@@ -68,7 +68,7 @@ function renderizarTabuleiro() {
   casas.forEach(casa => {
     const x = parseInt(casa.dataset.x);
     const y = parseInt(casa.dataset.y);
-    casa.classList.remove('selecionada', 'movimento', 'cavaleiro-protegido');
+    casa.classList.remove('selecionada', 'movimento', 'cavaleiro-protegido', 'ataque');
 
     const peca = tabuleiro[y][x];
     casa.textContent = peca ? PECAS[peca.tipo] : '';
@@ -79,9 +79,16 @@ function renderizarTabuleiro() {
 
     if (selecao && selecao.x === x && selecao.y === y) {
       casa.classList.add('selecionada');
-    } else if (movimentosPossiveis.some(pos => pos.x === x && pos.y === y)) {
-      casa.classList.add('movimento');
+    } else {
+    const mov = movimentosPossiveis.find(pos => pos.x === x && pos.y === y);
+    if (mov) {
+      if (mov.ataque) {
+        casa.classList.add('ataque');
+      } else {
+        casa.classList.add('movimento');
+      }
     }
+  }
   });
 }
 
@@ -125,6 +132,26 @@ function calcularMovimentos(tipo, x, y) {
       const nx = x + dx;
       const ny = y + dy;
       if (dentro(nx, ny)) movimentos.push({ x: nx, y: ny });
+    }
+  } else if (tipo === 'mago') {
+    const dirs = [
+      { dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+    ];
+    for (let dir of dirs) {
+      const nx = x + dir.dx;
+      const ny = y + dir.dy;
+      if (dentro(nx, ny)) movimentos.push({ x: nx, y: ny });
+    }
+    // Adiciona alvos em linha para ataque visual
+    for (let ny = 0; ny < 5; ny++) {
+      for (let nx = 0; nx < 5; nx++) {
+        if ((nx === x || ny === y) && !(nx === x && ny === y) && linhaLivre(x, y, nx, ny)) {
+          const alvo = tabuleiro[ny][nx];
+          if (alvo && alvo.jogador !== jogadorAtual) {
+            movimentos.push({ x: nx, y: ny, ataque: true });
+          }
+        }
+      }
     }
   }
 
