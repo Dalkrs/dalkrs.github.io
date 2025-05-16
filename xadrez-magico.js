@@ -19,6 +19,8 @@ const tabuleiro = [];
 const tabuleiroEl = document.getElementById('tabuleiro');
 const mensagemEl = document.getElementById('mensagem');
 const logEl = document.getElementById('log');
+const turnoEl = document.createElement('h1');
+document.body.insertBefore(turnoEl, tabuleiroEl);
 
 function logar(msg) {
   const p = document.createElement("p");
@@ -45,6 +47,7 @@ function criarTabuleiro() {
 
   posicionarPecas();
   renderizarTabuleiro();
+  turnoEl.textContent = jogadorAtual === 'A' ? '🎯 Seu Turno!' : '💀 Turno do Inimigo';
 }
 
 function posicionarPecas() {
@@ -238,6 +241,7 @@ function cliqueNaCasa(x, y) {
 
   renderizarTabuleiro();
   if (jogadorAtual === 'B') setTimeout(turnoIA, 500);
+  else turnoEl.textContent = '🎯 Seu Turno!';
 }
 
 function turnoIA() {
