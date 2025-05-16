@@ -59,6 +59,11 @@ body {
   border-radius: 2px;
   animation: disparo 0.3s ease-out forwards;
 }
+.ataque {
+  background-color: #7a0000 !important;
+  box-shadow: 0 0 10px red;
+}
+
 #log {
   max-height: 150px;
   overflow-y: auto;
