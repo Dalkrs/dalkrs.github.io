@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Central de Jogos Rúnicos de URGM</title>
+  <link rel="stylesheet" href="xadrez-magico.css">
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -106,11 +107,12 @@
   </div>
 
   <!-- Xadrez Mágico -->
-  <div id="xadrez" style="display:none;">
-    <div class="placeholder">
-      ♟️ Em breve: Enfrente entidades mágicas em um xadrez estratégico com runas!
-    </div>
-  </div>
+<div id="xadrez" style="display:none;">
+  <h2>Xadrez Mágico URGM</h2>
+  <div id="tabuleiro" class="tabuleiro"></div>
+  <p id="mensagem"></p>
+  <div id="log"></div>
+</div>
 
   <!-- Jogo dos Dados -->
 <div id="dados" style="display:none;">
@@ -315,6 +317,6 @@
     }
   }
 </script>
-
+<script src="xadrez-magico.js"></script>
 </body>
 </html>
