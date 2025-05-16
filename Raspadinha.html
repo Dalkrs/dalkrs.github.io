@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Raspadinhas Rúnicas de URGM</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0b0f12;
+      color: #00ffcc;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #79ffe1;
+      text-shadow: 0 0 10px #0ff;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    .controls select, .controls button {
+      padding: 10px;
+      background: #1b1f22;
+      color: #00ffcc;
+      border: 2px solid #00ffcc;
+      border-radius: 8px;
+      margin-left: 10px;
+    }
+
+    .scratch-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .scratch-box {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      background: url('https://i.imgur.com/UzJSVWi.png'); /* textura rúnica opcional */
+      background-size: cover;
+      border: 3px solid #0ff;
+      border-radius: 15px;
+      box-shadow: 0 0 15px #0ff80f;
+    }
+
+    .scratch-content {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      font-size: 20px;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #111;
+      border-radius: 12px;
+      z-index: 0;
+      font-weight: bold;
+      text-shadow: 0 0 5px #fff;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-radius: 12px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>✨ Raspadinhas Rúnicas de URGM ✨</h1>
+  <div class="controls">
+    <label for="amount">Quantidade de Raspadinhas: </label>
+    <select id="amount">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+    <button onclick="gerarRaspadinhas()">Invocar</button>
+  </div>
+
+  <div class="scratch-container" id="scratchArea"></div>
+
+  <!-- Efeitos sonoros -->
+  <audio id="scratchSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9e456ad7e4.mp3" preload="auto"></audio>
+  <audio id="revealSound" src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_f92c4c93dc.mp3" preload="auto"></audio>
+
+  <script>
+    const premios = [
+      { nome: '🔮 Equipamento', chance: 0.03 },
+      { nome: '🔥 Skill', chance: 0.01 },
+      { nome: '🧪 Kit', chance: 0.01 },
+      { nome: '💨 Nada', chance: 0.95 },
+    ];
+
+    function sortearPremio() {
+      let rand = Math.random();
+      let acumulado = 0;
+      for (let premio of premios) {
+        acumulado += premio.chance;
+        if (rand <= acumulado) return premio.nome;
+      }
+      return 'Nada';
+    }
+
+    function gerarRaspadinhas() {
+      const quantidade = parseInt(document.getElementById('amount').value);
+      const container = document.getElementById('scratchArea');
+      container.innerHTML = '';
+
+      for (let i = 0; i < quantidade; i++) {
+        const premio = sortearPremio();
+
+        const box = document.createElement('div');
+        box.className = 'scratch-box';
+
+        const content = document.createElement('div');
+        content.className = 'scratch-content';
+        content.textContent = premio;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 180;
+        canvas.height = 180;
+
+        box.appendChild(content);
+        box.appendChild(canvas);
+        container.appendChild(box);
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#888';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let isDrawing = false;
+        let revealed = false;
+
+        const scratchSound = document.getElementById('scratchSound');
+        const revealSound = document.getElementById('revealSound');
+
+        function draw(e) {
+          if (!isDrawing) return;
+
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+          const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.arc(x, y, 18, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Som de raspagem
+          if (scratchSound.paused) {
+            scratchSound.currentTime = 0;
+            scratchSound.play();
+          }
+
+          // Verificação de área raspada
+          if (!revealed) {
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let total = pixels.data.length / 4;
+            let transparent = 0;
+
+            for (let i = 3; i < pixels.data.length; i += 4) {
+              if (pixels.data[i] === 0) transparent++;
+            }
+
+            if (transparent / total > 0.5) {
+              revealed = true;
+              revealSound.play();
+            }
+          }
+        }
+
+        canvas.addEventListener('mousedown', () => isDrawing = true);
+        canvas.addEventListener('mouseup', () => {
+          isDrawing = false;
+          scratchSound.pause();
+        });
+        canvas.addEventListener('mouseleave', () => {
+          isDrawing = false;
+          scratchSound.pause();
+        });
+        canvas.addEventListener('mousemove', draw);
+
+        canvas.addEventListener('touchstart', () => isDrawing = true);
+        canvas.addEventListener('touchend', () => {
+          isDrawing = false;
+          scratchSound.pause();
+        });
+        canvas.addEventListener('touchcancel', () => {
+          isDrawing = false;
+          scratchSound.pause();
+        });
+        canvas.addEventListener('touchmove', draw);
+      }
+    }
+  </script>
+</body>
+</html>
