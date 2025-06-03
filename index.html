@@ -39,7 +39,7 @@
             <button id="resetButton" class="px-6 py-3 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
                 Reiniciar Teste
             </button>
-            <div id="messageBox" class="text-lg text-green-300 font-medium">
+            <div id="messageBox" class="text-lg text-green-300 font-medium text-center">
                 Conecte os cabos para iniciar o teste!
             </div>
         </div>
@@ -63,14 +63,32 @@
         let startPoint = null; // O ponto de onde o arrasto começou
         let currentMouseX = 0; // Posição X atual do mouse
         let currentMouseY = 0; // Posição Y atual do mouse
+        let gameWon = false; // Estado de vitória do jogo
 
         // Configurações visuais
-        const POINT_RADIUS = 15; // Raio dos pontos
+        const POINT_RADIUS = 20; // Raio dos pontos (aumentado para melhor precisão)
+        const HIT_DETECTION_RADIUS = POINT_RADIUS + 5; // Raio de detecção de clique (maior que o visual)
         const POINT_COLOR = '#00f0ff'; // Cor dos pontos (ciano neon)
         const DRAGGING_LINE_COLOR = '#ff00ff'; // Cor da linha enquanto arrasta (magenta neon)
         const HOVER_COLOR = '#ffcc00'; // Cor do ponto ao passar o mouse (amarelo neon)
         const CABLE_COLORS = ['#00ff00', '#ff0000', '#0000ff']; // Cores dos cabos: verde, vermelho, azul neon
+        const TARGET_POINT_GLOW_COLOR = '#00ffff'; // Cor do brilho para pontos alvo
+        const COMPLETED_CABLE_COLOR = '#00ff00'; // Cor para cabos do objetivo concluídos (verde neon)
         let currentColorIndex = 0; // Índice da cor atual do cabo
+
+        // Define o objetivo do jogo: conexões que precisam ser feitas para vencer
+        // Cada objeto representa uma conexão alvo, com os IDs dos pontos envolvidos
+        // e um status 'completed' para rastrear o progresso.
+        let targetConnections = [
+            { p1Id: 0, p2Id: 1, completed: false },
+            { p1Id: 1, p2Id: 2, completed: false },
+            { p1Id: 2, p2Id: 5, completed: false },
+            { p1Id: 5, p2Id: 8, completed: false },
+            { p1Id: 8, p2Id: 7, completed: false },
+            { p1Id: 7, p2Id: 6, completed: false },
+            { p1Id: 6, p2Id: 3, completed: false },
+            { p1Id: 3, p2Id: 0, completed: false }
+        ];
 
         // Função para inicializar os pontos no canvas
         function initializePoints() {
@@ -78,6 +96,10 @@
             points = [];
             connections = [];
             currentColorIndex = 0; // Reseta o índice da cor
+            gameWon = false; // Reseta o estado de vitória
+
+            // Reseta o status de conclusão das conexões alvo
+            targetConnections.forEach(conn => conn.completed = false);
 
             // Define as posições dos pontos em uma grade 3x3
             const numRows = 3;
@@ -96,11 +118,23 @@
             }
 
             drawGame(); // Desenha o estado inicial do jogo
-            messageBox.textContent = 'Conecte os cabos para iniciar o teste!';
+            messageBox.textContent = 'Conecte os cabos para formar o circuito rúnico!';
         }
 
         // Função para desenhar um ponto
         function drawPoint(point, hover = false) {
+            // Desenha um brilho para pontos que fazem parte do objetivo
+            const isTargetPoint = targetConnections.some(tc => tc.p1Id === point.id || tc.p2Id === point.id);
+            if (isTargetPoint) {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, POINT_RADIUS + 5, 0, Math.PI * 2); // Raio maior para o brilho
+                ctx.fillStyle = TARGET_POINT_GLOW_COLOR;
+                ctx.shadowBlur = 15; // Intensidade do brilho
+                ctx.shadowColor = TARGET_POINT_GLOW_COLOR;
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reseta o shadowBlur para não afetar outros desenhos
+            }
+
             ctx.beginPath();
             ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
             ctx.fillStyle = hover ? HOVER_COLOR : POINT_COLOR;
@@ -149,12 +183,12 @@
             });
         }
 
-        // Função para verificar se o mouse está sobre um ponto
+        // Função para verificar se o mouse está sobre um ponto (usando o raio de detecção maior)
         function getPointAtCoordinates(x, y) {
             for (let i = 0; i < points.length; i++) {
                 const p = points[i];
                 const distance = Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
-                if (distance < POINT_RADIUS) {
+                if (distance < HIT_DETECTION_RADIUS) { // Usa o raio de detecção
                     return p;
                 }
             }
@@ -227,10 +261,22 @@
             return false; // Nenhuma interseção encontrada
         }
 
+        // Função para verificar se o objetivo do jogo foi alcançado
+        function checkWinCondition() {
+            const allTargetConnectionsMade = targetConnections.every(tc => tc.completed);
+            if (allTargetConnectionsMade && !gameWon) {
+                gameWon = true;
+                messageBox.textContent = 'PARABÉNS! O circuito rúnico foi ativado!';
+                // Opcional: Adicionar efeitos visuais de vitória
+            }
+        }
+
         // --- Manipuladores de Eventos ---
 
         // Evento de pressionar o botão do mouse (ou tocar na tela)
         canvas.addEventListener('mousedown', (e) => {
+            if (gameWon) return; // Não permite interagir se o jogo já foi ganho
+
             // Obtém as coordenadas do mouse relativas ao canvas
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
@@ -249,6 +295,8 @@
 
         // Evento de mover o mouse (ou arrastar o dedo)
         canvas.addEventListener('mousemove', (e) => {
+            if (gameWon) return;
+
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
@@ -271,6 +319,8 @@
 
         // Evento de soltar o botão do mouse (ou levantar o dedo)
         canvas.addEventListener('mouseup', (e) => {
+            if (gameWon) return;
+
             if (dragging && startPoint) {
                 const rect = canvas.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
@@ -289,14 +339,28 @@
                     if (!alreadyConnected) {
                         // Verifica se a nova linha cruzaria alguma existente
                         if (!checkLineCrossing(startPoint, endPoint)) {
-                            connections.push({
+                            const newConnection = {
                                 p1: startPoint,
                                 p2: endPoint,
                                 color: CABLE_COLORS[currentColorIndex] // Atribui a cor atual
-                            });
+                            };
+                            connections.push(newConnection);
                             messageBox.textContent = `Cabo ${CABLE_COLORS[currentColorIndex]} conectado!`;
                             // Avança para a próxima cor
                             currentColorIndex = (currentColorIndex + 1) % CABLE_COLORS.length;
+
+                            // Verifica se esta conexão é uma das conexões alvo
+                            const matchedTarget = targetConnections.find(tc =>
+                                (tc.p1Id === startPoint.id && tc.p2Id === endPoint.id) ||
+                                (tc.p1Id === endPoint.id && tc.p2Id === startPoint.id)
+                            );
+                            if (matchedTarget) {
+                                matchedTarget.completed = true;
+                                // Se a conexão alvo foi feita, desenha com a cor de "completo"
+                                newConnection.color = COMPLETED_CABLE_COLOR;
+                            }
+
+                            checkWinCondition(); // Verifica se o jogo foi ganho
                         } else {
                             messageBox.textContent = 'ERRO: Os cabos não podem se cruzar!';
                         }
@@ -316,6 +380,8 @@
 
         // Evento para toque em dispositivos móveis (equivalente ao mousedown)
         canvas.addEventListener('touchstart', (e) => {
+            if (gameWon) return;
+
             e.preventDefault(); // Previne o scroll da página
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
@@ -334,6 +400,8 @@
 
         // Evento para arrastar o dedo (equivalente ao mousemove)
         canvas.addEventListener('touchmove', (e) => {
+            if (gameWon) return;
+
             e.preventDefault(); // Previne o scroll da página
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
@@ -350,6 +418,8 @@
 
         // Evento para levantar o dedo (equivalente ao mouseup)
         canvas.addEventListener('touchend', (e) => {
+            if (gameWon) return;
+
             if (dragging && startPoint) {
                 const rect = canvas.getBoundingClientRect();
                 // Use a última posição conhecida do touch para determinar o ponto final
@@ -366,13 +436,25 @@
 
                     if (!alreadyConnected) {
                         if (!checkLineCrossing(startPoint, endPoint)) {
-                            connections.push({
+                            const newConnection = {
                                 p1: startPoint,
                                 p2: endPoint,
                                 color: CABLE_COLORS[currentColorIndex]
-                            });
+                            };
+                            connections.push(newConnection);
                             messageBox.textContent = `Cabo ${CABLE_COLORS[currentColorIndex]} conectado!`;
                             currentColorIndex = (currentColorIndex + 1) % CABLE_COLORS.length;
+
+                            const matchedTarget = targetConnections.find(tc =>
+                                (tc.p1Id === startPoint.id && tc.p2Id === endPoint.id) ||
+                                (tc.p1Id === endPoint.id && tc.p2Id === startPoint.id)
+                            );
+                            if (matchedTarget) {
+                                matchedTarget.completed = true;
+                                newConnection.color = COMPLETED_CABLE_COLOR;
+                            }
+
+                            checkWinCondition();
                         } else {
                             messageBox.textContent = 'ERRO: Os cabos não podem se cruzar!';
                         }
