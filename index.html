@@ -1,322 +1,316 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Central de Jogos Rúnicos de URGM</title>
-  <link rel="stylesheet" href="xadrez-magico.css">
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0b0f12;
-      color: #00ffcc;
-      text-align: center;
-      padding: 20px;
-    }
-
-    h1 {
-      color: #79ffe1;
-      text-shadow: 0 0 10px #0ff;
-    }
-
-    .menu, .controls {
-      margin-bottom: 20px;
-    }
-
-    .menu button, .controls select, .controls button {
-      padding: 10px 20px;
-      margin: 5px;
-      background: #1b1f22;
-      color: #00ffcc;
-      border: 2px solid #00ffcc;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .scratch-container {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-
-    .scratch-box {
-      position: relative;
-      width: 180px;
-      height: 180px;
-      background: url('https://i.imgur.com/UzJSVWi.png');
-      background-size: cover;
-      border: 3px solid #0ff;
-      border-radius: 15px;
-      box-shadow: 0 0 15px #0ff80f;
-    }
-
-    .scratch-content {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      font-size: 20px;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #111;
-      border-radius: 12px;
-      z-index: 0;
-      font-weight: bold;
-      text-shadow: 0 0 5px #fff;
-    }
-
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      border-radius: 12px;
-      z-index: 1;
-    }
-
-    .placeholder {
-      padding: 40px;
-      font-size: 22px;
-      color: #999;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ligar Pontos - Jogo de Circuito</title>
+    <!-- Carrega o Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo personalizado para a fonte */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Cor de fundo suave */
+        }
+        /* Estilo para o canvas para garantir que ele seja responsivo */
+        canvas {
+            display: block;
+            background-color: #ffffff; /* Fundo branco para o tabuleiro */
+            border: 2px solid #cbd5e1; /* Borda leve */
+            border-radius: 12px; /* Cantos arredondados */
+            touch-action: none; /* Previne o comportamento padrão de toque, como rolagem */
+        }
+    </style>
 </head>
-<body>
-  <h1>🎲 Central de Jogos Rúnicos de URGM</h1>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-6 rounded-xl shadow-lg max-w-4xl w-full">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Jogo de Ligar Pontos</h1>
 
-  <div class="menu">
-    <button onclick="mostrarModulo('raspadinha')">🎰 Raspadinha Rúnica</button>
-    <button onclick="mostrarModulo('xadrez')">♟️ Xadrez Mágico</button>
-    <button onclick="mostrarModulo('dados')">🎲 Jogo dos Dados</button>
-  </div>
+        <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-6">
+            <button id="resetButton" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">
+                Reiniciar Jogo
+            </button>
+            <div id="messageBox" class="text-lg text-gray-700 font-medium">
+                Clique e arraste para ligar os pontos!
+            </div>
+        </div>
 
-  <!-- Raspadinha -->
-  <div id="raspadinha" style="display:none;">
-    <div class="controls">
-      <label for="amount">Quantidade de Raspadinhas:</label>
-      <select id="amount">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
-      <button onclick="gerarRaspadinhas()">Invocar</button>
+        <canvas id="gameCanvas" class="w-full h-auto" width="800" height="600"></canvas>
     </div>
-    <div class="scratch-container" id="scratchArea"></div>
-  </div>
 
-  <!-- Xadrez Mágico -->
-<div id="xadrez" style="display:none;">
-  <h2>Xadrez Mágico URGM</h2>
-  <div id="tabuleiro" class="tabuleiro"></div>
-  <p id="mensagem"></p>
-  <div id="log"></div>
-</div>
-
-  <!-- Jogo dos Dados -->
-<div id="dados" style="display:none;">
-  <div class="controls">
-    <label>Valor da Aposta (100 a 25000):</label>
-    <input type="number" id="valorAposta" min="100" max="25000" value="100"><br><br>
-    <label>Escolha seu número (1 a 100):</label>
-    <input type="number" id="numeroEscolhido" min="1" max="100" value="50"><br><br>
-    <button onclick="jogarDados()">Lançar Dados</button>
-  </div>
-
-  <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
-    <div>
-      <h3>Dado 1</h3>
-      <div id="dado1" style="font-size: 32px; padding: 20px; background: #222; border-radius: 10px;">🎲</div>
-    </div>
-    <div>
-      <h3>Dado 2</h3>
-      <div id="dado2" style="font-size: 32px; padding: 20px; background: #222; border-radius: 10px;">🎲</div>
-    </div>
-  </div>
-
-  <h2 id="resultado" style="margin-top: 30px;"></h2>
-</div>
-
-
-  <!-- Áudios -->
-  <audio id="scratchSound" src="https://cdn.freesound.org/previews/341/341695_6262510-lq.mp3" preload="auto"></audio>
-  <audio id="revealSound" src="https://cdn.freesound.org/previews/457/457777_8386275-lq.mp3" preload="auto"></audio>
-
-  <script>
-    function mostrarModulo(nome) {
-      document.getElementById('raspadinha').style.display = 'none';
-      document.getElementById('xadrez').style.display = 'none';
-      document.getElementById('dados').style.display = 'none';
-      document.getElementById(nome).style.display = 'block';
-    }
-
-    const premios = [
-      { nome: '🔮 Equipamento', chance: 0.03 },
-      { nome: '🔥 Skill', chance: 0.01 },
-      { nome: '🧪 Kit', chance: 0.01 },
-      { nome: '💨 Nada', chance: 0.95 },
-    ];
-
-    function sortearPremio() {
-      let rand = Math.random();
-      let acumulado = 0;
-      for (let premio of premios) {
-        acumulado += premio.chance;
-        if (rand <= acumulado) return premio.nome;
-      }
-      return 'Nada';
-    }
-
-    function gerarRaspadinhas() {
-      const quantidade = parseInt(document.getElementById('amount').value);
-      const container = document.getElementById('scratchArea');
-      container.innerHTML = '';
-
-      for (let i = 0; i < quantidade; i++) {
-        const premio = sortearPremio();
-
-        const box = document.createElement('div');
-        box.className = 'scratch-box';
-
-        const content = document.createElement('div');
-        content.className = 'scratch-content';
-        content.textContent = premio;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 180;
-        canvas.height = 180;
-
-        box.appendChild(content);
-        box.appendChild(canvas);
-        container.appendChild(box);
-
+    <script>
+        // Obtém o elemento canvas e seu contexto 2D
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#888';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        let isDrawing = false;
-        let revealed = false;
+        // Obtém o botão de reset e a caixa de mensagens
+        const resetButton = document.getElementById('resetButton');
+        const messageBox = document.getElementById('messageBox');
 
-        const scratchSound = document.getElementById('scratchSound');
-        const revealSound = document.getElementById('revealSound');
+        // Variáveis de estado do jogo
+        let points = []; // Array para armazenar os pontos do jogo
+        let connections = []; // Array para armazenar as linhas conectadas
+        let dragging = false; // Indica se o usuário está arrastando o mouse
+        let startPoint = null; // O ponto de onde o arrasto começou
+        let currentMouseX = 0; // Posição X atual do mouse
+        let currentMouseY = 0; // Posição Y atual do mouse
 
-        function draw(e) {
-          if (!isDrawing) return;
+        // Configurações visuais
+        const POINT_RADIUS = 15; // Raio dos pontos
+        const POINT_COLOR = '#4a90e2'; // Cor dos pontos (azul elétrico)
+        const CONNECTED_LINE_COLOR = '#28a745'; // Cor da linha conectada (verde)
+        const DRAGGING_LINE_COLOR = '#ffc107'; // Cor da linha enquanto arrasta (amarelo)
+        const HOVER_COLOR = '#f59e0b'; // Cor do ponto ao passar o mouse (laranja)
 
-          const rect = canvas.getBoundingClientRect();
-          const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-          const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        // Função para inicializar os pontos no canvas
+        function initializePoints() {
+            // Limpa os arrays existentes
+            points = [];
+            connections = [];
 
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.beginPath();
-          ctx.arc(x, y, 18, 0, 2 * Math.PI);
-          ctx.fill();
+            // Define as posições dos pontos.
+            // Para um jogo de circuito, você pode definir pontos estratégicos.
+            points.push({ id: 0, x: 100, y: 100, connectedTo: [] });
+            points.push({ id: 1, x: 400, y: 100, connectedTo: [] });
+            points.push({ id: 2, x: 700, y: 100, connectedTo: [] });
+            points.push({ id: 3, x: 100, y: 300, connectedTo: [] });
+            points.push({ id: 4, x: 400, y: 300, connectedTo: [] });
+            points.push({ id: 5, x: 700, y: 300, connectedTo: [] });
+            points.push({ id: 6, x: 100, y: 500, connectedTo: [] });
+            points.push({ id: 7, x: 400, y: 500, connectedTo: [] });
+            points.push({ id: 8, x: 700, y: 500, connectedTo: [] });
 
-          if (scratchSound.paused) {
-            scratchSound.currentTime = 0;
-            scratchSound.play();
-          }
-
-          if (!revealed) {
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let total = pixels.data.length / 4;
-            let transparent = 0;
-
-            for (let i = 3; i < pixels.data.length; i += 4) {
-              if (pixels.data[i] === 0) transparent++;
-            }
-
-            if (transparent / total > 0.5) {
-              revealed = true;
-              revealSound.currentTime = 0;
-              revealSound.play();
-            }
-          }
+            drawGame(); // Desenha o estado inicial do jogo
+            messageBox.textContent = 'Clique e arraste para ligar os pontos!';
         }
 
-        canvas.addEventListener('mousedown', () => isDrawing = true);
-        canvas.addEventListener('mouseup', () => {
-          isDrawing = false;
-          scratchSound.pause();
+        // Função para desenhar um ponto
+        function drawPoint(point, hover = false) {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = hover ? HOVER_COLOR : POINT_COLOR;
+            ctx.fill();
+            ctx.strokeStyle = '#333'; // Borda do ponto
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Desenha o ID do ponto (opcional, para depuração)
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(point.id, point.x, point.y);
+        }
+
+        // Função para desenhar uma linha
+        function drawLine(p1, p2, color, width = 4) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round'; // Pontas arredondadas para a linha
+            ctx.stroke();
+        }
+
+        // Função principal para desenhar todo o jogo
+        function drawGame() {
+            // Limpa o canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenha todas as conexões existentes
+            connections.forEach(conn => {
+                drawLine(conn.p1, conn.p2, CONNECTED_LINE_COLOR);
+            });
+
+            // Se estiver arrastando, desenha a linha temporária
+            if (dragging && startPoint) {
+                drawLine(startPoint, { x: currentMouseX, y: currentMouseY }, DRAGGING_LINE_COLOR, 3);
+            }
+
+            // Desenha todos os pontos
+            points.forEach(point => {
+                drawPoint(point);
+            });
+        }
+
+        // Função para verificar se o mouse está sobre um ponto
+        function getPointAtCoordinates(x, y) {
+            for (let i = 0; i < points.length; i++) {
+                const p = points[i];
+                const distance = Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
+                if (distance < POINT_RADIUS) {
+                    return p;
+                }
+            }
+            return null;
+        }
+
+        // --- Manipuladores de Eventos ---
+
+        // Evento de pressionar o botão do mouse (ou tocar na tela)
+        canvas.addEventListener('mousedown', (e) => {
+            // Obtém as coordenadas do mouse relativas ao canvas
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Verifica se o clique foi em um ponto
+            const clickedPoint = getPointAtCoordinates(mouseX, mouseY);
+            if (clickedPoint) {
+                dragging = true;
+                startPoint = clickedPoint;
+                currentMouseX = mouseX;
+                currentMouseY = mouseY;
+                drawGame(); // Redesenha para mostrar o ponto inicial
+            }
         });
-        canvas.addEventListener('mouseleave', () => {
-          isDrawing = false;
-          scratchSound.pause();
+
+        // Evento de mover o mouse (ou arrastar o dedo)
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Atualiza a posição do mouse para a linha de arrasto
+            currentMouseX = mouseX;
+            currentMouseY = mouseY;
+
+            if (dragging) {
+                drawGame(); // Redesenha para atualizar a linha de arrasto
+            } else {
+                // Efeito de hover nos pontos
+                const hoveredPoint = getPointAtCoordinates(mouseX, mouseY);
+                drawGame(); // Redesenha para limpar o hover anterior
+                if (hoveredPoint) {
+                    drawPoint(hoveredPoint, true); // Desenha o ponto com efeito de hover
+                }
+            }
         });
-        canvas.addEventListener('mousemove', draw);
 
-        canvas.addEventListener('touchstart', () => isDrawing = true);
-        canvas.addEventListener('touchend', () => {
-          isDrawing = false;
-          scratchSound.pause();
+        // Evento de soltar o botão do mouse (ou levantar o dedo)
+        canvas.addEventListener('mouseup', (e) => {
+            if (dragging && startPoint) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Verifica se o arrasto terminou em outro ponto
+                const endPoint = getPointAtCoordinates(mouseX, mouseY);
+
+                if (endPoint && endPoint.id !== startPoint.id) {
+                    // Evita conexões duplicadas
+                    const alreadyConnected = connections.some(conn =>
+                        (conn.p1.id === startPoint.id && conn.p2.id === endPoint.id) ||
+                        (conn.p1.id === endPoint.id && conn.p2.id === startPoint.id)
+                    );
+
+                    if (!alreadyConnected) {
+                        connections.push({ p1: startPoint, p2: endPoint });
+                        messageBox.textContent = `Ponto ${startPoint.id} conectado ao Ponto ${endPoint.id}!`;
+                        // Aqui você adicionaria a lógica para verificar o circuito
+                        // checkCircuitCompletion();
+                    } else {
+                        messageBox.textContent = 'Esses pontos já estão conectados!';
+                    }
+                } else if (endPoint && endPoint.id === startPoint.id) {
+                    messageBox.textContent = 'Você conectou um ponto a si mesmo!';
+                } else {
+                    messageBox.textContent = 'Nenhuma conexão válida feita.';
+                }
+            }
+            dragging = false;
+            startPoint = null;
+            drawGame(); // Redesenha o estado final
         });
-        canvas.addEventListener('touchcancel', () => {
-          isDrawing = false;
-          scratchSound.pause();
+
+        // Evento para toque em dispositivos móveis (equivalente ao mousedown)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Previne o scroll da página
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            const touchedPoint = getPointAtCoordinates(touchX, touchY);
+            if (touchedPoint) {
+                dragging = true;
+                startPoint = touchedPoint;
+                currentMouseX = touchX;
+                currentMouseY = touchY;
+                drawGame();
+            }
+        }, { passive: false }); // Use passive: false para permitir preventDefault
+
+        // Evento para arrastar o dedo (equivalente ao mousemove)
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Previne o scroll da página
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            currentMouseX = touchX;
+            currentMouseY = touchY;
+
+            if (dragging) {
+                drawGame();
+            }
+        }, { passive: false });
+
+        // Evento para levantar o dedo (equivalente ao mouseup)
+        canvas.addEventListener('touchend', (e) => {
+            if (dragging && startPoint) {
+                const rect = canvas.getBoundingClientRect();
+                // Use a última posição conhecida do touch para determinar o ponto final
+                const touchX = currentMouseX;
+                const touchY = currentMouseY;
+
+                const endPoint = getPointAtCoordinates(touchX, touchY);
+
+                if (endPoint && endPoint.id !== startPoint.id) {
+                    const alreadyConnected = connections.some(conn =>
+                        (conn.p1.id === startPoint.id && conn.p2.id === endPoint.id) ||
+                        (conn.p1.id === endPoint.id && conn.p2.id === startPoint.id)
+                    );
+
+                    if (!alreadyConnected) {
+                        connections.push({ p1: startPoint, p2: endPoint });
+                        messageBox.textContent = `Ponto ${startPoint.id} conectado ao Ponto ${endPoint.id}!`;
+                    } else {
+                        messageBox.textContent = 'Esses pontos já estão conectados!';
+                    }
+                } else if (endPoint && endPoint.id === startPoint.id) {
+                    messageBox.textContent = 'Você conectou um ponto a si mesmo!';
+                } else {
+                    messageBox.textContent = 'Nenhuma conexão válida feita.';
+                }
+            }
+            dragging = false;
+            startPoint = null;
+            drawGame();
         });
-        canvas.addEventListener('touchmove', draw);
-      }
-    }
 
-    // Começar com raspadinha visível
-    mostrarModulo('raspadinha');
-  </script>
-  <script>
-  function jogarDados() {
-    const aposta = parseInt(document.getElementById('valorAposta').value);
-    const escolha = parseInt(document.getElementById('numeroEscolhido').value);
-    const resultado = document.getElementById('resultado');
-    const dado1El = document.getElementById('dado1');
-    const dado2El = document.getElementById('dado2');
 
-    if (isNaN(aposta) || aposta < 100 || aposta > 25000) {
-      alert("Aposta inválida! Valor deve ser entre 100 e 25.000 lapros.");
-      return;
-    }
+        // Evento para o botão de reiniciar
+        resetButton.addEventListener('click', initializePoints);
 
-    if (isNaN(escolha) || escolha < 1 || escolha > 100) {
-      alert("Escolha inválida! Número deve ser entre 1 e 100.");
-      return;
-    }
+        // Ajusta o tamanho do canvas para ser responsivo
+        function resizeCanvas() {
+            const containerWidth = canvas.parentElement.clientWidth;
+            // Mantém uma proporção de 4:3 ou 16:9, ajuste conforme necessário
+            canvas.width = containerWidth;
+            canvas.height = containerWidth * (3 / 4); // Exemplo: proporção 4:3
+            initializePoints(); // Re-inicializa os pontos para ajustar às novas dimensões
+        }
 
-    resultado.textContent = "🎲 Rolando os dados...";
-    dado1El.textContent = "🎲";
-    dado2El.textContent = "🎲";
+        // Chama resizeCanvas quando a janela é carregada e redimensionada
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            initializePoints(); // Garante que os pontos são desenhados no carregamento
+        });
+        window.addEventListener('resize', resizeCanvas);
 
-    // Simular animação com delay
-    let animCount = 10;
-    let animInterval = setInterval(() => {
-      dado1El.textContent = Math.floor(Math.random() * 100) + 1;
-      dado2El.textContent = Math.floor(Math.random() * 100) + 1;
-      animCount--;
-      if (animCount === 0) {
-        clearInterval(animInterval);
-        finalizarJogo();
-      }
-    }, 100);
-
-    function finalizarJogo() {
-      const dado1 = Math.floor(Math.random() * 100) + 1;
-      const dado2 = Math.floor(Math.random() * 100) + 1;
-      dado1El.textContent = dado1;
-      dado2El.textContent = dado2;
-
-      const vizinhos = [escolha - 1, escolha + 1];
-      let ganhou = 0;
-
-      if (dado1 === escolha || dado2 === escolha) {
-        ganhou = aposta * 3;
-        resultado.textContent = `🎉 Caiu exatamente ${escolha}! Você ganhou ${ganhou} lapros! (x3)`;
-      } else if (vizinhos.includes(dado1) || vizinhos.includes(dado2)) {
-        ganhou = aposta * 2;
-        resultado.textContent = `✨ Caiu um número vizinho! Você ganhou ${ganhou} lapros! (x2)`;
-      } else {
-        resultado.textContent = `💀 Nenhum resultado próximo... você perdeu ${aposta} lapros.`;
-      }
-    }
-  }
-</script>
-<script src="xadrez-magico.js"></script>
+    </script>
 </body>
 </html>
