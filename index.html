@@ -3,35 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ligar Pontos - Jogo de Circuito</title>
-    <!-- Carrega o Tailwind CSS para estilização rápida e responsiva -->
+    <title>Teste Rúnico Garret</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilo personalizado para a fonte */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Cor de fundo suave */
+            background-color: #1a202c; /* Cor de fundo escura (quase preta) */
+            color: #e2e8f0; /* Cor do texto padrão */
         }
         /* Estilo para o canvas para garantir que ele seja responsivo */
         canvas {
             display: block;
-            background-color: #ffffff; /* Fundo branco para o tabuleiro */
-            border: 2px solid #cbd5e1; /* Borda leve */
+            background-color: #2d3748; /* Fundo mais escuro para o tabuleiro */
+            border: 2px solid #4a5568; /* Borda sutil */
             border-radius: 12px; /* Cantos arredondados */
             touch-action: none; /* Previne o comportamento padrão de toque, como rolagem */
+        }
+        /* Estilo para o botão com um toque futurista */
+        button {
+            background-image: linear-gradient(to right, #8b5cf6, #a78bfa); /* Gradiente roxo */
+            box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.3); /* Sombra sutil */
+        }
+        button:hover {
+            background-image: linear-gradient(to right, #a78bfa, #8b5cf6); /* Inverte o gradiente no hover */
+            box-shadow: 0 6px 20px 0 rgba(139, 92, 246, 0.4); /* Sombra mais intensa */
         }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-6 rounded-xl shadow-lg max-w-4xl w-full">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Jogo de Ligar Pontos</h1>
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg max-w-4xl w-full">
+        <h1 class="text-3xl font-bold text-center text-green-400 mb-6">Teste Rúnico Garret</h1>
 
         <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-6">
-            <button id="resetButton" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">
-                Reiniciar Jogo
+            <button id="resetButton" class="px-6 py-3 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Reiniciar Teste
             </button>
-            <div id="messageBox" class="text-lg text-gray-700 font-medium">
-                Clique e arraste para ligar os pontos!
+            <div id="messageBox" class="text-lg text-green-300 font-medium">
+                Conecte os cabos para iniciar o teste!
             </div>
         </div>
 
@@ -49,7 +58,7 @@
 
         // Variáveis de estado do jogo
         let points = []; // Array para armazenar os pontos do jogo
-        let connections = []; // Array para armazenar as linhas conectadas
+        let connections = []; // Array para armazenar as linhas conectadas (cabos)
         let dragging = false; // Indica se o usuário está arrastando o mouse
         let startPoint = null; // O ponto de onde o arrasto começou
         let currentMouseX = 0; // Posição X atual do mouse
@@ -57,31 +66,37 @@
 
         // Configurações visuais
         const POINT_RADIUS = 15; // Raio dos pontos
-        const POINT_COLOR = '#4a90e2'; // Cor dos pontos (azul elétrico)
-        const CONNECTED_LINE_COLOR = '#28a745'; // Cor da linha conectada (verde)
-        const DRAGGING_LINE_COLOR = '#ffc107'; // Cor da linha enquanto arrasta (amarelo)
-        const HOVER_COLOR = '#f59e0b'; // Cor do ponto ao passar o mouse (laranja)
+        const POINT_COLOR = '#00f0ff'; // Cor dos pontos (ciano neon)
+        const DRAGGING_LINE_COLOR = '#ff00ff'; // Cor da linha enquanto arrasta (magenta neon)
+        const HOVER_COLOR = '#ffcc00'; // Cor do ponto ao passar o mouse (amarelo neon)
+        const CABLE_COLORS = ['#00ff00', '#ff0000', '#0000ff']; // Cores dos cabos: verde, vermelho, azul neon
+        let currentColorIndex = 0; // Índice da cor atual do cabo
 
         // Função para inicializar os pontos no canvas
         function initializePoints() {
             // Limpa os arrays existentes
             points = [];
             connections = [];
+            currentColorIndex = 0; // Reseta o índice da cor
 
-            // Define as posições dos pontos.
-            // Para um jogo de circuito, você pode definir pontos estratégicos.
-            points.push({ id: 0, x: 100, y: 100, connectedTo: [] });
-            points.push({ id: 1, x: 400, y: 100, connectedTo: [] });
-            points.push({ id: 2, x: 700, y: 100, connectedTo: [] });
-            points.push({ id: 3, x: 100, y: 300, connectedTo: [] });
-            points.push({ id: 4, x: 400, y: 300, connectedTo: [] });
-            points.push({ id: 5, x: 700, y: 300, connectedTo: [] });
-            points.push({ id: 6, x: 100, y: 500, connectedTo: [] });
-            points.push({ id: 7, x: 400, y: 500, connectedTo: [] });
-            points.push({ id: 8, x: 700, y: 500, connectedTo: [] });
+            // Define as posições dos pontos em uma grade 3x3
+            const numRows = 3;
+            const numCols = 3;
+            const padding = 100;
+            const horizontalSpacing = (canvas.width - 2 * padding) / (numCols - 1);
+            const verticalSpacing = (canvas.height - 2 * padding) / (numRows - 1);
+
+            let idCounter = 0;
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    const x = padding + c * horizontalSpacing;
+                    const y = padding + r * verticalSpacing;
+                    points.push({ id: idCounter++, x: x, y: y, connectedTo: [] });
+                }
+            }
 
             drawGame(); // Desenha o estado inicial do jogo
-            messageBox.textContent = 'Clique e arraste para ligar os pontos!';
+            messageBox.textContent = 'Conecte os cabos para iniciar o teste!';
         }
 
         // Função para desenhar um ponto
@@ -102,7 +117,7 @@
             ctx.fillText(point.id, point.x, point.y);
         }
 
-        // Função para desenhar uma linha
+        // Função para desenhar uma linha (cabo)
         function drawLine(p1, p2, color, width = 4) {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
@@ -120,7 +135,7 @@
 
             // Desenha todas as conexões existentes
             connections.forEach(conn => {
-                drawLine(conn.p1, conn.p2, CONNECTED_LINE_COLOR);
+                drawLine(conn.p1, conn.p2, conn.color); // Usa a cor armazenada na conexão
             });
 
             // Se estiver arrastando, desenha a linha temporária
@@ -144,6 +159,72 @@
                 }
             }
             return null;
+        }
+
+        // --- Lógica para detecção de interseção de linhas (para evitar cruzamentos) ---
+
+        // Helper function to determine orientation of ordered triplet (p, q, r).
+        // 0 --> p, q and r are collinear
+        // 1 --> Clockwise
+        // 2 --> Counterclockwise
+        function orientation(p, q, r) {
+            let val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+            if (val === 0) return 0;  // collinear
+            return (val > 0) ? 1 : 2; // clockwise or counterclockwise
+        }
+
+        // Given three collinear points p, q, r, the function checks if
+        // point q lies on segment 'pr'
+        function onSegment(p, q, r) {
+            return (q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) &&
+                    q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y));
+        }
+
+        // The main function that returns true if line segment 'p1q1'
+        // and 'p2q2' intersect.
+        function doLinesIntersect(p1, q1, p2, q2) {
+            // Find the four orientations needed for general and special cases
+            let o1 = orientation(p1, q1, p2);
+            let o2 = orientation(p1, q1, q2);
+            let o3 = orientation(p2, q2, p1);
+            let o4 = orientation(p2, q2, q1);
+
+            // General case
+            if (o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 &&
+                o1 !== o2 && o3 !== o4) {
+                return true;
+            }
+
+            // Special Cases (collinear points)
+            // p1, q1 and p2 are collinear and p2 lies on segment p1q1
+            if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+
+            // p1, q1 and q2 are collinear and q2 lies on segment p1q1
+            if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+
+            // p2, q2 and p1 are collinear and p1 lies on segment p2q2
+            if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+
+            // p2, q2 and q1 are collinear and q1 lies on segment p2q2
+            if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+
+            return false; // Doesn't fall in any of the above cases
+        }
+
+        // Função para verificar se a nova linha cruzaria alguma linha existente
+        function checkLineCrossing(newLineP1, newLineP2) {
+            for (let i = 0; i < connections.length; i++) {
+                const existingLine = connections[i];
+                if (doLinesIntersect(newLineP1, newLineP2, existingLine.p1, existingLine.p2)) {
+                    // Ignora interseção se as linhas compartilham um ponto final (não é um "cruzamento" real)
+                    if ( (newLineP1.id === existingLine.p1.id || newLineP1.id === existingLine.p2.id) ||
+                         (newLineP2.id === existingLine.p1.id || newLineP2.id === existingLine.p2.id) ) {
+                        continue; // Não é um cruzamento, apenas compartilhando um nó
+                    }
+                    return true; // Há um cruzamento!
+                }
+            }
+            return false; // Nenhuma interseção encontrada
         }
 
         // --- Manipuladores de Eventos ---
@@ -206,10 +287,19 @@
                     );
 
                     if (!alreadyConnected) {
-                        connections.push({ p1: startPoint, p2: endPoint });
-                        messageBox.textContent = `Ponto ${startPoint.id} conectado ao Ponto ${endPoint.id}!`;
-                        // Aqui você adicionaria a lógica para verificar o circuito
-                        // checkCircuitCompletion();
+                        // Verifica se a nova linha cruzaria alguma existente
+                        if (!checkLineCrossing(startPoint, endPoint)) {
+                            connections.push({
+                                p1: startPoint,
+                                p2: endPoint,
+                                color: CABLE_COLORS[currentColorIndex] // Atribui a cor atual
+                            });
+                            messageBox.textContent = `Cabo ${CABLE_COLORS[currentColorIndex]} conectado!`;
+                            // Avança para a próxima cor
+                            currentColorIndex = (currentColorIndex + 1) % CABLE_COLORS.length;
+                        } else {
+                            messageBox.textContent = 'ERRO: Os cabos não podem se cruzar!';
+                        }
                     } else {
                         messageBox.textContent = 'Esses pontos já estão conectados!';
                     }
@@ -275,8 +365,17 @@
                     );
 
                     if (!alreadyConnected) {
-                        connections.push({ p1: startPoint, p2: endPoint });
-                        messageBox.textContent = `Ponto ${startPoint.id} conectado ao Ponto ${endPoint.id}!`;
+                        if (!checkLineCrossing(startPoint, endPoint)) {
+                            connections.push({
+                                p1: startPoint,
+                                p2: endPoint,
+                                color: CABLE_COLORS[currentColorIndex]
+                            });
+                            messageBox.textContent = `Cabo ${CABLE_COLORS[currentColorIndex]} conectado!`;
+                            currentColorIndex = (currentColorIndex + 1) % CABLE_COLORS.length;
+                        } else {
+                            messageBox.textContent = 'ERRO: Os cabos não podem se cruzar!';
+                        }
                     } else {
                         messageBox.textContent = 'Esses pontos já estão conectados!';
                     }
