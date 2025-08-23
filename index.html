@@ -1,33 +1,275 @@
-﻿<!DOCTYPE html>
-
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-    <meta charset="utf-8" />
-    <title>Dasmoto's Arts & Crafts</title>
-    <link href="stylesheet.css" rel="stylesheet" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora de ROI — Easyjur</title>
+  <style>
+    :root{
+      --bg:#0b0f14;--panel:#121821;--card:#0f141c;--muted:#7c8aa5;--text:#e6edf7;--b1:#223047;--a1:#76c7ff;--a2:#9be07d;--a3:#f6b26b;--a4:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Arial,ui-sans-serif,system-ui; background:var(--bg); color:var(--text); margin:0}
+    header{padding:20px; text-align:center; background:var(--panel)}
+    h1{margin:0}
+    .wrap{max-width:1100px; margin:20px auto; padding:20px; background:var(--panel); border-radius:12px}
+    .inputs{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px}
+    .field{display:flex; flex-direction:column}
+    label{font-size:13px; margin-bottom:6px; color:var(--muted)}
+    input,select{padding:10px; border-radius:10px; border:1px solid var(--b1); background:var(--card); color:#fff}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px}
+    .btn{padding:10px 16px; border:none; border-radius:10px; cursor:pointer; font-weight:bold}
+    .btn.primary{background:#2c7be5; color:#fff}
+    .btn.ghost{background:transparent; border:1px dashed var(--b1); color:#9fb5d9}
+    canvas{width:100%; height:420px; background:#0e1520; border-radius:12px; margin-top:16px}
+    .results{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:16px}
+    .kpi{background:var(--card); padding:12px; border-radius:10px; border:1px solid var(--b1)}
+    .kpi .label{font-size:12px; color:var(--muted)}
+    .kpi .value{font-size:20px; font-weight:800; margin-top:6px}
+    .legend{display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:8px}
+    .dot{width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px}
+    .eff{background:var(--a1)} .rev{background:var(--a2)} .inv{background:var(--a3)} .roi{background:var(--a4)}
+    details{margin-top:10px; color:#b7c6e2}
+    details summary{cursor:pointer}
+  </style>
 </head>
 <body>
-    <header>
-        <h1 class="image_title">Dasmoto's Arts & Crafts</h1>
-    </header>
-    <div class="brushes">
-        <h2>Brushes</h2>
-        <img src="resources/hacksaw.jpeg" alt="hacksaw" />
-        <h4>Hacksaw Brushes</h4>
-        <p>Made of the highest quality oak, Hacksaw brushes are known for their weight and ability to hold paint in large amounts. Availabe in different sizes.<span class="price">  Starting at $3.00/brush.</span> </p>
-    </div>
-    <div class="frames">
-        <h2>Frames</h2>
-        <img src="resources/frames.jpeg" alt="frames" />
-        <h4>Art Frames (assorted)</h4>
-        <p>Assorted frames made of different material, including MDF, birchwood, and PDE. Select frames can be sanded and painted according to your needs. <span class="price">Starting at $2.00 / frame.</span> </p>
-    </div>
-    <div class="paint">
-        <h2>Paint</h2>
-        <img src="resources/finnish.jpeg" alt="finnish" />
-        <h4>Clean Finnish paint</h4>
-        <p>Imported paint from Finland. Over 256 colors available in-store, varying in quantity (1 oz. to 8 oz.). Clean Finnish paint microbinds to canvas, increasing the finish and longevity of any artwork. <span class="price">Starting at $5.00 / tube.</span> </p>
+  <header>
+    <h1>Calculadora de ROI — Easyjur</h1>
+    <p>Preencha as variáveis. A projeção considera <b>rampa de adoção de 90 dias</b>.</p>
+  </header>
+
+  <div class="wrap">
+    <h3 style="margin-top:0">Parâmetros</h3>
+    <div class="inputs">
+      <div class="field">
+        <label>Horas trabalhadas por dia (por pessoa)</label>
+        <input type="number" id="hours_day" value="8" min="0" step="0.5">
+      </div>
+      <div class="field">
+        <label>Valor da hora (R$)</label>
+        <input type="number" id="hour_rate" value="80" min="0" step="5">
+      </div>
+      <div class="field">
+        <label>Pessoas impactadas (tamanho da equipe)</label>
+        <input type="number" id="team_size" value="5" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>Minutos desperdiçados por dia (por pessoa)</label>
+        <input type="number" id="wasted_minutes" value="30" min="0" step="5">
+      </div>
+      <div class="field">
+        <label>Redução do desperdício com Easyjur (%)</label>
+        <input type="number" id="waste_reduction_pct" value="60" min="0" max="100" step="1">
+      </div>
+      <div class="field">
+        <label>Contratos fechados por mês (incremento devido ao Easyjur)</label>
+        <input type="number" id="contracts_month" value="3" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>Ticket médio (R$)</label>
+        <input type="number" id="ticket" value="2500" min="0" step="100">
+      </div>
+      <div class="field">
+        <label>Receita preservada (churn evitado) (R$/mês)</label>
+        <input type="number" id="retained_revenue_month" value="2000" min="0" step="100">
+      </div>
+      <div class="field">
+        <label>Custo Easyjur (R$/mês)</label>
+        <input type="number" id="cost_monthly" value="1500" min="0" step="50">
+      </div>
+      <div class="field">
+        <label>Custo de implementação único (R$)</label>
+        <input type="number" id="cost_onetime" value="2000" min="0" step="100">
+      </div>
+      <div class="field">
+        <label>Forma da rampa (90 dias)</label>
+        <select id="ramp_shape">
+          <option value="s">S-curve (logística)</option>
+          <option value="linear">Linear</option>
+          <option value="stairs">Degraus 30/60/90</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Dia inicial (para go‑live deslocado)</label>
+        <input type="number" id="start_day" value="1" min="1" max="90" step="1">
+      </div>
     </div>
 
+    <div class="row">
+      <button class="btn primary" id="btnCalc">Calcular ROI</button>
+      <button class="btn ghost" id="btnCsv">Baixar CSV</button>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot eff"></span>Eficiência (acum.)</span>
+      <span><span class="dot rev"></span>Faturamento (acum.)</span>
+      <span><span class="dot inv"></span>Investimento (acum.)</span>
+      <span><span class="dot roi"></span>ROI total (%)</span>
+    </div>
+    <canvas id="chart"></canvas>
+
+    <div class="results">
+      <div class="kpi"><div class="label">Eficiência (90d)</div><div class="value" id="k_eff">—</div></div>
+      <div class="kpi"><div class="label">Faturamento (90d)</div><div class="value" id="k_rev">—</div></div>
+      <div class="kpi"><div class="label">Investimento (90d)</div><div class="value" id="k_inv">—</div></div>
+      <div class="kpi"><div class="label">ROI Total (90d)</div><div class="value" id="k_roi">—</div></div>
+    </div>
+
+    <details>
+      <summary>Como calculamos?</summary>
+      <ol>
+        <li>Rampa 90 dias (linear/S‑curve/degraus) gera um <em>fator de adoção</em> diário entre 0 e 1.</li>
+        <li>Eficiência diária = fator × ( equipe × (minutos desperdiçados × redução% ÷ 60) × R$/hora ).</li>
+        <li>Faturamento diário = fator × ( (contratos/mês × ticket)/30 + (receita preservada/mês)/30 ).</li>
+        <li>Investimento diário = (mensalidade/30) + (implementação/90).</li>
+        <li>ROI acumulado = (benefícios acumulados − investimento acumulado) ÷ investimento acumulado.</li>
+      </ol>
+    </details>
+  </div>
+
+  <script>
+    const $ = (s)=>document.querySelector(s);
+    const canvas = $('#chart');
+    const ctx = canvas.getContext('2d');
+
+    function pxFixCanvas(){
+      const dpr = Math.max(1, window.devicePixelRatio||1);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(420 * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+
+    function ramp(shape, n, startDay){
+      const arr = new Array(n).fill(0);
+      const s = Math.max(1, Math.min(n, startDay||1)) - 1;
+      for(let i=0;i<n;i++){
+        if(i<s){arr[i]=0;continue}
+        const t = (i - s) / (n - s - 1); // 0..1
+        let r=0;
+        if(shape==='linear') r = Math.max(0, Math.min(1,t));
+        else if(shape==='stairs'){
+          if(t<1/3) r=0.5; else if(t<2/3) r=0.8; else r=1;
+        } else {
+          const k=8; const x=(t-0.5)*k; let u=1/(1+Math.exp(-x));
+          const r0=1/(1+Math.exp(k/2)); const r1=1/(1+Math.exp(-k/2));
+          r=(u-r0)/(r1-r0); r=Math.max(0,Math.min(1,r));
+        }
+        arr[i]=r;
+      }
+      return arr;
+    }
+
+    function compute(){
+      const DAYS = 90;
+      const hoursDay = Number($('#hours_day').value)||0;
+      const hourRate = Number($('#hour_rate').value)||0;
+      const teamSize = Number($('#team_size').value)||0;
+      const wastedMin = Number($('#wasted_minutes').value)||0;
+      const wasteRedPct = Math.max(0, Math.min(100, Number($('#waste_reduction_pct').value)||0))/100;
+      const contracts = Number($('#contracts_month').value)||0;
+      const ticket = Number($('#ticket').value)||0;
+      const retained = Number($('#retained_revenue_month').value)||0;
+      const costMonthly = Number($('#cost_monthly').value)||0;
+      const costOnetime = Number($('#cost_onetime').value)||0;
+      const shape = $('#ramp_shape').value;
+      const startDay = Number($('#start_day').value)||1;
+
+      // eficiência diária monetizada
+      const savedHoursPerPerson = (wastedMin/60) * wasteRedPct; // horas poupadas por pessoa/dia
+      const dailyEffBase = teamSize * savedHoursPerPerson * hourRate;
+
+      // faturamento diário
+      const dailyRevBase = (contracts * ticket)/30 + (retained/30);
+
+      const dailyInv = (costMonthly/30) + (costOnetime/90);
+
+      const rr = ramp(shape, DAYS, startDay);
+      const cumEff=[], cumRev=[], cumInv=[], cumROI=[]; let cE=0,cR=0,cI=0;
+      for(let i=0;i<DAYS;i++){
+        cE += rr[i]*dailyEffBase;
+        cR += rr[i]*dailyRevBase;
+        cI += dailyInv;
+        cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
+        const roi = cI>0 ? (cE+cR-cI)/cI : NaN; cumROI.push(roi);
+      }
+      return {DAYS, rr, cumEff, cumRev, cumInv, cumROI,
+        totals:{eff:cE, rev:cR, inv:cI, roi:cI>0? (cE+cR-cI)/cI : NaN}};
+    }
+
+    function draw(){
+      pxFixCanvas();
+      const data = compute();
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      const pad = {l:60, r:60, t:20, b:30};
+      const x = i => pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r);
+      const moneyMax = Math.max(1, ...data.cumEff, ...data.cumRev, ...data.cumInv);
+      const yM = v => pad.t + (1 - (v/moneyMax))*(H-pad.t-pad.b);
+      const roiMax = Math.max(0.01, ...data.cumROI.map(v=>isFinite(v)?v:0));
+      const roiMin = Math.min(0, ...data.cumROI.map(v=>isFinite(v)?v:0));
+      const yR = v => pad.t + (1 - ((v - roiMin)/((roiMax-roiMin)||1)))*(H-pad.t-pad.b);
+
+      // grid
+      ctx.strokeStyle = '#223047'; ctx.lineWidth = 1; ctx.beginPath();
+      for(let g=0; g<=5; g++){ const gy = pad.t + g*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
+
+      function path(arr, yfn){ ctx.beginPath(); arr.forEach((v,i)=>{ const xx=x(i), yy=yfn(v); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}); }
+      function stroke(color,w=2){ ctx.strokeStyle=color; ctx.lineWidth=w; ctx.stroke(); }
+
+      path(data.cumEff, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a1'));
+      path(data.cumRev, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a2'));
+      path(data.cumInv, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a3'));
+      path(data.cumROI, yR); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a4'));
+
+      // x labels
+      ctx.fillStyle = '#8ea3c4'; ctx.font = '12px system-ui';
+      for(let d=0; d<data.DAYS; d+=15){ const xx=x(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
+
+      // y left labels (money)
+      for(let g=0; g<=5; g++){
+        const v = moneyMax*(1-g/5);
+        const ly = pad.t + g*(H-pad.t-pad.b)/5;
+        const txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+        ctx.fillText(txt, 6, ly+4);
+      }
+      // y right (ROI)
+      for(let g=0; g<=5; g++){
+        const v = roiMin + (roiMax-roiMin)*(1-g/5);
+        const ly = pad.t + g*(H-pad.t-pad.b)/5;
+        const txt = (v*100).toFixed(0).replace('.',',')+'%';
+        ctx.fillText(txt, W-50, ly+4);
+      }
+
+      // KPIs
+      const fmtBRL = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      const fmtPct = v => (isFinite(v)? (v*100).toFixed(1).replace('.',',')+'%':'—');
+      $('#k_eff').textContent = fmtBRL(data.totals.eff);
+      $('#k_rev').textContent = fmtBRL(data.totals.rev);
+      $('#k_inv').textContent = fmtBRL(data.totals.inv);
+      $('#k_roi').textContent = fmtPct(data.totals.roi);
+
+      // CSV
+      $('#btnCsv').onclick = ()=>{
+        const lines = ['dia,rampa_pct,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
+        for(let i=0;i<data.DAYS;i++){
+          const ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
+          const cb=ce+cr, roi=data.cumROI[i];
+          lines.push([i+1,(data.rr[i]*100).toFixed(2),ce.toFixed(2),cr.toFixed(2),cb.toFixed(2),ci.toFixed(2),roi.toFixed(6)].join(','));
+        }
+        const blob = new Blob([lines.join('
+')], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      };
+    }
+
+    $('#btnCalc').addEventListener('click', draw);
+    window.addEventListener('resize', draw);
+
+    // initial draw
+    draw();
+  </script>
 </body>
 </html>
