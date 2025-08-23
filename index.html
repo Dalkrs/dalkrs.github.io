@@ -97,8 +97,8 @@
     </div>
 
     <div class="row">
-      <button class="btn primary" id="btnCalc">Calcular ROI</button>
-      <button class="btn ghost" id="btnCsv">Baixar CSV</button>
+      <button type="button" class="btn primary" id="btnCalc">Calcular ROI</button>
+      <button type="button" class="btn ghost" id="btnCsv">Baixar CSV</button>
     </div>
 
     <div class="legend">
@@ -209,7 +209,64 @@
     }
 
     function draw(){
-      const dims = pxFixCanvas(); if(!dims) return; const {Wcss:W, Hcss:H} = dims;
+      try{
+        const dims = pxFixCanvas(); if(!dims) { console.warn('Sem contexto/canvas.'); return; }
+        const {Wcss:W, Hcss:H} = dims;
+        state.data = compute();
+        const data = state.data;
+        ctx.clearRect(0,0,W,H);
+        const pad = {l:60, r:60, t:20, b:30};
+        const x = i => pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r);
+        const moneyMax = Math.max(1, ...data.cumEff, ...data.cumRev, ...data.cumInv);
+        const yM = v => pad.t + (1 - (v/moneyMax))*(H-pad.t-pad.b);
+        const roiMax = Math.max(0.01, ...data.cumROI.map(v=>isFinite(v)?v:0));
+        const roiMin = Math.min(0, ...data.cumROI.map(v=>isFinite(v)?v:0));
+        const yR = v => pad.t + (1 - ((v - roiMin)/((roiMax-roiMin)||1)))*(H-pad.t-pad.b);
+
+        // grid
+        ctx.strokeStyle = '#223047'; ctx.lineWidth = 1; ctx.beginPath();
+        for(let g=0; g<=5; g++){ const gy = pad.t + g*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
+
+        function path(arr, yfn){ ctx.beginPath(); arr.forEach((v,i)=>{ const xx=x(i), yy=yfn(v); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}); }
+        function stroke(color,w=2){ ctx.strokeStyle=color||'#5aa9e6'; ctx.lineWidth=w; ctx.stroke(); }
+
+        const styles = getComputedStyle(document.documentElement);
+        path(data.cumEff, yM); stroke(styles.getPropertyValue('--a1')||'#76c7ff');
+        path(data.cumRev, yM); stroke(styles.getPropertyValue('--a2')||'#9be07d');
+        path(data.cumInv, yM); stroke(styles.getPropertyValue('--a3')||'#f6b26b');
+        path(data.cumROI, yR); stroke(styles.getPropertyValue('--a4')||'#ff6b6b');
+
+        // x labels
+        ctx.fillStyle = '#8ea3c4'; ctx.font = '12px system-ui';
+        for(let d=0; d<data.DAYS; d+=15){ const xx=x(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
+
+        // y left labels (money)
+        for(let g=0; g<=5; g++){
+          const v = moneyMax*(1-g/5);
+          const ly = pad.t + g*(H-pad.t-pad.b)/5;
+          const txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+          ctx.fillText(txt, 6, ly+4);
+        }
+        // y right (ROI)
+        for(let g=0; g<=5; g++){
+          const v = roiMin + (roiMax-roiMin)*(1-g/5);
+          const ly = pad.t + g*(H-pad.t-pad.b)/5;
+          const txt = (v*100).toFixed(0).replace('.',',')+'%';
+          ctx.fillText(txt, W-50, ly+4);
+        }
+
+        // KPIs
+        const fmtBRL = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        const fmtPct = v => (isFinite(v)? (v*100).toFixed(1).replace('.',',')+'%':'—');
+        $('#k_eff').textContent = fmtBRL(data.totals.eff);
+        $('#k_rev').textContent = fmtBRL(data.totals.rev);
+        $('#k_inv').textContent = fmtBRL(data.totals.inv);
+        $('#k_roi').textContent = fmtPct(data.totals.roi);
+      } catch(e){
+        console.error('Erro ao desenhar:', e);
+        alert('Ops! Algo impediu o cálculo do ROI. Veja o console do navegador para detalhes (F12).');
+      }
+    } = dims;
       state.data = compute();
       const data = state.data;
       ctx.clearRect(0,0,W,H);
@@ -278,8 +335,14 @@
     }
 
     function bind(){
-      $('#btnCalc')?.addEventListener('click', draw);
-      $('#btnCsv')?.addEventListener('click', downloadCsv);
+      const btnCalc = $('#btnCalc');
+      const btnCsv = $('#btnCsv');
+      if(btnCalc){ btnCalc.addEventListener('click', draw); }
+      if(btnCsv){ btnCsv.addEventListener('click', downloadCsv); }
+      // Atualiza em tempo real ao mudar qualquer campo
+      document.querySelectorAll('input,select').forEach(el=>{
+        el.addEventListener('input', ()=> draw());
+      });
       window.addEventListener('resize', draw);
     }
 
