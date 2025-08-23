@@ -3,29 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ROI Easyjur — Estável</title>
+  <title>ROI Easyjur — 1 ano (com marcos trimestrais)</title>
   <style>
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0b0f14;color:#e6edf7}
-    .wrap{max-width:980px;margin:0 auto;padding:20px}
-    h1{font-size:20px;margin:0 0 10px}
-    .panel{background:#121821;border:1px solid #1a2230;border-radius:12px;padding:14px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-    label{font-size:12px;color:#9fb0c9;margin-bottom:6px;display:block}
-    input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #223047;background:#0f141c;color:#fff}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    button{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:bold}
-    .primary{background:#2c7be5;color:#fff}
-    .ghost{background:transparent;border:1px dashed #33445e;color:#9fb5d9}
-    canvas{width:100%;height:360px;background:#0e1520;border-radius:12px;margin-top:12px}
-    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
-    .kpi{background:#0f141c;border:1px solid #1a2230;border-radius:10px;padding:10px}
-    .kpi .l{font-size:12px;color:#9fb0c9}
-    .kpi .v{font-size:18px;font-weight:800;margin-top:6px}
+    /* ====== Marca Easyjur ====== */
+    :root{
+      --ej-primary: #e5293f; /* vermelho */
+      --ej-gray-1: #acbac2; /* cinza claro */
+      --ej-gray-2: #7f919a; /* cinza médio */
+      --ej-white:  #ffffff;
+    }
+
+    /* Fonte Borna: troque o src abaixo para o caminho do seu arquivo WOFF2 */
+    @font-face{
+      font-family: 'Borna';
+      src: url('Borna.woff2') format('woff2'); /* substitua pelo caminho real */
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* ====== Layout ====== */
+    html, body{ height:100%; }
+    body{ margin:0; background:var(--ej-white); color:#111; font-family:'Borna', Arial, Helvetica, sans-serif; }
+    .wrap{ max-width:1080px; margin:0 auto; padding:24px 16px; }
+    h1{ margin:0 0 14px; font-size:22px; color:#111; }
+
+    .panel{ background:var(--ej-white); border:1px solid var(--ej-gray-1); border-radius:14px; padding:16px; }
+    .grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+    label{ font-size:12px; color:#35424a; display:block; margin:0 0 6px; }
+    input,select{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--ej-gray-1); background:var(--ej-white); color:#111; }
+    input:focus,select:focus{ outline:none; border-color: var(--ej-primary); box-shadow:0 0 0 2px rgba(229,41,63,.15); }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    button{ padding:10px 14px; border-radius:10px; border:1px solid transparent; cursor:pointer; font-weight:700; }
+    .primary{ background:var(--ej-primary); color:var(--ej-white); }
+    .ghost{ background:transparent; color:#111; border-color:var(--ej-gray-2); }
+
+    .legend{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; font-size:12px; color:#333; margin-top:8px; }
+    .sw{ width:14px; height:3px; border-radius:2px; display:inline-block; margin-right:6px; vertical-align:middle; }
+    .sw.eff{ background: var(--ej-gray-2); }
+    .sw.rev{ background: var(--ej-primary); }
+    .sw.inv{ background: var(--ej-gray-1); }
+    .sw.roi{ background: var(--ej-primary); border-bottom:1px dashed var(--ej-primary); height:0; padding-top:2px; }
+
+    canvas{ width:100%; height:420px; background:#fafbfc; border:1px solid var(--ej-gray-1); border-radius:12px; margin-top:10px; }
+
+    .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:12px; }
+    .kpi{ background:#fafbfc; border:1px solid var(--ej-gray-1); border-radius:10px; padding:12px; }
+    .kpi .l{ font-size:12px; color:#35424a; }
+    .kpi .v{ font-size:20px; font-weight:800; margin-top:6px; color:#111; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>ROI Easyjur — Estável</h1>
+    <h1>ROI Easyjur — 1 ano com marcos de impacto (90/180/270/360 dias)</h1>
     <div class="panel">
       <div class="grid">
         <div><label>Valor/hora (R$)</label><input id="hour_rate" type="number" value="80"></div>
@@ -50,46 +81,53 @@
         <button id="calc" class="primary" type="button">Calcular ROI</button>
         <button id="csv" class="ghost" type="button">Baixar CSV</button>
       </div>
+      <div class="legend">
+        <span><span class="sw eff"></span>Eficiência (acum.)</span>
+        <span><span class="sw rev"></span>Faturamento (acum.)</span>
+        <span><span class="sw inv"></span>Investimento (acum.)</span>
+        <span><span class="sw roi"></span>ROI total (%)</span>
+      </div>
       <canvas id="chart"></canvas>
       <div class="kpis">
-        <div class="kpi"><div class="l">Eficiência (90d)</div><div class="v" id="k_eff">—</div></div>
-        <div class="kpi"><div class="l">Faturamento (90d)</div><div class="v" id="k_rev">—</div></div>
-        <div class="kpi"><div class="l">Investimento (90d)</div><div class="v" id="k_inv">—</div></div>
-        <div class="kpi"><div class="l">ROI Total (90d)</div><div class="v" id="k_roi">—</div></div>
+        <div class="kpi"><div class="l">Eficiência (365d)</div><div class="v" id="k_eff">—</div></div>
+        <div class="kpi"><div class="l">Faturamento (365d)</div><div class="v" id="k_rev">—</div></div>
+        <div class="kpi"><div class="l">Investimento (365d)</div><div class="v" id="k_inv">—</div></div>
+        <div class="kpi"><div class="l">ROI Total (365d)</div><div class="v" id="k_roi">—</div></div>
       </div>
     </div>
   </div>
 
 <script>
 (function(){
-  // Helper
   function byId(id){ return document.getElementById(id); }
 
-  var canvas = byId("chart");
-  var ctx = canvas.getContext("2d");
-  var DAYS = 90;
+  var canvas = byId('chart');
+  var ctx = canvas.getContext('2d');
+  var DAYS = 365; // período de 1 ano
 
   function fixCanvas(){
-    var dpr = Math.max(1, window.devicePixelRatio || 1);
+    var dpr = Math.max(1, window.devicePixelRatio||1);
     var rect = canvas.getBoundingClientRect();
-    var W = rect.width || 900;
-    var H = 360;
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { W: W, H: H };
+    var W = rect.width || 1000, H = 420;
+    canvas.width = Math.round(W*dpr);
+    canvas.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {W:W, H:H};
   }
 
   function ramp(shape, n, startDay){
-    var arr = new Array(n);
-    for(var i=0;i<n;i++){ arr[i]=0; }
-    var s = Math.max(1, Math.min(n, startDay || 1)) - 1;
+    // Rampa de 90 dias e depois mantém 1 até o final do período
+    var rampDays = 90;
+    var arr = new Array(n); for(var i=0;i<n;i++) arr[i]=0;
+    var s = Math.max(1, Math.min(n, startDay||1)) - 1; // início
+    var e = Math.min(n-1, s + rampDays - 1);          // fim da rampa
     for(var j=0;j<n;j++){
       if(j < s){ arr[j]=0; continue; }
-      var t = (j - s) / Math.max(1, (n - s - 1));
-      var r = 0;
-      if(shape === "linear"){ r = Math.max(0, Math.min(1, t)); }
-      else if(shape === "stairs"){ r = (t < 1/3) ? 0.5 : ((t < 2/3) ? 0.8 : 1); }
+      if(j > e){ arr[j]=1; continue; }
+      var t = (j - s) / Math.max(1,(e - s)); // 0..1 nos 90 dias
+      var r=0;
+      if(shape==='linear'){ r = Math.max(0, Math.min(1,t)); }
+      else if(shape==='stairs'){ r = (t<1/3)?0.5:(t<2/3?0.8:1); }
       else { var k=8, x=(t-0.5)*k; var u=1/(1+Math.exp(-x)); var r0=1/(1+Math.exp(k/2)); var r1=1/(1+Math.exp(-k/2)); r=(u-r0)/(r1-r0); if(r<0) r=0; if(r>1) r=1; }
       arr[j]=r;
     }
@@ -97,100 +135,128 @@
   }
 
   function compute(){
-    var hourRate = Number(byId("hour_rate").value) || 0;
-    var teamSize = Number(byId("team_size").value) || 0;
-    var wastedMin = Number(byId("wasted_minutes").value) || 0;
-    var wasteRed = Math.max(0, Math.min(100, Number(byId("waste_reduction_pct").value) || 0)) / 100;
-    var contracts = Number(byId("contracts_month").value) || 0;
-    var ticket = Number(byId("ticket").value) || 0;
-    var retained = Number(byId("retained_revenue_month").value) || 0;
-    var costMonthly = Number(byId("cost_monthly").value) || 0;
-    var costOnetime = Number(byId("cost_onetime").value) || 0;
-    var shape = byId("ramp_shape").value;
-    var startDay = Number(byId("start_day").value) || 1;
+    var hourRate = Number(byId('hour_rate').value)||0;
+    var teamSize = Number(byId('team_size').value)||0;
+    var wastedMin = Number(byId('wasted_minutes').value)||0;
+    var wasteRed = Math.max(0, Math.min(100, Number(byId('waste_reduction_pct').value)||0))/100;
+    var contracts = Number(byId('contracts_month').value)||0;
+    var ticket = Number(byId('ticket').value)||0;
+    var retained = Number(byId('retained_revenue_month').value)||0;
+    var costMonthly = Number(byId('cost_monthly').value)||0;
+    var costOnetime = Number(byId('cost_onetime').value)||0;
+    var shape = byId('ramp_shape').value;
+    var startDay = Number(byId('start_day').value)||1;
 
-    var savedHours = (wastedMin / 60) * wasteRed; // per person per day
+    var savedHours = (wastedMin/60) * wasteRed; // por pessoa/dia
     var dailyEffBase = teamSize * savedHours * hourRate;
-    var dailyRevBase = (contracts * ticket) / 30 + (retained / 30);
-    var dailyInv = (costMonthly / 30) + (costOnetime / 90);
+    var dailyRevBase = (contracts * ticket)/30 + (retained/30);
+    var dailyInv = (costMonthly/30) + (costOnetime/90);
 
     var rr = ramp(shape, DAYS, startDay);
-    var cE=0, cR=0, cI=0;
-    var cumEff=[], cumRev=[], cumInv=[], cumROI=[];
+    var cE=0,cR=0,cI=0, cumEff=[], cumRev=[], cumInv=[], cumROI=[];
     for(var i=0;i<DAYS;i++){
-      cE += rr[i] * dailyEffBase;
-      cR += rr[i] * dailyRevBase;
+      cE += rr[i]*dailyEffBase;
+      cR += rr[i]*dailyRevBase;
       cI += dailyInv;
       cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
-      cumROI.push(cI>0 ? (cE + cR - cI) / cI : 0);
+      cumROI.push(cI>0 ? (cE+cR-cI)/cI : 0);
     }
-    return { cumEff:cumEff, cumRev:cumRev, cumInv:cumInv, cumROI:cumROI, totals:{ eff:cE, rev:cR, inv:cI, roi:(cI>0 ? (cE+cR-cI)/cI : 0) } };
+    return {cumEff:cumEff, cumRev:cumRev, cumInv:cumInv, cumROI:cumROI, totals:{eff:cE, rev:cR, inv:cI, roi:(cI>0?(cE+cR-cI)/cI:0)}};
   }
 
   function draw(){
-    var dims = fixCanvas();
-    var W = dims.W, H = dims.H;
+    var dims = fixCanvas(); var W=dims.W, H=dims.H;
     var data = compute();
 
     ctx.clearRect(0,0,W,H);
-    var pad = { l:60, r:60, t:20, b:30 };
-    function X(i){ return pad.l + (i/(DAYS-1)) * (W - pad.l - pad.r); }
-    var M = 1; for(var i=0;i<DAYS;i++){ if(data.cumEff[i]>M) M=data.cumEff[i]; if(data.cumRev[i]>M) M=data.cumRev[i]; if(data.cumInv[i]>M) M=data.cumInv[i]; }
-    function Ym(v){ return pad.t + (1 - (v / M)) * (H - pad.t - pad.b); }
-    var roiMax=0.01, roiMin=0; for(var j=0;j<DAYS;j++){ var rv=data.cumROI[j]; if(rv>roiMax) roiMax=rv; if(rv<roiMin) roiMin=rv; }
-    function Yr(v){ var rng=(roiMax-roiMin)||1; return pad.t + (1 - ((v - roiMin) / rng)) * (H - pad.t - pad.b); }
+    var pad = {l:60, r:60, t:24, b:40};
+    function X(i){ return pad.l + (i/(DAYS-1))*(W-pad.l-pad.r); }
 
-    // grid
-    ctx.strokeStyle = "#223047"; ctx.lineWidth = 1; ctx.beginPath();
+    // escalas
+    var M=1; for(var i=0;i<DAYS;i++){ if(data.cumEff[i]>M) M=data.cumEff[i]; if(data.cumRev[i]>M) M=data.cumRev[i]; if(data.cumInv[i]>M) M=data.cumInv[i]; }
+    function Ym(v){ return pad.t + (1 - (v/M))*(H-pad.t-pad.b); }
+    var roiMax=0.01, roiMin=0; for(var j=0;j<DAYS;j++){ var rv=data.cumROI[j]; if(rv>roiMax) roiMax=rv; if(rv<roiMin) roiMin=rv; }
+    function Yr(v){ var rng=(roiMax-roiMin)||1; return pad.t + (1 - ((v - roiMin)/rng))*(H-pad.t-pad.b); }
+
+    // grade
+    ctx.strokeStyle = '#e5eaee'; ctx.lineWidth=1; ctx.beginPath();
     for(var gi=0; gi<=5; gi++){ var gy = pad.t + gi*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l, gy); ctx.lineTo(W-pad.r, gy); }
     ctx.stroke();
 
+    // rótulos do eixo X por mês: M1..M12 (aprox. cada 30 dias)
+    ctx.fillStyle = '#333'; ctx.font = '12px Borna, Arial';
+    for(var d=0, m=1; d<DAYS; d+=30, m++){ var xx=X(d); ctx.fillText('M'+m, xx-8, H-12); }
+
+    // marcadores de impacto (90, 180, 270, 360)
+    var impacts=[90,180,270,360];
+    ctx.save(); ctx.setLineDash([6,6]); ctx.strokeStyle = '#cfd7db';
+    for(var mi=0; mi<impacts.length; mi++){
+      var day=impacts[mi]-1; if(day<0||day>=DAYS) continue; var xx = X(day);
+      ctx.beginPath(); ctx.moveTo(xx, pad.t); ctx.lineTo(xx, H-pad.b); ctx.stroke();
+      // seta
+      ctx.fillStyle = '#7f919a';
+      ctx.beginPath(); ctx.moveTo(xx, pad.t+2); ctx.lineTo(xx-6, pad.t+14); ctx.lineTo(xx+6, pad.t+14); ctx.closePath(); ctx.fill();
+      // texto
+      ctx.fillStyle = '#111'; ctx.font='12px Borna, Arial';
+      ctx.fillText((mi+1)+'º Impacto', xx+8, pad.t+16);
+    }
+    ctx.restore();
+
+    // linhas
     function line(arr, y){ ctx.beginPath(); for(var k=0;k<arr.length;k++){ var xx=X(k), yy=y(arr[k]); if(k===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.stroke(); }
 
-    ctx.lineWidth = 2; ctx.strokeStyle = "#76c7ff"; line(data.cumEff, Ym);
-    ctx.strokeStyle = "#9be07d"; line(data.cumRev, Ym);
-    ctx.strokeStyle = "#f6b26b"; line(data.cumInv, Ym);
-    ctx.strokeStyle = "#ff6b6b"; line(data.cumROI, Yr);
+    // Eficiência
+    ctx.lineWidth=2; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-2') || '#7f919a';
+    line(data.cumEff, Ym);
+    // Faturamento
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
+    line(data.cumRev, Ym);
+    // Investimento
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-1') || '#acbac2';
+    line(data.cumInv, Ym);
+    // ROI (trilhado)
+    ctx.setLineDash([4,4]); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
+    line(data.cumROI, Yr); ctx.setLineDash([]);
 
-    ctx.fillStyle = "#8ea3c4"; ctx.font = "12px Arial";
-    for(var d=0; d<DAYS; d+=15){ var xx=X(d); ctx.fillText(String(d+1)+"d", xx-8, H-8); }
+    // rótulos dos eixos Y
+    ctx.fillStyle = '#333'; ctx.font = '12px Borna, Arial';
+    for(var gy=0; gy<=5; gy++){
+      var v = M*(1-gy/5); var ly = pad.t + gy*(H-pad.t-pad.b)/5; var txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+      ctx.fillText(txt, 8, ly+4);
+    }
+    for(var gr=0; gr<=5; gr++){
+      var v2 = roiMin + (roiMax-roiMin)*(1-gr/5); var ly2 = pad.t + gr*(H-pad.t-pad.b)/5; var txt2 = (v2*100).toFixed(0)+'%';
+      ctx.fillText(txt2, W-44, ly2+4);
+    }
 
-    function BRL(v){ return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }); }
-    function PCT(v){ return (v*100).toFixed(1) + "%"; }
-    byId("k_eff").textContent = BRL(data.totals.eff);
-    byId("k_rev").textContent = BRL(data.totals.rev);
-    byId("k_inv").textContent = BRL(data.totals.inv);
-    byId("k_roi").textContent = PCT(data.totals.roi);
+    // KPIs
+    function BRL(v){ return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+    function PCT(v){ return (v*100).toFixed(1)+'%'; }
+    byId('k_eff').textContent = BRL(data.totals.eff);
+    byId('k_rev').textContent = BRL(data.totals.rev);
+    byId('k_inv').textContent = BRL(data.totals.inv);
+    byId('k_roi').textContent = PCT(data.totals.roi);
   }
 
   function downloadCsv(){
-  var data = compute();
-  var lines = ['dia,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
-  for(var i=0;i<DAYS;i++){
-    var ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
-    var cb=ce+cr, roi=data.cumROI[i];
-    lines.push([i+1, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
+    var data = compute();
+    var lines = ['dia,mes_index,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
+    for(var i=0;i<DAYS;i++){
+      var ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i]; var cb=ce+cr, roi=data.cumROI[i];
+      var m = Math.floor(i/30)+1; // mês aproximado
+      lines.push([i+1, m, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
+    }
+    var csv = lines.join('\r\n');
+    var blob = null; try{ blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'}); }catch(e){ blob=null; }
+    var url = blob ? URL.createObjectURL(blob) : 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF'+csv);
+    var a = document.createElement('a'); a.href=url; a.download='roi_easyjur_1ano.csv'; document.body.appendChild(a); a.click(); a.remove(); if(blob && URL && URL.revokeObjectURL) URL.revokeObjectURL(url);
   }
-  // CRLF ajuda no Excel; BOM para PT-BR
-  var csv = lines.join('\r\n');
-  var blob = null;
-  try { blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8' }); } catch(e) { blob = null; }
-  var url = blob ? URL.createObjectURL(blob) : 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF'+csv);
-  var a = document.createElement('a');
-  a.setAttribute('href', url);
-  a.setAttribute('download', 'roi_easyjur_90dias.csv');
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  if(blob && URL && URL.revokeObjectURL){ URL.revokeObjectURL(url); }
-}
 
-byId("calc").addEventListener("click", draw);
-byId("csv").addEventListener("click", downloadCsv);
-window.addEventListener("resize", draw);
-draw();
+  byId('calc').addEventListener('click', draw);
+  byId('csv').addEventListener('click', downloadCsv);
+  window.addEventListener('resize', draw);
+  draw();
 })();
 </script>
 </body>
 </html>
-
-
-
