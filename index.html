@@ -129,16 +129,29 @@
   </div>
 
   <script>
+  (function(){
     const $ = (s)=>document.querySelector(s);
     const canvas = $('#chart');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext && canvas.getContext('2d');
+    const state = { data:null };
+
+    function ensureCtx(){
+      if(!canvas || !ctx){ console.warn('Canvas/Context indisponível.'); return false; }
+      return true;
+    }
 
     function pxFixCanvas(){
+      if(!ensureCtx()) return;
       const dpr = Math.max(1, window.devicePixelRatio||1);
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(420 * dpr);
+      // Altura CSS fixa em 420px (via CSS). Vamos trabalhar em coordenadas CSS.
+      const Wcss = rect.width || 1000;
+      const Hcss = 420;
+      canvas.width = Math.round(Wcss * dpr);
+      canvas.height = Math.round(Hcss * dpr);
+      // Reset e aplica escala para que 1 unidade = 1px CSS
       ctx.setTransform(dpr,0,0,dpr,0,0);
+      return {Wcss, Hcss};
     }
 
     function ramp(shape, n, startDay){
@@ -146,7 +159,8 @@
       const s = Math.max(1, Math.min(n, startDay||1)) - 1;
       for(let i=0;i<n;i++){
         if(i<s){arr[i]=0;continue}
-        const t = (i - s) / (n - s - 1); // 0..1
+        const denom = Math.max(1, (n - s - 1));
+        const t = (i - s) / denom; // 0..1
         let r=0;
         if(shape==='linear') r = Math.max(0, Math.min(1,t));
         else if(shape==='stairs'){
@@ -163,26 +177,22 @@
 
     function compute(){
       const DAYS = 90;
-      const hoursDay = Number($('#hours_day').value)||0;
-      const hourRate = Number($('#hour_rate').value)||0;
-      const teamSize = Number($('#team_size').value)||0;
-      const wastedMin = Number($('#wasted_minutes').value)||0;
-      const wasteRedPct = Math.max(0, Math.min(100, Number($('#waste_reduction_pct').value)||0))/100;
-      const contracts = Number($('#contracts_month').value)||0;
-      const ticket = Number($('#ticket').value)||0;
-      const retained = Number($('#retained_revenue_month').value)||0;
-      const costMonthly = Number($('#cost_monthly').value)||0;
-      const costOnetime = Number($('#cost_onetime').value)||0;
-      const shape = $('#ramp_shape').value;
-      const startDay = Number($('#start_day').value)||1;
+      const hoursDay = Number($('#hours_day')?.value)||0;
+      const hourRate = Number($('#hour_rate')?.value)||0;
+      const teamSize = Number($('#team_size')?.value)||0;
+      const wastedMin = Number($('#wasted_minutes')?.value)||0;
+      const wasteRedPct = Math.max(0, Math.min(100, Number($('#waste_reduction_pct')?.value)||0))/100;
+      const contracts = Number($('#contracts_month')?.value)||0;
+      const ticket = Number($('#ticket')?.value)||0;
+      const retained = Number($('#retained_revenue_month')?.value)||0;
+      const costMonthly = Number($('#cost_monthly')?.value)||0;
+      const costOnetime = Number($('#cost_onetime')?.value)||0;
+      const shape = $('#ramp_shape')?.value || 's';
+      const startDay = Number($('#start_day')?.value)||1;
 
-      // eficiência diária monetizada
       const savedHoursPerPerson = (wastedMin/60) * wasteRedPct; // horas poupadas por pessoa/dia
       const dailyEffBase = teamSize * savedHoursPerPerson * hourRate;
-
-      // faturamento diário
       const dailyRevBase = (contracts * ticket)/30 + (retained/30);
-
       const dailyInv = (costMonthly/30) + (costOnetime/90);
 
       const rr = ramp(shape, DAYS, startDay);
@@ -199,9 +209,9 @@
     }
 
     function draw(){
-      pxFixCanvas();
-      const data = compute();
-      const W = canvas.width, H = canvas.height;
+      const dims = pxFixCanvas(); if(!dims) return; const {Wcss:W, Hcss:H} = dims;
+      state.data = compute();
+      const data = state.data;
       ctx.clearRect(0,0,W,H);
       const pad = {l:60, r:60, t:20, b:30};
       const x = i => pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r);
@@ -218,10 +228,11 @@
       function path(arr, yfn){ ctx.beginPath(); arr.forEach((v,i)=>{ const xx=x(i), yy=yfn(v); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}); }
       function stroke(color,w=2){ ctx.strokeStyle=color; ctx.lineWidth=w; ctx.stroke(); }
 
-      path(data.cumEff, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a1'));
-      path(data.cumRev, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a2'));
-      path(data.cumInv, yM); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a3'));
-      path(data.cumROI, yR); stroke(getComputedStyle(document.documentElement).getPropertyValue('--a4'));
+      const styles = getComputedStyle(document.documentElement);
+      path(data.cumEff, yM); stroke(styles.getPropertyValue('--a1'));
+      path(data.cumRev, yM); stroke(styles.getPropertyValue('--a2'));
+      path(data.cumInv, yM); stroke(styles.getPropertyValue('--a3'));
+      path(data.cumROI, yR); stroke(styles.getPropertyValue('--a4'));
 
       // x labels
       ctx.fillStyle = '#8ea3c4'; ctx.font = '12px system-ui';
@@ -249,27 +260,33 @@
       $('#k_rev').textContent = fmtBRL(data.totals.rev);
       $('#k_inv').textContent = fmtBRL(data.totals.inv);
       $('#k_roi').textContent = fmtPct(data.totals.roi);
-
-      // CSV
-      $('#btnCsv').onclick = ()=>{
-        const lines = ['dia,rampa_pct,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
-        for(let i=0;i<data.DAYS;i++){
-          const ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
-          const cb=ce+cr, roi=data.cumROI[i];
-          lines.push([i+1,(data.rr[i]*100).toFixed(2),ce.toFixed(2),cr.toFixed(2),cb.toFixed(2),ci.toFixed(2),roi.toFixed(6)].join(','));
-        }
-        const blob = new Blob([lines.join('
-')], {type:'text/csv;charset=utf-8;'});
-        const url = URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      };
     }
 
-    $('#btnCalc').addEventListener('click', draw);
-    window.addEventListener('resize', draw);
+    function downloadCsv(){
+      if(!state.data){ draw(); }
+      const data = state.data; if(!data) return;
+      const lines = ['dia,rampa_pct,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
+      for(let i=0;i<data.DAYS;i++){
+        const ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
+        const cb=ce+cr, roi=data.cumROI[i];
+        lines.push([i+1,(data.rr[i]*100).toFixed(2),ce.toFixed(2),cr.toFixed(2),cb.toFixed(2),ci.toFixed(2),roi.toFixed(6)].join(','));
+      }
+      const blob = new Blob([lines.join('
+')], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
 
-    // initial draw
-    draw();
-  </script>
+    function bind(){
+      $('#btnCalc')?.addEventListener('click', draw);
+      $('#btnCsv')?.addEventListener('click', downloadCsv);
+      window.addEventListener('resize', draw);
+    }
+
+    if(document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded', ()=>{ bind(); draw(); });
+    } else { bind(); draw(); }
+  })();
+</script>
 </body>
 </html>
