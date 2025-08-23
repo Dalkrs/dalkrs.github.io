@@ -182,7 +182,7 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     if(blob && URL && URL.revokeObjectURL){ URL.revokeObjectURL(url); }
   }
-    var blob = new Blob([lines.join('')]), { type:"text/csv;charset=utf-8;" });
+    var blob = new Blob([lines.join('')], { type: "text/csv;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a"); a.href = url; a.download = "roi_easyjur_90dias.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
@@ -195,4 +195,5 @@
 </script>
 </body>
 </html>
+
 
