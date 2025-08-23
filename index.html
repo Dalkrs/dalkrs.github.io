@@ -171,8 +171,7 @@
       var cb=ce+cr, roi=data.cumROI[i];
       lines.push([i+1, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(","));
     }
-    var blob = new Blob([lines.join("
-")], { type:"text/csv;charset=utf-8;" });
+    var blob = new Blob([lines.join("")], { type:"text/csv;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a"); a.href = url; a.download = "roi_easyjur_90dias.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
@@ -185,3 +184,4 @@
 </script>
 </body>
 </html>
+
