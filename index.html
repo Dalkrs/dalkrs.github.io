@@ -165,13 +165,26 @@
 
   function downloadCsv(){
     var data = compute();
-    var lines = ["dia,eff_acum,rev_acum,beneficio_acum,invest_acum,roi"];
+    var lines = ['dia,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
     for(var i=0;i<DAYS;i++){
       var ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
       var cb=ce+cr, roi=data.cumROI[i];
-      lines.push([i+1, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(","));
+      lines.push([i+1, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
     }
-    var blob = new Blob([lines.join("")], { type:"text/csv;charset=utf-8;" });
+    // Use CRLF to evitar quebra estranha em Excel e prefixo BOM para PT-BR
+    var csv = lines.join('
+');
+    var blob = null;
+    try { blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' }); } catch(e) { blob = null; }
+    var url = blob ? URL.createObjectURL(blob) : 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿'+csv);
+    var a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'roi_easyjur_90dias.csv');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if(blob && URL && URL.revokeObjectURL){ URL.revokeObjectURL(url); }
+  }
+    var blob = new Blob([lines.join('
+')]), { type:"text/csv;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a"); a.href = url; a.download = "roi_easyjur_90dias.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
@@ -184,4 +197,3 @@
 </script>
 </body>
 </html>
-
