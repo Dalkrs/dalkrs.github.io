@@ -130,44 +130,39 @@
 
   <script>
   (function(){
-    const $ = (s)=>document.querySelector(s);
-    const canvas = $('#chart');
-    const ctx = canvas.getContext && canvas.getContext('2d');
-    const state = { data:null };
+    function $(s){ return document.querySelector(s); }
+    var canvas = $('#chart');
+    var ctx = (canvas && canvas.getContext) ? canvas.getContext('2d') : null;
+    var state = { data:null };
 
-    function ensureCtx(){
-      if(!canvas || !ctx){ console.warn('Canvas/Context indisponível.'); return false; }
-      return true;
-    }
+    function ensureCtx(){ if(!canvas || !ctx){ console.warn('Canvas/Context indisponível.'); return false; } return true; }
 
     function pxFixCanvas(){
-      if(!ensureCtx()) return;
-      const dpr = Math.max(1, window.devicePixelRatio||1);
-      const rect = canvas.getBoundingClientRect();
-      // Altura CSS fixa em 420px (via CSS). Vamos trabalhar em coordenadas CSS.
-      const Wcss = rect.width || 1000;
-      const Hcss = 420;
+      if(!ensureCtx()) return null;
+      var dpr = Math.max(1, window.devicePixelRatio||1);
+      var rect = canvas.getBoundingClientRect();
+      var Wcss = rect.width || 1000;
+      var Hcss = 420;
       canvas.width = Math.round(Wcss * dpr);
       canvas.height = Math.round(Hcss * dpr);
-      // Reset e aplica escala para que 1 unidade = 1px CSS
       ctx.setTransform(dpr,0,0,dpr,0,0);
-      return {Wcss, Hcss};
+      return {Wcss:Wcss, Hcss:Hcss};
     }
 
     function ramp(shape, n, startDay){
-      const arr = new Array(n).fill(0);
-      const s = Math.max(1, Math.min(n, startDay||1)) - 1;
-      for(let i=0;i<n;i++){
+      var arr = new Array(n); for(var i=0;i<n;i++) arr[i]=0;
+      var s = Math.max(1, Math.min(n, startDay||1)) - 1;
+      for(var i=0;i<n;i++){
         if(i<s){arr[i]=0;continue}
-        const denom = Math.max(1, (n - s - 1));
-        const t = (i - s) / denom; // 0..1
-        let r=0;
-        if(shape==='linear') r = Math.max(0, Math.min(1,t));
+        var denom = Math.max(1, (n - s - 1));
+        var t = (i - s) / denom; // 0..1
+        var r=0;
+        if(shape==='linear'){ r = Math.max(0, Math.min(1,t)); }
         else if(shape==='stairs'){
           if(t<1/3) r=0.5; else if(t<2/3) r=0.8; else r=1;
         } else {
-          const k=8; const x=(t-0.5)*k; let u=1/(1+Math.exp(-x));
-          const r0=1/(1+Math.exp(k/2)); const r1=1/(1+Math.exp(-k/2));
+          var k=8; var x=(t-0.5)*k; var u=1/(1+Math.exp(-x));
+          var r0=1/(1+Math.exp(k/2)); var r1=1/(1+Math.exp(-k/2));
           r=(u-r0)/(r1-r0); r=Math.max(0,Math.min(1,r));
         }
         arr[i]=r;
@@ -175,62 +170,66 @@
       return arr;
     }
 
+    function val(id, fallback){ var el=$(id); return Number(el? el.value : fallback||0) || 0; }
+    function valStr(id, fallback){ var el=$(id); return el? el.value : (fallback||''); }
+
     function compute(){
-      const DAYS = 90;
-      const hoursDay = Number($('#hours_day')?.value)||0;
-      const hourRate = Number($('#hour_rate')?.value)||0;
-      const teamSize = Number($('#team_size')?.value)||0;
-      const wastedMin = Number($('#wasted_minutes')?.value)||0;
-      const wasteRedPct = Math.max(0, Math.min(100, Number($('#waste_reduction_pct')?.value)||0))/100;
-      const contracts = Number($('#contracts_month')?.value)||0;
-      const ticket = Number($('#ticket')?.value)||0;
-      const retained = Number($('#retained_revenue_month')?.value)||0;
-      const costMonthly = Number($('#cost_monthly')?.value)||0;
-      const costOnetime = Number($('#cost_onetime')?.value)||0;
-      const shape = $('#ramp_shape')?.value || 's';
-      const startDay = Number($('#start_day')?.value)||1;
+      var DAYS = 90;
+      var hoursDay = val('#hours_day',0); // não usado diretamente, mas previsto p/ extensões
+      var hourRate = val('#hour_rate',0);
+      var teamSize = val('#team_size',0);
+      var wastedMin = val('#wasted_minutes',0);
+      var wasteRedPct = Math.max(0, Math.min(100, val('#waste_reduction_pct',0)))/100;
+      var contracts = val('#contracts_month',0);
+      var ticket = val('#ticket',0);
+      var retained = val('#retained_revenue_month',0);
+      var costMonthly = val('#cost_monthly',0);
+      var costOnetime = val('#cost_onetime',0);
+      var shape = valStr('#ramp_shape','s') || 's';
+      var startDay = val('#start_day',1) || 1;
 
-      const savedHoursPerPerson = (wastedMin/60) * wasteRedPct; // horas poupadas por pessoa/dia
-      const dailyEffBase = teamSize * savedHoursPerPerson * hourRate;
-      const dailyRevBase = (contracts * ticket)/30 + (retained/30);
-      const dailyInv = (costMonthly/30) + (costOnetime/90);
+      var savedHoursPerPerson = (wastedMin/60) * wasteRedPct; // horas poupadas por pessoa/dia
+      var dailyEffBase = teamSize * savedHoursPerPerson * hourRate;
+      var dailyRevBase = (contracts * ticket)/30 + (retained/30);
+      var dailyInv = (costMonthly/30) + (costOnetime/90);
 
-      const rr = ramp(shape, DAYS, startDay);
-      const cumEff=[], cumRev=[], cumInv=[], cumROI=[]; let cE=0,cR=0,cI=0;
-      for(let i=0;i<DAYS;i++){
+      var rr = ramp(shape, DAYS, startDay);
+      var cumEff=[], cumRev=[], cumInv=[], cumROI=[]; var cE=0,cR=0,cI=0;
+      for(var i=0;i<DAYS;i++){
         cE += rr[i]*dailyEffBase;
         cR += rr[i]*dailyRevBase;
         cI += dailyInv;
         cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
-        const roi = cI>0 ? (cE+cR-cI)/cI : NaN; cumROI.push(roi);
+        var roi = cI>0 ? (cE+cR-cI)/cI : NaN; cumROI.push(roi);
       }
-      return {DAYS, rr, cumEff, cumRev, cumInv, cumROI,
-        totals:{eff:cE, rev:cR, inv:cI, roi:cI>0? (cE+cR-cI)/cI : NaN}};
+      return {DAYS:DAYS, rr:rr, cumEff:cumEff, cumRev:cumRev, cumInv:cumInv, cumROI:cumROI,
+        totals:{eff:cE, rev:cR, inv:cI, roi:(cI>0? (cE+cR-cI)/cI : NaN)}};
     }
 
     function draw(){
       try{
-        const dims = pxFixCanvas(); if(!dims) { console.warn('Sem contexto/canvas.'); return; }
-        const {Wcss:W, Hcss:H} = dims;
+        var dims = pxFixCanvas(); if(!dims){ console.warn('Sem contexto/canvas.'); return; }
+        var W = dims.Wcss; var H = dims.Hcss;
         state.data = compute();
-        const data = state.data;
+        var data = state.data;
         ctx.clearRect(0,0,W,H);
-        const pad = {l:60, r:60, t:20, b:30};
-        const x = i => pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r);
-        const moneyMax = Math.max(1, ...data.cumEff, ...data.cumRev, ...data.cumInv);
-        const yM = v => pad.t + (1 - (v/moneyMax))*(H-pad.t-pad.b);
-        const roiMax = Math.max(0.01, ...data.cumROI.map(v=>isFinite(v)?v:0));
-        const roiMin = Math.min(0, ...data.cumROI.map(v=>isFinite(v)?v:0));
-        const yR = v => pad.t + (1 - ((v - roiMin)/((roiMax-roiMin)||1)))*(H-pad.t-pad.b);
+        var pad = {l:60, r:60, t:20, b:30};
+        function x(i){ return pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r); }
+        var moneyMax = Math.max.apply(null, [1].concat(data.cumEff, data.cumRev, data.cumInv));
+        function yM(v){ return pad.t + (1 - (v/moneyMax))*(H-pad.t-pad.b); }
+        var roiArr = data.cumROI.map(function(v){ return isFinite(v)?v:0; });
+        var roiMax = Math.max.apply(null, [0.01].concat(roiArr));
+        var roiMin = Math.min.apply(null, [0].concat(roiArr));
+        function yR(v){ return pad.t + (1 - ((v - roiMin)/((roiMax-roiMin)||1)))*(H-pad.t-pad.b); }
 
         // grid
         ctx.strokeStyle = '#223047'; ctx.lineWidth = 1; ctx.beginPath();
-        for(let g=0; g<=5; g++){ const gy = pad.t + g*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
+        for(var g=0; g<=5; g++){ var gy = pad.t + g*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
 
-        function path(arr, yfn){ ctx.beginPath(); arr.forEach((v,i)=>{ const xx=x(i), yy=yfn(v); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}); }
-        function stroke(color,w=2){ ctx.strokeStyle=color||'#5aa9e6'; ctx.lineWidth=w; ctx.stroke(); }
+        function path(arr, yfn){ ctx.beginPath(); for(var i=0;i<arr.length;i++){ var xx=x(i), yy=yfn(arr[i]); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} }
+        function stroke(color,w){ ctx.strokeStyle=color||'#5aa9e6'; ctx.lineWidth=w||2; ctx.stroke(); }
 
-        const styles = getComputedStyle(document.documentElement);
+        var styles = window.getComputedStyle(document.documentElement);
         path(data.cumEff, yM); stroke(styles.getPropertyValue('--a1')||'#76c7ff');
         path(data.cumRev, yM); stroke(styles.getPropertyValue('--a2')||'#9be07d');
         path(data.cumInv, yM); stroke(styles.getPropertyValue('--a3')||'#f6b26b');
@@ -238,26 +237,26 @@
 
         // x labels
         ctx.fillStyle = '#8ea3c4'; ctx.font = '12px system-ui';
-        for(let d=0; d<data.DAYS; d+=15){ const xx=x(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
+        for(var d=0; d<data.DAYS; d+=15){ var xx=x(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
 
         // y left labels (money)
-        for(let g=0; g<=5; g++){
-          const v = moneyMax*(1-g/5);
-          const ly = pad.t + g*(H-pad.t-pad.b)/5;
-          const txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+        for(var gy2=0; gy2<=5; gy2++){
+          var v = moneyMax*(1-gy2/5);
+          var ly = pad.t + gy2*(H-pad.t-pad.b)/5;
+          var txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
           ctx.fillText(txt, 6, ly+4);
         }
         // y right (ROI)
-        for(let g=0; g<=5; g++){
-          const v = roiMin + (roiMax-roiMin)*(1-g/5);
-          const ly = pad.t + g*(H-pad.t-pad.b)/5;
-          const txt = (v*100).toFixed(0).replace('.',',')+'%';
-          ctx.fillText(txt, W-50, ly+4);
+        for(var gr=0; gr<=5; gr++){
+          var v2 = roiMin + (roiMax-roiMin)*(1-gr/5);
+          var ly2 = pad.t + gr*(H-pad.t-pad.b)/5;
+          var txt2 = (v2*100).toFixed(0).replace('.',',')+'%';
+          ctx.fillText(txt2, W-50, ly2+4);
         }
 
         // KPIs
-        const fmtBRL = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-        const fmtPct = v => (isFinite(v)? (v*100).toFixed(1).replace('.',',')+'%':'—');
+        function fmtBRL(v){ return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+        function fmtPct(v){ return (isFinite(v)? (v*100).toFixed(1).replace('.',',')+'%':'—'); }
         $('#k_eff').textContent = fmtBRL(data.totals.eff);
         $('#k_rev').textContent = fmtBRL(data.totals.rev);
         $('#k_inv').textContent = fmtBRL(data.totals.inv);
@@ -266,88 +265,35 @@
         console.error('Erro ao desenhar:', e);
         alert('Ops! Algo impediu o cálculo do ROI. Veja o console do navegador para detalhes (F12).');
       }
-    } = dims;
-      state.data = compute();
-      const data = state.data;
-      ctx.clearRect(0,0,W,H);
-      const pad = {l:60, r:60, t:20, b:30};
-      const x = i => pad.l + (i/(data.DAYS-1))*(W-pad.l-pad.r);
-      const moneyMax = Math.max(1, ...data.cumEff, ...data.cumRev, ...data.cumInv);
-      const yM = v => pad.t + (1 - (v/moneyMax))*(H-pad.t-pad.b);
-      const roiMax = Math.max(0.01, ...data.cumROI.map(v=>isFinite(v)?v:0));
-      const roiMin = Math.min(0, ...data.cumROI.map(v=>isFinite(v)?v:0));
-      const yR = v => pad.t + (1 - ((v - roiMin)/((roiMax-roiMin)||1)))*(H-pad.t-pad.b);
-
-      // grid
-      ctx.strokeStyle = '#223047'; ctx.lineWidth = 1; ctx.beginPath();
-      for(let g=0; g<=5; g++){ const gy = pad.t + g*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
-
-      function path(arr, yfn){ ctx.beginPath(); arr.forEach((v,i)=>{ const xx=x(i), yy=yfn(v); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);}); }
-      function stroke(color,w=2){ ctx.strokeStyle=color; ctx.lineWidth=w; ctx.stroke(); }
-
-      const styles = getComputedStyle(document.documentElement);
-      path(data.cumEff, yM); stroke(styles.getPropertyValue('--a1'));
-      path(data.cumRev, yM); stroke(styles.getPropertyValue('--a2'));
-      path(data.cumInv, yM); stroke(styles.getPropertyValue('--a3'));
-      path(data.cumROI, yR); stroke(styles.getPropertyValue('--a4'));
-
-      // x labels
-      ctx.fillStyle = '#8ea3c4'; ctx.font = '12px system-ui';
-      for(let d=0; d<data.DAYS; d+=15){ const xx=x(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
-
-      // y left labels (money)
-      for(let g=0; g<=5; g++){
-        const v = moneyMax*(1-g/5);
-        const ly = pad.t + g*(H-pad.t-pad.b)/5;
-        const txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
-        ctx.fillText(txt, 6, ly+4);
-      }
-      // y right (ROI)
-      for(let g=0; g<=5; g++){
-        const v = roiMin + (roiMax-roiMin)*(1-g/5);
-        const ly = pad.t + g*(H-pad.t-pad.b)/5;
-        const txt = (v*100).toFixed(0).replace('.',',')+'%';
-        ctx.fillText(txt, W-50, ly+4);
-      }
-
-      // KPIs
-      const fmtBRL = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-      const fmtPct = v => (isFinite(v)? (v*100).toFixed(1).replace('.',',')+'%':'—');
-      $('#k_eff').textContent = fmtBRL(data.totals.eff);
-      $('#k_rev').textContent = fmtBRL(data.totals.rev);
-      $('#k_inv').textContent = fmtBRL(data.totals.inv);
-      $('#k_roi').textContent = fmtPct(data.totals.roi);
     }
 
     function downloadCsv(){
       if(!state.data){ draw(); }
-      const data = state.data; if(!data) return;
-      const lines = ['dia,rampa_pct,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
-      for(let i=0;i<data.DAYS;i++){
-        const ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
-        const cb=ce+cr, roi=data.cumROI[i];
+      var data = state.data; if(!data) return;
+      var lines = ['dia,rampa_pct,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
+      for(var i=0;i<data.DAYS;i++){
+        var ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
+        var cb=ce+cr, roi=data.cumROI[i];
         lines.push([i+1,(data.rr[i]*100).toFixed(2),ce.toFixed(2),cr.toFixed(2),cb.toFixed(2),ci.toFixed(2),roi.toFixed(6)].join(','));
       }
-      const blob = new Blob([lines.join('
+      var blob = new Blob([lines.join('
 ')], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      var url = URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     }
 
     function bind(){
-      const btnCalc = $('#btnCalc');
-      const btnCsv = $('#btnCsv');
+      var btnCalc = $('#btnCalc');
+      var btnCsv = $('#btnCsv');
       if(btnCalc){ btnCalc.addEventListener('click', draw); }
       if(btnCsv){ btnCsv.addEventListener('click', downloadCsv); }
-      // Atualiza em tempo real ao mudar qualquer campo
-      document.querySelectorAll('input,select').forEach(el=>{
-        el.addEventListener('input', ()=> draw());
-      });
+      var fields = document.querySelectorAll('input,select');
+      for(var i=0;i<fields.length;i++){ fields[i].addEventListener('input', function(){ draw(); }); }
       window.addEventListener('resize', draw);
     }
 
     if(document.readyState==='loading'){
-      document.addEventListener('DOMContentLoaded', ()=>{ bind(); draw(); });
+      document.addEventListener('DOMContentLoaded', function(){ bind(); draw(); });
     } else { bind(); draw(); }
   })();
 </script>
