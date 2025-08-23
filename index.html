@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ROI Easyjur — Versão mínima estável</title>
+  <title>ROI Easyjur — Estável</title>
   <style>
     body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0b0f14;color:#e6edf7}
     .wrap{max-width:980px;margin:0 auto;padding:20px}
@@ -25,61 +25,30 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>ROI Easyjur — Versão mínima estável</h1>
+    <h1>ROI Easyjur — Estável</h1>
     <div class="panel">
       <div class="grid">
-        <div>
-          <label>Valor/hora (R$)</label>
-          <input id="hour_rate" type="number" value="80" min="0" step="1">
-        </div>
-        <div>
-          <label>Pessoas impactadas</label>
-          <input id="team_size" type="number" value="5" min="0" step="1">
-        </div>
-        <div>
-          <label>Minutos desperdiçados por dia (por pessoa)</label>
-          <input id="wasted_minutes" type="number" value="30" min="0" step="1">
-        </div>
-        <div>
-          <label>Redução do desperdício (%)</label>
-          <input id="waste_reduction_pct" type="number" value="60" min="0" max="100" step="1">
-        </div>
-        <div>
-          <label>Contratos/mês (incrementais)</label>
-          <input id="contracts_month" type="number" value="3" min="0" step="1">
-        </div>
-        <div>
-          <label>Ticket médio (R$)</label>
-          <input id="ticket" type="number" value="2500" min="0" step="50">
-        </div>
-        <div>
-          <label>Receita preservada/mês (R$)</label>
-          <input id="retained_revenue_month" type="number" value="2000" min="0" step="50">
-        </div>
-        <div>
-          <label>Custo mensal (R$)</label>
-          <input id="cost_monthly" type="number" value="1500" min="0" step="50">
-        </div>
-        <div>
-          <label>Implementação (R$) — diluído em 90d</label>
-          <input id="cost_onetime" type="number" value="2000" min="0" step="50">
-        </div>
-        <div>
-          <label>Rampa (90d)</label>
+        <div><label>Valor/hora (R$)</label><input id="hour_rate" type="number" value="80"></div>
+        <div><label>Pessoas impactadas</label><input id="team_size" type="number" value="5"></div>
+        <div><label>Minutos desperdiçados/dia</label><input id="wasted_minutes" type="number" value="30"></div>
+        <div><label>Redução desperdício (%)</label><input id="waste_reduction_pct" type="number" value="60"></div>
+        <div><label>Contratos/mês</label><input id="contracts_month" type="number" value="3"></div>
+        <div><label>Ticket médio (R$)</label><input id="ticket" type="number" value="2500"></div>
+        <div><label>Receita preservada/mês (R$)</label><input id="retained_revenue_month" type="number" value="2000"></div>
+        <div><label>Custo mensal (R$)</label><input id="cost_monthly" type="number" value="1500"></div>
+        <div><label>Implementação única (R$)</label><input id="cost_onetime" type="number" value="2000"></div>
+        <div><label>Rampa</label>
           <select id="ramp_shape">
             <option value="s">S-curve</option>
             <option value="linear">Linear</option>
-            <option value="stairs">Degraus 30/60/90</option>
+            <option value="stairs">Degraus</option>
           </select>
         </div>
-        <div>
-          <label>Dia inicial (go-live)</label>
-          <input id="start_day" type="number" value="1" min="1" max="90">
-        </div>
+        <div><label>Dia inicial</label><input id="start_day" type="number" value="1"></div>
       </div>
       <div class="row">
-        <button type="button" class="primary" id="calc">Calcular ROI</button>
-        <button type="button" class="ghost" id="csv">Baixar CSV</button>
+        <button id="calc" class="primary" type="button">Calcular ROI</button>
+        <button id="csv" class="ghost" type="button">Baixar CSV</button>
       </div>
       <canvas id="chart"></canvas>
       <div class="kpis">
@@ -93,111 +62,124 @@
 
 <script>
 (function(){
-  function g(id){ return document.getElementById(id); }
-  var canvas = g('chart');
-  var ctx = canvas.getContext('2d');
+  // Helper
+  function byId(id){ return document.getElementById(id); }
+
+  var canvas = byId("chart");
+  var ctx = canvas.getContext("2d");
   var DAYS = 90;
 
   function fixCanvas(){
-    var dpr = Math.max(1, window.devicePixelRatio||1);
+    var dpr = Math.max(1, window.devicePixelRatio || 1);
     var rect = canvas.getBoundingClientRect();
-    var W = rect.width || 900; var H = 360;
+    var W = rect.width || 900;
+    var H = 360;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    return {W:W, H:H};
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { W: W, H: H };
   }
 
   function ramp(shape, n, startDay){
-    var arr = new Array(n); for(var i=0;i<n;i++) arr[i]=0;
-    var s = Math.max(1, Math.min(n, startDay||1)) - 1;
+    var arr = new Array(n);
+    for(var i=0;i<n;i++){ arr[i]=0; }
+    var s = Math.max(1, Math.min(n, startDay || 1)) - 1;
     for(var j=0;j<n;j++){
-      if(j<s){arr[j]=0; continue;}
+      if(j < s){ arr[j]=0; continue; }
       var t = (j - s) / Math.max(1, (n - s - 1));
-      var r=0;
-      if(shape==='linear'){ r = Math.max(0, Math.min(1,t)); }
-      else if(shape==='stairs'){ r = (t<1/3)?0.5: (t<2/3?0.8:1); }
-      else { var k=8, x=(t-0.5)*k; var u=1/(1+Math.exp(-x)); var r0=1/(1+Math.exp(k/2)); var r1=1/(1+Math.exp(-k/2)); r=(u-r0)/(r1-r0); if(r<0)r=0; if(r>1)r=1; }
+      var r = 0;
+      if(shape === "linear"){ r = Math.max(0, Math.min(1, t)); }
+      else if(shape === "stairs"){ r = (t < 1/3) ? 0.5 : ((t < 2/3) ? 0.8 : 1); }
+      else { var k=8, x=(t-0.5)*k; var u=1/(1+Math.exp(-x)); var r0=1/(1+Math.exp(k/2)); var r1=1/(1+Math.exp(-k/2)); r=(u-r0)/(r1-r0); if(r<0) r=0; if(r>1) r=1; }
       arr[j]=r;
     }
     return arr;
   }
 
   function compute(){
-    var hourRate = Number(g('hour_rate').value)||0;
-    var teamSize = Number(g('team_size').value)||0;
-    var wastedMin = Number(g('wasted_minutes').value)||0;
-    var wasteRed = Math.max(0, Math.min(100, Number(g('waste_reduction_pct').value)||0))/100;
-    var contracts = Number(g('contracts_month').value)||0;
-    var ticket = Number(g('ticket').value)||0;
-    var retained = Number(g('retained_revenue_month').value)||0;
-    var costMonthly = Number(g('cost_monthly').value)||0;
-    var costOnetime = Number(g('cost_onetime').value)||0;
-    var shape = g('ramp_shape').value;
-    var startDay = Number(g('start_day').value)||1;
+    var hourRate = Number(byId("hour_rate").value) || 0;
+    var teamSize = Number(byId("team_size").value) || 0;
+    var wastedMin = Number(byId("wasted_minutes").value) || 0;
+    var wasteRed = Math.max(0, Math.min(100, Number(byId("waste_reduction_pct").value) || 0)) / 100;
+    var contracts = Number(byId("contracts_month").value) || 0;
+    var ticket = Number(byId("ticket").value) || 0;
+    var retained = Number(byId("retained_revenue_month").value) || 0;
+    var costMonthly = Number(byId("cost_monthly").value) || 0;
+    var costOnetime = Number(byId("cost_onetime").value) || 0;
+    var shape = byId("ramp_shape").value;
+    var startDay = Number(byId("start_day").value) || 1;
 
-    var savedHours = (wastedMin/60) * wasteRed; // por pessoa/dia
+    var savedHours = (wastedMin / 60) * wasteRed; // per person per day
     var dailyEffBase = teamSize * savedHours * hourRate;
-    var dailyRevBase = (contracts * ticket)/30 + (retained/30);
-    var dailyInv = (costMonthly/30) + (costOnetime/90);
+    var dailyRevBase = (contracts * ticket) / 30 + (retained / 30);
+    var dailyInv = (costMonthly / 30) + (costOnetime / 90);
 
     var rr = ramp(shape, DAYS, startDay);
-    var cE=0,cR=0,cI=0, cumEff=[], cumRev=[], cumInv=[], cumROI=[];
+    var cE=0, cR=0, cI=0;
+    var cumEff=[], cumRev=[], cumInv=[], cumROI=[];
     for(var i=0;i<DAYS;i++){
-      cE += rr[i]*dailyEffBase; cR += rr[i]*dailyRevBase; cI += dailyInv;
+      cE += rr[i] * dailyEffBase;
+      cR += rr[i] * dailyRevBase;
+      cI += dailyInv;
       cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
-      cumROI.push(cI>0 ? (cE+cR-cI)/cI : 0);
+      cumROI.push(cI>0 ? (cE + cR - cI) / cI : 0);
     }
-    return {cumEff:cumEff, cumRev:cumRev, cumInv:cumInv, cumROI:cumROI,
-            totals:{eff:cE, rev:cR, inv:cI, roi:(cI>0?(cE+cR-cI)/cI:0)}};
+    return { cumEff:cumEff, cumRev:cumRev, cumInv:cumInv, cumROI:cumROI, totals:{ eff:cE, rev:cR, inv:cI, roi:(cI>0 ? (cE+cR-cI)/cI : 0) } };
   }
 
   function draw(){
-    var dims = fixCanvas(); var W=dims.W, H=dims.H;
+    var dims = fixCanvas();
+    var W = dims.W, H = dims.H;
     var data = compute();
+
     ctx.clearRect(0,0,W,H);
-    var pad = {l:60,r:60,t:20,b:30};
-    function X(i){ return pad.l + (i/(DAYS-1))*(W-pad.l-pad.r); }
-    function max(){ var m=1; for(var i=0;i<DAYS;i++){ if(data.cumEff[i]>m) m=data.cumEff[i]; if(data.cumRev[i]>m) m=data.cumRev[i]; if(data.cumInv[i]>m) m=data.cumInv[i]; } return m; }
-    var M=max();
-    function Ym(v){ return pad.t + (1 - (v/M))*(H-pad.t-pad.b); }
-    var roiMax=0.01, roiMin=0; for(var i=0;i<DAYS;i++){ var v=data.cumROI[i]; if(v>roiMax) roiMax=v; if(v<roiMin) roiMin=v; }
-    function Yr(v){ var rng=(roiMax-roiMin)||1; return pad.t + (1 - ((v-roiMin)/rng))*(H-pad.t-pad.b); }
+    var pad = { l:60, r:60, t:20, b:30 };
+    function X(i){ return pad.l + (i/(DAYS-1)) * (W - pad.l - pad.r); }
+    var M = 1; for(var i=0;i<DAYS;i++){ if(data.cumEff[i]>M) M=data.cumEff[i]; if(data.cumRev[i]>M) M=data.cumRev[i]; if(data.cumInv[i]>M) M=data.cumInv[i]; }
+    function Ym(v){ return pad.t + (1 - (v / M)) * (H - pad.t - pad.b); }
+    var roiMax=0.01, roiMin=0; for(var j=0;j<DAYS;j++){ var rv=data.cumROI[j]; if(rv>roiMax) roiMax=rv; if(rv<roiMin) roiMin=rv; }
+    function Yr(v){ var rng=(roiMax-roiMin)||1; return pad.t + (1 - ((v - roiMin) / rng)) * (H - pad.t - pad.b); }
 
     // grid
-    ctx.strokeStyle='#223047'; ctx.lineWidth=1; ctx.beginPath();
-    for(var gi=0; gi<=5; gi++){ var gy=pad.t + gi*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy);} ctx.stroke();
+    ctx.strokeStyle = "#223047"; ctx.lineWidth = 1; ctx.beginPath();
+    for(var gi=0; gi<=5; gi++){ var gy = pad.t + gi*(H-pad.t-pad.b)/5; ctx.moveTo(pad.l, gy); ctx.lineTo(W-pad.r, gy); }
+    ctx.stroke();
 
-    function path(arr,yf){ ctx.beginPath(); for(var i=0;i<arr.length;i++){ var xx=X(i), yy=yf(arr[i]); if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.stroke(); }
-    ctx.lineWidth=2; ctx.strokeStyle='#76c7ff'; path(data.cumEff,Ym); // eff
-    ctx.strokeStyle='#9be07d'; path(data.cumRev,Ym); // rev
-    ctx.strokeStyle='#f6b26b'; path(data.cumInv,Ym); // inv
-    ctx.strokeStyle='#ff6b6b'; path(data.cumROI,Yr); // roi
+    function line(arr, y){ ctx.beginPath(); for(var k=0;k<arr.length;k++){ var xx=X(k), yy=y(arr[k]); if(k===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.stroke(); }
 
-    ctx.fillStyle='#8ea3c4'; ctx.font='12px Arial';
-    for(var d=0; d<DAYS; d+=15){ var xx=X(d); ctx.fillText((d+1)+'d', xx-8, H-8); }
+    ctx.lineWidth = 2; ctx.strokeStyle = "#76c7ff"; line(data.cumEff, Ym);
+    ctx.strokeStyle = "#9be07d"; line(data.cumRev, Ym);
+    ctx.strokeStyle = "#f6b26b"; line(data.cumInv, Ym);
+    ctx.strokeStyle = "#ff6b6b"; line(data.cumROI, Yr);
 
-    function BRL(v){ return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
-    function PCT(v){ return (v*100).toFixed(1)+'%'; }
-    g('k_eff').textContent=BRL(data.totals.eff);
-    g('k_rev').textContent=BRL(data.totals.rev);
-    g('k_inv').textContent=BRL(data.totals.inv);
-    g('k_roi').textContent=PCT(data.totals.roi);
+    ctx.fillStyle = "#8ea3c4"; ctx.font = "12px Arial";
+    for(var d=0; d<DAYS; d+=15){ var xx=X(d); ctx.fillText(String(d+1)+"d", xx-8, H-8); }
+
+    function BRL(v){ return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }); }
+    function PCT(v){ return (v*100).toFixed(1) + "%"; }
+    byId("k_eff").textContent = BRL(data.totals.eff);
+    byId("k_rev").textContent = BRL(data.totals.rev);
+    byId("k_inv").textContent = BRL(data.totals.inv);
+    byId("k_roi").textContent = PCT(data.totals.roi);
   }
 
-  function csv(){
+  function downloadCsv(){
     var data = compute();
-    var lines=['dia,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
-    var cE,cR,cI; for(var i=0;i<DAYS;i++){ cE=data.cumEff[i]; cR=data.cumRev[i]; cI=data.cumInv[i]; lines.push([i+1,cE.toFixed(2),cR.toFixed(2),(cE+cR).toFixed(2),cI.toFixed(2),data.cumROI[i].toFixed(6)].join(',')); }
-    var blob=new Blob([lines.join('
-')],{type:'text/csv;charset=utf-8;'});
-    var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='roi_easyjur_90dias.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    var lines = ["dia,eff_acum,rev_acum,beneficio_acum,invest_acum,roi"];
+    for(var i=0;i<DAYS;i++){
+      var ce=data.cumEff[i], cr=data.cumRev[i], ci=data.cumInv[i];
+      var cb=ce+cr, roi=data.cumROI[i];
+      lines.push([i+1, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(","));
+    }
+    var blob = new Blob([lines.join("
+")], { type:"text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a"); a.href = url; a.download = "roi_easyjur_90dias.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
 
-  g('calc').addEventListener('click', draw);
-  g('csv').addEventListener('click', csv);
-  window.addEventListener('resize', draw);
-  // first paint
+  byId("calc").addEventListener("click", draw);
+  byId("csv").addEventListener("click", downloadCsv);
+  window.addEventListener("resize", draw);
   draw();
 })();
 </script>
