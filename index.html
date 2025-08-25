@@ -335,7 +335,7 @@ z-index: 10;
 
 <img src="logo-easyjur-01.png" alt="Logo Easyjur" class="logo" />
 
-<h1 class="title">Calculadora de Crescimento e Investimento</h1>
+<h1 class="title">Calculadora de Crescimento vs Investimento</h1>
 
 <div class="panel">
 
@@ -343,7 +343,7 @@ z-index: 10;
 
 <div class="input-column">
 
-<h2 class="group-title">Custos e Investimento</h2>
+<h2 class="group-title">Investimento</h2>
 
 <div class="input-box">
 
@@ -355,7 +355,7 @@ z-index: 10;
 
 <div class="input-box">
 
-<label>Implementação única (R$)</label>
+<label>Consultoria Estratégica (R$)</label>
 
 <input id="cost_onetime" type="number" value="2000">
 
@@ -367,7 +367,7 @@ z-index: 10;
 
 <div class="input-column">
 
-<h2 class="group-title">Ganho por Eficiência</h2>
+<h2 class="group-title">Eficiência</h2>
 
 <div class="input-box">
 
@@ -387,7 +387,7 @@ z-index: 10;
 
 <div class="input-box">
 
-<label>Minutos desperdiçados/dia</label>
+<label>Minutos a serem otimizados</label>
 
 <input id="wasted_minutes" type="number" value="30">
 
@@ -395,7 +395,7 @@ z-index: 10;
 
 <div class="input-box">
 
-<label>Redução desperdício (%)</label>
+<label>Ganho de Eficiência (%)</label>
 
 <input id="waste_reduction_pct" type="number" value="60">
 
@@ -447,7 +447,7 @@ z-index: 10;
 
 <select id="ramp_shape">
 
-<option value="s">S-curve</option>
+<option value="s">Curva em S</option>
 
 <option value="linear">Linear</option>
 
@@ -495,11 +495,11 @@ z-index: 10;
 
 <div class="kpis">
 
-<div class="kpi"><div class="l">Eficiência (365d)</div><div class="v" id="k_eff">—</div></div>
+<div class="kpi"><div class="l">Investimento (365d)</div><div class="v" id="k_inv">—</div></div>
 
 <div class="kpi"><div class="l">Faturamento (365d)</div><div class="v" id="k_rev">—</div></div>
 
-<div class="kpi"><div class="l">Investimento (365d)</div><div class="v" id="k_inv">—</div></div>
+<div class="kpi"><div class="l">Eficiência (365d)</div><div class="v" id="k_eff">—</div></div>
 
 <div class="kpi"><div class="l">ROI Total (365d)</div><div class="v" id="k_roi">—</div></div>
 
@@ -513,40 +513,40 @@ z-index: 10;
 
 <pre>
 
-## Fórmulas de Cálculo
+Fórmulas de Cálculo
 
 
 
-**Ganho por Eficiência Diário:**
+Ganho por Eficiência Diário:
 
-`GanhoDiário = (MinutosDesperdiçados / 60) * (ReduçãoDesperdício / 100) * PessoasImpactadas * ValorHora`
-
-
-
-**Ganho de Faturamento Diário:**
-
-`GanhoDiário = (ContratosMensais * TicketMédio + ReceitaPreservadaMensal) / 30`
+Ganho Diário = (Minutos Desperdiçados / 60) * (Redução Desperdício / 100) * PessoasImpactadas * ValorHora
 
 
 
-**Custo Diário:**
+Ganho de Faturamento Diário:
 
-`CustoDiário = (CustoMensal / 30) + (CustoImplementaçãoÚnica / 90)`
-
-
-
-**Acumulado:**
-
-`ValorAcumulado = ∑(ValorDiário * Rampa)`
+Ganho Diário = (Contratos Mensais * Ticket Médio + Receita Preservada Mensal) / 30
 
 
 
-**ROI (Retorno sobre Investimento):**
+Custo Diário:
 
-`ROI = (EficiênciaAcumulada + FaturamentoAcumulada - InvestimentoAcumulado) / InvestimentoAcumulado`
+Custo Diário = (Custo Mensal / 30) + (Custo ImplementaçãoÚnica / 90)
 
 
-*O valor do ROI é exibido no formato "X", onde 1x significa que o investimento se pagou, 2x significa que o retorno foi o dobro do investimento, e assim por diante.*
+
+Acumulado:
+
+ValorAcumulado = ∑(ValorDiário * Rampa)
+
+
+
+ROI (Retorno sobre Investimento):
+
+ROI = (Eficiência Acumulada + Faturamento Acumulado - Investimento Acumulado) / Investimento Acumulado
+
+
+O valor do ROI é exibido no formato "X", onde 1x significa que o investimento se pagou, 2x significa que o retorno foi o dobro do investimento, e assim por diante.
 
 </pre>
 
@@ -1017,3 +1017,4 @@ draw();
 </body>
 
 </html>
+
