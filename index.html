@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Calculadora ROI Easyjur - Projeção de Cenários</title>
+<title>ROI Easyjur — 1 ano (com marcos trimestrais)</title>
 <style>
 /* ====== Marca Easyjur ====== */
 :root {
@@ -27,11 +27,11 @@
 /* ====== Layout ====== */
 html, body { height: 100%; }
 body { margin: 0; background: var(--ej-white); color: var(--ej-black); font-family: 'Borna', Arial, Helvetica, sans-serif; }
-.wrap {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 24px 16px;
-    position: relative;
+.wrap { 
+    max-width: 1080px; 
+    margin: 0 auto; 
+    padding: 24px 16px; 
+    position: relative; 
 }
 
 /* Estilo para o logo */
@@ -87,45 +87,7 @@ body { margin: 0; background: var(--ej-white); color: var(--ej-black); font-fami
 }
 
 label { font-size: 12px; color: #35424a; display: block; margin: 0 0 6px; }
-input[type="number"], input[type="range"], select { 
-    width: 100%; 
-    padding: 10px 12px; 
-    border-radius: 10px; 
-    border: 1px solid var(--ej-gray-1); 
-    background: var(--ej-white); 
-    color: var(--ej-black); 
-}
-
-/* Estilo para o slider */
-input[type="range"] {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 8px;
-    background: var(--ej-gray-1);
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
-    cursor: pointer;
-}
-input[type="range"]:hover { opacity: 1; }
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--ej-primary);
-    cursor: pointer;
-}
-input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--ej-primary);
-    cursor: pointer;
-}
-
+input, select { width: 30%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ej-gray-1); background: var(--ej-white); color: var(--ej-black); }
 input:focus, select:focus { outline: none; border-color: var(--ej-primary); box-shadow: 0 0 0 2px rgba(229, 41, 63, .15); }
 
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
@@ -150,12 +112,12 @@ button { padding: 10px 14px; border-radius: 10px; border: 1px solid transparent;
 canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(--ej-gray-1); border-radius: 12px; margin-top: 10px; cursor: crosshair; }
 
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
-.kpi {
-    background: #fafbfc;
-    border: 1px solid var(--ej-gray-1);
-    border-radius: 10px;
-    padding: 12px;
-    position: relative;
+.kpi { 
+    background: #fafbfc; 
+    border: 1px solid var(--ej-gray-1); 
+    border-radius: 10px; 
+    padding: 12px; 
+    position: relative; /* Adicionado para o posicionamento do ícone */
 }
 .kpi .l { font-size: 12px; color: #35424a; }
 .kpi .v { font-size: 20px; font-weight: 800; margin-top: 6px; color: var(--ej-black); }
@@ -163,7 +125,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 
 /* Estilo para os ícones de informação */
 .info-icon {
-    font-family: Arial, sans-serif;
+    font-family: Arial, sans-serif; /* Fonte para o "i" */
     font-size: 12px;
     font-weight: bold;
     color: var(--ej-gray-2);
@@ -172,7 +134,10 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
     position: absolute;
     right: 12px;
     top: 12px;
-    line-height: 1;
+    line-height: 1; /* Para evitar espaçamento extra */
+}
+.input-box .info-icon {
+    top: 12px;
 }
 
 /* Estilo para o tooltip de informação */
@@ -233,7 +198,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 }
 
 .accordion:after {
-    content: '\25BC';
+    content: '\25BC'; /* Caractere de triângulo para baixo */
     color: #777;
     font-weight: bold;
     float: right;
@@ -241,7 +206,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 }
 
 .active:after {
-    content: "\25B2";
+    content: "\25B2"; /* Caractere de triângulo para cima */
 }
 
 .panel-formulas {
@@ -259,7 +224,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 
 /* Tooltip do gráfico */
 #tooltip {
-    position: fixed;
+    position: fixed; /* Alterado para fixo para seguir o mouse na tela */
     background: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 8px;
@@ -277,124 +242,147 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <h1 class="title">Calculadora de Crescimento vs Investimento</h1>
 <div class="panel">
 <div class="column-container">
-    <div class="input-column">
-        <h2 class="group-title">Investimento</h2>
-        <div class="input-box">
-            <label>Custo mensal (R$)</label>
-            <input id="cost_monthly" type="number" value="1500">
-        </div>
-        <div class="input-box">
-            <label>Consultoria Estratégica (R$)</label>
-            <input id="cost_onetime" type="number" value="2000">
-        </div>
-    </div>
+<div class="input-column">
+<h2 class="group-title">Investimento</h2>
+<div class="input-box">
+<label>Custo mensal (R$)</label>
+<input id="cost_monthly" type="number" value="1500">
+</div>
+<div class="input-box">
+<label>Consultoria Estratégica (R$)</label>
+<input id="cost_onetime" type="number" value="2000">
+</div>
+</div>
 
-    <div class="input-column">
-        <h2 class="group-title">Eficiência</h2>
-        <div class="input-box">
-            <label>Valor/hora (R$)</label>
-            <input id="hour_rate" type="number" value="80">
-        </div>
-        <div class="input-box">
-            <label>Pessoas na equipe</label>
-            <input id="team_size" type="number" value="5">
-        </div>
-        <div class="input-box">
-            <label>Minutos gastos em atividades</label>
-            <input id="wasted_minutes" type="number" value="30">
-        </div>
-        <div class="input-box">
-            <label>Ganho de Eficiência (%)</label>
-            <input id="waste_reduction_pct" type="number" value="60">
-            <div class="info-icon">
-                i
-                <span class="info-tooltip">
-                    A percentagem de otimização no tempo gasto em tarefas.
-                </span>
-            </div>
-        </div>
-    </div>
+<div class="input-column">
+<h2 class="group-title">Eficiência</h2>
+<div class="input-box">
+<label>Valor/hora (R$)</label>
+<input id="hour_rate" type="number" value="80">
+</div>
+<div class="input-box">
+<label>Pessoas na equipe</label>
+<input id="team_size" type="number" value="5">
+</div>
+<div class="input-box">
+<label>Minutos gastos em atividades</label>
+<input id="wasted_minutes" type="number" value="30">
+</div>
+<div class="input-box">
+<label>Ganho de Eficiência (%)</label>
+<input id="waste_reduction_pct" type="number" value="60">
+</div>
+</div>
 
-    <div class="input-column">
-        <h2 class="group-title">Ganho de Faturamento</h2>
-        <div class="input-box">
-            <label>Contratos/mês</label>
-            <input id="contracts_month" type="number" value="3">
-        </div>
-        <div class="input-box">
-            <label>Ticket médio (R$)</label>
-            <input id="ticket" type="number" value="2500">
-        </div>
-        <div class="input-box">
-            <label>Receita preservada/mês (R$)</label>
-            <input id="retained_revenue_month" type="number" value="2000">
-            <div class="info-icon">
-                i
-                <span class="info-tooltip">
-                    Receita que sua empresa evita perder com a adoção da ferramenta. Por exemplo, multas ou perda de clientes.
-                </span>
-            </div>
-        </div>
-    </div>
+<div class="input-column">
+<h2 class="group-title">Ganho de Faturamento</h2>
+<div class="input-box">
+<label>Contratos/mês</label>
+<input id="contracts_month" type="number" value="3">
+</div>
+<div class="input-box">
+<label>Ticket médio (R$)</label>
+<input id="ticket" type="number" value="2500">
+</div>
+<div class="input-box">
+<label>Receita preservada/mês (R$)</label>
+<input id="retained_revenue_month" type="number" value="2000">
+<div class="info-icon">
+    i
+    <span class="info-tooltip">
+        Receita que sua empresa evita perder com a adoção da ferramenta. Por exemplo, multas ou perda de clientes devido a erros ou atrasos.
+    </span>
+</div>
+</div>
+</div>
 
-    <div class="input-column">
-        <h2 class="group-title">Parâmetros do Gráfico</h2>
-        <div class="input-box">
-            <label>Rampa</label>
-            <select id="ramp_shape">
-                <option value="s">Curva em S</option>
-                <option value="linear">Linear</option>
-                <option value="stairs">Degraus</option>
-            </select>
-            <div class="info-icon">
-                i
-                <span class="info-tooltip">
-                    A forma como os ganhos crescem ao longo do tempo. A Curva em S é a mais realista, pois reflete o período de adaptação.
-                </span>
-            </div>
-        </div>
-        <div class="input-box">
-            <label>Ativação Inicial</label>
-            <input id="start_day" type="number" value="30">
-            <div class="info-icon">
-                i
-                <span class="info-tooltip">
-                    O dia em que a equipe começa a usar a ferramenta e gerar os primeiros ganhos.
-                </span>
-            </div>
-        </div>
-        <div class="input-box">
-            <label>Período de Projeção</label>
-            <select id="projection_period">
-                <option value="1">1 Ano</option>
-                <option value="2">2 Anos</option>
-                <option value="3">3 Anos</option>
-            </select>
-        </div>
+<div class="input-column">
+<h2 class="group-title">Parâmetros do Gráfico</h2>
+<div class="input-box">
+    <label>Rampa</label>
+    <select id="ramp_shape">
+        <option value="s">Curva em S</option>
+        <option value="linear">Linear</option>
+        <option value="stairs">Degraus</option>
+    </select>
+    <div class="info-icon">
+        i
+        <span class="info-tooltip">
+            A forma como os ganhos de Eficiência e Faturamento crescem ao longo do tempo. A Curva em S é a mais realista, pois reflete o período de adaptação e treinamento.
+        </span>
     </div>
+</div>
+<div class="input-box">
+    <label>Ativação Inicial</label>
+    <input id="start_day" type="number" value="30">
+    <div class="info-icon">
+        i
+        <span class="info-tooltip">
+            O dia em que a sua equipe começa a usar o software e a gerar os primeiros ganhos. Representa o tempo de implementação da ferramenta.
+        </span>
+    </div>
+</div>
+
+</div>
+
 </div>
 
 <div class="row">
-    <button id="calc" class="primary" type="button">Calcular ROI</button>
-    <button id="csv" class="ghost" type="button">Baixar CSV</button>
+<button id="calc" class="primary" type="button">Calcular ROI</button>
+<button id="csv" class="ghost" type="button">Baixar CSV</button>
 </div>
 
 <div class="legend">
-    <span><span class="sw inv"></span>Investimento (acum.)</span>
-    <span><span class="sw rev"></span>Faturamento (acum.)</span>
-    <span><span class="sw eff"></span>Eficiência (acum.)</span>
-    <span><span class="sw roi"></span>ROI Total (x)</span>
+<span><span class="sw inv"></span>Investimento (acum.)</span>
+<span><span class="sw rev"></span>Faturamento (acum.)</span>
+<span><span class="sw eff"></span>Eficiência (acum.)</span>
+<span><span class="sw roi"></span>ROI Total (x)</span>
 </div>
 
 <canvas id="chart"></canvas>
 <div id="tooltip"></div>
 
 <div class="kpis">
-    <div class="kpi"><div class="l">Investimento (acum.)</div><div class="v" id="k_inv">—</div></div>
-    <div class="kpi"><div class="l">Faturamento (acum.)</div><div class="v" id="k_rev">—</div></div>
-    <div class="kpi"><div class="l">Eficiência (acum.)</div><div class="v" id="k_eff">—</div></div>
-    <div class="kpi"><div class="l">Ponto de Equilíbrio</div><div class="v" id="k_payback">—</div></div>
-    <div class="kpi"><div class="l">ROI Total (x)</div><div class="v" id="k_roi">—</div></div>
+    <div class="kpi">
+        <div class="l">Investimento (365d)</div>
+        <div class="v" id="k_inv">—</div>
+        <div class="info-icon">
+            i
+            <span class="info-tooltip">
+                Valor total investido no software e na consultoria ao longo de 1 ano. É a soma de todos os custos.
+            </span>
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="l">Faturamento (365d)</div>
+        <div class="v" id="k_rev">—</div>
+        <div class="info-icon">
+            i
+            <span class="info-tooltip">
+                Ganho acumulado em faturamento graças à ferramenta. Inclui a receita de novos contratos e a receita que seria perdida sem a solução.
+            </span>
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="l">Eficiência (365d)</div>
+        <div class="v" id="k_eff">—</div>
+        <div class="info-icon">
+            i
+            <span class="info-tooltip">
+                Ganho acumulado em valor financeiro pela otimização de tempo. É o valor das horas que a equipe parou de desperdiçar, convertidas em dinheiro.
+            </span>
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="l">ROI Total (365d)</div>
+        <div class="v" id="k_roi">—</div>
+        <div class="info-icon">
+            i
+            <span class="info-tooltip">
+                O Retorno sobre o Investimento. Indica quantas vezes o valor investido foi recuperado em ganhos. Por exemplo, 2x significa que o retorno foi o dobro do investimento.
+            </span>
+        </div>
+    </div>
 </div>
 
 </div>
@@ -431,7 +419,7 @@ function byId(id){ return document.getElementById(id); }
 var canvas = byId('chart');
 var ctx = canvas.getContext('2d');
 var tooltip = byId('tooltip');
-var DAYS = 365; // período padrão de 1 ano
+var DAYS = 365; // período de 1 ano
 var data = null; // para armazenar os dados calculados
 
 function fixCanvas(){
@@ -463,9 +451,6 @@ function ramp(shape, n, startDay){
 }
 
 function compute(){
-    var projection_period = Number(byId('projection_period').value);
-    DAYS = projection_period * 365;
-    
     var hourRate = Number(byId('hour_rate').value) || 0;
     var teamSize = Number(byId('team_size').value) || 0;
     var wastedMin = Number(byId('wasted_minutes').value) || 0;
@@ -485,39 +470,18 @@ function compute(){
 
     var rr = ramp(shape, DAYS, startDay);
     var cE = 0, cR = 0, cI = 0, cumEff = [], cumRev = [], cumInv = [], cumROI = [];
-    var paybackDay = null;
-
     for(var i = 0; i < DAYS; i++){
         cE += rr[i] * dailyEffBase;
         cR += rr[i] * dailyRevBase;
         cI += dailyInv;
-        cumEff.push(cE);
-        cumRev.push(cR);
-        cumInv.push(cI);
+        cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
         cumROI.push(cI > 0 ? (cE + cR - cI) / cI : 0);
-
-        // Calcular ponto de equilíbrio
-        if (paybackDay === null && (cE + cR) >= cI && cI > 0) {
-            paybackDay = i + 1;
-        }
     }
-    
-    // Se não encontrou o payback, verifica se o ponto de equilíbrio será atingido
-    if (paybackDay === null && cI > 0 && dailyEffBase > 0) {
-        var remainingInvestment = cI;
-        var totalDailyGain = dailyEffBase + dailyRevBase;
-        if (totalDailyGain > dailyInv) {
-            var daysToPayback = remainingInvestment / (totalDailyGain - dailyInv);
-            paybackDay = DAYS + daysToPayback;
-        }
-    }
-
     return {
         cumEff: cumEff,
         cumRev: cumRev,
         cumInv: cumInv,
         cumROI: cumROI,
-        paybackDay: paybackDay,
         totals: {
             eff: cE,
             rev: cR,
@@ -530,7 +494,6 @@ function compute(){
 function draw(){
     var dims = fixCanvas(); var W = dims.W, H = dims.H;
     data = compute();
-    var projection_period = Number(byId('projection_period').value);
 
     ctx.clearRect(0, 0, W, H);
     var pad = { l: 60, r: 60, t: 24, b: 40 };
@@ -547,31 +510,28 @@ function draw(){
     for(var gi = 0; gi <= 5; gi++){ var gy = pad.t + gi * (H - pad.t - pad.b) / 5; ctx.moveTo(pad.l, gy); ctx.lineTo(W - pad.r, gy); }
     ctx.stroke();
 
-    // rótulos do eixo X (Anos)
+    // rótulos do eixo X por mês: M1..M12 (aprox. cada 30 dias)
     ctx.fillStyle = '#333'; ctx.font = '12px Borna, Arial';
-    for(var y=1; y<=projection_period; y++){
-        var xx = X((y*365)-1);
-        ctx.fillText('Ano ' + y, xx-8, H-12);
-    }
+    for(var d = 0, m = 1; d < DAYS; d += 30, m++){ var xx = X(d); ctx.fillText('M' + m, xx - 8, H - 12); }
 
     // marcadores de impacto (90, 180, 270, 360)
-    var impacts=[90,180,270,360];
-    ctx.save(); ctx.setLineDash([6,6]); ctx.strokeStyle = '#cfd7db';
-    for(var mi=0; mi<impacts.length; mi++){
-        var day=impacts[mi]-1; if(day<0||day>=DAYS) continue; var xx = X(day);
-        ctx.beginPath(); ctx.moveTo(xx, pad.t); ctx.lineTo(xx, H-pad.b); ctx.stroke();
+    var impacts = [90, 180, 270, 360];
+    ctx.save(); ctx.setLineDash([6, 6]); ctx.strokeStyle = '#cfd7db';
+    for(var mi = 0; mi < impacts.length; mi++){
+        var day = impacts[mi] - 1; if(day < 0 || day >= DAYS) continue; var xx = X(day);
+        ctx.beginPath(); ctx.moveTo(xx, pad.t); ctx.lineTo(xx, H - pad.b); ctx.stroke();
         ctx.fillStyle = '#7f919a';
-        ctx.beginPath(); ctx.moveTo(xx, pad.t+2); ctx.lineTo(xx-6, pad.t+14); ctx.lineTo(xx+6, pad.t+14); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#111'; ctx.font='12px Borna, Arial';
-        ctx.fillText((mi+1)+'º Impacto', xx+8, pad.t+16);
+        ctx.beginPath(); ctx.moveTo(xx, pad.t + 2); ctx.lineTo(xx - 6, pad.t + 14); ctx.lineTo(xx + 6, pad.t + 14); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#111'; ctx.font = '12px Borna, Arial';
+        ctx.fillText((mi + 1) + 'º Impacto', xx + 8, pad.t + 16);
     }
     ctx.restore();
 
     // linhas
-    function line(arr, y){ ctx.beginPath(); for(var k=0;k<arr.length;k++){ var xx=X(k), yy=y(arr[k]); if(k===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.stroke(); }
+    function line(arr, y){ ctx.beginPath(); for(var k = 0; k < arr.length; k++){ var xx = X(k), yy = y(arr[k]); if(k === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy); } ctx.stroke(); }
 
     // Eficiência
-    ctx.lineWidth=2; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-2') || '#7f919a';
+    ctx.lineWidth = 2; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-2') || '#7f919a';
     line(data.cumEff, Ym);
     // Faturamento
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
@@ -580,60 +540,27 @@ function draw(){
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-blue') || '#007bff';
     line(data.cumInv, Ym);
     // ROI (trilhado)
-    ctx.setLineDash([4,4]); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
     line(data.cumROI, Yr); ctx.setLineDash([]);
 
     // rótulos dos eixos Y
     ctx.fillStyle = '#333'; ctx.font = '12px Borna, Arial';
-    for(var gy=0; gy<=5; gy++){
-        var v = M*(1-gy/5); var ly = pad.t + gy*(H-pad.t-pad.b)/5; var txt = v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
-        ctx.fillText(txt, 8, ly+4);
+    for(var gy = 0; gy <= 5; gy++){
+        var v = M * (1 - gy / 5); var ly = pad.t + gy * (H - pad.t - pad.b) / 5; var txt = v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 0});
+        ctx.fillText(txt, 8, ly + 4);
     }
-    for(var gr=0; gr<=5; gr++){
-        var v2 = roiMin + (roiMax-roiMin)*(1-gr/5); var ly2 = pad.t + gr*(H-pad.t-pad.b)/5;
+    for(var gr = 0; gr <= 5; gr++){
+        var v2 = roiMin + (roiMax - roiMin) * (1 - gr / 5); var ly2 = pad.t + gr * (H - pad.t - pad.b) / 5;
         var txt2 = (v2*100).toFixed(0) + '%';
         if (v2 > 0) txt2 = (v2).toFixed(1) + 'x';
         if (v2 < 1 && v2 > 0) txt2 = v2.toFixed(1) + 'x';
         if (v2 <= 0) txt2 = '0x';
-        ctx.fillText(txt2, W-44, ly2+4);
-    }
-    
-    // Ponto de Equilíbrio no gráfico
-    if (data.paybackDay !== null && data.paybackDay <= DAYS) {
-        var x_payback = X(data.paybackDay);
-        var y_payback = Ym(data.cumInv[data.paybackDay]);
-        
-        ctx.save();
-        ctx.setLineDash([2, 2]);
-        ctx.strokeStyle = '#28a745'; // verde
-        ctx.beginPath();
-        ctx.moveTo(x_payback, pad.t);
-        ctx.lineTo(x_payback, H-pad.b);
-        ctx.stroke();
-        
-        ctx.fillStyle = '#28a745';
-        ctx.font = '12px Borna, Arial';
-        var paybackText = 'Payback!';
-        ctx.fillText(paybackText, x_payback + 8, pad.t + 40);
-        ctx.restore();
+        ctx.fillText(txt2, W - 44, ly2 + 4);
     }
 
     // KPIs
-    function BRL(v){ return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+    function BRL(v){ return v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); }
     function ROI(v){ return (v * 100).toFixed(0) + '% (' + v.toFixed(1) + 'x)'; }
-    function Payback(days){
-        if (days === null || days > DAYS) return `Não alcançado em ${projection_period} ano(s)`;
-        var months = Math.floor(days / 30);
-        var remainingDays = Math.round(days % 30);
-        var text = '';
-        if (months > 0) text += `${months} m`;
-        if (months > 0 && remainingDays > 0) text += ' e ';
-        if (remainingDays > 0) text += `${remainingDays} d`;
-        if (months === 0 && remainingDays === 0) text = `No dia ${days}`;
-        return text;
-    }
-    
-    byId('k_payback').textContent = Payback(data.paybackDay);
     if (data.totals.roi <= 0.01) {
         byId('k_roi').textContent = '0x';
     } else {
@@ -642,24 +569,24 @@ function draw(){
     byId('k_eff').textContent = BRL(data.totals.eff);
     byId('k_rev').textContent = BRL(data.totals.rev);
     byId('k_inv').textContent = BRL(data.totals.inv);
-    byId('k_inv').classList.add('inv');
+    byId('k_inv').classList.add('inv'); // Adicionado para colorir o valor
 }
 
 function downloadCsv(){
     var d = compute();
     var lines = ['dia,mes_index,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
-    for(var i=0;i<DAYS;i++){
-        var ce=d.cumEff[i], cr=d.cumRev[i], ci=d.cumInv[i]; var cb=ce+cr, roi=d.cumROI[i];
-        var m = Math.floor(i/30)+1;
-        lines.push([i+1, m, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
+    for(var i = 0; i < DAYS; i++){
+        var ce = d.cumEff[i], cr = d.cumRev[i], ci = d.cumInv[i]; var cb = ce + cr, roi = d.cumROI[i];
+        var m = Math.floor(i / 30) + 1;
+        lines.push([i + 1, m, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
     }
     var csv = lines.join('\r\n');
-    var blob = null; try{ blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'}); }catch(e){ blob=null; }
-    var url = blob ? URL.createObjectURL(blob) : 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF'+csv);
-    var a = document.createElement('a'); a.href=url; a.download='roi_easyjur_1ano.csv'; document.body.appendChild(a); a.click(); a.remove(); if(blob && URL && URL.revokeObjectURL) URL.revokeObjectURL(url);
+    var blob = null; try{ blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }); } catch(e){ blob = null; }
+    var url = blob ? URL.createObjectURL(blob) : 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+    var a = document.createElement('a'); a.href = url; a.download = 'roi_easyjur_1ano.csv'; document.body.appendChild(a); a.click(); a.remove(); if(blob && URL && URL.revokeObjectURL) URL.revokeObjectURL(url);
 }
 
-// Lógica do Tooltip do Gráfico
+// Lógica do Tooltip
 function showTooltip(e) {
     if (!data) return;
     var rect = canvas.getBoundingClientRect();
@@ -707,12 +634,6 @@ acc.addEventListener("click", function() {
     } else {
         panel.style.maxHeight = panel.scrollHeight + "px";
     }
-});
-
-// Event listeners para os inputs para recalcular dinamicamente
-var inputs = document.querySelectorAll('input[type="number"], input[type="range"], select');
-inputs.forEach(input => {
-    input.addEventListener('input', draw);
 });
 
 byId('calc').addEventListener('click', draw);
