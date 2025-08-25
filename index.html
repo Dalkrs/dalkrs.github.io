@@ -30,10 +30,33 @@
         h1 { margin: 0 0 14px; font-size: 22px; color: var(--ej-black); }
 
         .panel { background: var(--ej-white); border: 1px solid var(--ej-gray-1); border-radius: 14px; padding: 16px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-        .grid-section { border-bottom: 1px solid var(--ej-gray-1); padding-bottom: 12px; margin-bottom: 12px; }
-        .grid-section:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .grid-section h2 { margin: 0 0 10px; font-size: 16px; color: var(--ej-gray-2); }
+        
+        /* Novo estilo para o container de colunas */
+        .column-container {
+            display: flex;
+            flex-wrap: wrap; /* Permite que as colunas quebrem a linha */
+            gap: 12px;
+        }
+
+        /* Novo estilo para as caixas de input agrupadas */
+        .input-group {
+            flex: 1 1 220px; /* Cresce e encolhe, com largura mínima de 220px */
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--ej-gray-1);
+        }
+
+        .input-group:last-of-type {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        /* Títulos dos grupos */
+        .group-title {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: var(--ej-gray-2);
+        }
+
         label { font-size: 12px; color: #35424a; display: block; margin: 0 0 6px; }
         input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ej-gray-1); background: var(--ej-white); color: var(--ej-black); }
         input:focus, select:focus { outline: none; border-color: var(--ej-primary); box-shadow: 0 0 0 2px rgba(229, 41, 63, .15); }
@@ -120,28 +143,32 @@
     <div class="wrap">
         <h1>ROI Easyjur — 1 ano com marcos de impacto (90/180/270/360 dias)</h1>
         <div class="panel">
-            <div class="grid">
-                <div class="grid-section">
-                    <h2>Custos e Investimento</h2>
+            <div class="column-container">
+                <div class="input-group">
+                    <h2 class="group-title">Custos e Investimento</h2>
                     <div><label>Custo mensal (R$)</label><input id="cost_monthly" type="number" value="1500"></div>
                     <div><label>Implementação única (R$)</label><input id="cost_onetime" type="number" value="2000"></div>
                 </div>
-                <div class="grid-section">
-                    <h2>Ganho por Eficiência</h2>
+
+                <div class="input-group">
+                    <h2 class="group-title">Ganho por Eficiência</h2>
                     <div><label>Valor/hora (R$)</label><input id="hour_rate" type="number" value="80"></div>
                     <div><label>Pessoas impactadas</label><input id="team_size" type="number" value="5"></div>
                     <div><label>Minutos desperdiçados/dia</label><input id="wasted_minutes" type="number" value="30"></div>
                     <div><label>Redução desperdício (%)</label><input id="waste_reduction_pct" type="number" value="60"></div>
                 </div>
-                <div class="grid-section">
-                    <h2>Ganho de Faturamento</h2>
+
+                <div class="input-group">
+                    <h2 class="group-title">Ganho de Faturamento</h2>
                     <div><label>Contratos/mês</label><input id="contracts_month" type="number" value="3"></div>
                     <div><label>Ticket médio (R$)</label><input id="ticket" type="number" value="2500"></div>
                     <div><label>Receita preservada/mês (R$)</label><input id="retained_revenue_month" type="number" value="2000"></div>
                 </div>
-                <div class="grid-section">
-                    <h2>Parâmetros do Gráfico</h2>
-                    <div><label>Rampa</label>
+
+                <div class="input-group">
+                    <h2 class="group-title">Parâmetros do Gráfico</h2>
+                    <div>
+                        <label>Rampa</label>
                         <select id="ramp_shape">
                             <option value="s">S-curve</option>
                             <option value="linear">Linear</option>
