@@ -30,24 +30,31 @@
         h1 { margin: 0 0 14px; font-size: 22px; color: var(--ej-black); }
 
         .panel { background: var(--ej-white); border: 1px solid var(--ej-gray-1); border-radius: 14px; padding: 16px; }
-        
-        /* Novo estilo para o container de colunas */
+
+        /* Container de colunas com Flexbox para as seções de input */
         .column-container {
             display: flex;
-            flex-wrap: wrap; /* Permite que as colunas quebrem a linha */
+            flex-wrap: wrap;
             gap: 12px;
         }
 
-        /* Novo estilo para as caixas de input agrupadas */
-        .input-group {
-            flex: 1 1 220px; /* Cresce e encolhe, com largura mínima de 220px */
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--ej-gray-1);
+        /* Cada coluna com seus inputs */
+        .input-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1 1 240px; /* Base de 240px para garantir espaço */
         }
-
-        .input-group:last-of-type {
+        
+        .input-group-item {
+            border-bottom: 1px solid var(--ej-gray-1);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+        .input-group-item:last-of-type {
             border-bottom: none;
             padding-bottom: 0;
+            margin-bottom: 0;
         }
 
         /* Títulos dos grupos */
@@ -55,6 +62,7 @@
             margin: 0 0 10px;
             font-size: 16px;
             color: var(--ej-gray-2);
+            width: 100%;
         }
 
         label { font-size: 12px; color: #35424a; display: block; margin: 0 0 6px; }
@@ -144,13 +152,13 @@
         <h1>ROI Easyjur — 1 ano com marcos de impacto (90/180/270/360 dias)</h1>
         <div class="panel">
             <div class="column-container">
-                <div class="input-group">
+                <div class="input-column">
                     <h2 class="group-title">Custos e Investimento</h2>
                     <div><label>Custo mensal (R$)</label><input id="cost_monthly" type="number" value="1500"></div>
                     <div><label>Implementação única (R$)</label><input id="cost_onetime" type="number" value="2000"></div>
                 </div>
 
-                <div class="input-group">
+                <div class="input-column">
                     <h2 class="group-title">Ganho por Eficiência</h2>
                     <div><label>Valor/hora (R$)</label><input id="hour_rate" type="number" value="80"></div>
                     <div><label>Pessoas impactadas</label><input id="team_size" type="number" value="5"></div>
@@ -158,14 +166,14 @@
                     <div><label>Redução desperdício (%)</label><input id="waste_reduction_pct" type="number" value="60"></div>
                 </div>
 
-                <div class="input-group">
+                <div class="input-column">
                     <h2 class="group-title">Ganho de Faturamento</h2>
                     <div><label>Contratos/mês</label><input id="contracts_month" type="number" value="3"></div>
                     <div><label>Ticket médio (R$)</label><input id="ticket" type="number" value="2500"></div>
                     <div><label>Receita preservada/mês (R$)</label><input id="retained_revenue_month" type="number" value="2000"></div>
                 </div>
 
-                <div class="input-group">
+                <div class="input-column">
                     <h2 class="group-title">Parâmetros do Gráfico</h2>
                     <div>
                         <label>Rampa</label>
