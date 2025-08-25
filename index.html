@@ -75,6 +75,7 @@ body { margin: 0; background: var(--ej-white); color: var(--ej-black); font-fami
 .input-box {
     padding-bottom: 12px;
     margin-bottom: 12px;
+    position: relative; /* Adicionado para posicionar o ícone de info */
 }
 
 /* Títulos dos grupos */
@@ -124,6 +125,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 
 /* Estilo para os ícones de informação */
 .info-icon {
+    font-family: Arial, sans-serif; /* Fonte para o "i" */
     font-size: 12px;
     font-weight: bold;
     color: var(--ej-gray-2);
@@ -131,6 +133,10 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
     margin-left: 4px;
     position: absolute;
     right: 12px;
+    top: 12px;
+    line-height: 1; /* Para evitar espaçamento extra */
+}
+.input-box .info-icon {
     top: 12px;
 }
 
@@ -144,7 +150,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
     border-radius: 6px;
     padding: 8px;
     position: absolute;
-    z-index: 1;
+    z-index: 10;
     bottom: 120%;
     left: 50%;
     margin-left: -100px;
@@ -165,7 +171,8 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
     border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
 }
 
-.kpi:hover .info-tooltip {
+.kpi:hover .info-tooltip,
+.input-box:hover .info-tooltip {
     visibility: visible;
     opacity: 1;
 }
@@ -286,17 +293,30 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <div class="input-column">
 <h2 class="group-title">Parâmetros do Gráfico</h2>
 <div class="input-box">
-<label>Rampa</label>
-<select id="ramp_shape">
-<option value="s">Curva em S</option>
-<option value="linear">Linear</option>
-<option value="stairs">Degraus</option>
-</select>
+    <label>Rampa</label>
+    <select id="ramp_shape">
+        <option value="s">Curva em S</option>
+        <option value="linear">Linear</option>
+        <option value="stairs">Degraus</option>
+    </select>
+    <div class="info-icon">
+        i
+        <span class="info-tooltip">
+            A forma como os ganhos de Eficiência e Faturamento crescem ao longo do tempo. A Curva em S é a mais realista, pois reflete o período de adaptação e treinamento.
+        </span>
+    </div>
 </div>
 <div class="input-box">
-<label>Ativação Inicial</label>
-<input id="start_day" type="number" value="30">
+    <label>Ativação Inicial</label>
+    <input id="start_day" type="number" value="30">
+    <div class="info-icon">
+        i
+        <span class="info-tooltip">
+            O dia em que a sua equipe começa a usar o software e a gerar os primeiros ganhos. Representa o tempo de implementação da ferramenta.
+        </span>
+    </div>
 </div>
+
 </div>
 
 </div>
