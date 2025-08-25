@@ -36,6 +36,14 @@
             height: auto;
         }
         
+        /* Estilo para o título centralizado */
+        .title {
+            text-align: center;
+            margin: 0 0 14px;
+            font-size: 22px;
+            color: var(--ej-black);
+        }
+        
         .panel { background: var(--ej-white); border: 1px solid var(--ej-gray-1); border-radius: 14px; padding: 16px; }
 
         /* Container de colunas com Flexbox para as seções de input */
@@ -45,10 +53,10 @@
             gap: 12px;
         }
 
-        /* Cada coluna com seus inputs */
+        /* Cada coluna com seus inputs - Agora usando GRID */
         .input-column {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            gap: 12px;
             flex: 1 1 220px; /* Base de 220px para garantir espaço */
             border-right: 1px solid var(--ej-gray-1); /* Separador entre colunas */
             padding-right: 12px;
@@ -58,10 +66,13 @@
             border-right: none;
             padding-right: 0;
         }
-
+        
         .input-box {
             padding-bottom: 12px;
             margin-bottom: 12px;
+        }
+        .input-box:last-of-type {
+            margin-bottom: 0;
         }
 
         /* Títulos dos grupos */
@@ -164,7 +175,7 @@
 <body>
     <div class="wrap">
         <img src="logo-easyjur-01.png" alt="Logo Easyjur" class="logo" />
-        <h1>Calculadora de Crescimento e Investimento</h1>
+        <h1 class="title">Calculadora de Crescimento e Investimento</h1>
         <div class="panel">
             <div class="column-container">
                 <div class="input-column">
@@ -256,7 +267,7 @@
                 ## Fórmulas de Cálculo
 
                 **Ganho por Eficiência Diário:**
-                `GanhoDiário = (MinutosDesperdiçados / 60) * (ReduçãoDesperdício / 100) * PessoasImpactadas * ValorHora`
+                `GanhoDiário = (MinutosDesperdicedos / 60) * (ReduçãoDesperdício / 100) * PessoasImpactadas * ValorHora`
 
                 **Ganho de Faturamento Diário:**
                 `GanhoDiário = (ContratosMensais * TicketMédio + ReceitaPreservadaMensal) / 30`
