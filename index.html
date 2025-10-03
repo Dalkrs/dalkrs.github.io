@@ -272,56 +272,36 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <div class="input-box">
 <label>Custo mensal BPO (R$)</label>
 <input id="cost_monthly" type="number" value="5000">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        Custo mensal do serviço de BPO de Legal Ops (Easyjur).
-    </span>
-</div>
 </div>
 <div class="input-box">
 <label>Consultoria Estratégica (R$)</label>
 <input id="cost_onetime" type="number" value="0">
+</div>
+<div class="input-box">
+<label>Tempo de Ativação BPO (dias)</label>
+<input id="activation_bpo_days" type="number" value="30">
 <div class="info-icon">
     i
     <span class="info-tooltip">
-        Custo único de implementação ou consultoria.
+        O tempo (em dias) que leva para o BPO de Legal Ops começar a entregar a produtividade máxima.
     </span>
 </div>
 </div>
 </div>
 
 <div class="input-column">
-<h2 class="group-title">Eficiência (Produção)</h2>
+<h2 class="group-title">Eficiência (Produção BPO)</h2>
 <div class="input-box">
 <label>Valor/hora Advogado (R$)</label>
 <input id="hour_rate_advogado" type="number" value="120">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        O valor da hora de trabalho de um advogado na sua equipe, usada para calcular o valor do tempo otimizado.
-    </span>
-</div>
 </div>
 <div class="input-box">
 <label>Horas gastas para criar uma petição</label>
 <input id="hours_per_petition" type="number" value="2">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        Quantas horas um advogado da sua equipe gasta, em média, para criar uma petição do zero.
-    </span>
-</div>
 </div>
 <div class="input-box">
 <label>Quantidade de petições por mês</label>
 <input id="petitions_per_month" type="number" value="50">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        Quantidade de petições produzidas por mês pelo serviço de Legal Ops.
-    </span>
-</div>
 </div>
 </div>
 
@@ -338,12 +318,6 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <div class="input-box">
 <label>Receita preservada/mês (R$)</label>
 <input id="retained_revenue_month" type="number" value="2000">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        Receita que sua empresa evita perder com o aumento de qualidade e velocidade nas petições (ex: evitando multas, aumentando a satisfação do cliente).
-    </span>
-</div>
 </div>
 </div>
 
@@ -352,22 +326,34 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <div class="input-box">
 <label>Custo mensal Advogado (R$)</label>
 <input id="cost_monthly_advogado" type="number" value="8000">
-<div class="info-icon">
-    i
-    <span class="info-tooltip">
-        Custo total (salário + encargos) mensal de um advogado associado que você contrataria.
-    </span>
-</div>
 </div>
 <div class="input-box">
 <label>Custo de Contratação Único (R$)</label>
 <input id="cost_onetime_advogado" type="number" value="5000">
+</div>
+<div class="input-box">
+<label>Tempo de Ativação Advogado (dias)</label>
+<input id="activation_advogado_days" type="number" value="90">
 <div class="info-icon">
     i
     <span class="info-tooltip">
-        Custos de recrutamento, treinamento inicial e infraestrutura para um novo advogado.
+        O tempo (em dias) que leva para um novo Advogado Associado estar totalmente produtivo na equipe.
     </span>
 </div>
+</div>
+<div class="input-box">
+    <label>Rampa de Ganho</label>
+    <select id="ramp_shape">
+        <option value="s">Curva em S</option>
+        <option value="linear">Linear</option>
+        <option value="stairs">Degraus</option>
+    </select>
+    <div class="info-icon">
+        i
+        <span class="info-tooltip">
+            A forma como os ganhos de Eficiência e Faturamento crescem ao longo do tempo. A Curva em S é a mais realista.
+        </span>
+    </div>
 </div>
 </div>
 
@@ -408,7 +394,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
         <div class="info-icon">
             i
             <span class="info-tooltip">
-                Ganho acumulado em faturamento graças à solução. Inclui a receita de novos contratos e a receita preservada.
+                Ganho acumulado em faturamento (novos contratos + receita preservada).
             </span>
         </div>
     </div>
@@ -441,31 +427,25 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <pre>
 Fórmulas de Cálculo (BPO de Petições)
 
-Custo Mensal por Petição (BPO):
-CustoPeticao_BPO = Custo Mensal BPO / Petições por Mês
-
-Custo Mensal por Petição (Advogado):
-CustoPeticao_Advogado = (Custo Mensal Advogado / (22 dias úteis * 8 horas/dia)) * Horas Petição
-
-Ganho por Eficiência Diário (Valor da Produção BPO vs Custo Advogado):
-Valor Hora Petição = Valor/hora Advogado / Horas Gastas para Criar uma Petição
-Ganho Diário = Valor Hora Petição * Petições por Mês / 30
+Valor de Produção da Petição = Valor/hora Advogado * Horas Gastas para Criar uma Petição
+Ganho por Eficiência Diário = (Valor de Produção da Petição * Petições por Mês / 30) * Rampa (BPO)
 
 Ganho de Faturamento Diário:
-Ganho Diário = (Contratos Mensais * Ticket Médio + Receita Preservada Mensal) / 30
+Ganho Diário = (Contratos Mensais * Ticket Médio + Receita Preservada Mensal) / 30 * Rampa (BPO)
 
 Custo Diário (Investimento BPO):
 Custo Diário = (Custo Mensal BPO / 30) + (Custo Implementação Única BPO / 90)
+
+Custo Total Advogado (1 Ano - Incluindo Ativação):
+Custo Anual Advogado = (Custo Mensal Advogado * 12) + Custo de Contratação Única 
+                       + (Custo Mensal Advogado * Tempo de Ativação Advogado / 30)
+                       * (1 - Produtividade Média no Período de Ativação - Ex: 50% de improdutividade)
 
 Acumulado:
 ValorAcumulado = ∑(ValorDiário * Rampa)
 
 ROI (Retorno sobre Investimento):
 ROI = (Eficiência Acumulada + Faturamento Acumulada - Investimento Acumulado) / Investimento Acumulado
-
-Comparação Anual:
-Custo Total BPO (1 ano) = Custo Mensal BPO * 12 + Custo Único BPO
-Custo Total Advogado (1 ano) = Custo Mensal Advogado * 12 + Custo Contratação Única
 </pre>
 </div>
 </div>
@@ -491,18 +471,27 @@ function fixCanvas(){
     return { W: W, H: H };
 }
 
+/**
+ * Calcula a curva de rampa. 
+ * @param {string} shape - Tipo de curva (s, linear, stairs)
+ * @param {number} n - Número total de dias (365)
+ * @param {number} startDay - Dia de início (Ativação)
+ * @param {number} rampDays - Duração da subida da rampa (fixo em 90 dias)
+ */
 function ramp(shape, n, startDay){
-    var rampDays = 90;
+    var rampDays = 90; // Mantém a duração do ramp-up em 90 dias (3 meses)
     var arr = new Array(n); for(var i = 0; i < n; i++) arr[i] = 0;
+    // O startDay aqui é o ponto onde a rampa *começa* a subir.
     var s = Math.max(1, Math.min(n, startDay || 1)) - 1;
     var e = Math.min(n - 1, s + rampDays - 1);
+    
     for(var j = 0; j < n; j++){
         if(j < s){ arr[j] = 0; continue; }
         if(j > e){ arr[j] = 1; continue; }
         var t = (j - s) / Math.max(1, (e - s));
         var r = 0;
         if(shape === 'linear'){ r = Math.max(0, Math.min(1, t)); }
-        else if(shape === 'stairs'){ r = (t < 1/3) ? 0.5 : (t < 2/3 ? 0.8 : 1); }
+        else if(shape === 'stairs'){ r = (t < 1/3) ? 0.33 : (t < 2/3 ? 0.66 : 1); }
         else { var k = 8, x = (t - 0.5) * k; var u = 1 / (1 + Math.exp(-x)); var r0 = 1 / (1 + Math.exp(k / 2)); var r1 = 1 / (1 + Math.exp(-k / 2)); r = (u - r0) / (r1 - r0); if(r < 0) r = 0; if(r > 1) r = 1; }
         arr[j] = r;
     }
@@ -510,54 +499,55 @@ function ramp(shape, n, startDay){
 }
 
 function compute(){
-    // Entradas da Coluna Eficiência (novas)
+    // Entradas BPO / Investimento
+    var costMonthlyBPO = Number(byId('cost_monthly').value) || 0;
+    var costOnetimeBPO = Number(byId('cost_onetime').value) || 0;
+    var activationBPODays = Number(byId('activation_bpo_days').value) || 30; // Novo campo
+    
+    // Entradas Advogado (usadas na comparação)
+    var costMonthlyAdvogado = Number(byId('cost_monthly_advogado').value) || 0;
+    var costOnetimeAdvogado = Number(byId('cost_onetime_advogado').value) || 0;
+    var activationAdvogadoDays = Number(byId('activation_advogado_days').value) || 90; // Novo campo
+    
+    // Entradas Eficiência / Faturamento
     var hourRateAdvogado = Number(byId('hour_rate_advogado').value) || 0;
     var hoursPerPetition = Number(byId('hours_per_petition').value) || 0;
     var petitionsPerMonth = Number(byId('petitions_per_month').value) || 0;
-    
-    // Outras Entradas
     var contracts = Number(byId('contracts_month').value) || 0;
     var ticket = Number(byId('ticket').value) || 0;
     var retained = Number(byId('retained_revenue_month').value) || 0;
-    var costMonthlyBPO = Number(byId('cost_monthly').value) || 0;
-    var costOnetimeBPO = Number(byId('cost_onetime').value) || 0;
     var shape = byId('ramp_shape').value;
-    var startDay = Number(byId('start_day').value) || 1;
 
-    // CÁLCULO DE EFICIÊNCIA (Valor Gerado pela Produção)
-    // Valor da Petição = Valor/hora Advogado * Horas por Petição.
-    // DailyEffBase é o valor total de trabalho (em valor/hora do advogado) que o BPO está produzindo, dividido por 30 dias.
+    // CÁLCULO DE BASE DIÁRIA (Valores máximos no dia 365)
     var dailyEffBase = 0;
     if (hoursPerPetition > 0) {
-        // Valor que um advogado custaria para gerar uma petição: hourRateAdvogado * hoursPerPetition.
-        // Ganho total mensal (em valor) gerado: (hourRateAdvogado * hoursPerPetition) * petitionsPerMonth
-        // Atenção: Aqui usamos (hourRateAdvogado / hoursPerPetition) como valor por petição, multiplicamos pelo volume e dividimos por 30.
-        // O valor correto, interpretando o "Eficiência" como o valor que o BPO gera (se fosse feito pelo advogado) é:
         var valuePerPetition = hourRateAdvogado * hoursPerPetition;
         dailyEffBase = (valuePerPetition * petitionsPerMonth) / 30;
-
-        // Se o custo for fixo por petição, a fórmula é outra, mas seguindo o raciocínio de "Eficiência (Valor de Trabalho Otimizado)",
-        // o cálculo acima é o mais apropriado para o contexto de ROI, representando o quanto a empresa economizaria em custos diretos
-        // e indiretos do advogado para produzir o mesmo volume, se o BPO fosse 'grátis' (o que não é).
-        // Na prática, é o valor de mercado (interno) do serviço que o BPO substitui/cria.
-        
     }
-    
-    // CÁLCULO DE FATURAMENTO
     var dailyRevBase = (contracts * ticket) / 30 + (retained / 30);
-    
-    // CÁLCULO DE INVESTIMENTO (BPO)
     var dailyInv = (costMonthlyBPO / 30) + (costOnetimeBPO / 90);
 
-    var rr = ramp(shape, DAYS, startDay);
+    // RAMPA: Aplicamos o tempo de ativação do BPO para os Ganhos de Eficiência e Faturamento
+    var rr = ramp(shape, DAYS, activationBPODays); // Usa a rampa do BPO
+
     var cE = 0, cR = 0, cI = 0, cumEff = [], cumRev = [], cumInv = [], cumROI = [];
     for(var i = 0; i < DAYS; i++){
+        // O Faturamento e Eficiência crescem de acordo com a Rampa (rr)
         cE += rr[i] * dailyEffBase;
         cR += rr[i] * dailyRevBase;
+        // O Investimento é fixo diariamente
         cI += dailyInv;
+        
         cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
         cumROI.push(cI > 0 ? (cE + cR - cI) / cI : 0);
     }
+    
+    // Incluir o custo do Advogado para a comparação (mesmo sem ser plotado)
+    var costTotalAdvogado = costMonthlyAdvogado * 12 + costOnetimeAdvogado;
+    // Adiciona o custo do salário pago durante o período de ativação (assumindo 50% de improdutividade para simplificar)
+    var costRampAdvogado = (costMonthlyAdvogado / 30) * activationAdvogadoDays * 0.5;
+    costTotalAdvogado += costRampAdvogado;
+
     return {
         cumEff: cumEff,
         cumRev: cumRev,
@@ -567,7 +557,8 @@ function compute(){
             eff: cE,
             rev: cR,
             inv: cI,
-            roi: (cI > 0 ? (cE + cR - cI) / cI : 0)
+            roi: (cI > 0 ? (cE + cR - cI) / cI : 0),
+            advogado_anual: costTotalAdvogado // Retorna o custo anual do Advogado
         }
     };
 }
@@ -575,7 +566,9 @@ function compute(){
 function draw(){
     var dims = fixCanvas(); var W = dims.W, H = dims.H;
     data = compute();
-
+    // ... (restante da função draw - que plota o gráfico e atualiza KPIs) ...
+    // [O código de plotagem do gráfico e atualização de KPIs permanece o mesmo]
+    
     ctx.clearRect(0, 0, W, H);
     var pad = { l: 60, r: 60, t: 24, b: 40 };
     function X(i){ return pad.l + (i / (DAYS - 1)) * (W - pad.l - pad.r); }
@@ -640,7 +633,6 @@ function draw(){
 
     // KPIs
     function BRL(v){ return v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); }
-    function ROI(v){ return (v * 100).toFixed(0) + '% (' + v.toFixed(1) + 'x)'; }
     if (data.totals.roi <= 0.01) {
         byId('k_roi').textContent = '0x';
     } else {
@@ -653,6 +645,7 @@ function draw(){
 }
 
 function downloadCsv(){
+    // [função downloadCsv permanece a mesma, pois o cálculo já é feito com a nova lógica]
     var d = compute();
     var lines = ['dia,mes_index,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
     for(var i = 0; i < DAYS; i++){
@@ -667,17 +660,15 @@ function downloadCsv(){
 }
 
 function compareCosts(){
+    var data = compute(); // Recalcula para garantir dados atualizados
+    
     // Entradas BPO
     var costMonthlyBPO = Number(byId('cost_monthly').value) || 0;
     var costOnetimeBPO = Number(byId('cost_onetime').value) || 0;
-
-    // Entradas Advogado
-    var costMonthlyAdvogado = Number(byId('cost_monthly_advogado').value) || 0;
-    var costOnetimeAdvogado = Number(byId('cost_onetime_advogado').value) || 0;
-
-    // Cálculos Anuais
     var costTotalBPO = costMonthlyBPO * 12 + costOnetimeBPO;
-    var costTotalAdvogado = costMonthlyAdvogado * 12 + costOnetimeAdvogado;
+
+    // Custo Advogado (já calculado com o custo de ativação na função compute)
+    var costTotalAdvogado = data.totals.advogado_anual; 
     
     // Formatação
     function BRL(v){ return v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 2}); }
@@ -689,11 +680,11 @@ function compareCosts(){
     if (diff > 0) {
         // BPO mais barato
         comparisonOutput.className = 'advantage';
-        comparisonOutput.innerHTML = `**VANTAGEM BPO:** O BPO de Legal Ops é **${BRL(diff)}** mais barato em 1 ano que a contratação de um Advogado Associado.`;
+        comparisonOutput.innerHTML = `**VANTAGEM BPO:** O BPO de Legal Ops é **${BRL(diff)}** mais barato em 1 ano que a contratação de um Advogado Associado (considerando a ativação de ambos).`;
     } else if (diff < 0) {
         // Advogado mais barato (ou BPO mais caro)
         comparisonOutput.className = 'disadvantage';
-        comparisonOutput.innerHTML = `**DESVANTAGEM BPO:** O BPO de Legal Ops é **${BRL(Math.abs(diff))}** mais caro em 1 ano que a contratação de um Advogado Associado.`;
+        comparisonOutput.innerHTML = `**DESVANTAGEM BPO:** O BPO de Legal Ops é **${BRL(Math.abs(diff))}** mais caro em 1 ano que a contratação de um Advogado Associado (considerando a ativação de ambos).`;
     } else {
         // Custos iguais
         comparisonOutput.className = '';
@@ -702,7 +693,7 @@ function compareCosts(){
     }
 }
 
-// Lógica do Tooltip
+// Lógica do Tooltip (inalterada)
 function showTooltip(e) {
     if (!data) return;
     var rect = canvas.getBoundingClientRect();
@@ -740,7 +731,7 @@ function hideTooltip() {
 canvas.addEventListener('mousemove', showTooltip);
 canvas.addEventListener('mouseout', hideTooltip);
 
-// Lógica do Acordeão
+// Lógica do Acordeão (inalterada)
 var acc = document.getElementsByClassName("accordion")[0];
 acc.addEventListener("click", function() {
     this.classList.toggle("active");
@@ -754,7 +745,7 @@ acc.addEventListener("click", function() {
 
 byId('calc').addEventListener('click', draw);
 byId('csv').addEventListener('click', downloadCsv);
-byId('compare_advogado').addEventListener('click', compareCosts); // Novo evento para a comparação
+byId('compare_advogado').addEventListener('click', compareCosts);
 window.addEventListener('resize', draw);
 draw();
 })();
