@@ -15,6 +15,7 @@
     --ej-black: #111;
     --ej-green: #28a745; /* verde para vantagem */
     --ej-red: #dc3545; /* vermelho para desvantagem */
+    --ej-gold: #ffc107; /* Amarelo/Dourado para linha Advogado */
 }
 
 /* Fonte Borna: troque o src abaixo para o caminho do seu arquivo WOFF2 */
@@ -104,6 +105,7 @@ button { padding: 10px 14px; border-radius: 10px; border: 1px solid transparent;
 .sw.eff { background: var(--ej-gray-2); }
 .sw.rev { background: var(--ej-primary); }
 .sw.inv { background: var(--ej-blue); }
+.sw.eff_adv { background: var(--ej-gold); } /* Nova Legenda: Produção Advogado */
 .sw.roi {
     width: 14px;
     height: 0;
@@ -348,12 +350,6 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
         <option value="linear">Linear</option>
         <option value="stairs">Degraus</option>
     </select>
-    <div class="info-icon">
-        i
-        <span class="info-tooltip">
-            A forma como os ganhos de Eficiência e Faturamento crescem ao longo do tempo. A Curva em S é a mais realista.
-        </span>
-    </div>
 </div>
 </div>
 
@@ -365,12 +361,22 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 <button id="csv" class="ghost" type="button">Baixar CSV</button>
 </div>
 
+<div class="row" style="margin-top: 20px; align-items: flex-start; gap: 16px;">
+    <h3 class="group-title" style="margin-top: 0; margin-bottom: 0; flex: 1 1 100%;">Controles do Gráfico</h3>
+    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="check_inv" checked> Investimento</label>
+    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="check_rev" checked> Faturamento BPO</label>
+    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="check_eff" checked> Eficiência BPO</label>
+    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="check_advogado" checked> Produção Advogado</label>
+    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="check_roi" checked> ROI Total</label>
+</div>
+
 <div id="comparison_output" style="display: none;"></div>
 
 <div class="legend">
 <span><span class="sw inv"></span>Investimento (acum.)</span>
-<span><span class="sw rev"></span>Faturamento (acum.)</span>
-<span><span class="sw eff"></span>Eficiência (acum.)</span>
+<span><span class="sw rev"></span>Faturamento BPO (acum.)</span>
+<span><span class="sw eff"></span>Eficiência BPO (acum.)</span>
+<span><span class="sw eff_adv"></span>Produção Advogado (acum.)</span>
 <span><span class="sw roi"></span>ROI Total (x)</span>
 </div>
 
@@ -389,7 +395,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
         </div>
     </div>
     <div class="kpi">
-        <div class="l">Faturamento (365d)</div>
+        <div class="l">Retorno Faturamento (365d)</div>
         <div class="v" id="k_rev">—</div>
         <div class="info-icon">
             i
@@ -399,7 +405,7 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
         </div>
     </div>
     <div class="kpi">
-        <div class="l">Eficiência (365d)</div>
+        <div class="l">Retorno Eficiência (365d)</div>
         <div class="v" id="k_eff">—</div>
         <div class="info-icon">
             i
@@ -414,7 +420,17 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
         <div class="info-icon">
             i
             <span class="info-tooltip">
-                O Retorno sobre o Investimento. Indica quantas vezes o valor investido foi recuperado em ganhos.
+                O Retorno sobre o Investimento do BPO.
+            </span>
+        </div>
+    </div>
+    <div class="kpi" style="background: var(--ej-green); color: var(--ej-white); border-color: var(--ej-green);">
+        <div class="l" style="color: var(--ej-white);">Vantagem BPO (x)</div>
+        <div class="v" id="k_vantagem" style="color: var(--ej-white);">—</div>
+        <div class="info-icon" style="color: var(--ej-white);">
+            i
+            <span class="info-tooltip" style="color: var(--ej-black); background-color: var(--ej-white);">
+                Compara o Retorno Líquido (Ganho - Custo) do BPO vs. o Retorno Líquido do Advogado.
             </span>
         </div>
     </div>
@@ -428,10 +444,15 @@ canvas { width: 100%; height: 420px; background: #fafbfc; border: 1px solid var(
 Fórmulas de Cálculo (BPO de Petições)
 
 Valor de Produção da Petição = Valor/hora Advogado * Horas Gastas para Criar uma Petição
-Ganho por Eficiência Diário = (Valor de Produção da Petição * Petições por Mês / 30) * Rampa (BPO)
 
-Ganho de Faturamento Diário:
-Ganho Diário = (Contratos Mensais * Ticket Médio + Receita Preservada Mensal) / 30 * Rampa (BPO)
+Ganho por Eficiência Diário (BPO):
+Ganho Diário = (Valor de Produção da Petição * Petições por Mês / 30) * Rampa (BPO)
+
+Ganho por Eficiência Diário (Advogado):
+Ganho Diário = (Valor de Produção da Petição * Petições por Mês / 30) * Rampa (Advogado)
+
+Ganho de Faturamento Diário (BPO e Advogado):
+Ganho Diário = (Contratos Mensais * Ticket Médio + Receita Preservada Mensal) / 30 * Rampa (BPO ou Advogado)
 
 Custo Diário (Investimento BPO):
 Custo Diário = (Custo Mensal BPO / 30) + (Custo Implementação Única BPO / 90)
@@ -439,13 +460,13 @@ Custo Diário = (Custo Mensal BPO / 30) + (Custo Implementação Única BPO / 90
 Custo Total Advogado (1 Ano - Incluindo Ativação):
 Custo Anual Advogado = (Custo Mensal Advogado * 12) + Custo de Contratação Única 
                        + (Custo Mensal Advogado * Tempo de Ativação Advogado / 30)
-                       * (1 - Produtividade Média no Período de Ativação - Ex: 50% de improdutividade)
+                       * (0.5) // Assumindo 50% de custo de improdutividade na ativação
 
-Acumulado:
-ValorAcumulado = ∑(ValorDiário * Rampa)
+Retorno Líquido:
+Retorno Líquido = (Eficiência Acumulada + Faturamento Acumulada) - Investimento Acumulado
 
-ROI (Retorno sobre Investimento):
-ROI = (Eficiência Acumulada + Faturamento Acumulada - Investimento Acumulado) / Investimento Acumulado
+Vantagem BPO (x):
+Vantagem X = Retorno Líquido BPO / Retorno Líquido Advogado
 </pre>
 </div>
 </div>
@@ -473,13 +494,9 @@ function fixCanvas(){
 
 /**
  * Calcula a curva de rampa. 
- * @param {string} shape - Tipo de curva (s, linear, stairs)
- * @param {number} n - Número total de dias (365)
- * @param {number} startDay - Dia de início (Ativação)
- * @param {number} rampDays - Duração da subida da rampa (fixo em 90 dias)
  */
 function ramp(shape, n, startDay){
-    var rampDays = 90; // Mantém a duração do ramp-up em 90 dias (3 meses)
+    var rampDays = 90; // Duração da subida da rampa em 90 dias
     var arr = new Array(n); for(var i = 0; i < n; i++) arr[i] = 0;
     // O startDay aqui é o ponto onde a rampa *começa* a subir.
     var s = Math.max(1, Math.min(n, startDay || 1)) - 1;
@@ -502,12 +519,12 @@ function compute(){
     // Entradas BPO / Investimento
     var costMonthlyBPO = Number(byId('cost_monthly').value) || 0;
     var costOnetimeBPO = Number(byId('cost_onetime').value) || 0;
-    var activationBPODays = Number(byId('activation_bpo_days').value) || 30; // Novo campo
+    var activationBPODays = Number(byId('activation_bpo_days').value) || 30;
     
     // Entradas Advogado (usadas na comparação)
     var costMonthlyAdvogado = Number(byId('cost_monthly_advogado').value) || 0;
     var costOnetimeAdvogado = Number(byId('cost_onetime_advogado').value) || 0;
-    var activationAdvogadoDays = Number(byId('activation_advogado_days').value) || 90; // Novo campo
+    var activationAdvogadoDays = Number(byId('activation_advogado_days').value) || 90;
     
     // Entradas Eficiência / Faturamento
     var hourRateAdvogado = Number(byId('hour_rate_advogado').value) || 0;
@@ -518,6 +535,10 @@ function compute(){
     var retained = Number(byId('retained_revenue_month').value) || 0;
     var shape = byId('ramp_shape').value;
 
+    // RAMPA BPO e ADVOGADO
+    var rr_bpo = ramp(shape, DAYS, activationBPODays); 
+    var rr_advogado = ramp(shape, DAYS, activationAdvogadoDays);
+
     // CÁLCULO DE BASE DIÁRIA (Valores máximos no dia 365)
     var dailyEffBase = 0;
     if (hoursPerPetition > 0) {
@@ -527,38 +548,63 @@ function compute(){
     var dailyRevBase = (contracts * ticket) / 30 + (retained / 30);
     var dailyInv = (costMonthlyBPO / 30) + (costOnetimeBPO / 90);
 
-    // RAMPA: Aplicamos o tempo de ativação do BPO para os Ganhos de Eficiência e Faturamento
-    var rr = ramp(shape, DAYS, activationBPODays); // Usa a rampa do BPO
-
     var cE = 0, cR = 0, cI = 0, cumEff = [], cumRev = [], cumInv = [], cumROI = [];
+    var cEA = 0, cRA = 0, cumEffAdvogado = [], cumRevAdvogado = []; // Acumuladores Advogado
+
     for(var i = 0; i < DAYS; i++){
-        // O Faturamento e Eficiência crescem de acordo com a Rampa (rr)
-        cE += rr[i] * dailyEffBase;
-        cR += rr[i] * dailyRevBase;
-        // O Investimento é fixo diariamente
+        // Valores BPO (Cálculo principal do ROI)
+        cE += rr_bpo[i] * dailyEffBase; // Rampa BPO para Eficiência
+        cR += rr_bpo[i] * dailyRevBase; // Rampa BPO para Faturamento
         cI += dailyInv;
+        
+        // Valores Advogado (Cálculo de comparação e nova linha)
+        cEA += rr_advogado[i] * dailyEffBase; // Rampa Advogado para Eficiência (Produção)
+        cRA += rr_advogado[i] * dailyRevBase; // Rampa Advogado para Faturamento
         
         cumEff.push(cE); cumRev.push(cR); cumInv.push(cI);
         cumROI.push(cI > 0 ? (cE + cR - cI) / cI : 0);
+        cumEffAdvogado.push(cEA);
+        cumRevAdvogado.push(cRA);
     }
     
-    // Incluir o custo do Advogado para a comparação (mesmo sem ser plotado)
+    // CUSTO TOTAL ADVOGADO (1 ano)
     var costTotalAdvogado = costMonthlyAdvogado * 12 + costOnetimeAdvogado;
-    // Adiciona o custo do salário pago durante o período de ativação (assumindo 50% de improdutividade para simplificar)
+    // Adiciona o custo do salário pago durante o período de ativação (assumindo 50% de improdutividade)
     var costRampAdvogado = (costMonthlyAdvogado / 30) * activationAdvogadoDays * 0.5;
     costTotalAdvogado += costRampAdvogado;
+    
+    // Cálculo da Vantagem (X)
+    var retornoLiquidoBPO = (cE + cR) - cI;
+    var retornoLiquidoAdvogado = (cEA + cRA) - costTotalAdvogado;
+    var vantagemX = 0;
+    if (retornoLiquidoAdvogado > 0) {
+        // BPO é mais vantajoso (ou menos desvantajoso)
+        vantagemX = retornoLiquidoBPO / retornoLiquidoAdvogado;
+    } else if (retornoLiquidoBPO > 0) {
+        // BPO lucrativo, Advogado não lucrativo.
+        vantagemX = Infinity; // Representa uma vantagem "infinita"
+    } else if (retornoLiquidoBPO < 0 && retornoLiquidoAdvogado < 0) {
+        // Ambos dão prejuízo, mas o menor prejuízo é o "menos desvantajoso"
+        vantagemX = retornoLiquidoBPO / retornoLiquidoAdvogado;
+    }
+
 
     return {
         cumEff: cumEff,
         cumRev: cumRev,
         cumInv: cumInv,
         cumROI: cumROI,
+        cumEffAdvogado: cumEffAdvogado, // Novo array para plotagem
+        
         totals: {
             eff: cE,
             rev: cR,
             inv: cI,
             roi: (cI > 0 ? (cE + cR - cI) / cI : 0),
-            advogado_anual: costTotalAdvogado // Retorna o custo anual do Advogado
+            advogado_anual: costTotalAdvogado, 
+            eff_advogado: cEA,
+            rev_advogado: cRA,
+            vantagem_x: vantagemX
         }
     };
 }
@@ -566,17 +612,33 @@ function compute(){
 function draw(){
     var dims = fixCanvas(); var W = dims.W, H = dims.H;
     data = compute();
-    // ... (restante da função draw - que plota o gráfico e atualiza KPIs) ...
-    // [O código de plotagem do gráfico e atualização de KPIs permanece o mesmo]
-    
+
+    // Leitura dos Checkboxes
+    var checkInv = byId('check_inv').checked;
+    var checkRev = byId('check_rev').checked;
+    var checkEff = byId('check_eff').checked;
+    var checkAdvogado = byId('check_advogado').checked;
+    var checkRoi = byId('check_roi').checked;
+
+
     ctx.clearRect(0, 0, W, H);
     var pad = { l: 60, r: 60, t: 24, b: 40 };
     function X(i){ return pad.l + (i / (DAYS - 1)) * (W - pad.l - pad.r); }
 
-    // escalas
-    var M = 1; for(var i = 0; i < DAYS; i++){ if(data.cumEff[i] > M) M = data.cumEff[i]; if(data.cumRev[i] > M) M = data.cumRev[i]; if(data.cumInv[i] > M) M = data.cumInv[i]; }
+    // escalas - O MAXIMO M deve considerar todas as linhas monetárias
+    var M = 1; 
+    for(var i = 0; i < DAYS; i++){ 
+        if(checkEff && data.cumEff[i] > M) M = data.cumEff[i]; 
+        if(checkRev && data.cumRev[i] > M) M = data.cumRev[i]; 
+        if(checkInv && data.cumInv[i] > M) M = data.cumInv[i]; 
+        if(checkAdvogado && data.cumEffAdvogado[i] > M) M = data.cumEffAdvogado[i]; 
+    }
+    
     function Ym(v){ return pad.t + (1 - (v / M)) * (H - pad.t - pad.b); }
-    var roiMax = 0.01, roiMin = 0; for(var j = 0; j < DAYS; j++){ var rv = data.cumROI[j]; if(rv > roiMax) roiMax = rv; if(rv < roiMin) roiMin = rv; }
+    
+    var roiMax = 0.01, roiMin = 0; 
+    if(checkRoi){ for(var j = 0; j < DAYS; j++){ var rv = data.cumROI[j]; if(rv > roiMax) roiMax = rv; if(rv < roiMin) roiMin = rv; } }
+    
     function Yr(v){ var rng = (roiMax - roiMin) || 1; return pad.t + (1 - ((v - roiMin) / rng)) * (H - pad.t - pad.b); }
 
     // grade
@@ -604,54 +666,89 @@ function draw(){
     // linhas
     function line(arr, y){ ctx.beginPath(); for(var k = 0; k < arr.length; k++){ var xx = X(k), yy = y(arr[k]); if(k === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy); } ctx.stroke(); }
 
-    // Eficiência
-    ctx.lineWidth = 2; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-2') || '#7f919a';
-    line(data.cumEff, Ym);
-    // Faturamento
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
-    line(data.cumRev, Ym);
-    // Investimento
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-blue') || '#007bff';
-    line(data.cumInv, Ym);
-    // ROI (trilhado)
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
-    line(data.cumROI, Yr); ctx.setLineDash([]);
+    // Desenho Condicional das Linhas
+    ctx.lineWidth = 2;
+    
+    // 1. Eficiência BPO (Ganho)
+    if(checkEff){
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gray-2') || '#7f919a';
+        line(data.cumEff, Ym);
+    }
+
+    // 2. Faturamento BPO (Ganho)
+    if(checkRev){
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
+        line(data.cumRev, Ym);
+    }
+
+    // 3. Investimento BPO (Custo)
+    if(checkInv){
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-blue') || '#007bff';
+        line(data.cumInv, Ym);
+    }
+
+    // 4. Produção Advogado (Nova Linha de Faturamento/Eficiência do Advogado)
+    if(checkAdvogado){
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-gold') || '#ffc107';
+        line(data.cumEffAdvogado, Ym);
+    }
+
+    // 5. ROI (trilhado)
+    if(checkRoi){
+        ctx.setLineDash([4, 4]); 
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ej-primary') || '#e5293f';
+        line(data.cumROI, Yr); 
+        ctx.setLineDash([]);
+    }
 
     // rótulos dos eixos Y
     ctx.fillStyle = '#333'; ctx.font = '12px Borna, Arial';
+    // Eixo Y Esquerdo (Monetário)
     for(var gy = 0; gy <= 5; gy++){
         var v = M * (1 - gy / 5); var ly = pad.t + gy * (H - pad.t - pad.b) / 5; var txt = v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 0});
         ctx.fillText(txt, 8, ly + 4);
     }
-    for(var gr = 0; gr <= 5; gr++){
-        var v2 = roiMin + (roiMax - roiMin) * (1 - gr / 5); var ly2 = pad.t + gr * (H - pad.t - pad.b) / 5;
-        var txt2 = (v2*100).toFixed(0) + '%';
-        if (v2 > 0) txt2 = v2.toFixed(1) + 'x';
-        if (v2 <= 0) txt2 = '0x';
-        ctx.fillText(txt2, W - 44, ly2 + 4);
+    // Eixo Y Direito (ROI)
+    if(checkRoi){
+        for(var gr = 0; gr <= 5; gr++){
+            var v2 = roiMin + (roiMax - roiMin) * (1 - gr / 5); var ly2 = pad.t + gr * (H - pad.t - pad.b) / 5;
+            var txt2 = (v2*100).toFixed(0) + '%';
+            if (v2 > 0) txt2 = v2.toFixed(1) + 'x';
+            if (v2 <= 0) txt2 = '0x';
+            ctx.fillText(txt2, W - 44, ly2 + 4);
+        }
     }
 
     // KPIs
     function BRL(v){ return v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}); }
-    if (data.totals.roi <= 0.01) {
-        byId('k_roi').textContent = '0x';
-    } else {
-        byId('k_roi').textContent = data.totals.roi.toFixed(1) + 'x';
-    }
+    
+    // BPO KPIs
+    if (data.totals.roi <= 0.01) { byId('k_roi').textContent = '0x'; } else { byId('k_roi').textContent = data.totals.roi.toFixed(1) + 'x'; }
     byId('k_eff').textContent = BRL(data.totals.eff);
     byId('k_rev').textContent = BRL(data.totals.rev);
     byId('k_inv').textContent = BRL(data.totals.inv);
     byId('k_inv').classList.add('inv');
+
+    // Novo KPI de Vantagem
+    var vantagemX = data.totals.vantagem_x;
+    if (vantagemX === Infinity) {
+        byId('k_vantagem').textContent = 'Infinito';
+    } else if (vantagemX > 0) {
+        byId('k_vantagem').textContent = vantagemX.toFixed(1) + 'x';
+    } else {
+        byId('k_vantagem').textContent = '0x';
+    }
 }
 
 function downloadCsv(){
-    // [função downloadCsv permanece a mesma, pois o cálculo já é feito com a nova lógica]
     var d = compute();
-    var lines = ['dia,mes_index,eff_acum,rev_acum,beneficio_acum,invest_acum,roi'];
+    var lines = ['dia,mes_index,eff_bpo_acum,rev_bpo_acum,eff_adv_acum,rev_adv_acum,beneficio_bpo_acum,invest_bpo_acum,roi_bpo'];
     for(var i = 0; i < DAYS; i++){
-        var ce = d.cumEff[i], cr = d.cumRev[i], ci = d.cumInv[i]; var cb = ce + cr, roi = d.cumROI[i];
+        var ce_bpo = d.cumEff[i], cr_bpo = d.cumRev[i], ci_bpo = d.cumInv[i]; 
+        var ce_adv = d.cumEffAdvogado[i], cr_adv = d.cumRevAdvogado[i];
+        var cb_bpo = ce_bpo + cr_bpo, roi = d.cumROI[i];
         var m = Math.floor(i / 30) + 1;
-        lines.push([i + 1, m, ce.toFixed(2), cr.toFixed(2), cb.toFixed(2), ci.toFixed(2), roi.toFixed(6)].join(','));
+        lines.push([i + 1, m, ce_bpo.toFixed(2), cr_bpo.toFixed(2), ce_adv.toFixed(2), cr_adv.toFixed(2), cb_bpo.toFixed(2), ci_bpo.toFixed(2), roi.toFixed(6)].join(','));
     }
     var csv = lines.join('\r\n');
     var blob = null; try{ blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }); } catch(e){ blob = null; }
@@ -680,11 +777,11 @@ function compareCosts(){
     if (diff > 0) {
         // BPO mais barato
         comparisonOutput.className = 'advantage';
-        comparisonOutput.innerHTML = `**VANTAGEM BPO:** O BPO de Legal Ops é **${BRL(diff)}** mais barato em 1 ano que a contratação de um Advogado Associado (considerando a ativação de ambos).`;
+        comparisonOutput.innerHTML = `**VANTAGEM CUSTO:** O BPO de Legal Ops é **${BRL(diff)}** mais barato em 1 ano que a contratação de um Advogado Associado (considerando a ativação e custos anuais).`;
     } else if (diff < 0) {
         // Advogado mais barato (ou BPO mais caro)
         comparisonOutput.className = 'disadvantage';
-        comparisonOutput.innerHTML = `**DESVANTAGEM BPO:** O BPO de Legal Ops é **${BRL(Math.abs(diff))}** mais caro em 1 ano que a contratação de um Advogado Associado (considerando a ativação de ambos).`;
+        comparisonOutput.innerHTML = `**DESVANTAGEM CUSTO:** O BPO de Legal Ops é **${BRL(Math.abs(diff))}** mais caro em 1 ano que a contratação de um Advogado Associado (considerando a ativação e custos anuais).`;
     } else {
         // Custos iguais
         comparisonOutput.className = '';
@@ -693,7 +790,7 @@ function compareCosts(){
     }
 }
 
-// Lógica do Tooltip (inalterada)
+// Lógica do Tooltip
 function showTooltip(e) {
     if (!data) return;
     var rect = canvas.getBoundingClientRect();
@@ -717,8 +814,10 @@ function showTooltip(e) {
     var rev = data.cumRev[i].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
     var inv = data.cumInv[i].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
     var roi = data.cumROI[i] > 0.01 ? data.cumROI[i].toFixed(1) + 'x' : '0x';
+    var eff_adv = data.cumEffAdvogado[i].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-    tooltip.innerHTML = `Dia ${day}<br>Eficiência: ${eff}<br>Faturamento: ${rev}<br>Investimento: ${inv}<br>ROI: ${roi}`;
+
+    tooltip.innerHTML = `Dia ${day}<br>Inv. BPO: ${inv}<br>Eficiência BPO: ${eff}<br>Prod. Advogado: ${eff_adv}<br>Faturamento: ${rev}<br>ROI: ${roi}`;
     tooltip.style.left = `${e.clientX + 10}px`;
     tooltip.style.top = `${e.clientY + 10}px`;
     tooltip.style.display = 'block';
@@ -731,7 +830,7 @@ function hideTooltip() {
 canvas.addEventListener('mousemove', showTooltip);
 canvas.addEventListener('mouseout', hideTooltip);
 
-// Lógica do Acordeão (inalterada)
+// Lógica do Acordeão
 var acc = document.getElementsByClassName("accordion")[0];
 acc.addEventListener("click", function() {
     this.classList.toggle("active");
@@ -746,6 +845,13 @@ acc.addEventListener("click", function() {
 byId('calc').addEventListener('click', draw);
 byId('csv').addEventListener('click', downloadCsv);
 byId('compare_advogado').addEventListener('click', compareCosts);
+// Adiciona evento de redesenho aos checkboxes
+byId('check_inv').addEventListener('change', draw);
+byId('check_rev').addEventListener('change', draw);
+byId('check_eff').addEventListener('change', draw);
+byId('check_advogado').addEventListener('change', draw);
+byId('check_roi').addEventListener('change', draw);
+
 window.addEventListener('resize', draw);
 draw();
 })();
