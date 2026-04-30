@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Caderno do Alquimista — Teoria Yara</title>
-<meta name="description" content="Caderno digital de ensaios da Teoria Yara — sistema de partituras alquímicas com pauta visual, banco de minérios e exportação de registros.">
+<meta name="description" content="Caderno digital de ensaios da Teoria Yara — partituras alquímicas, banco de minérios, ingredientes alquímicos e bancada de mistura.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IM+Fell+English+SC&family=Special+Elite&display=swap" rel="stylesheet">
@@ -14,642 +14,1244 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-  :root {
-    --paper:        #F1E7CF;
-    --paper-deep:   #E5D8B8;
-    --paper-darker: #D8C8A0;
-    --ink:          #2B1A0A;
-    --ink-light:    #4A3520;
-    --ink-faded:    #6B5634;
-    --sepia:        #8B5A2B;
-    --rust:         #A0411C;
-    --gold:         #B8841C;
-    --green-old:    #4F6B3E;
-    --blue-old:     #2C5670;
-    --shadow-warm:  rgba(43, 26, 10, 0.18);
-    --shadow-paper: rgba(43, 26, 10, 0.08);
-  }
+/* ============================================================
+   CADERNO DO ALQUIMISTA — Teoria Yara
+   Tema: pergaminho velho, tinta sépia, manuscrito de campo.
+   ============================================================ */
+:root {
+  --paper:        #F1E7CF;
+  --paper-deep:   #E5D8B8;
+  --paper-darker: #D8C8A0;
+  --ink:          #2B1A0A;
+  --ink-light:    #4A3520;
+  --ink-faded:    #6B5634;
+  --sepia:        #8B5A2B;
+  --rust:         #A0411C;
+  --gold:         #B8841C;
+  --green-old:    #4F6B3E;
+  --blue-old:     #2C5670;
+  --violet-old:   #5B3E6B;
+  --shadow-warm:  rgba(43, 26, 10, 0.18);
+  --shadow-paper: rgba(43, 26, 10, 0.08);
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'EB Garamond', serif;
-    background: var(--paper);
-    color: var(--ink);
-    font-size: 17px;
-    line-height: 1.55;
-    min-height: 100vh;
-    background-image:
-      radial-gradient(ellipse at 20% 30%, rgba(184, 132, 28, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 70%, rgba(160, 65, 28, 0.04) 0%, transparent 50%),
-      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.17 0 0 0 0 0.10 0 0 0 0 0.04 0 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  }
+body {
+  font-family: 'EB Garamond', serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.55;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 20% 30%, rgba(184, 132, 28, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(160, 65, 28, 0.04) 0%, transparent 50%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.17 0 0 0 0 0.10 0 0 0 0 0.04 0 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
 
-  header {
-    text-align: center;
-    padding: 2.5rem 1.5rem 1rem;
-    border-bottom: 1px double var(--ink-faded);
-    margin: 0 auto 1.5rem;
-    max-width: 1200px;
-    position: relative;
-  }
-  header::before, header::after {
-    content: '❦';
-    position: absolute;
-    top: 50%;
-    color: var(--sepia);
-    font-size: 1.5rem;
-    transform: translateY(-50%);
-  }
-  header::before { left: 8%; }
-  header::after { right: 8%; }
-  header h1 {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 2.6rem;
-    font-weight: normal;
-    letter-spacing: 0.04em;
-    color: var(--ink);
-    margin-bottom: 0.3rem;
-    text-shadow: 1px 1px 0 var(--paper-deep);
-  }
-  header .subtitle {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 1.1rem;
-    color: var(--ink-faded);
-    letter-spacing: 0.02em;
-  }
-  header .author {
-    font-family: 'Special Elite', monospace;
-    font-size: 0.75rem;
-    color: var(--ink-faded);
-    margin-top: 0.5rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
+header {
+  text-align: center;
+  padding: 2.5rem 1.5rem 1rem;
+  border-bottom: 1px double var(--ink-faded);
+  margin: 0 auto 1.5rem;
+  max-width: 1200px;
+  position: relative;
+}
+header::before, header::after {
+  content: '❦';
+  position: absolute;
+  top: 50%;
+  color: var(--sepia);
+  font-size: 1.5rem;
+  transform: translateY(-50%);
+}
+header::before { left: 8%; }
+header::after { right: 8%; }
+header h1 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 2.6rem;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+  text-shadow: 1px 1px 0 var(--paper-deep);
+}
+header .subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.02em;
+}
+header .author {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.75rem;
+  color: var(--ink-faded);
+  margin-top: 0.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
 
-  main { max-width: 1200px; margin: 0 auto; padding: 0 2rem 4rem; }
+main { max-width: 1200px; margin: 0 auto; padding: 0 2rem 4rem; }
 
-  .tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid var(--ink-faded);
-    flex-wrap: wrap;
-  }
-  .tab {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1rem;
-    padding: 0.7rem 1.4rem;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--ink-faded);
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.05em;
-    font-weight: normal;
-    margin-bottom: -1px;
-  }
-  .tab:hover { color: var(--ink); }
-  .tab.active {
-    color: var(--ink);
-    border-bottom-color: var(--rust);
-    background: linear-gradient(to top, rgba(160,65,28,0.05), transparent);
-  }
-  .tab-badge {
-    display: inline-block;
-    background: var(--rust);
-    color: var(--paper);
-    font-family: 'EB Garamond', serif;
-    font-size: 0.75rem;
-    padding: 1px 7px;
-    border-radius: 10px;
-    margin-left: 6px;
-    vertical-align: 1px;
-  }
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--ink-faded);
+  flex-wrap: wrap;
+}
+.tab {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1rem;
+  padding: 0.7rem 1.4rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--ink-faded);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+  font-weight: normal;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--rust);
+  background: linear-gradient(to top, rgba(160,65,28,0.05), transparent);
+}
+.tab-badge {
+  display: inline-block;
+  background: var(--rust);
+  color: var(--paper);
+  font-family: 'EB Garamond', serif;
+  font-size: 0.75rem;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
 
-  .panel { display: none; animation: fadeIn 0.4s ease; }
-  .panel.active { display: block; }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.panel { display: none; animation: fadeIn 0.4s ease; }
+.panel.active { display: block; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .section {
-    background: rgba(255, 250, 235, 0.6);
-    border: 0.5px solid var(--ink-faded);
-    border-radius: 2px;
-    padding: 1.5rem 1.75rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 2px 3px 0 var(--shadow-paper), inset 0 0 30px rgba(255, 250, 235, 0.4);
-    position: relative;
-  }
-  .section h2 {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1.4rem;
-    font-weight: normal;
-    color: var(--ink);
-    margin-bottom: 0.4rem;
-    letter-spacing: 0.04em;
-  }
-  .section .section-desc {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    color: var(--ink-faded);
-    font-size: 0.95rem;
-    margin-bottom: 1.2rem;
-    line-height: 1.5;
-  }
+.section {
+  background: rgba(255, 250, 235, 0.6);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 2px 3px 0 var(--shadow-paper), inset 0 0 30px rgba(255, 250, 235, 0.4);
+  position: relative;
+}
+.section h2 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.4rem;
+  font-weight: normal;
+  color: var(--ink);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.04em;
+}
+.section .section-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.5;
+}
 
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  .form-row.full { grid-template-columns: 1fr; }
-  .form-group { display: flex; flex-direction: column; }
-  .form-group label {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.85rem;
-    color: var(--ink-faded);
-    margin-bottom: 0.35rem;
-    letter-spacing: 0.05em;
-  }
-  input[type="text"], input[type="number"], textarea, select {
-    background: rgba(255, 250, 235, 0.7);
-    border: none;
-    border-bottom: 1px solid var(--ink-faded);
-    padding: 0.5rem 0.4rem;
-    font-family: 'EB Garamond', serif;
-    font-size: 1rem;
-    color: var(--ink);
-    transition: all 0.2s;
-    outline: none;
-  }
-  input[type="text"]:focus, input[type="number"]:focus,
-  textarea:focus, select:focus {
-    border-bottom: 1px solid var(--rust);
-    background: rgba(255, 250, 235, 0.95);
-  }
-  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.form-row.full { grid-template-columns: 1fr; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.05em;
+}
+input[type="text"], input[type="number"], textarea, select {
+  background: rgba(255, 250, 235, 0.7);
+  border: none;
+  border-bottom: 1px solid var(--ink-faded);
+  padding: 0.5rem 0.4rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 1rem;
+  color: var(--ink);
+  transition: all 0.2s;
+  outline: none;
+}
+input[type="text"]:focus, input[type="number"]:focus,
+textarea:focus, select:focus {
+  border-bottom: 1px solid var(--rust);
+  background: rgba(255, 250, 235, 0.95);
+}
+textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 
-  .btn {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
-    padding: 0.55rem 1.3rem;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    border-radius: 1px;
-    cursor: pointer;
-    transition: all 0.18s;
-    box-shadow: 1px 1px 0 var(--shadow-warm);
-  }
-  .btn:hover {
-    background: var(--rust);
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0 var(--shadow-warm);
-  }
-  .btn-secondary {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--ink-faded);
-  }
-  .btn-secondary:hover {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
-  }
-  .btn-danger { background: var(--rust); }
-  .btn-danger:hover { background: #6b2810; }
-  .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
+.btn {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  padding: 0.55rem 1.3rem;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 1px 1px 0 var(--shadow-warm);
+}
+.btn:hover {
+  background: var(--rust);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--shadow-warm);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink-faded);
+}
+.btn-secondary:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.btn-danger { background: var(--rust); }
+.btn-danger:hover { background: #6b2810; }
+.btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
+.btn-tiny { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
 
-  /* PAUTA YARA */
-  .pauta-wrapper {
-    background: rgba(255, 250, 235, 0.4);
-    border: 0.5px solid var(--ink-faded);
-    padding: 1rem;
-    border-radius: 2px;
-    overflow-x: auto;
-  }
-  .pauta-controls {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 0.9rem;
-    color: var(--ink-faded);
-  }
-  .pauta-controls label { display: flex; align-items: center; gap: 0.4rem; }
-  .pauta-controls input[type="number"] {
-    width: 60px;
-    text-align: center;
-    border: 1px solid var(--ink-faded);
-    padding: 3px 6px;
-  }
-  .pauta-svg {
-    display: block;
-    margin: 0 auto;
-    min-width: 600px;
-  }
-  .pauta-line { stroke: var(--ink-faded); stroke-width: 0.6; }
-  .pauta-h-label {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 13px;
-    fill: var(--ink-faded);
-  }
-  .nota-bg {
-    fill: rgba(184, 132, 28, 0.05);
-    stroke: var(--ink-faded);
-    stroke-width: 0.4;
-    stroke-dasharray: 2 2;
-    cursor: pointer;
-    transition: fill 0.15s;
-  }
-  .nota-bg:hover { fill: rgba(160, 65, 28, 0.18); }
-  .nota-bg.tem-batida {
-    fill: rgba(160, 65, 28, 0.10);
-    stroke-dasharray: none;
-    stroke: rgba(160, 65, 28, 0.6);
-  }
-  .nota-bg.tem-batida:hover { fill: rgba(160, 65, 28, 0.20); }
-  .nota-circle { transition: all 0.15s; pointer-events: none; }
-  .nota-circle.unbatida { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
-  .nota-circle.batida { fill: var(--ink); stroke: var(--ink); stroke-width: 1.5; }
-  .nota-label {
-    font-family: 'EB Garamond', serif;
-    font-size: 11px;
-    fill: var(--ink);
-    pointer-events: none;
-    text-anchor: middle;
-  }
-  .duration-label {
-    font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: 10px;
-    fill: var(--ink-faded);
-    pointer-events: none;
-    text-anchor: middle;
-  }
-  .ordem-marker {
-    font-family: 'Special Elite', monospace;
-    font-size: 9px;
-    fill: var(--rust);
-    pointer-events: none;
-    text-anchor: middle;
-    font-weight: bold;
-  }
-  .contador-batidas {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 11px;
-    fill: var(--rust);
-    pointer-events: none;
-    text-anchor: middle;
-  }
+/* ============== CHIPS DE ASSINATURA (NOVO) ============== */
+.assinatura-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(255, 250, 235, 0.5);
+  border: 1px dashed var(--ink-faded);
+  padding: 0.85rem;
+  border-radius: 2px;
+}
+.assinatura-add-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.assinatura-add-row .form-group { flex: 0 0 auto; }
+.assinatura-add-row .form-group label {
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+.assinatura-add-row select, .assinatura-add-row input[type="number"] {
+  border: 1px solid var(--ink-faded);
+  padding: 0.35rem 0.5rem;
+  background: rgba(255, 250, 235, 0.85);
+  font-family: 'EB Garamond', serif;
+  border-radius: 1px;
+  min-width: 90px;
+}
+.assinatura-add-row input.h-valor { width: 90px; }
+.assinatura-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.3rem 0.1rem;
+  border-top: 0.5px dashed var(--ink-faded);
+  padding-top: 0.6rem;
+}
+.assinatura-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 4px 4px 4px 12px;
+  border-radius: 14px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.95rem;
+  user-select: none;
+  box-shadow: 1px 1px 0 var(--shadow-warm);
+}
+.assinatura-chip .ord {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  color: var(--gold);
+  background: rgba(0,0,0,0.3);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.assinatura-chip .nota-h {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.assinatura-chip .dur {
+  font-style: italic;
+  color: var(--paper-deep);
+  font-size: 0.85rem;
+}
+.assinatura-chip .x-btn {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.15s;
+}
+.assinatura-chip .x-btn:hover { background: var(--rust); }
+.assinatura-empty {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+}
+.bandas-modal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0;
+}
+.banda-mini {
+  background: var(--paper-deep);
+  border: 0.5px solid var(--ink-faded);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.banda-mini .x-btn {
+  background: transparent;
+  border: none;
+  color: var(--rust);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  line-height: 1;
+}
 
-  /* SEQUÊNCIA DE MARTELADAS */
-  .sequencia-wrap {
-    margin-top: 1.2rem;
-    padding: 1rem 1rem 0.75rem;
-    background: rgba(255, 250, 235, 0.7);
-    border: 1px dashed var(--ink-faded);
-    border-radius: 2px;
-  }
-  .sequencia-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .sequencia-titulo {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.9rem;
-    color: var(--ink);
-    letter-spacing: 0.05em;
-  }
-  .sequencia-acoes { display: flex; gap: 0.4rem; }
-  .sequencia-acoes .btn {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.7rem;
-  }
-  .sequencia-pilulas {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    align-items: center;
-    min-height: 36px;
-  }
-  .pilula {
-    display: inline-flex;
-    align-items: center;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 4px 4px 4px 10px;
-    border-radius: 14px;
-    font-family: 'EB Garamond', serif;
-    font-size: 0.95rem;
-    box-shadow: 1px 1px 0 var(--shadow-warm);
-    user-select: none;
-  }
-  .pilula .ordem {
-    font-family: 'Special Elite', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    margin-right: 6px;
-    background: rgba(0,0,0,0.3);
-    padding: 1px 6px;
-    border-radius: 8px;
-  }
-  .pilula .nota-txt { margin-right: 6px; }
-  .pilula .x-btn {
-    background: transparent;
-    border: none;
-    color: var(--paper);
-    cursor: pointer;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    line-height: 1;
-    margin-left: 2px;
-    padding: 0;
-    transition: background 0.15s;
-  }
-  .pilula .x-btn:hover { background: var(--rust); }
-  .pilula-empty {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    color: var(--ink-faded);
-    padding: 0.4rem 0;
-  }
-  .seta-ordem {
-    color: var(--ink-faded);
-    font-size: 1rem;
-    align-self: center;
-  }
+/* DISPLAY DE VALOR/SOMA (puzzle) */
+.banda-preview-valor {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.3rem;
+  color: var(--rust);
+  font-weight: bold;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--ink-faded);
+  background: rgba(255, 250, 235, 0.85);
+  border-radius: 1px;
+  text-align: center;
+  min-width: 70px;
+}
+.assinatura-soma-info {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  color: var(--ink-faded);
+  padding-top: 0.5rem;
+  border-top: 0.5px dashed var(--ink-faded);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.assinatura-soma-info .lbl {
+  font-family: 'IM Fell English SC', serif;
+  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+}
+.assinatura-soma-info .val {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.1rem;
+  color: var(--ink);
+  font-weight: bold;
+}
 
-  .partitura-summary {
-    font-family: 'EB Garamond', serif;
-    font-size: 1.05rem;
-    color: var(--ink);
-    padding: 0.6rem 0 0.4rem;
-    text-align: center;
-    margin-top: 0.5rem;
-  }
-  .partitura-summary .label {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.8rem;
-    color: var(--ink-faded);
-    margin-right: 0.5rem;
-    letter-spacing: 0.05em;
-  }
-  .partitura-summary .empty { font-style: italic; color: var(--ink-faded); }
-  .partitura-summary .caminho-completo {
-    font-family: 'Special Elite', monospace;
-    font-size: 0.95rem;
-  }
+.alvo-display {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 720px) { .alvo-display { grid-template-columns: repeat(2, 1fr); } }
+.alvo-box {
+  background: rgba(255, 250, 235, 0.7);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  padding: 0.6rem 0.7rem;
+  text-align: center;
+}
+.alvo-box.alvo-atual {
+  background: rgba(43, 26, 10, 0.06);
+  border: 1px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--shadow-paper);
+}
+.alvo-lbl {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.78rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+.alvo-num {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.7rem;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.alvo-num.perfeito { color: var(--green-old); }
+.alvo-num.mais-perfeito { color: var(--gold); }
+.alvo-num.falha { color: var(--rust); }
+.alvo-dist {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--ink-faded);
+  margin-top: 0.15rem;
+}
 
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 1rem;
-  }
-  .mineral-card, .test-card {
-    background: rgba(255, 250, 235, 0.85);
-    border: 0.5px solid var(--ink-faded);
-    padding: 1rem 1.1rem;
-    border-radius: 2px;
-    box-shadow: 2px 2px 0 var(--shadow-paper);
-    position: relative;
-    transition: all 0.15s;
-  }
-  .test-card { cursor: pointer; }
-  .mineral-card:hover, .test-card:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 var(--shadow-paper);
-  }
-  .mineral-card h3, .test-card h3 {
-    font-family: 'IM Fell English SC', serif;
-    font-weight: normal;
-    font-size: 1.15rem;
-    margin-bottom: 0.3rem;
-    color: var(--ink);
-    letter-spacing: 0.03em;
-  }
-  .card-meta {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 0.9rem;
-    color: var(--ink-faded);
-    margin-bottom: 0.5rem;
-  }
-  .card-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
-  .tag {
-    display: inline-block;
-    padding: 1px 8px;
-    border: 0.5px solid var(--ink-faded);
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-family: 'Special Elite', monospace;
-    letter-spacing: 0.03em;
-    background: rgba(255, 250, 235, 0.6);
-  }
-  .tag.tag-puro { background: rgba(79, 107, 62, 0.18); color: var(--green-old); border-color: var(--green-old); }
-  .tag.tag-reativo { background: rgba(160, 65, 28, 0.18); color: var(--rust); border-color: var(--rust); }
-  .tag.tag-incerto { background: rgba(184, 132, 28, 0.18); color: var(--gold); border-color: var(--gold); }
-  .card-data {
-    font-family: 'EB Garamond', serif;
-    font-size: 0.9rem;
-    color: var(--ink);
-    margin: 0.4rem 0;
-    line-height: 1.4;
-  }
-  .card-data .label {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.75rem;
-    color: var(--ink-faded);
-    letter-spacing: 0.05em;
-    display: block;
-  }
-  .card-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.7rem;
-    border-top: 1px dashed var(--ink-faded);
-    padding-top: 0.6rem;
-  }
-  .card-actions .btn { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+.sinal-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.3rem 0 0.9rem;
+  flex-wrap: wrap;
+}
+.sinal-toggle .sinal-lbl {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.04em;
+}
+.sinal-btn {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.9rem;
+  padding: 0.45rem 1rem;
+  background: rgba(255, 250, 235, 0.7);
+  border: 1px solid var(--ink-faded);
+  color: var(--ink-faded);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+  letter-spacing: 0.03em;
+}
+.sinal-btn:hover { color: var(--ink); }
+.sinal-btn.ativo {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--shadow-warm);
+}
 
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1.5rem;
-    color: var(--ink-faded);
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 1.05rem;
-    border: 1px dashed var(--ink-faded);
-    border-radius: 2px;
-    background: rgba(255, 250, 235, 0.3);
-  }
-  .empty-state .glyph {
-    font-size: 3rem;
-    color: var(--sepia);
-    display: block;
-    margin-bottom: 0.5rem;
-  }
+.pilula.subtrai { background: var(--rust); }
+.pilula.subtrai .ordem { color: var(--paper-deep); background: rgba(0,0,0,0.25); }
 
-  footer {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--ink-faded);
-    font-family: 'IM Fell English SC', serif;
-    font-size: 0.8rem;
-    letter-spacing: 0.1em;
-    border-top: 1px solid var(--ink-faded);
-    margin: 3rem auto 0;
-    max-width: 1200px;
-  }
-  footer .seal {
-    display: inline-block;
-    padding: 0.4rem 1.2rem;
-    border: 1px double var(--ink-faded);
-    border-radius: 50px;
-    color: var(--rust);
-  }
-  footer .repo-link {
-    display: block;
-    margin-top: 0.6rem;
-    font-family: 'Special Elite', monospace;
-    font-size: 0.7rem;
-    color: var(--ink-faded);
-    text-transform: none;
-    letter-spacing: 0.02em;
-  }
-  footer .repo-link a { color: var(--ink-faded); text-decoration: underline; }
-  footer .repo-link a:hover { color: var(--rust); }
+/* PAUTA YARA (mantida do original) */
+.pauta-wrapper {
+  background: rgba(255, 250, 235, 0.4);
+  border: 0.5px solid var(--ink-faded);
+  padding: 1rem;
+  border-radius: 2px;
+  overflow-x: auto;
+}
+.pauta-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  color: var(--ink-faded);
+}
+.pauta-controls label { display: flex; align-items: center; gap: 0.4rem; }
+.pauta-controls input[type="number"] {
+  width: 60px;
+  text-align: center;
+  border: 1px solid var(--ink-faded);
+  padding: 3px 6px;
+}
+.pauta-svg {
+  display: block;
+  margin: 0 auto;
+  min-width: 600px;
+}
+.pauta-line { stroke: var(--ink-faded); stroke-width: 0.6; }
+.pauta-h-label {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 13px;
+  fill: var(--ink-faded);
+}
+.nota-bg {
+  fill: rgba(184, 132, 28, 0.05);
+  stroke: var(--ink-faded);
+  stroke-width: 0.4;
+  stroke-dasharray: 2 2;
+  cursor: pointer;
+  transition: fill 0.15s;
+}
+.nota-bg:hover { fill: rgba(160, 65, 28, 0.18); }
+.nota-bg.tem-batida {
+  fill: rgba(160, 65, 28, 0.10);
+  stroke-dasharray: none;
+  stroke: rgba(160, 65, 28, 0.6);
+}
+.nota-bg.tem-batida:hover { fill: rgba(160, 65, 28, 0.20); }
+.nota-circle { transition: all 0.15s; pointer-events: none; }
+.nota-circle.unbatida { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.nota-circle.batida { fill: var(--ink); stroke: var(--ink); stroke-width: 1.5; }
+.nota-label {
+  font-family: 'EB Garamond', serif;
+  font-size: 11px;
+  fill: var(--ink);
+  pointer-events: none;
+  text-anchor: middle;
+}
+.duration-label {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 10px;
+  fill: var(--ink-faded);
+  pointer-events: none;
+  text-anchor: middle;
+}
+.ordem-marker {
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  fill: var(--rust);
+  pointer-events: none;
+  text-anchor: middle;
+  font-weight: bold;
+}
+.contador-batidas {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 11px;
+  fill: var(--rust);
+  pointer-events: none;
+  text-anchor: middle;
+}
 
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.8rem;
-    margin-bottom: 1.5rem;
-  }
-  .stat {
-    background: rgba(255, 250, 235, 0.6);
-    border: 0.5px solid var(--ink-faded);
-    padding: 0.7rem 1rem;
-    text-align: center;
-    border-radius: 2px;
-  }
-  .stat-num {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1.8rem;
-    color: var(--ink);
-    line-height: 1;
-  }
-  .stat-label {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 0.85rem;
-    color: var(--ink-faded);
-    margin-top: 0.2rem;
-  }
+/* SEQUÊNCIA DE MARTELADAS */
+.sequencia-wrap {
+  margin-top: 1.2rem;
+  padding: 1rem 1rem 0.75rem;
+  background: rgba(255, 250, 235, 0.7);
+  border: 1px dashed var(--ink-faded);
+  border-radius: 2px;
+}
+.sequencia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.sequencia-titulo {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.9rem;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+}
+.sequencia-acoes { display: flex; gap: 0.4rem; }
+.sequencia-acoes .btn { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+.sequencia-pilulas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 36px;
+}
+.pilula {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 4px 4px 4px 10px;
+  border-radius: 14px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.95rem;
+  box-shadow: 1px 1px 0 var(--shadow-warm);
+  user-select: none;
+}
+.pilula .ordem {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  color: var(--gold);
+  margin-right: 6px;
+  background: rgba(0,0,0,0.3);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.pilula .nota-txt { margin-right: 6px; }
+.pilula .x-btn {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  margin-left: 2px;
+  padding: 0;
+  transition: background 0.15s;
+}
+.pilula .x-btn:hover { background: var(--rust); }
+.pilula-empty {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-faded);
+  padding: 0.4rem 0;
+}
+.seta-ordem {
+  color: var(--ink-faded);
+  font-size: 1rem;
+  align-self: center;
+}
 
-  .flash {
-    position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.8rem 1.4rem;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1rem;
-    box-shadow: 3px 3px 0 var(--shadow-warm);
-    z-index: 1000;
-    border-left: 4px solid var(--gold);
-    animation: slideIn 0.3s ease;
-  }
-  @keyframes slideIn {
-    from { transform: translateX(120%); }
-    to { transform: translateX(0); }
-  }
-  .flash.success { border-left-color: var(--green-old); }
-  .flash.error { border-left-color: var(--rust); }
+.partitura-summary {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.05rem;
+  color: var(--ink);
+  padding: 0.6rem 0 0.4rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.partitura-summary .label {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.8rem;
+  color: var(--ink-faded);
+  margin-right: 0.5rem;
+  letter-spacing: 0.05em;
+}
+.partitura-summary .empty { font-style: italic; color: var(--ink-faded); }
+.partitura-summary .caminho-completo {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.95rem;
+}
 
-  .filters-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .filter-input {
-    flex: 1;
-    min-width: 200px;
-    border: 1px solid var(--ink-faded);
-    padding: 0.4rem 0.6rem;
-    font-family: 'EB Garamond', serif;
-    background: rgba(255, 250, 235, 0.6);
-    border-radius: 1px;
-  }
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+}
+.mineral-card, .test-card, .ingr-card, .receita-card {
+  background: rgba(255, 250, 235, 0.85);
+  border: 0.5px solid var(--ink-faded);
+  padding: 1rem 1.1rem;
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--shadow-paper);
+  position: relative;
+  transition: all 0.15s;
+}
+.test-card, .receita-card { cursor: pointer; }
+.mineral-card:hover, .test-card:hover, .ingr-card:hover, .receita-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--shadow-paper);
+}
+.mineral-card h3, .test-card h3, .ingr-card h3, .receita-card h3 {
+  font-family: 'IM Fell English SC', serif;
+  font-weight: normal;
+  font-size: 1.15rem;
+  margin-bottom: 0.3rem;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+}
+.card-meta {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink-faded);
+  margin-bottom: 0.5rem;
+}
+.card-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-family: 'Special Elite', monospace;
+  letter-spacing: 0.03em;
+  background: rgba(255, 250, 235, 0.6);
+}
+.tag.tag-puro { background: rgba(79, 107, 62, 0.18); color: var(--green-old); border-color: var(--green-old); }
+.tag.tag-reativo { background: rgba(160, 65, 28, 0.18); color: var(--rust); border-color: var(--rust); }
+.tag.tag-incerto { background: rgba(184, 132, 28, 0.18); color: var(--gold); border-color: var(--gold); }
+.tag.tag-erva { background: rgba(79, 107, 62, 0.18); color: var(--green-old); border-color: var(--green-old); }
+.tag.tag-essencia { background: rgba(91, 62, 107, 0.18); color: var(--violet-old); border-color: var(--violet-old); }
+.tag.tag-reagente { background: rgba(184, 132, 28, 0.18); color: var(--gold); border-color: var(--gold); }
+.tag.tag-animal { background: rgba(160, 65, 28, 0.18); color: var(--rust); border-color: var(--rust); }
+.tag.rar-comum { background: rgba(43,26,10,0.08); color: var(--ink); }
+.tag.rar-incomum { background: rgba(44,86,112,0.18); color: var(--blue-old); border-color: var(--blue-old); }
+.tag.rar-rara { background: rgba(91, 62, 107, 0.22); color: var(--violet-old); border-color: var(--violet-old); }
+.tag.rar-lendaria { background: rgba(184, 132, 28, 0.30); color: var(--rust); border-color: var(--gold); }
+.card-data {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.9rem;
+  color: var(--ink);
+  margin: 0.4rem 0;
+  line-height: 1.4;
+}
+.card-data .label {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.75rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.05em;
+  display: block;
+}
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  border-top: 1px dashed var(--ink-faded);
+  padding-top: 0.6rem;
+}
+.card-actions .btn { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+.ingr-card .icone-grande {
+  font-size: 2.3rem;
+  text-align: center;
+  display: block;
+  margin: 0.2rem 0 0.4rem;
+}
 
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(43, 26, 10, 0.5);
-    backdrop-filter: blur(2px);
-    z-index: 100;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-  .modal-overlay.active { display: flex; }
-  .modal {
-    background: var(--paper);
-    border: 1px solid var(--ink);
-    box-shadow: 5px 5px 0 var(--shadow-warm);
-    padding: 1.75rem;
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 2px;
-  }
-  .modal h3 {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1.3rem;
-    margin-bottom: 0.4rem;
-    color: var(--ink);
-    font-weight: normal;
-  }
-  .modal-body {
-    font-family: 'Cormorant Garamond', serif;
-    color: var(--ink);
-    font-size: 1rem;
-    line-height: 1.5;
-    margin-bottom: 1.2rem;
-  }
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--ink-faded);
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  border: 1px dashed var(--ink-faded);
+  border-radius: 2px;
+  background: rgba(255, 250, 235, 0.3);
+}
+.empty-state .glyph {
+  font-size: 3rem;
+  color: var(--sepia);
+  display: block;
+  margin-bottom: 0.5rem;
+}
 
-  @media (max-width: 720px) {
-    header h1 { font-size: 1.9rem; }
-    header::before, header::after { display: none; }
-    main { padding: 0 1rem 3rem; }
-    .form-row { grid-template-columns: 1fr; }
-    .tabs { flex-wrap: nowrap; overflow-x: auto; }
-    .tab { white-space: nowrap; padding: 0.6rem 1rem; font-size: 0.85rem; }
-    .pauta-svg { min-width: 500px; }
-  }
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--ink-faded);
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  border-top: 1px solid var(--ink-faded);
+  margin: 3rem auto 0;
+  max-width: 1200px;
+}
+footer .seal {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border: 1px double var(--ink-faded);
+  border-radius: 50px;
+  color: var(--rust);
+}
+footer .repo-link {
+  display: block;
+  margin-top: 0.6rem;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  color: var(--ink-faded);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+footer .repo-link a { color: var(--ink-faded); text-decoration: underline; }
+footer .repo-link a:hover { color: var(--rust); }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+.stat {
+  background: rgba(255, 250, 235, 0.6);
+  border: 0.5px solid var(--ink-faded);
+  padding: 0.7rem 1rem;
+  text-align: center;
+  border-radius: 2px;
+}
+.stat-num {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.8rem;
+  color: var(--ink);
+  line-height: 1;
+}
+.stat-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+  margin-top: 0.2rem;
+}
+
+.flash {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.8rem 1.4rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  box-shadow: 3px 3px 0 var(--shadow-warm);
+  z-index: 1000;
+  border-left: 4px solid var(--gold);
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { transform: translateX(120%); }
+  to { transform: translateX(0); }
+}
+.flash.success { border-left-color: var(--green-old); }
+.flash.error { border-left-color: var(--rust); }
+
+.filters-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-input {
+  flex: 1;
+  min-width: 200px;
+  border: 1px solid var(--ink-faded);
+  padding: 0.4rem 0.6rem;
+  font-family: 'EB Garamond', serif;
+  background: rgba(255, 250, 235, 0.6);
+  border-radius: 1px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 26, 10, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--shadow-warm);
+  padding: 1.75rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 2px;
+}
+.modal.modal-wide { max-width: 800px; }
+.modal h3 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.3rem;
+  margin-bottom: 0.4rem;
+  color: var(--ink);
+  font-weight: normal;
+}
+.modal-body {
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 1.2rem;
+}
+
+/* PROPRIEDADES — chips dentro de cards */
+.prop-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0; }
+.prop-chip {
+  background: rgba(184, 132, 28, 0.18);
+  color: var(--ink);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-family: 'Special Elite', monospace;
+  border: 0.5px solid var(--gold);
+}
+.prop-chip .int { color: var(--rust); margin-left: 4px; font-weight: bold; }
+
+/* ETAPAS COMPATÍVEIS — botões pill */
+.etapas-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.3rem; }
+.etapa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 4px 12px;
+  border: 1px solid var(--ink-faded);
+  border-radius: 14px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.78rem;
+  background: rgba(255, 250, 235, 0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.etapa-pill input { display: none; }
+.etapa-pill.checked {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.etapa-pill .et-ico { font-size: 0.95rem; }
+.etapa-pill:hover { transform: translate(-1px, -1px); }
+
+/* ============== BANCADA ALQUÍMICA (NOVO) ============== */
+.bancada-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-top: 1rem;
+}
+@media (max-width: 880px) { .bancada-grid { grid-template-columns: 1fr; } }
+.bancada-coluna {
+  background: rgba(255, 250, 235, 0.7);
+  border: 0.5px solid var(--ink-faded);
+  padding: 1rem 1.1rem;
+  border-radius: 2px;
+}
+.bancada-coluna h4 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.05rem;
+  font-weight: normal;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bancada-coluna h4 .ind {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+}
+
+.produto-seletor {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 720px) { .produto-seletor { grid-template-columns: repeat(2, 1fr); } }
+.produto-card {
+  background: rgba(255, 250, 235, 0.6);
+  border: 1px solid var(--ink-faded);
+  padding: 0.5rem 0.6rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 2px;
+}
+.produto-card:hover { background: rgba(255, 250, 235, 0.95); }
+.produto-card.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--shadow-warm);
+}
+.produto-card .pico {
+  font-size: 1.7rem;
+  display: block;
+  margin-bottom: 0.15rem;
+}
+.produto-card .pname {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.ingr-pool {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 0.5px dashed var(--ink-faded);
+  padding: 0.4rem;
+  border-radius: 2px;
+  background: rgba(255, 250, 235, 0.3);
+}
+.ingr-pool-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 0.5px dashed var(--ink-faded);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ingr-pool-item:hover { background: rgba(160, 65, 28, 0.1); }
+.ingr-pool-item:last-child { border-bottom: none; }
+.ingr-pool-item .icn { font-size: 1.4rem; flex: 0 0 auto; width: 28px; text-align: center; }
+.ingr-pool-item .meta { flex: 1; font-size: 0.9rem; line-height: 1.2; }
+.ingr-pool-item .meta .nm { font-weight: 600; }
+.ingr-pool-item .meta .sb {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-faded);
+  font-size: 0.78rem;
+}
+.ingr-pool-item .add-btn {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.esteira {
+  min-height: 80px;
+  border: 1px dashed var(--ink-faded);
+  border-radius: 2px;
+  padding: 0.5rem;
+  background: rgba(255, 250, 235, 0.4);
+}
+.esteira-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 250, 235, 0.95);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.esteira-item .icn { font-size: 1.5rem; }
+.esteira-item .nm {
+  font-family: 'EB Garamond', serif;
+  font-weight: 600;
+  flex: 1;
+  min-width: 100px;
+}
+.esteira-item .x-btn {
+  background: transparent;
+  border: none;
+  color: var(--rust);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  width: 24px; height: 24px;
+}
+.esteira-etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: 100%;
+  padding-top: 0.4rem;
+  border-top: 0.5px dashed var(--ink-faded);
+  margin-top: 0.2rem;
+}
+.etapa-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-family: 'Special Elite', monospace;
+}
+.etapa-mini.invalid {
+  background: rgba(160, 65, 28, 0.4);
+  color: var(--paper);
+  text-decoration: line-through;
+}
+.etapa-mini .seq-num {
+  background: var(--gold);
+  color: var(--ink);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+.etapa-mini .x-btn {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  cursor: pointer;
+  padding: 0 0 0 3px;
+  font-size: 0.8rem;
+}
+.etapa-add-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.etapa-add-btn {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  background: rgba(255, 250, 235, 0.6);
+  border: 0.5px solid var(--ink-faded);
+  padding: 2px 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.etapa-add-btn:hover { background: var(--ink); color: var(--paper); }
+.etapa-add-btn:disabled, .etapa-add-btn.disabled { opacity: 0.35; cursor: not-allowed; background: rgba(255,250,235,0.4); }
+
+.recipiente-stage {
+  background: radial-gradient(ellipse at 50% 60%, rgba(43,26,10,0.18), transparent 70%);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.recipiente-svg { max-width: 230px; max-height: 220px; }
+
+/* Animações dos recipientes */
+.bubble {
+  animation: bubble-rise 1.6s ease-in infinite;
+  transform-origin: center;
+}
+@keyframes bubble-rise {
+  0%   { transform: translateY(0); opacity: 0; }
+  20%  { opacity: 0.85; }
+  100% { transform: translateY(-50px); opacity: 0; }
+}
+.liquido {
+  animation: liquido-wave 3s ease-in-out infinite;
+}
+@keyframes liquido-wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.spark {
+  animation: spark 0.6s ease-out infinite;
+  transform-origin: center;
+}
+@keyframes spark {
+  0%   { transform: scale(0.8); opacity: 1; }
+  50%  { transform: scale(1.4); opacity: 0.7; }
+  100% { transform: scale(0.6); opacity: 0.3; }
+}
+.smoke {
+  animation: smoke-rise 2.2s ease-out infinite;
+  transform-origin: bottom center;
+}
+@keyframes smoke-rise {
+  0%   { transform: translateY(0) scale(0.4); opacity: 0.6; }
+  60%  { opacity: 0.4; }
+  100% { transform: translateY(-60px) scale(1.7); opacity: 0; }
+}
+.mist {
+  animation: mist-puff 2.4s ease-out infinite;
+}
+@keyframes mist-puff {
+  0%   { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  20%  { opacity: 0.6; }
+  100% { transform: translate(35px, -25px) scale(1.6); opacity: 0; }
+}
+.cream-swirl {
+  animation: cream-swirl 4s linear infinite;
+  transform-origin: center;
+}
+@keyframes cream-swirl {
+  from { transform: rotate(0); }
+  to   { transform: rotate(360deg); }
+}
+.fuse-tip { animation: spark 0.4s ease-out infinite; }
+
+.mistura-resultado {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  background: rgba(255, 250, 235, 0.6);
+  font-family: 'Cormorant Garamond', serif;
+}
+.mistura-resultado.sucesso { border-left: 4px solid var(--green-old); }
+.mistura-resultado.falha   { border-left: 4px solid var(--rust); }
+.mistura-resultado.parcial { border-left: 4px solid var(--gold); }
+.mistura-resultado h5 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.05rem;
+  font-weight: normal;
+  margin-bottom: 0.4rem;
+}
+.mistura-resultado .efeito {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+  color: var(--ink);
+  font-style: italic;
+}
+
+.receita-card .ingr-list {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  margin: 0.3rem 0;
+}
+.receita-card .ingr-list .step {
+  display: inline-block;
+  background: rgba(43,26,10,0.08);
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin: 0 2px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  header h1 { font-size: 1.9rem; }
+  header::before, header::after { display: none; }
+  main { padding: 0 1rem 3rem; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row.triple { grid-template-columns: 1fr; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .tab { white-space: nowrap; padding: 0.6rem 1rem; font-size: 0.85rem; }
+  .pauta-svg { min-width: 500px; }
+}
 </style>
 </head>
 <body>
@@ -665,6 +1267,9 @@
 <div class="tabs" role="tablist">
   <button class="tab active" data-tab="banco" role="tab">Banco de Minérios <span class="tab-badge" id="badge-minerais">0</span></button>
   <button class="tab" data-tab="ensaio" role="tab">Novo Ensaio</button>
+  <button class="tab" data-tab="alquimicos" role="tab">Banco Alquímico <span class="tab-badge" id="badge-alquimicos">0</span></button>
+  <button class="tab" data-tab="bancada" role="tab">Bancada</button>
+  <button class="tab" data-tab="receitas" role="tab">Receitas <span class="tab-badge" id="badge-receitas">0</span></button>
   <button class="tab" data-tab="registros" role="tab">Registros <span class="tab-badge" id="badge-registros">0</span></button>
   <button class="tab" data-tab="exportar" role="tab">Exportar</button>
 </div>
@@ -674,7 +1279,7 @@
 
   <div class="section">
     <h2>Cadastrar Minério</h2>
-    <p class="section-desc">Cada minério recebe nome próprio, classificação por natureza (Puro, Reativo ou Incerto), descrição da propriedade e a assinatura Yara medida com Gaita ou Cabelo de Sereia.</p>
+    <p class="section-desc">Cada minério recebe nome próprio, classificação (Puro, Reativo ou Incerto), descrição da propriedade e a assinatura Yara — agora montada por construtor visual.</p>
 
     <div class="form-row">
       <div class="form-group">
@@ -696,16 +1301,67 @@
         <input type="text" id="min-prop" placeholder="Ex: Gelo, névoa gélida ao raspar">
       </div>
     </div>
-    <div class="form-row full">
+
+    <div class="form-row">
       <div class="form-group">
-        <label>Notas da assinatura — formato livre, ordem de leitura</label>
-        <input type="text" id="min-assinatura" placeholder="Ex: H1:2.0, H1:1.5, H2:2.0, H1:1.5">
+        <label>Valor Perfeito (alvo principal)</label>
+        <input type="number" step="1" min="-100" max="100" id="min-perfeito" placeholder="Ex: 7">
+      </div>
+      <div class="form-group">
+        <label>Valor Mais que Perfeito (alvo bônus)</label>
+        <input type="number" step="1" min="-100" max="100" id="min-mais-perfeito" placeholder="Ex: 10">
       </div>
     </div>
+
     <div class="form-row full">
       <div class="form-group">
+        <label>Assinatura — notas que compõem o minério (a ordem é decorativa)</label>
+        <div class="assinatura-builder" id="min-assinatura-builder">
+          <div class="assinatura-add-row">
+            <div class="form-group">
+              <label>Banda</label>
+              <select id="add-banda" class="add-banda" onchange="atualizarPreviewValor()"></select>
+            </div>
+            <div class="form-group">
+              <label>Sobrescrito</label>
+              <select id="add-sup" class="add-sup">
+                <option value="">— sem —</option>
+                <option value="1">¹</option>
+                <option value="2">²</option>
+                <option value="3">³</option>
+                <option value="4">⁴</option>
+                <option value="5">⁵</option>
+                <option value="6">⁶</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Valor</label>
+              <div class="banda-preview-valor" id="banda-preview-valor">—</div>
+            </div>
+            <div class="form-group" style="justify-content: flex-end;">
+              <label style="visibility:hidden">.</label>
+              <button class="btn btn-tiny" type="button" onclick="addNotaAssinatura()">+ adicionar nota</button>
+            </div>
+          </div>
+          <div class="assinatura-chips" id="min-assinatura-chips">
+            <span class="assinatura-empty">Nenhuma nota adicionada — selecione a banda e o sobrescrito, e clique em "+ adicionar nota".</span>
+          </div>
+          <div class="assinatura-soma-info" id="min-assinatura-soma">
+            <span class="lbl">Soma natural (todas somadas):</span>
+            <span class="val" id="min-soma-natural">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
         <label>Origem / fonte (opcional)</label>
-        <input type="text" id="min-origem" placeholder="Ex: Floresta gelada de Lirian — caçado em Frevo">
+        <input type="text" id="min-origem" placeholder="Ex: Floresta gelada de Lirian">
+      </div>
+      <div class="form-group">
+        <label>Ícone (emoji ou símbolo, opcional)</label>
+        <input type="text" id="min-icone" placeholder="Ex: 💎 ou ⛏" maxlength="3">
       </div>
     </div>
     <div class="form-row full">
@@ -714,8 +1370,21 @@
         <textarea id="min-notas" placeholder="Observações sobre o material, instrumento usado, condições..."></textarea>
       </div>
     </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Propriedades alquímicas (opcional) — para uso na bancada</label>
+        <div id="min-props-builder">
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:end">
+            <input type="text" id="add-min-prop-tag" placeholder="Ex: cura, fogo, gelo..." style="flex:1;min-width:160px" list="dl-props">
+            <input type="number" id="add-min-prop-int" placeholder="1-5" min="1" max="5" style="width:80px">
+            <button class="btn btn-tiny" type="button" onclick="addMinProp()">+ propriedade</button>
+          </div>
+          <div class="prop-chips" id="min-props-chips" style="margin-top:0.5rem;min-height:30px"></div>
+        </div>
+      </div>
+    </div>
     <div class="btn-row">
-      <button class="btn" onclick="salvarMineral()">Cadastrar minério</button>
+      <button class="btn" onclick="salvarMineral()" id="btn-salvar-mineral">Cadastrar minério</button>
       <button class="btn btn-secondary" onclick="limparFormMineral()">Limpar</button>
       <button class="btn btn-secondary" onclick="seedSeven()" id="btn-seed">Carregar os 7 conhecidos</button>
     </div>
@@ -723,7 +1392,7 @@
 
   <div class="section">
     <h2>Minérios Cadastrados</h2>
-    <p class="section-desc">Catálogo completo. Os minérios cadastrados aqui ficam disponíveis ao criar novos ensaios.</p>
+    <p class="section-desc">Catálogo completo. Os minérios cadastrados aqui ficam disponíveis para ensaios e para a bancada alquímica.</p>
     <div class="filters-row">
       <input type="text" class="filter-input" id="filter-min" placeholder="Filtrar por nome ou propriedade..." oninput="renderMinerais()">
       <select id="filter-min-classe" class="filter-input" style="flex:0 0 180px" onchange="renderMinerais()">
@@ -765,11 +1434,36 @@
   </div>
 
   <div class="section" id="pauta-section" style="display:none">
-    <h2>Pauta Yara</h2>
-    <p class="section-desc">Clique numa nota para registrar uma martelada nela. Clique de novo na mesma nota para adicionar outra martelada. Use os botões da sequência para remover ou desfazer batidas.</p>
+    <h2>Pauta Yara — Puzzle de Soma</h2>
+    <p class="section-desc">Cada nota da assinatura tem um valor harmônico (= índice da banda). Some marteladas (+) ou subtraia com reação contrária (−) até atingir o <strong>Valor Perfeito</strong> ou o <strong>Valor Mais que Perfeito</strong>. A mesma nota pode ser martelada várias vezes.</p>
+
+    <div class="alvo-display">
+      <div class="alvo-box">
+        <div class="alvo-lbl">Valor Perfeito</div>
+        <div class="alvo-num" id="alvo-perfeito">—</div>
+      </div>
+      <div class="alvo-box">
+        <div class="alvo-lbl">Valor Mais que Perfeito</div>
+        <div class="alvo-num" id="alvo-mais-perfeito">—</div>
+      </div>
+      <div class="alvo-box alvo-atual">
+        <div class="alvo-lbl">Soma atual</div>
+        <div class="alvo-num" id="soma-atual">0</div>
+        <div class="alvo-dist" id="soma-distancia">—</div>
+      </div>
+      <div class="alvo-box">
+        <div class="alvo-lbl">Status</div>
+        <div class="alvo-num" id="alvo-status">aguardando</div>
+      </div>
+    </div>
+
+    <div class="sinal-toggle">
+      <span class="sinal-lbl">Próxima martelada:</span>
+      <button class="sinal-btn ativo" id="btn-sinal-mais" onclick="setSinal(1)">+ somar</button>
+      <button class="sinal-btn" id="btn-sinal-menos" onclick="setSinal(-1)">− subtrair (reação contrária)</button>
+    </div>
 
     <div class="pauta-wrapper">
-      <div class="pauta-controls" id="pauta-duration-controls"></div>
       <div id="pauta-svg-container"></div>
 
       <div class="sequencia-wrap">
@@ -784,7 +1478,7 @@
       </div>
 
       <div class="partitura-summary">
-        <span class="label">Caminho:</span>
+        <span class="label">Equação:</span>
         <span id="caminho-text" class="empty caminho-completo">nenhuma martelada</span>
       </div>
     </div>
@@ -799,11 +1493,12 @@
         <input type="text" id="ensaio-resultado" placeholder="Ex: Esfera quicante / Líquido turvo / Sem reação">
       </div>
       <div class="form-group">
-        <label>Status</label>
+        <label>Status (sugerido pela soma — pode ajustar)</label>
         <select id="ensaio-status">
-          <option value="sucesso">Sucesso — efeito esperado</option>
+          <option value="perfeito">Perfeito — atingiu o Valor Perfeito</option>
+          <option value="mais-perfeito">Mais que Perfeito — atingiu o alvo bônus</option>
           <option value="parcial">Parcial — efeito modificado</option>
-          <option value="falha">Falha — sem efeito ou efeito errado</option>
+          <option value="falha">Falha — soma errada / sem efeito</option>
           <option value="surpresa">Surpresa — efeito inesperado</option>
         </select>
       </div>
@@ -828,15 +1523,276 @@
   </div>
 </div>
 
-<!-- ABA 3: REGISTROS -->
+<!-- ABA 3: BANCO ALQUÍMICO -->
+<div class="panel" id="panel-alquimicos">
+
+  <div class="section">
+    <h2>Cadastrar Ingrediente Alquímico</h2>
+    <p class="section-desc">Ervas, essências, reagentes ou partes de criaturas usados na bancada. Cada ingrediente carrega propriedades (cura, fogo, sono...) com intensidade, e as etapas de preparação que aceita.</p>
+
+    <div class="form-row triple">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="ing-nome" placeholder="Ex: Mandrágora seca">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="ing-tipo">
+          <option value="erva">Erva</option>
+          <option value="essencia">Essência</option>
+          <option value="reagente">Reagente</option>
+          <option value="animal">Parte animal</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Raridade</label>
+        <select id="ing-raridade">
+          <option value="comum">Comum</option>
+          <option value="incomum">Incomum</option>
+          <option value="rara">Rara</option>
+          <option value="lendaria">Lendária</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Origem / local de coleta (opcional)</label>
+        <input type="text" id="ing-origem" placeholder="Ex: Pântano de Lirian, lua cheia">
+      </div>
+      <div class="form-group">
+        <label>Ícone (emoji ou símbolo)</label>
+        <input type="text" id="ing-icone" placeholder="🌿 / 🦴 / ✦" maxlength="3">
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Descrição (opcional)</label>
+        <textarea id="ing-desc" placeholder="Aspecto, lore, observações..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Propriedades — tag + intensidade (1-5)</label>
+        <div>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:end">
+            <input type="text" id="add-ing-prop-tag" placeholder="Ex: cura, fogo, sono..." style="flex:1;min-width:160px" list="dl-props">
+            <input type="number" id="add-ing-prop-int" placeholder="1-5" min="1" max="5" style="width:80px">
+            <button class="btn btn-tiny" type="button" onclick="addIngProp()">+ propriedade</button>
+          </div>
+          <datalist id="dl-props">
+            <option value="cura">
+            <option value="veneno">
+            <option value="fogo">
+            <option value="gelo">
+            <option value="sono">
+            <option value="ilusão">
+            <option value="energia">
+            <option value="paralisia">
+            <option value="explosivo">
+            <option value="aroma">
+            <option value="luz">
+            <option value="trevas">
+            <option value="vento">
+            <option value="planta">
+            <option value="elétrico">
+            <option value="ácido">
+            <option value="protetor">
+          </datalist>
+          <div class="prop-chips" id="ing-props-chips" style="margin-top:0.5rem;min-height:30px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Etapas de preparação aceitas — selecione as compatíveis</label>
+        <div class="etapas-pills" id="ing-etapas-pills">
+          <label class="etapa-pill" data-etapa="moer">
+            <input type="checkbox" value="moer" onchange="atualizarEtapaPill(this)">
+            <span class="et-ico">⚒</span> Moer / Triturar
+          </label>
+          <label class="etapa-pill" data-etapa="ferver">
+            <input type="checkbox" value="ferver" onchange="atualizarEtapaPill(this)">
+            <span class="et-ico">♨</span> Ferver / Decoctar
+          </label>
+          <label class="etapa-pill" data-etapa="macerar">
+            <input type="checkbox" value="macerar" onchange="atualizarEtapaPill(this)">
+            <span class="et-ico">🫙</span> Macerar / Infundir
+          </label>
+          <label class="etapa-pill" data-etapa="destilar">
+            <input type="checkbox" value="destilar" onchange="atualizarEtapaPill(this)">
+            <span class="et-ico">⚗</span> Destilar / Sublimar
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="salvarIngrediente()" id="btn-salvar-ingr">Cadastrar ingrediente</button>
+      <button class="btn btn-secondary" onclick="limparFormIngrediente()">Limpar</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Catálogo Alquímico</h2>
+    <p class="section-desc">Ingredientes catalogados — disponíveis na bancada para construir poções, bombas, perfumes ou pastas.</p>
+    <div class="filters-row">
+      <input type="text" class="filter-input" id="filter-ing" placeholder="Filtrar por nome, propriedade ou tipo..." oninput="renderIngredientes()">
+      <select id="filter-ing-tipo" class="filter-input" style="flex:0 0 160px" onchange="renderIngredientes()">
+        <option value="">Todos os tipos</option>
+        <option value="erva">Ervas</option>
+        <option value="essencia">Essências</option>
+        <option value="reagente">Reagentes</option>
+        <option value="animal">Partes animais</option>
+      </select>
+      <select id="filter-ing-raridade" class="filter-input" style="flex:0 0 160px" onchange="renderIngredientes()">
+        <option value="">Todas as raridades</option>
+        <option value="comum">Comum</option>
+        <option value="incomum">Incomum</option>
+        <option value="rara">Rara</option>
+        <option value="lendaria">Lendária</option>
+      </select>
+    </div>
+    <div id="ingredientes-grid" class="cards-grid"></div>
+  </div>
+</div>
+
+<!-- ABA 4: BANCADA ALQUÍMICA -->
+<div class="panel" id="panel-bancada">
+  <div class="section">
+    <h2>Bancada de Mistura</h2>
+    <p class="section-desc">Escolha o produto desejado, adicione ingredientes do catálogo de alquímicos e/ou minérios, defina a sequência de etapas para cada um e observe a mistura ganhar forma. Combinações certas batem com receitas conhecidas; combinações novas geram resultados imprevisíveis.</p>
+
+    <div>
+      <h4 style="font-family:'IM Fell English SC',serif;font-weight:normal;letter-spacing:0.04em;font-size:1rem;margin-bottom:0.4rem;color:var(--ink-faded)">PRODUTO ALVO</h4>
+      <div class="produto-seletor" id="produto-seletor">
+        <div class="produto-card" data-produto="pocao" onclick="setProduto('pocao')"><span class="pico">⚗</span><span class="pname">Poção</span></div>
+        <div class="produto-card" data-produto="bomba" onclick="setProduto('bomba')"><span class="pico">💣</span><span class="pname">Bomba</span></div>
+        <div class="produto-card" data-produto="perfume" onclick="setProduto('perfume')"><span class="pico">🜍</span><span class="pname">Perfume</span></div>
+        <div class="produto-card" data-produto="pasta" onclick="setProduto('pasta')"><span class="pico">⚱</span><span class="pname">Pasta</span></div>
+      </div>
+    </div>
+
+    <div class="bancada-grid">
+      <div class="bancada-coluna">
+        <h4>Ingredientes <span class="ind">do catálogo</span></h4>
+        <div class="filters-row">
+          <input type="text" class="filter-input" id="filter-pool" placeholder="Buscar..." oninput="renderPool()">
+          <select id="filter-pool-fonte" class="filter-input" style="flex:0 0 130px" onchange="renderPool()">
+            <option value="">Todos</option>
+            <option value="alquimico">Alquímicos</option>
+            <option value="mineral">Minérios</option>
+          </select>
+        </div>
+        <div class="ingr-pool" id="bancada-pool"></div>
+      </div>
+
+      <div class="bancada-coluna">
+        <h4>Esteira de preparação <span class="ind">defina as etapas em sequência</span></h4>
+        <div class="esteira" id="bancada-esteira"></div>
+        <div style="text-align:center;margin-top:1rem">
+          <div class="recipiente-stage" id="recipiente-stage"></div>
+          <div class="btn-row" style="justify-content:center">
+            <button class="btn" onclick="executarMistura()">Misturar ⚯</button>
+            <button class="btn btn-secondary" onclick="limparBancada()">Limpar bancada</button>
+          </div>
+          <div id="mistura-resultado-wrap"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABA 5: LIVRO DE RECEITAS -->
+<div class="panel" id="panel-receitas">
+
+  <div class="section">
+    <h2>Cadastrar Receita</h2>
+    <p class="section-desc">Registre receitas conhecidas — combinações de ingredientes, etapas e produto que geram um efeito específico. Pode marcar como secreta para descobrir pela bancada.</p>
+
+    <div class="form-row triple">
+      <div class="form-group">
+        <label>Nome da receita</label>
+        <input type="text" id="rec-nome" placeholder="Ex: Poção de Cura Menor">
+      </div>
+      <div class="form-group">
+        <label>Produto</label>
+        <select id="rec-produto">
+          <option value="pocao">Poção</option>
+          <option value="bomba">Bomba</option>
+          <option value="perfume">Perfume</option>
+          <option value="pasta">Pasta</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status inicial</label>
+        <select id="rec-status">
+          <option value="conhecida">Conhecida — visível</option>
+          <option value="secreta">Secreta — só aparece após descoberta</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Efeito esperado / descrição</label>
+        <input type="text" id="rec-efeito" placeholder="Ex: Restaura ferimentos leves; gosto amargo">
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Ingredientes — adicione pelo menos um</label>
+        <div style="border:1px dashed var(--ink-faded);padding:0.7rem;border-radius:2px;background:rgba(255,250,235,0.5)">
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:end">
+            <select id="rec-add-ingr" class="filter-input" style="flex:1;min-width:200px"></select>
+            <button class="btn btn-tiny" type="button" onclick="addRecIngrediente()">+ adicionar à receita</button>
+          </div>
+          <div id="rec-ingredientes-list" style="margin-top:0.7rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="salvarReceita()" id="btn-salvar-rec">Cadastrar receita</button>
+      <button class="btn btn-secondary" onclick="limparFormReceita()">Limpar</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Livro de Receitas</h2>
+    <p class="section-desc">Receitas catalogadas. Receitas secretas aparecem como "❒ desconhecida" até serem descobertas na bancada.</p>
+    <div class="filters-row">
+      <input type="text" class="filter-input" id="filter-rec" placeholder="Filtrar por nome ou efeito..." oninput="renderReceitas()">
+      <select id="filter-rec-prod" class="filter-input" style="flex:0 0 150px" onchange="renderReceitas()">
+        <option value="">Todos os produtos</option>
+        <option value="pocao">Poções</option>
+        <option value="bomba">Bombas</option>
+        <option value="perfume">Perfumes</option>
+        <option value="pasta">Pastas</option>
+      </select>
+      <select id="filter-rec-status" class="filter-input" style="flex:0 0 160px" onchange="renderReceitas()">
+        <option value="">Todas</option>
+        <option value="conhecida">Apenas conhecidas</option>
+        <option value="descoberta">Apenas descobertas</option>
+        <option value="secreta">Apenas secretas</option>
+      </select>
+    </div>
+    <div id="receitas-grid" class="cards-grid"></div>
+  </div>
+</div>
+
+<!-- ABA 6: REGISTROS -->
 <div class="panel" id="panel-registros">
 
   <div class="section">
     <h2>Histórico de Ensaios</h2>
-    <p class="section-desc">Todos os ensaios registrados, em ordem cronológica inversa. Clique sobre um ensaio para ver detalhes completos.</p>
+    <p class="section-desc">Todos os ensaios e misturas registrados, em ordem cronológica inversa. Clique sobre um item para ver detalhes completos.</p>
 
     <div class="stats-row">
-      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">total de ensaios</div></div>
+      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">total registrado</div></div>
       <div class="stat"><div class="stat-num" id="stat-sucesso">0</div><div class="stat-label">sucessos</div></div>
       <div class="stat"><div class="stat-num" id="stat-falha">0</div><div class="stat-label">falhas / parciais</div></div>
       <div class="stat"><div class="stat-num" id="stat-surpresa">0</div><div class="stat-label">surpresas</div></div>
@@ -851,17 +1807,22 @@
         <option value="falha">Falha</option>
         <option value="surpresa">Surpresa</option>
       </select>
+      <select id="filter-tipo-reg" class="filter-input" style="flex:0 0 160px" onchange="renderEnsaios()">
+        <option value="">Tudo</option>
+        <option value="ensaio">Apenas ensaios</option>
+        <option value="mistura">Apenas misturas</option>
+      </select>
     </div>
 
     <div id="ensaios-grid" class="cards-grid"></div>
   </div>
 </div>
 
-<!-- ABA 4: EXPORTAR -->
+<!-- ABA 7: EXPORTAR -->
 <div class="panel" id="panel-exportar">
   <div class="section">
     <h2>Exportar Caderno</h2>
-    <p class="section-desc">Gere um Excel com todos os ensaios e minérios, ou um PDF formatado como compêndio para impressão e arquivo. Os dados permanecem salvos no caderno após exportar.</p>
+    <p class="section-desc">Gere um Excel com todos os registros (minérios, alquímicos, receitas, ensaios e misturas) ou um PDF formatado como compêndio.</p>
 
     <div class="btn-row" style="margin-top:1.5rem">
       <button class="btn" onclick="exportXLSX()">⤓ Baixar Excel (.xlsx)</button>
@@ -889,7 +1850,7 @@
 </footer>
 
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
+  <div class="modal" id="modal-box">
     <h3 id="modal-title"></h3>
     <div class="modal-body" id="modal-body"></div>
     <div class="btn-row" id="modal-actions"></div>
@@ -897,48 +1858,141 @@
 </div>
 
 <script>
-const STORAGE_KEY_M = 'yara-caderno-minerais-v2';
-const STORAGE_KEY_E = 'yara-caderno-ensaios-v2';
+/* ====================================================================
+   CADERNO DO ALQUIMISTA — Teoria Yara
+   v3 — puzzle de soma (alvo Perfeito / Mais que Perfeito) + alquimia
+   ==================================================================== */
+
+/* ============== STORAGE & ESTADO ============== */
+const KEY_M   = 'yara-minerais-v3';
+const KEY_E   = 'yara-ensaios-v3';        // ensaios + misturas (type discriminator)
+const KEY_I   = 'yara-ingredientes-v1';
+const KEY_R   = 'yara-receitas-v1';
+const KEY_B   = 'yara-bandas-custom-v1';
+
+const BANDAS_PADRAO = ['H0','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10'];
+const SUPS = { 1:'¹', 2:'²', 3:'³', 4:'⁴', 5:'⁵', 6:'⁶' };
 
 let minerais = [];
-let ensaios = [];
+let ensaios = [];          // inclui misturas (type='ensaio'|'mistura')
+let ingredientes = [];
+let receitas = [];
+let bandasCustom = [];
 
-// estado do ensaio em andamento — agora a sequência é uma LISTA de marteladas
-// cada item é o índice da nota da assinatura (com repetições permitidas)
+// estado do ensaio em andamento
 let ensaioAtual = {
-  notas: [],          // notas da assinatura (com índices de ocorrência)
-  sequencia: [],      // sequência ordenada de batidas: [idxNota, idxNota, ...] com repetições
+  mineralId: null,
+  notas: [],          // notas únicas da assinatura: [{h, sup, idx}]
+  sequencia: [],      // [{idxNota, sinal:+1|-1}]
+  sinalAtual: 1,
+  perfeito: 0,
+  maisPerfeito: 0,
 };
 
+// estado da bancada alquímica
+let bancadaAtual = {
+  produto: null,        // 'pocao'|'bomba'|'perfume'|'pasta'
+  ingredientes: [],     // [{refId, fonte:'alquimico'|'mineral', etapas:['moer','ferver']}]
+};
+
+// estado do form de minério
+let formMinAssinatura = [];  // [{h, sup}]
+let formMinProps = [];       // [{tag, intensidade}]
+
+// estado do form de ingrediente alquímico
+let formIngProps = [];
+
+// estado do form de receita
+let formRecIngredientes = []; // [{refId, fonte, etapas:[]}]
+
+
+/* ============== INICIALIZAÇÃO ============== */
 function init() {
   carregar();
   setupTabs();
+  popularBandasDropdown();
   renderMinerais();
-  renderEnsaiosSelect();
+  renderIngredientes();
+  renderReceitas();
   renderEnsaios();
+  renderEnsaiosSelect();
+  renderPool();
   atualizarBadges();
+  atualizarPreviewValor();
+  atualizarSomaNatural();
+  document.querySelectorAll('.produto-card').forEach(p=>p.classList.remove('active'));
+  renderRecipiente();
 }
 
 function carregar() {
-  // tenta v2; se não, migra de v1
-  try {
-    const m = localStorage.getItem(STORAGE_KEY_M) || localStorage.getItem('yara-caderno-minerais-v1');
-    minerais = m ? JSON.parse(m) : [];
-  } catch (e) { minerais = []; }
-  try {
-    const e = localStorage.getItem(STORAGE_KEY_E) || localStorage.getItem('yara-caderno-ensaios-v1');
-    ensaios = e ? JSON.parse(e) : [];
-    // migração: ensaios v1 tinham `notas` com flag `batida` boolean, agora precisamos de `sequencia`
-    ensaios.forEach(en => {
-      if (!en.sequencia && en.notas) {
-        en.sequencia = en.notas.map((n, i) => n.batida ? i : -1).filter(x => x >= 0);
-      }
-    });
-  } catch (e) { ensaios = []; }
+  try { minerais = JSON.parse(localStorage.getItem(KEY_M) || '[]'); } catch(e) { minerais = []; }
+  try { ensaios  = JSON.parse(localStorage.getItem(KEY_E) || '[]'); } catch(e) { ensaios  = []; }
+  try { ingredientes = JSON.parse(localStorage.getItem(KEY_I) || '[]'); } catch(e) { ingredientes = []; }
+  try { receitas = JSON.parse(localStorage.getItem(KEY_R) || '[]'); } catch(e) { receitas = []; }
+  try { bandasCustom = JSON.parse(localStorage.getItem(KEY_B) || '[]'); } catch(e) { bandasCustom = []; }
+
+  // === MIGRAÇÃO de versões antigas ===
+  // minerais v1/v2 (storage keys antigas)
+  if (minerais.length === 0) {
+    const old = localStorage.getItem('yara-caderno-minerais-v2') || localStorage.getItem('yara-caderno-minerais-v1');
+    if (old) {
+      try {
+        minerais = JSON.parse(old);
+        // converter assinatura antiga [{h, t}] -> [{h, sup}]
+        minerais.forEach(m => {
+          if (Array.isArray(m.assinatura)) {
+            const idx = gerarIndicesLegacy(m.assinatura);
+            m.assinatura = idx.map(n => ({ h: n.h, sup: n.idx || null }));
+          }
+          if (typeof m.perfeito === 'undefined') {
+            // sugestão: soma natural; mais perfeito = soma + maior valor
+            const soma = (m.assinatura||[]).reduce((a,n)=>a+(n.h|0),0);
+            const mx = (m.assinatura||[]).reduce((a,n)=>Math.max(a,n.h|0),0);
+            m.perfeito = soma;
+            m.maisPerfeito = soma + mx;
+          }
+          if (!Array.isArray(m.props)) m.props = [];
+        });
+        salvar();
+      } catch(e) { /* ignore */ }
+    }
+  }
+  if (ensaios.length === 0) {
+    const old = localStorage.getItem('yara-caderno-ensaios-v2') || localStorage.getItem('yara-caderno-ensaios-v1');
+    if (old) {
+      try {
+        ensaios = JSON.parse(old);
+        ensaios.forEach(en => {
+          en.tipo = en.tipo || 'ensaio';
+          if (!Array.isArray(en.sequencia) || (en.sequencia.length && typeof en.sequencia[0] === 'number')) {
+            en.sequencia = (en.sequencia || []).map(idx => ({ idxNota: idx, sinal: 1 }));
+          } else if (en.sequencia.length && typeof en.sequencia[0] === 'object' && 'idxNota' in en.sequencia[0]) {
+            // já no novo formato
+          }
+        });
+        salvar();
+      } catch(e) { /* ignore */ }
+    }
+  }
+
+  // garante shape mínimo
+  minerais.forEach(m => {
+    if (!Array.isArray(m.assinatura)) m.assinatura = [];
+    if (!Array.isArray(m.props)) m.props = [];
+    if (typeof m.perfeito !== 'number') m.perfeito = 0;
+    if (typeof m.maisPerfeito !== 'number') m.maisPerfeito = 0;
+  });
+  ensaios.forEach(en => {
+    en.tipo = en.tipo || 'ensaio';
+  });
 }
+
 function salvar() {
-  localStorage.setItem(STORAGE_KEY_M, JSON.stringify(minerais));
-  localStorage.setItem(STORAGE_KEY_E, JSON.stringify(ensaios));
+  localStorage.setItem(KEY_M, JSON.stringify(minerais));
+  localStorage.setItem(KEY_E, JSON.stringify(ensaios));
+  localStorage.setItem(KEY_I, JSON.stringify(ingredientes));
+  localStorage.setItem(KEY_R, JSON.stringify(receitas));
+  localStorage.setItem(KEY_B, JSON.stringify(bandasCustom));
 }
 
 function setupTabs() {
@@ -950,14 +2004,19 @@ function setupTabs() {
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
       if (tab.dataset.tab === 'ensaio') renderEnsaiosSelect();
       if (tab.dataset.tab === 'registros') renderEnsaios();
+      if (tab.dataset.tab === 'bancada') { renderPool(); renderEsteira(); }
+      if (tab.dataset.tab === 'receitas') { renderRecAddSelect(); renderReceitas(); }
     });
   });
 }
 
 function atualizarBadges() {
-  document.getElementById('badge-minerais').textContent = minerais.length;
-  document.getElementById('badge-registros').textContent = ensaios.length;
-  document.getElementById('btn-seed').style.display = minerais.length === 0 ? '' : 'none';
+  document.getElementById('badge-minerais').textContent   = minerais.length;
+  document.getElementById('badge-alquimicos').textContent = ingredientes.length;
+  document.getElementById('badge-receitas').textContent   = receitas.length;
+  document.getElementById('badge-registros').textContent  = ensaios.length;
+  const sb = document.getElementById('btn-seed');
+  if (sb) sb.style.display = minerais.length === 0 ? '' : 'none';
 }
 
 function flash(msg, tipo='success') {
@@ -968,19 +2027,84 @@ function flash(msg, tipo='success') {
   setTimeout(() => f.remove(), 2800);
 }
 
-/* MINÉRIOS */
-function parseAssinatura(str) {
-  if (!str) return [];
-  return str.split(/[,;\n]/).map(s => s.trim()).filter(Boolean).map(token => {
-    const m = token.match(/H?\s*(\d)\s*[:\s]\s*([\d.,]+)/i);
-    if (!m) return null;
-    return { h: parseInt(m[1]), t: parseFloat(m[2].replace(',', '.')) };
-  }).filter(Boolean);
+/* ============== HELPERS ============== */
+function escapeHTML(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function formatarData(iso) {
+  try {
+    return new Date(iso).toLocaleString('pt-BR', {
+      day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+    });
+  } catch { return iso; }
+}
+function formatarDataCurta(iso) {
+  try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
+}
+function dateStamp() {
+  const d = new Date();
+  return d.getFullYear() + (''+(d.getMonth()+1)).padStart(2,'0') + (''+d.getDate()).padStart(2,'0') +
+    '_' + (''+d.getHours()).padStart(2,'0') + (''+d.getMinutes()).padStart(2,'0');
+}
+function bandaParaH(banda) {
+  // 'H4' -> 4 ; bandas customizadas: tenta achar dígito; senão 0
+  const m = String(banda).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+function valorBanda(banda) {
+  // valor harmônico = índice da banda (H0=0, H1=1, ..., H10=10)
+  return bandaParaH(banda);
+}
+function notaLabel(n) {
+  // n = {h, sup}
+  return 'H' + n.h + (n.sup ? (SUPS[n.sup] || ('^'+n.sup)) : '');
+}
+function supChar(sup) { return sup ? (SUPS[sup] || ('^'+sup)) : ''; }
+function classeLabel(c) {
+  return c === 'puro' ? 'Puro' : c === 'reativo' ? 'Reativo' : 'Incerto';
+}
+function tipoLabel(t) {
+  return { erva:'Erva', essencia:'Essência', reagente:'Reagente', animal:'Parte animal' }[t] || t;
+}
+function raridadeLabel(r) {
+  return { comum:'Comum', incomum:'Incomum', rara:'Rara', lendaria:'Lendária' }[r] || r;
+}
+function etapaLabel(e) {
+  return { moer:'Moer', ferver:'Ferver', macerar:'Macerar', destilar:'Destilar' }[e] || e;
+}
+function etapaIcone(e) {
+  return { moer:'⚒', ferver:'♨', macerar:'🫙', destilar:'⚗' }[e] || '·';
+}
+function produtoLabel(p) {
+  return { pocao:'Poção', bomba:'Bomba', perfume:'Perfume', pasta:'Pasta' }[p] || p;
+}
+function produtoIcone(p) {
+  return { pocao:'⚗', bomba:'💣', perfume:'🜍', pasta:'⚱' }[p] || '·';
+}
+function statusLabel(s) {
+  return {
+    perfeito:'Perfeito', 'mais-perfeito':'Mais que Perfeito',
+    sucesso:'Sucesso', parcial:'Parcial', falha:'Falha', surpresa:'Surpresa',
+    descoberta:'Descoberta'
+  }[s] || s;
+}
+function statusStyle(s) {
+  if (s === 'perfeito')      return 'background:rgba(79,107,62,0.18);color:var(--green-old);border-color:var(--green-old)';
+  if (s === 'mais-perfeito') return 'background:rgba(184,132,28,0.30);color:var(--rust);border-color:var(--gold)';
+  if (s === 'sucesso')       return 'background:rgba(79,107,62,0.18);color:var(--green-old);border-color:var(--green-old)';
+  if (s === 'falha')         return 'background:rgba(160,65,28,0.18);color:var(--rust);border-color:var(--rust)';
+  if (s === 'parcial')       return 'background:rgba(184,132,28,0.18);color:var(--gold);border-color:var(--gold)';
+  if (s === 'surpresa')      return 'background:rgba(44,86,112,0.18);color:var(--blue-old);border-color:var(--blue-old)';
+  if (s === 'descoberta')    return 'background:rgba(91,62,107,0.22);color:var(--violet-old);border-color:var(--violet-old)';
+  return '';
 }
 
-function gerarIndices(notas) {
-  const counts = {};
-  notas.forEach(n => counts[n.h] = (counts[n.h] || 0) + 1);
+// legacy: gera índice (sup) para minerais antigos sem sup explícito
+function gerarIndicesLegacy(notas) {
+  const counts = {}; notas.forEach(n => counts[n.h] = (counts[n.h] || 0) + 1);
   const seen = {};
   return notas.map(n => {
     if (counts[n.h] > 1) {
@@ -991,62 +2115,213 @@ function gerarIndices(notas) {
   });
 }
 
-function notaLabel(nota) {
-  const supers = { 1:'¹', 2:'²', 3:'³', 4:'⁴', 5:'⁵', 6:'⁶' };
-  return 'H' + nota.h + (nota.idx !== null && nota.idx !== undefined ? (supers[nota.idx] || nota.idx) : '');
+
+/* ============== BANDAS (dropdown + customização) ============== */
+function listarBandas() {
+  return [...BANDAS_PADRAO, ...bandasCustom];
+}
+function popularBandasDropdown() {
+  const sel = document.getElementById('add-banda');
+  const atual = sel.value;
+  sel.innerHTML = listarBandas().map(b =>
+    `<option value="${escapeHTML(b)}">${escapeHTML(b)} (vale ${valorBanda(b)})</option>`
+  ).join('');
+  if (atual) sel.value = atual;
+}
+function abrirGerenciarBandas() {
+  // não está mais visível por padrão (removi do form de min para deixar mais limpo),
+  // mas mantenho a função caso seja chamada
+  const html = `
+    <p style="margin-bottom:0.6rem">Bandas padrão (H0–H10) sempre disponíveis. Adicione bandas customizadas se precisar (ex: H11, HΩ).</p>
+    <div class="bandas-modal-list">
+      ${BANDAS_PADRAO.map(b => `<span class="banda-mini" style="opacity:0.7" title="padrão">${b} <em style="color:var(--ink-faded)">·padrão·</em></span>`).join('')}
+      ${bandasCustom.map(b => `<span class="banda-mini">${escapeHTML(b)} <button class="x-btn" onclick="removerBandaCustom('${escapeHTML(b)}')" title="remover">×</button></span>`).join('')}
+    </div>
+    <div style="display:flex;gap:0.4rem;margin-top:0.6rem">
+      <input type="text" id="nova-banda-input" placeholder="Ex: H11" style="flex:1;border:1px solid var(--ink-faded);padding:0.4rem 0.6rem">
+      <button class="btn btn-tiny" onclick="adicionarBandaCustomFromInput()">+ adicionar</button>
+    </div>
+  `;
+  abrirModal('Gerenciar bandas customizadas', html, [
+    { label: 'Fechar', class:'btn-secondary', onClick: closeModal }
+  ]);
+}
+window.adicionarBandaCustomFromInput = function() {
+  const v = document.getElementById('nova-banda-input').value.trim();
+  if (!v) return;
+  if (listarBandas().includes(v)) { flash('Banda já existe.', 'error'); return; }
+  bandasCustom.push(v);
+  salvar();
+  popularBandasDropdown();
+  abrirGerenciarBandas();
+};
+window.removerBandaCustom = function(b) {
+  bandasCustom = bandasCustom.filter(x => x !== b);
+  salvar();
+  popularBandasDropdown();
+  abrirGerenciarBandas();
+};
+
+window.atualizarPreviewValor = function() {
+  const sel = document.getElementById('add-banda');
+  const v = sel ? valorBanda(sel.value) : 0;
+  const out = document.getElementById('banda-preview-valor');
+  if (out) out.textContent = isNaN(v) ? '—' : String(v);
+};
+
+
+/* ============== FORM DE MINÉRIO ============== */
+window.addNotaAssinatura = function() {
+  const banda = document.getElementById('add-banda').value;
+  const sup = parseInt(document.getElementById('add-sup').value, 10) || null;
+  if (!banda) { flash('Selecione uma banda.', 'error'); return; }
+  formMinAssinatura.push({ h: bandaParaH(banda), sup });
+  renderChipsAssinatura();
+  atualizarSomaNatural();
+};
+window.removerNotaAssinatura = function(i) {
+  formMinAssinatura.splice(i, 1);
+  renderChipsAssinatura();
+  atualizarSomaNatural();
+};
+function renderChipsAssinatura() {
+  const cont = document.getElementById('min-assinatura-chips');
+  if (formMinAssinatura.length === 0) {
+    cont.innerHTML = '<span class="assinatura-empty">Nenhuma nota adicionada — selecione a banda e o sobrescrito, e clique em "+ adicionar nota".</span>';
+    return;
+  }
+  cont.innerHTML = formMinAssinatura.map((n, i) => `
+    <span class="assinatura-chip">
+      <span class="ord">${i+1}</span>
+      <span class="nota-h">${notaLabel(n)}</span>
+      <span class="dur">vale ${n.h}</span>
+      <button class="x-btn" onclick="removerNotaAssinatura(${i})" title="remover">×</button>
+    </span>
+  `).join('');
+}
+function atualizarSomaNatural() {
+  const soma = formMinAssinatura.reduce((a, n) => a + n.h, 0);
+  const out = document.getElementById('min-soma-natural');
+  if (out) out.textContent = String(soma);
+}
+
+window.addMinProp = function() {
+  const tag = document.getElementById('add-min-prop-tag').value.trim();
+  const intensidade = parseInt(document.getElementById('add-min-prop-int').value, 10) || 1;
+  if (!tag) return;
+  formMinProps.push({ tag, intensidade: Math.max(1, Math.min(5, intensidade)) });
+  document.getElementById('add-min-prop-tag').value = '';
+  document.getElementById('add-min-prop-int').value = '';
+  renderMinPropsChips();
+};
+window.removerMinProp = function(i) {
+  formMinProps.splice(i, 1);
+  renderMinPropsChips();
+};
+function renderMinPropsChips() {
+  const cont = document.getElementById('min-props-chips');
+  cont.innerHTML = formMinProps.length === 0
+    ? '<span class="assinatura-empty">Nenhuma propriedade alquímica.</span>'
+    : formMinProps.map((p, i) => `
+        <span class="prop-chip">${escapeHTML(p.tag)}<span class="int">×${p.intensidade}</span>
+          <button class="x-btn" style="background:transparent;border:none;color:var(--rust);cursor:pointer;margin-left:4px" onclick="removerMinProp(${i})">×</button>
+        </span>`).join('');
 }
 
 function salvarMineral() {
   const nome = document.getElementById('min-nome').value.trim();
   const classe = document.getElementById('min-classe').value;
   const prop = document.getElementById('min-prop').value.trim();
-  const assinaturaRaw = document.getElementById('min-assinatura').value.trim();
   const origem = document.getElementById('min-origem').value.trim();
-  const notas = document.getElementById('min-notas').value.trim();
+  const icone = document.getElementById('min-icone').value.trim();
+  const obs = document.getElementById('min-notas').value.trim();
+  const perfeito = parseInt(document.getElementById('min-perfeito').value, 10);
+  const maisPerfeito = parseInt(document.getElementById('min-mais-perfeito').value, 10);
+
+  const editId = document.getElementById('btn-salvar-mineral').dataset.editId;
 
   if (!nome) { flash('Informe o nome do minério.', 'error'); return; }
-  if (!prop) { flash('Informe a propriedade do minério.', 'error'); return; }
-  const assinatura = parseAssinatura(assinaturaRaw);
-  if (assinatura.length === 0) {
-    flash('Assinatura inválida. Use formato H1:2.0, H2:1.5...', 'error');
-    return;
-  }
+  if (!prop) { flash('Informe a propriedade.', 'error'); return; }
+  if (formMinAssinatura.length === 0) { flash('Adicione pelo menos uma nota à assinatura.', 'error'); return; }
+  if (isNaN(perfeito)) { flash('Informe o Valor Perfeito.', 'error'); return; }
+  if (isNaN(maisPerfeito)) { flash('Informe o Valor Mais que Perfeito.', 'error'); return; }
 
-  const novo = {
-    id: 'min-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
-    nome, classe, prop, assinatura, origem, notas,
-    criadoEm: new Date().toISOString(),
+  const dados = {
+    nome, classe, prop, origem, icone, obs,
+    assinatura: formMinAssinatura.map(n => ({ ...n })),
+    perfeito, maisPerfeito,
+    props: formMinProps.map(p => ({ ...p })),
   };
-  minerais.unshift(novo);
+
+  if (editId) {
+    const m = minerais.find(x => x.id === editId);
+    if (m) Object.assign(m, dados);
+    document.getElementById('btn-salvar-mineral').dataset.editId = '';
+    document.getElementById('btn-salvar-mineral').textContent = 'Cadastrar minério';
+    flash(`Minério "${nome}" atualizado.`);
+  } else {
+    minerais.unshift({
+      id: 'min-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      ...dados,
+      criadoEm: new Date().toISOString(),
+    });
+    flash(`Minério "${nome}" cadastrado.`);
+  }
   salvar();
   limparFormMineral();
   renderMinerais();
   renderEnsaiosSelect();
+  renderPool();
+  renderRecAddSelect();
   atualizarBadges();
-  flash(`Minério "${nome}" cadastrado.`);
 }
 
 function limparFormMineral() {
-  ['min-nome','min-prop','min-assinatura','min-origem','min-notas'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['min-nome','min-prop','min-origem','min-icone','min-notas','min-perfeito','min-mais-perfeito']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('min-classe').value = 'incerto';
+  formMinAssinatura = [];
+  formMinProps = [];
+  renderChipsAssinatura();
+  renderMinPropsChips();
+  atualizarSomaNatural();
+  document.getElementById('btn-salvar-mineral').dataset.editId = '';
+  document.getElementById('btn-salvar-mineral').textContent = 'Cadastrar minério';
+}
+
+function editarMineral(id) {
+  const m = minerais.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('min-nome').value = m.nome;
+  document.getElementById('min-classe').value = m.classe;
+  document.getElementById('min-prop').value = m.prop;
+  document.getElementById('min-origem').value = m.origem || '';
+  document.getElementById('min-icone').value = m.icone || '';
+  document.getElementById('min-notas').value = m.obs || m.notas || '';
+  document.getElementById('min-perfeito').value = m.perfeito;
+  document.getElementById('min-mais-perfeito').value = m.maisPerfeito;
+  formMinAssinatura = m.assinatura.map(n => ({ ...n }));
+  formMinProps = (m.props || []).map(p => ({ ...p }));
+  renderChipsAssinatura();
+  renderMinPropsChips();
+  atualizarSomaNatural();
+  document.getElementById('btn-salvar-mineral').dataset.editId = id;
+  document.getElementById('btn-salvar-mineral').textContent = 'Atualizar minério';
+  document.querySelector('.tab[data-tab="banco"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function removerMineral(id) {
   const m = minerais.find(x => x.id === id);
   if (!m) return;
-  abrirModal(
-    'Remover minério?',
-    `Deseja realmente remover "${m.nome}" do banco? Esta ação não afeta ensaios já registrados, mas o minério não estará mais disponível para novos ensaios.`,
+  abrirModal('Remover minério?',
+    `Remover "${escapeHTML(m.nome)}" do banco? Ensaios já registrados não são afetados.`,
     [
-      { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
-      { label: 'Remover', class: 'btn-danger', onClick: () => {
+      { label: 'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label: 'Remover', class:'btn-danger', onClick: () => {
         minerais = minerais.filter(x => x.id !== id);
         salvar();
-        renderMinerais();
-        renderEnsaiosSelect();
-        atualizarBadges();
+        renderMinerais(); renderEnsaiosSelect(); renderPool(); atualizarBadges();
         flash(`Minério "${m.nome}" removido.`);
         closeModal();
       }},
@@ -1060,12 +2335,9 @@ function renderMinerais() {
   const filtroClasse = document.getElementById('filter-min-classe').value;
 
   let lista = minerais.slice();
-  if (filtro) {
-    lista = lista.filter(m =>
-      m.nome.toLowerCase().includes(filtro) ||
-      m.prop.toLowerCase().includes(filtro)
-    );
-  }
+  if (filtro) lista = lista.filter(m =>
+    m.nome.toLowerCase().includes(filtro) || (m.prop || '').toLowerCase().includes(filtro)
+  );
   if (filtroClasse) lista = lista.filter(m => m.classe === filtroClasse);
 
   if (lista.length === 0) {
@@ -1077,23 +2349,27 @@ function renderMinerais() {
   }
 
   grid.innerHTML = lista.map(m => {
-    const notasIdx = gerarIndices(m.assinatura);
-    const sigStr = notasIdx.map(n => notaLabel(n) + ' (' + n.t.toFixed(1) + 's)').join(' · ');
+    const sigStr = (m.assinatura || []).map(n => notaLabel(n) + '<span style="color:var(--ink-faded)">(' + n.h + ')</span>').join(' · ');
+    const propsStr = (m.props || []).length
+      ? '<div class="prop-chips">' + m.props.map(p => `<span class="prop-chip">${escapeHTML(p.tag)}<span class="int">×${p.intensidade}</span></span>`).join('') + '</div>'
+      : '';
+    const ico = m.icone ? `<span style="font-size:1.4rem;float:right">${escapeHTML(m.icone)}</span>` : '';
     return `
       <div class="mineral-card">
-        <h3>${escapeHTML(m.nome)}</h3>
+        ${ico}<h3>${escapeHTML(m.nome)}</h3>
         <div class="card-meta">${escapeHTML(m.prop)}</div>
         <div class="card-tags">
           <span class="tag tag-${m.classe}">${classeLabel(m.classe)}</span>
+          <span class="tag" style="background:rgba(79,107,62,0.18);color:var(--green-old);border-color:var(--green-old)">★ ${m.perfeito}</span>
+          <span class="tag" style="background:rgba(184,132,28,0.30);color:var(--rust);border-color:var(--gold)">★★ ${m.maisPerfeito}</span>
         </div>
-        <div class="card-data">
-          <span class="label">Assinatura</span>
-          ${sigStr}
-        </div>
+        <div class="card-data"><span class="label">Assinatura</span>${sigStr}</div>
         ${m.origem ? `<div class="card-data"><span class="label">Origem</span>${escapeHTML(m.origem)}</div>` : ''}
-        ${m.notas ? `<div class="card-data"><span class="label">Notas</span>${escapeHTML(m.notas)}</div>` : ''}
+        ${propsStr ? `<div class="card-data"><span class="label">Propriedades alquímicas</span>${propsStr}</div>` : ''}
+        ${m.obs ? `<div class="card-data"><span class="label">Notas</span>${escapeHTML(m.obs)}</div>` : ''}
         <div class="card-actions">
-          <button class="btn btn-secondary" onclick="usarMineralEnsaio('${m.id}')">Usar em ensaio</button>
+          <button class="btn btn-secondary" onclick="usarMineralEnsaio('${m.id}')">Ensaio</button>
+          <button class="btn btn-secondary" onclick="editarMineral('${m.id}')">Editar</button>
           <button class="btn btn-secondary" onclick="removerMineral('${m.id}')">Remover</button>
         </div>
       </div>
@@ -1101,24 +2377,19 @@ function renderMinerais() {
   }).join('');
 }
 
-function classeLabel(c) {
-  return c === 'puro' ? 'Puro' : c === 'reativo' ? 'Reativo' : 'Incerto';
-}
-function statusLabel(s) {
-  return { sucesso:'Sucesso', parcial:'Parcial', falha:'Falha', surpresa:'Surpresa' }[s] || s;
-}
-
-function usarMineralEnsaio(id) {
+window.usarMineralEnsaio = function(id) {
   document.querySelector('.tab[data-tab="ensaio"]').click();
   setTimeout(() => {
     document.getElementById('ensaio-mineral').value = id;
     onMineralChange();
   }, 100);
-}
+};
 
-/* ENSAIO */
+
+/* ============== ENSAIO (PUZZLE DE SOMA) ============== */
 function renderEnsaiosSelect() {
   const sel = document.getElementById('ensaio-mineral');
+  if (!sel) return;
   const valorAtual = sel.value;
   if (minerais.length === 0) {
     document.getElementById('ensaio-vazio').style.display = '';
@@ -1133,7 +2404,7 @@ function renderEnsaiosSelect() {
   if (valorAtual) sel.value = valorAtual;
 }
 
-function onMineralChange() {
+window.onMineralChange = function() {
   const id = document.getElementById('ensaio-mineral').value;
   if (!id) {
     document.getElementById('pauta-section').style.display = 'none';
@@ -1142,145 +2413,188 @@ function onMineralChange() {
   }
   const m = minerais.find(x => x.id === id);
   if (!m) return;
-  ensaioAtual.notas = gerarIndices(m.assinatura).map(n => ({ ...n }));
+  ensaioAtual.mineralId = m.id;
+  ensaioAtual.notas = m.assinatura.map(n => ({ ...n }));
   ensaioAtual.sequencia = [];
+  ensaioAtual.sinalAtual = 1;
+  ensaioAtual.perfeito = m.perfeito;
+  ensaioAtual.maisPerfeito = m.maisPerfeito;
   document.getElementById('pauta-section').style.display = '';
   document.getElementById('resultado-section').style.display = '';
+  document.getElementById('alvo-perfeito').textContent = m.perfeito;
+  document.getElementById('alvo-mais-perfeito').textContent = m.maisPerfeito;
+  setSinal(1);
   renderPauta();
+};
+
+window.setSinal = function(s) {
+  ensaioAtual.sinalAtual = s;
+  document.getElementById('btn-sinal-mais').classList.toggle('ativo', s === 1);
+  document.getElementById('btn-sinal-menos').classList.toggle('ativo', s === -1);
+};
+
+function calcularSomaAtual() {
+  return ensaioAtual.sequencia.reduce((acc, b) => {
+    const n = ensaioAtual.notas[b.idxNota];
+    return acc + (n.h * b.sinal);
+  }, 0);
+}
+
+function statusAutoDaSoma(soma) {
+  if (soma === ensaioAtual.maisPerfeito) return 'mais-perfeito';
+  if (soma === ensaioAtual.perfeito)     return 'perfeito';
+  return 'falha';
 }
 
 function renderPauta() {
-  // controles de duração
-  const controls = document.getElementById('pauta-duration-controls');
-  controls.innerHTML = ensaioAtual.notas.map((n, i) => `
-    <label>
-      <span>${notaLabel(n)}</span>
-      <input type="number" step="0.5" min="0.5" max="5" value="${n.t.toFixed(1)}"
-             onchange="setDur(${i}, this.value)">
-      <span style="color:var(--ink-faded);font-size:0.85rem">s</span>
-    </label>
-  `).join('');
-
-  // SVG
   const container = document.getElementById('pauta-svg-container');
   const notas = ensaioAtual.notas;
-  if (notas.length === 0) {
+  if (!notas || notas.length === 0) {
     container.innerHTML = '<p class="empty-state">Sem notas na assinatura.</p>';
+    renderSequencia();
+    atualizarAlvosDisplay();
     return;
   }
 
-  const padLeft = 50, padRight = 30, padTop = 40, padBottom = 50;
-  const lineH = 30;
-  const totalT = notas.reduce((acc, n) => acc + n.t, 0);
-  const minColW = 70;
-  const colWidthsByT = notas.map(n => Math.max(minColW, (n.t / totalT) * 600));
-  const innerW = colWidthsByT.reduce((a,b)=>a+b,0);
+  const padLeft = 60, padRight = 30, padTop = 30, padBottom = 50;
+  const lineH = 22;
+  const minColW = 64;
+  const maxBanda = Math.max(10, ...notas.map(n=>n.h));
+  const colWidthsByH = notas.map(()=> minColW);
+  const innerW = colWidthsByH.reduce((a,b)=>a+b,0);
   const w = padLeft + innerW + padRight;
-  const h = padTop + lineH * 4 + padBottom;
+  const h = padTop + lineH * (maxBanda) + padBottom;
 
   let xCenters = [];
   let acc = padLeft;
   for (let i = 0; i < notas.length; i++) {
-    xCenters.push(acc + colWidthsByT[i]/2);
-    acc += colWidthsByT[i];
+    xCenters.push(acc + colWidthsByH[i]/2);
+    acc += colWidthsByH[i];
   }
 
-  // contagem de batidas por nota
+  // contagem de batidas por nota (com sinais separados)
   const batidasPorNota = {};
-  ensaioAtual.sequencia.forEach((idx, ordem) => {
-    if (!batidasPorNota[idx]) batidasPorNota[idx] = [];
-    batidasPorNota[idx].push(ordem + 1); // ordem 1-based
+  ensaioAtual.sequencia.forEach((b, ordem) => {
+    if (!batidasPorNota[b.idxNota]) batidasPorNota[b.idxNota] = [];
+    batidasPorNota[b.idxNota].push({ ordem: ordem+1, sinal: b.sinal });
   });
 
   let svg = `<svg class="pauta-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // linhas H4..H0
-  for (let lvl = 0; lvl <= 4; lvl++) {
-    const y = padTop + (4 - lvl) * lineH;
+  // linhas H0..Hmax (de cima pra baixo: maxBanda em cima)
+  for (let lvl = 0; lvl <= maxBanda; lvl++) {
+    const y = padTop + (maxBanda - lvl) * lineH;
     svg += `<line class="pauta-line" x1="${padLeft}" y1="${y}" x2="${w - padRight}" y2="${y}"/>`;
-    svg += `<text class="pauta-h-label" x="${padLeft - 25}" y="${y + 4}">H${lvl}</text>`;
+    svg += `<text class="pauta-h-label" x="${padLeft - 30}" y="${y + 4}">H${lvl}</text>`;
   }
 
-  // Notas
+  // notas
   notas.forEach((n, i) => {
     const cx = xCenters[i];
-    const cy = padTop + (4 - n.h) * lineH;
-    const colW = colWidthsByT[i];
+    const cy = padTop + (maxBanda - n.h) * lineH;
+    const colW = colWidthsByH[i];
     const colX = cx - colW/2;
     const ordens = batidasPorNota[i] || [];
     const temBatida = ordens.length > 0;
 
-    // Background da coluna
+    // Background
     svg += `<rect class="nota-bg ${temBatida?'tem-batida':''}"
               x="${colX + 2}" y="${padTop - 5}"
-              width="${colW - 4}" height="${lineH * 4 + 10}"
+              width="${colW - 4}" height="${lineH * maxBanda + 10}"
               onclick="adicionarBatida(${i})"/>`;
 
     // Círculo da nota
     svg += `<circle class="nota-circle ${temBatida?'batida':'unbatida'}"
               cx="${cx}" cy="${cy}" r="9"/>`;
 
-    // Marcadores de ordem (1ª, 2ª, 3ª... batida)
+    // Marcadores de ordem com sinal
     if (ordens.length > 0) {
-      const ordensTxt = ordens.length <= 4 ? ordens.join(',') : ordens.slice(0, 3).join(',') + '...';
+      const ordensTxt = ordens.length <= 4
+        ? ordens.map(o => (o.sinal>0?'+':'−')+o.ordem).join(',')
+        : ordens.slice(0, 3).map(o => (o.sinal>0?'+':'−')+o.ordem).join(',') + '...';
       svg += `<text class="ordem-marker" x="${cx}" y="${cy - 14}">${ordensTxt}</text>`;
-      // Contador grande se houver muitas
       if (ordens.length > 1) {
         svg += `<text class="contador-batidas" x="${cx + 14}" y="${cy + 4}">×${ordens.length}</text>`;
       }
     }
 
-    // Label da nota
+    // Label
     svg += `<text class="nota-label" x="${cx}" y="${h - padBottom + 18}">${notaLabel(n)}</text>`;
-    svg += `<text class="duration-label" x="${cx}" y="${h - padBottom + 32}">${n.t.toFixed(1)}s</text>`;
+    svg += `<text class="duration-label" x="${cx}" y="${h - padBottom + 32}">vale ${n.h}</text>`;
   });
 
   svg += `</svg>`;
   container.innerHTML = svg;
 
   renderSequencia();
+  atualizarAlvosDisplay();
 }
 
 function renderSequencia() {
   const cont = document.getElementById('sequencia-pilulas');
   if (!cont) return;
   if (ensaioAtual.sequencia.length === 0) {
-    cont.innerHTML = '<span class="pilula-empty">Clique em uma nota da pauta para adicionar uma martelada.</span>';
-    document.getElementById('btn-desfazer').disabled = true;
-    document.getElementById('btn-desfazer').style.opacity = '0.4';
+    cont.innerHTML = '<span class="pilula-empty">Clique numa nota da pauta para somar (+) ou subtrair (−), conforme o sinal selecionado.</span>';
+    const btn = document.getElementById('btn-desfazer');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; }
   } else {
-    document.getElementById('btn-desfazer').disabled = false;
-    document.getElementById('btn-desfazer').style.opacity = '1';
+    const btn = document.getElementById('btn-desfazer');
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     let html = '';
-    ensaioAtual.sequencia.forEach((idxNota, ordem) => {
-      const nota = ensaioAtual.notas[idxNota];
-      const lbl = notaLabel(nota);
-      if (ordem > 0) html += '<span class="seta-ordem">→</span>';
-      html += `<span class="pilula">
+    ensaioAtual.sequencia.forEach((b, ordem) => {
+      const n = ensaioAtual.notas[b.idxNota];
+      const lbl = notaLabel(n);
+      const cls = b.sinal < 0 ? 'pilula subtrai' : 'pilula';
+      const sinalStr = b.sinal > 0 ? '+' : '−';
+      if (ordem > 0) html += '<span class="seta-ordem">·</span>';
+      html += `<span class="${cls}">
         <span class="ordem">${ordem + 1}</span>
-        <span class="nota-txt">${lbl}</span>
-        <button class="x-btn" onclick="removerBatida(${ordem})" title="Remover esta martelada">×</button>
+        <span class="nota-txt">${sinalStr} ${lbl} (${n.h})</span>
+        <button class="x-btn" onclick="removerBatida(${ordem})" title="Remover">×</button>
       </span>`;
     });
     cont.innerHTML = html;
   }
   atualizarSummary();
 }
-
 function atualizarSummary() {
   const txt = document.getElementById('caminho-text');
+  if (!txt) return;
   if (ensaioAtual.sequencia.length === 0) {
     txt.textContent = 'nenhuma martelada';
     txt.classList.add('empty');
   } else {
     txt.classList.remove('empty');
-    const labels = ensaioAtual.sequencia.map(idx => notaLabel(ensaioAtual.notas[idx]));
-    txt.textContent = labels.join(' · ');
+    const partes = ensaioAtual.sequencia.map(b => {
+      const n = ensaioAtual.notas[b.idxNota];
+      return (b.sinal>0?'+':'−') + n.h + supChar(n.sup ? n.sup : 0).replace(/⁰/,'');
+    });
+    const soma = calcularSomaAtual();
+    txt.textContent = partes.join(' ') + ' = ' + soma;
+  }
+}
+function atualizarAlvosDisplay() {
+  const soma = calcularSomaAtual();
+  document.getElementById('soma-atual').textContent = soma;
+  const dist = document.getElementById('soma-distancia');
+  const status = statusAutoDaSoma(soma);
+  const elStatus = document.getElementById('alvo-status');
+  elStatus.textContent = status === 'mais-perfeito' ? 'Mais que Perfeito ★★'
+                       : status === 'perfeito' ? 'Perfeito ★'
+                       : 'fora do alvo';
+  elStatus.className = 'alvo-num ' + status;
+  document.getElementById('soma-atual').className = 'alvo-num ' + (status==='falha' ? '' : status);
+  if (status === 'falha') {
+    const dP = ensaioAtual.perfeito - soma;
+    const dM = ensaioAtual.maisPerfeito - soma;
+    dist.textContent = `falta ${dP>=0?'+':''}${dP} para Perfeito · ${dM>=0?'+':''}${dM} para Mais que Perfeito`;
+  } else {
+    dist.textContent = '✓ alvo atingido';
   }
 }
 
 window.adicionarBatida = function(idxNota) {
-  ensaioAtual.sequencia.push(idxNota);
+  ensaioAtual.sequencia.push({ idxNota, sinal: ensaioAtual.sinalAtual });
   renderPauta();
 };
 window.removerBatida = function(ordem) {
@@ -1296,247 +2610,1127 @@ window.limparSequencia = function() {
   ensaioAtual.sequencia = [];
   renderPauta();
 };
-window.setDur = function(i, val) {
-  const v = parseFloat(val);
-  if (isNaN(v) || v <= 0) return;
-  ensaioAtual.notas[i].t = v;
-  renderPauta();
-};
 
 function salvarEnsaio() {
   const idMin = document.getElementById('ensaio-mineral').value;
   const reagente = document.getElementById('ensaio-reagente').value.trim();
   const gesto = document.getElementById('ensaio-gesto').value.trim();
   const resultado = document.getElementById('ensaio-resultado').value.trim();
-  const status = document.getElementById('ensaio-status').value;
+  let status = document.getElementById('ensaio-status').value;
   const obs = document.getElementById('ensaio-obs').value.trim();
 
   if (!idMin) { flash('Selecione um minério.', 'error'); return; }
   const m = minerais.find(x => x.id === idMin);
   if (!m) { flash('Minério não encontrado.', 'error'); return; }
   if (ensaioAtual.sequencia.length === 0 && status !== 'falha') {
-    flash('Adicione ao menos uma martelada à sequência (ou registre como falha).', 'error');
+    flash('Adicione ao menos uma martelada (ou registre como falha).', 'error');
     return;
   }
   if (!resultado) { flash('Descreva o resultado obtido.', 'error'); return; }
 
-  const caminhoLabels = ensaioAtual.sequencia.map(idx => notaLabel(ensaioAtual.notas[idx]));
-  const notasFotografia = ensaioAtual.notas.map(n => ({
-    h: n.h, t: n.t, idx: n.idx
-  }));
-
+  const soma = calcularSomaAtual();
   const novo = {
     id: 'ens-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+    tipo: 'ensaio',
     mineralId: m.id,
     mineralNome: m.nome,
     mineralClasse: m.classe,
     mineralProp: m.prop,
-    reagente,
-    gesto,
-    sequencia: ensaioAtual.sequencia.slice(),
-    caminho: caminhoLabels,
-    caminhoStr: caminhoLabels.join(' · '),
-    numMarteladas: ensaioAtual.sequencia.length,
-    notas: notasFotografia,
-    resultado,
-    status,
-    obs,
+    perfeito: m.perfeito,
+    maisPerfeito: m.maisPerfeito,
+    reagente, gesto,
+    sequencia: ensaioAtual.sequencia.map(b => ({ ...b })),
+    notas: ensaioAtual.notas.map(n => ({ ...n })),
+    soma, somaNatural: ensaioAtual.notas.reduce((a,n)=>a+n.h,0),
+    statusAutoSoma: statusAutoDaSoma(soma),
+    resultado, status, obs,
     data: new Date().toISOString(),
   };
-
   ensaios.unshift(novo);
   salvar();
   limparFormEnsaio();
-  renderEnsaios();
-  atualizarBadges();
+  renderEnsaios(); atualizarBadges();
   flash(`Ensaio em "${m.nome}" registrado.`);
 }
-
 function limparFormEnsaio() {
   document.getElementById('ensaio-reagente').value = '';
   document.getElementById('ensaio-gesto').value = '';
   document.getElementById('ensaio-resultado').value = '';
   document.getElementById('ensaio-obs').value = '';
-  document.getElementById('ensaio-status').value = 'sucesso';
+  document.getElementById('ensaio-status').value = 'perfeito';
   ensaioAtual.sequencia = [];
   renderPauta();
 }
 
-/* REGISTROS */
+
+/* ============== INGREDIENTES ALQUÍMICOS ============== */
+window.atualizarEtapaPill = function(input) {
+  const lab = input.closest('.etapa-pill');
+  if (lab) lab.classList.toggle('checked', input.checked);
+};
+
+window.addIngProp = function() {
+  const tag = document.getElementById('add-ing-prop-tag').value.trim();
+  const intensidade = parseInt(document.getElementById('add-ing-prop-int').value, 10) || 1;
+  if (!tag) return;
+  formIngProps.push({ tag, intensidade: Math.max(1, Math.min(5, intensidade)) });
+  document.getElementById('add-ing-prop-tag').value = '';
+  document.getElementById('add-ing-prop-int').value = '';
+  renderIngPropsChips();
+};
+window.removerIngProp = function(i) {
+  formIngProps.splice(i, 1);
+  renderIngPropsChips();
+};
+function renderIngPropsChips() {
+  const cont = document.getElementById('ing-props-chips');
+  cont.innerHTML = formIngProps.length === 0
+    ? '<span class="assinatura-empty">Nenhuma propriedade adicionada.</span>'
+    : formIngProps.map((p, i) => `
+        <span class="prop-chip">${escapeHTML(p.tag)}<span class="int">×${p.intensidade}</span>
+          <button class="x-btn" style="background:transparent;border:none;color:var(--rust);cursor:pointer;margin-left:4px" onclick="removerIngProp(${i})">×</button>
+        </span>`).join('');
+}
+
+function salvarIngrediente() {
+  const nome = document.getElementById('ing-nome').value.trim();
+  const tipo = document.getElementById('ing-tipo').value;
+  const raridade = document.getElementById('ing-raridade').value;
+  const origem = document.getElementById('ing-origem').value.trim();
+  const icone = document.getElementById('ing-icone').value.trim() || '🌿';
+  const desc = document.getElementById('ing-desc').value.trim();
+  const etapas = Array.from(document.querySelectorAll('#ing-etapas-pills input:checked')).map(x => x.value);
+  const editId = document.getElementById('btn-salvar-ingr').dataset.editId;
+
+  if (!nome) { flash('Informe o nome.', 'error'); return; }
+  if (formIngProps.length === 0) { flash('Adicione pelo menos uma propriedade.', 'error'); return; }
+  if (etapas.length === 0) { flash('Selecione pelo menos uma etapa compatível.', 'error'); return; }
+
+  const dados = {
+    nome, tipo, raridade, origem, icone, desc,
+    props: formIngProps.map(p => ({ ...p })),
+    etapas,
+  };
+
+  if (editId) {
+    const ing = ingredientes.find(x => x.id === editId);
+    if (ing) Object.assign(ing, dados);
+    document.getElementById('btn-salvar-ingr').dataset.editId = '';
+    document.getElementById('btn-salvar-ingr').textContent = 'Cadastrar ingrediente';
+    flash(`Ingrediente "${nome}" atualizado.`);
+  } else {
+    ingredientes.unshift({
+      id: 'ing-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      ...dados,
+      criadoEm: new Date().toISOString(),
+    });
+    flash(`Ingrediente "${nome}" cadastrado.`);
+  }
+  salvar();
+  limparFormIngrediente();
+  renderIngredientes(); renderPool(); renderRecAddSelect(); atualizarBadges();
+}
+
+function limparFormIngrediente() {
+  ['ing-nome','ing-origem','ing-icone','ing-desc'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('ing-tipo').value = 'erva';
+  document.getElementById('ing-raridade').value = 'comum';
+  document.querySelectorAll('#ing-etapas-pills input').forEach(c => { c.checked = false; c.closest('.etapa-pill').classList.remove('checked'); });
+  formIngProps = [];
+  renderIngPropsChips();
+  document.getElementById('btn-salvar-ingr').dataset.editId = '';
+  document.getElementById('btn-salvar-ingr').textContent = 'Cadastrar ingrediente';
+}
+
+function editarIngrediente(id) {
+  const ing = ingredientes.find(x => x.id === id);
+  if (!ing) return;
+  document.getElementById('ing-nome').value = ing.nome;
+  document.getElementById('ing-tipo').value = ing.tipo;
+  document.getElementById('ing-raridade').value = ing.raridade;
+  document.getElementById('ing-origem').value = ing.origem || '';
+  document.getElementById('ing-icone').value = ing.icone || '';
+  document.getElementById('ing-desc').value = ing.desc || '';
+  formIngProps = (ing.props || []).map(p => ({ ...p }));
+  renderIngPropsChips();
+  document.querySelectorAll('#ing-etapas-pills input').forEach(c => {
+    c.checked = ing.etapas.includes(c.value);
+    c.closest('.etapa-pill').classList.toggle('checked', c.checked);
+  });
+  document.getElementById('btn-salvar-ingr').dataset.editId = id;
+  document.getElementById('btn-salvar-ingr').textContent = 'Atualizar ingrediente';
+  document.querySelector('.tab[data-tab="alquimicos"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function removerIngrediente(id) {
+  const ing = ingredientes.find(x => x.id === id);
+  if (!ing) return;
+  abrirModal('Remover ingrediente?',
+    `Remover "${escapeHTML(ing.nome)}"? Receitas que o utilizam ficarão incompletas.`,
+    [
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Remover', class:'btn-danger', onClick: () => {
+        ingredientes = ingredientes.filter(x => x.id !== id);
+        salvar();
+        renderIngredientes(); renderPool(); renderRecAddSelect(); atualizarBadges();
+        flash(`Ingrediente "${ing.nome}" removido.`);
+        closeModal();
+      }},
+    ]
+  );
+}
+
+function renderIngredientes() {
+  const grid = document.getElementById('ingredientes-grid');
+  if (!grid) return;
+  const filtro = (document.getElementById('filter-ing').value || '').toLowerCase();
+  const fTipo = document.getElementById('filter-ing-tipo').value;
+  const fRar = document.getElementById('filter-ing-raridade').value;
+
+  let lista = ingredientes.slice();
+  if (filtro) lista = lista.filter(i =>
+    i.nome.toLowerCase().includes(filtro) ||
+    (i.props || []).some(p => p.tag.toLowerCase().includes(filtro)) ||
+    tipoLabel(i.tipo).toLowerCase().includes(filtro)
+  );
+  if (fTipo) lista = lista.filter(i => i.tipo === fTipo);
+  if (fRar)  lista = lista.filter(i => i.raridade === fRar);
+
+  if (lista.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <span class="glyph">🌿</span>
+      ${ingredientes.length === 0 ? 'Nenhum ingrediente catalogado ainda.' : 'Nenhum ingrediente encontrado.'}
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = lista.map(i => {
+    const propsStr = (i.props || []).map(p =>
+      `<span class="prop-chip">${escapeHTML(p.tag)}<span class="int">×${p.intensidade}</span></span>`).join('');
+    const etapasStr = (i.etapas || []).map(e =>
+      `<span class="etapa-mini">${etapaIcone(e)} ${etapaLabel(e)}</span>`).join(' ');
+    return `
+      <div class="ingr-card">
+        <span class="icone-grande">${escapeHTML(i.icone || '🌿')}</span>
+        <h3 style="text-align:center">${escapeHTML(i.nome)}</h3>
+        <div class="card-tags" style="justify-content:center">
+          <span class="tag tag-${i.tipo}">${tipoLabel(i.tipo)}</span>
+          <span class="tag rar-${i.raridade}">${raridadeLabel(i.raridade)}</span>
+        </div>
+        <div class="card-data"><span class="label">Propriedades</span><div class="prop-chips">${propsStr}</div></div>
+        <div class="card-data"><span class="label">Etapas aceitas</span><div style="display:flex;flex-wrap:wrap;gap:0.3rem">${etapasStr}</div></div>
+        ${i.origem ? `<div class="card-data"><span class="label">Origem</span>${escapeHTML(i.origem)}</div>` : ''}
+        ${i.desc ? `<div class="card-data"><span class="label">Descrição</span>${escapeHTML(i.desc)}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn btn-secondary" onclick="addIngrToBancada('${i.id}','alquimico')">→ Bancada</button>
+          <button class="btn btn-secondary" onclick="editarIngrediente('${i.id}')">Editar</button>
+          <button class="btn btn-secondary" onclick="removerIngrediente('${i.id}')">Remover</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+
+/* ============== BANCADA ALQUÍMICA ============== */
+window.setProduto = function(p) {
+  bancadaAtual.produto = p;
+  document.querySelectorAll('.produto-card').forEach(c => c.classList.toggle('active', c.dataset.produto === p));
+  renderRecipiente();
+};
+
+function renderPool() {
+  const pool = document.getElementById('bancada-pool');
+  if (!pool) return;
+  const filtro = (document.getElementById('filter-pool')?.value || '').toLowerCase();
+  const fonte = document.getElementById('filter-pool-fonte')?.value || '';
+
+  const itens = [];
+  if (fonte === '' || fonte === 'alquimico') {
+    ingredientes.forEach(i => itens.push({
+      tipo: 'alquimico', refId: i.id, nome: i.nome, icone: i.icone || '🌿',
+      sub: tipoLabel(i.tipo) + ' · ' + raridadeLabel(i.raridade),
+      buscavel: i.nome + ' ' + (i.props||[]).map(p=>p.tag).join(' ') + ' ' + tipoLabel(i.tipo),
+    }));
+  }
+  if (fonte === '' || fonte === 'mineral') {
+    minerais.forEach(m => itens.push({
+      tipo: 'mineral', refId: m.id, nome: m.nome, icone: m.icone || '⛏',
+      sub: 'Minério ' + classeLabel(m.classe).toLowerCase(),
+      buscavel: m.nome + ' ' + (m.prop||'') + ' ' + (m.props||[]).map(p=>p.tag).join(' '),
+    }));
+  }
+  const lista = filtro ? itens.filter(it => it.buscavel.toLowerCase().includes(filtro)) : itens;
+
+  if (lista.length === 0) {
+    pool.innerHTML = `<div class="empty-state" style="margin:0.5rem 0;padding:1.5rem;font-size:0.9rem">
+      ${itens.length===0?'Cadastre ingredientes ou minérios para usar aqui.':'Nada encontrado.'}
+    </div>`;
+    return;
+  }
+  pool.innerHTML = lista.map(it => `
+    <div class="ingr-pool-item">
+      <span class="icn">${escapeHTML(it.icone)}</span>
+      <div class="meta">
+        <div class="nm">${escapeHTML(it.nome)}</div>
+        <div class="sb">${escapeHTML(it.sub)}</div>
+      </div>
+      <button class="add-btn" onclick="addIngrToBancada('${it.refId}','${it.tipo}')" title="Adicionar à esteira">+</button>
+    </div>
+  `).join('');
+}
+
+window.addIngrToBancada = function(refId, fonte) {
+  bancadaAtual.ingredientes.push({ refId, fonte, etapas: [] });
+  renderEsteira();
+  renderRecipiente();
+  // garante ir para aba bancada
+  if (!document.getElementById('panel-bancada').classList.contains('active')) {
+    document.querySelector('.tab[data-tab="bancada"]').click();
+  }
+};
+window.removerIngrFromBancada = function(idx) {
+  bancadaAtual.ingredientes.splice(idx, 1);
+  renderEsteira();
+  renderRecipiente();
+};
+window.addEtapaIngr = function(idxIng, etapa) {
+  const it = bancadaAtual.ingredientes[idxIng];
+  if (!it) return;
+  it.etapas.push(etapa);
+  renderEsteira();
+  renderRecipiente();
+};
+window.removerEtapaIngr = function(idxIng, idxEtapa) {
+  const it = bancadaAtual.ingredientes[idxIng];
+  if (!it) return;
+  it.etapas.splice(idxEtapa, 1);
+  renderEsteira();
+};
+window.limparBancada = function() {
+  bancadaAtual.ingredientes = [];
+  bancadaAtual.produto = null;
+  document.querySelectorAll('.produto-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('mistura-resultado-wrap').innerHTML = '';
+  renderEsteira();
+  renderRecipiente();
+};
+
+function getIngrInfo(refId, fonte) {
+  if (fonte === 'alquimico') {
+    const ing = ingredientes.find(i => i.id === refId);
+    if (!ing) return null;
+    return { nome: ing.nome, icone: ing.icone || '🌿', etapasOk: ing.etapas || [], props: ing.props || [], obj: ing };
+  }
+  if (fonte === 'mineral') {
+    const m = minerais.find(x => x.id === refId);
+    if (!m) return null;
+    // minérios aceitam todas as etapas por padrão
+    return { nome: m.nome, icone: m.icone || '⛏', etapasOk: ['moer','ferver','macerar','destilar'], props: m.props || [], obj: m };
+  }
+  return null;
+}
+
+function renderEsteira() {
+  const cont = document.getElementById('bancada-esteira');
+  if (!cont) return;
+  if (bancadaAtual.ingredientes.length === 0) {
+    cont.innerHTML = '<div class="empty-state" style="margin:0;padding:1.2rem;font-size:0.9rem">Nenhum ingrediente na esteira. Clique em + nos itens da coluna ao lado.</div>';
+    return;
+  }
+  cont.innerHTML = bancadaAtual.ingredientes.map((it, idx) => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    if (!info) return `<div class="esteira-item" style="opacity:0.5">[ingrediente removido] <button class="x-btn" onclick="removerIngrFromBancada(${idx})">×</button></div>`;
+    const etapasHtml = it.etapas.map((e, ei) => {
+      const valid = info.etapasOk.includes(e);
+      return `<span class="etapa-mini ${valid?'':'invalid'}">
+        <span class="seq-num">${ei+1}</span>${etapaIcone(e)} ${etapaLabel(e)}
+        <button class="x-btn" onclick="removerEtapaIngr(${idx}, ${ei})">×</button>
+      </span>`;
+    }).join('');
+    const addBtns = ['moer','ferver','macerar','destilar'].map(e => {
+      const ok = info.etapasOk.includes(e);
+      return `<button class="etapa-add-btn ${ok?'':'disabled'}" ${ok?'':'disabled'} onclick="addEtapaIngr(${idx},'${e}')" title="${ok?'adicionar':'incompatível'}">+ ${etapaIcone(e)} ${etapaLabel(e)}</button>`;
+    }).join('');
+    return `
+      <div class="esteira-item">
+        <span class="icn">${escapeHTML(info.icone)}</span>
+        <span class="nm">${escapeHTML(info.nome)} <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded)">(${it.fonte === 'mineral' ? 'minério' : 'alquímico'})</span></span>
+        <button class="x-btn" onclick="removerIngrFromBancada(${idx})" title="remover">×</button>
+        <div class="esteira-etapas">
+          ${etapasHtml || '<span style="color:var(--ink-faded);font-style:italic;font-size:0.8rem">sem etapas</span>'}
+          <div class="etapa-add-btns">${addBtns}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============== ANIMAÇÕES SVG DOS RECIPIENTES ============== */
+function corMisturaBancada() {
+  // calcula uma cor média dos ingredientes baseada nas tags
+  const corMap = {
+    cura:'#5BA661', veneno:'#7BAA3E', fogo:'#C44A1B', gelo:'#7AB6D9',
+    sono:'#5C5A8D', ilusao:'#9461B0', 'ilusão':'#9461B0', energia:'#E0B12A',
+    paralisia:'#5870A2', explosivo:'#A03B1B', aroma:'#C9A0DC', luz:'#E8D483',
+    trevas:'#3A2D45', vento:'#A8C7E0', planta:'#5F8C42', 'elétrico':'#D9C42A',
+    eletrico:'#D9C42A', acido:'#C2D02E', 'ácido':'#C2D02E', protetor:'#7A9F8A'
+  };
+  let r=0, g=0, b=0, n=0;
+  bancadaAtual.ingredientes.forEach(it => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    if (!info) return;
+    info.props.forEach(p => {
+      const c = corMap[p.tag.toLowerCase()];
+      if (c) {
+        const rr = parseInt(c.substr(1,2),16), gg = parseInt(c.substr(3,2),16), bb = parseInt(c.substr(5,2),16);
+        const w = Math.max(1, p.intensidade);
+        r += rr*w; g += gg*w; b += bb*w; n += w;
+      }
+    });
+  });
+  if (n === 0) return '#7B5C2D'; // sépia padrão
+  return `rgb(${Math.round(r/n)},${Math.round(g/n)},${Math.round(b/n)})`;
+}
+function svgPocao(cor) {
+  return `<svg class="recipiente-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <clipPath id="pocaoClip">
+        <path d="M 60 90 Q 60 75 70 65 L 70 35 L 130 35 L 130 65 Q 140 75 140 90 L 145 175 Q 145 195 125 200 L 75 200 Q 55 195 55 175 Z"/>
+      </clipPath>
+    </defs>
+    <!-- gargalo -->
+    <rect x="80" y="20" width="40" height="22" fill="#5B4326" stroke="#2B1A0A" stroke-width="1.2"/>
+    <rect x="78" y="18" width="44" height="6" fill="#3E2C16" stroke="#2B1A0A" stroke-width="1.2"/>
+    <!-- corpo -->
+    <path d="M 60 90 Q 60 75 70 65 L 70 35 L 130 35 L 130 65 Q 140 75 140 90 L 145 175 Q 145 195 125 200 L 75 200 Q 55 195 55 175 Z"
+      fill="rgba(241,231,207,0.55)" stroke="#2B1A0A" stroke-width="1.5"/>
+    <!-- líquido -->
+    <g clip-path="url(#pocaoClip)">
+      <rect class="liquido" x="40" y="115" width="130" height="100" fill="${cor}" opacity="0.85"/>
+      <path class="liquido" d="M 40 116 Q 70 110 100 116 T 170 116 L 170 130 L 40 130 Z" fill="${cor}" opacity="0.9"/>
+      <!-- bolhas -->
+      <circle class="bubble" cx="80" cy="170" r="3" fill="rgba(255,255,255,0.7)" style="animation-delay:0s"/>
+      <circle class="bubble" cx="100" cy="180" r="2" fill="rgba(255,255,255,0.6)" style="animation-delay:0.5s"/>
+      <circle class="bubble" cx="115" cy="165" r="4" fill="rgba(255,255,255,0.7)" style="animation-delay:1s"/>
+      <circle class="bubble" cx="90" cy="190" r="2.5" fill="rgba(255,255,255,0.6)" style="animation-delay:0.3s"/>
+    </g>
+    <!-- reflexo -->
+    <ellipse cx="80" cy="120" rx="6" ry="22" fill="rgba(255,255,255,0.18)"/>
+    <!-- etiqueta -->
+    <rect x="72" y="150" width="56" height="24" fill="rgba(241,231,207,0.85)" stroke="#2B1A0A" stroke-width="0.4"/>
+    <text x="100" y="166" text-anchor="middle" font-family="IM Fell English SC, serif" font-size="11" fill="#2B1A0A">⚗ Poção</text>
+  </svg>`;
+}
+function svgBomba(cor) {
+  return `<svg class="recipiente-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <!-- pavio -->
+    <path d="M 100 30 Q 110 18 120 25 Q 128 35 118 45" fill="none" stroke="#2B1A0A" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- faísca -->
+    <g transform="translate(118,18)">
+      <circle class="spark" cx="0" cy="0" r="6" fill="#FFD23A" opacity="0.95"/>
+      <circle class="spark" cx="0" cy="0" r="3" fill="#FF8C19" style="animation-delay:0.2s"/>
+      <circle class="spark" cx="-4" cy="-3" r="2" fill="#FFFFFF" style="animation-delay:0.4s"/>
+    </g>
+    <!-- fumaça -->
+    <g opacity="0.55" transform="translate(118,18)">
+      <circle class="smoke" cx="0" cy="-4" r="4" fill="rgba(60,40,20,0.6)"/>
+      <circle class="smoke" cx="-3" cy="-2" r="3" fill="rgba(80,55,30,0.5)" style="animation-delay:0.7s"/>
+      <circle class="smoke" cx="4" cy="-3" r="3.5" fill="rgba(60,40,20,0.55)" style="animation-delay:1.4s"/>
+    </g>
+    <!-- esfera principal -->
+    <circle cx="100" cy="135" r="65" fill="#1F1208" stroke="#000" stroke-width="2"/>
+    <circle cx="100" cy="135" r="65" fill="${cor}" opacity="0.18"/>
+    <!-- brilho -->
+    <ellipse cx="78" cy="115" rx="14" ry="8" fill="rgba(255,255,255,0.25)"/>
+    <!-- topo (encaixe do pavio) -->
+    <rect x="92" y="62" width="16" height="14" fill="#3E2C16" stroke="#2B1A0A" stroke-width="1.2"/>
+    <rect x="88" y="68" width="24" height="6" fill="#5B4326" stroke="#2B1A0A" stroke-width="1.2"/>
+    <!-- símbolo -->
+    <text x="100" y="143" text-anchor="middle" font-family="IM Fell English SC, serif" font-size="20" fill="${cor}" opacity="0.85">⚜</text>
+  </svg>`;
+}
+function svgPerfume(cor) {
+  return `<svg class="recipiente-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <!-- pulverizador (bulbo) -->
+    <ellipse cx="55" cy="60" rx="20" ry="16" fill="rgba(160,65,28,0.4)" stroke="#2B1A0A" stroke-width="1.2"/>
+    <ellipse cx="55" cy="60" rx="14" ry="10" fill="rgba(241,231,207,0.4)"/>
+    <!-- mangueira -->
+    <path d="M 73 60 Q 90 60 100 50" fill="none" stroke="#2B1A0A" stroke-width="2"/>
+    <!-- bocal -->
+    <rect x="95" y="42" width="14" height="16" fill="#5B4326" stroke="#2B1A0A" stroke-width="1.2"/>
+    <rect x="92" y="38" width="20" height="6" fill="#B8841C" stroke="#2B1A0A" stroke-width="1"/>
+    <!-- frasco -->
+    <path d="M 70 75 L 70 60 L 130 60 L 130 75 Q 145 95 145 130 L 145 195 L 55 195 L 55 130 Q 55 95 70 75 Z"
+      fill="rgba(241,231,207,0.55)" stroke="#2B1A0A" stroke-width="1.5"/>
+    <!-- líquido -->
+    <defs><clipPath id="perfClip"><path d="M 70 75 L 70 60 L 130 60 L 130 75 Q 145 95 145 130 L 145 195 L 55 195 L 55 130 Q 55 95 70 75 Z"/></clipPath></defs>
+    <g clip-path="url(#perfClip)">
+      <rect class="liquido" x="50" y="115" width="100" height="85" fill="${cor}" opacity="0.7"/>
+    </g>
+    <!-- névoa -->
+    <g transform="translate(105, 35)">
+      <circle class="mist" cx="0" cy="0" r="6" fill="rgba(255,255,255,0.7)"/>
+      <circle class="mist" cx="3" cy="3" r="5" fill="${cor}" opacity="0.5" style="animation-delay:0.6s"/>
+      <circle class="mist" cx="-2" cy="2" r="4" fill="rgba(255,255,255,0.5)" style="animation-delay:1.2s"/>
+      <circle class="mist" cx="6" cy="-2" r="3" fill="${cor}" opacity="0.4" style="animation-delay:1.8s"/>
+    </g>
+    <!-- etiqueta -->
+    <rect x="75" y="135" width="50" height="22" fill="rgba(241,231,207,0.85)" stroke="#2B1A0A" stroke-width="0.4"/>
+    <text x="100" y="151" text-anchor="middle" font-family="IM Fell English SC, serif" font-size="10" fill="#2B1A0A">🜍 Perfume</text>
+  </svg>`;
+}
+function svgPasta(cor) {
+  return `<svg class="recipiente-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <!-- corpo do potinho -->
+    <ellipse cx="100" cy="180" rx="65" ry="14" fill="#3E2C16"/>
+    <rect x="35" y="100" width="130" height="80" fill="#5B4326" stroke="#2B1A0A" stroke-width="1.5"/>
+    <ellipse cx="100" cy="100" rx="65" ry="12" fill="#3E2C16" stroke="#2B1A0A" stroke-width="1.5"/>
+    <!-- pasta dentro -->
+    <ellipse cx="100" cy="100" rx="58" ry="9" fill="${cor}"/>
+    <g class="cream-swirl" style="transform-origin: 100px 100px">
+      <ellipse cx="100" cy="98" rx="40" ry="6" fill="${cor}" opacity="0.8"/>
+      <ellipse cx="100" cy="98" rx="22" ry="4" fill="rgba(255,255,255,0.25)"/>
+    </g>
+    <!-- tampa (parcialmente aberta no fundo) -->
+    <ellipse cx="100" cy="65" rx="68" ry="8" fill="#3E2C16" stroke="#2B1A0A" stroke-width="1.2" opacity="0.85"/>
+    <ellipse cx="100" cy="58" rx="68" ry="8" fill="#5B4326" stroke="#2B1A0A" stroke-width="1.2" opacity="0.85"/>
+    <text x="100" y="63" text-anchor="middle" font-family="IM Fell English SC, serif" font-size="11" fill="#F1E7CF" opacity="0.9">⚱ Pasta</text>
+    <!-- aspecto cremoso -->
+    <ellipse cx="80" cy="100" rx="8" ry="3" fill="rgba(255,255,255,0.4)"/>
+    <ellipse cx="120" cy="100" rx="6" ry="2" fill="rgba(255,255,255,0.3)"/>
+  </svg>`;
+}
+function renderRecipiente() {
+  const stage = document.getElementById('recipiente-stage');
+  if (!stage) return;
+  if (!bancadaAtual.produto) {
+    stage.innerHTML = '<p style="color:var(--ink-faded);font-family:Cormorant Garamond,serif;font-style:italic">Escolha o produto para visualizar.</p>';
+    return;
+  }
+  const cor = corMisturaBancada();
+  let svg = '';
+  switch (bancadaAtual.produto) {
+    case 'pocao':   svg = svgPocao(cor); break;
+    case 'bomba':   svg = svgBomba(cor); break;
+    case 'perfume': svg = svgPerfume(cor); break;
+    case 'pasta':   svg = svgPasta(cor); break;
+  }
+  stage.innerHTML = svg;
+}
+
+/* === Lógica de mistura: receita match + cálculo de propriedades === */
+function arraysIguais(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i=0;i<a.length;i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+function multisetIngrIgual(a, b) {
+  if (a.length !== b.length) return false;
+  // ordena por refId+etapas
+  const norm = arr => arr.map(it => ({ refId: it.refId, fonte: it.fonte, etapas: it.etapas.slice() }))
+    .sort((x,y) => (x.refId+'|'+x.fonte).localeCompare(y.refId+'|'+y.fonte));
+  const A = norm(a), B = norm(b);
+  for (let i=0;i<A.length;i++) {
+    if (A[i].refId !== B[i].refId) return false;
+    if (A[i].fonte !== B[i].fonte) return false;
+    if (!arraysIguais(A[i].etapas, B[i].etapas)) return false;
+  }
+  return true;
+}
+
+function executarMistura() {
+  if (!bancadaAtual.produto) { flash('Escolha o produto.', 'error'); return; }
+  if (bancadaAtual.ingredientes.length === 0) { flash('Adicione ingredientes.', 'error'); return; }
+
+  // valida etapas — todas devem ser compatíveis
+  const incompativeis = [];
+  bancadaAtual.ingredientes.forEach((it, idx) => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    if (!info) return;
+    it.etapas.forEach(e => { if (!info.etapasOk.includes(e)) incompativeis.push(`${info.nome}: ${etapaLabel(e)}`); });
+  });
+
+  // tenta match exato com receita
+  let receitaMatch = null;
+  for (const r of receitas) {
+    if (r.produto !== bancadaAtual.produto) continue;
+    if (multisetIngrIgual(r.ingredientes, bancadaAtual.ingredientes)) { receitaMatch = r; break; }
+  }
+
+  // monta resultado
+  let status, efeito, descricao, descobriu = false;
+  if (incompativeis.length > 0) {
+    status = 'falha';
+    efeito = 'Mistura inconsistente';
+    descricao = `Etapas incompatíveis com os ingredientes: ${incompativeis.join('; ')}.`;
+  } else if (receitaMatch) {
+    status = 'sucesso';
+    efeito = receitaMatch.efeito;
+    descricao = `Combinação reconhecida: <strong>${escapeHTML(receitaMatch.nome)}</strong>.`;
+    if (receitaMatch.status === 'secreta') {
+      receitaMatch.status = 'descoberta';
+      receitaMatch.descobertaEm = new Date().toISOString();
+      descobriu = true;
+      descricao += ' Receita revelada!';
+    }
+  } else {
+    // calcula efeito por propriedades dominantes
+    const tagSum = {};
+    bancadaAtual.ingredientes.forEach(it => {
+      const info = getIngrInfo(it.refId, it.fonte);
+      if (!info) return;
+      info.props.forEach(p => {
+        tagSum[p.tag.toLowerCase()] = (tagSum[p.tag.toLowerCase()] || 0) + p.intensidade;
+      });
+    });
+    const tags = Object.entries(tagSum).sort((a,b) => b[1] - a[1]);
+    if (tags.length === 0) {
+      status = 'falha';
+      efeito = 'Mistura inerte';
+      descricao = 'Nenhum ingrediente trouxe propriedades reconhecíveis. O resultado é uma matéria sem reação.';
+    } else if (tags.length === 1) {
+      status = 'parcial';
+      efeito = `Efeito dominante: ${tags[0][0]} (intensidade ${tags[0][1]})`;
+      descricao = 'Combinação simples. O efeito é puro mas previsível.';
+    } else {
+      // duas tags principais com soma similar = surpresa
+      const dif = Math.abs(tags[0][1] - tags[1][1]);
+      if (dif <= 1) {
+        status = 'surpresa';
+        efeito = `Efeito misto: ${tags[0][0]} ⊕ ${tags[1][0]} (intensidades ${tags[0][1]} e ${tags[1][1]})`;
+        descricao = 'As propriedades se equilibram — resultado imprevisível, mas ativo.';
+      } else {
+        status = 'parcial';
+        efeito = `Efeito dominante: ${tags[0][0]} (${tags[0][1]}), com traço de ${tags[1][0]} (${tags[1][1]})`;
+        descricao = 'Mistura nova — não bate com nenhuma receita catalogada.';
+      }
+    }
+  }
+
+  // registra mistura
+  const reg = {
+    id: 'mix-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+    tipo: 'mistura',
+    produto: bancadaAtual.produto,
+    ingredientes: bancadaAtual.ingredientes.map(it => {
+      const info = getIngrInfo(it.refId, it.fonte);
+      return { refId: it.refId, fonte: it.fonte, nome: info ? info.nome : '(?)', etapas: it.etapas.slice() };
+    }),
+    efeito, descricao, status,
+    receitaId: receitaMatch ? receitaMatch.id : null,
+    receitaNome: receitaMatch ? receitaMatch.nome : null,
+    descobriu,
+    data: new Date().toISOString(),
+  };
+  ensaios.unshift(reg);
+  salvar();
+  renderEnsaios(); renderReceitas(); atualizarBadges();
+
+  // exibe resultado
+  const wrap = document.getElementById('mistura-resultado-wrap');
+  wrap.innerHTML = `
+    <div class="mistura-resultado ${status}">
+      <h5>${produtoIcone(bancadaAtual.produto)} ${produtoLabel(bancadaAtual.produto)} — ${statusLabel(status)}${descobriu?' · ✦ Descoberta':''}</h5>
+      <div class="efeito">${escapeHTML(efeito)}</div>
+      <div>${descricao}</div>
+    </div>
+  `;
+  flash(`Mistura registrada — ${statusLabel(status)}${descobriu?' (receita revelada!)':''}.`);
+  renderRecipiente();
+}
+
+
+/* ============== RECEITAS ============== */
+function renderRecAddSelect() {
+  const sel = document.getElementById('rec-add-ingr');
+  if (!sel) return;
+  const opcoes = [];
+  ingredientes.forEach(i => opcoes.push(`<option value="alquimico:${i.id}">${escapeHTML(i.icone||'🌿')} ${escapeHTML(i.nome)} (alquímico)</option>`));
+  minerais.forEach(m => opcoes.push(`<option value="mineral:${m.id}">${escapeHTML(m.icone||'⛏')} ${escapeHTML(m.nome)} (minério)</option>`));
+  sel.innerHTML = opcoes.length ? '<option value="">— escolha —</option>' + opcoes.join('') : '<option value="">— cadastre ingredientes/minérios primeiro —</option>';
+}
+
+window.addRecIngrediente = function() {
+  const v = document.getElementById('rec-add-ingr').value;
+  if (!v || !v.includes(':')) return;
+  const [fonte, refId] = v.split(':');
+  formRecIngredientes.push({ fonte, refId, etapas: [] });
+  renderRecIngrList();
+};
+window.removerRecIngrediente = function(i) {
+  formRecIngredientes.splice(i, 1);
+  renderRecIngrList();
+};
+window.addRecEtapa = function(i, etapa) {
+  formRecIngredientes[i].etapas.push(etapa);
+  renderRecIngrList();
+};
+window.removerRecEtapa = function(i, ei) {
+  formRecIngredientes[i].etapas.splice(ei, 1);
+  renderRecIngrList();
+};
+function renderRecIngrList() {
+  const cont = document.getElementById('rec-ingredientes-list');
+  if (formRecIngredientes.length === 0) {
+    cont.innerHTML = '<span class="assinatura-empty">Nenhum ingrediente na receita.</span>';
+    return;
+  }
+  cont.innerHTML = formRecIngredientes.map((it, i) => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    if (!info) return `<div class="esteira-item" style="opacity:0.5">[ingrediente removido] <button class="x-btn" onclick="removerRecIngrediente(${i})">×</button></div>`;
+    const etapasHtml = it.etapas.map((e, ei) =>
+      `<span class="etapa-mini ${info.etapasOk.includes(e)?'':'invalid'}">
+        <span class="seq-num">${ei+1}</span>${etapaIcone(e)} ${etapaLabel(e)}
+        <button class="x-btn" onclick="removerRecEtapa(${i}, ${ei})">×</button>
+      </span>`).join('');
+    const addBtns = ['moer','ferver','macerar','destilar'].map(e => {
+      const ok = info.etapasOk.includes(e);
+      return `<button class="etapa-add-btn ${ok?'':'disabled'}" ${ok?'':'disabled'} onclick="addRecEtapa(${i},'${e}')">+ ${etapaIcone(e)} ${etapaLabel(e)}</button>`;
+    }).join('');
+    return `
+      <div class="esteira-item">
+        <span class="icn">${escapeHTML(info.icone)}</span>
+        <span class="nm">${escapeHTML(info.nome)} <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded)">(${it.fonte === 'mineral' ? 'minério' : 'alquímico'})</span></span>
+        <button class="x-btn" onclick="removerRecIngrediente(${i})">×</button>
+        <div class="esteira-etapas">
+          ${etapasHtml || '<span style="color:var(--ink-faded);font-style:italic;font-size:0.8rem">sem etapas</span>'}
+          <div class="etapa-add-btns">${addBtns}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function salvarReceita() {
+  const nome = document.getElementById('rec-nome').value.trim();
+  const produto = document.getElementById('rec-produto').value;
+  const status = document.getElementById('rec-status').value;
+  const efeito = document.getElementById('rec-efeito').value.trim();
+  const editId = document.getElementById('btn-salvar-rec').dataset.editId;
+
+  if (!nome) { flash('Informe o nome.', 'error'); return; }
+  if (!efeito) { flash('Informe o efeito esperado.', 'error'); return; }
+  if (formRecIngredientes.length === 0) { flash('Adicione pelo menos um ingrediente.', 'error'); return; }
+
+  const dados = {
+    nome, produto, status, efeito,
+    ingredientes: formRecIngredientes.map(it => ({ ...it, etapas: it.etapas.slice() })),
+  };
+
+  if (editId) {
+    const r = receitas.find(x => x.id === editId);
+    if (r) Object.assign(r, dados);
+    document.getElementById('btn-salvar-rec').dataset.editId = '';
+    document.getElementById('btn-salvar-rec').textContent = 'Cadastrar receita';
+    flash(`Receita "${nome}" atualizada.`);
+  } else {
+    receitas.unshift({
+      id: 'rec-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      ...dados,
+      criadoEm: new Date().toISOString(),
+    });
+    flash(`Receita "${nome}" cadastrada.`);
+  }
+  salvar();
+  limparFormReceita();
+  renderReceitas(); atualizarBadges();
+}
+
+function limparFormReceita() {
+  ['rec-nome','rec-efeito'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('rec-produto').value = 'pocao';
+  document.getElementById('rec-status').value = 'conhecida';
+  formRecIngredientes = [];
+  renderRecIngrList();
+  document.getElementById('btn-salvar-rec').dataset.editId = '';
+  document.getElementById('btn-salvar-rec').textContent = 'Cadastrar receita';
+}
+
+function editarReceita(id) {
+  const r = receitas.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('rec-nome').value = r.nome;
+  document.getElementById('rec-produto').value = r.produto;
+  document.getElementById('rec-status').value = r.status === 'descoberta' ? 'conhecida' : r.status;
+  document.getElementById('rec-efeito').value = r.efeito;
+  formRecIngredientes = r.ingredientes.map(it => ({ ...it, etapas: it.etapas.slice() }));
+  renderRecIngrList();
+  document.getElementById('btn-salvar-rec').dataset.editId = id;
+  document.getElementById('btn-salvar-rec').textContent = 'Atualizar receita';
+  document.querySelector('.tab[data-tab="receitas"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function removerReceita(id) {
+  const r = receitas.find(x => x.id === id);
+  if (!r) return;
+  abrirModal('Remover receita?',
+    `Remover "${escapeHTML(r.nome)}" do livro de receitas?`,
+    [
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Remover', class:'btn-danger', onClick: () => {
+        receitas = receitas.filter(x => x.id !== id);
+        salvar();
+        renderReceitas(); atualizarBadges();
+        flash(`Receita "${r.nome}" removida.`);
+        closeModal();
+      }},
+    ]
+  );
+}
+
+function renderReceitas() {
+  const grid = document.getElementById('receitas-grid');
+  if (!grid) return;
+  const filtro = (document.getElementById('filter-rec')?.value || '').toLowerCase();
+  const fProd = document.getElementById('filter-rec-prod')?.value || '';
+  const fStat = document.getElementById('filter-rec-status')?.value || '';
+
+  let lista = receitas.slice();
+  if (filtro) lista = lista.filter(r => r.nome.toLowerCase().includes(filtro) || r.efeito.toLowerCase().includes(filtro));
+  if (fProd) lista = lista.filter(r => r.produto === fProd);
+  if (fStat) lista = lista.filter(r => r.status === fStat);
+
+  if (lista.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <span class="glyph">📜</span>
+      ${receitas.length === 0 ? 'Nenhuma receita registrada ainda.' : 'Nenhuma receita encontrada com esse filtro.'}
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = lista.map(r => {
+    const secreta = r.status === 'secreta';
+    const desc = r.status === 'descoberta';
+    const ingrStr = r.ingredientes.map(it => {
+      const info = getIngrInfo(it.refId, it.fonte);
+      const nome = info ? info.nome : '(?)';
+      const ico = info ? info.icone : '?';
+      const etapas = it.etapas.map(e => `<span class="step">${etapaIcone(e)}</span>`).join(' → ');
+      return `<div>${escapeHTML(ico)} ${escapeHTML(nome)} ${etapas ? '— ' + etapas : ''}</div>`;
+    }).join('');
+
+    const titulo = secreta ? '❒ ?????' : escapeHTML(r.nome);
+    const efeito = secreta ? 'Receita ainda não descoberta.' : escapeHTML(r.efeito);
+    const ingrBody = secreta ? '<em style="color:var(--ink-faded)">ingredientes ocultos</em>' : ingrStr;
+
+    const tagStatus = secreta
+      ? `<span class="tag" style="${statusStyle('falha')}">secreta</span>`
+      : desc
+        ? `<span class="tag" style="${statusStyle('descoberta')}">descoberta</span>`
+        : `<span class="tag" style="${statusStyle('sucesso')}">conhecida</span>`;
+
+    return `
+      <div class="receita-card" onclick="verReceita('${r.id}')">
+        <h3>${produtoIcone(r.produto)} ${titulo}</h3>
+        <div class="card-tags">
+          <span class="tag">${produtoLabel(r.produto)}</span>
+          ${tagStatus}
+        </div>
+        <div class="card-data"><span class="label">Efeito</span>${efeito}</div>
+        <div class="card-data"><span class="label">Ingredientes</span><div class="ingr-list">${ingrBody}</div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.verReceita = function(id) {
+  const r = receitas.find(x => x.id === id);
+  if (!r) return;
+  if (r.status === 'secreta') {
+    abrirModal('Receita secreta',
+      'Esta receita ainda não foi descoberta. Tente combinações na bancada para revelá-la.',
+      [{ label: 'Fechar', class:'btn-secondary', onClick: closeModal }]);
+    return;
+  }
+  const ingrStr = r.ingredientes.map(it => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    const nome = info ? info.nome : '(?)';
+    const ico = info ? info.icone : '?';
+    const etapas = it.etapas.map(e => `<span class="step">${etapaIcone(e)} ${etapaLabel(e)}</span>`).join(' → ');
+    return `<div style="margin:0.3rem 0">${escapeHTML(ico)} <strong>${escapeHTML(nome)}</strong> ${etapas ? '<br>&nbsp;&nbsp;' + etapas : ''}</div>`;
+  }).join('');
+  const body = `
+    <p><strong>${produtoIcone(r.produto)} ${produtoLabel(r.produto)}</strong></p>
+    <p style="margin:0.5rem 0"><em>${escapeHTML(r.efeito)}</em></p>
+    <div style="margin-top:0.7rem"><strong>Ingredientes:</strong>${ingrStr}</div>
+    ${r.descobertaEm ? `<p style="margin-top:0.7rem;color:var(--ink-faded);font-size:0.85rem">Descoberta em ${formatarData(r.descobertaEm)}.</p>` : ''}
+  `;
+  abrirModal(r.nome, body, [
+    { label:'Editar', class:'btn-secondary', onClick: () => { closeModal(); editarReceita(r.id); } },
+    { label:'Remover', class:'btn-danger', onClick: () => { closeModal(); removerReceita(r.id); } },
+    { label:'Fechar', class:'btn-secondary', onClick: closeModal },
+  ]);
+};
+
+
+/* ============== REGISTROS (ensaios + misturas) ============== */
 function renderEnsaios() {
   const grid = document.getElementById('ensaios-grid');
+  if (!grid) return;
   const filtro = (document.getElementById('filter-ensaio')?.value || '').toLowerCase();
   const fStatus = document.getElementById('filter-status')?.value;
+  const fTipo = document.getElementById('filter-tipo-reg')?.value;
 
   document.getElementById('stat-total').textContent = ensaios.length;
-  document.getElementById('stat-sucesso').textContent = ensaios.filter(e=>e.status==='sucesso').length;
-  document.getElementById('stat-falha').textContent = ensaios.filter(e=>e.status==='falha'||e.status==='parcial').length;
-  document.getElementById('stat-surpresa').textContent = ensaios.filter(e=>e.status==='surpresa').length;
+  document.getElementById('stat-sucesso').textContent = ensaios.filter(e => ['perfeito','mais-perfeito','sucesso'].includes(e.status)).length;
+  document.getElementById('stat-falha').textContent = ensaios.filter(e => ['falha','parcial'].includes(e.status)).length;
+  document.getElementById('stat-surpresa').textContent = ensaios.filter(e => e.status === 'surpresa').length;
 
   let lista = ensaios.slice();
-  if (filtro) {
-    lista = lista.filter(e =>
-      e.mineralNome.toLowerCase().includes(filtro) ||
-      (e.gesto || '').toLowerCase().includes(filtro) ||
-      (e.resultado || '').toLowerCase().includes(filtro)
-    );
-  }
+  if (fTipo) lista = lista.filter(e => (e.tipo||'ensaio') === fTipo);
+  if (filtro) lista = lista.filter(e => {
+    const blob = (e.mineralNome||'') + ' ' + (e.gesto||'') + ' ' + (e.resultado||'') + ' ' +
+                 (e.efeito||'') + ' ' + (e.receitaNome||'');
+    return blob.toLowerCase().includes(filtro);
+  });
   if (fStatus) lista = lista.filter(e => e.status === fStatus);
 
   if (lista.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <span class="glyph">📜</span>
-      ${ensaios.length === 0 ? 'Nenhum ensaio registrado ainda. Vá para "Novo Ensaio" para começar.' : 'Nenhum ensaio encontrado com esse filtro.'}
+      ${ensaios.length === 0 ? 'Nenhum registro ainda.' : 'Nenhum registro encontrado com esse filtro.'}
     </div>`;
     return;
   }
 
-  grid.innerHTML = lista.map(e => `
+  grid.innerHTML = lista.map(e => {
+    if (e.tipo === 'mistura') return cardMistura(e);
+    return cardEnsaio(e);
+  }).join('');
+}
+
+function cardEnsaio(e) {
+  return `
     <div class="test-card" onclick="verEnsaio('${e.id}')">
-      <h3>${escapeHTML(e.mineralNome)}</h3>
-      <div class="card-meta">${formatarData(e.data)}</div>
+      <h3>⚒ ${escapeHTML(e.mineralNome || '')}</h3>
+      <div class="card-meta">${formatarData(e.data)} · ensaio</div>
       <div class="card-tags">
-        <span class="tag tag-${e.mineralClasse}">${classeLabel(e.mineralClasse)}</span>
+        ${e.mineralClasse ? `<span class="tag tag-${e.mineralClasse}">${classeLabel(e.mineralClasse)}</span>` : ''}
         <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
-        <span class="tag" style="background:rgba(43,26,10,0.08);color:var(--ink)">${e.numMarteladas || (e.sequencia ? e.sequencia.length : 0)} marteladas</span>
+        <span class="tag" style="background:rgba(43,26,10,0.08);color:var(--ink)">soma ${e.soma}</span>
       </div>
       ${e.gesto ? `<div class="card-data"><span class="label">Gesto</span>${escapeHTML(e.gesto)}</div>` : ''}
-      <div class="card-data"><span class="label">Caminho</span>${escapeHTML(e.caminhoStr) || '<em style="color:var(--ink-faded)">nenhum</em>'}</div>
-      <div class="card-data"><span class="label">Resultado</span>${escapeHTML(e.resultado)}</div>
+      <div class="card-data"><span class="label">Equação</span>${equacaoString(e)}</div>
+      <div class="card-data"><span class="label">Resultado</span>${escapeHTML(e.resultado||'')}</div>
     </div>
-  `).join('');
+  `;
+}
+function cardMistura(e) {
+  return `
+    <div class="test-card" onclick="verMistura('${e.id}')">
+      <h3>${produtoIcone(e.produto)} ${produtoLabel(e.produto)}${e.descobriu?' · ✦':''}</h3>
+      <div class="card-meta">${formatarData(e.data)} · mistura alquímica</div>
+      <div class="card-tags">
+        <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
+        ${e.receitaNome ? `<span class="tag" style="${statusStyle('descoberta')}">${escapeHTML(e.receitaNome)}</span>` : ''}
+      </div>
+      <div class="card-data"><span class="label">Efeito</span>${escapeHTML(e.efeito || '')}</div>
+      <div class="card-data"><span class="label">Ingredientes</span>${e.ingredientes.map(i => escapeHTML(i.nome)).join(' · ')}</div>
+    </div>
+  `;
+}
+function equacaoString(e) {
+  if (!e.sequencia || e.sequencia.length === 0) return '<em style="color:var(--ink-faded)">vazia</em>';
+  const partes = e.sequencia.map(b => {
+    const n = e.notas ? e.notas[b.idxNota] : null;
+    if (!n) return '?';
+    return (b.sinal>0?'+':'−') + n.h;
+  });
+  return partes.join(' ') + ' = ' + e.soma;
 }
 
-function statusStyle(s) {
-  if (s === 'sucesso') return 'background:rgba(79,107,62,0.18);color:var(--green-old);border-color:var(--green-old)';
-  if (s === 'falha') return 'background:rgba(160,65,28,0.18);color:var(--rust);border-color:var(--rust)';
-  if (s === 'parcial') return 'background:rgba(184,132,28,0.18);color:var(--gold);border-color:var(--gold)';
-  if (s === 'surpresa') return 'background:rgba(44,86,112,0.18);color:var(--blue-old);border-color:var(--blue-old)';
-  return '';
-}
-
-function verEnsaio(id) {
+window.verEnsaio = function(id) {
   const e = ensaios.find(x => x.id === id);
-  if (!e) return;
+  if (!e || e.tipo === 'mistura') return verMistura(id);
 
-  // monta detalhamento da assinatura com batidas
-  const supers = { 1:'¹', 2:'²', 3:'³', 4:'⁴' };
-  const batidasPorIdx = {};
-  if (e.sequencia) {
-    e.sequencia.forEach((idx, ordem) => {
-      if (!batidasPorIdx[idx]) batidasPorIdx[idx] = [];
-      batidasPorIdx[idx].push(ordem + 1);
-    });
-  }
-
-  const sigStr = e.notas.map((n, i) => {
-    const lbl = 'H' + n.h + (n.idx ? supers[n.idx] || '' : '');
-    const ordens = batidasPorIdx[i] || [];
-    const marcador = ordens.length > 0 ? '●' : '○';
-    const ordensTxt = ordens.length > 0 ? ` <span style="color:var(--rust);font-family:'Special Elite';font-size:0.8rem">[batidas: ${ordens.join(', ')}]</span>` : '';
-    return `${marcador} ${lbl} (${n.t.toFixed(1)}s)${ordensTxt}`;
-  }).join('<br>');
-
-  const caminhoVisual = e.sequencia && e.sequencia.length > 0
-    ? e.sequencia.map((idx, ordem) => {
-        const n = e.notas[idx];
-        const lbl = 'H' + n.h + (n.idx ? supers[n.idx] || '' : '');
-        return `<span style="background:var(--ink);color:var(--paper);padding:2px 8px;border-radius:10px;margin:0 2px;font-size:0.85rem"><sup style="color:var(--gold);font-size:0.7rem">${ordem+1}</sup> ${lbl}</span>`;
-      }).join(' ')
-    : '<em style="color:var(--ink-faded)">nenhuma</em>';
+  const sigStr = (e.notas || []).map(n => notaLabel(n) + ' (vale ' + n.h + ')').join(' · ');
+  const equacao = equacaoString(e);
 
   const body = `
     <div style="display:flex;gap:0.5rem;margin-bottom:0.7rem;flex-wrap:wrap">
-      <span class="tag tag-${e.mineralClasse}">${classeLabel(e.mineralClasse)}</span>
+      ${e.mineralClasse ? `<span class="tag tag-${e.mineralClasse}">${classeLabel(e.mineralClasse)}</span>` : ''}
       <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
-      <span class="tag" style="background:rgba(43,26,10,0.08);color:var(--ink)">${e.numMarteladas || (e.sequencia ? e.sequencia.length : 0)} marteladas</span>
+      <span class="tag">soma ${e.soma}</span>
     </div>
     <p style="margin-bottom:0.4rem;font-style:italic">${formatarData(e.data)}</p>
-    <p style="margin-bottom:0.7rem"><strong>Propriedade do minério:</strong> ${escapeHTML(e.mineralProp)}</p>
-    ${e.reagente ? `<p style="margin-bottom:0.5rem"><strong>Reagente:</strong> ${escapeHTML(e.reagente)}</p>` : ''}
-    ${e.gesto ? `<p style="margin-bottom:0.5rem"><strong>Gesto pretendido:</strong> ${escapeHTML(e.gesto)}</p>` : ''}
-    <div style="margin-bottom:0.5rem"><strong>Sequência executada:</strong><br><div style="margin-top:0.4rem;line-height:2.2">${caminhoVisual}</div></div>
-    <p style="margin-bottom:0.5rem"><strong>Resultado:</strong> ${escapeHTML(e.resultado)}</p>
-    ${e.obs ? `<p style="margin-bottom:0.5rem"><strong>Observações:</strong><br>${escapeHTML(e.obs)}</p>` : ''}
-    <div style="margin-top:1rem;padding:0.7rem;background:rgba(255,250,235,0.6);border:0.5px solid var(--ink-faded);font-family:'Special Elite',monospace;font-size:0.85rem;line-height:1.7">
-      <strong style="font-family:'IM Fell English SC',serif;display:block;margin-bottom:6px;letter-spacing:0.05em;font-size:0.9rem">Assinatura do material</strong>
-      ${sigStr}
+    <p style="margin-bottom:0.5rem"><strong>Propriedade:</strong> ${escapeHTML(e.mineralProp || '—')}</p>
+    ${e.reagente ? `<p style="margin-bottom:0.4rem"><strong>Reagente:</strong> ${escapeHTML(e.reagente)}</p>` : ''}
+    ${e.gesto ? `<p style="margin-bottom:0.4rem"><strong>Gesto pretendido:</strong> ${escapeHTML(e.gesto)}</p>` : ''}
+    <div style="margin:0.5rem 0;padding:0.6rem;background:rgba(255,250,235,0.6);border:0.5px solid var(--ink-faded)">
+      <div><strong>Valor Perfeito:</strong> ${e.perfeito ?? '—'} · <strong>Mais que Perfeito:</strong> ${e.maisPerfeito ?? '—'}</div>
+      <div style="margin-top:0.3rem;font-family:'Special Elite',monospace"><strong>Equação:</strong> ${equacao}</div>
+      <div style="margin-top:0.3rem;font-style:italic;color:var(--ink-faded)">Status auto: ${statusLabel(e.statusAutoSoma||'falha')}</div>
+    </div>
+    <p style="margin-bottom:0.4rem"><strong>Resultado:</strong> ${escapeHTML(e.resultado || '')}</p>
+    ${e.obs ? `<p style="margin-bottom:0.4rem"><strong>Observações:</strong><br>${escapeHTML(e.obs)}</p>` : ''}
+    <div style="margin-top:0.7rem;padding:0.6rem;background:rgba(255,250,235,0.5);font-family:'Special Elite',monospace;font-size:0.85rem">
+      <strong style="font-family:'IM Fell English SC',serif">Assinatura</strong><br>${sigStr}
     </div>
   `;
-
-  abrirModal(e.mineralNome, body, [
-    { label: 'Excluir ensaio', class: 'btn-danger', onClick: () => excluirEnsaio(e.id) },
-    { label: 'Fechar', class: 'btn-secondary', onClick: closeModal },
+  abrirModal(e.mineralNome || 'Ensaio', body, [
+    { label:'Excluir', class:'btn-danger', onClick: () => { ensaios = ensaios.filter(x => x.id !== id); salvar(); renderEnsaios(); atualizarBadges(); closeModal(); flash('Ensaio excluído.'); } },
+    { label:'Fechar', class:'btn-secondary', onClick: closeModal },
   ]);
-}
+};
 
-function excluirEnsaio(id) {
-  ensaios = ensaios.filter(x => x.id !== id);
-  salvar();
-  renderEnsaios();
-  atualizarBadges();
-  flash('Ensaio excluído.');
-  closeModal();
-}
+window.verMistura = function(id) {
+  const e = ensaios.find(x => x.id === id);
+  if (!e) return;
+  const ingrStr = e.ingredientes.map(it => {
+    const info = getIngrInfo(it.refId, it.fonte);
+    const ico = info ? info.icone : '?';
+    const etapas = it.etapas.map(s => `<span class="step">${etapaIcone(s)} ${etapaLabel(s)}</span>`).join(' → ');
+    return `<div>${escapeHTML(ico)} <strong>${escapeHTML(it.nome)}</strong> ${etapas ? '— ' + etapas : ''}</div>`;
+  }).join('');
+  const body = `
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.7rem;flex-wrap:wrap">
+      <span class="tag">${produtoLabel(e.produto)}</span>
+      <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
+      ${e.receitaNome ? `<span class="tag" style="${statusStyle('descoberta')}">${escapeHTML(e.receitaNome)}</span>` : ''}
+    </div>
+    <p style="margin-bottom:0.4rem;font-style:italic">${formatarData(e.data)}</p>
+    <p style="margin-bottom:0.5rem"><strong>Efeito:</strong> ${escapeHTML(e.efeito || '')}</p>
+    <p style="margin-bottom:0.5rem">${e.descricao || ''}</p>
+    <div style="margin-top:0.7rem"><strong>Ingredientes:</strong><br>${ingrStr}</div>
+  `;
+  abrirModal(`${produtoIcone(e.produto)} ${produtoLabel(e.produto)}`, body, [
+    { label:'Excluir', class:'btn-danger', onClick: () => { ensaios = ensaios.filter(x => x.id !== id); salvar(); renderEnsaios(); atualizarBadges(); closeModal(); flash('Mistura excluída.'); } },
+    { label:'Fechar', class:'btn-secondary', onClick: closeModal },
+  ]);
+};
 
-/* EXPORTAÇÃO */
+
+/* ============== EXPORTAÇÃO ============== */
 function exportXLSX() {
   if (typeof XLSX === 'undefined') { flash('Biblioteca XLSX não carregou.', 'error'); return; }
   const wb = XLSX.utils.book_new();
 
+  // Minérios
   const minRows = minerais.map(m => ({
     'Nome': m.nome,
     'Classificação': classeLabel(m.classe),
     'Propriedade': m.prop,
-    'Assinatura': gerarIndices(m.assinatura).map(n => notaLabel(n) + ':' + n.t.toFixed(1) + 's').join(' · '),
+    'Valor Perfeito': m.perfeito,
+    'Valor Mais que Perfeito': m.maisPerfeito,
+    'Assinatura': (m.assinatura||[]).map(n => notaLabel(n) + ':' + n.h).join(' · '),
+    'Soma natural': (m.assinatura||[]).reduce((a,n)=>a+n.h,0),
+    'Propriedades alquímicas': (m.props||[]).map(p => `${p.tag}×${p.intensidade}`).join('; '),
     'Origem': m.origem || '',
-    'Notas': m.notas || '',
+    'Notas': m.obs || '',
     'Cadastrado em': formatarData(m.criadoEm),
   }));
-  if (minRows.length === 0) minRows.push({ 'Nome': '(nenhum minério cadastrado)' });
+  if (minRows.length === 0) minRows.push({ 'Nome': '(nenhum minério)' });
   const ws1 = XLSX.utils.json_to_sheet(minRows);
-  ws1['!cols'] = [{wch:25},{wch:15},{wch:30},{wch:35},{wch:30},{wch:40},{wch:18}];
+  ws1['!cols'] = [{wch:25},{wch:15},{wch:30},{wch:14},{wch:18},{wch:35},{wch:12},{wch:32},{wch:30},{wch:40},{wch:18}];
   XLSX.utils.book_append_sheet(wb, ws1, 'Minérios');
 
-  const ensRows = ensaios.map(e => ({
+  // Ingredientes
+  const ingRows = ingredientes.map(i => ({
+    'Nome': i.nome,
+    'Tipo': tipoLabel(i.tipo),
+    'Raridade': raridadeLabel(i.raridade),
+    'Propriedades': (i.props||[]).map(p => `${p.tag}×${p.intensidade}`).join('; '),
+    'Etapas aceitas': (i.etapas||[]).map(etapaLabel).join(', '),
+    'Origem': i.origem || '',
+    'Descrição': i.desc || '',
+    'Cadastrado em': formatarData(i.criadoEm),
+  }));
+  if (ingRows.length === 0) ingRows.push({ 'Nome': '(nenhum ingrediente)' });
+  const ws2 = XLSX.utils.json_to_sheet(ingRows);
+  ws2['!cols'] = [{wch:25},{wch:14},{wch:14},{wch:35},{wch:25},{wch:30},{wch:40},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Ingredientes');
+
+  // Receitas
+  const recRows = receitas.map(r => ({
+    'Nome': r.nome,
+    'Produto': produtoLabel(r.produto),
+    'Status': r.status,
+    'Efeito': r.efeito,
+    'Ingredientes': r.ingredientes.map(it => {
+      const info = getIngrInfo(it.refId, it.fonte);
+      return (info ? info.nome : '?') + (it.etapas.length ? ' [' + it.etapas.map(etapaLabel).join('→') + ']' : '');
+    }).join(' + '),
+    'Descoberta em': r.descobertaEm ? formatarData(r.descobertaEm) : '',
+  }));
+  if (recRows.length === 0) recRows.push({ 'Nome': '(nenhuma receita)' });
+  const ws3 = XLSX.utils.json_to_sheet(recRows);
+  ws3['!cols'] = [{wch:25},{wch:14},{wch:14},{wch:35},{wch:50},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Receitas');
+
+  // Ensaios
+  const ensRows = ensaios.filter(e => e.tipo === 'ensaio').map(e => ({
     'Data': formatarData(e.data),
     'Minério': e.mineralNome,
     'Classe': classeLabel(e.mineralClasse),
-    'Propriedade': e.mineralProp,
     'Reagente': e.reagente || '',
-    'Gesto pretendido': e.gesto || '',
-    'Caminho executado': e.caminhoStr || '',
-    'Nº de marteladas': e.numMarteladas || (e.sequencia ? e.sequencia.length : 0),
-    'Resultado': e.resultado,
-    'Status': statusLabel(e.status),
+    'Gesto': e.gesto || '',
+    'Valor Perfeito': e.perfeito,
+    'Mais que Perfeito': e.maisPerfeito,
+    'Equação': equacaoStringPlain(e),
+    'Soma final': e.soma,
+    'Status (auto)': statusLabel(e.statusAutoSoma || ''),
+    'Resultado': e.resultado || '',
+    'Status (registrado)': statusLabel(e.status),
     'Observações': e.obs || '',
   }));
-  if (ensRows.length === 0) ensRows.push({ 'Data': '(nenhum ensaio registrado)' });
-  const ws2 = XLSX.utils.json_to_sheet(ensRows);
-  ws2['!cols'] = [{wch:18},{wch:25},{wch:12},{wch:25},{wch:18},{wch:30},{wch:35},{wch:14},{wch:35},{wch:12},{wch:50}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Ensaios');
+  if (ensRows.length === 0) ensRows.push({ 'Data': '(nenhum ensaio)' });
+  const ws4 = XLSX.utils.json_to_sheet(ensRows);
+  ws4['!cols'] = [{wch:18},{wch:25},{wch:12},{wch:18},{wch:30},{wch:14},{wch:18},{wch:35},{wch:10},{wch:18},{wch:35},{wch:18},{wch:50}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Ensaios');
 
+  // Misturas
+  const mixRows = ensaios.filter(e => e.tipo === 'mistura').map(e => ({
+    'Data': formatarData(e.data),
+    'Produto': produtoLabel(e.produto),
+    'Status': statusLabel(e.status),
+    'Receita': e.receitaNome || '—',
+    'Descoberta?': e.descobriu ? 'Sim' : 'Não',
+    'Efeito': e.efeito || '',
+    'Ingredientes': e.ingredientes.map(it =>
+      it.nome + (it.etapas.length ? ' [' + it.etapas.map(etapaLabel).join('→') + ']' : '')
+    ).join(' + '),
+  }));
+  if (mixRows.length === 0) mixRows.push({ 'Data': '(nenhuma mistura)' });
+  const ws5 = XLSX.utils.json_to_sheet(mixRows);
+  ws5['!cols'] = [{wch:18},{wch:14},{wch:18},{wch:25},{wch:12},{wch:35},{wch:50}];
+  XLSX.utils.book_append_sheet(wb, ws5, 'Misturas');
+
+  // Resumo
   const resumo = [
-    { 'Métrica': 'Total de minérios', 'Valor': minerais.length },
-    { 'Métrica': 'Minérios Puros', 'Valor': minerais.filter(m=>m.classe==='puro').length },
-    { 'Métrica': 'Minérios Reativos', 'Valor': minerais.filter(m=>m.classe==='reativo').length },
-    { 'Métrica': 'Minérios Incertos', 'Valor': minerais.filter(m=>m.classe==='incerto').length },
-    { 'Métrica': '', 'Valor': '' },
-    { 'Métrica': 'Total de ensaios', 'Valor': ensaios.length },
-    { 'Métrica': 'Ensaios bem-sucedidos', 'Valor': ensaios.filter(e=>e.status==='sucesso').length },
-    { 'Métrica': 'Ensaios parciais', 'Valor': ensaios.filter(e=>e.status==='parcial').length },
-    { 'Métrica': 'Ensaios falhos', 'Valor': ensaios.filter(e=>e.status==='falha').length },
-    { 'Métrica': 'Ensaios surpresa', 'Valor': ensaios.filter(e=>e.status==='surpresa').length },
-    { 'Métrica': '', 'Valor': '' },
-    { 'Métrica': 'Exportado em', 'Valor': new Date().toLocaleString('pt-BR') },
+    { 'Métrica':'Total de minérios', 'Valor': minerais.length },
+    { 'Métrica':'Total de ingredientes', 'Valor': ingredientes.length },
+    { 'Métrica':'Total de receitas', 'Valor': receitas.length },
+    { 'Métrica':'Receitas descobertas', 'Valor': receitas.filter(r=>r.status==='descoberta').length },
+    { 'Métrica':'Receitas secretas', 'Valor': receitas.filter(r=>r.status==='secreta').length },
+    { 'Métrica':'', 'Valor':'' },
+    { 'Métrica':'Total de ensaios', 'Valor': ensaios.filter(e=>e.tipo==='ensaio').length },
+    { 'Métrica':'Ensaios Perfeitos', 'Valor': ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='perfeito').length },
+    { 'Métrica':'Ensaios Mais que Perfeitos', 'Valor': ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='mais-perfeito').length },
+    { 'Métrica':'Ensaios falhos', 'Valor': ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='falha').length },
+    { 'Métrica':'', 'Valor':'' },
+    { 'Métrica':'Total de misturas', 'Valor': ensaios.filter(e=>e.tipo==='mistura').length },
+    { 'Métrica':'', 'Valor':'' },
+    { 'Métrica':'Exportado em', 'Valor': new Date().toLocaleString('pt-BR') },
   ];
-  const ws3 = XLSX.utils.json_to_sheet(resumo);
-  ws3['!cols'] = [{wch:30},{wch:25}];
-  XLSX.utils.book_append_sheet(wb, ws3, 'Resumo');
+  const ws6 = XLSX.utils.json_to_sheet(resumo);
+  ws6['!cols'] = [{wch:30},{wch:25}];
+  XLSX.utils.book_append_sheet(wb, ws6, 'Resumo');
 
   const filename = 'CadernoYara_' + dateStamp() + '.xlsx';
   XLSX.writeFile(wb, filename);
   flash('Excel exportado: ' + filename);
+}
+
+function equacaoStringPlain(e) {
+  if (!e.sequencia || e.sequencia.length === 0) return '(vazia)';
+  const partes = e.sequencia.map(b => {
+    const n = e.notas ? e.notas[b.idxNota] : null;
+    return (b.sinal>0?'+':'-') + (n?n.h:'?');
+  });
+  return partes.join(' ') + ' = ' + e.soma;
 }
 
 function exportPDF() {
@@ -1544,129 +3738,134 @@ function exportPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.setFont('times', 'bolditalic');
-  doc.setFontSize(20);
-  doc.text('Caderno do Alquimista', 105, 22, { align: 'center' });
-  doc.setFont('times', 'italic');
-  doc.setFontSize(11);
-  doc.text('Registro de Ensaios da Teoria Yara', 105, 30, { align: 'center' });
-  doc.setFont('times', 'normal');
-  doc.setFontSize(9);
-  doc.text(new Date().toLocaleDateString('pt-BR'), 105, 36, { align: 'center' });
-  doc.setLineWidth(0.5);
-  doc.line(20, 40, 190, 40);
+  doc.setFont('times', 'bolditalic'); doc.setFontSize(20);
+  doc.text('Caderno do Alquimista', 105, 22, { align:'center' });
+  doc.setFont('times', 'italic'); doc.setFontSize(11);
+  doc.text('Registro de Ensaios da Teoria Yara — Compêndio', 105, 30, { align:'center' });
+  doc.setFont('times', 'normal'); doc.setFontSize(9);
+  doc.text(new Date().toLocaleDateString('pt-BR'), 105, 36, { align:'center' });
+  doc.setLineWidth(0.5); doc.line(20, 40, 190, 40);
 
   let y = 50;
+  doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Resumo', 20, y); y += 7;
+  doc.setFont('times','normal'); doc.setFontSize(10);
+  doc.text(`Minérios: ${minerais.length} · Ingredientes: ${ingredientes.length} · Receitas: ${receitas.length}`, 25, y); y+=5;
+  doc.text(`Ensaios: ${ensaios.filter(e=>e.tipo==='ensaio').length} (Perfeitos: ${ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='perfeito').length} · Mais que Perfeitos: ${ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='mais-perfeito').length})`, 25, y); y+=5;
+  doc.text(`Misturas: ${ensaios.filter(e=>e.tipo==='mistura').length}`, 25, y); y+=12;
 
-  doc.setFont('times', 'bold');
-  doc.setFontSize(13);
-  doc.text('Resumo', 20, y);
-  y += 7;
-  doc.setFont('times', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Total de minérios cadastrados: ${minerais.length}`, 25, y); y += 5;
-  doc.text(`Total de ensaios registrados: ${ensaios.length}`, 25, y); y += 5;
-  doc.text(`Sucessos: ${ensaios.filter(e=>e.status==='sucesso').length} · Falhas: ${ensaios.filter(e=>e.status==='falha').length} · Parciais: ${ensaios.filter(e=>e.status==='parcial').length} · Surpresas: ${ensaios.filter(e=>e.status==='surpresa').length}`, 25, y);
-  y += 12;
-
+  // Minérios
   if (minerais.length > 0) {
-    doc.setFont('times', 'bold');
-    doc.setFontSize(13);
-    doc.text('Banco de Minérios', 20, y);
-    y += 4;
-
-    const minBody = minerais.map(m => [
-      m.nome,
-      classeLabel(m.classe),
-      m.prop,
-      gerarIndices(m.assinatura).map(n => notaLabel(n) + ':' + n.t.toFixed(1) + 's').join(' · '),
-    ]);
-
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Banco de Minérios', 20, y); y += 4;
     doc.autoTable({
       startY: y + 2,
-      head: [['Nome', 'Classe', 'Propriedade', 'Assinatura']],
-      body: minBody,
-      styles: { font: 'times', fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [43, 26, 10], textColor: [241, 231, 207], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 231, 207] },
-      margin: { left: 20, right: 20 },
+      head: [['Nome','Classe','Propriedade','Perf.','+Perf.','Assinatura']],
+      body: minerais.map(m => [
+        m.nome, classeLabel(m.classe), m.prop, m.perfeito, m.maisPerfeito,
+        (m.assinatura||[]).map(n => notaLabel(n)+':'+n.h).join(' · '),
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:14, right:14 },
+      columnStyles: { 0:{cellWidth:30}, 1:{cellWidth:18}, 2:{cellWidth:35}, 3:{cellWidth:14,halign:'center'}, 4:{cellWidth:16,halign:'center'}, 5:{cellWidth:65} },
     });
     y = doc.lastAutoTable.finalY + 12;
   }
 
-  if (ensaios.length > 0) {
-    if (y > 220) { doc.addPage(); y = 25; }
-    doc.setFont('times', 'bold');
-    doc.setFontSize(13);
-    doc.text('Histórico de Ensaios', 20, y);
-    y += 4;
-
-    const ensBody = ensaios.map(e => [
-      formatarDataCurta(e.data),
-      e.mineralNome,
-      e.gesto || '—',
-      e.caminhoStr || '—',
-      String(e.numMarteladas || (e.sequencia ? e.sequencia.length : 0)),
-      e.resultado,
-      statusLabel(e.status),
-    ]);
-
+  // Ingredientes
+  if (ingredientes.length > 0) {
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Banco Alquímico', 20, y); y += 4;
     doc.autoTable({
       startY: y + 2,
-      head: [['Data', 'Minério', 'Gesto', 'Caminho', 'Nº', 'Resultado', 'Status']],
-      body: ensBody,
-      styles: { font: 'times', fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-      headStyles: { fillColor: [43, 26, 10], textColor: [241, 231, 207], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 231, 207] },
-      margin: { left: 12, right: 12 },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 28 },
-        3: { cellWidth: 38 },
-        4: { cellWidth: 10, halign: 'center' },
-        5: { cellWidth: 40 },
-        6: { cellWidth: 18 },
-      },
+      head: [['Nome','Tipo','Raridade','Propriedades','Etapas']],
+      body: ingredientes.map(i => [
+        i.nome, tipoLabel(i.tipo), raridadeLabel(i.raridade),
+        (i.props||[]).map(p=>`${p.tag}×${p.intensidade}`).join('; '),
+        (i.etapas||[]).map(etapaLabel).join(', '),
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:14, right:14 },
+      columnStyles: { 0:{cellWidth:35}, 1:{cellWidth:22}, 2:{cellWidth:22}, 3:{cellWidth:55}, 4:{cellWidth:40} },
     });
     y = doc.lastAutoTable.finalY + 12;
+  }
 
-    const ensaiosComObs = ensaios.filter(e => e.obs);
-    if (ensaiosComObs.length > 0) {
-      doc.addPage();
-      doc.setFont('times', 'bold');
-      doc.setFontSize(13);
-      doc.text('Observações Detalhadas', 20, 25);
-      let yObs = 35;
-      ensaiosComObs.forEach(e => {
-        if (yObs > 270) { doc.addPage(); yObs = 25; }
-        doc.setFont('times', 'bold');
-        doc.setFontSize(10);
-        doc.text(`${e.mineralNome} — ${formatarDataCurta(e.data)}`, 20, yObs);
-        yObs += 5;
-        doc.setFont('times', 'italic');
-        doc.setFontSize(9);
-        doc.text(`Caminho: ${e.caminhoStr || 'nenhum'}  ·  Resultado: ${e.resultado}`, 20, yObs);
-        yObs += 5;
-        doc.setFont('times', 'normal');
-        doc.setFontSize(9);
-        const lines = doc.splitTextToSize(e.obs, 170);
-        doc.text(lines, 20, yObs);
-        yObs += lines.length * 4.5 + 6;
-        doc.setLineWidth(0.2);
-        doc.setDrawColor(150, 130, 90);
-        doc.line(20, yObs - 3, 190, yObs - 3);
-      });
-    }
+  // Receitas (apenas conhecidas e descobertas)
+  const recsVisiveis = receitas.filter(r => r.status !== 'secreta');
+  if (recsVisiveis.length > 0) {
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Livro de Receitas', 20, y); y += 4;
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Nome','Produto','Efeito','Ingredientes']],
+      body: recsVisiveis.map(r => [
+        r.nome, produtoLabel(r.produto), r.efeito,
+        r.ingredientes.map(it => {
+          const info = getIngrInfo(it.refId, it.fonte);
+          return (info ? info.nome : '?') + (it.etapas.length ? ' ['+it.etapas.map(etapaLabel).join('→')+']' : '');
+        }).join(' + '),
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:14, right:14 },
+      columnStyles: { 0:{cellWidth:35}, 1:{cellWidth:20}, 2:{cellWidth:50}, 3:{cellWidth:65} },
+    });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  // Ensaios
+  const ensReg = ensaios.filter(e => e.tipo === 'ensaio');
+  if (ensReg.length > 0) {
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Histórico de Ensaios', 20, y); y += 4;
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Data','Minério','Equação','Soma','Resultado','Status']],
+      body: ensReg.map(e => [
+        formatarDataCurta(e.data), e.mineralNome, equacaoStringPlain(e),
+        String(e.soma), e.resultado || '—', statusLabel(e.status),
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:12, right:12 },
+      columnStyles: { 0:{cellWidth:20}, 1:{cellWidth:30}, 2:{cellWidth:50}, 3:{cellWidth:14,halign:'center'}, 4:{cellWidth:45}, 5:{cellWidth:25} },
+    });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  // Misturas
+  const mixReg = ensaios.filter(e => e.tipo === 'mistura');
+  if (mixReg.length > 0) {
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Histórico de Misturas', 20, y); y += 4;
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Data','Produto','Status','Efeito','Ingredientes']],
+      body: mixReg.map(e => [
+        formatarDataCurta(e.data), produtoLabel(e.produto), statusLabel(e.status),
+        e.efeito || '—',
+        e.ingredientes.map(it => it.nome + (it.etapas.length?' ['+it.etapas.map(etapaLabel).join('→')+']':'')).join(' + ')
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:12, right:12 },
+      columnStyles: { 0:{cellWidth:20}, 1:{cellWidth:22}, 2:{cellWidth:22}, 3:{cellWidth:55}, 4:{cellWidth:65} },
+    });
   }
 
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFont('times', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 100, 70);
-    doc.text(`— Caderno do Alquimista — Yara · página ${i} de ${pageCount} —`, 105, 290, { align: 'center' });
+    doc.setFont('times','italic'); doc.setFontSize(8);
+    doc.setTextColor(120,100,70);
+    doc.text(`— Caderno do Alquimista — Yara · página ${i} de ${pageCount} —`, 105, 290, { align:'center' });
   }
 
   const filename = 'CadernoYara_' + dateStamp() + '.pdf';
@@ -1675,15 +3874,14 @@ function exportPDF() {
 }
 
 function exportJSON() {
-  const data = { minerais, ensaios, exportadoEm: new Date().toISOString(), versao: 2 };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const data = { minerais, ingredientes, receitas, ensaios, bandasCustom, exportadoEm: new Date().toISOString(), versao: 3 };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'CadernoYara_backup_' + dateStamp() + '.json';
   a.click();
   flash('Backup JSON exportado.');
 }
-
 function importJSON(ev) {
   const file = ev.target.files[0];
   if (!file) return;
@@ -1691,61 +3889,63 @@ function importJSON(ev) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.minerais || !data.ensaios) throw new Error('Formato inválido');
-
-      abrirModal(
-        'Importar backup?',
-        `O arquivo contém ${data.minerais.length} minérios e ${data.ensaios.length} ensaios. Deseja substituir os dados atuais ou mesclar?`,
+      if (!data.minerais && !data.ensaios && !data.ingredientes) throw new Error('Formato inválido');
+      const counts = {
+        m: (data.minerais||[]).length,
+        i: (data.ingredientes||[]).length,
+        r: (data.receitas||[]).length,
+        e: (data.ensaios||[]).length,
+      };
+      abrirModal('Importar backup?',
+        `Arquivo contém ${counts.m} minérios, ${counts.i} ingredientes, ${counts.r} receitas, ${counts.e} registros. Deseja substituir ou mesclar?`,
         [
-          { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
-          { label: 'Mesclar', class: 'btn-secondary', onClick: () => doImport(data, false) },
-          { label: 'Substituir', class: 'btn-danger', onClick: () => doImport(data, true) },
+          { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+          { label:'Mesclar', class:'btn-secondary', onClick: () => doImport(data, false) },
+          { label:'Substituir', class:'btn-danger', onClick: () => doImport(data, true) },
         ]
       );
-    } catch (err) {
-      flash('Arquivo inválido: ' + err.message, 'error');
-    }
+    } catch (err) { flash('Arquivo inválido: ' + err.message, 'error'); }
   };
   reader.readAsText(file);
   ev.target.value = '';
 }
-
 function doImport(data, substituir) {
+  const merge = (cur, novo) => {
+    const ids = new Set(cur.map(x => x.id));
+    (novo||[]).forEach(x => { if (!ids.has(x.id)) cur.push(x); });
+    return cur;
+  };
   if (substituir) {
-    minerais = data.minerais;
-    ensaios = data.ensaios;
+    minerais = data.minerais || [];
+    ingredientes = data.ingredientes || [];
+    receitas = data.receitas || [];
+    ensaios = data.ensaios || [];
+    bandasCustom = data.bandasCustom || [];
   } else {
-    const idsM = new Set(minerais.map(m => m.id));
-    data.minerais.forEach(m => { if (!idsM.has(m.id)) minerais.push(m); });
-    const idsE = new Set(ensaios.map(e => e.id));
-    data.ensaios.forEach(e => { if (!idsE.has(e.id)) ensaios.push(e); });
+    minerais     = merge(minerais, data.minerais);
+    ingredientes = merge(ingredientes, data.ingredientes);
+    receitas     = merge(receitas, data.receitas);
+    ensaios      = merge(ensaios, data.ensaios);
+    (data.bandasCustom||[]).forEach(b => { if (!bandasCustom.includes(b)) bandasCustom.push(b); });
   }
-  // garantir migração das sequências
-  ensaios.forEach(en => {
-    if (!en.sequencia && en.notas) {
-      en.sequencia = en.notas.map((n, i) => n.batida ? i : -1).filter(x => x >= 0);
-    }
-  });
   salvar();
-  renderMinerais();
-  renderEnsaiosSelect();
-  renderEnsaios();
-  atualizarBadges();
-  closeModal();
-  flash('Backup importado.');
+  renderMinerais(); renderIngredientes(); renderReceitas(); renderEnsaios();
+  renderEnsaiosSelect(); renderPool(); renderRecAddSelect();
+  popularBandasDropdown(); atualizarBadges();
+  closeModal(); flash('Backup importado.');
 }
-
 function apagarTudo() {
-  abrirModal(
-    'Apagar todos os dados?',
-    'Esta ação não pode ser desfeita. Todos os minérios e ensaios serão removidos. Faça um backup JSON antes de continuar, se desejar preservar os dados.',
+  abrirModal('Apagar todos os dados?',
+    'Esta ação não pode ser desfeita. Todos os minérios, ingredientes, receitas, ensaios e misturas serão removidos. Faça um backup JSON antes.',
     [
-      { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
-      { label: 'Apagar tudo', class: 'btn-danger', onClick: () => {
-        minerais = []; ensaios = []; salvar();
-        renderMinerais(); renderEnsaiosSelect(); renderEnsaios(); atualizarBadges();
-        closeModal();
-        flash('Tudo apagado.');
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Apagar tudo', class:'btn-danger', onClick: () => {
+        minerais = []; ingredientes = []; receitas = []; ensaios = []; bandasCustom = [];
+        salvar();
+        renderMinerais(); renderIngredientes(); renderReceitas(); renderEnsaios();
+        renderEnsaiosSelect(); renderPool(); renderRecAddSelect();
+        popularBandasDropdown(); atualizarBadges();
+        closeModal(); flash('Tudo apagado.');
       }},
     ]
   );
@@ -1753,73 +3953,56 @@ function apagarTudo() {
 
 function seedSeven() {
   const seven = [
-    { nome: 'Minério Branco', classe: 'reativo', prop: 'Cura / equipamentos mágicos',
-      assinatura: parseAssinatura('H3:2.0, H4:1.5, H3:2.0'),
+    { nome:'Minério Branco', classe:'reativo', prop:'Cura / equipamentos mágicos',
+      assinatura: [{h:3,sup:1},{h:4,sup:null},{h:3,sup:2}],
+      perfeito: 10, maisPerfeito: 14,
       origem: 'Veias profundas — minério raro' },
-    { nome: 'Minério Ígneo', classe: 'reativo', prop: 'Fogo / explosão / pólvora',
-      assinatura: parseAssinatura('H3:1.0, H4:1.0, H3:1.5, H2:2.0'),
+    { nome:'Minério Ígneo', classe:'reativo', prop:'Fogo / explosão / pólvora',
+      assinatura: [{h:3,sup:1},{h:4,sup:null},{h:3,sup:2},{h:2,sup:null}],
+      perfeito: 12, maisPerfeito: 15,
       origem: 'Minas Rubras de Lirian' },
-    { nome: 'Braço de Yukiona', classe: 'incerto', prop: 'Gelo / névoa gélida ao raspar',
-      assinatura: parseAssinatura('H1:2.0, H2:1.5, H0:3.0'),
+    { nome:'Braço de Yukiona', classe:'incerto', prop:'Gelo / névoa gélida ao raspar',
+      assinatura: [{h:1,sup:1},{h:2,sup:null},{h:0,sup:null}],
+      perfeito: 3, maisPerfeito: 5,
       origem: 'Criatura — região gelada do norte' },
-    { nome: 'Presa de Snir', classe: 'incerto', prop: 'Elétrico / paralisia',
-      assinatura: parseAssinatura('H4:1.0, H3:1.0, H4:1.5'),
+    { nome:'Presa de Snir', classe:'incerto', prop:'Elétrico / paralisia',
+      assinatura: [{h:4,sup:1},{h:3,sup:null},{h:4,sup:2}],
+      perfeito: 11, maisPerfeito: 15,
       origem: 'Criatura — Snir das tempestades' },
-    { nome: 'Coração de Volar', classe: 'incerto', prop: 'Vento / esquiva / agilidade',
-      assinatura: parseAssinatura('H4:1.5, H3:1.0, H4:2.0'),
+    { nome:'Coração de Volar', classe:'incerto', prop:'Vento / esquiva / agilidade',
+      assinatura: [{h:4,sup:1},{h:3,sup:null},{h:4,sup:2}],
+      perfeito: 11, maisPerfeito: 15,
       origem: 'Criatura — Volar dos picos altos' },
-    { nome: 'Cabeça de Balelush', classe: 'reativo', prop: 'Planta / tóxico ou anti-tóxico',
-      assinatura: parseAssinatura('H1:2.0, H2:1.5, H1:2.0, H2:1.5'),
+    { nome:'Cabeça de Balelush', classe:'reativo', prop:'Planta / tóxico ou anti-tóxico',
+      assinatura: [{h:1,sup:1},{h:2,sup:1},{h:1,sup:2},{h:2,sup:2}],
+      perfeito: 6, maisPerfeito: 8,
       origem: 'Criatura vegetal — pântanos' },
-    { nome: 'Minério Chupão', classe: 'reativo', prop: 'Conversão de propriedades para defesa',
-      assinatura: parseAssinatura('H1:2.0, H3:1.5, H4:1.5, H3:1.5, H1:2.0'),
+    { nome:'Minério Chupão', classe:'reativo', prop:'Conversão de propriedades para defesa',
+      assinatura: [{h:1,sup:1},{h:3,sup:null},{h:4,sup:null},{h:3,sup:null},{h:1,sup:2}],
+      perfeito: 12, maisPerfeito: 16,
       origem: 'Veias profundas — junto ao Minério Branco' },
   ];
   seven.forEach(s => {
     minerais.unshift({
       id: 'min-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
       ...s,
-      notas: '',
+      props: [], obs: '', icone: '',
       criadoEm: new Date().toISOString(),
     });
   });
   salvar();
-  renderMinerais();
-  renderEnsaiosSelect();
-  atualizarBadges();
+  renderMinerais(); renderEnsaiosSelect(); renderPool(); atualizarBadges();
   flash('7 minérios carregados.');
 }
 
-/* HELPERS */
-function escapeHTML(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-function formatarData(iso) {
-  try {
-    return new Date(iso).toLocaleString('pt-BR', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-  } catch { return iso; }
-}
-function formatarDataCurta(iso) {
-  try { return new Date(iso).toLocaleDateString('pt-BR'); }
-  catch { return iso; }
-}
-function dateStamp() {
-  const d = new Date();
-  return d.getFullYear() + (''+(d.getMonth()+1)).padStart(2,'0') + (''+d.getDate()).padStart(2,'0') +
-    '_' + (''+d.getHours()).padStart(2,'0') + (''+d.getMinutes()).padStart(2,'0');
-}
 
+/* ============== MODAL ============== */
 function abrirModal(titulo, body, actions) {
   document.getElementById('modal-title').textContent = titulo;
   document.getElementById('modal-body').innerHTML = body;
   const acts = document.getElementById('modal-actions');
   acts.innerHTML = '';
-  actions.forEach(a => {
+  (actions || []).forEach(a => {
     const b = document.createElement('button');
     b.className = 'btn ' + (a.class || '');
     b.textContent = a.label;
@@ -1834,7 +4017,6 @@ function closeModal() {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
-  // Ctrl/Cmd+Z desfaz última batida quando estamos no painel de ensaio
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && document.getElementById('panel-ensaio').classList.contains('active')) {
     e.preventDefault();
     desfazerUltima();
