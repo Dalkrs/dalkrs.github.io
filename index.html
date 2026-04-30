@@ -1242,6 +1242,511 @@ footer .repo-link a:hover { color: var(--rust); }
   font-size: 0.75rem;
 }
 
+/* ============== ÍCONES (Iconify + emoji) ============== */
+.ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+.ico img {
+  width: 1em;
+  height: 1em;
+  display: block;
+  filter: drop-shadow(0 0 0 transparent);
+}
+.ico-emoji {
+  font-family: 'EB Garamond', serif;
+  font-style: normal;
+}
+.ico-grande { font-size: 2.4rem; }
+.ico-medio  { font-size: 1.4rem; }
+.ico-card   { font-size: 2.6rem; }
+
+/* PICKER DE ÍCONE — botão + preview */
+.icon-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.icon-pick-preview {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ink-faded);
+  background: rgba(255, 250, 235, 0.85);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+}
+.icon-pick-btn {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(255, 250, 235, 0.7);
+  border: 1px solid var(--ink-faded);
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.icon-pick-btn:hover { background: var(--ink); color: var(--paper); }
+.icon-pick-clear {
+  background: transparent;
+  border: none;
+  color: var(--rust);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  line-height: 1;
+}
+
+/* MODAL — abas + grid de ícones */
+.icon-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--ink-faded);
+}
+.icon-tab {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.9rem;
+  padding: 0.55rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--ink-faded);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  margin-bottom: -1px;
+  transition: color 0.15s;
+}
+.icon-tab:hover { color: var(--ink); }
+.icon-tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--rust);
+}
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 0.4rem 0.2rem;
+}
+.icon-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 250, 235, 0.6);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  transition: all 0.15s;
+  padding: 6px;
+}
+.icon-cell img { width: 28px; height: 28px; display: block; }
+.icon-cell:hover {
+  background: var(--ink);
+  color: var(--paper);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--shadow-warm);
+}
+.icon-cell:hover img { filter: invert(1) brightness(2); }
+.icon-cell.selected {
+  background: var(--rust);
+  color: var(--paper);
+  border-color: var(--rust);
+}
+
+/* ============== STATUS DO PUZZLE — estados ricos ============== */
+.alvo-num.quase-perfeito { color: var(--gold); }
+.alvo-num.subperfeito    { color: var(--ink-faded); }
+.alvo-num.excesso        { color: var(--rust); }
+.alvo-num.negativo       { color: #6b2810; }
+.alvo-num.vazio          { color: var(--ink-faded); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.2rem; }
+
+.alvo-box.alvo-atual.bateu {
+  animation: glow-perfeito 1.4s ease-in-out infinite;
+}
+@keyframes glow-perfeito {
+  0%, 100% {
+    box-shadow: 2px 2px 0 var(--shadow-paper), 0 0 0px rgba(184, 132, 28, 0.5);
+    border-color: var(--ink);
+  }
+  50% {
+    box-shadow: 2px 2px 0 var(--shadow-paper), 0 0 18px rgba(184, 132, 28, 0.85);
+    border-color: var(--gold);
+  }
+}
+.alvo-box.alvo-atual.bateu-mais {
+  animation: glow-mais 1.2s ease-in-out infinite;
+}
+@keyframes glow-mais {
+  0%, 100% {
+    box-shadow: 2px 2px 0 var(--shadow-paper), 0 0 0px rgba(160, 65, 28, 0.6);
+    border-color: var(--ink);
+  }
+  50% {
+    box-shadow: 2px 2px 0 var(--shadow-paper), 0 0 22px rgba(160, 65, 28, 0.9);
+    border-color: var(--rust);
+  }
+}
+
+/* HISTÓRICO DE TENTATIVAS */
+.historico-tentativas {
+  background: rgba(255, 250, 235, 0.5);
+  border: 0.5px dashed var(--ink-faded);
+  padding: 0.8rem 1rem;
+  border-radius: 2px;
+  margin-top: 1rem;
+}
+.historico-tentativas .ht-titulo {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.historico-tentativas .ht-titulo .ht-stats {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ht-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.ht-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.78rem;
+  border: 0.5px solid var(--ink-faded);
+  background: rgba(255, 250, 235, 0.7);
+  color: var(--ink-faded);
+  cursor: default;
+  transition: all 0.15s;
+}
+.ht-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--shadow-paper);
+}
+.ht-item.ht-perfeito {
+  background: rgba(79, 107, 62, 0.18);
+  color: var(--green-old);
+  border-color: var(--green-old);
+}
+.ht-item.ht-mais-perfeito {
+  background: rgba(184, 132, 28, 0.30);
+  color: var(--rust);
+  border-color: var(--gold);
+  font-weight: bold;
+}
+.ht-item.ht-falha {
+  background: rgba(160, 65, 28, 0.10);
+  color: var(--ink-faded);
+}
+.ht-item .ht-soma { font-weight: bold; color: var(--ink); }
+.ht-empty {
+  color: var(--ink-faded);
+  font-style: italic;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+}
+
+/* TOGGLE manter sinal */
+.sinal-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-faded);
+  cursor: pointer;
+  user-select: none;
+  margin-left: auto;
+}
+.sinal-lock input { cursor: pointer; }
+
+/* QUALIDADE DA MISTURA */
+.qualidade-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  margin-left: 0.4rem;
+}
+.qualidade-tag.q-critica { background: var(--gold); color: var(--ink); border: 0.5px solid var(--rust); }
+.qualidade-tag.q-boa { background: rgba(79, 107, 62, 0.4); color: var(--ink); border: 0.5px solid var(--green-old); }
+.qualidade-tag.q-aceitavel { background: rgba(184, 132, 28, 0.25); color: var(--ink); border: 0.5px solid var(--gold); }
+.qualidade-tag.q-ruim { background: rgba(160, 65, 28, 0.18); color: var(--rust); border: 0.5px solid var(--rust); }
+
+.recipiente-stage.bateu {
+  animation: stage-pulse 2s ease-in-out infinite;
+}
+@keyframes stage-pulse {
+  0%, 100% { background: radial-gradient(ellipse at 50% 60%, rgba(43,26,10,0.18), transparent 70%); }
+  50% { background: radial-gradient(ellipse at 50% 60%, rgba(184,132,28,0.35), transparent 75%); }
+}
+
+/* TRANSIÇÕES E HOVERS APRIMORADOS */
+.btn { transition: all 0.18s ease; }
+.tab { transition: color 0.2s, border-color 0.2s, background 0.2s; }
+.section { transition: box-shadow 0.2s; }
+.section:hover { box-shadow: 3px 4px 0 var(--shadow-paper), inset 0 0 30px rgba(255, 250, 235, 0.4); }
+.mineral-card, .test-card, .ingr-card, .receita-card { transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; }
+.mineral-card:hover, .test-card:hover, .ingr-card:hover, .receita-card:hover {
+  border-color: var(--ink);
+}
+.produto-card { transition: all 0.2s ease; }
+.produto-card:hover .pico { transform: scale(1.08); transition: transform 0.2s; }
+.produto-card .pico { transition: transform 0.2s; }
+
+/* SELETOR DE SINAL — visual mais rico */
+.sinal-btn .ico { margin-right: 0.3rem; }
+.sinal-btn.ativo[data-sign="+"] {
+  background: var(--green-old);
+  border-color: var(--green-old);
+}
+.sinal-btn.ativo[data-sign="-"] {
+  background: var(--rust);
+  border-color: var(--rust);
+}
+
+/* ESTILO DOS BADGES DE ALVO MELHORADO */
+.alvo-box .alvo-meta {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  color: var(--ink-faded);
+  margin-top: 0.1rem;
+  min-height: 1em;
+}
+
+/* ===== WIZARD HEADER (decoração extra) ===== */
+header .ornamento {
+  display: block;
+  margin: 0 auto 0.5rem;
+  width: 60px;
+  opacity: 0.85;
+}
+
+/* ===== TOGGLE DE MUTE (canto do header) ===== */
+.mute-toggle {
+  position: absolute;
+  top: 1.4rem;
+  right: 1.4rem;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 250, 235, 0.85);
+  border: 1px solid var(--ink-faded);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s;
+  color: var(--ink);
+  z-index: 5;
+}
+.mute-toggle:hover {
+  background: var(--ink);
+  color: var(--paper);
+  transform: scale(1.05);
+}
+.mute-toggle.muted {
+  color: var(--rust);
+  border-color: var(--rust);
+}
+@media (max-width: 720px) {
+  .mute-toggle { top: 0.7rem; right: 0.7rem; width: 36px; height: 36px; font-size: 1rem; }
+}
+
+/* ===== CATÁLOGO DE ETAPAS ===== */
+.etapa-card {
+  background: rgba(255, 250, 235, 0.85);
+  border: 0.5px solid var(--ink-faded);
+  padding: 0.9rem 1rem;
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--shadow-paper);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.etapa-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--shadow-paper);
+}
+.etapa-card .et-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.etapa-card .et-head .et-ico-grande {
+  font-size: 1.6rem;
+}
+.etapa-card h4 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.05rem;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  flex: 1;
+}
+.etapa-card .et-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.efeitos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+.efeito-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 3px 9px;
+  background: rgba(184, 132, 28, 0.15);
+  border: 0.5px solid var(--gold);
+  border-radius: 10px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.efeito-chip .et-tipo {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.efeito-chip .et-formula {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.85rem;
+}
+
+/* FORM EFEITOS — adicionar em sequência */
+.efeito-builder {
+  border: 1px dashed var(--ink-faded);
+  padding: 0.8rem;
+  border-radius: 2px;
+  background: rgba(255, 250, 235, 0.4);
+  margin-top: 0.5rem;
+}
+.efeito-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-bottom: 0.5rem;
+}
+.efeito-row select, .efeito-row input {
+  border: 1px solid var(--ink-faded);
+  padding: 0.35rem 0.5rem;
+  background: rgba(255, 250, 235, 0.85);
+  border-radius: 1px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.9rem;
+}
+.efeito-row .ef-tipo { min-width: 110px; }
+.efeito-row .ef-tag, .efeito-row .ef-tag2 { min-width: 120px; }
+.efeito-row .ef-num { width: 70px; }
+.efeito-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: rgba(255, 250, 235, 0.75);
+  border: 0.5px solid var(--ink-faded);
+  border-radius: 2px;
+  margin-bottom: 0.4rem;
+}
+.efeito-card .ef-num-ord {
+  background: var(--ink);
+  color: var(--paper);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-family: 'Special Elite', monospace;
+  flex-shrink: 0;
+}
+.efeito-card .ef-desc {
+  flex: 1;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.9rem;
+}
+.efeito-card .ef-tipo-tag {
+  background: var(--gold);
+  color: var(--ink);
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+/* DIFF DE PROPRIEDADES NA BANCADA (visualizar antes/depois) */
+.props-diff {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 250, 235, 0.4);
+  border: 0.5px dashed var(--ink-faded);
+  border-radius: 2px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.82rem;
+}
+.props-diff .pd-titulo {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 0.75rem;
+  color: var(--ink-faded);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+.props-diff-flow {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.props-diff-flow .arrow {
+  color: var(--rust);
+  font-family: 'Special Elite', monospace;
+  font-size: 1rem;
+}
+.prop-chip.pd-novo { border-color: var(--green-old); background: rgba(79, 107, 62, 0.20); }
+.prop-chip.pd-mod { border-color: var(--rust); background: rgba(160, 65, 28, 0.18); }
+
 @media (max-width: 720px) {
   header h1 { font-size: 1.9rem; }
   header::before, header::after { display: none; }
@@ -1251,12 +1756,16 @@ footer .repo-link a:hover { color: var(--rust); }
   .tabs { flex-wrap: nowrap; overflow-x: auto; }
   .tab { white-space: nowrap; padding: 0.6rem 1rem; font-size: 0.85rem; }
   .pauta-svg { min-width: 500px; }
+  .icon-grid { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); }
+  .alvo-display { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
 <body>
 
 <header>
+  <button class="mute-toggle" id="mute-toggle" onclick="toggleMute()" aria-label="Alternar sons">🔊</button>
+  <img class="ornamento" src="https://api.iconify.design/game-icons/alchemy-pot.svg?color=%238B5A2B" alt="" aria-hidden="true">
   <h1>Caderno do Alquimista</h1>
   <div class="subtitle">Registro de Ensaios da Teoria Yara</div>
   <div class="author">— Bancada de Trabalho Pessoal —</div>
@@ -1270,6 +1779,7 @@ footer .repo-link a:hover { color: var(--rust); }
   <button class="tab" data-tab="alquimicos" role="tab">Banco Alquímico <span class="tab-badge" id="badge-alquimicos">0</span></button>
   <button class="tab" data-tab="bancada" role="tab">Bancada</button>
   <button class="tab" data-tab="receitas" role="tab">Receitas <span class="tab-badge" id="badge-receitas">0</span></button>
+  <button class="tab" data-tab="inventario" role="tab">Inventário <span class="tab-badge" id="badge-inventario">0</span></button>
   <button class="tab" data-tab="registros" role="tab">Registros <span class="tab-badge" id="badge-registros">0</span></button>
   <button class="tab" data-tab="exportar" role="tab">Exportar</button>
 </div>
@@ -1360,8 +1870,13 @@ footer .repo-link a:hover { color: var(--rust); }
         <input type="text" id="min-origem" placeholder="Ex: Floresta gelada de Lirian">
       </div>
       <div class="form-group">
-        <label>Ícone (emoji ou símbolo, opcional)</label>
-        <input type="text" id="min-icone" placeholder="Ex: 💎 ou ⛏" maxlength="3">
+        <label>Ícone</label>
+        <div class="icon-pick">
+          <span class="icon-pick-preview" id="min-icone-preview" aria-label="Ícone selecionado">·</span>
+          <button type="button" class="icon-pick-btn" onclick="abrirSeletorIcone(setIconeMineral)">Escolher ícone</button>
+          <button type="button" class="icon-pick-clear" onclick="setIconeMineral('')" aria-label="Limpar ícone" title="Limpar">×</button>
+          <input type="hidden" id="min-icone">
+        </div>
       </div>
     </div>
     <div class="form-row full">
@@ -1376,7 +1891,7 @@ footer .repo-link a:hover { color: var(--rust); }
         <div id="min-props-builder">
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:end">
             <input type="text" id="add-min-prop-tag" placeholder="Ex: cura, fogo, gelo..." style="flex:1;min-width:160px" list="dl-props">
-            <input type="number" id="add-min-prop-int" placeholder="1-5" min="1" max="5" style="width:80px">
+            <input type="number" id="add-min-prop-int" placeholder="1-999" min="1" max="999" style="width:80px">
             <button class="btn btn-tiny" type="button" onclick="addMinProp()">+ propriedade</button>
           </div>
           <div class="prop-chips" id="min-props-chips" style="margin-top:0.5rem;min-height:30px"></div>
@@ -1459,8 +1974,12 @@ footer .repo-link a:hover { color: var(--rust); }
 
     <div class="sinal-toggle">
       <span class="sinal-lbl">Próxima martelada:</span>
-      <button class="sinal-btn ativo" id="btn-sinal-mais" onclick="setSinal(1)">+ somar</button>
-      <button class="sinal-btn" id="btn-sinal-menos" onclick="setSinal(-1)">− subtrair (reação contrária)</button>
+      <button class="sinal-btn ativo" id="btn-sinal-mais" data-sign="+" onclick="setSinal(1)" aria-label="Modo somar">+ somar</button>
+      <button class="sinal-btn" id="btn-sinal-menos" data-sign="-" onclick="setSinal(-1)" aria-label="Modo subtrair, reação contrária">− subtrair (reação contrária)</button>
+      <label class="sinal-lock" title="Se desligado, volta para '+' depois de cada subtração">
+        <input type="checkbox" id="sinal-lock" checked onchange="onSinalLockChange(this.checked)">
+        <span>manter sinal</span>
+      </label>
     </div>
 
     <div class="pauta-wrapper">
@@ -1480,6 +1999,16 @@ footer .repo-link a:hover { color: var(--rust); }
       <div class="partitura-summary">
         <span class="label">Equação:</span>
         <span id="caminho-text" class="empty caminho-completo">nenhuma martelada</span>
+      </div>
+
+      <div class="historico-tentativas" id="historico-tentativas-wrap">
+        <div class="ht-titulo">
+          <span>Tentativas neste minério</span>
+          <span class="ht-stats" id="ht-stats">—</span>
+        </div>
+        <div class="ht-lista" id="ht-lista">
+          <span class="ht-empty">Nenhuma tentativa registrada ainda. Cada ensaio salvo entra aqui automaticamente.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1561,8 +2090,13 @@ footer .repo-link a:hover { color: var(--rust); }
         <input type="text" id="ing-origem" placeholder="Ex: Pântano de Lirian, lua cheia">
       </div>
       <div class="form-group">
-        <label>Ícone (emoji ou símbolo)</label>
-        <input type="text" id="ing-icone" placeholder="🌿 / 🦴 / ✦" maxlength="3">
+        <label>Ícone</label>
+        <div class="icon-pick">
+          <span class="icon-pick-preview" id="ing-icone-preview" aria-label="Ícone selecionado">🌿</span>
+          <button type="button" class="icon-pick-btn" onclick="abrirSeletorIcone(setIconeIngrediente)">Escolher ícone</button>
+          <button type="button" class="icon-pick-clear" onclick="setIconeIngrediente('')" aria-label="Limpar ícone" title="Limpar">×</button>
+          <input type="hidden" id="ing-icone">
+        </div>
       </div>
     </div>
 
@@ -1579,7 +2113,7 @@ footer .repo-link a:hover { color: var(--rust); }
         <div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:end">
             <input type="text" id="add-ing-prop-tag" placeholder="Ex: cura, fogo, sono..." style="flex:1;min-width:160px" list="dl-props">
-            <input type="number" id="add-ing-prop-int" placeholder="1-5" min="1" max="5" style="width:80px">
+            <input type="number" id="add-ing-prop-int" placeholder="1-999" min="1" max="999" style="width:80px">
             <button class="btn btn-tiny" type="button" onclick="addIngProp()">+ propriedade</button>
           </div>
           <datalist id="dl-props">
@@ -1610,22 +2144,7 @@ footer .repo-link a:hover { color: var(--rust); }
       <div class="form-group">
         <label>Etapas de preparação aceitas — selecione as compatíveis</label>
         <div class="etapas-pills" id="ing-etapas-pills">
-          <label class="etapa-pill" data-etapa="moer">
-            <input type="checkbox" value="moer" onchange="atualizarEtapaPill(this)">
-            <span class="et-ico">⚒</span> Moer / Triturar
-          </label>
-          <label class="etapa-pill" data-etapa="ferver">
-            <input type="checkbox" value="ferver" onchange="atualizarEtapaPill(this)">
-            <span class="et-ico">♨</span> Ferver / Decoctar
-          </label>
-          <label class="etapa-pill" data-etapa="macerar">
-            <input type="checkbox" value="macerar" onchange="atualizarEtapaPill(this)">
-            <span class="et-ico">🫙</span> Macerar / Infundir
-          </label>
-          <label class="etapa-pill" data-etapa="destilar">
-            <input type="checkbox" value="destilar" onchange="atualizarEtapaPill(this)">
-            <span class="et-ico">⚗</span> Destilar / Sublimar
-          </label>
+          <span class="assinatura-empty">Carregando etapas do catálogo...</span>
         </div>
       </div>
     </div>
@@ -1657,6 +2176,101 @@ footer .repo-link a:hover { color: var(--rust); }
       </select>
     </div>
     <div id="ingredientes-grid" class="cards-grid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Etapas de Preparação</h2>
+    <p class="section-desc">Cadastre etapas customizáveis (moer, ferver, destilar, fermentar...) com efeitos sobre as propriedades. Cada etapa pode multiplicar intensidades, transformar uma propriedade em outra, adicionar ou remover propriedades — aplicado quando o ingrediente passa pela etapa na bancada. Cada etapa também tem um som procedural próprio.</p>
+
+    <div class="form-row triple">
+      <div class="form-group">
+        <label>Nome da etapa</label>
+        <input type="text" id="et-nome" placeholder="Ex: Moer / Ferver / Sublimar">
+      </div>
+      <div class="form-group">
+        <label>Som ao executar</label>
+        <select id="et-som">
+          <option value="pilada">Pilada / Triturar</option>
+          <option value="fervura">Fervura / Borbulha</option>
+          <option value="maceracao">Maceração / Líquido lento</option>
+          <option value="destilacao">Destilação / Gota</option>
+          <option value="cristalizacao">Cristalização / Tilintar</option>
+          <option value="combustao">Combustão / Queima</option>
+          <option value="silencio">Silencioso</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ícone</label>
+        <div class="icon-pick">
+          <span class="icon-pick-preview" id="et-icone-preview" aria-label="Ícone selecionado">⚒</span>
+          <button type="button" class="icon-pick-btn" onclick="abrirSeletorIcone(setIconeEtapa)">Escolher</button>
+          <button type="button" class="icon-pick-clear" onclick="setIconeEtapa('')" aria-label="Limpar" title="Limpar">×</button>
+          <input type="hidden" id="et-icone">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Descrição (opcional)</label>
+        <textarea id="et-desc" rows="2" placeholder="Ex: Reduz o ingrediente a pó fino. Aumenta dispersão de propriedades sólidas."></textarea>
+      </div>
+    </div>
+
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Efeitos sobre as propriedades — aplicados em ordem</label>
+        <div class="efeito-builder">
+          <div class="efeito-row">
+            <div class="form-group" style="flex:0 0 auto">
+              <label style="font-size:0.75rem">Tipo</label>
+              <select id="ef-tipo" class="ef-tipo" onchange="atualizarEfeitoForm()">
+                <option value="multiplica">Multiplicar intensidade</option>
+                <option value="modifica">Somar/subtrair intensidade</option>
+                <option value="transforma">Transformar propriedade</option>
+                <option value="adiciona">Adicionar propriedade</option>
+                <option value="remove">Remover propriedade</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:0 0 auto" id="ef-alvo-wrap">
+              <label style="font-size:0.75rem">Alvo (tag ou "qualquer")</label>
+              <input type="text" id="ef-alvo" class="ef-tag" placeholder="cura / qualquer" list="dl-props">
+            </div>
+            <div class="form-group" style="flex:0 0 auto;display:none" id="ef-de-wrap">
+              <label style="font-size:0.75rem">De (origem)</label>
+              <input type="text" id="ef-de" class="ef-tag" placeholder="cura" list="dl-props">
+            </div>
+            <div class="form-group" style="flex:0 0 auto;display:none" id="ef-para-wrap">
+              <label style="font-size:0.75rem">Para (destino)</label>
+              <input type="text" id="ef-para" class="ef-tag2" placeholder="veneno" list="dl-props">
+            </div>
+            <div class="form-group" style="flex:0 0 auto" id="ef-num-wrap">
+              <label style="font-size:0.75rem" id="ef-num-label">Fator</label>
+              <input type="number" id="ef-num" class="ef-num" placeholder="2" step="0.1">
+            </div>
+            <div class="form-group" style="justify-content:flex-end">
+              <label style="visibility:hidden">.</label>
+              <button type="button" class="btn btn-tiny" onclick="addEfeitoEtapa()">+ adicionar</button>
+            </div>
+          </div>
+          <div id="et-efeitos-lista">
+            <span class="assinatura-empty">Nenhum efeito ainda — esta etapa não modifica propriedades.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="salvarEtapa()" id="btn-salvar-et">Cadastrar etapa</button>
+      <button class="btn btn-secondary" onclick="limparFormEtapa()">Limpar</button>
+      <button class="btn btn-secondary" onclick="restaurarEtapasPadrao()">Restaurar etapas padrão</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Catálogo de Etapas</h2>
+    <p class="section-desc">As etapas aqui aparecem disponíveis no cadastro de ingredientes (etapas compatíveis) e na bancada de mistura.</p>
+    <div id="etapas-grid" class="cards-grid"></div>
   </div>
 </div>
 
@@ -1758,6 +2372,7 @@ footer .repo-link a:hover { color: var(--rust); }
     <div class="btn-row">
       <button class="btn" onclick="salvarReceita()" id="btn-salvar-rec">Cadastrar receita</button>
       <button class="btn btn-secondary" onclick="limparFormReceita()">Limpar</button>
+      <button class="btn btn-secondary" onclick="seedReceitas()" id="btn-seed-rec">Carregar 3 receitas exemplo</button>
     </div>
   </div>
 
@@ -1784,7 +2399,42 @@ footer .repo-link a:hover { color: var(--rust); }
   </div>
 </div>
 
-<!-- ABA 6: REGISTROS -->
+<!-- ABA 6: INVENTÁRIO -->
+<div class="panel" id="panel-inventario">
+  <div class="section">
+    <h2>Inventário de Produtos</h2>
+    <p class="section-desc">Misturas bem-sucedidas (Crítica, Boa, Aceitável ou Perfeita) entram aqui automaticamente. Você pode incrementar a quantidade quando refazer a mesma receita, consumir uma unidade ao usar em sessão, ou descartar tudo de um lote.</p>
+
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num" id="inv-stat-total">0</div><div class="stat-label">tipos no estoque</div></div>
+      <div class="stat"><div class="stat-num" id="inv-stat-unidades">0</div><div class="stat-label">unidades totais</div></div>
+      <div class="stat"><div class="stat-num" id="inv-stat-criticas">0</div><div class="stat-label">qualidade crítica</div></div>
+      <div class="stat"><div class="stat-num" id="inv-stat-baixas">0</div><div class="stat-label">qualidade aceitável/ruim</div></div>
+    </div>
+
+    <div class="filters-row">
+      <input type="text" class="filter-input" id="filter-inv" placeholder="Filtrar por nome ou efeito..." oninput="renderInventario()">
+      <select id="filter-inv-prod" class="filter-input" style="flex:0 0 150px" onchange="renderInventario()">
+        <option value="">Todos os produtos</option>
+        <option value="pocao">Poções</option>
+        <option value="bomba">Bombas</option>
+        <option value="perfume">Perfumes</option>
+        <option value="pasta">Pastas</option>
+      </select>
+      <select id="filter-inv-qual" class="filter-input" style="flex:0 0 160px" onchange="renderInventario()">
+        <option value="">Todas qualidades</option>
+        <option value="critica">Crítica</option>
+        <option value="boa">Boa</option>
+        <option value="aceitavel">Aceitável</option>
+        <option value="ruim">Ruim</option>
+      </select>
+    </div>
+
+    <div id="inventario-grid" class="cards-grid"></div>
+  </div>
+</div>
+
+<!-- ABA 7: REGISTROS -->
 <div class="panel" id="panel-registros">
 
   <div class="section">
@@ -1857,6 +2507,21 @@ footer .repo-link a:hover { color: var(--rust); }
   </div>
 </div>
 
+<!-- Modal de seletor de ícones -->
+<div class="modal-overlay" id="icon-picker-overlay" onclick="if(event.target===this)fecharSeletorIcone()">
+  <div class="modal modal-wide">
+    <h3>Escolher ícone</h3>
+    <div class="modal-body" style="margin-bottom:0.6rem">
+      <p style="font-size:0.95rem;color:var(--ink-faded)">Selecione um símbolo. Ícones de fantasia vêm da biblioteca <em>Game Icons</em> (CC BY 3.0).</p>
+    </div>
+    <div class="icon-tabs" id="icon-tabs"></div>
+    <div class="icon-grid" id="icon-grid"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="fecharSeletorIcone()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ====================================================================
    CADERNO DO ALQUIMISTA — Teoria Yara
@@ -1864,20 +2529,115 @@ footer .repo-link a:hover { color: var(--rust); }
    ==================================================================== */
 
 /* ============== STORAGE & ESTADO ============== */
-const KEY_M   = 'yara-minerais-v3';
-const KEY_E   = 'yara-ensaios-v3';        // ensaios + misturas (type discriminator)
-const KEY_I   = 'yara-ingredientes-v1';
-const KEY_R   = 'yara-receitas-v1';
-const KEY_B   = 'yara-bandas-custom-v1';
+const KEY_M    = 'yara-minerais-v3';
+const KEY_E    = 'yara-ensaios-v3';        // ensaios + misturas (type discriminator)
+const KEY_I    = 'yara-ingredientes-v1';
+const KEY_R    = 'yara-receitas-v1';
+const KEY_B    = 'yara-bandas-custom-v1';
+const KEY_INV  = 'yara-inventario-v1';
+const KEY_ET   = 'yara-etapas-v1';
+const KEY_PREF = 'yara-pref-v1';
 
 const BANDAS_PADRAO = ['H0','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10'];
 const SUPS = { 1:'¹', 2:'²', 3:'³', 4:'⁴', 5:'⁵', 6:'⁶' };
+
+/* ============== BIBLIOTECA DE ÍCONES (Iconify + emoji) ============== */
+const ICONIFY_BASE = 'https://api.iconify.design';
+// cor padrão: var(--ink) -> #2B1A0A urlencoded = %232B1A0A
+const ICON_COLOR_INK = '%232B1A0A';
+
+const ICON_LIBRARY = {
+  'Símbolos': [
+    '🌿','🍄','🪻','🌹','🌷','🌳','🪵','🍂','☘','🌵',
+    '✨','⭐','⚡','❄','🔥','💧','🪨','💎','🔮','⚗',
+    '🦴','🐍','🦂','🪶','🐚','🥚','🩸','🦋','🪞','🧪',
+    '🜍','🜎','🜏','⚱','💣','🧂','🍯','🌀','🌙','☀',
+    '🌾','🌻','🍃','🌱','🪷','🐌','🐛','🪳','🪲','🪺',
+    '🧉','🧴','🪔','🕯','📜','✒','🪶','♨','🜔','🜞'
+  ],
+  'Alquimia': [
+    'game-icons:potion-ball','game-icons:potion-of-madness','game-icons:cauldron',
+    'game-icons:alchemy-pot','game-icons:scroll-quill','game-icons:fairy-wand',
+    'game-icons:fire-bowl','game-icons:flask','game-icons:vial',
+    'game-icons:dragon-spiral','game-icons:dragon-head','game-icons:eyestalk',
+    'game-icons:mushrooms-cluster','game-icons:plant-roots','game-icons:roots',
+    'game-icons:moss','game-icons:fern','game-icons:dried-fruit',
+    'game-icons:beast-eye','game-icons:fairy','game-icons:bone-knife',
+    'game-icons:dread-skull','game-icons:eyeball','game-icons:bat',
+    'game-icons:ammonite','game-icons:pestle-mortar','game-icons:torch',
+    'game-icons:rune-stone','game-icons:wax-seal','game-icons:powder',
+    'game-icons:crystal-ball','game-icons:crystal-cluster','game-icons:gold-bar',
+    'game-icons:hammer-drop','game-icons:string','game-icons:quill-ink',
+    'game-icons:lantern','game-icons:dripping-blade','game-icons:bottle-vapors',
+    'game-icons:smoking-orb','game-icons:magic-swirl','game-icons:fizzing-flask'
+  ],
+  'Natureza': [
+    'ph:leaf-fill','ph:plant-fill','ph:flower-fill','ph:tree-fill',
+    'ph:tree-evergreen-fill','ph:mountains-fill','ph:fire-fill','ph:drop-fill',
+    'ph:snowflake-fill','ph:lightning-fill','ph:moon-fill','ph:sun-fill',
+    'ph:eye-fill','ph:diamond-fill','ph:bone','ph:bug','ph:butterfly',
+    'ph:flask-fill','ph:atom-fill','ph:flower-tulip-fill','ph:flower-lotus-fill',
+    'ph:wind-fill','ph:cloud-fog-fill','ph:cloud-lightning-fill','ph:waves',
+    'ph:fish-fill','ph:bird-fill','ph:cat-fill','ph:dog-fill','ph:rabbit-fill'
+  ],
+  'Objetos': [
+    'game-icons:vial','game-icons:flat-platform','game-icons:stone-block',
+    'game-icons:gold-bar','game-icons:rolled-cloth','game-icons:tied-scroll',
+    'game-icons:ribbon-shield','game-icons:hourglass','game-icons:locked-chest',
+    'game-icons:key','game-icons:scales','game-icons:anvil',
+    'game-icons:gem-chain','game-icons:hand','game-icons:sword-wound',
+    'game-icons:hood','game-icons:thread-spool','game-icons:bandage-roll',
+    'game-icons:carved-skull','game-icons:smoking-finger','game-icons:abstract-090'
+  ]
+};
+
+function iconImg(spec, size) {
+  if (!spec) return '<span class="ico ico-emoji">·</span>';
+  size = size || '1em';
+  // formato Iconify: prefix:name
+  if (/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(spec)) {
+    const url = `${ICONIFY_BASE}/${spec}.svg?color=${ICON_COLOR_INK}`;
+    return `<span class="ico" style="font-size:${size}"><img src="${url}" alt=""></span>`;
+  }
+  // emoji ou texto
+  return `<span class="ico ico-emoji" style="font-size:${size}">${escapeHTML(spec)}</span>`;
+}
+
+function iconCellHTML(spec) {
+  if (/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(spec)) {
+    const url = `${ICONIFY_BASE}/${spec}.svg?color=${ICON_COLOR_INK}`;
+    return `<img src="${url}" alt="${spec}">`;
+  }
+  return spec;
+}
+
+// para <option> (que não aceita HTML/SVG inline) — devolve apenas texto curto
+function iconForOption(spec) {
+  if (!spec) return '◇';
+  if (/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(spec)) return '◆';
+  return spec;
+}
 
 let minerais = [];
 let ensaios = [];          // inclui misturas (type='ensaio'|'mistura')
 let ingredientes = [];
 let receitas = [];
+let inventario = [];       // produtos finalizados
+let etapas = [];           // catálogo de etapas customizáveis
 let bandasCustom = [];
+
+// preferências
+let mute = false;
+
+// estado de form da etapa
+let formEtapaEfeitos = [];
+
+// estado do seletor de ícone (modal)
+let iconPickerCallback = null;
+let iconPickerCategoria = 'Símbolos';
+
+// preferência: travar sinal (manter '−' até clicar em '+')
+let manterSinal = true;
 
 // estado do ensaio em andamento
 let ensaioAtual = {
@@ -1911,15 +2671,20 @@ function init() {
   carregar();
   setupTabs();
   popularBandasDropdown();
+  setupIconPickerTabs();
   renderMinerais();
   renderIngredientes();
   renderReceitas();
   renderEnsaios();
   renderEnsaiosSelect();
   renderPool();
+  renderInventario();
+  renderRecAddSelect();
   atualizarBadges();
   atualizarPreviewValor();
   atualizarSomaNatural();
+  atualizarPreviewIconeMineral();
+  atualizarPreviewIconeIngrediente();
   document.querySelectorAll('.produto-card').forEach(p=>p.classList.remove('active'));
   renderRecipiente();
 }
@@ -1929,7 +2694,19 @@ function carregar() {
   try { ensaios  = JSON.parse(localStorage.getItem(KEY_E) || '[]'); } catch(e) { ensaios  = []; }
   try { ingredientes = JSON.parse(localStorage.getItem(KEY_I) || '[]'); } catch(e) { ingredientes = []; }
   try { receitas = JSON.parse(localStorage.getItem(KEY_R) || '[]'); } catch(e) { receitas = []; }
+  try { inventario = JSON.parse(localStorage.getItem(KEY_INV) || '[]'); } catch(e) { inventario = []; }
+  try { etapas = JSON.parse(localStorage.getItem(KEY_ET) || '[]'); } catch(e) { etapas = []; }
   try { bandasCustom = JSON.parse(localStorage.getItem(KEY_B) || '[]'); } catch(e) { bandasCustom = []; }
+  try {
+    const pref = JSON.parse(localStorage.getItem(KEY_PREF) || '{}');
+    mute = !!pref.mute;
+  } catch(e) {}
+
+  // garante seed inicial das 4 etapas padrão se catálogo estiver vazio
+  if (etapas.length === 0) {
+    etapas = etapasPadrao();
+    localStorage.setItem(KEY_ET, JSON.stringify(etapas));
+  }
 
   // === MIGRAÇÃO de versões antigas ===
   // minerais v1/v2 (storage keys antigas)
@@ -1992,7 +2769,10 @@ function salvar() {
   localStorage.setItem(KEY_E, JSON.stringify(ensaios));
   localStorage.setItem(KEY_I, JSON.stringify(ingredientes));
   localStorage.setItem(KEY_R, JSON.stringify(receitas));
+  localStorage.setItem(KEY_INV, JSON.stringify(inventario));
+  localStorage.setItem(KEY_ET, JSON.stringify(etapas));
   localStorage.setItem(KEY_B, JSON.stringify(bandasCustom));
+  localStorage.setItem(KEY_PREF, JSON.stringify({ mute }));
 }
 
 function setupTabs() {
@@ -2002,10 +2782,11 @@ function setupTabs() {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-      if (tab.dataset.tab === 'ensaio') renderEnsaiosSelect();
+      if (tab.dataset.tab === 'ensaio') { renderEnsaiosSelect(); renderHistoricoTentativas(); }
       if (tab.dataset.tab === 'registros') renderEnsaios();
       if (tab.dataset.tab === 'bancada') { renderPool(); renderEsteira(); }
       if (tab.dataset.tab === 'receitas') { renderRecAddSelect(); renderReceitas(); }
+      if (tab.dataset.tab === 'inventario') renderInventario();
     });
   });
 }
@@ -2014,9 +2795,12 @@ function atualizarBadges() {
   document.getElementById('badge-minerais').textContent   = minerais.length;
   document.getElementById('badge-alquimicos').textContent = ingredientes.length;
   document.getElementById('badge-receitas').textContent   = receitas.length;
+  document.getElementById('badge-inventario').textContent = inventario.reduce((s, it) => s + it.qtd, 0);
   document.getElementById('badge-registros').textContent  = ensaios.length;
   const sb = document.getElementById('btn-seed');
   if (sb) sb.style.display = minerais.length === 0 ? '' : 'none';
+  const sr = document.getElementById('btn-seed-rec');
+  if (sr) sr.style.display = (receitas.length === 0 && (minerais.length > 0 || ingredientes.length > 0)) ? '' : 'none';
 }
 
 function flash(msg, tipo='success') {
@@ -2072,12 +2856,7 @@ function tipoLabel(t) {
 function raridadeLabel(r) {
   return { comum:'Comum', incomum:'Incomum', rara:'Rara', lendaria:'Lendária' }[r] || r;
 }
-function etapaLabel(e) {
-  return { moer:'Moer', ferver:'Ferver', macerar:'Macerar', destilar:'Destilar' }[e] || e;
-}
-function etapaIcone(e) {
-  return { moer:'⚒', ferver:'♨', macerar:'🫙', destilar:'⚗' }[e] || '·';
-}
+// etapaLabel e etapaIcone foram movidas para a seção de Catálogo de Etapas (dinâmicas)
 function produtoLabel(p) {
   return { pocao:'Poção', bomba:'Bomba', perfume:'Perfume', pasta:'Pasta' }[p] || p;
 }
@@ -2285,6 +3064,7 @@ function limparFormMineral() {
   renderChipsAssinatura();
   renderMinPropsChips();
   atualizarSomaNatural();
+  atualizarPreviewIconeMineral();
   document.getElementById('btn-salvar-mineral').dataset.editId = '';
   document.getElementById('btn-salvar-mineral').textContent = 'Cadastrar minério';
 }
@@ -2297,6 +3077,7 @@ function editarMineral(id) {
   document.getElementById('min-prop').value = m.prop;
   document.getElementById('min-origem').value = m.origem || '';
   document.getElementById('min-icone').value = m.icone || '';
+  atualizarPreviewIconeMineral();
   document.getElementById('min-notas').value = m.obs || m.notas || '';
   document.getElementById('min-perfeito').value = m.perfeito;
   document.getElementById('min-mais-perfeito').value = m.maisPerfeito;
@@ -2353,7 +3134,7 @@ function renderMinerais() {
     const propsStr = (m.props || []).length
       ? '<div class="prop-chips">' + m.props.map(p => `<span class="prop-chip">${escapeHTML(p.tag)}<span class="int">×${p.intensidade}</span></span>`).join('') + '</div>'
       : '';
-    const ico = m.icone ? `<span style="font-size:1.4rem;float:right">${escapeHTML(m.icone)}</span>` : '';
+    const ico = m.icone ? `<span style="float:right">${iconImg(m.icone, '1.6rem')}</span>` : '';
     return `
       <div class="mineral-card">
         ${ico}<h3>${escapeHTML(m.nome)}</h3>
@@ -2425,6 +3206,7 @@ window.onMineralChange = function() {
   document.getElementById('alvo-mais-perfeito').textContent = m.maisPerfeito;
   setSinal(1);
   renderPauta();
+  renderHistoricoTentativas();
 };
 
 window.setSinal = function(s) {
@@ -2438,12 +3220,6 @@ function calcularSomaAtual() {
     const n = ensaioAtual.notas[b.idxNota];
     return acc + (n.h * b.sinal);
   }, 0);
-}
-
-function statusAutoDaSoma(soma) {
-  if (soma === ensaioAtual.maisPerfeito) return 'mais-perfeito';
-  if (soma === ensaioAtual.perfeito)     return 'perfeito';
-  return 'falha';
 }
 
 function renderPauta() {
@@ -2573,28 +3349,12 @@ function atualizarSummary() {
     txt.textContent = partes.join(' ') + ' = ' + soma;
   }
 }
-function atualizarAlvosDisplay() {
-  const soma = calcularSomaAtual();
-  document.getElementById('soma-atual').textContent = soma;
-  const dist = document.getElementById('soma-distancia');
-  const status = statusAutoDaSoma(soma);
-  const elStatus = document.getElementById('alvo-status');
-  elStatus.textContent = status === 'mais-perfeito' ? 'Mais que Perfeito ★★'
-                       : status === 'perfeito' ? 'Perfeito ★'
-                       : 'fora do alvo';
-  elStatus.className = 'alvo-num ' + status;
-  document.getElementById('soma-atual').className = 'alvo-num ' + (status==='falha' ? '' : status);
-  if (status === 'falha') {
-    const dP = ensaioAtual.perfeito - soma;
-    const dM = ensaioAtual.maisPerfeito - soma;
-    dist.textContent = `falta ${dP>=0?'+':''}${dP} para Perfeito · ${dM>=0?'+':''}${dM} para Mais que Perfeito`;
-  } else {
-    dist.textContent = '✓ alvo atingido';
-  }
-}
-
 window.adicionarBatida = function(idxNota) {
   ensaioAtual.sequencia.push({ idxNota, sinal: ensaioAtual.sinalAtual });
+  // Auto-reset: se manterSinal está desligado e usou subtração, volta para soma
+  if (!manterSinal && ensaioAtual.sinalAtual === -1) {
+    setSinal(1);
+  }
   renderPauta();
 };
 window.removerBatida = function(ordem) {
@@ -2647,9 +3407,11 @@ function salvarEnsaio() {
     data: new Date().toISOString(),
   };
   ensaios.unshift(novo);
+  // grava no histórico de tentativas do minério
+  adicionarHistoricoMineral(m.id, novo);
   salvar();
   limparFormEnsaio();
-  renderEnsaios(); atualizarBadges();
+  renderEnsaios(); renderHistoricoTentativas(); atualizarBadges();
   flash(`Ensaio em "${m.nome}" registrado.`);
 }
 function limparFormEnsaio() {
@@ -2738,6 +3500,7 @@ function limparFormIngrediente() {
   document.querySelectorAll('#ing-etapas-pills input').forEach(c => { c.checked = false; c.closest('.etapa-pill').classList.remove('checked'); });
   formIngProps = [];
   renderIngPropsChips();
+  atualizarPreviewIconeIngrediente();
   document.getElementById('btn-salvar-ingr').dataset.editId = '';
   document.getElementById('btn-salvar-ingr').textContent = 'Cadastrar ingrediente';
 }
@@ -2750,6 +3513,7 @@ function editarIngrediente(id) {
   document.getElementById('ing-raridade').value = ing.raridade;
   document.getElementById('ing-origem').value = ing.origem || '';
   document.getElementById('ing-icone').value = ing.icone || '';
+  atualizarPreviewIconeIngrediente();
   document.getElementById('ing-desc').value = ing.desc || '';
   formIngProps = (ing.props || []).map(p => ({ ...p }));
   renderIngPropsChips();
@@ -2812,7 +3576,7 @@ function renderIngredientes() {
       `<span class="etapa-mini">${etapaIcone(e)} ${etapaLabel(e)}</span>`).join(' ');
     return `
       <div class="ingr-card">
-        <span class="icone-grande">${escapeHTML(i.icone || '🌿')}</span>
+        <span class="icone-grande">${iconImg(i.icone || '🌿', '2.4rem')}</span>
         <h3 style="text-align:center">${escapeHTML(i.nome)}</h3>
         <div class="card-tags" style="justify-content:center">
           <span class="tag tag-${i.tipo}">${tipoLabel(i.tipo)}</span>
@@ -2871,7 +3635,7 @@ function renderPool() {
   }
   pool.innerHTML = lista.map(it => `
     <div class="ingr-pool-item">
-      <span class="icn">${escapeHTML(it.icone)}</span>
+      <span class="icn">${iconImg(it.icone, '1.5rem')}</span>
       <div class="meta">
         <div class="nm">${escapeHTML(it.nome)}</div>
         <div class="sb">${escapeHTML(it.sub)}</div>
@@ -2955,7 +3719,7 @@ function renderEsteira() {
     }).join('');
     return `
       <div class="esteira-item">
-        <span class="icn">${escapeHTML(info.icone)}</span>
+        <span class="icn">${iconImg(info.icone, '1.5rem')}</span>
         <span class="nm">${escapeHTML(info.nome)} <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded)">(${it.fonte === 'mineral' ? 'minério' : 'alquímico'})</span></span>
         <button class="x-btn" onclick="removerIngrFromBancada(${idx})" title="remover">×</button>
         <div class="esteira-etapas">
@@ -3121,24 +3885,6 @@ function renderRecipiente() {
 }
 
 /* === Lógica de mistura: receita match + cálculo de propriedades === */
-function arraysIguais(a, b) {
-  if (a.length !== b.length) return false;
-  for (let i=0;i<a.length;i++) if (a[i] !== b[i]) return false;
-  return true;
-}
-function multisetIngrIgual(a, b) {
-  if (a.length !== b.length) return false;
-  // ordena por refId+etapas
-  const norm = arr => arr.map(it => ({ refId: it.refId, fonte: it.fonte, etapas: it.etapas.slice() }))
-    .sort((x,y) => (x.refId+'|'+x.fonte).localeCompare(y.refId+'|'+y.fonte));
-  const A = norm(a), B = norm(b);
-  for (let i=0;i<A.length;i++) {
-    if (A[i].refId !== B[i].refId) return false;
-    if (A[i].fonte !== B[i].fonte) return false;
-    if (!arraysIguais(A[i].etapas, B[i].etapas)) return false;
-  }
-  return true;
-}
 
 function executarMistura() {
   if (!bancadaAtual.produto) { flash('Escolha o produto.', 'error'); return; }
@@ -3152,23 +3898,30 @@ function executarMistura() {
     it.etapas.forEach(e => { if (!info.etapasOk.includes(e)) incompativeis.push(`${info.nome}: ${etapaLabel(e)}`); });
   });
 
-  // tenta match exato com receita
+  // tenta match inclusivo (etapas da receita = subsequência das executadas)
   let receitaMatch = null;
+  let etapasExtras = 0;
   for (const r of receitas) {
     if (r.produto !== bancadaAtual.produto) continue;
-    if (multisetIngrIgual(r.ingredientes, bancadaAtual.ingredientes)) { receitaMatch = r; break; }
+    const sat = bancadaSatisfazReceita(r, bancadaAtual);
+    if (sat) { receitaMatch = r; etapasExtras = sat.etapasExtras; break; }
   }
 
   // monta resultado
   let status, efeito, descricao, descobriu = false;
+  let qualidade = null;
   if (incompativeis.length > 0) {
     status = 'falha';
     efeito = 'Mistura inconsistente';
     descricao = `Etapas incompatíveis com os ingredientes: ${incompativeis.join('; ')}.`;
   } else if (receitaMatch) {
     status = 'sucesso';
+    qualidade = qualidadeDeMistura(etapasExtras);
     efeito = receitaMatch.efeito;
-    descricao = `Combinação reconhecida: <strong>${escapeHTML(receitaMatch.nome)}</strong>.`;
+    const qualNote = etapasExtras === 0
+      ? 'execução exata'
+      : `${etapasExtras} etapa${etapasExtras===1?'':'s'} extra além do mínimo`;
+    descricao = `Combinação reconhecida: <strong>${escapeHTML(receitaMatch.nome)}</strong> · qualidade <strong>${qualidadeLabel(qualidade)}</strong> (${qualNote}).`;
     if (receitaMatch.status === 'secreta') {
       receitaMatch.status = 'descoberta';
       receitaMatch.descobertaEm = new Date().toISOString();
@@ -3209,6 +3962,10 @@ function executarMistura() {
     }
   }
 
+  // se foi parcial mas tem propriedades reconhecidas, atribui qualidade ruim
+  if (!qualidade && status === 'parcial') qualidade = 'ruim';
+  if (!qualidade && status === 'surpresa') qualidade = 'aceitavel';
+
   // registra mistura
   const reg = {
     id: 'mix-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
@@ -3218,25 +3975,40 @@ function executarMistura() {
       const info = getIngrInfo(it.refId, it.fonte);
       return { refId: it.refId, fonte: it.fonte, nome: info ? info.nome : '(?)', etapas: it.etapas.slice() };
     }),
-    efeito, descricao, status,
+    efeito, descricao, status, qualidade,
     receitaId: receitaMatch ? receitaMatch.id : null,
     receitaNome: receitaMatch ? receitaMatch.nome : null,
     descobriu,
     data: new Date().toISOString(),
   };
   ensaios.unshift(reg);
+
+  // estoca no inventário se for um produto utilizável
+  let estocou = false;
+  if (status === 'sucesso' || ((status === 'parcial' || status === 'surpresa') && qualidade)) {
+    adicionarAoInventario(reg, qualidade);
+    estocou = true;
+  }
+
   salvar();
-  renderEnsaios(); renderReceitas(); atualizarBadges();
+  renderEnsaios(); renderReceitas(); renderInventario(); atualizarBadges();
 
   // exibe resultado
   const wrap = document.getElementById('mistura-resultado-wrap');
+  const qTag = qualidade ? `<span class="qualidade-tag q-${qualidade}">${qualidadeLabel(qualidade)}</span>` : '';
+  const stockNote = estocou ? `<div style="margin-top:0.4rem;font-size:0.85rem;color:var(--green-old);font-style:italic">+1 unidade no inventário</div>` : '';
   wrap.innerHTML = `
     <div class="mistura-resultado ${status}">
-      <h5>${produtoIcone(bancadaAtual.produto)} ${produtoLabel(bancadaAtual.produto)} — ${statusLabel(status)}${descobriu?' · ✦ Descoberta':''}</h5>
+      <h5>${produtoIcone(bancadaAtual.produto)} ${produtoLabel(bancadaAtual.produto)} — ${statusLabel(status)}${qTag}${descobriu?' · ✦ Descoberta':''}</h5>
       <div class="efeito">${escapeHTML(efeito)}</div>
       <div>${descricao}</div>
+      ${stockNote}
     </div>
   `;
+  // glow no recipiente quando dá certo
+  const stage = document.getElementById('recipiente-stage');
+  if (stage) stage.classList.toggle('bateu', status === 'sucesso');
+
   flash(`Mistura registrada — ${statusLabel(status)}${descobriu?' (receita revelada!)':''}.`);
   renderRecipiente();
 }
@@ -3247,8 +4019,8 @@ function renderRecAddSelect() {
   const sel = document.getElementById('rec-add-ingr');
   if (!sel) return;
   const opcoes = [];
-  ingredientes.forEach(i => opcoes.push(`<option value="alquimico:${i.id}">${escapeHTML(i.icone||'🌿')} ${escapeHTML(i.nome)} (alquímico)</option>`));
-  minerais.forEach(m => opcoes.push(`<option value="mineral:${m.id}">${escapeHTML(m.icone||'⛏')} ${escapeHTML(m.nome)} (minério)</option>`));
+  ingredientes.forEach(i => opcoes.push(`<option value="alquimico:${i.id}">${iconForOption(i.icone||'🌿')} ${escapeHTML(i.nome)} (alquímico)</option>`));
+  minerais.forEach(m => opcoes.push(`<option value="mineral:${m.id}">${iconForOption(m.icone||'⛏')} ${escapeHTML(m.nome)} (minério)</option>`));
   sel.innerHTML = opcoes.length ? '<option value="">— escolha —</option>' + opcoes.join('') : '<option value="">— cadastre ingredientes/minérios primeiro —</option>';
 }
 
@@ -3291,7 +4063,7 @@ function renderRecIngrList() {
     }).join('');
     return `
       <div class="esteira-item">
-        <span class="icn">${escapeHTML(info.icone)}</span>
+        <span class="icn">${iconImg(info.icone, '1.5rem')}</span>
         <span class="nm">${escapeHTML(info.nome)} <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded)">(${it.fonte === 'mineral' ? 'minério' : 'alquímico'})</span></span>
         <button class="x-btn" onclick="removerRecIngrediente(${i})">×</button>
         <div class="esteira-etapas">
@@ -3519,12 +4291,14 @@ function cardEnsaio(e) {
   `;
 }
 function cardMistura(e) {
+  const qTag = e.qualidade ? `<span class="tag qualidade-tag q-${e.qualidade}" style="margin:0">${qualidadeLabel(e.qualidade)}</span>` : '';
   return `
     <div class="test-card" onclick="verMistura('${e.id}')">
       <h3>${produtoIcone(e.produto)} ${produtoLabel(e.produto)}${e.descobriu?' · ✦':''}</h3>
       <div class="card-meta">${formatarData(e.data)} · mistura alquímica</div>
       <div class="card-tags">
         <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
+        ${qTag}
         ${e.receitaNome ? `<span class="tag" style="${statusStyle('descoberta')}">${escapeHTML(e.receitaNome)}</span>` : ''}
       </div>
       <div class="card-data"><span class="label">Efeito</span>${escapeHTML(e.efeito || '')}</div>
@@ -3589,6 +4363,7 @@ window.verMistura = function(id) {
     <div style="display:flex;gap:0.5rem;margin-bottom:0.7rem;flex-wrap:wrap">
       <span class="tag">${produtoLabel(e.produto)}</span>
       <span class="tag" style="${statusStyle(e.status)}">${statusLabel(e.status)}</span>
+      ${e.qualidade ? `<span class="tag qualidade-tag q-${e.qualidade}" style="margin:0">${qualidadeLabel(e.qualidade)}</span>` : ''}
       ${e.receitaNome ? `<span class="tag" style="${statusStyle('descoberta')}">${escapeHTML(e.receitaNome)}</span>` : ''}
     </div>
     <p style="margin-bottom:0.4rem;font-style:italic">${formatarData(e.data)}</p>
@@ -3698,6 +4473,21 @@ function exportXLSX() {
   ws5['!cols'] = [{wch:18},{wch:14},{wch:18},{wch:25},{wch:12},{wch:35},{wch:50}];
   XLSX.utils.book_append_sheet(wb, ws5, 'Misturas');
 
+  // Inventário
+  const invRows = inventario.map(it => ({
+    'Nome': it.nome,
+    'Produto': produtoLabel(it.produto),
+    'Qualidade': qualidadeLabel(it.qualidade),
+    'Quantidade': it.qtd,
+    'Efeito': it.efeito || '',
+    'Ingredientes': (it.ingredientesSnap||[]).map(s => s.nome + (s.etapas&&s.etapas.length?' ['+s.etapas.map(etapaLabel).join('→')+']' : '')).join(' + '),
+    'Atualizado em': formatarData(it.atualizadoEm || it.criadoEm),
+  }));
+  if (invRows.length === 0) invRows.push({ 'Nome': '(inventário vazio)' });
+  const wsInv = XLSX.utils.json_to_sheet(invRows);
+  wsInv['!cols'] = [{wch:30},{wch:14},{wch:14},{wch:12},{wch:35},{wch:55},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsInv, 'Inventário');
+
   // Resumo
   const resumo = [
     { 'Métrica':'Total de minérios', 'Valor': minerais.length },
@@ -3712,6 +4502,10 @@ function exportXLSX() {
     { 'Métrica':'Ensaios falhos', 'Valor': ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='falha').length },
     { 'Métrica':'', 'Valor':'' },
     { 'Métrica':'Total de misturas', 'Valor': ensaios.filter(e=>e.tipo==='mistura').length },
+    { 'Métrica':'Misturas Críticas', 'Valor': ensaios.filter(e=>e.tipo==='mistura'&&e.qualidade==='critica').length },
+    { 'Métrica':'', 'Valor':'' },
+    { 'Métrica':'Tipos no inventário', 'Valor': inventario.length },
+    { 'Métrica':'Unidades no inventário', 'Valor': inventario.reduce((s,it)=>s+it.qtd,0) },
     { 'Métrica':'', 'Valor':'' },
     { 'Métrica':'Exportado em', 'Valor': new Date().toLocaleString('pt-BR') },
   ];
@@ -3751,7 +4545,8 @@ function exportPDF() {
   doc.setFont('times','normal'); doc.setFontSize(10);
   doc.text(`Minérios: ${minerais.length} · Ingredientes: ${ingredientes.length} · Receitas: ${receitas.length}`, 25, y); y+=5;
   doc.text(`Ensaios: ${ensaios.filter(e=>e.tipo==='ensaio').length} (Perfeitos: ${ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='perfeito').length} · Mais que Perfeitos: ${ensaios.filter(e=>e.tipo==='ensaio'&&e.status==='mais-perfeito').length})`, 25, y); y+=5;
-  doc.text(`Misturas: ${ensaios.filter(e=>e.tipo==='mistura').length}`, 25, y); y+=12;
+  doc.text(`Misturas: ${ensaios.filter(e=>e.tipo==='mistura').length}`, 25, y); y+=5;
+  doc.text(`Inventário: ${inventario.length} tipos · ${inventario.reduce((s,it)=>s+it.qtd,0)} unidades`, 25, y); y+=12;
 
   // Minérios
   if (minerais.length > 0) {
@@ -3860,6 +4655,26 @@ function exportPDF() {
     });
   }
 
+  // Inventário
+  if (inventario.length > 0) {
+    if (y > 240) { doc.addPage(); y = 25; }
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.text('Inventário de Produtos', 20, y); y += 4;
+    doc.autoTable({
+      startY: y + 2,
+      head: [['Nome','Produto','Qualidade','Qtd','Efeito','Ingredientes']],
+      body: inventario.map(it => [
+        it.nome, produtoLabel(it.produto), qualidadeLabel(it.qualidade), String(it.qtd),
+        it.efeito || '—',
+        (it.ingredientesSnap||[]).map(s => s.nome).join(' + '),
+      ]),
+      styles: { font:'times', fontSize:8, cellPadding:2, overflow:'linebreak' },
+      headStyles: { fillColor:[43,26,10], textColor:[241,231,207], fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[241,231,207] },
+      margin: { left:12, right:12 },
+      columnStyles: { 0:{cellWidth:35}, 1:{cellWidth:20}, 2:{cellWidth:20}, 3:{cellWidth:14,halign:'center'}, 4:{cellWidth:50}, 5:{cellWidth:45} },
+    });
+  }
+
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -3874,7 +4689,7 @@ function exportPDF() {
 }
 
 function exportJSON() {
-  const data = { minerais, ingredientes, receitas, ensaios, bandasCustom, exportadoEm: new Date().toISOString(), versao: 3 };
+  const data = { minerais, ingredientes, receitas, ensaios, inventario, bandasCustom, exportadoEm: new Date().toISOString(), versao: 4 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3920,17 +4735,19 @@ function doImport(data, substituir) {
     ingredientes = data.ingredientes || [];
     receitas = data.receitas || [];
     ensaios = data.ensaios || [];
+    inventario = data.inventario || [];
     bandasCustom = data.bandasCustom || [];
   } else {
     minerais     = merge(minerais, data.minerais);
     ingredientes = merge(ingredientes, data.ingredientes);
     receitas     = merge(receitas, data.receitas);
     ensaios      = merge(ensaios, data.ensaios);
+    inventario   = merge(inventario, data.inventario);
     (data.bandasCustom||[]).forEach(b => { if (!bandasCustom.includes(b)) bandasCustom.push(b); });
   }
   salvar();
   renderMinerais(); renderIngredientes(); renderReceitas(); renderEnsaios();
-  renderEnsaiosSelect(); renderPool(); renderRecAddSelect();
+  renderEnsaiosSelect(); renderPool(); renderRecAddSelect(); renderInventario();
   popularBandasDropdown(); atualizarBadges();
   closeModal(); flash('Backup importado.');
 }
@@ -3940,10 +4757,10 @@ function apagarTudo() {
     [
       { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
       { label:'Apagar tudo', class:'btn-danger', onClick: () => {
-        minerais = []; ingredientes = []; receitas = []; ensaios = []; bandasCustom = [];
+        minerais = []; ingredientes = []; receitas = []; ensaios = []; inventario = []; bandasCustom = [];
         salvar();
         renderMinerais(); renderIngredientes(); renderReceitas(); renderEnsaios();
-        renderEnsaiosSelect(); renderPool(); renderRecAddSelect();
+        renderEnsaiosSelect(); renderPool(); renderRecAddSelect(); renderInventario();
         popularBandasDropdown(); atualizarBadges();
         closeModal(); flash('Tudo apagado.');
       }},
@@ -4015,8 +4832,1042 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('active');
 }
 
+/* ============== SELETOR DE ÍCONES (modal) ============== */
+function setupIconPickerTabs() {
+  const tabsCont = document.getElementById('icon-tabs');
+  if (!tabsCont) return;
+  tabsCont.innerHTML = Object.keys(ICON_LIBRARY).map((cat, i) =>
+    `<button class="icon-tab ${i===0?'active':''}" data-cat="${cat}" onclick="setIconCategoria('${cat}')">${cat}</button>`
+  ).join('');
+}
+function setIconCategoria(cat) {
+  iconPickerCategoria = cat;
+  document.querySelectorAll('.icon-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+  renderIconGrid();
+}
+function renderIconGrid() {
+  const grid = document.getElementById('icon-grid');
+  const lista = ICON_LIBRARY[iconPickerCategoria] || [];
+  grid.innerHTML = lista.map(spec =>
+    `<button class="icon-cell" type="button" onclick="escolherIcone('${spec}')" title="${spec}" aria-label="Selecionar ${spec}">${iconCellHTML(spec)}</button>`
+  ).join('');
+}
+window.abrirSeletorIcone = function(callback) {
+  iconPickerCallback = callback;
+  iconPickerCategoria = 'Símbolos';
+  setupIconPickerTabs();
+  setIconCategoria('Símbolos');
+  document.getElementById('icon-picker-overlay').classList.add('active');
+};
+window.fecharSeletorIcone = function() {
+  iconPickerCallback = null;
+  document.getElementById('icon-picker-overlay').classList.remove('active');
+};
+window.escolherIcone = function(spec) {
+  if (typeof iconPickerCallback === 'function') iconPickerCallback(spec);
+  fecharSeletorIcone();
+};
+
+window.setIconeMineral = function(spec) {
+  document.getElementById('min-icone').value = spec || '';
+  atualizarPreviewIconeMineral();
+};
+window.setIconeIngrediente = function(spec) {
+  document.getElementById('ing-icone').value = spec || '';
+  atualizarPreviewIconeIngrediente();
+};
+function atualizarPreviewIconeMineral() {
+  const spec = document.getElementById('min-icone').value;
+  const prev = document.getElementById('min-icone-preview');
+  if (!prev) return;
+  prev.innerHTML = spec ? iconCellHTML(spec) : '·';
+}
+function atualizarPreviewIconeIngrediente() {
+  const spec = document.getElementById('ing-icone').value;
+  const prev = document.getElementById('ing-icone-preview');
+  if (!prev) return;
+  prev.innerHTML = spec ? iconCellHTML(spec) : '🌿';
+}
+
+
+/* ============== STATUS DO PUZZLE — estados ricos ============== */
+// substitui statusAutoDaSoma e atualizarAlvosDisplay anteriores
+function statusPuzzle(soma) {
+  if (ensaioAtual.sequencia.length === 0) return { codigo: 'vazio', label: 'aguardando', dist: '—' };
+  const P = ensaioAtual.perfeito;
+  const M = ensaioAtual.maisPerfeito;
+  if (soma === M) return { codigo: 'mais-perfeito', label: 'Mais que Perfeito ★★', dist: '✦ alvo bônus atingido' };
+  if (soma === P) return { codigo: 'perfeito', label: 'Perfeito ★', dist: '✓ alvo principal atingido' };
+  if (soma < 0) return { codigo: 'negativo', label: 'soma negativa', dist: 'soma abaixo de zero — reagentes excedidos' };
+  // determinar mais próximo
+  const dP = P - soma; const dM = M - soma;
+  if (Math.abs(dP) === 1 || Math.abs(dM) === 1) return { codigo: 'quase-perfeito', label: 'quase lá!', dist: `falta ${dP>=0?'+':''}${dP} para Perfeito · ${dM>=0?'+':''}${dM} para Mais que Perfeito` };
+  if (soma > Math.max(P, M)) return { codigo: 'excesso', label: 'excesso', dist: `passou ${soma - Math.max(P,M)} além do maior alvo` };
+  return { codigo: 'subperfeito', label: 'em construção', dist: `falta ${dP>=0?'+':''}${dP} para Perfeito · ${dM>=0?'+':''}${dM} para Mais que Perfeito` };
+}
+
+// alias compatível com chamadas antigas
+function statusAutoDaSoma(soma) {
+  return statusPuzzle(soma).codigo === 'mais-perfeito' ? 'mais-perfeito'
+       : statusPuzzle(soma).codigo === 'perfeito' ? 'perfeito'
+       : 'falha';
+}
+
+function atualizarAlvosDisplay() {
+  const soma = calcularSomaAtual();
+  const st = statusPuzzle(soma);
+  const elSoma = document.getElementById('soma-atual');
+  elSoma.textContent = ensaioAtual.sequencia.length === 0 ? '—' : soma;
+  elSoma.className = 'alvo-num ' + st.codigo;
+
+  const elStatus = document.getElementById('alvo-status');
+  elStatus.textContent = st.label;
+  elStatus.className = 'alvo-num ' + st.codigo;
+
+  document.getElementById('soma-distancia').textContent = st.dist;
+
+  // glow no card "Soma atual" quando bate alvo
+  const cardAtual = document.querySelector('.alvo-box.alvo-atual');
+  if (cardAtual) {
+    cardAtual.classList.toggle('bateu', st.codigo === 'perfeito');
+    cardAtual.classList.toggle('bateu-mais', st.codigo === 'mais-perfeito');
+  }
+}
+
+
+/* ============== HISTÓRICO DE TENTATIVAS ============== */
+function renderHistoricoTentativas() {
+  const wrap = document.getElementById('historico-tentativas-wrap');
+  if (!wrap) return;
+  if (!ensaioAtual.mineralId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const m = minerais.find(x => x.id === ensaioAtual.mineralId);
+  const lista = (m && Array.isArray(m.historicoTentativas)) ? m.historicoTentativas : [];
+  const ht = document.getElementById('ht-lista');
+  const stats = document.getElementById('ht-stats');
+
+  const totalP = lista.filter(t => t.status === 'perfeito').length;
+  const totalMP = lista.filter(t => t.status === 'mais-perfeito').length;
+  stats.innerHTML = `${lista.length} tentativa${lista.length===1?'':'s'} · ${totalP} ★ · ${totalMP} ★★`;
+
+  if (lista.length === 0) {
+    ht.innerHTML = '<span class="ht-empty">Nenhuma tentativa registrada ainda. Cada ensaio salvo entra aqui automaticamente.</span>';
+    return;
+  }
+  // ordenar por data desc
+  const orderd = lista.slice().sort((a,b) => (b.data||'').localeCompare(a.data||''));
+  ht.innerHTML = orderd.slice(0, 30).map(t => {
+    const cls = t.status === 'perfeito' ? 'ht-perfeito'
+              : t.status === 'mais-perfeito' ? 'ht-mais-perfeito'
+              : 'ht-falha';
+    const ico = t.status === 'perfeito' ? '★' : t.status === 'mais-perfeito' ? '★★' : '·';
+    const dataStr = t.data ? formatarDataCurta(t.data) : '';
+    return `<span class="ht-item ${cls}" title="${dataStr}">${ico} <span class="ht-eq">${escapeHTML(t.equacao || '')}</span> = <span class="ht-soma">${t.soma}</span></span>`;
+  }).join('');
+}
+
+function adicionarHistoricoMineral(idMin, ensaio) {
+  const m = minerais.find(x => x.id === idMin);
+  if (!m) return;
+  if (!Array.isArray(m.historicoTentativas)) m.historicoTentativas = [];
+  m.historicoTentativas.unshift({
+    soma: ensaio.soma,
+    equacao: equacaoStringPlain(ensaio),
+    status: ensaio.statusAutoSoma || 'falha',
+    data: ensaio.data,
+  });
+  if (m.historicoTentativas.length > 60) m.historicoTentativas = m.historicoTentativas.slice(0, 60);
+}
+
+
+/* ============== TOGGLE MANTER SINAL ============== */
+window.onSinalLockChange = function(checked) {
+  manterSinal = !!checked;
+};
+
+
+/* ============== MATCH INCLUSIVO + QUALIDADE ============== */
+function ehSubsequencia(receitaEt, executadasEt) {
+  // verifica se receitaEt aparece como subsequência ordenada em executadasEt
+  if (receitaEt.length === 0) return true;
+  let i = 0;
+  for (const e of executadasEt) {
+    if (e === receitaEt[i]) {
+      i++;
+      if (i >= receitaEt.length) return true;
+    }
+  }
+  return i >= receitaEt.length;
+}
+
+function bancadaSatisfazReceita(receita, bancada) {
+  // exige mesmo conjunto de ingredientes (1:1)
+  if (receita.ingredientes.length !== bancada.ingredientes.length) return null;
+  // mapear ingredientes 1:1
+  const usados = new Set();
+  let etapasExtras = 0;
+  for (const ri of receita.ingredientes) {
+    let achou = -1;
+    for (let bi = 0; bi < bancada.ingredientes.length; bi++) {
+      if (usados.has(bi)) continue;
+      const b = bancada.ingredientes[bi];
+      if (b.refId !== ri.refId || b.fonte !== ri.fonte) continue;
+      if (ehSubsequencia(ri.etapas, b.etapas)) {
+        etapasExtras += (b.etapas.length - ri.etapas.length);
+        achou = bi;
+        break;
+      }
+    }
+    if (achou < 0) return null;
+    usados.add(achou);
+  }
+  return { match: true, etapasExtras };
+}
+
+function qualidadeDeMistura(etapasExtras) {
+  if (etapasExtras === 0) return 'critica';
+  if (etapasExtras <= 2) return 'boa';
+  if (etapasExtras <= 4) return 'aceitavel';
+  return 'ruim';
+}
+function qualidadeLabel(q) {
+  return { critica:'Crítica', boa:'Boa', aceitavel:'Aceitável', ruim:'Ruim' }[q] || q;
+}
+
+
+/* ============== INVENTÁRIO DE PRODUTOS ============== */
+function inventarioFazChave(produto, receitaId, ingredientesSnap) {
+  // chave única para agregar unidades iguais
+  if (receitaId) return `${produto}::r:${receitaId}`;
+  const ass = ingredientesSnap.map(it =>
+    `${it.fonte}-${it.refId}-${(it.etapas||[]).join('|')}`
+  ).sort().join(';');
+  return `${produto}::s:${ass}`;
+}
+
+function adicionarAoInventario(mistura, qualidade) {
+  if (!mistura) return;
+  const chave = inventarioFazChave(mistura.produto, mistura.receitaId, mistura.ingredientes);
+  const existente = inventario.find(it => it.chave === chave && it.qualidade === qualidade);
+  if (existente) {
+    existente.qtd += 1;
+    existente.atualizadoEm = new Date().toISOString();
+  } else {
+    inventario.unshift({
+      id: 'inv-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      chave,
+      produto: mistura.produto,
+      nome: mistura.receitaNome || (produtoLabel(mistura.produto) + ' improvisada'),
+      receitaId: mistura.receitaId || null,
+      efeito: mistura.efeito,
+      qualidade,
+      qtd: 1,
+      ingredientesSnap: mistura.ingredientes.map(it => ({
+        refId: it.refId, fonte: it.fonte, nome: it.nome, etapas: (it.etapas||[]).slice()
+      })),
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+    });
+  }
+}
+
+window.consumirInventario = function(id) {
+  const it = inventario.find(x => x.id === id);
+  if (!it) return;
+  it.qtd -= 1;
+  if (it.qtd <= 0) inventario = inventario.filter(x => x.id !== id);
+  salvar();
+  renderInventario(); atualizarBadges();
+  flash(`Consumiu 1 unidade de "${it.nome}".`);
+};
+window.incrementarInventario = function(id) {
+  const it = inventario.find(x => x.id === id);
+  if (!it) return;
+  it.qtd += 1;
+  it.atualizadoEm = new Date().toISOString();
+  salvar();
+  renderInventario(); atualizarBadges();
+};
+window.removerInventarioItem = function(id) {
+  const it = inventario.find(x => x.id === id);
+  if (!it) return;
+  abrirModal('Descartar lote?',
+    `Descartar todas as ${it.qtd} unidades de "${escapeHTML(it.nome)}"?`,
+    [
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Descartar', class:'btn-danger', onClick: () => {
+        inventario = inventario.filter(x => x.id !== id);
+        salvar(); renderInventario(); atualizarBadges();
+        closeModal(); flash(`Lote "${it.nome}" descartado.`);
+      }},
+    ]
+  );
+};
+
+function renderInventario() {
+  const grid = document.getElementById('inventario-grid');
+  if (!grid) return;
+  const filtro = (document.getElementById('filter-inv')?.value || '').toLowerCase();
+  const fProd = document.getElementById('filter-inv-prod')?.value || '';
+  const fQual = document.getElementById('filter-inv-qual')?.value || '';
+
+  // stats
+  const totalUnidades = inventario.reduce((s, it) => s + it.qtd, 0);
+  const criticas = inventario.filter(it => it.qualidade === 'critica').length;
+  const baixas = inventario.filter(it => it.qualidade === 'aceitavel' || it.qualidade === 'ruim').length;
+  document.getElementById('inv-stat-total').textContent = inventario.length;
+  document.getElementById('inv-stat-unidades').textContent = totalUnidades;
+  document.getElementById('inv-stat-criticas').textContent = criticas;
+  document.getElementById('inv-stat-baixas').textContent = baixas;
+
+  let lista = inventario.slice();
+  if (filtro) lista = lista.filter(it => (it.nome||'').toLowerCase().includes(filtro) || (it.efeito||'').toLowerCase().includes(filtro));
+  if (fProd) lista = lista.filter(it => it.produto === fProd);
+  if (fQual) lista = lista.filter(it => it.qualidade === fQual);
+
+  if (lista.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <span class="glyph">⚱</span>
+      ${inventario.length === 0 ? 'Nenhum produto no inventário ainda. Faça misturas bem-sucedidas na bancada para estocar.' : 'Nenhum item encontrado com esse filtro.'}
+    </div>`;
+    return;
+  }
+  grid.innerHTML = lista.map(it => `
+    <div class="ingr-card">
+      <span class="icone-grande">${produtoIcone(it.produto)}</span>
+      <h3 style="text-align:center">${escapeHTML(it.nome)}</h3>
+      <div class="card-tags" style="justify-content:center">
+        <span class="tag">${produtoLabel(it.produto)}</span>
+        <span class="tag qualidade-tag q-${it.qualidade}" style="margin:0">${qualidadeLabel(it.qualidade)}</span>
+      </div>
+      <div class="card-data" style="text-align:center;font-family:'Special Elite',monospace;font-size:1.7rem">
+        ×${it.qtd}
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded);font-weight:normal">unidade${it.qtd===1?'':'s'}</div>
+      </div>
+      <div class="card-data"><span class="label">Efeito</span>${escapeHTML(it.efeito || '—')}</div>
+      <div class="card-data"><span class="label">Ingredientes</span>${it.ingredientesSnap.map(s => escapeHTML(s.nome)).join(' · ')}</div>
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-tiny" onclick="incrementarInventario('${it.id}')" aria-label="Adicionar uma unidade">+ 1</button>
+        <button class="btn btn-secondary btn-tiny" onclick="consumirInventario('${it.id}')" aria-label="Consumir uma unidade">Consumir</button>
+        <button class="btn btn-danger btn-tiny" onclick="removerInventarioItem('${it.id}')" aria-label="Descartar lote">Descartar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+
+/* ============== SEED DE RECEITAS EXEMPLO ============== */
+function seedReceitas() {
+  if (minerais.length === 0 && ingredientes.length === 0) {
+    flash('Cadastre minérios ou ingredientes primeiro.', 'error');
+    return;
+  }
+  const minA = minerais[0];
+  const minB = minerais[1] || minerais[0];
+  const ingA = ingredientes[0];
+  const ingB = ingredientes[1] || ingredientes[0];
+
+  const exemplos = [];
+  // 1ª: poção combinando 2 minérios
+  if (minA && minB && minA !== minB) {
+    exemplos.push({
+      nome: 'Tônica de Equilíbrio',
+      produto: 'pocao',
+      status: 'conhecida',
+      efeito: 'Restaura ferimentos leves e estabiliza energia interna.',
+      ingredientes: [
+        { fonte:'mineral', refId: minA.id, etapas: ['moer'] },
+        { fonte:'mineral', refId: minB.id, etapas: ['moer','ferver'] },
+      ],
+    });
+  } else if (minA) {
+    exemplos.push({
+      nome: 'Tônica Simples',
+      produto: 'pocao',
+      status: 'conhecida',
+      efeito: 'Restaura energia básica.',
+      ingredientes: [
+        { fonte:'mineral', refId: minA.id, etapas: ['moer','ferver'] },
+      ],
+    });
+  }
+  // 2ª: bomba secreta
+  if (ingA || minA) {
+    const fonte = ingA ? 'alquimico' : 'mineral';
+    const ref = ingA ? ingA.id : minA.id;
+    const etapasOk = ingA ? (ingA.etapas || []) : ['moer'];
+    const etapas = etapasOk.includes('moer') ? ['moer'] : (etapasOk[0] ? [etapasOk[0]] : ['moer']);
+    exemplos.push({
+      nome: 'Bomba do Trovão Velho',
+      produto: 'bomba',
+      status: 'secreta',
+      efeito: 'Detona com estrondo seco; atordoa quem estiver perto.',
+      ingredientes: [{ fonte, refId: ref, etapas }],
+    });
+  }
+  // 3ª: perfume conhecido
+  if (ingB || minB) {
+    const fonte = ingB ? 'alquimico' : 'mineral';
+    const ref = ingB ? ingB.id : minB.id;
+    const etapasOk = ingB ? (ingB.etapas || []) : ['destilar'];
+    const etapas = etapasOk.includes('destilar') ? ['destilar'] : (etapasOk[0] ? [etapasOk[0]] : ['destilar']);
+    exemplos.push({
+      nome: 'Aroma de Confiança',
+      produto: 'perfume',
+      status: 'conhecida',
+      efeito: 'Tranquiliza humores; ouvintes ficam mais receptivos por uma cena.',
+      ingredientes: [{ fonte, refId: ref, etapas }],
+    });
+  }
+
+  if (exemplos.length === 0) {
+    flash('Não foi possível gerar receitas com os dados atuais.', 'error');
+    return;
+  }
+  exemplos.forEach(rec => {
+    receitas.unshift({
+      id: 'rec-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      ...rec,
+      criadoEm: new Date().toISOString(),
+    });
+  });
+  salvar();
+  renderReceitas(); atualizarBadges();
+  flash(`${exemplos.length} receita(s) exemplo carregada(s).`);
+}
+
+/* ============================================================
+   ENGINE DE ÁUDIO PROCEDURAL (Web Audio API)
+   ============================================================ */
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return null; }
+  }
+  return _audioCtx;
+}
+
+window.toggleMute = function() {
+  mute = !mute;
+  document.getElementById('mute-toggle').textContent = mute ? '🔇' : '🔊';
+  document.getElementById('mute-toggle').classList.toggle('muted', mute);
+  document.getElementById('mute-toggle').setAttribute('aria-label', mute ? 'Sons desligados — clique para ligar' : 'Sons ligados — clique para desligar');
+  salvar();
+  if (!mute) tocarSom('clique'); // feedback ao reativar
+};
+
+function tocarSom(tipo) {
+  if (mute) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') { try { ctx.resume(); } catch(e) {} }
+  try {
+    switch (tipo) {
+      case 'pilada':       return _somPilada(ctx);
+      case 'fervura':      return _somFervura(ctx);
+      case 'maceracao':    return _somMaceracao(ctx);
+      case 'destilacao':   return _somDestilacao(ctx);
+      case 'cristalizacao':return _somCristalizacao(ctx);
+      case 'combustao':    return _somCombustao(ctx);
+      case 'silencio':     return; // intencional
+      case 'sino-curto':   return _somSinoCurto(ctx);
+      case 'sino-grande':  return _somSinoGrande(ctx);
+      case 'falha':        return _somFalha(ctx);
+      case 'descoberta':   return _somDescoberta(ctx);
+      case 'pop':          return _somPop(ctx);
+      case 'clique':       return _somClique(ctx);
+      case 'martelada':    return _somMartelada(ctx);
+    }
+  } catch(e) { /* fail silently */ }
+}
+
+function _envelope(ctx, dur, peak, attack=0.005) {
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(peak, ctx.currentTime + attack);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  return g;
+}
+
+function _somPilada(ctx) {
+  // 2 batidas curtas tipo pilão
+  for (let i = 0; i < 2; i++) {
+    setTimeout(() => {
+      const o = ctx.createOscillator();
+      const g = _envelope(ctx, 0.18, 0.35, 0.001);
+      o.type = 'square';
+      o.frequency.setValueAtTime(120, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.12);
+      // ruído junto
+      const n = _ruido(ctx, 0.1);
+      o.connect(g).connect(ctx.destination);
+      n.gain.setValueAtTime(0.15, ctx.currentTime);
+      n.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      o.start();
+      o.stop(ctx.currentTime + 0.18);
+    }, i * 180);
+  }
+}
+
+function _ruido(ctx, dur) {
+  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const g = ctx.createGain();
+  src.connect(g).connect(ctx.destination);
+  src.start();
+  return g;
+}
+
+function _somFervura(ctx) {
+  // ruído passa-baixa ondulado
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 1.5, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 380;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.1);
+  g.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+  src.connect(filt).connect(g).connect(ctx.destination);
+  src.start();
+  // bolhas pontuais
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const o = ctx.createOscillator();
+      const og = _envelope(ctx, 0.12, 0.25);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(280 + Math.random()*200, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.1);
+      o.connect(og).connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.12);
+    }, 200 + i*250);
+  }
+}
+
+function _somMaceracao(ctx) {
+  // sopro líquido com modulação suave
+  const o = ctx.createOscillator(); o.type = 'sine';
+  const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 4;
+  const lfoG = ctx.createGain(); lfoG.gain.value = 30;
+  o.frequency.value = 220;
+  lfo.connect(lfoG).connect(o.frequency);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.2);
+  g.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 1.1);
+  const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 600;
+  o.connect(filt).connect(g).connect(ctx.destination);
+  o.start(); lfo.start();
+  o.stop(ctx.currentTime + 1.2); lfo.stop(ctx.currentTime + 1.2);
+}
+
+function _somDestilacao(ctx) {
+  // gota: pulso breve com pitch alto descendo
+  const o = ctx.createOscillator();
+  const g = _envelope(ctx, 0.35, 0.4, 0.005);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(1400, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.3);
+  o.connect(g).connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime + 0.4);
+}
+
+function _somCristalizacao(ctx) {
+  // tilintar agudo com 2 notas
+  [1800, 2400].forEach((f, i) => {
+    setTimeout(() => {
+      const o = ctx.createOscillator();
+      const g = _envelope(ctx, 0.5, 0.18, 0.002);
+      o.type = 'triangle';
+      o.frequency.value = f;
+      o.connect(g).connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.5);
+    }, i * 80);
+  });
+}
+
+function _somCombustao(ctx) {
+  // chiado de chama
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i/d.length);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const filt = ctx.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 800;
+  const g = ctx.createGain(); g.gain.value = 0.2;
+  src.connect(filt).connect(g).connect(ctx.destination);
+  src.start();
+}
+
+function _somSinoCurto(ctx) {
+  // sino: senóide com envelope longo + harmônicos
+  [880, 1320, 1760].forEach((f, i) => {
+    const o = ctx.createOscillator();
+    const g = _envelope(ctx, 1.2, 0.18 / (i+1), 0.005);
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(g).connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 1.3);
+  });
+}
+
+function _somSinoGrande(ctx) {
+  // 3 notas ascendentes + sustain
+  const notas = [523.25, 659.25, 783.99]; // C5, E5, G5
+  notas.forEach((f, i) => {
+    setTimeout(() => {
+      [f, f*2, f*3].forEach((h, hi) => {
+        const o = ctx.createOscillator();
+        const g = _envelope(ctx, 1.5, 0.18 / (hi+1), 0.005);
+        o.type = 'sine';
+        o.frequency.value = h;
+        o.connect(g).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 1.6);
+      });
+    }, i * 130);
+  });
+}
+
+function _somFalha(ctx) {
+  // dissonância descendente
+  [400, 380].forEach((f, i) => {
+    const o = ctx.createOscillator();
+    const g = _envelope(ctx, 0.5, 0.2, 0.01);
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(f * 0.5, ctx.currentTime + 0.4);
+    o.connect(g).connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.5);
+  });
+}
+
+function _somDescoberta(ctx) {
+  // sequência ascendente curta + sino
+  const notas = [659.25, 783.99, 987.77, 1318.51]; // E5, G5, B5, E6
+  notas.forEach((f, i) => {
+    setTimeout(() => {
+      const o = ctx.createOscillator();
+      const g = _envelope(ctx, 0.7, 0.16, 0.003);
+      o.type = 'triangle';
+      o.frequency.value = f;
+      o.connect(g).connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.7);
+    }, i * 90);
+  });
+}
+
+function _somPop(ctx) {
+  const o = ctx.createOscillator();
+  const g = _envelope(ctx, 0.1, 0.22, 0.002);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(800, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08);
+  o.connect(g).connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime + 0.1);
+}
+
+function _somClique(ctx) {
+  const o = ctx.createOscillator();
+  const g = _envelope(ctx, 0.05, 0.1, 0.001);
+  o.type = 'square';
+  o.frequency.value = 1200;
+  o.connect(g).connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime + 0.05);
+}
+
+function _somMartelada(ctx) {
+  // martelo metálico curto
+  const o = ctx.createOscillator();
+  const g = _envelope(ctx, 0.12, 0.3, 0.001);
+  o.type = 'square';
+  o.frequency.setValueAtTime(160, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.08);
+  o.connect(g).connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime + 0.12);
+}
+
+function refreshMuteUI() {
+  const b = document.getElementById('mute-toggle');
+  if (!b) return;
+  b.textContent = mute ? '🔇' : '🔊';
+  b.classList.toggle('muted', mute);
+  b.setAttribute('aria-label', mute ? 'Sons desligados — clique para ligar' : 'Sons ligados — clique para desligar');
+}
+
+
+/* ============================================================
+   CATÁLOGO DE ETAPAS DE PREPARAÇÃO (CUSTOMIZÁVEIS)
+   ============================================================ */
+function etapasPadrao() {
+  // 4 etapas iniciais com IDs simples (compatibilidade com dados antigos)
+  const now = new Date().toISOString();
+  return [
+    {
+      id: 'moer', nome: 'Moer / Triturar', icone: 'game-icons:pestle-mortar',
+      som: 'pilada', desc: 'Reduz o ingrediente a pó fino. Aumenta dispersão de propriedades sólidas.',
+      efeitos: [{ tipo:'multiplica', alvo:'qualquer', fator: 1.2 }],
+      criadoEm: now,
+    },
+    {
+      id: 'ferver', nome: 'Ferver / Decoctar', icone: 'game-icons:cauldron',
+      som: 'fervura', desc: 'Cozinha em água ou óleo. Extrai propriedades líquidas.',
+      efeitos: [{ tipo:'multiplica', alvo:'cura', fator: 1.5 }, { tipo:'multiplica', alvo:'veneno', fator: 1.5 }],
+      criadoEm: now,
+    },
+    {
+      id: 'macerar', nome: 'Macerar / Infundir', icone: 'game-icons:bottle-vapors',
+      som: 'maceracao', desc: 'Repouso em álcool ou óleo. Preserva propriedades delicadas.',
+      efeitos: [{ tipo:'multiplica', alvo:'aroma', fator: 2 }, { tipo:'multiplica', alvo:'sono', fator: 1.4 }],
+      criadoEm: now,
+    },
+    {
+      id: 'destilar', nome: 'Destilar / Sublimar', icone: 'game-icons:alembic',
+      som: 'destilacao', desc: 'Separa essências voláteis. Concentra mas reduz quantidade.',
+      efeitos: [{ tipo:'multiplica', alvo:'qualquer', fator: 0.7 }, { tipo:'multiplica', alvo:'fogo', fator: 2.5 }, { tipo:'multiplica', alvo:'energia', fator: 2 }],
+      criadoEm: now,
+    },
+  ];
+}
+
+function getEtapa(id) { return etapas.find(et => et.id === id); }
+function getEtapaSom(id) {
+  const et = getEtapa(id);
+  return et ? et.som : 'silencio';
+}
+function getEtapaIcone(id) {
+  const et = getEtapa(id);
+  return et ? (et.icone || '⚒') : '⚒';
+}
+function getEtapaNome(id) {
+  const et = getEtapa(id);
+  return et ? et.nome : id;
+}
+
+// substitui etapaLabel/etapaIcone fixos
+function etapaLabel(id) { return getEtapaNome(id); }
+function etapaIcone(id) {
+  const ic = getEtapaIcone(id);
+  if (/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(ic)) {
+    return iconImg(ic, '0.95em');
+  }
+  return ic;
+}
+
+function aplicarEfeitosEtapa(props, efeitos) {
+  let res = props.map(p => ({ ...p }));
+  if (!efeitos) return res;
+  for (const ef of efeitos) {
+    switch (ef.tipo) {
+      case 'multiplica': {
+        res.forEach(p => {
+          if (ef.alvo === 'qualquer' || (p.tag||'').toLowerCase() === (ef.alvo||'').toLowerCase()) {
+            p.intensidade = Math.max(1, Math.round((p.intensidade || 1) * (ef.fator || 1)));
+          }
+        });
+        break;
+      }
+      case 'modifica': {
+        res.forEach(p => {
+          if (ef.alvo === 'qualquer' || (p.tag||'').toLowerCase() === (ef.alvo||'').toLowerCase()) {
+            p.intensidade = Math.max(0, (p.intensidade || 0) + (ef.delta || 0));
+          }
+        });
+        res = res.filter(p => p.intensidade > 0);
+        break;
+      }
+      case 'transforma': {
+        res.forEach(p => {
+          if ((p.tag||'').toLowerCase() === (ef.de||'').toLowerCase()) {
+            p.tag = ef.para || p.tag;
+            if (ef.intensidade && ef.intensidade > 0) p.intensidade = ef.intensidade;
+          }
+        });
+        break;
+      }
+      case 'adiciona': {
+        if (ef.tag) res.push({ tag: ef.tag, intensidade: ef.intensidade || 1 });
+        break;
+      }
+      case 'remove': {
+        res = res.filter(p => (p.tag||'').toLowerCase() !== (ef.alvo||'').toLowerCase());
+        break;
+      }
+    }
+  }
+  return res;
+}
+
+function propsAposEtapas(propsOriginais, etapasIds) {
+  let props = (propsOriginais || []).map(p => ({ ...p }));
+  for (const eId of (etapasIds || [])) {
+    const et = getEtapa(eId);
+    if (et) props = aplicarEfeitosEtapa(props, et.efeitos);
+  }
+  return props;
+}
+
+// renderiza pílulas do form de ingrediente dinamicamente
+function renderEtapasPills() {
+  const cont = document.getElementById('ing-etapas-pills');
+  if (!cont) return;
+  if (etapas.length === 0) {
+    cont.innerHTML = '<span class="assinatura-empty">Cadastre etapas no catálogo abaixo para vincular aqui.</span>';
+    return;
+  }
+  cont.innerHTML = etapas.map(et => {
+    const ic = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(et.icone || '')
+      ? iconImg(et.icone, '0.95em')
+      : (et.icone || '⚒');
+    return `<label class="etapa-pill" data-etapa="${et.id}">
+      <input type="checkbox" value="${et.id}" onchange="atualizarEtapaPill(this)">
+      <span class="et-ico">${ic}</span> ${escapeHTML(et.nome)}
+    </label>`;
+  }).join('');
+}
+
+window.atualizarEfeitoForm = function() {
+  const tipo = document.getElementById('ef-tipo').value;
+  const wAlvo = document.getElementById('ef-alvo-wrap');
+  const wDe = document.getElementById('ef-de-wrap');
+  const wPara = document.getElementById('ef-para-wrap');
+  const wNum = document.getElementById('ef-num-wrap');
+  const lblNum = document.getElementById('ef-num-label');
+  // resetar
+  wAlvo.style.display = 'none';
+  wDe.style.display = 'none';
+  wPara.style.display = 'none';
+  wNum.style.display = 'none';
+  switch (tipo) {
+    case 'multiplica': wAlvo.style.display = ''; wNum.style.display = ''; lblNum.textContent = 'Fator (×)'; break;
+    case 'modifica':   wAlvo.style.display = ''; wNum.style.display = ''; lblNum.textContent = 'Delta (+/−)'; break;
+    case 'transforma': wDe.style.display = ''; wPara.style.display = ''; wNum.style.display = ''; lblNum.textContent = 'Intensidade (opc.)'; break;
+    case 'adiciona':   wPara.style.display = ''; wNum.style.display = ''; lblNum.textContent = 'Intensidade'; document.getElementById('ef-para').placeholder = 'cura'; break;
+    case 'remove':     wAlvo.style.display = ''; break;
+  }
+};
+
+window.addEfeitoEtapa = function() {
+  const tipo = document.getElementById('ef-tipo').value;
+  const alvo = document.getElementById('ef-alvo').value.trim();
+  const de = document.getElementById('ef-de').value.trim();
+  const para = document.getElementById('ef-para').value.trim();
+  const num = parseFloat(document.getElementById('ef-num').value);
+  let efeito = { tipo };
+  switch (tipo) {
+    case 'multiplica':
+      if (!alvo) { flash('Informe o alvo (tag ou "qualquer").', 'error'); return; }
+      if (isNaN(num) || num <= 0) { flash('Informe um fator positivo.', 'error'); return; }
+      efeito.alvo = alvo; efeito.fator = num;
+      break;
+    case 'modifica':
+      if (!alvo) { flash('Informe o alvo.', 'error'); return; }
+      if (isNaN(num)) { flash('Informe um delta (+/−).', 'error'); return; }
+      efeito.alvo = alvo; efeito.delta = num;
+      break;
+    case 'transforma':
+      if (!de || !para) { flash('Informe origem e destino.', 'error'); return; }
+      efeito.de = de; efeito.para = para;
+      if (!isNaN(num) && num > 0) efeito.intensidade = num;
+      break;
+    case 'adiciona':
+      if (!para) { flash('Informe a tag a adicionar.', 'error'); return; }
+      if (isNaN(num) || num <= 0) { flash('Informe a intensidade.', 'error'); return; }
+      efeito.tag = para; efeito.intensidade = num;
+      break;
+    case 'remove':
+      if (!alvo) { flash('Informe a tag a remover.', 'error'); return; }
+      efeito.alvo = alvo;
+      break;
+  }
+  formEtapaEfeitos.push(efeito);
+  // limpa campos
+  document.getElementById('ef-alvo').value = '';
+  document.getElementById('ef-de').value = '';
+  document.getElementById('ef-para').value = '';
+  document.getElementById('ef-num').value = '';
+  renderEfeitosForm();
+};
+
+window.removerEfeitoEtapa = function(i) {
+  formEtapaEfeitos.splice(i, 1);
+  renderEfeitosForm();
+};
+
+function renderEfeitosForm() {
+  const cont = document.getElementById('et-efeitos-lista');
+  if (formEtapaEfeitos.length === 0) {
+    cont.innerHTML = '<span class="assinatura-empty">Nenhum efeito ainda — esta etapa não modifica propriedades.</span>';
+    return;
+  }
+  cont.innerHTML = formEtapaEfeitos.map((ef, i) => `
+    <div class="efeito-card">
+      <span class="ef-num-ord">${i+1}</span>
+      <span class="ef-tipo-tag">${ef.tipo}</span>
+      <span class="ef-desc">${descricaoEfeito(ef)}</span>
+      <button class="x-btn" style="background:transparent;border:none;color:var(--rust);cursor:pointer;font-size:1.1rem" onclick="removerEfeitoEtapa(${i})" aria-label="Remover efeito">×</button>
+    </div>
+  `).join('');
+}
+
+function descricaoEfeito(ef) {
+  switch (ef.tipo) {
+    case 'multiplica': return `intensidade de "${escapeHTML(ef.alvo)}" × ${ef.fator}`;
+    case 'modifica':   return `intensidade de "${escapeHTML(ef.alvo)}" ${ef.delta>=0?'+':''}${ef.delta}`;
+    case 'transforma': return `"${escapeHTML(ef.de)}" → "${escapeHTML(ef.para)}"${ef.intensidade?` (=${ef.intensidade})`:''}`;
+    case 'adiciona':   return `+ "${escapeHTML(ef.tag)}" ×${ef.intensidade}`;
+    case 'remove':     return `remove "${escapeHTML(ef.alvo)}"`;
+    default: return '';
+  }
+}
+
+window.setIconeEtapa = function(spec) {
+  document.getElementById('et-icone').value = spec || '';
+  atualizarPreviewIconeEtapa();
+};
+function atualizarPreviewIconeEtapa() {
+  const spec = document.getElementById('et-icone').value;
+  const prev = document.getElementById('et-icone-preview');
+  if (!prev) return;
+  prev.innerHTML = spec ? iconCellHTML(spec) : '⚒';
+}
+
+function salvarEtapa() {
+  const nome = document.getElementById('et-nome').value.trim();
+  const som = document.getElementById('et-som').value;
+  const icone = document.getElementById('et-icone').value || '⚒';
+  const desc = document.getElementById('et-desc').value.trim();
+  const editId = document.getElementById('btn-salvar-et').dataset.editId;
+
+  if (!nome) { flash('Informe o nome da etapa.', 'error'); return; }
+
+  const dados = { nome, som, icone, desc, efeitos: formEtapaEfeitos.map(e => ({...e})) };
+
+  if (editId) {
+    const et = etapas.find(x => x.id === editId);
+    if (et) Object.assign(et, dados);
+    document.getElementById('btn-salvar-et').dataset.editId = '';
+    document.getElementById('btn-salvar-et').textContent = 'Cadastrar etapa';
+    flash(`Etapa "${nome}" atualizada.`);
+  } else {
+    etapas.push({
+      id: 'et-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      ...dados,
+      criadoEm: new Date().toISOString(),
+    });
+    flash(`Etapa "${nome}" cadastrada.`);
+  }
+  salvar();
+  tocarSom('pop');
+  limparFormEtapa();
+  renderEtapas();
+  renderEtapasPills();
+}
+
+function limparFormEtapa() {
+  ['et-nome','et-icone','et-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('et-som').value = 'pilada';
+  formEtapaEfeitos = [];
+  renderEfeitosForm();
+  atualizarPreviewIconeEtapa();
+  document.getElementById('btn-salvar-et').dataset.editId = '';
+  document.getElementById('btn-salvar-et').textContent = 'Cadastrar etapa';
+}
+
+function editarEtapa(id) {
+  const et = etapas.find(x => x.id === id);
+  if (!et) return;
+  document.getElementById('et-nome').value = et.nome;
+  document.getElementById('et-som').value = et.som || 'pilada';
+  document.getElementById('et-icone').value = et.icone || '';
+  atualizarPreviewIconeEtapa();
+  document.getElementById('et-desc').value = et.desc || '';
+  formEtapaEfeitos = (et.efeitos || []).map(e => ({...e}));
+  renderEfeitosForm();
+  document.getElementById('btn-salvar-et').dataset.editId = id;
+  document.getElementById('btn-salvar-et').textContent = 'Atualizar etapa';
+  document.querySelector('.tab[data-tab="alquimicos"]').click();
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+function removerEtapa(id) {
+  const et = etapas.find(x => x.id === id);
+  if (!et) return;
+  abrirModal('Remover etapa?',
+    `Remover "${escapeHTML(et.nome)}" do catálogo? Ingredientes e receitas que a utilizam continuarão funcionando, mas a etapa não estará disponível para novos cadastros.`,
+    [
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Remover', class:'btn-danger', onClick: () => {
+        etapas = etapas.filter(x => x.id !== id);
+        salvar();
+        renderEtapas(); renderEtapasPills(); renderEsteira(); renderRecIngrList();
+        closeModal(); flash(`Etapa "${et.nome}" removida.`);
+      }},
+    ]
+  );
+}
+
+function restaurarEtapasPadrao() {
+  abrirModal('Restaurar etapas padrão?',
+    'Isso vai adicionar de volta as 4 etapas padrão (Moer, Ferver, Macerar, Destilar) com seus efeitos originais. Etapas custom existentes não serão tocadas; etapas padrão existentes serão sobrescritas.',
+    [
+      { label:'Cancelar', class:'btn-secondary', onClick: closeModal },
+      { label:'Restaurar', class:'btn', onClick: () => {
+        const padrao = etapasPadrao();
+        padrao.forEach(p => {
+          const ix = etapas.findIndex(e => e.id === p.id);
+          if (ix >= 0) etapas[ix] = p; else etapas.push(p);
+        });
+        salvar();
+        renderEtapas(); renderEtapasPills();
+        closeModal(); flash('Etapas padrão restauradas.');
+      }},
+    ]
+  );
+}
+
+function renderEtapas() {
+  const grid = document.getElementById('etapas-grid');
+  if (!grid) return;
+  if (etapas.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <span class="glyph">⚒</span>
+      Nenhuma etapa cadastrada. Clique em "Restaurar etapas padrão" para começar.
+    </div>`;
+    return;
+  }
+  grid.innerHTML = etapas.map(et => {
+    const ic = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(et.icone || '')
+      ? iconImg(et.icone, '1.6rem')
+      : `<span class="et-ico-grande">${escapeHTML(et.icone || '⚒')}</span>`;
+    const efeitos = (et.efeitos || []).map(ef => `
+      <span class="efeito-chip">
+        <span class="et-tipo">${ef.tipo}</span>
+        <span class="et-formula">${descricaoEfeito(ef)}</span>
+      </span>
+    `).join('');
+    return `
+      <div class="etapa-card">
+        <div class="et-head">${ic}<h4>${escapeHTML(et.nome)}</h4>
+          <button class="btn btn-secondary btn-tiny" onclick="tocarSom('${et.som||'silencio'}')" aria-label="Ouvir o som da etapa" title="Ouvir o som">▶</button>
+        </div>
+        ${et.desc ? `<div class="et-desc">${escapeHTML(et.desc)}</div>` : ''}
+        ${efeitos ? `<div class="efeitos-lista">${efeitos}</div>` : '<div class="et-desc">Sem efeitos definidos — apenas decorativa.</div>'}
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:var(--ink-faded)">som: ${escapeHTML(et.som||'silencio')}</div>
+        <div class="card-actions" style="margin-top:0.4rem">
+          <button class="btn btn-secondary btn-tiny" onclick="editarEtapa('${et.id}')">Editar</button>
+          <button class="btn btn-secondary btn-tiny" onclick="removerEtapa('${et.id}')">Remover</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') { closeModal(); fecharSeletorIcone(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && document.getElementById('panel-ensaio').classList.contains('active')) {
     e.preventDefault();
     desfazerUltima();
