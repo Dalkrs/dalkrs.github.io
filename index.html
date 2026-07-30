@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck do Paladino — Urgm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --noite:#14121c;
+    --pedra:#1e1a2a;
+    --pedra-clara:#28223a;
+    --ouro:#c9a227;
+    --ouro-claro:#e8c96a;
+    --pergaminho:#efe4c9;
+    --pergaminho-escuro:#e2d3ae;
+    --tinta:#2b2117;
+    --carmesim:#a13646;
+    --nevoa:#9b93ad;
+    --borda:#3a3350;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--noite);
+    background-image:
+      radial-gradient(1200px 600px at 50% -200px, rgba(201,162,39,.08), transparent 60%),
+      radial-gradient(800px 500px at 90% 110%, rgba(161,54,70,.06), transparent 60%);
+    color:var(--nevoa);
+    font-family:"EB Garamond",Georgia,serif;
+    font-size:17px;
+    min-height:100vh;
+    padding:24px 16px 80px;
+  }
+  header{max-width:1200px;margin:0 auto 28px;text-align:center}
+  header h1{
+    font-family:Cinzel,serif;font-weight:700;
+    font-size:clamp(1.6rem,4vw,2.6rem);
+    letter-spacing:.14em;color:var(--ouro-claro);
+    text-shadow:0 0 24px rgba(201,162,39,.25);
+  }
+  header p{font-style:italic;color:var(--nevoa);margin-top:6px}
+  .filete{
+    width:min(420px,80%);height:1px;margin:14px auto 0;
+    background:linear-gradient(90deg,transparent,var(--ouro),transparent);
+    position:relative;
+  }
+  .filete::after{
+    content:"✦";position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);color:var(--ouro);
+    background:var(--noite);padding:0 10px;font-size:.8rem;
+  }
+
+  main{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:380px 1fr;gap:24px}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+
+  .painel{
+    background:var(--pedra);
+    border:1px solid var(--borda);
+    border-radius:10px;
+    padding:20px;
+  }
+  .painel h2{
+    font-family:Cinzel,serif;font-weight:600;font-size:1.05rem;
+    letter-spacing:.12em;color:var(--ouro);
+    display:flex;align-items:center;gap:10px;margin-bottom:16px;
+  }
+  .painel h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--borda),transparent)}
+
+  label{display:block;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--nevoa);margin:12px 0 4px}
+  input[type=text],input[type=number],textarea{
+    width:100%;background:var(--noite);color:#ded8ea;
+    border:1px solid var(--borda);border-radius:6px;
+    padding:9px 10px;font-family:inherit;font-size:1rem;
+  }
+  textarea{resize:vertical;min-height:80px}
+  input:focus,textarea:focus,button:focus-visible{
+    outline:2px solid var(--ouro);outline-offset:1px;
+  }
+
+  .linha{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+  .linha>div{flex:1;min-width:110px}
+
+  button{
+    font-family:Cinzel,serif;letter-spacing:.08em;font-weight:600;
+    background:var(--pedra-clara);color:var(--ouro-claro);
+    border:1px solid var(--ouro);border-radius:6px;
+    padding:9px 16px;cursor:pointer;font-size:.85rem;
+    transition:background .15s,color .15s,box-shadow .15s;
+  }
+  button:hover{background:var(--ouro);color:var(--noite)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button:disabled:hover{background:var(--pedra-clara);color:var(--ouro-claro)}
+  button.sutil{border-color:var(--borda);color:var(--nevoa);font-family:"EB Garamond",serif;letter-spacing:0;font-weight:500}
+  button.sutil:hover{background:var(--pedra-clara);color:#ded8ea}
+  button.perigo{border-color:var(--carmesim);color:#e0919c}
+  button.perigo:hover{background:var(--carmesim);color:#fff}
+
+  .btn-oracao{
+    width:100%;padding:14px;font-size:1rem;margin-top:4px;
+    background:linear-gradient(180deg,#2d2740,#1e1a2a);
+    box-shadow:0 0 0 1px var(--ouro) inset,0 0 18px rgba(201,162,39,.15);
+  }
+  .btn-oracao:hover{
+    background:linear-gradient(180deg,var(--ouro-claro),var(--ouro));
+    color:var(--noite);box-shadow:0 0 26px rgba(201,162,39,.45);
+  }
+
+  /* ---- lista do grimório ---- */
+  .grimorio-lista{margin-top:18px;display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px}
+  .grimorio-item{
+    display:flex;align-items:center;gap:10px;
+    background:var(--noite);border:1px solid var(--borda);
+    border-radius:6px;padding:8px 10px;
+  }
+  .grimorio-item .nome{flex:1;color:#ded8ea;font-weight:500}
+  .grimorio-item .fe{font-family:Cinzel,serif;font-size:.8rem;color:var(--ouro)}
+  .grimorio-item .copias{font-size:.85rem;color:var(--nevoa)}
+  .grimorio-item button{padding:4px 9px;font-size:.72rem}
+
+  /* ---- mesa ---- */
+  .mesa-controles{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:6px}
+  .mesa-controles .campo{width:150px}
+  .placar{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px}
+  .placar span{font-size:.9rem;color:var(--nevoa)}
+  .placar b{font-family:Cinzel,serif;color:var(--ouro-claro);font-weight:600}
+
+  .zona-titulo{
+    font-family:Cinzel,serif;font-size:.85rem;letter-spacing:.14em;
+    color:var(--nevoa);margin:20px 0 10px;text-transform:uppercase;
+  }
+  .mao,.pilha-descarte{display:flex;flex-wrap:wrap;gap:14px;min-height:60px}
+  .vazio{font-style:italic;color:#6d6580;padding:8px 0}
+
+  /* ---- carta ---- */
+  .carta{
+    width:150px;height:200px;border-radius:9px;
+    background:linear-gradient(160deg,var(--pergaminho),var(--pergaminho-escuro));
+    color:var(--tinta);
+    border:1px solid #b3945a;
+    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px #b3945a inset,0 4px 10px rgba(0,0,0,.45);
+    padding:12px 10px 10px;position:relative;cursor:pointer;
+    display:flex;flex-direction:column;
+    transition:transform .15s,box-shadow .15s;
+    user-select:none;
+  }
+  .carta:hover{transform:translateY(-4px)}
+  .carta .custo{
+    position:absolute;top:-9px;right:-9px;
+    width:34px;height:34px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--ouro-claro),var(--ouro) 70%);
+    color:var(--noite);font-family:Cinzel,serif;font-weight:700;font-size:.95rem;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 10px rgba(201,162,39,.6),0 2px 4px rgba(0,0,0,.4);
+  }
+  .carta .emblema{text-align:center;font-size:1.5rem;color:#8a6d2f;margin-top:8px}
+  .carta .nome{
+    font-family:Cinzel,serif;font-weight:600;font-size:.82rem;
+    text-align:center;margin-top:auto;margin-bottom:auto;
+    line-height:1.25;letter-spacing:.03em;
+  }
+  .carta .rodape{
+    font-size:.7rem;text-align:center;color:#7a6647;
+    border-top:1px solid #c4ac7c;padding-top:5px;font-style:italic;
+  }
+  .carta.selecionada{
+    border-color:var(--carmesim);
+    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--carmesim) inset,0 0 16px rgba(161,54,70,.55);
+    transform:translateY(-4px) rotate(-2deg);
+  }
+  .carta.selecionada::after{
+    content:"DESCARTAR";position:absolute;left:50%;top:6px;transform:translateX(-50%);
+    font-family:Cinzel,serif;font-size:.55rem;letter-spacing:.2em;color:var(--carmesim);font-weight:700;
+  }
+  .pilha-descarte .carta{opacity:.55;cursor:default;filter:grayscale(.4)}
+  .pilha-descarte .carta:hover{transform:none}
+
+  @keyframes surgir{
+    from{opacity:0;transform:translateY(16px) scale(.94)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+  }
+  .carta.nova{animation:surgir .35s ease both}
+
+  /* ---- tooltip ---- */
+  #tooltip{
+    position:fixed;z-index:50;max-width:280px;
+    background:#0f0d16;border:1px solid var(--ouro);
+    border-radius:8px;padding:12px 14px;
+    box-shadow:0 6px 24px rgba(0,0,0,.6),0 0 12px rgba(201,162,39,.15);
+    pointer-events:none;opacity:0;transition:opacity .1s;
+  }
+  #tooltip.visivel{opacity:1}
+  #tooltip .t-nome{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:.9rem;letter-spacing:.06em;margin-bottom:4px}
+  #tooltip .t-fe{font-size:.78rem;color:var(--ouro);margin-bottom:8px;font-style:italic}
+  #tooltip .t-desc{font-size:.9rem;color:#ded8ea;line-height:1.45}
+
+  .acoes-arquivo{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  .aviso{font-size:.85rem;font-style:italic;color:#6d6580;margin-top:10px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Deck do Paladino</h1>
+  <p>Reino de Lirian · Que a fé guie a mão que puxa a carta</p>
+  <div class="filete"></div>
+</header>
+
+<main>
+  <!-- ======== GRIMÓRIO (cadastro) ======== -->
+  <section class="painel" aria-label="Grimório de habilidades">
+    <h2>Grimório</h2>
+    <form id="formSkill" autocomplete="off">
+      <label for="fNome">Nome da habilidade</label>
+      <input type="text" id="fNome" required maxlength="60" placeholder="Ex.: Escudo de Luz de Manomã">
+      <div class="linha">
+        <div>
+          <label for="fFe">Custo de fé</label>
+          <input type="number" id="fFe" min="0" max="99" value="1">
+        </div>
+        <div>
+          <label for="fCopias">Cópias no deck</label>
+          <input type="number" id="fCopias" min="1" max="20" value="1">
+        </div>
+      </div>
+      <label for="fDesc">Descrição</label>
+      <textarea id="fDesc" required maxlength="600" placeholder="O que a habilidade faz quando invocada…"></textarea>
+      <div class="linha" style="margin-top:12px">
+        <button type="submit" id="btnSalvar">Registrar habilidade</button>
+        <button type="button" class="sutil" id="btnCancelarEdicao" hidden>Cancelar edição</button>
+      </div>
+    </form>
+
+    <div class="grimorio-lista" id="listaSkills"></div>
+
+    <div class="acoes-arquivo">
+      <button type="button" class="sutil" id="btnExportar">Exportar deck (.json)</button>
+      <button type="button" class="sutil" id="btnImportar">Importar deck</button>
+      <input type="file" id="inputImportar" accept="application/json" hidden>
+    </div>
+    <p class="aviso">As habilidades ficam salvas neste navegador. Use exportar/importar para levar o deck a outro dispositivo.</p>
+  </section>
+
+  <!-- ======== MESA ======== -->
+  <section class="painel" aria-label="Mesa de jogo">
+    <h2>Mesa</h2>
+
+    <div class="mesa-controles">
+      <div class="campo">
+        <label for="cfgMao">Cartas na mão inicial</label>
+        <input type="number" id="cfgMao" min="1" max="30" value="5">
+      </div>
+      <button type="button" class="btn-oracao" style="flex:1;min-width:200px" id="btnOracao">☀ Fazer Oração</button>
+    </div>
+
+    <div class="placar">
+      <span>Deck: <b id="ctDeck">0</b></span>
+      <span>Mão: <b id="ctMao">0</b></span>
+      <span>Descarte: <b id="ctDescarte">0</b></span>
+    </div>
+
+    <div class="zona-titulo">Mão · clique numa carta para marcá-la</div>
+    <div class="mao" id="zonaMao"><p class="vazio">Faça a oração para receber suas cartas.</p></div>
+
+    <div class="linha" style="margin-top:16px">
+      <button type="button" class="perigo" id="btnDescartar" disabled>Descartar selecionadas</button>
+      <div style="flex:0 0 130px">
+        <label for="qtdPuxar" style="margin-top:0">Puxar do deck</label>
+        <input type="number" id="qtdPuxar" min="1" max="30" value="1">
+      </div>
+      <button type="button" id="btnPuxar" disabled>Puxar cartas</button>
+    </div>
+
+    <div class="zona-titulo">Pilha de descarte</div>
+    <div class="pilha-descarte" id="zonaDescarte"><p class="vazio">Nenhuma carta descartada.</p></div>
+  </section>
+</main>
+
+<div id="tooltip" role="tooltip">
+  <div class="t-nome"></div>
+  <div class="t-fe"></div>
+  <div class="t-desc"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const CHAVE = "urgm_deck_paladino_v1";
+  const CHAVE_CFG = "urgm_deck_paladino_cfg_v1";
+
+  /* ---------- estado ---------- */
+  let skills = [];          // {id, nome, fe, copias, desc}
+  let deck = [];            // instâncias: {uid, skillId}
+  let mao = [];
+  let descarte = [];
+  let selecionadas = new Set(); // uids marcados para descarte
+  let editandoId = null;
+
+  /* ---------- persistência ---------- */
+  function salvar(){
+    try{ localStorage.setItem(CHAVE, JSON.stringify(skills)); }catch(e){}
+  }
+  function carregar(){
+    try{
+      const bruto = localStorage.getItem(CHAVE);
+      if(bruto) skills = JSON.parse(bruto).filter(s => s && s.nome);
+      const cfg = JSON.parse(localStorage.getItem(CHAVE_CFG) || "{}");
+      if(cfg.mao) el("cfgMao").value = cfg.mao;
+    }catch(e){ skills = []; }
+  }
+  function salvarCfg(){
+    try{ localStorage.setItem(CHAVE_CFG, JSON.stringify({mao: el("cfgMao").value})); }catch(e){}
+  }
+
+  /* ---------- utilidades ---------- */
+  const el = id => document.getElementById(id);
+  const skillPorId = id => skills.find(s => s.id === id);
+  function novoId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function embaralhar(arr){
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  /* ---------- grimório ---------- */
+  function renderGrimorio(){
+    const lista = el("listaSkills");
+    lista.innerHTML = "";
+    if(!skills.length){
+      lista.innerHTML = '<p class="vazio">O grimório está vazio. Registre a primeira habilidade.</p>';
+      return;
+    }
+    skills.forEach(s => {
+      const div = document.createElement("div");
+      div.className = "grimorio-item";
+      div.innerHTML =
+        '<span class="fe">✦ ' + s.fe + '</span>' +
+        '<span class="nome"></span>' +
+        '<span class="copias">×' + s.copias + '</span>';
+      div.querySelector(".nome").textContent = s.nome;
+
+      const bEdit = document.createElement("button");
+      bEdit.type = "button"; bEdit.className = "sutil"; bEdit.textContent = "Editar";
+      bEdit.addEventListener("click", () => iniciarEdicao(s.id));
+
+      const bDel = document.createElement("button");
+      bDel.type = "button"; bDel.className = "perigo"; bDel.textContent = "×";
+      bDel.setAttribute("aria-label", "Remover " + s.nome);
+      bDel.addEventListener("click", () => {
+        if(confirm('Remover "' + s.nome + '" do grimório?')){
+          skills = skills.filter(x => x.id !== s.id);
+          salvar(); renderGrimorio();
+        }
+      });
+
+      div.appendChild(bEdit); div.appendChild(bDel);
+      lista.appendChild(div);
+    });
+  }
+
+  function iniciarEdicao(id){
+    const s = skillPorId(id);
+    if(!s) return;
+    editandoId = id;
+    el("fNome").value = s.nome;
+    el("fFe").value = s.fe;
+    el("fCopias").value = s.copias;
+    el("fDesc").value = s.desc;
+    el("btnSalvar").textContent = "Salvar alterações";
+    el("btnCancelarEdicao").hidden = false;
+    el("fNome").focus();
+  }
+  function encerrarEdicao(){
+    editandoId = null;
+    el("formSkill").reset();
+    el("fFe").value = 1; el("fCopias").value = 1;
+    el("btnSalvar").textContent = "Registrar habilidade";
+    el("btnCancelarEdicao").hidden = true;
+  }
+
+  el("formSkill").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const dados = {
+      nome: el("fNome").value.trim(),
+      fe: Math.max(0, parseInt(el("fFe").value, 10) || 0),
+      copias: Math.min(20, Math.max(1, parseInt(el("fCopias").value, 10) || 1)),
+      desc: el("fDesc").value.trim()
+    };
+    if(!dados.nome || !dados.desc) return;
+    if(editandoId){
+      Object.assign(skillPorId(editandoId), dados);
+    }else{
+      skills.push(Object.assign({id: novoId()}, dados));
+    }
+    salvar(); renderGrimorio(); encerrarEdicao();
+  });
+  el("btnCancelarEdicao").addEventListener("click", encerrarEdicao);
+
+  /* ---------- exportar / importar ---------- */
+  el("btnExportar").addEventListener("click", function(){
+    const blob = new Blob([JSON.stringify(skills, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "deck-paladino-urgm.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  el("btnImportar").addEventListener("click", () => el("inputImportar").click());
+  el("inputImportar").addEventListener("change", function(){
+    const arq = this.files[0];
+    if(!arq) return;
+    const leitor = new FileReader();
+    leitor.onload = function(){
+      try{
+        const dados = JSON.parse(leitor.result);
+        if(!Array.isArray(dados)) throw new Error();
+        skills = dados
+          .filter(s => s && s.nome && s.desc)
+          .map(s => ({
+            id: s.id || novoId(),
+            nome: String(s.nome).slice(0,60),
+            fe: Math.max(0, parseInt(s.fe,10) || 0),
+            copias: Math.min(20, Math.max(1, parseInt(s.copias,10) || 1)),
+            desc: String(s.desc).slice(0,600)
+          }));
+        salvar(); renderGrimorio();
+      }catch(e){
+        alert("Arquivo inválido. Selecione um .json exportado por esta ferramenta.");
+      }
+    };
+    leitor.readAsText(arq);
+    this.value = "";
+  });
+
+  /* ---------- mesa ---------- */
+  function montarDeckCompleto(){
+    const inst = [];
+    skills.forEach(s => {
+      for(let i = 0; i < s.copias; i++) inst.push({uid: novoId(), skillId: s.id});
+    });
+    return embaralhar(inst);
+  }
+
+  el("btnOracao").addEventListener("click", function(){
+    if(!skills.length){
+      alert("O grimório está vazio — registre habilidades antes de orar.");
+      return;
+    }
+    salvarCfg();
+    deck = montarDeckCompleto();
+    const n = Math.min(deck.length, Math.max(1, parseInt(el("cfgMao").value, 10) || 1));
+    mao = deck.splice(0, n);
+    descarte = [];
+    selecionadas.clear();
+    renderMesa(true);
+  });
+
+  el("btnDescartar").addEventListener("click", function(){
+    if(!selecionadas.size) return;
+    const vao = mao.filter(c => selecionadas.has(c.uid));
+    mao = mao.filter(c => !selecionadas.has(c.uid));
+    descarte = descarte.concat(vao);
+    selecionadas.clear();
+    esconderTooltip();
+    renderMesa(false);
+  });
+
+  el("btnPuxar").addEventListener("click", function(){
+    if(!deck.length){ alert("O deck está vazio."); return; }
+    const q = Math.min(deck.length, Math.max(1, parseInt(el("qtdPuxar").value, 10) || 1));
+    const novas = deck.splice(0, q);
+    novas.forEach(c => c.nova = true);
+    mao = mao.concat(novas);
+    renderMesa(false);
+  });
+
+  function criarCarta(inst, zonaMao){
+    const s = skillPorId(inst.skillId);
+    if(!s) return null;
+    const c = document.createElement("div");
+    c.className = "carta" + (inst.nova ? " nova" : "");
+    delete inst.nova;
+    c.tabIndex = 0;
+    c.setAttribute("role", "button");
+    c.setAttribute("aria-label", s.nome + ", custo de fé " + s.fe);
+    c.innerHTML =
+      '<div class="custo">' + s.fe + '</div>' +
+      '<div class="emblema">✠</div>' +
+      '<div class="nome"></div>' +
+      '<div class="rodape">fé ' + s.fe + '</div>';
+    c.querySelector(".nome").textContent = s.nome;
+
+    if(zonaMao){
+      if(selecionadas.has(inst.uid)) c.classList.add("selecionada");
+      const alternar = () => {
+        if(selecionadas.has(inst.uid)) selecionadas.delete(inst.uid);
+        else selecionadas.add(inst.uid);
+        c.classList.toggle("selecionada");
+        atualizarBotoes();
+      };
+      c.addEventListener("click", alternar);
+      c.addEventListener("keydown", ev => {
+        if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); alternar(); }
+      });
+    }
+
+    // tooltip seguindo o mouse
+    c.addEventListener("mouseenter", () => mostrarTooltip(s));
+    c.addEventListener("mousemove", moverTooltip);
+    c.addEventListener("mouseleave", esconderTooltip);
+    c.addEventListener("focus", ev => {
+      mostrarTooltip(s);
+      const r = c.getBoundingClientRect();
+      posicionarTooltip(r.right, r.top);
+    });
+    c.addEventListener("blur", esconderTooltip);
+    return c;
+  }
+
+  function renderMesa(animarTudo){
+    const zM = el("zonaMao"), zD = el("zonaDescarte");
+    zM.innerHTML = ""; zD.innerHTML = "";
+
+    if(!mao.length){
+      zM.innerHTML = deck.length || descarte.length
+        ? '<p class="vazio">Mão vazia — puxe cartas do deck.</p>'
+        : '<p class="vazio">Faça a oração para receber suas cartas.</p>';
+    }else{
+      mao.forEach(inst => {
+        if(animarTudo) inst.nova = true;
+        const c = criarCarta(inst, true);
+        if(c) zM.appendChild(c);
+      });
+    }
+
+    if(!descarte.length){
+      zD.innerHTML = '<p class="vazio">Nenhuma carta descartada.</p>';
+    }else{
+      descarte.forEach(inst => {
+        const c = criarCarta(inst, false);
+        if(c) zD.appendChild(c);
+      });
+    }
+
+    el("ctDeck").textContent = deck.length;
+    el("ctMao").textContent = mao.length;
+    el("ctDescarte").textContent = descarte.length;
+    atualizarBotoes();
+  }
+
+  function atualizarBotoes(){
+    el("btnDescartar").disabled = !selecionadas.size;
+    el("btnDescartar").textContent = selecionadas.size
+      ? "Descartar selecionadas (" + selecionadas.size + ")"
+      : "Descartar selecionadas";
+    el("btnPuxar").disabled = !deck.length;
+  }
+
+  /* ---------- tooltip ---------- */
+  const tip = el("tooltip");
+  function mostrarTooltip(s){
+    tip.querySelector(".t-nome").textContent = s.nome;
+    tip.querySelector(".t-fe").textContent = "Custo de fé: " + s.fe;
+    tip.querySelector(".t-desc").textContent = s.desc;
+    tip.classList.add("visivel");
+  }
+  function moverTooltip(ev){ posicionarTooltip(ev.clientX, ev.clientY); }
+  function posicionarTooltip(x, y){
+    const m = 18;
+    const r = tip.getBoundingClientRect();
+    let px = x + m, py = y + m;
+    if(px + r.width > window.innerWidth - 8)  px = x - r.width - m;
+    if(py + r.height > window.innerHeight - 8) py = y - r.height - m;
+    tip.style.left = Math.max(8, px) + "px";
+    tip.style.top  = Math.max(8, py) + "px";
+  }
+  function esconderTooltip(){ tip.classList.remove("visivel"); }
+
+  /* ---------- início ---------- */
+  carregar();
+  renderGrimorio();
+  renderMesa(false);
+})();
+</script>
+</body>
+</html>
