@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck do Paladino — Urgm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --noite:#14121c;
+    --pedra:#1e1a2a;
+    --pedra-clara:#28223a;
+    --ouro:#c9a227;
+    --ouro-claro:#e8c96a;
+    --pergaminho:#efe4c9;
+    --pergaminho-escuro:#e2d3ae;
+    --tinta:#2b2117;
+    --carmesim:#a13646;
+    --nevoa:#9b93ad;
+    --borda:#3a3350;
+    --r-comum:#9aa0a6;
+    --r-incomum:#4aa564;
+    --r-rara:#4a7fd6;
+    --r-epica:#9757d4;
+    --r-lendaria:#d98f2b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--noite);
+    background-image:
+      radial-gradient(1200px 600px at 50% -200px, rgba(201,162,39,.08), transparent 60%),
+      radial-gradient(800px 500px at 90% 110%, rgba(161,54,70,.06), transparent 60%);
+    color:var(--nevoa);
+    font-family:"EB Garamond",Georgia,serif;
+    font-size:17px;
+    min-height:100vh;
+    padding:24px 16px 80px;
+  }
+  header{max-width:1280px;margin:0 auto 28px;text-align:center}
+  header h1{
+    font-family:Cinzel,serif;font-weight:700;
+    font-size:clamp(1.6rem,4vw,2.6rem);
+    letter-spacing:.14em;color:var(--ouro-claro);
+    text-shadow:0 0 24px rgba(201,162,39,.25);
+  }
+  header p{font-style:italic;color:var(--nevoa);margin-top:6px}
+  .filete{
+    width:min(420px,80%);height:1px;margin:14px auto 0;
+    background:linear-gradient(90deg,transparent,var(--ouro),transparent);
+    position:relative;
+  }
+  .filete::after{
+    content:"✦";position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);color:var(--ouro);
+    background:var(--noite);padding:0 10px;font-size:.8rem;
+  }
+
+  main{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:410px 1fr;gap:24px}
+  @media(max-width:980px){main{grid-template-columns:1fr}}
+
+  .painel{
+    background:var(--pedra);
+    border:1px solid var(--borda);
+    border-radius:10px;
+    padding:20px;
+  }
+  .painel h2{
+    font-family:Cinzel,serif;font-weight:600;font-size:1.05rem;
+    letter-spacing:.12em;color:var(--ouro);
+    display:flex;align-items:center;gap:10px;margin-bottom:16px;
+  }
+  .painel h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--borda),transparent)}
+
+  label{display:block;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--nevoa);margin:12px 0 4px}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;background:var(--noite);color:#ded8ea;
+    border:1px solid var(--borda);border-radius:6px;
+    padding:9px 10px;font-family:inherit;font-size:1rem;
+  }
+  select{cursor:pointer}
+  textarea{resize:vertical;min-height:76px}
+  input:focus,textarea:focus,select:focus,button:focus-visible{
+    outline:2px solid var(--ouro);outline-offset:1px;
+  }
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--ouro);cursor:pointer}
+
+  .linha{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+  .linha>div{flex:1;min-width:100px}
+
+  button{
+    font-family:Cinzel,serif;letter-spacing:.08em;font-weight:600;
+    background:var(--pedra-clara);color:var(--ouro-claro);
+    border:1px solid var(--ouro);border-radius:6px;
+    padding:9px 16px;cursor:pointer;font-size:.85rem;
+    transition:background .15s,color .15s,box-shadow .15s;
+  }
+  button:hover{background:var(--ouro);color:var(--noite)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button:disabled:hover{background:var(--pedra-clara);color:var(--ouro-claro)}
+  button.sutil{border-color:var(--borda);color:var(--nevoa);font-family:"EB Garamond",serif;letter-spacing:0;font-weight:500}
+  button.sutil:hover{background:var(--pedra-clara);color:#ded8ea}
+  button.perigo{border-color:var(--carmesim);color:#e0919c}
+  button.perigo:hover{background:var(--carmesim);color:#fff}
+  button.sombrio{border-color:#5a5470;color:#b6aed0}
+  button.sombrio:hover{background:#3b3452;color:#e8e2f5}
+
+  .btn-oracao{
+    padding:14px 22px;font-size:1rem;
+    background:linear-gradient(180deg,#2d2740,#1e1a2a);
+    box-shadow:0 0 0 1px var(--ouro) inset,0 0 18px rgba(201,162,39,.15);
+  }
+  .btn-oracao:hover{
+    background:linear-gradient(180deg,var(--ouro-claro),var(--ouro));
+    color:var(--noite);box-shadow:0 0 26px rgba(201,162,39,.45);
+  }
+
+  /* ---- tags mecânicas no formulário ---- */
+  .caixa-tags{
+    border:1px solid var(--borda);border-radius:8px;
+    padding:12px;margin-top:14px;background:rgba(0,0,0,.15);
+  }
+  .caixa-tags h3{
+    font-family:Cinzel,serif;font-size:.78rem;letter-spacing:.12em;
+    color:var(--nevoa);text-transform:uppercase;margin-bottom:8px;
+  }
+  .caixa-tags h3:not(:first-child){margin-top:14px;padding-top:12px;border-top:1px solid var(--borda)}
+  .tag-linha{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+  .tag-linha label{margin:0;text-transform:none;font-size:.95rem;letter-spacing:0;color:#c9c2da;cursor:pointer}
+  .tag-linha input[type=number]{width:66px;padding:5px 7px;font-size:.9rem}
+  .tag-linha select{width:auto;padding:5px 7px;font-size:.9rem}
+  .tag-linha .mini{font-size:.8rem;color:var(--nevoa)}
+
+  /* ---- lista do grimório ---- */
+  .grimorio-lista{margin-top:18px;display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-right:4px}
+  .grimorio-item{
+    display:flex;align-items:center;gap:8px;
+    background:var(--noite);border:1px solid var(--borda);
+    border-radius:6px;padding:8px 10px;
+  }
+  .gema{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
+  .grimorio-item .nome{flex:1;color:#ded8ea;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grimorio-item .fe{font-family:Cinzel,serif;font-size:.8rem;color:var(--ouro);flex:none}
+  .grimorio-item .copias{font-size:.85rem;color:var(--nevoa);flex:none}
+  .grimorio-item button{padding:4px 9px;font-size:.72rem;flex:none}
+
+  /* ---- santuário da fé ---- */
+  .santuario{
+    display:flex;gap:22px;align-items:center;flex-wrap:wrap;
+    padding-bottom:18px;border-bottom:1px solid var(--borda);margin-bottom:16px;
+  }
+  .orbe-area{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .orbe{
+    position:relative;width:132px;height:132px;border-radius:50%;
+    background:radial-gradient(circle at 32% 26%, #3a3350, #0d0b14 72%);
+    border:3px solid var(--ouro);overflow:hidden;flex:none;
+    box-shadow:0 0 24px rgba(201,162,39,.25),0 0 0 6px rgba(201,162,39,.08),inset 0 0 30px rgba(0,0,0,.7);
+  }
+  .orbe::after{
+    content:"";position:absolute;top:8%;left:16%;width:42%;height:24%;
+    border-radius:50%;background:radial-gradient(ellipse, rgba(255,255,255,.28), transparent 70%);
+    pointer-events:none;
+  }
+  .liquido{
+    position:absolute;left:0;right:0;bottom:0;height:0%;
+    background:linear-gradient(180deg,#f4dd8f 0%,var(--ouro) 45%,#8a6d1f 100%);
+    transition:height .6s ease;
+    box-shadow:0 0 18px rgba(232,201,106,.6);
+  }
+  .onda{
+    position:absolute;top:-13px;left:-30%;width:160%;height:26px;
+    background:#0d0b14;border-radius:44%;
+    animation:ondular 6s linear infinite;
+  }
+  .onda.dois{animation-duration:9s;opacity:.6;top:-15px}
+  @keyframes ondular{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .orbe .valor{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;
+  }
+  .orbe .valor b{
+    font-family:Cinzel,serif;font-size:1.7rem;font-weight:700;color:#fff;
+    text-shadow:0 0 8px rgba(0,0,0,.9),0 0 16px rgba(201,162,39,.8);
+  }
+  .orbe .valor span{font-size:.72rem;color:#d8d2e8;text-shadow:0 1px 3px #000;letter-spacing:.1em}
+  .orbe.baixa{animation:pulsar 1.6s ease-in-out infinite}
+  @keyframes pulsar{
+    0%,100%{box-shadow:0 0 24px rgba(161,54,70,.35),inset 0 0 30px rgba(0,0,0,.7)}
+    50%{box-shadow:0 0 40px rgba(161,54,70,.7),inset 0 0 30px rgba(0,0,0,.7)}
+  }
+  .ajuste-fe{display:flex;gap:5px;align-items:center}
+  .ajuste-fe button{padding:3px 9px;font-size:.75rem}
+
+  .santuario-controles{flex:1;min-width:250px;display:flex;flex-direction:column;gap:10px}
+  .santuario-controles .linha label{margin-top:0}
+  .rodada-caixa{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .rodada-caixa .num{
+    font-family:Cinzel,serif;font-size:1.15rem;color:var(--ouro-claro);
+    border:1px solid var(--borda);border-radius:6px;padding:5px 14px;background:var(--noite);
+  }
+  .dados{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+  .dados button{padding:4px 8px;font-size:.72rem;font-family:"EB Garamond",serif;letter-spacing:0}
+  .dado-resultado{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:1rem;min-width:60px}
+
+  .placar{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 4px}
+  .placar span{font-size:.9rem;color:var(--nevoa)}
+  .placar b{font-family:Cinzel,serif;color:var(--ouro-claro);font-weight:600}
+
+  .zona-titulo{
+    font-family:Cinzel,serif;font-size:.85rem;letter-spacing:.14em;
+    color:var(--nevoa);margin:20px 0 10px;text-transform:uppercase;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .zona-titulo button{padding:3px 10px;font-size:.68rem}
+  .mao,.pilha{display:flex;flex-wrap:wrap;gap:16px;min-height:56px}
+  .vazio{font-style:italic;color:#6d6580;padding:8px 0}
+
+  /* ---- carta ---- */
+  .carta{
+    width:154px;height:214px;border-radius:9px;
+    background:linear-gradient(160deg,var(--pergaminho),var(--pergaminho-escuro));
+    color:var(--tinta);
+    border:1px solid #b3945a;
+    --anel:#b3945a;
+    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--anel) inset,0 4px 10px rgba(0,0,0,.45);
+    padding:12px 10px 8px;position:relative;cursor:pointer;
+    display:flex;flex-direction:column;
+    transition:transform .15s,box-shadow .15s;
+    user-select:none;
+  }
+  .carta:hover{transform:translateY(-4px)}
+  .carta.r-comum{--anel:var(--r-comum)}
+  .carta.r-incomum{--anel:var(--r-incomum)}
+  .carta.r-rara{--anel:var(--r-rara)}
+  .carta.r-epica{--anel:var(--r-epica)}
+  .carta.r-lendaria{--anel:var(--r-lendaria);box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--anel) inset,0 0 14px rgba(217,143,43,.55),0 4px 10px rgba(0,0,0,.45)}
+  .carta .custo{
+    position:absolute;top:-9px;right:-9px;z-index:2;
+    width:34px;height:34px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--ouro-claro),var(--ouro) 70%);
+    color:var(--noite);font-family:Cinzel,serif;font-weight:700;font-size:.95rem;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 10px rgba(201,162,39,.6),0 2px 4px rgba(0,0,0,.4);
+  }
+  .carta .custo.alt{
+    background:radial-gradient(circle at 35% 30%,#d47a89,var(--carmesim) 70%);
+    color:#fff;
+    box-shadow:0 0 12px rgba(161,54,70,.8),0 2px 4px rgba(0,0,0,.4);
+  }
+  .carta .acumulo{
+    position:absolute;top:-9px;left:-9px;z-index:2;
+    min-width:34px;height:24px;border-radius:12px;padding:0 7px;
+    background:radial-gradient(circle at 35% 30%,#7fd6f0,#3b8fb8 75%);
+    color:#08222e;font-family:Cinzel,serif;font-weight:700;font-size:.72rem;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 10px rgba(87,180,214,.6),0 2px 4px rgba(0,0,0,.4);
+  }
+  .carta .arte{
+    height:74px;margin:-2px -1px 6px;border-radius:5px;overflow:hidden;
+    border:1px solid rgba(122,102,71,.5);flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,rgba(122,102,71,.14),transparent);
+  }
+  .carta .arte img{width:100%;height:100%;object-fit:cover;display:block}
+  .carta .arte .emblema{font-size:1.7rem;color:#8a6d2f}
+  .carta .nome{
+    font-family:Cinzel,serif;font-weight:600;font-size:.78rem;
+    text-align:center;line-height:1.25;letter-spacing:.02em;
+    flex:1;display:flex;align-items:center;justify-content:center;
+  }
+  .carta .rodape{
+    font-size:.68rem;text-align:center;color:#7a6647;
+    border-top:1px solid #c4ac7c;padding-top:4px;font-style:italic;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .carta .rodape .gema{width:8px;height:8px}
+  .carta.selecionada{
+    border-color:var(--carmesim);
+    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--carmesim) inset,0 0 16px rgba(161,54,70,.55);
+    transform:translateY(-4px) rotate(-2deg);
+  }
+  .carta .acoes{
+    position:absolute;left:6px;right:6px;bottom:26px;z-index:2;
+    display:none;gap:5px;justify-content:center;flex-wrap:wrap;
+  }
+  .carta:hover .acoes,.carta:focus-within .acoes{display:flex}
+  .carta .acoes button{padding:4px 10px;font-size:.68rem;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  .carta .acoes .canal.ativo{background:var(--ouro);color:var(--noite);box-shadow:0 0 12px rgba(232,201,106,.8)}
+  .carta .acoes .cond.ativo{background:var(--carmesim);color:#fff;box-shadow:0 0 12px rgba(161,54,70,.8)}
+  .pilha .carta{opacity:.55;cursor:default;filter:grayscale(.35)}
+  .pilha .carta:hover{transform:none}
+  .pilha.cemiterio .carta{opacity:.4;filter:grayscale(.9) brightness(.8)}
+
+  @keyframes surgir{
+    from{opacity:0;transform:translateY(16px) scale(.94)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+  }
+  .carta.nova{animation:surgir .35s ease both}
+
+  /* ---- tooltip ---- */
+  #tooltip{
+    position:fixed;z-index:60;max-width:300px;
+    background:#0f0d16;border:1px solid var(--ouro);
+    border-radius:8px;padding:12px 14px;
+    box-shadow:0 6px 24px rgba(0,0,0,.6),0 0 12px rgba(201,162,39,.15);
+    pointer-events:none;opacity:0;transition:opacity .1s;
+  }
+  #tooltip.visivel{opacity:1}
+  #tooltip .t-nome{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:.9rem;letter-spacing:.06em;margin-bottom:2px}
+  #tooltip .t-raridade{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+  #tooltip .t-fe{font-size:.78rem;color:var(--ouro);margin-bottom:8px;font-style:italic}
+  #tooltip .t-desc{font-size:.9rem;color:#ded8ea;line-height:1.45;white-space:pre-line}
+  #tooltip .t-tags{margin-top:8px;font-size:.76rem;color:#8fc7da;line-height:1.4;white-space:pre-line}
+
+  /* ---- modal ---- */
+  #veu{
+    position:fixed;inset:0;background:rgba(10,8,16,.7);z-index:70;
+    display:none;align-items:center;justify-content:center;padding:16px;
+  }
+  #veu.aberto{display:flex}
+  #modal{
+    background:var(--pedra);border:1px solid var(--ouro);border-radius:10px;
+    padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
+    box-shadow:0 10px 40px rgba(0,0,0,.7),0 0 24px rgba(201,162,39,.15);
+  }
+  #modal h3{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:1rem;letter-spacing:.08em;margin-bottom:6px}
+  #modal p{font-size:.92rem;margin-bottom:16px}
+  #modal .destinos{display:flex;gap:10px;flex-wrap:wrap}
+  #modal .destinos button{flex:1;min-width:110px}
+  .sel-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:280px;overflow-y:auto}
+  .sel-item{
+    display:flex;align-items:center;gap:10px;
+    background:var(--noite);border:1px solid var(--borda);border-radius:6px;
+    padding:8px 10px;cursor:pointer;
+  }
+  .sel-item.marcado{border-color:var(--ouro);box-shadow:0 0 8px rgba(201,162,39,.3)}
+  .sel-item .nome{flex:1;color:#ded8ea;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sel-item .fe{font-family:Cinzel,serif;font-size:.8rem;color:var(--ouro)}
+
+  /* ---- log ---- */
+  .log{margin-top:22px;border-top:1px solid var(--borda);padding-top:14px}
+  .log-lista{
+    max-height:170px;overflow-y:auto;font-size:.86rem;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .log-lista div{color:#b6aed0}
+  .log-lista .rod{color:var(--ouro);font-family:Cinzel,serif;font-size:.72rem;margin-right:6px}
+
+  .acoes-arquivo{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  .aviso{font-size:.85rem;font-style:italic;color:#6d6580;margin-top:10px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Deck do Paladino</h1>
+  <p>Reino de Lirian · Que a fé guie a mão que puxa a carta</p>
+  <div class="filete"></div>
+</header>
+
+<main>
+  <!-- ======== GRIMÓRIO ======== -->
+  <section class="painel" aria-label="Grimório de habilidades">
+    <h2>Grimório</h2>
+    <form id="formSkill" autocomplete="off">
+      <label for="fNome">Nome da habilidade</label>
+      <input type="text" id="fNome" required maxlength="60" placeholder="Ex.: Escudo de Luz de Manomã">
+
+      <div class="linha">
+        <div>
+          <label for="fFe">Custo de fé</label>
+          <input type="number" id="fFe" min="0" max="999" value="1">
+        </div>
+        <div>
+          <label for="fCopias">Cópias</label>
+          <input type="number" id="fCopias" min="1" max="20" value="1">
+        </div>
+        <div>
+          <label for="fRaridade">Raridade</label>
+          <select id="fRaridade">
+            <option value="comum">Comum</option>
+            <option value="incomum">Incomum</option>
+            <option value="rara">Rara</option>
+            <option value="epica">Épica</option>
+            <option value="lendaria">Lendária</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="fArte">Arte da carta (URL ou caminho, opcional)</label>
+      <input type="text" id="fArte" maxlength="300" placeholder="Ex.: artes/escudo-da-dor.png">
+
+      <label for="fDesc">Descrição</label>
+      <textarea id="fDesc" required maxlength="900" placeholder="O que a habilidade faz quando invocada…"></textarea>
+
+      <label for="fLabels">Etiquetas livres (separadas por vírgula, opcional)</label>
+      <input type="text" id="fLabels" maxlength="120" placeholder="Ex.: Gama, Temporal, Cura">
+
+      <div class="caixa-tags">
+        <h3>Tags de fé</h3>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkRecupera">
+          <label for="chkRecupera">Recupera fé ao usar:</label>
+          <input type="number" id="valRecupera" min="1" max="999" value="10" disabled>
+          <span class="mini">de fé</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkAcumula">
+          <label for="chkAcumula">Acumula fé na mão:</label>
+          <input type="number" id="valAcumulaPor" min="1" max="999" value="10" disabled>
+          <span class="mini">por rodada, limite</span>
+          <input type="number" id="valAcumulaLim" min="1" max="999" value="50" disabled>
+          <span class="mini">(devolve ao descartar)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkCanaliza">
+          <label for="chkCanaliza">Canalizar fé:</label>
+          <input type="number" id="valCanaliza" min="1" max="999" value="15" disabled>
+          <span class="mini">por rodada enquanto ativa na mão</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkCustoCond">
+          <label for="chkCustoCond">Custo condicional:</label>
+          <input type="number" id="valCustoCond" min="0" max="999" value="40" disabled>
+          <select id="modoCustoCond" disabled>
+            <option value="descarte">pago ao descartar (efeito de descarte)</option>
+            <option value="condicao">vale quando a condição está marcada</option>
+          </select>
+        </div>
+
+        <h3>Tags ao usar</h3>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkPuxar">
+          <label for="chkPuxar">Puxa do deck:</label>
+          <input type="number" id="valPuxar" min="1" max="20" value="2" disabled>
+          <span class="mini">carta(s)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkDescAleat">
+          <label for="chkDescAleat">Descarta aleatórias da mão:</label>
+          <input type="number" id="valDescAleat" min="1" max="20" value="2" disabled>
+          <span class="mini">carta(s)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkDado">
+          <label for="chkDado">Rola dado:</label>
+          <select id="valDado" disabled>
+            <option value="4">d4</option>
+            <option value="6">d6</option>
+            <option value="8">d8</option>
+            <option value="10">d10</option>
+            <option value="12">d12</option>
+            <option value="20">d20</option>
+            <option value="30">d30</option>
+            <option value="100">d100</option>
+          </select>
+          <span class="mini">e registra na crônica</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkRevCem">
+          <label for="chkRevCem">Revive do cemitério:</label>
+          <input type="number" id="valRevCem" min="1" max="20" value="1" disabled>
+          <span class="mini">carta(s)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkRevDesc">
+          <label for="chkRevDesc">Revive do descarte:</label>
+          <input type="number" id="valRevDesc" min="1" max="20" value="1" disabled>
+          <span class="mini">carta(s)</span>
+        </div>
+        <div class="tag-linha">
+          <label for="fDestino" style="cursor:default">Destino após usar:</label>
+          <select id="fDestino" style="flex:1">
+            <option value="perguntar">Perguntar (padrão)</option>
+            <option value="cemiterio">Queimar — vai direto ao cemitério</option>
+            <option value="deck">Eco — embaralha de volta no deck</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="linha" style="margin-top:12px">
+        <button type="submit" id="btnSalvar">Registrar habilidade</button>
+        <button type="button" class="sutil" id="btnCancelarEdicao" hidden>Cancelar edição</button>
+      </div>
+    </form>
+
+    <div class="grimorio-lista" id="listaSkills"></div>
+
+    <div class="acoes-arquivo">
+      <button type="button" class="sutil" id="btnExportar">Exportar deck (.json)</button>
+      <button type="button" class="sutil" id="btnImportar">Importar deck</button>
+      <input type="file" id="inputImportar" accept="application/json" hidden>
+    </div>
+    <p class="aviso">As habilidades ficam salvas neste navegador. Use exportar/importar para levar o deck a outro dispositivo ou guardar backup no seu repositório.</p>
+  </section>
+
+  <!-- ======== MESA ======== -->
+  <section class="painel" aria-label="Mesa de jogo">
+    <h2>Mesa</h2>
+
+    <div class="santuario">
+      <div class="orbe-area">
+        <div class="orbe" id="orbe" role="img" aria-label="Pool de fé">
+          <div class="liquido" id="liquido">
+            <div class="onda"></div>
+            <div class="onda dois"></div>
+          </div>
+          <div class="valor"><b id="feAtual">0</b><span id="feMaxTxt">/ 0 FÉ</span></div>
+        </div>
+        <div class="ajuste-fe">
+          <button type="button" class="sutil" data-fe="-10">−10</button>
+          <button type="button" class="sutil" data-fe="-5">−5</button>
+          <button type="button" class="sutil" data-fe="5">+5</button>
+          <button type="button" class="sutil" data-fe="10">+10</button>
+        </div>
+      </div>
+
+      <div class="santuario-controles">
+        <div class="linha">
+          <div style="max-width:130px">
+            <label for="cfgMao">Mão inicial</label>
+            <input type="number" id="cfgMao" min="1" max="30" value="5">
+          </div>
+          <div style="max-width:130px">
+            <label for="cfgFeMax">Fé máxima</label>
+            <input type="number" id="cfgFeMax" min="1" max="999" value="100">
+          </div>
+          <button type="button" class="btn-oracao" id="btnNovaBatalha" style="flex:1;min-width:180px">☀ Nova Batalha</button>
+        </div>
+        <div class="rodada-caixa">
+          <span class="num">Rodada <b id="numRodada">—</b></span>
+          <button type="button" id="btnRodada" disabled>Passar Rodada ⏳</button>
+        </div>
+        <div class="dados">
+          <span class="mini" style="font-size:.8rem;letter-spacing:.08em;color:var(--nevoa)">DADOS:</span>
+          <button type="button" class="sutil" data-dado="4">d4</button>
+          <button type="button" class="sutil" data-dado="6">d6</button>
+          <button type="button" class="sutil" data-dado="8">d8</button>
+          <button type="button" class="sutil" data-dado="10">d10</button>
+          <button type="button" class="sutil" data-dado="12">d12</button>
+          <button type="button" class="sutil" data-dado="20">d20</button>
+          <button type="button" class="sutil" data-dado="30">d30</button>
+          <span class="dado-resultado" id="dadoResultado"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="placar">
+      <span>Deck: <b id="ctDeck">0</b></span>
+      <span>Mão: <b id="ctMao">0</b></span>
+      <span>Descarte: <b id="ctDescarte">0</b></span>
+      <span>Cemitério: <b id="ctCemiterio">0</b></span>
+    </div>
+
+    <div class="zona-titulo">Mão · clique para marcar · passe o mouse para agir</div>
+    <div class="mao" id="zonaMao"><p class="vazio">Inicie uma batalha para fazer a oração.</p></div>
+
+    <div class="linha" style="margin-top:16px">
+      <button type="button" class="perigo" id="btnDescartar" disabled>Descartar selecionadas</button>
+      <button type="button" class="sombrio" id="btnBanir" disabled>Banir p/ cemitério</button>
+      <div style="flex:0 0 120px">
+        <label for="qtdPuxar" style="margin-top:0">Puxar do deck</label>
+        <input type="number" id="qtdPuxar" min="1" max="30" value="1">
+      </div>
+      <button type="button" id="btnPuxar" disabled>Puxar cartas</button>
+    </div>
+
+    <div class="zona-titulo">
+      Pilha de descarte
+      <button type="button" class="sutil" id="btnReembaralhar" disabled>↺ Reembaralhar no deck</button>
+    </div>
+    <div class="pilha" id="zonaDescarte"><p class="vazio">Nenhuma carta descartada.</p></div>
+
+    <div class="zona-titulo">Cemitério · banidas até a próxima batalha</div>
+    <div class="pilha cemiterio" id="zonaCemiterio"><p class="vazio">Nenhuma carta banida.</p></div>
+
+    <div class="log">
+      <div class="zona-titulo" style="margin-top:0">Crônica da batalha</div>
+      <div class="log-lista" id="logLista"><p class="vazio">A crônica começa com a primeira oração.</p></div>
+    </div>
+  </section>
+</main>
+
+<div id="tooltip" role="tooltip">
+  <div class="t-nome"></div>
+  <div class="t-raridade"></div>
+  <div class="t-fe"></div>
+  <div class="t-desc"></div>
+  <div class="t-tags"></div>
+</div>
+
+<div id="veu">
+  <div id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const CHAVE_V1 = "urgm_deck_paladino_v1";
+  const CHAVE = "urgm_deck_paladino_v2";
+  const CHAVE_CFG = "urgm_deck_paladino_cfg_v2";
+  const CHAVE_BATALHA = "urgm_deck_paladino_batalha_v2";
+
+  const RARIDADES = {
+    comum:{nome:"Comum",cor:"var(--r-comum)"},
+    incomum:{nome:"Incomum",cor:"var(--r-incomum)"},
+    rara:{nome:"Rara",cor:"var(--r-rara)"},
+    epica:{nome:"Épica",cor:"var(--r-epica)"},
+    lendaria:{nome:"Lendária",cor:"var(--r-lendaria)"}
+  };
+  const DADOS_VALIDOS = [4,6,8,10,12,20,30,100];
+
+  /* ---------- estado ---------- */
+  let skills = [];
+  let deck = [], mao = [], descarte = [], cemiterio = [];
+  let selecionadas = new Set();
+  let pool = {atual:0, max:100};
+  let rodada = 0;
+  let emBatalha = false;
+  let log = [];
+  let editandoId = null;
+  let fluxoAtivo = false; // evita usar duas cartas ao mesmo tempo
+
+  /* ---------- utilidades ---------- */
+  const el = id => document.getElementById(id);
+  const skillPorId = id => skills.find(s => s.id === id);
+  function novoId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function embaralhar(arr){
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function limitar(v, mn, mx){ return Math.min(mx, Math.max(mn, v)); }
+  function rolar(lados){ return 1 + Math.floor(Math.random() * lados); }
+
+  /* ---------- normalização de skill ---------- */
+  function normalizar(s){
+    const t = s.tags || {};
+    return {
+      id: s.id || novoId(),
+      nome: String(s.nome || "").slice(0,60),
+      fe: limitar(parseInt(s.fe,10) || 0, 0, 999),
+      copias: limitar(parseInt(s.copias,10) || 1, 1, 20),
+      desc: String(s.desc || "").slice(0,900),
+      raridade: RARIDADES[s.raridade] ? s.raridade : "comum",
+      arte: String(s.arte || "").slice(0,300),
+      labels: Array.isArray(s.labels) ? s.labels.map(x=>String(x).trim()).filter(Boolean).slice(0,8) : [],
+      tags: {
+        recuperaAoUsar: t.recuperaAoUsar ? {valor: limitar(parseInt(t.recuperaAoUsar.valor,10)||0,1,999)} : null,
+        acumula: t.acumula ? {
+          porRodada: limitar(parseInt(t.acumula.porRodada,10)||0,1,999),
+          limite: limitar(parseInt(t.acumula.limite,10)||0,1,999)
+        } : null,
+        canaliza: t.canaliza ? {valor: limitar(parseInt(t.canaliza.valor,10)||0,1,999)} : null,
+        custoCond: t.custoCond ? {
+          valor: limitar(parseInt(t.custoCond.valor,10)||0,0,999),
+          modo: t.custoCond.modo === "condicao" ? "condicao" : "descarte"
+        } : null,
+        puxarAoUsar: t.puxarAoUsar ? {qtd: limitar(parseInt(t.puxarAoUsar.qtd,10)||0,1,20)} : null,
+        descartarAleatorias: t.descartarAleatorias ? {qtd: limitar(parseInt(t.descartarAleatorias.qtd,10)||0,1,20)} : null,
+        dadoAoUsar: t.dadoAoUsar && DADOS_VALIDOS.includes(parseInt(t.dadoAoUsar.lados,10)) ? {lados: parseInt(t.dadoAoUsar.lados,10)} : null,
+        reviverCem: t.reviverCem ? {qtd: limitar(parseInt(t.reviverCem.qtd,10)||0,1,20)} : null,
+        reviverDesc: t.reviverDesc ? {qtd: limitar(parseInt(t.reviverDesc.qtd,10)||0,1,20)} : null,
+        destinoFixo: ["perguntar","cemiterio","deck"].includes(t.destinoFixo) ? t.destinoFixo : "perguntar"
+      }
+    };
+  }
+
+  function custoEfetivo(inst, s){
+    if(s.tags.custoCond && s.tags.custoCond.modo === "condicao" && inst.condAtiva){
+      return s.tags.custoCond.valor;
+    }
+    return s.fe;
+  }
+
+  /* ---------- persistência ---------- */
+  function salvarSkills(){ try{ localStorage.setItem(CHAVE, JSON.stringify(skills)); }catch(e){} }
+  function salvarCfg(){
+    try{ localStorage.setItem(CHAVE_CFG, JSON.stringify({mao: el("cfgMao").value, feMax: el("cfgFeMax").value})); }catch(e){}
+  }
+  function salvarBatalha(){
+    try{
+      localStorage.setItem(CHAVE_BATALHA, JSON.stringify({deck,mao,descarte,cemiterio,pool,rodada,emBatalha,log}));
+    }catch(e){}
+  }
+  function carregarTudo(){
+    try{
+      let bruto = localStorage.getItem(CHAVE);
+      if(!bruto){
+        const antigo = localStorage.getItem(CHAVE_V1);
+        if(antigo) bruto = antigo;
+      }
+      if(bruto) skills = JSON.parse(bruto).filter(s => s && s.nome).map(normalizar);
+    }catch(e){ skills = []; }
+    try{
+      const cfg = JSON.parse(localStorage.getItem(CHAVE_CFG) || "{}");
+      if(cfg.mao) el("cfgMao").value = cfg.mao;
+      if(cfg.feMax) el("cfgFeMax").value = cfg.feMax;
+    }catch(e){}
+    try{
+      const b = JSON.parse(localStorage.getItem(CHAVE_BATALHA) || "null");
+      if(b && b.emBatalha){
+        const valida = arr => (arr||[]).filter(i => i && skillPorId(i.skillId));
+        deck = valida(b.deck); mao = valida(b.mao);
+        descarte = valida(b.descarte); cemiterio = valida(b.cemiterio);
+        pool = b.pool || pool; rodada = b.rodada || 1;
+        emBatalha = true; log = Array.isArray(b.log) ? b.log : [];
+      }
+    }catch(e){}
+  }
+
+  /* ---------- crônica ---------- */
+  function cronica(txt){
+    log.unshift({r: rodada, t: txt});
+    if(log.length > 150) log.length = 150;
+    renderLog();
+  }
+  function renderLog(){
+    const c = el("logLista");
+    if(!log.length){
+      c.innerHTML = '<p class="vazio">A crônica começa com a primeira oração.</p>';
+      return;
+    }
+    c.innerHTML = "";
+    log.forEach(e => {
+      const d = document.createElement("div");
+      const r = document.createElement("span");
+      r.className = "rod"; r.textContent = "R" + e.r;
+      d.appendChild(r);
+      d.appendChild(document.createTextNode(e.t));
+      c.appendChild(d);
+    });
+  }
+
+  /* ---------- modais genéricos (Promise) ---------- */
+  const veu = el("veu"), modal = el("modal");
+  let resolverPendente = null;
+
+  function fecharModal(){
+    veu.classList.remove("aberto");
+    modal.innerHTML = "";
+    if(resolverPendente){ const f = resolverPendente; resolverPendente = null; f(); }
+  }
+  veu.addEventListener("click", ev => { if(ev.target === veu) fecharModal(); });
+  document.addEventListener("keydown", ev => {
+    if(ev.key === "Escape" && veu.classList.contains("aberto")) fecharModal();
+  });
+
+  /* pergunta com botões: botoes = [{label, classe, valor}] */
+  function perguntarModal(titulo, texto, botoes){
+    return new Promise(res => {
+      modal.innerHTML = "";
+      const h = document.createElement("h3"); h.textContent = titulo;
+      const p = document.createElement("p"); p.textContent = texto;
+      const div = document.createElement("div"); div.className = "destinos";
+      botoes.forEach(b => {
+        const bt = document.createElement("button");
+        bt.type = "button"; bt.textContent = b.label;
+        if(b.classe) bt.className = b.classe;
+        bt.addEventListener("click", () => {
+          resolverPendente = null;
+          veu.classList.remove("aberto");
+          modal.innerHTML = "";
+          res(b.valor);
+        });
+        div.appendChild(bt);
+      });
+      modal.append(h, p, div);
+      resolverPendente = () => res(null);
+      veu.classList.add("aberto");
+    });
+  }
+
+  /* seleção de cartas de uma zona: retorna array de uids (ou null) */
+  function selecionarCartasModal(titulo, texto, instancias, max){
+    return new Promise(res => {
+      modal.innerHTML = "";
+      const h = document.createElement("h3"); h.textContent = titulo;
+      const p = document.createElement("p"); p.textContent = texto;
+      const lista = document.createElement("div"); lista.className = "sel-lista";
+      const marcados = new Set();
+
+      const div = document.createElement("div"); div.className = "destinos";
+      const bOk = document.createElement("button");
+      bOk.type = "button"; bOk.textContent = "Confirmar"; bOk.disabled = true;
+      const bCanc = document.createElement("button");
+      bCanc.type = "button"; bCanc.className = "sutil"; bCanc.textContent = "Cancelar";
+
+      instancias.forEach(inst => {
+        const s = skillPorId(inst.skillId);
+        if(!s) return;
+        const item = document.createElement("div");
+        item.className = "sel-item";
+        const gema = document.createElement("span");
+        gema.className = "gema";
+        gema.style.color = RARIDADES[s.raridade].cor;
+        gema.style.background = RARIDADES[s.raridade].cor;
+        const nome = document.createElement("span");
+        nome.className = "nome"; nome.textContent = s.nome;
+        const fe = document.createElement("span");
+        fe.className = "fe"; fe.textContent = "✦ " + s.fe;
+        item.append(gema, nome, fe);
+        item.addEventListener("click", () => {
+          if(marcados.has(inst.uid)){
+            marcados.delete(inst.uid);
+            item.classList.remove("marcado");
+          }else if(marcados.size < max){
+            marcados.add(inst.uid);
+            item.classList.add("marcado");
+          }
+          bOk.disabled = !marcados.size;
+          bOk.textContent = marcados.size ? "Confirmar (" + marcados.size + "/" + max + ")" : "Confirmar";
+        });
+        lista.appendChild(item);
+      });
+
+      bOk.addEventListener("click", () => {
+        resolverPendente = null;
+        veu.classList.remove("aberto");
+        modal.innerHTML = "";
+        res(Array.from(marcados));
+      });
+      bCanc.addEventListener("click", () => fecharModal());
+
+      div.append(bOk, bCanc);
+      modal.append(h, p, lista, div);
+      resolverPendente = () => res(null);
+      veu.classList.add("aberto");
+    });
+  }
+
+  /* ---------- formulário / tags ---------- */
+  [
+    ["chkRecupera",["valRecupera"]],
+    ["chkAcumula",["valAcumulaPor","valAcumulaLim"]],
+    ["chkCanaliza",["valCanaliza"]],
+    ["chkCustoCond",["valCustoCond","modoCustoCond"]],
+    ["chkPuxar",["valPuxar"]],
+    ["chkDescAleat",["valDescAleat"]],
+    ["chkDado",["valDado"]],
+    ["chkRevCem",["valRevCem"]],
+    ["chkRevDesc",["valRevDesc"]]
+  ].forEach(([chk, campos]) => {
+    el(chk).addEventListener("change", function(){
+      campos.forEach(c => el(c).disabled = !this.checked);
+    });
+  });
+
+  el("formSkill").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const dados = normalizar({
+      id: editandoId || undefined,
+      nome: el("fNome").value.trim(),
+      fe: el("fFe").value,
+      copias: el("fCopias").value,
+      desc: el("fDesc").value.trim(),
+      raridade: el("fRaridade").value,
+      arte: el("fArte").value.trim(),
+      labels: el("fLabels").value.split(",").map(x=>x.trim()).filter(Boolean),
+      tags: {
+        recuperaAoUsar: el("chkRecupera").checked ? {valor: el("valRecupera").value} : null,
+        acumula: el("chkAcumula").checked ? {porRodada: el("valAcumulaPor").value, limite: el("valAcumulaLim").value} : null,
+        canaliza: el("chkCanaliza").checked ? {valor: el("valCanaliza").value} : null,
+        custoCond: el("chkCustoCond").checked ? {valor: el("valCustoCond").value, modo: el("modoCustoCond").value} : null,
+        puxarAoUsar: el("chkPuxar").checked ? {qtd: el("valPuxar").value} : null,
+        descartarAleatorias: el("chkDescAleat").checked ? {qtd: el("valDescAleat").value} : null,
+        dadoAoUsar: el("chkDado").checked ? {lados: el("valDado").value} : null,
+        reviverCem: el("chkRevCem").checked ? {qtd: el("valRevCem").value} : null,
+        reviverDesc: el("chkRevDesc").checked ? {qtd: el("valRevDesc").value} : null,
+        destinoFixo: el("fDestino").value
+      }
+    });
+    if(!dados.nome || !dados.desc) return;
+    if(editandoId){
+      const i = skills.findIndex(s => s.id === editandoId);
+      if(i >= 0) skills[i] = dados;
+    }else{
+      skills.push(dados);
+    }
+    salvarSkills(); renderGrimorio(); renderMesa(false); encerrarEdicao();
+  });
+
+  function iniciarEdicao(id){
+    const s = skillPorId(id);
+    if(!s) return;
+    editandoId = id;
+    el("fNome").value = s.nome;
+    el("fFe").value = s.fe;
+    el("fCopias").value = s.copias;
+    el("fDesc").value = s.desc;
+    el("fRaridade").value = s.raridade;
+    el("fArte").value = s.arte;
+    el("fLabels").value = s.labels.join(", ");
+
+    const preencher = (chk, tag, mapa) => {
+      el(chk).checked = !!tag;
+      Object.keys(mapa).forEach(campo => {
+        el(campo).disabled = !tag;
+        if(tag) el(campo).value = tag[mapa[campo]];
+      });
+    };
+    preencher("chkRecupera", s.tags.recuperaAoUsar, {valRecupera:"valor"});
+    preencher("chkAcumula", s.tags.acumula, {valAcumulaPor:"porRodada", valAcumulaLim:"limite"});
+    preencher("chkCanaliza", s.tags.canaliza, {valCanaliza:"valor"});
+    preencher("chkCustoCond", s.tags.custoCond, {valCustoCond:"valor", modoCustoCond:"modo"});
+    preencher("chkPuxar", s.tags.puxarAoUsar, {valPuxar:"qtd"});
+    preencher("chkDescAleat", s.tags.descartarAleatorias, {valDescAleat:"qtd"});
+    preencher("chkDado", s.tags.dadoAoUsar, {valDado:"lados"});
+    preencher("chkRevCem", s.tags.reviverCem, {valRevCem:"qtd"});
+    preencher("chkRevDesc", s.tags.reviverDesc, {valRevDesc:"qtd"});
+    el("fDestino").value = s.tags.destinoFixo;
+
+    el("btnSalvar").textContent = "Salvar alterações";
+    el("btnCancelarEdicao").hidden = false;
+    el("fNome").focus();
+  }
+  function encerrarEdicao(){
+    editandoId = null;
+    el("formSkill").reset();
+    el("fFe").value = 1; el("fCopias").value = 1;
+    ["valRecupera","valAcumulaPor","valAcumulaLim","valCanaliza","valCustoCond","modoCustoCond",
+     "valPuxar","valDescAleat","valDado","valRevCem","valRevDesc"].forEach(c => el(c).disabled = true);
+    el("valRecupera").value = 10; el("valAcumulaPor").value = 10;
+    el("valAcumulaLim").value = 50; el("valCanaliza").value = 15;
+    el("valCustoCond").value = 40; el("modoCustoCond").value = "descarte";
+    el("valPuxar").value = 2; el("valDescAleat").value = 2;
+    el("valDado").value = "4"; el("valRevCem").value = 1; el("valRevDesc").value = 1;
+    el("fDestino").value = "perguntar";
+    el("btnSalvar").textContent = "Registrar habilidade";
+    el("btnCancelarEdicao").hidden = true;
+  }
+  el("btnCancelarEdicao").addEventListener("click", encerrarEdicao);
+
+  /* ---------- grimório ---------- */
+  function descreverTags(s){
+    const t = [];
+    if(s.tags.recuperaAoUsar) t.push("⚡ Recupera " + s.tags.recuperaAoUsar.valor + " de fé ao usar");
+    if(s.tags.acumula) t.push("🕰 Acumula +" + s.tags.acumula.porRodada + " fé/rodada na mão (máx " + s.tags.acumula.limite + "), devolve ao descartar");
+    if(s.tags.canaliza) t.push("✨ Canaliza +" + s.tags.canaliza.valor + " fé/rodada enquanto ativa");
+    if(s.tags.custoCond){
+      t.push(s.tags.custoCond.modo === "descarte"
+        ? "🔥 Efeito de descarte: pague " + s.tags.custoCond.valor + " de fé ao descartar para ativar"
+        : "🌓 Custo condicional: " + s.tags.custoCond.valor + " de fé quando a condição está marcada");
+    }
+    if(s.tags.puxarAoUsar) t.push("🂡 Puxa " + s.tags.puxarAoUsar.qtd + " carta(s) ao usar");
+    if(s.tags.descartarAleatorias) t.push("🂠 Descarta " + s.tags.descartarAleatorias.qtd + " aleatória(s) ao usar");
+    if(s.tags.dadoAoUsar) t.push("🎲 Rola 1d" + s.tags.dadoAoUsar.lados + " ao usar");
+    if(s.tags.reviverCem) t.push("🕯 Revive " + s.tags.reviverCem.qtd + " carta(s) do cemitério");
+    if(s.tags.reviverDesc) t.push("↺ Revive " + s.tags.reviverDesc.qtd + " carta(s) do descarte");
+    if(s.tags.destinoFixo === "cemiterio") t.push("🕯 Queima: vai direto ao cemitério após usar");
+    if(s.tags.destinoFixo === "deck") t.push("♻ Eco: volta embaralhada ao deck após usar");
+    return t;
+  }
+
+  function renderGrimorio(){
+    const lista = el("listaSkills");
+    lista.innerHTML = "";
+    if(!skills.length){
+      lista.innerHTML = '<p class="vazio">O grimório está vazio. Registre a primeira habilidade.</p>';
+      return;
+    }
+    skills.forEach(s => {
+      const div = document.createElement("div");
+      div.className = "grimorio-item";
+
+      const gema = document.createElement("span");
+      gema.className = "gema";
+      gema.style.color = RARIDADES[s.raridade].cor;
+      gema.style.background = RARIDADES[s.raridade].cor;
+      gema.title = RARIDADES[s.raridade].nome;
+
+      const fe = document.createElement("span");
+      fe.className = "fe"; fe.textContent = "✦ " + s.fe;
+
+      const nome = document.createElement("span");
+      nome.className = "nome"; nome.textContent = s.nome;
+
+      const cop = document.createElement("span");
+      cop.className = "copias"; cop.textContent = "×" + s.copias;
+
+      const bEdit = document.createElement("button");
+      bEdit.type = "button"; bEdit.className = "sutil"; bEdit.textContent = "Editar";
+      bEdit.addEventListener("click", () => iniciarEdicao(s.id));
+
+      const bDel = document.createElement("button");
+      bDel.type = "button"; bDel.className = "perigo"; bDel.textContent = "×";
+      bDel.setAttribute("aria-label", "Remover " + s.nome);
+      bDel.addEventListener("click", () => {
+        if(confirm('Remover "' + s.nome + '" do grimório?')){
+          skills = skills.filter(x => x.id !== s.id);
+          salvarSkills(); renderGrimorio();
+        }
+      });
+
+      div.append(gema, fe, nome, cop, bEdit, bDel);
+      lista.appendChild(div);
+    });
+  }
+
+  /* ---------- exportar / importar ---------- */
+  el("btnExportar").addEventListener("click", function(){
+    const blob = new Blob([JSON.stringify(skills, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "deck-paladino-urgm.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  el("btnImportar").addEventListener("click", () => el("inputImportar").click());
+  el("inputImportar").addEventListener("change", function(){
+    const arq = this.files[0];
+    if(!arq) return;
+    const leitor = new FileReader();
+    leitor.onload = function(){
+      try{
+        const dados = JSON.parse(leitor.result);
+        if(!Array.isArray(dados)) throw new Error();
+        skills = dados.filter(s => s && s.nome && s.desc).map(normalizar);
+        salvarSkills(); renderGrimorio(); renderMesa(false);
+      }catch(e){
+        alert("Arquivo inválido. Selecione um .json exportado por esta ferramenta.");
+      }
+    };
+    leitor.readAsText(arq);
+    this.value = "";
+  });
+
+  /* ---------- batalha ---------- */
+  function novaInstancia(skillId){
+    return {uid: novoId(), skillId, acc: 0, canalizando: false, condAtiva: false};
+  }
+  function montarDeckCompleto(){
+    const inst = [];
+    skills.forEach(s => {
+      for(let i = 0; i < s.copias; i++) inst.push(novaInstancia(s.id));
+    });
+    return embaralhar(inst);
+  }
+  function aoSairDaMao(inst){ inst.canalizando = false; inst.condAtiva = false; }
+  function resetarInstancia(inst){ inst.acc = 0; inst.canalizando = false; inst.condAtiva = false; }
+
+  el("btnNovaBatalha").addEventListener("click", function(){
+    if(fluxoAtivo) return;
+    if(!skills.length){
+      alert("O grimório está vazio — registre habilidades antes de orar.");
+      return;
+    }
+    if(emBatalha && !confirm("Encerrar a batalha atual e fazer uma nova oração? O cemitério retorna ao deck.")) return;
+    salvarCfg();
+    pool.max = limitar(parseInt(el("cfgFeMax").value,10) || 100, 1, 999);
+    pool.atual = pool.max;
+    deck = montarDeckCompleto();
+    const n = Math.min(deck.length, limitar(parseInt(el("cfgMao").value,10) || 1, 1, 30));
+    mao = deck.splice(0, n);
+    descarte = []; cemiterio = [];
+    selecionadas.clear();
+    rodada = 1; emBatalha = true; log = [];
+    cronica("⚔ Nova batalha. Oração feita: " + n + " carta(s) na mão, fé plena (" + pool.max + ").");
+    renderMesa(true);
+  });
+
+  el("btnRodada").addEventListener("click", function(){
+    if(!emBatalha || fluxoAtivo) return;
+    rodada++;
+    const eventos = [];
+    mao.forEach(inst => {
+      const s = skillPorId(inst.skillId);
+      if(!s) return;
+      if(s.tags.acumula){
+        const antes = inst.acc;
+        inst.acc = Math.min(s.tags.acumula.limite, inst.acc + s.tags.acumula.porRodada);
+        if(inst.acc !== antes) eventos.push("🕰 " + s.nome + " acumulou +" + (inst.acc - antes) + " (total " + inst.acc + ").");
+      }
+      if(s.tags.canaliza && inst.canalizando){
+        const ganho = Math.min(s.tags.canaliza.valor, pool.max - pool.atual);
+        if(ganho > 0){
+          pool.atual += ganho;
+          eventos.push("✨ " + s.nome + " canalizou +" + ganho + " de fé.");
+        }
+      }
+    });
+    cronica("⏳ Rodada " + rodada + " começou.");
+    eventos.forEach(e => cronica(e));
+    renderMesa(false);
+  });
+
+  document.querySelectorAll("[data-fe]").forEach(b => {
+    b.addEventListener("click", function(){
+      if(!emBatalha) return;
+      const d = parseInt(this.dataset.fe, 10);
+      pool.atual = limitar(pool.atual + d, 0, pool.max);
+      renderMesa(false);
+    });
+  });
+
+  document.querySelectorAll("[data-dado]").forEach(b => {
+    b.addEventListener("click", function(){
+      const lados = parseInt(this.dataset.dado, 10);
+      const r = rolar(lados);
+      el("dadoResultado").textContent = "d" + lados + " → " + r;
+      if(emBatalha) cronica("🎲 d" + lados + " rolado: " + r + ".");
+    });
+  });
+
+  /* ---------- mover cartas ---------- */
+  function refundarAcumulo(inst, s){
+    if(s.tags.acumula && inst.acc > 0){
+      const ganho = Math.min(inst.acc, pool.max - pool.atual);
+      if(ganho > 0){
+        pool.atual += ganho;
+        cronica("🕰 " + s.nome + " devolveu +" + ganho + " de fé acumulada.");
+      }
+      inst.acc = 0;
+    }
+  }
+
+  /* pergunta o efeito de descarte (custo condicional modo "descarte") */
+  async function tratarEfeitoDescarte(inst, s){
+    if(!(s.tags.custoCond && s.tags.custoCond.modo === "descarte")) return;
+    const v = s.tags.custoCond.valor;
+    const ativar = await perguntarModal(
+      "Efeito de descarte: " + s.nome,
+      "Pagar " + v + " de fé para ativar o efeito de descarte? (Fé atual: " + pool.atual + ")",
+      [
+        {label:"Ativar (−" + v + " fé)", classe:"perigo", valor:true},
+        {label:"Só descartar", classe:"sutil", valor:false}
+      ]
+    );
+    if(ativar){
+      if(pool.atual >= v){
+        pool.atual -= v;
+        cronica("🔥 Efeito de descarte de " + s.nome + " ativado (−" + v + " fé).");
+      }else{
+        cronica("🔥 Fé insuficiente para o efeito de descarte de " + s.nome + " — descartada sem ativar.");
+        alert("Fé insuficiente (" + pool.atual + " < " + v + "). A carta foi descartada sem ativar o efeito.");
+      }
+    }
+  }
+
+  async function descartarInstancia(inst){
+    const s = skillPorId(inst.skillId);
+    aoSairDaMao(inst);
+    if(s){
+      refundarAcumulo(inst, s);
+      await tratarEfeitoDescarte(inst, s);
+    }
+    descarte.push(inst);
+  }
+
+  async function moverSelecionadas(destino){
+    if(fluxoAtivo) return;
+    const vao = mao.filter(c => selecionadas.has(c.uid));
+    if(!vao.length) return;
+    fluxoAtivo = true;
+    mao = mao.filter(c => !selecionadas.has(c.uid));
+    selecionadas.clear();
+    esconderTooltip();
+    for(const inst of vao){
+      if(destino === "descarte"){
+        await descartarInstancia(inst);
+      }else{
+        aoSairDaMao(inst); inst.acc = 0;
+        cemiterio.push(inst);
+      }
+      renderMesa(false);
+    }
+    cronica((destino === "descarte" ? "🂠 " : "🕯 ") + vao.length + " carta(s) " +
+      (destino === "descarte" ? "descartada(s)." : "banida(s) para o cemitério."));
+    fluxoAtivo = false;
+    renderMesa(false);
+  }
+  el("btnDescartar").addEventListener("click", () => moverSelecionadas("descarte"));
+  el("btnBanir").addEventListener("click", () => moverSelecionadas("cemiterio"));
+
+  el("btnPuxar").addEventListener("click", function(){
+    if(!deck.length || fluxoAtivo) return;
+    const q = Math.min(deck.length, limitar(parseInt(el("qtdPuxar").value,10) || 1, 1, 30));
+    puxarCartas(q);
+    renderMesa(false);
+  });
+  function puxarCartas(q){
+    const novas = deck.splice(0, q);
+    novas.forEach(c => c.nova = true);
+    mao = mao.concat(novas);
+    cronica("🂡 " + novas.length + " carta(s) puxada(s) do deck.");
+    return novas.length;
+  }
+
+  el("btnReembaralhar").addEventListener("click", function(){
+    if(!descarte.length || fluxoAtivo) return;
+    const q = descarte.length;
+    descarte.forEach(resetarInstancia);
+    deck = embaralhar(deck.concat(descarte));
+    descarte = [];
+    cronica("↺ " + q + " carta(s) do descarte reembaralhada(s) no deck.");
+    renderMesa(false);
+  });
+
+  /* ---------- reviver ---------- */
+  async function fluxoReviver(zona, qtdMax){
+    const origem = zona === "cemiterio" ? cemiterio : descarte;
+    const nomeZona = zona === "cemiterio" ? "cemitério" : "descarte";
+    if(!origem.length){
+      cronica("🕯 Nada para reviver no " + nomeZona + ".");
+      return;
+    }
+    const max = Math.min(qtdMax, origem.length);
+    const uids = await selecionarCartasModal(
+      "Reviver do " + nomeZona,
+      "Escolha até " + max + " carta(s) para reviver:",
+      origem, max
+    );
+    if(!uids || !uids.length){
+      cronica("🕯 Reviver do " + nomeZona + " cancelado.");
+      return;
+    }
+    const dest = await perguntarModal(
+      "Destino das revividas",
+      "Para onde vão as " + uids.length + " carta(s) escolhida(s)?",
+      [
+        {label:"→ Mão", valor:"mao"},
+        {label:"→ Topo do deck", classe:"sutil", valor:"deck"},
+        {label:"Cancelar", classe:"sutil", valor:null}
+      ]
+    );
+    if(!dest){
+      cronica("🕯 Reviver do " + nomeZona + " cancelado.");
+      return;
+    }
+    const escolhidas = origem.filter(i => uids.includes(i.uid));
+    if(zona === "cemiterio") cemiterio = cemiterio.filter(i => !uids.includes(i.uid));
+    else descarte = descarte.filter(i => !uids.includes(i.uid));
+    escolhidas.forEach(resetarInstancia);
+    const nomes = escolhidas.map(i => { const s = skillPorId(i.skillId); return s ? s.nome : "?"; }).join(", ");
+    if(dest === "mao"){
+      escolhidas.forEach(i => i.nova = true);
+      mao = mao.concat(escolhidas);
+      cronica("🕯 Reviveu do " + nomeZona + " para a mão: " + nomes + ".");
+    }else{
+      deck = escolhidas.concat(deck);
+      cronica("🕯 Reviveu do " + nomeZona + " para o topo do deck: " + nomes + ".");
+    }
+  }
+
+  /* ---------- usar carta ---------- */
+  async function fluxoUsar(inst, s){
+    if(fluxoAtivo) return;
+    const custo = custoEfetivo(inst, s);
+    if(pool.atual < custo){
+      alert("Fé insuficiente: " + s.nome + " custa " + custo + " e você tem " + pool.atual + ".");
+      return;
+    }
+    fluxoAtivo = true;
+    try{
+      /* destino da carta usada */
+      let destino = s.tags.destinoFixo;
+      if(destino === "perguntar"){
+        let txt = "Custo: " + custo + " de fé (restarão " + (pool.atual - custo) + ").";
+        if(inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao") txt += " [condição ativa]";
+        if(s.tags.recuperaAoUsar) txt += " Recupera +" + s.tags.recuperaAoUsar.valor + " ao usar.";
+        txt += " Para onde a carta vai?";
+        destino = await perguntarModal("Usar: " + s.nome, txt, [
+          {label:"→ Descarte", classe:"perigo", valor:"descarte"},
+          {label:"→ Cemitério", classe:"sombrio", valor:"cemiterio"},
+          {label:"Cancelar", classe:"sutil", valor:null}
+        ]);
+        if(!destino) return;
+      }
+
+      /* pagar e recuperar */
+      pool.atual = Math.max(0, pool.atual - custo);
+      let txt = "⚡ Usou " + s.nome + " (−" + custo + " fé" +
+        (inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao" ? " condicional" : "");
+      if(s.tags.recuperaAoUsar){
+        const ganho = Math.min(s.tags.recuperaAoUsar.valor, pool.max - pool.atual);
+        pool.atual += ganho;
+        txt += ", +" + ganho + " recuperada";
+      }
+      txt += ")";
+
+      /* mover a carta usada */
+      mao = mao.filter(c => c.uid !== inst.uid);
+      selecionadas.delete(inst.uid);
+      aoSairDaMao(inst);
+      if(destino === "descarte"){
+        const sD = s;
+        refundarAcumulo(inst, sD);
+        descarte.push(inst);
+        txt += " → descarte.";
+      }else if(destino === "cemiterio"){
+        inst.acc = 0;
+        cemiterio.push(inst);
+        txt += " → cemitério (queimada).";
+      }else{ /* deck (eco) */
+        resetarInstancia(inst);
+        deck.push(inst);
+        embaralhar(deck);
+        txt += " → voltou embaralhada ao deck (eco).";
+      }
+      cronica(txt);
+      esconderTooltip();
+      renderMesa(false);
+
+      /* efeitos ao usar, na ordem: dado → puxar → descartar aleatórias → reviver */
+      if(s.tags.dadoAoUsar){
+        const r = rolar(s.tags.dadoAoUsar.lados);
+        el("dadoResultado").textContent = "d" + s.tags.dadoAoUsar.lados + " → " + r;
+        cronica("🎲 " + s.nome + " rolou 1d" + s.tags.dadoAoUsar.lados + ": " + r + ".");
+      }
+      if(s.tags.puxarAoUsar && deck.length){
+        puxarCartas(Math.min(deck.length, s.tags.puxarAoUsar.qtd));
+        renderMesa(false);
+      }
+      if(s.tags.descartarAleatorias && mao.length){
+        const q = Math.min(mao.length, s.tags.descartarAleatorias.qtd);
+        const sorteadas = embaralhar(mao.slice()).slice(0, q);
+        const uidsSort = new Set(sorteadas.map(i => i.uid));
+        mao = mao.filter(i => !uidsSort.has(i.uid));
+        sorteadas.forEach(i => selecionadas.delete(i.uid));
+        const nomes = sorteadas.map(i => { const x = skillPorId(i.skillId); return x ? x.nome : "?"; }).join(", ");
+        cronica("🂠 " + s.nome + " descartou aleatoriamente: " + nomes + ".");
+        for(const i of sorteadas){
+          await descartarInstancia(i);
+          renderMesa(false);
+        }
+      }
+      if(s.tags.reviverCem){
+        await fluxoReviver("cemiterio", s.tags.reviverCem.qtd);
+        renderMesa(false);
+      }
+      if(s.tags.reviverDesc){
+        await fluxoReviver("descarte", s.tags.reviverDesc.qtd);
+        renderMesa(false);
+      }
+    }finally{
+      fluxoAtivo = false;
+      renderMesa(false);
+    }
+  }
+
+  /* ---------- render de cartas ---------- */
+  function criarCarta(inst, naMao){
+    const s = skillPorId(inst.skillId);
+    if(!s) return null;
+    const c = document.createElement("div");
+    c.className = "carta r-" + s.raridade + (inst.nova ? " nova" : "");
+    delete inst.nova;
+    c.tabIndex = 0;
+    c.setAttribute("aria-label", s.nome + ", " + RARIDADES[s.raridade].nome + ", custo de fé " + custoEfetivo(inst, s));
+
+    const custo = document.createElement("div");
+    custo.className = "custo" + (inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao" ? " alt" : "");
+    custo.textContent = custoEfetivo(inst, s);
+    c.appendChild(custo);
+
+    if(s.tags.acumula && inst.acc > 0){
+      const acc = document.createElement("div");
+      acc.className = "acumulo"; acc.textContent = "+" + inst.acc;
+      acc.title = "Fé acumulada";
+      c.appendChild(acc);
+    }
+
+    const arte = document.createElement("div");
+    arte.className = "arte";
+    if(s.arte){
+      const img = document.createElement("img");
+      img.alt = ""; img.loading = "lazy"; img.src = s.arte;
+      img.addEventListener("error", function(){
+        arte.innerHTML = '<span class="emblema">✠</span>';
+      });
+      arte.appendChild(img);
+    }else{
+      arte.innerHTML = '<span class="emblema">✠</span>';
+    }
+    c.appendChild(arte);
+
+    const nome = document.createElement("div");
+    nome.className = "nome"; nome.textContent = s.nome;
+    c.appendChild(nome);
+
+    const rodape = document.createElement("div");
+    rodape.className = "rodape";
+    const gema = document.createElement("span");
+    gema.className = "gema";
+    gema.style.color = RARIDADES[s.raridade].cor;
+    gema.style.background = RARIDADES[s.raridade].cor;
+    rodape.appendChild(gema);
+    rodape.appendChild(document.createTextNode("fé " + s.fe));
+    c.appendChild(rodape);
+
+    if(naMao){
+      if(selecionadas.has(inst.uid)) c.classList.add("selecionada");
+
+      const acoes = document.createElement("div");
+      acoes.className = "acoes";
+      const bUsar = document.createElement("button");
+      bUsar.type = "button"; bUsar.textContent = "Usar ✦";
+      bUsar.addEventListener("click", ev => { ev.stopPropagation(); fluxoUsar(inst, s); });
+      acoes.appendChild(bUsar);
+      if(s.tags.canaliza){
+        const bCanal = document.createElement("button");
+        bCanal.type = "button";
+        bCanal.className = "sutil canal" + (inst.canalizando ? " ativo" : "");
+        bCanal.textContent = inst.canalizando ? "Canalizando" : "Canalizar";
+        bCanal.addEventListener("click", ev => {
+          ev.stopPropagation();
+          inst.canalizando = !inst.canalizando;
+          cronica((inst.canalizando ? "✨ Começou" : "✨ Parou") + " de canalizar " + s.nome + ".");
+          renderMesa(false);
+        });
+        acoes.appendChild(bCanal);
+      }
+      if(s.tags.custoCond && s.tags.custoCond.modo === "condicao"){
+        const bCond = document.createElement("button");
+        bCond.type = "button";
+        bCond.className = "sutil cond" + (inst.condAtiva ? " ativo" : "");
+        bCond.textContent = inst.condAtiva ? "Condição ✓" : "Condição";
+        bCond.title = "Com a condição ativa, o custo passa a ser " + s.tags.custoCond.valor;
+        bCond.addEventListener("click", ev => {
+          ev.stopPropagation();
+          inst.condAtiva = !inst.condAtiva;
+          cronica("🌓 Condição de " + s.nome + (inst.condAtiva ? " ativada (custo " + s.tags.custoCond.valor + ")." : " desativada (custo " + s.fe + ")."));
+          renderMesa(false);
+        });
+        acoes.appendChild(bCond);
+      }
+      c.appendChild(acoes);
+
+      const alternar = () => {
+        if(fluxoAtivo) return;
+        if(selecionadas.has(inst.uid)) selecionadas.delete(inst.uid);
+        else selecionadas.add(inst.uid);
+        c.classList.toggle("selecionada");
+        atualizarBotoes();
+      };
+      c.addEventListener("click", alternar);
+      c.addEventListener("keydown", ev => {
+        if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); alternar(); }
+        if(ev.key.toLowerCase() === "u"){ ev.preventDefault(); fluxoUsar(inst, s); }
+      });
+    }
+
+    c.addEventListener("mouseenter", () => mostrarTooltip(s, inst));
+    c.addEventListener("mousemove", moverTooltip);
+    c.addEventListener("mouseleave", esconderTooltip);
+    c.addEventListener("focus", () => {
+      mostrarTooltip(s, inst);
+      const r = c.getBoundingClientRect();
+      posicionarTooltip(r.right, r.top);
+    });
+    c.addEventListener("blur", esconderTooltip);
+    return c;
+  }
+
+  function renderZona(container, arr, naMao, vazioMsg){
+    container.innerHTML = "";
+    if(!arr.length){
+      container.innerHTML = '<p class="vazio">' + vazioMsg + '</p>';
+      return;
+    }
+    arr.forEach(inst => {
+      const c = criarCarta(inst, naMao);
+      if(c) container.appendChild(c);
+    });
+  }
+
+  function renderMesa(animarTudo){
+    if(animarTudo) mao.forEach(i => i.nova = true);
+    renderZona(el("zonaMao"), mao, true,
+      emBatalha ? "Mão vazia — puxe cartas do deck." : "Inicie uma batalha para fazer a oração.");
+    renderZona(el("zonaDescarte"), descarte, false, "Nenhuma carta descartada.");
+    renderZona(el("zonaCemiterio"), cemiterio, false, "Nenhuma carta banida.");
+
+    el("ctDeck").textContent = deck.length;
+    el("ctMao").textContent = mao.length;
+    el("ctDescarte").textContent = descarte.length;
+    el("ctCemiterio").textContent = cemiterio.length;
+    el("numRodada").textContent = emBatalha ? rodada : "—";
+
+    const pct = pool.max ? Math.round(100 * pool.atual / pool.max) : 0;
+    el("liquido").style.height = pct + "%";
+    el("feAtual").textContent = pool.atual;
+    el("feMaxTxt").textContent = "/ " + pool.max + " FÉ";
+    el("orbe").classList.toggle("baixa", emBatalha && pct <= 20);
+    el("orbe").setAttribute("aria-label", "Pool de fé: " + pool.atual + " de " + pool.max);
+
+    atualizarBotoes();
+    salvarBatalha();
+  }
+
+  function atualizarBotoes(){
+    el("btnDescartar").disabled = !selecionadas.size;
+    el("btnDescartar").textContent = selecionadas.size
+      ? "Descartar selecionadas (" + selecionadas.size + ")"
+      : "Descartar selecionadas";
+    el("btnBanir").disabled = !selecionadas.size;
+    el("btnPuxar").disabled = !emBatalha || !deck.length;
+    el("btnRodada").disabled = !emBatalha;
+    el("btnReembaralhar").disabled = !descarte.length;
+  }
+
+  /* ---------- tooltip ---------- */
+  const tip = el("tooltip");
+  function mostrarTooltip(s, inst){
+    tip.querySelector(".t-nome").textContent = s.nome;
+    const rar = tip.querySelector(".t-raridade");
+    rar.textContent = RARIDADES[s.raridade].nome;
+    rar.style.color = RARIDADES[s.raridade].cor;
+    let feTxt = "Custo de fé: " + s.fe;
+    if(inst && s.tags.custoCond && s.tags.custoCond.modo === "condicao" && inst.condAtiva){
+      feTxt = "Custo de fé: " + s.tags.custoCond.valor + " (condição ativa; base " + s.fe + ")";
+    }
+    if(inst && s.tags.acumula) feTxt += " · Acumulada: " + inst.acc;
+    tip.querySelector(".t-fe").textContent = feTxt;
+    tip.querySelector(".t-desc").textContent = s.desc;
+    const tt = tip.querySelector(".t-tags");
+    const linhas = descreverTags(s);
+    if(s.labels.length) linhas.push("🏷 " + s.labels.join(" · "));
+    tt.textContent = linhas.join("\n");
+    tip.classList.add("visivel");
+  }
+  function moverTooltip(ev){ posicionarTooltip(ev.clientX, ev.clientY); }
+  function posicionarTooltip(x, y){
+    const m = 18;
+    const r = tip.getBoundingClientRect();
+    let px = x + m, py = y + m;
+    if(px + r.width > window.innerWidth - 8)  px = x - r.width - m;
+    if(py + r.height > window.innerHeight - 8) py = y - r.height - m;
+    tip.style.left = Math.max(8, px) + "px";
+    tip.style.top  = Math.max(8, py) + "px";
+  }
+  function esconderTooltip(){ tip.classList.remove("visivel"); }
+
+  /* ---------- início ---------- */
+  carregarTudo();
+  renderGrimorio();
+  renderLog();
+  renderMesa(false);
+})();
+</script>
+</body>
+</html>
