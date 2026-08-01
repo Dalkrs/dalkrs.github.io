@@ -190,7 +190,19 @@
     50%{box-shadow:0 0 40px rgba(161,54,70,.7),inset 0 0 30px rgba(0,0,0,.7)}
   }
   .ajuste-fe{display:flex;gap:5px;align-items:center}
-  .ajuste-fe button{padding:3px 9px;font-size:.75rem}
+  .ajuste-fe button{padding:3px 12px;font-size:.9rem}
+  .ajuste-fe input{width:64px;padding:4px 6px;text-align:center;font-size:.9rem}
+
+  .efeitos{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 4px}
+  .efeitos-titulo{font-family:Cinzel,serif;font-size:.72rem;letter-spacing:.12em;color:var(--nevoa)}
+  .efeito-chip{
+    display:flex;align-items:center;gap:6px;font-size:.82rem;color:#e8d9a8;
+    border:1px solid var(--ouro);border-radius:20px;padding:2px 6px 2px 11px;
+    background:rgba(201,162,39,.1);box-shadow:0 0 8px rgba(201,162,39,.15);
+  }
+  .efeito-chip b{font-family:Cinzel,serif;font-size:.72rem;color:var(--ouro-claro)}
+  .efeito-chip button{padding:0 6px;font-size:.78rem;border:none;background:none;color:var(--nevoa)}
+  .efeito-chip button:hover{color:#fff;background:none}
 
   .santuario-controles{flex:1;min-width:250px;display:flex;flex-direction:column;gap:10px}
   .santuario-controles .linha label{margin-top:0}
@@ -431,6 +443,13 @@
             <option value="descarte">pago ao descartar (efeito de descarte)</option>
             <option value="condicao">vale quando a condição está marcada</option>
           </select>
+          <select id="obrigCustoCond" disabled>
+            <option value="opcional">opcional (pergunta)</option>
+            <option value="obrigatorio">obrigatório (automático)</option>
+          </select>
+        </div>
+        <div class="tag-linha">
+          <input type="text" id="txtCustoCond" maxlength="300" placeholder="Texto do efeito de descarte (opcional)" disabled style="flex:1">
         </div>
 
         <h3>Tags ao usar</h3>
@@ -448,17 +467,8 @@
         </div>
         <div class="tag-linha">
           <input type="checkbox" id="chkDado">
-          <label for="chkDado">Rola dado:</label>
-          <select id="valDado" disabled>
-            <option value="4">d4</option>
-            <option value="6">d6</option>
-            <option value="8">d8</option>
-            <option value="10">d10</option>
-            <option value="12">d12</option>
-            <option value="20">d20</option>
-            <option value="30">d30</option>
-            <option value="100">d100</option>
-          </select>
+          <label for="chkDado">Rola dado ao usar:</label>
+          <input type="text" id="valDado" maxlength="20" value="1d4" placeholder="ex.: d4 ou 1d30+30" disabled style="width:130px">
           <span class="mini">e registra na crônica</span>
         </div>
         <div class="tag-linha">
@@ -472,6 +482,20 @@
           <label for="chkRevDesc">Revive do descarte:</label>
           <input type="number" id="valRevDesc" min="1" max="20" value="1" disabled>
           <span class="mini">carta(s)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkBanirDesc">
+          <label for="chkBanirDesc">Banida ao ser descartada</label>
+          <span class="mini">(vai ao cemitério em vez do descarte)</span>
+        </div>
+        <div class="tag-linha">
+          <input type="text" id="txtBanirDesc" maxlength="300" placeholder="Texto do efeito ao ser banida (opcional)" disabled style="flex:1">
+        </div>
+        <div class="tag-linha">
+          <input type="checkbox" id="chkDuracao">
+          <label for="chkDuracao">Efeito dura:</label>
+          <input type="number" id="valDuracao" min="1" max="99" value="2" disabled>
+          <span class="mini">rodada(s) — contador na mesa</span>
         </div>
         <div class="tag-linha">
           <label for="fDestino" style="cursor:default">Destino após usar:</label>
@@ -513,10 +537,9 @@
           <div class="valor"><b id="feAtual">0</b><span id="feMaxTxt">/ 0 FÉ</span></div>
         </div>
         <div class="ajuste-fe">
-          <button type="button" class="sutil" data-fe="-10">−10</button>
-          <button type="button" class="sutil" data-fe="-5">−5</button>
-          <button type="button" class="sutil" data-fe="5">+5</button>
-          <button type="button" class="sutil" data-fe="10">+10</button>
+          <button type="button" class="sutil" id="btnFeMenos" aria-label="Reduzir fé">−</button>
+          <input type="number" id="ajusteFeValor" min="1" max="999" value="5" aria-label="Quantidade de fé para ajustar">
+          <button type="button" class="sutil" id="btnFeMais" aria-label="Adicionar fé">+</button>
         </div>
       </div>
 
@@ -529,6 +552,10 @@
           <div style="max-width:130px">
             <label for="cfgFeMax">Fé máxima</label>
             <input type="number" id="cfgFeMax" min="1" max="999" value="100">
+          </div>
+          <div style="max-width:130px">
+            <label for="cfgFeIni">Fé inicial</label>
+            <input type="number" id="cfgFeIni" min="0" max="999" value="20">
           </div>
           <button type="button" class="btn-oracao" id="btnNovaBatalha" style="flex:1;min-width:180px">☀ Nova Batalha</button>
         </div>
@@ -545,6 +572,8 @@
           <button type="button" class="sutil" data-dado="12">d12</button>
           <button type="button" class="sutil" data-dado="20">d20</button>
           <button type="button" class="sutil" data-dado="30">d30</button>
+          <input type="text" id="dadoLivre" placeholder="ex.: 45 ou 1d30+30" style="width:134px;padding:4px 7px;font-size:.85rem">
+          <button type="button" class="sutil" id="btnDadoLivre">Rolar</button>
           <span class="dado-resultado" id="dadoResultado"></span>
         </div>
       </div>
@@ -556,6 +585,8 @@
       <span>Descarte: <b id="ctDescarte">0</b></span>
       <span>Cemitério: <b id="ctCemiterio">0</b></span>
     </div>
+
+    <div class="efeitos" id="zonaEfeitos" hidden></div>
 
     <div class="zona-titulo">Mão · clique para marcar · passe o mouse para agir</div>
     <div class="mao" id="zonaMao"><p class="vazio">Inicie uma batalha para fazer a oração.</p></div>
@@ -613,11 +644,11 @@
     epica:{nome:"Épica",cor:"var(--r-epica)"},
     lendaria:{nome:"Lendária",cor:"var(--r-lendaria)"}
   };
-  const DADOS_VALIDOS = [4,6,8,10,12,20,30,100];
 
   /* ---------- estado ---------- */
   let skills = [];
   let deck = [], mao = [], descarte = [], cemiterio = [];
+  let efeitosAtivos = []; // {id, nome, restam}
   let selecionadas = new Set();
   let pool = {atual:0, max:100};
   let rodada = 0;
@@ -640,6 +671,32 @@
   function limitar(v, mn, mx){ return Math.min(mx, Math.max(mn, v)); }
   function rolar(lados){ return 1 + Math.floor(Math.random() * lados); }
 
+  /* aceita "45" (=1d45) ou notação NdX+Y: "d4", "1d30+30", "2d20-3" */
+  function interpretarDado(txt){
+    txt = String(txt || "").trim().toLowerCase().replace(/\s+/g,"");
+    if(!txt) return null;
+    if(/^\d+$/.test(txt)){
+      const l = parseInt(txt,10);
+      return l >= 2 && l <= 1000 ? {n:1, lados:l, mod:0, formula:"1d"+l} : null;
+    }
+    const m = txt.match(/^(\d*)d(\d+)([+-]\d+)?$/);
+    if(!m) return null;
+    const n = limitar(parseInt(m[1] || "1",10), 1, 50);
+    const lados = parseInt(m[2],10);
+    if(lados < 2 || lados > 1000) return null;
+    const mod = m[3] ? parseInt(m[3],10) : 0;
+    return {n, lados, mod, formula: n + "d" + lados + (mod ? (mod > 0 ? "+" : "") + mod : "")};
+  }
+  function rolarFormula(d){
+    let total = d.mod;
+    const partes = [];
+    for(let i = 0; i < d.n; i++){ const r = rolar(d.lados); total += r; partes.push(r); }
+    return {total, partes};
+  }
+  function detalheRolagem(d, r){
+    return (d.n > 1 || d.mod) ? " [" + r.partes.join(", ") + (d.mod ? (d.mod > 0 ? " +" : " ") + d.mod : "") + "]" : "";
+  }
+
   /* ---------- normalização de skill ---------- */
   function normalizar(s){
     const t = s.tags || {};
@@ -661,13 +718,21 @@
         canaliza: t.canaliza ? {valor: limitar(parseInt(t.canaliza.valor,10)||0,1,999)} : null,
         custoCond: t.custoCond ? {
           valor: limitar(parseInt(t.custoCond.valor,10)||0,0,999),
-          modo: t.custoCond.modo === "condicao" ? "condicao" : "descarte"
+          modo: t.custoCond.modo === "condicao" ? "condicao" : "descarte",
+          obrigatorio: !!t.custoCond.obrigatorio,
+          texto: String(t.custoCond.texto || "").slice(0,300)
         } : null,
         puxarAoUsar: t.puxarAoUsar ? {qtd: limitar(parseInt(t.puxarAoUsar.qtd,10)||0,1,20)} : null,
         descartarAleatorias: t.descartarAleatorias ? {qtd: limitar(parseInt(t.descartarAleatorias.qtd,10)||0,1,20)} : null,
-        dadoAoUsar: t.dadoAoUsar && DADOS_VALIDOS.includes(parseInt(t.dadoAoUsar.lados,10)) ? {lados: parseInt(t.dadoAoUsar.lados,10)} : null,
+        dadoAoUsar: (function(){
+          if(!t.dadoAoUsar) return null;
+          const d = interpretarDado(t.dadoAoUsar.formula || (t.dadoAoUsar.lados ? "1d" + t.dadoAoUsar.lados : ""));
+          return d ? {formula: d.formula} : null;
+        })(),
         reviverCem: t.reviverCem ? {qtd: limitar(parseInt(t.reviverCem.qtd,10)||0,1,20)} : null,
         reviverDesc: t.reviverDesc ? {qtd: limitar(parseInt(t.reviverDesc.qtd,10)||0,1,20)} : null,
+        banirAoDescartar: t.banirAoDescartar ? {texto: String(t.banirAoDescartar.texto || "").slice(0,300)} : null,
+        duracao: t.duracao ? {rodadas: limitar(parseInt(t.duracao.rodadas,10)||0,1,99)} : null,
         destinoFixo: ["perguntar","cemiterio","deck"].includes(t.destinoFixo) ? t.destinoFixo : "perguntar"
       }
     };
@@ -683,11 +748,11 @@
   /* ---------- persistência ---------- */
   function salvarSkills(){ try{ localStorage.setItem(CHAVE, JSON.stringify(skills)); }catch(e){} }
   function salvarCfg(){
-    try{ localStorage.setItem(CHAVE_CFG, JSON.stringify({mao: el("cfgMao").value, feMax: el("cfgFeMax").value})); }catch(e){}
+    try{ localStorage.setItem(CHAVE_CFG, JSON.stringify({mao: el("cfgMao").value, feMax: el("cfgFeMax").value, feIni: el("cfgFeIni").value})); }catch(e){}
   }
   function salvarBatalha(){
     try{
-      localStorage.setItem(CHAVE_BATALHA, JSON.stringify({deck,mao,descarte,cemiterio,pool,rodada,emBatalha,log}));
+      localStorage.setItem(CHAVE_BATALHA, JSON.stringify({deck,mao,descarte,cemiterio,pool,rodada,emBatalha,log,efeitosAtivos}));
     }catch(e){}
   }
   function carregarTudo(){
@@ -703,6 +768,7 @@
       const cfg = JSON.parse(localStorage.getItem(CHAVE_CFG) || "{}");
       if(cfg.mao) el("cfgMao").value = cfg.mao;
       if(cfg.feMax) el("cfgFeMax").value = cfg.feMax;
+      if(cfg.feIni !== undefined && cfg.feIni !== "") el("cfgFeIni").value = cfg.feIni;
     }catch(e){}
     try{
       const b = JSON.parse(localStorage.getItem(CHAVE_BATALHA) || "null");
@@ -712,6 +778,7 @@
         descarte = valida(b.descarte); cemiterio = valida(b.cemiterio);
         pool = b.pool || pool; rodada = b.rodada || 1;
         emBatalha = true; log = Array.isArray(b.log) ? b.log : [];
+        efeitosAtivos = Array.isArray(b.efeitosAtivos) ? b.efeitosAtivos : [];
       }
     }catch(e){}
   }
@@ -841,12 +908,14 @@
     ["chkRecupera",["valRecupera"]],
     ["chkAcumula",["valAcumulaPor","valAcumulaLim"]],
     ["chkCanaliza",["valCanaliza"]],
-    ["chkCustoCond",["valCustoCond","modoCustoCond"]],
+    ["chkCustoCond",["valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond"]],
     ["chkPuxar",["valPuxar"]],
     ["chkDescAleat",["valDescAleat"]],
     ["chkDado",["valDado"]],
     ["chkRevCem",["valRevCem"]],
-    ["chkRevDesc",["valRevDesc"]]
+    ["chkRevDesc",["valRevDesc"]],
+    ["chkBanirDesc",["txtBanirDesc"]],
+    ["chkDuracao",["valDuracao"]]
   ].forEach(([chk, campos]) => {
     el(chk).addEventListener("change", function(){
       campos.forEach(c => el(c).disabled = !this.checked);
@@ -855,6 +924,11 @@
 
   el("formSkill").addEventListener("submit", function(ev){
     ev.preventDefault();
+    if(el("chkDado").checked && !interpretarDado(el("valDado").value)){
+      alert('Fórmula de dado inválida. Use um número (ex.: 45) ou notação NdX+Y (ex.: d4, 1d30+30, 2d20-3).');
+      el("valDado").focus();
+      return;
+    }
     const dados = normalizar({
       id: editandoId || undefined,
       nome: el("fNome").value.trim(),
@@ -868,12 +942,14 @@
         recuperaAoUsar: el("chkRecupera").checked ? {valor: el("valRecupera").value} : null,
         acumula: el("chkAcumula").checked ? {porRodada: el("valAcumulaPor").value, limite: el("valAcumulaLim").value} : null,
         canaliza: el("chkCanaliza").checked ? {valor: el("valCanaliza").value} : null,
-        custoCond: el("chkCustoCond").checked ? {valor: el("valCustoCond").value, modo: el("modoCustoCond").value} : null,
+        custoCond: el("chkCustoCond").checked ? {valor: el("valCustoCond").value, modo: el("modoCustoCond").value, obrigatorio: el("obrigCustoCond").value === "obrigatorio", texto: el("txtCustoCond").value.trim()} : null,
         puxarAoUsar: el("chkPuxar").checked ? {qtd: el("valPuxar").value} : null,
         descartarAleatorias: el("chkDescAleat").checked ? {qtd: el("valDescAleat").value} : null,
-        dadoAoUsar: el("chkDado").checked ? {lados: el("valDado").value} : null,
+        dadoAoUsar: el("chkDado").checked ? {formula: el("valDado").value} : null,
         reviverCem: el("chkRevCem").checked ? {qtd: el("valRevCem").value} : null,
         reviverDesc: el("chkRevDesc").checked ? {qtd: el("valRevDesc").value} : null,
+        banirAoDescartar: el("chkBanirDesc").checked ? {texto: el("txtBanirDesc").value.trim()} : null,
+        duracao: el("chkDuracao").checked ? {rodadas: el("valDuracao").value} : null,
         destinoFixo: el("fDestino").value
       }
     });
@@ -909,12 +985,21 @@
     preencher("chkRecupera", s.tags.recuperaAoUsar, {valRecupera:"valor"});
     preencher("chkAcumula", s.tags.acumula, {valAcumulaPor:"porRodada", valAcumulaLim:"limite"});
     preencher("chkCanaliza", s.tags.canaliza, {valCanaliza:"valor"});
-    preencher("chkCustoCond", s.tags.custoCond, {valCustoCond:"valor", modoCustoCond:"modo"});
+    el("chkCustoCond").checked = !!s.tags.custoCond;
+    ["valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond"].forEach(c => el(c).disabled = !s.tags.custoCond);
+    if(s.tags.custoCond){
+      el("valCustoCond").value = s.tags.custoCond.valor;
+      el("modoCustoCond").value = s.tags.custoCond.modo;
+      el("obrigCustoCond").value = s.tags.custoCond.obrigatorio ? "obrigatorio" : "opcional";
+      el("txtCustoCond").value = s.tags.custoCond.texto;
+    }
     preencher("chkPuxar", s.tags.puxarAoUsar, {valPuxar:"qtd"});
     preencher("chkDescAleat", s.tags.descartarAleatorias, {valDescAleat:"qtd"});
-    preencher("chkDado", s.tags.dadoAoUsar, {valDado:"lados"});
+    preencher("chkDado", s.tags.dadoAoUsar, {valDado:"formula"});
     preencher("chkRevCem", s.tags.reviverCem, {valRevCem:"qtd"});
     preencher("chkRevDesc", s.tags.reviverDesc, {valRevDesc:"qtd"});
+    preencher("chkBanirDesc", s.tags.banirAoDescartar, {txtBanirDesc:"texto"});
+    preencher("chkDuracao", s.tags.duracao, {valDuracao:"rodadas"});
     el("fDestino").value = s.tags.destinoFixo;
 
     el("btnSalvar").textContent = "Salvar alterações";
@@ -925,13 +1010,15 @@
     editandoId = null;
     el("formSkill").reset();
     el("fFe").value = 1; el("fCopias").value = 1;
-    ["valRecupera","valAcumulaPor","valAcumulaLim","valCanaliza","valCustoCond","modoCustoCond",
-     "valPuxar","valDescAleat","valDado","valRevCem","valRevDesc"].forEach(c => el(c).disabled = true);
+    ["valRecupera","valAcumulaPor","valAcumulaLim","valCanaliza","valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond",
+     "valPuxar","valDescAleat","valDado","valRevCem","valRevDesc","txtBanirDesc","valDuracao"].forEach(c => el(c).disabled = true);
     el("valRecupera").value = 10; el("valAcumulaPor").value = 10;
     el("valAcumulaLim").value = 50; el("valCanaliza").value = 15;
     el("valCustoCond").value = 40; el("modoCustoCond").value = "descarte";
+    el("obrigCustoCond").value = "opcional"; el("txtCustoCond").value = "";
     el("valPuxar").value = 2; el("valDescAleat").value = 2;
-    el("valDado").value = "4"; el("valRevCem").value = 1; el("valRevDesc").value = 1;
+    el("valDado").value = "1d4"; el("valRevCem").value = 1; el("valRevDesc").value = 1;
+    el("txtBanirDesc").value = ""; el("valDuracao").value = 2;
     el("fDestino").value = "perguntar";
     el("btnSalvar").textContent = "Registrar habilidade";
     el("btnCancelarEdicao").hidden = true;
@@ -945,15 +1032,21 @@
     if(s.tags.acumula) t.push("🕰 Acumula +" + s.tags.acumula.porRodada + " fé/rodada na mão (máx " + s.tags.acumula.limite + "), devolve ao descartar");
     if(s.tags.canaliza) t.push("✨ Canaliza +" + s.tags.canaliza.valor + " fé/rodada enquanto ativa");
     if(s.tags.custoCond){
-      t.push(s.tags.custoCond.modo === "descarte"
-        ? "🔥 Efeito de descarte: pague " + s.tags.custoCond.valor + " de fé ao descartar para ativar"
-        : "🌓 Custo condicional: " + s.tags.custoCond.valor + " de fé quando a condição está marcada");
+      if(s.tags.custoCond.modo === "descarte"){
+        t.push("🔥 Efeito de descarte " + (s.tags.custoCond.obrigatorio ? "automático" : "opcional") +
+          (s.tags.custoCond.valor > 0 ? " (custa " + s.tags.custoCond.valor + " de fé)" : " (sem custo de fé)") +
+          (s.tags.custoCond.texto ? ": " + s.tags.custoCond.texto : ""));
+      }else{
+        t.push("🌓 Custo condicional: " + s.tags.custoCond.valor + " de fé quando a condição está marcada");
+      }
     }
     if(s.tags.puxarAoUsar) t.push("🂡 Puxa " + s.tags.puxarAoUsar.qtd + " carta(s) ao usar");
     if(s.tags.descartarAleatorias) t.push("🂠 Descarta " + s.tags.descartarAleatorias.qtd + " aleatória(s) ao usar");
-    if(s.tags.dadoAoUsar) t.push("🎲 Rola 1d" + s.tags.dadoAoUsar.lados + " ao usar");
+    if(s.tags.dadoAoUsar) t.push("🎲 Rola " + s.tags.dadoAoUsar.formula + " ao usar");
     if(s.tags.reviverCem) t.push("🕯 Revive " + s.tags.reviverCem.qtd + " carta(s) do cemitério");
     if(s.tags.reviverDesc) t.push("↺ Revive " + s.tags.reviverDesc.qtd + " carta(s) do descarte");
+    if(s.tags.banirAoDescartar) t.push("🕯 Se descartada, é banida direto ao cemitério" + (s.tags.banirAoDescartar.texto ? ": " + s.tags.banirAoDescartar.texto : ""));
+    if(s.tags.duracao) t.push("⌛ Efeito dura " + s.tags.duracao.rodadas + " rodada(s) — contador na mesa");
     if(s.tags.destinoFixo === "cemiterio") t.push("🕯 Queima: vai direto ao cemitério após usar");
     if(s.tags.destinoFixo === "deck") t.push("♻ Eco: volta embaralhada ao deck após usar");
     return t;
@@ -1055,14 +1148,14 @@
     if(emBatalha && !confirm("Encerrar a batalha atual e fazer uma nova oração? O cemitério retorna ao deck.")) return;
     salvarCfg();
     pool.max = limitar(parseInt(el("cfgFeMax").value,10) || 100, 1, 999);
-    pool.atual = pool.max;
+    pool.atual = Math.min(pool.max, limitar(parseInt(el("cfgFeIni").value,10) || 0, 0, 999));
     deck = montarDeckCompleto();
     const n = Math.min(deck.length, limitar(parseInt(el("cfgMao").value,10) || 1, 1, 30));
     mao = deck.splice(0, n);
-    descarte = []; cemiterio = [];
+    descarte = []; cemiterio = []; efeitosAtivos = [];
     selecionadas.clear();
     rodada = 1; emBatalha = true; log = [];
-    cronica("⚔ Nova batalha. Oração feita: " + n + " carta(s) na mão, fé plena (" + pool.max + ").");
+    cronica("⚔ Nova batalha. Oração feita: " + n + " carta(s) na mão, fé inicial " + pool.atual + "/" + pool.max + ".");
     renderMesa(true);
   });
 
@@ -1086,19 +1179,23 @@
         }
       }
     });
+    efeitosAtivos.forEach(e => e.restam--);
+    const expirados = efeitosAtivos.filter(e => e.restam <= 0);
+    efeitosAtivos = efeitosAtivos.filter(e => e.restam > 0);
+    expirados.forEach(e => eventos.push("⌛ Efeito expirou: " + e.nome + "."));
     cronica("⏳ Rodada " + rodada + " começou.");
     eventos.forEach(e => cronica(e));
     renderMesa(false);
   });
 
-  document.querySelectorAll("[data-fe]").forEach(b => {
-    b.addEventListener("click", function(){
-      if(!emBatalha) return;
-      const d = parseInt(this.dataset.fe, 10);
-      pool.atual = limitar(pool.atual + d, 0, pool.max);
-      renderMesa(false);
-    });
-  });
+  function ajustarFe(sinal){
+    if(!emBatalha) return;
+    const v = limitar(parseInt(el("ajusteFeValor").value,10) || 0, 1, 999);
+    pool.atual = limitar(pool.atual + sinal * v, 0, pool.max);
+    renderMesa(false);
+  }
+  el("btnFeMenos").addEventListener("click", () => ajustarFe(-1));
+  el("btnFeMais").addEventListener("click", () => ajustarFe(1));
 
   document.querySelectorAll("[data-dado]").forEach(b => {
     b.addEventListener("click", function(){
@@ -1107,6 +1204,20 @@
       el("dadoResultado").textContent = "d" + lados + " → " + r;
       if(emBatalha) cronica("🎲 d" + lados + " rolado: " + r + ".");
     });
+  });
+  function rolarLivre(){
+    const d = interpretarDado(el("dadoLivre").value);
+    if(!d){
+      alert("Formato inválido. Digite um número (ex.: 45 = d45) ou notação NdX+Y (ex.: 1d30+30, 2d20-3).");
+      return;
+    }
+    const r = rolarFormula(d);
+    el("dadoResultado").textContent = d.formula + " → " + r.total;
+    if(emBatalha) cronica("🎲 " + d.formula + " rolado: " + r.total + detalheRolagem(d, r) + ".");
+  }
+  el("btnDadoLivre").addEventListener("click", rolarLivre);
+  el("dadoLivre").addEventListener("keydown", ev => {
+    if(ev.key === "Enter"){ ev.preventDefault(); rolarLivre(); }
   });
 
   /* ---------- mover cartas ---------- */
@@ -1121,20 +1232,42 @@
     }
   }
 
-  /* pergunta o efeito de descarte (custo condicional modo "descarte") */
+  /* pergunta ou aplica o efeito de descarte (custo condicional modo "descarte") */
   async function tratarEfeitoDescarte(inst, s){
     if(!(s.tags.custoCond && s.tags.custoCond.modo === "descarte")) return;
     const v = s.tags.custoCond.valor;
+    const texto = s.tags.custoCond.texto;
+
+    if(s.tags.custoCond.obrigatorio){
+      if(v > 0){
+        const pago = Math.min(v, pool.atual);
+        pool.atual -= pago;
+        cronica("🔥 Efeito de descarte de " + s.nome + " ativado automaticamente (−" + pago + " fé" + (pago < v ? ", fé insuficiente para o custo cheio" : "") + ").");
+      }else{
+        cronica("🔥 Efeito de descarte de " + s.nome + " ativado automaticamente.");
+      }
+      await perguntarModal(
+        "Efeito de descarte: " + s.nome,
+        (texto || "O efeito de descarte desta carta é ativado automaticamente.") + (v > 0 ? " (Custo: " + v + " de fé.)" : ""),
+        [{label:"Entendido", valor:true}]
+      );
+      return;
+    }
+
+    const corpo = (texto ? texto + " — " : "") + (v > 0
+      ? "Pagar " + v + " de fé para ativar? (Fé atual: " + pool.atual + ")"
+      : "Ativar o efeito de descarte? (sem custo de fé)");
     const ativar = await perguntarModal(
-      "Efeito de descarte: " + s.nome,
-      "Pagar " + v + " de fé para ativar o efeito de descarte? (Fé atual: " + pool.atual + ")",
+      "Efeito de descarte: " + s.nome, corpo,
       [
-        {label:"Ativar (−" + v + " fé)", classe:"perigo", valor:true},
+        {label: v > 0 ? "Ativar (−" + v + " fé)" : "Ativar", classe:"perigo", valor:true},
         {label:"Só descartar", classe:"sutil", valor:false}
       ]
     );
     if(ativar){
-      if(pool.atual >= v){
+      if(v <= 0){
+        cronica("🔥 Efeito de descarte de " + s.nome + " ativado.");
+      }else if(pool.atual >= v){
         pool.atual -= v;
         cronica("🔥 Efeito de descarte de " + s.nome + " ativado (−" + v + " fé).");
       }else{
@@ -1150,6 +1283,15 @@
     if(s){
       refundarAcumulo(inst, s);
       await tratarEfeitoDescarte(inst, s);
+      if(s.tags.banirAoDescartar){
+        inst.acc = 0;
+        cemiterio.push(inst);
+        cronica("🕯 " + s.nome + " foi banida automaticamente ao ser descartada.");
+        if(s.tags.banirAoDescartar.texto){
+          await perguntarModal("Banida: " + s.nome, s.tags.banirAoDescartar.texto, [{label:"Entendido", valor:true}]);
+        }
+        return;
+      }
     }
     descarte.push(inst);
   }
@@ -1188,11 +1330,11 @@
       }
       salvarCfg();
       pool.max = limitar(parseInt(el("cfgFeMax").value,10) || 100, 1, 999);
-      pool.atual = pool.max;
+      pool.atual = Math.min(pool.max, limitar(parseInt(el("cfgFeIni").value,10) || 0, 0, 999));
       deck = montarDeckCompleto();
-      descarte = []; cemiterio = []; selecionadas.clear();
+      descarte = []; cemiterio = []; efeitosAtivos = []; selecionadas.clear();
       rodada = 1; emBatalha = true; log = [];
-      cronica("⚔ Batalha iniciada direto no puxar — deck montado e fé plena (" + pool.max + ").");
+      cronica("⚔ Batalha iniciada direto no puxar — deck montado, fé inicial " + pool.atual + "/" + pool.max + ".");
     }
     puxarCartas(q);
     renderMesa(false);
@@ -1333,14 +1475,21 @@
         txt += " → voltou embaralhada ao deck (eco).";
       }
       cronica(txt);
+      if(s.tags.duracao){
+        efeitosAtivos.push({id: novoId(), nome: s.nome, restam: s.tags.duracao.rodadas});
+        cronica("⌛ Efeito ativo: " + s.nome + " por " + s.tags.duracao.rodadas + " rodada(s).");
+      }
       esconderTooltip();
       renderMesa(false);
 
       /* efeitos ao usar, na ordem: dado → puxar → descartar aleatórias → reviver */
       if(s.tags.dadoAoUsar){
-        const r = rolar(s.tags.dadoAoUsar.lados);
-        el("dadoResultado").textContent = "d" + s.tags.dadoAoUsar.lados + " → " + r;
-        cronica("🎲 " + s.nome + " rolou 1d" + s.tags.dadoAoUsar.lados + ": " + r + ".");
+        const d = interpretarDado(s.tags.dadoAoUsar.formula);
+        if(d){
+          const r = rolarFormula(d);
+          el("dadoResultado").textContent = d.formula + " → " + r.total;
+          cronica("🎲 " + s.nome + " rolou " + d.formula + ": " + r.total + detalheRolagem(d, r) + ".");
+        }
       }
       if(s.tags.puxarAoUsar){
         puxarCartas(s.tags.puxarAoUsar.qtd);
@@ -1511,6 +1660,36 @@
     el("ctDescarte").textContent = descarte.length;
     el("ctCemiterio").textContent = cemiterio.length;
     el("numRodada").textContent = emBatalha ? rodada : "—";
+
+    /* efeitos ativos */
+    const ze = el("zonaEfeitos");
+    ze.innerHTML = "";
+    if(efeitosAtivos.length){
+      ze.hidden = false;
+      const tit = document.createElement("span");
+      tit.className = "efeitos-titulo"; tit.textContent = "EFEITOS ATIVOS:";
+      ze.appendChild(tit);
+      efeitosAtivos.forEach(e => {
+        const chip = document.createElement("span");
+        chip.className = "efeito-chip";
+        chip.appendChild(document.createTextNode(e.nome + " "));
+        const b = document.createElement("b");
+        b.textContent = e.restam + "R";
+        b.title = "Rodadas restantes";
+        chip.appendChild(b);
+        const x = document.createElement("button");
+        x.type = "button"; x.textContent = "×"; x.title = "Encerrar efeito agora";
+        x.addEventListener("click", () => {
+          efeitosAtivos = efeitosAtivos.filter(f => f.id !== e.id);
+          cronica("⌛ Efeito encerrado manualmente: " + e.nome + ".");
+          renderMesa(false);
+        });
+        chip.appendChild(x);
+        ze.appendChild(chip);
+      });
+    }else{
+      ze.hidden = true;
+    }
 
     const pct = pool.max ? Math.round(100 * pool.atual / pool.max) : 0;
     el("liquido").style.height = pct + "%";
