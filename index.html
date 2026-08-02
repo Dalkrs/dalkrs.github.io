@@ -302,6 +302,7 @@
   .carta .acoes .cond.ativo{background:var(--carmesim);color:#fff;box-shadow:0 0 12px rgba(161,54,70,.8)}
   .pilha .carta{opacity:.55;cursor:default;filter:grayscale(.35)}
   .pilha .carta:hover{transform:none}
+  .pilha:not(.cemiterio) .carta:hover{opacity:.95;filter:grayscale(0)}
   .pilha.cemiterio .carta{opacity:.4;filter:grayscale(.9) brightness(.8)}
 
   @keyframes surgir{
@@ -604,6 +605,7 @@
     <div class="zona-titulo">
       Pilha de descarte
       <button type="button" class="sutil" id="btnReembaralhar" disabled>↺ Reembaralhar no deck</button>
+      <button type="button" class="sutil" id="btnResgatar" disabled>⤴ Resgatar cartas</button>
     </div>
     <div class="pilha" id="zonaDescarte"><p class="vazio">Nenhuma carta descartada.</p></div>
 
@@ -1373,26 +1375,28 @@
     renderMesa(false);
   });
 
-  /* ---------- reviver ---------- */
-  async function fluxoReviver(zona, qtdMax){
+  /* ---------- reviver / resgatar ---------- */
+  async function fluxoReviver(zona, qtdMax, resgate){
     const origem = zona === "cemiterio" ? cemiterio : descarte;
     const nomeZona = zona === "cemiterio" ? "cemitério" : "descarte";
+    const acao = resgate ? "Resgatar" : "Reviver";
+    const acaoFeita = resgate ? "Resgatou" : "Reviveu";
     if(!origem.length){
-      cronica("🕯 Nada para reviver no " + nomeZona + ".");
+      cronica("🕯 Nada para " + acao.toLowerCase() + " no " + nomeZona + ".");
       return;
     }
     const max = Math.min(qtdMax, origem.length);
     const uids = await selecionarCartasModal(
-      "Reviver do " + nomeZona,
-      "Escolha até " + max + " carta(s) para reviver:",
+      acao + " do " + nomeZona,
+      "Escolha até " + max + " carta(s):",
       origem, max
     );
     if(!uids || !uids.length){
-      cronica("🕯 Reviver do " + nomeZona + " cancelado.");
+      cronica("🕯 " + acao + " do " + nomeZona + " cancelado.");
       return;
     }
     const dest = await perguntarModal(
-      "Destino das revividas",
+      "Destino das cartas",
       "Para onde vão as " + uids.length + " carta(s) escolhida(s)?",
       [
         {label:"→ Mão", valor:"mao"},
@@ -1401,7 +1405,7 @@
       ]
     );
     if(!dest){
-      cronica("🕯 Reviver do " + nomeZona + " cancelado.");
+      cronica("🕯 " + acao + " do " + nomeZona + " cancelado.");
       return;
     }
     const escolhidas = origem.filter(i => uids.includes(i.uid));
@@ -1412,10 +1416,47 @@
     if(dest === "mao"){
       escolhidas.forEach(i => i.nova = true);
       mao = mao.concat(escolhidas);
-      cronica("🕯 Reviveu do " + nomeZona + " para a mão: " + nomes + ".");
+      cronica("🕯 " + acaoFeita + " do " + nomeZona + " para a mão: " + nomes + ".");
     }else{
       deck = escolhidas.concat(deck);
-      cronica("🕯 Reviveu do " + nomeZona + " para o topo do deck: " + nomes + ".");
+      cronica("🕯 " + acaoFeita + " do " + nomeZona + " para o topo do deck: " + nomes + ".");
+    }
+  }
+
+  /* resgate manual da pilha de descarte, a qualquer momento */
+  el("btnResgatar").addEventListener("click", async function(){
+    if(!descarte.length || fluxoAtivo) return;
+    fluxoAtivo = true;
+    try{
+      await fluxoReviver("descarte", descarte.length, true);
+    }finally{
+      fluxoAtivo = false;
+      renderMesa(false);
+    }
+  });
+
+  async function resgatarUnica(inst){
+    const s = skillPorId(inst.skillId);
+    const nome = s ? s.nome : "carta";
+    const dest = await perguntarModal(
+      "Resgatar: " + nome,
+      "Para onde vai a carta resgatada?",
+      [
+        {label:"→ Mão", valor:"mao"},
+        {label:"→ Topo do deck", classe:"sutil", valor:"deck"},
+        {label:"Cancelar", classe:"sutil", valor:null}
+      ]
+    );
+    if(!dest) return;
+    descarte = descarte.filter(i => i.uid !== inst.uid);
+    resetarInstancia(inst);
+    if(dest === "mao"){
+      inst.nova = true;
+      mao.push(inst);
+      cronica("⤴ Resgatou " + nome + " do descarte para a mão.");
+    }else{
+      deck.unshift(inst);
+      cronica("⤴ Resgatou " + nome + " do descarte para o topo do deck.");
     }
   }
 
@@ -1523,7 +1564,8 @@
   }
 
   /* ---------- render de cartas ---------- */
-  function criarCarta(inst, naMao){
+  function criarCarta(inst, zona){
+    const naMao = zona === "mao";
     const s = skillPorId(inst.skillId);
     if(!s) return null;
     const c = document.createElement("div");
@@ -1622,6 +1664,25 @@
         if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); alternar(); }
         if(ev.key.toLowerCase() === "u"){ ev.preventDefault(); fluxoUsar(inst, s); }
       });
+    }else if(zona === "descarte"){
+      const acoes = document.createElement("div");
+      acoes.className = "acoes";
+      const bRes = document.createElement("button");
+      bRes.type = "button"; bRes.textContent = "Resgatar ⤴";
+      bRes.addEventListener("click", async ev => {
+        ev.stopPropagation();
+        if(fluxoAtivo) return;
+        fluxoAtivo = true;
+        try{
+          await resgatarUnica(inst);
+        }finally{
+          fluxoAtivo = false;
+          esconderTooltip();
+          renderMesa(false);
+        }
+      });
+      acoes.appendChild(bRes);
+      c.appendChild(acoes);
     }
 
     c.addEventListener("mouseenter", () => mostrarTooltip(s, inst));
@@ -1636,24 +1697,24 @@
     return c;
   }
 
-  function renderZona(container, arr, naMao, vazioMsg){
+  function renderZona(container, arr, zona, vazioMsg){
     container.innerHTML = "";
     if(!arr.length){
       container.innerHTML = '<p class="vazio">' + vazioMsg + '</p>';
       return;
     }
     arr.forEach(inst => {
-      const c = criarCarta(inst, naMao);
+      const c = criarCarta(inst, zona);
       if(c) container.appendChild(c);
     });
   }
 
   function renderMesa(animarTudo){
     if(animarTudo) mao.forEach(i => i.nova = true);
-    renderZona(el("zonaMao"), mao, true,
+    renderZona(el("zonaMao"), mao, "mao",
       emBatalha ? "Mão vazia — puxe cartas do deck." : "Inicie uma batalha para fazer a oração.");
-    renderZona(el("zonaDescarte"), descarte, false, "Nenhuma carta descartada.");
-    renderZona(el("zonaCemiterio"), cemiterio, false, "Nenhuma carta banida.");
+    renderZona(el("zonaDescarte"), descarte, "descarte", "Nenhuma carta descartada.");
+    renderZona(el("zonaCemiterio"), cemiterio, "cemiterio", "Nenhuma carta banida.");
 
     el("ctDeck").textContent = deck.length;
     el("ctMao").textContent = mao.length;
@@ -1711,6 +1772,7 @@
     el("btnPuxar").disabled = !emBatalha && !skills.length;
     el("btnRodada").disabled = !emBatalha;
     el("btnReembaralhar").disabled = !descarte.length;
+    el("btnResgatar").disabled = !descarte.length;
   }
 
   /* ---------- tooltip ---------- */
