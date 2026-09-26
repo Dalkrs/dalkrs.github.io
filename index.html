@@ -2,1816 +2,2029 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deck do Paladino — Urgm</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Rolador de Urgm</title>
 <style>
-  :root{
-    --noite:#14121c;
-    --pedra:#1e1a2a;
-    --pedra-clara:#28223a;
-    --ouro:#c9a227;
-    --ouro-claro:#e8c96a;
-    --pergaminho:#efe4c9;
-    --pergaminho-escuro:#e2d3ae;
-    --tinta:#2b2117;
-    --carmesim:#a13646;
-    --nevoa:#9b93ad;
-    --borda:#3a3350;
-    --r-comum:#9aa0a6;
-    --r-incomum:#4aa564;
-    --r-rara:#4a7fd6;
-    --r-epica:#9757d4;
-    --r-lendaria:#d98f2b;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--noite);
-    background-image:
-      radial-gradient(1200px 600px at 50% -200px, rgba(201,162,39,.08), transparent 60%),
-      radial-gradient(800px 500px at 90% 110%, rgba(161,54,70,.06), transparent 60%);
-    color:var(--nevoa);
-    font-family:"EB Garamond",Georgia,serif;
-    font-size:17px;
-    min-height:100vh;
-    padding:24px 16px 80px;
-  }
-  header{max-width:1280px;margin:0 auto 28px;text-align:center}
-  header h1{
-    font-family:Cinzel,serif;font-weight:700;
-    font-size:clamp(1.6rem,4vw,2.6rem);
-    letter-spacing:.14em;color:var(--ouro-claro);
-    text-shadow:0 0 24px rgba(201,162,39,.25);
-  }
-  header p{font-style:italic;color:var(--nevoa);margin-top:6px}
-  .filete{
-    width:min(420px,80%);height:1px;margin:14px auto 0;
-    background:linear-gradient(90deg,transparent,var(--ouro),transparent);
-    position:relative;
-  }
-  .filete::after{
-    content:"✦";position:absolute;left:50%;top:50%;
-    transform:translate(-50%,-50%);color:var(--ouro);
-    background:var(--noite);padding:0 10px;font-size:.8rem;
-  }
+:root{
+  --ink:#0c1320;--ink-top:#09101b;--panel:#131c2c;--panel-2:#1b263a;--field:#0e1623;
+  --line:#233049;--line-strong:#34435f;--parchment:#ede5d1;--muted:#a3acc0;--faint:#7a869e;
+  --gold:#d7a94b;--gold-hover:#e6bb63;--gold-ink:#1d1505;--warn:#f2a65a;--error:#ff7b7b;--focus:#f3d28a;
+  --serif:"Palatino Linotype","Book Antiqua",Palatino,"URW Palladio L","P052",Georgia,serif;
+  --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--ink);color:var(--parchment);font:16px/1.45 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default;opacity:.45}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.ico{display:inline-flex;align-items:center;flex:none}
+.ico svg{display:block}
 
-  main{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:410px 1fr;gap:24px}
-  @media(max-width:980px){main{grid-template-columns:1fr}}
+/* topo */
+.topbar{flex:none;display:flex;align-items:center;gap:18px;height:60px;padding:0 20px;background:var(--ink-top);border-bottom:1px solid var(--line);position:relative;z-index:20}
+.brand{font-family:var(--serif);font-size:21px;white-space:nowrap}
+.hist-picker{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;position:relative}
+.hist-label{color:var(--muted);font-size:14px}
+.hist-btn{display:inline-flex;align-items:center;gap:10px;min-width:0;max-width:380px;padding:7px 12px 7px 14px;background:var(--panel);border:1px solid var(--line-strong);border-radius:9px;font-weight:600}
+.hist-btn:hover{border-color:var(--muted)}
+.hist-btn .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-right{display:flex;align-items:center;gap:14px;position:relative}
+.save-status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--faint);white-space:nowrap}
+.save-status.bad{color:var(--error);font-weight:700}
+.menu-btn{position:relative;padding:7px 14px;background:transparent;border:1px solid var(--line-strong);border-radius:9px;font-weight:600}
+.menu-btn:hover{border-color:var(--muted)}
+.menu-dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:2px solid var(--ink-top)}
+.dropdown{position:absolute;top:calc(100% + 8px);z-index:40;min-width:300px;max-width:min(420px,94vw);padding:8px;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.5)}
+.dropdown.center{left:50%;transform:translateX(-50%)}
+.dropdown.right{right:0}
+.dd-heading{padding:6px 10px 4px;font-size:13px;color:var(--muted)}
+.dd-list{list-style:none;margin:0;padding:0;max-height:46vh;overflow:auto}
+.dd-item{display:flex;align-items:baseline;justify-content:space-between;gap:14px;width:100%;padding:9px 10px;text-align:left;background:transparent;border:0;border-radius:8px}
+.dd-item:hover,.dd-item:focus-visible{background:var(--panel-2)}
+.dd-item.current{background:var(--panel-2);box-shadow:inset 3px 0 0 var(--gold)}
+.dd-item.accent{color:var(--gold);font-weight:600}
+.dd-item.danger{color:var(--error)}
+.dd-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-meta{flex:none;font-size:13px;color:var(--muted)}
+.dd-sep{height:1px;margin:8px 4px;background:var(--line)}
+.dd-note{padding:6px 10px;font-size:13px;color:var(--muted)}
+.dd-note.warn{color:var(--warn)}
+.banner{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;font-size:15px}
+.banner.error{background:#3b1719;color:#ffdada;border-bottom:1px solid #6e2a2e}
+.banner.warn{background:#3a2a14;color:#ffe7c7;border-bottom:1px solid #6b4d22}
+.banner-actions{display:flex;gap:8px;flex:none}
 
-  .painel{
-    background:var(--pedra);
-    border:1px solid var(--borda);
-    border-radius:10px;
-    padding:20px;
-  }
-  .painel h2{
-    font-family:Cinzel,serif;font-weight:600;font-size:1.05rem;
-    letter-spacing:.12em;color:var(--ouro);
-    display:flex;align-items:center;gap:10px;margin-bottom:16px;
-  }
-  .painel h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--borda),transparent)}
+/* layout */
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(330px,410px) minmax(0,1fr);gap:22px;padding:18px 20px 20px}
 
-  label{display:block;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--nevoa);margin:12px 0 4px}
-  input[type=text],input[type=number],textarea,select{
-    width:100%;background:var(--noite);color:#ded8ea;
-    border:1px solid var(--borda);border-radius:6px;
-    padding:9px 10px;font-family:inherit;font-size:1rem;
-  }
-  select{cursor:pointer}
-  textarea{resize:vertical;min-height:76px}
-  input:focus,textarea:focus,select:focus,button:focus-visible{
-    outline:2px solid var(--ouro);outline-offset:1px;
-  }
-  input[type=checkbox]{width:16px;height:16px;accent-color:var(--ouro);cursor:pointer}
+/* painel de rolagem */
+.roll-panel{min-height:0;overflow:auto;padding:18px 18px 16px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin-bottom:18px;background:var(--field);border:1px solid var(--line);border-radius:11px}
+.tab{padding:9px 4px;background:transparent;border:0;border-radius:8px;color:var(--muted);font-size:15px;font-weight:600;white-space:nowrap}
+.tab:hover{color:var(--parchment)}
+.tab[aria-selected="true"]{background:var(--panel-2);color:var(--parchment);box-shadow:inset 0 -2px 0 var(--gold)}
+.field{display:block;margin-bottom:14px}
+.field-label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:14px;color:var(--muted)}
+.opt{font-size:12.5px;color:var(--faint)}
+.input{display:block;width:100%;height:46px;padding:0 12px;background:var(--field);border:1px solid var(--line-strong);border-radius:9px;font-size:17px}
+.input::placeholder{color:#5d6a83}
+.input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(215,169,75,.22)}
+.input.invalid{border-color:var(--warn)}
+textarea.input{height:auto;min-height:84px;padding:10px 12px;resize:vertical;font-size:16px;line-height:1.45}
+.num-input{font-family:var(--serif);font-size:22px;font-variant-numeric:lining-nums tabular-nums}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.link-btn{padding:2px 0;background:none;border:0;color:var(--gold);font-size:14px}
+.link-btn:hover{text-decoration:underline}
+.desc-toggle{display:block;margin:-6px 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 16px}
+.chip{min-width:46px;padding:6px 9px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;font-size:14px;font-weight:700}
+.chip:hover{border-color:var(--muted)}
+.chip.quiet{background:transparent;color:var(--muted);font-weight:500}
+.tables-link{display:block;margin:-6px 0 16px}
+.palette{display:flex;flex-wrap:wrap;gap:8px}
+.swatch{width:32px;height:32px;padding:0;border:0;border-radius:50%;background:var(--sw,transparent);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
+.swatch:hover{transform:scale(1.06)}
+.swatch[aria-checked="true"],.swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--parchment)}
+.swatch-none{position:relative;background:transparent;border:2px dashed var(--line-strong)}
+.swatch-none::after{content:"";position:absolute;left:50%;top:5px;bottom:5px;width:2px;background:var(--faint);transform:translateX(-50%) rotate(45deg)}
+.swatch.small{width:28px;height:28px}
+.preview{min-height:46px;margin:4px 0 12px;padding:11px 12px;background:var(--field);border:1px solid var(--line);border-radius:9px;font-size:15px;line-height:1.35}
+.preview.hint{color:var(--muted)}
+.preview.ok{color:var(--parchment)}
+.preview.problem{color:var(--warn);border-color:rgba(242,166,90,.45)}
+.preview.error{color:var(--error);border-color:var(--error)}
+.roll-btn{display:block;width:100%;height:60px;background:var(--gold);color:var(--gold-ink);border:0;border-radius:12px;font-family:var(--serif);font-size:27px;font-weight:700;letter-spacing:.02em}
+.roll-btn:hover{background:var(--gold-hover)}
+.roll-btn:active{transform:translateY(1px)}
+.dest{margin-top:10px;text-align:center;font-size:14px;color:var(--muted)}
+.dest strong{color:var(--parchment);font-weight:600}
+.kbd-hint{margin-top:4px;text-align:center;font-size:12.5px;color:var(--faint)}
 
-  .linha{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
-  .linha>div{flex:1;min-width:100px}
+/* resultados */
+.results{min-height:0;display:flex;flex-direction:column;gap:18px}
+.last-card{--c:#3b4a68;flex:none;display:grid;grid-template-columns:10px minmax(0,1fr);min-height:190px;overflow:hidden;background:var(--panel);background:color-mix(in srgb,var(--c) 9%,var(--panel));border:1px solid var(--line-strong);border-color:color-mix(in srgb,var(--c) 38%,var(--line));border-radius:16px}
+.last-band{background:var(--c)}
+.last-body{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"meta meta" "num text" "actions actions";align-items:center;column-gap:28px;padding:14px 22px 16px}
+.last-meta{grid-area:meta;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px;color:var(--muted)}
+.last-meta .pin{color:var(--gold)}
+.last-num{grid-area:num;font-family:var(--serif);font-size:88px;font-weight:700;line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.last-num.long{font-size:60px}
+.last-text{grid-area:text;min-width:0}
+.last-title{display:block;max-width:100%;padding:0;background:none;border:0;text-align:left;font-family:var(--serif);font-size:25px;line-height:1.2;overflow-wrap:anywhere}
+.last-title:hover{text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px}
+.last-title.untitled-big{font-family:var(--sans);font-size:17px;font-style:italic;color:var(--warn)}
+.last-comp{margin-top:6px;color:var(--muted);overflow-wrap:anywhere}
+.last-desc{margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.last-item{grid-area:item;margin-top:10px;font-family:var(--serif);font-size:32px;line-height:1.2;overflow-wrap:anywhere}
+.last-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.last-card.is-table .last-body{grid-template-columns:minmax(0,1fr);grid-template-areas:"meta" "text" "item" "actions"}
+.last-card.empty .last-body{display:flex;flex-direction:column;justify-content:center}
+.last-empty-title{font-family:var(--serif);font-size:23px}
+.last-empty-sub{margin-top:6px;color:var(--muted)}
+.last-card.flash{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:color-mix(in srgb,var(--c) 34%,var(--panel))}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:9px;font-size:15px;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.ghost{background:transparent}
+.btn.small{padding:5px 10px;font-size:14px}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.btn.primary:hover{background:var(--gold-hover)}
+.btn.danger{background:transparent;color:var(--error);border-color:rgba(255,123,123,.45)}
+.btn.danger:hover{border-color:var(--error)}
+.btn.danger-solid{background:#b93c3c;border-color:#b93c3c;color:#fff}
 
-  button{
-    font-family:Cinzel,serif;letter-spacing:.08em;font-weight:600;
-    background:var(--pedra-clara);color:var(--ouro-claro);
-    border:1px solid var(--ouro);border-radius:6px;
-    padding:9px 16px;cursor:pointer;font-size:.85rem;
-    transition:background .15s,color .15s,box-shadow .15s;
-  }
-  button:hover{background:var(--ouro);color:var(--noite)}
-  button:disabled{opacity:.4;cursor:not-allowed}
-  button:disabled:hover{background:var(--pedra-clara);color:var(--ouro-claro)}
-  button.sutil{border-color:var(--borda);color:var(--nevoa);font-family:"EB Garamond",serif;letter-spacing:0;font-weight:500}
-  button.sutil:hover{background:var(--pedra-clara);color:#ded8ea}
-  button.perigo{border-color:var(--carmesim);color:#e0919c}
-  button.perigo:hover{background:var(--carmesim);color:#fff}
-  button.sombrio{border-color:#5a5470;color:#b6aed0}
-  button.sombrio:hover{background:#3b3452;color:#e8e2f5}
+/* histórico */
+.log-box{flex:1;min-height:0;display:flex;flex-direction:column}
+.log-head{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:0 2px 10px;border-bottom:1px solid var(--line-strong)}
+.log-title{font-family:var(--serif);font-size:21px;font-weight:600}
+.log-count{font-size:14px;color:var(--muted)}
+.untitled-btn{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:transparent;border:1px solid rgba(242,166,90,.4);border-radius:999px;color:var(--warn);font-size:13px}
+.log-tools{margin-left:auto;display:flex;gap:8px}
+.filter-row{flex:none;display:flex;flex-direction:column;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.filter-line{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px}
+.filter-label{font-size:14px;color:var(--muted);min-width:34px}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:15px;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--gold)}
+.input.search{height:38px;font-size:15px;max-width:320px;flex:1}
+.log-scroll{flex:1;min-height:0;overflow:auto;padding-right:4px}
+.filter-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 4px;padding:9px 12px;background:rgba(215,169,75,.1);border:1px solid rgba(215,169,75,.35);border-radius:10px;font-size:14px}
+.pinned{margin-top:12px;padding:4px 0 6px;border-bottom:1px solid var(--line-strong)}
+.pinned-title{display:flex;align-items:center;gap:6px;padding:4px 2px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--gold)}
+.log{list-style:none;margin:0;padding:0}
+.entry{display:grid;grid-template-columns:4px minmax(0,1fr) auto;column-gap:14px;width:100%;padding:11px 12px 11px 0;background:transparent;border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer}
+.entry:hover{background:rgba(237,229,209,.035)}
+.entry.newest{background:rgba(215,169,75,.07)}
+.entry-band{display:block;border-radius:0 3px 3px 0;background:var(--c,transparent)}
+.entry-main{display:block;min-width:0}
+.entry-title{display:flex;align-items:center;gap:6px;font-family:var(--serif);font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+.entry-title .pin{color:var(--gold)}
+.untitled{display:inline-flex;align-items:center;gap:7px;font-family:var(--sans);font-size:15px;font-style:italic;color:var(--faint)}
+.untitled::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.entry-item{display:block;margin-top:3px;font-family:var(--serif);font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.entry-comp{display:block;margin-top:2px;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.entry-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;color:#d9d2c0}
+.entry-side{display:block;text-align:right}
+.entry-num{display:block;font-family:var(--serif);font-size:30px;font-weight:700;line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.entry-num.long{font-size:22px}
+.entry-time{display:block;margin-top:6px;font-size:13px;color:var(--faint);white-space:nowrap}
+.sep{display:flex;align-items:center;gap:14px;width:100%;padding:16px 8px 10px;background:none;border:0;color:var(--gold);font-family:var(--serif);font-size:16px;font-style:italic;cursor:pointer}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:rgba(215,169,75,.4)}
+.sep:hover .sep-text{text-decoration:underline}
+.log-empty{padding:28px 4px;color:var(--muted)}
+.more-btn{margin:14px 0}
 
-  .btn-oracao{
-    padding:14px 22px;font-size:1rem;
-    background:linear-gradient(180deg,#2d2740,#1e1a2a);
-    box-shadow:0 0 0 1px var(--ouro) inset,0 0 18px rgba(201,162,39,.15);
-  }
-  .btn-oracao:hover{
-    background:linear-gradient(180deg,var(--ouro-claro),var(--ouro));
-    color:var(--noite);box-shadow:0 0 26px rgba(201,162,39,.45);
-  }
+/* diálogos */
+dialog{width:min(560px,94vw);max-height:88vh;padding:0;background:var(--panel);color:var(--parchment);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog[open]{display:flex;flex-direction:column}
+dialog::backdrop{background:rgba(4,8,14,.72)}
+dialog.wide{width:min(900px,96vw)}
+.dlg-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dlg-head h2{font-family:var(--serif);font-size:22px;font-weight:600}
+.dlg-body{flex:1;min-height:0;overflow:auto;padding:18px 20px}
+.dlg-foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-top:1px solid var(--line)}
+.note{font-size:13px;color:var(--muted)}
+.edit-result{display:grid;grid-template-columns:6px minmax(0,1fr);margin-bottom:18px;overflow:hidden;background:var(--field);border:1px solid var(--line);border-radius:11px}
+.edit-band{background:var(--c)}
+.edit-res-body{display:flex;flex-direction:column;gap:4px;padding:12px 14px}
+.edit-num{font-family:var(--serif);font-size:42px;font-weight:700;line-height:1}
+.edit-item{font-family:var(--serif);font-size:23px;overflow-wrap:anywhere}
+.edit-comp{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.edit-lock{font-size:12.5px;color:var(--faint)}
+.edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 18px}
+.move-row{display:flex;gap:8px}
+.move-row .input{flex:1;height:42px;font-size:15px}
+.prompt-msg{margin-bottom:14px;color:var(--muted)}
+.tables-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+.tables-nav{display:flex;flex-direction:column;gap:10px}
+.tables-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:52vh;overflow:auto}
+.tl-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:9px;text-align:left}
+.tl-item:hover{background:var(--panel-2)}
+.tl-item.current{background:var(--panel-2);border-color:var(--line-strong);box-shadow:inset 3px 0 0 var(--gold)}
+.tl-name{font-weight:600;overflow-wrap:anywhere}
+.tl-count{font-size:13px;color:var(--muted)}
+textarea.items-area{min-height:280px;font-size:16px}
+.table-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tables-empty{align-self:center;color:var(--muted)}
+.trash-list{list-style:none;margin:14px 0 0;padding:0}
+.trash-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.trash-info{display:flex;flex-direction:column;min-width:0}
+.trash-name{overflow-wrap:anywhere}
+.trash-meta{font-size:13px;color:var(--muted)}
+.trash-empty{padding:16px 0;color:var(--muted)}
 
-  /* ---- tags mecânicas no formulário ---- */
-  .caixa-tags{
-    border:1px solid var(--borda);border-radius:8px;
-    padding:12px;margin-top:14px;background:rgba(0,0,0,.15);
-  }
-  .caixa-tags h3{
-    font-family:Cinzel,serif;font-size:.78rem;letter-spacing:.12em;
-    color:var(--nevoa);text-transform:uppercase;margin-bottom:8px;
-  }
-  .caixa-tags h3:not(:first-child){margin-top:14px;padding-top:12px;border-top:1px solid var(--borda)}
-  .tag-linha{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
-  .tag-linha label{margin:0;text-transform:none;font-size:.95rem;letter-spacing:0;color:#c9c2da;cursor:pointer}
-  .tag-linha input[type=number]{width:66px;padding:5px 7px;font-size:.9rem}
-  .tag-linha select{width:auto;padding:5px 7px;font-size:.9rem}
-  .tag-linha .mini{font-size:.8rem;color:var(--nevoa)}
+/* aviso flutuante */
+.toast{position:fixed;left:50%;bottom:24px;right:auto;top:auto;transform:translateX(-50%);margin:0;display:flex;align-items:center;gap:14px;width:max-content;max-width:min(680px,92vw);padding:12px 12px 12px 18px;background:#1f2b41;color:var(--parchment);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-size:15px;z-index:60}
+.toast.error{border-color:var(--error)}
+.toast-btn{flex:none;padding:7px 12px;background:var(--gold);color:var(--gold-ink);border:0;border-radius:8px;font-weight:700}
 
-  /* ---- lista do grimório ---- */
-  .grimorio-lista{margin-top:18px;display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-right:4px}
-  .grimorio-item{
-    display:flex;align-items:center;gap:8px;
-    background:var(--noite);border:1px solid var(--borda);
-    border-radius:6px;padding:8px 10px;
-  }
-  .gema{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
-  .grimorio-item .nome{flex:1;color:#ded8ea;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .grimorio-item .fe{font-family:Cinzel,serif;font-size:.8rem;color:var(--ouro);flex:none}
-  .grimorio-item .copias{font-size:.85rem;color:var(--nevoa);flex:none}
-  .grimorio-item button{padding:4px 9px;font-size:.72rem;flex:none}
-
-  /* ---- santuário da fé ---- */
-  .santuario{
-    display:flex;gap:22px;align-items:center;flex-wrap:wrap;
-    padding-bottom:18px;border-bottom:1px solid var(--borda);margin-bottom:16px;
-  }
-  .orbe-area{display:flex;flex-direction:column;align-items:center;gap:8px}
-  .orbe{
-    position:relative;width:132px;height:132px;border-radius:50%;
-    background:radial-gradient(circle at 32% 26%, #3a3350, #0d0b14 72%);
-    border:3px solid var(--ouro);overflow:hidden;flex:none;
-    box-shadow:0 0 24px rgba(201,162,39,.25),0 0 0 6px rgba(201,162,39,.08),inset 0 0 30px rgba(0,0,0,.7);
-  }
-  .orbe::after{
-    content:"";position:absolute;top:8%;left:16%;width:42%;height:24%;
-    border-radius:50%;background:radial-gradient(ellipse, rgba(255,255,255,.28), transparent 70%);
-    pointer-events:none;
-  }
-  .liquido{
-    position:absolute;left:0;right:0;bottom:0;height:0%;
-    background:linear-gradient(180deg,#f4dd8f 0%,var(--ouro) 45%,#8a6d1f 100%);
-    transition:height .6s ease;
-    box-shadow:0 0 18px rgba(232,201,106,.6);
-  }
-  .onda{
-    position:absolute;top:-13px;left:-30%;width:160%;height:26px;
-    background:#0d0b14;border-radius:44%;
-    animation:ondular 6s linear infinite;
-  }
-  .onda.dois{animation-duration:9s;opacity:.6;top:-15px}
-  @keyframes ondular{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-  .orbe .valor{
-    position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;pointer-events:none;
-  }
-  .orbe .valor b{
-    font-family:Cinzel,serif;font-size:1.7rem;font-weight:700;color:#fff;
-    text-shadow:0 0 8px rgba(0,0,0,.9),0 0 16px rgba(201,162,39,.8);
-  }
-  .orbe .valor span{font-size:.72rem;color:#d8d2e8;text-shadow:0 1px 3px #000;letter-spacing:.1em}
-  .orbe.baixa{animation:pulsar 1.6s ease-in-out infinite}
-  @keyframes pulsar{
-    0%,100%{box-shadow:0 0 24px rgba(161,54,70,.35),inset 0 0 30px rgba(0,0,0,.7)}
-    50%{box-shadow:0 0 40px rgba(161,54,70,.7),inset 0 0 30px rgba(0,0,0,.7)}
-  }
-  .ajuste-fe{display:flex;gap:5px;align-items:center}
-  .ajuste-fe button{padding:3px 12px;font-size:.9rem}
-  .ajuste-fe input{width:64px;padding:4px 6px;text-align:center;font-size:.9rem}
-
-  .efeitos{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 4px}
-  .efeitos-titulo{font-family:Cinzel,serif;font-size:.72rem;letter-spacing:.12em;color:var(--nevoa)}
-  .efeito-chip{
-    display:flex;align-items:center;gap:6px;font-size:.82rem;color:#e8d9a8;
-    border:1px solid var(--ouro);border-radius:20px;padding:2px 6px 2px 11px;
-    background:rgba(201,162,39,.1);box-shadow:0 0 8px rgba(201,162,39,.15);
-  }
-  .efeito-chip b{font-family:Cinzel,serif;font-size:.72rem;color:var(--ouro-claro)}
-  .efeito-chip button{padding:0 6px;font-size:.78rem;border:none;background:none;color:var(--nevoa)}
-  .efeito-chip button:hover{color:#fff;background:none}
-
-  .santuario-controles{flex:1;min-width:250px;display:flex;flex-direction:column;gap:10px}
-  .santuario-controles .linha label{margin-top:0}
-  .rodada-caixa{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .rodada-caixa .num{
-    font-family:Cinzel,serif;font-size:1.15rem;color:var(--ouro-claro);
-    border:1px solid var(--borda);border-radius:6px;padding:5px 14px;background:var(--noite);
-  }
-  .dados{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-  .dados button{padding:4px 8px;font-size:.72rem;font-family:"EB Garamond",serif;letter-spacing:0}
-  .dado-resultado{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:1rem;min-width:60px}
-
-  .placar{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 4px}
-  .placar span{font-size:.9rem;color:var(--nevoa)}
-  .placar b{font-family:Cinzel,serif;color:var(--ouro-claro);font-weight:600}
-
-  .zona-titulo{
-    font-family:Cinzel,serif;font-size:.85rem;letter-spacing:.14em;
-    color:var(--nevoa);margin:20px 0 10px;text-transform:uppercase;
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  }
-  .zona-titulo button{padding:3px 10px;font-size:.68rem}
-  .mao,.pilha{display:flex;flex-wrap:wrap;gap:16px;min-height:56px}
-  .vazio{font-style:italic;color:#6d6580;padding:8px 0}
-
-  /* ---- carta ---- */
-  .carta{
-    width:154px;height:214px;border-radius:9px;
-    background:linear-gradient(160deg,var(--pergaminho),var(--pergaminho-escuro));
-    color:var(--tinta);
-    border:1px solid #b3945a;
-    --anel:#b3945a;
-    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--anel) inset,0 4px 10px rgba(0,0,0,.45);
-    padding:12px 10px 8px;position:relative;cursor:pointer;
-    display:flex;flex-direction:column;
-    transition:transform .15s,box-shadow .15s;
-    user-select:none;
-  }
-  .carta:hover{transform:translateY(-4px)}
-  .carta.r-comum{--anel:var(--r-comum)}
-  .carta.r-incomum{--anel:var(--r-incomum)}
-  .carta.r-rara{--anel:var(--r-rara)}
-  .carta.r-epica{--anel:var(--r-epica)}
-  .carta.r-lendaria{--anel:var(--r-lendaria);box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--anel) inset,0 0 14px rgba(217,143,43,.55),0 4px 10px rgba(0,0,0,.45)}
-  .carta .custo{
-    position:absolute;top:-9px;right:-9px;z-index:2;
-    width:34px;height:34px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%,var(--ouro-claro),var(--ouro) 70%);
-    color:var(--noite);font-family:Cinzel,serif;font-weight:700;font-size:.95rem;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 0 10px rgba(201,162,39,.6),0 2px 4px rgba(0,0,0,.4);
-  }
-  .carta .custo.alt{
-    background:radial-gradient(circle at 35% 30%,#d47a89,var(--carmesim) 70%);
-    color:#fff;
-    box-shadow:0 0 12px rgba(161,54,70,.8),0 2px 4px rgba(0,0,0,.4);
-  }
-  .carta .acumulo{
-    position:absolute;top:-9px;left:-9px;z-index:2;
-    min-width:34px;height:24px;border-radius:12px;padding:0 7px;
-    background:radial-gradient(circle at 35% 30%,#7fd6f0,#3b8fb8 75%);
-    color:#08222e;font-family:Cinzel,serif;font-weight:700;font-size:.72rem;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 0 10px rgba(87,180,214,.6),0 2px 4px rgba(0,0,0,.4);
-  }
-  .carta .arte{
-    height:74px;margin:-2px -1px 6px;border-radius:5px;overflow:hidden;
-    border:1px solid rgba(122,102,71,.5);flex:none;
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(180deg,rgba(122,102,71,.14),transparent);
-  }
-  .carta .arte img{width:100%;height:100%;object-fit:cover;display:block}
-  .carta .arte .emblema{font-size:1.7rem;color:#8a6d2f}
-  .carta .nome{
-    font-family:Cinzel,serif;font-weight:600;font-size:.78rem;
-    text-align:center;line-height:1.25;letter-spacing:.02em;
-    flex:1;display:flex;align-items:center;justify-content:center;
-  }
-  .carta .rodape{
-    font-size:.68rem;text-align:center;color:#7a6647;
-    border-top:1px solid #c4ac7c;padding-top:4px;font-style:italic;
-    display:flex;align-items:center;justify-content:center;gap:6px;
-  }
-  .carta .rodape .gema{width:8px;height:8px}
-  .carta.selecionada{
-    border-color:var(--carmesim);
-    box-shadow:0 0 0 3px var(--pergaminho) inset,0 0 0 4px var(--carmesim) inset,0 0 16px rgba(161,54,70,.55);
-    transform:translateY(-4px) rotate(-2deg);
-  }
-  .carta .acoes{
-    position:absolute;left:6px;right:6px;bottom:26px;z-index:2;
-    display:none;gap:5px;justify-content:center;flex-wrap:wrap;
-  }
-  .carta:hover .acoes,.carta:focus-within .acoes{display:flex}
-  .carta .acoes button{padding:4px 10px;font-size:.68rem;box-shadow:0 2px 6px rgba(0,0,0,.5)}
-  .carta .acoes .canal.ativo{background:var(--ouro);color:var(--noite);box-shadow:0 0 12px rgba(232,201,106,.8)}
-  .carta .acoes .cond.ativo{background:var(--carmesim);color:#fff;box-shadow:0 0 12px rgba(161,54,70,.8)}
-  .pilha .carta{opacity:.55;cursor:default;filter:grayscale(.35)}
-  .pilha .carta:hover{transform:none}
-  .pilha:not(.cemiterio) .carta:hover{opacity:.95;filter:grayscale(0)}
-  .pilha.cemiterio .carta{opacity:.4;filter:grayscale(.9) brightness(.8)}
-
-  @keyframes surgir{
-    from{opacity:0;transform:translateY(16px) scale(.94)}
-    to{opacity:1;transform:translateY(0) scale(1)}
-  }
-  .carta.nova{animation:surgir .35s ease both}
-
-  /* ---- tooltip ---- */
-  #tooltip{
-    position:fixed;z-index:60;max-width:300px;
-    background:#0f0d16;border:1px solid var(--ouro);
-    border-radius:8px;padding:12px 14px;
-    box-shadow:0 6px 24px rgba(0,0,0,.6),0 0 12px rgba(201,162,39,.15);
-    pointer-events:none;opacity:0;transition:opacity .1s;
-  }
-  #tooltip.visivel{opacity:1}
-  #tooltip .t-nome{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:.9rem;letter-spacing:.06em;margin-bottom:2px}
-  #tooltip .t-raridade{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
-  #tooltip .t-fe{font-size:.78rem;color:var(--ouro);margin-bottom:8px;font-style:italic}
-  #tooltip .t-desc{font-size:.9rem;color:#ded8ea;line-height:1.45;white-space:pre-line}
-  #tooltip .t-tags{margin-top:8px;font-size:.76rem;color:#8fc7da;line-height:1.4;white-space:pre-line}
-
-  /* ---- modal ---- */
-  #veu{
-    position:fixed;inset:0;background:rgba(10,8,16,.7);z-index:70;
-    display:none;align-items:center;justify-content:center;padding:16px;
-  }
-  #veu.aberto{display:flex}
-  #modal{
-    background:var(--pedra);border:1px solid var(--ouro);border-radius:10px;
-    padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
-    box-shadow:0 10px 40px rgba(0,0,0,.7),0 0 24px rgba(201,162,39,.15);
-  }
-  #modal h3{font-family:Cinzel,serif;color:var(--ouro-claro);font-size:1rem;letter-spacing:.08em;margin-bottom:6px}
-  #modal p{font-size:.92rem;margin-bottom:16px}
-  #modal .destinos{display:flex;gap:10px;flex-wrap:wrap}
-  #modal .destinos button{flex:1;min-width:110px}
-  .sel-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:280px;overflow-y:auto}
-  .sel-item{
-    display:flex;align-items:center;gap:10px;
-    background:var(--noite);border:1px solid var(--borda);border-radius:6px;
-    padding:8px 10px;cursor:pointer;
-  }
-  .sel-item.marcado{border-color:var(--ouro);box-shadow:0 0 8px rgba(201,162,39,.3)}
-  .sel-item .nome{flex:1;color:#ded8ea;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sel-item .fe{font-family:Cinzel,serif;font-size:.8rem;color:var(--ouro)}
-
-  /* ---- log ---- */
-  .log{margin-top:22px;border-top:1px solid var(--borda);padding-top:14px}
-  .log-lista{
-    max-height:170px;overflow-y:auto;font-size:.86rem;
-    display:flex;flex-direction:column;gap:3px;
-  }
-  .log-lista div{color:#b6aed0}
-  .log-lista .rod{color:var(--ouro);font-family:Cinzel,serif;font-size:.72rem;margin-right:6px}
-
-  .acoes-arquivo{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-  .aviso{font-size:.85rem;font-style:italic;color:#6d6580;margin-top:10px}
-
-  @media (prefers-reduced-motion: reduce){
-    *{animation:none!important;transition:none!important}
-  }
+@media (max-width:900px){
+  body{height:auto;min-height:100vh;overflow:visible}
+  .layout{display:flex;flex-direction:column}
+  .roll-panel,.log-scroll{overflow:visible}
+  .brand{font-size:18px}
+  .hist-label{display:none}
+}
+@media (max-width:600px){
+  .topbar{gap:10px;padding:0 12px}
+  .brand,.save-status{display:none}
+  .layout{padding:12px}
+  .last-body{grid-template-columns:minmax(0,1fr);grid-template-areas:"meta" "num" "text" "actions"}
+  .last-num{font-size:64px}
+  .tables-layout{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  .last-card.flash{animation:none}
+  .swatch:hover{transform:none}
+}
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Deck do Paladino</h1>
-  <p>Reino de Lirian · Que a fé guie a mão que puxa a carta</p>
-  <div class="filete"></div>
+<header class="topbar">
+  <div class="brand">Rolador de Urgm</div>
+  <div class="hist-picker">
+    <span class="hist-label" id="histLabel">Histórico</span>
+    <button type="button" class="hist-btn" id="histBtn" aria-haspopup="menu" aria-expanded="false">
+      <span class="name" id="histName"></span>
+      <span class="ico" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </button>
+    <div class="dropdown center" id="histMenu" role="menu" hidden></div>
+  </div>
+  <div class="top-right">
+    <span class="save-status" id="saveStatus" role="status"></span>
+    <button type="button" class="menu-btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false">Menu<span class="menu-dot" id="menuDot" hidden></span></button>
+    <div class="dropdown right" id="mainMenu" role="menu" hidden></div>
+  </div>
 </header>
+<div class="banner" id="banner" role="alert" hidden></div>
+<noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o rolador.</p></noscript>
 
-<main>
-  <!-- ======== GRIMÓRIO ======== -->
-  <section class="painel" aria-label="Grimório de habilidades">
-    <h2>Grimório</h2>
-    <form id="formSkill" autocomplete="off">
-      <label for="fNome">Nome da habilidade</label>
-      <input type="text" id="fNome" required maxlength="60" placeholder="Ex.: Escudo de Luz de Manomã">
-
-      <div class="linha">
-        <div>
-          <label for="fFe">Custo de fé</label>
-          <input type="number" id="fFe" min="0" max="999" value="1">
-        </div>
-        <div>
-          <label for="fCopias">Cópias</label>
-          <input type="number" id="fCopias" min="1" max="20" value="1">
-        </div>
-        <div>
-          <label for="fRaridade">Raridade</label>
-          <select id="fRaridade">
-            <option value="comum">Comum</option>
-            <option value="incomum">Incomum</option>
-            <option value="rara">Rara</option>
-            <option value="epica">Épica</option>
-            <option value="lendaria">Lendária</option>
-          </select>
-        </div>
-      </div>
-
-      <label for="fArte">Arte da carta (URL ou caminho, opcional)</label>
-      <input type="text" id="fArte" maxlength="300" placeholder="Ex.: artes/escudo-da-dor.png">
-
-      <label for="fDesc">Descrição</label>
-      <textarea id="fDesc" required maxlength="900" placeholder="O que a habilidade faz quando invocada…"></textarea>
-
-      <label for="fLabels">Etiquetas livres (separadas por vírgula, opcional)</label>
-      <input type="text" id="fLabels" maxlength="120" placeholder="Ex.: Gama, Temporal, Cura">
-
-      <div class="caixa-tags">
-        <h3>Tags de fé</h3>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkRecupera">
-          <label for="chkRecupera">Recupera fé ao usar:</label>
-          <input type="number" id="valRecupera" min="1" max="999" value="10" disabled>
-          <span class="mini">de fé</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkAcumula">
-          <label for="chkAcumula">Acumula fé na mão:</label>
-          <input type="number" id="valAcumulaPor" min="1" max="999" value="10" disabled>
-          <span class="mini">por rodada, limite</span>
-          <input type="number" id="valAcumulaLim" min="1" max="999" value="50" disabled>
-          <span class="mini">(devolve ao descartar)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkCanaliza">
-          <label for="chkCanaliza">Canalizar fé:</label>
-          <input type="number" id="valCanaliza" min="1" max="999" value="15" disabled>
-          <span class="mini">por rodada enquanto ativa na mão</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkCustoCond">
-          <label for="chkCustoCond">Custo condicional:</label>
-          <input type="number" id="valCustoCond" min="0" max="999" value="40" disabled>
-          <select id="modoCustoCond" disabled>
-            <option value="descarte">pago ao descartar (efeito de descarte)</option>
-            <option value="condicao">vale quando a condição está marcada</option>
-          </select>
-          <select id="obrigCustoCond" disabled>
-            <option value="opcional">opcional (pergunta)</option>
-            <option value="obrigatorio">obrigatório (automático)</option>
-          </select>
-        </div>
-        <div class="tag-linha">
-          <input type="text" id="txtCustoCond" maxlength="300" placeholder="Texto do efeito de descarte (opcional)" disabled style="flex:1">
-        </div>
-
-        <h3>Tags ao usar</h3>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkPuxar">
-          <label for="chkPuxar">Puxa do deck:</label>
-          <input type="number" id="valPuxar" min="1" max="20" value="2" disabled>
-          <span class="mini">carta(s)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkDescAleat">
-          <label for="chkDescAleat">Descarta aleatórias da mão:</label>
-          <input type="number" id="valDescAleat" min="1" max="20" value="2" disabled>
-          <span class="mini">carta(s)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkDado">
-          <label for="chkDado">Rola dado ao usar:</label>
-          <input type="text" id="valDado" maxlength="20" value="1d4" placeholder="ex.: d4 ou 1d30+30" disabled style="width:130px">
-          <span class="mini">e registra na crônica</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkRevCem">
-          <label for="chkRevCem">Revive do cemitério:</label>
-          <input type="number" id="valRevCem" min="1" max="20" value="1" disabled>
-          <span class="mini">carta(s)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkRevDesc">
-          <label for="chkRevDesc">Revive do descarte:</label>
-          <input type="number" id="valRevDesc" min="1" max="20" value="1" disabled>
-          <span class="mini">carta(s)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkBanirDesc">
-          <label for="chkBanirDesc">Banida ao ser descartada</label>
-          <span class="mini">(vai ao cemitério em vez do descarte)</span>
-        </div>
-        <div class="tag-linha">
-          <input type="text" id="txtBanirDesc" maxlength="300" placeholder="Texto do efeito ao ser banida (opcional)" disabled style="flex:1">
-        </div>
-        <div class="tag-linha">
-          <input type="checkbox" id="chkDuracao">
-          <label for="chkDuracao">Efeito dura:</label>
-          <input type="number" id="valDuracao" min="1" max="99" value="2" disabled>
-          <span class="mini">rodada(s) — contador na mesa</span>
-        </div>
-        <div class="tag-linha">
-          <label for="fDestino" style="cursor:default">Destino após usar:</label>
-          <select id="fDestino" style="flex:1">
-            <option value="perguntar">Perguntar (padrão)</option>
-            <option value="cemiterio">Queimar — vai direto ao cemitério</option>
-            <option value="deck">Eco — embaralha de volta no deck</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="linha" style="margin-top:12px">
-        <button type="submit" id="btnSalvar">Registrar habilidade</button>
-        <button type="button" class="sutil" id="btnCancelarEdicao" hidden>Cancelar edição</button>
-      </div>
-    </form>
-
-    <div class="grimorio-lista" id="listaSkills"></div>
-
-    <div class="acoes-arquivo">
-      <button type="button" class="sutil" id="btnExportar">Exportar deck (.json)</button>
-      <button type="button" class="sutil" id="btnImportar">Importar deck</button>
-      <input type="file" id="inputImportar" accept="application/json" hidden>
+<main class="layout">
+  <section class="roll-panel" aria-label="Nova rolagem">
+    <div class="tabs" role="tablist" aria-label="Tipo de rolagem">
+      <button type="button" class="tab" role="tab" data-mode="fixa">Fixa</button>
+      <button type="button" class="tab" role="tab" data-mode="dados">Dados livres</button>
+      <button type="button" class="tab" role="tab" data-mode="tabela">Tabela</button>
     </div>
-    <p class="aviso">As habilidades ficam salvas neste navegador. Use exportar/importar para levar o deck a outro dispositivo ou guardar backup no seu repositório.</p>
+
+    <label class="field">
+      <span class="field-label">O que está sendo rolado? <span class="opt">opcional</span></span>
+      <input class="input" id="fTitle" type="text" maxlength="120" autocomplete="off" placeholder="Ex.: Ataque do goblin">
+    </label>
+    <button type="button" class="link-btn desc-toggle" id="descToggle">+ Adicionar descrição</button>
+    <label class="field" id="descWrap" hidden>
+      <span class="field-label">Descrição <span class="opt">opcional</span></span>
+      <textarea class="input" id="fDesc" rows="3" maxlength="2000" placeholder="Detalhes para lembrar depois"></textarea>
+    </label>
+
+    <div class="mode-body" data-for="fixa">
+      <div class="row2">
+        <label class="field"><span class="field-label">Atributo</span>
+          <input class="input num-input" id="fAtr" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="60"></label>
+        <label class="field"><span class="field-label">Quanto fixar</span>
+          <input class="input num-input" id="fFixa" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="0"></label>
+      </div>
+    </div>
+    <div class="mode-body" data-for="dados" hidden>
+      <label class="field"><span class="field-label">Dados</span>
+        <input class="input num-input" id="fExpr" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="2d6+3"></label>
+      <div class="chips" id="chips" aria-label="Atalhos de dados">
+        <button type="button" class="chip" data-die="4">d4</button>
+        <button type="button" class="chip" data-die="6">d6</button>
+        <button type="button" class="chip" data-die="8">d8</button>
+        <button type="button" class="chip" data-die="10">d10</button>
+        <button type="button" class="chip" data-die="12">d12</button>
+        <button type="button" class="chip" data-die="20">d20</button>
+        <button type="button" class="chip" data-die="100">d100</button>
+        <button type="button" class="chip quiet" data-mod="1">+1</button>
+        <button type="button" class="chip quiet" data-mod="-1">−1</button>
+        <button type="button" class="chip quiet" data-clear="1">Limpar</button>
+      </div>
+    </div>
+    <div class="mode-body" data-for="tabela" hidden>
+      <label class="field"><span class="field-label">Tabela</span>
+        <select class="input" id="fTable"></select></label>
+      <button type="button" class="link-btn tables-link" id="openTablesFromForm">Criar ou editar tabelas</button>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Cor <span class="opt" id="colorName">sem cor</span></span>
+      <div class="palette" id="palette" role="radiogroup" aria-label="Cor da rolagem"></div>
+    </div>
+
+    <div class="preview hint" id="preview" aria-live="polite"></div>
+    <button type="button" class="roll-btn" id="rollBtn">Rolar</button>
+    <p class="dest">Vai para o histórico <strong id="destName"></strong></p>
+    <p class="kbd-hint">Enter avança os campos; no último, rola.</p>
   </section>
 
-  <!-- ======== MESA ======== -->
-  <section class="painel" aria-label="Mesa de jogo">
-    <h2>Mesa</h2>
-
-    <div class="santuario">
-      <div class="orbe-area">
-        <div class="orbe" id="orbe" role="img" aria-label="Pool de fé">
-          <div class="liquido" id="liquido">
-            <div class="onda"></div>
-            <div class="onda dois"></div>
-          </div>
-          <div class="valor"><b id="feAtual">0</b><span id="feMaxTxt">/ 0 FÉ</span></div>
-        </div>
-        <div class="ajuste-fe">
-          <button type="button" class="sutil" id="btnFeMenos" aria-label="Reduzir fé">−</button>
-          <input type="number" id="ajusteFeValor" min="1" max="999" value="5" aria-label="Quantidade de fé para ajustar">
-          <button type="button" class="sutil" id="btnFeMais" aria-label="Adicionar fé">+</button>
+  <section class="results" aria-label="Resultados">
+    <div class="last-card empty" id="lastCard" aria-live="polite"></div>
+    <div class="log-box">
+      <div class="log-head">
+        <h2 class="log-title">Histórico</h2>
+        <span class="log-count" id="logCount"></span>
+        <button type="button" class="untitled-btn" id="untitledBtn" hidden></button>
+        <div class="log-tools">
+          <button type="button" class="btn small ghost" id="sepBtn">Adicionar separador</button>
+          <button type="button" class="btn small ghost" id="filterBtn" aria-expanded="false">Filtrar</button>
         </div>
       </div>
-
-      <div class="santuario-controles">
-        <div class="linha">
-          <div style="max-width:130px">
-            <label for="cfgMao">Mão inicial</label>
-            <input type="number" id="cfgMao" min="1" max="30" value="5">
-          </div>
-          <div style="max-width:130px">
-            <label for="cfgFeMax">Fé máxima</label>
-            <input type="number" id="cfgFeMax" min="1" max="999" value="100">
-          </div>
-          <div style="max-width:130px">
-            <label for="cfgFeIni">Fé inicial</label>
-            <input type="number" id="cfgFeIni" min="0" max="999" value="20">
-          </div>
-          <button type="button" class="btn-oracao" id="btnNovaBatalha" style="flex:1;min-width:180px">☀ Nova Batalha</button>
-        </div>
-        <div class="rodada-caixa">
-          <span class="num">Rodada <b id="numRodada">—</b></span>
-          <button type="button" id="btnRodada" disabled>Passar Rodada ⏳</button>
-        </div>
-        <div class="dados">
-          <span class="mini" style="font-size:.8rem;letter-spacing:.08em;color:var(--nevoa)">DADOS:</span>
-          <button type="button" class="sutil" data-dado="4">d4</button>
-          <button type="button" class="sutil" data-dado="6">d6</button>
-          <button type="button" class="sutil" data-dado="8">d8</button>
-          <button type="button" class="sutil" data-dado="10">d10</button>
-          <button type="button" class="sutil" data-dado="12">d12</button>
-          <button type="button" class="sutil" data-dado="20">d20</button>
-          <button type="button" class="sutil" data-dado="30">d30</button>
-          <input type="text" id="dadoLivre" placeholder="ex.: 45 ou 1d30+30" style="width:134px;padding:4px 7px;font-size:.85rem">
-          <button type="button" class="sutil" id="btnDadoLivre">Rolar</button>
-          <span class="dado-resultado" id="dadoResultado"></span>
+      <div class="filter-row" id="filterRow" hidden>
+        <div class="filter-line"><span class="filter-label">Cor</span><div class="palette" id="filterPalette" aria-label="Filtrar por cor"></div></div>
+        <div class="filter-line">
+          <label class="check"><input type="checkbox" id="fltUntitled"> Só sem título</label>
+          <label class="check"><input type="checkbox" id="fltPinned"> Só fixadas</label>
+          <input class="input search" id="fltSearch" type="search" autocomplete="off" placeholder="Buscar no título ou na descrição">
         </div>
       </div>
-    </div>
-
-    <div class="placar">
-      <span>Deck: <b id="ctDeck">0</b></span>
-      <span>Mão: <b id="ctMao">0</b></span>
-      <span>Descarte: <b id="ctDescarte">0</b></span>
-      <span>Cemitério: <b id="ctCemiterio">0</b></span>
-    </div>
-
-    <div class="efeitos" id="zonaEfeitos" hidden></div>
-
-    <div class="zona-titulo">Mão · clique para marcar · passe o mouse para agir</div>
-    <div class="mao" id="zonaMao"><p class="vazio">Inicie uma batalha para fazer a oração.</p></div>
-
-    <div class="linha" style="margin-top:16px">
-      <button type="button" class="perigo" id="btnDescartar" disabled>Descartar selecionadas</button>
-      <button type="button" class="sombrio" id="btnBanir" disabled>Banir p/ cemitério</button>
-      <div style="flex:0 0 120px">
-        <label for="qtdPuxar" style="margin-top:0">Puxar do deck</label>
-        <input type="number" id="qtdPuxar" min="1" max="30" value="1">
+      <div class="log-scroll" id="logScroll">
+        <div class="filter-banner" id="filterBanner" hidden></div>
+        <div id="pinnedBox"></div>
+        <ol class="log" id="log"></ol>
+        <div id="logMore"></div>
       </div>
-      <button type="button" id="btnPuxar" disabled>Puxar cartas</button>
-    </div>
-
-    <div class="zona-titulo">
-      Pilha de descarte
-      <button type="button" class="sutil" id="btnReembaralhar" disabled>↺ Reembaralhar no deck</button>
-      <button type="button" class="sutil" id="btnResgatar" disabled>⤴ Resgatar cartas</button>
-    </div>
-    <div class="pilha" id="zonaDescarte"><p class="vazio">Nenhuma carta descartada.</p></div>
-
-    <div class="zona-titulo">Cemitério · banidas até a próxima batalha</div>
-    <div class="pilha cemiterio" id="zonaCemiterio"><p class="vazio">Nenhuma carta banida.</p></div>
-
-    <div class="log">
-      <div class="zona-titulo" style="margin-top:0">Crônica da batalha</div>
-      <div class="log-lista" id="logLista"><p class="vazio">A crônica começa com a primeira oração.</p></div>
     </div>
   </section>
 </main>
 
-<div id="tooltip" role="tooltip">
-  <div class="t-nome"></div>
-  <div class="t-raridade"></div>
-  <div class="t-fe"></div>
-  <div class="t-desc"></div>
-  <div class="t-tags"></div>
-</div>
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual" hidden></div>
 
-<div id="veu">
-  <div id="modal" role="dialog" aria-modal="true"></div>
-</div>
+<dialog id="editDlg" aria-labelledby="editHead">
+  <div class="dlg-head"><h2 id="editHead">Rolagem</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <div class="edit-result" id="editResult"></div>
+    <label class="field"><span class="field-label">Título</span>
+      <input class="input" id="eTitle" type="text" maxlength="120" autocomplete="off" placeholder="Ex.: Ataque do goblin"></label>
+    <label class="field"><span class="field-label">Descrição</span>
+      <textarea class="input" id="eDesc" rows="4" maxlength="2000"></textarea></label>
+    <div class="field"><span class="field-label">Cor <span class="opt" id="eColorName"></span></span>
+      <div class="palette" id="ePalette" role="radiogroup" aria-label="Cor da rolagem"></div></div>
+    <div class="edit-actions">
+      <button type="button" class="btn" id="eRepeat">Repetir esta rolagem</button>
+      <button type="button" class="btn" id="ePin">Fixar no topo</button>
+    </div>
+    <div id="eMoveBox">
+      <span class="field-label">Mover para outro histórico</span>
+      <div class="move-row"><select class="input" id="eMoveSel"></select><button type="button" class="btn" id="eMoveBtn">Mover</button></div>
+    </div>
+  </div>
+  <div class="dlg-foot"><span class="note">Título, descrição e cor são salvos sozinhos.</span><button type="button" class="btn danger" id="eDelete">Apagar rolagem</button></div>
+</dialog>
+
+<dialog id="sepDlg" aria-labelledby="sepHead">
+  <div class="dlg-head"><h2 id="sepHead">Separador</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body"><label class="field"><span class="field-label">Texto do separador</span>
+    <input class="input" id="sText" type="text" maxlength="120" autocomplete="off"></label></div>
+  <div class="dlg-foot"><span class="note">Salvo sozinho.</span><button type="button" class="btn danger" id="sDelete">Apagar separador</button></div>
+</dialog>
+
+<dialog id="tablesDlg" class="wide" aria-labelledby="tablesHead">
+  <div class="dlg-head"><h2 id="tablesHead">Tabelas de eventos</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body tables-layout">
+    <nav class="tables-nav" aria-label="Suas tabelas">
+      <ul class="tables-list" id="tablesList"></ul>
+      <button type="button" class="btn" id="newTableBtn">Nova tabela</button>
+    </nav>
+    <div id="tableEditor">
+      <label class="field"><span class="field-label">Nome da tabela</span>
+        <input class="input" id="tName" type="text" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span class="field-label">Itens <span class="opt">um por linha</span></span>
+        <textarea class="input items-area" id="tItems" rows="14" placeholder="Céu limpo&#10;Chuva fina&#10;Nevoeiro&#10;Tempestade"></textarea></label>
+      <div class="table-foot"><span class="note" id="tCount"></span><button type="button" class="btn danger small" id="tDelete">Apagar tabela</button></div>
+    </div>
+    <p class="tables-empty" id="tablesEmpty" hidden>Nenhuma tabela ainda. Clique em “Nova tabela” e escreva um item por linha. Exemplo: uma tabela “Clima” com um tipo de clima em cada linha.</p>
+  </div>
+</dialog>
+
+<dialog id="trashDlg" aria-labelledby="trashHead">
+  <div class="dlg-head"><h2 id="trashHead">Lixeira</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body"><p class="note">Tudo o que é apagado fica aqui por 30 dias. Depois disso some de vez.</p><ul class="trash-list" id="trashList"></ul></div>
+  <div class="dlg-foot"><span></span><button type="button" class="btn danger" id="emptyTrashBtn">Esvaziar lixeira</button></div>
+</dialog>
+
+<dialog id="promptDlg" aria-labelledby="promptHead">
+  <div class="dlg-head"><h2 id="promptHead"></h2></div>
+  <div class="dlg-body">
+    <p class="prompt-msg" id="promptMsg"></p>
+    <label class="field" id="promptField"><span class="field-label" id="promptLabel"></span>
+      <input class="input" id="promptInput" type="text" maxlength="120" autocomplete="off"></label>
+  </div>
+  <div class="dlg-foot"><button type="button" class="btn ghost" id="promptCancel">Cancelar</button><button type="button" class="btn primary" id="promptOk">Ok</button></div>
+</dialog>
+
+<input type="file" id="importInput" accept=".json,application/json" hidden>
 
 <script>
-(function(){
-  "use strict";
-  const CHAVE_V1 = "urgm_deck_paladino_v1";
-  const CHAVE = "urgm_deck_paladino_v2";
-  const CHAVE_CFG = "urgm_deck_paladino_cfg_v2";
-  const CHAVE_BATALHA = "urgm_deck_paladino_batalha_v2";
+(function () {
+  'use strict';
 
-  const RARIDADES = {
-    comum:{nome:"Comum",cor:"var(--r-comum)"},
-    incomum:{nome:"Incomum",cor:"var(--r-incomum)"},
-    rara:{nome:"Rara",cor:"var(--r-rara)"},
-    epica:{nome:"Épica",cor:"var(--r-epica)"},
-    lendaria:{nome:"Lendária",cor:"var(--r-lendaria)"}
+  /* ================= constantes ================= */
+  const STORAGE_KEY = 'rolador-urgm:dados:v1';
+  const TRASH_DAYS = 30;
+  const DAY = 86400000;
+  const LOG_PAGE = 200;
+  const MAX_NUM = 9999999;
+  const STORAGE_SOFT_LIMIT = 4000000; // caracteres (~80% do limite comum de 5 MB)
+  const ROLL_GAP_MS = 450;            // evita rolagem dupla por clique duplo
+  const NO_COLOR = '#3b4a68';
+
+  const COLORS = [
+    { id: 'vermelho', name: 'Vermelho', hex: '#ef5350' },
+    { id: 'laranja',  name: 'Laranja',  hex: '#ff8a3d' },
+    { id: 'amarelo',  name: 'Amarelo',  hex: '#f5cf4f' },
+    { id: 'verde',    name: 'Verde',    hex: '#5cc26b' },
+    { id: 'turquesa', name: 'Turquesa', hex: '#2fc4bd' },
+    { id: 'azul',     name: 'Azul',     hex: '#5aa2ff' },
+    { id: 'roxo',     name: 'Roxo',     hex: '#a67cf2' },
+    { id: 'rosa',     name: 'Rosa',     hex: '#f06aa8' },
+  ];
+  const COLOR = {};
+  COLORS.forEach((c) => { COLOR[c.id] = c; });
+
+  const ICONS = {
+    check: '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5 5.5 10.5 11.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    pin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M10 1.2 14.8 6l-1.9.7-2.7 2.7.4 3.4-1.5 1.5-2.7-2.7-4 4-.8-.8 4-4-2.7-2.7L4.4 6.6l3.4.4 2.7-2.7z" fill="currentColor"/></svg>',
   };
 
-  /* ---------- estado ---------- */
-  let skills = [];
-  let deck = [], mao = [], descarte = [], cemiterio = [];
-  let efeitosAtivos = []; // {id, nome, restam}
-  let selecionadas = new Set();
-  let pool = {atual:0, max:100};
-  let rodada = 0;
-  let emBatalha = false;
-  let log = [];
-  let editandoId = null;
-  let fluxoAtivo = false; // evita usar duas cartas ao mesmo tempo
+  /* ================= estado ================= */
+  let state = null;
+  let storageAvailable = true;
+  let saveFailed = false;
+  let saveBlocked = false;
+  let corruptRaw = null;
+  let corruptNoticeDismissed = false;
+  let lastSavedSize = 0;
+  let pendingSave = null;
 
-  /* ---------- utilidades ---------- */
-  const el = id => document.getElementById(id);
-  const skillPorId = id => skills.find(s => s.id === id);
-  function novoId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-  function embaralhar(arr){
-    for(let i = arr.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
-  function limitar(v, mn, mx){ return Math.min(mx, Math.max(mn, v)); }
-  function rolar(lados){ return 1 + Math.floor(Math.random() * lados); }
+  let formColor = null;
+  let descOpen = false;
+  let attempted = false;
+  let lastRollTime = 0;
+  let openMenuId = null;
+  let filterOpen = false;
+  const filters = { colors: new Set(), noTitle: false, pinned: false, q: '' };
+  let logLimit = LOG_PAGE;
+  let editingId = null;
+  let editingSepId = null;
+  let editingTableId = null;
+  let promptResolve = null;
+  let toastTimer = null;
+  let renderSoonTimer = null;
 
-  /* aceita "45" (=1d45) ou notação NdX+Y: "d4", "1d30+30", "2d20-3" */
-  function interpretarDado(txt){
-    txt = String(txt || "").trim().toLowerCase().replace(/\s+/g,"");
-    if(!txt) return null;
-    if(/^\d+$/.test(txt)){
-      const l = parseInt(txt,10);
-      return l >= 2 && l <= 1000 ? {n:1, lados:l, mod:0, formula:"1d"+l} : null;
-    }
-    const m = txt.match(/^(\d*)d(\d+)([+-]\d+)?$/);
-    if(!m) return null;
-    const n = limitar(parseInt(m[1] || "1",10), 1, 50);
-    const lados = parseInt(m[2],10);
-    if(lados < 2 || lados > 1000) return null;
-    const mod = m[3] ? parseInt(m[3],10) : 0;
-    return {n, lados, mod, formula: n + "d" + lados + (mod ? (mod > 0 ? "+" : "") + mod : "")};
-  }
-  function rolarFormula(d){
-    let total = d.mod;
-    const partes = [];
-    for(let i = 0; i < d.n; i++){ const r = rolar(d.lados); total += r; partes.push(r); }
-    return {total, partes};
-  }
-  function detalheRolagem(d, r){
-    return (d.n > 1 || d.mod) ? " [" + r.partes.join(", ") + (d.mod ? (d.mod > 0 ? " +" : " ") + d.mod : "") + "]" : "";
-  }
+  /* ================= utilidades ================= */
+  const $ = (id) => document.getElementById(id);
 
-  /* ---------- normalização de skill ---------- */
-  function normalizar(s){
-    const t = s.tags || {};
-    return {
-      id: s.id || novoId(),
-      nome: String(s.nome || "").slice(0,60),
-      fe: limitar(parseInt(s.fe,10) || 0, 0, 999),
-      copias: limitar(parseInt(s.copias,10) || 1, 1, 20),
-      desc: String(s.desc || "").slice(0,900),
-      raridade: RARIDADES[s.raridade] ? s.raridade : "comum",
-      arte: String(s.arte || "").slice(0,300),
-      labels: Array.isArray(s.labels) ? s.labels.map(x=>String(x).trim()).filter(Boolean).slice(0,8) : [],
-      tags: {
-        recuperaAoUsar: t.recuperaAoUsar ? {valor: limitar(parseInt(t.recuperaAoUsar.valor,10)||0,1,999)} : null,
-        acumula: t.acumula ? {
-          porRodada: limitar(parseInt(t.acumula.porRodada,10)||0,1,999),
-          limite: limitar(parseInt(t.acumula.limite,10)||0,1,999)
-        } : null,
-        canaliza: t.canaliza ? {valor: limitar(parseInt(t.canaliza.valor,10)||0,1,999)} : null,
-        custoCond: t.custoCond ? {
-          valor: limitar(parseInt(t.custoCond.valor,10)||0,0,999),
-          modo: t.custoCond.modo === "condicao" ? "condicao" : "descarte",
-          obrigatorio: !!t.custoCond.obrigatorio,
-          texto: String(t.custoCond.texto || "").slice(0,300)
-        } : null,
-        puxarAoUsar: t.puxarAoUsar ? {qtd: limitar(parseInt(t.puxarAoUsar.qtd,10)||0,1,20)} : null,
-        descartarAleatorias: t.descartarAleatorias ? {qtd: limitar(parseInt(t.descartarAleatorias.qtd,10)||0,1,20)} : null,
-        dadoAoUsar: (function(){
-          if(!t.dadoAoUsar) return null;
-          const d = interpretarDado(t.dadoAoUsar.formula || (t.dadoAoUsar.lados ? "1d" + t.dadoAoUsar.lados : ""));
-          return d ? {formula: d.formula} : null;
-        })(),
-        reviverCem: t.reviverCem ? {qtd: limitar(parseInt(t.reviverCem.qtd,10)||0,1,20)} : null,
-        reviverDesc: t.reviverDesc ? {qtd: limitar(parseInt(t.reviverDesc.qtd,10)||0,1,20)} : null,
-        banirAoDescartar: t.banirAoDescartar ? {texto: String(t.banirAoDescartar.texto || "").slice(0,300)} : null,
-        duracao: t.duracao ? {rodadas: limitar(parseInt(t.duracao.rodadas,10)||0,1,99)} : null,
-        destinoFixo: ["perguntar","cemiterio","deck"].includes(t.destinoFixo) ? t.destinoFixo : "perguntar"
+  function h(tag, props, ...kids) {
+    const node = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null || v === false) continue;
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k === 'vars') { for (const name in v) if (v[name] != null) node.style.setProperty(name, v[name]); }
+        else if (k.slice(0, 2) === 'on' && typeof v === 'function') node.addEventListener(k.slice(2), v);
+        else if (v === true) node.setAttribute(k, '');
+        else node.setAttribute(k, String(v));
       }
-    };
-  }
-
-  function custoEfetivo(inst, s){
-    if(s.tags.custoCond && s.tags.custoCond.modo === "condicao" && inst.condAtiva){
-      return s.tags.custoCond.valor;
     }
-    return s.fe;
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false || kid === '') continue;
+      node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return node;
   }
 
-  /* ---------- persistência ---------- */
-  function salvarSkills(){ try{ localStorage.setItem(CHAVE, JSON.stringify(skills)); }catch(e){} }
-  function salvarCfg(){
-    try{ localStorage.setItem(CHAVE_CFG, JSON.stringify({mao: el("cfgMao").value, feMax: el("cfgFeMax").value, feIni: el("cfgFeIni").value})); }catch(e){}
-  }
-  function salvarBatalha(){
-    try{
-      localStorage.setItem(CHAVE_BATALHA, JSON.stringify({deck,mao,descarte,cemiterio,pool,rodada,emBatalha,log,efeitosAtivos}));
-    }catch(e){}
-  }
-  function carregarTudo(){
-    try{
-      let bruto = localStorage.getItem(CHAVE);
-      if(!bruto){
-        const antigo = localStorage.getItem(CHAVE_V1);
-        if(antigo) bruto = antigo;
-      }
-      if(bruto) skills = JSON.parse(bruto).filter(s => s && s.nome).map(normalizar);
-    }catch(e){ skills = []; }
-    try{
-      const cfg = JSON.parse(localStorage.getItem(CHAVE_CFG) || "{}");
-      if(cfg.mao) el("cfgMao").value = cfg.mao;
-      if(cfg.feMax) el("cfgFeMax").value = cfg.feMax;
-      if(cfg.feIni !== undefined && cfg.feIni !== "") el("cfgFeIni").value = cfg.feIni;
-    }catch(e){}
-    try{
-      const b = JSON.parse(localStorage.getItem(CHAVE_BATALHA) || "null");
-      if(b && b.emBatalha){
-        const valida = arr => (arr||[]).filter(i => i && skillPorId(i.skillId));
-        deck = valida(b.deck); mao = valida(b.mao);
-        descarte = valida(b.descarte); cemiterio = valida(b.cemiterio);
-        pool = b.pool || pool; rodada = b.rodada || 1;
-        emBatalha = true; log = Array.isArray(b.log) ? b.log : [];
-        efeitosAtivos = Array.isArray(b.efeitosAtivos) ? b.efeitosAtivos : [];
-      }
-    }catch(e){}
+  function icon(name, cls) {
+    const span = document.createElement('span');
+    span.className = 'ico' + (cls ? ' ' + cls : '');
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = ICONS[name]; // só SVG fixo do próprio arquivo
+    return span;
   }
 
-  /* ---------- crônica ---------- */
-  function cronica(txt){
-    log.unshift({r: rodada, t: txt});
-    if(log.length > 150) log.length = 150;
+  const hasCrypto = !!(window.crypto && typeof window.crypto.getRandomValues === 'function');
+
+  /* Inteiro uniforme de 1 a n, com o gerador criptográfico do navegador. */
+  function randInt(n) {
+    if (!Number.isSafeInteger(n) || n < 1) throw new RangeError('randInt: n inválido');
+    if (n === 1) return 1;
+    if (!hasCrypto) return 1 + Math.floor(Math.random() * n);
+    const RANGE = 4294967296;
+    const limit = RANGE - (RANGE % n); // descarta a sobra para não viciar o resultado
+    const buf = new Uint32Array(1);
+    let x;
+    do { window.crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+    return 1 + (x % n);
+  }
+
+  function uid(prefix) {
+    let r;
+    if (hasCrypto) { const b = new Uint32Array(2); window.crypto.getRandomValues(b); r = b[0].toString(36) + b[1].toString(36); }
+    else r = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+    return prefix + '_' + Date.now().toString(36) + r;
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  function startOfDay(ts) { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function daysBetween(ts) { return Math.round((startOfDay(Date.now()) - startOfDay(ts)) / DAY); }
+  function isToday(ts) { return daysBetween(ts) === 0; }
+  function clock(ts) { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function dayMonth(ts) { const d = new Date(ts); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+  function fullDate(ts) { return dayMonth(ts) + '/' + new Date(ts).getFullYear(); }
+  function listWhen(ts) { return isToday(ts) ? clock(ts) : dayMonth(ts) + ' ' + clock(ts); }
+  function dayWord(ts) { const d = daysBetween(ts); if (d <= 0) return 'hoje'; if (d === 1) return 'ontem'; return dayMonth(ts); }
+  function ago(ts) { if (!ts) return 'nunca'; const d = daysBetween(ts); if (d <= 0) return 'hoje'; if (d === 1) return 'ontem'; return 'há ' + d + ' dias'; }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function joinPt(parts) { return parts.length <= 1 ? parts.join('') : parts.slice(0, -1).join(', ') + ' e ' + parts[parts.length - 1]; }
+  function colorHex(id) { return id && COLOR[id] ? COLOR[id].hex : null; }
+  function colorLabel(id) { return id && COLOR[id] ? COLOR[id].name.toLowerCase() : 'sem cor'; }
+  function fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function slug(s) { return fold(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'historico'; }
+  function stamp() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()); }
+  function uniqueName(base, taken) { if (!taken.includes(base)) return base; let i = 2; while (taken.includes(base + ' (' + i + ')')) i++; return base + ' (' + i + ')'; }
+  function defaultHistoryName() { return 'Sessão de ' + dayMonth(Date.now()); }
+  function sizeLabel(chars) { return chars < 1048576 ? Math.max(1, Math.round(chars / 1024)) + ' KB' : (chars / 1048576).toFixed(1).replace('.', ',') + ' MB'; }
+  const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const isNarrow = () => !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
+
+  /* ================= leitura segura dos dados ================= */
+  function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+  function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : null; }
+  function int(v) { return Number.isSafeInteger(v) ? v : null; }
+
+  function normEntry(e) {
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || !e.id) return null;
+    const createdAt = num(e.createdAt) || Date.now();
+    if (e.type === 'sep') return { id: e.id, type: 'sep', text: str(e.text, 120).trim() || 'Separador', createdAt };
+    if (e.type !== 'roll') return null;
+    const base = { id: e.id, type: 'roll', mode: e.mode, title: str(e.title, 120), description: str(e.description, 2000),
+      color: COLOR[e.color] ? e.color : null, pinned: e.pinned === true, createdAt };
+    if (e.mode === 'fixa') {
+      const atributo = int(e.atributo), fixa = int(e.fixa), total = int(e.total);
+      if (atributo == null || fixa == null || total == null) return null;
+      return Object.assign(base, { atributo, fixa, die: atributo - fixa, dieValue: int(e.dieValue) != null ? e.dieValue : total - fixa, total });
+    }
+    if (e.mode === 'dados') {
+      if (!Array.isArray(e.terms) || int(e.total) == null) return null;
+      const terms = [];
+      for (const t of e.terms) {
+        if (!t || typeof t !== 'object') return null;
+        const sign = t.sign === -1 ? -1 : 1;
+        if (t.kind === 'dice') {
+          const count = int(t.count), sides = int(t.sides);
+          if (count == null || sides == null || count < 1 || sides < 2) return null;
+          const rolls = Array.isArray(t.rolls) ? t.rolls.filter((x) => Number.isSafeInteger(x)) : [];
+          terms.push({ kind: 'dice', sign, count, sides, rolls });
+        } else if (t.kind === 'num') {
+          const value = int(t.value);
+          if (value == null) return null;
+          terms.push({ kind: 'num', sign, value });
+        } else return null;
+      }
+      return Object.assign(base, { expr: str(e.expr, 200) || displayTerms(terms), terms, total: e.total, min: int(e.min), max: int(e.max) });
+    }
+    if (e.mode === 'tabela') {
+      if (typeof e.itemText !== 'string') return null;
+      return Object.assign(base, { tableId: str(e.tableId, 100), tableName: str(e.tableName, 80) || 'Tabela',
+        itemCount: int(e.itemCount) || 0, itemIndex: int(e.itemIndex) || 0, itemText: str(e.itemText, 1000) });
+    }
+    return null;
+  }
+
+  function normHistory(x) {
+    if (!x || typeof x !== 'object' || typeof x.id !== 'string' || !x.id) return null;
+    const seen = new Set();
+    const entries = [];
+    for (const raw of (Array.isArray(x.entries) ? x.entries : [])) {
+      const e = normEntry(raw);
+      if (!e || seen.has(e.id)) continue;
+      seen.add(e.id);
+      entries.push(e);
+    }
+    entries.sort((a, b) => a.createdAt - b.createdAt);
+    const createdAt = num(x.createdAt) || (entries[0] ? entries[0].createdAt : Date.now());
+    const updatedAt = num(x.updatedAt) || (entries.length ? entries[entries.length - 1].createdAt : createdAt);
+    return { id: x.id, name: str(x.name, 80).trim() || 'Histórico sem nome', createdAt, updatedAt, entries };
+  }
+
+  function normTable(t) {
+    if (!t || typeof t !== 'object' || typeof t.id !== 'string' || !t.id) return null;
+    const now = Date.now();
+    return { id: t.id, name: str(t.name, 80).trim() || 'Tabela sem nome', text: str(t.text, 20000),
+      createdAt: num(t.createdAt) || now, updatedAt: num(t.updatedAt) || now };
+  }
+
+  function normTrash(t) {
+    if (!t || typeof t !== 'object' || typeof t.id !== 'string') return null;
+    const deletedAt = num(t.deletedAt);
+    if (!deletedAt) return null;
+    let data = null;
+    if (t.kind === 'entry') data = normEntry(t.data);
+    else if (t.kind === 'history') data = normHistory(t.data);
+    else if (t.kind === 'table') data = normTable(t.data);
+    if (!data) return null;
+    const out = { id: t.id, kind: t.kind, deletedAt, data };
+    if (t.kind === 'entry') out.historyId = str(t.historyId, 100);
+    return out;
+  }
+
+  function newHistory(name) { const now = Date.now(); return { id: uid('h'), name, createdAt: now, updatedAt: now, entries: [] }; }
+  function freshState() {
+    const first = newHistory(defaultHistoryName());
+    return { version: 1, activeHistoryId: first.id, histories: [first], tables: [], trash: [], lastBackupAt: null, mode: 'fixa' };
+  }
+  function mostRecent(list) { return list.reduce((best, x) => (!best || x.updatedAt > best.updatedAt ? x : best), null); }
+
+  function normalizeState(raw) {
+    const histories = [];
+    const hIds = new Set();
+    for (const x of (Array.isArray(raw.histories) ? raw.histories : [])) {
+      const n = normHistory(x);
+      if (n && !hIds.has(n.id)) { hIds.add(n.id); histories.push(n); }
+    }
+    const tables = [];
+    const tIds = new Set();
+    for (const x of (Array.isArray(raw.tables) ? raw.tables : [])) {
+      const n = normTable(x);
+      if (n && !tIds.has(n.id)) { tIds.add(n.id); tables.push(n); }
+    }
+    const trash = (Array.isArray(raw.trash) ? raw.trash : []).map(normTrash).filter(Boolean);
+    const s = { version: 1, activeHistoryId: typeof raw.activeHistoryId === 'string' ? raw.activeHistoryId : '',
+      histories, tables, trash, lastBackupAt: num(raw.lastBackupAt),
+      mode: ['fixa', 'dados', 'tabela'].includes(raw.mode) ? raw.mode : 'fixa' };
+    if (!s.histories.length) s.histories.push(newHistory(defaultHistoryName()));
+    if (!s.histories.some((x) => x.id === s.activeHistoryId)) s.activeHistoryId = mostRecent(s.histories).id;
+    return s;
+  }
+
+  /* ================= salvar no navegador ================= */
+  function load() {
+    let raw;
+    try { raw = window.localStorage.getItem(STORAGE_KEY); }
+    catch (err) { storageAvailable = false; return freshState(); }
+    if (raw == null) return freshState();
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (err) { parsed = null; }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return normalizeState(parsed);
+    // Dados danificados: guarda uma cópia antes de qualquer coisa.
+    corruptRaw = raw;
+    try { window.localStorage.setItem(STORAGE_KEY + ':danificado:' + stamp(), raw); }
+    catch (err) { saveBlocked = true; }
+    return freshState();
+  }
+
+  function save() {
+    if (pendingSave) { clearTimeout(pendingSave); pendingSave = null; }
+    if (!storageAvailable || saveBlocked) { renderSaveStatus(); renderBanner(); return false; }
+    const json = JSON.stringify(state);
+    try { window.localStorage.setItem(STORAGE_KEY, json); lastSavedSize = json.length; saveFailed = false; }
+    catch (err) { saveFailed = true; }
+    renderSaveStatus();
+    renderBanner();
+    return !saveFailed;
+  }
+  function saveSoon() { if (pendingSave) clearTimeout(pendingSave); pendingSave = setTimeout(save, 300); }
+  function flushSave() { if (pendingSave) save(); }
+
+  /* ================= ajudantes do domínio ================= */
+  function activeHistory() { return state.histories.find((x) => x.id === state.activeHistoryId) || state.histories[0]; }
+  function findEntry(id) {
+    if (!id) return null;
+    for (const hist of state.histories) {
+      const i = hist.entries.findIndex((e) => e.id === id);
+      if (i !== -1) return { hist, index: i, entry: hist.entries[i] };
+    }
+    return null;
+  }
+  function findTable(id) { return (id && state.tables.find((t) => t.id === id)) || null; }
+  function tableItems(t) { return String(t.text || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean); }
+  function insertSorted(list, e) { let i = list.length; while (i > 0 && list[i - 1].createdAt > e.createdAt) i--; list.splice(i, 0, e); }
+  function rollsOf(hist) { return hist.entries.filter((e) => e.type === 'roll'); }
+  function latestRoll(hist) { for (let i = hist.entries.length - 1; i >= 0; i--) if (hist.entries[i].type === 'roll') return hist.entries[i]; return null; }
+  function totalRolls() { return state.histories.reduce((n, x) => n + rollsOf(x).length, 0); }
+  function lastChange() {
+    let m = 0;
+    for (const x of state.histories) m = Math.max(m, x.updatedAt);
+    for (const t of state.tables) m = Math.max(m, t.updatedAt);
+    return m;
+  }
+  function backupOverdue() {
+    const n = totalRolls();
+    if (!n) return false;
+    if (!state.lastBackupAt) return n >= 10;
+    return Date.now() - state.lastBackupAt > 14 * DAY && lastChange() > state.lastBackupAt;
+  }
+  function purgeTrash() {
+    const cutoff = Date.now() - TRASH_DAYS * DAY;
+    const before = state.trash.length;
+    state.trash = state.trash.filter((t) => t.deletedAt >= cutoff);
+    return state.trash.length !== before;
+  }
+  function pushTrash(item) { item.id = uid('t'); item.deletedAt = Date.now(); state.trash.push(item); return item.id; }
+
+  /* ================= dados livres ================= */
+  function tokenizeDice(input) {
+    const src = String(input || '').replace(/[−‒–—]/g, '-').replace(/d%/gi, 'd100');
+    if (!src.trim()) return { empty: true, terms: [] };
+    const re = /\s*([+-])?\s*(?:(\d*)[dD](\d+)|(\d+))\s*/y;
+    const terms = [];
+    let pos = 0;
+    while (pos < src.length) {
+      re.lastIndex = pos;
+      const m = re.exec(src);
+      if (!m) {
+        const rest = src.slice(pos).trim();
+        if (rest === '+' || rest === '-') return { error: 'Falta completar depois do “' + (rest === '-' ? '−' : '+') + '”.' };
+        return { error: 'Não entendi “' + rest + '”. Escreva algo como 2d6+3.' };
+      }
+      if (terms.length && !m[1]) return { error: 'Falta um + ou − antes de “' + m[0].trim() + '”.' };
+      const sign = m[1] === '-' ? -1 : 1;
+      if (m[3] !== undefined) terms.push({ kind: 'dice', sign, count: m[2] === '' ? 1 : Number(m[2]), sides: Number(m[3]) });
+      else terms.push({ kind: 'num', sign, value: Number(m[4]) });
+      pos = re.lastIndex;
+    }
+    return { terms };
+  }
+
+  function displayTerms(terms) {
+    return terms.map((t, i) => {
+      const body = t.kind === 'dice' ? t.count + 'd' + t.sides : String(t.value);
+      if (i === 0) return (t.sign < 0 ? '−' : '') + body;
+      return (t.sign < 0 ? ' − ' : ' + ') + body;
+    }).join('');
+  }
+  function compactTerms(terms) {
+    return terms.map((t, i) => {
+      const body = t.kind === 'dice' ? t.count + 'd' + t.sides : String(t.value);
+      return (t.sign < 0 ? '-' : (i === 0 ? '' : '+')) + body;
+    }).join('');
+  }
+
+  function parseDice(input) {
+    const tk = tokenizeDice(input);
+    if (tk.empty) return { empty: true };
+    if (tk.error) return { error: tk.error };
+    const terms = tk.terms;
+    if (terms.length > 20) return { error: 'Use no máximo 20 partes numa rolagem só.' };
+    let dice = 0;
+    for (const t of terms) {
+      if (t.kind === 'dice') {
+        if (t.count < 1) return { error: 'A quantidade de dados precisa ser pelo menos 1.' };
+        if (t.count > 100) return { error: 'Use no máximo 100 dados iguais de uma vez.' };
+        if (t.sides < 2) return { error: 'O dado precisa ter pelo menos 2 lados.' };
+        if (t.sides > 100000) return { error: 'O dado pode ter no máximo 100000 lados.' };
+        dice += t.count;
+      } else if (t.value > 1000000) return { error: 'Esse modificador é grande demais.' };
+    }
+    if (!dice) return { error: 'Falta o dado. Escreva algo como 1d20 ou 2d6+3.' };
+    if (dice > 300) return { error: 'São dados demais numa rolagem só (máximo 300).' };
+    let min = 0, max = 0;
+    for (const t of terms) {
+      if (t.kind === 'dice') {
+        if (t.sign > 0) { min += t.count; max += t.count * t.sides; }
+        else { min -= t.count * t.sides; max -= t.count; }
+      } else { min += t.sign * t.value; max += t.sign * t.value; }
+    }
+    return { terms, min, max, norm: displayTerms(terms) };
+  }
+
+  /* ================= rolagens ================= */
+  function buildRoll(spec, meta) {
+    const base = { id: uid('r'), type: 'roll', mode: spec.mode, title: meta.title || '', description: meta.description || '',
+      color: COLOR[meta.color] ? meta.color : null, pinned: false, createdAt: Date.now() };
+    if (spec.mode === 'fixa') {
+      const die = spec.atributo - spec.fixa;
+      const dieValue = die > 0 ? randInt(die) : 0;
+      return Object.assign(base, { atributo: spec.atributo, fixa: spec.fixa, die, dieValue, total: dieValue + spec.fixa });
+    }
+    if (spec.mode === 'dados') {
+      const terms = spec.parsed.terms.map((t) => (t.kind === 'dice'
+        ? { kind: 'dice', sign: t.sign, count: t.count, sides: t.sides, rolls: Array.from({ length: t.count }, () => randInt(t.sides)) }
+        : { kind: 'num', sign: t.sign, value: t.value }));
+      const total = terms.reduce((acc, t) => acc + t.sign * (t.kind === 'dice' ? t.rolls.reduce((a, b) => a + b, 0) : t.value), 0);
+      return Object.assign(base, { expr: spec.parsed.norm, terms, total, min: spec.parsed.min, max: spec.parsed.max });
+    }
+    const items = tableItems(spec.table);
+    const index = randInt(items.length);
+    return Object.assign(base, { tableId: spec.table.id, tableName: spec.table.name, itemCount: items.length, itemIndex: index, itemText: items[index - 1] });
+  }
+
+  function compText(e, full) {
+    if (e.mode === 'fixa') {
+      if (e.die === 0) return 'Fixa total de ' + e.fixa + ', sem rolar dado (atributo ' + e.atributo + ')';
+      if (e.fixa === 0) return e.dieValue + ' no d' + e.die + ', sem fixa (atributo ' + e.atributo + ')';
+      return e.dieValue + ' no d' + e.die + ' + ' + e.fixa + ' de fixa (atributo ' + e.atributo + ')';
+    }
+    if (e.mode === 'dados') {
+      return e.terms.map((t, i) => {
+        const op = i === 0 ? (t.sign < 0 ? '−' : '') : (t.sign < 0 ? ' − ' : ' + ');
+        if (t.kind === 'num') return op + t.value;
+        const list = !full && t.rolls.length > 12 ? t.rolls.slice(0, 12).join(', ') + ', …' : t.rolls.join(', ');
+        return op + t.count + 'd' + t.sides + ' (' + list + ')';
+      }).join('');
+    }
+    return 'Tabela “' + e.tableName + '”, item ' + e.itemIndex + ' de ' + e.itemCount;
+  }
+
+  /* ================= formulário de rolagem ================= */
+  const FIELD_ORDER = { fixa: ['fTitle', 'fAtr', 'fFixa'], dados: ['fTitle', 'fExpr'], tabela: ['fTitle', 'fTable'] };
+
+  function readInt(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return { empty: true };
+    if (!/^\d+$/.test(s)) return { bad: true };
+    const n = Number(s);
+    if (n > MAX_NUM) return { big: true };
+    return { value: n };
+  }
+  function problem(field, text) { return { ok: false, level: 'problem', field, text }; }
+  function guide(field, text) { return { ok: false, level: 'hint', field, text }; }
+
+  function validateForm() {
+    const mode = state.mode;
+    if (mode === 'fixa') {
+      const a = readInt($('fAtr').value);
+      const f = readInt($('fFixa').value);
+      if (a.bad) return problem('fAtr', 'O atributo só aceita número inteiro (sem letra, vírgula ou ponto).');
+      if (a.big) return problem('fAtr', 'Esse atributo é grande demais.');
+      if (f.bad) return problem('fFixa', 'A fixa só aceita número inteiro (sem letra, vírgula ou ponto).');
+      if (f.big) return problem('fFixa', 'Essa fixa é grande demais.');
+      if (a.empty) return guide('fAtr', 'Digite o atributo e quanto quer fixar.');
+      if (a.value < 1) return problem('fAtr', 'O atributo precisa ser pelo menos 1.');
+      const fixa = f.empty ? 0 : f.value;
+      if (fixa > a.value) return problem('fFixa', 'A fixa (' + fixa + ') passou do atributo (' + a.value + '). Ela pode ir no máximo até ' + a.value + '.');
+      const die = a.value - fixa;
+      let text;
+      if (die === 0) text = 'Fixa igual ao atributo: o resultado sai ' + a.value + ', sem rolar dado.';
+      else if (fixa === 0) text = 'Vai rolar 1d' + die + ', sem fixa. Resultado entre 1 e ' + die + '.';
+      else text = 'Vai rolar 1d' + die + ' + ' + fixa + '. Resultado entre ' + (fixa + 1) + ' e ' + a.value + '.';
+      return { ok: true, text, spec: { mode, atributo: a.value, fixa } };
+    }
+    if (mode === 'dados') {
+      const p = parseDice($('fExpr').value);
+      if (p.empty) return guide('fExpr', 'Escreva os dados (ex.: 2d6+3) ou use os botões abaixo.');
+      if (p.error) return problem('fExpr', p.error);
+      return { ok: true, text: 'Vai rolar ' + p.norm + '. Resultado entre ' + p.min + ' e ' + p.max + '.', spec: { mode, parsed: p } };
+    }
+    if (!state.tables.length) return guide('fTable', 'Você ainda não tem tabelas. Clique em “Criar ou editar tabelas”.');
+    const id = $('fTable').value;
+    if (!id) return guide('fTable', 'Escolha uma tabela.');
+    const t = findTable(id);
+    if (!t) return problem('fTable', 'Essa tabela não existe mais. Escolha outra.');
+    const n = tableItems(t).length;
+    if (!n) return problem('fTable', 'A tabela “' + t.name + '” está vazia. Adicione itens em “Criar ou editar tabelas”.');
+    const text = n === 1
+      ? 'A tabela “' + t.name + '” tem 1 item só: o resultado vai ser sempre ele.'
+      : 'Vai sortear 1 entre ' + n + ' itens de “' + t.name + '”, todos com a mesma chance.';
+    return { ok: true, text, spec: { mode, table: t } };
+  }
+
+  function renderPreview() {
+    const v = validateForm();
+    const p = $('preview');
+    p.textContent = v.text;
+    p.className = 'preview ' + (v.ok ? 'ok' : attempted ? 'error' : v.level);
+    for (const id of ['fAtr', 'fFixa', 'fExpr', 'fTable']) {
+      $(id).classList.toggle('invalid', !v.ok && v.field === id && (v.level === 'problem' || attempted));
+    }
+    return v;
+  }
+
+  function onFormInput() { attempted = false; renderPreview(); }
+
+  function doRoll() {
+    if (Date.now() - lastRollTime < ROLL_GAP_MS) return; // clique duplo não rola duas vezes
+    const v = validateForm();
+    if (!v.ok) {
+      attempted = true;
+      renderPreview();
+      const f = $(v.field);
+      if (f) f.focus();
+      return;
+    }
+    lastRollTime = Date.now();
+    const entry = buildRoll(v.spec, { title: $('fTitle').value.trim(), description: $('fDesc').value.trim(), color: formColor });
+    const hist = activeHistory();
+    insertSorted(hist.entries, entry);
+    hist.updatedAt = Date.now();
+    save();
+    resetForm();
+    afterNewRoll();
+  }
+
+  /* Depois de rolar, tudo volta ao padrão: nada de valor antigo esquecido no campo. */
+  function resetForm() {
+    for (const id of ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr']) $(id).value = '';
+    $('fTable').value = '';
+    formColor = null;
+    descOpen = false;
+    attempted = false;
+  }
+
+  function afterNewRoll() {
+    renderFormState();
+    renderHeader();
+    renderLast(true);
+    renderLog();
+    $('logScroll').scrollTop = 0;
+    if (isNarrow()) $('lastCard').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    else $('fTitle').focus({ preventScroll: true });
+  }
+
+  function repeatEntry(id) {
+    if (Date.now() - lastRollTime < ROLL_GAP_MS) return;
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    const e = f.entry;
+    let spec;
+    if (e.mode === 'fixa') spec = { mode: 'fixa', atributo: e.atributo, fixa: e.fixa };
+    else if (e.mode === 'dados') {
+      const p = parseDice(compactTerms(e.terms));
+      if (p.error || p.empty) { toast('Não deu para repetir esta rolagem.', { error: true }); return; }
+      spec = { mode: 'dados', parsed: p };
+    } else {
+      const t = findTable(e.tableId);
+      if (!t) { toast('A tabela “' + e.tableName + '” não existe mais. Restaure pela lixeira para repetir.', { error: true }); return; }
+      if (!tableItems(t).length) { toast('A tabela “' + t.name + '” está vazia agora.', { error: true }); return; }
+      spec = { mode: 'tabela', table: t };
+    }
+    lastRollTime = Date.now();
+    const entry = buildRoll(spec, { title: e.title, description: e.description, color: e.color });
+    const hist = activeHistory();
+    insertSorted(hist.entries, entry);
+    hist.updatedAt = Date.now();
+    save();
+    renderHeader();
+    renderLast(true);
+    renderLog();
+    $('logScroll').scrollTop = 0;
+  }
+
+  function onFieldKeydown(ev) {
+    if (ev.key !== 'Enter' || ev.isComposing) return;
+    const id = ev.target.id;
+    if (id === 'fDesc') { if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); doRoll(); } return; }
+    ev.preventDefault();
+    if (ev.ctrlKey || ev.metaKey) { doRoll(); return; }
+    const order = FIELD_ORDER[state.mode];
+    const i = order.indexOf(id);
+    if (i === -1 || i === order.length - 1) doRoll();
+    else $(order[i + 1]).focus();
+  }
+
+  function focusExprEnd() {
+    const input = $('fExpr');
+    input.focus();
+    const n = input.value.length;
+    try { input.setSelectionRange(n, n); } catch (err) { /* ok */ }
+  }
+
+  function applyChipDie(sides) {
+    const input = $('fExpr');
+    const tk = tokenizeDice(input.value);
+    if (tk.error) { attempted = true; renderPreview(); focusExprEnd(); return; }
+    const terms = tk.terms;
+    const found = terms.find((t) => t.kind === 'dice' && t.sides === sides && t.sign > 0);
+    if (found) found.count = Math.min(100, found.count + 1);
+    else {
+      const nt = { kind: 'dice', sign: 1, count: 1, sides };
+      const i = terms.findIndex((t) => t.kind === 'num');
+      if (i === -1) terms.push(nt); else terms.splice(i, 0, nt);
+    }
+    input.value = compactTerms(terms);
+    onFormInput();
+    focusExprEnd(); // assim o Enter rola, em vez de clicar no atalho de novo
+  }
+
+  function applyChipMod(delta) {
+    const input = $('fExpr');
+    const tk = tokenizeDice(input.value);
+    if (tk.error) { attempted = true; renderPreview(); focusExprEnd(); return; }
+    const terms = tk.terms.filter((t) => t.kind === 'dice');
+    const mod = tk.terms.filter((t) => t.kind === 'num').reduce((a, t) => a + t.sign * t.value, 0) + delta;
+    if (mod !== 0) terms.push({ kind: 'num', sign: mod < 0 ? -1 : 1, value: Math.abs(mod) });
+    input.value = compactTerms(terms);
+    onFormInput();
+    focusExprEnd();
+  }
+
+  function setMode(mode) {
+    if (!FIELD_ORDER[mode] || state.mode === mode) return;
+    state.mode = mode;
+    attempted = false;
+    save();
+    renderFormState();
+  }
+
+  /* ================= paletas de cor ================= */
+  function buildPalette(container, onPick) {
+    container.replaceChildren();
+    for (const c of [{ id: null, name: 'Sem cor' }].concat(COLORS)) {
+      container.append(h('button', {
+        type: 'button', class: 'swatch' + (c.id ? '' : ' swatch-none'), role: 'radio', 'aria-checked': 'false',
+        'aria-label': c.name, title: c.name, 'data-color': c.id || '', vars: { '--sw': c.id ? c.hex : null },
+        onclick: () => onPick(c.id),
+      }));
+    }
+  }
+  function markPalette(container, selected) {
+    for (const b of container.children) b.setAttribute('aria-checked', String((b.dataset.color || null) === (selected || null)));
+  }
+  function buildFilterPalette() {
+    const box = $('filterPalette');
+    box.replaceChildren();
+    for (const c of [{ id: 'none', name: 'Sem cor' }].concat(COLORS)) {
+      box.append(h('button', {
+        type: 'button', class: 'swatch small' + (c.id === 'none' ? ' swatch-none' : ''), 'aria-pressed': 'false',
+        'aria-label': 'Filtrar: ' + c.name, title: c.name, 'data-color': c.id, vars: { '--sw': c.id !== 'none' ? c.hex : null },
+        onclick: () => {
+          if (filters.colors.has(c.id)) filters.colors.delete(c.id); else filters.colors.add(c.id);
+          logLimit = LOG_PAGE;
+          renderFilterRow();
+          renderLog();
+        },
+      }));
+    }
+  }
+
+  /* ================= desenho da tela ================= */
+  function renderAll() {
+    renderHeader();
+    renderFormState();
+    renderLast(false);
+    renderFilterRow();
+    renderLog();
+    renderSaveStatus();
+    renderBanner();
+  }
+
+  function renderHeader() {
+    const hist = activeHistory();
+    $('histName').textContent = hist.name;
+    $('histBtn').title = 'Histórico atual: ' + hist.name;
+    $('destName').textContent = hist.name;
+    $('menuDot').hidden = !backupOverdue();
+  }
+
+  function renderFormState() {
+    for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', String(b.dataset.mode === state.mode));
+    for (const el of document.querySelectorAll('.mode-body')) el.hidden = el.dataset.for !== state.mode;
+    $('descWrap').hidden = !descOpen;
+    $('descToggle').hidden = descOpen;
+    renderTableSelect();
+    markPalette($('palette'), formColor);
+    $('colorName').textContent = colorLabel(formColor);
+    $('destName').textContent = activeHistory().name;
+    renderPreview();
+  }
+
+  function renderTableSelect() {
+    const sel = $('fTable');
+    const cur = sel.value;
+    sel.replaceChildren(
+      h('option', { value: '', text: state.tables.length ? 'Escolha uma tabela…' : 'Nenhuma tabela criada ainda' }),
+      ...state.tables.map((t) => h('option', { value: t.id, text: t.name + ' (' + plural(tableItems(t).length, 'item', 'itens') + ')' })));
+    sel.value = findTable(cur) ? cur : '';
+  }
+
+  function renderSaveStatus() {
+    const el = $('saveStatus');
+    el.replaceChildren();
+    if (!storageAvailable || saveBlocked) { el.className = 'save-status bad'; el.append('Salvamento desligado'); }
+    else if (saveFailed) { el.className = 'save-status bad'; el.append('Não foi salvo'); }
+    else { el.className = 'save-status'; el.append(icon('check'), 'Salvo no navegador'); }
+  }
+
+  function downloadCorrupt() {
+    if (corruptRaw != null) downloadFile('rolador-urgm-dados-danificados-' + stamp() + '.txt', corruptRaw, 'text/plain');
+  }
+
+  function renderBanner() {
+    const b = $('banner');
+    let n = null;
+    if (!storageAvailable) {
+      n = { kind: 'error', text: 'Este navegador está bloqueando o salvamento. O que for rolado agora some quando a aba fechar. Antes de sair, use Menu > Exportar backup completo.',
+        actions: [['Exportar backup completo', exportAll]] };
+    } else if (saveBlocked) {
+      n = { kind: 'error', text: 'Os dados salvos estavam danificados. Para não apagá-los, o salvamento está pausado. Baixe a cópia dos dados antigos para continuar salvando.',
+        actions: [['Baixar cópia e continuar', () => { downloadCorrupt(); saveBlocked = false; save(); renderAll(); }]] };
+    } else if (saveFailed) {
+      n = { kind: 'error', text: 'Não deu para salvar: o espaço do navegador para o rolador acabou. Exporte um backup completo e depois esvazie a lixeira ou apague históricos antigos.',
+        actions: [['Exportar backup completo', exportAll], ['Abrir lixeira', openTrash]] };
+    } else if (corruptRaw != null && !corruptNoticeDismissed) {
+      n = { kind: 'warn', text: 'Os dados salvos estavam danificados e não puderam ser abertos. Uma cópia foi guardada neste navegador e o rolador começou do zero.',
+        actions: [['Baixar cópia', downloadCorrupt], ['Entendi', () => { corruptNoticeDismissed = true; renderBanner(); }]] };
+    } else if (lastSavedSize > STORAGE_SOFT_LIMIT) {
+      n = { kind: 'warn', text: 'O espaço do navegador está quase cheio (' + Math.min(99, Math.round(lastSavedSize / 50000)) + '% usado). Exporte um backup completo e apague históricos antigos que não usa mais.',
+        actions: [['Exportar backup completo', exportAll]] };
+    }
+    if (!n) { b.hidden = true; b.replaceChildren(); return; }
+    b.hidden = false;
+    b.className = 'banner ' + n.kind;
+    b.replaceChildren(
+      h('span', { class: 'banner-text', text: n.text }),
+      h('span', { class: 'banner-actions' }, n.actions.map(([label, fn]) => h('button', { type: 'button', class: 'btn small', onclick: fn }, label))));
+  }
+
+  function renderLast(flash) {
+    const card = $('lastCard');
+    const hist = activeHistory();
+    const e = latestRoll(hist);
+    card.replaceChildren();
+    card.className = 'last-card';
+    if (!e) {
+      card.classList.add('empty');
+      card.style.setProperty('--c', NO_COLOR);
+      card.append(h('div', { class: 'last-band' }), h('div', { class: 'last-body' },
+        h('p', { class: 'last-empty-title', text: 'Nenhuma rolagem neste histórico ainda.' }),
+        h('p', { class: 'last-empty-sub', text: 'Preencha o painel ao lado e clique em Rolar. O resultado aparece aqui, grande.' })));
+      return;
+    }
+    card.style.setProperty('--c', colorHex(e.color) || NO_COLOR);
+    if (e.mode === 'tabela') card.classList.add('is-table');
+    const when = isToday(e.createdAt) ? 'Última rolagem às ' + clock(e.createdAt) : 'Última rolagem em ' + dayMonth(e.createdAt) + ' às ' + clock(e.createdAt);
+    const titleBtn = h('button', { type: 'button', class: 'last-title' + (e.title ? '' : ' untitled-big'), onclick: () => openEdit(e.id) },
+      e.title || 'Sem título. Clique para dar um nome.');
+    const text = h('div', { class: 'last-text' }, titleBtn,
+      h('div', { class: 'last-comp', text: compText(e) }),
+      e.description ? h('p', { class: 'last-desc', text: e.description }) : null);
+    const actions = h('div', { class: 'last-actions' },
+      h('button', { type: 'button', class: 'btn', onclick: () => repeatEntry(e.id) }, 'Repetir'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: () => openEdit(e.id) }, 'Editar'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: () => togglePin(e.id) }, e.pinned ? 'Desafixar' : 'Fixar'));
+    const body = h('div', { class: 'last-body' }, h('div', { class: 'last-meta' }, when, e.pinned ? icon('pin', 'pin') : null));
+    if (e.mode === 'tabela') body.append(text, h('div', { class: 'last-item', text: e.itemText }), actions);
+    else body.append(h('div', { class: 'last-num' + (String(e.total).length > 5 ? ' long' : ''), text: String(e.total) }), text, actions);
+    card.append(h('div', { class: 'last-band' }), body);
+    if (flash && !reduceMotion()) { void card.offsetWidth; card.classList.add('flash'); }
+  }
+
+  /* ================= histórico ================= */
+  function filterActive() { return filters.colors.size > 0 || filters.noTitle || filters.pinned || filters.q.trim() !== ''; }
+  function matchesFilter(e) {
+    if (e.type !== 'roll') return false;
+    if (filters.colors.size && !filters.colors.has(e.color || 'none')) return false;
+    if (filters.noTitle && e.title) return false;
+    if (filters.pinned && !e.pinned) return false;
+    const q = fold(filters.q).trim();
+    if (q && !fold([e.title, e.description, e.itemText || '', e.tableName || ''].join(' ')).includes(q)) return false;
+    return true;
+  }
+  function resetFilters() {
+    filters.colors.clear();
+    filters.noTitle = false;
+    filters.pinned = false;
+    filters.q = '';
+    filterOpen = false;
+    logLimit = LOG_PAGE;
+  }
+  function clearFilters() { resetFilters(); renderFilterRow(); renderLog(); }
+
+  function renderFilterRow() {
+    $('filterRow').hidden = !filterOpen;
+    $('filterBtn').textContent = filterOpen ? 'Fechar filtro' : 'Filtrar';
+    $('filterBtn').setAttribute('aria-expanded', String(filterOpen));
+    for (const b of $('filterPalette').children) b.setAttribute('aria-pressed', String(filters.colors.has(b.dataset.color)));
+    $('fltUntitled').checked = filters.noTitle;
+    $('fltPinned').checked = filters.pinned;
+    if ($('fltSearch').value !== filters.q) $('fltSearch').value = filters.q;
+  }
+
+  function entryRow(e, opts) {
+    opts = opts || {};
+    const title = e.title ? h('span', { class: 'entry-title-text', text: e.title }) : h('span', { class: 'untitled', text: 'Sem título' });
+    const main = h('span', { class: 'entry-main' },
+      h('span', { class: 'entry-title' }, title, e.pinned && !opts.compact ? icon('pin', 'pin') : null),
+      e.mode === 'tabela' ? h('span', { class: 'entry-item', text: e.itemText }) : null,
+      h('span', { class: 'entry-comp', text: compText(e) }),
+      e.description && !opts.compact ? h('span', { class: 'entry-desc', text: e.description }) : null);
+    const side = h('span', { class: 'entry-side' },
+      e.mode === 'tabela' ? null : h('span', { class: 'entry-num' + (String(e.total).length > 5 ? ' long' : ''), text: String(e.total) }),
+      h('span', { class: 'entry-time', text: listWhen(e.createdAt) }));
+    return h('li', null, h('button', {
+      type: 'button', class: 'entry' + (opts.newest ? ' newest' : ''), 'data-id': e.id, vars: { '--c': colorHex(e.color) },
+      onclick: () => openEdit(e.id),
+    }, h('span', { class: 'entry-band', 'aria-hidden': 'true' }), main, side));
+  }
+
+  function sepRow(e) {
+    return h('li', null, h('button', { type: 'button', class: 'sep', 'data-id': e.id, onclick: () => openSepEdit(e.id) },
+      h('span', { class: 'sep-text', text: e.text })));
+  }
+
+  function renderLog() {
+    const hist = activeHistory();
+    const rolls = rollsOf(hist);
+    $('logCount').textContent = plural(rolls.length, 'rolagem', 'rolagens');
+    const untitled = rolls.filter((e) => !e.title).length;
+    $('untitledBtn').hidden = untitled === 0;
+    $('untitledBtn').textContent = untitled + ' sem título';
+
+    const active = filterActive();
+    const list = (active ? hist.entries.filter(matchesFilter) : hist.entries.slice()).reverse();
+
+    const fb = $('filterBanner');
+    if (active) {
+      fb.hidden = false;
+      fb.replaceChildren(h('span', { text: 'Filtro ligado: mostrando ' + list.length + ' de ' + plural(rolls.length, 'rolagem', 'rolagens') + '.' }),
+        h('button', { type: 'button', class: 'btn small', onclick: clearFilters }, 'Limpar filtro'));
+    } else { fb.hidden = true; fb.replaceChildren(); }
+
+    const pb = $('pinnedBox');
+    pb.replaceChildren();
+    if (!active) {
+      const pinned = rolls.filter((e) => e.pinned).reverse();
+      if (pinned.length) {
+        pb.append(h('section', { class: 'pinned', 'aria-label': 'Rolagens fixadas' },
+          h('h3', { class: 'pinned-title' }, icon('pin'), 'Fixadas'),
+          h('ol', { class: 'log' }, pinned.map((e) => entryRow(e, { compact: true })))));
+      }
+    }
+
+    const newest = latestRoll(hist);
+    const ol = $('log');
+    ol.replaceChildren();
+    const shown = list.slice(0, logLimit);
+    for (const e of shown) ol.append(e.type === 'sep' ? sepRow(e) : entryRow(e, { newest: !!newest && e.id === newest.id }));
+
+    const more = $('logMore');
+    more.replaceChildren();
+    if (!hist.entries.length) more.append(h('p', { class: 'log-empty', text: 'Nada neste histórico ainda. Cada rolagem entra aqui, da mais nova para a mais antiga.' }));
+    else if (active && !list.length) more.append(h('p', { class: 'log-empty' }, 'Nenhuma rolagem bate com esse filtro. ',
+      h('button', { type: 'button', class: 'link-btn', onclick: clearFilters }, 'Limpar filtro')));
+    if (list.length > shown.length) {
+      more.append(h('button', { type: 'button', class: 'btn ghost more-btn', onclick: () => { logLimit += LOG_PAGE; renderLog(); } },
+        'Mostrar mais antigas (' + (list.length - shown.length) + ')'));
+    }
+  }
+
+  function renderResultsSoon() {
+    clearTimeout(renderSoonTimer);
+    renderSoonTimer = setTimeout(() => { renderLast(false); renderLog(); }, 150);
+  }
+
+  /* ================= ações sobre rolagens ================= */
+  function togglePin(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    f.entry.pinned = !f.entry.pinned;
+    save();
+    renderLast(false);
     renderLog();
   }
-  function renderLog(){
-    const c = el("logLista");
-    if(!log.length){
-      c.innerHTML = '<p class="vazio">A crônica começa com a primeira oração.</p>';
-      return;
-    }
-    c.innerHTML = "";
-    log.forEach(e => {
-      const d = document.createElement("div");
-      const r = document.createElement("span");
-      r.className = "rod"; r.textContent = "R" + e.r;
-      d.appendChild(r);
-      d.appendChild(document.createTextNode(e.t));
-      c.appendChild(d);
+
+  function deleteEntry(id) {
+    const f = findEntry(id);
+    if (!f) return;
+    f.hist.entries.splice(f.index, 1);
+    const isSep = f.entry.type === 'sep';
+    const tid = pushTrash({ kind: 'entry', historyId: f.hist.id, data: f.entry });
+    save();
+    renderAll();
+    toast(isSep ? 'Separador apagado.' : 'Rolagem apagada.', { undo: () => restoreFromTrash(tid) });
+  }
+
+  function moveEntry(id, targetId) {
+    const f = findEntry(id);
+    const target = state.histories.find((x) => x.id === targetId);
+    if (!f || !target || f.hist.id === targetId) return;
+    const fromId = f.hist.id;
+    f.hist.entries.splice(f.index, 1);
+    insertSorted(target.entries, f.entry);
+    target.updatedAt = Math.max(target.updatedAt, Date.now());
+    save();
+    renderAll();
+    toast('Rolagem movida para “' + target.name + '”.', {
+      undo: () => {
+        const g = findEntry(id);
+        const back = state.histories.find((x) => x.id === fromId);
+        if (!g || !back) return;
+        g.hist.entries.splice(g.index, 1);
+        insertSorted(back.entries, g.entry);
+        save();
+        renderAll();
+        toast('A rolagem voltou para “' + back.name + '”.');
+      },
     });
   }
 
-  /* ---------- modais genéricos (Promise) ---------- */
-  const veu = el("veu"), modal = el("modal");
-  let resolverPendente = null;
-
-  function fecharModal(){
-    veu.classList.remove("aberto");
-    modal.innerHTML = "";
-    if(resolverPendente){ const f = resolverPendente; resolverPendente = null; f(); }
-  }
-  veu.addEventListener("click", ev => { if(ev.target === veu) fecharModal(); });
-  document.addEventListener("keydown", ev => {
-    if(ev.key === "Escape" && veu.classList.contains("aberto")) fecharModal();
-  });
-
-  /* pergunta com botões: botoes = [{label, classe, valor}] */
-  function perguntarModal(titulo, texto, botoes){
-    return new Promise(res => {
-      modal.innerHTML = "";
-      const h = document.createElement("h3"); h.textContent = titulo;
-      const p = document.createElement("p"); p.textContent = texto;
-      const div = document.createElement("div"); div.className = "destinos";
-      botoes.forEach(b => {
-        const bt = document.createElement("button");
-        bt.type = "button"; bt.textContent = b.label;
-        if(b.classe) bt.className = b.classe;
-        bt.addEventListener("click", () => {
-          resolverPendente = null;
-          veu.classList.remove("aberto");
-          modal.innerHTML = "";
-          res(b.valor);
-        });
-        div.appendChild(bt);
-      });
-      modal.append(h, p, div);
-      resolverPendente = () => res(null);
-      veu.classList.add("aberto");
-    });
-  }
-
-  /* seleção de cartas de uma zona: retorna array de uids (ou null) */
-  function selecionarCartasModal(titulo, texto, instancias, max){
-    return new Promise(res => {
-      modal.innerHTML = "";
-      const h = document.createElement("h3"); h.textContent = titulo;
-      const p = document.createElement("p"); p.textContent = texto;
-      const lista = document.createElement("div"); lista.className = "sel-lista";
-      const marcados = new Set();
-
-      const div = document.createElement("div"); div.className = "destinos";
-      const bOk = document.createElement("button");
-      bOk.type = "button"; bOk.textContent = "Confirmar"; bOk.disabled = true;
-      const bCanc = document.createElement("button");
-      bCanc.type = "button"; bCanc.className = "sutil"; bCanc.textContent = "Cancelar";
-
-      instancias.forEach(inst => {
-        const s = skillPorId(inst.skillId);
-        if(!s) return;
-        const item = document.createElement("div");
-        item.className = "sel-item";
-        const gema = document.createElement("span");
-        gema.className = "gema";
-        gema.style.color = RARIDADES[s.raridade].cor;
-        gema.style.background = RARIDADES[s.raridade].cor;
-        const nome = document.createElement("span");
-        nome.className = "nome"; nome.textContent = s.nome;
-        const fe = document.createElement("span");
-        fe.className = "fe"; fe.textContent = "✦ " + s.fe;
-        item.append(gema, nome, fe);
-        item.addEventListener("click", () => {
-          if(marcados.has(inst.uid)){
-            marcados.delete(inst.uid);
-            item.classList.remove("marcado");
-          }else if(marcados.size < max){
-            marcados.add(inst.uid);
-            item.classList.add("marcado");
-          }
-          bOk.disabled = !marcados.size;
-          bOk.textContent = marcados.size ? "Confirmar (" + marcados.size + "/" + max + ")" : "Confirmar";
-        });
-        lista.appendChild(item);
-      });
-
-      bOk.addEventListener("click", () => {
-        resolverPendente = null;
-        veu.classList.remove("aberto");
-        modal.innerHTML = "";
-        res(Array.from(marcados));
-      });
-      bCanc.addEventListener("click", () => fecharModal());
-
-      div.append(bOk, bCanc);
-      modal.append(h, p, lista, div);
-      resolverPendente = () => res(null);
-      veu.classList.add("aberto");
-    });
-  }
-
-  /* ---------- formulário / tags ---------- */
-  [
-    ["chkRecupera",["valRecupera"]],
-    ["chkAcumula",["valAcumulaPor","valAcumulaLim"]],
-    ["chkCanaliza",["valCanaliza"]],
-    ["chkCustoCond",["valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond"]],
-    ["chkPuxar",["valPuxar"]],
-    ["chkDescAleat",["valDescAleat"]],
-    ["chkDado",["valDado"]],
-    ["chkRevCem",["valRevCem"]],
-    ["chkRevDesc",["valRevDesc"]],
-    ["chkBanirDesc",["txtBanirDesc"]],
-    ["chkDuracao",["valDuracao"]]
-  ].forEach(([chk, campos]) => {
-    el(chk).addEventListener("change", function(){
-      campos.forEach(c => el(c).disabled = !this.checked);
-    });
-  });
-
-  el("formSkill").addEventListener("submit", function(ev){
-    ev.preventDefault();
-    if(el("chkDado").checked && !interpretarDado(el("valDado").value)){
-      alert('Fórmula de dado inválida. Use um número (ex.: 45) ou notação NdX+Y (ex.: d4, 1d30+30, 2d20-3).');
-      el("valDado").focus();
-      return;
-    }
-    const dados = normalizar({
-      id: editandoId || undefined,
-      nome: el("fNome").value.trim(),
-      fe: el("fFe").value,
-      copias: el("fCopias").value,
-      desc: el("fDesc").value.trim(),
-      raridade: el("fRaridade").value,
-      arte: el("fArte").value.trim(),
-      labels: el("fLabels").value.split(",").map(x=>x.trim()).filter(Boolean),
-      tags: {
-        recuperaAoUsar: el("chkRecupera").checked ? {valor: el("valRecupera").value} : null,
-        acumula: el("chkAcumula").checked ? {porRodada: el("valAcumulaPor").value, limite: el("valAcumulaLim").value} : null,
-        canaliza: el("chkCanaliza").checked ? {valor: el("valCanaliza").value} : null,
-        custoCond: el("chkCustoCond").checked ? {valor: el("valCustoCond").value, modo: el("modoCustoCond").value, obrigatorio: el("obrigCustoCond").value === "obrigatorio", texto: el("txtCustoCond").value.trim()} : null,
-        puxarAoUsar: el("chkPuxar").checked ? {qtd: el("valPuxar").value} : null,
-        descartarAleatorias: el("chkDescAleat").checked ? {qtd: el("valDescAleat").value} : null,
-        dadoAoUsar: el("chkDado").checked ? {formula: el("valDado").value} : null,
-        reviverCem: el("chkRevCem").checked ? {qtd: el("valRevCem").value} : null,
-        reviverDesc: el("chkRevDesc").checked ? {qtd: el("valRevDesc").value} : null,
-        banirAoDescartar: el("chkBanirDesc").checked ? {texto: el("txtBanirDesc").value.trim()} : null,
-        duracao: el("chkDuracao").checked ? {rodadas: el("valDuracao").value} : null,
-        destinoFixo: el("fDestino").value
+  function restoreFromTrash(tid, opts) {
+    opts = opts || {};
+    const i = state.trash.findIndex((t) => t.id === tid);
+    if (i === -1) { toast('Esse item não está mais na lixeira.'); return; }
+    const item = state.trash[i];
+    let msg = '';
+    if (item.kind === 'history') {
+      const hist = item.data;
+      if (state.histories.some((x) => x.id === hist.id)) hist.id = uid('h');
+      hist.name = uniqueName(hist.name, state.histories.map((x) => x.name));
+      state.histories.push(hist);
+      if (opts.removePlaceholder) {
+        const pi = state.histories.findIndex((x) => x.id === opts.removePlaceholder && x.entries.length === 0);
+        if (pi !== -1) state.histories.splice(pi, 1);
       }
+      if (opts.activate) { state.activeHistoryId = hist.id; resetFilters(); }
+      msg = 'Histórico “' + hist.name + '” restaurado.';
+    } else if (item.kind === 'entry') {
+      const target = state.histories.find((x) => x.id === item.historyId) || activeHistory();
+      if (findEntry(item.data.id)) item.data.id = uid(item.data.type === 'sep' ? 's' : 'r');
+      insertSorted(target.entries, item.data);
+      msg = (item.data.type === 'sep' ? 'Separador restaurado' : 'Rolagem restaurada') + ' em “' + target.name + '”.';
+    } else if (item.kind === 'table') {
+      const t = item.data;
+      if (findTable(t.id)) t.id = uid('tb');
+      t.name = uniqueName(t.name, state.tables.map((x) => x.name));
+      state.tables.push(t);
+      msg = 'Tabela “' + t.name + '” restaurada.';
+    }
+    state.trash.splice(i, 1);
+    save();
+    renderAll();
+    refreshOpenDialogs();
+    toast(msg);
+  }
+
+  /* ================= históricos ================= */
+  function switchHistory(id) {
+    const hist = state.histories.find((x) => x.id === id);
+    if (!hist) return;
+    state.activeHistoryId = id;
+    resetFilters();
+    save();
+    renderAll();
+    $('logScroll').scrollTop = 0;
+    toast('Agora no histórico “' + hist.name + '”. As próximas rolagens vão para ele.');
+  }
+
+  async function newHistoryFlow() {
+    const names = state.histories.map((x) => x.name);
+    const name = await askText({ title: 'Novo histórico', label: 'Nome do histórico', value: uniqueName(defaultHistoryName(), names),
+      confirm: 'Criar e usar', message: 'As próximas rolagens vão para o histórico novo. Os outros continuam guardados.' });
+    if (name == null) return;
+    const hist = newHistory(uniqueName(name.trim().slice(0, 80) || defaultHistoryName(), names));
+    state.histories.push(hist);
+    state.activeHistoryId = hist.id;
+    resetFilters();
+    save();
+    renderAll();
+    toast('Histórico “' + hist.name + '” criado. As próximas rolagens vão para ele.');
+  }
+
+  async function renameHistoryFlow() {
+    const cur = activeHistory();
+    const name = await askText({ title: 'Renomear histórico', label: 'Nome do histórico', value: cur.name, confirm: 'Renomear' });
+    if (name == null) return;
+    const clean = name.trim().slice(0, 80);
+    if (!clean || clean === cur.name) return;
+    cur.name = uniqueName(clean, state.histories.filter((x) => x.id !== cur.id).map((x) => x.name));
+    save();
+    renderAll();
+    toast('Histórico renomeado para “' + cur.name + '”.');
+  }
+
+  function deleteHistory(id) {
+    const i = state.histories.findIndex((x) => x.id === id);
+    if (i === -1) return;
+    const hist = state.histories.splice(i, 1)[0];
+    const tid = pushTrash({ kind: 'history', data: hist });
+    let placeholder = null;
+    if (!state.histories.length) { placeholder = newHistory(defaultHistoryName()); state.histories.push(placeholder); }
+    if (state.activeHistoryId === id) state.activeHistoryId = mostRecent(state.histories).id;
+    resetFilters();
+    save();
+    renderAll();
+    toast('Histórico “' + hist.name + '” foi para a lixeira. Agora você está em “' + activeHistory().name + '”.', {
+      undo: () => restoreFromTrash(tid, { activate: true, removePlaceholder: placeholder && placeholder.id }),
     });
-    if(!dados.nome || !dados.desc) return;
-    if(editandoId){
-      const i = skills.findIndex(s => s.id === editandoId);
-      if(i >= 0) skills[i] = dados;
-    }else{
-      skills.push(dados);
-    }
-    salvarSkills(); renderGrimorio(); renderMesa(false); encerrarEdicao();
-  });
-
-  function iniciarEdicao(id){
-    const s = skillPorId(id);
-    if(!s) return;
-    editandoId = id;
-    el("fNome").value = s.nome;
-    el("fFe").value = s.fe;
-    el("fCopias").value = s.copias;
-    el("fDesc").value = s.desc;
-    el("fRaridade").value = s.raridade;
-    el("fArte").value = s.arte;
-    el("fLabels").value = s.labels.join(", ");
-
-    const preencher = (chk, tag, mapa) => {
-      el(chk).checked = !!tag;
-      Object.keys(mapa).forEach(campo => {
-        el(campo).disabled = !tag;
-        if(tag) el(campo).value = tag[mapa[campo]];
-      });
-    };
-    preencher("chkRecupera", s.tags.recuperaAoUsar, {valRecupera:"valor"});
-    preencher("chkAcumula", s.tags.acumula, {valAcumulaPor:"porRodada", valAcumulaLim:"limite"});
-    preencher("chkCanaliza", s.tags.canaliza, {valCanaliza:"valor"});
-    el("chkCustoCond").checked = !!s.tags.custoCond;
-    ["valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond"].forEach(c => el(c).disabled = !s.tags.custoCond);
-    if(s.tags.custoCond){
-      el("valCustoCond").value = s.tags.custoCond.valor;
-      el("modoCustoCond").value = s.tags.custoCond.modo;
-      el("obrigCustoCond").value = s.tags.custoCond.obrigatorio ? "obrigatorio" : "opcional";
-      el("txtCustoCond").value = s.tags.custoCond.texto;
-    }
-    preencher("chkPuxar", s.tags.puxarAoUsar, {valPuxar:"qtd"});
-    preencher("chkDescAleat", s.tags.descartarAleatorias, {valDescAleat:"qtd"});
-    preencher("chkDado", s.tags.dadoAoUsar, {valDado:"formula"});
-    preencher("chkRevCem", s.tags.reviverCem, {valRevCem:"qtd"});
-    preencher("chkRevDesc", s.tags.reviverDesc, {valRevDesc:"qtd"});
-    preencher("chkBanirDesc", s.tags.banirAoDescartar, {txtBanirDesc:"texto"});
-    preencher("chkDuracao", s.tags.duracao, {valDuracao:"rodadas"});
-    el("fDestino").value = s.tags.destinoFixo;
-
-    el("btnSalvar").textContent = "Salvar alterações";
-    el("btnCancelarEdicao").hidden = false;
-    el("fNome").focus();
   }
-  function encerrarEdicao(){
-    editandoId = null;
-    el("formSkill").reset();
-    el("fFe").value = 1; el("fCopias").value = 1;
-    ["valRecupera","valAcumulaPor","valAcumulaLim","valCanaliza","valCustoCond","modoCustoCond","obrigCustoCond","txtCustoCond",
-     "valPuxar","valDescAleat","valDado","valRevCem","valRevDesc","txtBanirDesc","valDuracao"].forEach(c => el(c).disabled = true);
-    el("valRecupera").value = 10; el("valAcumulaPor").value = 10;
-    el("valAcumulaLim").value = 50; el("valCanaliza").value = 15;
-    el("valCustoCond").value = 40; el("modoCustoCond").value = "descarte";
-    el("obrigCustoCond").value = "opcional"; el("txtCustoCond").value = "";
-    el("valPuxar").value = 2; el("valDescAleat").value = 2;
-    el("valDado").value = "1d4"; el("valRevCem").value = 1; el("valRevDesc").value = 1;
-    el("txtBanirDesc").value = ""; el("valDuracao").value = 2;
-    el("fDestino").value = "perguntar";
-    el("btnSalvar").textContent = "Registrar habilidade";
-    el("btnCancelarEdicao").hidden = true;
-  }
-  el("btnCancelarEdicao").addEventListener("click", encerrarEdicao);
 
-  /* ---------- grimório ---------- */
-  function descreverTags(s){
-    const t = [];
-    if(s.tags.recuperaAoUsar) t.push("⚡ Recupera " + s.tags.recuperaAoUsar.valor + " de fé ao usar");
-    if(s.tags.acumula) t.push("🕰 Acumula +" + s.tags.acumula.porRodada + " fé/rodada na mão (máx " + s.tags.acumula.limite + "), devolve ao descartar");
-    if(s.tags.canaliza) t.push("✨ Canaliza +" + s.tags.canaliza.valor + " fé/rodada enquanto ativa");
-    if(s.tags.custoCond){
-      if(s.tags.custoCond.modo === "descarte"){
-        t.push("🔥 Efeito de descarte " + (s.tags.custoCond.obrigatorio ? "automático" : "opcional") +
-          (s.tags.custoCond.valor > 0 ? " (custa " + s.tags.custoCond.valor + " de fé)" : " (sem custo de fé)") +
-          (s.tags.custoCond.texto ? ": " + s.tags.custoCond.texto : ""));
-      }else{
-        t.push("🌓 Custo condicional: " + s.tags.custoCond.valor + " de fé quando a condição está marcada");
+  async function addSeparatorFlow() {
+    const text = await askText({ title: 'Adicionar separador', label: 'Texto do separador', placeholder: 'Ex.: Início do combate',
+      confirm: 'Adicionar', message: 'O separador entra agora no histórico e ajuda a dividir as partes da sessão.' });
+    if (text == null) return;
+    const hist = activeHistory();
+    insertSorted(hist.entries, { id: uid('s'), type: 'sep', text: text.trim().slice(0, 120) || 'Separador', createdAt: Date.now() });
+    hist.updatedAt = Date.now();
+    save();
+    renderLog();
+    $('logScroll').scrollTop = 0;
+  }
+
+  /* ================= menus do topo ================= */
+  function openMenu(which) {
+    closeMenus(false);
+    const menu = $(which === 'hist' ? 'histMenu' : 'mainMenu');
+    const trigger = $(which === 'hist' ? 'histBtn' : 'menuBtn');
+    if (which === 'hist') buildHistMenu(menu); else buildMainMenu(menu);
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    openMenuId = which;
+    const first = menu.querySelector('button');
+    if (first) first.focus();
+  }
+  function closeMenus(returnFocus) {
+    if (!openMenuId) return;
+    const which = openMenuId;
+    $('histMenu').hidden = true;
+    $('mainMenu').hidden = true;
+    $('histBtn').setAttribute('aria-expanded', 'false');
+    $('menuBtn').setAttribute('aria-expanded', 'false');
+    openMenuId = null;
+    if (returnFocus) $(which === 'hist' ? 'histBtn' : 'menuBtn').focus();
+  }
+  function menuItem(label, fn, cls, meta) {
+    return h('button', { type: 'button', role: 'menuitem', class: 'dd-item' + (cls ? ' ' + cls : ''), onclick: () => { closeMenus(false); fn(); } },
+      h('span', { class: 'dd-name', text: label }), meta ? h('span', { class: 'dd-meta', text: meta }) : null);
+  }
+
+  function buildHistMenu(menu) {
+    const cur = activeHistory();
+    const sorted = state.histories.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    menu.replaceChildren(
+      h('div', { class: 'dd-heading', text: 'Escolha o histórico' }),
+      h('ul', { class: 'dd-list' }, sorted.map((x) => h('li', null,
+        menuItem(x.name, () => { if (x.id !== cur.id) switchHistory(x.id); }, x.id === cur.id ? 'current' : '',
+          (x.id === cur.id ? 'atual, ' : '') + plural(rollsOf(x).length, 'rolagem', 'rolagens') + ', ' + dayWord(x.updatedAt))))),
+      menuItem('+ Novo histórico', newHistoryFlow, 'accent'),
+      h('div', { class: 'dd-sep' }),
+      h('div', { class: 'dd-heading', text: 'Histórico atual: ' + cur.name }),
+      menuItem('Renomear', renameHistoryFlow),
+      menuItem('Exportar este histórico', exportHistory),
+      menuItem('Apagar este histórico', () => deleteHistory(cur.id), 'danger'));
+  }
+
+  function buildMainMenu(menu) {
+    const overdue = backupOverdue();
+    const trashN = state.trash.length;
+    menu.replaceChildren(
+      menuItem('Tabelas de eventos', () => openTables(), '', state.tables.length ? String(state.tables.length) : 'nenhuma'),
+      menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
+      h('div', { class: 'dd-sep' }),
+      menuItem('Exportar backup completo', exportAll),
+      menuItem('Importar backup', () => $('importInput').click()),
+      h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
+        text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
+      h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
+  }
+
+  /* ================= aviso flutuante ================= */
+  function hideToast() {
+    const t = $('toast');
+    clearTimeout(toastTimer);
+    try { if (typeof t.hidePopover === 'function' && t.matches(':popover-open')) t.hidePopover(); } catch (err) { /* ok */ }
+    t.hidden = true;
+  }
+  function armToast(ms) { clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, ms); }
+  /* Com uma janela aberta, o resto da página fica inativo; o aviso vai para dentro dela para o "Desfazer" funcionar. */
+  function toastHost() {
+    if ($('promptDlg').open) return $('promptDlg');
+    for (const id of ['editDlg', 'sepDlg', 'tablesDlg', 'trashDlg']) if ($(id).open) return $(id);
+    return document.body;
+  }
+  function showToastEl(t) {
+    const host = toastHost();
+    if (t.parentElement !== host) host.append(t);
+    t.hidden = false;
+    if (typeof t.showPopover === 'function') {
+      try { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } catch (err) { /* segue visível sem popover */ }
+    }
+  }
+  function toast(message, opts) {
+    opts = opts || {};
+    const t = $('toast');
+    t.replaceChildren(h('span', { text: message }));
+    if (opts.undo) t.append(h('button', { type: 'button', class: 'toast-btn', onclick: () => { hideToast(); opts.undo(); } }, 'Desfazer'));
+    t.classList.toggle('error', !!opts.error);
+    showToastEl(t);
+    armToast(opts.undo ? 10000 : opts.error ? 6000 : 4000);
+  }
+
+  /* ================= janelas de pergunta ================= */
+  function openPrompt(o) {
+    if (promptResolve) { const r = promptResolve; promptResolve = null; r(null); }
+    $('promptHead').textContent = o.title;
+    $('promptMsg').textContent = o.message || '';
+    $('promptMsg').hidden = !o.message;
+    $('promptField').hidden = !o.input;
+    $('promptLabel').textContent = o.label || '';
+    const inp = $('promptInput');
+    inp.value = o.value || '';
+    inp.placeholder = o.placeholder || '';
+    const ok = $('promptOk');
+    ok.textContent = o.confirm || 'Ok';
+    ok.className = 'btn ' + (o.danger ? 'danger-solid' : 'primary');
+    $('promptCancel').hidden = !!o.noCancel;
+    const dlg = $('promptDlg');
+    return new Promise((resolve) => {
+      promptResolve = resolve;
+      if (!dlg.open) dlg.showModal();
+      if (o.input) { inp.focus(); inp.select(); }
+      else if (o.danger) $('promptCancel').focus(); // em ação perigosa, o Enter cai no Cancelar
+      else ok.focus();
+    });
+  }
+  function finishPrompt(value) {
+    const r = promptResolve;
+    promptResolve = null;
+    const dlg = $('promptDlg');
+    if (dlg.open) dlg.close();
+    if (r) r(value);
+  }
+  function askText(o) { return openPrompt(Object.assign({}, o, { input: true })); }
+  function askConfirm(o) { return openPrompt(Object.assign({}, o, { input: false })).then((v) => v !== null); }
+  function showInfo(title, message) { return openPrompt({ title, message, input: false, confirm: 'Entendi', noCancel: true }); }
+
+  /* ================= editar rolagem ================= */
+  function openEdit(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    closeMenus(false);
+    editingId = id;
+    fillEditStatic(f);
+    $('eTitle').value = f.entry.title;
+    $('eDesc').value = f.entry.description;
+    const dlg = $('editDlg');
+    if (!dlg.open) dlg.showModal();
+    $('eTitle').focus();
+  }
+
+  function fillEditStatic(f) {
+    const e = f.entry;
+    $('editHead').textContent = isToday(e.createdAt) ? 'Rolagem das ' + clock(e.createdAt) : 'Rolagem de ' + fullDate(e.createdAt) + ', ' + clock(e.createdAt);
+    const res = $('editResult');
+    res.style.setProperty('--c', colorHex(e.color) || NO_COLOR);
+    res.replaceChildren(h('span', { class: 'edit-band' }), h('span', { class: 'edit-res-body' },
+      e.mode === 'tabela' ? h('span', { class: 'edit-item', text: e.itemText }) : h('span', { class: 'edit-num', text: String(e.total) }),
+      h('span', { class: 'edit-comp', text: compText(e, true) }),
+      h('span', { class: 'edit-lock', text: 'O resultado fica travado. Dá para mudar título, descrição, cor e o histórico onde ela está.' })));
+    markPalette($('ePalette'), e.color);
+    $('eColorName').textContent = colorLabel(e.color);
+    $('ePin').textContent = e.pinned ? 'Desafixar do topo' : 'Fixar no topo';
+    const others = state.histories.filter((x) => x.id !== f.hist.id);
+    $('eMoveBox').hidden = !others.length;
+    const sel = $('eMoveSel');
+    const prev = sel.value;
+    sel.replaceChildren(h('option', { value: '', text: 'Escolha o histórico…' }), ...others.map((x) => h('option', { value: x.id, text: x.name })));
+    if (others.some((x) => x.id === prev)) sel.value = prev;
+  }
+
+  function openSepEdit(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'sep') return;
+    editingSepId = id;
+    $('sText').value = f.entry.text;
+    const d = $('sepDlg');
+    if (!d.open) d.showModal();
+    $('sText').focus();
+    $('sText').select();
+  }
+
+  /* ================= tabelas de eventos ================= */
+  function openTables(selectId) {
+    closeMenus(false);
+    if (selectId && findTable(selectId)) editingTableId = selectId;
+    if (!findTable(editingTableId)) editingTableId = state.tables.length ? state.tables[0].id : null;
+    renderTablesList();
+    fillTableEditor();
+    const dlg = $('tablesDlg');
+    if (!dlg.open) dlg.showModal();
+    if (editingTableId) $('tItems').focus(); else $('newTableBtn').focus();
+  }
+
+  /* Atualiza a lista sem recriar os botões quando dá, para não "engolir" cliques. */
+  function renderTablesList() {
+    const ul = $('tablesList');
+    const ids = state.tables.map((t) => t.id).join('|');
+    if (ul.dataset.ids !== ids) {
+      ul.replaceChildren();
+      for (const t of state.tables) {
+        ul.append(h('li', null, h('button', { type: 'button', class: 'tl-item', 'data-id': t.id, onclick: () => selectTable(t.id) },
+          h('span', { class: 'tl-name' }), h('span', { class: 'tl-count' }))));
       }
+      ul.dataset.ids = ids;
     }
-    if(s.tags.puxarAoUsar) t.push("🂡 Puxa " + s.tags.puxarAoUsar.qtd + " carta(s) ao usar");
-    if(s.tags.descartarAleatorias) t.push("🂠 Descarta " + s.tags.descartarAleatorias.qtd + " aleatória(s) ao usar");
-    if(s.tags.dadoAoUsar) t.push("🎲 Rola " + s.tags.dadoAoUsar.formula + " ao usar");
-    if(s.tags.reviverCem) t.push("🕯 Revive " + s.tags.reviverCem.qtd + " carta(s) do cemitério");
-    if(s.tags.reviverDesc) t.push("↺ Revive " + s.tags.reviverDesc.qtd + " carta(s) do descarte");
-    if(s.tags.banirAoDescartar) t.push("🕯 Se descartada, é banida direto ao cemitério" + (s.tags.banirAoDescartar.texto ? ": " + s.tags.banirAoDescartar.texto : ""));
-    if(s.tags.duracao) t.push("⌛ Efeito dura " + s.tags.duracao.rodadas + " rodada(s) — contador na mesa");
-    if(s.tags.destinoFixo === "cemiterio") t.push("🕯 Queima: vai direto ao cemitério após usar");
-    if(s.tags.destinoFixo === "deck") t.push("♻ Eco: volta embaralhada ao deck após usar");
-    return t;
+    for (const btn of ul.querySelectorAll('.tl-item')) {
+      const t = findTable(btn.dataset.id);
+      if (!t) continue;
+      btn.classList.toggle('current', t.id === editingTableId);
+      btn.querySelector('.tl-name').textContent = t.name;
+      btn.querySelector('.tl-count').textContent = plural(tableItems(t).length, 'item', 'itens');
+    }
   }
 
-  function renderGrimorio(){
-    const lista = el("listaSkills");
-    lista.innerHTML = "";
-    if(!skills.length){
-      lista.innerHTML = '<p class="vazio">O grimório está vazio. Registre a primeira habilidade.</p>';
-      return;
-    }
-    skills.forEach(s => {
-      const div = document.createElement("div");
-      div.className = "grimorio-item";
-
-      const gema = document.createElement("span");
-      gema.className = "gema";
-      gema.style.color = RARIDADES[s.raridade].cor;
-      gema.style.background = RARIDADES[s.raridade].cor;
-      gema.title = RARIDADES[s.raridade].nome;
-
-      const fe = document.createElement("span");
-      fe.className = "fe"; fe.textContent = "✦ " + s.fe;
-
-      const nome = document.createElement("span");
-      nome.className = "nome"; nome.textContent = s.nome;
-
-      const cop = document.createElement("span");
-      cop.className = "copias"; cop.textContent = "×" + s.copias;
-
-      const bEdit = document.createElement("button");
-      bEdit.type = "button"; bEdit.className = "sutil"; bEdit.textContent = "Editar";
-      bEdit.addEventListener("click", () => iniciarEdicao(s.id));
-
-      const bDel = document.createElement("button");
-      bDel.type = "button"; bDel.className = "perigo"; bDel.textContent = "×";
-      bDel.setAttribute("aria-label", "Remover " + s.nome);
-      bDel.addEventListener("click", () => {
-        if(confirm('Remover "' + s.nome + '" do grimório?')){
-          skills = skills.filter(x => x.id !== s.id);
-          salvarSkills(); renderGrimorio();
-        }
-      });
-
-      div.append(gema, fe, nome, cop, bEdit, bDel);
-      lista.appendChild(div);
-    });
+  function selectTable(id) {
+    flushSave();
+    editingTableId = id;
+    renderTablesList();
+    fillTableEditor();
+    $('tItems').focus();
   }
 
-  /* ---------- exportar / importar ---------- */
-  el("btnExportar").addEventListener("click", function(){
-    const blob = new Blob([JSON.stringify(skills, null, 2)], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "deck-paladino-urgm.json";
+  function fillTableEditor() {
+    const t = findTable(editingTableId);
+    $('tableEditor').hidden = !t;
+    $('tablesEmpty').hidden = !!t;
+    if (!t) return;
+    $('tName').value = t.name;
+    $('tItems').value = t.text;
+    renderTableCount(t);
+  }
+
+  function renderTableCount(t) {
+    const n = tableItems(t).length;
+    $('tCount').textContent = n ? plural(n, 'item', 'itens') + ', todos com a mesma chance. Linhas vazias são ignoradas.' : 'Nenhum item ainda. Escreva um por linha.';
+  }
+
+  function newTable() {
+    flushSave();
+    const now = Date.now();
+    const t = { id: uid('tb'), name: uniqueName('Nova tabela', state.tables.map((x) => x.name)), text: '', createdAt: now, updatedAt: now };
+    state.tables.push(t);
+    editingTableId = t.id;
+    save();
+    renderTablesList();
+    fillTableEditor();
+    renderTableSelect();
+    renderPreview();
+    $('tName').focus();
+    $('tName').select();
+  }
+
+  function deleteTable() {
+    const i = state.tables.findIndex((x) => x.id === editingTableId);
+    if (i === -1) return;
+    flushSave();
+    const t = state.tables.splice(i, 1)[0];
+    const tid = pushTrash({ kind: 'table', data: t });
+    editingTableId = state.tables.length ? state.tables[Math.min(i, state.tables.length - 1)].id : null;
+    save();
+    renderTablesList();
+    fillTableEditor();
+    renderTableSelect();
+    renderPreview();
+    toast('Tabela “' + t.name + '” foi para a lixeira.', { undo: () => { restoreFromTrash(tid); } });
+  }
+
+  /* ================= lixeira ================= */
+  function openTrash() {
+    closeMenus(false);
+    if (purgeTrash()) save();
+    renderTrash();
+    const d = $('trashDlg');
+    if (!d.open) d.showModal();
+  }
+
+  function trashLabel(it) {
+    if (it.kind === 'history') return 'Histórico “' + it.data.name + '” (' + plural(rollsOf(it.data).length, 'rolagem', 'rolagens') + ')';
+    if (it.kind === 'table') return 'Tabela “' + it.data.name + '” (' + plural(tableItems(it.data).length, 'item', 'itens') + ')';
+    const e = it.data;
+    if (e.type === 'sep') return 'Separador “' + e.text + '”';
+    return 'Rolagem ' + (e.title ? '“' + e.title + '”' : 'sem título') + ': ' + (e.mode === 'tabela' ? e.itemText : e.total);
+  }
+
+  function trashMeta(it) {
+    const left = Math.max(0, TRASH_DAYS - Math.floor((Date.now() - it.deletedAt) / DAY));
+    let s = 'Foi para a lixeira ' + ago(it.deletedAt) + '. Some de vez em ' + plural(left, 'dia', 'dias') + '.';
+    if (it.kind === 'entry') {
+      const src = state.histories.find((x) => x.id === it.historyId);
+      s += src ? ' Volta para “' + src.name + '”.' : ' O histórico dela não existe mais: volta para o histórico atual.';
+    }
+    return s;
+  }
+
+  function renderTrash() {
+    const ul = $('trashList');
+    ul.replaceChildren();
+    const items = state.trash.slice().sort((a, b) => b.deletedAt - a.deletedAt);
+    if (!items.length) ul.append(h('li', { class: 'trash-empty', text: 'A lixeira está vazia.' }));
+    for (const it of items) {
+      ul.append(h('li', { class: 'trash-item' },
+        h('span', { class: 'trash-info' }, h('span', { class: 'trash-name', text: trashLabel(it) }), h('span', { class: 'trash-meta', text: trashMeta(it) })),
+        h('button', { type: 'button', class: 'btn small', onclick: () => restoreFromTrash(it.id) }, 'Restaurar')));
+    }
+    $('emptyTrashBtn').disabled = !items.length;
+  }
+
+  async function emptyTrash() {
+    const n = state.trash.length;
+    if (!n) return;
+    const ok = await askConfirm({ title: 'Esvaziar lixeira?', danger: true, confirm: 'Apagar de vez',
+      message: (n === 1 ? 'O item da lixeira vai ser apagado de vez.' : 'Os ' + n + ' itens da lixeira vão ser apagados de vez.') + ' Isso não pode ser desfeito.' });
+    if (!ok) return;
+    state.trash = [];
+    save();
+    renderTrash();
+    toast('Lixeira esvaziada.');
+  }
+
+  function refreshOpenDialogs() {
+    if ($('trashDlg').open) renderTrash();
+    if ($('tablesDlg').open) {
+      if (!findTable(editingTableId)) editingTableId = state.tables.length ? state.tables[0].id : null;
+      renderTablesList();
+      const typing = document.activeElement === $('tItems') || document.activeElement === $('tName');
+      if (!typing || !findTable(editingTableId)) fillTableEditor();
+    }
+    if ($('editDlg').open) { const f = findEntry(editingId); if (!f) $('editDlg').close(); else fillEditStatic(f); }
+    if ($('sepDlg').open && !findEntry(editingSepId)) $('sepDlg').close();
+  }
+
+  /* ================= exportar e importar ================= */
+  function downloadFile(name, text, type) {
+    const blob = new Blob([text], { type: type || 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = h('a', { href: url, download: name });
+    document.body.append(a);
     a.click();
-    URL.revokeObjectURL(a.href);
-  });
-  el("btnImportar").addEventListener("click", () => el("inputImportar").click());
-  el("inputImportar").addEventListener("change", function(){
-    const arq = this.files[0];
-    if(!arq) return;
-    const leitor = new FileReader();
-    leitor.onload = function(){
-      try{
-        const dados = JSON.parse(leitor.result);
-        if(!Array.isArray(dados)) throw new Error();
-        skills = dados.filter(s => s && s.nome && s.desc).map(normalizar);
-        salvarSkills(); renderGrimorio(); renderMesa(false);
-      }catch(e){
-        alert("Arquivo inválido. Selecione um .json exportado por esta ferramenta.");
-      }
-    };
-    leitor.readAsText(arq);
-    this.value = "";
-  });
-
-  /* ---------- batalha ---------- */
-  function novaInstancia(skillId){
-    return {uid: novoId(), skillId, acc: 0, canalizando: false, condAtiva: false};
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
-  function montarDeckCompleto(){
-    const inst = [];
-    skills.forEach(s => {
-      for(let i = 0; i < s.copias; i++) inst.push(novaInstancia(s.id));
+
+  function exportAll() {
+    flushSave();
+    const payload = { app: 'rolador-urgm', kind: 'backup', version: 1, exportedAt: new Date().toISOString(),
+      data: { histories: state.histories, tables: state.tables } };
+    downloadFile('rolador-urgm-backup-' + stamp() + '.json', JSON.stringify(payload, null, 2));
+    state.lastBackupAt = Date.now();
+    save();
+    renderHeader();
+    toast('Backup completo baixado. Guarde o arquivo num lugar seguro, como uma pasta na nuvem.');
+  }
+
+  function exportHistory() {
+    flushSave();
+    const hist = activeHistory();
+    const payload = { app: 'rolador-urgm', kind: 'history', version: 1, exportedAt: new Date().toISOString(),
+      data: { histories: [hist], tables: [] } };
+    downloadFile('rolador-urgm-' + slug(hist.name) + '-' + stamp() + '.json', JSON.stringify(payload, null, 2));
+    toast('Histórico “' + hist.name + '” baixado.');
+  }
+
+  /* Importar só acrescenta: nada do que já existe é apagado ou trocado. */
+  function mergeImport(data) {
+    const r = { newHistories: 0, rolls: 0, seps: 0, newTables: 0, inTrash: 0 };
+    const known = new Set();
+    for (const x of state.histories) for (const e of x.entries) known.add(e.id);
+    for (const t of state.trash) {
+      if (t.kind === 'entry') known.add(t.data.id);
+      if (t.kind === 'history') for (const e of t.data.entries) known.add(e.id);
+    }
+    const trashedHistories = new Set(state.trash.filter((t) => t.kind === 'history').map((t) => t.data.id));
+    const trashedTables = new Set(state.trash.filter((t) => t.kind === 'table').map((t) => t.data.id));
+    const count = (list) => { for (const e of list) { if (e.type === 'sep') r.seps++; else r.rolls++; } };
+
+    for (const raw of (Array.isArray(data.histories) ? data.histories : [])) {
+      const inc = normHistory(raw);
+      if (!inc) continue;
+      if (trashedHistories.has(inc.id)) { r.inTrash++; continue; }
+      const fresh = inc.entries.filter((e) => !known.has(e.id));
+      fresh.forEach((e) => known.add(e.id));
+      const existing = state.histories.find((x) => x.id === inc.id);
+      if (existing) {
+        for (const e of fresh) insertSorted(existing.entries, e);
+        if (fresh.length) existing.updatedAt = Math.max(existing.updatedAt, inc.updatedAt);
+        count(fresh);
+      } else {
+        if (inc.entries.length && !fresh.length) continue; // tudo já está em outro histórico
+        inc.entries = fresh;
+        inc.name = uniqueName(inc.name, state.histories.map((x) => x.name));
+        state.histories.push(inc);
+        r.newHistories++;
+        count(fresh);
+      }
+    }
+
+    for (const raw of (Array.isArray(data.tables) ? data.tables : [])) {
+      const t = normTable(raw);
+      if (!t) continue;
+      if (trashedTables.has(t.id)) { r.inTrash++; continue; }
+      const same = state.tables.find((x) => x.id === t.id);
+      if (same) {
+        if (same.text === t.text) continue;
+        t.id = uid('tb');
+        t.name = uniqueName(t.name + ' (importada)', state.tables.map((x) => x.name));
+      } else {
+        if (state.tables.some((x) => x.name === t.name && x.text === t.text)) continue;
+        t.name = uniqueName(t.name, state.tables.map((x) => x.name));
+      }
+      state.tables.push(t);
+      r.newTables++;
+    }
+    return r;
+  }
+
+  async function handleImport(file) {
+    let obj;
+    try { obj = JSON.parse(await file.text()); }
+    catch (err) { showInfo('Não deu para importar', 'Esse arquivo não pôde ser lido. Escolha um arquivo .json exportado pelo Rolador de Urgm. Nada foi alterado.'); return; }
+    let data = null;
+    if (obj && obj.app === 'rolador-urgm' && obj.data && typeof obj.data === 'object') data = obj.data;
+    else if (obj && Array.isArray(obj.histories)) data = obj;
+    if (!data) { showInfo('Não deu para importar', 'Esse arquivo não é um backup do Rolador de Urgm. Nada foi alterado.'); return; }
+    flushSave();
+    const r = mergeImport(data);
+    save();
+    renderAll();
+    refreshOpenDialogs();
+    const parts = [];
+    if (r.newHistories) parts.push(plural(r.newHistories, 'histórico novo', 'históricos novos'));
+    if (r.rolls) parts.push(plural(r.rolls, 'rolagem', 'rolagens'));
+    if (r.seps) parts.push(plural(r.seps, 'separador', 'separadores'));
+    if (r.newTables) parts.push(plural(r.newTables, 'tabela', 'tabelas'));
+    if (!parts.length && !r.inTrash) { showInfo('Nada novo para importar', 'Tudo o que tem nesse arquivo já estava aqui. Nada foi alterado.'); return; }
+    let msg = parts.length ? 'Entrou: ' + joinPt(parts) + '. ' : '';
+    if (r.inTrash) msg += (r.inTrash === 1 ? '1 item do arquivo está na sua lixeira e não foi trazido de novo. ' : r.inTrash + ' itens do arquivo estão na sua lixeira e não foram trazidos de novo. ') + 'Se quiser, restaure pela lixeira. ';
+    msg += 'Nada do que já existia foi apagado.';
+    if (r.newHistories) msg += ' Os históricos novos estão no seletor de histórico, lá em cima.';
+    showInfo('Importação concluída', msg);
+  }
+
+  /* ================= eventos ================= */
+  function bindEvents() {
+    for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => setMode(b.dataset.mode));
+    for (const id of ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr']) $(id).addEventListener('input', onFormInput);
+    $('fTable').addEventListener('change', onFormInput);
+    for (const id of ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr', 'fTable']) $(id).addEventListener('keydown', onFieldKeydown);
+    $('rollBtn').addEventListener('click', doRoll);
+    $('descToggle').addEventListener('click', () => { descOpen = true; renderFormState(); $('fDesc').focus(); });
+    $('openTablesFromForm').addEventListener('click', () => openTables($('fTable').value));
+    $('chips').addEventListener('click', (ev) => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      if (b.dataset.die) applyChipDie(Number(b.dataset.die));
+      else if (b.dataset.mod) applyChipMod(Number(b.dataset.mod));
+      else if (b.dataset.clear) { $('fExpr').value = ''; onFormInput(); focusExprEnd(); }
     });
-    return embaralhar(inst);
-  }
-  function aoSairDaMao(inst){ inst.canalizando = false; inst.condAtiva = false; }
-  function resetarInstancia(inst){ inst.acc = 0; inst.canalizando = false; inst.condAtiva = false; }
 
-  el("btnNovaBatalha").addEventListener("click", function(){
-    if(fluxoAtivo) return;
-    if(!skills.length){
-      alert("O grimório está vazio — registre habilidades antes de orar.");
-      return;
-    }
-    if(emBatalha && !confirm("Encerrar a batalha atual e fazer uma nova oração? O cemitério retorna ao deck.")) return;
-    salvarCfg();
-    pool.max = limitar(parseInt(el("cfgFeMax").value,10) || 100, 1, 999);
-    pool.atual = Math.min(pool.max, limitar(parseInt(el("cfgFeIni").value,10) || 0, 0, 999));
-    deck = montarDeckCompleto();
-    const n = Math.min(deck.length, limitar(parseInt(el("cfgMao").value,10) || 1, 1, 30));
-    mao = deck.splice(0, n);
-    descarte = []; cemiterio = []; efeitosAtivos = [];
-    selecionadas.clear();
-    rodada = 1; emBatalha = true; log = [];
-    cronica("⚔ Nova batalha. Oração feita: " + n + " carta(s) na mão, fé inicial " + pool.atual + "/" + pool.max + ".");
-    renderMesa(true);
-  });
+    $('histBtn').addEventListener('click', () => (openMenuId === 'hist' ? closeMenus(true) : openMenu('hist')));
+    $('menuBtn').addEventListener('click', () => (openMenuId === 'main' ? closeMenus(true) : openMenu('main')));
+    document.addEventListener('pointerdown', (ev) => {
+      if (openMenuId && !ev.target.closest('.dropdown, #histBtn, #menuBtn')) closeMenus(false);
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && openMenuId) closeMenus(true); });
 
-  el("btnRodada").addEventListener("click", function(){
-    if(!emBatalha || fluxoAtivo) return;
-    rodada++;
-    const eventos = [];
-    mao.forEach(inst => {
-      const s = skillPorId(inst.skillId);
-      if(!s) return;
-      if(s.tags.acumula){
-        const antes = inst.acc;
-        inst.acc = Math.min(s.tags.acumula.limite, inst.acc + s.tags.acumula.porRodada);
-        if(inst.acc !== antes) eventos.push("🕰 " + s.nome + " acumulou +" + (inst.acc - antes) + " (total " + inst.acc + ").");
-      }
-      if(s.tags.canaliza && inst.canalizando){
-        const ganho = Math.min(s.tags.canaliza.valor, pool.max - pool.atual);
-        if(ganho > 0){
-          pool.atual += ganho;
-          eventos.push("✨ " + s.nome + " canalizou +" + ganho + " de fé.");
-        }
+    $('sepBtn').addEventListener('click', addSeparatorFlow);
+    $('filterBtn').addEventListener('click', () => {
+      if (filterOpen) resetFilters(); else filterOpen = true;
+      renderFilterRow();
+      renderLog();
+    });
+    $('untitledBtn').addEventListener('click', () => {
+      filterOpen = true;
+      filters.noTitle = true;
+      logLimit = LOG_PAGE;
+      renderFilterRow();
+      renderLog();
+    });
+    $('fltUntitled').addEventListener('change', () => { filters.noTitle = $('fltUntitled').checked; logLimit = LOG_PAGE; renderLog(); });
+    $('fltPinned').addEventListener('change', () => { filters.pinned = $('fltPinned').checked; logLimit = LOG_PAGE; renderLog(); });
+    let searchTimer = null;
+    $('fltSearch').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { filters.q = $('fltSearch').value; logLimit = LOG_PAGE; renderLog(); }, 150);
+    });
+
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-close]');
+      if (!b) return;
+      const d = b.closest('dialog');
+      if (d) d.close();
+    });
+
+    // editar rolagem
+    $('eTitle').addEventListener('input', () => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.title = $('eTitle').value.trim().slice(0, 120);
+      saveSoon(); renderResultsSoon();
+    });
+    $('eDesc').addEventListener('input', () => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.description = $('eDesc').value.trim().slice(0, 2000);
+      saveSoon(); renderResultsSoon();
+    });
+    $('eTitle').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); $('editDlg').close(); } });
+    $('ePin').addEventListener('click', () => { togglePin(editingId); const f = findEntry(editingId); if (f) fillEditStatic(f); });
+    $('eRepeat').addEventListener('click', () => { const id = editingId; $('editDlg').close(); repeatEntry(id); });
+    $('eMoveBtn').addEventListener('click', () => {
+      const target = $('eMoveSel').value;
+      if (!target) { $('eMoveSel').focus(); return; }
+      const id = editingId;
+      $('editDlg').close();
+      moveEntry(id, target);
+    });
+    $('eDelete').addEventListener('click', () => { const id = editingId; $('editDlg').close(); deleteEntry(id); });
+    $('editDlg').addEventListener('close', () => { flushSave(); editingId = null; clearTimeout(renderSoonTimer); renderLast(false); renderLog(); });
+
+    // separador
+    $('sText').addEventListener('input', () => {
+      const f = findEntry(editingSepId); if (!f) return;
+      f.entry.text = $('sText').value.trim().slice(0, 120) || 'Separador';
+      saveSoon(); renderResultsSoon();
+    });
+    $('sText').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); $('sepDlg').close(); } });
+    $('sDelete').addEventListener('click', () => { const id = editingSepId; $('sepDlg').close(); deleteEntry(id); });
+    $('sepDlg').addEventListener('close', () => { flushSave(); editingSepId = null; clearTimeout(renderSoonTimer); renderLog(); });
+
+    // tabelas
+    $('newTableBtn').addEventListener('click', newTable);
+    $('tDelete').addEventListener('click', deleteTable);
+    $('tName').addEventListener('input', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      t.name = $('tName').value.trim().slice(0, 80) || 'Tabela sem nome';
+      t.updatedAt = Date.now();
+      saveSoon(); renderTablesList();
+    });
+    $('tName').addEventListener('blur', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      const unique = uniqueName(t.name, state.tables.filter((x) => x.id !== t.id).map((x) => x.name));
+      if (unique !== t.name || $('tName').value.trim() !== t.name) {
+        t.name = unique;
+        $('tName').value = unique;
+        save();
+        renderTablesList();
       }
     });
-    efeitosAtivos.forEach(e => e.restam--);
-    const expirados = efeitosAtivos.filter(e => e.restam <= 0);
-    efeitosAtivos = efeitosAtivos.filter(e => e.restam > 0);
-    expirados.forEach(e => eventos.push("⌛ Efeito expirou: " + e.nome + "."));
-    cronica("⏳ Rodada " + rodada + " começou.");
-    eventos.forEach(e => cronica(e));
-    renderMesa(false);
-  });
-
-  function ajustarFe(sinal){
-    if(!emBatalha) return;
-    const v = limitar(parseInt(el("ajusteFeValor").value,10) || 0, 1, 999);
-    pool.atual = limitar(pool.atual + sinal * v, 0, pool.max);
-    renderMesa(false);
-  }
-  el("btnFeMenos").addEventListener("click", () => ajustarFe(-1));
-  el("btnFeMais").addEventListener("click", () => ajustarFe(1));
-
-  document.querySelectorAll("[data-dado]").forEach(b => {
-    b.addEventListener("click", function(){
-      const lados = parseInt(this.dataset.dado, 10);
-      const r = rolar(lados);
-      el("dadoResultado").textContent = "d" + lados + " → " + r;
-      if(emBatalha) cronica("🎲 d" + lados + " rolado: " + r + ".");
+    $('tItems').addEventListener('input', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      t.text = $('tItems').value.slice(0, 20000);
+      t.updatedAt = Date.now();
+      renderTableCount(t);
+      saveSoon(); renderTablesList();
     });
-  });
-  function rolarLivre(){
-    const d = interpretarDado(el("dadoLivre").value);
-    if(!d){
-      alert("Formato inválido. Digite um número (ex.: 45 = d45) ou notação NdX+Y (ex.: 1d30+30, 2d20-3).");
-      return;
-    }
-    const r = rolarFormula(d);
-    el("dadoResultado").textContent = d.formula + " → " + r.total;
-    if(emBatalha) cronica("🎲 " + d.formula + " rolado: " + r.total + detalheRolagem(d, r) + ".");
-  }
-  el("btnDadoLivre").addEventListener("click", rolarLivre);
-  el("dadoLivre").addEventListener("keydown", ev => {
-    if(ev.key === "Enter"){ ev.preventDefault(); rolarLivre(); }
-  });
+    $('tablesDlg').addEventListener('close', () => { flushSave(); renderTableSelect(); renderPreview(); });
 
-  /* ---------- mover cartas ---------- */
-  function refundarAcumulo(inst, s){
-    if(s.tags.acumula && inst.acc > 0){
-      const ganho = Math.min(inst.acc, pool.max - pool.atual);
-      if(ganho > 0){
-        pool.atual += ganho;
-        cronica("🕰 " + s.nome + " devolveu +" + ganho + " de fé acumulada.");
-      }
-      inst.acc = 0;
-    }
-  }
+    // lixeira e janelas de pergunta
+    $('emptyTrashBtn').addEventListener('click', emptyTrash);
+    $('promptOk').addEventListener('click', () => finishPrompt($('promptField').hidden ? '' : $('promptInput').value));
+    $('promptCancel').addEventListener('click', () => finishPrompt(null));
+    $('promptInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); finishPrompt($('promptInput').value); } });
+    $('promptDlg').addEventListener('close', () => { if (promptResolve) finishPrompt(null); });
 
-  /* pergunta ou aplica o efeito de descarte (custo condicional modo "descarte") */
-  async function tratarEfeitoDescarte(inst, s){
-    if(!(s.tags.custoCond && s.tags.custoCond.modo === "descarte")) return;
-    const v = s.tags.custoCond.valor;
-    const texto = s.tags.custoCond.texto;
+    // importar
+    $('importInput').addEventListener('change', () => {
+      const file = $('importInput').files && $('importInput').files[0];
+      $('importInput').value = '';
+      if (file) handleImport(file);
+    });
 
-    if(s.tags.custoCond.obrigatorio){
-      if(v > 0){
-        const pago = Math.min(v, pool.atual);
-        pool.atual -= pago;
-        cronica("🔥 Efeito de descarte de " + s.nome + " ativado automaticamente (−" + pago + " fé" + (pago < v ? ", fé insuficiente para o custo cheio" : "") + ").");
-      }else{
-        cronica("🔥 Efeito de descarte de " + s.nome + " ativado automaticamente.");
-      }
-      await perguntarModal(
-        "Efeito de descarte: " + s.nome,
-        (texto || "O efeito de descarte desta carta é ativado automaticamente.") + (v > 0 ? " (Custo: " + v + " de fé.)" : ""),
-        [{label:"Entendido", valor:true}]
-      );
-      return;
-    }
-
-    const corpo = (texto ? texto + " — " : "") + (v > 0
-      ? "Pagar " + v + " de fé para ativar? (Fé atual: " + pool.atual + ")"
-      : "Ativar o efeito de descarte? (sem custo de fé)");
-    const ativar = await perguntarModal(
-      "Efeito de descarte: " + s.nome, corpo,
-      [
-        {label: v > 0 ? "Ativar (−" + v + " fé)" : "Ativar", classe:"perigo", valor:true},
-        {label:"Só descartar", classe:"sutil", valor:false}
-      ]
-    );
-    if(ativar){
-      if(v <= 0){
-        cronica("🔥 Efeito de descarte de " + s.nome + " ativado.");
-      }else if(pool.atual >= v){
-        pool.atual -= v;
-        cronica("🔥 Efeito de descarte de " + s.nome + " ativado (−" + v + " fé).");
-      }else{
-        cronica("🔥 Fé insuficiente para o efeito de descarte de " + s.nome + " — descartada sem ativar.");
-        alert("Fé insuficiente (" + pool.atual + " < " + v + "). A carta foi descartada sem ativar o efeito.");
-      }
-    }
-  }
-
-  async function descartarInstancia(inst){
-    const s = skillPorId(inst.skillId);
-    aoSairDaMao(inst);
-    if(s){
-      refundarAcumulo(inst, s);
-      await tratarEfeitoDescarte(inst, s);
-      if(s.tags.banirAoDescartar){
-        inst.acc = 0;
-        cemiterio.push(inst);
-        cronica("🕯 " + s.nome + " foi banida automaticamente ao ser descartada.");
-        if(s.tags.banirAoDescartar.texto){
-          await perguntarModal("Banida: " + s.nome, s.tags.banirAoDescartar.texto, [{label:"Entendido", valor:true}]);
-        }
-        return;
-      }
-    }
-    descarte.push(inst);
-  }
-
-  async function moverSelecionadas(destino){
-    if(fluxoAtivo) return;
-    const vao = mao.filter(c => selecionadas.has(c.uid));
-    if(!vao.length) return;
-    fluxoAtivo = true;
-    mao = mao.filter(c => !selecionadas.has(c.uid));
-    selecionadas.clear();
-    esconderTooltip();
-    for(const inst of vao){
-      if(destino === "descarte"){
-        await descartarInstancia(inst);
-      }else{
-        aoSairDaMao(inst); inst.acc = 0;
-        cemiterio.push(inst);
-      }
-      renderMesa(false);
-    }
-    cronica((destino === "descarte" ? "🂠 " : "🕯 ") + vao.length + " carta(s) " +
-      (destino === "descarte" ? "descartada(s)." : "banida(s) para o cemitério."));
-    fluxoAtivo = false;
-    renderMesa(false);
-  }
-  el("btnDescartar").addEventListener("click", () => moverSelecionadas("descarte"));
-  el("btnBanir").addEventListener("click", () => moverSelecionadas("cemiterio"));
-
-  el("btnPuxar").addEventListener("click", function(){
-    const q = limitar(parseInt(el("qtdPuxar").value,10) || 1, 1, 30);
-    if(!emBatalha){
-      if(!skills.length){
-        alert("O grimório está vazio — registre habilidades antes de puxar.");
-        return;
-      }
-      salvarCfg();
-      pool.max = limitar(parseInt(el("cfgFeMax").value,10) || 100, 1, 999);
-      pool.atual = Math.min(pool.max, limitar(parseInt(el("cfgFeIni").value,10) || 0, 0, 999));
-      deck = montarDeckCompleto();
-      descarte = []; cemiterio = []; efeitosAtivos = []; selecionadas.clear();
-      rodada = 1; emBatalha = true; log = [];
-      cronica("⚔ Batalha iniciada direto no puxar — deck montado, fé inicial " + pool.atual + "/" + pool.max + ".");
-    }
-    puxarCartas(q);
-    renderMesa(false);
-  });
-  /* puxa sempre: se o deck zerar no meio, reembaralha o descarte sozinho e continua */
-  function puxarCartas(q){
-    let restantes = q, puxadas = 0;
-    while(restantes > 0){
-      if(!deck.length){
-        if(descarte.length){
-          const n = descarte.length;
-          descarte.forEach(resetarInstancia);
-          deck = embaralhar(deck.concat(descarte));
-          descarte = [];
-          cronica("↺ Deck vazio: " + n + " carta(s) do descarte reembaralhada(s) automaticamente.");
-        }else break;
-      }
-      const lote = deck.splice(0, Math.min(restantes, deck.length));
-      lote.forEach(c => c.nova = true);
-      mao = mao.concat(lote);
-      puxadas += lote.length;
-      restantes -= lote.length;
-    }
-    if(puxadas) cronica("🂡 " + puxadas + " carta(s) puxada(s) do deck.");
-    else cronica("🂡 Nada para puxar — deck e descarte vazios (cemitério não retorna).");
-    return puxadas;
-  }
-
-  el("btnReembaralhar").addEventListener("click", function(){
-    if(!descarte.length || fluxoAtivo) return;
-    const q = descarte.length;
-    descarte.forEach(resetarInstancia);
-    deck = embaralhar(deck.concat(descarte));
-    descarte = [];
-    cronica("↺ " + q + " carta(s) do descarte reembaralhada(s) no deck.");
-    renderMesa(false);
-  });
-
-  /* ---------- reviver / resgatar ---------- */
-  async function fluxoReviver(zona, qtdMax, resgate){
-    const origem = zona === "cemiterio" ? cemiterio : descarte;
-    const nomeZona = zona === "cemiterio" ? "cemitério" : "descarte";
-    const acao = resgate ? "Resgatar" : "Reviver";
-    const acaoFeita = resgate ? "Resgatou" : "Reviveu";
-    if(!origem.length){
-      cronica("🕯 Nada para " + acao.toLowerCase() + " no " + nomeZona + ".");
-      return;
-    }
-    const max = Math.min(qtdMax, origem.length);
-    const uids = await selecionarCartasModal(
-      acao + " do " + nomeZona,
-      "Escolha até " + max + " carta(s):",
-      origem, max
-    );
-    if(!uids || !uids.length){
-      cronica("🕯 " + acao + " do " + nomeZona + " cancelado.");
-      return;
-    }
-    const dest = await perguntarModal(
-      "Destino das cartas",
-      "Para onde vão as " + uids.length + " carta(s) escolhida(s)?",
-      [
-        {label:"→ Mão", valor:"mao"},
-        {label:"→ Topo do deck", classe:"sutil", valor:"deck"},
-        {label:"Cancelar", classe:"sutil", valor:null}
-      ]
-    );
-    if(!dest){
-      cronica("🕯 " + acao + " do " + nomeZona + " cancelado.");
-      return;
-    }
-    const escolhidas = origem.filter(i => uids.includes(i.uid));
-    if(zona === "cemiterio") cemiterio = cemiterio.filter(i => !uids.includes(i.uid));
-    else descarte = descarte.filter(i => !uids.includes(i.uid));
-    escolhidas.forEach(resetarInstancia);
-    const nomes = escolhidas.map(i => { const s = skillPorId(i.skillId); return s ? s.nome : "?"; }).join(", ");
-    if(dest === "mao"){
-      escolhidas.forEach(i => i.nova = true);
-      mao = mao.concat(escolhidas);
-      cronica("🕯 " + acaoFeita + " do " + nomeZona + " para a mão: " + nomes + ".");
-    }else{
-      deck = escolhidas.concat(deck);
-      cronica("🕯 " + acaoFeita + " do " + nomeZona + " para o topo do deck: " + nomes + ".");
-    }
-  }
-
-  /* resgate manual da pilha de descarte, a qualquer momento */
-  el("btnResgatar").addEventListener("click", async function(){
-    if(!descarte.length || fluxoAtivo) return;
-    fluxoAtivo = true;
-    try{
-      await fluxoReviver("descarte", descarte.length, true);
-    }finally{
-      fluxoAtivo = false;
-      renderMesa(false);
-    }
-  });
-
-  async function resgatarUnica(inst){
-    const s = skillPorId(inst.skillId);
-    const nome = s ? s.nome : "carta";
-    const dest = await perguntarModal(
-      "Resgatar: " + nome,
-      "Para onde vai a carta resgatada?",
-      [
-        {label:"→ Mão", valor:"mao"},
-        {label:"→ Topo do deck", classe:"sutil", valor:"deck"},
-        {label:"Cancelar", classe:"sutil", valor:null}
-      ]
-    );
-    if(!dest) return;
-    descarte = descarte.filter(i => i.uid !== inst.uid);
-    resetarInstancia(inst);
-    if(dest === "mao"){
-      inst.nova = true;
-      mao.push(inst);
-      cronica("⤴ Resgatou " + nome + " do descarte para a mão.");
-    }else{
-      deck.unshift(inst);
-      cronica("⤴ Resgatou " + nome + " do descarte para o topo do deck.");
-    }
-  }
-
-  /* ---------- usar carta ---------- */
-  async function fluxoUsar(inst, s){
-    if(fluxoAtivo) return;
-    const custo = custoEfetivo(inst, s);
-    if(pool.atual < custo){
-      alert("Fé insuficiente: " + s.nome + " custa " + custo + " e você tem " + pool.atual + ".");
-      return;
-    }
-    fluxoAtivo = true;
-    try{
-      /* destino da carta usada */
-      let destino = s.tags.destinoFixo;
-      if(destino === "perguntar"){
-        let txt = "Custo: " + custo + " de fé (restarão " + (pool.atual - custo) + ").";
-        if(inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao") txt += " [condição ativa]";
-        if(s.tags.recuperaAoUsar) txt += " Recupera +" + s.tags.recuperaAoUsar.valor + " ao usar.";
-        txt += " Para onde a carta vai?";
-        destino = await perguntarModal("Usar: " + s.nome, txt, [
-          {label:"→ Descarte", classe:"perigo", valor:"descarte"},
-          {label:"→ Cemitério", classe:"sombrio", valor:"cemiterio"},
-          {label:"Cancelar", classe:"sutil", valor:null}
-        ]);
-        if(!destino) return;
-      }
-
-      /* pagar e recuperar */
-      pool.atual = Math.max(0, pool.atual - custo);
-      let txt = "⚡ Usou " + s.nome + " (−" + custo + " fé" +
-        (inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao" ? " condicional" : "");
-      if(s.tags.recuperaAoUsar){
-        const ganho = Math.min(s.tags.recuperaAoUsar.valor, pool.max - pool.atual);
-        pool.atual += ganho;
-        txt += ", +" + ganho + " recuperada";
-      }
-      txt += ")";
-
-      /* mover a carta usada */
-      mao = mao.filter(c => c.uid !== inst.uid);
-      selecionadas.delete(inst.uid);
-      aoSairDaMao(inst);
-      if(destino === "descarte"){
-        const sD = s;
-        refundarAcumulo(inst, sD);
-        descarte.push(inst);
-        txt += " → descarte.";
-      }else if(destino === "cemiterio"){
-        inst.acc = 0;
-        cemiterio.push(inst);
-        txt += " → cemitério (queimada).";
-      }else{ /* deck (eco) */
-        resetarInstancia(inst);
-        deck.push(inst);
-        embaralhar(deck);
-        txt += " → voltou embaralhada ao deck (eco).";
-      }
-      cronica(txt);
-      if(s.tags.duracao){
-        efeitosAtivos.push({id: novoId(), nome: s.nome, restam: s.tags.duracao.rodadas});
-        cronica("⌛ Efeito ativo: " + s.nome + " por " + s.tags.duracao.rodadas + " rodada(s).");
-      }
-      esconderTooltip();
-      renderMesa(false);
-
-      /* efeitos ao usar, na ordem: dado → puxar → descartar aleatórias → reviver */
-      if(s.tags.dadoAoUsar){
-        const d = interpretarDado(s.tags.dadoAoUsar.formula);
-        if(d){
-          const r = rolarFormula(d);
-          el("dadoResultado").textContent = d.formula + " → " + r.total;
-          cronica("🎲 " + s.nome + " rolou " + d.formula + ": " + r.total + detalheRolagem(d, r) + ".");
-        }
-      }
-      if(s.tags.puxarAoUsar){
-        puxarCartas(s.tags.puxarAoUsar.qtd);
-        renderMesa(false);
-      }
-      if(s.tags.descartarAleatorias && mao.length){
-        const q = Math.min(mao.length, s.tags.descartarAleatorias.qtd);
-        const sorteadas = embaralhar(mao.slice()).slice(0, q);
-        const uidsSort = new Set(sorteadas.map(i => i.uid));
-        mao = mao.filter(i => !uidsSort.has(i.uid));
-        sorteadas.forEach(i => selecionadas.delete(i.uid));
-        const nomes = sorteadas.map(i => { const x = skillPorId(i.skillId); return x ? x.nome : "?"; }).join(", ");
-        cronica("🂠 " + s.nome + " descartou aleatoriamente: " + nomes + ".");
-        for(const i of sorteadas){
-          await descartarInstancia(i);
-          renderMesa(false);
-        }
-      }
-      if(s.tags.reviverCem){
-        await fluxoReviver("cemiterio", s.tags.reviverCem.qtd);
-        renderMesa(false);
-      }
-      if(s.tags.reviverDesc){
-        await fluxoReviver("descarte", s.tags.reviverDesc.qtd);
-        renderMesa(false);
-      }
-    }finally{
-      fluxoAtivo = false;
-      renderMesa(false);
-    }
-  }
-
-  /* ---------- render de cartas ---------- */
-  function criarCarta(inst, zona){
-    const naMao = zona === "mao";
-    const s = skillPorId(inst.skillId);
-    if(!s) return null;
-    const c = document.createElement("div");
-    c.className = "carta r-" + s.raridade + (inst.nova ? " nova" : "");
-    delete inst.nova;
-    c.tabIndex = 0;
-    c.setAttribute("aria-label", s.nome + ", " + RARIDADES[s.raridade].nome + ", custo de fé " + custoEfetivo(inst, s));
-
-    const custo = document.createElement("div");
-    custo.className = "custo" + (inst.condAtiva && s.tags.custoCond && s.tags.custoCond.modo === "condicao" ? " alt" : "");
-    custo.textContent = custoEfetivo(inst, s);
-    c.appendChild(custo);
-
-    if(s.tags.acumula && inst.acc > 0){
-      const acc = document.createElement("div");
-      acc.className = "acumulo"; acc.textContent = "+" + inst.acc;
-      acc.title = "Fé acumulada";
-      c.appendChild(acc);
-    }
-
-    const arte = document.createElement("div");
-    arte.className = "arte";
-    if(s.arte){
-      const img = document.createElement("img");
-      img.alt = ""; img.loading = "lazy"; img.src = s.arte;
-      img.addEventListener("error", function(){
-        arte.innerHTML = '<span class="emblema">✠</span>';
+    // aviso flutuante pausa enquanto o mouse está em cima
+    $('toast').addEventListener('mouseenter', () => clearTimeout(toastTimer));
+    $('toast').addEventListener('mouseleave', () => armToast(3000));
+    // se a janela que segurava o aviso fechar, ele volta para a página
+    for (const d of document.querySelectorAll('dialog')) {
+      d.addEventListener('close', () => {
+        const t = $('toast');
+        if (t.parentElement === d && !t.hidden) showToastEl(t);
+        else if (t.parentElement === d) document.body.append(t);
       });
-      arte.appendChild(img);
-    }else{
-      arte.innerHTML = '<span class="emblema">✠</span>';
-    }
-    c.appendChild(arte);
-
-    const nome = document.createElement("div");
-    nome.className = "nome"; nome.textContent = s.nome;
-    c.appendChild(nome);
-
-    const rodape = document.createElement("div");
-    rodape.className = "rodape";
-    const gema = document.createElement("span");
-    gema.className = "gema";
-    gema.style.color = RARIDADES[s.raridade].cor;
-    gema.style.background = RARIDADES[s.raridade].cor;
-    rodape.appendChild(gema);
-    rodape.appendChild(document.createTextNode("fé " + s.fe));
-    c.appendChild(rodape);
-
-    if(naMao){
-      if(selecionadas.has(inst.uid)) c.classList.add("selecionada");
-
-      const acoes = document.createElement("div");
-      acoes.className = "acoes";
-      const bUsar = document.createElement("button");
-      bUsar.type = "button"; bUsar.textContent = "Usar ✦";
-      bUsar.addEventListener("click", ev => { ev.stopPropagation(); fluxoUsar(inst, s); });
-      acoes.appendChild(bUsar);
-      if(s.tags.canaliza){
-        const bCanal = document.createElement("button");
-        bCanal.type = "button";
-        bCanal.className = "sutil canal" + (inst.canalizando ? " ativo" : "");
-        bCanal.textContent = inst.canalizando ? "Canalizando" : "Canalizar";
-        bCanal.addEventListener("click", ev => {
-          ev.stopPropagation();
-          inst.canalizando = !inst.canalizando;
-          cronica((inst.canalizando ? "✨ Começou" : "✨ Parou") + " de canalizar " + s.nome + ".");
-          renderMesa(false);
-        });
-        acoes.appendChild(bCanal);
-      }
-      if(s.tags.custoCond && s.tags.custoCond.modo === "condicao"){
-        const bCond = document.createElement("button");
-        bCond.type = "button";
-        bCond.className = "sutil cond" + (inst.condAtiva ? " ativo" : "");
-        bCond.textContent = inst.condAtiva ? "Condição ✓" : "Condição";
-        bCond.title = "Com a condição ativa, o custo passa a ser " + s.tags.custoCond.valor;
-        bCond.addEventListener("click", ev => {
-          ev.stopPropagation();
-          inst.condAtiva = !inst.condAtiva;
-          cronica("🌓 Condição de " + s.nome + (inst.condAtiva ? " ativada (custo " + s.tags.custoCond.valor + ")." : " desativada (custo " + s.fe + ")."));
-          renderMesa(false);
-        });
-        acoes.appendChild(bCond);
-      }
-      c.appendChild(acoes);
-
-      const alternar = () => {
-        if(fluxoAtivo) return;
-        if(selecionadas.has(inst.uid)) selecionadas.delete(inst.uid);
-        else selecionadas.add(inst.uid);
-        c.classList.toggle("selecionada");
-        atualizarBotoes();
-      };
-      c.addEventListener("click", alternar);
-      c.addEventListener("keydown", ev => {
-        if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); alternar(); }
-        if(ev.key.toLowerCase() === "u"){ ev.preventDefault(); fluxoUsar(inst, s); }
-      });
-    }else if(zona === "descarte"){
-      const acoes = document.createElement("div");
-      acoes.className = "acoes";
-      const bRes = document.createElement("button");
-      bRes.type = "button"; bRes.textContent = "Resgatar ⤴";
-      bRes.addEventListener("click", async ev => {
-        ev.stopPropagation();
-        if(fluxoAtivo) return;
-        fluxoAtivo = true;
-        try{
-          await resgatarUnica(inst);
-        }finally{
-          fluxoAtivo = false;
-          esconderTooltip();
-          renderMesa(false);
-        }
-      });
-      acoes.appendChild(bRes);
-      c.appendChild(acoes);
     }
 
-    c.addEventListener("mouseenter", () => mostrarTooltip(s, inst));
-    c.addEventListener("mousemove", moverTooltip);
-    c.addEventListener("mouseleave", esconderTooltip);
-    c.addEventListener("focus", () => {
-      mostrarTooltip(s, inst);
-      const r = c.getBoundingClientRect();
-      posicionarTooltip(r.right, r.top);
-    });
-    c.addEventListener("blur", esconderTooltip);
-    return c;
-  }
-
-  function renderZona(container, arr, zona, vazioMsg){
-    container.innerHTML = "";
-    if(!arr.length){
-      container.innerHTML = '<p class="vazio">' + vazioMsg + '</p>';
-      return;
-    }
-    arr.forEach(inst => {
-      const c = criarCarta(inst, zona);
-      if(c) container.appendChild(c);
+    // salvar antes de sair e manter duas abas em sincronia
+    window.addEventListener('pagehide', flushSave);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
+    window.addEventListener('storage', (ev) => {
+      if (ev.key !== STORAGE_KEY || ev.newValue == null) return;
+      let parsed;
+      try { parsed = JSON.parse(ev.newValue); } catch (err) { return; }
+      if (!parsed || typeof parsed !== 'object') return;
+      if (pendingSave) { clearTimeout(pendingSave); pendingSave = null; }
+      state = normalizeState(parsed);
+      lastSavedSize = ev.newValue.length;
+      renderAll();
+      refreshOpenDialogs();
     });
   }
 
-  function renderMesa(animarTudo){
-    if(animarTudo) mao.forEach(i => i.nova = true);
-    renderZona(el("zonaMao"), mao, "mao",
-      emBatalha ? "Mão vazia — puxe cartas do deck." : "Inicie uma batalha para fazer a oração.");
-    renderZona(el("zonaDescarte"), descarte, "descarte", "Nenhuma carta descartada.");
-    renderZona(el("zonaCemiterio"), cemiterio, "cemiterio", "Nenhuma carta banida.");
-
-    el("ctDeck").textContent = deck.length;
-    el("ctMao").textContent = mao.length;
-    el("ctDescarte").textContent = descarte.length;
-    el("ctCemiterio").textContent = cemiterio.length;
-    el("numRodada").textContent = emBatalha ? rodada : "—";
-
-    /* efeitos ativos */
-    const ze = el("zonaEfeitos");
-    ze.innerHTML = "";
-    if(efeitosAtivos.length){
-      ze.hidden = false;
-      const tit = document.createElement("span");
-      tit.className = "efeitos-titulo"; tit.textContent = "EFEITOS ATIVOS:";
-      ze.appendChild(tit);
-      efeitosAtivos.forEach(e => {
-        const chip = document.createElement("span");
-        chip.className = "efeito-chip";
-        chip.appendChild(document.createTextNode(e.nome + " "));
-        const b = document.createElement("b");
-        b.textContent = e.restam + "R";
-        b.title = "Rodadas restantes";
-        chip.appendChild(b);
-        const x = document.createElement("button");
-        x.type = "button"; x.textContent = "×"; x.title = "Encerrar efeito agora";
-        x.addEventListener("click", () => {
-          efeitosAtivos = efeitosAtivos.filter(f => f.id !== e.id);
-          cronica("⌛ Efeito encerrado manualmente: " + e.nome + ".");
-          renderMesa(false);
-        });
-        chip.appendChild(x);
-        ze.appendChild(chip);
-      });
-    }else{
-      ze.hidden = true;
-    }
-
-    const pct = pool.max ? Math.round(100 * pool.atual / pool.max) : 0;
-    el("liquido").style.height = pct + "%";
-    el("feAtual").textContent = pool.atual;
-    el("feMaxTxt").textContent = "/ " + pool.max + " FÉ";
-    el("orbe").classList.toggle("baixa", emBatalha && pct <= 20);
-    el("orbe").setAttribute("aria-label", "Pool de fé: " + pool.atual + " de " + pool.max);
-
-    atualizarBotoes();
-    salvarBatalha();
+  /* ================= início ================= */
+  function init() {
+    state = load();
+    purgeTrash();
+    buildPalette($('palette'), (cid) => { formColor = cid; markPalette($('palette'), cid); $('colorName').textContent = colorLabel(cid); });
+    buildPalette($('ePalette'), (cid) => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.color = cid;
+      save();
+      fillEditStatic(f);
+      renderLast(false);
+      renderLog();
+    });
+    buildFilterPalette();
+    bindEvents();
+    save();
+    if (!lastSavedSize) lastSavedSize = JSON.stringify(state).length;
+    renderAll();
+    if (!isNarrow()) $('fTitle').focus({ preventScroll: true });
+    window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
   }
 
-  function atualizarBotoes(){
-    el("btnDescartar").disabled = !selecionadas.size;
-    el("btnDescartar").textContent = selecionadas.size
-      ? "Descartar selecionadas (" + selecionadas.size + ")"
-      : "Descartar selecionadas";
-    el("btnBanir").disabled = !selecionadas.size;
-    el("btnPuxar").disabled = !emBatalha && !skills.length;
-    el("btnRodada").disabled = !emBatalha;
-    el("btnReembaralhar").disabled = !descarte.length;
-    el("btnResgatar").disabled = !descarte.length;
-  }
-
-  /* ---------- tooltip ---------- */
-  const tip = el("tooltip");
-  function mostrarTooltip(s, inst){
-    tip.querySelector(".t-nome").textContent = s.nome;
-    const rar = tip.querySelector(".t-raridade");
-    rar.textContent = RARIDADES[s.raridade].nome;
-    rar.style.color = RARIDADES[s.raridade].cor;
-    let feTxt = "Custo de fé: " + s.fe;
-    if(inst && s.tags.custoCond && s.tags.custoCond.modo === "condicao" && inst.condAtiva){
-      feTxt = "Custo de fé: " + s.tags.custoCond.valor + " (condição ativa; base " + s.fe + ")";
-    }
-    if(inst && s.tags.acumula) feTxt += " · Acumulada: " + inst.acc;
-    tip.querySelector(".t-fe").textContent = feTxt;
-    tip.querySelector(".t-desc").textContent = s.desc;
-    const tt = tip.querySelector(".t-tags");
-    const linhas = descreverTags(s);
-    if(s.labels.length) linhas.push("🏷 " + s.labels.join(" · "));
-    tt.textContent = linhas.join("\n");
-    tip.classList.add("visivel");
-  }
-  function moverTooltip(ev){ posicionarTooltip(ev.clientX, ev.clientY); }
-  function posicionarTooltip(x, y){
-    const m = 18;
-    const r = tip.getBoundingClientRect();
-    let px = x + m, py = y + m;
-    if(px + r.width > window.innerWidth - 8)  px = x - r.width - m;
-    if(py + r.height > window.innerHeight - 8) py = y - r.height - m;
-    tip.style.left = Math.max(8, px) + "px";
-    tip.style.top  = Math.max(8, py) + "px";
-  }
-  function esconderTooltip(){ tip.classList.remove("visivel"); }
-
-  /* ---------- início ---------- */
-  carregarTudo();
-  renderGrimorio();
-  renderLog();
-  renderMesa(false);
+  init();
 })();
 </script>
 </body>
