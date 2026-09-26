@@ -217,6 +217,9 @@ textarea.items-area{min-height:280px;font-size:16px}
 .trash-name{overflow-wrap:anywhere}
 .trash-meta{font-size:13px;color:var(--muted)}
 .trash-empty{padding:16px 0;color:var(--muted)}
+textarea.copy-area{min-height:220px;font-size:13px;font-family:Consolas,"Cascadia Mono",monospace;line-height:1.4}
+label.dd-item{cursor:pointer}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* aviso flutuante */
 .toast{position:fixed;left:50%;bottom:24px;right:auto;top:auto;transform:translateX(-50%);margin:0;display:flex;align-items:center;gap:14px;width:max-content;max-width:min(680px,92vw);padding:12px 12px 12px 18px;background:#1f2b41;color:var(--parchment);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-size:15px;z-index:60}
@@ -320,7 +323,7 @@ textarea.items-area{min-height:280px;font-size:16px}
     <div class="preview hint" id="preview" aria-live="polite"></div>
     <button type="button" class="roll-btn" id="rollBtn">Rolar</button>
     <p class="dest">Vai para o histórico <strong id="destName"></strong></p>
-    <p class="kbd-hint">Enter avança os campos; no último, rola.</p>
+    <p class="kbd-hint">Enter avança os campos; no último, rola. Os campos continuam preenchidos para a próxima.</p>
   </section>
 
   <section class="results" aria-label="Resultados">
@@ -418,7 +421,16 @@ textarea.items-area{min-height:280px;font-size:16px}
   <div class="dlg-foot"><button type="button" class="btn ghost" id="promptCancel">Cancelar</button><button type="button" class="btn primary" id="promptOk">Ok</button></div>
 </dialog>
 
-<input type="file" id="importInput" accept=".json,application/json" hidden>
+<dialog id="copyDlg" aria-labelledby="copyHead">
+  <div class="dlg-head"><h2 id="copyHead">Salvar arquivo</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <p class="prompt-msg" id="copyMsg"></p>
+    <textarea class="input copy-area" id="copyText" rows="10" readonly spellcheck="false"></textarea>
+  </div>
+  <div class="dlg-foot"><span class="note" id="copyNote"></span><button type="button" class="btn primary" id="copyBtn">Copiar</button></div>
+</dialog>
+
+<input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
 <script>
 (function () {
@@ -448,8 +460,8 @@ textarea.items-area{min-height:280px;font-size:16px}
   COLORS.forEach((c) => { COLOR[c.id] = c; });
 
   const ICONS = {
-    check: '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5 5.5 10.5 11.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    pin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M10 1.2 14.8 6l-1.9.7-2.7 2.7.4 3.4-1.5 1.5-2.7-2.7-4 4-.8-.8 4-4-2.7-2.7L4.4 6.6l3.4.4 2.7-2.7z" fill="currentColor"/></svg>',
+    check: { box: '0 0 14 14', d: 'M2.5 7.5 5.5 10.5 11.5 3.5', stroke: true },
+    pin: { box: '0 0 16 16', d: 'M10 1.2 14.8 6l-1.9.7-2.7 2.7.4 3.4-1.5 1.5-2.7-2.7-4 4-.8-.8 4-4-2.7-2.7L4.4 6.6l3.4.4 2.7-2.7z', stroke: false },
   };
 
   /* ================= estado ================= */
@@ -502,10 +514,26 @@ textarea.items-area{min-height:280px;font-size:16px}
   }
 
   function icon(name, cls) {
+    const def = ICONS[name];
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', def.box);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', def.d);
+    if (def.stroke) {
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+    } else path.setAttribute('fill', 'currentColor');
+    svg.append(path);
     const span = document.createElement('span');
     span.className = 'ico' + (cls ? ' ' + cls : '');
     span.setAttribute('aria-hidden', 'true');
-    span.innerHTML = ICONS[name]; // só SVG fixo do próprio arquivo
+    span.append(svg);
     return span;
   }
 
@@ -915,19 +943,12 @@ textarea.items-area{min-height:280px;font-size:16px}
     insertSorted(hist.entries, entry);
     hist.updatedAt = Date.now();
     save();
-    resetForm();
+    attempted = false;
     afterNewRoll();
   }
 
-  /* Depois de rolar, tudo volta ao padrão: nada de valor antigo esquecido no campo. */
-  function resetForm() {
-    for (const id of ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr']) $(id).value = '';
-    $('fTable').value = '';
-    formColor = null;
-    descOpen = false;
-    attempted = false;
-  }
-
+  /* Depois de rolar, tudo continua preenchido e o foco fica onde estava:
+     é só apertar Enter (ou clicar em Rolar) de novo para a próxima rolagem. */
   function afterNewRoll() {
     renderFormState();
     renderHeader();
@@ -935,7 +956,6 @@ textarea.items-area{min-height:280px;font-size:16px}
     renderLog();
     $('logScroll').scrollTop = 0;
     if (isNarrow()) $('lastCard').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
-    else $('fTitle').focus({ preventScroll: true });
   }
 
   function repeatEntry(id) {
@@ -969,6 +989,7 @@ textarea.items-area{min-height:280px;font-size:16px}
 
   function onFieldKeydown(ev) {
     if (ev.key !== 'Enter' || ev.isComposing) return;
+    if (ev.repeat) { ev.preventDefault(); return; } // segurar o Enter não dispara rolagens em série
     const id = ev.target.id;
     if (id === 'fDesc') { if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); doRoll(); } return; }
     ev.preventDefault();
@@ -1102,10 +1123,6 @@ textarea.items-area{min-height:280px;font-size:16px}
     else { el.className = 'save-status'; el.append(icon('check'), 'Salvo no navegador'); }
   }
 
-  function downloadCorrupt() {
-    if (corruptRaw != null) downloadFile('rolador-urgm-dados-danificados-' + stamp() + '.txt', corruptRaw, 'text/plain');
-  }
-
   function renderBanner() {
     const b = $('banner');
     let n = null;
@@ -1113,14 +1130,20 @@ textarea.items-area{min-height:280px;font-size:16px}
       n = { kind: 'error', text: 'Este navegador está bloqueando o salvamento. O que for rolado agora some quando a aba fechar. Antes de sair, use Menu > Exportar backup completo.',
         actions: [['Exportar backup completo', exportAll]] };
     } else if (saveBlocked) {
-      n = { kind: 'error', text: 'Os dados salvos estavam danificados. Para não apagá-los, o salvamento está pausado. Baixe a cópia dos dados antigos para continuar salvando.',
-        actions: [['Baixar cópia e continuar', () => { downloadCorrupt(); saveBlocked = false; save(); renderAll(); }]] };
+      n = { kind: 'error', text: 'Os dados salvos estavam danificados. Para não apagá-los, o salvamento está pausado. Salve uma cópia dos dados antigos para continuar salvando.',
+        actions: [['Salvar cópia e continuar', async () => {
+          const r = await saveCorruptCopy();
+          if (r !== 'saved' && r !== 'copied') return;
+          saveBlocked = false;
+          save();
+          renderAll();
+        }]] };
     } else if (saveFailed) {
       n = { kind: 'error', text: 'Não deu para salvar: o espaço do navegador para o rolador acabou. Exporte um backup completo e depois esvazie a lixeira ou apague históricos antigos.',
         actions: [['Exportar backup completo', exportAll], ['Abrir lixeira', openTrash]] };
     } else if (corruptRaw != null && !corruptNoticeDismissed) {
       n = { kind: 'warn', text: 'Os dados salvos estavam danificados e não puderam ser abertos. Uma cópia foi guardada neste navegador e o rolador começou do zero.',
-        actions: [['Baixar cópia', downloadCorrupt], ['Entendi', () => { corruptNoticeDismissed = true; renderBanner(); }]] };
+        actions: [['Salvar cópia', saveCorruptCopy], ['Entendi', () => { corruptNoticeDismissed = true; renderBanner(); }]] };
     } else if (lastSavedSize > STORAGE_SOFT_LIMIT) {
       n = { kind: 'warn', text: 'O espaço do navegador está quase cheio (' + Math.min(99, Math.round(lastSavedSize / 50000)) + '% usado). Exporte um backup completo e apague históricos antigos que não usa mais.',
         actions: [['Exportar backup completo', exportAll]] };
@@ -1443,6 +1466,11 @@ textarea.items-area{min-height:280px;font-size:16px}
     return h('button', { type: 'button', role: 'menuitem', class: 'dd-item' + (cls ? ' ' + cls : ''), onclick: () => { closeMenus(false); fn(); } },
       h('span', { class: 'dd-name', text: label }), meta ? h('span', { class: 'dd-meta', text: meta }) : null);
   }
+  function openImportPicker() {
+    const input = $('importInput');
+    closeMenus(false);
+    try { input.showPicker(); } catch (err) { toast('Clique em Menu > Importar backup com o mouse para escolher o arquivo.', { error: true }); }
+  }
 
   function buildHistMenu(menu) {
     const cur = activeHistory();
@@ -1468,7 +1496,11 @@ textarea.items-area{min-height:280px;font-size:16px}
       menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
       h('div', { class: 'dd-sep' }),
       menuItem('Exportar backup completo', exportAll),
-      menuItem('Importar backup', () => $('importInput').click()),
+      // rótulo ligado ao campo de arquivo: o próprio navegador abre a escolha do arquivo
+      h('label', { class: 'dd-item', for: 'importInput', role: 'menuitem', tabindex: '0',
+        onclick: () => setTimeout(() => closeMenus(false), 0),
+        onkeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openImportPicker(); } } },
+        h('span', { class: 'dd-name', text: 'Importar backup' })),
       h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
         text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
       h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
@@ -1737,34 +1769,98 @@ textarea.items-area{min-height:280px;font-size:16px}
   }
 
   /* ================= exportar e importar ================= */
-  function downloadFile(name, text, type) {
-    const blob = new Blob([text], { type: type || 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = h('a', { href: url, download: name });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  /*
+    Salvar usa a janela "Salvar como" do próprio navegador (Chrome e Edge).
+    Se ela não existir, abre uma janela com o texto e um botão Copiar.
+    Resultado: 'saved', 'copied', 'cancelled' ou 'failed'.
+  */
+  const copyState = { resolve: null, copied: false };
+
+  async function saveTextFile(name, text, opts) {
+    opts = opts || {};
+    const mime = opts.mime || 'application/json';
+    const ext = opts.ext || '.json';
+    if (typeof window.showSaveFilePicker === 'function') {
+      let handle = null;
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: opts.description || 'Arquivo do Rolador de Urgm', accept: { [mime]: [ext] } }],
+        });
+      } catch (err) {
+        if (err && err.name === 'AbortError') return 'cancelled';
+        handle = null; // janela bloqueada pelo navegador: usa o plano B abaixo
+      }
+      if (handle) {
+        try {
+          const writable = await handle.createWritable();
+          await writable.write(text);
+          await writable.close();
+          return 'saved';
+        } catch (err) {
+          toast('Não deu para gravar o arquivo nessa pasta. Tente de novo escolhendo outra pasta.', { error: true });
+          return 'failed';
+        }
+      }
+    }
+    return openCopyDialog(name, text);
   }
 
-  function exportAll() {
+  function openCopyDialog(name, text) {
+    if (copyState.resolve) { const r = copyState.resolve; copyState.resolve = null; r('cancelled'); }
+    copyState.copied = false;
+    $('copyMsg').textContent = 'Este navegador não abriu a janela de salvar. Clique em Copiar, abra o Bloco de Notas, cole o texto e salve com o nome ' + name + '.';
+    $('copyText').value = text;
+    $('copyNote').textContent = '';
+    const dlg = $('copyDlg');
+    return new Promise((resolve) => {
+      copyState.resolve = resolve;
+      if (!dlg.open) dlg.showModal();
+      $('copyBtn').focus();
+    });
+  }
+
+  async function copyFromDialog() {
+    const area = $('copyText');
+    try {
+      await navigator.clipboard.writeText(area.value);
+      copyState.copied = true;
+      $('copyNote').textContent = 'Copiado. Agora cole no Bloco de Notas e salve.';
+    } catch (err) {
+      area.focus();
+      area.select();
+      $('copyNote').textContent = 'O texto está selecionado: aperte Ctrl+C para copiar.';
+      copyState.copied = true;
+    }
+  }
+
+  async function exportAll() {
     flushSave();
     const payload = { app: 'rolador-urgm', kind: 'backup', version: 1, exportedAt: new Date().toISOString(),
       data: { histories: state.histories, tables: state.tables } };
-    downloadFile('rolador-urgm-backup-' + stamp() + '.json', JSON.stringify(payload, null, 2));
+    const result = await saveTextFile('rolador-urgm-backup-' + stamp() + '.json', JSON.stringify(payload, null, 2),
+      { description: 'Backup do Rolador de Urgm' });
+    if (result !== 'saved' && result !== 'copied') return;
     state.lastBackupAt = Date.now();
     save();
     renderHeader();
-    toast('Backup completo baixado. Guarde o arquivo num lugar seguro, como uma pasta na nuvem.');
+    if (result === 'saved') toast('Backup completo salvo. Guarde o arquivo num lugar seguro, como uma pasta na nuvem.');
   }
 
-  function exportHistory() {
+  async function exportHistory() {
     flushSave();
     const hist = activeHistory();
     const payload = { app: 'rolador-urgm', kind: 'history', version: 1, exportedAt: new Date().toISOString(),
       data: { histories: [hist], tables: [] } };
-    downloadFile('rolador-urgm-' + slug(hist.name) + '-' + stamp() + '.json', JSON.stringify(payload, null, 2));
-    toast('Histórico “' + hist.name + '” baixado.');
+    const result = await saveTextFile('rolador-urgm-' + slug(hist.name) + '-' + stamp() + '.json', JSON.stringify(payload, null, 2),
+      { description: 'Histórico do Rolador de Urgm' });
+    if (result === 'saved') toast('Histórico “' + hist.name + '” salvo.');
+  }
+
+  function saveCorruptCopy() {
+    if (corruptRaw == null) return Promise.resolve('cancelled');
+    return saveTextFile('rolador-urgm-dados-danificados-' + stamp() + '.txt', corruptRaw,
+      { description: 'Cópia dos dados danificados', mime: 'text/plain', ext: '.txt' });
   }
 
   /* Importar só acrescenta: nada do que já existe é apagado ou trocado. */
@@ -1853,6 +1949,7 @@ textarea.items-area{min-height:280px;font-size:16px}
     $('fTable').addEventListener('change', onFormInput);
     for (const id of ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr', 'fTable']) $(id).addEventListener('keydown', onFieldKeydown);
     $('rollBtn').addEventListener('click', doRoll);
+    $('rollBtn').addEventListener('keydown', (ev) => { if (ev.repeat && (ev.key === 'Enter' || ev.key === ' ')) ev.preventDefault(); });
     $('descToggle').addEventListener('click', () => { descOpen = true; renderFormState(); $('fDesc').focus(); });
     $('openTablesFromForm').addEventListener('click', () => openTables($('fTable').value));
     $('chips').addEventListener('click', (ev) => {
@@ -1972,6 +2069,14 @@ textarea.items-area{min-height:280px;font-size:16px}
       const file = $('importInput').files && $('importInput').files[0];
       $('importInput').value = '';
       if (file) handleImport(file);
+    });
+
+    // janela de copiar (plano B quando o navegador não abre o "Salvar como")
+    $('copyBtn').addEventListener('click', copyFromDialog);
+    $('copyDlg').addEventListener('close', () => {
+      const r = copyState.resolve;
+      copyState.resolve = null;
+      if (r) r(copyState.copied ? 'copied' : 'cancelled');
     });
 
     // aviso flutuante pausa enquanto o mouse está em cima
