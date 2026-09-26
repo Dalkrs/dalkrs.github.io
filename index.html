@@ -296,6 +296,22 @@ body[data-mode="duelo"] .kbd-hint{display:none}
   .duel-result{grid-template-columns:minmax(0,1fr)}
   .duel-res-vs{display:none}
 }
+/* resumo com IA */
+.ai-intro{margin-bottom:14px}
+.ai-tabs{display:inline-flex}
+.key-row{display:flex;gap:8px}
+.key-row .input{flex:1;min-width:0;font-family:Consolas,"Cascadia Mono",monospace;font-size:15px}
+.key-help{margin-top:6px}
+.ai-error{margin-top:12px;padding:10px 12px;background:rgba(255,123,123,.1);border:1px solid rgba(255,123,123,.5);border-radius:9px;color:#ffc4c4;font-size:14.5px}
+.ai-error-detail{display:block;margin-top:4px;font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.ai-setup-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
+.ai-setup-right{display:flex;gap:8px;margin-left:auto}
+.ai-what{font-size:17px;margin-bottom:4px}
+.ai-privacy{margin-top:4px}
+.ai-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:16px 0 4px}
+.ai-busy{color:var(--muted)}
+textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
+.ai-out-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -440,6 +456,7 @@ body[data-mode="duelo"] .kbd-hint{display:none}
         <span class="log-count" id="logCount"></span>
         <button type="button" class="untitled-btn" id="untitledBtn" hidden></button>
         <div class="log-tools">
+          <button type="button" class="btn small ghost" id="aiBtn">Resumo com IA</button>
           <button type="button" class="btn small ghost" id="sepBtn">Adicionar separador</button>
           <button type="button" class="btn small ghost" id="filterBtn" aria-expanded="false">Filtrar</button>
         </div>
@@ -538,6 +555,48 @@ body[data-mode="duelo"] .kbd-hint{display:none}
       <button type="button" class="btn primary" id="tieReroll">Rolar de novo</button>
     </span>
     <button type="button" class="link-btn tie-keep" id="tieKeep">Deixar empate e decidir depois</button>
+  </div>
+</dialog>
+
+<dialog id="aiDlg" class="wide" aria-labelledby="aiHead">
+  <div class="dlg-head"><h2 id="aiHead">Resumo da sessão com IA</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <div id="aiSetup" hidden>
+      <p class="note ai-intro">Escolha a IA e cole a chave da API. A chave fica só neste navegador: não vai para o backup nem para o arquivo.</p>
+      <div class="field"><span class="field-label">IA</span>
+        <div class="mini-tabs ai-tabs" role="group" aria-label="Qual IA usar">
+          <button type="button" class="mini-tab" data-ai="claude" aria-pressed="true">Claude</button>
+          <button type="button" class="mini-tab" data-ai="gemini" aria-pressed="false">Gemini</button>
+        </div></div>
+      <label class="field"><span class="field-label">Modelo</span><select class="input" id="aiModel"></select></label>
+      <label class="field" id="aiModelCustomWrap" hidden><span class="field-label">ID do modelo</span>
+        <input class="input" id="aiModelCustom" type="text" maxlength="100" autocomplete="off" spellcheck="false"></label>
+      <div class="field"><label class="field-label" for="aiKey">Chave da API</label>
+        <div class="key-row"><input class="input" id="aiKey" type="password" maxlength="300" autocomplete="off" spellcheck="false">
+          <button type="button" class="btn" id="aiKeyShow">Mostrar</button></div>
+        <p class="note key-help" id="aiKeyHelp"></p></div>
+      <label class="check"><input type="checkbox" id="aiRemember" checked> Lembrar a chave neste navegador</label>
+      <div class="ai-error" id="aiSetupError" role="alert" hidden></div>
+      <div class="ai-setup-actions">
+        <button type="button" class="btn danger small" id="aiForget">Esquecer chave</button>
+        <span class="ai-setup-right"><button type="button" class="btn ghost" id="aiSetupBack">Voltar</button><button type="button" class="btn primary" id="aiSave">Salvar</button></span>
+      </div>
+    </div>
+    <div id="aiMain" hidden>
+      <p class="ai-what" id="aiWhat"></p>
+      <p class="note"><span id="aiWho"></span> <button type="button" class="link-btn" id="aiChange">Trocar IA ou chave</button></p>
+      <p class="note ai-privacy">Títulos, descrições e resultados deste histórico vão para a IA escolhida. Os números da sessão são contados aqui mesmo, sem IA.</p>
+      <div class="ai-actions">
+        <button type="button" class="btn primary" id="aiGenerate">Gerar resumo</button>
+        <span class="ai-busy" id="aiBusy" role="status" hidden>Gerando o resumo… costuma levar alguns segundos.</span>
+        <button type="button" class="btn ghost" id="aiCancel" hidden>Cancelar</button>
+      </div>
+      <div class="ai-error" id="aiError" role="alert" hidden></div>
+      <div id="aiOutWrap" hidden>
+        <textarea class="input ai-out" id="aiOut" rows="16" spellcheck="false" aria-label="Resumo gerado"></textarea>
+        <div class="ai-out-foot"><span class="note" id="aiCopyNote">Dá para editar o texto antes de copiar.</span><button type="button" class="btn primary" id="aiCopy">Copiar</button></div>
+      </div>
+    </div>
   </div>
 </dialog>
 
@@ -2006,6 +2065,7 @@ body[data-mode="duelo"] .kbd-hint{display:none}
     menu.replaceChildren(
       menuItem('Tabelas de eventos', () => openTables(), '', state.tables.length ? String(state.tables.length) : 'nenhuma'),
       menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
+      menuItem('Resumo da sessão com IA', openAi),
       h('div', { class: 'dd-sep' }),
       menuItem('Exportar backup completo', exportAll),
       // rótulo ligado ao campo de arquivo: o próprio navegador abre a escolha do arquivo
@@ -2029,7 +2089,7 @@ body[data-mode="duelo"] .kbd-hint{display:none}
   /* Com uma janela aberta, o resto da página fica inativo; o aviso vai para dentro dela para o "Desfazer" funcionar. */
   function toastHost() {
     if ($('promptDlg').open) return $('promptDlg');
-    for (const id of ['tieDlg', 'copyDlg', 'editDlg', 'sepDlg', 'tablesDlg', 'trashDlg']) if ($(id).open) return $(id);
+    for (const id of ['tieDlg', 'copyDlg', 'aiDlg', 'editDlg', 'sepDlg', 'tablesDlg', 'trashDlg']) if ($(id).open) return $(id);
     return document.body;
   }
   function showToastEl(t) {
@@ -2657,11 +2717,384 @@ body[data-mode="duelo"] .kbd-hint{display:none}
     buildFilterPalette();
     for (const id of ['fOp', 'd0Op', 'd1Op']) fillOpSelect($(id));
     bindEvents();
+    bindAiEvents();
     save();
     if (!lastSavedSize) lastSavedSize = JSON.stringify(state).length;
     renderAll();
     if (!isNarrow()) $('fTitle').focus({ preventScroll: true });
     window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
+  }
+
+  /* ================= resumo com IA (Claude ou Gemini) ================= */
+  const AI_KEY = 'rolador-urgm:ia:v1'; // separado dos dados: nunca entra no backup
+  const AI_TIMEOUT_MS = 120000;
+  const AI_PROVIDERS = {
+    claude: {
+      name: 'Claude',
+      models: [
+        { id: 'claude-sonnet-5', label: 'Claude Sonnet 5 (texto melhor)' },
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (mais barato)' },
+      ],
+      help: 'Crie a chave em platform.claude.com, na parte de API keys. É diferente da assinatura do app do Claude; o uso é cobrado na conta dona da chave.',
+      placeholder: 'sk-ant-…',
+    },
+    gemini: {
+      name: 'Gemini',
+      models: [
+        { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
+        { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (mais barato)' },
+      ],
+      help: 'Crie a chave em aistudio.google.com, em “Get API key”. O Gemini tem uma faixa gratuita com limites de uso.',
+      placeholder: 'AIza…',
+    },
+  };
+  const AI_OTHER = '__outro';
+
+  const AI_SYSTEM = [
+    'Você ajuda o mestre de uma mesa de RPG de fantasia a documentar a sessão de jogo.',
+    'Você vai receber o registro de rolagens de um histórico, em ordem cronológica. Linhas "--- Cena: ... ---" são separadores que o mestre colocou para dividir as partes da sessão. Cada rolagem tem título (o que foi rolado), resultado e, às vezes, descrição, requisito (passou ou não passou) e a marca FIXADA.',
+    'Escreva em português do Brasil, em Markdown, exatamente estas três seções, nesta ordem:',
+    '## Relato da sessão',
+    'Um texto corrido e curto contando o que aconteceu, na ordem, usando só o que está no registro.',
+    '## Cenas',
+    'Uma subseção (###) para cada separador, na ordem, com tópicos curtos do que aconteceu nela. Rolagens antes do primeiro separador ficam em "### Início".',
+    '## Lembretes para a próxima sessão',
+    'Tópicos com as rolagens fixadas, empates deixados para decidir, rolagens sem título que talvez precisem de contexto e pontas soltas que aparecem nas descrições.',
+    'Regras: não invente fatos, nomes, motivos ou consequências que não estejam no registro; quando o registro não disser algo, não preencha a lacuna. Use frases curtas, fáceis de ler rápido. Não escreva seção de números, introdução nem conclusão fora das três seções.',
+  ].join('\n');
+
+  const aiSettings = { provider: 'claude', models: { claude: 'claude-sonnet-5', gemini: 'gemini-3.8-flash' }, keys: { claude: '', gemini: '' }, remember: true };
+  let aiLoaded = false;
+  let aiBusy = null;          // AbortController do pedido em andamento
+  let aiSetupOpen = false;
+  let aiDraftProvider = 'claude';
+  const aiResults = {};       // resumo gerado por histórico, só enquanto a aba está aberta
+
+  function loadAi() {
+    if (aiLoaded) return;
+    aiLoaded = true;
+    try {
+      const raw = window.localStorage.getItem(AI_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || typeof s !== 'object') return;
+      if (AI_PROVIDERS[s.provider]) aiSettings.provider = s.provider;
+      for (const p of Object.keys(AI_PROVIDERS)) {
+        if (s.models && typeof s.models[p] === 'string' && s.models[p].trim()) aiSettings.models[p] = s.models[p].trim().slice(0, 100);
+        if (s.keys && typeof s.keys[p] === 'string') aiSettings.keys[p] = s.keys[p].trim().slice(0, 300);
+      }
+      aiSettings.remember = s.remember !== false;
+    } catch (err) { /* sem configuração guardada */ }
+  }
+
+  function saveAi() {
+    const copy = { provider: aiSettings.provider, models: Object.assign({}, aiSettings.models), remember: aiSettings.remember,
+      keys: aiSettings.remember ? Object.assign({}, aiSettings.keys) : { claude: '', gemini: '' } };
+    try { window.localStorage.setItem(AI_KEY, JSON.stringify(copy)); }
+    catch (err) { toast('Não deu para guardar a configuração da IA neste navegador.', { error: true }); }
+  }
+
+  function modelLabel(p, id) {
+    const m = AI_PROVIDERS[p].models.find((x) => x.id === id);
+    return m ? m.label.replace(/ \(.*\)$/, '') : AI_PROVIDERS[p].name + ' (' + id + ')';
+  }
+
+  /* ---------- registro enviado para a IA ---------- */
+  function aiEntryLine(e) {
+    const when = '[' + clock(e.createdAt) + '] ';
+    const title = e.title || 'Sem título';
+    const desc = e.description ? ' | Descrição: ' + e.description.replace(/\s+/g, ' ') : '';
+    const pin = e.pinned ? ' | FIXADA' : '';
+    if (e.mode === 'duelo') {
+      const r = lastRound(e);
+      const reqs = e.sides.map((s, i) => (s.check
+        ? s.name + (evalCheck(s.check, r[i].total).pass ? ' passou' : ' não passou') + ' no requisito ' + OPS[s.check.op].sym + ' ' + s.check.target
+        : null)).filter(Boolean);
+      const rounds = e.rounds.length > 1 ? ' Rodadas: ' + e.rounds.map((x) => x[0].total + '×' + x[1].total).join(', ') + '.' : '';
+      return when + 'Duelo "' + title + '": ' + e.sides[0].name + ' ' + r[0].total + ' × ' + r[1].total + ' ' + e.sides[1].name + '. ' +
+        duelSummary(e) + (reqs.length ? ' Requisitos: ' + reqs.join('; ') + '.' : '') + rounds + desc + pin;
+    }
+    if (e.mode === 'tabela') return when + '"' + title + '": sorteio na tabela ' + e.tableName + ' deu "' + e.itemText + '".' + desc + pin;
+    const chk = e.check ? ' | Requisito ' + OPS[e.check.op].sym + ' ' + e.check.target + ': ' + (evalCheck(e.check, e.total).pass ? 'passou' : 'não passou') : '';
+    return when + '"' + title + '": ' + e.total + ' (' + (e.mode === 'fixa' ? 'fixa' : 'dados') + ': ' + compText(e) + ')' + chk + desc + pin;
+  }
+
+  function aiLogText(hist) {
+    let text = hist.entries.map((e) => (e.type === 'sep' ? '--- Cena: ' + e.text + ' ---' : aiEntryLine(e))).join('\n');
+    if (text.length > 150000) text = '(As rolagens mais antigas foram cortadas por tamanho.)\n' + text.slice(-150000);
+    return text;
+  }
+
+  /* ---------- números contados aqui, sem IA ---------- */
+  function statsMarkdown(hist) {
+    const rolls = rollsOf(hist);
+    const by = { fixa: 0, dados: 0, tabela: 0, duelo: 0 };
+    let pass = 0, fail = 0;
+    const numeric = [];
+    const duels = [];
+    for (const e of rolls) {
+      by[e.mode] = (by[e.mode] || 0) + 1;
+      if (e.mode === 'duelo') {
+        const r = lastRound(e);
+        e.sides.forEach((s, i) => { if (s.check) { if (evalCheck(s.check, r[i].total).pass) pass++; else fail++; } });
+        duels.push(e);
+      } else {
+        if (e.check) { if (evalCheck(e.check, e.total).pass) pass++; else fail++; }
+        if (e.mode !== 'tabela') numeric.push(e);
+      }
+    }
+    const kinds = [];
+    if (by.fixa) kinds.push(by.fixa + ' de fixa');
+    if (by.dados) kinds.push(by.dados + ' de dados');
+    if (by.tabela) kinds.push(by.tabela + ' de tabela');
+    if (by.duelo) kinds.push(plural(by.duelo, 'duelo', 'duelos'));
+    const out = ['- Rolagens: ' + rolls.length + (kinds.length ? ' (' + joinPt(kinds) + ')' : '')];
+    if (pass + fail) out.push('- Requisitos: ' + plural(pass, 'passou', 'passaram') + ' e ' + plural(fail, 'não passou', 'não passaram'));
+    for (const e of duels) {
+      const r = lastRound(e);
+      out.push('- Duelo' + (e.title ? ' “' + e.title + '”' : '') + ': ' + e.sides[0].name + ' ' + r[0].total + ' × ' + r[1].total + ' ' + e.sides[1].name + '. ' + duelSummary(e));
+    }
+    if (numeric.length > 1) {
+      const hi = numeric.reduce((a, b) => (b.total > a.total ? b : a));
+      const lo = numeric.reduce((a, b) => (b.total < a.total ? b : a));
+      out.push('- Maior resultado: ' + hi.total + ' (' + (hi.title || 'sem título') + ')');
+      out.push('- Menor resultado: ' + lo.total + ' (' + (lo.title || 'sem título') + ')');
+    }
+    const pinned = rolls.filter((e) => e.pinned).length;
+    if (pinned) out.push('- Rolagens fixadas: ' + pinned);
+    const untitled = rolls.filter((e) => !e.title).length;
+    if (untitled) out.push('- Rolagens sem título: ' + untitled);
+    return out.join('\n');
+  }
+
+  function assembleSummary(hist, aiText) {
+    const numbers = '## Números da sessão\n' + statsMarkdown(hist);
+    let body = aiText.trim();
+    const m = body.match(/^##\s*Lembretes/m);
+    if (m) body = body.slice(0, m.index).trimEnd() + '\n\n' + numbers + '\n\n' + body.slice(m.index);
+    else body += '\n\n' + numbers;
+    return '# Resumo: ' + hist.name + '\n\n' + body + '\n';
+  }
+
+  /* ---------- pedido para a IA ---------- */
+  function aiError(status, detail) { const e = new Error(detail || 'erro'); e.status = status; e.detail = detail || ''; return e; }
+
+  async function readJson(res) { try { return await res.json(); } catch (err) { return null; } }
+
+  async function callAi(provider, model, key, system, user, signal) {
+    if (provider === 'claude') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({ model, max_tokens: 4000, system, messages: [{ role: 'user', content: user }] }),
+        signal,
+      });
+      const data = await readJson(res);
+      if (!res.ok) throw aiError(res.status, data && data.error && data.error.message);
+      const text = (data && Array.isArray(data.content) ? data.content : []).filter((b) => b && b.type === 'text').map((b) => b.text).join('').trim();
+      if (!text) throw aiError(-1, 'A IA respondeu sem texto.');
+      return { text, truncated: data.stop_reason === 'max_tokens' };
+    }
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.4 },
+      }),
+      signal,
+    });
+    const data = await readJson(res);
+    if (!res.ok) throw aiError(res.status, data && data.error && data.error.message);
+    const cand = data && Array.isArray(data.candidates) ? data.candidates[0] : null;
+    const parts = cand && cand.content && Array.isArray(cand.content.parts) ? cand.content.parts : [];
+    const text = parts.map((x) => (typeof x.text === 'string' && !x.thought ? x.text : '')).join('').trim();
+    if (!text) throw aiError(-1, cand && cand.finishReason === 'SAFETY' ? 'A IA se recusou a resumir este conteúdo.' : 'A IA respondeu sem texto.');
+    return { text, truncated: cand.finishReason === 'MAX_TOKENS' };
+  }
+
+  function aiErrorMessage(err) {
+    if (err.name === 'AbortError') return err.timedOut ? 'A IA demorou demais para responder. Tente de novo.' : 'Resumo cancelado.';
+    if (err instanceof TypeError || err.status == null) return 'Não deu para falar com a IA. Confira a internet e tente de novo.';
+    const d = String(err.detail || '').toLowerCase();
+    if (err.status === -1) return err.detail;
+    if (/credit|billing|balance|quota/.test(d)) return 'A conta dessa chave está sem créditos ou passou da cota.';
+    if (/api key|api_key|x-api-key|authentication/.test(d) || err.status === 401) return 'A chave foi recusada. Confira se copiou a chave inteira, sem espaços.';
+    if (err.status === 403) return 'Essa chave não tem permissão para usar esse modelo.';
+    if (err.status === 404 || /not found|model/.test(d) && err.status === 400) return 'Esse modelo não foi encontrado. Escolha outro em “Trocar IA ou chave”.';
+    if (err.status === 413) return 'O histórico é grande demais para resumir de uma vez.';
+    if (err.status === 429) return 'Limite de uso atingido. Espere um pouco e tente de novo; se continuar, confira os créditos ou a cota da conta.';
+    if (err.status >= 500) return 'A IA está sobrecarregada ou fora do ar. Tente de novo em alguns minutos.';
+    return 'A IA recusou o pedido.';
+  }
+
+  function showAiError(boxId, text, detail) {
+    const box = $(boxId);
+    box.hidden = false;
+    box.replaceChildren(h('span', { text }), detail ? h('span', { class: 'ai-error-detail', text: 'Detalhe da IA: ' + detail }) : null);
+  }
+  function hideAiError(boxId) { $(boxId).hidden = true; $(boxId).replaceChildren(); }
+
+  async function generateSummary() {
+    if (aiBusy) return;
+    const hist = activeHistory();
+    if (!rollsOf(hist).length) { showAiError('aiError', 'Esse histórico ainda não tem rolagens para resumir.'); return; }
+    const p = aiSettings.provider;
+    if (!aiSettings.keys[p]) { openAiSetup(); return; }
+    const ctrl = new AbortController();
+    aiBusy = ctrl;
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, AI_TIMEOUT_MS);
+    hideAiError('aiError');
+    renderAiMain();
+    try {
+      const r = await callAi(p, aiSettings.models[p], aiSettings.keys[p], AI_SYSTEM, 'Histórico: "' + hist.name + '"\n\nRegistro:\n' + aiLogText(hist), ctrl.signal);
+      aiResults[hist.id] = assembleSummary(hist, r.text) + (r.truncated ? '\n(A resposta da IA foi cortada por tamanho.)\n' : '');
+      $('aiOut').value = aiResults[hist.id];
+      $('aiCopyNote').textContent = 'Dá para editar o texto antes de copiar.';
+    } catch (err) {
+      if (err && err.name === 'AbortError') err.timedOut = timedOut;
+      showAiError('aiError', aiErrorMessage(err), err && err.status > 0 ? err.detail : '');
+    } finally {
+      clearTimeout(timer);
+      aiBusy = null;
+      renderAiMain();
+    }
+  }
+
+  /* ---------- janela ---------- */
+  function openAi() {
+    closeMenus(false);
+    loadAi();
+    const dlg = $('aiDlg');
+    hideAiError('aiError');
+    if (!aiSettings.keys[aiSettings.provider]) openAiSetup();
+    else { aiSetupOpen = false; renderAiMain(); }
+    const hist = activeHistory();
+    $('aiOut').value = aiResults[hist.id] || '';
+    if (!dlg.open) dlg.showModal();
+    if (aiSetupOpen) $('aiKey').focus(); else $('aiGenerate').focus();
+  }
+
+  function openAiSetup() {
+    aiSetupOpen = true;
+    aiDraftProvider = aiSettings.provider;
+    $('aiRemember').checked = aiSettings.remember;
+    hideAiError('aiSetupError');
+    fillAiSetup();
+    $('aiSetup').hidden = false;
+    $('aiMain').hidden = true;
+    $('aiKey').focus();
+  }
+
+  function fillAiSetup() {
+    const p = aiDraftProvider;
+    const prov = AI_PROVIDERS[p];
+    for (const b of document.querySelectorAll('.mini-tab[data-ai]')) b.setAttribute('aria-pressed', String(b.dataset.ai === p));
+    const sel = $('aiModel');
+    sel.replaceChildren(...prov.models.map((m) => h('option', { value: m.id, text: m.label })), h('option', { value: AI_OTHER, text: 'Outro modelo…' }));
+    const cur = aiSettings.models[p];
+    const known = prov.models.some((m) => m.id === cur);
+    sel.value = known ? cur : AI_OTHER;
+    $('aiModelCustom').value = known ? '' : cur;
+    $('aiModelCustomWrap').hidden = known;
+    $('aiKey').value = aiSettings.keys[p] || '';
+    $('aiKey').type = 'password';
+    $('aiKeyShow').textContent = 'Mostrar';
+    $('aiKey').placeholder = prov.placeholder;
+    $('aiKeyHelp').textContent = prov.help;
+    $('aiForget').hidden = !aiSettings.keys[p];
+    $('aiSetupBack').hidden = !aiSettings.keys[aiSettings.provider];
+  }
+
+  function saveAiSetup() {
+    const p = aiDraftProvider;
+    const key = $('aiKey').value.trim();
+    if (!key) { showAiError('aiSetupError', 'Cole a chave da API.'); $('aiKey').focus(); return; }
+    if (/\s/.test(key)) { showAiError('aiSetupError', 'A chave não pode ter espaço no meio. Copie de novo.'); $('aiKey').focus(); return; }
+    const model = $('aiModel').value === AI_OTHER ? $('aiModelCustom').value.trim() : $('aiModel').value;
+    if (!model) { showAiError('aiSetupError', 'Digite o ID do modelo.'); $('aiModelCustom').focus(); return; }
+    aiSettings.provider = p;
+    aiSettings.keys[p] = key.slice(0, 300);
+    aiSettings.models[p] = model.slice(0, 100);
+    aiSettings.remember = $('aiRemember').checked;
+    saveAi();
+    aiSetupOpen = false;
+    renderAiMain();
+    $('aiGenerate').focus();
+  }
+
+  function forgetAiKey() {
+    const p = aiDraftProvider;
+    aiSettings.keys[p] = '';
+    saveAi();
+    fillAiSetup();
+    $('aiKey').focus();
+    toast('Chave do ' + AI_PROVIDERS[p].name + ' apagada deste navegador.');
+  }
+
+  function renderAiMain() {
+    $('aiSetup').hidden = aiSetupOpen === true ? false : true;
+    $('aiMain').hidden = aiSetupOpen === true;
+    if (aiSetupOpen) return;
+    const hist = activeHistory();
+    const rolls = rollsOf(hist).length;
+    const scenes = hist.entries.filter((e) => e.type === 'sep').length;
+    $('aiWhat').textContent = 'Vai resumir “' + hist.name + '”: ' + plural(rolls, 'rolagem', 'rolagens') +
+      (scenes ? ', ' + plural(scenes, 'separador', 'separadores') : '') + '.';
+    $('aiWho').textContent = 'IA: ' + modelLabel(aiSettings.provider, aiSettings.models[aiSettings.provider]) + '.';
+    const gen = $('aiGenerate');
+    gen.disabled = !!aiBusy || !rolls;
+    gen.textContent = aiResults[hist.id] ? 'Gerar de novo' : 'Gerar resumo';
+    $('aiBusy').hidden = !aiBusy;
+    $('aiCancel').hidden = !aiBusy;
+    $('aiChange').disabled = !!aiBusy;
+    $('aiOutWrap').hidden = !aiResults[hist.id];
+  }
+
+  async function copyAiSummary() {
+    const area = $('aiOut');
+    try {
+      await navigator.clipboard.writeText(area.value);
+      $('aiCopyNote').textContent = 'Copiado. Agora é só colar na documentação.';
+    } catch (err) {
+      area.focus();
+      area.select();
+      $('aiCopyNote').textContent = 'O texto está selecionado: aperte Ctrl+C para copiar.';
+    }
+  }
+
+  function bindAiEvents() {
+    $('aiBtn').addEventListener('click', openAi);
+    for (const b of document.querySelectorAll('.mini-tab[data-ai]')) {
+      b.addEventListener('click', () => { aiDraftProvider = b.dataset.ai; hideAiError('aiSetupError'); fillAiSetup(); $('aiKey').focus(); });
+    }
+    $('aiModel').addEventListener('change', () => {
+      const other = $('aiModel').value === AI_OTHER;
+      $('aiModelCustomWrap').hidden = !other;
+      if (other) $('aiModelCustom').focus();
+    });
+    $('aiKeyShow').addEventListener('click', () => {
+      const show = $('aiKey').type === 'password';
+      $('aiKey').type = show ? 'text' : 'password';
+      $('aiKeyShow').textContent = show ? 'Esconder' : 'Mostrar';
+    });
+    $('aiKey').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); saveAiSetup(); } });
+    $('aiSave').addEventListener('click', saveAiSetup);
+    $('aiForget').addEventListener('click', forgetAiKey);
+    $('aiSetupBack').addEventListener('click', () => { aiSetupOpen = false; renderAiMain(); $('aiGenerate').focus(); });
+    $('aiChange').addEventListener('click', openAiSetup);
+    $('aiGenerate').addEventListener('click', generateSummary);
+    $('aiCancel').addEventListener('click', () => { if (aiBusy) aiBusy.abort(); });
+    $('aiCopy').addEventListener('click', copyAiSummary);
+    $('aiOut').addEventListener('input', () => { const hist = activeHistory(); aiResults[hist.id] = $('aiOut').value; });
+    $('aiDlg').addEventListener('close', () => { if (aiBusy) aiBusy.abort(); });
   }
 
   init();
