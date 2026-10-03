@@ -104,7 +104,7 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
       { id: 'rt1', k: 't', pts: [[0, 0], [100, 0], [100, 100]], via: 'estrada' },            // 200 un = 100 km
       { id: 'g1', k: 'g', x: 0, y: 0, ritmo: 'normal', rota: 'rt1', prog: 0 },
       { id: 'g2', k: 'g', x: 5, y: 5, ritmo: 'lento' },
-      { id: 'g3', k: 'g', x: 5, y: 5, ritmo: 'rapido', rota: 'rt1', prog: 90 },
+      { id: 'g3', k: 'g', x: 100, y: 80, ritmo: 'rapido', rota: 'rt1', prog: 90 },              // 90 km = 180 un: em (100, 80)
     ],
   });
   ok(N.kmDe(base, 200) === 100 && N.unidadesDe(base, 100) === 200 && N.unidadesDe({ escala: { kmPorUn: 0 } }, 50) === 0, 'km ↔ unidades');
@@ -115,8 +115,17 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
   ok(j(base) === antes, 'andarUmDia não muda o mapa');
   const b = N.andarUmDia(base, 'g3');
   ok(b.ok && b.chegou && b.prog === 100 && b.km === 10 && b.x === 100 && b.y === 100 && /fim da rota/.test(b.msg), 'chega ao fim: anda só o que falta');
-  const fim = N.andarUmDia(N.normalizarMapa(Object.assign(N.copia(base), { objs: base.objs.map(o => (o.id === 'g3' ? Object.assign({}, o, { prog: 100 }) : o)) })), 'g3');
-  ok(!fim.ok && fim.chegou && fim.msg === 'Chegou ao fim da rota', 'já no fim: não anda');
+  const fim = N.andarUmDia(N.normalizarMapa(Object.assign(N.copia(base), { objs: base.objs.map(o => (o.id === 'g3' ? Object.assign({}, o, { prog: 100, x: 100, y: 100 }) : o)) })), 'g3');
+  ok(!fim.ok && fim.chegou && fim.msg === 'Chegou ao fim da rota' && fim.x === 100 && fim.y === 100, 'já no fim: não anda (e fica no fim da rota, não no começo): ' + j(fim));
+  ok(j(N.pontoNaPolilinha([[0, 0], [100, 0], [100, 100]], Infinity)) === j({ x: 100, y: 100, fim: true, i: 1 }), 'pontoNaPolilinha até o infinito: o último ponto');
+  // o grupo anda de onde está: arrastado na rota (ou com a escala trocada), segue dali; longe dela, não anda
+  const mexido = g => N.normalizarMapa(Object.assign(N.copia(base), { objs: base.objs.map(o => (o.id === 'g1' ? Object.assign({}, o, g) : o)) }));
+  const arr = N.andarUmDia(mexido({ x: 100, y: 20, prog: 0 }), 'g1');               // 120 un = 60 km já andados
+  ok(arr.ok && arr.prog === 97.5 && arr.km === 37.5 && arr.x === 100 && arr.y === 95, 'grupo arrastado pela rota: anda dali, não do começo: ' + j(arr));
+  const esc = N.andarUmDia(mexido({ x: 75, y: 0, prog: 75 }), 'g1');               // prog de outra escala (75 km = 150 un)
+  ok(esc.ok && esc.prog === 75 && esc.x === 100 && esc.y === 50, 'progresso de outra escala: o lugar do grupo vale: ' + j(esc));
+  const fora = N.andarUmDia(mexido({ x: 900, y: 900, prog: 0 }), 'g1');
+  ok(!fora.ok && fora.x === 900 && /longe da rota/.test(fora.msg), 'grupo longe da rota: não salta para ela: ' + fora.msg);
   ok(N.andarUmDia(base, 'g2').msg === 'Sem rota' && !N.andarUmDia(base, 'g2').ok, 'sem rota: avisa');
   const semEscala = N.normalizarMapa(Object.assign(N.copia(base), { escala: { kmPorUn: 0 } }));
   ok(N.andarUmDia(semEscala, 'g1').msg === 'Defina a escala do mapa primeiro', 'sem escala: avisa');
@@ -153,6 +162,7 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
 }
 
 /* ================= normalização com lixo ================= */
+const SEGREDO_NEVOA = 'Acampamento dos cultistas';
 {
   const lixos = [null, undefined, 42, 'texto', true, [], [1, 2], { objs: 'x' }, { objs: [null, 3, 'a', [], { k: 'zz' }] }, { faccoes: 'x', nevoa: [], cal: 5, escala: 'x', img: 7 },
     { cal: { meses: [null, { nome: 5, dias: 'x' }] } }, { nevoa: { on: 'sim', ops: [null, { t: '+', x: 'a' }, { t: '+', x: 1, y: 1, r: -5 }, { t: '*', x: 1, y: 1, r: 5 }] } },
@@ -231,6 +241,32 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
   const t0 = Date.now(), en = N.normalizarMapa({ nevoa: { on: true, ops: enorme } }).nevoa.ops;
   ok(en.length <= 4000 && Date.now() - t0 < 1500, 'mesmo com 20 mil operações, corta rápido (' + (Date.now() - t0) + ' ms)');
   ok(N.normalizarMapa({ nevoa: { on: true, ops: [{ t: '-', x: 1, y: 1, r: 5 }, { t: '+', x: 1, y: 1, r: 5 }] } }).nevoa.ops.length === 1, 'cobrir antes de qualquer revelação sai (não muda nada)');
+  // a regra de ouro do enxugamento: o que estava coberto continua coberto (senão o que a névoa escondia vaza)
+  {
+    const cru = (lista, x, y) => { for (let i = lista.length - 1; i >= 0; i--) { const o = lista[i]; if ((x - o.x) ** 2 + (y - o.y) ** 2 <= o.r * o.r) return o.t === '-'; } return true; };
+    let sem = 11; const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+    let abriu = 0, cobertos = 0;
+    for (const [larg, cobre] of [[2000, 0.1], [2000, 0.5], [30000, 0.2]]) {
+      const tracos = [];
+      while (tracos.length < 4600) {
+        const t = rnd() < cobre ? '-' : '+', x0 = rnd() * larg, y0 = rnd() * larg * 0.7, r = Math.round(20 + rnd() * 80);
+        for (let k = 0; k < 30; k++) tracos.push({ t, x: Math.round(x0 + k * r / 2), y: Math.round(y0 + k * 2), r });
+      }
+      const en = N.normalizarMapa({ nevoa: { on: true, ops: tracos } });
+      // pontos em toda parte e, principalmente, rentes à borda de cada pincelada (onde uma fusão gulosa abriria)
+      const pontos = [];
+      for (let x = 0; x < larg; x += larg / 220) for (let y = 0; y < larg * 0.7; y += larg / 220) pontos.push([x, y]);
+      for (const o of tracos) for (const [dx, dy] of [[0, 1.06], [0, -1.06], [0.25, 1.02], [-0.25, -1.02]]) pontos.push([o.x + dx * o.r, o.y + dy * o.r]);
+      for (const [x, y] of pontos) if (cru(tracos, x, y)) { cobertos++; if (!N.nevoaCobre(en, x, y)) abriu++; }
+    }
+    ok(cobertos > 1000 && abriu === 0, 'acima de 4000 operações: todo ponto coberto continua coberto depois de enxugar (' + abriu + ' de ' + cobertos + ' abriram)');
+    // o caso do traço antigo: um marcador logo além dele, coberto, não pode ir para a projeção quando a névoa enxuga
+    const velhas = [];
+    for (let i = 0; i < 40; i++) velhas.push({ t: '+', x: 100 + i * 30, y: 200, r: 60 });
+    for (let i = 0; velhas.length < 4000; i++) velhas.push({ t: '+', x: 100 + (i % 60) * 30, y: 700 + Math.floor(i / 60) * 8, r: 60 });
+    const mapa = N.normalizarMapa({ larg: 2000, alt: 1400, nevoa: { on: true, ops: velhas.concat([{ t: '+', x: 1900, y: 1300, r: 60 }]) }, objs: [{ id: 'acamp', k: 'm', x: 115, y: 268, nome: SEGREDO_NEVOA }] });
+    ok(mapa.nevoa.ops.length <= 4000 && N.nevoaCobre(mapa, 115, 268) && !j(N.projetar(mapa)).includes(SEGREDO_NEVOA), 'enxugar a névoa não revela o marcador logo além de um traço antigo');
+  }
 
   // idempotente e previsível
   const duas = N.normalizarMapa(m);
@@ -293,6 +329,10 @@ function mundo() {
   ok(!ob('r_rei').enc || (ob('r_rei').enc.chance === 0 && ob('r_rei').enc.itens.length === 0), 'regra 3: a tabela de encontros não vai');
   // regra 4
   ok(ob('e_hoje') && !ob('e_futuro') && !ob('e_passou'), 'regra 4: só os eventos ativos hoje (futuros e terminados saem)');
+  {
+    const praga = N.projetar(N.normalizarMapa({ cal: { dia: 10 }, objs: [{ id: 'pr', k: 'e', x: 0, y: 0, r: 120, ini: 8, fim: 40, cresce: -3 }] })).objs[0];
+    ok(praga && praga.r === 114 && praga.fim === null && praga.cresce === 0 && praga.ini === 8, 'regra 4: o evento vai como está hoje (raio de hoje), sem o fim planejado nem o crescimento: ' + j(praga));
+  }
   // regra 6
   ok(ob('g_jog') && ob('g_jog').rota === null && ob('g_ok').rota === 't_ok' && ob('g_ok').prog === 4, 'regra 6: grupo fica; rota que não foi junto vira null');
   // regra 7

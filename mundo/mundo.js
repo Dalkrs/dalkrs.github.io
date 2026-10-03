@@ -15,8 +15,10 @@
   const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
   const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'n', 'd'];
   const MAX_DESFAZER = 100;
-  const ESPERA = { local: 400, doc: 500, pub: 900, fora: 900 };
+  const ESPERA = { local: 400, fora: 900 };
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
+  // a mesma regra de id do núcleo: o que não passa nela ganharia um id novo a cada leitura
+  const idValido = k => typeof k === 'string' && k.length <= 80 && /^[A-Za-z0-9_:.-]+$/.test(k) && k !== '__proto__';
 
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto. */
   function h(tag, attrs, ...kids) {
@@ -43,7 +45,7 @@
   let modo = 'local';                                // 'local' | 'mesa'
   let D = null;                                      // documentos da mesa (TC.dados)
   let jAtual = null;                                 // JSON do mapa aberto, para comparar sem custo
-  let pilhaDesfazer = [], pilhaRefazer = [];
+  let pilhaDesfazer = [], pilhaRefazer = [], contaPasso = 0;   // cada passo tem um número: o "Desfazer" de um aviso confere se é o dele
   let comoJog = false, cacheVista = { de: null, v: null };
 
   const App = {
@@ -51,7 +53,9 @@
     papel: 'mestre', naMesa: false, mesa: null, eu: null,
     mapa: null, mapas: [], mostrado: null,
     sel: [], ferramenta: 'sel',
-    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60 },
+    // opções das ferramentas; oculto = o que for criado já nasce escondido dos jogadores (para preparar um segredo
+    // num mapa que eles estão vendo, sem que ele apareça no meio do caminho)
+    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false },
     gesto: false,                                    // a tela liga durante um arrasto ou desenho
     salvo: { estado: 'ok', texto: '' },
     pronto: false,
@@ -74,7 +78,7 @@
     desfazer() {
       if (!App.podeEditar() || !pilhaDesfazer.length) return false;
       const p = pilhaDesfazer.pop();
-      pilhaRefazer.push({ rotulo: p.rotulo, json: jAtual });
+      pilhaRefazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n });
       trocarConteudo(JSON.parse(p.json), p.json, { origem: 'desfazer', rotulo: p.rotulo });
       agendarGravacao();
       return true;
@@ -82,7 +86,7 @@
     refazer() {
       if (!App.podeEditar() || !pilhaRefazer.length) return false;
       const p = pilhaRefazer.pop();
-      pilhaDesfazer.push({ rotulo: p.rotulo, json: jAtual });
+      pilhaDesfazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n });
       trocarConteudo(JSON.parse(p.json), p.json, { origem: 'refazer', rotulo: p.rotulo });
       agendarGravacao();
       return true;
@@ -91,6 +95,10 @@
     podeRefazer() { return App.podeEditar() && pilhaRefazer.length > 0; },
     rotuloDesfazer() { return pilhaDesfazer.length ? pilhaDesfazer[pilhaDesfazer.length - 1].rotulo : ''; },
     rotuloRefazer() { return pilhaRefazer.length ? pilhaRefazer[pilhaRefazer.length - 1].rotulo : ''; },
+    // o passo que o próximo desfazer (ou refazer) vai mexer: 0 = nenhum. Quem oferece "Desfazer" num aviso guarda
+    // este número logo depois da mudança e só desfaz se ele ainda estiver no topo (senão desfaria outra coisa).
+    passoAtual() { return pilhaDesfazer.length ? pilhaDesfazer[pilhaDesfazer.length - 1].n : 0; },
+    passoRefazer() { return pilhaRefazer.length ? pilhaRefazer[pilhaRefazer.length - 1].n : 0; },
 
     selecionar(ids, somar = false) {
       const v = App.vista(), existe = new Set(v ? v.objs.map(o => o.id) : []);
@@ -152,7 +160,7 @@
     novo.id = App.mapa.id;                                                         // o id do mapa não muda por aqui
     const jn = j(novo);
     if (jn === jAtual) return false;                                               // nada mudou: nem passo, nem gravação
-    pilhaDesfazer.push({ rotulo: String(rotulo || ''), json: jAtual });
+    pilhaDesfazer.push({ rotulo: String(rotulo || ''), json: jAtual, n: ++contaPasso });
     if (pilhaDesfazer.length > MAX_DESFAZER) pilhaDesfazer.shift();
     pilhaRefazer = [];
     trocarConteudo(novo, jn, { origem: 'local', rotulo: String(rotulo || '') });
@@ -172,6 +180,12 @@
     pilhaDesfazer = []; pilhaRefazer = [];
     const tinhaSel = App.sel.length > 0;
     App.sel = [];
+    // a "sombra" é o que está guardado deste mapa agora: a próxima gravação compara com ela para ver se outra aba
+    // ou outro aparelho mexeu nele nesse meio-tempo
+    if (m && App.papel === 'mestre') {
+      if (modo === 'local') { const cru = lerLocal().mapas[m.id]; sombraLocal = cru ? j(N.normalizarMapa(Object.assign({}, cru, { id: m.id }))) : null; }
+      else { const d = docMapa(m.id); if (d) sombraDoc.set(m.id, j(d)); }
+    }
     if (m) lembrarAtual(m.id);
     atualizarLista();
     if (!emitir) return;
@@ -192,7 +206,11 @@
   // A lista do seletor de mapas. O mapa aberto vale como está agora (pode ainda não ter sido gravado).
   function atualizarLista() {
     let lista;
-    if (modo === 'local') { const est = lerLocal(); lista = Object.keys(est.mapas).map(id => resumo(est.mapas[id], id)); }
+    if (modo === 'local') {
+      const est = lerLocal();
+      for (const [id, m] of pendentes) est.mapas[id] = m;                        // os que não couberam no navegador
+      lista = Object.keys(est.mapas).map(id => resumo(est.mapas[id], id));
+    }
     else if (App.papel === 'mestre') lista = docsMapas().map(l => resumo(l.dados, l.id.slice(PRE_MAPA.length)));
     else lista = lerIndice().mapas.map(m => ({ id: m.id, nome: m.nome, oculto: false }));
     if (App.mapa && App.papel === 'mestre') {
@@ -205,7 +223,11 @@
     return mudou;
   }
   function carregarMapa(id) {
-    if (modo === 'local') { const est = lerLocal(); return est.mapas[id] ? N.normalizarMapa(Object.assign({}, est.mapas[id], { id })) : null; }
+    if (modo === 'local') {
+      if (pendentes.has(id)) return N.copia(pendentes.get(id));                    // a versão daqui, que ainda não coube
+      const est = lerLocal();
+      return est.mapas[id] ? N.normalizarMapa(Object.assign({}, est.mapas[id], { id })) : null;
+    }
     return App.papel === 'mestre' ? docMapa(id) : docPub(id);
   }
   function lembrarAtual(id) {
@@ -230,14 +252,18 @@
     abrir(m);
     return true;
   }
-  // Põe um mapa novo na coleção (navegador ou mesa) e abre.
-  function adicionarMapa(m) {
+  /* Põe um mapa novo na coleção (navegador ou mesa) e abre. Na mesa, o que entra (criado, importado, duplicado) começa
+     escondido dos jogadores: só vai para eles com o clique em "Mostrar aos jogadores". O "Desfazer" de um mapa
+     apagado (esconder = false) devolve o mapa como ele era. */
+  function adicionarMapa(m, esconder = true) {
     salvarJa();
+    if (modo === 'mesa' && esconder) m.oculto = true;
+    let gravou = true;
     if (modo === 'local') {
       const est = lerLocal();
       est.mapas[m.id] = m; est.atual = m.id;
-      gravarEstado(est);
-      sombraLocal = j(m);
+      gravou = gravarEstado(est);
+      if (!gravou) pendentes.set(m.id, m);                                      // fica na tela; o aviso de espaço já saiu
     } else {
       gravarDocMesa(PRE_MAPA + m.id, { dados: N.copia(m), vis: 'mestre' });
       sombraDoc.set(m.id, j(m));
@@ -245,9 +271,10 @@
     }
     abrir(m);
     if (modo === 'mesa') { sincronizarPub(m.id); sincronizarIndice(); }
-    marcarSalvo('ok', modo === 'local' ? 'Salvo neste navegador' : 'Salvo na mesa');
+    if (gravou) marcarSalvo('ok', modo === 'local' ? 'Salvo neste navegador' : 'Salvo na mesa');
     return m;
   }
+  const avisoEscondido = () => (modo === 'mesa' ? ' Está escondido dos jogadores até você mostrar.' : '');
   function criarMapa(nome, o) {
     if (App.papel !== 'mestre') return null;
     o = o || {};
@@ -260,7 +287,7 @@
     if (!m) return null;
     const c = N.normalizarMapa(Object.assign(N.copia(m), { id: N.novoId('mp'), nome: m.nome + ' (cópia)' }));
     adicionarMapa(c);
-    App.toast('Mapa duplicado: ' + c.nome);
+    App.toast('Mapa duplicado: ' + c.nome + '.' + avisoEscondido());
     return c;
   }
   function renomearMapa(nome) {
@@ -278,7 +305,7 @@
     if (!m) return false;
     if (modo === 'local') {
       const est = lerLocal();
-      delete est.mapas[id];
+      delete est.mapas[id]; pendentes.delete(id);
       if (est.atual === id) est.atual = null;
       gravarEstado(est);
     } else {
@@ -299,12 +326,13 @@
   function restaurarMapa(m) {
     if (carregarMapa(m.id)) { trocarMapa(m.id); return; }
     restaurados.add(m.id);
-    adicionarMapa(N.copia(m));
+    adicionarMapa(N.copia(m), false);
     App.toast('Mapa de volta: ' + m.nome);
   }
 
   /* ---------------- gravação ---------------- */
-  let tLocal = 0, tDoc = 0, tPub = 0, sombraLocal = null, avisouEspaco = false;
+  let tLocal = 0, sombraLocal = null, avisouEspaco = false;
+  const pendentes = new Map();                       // sem mesa: mapas que não couberam no navegador (id → Mapa)
   function marcarSalvo(estado, texto) {
     App.salvo = { estado, texto };
     const el = $('salvo');
@@ -315,18 +343,21 @@
     }
     App.emit('salvo', App.salvo);
   }
+  /* Sem mesa, grava no navegador um pouco depois (várias mudanças seguidas viram uma gravação só). Na mesa, o mapa e
+     a projeção vão para a casca na hora: ela mesma junta as escritas de cada documento e esvazia a fila quando a
+     página sai. Esperar aqui perderia a última mudança ao recarregar ou fechar a aba (a casca sai junto com esta
+     moldura e não recebe mais nada) — inclusive um "Esconder dos jogadores" recém-marcado. */
   function agendarGravacao() {
     if (App.papel !== 'mestre' || !App.mapa) return;
     marcarSalvo('salvando', 'Salvando…');
     if (modo === 'local') { clearTimeout(tLocal); tLocal = setTimeout(gravarLocal, ESPERA.local); return; }
-    clearTimeout(tDoc); tDoc = setTimeout(gravarDoc, ESPERA.doc);
-    clearTimeout(tPub); tPub = setTimeout(publicar, ESPERA.pub);
+    gravarDoc();
+    publicar();
   }
-  // Manda agora o que estava esperando (antes de trocar de mapa, ao sair da página…).
+  // Manda agora o que estava esperando (antes de trocar de mapa, ao sair da página…). Sem espaço no navegador,
+  // tenta de novo: pode ter sobrado espaço.
   function salvarJa() {
-    if (tLocal) { clearTimeout(tLocal); gravarLocal(); }
-    if (tDoc) { clearTimeout(tDoc); gravarDoc(); }
-    if (tPub) { clearTimeout(tPub); publicar(); }
+    if (tLocal || (modo === 'local' && pendentes.size)) { clearTimeout(tLocal); gravarLocal(); }
   }
 
   /* ---- sem mesa: no navegador ---- */
@@ -334,13 +365,27 @@
     let v = null;
     try { v = JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (e) { v = null; }
     const mapas = v && v.mapas && typeof v.mapas === 'object' && !Array.isArray(v.mapas) ? v.mapas : {};
-    for (const k of Object.keys(mapas)) if (!mapas[k] || typeof mapas[k] !== 'object') delete mapas[k];
-    return { atual: v && typeof v.atual === 'string' ? v.atual : null, mapas };
+    let atual = v && typeof v.atual === 'string' ? v.atual : null;
+    for (const k of Object.keys(mapas)) {
+      if (!mapas[k] || typeof mapas[k] !== 'object') { delete mapas[k]; continue; }
+      if (idValido(k)) continue;
+      // chave que não serve de id (dado antigo, lixo): ganha um id derivado dela, sempre o mesmo — assim o mapa não
+      // aparece em dobro nem ganha uma cópia nova a cada gravação, e "Apagar" o encontra (a próxima gravação conserta)
+      let h = 0;
+      for (const c of k) h = (h * 31 + c.codePointAt(0)) >>> 0;
+      let nk = 'mp_' + h.toString(36);
+      while (mapas[nk] || !idValido(nk)) nk += '_';
+      mapas[nk] = mapas[k]; delete mapas[k];
+      if (atual === k) atual = nk;
+    }
+    return { atual, mapas };
   }
   function gravarEstado(est) {
+    for (const [id, m] of pendentes) est.mapas[id] = m;                         // o que não coube antes tenta junto
     try {
       localStorage.setItem(CHAVE, j(est));
       avisouEspaco = false;
+      pendentes.clear();
       return true;
     } catch (e) {
       marcarSalvo('erro', 'Sem espaço no navegador');
@@ -352,11 +397,18 @@
     }
   }
   // Relê o que está guardado e troca só o mapa aberto: outra aba pode ter mexido em outro mapa nesse meio-tempo.
+  // E se mexeu neste (ou o apagou), não grava por cima às cegas: junta as duas mudanças (ou deixa apagado).
   function gravarLocal() {
     tLocal = 0;
     if (!App.mapa || App.papel !== 'mestre') return;
-    const est = lerLocal();
-    est.mapas[App.mapa.id] = App.mapa; est.atual = App.mapa.id;
+    const est = lerLocal(), id = App.mapa.id, cru = est.mapas[id];
+    if (!cru && sombraLocal != null && !pendentes.has(id)) { sumiuOAtual('Este mapa foi apagado em outra aba. A última mudança daqui não foi gravada.'); return; }
+    if (cru && sombraLocal != null) {
+      const deles = N.normalizarMapa(Object.assign({}, cru, { id })), jd = j(deles);
+      if (jd !== sombraLocal && jd !== jAtual) juntarDeFora(sombraLocal, deles, 'O mapa mudou em outra aba enquanto você mexia aqui. As duas mudanças foram juntadas; o desfazer recomeça daqui.');
+      sombraLocal = jd;
+    }
+    pendentes.set(id, App.mapa); est.atual = id;                               // sem espaço, fica aqui na memória até caber
     if (gravarEstado(est)) { sombraLocal = jAtual; marcarSalvo('ok', 'Salvo neste navegador'); }
   }
 
@@ -367,39 +419,49 @@
   function gravarDocMesa(id, campos) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, campos); }
   function apagarDocMesa(id) { if (modo === 'mesa' && App.papel === 'mestre' && D && D.pegar(id)) D.apagar(id); }
   const dadosDoc = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
-  function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && dadosDoc(l)) : []; }
+  function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && idValido(l.id.slice(PRE_MAPA.length)) && dadosDoc(l)) : []; }
   function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
   function docPub(id) { const d = D ? dadosDoc(D.pegar(PRE_PUB + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
   function normIndice(d) {
     const ok = typeof d === 'object' && d && Array.isArray(d.mapas) ? d.mapas : [];
-    const mapas = ok.filter(m => m && typeof m.id === 'string' && m.id).map(m => ({ id: m.id, nome: typeof m.nome === 'string' && m.nome.trim() ? m.nome : 'Mapa sem nome' }));
+    const mapas = ok.filter(m => m && idValido(m.id)).map(m => ({ id: m.id, nome: typeof m.nome === 'string' && m.nome.trim() ? m.nome : 'Mapa sem nome' }));
     const mostrado = d && typeof d.mostrado === 'string' && mapas.some(m => m.id === d.mostrado) ? d.mostrado : null;
     return { mapas, mostrado };
   }
   function lerIndice() { return normIndice(D ? dadosDoc(D.pegar(INDICE)) : null); }
 
+  /* Antes de gravar, confere se outro aparelho mexeu neste mapa desde a última vez (a mudança de fora fica esperando
+     enquanto alguém digita ou arrasta aqui). Gravar por cima às cegas desfaria o que foi feito lá — um "Esconder dos
+     jogadores" voltaria atrás, um mapa apagado voltaria à mesa. Então junta as duas mudanças, ou deixa apagado. */
   function gravarDoc() {
-    tDoc = 0;
     const m = App.mapa;
-    if (!m || App.papel !== 'mestre') return;
-    if (sombraDoc.get(m.id) !== jAtual) {
-      gravarDocMesa(PRE_MAPA + m.id, { dados: JSON.parse(jAtual), vis: 'mestre' });
-      sombraDoc.set(m.id, jAtual);
+    if (!m || App.papel !== 'mestre' || modo !== 'mesa') return;
+    const id = m.id, base = sombraDoc.get(id), cru = dadosDoc(D.pegar(PRE_MAPA + id));
+    if (!cru && base !== undefined) { sombraDoc.delete(id); sumiuOAtual('Este mapa foi apagado em outro aparelho. A última mudança daqui não foi gravada.'); return; }
+    if (cru && j(cru) !== base) {
+      const deles = docMapa(id), jd = j(deles);
+      if (jd !== base && jd !== jAtual) juntarDeFora(base, deles, 'O mapa mudou em outro aparelho enquanto você mexia aqui. As duas mudanças foram juntadas; o desfazer recomeça daqui.');
+      sombraDoc.set(id, jd);
+    }
+    if (sombraDoc.get(id) !== jAtual) {
+      gravarDocMesa(PRE_MAPA + id, { dados: JSON.parse(jAtual), vis: 'mestre' });
+      sombraDoc.set(id, jAtual);
     }
     marcarSalvo('ok', 'Salvo na mesa');
   }
   function publicar() {
-    tPub = 0;
     if (App.papel !== 'mestre') return;
     if (App.mapa) sincronizarPub(App.mapa.id);
     sincronizarIndice();
   }
+  // Escondido no que está gravado na mesa (outro aparelho pode ter escondido agora há pouco): esconder vence.
+  function escondidoNaMesa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return !!d && resumo(d, id).oculto; }
   // A projeção de um mapa: só quando mudou desde a última vez; mapa escondido não tem projeção nenhuma.
   function sincronizarPub(id) {
     if (modo !== 'mesa' || App.papel !== 'mestre') return;
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const tem = !!dadosDoc(D.pegar(PRE_PUB + id));
-    if (!m || m.oculto) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
+    if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
     const p = N.projetar(m), jp = j(p);
     if (tem && sombraPub.get(id) === jp) return;
     gravarDocMesa(PRE_PUB + id, { dados: p, vis: 'mesa' });
@@ -410,11 +472,22 @@
     const mapas = App.mapas.filter(m => !m.oculto).map(m => ({ id: m.id, nome: m.nome }));
     return { mapas, mostrado: mapas.some(m => m.id === App.mostrado) ? App.mostrado : null };
   }
+  // O índice que está na mesa mudou em outro aparelho desde a última vez (o mapa mostrado, por exemplo): vale o de lá.
+  function adotarIndice() {
+    const d = D ? dadosDoc(D.pegar(INDICE)) : null;
+    if (!d) return;
+    const idx = normIndice(d), ji = j(idx);
+    if (ji === sombraIndice) return;
+    sombraIndice = ji;
+    if (idx.mostrado !== App.mostrado) { App.mostrado = idx.mostrado; App.emit('mapas', App.mapas); }
+  }
+  // Compara com o índice que está na mesa, não só com o que este aparelho gravou por último.
   function sincronizarIndice() {
     if (modo !== 'mesa' || App.papel !== 'mestre') return;
-    const idx = indiceAgora(), ji = j(idx), tem = !!dadosDoc(D.pegar(INDICE));
-    if (ji === sombraIndice && tem) return;
-    if (!tem && !idx.mapas.length) return;                               // mesa sem mapas públicos e sem índice: nada a dizer
+    adotarIndice();
+    const idx = indiceAgora(), ji = j(idx), d = dadosDoc(D.pegar(INDICE));
+    if (d && j(normIndice(d)) === ji) { sombraIndice = ji; return; }
+    if (!d && !idx.mapas.length) return;                                 // mesa sem mapas públicos e sem índice: nada a dizer
     gravarDocMesa(INDICE, { dados: idx, vis: 'mesa' });
     sombraIndice = ji;
   }
@@ -443,7 +516,7 @@
       if (!m) return false;
       if (m.oculto !== oculto) {
         m.oculto = oculto;
-        if (modo === 'local') { const est = lerLocal(); est.mapas[id] = m; gravarEstado(est); }
+        if (modo === 'local') { if (pendentes.has(id)) pendentes.set(id, m); const est = lerLocal(); est.mapas[id] = m; gravarEstado(est); }
         else { gravarDocMesa(PRE_MAPA + id, { dados: m, vis: 'mestre' }); sombraDoc.set(id, j(m)); }
       }
     }
@@ -462,19 +535,72 @@
       if (!item) return false;
       if (item.oculto) esconderMapa(id, false);
     }
+    adotarIndice();                                                       // o que outro aparelho mostrou fica para trás
+    const antes = App.mostrado;
     App.mostrado = id || null;
-    salvarJa();
     if (id) sincronizarPub(id);
     sincronizarIndice();
     App.emit('mapas', App.mapas);
     const item = id && App.mapas.find(m => m.id === id);
-    App.toast(item ? 'Os jogadores agora veem: ' + item.nome : 'Nenhum mapa está sendo mostrado aos jogadores.');
+    if (item) App.toast('Os jogadores agora veem: ' + item.nome);
+    else {
+      // parar de mostrar não esconde: quem já está com o mapa aberto continua vendo (e recebendo o que mudar nele)
+      const aberto = antes && App.mapas.find(m => m.id === antes && !m.oculto);
+      if (aberto) App.toast('Nenhum mapa está sendo mostrado. "' + aberto.nome + '" continua aberto para os jogadores; para tirar da vista deles, esconda.', 'Esconder', () => esconderMapa(aberto.id, true), 12000);
+      else App.toast('Nenhum mapa está sendo mostrado aos jogadores.');
+    }
     return true;
   }
   function publicarNaMesa(titulo, resumo, secreta) {
     if (!App.naMesa || !window.TC || !TC.ponte) return false;
     TC.ponte.publicar('mundo', { titulo: String(titulo || 'Mapa-múndi').slice(0, 120), resumo: String(resumo || '').slice(0, 600), secreta: !!secreta });
     return true;
+  }
+
+  /* ---------------- juntar duas mudanças no mesmo mapa ---------------- */
+  /* Três vias: base = o que este aparelho viu guardado por último; meu = o mapa daqui; deles = o que está guardado
+     agora. Campo que só um lado mudou fica com a mudança desse lado; os dois mudaram: fica o daqui, mas "esconder"
+     de qualquer lado vence. Objeto ou facção apagado de um lado sai; os novos dos dois lados ficam. Pinceladas de
+     névoa dos dois lados ficam todas (as de lá por último). */
+  const igual = (a, b) => j(a) === j(b);
+  function tresVias(b, m, d, k) {
+    if (igual(m, d)) return m;
+    if (b !== undefined && igual(m, b)) return d;
+    if (b !== undefined && igual(d, b)) return m;
+    return k === 'oculto' || k === 'oculta' ? !!(m || d) : m;
+  }
+  function juntarCampos(b, m, d) {
+    const r = {};
+    for (const k of new Set(Object.keys(m).concat(Object.keys(d)))) r[k] = tresVias(b ? b[k] : undefined, m[k], d[k], k);
+    return r;
+  }
+  function juntarLista(lb, lm, ld) {
+    const B = new Map((lb || []).map(x => [x.id, x])), Dl = new Map(ld.map(x => [x.id, x])), M = new Set(lm.map(x => x.id)), r = [];
+    for (const x of lm) {
+      const b = B.get(x.id), d = Dl.get(x.id);
+      if (b && !d) continue;                                              // apagado lá
+      r.push(d ? juntarCampos(b, x, d) : x);
+    }
+    for (const d of ld) if (!M.has(d.id) && !B.has(d.id)) r.push(d);     // novo de lá (o que saiu daqui fica fora)
+    return r;
+  }
+  function juntarOps(b, m, d) {
+    if (igual(m, d)) return m;
+    b = b || [];
+    const resto = x => (x.length >= b.length && igual(x.slice(0, b.length), b) ? x.slice(b.length) : null);
+    const rm = resto(m), rd = resto(d);
+    if (rm && rd) return b.concat(rm, rd);
+    if (rd) return m.concat(rd);
+    if (rm) return d.concat(rm);
+    return m;
+  }
+  function juntar(base, meu, deles) {
+    const r = juntarCampos(base, meu, deles);
+    r.objs = juntarLista(base && base.objs, meu.objs, deles.objs);
+    r.faccoes = juntarLista(base && base.faccoes, meu.faccoes, deles.faccoes);
+    const nb = base && base.nevoa;
+    r.nevoa = { on: tresVias(nb ? nb.on : undefined, meu.nevoa.on, deles.nevoa.on, 'on'), ops: juntarOps(nb && nb.ops, meu.nevoa.ops, deles.nevoa.ops) };
+    return N.normalizarMapa(r);
   }
 
   /* ---------------- mudança de fora ---------------- */
@@ -502,9 +628,17 @@
     trocarConteudo(novo, jn, { origem: 'fora' });
     if (aviso && perdeu) App.toast(aviso + ' O desfazer recomeça daqui.');
   }
+  // Mudança de fora com mudança daqui ainda por gravar: junta as duas no mapa aberto (o desfazer recomeça).
+  function juntarDeFora(base, deles, aviso) {
+    const junto = juntar(base ? JSON.parse(base) : null, App.mapa, deles);
+    junto.id = App.mapa.id;
+    pilhaDesfazer = []; pilhaRefazer = [];
+    trocarConteudo(junto, j(junto), { origem: 'fora' });
+    App.toast(aviso);
+  }
   function sumiuOAtual(aviso) {
-    for (const t of [tLocal, tDoc, tPub]) clearTimeout(t);              // o que esperava para subir era do mapa que sumiu
-    tLocal = tDoc = tPub = 0;
+    clearTimeout(tLocal); tLocal = 0;                                     // o que esperava para subir era do mapa que sumiu
+    if (App.mapa) pendentes.delete(App.mapa.id);
     App.mapa = null; jAtual = null;
     atualizarLista();
     abrir(App.mapas[0] ? carregarMapa(App.mapas[0].id) : null);
@@ -518,18 +652,17 @@
       return;
     }
     const est = lerLocal(), cru = est.mapas[App.mapa.id];
-    if (!cru) { sumiuOAtual('Este mapa foi apagado em outra aba.'); return; }
+    if (!cru) { if (sombraLocal != null) sumiuOAtual('Este mapa foi apagado em outra aba.'); return; }   // sem sombra: ainda não coube aqui
     if (mudouLista) App.emit('mapas', App.mapas);
     const m = N.normalizarMapa(Object.assign({}, cru, { id: App.mapa.id })), jm = j(m);
     if (jm === sombraLocal || jm === jAtual) { sombraLocal = jm; return; }
-    if (tLocal) { clearTimeout(tLocal); tLocal = 0; }                     // o que ainda não foi gravado aqui perde para o de lá
+    if (tLocal || pendentes.has(App.mapa.id)) { clearTimeout(tLocal); gravarLocal(); return; }   // há mudança daqui por gravar: junta
     sombraLocal = jm;
     aplicarDeFora(m, jm, 'O mapa mudou em outra aba.');
     marcarSalvo('ok', 'Salvo neste navegador');
   }
   function conferirMestre() {
-    const idx = lerIndice();
-    if (dadosDoc(D.pegar(INDICE)) && idx.mostrado !== App.mostrado && j(idx) !== sombraIndice) { App.mostrado = idx.mostrado; sombraIndice = j(idx); App.emit('mapas', App.mapas); }
+    adotarIndice();
     if (docsMapas().length) tirarOferta();
     const mudouLista = atualizarLista();
     if (!App.mapa) {
@@ -545,8 +678,7 @@
     if (mudouLista) App.emit('mapas', App.mapas);
     const jm = j(m);
     if (jm === sombraDoc.get(id) || jm === jAtual) { sombraDoc.set(id, jm); return; }
-    if (tDoc) { clearTimeout(tDoc); tDoc = 0; }
-    sombraDoc.set(id, jm);
+    sombraDoc.set(id, jm);                                                // o daqui já foi gravado na hora: o de lá é o mais novo
     aplicarDeFora(m, jm, 'O mapa mudou em outro aparelho.');
     marcarSalvo('ok', 'Salvo na mesa');
   }
@@ -592,7 +724,7 @@
       try {
         await trazerLocais(est, (i, total) => { sim.textContent = 'Trazendo… (' + i + ' de ' + total + ')'; });
         tirarOferta();
-        App.toast(n === 1 ? 'O mapa deste navegador agora é da mesa.' : 'Os ' + n + ' mapas deste navegador agora são da mesa.');
+        App.toast(n === 1 ? 'O mapa deste navegador agora é da mesa, escondido dos jogadores até você mostrar.' : 'Os ' + n + ' mapas deste navegador agora são da mesa, escondidos dos jogadores até você mostrar.');
       } catch (e) {
         console.warn(e);
         sim.disabled = nao.disabled = false;
@@ -616,6 +748,7 @@
         if (blob) m.img.url = await TC.arquivos.subir(blob).catch(e => { throw new Error('Não deu para enviar a imagem de "' + m.nome + '": ' + e.message + ' Nada foi trazido.'); });
         else m.img = null;                                                // a imagem já não estava neste navegador
       }
+      m.oculto = true;                                                    // na mesa, nada vai para os jogadores sem "Mostrar"
       prontos.push(N.normalizarMapa(m));
     }
     if (docsMapas().length) throw new Error('A mesa ganhou mapas enquanto isso. Nada foi trazido.');
@@ -803,7 +936,7 @@
     if (img && w0 > 0 && h0 > 0 && (w0 !== img.w || h0 !== img.h)) m = N.escalarMapa(m, img.w / w0, img.h / h0);
     if (App.mapas.some(x => x.nome === m.nome)) m.nome = m.nome + ' (importado)';
     adicionarMapa(m);
-    App.toast('Mapa importado: ' + m.nome);
+    App.toast('Mapa importado: ' + m.nome + '.' + avisoEscondido());
     return m;
   }
 

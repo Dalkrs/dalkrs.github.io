@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casca falsa · testes</title>
+<style>
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1017; }
+iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0; display: block; }
+</style>
+</head>
+<body>
+<script>
+/* Casca falsa, só para os testes: faz o papel de index.html (a casca do site) para UM aparelho, sem conta e sem
+   Supabase — a rede de fora não existe aqui. Abre o Mapa-múndi numa moldura e fala com ele pelo protocolo de
+   tc/ponte.js, como o daPonte de index.html:
+     ola           → estado { mesa, papel, segredo: false, eu, membros }
+     dados.abrir   → dados.tudo só com o que este papel pode ler (o mestre, tudo; o jogador, vis 'mesa' ou o que é dele)
+     dados.gravar  → as regras do banco (supabase/migrations/0003): o jogador só grava o que é dele, não troca o dono
+                     nem a visibilidade e não apaga; o que passa vai para o Node (window.__tcGravou), que faz o papel
+                     do banco e repassa aos outros aparelhos; o que não passa fica em window.__recusas
+     rolagem       → window.__rolagens (o que iria para a mesa ao vivo)
+     arquivo.subir → arquivo.ok com o endereço que o Node devolve (window.__tcSubir: um https:// servido pelo próprio
+                     teste, que funciona em qualquer aparelho); sem o Node, um data URL da imagem
+   O Node entrega o que mudou em outro aparelho chamando window.__chegou(col, linha); a casca só passa adiante o que
+   este papel pode ver. Endereço: casca-falsa.html?papel=mestre|jogador&eu=<id>&mesa=<id>[&nome=<nome da mesa>]
+   Cada linha: { id, mesa_id, dono_id, vis, dados, rev } (documentos) — as mesmas colunas de tc/tc.js. */
+(() => {
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const papel = q.get('papel') === 'jogador' ? 'jogador' : 'mestre';
+  const eu = q.get('eu') || (papel === 'mestre' ? 'u_mestre' : 'u_jogador');
+  const mesa = { id: q.get('mesa') || 'mesa_teste', nome: q.get('nome') || 'Mesa de teste' };
+  const idMestre = papel === 'mestre' ? eu : q.get('mestre') || 'u_mestre';
+  const membros = [{ id: idMestre, nome: 'Mestre', papel: 'mestre', cor: '#e6ab4f' }];
+  if (papel === 'jogador') membros.push({ id: eu, nome: 'Jogador', papel: 'jogador', cor: '#6fbf8f' });
+  const COLUNAS = { personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado'], documentos: ['dono_id', 'vis', 'dados'] };
+  const copia = x => JSON.parse(JSON.stringify(x));
+
+  // o que o "servidor" tem (o Node manda); a moldura só recebe o recorte que este papel pode ler
+  const banco = { personagens: new Map(), documentos: new Map() };
+  let rev = 0;
+  window.__entregues = [];       // tudo o que entrou na moldura, como entrou (para conferir o que vazou)
+  window.__gravacoes = [];       // todo dados.gravar que a moldura mandou, aceito ou não
+  window.__recusas = [];
+  window.__rolagens = [];
+  window.__arquivos = [];
+  window.__arquivosApagados = [];
+
+  const podeVer = l => !!l && !l.apagado && (papel === 'mestre' || l.vis === 'mesa' || (!!eu && l.dono_id === eu));
+  // As regras de documentos/personagens para quem não é o mestre (políticas *_criar e *_editar e o gatilho tocar()).
+  function recusa(col, id, campos) {
+    if (papel === 'mestre') return null;
+    const l = banco[col].get(id);
+    if (campos.apagado) return 'O jogador não apaga.';
+    if (!l) return campos.dono_id === eu ? null : 'Só o mestre cria o que não tem dono.';
+    if (l.dono_id !== eu) return 'Só o mestre altera isto.';
+    if ('dono_id' in campos && campos.dono_id !== l.dono_id) return 'O jogador não troca o dono.';
+    if ('vis' in campos && campos.vis !== l.vis) return 'O jogador não troca a visibilidade.';
+    return null;
+  }
+
+  const moldura = document.createElement('iframe');
+  moldura.title = 'Sistema';
+  function entregar(m) {
+    window.__entregues.push(copia(m));
+    try { moldura.contentWindow.postMessage({ tinycats: m }, location.origin); } catch (e) { /* moldura recarregando */ }
+  }
+  // linhas do Node junto com as que já chegaram por __chegou: fica a revisão mais nova de cada uma
+  async function lerDoNode(col) {
+    if (typeof window.__tcLer !== 'function') return;
+    for (const l of (await window.__tcLer(col)) || []) {
+      const a = banco[col].get(l.id);
+      if (!a || (a.rev || 0) <= (l.rev || 0)) banco[col].set(l.id, l);
+      if (l.rev > rev) rev = l.rev;
+    }
+  }
+  const lerArquivo = blob => new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => falha(r.error); r.readAsDataURL(blob); });
+
+  async function daMoldura(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'ola') entregar({ t: 'estado', mesa: copia(mesa), papel, segredo: false, eu, membros: copia(membros) });
+    else if (m.t === 'dados.abrir') {
+      if (!banco[m.col]) { entregar({ t: 'dados.erro', n: m.n, erro: 'Coleção desconhecida: ' + m.col }); return; }
+      try { await lerDoNode(m.col); } catch (e) { entregar({ t: 'dados.erro', n: m.n, erro: 'Não deu para ler os dados da mesa.' }); return; }
+      entregar({ t: 'dados.tudo', col: m.col, n: m.n, linhas: [...banco[m.col].values()].filter(podeVer).map(copia) });
+    } else if (m.t === 'dados.gravar') {
+      const col = m.col, id = m.id, campos = m.campos || {};
+      const motivo = !banco[col] ? 'Coleção desconhecida.' : typeof id !== 'string' || !id ? 'Sem id.' : recusa(col, id, campos);
+      window.__gravacoes.push({ col, id, campos: copia(campos), aceito: !motivo, motivo: motivo || null });
+      if (motivo) { window.__recusas.push({ col, id, campos: copia(campos), motivo }); return; }
+      const ant = banco[col].get(id);
+      let linha;
+      if (campos.apagado) {
+        if (!ant) return;
+        banco[col].delete(id);
+        linha = { id, mesa_id: mesa.id, apagado: true, rev: ++rev };
+      } else {
+        linha = Object.assign({ id, mesa_id: mesa.id, dono_id: null, vis: 'mestre' }, ant || {});
+        for (const k of COLUNAS[col]) if (campos[k] !== undefined) linha[k] = copia(campos[k]);
+        linha.rev = ++rev;
+        banco[col].set(id, linha);
+      }
+      if (typeof window.__tcGravou === 'function') {
+        const salva = await window.__tcGravou(col, copia(linha));
+        if (salva && salva.rev && !salva.apagado) { banco[col].set(id, salva); if (salva.rev > rev) rev = salva.rev; }
+      }
+    } else if (m.t === 'rolagem') window.__rolagens.push({ origem: m.origem, dados: copia(m.dados || null) });
+    else if (m.t === 'arquivo.subir') {
+      try {
+        const b = m.blob;
+        if (papel !== 'mestre') throw new Error('Só o mestre envia imagens.');
+        if (!b || !/^image\/(jpeg|png|webp|gif)$/.test(b.type)) throw new Error('Envie uma imagem JPG, PNG ou WebP.');
+        const dataUrl = await lerArquivo(b);
+        const url = typeof window.__tcSubir === 'function' ? await window.__tcSubir(dataUrl, b.type) : dataUrl;
+        window.__arquivos.push({ tipo: b.type, tam: b.size, url });
+        entregar({ t: 'arquivo.ok', n: m.n, url });
+      } catch (e) { entregar({ t: 'arquivo.erro', n: m.n, erro: (e && e.message) || 'Não deu para enviar a imagem agora.' }); }
+    } else if (m.t === 'arquivo.apagar') window.__arquivosApagados.push(m.url);
+  }
+  window.addEventListener('message', ev => {
+    if (ev.origin !== location.origin || ev.source !== moldura.contentWindow || !ev.data || !ev.data.tinycats) return;
+    daMoldura(ev.data.tinycats).catch(e => console.error('casca falsa:', e));
+  });
+
+  // O Node avisa o que mudou em outro aparelho. Quem deixou de poder ver (apagada, ou fechada para o mestre) recebe a saída.
+  window.__chegou = (col, linha) => {
+    if (!banco[col] || !linha || !linha.id) return false;
+    const ant = banco[col].get(linha.id), via = podeVer(ant);
+    if (linha.apagado) banco[col].delete(linha.id); else banco[col].set(linha.id, copia(linha));
+    if (linha.rev > rev) rev = linha.rev;
+    if (podeVer(linha)) entregar({ t: 'dado', col, linha: copia(linha) });
+    else if (via) entregar({ t: 'dado', col, linha: { id: linha.id, apagado: true, rev: linha.rev } });
+    return true;
+  };
+  window.__casca = { papel, eu, mesa, banco };
+
+  moldura.src = '/mundo/?casca=1&debug';
+  document.body.append(moldura);
+})();
+</script>
+</body>
+</html>

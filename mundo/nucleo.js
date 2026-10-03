@@ -121,7 +121,7 @@
   function pontoNaPolilinha(pts, s) {
     if (!Array.isArray(pts) || !pts.length) return { x: 0, y: 0, fim: true, i: 0 };
     const total = compPolilinha(pts), ult = xy(pts[pts.length - 1]);
-    s = num(s, 0);
+    s = s === Infinity ? total : num(s, 0);                  // "até o fim" também vale (num() não aceita infinito)
     if (s >= total) return { x: ult.x, y: ult.y, fim: true, i: Math.max(0, pts.length - 2) };
     if (s <= 0) { const p = xy(pts[0]); return { x: p.x, y: p.y, fim: false, i: 0 }; }
     for (let i = 1; i < pts.length; i++) {
@@ -130,6 +130,21 @@
       s -= d;
     }
     return { x: ult.x, y: ult.y, fim: true, i: Math.max(0, pts.length - 2) };
+  }
+  // O ponto da linha mais perto de p: onde fica, a que distância (d) e quanto da linha vem antes dele (s).
+  function maisPerto(pts, p) {
+    const q = xy(p);
+    let melhor = null, s0 = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const a = xy(pts[i - 1]), b = xy(pts[i]), dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+      const t = L ? limitar(((q.x - a.x) * dx + (q.y - a.y) * dy) / (L * L), 0, 1) : 0;
+      const x = a.x + dx * t, y = a.y + dy * t, d = Math.hypot(q.x - x, q.y - y);
+      if (!melhor || d < melhor.d) melhor = { x, y, d, s: s0 + L * t };
+      s0 += L;
+    }
+    if (melhor) return melhor;
+    const a = xy(pts[0]);
+    return { x: a.x, y: a.y, d: Math.hypot(q.x - a.x, q.y - a.y), s: 0 };
   }
   function dentroPoligono(p, pts) {
     if (!Array.isArray(pts) || pts.length < 3) return false;
@@ -215,7 +230,15 @@
     const rota = g.rota ? objDe(mapa, g.rota, 't') : null;
     if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2) return Object.assign(base, { msg: 'Sem rota' });
     if (!(kmPorUn(mapa) > 0)) return Object.assign(base, { msg: 'Defina a escala do mapa primeiro' });
-    const total = kmDe(mapa, compPolilinha(rota.pts)), antes = Math.max(0, num(g.prog, 0));
+    const comp = compPolilinha(rota.pts), total = kmDe(mapa, comp);
+    let antes = limitar(num(g.prog, 0), 0, total);
+    // Anda de onde o grupo está de fato. Arrastado para fora do lugar (ou com a escala trocada) o progresso guardado
+    // já não bate com ele: perto da rota, segue do ponto dela mais perto; longe, não anda (seria um salto pelo mapa).
+    if (dist(pontoNaPolilinha(rota.pts, unidadesDe(mapa, antes)), g) > 0.5) {
+      const q = maisPerto(rota.pts, g), longe = Math.max(comp * 0.05, Math.hypot(num(mapa.larg, 2000), num(mapa.alt, 1400)) * 0.01);
+      if (q.d > longe) return Object.assign(base, { msg: 'O grupo está longe da rota (a ' + km1(kmDe(mapa, q.d)) + ' km dela). Arraste-o para a rota ou use "Pôr no começo da rota"' });
+      antes = kmDe(mapa, q.s);
+    }
     if (antes >= total - 1e-6) {
       const p = pontoNaPolilinha(rota.pts, Infinity);
       return Object.assign(base, { x: arred(p.x), y: arred(p.y), prog: arred(total), chegou: true, msg: 'Chegou ao fim da rota' });
@@ -273,24 +296,14 @@
     const r = (d + a.r + b.r) / 2, k = (r - a.r) / d;
     return { t: a.t, x: arred(a.x + (b.x - a.x) * k), y: arred(a.y + (b.y - a.y) * k), r: arred(r) };
   }
-  /* Passou do limite: 1) some quem uma operação posterior cobre por inteiro (não muda nada no desenho);
-     2) as mais antigas do mesmo tipo, vizinhas e sobrepostas, se fundem num círculo (só quando ele não fica
-        maior que as duas somadas, para não abrir área demais); 3) em último caso, as mais antigas revelações saem
-        (o que volta a ficar coberto — nunca o contrário). */
+  /* Passou do limite. A regra de ouro: o que estava coberto continua coberto (nada escondido vaza para os jogadores).
+     1) some quem uma operação posterior cobre por inteiro (não muda nada no desenho);
+     2) as mais antigas, vizinhas e do mesmo tipo, se fundem num círculo. "Cobrir" pode fundir num círculo que envolve
+        as duas (cobre a mais, nunca a menos; só quando ele não fica maior que as duas somadas). Duas revelações só se
+        fundem quando uma já contém a outra: envolver as duas abriria área que estava coberta;
+     3) em último caso, as mais antigas saem (o que elas abriam volta a ficar coberto — nunca o contrário). */
   function enxugarOps(ops) {
-    if (ops.length > MAX_OPS && ops.length <= MAX_OPS * 3) {        // o passo 1 compara todas com todas: só com folga
-      const fica = [];
-      for (let i = 0; i < ops.length; i++) {
-        const a = ops[i];
-        let coberta = false;
-        for (let j = i + 1; j < ops.length && !coberta; j++) {
-          const b = ops[j];
-          if (Math.hypot(b.x - a.x, b.y - a.y) + a.r <= b.r) coberta = true;
-        }
-        if (!coberta) fica.push(a);
-      }
-      ops = semCobrirNoComeco(fica);
-    }
+    if (ops.length > MAX_OPS && ops.length <= MAX_OPS * 3) ops = semCobrirNoComeco(semRedundantes(ops));
     if (ops.length > MAX_OPS) {
       let sobra = ops.length - MAX_OPS;
       const r = [];
@@ -298,7 +311,8 @@
         const u = r[r.length - 1];
         if (sobra > 0 && u && u.t === o.t) {
           const e = envolver(u, o);
-          if (e.r * e.r <= u.r * u.r + o.r * o.r) { r[r.length - 1] = e; sobra--; continue; }
+          const contem = (e.x === u.x && e.y === u.y && e.r === u.r) || (e.x === o.x && e.y === o.y && e.r === o.r);
+          if (o.t === '-' ? e.r * e.r <= u.r * u.r + o.r * o.r : contem) { r[r.length - 1] = e; sobra--; continue; }
         }
         r.push(o);
       }
@@ -306,6 +320,31 @@
     }
     if (ops.length > MAX_OPS) ops = semCobrirNoComeco(ops.slice(ops.length - MAX_OPS));
     return ops;
+  }
+  /* Passo 1 sem comparar todas com todas (milhares de pinceladas travariam a página a cada traço): as operações
+     posteriores ficam numa grade pelo centro, em células do tamanho dos raios comuns; as muito grandes ("revelar
+     tudo", pincel com o zoom afastado) ficam numa lista à parte, curta. Só quem tem raio maior contém outra, e com
+     os dois raios até o tamanho da célula os centros caem em células vizinhas. */
+  function semRedundantes(ops) {
+    const raios = ops.map(o => o.r).sort((a, b) => a - b);
+    const T = Math.max(1, raios[Math.floor(raios.length * 0.9)] || 1);
+    const grade = new Map(), grandes = [], fica = [];
+    for (let i = ops.length - 1; i >= 0; i--) {
+      const a = ops[i], contem = b => Math.hypot(b.x - a.x, b.y - a.y) + a.r <= b.r;
+      const cx = Math.floor(a.x / T), cy = Math.floor(a.y / T);
+      let coberta = grandes.some(contem);
+      if (!coberta && a.r <= T) {
+        for (let dx = -1; dx <= 1 && !coberta; dx++) for (let dy = -1; dy <= 1 && !coberta; dy++) {
+          const l = grade.get((cx + dx) + ',' + (cy + dy));
+          if (l) coberta = l.some(contem);
+        }
+      }
+      if (coberta) continue;
+      fica.push(a);
+      if (a.r > T) grandes.push(a);
+      else { const k = cx + ',' + cy; if (grade.has(k)) grade.get(k).push(a); else grade.set(k, [a]); }
+    }
+    return fica.reverse();
   }
   // Cobrir antes de qualquer revelação não muda nada (tudo começa coberto).
   function semCobrirNoComeco(ops) { let i = 0; while (i < ops.length && ops[i].t === '-') i++; return i ? ops.slice(i) : ops; }
@@ -488,7 +527,8 @@
   /* ---------------- projeção pública ---------------- */
   /* O que os jogadores recebem. Tudo o que é só do mestre sai aqui — e nada além deste recorte vai para eles:
      notas, o "escondido" do mapa, objetos e facções escondidos, o "é falso" dos boatos, a tabela de encontros,
-     eventos fora do dia de hoje e o que a névoa cobre (menos os grupos: são os próprios jogadores). */
+     eventos fora do dia de hoje (e o futuro dos de hoje: quando acabam, quanto crescem) e o que a névoa cobre
+     (menos os grupos: são os próprios jogadores). */
   function projetar(mapa) {
     const m = normalizarMapa(mapa);                          // já é uma cópia
     const dia = m.cal.dia, nevoa = m.nevoa.on, ops = m.nevoa.ops;
@@ -506,7 +546,11 @@
       if (o.oculto) continue;
       delete o.nota;
       if (o.k === 'm') { delete o.falso; if (coberto(o.x, o.y)) continue; }
-      else if (o.k === 'e') { if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue; }
+      else if (o.k === 'e') {
+        if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue;
+        // o evento como ele está hoje: o fim planejado e o quanto ainda vai crescer são do mestre
+        o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
+      }
       else if (o.k === 'r') { delete o.enc; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }

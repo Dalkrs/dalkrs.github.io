@@ -243,20 +243,22 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=5"></script>
+<script src="tc/tc.js?v=6"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-6';
+  const VERSAO = '2026.10.03-7';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
+    mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
     fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
     arvore: '<circle cx="12" cy="5" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M12 7v4"/><path d="M12 11c-4 0-6 2-6 5"/><path d="M12 11c4 0 6 2 6 5"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   const ABAS = [
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true },
+    { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
     { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true },
     { id: 'rolador', nome: 'Rolador', src: 'rolador/' },

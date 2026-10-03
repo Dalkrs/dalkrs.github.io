@@ -23,7 +23,7 @@
   const MAX_LISTA = 150;                          // a lista do mapa mostra até tantos; o resto, pela busca
   const CHAVE_UI = 'tinycats:mundo:painel';       // { aba, fechado }: só conveniência deste navegador
   const ESTREITO = '(max-width: 680px)';          // o painel vira gaveta por cima do mapa (CSS de mundo/index.html)
-  const CELULAR = '(max-width: 600px)';           // a barra de cima encolhe (CSS de _painel.css)
+  const CELULAR = '(max-width: 900px)';           // a barra de cima encolhe (CSS do painel em mundo/index.html): tablet e celular
   const ROTA_SVG = '<path d="M4 19c3-1 3-6 8-7s5-5 8-7"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="5" r="1.6"/>';
   const FRENTE_SVG = '<path d="M3 16c3-3 6-3 9 0s6 3 9 0"/><path d="M6 4l5 5M11 4 6 9M13 4l5 5M18 4l-5 5"/>';
   const CHECK_SVG = '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
@@ -243,12 +243,25 @@
   }
   function teclaCampo(ev) {
     if (ev.key === 'Escape') {
-      if (this.value !== this._modelo) { ev.preventDefault(); ev.stopPropagation(); this.value = this._modelo; }
+      if (this.value !== this._modelo) { ev.preventDefault(); ev.stopPropagation(); this.value = this._modelo; pintarTopo(); }
       return;
     }
     if (ev.key === 'Enter' && (this.tagName !== 'TEXTAREA' || ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); this._commit(); }
   }
   function mudaCampo() { this._commit(); }
+  // um campo do painel com o foco e com texto escrito que ainda não foi gravado
+  function campoSujo() {
+    const el = document.activeElement;
+    return !!el && typeof el._commit === 'function' && el._modelo !== undefined && textual(el) && el.value !== el._modelo && !!$('side') && $('side').contains(el);
+  }
+  /* A página vai sair (recarregar, fechar a aba, o celular pôr em segundo plano): o que está escrito no campo com o
+     foco ainda não virou mudança (só vira no Enter ou ao sair do campo). Grava agora e manda tudo. Este ouvinte vem
+     depois do de mundo.js, então manda ele mesmo. */
+  function antesDeSair() {
+    if (!App || !campoSujo()) return;
+    try { document.activeElement._commit(); } catch (e) { console.error(e); }
+    try { App.salvarJa(); } catch (e) { console.error(e); }
+  }
   function campo(rotulo, el, dica, classe) {
     return h('label', { class: 'field' + (classe ? ' ' + classe : '') }, h('span', { text: rotulo }), el, dica ? h('small', { class: 'ajuda', text: dica }) : null);
   }
@@ -305,11 +318,12 @@
   function mudarObj(id, rotulo, fn) {
     return App.mudar(rotulo, m => { const o = achar(m, id); if (!o) return false; return fn(o, m); });
   }
-  // "Desfazer" do aviso: só desfaz se a última mudança ainda é a do aviso (senão desfaria outra coisa).
-  function avisoDesfazer(texto, rotulo) {
+  // "Desfazer" do aviso: só desfaz se o passo de cima ainda é o deste aviso (senão desfaria outra coisa). Quem chama
+  // acabou de mudar o mapa: o passo de agora é o dele.
+  function avisoDesfazer(texto) {
+    const passo = typeof App.passoAtual === 'function' ? App.passoAtual() : null;
     App.toast(texto, 'Desfazer', () => {
-      const r = typeof App.rotuloDesfazer === 'function' ? App.rotuloDesfazer() : null;
-      if (r != null && r !== rotulo) { App.toast('Já houve outra mudança depois. Use o botão Desfazer, lá em cima.'); return; }
+      if (passo != null && App.passoAtual() !== passo) { App.toast('Já houve outra mudança depois. Use o botão Desfazer, lá em cima.'); return; }
       App.desfazer();
     });
   }
@@ -367,7 +381,7 @@
       if (!n) return false;
       m.objs.push(n); novoId = n.id;
     });
-    if (novoId) { App.selecionar([novoId]); avisoDesfazer('Duplicado.', 'duplicar'); }
+    if (novoId) { App.selecionar([novoId]); avisoDesfazer('Duplicado.'); }
   }
   function apagarObjs(ids) {
     const set = new Set(ids), v = App.mapa, um = ids.length === 1 ? achar(v, ids[0]) : null;
@@ -375,7 +389,7 @@
     const ok = App.mudar(rot, m => { const antes = m.objs.length; m.objs = m.objs.filter(o => !set.has(o.id)); if (m.objs.length === antes) return false; });
     if (ok === false) return;
     if (encontro && set.has(encontro.grupo)) encontro = null;
-    avisoDesfazer(um ? APAGADO[um.k] || 'Apagado.' : ids.length + ' objetos apagados.', rot);
+    avisoDesfazer(um ? APAGADO[um.k] || 'Apagado.' : ids.length + ' objetos apagados.');
   }
 
   /* ---------------- encontros ---------------- */
@@ -392,15 +406,22 @@
       r: N().sortearEncontro(reg), mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1 };
     agendar();
   }
-  function textoEncontro(e) {
+  function textoEncontro(e, grupoNome) {
     const r = e.r;
-    return (e.grupoNome ? e.grupoNome + ': ' : '') + (r.houve ? r.item || 'encontro (sem resultado escrito na tabela)' : 'nada acontece') +
+    return (grupoNome ? grupoNome + ': ' : '') + (r.houve ? r.item || 'encontro (sem resultado escrito na tabela)' : 'nada acontece') +
       ' (d100 ' + r.d100 + ', chance ' + r.chance + '%)';
+  }
+  /* Os nomes que podem ir para a mesa às claras: os da projeção pública. Região ou grupo escondido (ou coberto pela
+     névoa) vai sem o nome — o que os jogadores não veem no mapa não aparece no registro da mesa. */
+  function nomesPublicos(e) {
+    const P = N().projetar(App.mapa), reg = achar(P, e.regiao), g = e.grupo ? achar(P, e.grupo) : null;
+    return { regiao: reg ? nomeDe(reg, P) : null, grupo: g ? nomeDe(g, P) : e.grupo ? 'Grupo' : '', grupoEscondido: !!e.grupo && !g };
   }
   function enviarEncontro(secreta) {
     const e = encontro;
     if (!e || !App.naMesa) return;
-    const ok = App.publicarNaMesa('Encontro em ' + e.regiaoNome, textoEncontro(e), secreta);
+    const pub = secreta ? { regiao: e.regiaoNome, grupo: e.grupoNome } : nomesPublicos(e);
+    const ok = App.publicarNaMesa(pub.regiao ? 'Encontro em ' + pub.regiao : 'Encontro', textoEncontro(e, pub.grupo), secreta);
     if (ok === false) { App.toast('Não deu para mandar agora. A mesa está aberta?'); return; }
     if (secreta) e.segredo = true; else e.mesa = true;
     App.toast(secreta ? 'Foi para o seu registro, em segredo.' : 'Foi para a mesa.');
@@ -417,11 +438,15 @@
       corpo = r.item || 'Houve encontro, mas a tabela da região está sem resultados escritos.';
       det = 'd100: ' + r.d100 + ' (chance ' + r.chance + '%)' + (r.total ? ' · peso ' + r.peso + ' de ' + r.total : '');
     }
+    const pub = App.naMesa ? nomesPublicos(e) : null;
+    const semNome = !pub ? null : !pub.regiao ? 'A região está escondida dos jogadores: o nome dela não vai para a mesa.'
+      : pub.grupoEscondido ? 'O grupo está escondido dos jogadores: o nome dele não vai para a mesa.' : null;
     return h('div', { class: 'cartao' + (r.houve ? ' houve' : ''), role: 'status', 'data-k': 'enc:' + e.n },
       h('b', { text: titulo }),
       h('small', { text: (e.grupoNome ? e.grupoNome + ' · ' : '') + e.regiaoNome }),
       h('p', { class: 'publico', text: corpo }),
       det ? h('small', { text: det }) : null,
+      semNome ? h('small', { text: semNome }) : null,
       App.naMesa ? linha(
         botao(e.mesa ? 'Foi para a mesa' : 'Mandar para a mesa', () => enviarEncontro(false), { c: 'sm pri', k: 'enc:mesa', off: e.mesa }),
         botao(e.segredo ? 'Foi só para você' : 'Mandar só para mim (segredo)', () => enviarEncontro(true), { c: 'sm', k: 'enc:seg', off: e.segredo })) : null,
@@ -455,9 +480,9 @@
       $('diaMenos').disabled = !ed || v.cal.dia <= 0;
       $('diaMais').disabled = !ed;
     }
-    // salvo
-    const s = App.salvo || {}, sv = $('salvo');
-    if (sv) { trocarTexto(sv, s.texto || ''); sv.classList.toggle('ruim', s.estado === 'erro'); }
+    // salvo (o que foi escrito num campo e ainda não terminou de editar não está salvo: Enter ou sair do campo grava)
+    const s = App.salvo || {}, sv = $('salvo'), sujo = campoSujo();
+    if (sv) { trocarTexto(sv, sujo && s.estado !== 'erro' ? 'Editando…' : s.texto || ''); sv.classList.toggle('ruim', s.estado === 'erro'); }
     // ver como jogador
     const cj = $('comoJog');
     if (cj) { cj.checked = !!App.comoJogador; cj.disabled = !m; }
@@ -480,6 +505,17 @@
       bp.title = aberto ? 'Esconder o painel' : 'Mostrar o painel';
     }
   }
+  // O botão Desfazer avisa o que desfez e oferece refazer: no celular e no tablet não há Ctrl+Shift+Z, e um toque a
+  // mais no Desfazer não pode perder a mudança de vez.
+  function desfazerPeloBotao() {
+    const rot = App.rotuloDesfazer();
+    if (!App.desfazer()) return;
+    const passo = App.passoRefazer();
+    toast('Desfeito' + (rot ? ': ' + rot : '') + '.', 'Refazer', () => {
+      if (App.passoRefazer() !== passo) { App.toast('Já houve outra mudança depois: não dá mais para refazer isto.'); return; }
+      App.refazer();
+    });
+  }
   function definirPainel(aberto, guardar) {
     const sd = $('side');
     if (!sd) return;
@@ -492,7 +528,8 @@
     const bt = $('btMapa');
     if (bt) {
       bt.addEventListener('click', () => { if (menu) fecharMenu(true); else abrirMenu(); });
-      bt.addEventListener('keydown', ev => { if (ev.key === 'ArrowDown' && !menu) { ev.preventDefault(); abrirMenu(); } });
+      // a seta que abre o menu não segue para a tela (lá ela moveria o que está selecionado no mapa)
+      bt.addEventListener('keydown', ev => { if (ev.key === 'ArrowDown' && !menu) { ev.preventDefault(); ev.stopPropagation(); abrirMenu(); } });
     }
     const dt = $('dataTxt');
     if (dt) {
@@ -502,7 +539,7 @@
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('diaMenos', () => passarDias(-1));
     on('diaMais', () => passarDias(1));
-    on('btDesfazer', () => App.desfazer());
+    on('btDesfazer', desfazerPeloBotao);
     on('btPainel', () => definirPainel($('side').classList.contains('fechado'), true));
     const cj = $('comoJog');
     if (cj) cj.addEventListener('change', () => { App.comoJogador = cj.checked; pintar(); });
@@ -583,14 +620,14 @@
 
   /* ---------------- ações do mapa (menu e aba Mapa) ---------------- */
   async function novoMapa() {
-    const r = await janela({ titulo: 'Novo mapa', ok: 'Criar mapa', campos: [
+    const r = await janela({ titulo: 'Novo mapa', ok: 'Criar mapa', texto: App.naMesa ? 'O mapa novo começa escondido dos jogadores. Quando quiser, use "Mostrar este mapa aos jogadores".' : null, campos: [
       { id: 'nome', rotulo: 'Nome', valor: '', ph: 'Mundo conhecido', max: 120 },
       { id: 'fundo', rotulo: 'Começar com', tipo: 'opcoes', valor: 'imagem', opcoes: [['imagem', 'Uma imagem sua (PNG, JPG ou WebP)'], ['papel', 'Papel em branco, para desenhar por cima']] },
     ] });
     if (!r) return;
     const nome = r.nome.trim() || 'Mundo conhecido';
     if (r.fundo === 'imagem') escolherImagem({ novo: true, nome });
-    else { App.criarMapa(nome, { larg: 2000, alt: 1400 }); App.toast('Mapa criado: ' + nome); }
+    else { App.criarMapa(nome, { larg: 2000, alt: 1400 }); App.toast('Mapa criado: ' + nome + '.' + (App.naMesa ? ' Está escondido dos jogadores até você mostrar.' : '')); }
   }
   async function renomearMapa() {
     if (!App.mapa) return;
@@ -625,6 +662,14 @@
     arqModo = modo || null;
     arq.value = '';
     arq.click();
+  }
+  async function tirarImagem() {
+    if (!App.mapa) return;
+    const idMapa = App.mapa.id;
+    const ok = await App.confirmar({ titulo: 'Tirar a imagem do mapa?', ok: 'Tirar a imagem', perigo: true,
+      texto: 'O mapa volta a ser um papel em branco; o que está desenhado fica onde está. Dá para desfazer enquanto esta página estiver aberta.' });
+    if (!ok || !mesmoMapa(idMapa)) return;
+    if (App.mudar('tirar a imagem', mm => { mm.img = null; }) !== false) avisoDesfazer('A imagem saiu; ficou o papel em branco.');
   }
   async function trocarImagem() {
     if (!App.mapa) return;
@@ -662,7 +707,8 @@
     if (!T || typeof T.medir !== 'function' || !App.podeEditar()) { App.toast('A régua não está disponível agora.'); return; }
     const idMapa = App.mapa.id, sd = $('side'), saiu = estreito() && sd && !sd.classList.contains('fechado');
     if (saiu) definirPainel(false);                     // no celular o painel cobre o mapa
-    const dica = toast('Arraste no mapa sobre uma distância que você conhece. Esc cancela.', null, null, 15000);
+    const toque = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    const dica = toast('Arraste no mapa sobre uma distância que você conhece.' + (toque ? '' : ' Esc cancela.'), 'Cancelar', () => App.usarFerramenta('sel'), 15000);
     let un = null;
     try { un = await T.medir(); } catch (e) { console.error(e); }
     dica();
@@ -673,8 +719,16 @@
       campos: [{ id: 'km', rotulo: 'Distância em km', tipo: 'decimal', valor: '', ph: 'Ex.: 120' }],
       ler: v => { const n = lerNum(v.km); if (!(n > 0)) throw new Error('Escreva quantos km, um número maior que zero.'); return n; } });
     if (kmLinha == null || !mesmoMapa(idMapa)) return;
-    App.mudar('definir a escala', m => { m.escala.kmPorUn = kmLinha / un; });
+    App.mudar('definir a escala', m => { definirEscala(m, kmLinha / un); });
     App.toast('Escala definida: 100 unidades = ' + fmt(kmLinha / un * 100, 2) + ' km.');
+  }
+
+  // Trocar a escala leva junto o progresso dos grupos (guardado em km): cada um continua no mesmo ponto da rota, sem
+  // pular para trás nem para o fim no próximo "Andar 1 dia".
+  function definirEscala(m, kmPorUn) {
+    const antes = m.escala.kmPorUn;
+    m.escala.kmPorUn = kmPorUn;
+    if (antes > 0 && kmPorUn > 0) for (const g of m.objs) if (g.k === 'g' && g.prog > 0) g.prog = g.prog * kmPorUn / antes;
   }
 
   /* ================= janelas e avisos ================= */
@@ -785,7 +839,7 @@
         botao('Escolher imagem', () => escolherImagem({ novo: true, nome: nomeNovo.trim() || 'Mundo conhecido' }), { c: 'pri', k: 'vz:img' }),
         botao('Papel em branco', () => { App.criarMapa(nomeNovo.trim() || 'Mundo conhecido', { larg: 2000, alt: 1400 }); nomeNovo = ''; }, { k: 'vz:papel' })),
       outros,
-      h('p', { class: 'note', text: App.naMesa ? 'Fica guardado na mesa. Os jogadores só veem o que você mostrar.' : 'Fica guardado neste navegador. Dá para exportar uma cópia (.json) depois.' }));
+      h('p', { class: 'note', text: App.naMesa ? 'Fica guardado na mesa, escondido dos jogadores até você mostrar.' : 'Fica guardado neste navegador. Dá para exportar uma cópia (.json) depois.' }));
   }
 
   /* ================= abas ================= */
@@ -889,7 +943,8 @@
       out.push(h('div', { class: 'lista' }, achados.slice(0, MAX_LISTA).map(o => itemLista(o, v, mestre))));
       if (achados.length > MAX_LISTA) out.push(nota('Mostrando ' + MAX_LISTA + ' de ' + fmt(achados.length, 0) + '. Use a busca para achar o resto.'));
     }
-    out.push(nota(ed ? 'Clique num objeto do mapa (ou da lista) para ver e editar.' : 'Toque num objeto do mapa (ou da lista) para ler o que se sabe dele.'));
+    const toque = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    out.push(nota(ed ? 'Clique num objeto do mapa (ou da lista) para ver e editar.' : (toque ? 'Toque' : 'Clique') + ' num objeto do mapa (ou da lista) para ler o que se sabe dele.'));
     return out;
   }
   function varios(v, ids) {
@@ -966,14 +1021,23 @@
   }
   function secMarcador(o, grava) {
     const I = N().ICONES, id = o.id, ic = I[o.ic] || I.cidade;
+    // a grade é uma parada só do Tab (no ícone escolhido); as setas andam entre os ícones
     return secao('Marcador',
-      h('div', { class: 'grade', role: 'group', 'aria-label': 'Ícone' }, Object.keys(I).map(k => h('button', { type: 'button', 'data-k': 'ic:' + id + ':' + k,
-        'aria-pressed': String(o.ic === k), title: I[k].nome, 'aria-label': I[k].nome, onclick: () => mudarObj(id, 'trocar o ícone', x => { x.ic = k; }) }, glifo(I[k].svg, 20)))),
+      h('div', { class: 'grade', role: 'group', 'aria-label': 'Ícone', onkeydown: setasNaGrade }, Object.keys(I).map(k => h('button', { type: 'button', 'data-k': 'ic:' + id + ':' + k,
+        'aria-pressed': String(o.ic === k), tabindex: o.ic === k ? '0' : '-1', title: I[k].nome, 'aria-label': I[k].nome, onclick: () => mudarObj(id, 'trocar o ícone', x => { x.ic = k; }) }, glifo(I[k].svg, 20)))),
       h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor do marcador', o.cor || ic.cor, grava('mudar a cor', (x, v) => { x.cor = v; })),
         h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Cor do ícone' }),
         o.cor ? botao('Usar a cor do ícone', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null),
       caixa('o:' + id + ':rumor', 'É boato', o.rumor, grava('marcar como boato', (x, v) => { x.rumor = !!v; if (!v) x.falso = false; }),
         { dica: 'Os jogadores veem com um "?": pode ser verdade ou não.' }));
+  }
+  function setasNaGrade(ev) {
+    const bs = [...this.querySelectorAll('button')], i = bs.indexOf(document.activeElement), col = 6;
+    if (i < 0) return;
+    const j = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + col, ArrowUp: i - col, Home: 0, End: bs.length - 1 }[ev.key];
+    if (j == null) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (j >= 0 && j < bs.length) bs[j].focus();
   }
   function secGrupo(o, m, grava) {
     const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [];
@@ -1008,7 +1072,7 @@
     const r = N().andarUmDia(App.mapa, id);
     if (!r.ok) { App.toast((r.msg || 'O grupo não andou') + '.'); return; }
     const ok = mudarObj(id, 'andar 1 dia', g => { g.x = r.x; g.y = r.y; g.prog = r.prog; });
-    if (ok !== false) avisoDesfazer(r.msg + '. A data não mudou.', 'andar 1 dia');
+    if (ok !== false) avisoDesfazer(r.msg + '. A data não mudou.');
   }
   function secRegiao(o, m, grava) {
     const id = o.id, f = facDe(m, o.fac), out = [];
@@ -1186,7 +1250,7 @@
     });
     if (r === false) return;
     if (facAberta === id) facAberta = null;
-    avisoDesfazer('Facção apagada.', 'apagar a facção');
+    avisoDesfazer('Facção apagada.');
   }
   function abaFaccoes(v) {
     const ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, out = [h('h3', { text: 'Facções' })];
@@ -1257,7 +1321,7 @@
     if (m.img) {
       img.push(nota('Imagem de ' + fmt(m.img.w, 0) + ' × ' + fmt(m.img.h, 0) + ' px.'));
       img.push(linha(botao('Trocar imagem…', trocarImagem, { k: 'mapa:trocar' }),
-        botao('Voltar ao papel em branco', () => { if (App.mudar('tirar a imagem', mm => { mm.img = null; }) !== false) avisoDesfazer('A imagem saiu; ficou o papel em branco.', 'tirar a imagem'); }, { c: 'sm', k: 'mapa:sem-img' })));
+        botao('Voltar ao papel em branco', tirarImagem, { c: 'sm', k: 'mapa:sem-img' })));
     } else {
       img.push(nota('Papel em branco. Uma imagem sua pode virar o fundo do mapa.'));
       img.push(linha(botao('Escolher imagem…', () => escolherImagem(null), { c: 'pri', k: 'mapa:img' })));
@@ -1270,7 +1334,7 @@
     // escala
     const k100 = temEscala(m) ? m.escala.kmPorUn * 100 : null;
     out.push(secao('Escala',
-      campoNumero('mapa:escala', '100 unidades do mapa equivalem a (km)', k100, n => App.mudar('mudar a escala', mm => { mm.escala.kmPorUn = n / 100; }),
+      campoNumero('mapa:escala', '100 unidades do mapa equivalem a (km)', k100, n => App.mudar('mudar a escala', mm => { definirEscala(mm, n / 100); }),
         { decimal: true, min: 0, vazio: 0, ph: 'sem escala', erro: 'Use um número de km, zero ou mais.' }),
       nota(k100 ? 'O mapa tem cerca de ' + fmt(km(m, m.larg), 0) + ' × ' + fmt(km(m, m.alt), 0) + ' km.' : 'Sem escala, as viagens e a régua falam em unidades do mapa.'),
       linha(botao('Medir com a régua…', medirEscala, { k: 'mapa:medir', title: 'Arraste no mapa sobre uma distância conhecida e diga quantos km ela tem' }))));
@@ -1292,7 +1356,7 @@
       }, { area: true, linhas: 6, dica: 'O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' })));
     // névoa
     out.push(secao('Névoa',
-      caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, v => App.mudar(v ? 'ligar a névoa' : 'desligar a névoa', mm => { mm.nevoa.on = !!v; }),
+      caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, ligarNevoa,
         { dica: 'Os jogadores só veem o que você revelar com o pincel (N). Os grupos aparecem sempre.' }),
       h('div', { class: 'row' },
         botao('Pincel de névoa', () => App.usarFerramenta('n'), { c: 'sm', k: 'mapa:pincel' }),
@@ -1327,13 +1391,29 @@
     }
     return meses.length ? meses.slice(0, 100) : null;
   }
+  /* Desligar a névoa mostra o mapa inteiro aos jogadores, como "Revelar tudo": pede a mesma confirmação. Ligar não
+     mostra nada a ninguém (só cobre), então vai direto, com o aviso e o desfazer. */
+  async function ligarNevoa(v) {
+    if (!App.mapa) return;
+    const idMapa = App.mapa.id;
+    if (!v) {
+      const ok = await App.confirmar({ titulo: 'Desligar a névoa?', ok: 'Desligar a névoa', perigo: true,
+        texto: 'Sem névoa, os jogadores passam a ver o mapa inteiro (menos o que estiver escondido), inclusive o que ainda está coberto. Dá para desfazer, mas o que eles já viram não volta.' });
+      if (!ok || !mesmoMapa(idMapa)) { agendar(); return; }
+      if (App.mudar('desligar a névoa', mm => { if (!mm.nevoa.on) return false; mm.nevoa.on = false; }) !== false) avisoDesfazer('Névoa desligada: os jogadores veem o mapa inteiro.');
+      return;
+    }
+    if (App.mudar('ligar a névoa', mm => { if (mm.nevoa.on) return false; mm.nevoa.on = true; }) !== false) {
+      avisoDesfazer(App.mapa.nevoa.ops.some(o => o.t === '+') ? 'Névoa ligada.' : 'Névoa ligada: os jogadores só veem os grupos até você revelar com o pincel (N).');
+    }
+  }
   async function revelarTudo() {
     const idMapa = App.mapa && App.mapa.id;
-    const ok = await App.confirmar({ titulo: 'Revelar o mapa inteiro?', ok: 'Revelar tudo',
+    const ok = await App.confirmar({ titulo: 'Revelar o mapa inteiro?', ok: 'Revelar tudo', perigo: true,
       texto: 'A névoa sai de todo o mapa: os jogadores passam a ver tudo (menos o que estiver escondido). Dá para desfazer.' });
     if (!ok || !mesmoMapa(idMapa)) return;
     if (App.mudar('revelar tudo', m => { m.nevoa.ops = [{ t: '+', x: m.larg / 2, y: m.alt / 2, r: Math.hypot(m.larg, m.alt) / 2 + 2 }]; }) !== false) {
-      avisoDesfazer(App.mapa.nevoa.on ? 'Mapa todo revelado.' : 'Mapa todo revelado. A névoa está desligada; ligue para valer.', 'revelar tudo');
+      avisoDesfazer(App.mapa.nevoa.on ? 'Mapa todo revelado.' : 'Mapa todo revelado. A névoa está desligada; ligue para valer.');
     }
   }
   async function cobrirTudo() {
@@ -1341,7 +1421,7 @@
     const ok = await App.confirmar({ titulo: 'Cobrir o mapa inteiro?', ok: 'Cobrir tudo', perigo: true,
       texto: 'Tudo o que foi revelado volta para debaixo da névoa. Os jogadores só vão ver os grupos. Dá para desfazer.' });
     if (!ok || !mesmoMapa(idMapa)) return;
-    if (App.mudar('cobrir tudo', m => { if (!m.nevoa.ops.length) return false; m.nevoa.ops = []; }) !== false) avisoDesfazer('Mapa todo coberto.', 'cobrir tudo');
+    if (App.mudar('cobrir tudo', m => { if (!m.nevoa.ops.length) return false; m.nevoa.ops = []; }) !== false) avisoDesfazer('Mapa todo coberto.');
   }
 
   /* ================= desenho e partida ================= */
@@ -1380,7 +1460,11 @@
       });
       // ao sair de um campo, o painel se acerta com o mapa (o que foi arrumado na gravação, como espaços)
       sd.addEventListener('focusout', agendar);
+      sd.addEventListener('input', ev => { if (ev.target && ev.target._modelo !== undefined) pintarTopo(); });
     }
+    window.addEventListener('beforeunload', antesDeSair);
+    window.addEventListener('pagehide', antesDeSair);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) antesDeSair(); });
     for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista']) App.on(ev, agendar);
     App.on('mapas', () => { if (menu) abrirMenu(); });
     window.addEventListener('resize', () => fecharMenu());

@@ -10,10 +10,11 @@
   const MASCARA = 'mundoNevoaMascara';
   const Z_MAX = 8;
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
-  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60 };
+  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false };
   const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.' };
-  const NOVO = { m: 'Novo marcador', g: 'Novo grupo', r: 'Nova região', e: 'Novo evento', t: 'Nova rota', f: 'Nova frente' };
+  // rótulos do desfazer em minúsculas, como os do painel e do App ("Desfazer: novo marcador")
+  const NOVO = { m: 'novo marcador', g: 'novo grupo', r: 'nova região', e: 'novo evento', t: 'nova rota', f: 'nova frente' };
 
   const FERRAMENTAS = [
     { id: 'sel', nome: 'Selecionar', tecla: 'V' },
@@ -98,6 +99,27 @@
     if (Math.abs(a) < 1e-6) return pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length], [0, 0]);
     return [cx / (3 * a), cy / (3 * a)];
   }
+  /* Onde vai o nome da região: o centro de massa, se ele cai dentro dela. Numa região côncava (um "C" em volta de
+     uma baía) ele pode cair fora, em cima da vizinha: aí vai no meio do trecho mais largo de dentro, na mesma altura
+     (ou na altura do meio). Dentro e fora pela regra par-ímpar, a mesma do núcleo e do preenchimento. */
+  function pontoDoNome(pts) {
+    const c = centroDe(pts);
+    if (N().dentroPoligono(c, pts)) return c;
+    let y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) { if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+    for (const y of [c[1], (y0 + y1) / 2]) {
+      const xs = [];
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xa, ya] = pts[i], [xb, yb] = pts[j];
+        if ((ya > y) !== (yb > y)) xs.push(xa + (y - ya) * (xb - xa) / (yb - ya));
+      }
+      xs.sort((a, b) => a - b);
+      let melhor = null;
+      for (let k = 0; k + 1 < xs.length; k += 2) if (!melhor || xs[k + 1] - xs[k] > melhor[1] - melhor[0]) melhor = [xs[k], xs[k + 1]];
+      if (melhor) return [(melhor[0] + melhor[1]) / 2, y];
+    }
+    return c;
+  }
   function comprimento(pts) { let t = 0; for (let i = 1; i < pts.length; i++) t += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return t; }
   // o trecho da polilinha do começo até o comprimento s (o caminho já andado)
   function trecho(pts, sAte) {
@@ -143,11 +165,13 @@
   function textoDistancia(m, u) {
     if (!temEscala(m)) return num(u, 0) + ' unidades';
     const km = kmDe(m, u), rit = (dicionario('RITMOS').normal || {}).km || 30;
-    const tk = km < 10 ? num(km, 1) : num(km, 0), dias = km / rit;
-    const td = dias < 0.1 ? 'menos de um décimo de dia' : (dias < 1.95 && dias >= 0.95 ? '1 dia' : num(dias, 1) + ' dia' + (dias >= 2 ? 's' : ''));
+    const tk = km < 10 ? num(km, 1) : num(km, 0), dias = km / rit, d = Math.round(dias * 10) / 10;
+    // arredonda primeiro e escolhe a palavra pelo número que aparece (como no painel): "1,5 dias", "2 dias", "1 dia"
+    const td = dias < 0.1 ? 'menos de um décimo de dia' : num(d, 1) + (d <= 1 ? ' dia' : ' dias');
     return tk + ' km · ' + td + ' a ritmo normal';
   }
   function opt(nome) { const o = App && App.opt; return o && o[nome] !== undefined ? o[nome] : OPT_PADRAO[nome]; }
+  const diaDaVista = () => (ctxAtual ? ctxAtual.dia : (M && M.cal && M.cal.dia) || 0);
   function porOpt(nome, v) { if (!App.opt) App.opt = Object.assign({}, OPT_PADRAO); App.opt[nome] = v; }
 
   /* ---- estado da tela ---- */
@@ -228,8 +252,9 @@
     if (Array.isArray(alvo.pts)) {
       const b = caixaDe([alvo]);
       if (b) { const cab = Math.min((t.w * 0.8) / Math.max(1, b.x1 - b.x0), (t.h * 0.8) / Math.max(1, b.y1 - b.y0)); if (cab < z) z = limitarZ(cab); }
-    } else if (alvo.k === 'e' && alvo.r > 0) {
-      const cab = Math.min(t.w, t.h) * 0.4 / alvo.r; if (cab < z) z = limitarZ(cab);
+    } else if (alvo.k === 'e') {
+      const r = raioNoDia(alvo, diaDaVista());                     // a área como está hoje (cresce e encolhe)
+      if (r > 0) { const cab = Math.min(t.w, t.h) * 0.4 / r; if (cab < z) z = limitarZ(cab); }
     }
     const fim = { x: t.w / 2 - c[0] * z, y: t.h / 2 - c[1] * z, z };
     if (semMovimento()) { Object.assign(V, fim); aplicarVista(true); return; }
@@ -362,7 +387,7 @@
     indice = new Map((m.objs || []).map(o => [o.id, o]));
     if (m.id !== mapaId) {                     // outro mapa: limpa tudo e enquadra
       mapaId = m.id; rasc = null; regua = null; g = null; App.gesto = false;
-      for (const r of recs.values()) r.el.remove();
+      for (const r of recs.values()) { r.el.remove(); if (r.el2) r.el2.remove(); }
       recs.clear(); nevRef = null;
       L = m.larg; A = m.alt; zAplicado = 0;
       caber();
@@ -377,6 +402,11 @@
     // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
     svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length > 24);
     svg.classList.toggle('sem-marcha', C.fre.getElementsByClassName('frente-anda').length > 12);
+    // Para quem vê a névoa fechada (jogador, "ver como jogador"), marcadores e selos vão por cima dela: só chega aqui o
+    // que está à mostra (a projeção tira o que ela cobre), e perto da borda de uma clareira eles ficariam cortados.
+    // O mestre vê a névoa translúcida por cima deles: sabe o que está coberto.
+    const icAcima = !mestreVe();
+    if (C.mar.__acima !== icAcima) { C.mar.__acima = icAcima; svg.insertBefore(C.mar, icAcima ? C.tra : C.nev); }
     desenharNevoa(m);
     desenharSelecao();
     desenharRascunho();
@@ -432,8 +462,8 @@
         chave = chaveDe(o, ctx);
         if (!r || r.chave !== chave) {
           const el = construir(o, ctx);
-          if (r) r.el.remove();
-          r = { el, chave };
+          if (r) { r.el.remove(); if (r.el2) r.el2.remove(); }
+          r = { el, el2: el.__ico || null, chave };                // el2: o selo do evento, na camada dos ícones
           recs.set(o.id, r);
         }
       } catch (e) {
@@ -442,8 +472,9 @@
       }
       vistos.add(o.id);
       por[cam].push(r.el);
+      if (r.el2) por.mar.push(r.el2);
     }
-    for (const [id, r] of recs) if (!vistos.has(id)) { r.el.remove(); recs.delete(id); }
+    for (const [id, r] of recs) if (!vistos.has(id)) { r.el.remove(); if (r.el2) r.el2.remove(); recs.delete(id); }
     for (const cam in por) ordenar(C[cam], por[cam]);
   }
   // Põe os filhos na ordem pedida mexendo só no que saiu do lugar (mover um nó reinicia as animações dele).
@@ -487,7 +518,7 @@
     const f = o.fac ? ctx.fac.get(o.fac) : null, cor = f ? f.cor : (o.cor || '');
     g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac'), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
     if (o.nome) {
-      const c = centroDe(o.pts), fx = fixo(c[0], c[1]);
+      const c = pontoDoNome(o.pts), fx = fixo(c[0], c[1]);
       fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg'));
       g0.append(fx);
     }
@@ -530,6 +561,9 @@
       g0.append(s('circle', { class: 'eve-area', cx: um(o.x), cy: um(o.y), r: um(r), fill: cor, stroke: cor, style: `fill-opacity:${[0.1, 0.16, 0.24][forca - 1]}` }));
       if (ativo) for (const b of ['', ' b']) g0.append(s('circle', { class: 'eve-pulso' + b, cx: um(o.x), cy: um(o.y), r: um(r), stroke: cor, 'pointer-events': 'none' }));
     }
+    // O selo (tamanho fixo na tela) vai na camada dos ícones, com os marcadores: para quem vê a névoa fechada ela fica
+    // por cima dela, e um evento perto da borda de uma clareira não aparece meio coberto. A área fica embaixo.
+    const g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
     const fx = fixo(o.x, o.y);
     fx.append(
       s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (ativo ? '' : ' (fora da data de hoje)') }),
@@ -537,7 +571,8 @@
       s('path', { class: 'selo', d: 'M0 -17L17 0L0 17L-17 0Z', fill: cor, 'stroke-linejoin': 'round' }),
       glifo(def, 17));
     fx.append(rotulo(o.nome || def.nome, 31));
-    g0.append(fx);
+    g1.append(fx);
+    g0.__ico = g1;
   }
   function marcador(g0, o) {
     const def = defIcone(o.ic), cor = o.cor || def.cor || '#e6ab4f';
@@ -615,13 +650,14 @@
         const fx = fixo(o.x, o.y);
         fx.append(s('circle', { class: 'sel-anel', r: o.k === 'g' ? 25 : 22 }));
         C.sel.append(fx);
-        if (o.k === 'e' && o.r > 0 && ids.length === 1) C.sel.append(s('circle', { class: 'sel-anel', cx: um(o.x), cy: um(o.y), r: um(o.r) }));
+        const rh = o.k === 'e' ? raioNoDia(o, diaDaVista()) : 0;           // a borda que aparece hoje, não a do primeiro dia
+        if (rh > 0 && ids.length === 1) C.sel.append(s('circle', { class: 'sel-anel', cx: um(o.x), cy: um(o.y), r: um(rh) }));
       }
     }
     if (ids.length !== 1 || !editar || !unico) return;
     const o = unico;
     // a alça do raio nunca fica em cima do selo (raio 0 ainda dá para puxar)
-    if (o.k === 'e') { C.sel.append(alca('raio', 0, o.x + Math.max(o.r || 0, 30 / V.z), o.y)); return; }
+    if (o.k === 'e') { C.sel.append(alca('raio', 0, o.x + Math.max(raioNoDia(o, diaDaVista()), 30 / V.z), o.y)); return; }
     if (!Array.isArray(o.pts)) return;
     const n = o.pts.length, fecha = o.k === 'r';
     for (let i = 0; i < (fecha ? n : n - 1); i++) {
@@ -717,7 +753,7 @@
     if (!optsEl) return;
     const f = ferramenta(), editar = podeEditar() && !!M;
     const facs = M ? (M.faccoes || []).map(x => [x.id, x.nome, x.cor]) : [];
-    const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null]);
+    const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null, !!medindo]);
     if (!forcar && chave === optsChave) return;
     optsChave = chave;
     // não derruba um seletor aberto: quem está escolhendo termina antes
@@ -751,6 +787,12 @@
         chip({ 'aria-pressed': String(p === 'cobrir'), title: 'O pincel fecha a névoa de novo', onclick: () => { porOpt('pincel', 'cobrir'); reabrir(); atualizarDica(); } }, 'Cobrir'),
         h('label', { class: 'chip', title: 'Tamanho do pincel na tela' }, h('span', { texto: 'Pincel' }), faixa));
     }
+    // o que for criado com esta opção já nasce escondido: um segredo preparado num mapa que os jogadores estão vendo
+    // não aparece para eles no meio do caminho (antes de dar tempo de marcar "Esconder")
+    if (f in NOVO) optsEl.append(chip({ 'aria-pressed': String(!!opt('oculto')), title: 'O que você criar agora já nasce escondido dos jogadores',
+      onclick: () => { porOpt('oculto', !opt('oculto')); reabrir(); } }, 'Criar escondido'));
+    // medindo para a escala: no celular não há Esc, então um botão
+    if (medindo) optsEl.append(chip({ title: 'Cancelar a medida (Esc)', onclick: () => cancelarMedida() }, 'Cancelar a medida'));
     if (rasc && rasc.pts.length && (f === 'r' || f === 't' || f === 'f')) {
       const min = f === 'r' ? 3 : 2;
       optsEl.append(
@@ -835,7 +877,7 @@
     if (!podeEditar()) return null;
     let id = null;
     App.mudar(NOVO[k], d => {
-      const o = N().objNovo(k, campos);
+      const o = N().objNovo(k, Object.assign({ oculto: !!opt('oculto') }, campos));   // "Criar escondido" nas opções
       if (!o) return false;
       if (!Array.isArray(d.objs)) d.objs = [];
       d.objs.push(o); id = o.id;
@@ -868,23 +910,28 @@
     [dx, dy] = limitarDelta(objs, dx, dy);
     if (!dx && !dy) return false;
     const conj = new Set(objs.map(o => o.id));
-    App.mudar(conj.size === 1 ? 'Mover' : `Mover ${conj.size} objetos`, d => { for (const o of d.objs) if (conj.has(o.id)) deslocar(o, dx, dy); });
+    App.mudar(conj.size === 1 ? 'mover' : `mover ${conj.size} objetos`, d => { for (const o of d.objs) if (conj.has(o.id)) deslocar(o, dx, dy); });
     return true;
   }
   function apagar(ids) {
     if (!podeEditar()) return 0;
     const objs = ids.map(objEditavel).filter(Boolean);
     if (!objs.length) return 0;
-    const conj = new Set(objs.map(o => o.id));
-    App.mudar(objs.length === 1 ? 'Apagar' : `Apagar ${objs.length} objetos`, d => { d.objs = d.objs.filter(o => !conj.has(o.id)); });
+    const conj = new Set(objs.map(o => o.id)), rot = objs.length === 1 ? 'apagar' : `apagar ${objs.length} objetos`;
+    if (!App.mudar(rot, d => { d.objs = d.objs.filter(o => !conj.has(o.id)); })) return 0;
     App.selecionar([]);
-    App.toast(objs.length === 1 ? APAGADO[objs[0].k] || 'Apagado.' : `${objs.length} objetos apagados.`, 'Desfazer', () => App.desfazer());
+    // o "Desfazer" do aviso só desfaz se o passo de cima ainda é este (senão desfaria outra coisa, como no painel)
+    const passo = typeof App.passoAtual === 'function' ? App.passoAtual() : null;
+    App.toast(objs.length === 1 ? APAGADO[objs[0].k] || 'Apagado.' : `${objs.length} objetos apagados.`, 'Desfazer', () => {
+      if (passo != null && App.passoAtual() !== passo) { App.toast('Já houve outra mudança depois. Use o botão Desfazer, lá em cima.'); return; }
+      App.desfazer();
+    });
     return objs.length;
   }
   function duplicar(ids) {
     if (!podeEditar()) return;
     const desl = um(24 / V.z), novos = [];
-    App.mudar(ids.length === 1 ? 'Duplicar' : `Duplicar ${ids.length} objetos`, d => {
+    App.mudar(ids.length === 1 ? 'duplicar' : `duplicar ${ids.length} objetos`, d => {
       for (const id of ids) {
         const o = d.objs.find(x => x.id === id);
         if (!o) continue;
@@ -900,7 +947,7 @@
   function trazerParaFrente(ids) {
     if (!podeEditar()) return;
     const conj = new Set(ids);
-    App.mudar('Trazer para frente', d => {
+    App.mudar('trazer para frente', d => {
       const vao = d.objs.filter(o => conj.has(o.id));
       if (!vao.length) return false;
       d.objs = d.objs.filter(o => !conj.has(o.id)).concat(vao);
@@ -908,7 +955,12 @@
   }
   function aplicarAlca(o, a, p) {
     const q = preso(p);
-    if (a.tipo === 'raio') { o.r = um(Math.max(1, Math.hypot(p.x - o.x, p.y - o.y))); return; }
+    if (a.tipo === 'raio') {
+      // a alça está na borda de hoje; o raio guardado é o do primeiro dia (o evento cresce ou encolhe a partir dele)
+      const dias = Math.max(0, diaDaVista() - (Number.isFinite(o.ini) ? o.ini : 0));
+      o.r = um(Math.max(1, Math.hypot(p.x - o.x, p.y - o.y) - (o.cresce || 0) * dias));
+      return;
+    }
     if (!Array.isArray(o.pts)) return;
     if (a.tipo === 'v') o.pts[a.i] = [q.x, q.y];
     else if (a.tipo === 'meio') o.pts.splice(a.i + 1, 0, [q.x, q.y]);
@@ -918,7 +970,7 @@
     if (!o || !Array.isArray(o.pts)) return;
     const min = o.k === 'r' ? 3 : 2;
     if (o.pts.length <= min) { App.toast(o.k === 'r' ? 'Uma região precisa de pelo menos 3 pontos.' : 'Uma linha precisa de pelo menos 2 pontos.'); return; }
-    App.mudar('Tirar ponto', d => { const x = d.objs.find(y => y.id === id); if (!x || x.pts.length <= min) return false; x.pts.splice(i, 1); });
+    App.mudar('tirar o ponto', d => { const x = d.objs.find(y => y.id === id); if (!x || x.pts.length <= min) return false; x.pts.splice(i, 1); });
   }
 
   /* desenho de região, rota e frente, ponto a ponto */
@@ -1044,8 +1096,7 @@
         let ddx = p.x - g.p0.x, ddy = p.y - g.p0.y;
         [ddx, ddy] = limitarDelta(g.objs, ddx, ddy);
         g.dx = ddx; g.dy = ddy;
-        for (const id of g.ids) { const r = recs.get(id); if (r) r.el.setAttribute('transform', `translate(${um(ddx)} ${um(ddy)})`); }
-        C.sel.setAttribute('transform', `translate(${um(ddx)} ${um(ddy)})`);
+        moverProvisorio(g);
         break;
       }
       case 'alca': alcaProvisoria(p); break;
@@ -1067,8 +1118,13 @@
       desenharSelecao();
     }
   }
+  function moverProvisorio(gg) {
+    const t = `translate(${um(gg.dx)} ${um(gg.dy)})`;
+    for (const id of gg.ids) { const r = recs.get(id); if (r) { r.el.setAttribute('transform', t); if (r.el2) r.el2.setAttribute('transform', t); } }
+    C.sel.setAttribute('transform', t);
+  }
   function soltarProvisorio(gg) {
-    for (const id of gg.ids || []) { const r = recs.get(id); if (r) r.el.removeAttribute('transform'); }
+    for (const id of gg.ids || []) { const r = recs.get(id); if (r) { r.el.removeAttribute('transform'); if (r.el2) r.el2.removeAttribute('transform'); } }
     C.sel.removeAttribute('transform');
   }
   function alcaProvisoria(p) {
@@ -1078,7 +1134,11 @@
     aplicarAlca(c, g.alca, p);
     g.prov = c; g.p = p;
     const r = recs.get(o.id);
-    if (r && ctxAtual) { const el = construir(c, ctxAtual); r.el.replaceWith(el); r.el = el; r.chave = null; }
+    if (r && ctxAtual) {
+      const el = construir(c, ctxAtual);
+      r.el.replaceWith(el); r.el = el; r.chave = null;
+      if (r.el2 && el.__ico) { r.el2.replaceWith(el.__ico); r.el2 = el.__ico; }
+    }
     desenharSelecao(c);
   }
   function pincelar(p) {
@@ -1141,12 +1201,12 @@
           if (a.tipo === 'v' && (duplo || gg.alt)) tirarVertice(id, a.i);
           else if (a.tipo === 'meio') {
             const o = objEditavel(id);
-            if (o && o.pts) { const n = o.pts.length, q0 = o.pts[a.i], q1 = o.pts[(a.i + 1) % n]; App.mudar('Novo ponto', d => { const x = d.objs.find(y => y.id === id); if (!x) return false; x.pts.splice(a.i + 1, 0, [um((q0[0] + q1[0]) / 2), um((q0[1] + q1[1]) / 2)]); }); }
+            if (o && o.pts) { const n = o.pts.length, q0 = o.pts[a.i], q1 = o.pts[(a.i + 1) % n]; App.mudar('novo ponto', d => { const x = d.objs.find(y => y.id === id); if (!x) return false; x.pts.splice(a.i + 1, 0, [um((q0[0] + q1[0]) / 2), um((q0[1] + q1[1]) / 2)]); }); }
           }
           break;
         }
         if (!editar) break;
-        App.mudar(a.tipo === 'raio' ? 'Raio do evento' : a.tipo === 'meio' ? 'Novo ponto' : 'Mover ponto', d => {
+        App.mudar(a.tipo === 'raio' ? 'mudar o raio' : a.tipo === 'meio' ? 'novo ponto' : 'mover o ponto', d => {
           const o = d.objs.find(x => x.id === id);
           if (!o) return false;
           aplicarAlca(o, a, gg.p || p);
@@ -1167,7 +1227,7 @@
       case 'pincel':
         if (editar && gg.ops.length) {
           const t = gg.ops[0].t, ops = gg.ops;
-          App.mudar(t === '+' ? 'Revelar a névoa' : 'Cobrir com névoa', d => {
+          App.mudar(t === '+' ? 'revelar a névoa' : 'cobrir com névoa', d => {
             if (!d.nevoa || typeof d.nevoa !== 'object') d.nevoa = { on: false, ops: [] };
             if (!Array.isArray(d.nevoa.ops)) d.nevoa.ops = [];
             for (const op of ops) d.nevoa.ops.push(op);
@@ -1194,6 +1254,7 @@
   function cancelarGesto() {
     clearTimeout(tLongo);
     if (!g) return;
+    if (g.setas) { soltarSetas(); return; }                                   // o que as setas andaram foi de propósito
     const gg = g;
     g = null;
     App.gesto = false;
@@ -1303,14 +1364,14 @@
     const noPainel = alvo && alvo.closest && alvo.closest('#side, .menu');
     if (k === ' ' || e.code === 'Space') {
       // num botão do painel o espaço aperta o botão; no trilho e nas opções, segurar o espaço anda pelo mapa
-      if (emControle && !alvo.closest('#rail, .opts')) return;
+      if (noPainel || (emControle && !alvo.closest('#rail, .opts'))) return;
       e.preventDefault();
       if (!espaco) { espaco = true; palco.style.cursor = 'grab'; }
       return;
     }
     if (k === 'Escape') {
       if (g) { cancelarGesto(); e.preventDefault(); return; }
-      if (medindo) { App.usarFerramenta(medindo.ant || 'sel'); e.preventDefault(); return; }
+      if (medindo) { cancelarMedida(); e.preventDefault(); return; }
       if (rasc) { cancelarRascunho(); e.preventDefault(); return; }
       if (regua) { regua = null; desenharRascunho(); atualizarDica(); e.preventDefault(); return; }
       // numa ferramenta de criar, Esc volta para Selecionar (como a dica promete); em Selecionar, limpa a seleção
@@ -1323,18 +1384,24 @@
       if (rasc) { e.preventDefault(); terminarRascunho(); }
       return;
     }
+    // Com o foco no painel (num botão, no seletor de cor…) as teclas são do painel: Delete não apaga o que está
+    // escolhido no mapa, e quem digita achando que está num campo não troca a ferramenta nem dá zoom sem perceber.
+    if (noPainel && k !== 'Escape') return;
     if (k === 'Backspace' || k === 'Delete') {
-      if (rasc && k === 'Backspace') { e.preventDefault(); tirarPonto(); return; }
-      if (editar && selecao().length && !g) { e.preventDefault(); apagar(selecao()); }
+      // desenhando uma linha, as duas tiram o último ponto (e nunca apagam o que estava escolhido antes)
+      if (rasc) { e.preventDefault(); tirarPonto(); return; }
+      if (editar && ferramenta() === 'sel' && selecao().length && !g) { e.preventDefault(); apagar(selecao()); }
       return;
     }
     if (k.startsWith('Arrow')) {
-      if (noPainel || (alvo && alvo.type === 'range')) return;
+      if (alvo && alvo.type === 'range') return;
       const dx = k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, dy = k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0;
       e.preventDefault();
-      const ids = selecao();
-      if (editar && ids.length && !g) { const passo = e.shiftKey ? 10 : 1; moverSelecao(ids, dx * passo, dy * passo); }
-      else { V.x -= dx * 80; V.y -= dy * 80; agendarVista(); }       // sem seleção, as setas andam pelo mapa
+      const ids = g && g.setas ? g.ids : selecao(), passo = e.shiftKey ? 10 : 1;
+      if (editar && ids.length && (!g || g.setas)) {
+        if (e.repeat || g) setaSegurada(ids, dx * passo, dy * passo);
+        else moverSelecao(ids, dx * passo, dy * passo);
+      } else if (!g) { V.x -= dx * 80; V.y -= dy * 80; agendarVista(); }     // sem seleção, as setas andam pelo mapa
       return;
     }
     if (k === '+' || k === '=') { zoomNoMeio(1.25); return; }
@@ -1342,9 +1409,42 @@
     if (k === '0') { caber(); return; }
     if (editar && POR_TECLA[lk] && !e.repeat) { e.preventDefault(); App.usarFerramenta(POR_TECLA[lk]); }
   }
-  function aoSoltarTecla(e) { if (e.key === ' ' || e.code === 'Space') { espaco = false; palco.style.cursor = ''; } }
+  function aoSoltarTecla(e) {
+    if (e.key === ' ' || e.code === 'Space') { espaco = false; palco.style.cursor = ''; }
+    if (e.key && e.key.startsWith('Arrow')) soltarSetas();
+  }
+  /* Segurar a seta: o objeto anda na tela e vira UM passo de desfazer ao soltar a tecla (como no arrasto). Uma
+     mudança por repetição do teclado encheria a pilha (100 passos) e empurraria para fora o que veio antes. */
+  let tSetas = 0;
+  function setaSegurada(ids, dx, dy) {
+    if (!g) {
+      const objs = ids.map(objEditavel).filter(Boolean);
+      if (!objs.length) return;
+      g = { tipo: 'mover', setas: true, ids: objs.map(o => o.id), objs, dx: 0, dy: 0 };
+      App.gesto = true;
+    }
+    [g.dx, g.dy] = limitarDelta(g.objs, g.dx + dx, g.dy + dy);
+    moverProvisorio(g);
+    clearTimeout(tSetas); tSetas = setTimeout(soltarSetas, 800);          // se o "soltar" da tecla se perder
+  }
+  function soltarSetas() {
+    clearTimeout(tSetas);
+    if (!g || !g.setas) return;
+    const gg = g;
+    g = null; App.gesto = false;
+    soltarProvisorio(gg);
+    if (podeEditar() && (gg.dx || gg.dy)) moverSelecao(gg.ids, gg.dx, gg.dy);
+    redesenhar();
+  }
 
   /* ---- medir com a régua (o painel usa para definir a escala) ---- */
+  function cancelarMedida() {
+    if (!medindo) return;
+    const m = medindo;
+    medindo = null; regua = null;
+    m.ok(null);
+    if (App.ferramenta !== m.ant) App.usarFerramenta(m.ant); else agendar();
+  }
   function medir() {
     if (medindo) { const m = medindo; medindo = null; m.ok(null); }
     if (!App || !M) return Promise.resolve(null);
@@ -1406,7 +1506,7 @@
     document.addEventListener('pointerdown', e => { if (menuEl && !menuEl.contains(e.target)) fecharMenus(); }, true);
     window.addEventListener('keydown', aoTeclar);
     window.addEventListener('keyup', aoSoltarTecla);
-    window.addEventListener('blur', () => { espaco = false; if (palco) palco.style.cursor = ''; fecharMenus(); });
+    window.addEventListener('blur', () => { espaco = false; if (palco) palco.style.cursor = ''; fecharMenus(); soltarSetas(); });
     window.addEventListener('resize', fecharMenus);
 
     const bt = (id, fn) => { const b = document.getElementById(id); if (b) b.addEventListener('click', fn); };
@@ -1417,9 +1517,12 @@
     // o palco muda de tamanho (painel abre e fecha, celular gira): mantém o mesmo ponto no meio
     if (window.ResizeObserver) new ResizeObserver(() => {
       const t = tamanho();
-      if (tamPalco && t.w && t.h && !precisaCaber) { V.x += (t.w - tamPalco.w) / 2; V.y += (t.h - tamPalco.h) / 2; aplicarVista(); }
+      // escondido (outra aba da casca: a moldura fica com display none) o palco mede 0×0: guarda o último tamanho de
+      // verdade, senão a volta somaria meia tela ao deslocamento a cada troca de aba
+      if (!t.w || !t.h) return;
+      if (tamPalco && !precisaCaber) { V.x += (t.w - tamPalco.w) / 2; V.y += (t.h - tamPalco.h) / 2; aplicarVista(); }
       tamPalco = { w: t.w, h: t.h };
-      if (precisaCaber && t.w && t.h) caber();
+      if (precisaCaber) caber();
     }).observe(palco);
 
     App.on('muda', agendar);
