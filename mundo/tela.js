@@ -75,6 +75,14 @@
   const semMovimento = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const num = (v, casas) => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: casas });
   const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t);
+  // cor clara pede letra escura (a sigla do grupo fica legível em qualquer cor)
+  function clara(cor) {
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(cor || '').trim());
+    if (!m) return true;
+    const x = m[1].length === 3 ? m[1].replace(/./g, c => c + c) : m[1];
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
+  }
 
   /* ---- geometria só para desenhar (a regra do mundo fica no núcleo) ---- */
   function caminho(pts, fechar) {
@@ -146,7 +154,7 @@
   const V = { x: 0, y: 0, z: 1 };               // a vista: deslocamento na tela (px) e zoom
   let palco, mundoEl, optsEl, dicaEl, railEl, zTxt, svg, fundoEl = null, fundoChave = null;
   const C = {};                                  // camadas do SVG
-  let mascara, mascBase, mascOps, mascProv, nevRect;
+  let mascara, mascBase, mascOps, nevRect;
   let M = null, indice = new Map(), ctxAtual = null;   // o mapa desenhado no último quadro (App.vista())
   let mapaId = null, L = 0, A = 0, zAplicado = 0;
   const recs = new Map();                        // id → { el, chave }: só reconstrói o objeto que mudou
@@ -185,6 +193,7 @@
   const limitarZ = z => limitar(z, zMin(), Z_MAX);
 
   function paraMundo(cx, cy) {
+    if (!palco) return { x: 0, y: 0 };
     const r = palco.getBoundingClientRect();
     return { x: (cx - r.left - V.x) / V.z, y: (cy - r.top - V.y) / V.z };
   }
@@ -205,7 +214,7 @@
     precisaCaber = false;
     V.z = limitar(zoomCaber(), 0.005, Z_MAX);
     V.x = (t.w - L * V.z) / 2; V.y = (t.h - A * V.z) / 2;
-    aplicarVista();
+    aplicarVista(true);
   }
   // Centraliza um ponto ou um objeto. Uma região maior que a tela também afasta o zoom até caber.
   function centrar(alvo) {
@@ -223,7 +232,7 @@
       const cab = Math.min(t.w, t.h) * 0.4 / alvo.r; if (cab < z) z = limitarZ(cab);
     }
     const fim = { x: t.w / 2 - c[0] * z, y: t.h / 2 - c[1] * z, z };
-    if (semMovimento()) { Object.assign(V, fim); aplicarVista(); return; }
+    if (semMovimento()) { Object.assign(V, fim); aplicarVista(true); return; }
     const ini = { x: V.x, y: V.y, z: V.z }, t0 = performance.now(), dur = 260;
     const passo = agora => {
       const k = Math.min(1, (agora - t0) / dur), e = 1 - Math.pow(1 - k, 3);
@@ -232,13 +241,13 @@
       const cx0 = (t.w / 2 - ini.x) / ini.z, cy0 = (t.h / 2 - ini.y) / ini.z;
       const cx = cx0 + (c[0] - cx0) * e, cy = cy0 + (c[1] - cy0) * e;
       V.z = z1; V.x = t.w / 2 - cx * z1; V.y = t.h / 2 - cy * z1;
-      aplicarVista();
+      aplicarVista(k >= 1);
       if (k < 1) requestAnimationFrame(passo);
     };
     requestAnimationFrame(passo);
   }
 
-  const tf = (x, y) => `translate(${um(x * 100) / 100} ${um(y * 100) / 100}) scale(${1 / V.z})`;
+  const tf = (x, y) => `translate(${um(x * 100) / 100} ${um(y * 100) / 100}) scale(${1 / (zAplicado || V.z)})`;
   // Grupo de tamanho constante na tela: dentro dele, 1 unidade = 1 px. O zoom só reescreve o transform.
   function fixo(x, y, cls) {
     const el = s('g', { class: 'fixo' + (cls ? ' ' + cls : '') });
@@ -246,29 +255,90 @@
     el.setAttribute('transform', tf(x, y));
     return el;
   }
-  function aplicarVista() {
+  // O #mundo segue a vista na hora. A escala do SVG (zAplicado) só alcança o zoom quando ele para: no meio da roda,
+  // da pinça ou de uma animação o mapa inteiro escala como uma imagem, sem repintar 300 objetos a cada quadro (os
+  // ícones crescem ou encolhem um instante); 140 ms depois tudo volta ao tamanho certo, nítido.
+  let tAssentar = 0;
+  function aplicarVista(assentar) {
     if (!mundoEl) return;
     mundoEl.style.transform = `translate(${V.x}px, ${V.y}px) scale(${V.z})`;
     if (V.z !== zAplicado) {
-      zAplicado = V.z;
-      // O SVG fica no tamanho da tela e desfaz a escala do #mundo: assim o vector-effect (contorno fino) e os
-      // textos valem em pixels de verdade — o Chromium não leva a escala CSS de fora em conta no non-scaling-stroke.
-      svg.setAttribute('width', Math.max(1, L * V.z));
-      svg.setAttribute('height', Math.max(1, A * V.z));
-      svg.style.transform = `scale(${1 / V.z})`;
-      for (const el of svg.getElementsByClassName('fixo')) el.setAttribute('transform', tf(el.__x, el.__y));
-      if (!g) desenharSelecao();
-      desenharRascunho();
+      if (assentar || !zAplicado) aplicarEscala();
+      else { clearTimeout(tAssentar); tAssentar = setTimeout(() => aplicarVista(true), 140); }
     }
     if (zTxt) zTxt.textContent = (V.z < 0.1 ? num(V.z * 100, 1) : Math.round(V.z * 100)) + '%';
   }
+  function aplicarEscala() {
+    clearTimeout(tAssentar); tAssentar = 0;
+    zAplicado = V.z;
+    // O SVG fica no tamanho da tela e desfaz a escala do #mundo: assim o vector-effect (contorno fino) e os
+    // textos valem em pixels de verdade — o Chromium não leva a escala CSS de fora em conta no non-scaling-stroke.
+    svg.setAttribute('width', Math.max(1, L * V.z));
+    svg.setAttribute('height', Math.max(1, A * V.z));
+    svg.style.transform = `scale(${1 / V.z})`;
+    for (const el of svg.getElementsByClassName('fixo')) el.setAttribute('transform', tf(el.__x, el.__y));
+    arrumarRotulos();
+    if (!g) desenharSelecao();
+    desenharRascunho();
+    if (!g && !pinca) { mundoEl.classList.remove('movendo'); quieto(false); }
+  }
+  // Rótulos que se cobrem ficam ilegíveis. Com o zoom afastado, mostra os mais importantes (o que está escolhido,
+  // grupos, marcadores, eventos, regiões, linhas) e esconde os que cairiam em cima deles; ao aproximar, voltam.
+  // O nome escondido continua no painel e na dica do mouse.
+  function arrumarRotulos() {
+    if (!svg || !M) return;
+    const escolhidos = new Set((App && App.sel) || []), z = zAplicado || V.z, CEL = 96, grade = new Map();
+    const ocupar = (caixa) => {
+      for (let cx = Math.floor(caixa[0] / CEL); cx <= Math.floor(caixa[2] / CEL); cx++) for (let cy = Math.floor(caixa[1] / CEL); cy <= Math.floor(caixa[3] / CEL); cy++) {
+        const k = cx + ':' + cy;
+        if (!grade.has(k)) grade.set(k, []);
+        grade.get(k).push(caixa);
+      }
+    };
+    // os ícones (marcador, grupo, selo de evento) vêm antes: nome nenhum se escreve por cima de um ícone
+    for (const cam of ['gru', 'mar', 'eve']) for (const o of C[cam].children) {
+      const f = o.lastElementChild;
+      if (f && f.__x !== undefined) ocupar([f.__x * z - 15, f.__y * z - 15, f.__x * z + 15, f.__y * z + 15]);
+    }
+    const primeiro = [], resto = [];
+    for (const cam of ['gru', 'mar', 'eve', 'reg', 'rot', 'fre']) {
+      const lista = C[cam].getElementsByClassName('rotulo');
+      for (let i = lista.length - 1; i >= 0; i--) {         // os desenhados por cima têm a vez
+        const el = lista[i];
+        if (el.__id === undefined) { const o = el.closest('[data-id]'); el.__id = o ? o.getAttribute('data-id') : ''; }
+        (escolhidos.has(el.__id) ? primeiro : resto).push(el);
+      }
+    }
+    for (const el of primeiro.concat(resto)) {
+      const pai = el.parentNode;
+      if (!pai || pai.__x === undefined) continue;
+      if (!el.__w) { const w = el.__oculto ? 0 : el.getComputedTextLength(); el.__w = w > 0 ? w : 0; }
+      const w = el.__w || el.textContent.length * 7.5, dy = Number(el.getAttribute('y')) || 0;
+      const x0 = pai.__x * z - w / 2 - 3, x1 = x0 + w + 6, y0 = pai.__y * z + dy - 12, y1 = y0 + 16;
+      const cx0 = Math.floor(x0 / CEL), cx1 = Math.floor(x1 / CEL), cy0 = Math.floor(y0 / CEL), cy1 = Math.floor(y1 / CEL);
+      let bate = false;
+      for (let cx = cx0; cx <= cx1 && !bate; cx++) for (let cy = cy0; cy <= cy1 && !bate; cy++) {
+        const caixas = grade.get(cx + ':' + cy);
+        if (caixas) for (const b of caixas) if (x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1]) { bate = true; break; }
+      }
+      const esconder = bate && !escolhidos.has(el.__id);
+      if (esconder !== !!el.__oculto) { el.__oculto = esconder; el.style.display = esconder ? 'none' : ''; }
+      if (!esconder) ocupar([x0, y0, x1, y1]);
+    }
+  }
   function agendarVista() {
-    // durante o movimento o #mundo vira camada própria (desliza sem repintar); ao parar volta a ficar nítido
-    if (mundoEl && !mundoEl.classList.contains('movendo')) mundoEl.classList.add('movendo');
-    clearTimeout(tMovendo);
-    tMovendo = setTimeout(() => { if (!g && !pinca && mundoEl) mundoEl.classList.remove('movendo'); }, 180);
+    // durante o movimento o #mundo vira camada própria (desliza sem repintar) e as animações param; ao parar,
+    // volta a ficar nítido
+    if (mundoEl && !mundoEl.classList.contains('movendo')) { mundoEl.classList.add('movendo'); quieto(true); }
+    soltarMovendo();
     if (!qVista) qVista = requestAnimationFrame(() => { qVista = 0; aplicarVista(); });
   }
+  function soltarMovendo() {
+    clearTimeout(tMovendo);
+    tMovendo = setTimeout(() => { if (!g && !pinca && mundoEl) { mundoEl.classList.remove('movendo'); if (!tAssentar) quieto(false); } }, 180);
+  }
+  // animações em pausa enquanto a pessoa mexe no mapa: o quadro sai só com o que ela está fazendo
+  function quieto(sim) { if (svg) svg.classList.toggle('quieto', !!sim); }
   function agendar() { if (!qTudo) qTudo = requestAnimationFrame(() => { qTudo = 0; redesenhar(); }); }
   function safeVista() { try { return App.vista(); } catch (e) { console.error(e); return null; } }
 
@@ -282,7 +352,7 @@
     const m = safeVista();
     M = m;
     pintarTrilho();
-    palco.className = 'palco t-' + ferramenta() + (g && g.tipo === 'pan' ? ' pan' : '');
+    palco.className = 'palco ' + (podeEditar() ? 't-' + ferramenta() : 't-ver') + (g && g.tipo === 'pan' ? ' pan' : '');
     if (!m) {
       mundoEl.hidden = true; indice = new Map();
       desenharOpts(); atualizarDica();
@@ -291,21 +361,26 @@
     mundoEl.hidden = false;
     indice = new Map((m.objs || []).map(o => [o.id, o]));
     if (m.id !== mapaId) {                     // outro mapa: limpa tudo e enquadra
-      mapaId = m.id; rasc = null; regua = null; g = null;
+      mapaId = m.id; rasc = null; regua = null; g = null; App.gesto = false;
       for (const r of recs.values()) r.el.remove();
       recs.clear(); nevRef = null;
       L = m.larg; A = m.alt; zAplicado = 0;
       caber();
     } else if (m.larg !== L || m.alt !== A) { L = m.larg; A = m.alt; zAplicado = 0; caber(); }
     svg.setAttribute('viewBox', `0 0 ${L} ${A}`);
-    aplicarVista();
+    aplicarVista(!tAssentar);
     desenharFundo(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
     ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe() };
     desenharObjetos(m, ctxAtual);
+    // As animações (pulso dos eventos, marcha das frentes) repintam o SVG a cada quadro, fora da placa de vídeo.
+    // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
+    svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length > 24);
+    svg.classList.toggle('sem-marcha', C.fre.getElementsByClassName('frente-anda').length > 12);
     desenharNevoa(m);
     desenharSelecao();
     desenharRascunho();
+    arrumarRotulos();
     desenharOpts();
     atualizarDica();
   }
@@ -395,7 +470,7 @@
     return g0;
   }
   function rotulo(texto, y, cls) {
-    return s('text', { class: cls || 'rotulo', y, 'text-anchor': 'middle', texto: curto(String(texto), 48) });
+    return s('text', { class: cls || 'rotulo', y, 'text-anchor': 'middle', 'font-size': 12.5, texto: curto(String(texto), 48) });
   }
   const moldes = new Map();
   function glifo(def, tam) {
@@ -413,7 +488,7 @@
     g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac'), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
     if (o.nome) {
       const c = centroDe(o.pts), fx = fixo(c[0], c[1]);
-      fx.append(rotulo(o.nome, 4.5, 'rotulo rotulo-reg'));
+      fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg'));
       g0.append(fx);
     }
   }
@@ -426,7 +501,7 @@
       s('path', { class: 'fre-a' + anda, d, stroke: corFac(ctx, o.a) }),
       s('path', { class: 'fre-b' + anda, d, stroke: corFac(ctx, o.b) }),
       s('path', { class: 'fre-hit', d }));
-    if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10)); g0.append(fx); }
+    if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
   // o maior progresso dos grupos nesta rota, em unidades do mapa
   function andadoDe(m, rt) {
@@ -443,7 +518,7 @@
     const andou = andadoDe(ctx.m, o);
     if (andou > 0) g0.append(s('path', { class: 'rot-andado' + via, d: caminho(trecho(o.pts, andou)) }));
     g0.append(s('path', { class: 'rot-hit', d }));
-    if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10)); g0.append(fx); }
+    if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
   function evento(g0, o, ctx) {
     const def = defEvento(o.tipo), cor = def.cor || '#f0786e';
@@ -453,12 +528,12 @@
     if (r > 0) {
       const forca = limitar(Math.round(o.forca) || 1, 1, 3);
       g0.append(s('circle', { class: 'eve-area', cx: um(o.x), cy: um(o.y), r: um(r), fill: cor, stroke: cor, style: `fill-opacity:${[0.1, 0.16, 0.24][forca - 1]}` }));
-      if (ativo) for (const b of ['', ' b']) g0.append(s('circle', { class: 'eve-pulso' + b, cx: um(o.x), cy: um(o.y), r: um(r), stroke: cor }));
+      if (ativo) for (const b of ['', ' b']) g0.append(s('circle', { class: 'eve-pulso' + b, cx: um(o.x), cy: um(o.y), r: um(r), stroke: cor, 'pointer-events': 'none' }));
     }
     const fx = fixo(o.x, o.y);
     fx.append(
       s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (ativo ? '' : ' (fora da data de hoje)') }),
-      s('circle', { class: 'alvo', r: 20 }),
+      s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
       s('path', { class: 'selo', d: 'M0 -17L17 0L0 17L-17 0Z', fill: cor, 'stroke-linejoin': 'round' }),
       glifo(def, 17));
     fx.append(rotulo(o.nome || def.nome, 31));
@@ -472,10 +547,10 @@
     const fx = fixo(o.x, o.y);
     fx.append(
       s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') }),
-      s('circle', { class: 'alvo', r: 20 }),
+      s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
       s('circle', { class: 'selo', r: 14, fill: cor }),
       glifo(def, 19));
-    if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5 }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', texto: '?' }));
+    if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
     if (o.nome) fx.append(rotulo(o.nome, 30));
     g0.append(fx);
@@ -485,10 +560,10 @@
     const fx = fixo(o.x, o.y);
     fx.append(
       s('title', { texto: o.nome || 'Grupo' }),
-      s('circle', { class: 'alvo', r: 22 }),
+      s('circle', { class: 'alvo', r: 22, fill: 'transparent' }),
       s('circle', { class: 'grupo-anel', r: 19.5 }),
       s('circle', { class: 'grupo-base', r: 15, fill: o.cor || '#e6ab4f' }),
-      s('text', { class: 'sigla', y: 4.3, 'text-anchor': 'middle', texto: String(o.sigla || '').slice(0, 3) }));
+      s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }
@@ -501,7 +576,7 @@
     const pincelando = ferramenta() === 'n' && podeEditar();
     const mostrar = !!nv.on || pincelando;
     C.nev.style.display = mostrar ? '' : 'none';
-    if (!g || g.tipo !== 'pincel') mascProv.replaceChildren();
+    if (!g || g.tipo !== 'pincel') C.tra.replaceChildren();
     if (!mostrar) return;
     for (const el of [mascara, mascBase, nevRect]) { el.setAttribute('x', 0); el.setAttribute('y', 0); el.setAttribute('width', L); el.setAttribute('height', A); }
     // mestre vê através (translúcida); jogador e "ver como jogador", opaca. Desligada, só uma sombra enquanto pinta.
@@ -545,7 +620,8 @@
     }
     if (ids.length !== 1 || !editar || !unico) return;
     const o = unico;
-    if (o.k === 'e') { C.sel.append(alca('raio', 0, o.x + (o.r || 0), o.y)); return; }
+    // a alça do raio nunca fica em cima do selo (raio 0 ainda dá para puxar)
+    if (o.k === 'e') { C.sel.append(alca('raio', 0, o.x + Math.max(o.r || 0, 30 / V.z), o.y)); return; }
     if (!Array.isArray(o.pts)) return;
     const n = o.pts.length, fecha = o.k === 'r';
     for (let i = 0; i < (fecha ? n : n - 1); i++) {
@@ -558,7 +634,7 @@
   function alca(tipo, i, x, y) {
     const fx = fixo(x, y);
     fx.setAttribute('data-alca', tipo); fx.setAttribute('data-i', i);
-    fx.append(s('circle', { class: 'alca-alvo', r: toqueGrosso() ? 16 : 11 }), s('circle', { class: 'alca' + (tipo === 'meio' ? ' meio' : ''), r: tipo === 'meio' ? 4.5 : 6.5 }));
+    fx.append(s('circle', { class: 'alca-alvo', r: toqueGrosso() ? 16 : 11, fill: 'transparent' }), s('circle', { class: 'alca' + (tipo === 'meio' ? ' meio' : ''), r: tipo === 'meio' ? 4.5 : 6.5 }));
     return fx;
   }
 
@@ -690,7 +766,11 @@
     for (const k of Object.keys(I)) {
       const ic = s('svg', { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
       ic.innerHTML = I[k].svg || '';                         // markup fixo do núcleo
-      grade.append(h('button', { type: 'button', title: I[k].nome, 'aria-label': I[k].nome, 'aria-pressed': String(k === atual), onclick: () => { porOpt('ic', k); fecharMenus(); desenharOpts(true); botao.focus(); } }, ic));
+      grade.append(h('button', { type: 'button', title: I[k].nome, 'aria-label': I[k].nome, 'aria-pressed': String(k === atual), onclick: () => {
+        porOpt('ic', k); fecharMenus(); desenharOpts(true);
+        const novo = optsEl.querySelector('[aria-haspopup]');           // o chip foi refeito: o foco volta para ele
+        if (novo) novo.focus();
+      } }, ic));
     }
     const r = botao.getBoundingClientRect();
     mostrarMenu(h('div', { class: 'menu menu-icones', role: 'dialog', 'aria-label': 'Ícone do marcador' }, grade), r.left, r.bottom + 6);
@@ -704,29 +784,32 @@
   }
   function textoDica() {
     if (!M) return '';
-    const tq = toqueGrosso(), Cl = tq ? 'Toque' : 'Clique', cl = tq ? 'toque' : 'clique';
-    if (medindo) return 'Arraste sobre uma distância que você conhece no mapa. Esc cancela.';
+    const tq = toqueGrosso(), Cl = tq ? 'Toque' : 'Clique';
+    if (medindo) {
+      const u = regua ? Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y) : 0;
+      return u > 0 ? textoDistancia(M, u) + '. Solte para usar esta medida.' : 'Arraste sobre uma distância que você conhece no mapa.' + (tq ? '' : ' Esc cancela.');
+    }
     if (App.papel === 'mestre' && App.comoJogador) return 'Vendo como jogador: assim os jogadores veem o mapa. Nada aqui muda o mapa.';
-    if (!podeEditar()) return `${Cl} num lugar para ler sobre ele. Arraste para andar pelo mapa${tq ? '; pince para aproximar.' : '; a roda do mouse aproxima.'}`;
+    if (!podeEditar()) return tq ? 'Toque num lugar para ler sobre ele. Arraste para andar; pince para aproximar.' : 'Clique num lugar para ler sobre ele. Arraste para andar pelo mapa; a roda do mouse aproxima.';
     const f = ferramenta(), n = rasc ? rasc.pts.length : 0;
-    const tirar = tq ? '“Tirar o último ponto” desfaz um ponto' : 'Backspace tira o último ponto';
+    // no celular a dica é curta e sem teclas: os chips de cima fazem o papel do Enter, do Backspace e do Esc
+    const fim = tq ? '' : ' Backspace tira o último ponto; Esc cancela.';
     switch (f) {
-      case 'm': return `${Cl} no mapa para pôr o marcador. Esc volta para Selecionar.`;
-      case 'g': return `${Cl} no mapa para pôr o grupo. Esc volta para Selecionar.`;
-      case 'e': return `${Cl} para pôr o evento, ou arraste para escolher o tamanho da área. Esc volta para Selecionar.`;
+      case 'm': return `${Cl} no mapa para pôr o marcador.` + (tq ? '' : ' Esc volta para Selecionar.');
+      case 'g': return `${Cl} no mapa para pôr o grupo.` + (tq ? '' : ' Esc volta para Selecionar.');
+      case 'e': return `${Cl} para pôr o evento, ou arraste para escolher o tamanho da área.` + (tq ? '' : ' Esc volta para Selecionar.');
       case 'r':
         if (!n) return `${Cl} para pôr o primeiro ponto da região.`;
-        return n < 3 ? `${Cl} para pôr mais pontos (uma região tem pelo menos 3). ${tirar}; Esc cancela.`
-          : `${Cl} para mais pontos. ${Cl} no primeiro ponto${tq ? '' : ' ou aperte Enter'} para fechar. ${tirar}; Esc cancela.`;
+        if (n < 3) return `${Cl} para pôr mais pontos (uma região tem pelo menos 3).` + fim;
+        return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
       case 't': case 'f': {
-        const o = f === 't' ? 'da rota' : 'da frente de batalha';
-        if (!n) return `${Cl} para pôr o começo ${o}.`;
-        return `${Cl} para mais pontos. ${tq ? 'Toque de novo no último ponto' : 'Duplo clique ou Enter'} termina. ${tirar}; Esc cancela.`;
+        if (!n) return `${Cl} para pôr o começo ${f === 't' ? 'da rota' : 'da frente de batalha'}.`;
+        return tq ? 'Toque para mais pontos; toque de novo no último para terminar.' : 'Clique para mais pontos. Duplo clique ou Enter termina.' + fim;
       }
       case 'n': {
         const nv = M.nevoa || {};
         const base = opt('pincel') === 'cobrir' ? 'Arraste para cobrir com névoa.' : 'Arraste para revelar o mapa.';
-        return base + (nv.on ? ' Cada traço é um passo de desfazer.' : ' A névoa está desligada (aba Mapa): os jogadores ainda veem tudo.');
+        return base + (nv.on ? (tq ? '' : ' Cada traço é um passo de desfazer.') : ' A névoa está desligada (aba Mapa): os jogadores ainda veem tudo.');
       }
       case 'd':
         if (regua) { const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y); if (u > 0) return textoDistancia(M, u) + '. Nada é gravado.'; }
@@ -734,14 +817,13 @@
     }
     const sel = selecao();
     if (sel.length) {
-      const o = indice.get(sel[0]);
-      const ajuste = sel.length === 1 && o && Array.isArray(o.pts) ? ` Arraste os pontos para ajustar; o ponto do meio cria outro; ${tq ? 'dois toques' : 'duplo clique'} num ponto o tira.` : '';
-      const ajusteR = sel.length === 1 && o && o.k === 'e' ? ' A alça na borda muda o raio.' : '';
-      return tq ? `Arraste para mover. Toque longo: mais opções.${ajuste}${ajusteR}`
-        : `Arraste para mover · Delete apaga · setas ajustam (Shift: 10) · Esc limpa a seleção.${ajuste}${ajusteR}`;
+      const o = sel.length === 1 ? indice.get(sel[0]) : null;
+      if (tq) return 'Arraste para mover. Toque longo: mais opções.' + (o && Array.isArray(o.pts) ? ' Arraste os pontos para ajustar.' : o && o.k === 'e' ? ' A alça na borda muda o raio.' : '');
+      const ajuste = o && Array.isArray(o.pts) ? ' Arraste os pontos para ajustar; o ponto do meio cria outro; duplo clique num ponto o tira.' : o && o.k === 'e' ? ' A alça na borda muda o raio.' : '';
+      return 'Arraste para mover · Delete apaga · setas ajustam (Shift: 10) · Esc limpa a seleção.' + ajuste;
     }
-    return tq ? `Toque para selecionar e arraste para mover. Arraste o fundo para andar; toque longo: mais opções.`
-      : `${Cl} para selecionar (Shift soma) e arraste para mover. Arraste o fundo para andar pelo mapa; botão direito: mais opções.`;
+    return tq ? 'Toque para escolher; arraste o fundo para andar. Toque longo: mais opções.'
+      : 'Clique para selecionar (Shift soma) e arraste para mover. Arraste o fundo para andar pelo mapa; botão direito: mais opções.';
   }
 
   /* ---- mudanças no mapa (sempre por App.mudar) ---- */
@@ -885,6 +967,7 @@
     return duplo;
   }
   function comecar(e, tipo, extra) {
+    quieto(true);
     g = Object.assign({ tipo, pid: e.pointerId, sx: e.clientX, sy: e.clientY, p0: paraMundo(e.clientX, e.clientY), moveu: false, toque: e.pointerType !== 'mouse', shift: e.shiftKey, alt: e.altKey, vx: V.x, vy: V.y }, extra);
     App.gesto = true;
     try { palco.setPointerCapture(e.pointerId); } catch (er) { /* sem captura, o gesto segue enquanto o ponteiro estiver no palco */ }
@@ -900,10 +983,11 @@
     }
     if (g) return;                                  // já tem um gesto: um segundo botão não começa outro
     if (e.button !== 0 && e.button !== 1) return;   // o botão direito é do menu
+    if (e.button === 0 && e.ctrlKey && /Mac/i.test(navigator.platform || '')) return;   // Ctrl+clique no Mac também
     const f = ferramenta(), editar = podeEditar();
     if (regua && regua.manter) { regua = null; desenharRascunho(); }
     if (e.button === 1 || espaco) { comecar(e, 'pan'); palco.classList.add('pan'); return; }
-    if (e.pointerType === 'touch' && f === 'sel') agendarToqueLongo(e);
+    if (e.pointerType === 'touch' && f === 'sel' && editar) agendarToqueLongo(e);   // o jogador não tem menu
     if (f === 'sel') {
       const a = editar && e.target.closest ? e.target.closest('[data-alca]') : null;
       if (a && C.sel.contains(a)) {
@@ -912,10 +996,11 @@
       }
       const id = idDoAlvo(e.target);
       if (id) {
-        const area = !!(e.target.classList && (e.target.classList.contains('reg') || e.target.classList.contains('eve-area')));
+        const o = indice.get(id) || {};
+        const area = o.k === 'r' || o.k === 't' || o.k === 'f' || !!(e.target.classList && e.target.classList.contains('eve-area'));
         const jaSel = (App.sel || []).includes(id);
-        // um ponto (marcador, grupo, selo) se pega ao apertar; uma área grande só se escolhe ao soltar,
-        // para que arrastar por dentro de uma região ainda ande pelo mapa
+        // um ponto (marcador, grupo, selo) se pega ao apertar; área e linha só se escolhem ao soltar, para que
+        // arrastar por cima de uma região ou de uma estrada ainda ande pelo mapa (depois de escolhidas, arrastam)
         if (!area && !jaSel && !e.shiftKey) App.selecionar([id]);
         comecar(e, 'objeto', { idObj: id, area, jaSel });
         return;
@@ -926,7 +1011,11 @@
     if (f === 'm' || f === 'g') { comecar(e, 'por'); return; }
     if (f === 'r' || f === 't' || f === 'f') { comecar(e, 'ponto'); return; }
     if (f === 'e') { comecar(e, 'evento', { r: 0 }); return; }
-    if (f === 'n') { comecar(e, 'pincel', { ops: [] }); cursor = g.p0; pincelar(g.p0); desenharRascunho(); return; }
+    if (f === 'n') {
+      comecar(e, 'pincel', { ops: [] });
+      C.tra.setAttribute('class', 'c-tra' + (opt('pincel') === 'cobrir' ? ' cobre' : ''));
+      cursor = g.p0; pincelar(g.p0); desenharRascunho(); return;
+    }
     if (f === 'd') { comecar(e, 'regua'); regua = { a: g.p0, b: g.p0 }; desenharRascunho(); }
   }
   function aoMover(e) {
@@ -978,6 +1067,10 @@
       desenharSelecao();
     }
   }
+  function soltarProvisorio(gg) {
+    for (const id of gg.ids || []) { const r = recs.get(id); if (r) r.el.removeAttribute('transform'); }
+    C.sel.removeAttribute('transform');
+  }
   function alcaProvisoria(p) {
     const o = objEditavel(g.idObj);
     if (!o) return;
@@ -993,7 +1086,8 @@
     const por = q => {
       const op = { t, x: um(q.x), y: um(q.y), r: um(r) };
       ops.push(op);
-      mascProv.append(s('path', { d: circulo(op.x, op.y, op.r), fill: t === '+' ? '#000' : '#fff' }));
+      // a prévia do traço vai numa camada à parte: mexer na máscara a cada movimento repintaria o mapa inteiro
+      C.tra.append(s('circle', { cx: op.x, cy: op.y, r: op.r }));
     };
     const ult = ops[ops.length - 1];
     if (!ult) { por(p); return; }
@@ -1006,18 +1100,21 @@
   function aoSoltar(e) {
     if (e.pointerType === 'touch') {
       toques.delete(e.pointerId);
-      if (pinca) { if (toques.size < 2) { pinca = null; agendarVista(); } return; }
+      if (pinca) { if (toques.size < 2) { pinca = null; soltarMovendo(); } return; }
     }
     clearTimeout(tLongo);
+    if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') cursor = null;   // o dedo não fica pairando sobre o mapa
     if (!g || e.pointerId !== g.pid) return;
     if (e.type === 'pointercancel') { cancelarGesto(); return; }
     const gg = g;
     g = null;
     App.gesto = false;
     palco.classList.remove('pan');
+    if (!mundoEl.classList.contains('movendo')) quieto(false);
     const p = paraMundo(e.clientX, e.clientY);
+    if (gg.tipo === 'pan') soltarMovendo();
     try { terminarGesto(gg, p, e); }
-    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel') redesenhar(); agendarVista(); }
+    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel') redesenhar(); }
   }
   function terminarGesto(gg, p, e) {
     const editar = podeEditar();
@@ -1034,7 +1131,8 @@
         break;
       }
       case 'mover':
-        if (editar && (gg.dx || gg.dy)) { if (!moverSelecao(gg.ids, gg.dx, gg.dy)) desenharSelecao(); }
+        soltarProvisorio(gg);                          // o redesenho logo abaixo põe cada um no lugar novo
+        if (editar && (gg.dx || gg.dy)) moverSelecao(gg.ids, gg.dx, gg.dy);
         break;
       case 'alca': {
         const a = gg.alca, id = gg.idObj;
@@ -1059,8 +1157,8 @@
         criarEm(ferramenta(), p);
         break;
       case 'evento':
-        if (!gg.moveu) criarEm('e', p);
-        else if (gg.r * V.z >= 6) criarEm('e', gg.p0, { r: um(gg.r) });
+        if (gg.moveu && gg.r * V.z >= 6) criarEm('e', gg.p0, { r: um(gg.r) });
+        else criarEm('e', gg.p0);
         desenharRascunho();
         break;
       case 'ponto':
@@ -1100,8 +1198,10 @@
     g = null;
     App.gesto = false;
     palco.classList.remove('pan');
+    if (!mundoEl.classList.contains('movendo')) quieto(false);
     if (gg.tipo === 'regua') regua = null;
-    if (gg.tipo === 'pan' || gg.tipo === 'fundo') { V.x = gg.moveu ? V.x : gg.vx; }
+    if (gg.tipo === 'mover') soltarProvisorio(gg);
+    if (gg.tipo === 'pan') soltarMovendo();
     redesenhar();
     desenharRascunho();
   }
@@ -1125,8 +1225,9 @@
     clearTimeout(tLongo);
     const x = e.clientX, y = e.clientY, alvo = e.target;
     tLongo = setTimeout(() => {
-      if (!g || g.moveu || toques.size !== 1) return;
+      if (!g || g.moveu || toques.size !== 1 || rasc) return;
       const id = idDoAlvo(alvo), p = paraMundo(x, y);
+      if (!id && !dentroDoMapa(p, 0)) return;
       cancelarGesto();
       ultimoMenu = Date.now();
       abrirMenuMapa(x, y, id, p);
@@ -1201,7 +1302,8 @@
     const emControle = alvo && alvo.closest && alvo.closest('button, a, input, [role="tab"], [role="menuitem"]');
     const noPainel = alvo && alvo.closest && alvo.closest('#side, .menu');
     if (k === ' ' || e.code === 'Space') {
-      if (emControle) return;
+      // num botão do painel o espaço aperta o botão; no trilho e nas opções, segurar o espaço anda pelo mapa
+      if (emControle && !alvo.closest('#rail, .opts')) return;
       e.preventDefault();
       if (!espaco) { espaco = true; palco.style.cursor = 'grab'; }
       return;
@@ -1211,8 +1313,9 @@
       if (medindo) { App.usarFerramenta(medindo.ant || 'sel'); e.preventDefault(); return; }
       if (rasc) { cancelarRascunho(); e.preventDefault(); return; }
       if (regua) { regua = null; desenharRascunho(); atualizarDica(); e.preventDefault(); return; }
-      if ((App.sel || []).length) { App.selecionar([]); e.preventDefault(); return; }
-      if (editar && App.ferramenta !== 'sel') { App.usarFerramenta('sel'); e.preventDefault(); }
+      // numa ferramenta de criar, Esc volta para Selecionar (como a dica promete); em Selecionar, limpa a seleção
+      if (editar && App.ferramenta !== 'sel') { App.usarFerramenta('sel'); e.preventDefault(); return; }
+      if ((App.sel || []).length) { App.selecionar([]); e.preventDefault(); }
       return;
     }
     if (k === 'Enter') {
@@ -1269,10 +1372,10 @@
     svg.style.transformOrigin = '0 0';
     mascara = s('mask', { id: MASCARA, maskUnits: 'userSpaceOnUse', maskContentUnits: 'userSpaceOnUse' });
     mascBase = s('rect', { fill: '#fff' });
-    mascOps = s('g'); mascProv = s('g');
-    mascara.append(mascBase, mascOps, mascProv);
+    mascOps = s('g');
+    mascara.append(mascBase, mascOps);
     svg.append(s('defs', null, mascara));
-    for (const n of ['reg', 'fre', 'rot', 'eve', 'mar', 'nev', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    for (const n of ['reg', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
     nevRect = s('rect', { class: 'nevoa', mask: `url(#${MASCARA})` });
     C.nev.append(nevRect);
     mundoEl.append(svg);
@@ -1282,6 +1385,8 @@
     palco.addEventListener('pointermove', aoMover);
     palco.addEventListener('pointerup', aoSoltar);
     palco.addEventListener('pointercancel', aoSoltar);
+    // perdeu o ponteiro sem soltar (outra janela tomou o foco, por exemplo): desiste do gesto sem gravar
+    palco.addEventListener('lostpointercapture', e => { if (g && e.pointerId === g.pid) cancelarGesto(); });
     palco.addEventListener('pointerleave', e => { if (!g && e.pointerType !== 'touch') { cursor = null; desenharRascunho(); } });
     palco.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });   // sem a rolagem automática do botão do meio
     palco.addEventListener('contextmenu', e => {
@@ -1312,7 +1417,7 @@
     // o palco muda de tamanho (painel abre e fecha, celular gira): mantém o mesmo ponto no meio
     if (window.ResizeObserver) new ResizeObserver(() => {
       const t = tamanho();
-      if (tamPalco && t.w && t.h && !precisaCaber) { V.x += (t.w - tamPalco.w) / 2; V.y += (t.h - tamPalco.h) / 2; zAplicado = 0; agendarVista(); }
+      if (tamPalco && t.w && t.h && !precisaCaber) { V.x += (t.w - tamPalco.w) / 2; V.y += (t.h - tamPalco.h) / 2; aplicarVista(); }
       tamPalco = { w: t.w, h: t.h };
       if (precisaCaber && t.w && t.h) caber();
     }).observe(palco);
