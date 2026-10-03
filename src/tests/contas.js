@@ -1,6 +1,6 @@
 // Contas de teste no projeto real. A senha é sorteada na primeira vez e fica FORA do repositório.
-const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const ARQ = path.join(process.env.TC_SCRATCH || '/tmp/claude-0/-home-claude-dalkrs-github-io/5882dc29-5a93-5459-98f8-cb7f2bf623b7/scratchpad', 'tc-teste.json');
+const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const ARQ = path.join(process.env.TC_SCRATCH || path.join(os.tmpdir(), 'tinycats-teste'), 'tc-teste.json');
 function contas() {
   if (fs.existsSync(ARQ)) return JSON.parse(fs.readFileSync(ARQ, 'utf8'));
   const sufixo = crypto.randomBytes(4).toString('hex');

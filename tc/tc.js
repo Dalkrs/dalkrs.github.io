@@ -492,5 +492,36 @@
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
   window.addEventListener('pagehide', () => dados.descarregar());
 
-  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.erroPt = erroPt;
+  /* ---------------- imagens da mesa ---------------- */
+  const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+  const arquivos = {
+    /* Envia uma imagem para a pasta da mesa e devolve o endereço público dela. Só o mestre envia. */
+    async subir(blob) {
+      const a = mesas.atual;
+      if (!a) throw new Error('Abra uma mesa primeiro.');
+      if (!blob || !EXT[blob.type]) throw new Error('Envie uma imagem JPG, PNG ou WebP.');
+      if (blob.size > 15 * 1024 * 1024) throw new Error('A imagem passa de 15 MB. Diminua e tente de novo.');
+      const caminho = a.id + '/' + novoId('img') + '.' + EXT[blob.type];
+      const { error } = await cliente().storage.from('mesas').upload(caminho, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false });
+      if (error) throw falha(error, 'Não deu para enviar a imagem agora.');
+      return cliente().storage.from('mesas').getPublicUrl(caminho).data.publicUrl;
+    },
+    /* Apaga uma imagem enviada antes (quando ela é trocada). Se não der, tudo bem: fica só ocupando espaço. */
+    async apagar(url) {
+      const m = /\/object\/public\/mesas\/(.+)$/.exec(String(url || ''));
+      if (!m || !mesas.atual || !m[1].startsWith(mesas.atual.id + '/')) return;
+      try { await cliente().storage.from('mesas').remove([decodeURIComponent(m[1])]); } catch (e) { /* fica */ }
+    },
+  };
+
+  /* Rolagens que vêm do mapa-múndi (encontros sorteados, por exemplo) entram na mesa como as outras. */
+  const deSistemaAntes = aoVivo.deSistema;
+  aoVivo.deSistema = async (origem, d) => {
+    if (origem === 'mundo' && d && typeof d === 'object' && mesas.atual) {
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Mapa-múndi').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem: 'mundo', secreta: d.secreta ? true : undefined });
+    }
+    return deSistemaAntes(origem, d);
+  };
+
+  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.arquivos = arquivos; TC.erroPt = erroPt;
 })();

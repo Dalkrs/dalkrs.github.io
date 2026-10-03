@@ -1,5 +1,5 @@
 // Confere o site NO AR (pelo proxy do ambiente): abas, conta, mesa e mesa ao vivo. Uso: node vivo.js
-const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { chromium } = (() => { for (const p of ['playwright', '/opt/node-tools/node_modules/playwright', '/opt/npm-tools/node_modules/playwright']) { try { return require(p); } catch (e) { /* tenta o próximo */ } } throw new Error('Playwright não encontrado'); })();
 const { contas } = require('./contas');
 (async () => {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;

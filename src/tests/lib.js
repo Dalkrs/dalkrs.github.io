@@ -1,6 +1,6 @@
 // Apoio aos testes do site: serve a raiz do repositório (como o GitHub Pages) e abre páginas no Chromium.
 const http = require('http'), fs = require('fs'), path = require('path');
-const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { chromium } = (() => { for (const p of ['playwright', '/opt/node-tools/node_modules/playwright', '/opt/npm-tools/node_modules/playwright']) { try { return require(p); } catch (e) { /* tenta o próximo */ } } throw new Error('Playwright não encontrado'); })();
 const ROOT = path.join(__dirname, '..', '..');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
@@ -46,7 +46,7 @@ async function start(opt = {}) {
     const page = await ctx.newPage();
     const tag = o.name || 'pg';
     // o proxy deste ambiente não aceita WebSocket: o tempo real do Supabase falha aqui (e a leitura periódica assume)
-    const IGNORE = /Failed to load resource: net::ERR_(FAILED|INTERNET_DISCONNECTED|NAME_NOT_RESOLVED)|fonts\.g(oogleapis|static)\.com|WebSocket connection to 'wss:\/\/[a-z]+\.supabase\.co/;
+    const IGNORE = /Failed to load resource: net::ERR_(FAILED|INTERNET_DISCONNECTED|NAME_NOT_RESOLVED|CERT_AUTHORITY_INVALID|TUNNEL_CONNECTION_FAILED|PROXY_CONNECTION_FAILED)|fonts\.g(oogleapis|static)\.com|WebSocket connection to 'wss:\/\/[a-z]+\.supabase\.co/;
     page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !IGNORE.test(m.text())) errs.push(`[${tag}] [${m.type()}] ${m.text()}`); });
     page.on('pageerror', e => errs.push(`[${tag}] [pageerror] ${e.message}`));
     return { ctx, page };

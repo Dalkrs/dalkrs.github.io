@@ -1,0 +1,5 @@
+-- Imagens da mesa (mapa-múndi, fundos de cena, retratos): um balde público ("mesas"), com uma pasta por mesa.
+-- Ler é pelo endereço da imagem (que ninguém adivinha: leva o id da mesa e um nome sorteado).
+-- Enviar, trocar e apagar: só o mestre da mesa dona da pasta (função privado.mestre_da_pasta + três políticas em storage.objects).
+-- Limite por arquivo: 15 MB; tipos: JPEG, PNG, WebP e GIF.
+-- O texto completo aplicado está no histórico de migrações do projeto (imagens_da_mesa).

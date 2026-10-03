@@ -1,6 +1,6 @@
 // Apoio aos testes no navegador: sobe um servidor local e abre a página.
 const http = require('http'), fs = require('fs'), path = require('path');
-const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { chromium } = (() => { for (const p of ['playwright', '/opt/node-tools/node_modules/playwright', '/opt/npm-tools/node_modules/playwright']) { try { return require(p); } catch (e) { /* tenta o próximo */ } } throw new Error('Playwright não encontrado'); })();
 
 // root: a pasta servida (padrão: esta, a dos testes). Endereço terminado em "/" entrega o index.html da pasta,
 // como um servidor de site faz.

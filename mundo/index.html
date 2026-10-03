@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa-múndi · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Mapa-múndi: a imagem do mundo no centro, com marcadores, grupos, regiões, eventos, rotas, facções e névoa por cima.
+   Trilho de ferramentas à esquerda (só o mestre), painel à direita. Mesmas cores da mesa de cenas. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --secret: #b39cf0;
+  --paper: #232a38; --ink-map: #f3ead2;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+    --line: #d2d8e2; --line-strong: #aeb8c9;
+    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
+    --paper: #e9e2cf; --ink-map: #2a2418;
+    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- barra de cima ---- */
+.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.pick { display: flex; align-items: center; gap: 7px; height: 34px; max-width: 280px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; }
+.pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick:hover { background: var(--hover); }
+.cal { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.cal b { padding: 0 10px; font-weight: 600; white-space: nowrap; }
+.grow { flex: 1; }
+.ib { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg-2); }
+.ib:hover:not(:disabled) { background: var(--hover); color: var(--fg); border-color: var(--line); }
+.ib:disabled { opacity: .4; cursor: default; }
+.sw { display: flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--fg-2); font-size: 13px; }
+.salvo { font: 12px var(--mono); color: var(--fg-3); white-space: nowrap; }
+.salvo.ruim { color: var(--danger); }
+
+/* ---- área de trabalho ---- */
+.work { flex: 1; min-height: 0; display: flex; }
+.rail { flex: none; width: 50px; padding: 8px 6px; display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-right: 1px solid var(--line); overflow-y: auto; }
+.tool { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; border: 1px solid transparent; background: none; color: var(--fg-2); }
+.tool:hover { background: var(--hover); color: var(--fg); }
+.tool[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.rail hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 3px 0; }
+.palco { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--table); touch-action: none; cursor: grab; }
+.palco.t-m, .palco.t-g, .palco.t-r, .palco.t-e, .palco.t-t, .palco.t-f, .palco.t-n, .palco.t-d { cursor: crosshair; }
+.palco.pan { cursor: grabbing; }
+.mundo { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.mundo img { display: block; user-select: none; -webkit-user-drag: none; }
+.mundo .papel { background: var(--paper); background-image: linear-gradient(rgba(127,127,127,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(127,127,127,.12) 1px, transparent 1px); background-size: 100px 100px; }
+.mundo svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.opts { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
+.opts > * { pointer-events: auto; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--fg-2); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.chip[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.chip input[type="range"] { width: 110px; }
+.dica { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 190px); padding: 7px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-size: 13px; pointer-events: none; }
+.zoom { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); }
+.zoom b { min-width: 46px; text-align: center; font: 600 12px var(--mono); color: var(--fg-2); }
+.vazio { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; pointer-events: none; }
+.vazio > div { max-width: 420px; padding: 22px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); pointer-events: auto; }
+.vazio h2 { margin: 0 0 6px; font: 600 22px/1.15 var(--display); }
+.vazio p { margin: 0 0 14px; color: var(--fg-2); }
+
+/* ---- o que vai por cima do mapa ---- */
+svg text { font-family: var(--ui); paint-order: stroke; stroke: rgba(10, 12, 18, .82); stroke-width: 3.2px; stroke-linejoin: round; fill: #f6efe0; pointer-events: none; user-select: none; }
+.obj { cursor: pointer; }
+.t-sel .obj { cursor: grab; }
+.reg { fill-opacity: .2; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.reg.semfac { fill: #9aa3b5; stroke: #c3cadb; stroke-dasharray: 6 5; }
+.reg.oculto, .mar.oculto, .eve.oculto, .rot.oculto { opacity: .55; }
+.sel-anel { fill: none; stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
+.rot { fill: none; stroke: #f3ead2; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.rot-fundo { fill: none; stroke: rgba(10,12,18,.55); stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.rot-hit, .fre-hit { fill: none; stroke: transparent; stroke-width: 18; vector-effect: non-scaling-stroke; }
+.fre-a, .fre-b { fill: none; stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke-dasharray: 12 12; }
+.fre-b { stroke-dashoffset: 12; }
+.eve-area { fill-opacity: .16; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 3 6; }
+.eve-pulso { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; opacity: 0; animation: pulso 3.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.eve-pulso.b { animation-delay: 1.6s; }
+@keyframes pulso { 0% { transform: scale(.35); opacity: .7; } 100% { transform: scale(1); opacity: 0; } }
+.frente-anda { animation: anda 1.6s linear infinite; }
+@keyframes anda { to { stroke-dashoffset: -24; } }
+@media (prefers-reduced-motion: reduce) { .eve-pulso, .frente-anda { animation: none; } .eve-pulso { opacity: .3; } }
+.selo { stroke: rgba(10,12,18,.85); stroke-width: 1.5; }
+.glifo { fill: none; stroke: #14171f; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.rumor .selo { fill: #2b3243; stroke: #f3ead2; stroke-dasharray: 3 3; }
+.rumor .glifo { stroke: #f3ead2; }
+.falso { opacity: .6; }
+.falso .risco { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; }
+.grupo-base { stroke: #14171f; stroke-width: 2.5; }
+.grupo-anel { fill: none; stroke: #fff; stroke-width: 2; opacity: .85; }
+.nevoa { fill: #05070c; }
+.alca { fill: var(--lamp); stroke: #14171f; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: move; }
+.rasc { fill: rgba(230,171,79,.14); stroke: var(--lamp); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
+.regua { stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pincel { fill: rgba(230,171,79,.12); stroke: var(--lamp); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* ---- painel ---- */
+.side { flex: none; width: 330px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
+.tabs { flex: none; display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.tab { position: relative; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--fg-2); font-weight: 600; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--lamp-ink); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
+.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pane h3 { margin: 0; font: 600 19px/1.2 var(--display); }
+.pane .sub { color: var(--fg-3); font-size: 12.5px; margin-top: -8px; }
+.field { display: grid; gap: 4px; }
+.field > span { font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+.in { width: 100%; min-width: 0; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertical; line-height: 1.4; }
+.row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.row > .field { flex: 1; min-width: 90px; }
+.btn { height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.per { color: var(--danger); }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
+.note { margin: 0; color: var(--fg-3); font-size: 12.5px; }
+.sec { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.sec > b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.segredo { border-left: 3px solid var(--secret); padding-left: 9px; }
+.grade { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.grade button { display: grid; place-items: center; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: var(--fg-2); }
+.grade button[aria-pressed="true"] { border-color: var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); }
+.li { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.li i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.li .tx { flex: 1; min-width: 0; }
+.li .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.li .tx small { color: var(--fg-3); }
+.li.clic { cursor: pointer; }
+.li.clic:hover { border-color: var(--line-strong); }
+.rel { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.rel span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--line-strong); }
+.tag.guerra { color: var(--danger); border-color: var(--danger); }
+.tag.alianca { color: var(--ok); border-color: var(--ok); }
+.tag.tensao { color: var(--lamp-ink); border-color: var(--lamp); }
+.publico { white-space: pre-wrap; margin: 0; }
+.menu { position: fixed; z-index: 20; min-width: 230px; max-width: 320px; padding: 6px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); }
+.menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 7px; background: none; font-weight: 600; }
+.menu button:hover { background: var(--hover); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.toasts { position: fixed; z-index: 30; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
+.jogador .rail, .jogador #comoJogBox, .jogador #btDesfazer, .jogador #diaMenos, .jogador #diaMais { display: none; }
+@media (max-width: 900px) { .side { width: 280px; } }
+@media (max-width: 680px) { .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; width: min(300px, 86%); box-shadow: var(--shadow); } .work { position: relative; } .side.fechado { display: none; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <span class="brand">Mapa-múndi</span>
+    <button type="button" class="pick" id="btMapa" aria-haspopup="menu" title="Trocar de mapa, criar ou renomear"><span id="nomeMapa">Mapa</span><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="cal" title="A data do mundo">
+      <button type="button" class="ib" id="diaMenos" title="Voltar um dia" aria-label="Voltar um dia"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <b id="dataTxt">Dia 1</b>
+      <button type="button" class="ib" id="diaMais" title="Avançar um dia" aria-label="Avançar um dia"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <span class="grow"></span>
+    <span class="salvo" id="salvo" role="status"></span>
+    <label class="sw" id="comoJogBox" title="Mostra o mapa como os jogadores veem: sem o que é só do mestre e com a névoa fechada"><input type="checkbox" id="comoJog"> Ver como jogador</label>
+    <button type="button" class="ib" id="btDesfazer" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button type="button" class="ib" id="btPainel" title="Mostrar ou esconder o painel" aria-label="Mostrar ou esconder o painel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+  </header>
+  <div class="work">
+    <nav class="rail" id="rail" aria-label="Ferramentas"></nav>
+    <div class="palco" id="palco">
+      <div class="mundo" id="mundo"></div>
+      <div class="opts" id="opts"></div>
+      <div class="dica" id="dica"></div>
+      <div class="zoom">
+        <button type="button" class="ib" id="zMenos" title="Afastar" aria-label="Afastar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        <b id="zTxt">100%</b>
+        <button type="button" class="ib" id="zMais" title="Aproximar" aria-label="Aproximar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+        <button type="button" class="ib" id="zCabe" title="Ver o mapa inteiro" aria-label="Ver o mapa inteiro"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <div class="vazio" id="vazio" hidden></div>
+    </div>
+    <aside class="side" id="side">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="pane" id="pane"></div>
+    </aside>
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
+<noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
+<script src="../tc/ponte.js?v=3"></script>
+<script src="../tc/dice.js?v=1"></script>
+<script src="nucleo.js?v=1"></script>
+<script src="tela.js?v=1"></script>
+<script src="painel.js?v=1"></script>
+<script src="mundo.js?v=1"></script>
+</body>
+</html>

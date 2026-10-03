@@ -54,8 +54,19 @@
     },
   };
 
+  /* ---- imagens da mesa ---- */
+  const arquivos = {
+    subir(blob) { const n = ++seq; const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; }); enviar({ t: 'arquivo.subir', n, blob }); return p; },
+    apagar(url) { enviar({ t: 'arquivo.apagar', url }); },
+  };
+
   function receber(m) {
     if (!m || typeof m !== 'object') return;
+    if ((m.t === 'arquivo.ok' || m.t === 'arquivo.erro') && esperas[m.n]) {
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (m.t === 'arquivo.ok') e.ok(m.url); else e.falha(new Error(m.erro || 'Não deu para enviar a imagem.'));
+      return;
+    }
     if (m.t === 'estado') {
       ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [] };
       avisar(ponte.estado);
@@ -76,6 +87,6 @@
   }
   window.addEventListener('message', ev => { if (ev.origin === location.origin && ev.source === window.parent && ev.data && ev.data.tinycats) receber(ev.data.tinycats); });
   if (canal) canal.onmessage = ev => { if (!naCasca) receber(ev.data); };
-  TC.ponte = ponte; TC.dados = dados;
+  TC.ponte = ponte; TC.dados = dados; TC.arquivos = arquivos;
   enviar({ t: 'ola' });
 })();

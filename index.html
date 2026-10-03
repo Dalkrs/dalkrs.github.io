@@ -376,6 +376,10 @@ dialog::backdrop { background: var(--scrim); }
       catch (e) { responder({ t: 'dados.erro', n: m.n, erro: e.message }); }
     } else if (m.t === 'dados.gravar' && mesas.atual) {
       try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte); } catch (e) { toast(e.message); }
+    } else if (m.t === 'arquivo.subir') {
+      TC.arquivos.subir(m.blob).then(url => responder({ t: 'arquivo.ok', n: m.n, url }), e => responder({ t: 'arquivo.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'arquivo.apagar') {
+      TC.arquivos.apagar(m.url);
     }
   }
   // Toda mudança nos dados da mesa vai para os sistemas abertos (menos para quem acabou de fazê-la).
