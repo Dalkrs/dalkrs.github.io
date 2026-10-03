@@ -144,6 +144,15 @@ const Store = (() => {
     upd: (c, id, p) => push({ t: 'upd', c, id, p }),
     scn: p => push({ t: 'scn', p }),
     ord: (c, ids) => push({ t: 'ord', c, ids }),
+    // Operação que veio de fora (a ficha do personagem, outro aparelho): vale na hora e avisa a tela, mas não entra no desfazer.
+    remote(op) {
+      if (tx) commit();
+      const inv = raw(op);
+      if (!inv) return false;
+      emit('live', op, inv);
+      emit('commit', { sceneId: S.current, label: '', ops: [op], remote: true });
+      return true;
+    },
     // Agrupa várias operações num único passo de desfazer.
     tx(label, fn) { const own = !tx; begin(label); try { fn(); } finally { if (own) commit(); } },
 

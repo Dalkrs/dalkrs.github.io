@@ -976,6 +976,28 @@ const UI = (() => {
       others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id })) }))) : null);
   }
 
+  /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
+  function fichaBox(t) {
+    const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
+    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
+      v => { Fichas.link(t, v || null); const c = v ? Fichas.get(v) : null; toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` : `${t.name} não segue mais nenhuma ficha.`); }))];
+    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token pega dela HP, SP e os outros recursos, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
+    if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
+    const itens = Fichas.rolaveis(t);
+    if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
+    const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
+    App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    out.push(
+      note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha.'),
+      field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
+      field('Fixando', inNum('tk-fixa', fixa0, v => { App.opt.fichaFixa = Math.max(0, Math.round(v) || 0); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      h('div', { class: 'row' }, btn('Rolar', () => {
+        const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
+        toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
+      }, { icon: 'die', id: 'tk-rolar' })));
+    return out;
+  }
+
   function tokenPanel(t) {
     const gm = isGM(), sc = Store.scene();
     const U = (p, label) => Store.tx(label || 'Editar token', () => Store.upd('tokens', t.id, p));
@@ -1007,6 +1029,7 @@ const UI = (() => {
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
+      Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
       sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)),
       sec('s-vis', 'Visão e luz', false,
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),

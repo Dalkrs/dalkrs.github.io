@@ -548,7 +548,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=1"></script>
+<script src="../tc/ponte.js?v=2"></script>
+<script src="../tc/dice.js?v=1"></script>
+<script src="../tc/rules.js?v=1"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -875,15 +877,17 @@ const BAR_DEFAULTS = [
 const BAR_COLORS = ['#d6524b', '#4a9be0', '#e2b23e', '#6fbf73', '#b07ad9', '#e58a4e', '#4fc3c0', '#d96aa0'];
 function cleanBar(b) {
   const o = b || {};
-  return {
+  return cleanBarRef({
     n: String(o.n == null ? 'Barra' : o.n).slice(0, 24) || 'Barra',
     c: /^#[0-9a-f]{6}$/i.test(o.c || '') ? o.c : BAR_COLORS[0],
     v: Math.max(0, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
     k: o.k === 'pts' ? 'pts' : 'bar',
     on: o.on !== false,
     vis: ['num', 'bar', 'none'].includes(o.vis) ? o.vis : '',     // '' = segue a regra do token
-  };
+  }, o);
 }
+// Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
+const cleanBarRef = (b, o) => { if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64); return b; };
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
   return (Array.isArray(p) && p.length ? p : BAR_DEFAULTS).slice(0, MAX_BARS).map(cleanBar);
@@ -1062,6 +1066,7 @@ function normalizeScene(sc) {
     t.bars = (Array.isArray(t.bars) ? t.bars : barDefaults()).slice(0, MAX_BARS).map(cleanBar);
     if (!t.cinfo || typeof t.cinfo !== 'object') t.cinfo = {};
     t.ini = clampIni(t.ini); t.turns = clampTurns(t.turns);
+    t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
   }
   return sc;
 }
@@ -1211,6 +1216,15 @@ const Store = (() => {
     upd: (c, id, p) => push({ t: 'upd', c, id, p }),
     scn: p => push({ t: 'scn', p }),
     ord: (c, ids) => push({ t: 'ord', c, ids }),
+    // Operação que veio de fora (a ficha do personagem, outro aparelho): vale na hora e avisa a tela, mas não entra no desfazer.
+    remote(op) {
+      if (tx) commit();
+      const inv = raw(op);
+      if (!inv) return false;
+      emit('live', op, inv);
+      emit('commit', { sceneId: S.current, label: '', ops: [op], remote: true });
+      return true;
+    },
     // Agrupa várias operações num único passo de desfazer.
     tx(label, fn) { const own = !tx; begin(label); try { fn(); } finally { if (own) commit(); } },
 
@@ -3167,6 +3181,129 @@ const Act = {
     return ended;
   },
 };
+/* ---------------------------------------------------------------
+   7b. FICHAS — o token ligado à ficha do personagem
+   Só existe dentro do site, com uma mesa aberta (a ponte entrega os personagens da mesa).
+   O token aponta para um personagem (t.char). A ficha manda: cada recurso dela (HP, SP…) vira uma
+   barra do token, com o máximo calculado pelas fórmulas e o valor atual anotado na ficha; e o bônus
+   de iniciativa vem da fórmula de iniciativa da ficha, quando ela tem uma.
+   Na volta, mexer numa dessas barras no mapa (dano, cura, área, reaplicar, desfazer) grava o valor
+   atual na ficha. Também dá para rolar um atributo da ficha direto do token, com a regra da fixa.
+   --------------------------------------------------------------- */
+const Fichas = (() => {
+  let P = null, D = null, on = false, applying = false;
+  const R = () => window.TC.rules;
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+  const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
+  const get = id => (P && id ? P.pegar(id) : null);
+  const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
+  const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
+  const resumo = l => R().resumo(pcDe(l), cfg(), null, l.estado || {});
+
+  // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
+  function barrasDe(t, r) {
+    const bars = t.bars.map(b => Object.assign({}, b));
+    let mudou = false;
+    for (const rec of r.recursos) {
+      if (rec.max == null || !isFinite(rec.max)) continue;
+      let b = bars.find(x => x.ref === rec.id) || bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      if (!b) {
+        if (bars.length >= MAX_BARS) continue;
+        b = cleanBar({ n: rec.nome, c: BAR_COLORS[bars.length % BAR_COLORS.length], v: rec.atual, m: rec.max, k: 'bar', on: true, vis: '' });
+        bars.push(b); mudou = true;
+      }
+      const nome = String(rec.nome || 'Barra').slice(0, 24);
+      if (b.ref !== rec.id) { b.ref = rec.id; mudou = true; }
+      if (b.n !== nome) { b.n = nome; mudou = true; }
+      if (b.m !== rec.max) { b.m = rec.max; mudou = true; }
+      if (b.v !== rec.atual) { b.v = rec.atual; mudou = true; }
+    }
+    for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
+    return mudou ? bars : null;
+  }
+  // ficha → token (não entra no desfazer: quem manda é a ficha)
+  function syncToken(t) {
+    const l = get(t.char);
+    if (!l) return false;
+    const r = resumo(l), p = {};
+    const bars = barrasDe(t, r);
+    if (bars) p.bars = bars;
+    if (String((l.ficha && l.ficha.ini) || '').trim() !== '' && clampIni(r.ini) !== t.ini) p.ini = clampIni(r.ini);
+    if (!Object.keys(p).length) return false;
+    applying = true;
+    try { Store.remote({ t: 'upd', c: 'tokens', id: t.id, p }); } finally { applying = false; }
+    return true;
+  }
+  function syncAll(charId) {
+    if (!on) return;
+    let n = 0;
+    for (const t of Store.scene().tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t)) n++;
+    return n;
+  }
+  // token → ficha: o valor atual das barras ligadas
+  function onLive(op) {
+    if (!on || applying || op.t !== 'upd' || op.c !== 'tokens' || !op.p || !op.p.bars) return;
+    const t = Store.get('tokens', op.id);
+    if (!t || !t.char) return;
+    const l = get(t.char);
+    if (!l) return;
+    const rec = Object.assign({}, (l.estado && l.estado.rec) || {});
+    let mudou = false;
+    for (const b of t.bars) if (b.ref && isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
+    if (!mudou) return;
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec }) });
+    syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
+  }
+  function link(t, charId) {
+    if (!charId) {
+      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
+      return;
+    }
+    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, { char: charId }));
+    const now = Store.get('tokens', t.id);
+    if (now) syncToken(now);
+  }
+  // O que dá para rolar pela ficha deste token: [chave, nome, valor]
+  function rolaveis(t) {
+    const l = get(t.char);
+    if (!l) return [];
+    const pc = pcDe(l), c = R().calcular(pc, cfg(), null), fonte = (pc.rol && pc.rol.fonte) || 'total';
+    return ROLAVEIS.map(k => [k, R().NOMES[k] || k, Math.max(0, Math.round(R().valorDoAtributo(c, k, fonte) || 0))]);
+  }
+  const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
+  // Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa.
+  function rolar(t, chave, fixa) {
+    const item = rolaveis(t).find(x => x[0] === chave);
+    if (!item) return { ok: false, error: 'Este token não está ligado a uma ficha.' };
+    const valor = item[2];
+    if (valor < 1) return { ok: false, error: item[1] + ' está em 0: não há o que rolar.' };
+    const r = window.TC.dice.rollFixa(valor, Math.min(Math.max(0, Math.round(+fixa || 0)), valor));
+    if (!r.ok) return r;
+    if (Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total }); } catch (e) { console.error(e); } }
+    return Object.assign({ nome: item[1] }, r);
+  }
+
+  async function start(refresh) {
+    const T = window.TC;
+    if (!T || !T.ponte || !T.dados || !T.rules || !T.dice) return false;
+    const st = await T.ponte.pronta;
+    if (!T.dados.disponivel() || st.papel !== 'mestre') return false;      // por enquanto, só o mestre liga token a ficha
+    try {
+      P = T.dados.col('personagens'); D = T.dados.col('documentos');
+      await Promise.all([P.pronta, D.pronta]);
+    } catch (e) { console.error(e); return false; }
+    on = true;
+    Store.on('live', onLive);
+    Store.on('scene', () => syncAll());
+    P.aoMudar(l => { if (!l.apagado) syncAll(l.id); refresh(); });
+    D.aoMudar(l => { if (l.id === 'fichas:cfg') { syncAll(); refresh(); } });
+    syncAll();
+    refresh();
+    return true;
+  }
+  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar };
+})();
 /* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
    Ordem das camadas: fundo, grade, desenhos de baixo, efeitos sem brilho,
@@ -5943,6 +6080,28 @@ const UI = (() => {
       others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id })) }))) : null);
   }
 
+  /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
+  function fichaBox(t) {
+    const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
+    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
+      v => { Fichas.link(t, v || null); const c = v ? Fichas.get(v) : null; toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` : `${t.name} não segue mais nenhuma ficha.`); }))];
+    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token pega dela HP, SP e os outros recursos, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
+    if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
+    const itens = Fichas.rolaveis(t);
+    if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
+    const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
+    App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    out.push(
+      note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha.'),
+      field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
+      field('Fixando', inNum('tk-fixa', fixa0, v => { App.opt.fichaFixa = Math.max(0, Math.round(v) || 0); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      h('div', { class: 'row' }, btn('Rolar', () => {
+        const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
+        toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
+      }, { icon: 'die', id: 'tk-rolar' })));
+    return out;
+  }
+
   function tokenPanel(t) {
     const gm = isGM(), sc = Store.scene();
     const U = (p, label) => Store.tx(label || 'Editar token', () => Store.upd('tokens', t.id, p));
@@ -5974,6 +6133,7 @@ const UI = (() => {
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
+      Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
       sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)),
       sec('s-vis', 'Visão e luz', false,
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),
@@ -7015,6 +7175,7 @@ async function start(snap) {
   if (/[?&]casca\b/.test(location.search)) document.documentElement.classList.add('na-casca');
   // Dentro do site, com uma mesa aberta: as rolagens daqui (iniciativa) também vão para a mesa ao vivo.
   // Token que os jogadores não veem, ou de nome escondido, sai marcado como oculto: a rolagem dele fica só com o mestre.
+  Fichas.start(() => { try { UI.renderAll(); } catch (e) { /* ainda abrindo */ } });
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
@@ -7026,7 +7187,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

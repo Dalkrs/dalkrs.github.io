@@ -292,15 +292,17 @@ const BAR_DEFAULTS = [
 const BAR_COLORS = ['#d6524b', '#4a9be0', '#e2b23e', '#6fbf73', '#b07ad9', '#e58a4e', '#4fc3c0', '#d96aa0'];
 function cleanBar(b) {
   const o = b || {};
-  return {
+  return cleanBarRef({
     n: String(o.n == null ? 'Barra' : o.n).slice(0, 24) || 'Barra',
     c: /^#[0-9a-f]{6}$/i.test(o.c || '') ? o.c : BAR_COLORS[0],
     v: Math.max(0, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
     k: o.k === 'pts' ? 'pts' : 'bar',
     on: o.on !== false,
     vis: ['num', 'bar', 'none'].includes(o.vis) ? o.vis : '',     // '' = segue a regra do token
-  };
+  }, o);
 }
+// Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
+const cleanBarRef = (b, o) => { if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64); return b; };
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
   return (Array.isArray(p) && p.length ? p : BAR_DEFAULTS).slice(0, MAX_BARS).map(cleanBar);
@@ -479,6 +481,7 @@ function normalizeScene(sc) {
     t.bars = (Array.isArray(t.bars) ? t.bars : barDefaults()).slice(0, MAX_BARS).map(cleanBar);
     if (!t.cinfo || typeof t.cinfo !== 'object') t.cinfo = {};
     t.ini = clampIni(t.ini); t.turns = clampTurns(t.turns);
+    t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
   }
   return sc;
 }
