@@ -1,0 +1,11 @@
+# gerados pelos testes e pelo build
+node_modules/
+src/**/test/*.png
+src/**/test/v2/
+src/**/test/*.json
+src/**/test/page*.html
+src/cenas/cenas-de-urgm.html
+*.log
+.DS_Store
+src/**/test/v3/
+src/**/test/*.html

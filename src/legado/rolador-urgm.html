@@ -1,0 +1,3104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Rolador de Urgm</title>
+<style>
+:root{
+  --ink:#0c1320;--ink-top:#09101b;--panel:#131c2c;--panel-2:#1b263a;--field:#0e1623;
+  --line:#233049;--line-strong:#34435f;--parchment:#ede5d1;--muted:#a3acc0;--faint:#7a869e;
+  --gold:#d7a94b;--gold-hover:#e6bb63;--gold-ink:#1d1505;--warn:#f2a65a;--error:#ff7b7b;--focus:#f3d28a;
+  --serif:"Palatino Linotype","Book Antiqua",Palatino,"URW Palladio L","P052",Georgia,serif;
+  --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--ink);color:var(--parchment);font:16px/1.45 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default;opacity:.45}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.ico{display:inline-flex;align-items:center;flex:none}
+.ico svg{display:block}
+
+/* topo */
+.topbar{flex:none;display:flex;align-items:center;gap:18px;height:60px;padding:0 20px;background:var(--ink-top);border-bottom:1px solid var(--line);position:relative;z-index:20}
+.brand{font-family:var(--serif);font-size:21px;white-space:nowrap}
+.hist-picker{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;position:relative}
+.hist-label{color:var(--muted);font-size:14px}
+.hist-btn{display:inline-flex;align-items:center;gap:10px;min-width:0;max-width:380px;padding:7px 12px 7px 14px;background:var(--panel);border:1px solid var(--line-strong);border-radius:9px;font-weight:600}
+.hist-btn:hover{border-color:var(--muted)}
+.hist-btn .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-right{display:flex;align-items:center;gap:14px;position:relative}
+.save-status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--faint);white-space:nowrap}
+.save-status.bad{color:var(--error);font-weight:700}
+.menu-btn{position:relative;padding:7px 14px;background:transparent;border:1px solid var(--line-strong);border-radius:9px;font-weight:600}
+.menu-btn:hover{border-color:var(--muted)}
+.menu-dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:2px solid var(--ink-top)}
+.dropdown{position:absolute;top:calc(100% + 8px);z-index:40;min-width:300px;max-width:min(420px,94vw);padding:8px;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.5)}
+.dropdown.center{left:50%;transform:translateX(-50%)}
+.dropdown.right{right:0}
+.dd-heading{padding:6px 10px 4px;font-size:13px;color:var(--muted)}
+.dd-list{list-style:none;margin:0;padding:0;max-height:46vh;overflow:auto}
+.dd-item{display:flex;align-items:baseline;justify-content:space-between;gap:14px;width:100%;padding:9px 10px;text-align:left;background:transparent;border:0;border-radius:8px}
+.dd-item:hover,.dd-item:focus-visible{background:var(--panel-2)}
+.dd-item.current{background:var(--panel-2);box-shadow:inset 3px 0 0 var(--gold)}
+.dd-item.accent{color:var(--gold);font-weight:600}
+.dd-item.danger{color:var(--error)}
+.dd-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-meta{flex:none;font-size:13px;color:var(--muted)}
+.dd-sep{height:1px;margin:8px 4px;background:var(--line)}
+.dd-note{padding:6px 10px;font-size:13px;color:var(--muted)}
+.dd-note.warn{color:var(--warn)}
+.banner{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;font-size:15px}
+.banner.error{background:#3b1719;color:#ffdada;border-bottom:1px solid #6e2a2e}
+.banner.warn{background:#3a2a14;color:#ffe7c7;border-bottom:1px solid #6b4d22}
+.banner-actions{display:flex;gap:8px;flex:none}
+
+/* layout */
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(330px,410px) minmax(0,1fr);gap:22px;padding:18px 20px 20px}
+
+/* painel de rolagem */
+.roll-panel{min-height:0;overflow:auto;padding:18px 18px 16px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;margin-bottom:18px;background:var(--field);border:1px solid var(--line);border-radius:11px}
+.tab{padding:9px 4px;background:transparent;border:0;border-radius:8px;color:var(--muted);font-size:15px;font-weight:600;white-space:nowrap}
+.tab:hover{color:var(--parchment)}
+.tab[aria-selected="true"]{background:var(--panel-2);color:var(--parchment);box-shadow:inset 0 -2px 0 var(--gold)}
+.field{display:block;margin-bottom:14px}
+.field-label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:14px;color:var(--muted)}
+.opt{font-size:12.5px;color:var(--faint)}
+.input{display:block;width:100%;height:46px;padding:0 12px;background:var(--field);border:1px solid var(--line-strong);border-radius:9px;font-size:17px}
+.input::placeholder{color:#5d6a83}
+.input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(215,169,75,.22)}
+.input.invalid{border-color:var(--warn)}
+textarea.input{height:auto;min-height:84px;padding:10px 12px;resize:vertical;font-size:16px;line-height:1.45}
+.num-input{font-family:var(--serif);font-size:22px;font-variant-numeric:lining-nums tabular-nums}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.link-btn{padding:2px 0;background:none;border:0;color:var(--gold);font-size:14px}
+.link-btn:hover{text-decoration:underline}
+.desc-toggle{display:block;margin:-6px 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 16px}
+.chip{min-width:46px;padding:6px 9px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;font-size:14px;font-weight:700}
+.chip:hover{border-color:var(--muted)}
+.chip.quiet{background:transparent;color:var(--muted);font-weight:500}
+.tables-link{display:block;margin:-6px 0 16px}
+.palette{display:flex;flex-wrap:wrap;gap:8px}
+.swatch{width:32px;height:32px;padding:0;border:0;border-radius:50%;background:var(--sw,transparent);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
+.swatch:hover{transform:scale(1.06)}
+.swatch[aria-checked="true"],.swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--parchment)}
+.swatch-none{position:relative;background:transparent;border:2px dashed var(--line-strong)}
+.swatch-none::after{content:"";position:absolute;left:50%;top:5px;bottom:5px;width:2px;background:var(--faint);transform:translateX(-50%) rotate(45deg)}
+.swatch.small{width:28px;height:28px}
+.preview{min-height:46px;margin:4px 0 12px;padding:11px 12px;background:var(--field);border:1px solid var(--line);border-radius:9px;font-size:15px;line-height:1.35}
+.preview.hint{color:var(--muted)}
+.preview.ok{color:var(--parchment)}
+.preview.problem{color:var(--warn);border-color:rgba(242,166,90,.45)}
+.preview.error{color:var(--error);border-color:var(--error)}
+.roll-btn{display:block;width:100%;height:60px;background:var(--gold);color:var(--gold-ink);border:0;border-radius:12px;font-family:var(--serif);font-size:27px;font-weight:700;letter-spacing:.02em}
+.roll-btn:hover{background:var(--gold-hover)}
+.roll-btn:active{transform:translateY(1px)}
+.dest{margin-top:10px;text-align:center;font-size:14px;color:var(--muted)}
+.dest strong{color:var(--parchment);font-weight:600}
+.kbd-hint{margin-top:4px;text-align:center;font-size:12.5px;color:var(--faint)}
+
+/* resultados */
+.results{min-height:0;display:flex;flex-direction:column;gap:18px}
+.last-card{--c:#3b4a68;flex:none;display:grid;grid-template-columns:10px minmax(0,1fr);min-height:190px;overflow:hidden;background:var(--panel);background:color-mix(in srgb,var(--c) 9%,var(--panel));border:1px solid var(--line-strong);border-color:color-mix(in srgb,var(--c) 38%,var(--line));border-radius:16px}
+.last-band{background:var(--c)}
+.last-body{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"meta meta" "num text" "actions actions";align-items:center;column-gap:28px;padding:14px 22px 16px}
+.last-meta{grid-area:meta;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px;color:var(--muted)}
+.last-meta .pin{color:var(--gold)}
+.last-num{grid-area:num;font-family:var(--serif);font-size:88px;font-weight:700;line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.last-num.long{font-size:60px}
+.last-text{grid-area:text;min-width:0}
+.last-title{display:block;max-width:100%;padding:0;background:none;border:0;text-align:left;font-family:var(--serif);font-size:25px;line-height:1.2;overflow-wrap:anywhere}
+.last-title:hover{text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px}
+.last-title.untitled-big{font-family:var(--sans);font-size:17px;font-style:italic;color:var(--warn)}
+.last-comp{margin-top:6px;color:var(--muted);overflow-wrap:anywhere}
+.last-desc{margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.last-item{grid-area:item;margin-top:10px;font-family:var(--serif);font-size:32px;line-height:1.2;overflow-wrap:anywhere}
+.last-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.last-card.is-table .last-body{grid-template-columns:minmax(0,1fr);grid-template-areas:"meta" "text" "item" "actions"}
+.last-card.empty .last-body{display:flex;flex-direction:column;justify-content:center}
+.last-empty-title{font-family:var(--serif);font-size:23px}
+.last-empty-sub{margin-top:6px;color:var(--muted)}
+.last-card.flash{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:color-mix(in srgb,var(--c) 34%,var(--panel))}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:9px;font-size:15px;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.ghost{background:transparent}
+.btn.small{padding:5px 10px;font-size:14px}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.btn.primary:hover{background:var(--gold-hover)}
+.btn.danger{background:transparent;color:var(--error);border-color:rgba(255,123,123,.45)}
+.btn.danger:hover{border-color:var(--error)}
+.btn.danger-solid{background:#b93c3c;border-color:#b93c3c;color:#fff}
+
+/* histórico */
+.log-box{flex:1;min-height:0;display:flex;flex-direction:column}
+.log-head{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:0 2px 10px;border-bottom:1px solid var(--line-strong)}
+.log-title{font-family:var(--serif);font-size:21px;font-weight:600}
+.log-count{font-size:14px;color:var(--muted)}
+.untitled-btn{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:transparent;border:1px solid rgba(242,166,90,.4);border-radius:999px;color:var(--warn);font-size:13px}
+.log-tools{margin-left:auto;display:flex;gap:8px}
+.filter-row{flex:none;display:flex;flex-direction:column;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.filter-line{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px}
+.filter-label{font-size:14px;color:var(--muted);min-width:34px}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:15px;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--gold)}
+.input.search{height:38px;font-size:15px;max-width:320px;flex:1}
+.log-scroll{flex:1;min-height:0;overflow:auto;padding-right:4px}
+.filter-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 4px;padding:9px 12px;background:rgba(215,169,75,.1);border:1px solid rgba(215,169,75,.35);border-radius:10px;font-size:14px}
+.pinned{margin-top:12px;padding:4px 0 6px;border-bottom:1px solid var(--line-strong)}
+.pinned-title{display:flex;align-items:center;gap:6px;padding:4px 2px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--gold)}
+.log{list-style:none;margin:0;padding:0}
+.entry{display:grid;grid-template-columns:4px minmax(0,1fr) auto;column-gap:14px;width:100%;padding:11px 12px 11px 0;background:transparent;border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer}
+.entry:hover{background:rgba(237,229,209,.035)}
+.entry.newest{background:rgba(215,169,75,.07)}
+.entry-band{display:block;border-radius:0 3px 3px 0;background:var(--c,transparent)}
+.entry-main{display:block;min-width:0}
+.entry-title{display:flex;align-items:center;gap:6px;font-family:var(--serif);font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+.entry-title .pin{color:var(--gold)}
+.untitled{display:inline-flex;align-items:center;gap:7px;font-family:var(--sans);font-size:15px;font-style:italic;color:var(--faint)}
+.untitled::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.entry-item{display:block;margin-top:3px;font-family:var(--serif);font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.entry-comp{display:block;margin-top:2px;font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.entry-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;color:#d9d2c0}
+.entry-side{display:block;text-align:right}
+.entry-num{display:block;font-family:var(--serif);font-size:30px;font-weight:700;line-height:1;font-variant-numeric:lining-nums tabular-nums}
+.entry-num.long{font-size:22px}
+.entry-time{display:block;margin-top:6px;font-size:13px;color:var(--faint);white-space:nowrap}
+.sep{display:flex;align-items:center;gap:14px;width:100%;padding:16px 8px 10px;background:none;border:0;color:var(--gold);font-family:var(--serif);font-size:16px;font-style:italic;cursor:pointer}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:rgba(215,169,75,.4)}
+.sep:hover .sep-text{text-decoration:underline}
+.log-empty{padding:28px 4px;color:var(--muted)}
+.more-btn{margin:14px 0}
+
+/* diálogos */
+dialog{width:min(560px,94vw);max-height:88vh;padding:0;background:var(--panel);color:var(--parchment);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog[open]{display:flex;flex-direction:column}
+dialog::backdrop{background:rgba(4,8,14,.72)}
+dialog.wide{width:min(900px,96vw)}
+.dlg-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dlg-head h2{font-family:var(--serif);font-size:22px;font-weight:600}
+.dlg-body{flex:1;min-height:0;overflow:auto;padding:18px 20px}
+.dlg-foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-top:1px solid var(--line)}
+.note{font-size:13px;color:var(--muted)}
+.edit-result{display:grid;grid-template-columns:6px minmax(0,1fr);margin-bottom:18px;overflow:hidden;background:var(--field);border:1px solid var(--line);border-radius:11px}
+.edit-band{background:var(--c)}
+.edit-res-body{display:flex;flex-direction:column;gap:4px;padding:12px 14px}
+.edit-num{font-family:var(--serif);font-size:42px;font-weight:700;line-height:1}
+.edit-item{font-family:var(--serif);font-size:23px;overflow-wrap:anywhere}
+.edit-comp{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.edit-lock{font-size:12.5px;color:var(--faint)}
+.edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 18px}
+.move-row{display:flex;gap:8px}
+.move-row .input{flex:1;height:42px;font-size:15px}
+.prompt-msg{margin-bottom:14px;color:var(--muted)}
+.tables-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}
+.tables-nav{display:flex;flex-direction:column;gap:10px}
+.tables-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:52vh;overflow:auto}
+.tl-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:9px;text-align:left}
+.tl-item:hover{background:var(--panel-2)}
+.tl-item.current{background:var(--panel-2);border-color:var(--line-strong);box-shadow:inset 3px 0 0 var(--gold)}
+.tl-name{font-weight:600;overflow-wrap:anywhere}
+.tl-count{font-size:13px;color:var(--muted)}
+textarea.items-area{min-height:280px;font-size:16px}
+.table-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tables-empty{align-self:center;color:var(--muted)}
+.trash-list{list-style:none;margin:14px 0 0;padding:0}
+.trash-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.trash-info{display:flex;flex-direction:column;min-width:0}
+.trash-name{overflow-wrap:anywhere}
+.trash-meta{font-size:13px;color:var(--muted)}
+.trash-empty{padding:16px 0;color:var(--muted)}
+textarea.copy-area{min-height:220px;font-size:13px;font-family:Consolas,"Cascadia Mono",monospace;line-height:1.4}
+label.dd-item{cursor:pointer}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* aviso flutuante */
+.toast{position:fixed;left:50%;bottom:24px;right:auto;top:auto;transform:translateX(-50%);margin:0;display:flex;align-items:center;gap:14px;width:max-content;max-width:min(680px,92vw);padding:12px 12px 12px 18px;background:#1f2b41;color:var(--parchment);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-size:15px;z-index:60}
+.toast.error{border-color:var(--error)}
+.toast-btn{flex:none;padding:7px 12px;background:var(--gold);color:var(--gold-ink);border:0;border-radius:8px;font-weight:700}
+
+@media (max-width:900px){
+  body{height:auto;min-height:100vh;overflow:visible}
+  .layout{display:flex;flex-direction:column}
+  .roll-panel,.log-scroll{overflow:visible}
+  .brand{font-size:18px}
+  .hist-label{display:none}
+}
+@media (max-width:600px){
+  .topbar{gap:10px;padding:0 12px}
+  .brand,.save-status{display:none}
+  .layout{padding:12px}
+  .last-body{grid-template-columns:minmax(0,1fr);grid-template-areas:"meta" "num" "text" "actions"}
+  .last-num{font-size:64px}
+  .tables-layout{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  .last-card.flash{animation:none}
+  .swatch:hover{transform:none}
+}
+
+/* comparação e duelo */
+.check-inputs{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:8px}
+select.op-select{font-size:15px;padding-right:6px}
+.preview-note{color:var(--warn)}
+.verdict{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:8px;padding:5px 10px;border-radius:8px;font-size:15px;line-height:1.3}
+.verdict.pass{background:rgba(108,194,143,.15);color:#93e2b4}
+.verdict.fail{background:rgba(255,123,123,.14);color:#ffa3a3}
+.verdict-word{font-weight:700}
+.verdict-detail{color:var(--parchment);opacity:.85;font-size:14px}
+.verdict.small{margin-top:0;padding:1px 8px;font-size:13px}
+.verdict.small .verdict-detail{font-size:13px}
+.entry-checks{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:5px}
+.duel-check{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.entry-comp.tie{color:var(--warn)}
+.entry-num.duel{font-size:22px;white-space:nowrap}
+.duel-side{padding:10px 10px 8px;background:var(--field);border:1px solid var(--line);border-radius:11px}
+.duel-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.duel-side .input{height:38px;background:var(--panel)}
+.duel-side .field-label{margin-bottom:4px;font-size:13px}
+.duel-name{flex:1;min-width:0;font-size:16px;font-weight:600}
+.mini-tabs{flex:none;display:flex;gap:2px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.mini-tab{padding:5px 10px;background:transparent;border:0;border-radius:6px;color:var(--muted);font-size:13.5px;font-weight:600}
+.mini-tab[aria-pressed="true"]{background:var(--panel-2);color:var(--parchment);box-shadow:inset 0 -2px 0 var(--gold)}
+.duel-side .field{margin-bottom:8px}
+.duel-side .num-input{font-size:19px}
+.duel-vs{margin:3px 0;text-align:center;font-family:var(--serif);font-style:italic;color:var(--gold)}
+.mode-body[data-for="duelo"]{margin-bottom:14px}
+.last-card.is-duel .last-body{grid-template-columns:minmax(0,1fr);grid-template-areas:"meta" "text" "duel" "summary" "actions"}
+.duel-result{grid-area:duel;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;margin-top:12px}
+.duel-res-side{min-width:0;padding:12px 14px;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px}
+.duel-res-side.winner{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.duel-res-name{font-family:var(--serif);font-size:19px;overflow-wrap:anywhere}
+.duel-res-num{font-family:var(--serif);font-size:64px;font-weight:700;line-height:1.05;font-variant-numeric:lining-nums tabular-nums}
+.duel-res-comp{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.duel-res-tag{display:inline-block;margin-top:8px;padding:2px 10px;border-radius:999px;background:var(--gold);color:var(--gold-ink);font-size:13px;font-weight:700}
+.duel-res-vs{align-self:center;font-family:var(--serif);font-size:26px;color:var(--muted)}
+.duel-summary-wrap{grid-area:summary;margin-top:12px}
+.duel-summary{font-size:17px;font-weight:600}
+.duel-summary.tie{color:var(--warn)}
+.duel-rounds{margin-top:2px;font-size:13.5px;color:var(--muted)}
+.tie-msg{font-size:17px}
+.tie-foot{flex-direction:column;align-items:stretch}
+.tie-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.tie-keep{align-self:flex-end}
+body[data-mode="duelo"] .kbd-hint{display:none}
+.edit-sides{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
+@media (max-width:600px){
+  .duel-result{grid-template-columns:minmax(0,1fr)}
+  .duel-res-vs{display:none}
+}
+/* resumo com IA */
+.ai-intro{margin-bottom:14px}
+.ai-tabs{display:inline-flex}
+.key-row{display:flex;gap:8px}
+.key-row .input{flex:1;min-width:0;font-family:Consolas,"Cascadia Mono",monospace;font-size:15px}
+.key-help{margin-top:6px}
+.ai-error{margin-top:12px;padding:10px 12px;background:rgba(255,123,123,.1);border:1px solid rgba(255,123,123,.5);border-radius:9px;color:#ffc4c4;font-size:14.5px}
+.ai-error-detail{display:block;margin-top:4px;font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.ai-setup-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
+.ai-setup-right{display:flex;gap:8px;margin-left:auto}
+.ai-what{font-size:17px;margin-bottom:4px}
+.ai-privacy{margin-top:4px}
+.ai-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:16px 0 4px}
+.ai-busy{color:var(--muted)}
+textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
+.ai-out-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Rolador de Urgm</div>
+  <div class="hist-picker">
+    <span class="hist-label" id="histLabel">Histórico</span>
+    <button type="button" class="hist-btn" id="histBtn" aria-haspopup="menu" aria-expanded="false">
+      <span class="name" id="histName"></span>
+      <span class="ico" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </button>
+    <div class="dropdown center" id="histMenu" role="menu" hidden></div>
+  </div>
+  <div class="top-right">
+    <span class="save-status" id="saveStatus" role="status"></span>
+    <button type="button" class="menu-btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false">Menu<span class="menu-dot" id="menuDot" hidden></span></button>
+    <div class="dropdown right" id="mainMenu" role="menu" hidden></div>
+  </div>
+</header>
+<div class="banner" id="banner" role="alert" hidden></div>
+<noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o rolador.</p></noscript>
+
+<main class="layout">
+  <section class="roll-panel" aria-label="Nova rolagem">
+    <div class="tabs" role="tablist" aria-label="Tipo de rolagem">
+      <button type="button" class="tab" role="tab" data-mode="fixa">Fixa</button>
+      <button type="button" class="tab" role="tab" data-mode="dados">Dados</button>
+      <button type="button" class="tab" role="tab" data-mode="tabela">Tabela</button>
+      <button type="button" class="tab" role="tab" data-mode="duelo">Duelo</button>
+    </div>
+
+    <label class="field">
+      <span class="field-label">O que está sendo rolado? <span class="opt">opcional</span></span>
+      <input class="input" id="fTitle" type="text" maxlength="120" autocomplete="off" placeholder="Ex.: Ataque do goblin">
+    </label>
+    <button type="button" class="link-btn desc-toggle" id="descToggle">+ Adicionar descrição</button>
+    <label class="field" id="descWrap" hidden>
+      <span class="field-label">Descrição <span class="opt">opcional</span></span>
+      <textarea class="input" id="fDesc" rows="3" maxlength="2000" placeholder="Detalhes para lembrar depois"></textarea>
+    </label>
+
+    <div class="mode-body" data-for="fixa">
+      <div class="row2">
+        <label class="field"><span class="field-label">Atributo</span>
+          <input class="input num-input" id="fAtr" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="60"></label>
+        <label class="field"><span class="field-label">Quanto fixar</span>
+          <input class="input num-input" id="fFixa" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="0"></label>
+      </div>
+    </div>
+    <div class="mode-body" data-for="dados" hidden>
+      <label class="field"><span class="field-label">Dados</span>
+        <input class="input num-input" id="fExpr" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="2d6+3"></label>
+      <div class="chips" id="chips" aria-label="Atalhos de dados">
+        <button type="button" class="chip" data-die="4">d4</button>
+        <button type="button" class="chip" data-die="6">d6</button>
+        <button type="button" class="chip" data-die="8">d8</button>
+        <button type="button" class="chip" data-die="10">d10</button>
+        <button type="button" class="chip" data-die="12">d12</button>
+        <button type="button" class="chip" data-die="20">d20</button>
+        <button type="button" class="chip" data-die="100">d100</button>
+        <button type="button" class="chip quiet" data-mod="1">+1</button>
+        <button type="button" class="chip quiet" data-mod="-1">−1</button>
+        <button type="button" class="chip quiet" data-clear="1">Limpar</button>
+      </div>
+    </div>
+    <div class="mode-body" data-for="tabela" hidden>
+      <label class="field"><span class="field-label">Tabela</span>
+        <select class="input" id="fTable"></select></label>
+      <button type="button" class="link-btn tables-link" id="openTablesFromForm">Criar ou editar tabelas</button>
+    </div>
+
+    <div class="mode-body" data-for="duelo" hidden>
+      <div class="duel-side" data-side="0">
+        <div class="duel-head">
+          <input class="input duel-name" id="d0Name" type="text" maxlength="40" autocomplete="off" value="Ataque" aria-label="Nome do primeiro lado">
+          <div class="mini-tabs" role="group" aria-label="Como o primeiro lado rola">
+            <button type="button" class="mini-tab" data-side="0" data-dmode="fixa" aria-pressed="true">Fixa</button>
+            <button type="button" class="mini-tab" data-side="0" data-dmode="dados" aria-pressed="false">Dados</button>
+          </div>
+        </div>
+        <div class="row2" data-dfor="fixa">
+          <label class="field"><span class="field-label">Atributo</span>
+            <input class="input num-input" id="d0Atr" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="60"></label>
+          <label class="field"><span class="field-label">Quanto fixar</span>
+            <input class="input num-input" id="d0Fixa" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="0"></label>
+        </div>
+        <label class="field" data-dfor="dados" hidden><span class="field-label">Dados</span>
+          <input class="input num-input" id="d0Expr" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="2d6+3"></label>
+        <div class="check-row">
+          <span class="field-label">Requisito <span class="opt">opcional</span></span>
+          <div class="check-inputs"><select class="input op-select" id="d0Op" aria-label="Sinal do requisito"></select>
+            <input class="input num-input" id="d0Alvo" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="alvo" aria-label="Alvo do requisito"></div>
+        </div>
+      </div>
+      <div class="duel-vs" aria-hidden="true">contra</div>
+      <div class="duel-side" data-side="1">
+        <div class="duel-head">
+          <input class="input duel-name" id="d1Name" type="text" maxlength="40" autocomplete="off" value="Defesa" aria-label="Nome do segundo lado">
+          <div class="mini-tabs" role="group" aria-label="Como o segundo lado rola">
+            <button type="button" class="mini-tab" data-side="1" data-dmode="fixa" aria-pressed="true">Fixa</button>
+            <button type="button" class="mini-tab" data-side="1" data-dmode="dados" aria-pressed="false">Dados</button>
+          </div>
+        </div>
+        <div class="row2" data-dfor="fixa">
+          <label class="field"><span class="field-label">Atributo</span>
+            <input class="input num-input" id="d1Atr" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="60"></label>
+          <label class="field"><span class="field-label">Quanto fixar</span>
+            <input class="input num-input" id="d1Fixa" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="0"></label>
+        </div>
+        <label class="field" data-dfor="dados" hidden><span class="field-label">Dados</span>
+          <input class="input num-input" id="d1Expr" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="2d6+3"></label>
+        <div class="check-row">
+          <span class="field-label">Requisito <span class="opt">opcional</span></span>
+          <div class="check-inputs"><select class="input op-select" id="d1Op" aria-label="Sinal do requisito"></select>
+            <input class="input num-input" id="d1Alvo" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="alvo" aria-label="Alvo do requisito"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field check-row" id="checkRow">
+      <span class="field-label">Comparar com <span class="opt">opcional</span></span>
+      <div class="check-inputs"><select class="input op-select" id="fOp" aria-label="Sinal da comparação"></select>
+        <input class="input num-input" id="fAlvo" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="alvo" aria-label="Alvo da comparação"></div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Cor <span class="opt" id="colorName">sem cor</span></span>
+      <div class="palette" id="palette" role="radiogroup" aria-label="Cor da rolagem"></div>
+    </div>
+
+    <div class="preview hint" id="preview" aria-live="polite"></div>
+    <button type="button" class="roll-btn" id="rollBtn">Rolar</button>
+    <p class="dest">Vai para o histórico <strong id="destName"></strong></p>
+    <p class="kbd-hint">Enter avança os campos; no último, rola. Os campos continuam preenchidos para a próxima.</p>
+  </section>
+
+  <section class="results" aria-label="Resultados">
+    <div class="last-card empty" id="lastCard" aria-live="polite"></div>
+    <div class="log-box">
+      <div class="log-head">
+        <h2 class="log-title">Histórico</h2>
+        <span class="log-count" id="logCount"></span>
+        <button type="button" class="untitled-btn" id="untitledBtn" hidden></button>
+        <div class="log-tools">
+          <button type="button" class="btn small ghost" id="aiBtn">Resumo com IA</button>
+          <button type="button" class="btn small ghost" id="sepBtn">Adicionar separador</button>
+          <button type="button" class="btn small ghost" id="filterBtn" aria-expanded="false">Filtrar</button>
+        </div>
+      </div>
+      <div class="filter-row" id="filterRow" hidden>
+        <div class="filter-line"><span class="filter-label">Cor</span><div class="palette" id="filterPalette" aria-label="Filtrar por cor"></div></div>
+        <div class="filter-line">
+          <label class="check"><input type="checkbox" id="fltUntitled"> Só sem título</label>
+          <label class="check"><input type="checkbox" id="fltPinned"> Só fixadas</label>
+          <input class="input search" id="fltSearch" type="search" autocomplete="off" placeholder="Buscar no título ou na descrição">
+        </div>
+      </div>
+      <div class="log-scroll" id="logScroll">
+        <div class="filter-banner" id="filterBanner" hidden></div>
+        <div id="pinnedBox"></div>
+        <ol class="log" id="log"></ol>
+        <div id="logMore"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual" hidden></div>
+
+<dialog id="editDlg" aria-labelledby="editHead">
+  <div class="dlg-head"><h2 id="editHead">Rolagem</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <div class="edit-result" id="editResult"></div>
+    <label class="field"><span class="field-label">Título</span>
+      <input class="input" id="eTitle" type="text" maxlength="120" autocomplete="off" placeholder="Ex.: Ataque do goblin"></label>
+    <label class="field"><span class="field-label">Descrição</span>
+      <textarea class="input" id="eDesc" rows="4" maxlength="2000"></textarea></label>
+    <div class="field"><span class="field-label">Cor <span class="opt" id="eColorName"></span></span>
+      <div class="palette" id="ePalette" role="radiogroup" aria-label="Cor da rolagem"></div></div>
+    <div class="edit-actions">
+      <button type="button" class="btn primary" id="eTie" hidden>Decidir empate</button>
+      <button type="button" class="btn" id="eRepeat">Repetir esta rolagem</button>
+      <button type="button" class="btn" id="ePin">Fixar no topo</button>
+    </div>
+    <div id="eMoveBox">
+      <span class="field-label">Mover para outro histórico</span>
+      <div class="move-row"><select class="input" id="eMoveSel"></select><button type="button" class="btn" id="eMoveBtn">Mover</button></div>
+    </div>
+  </div>
+  <div class="dlg-foot"><span class="note">Título, descrição e cor são salvos sozinhos.</span><button type="button" class="btn danger" id="eDelete">Apagar rolagem</button></div>
+</dialog>
+
+<dialog id="sepDlg" aria-labelledby="sepHead">
+  <div class="dlg-head"><h2 id="sepHead">Separador</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body"><label class="field"><span class="field-label">Texto do separador</span>
+    <input class="input" id="sText" type="text" maxlength="120" autocomplete="off"></label></div>
+  <div class="dlg-foot"><span class="note">Salvo sozinho.</span><button type="button" class="btn danger" id="sDelete">Apagar separador</button></div>
+</dialog>
+
+<dialog id="tablesDlg" class="wide" aria-labelledby="tablesHead">
+  <div class="dlg-head"><h2 id="tablesHead">Tabelas de eventos</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body tables-layout">
+    <nav class="tables-nav" aria-label="Suas tabelas">
+      <ul class="tables-list" id="tablesList"></ul>
+      <button type="button" class="btn" id="newTableBtn">Nova tabela</button>
+    </nav>
+    <div id="tableEditor">
+      <label class="field"><span class="field-label">Nome da tabela</span>
+        <input class="input" id="tName" type="text" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span class="field-label">Itens <span class="opt">um por linha</span></span>
+        <textarea class="input items-area" id="tItems" rows="14" placeholder="Céu limpo&#10;Chuva fina&#10;Nevoeiro&#10;Tempestade"></textarea></label>
+      <div class="table-foot"><span class="note" id="tCount"></span><button type="button" class="btn danger small" id="tDelete">Apagar tabela</button></div>
+    </div>
+    <p class="tables-empty" id="tablesEmpty" hidden>Nenhuma tabela ainda. Clique em “Nova tabela” e escreva um item por linha. Exemplo: uma tabela “Clima” com um tipo de clima em cada linha.</p>
+  </div>
+</dialog>
+
+<dialog id="trashDlg" aria-labelledby="trashHead">
+  <div class="dlg-head"><h2 id="trashHead">Lixeira</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body"><p class="note">Tudo o que é apagado fica aqui por 30 dias. Depois disso some de vez.</p><ul class="trash-list" id="trashList"></ul></div>
+  <div class="dlg-foot"><span></span><button type="button" class="btn danger" id="emptyTrashBtn">Esvaziar lixeira</button></div>
+</dialog>
+
+<dialog id="promptDlg" aria-labelledby="promptHead">
+  <div class="dlg-head"><h2 id="promptHead"></h2></div>
+  <div class="dlg-body">
+    <p class="prompt-msg" id="promptMsg"></p>
+    <label class="field" id="promptField"><span class="field-label" id="promptLabel"></span>
+      <input class="input" id="promptInput" type="text" maxlength="120" autocomplete="off"></label>
+  </div>
+  <div class="dlg-foot"><button type="button" class="btn ghost" id="promptCancel">Cancelar</button><button type="button" class="btn primary" id="promptOk">Ok</button></div>
+</dialog>
+
+<dialog id="tieDlg" aria-labelledby="tieHead">
+  <div class="dlg-head"><h2 id="tieHead">Empate</h2></div>
+  <div class="dlg-body"><p class="tie-msg" id="tieMsg"></p></div>
+  <div class="dlg-foot tie-foot">
+    <span class="tie-actions">
+      <button type="button" class="btn" id="tieWinA">Primeiro lado vence</button>
+      <button type="button" class="btn" id="tieWinB">Segundo lado vence</button>
+      <button type="button" class="btn primary" id="tieReroll">Rolar de novo</button>
+    </span>
+    <button type="button" class="link-btn tie-keep" id="tieKeep">Deixar empate e decidir depois</button>
+  </div>
+</dialog>
+
+<dialog id="aiDlg" class="wide" aria-labelledby="aiHead">
+  <div class="dlg-head"><h2 id="aiHead">Resumo da sessão com IA</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <div id="aiSetup" hidden>
+      <p class="note ai-intro">Escolha a IA e cole a chave da API. A chave fica só neste navegador: não vai para o backup nem para o arquivo.</p>
+      <div class="field"><span class="field-label">IA</span>
+        <div class="mini-tabs ai-tabs" role="group" aria-label="Qual IA usar">
+          <button type="button" class="mini-tab" data-ai="claude" aria-pressed="true">Claude</button>
+          <button type="button" class="mini-tab" data-ai="gemini" aria-pressed="false">Gemini</button>
+        </div></div>
+      <label class="field"><span class="field-label">Modelo</span><select class="input" id="aiModel"></select></label>
+      <label class="field" id="aiModelCustomWrap" hidden><span class="field-label">ID do modelo</span>
+        <input class="input" id="aiModelCustom" type="text" maxlength="100" autocomplete="off" spellcheck="false"></label>
+      <div class="field"><label class="field-label" for="aiKey">Chave da API</label>
+        <div class="key-row"><input class="input" id="aiKey" type="password" maxlength="300" autocomplete="off" spellcheck="false">
+          <button type="button" class="btn" id="aiKeyShow">Mostrar</button></div>
+        <p class="note key-help" id="aiKeyHelp"></p></div>
+      <label class="check"><input type="checkbox" id="aiRemember" checked> Lembrar a chave neste navegador</label>
+      <div class="ai-error" id="aiSetupError" role="alert" hidden></div>
+      <div class="ai-setup-actions">
+        <button type="button" class="btn danger small" id="aiForget">Esquecer chave</button>
+        <span class="ai-setup-right"><button type="button" class="btn ghost" id="aiSetupBack">Voltar</button><button type="button" class="btn primary" id="aiSave">Salvar</button></span>
+      </div>
+    </div>
+    <div id="aiMain" hidden>
+      <p class="ai-what" id="aiWhat"></p>
+      <p class="note"><span id="aiWho"></span> <button type="button" class="link-btn" id="aiChange">Trocar IA ou chave</button></p>
+      <p class="note ai-privacy">Títulos, descrições e resultados deste histórico vão para a IA escolhida. Os números da sessão são contados aqui mesmo, sem IA.</p>
+      <div class="ai-actions">
+        <button type="button" class="btn primary" id="aiGenerate">Gerar resumo</button>
+        <span class="ai-busy" id="aiBusy" role="status" hidden>Gerando o resumo… costuma levar alguns segundos.</span>
+        <button type="button" class="btn ghost" id="aiCancel" hidden>Cancelar</button>
+      </div>
+      <div class="ai-error" id="aiError" role="alert" hidden></div>
+      <div id="aiOutWrap" hidden>
+        <textarea class="input ai-out" id="aiOut" rows="16" spellcheck="false" aria-label="Resumo gerado"></textarea>
+        <div class="ai-out-foot"><span class="note" id="aiCopyNote">Dá para editar o texto antes de copiar.</span><button type="button" class="btn primary" id="aiCopy">Copiar</button></div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="copyDlg" aria-labelledby="copyHead">
+  <div class="dlg-head"><h2 id="copyHead">Salvar arquivo</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body">
+    <p class="prompt-msg" id="copyMsg"></p>
+    <textarea class="input copy-area" id="copyText" rows="10" readonly spellcheck="false"></textarea>
+  </div>
+  <div class="dlg-foot"><span class="note" id="copyNote"></span><button type="button" class="btn primary" id="copyBtn">Copiar</button></div>
+</dialog>
+
+<input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= constantes ================= */
+  const STORAGE_KEY = 'rolador-urgm:dados:v1';
+  const TRASH_DAYS = 30;
+  const DAY = 86400000;
+  const LOG_PAGE = 200;
+  const MAX_NUM = 9999999;
+  const STORAGE_SOFT_LIMIT = 4000000; // caracteres (~80% do limite comum de 5 MB)
+  const ROLL_GAP_MS = 450;            // evita rolagem dupla por clique duplo
+  const NO_COLOR = '#3b4a68';
+
+  const COLORS = [
+    { id: 'vermelho', name: 'Vermelho', hex: '#ef5350' },
+    { id: 'laranja',  name: 'Laranja',  hex: '#ff8a3d' },
+    { id: 'amarelo',  name: 'Amarelo',  hex: '#f5cf4f' },
+    { id: 'verde',    name: 'Verde',    hex: '#5cc26b' },
+    { id: 'turquesa', name: 'Turquesa', hex: '#2fc4bd' },
+    { id: 'azul',     name: 'Azul',     hex: '#5aa2ff' },
+    { id: 'roxo',     name: 'Roxo',     hex: '#a67cf2' },
+    { id: 'rosa',     name: 'Rosa',     hex: '#f06aa8' },
+  ];
+  const COLOR = {};
+  COLORS.forEach((c) => { COLOR[c.id] = c; });
+
+  const ICONS = {
+    check: { box: '0 0 14 14', d: 'M2.5 7.5 5.5 10.5 11.5 3.5', stroke: true },
+    pin: { box: '0 0 16 16', d: 'M10 1.2 14.8 6l-1.9.7-2.7 2.7.4 3.4-1.5 1.5-2.7-2.7-4 4-.8-.8 4-4-2.7-2.7L4.4 6.6l3.4.4 2.7-2.7z', stroke: false },
+  };
+
+  /* ================= estado ================= */
+  let state = null;
+  let storageAvailable = true;
+  let saveFailed = false;
+  let saveBlocked = false;
+  let corruptRaw = null;
+  let corruptNoticeDismissed = false;
+  let lastSavedSize = 0;
+  let pendingSave = null;
+
+  let formColor = null;
+  let descOpen = false;
+  let attempted = false;
+  let lastRollTime = 0;
+  let openMenuId = null;
+  let filterOpen = false;
+  const filters = { colors: new Set(), noTitle: false, pinned: false, q: '' };
+  let logLimit = LOG_PAGE;
+  let editingId = null;
+  let editingSepId = null;
+  let editingTableId = null;
+  let promptResolve = null;
+  let toastTimer = null;
+  let renderSoonTimer = null;
+
+  /* ================= utilidades ================= */
+  const $ = (id) => document.getElementById(id);
+
+  function h(tag, props, ...kids) {
+    const node = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null || v === false) continue;
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k === 'vars') { for (const name in v) if (v[name] != null) node.style.setProperty(name, v[name]); }
+        else if (k.slice(0, 2) === 'on' && typeof v === 'function') node.addEventListener(k.slice(2), v);
+        else if (v === true) node.setAttribute(k, '');
+        else node.setAttribute(k, String(v));
+      }
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false || kid === '') continue;
+      node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return node;
+  }
+
+  function icon(name, cls) {
+    const def = ICONS[name];
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', def.box);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', def.d);
+    if (def.stroke) {
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+    } else path.setAttribute('fill', 'currentColor');
+    svg.append(path);
+    const span = document.createElement('span');
+    span.className = 'ico' + (cls ? ' ' + cls : '');
+    span.setAttribute('aria-hidden', 'true');
+    span.append(svg);
+    return span;
+  }
+
+  const hasCrypto = !!(window.crypto && typeof window.crypto.getRandomValues === 'function');
+
+  /* Inteiro uniforme de 1 a n, com o gerador criptográfico do navegador. */
+  function randInt(n) {
+    if (!Number.isSafeInteger(n) || n < 1) throw new RangeError('randInt: n inválido');
+    if (n === 1) return 1;
+    if (!hasCrypto) return 1 + Math.floor(Math.random() * n);
+    const RANGE = 4294967296;
+    const limit = RANGE - (RANGE % n); // descarta a sobra para não viciar o resultado
+    const buf = new Uint32Array(1);
+    let x;
+    do { window.crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+    return 1 + (x % n);
+  }
+
+  function uid(prefix) {
+    let r;
+    if (hasCrypto) { const b = new Uint32Array(2); window.crypto.getRandomValues(b); r = b[0].toString(36) + b[1].toString(36); }
+    else r = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+    return prefix + '_' + Date.now().toString(36) + r;
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  function startOfDay(ts) { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function daysBetween(ts) { return Math.round((startOfDay(Date.now()) - startOfDay(ts)) / DAY); }
+  function isToday(ts) { return daysBetween(ts) === 0; }
+  function clock(ts) { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function dayMonth(ts) { const d = new Date(ts); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+  function fullDate(ts) { return dayMonth(ts) + '/' + new Date(ts).getFullYear(); }
+  function listWhen(ts) { return isToday(ts) ? clock(ts) : dayMonth(ts) + ' ' + clock(ts); }
+  function dayWord(ts) { const d = daysBetween(ts); if (d <= 0) return 'hoje'; if (d === 1) return 'ontem'; return dayMonth(ts); }
+  function ago(ts) { if (!ts) return 'nunca'; const d = daysBetween(ts); if (d <= 0) return 'hoje'; if (d === 1) return 'ontem'; return 'há ' + d + ' dias'; }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function joinPt(parts) { return parts.length <= 1 ? parts.join('') : parts.slice(0, -1).join(', ') + ' e ' + parts[parts.length - 1]; }
+  function colorHex(id) { return id && COLOR[id] ? COLOR[id].hex : null; }
+  function colorLabel(id) { return id && COLOR[id] ? COLOR[id].name.toLowerCase() : 'sem cor'; }
+  function fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function slug(s) { return fold(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'historico'; }
+  function stamp() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()); }
+  function uniqueName(base, taken) { if (!taken.includes(base)) return base; let i = 2; while (taken.includes(base + ' (' + i + ')')) i++; return base + ' (' + i + ')'; }
+  function defaultHistoryName() { return 'Sessão de ' + dayMonth(Date.now()); }
+  function sizeLabel(chars) { return chars < 1048576 ? Math.max(1, Math.round(chars / 1024)) + ' KB' : (chars / 1048576).toFixed(1).replace('.', ',') + ' MB'; }
+  const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const isNarrow = () => !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
+
+  /* ================= leitura segura dos dados ================= */
+  function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+  function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : null; }
+  function int(v) { return Number.isSafeInteger(v) ? v : null; }
+
+  function normEntry(e) {
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || !e.id) return null;
+    const createdAt = num(e.createdAt) || Date.now();
+    if (e.type === 'sep') return { id: e.id, type: 'sep', text: str(e.text, 120).trim() || 'Separador', createdAt };
+    if (e.type !== 'roll') return null;
+    const base = { id: e.id, type: 'roll', mode: e.mode, title: str(e.title, 120), description: str(e.description, 2000),
+      color: COLOR[e.color] ? e.color : null, pinned: e.pinned === true, createdAt };
+    if (e.mode === 'fixa') {
+      const atributo = int(e.atributo), fixa = int(e.fixa), total = int(e.total);
+      if (atributo == null || fixa == null || total == null) return null;
+      return Object.assign(base, { atributo, fixa, die: atributo - fixa, dieValue: int(e.dieValue) != null ? e.dieValue : total - fixa, total, check: normCheck(e.check) });
+    }
+    if (e.mode === 'dados') {
+      if (!Array.isArray(e.terms) || int(e.total) == null) return null;
+      const terms = [];
+      for (const t of e.terms) {
+        if (!t || typeof t !== 'object') return null;
+        const sign = t.sign === -1 ? -1 : 1;
+        if (t.kind === 'dice') {
+          const count = int(t.count), sides = int(t.sides);
+          if (count == null || sides == null || count < 1 || sides < 2) return null;
+          const rolls = Array.isArray(t.rolls) ? t.rolls.filter((x) => Number.isSafeInteger(x)) : [];
+          terms.push({ kind: 'dice', sign, count, sides, rolls });
+        } else if (t.kind === 'num') {
+          const value = int(t.value);
+          if (value == null) return null;
+          terms.push({ kind: 'num', sign, value });
+        } else return null;
+      }
+      return Object.assign(base, { expr: str(e.expr, 200) || displayTerms(terms), terms, total: e.total, min: int(e.min), max: int(e.max), check: normCheck(e.check) });
+    }
+    if (e.mode === 'duelo') return normDuel(e, base);
+    if (e.mode === 'tabela') {
+      if (typeof e.itemText !== 'string') return null;
+      return Object.assign(base, { tableId: str(e.tableId, 100), tableName: str(e.tableName, 80) || 'Tabela',
+        itemCount: int(e.itemCount) || 0, itemIndex: int(e.itemIndex) || 0, itemText: str(e.itemText, 1000) });
+    }
+    return null;
+  }
+
+  function normHistory(x) {
+    if (!x || typeof x !== 'object' || typeof x.id !== 'string' || !x.id) return null;
+    const seen = new Set();
+    const entries = [];
+    for (const raw of (Array.isArray(x.entries) ? x.entries : [])) {
+      const e = normEntry(raw);
+      if (!e || seen.has(e.id)) continue;
+      seen.add(e.id);
+      entries.push(e);
+    }
+    entries.sort((a, b) => a.createdAt - b.createdAt);
+    const createdAt = num(x.createdAt) || (entries[0] ? entries[0].createdAt : Date.now());
+    const updatedAt = num(x.updatedAt) || (entries.length ? entries[entries.length - 1].createdAt : createdAt);
+    return { id: x.id, name: str(x.name, 80).trim() || 'Histórico sem nome', createdAt, updatedAt, entries };
+  }
+
+  function normTable(t) {
+    if (!t || typeof t !== 'object' || typeof t.id !== 'string' || !t.id) return null;
+    const now = Date.now();
+    return { id: t.id, name: str(t.name, 80).trim() || 'Tabela sem nome', text: str(t.text, 20000),
+      createdAt: num(t.createdAt) || now, updatedAt: num(t.updatedAt) || now };
+  }
+
+  function normTrash(t) {
+    if (!t || typeof t !== 'object' || typeof t.id !== 'string') return null;
+    const deletedAt = num(t.deletedAt);
+    if (!deletedAt) return null;
+    let data = null;
+    if (t.kind === 'entry') data = normEntry(t.data);
+    else if (t.kind === 'history') data = normHistory(t.data);
+    else if (t.kind === 'table') data = normTable(t.data);
+    if (!data) return null;
+    const out = { id: t.id, kind: t.kind, deletedAt, data };
+    if (t.kind === 'entry') out.historyId = str(t.historyId, 100);
+    return out;
+  }
+
+  function newHistory(name) { const now = Date.now(); return { id: uid('h'), name, createdAt: now, updatedAt: now, entries: [] }; }
+  function freshState() {
+    const first = newHistory(defaultHistoryName());
+    return { version: 1, activeHistoryId: first.id, histories: [first], tables: [], trash: [], lastBackupAt: null, mode: 'fixa' };
+  }
+  function mostRecent(list) { return list.reduce((best, x) => (!best || x.updatedAt > best.updatedAt ? x : best), null); }
+
+  function normalizeState(raw) {
+    const histories = [];
+    const hIds = new Set();
+    for (const x of (Array.isArray(raw.histories) ? raw.histories : [])) {
+      const n = normHistory(x);
+      if (n && !hIds.has(n.id)) { hIds.add(n.id); histories.push(n); }
+    }
+    const tables = [];
+    const tIds = new Set();
+    for (const x of (Array.isArray(raw.tables) ? raw.tables : [])) {
+      const n = normTable(x);
+      if (n && !tIds.has(n.id)) { tIds.add(n.id); tables.push(n); }
+    }
+    const trash = (Array.isArray(raw.trash) ? raw.trash : []).map(normTrash).filter(Boolean);
+    const s = { version: 1, activeHistoryId: typeof raw.activeHistoryId === 'string' ? raw.activeHistoryId : '',
+      histories, tables, trash, lastBackupAt: num(raw.lastBackupAt),
+      mode: ['fixa', 'dados', 'tabela'].includes(raw.mode) ? raw.mode : 'fixa' };
+    if (!s.histories.length) s.histories.push(newHistory(defaultHistoryName()));
+    if (!s.histories.some((x) => x.id === s.activeHistoryId)) s.activeHistoryId = mostRecent(s.histories).id;
+    return s;
+  }
+
+  /* ================= salvar no navegador ================= */
+  function load() {
+    let raw;
+    try { raw = window.localStorage.getItem(STORAGE_KEY); }
+    catch (err) { storageAvailable = false; return freshState(); }
+    if (raw == null) return freshState();
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (err) { parsed = null; }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return normalizeState(parsed);
+    // Dados danificados: guarda uma cópia antes de qualquer coisa.
+    corruptRaw = raw;
+    try { window.localStorage.setItem(STORAGE_KEY + ':danificado:' + stamp(), raw); }
+    catch (err) { saveBlocked = true; }
+    return freshState();
+  }
+
+  function save() {
+    if (pendingSave) { clearTimeout(pendingSave); pendingSave = null; }
+    if (!storageAvailable || saveBlocked) { renderSaveStatus(); renderBanner(); return false; }
+    const json = JSON.stringify(state);
+    try { window.localStorage.setItem(STORAGE_KEY, json); lastSavedSize = json.length; saveFailed = false; }
+    catch (err) { saveFailed = true; }
+    renderSaveStatus();
+    renderBanner();
+    return !saveFailed;
+  }
+  function saveSoon() { if (pendingSave) clearTimeout(pendingSave); pendingSave = setTimeout(save, 300); }
+  function flushSave() { if (pendingSave) save(); }
+
+  /* ================= ajudantes do domínio ================= */
+  function activeHistory() { return state.histories.find((x) => x.id === state.activeHistoryId) || state.histories[0]; }
+  function findEntry(id) {
+    if (!id) return null;
+    for (const hist of state.histories) {
+      const i = hist.entries.findIndex((e) => e.id === id);
+      if (i !== -1) return { hist, index: i, entry: hist.entries[i] };
+    }
+    return null;
+  }
+  function findTable(id) { return (id && state.tables.find((t) => t.id === id)) || null; }
+  function tableItems(t) { return String(t.text || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean); }
+  function insertSorted(list, e) { let i = list.length; while (i > 0 && list[i - 1].createdAt > e.createdAt) i--; list.splice(i, 0, e); }
+  function rollsOf(hist) { return hist.entries.filter((e) => e.type === 'roll'); }
+  function latestRoll(hist) { for (let i = hist.entries.length - 1; i >= 0; i--) if (hist.entries[i].type === 'roll') return hist.entries[i]; return null; }
+  function totalRolls() { return state.histories.reduce((n, x) => n + rollsOf(x).length, 0); }
+  function lastChange() {
+    let m = 0;
+    for (const x of state.histories) m = Math.max(m, x.updatedAt);
+    for (const t of state.tables) m = Math.max(m, t.updatedAt);
+    return m;
+  }
+  function backupOverdue() {
+    const n = totalRolls();
+    if (!n) return false;
+    if (!state.lastBackupAt) return n >= 10;
+    return Date.now() - state.lastBackupAt > 14 * DAY && lastChange() > state.lastBackupAt;
+  }
+  function purgeTrash() {
+    const cutoff = Date.now() - TRASH_DAYS * DAY;
+    const before = state.trash.length;
+    state.trash = state.trash.filter((t) => t.deletedAt >= cutoff);
+    return state.trash.length !== before;
+  }
+  function pushTrash(item) { item.id = uid('t'); item.deletedAt = Date.now(); state.trash.push(item); return item.id; }
+
+  /* ================= dados livres ================= */
+  function tokenizeDice(input) {
+    const src = String(input || '').replace(/[−‒–—]/g, '-').replace(/d%/gi, 'd100');
+    if (!src.trim()) return { empty: true, terms: [] };
+    const re = /\s*([+-])?\s*(?:(\d*)[dD](\d+)|(\d+))\s*/y;
+    const terms = [];
+    let pos = 0;
+    while (pos < src.length) {
+      re.lastIndex = pos;
+      const m = re.exec(src);
+      if (!m) {
+        const rest = src.slice(pos).trim();
+        if (rest === '+' || rest === '-') return { error: 'Falta completar depois do “' + (rest === '-' ? '−' : '+') + '”.' };
+        return { error: 'Não entendi “' + rest + '”. Escreva algo como 2d6+3.' };
+      }
+      if (terms.length && !m[1]) return { error: 'Falta um + ou − antes de “' + m[0].trim() + '”.' };
+      const sign = m[1] === '-' ? -1 : 1;
+      if (m[3] !== undefined) terms.push({ kind: 'dice', sign, count: m[2] === '' ? 1 : Number(m[2]), sides: Number(m[3]) });
+      else terms.push({ kind: 'num', sign, value: Number(m[4]) });
+      pos = re.lastIndex;
+    }
+    return { terms };
+  }
+
+  function displayTerms(terms) {
+    return terms.map((t, i) => {
+      const body = t.kind === 'dice' ? t.count + 'd' + t.sides : String(t.value);
+      if (i === 0) return (t.sign < 0 ? '−' : '') + body;
+      return (t.sign < 0 ? ' − ' : ' + ') + body;
+    }).join('');
+  }
+  function compactTerms(terms) {
+    return terms.map((t, i) => {
+      const body = t.kind === 'dice' ? t.count + 'd' + t.sides : String(t.value);
+      return (t.sign < 0 ? '-' : (i === 0 ? '' : '+')) + body;
+    }).join('');
+  }
+
+  function parseDice(input) {
+    const tk = tokenizeDice(input);
+    if (tk.empty) return { empty: true };
+    if (tk.error) return { error: tk.error };
+    const terms = tk.terms;
+    if (terms.length > 20) return { error: 'Use no máximo 20 partes numa rolagem só.' };
+    let dice = 0;
+    for (const t of terms) {
+      if (t.kind === 'dice') {
+        if (t.count < 1) return { error: 'A quantidade de dados precisa ser pelo menos 1.' };
+        if (t.count > 100) return { error: 'Use no máximo 100 dados iguais de uma vez.' };
+        if (t.sides < 2) return { error: 'O dado precisa ter pelo menos 2 lados.' };
+        if (t.sides > 100000) return { error: 'O dado pode ter no máximo 100000 lados.' };
+        dice += t.count;
+      } else if (t.value > 1000000) return { error: 'Esse modificador é grande demais.' };
+    }
+    if (!dice) return { error: 'Falta o dado. Escreva algo como 1d20 ou 2d6+3.' };
+    if (dice > 300) return { error: 'São dados demais numa rolagem só (máximo 300).' };
+    let min = 0, max = 0;
+    for (const t of terms) {
+      if (t.kind === 'dice') {
+        if (t.sign > 0) { min += t.count; max += t.count * t.sides; }
+        else { min -= t.count * t.sides; max -= t.count; }
+      } else { min += t.sign * t.value; max += t.sign * t.value; }
+    }
+    return { terms, min, max, norm: displayTerms(terms) };
+  }
+
+  /* ================= rolagens ================= */
+  function buildRoll(spec, meta) {
+    const base = { id: uid('r'), type: 'roll', mode: spec.mode, title: meta.title || '', description: meta.description || '',
+      color: COLOR[meta.color] ? meta.color : null, pinned: false, createdAt: Date.now() };
+    if (spec.mode === 'fixa') {
+      const die = spec.atributo - spec.fixa;
+      const dieValue = die > 0 ? randInt(die) : 0;
+      return Object.assign(base, { atributo: spec.atributo, fixa: spec.fixa, die, dieValue, total: dieValue + spec.fixa, check: spec.check || null });
+    }
+    if (spec.mode === 'dados') {
+      const terms = spec.parsed.terms.map((t) => (t.kind === 'dice'
+        ? { kind: 'dice', sign: t.sign, count: t.count, sides: t.sides, rolls: Array.from({ length: t.count }, () => randInt(t.sides)) }
+        : { kind: 'num', sign: t.sign, value: t.value }));
+      const total = terms.reduce((acc, t) => acc + t.sign * (t.kind === 'dice' ? t.rolls.reduce((a, b) => a + b, 0) : t.value), 0);
+      return Object.assign(base, { expr: spec.parsed.norm, terms, total, min: spec.parsed.min, max: spec.parsed.max, check: spec.check || null });
+    }
+    const items = tableItems(spec.table);
+    const index = randInt(items.length);
+    return Object.assign(base, { tableId: spec.table.id, tableName: spec.table.name, itemCount: items.length, itemIndex: index, itemText: items[index - 1] });
+  }
+
+  function compText(e, full) {
+    if (e.mode === 'fixa') return fixaComp(e.atributo, e.fixa, e.dieValue);
+    if (e.mode === 'dados') return dadosComp(e.terms, full);
+    if (e.mode === 'duelo') return e.sides[0].name + ' × ' + e.sides[1].name + ': ' + duelSummary(e);
+    return 'Tabela “' + e.tableName + '”, item ' + e.itemIndex + ' de ' + e.itemCount;
+  }
+
+  /* ================= comparadores (>, ≥, =, ≤, <) ================= */
+  const OP_ORDER = ['>=', '>', '=', '<=', '<'];
+  const OPS = {
+    '>=': { sym: '≥', label: '≥ igual ou maior', short: (t) => t + ' ou mais', test: (v, t) => v >= t },
+    '>':  { sym: '>', label: '> maior que',      short: (t) => 'mais que ' + t, test: (v, t) => v > t },
+    '=':  { sym: '=', label: '= igual a',        short: (t) => 'exatamente ' + t, test: (v, t) => v === t },
+    '<=': { sym: '≤', label: '≤ igual ou menor', short: (t) => t + ' ou menos', test: (v, t) => v <= t },
+    '<':  { sym: '<', label: '< menor que',      short: (t) => 'menos que ' + t, test: (v, t) => v < t },
+  };
+
+  function readSigned(raw) {
+    const s = String(raw || '').trim().replace(/[−–]/g, '-');
+    if (!s) return { empty: true };
+    if (!/^-?\d+$/.test(s)) return { bad: true };
+    const n = Number(s);
+    if (Math.abs(n) > MAX_NUM) return { big: true };
+    return { value: n };
+  }
+
+  function normCheck(c) {
+    if (!c || typeof c !== 'object' || !OPS[c.op] || !Number.isSafeInteger(c.target)) return null;
+    return { op: c.op, target: c.target };
+  }
+
+  /* Diz se passou e explica a margem em palavras. */
+  function evalCheck(check, total) {
+    if (!check || !OPS[check.op]) return null;
+    const t = check.target;
+    const op = check.op;
+    const pass = OPS[op].test(total, t);
+    let detail;
+    if (op === '=') detail = pass ? 'exatamente ' + t : 'diferença de ' + Math.abs(total - t);
+    else if (op === '>=' || op === '>') {
+      const need = op === '>' ? t + 1 : t;
+      if (pass) detail = total === need && op === '>=' ? 'no limite' : 'por ' + (total - t);
+      else { const miss = need - total; detail = miss === 1 ? 'faltou 1' : 'faltaram ' + miss; }
+    } else {
+      const lim = op === '<' ? t - 1 : t;
+      if (pass) detail = total === lim && op === '<=' ? 'no limite' : 'por ' + (t - total);
+      else detail = 'passou do limite por ' + (total - lim);
+    }
+    return { pass, text: OPS[op].sym + ' ' + t + ', ' + detail };
+  }
+
+  /* 'never' quando não tem como passar, 'always' quando sempre passa (costuma ser erro de digitação). */
+  function checkReach(check, min, max) {
+    if (!check || min == null || max == null) return null;
+    const t = check.target;
+    switch (check.op) {
+      case '>=': return min >= t ? 'always' : max < t ? 'never' : null;
+      case '>': return min > t ? 'always' : max <= t ? 'never' : null;
+      case '=': return (t < min || t > max) ? 'never' : (min === max ? 'always' : null);
+      case '<=': return max <= t ? 'always' : min > t ? 'never' : null;
+      case '<': return max < t ? 'always' : min >= t ? 'never' : null;
+      default: return null;
+    }
+  }
+
+  function reachNote(reach) {
+    if (reach === 'never') return 'Atenção: com esse alvo não tem como passar.';
+    if (reach === 'always') return 'Atenção: com esse alvo sempre passa.';
+    return '';
+  }
+
+  function fillOpSelect(sel) {
+    if (sel.options.length) return;
+    for (const op of OP_ORDER) sel.append(h('option', { value: op, text: OPS[op].label }));
+    sel.value = '>=';
+  }
+
+  /* ================= composição de fixa e dados ================= */
+  function fixaComp(atributo, fixa, dieValue) {
+    const die = atributo - fixa;
+    if (die === 0) return 'Fixa total de ' + fixa + ', sem rolar dado (atributo ' + atributo + ')';
+    if (fixa === 0) return dieValue + ' no d' + die + ', sem fixa (atributo ' + atributo + ')';
+    return dieValue + ' no d' + die + ' + ' + fixa + ' de fixa (atributo ' + atributo + ')';
+  }
+  function dadosComp(terms, full) {
+    return terms.map((t, i) => {
+      const op = i === 0 ? (t.sign < 0 ? '−' : '') : (t.sign < 0 ? ' − ' : ' + ');
+      if (t.kind === 'num') return op + t.value;
+      const rolls = t.rolls || [];
+      const list = !full && rolls.length > 12 ? rolls.slice(0, 12).join(', ') + ', …' : rolls.join(', ');
+      return op + t.count + 'd' + t.sides + ' (' + list + ')';
+    }).join('');
+  }
+  function rollTerms(terms) {
+    const out = terms.map((t) => (t.kind === 'dice'
+      ? { kind: 'dice', sign: t.sign, count: t.count, sides: t.sides, rolls: Array.from({ length: t.count }, () => randInt(t.sides)) }
+      : { kind: 'num', sign: t.sign, value: t.value }));
+    const total = out.reduce((acc, t) => acc + t.sign * (t.kind === 'dice' ? t.rolls.reduce((a, b) => a + b, 0) : t.value), 0);
+    return { terms: out, total };
+  }
+  function bareTerms(terms) {
+    return terms.map((t) => (t.kind === 'dice' ? { kind: 'dice', sign: t.sign, count: t.count, sides: t.sides } : { kind: 'num', sign: t.sign, value: t.value }));
+  }
+
+  /* ================= duelo ================= */
+  const duelModes = ['fixa', 'fixa'];
+
+  function rollSide(side) {
+    if (side.mode === 'fixa') {
+      const die = side.atributo - side.fixa;
+      const dieValue = die > 0 ? randInt(die) : 0;
+      return { total: dieValue + side.fixa, dieValue };
+    }
+    return rollTerms(side.terms);
+  }
+
+  function sideComp(side, res, full) {
+    return side.mode === 'fixa' ? fixaComp(side.atributo, side.fixa, res.dieValue) : dadosComp(res.terms || [], full);
+  }
+
+  function buildDuel(spec, meta) {
+    const sides = spec.sides.map((s) => (s.mode === 'fixa'
+      ? { name: s.name, mode: 'fixa', atributo: s.atributo, fixa: s.fixa, check: s.check || null }
+      : { name: s.name, mode: 'dados', expr: s.parsed.norm, terms: bareTerms(s.parsed.terms), min: s.parsed.min, max: s.parsed.max, check: s.check || null }));
+    const e = { id: uid('r'), type: 'roll', mode: 'duelo', title: meta.title || '', description: meta.description || '',
+      color: COLOR[meta.color] ? meta.color : null, pinned: false, createdAt: Date.now(), sides, rounds: [], winner: null, decidedBy: null };
+    addDuelRound(e);
+    return e;
+  }
+
+  function addDuelRound(e) {
+    const r = e.sides.map(rollSide);
+    e.rounds.push(r);
+    if (r[0].total === r[1].total) { e.winner = null; e.decidedBy = null; }
+    else { e.winner = r[0].total > r[1].total ? 0 : 1; e.decidedBy = 'rolagem'; }
+  }
+
+  function lastRound(e) { return e.rounds[e.rounds.length - 1]; }
+
+  function duelSummary(e) {
+    const r = lastRound(e);
+    if (e.winner == null) return 'Empate em ' + r[0].total + '.';
+    const w = e.sides[e.winner].name;
+    if (e.decidedBy === 'mestre') return 'Empate em ' + r[0].total + ': o mestre deu a vitória para ' + w + '.';
+    const extra = e.rounds.length > 1 ? ' (desempate na ' + e.rounds.length + 'ª rodada)' : '';
+    return w + ' venceu por ' + Math.abs(r[0].total - r[1].total) + extra + '.';
+  }
+
+  function normTerms(list, withRolls) {
+    if (!Array.isArray(list)) return null;
+    const terms = [];
+    for (const t of list) {
+      if (!t || typeof t !== 'object') return null;
+      const sign = t.sign === -1 ? -1 : 1;
+      if (t.kind === 'dice') {
+        const count = int(t.count), sides = int(t.sides);
+        if (count == null || sides == null || count < 1 || sides < 2) return null;
+        const d = { kind: 'dice', sign, count, sides };
+        if (withRolls) d.rolls = Array.isArray(t.rolls) ? t.rolls.filter((x) => Number.isSafeInteger(x)) : [];
+        terms.push(d);
+      } else if (t.kind === 'num') {
+        const value = int(t.value);
+        if (value == null) return null;
+        terms.push({ kind: 'num', sign, value });
+      } else return null;
+    }
+    return terms;
+  }
+
+  function normSide(s) {
+    if (!s || typeof s !== 'object') return null;
+    const name = str(s.name, 40).trim() || 'Lado';
+    const check = normCheck(s.check);
+    if (s.mode === 'fixa') {
+      const atributo = int(s.atributo), fixa = int(s.fixa);
+      if (atributo == null || fixa == null || atributo < 1 || fixa < 0 || fixa > atributo) return null;
+      return { name, mode: 'fixa', atributo, fixa, check };
+    }
+    if (s.mode === 'dados') {
+      const terms = normTerms(s.terms, false);
+      if (!terms || !terms.length) return null;
+      return { name, mode: 'dados', expr: str(s.expr, 200) || displayTerms(terms), terms, min: int(s.min), max: int(s.max), check };
+    }
+    return null;
+  }
+
+  function normRoundSide(side, r) {
+    if (!r || typeof r !== 'object' || int(r.total) == null) return null;
+    if (side.mode === 'fixa') return { total: r.total, dieValue: int(r.dieValue) != null ? r.dieValue : r.total - side.fixa };
+    const terms = normTerms(r.terms, true);
+    if (!terms) return null;
+    return { total: r.total, terms };
+  }
+
+  function normDuel(e, base) {
+    if (!Array.isArray(e.sides) || e.sides.length !== 2 || !Array.isArray(e.rounds) || !e.rounds.length) return null;
+    const sides = e.sides.map(normSide);
+    if (sides.some((x) => !x)) return null;
+    const rounds = [];
+    for (const r of e.rounds.slice(0, 50)) {
+      if (!Array.isArray(r) || r.length !== 2) return null;
+      const a = normRoundSide(sides[0], r[0]);
+      const b = normRoundSide(sides[1], r[1]);
+      if (!a || !b) return null;
+      rounds.push([a, b]);
+    }
+    const winner = e.winner === 0 || e.winner === 1 ? e.winner : null;
+    const decidedBy = winner == null ? null : (e.decidedBy === 'mestre' ? 'mestre' : 'rolagem');
+    return Object.assign(base, { sides, rounds, winner, decidedBy });
+  }
+
+  function verdictEl(res, small) {
+    if (!res) return null;
+    return h('span', { class: 'verdict ' + (res.pass ? 'pass' : 'fail') + (small ? ' small' : '') },
+      h('span', { class: 'verdict-word', text: res.pass ? '✓ Passou' : '✗ Não passou' }),
+      h('span', { class: 'verdict-detail', text: res.text }));
+  }
+
+  /* ================= formulário de rolagem ================= */
+  const MODES = ['fixa', 'dados', 'tabela', 'duelo'];
+  const INVALID_IDS = ['fAtr', 'fFixa', 'fExpr', 'fTable', 'fAlvo', 'd0Atr', 'd0Fixa', 'd0Expr', 'd0Alvo', 'd1Atr', 'd1Fixa', 'd1Expr', 'd1Alvo'];
+  const DEFAULT_SIDE_NAMES = ['Ataque', 'Defesa'];
+
+  function sideValueFields(i) { return duelModes[i] === 'fixa' ? ['d' + i + 'Atr', 'd' + i + 'Fixa'] : ['d' + i + 'Expr']; }
+
+  /* Ordem do Enter: no último campo, rola. */
+  function fieldOrder() {
+    if (state.mode === 'fixa') return ['fTitle', 'fAtr', 'fFixa'];
+    if (state.mode === 'dados') return ['fTitle', 'fExpr'];
+    if (state.mode === 'tabela') return ['fTitle', 'fTable'];
+    return ['fTitle'].concat(sideValueFields(0), sideValueFields(1));
+  }
+
+  function readInt(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return { empty: true };
+    if (!/^\d+$/.test(s)) return { bad: true };
+    const n = Number(s);
+    if (n > MAX_NUM) return { big: true };
+    return { value: n };
+  }
+  function problem(field, text) { return { ok: false, level: 'problem', field, text }; }
+  function guide(field, text) { return { ok: false, level: 'hint', field, text }; }
+
+  /* Lê "sinal + alvo". Alvo vazio = sem comparação. */
+  function readCheck(opId, alvoId) {
+    const r = readSigned($(alvoId).value);
+    if (r.empty) return { check: null };
+    if (r.bad) return { error: 'O alvo só aceita número inteiro (sem letra, vírgula ou ponto).' };
+    if (r.big) return { error: 'Esse alvo é grande demais.' };
+    const op = OPS[$(opId).value] ? $(opId).value : '>=';
+    return { check: { op, target: r.value } };
+  }
+
+  /* Valida atributo + fixa; prefix vai na frente das mensagens do duelo ("Ataque: ..."). */
+  function validateFixa(atrId, fixaId, prefix) {
+    const a = readInt($(atrId).value);
+    const f = readInt($(fixaId).value);
+    if (a.bad) return problem(atrId, prefix + 'o atributo só aceita número inteiro (sem letra, vírgula ou ponto).');
+    if (a.big) return problem(atrId, prefix + 'esse atributo é grande demais.');
+    if (f.bad) return problem(fixaId, prefix + 'a fixa só aceita número inteiro (sem letra, vírgula ou ponto).');
+    if (f.big) return problem(fixaId, prefix + 'essa fixa é grande demais.');
+    if (a.empty) return guide(atrId, prefix + 'digite o atributo e quanto quer fixar.');
+    if (a.value < 1) return problem(atrId, prefix + 'o atributo precisa ser pelo menos 1.');
+    const fixa = f.empty ? 0 : f.value;
+    if (fixa > a.value) return problem(fixaId, prefix + 'a fixa (' + fixa + ') passou do atributo (' + a.value + '). Ela pode ir no máximo até ' + a.value + '.');
+    const die = a.value - fixa;
+    const min = die === 0 ? a.value : fixa + 1;
+    const roll = die === 0 ? 'fixa total ' + a.value : fixa === 0 ? '1d' + die + ', sem fixa' : '1d' + die + ' + ' + fixa;
+    return { ok: true, atributo: a.value, fixa, die, min, max: a.value, roll };
+  }
+
+  function capital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function validateForm() {
+    const mode = state.mode;
+    if (mode === 'fixa' || mode === 'dados') {
+      let base, spec, text, min, max;
+      if (mode === 'fixa') {
+        const r = validateFixa('fAtr', 'fFixa', '');
+        if (!r.ok) return Object.assign(r, { text: capital(r.text) });
+        min = r.min; max = r.max;
+        spec = { mode, atributo: r.atributo, fixa: r.fixa };
+        if (r.die === 0) text = 'Fixa igual ao atributo: o resultado sai ' + r.atributo + ', sem rolar dado.';
+        else text = 'Vai rolar ' + r.roll + '. Resultado entre ' + min + ' e ' + max + '.';
+      } else {
+        const p = parseDice($('fExpr').value);
+        if (p.empty) return guide('fExpr', 'Escreva os dados (ex.: 2d6+3) ou use os botões abaixo.');
+        if (p.error) return problem('fExpr', p.error);
+        min = p.min; max = p.max;
+        spec = { mode, parsed: p };
+        text = 'Vai rolar ' + p.norm + '. Resultado entre ' + min + ' e ' + max + '.';
+      }
+      const c = readCheck('fOp', 'fAlvo');
+      if (c.error) return problem('fAlvo', c.error);
+      spec.check = c.check;
+      if (c.check) text += ' Passa com ' + OPS[c.check.op].short(c.check.target) + '.';
+      base = { ok: true, text, spec, note: c.check ? reachNote(checkReach(c.check, min, max)) : '' };
+      return base;
+    }
+    if (mode === 'duelo') return validateDuel();
+    if (!state.tables.length) return guide('fTable', 'Você ainda não tem tabelas. Clique em “Criar ou editar tabelas”.');
+    const id = $('fTable').value;
+    if (!id) return guide('fTable', 'Escolha uma tabela.');
+    const t = findTable(id);
+    if (!t) return problem('fTable', 'Essa tabela não existe mais. Escolha outra.');
+    const n = tableItems(t).length;
+    if (!n) return problem('fTable', 'A tabela “' + t.name + '” está vazia. Adicione itens em “Criar ou editar tabelas”.');
+    const text = n === 1
+      ? 'A tabela “' + t.name + '” tem 1 item só: o resultado vai ser sempre ele.'
+      : 'Vai sortear 1 entre ' + n + ' itens de “' + t.name + '”, todos com a mesma chance.';
+    return { ok: true, text, spec: { mode, table: t } };
+  }
+
+  function sideName(i) { return $('d' + i + 'Name').value.trim().slice(0, 40) || DEFAULT_SIDE_NAMES[i]; }
+
+  function validateSide(i) {
+    const name = sideName(i);
+    const prefix = name + ': ';
+    let side, min, max, roll;
+    if (duelModes[i] === 'fixa') {
+      const r = validateFixa('d' + i + 'Atr', 'd' + i + 'Fixa', prefix);
+      if (!r.ok) return r;
+      side = { name, mode: 'fixa', atributo: r.atributo, fixa: r.fixa };
+      min = r.min; max = r.max; roll = r.roll;
+    } else {
+      const p = parseDice($('d' + i + 'Expr').value);
+      if (p.empty) return guide('d' + i + 'Expr', prefix + 'escreva os dados (ex.: 2d6+3).');
+      if (p.error) return problem('d' + i + 'Expr', prefix + p.error.charAt(0).toLowerCase() + p.error.slice(1));
+      side = { name, mode: 'dados', parsed: p };
+      min = p.min; max = p.max; roll = p.norm;
+    }
+    const c = readCheck('d' + i + 'Op', 'd' + i + 'Alvo');
+    if (c.error) return problem('d' + i + 'Alvo', prefix + c.error.charAt(0).toLowerCase() + c.error.slice(1));
+    side.check = c.check;
+    const reach = c.check ? checkReach(c.check, min, max) : null;
+    return { ok: true, side, roll, reach };
+  }
+
+  function validateDuel() {
+    const a = validateSide(0);
+    if (!a.ok) return a;
+    const b = validateSide(1);
+    if (!b.ok) return b;
+    let text = a.side.name + ' (' + a.roll + ') contra ' + b.side.name + ' (' + b.roll + '): vence quem tirar mais.';
+    const reqs = [a, b].filter((x) => x.side.check).map((x) => x.side.name + ', ' + OPS[x.side.check.op].short(x.side.check.target));
+    if (reqs.length) text += ' ' + (reqs.length === 1 ? 'Requisito: ' : 'Requisitos: ') + reqs.join('; ') + '.';
+    const notes = [a, b].filter((x) => x.reach).map((x) => 'com esse alvo, ' + x.side.name + (x.reach === 'never' ? ' não tem como passar' : ' sempre passa'));
+    return { ok: true, text, note: notes.length ? 'Atenção: ' + notes.join('; ') + '.' : '', spec: { mode: 'duelo', sides: [a.side, b.side] } };
+  }
+
+  function renderPreview() {
+    const v = validateForm();
+    const p = $('preview');
+    p.replaceChildren(v.text);
+    if (v.ok && v.note) p.append(h('span', { class: 'preview-note', text: ' ' + v.note }));
+    p.className = 'preview ' + (v.ok ? 'ok' : attempted ? 'error' : v.level);
+    for (const id of INVALID_IDS) {
+      $(id).classList.toggle('invalid', !v.ok && v.field === id && (v.level === 'problem' || attempted));
+    }
+    return v;
+  }
+
+  function onFormInput() { attempted = false; renderPreview(); }
+
+  function doRoll() {
+    if (Date.now() - lastRollTime < ROLL_GAP_MS) return; // clique duplo não rola duas vezes
+    const v = validateForm();
+    if (!v.ok) {
+      attempted = true;
+      renderPreview();
+      const f = $(v.field);
+      if (f) f.focus();
+      return;
+    }
+    lastRollTime = Date.now();
+    const meta = { title: $('fTitle').value.trim(), description: $('fDesc').value.trim(), color: formColor };
+    const entry = v.spec.mode === 'duelo' ? buildDuel(v.spec, meta) : buildRoll(v.spec, meta);
+    const hist = activeHistory();
+    insertSorted(hist.entries, entry);
+    hist.updatedAt = Date.now();
+    save();
+    attempted = false;
+    afterNewRoll();
+    if (entry.mode === 'duelo' && entry.winner == null) openTie(entry.id);
+  }
+
+  /* Depois de rolar, tudo continua preenchido e o foco fica onde estava:
+     é só apertar Enter (ou clicar em Rolar) de novo para a próxima rolagem. */
+  function afterNewRoll() {
+    renderFormState();
+    renderHeader();
+    renderLast(true);
+    renderLog();
+    $('logScroll').scrollTop = 0;
+    if (isNarrow()) $('lastCard').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  }
+
+  function repeatEntry(id) {
+    if (Date.now() - lastRollTime < ROLL_GAP_MS) return;
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    const e = f.entry;
+    const meta = { title: e.title, description: e.description, color: e.color };
+    let entry;
+    if (e.mode === 'duelo') {
+      const sides = e.sides.map((s) => (s.mode === 'fixa'
+        ? { name: s.name, mode: 'fixa', atributo: s.atributo, fixa: s.fixa, check: s.check }
+        : { name: s.name, mode: 'dados', parsed: parseDice(compactTerms(s.terms)), check: s.check }));
+      if (sides.some((s) => s.mode === 'dados' && (s.parsed.error || s.parsed.empty))) { toast('Não deu para repetir este duelo.', { error: true }); return; }
+      lastRollTime = Date.now();
+      entry = buildDuel({ mode: 'duelo', sides }, meta);
+    } else {
+      let spec;
+      if (e.mode === 'fixa') spec = { mode: 'fixa', atributo: e.atributo, fixa: e.fixa, check: e.check };
+      else if (e.mode === 'dados') {
+        const p = parseDice(compactTerms(e.terms));
+        if (p.error || p.empty) { toast('Não deu para repetir esta rolagem.', { error: true }); return; }
+        spec = { mode: 'dados', parsed: p, check: e.check };
+      } else {
+        const t = findTable(e.tableId);
+        if (!t) { toast('A tabela “' + e.tableName + '” não existe mais. Restaure pela lixeira para repetir.', { error: true }); return; }
+        if (!tableItems(t).length) { toast('A tabela “' + t.name + '” está vazia agora.', { error: true }); return; }
+        spec = { mode: 'tabela', table: t };
+      }
+      lastRollTime = Date.now();
+      entry = buildRoll(spec, meta);
+    }
+    const hist = activeHistory();
+    insertSorted(hist.entries, entry);
+    hist.updatedAt = Date.now();
+    save();
+    renderHeader();
+    renderLast(true);
+    renderLog();
+    $('logScroll').scrollTop = 0;
+    if (entry.mode === 'duelo' && entry.winner == null) openTie(entry.id);
+  }
+
+  function onFieldKeydown(ev) {
+    if (ev.key !== 'Enter' || ev.isComposing) return;
+    if (ev.repeat) { ev.preventDefault(); return; } // segurar o Enter não dispara rolagens em série
+    const id = ev.target.id;
+    if (id === 'fDesc') { if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); doRoll(); } return; }
+    ev.preventDefault();
+    if (ev.ctrlKey || ev.metaKey) { doRoll(); return; }
+    // No duelo, Enter nos campos extras do 1º lado (nome, sinal, alvo) passa para o 2º lado.
+    if (state.mode === 'duelo' && /^d0(Name|Op|Alvo)$/.test(id)) { $(sideValueFields(1)[0]).focus(); return; }
+    if (state.mode === 'duelo' && id === 'd1Name') { $(sideValueFields(1)[0]).focus(); return; }
+    const order = fieldOrder();
+    const i = order.indexOf(id);
+    if (i === -1 || i === order.length - 1) doRoll();
+    else $(order[i + 1]).focus();
+  }
+
+  function focusExprEnd() {
+    const input = $('fExpr');
+    input.focus();
+    const n = input.value.length;
+    try { input.setSelectionRange(n, n); } catch (err) { /* ok */ }
+  }
+
+  function applyChipDie(sides) {
+    const input = $('fExpr');
+    const tk = tokenizeDice(input.value);
+    if (tk.error) { attempted = true; renderPreview(); focusExprEnd(); return; }
+    const terms = tk.terms;
+    const found = terms.find((t) => t.kind === 'dice' && t.sides === sides && t.sign > 0);
+    if (found) found.count = Math.min(100, found.count + 1);
+    else {
+      const nt = { kind: 'dice', sign: 1, count: 1, sides };
+      const i = terms.findIndex((t) => t.kind === 'num');
+      if (i === -1) terms.push(nt); else terms.splice(i, 0, nt);
+    }
+    input.value = compactTerms(terms);
+    onFormInput();
+    focusExprEnd(); // assim o Enter rola, em vez de clicar no atalho de novo
+  }
+
+  function applyChipMod(delta) {
+    const input = $('fExpr');
+    const tk = tokenizeDice(input.value);
+    if (tk.error) { attempted = true; renderPreview(); focusExprEnd(); return; }
+    const terms = tk.terms.filter((t) => t.kind === 'dice');
+    const mod = tk.terms.filter((t) => t.kind === 'num').reduce((a, t) => a + t.sign * t.value, 0) + delta;
+    if (mod !== 0) terms.push({ kind: 'num', sign: mod < 0 ? -1 : 1, value: Math.abs(mod) });
+    input.value = compactTerms(terms);
+    onFormInput();
+    focusExprEnd();
+  }
+
+  function setMode(mode) {
+    if (!MODES.includes(mode) || state.mode === mode) return;
+    state.mode = mode;
+    attempted = false;
+    save();
+    renderFormState();
+  }
+
+  function setDuelMode(i, mode) {
+    if (duelModes[i] === mode) return;
+    duelModes[i] = mode;
+    attempted = false;
+    renderFormState();
+    $(sideValueFields(i)[0]).focus();
+  }
+
+  /* ================= empate no duelo ================= */
+  let tieEntryId = null;
+
+  function openTie(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.mode !== 'duelo') return;
+    tieEntryId = id;
+    fillTie(f.entry);
+    const dlg = $('tieDlg');
+    if (!dlg.open) dlg.showModal();
+    $('tieReroll').focus(); // o botão mais seguro fica com o foco
+  }
+
+  function fillTie(e) {
+    const r = lastRound(e);
+    const [a, b] = e.sides;
+    let msg = a.name + ' e ' + b.name + ' tiraram ' + r[0].total + '.';
+    if (e.rounds.length > 1) msg += ' Já é o ' + e.rounds.length + 'º empate seguido.';
+    $('tieMsg').textContent = msg;
+    $('tieWinA').textContent = a.name + ' vence';
+    $('tieWinB').textContent = b.name + ' vence';
+  }
+
+  function tieReroll() {
+    if (Date.now() - lastRollTime < ROLL_GAP_MS) return;
+    const f = findEntry(tieEntryId);
+    if (!f) { $('tieDlg').close(); return; }
+    lastRollTime = Date.now();
+    addDuelRound(f.entry);
+    save();
+    renderLast(true);
+    renderLog();
+    if (f.entry.winner == null) { fillTie(f.entry); $('tieReroll').focus(); }
+    else $('tieDlg').close();
+  }
+
+  function tieDecide(i) {
+    const f = findEntry(tieEntryId);
+    if (f) { f.entry.winner = i; f.entry.decidedBy = 'mestre'; save(); }
+    $('tieDlg').close();
+    renderLast(false);
+    renderLog();
+  }
+
+  /* ================= paletas de cor ================= */
+  function buildPalette(container, onPick) {
+    container.replaceChildren();
+    for (const c of [{ id: null, name: 'Sem cor' }].concat(COLORS)) {
+      container.append(h('button', {
+        type: 'button', class: 'swatch' + (c.id ? '' : ' swatch-none'), role: 'radio', 'aria-checked': 'false',
+        'aria-label': c.name, title: c.name, 'data-color': c.id || '', vars: { '--sw': c.id ? c.hex : null },
+        onclick: () => onPick(c.id),
+      }));
+    }
+  }
+  function markPalette(container, selected) {
+    for (const b of container.children) b.setAttribute('aria-checked', String((b.dataset.color || null) === (selected || null)));
+  }
+  function buildFilterPalette() {
+    const box = $('filterPalette');
+    box.replaceChildren();
+    for (const c of [{ id: 'none', name: 'Sem cor' }].concat(COLORS)) {
+      box.append(h('button', {
+        type: 'button', class: 'swatch small' + (c.id === 'none' ? ' swatch-none' : ''), 'aria-pressed': 'false',
+        'aria-label': 'Filtrar: ' + c.name, title: c.name, 'data-color': c.id, vars: { '--sw': c.id !== 'none' ? c.hex : null },
+        onclick: () => {
+          if (filters.colors.has(c.id)) filters.colors.delete(c.id); else filters.colors.add(c.id);
+          logLimit = LOG_PAGE;
+          renderFilterRow();
+          renderLog();
+        },
+      }));
+    }
+  }
+
+  /* ================= desenho da tela ================= */
+  function renderAll() {
+    renderHeader();
+    renderFormState();
+    renderLast(false);
+    renderFilterRow();
+    renderLog();
+    renderSaveStatus();
+    renderBanner();
+  }
+
+  function renderHeader() {
+    const hist = activeHistory();
+    $('histName').textContent = hist.name;
+    $('histBtn').title = 'Histórico atual: ' + hist.name;
+    $('destName').textContent = hist.name;
+    $('menuDot').hidden = !backupOverdue();
+  }
+
+  function renderFormState() {
+    for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', String(b.dataset.mode === state.mode));
+    for (const el of document.querySelectorAll('.mode-body')) el.hidden = el.dataset.for !== state.mode;
+    $('descWrap').hidden = !descOpen;
+    $('descToggle').hidden = descOpen;
+    $('checkRow').hidden = !(state.mode === 'fixa' || state.mode === 'dados');
+    document.body.dataset.mode = state.mode;
+    for (let i = 0; i < 2; i++) {
+      for (const t of document.querySelectorAll('.mini-tab[data-side="' + i + '"]')) t.setAttribute('aria-pressed', String(t.dataset.dmode === duelModes[i]));
+      for (const el of document.querySelectorAll('.duel-side[data-side="' + i + '"] [data-dfor]')) el.hidden = el.dataset.dfor !== duelModes[i];
+    }
+    renderTableSelect();
+    markPalette($('palette'), formColor);
+    $('colorName').textContent = colorLabel(formColor);
+    $('destName').textContent = activeHistory().name;
+    renderPreview();
+  }
+
+  function renderTableSelect() {
+    const sel = $('fTable');
+    const cur = sel.value;
+    sel.replaceChildren(
+      h('option', { value: '', text: state.tables.length ? 'Escolha uma tabela…' : 'Nenhuma tabela criada ainda' }),
+      ...state.tables.map((t) => h('option', { value: t.id, text: t.name + ' (' + plural(tableItems(t).length, 'item', 'itens') + ')' })));
+    sel.value = findTable(cur) ? cur : '';
+  }
+
+  function renderSaveStatus() {
+    const el = $('saveStatus');
+    el.replaceChildren();
+    if (!storageAvailable || saveBlocked) { el.className = 'save-status bad'; el.append('Salvamento desligado'); }
+    else if (saveFailed) { el.className = 'save-status bad'; el.append('Não foi salvo'); }
+    else { el.className = 'save-status'; el.append(icon('check'), 'Salvo no navegador'); }
+  }
+
+  function renderBanner() {
+    const b = $('banner');
+    let n = null;
+    if (!storageAvailable) {
+      n = { kind: 'error', text: 'Este navegador está bloqueando o salvamento. O que for rolado agora some quando a aba fechar. Antes de sair, use Menu > Exportar backup completo.',
+        actions: [['Exportar backup completo', exportAll]] };
+    } else if (saveBlocked) {
+      n = { kind: 'error', text: 'Os dados salvos estavam danificados. Para não apagá-los, o salvamento está pausado. Salve uma cópia dos dados antigos para continuar salvando.',
+        actions: [['Salvar cópia e continuar', async () => {
+          const r = await saveCorruptCopy();
+          if (r !== 'saved' && r !== 'copied') return;
+          saveBlocked = false;
+          save();
+          renderAll();
+        }]] };
+    } else if (saveFailed) {
+      n = { kind: 'error', text: 'Não deu para salvar: o espaço do navegador para o rolador acabou. Exporte um backup completo e depois esvazie a lixeira ou apague históricos antigos.',
+        actions: [['Exportar backup completo', exportAll], ['Abrir lixeira', openTrash]] };
+    } else if (corruptRaw != null && !corruptNoticeDismissed) {
+      n = { kind: 'warn', text: 'Os dados salvos estavam danificados e não puderam ser abertos. Uma cópia foi guardada neste navegador e o rolador começou do zero.',
+        actions: [['Salvar cópia', saveCorruptCopy], ['Entendi', () => { corruptNoticeDismissed = true; renderBanner(); }]] };
+    } else if (lastSavedSize > STORAGE_SOFT_LIMIT) {
+      n = { kind: 'warn', text: 'O espaço do navegador está quase cheio (' + Math.min(99, Math.round(lastSavedSize / 50000)) + '% usado). Exporte um backup completo e apague históricos antigos que não usa mais.',
+        actions: [['Exportar backup completo', exportAll]] };
+    }
+    if (!n) { b.hidden = true; b.replaceChildren(); return; }
+    b.hidden = false;
+    b.className = 'banner ' + n.kind;
+    b.replaceChildren(
+      h('span', { class: 'banner-text', text: n.text }),
+      h('span', { class: 'banner-actions' }, n.actions.map(([label, fn]) => h('button', { type: 'button', class: 'btn small', onclick: fn }, label))));
+  }
+
+  function renderLast(flash) {
+    const card = $('lastCard');
+    const hist = activeHistory();
+    const e = latestRoll(hist);
+    card.replaceChildren();
+    card.className = 'last-card';
+    if (!e) {
+      card.classList.add('empty');
+      card.style.setProperty('--c', NO_COLOR);
+      card.append(h('div', { class: 'last-band' }), h('div', { class: 'last-body' },
+        h('p', { class: 'last-empty-title', text: 'Nenhuma rolagem neste histórico ainda.' }),
+        h('p', { class: 'last-empty-sub', text: 'Preencha o painel ao lado e clique em Rolar. O resultado aparece aqui, grande.' })));
+      return;
+    }
+    card.style.setProperty('--c', colorHex(e.color) || NO_COLOR);
+    const when = isToday(e.createdAt) ? 'Última rolagem às ' + clock(e.createdAt) : 'Última rolagem em ' + dayMonth(e.createdAt) + ' às ' + clock(e.createdAt);
+    const titleBtn = h('button', { type: 'button', class: 'last-title' + (e.title ? '' : ' untitled-big'), onclick: () => openEdit(e.id) },
+      e.title || 'Sem título. Clique para dar um nome.');
+    const tiedOpen = e.mode === 'duelo' && e.winner == null;
+    const actions = h('div', { class: 'last-actions' },
+      tiedOpen ? h('button', { type: 'button', class: 'btn primary', onclick: () => openTie(e.id) }, 'Decidir empate') : null,
+      h('button', { type: 'button', class: 'btn', onclick: () => repeatEntry(e.id) }, 'Repetir'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: () => openEdit(e.id) }, 'Editar'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: () => togglePin(e.id) }, e.pinned ? 'Desafixar' : 'Fixar'));
+    const body = h('div', { class: 'last-body' }, h('div', { class: 'last-meta' }, when, e.pinned ? icon('pin', 'pin') : null));
+    if (e.mode === 'duelo') {
+      card.classList.add('is-duel');
+      const r = lastRound(e);
+      const cols = [];
+      e.sides.forEach((s, i) => {
+        if (i === 1) cols.push(h('div', { class: 'duel-res-vs', 'aria-hidden': 'true', text: '×' }));
+        cols.push(h('div', { class: 'duel-res-side' + (e.winner === i ? ' winner' : '') },
+          h('div', { class: 'duel-res-name', text: s.name }),
+          h('div', { class: 'duel-res-num', text: String(r[i].total) }),
+          h('div', { class: 'duel-res-comp', text: sideComp(s, r[i]) }),
+          s.check ? verdictEl(evalCheck(s.check, r[i].total)) : null,
+          e.winner === i ? h('div', { class: 'duel-res-tag', text: 'Venceu' }) : null));
+      });
+      const earlier = e.rounds.length > 1
+        ? h('div', { class: 'duel-rounds', text: 'Rodadas anteriores: ' + e.rounds.slice(0, -1).map((x) => x[0].total + ' × ' + x[1].total).join('; ') + '.' })
+        : null;
+      body.append(h('div', { class: 'last-text' }, titleBtn, e.description ? h('p', { class: 'last-desc', text: e.description }) : null),
+        h('div', { class: 'duel-result' }, cols),
+        h('div', { class: 'duel-summary-wrap' }, h('div', { class: 'duel-summary' + (e.winner == null ? ' tie' : ''), text: duelSummary(e) }), earlier),
+        actions);
+    } else {
+      const text = h('div', { class: 'last-text' }, titleBtn,
+        h('div', { class: 'last-comp', text: compText(e) }),
+        e.check ? verdictEl(evalCheck(e.check, e.total)) : null,
+        e.description ? h('p', { class: 'last-desc', text: e.description }) : null);
+      if (e.mode === 'tabela') { card.classList.add('is-table'); body.append(text, h('div', { class: 'last-item', text: e.itemText }), actions); }
+      else body.append(h('div', { class: 'last-num' + (String(e.total).length > 5 ? ' long' : ''), text: String(e.total) }), text, actions);
+    }
+    card.append(h('div', { class: 'last-band' }), body);
+    if (flash && !reduceMotion()) { void card.offsetWidth; card.classList.add('flash'); }
+  }
+
+  /* ================= histórico ================= */
+  function filterActive() { return filters.colors.size > 0 || filters.noTitle || filters.pinned || filters.q.trim() !== ''; }
+  function matchesFilter(e) {
+    if (e.type !== 'roll') return false;
+    if (filters.colors.size && !filters.colors.has(e.color || 'none')) return false;
+    if (filters.noTitle && e.title) return false;
+    if (filters.pinned && !e.pinned) return false;
+    const q = fold(filters.q).trim();
+    const sideNames = e.mode === 'duelo' ? e.sides.map((x) => x.name).join(' ') : '';
+    if (q && !fold([e.title, e.description, e.itemText || '', e.tableName || '', sideNames].join(' ')).includes(q)) return false;
+    return true;
+  }
+  function resetFilters() {
+    filters.colors.clear();
+    filters.noTitle = false;
+    filters.pinned = false;
+    filters.q = '';
+    filterOpen = false;
+    logLimit = LOG_PAGE;
+  }
+  function clearFilters() { resetFilters(); renderFilterRow(); renderLog(); }
+
+  function renderFilterRow() {
+    $('filterRow').hidden = !filterOpen;
+    $('filterBtn').textContent = filterOpen ? 'Fechar filtro' : 'Filtrar';
+    $('filterBtn').setAttribute('aria-expanded', String(filterOpen));
+    for (const b of $('filterPalette').children) b.setAttribute('aria-pressed', String(filters.colors.has(b.dataset.color)));
+    $('fltUntitled').checked = filters.noTitle;
+    $('fltPinned').checked = filters.pinned;
+    if ($('fltSearch').value !== filters.q) $('fltSearch').value = filters.q;
+  }
+
+  function entryRow(e, opts) {
+    opts = opts || {};
+    const title = e.title ? h('span', { class: 'entry-title-text', text: e.title }) : h('span', { class: 'untitled', text: 'Sem título' });
+    let numText = String(e.total);
+    let checks = null;
+    if (e.mode === 'duelo') {
+      const r = lastRound(e);
+      numText = r[0].total + ' × ' + r[1].total;
+      const list = e.sides.map((s, i) => (s.check ? h('span', { class: 'duel-check' }, s.name + ' ', verdictEl(evalCheck(s.check, r[i].total), true)) : null)).filter(Boolean);
+      if (list.length) checks = h('span', { class: 'entry-checks' }, list);
+    } else if (e.check) checks = h('span', { class: 'entry-checks' }, verdictEl(evalCheck(e.check, e.total), true));
+    const main = h('span', { class: 'entry-main' },
+      h('span', { class: 'entry-title' }, title, e.pinned && !opts.compact ? icon('pin', 'pin') : null),
+      e.mode === 'tabela' ? h('span', { class: 'entry-item', text: e.itemText }) : null,
+      h('span', { class: 'entry-comp' + (e.mode === 'duelo' && e.winner == null ? ' tie' : ''), text: compText(e) }),
+      checks,
+      e.description && !opts.compact ? h('span', { class: 'entry-desc', text: e.description }) : null);
+    const side = h('span', { class: 'entry-side' },
+      e.mode === 'tabela' ? null : h('span', { class: 'entry-num' + (e.mode === 'duelo' ? ' duel' : String(e.total).length > 5 ? ' long' : ''), text: numText }),
+      h('span', { class: 'entry-time', text: listWhen(e.createdAt) }));
+    return h('li', null, h('button', {
+      type: 'button', class: 'entry' + (opts.newest ? ' newest' : ''), 'data-id': e.id, vars: { '--c': colorHex(e.color) },
+      onclick: () => openEdit(e.id),
+    }, h('span', { class: 'entry-band', 'aria-hidden': 'true' }), main, side));
+  }
+
+  function sepRow(e) {
+    return h('li', null, h('button', { type: 'button', class: 'sep', 'data-id': e.id, onclick: () => openSepEdit(e.id) },
+      h('span', { class: 'sep-text', text: e.text })));
+  }
+
+  function renderLog() {
+    const hist = activeHistory();
+    const rolls = rollsOf(hist);
+    $('logCount').textContent = plural(rolls.length, 'rolagem', 'rolagens');
+    const untitled = rolls.filter((e) => !e.title).length;
+    $('untitledBtn').hidden = untitled === 0;
+    $('untitledBtn').textContent = untitled + ' sem título';
+
+    const active = filterActive();
+    const list = (active ? hist.entries.filter(matchesFilter) : hist.entries.slice()).reverse();
+
+    const fb = $('filterBanner');
+    if (active) {
+      fb.hidden = false;
+      fb.replaceChildren(h('span', { text: 'Filtro ligado: mostrando ' + list.length + ' de ' + plural(rolls.length, 'rolagem', 'rolagens') + '.' }),
+        h('button', { type: 'button', class: 'btn small', onclick: clearFilters }, 'Limpar filtro'));
+    } else { fb.hidden = true; fb.replaceChildren(); }
+
+    const pb = $('pinnedBox');
+    pb.replaceChildren();
+    if (!active) {
+      const pinned = rolls.filter((e) => e.pinned).reverse();
+      if (pinned.length) {
+        pb.append(h('section', { class: 'pinned', 'aria-label': 'Rolagens fixadas' },
+          h('h3', { class: 'pinned-title' }, icon('pin'), 'Fixadas'),
+          h('ol', { class: 'log' }, pinned.map((e) => entryRow(e, { compact: true })))));
+      }
+    }
+
+    const newest = latestRoll(hist);
+    const ol = $('log');
+    ol.replaceChildren();
+    const shown = list.slice(0, logLimit);
+    for (const e of shown) ol.append(e.type === 'sep' ? sepRow(e) : entryRow(e, { newest: !!newest && e.id === newest.id }));
+
+    const more = $('logMore');
+    more.replaceChildren();
+    if (!hist.entries.length) more.append(h('p', { class: 'log-empty', text: 'Nada neste histórico ainda. Cada rolagem entra aqui, da mais nova para a mais antiga.' }));
+    else if (active && !list.length) more.append(h('p', { class: 'log-empty' }, 'Nenhuma rolagem bate com esse filtro. ',
+      h('button', { type: 'button', class: 'link-btn', onclick: clearFilters }, 'Limpar filtro')));
+    if (list.length > shown.length) {
+      more.append(h('button', { type: 'button', class: 'btn ghost more-btn', onclick: () => { logLimit += LOG_PAGE; renderLog(); } },
+        'Mostrar mais antigas (' + (list.length - shown.length) + ')'));
+    }
+  }
+
+  function renderResultsSoon() {
+    clearTimeout(renderSoonTimer);
+    renderSoonTimer = setTimeout(() => { renderLast(false); renderLog(); }, 150);
+  }
+
+  /* ================= ações sobre rolagens ================= */
+  function togglePin(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    f.entry.pinned = !f.entry.pinned;
+    save();
+    renderLast(false);
+    renderLog();
+  }
+
+  function deleteEntry(id) {
+    const f = findEntry(id);
+    if (!f) return;
+    f.hist.entries.splice(f.index, 1);
+    const isSep = f.entry.type === 'sep';
+    const tid = pushTrash({ kind: 'entry', historyId: f.hist.id, data: f.entry });
+    save();
+    renderAll();
+    toast(isSep ? 'Separador apagado.' : 'Rolagem apagada.', { undo: () => restoreFromTrash(tid) });
+  }
+
+  function moveEntry(id, targetId) {
+    const f = findEntry(id);
+    const target = state.histories.find((x) => x.id === targetId);
+    if (!f || !target || f.hist.id === targetId) return;
+    const fromId = f.hist.id;
+    f.hist.entries.splice(f.index, 1);
+    insertSorted(target.entries, f.entry);
+    target.updatedAt = Math.max(target.updatedAt, Date.now());
+    save();
+    renderAll();
+    toast('Rolagem movida para “' + target.name + '”.', {
+      undo: () => {
+        const g = findEntry(id);
+        const back = state.histories.find((x) => x.id === fromId);
+        if (!g || !back) return;
+        g.hist.entries.splice(g.index, 1);
+        insertSorted(back.entries, g.entry);
+        save();
+        renderAll();
+        toast('A rolagem voltou para “' + back.name + '”.');
+      },
+    });
+  }
+
+  function restoreFromTrash(tid, opts) {
+    opts = opts || {};
+    const i = state.trash.findIndex((t) => t.id === tid);
+    if (i === -1) { toast('Esse item não está mais na lixeira.'); return; }
+    const item = state.trash[i];
+    let msg = '';
+    if (item.kind === 'history') {
+      const hist = item.data;
+      if (state.histories.some((x) => x.id === hist.id)) hist.id = uid('h');
+      hist.name = uniqueName(hist.name, state.histories.map((x) => x.name));
+      state.histories.push(hist);
+      if (opts.removePlaceholder) {
+        const pi = state.histories.findIndex((x) => x.id === opts.removePlaceholder && x.entries.length === 0);
+        if (pi !== -1) state.histories.splice(pi, 1);
+      }
+      if (opts.activate) { state.activeHistoryId = hist.id; resetFilters(); }
+      msg = 'Histórico “' + hist.name + '” restaurado.';
+    } else if (item.kind === 'entry') {
+      const target = state.histories.find((x) => x.id === item.historyId) || activeHistory();
+      if (findEntry(item.data.id)) item.data.id = uid(item.data.type === 'sep' ? 's' : 'r');
+      insertSorted(target.entries, item.data);
+      msg = (item.data.type === 'sep' ? 'Separador restaurado' : 'Rolagem restaurada') + ' em “' + target.name + '”.';
+    } else if (item.kind === 'table') {
+      const t = item.data;
+      if (findTable(t.id)) t.id = uid('tb');
+      t.name = uniqueName(t.name, state.tables.map((x) => x.name));
+      state.tables.push(t);
+      msg = 'Tabela “' + t.name + '” restaurada.';
+    }
+    state.trash.splice(i, 1);
+    save();
+    renderAll();
+    refreshOpenDialogs();
+    toast(msg);
+  }
+
+  /* ================= históricos ================= */
+  function switchHistory(id) {
+    const hist = state.histories.find((x) => x.id === id);
+    if (!hist) return;
+    state.activeHistoryId = id;
+    resetFilters();
+    save();
+    renderAll();
+    $('logScroll').scrollTop = 0;
+    toast('Agora no histórico “' + hist.name + '”. As próximas rolagens vão para ele.');
+  }
+
+  async function newHistoryFlow() {
+    const names = state.histories.map((x) => x.name);
+    const name = await askText({ title: 'Novo histórico', label: 'Nome do histórico', value: uniqueName(defaultHistoryName(), names),
+      confirm: 'Criar e usar', message: 'As próximas rolagens vão para o histórico novo. Os outros continuam guardados.' });
+    if (name == null) return;
+    const hist = newHistory(uniqueName(name.trim().slice(0, 80) || defaultHistoryName(), names));
+    state.histories.push(hist);
+    state.activeHistoryId = hist.id;
+    resetFilters();
+    save();
+    renderAll();
+    toast('Histórico “' + hist.name + '” criado. As próximas rolagens vão para ele.');
+  }
+
+  async function renameHistoryFlow() {
+    const cur = activeHistory();
+    const name = await askText({ title: 'Renomear histórico', label: 'Nome do histórico', value: cur.name, confirm: 'Renomear' });
+    if (name == null) return;
+    const clean = name.trim().slice(0, 80);
+    if (!clean || clean === cur.name) return;
+    cur.name = uniqueName(clean, state.histories.filter((x) => x.id !== cur.id).map((x) => x.name));
+    save();
+    renderAll();
+    toast('Histórico renomeado para “' + cur.name + '”.');
+  }
+
+  function deleteHistory(id) {
+    const i = state.histories.findIndex((x) => x.id === id);
+    if (i === -1) return;
+    const hist = state.histories.splice(i, 1)[0];
+    const tid = pushTrash({ kind: 'history', data: hist });
+    let placeholder = null;
+    if (!state.histories.length) { placeholder = newHistory(defaultHistoryName()); state.histories.push(placeholder); }
+    if (state.activeHistoryId === id) state.activeHistoryId = mostRecent(state.histories).id;
+    resetFilters();
+    save();
+    renderAll();
+    toast('Histórico “' + hist.name + '” foi para a lixeira. Agora você está em “' + activeHistory().name + '”.', {
+      undo: () => restoreFromTrash(tid, { activate: true, removePlaceholder: placeholder && placeholder.id }),
+    });
+  }
+
+  async function addSeparatorFlow() {
+    const text = await askText({ title: 'Adicionar separador', label: 'Texto do separador', placeholder: 'Ex.: Início do combate',
+      confirm: 'Adicionar', message: 'O separador entra agora no histórico e ajuda a dividir as partes da sessão.' });
+    if (text == null) return;
+    const hist = activeHistory();
+    insertSorted(hist.entries, { id: uid('s'), type: 'sep', text: text.trim().slice(0, 120) || 'Separador', createdAt: Date.now() });
+    hist.updatedAt = Date.now();
+    save();
+    renderLog();
+    $('logScroll').scrollTop = 0;
+  }
+
+  /* ================= menus do topo ================= */
+  function openMenu(which) {
+    closeMenus(false);
+    const menu = $(which === 'hist' ? 'histMenu' : 'mainMenu');
+    const trigger = $(which === 'hist' ? 'histBtn' : 'menuBtn');
+    if (which === 'hist') buildHistMenu(menu); else buildMainMenu(menu);
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    openMenuId = which;
+    const first = menu.querySelector('button');
+    if (first) first.focus();
+  }
+  function closeMenus(returnFocus) {
+    if (!openMenuId) return;
+    const which = openMenuId;
+    $('histMenu').hidden = true;
+    $('mainMenu').hidden = true;
+    $('histBtn').setAttribute('aria-expanded', 'false');
+    $('menuBtn').setAttribute('aria-expanded', 'false');
+    openMenuId = null;
+    if (returnFocus) $(which === 'hist' ? 'histBtn' : 'menuBtn').focus();
+  }
+  function menuItem(label, fn, cls, meta) {
+    return h('button', { type: 'button', role: 'menuitem', class: 'dd-item' + (cls ? ' ' + cls : ''), onclick: () => { closeMenus(false); fn(); } },
+      h('span', { class: 'dd-name', text: label }), meta ? h('span', { class: 'dd-meta', text: meta }) : null);
+  }
+  function openImportPicker() {
+    const input = $('importInput');
+    closeMenus(false);
+    try { input.showPicker(); } catch (err) { toast('Clique em Menu > Importar backup com o mouse para escolher o arquivo.', { error: true }); }
+  }
+
+  function buildHistMenu(menu) {
+    const cur = activeHistory();
+    const sorted = state.histories.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    menu.replaceChildren(
+      h('div', { class: 'dd-heading', text: 'Escolha o histórico' }),
+      h('ul', { class: 'dd-list' }, sorted.map((x) => h('li', null,
+        menuItem(x.name, () => { if (x.id !== cur.id) switchHistory(x.id); }, x.id === cur.id ? 'current' : '',
+          (x.id === cur.id ? 'atual, ' : '') + plural(rollsOf(x).length, 'rolagem', 'rolagens') + ', ' + dayWord(x.updatedAt))))),
+      menuItem('+ Novo histórico', newHistoryFlow, 'accent'),
+      h('div', { class: 'dd-sep' }),
+      h('div', { class: 'dd-heading', text: 'Histórico atual: ' + cur.name }),
+      menuItem('Renomear', renameHistoryFlow),
+      menuItem('Exportar este histórico', exportHistory),
+      menuItem('Apagar este histórico', () => deleteHistory(cur.id), 'danger'));
+  }
+
+  function buildMainMenu(menu) {
+    const overdue = backupOverdue();
+    const trashN = state.trash.length;
+    menu.replaceChildren(
+      menuItem('Tabelas de eventos', () => openTables(), '', state.tables.length ? String(state.tables.length) : 'nenhuma'),
+      menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
+      menuItem('Resumo da sessão com IA', openAi),
+      h('div', { class: 'dd-sep' }),
+      menuItem('Exportar backup completo', exportAll),
+      // rótulo ligado ao campo de arquivo: o próprio navegador abre a escolha do arquivo
+      h('label', { class: 'dd-item', for: 'importInput', role: 'menuitem', tabindex: '0',
+        onclick: () => setTimeout(() => closeMenus(false), 0),
+        onkeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openImportPicker(); } } },
+        h('span', { class: 'dd-name', text: 'Importar backup' })),
+      h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
+        text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
+      h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
+  }
+
+  /* ================= aviso flutuante ================= */
+  function hideToast() {
+    const t = $('toast');
+    clearTimeout(toastTimer);
+    try { if (typeof t.hidePopover === 'function' && t.matches(':popover-open')) t.hidePopover(); } catch (err) { /* ok */ }
+    t.hidden = true;
+  }
+  function armToast(ms) { clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, ms); }
+  /* Com uma janela aberta, o resto da página fica inativo; o aviso vai para dentro dela para o "Desfazer" funcionar. */
+  function toastHost() {
+    if ($('promptDlg').open) return $('promptDlg');
+    for (const id of ['tieDlg', 'copyDlg', 'aiDlg', 'editDlg', 'sepDlg', 'tablesDlg', 'trashDlg']) if ($(id).open) return $(id);
+    return document.body;
+  }
+  function showToastEl(t) {
+    const host = toastHost();
+    if (t.parentElement !== host) host.append(t);
+    t.hidden = false;
+    if (typeof t.showPopover === 'function') {
+      try { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } catch (err) { /* segue visível sem popover */ }
+    }
+  }
+  function toast(message, opts) {
+    opts = opts || {};
+    const t = $('toast');
+    t.replaceChildren(h('span', { text: message }));
+    if (opts.undo) t.append(h('button', { type: 'button', class: 'toast-btn', onclick: () => { hideToast(); opts.undo(); } }, 'Desfazer'));
+    t.classList.toggle('error', !!opts.error);
+    showToastEl(t);
+    armToast(opts.undo ? 10000 : opts.error ? 6000 : 4000);
+  }
+
+  /* ================= janelas de pergunta ================= */
+  function openPrompt(o) {
+    if (promptResolve) { const r = promptResolve; promptResolve = null; r(null); }
+    $('promptHead').textContent = o.title;
+    $('promptMsg').textContent = o.message || '';
+    $('promptMsg').hidden = !o.message;
+    $('promptField').hidden = !o.input;
+    $('promptLabel').textContent = o.label || '';
+    const inp = $('promptInput');
+    inp.value = o.value || '';
+    inp.placeholder = o.placeholder || '';
+    const ok = $('promptOk');
+    ok.textContent = o.confirm || 'Ok';
+    ok.className = 'btn ' + (o.danger ? 'danger-solid' : 'primary');
+    $('promptCancel').hidden = !!o.noCancel;
+    const dlg = $('promptDlg');
+    return new Promise((resolve) => {
+      promptResolve = resolve;
+      if (!dlg.open) dlg.showModal();
+      if (o.input) { inp.focus(); inp.select(); }
+      else if (o.danger) $('promptCancel').focus(); // em ação perigosa, o Enter cai no Cancelar
+      else ok.focus();
+    });
+  }
+  function finishPrompt(value) {
+    const r = promptResolve;
+    promptResolve = null;
+    const dlg = $('promptDlg');
+    if (dlg.open) dlg.close();
+    if (r) r(value);
+  }
+  function askText(o) { return openPrompt(Object.assign({}, o, { input: true })); }
+  function askConfirm(o) { return openPrompt(Object.assign({}, o, { input: false })).then((v) => v !== null); }
+  function showInfo(title, message) { return openPrompt({ title, message, input: false, confirm: 'Entendi', noCancel: true }); }
+
+  /* ================= editar rolagem ================= */
+  function openEdit(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'roll') return;
+    closeMenus(false);
+    editingId = id;
+    fillEditStatic(f);
+    $('eTitle').value = f.entry.title;
+    $('eDesc').value = f.entry.description;
+    const dlg = $('editDlg');
+    if (!dlg.open) dlg.showModal();
+    $('eTitle').focus();
+  }
+
+  function fillEditStatic(f) {
+    const e = f.entry;
+    $('editHead').textContent = isToday(e.createdAt) ? 'Rolagem das ' + clock(e.createdAt) : 'Rolagem de ' + fullDate(e.createdAt) + ', ' + clock(e.createdAt);
+    const res = $('editResult');
+    res.style.setProperty('--c', colorHex(e.color) || NO_COLOR);
+    let top, detail;
+    if (e.mode === 'duelo') {
+      const r = lastRound(e);
+      top = h('span', { class: 'edit-num', text: r[0].total + ' × ' + r[1].total });
+      detail = h('span', { class: 'edit-sides' },
+        e.sides.map((s, i) => h('span', null, s.name + ': ' + sideComp(s, r[i], true) + ' ', s.check ? verdictEl(evalCheck(s.check, r[i].total), true) : null)),
+        h('span', { class: 'edit-comp', text: duelSummary(e) }));
+    } else {
+      top = e.mode === 'tabela' ? h('span', { class: 'edit-item', text: e.itemText }) : h('span', { class: 'edit-num', text: String(e.total) });
+      detail = h('span', { class: 'edit-comp', text: compText(e, true) });
+    }
+    res.replaceChildren(h('span', { class: 'edit-band' }), h('span', { class: 'edit-res-body' }, top, detail,
+      e.check ? verdictEl(evalCheck(e.check, e.total), true) : null,
+      h('span', { class: 'edit-lock', text: 'O resultado fica travado. Dá para mudar título, descrição, cor e o histórico onde ela está.' })));
+    $('eTie').hidden = !(e.mode === 'duelo' && e.winner == null);
+    markPalette($('ePalette'), e.color);
+    $('eColorName').textContent = colorLabel(e.color);
+    $('ePin').textContent = e.pinned ? 'Desafixar do topo' : 'Fixar no topo';
+    const others = state.histories.filter((x) => x.id !== f.hist.id);
+    $('eMoveBox').hidden = !others.length;
+    const sel = $('eMoveSel');
+    const prev = sel.value;
+    sel.replaceChildren(h('option', { value: '', text: 'Escolha o histórico…' }), ...others.map((x) => h('option', { value: x.id, text: x.name })));
+    if (others.some((x) => x.id === prev)) sel.value = prev;
+  }
+
+  function openSepEdit(id) {
+    const f = findEntry(id);
+    if (!f || f.entry.type !== 'sep') return;
+    editingSepId = id;
+    $('sText').value = f.entry.text;
+    const d = $('sepDlg');
+    if (!d.open) d.showModal();
+    $('sText').focus();
+    $('sText').select();
+  }
+
+  /* ================= tabelas de eventos ================= */
+  function openTables(selectId) {
+    closeMenus(false);
+    if (selectId && findTable(selectId)) editingTableId = selectId;
+    if (!findTable(editingTableId)) editingTableId = state.tables.length ? state.tables[0].id : null;
+    renderTablesList();
+    fillTableEditor();
+    const dlg = $('tablesDlg');
+    if (!dlg.open) dlg.showModal();
+    if (editingTableId) $('tItems').focus(); else $('newTableBtn').focus();
+  }
+
+  /* Atualiza a lista sem recriar os botões quando dá, para não "engolir" cliques. */
+  function renderTablesList() {
+    const ul = $('tablesList');
+    const ids = state.tables.map((t) => t.id).join('|');
+    if (ul.dataset.ids !== ids) {
+      ul.replaceChildren();
+      for (const t of state.tables) {
+        ul.append(h('li', null, h('button', { type: 'button', class: 'tl-item', 'data-id': t.id, onclick: () => selectTable(t.id) },
+          h('span', { class: 'tl-name' }), h('span', { class: 'tl-count' }))));
+      }
+      ul.dataset.ids = ids;
+    }
+    for (const btn of ul.querySelectorAll('.tl-item')) {
+      const t = findTable(btn.dataset.id);
+      if (!t) continue;
+      btn.classList.toggle('current', t.id === editingTableId);
+      btn.querySelector('.tl-name').textContent = t.name;
+      btn.querySelector('.tl-count').textContent = plural(tableItems(t).length, 'item', 'itens');
+    }
+  }
+
+  function selectTable(id) {
+    flushSave();
+    editingTableId = id;
+    renderTablesList();
+    fillTableEditor();
+    $('tItems').focus();
+  }
+
+  function fillTableEditor() {
+    const t = findTable(editingTableId);
+    $('tableEditor').hidden = !t;
+    $('tablesEmpty').hidden = !!t;
+    if (!t) return;
+    $('tName').value = t.name;
+    $('tItems').value = t.text;
+    renderTableCount(t);
+  }
+
+  function renderTableCount(t) {
+    const n = tableItems(t).length;
+    $('tCount').textContent = n ? plural(n, 'item', 'itens') + ', todos com a mesma chance. Linhas vazias são ignoradas.' : 'Nenhum item ainda. Escreva um por linha.';
+  }
+
+  function newTable() {
+    flushSave();
+    const now = Date.now();
+    const t = { id: uid('tb'), name: uniqueName('Nova tabela', state.tables.map((x) => x.name)), text: '', createdAt: now, updatedAt: now };
+    state.tables.push(t);
+    editingTableId = t.id;
+    save();
+    renderTablesList();
+    fillTableEditor();
+    renderTableSelect();
+    renderPreview();
+    $('tName').focus();
+    $('tName').select();
+  }
+
+  function deleteTable() {
+    const i = state.tables.findIndex((x) => x.id === editingTableId);
+    if (i === -1) return;
+    flushSave();
+    const t = state.tables.splice(i, 1)[0];
+    const tid = pushTrash({ kind: 'table', data: t });
+    editingTableId = state.tables.length ? state.tables[Math.min(i, state.tables.length - 1)].id : null;
+    save();
+    renderTablesList();
+    fillTableEditor();
+    renderTableSelect();
+    renderPreview();
+    toast('Tabela “' + t.name + '” foi para a lixeira.', { undo: () => { restoreFromTrash(tid); } });
+  }
+
+  /* ================= lixeira ================= */
+  function openTrash() {
+    closeMenus(false);
+    if (purgeTrash()) save();
+    renderTrash();
+    const d = $('trashDlg');
+    if (!d.open) d.showModal();
+  }
+
+  function trashLabel(it) {
+    if (it.kind === 'history') return 'Histórico “' + it.data.name + '” (' + plural(rollsOf(it.data).length, 'rolagem', 'rolagens') + ')';
+    if (it.kind === 'table') return 'Tabela “' + it.data.name + '” (' + plural(tableItems(it.data).length, 'item', 'itens') + ')';
+    const e = it.data;
+    if (e.type === 'sep') return 'Separador “' + e.text + '”';
+    if (e.mode === 'duelo') { const r = lastRound(e); return 'Duelo ' + (e.title ? '“' + e.title + '”' : 'sem título') + ': ' + r[0].total + ' × ' + r[1].total; }
+    return 'Rolagem ' + (e.title ? '“' + e.title + '”' : 'sem título') + ': ' + (e.mode === 'tabela' ? e.itemText : e.total);
+  }
+
+  function trashMeta(it) {
+    const left = Math.max(0, TRASH_DAYS - Math.floor((Date.now() - it.deletedAt) / DAY));
+    let s = 'Foi para a lixeira ' + ago(it.deletedAt) + '. Some de vez em ' + plural(left, 'dia', 'dias') + '.';
+    if (it.kind === 'entry') {
+      const src = state.histories.find((x) => x.id === it.historyId);
+      s += src ? ' Volta para “' + src.name + '”.' : ' O histórico dela não existe mais: volta para o histórico atual.';
+    }
+    return s;
+  }
+
+  function renderTrash() {
+    const ul = $('trashList');
+    ul.replaceChildren();
+    const items = state.trash.slice().sort((a, b) => b.deletedAt - a.deletedAt);
+    if (!items.length) ul.append(h('li', { class: 'trash-empty', text: 'A lixeira está vazia.' }));
+    for (const it of items) {
+      ul.append(h('li', { class: 'trash-item' },
+        h('span', { class: 'trash-info' }, h('span', { class: 'trash-name', text: trashLabel(it) }), h('span', { class: 'trash-meta', text: trashMeta(it) })),
+        h('button', { type: 'button', class: 'btn small', onclick: () => restoreFromTrash(it.id) }, 'Restaurar')));
+    }
+    $('emptyTrashBtn').disabled = !items.length;
+  }
+
+  async function emptyTrash() {
+    const n = state.trash.length;
+    if (!n) return;
+    const ok = await askConfirm({ title: 'Esvaziar lixeira?', danger: true, confirm: 'Apagar de vez',
+      message: (n === 1 ? 'O item da lixeira vai ser apagado de vez.' : 'Os ' + n + ' itens da lixeira vão ser apagados de vez.') + ' Isso não pode ser desfeito.' });
+    if (!ok) return;
+    state.trash = [];
+    save();
+    renderTrash();
+    toast('Lixeira esvaziada.');
+  }
+
+  function refreshOpenDialogs() {
+    if ($('trashDlg').open) renderTrash();
+    if ($('tablesDlg').open) {
+      if (!findTable(editingTableId)) editingTableId = state.tables.length ? state.tables[0].id : null;
+      renderTablesList();
+      const typing = document.activeElement === $('tItems') || document.activeElement === $('tName');
+      if (!typing || !findTable(editingTableId)) fillTableEditor();
+    }
+    if ($('editDlg').open) { const f = findEntry(editingId); if (!f) $('editDlg').close(); else fillEditStatic(f); }
+    if ($('sepDlg').open && !findEntry(editingSepId)) $('sepDlg').close();
+  }
+
+  /* ================= exportar e importar ================= */
+  /*
+    Salvar usa a janela "Salvar como" do próprio navegador (Chrome e Edge).
+    Se ela não existir, abre uma janela com o texto e um botão Copiar.
+    Resultado: 'saved', 'copied', 'cancelled' ou 'failed'.
+  */
+  const copyState = { resolve: null, copied: false };
+
+  async function saveTextFile(name, text, opts) {
+    opts = opts || {};
+    const mime = opts.mime || 'application/json';
+    const ext = opts.ext || '.json';
+    if (typeof window.showSaveFilePicker === 'function') {
+      let handle = null;
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: opts.description || 'Arquivo do Rolador de Urgm', accept: { [mime]: [ext] } }],
+        });
+      } catch (err) {
+        if (err && err.name === 'AbortError') return 'cancelled';
+        handle = null; // janela bloqueada pelo navegador: usa o plano B abaixo
+      }
+      if (handle) {
+        try {
+          const writable = await handle.createWritable();
+          await writable.write(text);
+          await writable.close();
+          return 'saved';
+        } catch (err) {
+          toast('Não deu para gravar o arquivo nessa pasta. Tente de novo escolhendo outra pasta.', { error: true });
+          return 'failed';
+        }
+      }
+    }
+    return openCopyDialog(name, text);
+  }
+
+  function openCopyDialog(name, text) {
+    if (copyState.resolve) { const r = copyState.resolve; copyState.resolve = null; r('cancelled'); }
+    copyState.copied = false;
+    $('copyMsg').textContent = 'Este navegador não abriu a janela de salvar. Clique em Copiar, abra o Bloco de Notas, cole o texto e salve com o nome ' + name + '.';
+    $('copyText').value = text;
+    $('copyNote').textContent = '';
+    const dlg = $('copyDlg');
+    return new Promise((resolve) => {
+      copyState.resolve = resolve;
+      if (!dlg.open) dlg.showModal();
+      $('copyBtn').focus();
+    });
+  }
+
+  async function copyFromDialog() {
+    const area = $('copyText');
+    try {
+      await navigator.clipboard.writeText(area.value);
+      copyState.copied = true;
+      $('copyNote').textContent = 'Copiado. Agora cole no Bloco de Notas e salve.';
+    } catch (err) {
+      area.focus();
+      area.select();
+      $('copyNote').textContent = 'O texto está selecionado: aperte Ctrl+C para copiar.';
+      copyState.copied = true;
+    }
+  }
+
+  async function exportAll() {
+    flushSave();
+    const payload = { app: 'rolador-urgm', kind: 'backup', version: 1, exportedAt: new Date().toISOString(),
+      data: { histories: state.histories, tables: state.tables } };
+    const result = await saveTextFile('rolador-urgm-backup-' + stamp() + '.json', JSON.stringify(payload, null, 2),
+      { description: 'Backup do Rolador de Urgm' });
+    if (result !== 'saved' && result !== 'copied') return;
+    state.lastBackupAt = Date.now();
+    save();
+    renderHeader();
+    if (result === 'saved') toast('Backup completo salvo. Guarde o arquivo num lugar seguro, como uma pasta na nuvem.');
+  }
+
+  async function exportHistory() {
+    flushSave();
+    const hist = activeHistory();
+    const payload = { app: 'rolador-urgm', kind: 'history', version: 1, exportedAt: new Date().toISOString(),
+      data: { histories: [hist], tables: [] } };
+    const result = await saveTextFile('rolador-urgm-' + slug(hist.name) + '-' + stamp() + '.json', JSON.stringify(payload, null, 2),
+      { description: 'Histórico do Rolador de Urgm' });
+    if (result === 'saved') toast('Histórico “' + hist.name + '” salvo.');
+  }
+
+  function saveCorruptCopy() {
+    if (corruptRaw == null) return Promise.resolve('cancelled');
+    return saveTextFile('rolador-urgm-dados-danificados-' + stamp() + '.txt', corruptRaw,
+      { description: 'Cópia dos dados danificados', mime: 'text/plain', ext: '.txt' });
+  }
+
+  /* Importar só acrescenta: nada do que já existe é apagado ou trocado. */
+  function mergeImport(data) {
+    const r = { newHistories: 0, rolls: 0, seps: 0, newTables: 0, inTrash: 0 };
+    const known = new Set();
+    for (const x of state.histories) for (const e of x.entries) known.add(e.id);
+    for (const t of state.trash) {
+      if (t.kind === 'entry') known.add(t.data.id);
+      if (t.kind === 'history') for (const e of t.data.entries) known.add(e.id);
+    }
+    const trashedHistories = new Set(state.trash.filter((t) => t.kind === 'history').map((t) => t.data.id));
+    const trashedTables = new Set(state.trash.filter((t) => t.kind === 'table').map((t) => t.data.id));
+    const count = (list) => { for (const e of list) { if (e.type === 'sep') r.seps++; else r.rolls++; } };
+
+    for (const raw of (Array.isArray(data.histories) ? data.histories : [])) {
+      const inc = normHistory(raw);
+      if (!inc) continue;
+      if (trashedHistories.has(inc.id)) { r.inTrash++; continue; }
+      const fresh = inc.entries.filter((e) => !known.has(e.id));
+      fresh.forEach((e) => known.add(e.id));
+      const existing = state.histories.find((x) => x.id === inc.id);
+      if (existing) {
+        for (const e of fresh) insertSorted(existing.entries, e);
+        if (fresh.length) existing.updatedAt = Math.max(existing.updatedAt, inc.updatedAt);
+        count(fresh);
+      } else {
+        if (inc.entries.length && !fresh.length) continue; // tudo já está em outro histórico
+        inc.entries = fresh;
+        inc.name = uniqueName(inc.name, state.histories.map((x) => x.name));
+        state.histories.push(inc);
+        r.newHistories++;
+        count(fresh);
+      }
+    }
+
+    for (const raw of (Array.isArray(data.tables) ? data.tables : [])) {
+      const t = normTable(raw);
+      if (!t) continue;
+      if (trashedTables.has(t.id)) { r.inTrash++; continue; }
+      const same = state.tables.find((x) => x.id === t.id);
+      if (same) {
+        if (same.text === t.text) continue;
+        t.id = uid('tb');
+        t.name = uniqueName(t.name + ' (importada)', state.tables.map((x) => x.name));
+      } else {
+        if (state.tables.some((x) => x.name === t.name && x.text === t.text)) continue;
+        t.name = uniqueName(t.name, state.tables.map((x) => x.name));
+      }
+      state.tables.push(t);
+      r.newTables++;
+    }
+    return r;
+  }
+
+  async function handleImport(file) {
+    let obj;
+    try { obj = JSON.parse(await file.text()); }
+    catch (err) { showInfo('Não deu para importar', 'Esse arquivo não pôde ser lido. Escolha um arquivo .json exportado pelo Rolador de Urgm. Nada foi alterado.'); return; }
+    let data = null;
+    if (obj && obj.app === 'rolador-urgm' && obj.data && typeof obj.data === 'object') data = obj.data;
+    else if (obj && Array.isArray(obj.histories)) data = obj;
+    if (!data) { showInfo('Não deu para importar', 'Esse arquivo não é um backup do Rolador de Urgm. Nada foi alterado.'); return; }
+    flushSave();
+    const r = mergeImport(data);
+    save();
+    renderAll();
+    refreshOpenDialogs();
+    const parts = [];
+    if (r.newHistories) parts.push(plural(r.newHistories, 'histórico novo', 'históricos novos'));
+    if (r.rolls) parts.push(plural(r.rolls, 'rolagem', 'rolagens'));
+    if (r.seps) parts.push(plural(r.seps, 'separador', 'separadores'));
+    if (r.newTables) parts.push(plural(r.newTables, 'tabela', 'tabelas'));
+    if (!parts.length && !r.inTrash) { showInfo('Nada novo para importar', 'Tudo o que tem nesse arquivo já estava aqui. Nada foi alterado.'); return; }
+    let msg = parts.length ? 'Entrou: ' + joinPt(parts) + '. ' : '';
+    if (r.inTrash) msg += (r.inTrash === 1 ? '1 item do arquivo está na sua lixeira e não foi trazido de novo. ' : r.inTrash + ' itens do arquivo estão na sua lixeira e não foram trazidos de novo. ') + 'Se quiser, restaure pela lixeira. ';
+    msg += 'Nada do que já existia foi apagado.';
+    if (r.newHistories) msg += ' Os históricos novos estão no seletor de histórico, lá em cima.';
+    showInfo('Importação concluída', msg);
+  }
+
+  /* ================= eventos ================= */
+  function bindEvents() {
+    for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => setMode(b.dataset.mode));
+    const textIds = ['fTitle', 'fDesc', 'fAtr', 'fFixa', 'fExpr', 'fAlvo', 'd0Name', 'd0Atr', 'd0Fixa', 'd0Expr', 'd0Alvo', 'd1Name', 'd1Atr', 'd1Fixa', 'd1Expr', 'd1Alvo'];
+    for (const id of textIds) $(id).addEventListener('input', onFormInput);
+    for (const id of ['fTable', 'fOp', 'd0Op', 'd1Op']) $(id).addEventListener('change', onFormInput);
+    for (const id of textIds.concat(['fTable', 'fOp', 'd0Op', 'd1Op'])) $(id).addEventListener('keydown', onFieldKeydown);
+    for (const b of document.querySelectorAll('.mini-tab')) b.addEventListener('click', () => setDuelMode(Number(b.dataset.side), b.dataset.dmode));
+    for (const i of [0, 1]) $('d' + i + 'Name').addEventListener('blur', () => { if (!$('d' + i + 'Name').value.trim()) { $('d' + i + 'Name').value = DEFAULT_SIDE_NAMES[i]; onFormInput(); } });
+    // empate no duelo
+    $('tieReroll').addEventListener('click', tieReroll);
+    $('tieWinA').addEventListener('click', () => tieDecide(0));
+    $('tieWinB').addEventListener('click', () => tieDecide(1));
+    $('tieKeep').addEventListener('click', () => $('tieDlg').close());
+    $('tieDlg').addEventListener('close', () => { tieEntryId = null; renderLast(false); renderLog(); });
+    $('rollBtn').addEventListener('click', doRoll);
+    $('rollBtn').addEventListener('keydown', (ev) => { if (ev.repeat && (ev.key === 'Enter' || ev.key === ' ')) ev.preventDefault(); });
+    $('descToggle').addEventListener('click', () => { descOpen = true; renderFormState(); $('fDesc').focus(); });
+    $('openTablesFromForm').addEventListener('click', () => openTables($('fTable').value));
+    $('chips').addEventListener('click', (ev) => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      if (b.dataset.die) applyChipDie(Number(b.dataset.die));
+      else if (b.dataset.mod) applyChipMod(Number(b.dataset.mod));
+      else if (b.dataset.clear) { $('fExpr').value = ''; onFormInput(); focusExprEnd(); }
+    });
+
+    $('histBtn').addEventListener('click', () => (openMenuId === 'hist' ? closeMenus(true) : openMenu('hist')));
+    $('menuBtn').addEventListener('click', () => (openMenuId === 'main' ? closeMenus(true) : openMenu('main')));
+    document.addEventListener('pointerdown', (ev) => {
+      if (openMenuId && !ev.target.closest('.dropdown, #histBtn, #menuBtn')) closeMenus(false);
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && openMenuId) closeMenus(true); });
+
+    $('sepBtn').addEventListener('click', addSeparatorFlow);
+    $('filterBtn').addEventListener('click', () => {
+      if (filterOpen) resetFilters(); else filterOpen = true;
+      renderFilterRow();
+      renderLog();
+    });
+    $('untitledBtn').addEventListener('click', () => {
+      filterOpen = true;
+      filters.noTitle = true;
+      logLimit = LOG_PAGE;
+      renderFilterRow();
+      renderLog();
+    });
+    $('fltUntitled').addEventListener('change', () => { filters.noTitle = $('fltUntitled').checked; logLimit = LOG_PAGE; renderLog(); });
+    $('fltPinned').addEventListener('change', () => { filters.pinned = $('fltPinned').checked; logLimit = LOG_PAGE; renderLog(); });
+    let searchTimer = null;
+    $('fltSearch').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { filters.q = $('fltSearch').value; logLimit = LOG_PAGE; renderLog(); }, 150);
+    });
+
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-close]');
+      if (!b) return;
+      const d = b.closest('dialog');
+      if (d) d.close();
+    });
+
+    // editar rolagem
+    $('eTitle').addEventListener('input', () => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.title = $('eTitle').value.trim().slice(0, 120);
+      saveSoon(); renderResultsSoon();
+    });
+    $('eDesc').addEventListener('input', () => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.description = $('eDesc').value.trim().slice(0, 2000);
+      saveSoon(); renderResultsSoon();
+    });
+    $('eTitle').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); $('editDlg').close(); } });
+    $('ePin').addEventListener('click', () => { togglePin(editingId); const f = findEntry(editingId); if (f) fillEditStatic(f); });
+    $('eRepeat').addEventListener('click', () => { const id = editingId; $('editDlg').close(); repeatEntry(id); });
+    $('eTie').addEventListener('click', () => { const id = editingId; $('editDlg').close(); openTie(id); });
+    $('eMoveBtn').addEventListener('click', () => {
+      const target = $('eMoveSel').value;
+      if (!target) { $('eMoveSel').focus(); return; }
+      const id = editingId;
+      $('editDlg').close();
+      moveEntry(id, target);
+    });
+    $('eDelete').addEventListener('click', () => { const id = editingId; $('editDlg').close(); deleteEntry(id); });
+    $('editDlg').addEventListener('close', () => { flushSave(); editingId = null; clearTimeout(renderSoonTimer); renderLast(false); renderLog(); });
+
+    // separador
+    $('sText').addEventListener('input', () => {
+      const f = findEntry(editingSepId); if (!f) return;
+      f.entry.text = $('sText').value.trim().slice(0, 120) || 'Separador';
+      saveSoon(); renderResultsSoon();
+    });
+    $('sText').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); $('sepDlg').close(); } });
+    $('sDelete').addEventListener('click', () => { const id = editingSepId; $('sepDlg').close(); deleteEntry(id); });
+    $('sepDlg').addEventListener('close', () => { flushSave(); editingSepId = null; clearTimeout(renderSoonTimer); renderLog(); });
+
+    // tabelas
+    $('newTableBtn').addEventListener('click', newTable);
+    $('tDelete').addEventListener('click', deleteTable);
+    $('tName').addEventListener('input', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      t.name = $('tName').value.trim().slice(0, 80) || 'Tabela sem nome';
+      t.updatedAt = Date.now();
+      saveSoon(); renderTablesList();
+    });
+    $('tName').addEventListener('blur', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      const unique = uniqueName(t.name, state.tables.filter((x) => x.id !== t.id).map((x) => x.name));
+      if (unique !== t.name || $('tName').value.trim() !== t.name) {
+        t.name = unique;
+        $('tName').value = unique;
+        save();
+        renderTablesList();
+      }
+    });
+    $('tItems').addEventListener('input', () => {
+      const t = findTable(editingTableId); if (!t) return;
+      t.text = $('tItems').value.slice(0, 20000);
+      t.updatedAt = Date.now();
+      renderTableCount(t);
+      saveSoon(); renderTablesList();
+    });
+    $('tablesDlg').addEventListener('close', () => { flushSave(); renderTableSelect(); renderPreview(); });
+
+    // lixeira e janelas de pergunta
+    $('emptyTrashBtn').addEventListener('click', emptyTrash);
+    $('promptOk').addEventListener('click', () => finishPrompt($('promptField').hidden ? '' : $('promptInput').value));
+    $('promptCancel').addEventListener('click', () => finishPrompt(null));
+    $('promptInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); finishPrompt($('promptInput').value); } });
+    $('promptDlg').addEventListener('close', () => { if (promptResolve) finishPrompt(null); });
+
+    // importar
+    $('importInput').addEventListener('change', () => {
+      const file = $('importInput').files && $('importInput').files[0];
+      $('importInput').value = '';
+      if (file) handleImport(file);
+    });
+
+    // janela de copiar (plano B quando o navegador não abre o "Salvar como")
+    $('copyBtn').addEventListener('click', copyFromDialog);
+    $('copyDlg').addEventListener('close', () => {
+      const r = copyState.resolve;
+      copyState.resolve = null;
+      if (r) r(copyState.copied ? 'copied' : 'cancelled');
+    });
+
+    // aviso flutuante pausa enquanto o mouse está em cima
+    $('toast').addEventListener('mouseenter', () => clearTimeout(toastTimer));
+    $('toast').addEventListener('mouseleave', () => armToast(3000));
+    // se a janela que segurava o aviso fechar, ele volta para a página
+    for (const d of document.querySelectorAll('dialog')) {
+      d.addEventListener('close', () => {
+        const t = $('toast');
+        if (t.parentElement === d && !t.hidden) showToastEl(t);
+        else if (t.parentElement === d) document.body.append(t);
+      });
+    }
+
+    // salvar antes de sair e manter duas abas em sincronia
+    window.addEventListener('pagehide', flushSave);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
+    window.addEventListener('storage', (ev) => {
+      if (ev.key !== STORAGE_KEY || ev.newValue == null) return;
+      let parsed;
+      try { parsed = JSON.parse(ev.newValue); } catch (err) { return; }
+      if (!parsed || typeof parsed !== 'object') return;
+      if (pendingSave) { clearTimeout(pendingSave); pendingSave = null; }
+      state = normalizeState(parsed);
+      lastSavedSize = ev.newValue.length;
+      renderAll();
+      refreshOpenDialogs();
+    });
+  }
+
+  /* ================= início ================= */
+  function init() {
+    state = load();
+    purgeTrash();
+    buildPalette($('palette'), (cid) => { formColor = cid; markPalette($('palette'), cid); $('colorName').textContent = colorLabel(cid); });
+    buildPalette($('ePalette'), (cid) => {
+      const f = findEntry(editingId); if (!f) return;
+      f.entry.color = cid;
+      save();
+      fillEditStatic(f);
+      renderLast(false);
+      renderLog();
+    });
+    buildFilterPalette();
+    for (const id of ['fOp', 'd0Op', 'd1Op']) fillOpSelect($(id));
+    bindEvents();
+    bindAiEvents();
+    save();
+    if (!lastSavedSize) lastSavedSize = JSON.stringify(state).length;
+    renderAll();
+    if (!isNarrow()) $('fTitle').focus({ preventScroll: true });
+    window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
+  }
+
+  /* ================= resumo com IA (Claude ou Gemini) ================= */
+  const AI_KEY = 'rolador-urgm:ia:v1'; // separado dos dados: nunca entra no backup
+  const AI_TIMEOUT_MS = 120000;
+  const AI_PROVIDERS = {
+    claude: {
+      name: 'Claude',
+      models: [
+        { id: 'claude-sonnet-5', label: 'Claude Sonnet 5 (texto melhor)' },
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (mais barato)' },
+      ],
+      help: 'Crie a chave em platform.claude.com, na parte de API keys. É diferente da assinatura do app do Claude; o uso é cobrado na conta dona da chave.',
+      placeholder: 'sk-ant-…',
+    },
+    gemini: {
+      name: 'Gemini',
+      models: [
+        { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
+        { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (mais barato)' },
+      ],
+      help: 'Crie a chave em aistudio.google.com, em “Get API key”. O Gemini tem uma faixa gratuita com limites de uso.',
+      placeholder: 'AIza…',
+    },
+  };
+  const AI_OTHER = '__outro';
+
+  const AI_SYSTEM = [
+    'Você ajuda o mestre de uma mesa de RPG de fantasia a documentar a sessão de jogo.',
+    'Você vai receber o registro de rolagens de um histórico, em ordem cronológica. Linhas "--- Cena: ... ---" são separadores que o mestre colocou para dividir as partes da sessão. Cada rolagem tem título (o que foi rolado), resultado e, às vezes, descrição, requisito (passou ou não passou) e a marca FIXADA.',
+    'Escreva em português do Brasil, em Markdown, exatamente estas três seções, nesta ordem:',
+    '## Relato da sessão',
+    'Um texto corrido e curto contando o que aconteceu, na ordem, usando só o que está no registro.',
+    '## Cenas',
+    'Uma subseção (###) para cada separador, na ordem, com tópicos curtos do que aconteceu nela. Rolagens antes do primeiro separador ficam em "### Início".',
+    '## Lembretes para a próxima sessão',
+    'Tópicos com as rolagens fixadas, empates deixados para decidir, rolagens sem título que talvez precisem de contexto e pontas soltas que aparecem nas descrições.',
+    'Regras: não invente fatos, nomes, motivos ou consequências que não estejam no registro; quando o registro não disser algo, não preencha a lacuna. Use frases curtas, fáceis de ler rápido. Não escreva seção de números, introdução nem conclusão fora das três seções.',
+  ].join('\n');
+
+  const aiSettings = { provider: 'claude', models: { claude: 'claude-sonnet-5', gemini: 'gemini-3.8-flash' }, keys: { claude: '', gemini: '' }, remember: true };
+  let aiLoaded = false;
+  let aiBusy = null;          // AbortController do pedido em andamento
+  let aiSetupOpen = false;
+  let aiDraftProvider = 'claude';
+  const aiResults = {};       // resumo gerado por histórico, só enquanto a aba está aberta
+
+  function loadAi() {
+    if (aiLoaded) return;
+    aiLoaded = true;
+    try {
+      const raw = window.localStorage.getItem(AI_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || typeof s !== 'object') return;
+      if (AI_PROVIDERS[s.provider]) aiSettings.provider = s.provider;
+      for (const p of Object.keys(AI_PROVIDERS)) {
+        if (s.models && typeof s.models[p] === 'string' && s.models[p].trim()) aiSettings.models[p] = s.models[p].trim().slice(0, 100);
+        if (s.keys && typeof s.keys[p] === 'string') aiSettings.keys[p] = s.keys[p].trim().slice(0, 300);
+      }
+      aiSettings.remember = s.remember !== false;
+    } catch (err) { /* sem configuração guardada */ }
+  }
+
+  function saveAi() {
+    const copy = { provider: aiSettings.provider, models: Object.assign({}, aiSettings.models), remember: aiSettings.remember,
+      keys: aiSettings.remember ? Object.assign({}, aiSettings.keys) : { claude: '', gemini: '' } };
+    try { window.localStorage.setItem(AI_KEY, JSON.stringify(copy)); }
+    catch (err) { toast('Não deu para guardar a configuração da IA neste navegador.', { error: true }); }
+  }
+
+  function modelLabel(p, id) {
+    const m = AI_PROVIDERS[p].models.find((x) => x.id === id);
+    return m ? m.label.replace(/ \(.*\)$/, '') : AI_PROVIDERS[p].name + ' (' + id + ')';
+  }
+
+  /* ---------- registro enviado para a IA ---------- */
+  function aiEntryLine(e) {
+    const when = '[' + clock(e.createdAt) + '] ';
+    const title = e.title || 'Sem título';
+    const desc = e.description ? ' | Descrição: ' + e.description.replace(/\s+/g, ' ') : '';
+    const pin = e.pinned ? ' | FIXADA' : '';
+    if (e.mode === 'duelo') {
+      const r = lastRound(e);
+      const reqs = e.sides.map((s, i) => (s.check
+        ? s.name + (evalCheck(s.check, r[i].total).pass ? ' passou' : ' não passou') + ' no requisito ' + OPS[s.check.op].sym + ' ' + s.check.target
+        : null)).filter(Boolean);
+      const rounds = e.rounds.length > 1 ? ' Rodadas: ' + e.rounds.map((x) => x[0].total + '×' + x[1].total).join(', ') + '.' : '';
+      return when + 'Duelo "' + title + '": ' + e.sides[0].name + ' ' + r[0].total + ' × ' + r[1].total + ' ' + e.sides[1].name + '. ' +
+        duelSummary(e) + (reqs.length ? ' Requisitos: ' + reqs.join('; ') + '.' : '') + rounds + desc + pin;
+    }
+    if (e.mode === 'tabela') return when + '"' + title + '": sorteio na tabela ' + e.tableName + ' deu "' + e.itemText + '".' + desc + pin;
+    const chk = e.check ? ' | Requisito ' + OPS[e.check.op].sym + ' ' + e.check.target + ': ' + (evalCheck(e.check, e.total).pass ? 'passou' : 'não passou') : '';
+    return when + '"' + title + '": ' + e.total + ' (' + (e.mode === 'fixa' ? 'fixa' : 'dados') + ': ' + compText(e) + ')' + chk + desc + pin;
+  }
+
+  function aiLogText(hist) {
+    let text = hist.entries.map((e) => (e.type === 'sep' ? '--- Cena: ' + e.text + ' ---' : aiEntryLine(e))).join('\n');
+    if (text.length > 150000) text = '(As rolagens mais antigas foram cortadas por tamanho.)\n' + text.slice(-150000);
+    return text;
+  }
+
+  /* ---------- números contados aqui, sem IA ---------- */
+  function statsMarkdown(hist) {
+    const rolls = rollsOf(hist);
+    const by = { fixa: 0, dados: 0, tabela: 0, duelo: 0 };
+    let pass = 0, fail = 0;
+    const numeric = [];
+    const duels = [];
+    for (const e of rolls) {
+      by[e.mode] = (by[e.mode] || 0) + 1;
+      if (e.mode === 'duelo') {
+        const r = lastRound(e);
+        e.sides.forEach((s, i) => { if (s.check) { if (evalCheck(s.check, r[i].total).pass) pass++; else fail++; } });
+        duels.push(e);
+      } else {
+        if (e.check) { if (evalCheck(e.check, e.total).pass) pass++; else fail++; }
+        if (e.mode !== 'tabela') numeric.push(e);
+      }
+    }
+    const kinds = [];
+    if (by.fixa) kinds.push(by.fixa + ' de fixa');
+    if (by.dados) kinds.push(by.dados + ' de dados');
+    if (by.tabela) kinds.push(by.tabela + ' de tabela');
+    if (by.duelo) kinds.push(plural(by.duelo, 'duelo', 'duelos'));
+    const out = ['- Rolagens: ' + rolls.length + (kinds.length ? ' (' + joinPt(kinds) + ')' : '')];
+    if (pass + fail) out.push('- Requisitos: ' + plural(pass, 'passou', 'passaram') + ' e ' + plural(fail, 'não passou', 'não passaram'));
+    for (const e of duels) {
+      const r = lastRound(e);
+      out.push('- Duelo' + (e.title ? ' “' + e.title + '”' : '') + ': ' + e.sides[0].name + ' ' + r[0].total + ' × ' + r[1].total + ' ' + e.sides[1].name + '. ' + duelSummary(e));
+    }
+    if (numeric.length > 1) {
+      const hi = numeric.reduce((a, b) => (b.total > a.total ? b : a));
+      const lo = numeric.reduce((a, b) => (b.total < a.total ? b : a));
+      out.push('- Maior resultado: ' + hi.total + ' (' + (hi.title || 'sem título') + ')');
+      out.push('- Menor resultado: ' + lo.total + ' (' + (lo.title || 'sem título') + ')');
+    }
+    const pinned = rolls.filter((e) => e.pinned).length;
+    if (pinned) out.push('- Rolagens fixadas: ' + pinned);
+    const untitled = rolls.filter((e) => !e.title).length;
+    if (untitled) out.push('- Rolagens sem título: ' + untitled);
+    return out.join('\n');
+  }
+
+  function assembleSummary(hist, aiText) {
+    const numbers = '## Números da sessão\n' + statsMarkdown(hist);
+    let body = aiText.trim();
+    const m = body.match(/^##\s*Lembretes/m);
+    if (m) body = body.slice(0, m.index).trimEnd() + '\n\n' + numbers + '\n\n' + body.slice(m.index);
+    else body += '\n\n' + numbers;
+    return '# Resumo: ' + hist.name + '\n\n' + body + '\n';
+  }
+
+  /* ---------- pedido para a IA ---------- */
+  function aiError(status, detail) { const e = new Error(detail || 'erro'); e.status = status; e.detail = detail || ''; return e; }
+
+  async function readJson(res) { try { return await res.json(); } catch (err) { return null; } }
+
+  async function callAi(provider, model, key, system, user, signal) {
+    if (provider === 'claude') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({ model, max_tokens: 4000, system, messages: [{ role: 'user', content: user }] }),
+        signal,
+      });
+      const data = await readJson(res);
+      if (!res.ok) throw aiError(res.status, data && data.error && data.error.message);
+      const text = (data && Array.isArray(data.content) ? data.content : []).filter((b) => b && b.type === 'text').map((b) => b.text).join('').trim();
+      if (!text) throw aiError(-1, 'A IA respondeu sem texto.');
+      return { text, truncated: data.stop_reason === 'max_tokens' };
+    }
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.4 },
+      }),
+      signal,
+    });
+    const data = await readJson(res);
+    if (!res.ok) throw aiError(res.status, data && data.error && data.error.message);
+    const cand = data && Array.isArray(data.candidates) ? data.candidates[0] : null;
+    const parts = cand && cand.content && Array.isArray(cand.content.parts) ? cand.content.parts : [];
+    const text = parts.map((x) => (typeof x.text === 'string' && !x.thought ? x.text : '')).join('').trim();
+    if (!text) throw aiError(-1, cand && cand.finishReason === 'SAFETY' ? 'A IA se recusou a resumir este conteúdo.' : 'A IA respondeu sem texto.');
+    return { text, truncated: cand.finishReason === 'MAX_TOKENS' };
+  }
+
+  function aiErrorMessage(err) {
+    if (err.name === 'AbortError') return err.timedOut ? 'A IA demorou demais para responder. Tente de novo.' : 'Resumo cancelado.';
+    if (err instanceof TypeError || err.status == null) return 'Não deu para falar com a IA. Confira a internet e tente de novo.';
+    const d = String(err.detail || '').toLowerCase();
+    if (err.status === -1) return err.detail;
+    if (/credit|billing|balance|quota/.test(d)) return 'A conta dessa chave está sem créditos ou passou da cota.';
+    if (/api key|api_key|x-api-key|authentication/.test(d) || err.status === 401) return 'A chave foi recusada. Confira se copiou a chave inteira, sem espaços.';
+    if (err.status === 403) return 'Essa chave não tem permissão para usar esse modelo.';
+    if (err.status === 404 || /not found|model/.test(d) && err.status === 400) return 'Esse modelo não foi encontrado. Escolha outro em “Trocar IA ou chave”.';
+    if (err.status === 413) return 'O histórico é grande demais para resumir de uma vez.';
+    if (err.status === 429) return 'Limite de uso atingido. Espere um pouco e tente de novo; se continuar, confira os créditos ou a cota da conta.';
+    if (err.status >= 500) return 'A IA está sobrecarregada ou fora do ar. Tente de novo em alguns minutos.';
+    return 'A IA recusou o pedido.';
+  }
+
+  function showAiError(boxId, text, detail) {
+    const box = $(boxId);
+    box.hidden = false;
+    box.replaceChildren(h('span', { text }), detail ? h('span', { class: 'ai-error-detail', text: 'Detalhe da IA: ' + detail }) : null);
+  }
+  function hideAiError(boxId) { $(boxId).hidden = true; $(boxId).replaceChildren(); }
+
+  async function generateSummary() {
+    if (aiBusy) return;
+    const hist = activeHistory();
+    if (!rollsOf(hist).length) { showAiError('aiError', 'Esse histórico ainda não tem rolagens para resumir.'); return; }
+    const p = aiSettings.provider;
+    if (!aiSettings.keys[p]) { openAiSetup(); return; }
+    const ctrl = new AbortController();
+    aiBusy = ctrl;
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, AI_TIMEOUT_MS);
+    hideAiError('aiError');
+    renderAiMain();
+    try {
+      const r = await callAi(p, aiSettings.models[p], aiSettings.keys[p], AI_SYSTEM, 'Histórico: "' + hist.name + '"\n\nRegistro:\n' + aiLogText(hist), ctrl.signal);
+      aiResults[hist.id] = assembleSummary(hist, r.text) + (r.truncated ? '\n(A resposta da IA foi cortada por tamanho.)\n' : '');
+      $('aiOut').value = aiResults[hist.id];
+      $('aiCopyNote').textContent = 'Dá para editar o texto antes de copiar.';
+    } catch (err) {
+      if (err && err.name === 'AbortError') err.timedOut = timedOut;
+      showAiError('aiError', aiErrorMessage(err), err && err.status > 0 ? err.detail : '');
+    } finally {
+      clearTimeout(timer);
+      aiBusy = null;
+      renderAiMain();
+    }
+  }
+
+  /* ---------- janela ---------- */
+  function openAi() {
+    closeMenus(false);
+    loadAi();
+    const dlg = $('aiDlg');
+    hideAiError('aiError');
+    if (!aiSettings.keys[aiSettings.provider]) openAiSetup();
+    else { aiSetupOpen = false; renderAiMain(); }
+    const hist = activeHistory();
+    $('aiOut').value = aiResults[hist.id] || '';
+    if (!dlg.open) dlg.showModal();
+    if (aiSetupOpen) $('aiKey').focus(); else $('aiGenerate').focus();
+  }
+
+  function openAiSetup() {
+    aiSetupOpen = true;
+    aiDraftProvider = aiSettings.provider;
+    $('aiRemember').checked = aiSettings.remember;
+    hideAiError('aiSetupError');
+    fillAiSetup();
+    $('aiSetup').hidden = false;
+    $('aiMain').hidden = true;
+    $('aiKey').focus();
+  }
+
+  function fillAiSetup() {
+    const p = aiDraftProvider;
+    const prov = AI_PROVIDERS[p];
+    for (const b of document.querySelectorAll('.mini-tab[data-ai]')) b.setAttribute('aria-pressed', String(b.dataset.ai === p));
+    const sel = $('aiModel');
+    sel.replaceChildren(...prov.models.map((m) => h('option', { value: m.id, text: m.label })), h('option', { value: AI_OTHER, text: 'Outro modelo…' }));
+    const cur = aiSettings.models[p];
+    const known = prov.models.some((m) => m.id === cur);
+    sel.value = known ? cur : AI_OTHER;
+    $('aiModelCustom').value = known ? '' : cur;
+    $('aiModelCustomWrap').hidden = known;
+    $('aiKey').value = aiSettings.keys[p] || '';
+    $('aiKey').type = 'password';
+    $('aiKeyShow').textContent = 'Mostrar';
+    $('aiKey').placeholder = prov.placeholder;
+    $('aiKeyHelp').textContent = prov.help;
+    $('aiForget').hidden = !aiSettings.keys[p];
+    $('aiSetupBack').hidden = !aiSettings.keys[aiSettings.provider];
+  }
+
+  function saveAiSetup() {
+    const p = aiDraftProvider;
+    const key = $('aiKey').value.trim();
+    if (!key) { showAiError('aiSetupError', 'Cole a chave da API.'); $('aiKey').focus(); return; }
+    if (/\s/.test(key)) { showAiError('aiSetupError', 'A chave não pode ter espaço no meio. Copie de novo.'); $('aiKey').focus(); return; }
+    const model = $('aiModel').value === AI_OTHER ? $('aiModelCustom').value.trim() : $('aiModel').value;
+    if (!model) { showAiError('aiSetupError', 'Digite o ID do modelo.'); $('aiModelCustom').focus(); return; }
+    aiSettings.provider = p;
+    aiSettings.keys[p] = key.slice(0, 300);
+    aiSettings.models[p] = model.slice(0, 100);
+    aiSettings.remember = $('aiRemember').checked;
+    saveAi();
+    aiSetupOpen = false;
+    renderAiMain();
+    $('aiGenerate').focus();
+  }
+
+  function forgetAiKey() {
+    const p = aiDraftProvider;
+    aiSettings.keys[p] = '';
+    saveAi();
+    fillAiSetup();
+    $('aiKey').focus();
+    toast('Chave do ' + AI_PROVIDERS[p].name + ' apagada deste navegador.');
+  }
+
+  function renderAiMain() {
+    $('aiSetup').hidden = aiSetupOpen === true ? false : true;
+    $('aiMain').hidden = aiSetupOpen === true;
+    if (aiSetupOpen) return;
+    const hist = activeHistory();
+    const rolls = rollsOf(hist).length;
+    const scenes = hist.entries.filter((e) => e.type === 'sep').length;
+    $('aiWhat').textContent = 'Vai resumir “' + hist.name + '”: ' + plural(rolls, 'rolagem', 'rolagens') +
+      (scenes ? ', ' + plural(scenes, 'separador', 'separadores') : '') + '.';
+    $('aiWho').textContent = 'IA: ' + modelLabel(aiSettings.provider, aiSettings.models[aiSettings.provider]) + '.';
+    const gen = $('aiGenerate');
+    gen.disabled = !!aiBusy || !rolls;
+    gen.textContent = aiResults[hist.id] ? 'Gerar de novo' : 'Gerar resumo';
+    $('aiBusy').hidden = !aiBusy;
+    $('aiCancel').hidden = !aiBusy;
+    $('aiChange').disabled = !!aiBusy;
+    $('aiOutWrap').hidden = !aiResults[hist.id];
+  }
+
+  async function copyAiSummary() {
+    const area = $('aiOut');
+    try {
+      await navigator.clipboard.writeText(area.value);
+      $('aiCopyNote').textContent = 'Copiado. Agora é só colar na documentação.';
+    } catch (err) {
+      area.focus();
+      area.select();
+      $('aiCopyNote').textContent = 'O texto está selecionado: aperte Ctrl+C para copiar.';
+    }
+  }
+
+  function bindAiEvents() {
+    $('aiBtn').addEventListener('click', openAi);
+    for (const b of document.querySelectorAll('.mini-tab[data-ai]')) {
+      b.addEventListener('click', () => { aiDraftProvider = b.dataset.ai; hideAiError('aiSetupError'); fillAiSetup(); $('aiKey').focus(); });
+    }
+    $('aiModel').addEventListener('change', () => {
+      const other = $('aiModel').value === AI_OTHER;
+      $('aiModelCustomWrap').hidden = !other;
+      if (other) $('aiModelCustom').focus();
+    });
+    $('aiKeyShow').addEventListener('click', () => {
+      const show = $('aiKey').type === 'password';
+      $('aiKey').type = show ? 'text' : 'password';
+      $('aiKeyShow').textContent = show ? 'Esconder' : 'Mostrar';
+    });
+    $('aiKey').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); saveAiSetup(); } });
+    $('aiSave').addEventListener('click', saveAiSetup);
+    $('aiForget').addEventListener('click', forgetAiKey);
+    $('aiSetupBack').addEventListener('click', () => { aiSetupOpen = false; renderAiMain(); $('aiGenerate').focus(); });
+    $('aiChange').addEventListener('click', openAiSetup);
+    $('aiGenerate').addEventListener('click', generateSummary);
+    $('aiCancel').addEventListener('click', () => { if (aiBusy) aiBusy.abort(); });
+    $('aiCopy').addEventListener('click', copyAiSummary);
+    $('aiOut').addEventListener('input', () => { const hist = activeHistory(); aiResults[hist.id] = $('aiOut').value; });
+    $('aiDlg').addEventListener('close', () => { if (aiBusy) aiBusy.abort(); });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

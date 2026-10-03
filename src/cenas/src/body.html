@@ -1,0 +1,29 @@
+<div class="app" id="app">
+  <header class="top" id="top"></header>
+  <div class="banner" id="banner" hidden></div>
+  <div class="work">
+    <nav class="rail" id="rail" aria-label="Ferramentas"></nav>
+    <main class="stage" id="stage">
+      <canvas id="cv" aria-label="Mapa da cena"></canvas>
+      <div class="opts" id="opts" hidden></div>
+      <div class="turnb" id="turnb" role="status" hidden></div>
+      <div class="dock">
+        <div class="toasts" id="toasts" aria-live="polite"></div>
+        <div class="hud" id="hud" hidden></div>
+        <div class="foot">
+          <div class="hint" id="hint"></div>
+          <div class="foot-r">
+            <div class="veilchip" id="veilchip" role="note" hidden></div>
+            <div class="status" id="status"></div>
+          </div>
+        </div>
+      </div>
+      <div class="drop" id="drop" hidden>Solte a imagem para usar na cena</div>
+    </main>
+    <aside class="side" id="side" aria-label="Painel"></aside>
+  </div>
+</div>
+<div id="layer"></div>
+<div class="toasts over" id="toastsTop" aria-live="polite"></div>
+<input type="file" id="fileImg" accept="image/*" multiple hidden>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
