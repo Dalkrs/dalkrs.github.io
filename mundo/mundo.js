@@ -718,7 +718,7 @@
     const recusar = () => { tirarOferta(); guarda.gravar(chave, '1'); };
     const sim = h('button', { type: 'button', class: 'btn pri sm', text: n === 1 ? 'Trazer o mapa deste navegador para a mesa' : 'Trazer os ' + n + ' mapas deste navegador para a mesa' });
     const nao = h('button', { type: 'button', class: 'btn sm', text: 'Começar do zero', onclick: recusar });
-    const txt = h('span', { text: 'Esta mesa ainda não tem mapas. Neste navegador há ' + (n === 1 ? '1 mapa guardado.' : n + ' mapas guardados.') });
+    const txt = h('span', { text: 'Esta mesa ainda não tem mapas. Neste navegador há ' + (n === 1 ? '1 mapa guardado.' : n + ' mapas guardados.') + ' Na mesa, chegam escondidos dos jogadores.' });
     sim.addEventListener('click', async () => {
       sim.disabled = nao.disabled = true;
       try {

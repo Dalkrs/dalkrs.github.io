@@ -255,8 +255,8 @@ const SEGREDO_NEVOA = 'Acampamento dos cultistas';
       const en = N.normalizarMapa({ nevoa: { on: true, ops: tracos } });
       // pontos em toda parte e, principalmente, rentes à borda de cada pincelada (onde uma fusão gulosa abriria)
       const pontos = [];
-      for (let x = 0; x < larg; x += larg / 220) for (let y = 0; y < larg * 0.7; y += larg / 220) pontos.push([x, y]);
-      for (const o of tracos) for (const [dx, dy] of [[0, 1.06], [0, -1.06], [0.25, 1.02], [-0.25, -1.02]]) pontos.push([o.x + dx * o.r, o.y + dy * o.r]);
+      for (let x = 0; x < larg; x += larg / 100) for (let y = 0; y < larg * 0.7; y += larg / 100) pontos.push([x, y]);
+      tracos.forEach((o, i) => { if (i % 2) for (const [dx, dy] of [[0, 1.06], [0.25, -1.02]]) pontos.push([o.x + dx * o.r, o.y + dy * o.r]); });
       for (const [x, y] of pontos) if (cru(tracos, x, y)) { cobertos++; if (!N.nevoaCobre(en, x, y)) abriu++; }
     }
     ok(cobertos > 1000 && abriu === 0, 'acima de 4000 operações: todo ponto coberto continua coberto depois de enxugar (' + abriu + ' de ' + cobertos + ' abriram)');

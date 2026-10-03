@@ -27,5 +27,5 @@ que já existiam neste endereço.
 
 ```
 cd src/cenas && ./build.sh && cd test && node unit.js && node unit2.js && node unit3.js && node v3.js
-cd src/tests && node site.test.js && node dice.test.js && node mundo-nucleo.test.js
+cd src/tests && node site.test.js && node dice.test.js && node mundo-nucleo.test.js && node mundo.test.js
 ```

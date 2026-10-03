@@ -80,6 +80,8 @@ const obj = (a, id) => A(a, id => (__mundo.App.mapa && __mundo.App.mapa.objs.fin
 const rotulo = a => A(a, () => __mundo.App.rotuloDesfazer());
 const mapa = a => A(a, () => __mundo.App.mapa);
 const perto = (v, alvo, folga = 1.5) => typeof v === 'number' && Math.abs(v - alvo) <= folga;
+// objetos desenhados (o selo de um evento fica num grupo à parte, na camada dos ícones: conta pelo id)
+const desenhados = a => A(a, () => new Set([...document.querySelectorAll('#mundo svg .obj')].map(e => e.getAttribute('data-id'))).size);
 const textoDoAviso = a => A(a, () => [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent).join(' | '));
 const semRolagemLateral = a => A(a, () => document.documentElement.scrollWidth <= innerWidth && document.body.scrollWidth <= innerWidth);
 const imagemAberta = (a, w) => ate(() => A(a, w => { const i = document.querySelector('#mundo img'); return !!i && i.complete && i.naturalWidth === w; }, w));
@@ -189,7 +191,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
 
     m = await mapa(L);
     for (const k of ['m', 'g', 'r', 'e', 't', 'f']) ok(m.objs.filter(x => x.k === k).length === 1, `um objeto do tipo ${k} posto pela interface`);
-    ok(await ate(async () => await A(L, () => document.querySelectorAll('#mundo svg .obj').length) === 6, 3000), 'os seis desenhados no mapa');
+    ok(await ate(async () => await desenhados(L) === 6, 3000), 'os seis desenhados no mapa');
   });
 
   await passo('local: desfazer e refazer', async () => {
@@ -265,7 +267,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await ate(() => A(L, () => { const i = document.querySelector('#mundo img'); return !!i && i.complete && i.naturalWidth === 1000 && i.src.startsWith('blob:'); })), 'recarregado: a imagem volta do IndexedDB');
     blob = await noIdb();
     ok(!!blob && blob.tam === PNG_LOCAL.length, 'recarregado: o arquivo continua no IndexedDB');
-    ok(await A(L, () => document.querySelectorAll('#mundo svg .obj').length) === 6 && !(await A(L, () => __mundo.App.podeDesfazer())), 'recarregado: os seis objetos de volta e o desfazer recomeça');
+    ok(await desenhados(L) === 6 && !(await A(L, () => __mundo.App.podeDesfazer())), 'recarregado: os seis objetos de volta e o desfazer recomeça');
   });
 
   await passo('local: ver como jogador', async () => {
@@ -307,6 +309,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await a.P.exposeFunction('__tcGravou', (col, linha) => gravou(a, col, linha));
     await a.P.exposeFunction('__tcSubir', (dataUrl, tipo) => subir(dataUrl, tipo));
     aparelhos.push(a);
+    if (o.antes) await o.antes(a.P);                     // preparar o navegador (mapas guardados nele, por exemplo)
     await abrirCasca(a);
     return a;
   }
@@ -319,6 +322,29 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
   const doc = id => banco.documentos.get(id) || null;
   const casca = (a, fn) => a.P.evaluate(fn);
   const gravacoes = a => casca(a, () => window.__gravacoes.length);
+
+  /* ---- mapas que já estavam no navegador do mestre ---- */
+  await passo('mesa: trazer os mapas deste navegador', async () => {
+    const V = await naCasca('mestre-casa', 'mestre', 'u_mestre', { antes: async P => {
+      await P.goto(t.base + 'mundo/?debug', { waitUntil: 'load' });
+      await P.waitForFunction(() => window.__mundo && window.__mundo.App.pronto);
+      await P.evaluate(() => {
+        const A = __mundo.App;
+        A.criarMapa('Mapa de casa', { larg: 1200, alt: 800 });
+        A.mudar('novo marcador', m => { m.objs.push(__mundo.N.objNovo('m', { x: 100, y: 100, nome: 'Segredo de casa' })); });
+        A.salvarJa();
+      });
+    } });
+    ok(await V.F.locator('.oferta').isVisible(), 'mesa sem mapas e um mapa neste navegador: a faixa oferece trazer');
+    await V.F.locator('.oferta button', { hasText: 'Trazer' }).click();
+    ok(await ate(() => [...banco.documentos.keys()].some(k => k.startsWith(PRE_MAPA))), 'o mapa do navegador sobe para a mesa');
+    const k = [...banco.documentos.keys()].find(x => x.startsWith(PRE_MAPA));
+    ok(!!k && doc(k).dados.oculto === true && ![...banco.documentos.keys()].some(x => x.startsWith(PRE_PUB) || x === INDICE), 'o que foi trazido chega escondido dos jogadores: sem projeção e sem índice');
+    await menuMapa(V, 'Apagar mapa…');
+    await (await janela(V)).locator('button[type="submit"]').click(); await espera(300);
+    ok(banco.documentos.size === 0, 'apagado, a mesa volta a ficar vazia para o resto do teste');
+    await V.P.close();
+  });
 
   /* ---- o mestre ---- */
   const M = await naCasca('mestre', 'mestre', 'u_mestre');
@@ -337,6 +363,8 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(banco.arquivos.size === 1 && [...banco.arquivos.values()][0].buf.equals(PNG_MESA), 'o arquivo que chegou é o PNG escolhido, inteiro');
     ok(await imagemAberta(M, 1000), 'a imagem aparece no mapa do mestre');
     ok(await ate(() => { const d = doc(PRE_MAPA + id.mapa1); return !!d && d.vis === 'mestre' && !!d.dados.img && d.dados.img.url === m.img.url; }), 'documento mundo:mapa:<id> (vis "mestre") com a imagem');
+    // na mesa o mapa novo nasce escondido: nada vai para os jogadores sem o clique em "Mostrar aos jogadores"
+    ok(m.oculto === true && doc(PRE_MAPA + id.mapa1).dados.oculto === true && !doc(PRE_PUB + id.mapa1) && !doc(INDICE), 'o mapa novo nasce escondido dos jogadores: sem projeção e sem índice na mesa');
   });
 
   await passo('mesa: escala e facções', async () => {
@@ -468,6 +496,16 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await M.P.keyboard.press('Escape'); await espera(100);
   });
 
+  await passo('mesa: mostrar aos jogadores', async () => {
+    ok(!doc(PRE_PUB + id.mapa1) && !doc(INDICE), 'montado escondido: nada do mapa foi para a mesa dos jogadores');
+    await aba(M, 'mapa');
+    ok(/Escondido: os jogadores não veem este mapa/.test(await M.F.locator('#pane').innerText()), 'a aba Mapa diz que o mapa está escondido');
+    await botao(M, 'mapa:mostrar');
+    ok(await A(M, () => __mundo.App.mapa.oculto === false && __mundo.App.mostrado === __mundo.App.mapa.id), '"Mostrar aos jogadores" tira do esconderijo e mostra');
+    ok(/Os jogadores agora veem: Mundo da Mesa/.test(await textoDoAviso(M)), 'o aviso diz o que os jogadores veem');
+    await M.P.keyboard.press('Escape'); await espera(100);
+  });
+
   await passo('mesa: o que foi gravado', async () => {
     // o mapa inteiro só para o mestre; a projeção e o índice para a mesa
     ok(await ate(async () => {
@@ -480,7 +518,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     const mm = doc(PRE_MAPA + id.mapa1), pub = doc(PRE_PUB + id.mapa1), idx = doc(INDICE);
     ok(!!mm && mm.vis === 'mestre' && j(mm.dados).includes(SEG), 'mundo:mapa:<id> é vis "mestre" e guarda tudo (notas, escondidos, encontros)');
     ok(!!pub && pub.vis === 'mesa' && !j(pub.dados).includes(SEG), 'mundo:pub:<id> é vis "mesa" e não tem nada do que é só do mestre');
-    ok(!!idx && idx.vis === 'mesa' && j(idx.dados) === j({ mapas: [{ id: id.mapa1, nome: 'Mundo da Mesa' }], mostrado: null }), 'mundo:indice é vis "mesa": ' + j(idx && idx.dados) + ' (vis ' + (idx && idx.vis) + ')');
+    ok(!!idx && idx.vis === 'mesa' && j(idx.dados) === j({ mapas: [{ id: id.mapa1, nome: 'Mundo da Mesa' }], mostrado: id.mapa1 }), 'mundo:indice é vis "mesa": ' + j(idx && idx.dados) + ' (vis ' + (idx && idx.vis) + ')');
     ok(j([...banco.documentos.keys()].sort()) === j([INDICE, PRE_MAPA + id.mapa1, PRE_PUB + id.mapa1].sort()), 'só esses três documentos na mesa: ' + [...banco.documentos.keys()].join(', '));
     ok(await casca(M, () => window.__recusas.length) === 0, 'nenhuma gravação do mestre foi recusada');
     await foto(M, 'mesa-mestre');
@@ -512,6 +550,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(!!f(id.torre) && f(id.torre).rumor === true && p.objs.every(x => x.falso !== true), 'na projeção: o boato está como boato, sem o "falso"');
     ok(p.objs.filter(x => x.k === 'r').every(x => x.enc && x.enc.chance === 0 && x.enc.itens.length === 0), 'na projeção: nenhuma tabela de encontros');
     ok(!ids.includes(id.invasao) && !!f(id.praga), 'na projeção: o evento futuro não está; o ativo está');
+    ok(f(id.praga) && f(id.praga).r === 80 && f(id.praga).cresce === 0 && f(id.praga).fim === null, 'na projeção: o evento vai como está hoje, sem o quanto ainda vai crescer: ' + j(f(id.praga) && { r: f(id.praga).r, cresce: f(id.praga).cresce }));
     ok(!ids.includes(id.ruina) && !!f(id.vila) && !!f(id.herois), 'na projeção: o marcador sob a névoa não está; os revelados e o grupo estão');
     ok(p.faccoes.length === 1 && p.faccoes[0].id === id.reino && !(id.culto in p.faccoes[0].rel), 'na projeção: a facção escondida não está, nem a relação com ela');
     ok(!!f(id.floresta) && f(id.floresta).fac === null && !!f(id.frente) && f(id.frente).a === id.reino && f(id.frente).b === null, 'na projeção: região e frente que apontavam para a facção escondida ficam sem ela');
@@ -551,6 +590,9 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(!/class="[^"]*\bfalso\b/.test(tudo) && !/class="risco"/.test(tudo) && !tudo.includes('(falso)'), 'na tela do jogador o boato não diz que é falso');
     ok(await A(J, x => document.querySelector(`#mundo svg [data-id="${x}"]`).classList.contains('rumor'), id.torre), 'o jogador vê a torre como boato ("?")');
     ok(await A(J, () => { const r = document.querySelector('#mundo svg .nevoa'); return !!r && r.closest('.c-nev').style.display !== 'none' && r.getAttribute('opacity') === '1'; }), 'para o jogador a névoa é opaca');
+    // a névoa fechada não corta marcadores e selos à mostra (perto da borda de uma clareira): eles vão por cima dela
+    const acima = a => A(a, () => !!(document.querySelector('#mundo svg .c-nev').compareDocumentPosition(document.querySelector('#mundo svg .c-mar')) & Node.DOCUMENT_POSITION_FOLLOWING));
+    ok(await acima(J) && !(await acima(M)), 'para o jogador os ícones ficam por cima da névoa; para o mestre, por baixo (ele vê a névoa translúcida)');
     await foto(J, 'mesa-jogador');
   });
 
@@ -614,6 +656,27 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await casca(J, () => window.__rolagens.length) === 0 && !j(await casca(J, () => window.__entregues)).includes(SEG), 'nada do encontro chegou ao jogador pela ponte');
   });
 
+  await passo('mesa: encontro numa região escondida', async () => {
+    // a região escondida (ou coberta pela névoa) não dá o nome dela ao que vai para a mesa às claras
+    await aba(M, 'selecao');
+    await A(M, x => __mundo.App.selecionar([x]), id.floresta); await espera(200);
+    await alternar(M, `o:${id.floresta}:oculto`);
+    ok((await obj(M, id.floresta)).oculto === true, 'o mestre esconde a Floresta Sombria');
+    await aba(M, 'hoje');
+    await botao(M, `gr-sortear:${id.herois}`);
+    ok(/escondida dos jogadores: o nome dela não vai para a mesa/.test(await M.F.locator('#pane .cartao').innerText()), 'o cartão avisa que o nome da região não vai para a mesa');
+    await botao(M, 'enc:mesa');
+    const rol = (await casca(M, () => window.__rolagens)).slice(-1)[0];
+    ok(!!rol && rol.dados.secreta === false && rol.dados.titulo === 'Encontro' && !/Floresta/.test(j(rol.dados)) && /^Os Heróis: /.test(rol.dados.resumo), '"Mandar para a mesa" sem o nome da região escondida: ' + j(rol && rol.dados));
+    await botao(M, 'enc:fechar');
+    await aba(M, 'selecao');
+    await A(M, x => __mundo.App.selecionar([x]), id.floresta); await espera(200);
+    await alternar(M, `o:${id.floresta}:oculto`);
+    ok((await obj(M, id.floresta)).oculto === false, 'e mostra de novo');
+    await A(M, () => __mundo.App.selecionar([]));
+    await aba(M, 'hoje');
+  });
+
   await passo('mesa: o evento futuro chega', async () => {
     await botao(M, 'hoje:+7');
     ok(await ate(() => A(J, x => __mundo.App.mapa.cal.dia === 8 && __mundo.App.mapa.objs.some(y => y.id === x), id.invasao)), '+7 dias: o evento que começava no dia 3 aparece para o jogador');
@@ -629,16 +692,24 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await d.locator('button[type="submit"]').click(); await espera(400);
     id.mapa2 = await A(M, () => __mundo.App.mapa && __mundo.App.mapa.id);
     ok(!!id.mapa2 && id.mapa2 !== id.mapa1 && (await mapa(M)).nome === 'Ilhas do Sul', 'mestre: "Novo mapa…" (papel em branco) pelo menu');
-    ok(await ate(() => !!doc(PRE_MAPA + id.mapa2) && !!doc(PRE_PUB + id.mapa2) && doc(INDICE).dados.mapas.length === 2), 'o mapa novo entra na mesa e no índice');
-    ok(await ate(() => A(J, () => __mundo.App.mapas.length === 2)) && await A(J, x => __mundo.App.mapa.id === x, id.mapa1), 'o jogador ganha o mapa novo na lista, mas continua onde estava');
+    // um rascunho: o marcador posto nele não pode chegar a ninguém
+    await A(M, () => __mundo.App.mudar('novo marcador', m => { m.objs.push(__mundo.N.objNovo('m', { id: 'mc_rascunho', x: 500, y: 500, nome: 'Covil do rascunho' })); }));
+    await espera(600);
+    ok(!!doc(PRE_MAPA + id.mapa2) && doc(PRE_MAPA + id.mapa2).dados.oculto === true && !doc(PRE_PUB + id.mapa2) && doc(INDICE).dados.mapas.length === 1, 'o mapa novo entra na mesa escondido: sem projeção e fora do índice');
+    ok(await A(J, x => __mundo.App.mapas.length === 1 && __mundo.App.mapa.id === x, id.mapa1) && !j(await casca(J, () => window.__entregues)).includes('Covil do rascunho'), 'o jogador não recebe nada do rascunho e continua onde estava');
     await A(J, () => document.getElementById('toasts').replaceChildren());
     await menuMapa(M, 'Mostrar este mapa aos jogadores');
-    ok(await ate(() => doc(INDICE).dados.mostrado === id.mapa2), 'índice: mostrado = o mapa novo');
+    ok(await ate(() => doc(INDICE).dados.mostrado === id.mapa2 && doc(INDICE).dados.mapas.length === 2 && !!doc(PRE_PUB + id.mapa2)), 'índice: mostrado = o mapa novo (tirado do esconderijo pelo mesmo clique)');
     ok(await ate(() => A(J, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x && document.getElementById('nomeMapa').textContent === 'Ilhas do Sul', id.mapa2)), 'o mestre mostra outro mapa: o jogador troca para ele');
     ok(/O mestre mostrou: Ilhas do Sul/.test(await textoDoAviso(J)), 'e é avisado: "' + await textoDoAviso(J) + '"');
   });
 
   await passo('mesa: esconder o mapa', async () => {
+    // parar de mostrar não esconde: o aviso diz isso e oferece esconder
+    await semAvisos(M);
+    await menuMapa(M, 'Parar de mostrar aos jogadores');
+    ok(await ate(() => doc(INDICE).dados.mostrado === null) && /continua aberto para os jogadores/.test(await textoDoAviso(M)) && await M.F.locator('#toasts .toast button', { hasText: 'Esconder' }).count() === 1,
+      '"Parar de mostrar": o aviso diz que o mapa continua aberto para os jogadores e oferece "Esconder": ' + await textoDoAviso(M));
     await menuMapa(M, 'Esconder dos jogadores');
     ok(await ate(() => !doc(PRE_PUB + id.mapa2) && j(doc(INDICE).dados) === j({ mapas: [{ id: id.mapa1, nome: 'Mundo da Mesa' }], mostrado: null })), 'esconder: a projeção sai da mesa e o índice fica sem o mapa');
     ok(await ate(() => A(J, ([a, b]) => !!__mundo.App.mapa && __mundo.App.mapa.id === a && !__mundo.App.mapas.some(x => x.id === b), [id.mapa1, id.mapa2])), 'o mapa escondido some para o jogador (ele volta ao que sobrou)');
@@ -656,6 +727,30 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await ate(() => A(J, () => __mundo.App.mapa === null && !document.getElementById('vazio').hidden && /O mestre ainda não mostrou nenhum mapa\./.test(document.getElementById('vazio').textContent))), 'o jogador sem mapa vê: "O mestre ainda não mostrou nenhum mapa."');
     await menuMapa(M, 'Deixar os jogadores verem este mapa');
     ok(await ate(() => A(J, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x && __mundo.App.mapa.cal.dia === 8, id.mapa1)), 'o mestre deixa ver de novo: o mapa volta para o jogador');
+  });
+
+  await passo('mesa: dois aparelhos do mestre', async () => {
+    // Um segundo aparelho do mestre está com um campo em foco (a mudança de fora fica esperando). Neste, o mestre
+    // esconde a torre. Quando o segundo grava a sua mudança, as duas ficam: a torre não volta para os jogadores.
+    const M2 = await naCasca('mestre-tablet', 'mestre', 'u_mestre');
+    await A(M2, x => __mundo.App.trocarMapa(x), id.mapa1); await espera(300);
+    await aba(M2, 'selecao');
+    await A(M2, x => __mundo.App.selecionar([x]), id.vila); await espera(250);
+    await campo(M2, `o:${id.vila}:txt`).fill('Rumores novos');
+    await aba(M, 'selecao');
+    await A(M, x => __mundo.App.selecionar([x]), id.torre); await espera(250);
+    await alternar(M, `o:${id.torre}:oculto`);
+    ok(await ate(() => !doc(PRE_PUB + id.mapa1).dados.objs.some(o => o.id === id.torre)) && await ate(() => A(J, x => !__mundo.App.mapa.objs.some(o => o.id === x), id.torre)), 'um aparelho esconde a torre: ela sai da projeção e do mapa do jogador');
+    ok(await A(M2, x => __mundo.App.mapa.objs.find(o => o.id === x).oculto === false, id.torre), 'o outro aparelho, com um campo em foco, ainda não aplicou a mudança');
+    await campo(M2, `o:${id.vila}:txt`).press('Control+Enter'); await espera(500);
+    const mm = doc(PRE_MAPA + id.mapa1).dados, pub = doc(PRE_PUB + id.mapa1).dados, of = (x, k) => x.objs.find(o => o.id === k);
+    ok(of(mm, id.torre).oculto === true && of(mm, id.vila).txt === 'Rumores novos', 'o outro aparelho grava: as duas mudanças ficam (a torre continua escondida)');
+    ok(!of(pub, id.torre) && of(pub, id.vila).txt === 'Rumores novos', 'e a projeção não traz a torre de volta');
+    ok(await A(M2, x => __mundo.App.mapa.objs.find(o => o.id === x).oculto === true, id.torre), 'o outro aparelho fica com as duas mudanças');
+    await M2.P.close();
+    await alternar(M, `o:${id.torre}:oculto`);
+    ok(await ate(() => !!doc(PRE_PUB + id.mapa1).dados.objs.some(o => o.id === id.torre)), 'a torre volta quando o mestre a mostra');
+    await A(M, () => __mundo.App.selecionar([]));
   });
 
   await passo('mesa: o mestre recarrega', async () => {
