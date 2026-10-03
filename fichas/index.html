@@ -200,6 +200,10 @@ table.attr tr:last-child td{border-bottom:0}
 .rescard .top{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
 .rescard .val{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:600;margin-left:auto;line-height:1}
 .rescard .val.err{font-size:13px;color:var(--rubric);font-weight:500}
+.darv{margin-left:5px;font-size:10.5px;color:var(--teal);font-weight:500;white-space:nowrap}
+.inirow{display:flex;align-items:end;gap:10px;margin-top:10px;flex-wrap:wrap}
+.inirow .f{flex:1;min-width:150px}
+.inirow .inival{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-soft);padding-bottom:7px;white-space:nowrap}
 .rescard .atual{display:flex;align-items:center;gap:8px;margin:-2px 0 8px}
 .rescard .atual input{width:84px;font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600}
 .rescard .atual .de{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12.5px}
@@ -558,7 +562,8 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=2"></script>
-<script src="mesa.js?v=1"></script>
+<script src="../tc/rules.js?v=1"></script>
+<script src="mesa.js?v=2"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -880,6 +885,12 @@ function bonusItens(pc){
   return b;
 }
 function calcular(pc){
+  // As contas são as das regras compartilhadas do site (conferidas contra as daqui): as mesmas, mais os bônus dos
+  // nódulos escolhidos na árvore. O cálculo original, logo abaixo, fica de reserva se a biblioteca não carregar.
+  if(window.TC && TC.rules && !calcular.semLib){
+    try{ return TC.rules.calcular(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib)}); }
+    catch(e){ console.error(e); calcular.semLib=true; }
+  }
   const mult=multTier(pc.tier);
   const total    = ptsDoLevel(pc.level)*mult;
   const totalAnt = ptsDoLevel(Math.max(1,(+pc.level)-1))*mult;
@@ -992,6 +1003,12 @@ function renderLista(){
   ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
   ligarElenco();
 }
+/* iniciativa da ficha: um número ou uma fórmula (as mesmas variáveis dos recursos) */
+function iniciativaDe(pc){
+  if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib)}); }catch(e){} }
+  const n=parseInt(pc.ini,10); return {val: isFinite(n)? n : 0, err:null};
+}
+function iniTexto(pc){ const r=iniciativaDe(pc); return r.err? 'fórmula com erro' : (String(pc.ini||'').trim()===''? 'sem bônus' : '= '+(r.val>=0?'+':'−')+Math.abs(r.val)); }
 /* valor atual de um recurso: o que foi anotado; sem anotação, está cheio */
 function temAtual(pc,r){ const rec=pc.estado&&pc.estado.rec; return !!rec && isFinite(rec[r.id]) && rec[r.id]!==null; }
 function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : arred(r.val); }
@@ -1192,11 +1209,11 @@ function renderFicha(){
           <thead><tr><th>Atributo</th><th>Tier</th><th>Base</th><th>Equip.</th><th>Total</th><th>Lvl ant.</th></tr></thead>
           <tbody>
           ${ATRIBS.map(a=>{
-            const d=c.base[a.k]-c.ant[a.k];
+            const d=(c.nat||c.base)[a.k]-c.ant[a.k], arv=c.arv? (c.arv[a.k]||0) : 0;
             return `<tr>
               <td><span class="aname">${a.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${a.k}</span></td>
               <td><select class="tsel" data-tier="${a.k}">${TIERS_ATR.map(t=>`<option ${pc.tiers[a.k]===t?'selected':''}>${t}</option>`).join('')}</select></td>
-              <td class="num vbase">${c.base[a.k]}</td>
+              <td class="num vbase" ${arv?`title="${c.nat[a.k]} do nível ${arv>0?'+':'−'} ${Math.abs(arv)} da árvore"`:''}>${c.base[a.k]}${arv?`<span class="darv">${arv>0?'+':'−'}${Math.abs(arv)} árv.</span>`:''}</td>
               <td class="num vequip">${c.eq[a.k]?'+'+c.eq[a.k]:'—'}</td>
               <td class="num vtot">${c.tot[a.k]}</td>
               <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.ant[a.k]}</span>
@@ -1270,6 +1287,11 @@ function renderFicha(){
           <button class="atrbt disputar" id="btnDisputa" title="Rolar contra outro personagem ou contra um valor avulso">
             <b>×</b><span>Disputar</span></button>
         </div>
+        <div class="inirow">
+          <label class="f"><span class="eyebrow">Iniciativa: 1d20 +</span><input id="f_ini" class="mono" value="${esc(pc.ini||'')}" placeholder="ex.: 3 ou AGI/5" title="Um número ou uma fórmula com as mesmas variáveis dos recursos"></label>
+          <span class="inival" id="iniVal">${iniTexto(pc)}</span>
+          <button class="mini" id="btnIni" title="Rola 1d20 + a iniciativa e registra">Rolar iniciativa</button>
+        </div>
         ${pc.ultRol? `<div class="rolsaida c-${COR_ATR[pc.ultRol.k]||''}">
           <div class="rolnum">${pc.ultRol.total}</div>
           <div class="roldet"><strong>${esc(pc.ultRol.k)} ${pc.ultRol.valor}</strong>${pc.ultRol.base?' base':''}
@@ -1325,6 +1347,7 @@ function renderFicha(){
             </div>`}
             <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
+            ${r.arv?`<div class="hint">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} dos nódulos da árvore.</div>`:''}
           </div>`).join('') || '<div class="hint">Nenhum recurso. Clique em “+ Recurso” para criar HP, SP, fé, sanidade, o que precisar.</div>'}
       </div>
       <hr class="sep">
@@ -1436,6 +1459,15 @@ function ligarFicha(pc){
   host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
   FichasMesa.ligarDono(host, pc);
+  const fini=host.querySelector('#f_ini');
+  if(fini) fini.oninput=e=>patchLeve(()=>{ pc.ini=e.target.value; const v=host.querySelector('#iniVal'); if(v) v.textContent=iniTexto(pc); });
+  const bini=host.querySelector('#btnIni');
+  if(bini) bini.onclick=()=>{
+    const r=iniciativaDe(pc), d=randInt(20), total=d+r.val;
+    pc.ultRol={k:'INI', valor:r.val, base:false, total, texto:'1d20 '+(r.val<0?'− ':'+ ')+Math.abs(r.val), dado:20, bruto:d};
+    logar({tipo:'livre', quem:pc.nome, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val), total});
+    render();
+  };
   // valor atual de cada recurso (HP, SP...): vazio = cheio
   host.querySelectorAll('[data-resatual]').forEach(i=>i.oninput=e=>patchLeve(()=>{
     const est=pc.estado||(pc.estado={}); const rec=est.rec||(est.rec={});

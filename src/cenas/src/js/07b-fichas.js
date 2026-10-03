@@ -16,7 +16,10 @@ const Fichas = (() => {
   const get = id => (P && id ? P.pegar(id) : null);
   const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
-  const resumo = l => R().resumo(pcDe(l), cfg(), null, l.estado || {});
+  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe)
+  const bib = () => { const d = D && D.pegar('arvore:biblioteca'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
+  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()) });
+  const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
 
   // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
   function barrasDe(t, r) {
@@ -85,7 +88,7 @@ const Fichas = (() => {
   function rolaveis(t) {
     const l = get(t.char);
     if (!l) return [];
-    const pc = pcDe(l), c = R().calcular(pc, cfg(), null), fonte = (pc.rol && pc.rol.fonte) || 'total';
+    const pc = pcDe(l), c = R().calcular(pc, cfg(), extra(l)), fonte = (pc.rol && pc.rol.fonte) || 'total';
     return ROLAVEIS.map(k => [k, R().NOMES[k] || k, Math.max(0, Math.round(R().valorDoAtributo(c, k, fonte) || 0))]);
   }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
@@ -114,7 +117,7 @@ const Fichas = (() => {
     Store.on('live', onLive);
     Store.on('scene', () => syncAll());
     P.aoMudar(l => { if (!l.apagado) syncAll(l.id); refresh(); });
-    D.aoMudar(l => { if (l.id === 'fichas:cfg') { syncAll(); refresh(); } });
+    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca') { syncAll(); refresh(); } });
     syncAll();
     refresh();
     return true;

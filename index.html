@@ -248,7 +248,7 @@ dialog::backdrop { background: var(--scrim); }
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-5';
+  const VERSAO = '2026.10.03-6';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
@@ -258,7 +258,7 @@ dialog::backdrop { background: var(--scrim); }
   const ABAS = [
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
-    { id: 'arvore', nome: 'Árvore', src: 'arvore/' },
+    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true },
     { id: 'rolador', nome: 'Rolador', src: 'rolador/' },
   ];
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore' };

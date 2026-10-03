@@ -18,8 +18,12 @@ const FichasMesa = (() => {
   const podeEditar = pc => !ativo || mestre() || (!!pc && pc._dono === st.eu);
 
   /* personagem da calculadora ⇄ linha da mesa */
+  // A biblioteca de árvores vem da mesa: para o mestre, a original; para o jogador, o pacote publicado.
+  const bibDaMesa = () => { const d = D.pegar(mestre() ? 'arvore:biblioteca' : 'arvore:pacote'), b = d && d.dados; return b && Array.isArray(b.arvores) ? b : null; };
+
   function daLinha(l, antigo) {
-    const pc = Object.assign({}, l.ficha || {});
+    // personagem criado em outra aba (na Árvore) ainda não tem ficha: nasce com a ficha padrão
+    const pc = l.ficha && Object.keys(l.ficha).length ? Object.assign({}, l.ficha) : personagemPadrao(l.nome);
     pc.id = l.id;
     pc.nome = l.nome || pc.nome || 'Sem nome';
     pc.skills = l.skills && Array.isArray(l.skills.arvores) ? l.skills : { arvores: [], pontos: {}, alocados: {} };
@@ -51,7 +55,7 @@ const FichasMesa = (() => {
       situacoes: doc('situacoes') || [],
       tabelas: doc('tabelas') || [],
       log: Array.isArray(tela.log) ? tela.log : [],
-      bib: tela.bib || null,
+      bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
       abaFicha: tela.abaFicha, skillsUI: tela.skillsUI, fechados: tela.fechados, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
@@ -60,6 +64,7 @@ const FichasMesa = (() => {
     // o retrato guarda a ficha como a calculadora a escreveria: assim a primeira gravação não reenvia tudo à toa
     s.personagens.forEach((pc, i) => { const p = partes(pc), r = sombra.pcs.get(pc.id); r.ficha = j(p.ficha); r.skills = j(p.skills); r.estado = j(p.estado); r.nome = p.nome; if (mestre()) r.ordem = linhas[i].ordem; });
     for (const k in DOCS) { const v = doc(k); sombra.docs[k] = v === undefined ? undefined : j(v); }
+    sombra.bib = bibDaMesa() ? j(bibDaMesa()) : null;
     return s;
   }
 
@@ -116,6 +121,13 @@ const FichasMesa = (() => {
         if (!S.sel) S.sel = pc.id;
       }
     } else {
+      if (l0.id === 'arvore:biblioteca' || l0.id === 'arvore:pacote') {       // as árvores mudaram na aba Árvore
+        const b = bibDaMesa();
+        if (!b || j(b) === sombra.bib) return;
+        sombra.bib = j(b); S.bib = JSON.parse(sombra.bib);
+        migrar(); guardarTela(); redesenhar();
+        return;
+      }
       const k = Object.keys(DOCS).find(x => DOCS[x] === l0.id);
       if (!k) return;
       const v = l0.apagado || !l0.dados ? undefined : l0.dados.v, jv = v === undefined ? undefined : j(v);
@@ -152,7 +164,11 @@ const FichasMesa = (() => {
     window.storage = { get: async () => ({ value: j(montar()) }), set: async (k, texto) => { gravar(JSON.parse(texto)); } };
     P.aoMudar(l => remoto('pc', l));
     D.aoMudar(l => remoto('doc', l));
-    TC.ponte.aoMudar(e => { const antes = j(st && st.membros); st = e; if (antes !== j(e.membros) && !digitando()) { try { render(); } catch (x) { /* ainda abrindo */ } } });
+    TC.ponte.aoMudar(e => {
+      const antes = j(st && st.membros); st = e;
+      if (antes === j(e.membros)) return;
+      try { if (digitando()) { renderPendente = true; pintarDono(); renderLista(); } else render(); } catch (x) { /* ainda abrindo */ }
+    });
     document.documentElement.classList.add('na-mesa', mestre() ? 'papel-mestre' : 'papel-jogador');
     return true;
   }
@@ -193,6 +209,14 @@ const FichasMesa = (() => {
       </select></label>
       <label class="chk"><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Todos os jogadores veem esta ficha</span></label>
     </div>`;
+  }
+  // Entrou ou saiu alguém da mesa enquanto o mestre digita na ficha: a lista de jogadores se atualiza no lugar.
+  function pintarDono() {
+    const d = document.querySelector('#f_dono'), pc = S.personagens.find(p => p.id === S.sel);
+    if (!d || !pc) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = htmlDono(pc);
+    const novo = tmp.querySelector('#f_dono');
+    if (novo) { d.innerHTML = novo.innerHTML; d.value = pc._dono || ''; }
   }
   function ligarDono(host, pc) {
     const d = host.querySelector('#f_dono'), v = host.querySelector('#f_vis');

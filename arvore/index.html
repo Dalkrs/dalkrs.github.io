@@ -393,6 +393,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
   #painel{max-height:38vh}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.mesa-oferta{margin:8px 12px 0;padding:10px 12px;border:1px dashed var(--acento-borda);border-radius:8px;background:var(--acento-fundo);font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.papel-jogador #btMestre,.papel-jogador #btJogador,.papel-jogador #btTroca,.papel-jogador #nomeBib{display:none}
 </style>
 </head>
 <body>
@@ -460,6 +462,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
+<script src="../tc/ponte.js?v=2"></script>
+<script src="mesa.js?v=1"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -468,10 +472,11 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
    Arquivo único; os dados ficam no localStorage do navegador.
    ============================================================ */
 
-const CHAVE_DOC    = 'urgm.arvore.v4';
-const CHAVE_UI     = 'urgm.arvore.ui.v4';
-const CHAVE_HIST   = 'urgm.arvore.historico.v4';
-const CHAVE_SENHAS = 'urgm.arvore.senhas.v4';
+// dentro de uma mesa do site, estas chaves passam a ser as da mesa (ver mesa.js)
+let CHAVE_DOC    = 'urgm.arvore.v4';
+let CHAVE_UI     = 'urgm.arvore.ui.v4';
+let CHAVE_HIST   = 'urgm.arvore.historico.v4';
+let CHAVE_SENHAS = 'urgm.arvore.senhas.v4';
 const ANTIGAS = {doc3:'urgm.arvore.doc.v3', arv1:'urgm.arvore.v1', build1:'urgm.arvore.build.v1', ui1:'urgm.arvore.ui.v1'};
 const FORMATO = 'urgm-skilltree';
 
@@ -557,7 +562,7 @@ function arvoreVisivel(){
   return eq.find(a=>a.id===p.arvoreAtual) || eq[0] || null;
 }
 function garantirSelecoes(){
-  if(!doc.personagens.length) doc.personagens.push(personagemNovo('Personagem 1', bib()));
+  if(!doc.personagens.length) doc.personagens.push(ArvoreMesa.personagemInicial() || personagemNovo('Personagem 1', bib()));
   if(!arvorePorId(ui.arvoreMestre)) ui.arvoreMestre = bib().arvores[0]?.id || null;
   if(!doc.personagens.some(p=>p.id===ui.personagem)) ui.personagem = doc.personagens[0].id;
   doc.personagens.forEach(p=>{
@@ -679,13 +684,35 @@ function normalizarNo(n, b, ids){
     const custos = {};
     const orig = (g && g.custos) || {};
     for(const k in orig){ const v = Math.floor(+orig[k]); if(ids.pool.has(k) && v>0) custos[k] = v; }
-    return {custos, texto:String((g && g.texto) || '')};
+    const limpo = {custos, texto:String((g && g.texto) || '')};
+    const bn = bonusLimpo(g && g.bonus); if(bn) limpo.bonus = bn;      // bônus que o grau dá na ficha (FOR +2, HP +10…)
+    return limpo;
   });
   if(n.escola && typeof n.escola==='object'){
     n.escola = {nome:String(n.escola.nome || n.nome), cor:corOk(n.escola.cor, COR_ESCOLA),
                 secreta:!!n.escola.secreta, senha:String(n.escola.senha || '')};
   }else n.escola = null;
   for(const k of Object.keys(n)) if(k.startsWith('_')) delete n[k];
+}
+/* Bônus que um grau dá na ficha do personagem. No editor é um texto ("FOR +2, HP +10"); guardado, um mapa {FOR:2, HP:10}.
+   Siglas de atributo (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM) somam no atributo; qualquer outro nome é o de um recurso da ficha (HP, SP…). */
+const SIGLAS_BONUS = ['FOR','DES','VIT','CAN','AGI','ESQ','FUR','PER','DFF','DFM'];
+function bonusLimpo(b){
+  if(!b || typeof b!=='object' || Array.isArray(b)) return null;
+  const o = {};
+  for(const k in b){ const v = +b[k], nome = String(k).trim().slice(0, 30); if(nome && Number.isFinite(v) && v!==0) o[nome] = v; }
+  return Object.keys(o).length ? o : null;
+}
+function bonusTexto(b){ return b ? Object.keys(b).map(k=>k + ' ' + (b[k]>=0 ? '+' : '−') + Math.abs(b[k])).join(', ') : ''; }
+function bonusLer(t){
+  const o = {};
+  String(t || '').split(/[,;\n]+/).forEach(parte=>{
+    const m = /^\s*(.+?)\s*([+\-−])?\s*(\d+(?:[.,]\d+)?)\s*$/.exec(parte);
+    if(!m) return;
+    const nome = m[1].trim().replace(/\s+/g, ' ').slice(0, 30), v = (m[2]==='-' || m[2]==='−' ? -1 : 1) * parseFloat(m[3].replace(',', '.'));
+    if(nome && Number.isFinite(v) && v!==0) o[SIGLAS_BONUS.includes(nome.toUpperCase()) ? nome.toUpperCase() : nome] = v;
+  });
+  return Object.keys(o).length ? o : null;
 }
 function normalizarPersonagem(p, b, vistos){
   p.id = vistos ? idUnico(p.id, 'c', vistos) : (idOk(p.id) ? p.id : novoId('c'));
@@ -792,6 +819,7 @@ function salvarJa(){
     if(!avisouFalha){ avisouFalha = true; aviso('O navegador não deixou salvar. Baixe um backup em Importar / Exportar.', 'err', 6000); }
   }
   salvarHistorico();
+  ArvoreMesa.depoisDeSalvar();      // dentro de uma mesa do site: manda para ela o que mudou
 }
 function lerJSON(chave){ try{ return JSON.parse(localStorage.getItem(chave)); }catch(e){ return null; } }
 
@@ -846,7 +874,7 @@ function registrar(rotulo, chave){
   atualizarHistorico();
 }
 function aplicarEstado(e){
-  doc = JSON.parse(e.doc); normalizarDoc();
+  doc = ArvoreMesa.restringir(JSON.parse(e.doc)); normalizarDoc();
   if(e.vista){ ui.arvoreMestre = e.vista.arvoreMestre; ui.personagem = e.vista.personagem; }
   indexar(); garantirSelecoes();
   selecionado = (e.sel && porId.has(e.sel)) ? e.sel : null;
@@ -1840,6 +1868,11 @@ function gerarPapel(){
 /* ============================================================
    INTERFACE — abas, seletor de árvores e painéis
    ============================================================ */
+/* campo do bônus que o grau dá na ficha (para o mestre) */
+function campoBonus(g, i){
+  return `<input class="campo gbonus" data-g="${i}" value="${esc(bonusTexto(g.bonus))}" placeholder="Bônus na ficha (opcional): FOR +2, HP +10" style="margin-top:4px"
+    title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
+}
 function pintarTudo(){
   indexar(); garantirSelecoes();
   atualizarModoUI(); pintarAbas(); pintarSeletor(); desenhar(); pintarPainel(); atualizarHistorico();
@@ -1984,6 +2017,7 @@ function duplicarPersonagem(){
   salvar(); pintarTudo();
 }
 async function excluirPersonagem(){
+  if(ArvoreMesa.ativo()) return aviso('Na mesa, os personagens são excluídos na aba Fichas (lá a ficha inteira vai junto).', 'err', 6000);
   if(doc.personagens.length<=1) return aviso('É preciso ter ao menos um personagem.');
   const p = personagemAtual();
   const ok = await confirmar('Excluir personagem', `Excluir “${esc(p.nome)}” e a build dele? Dá para desfazer com Ctrl+Z.`, 'Excluir personagem', true);
@@ -2129,9 +2163,10 @@ function blocoNo(a, n){
       <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
         <div class="passo"><button class="btn" id="grauMenos" ${G<=1 ? 'disabled' : ''} aria-label="Menos um grau">−</button><b>${G}</b>
         <button class="btn" id="grauMais" ${G>=MAX_GRAUS ? 'disabled' : ''} aria-label="Mais um grau">+</button></div></div>
-      ${G===1 ? linhasCusto(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
+      ${G===1 ? linhasCusto(n.graus[0], 0) + campoBonus(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
         ${linhasCusto(g, i)}
-        <textarea class="campo gtexto" data-g="${i}" placeholder="O que o grau ${i+1} acrescenta…" style="min-height:46px;margin-top:4px">${esc(g.texto)}</textarea></div>`).join('')}
+        <textarea class="campo gtexto" data-g="${i}" placeholder="O que o grau ${i+1} acrescenta…" style="min-height:46px;margin-top:4px">${esc(g.texto)}</textarea>
+        ${campoBonus(g, i)}</div>`).join('')}
       <p class="nota">${G===1 ? 'Zero num tipo de ponto = não consome aquele tipo.' : 'O jogador compra os graus em ordem; cada um tem custo e texto próprios.'}</p>
     </div>
     <div class="grupo"><span class="rot">Pré-requisitos</span>
@@ -2276,6 +2311,7 @@ function ligarMestre(){
     e.target.value = v;
   }, {semDesenho:true}));
   $$('.gtexto').forEach(t=>t.oninput = e=>muda('texto do grau', 'gtexto'+n.id+t.dataset.g, ()=>{ n.graus[+t.dataset.g].texto = e.target.value; }, {semDesenho:true}));
+  $$('.gbonus').forEach(t=>t.onchange = e=>{ muda('bônus do grau', 'gbonus'+n.id+t.dataset.g, ()=>{ const g = n.graus[+t.dataset.g], b = bonusLer(e.target.value); if(b) g.bonus = b; else delete g.bonus; }, {semDesenho:true}); e.target.value = bonusTexto(n.graus[+t.dataset.g].bonus); });
   on('#addPre', 'change', e=>{
     const alvo = e.target.value; if(!alvo) return;
     if(alvo===n.id || ehAncestral(n.id, alvo)){ pintarPainel(); return aviso('Isso criaria uma dependência circular.'); }
@@ -2445,7 +2481,7 @@ function painelJogador(){
     detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
       <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
       ${n.desc ? `<p class="info" style="color:var(--texto)">${esc(n.desc)}</p>` : ''}
-      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}</span></li>`).join('')}</ul>`
+      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}</span></li>`).join('')}</ul>`
              : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>`}
       ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
@@ -3076,7 +3112,7 @@ function mostrarDica(n){
   $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
     <div class="meta">${esc(meta)}</div>
     ${n.desc ? `<p>${esc(n.desc)}</p>` : ''}
-    ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}</li>`).join('')}</ul>` : ''}
+    ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}</li>`).join('')}</ul>` : ''}
     ${(n.pais.length>1 || paisFora(n).length) ? `<p class="exige">${esc(exigencia(n))}</p>` : ''}
     ${col.length ? `<p>Caminho exclusivo com ${col.map(m=>'“' + esc(m.nome) + '”').join(', ')}.</p>` : ''}
     ${esc0 ? `<p>Escola: ${esc(esc0.escola.nome)}${esc0.escola.secreta && !jog ? ' · secreta' : ''}</p>` : ''}
@@ -3399,7 +3435,8 @@ function iniciar(){
     try{ doc = JSON.parse(e.newValue); normalizarDoc(); pintarTudo(); }catch(_){}
   });
 }
-iniciar();
+// Dentro do site, com uma mesa aberta, as árvores e os personagens vêm da mesa (mesa.js prepara tudo antes de abrir).
+ArvoreMesa.preparar().then(()=>{ iniciar(); ArvoreMesa.depoisDeAbrir(); }, e=>ArvoreMesa.falhou(e));
 
 </script>
 </body>
