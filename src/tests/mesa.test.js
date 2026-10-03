@@ -99,9 +99,11 @@ const { ok, end } = checker();
   // ---------- Fichas e Cenas também publicam ----------
   await M.locator('#tab-fichas').click(); await w(2000);
   const F = M.frame({ url: /\/fichas\// });
+  ok((await F.locator('#ficha').innerText()).includes('Nenhum personagem'), 'numa mesa nova, as Fichas começam vazias (as do navegador ficam fora dela)');
+  await F.locator('#btnNew').click(); await w(500);
   await F.locator('[data-rolar]').first().click(); await w(600);
-  ok(await espera(J, 'Dain X', 9000), 'uma rolagem feita na ficha chega ao jogador');
-  ok(await feed(J).locator('.rol', { hasText: 'Dain X' }).locator('.or').innerText() === 'Fichas', 'com a origem "Fichas"');
+  ok(await espera(J, 'Novo personagem', 9000), 'uma rolagem feita na ficha chega ao jogador');
+  ok(await feed(J).locator('.rol', { hasText: 'Novo personagem' }).locator('.or').innerText() === 'Fichas', 'com a origem "Fichas"');
   await M.locator('#tab-cenas').click(); await w(2500);
   const C = M.frame({ url: /\/cenas\// });
   if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await w(400); }

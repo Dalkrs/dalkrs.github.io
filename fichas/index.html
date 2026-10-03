@@ -200,6 +200,18 @@ table.attr tr:last-child td{border-bottom:0}
 .rescard .top{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
 .rescard .val{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:600;margin-left:auto;line-height:1}
 .rescard .val.err{font-size:13px;color:var(--rubric);font-weight:500}
+.rescard .atual{display:flex;align-items:center;gap:8px;margin:-2px 0 8px}
+.rescard .atual input{width:84px;font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600}
+.rescard .atual .de{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+/* dentro de uma mesa do site */
+.idmesa{display:flex;flex-wrap:wrap;align-items:end;gap:14px;margin:0 0 12px;padding:10px 12px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo)}
+.idmesa .f{min-width:220px}
+.idmesa .chk{display:flex;align-items:center;gap:7px;padding-bottom:7px;font-size:13px}
+.so-consulta{margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);color:var(--ink-2);font-size:13px}
+.mesa-oferta{margin:0 0 10px;padding:10px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo);font-size:13px}
+.mesa-oferta p{margin:0 0 8px}
+.mesa-falha{margin:14px;padding:12px 14px;border:1px solid var(--rubric-borda);border-radius:var(--r);background:var(--rubric-fundo)}
+.papel-jogador #btnCfg,.papel-jogador #btnFlush,.papel-jogador #btnImport,.papel-jogador #btnGrupo,.papel-jogador nav.tabs button[data-tab="mesa"],.papel-jogador .grab{display:none}
 .rescard input.fml{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
 .fmlerr{color:var(--rubric);font-size:11.5px;margin-top:4px;font-family:"IBM Plex Mono",monospace}
 .vars{font-size:11.5px;color:var(--ink-soft);line-height:1.7}
@@ -545,7 +557,8 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=1"></script>
+<script src="../tc/ponte.js?v=2"></script>
+<script src="mesa.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -801,8 +814,9 @@ function personagemPadrao(nome,raca,tier,level,tiers){
 let S = estadoPadrao();
 
 /* ---------- persistência ---------- */
-const KEY='urgm_calc_atributos_v1';
+let KEY='urgm_calc_atributos_v1';   // dentro de uma mesa do site, a chave passa a ser a da mesa (ver mesa.js)
 async function loadState(){
+  await FichasMesa.preparar();   // com uma mesa aberta no site, as fichas vêm dela
   try{
     if(window.storage && window.storage.get){
       const r=await window.storage.get(KEY);
@@ -978,12 +992,15 @@ function renderLista(){
   ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
   ligarElenco();
 }
+/* valor atual de um recurso: o que foi anotado; sem anotação, está cheio */
+function temAtual(pc,r){ const rec=pc.estado&&pc.estado.rec; return !!rec && isFinite(rec[r.id]) && rec[r.id]!==null; }
+function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : arred(r.val); }
 function linhaElenco(p){
   return `<li class="pcrow" data-id="${p.id}">
     <span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo">⠿</span>
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       <span class="nm">${esc(p.nome)}</span>
-      <span class="mt">Tier ${esc(p.tier)} · Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}</span>
+      <span class="mt">Tier ${esc(p.tier)} · Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
         ${(p.tags||[]).slice(0,3).map(t=>`<span class="tag mini-tag">${esc(t)}</span>`).join('')}
@@ -1151,6 +1168,7 @@ function renderFicha(){
         <label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>
         <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
       </div>
+      ${FichasMesa.htmlDono(pc)}
       <div class="idcard2">
         <label class="f"><span class="eyebrow">Grupo</span>
           <select id="f_grupo">
@@ -1299,6 +1317,12 @@ function renderFicha(){
               <button class="mini danger" data-resdel="${r.id}">Remover</button>
               <span class="val ${r.err?'err':''}">${r.err? 'erro' : (r.val==null?'—':fmt(r.val))}</span>
             </div>
+            ${r.err||r.val==null?'':`<div class="atual">
+              <span class="eyebrow">Atual</span>
+              <input class="inm" type="number" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}">
+              <span class="de">de ${fmt(arred(r.val))}</span>
+              ${temAtual(pc,r)?`<button class="mini" data-rescheio="${r.id}" title="Voltar ao máximo">Encher</button>`:''}
+            </div>`}
             <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
           </div>`).join('') || '<div class="hint">Nenhum recurso. Clique em “+ Recurso” para criar HP, SP, fé, sanidade, o que precisar.</div>'}
@@ -1411,6 +1435,13 @@ function ligarFicha(pc){
   host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
   host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
+  FichasMesa.ligarDono(host, pc);
+  // valor atual de cada recurso (HP, SP...): vazio = cheio
+  host.querySelectorAll('[data-resatual]').forEach(i=>i.oninput=e=>patchLeve(()=>{
+    const est=pc.estado||(pc.estado={}); const rec=est.rec||(est.rec={});
+    const v=e.target.value.trim(); if(v===''||!isFinite(+v)) delete rec[i.dataset.resatual]; else rec[i.dataset.resatual]=+v;
+  }));
+  host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[b.dataset.rescheio]; }));
   const rfx=host.querySelector('#rolFixa');
   if(rfx) rfx.oninput=e=>patchLeve(()=>{pc.rol.fixa=Math.max(0,+e.target.value||0)});
   const rfo=host.querySelector('#rolFonte');
@@ -2661,6 +2692,7 @@ function importar(file){
       const d=JSON.parse(fr.result);
       if(ehArquivoDeArvores(d)){ importarArvores(d); return; }
       if(!d.personagens) throw new Error('sem personagens');
+      if(FichasMesa.trazer(d)) return;   // dentro de uma mesa: o arquivo só acrescenta, nada é substituído
       if(confirm('Substituir os dados atuais pelos do arquivo?')){
         S=d; migrar(); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Dados importados');
       }
@@ -2794,11 +2826,14 @@ document.getElementById('btnFlush').onclick=abrirFlush;
 document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.target.files[0])};
 
 (async function init(){
-  const saved=await loadState();
+  let saved;
+  try{ saved=await loadState(); }
+  catch(e){ FichasMesa.falhou(e); return; }
   if(saved && saved.personagens){ S=saved; }
   migrar();
   if(!S.sel) S.sel=S.personagens[0]?.id||null;
   render();
+  FichasMesa.depoisDeAbrir();
 })();
 </script>
 </body>

@@ -129,7 +129,7 @@
       const cv = await cliente().from('mesa_convites').select('codigo').eq('mesa_id', id).maybeSingle();
       codigo = cv.data ? cv.data.codigo : null;
     }
-    aoVivo.parar();
+    aoVivo.parar(); dadosZerar();
     mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, meuNome: eu.nome, minhaCor: eu.cor, codigo, membros };
     guarda.gravar(CHAVE_MESA, id);
     mesas.emit('muda', mesas.atual);
@@ -137,7 +137,7 @@
     return mesas.atual;
   };
   mesas.fechar = () => {
-    aoVivo.parar();
+    aoVivo.parar(); dadosZerar();
     if (mesas.atual) { mesas.atual = null; mesas.emit('muda', null); }
   };
   mesas.esquecer = () => { guarda.gravar(CHAVE_MESA, null); mesas.fechar(); };
@@ -235,14 +235,17 @@
       canal = cliente().channel('mesa-' + id)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) aplicar(p.new); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
-        .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) buscarNovos(); } });
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) dadosRemoto('personagens', p.new); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) dadosRemoto('documentos', p.new); })
+        .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); } } });
     } catch (e) { canal = null; }
     // Rede de segurança: sem o tempo real, lê a cada 3 s; com ele, confere a cada 30 s. A presença vai a cada 25 s.
     volta = 0;
     relogio = setInterval(() => {
       volta++;
-      if (!aoVivo.conectado || volta % 10 === 0) buscarNovos();
+      if (!aoVivo.conectado || volta % 10 === 0) { buscarNovos(); dadosBuscar(); }
       if (volta % 8 === 0) presenca();
+      else if (!aoVivo.conectado && volta % 2 === 0) recarregarMembros();   // sem tempo real, quem entrou aparece em poucos segundos
     }, 3000);
     presenca();
   };
@@ -252,7 +255,7 @@
     mesaId = null; aoVivo.itens = [];
     if (aoVivo.conectado) { aoVivo.conectado = false; aoVivo.emit('estado', false); }
   };
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && mesaId) { buscarNovos(); presenca(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && mesaId) { buscarNovos(); dadosBuscar(); presenca(); } });
 
   async function gravar(tipo, dados, opt = {}) {
     const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
@@ -344,5 +347,147 @@
     return aoVivo.rolagem(dados, opt);
   };
 
-  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.erroPt = erroPt;
+  /* ---------------- dados compartilhados da mesa ---------------- */
+  /* Personagens e documentos da mesa aberta. A casca guarda uma cópia na memória, entrega aos sistemas (pela ponte)
+     e manda para o banco só os campos que mudaram. O que ainda não subiu continua valendo aqui até subir;
+     se a rede cair, tenta de novo sozinho. Cada linha: { id, ...campos, rev }. */
+  const TABELAS = {
+    personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado'],
+    documentos: ['dono_id', 'vis', 'dados'],
+  };
+  const dados = emissor({ pendentes: 0, erro: null });
+  let cols = {};
+  function dadosZerar() {
+    for (const k in cols) { const c = cols[k]; c.morta = true; for (const t of c.tempo.values()) clearTimeout(t); }
+    cols = {};
+    if (dados.pendentes) { dados.pendentes = 0; dados.emit('pendentes', 0); }
+  }
+  function contarPendentes() {
+    let n = 0;
+    for (const k in cols) n += cols[k].sujos.size + cols[k].emVoo.size;
+    if (n !== dados.pendentes) { dados.pendentes = n; dados.emit('pendentes', n); }
+  }
+  function abrirCol(nome) {
+    if (!TABELAS[nome]) throw new Error('Coleção desconhecida: ' + nome);
+    if (!mesas.atual) throw new Error('Abra uma mesa primeiro.');
+    if (cols[nome]) return cols[nome];
+    const c = cols[nome] = { nome, mesa: mesas.atual.id, linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
+    c.pronta = (async () => {
+      for (let de = 0; ; de += 1000) {
+        const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
+        if (error) throw falha(error, 'Não deu para ler os dados da mesa.');
+        for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (!l.apagado && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
+        if (data.length < 1000) break;
+      }
+      return true;
+    })();
+    c.pronta.catch(() => { if (cols[nome] === c) delete cols[nome]; });   // falhou: a próxima abertura tenta de novo
+    return c;
+  }
+  /* Uma linha que veio do banco (tempo real ou leitura periódica). */
+  function dadosRemoto(nome, r) {
+    const c = cols[nome];
+    if (!c || c.morta || r.mesa_id !== c.mesa) return;
+    if (r.rev > c.maxRev) c.maxRev = r.rev;
+    const l = c.linhas.get(r.id), meus = new Set([...(c.sujos.get(r.id) || []), ...(c.emVoo.get(r.id) || [])]);
+    if (l && l.rev >= r.rev) return;
+    if (r.apagado) {
+      if (meus.has('*')) return;                 // acabei de recriar aqui: a minha versão sobe
+      if (l) { c.linhas.delete(r.id); dados.emit('muda', nome, { id: r.id, apagado: true }, 'remota', null); }
+      return;
+    }
+    if (meus.has('apagado')) return;             // apaguei aqui e ainda não subiu
+    const n = Object.assign({}, r);
+    if (l) for (const k of meus) if (k !== '*' && k in l) n[k] = l[k];
+    c.linhas.set(r.id, n);
+    dados.emit('muda', nome, n, 'remota', null);
+  }
+  async function dadosBuscar() {
+    for (const nome in cols) {
+      const c = cols[nome];
+      if (c.morta || c.buscando) continue;
+      c.buscando = true;
+      try {
+        await c.pronta;
+        const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).gt('rev', c.maxRev).order('rev').limit(500);
+        if (!error && !c.morta) for (const r of data || []) dadosRemoto(nome, r);
+      } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
+      c.buscando = false;
+    }
+  }
+  function agendar(c, id, ms) {
+    clearTimeout(c.tempo.get(id));
+    c.tempo.set(id, setTimeout(() => { c.tempo.delete(id); enviarLinha(c, id); }, ms));
+  }
+  async function enviarLinha(c, id) {
+    if (c.morta || c.emVoo.has(id)) return;
+    const campos = c.sujos.get(id);
+    if (!campos) return;
+    c.sujos.delete(id); c.emVoo.set(id, campos);
+    const l = c.linhas.get(id);
+    let r = null;
+    try {
+      if (!l && campos.has('*')) r = { data: { rev: 0 } };                         // criada e apagada antes de subir: nada a fazer
+      else if (!l) r = await cliente().from(c.nome).update({ apagado: true }).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
+      else {
+        const inteira = () => { const o = { mesa_id: c.mesa, id, apagado: false }; for (const k of TABELAS[c.nome]) if (l[k] !== undefined) o[k] = l[k]; return o; };
+        if (campos.has('*')) {
+          r = await cliente().from(c.nome).insert(inteira()).select('rev').single();
+          if (r.error && r.error.code === '23505') r = await cliente().from(c.nome).update(inteira()).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
+        } else {
+          const o = {}; for (const k of campos) o[k] = l[k];
+          r = await cliente().from(c.nome).update(o).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
+          if (!r.error && !r.data) r = await cliente().from(c.nome).insert(inteira()).select('rev').single();   // a linha não existia no banco
+        }
+      }
+    } catch (e) { r = { error: e }; }
+    c.emVoo.delete(id);
+    if (c.morta) return;
+    if (r.error) {
+      // volta para a fila (junto com o que mudou nesse meio-tempo) e tenta de novo, cada vez mais devagar
+      const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
+      const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(r.error.message || ''));
+      dados.erro = erroPt(r.error, 'Não deu para salvar na mesa agora.');
+      c.falhas = Math.min(c.falhas + 1, 6);
+      if (semPermissao) { c.sujos.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir
+      else agendar(c, id, 2000 * Math.pow(2, c.falhas));
+      dados.emit('erro', dados.erro);
+    } else {
+      c.falhas = 0; dados.erro = null;
+      const agora = c.linhas.get(id);
+      if (agora && r.data && r.data.rev > (agora.rev || 0)) agora.rev = r.data.rev;
+      if (r.data && r.data.rev > c.maxRev && !aoVivo.conectado) { /* a leitura periódica traz o resto */ }
+      if (c.sujos.has(id)) agendar(c, id, 300);
+    }
+    contarPendentes();
+  }
+  /* Grava campos de uma linha (cria se não existir). `de` identifica quem pediu, para não receber o próprio eco. */
+  function dadosGravar(nome, id, campos, de) {
+    const c = abrirCol(nome);
+    let l = c.linhas.get(id);
+    const suj = c.sujos.get(id) || new Set();
+    if (campos && campos.apagado) {
+      if (!l) return null;
+      c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj);
+      dados.emit('muda', nome, { id, apagado: true }, 'local', de);
+    } else {
+      if (!l) { l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado'); }
+      else l = Object.assign({}, l);
+      for (const k of TABELAS[nome]) if (campos[k] !== undefined) { l[k] = campos[k]; suj.add(k); }
+      c.linhas.set(id, l); c.sujos.set(id, suj);
+      dados.emit('muda', nome, l, 'local', de);
+    }
+    agendar(c, id, 500);
+    contarPendentes();
+    return l;
+  }
+  dados.col = nome => {
+    const c = abrirCol(nome);
+    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de) => dadosGravar(nome, id, campos, de), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
+  };
+  /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
+  dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
+  window.addEventListener('pagehide', () => dados.descarregar());
+
+  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.erroPt = erroPt;
 })();

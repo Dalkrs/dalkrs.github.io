@@ -69,6 +69,8 @@ button { cursor: pointer; }
 .conta .nm { overflow: hidden; text-overflow: ellipsis; }
 .conta .pp { font-weight: 500; color: var(--fg-3); font-size: 12px; }
 .conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.nuvem { font-size: 12px; color: var(--fg-3); white-space: nowrap; }
+.nuvem.ruim { color: var(--danger); font-weight: 600; }
 .selo { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9px; background: var(--lamp); color: var(--on-lamp); font: 700 10px/16px var(--ui); text-align: center; }
 
 /* ---- corpo: sistema + mesa ao vivo ---- */
@@ -208,6 +210,7 @@ dialog::backdrop { background: var(--scrim); }
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8"/><path d="M8 12.5h5"/></svg>
       <span class="selo" id="selo" hidden></span>
     </button>
+    <span class="nuvem" id="nuvem" hidden role="status"></span>
     <button type="button" class="conta" id="btnConta" hidden aria-haspopup="true"></button>
     <a class="ib" id="pop" target="_blank" rel="noopener" title="Abrir esta aba em outra janela" aria-label="Abrir esta aba em outra janela">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
@@ -240,12 +243,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=3"></script>
+<script src="tc/tc.js?v=4"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-3';
+  const VERSAO = '2026.10.03-4';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
@@ -254,7 +257,7 @@ dialog::backdrop { background: var(--scrim); }
   };
   const ABAS = [
     { id: 'cenas', nome: 'Cenas', src: 'cenas/' },
-    { id: 'fichas', nome: 'Fichas', src: 'fichas/' },
+    { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
     { id: 'arvore', nome: 'Árvore', src: 'arvore/' },
     { id: 'rolador', nome: 'Rolador', src: 'rolador/' },
   ];
@@ -337,14 +340,17 @@ dialog::backdrop { background: var(--scrim); }
     foco(f);
   }
   // O teclado vai para o sistema aberto, para os atalhos dele funcionarem sem um clique antes.
-  function foco(f) { if (document.activeElement && $('vivo').contains(document.activeElement)) return; try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ } }
+  // (Mas não tira o foco de quem está escrevendo na mesa ao vivo, nem fecha um menu ou janela que a pessoa acabou de abrir.)
+  function foco(f) {
+    if ((document.activeElement && $('vivo').contains(document.activeElement)) || !$('menu').hidden || $('dlg').open) return;
+    try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ }
+  }
   window.addEventListener('hashchange', () => { const hs = daHash(); if (existe(hs) && hs !== atual) abrir(hs); });
   $('brand').addEventListener('click', ev => { ev.preventDefault(); if (atual) foco(frames[atual]); });
-  abrir(inicial());
 
   /* ================= conta, mesas e mesa ao vivo ================= */
   const TC = window.TC || {};
-  if (!TC.conta || !TC.conta.disponivel()) return;      // sem a biblioteca da nuvem, o site segue só com as abas
+  if (!TC.conta || !TC.conta.disponivel()) { abrir(inicial()); return; }      // sem a biblioteca da nuvem, o site segue só com as abas
   const { conta, mesas, aoVivo } = TC;
   const btnConta = $('btnConta'), btnVivo = $('btnVivo'), vivo = $('vivo'), feed = $('feed'), menu = $('menu'), dlg = $('dlg');
   let naoLidas = 0;
@@ -355,23 +361,43 @@ dialog::backdrop { background: var(--scrim); }
   /* ---- ponte com os sistemas ---- */
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* sem BroadcastChannel: só as molduras recebem */ }
-  const estadoPonte = () => ({ t: 'estado', mesa: mesas.atual ? { id: mesas.atual.id, nome: mesas.atual.nome } : null, papel: mesas.atual ? mesas.atual.papel : null, segredo: !!aoVivo.segredo });
+  const estadoPonte = () => { const a = mesas.atual; return { t: 'estado', mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? a.papel : null, segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null, membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cor: x.cor })) : [] }; };
   function difundir() {
     const m = estadoPonte();
     for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: m }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
     if (canal) canal.postMessage(m);
   }
-  function daPonte(m, responder) {
+  function daPonte(m, responder, fonte) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'ola') responder(estadoPonte());
     else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast('A rolagem não chegou à mesa: ' + e.message));
+    else if (m.t === 'dados.abrir') {
+      try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas() }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
+      catch (e) { responder({ t: 'dados.erro', n: m.n, erro: e.message }); }
+    } else if (m.t === 'dados.gravar' && mesas.atual) {
+      try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte); } catch (e) { toast(e.message); }
+    }
+  }
+  // Toda mudança nos dados da mesa vai para os sistemas abertos (menos para quem acabou de fazê-la).
+  TC.dados.on('muda', (col, linha, origem, de) => {
+    for (const k in frames) { const jan = frames[k].contentWindow; if (jan && jan !== de) { try { jan.postMessage({ tinycats: { t: 'dado', col, linha } }, location.origin); } catch (e) { /* moldura saindo */ } } }
+  });
+  TC.dados.on('recusado', (col, id, msg) => toast(msg));
+  TC.dados.on('pendentes', pintarNuvem);
+  TC.dados.on('erro', pintarNuvem);
+  function pintarNuvem() {
+    const el = $('nuvem'), n = TC.dados.pendentes;
+    el.hidden = !mesas.atual || (!n && !TC.dados.erro);
+    el.classList.toggle('ruim', !!TC.dados.erro && n > 0);
+    el.textContent = TC.dados.erro && n > 0 ? 'Sem salvar: tentando de novo' : n ? 'Salvando…' : '';
+    el.title = TC.dados.erro && n > 0 ? 'As alterações estão guardadas aqui e sobem assim que a conexão voltar. ' + TC.dados.erro : '';
   }
   window.addEventListener('message', ev => {
     if (ev.origin !== location.origin || !ev.data || !ev.data.tinycats) return;
     if (!Object.values(frames).some(f => f.contentWindow === ev.source)) return;
-    daPonte(ev.data.tinycats, r => ev.source.postMessage({ tinycats: r }, location.origin));
+    daPonte(ev.data.tinycats, r => ev.source.postMessage({ tinycats: r }, location.origin), ev.source);
   });
-  if (canal) canal.onmessage = ev => daPonte(ev.data, r => canal.postMessage(r));
+  if (canal) canal.onmessage = ev => { if (ev.data && (ev.data.t === 'ola' || ev.data.t === 'rolagem')) daPonte(ev.data, r => canal.postMessage(r), null); };
 
   /* ---- botão da conta ---- */
   function pintarConta() {
@@ -621,10 +647,18 @@ dialog::backdrop { background: var(--scrim); }
   aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
-  mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); });
+  mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); difundir(); });
   mesas.on('removido', () => toast('Você não participa mais desta mesa.'));
+  let mesaDasMolduras = null;
+  function recarregarSistemas() {
+    const id = mesas.atual ? mesas.atual.id : null;
+    if (id === mesaDasMolduras) return;
+    mesaDasMolduras = id;
+    for (const a of ABAS) if (a.dados && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
+    if (atual && !frames[atual]) abrir(atual);
+  }
   mesas.on('muda', a => {
-    pintarConta(); fecharMenu(); difundir();
+    pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
     if (a) { $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false); }
   });
@@ -636,12 +670,13 @@ dialog::backdrop { background: var(--scrim); }
     if (ultima) { try { await mesas.abrir(ultima); return; } catch (e) { /* a mesa sumiu ou a pessoa saiu dela: escolhe outra */ } }
     janelaMesas();
   }
-  conta.pronta.then(async u => {
+  // Primeiro a mesa (se a pessoa já estava numa), depois a aba: assim o sistema já abre com os dados certos.
+  const prazo = new Promise(ok => setTimeout(ok, 8000));
+  Promise.race([prazo, conta.pronta.then(async u => {
     pintarConta();
-    if (!u) return;
-    const ultima = mesas.ultima();
+    const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
-  });
+  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; abrir(inicial()); });
 })();
 </script>
 </body>

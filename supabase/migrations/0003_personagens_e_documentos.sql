@@ -1,0 +1,15 @@
+-- Dados compartilhados da mesa: personagens (ficha, skills e estado atual) e documentos
+-- (configurações e bibliotecas dos sistemas: tabelas base das fichas, árvores, tabelas de eventos...).
+--
+-- Quem vê o quê:
+--   · o mestre vê e altera tudo da mesa;
+--   · o jogador vê o que é dele (dono_id) e o que o mestre abriu para a mesa (vis = 'mesa');
+--   · o jogador altera só o que é dele, e não troca o dono, a visibilidade nem apaga.
+-- Apagar é marcar apagado = true (assim a remoção também chega aos outros aparelhos).
+--
+-- Tabelas: public.personagens (mesa_id, id, nome, dono_id, vis, ordem, ficha, skills, estado, rev, atualizado_em,
+-- atualizado_por, apagado) e public.documentos (mesa_id, id, dono_id, vis, dados, rev, ...).
+-- Gatilho privado.tocar(): revisão e hora do servidor; jogador não troca dono/visibilidade nem apaga.
+-- Políticas: *_ver, *_criar, *_editar (mestre: tudo; jogador: o que é dele / o que a mesa vê).
+-- As duas tabelas estão na publicação de tempo real.
+-- O texto completo aplicado está no histórico de migrações do projeto (personagens_e_documentos).
