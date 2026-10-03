@@ -1,0 +1,6 @@
+{
+  "name": "tinycats-testes",
+  "private": true,
+  "description": "Dependências só dos testes (o site não tem etapa de build).",
+  "dependencies": { "@supabase/supabase-js": "^2", "ws": "^8" }
+}

@@ -27,11 +27,21 @@ function serve() {
 // Abre um contexto de navegador. Cada contexto é um "aparelho" separado (armazenamento próprio).
 async function start(opt = {}) {
   const srv = await serve();
-  const browser = await chromium.launch();
+  // opt.net: os testes falam com o Supabase de verdade, pelo proxy do ambiente
+  const proxy = opt.net ? (process.env.HTTPS_PROXY || process.env.https_proxy) : null;
+  const browser = await chromium.launch(proxy ? { proxy: { server: proxy, bypass: '127.0.0.1,localhost' } } : {});
   const base = `http://127.0.0.1:${srv.address().port}/`;
   const errs = [];
   async function device(o = {}) {
-    const ctx = await browser.newContext({ viewport: { width: o.w || 1440, height: o.h || 900 }, colorScheme: o.theme || 'dark', acceptDownloads: true });
+    const ctx = await browser.newContext({ ignoreHTTPSErrors: !!opt.net, viewport: { width: o.w || 1440, height: o.h || 900 }, colorScheme: o.theme || 'dark', acceptDownloads: true });
+    // Com o proxy ligado, o Chromium manda até o endereço local por ele; então os arquivos locais são entregues daqui mesmo.
+    if (opt.net) await ctx.route(base + '**', route => {
+      let p = decodeURIComponent(new URL(route.request().url()).pathname);
+      if (p.endsWith('/')) p += 'index.html';
+      const f = path.join(ROOT, p);
+      if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) return route.fulfill({ status: 404, body: 'não encontrado' });
+      route.fulfill({ status: 200, contentType: TYPES[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f) });
+    });
     if (o.seed) await ctx.addInitScript(seed => { try { for (const k in seed) if (localStorage.getItem(k) === null) localStorage.setItem(k, seed[k]); } catch (e) {} }, o.seed);
     const page = await ctx.newPage();
     const tag = o.name || 'pg';
