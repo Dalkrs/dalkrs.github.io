@@ -187,6 +187,13 @@ async function start(snap) {
   // (Nos testes automáticos, com ?debug, só abre se o endereço também trouxer ?tour.)
   // Aberta pela casca do site (que já mostra a marca na barra de cima): a marca daqui some.
   if (/[?&]casca\b/.test(location.search)) document.documentElement.classList.add('na-casca');
+  // Dentro do site, com uma mesa aberta: as rolagens daqui (iniciativa) também vão para a mesa ao vivo.
+  // Token que os jogadores não veem, ou de nome escondido, sai marcado como oculto: a rolagem dele fica só com o mestre.
+  if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {
+    if (!window.TC.ponte.estado.mesa) return;
+    const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
+    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)) }));
+  };
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
 }

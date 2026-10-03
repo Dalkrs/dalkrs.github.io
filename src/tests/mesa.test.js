@@ -1,0 +1,142 @@
+// A mesa ao vivo, de ponta a ponta, no projeto real: o mestre e um jogador, cada um no seu aparelho.
+const { start, checker } = require('./lib');
+const { contas, entrar } = require('./contas');
+const { ok, end } = checker();
+(async () => {
+  const t = await start({ net: true });
+  const c = contas();
+  // garante as contas (numa página em branco) e sai, para o teste entrar pela tela
+  { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await d.ctx.close(); }
+
+  const M = (await t.device({ name: 'mestre' })).page, J = (await t.device({ name: 'jogador', w: 1200, h: 800 })).page;
+  const w = (ms, p) => (p || M).waitForTimeout(ms);
+  const feed = p => p.locator('#feed');
+  const espera = async (p, texto, ms = 9000) => { try { await feed(p).getByText(texto, { exact: false }).first().waitFor({ timeout: ms }); return true; } catch (e) { return false; } };
+  const some = async (p, texto, ms = 9000) => { try { await feed(p).getByText(texto, { exact: false }).first().waitFor({ state: 'detached', timeout: ms }); return true; } catch (e) { return false; } };
+
+  // ---------- sem conta: tudo como antes, com o botão Entrar ----------
+  await M.goto(t.base, { waitUntil: 'load' }); await w(1500);
+  ok((await M.locator('#btnConta').innerText()).trim() === 'Entrar', 'sem conta, a barra mostra "Entrar"');
+  ok(await M.locator('#btnVivo').isHidden() && await M.locator('#vivo').isHidden(), 'sem mesa não há painel nem botão da mesa ao vivo');
+
+  // ---------- o mestre entra e cria a mesa ----------
+  await M.locator('#btnConta').click(); await w(300);
+  ok(await M.locator('#f-conta').isVisible(), 'abre a janela de entrar');
+  await M.locator('#c-email').fill(c.mestre); await M.locator('#c-senha').fill('senha-errada-1'); await M.locator('#c-ok').click(); await w(2500);
+  ok((await M.locator('#c-erro').innerText()).includes('incorretos'), 'senha errada: aviso em português — ' + await M.locator('#c-erro').innerText());
+  await M.locator('#c-senha').fill(c.senha); await M.locator('#c-ok').click();
+  await M.locator('#m-nome').waitFor({ timeout: 15000 });
+  ok(true, 'depois de entrar, abre a janela de mesas');
+  const nomeMesa = 'Mesa E2E ' + Date.now().toString(36);
+  await M.locator('#m-nome').fill(nomeMesa); await M.locator('#m-criar').click();
+  await M.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
+  ok((await M.locator('#btnConta').innerText()).includes(nomeMesa) && (await M.locator('#btnConta').innerText()).includes('Mestre'), 'a barra mostra a mesa e o papel: ' + (await M.locator('#btnConta').innerText()).replace(/\s+/g, ' '));
+  ok(await M.locator('#vivo').isVisible(), 'o painel da mesa ao vivo abre');
+  await M.locator('#btnConta').click(); await w(400);
+  const codigo = (await M.locator('#codigo').innerText()).trim();
+  ok(/^[A-Z2-9]{3}-[A-Z2-9]{3}$/.test(codigo), 'o mestre vê o código de convite: ' + codigo);
+  await M.keyboard.press('Escape'); await w(200);
+  ok(await M.locator('#menu').isHidden(), 'Esc fecha o menu');
+
+  // ---------- o jogador entra com o código ----------
+  await J.goto(t.base, { waitUntil: 'load' }); await w(1200, J);
+  await J.locator('#btnConta').click(); await J.locator('#c-email').fill(c.jog1); await J.locator('#c-senha').fill(c.senha); await J.locator('#c-ok').click();
+  await J.locator('#m-cod').waitFor({ timeout: 15000 });
+  await J.locator('#m-cod').fill('zzz-zzz'); await J.locator('#m-meu').fill('Dalmo'); await J.locator('#m-entrar').click(); await w(2500, J);
+  ok((await J.locator('#m-erro').innerText()).includes('não encontrado'), 'código errado: ' + await J.locator('#m-erro').innerText());
+  await J.locator('#m-cod').fill(codigo.toLowerCase()); await J.locator('#m-entrar').click();
+  await J.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
+  ok((await J.locator('#btnConta').innerText()).includes('Jogador'), 'o jogador entra na mesa como jogador');
+  ok(await J.locator('#segredo').count() === 0, 'o jogador não tem o botão "Em segredo"');
+  await J.locator('#btnConta').click(); await w(300, J);
+  ok(await J.locator('#codigo').count() === 0, 'o jogador não vê o código de convite');
+  ok(await J.locator('#membros .mb').count() === 2, 'o jogador vê os dois participantes');
+  await J.keyboard.press('Escape');
+
+  // ---------- conversa e comandos ----------
+  await J.locator('#msg').fill('olá, mesa!'); await J.locator('#msg').press('Enter');
+  ok(await espera(J, 'olá, mesa!'), 'a fala aparece para quem escreveu');
+  ok(await espera(M, 'olá, mesa!'), 'a fala chega ao mestre');
+  await J.locator('#msg').fill('/r 2d6+3 >= 5'); await J.locator('#msg').press('Enter');
+  ok(await espera(J, '2d6 + 3'), 'o /r rola e mostra a conta');
+  const cartaJ = feed(J).locator('.rol').last();
+  ok(/^\d+$/.test((await cartaJ.locator('.tot').innerText()).trim()) && /Passou/.test(await cartaJ.locator('.vd').innerText()), 'a carta tem o total e o veredito: ' + (await cartaJ.innerText()).replace(/\n/g, ' | '));
+  ok(await espera(M, '2d6 + 3'), 'a rolagem do jogador chega ao mestre');
+  ok((await feed(M).locator('.rol').last().locator('.it-h b').innerText()) === 'Dalmo', 'com o nome de quem rolou');
+  await J.locator('#msg').fill('/fixa 60 20'); await J.locator('#msg').press('Enter');
+  ok(await espera(J, 'de fixa (atributo 60)'), 'o /fixa rola pela regra da fixa');
+  await J.locator('#msg').fill('/me saca a espada'); await J.locator('#msg').press('Enter');
+  ok(await espera(M, 'Dalmo saca a espada'), 'o /me vira ação, e chega ao mestre');
+  await J.locator('#msg').fill('/voar'); await J.locator('#msg').press('Enter'); await w(500, J);
+  ok(await feed(J).locator('.nota.erro').count() === 1 && (await J.locator('#msg').inputValue()) === '/voar', 'comando desconhecido: aviso só para quem digitou, e o texto volta ao campo');
+  await J.locator('#msg').fill('/ajuda'); await J.locator('#msg').press('Enter'); await w(400, J);
+  ok((await feed(J).locator('.nota').last().innerText()).includes('/fixa'), 'o /ajuda lista os comandos');
+  ok(!(await feed(M).innerText()).includes('/voar') && !(await feed(M).innerText()).includes('Comandos da mesa'), 'avisos e ajuda não vão para a mesa');
+
+  // ---------- segredo do mestre ----------
+  ok((await M.locator('#dicaTxt').innerText()).includes('A mesa vê'), 'por padrão a mesa vê as rolagens do mestre');
+  await M.locator('#segredo').click(); await w(300);
+  ok(await M.locator('#segredo').getAttribute('aria-pressed') === 'true' && (await M.locator('#dicaTxt').innerText()).includes('Só você'), 'ligar "Em segredo" muda o aviso');
+  await M.locator('#msg').fill('/r 1d20'); await M.locator('#msg').press('Enter');
+  ok(await espera(M, 'Só você vê'), 'a rolagem secreta aparece para o mestre, marcada');
+  // o Rolador, dentro do site, acompanha
+  await M.locator('#tab-rolador').click(); await w(1800);
+  const R = M.frame({ url: /\/rolador\// });
+  ok((await R.locator('#mesaDest').innerText()).includes('Em segredo'), 'o Rolador avisa que a rolagem sai em segredo: ' + await R.locator('#mesaDest').innerText());
+  await R.locator('#fTitle').fill('Furtividade do bandido'); await R.locator('#fAtr').fill('60'); await R.locator('#fFixa').fill('20'); await R.locator('#rollBtn').click();
+  ok(await espera(M, 'Furtividade do bandido'), 'a rolagem do Rolador entra na mesa ao vivo do mestre');
+  const cartaR = feed(M).locator('.rol', { hasText: 'Furtividade do bandido' });
+  ok(await cartaR.locator('.or').innerText() === 'Rolador' && (await cartaR.getAttribute('class')).includes('secreta'), 'com a origem "Rolador" e marcada como secreta');
+  await w(7000);
+  ok(!(await feed(J).innerText()).includes('Furtividade do bandido') && await feed(J).locator('.rol').count() === 2, 'o jogador NÃO vê as rolagens secretas (continua com as 2 dele)');
+  await cartaR.getByRole('button', { name: 'Mostrar à mesa' }).click();
+  ok(await espera(J, 'Furtividade do bandido'), 'revelada, ela chega ao jogador');
+  ok(!(await feed(M).locator('.rol', { hasText: 'Furtividade do bandido' }).getAttribute('class')).includes('secreta'), 'e deixa de estar marcada como secreta para o mestre');
+  await M.locator('#segredo').click(); await w(400);
+  ok((await R.locator('#mesaDest').innerText()).includes('vê esta rolagem'), 'desligando o segredo, o Rolador volta a avisar que a mesa vê');
+  await M.screenshot({ path: 'shot-mesa-mestre.png' });
+
+  // ---------- Fichas e Cenas também publicam ----------
+  await M.locator('#tab-fichas').click(); await w(2000);
+  const F = M.frame({ url: /\/fichas\// });
+  await F.locator('[data-rolar]').first().click(); await w(600);
+  ok(await espera(J, 'Dain X', 9000), 'uma rolagem feita na ficha chega ao jogador');
+  ok(await feed(J).locator('.rol', { hasText: 'Dain X' }).locator('.or').innerText() === 'Fichas', 'com a origem "Fichas"');
+  await M.locator('#tab-cenas').click(); await w(2500);
+  const C = M.frame({ url: /\/cenas\// });
+  if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await w(400); }
+  await C.locator('#tab-turn').click(); await w(400);
+  await C.locator('#turnRoll').click(); await w(600);
+  if (await C.getByRole('button', { name: /Rolar de novo|Rolar/ }).count() > 1) { /* já tinham iniciativa: confirma */ const b = C.locator('.modal .btn.primary'); if (await b.count()) await b.click(); }
+  ok(await espera(M, 'Iniciativa ·', 9000), 'a iniciativa rolada na cena entra na mesa ao vivo');
+  ok(await espera(J, 'Iniciativa ·', 9000), 'e chega ao jogador');
+
+  // ---------- presença, apagar, recarregar ----------
+  ok(await M.locator('#quem .pes:not(.fora)').count() >= 1, 'o painel mostra quem está na mesa');
+  const antes = await feed(M).locator('.it').count();
+  await feed(J).locator('.fala', { hasText: 'olá, mesa!' }).hover(); await feed(J).locator('.fala', { hasText: 'olá, mesa!' }).locator('.mini').click();
+  ok(await some(M, 'olá, mesa!'), 'o jogador apaga a própria fala e ela some para o mestre');
+  await J.locator('.toast button', { hasText: 'Desfazer' }).click();
+  ok(await espera(M, 'olá, mesa!'), 'desfazer devolve a fala');
+  await J.screenshot({ path: 'shot-mesa-jogador.png' });
+  await M.reload({ waitUntil: 'load' });
+  await M.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
+  ok((await M.locator('#btnConta').innerText()).includes(nomeMesa), 'ao recarregar, a conta e a mesa continuam abertas');
+  ok(await espera(M, 'Furtividade do bandido', 6000) && await feed(M).locator('.it').count() >= antes - 1, 'e o registro volta inteiro');
+
+  // ---------- o mestre apaga a mesa ----------
+  await M.locator('#btnConta').click(); await w(300);
+  await M.locator('#menu .lk', { hasText: 'Apagar esta mesa' }).click(); await w(300);
+  await M.locator('#a-nome').fill('nome errado'); await M.locator('dialog .btn.per').click(); await w(500);
+  ok((await M.locator('dialog .err').innerText()).includes('não confere'), 'apagar a mesa exige o nome certo');
+  await M.locator('#a-nome').fill(nomeMesa); await M.locator('dialog .btn.per').click();
+  await M.locator('#vivo').waitFor({ state: 'hidden', timeout: 15000 });
+  ok((await M.locator('#btnConta').innerText()).trim() === 'Escolher mesa', 'mesa apagada: a barra volta a "Escolher mesa"');
+  await M.locator('#btnConta').click(); await w(200); await M.locator('#menu .lk', { hasText: 'Sair da conta' }).click(); await w(1500);
+  ok((await M.locator('#btnConta').innerText()).trim() === 'Entrar', 'sair da conta volta ao começo');
+
+  if (t.errs.length) console.log('CONSOLE:\n' + t.errs.join('\n'));
+  ok(t.errs.filter(e => !/status of (400|401|409)/.test(e)).length === 0, 'sem erros inesperados no console');
+  await t.close();
+  end();
+})().catch(e => { console.error(e); process.exit(1); });

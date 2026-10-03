@@ -5,21 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tiny Cats · Sistema de RPG</title>
 <meta name="description" content="Tiny Cats, sistema de RPG: cenas, fichas, árvore de habilidades e rolador de dados em um só lugar.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161a24'/%3E%3Cpath d='M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.600 21.600 26 16 26s-9.900-3.400-10.400-8.400C5.400 15.600 5.900 13.700 7 12z' fill='%23e6ab4f'/%3E%3Ccircle cx='12.200' cy='16.500' r='1.500' fill='%23161a24'/%3E%3Ccircle cx='19.800' cy='16.500' r='1.500' fill='%23161a24'/%3E%3Cpath d='M14.800 20.200h2.400L16 21.600z' fill='%23161a24'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161a24'/%3E%3Cpath d='M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.6 21.6 26 16 26s-9.9-3.4-10.4-8.4C5.4 15.6 5.9 13.7 7 12z' fill='%23e6ab4f'/%3E%3Ccircle cx='12.2' cy='16.5' r='1.5' fill='%23161a24'/%3E%3Ccircle cx='19.8' cy='16.5' r='1.5' fill='%23161a24'/%3E%3Cpath d='M14.8 20.2h2.4L16 21.6z' fill='%23161a24'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Grenze:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@600;700&display=swap">
 <style>
-/* Casca do site: uma barra fina com a marca e as abas; cada sistema roda na própria página, dentro de uma moldura.
-   As cores são as mesmas da mesa de cenas (escuro por padrão, claro quando o sistema pede). */
+/* Casca do site: uma barra fina com a marca, as abas e a mesa; cada sistema roda na própria página, dentro de uma
+   moldura; à direita, o painel da mesa ao vivo. Cores iguais às da mesa de cenas (escuro por padrão). */
 :root {
   color-scheme: dark;
   --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
   --line: #2b3243; --line-strong: #40495f;
   --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
   --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --secret: #b39cf0; --secret-soft: rgba(150, 120, 240, .14);
+  --scrim: rgba(5, 7, 12, .62); --shadow: 0 12px 34px rgba(0, 0, 0, .5);
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
   --bar: 44px;
 }
 @media (prefers-color-scheme: light) {
@@ -29,6 +32,8 @@
     --line: #d2d8e2; --line-strong: #aeb8c9;
     --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
     --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5; --secret-soft: rgba(91, 63, 181, .1);
+    --scrim: rgba(30, 38, 54, .42); --shadow: 0 12px 34px rgba(40, 50, 72, .24);
   }
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -40,79 +45,212 @@ body {
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
   display: flex; flex-direction: column;
 }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
 
-.bar {
-  flex: none; height: var(--bar); display: flex; align-items: stretch; gap: 6px;
-  padding: 0 10px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line);
-  min-width: 0;
-}
-.brand {
-  display: flex; align-items: center; gap: 8px; padding-right: 10px; margin-right: 2px;
-  color: var(--lamp-ink); text-decoration: none; font: 700 21px/1 var(--display); letter-spacing: .01em;
-  white-space: nowrap; border-radius: 6px;
-}
+/* ---- barra ---- */
+.bar { flex: none; height: var(--bar); display: flex; align-items: stretch; gap: 6px; padding: 0 10px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; }
+.brand { display: flex; align-items: center; gap: 8px; padding-right: 10px; margin-right: 2px; color: var(--lamp-ink); text-decoration: none; font: 700 21px/1 var(--display); letter-spacing: .01em; white-space: nowrap; border-radius: 6px; }
 .brand svg { flex: none; }
 .tabs { display: flex; align-items: stretch; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab {
-  position: relative; display: flex; align-items: center; gap: 7px; padding: 0 13px;
-  color: var(--fg-2); text-decoration: none; font-weight: 600; white-space: nowrap; border-radius: 6px 6px 0 0;
-}
+.tab { position: relative; display: flex; align-items: center; gap: 7px; padding: 0 13px; color: var(--fg-2); text-decoration: none; font-weight: 600; white-space: nowrap; border-radius: 6px 6px 0 0; }
 .tab svg { flex: none; opacity: .85; }
 .tab:hover { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
-.tab[aria-selected="true"]::after {
-  content: ""; position: absolute; left: 9px; right: 9px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--lamp);
-}
-.bar-r { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 8px; }
-.ib {
-  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px;
-  color: var(--fg-2); background: none; border: 1px solid transparent; text-decoration: none; cursor: pointer;
-}
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--lamp); }
+.bar-r { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 8px; flex: none; }
+.ib { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; color: var(--fg-2); background: none; border: 1px solid transparent; text-decoration: none; }
 .ib:hover { color: var(--fg); background: var(--hover); border-color: var(--line); }
+.ib[aria-pressed="true"] { color: var(--lamp-ink); background: var(--lamp-soft); }
+.conta { display: flex; align-items: center; gap: 7px; height: 32px; max-width: 250px; padding: 0 11px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
+.conta:hover { border-color: var(--line-strong); background: var(--hover); }
+.conta .nm { overflow: hidden; text-overflow: ellipsis; }
+.conta .pp { font-weight: 500; color: var(--fg-3); font-size: 12px; }
+.conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.selo { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9px; background: var(--lamp); color: var(--on-lamp); font: 700 10px/16px var(--ui); text-align: center; }
 
-.stage { position: relative; flex: 1; min-height: 0; background: var(--table); }
+/* ---- corpo: sistema + mesa ao vivo ---- */
+.corpo { flex: 1; min-height: 0; display: flex; position: relative; }
+.stage { position: relative; flex: 1; min-width: 0; background: var(--table); }
 .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--table); }
-.wait {
-  position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); pointer-events: none;
-}
+.wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); pointer-events: none; }
 .wait span { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 
+.vivo { flex: none; width: 340px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
+.vivo-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
+.vivo-h strong { font: 600 17px/1.1 var(--display); letter-spacing: .01em; }
+.sinal { width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); flex: none; }
+.sinal.on { background: var(--ok); }
+.vivo-h .ib { margin-left: auto; }
+.quem { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.pes { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); font-size: 12.5px; }
+.pes i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pes.fora { opacity: .5; }
+.pes.fora i { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--fg-3); }
+.pes small { color: var(--fg-3); font-size: 11px; }
+.feed { flex: 1; min-height: 0; margin: 0; padding: 8px 10px 10px; list-style: none; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; overscroll-behavior: contain; }
+.feed:empty::before { content: "Ainda não há nada aqui. Role um dado ou mande uma mensagem."; color: var(--fg-3); padding: 18px 6px; text-align: center; }
+.it { position: relative; padding: 2px 4px; border-radius: 8px; overflow-wrap: anywhere; }
+.it-h { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; color: var(--fg-3); }
+.it-h b { font-weight: 700; color: var(--fg); }
+.it-h time { margin-left: auto; font: 11px var(--mono); flex: none; }
+.it-h .or { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); }
+.fala .tx { white-space: pre-wrap; }
+.acao { color: var(--fg-2); font-style: italic; }
+.rol { padding: 8px 10px 9px; background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--line-strong); }
+.rol .tt { margin-top: 3px; font-weight: 600; }
+.rol .rs { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
+.rol .tot { font: 600 26px/1.1 var(--display); color: var(--lamp-ink); flex: none; }
+.rol .res { color: var(--fg-2); font-size: 13px; min-width: 0; }
+.rol .vd { margin-top: 3px; font-weight: 600; font-size: 13px; }
+.rol .vd.sim { color: var(--ok); }
+.rol .vd.nao { color: var(--danger); }
+.rol.secreta { background: var(--secret-soft); border-color: var(--secret); border-left-color: var(--secret); }
+.rol .sg { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--secret); font-size: 12.5px; font-weight: 600; }
+.it .acts { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
+.it:hover .acts, .it:focus-within .acts { display: flex; }
+.mini { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; border: 0; background: var(--surface); color: var(--fg-3); }
+.mini:hover { color: var(--danger); background: var(--hover); }
+.nota { padding: 7px 10px; border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--fg-2); font-size: 13px; }
+.nota.erro { border-color: var(--danger); color: var(--fg); }
+.nota b { color: var(--fg); font-family: var(--mono); font-weight: 600; }
+.nota p { margin: 4px 0 0; }
+.nota .fechar { float: right; margin: -2px -4px 0 6px; }
+.novo { animation: surge .9s ease-out; }
+@keyframes surge { from { background-color: var(--lamp-soft); } }
+@media (prefers-reduced-motion: reduce) { .novo { animation: none; } }
+.novas { flex: none; align-self: center; margin: -34px 0 6px; z-index: 1; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--lamp); background: var(--surface); color: var(--lamp-ink); font-weight: 600; box-shadow: var(--shadow); }
+.compor { flex: none; padding: 8px 10px 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.compor.seg { background: var(--secret-soft); border-top-color: var(--secret); }
+.compor input { min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.compor .dica { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-3); min-height: 24px; }
+.compor.seg .dica { color: var(--secret); font-weight: 600; }
+.chave { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg-2); font-size: 12px; font-weight: 600; flex: none; }
+.chave[aria-pressed="true"] { background: var(--secret); border-color: var(--secret); color: #fff; }
+
+.btn { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover { filter: brightness(1.06); }
+.btn.per { color: var(--danger); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 13px; }
+.btn:disabled { opacity: .55; cursor: default; }
+
+/* ---- menu da conta ---- */
+.menu { position: fixed; z-index: 30; top: calc(var(--bar) + 4px + env(safe-area-inset-top, 0px)); right: 8px; width: 310px; max-height: calc(100% - var(--bar) - 16px); overflow: auto; padding: 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); }
+.menu h3 { margin: 0; font: 600 18px/1.2 var(--display); }
+.menu .sub { color: var(--fg-3); font-size: 12.5px; }
+.menu .sec { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.menu .rot { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); margin-bottom: 6px; }
+.cod { display: flex; align-items: center; gap: 6px; }
+.cod code { font: 600 19px var(--mono); letter-spacing: .08em; color: var(--lamp-ink); margin-right: auto; }
+.mb { display: flex; align-items: center; gap: 7px; padding: 3px 0; }
+.mb i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.mb.fora i { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--fg-3); }
+.mb span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb small { color: var(--fg-3); }
+.mb .btn { margin-left: auto; }
+.menu .lk { display: block; width: 100%; text-align: left; padding: 8px 8px; border: 0; border-radius: 7px; background: none; font-weight: 600; }
+.menu .lk:hover { background: var(--hover); }
+.menu .lk.per { color: var(--danger); }
+
+/* ---- janelas ---- */
+dialog { width: min(440px, calc(100% - 24px)); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+dialog::backdrop { background: var(--scrim); }
+.dl { padding: 18px 18px 16px; display: grid; gap: 12px; }
+.dl h2 { margin: 0; font: 600 22px/1.15 var(--display); }
+.dl p { margin: 0; color: var(--fg-2); }
+.dl label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--fg-2); }
+.dl input { width: 100%; min-width: 0; height: 38px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 400; color: var(--fg); }
+.dl .lin { display: flex; gap: 8px; align-items: end; }
+.dl .lin label { flex: 1; min-width: 0; }
+.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.dl .err { color: var(--danger); font-weight: 600; min-height: 0; }
+.dl .err:empty { display: none; }
+.dl .nt { font-size: 12.5px; color: var(--fg-3); }
+.dl fieldset { margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.dl legend { padding: 0; font-weight: 700; float: left; width: 100%; margin-bottom: 2px; }
+.seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 3px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); }
+.seg2 button { height: 32px; border: 0; border-radius: 7px; background: none; font-weight: 600; color: var(--fg-2); }
+.seg2 button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.ms { display: grid; gap: 6px; }
+.ms button { display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; text-align: left; }
+.ms button:hover { border-color: var(--lamp); }
+.ms button small { margin-left: auto; color: var(--fg-3); font-weight: 500; }
+
+.toasts { position: fixed; z-index: 40; left: 50%; bottom: 18px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
+
+@media (max-width: 900px) {
+  .vivo { position: absolute; top: 0; right: 0; bottom: 0; z-index: 20; width: min(340px, 100%); box-shadow: var(--shadow); }
+}
 @media (max-width: 620px) {
   .brand span { display: none; }
   .tab { padding: 0 10px; }
   .tab svg { display: none; }
+  .conta .pp { display: none; }
+  .conta { max-width: 130px; }
 }
 </style>
 </head>
 <body>
 <header class="bar">
   <a class="brand" href="./" id="brand" title="Tiny Cats · Sistema de RPG">
-    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.6 21.6 26 16 26S6.1 22.600 5.600 17.600C5.400 15.600 5.900 13.700 7 12z" fill="currentColor"/><circle cx="12.200" cy="16.500" r="1.500" fill="var(--surface)"/><circle cx="19.800" cy="16.500" r="1.500" fill="var(--surface)"/><path d="M14.800 20.200h2.400L16 21.600z" fill="var(--surface)"/></svg>
+    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.6 21.6 26 16 26s-9.9-3.4-10.4-8.4C5.4 15.6 5.9 13.7 7 12z" fill="currentColor"/><circle cx="12.2" cy="16.5" r="1.5" fill="var(--surface)"/><circle cx="19.8" cy="16.5" r="1.5" fill="var(--surface)"/><path d="M14.8 20.2h2.4L16 21.6z" fill="var(--surface)"/></svg>
     <span>Tiny Cats</span>
   </a>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
   <div class="bar-r">
+    <button type="button" class="ib" id="btnVivo" hidden aria-pressed="false" title="Mesa ao vivo: rolagens e conversa" aria-label="Mesa ao vivo">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8"/><path d="M8 12.5h5"/></svg>
+      <span class="selo" id="selo" hidden></span>
+    </button>
+    <button type="button" class="conta" id="btnConta" hidden aria-haspopup="true"></button>
     <a class="ib" id="pop" target="_blank" rel="noopener" title="Abrir esta aba em outra janela" aria-label="Abrir esta aba em outra janela">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
     </a>
   </div>
 </header>
-<main class="stage" id="stage">
-  <div class="wait" id="wait"><span>Carregando…</span></div>
-</main>
+<div class="corpo">
+  <main class="stage" id="stage">
+    <div class="wait" id="wait"><span>Carregando…</span></div>
+  </main>
+  <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
+    <div class="vivo-h">
+      <strong>Mesa ao vivo</strong><span class="sinal" id="sinal"></span>
+      <button type="button" class="ib" id="vivoX" title="Fechar o painel" aria-label="Fechar o painel da mesa ao vivo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="quem" id="quem"></div>
+    <ol class="feed" id="feed" role="log" aria-live="polite" aria-label="Rolagens e conversa da mesa"></ol>
+    <button type="button" class="novas" id="novas" hidden>Novidades abaixo ↓</button>
+    <form class="compor" id="compor" autocomplete="off">
+      <input id="msg" maxlength="1500" placeholder="Mensagem ou /r 2d6+3" aria-label="Mensagem ou comando" enterkeyhint="send">
+      <button class="btn pri" type="submit">Enviar</button>
+      <div class="dica" id="dica"></div>
+    </form>
+  </aside>
+</div>
+<div class="menu" id="menu" hidden role="dialog" aria-label="Conta e mesa"></div>
+<dialog id="dlg"></dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o Tiny Cats.</p></noscript>
+<script src="tc/supabase.js?v=1"></script>
+<script src="tc/config.js?v=1"></script>
+<script src="tc/dice.js?v=1"></script>
+<script src="tc/tc.js?v=2"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-1';
+  const VERSAO = '2026.10.03-2';
   const ICO = {
-    cenas: '<path d="M9 4 3 6.500v13.500l6-2.500 6 2.500 6-2.500V4l-6 2.500L9 4z"/><path d="M9 4v13.500"/><path d="M15 6.500V20"/>',
-    fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.500" r="2.300"/><path d="M8.500 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
+    cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
+    fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
     arvore: '<circle cx="12" cy="5" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M12 7v4"/><path d="M12 11c-4 0-6 2-6 5"/><path d="M12 11c4 0 6 2 6 5"/>',
-    rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.100" fill="currentColor"/><circle cx="15" cy="15" r="1.100" fill="currentColor"/><circle cx="15" cy="9" r="1.100" fill="currentColor"/><circle cx="9" cy="15" r="1.100" fill="currentColor"/>',
+    rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   const ABAS = [
     { id: 'cenas', nome: 'Cenas', src: 'cenas/' },
@@ -120,6 +258,7 @@ body {
     { id: 'arvore', nome: 'Árvore', src: 'arvore/' },
     { id: 'rolador', nome: 'Rolador', src: 'rolador/' },
   ];
+  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
   const stage = $('stage'), tabs = $('tabs'), wait = $('wait'), pop = $('pop');
@@ -127,29 +266,52 @@ body {
   let atual = null;
 
   const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: só não lembra a aba */ } };
+  const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: só não lembra */ } };
   const existe = id => ABAS.some(a => a.id === id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
 
+  /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto. */
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const k in attrs || {}) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k === 'style') el.style.cssText = v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) el.append(c);
+    return el;
+  }
+  const X_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  const CAD_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+  function icone(svg) { const s = document.createElement('span'); s.style.display = 'inline-grid'; s.innerHTML = svg; return s; }
+
+  function toast(texto, acao, fn, ms) {
+    const t = h('div', { class: 'toast' }, h('span', { text: texto }));
+    if (acao) t.append(h('button', { type: 'button', text: acao, onclick: () => { t.remove(); fn(); } }));
+    $('toasts').append(t);
+    setTimeout(() => t.remove(), ms || (acao ? 8000 : 4500));
+  }
+
+  /* ================= abas e molduras ================= */
   // Primeira visita: quem já usava o Rolador neste endereço cai direto nele.
   function inicial() {
-    const h = daHash();
-    if (existe(h)) return h;
+    const hs = daHash();
+    if (existe(hs)) return hs;
     const salvo = ler(CHAVE);
     if (existe(salvo)) return salvo;
     return ler('rolador-urgm:dados:v1') ? 'rolador' : 'cenas';
   }
-
   for (const a of ABAS) {
-    const el = document.createElement('a');
-    el.className = 'tab'; el.id = 'tab-' + a.id; el.href = '#/' + a.id;
-    el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', 'false');
-    el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg><span></span>';
-    el.lastChild.textContent = a.nome;
+    const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
+    el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
+    el.append(h('span', { text: a.nome }));
     el.addEventListener('click', ev => { ev.preventDefault(); abrir(a.id); });
     tabs.append(el);
   }
-
   function abrir(id) {
     if (!existe(id)) id = 'cenas';
     const a = ABAS.find(x => x.id === id);
@@ -163,9 +325,7 @@ body {
     }
     let f = frames[id];
     if (!f) {
-      f = frames[id] = document.createElement('iframe');
-      f.title = a.nome; f.id = 'f-' + id;
-      f.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen');
+      f = frames[id] = h('iframe', { title: a.nome, id: 'f-' + id, allow: 'clipboard-read; clipboard-write; fullscreen' });
       wait.hidden = false;
       f.addEventListener('load', () => { if (atual === id) { wait.hidden = true; foco(f); } });
       f.src = a.src + '?casca=1&v=' + encodeURIComponent(VERSAO);
@@ -177,11 +337,311 @@ body {
     foco(f);
   }
   // O teclado vai para o sistema aberto, para os atalhos dele funcionarem sem um clique antes.
-  function foco(f) { try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ } }
-
-  window.addEventListener('hashchange', () => { const h = daHash(); if (existe(h) && h !== atual) abrir(h); });
+  function foco(f) { if (document.activeElement && $('vivo').contains(document.activeElement)) return; try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ } }
+  window.addEventListener('hashchange', () => { const hs = daHash(); if (existe(hs) && hs !== atual) abrir(hs); });
   $('brand').addEventListener('click', ev => { ev.preventDefault(); if (atual) foco(frames[atual]); });
   abrir(inicial());
+
+  /* ================= conta, mesas e mesa ao vivo ================= */
+  const TC = window.TC || {};
+  if (!TC.conta || !TC.conta.disponivel()) return;      // sem a biblioteca da nuvem, o site segue só com as abas
+  const { conta, mesas, aoVivo } = TC;
+  const btnConta = $('btnConta'), btnVivo = $('btnVivo'), vivo = $('vivo'), feed = $('feed'), menu = $('menu'), dlg = $('dlg');
+  let naoLidas = 0;
+  const papelPt = p => (p === 'mestre' ? 'Mestre' : 'Jogador');
+  const hora = iso => { const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const codigoBonito = c => (c ? c.slice(0, 3) + '-' + c.slice(3) : '');
+
+  /* ---- ponte com os sistemas ---- */
+  let canal = null;
+  try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* sem BroadcastChannel: só as molduras recebem */ }
+  const estadoPonte = () => ({ t: 'estado', mesa: mesas.atual ? { id: mesas.atual.id, nome: mesas.atual.nome } : null, papel: mesas.atual ? mesas.atual.papel : null, segredo: !!aoVivo.segredo });
+  function difundir() {
+    const m = estadoPonte();
+    for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: m }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
+    if (canal) canal.postMessage(m);
+  }
+  function daPonte(m, responder) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'ola') responder(estadoPonte());
+    else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast('A rolagem não chegou à mesa: ' + e.message));
+  }
+  window.addEventListener('message', ev => {
+    if (ev.origin !== location.origin || !ev.data || !ev.data.tinycats) return;
+    if (!Object.values(frames).some(f => f.contentWindow === ev.source)) return;
+    daPonte(ev.data.tinycats, r => ev.source.postMessage({ tinycats: r }, location.origin));
+  });
+  if (canal) canal.onmessage = ev => daPonte(ev.data, r => canal.postMessage(r));
+
+  /* ---- botão da conta ---- */
+  function pintarConta() {
+    btnConta.hidden = false;
+    btnConta.className = 'conta';
+    btnConta.replaceChildren();
+    const a = mesas.atual;
+    if (!conta.usuario) { btnConta.classList.add('entrar'); btnConta.append(h('span', { class: 'nm', text: 'Entrar' })); btnConta.title = 'Entrar para jogar com a mesa'; }
+    else if (!a) { btnConta.append(h('span', { class: 'nm', text: 'Escolher mesa' })); btnConta.title = 'Conta de ' + conta.usuario.email; }
+    else { btnConta.append(h('span', { class: 'nm', text: a.nome }), h('span', { class: 'pp', text: papelPt(a.papel) })); btnConta.title = 'Mesa ' + a.nome + ' · ' + papelPt(a.papel); }
+    btnVivo.hidden = !a;
+    if (!a) { vivo.hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
+  }
+  btnConta.addEventListener('click', () => {
+    if (!menu.hidden) { fecharMenu(); return; }
+    if (!conta.usuario) janelaConta();
+    else abrirMenu();
+  });
+
+  /* ---- menu ---- */
+  function fecharMenu() { menu.hidden = true; }
+  function abrirMenu() {
+    const a = mesas.atual, u = conta.usuario;
+    menu.replaceChildren();
+    if (a) {
+      menu.append(h('h3', { text: a.nome }), h('div', { class: 'sub', text: 'Você é ' + (a.papel === 'mestre' ? 'o mestre' : 'jogador') + ' · ' + a.meuNome }));
+      if (a.papel === 'mestre' && a.codigo) {
+        menu.append(h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'Código de convite' }),
+          h('div', { class: 'cod' }, h('code', { id: 'codigo', text: codigoBonito(a.codigo) }),
+            h('button', { type: 'button', class: 'btn sm', text: 'Copiar', onclick: async () => { try { await navigator.clipboard.writeText(codigoBonito(a.codigo)); toast('Código copiado.'); } catch (e) { toast('Não deu para copiar. O código é ' + codigoBonito(a.codigo)); } } }),
+            h('button', { type: 'button', class: 'btn sm', text: 'Trocar', title: 'Gera um código novo; o atual deixa de valer', onclick: async () => { try { await mesas.novoCodigo(); abrirMenu(); toast('Código novo gerado. O antigo não vale mais.'); } catch (e) { toast(e.message); } } })),
+          h('div', { class: 'sub', style: 'margin-top:6px', text: 'Passe o código aos jogadores. Quem entrar com ele participa desta mesa.' })));
+      }
+      const lista = h('div', { class: 'sec', id: 'membros' }, h('div', { class: 'rot', text: 'Quem participa' }));
+      for (const m of a.membros) {
+        const lin = h('div', { class: 'mb' + (aoVivo.online(m) ? '' : ' fora') }, h('i', { style: 'background:' + (m.cor || '#888') }), h('span', { text: m.nome }), h('small', { text: m.papel === 'mestre' ? 'mestre' : '' }));
+        if (a.papel === 'mestre' && m.papel === 'jogador') lin.append(h('button', { type: 'button', class: 'btn sm', text: 'Tirar', onclick: () => confirmar('Tirar ' + m.nome + ' da mesa?', 'A pessoa deixa de ver esta mesa. Ela pode voltar com o código de convite.', 'Tirar', async () => { await mesas.tirar(m.usuario_id); toast(m.nome + ' saiu da mesa.'); }) }));
+        lista.append(lin);
+      }
+      menu.append(lista);
+    } else {
+      menu.append(h('h3', { text: 'Nenhuma mesa aberta' }), h('div', { class: 'sub', text: 'Sem mesa, cada sistema guarda os dados só neste navegador.' }));
+    }
+    const sec = h('div', { class: 'sec' });
+    sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
+    if (a && a.papel === 'jogador') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
+    if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
+    if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: () => { fecharMenu(); mesas.esquecer(); } }));
+    sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); await conta.sair(); toast('Você saiu da conta.'); } }));
+    sec.append(h('div', { class: 'sub', style: 'padding:4px 8px 0', text: u.email }));
+    menu.append(sec);
+    menu.hidden = false;
+  }
+  document.addEventListener('pointerdown', ev => { if (!menu.hidden && !menu.contains(ev.target) && !btnConta.contains(ev.target)) fecharMenu(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !menu.hidden) { fecharMenu(); btnConta.focus(); } });
+  window.addEventListener('blur', () => { if (!menu.hidden && document.activeElement && document.activeElement.tagName === 'IFRAME') fecharMenu(); });
+
+  /* ---- janelas ---- */
+  function abrirJanela(conteudo) { dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); }
+  function fecharJanela() { if (dlg.open) dlg.close(); dlg.replaceChildren(); }
+  dlg.addEventListener('click', ev => { if (ev.target === dlg) fecharJanela(); });
+  // o aviso de "fechou" chega atrasado: se outra janela já abriu no lugar (entrar → mesas), não é para esvaziá-la
+  dlg.addEventListener('close', () => { if (!dlg.open) dlg.replaceChildren(); });
+  /* Um formulário que trava o botão enquanto envia e mostra o erro logo acima dele. */
+  function enviarCom(form, err, botao, fn) {
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (botao.disabled) return;
+      err.textContent = ''; botao.disabled = true;
+      try { await fn(); } catch (e) { err.textContent = (e && e.message) || 'Não deu certo agora. Tente de novo.'; }
+      botao.disabled = false;
+    });
+  }
+  function confirmar(titulo, texto, rotulo, fn) {
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn per', text: rotulo });
+    const f = h('form', { class: 'dl' }, h('h2', { text: titulo }), h('p', { text: texto }), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => { await fn(); fecharJanela(); });
+    abrirJanela(f);
+  }
+  function janelaConta(modo) {
+    modo = modo || 'entrar';
+    const criar = modo === 'criar';
+    const nome = h('input', { id: 'c-nome', maxlength: 40, autocomplete: 'nickname', required: true });
+    const email = h('input', { id: 'c-email', type: 'email', maxlength: 120, autocomplete: 'email', required: true });
+    const senha = h('input', { id: 'c-senha', type: 'password', minlength: criar ? 8 : 1, maxlength: 72, autocomplete: criar ? 'new-password' : 'current-password', required: true });
+    const err = h('div', { class: 'err', role: 'alert', id: 'c-erro' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'c-ok', text: criar ? 'Criar conta' : 'Entrar' });
+    const f = h('form', { class: 'dl', id: 'f-conta' },
+      h('h2', { text: criar ? 'Criar conta' : 'Entrar' }),
+      h('div', { class: 'seg2', role: 'group', 'aria-label': 'Entrar ou criar conta' },
+        h('button', { type: 'button', 'aria-pressed': String(!criar), text: 'Já tenho conta', onclick: () => janelaConta('entrar') }),
+        h('button', { type: 'button', 'aria-pressed': String(criar), id: 'c-novo', text: 'Criar conta', onclick: () => janelaConta('criar') })),
+      criar ? h('label', {}, 'Como você quer ser chamado', nome) : null,
+      h('label', {}, 'E-mail', email),
+      h('label', {}, criar ? 'Senha (8 caracteres ou mais)' : 'Senha', senha),
+      err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok),
+      h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Guarde a senha; por enquanto, quem redefine é quem cuida do site.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }));
+    enviarCom(f, err, ok, async () => {
+      if (criar) await conta.criar(email.value, senha.value, nome.value.trim());
+      else await conta.entrar(email.value, senha.value);
+      fecharJanela();
+      await aoEntrar();
+    });
+    abrirJanela(f);
+    (criar ? nome : email).focus();
+  }
+  async function janelaMesas() {
+    const u = conta.usuario; if (!u) { janelaConta(); return; }
+    const err = h('div', { class: 'err', role: 'alert', id: 'm-erro' });
+    const lista = h('div', { class: 'ms', id: 'm-lista' }, h('div', { class: 'nt', text: 'Procurando suas mesas…' }));
+    const nNome = h('input', { id: 'm-nome', maxlength: 80, placeholder: 'Ex.: A Guarita em Ruínas', required: true });
+    const bCriar = h('button', { type: 'submit', class: 'btn pri', id: 'm-criar', text: 'Criar' });
+    const fCriar = h('form', { class: 'lin' }, h('label', {}, 'Nome da mesa', nNome), bCriar);
+    const eCod = h('input', { id: 'm-cod', maxlength: 9, placeholder: 'ABC-DEF', required: true, style: 'text-transform:uppercase;font-family:var(--mono);letter-spacing:.06em', autocapitalize: 'characters', spellcheck: 'false' });
+    const eNome = h('input', { id: 'm-meu', maxlength: 40, value: u.nome, required: true });
+    const bEntrar = h('button', { type: 'submit', class: 'btn pri', id: 'm-entrar', text: 'Entrar' });
+    const fEntrar = h('form', { class: 'lin' }, h('label', { style: 'flex:0 0 112px' }, 'Código', eCod), h('label', {}, 'Seu nome na mesa', eNome), bEntrar);
+    enviarCom(fCriar, err, bCriar, async () => { await mesas.criar(nNome.value.trim(), u.nome); fecharJanela(); toast('Mesa criada. Você é o mestre; o código de convite está no menu da mesa.'); });
+    enviarCom(fEntrar, err, bEntrar, async () => { await mesas.entrarComCodigo(eCod.value, eNome.value.trim()); fecharJanela(); });
+    abrirJanela(h('div', { class: 'dl' },
+      h('h2', { text: 'Mesas' }),
+      h('p', { text: 'A mesa é onde o mestre e os jogadores se encontram: todos veem as rolagens e a conversa na hora.' }),
+      lista,
+      h('fieldset', {}, h('legend', { text: 'Criar uma mesa (você será o mestre)' }), fCriar),
+      h('fieldset', {}, h('legend', { text: 'Entrar numa mesa com o código do mestre' }), fEntrar),
+      err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Fechar', onclick: fecharJanela }))));
+    try {
+      const ms = await mesas.lista();
+      lista.replaceChildren();
+      if (!ms.length) lista.append(h('div', { class: 'nt', text: 'Você ainda não participa de nenhuma mesa. Crie uma ou entre com um código.' }));
+      for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + papelPt(m.papel) })));
+    } catch (e) { lista.replaceChildren(h('div', { class: 'nt', text: e.message })); }
+  }
+  function janelaApagar(a) {
+    const campo = h('input', { id: 'a-nome', autocomplete: 'off', required: true });
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn per', text: 'Apagar a mesa' });
+    const f = h('form', { class: 'dl' }, h('h2', { text: 'Apagar a mesa?' }),
+      h('p', { text: 'Isto apaga a mesa ' + a.nome + ' para todos: participantes, rolagens e conversa. Não dá para desfazer.' }),
+      h('label', {}, 'Para confirmar, digite o nome da mesa', campo), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => {
+      if (campo.value.trim().toLowerCase() !== a.nome.trim().toLowerCase()) throw new Error('O nome não confere. Nada foi apagado.');
+      await mesas.apagar(); fecharJanela(); toast('Mesa apagada.');
+    });
+    abrirJanela(f); campo.focus();
+  }
+
+  /* ---- painel da mesa ao vivo ---- */
+  const perto = () => feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+  const descer = () => { feed.scrollTop = feed.scrollHeight; $('novas').hidden = true; };
+  feed.addEventListener('scroll', () => { if (perto()) $('novas').hidden = true; });
+  $('novas').addEventListener('click', descer);
+  function mostrarVivo(v, lembrar) {
+    vivo.hidden = !v || !mesas.atual;
+    btnVivo.setAttribute('aria-pressed', String(!vivo.hidden));
+    if (lembrar) gravar('tinycats:vivo', v ? '1' : '0');
+    if (!vivo.hidden) { naoLidas = 0; pintarSelo(); descer(); }
+  }
+  function pintarSelo() { const s = $('selo'); s.hidden = !naoLidas; s.textContent = naoLidas > 9 ? '9+' : String(naoLidas); }
+  btnVivo.addEventListener('click', () => mostrarVivo(vivo.hidden, true));
+  $('vivoX').addEventListener('click', () => { mostrarVivo(false, true); btnVivo.focus(); });
+
+  function pintarQuem() {
+    const a = mesas.atual, q = $('quem'); q.replaceChildren();
+    if (!a) return;
+    const ord = a.membros.slice().sort((x, y) => (aoVivo.online(y) - aoVivo.online(x)) || (x.papel === 'mestre' ? -1 : y.papel === 'mestre' ? 1 : 0));
+    for (const m of ord) q.append(h('span', { class: 'pes' + (aoVivo.online(m) ? '' : ' fora'), title: m.nome + (aoVivo.online(m) ? ' está na mesa' : ' não está com a mesa aberta') }, h('i', { style: 'background:' + (m.cor || '#888') }), m.nome, m.papel === 'mestre' ? h('small', { text: 'mestre' }) : null));
+  }
+  function corDe(uid) { const m = mesas.atual && mesas.atual.membros.find(x => x.usuario_id === uid); return (m && m.cor) || 'var(--fg-3)'; }
+  function linha(l) {
+    const meu = l.autor_id === conta.usuario.id, mestre = mesas.atual.papel === 'mestre', d = l.dados || {};
+    let el;
+    if (l.tipo === 'rolagem') {
+      el = h('li', { class: 'it rol' + (l.secreta ? ' secreta' : ''), 'data-id': l.id, style: l.secreta ? null : 'border-left-color:' + corDe(l.autor_id) },
+        h('div', { class: 'it-h' }, h('b', { text: l.autor_nome }), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
+        d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
+        h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
+        d.veredito ? h('div', { class: 'vd ' + (d.passou ? 'sim' : 'nao'), text: d.veredito }) : null);
+      if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
+    } else if (l.tipo === 'acao') {
+      el = h('li', { class: 'it acao', 'data-id': l.id }, h('span', { text: '✦ ' + l.autor_nome + ' ' + (d.texto || '') }));
+    } else {
+      el = h('li', { class: 'it fala', 'data-id': l.id },
+        h('div', { class: 'it-h' }, h('b', { style: 'color:' + corDe(l.autor_id), text: l.autor_nome }), h('time', { text: hora(l.criado_em) })),
+        h('div', { class: 'tx', text: d.texto || '' }));
+    }
+    if (meu || (mestre && !l.secreta)) {
+      const x = h('button', { type: 'button', class: 'mini', title: 'Apagar', 'aria-label': 'Apagar esta linha', onclick: async () => {
+        try { await aoVivo.apagar(l.id); toast('Linha apagada.', 'Desfazer', () => aoVivo.desfazerApagar(l.id)); } catch (e) { toast(e.message); }
+      } });
+      x.innerHTML = X_SVG;
+      el.append(h('div', { class: 'acts' }, x));
+    }
+    return el;
+  }
+  function pintarFeed() { feed.replaceChildren(...aoVivo.itens.map(linha)); descer(); }
+  function nota(conteudo, erro) {
+    const x = h('button', { type: 'button', class: 'mini fechar', title: 'Fechar', 'aria-label': 'Fechar este aviso', onclick: () => n.remove() }); x.innerHTML = X_SVG;
+    const n = h('li', { class: 'nota' + (erro ? ' erro' : '') }, x, conteudo);
+    feed.append(n); descer();
+  }
+  function pintarCompor() {
+    const a = mesas.atual, dica = $('dica'), c = $('compor'); if (!a) return;
+    dica.replaceChildren();
+    c.classList.toggle('seg', !!aoVivo.segredo);
+    if (a.papel === 'mestre') {
+      const b = h('button', { type: 'button', class: 'chave', id: 'segredo', 'aria-pressed': String(!!aoVivo.segredo), title: 'Ligado: as rolagens que você fizer (aqui, no Rolador, nas Fichas e nas Cenas) ficam só para você, até mostrar à mesa', onclick: () => aoVivo.definirSegredo(!aoVivo.segredo) }, icone(CAD_SVG), h('span', { text: 'Em segredo' }));
+      dica.append(b, h('span', { id: 'dicaTxt', text: aoVivo.segredo ? 'Só você vê as suas rolagens.' : 'A mesa vê as suas rolagens.' }));
+    } else {
+      dica.append(h('span', { text: '/r 2d6+3 rola dados · /fixa 60 20 · /ajuda' }));
+    }
+  }
+  $('compor').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const campo = $('msg'), texto = campo.value.trim();
+    if (!texto) return;
+    campo.value = '';
+    try {
+      const r = await aoVivo.comando(texto);
+      if (r.erro) { nota(h('span', { text: r.erro }), true); campo.value = texto; }
+      else if (r.ajuda) nota(h('div', {}, h('strong', { text: 'Comandos da mesa' }), ...r.ajuda.map(x => h('p', {}, h('b', { text: x.cmd }), ' — ' + x.desc))));
+      else descer();
+    } catch (e) { nota(h('span', { text: e.message }), true); campo.value = texto; }
+    campo.focus();
+  });
+
+  aoVivo.on('reinicio', () => { pintarFeed(); pintarQuem(); pintarCompor(); });
+  aoVivo.on('item', (l, novo) => {
+    const velho = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'), el = linha(l), embaixo = perto();
+    if (velho) velho.replaceWith(el);
+    else {
+      // entra na posição certa (as linhas chegam quase sempre em ordem; revelações antigas podem entrar no meio)
+      const i = aoVivo.itens.indexOf(l), prox = aoVivo.itens[i + 1], antes = prox ? feed.querySelector('[data-id="' + CSS.escape(prox.id) + '"]') : null;
+      if (antes) feed.insertBefore(el, antes); else feed.append(el);
+      el.classList.add('novo');
+      const meu = l.autor_id === conta.usuario.id;
+      if (vivo.hidden) { if (!meu) { naoLidas++; pintarSelo(); } }
+      else if (embaixo || meu) descer();
+      else $('novas').hidden = false;
+    }
+  });
+  aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); });
+  aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
+  aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
+  mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); });
+  mesas.on('removido', () => toast('Você não participa mais desta mesa.'));
+  mesas.on('muda', a => {
+    pintarConta(); fecharMenu(); difundir();
+    naoLidas = 0; pintarSelo();
+    if (a) { $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false); }
+  });
+  conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); });
+
+  async function aoEntrar() {
+    pintarConta();
+    const ultima = mesas.ultima();
+    if (ultima) { try { await mesas.abrir(ultima); return; } catch (e) { /* a mesa sumiu ou a pessoa saiu dela: escolhe outra */ } }
+    janelaMesas();
+  }
+  conta.pronta.then(async u => {
+    pintarConta();
+    if (!u) return;
+    const ultima = mesas.ultima();
+    if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
+  });
 })();
 </script>
 </body>

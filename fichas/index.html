@@ -545,6 +545,7 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
+<script src="../tc/ponte.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -741,9 +742,12 @@ function rolarFixa(valorAtributo, fixado){
 /* ---------- registro da mesa ---------- */
 function logar(e){
   S.log = S.log||[];
-  S.log.unshift({id:uid(), ts:Date.now(), ...e});
+  const reg = {id:uid(), ts:Date.now(), ...e};
+  S.log.unshift(reg);
   if(S.log.length>300) S.log.length=300;
   save();
+  // mesa ao vivo: com uma mesa aberta no site, a rolagem também aparece para a mesa (a casca decide se é aberta ou secreta)
+  try{ if(window.TC && TC.ponte && TC.ponte.estado.mesa) TC.ponte.publicar('ficha', reg); }catch(err){}
 }
 function horaCurta(ts){
   const d=new Date(ts);

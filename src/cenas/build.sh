@@ -48,6 +48,7 @@ mkdir -p "$(dirname "$SITE")"
   head_parts
   echo '</head>'
   echo '<body>'
+  echo '<script src="../tc/ponte.js?v=1"></script>'   # só a página do site fala com a casca (mesa ao vivo)
   body_parts
   echo '</body>'
   echo '</html>'

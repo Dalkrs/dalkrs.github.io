@@ -105,6 +105,8 @@ textarea.input{height:auto;min-height:84px;padding:10px 12px;resize:vertical;fon
 .dest{margin-top:10px;text-align:center;font-size:14px;color:var(--muted)}
 .dest strong{color:var(--parchment);font-weight:600}
 .kbd-hint{margin-top:4px;text-align:center;font-size:12.5px;color:var(--faint)}
+.mesa-dest{font-weight:600;color:var(--gold)}
+.mesa-dest.secreta{color:#b39cf0}
 
 /* resultados */
 .results{min-height:0;display:flex;flex-direction:column;gap:18px}
@@ -445,6 +447,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     <div class="preview hint" id="preview" aria-live="polite"></div>
     <button type="button" class="roll-btn" id="rollBtn">Rolar</button>
     <p class="dest">Vai para o histórico <strong id="destName"></strong></p>
+    <p class="dest mesa-dest" id="mesaDest" hidden></p>
     <p class="kbd-hint">Enter avança os campos; no último, rola. Os campos continuam preenchidos para a próxima.</p>
   </section>
 
@@ -611,6 +614,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
 <input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
+<script src="../tc/ponte.js?v=1"></script>
 <script>
 (function () {
   'use strict';
@@ -1389,6 +1393,23 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
   function onFormInput() { attempted = false; renderPreview(); }
 
+  /* Mesa ao vivo: com o Rolador aberto dentro do site e uma mesa aberta, cada rolagem também vai para o registro da mesa.
+     Quem decide se ela é aberta ou secreta é o botão "Em segredo" do painel da mesa. Sem mesa, nada muda aqui. */
+  function publicar(entry) {
+    try { if (window.TC && TC.ponte && TC.ponte.estado.mesa) TC.ponte.publicar('rolador', entry); } catch (e) { /* a mesa é opcional */ }
+  }
+  function renderMesaDest(st) {
+    const el = $('mesaDest');
+    if (!el) return;
+    el.hidden = !st.mesa;
+    if (!st.mesa) return;
+    const segredo = st.papel === 'mestre' && st.segredo;
+    el.classList.toggle('secreta', segredo);
+    el.textContent = segredo ? 'Em segredo: na mesa, só você vê esta rolagem' : 'A mesa vê esta rolagem';
+    el.title = 'Mesa aberta: ' + st.mesa.nome;
+  }
+  if (window.TC && TC.ponte) TC.ponte.aoMudar(renderMesaDest);
+
   function doRoll() {
     if (Date.now() - lastRollTime < ROLL_GAP_MS) return; // clique duplo não rola duas vezes
     const v = validateForm();
@@ -1406,6 +1427,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     insertSorted(hist.entries, entry);
     hist.updatedAt = Date.now();
     save();
+    publicar(entry);
     attempted = false;
     afterNewRoll();
     if (entry.mode === 'duelo' && entry.winner == null) openTie(entry.id);
@@ -1456,6 +1478,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     insertSorted(hist.entries, entry);
     hist.updatedAt = Date.now();
     save();
+    publicar(entry);
     renderHeader();
     renderLast(true);
     renderLog();
@@ -1561,6 +1584,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     lastRollTime = Date.now();
     addDuelRound(f.entry);
     save();
+    publicar(f.entry);
     renderLast(true);
     renderLog();
     if (f.entry.winner == null) { fillTie(f.entry); $('tieReroll').focus(); }
@@ -1569,7 +1593,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
   function tieDecide(i) {
     const f = findEntry(tieEntryId);
-    if (f) { f.entry.winner = i; f.entry.decidedBy = 'mestre'; save(); }
+    if (f) { f.entry.winner = i; f.entry.decidedBy = 'mestre'; save(); publicar(f.entry); }
     $('tieDlg').close();
     renderLast(false);
     renderLog();
