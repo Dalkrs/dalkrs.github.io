@@ -185,6 +185,8 @@ async function start(snap) {
 
   // Tutorial de primeiro uso: abre sozinho uma vez, quando quem entra é o mestre.
   // (Nos testes automáticos, com ?debug, só abre se o endereço também trouxer ?tour.)
+  // Aberta pela casca do site (que já mostra a marca na barra de cima): a marca daqui some.
+  if (/[?&]casca\b/.test(location.search)) document.documentElement.classList.add('na-casca');
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
 }

@@ -83,6 +83,7 @@ button { cursor: pointer; }
   padding: 7px 16px; background: var(--surface); border-bottom: 1px solid var(--line);
 }
 .brand { font: 600 22px/1 var(--display); letter-spacing: .01em; color: var(--lamp-ink); white-space: nowrap; padding-right: 2px; }
+.na-casca .brand { display: none; }
 .scene-b {
   display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 300px;
   padding: 6px 10px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px;
@@ -7009,6 +7010,8 @@ async function start(snap) {
 
   // Tutorial de primeiro uso: abre sozinho uma vez, quando quem entra é o mestre.
   // (Nos testes automáticos, com ?debug, só abre se o endereço também trouxer ?tour.)
+  // Aberta pela casca do site (que já mostra a marca na barra de cima): a marca daqui some.
+  if (/[?&]casca\b/.test(location.search)) document.documentElement.classList.add('na-casca');
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
 }

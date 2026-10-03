@@ -1,0 +1,3406 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="pedra">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Árvore de Habilidades · Tiny Cats</title>
+<script>
+/* aplica o tema antes de desenhar a página, para não piscar */
+(function(){
+  var t = 'auto';
+  try{ var u = JSON.parse(localStorage.getItem('urgm.arvore.ui.v4')); if(u && u.tema) t = u.tema; }catch(e){}
+  if(t!=='tinta' && t!=='pedra') t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'tinta' : 'pedra';
+  document.documentElement.setAttribute('data-tema', t);
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=JetBrains+Mono:wght@400;600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+/* ================= tokens ================= */
+:root, [data-tema="pedra"]{
+  --fundo:#0B0E13; --fundo-2:#111722; --fundo-3:#19202C; --tela:#101318;
+  --linha:rgba(233,227,214,.13); --linha-forte:rgba(233,227,214,.3);
+  --texto:#E9E3D6; --texto-2:rgba(233,227,214,.62); --texto-3:rgba(233,227,214,.38);
+  --acento:#D9A441; --acento-fundo:rgba(217,164,65,.13); --acento-borda:rgba(217,164,65,.5);
+  --perigo:#E79AA3; --perigo-fundo:rgba(140,47,57,.18); --perigo-borda:rgba(140,47,57,.7);
+  --ok:#6FBF9F; --campo:rgba(11,14,19,.55); --campo-borda:rgba(233,227,214,.13);
+  --dica-fundo:rgba(9,12,17,.97); --sombra:0 12px 32px rgba(0,0,0,.6);
+  --titulo:'Fraunces',Georgia,serif; --glifo:'Ma Shan Zheng','Noto Serif CJK SC','Songti SC','SimSun',serif;
+  --veu:rgba(6,8,12,.78);
+  color-scheme:dark;
+}
+[data-tema="tinta"]{
+  --fundo:#E2D8C2; --fundo-2:#EBE3CF; --fundo-3:#F3EDDF; --tela:#ECE4D0;
+  --linha:rgba(31,27,22,.15); --linha-forte:rgba(31,27,22,.34);
+  --texto:#1F1B16; --texto-2:rgba(31,27,22,.68); --texto-3:rgba(31,27,22,.46);
+  --acento:#B23A2E; --acento-fundo:rgba(178,58,46,.09); --acento-borda:rgba(178,58,46,.5);
+  --perigo:#7E2437; --perigo-fundo:rgba(126,36,55,.1); --perigo-borda:rgba(126,36,55,.55);
+  --ok:#2F7A55; --campo:rgba(255,252,244,.7); --campo-borda:rgba(31,27,22,.18);
+  --dica-fundo:rgba(246,241,229,.98); --sombra:0 12px 30px rgba(60,45,25,.22);
+  --titulo:'Cormorant Garamond',Georgia,serif;
+  --veu:rgba(40,32,22,.45);
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;background:var(--fundo);color:var(--texto);overflow:hidden;
+  font:400 14px/1.5 'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+[data-tema="pedra"] body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(62% 52% at 22% 12%, rgba(78,140,125,.10), transparent 70%),
+    radial-gradient(58% 48% at 82% 88%, rgba(140,47,57,.09), transparent 70%);
+}
+#app{position:relative;z-index:1;display:grid;grid-template-rows:auto auto 1fr;height:100%;overflow:hidden}
+#app > *{min-width:0}
+
+/* ================= topo ================= */
+#topo{
+  display:flex;align-items:center;gap:12px;padding:0 16px;height:58px;
+  border-bottom:1px solid var(--linha);background:var(--fundo);
+}
+.selo{
+  width:26px;height:26px;flex:none;border-radius:4px;display:grid;place-items:center;
+  font:18px/1 var(--glifo);
+}
+[data-tema="pedra"] .selo{border:1px solid var(--acento-borda);border-radius:50%;color:var(--acento);font-size:15px}
+[data-tema="tinta"] .selo{background:var(--acento);color:#F3E9D6}
+#nomeBib{
+  background:transparent;border:1px solid transparent;color:var(--texto);
+  font:600 19px/1 var(--titulo);padding:6px 8px;border-radius:3px;min-width:120px;max-width:300px;
+}
+#nomeBib:hover:not([readonly]){border-color:var(--linha)}
+#nomeBib:focus{outline:none;border-color:var(--acento-borda);background:var(--campo)}
+.espaco{flex:1}
+#busca{width:170px}
+.seg{display:flex;border:1px solid var(--linha);border-radius:3px;overflow:hidden;flex:none}
+.seg button{
+  appearance:none;background:transparent;border:0;color:var(--texto-2);cursor:pointer;
+  padding:8px 12px;font:600 11px/1 'Barlow';letter-spacing:.1em;text-transform:uppercase;transition:.15s;
+}
+.seg button[aria-pressed="true"]{background:var(--acento-fundo);color:var(--acento)}
+.seg button:hover{color:var(--texto)}
+.historico{display:flex;gap:6px;flex:none}
+.curto{display:none}
+
+/* ================= botões e campos ================= */
+.btn{
+  appearance:none;border:1px solid var(--linha);background:transparent;color:var(--texto);
+  padding:8px 12px;border-radius:3px;cursor:pointer;transition:.15s;
+  font:600 11px/1 'Barlow';letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
+}
+.btn:hover{background:var(--acento-fundo);border-color:var(--linha-forte)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ouro{border-color:var(--acento-borda);color:var(--acento);background:var(--acento-fundo)}
+.btn.perigo:hover{border-color:var(--perigo-borda);color:var(--perigo);background:var(--perigo-fundo)}
+.btn.mini{padding:5px 8px;font-size:10px}
+.btn.ico{padding:0;width:34px;height:34px;display:grid;place-items:center;font-size:16px;line-height:1;letter-spacing:0}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+
+.campo{
+  width:100%;background:var(--campo);border:1px solid var(--campo-borda);color:var(--texto);
+  padding:8px 10px;border-radius:3px;font:400 13px 'Barlow';
+}
+.campo:focus{outline:none;border-color:var(--acento-borda);box-shadow:0 0 0 3px var(--acento-fundo)}
+textarea.campo{resize:vertical;min-height:64px;line-height:1.45}
+select.campo{cursor:pointer}
+label.rot, .rot{display:block;font:600 10px/1.35 'Barlow';letter-spacing:.13em;text-transform:uppercase;color:var(--texto-3);margin:0 0 6px}
+.nota{color:var(--texto-3);font-size:12.5px;line-height:1.55;margin:6px 0 0}
+.vazio{color:var(--texto-3);font-style:italic;font-size:13px;line-height:1.6;margin:0}
+
+/* ================= abas ================= */
+#abas{
+  display:flex;align-items:center;gap:8px;padding:7px 12px;min-height:46px;overflow:hidden;
+  border-bottom:1px solid var(--linha);background:var(--fundo-2);
+}
+#abas > .btn{flex:none}
+#listaAbas{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px;flex:1 1 auto;min-width:0}
+#listaAbas::-webkit-scrollbar{height:5px}
+#listaAbas::-webkit-scrollbar-thumb{background:var(--linha);border-radius:3px}
+.aba{
+  appearance:none;border:1px solid var(--linha);background:transparent;color:var(--texto-2);
+  padding:7px 12px;border-radius:3px;cursor:pointer;white-space:nowrap;transition:.15s;
+  font:500 13px/1 'Barlow';display:flex;align-items:center;gap:7px;
+}
+.aba:hover{color:var(--texto);border-color:var(--linha-forte)}
+.aba[aria-selected="true"]{background:var(--acento-fundo);border-color:var(--acento-borda);color:var(--acento);font-weight:600}
+.aba small{font:600 9px/1 'Barlow';letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.aba b{font:600 10px 'JetBrains Mono',monospace;opacity:.7}
+.aba .lacre{font:13px/1 var(--glifo);color:var(--acento)}
+
+/* ================= palco ================= */
+#palco{display:grid;grid-template-columns:340px 1fr;min-height:0}
+#painel{border-right:1px solid var(--linha);background:var(--fundo-2);overflow-y:auto;overscroll-behavior:contain;padding:16px}
+#painel::-webkit-scrollbar{width:8px}
+#painel::-webkit-scrollbar-thumb{background:var(--linha);border-radius:4px}
+.bloco{margin-bottom:20px}
+.bloco > h2, details.bloco > summary{
+  font:600 11px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:var(--texto-3);
+  margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--linha);
+}
+details.bloco > summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+details.bloco > summary::-webkit-details-marker{display:none}
+details.bloco > summary::after{content:'+';font-size:13px;line-height:.8}
+details.bloco[open] > summary::after{content:'−'}
+.grupo{margin-bottom:12px}
+.linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acoes{display:flex;gap:8px;flex-wrap:wrap}
+
+/* paleta, formas e escolhas */
+.paleta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tinta{width:22px;height:22px;border-radius:50%;border:1px solid var(--linha-forte);cursor:pointer;padding:0;transition:.12s;position:relative}
+.tinta:hover{transform:scale(1.14)}
+.tinta[aria-pressed="true"]{box-shadow:0 0 0 2px var(--fundo-2),0 0 0 3px var(--acento)}
+.tinta.auto{background:conic-gradient(var(--texto) 0 50%, var(--acento) 0 100%)}
+input[type=color].livre{width:26px;height:22px;padding:0;border:1px solid var(--linha);background:none;border-radius:3px;cursor:pointer}
+.formas{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.formas button{
+  appearance:none;border:1px solid var(--linha);background:transparent;border-radius:3px;padding:3px;cursor:pointer;
+  color:var(--texto-2);aspect-ratio:1;display:grid;place-items:center;
+}
+.formas button[aria-pressed="true"]{border-color:var(--acento-borda);color:var(--acento);background:var(--acento-fundo)}
+.formas svg{width:100%;height:100%}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  appearance:none;border:1px solid var(--linha);background:transparent;color:var(--texto-2);border-radius:999px;
+  padding:5px 10px;font:500 12px/1 'Barlow';cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.chip i{width:9px;height:9px;border-radius:50%;flex:none}
+.chip[aria-pressed="true"]{border-color:var(--acento-borda);color:var(--texto);background:var(--acento-fundo)}
+.chip:hover{border-color:var(--linha-forte)}
+
+/* graus */
+.grau{border:1px solid var(--linha);border-radius:3px;padding:8px;margin-bottom:8px;background:var(--campo)}
+.grau-topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.grau-topo span{font:600 10px 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:var(--texto-3)}
+.passo{display:flex;align-items:center;gap:6px}
+.passo b{font:600 14px 'JetBrains Mono';min-width:18px;text-align:center}
+.passo .btn{width:28px;height:28px;padding:0;font-size:14px;letter-spacing:0}
+
+/* moedas / tipos de ponto */
+.moeda{display:grid;grid-template-columns:12px 1fr 64px;gap:8px;align-items:center;margin-bottom:6px}
+.moeda i{width:10px;height:10px;border-radius:50%}
+.moeda span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.moeda input{padding:5px 7px;text-align:center;font-family:'JetBrains Mono',monospace}
+.lista-ed{display:grid;gap:6px;align-items:center;margin-bottom:6px}
+.lista-ed.pool{grid-template-columns:26px 1fr 58px 28px}
+.lista-ed.nat{grid-template-columns:26px 1fr 28px}
+.lista-ed.uso{grid-template-columns:1fr 52px 28px}
+.lista-ed input[type=color]{width:26px;height:30px;padding:0;border:1px solid var(--linha);background:none;border-radius:3px;cursor:pointer}
+.lista-ed .btn{padding:0;height:30px;font-size:14px;letter-spacing:0}
+
+/* pré-requisitos */
+.pre{display:flex;align-items:center;gap:8px;padding:5px 6px;margin-bottom:5px;border:1px solid var(--linha);border-radius:3px;background:var(--campo);font-size:13px}
+.pre i{width:9px;height:9px;border-radius:50%;flex:none}
+.pre span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pre em{font-style:normal;font-size:11px;color:var(--texto-3)}
+.regra{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.regra .btn{padding:8px 6px;font-size:10px}
+/* árvores equipadas: arrastar para mudar a ordem */
+.eqp{user-select:none;-webkit-user-select:none}
+.eqp.movel{cursor:grab}
+.eqp .alca{flex:none;display:grid;place-items:center;width:16px;height:22px;margin:-3px -3px -3px -2px;border-radius:2px;
+  color:var(--texto-3);cursor:grab;touch-action:none;-webkit-touch-callout:none}
+.eqp .alca:hover{color:var(--texto)}
+.eqp .alca svg{width:8px;height:12px;fill:currentColor}
+@media (pointer:coarse){ .eqp .alca{width:30px;height:32px;margin:-6px -6px -6px -4px} }
+#seletor .arv[data-id]{touch-action:none;-webkit-touch-callout:none}
+.levantada{opacity:.32}
+.arv.levantada{border-style:dashed}
+.fantasma-ordem{position:fixed;z-index:75;pointer-events:none;margin:0!important;box-shadow:var(--sombra)}
+.fantasma-ordem.pre{background:var(--fundo-3);border-color:var(--acento-borda)}
+.marca-ordem{position:fixed;z-index:76;pointer-events:none;display:none;border-radius:2px;background:var(--acento)}
+.marca-ordem.on{display:block}
+.marca-ordem::before,.marca-ordem::after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;background:inherit;box-shadow:inherit}
+.marca-ordem.y::before{left:-4px;top:-2px} .marca-ordem.y::after{right:-4px;top:-2px}
+.marca-ordem.x::before{top:-4px;left:-2px} .marca-ordem.x::after{bottom:-4px;left:-2px}
+[data-tema="pedra"] .marca-ordem{box-shadow:0 0 10px rgba(217,164,65,.75)}
+body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-webkit-user-select:none}
+.caixa{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:4px 0}
+.caixa input{accent-color:var(--acento);width:15px;height:15px}
+.recuo{border-left:2px solid var(--acento-borda);padding-left:10px;margin-top:8px}
+
+/* carteira do jogador */
+.bolsa{border:1px solid var(--linha);border-radius:3px;padding:9px 10px;margin-bottom:9px;background:var(--campo)}
+.bolsa-topo{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.bolsa-topo i{width:10px;height:10px;border-radius:50%;flex:none}
+.bolsa-topo span{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bolsa-topo em{font:600 19px/1 'JetBrains Mono',monospace;font-style:normal}
+.bolsa-barra{height:3px;background:var(--linha);border-radius:2px;overflow:hidden}
+.bolsa-barra span{display:block;height:100%;transition:width .18s}
+.bolsa-pe{display:flex;align-items:center;gap:8px;margin-top:8px}
+.bolsa-pe label{font:600 9px/1 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:var(--texto-3);white-space:nowrap}
+.bolsa-pe input{width:70px;padding:5px 7px;text-align:center;font-family:'JetBrains Mono',monospace}
+.natcont{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.natcont span{display:inline-flex;align-items:center;gap:6px}
+.natcont i{width:9px;height:9px;border-radius:50%}
+.natcont b{font:600 13px 'JetBrains Mono'}
+.pilha{list-style:none;margin:0;padding:0;max-height:260px;overflow-y:auto}
+.pilha li{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--linha);cursor:pointer;font-size:13px}
+.pilha li:hover{background:var(--acento-fundo)}
+.pilha i{width:9px;height:9px;border-radius:50%;flex:none}
+.pilha .fim{margin-left:auto;display:flex;gap:6px;flex:none;font:600 11px 'JetBrains Mono';color:var(--texto-3)}
+.graus-lista{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px}
+.graus-lista li{display:grid;grid-template-columns:18px 1fr;gap:6px;padding:4px 0;border-bottom:1px dashed var(--linha);color:var(--texto-2)}
+.graus-lista li.feito{color:var(--texto)}
+.graus-lista li b{font:600 11px 'JetBrains Mono';color:var(--acento)}
+.info{font-size:12.5px;color:var(--texto-2);margin:0 0 8px;line-height:1.5}
+.info.acento{color:var(--acento)}
+
+/* ================= tela ================= */
+#tela{position:relative;min-width:0;overflow:hidden;touch-action:none;cursor:grab;background-color:var(--tela)}
+[data-tema="tinta"] #tela{background-image:var(--fibras)}
+#tela.arrastando{cursor:grabbing}
+#svg{width:100%;height:100%;display:block;position:relative;z-index:1}
+#montanhas{position:absolute;left:0;right:0;bottom:0;width:100%;height:190px;pointer-events:none;z-index:0;display:none}
+[data-tema="tinta"] #montanhas{display:block}
+#marca{
+  position:absolute;left:18px;bottom:50px;z-index:0;pointer-events:none;max-width:70%;
+  color:var(--texto);opacity:.13;
+}
+#marca small{display:block;font:600 11px/1 'Barlow';letter-spacing:.3em;text-transform:uppercase;margin-bottom:6px}
+#marca b{display:block;font:600 44px/1 var(--titulo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#topoTela{position:absolute;left:14px;right:14px;top:12px;z-index:3;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;pointer-events:none}
+#topoTela > *{pointer-events:auto}
+#seletor{display:flex;gap:6px;flex-wrap:wrap}
+.arv{
+  appearance:none;border:1px solid var(--linha);background:var(--fundo-2);color:var(--texto-2);border-radius:3px;
+  padding:6px 10px;font:500 12.5px/1.1 'Barlow';cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);
+}
+.arv small{font:600 8.5px/1 'Barlow';letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.arv[aria-selected="true"]{border-color:var(--acento-borda);color:var(--acento);background:var(--fundo-3)}
+.arv.mais{justify-content:center;flex-direction:row;font-weight:600}
+#filtroNat{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#filtroNat .chip{background:var(--fundo-2)}
+#zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:3}
+#zoom .btn{width:34px;height:34px;padding:0;font-size:15px;display:grid;place-items:center;background:var(--fundo-2)}
+#dica{
+  position:absolute;left:14px;bottom:14px;z-index:3;font:400 11.5px 'Barlow';color:var(--texto-3);
+  background:var(--fundo-2);border:1px solid var(--linha);border-radius:3px;padding:6px 10px;pointer-events:none;max-width:calc(100% - 90px);
+}
+#nada{position:absolute;inset:0;display:none;place-content:center;text-align:center;gap:14px;pointer-events:none;z-index:2;padding:20px}
+#nada.on{display:grid}
+#nada p{font:400 18px/1.55 var(--titulo);color:var(--texto-2);margin:0;max-width:360px}
+#nada .btn{pointer-events:auto;justify-self:center}
+
+/* nós (svg) */
+.no{cursor:pointer}
+.no .toque{fill:transparent}
+.rotulo{font:600 11px 'Barlow';text-anchor:middle;pointer-events:none;paint-order:stroke;stroke-width:3.5px;stroke-linejoin:round}
+.rotulo.forte{font-size:12.5px}
+[data-tema="pedra"] .rotulo{fill:rgba(233,227,214,.68);stroke:#101318}
+[data-tema="pedra"] .rotulo.forte{fill:#EFE7D6}
+[data-tema="tinta"] .rotulo{fill:rgba(31,27,22,.72);stroke:#ECE4D0;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700}
+[data-tema="tinta"] .rotulo.forte{fill:#1F1B16;font-size:15px}
+.glifo{font-family:var(--glifo);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.regra-txt{font:600 9px 'JetBrains Mono',monospace;text-anchor:middle;letter-spacing:.1em;pointer-events:none;paint-order:stroke;stroke-width:3px;stroke-linejoin:round}
+[data-tema="pedra"] .regra-txt{stroke:#101318}
+[data-tema="tinta"] .regra-txt{stroke:#ECE4D0}
+.sigla{font:700 8.5px 'Barlow';text-anchor:middle;dominant-baseline:central;pointer-events:none;letter-spacing:.02em}
+.nomeesc{pointer-events:none;font-family:var(--titulo);font-weight:600;letter-spacing:.04em}
+.no.apagado{opacity:.16}
+
+/* ================= tooltip ================= */
+#dica2{
+  position:fixed;left:0;top:0;z-index:60;pointer-events:none;opacity:0;transition:opacity .12s;
+  max-width:290px;background:var(--dica-fundo);border:1px solid var(--linha-forte);
+  border-radius:4px;padding:10px 12px;box-shadow:var(--sombra);
+}
+#dica2.on{opacity:1}
+#dica2 h3{margin:0 0 2px;font:600 15px/1.25 var(--titulo)}
+[data-tema="tinta"] #dica2 h3{font-size:18px}
+#dica2 .meta{font:600 9px/1.4 'Barlow';letter-spacing:.13em;text-transform:uppercase;color:var(--texto-3);margin-bottom:6px}
+#dica2 p{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--texto-2)}
+#dica2 .exige{color:var(--acento)}
+#dica2 .gr{margin:6px 0 0;padding:0;list-style:none;font-size:12px;color:var(--texto-2)}
+#dica2 .gr li{padding:2px 0}
+#dica2 .gr b{font:600 11px 'JetBrains Mono';color:var(--acento);margin-right:4px}
+#dica2 .estado{margin-top:8px;font:600 10px 'Barlow';letter-spacing:.1em;text-transform:uppercase}
+
+/* ================= modais ================= */
+.veu{position:fixed;inset:0;z-index:80;background:var(--veu);display:none;place-items:center;padding:20px}
+.veu.on{display:grid}
+#veuDlg{z-index:90}
+.modal{
+  width:min(640px,100%);max-height:88vh;overflow-y:auto;background:var(--fundo-2);color:var(--texto);
+  border:1px solid var(--linha);border-radius:5px;padding:22px;box-shadow:var(--sombra);
+}
+.modal.largo{width:min(920px,100%)}
+.modal.estreito{width:min(420px,100%)}
+.modal h2{margin:0 0 4px;font:600 21px var(--titulo)}
+[data-tema="tinta"] .modal h2{font-size:25px}
+.modal p.sub{margin:0 0 16px;color:var(--texto-2);font-size:13px}
+.modal .rodape{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.modal .aviso-linha{margin-top:10px;font-size:12.5px;min-height:18px}
+.aviso-linha.ok{color:var(--ok)} .aviso-linha.err{color:var(--perigo)}
+#json{width:100%;height:170px;font:400 11.5px/1.5 'JetBrains Mono',monospace;white-space:pre;overflow:auto}
+.saidas{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.saida{border:1px solid var(--linha);border-radius:4px;padding:10px;background:var(--campo);display:flex;flex-direction:column;gap:8px}
+.saida b{font:600 14px var(--titulo)}
+[data-tema="tinta"] .saida b{font-size:17px}
+.saida span{font-size:12px;color:var(--texto-2);line-height:1.45;flex:1}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#txtEntrada{width:100%;min-height:300px;font:400 12.5px/1.6 'JetBrains Mono',monospace;white-space:pre;tab-size:2}
+.previa{border:1px solid var(--linha);border-radius:3px;background:var(--campo);padding:10px;min-height:300px;max-height:420px;overflow:auto;font-size:13px}
+.previa .pl{display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap}
+.previa .pl .nm{font-weight:600}
+.etq{font:600 10px/1 'Barlow';letter-spacing:.06em;padding:3px 6px;border-radius:999px;border:1px solid var(--linha);color:var(--texto-2);display:inline-flex;align-items:center;gap:4px}
+.etq i{width:7px;height:7px;border-radius:50%}
+.problemas{list-style:none;margin:10px 0 0;padding:0;font-size:12.5px}
+.problemas li{padding:6px 8px;border:1px solid var(--linha);border-radius:3px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.problemas li:hover{border-color:var(--linha-forte)}
+.problemas li.erro{border-color:var(--perigo-borda);background:var(--perigo-fundo)}
+.problemas .tag{font:600 9px/1.6 'Barlow';letter-spacing:.12em;text-transform:uppercase;flex:none;padding:0 5px;border-radius:2px}
+.problemas .erro .tag{color:var(--perigo)}
+.problemas .aviso .tag{color:var(--texto-3)}
+.problemas small{display:block;color:var(--texto-3);font-size:11px}
+.cat-lista{display:grid;gap:14px}
+.cat-lista h3{margin:0 0 6px;font:600 10px 'Barlow';letter-spacing:.14em;text-transform:uppercase;color:var(--texto-3)}
+.cat-lista .opcoes{display:flex;flex-wrap:wrap;gap:6px}
+
+@media (max-width:860px){
+  #palco{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  #painel{border-right:0;border-top:1px solid var(--linha);max-height:40vh;order:2}
+  #tela{order:1;min-height:240px}
+  #topo{height:auto;flex-wrap:wrap;padding:8px 12px;gap:8px;overflow:hidden}
+  #topo .espaco{display:none}
+  #nomeBib{flex:1 1 150px;font-size:16px;min-width:0}
+  #busca{width:100%;order:9}
+  #dica{display:none}
+  #marca b{font-size:28px}
+  #marca{bottom:14px}
+  .duas{grid-template-columns:1fr}
+  #topoTela{flex-direction:column}
+}
+@media (max-width:600px){
+  .longo{display:none} .curto{display:inline}
+  #btTroca{order:2;padding:0;width:34px;height:34px;font-size:16px}
+  #topo .selo{order:0} #nomeBib{order:1;flex:1 1 200px}
+  #topo .seg, #topo .historico{order:3}
+  #topo .seg button{padding:8px 9px}
+  #busca{display:none}
+  #abas{padding:6px 10px;gap:6px}
+  #abas .btn.mini{width:32px;height:32px;padding:0;font-size:14px;letter-spacing:0}
+  #abas .btn.ico{width:32px;height:32px}
+  #filtroNat{display:none}
+  #painel{max-height:38vh}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topo">
+    <div class="selo" aria-hidden="true">道</div>
+    <input id="nomeBib" value="Árvores de Habilidade" aria-label="Nome da biblioteca">
+    <div class="espaco"></div>
+    <input id="busca" class="campo" type="search" placeholder="Buscar nódulo…" aria-label="Buscar nódulo">
+    <div class="seg" role="group" aria-label="Tema">
+      <button id="btTinta" aria-pressed="false" title="Tinta sobre papel">Tinta</button>
+      <button id="btPedra" aria-pressed="false" title="Pedra e ouro">Pedra</button>
+    </div>
+    <div class="historico" role="group" aria-label="Histórico">
+      <button class="btn ico" id="btDesfazer" aria-label="Desfazer">↺</button>
+      <button class="btn ico" id="btRefazer" aria-label="Refazer">↻</button>
+    </div>
+    <div class="seg" role="group" aria-label="Modo">
+      <button id="btMestre" aria-pressed="true">Mestre</button>
+      <button id="btJogador" aria-pressed="false">Jogador</button>
+    </div>
+    <button class="btn" id="btTroca" title="Importar / Exportar"><span class="longo">Importar / Exportar</span><span class="curto" aria-hidden="true">⇅</span></button>
+  </header>
+
+  <nav id="abas" aria-label="Abas">
+    <div id="listaAbas" role="tablist"></div>
+    <button class="btn ico" id="btNovaAba" title="Nova">+</button>
+    <button class="btn mini" id="btRenomearAba" title="Renomear"><span class="longo">Renomear</span><span class="curto" aria-hidden="true">✎</span></button>
+    <button class="btn mini" id="btDuplicarAba" title="Duplicar"><span class="longo">Duplicar</span><span class="curto" aria-hidden="true">⧉</span></button>
+    <button class="btn mini perigo" id="btExcluirAba" title="Excluir"><span class="longo">Excluir</span><span class="curto" aria-hidden="true">✕</span></button>
+  </nav>
+
+  <div id="palco">
+    <aside id="painel"></aside>
+    <main id="tela">
+      <svg id="montanhas" viewBox="0 0 1000 190" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div id="marca" aria-hidden="true"><small></small><b></b></div>
+      <svg id="svg" role="img" aria-label="Árvore de habilidades">
+        <defs>
+          <radialGradient id="brilhoOuro"><stop offset="0%" stop-color="#E3B55E" stop-opacity=".42"/><stop offset="100%" stop-color="#E3B55E" stop-opacity="0"/></radialGradient>
+        </defs>
+        <defs id="defsDin"></defs>
+        <g id="camara">
+          <g id="fundoCam"></g>
+          <g id="territorios"></g>
+          <g id="auras"></g>
+          <g id="tracos"></g>
+          <g id="nos"></g>
+        </g>
+      </svg>
+      <div id="topoTela"><div id="seletor"></div><div id="filtroNat"></div></div>
+      <div id="nada"><p></p><button class="btn ouro" id="btNada"></button></div>
+      <div id="zoom">
+        <button class="btn" id="btMais" title="Aproximar">+</button>
+        <button class="btn" id="btMenos" title="Afastar">−</button>
+        <button class="btn" id="btCentro" title="Centralizar">◎</button>
+      </div>
+      <div id="dica"></div>
+    </main>
+  </div>
+</div>
+
+<div id="dica2" role="tooltip"></div>
+<div class="veu" id="veu"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
+<input type="file" id="arquivo" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* ============================================================
+   ÁRVORES DE HABILIDADE
+   Biblioteca de árvores (mestre) + personagens (jogador).
+   Arquivo único; os dados ficam no localStorage do navegador.
+   ============================================================ */
+
+const CHAVE_DOC    = 'urgm.arvore.v4';
+const CHAVE_UI     = 'urgm.arvore.ui.v4';
+const CHAVE_HIST   = 'urgm.arvore.historico.v4';
+const CHAVE_SENHAS = 'urgm.arvore.senhas.v4';
+const ANTIGAS = {doc3:'urgm.arvore.doc.v3', arv1:'urgm.arvore.v1', build1:'urgm.arvore.build.v1', ui1:'urgm.arvore.ui.v1'};
+const FORMATO = 'urgm-skilltree';
+
+const TINTAS = ['#D9A441','#4E8C7D','#8C2F39','#9BB7C9','#B07CC6','#C9743E',
+                '#6E8CD9','#7FB069','#D96A8F','#8E8E8E','#4FA3A5','#1F1B16'];
+
+const TIPOS_PADRAO = {
+  pequeno : {nome:'Pequeno' , raio:10, custo:1, forma:'circulo'},
+  notavel : {nome:'Notável' , raio:18, custo:2, forma:'circulo'},
+  keystone: {nome:'Keystone', raio:27, custo:4, forma:'hexagono'}
+};
+const NATUREZAS_PADRAO = [
+  {id:'forca',       nome:'Força',       cor:'#D0463A'},
+  {id:'canalizacao', nome:'Canalização', cor:'#3F7FD6'},
+  {id:'hibrida',     nome:'Híbrida',     cor:'#3FA366'}
+];
+const USOS_PADRAO = [
+  {id:'passiva', nome:'Passiva', sigla:'Pa'},
+  {id:'ativa',   nome:'Ativa',   sigla:'At'},
+  {id:'reacao',  nome:'Reação',  sigla:'Re'},
+  {id:'postura', nome:'Postura', sigla:'Po'}
+];
+const CATEGORIAS = [
+  {id:'raca', nome:'Raça'}, {id:'classe', nome:'Classe'}, {id:'escola', nome:'Escola'}, {id:'outra', nome:'Outra'}
+];
+const FORMAS = [
+  {id:'circulo', nome:'Círculo'}, {id:'losango', nome:'Losango'}, {id:'hexagono', nome:'Hexágono'},
+  {id:'octogono', nome:'Octógono'}, {id:'lotus', nome:'Lótus'}, {id:'selo', nome:'Selo'},
+  {id:'escudo', nome:'Escudo'}, {id:'lamina', nome:'Lâmina'}, {id:'estrela', nome:'Estrela'}
+];
+const MAX_GRAUS = 5;
+const COR_ESCOLA = '#B23A2E';
+
+/* ---------- utilidades ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(t, a){
+  const n = document.createElementNS(SVGNS, t);
+  if(a) for(const k in a) if(a[k]!==undefined && a[k]!==null) n.setAttribute(k, a[k]);
+  return n;
+}
+const novoId = (p='n') => p + Math.random().toString(36).slice(2,9) + Math.random().toString(36).slice(2,4);
+const f1 = n => Math.round(n*10)/10;
+function semente(str){ let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0)/4294967295; }
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const clone = o => JSON.parse(JSON.stringify(o));
+// ids e cores vêm de arquivos de outras pessoas: só aceita o formato que o próprio app gera
+const ID_OK = /^[\w-]{1,48}$/, COR_OK = /^#[0-9a-f]{3,8}$/i;
+const idOk = x => typeof x==='string' && ID_OK.test(x);
+const corOk = (c, pad) => (typeof c==='string' && COR_OK.test(c)) ? c : pad;
+const soObjetos = l => Array.isArray(l) ? l.filter(x=>x && typeof x==='object' && !Array.isArray(x)) : [];
+function idUnico(x, pref, vistos){
+  let id = idOk(x) && !vistos.has(x) ? x : novoId(pref);
+  while(vistos.has(id)) id = novoId(pref);
+  vistos.add(id); return id;
+}
+const nomeCat = id => (CATEGORIAS.find(c=>c.id===id) || CATEGORIAS[3]).nome;
+
+/* ---------- estado ----------
+   doc  = biblioteca + personagens (é o que vai para o histórico e para os arquivos)
+   ui   = preferências e seleção deste navegador                                    */
+let doc, ui, senhas = {};
+let selecionado = null, pairado = null, filtro = '';
+const filtroNat = new Set();
+let migrado = false, danificado = false;
+
+const bib = () => doc.biblioteca;
+function arvorePorId(id){ return bib().arvores.find(a=>a.id===id) || null; }
+function personagemAtual(){ return doc.personagens.find(p=>p.id===ui.personagem) || doc.personagens[0] || null; }
+function poolPorId(id){ return bib().pools.find(p=>p.id===id) || null; }
+function naturezaPorId(id){ return bib().naturezas.find(n=>n.id===id) || null; }
+function usoPorId(id){ return bib().usos.find(u=>u.id===id) || null; }
+// tipos de uso de um nódulo, na ordem da biblioteca
+function usosDe(n){ return bib().usos.filter(u=>n.usos.includes(u.id)); }
+
+/* a árvore que aparece na tela agora */
+function arvoreVisivel(){
+  if(ui.modo==='mestre') return arvorePorId(ui.arvoreMestre) || bib().arvores[0] || null;
+  const p = personagemAtual(); if(!p) return null;
+  const eq = p.arvores.map(arvorePorId).filter(Boolean);
+  return eq.find(a=>a.id===p.arvoreAtual) || eq[0] || null;
+}
+function garantirSelecoes(){
+  if(!doc.personagens.length) doc.personagens.push(personagemNovo('Personagem 1', bib()));
+  if(!arvorePorId(ui.arvoreMestre)) ui.arvoreMestre = bib().arvores[0]?.id || null;
+  if(!doc.personagens.some(p=>p.id===ui.personagem)) ui.personagem = doc.personagens[0].id;
+  doc.personagens.forEach(p=>{
+    const eq = p.arvores.filter(id=>arvorePorId(id));
+    if(!eq.includes(p.arvoreAtual)) p.arvoreAtual = eq[0] || null;
+  });
+  if(selecionado && !porId.has(selecionado)) selecionado = null;
+}
+
+/* ---------- moldes ---------- */
+function noNovo(tipo, extra){
+  const b = bib(); const t = b.tipos[tipo] || b.tipos.pequeno;
+  const p0 = b.pools[0]?.id;
+  return Object.assign({
+    id:novoId(), pais:[], regra:'e', nome:'Novo nódulo', tipo: b.tipos[tipo] ? tipo : 'pequeno',
+    forma:t.forma||'circulo', glifo:'', cor:'', natureza:'', usos:[], desc:'', exclusivo:'', escola:null,
+    graus:[{custos:(p0 && t.custo>0) ? {[p0]:t.custo} : {}, texto:''}]
+  }, extra||{});
+}
+function bibliotecaInicial(){
+  const tipos = clone(TIPOS_PADRAO);
+  const mk = (tipo, extra) => Object.assign({
+    id:novoId(), pais:[], regra:'e', nome:'', tipo, forma:tipos[tipo].forma, glifo:'', cor:'',
+    natureza:'', usos:[], desc:'', exclusivo:'', escola:null,
+    graus:[{custos: tipos[tipo].custo>0 ? {p1:tipos[tipo].custo} : {}, texto:''}]
+  }, extra);
+  const raiz = mk('keystone', {nome:'Origem', desc:'Ponto de partida da árvore.', glifo:'道', graus:[{custos:{}, texto:''}]});
+  const ramos = [
+    mk('notavel', {nome:'Corpo',    pais:[raiz.id], natureza:'forca',       usos:['passiva'], glifo:'力', desc:'Técnicas externas, do corpo.'}),
+    mk('notavel', {nome:'Mente',    pais:[raiz.id], natureza:'canalizacao', usos:['ativa'],   glifo:'气', desc:'Técnicas internas, do qi.'}),
+    mk('notavel', {nome:'Espírito', pais:[raiz.id], natureza:'hibrida',     usos:['postura'], glifo:'合', desc:'Corpo e qi cultivados juntos.'})
+  ];
+  return {
+    nome:'Árvores de Habilidade',
+    pools:[{id:'p1', nome:'Pontos', cor:'#D9A441', padrao:20}],
+    naturezas:clone(NATUREZAS_PADRAO), usos:clone(USOS_PADRAO), tipos,
+    arvores:[{id:novoId('a'), nome:'Árvore de exemplo', categoria:'classe', secreta:false, senha:'', nodes:[raiz, ...ramos]}],
+    cofres:[]
+  };
+}
+function personagemNovo(nome, b){
+  const pontos = {}; b.pools.forEach(p=>{ pontos[p.id] = p.padrao; });
+  return {id:novoId('c'), nome:nome||'Personagem', arvores:[], arvoreAtual:null, pontos, alocados:{}, ordemLivre:true};
+}
+function docInicial(){
+  const b = bibliotecaInicial();
+  const p = personagemNovo('Personagem 1', b);
+  p.arvores = [b.arvores[0].id]; p.arvoreAtual = b.arvores[0].id;
+  return {formato:FORMATO+'-doc', versao:4, biblioteca:b, personagens:[p]};
+}
+
+/* ---------- normalização (aceita dados antigos e arquivos tortos) ---------- */
+function normalizarBiblioteca(b){
+  b.nome = String(b.nome || 'Árvores de Habilidade');
+  const tiposOrig = (b.tipos && typeof b.tipos==='object') ? b.tipos : {};
+  b.tipos = {};
+  for(const k in TIPOS_PADRAO){
+    const t = Object.assign({}, TIPOS_PADRAO[k], (tiposOrig[k] && typeof tiposOrig[k]==='object') ? tiposOrig[k] : {});
+    b.tipos[k] = {nome:String(t.nome || k), raio:Math.min(60, Math.max(4, +t.raio || 10)), custo:Math.max(0, Math.floor(+t.custo || 0)),
+                  forma: FORMAS.some(f=>f.id===t.forma) ? t.forma : TIPOS_PADRAO[k].forma};
+  }
+  const vistos = new Set();
+  b.pools = soObjetos(b.pools);
+  if(!b.pools.length) b.pools = [{id:'p1', nome:'Pontos', cor:'#D9A441', padrao:20}];
+  b.pools.forEach((p,i)=>{
+    p.id = idUnico(p.id, 'p', vistos); p.nome = String(p.nome || 'Pontos');
+    p.cor = corOk(p.cor, TINTAS[i%TINTAS.length]);
+    p.padrao = Number.isFinite(+p.padrao) ? Math.max(0, Math.floor(+p.padrao)) : 20;
+  });
+  b.naturezas = Array.isArray(b.naturezas) ? soObjetos(b.naturezas) : clone(NATUREZAS_PADRAO);
+  b.naturezas.forEach((n,i)=>{ n.id = idUnico(n.id, 't', vistos); n.nome = String(n.nome || 'Natureza'); n.cor = corOk(n.cor, TINTAS[i%TINTAS.length]); });
+  b.usos = Array.isArray(b.usos) ? soObjetos(b.usos) : clone(USOS_PADRAO);
+  b.usos.forEach(u=>{ u.id = idUnico(u.id, 'u', vistos); u.nome = String(u.nome || 'Uso'); u.sigla = String(u.sigla || u.nome.slice(0,2)).slice(0,3); });
+  b.arvores = soObjetos(b.arvores);
+  b.cofres = soObjetos(b.cofres).filter(c=>idOk(c.id) && typeof c.salt==='string' && typeof c.iv==='string' && typeof c.dados==='string');
+  const ids = {
+    pool:new Set(b.pools.map(p=>p.id)), nat:new Set(b.naturezas.map(n=>n.id)), uso:new Set(b.usos.map(u=>u.id)), nos:new Set()
+  };
+  const vistasA = new Set();
+  b.arvores.forEach(a=>normalizarArvore(a, b, ids, vistasA));
+}
+function normalizarArvore(a, b, ids, vistasA){
+  a.id = idUnico(a.id, 'a', vistasA || new Set()); a.nome = String(a.nome || 'Árvore');
+  if(!CATEGORIAS.some(c=>c.id===a.categoria)) a.categoria = 'outra';
+  a.secreta = !!a.secreta; a.senha = String(a.senha || '');
+  a.nodes = soObjetos(a.nodes);
+  a.nodes.forEach(n=>normalizarNo(n, b, ids));
+}
+function normalizarNo(n, b, ids){
+  n.id = idUnico(n.id, 'n', ids.nos);
+  if(!Array.isArray(n.pais)) n.pais = n.pai ? [n.pai] : [];
+  delete n.pai;
+  n.pais = [...new Set(n.pais.filter(x=>idOk(x) && x!==n.id))];
+  n.regra = n.regra==='ou' ? 'ou' : 'e';
+  if(!b.tipos[n.tipo]) n.tipo = 'pequeno';
+  if(!FORMAS.some(f=>f.id===n.forma)) n.forma = b.tipos[n.tipo].forma || 'circulo';
+  n.nome = String(n.nome ?? '').trim() || 'Sem nome';
+  n.glifo = [...String(n.glifo||'')].slice(0,2).join('');
+  n.cor = corOk(n.cor, '');
+  n.natureza = ids.nat.has(n.natureza) ? n.natureza : '';
+  // aceita o formato anterior, de um tipo de uso só
+  const usosOrig = Array.isArray(n.usos) ? n.usos : (n.uso ? [n.uso] : []);
+  n.usos = [...new Set(usosOrig.filter(x=>ids.uso.has(x)))];
+  delete n.uso;
+  n.desc = String(n.desc || '');
+  n.exclusivo = String(n.exclusivo || '').trim();
+  if(!Array.isArray(n.graus) || !n.graus.length){
+    let c = n.custos;
+    if(!c || typeof c!=='object'){
+      const v = Number.isFinite(+n.custo) ? +n.custo : (b.tipos[n.tipo]?.custo ?? 1);
+      c = v>0 ? {[b.pools[0].id]:v} : {};
+    }
+    n.graus = [{custos:c, texto:''}];
+  }
+  delete n.custos; delete n.custo; delete n.efeitos;           // efeitos de atributo saíram do sistema
+  n.graus = soObjetos(n.graus).slice(0, MAX_GRAUS);
+  if(!n.graus.length) n.graus = [{custos:{}, texto:''}];
+  n.graus = n.graus.map(g=>{
+    const custos = {};
+    const orig = (g && g.custos) || {};
+    for(const k in orig){ const v = Math.floor(+orig[k]); if(ids.pool.has(k) && v>0) custos[k] = v; }
+    return {custos, texto:String((g && g.texto) || '')};
+  });
+  if(n.escola && typeof n.escola==='object'){
+    n.escola = {nome:String(n.escola.nome || n.nome), cor:corOk(n.escola.cor, COR_ESCOLA),
+                secreta:!!n.escola.secreta, senha:String(n.escola.senha || '')};
+  }else n.escola = null;
+  for(const k of Object.keys(n)) if(k.startsWith('_')) delete n[k];
+}
+function normalizarPersonagem(p, b, vistos){
+  p.id = vistos ? idUnico(p.id, 'c', vistos) : (idOk(p.id) ? p.id : novoId('c'));
+  p.nome = String(p.nome || 'Personagem');
+  p.arvores = Array.isArray(p.arvores) ? [...new Set(p.arvores.filter(idOk))] : [];
+  const pts = (p.pontos && typeof p.pontos==='object' && !Array.isArray(p.pontos)) ? p.pontos : {};
+  p.pontos = {};
+  for(const k in pts) if(idOk(k) && Number.isFinite(+pts[k])) p.pontos[k] = Math.max(0, Math.floor(+pts[k]));   // tipos ainda trancados ficam guardados
+  b.pools.forEach(pl=>{ if(!(pl.id in p.pontos)) p.pontos[pl.id] = pl.padrao; });
+  let al = p.alocados;
+  if(Array.isArray(al)){ const m = {}; al.forEach(id=>{ m[id] = 1; }); al = m; }
+  if(!al || typeof al!=='object') al = {};
+  p.alocados = {};
+  for(const k of Object.keys(al)){
+    const g = Math.floor(+al[k]);
+    if(idOk(k) && g>=1) p.alocados[k] = Math.min(g, MAX_GRAUS);
+  }
+  if(!idOk(p.arvoreAtual)) p.arvoreAtual = null;
+  // antes as árvores equipadas apareciam sempre por categoria; agora vale a ordem do jogador.
+  // Quem vem de antes começa na ordem em que já aparecia na tela.
+  if(p.ordemLivre!==true){ ordenarPorCategoria(p, b); p.ordemLivre = true; }
+}
+function ordenarPorCategoria(p, b){
+  const pos = id => { const a = b.arvores.find(x=>x.id===id); return a ? CATEGORIAS.findIndex(c=>c.id===a.categoria) : CATEGORIAS.length; };
+  p.arvores = p.arvores.map((id,i)=>({id, i, k:pos(id)})).sort((x,y)=>x.k-y.k || x.i-y.i).map(x=>x.id);
+}
+// normaliza um documento; lança erro se não der para aproveitar
+function normalizarObjDoc(d){
+  if(!d || typeof d!=='object' || !d.biblioteca || typeof d.biblioteca!=='object') throw new Error('o arquivo não tem uma biblioteca válida');
+  normalizarBiblioteca(d.biblioteca);
+  d.personagens = soObjetos(d.personagens);
+  const vistos = new Set();
+  d.personagens.forEach(p=>normalizarPersonagem(p, d.biblioteca, vistos));
+  d.formato = FORMATO+'-doc'; d.versao = 4;
+  delete d.fichas; delete d.atual;
+  return d;
+}
+function normalizarDoc(){
+  if(!doc || typeof doc!=='object' || !doc.biblioteca) doc = docInicial();
+  normalizarObjDoc(doc);
+}
+
+/* ---------- migração do formato anterior (abas com uma árvore cada) ---------- */
+function migrarV3(v3){
+  const b = {nome:'Árvores de Habilidade', pools:[], naturezas:clone(NATUREZAS_PADRAO), usos:clone(USOS_PADRAO),
+             tipos:null, arvores:[], cofres:[]};
+  const personagens = [];
+  const vistos = new Set();
+  const corPadraoAntiga = {pequeno:'#9bb7c9', notavel:'#4e8c7d', keystone:'#d9a441'};
+  soObjetos(v3.fichas).forEach((f,i)=>{
+    const a = (f && f.arvore) || {}; const bd = (f && f.build) || {};
+    if(!b.tipos && a.tipos) b.tipos = clone(a.tipos);
+    const poolsA = (Array.isArray(a.pools) && a.pools.length) ? a.pools
+                 : [{id:'p1', nome:'Pontos', cor:'#D9A441', padrao: Number.isFinite(+a.pontosPadrao) ? +a.pontosPadrao : 20}];
+    const mapaPool = {}, usadosAqui = new Set();
+    poolsA.forEach(p=>{
+      let ex = b.pools.find(x=>norm(x.nome)===norm(p.nome) && !usadosAqui.has(x.id));
+      if(!ex){ ex = {id: (!idOk(p.id) || b.pools.some(x=>x.id===p.id)) ? novoId('p') : p.id, nome:p.nome||'Pontos', cor:p.cor, padrao:p.padrao}; b.pools.push(ex); }
+      usadosAqui.add(ex.id); mapaPool[p.id] = ex.id;
+    });
+    const tiposA = (a.tipos && typeof a.tipos==='object') ? a.tipos : {};
+    const nodesA = soObjetos(a.nodes);
+    const mapaNo = {};
+    nodesA.forEach(n=>{ const id = vistos.has(n.id) ? novoId() : n.id; mapaNo[n.id] = id; vistos.add(id); });
+    const nodes = nodesA.map(n=>{
+      let src = n.custos;
+      if(!src || typeof src!=='object'){
+        // formato de uma árvore só: custo numérico; sem custo, valia o padrão do tipo
+        const v = (typeof n.custo==='number' && isFinite(n.custo)) ? n.custo
+                : ((tiposA[n.tipo] && tiposA[n.tipo].custo) ?? TIPOS_PADRAO[n.tipo]?.custo ?? 1);
+        src = v>0 ? {[poolsA[0].id]:v} : {};
+      }
+      const custos = {}; for(const k in src){ if(mapaPool[k]) custos[mapaPool[k]] = src[k]; }
+      const pais = Array.isArray(n.pais) ? n.pais : (n.pai ? [n.pai] : []);
+      const cor = (n.cor && n.cor.toLowerCase()!==corPadraoAntiga[n.tipo]) ? n.cor : '';
+      return {id:mapaNo[n.id], pais:pais.map(x=>mapaNo[x]||x), regra:n.regra, nome:n.nome, tipo:n.tipo,
+              forma: n.tipo==='keystone' ? 'hexagono' : 'circulo', glifo:'', cor,
+              natureza:'', usos:[], desc:n.desc||'', exclusivo:'', escola:null, graus:[{custos, texto:''}]};
+    });
+    const arv = {id:novoId('a'), nome: a.nome || (f && f.nome) || ('Árvore '+(i+1)), categoria:'outra', secreta:false, senha:'', nodes};
+    b.arvores.push(arv);
+    const pontos = {};
+    if(bd.pontos && typeof bd.pontos==='object'){ for(const k in bd.pontos){ if(mapaPool[k]) pontos[mapaPool[k]] = bd.pontos[k]; } }
+    else if(Number.isFinite(+bd.pontos)) pontos[mapaPool[poolsA[0].id]] = +bd.pontos;
+    const alocados = {};
+    (Array.isArray(bd.alocados) ? bd.alocados : []).forEach(id=>{ alocados[mapaNo[id] || id] = 1; });
+    personagens.push({id:novoId('c'), nome:(f && f.nome) || arv.nome, arvores:[arv.id], arvoreAtual:arv.id, pontos, alocados});
+  });
+  return {biblioteca:b, personagens};
+}
+
+/* ---------- persistência ---------- */
+let pendente, avisouFalha = false, sujo = false;
+function salvar(){ sujo = true; clearTimeout(pendente); pendente = setTimeout(salvarJa, 250); }
+function salvarJa(){
+  clearTimeout(pendente); sujo = false;
+  try{
+    localStorage.setItem(CHAVE_DOC, JSON.stringify(doc));
+    localStorage.setItem(CHAVE_UI, JSON.stringify(ui));
+    localStorage.setItem(CHAVE_SENHAS, JSON.stringify(senhas));
+    avisouFalha = false;
+  }catch(e){
+    console.warn('Não foi possível salvar no navegador:', e);
+    if(!avisouFalha){ avisouFalha = true; aviso('O navegador não deixou salvar. Baixe um backup em Importar / Exportar.', 'err', 6000); }
+  }
+  salvarHistorico();
+}
+function lerJSON(chave){ try{ return JSON.parse(localStorage.getItem(chave)); }catch(e){ return null; } }
+
+function carregar(){
+  let d = lerJSON(CHAVE_DOC);
+  if(!d || !d.biblioteca){
+    d = null;
+    const v3 = lerJSON(ANTIGAS.doc3);
+    if(v3 && Array.isArray(v3.fichas) && v3.fichas.length){
+      const m = migrarV3(v3); d = {biblioteca:m.biblioteca, personagens:m.personagens}; migrado = true;
+    }else{
+      const a = lerJSON(ANTIGAS.arv1), b = lerJSON(ANTIGAS.build1);
+      if(a && Array.isArray(a.nodes)){
+        const m = migrarV3({fichas:[{nome:a.nome, arvore:a, build:b||{}}]});
+        d = {biblioteca:m.biblioteca, personagens:m.personagens}; migrado = true;
+      }
+    }
+  }
+  try{ doc = d; normalizarDoc(); }
+  catch(e){
+    console.warn('Dados salvos danificados:', e);
+    try{ const cru = localStorage.getItem(CHAVE_DOC); if(cru) localStorage.setItem(CHAVE_DOC + '.danificado', cru); }catch(_){}
+    doc = docInicial(); normalizarDoc(); danificado = true;
+  }
+  ui = Object.assign({modo:'mestre', tema:'auto', arvoreMestre:null, personagem:null, abertos:{}}, lerJSON(CHAVE_UI) || {});
+  if(migrado){ const u1 = lerJSON(ANTIGAS.ui1); if(u1 && u1.modo) ui.modo = u1.modo; }
+  if(!ui.abertos || typeof ui.abertos!=='object') ui.abertos = {};
+  senhas = lerJSON(CHAVE_SENHAS) || {};
+  const h = lerJSON(CHAVE_HIST);
+  if(Array.isArray(h)) pilhaDesfazer = h.filter(x=>x && x.estado && typeof x.estado.doc==='string');
+}
+
+/* ============================================================
+   HISTÓRICO — desfazer / refazer
+   Guarda o documento inteiro ANTES de cada mudança.
+   ============================================================ */
+const PILHA_MAX = 40, PILHA_SALVA = 6;
+let pilhaDesfazer = [], pilhaRefazer = [], ultimoRegistro = {chave:null, t:0};
+
+function instantaneo(){
+  return {doc:JSON.stringify(doc), sel:selecionado,
+          vista:{arvoreMestre:ui.arvoreMestre, personagem:ui.personagem}};
+}
+// chave opcional: junta edições seguidas do mesmo campo num passo só
+function registrar(rotulo, chave){
+  const agora = Date.now();
+  if(chave && ultimoRegistro.chave===chave && agora-ultimoRegistro.t < 2000){ ultimoRegistro.t = agora; return; }
+  ultimoRegistro = {chave:chave||null, t:agora};
+  pilhaDesfazer.push({rotulo, estado:instantaneo()});
+  if(pilhaDesfazer.length > PILHA_MAX) pilhaDesfazer.shift();
+  pilhaRefazer.length = 0;
+  atualizarHistorico();
+}
+function aplicarEstado(e){
+  doc = JSON.parse(e.doc); normalizarDoc();
+  if(e.vista){ ui.arvoreMestre = e.vista.arvoreMestre; ui.personagem = e.vista.personagem; }
+  indexar(); garantirSelecoes();
+  selecionado = (e.sel && porId.has(e.sel)) ? e.sel : null;
+  salvar(); pintarTudo();
+}
+function desfazer(){
+  if(!pilhaDesfazer.length) return aviso('Nada para desfazer.');
+  const passo = pilhaDesfazer.pop();
+  pilhaRefazer.push({rotulo:passo.rotulo, estado:instantaneo()});
+  if(pilhaRefazer.length > PILHA_MAX) pilhaRefazer.shift();
+  ultimoRegistro = {chave:null, t:0};
+  aplicarEstado(passo.estado); atualizarHistorico();
+  aviso('Desfeito: ' + passo.rotulo, 'ok');
+}
+function refazer(){
+  if(!pilhaRefazer.length) return aviso('Nada para refazer.');
+  const passo = pilhaRefazer.pop();
+  pilhaDesfazer.push({rotulo:passo.rotulo, estado:instantaneo()});
+  ultimoRegistro = {chave:null, t:0};
+  aplicarEstado(passo.estado); atualizarHistorico();
+  aviso('Refeito: ' + passo.rotulo, 'ok');
+}
+function atualizarHistorico(){
+  const d = $('#btDesfazer'), r = $('#btRefazer'); if(!d || !r) return;
+  d.disabled = !pilhaDesfazer.length; r.disabled = !pilhaRefazer.length;
+  d.title = pilhaDesfazer.length ? 'Desfazer: ' + pilhaDesfazer[pilhaDesfazer.length-1].rotulo + ' (Ctrl+Z)' : 'Nada para desfazer';
+  r.title = pilhaRefazer.length ? 'Refazer: ' + pilhaRefazer[pilhaRefazer.length-1].rotulo + ' (Ctrl+Shift+Z)' : 'Nada para refazer';
+}
+// o histórico é grande; se não couber no navegador, guarda menos passos
+function salvarHistorico(){
+  let n = Math.min(PILHA_SALVA, pilhaDesfazer.length);
+  for(;;){
+    try{ localStorage.setItem(CHAVE_HIST, JSON.stringify(pilhaDesfazer.slice(-n))); return; }
+    catch(e){
+      if(n<=0){ try{ localStorage.removeItem(CHAVE_HIST); }catch(_){} return; }
+      n = n>1 ? Math.floor(n/2) : 0;
+    }
+  }
+}
+
+/* ============================================================
+   ESCOLAS SECRETAS — cofres com senha (AES-GCM + PBKDF2)
+   O conteúdo secreto sai do pacote para jogadores e vai num
+   cofre. Sem a senha não há nome, nó nem contagem visível.
+   ============================================================ */
+const codif = new TextEncoder(), decodif = new TextDecoder();
+function b64(bytes){
+  let s = '';
+  for(let i=0; i<bytes.length; i+=0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+  return btoa(s);
+}
+function deB64(str){ const s = atob(str); const u = new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i] = s.charCodeAt(i); return u; }
+const criptoOk = () => !!(window.crypto && crypto.subtle);
+
+// senha falada na mesa: ignora maiúsculas, acentos e espaços sobrando
+async function derivar(senha, salt){
+  const base = await crypto.subtle.importKey('raw', codif.encode(norm(senha)), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:150000, hash:'SHA-256'},
+                                 base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function trancar(obj, senha){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const k = await derivar(senha, salt);
+  const dados = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, k, codif.encode(JSON.stringify(obj))));
+  return {salt:b64(salt), iv:b64(iv), dados:b64(dados)};
+}
+async function abrirCofre(cofre, senha){
+  try{
+    const k = await derivar(senha, deB64(cofre.salt));
+    const bytes = await crypto.subtle.decrypt({name:'AES-GCM', iv:deB64(cofre.iv)}, k, deB64(cofre.dados));
+    return JSON.parse(decodif.decode(bytes));
+  }catch(e){ return null; }
+}
+
+/* ---------- pacote para jogadores ---------- */
+function semSenhas(a){
+  a.senha = '';
+  a.nodes.forEach(n=>{ if(n.escola) n.escola.senha = ''; });
+  return a;
+}
+async function montarPacote(){
+  indexar();
+  const b = clone(bib());
+  const fora = [], unidades = [];
+  // 1) ramos secretos (os mais internos primeiro)
+  for(const a of b.arvores){
+    const entradas = a.nodes.filter(n=>n.escola && n.escola.secreta)
+      .map(n=>({n, membros:membrosDaEscola(n.id)}))
+      .sort((x,y)=>x.membros.length - y.membros.length);
+    for(const {n, membros} of entradas){
+      const presentes = new Set(a.nodes.map(x=>x.id));
+      const ids = membros.filter(id=>presentes.has(id));
+      if(!ids.length) continue;
+      const nodes = a.nodes.filter(x=>ids.includes(x.id)).map(x=>{ const c = clone(x); if(c.escola) c.escola.senha = ''; return c; });
+      a.nodes = a.nodes.filter(x=>!ids.includes(x.id));
+      if(!n.escola.senha.trim()){ fora.push(`escola “${n.escola.nome}” (sem senha)`); continue; }
+      // escola secreta dentro de outra escola secreta: só abre depois da de fora
+      const dentro = entradas.filter(o=>o.n!==n && o.membros.includes(n.id)).sort((x,y)=>x.membros.length - y.membros.length)[0];
+      unidades.push({id:n.id, senha:n.escola.senha, nodes, conteudo:{tipo:'ramo', arvore:a.id, dentro: dentro ? dentro.n.id : null, nodes}});
+    }
+  }
+  // 2) árvores secretas
+  const visiveis = [];
+  for(const a of b.arvores){
+    if(!a.secreta){ visiveis.push(semSenhas(a)); continue; }
+    if(!a.senha.trim()){ fora.push(`árvore “${a.nome}” (sem senha)`); continue; }
+    const arv = semSenhas(clone(a));
+    unidades.push({id:a.id, senha:a.senha, nodes:arv.nodes, conteudo:{tipo:'arvore', arvore:arv}});
+  }
+  // 3) tipos de ponto, naturezas e usos que só aparecem em segredo viajam dentro do segredo
+  const usa = nodes => {
+    const s = {pool:new Set(), nat:new Set(), uso:new Set()};
+    nodes.forEach(n=>{ n.graus.forEach(g=>Object.keys(g.custos).forEach(k=>s.pool.add(k))); if(n.natureza) s.nat.add(n.natureza); n.usos.forEach(u=>s.uso.add(u)); });
+    return s;
+  };
+  const vis = usa(visiveis.flatMap(a=>a.nodes)), seg = usa(unidades.flatMap(u=>u.nodes));
+  const publico = (id, t) => vis[t].has(id) || !seg[t].has(id);
+  const pools = b.pools.filter(p=>publico(p.id, 'pool'));
+  if(!pools.length) pools.push(b.pools[0]);
+  const naturezas = b.naturezas.filter(t=>publico(t.id, 'nat'));
+  const usos = b.usos.filter(u=>publico(u.id, 'uso'));
+  const cofres = [...b.cofres];                 // cofres que este navegador recebeu e não abriu
+  for(const u of unidades){
+    const s = usa(u.nodes);
+    u.conteudo.defs = {
+      pools: b.pools.filter(p=>s.pool.has(p.id) && !pools.includes(p)),
+      naturezas: b.naturezas.filter(t=>s.nat.has(t.id) && !naturezas.includes(t)),
+      usos: b.usos.filter(x=>s.uso.has(x.id) && !usos.includes(x))
+    };
+    cofres.push(Object.assign({id:u.id}, await trancar(u.conteudo, u.senha)));
+  }
+  return {
+    pacote:{formato:FORMATO+'-pacote', versao:4, nome:b.nome, pools, naturezas, usos, tipos:b.tipos, arvores:visiveis, cofres},
+    fora
+  };
+}
+
+/* ---------- abrir escolas no navegador do jogador ---------- */
+function aplicarCofre(cofre, conteudo){
+  const b = bib();
+  if(!conteudo || typeof conteudo!=='object') return false;
+  let host = null;
+  if(conteudo.tipo==='ramo'){
+    host = b.arvores.find(a=>a.id===conteudo.arvore);
+    if(!host || !Array.isArray(conteudo.nodes)) return false;                        // a árvore que recebe o ramo ainda está trancada
+    if(conteudo.dentro && !host.nodes.some(n=>n.id===conteudo.dentro)) return false; // a escola de fora ainda está trancada
+  }else if(conteudo.tipo!=='arvore' || !conteudo.arvore || typeof conteudo.arvore!=='object') return false;
+  const d = conteudo.defs || {};
+  (Array.isArray(d.pools) ? d.pools : []).forEach(p=>{ if(p && !b.pools.some(x=>x.id===p.id)) b.pools.push(p); });
+  (Array.isArray(d.naturezas) ? d.naturezas : []).forEach(t=>{ if(t && !b.naturezas.some(x=>x.id===t.id)) b.naturezas.push(t); });
+  (Array.isArray(d.usos) ? d.usos : []).forEach(u=>{ if(u && !b.usos.some(x=>x.id===u.id)) b.usos.push(u); });
+  if(conteudo.tipo==='arvore'){
+    if(!b.arvores.some(a=>a.id===conteudo.arvore.id)) b.arvores.push(conteudo.arvore);
+  }else{
+    const ids = new Set(host.nodes.map(n=>n.id));
+    conteudo.nodes.forEach(n=>{ if(n && !ids.has(n.id)) host.nodes.push(n); });
+  }
+  b.cofres = b.cofres.filter(c=>c!==cofre);
+  normalizarBiblioteca(b);
+  doc.personagens.forEach(p=>normalizarPersonagem(p, b));
+  return true;
+}
+// tenta as senhas guardadas neste navegador (útil quando chega um pacote novo)
+async function reabrirGuardadas(){
+  if(!criptoOk()) return [];
+  const abertas = [];
+  let progresso = true;
+  while(progresso){
+    progresso = false;
+    for(const c of [...bib().cofres]){
+      const s = senhas[c.id]; if(!s) continue;
+      const conteudo = await abrirCofre(c, s);
+      if(conteudo && aplicarCofre(c, conteudo)){ progresso = true; abertas.push(nomeDoConteudo(conteudo)); }
+    }
+  }
+  return abertas;
+}
+function nomeDoConteudo(c){
+  if(c.tipo==='arvore') return c.arvore.nome;
+  const e = (c.nodes||[]).find(n=>n.escola);
+  return e ? e.escola.nome : 'escola';
+}
+async function destrancarComSenha(senha){
+  if(!criptoOk()) throw new Error('Este navegador não oferece criptografia nesta página.');
+  const abertas = []; const pendentes = [];
+  for(const c of [...bib().cofres]){
+    const conteudo = await abrirCofre(c, senha);
+    if(!conteudo) continue;
+    senhas[c.id] = norm(senha);
+    if(aplicarCofre(c, conteudo)) abertas.push({nome:nomeDoConteudo(conteudo), conteudo});
+    else pendentes.push(nomeDoConteudo(conteudo));
+  }
+  if(abertas.length){ (await reabrirGuardadas()).forEach(n=>abertas.push({nome:n, conteudo:null})); }
+  return {abertas, pendentes};
+}
+
+/* ============================================================
+   GRAFO — índice global, requisitos, escolas e layout
+   ============================================================ */
+const porId = new Map();       // id -> nó (todas as árvores)
+const arvDe = new Map();       // id do nó -> árvore
+const filhosDe = new Map();    // id -> filhos na MESMA árvore
+const dependentes = new Map(); // id -> nós de qualquer árvore que exigem este
+let reqCache = new Map(), membrosCache = new Map(), altCache = new Map();
+
+function indexar(){
+  porId.clear(); arvDe.clear(); filhosDe.clear(); dependentes.clear();
+  reqCache = new Map(); membrosCache = new Map(); altCache = new Map();
+  for(const a of bib().arvores) for(const n of a.nodes){ porId.set(n.id, n); arvDe.set(n.id, a); filhosDe.set(n.id, []); dependentes.set(n.id, []); }
+  for(const a of bib().arvores) for(const n of a.nodes){
+    for(const pid of n.pais){
+      if(!porId.has(pid)) continue;
+      dependentes.get(pid).push(n);
+      if(arvDe.get(pid)===a) filhosDe.get(pid).push(n);
+    }
+  }
+}
+const filhos = id => filhosDe.get(id) || [];
+function paisNaArvore(n){ const a = arvDe.get(n.id); return n.pais.filter(pid=>porId.has(pid) && arvDe.get(pid)===a); }
+function paisFora(n){ const a = arvDe.get(n.id); return n.pais.filter(pid=>!porId.has(pid) || arvDe.get(pid)!==a); }
+
+// "anc" está acima de "id"? (inclui requisitos de outras árvores) — evita ciclos
+function ehAncestral(anc, id, visto){
+  visto = visto || new Set();
+  const n = porId.get(id); if(!n) return false;
+  for(const pid of n.pais){
+    if(pid===anc) return true;
+    if(!visto.has(pid)){ visto.add(pid); if(ehAncestral(anc, pid, visto)) return true; }
+  }
+  return false;
+}
+
+/* req(id): nós que TODO caminho até "id" obriga a pegar.
+   Com E entram todos os requisitos; com OU, só o que é comum a todas as opções. */
+function req(id, pilha){
+  if(reqCache.has(id)) return reqCache.get(id);
+  pilha = pilha || new Set();
+  const n = porId.get(id);
+  if(!n || pilha.has(id)) return new Set([id]);
+  pilha.add(id);
+  let r;
+  if(!n.pais.length) r = new Set();
+  else if(n.regra==='ou'){
+    r = null;
+    for(const pid of n.pais){
+      const s = porId.has(pid) ? req(pid, pilha) : new Set();
+      r = r ? new Set([...r].filter(x=>s.has(x))) : new Set(s);
+    }
+  }else{
+    r = new Set();
+    for(const pid of n.pais){ if(porId.has(pid)) for(const x of req(pid, pilha)) r.add(x); else r.add(pid); }
+  }
+  pilha.delete(id);
+  r.add(id);
+  reqCache.set(id, r);
+  return r;
+}
+
+/* alternativas(id): cada jeito de chegar até "id", resumido pelos caminhos exclusivos
+   que ele obriga a escolher ({grupo: nó}). Lista vazia = impossível de liberar.
+   Quando há opções demais, o cálculo desiste e trata como possível (nunca acusa à toa). */
+const LIMITE_ALT = 64;
+function alternativas(id, pilha){
+  if(altCache.has(id)) return altCache.get(id);
+  const n = porId.get(id);
+  if(!n) return [{}];
+  pilha = pilha || new Set();
+  if(pilha.has(id)) return [{}];
+  pilha.add(id);
+  const g = grupoEx(n);
+  const proprio = g ? {[g]:id} : {};
+  const juntar = (a, b) => { const r = Object.assign({}, a); for(const k in b){ if(k in r && r[k]!==b[k]) return null; r[k] = b[k]; } return r; };
+  let res, estourou = false;
+  if(!n.pais.length) res = [proprio];
+  else if(n.regra==='ou'){
+    res = [];
+    for(const pid of n.pais){
+      for(const alt of alternativas(pid, pilha)){ const j = juntar(proprio, alt); if(j) res.push(j); }
+      if(res.length>LIMITE_ALT){ estourou = true; break; }
+    }
+  }else{
+    res = [proprio];
+    for(const pid of n.pais){
+      const altsP = alternativas(pid, pilha), novo = [];
+      for(const a of res) for(const b of altsP){ const j = juntar(a, b); if(j) novo.push(j); }
+      res = novo;
+      if(!res.length) break;
+      if(res.length>LIMITE_ALT){ estourou = true; break; }
+    }
+  }
+  if(estourou) res = [proprio];
+  const vistos = new Set();
+  res = res.filter(r=>{ const k = Object.keys(r).sort().map(x=>x+'='+r[x]).join('|'); if(vistos.has(k)) return false; vistos.add(k); return true; });
+  pilha.delete(id);
+  altCache.set(id, res);
+  return res;
+}
+
+/* escola-ramo: o nó de entrada e tudo que só existe através dele */
+function membrosDaEscola(eid){
+  if(membrosCache.has(eid)) return membrosCache.get(eid);
+  const a = arvDe.get(eid); if(!a) return [];
+  const m = a.nodes.filter(n=>n.id===eid || req(n.id).has(eid)).map(n=>n.id);
+  membrosCache.set(eid, m);
+  return m;
+}
+function escolaDoNo(id){
+  const a = arvDe.get(id); if(!a) return null;
+  let melhor = null, tam = Infinity;
+  for(const e of a.nodes){
+    if(!e.escola) continue;
+    const m = membrosDaEscola(e.id);
+    if(m.includes(id) && m.length < tam){ melhor = e; tam = m.length; }
+  }
+  return melhor;
+}
+// o segredo (árvore ou escola-ramo) que esconde este nó, se houver
+function segredoDe(id){
+  const a = arvDe.get(id); if(!a) return null;
+  if(a.secreta) return {tipo:'arvore', nome:a.nome};
+  for(const e of a.nodes){
+    if(e.escola && e.escola.secreta && membrosDaEscola(e.id).includes(id)) return {tipo:'ramo', nome:e.escola.nome};
+  }
+  return null;
+}
+
+/* ---------- layout radial por árvore ---------- */
+const ANEL = 150;
+// largura máxima do leque de filhos por profundidade: a raiz espalha em 360°
+const LEQUE = [Math.PI*2, 1.90, 1.35, 1.10, 0.95, 0.85, 0.78, 0.72];
+let pos = new Map();            // id -> {x, y, prof, principal}
+let unicaRaiz = false;
+
+function raioDe(n){ return (bib().tipos[n.tipo] || bib().tipos.pequeno).raio; }
+
+function calcularLayout(a){
+  pos = new Map();
+  if(!a || !a.nodes.length) return pos;
+  const meta = new Map(a.nodes.map(n=>[n.id, {prof:null, principal:null}]));
+  const raizes = a.nodes.filter(n=>!paisNaArvore(n).length);
+  const fila = [...raizes];
+  raizes.forEach(r=>{ meta.get(r.id).prof = 0; });
+  for(let i=0; i<fila.length; i++){
+    const cur = fila[i];
+    for(const c of filhos(cur.id)){
+      const m = meta.get(c.id);
+      if(m.prof!==null) continue;
+      m.prof = meta.get(cur.id).prof + 1; m.principal = cur.id; fila.push(c);
+    }
+  }
+  // nós presos em ciclo (dados tortos) aparecem como raízes soltas
+  a.nodes.forEach(n=>{ const m = meta.get(n.id); if(m.prof===null){ m.prof = 0; m.principal = null; } });
+  const primarios = new Map(a.nodes.map(n=>[n.id, []]));
+  a.nodes.forEach(n=>{ const m = meta.get(n.id); if(m.principal) primarios.get(m.principal).push(n); });
+  const rs = a.nodes.filter(n=>meta.get(n.id).principal===null);
+
+  const pesos = new Map();
+  const peso = n => {
+    if(pesos.has(n.id)) return pesos.get(n.id);
+    pesos.set(n.id, 1);
+    const k = primarios.get(n.id);
+    const v = k.length ? k.reduce((s,c)=>s+peso(c), 0) : 1;
+    pesos.set(n.id, v); return v;
+  };
+  const fatia = n => Math.pow(peso(n), 0.55);
+  unicaRaiz = rs.length===1;
+  const raio = prof => (unicaRaiz ? prof : prof+1) * ANEL * (1 + Math.max(0, prof-2)*0.05);
+
+  const colocar = (n, a0, a1, prof) => {
+    const s = semente(n.id);
+    const meio = (a0+a1)/2;
+    const ang = meio + (a1-a0)*(s-.5)*0.10;
+    const r = raio(prof) + (prof>0 ? (s-.5)*18 : 0);
+    pos.set(n.id, {x:Math.cos(ang)*r, y:Math.sin(ang)*r, prof, principal:meta.get(n.id).principal});
+    const k = primarios.get(n.id);
+    if(!k.length) return;
+    const larg = Math.min(a1-a0, LEQUE[Math.min(prof, LEQUE.length-1)]);
+    const tot = k.reduce((acc,c)=>acc+fatia(c), 0) || 1;
+    let ai = meio - larg/2;
+    for(const c of k){ const f = larg*fatia(c)/tot; colocar(c, ai, ai+f, prof+1); ai += f; }
+  };
+  if(unicaRaiz) colocar(rs[0], -Math.PI/2, Math.PI*1.5, 0);
+  else{
+    const tot = rs.reduce((s,r)=>s+fatia(r), 0) || 1;
+    let ai = -Math.PI/2;
+    for(const r of rs){ const f = Math.PI*2*fatia(r)/tot; colocar(r, ai, ai+f, 0); ai += f; }
+  }
+  return pos;
+}
+// nós de uma árvore que nenhum caminho alcança a partir das raízes (ciclos)
+function nosEmCiclo(a){
+  const alcancados = new Set();
+  const fila = a.nodes.filter(n=>!paisNaArvore(n).length);
+  fila.forEach(n=>alcancados.add(n.id));
+  for(let i=0; i<fila.length; i++) for(const c of filhos(fila[i].id)) if(!alcancados.has(c.id)){ alcancados.add(c.id); fila.push(c); }
+  return a.nodes.filter(n=>!alcancados.has(n.id));
+}
+
+/* ============================================================
+   REGRAS DE ALOCAÇÃO (por personagem)
+   alocados = {idDoNó: grau}. Ids desconhecidos (escola ainda
+   trancada neste navegador) ficam guardados sem contar.
+   ============================================================ */
+const conjuntoAlocado = p => new Set(Object.keys(p.alocados));
+const grupoEx = n => norm(n.exclusivo);
+function equipado(p, id){ const a = arvDe.get(id); return !!a && p.arvores.includes(a.id); }
+function satisfeito(n, conj){
+  if(!n.pais.length) return true;
+  return n.regra==='ou' ? n.pais.some(x=>conj.has(x)) : n.pais.every(x=>conj.has(x));
+}
+function fechadoPor(p, n){
+  const g = grupoEx(n); if(!g) return null;
+  for(const id in p.alocados){
+    if(id===n.id) continue;
+    const m = porId.get(id);
+    if(m && grupoEx(m)===g) return m;
+  }
+  return null;
+}
+const custoGrau = (n, k) => (n.graus[k-1] && n.graus[k-1].custos) || {};
+function gastos(p, poolId){
+  let s = 0;
+  for(const id in p.alocados){
+    const n = porId.get(id); if(!n) continue;
+    const g = Math.min(p.alocados[id], n.graus.length);
+    for(let k=0; k<g; k++) s += n.graus[k].custos[poolId] || 0;
+  }
+  return s;
+}
+const restantes = (p, poolId) => (p.pontos[poolId] || 0) - gastos(p, poolId);
+function podePagarGrau(p, n, k){ const c = custoGrau(n, k); return bib().pools.every(pl=>(c[pl.id]||0) <= restantes(p, pl.id)); }
+function faltaTexto(p, n, k){
+  const c = custoGrau(n, k);
+  const f = bib().pools.filter(pl=>(c[pl.id]||0) > restantes(p, pl.id));
+  return f.length ? 'Faltam pontos: ' + f.map(x=>x.nome).join(', ') + '.' : '';
+}
+function custoTexto(custos){
+  const partes = bib().pools.filter(pl=>custos[pl.id]>0).map(pl=>`${pl.nome}: ${custos[pl.id]}`);
+  return partes.length ? partes.join(' · ') : 'sem custo';
+}
+function estadoNo(p, n){
+  if((p.alocados[n.id]||0) > 0) return 'on';
+  if(!equipado(p, n.id)) return 'bloq';
+  if(fechadoPor(p, n)) return 'fechado';
+  if(!satisfeito(n, conjuntoAlocado(p))) return 'bloq';
+  return podePagarGrau(p, n, 1) ? 'disp' : 'caro';
+}
+// dos alocados, quais continuam presos a alguma raiz (ponto fixo por causa do OU)
+function sustentados(conj){
+  const ok = new Set([...conj].filter(id=>!porId.has(id)));
+  let mudou = true;
+  while(mudou){
+    mudou = false;
+    for(const id of conj){
+      if(ok.has(id)) continue;
+      const n = porId.get(id); if(!n) continue;
+      if(satisfeito(n, ok)){ ok.add(id); mudou = true; }
+    }
+  }
+  return ok;
+}
+function podeSoltar(p, id){ const c = conjuntoAlocado(p); c.delete(id); return sustentados(c).size === c.size; }
+function podarPersonagem(p){
+  for(const id of Object.keys(p.alocados)){
+    const n = porId.get(id);
+    if(!n) continue;
+    if(!equipado(p, id)){ delete p.alocados[id]; continue; }
+    if(p.alocados[id] > n.graus.length) p.alocados[id] = n.graus.length;
+  }
+  const vistos = new Set();
+  for(const id of Object.keys(p.alocados)){
+    const n = porId.get(id); if(!n) continue;
+    const g = grupoEx(n); if(!g) continue;
+    if(vistos.has(g)) delete p.alocados[id]; else vistos.add(g);
+  }
+  const ok = sustentados(conjuntoAlocado(p));
+  for(const id of Object.keys(p.alocados)) if(!ok.has(id)) delete p.alocados[id];
+}
+function podarTodos(){ indexar(); doc.personagens.forEach(podarPersonagem); }
+
+// "Exige Corpo e Mente." — com a árvore de origem quando vem de fora
+function exigencia(n){
+  if(!n.pais.length) return '';
+  const a = arvDe.get(n.id);
+  const nomes = n.pais.map(pid=>{
+    const m = porId.get(pid);
+    if(!m) return 'um requisito desconhecido';
+    const am = arvDe.get(pid);
+    return am===a ? m.nome : `${m.nome} (${nomeCat(am.categoria)} · ${am.nome})`;
+  });
+  if(nomes.length===1) return 'Exige ' + nomes[0] + '.';
+  const lig = n.regra==='ou' ? ' ou ' : ' e ';
+  return 'Exige ' + nomes.slice(0,-1).join(', ') + lig + nomes[nomes.length-1] + '.';
+}
+function colegasExclusivos(n){
+  const g = grupoEx(n); if(!g) return [];
+  const out = [];
+  for(const [id, m] of porId) if(id!==n.id && grupoEx(m)===g) out.push(m);
+  return out;
+}
+
+/* ---------- alocar / soltar ---------- */
+const dormentes = p => Object.keys(p.alocados).filter(id=>!porId.has(id));
+async function podeSoltarComTrancados(p){
+  if(!dormentes(p).length) return true;
+  return confirmar('Soltar nódulo', 'Este personagem tem nódulos numa escola que está trancada neste navegador. Se algum deles depender do que você vai soltar, ele será solto quando a escola abrir. Soltar mesmo assim?', 'Soltar', true);
+}
+async function subirGrau(id){
+  const p = personagemAtual(); const n = porId.get(id); if(!p || !n) return;
+  const g = p.alocados[id] || 0, max = n.graus.length;
+  if(g===0){
+    const est = estadoNo(p, n);
+    if(est==='bloq') return aviso(!equipado(p, id) ? 'Esta árvore não está equipada.' : (exigencia(n) || 'Este nódulo ainda não está liberado.'));
+    if(est==='fechado') return aviso('Caminho fechado: você já escolheu “' + fechadoPor(p, n).nome + '”.');
+    if(est==='caro') return aviso(faltaTexto(p, n, 1));
+    registrar('alocar ' + n.nome);
+    p.alocados[id] = 1;
+    if(max>1) aviso(`${n.nome}: grau 1 de ${max}`, 'ok');
+  }else if(g<max){
+    if(!podePagarGrau(p, n, g+1)) return aviso(faltaTexto(p, n, g+1));
+    registrar('subir grau de ' + n.nome);
+    p.alocados[id] = g+1;
+    aviso(`${n.nome}: grau ${g+1} de ${max}`, 'ok');
+  }else{
+    if(!podeSoltar(p, id)) return aviso('Solte primeiro os nódulos que dependem deste.');
+    if(!(await podeSoltarComTrancados(p))) return;
+    registrar('soltar ' + n.nome);
+    delete p.alocados[id];
+  }
+  salvar(); desenhar(); pintarPainel(); pintarAbas();
+}
+async function descerGrau(id){
+  const p = personagemAtual(); const n = porId.get(id); if(!p || !n) return;
+  const g = p.alocados[id] || 0; if(!g) return;
+  if(g>1){
+    registrar('descer grau de ' + n.nome);
+    p.alocados[id] = g-1;
+    aviso(`${n.nome}: grau ${g-1} de ${n.graus.length}`, 'ok');
+  }else{
+    if(!podeSoltar(p, id)) return aviso('Solte primeiro os nódulos que dependem deste.');
+    if(!(await podeSoltarComTrancados(p))) return;
+    registrar('soltar ' + n.nome);
+    delete p.alocados[id];
+  }
+  salvar(); desenhar(); pintarPainel(); pintarAbas();
+}
+
+/* ============================================================
+   DESENHO — dois temas: tinta sobre papel / pedra e ouro
+   ============================================================ */
+const COR_T = {tinta:'#1F1B16', papel:'#ECE4D0', papelNo:'#F3EDDF', verm:'#B23A2E'};
+const COR_P = {ouro:'#E3B55E', ouroEsc:'#C99A45', ouroClaro:'#F6E2AE', bronze:'#8A7447', bronzeClaro:'#B39258',
+               encaixe:'#1B1813', fundoEnc:'#0F0E0B', canal:'#4B4334', glifoOn:'#F1D9A2', glifoOff:'#7A6B52', verm:'#E0766A'};
+const temaAtual = () => document.documentElement.getAttribute('data-tema')==='tinta' ? 'tinta' : 'pedra';
+function temaResolvido(){
+  if(ui.tema==='tinta' || ui.tema==='pedra') return ui.tema;
+  return (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'tinta' : 'pedra';
+}
+
+/* ---------- cor ---------- */
+function rgb(h){ h = String(h||'').replace('#',''); if(h.length===3) h = h.split('').map(c=>c+c).join(''); const v = parseInt(h,16); return isNaN(v) ? [128,128,128] : [(v>>16)&255,(v>>8)&255,v&255]; }
+function mix(a, b, t){ const x = rgb(a), y = rgb(b); return '#' + x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
+function claro(h){ const [r,g,b] = rgb(h); return (0.299*r + 0.587*g + 0.114*b)/255 > .6; }
+
+/* ---------- formas ---------- */
+function poli(r, n, rot){ const p = []; for(let k=0;k<n;k++){ const a = rot + 2*Math.PI*k/n; p.push(`${f1(Math.cos(a)*r)},${f1(Math.sin(a)*r)}`); } return p.join(' '); }
+function estrelaP(ro, ri, n, rot){
+  rot = rot ?? -Math.PI/2; const p = [];
+  for(let k=0;k<2*n;k++){ const r = k%2 ? ri : ro, a = rot + Math.PI*k/n; p.push(`${f1(Math.cos(a)*r)},${f1(Math.sin(a)*r)}`); }
+  return p.join(' ');
+}
+function lotusD(r, n){
+  n = n || 8; let d = '';
+  const pt = (a, rr) => [Math.cos(a)*rr, Math.sin(a)*rr];
+  for(let k=0;k<n;k++){
+    const a0 = 2*Math.PI*k/n - Math.PI/2 - Math.PI/n, a1 = a0 + 2*Math.PI/n, am = (a0+a1)/2;
+    const b0 = pt(a0, r*.66), tip = pt(am, r*1.2), b1 = pt(a1, r*.66);
+    const c0 = pt(a0+(am-a0)*.2, r*1.04), c1 = pt(a1-(a1-am)*.2, r*1.04);
+    d += (k===0 ? `M${f1(b0[0])},${f1(b0[1])}` : '') +
+         ` Q${f1(c0[0])},${f1(c0[1])} ${f1(tip[0])},${f1(tip[1])} Q${f1(c1[0])},${f1(c1[1])} ${f1(b1[0])},${f1(b1[1])}`;
+  }
+  return d + ' Z';
+}
+const escudoD = r => `M${f1(-r*.86)},${f1(-r*.8)} L${f1(r*.86)},${f1(-r*.8)} Q${f1(r*.95)},${f1(r*.32)} 0,${f1(r*1.05)} Q${f1(-r*.95)},${f1(r*.32)} ${f1(-r*.86)},${f1(-r*.8)} Z`;
+const laminaD = r => `M0,${f1(-r*1.12)} Q${f1(r*1.2)},0 0,${f1(r*1.12)} Q${f1(-r*1.2)},0 0,${f1(-r*1.12)} Z`;
+function formaEl(forma, r, attrs){
+  switch(forma){
+    case 'losango':  return el('polygon', Object.assign({points:poli(r*1.14, 4, -Math.PI/2)}, attrs));
+    case 'hexagono': return el('polygon', Object.assign({points:poli(r*1.07, 6, -Math.PI/2)}, attrs));
+    case 'octogono': return el('polygon', Object.assign({points:poli(r*1.05, 8, Math.PI/8)}, attrs));
+    case 'lotus':    return el('path', Object.assign({d:lotusD(r)}, attrs));
+    case 'selo':     return el('rect', Object.assign({x:f1(-r*.9), y:f1(-r*.9), width:f1(r*1.8), height:f1(r*1.8), rx:f1(Math.max(2, r*.18))}, attrs));
+    case 'escudo':   return el('path', Object.assign({d:escudoD(r)}, attrs));
+    case 'lamina':   return el('path', Object.assign({d:laminaD(r)}, attrs));
+    case 'estrela':  return el('polygon', Object.assign({points:estrelaP(r*1.15, r*.62, 8)}, attrs));
+    default:         return el('circle', Object.assign({r:f1(r)}, attrs));
+  }
+}
+function iconeForma(forma){   // miniatura para os botões do editor
+  const s = document.createElementNS(SVGNS, 'svg'); s.setAttribute('viewBox', '-16 -16 32 32');
+  s.appendChild(formaEl(forma, 10.5, {fill:'none', stroke:'currentColor', 'stroke-width':1.6}));
+  return s.outerHTML;
+}
+// mancha de aquarela: contorno irregular, sempre igual para o mesmo nó
+function blobD(cx, cy, r, chave){
+  const n = 8, pts = [];
+  for(let k=0;k<n;k++){
+    const a = 2*Math.PI*k/n + (semente(chave+'a'+k)-.5)*.36;
+    const rr = r*(1 + (semente(chave+'r'+k)-.5)*.4);
+    pts.push([cx+Math.cos(a)*rr, cy+Math.sin(a)*rr]);
+  }
+  const m = (p,q) => [(p[0]+q[0])/2, (p[1]+q[1])/2];
+  let s = m(pts[0], pts[1]); let d = `M${Math.round(s[0])},${Math.round(s[1])}`;
+  for(let i=0;i<n;i++){ const p1 = pts[(i+1)%n], p2 = pts[(i+2)%n], e = m(p1, p2); d += ` Q${Math.round(p1[0])},${Math.round(p1[1])} ${Math.round(e[0])},${Math.round(e[1])}`; }
+  return d + ' Z';
+}
+// pincelada: faixa que afina do pai para o filho
+function traco(x1,y1,w1,x2,y2,w2,curva){
+  const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1;
+  const nx=-dy/L, ny=dx/L;
+  const mx=(x1+x2)/2+nx*curva, my=(y1+y2)/2+ny*curva, wm=(w1+w2)/2*1.08;
+  const p=(x,y)=>`${f1(x)},${f1(y)}`;
+  return `M${p(x1+nx*w1,y1+ny*w1)} Q${p(mx+nx*wm,my+ny*wm)} ${p(x2+nx*w2,y2+ny*w2)}`
+       + ` L${p(x2-nx*w2,y2-ny*w2)} Q${p(mx-nx*wm,my-ny*wm)} ${p(x1-nx*w1,y1-ny*w1)} Z`;
+}
+function glifoEl(txt, r, cor, op){
+  const t = el('text', {class:'glifo', y:f1(r*.04), fill:cor, opacity:op, 'font-size':f1(Math.max(10, r*(txt.length>1 ? .78 : 1.08)))});
+  t.textContent = txt; return t;
+}
+
+/* ---------- câmera ---------- */
+let cam = {x:0, y:0, k:1};
+function aplicarCam(){ $('#camara').setAttribute('transform', `translate(${f1(cam.x)},${f1(cam.y)}) scale(${cam.k.toFixed(3)})`); }
+function centralizar(){
+  const t = $('#tela').getBoundingClientRect();
+  if(!pos.size){ cam = {x:t.width/2, y:t.height/2, k:1}; return aplicarCam(); }
+  let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9;
+  pos.forEach((q,id)=>{ const n = porId.get(id); const r = (n ? raioDe(n) : 10) + 44;
+    x0=Math.min(x0,q.x-r); y0=Math.min(y0,q.y-r); x1=Math.max(x1,q.x+r); y1=Math.max(y1,q.y+r); });
+  extrasLimite.forEach(e=>{ x0=Math.min(x0,e.x0); y0=Math.min(y0,e.y0); x1=Math.max(x1,e.x1); y1=Math.max(y1,e.y1); });
+  const k = Math.min(t.width/(x1-x0||1), (t.height-60)/(y1-y0||1), 1.6) * 0.9;
+  cam.k = Math.max(.12, k);
+  cam.x = t.width/2 - ((x0+x1)/2)*cam.k;
+  cam.y = t.height/2 + 18 - ((y0+y1)/2)*cam.k;
+  aplicarCam();
+}
+function zoomPara(k, cx, cy){
+  const t = $('#tela').getBoundingClientRect();
+  cx = cx ?? t.width/2; cy = cy ?? t.height/2;
+  const novo = Math.min(2.6, Math.max(.12, k));
+  cam.x = cx - (cx-cam.x)*(novo/cam.k);
+  cam.y = cy - (cy-cam.y)*(novo/cam.k);
+  cam.k = novo; aplicarCam();
+}
+function focarNo(id){
+  const q = pos.get(id); if(!q) return;
+  const t = $('#tela').getBoundingClientRect();
+  cam.x = t.width/2 - q.x*cam.k; cam.y = t.height/2 - q.y*cam.k; aplicarCam();
+}
+
+/* ---------- desenho principal ---------- */
+let raioProf = p => (p+1)*ANEL;
+let extrasLimite = [];   // nomes de escola, para caber na hora de centralizar
+function desenhar(){
+  indexar();
+  const a = arvoreVisivel();
+  const g = {f:$('#fundoCam'), te:$('#territorios'), au:$('#auras'), tr:$('#tracos'), no:$('#nos')};
+  for(const k in g) g[k].textContent = '';
+  $('#defsDin').textContent = '';
+  atualizarMarca(a);
+  pintarFiltroNat(a);
+  if(!a || !a.nodes.length){ pos = new Map(); mostrarVazio(a); esconderDica(); return; }
+  $('#nada').classList.remove('on');
+  calcularLayout(a);
+  raioProf = p => (unicaRaiz ? p : p+1) * ANEL * (1 + Math.max(0, p-2)*0.05);
+  const tema = temaAtual();
+  const jogador = ui.modo==='jogador';
+  const p = jogador ? personagemAtual() : null;
+  const est = new Map(a.nodes.map(n=>[n.id, jogador ? estadoNo(p, n) : 'mestre']));
+  const busca = norm(filtro);
+  const bate = n => (!busca || norm(n.nome).includes(busca) || norm(n.desc).includes(busca))
+                    && (!filtroNat.size || filtroNat.has(n.natureza));
+
+  desenharFundo(g.f, a, tema);
+  extrasLimite = [];
+  for(const n of a.nodes) if(n.escola) desenharTerritorio(g.te, n, tema);
+  for(const n of a.nodes) desenharAura(g.au, n, est.get(n.id), tema, bate(n));
+  for(const n of a.nodes){
+    const q = pos.get(n.id);
+    for(const pid of paisNaArvore(n)) if(pid!==q.principal) ligacaoExtra(g.tr, pid, n, est, tema);
+  }
+  for(const n of a.nodes){ const q = pos.get(n.id); if(q.principal) desenharAresta(g.tr, q.principal, n, est, tema); }
+  for(const n of a.nodes) desenharNo(g.no, n, est.get(n.id), tema, p, bate(n), busca);
+  revalidarPaire();
+}
+
+function desenharFundo(g, a, tema){
+  let maxP = 0; pos.forEach(q=>{ if(q.prof>maxP) maxP = q.prof; });
+  const ini = unicaRaiz ? 1 : 0;
+  if(tema==='tinta'){
+    for(let k=ini;k<=maxP;k++) g.appendChild(el('circle', {r:f1(raioProf(k)), fill:'none', stroke:'rgba(31,27,22,.08)', 'stroke-width':1, 'stroke-dasharray':'2 7'}));
+    return;
+  }
+  for(let k=ini;k<=maxP;k++){
+    const R = raioProf(k);
+    g.appendChild(el('circle', {r:f1(R), fill:'none', stroke:'#27251F', 'stroke-width':1}));
+    for(let i=0;i<24;i++){
+      const an = i*Math.PI/12, r2 = R + (i%2 ? 3 : 6);
+      g.appendChild(el('line', {x1:f1(Math.cos(an)*R), y1:f1(Math.sin(an)*R), x2:f1(Math.cos(an)*r2), y2:f1(Math.sin(an)*r2), stroke:'#34312A', 'stroke-width':1}));
+    }
+  }
+  let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9;
+  pos.forEach(q=>{ x0=Math.min(x0,q.x); y0=Math.min(y0,q.y); x1=Math.max(x1,q.x); y1=Math.max(y1,q.y); });
+  x0-=260; y0-=260; x1+=260; y1+=260;
+  const qtd = Math.min(280, Math.round((x1-x0)*(y1-y0)/9000));
+  for(let i=0;i<qtd;i++){
+    const s = k => semente(a.id+'e'+i+k);
+    g.appendChild(el('circle', {cx:f1(x0+s('x')*(x1-x0)), cy:f1(y0+s('y')*(y1-y0)), r:f1(.5+s('r')*1), fill:'#D6CDB5', opacity:f1(.12+s('o')*.35)}));
+  }
+}
+
+function desenharTerritorio(g, entrada, tema){
+  const membros = membrosDaEscola(entrada.id).filter(id=>pos.has(id));
+  if(!membros.length) return;
+  const cor = entrada.escola.cor || COR_ESCOLA;
+  const conj = new Set(membros);
+  const grp = el('g', {opacity: tema==='tinta' ? .1 : .13});
+  for(const id of membros){
+    const q = pos.get(id), n = porId.get(id);
+    grp.appendChild(el('circle', {cx:f1(q.x), cy:f1(q.y), r:f1(raioDe(n)+30), fill:cor}));
+    if(q.principal && conj.has(q.principal)){
+      const s = pos.get(q.principal);
+      grp.appendChild(el('line', {x1:f1(s.x), y1:f1(s.y), x2:f1(q.x), y2:f1(q.y), stroke:cor, 'stroke-width':54, 'stroke-linecap':'round'}));
+    }
+  }
+  g.appendChild(grp);
+  // o nome fica além do nó mais distante do centro, na direção do ramo
+  let longe = null, dmax = -1;
+  membros.forEach(id=>{ const q = pos.get(id), d = Math.hypot(q.x, q.y); if(d>dmax){ dmax = d; longe = {q, n:porId.get(id)}; } });
+  const tam = tema==='tinta' ? 30 : 24;
+  const L = Math.hypot(longe.q.x, longe.q.y);
+  const ux = L>1 ? longe.q.x/L : 0, uy = L>1 ? longe.q.y/L : -1;
+  const dist = raioDe(longe.n) + 40;
+  const tx = longe.q.x + ux*dist, ty = longe.q.y + uy*dist + tam*.35;
+  const anc = ux > .35 ? 'start' : ux < -.35 ? 'end' : 'middle';
+  const t = el('text', {class:'nomeesc', x:f1(tx), y:f1(ty), fill:cor, opacity: tema==='tinta' ? .72 : .62, 'font-size':tam, 'text-anchor':anc});
+  t.textContent = entrada.escola.nome;
+  g.appendChild(t);
+  const w = entrada.escola.nome.length*tam*.52;
+  const x0 = anc==='start' ? tx : anc==='end' ? tx - w : tx - w/2;
+  extrasLimite.push({x0, y0:ty - tam, x1:x0 + w + 30, y1:ty + 6});
+  if(entrada.escola.secreta && ui.modo==='mestre'){
+    let wr = 0; try{ wr = t.getComputedTextLength(); }catch(e){}
+    if(!wr) wr = w;
+    const fim = anc==='start' ? tx + wr : anc==='end' ? tx : tx + wr/2;
+    seloSecreto(g, fim + 16, ty - tam*.34, tema);
+  }
+}
+function seloSecreto(g, x, y, tema){
+  const s = 18;
+  g.appendChild(el('rect', {x:f1(x-s/2), y:f1(y-s/2), width:s, height:s, rx:2.5,
+    fill: tema==='tinta' ? COR_T.verm : 'none', stroke: tema==='tinta' ? 'none' : COR_P.ouro, 'stroke-width':1.2}));
+  const t = el('text', {class:'glifo', x:f1(x), y:f1(y+.5), fill: tema==='tinta' ? '#F3E9D6' : COR_P.ouro, 'font-size':13});
+  t.textContent = '秘'; g.appendChild(t);
+}
+
+// um degradê radial por cor de natureza (criado sob demanda a cada desenho)
+function gradAura(cor){
+  const id = 'aura' + cor.replace(/[^0-9a-f]/gi, '');
+  const defs = $('#defsDin');
+  if(!defs.querySelector('#' + id)){
+    const g = el('radialGradient', {id});
+    [[0,.72],[.36,.44],[.66,.15],[1,0]].forEach(([o, op])=>g.appendChild(el('stop', {offset:o, 'stop-color':cor, 'stop-opacity':op})));
+    defs.appendChild(g);
+  }
+  return `url(#${id})`;
+}
+function desenharAura(g, n, e, tema, bate){
+  const q = pos.get(n.id), r = raioDe(n), nat = naturezaPorId(n.natureza);
+  const grp = el('g', {transform:`translate(${f1(q.x)},${f1(q.y)})`, opacity: bate ? 1 : .15});
+  if(tema==='tinta'){
+    if(!nat) return;
+    const [o1, o2] = (e==='on'||e==='mestre') ? [.22,.2] : e==='disp' ? [.15,.13] : e==='caro' ? [.12,.1] : e==='bloq' ? [.08,.07] : [.05,.04];
+    grp.appendChild(el('path', {d:blobD(0, 0, Math.max(r*2.05, r+15), n.id+'a'), fill:nat.cor, opacity:o1}));
+    grp.appendChild(el('path', {d:blobD(1.5, -1, Math.max(r*1.45, r+8), n.id+'b'), fill:nat.cor, opacity:o2}));
+  }else{
+    // pedra: brilho em degradê (forte em todos, mais forte no alocado) + anel nítido
+    const cor = nat ? nat.cor : COR_P.ouro;
+    const ra = r + (n.tipo==='keystone' ? 16 : 6);
+    const rg = n.tipo==='keystone' ? r*2.1 + 26 : r*2.4 + 16;
+    const brilho = nat
+      ? {on:1, mestre:.85, disp:.62, caro:.5, bloq:.42, fechado:.14}[e]
+      : {on:.9, disp:.28, caro:.2}[e] || 0;
+    if(brilho) grp.appendChild(el('circle', {r:f1(e==='on' ? rg*1.08 : rg), fill:gradAura(cor), opacity:brilho}));
+    if(e==='on') grp.appendChild(el('circle', {r:ra, fill:'none', stroke:cor, 'stroke-width':1.8, opacity: nat ? .9 : .6}));
+    else if(e==='mestre'){ if(nat) grp.appendChild(el('circle', {r:ra, fill:'none', stroke:cor, 'stroke-width':1.3, opacity:.65})); }
+    else if(e==='disp') grp.appendChild(el('circle', {r:ra, fill:'none', stroke:cor, 'stroke-width':1.6, 'stroke-dasharray':'3 3'}));
+    else if(e==='caro') grp.appendChild(el('circle', {r:ra, fill:'none', stroke:cor, 'stroke-width':1.3, 'stroke-dasharray':'1 3', opacity:.8}));
+    else if(nat) grp.appendChild(el('circle', {r:ra, fill:'none', stroke:cor, 'stroke-width':1.1, opacity: e==='fechado' ? .2 : .5}));
+  }
+  if(grp.childNodes.length) g.appendChild(grp);
+}
+
+function desenharAresta(g, pid, n, est, tema){
+  const a = pos.get(pid), b = pos.get(n.id), pn = porId.get(pid);
+  const ep = est.get(pid), eb = est.get(n.id);
+  const ligado = ep==='on' && eb==='on';
+  const perto = eb==='disp' || eb==='caro';
+  const L = Math.hypot(b.x-a.x, b.y-a.y) || 1;
+  const curva = (semente(n.id+'t')-.5)*L*0.12;
+  if(tema==='tinta'){
+    const d = traco(a.x, a.y, Math.max(3.4, raioDe(pn)*.32), b.x, b.y, Math.max(1.8, raioDe(n)*.24), curva);
+    const op = ligado ? .9 : eb==='mestre' ? .62 : perto ? .28 : .13;
+    g.appendChild(el('path', {d, fill:COR_T.tinta, opacity:op}));
+    return;
+  }
+  const nx = -(b.y-a.y)/L, ny = (b.x-a.x)/L;
+  const mx = (a.x+b.x)/2 + nx*curva, my = (a.y+b.y)/2 + ny*curva;
+  const cam_ = (k) => `M${f1(a.x+nx*k)},${f1(a.y+ny*k)} Q${f1(mx+nx*k)},${f1(my+ny*k)} ${f1(b.x+nx*k)},${f1(b.y+ny*k)}`;
+  if(ligado){
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouro, 'stroke-width':12, opacity:.08, 'stroke-linecap':'round'}));
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouroEsc, 'stroke-width':5, 'stroke-linecap':'round'}));
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouroClaro, 'stroke-width':1.4, 'stroke-linecap':'round'}));
+  }else if(eb==='mestre'){
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.bronze, 'stroke-width':2.4, 'stroke-linecap':'round', opacity:.9}));
+  }else{
+    const s = perto ? 2.1 : 1.8, cor = perto ? '#6B5D44' : COR_P.canal;
+    for(const k of [-s, s]) g.appendChild(el('path', {d:cam_(k), fill:'none', stroke:cor, 'stroke-width':1}));
+  }
+}
+function ligacaoExtra(g, pid, n, est, tema){
+  const a = pos.get(pid), b = pos.get(n.id); if(!a || !b) return;
+  const ligado = est.get(pid)==='on' && est.get(n.id)==='on';
+  const dx = b.x-a.x, dy = b.y-a.y, L = Math.hypot(dx,dy) || 1;
+  const lado = semente(n.id+pid) > .5 ? 1 : -1;
+  const cx = (a.x+b.x)/2 + (-dy/L)*L*0.15*lado, cy = (a.y+b.y)/2 + (dx/L)*L*0.15*lado;
+  const cor = tema==='tinta' ? (ligado ? COR_T.tinta : 'rgba(31,27,22,.32)') : (ligado ? COR_P.ouro : 'rgba(233,227,214,.24)');
+  g.appendChild(el('path', {d:`M${f1(a.x)},${f1(a.y)} Q${f1(cx)},${f1(cy)} ${f1(b.x)},${f1(b.y)}`, fill:'none', stroke:cor,
+    'stroke-width': ligado ? 2.2 : 1.4, 'stroke-dasharray':'7 6', 'stroke-linecap':'round'}));
+}
+
+function desenharNo(g, n, e, tema, p, bate, busca){
+  const q = pos.get(n.id), r = raioDe(n), nat = naturezaPorId(n.natureza);
+  const grp = el('g', {class:'no'+(bate ? '' : ' apagado'), transform:`translate(${f1(q.x)},${f1(q.y)})`});
+  grp.dataset.id = n.id;
+  const on = e==='on' || e==='mestre';
+  if(tema==='tinta') noTinta(grp, n, e, r, on); else noPedra(grp, n, e, r, nat, on);
+  selos(grp, n, r, tema);
+  // regra de liberação quando há mais de um requisito
+  if(n.pais.length>1){
+    const t = el('text', {class:'regra-txt', y:f1(-(r + (n.tipo==='keystone' ? 22 : 13)))});
+    t.setAttribute('fill', n.regra==='ou' ? (tema==='tinta' ? '#2F7A55' : '#4E8C7D') : (tema==='tinta' ? COR_T.verm : COR_P.ouro));
+    t.textContent = n.regra==='ou' ? 'OU' : 'E'; grp.appendChild(t);
+  }
+  // graus: bolinhas embaixo
+  const ext = n.tipo==='keystone' ? 13 : 3;
+  let yRot = r + ext + 14;
+  const G = n.graus.length;
+  if(G>1){
+    const g0 = p ? Math.min(p.alocados[n.id]||0, G) : 0;
+    const esp = 7, x0 = -(G-1)*esp/2, yp = r + ext + 6;
+    const cor = tema==='tinta' ? COR_T.tinta : COR_P.ouro;
+    for(let k=0;k<G;k++){
+      const cheio = k < g0;
+      grp.appendChild(el('circle', {cx:f1(x0+k*esp), cy:f1(yp), r:2.4, fill: cheio ? cor : (tema==='tinta' ? COR_T.papelNo : COR_P.encaixe),
+        stroke:cor, 'stroke-width':1.1, opacity: (cheio || e==='mestre' || e==='disp') ? 1 : .55}));
+    }
+    yRot = yp + 15;
+  }
+  if(selecionado===n.id){
+    grp.appendChild(el('circle', {r:r + (n.tipo==='keystone' ? 17 : 11), fill:'none',
+      stroke: tema==='tinta' ? COR_T.verm : COR_P.ouro, 'stroke-width':1.5, 'stroke-dasharray':'3 4'}));
+  }
+  if(n.tipo!=='pequeno' || cam.k>.85 || busca){
+    const t = el('text', {class:'rotulo' + (n.tipo==='keystone' ? ' forte' : ''), y:f1(yRot)});
+    t.textContent = n.nome; grp.appendChild(t);
+  }
+  grp.appendChild(el('circle', {r:Math.max(r+8, 18), class:'toque'}));
+  g.appendChild(grp);
+}
+function noTinta(grp, n, e, r, on){
+  const T = COR_T, base = n.cor || T.tinta;
+  const opOrn = on ? 1 : (e==='disp' || e==='caro') ? .55 : .28;
+  if(n.tipo==='keystone'){
+    for(let i=0;i<8;i++){
+      const a = -Math.PI/2 + Math.PI/8 + i*Math.PI/4;
+      for(const off of [-3.1, 3.1]){
+        const tx = -Math.sin(a)*off, ty = Math.cos(a)*off;
+        grp.appendChild(el('line', {x1:f1(Math.cos(a)*(r+6)+tx), y1:f1(Math.sin(a)*(r+6)+ty), x2:f1(Math.cos(a)*(r+12)+tx), y2:f1(Math.sin(a)*(r+12)+ty),
+          stroke:base, 'stroke-width':2.1, 'stroke-linecap':'round', opacity:opOrn}));
+      }
+    }
+  }else if(n.tipo==='notavel'){
+    grp.appendChild(el('circle', {r:r+5, fill:'none', stroke:base, 'stroke-width':1, opacity: on ? .45 : .22}));
+  }
+  let at;
+  if(on) at = {fill:base};
+  else if(e==='disp') at = {fill:T.papelNo, stroke:base, 'stroke-width':1.6, 'stroke-dasharray':'3.5 2.5'};
+  else if(e==='caro') at = {fill:T.papelNo, stroke:T.tinta, 'stroke-width':1.4, 'stroke-dasharray':'1 3', 'stroke-opacity':.55};
+  else at = {fill:T.papelNo, stroke:T.tinta, 'stroke-width':1.1, 'stroke-opacity': e==='fechado' ? .2 : .32};
+  grp.appendChild(formaEl(n.forma, r, at));
+  if(n.glifo){
+    const cor = on ? (claro(base) ? T.tinta : T.papel) : T.tinta;
+    grp.appendChild(glifoEl(n.glifo, r, cor, on ? 1 : (e==='disp' || e==='caro') ? .62 : .3));
+  }
+  if(e==='fechado') grp.appendChild(el('line', {x1:f1(-r*1.05), y1:f1(r*1.05), x2:f1(r*1.05), y2:f1(-r*1.05), stroke:T.verm, 'stroke-width':1.8, 'stroke-linecap':'round', opacity:.8}));
+}
+function noPedra(grp, n, e, r, nat, on){
+  const P = COR_P;
+  const moldura = e==='on' ? P.ouro : e==='mestre' ? (n.cor || P.ouro) : e==='disp' ? P.bronzeClaro : P.bronze;
+  if(n.tipo==='keystone'){
+    grp.appendChild(el('polygon', {points:estrelaP(r+11, r+4, 12), fill:'#2A2214', stroke: on ? P.ouro : P.bronze, 'stroke-width':1.2, opacity: on ? 1 : .8}));
+  }
+  grp.appendChild(formaEl(n.forma, r+2.5, {fill:P.encaixe, stroke:moldura, 'stroke-width':2.2}));
+  const interno = !on ? P.fundoEnc
+    : n.cor ? mix(n.cor, '#000000', e==='on' ? .2 : .35)
+    : nat ? mix(nat.cor, '#000000', .66) : '#3A2E18';
+  grp.appendChild(formaEl(n.forma, Math.max(3, r-2), {fill:interno}));
+  if(n.glifo){
+    const cor = on ? (claro(interno) ? '#1B1813' : P.glifoOn) : P.glifoOff;
+    grp.appendChild(glifoEl(n.glifo, r, cor, 1));
+  }else if(r<=12 && e==='on'){
+    grp.appendChild(el('circle', {r:f1(r*.42), fill: nat ? nat.cor : P.ouro}));
+  }
+  if(e==='fechado') grp.appendChild(el('line', {x1:f1(-r*1.05), y1:f1(r*1.05), x2:f1(r*1.05), y2:f1(-r*1.05), stroke:P.verm, 'stroke-width':1.8, 'stroke-linecap':'round', opacity:.85}));
+}
+// selinhos: tipo de uso (sup. dir.), caminho exclusivo (sup. esq.), requisito de outra árvore (inf. esq.)
+function selos(grp, n, r, tema){
+  const fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe;
+  // vários tipos de uso viram um selo só: "At·Re"
+  const siglas = usosDe(n).map(u=>u.sigla).filter(Boolean).join('·');
+  if(siglas && (n.tipo!=='pequeno' || cam.k>.7)){
+    const w = Math.max(16, siglas.length*5.9 + 8), x0 = r*.62 - 2, y = -r*.8 - 4;
+    grp.appendChild(el('rect', {x:f1(x0), y:f1(y-6.5), width:f1(w), height:13, rx:3, fill:fundo,
+      stroke: tema==='tinta' ? 'rgba(31,27,22,.55)' : COR_P.bronze, 'stroke-width':.8}));
+    const t = el('text', {class:'sigla', x:f1(x0 + w/2), y:f1(y+.5), fill: tema==='tinta' ? COR_T.tinta : COR_P.glifoOn});
+    t.textContent = siglas; grp.appendChild(t);
+  }
+  if(n.exclusivo){
+    const x = -r*.8 - 5, y = -r*.8 - 4, cor = tema==='tinta' ? COR_T.verm : COR_P.verm;
+    grp.appendChild(el('circle', {cx:f1(x), cy:f1(y), r:5.6, fill:fundo, stroke:cor, 'stroke-width':1.2}));
+    grp.appendChild(el('line', {x1:f1(x-3.3), y1:f1(y+3.3), x2:f1(x+3.3), y2:f1(y-3.3), stroke:cor, 'stroke-width':1.2}));
+  }
+  if(paisFora(n).length){
+    const x = -r*.8 - 5, y = r*.8 + 4, cor = tema==='tinta' ? COR_T.tinta : COR_P.ouro;
+    grp.appendChild(el('circle', {cx:f1(x), cy:f1(y), r:5.6, fill:fundo, stroke:cor, 'stroke-width':1}));
+    grp.appendChild(el('path', {d:`M${f1(x-2.2)},${f1(y+2.2)} L${f1(x+2.3)},${f1(y-2.3)} M${f1(x-.5)},${f1(y-2.3)} L${f1(x+2.3)},${f1(y-2.3)} L${f1(x+2.3)},${f1(y+.5)}`,
+      fill:'none', stroke:cor, 'stroke-width':1.1, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+  }
+}
+
+/* ---------- moldura da tela ---------- */
+function atualizarMarca(a){
+  const m = $('#marca');
+  m.querySelector('small').textContent = a ? nomeCat(a.categoria) + (a.secreta && ui.modo==='mestre' ? ' · secreta' : '') : '';
+  m.querySelector('b').textContent = a ? a.nome : '';
+}
+function mostrarVazio(a){
+  const nada = $('#nada'), txt = nada.querySelector('p'), bt = $('#btNada');
+  nada.classList.add('on');
+  const faz = (t, rot, fn) => { txt.textContent = t; bt.textContent = rot; bt.onclick = fn; };
+  if(ui.modo==='mestre'){
+    if(!a) faz('A biblioteca ainda não tem árvores. Crie a primeira — raça, classe ou escola.', 'Criar árvore', novaArvore);
+    else faz('Esta árvore está vazia. Comece pela origem e vá ramificando a partir dela.', 'Criar a origem', ()=>criarNo(null));
+  }else{
+    const p = personagemAtual();
+    if(!bib().arvores.length) faz('A biblioteca está vazia. Carregue o pacote que o mestre mandou.', 'Importar pacote', abrirTroca);
+    else if(!a) faz(`${p.nome} ainda não tem árvores. Equipe a raça, a classe e as escolas.`, 'Equipar árvore', abrirEquipar);
+    else faz('Esta árvore ainda está vazia.', 'Equipar outra árvore', abrirEquipar);
+  }
+}
+function gerarPapel(){
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="520" height="460">';
+  for(let i=0;i<14;i++){
+    const r = k => semente('fibra'+i+k);
+    const x = r('x')*470, y = r('y')*460, L = 14 + r('l')*46, ang = (r('a')-.5)*.5;
+    s += `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x+Math.cos(ang)*L)}" y2="${f1(y+Math.sin(ang)*L)}" stroke="#8a7a5a" stroke-opacity="${(.05+r('o')*.07).toFixed(3)}" stroke-width=".6" stroke-linecap="round"/>`;
+  }
+  s += '</svg>';
+  document.documentElement.style.setProperty('--fibras', `url("data:image/svg+xml,${encodeURIComponent(s)}")`);
+  const m = $('#montanhas'); m.textContent = '';
+  const serra = (base, amp, chave, op) => {
+    let x = 0, d = 'M0,190 L0,' + base; let i = 0;
+    while(x < 1000){ x += 30 + semente(chave+'w'+i)*50; d += ` L${f1(Math.min(x,1000))},${f1(base - semente(chave+'h'+i)*amp)}`; i++; }
+    d += ' L1000,190 Z';
+    m.appendChild(el('path', {d, fill:'#1F1B16', opacity:op}));
+  };
+  serra(118, 62, 'longe', .04); serra(152, 36, 'perto', .06);
+}
+
+/* ============================================================
+   INTERFACE — abas, seletor de árvores e painéis
+   ============================================================ */
+function pintarTudo(){
+  indexar(); garantirSelecoes();
+  atualizarModoUI(); pintarAbas(); pintarSeletor(); desenhar(); pintarPainel(); atualizarHistorico();
+}
+function atualizarModoUI(){
+  const m = ui.modo;
+  $('#btMestre').setAttribute('aria-pressed', m==='mestre');
+  $('#btJogador').setAttribute('aria-pressed', m==='jogador');
+  $('#nomeBib').readOnly = m!=='mestre';
+  $('#nomeBib').value = bib().nome;
+  const t = temaAtual();
+  $('#btTinta').setAttribute('aria-pressed', t==='tinta');
+  $('#btPedra').setAttribute('aria-pressed', t==='pedra');
+  if(!$('#dica').dataset.aviso) $('#dica').textContent = dicaPadrao();
+}
+const ordemCat = id => CATEGORIAS.findIndex(c=>c.id===id);
+const arvoresOrdenadas = lista => [...lista].sort((x,y)=>ordemCat(x.categoria)-ordemCat(y.categoria));
+function corDoNo(m){
+  if(!m) return '#8a7a5a';
+  if(m.cor) return m.cor;
+  const nat = naturezaPorId(m.natureza);
+  return nat ? nat.cor : (temaAtual()==='tinta' ? COR_T.tinta : COR_P.ouro);
+}
+const plural = (n, um, varios) => `${n} ${n===1 ? um : varios}`;
+// seis pontinhos: “pegue aqui para arrastar”
+const ICONE_ALCA = '<svg viewBox="0 0 8 12" aria-hidden="true">' + [2,6,10].map(y=>`<circle cx="2" cy="${y}" r="1.15"/><circle cx="6" cy="${y}" r="1.15"/>`).join('') + '</svg>';
+
+/* ---------- abas: árvores (mestre) ou personagens (jogador) ---------- */
+function pintarAbas(){
+  const cx = $('#listaAbas');
+  if(ui.modo==='mestre'){
+    const lista = arvoresOrdenadas(bib().arvores);
+    cx.innerHTML = lista.length ? lista.map(a=>`
+      <button class="aba" role="tab" data-id="${esc(a.id)}" aria-selected="${a.id===ui.arvoreMestre}">
+        <small>${esc(nomeCat(a.categoria))}</small>${esc(a.nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}<b>${a.nodes.length}</b>
+      </button>`).join('') : '<span class="vazio" style="padding:6px 4px">Nenhuma árvore ainda</span>';
+    $('#btNovaAba').title = 'Nova árvore';
+    $('#btNovaAba').setAttribute('aria-label', 'Nova árvore');
+    $('#btRenomearAba').title = 'Renomear ou mudar a categoria';
+    $('#btRenomearAba').disabled = $('#btDuplicarAba').disabled = $('#btExcluirAba').disabled = !lista.length;
+  }else{
+    cx.innerHTML = doc.personagens.map(p=>`
+      <button class="aba" role="tab" data-id="${esc(p.id)}" aria-selected="${p.id===ui.personagem}">
+        ${esc(p.nome)}<b>${Object.keys(p.alocados).filter(id=>porId.has(id)).length}</b>
+      </button>`).join('');
+    $('#btNovaAba').title = 'Novo personagem';
+    $('#btNovaAba').setAttribute('aria-label', 'Novo personagem');
+    $('#btRenomearAba').title = 'Renomear personagem';
+    $('#btRenomearAba').disabled = $('#btDuplicarAba').disabled = false;
+    $('#btExcluirAba').disabled = doc.personagens.length<=1;
+  }
+  cx.querySelectorAll('.aba').forEach(b=>{
+    b.onclick = () => ui.modo==='mestre' ? trocarArvoreMestre(b.dataset.id) : trocarPersonagem(b.dataset.id);
+    b.ondblclick = () => renomearAba();
+  });
+  const ativa = cx.querySelector('[aria-selected="true"]');
+  if(ativa) ativa.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+function trocarArvoreMestre(id){
+  if(id===ui.arvoreMestre) return;
+  ui.arvoreMestre = id; selecionado = null; salvar(); pintarTudo(); centralizar();
+}
+function trocarPersonagem(id){
+  if(id===ui.personagem) return;
+  ui.personagem = id; selecionado = null; salvar(); pintarTudo(); centralizar();
+}
+function trocarArvoreJogador(id){
+  const p = personagemAtual(); if(!p || p.arvoreAtual===id) return;
+  p.arvoreAtual = id; selecionado = null; salvar(); pintarTudo(); centralizar();
+}
+function novaAba(){ return ui.modo==='mestre' ? novaArvore() : novoPersonagem(); }
+function renomearAba(){ return ui.modo==='mestre' ? renomearArvore() : renomearPersonagem(); }
+function duplicarAba(){ return ui.modo==='mestre' ? duplicarArvore() : duplicarPersonagem(); }
+function excluirAba(){ return ui.modo==='mestre' ? excluirArvore() : excluirPersonagem(); }
+
+async function novaArvore(){
+  const r = await dialogo({titulo:'Nova árvore', campos:[
+      {nome:'nome', rotulo:'Nome', valor:'', dica:'Ex.: Humano, Monge, Escola da Garça Branca'},
+      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:'classe', opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))}],
+    botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Criar árvore', valor:true, classe:'ouro', validar:v=>v.nome.trim() ? '' : 'Dê um nome à árvore.'}]});
+  if(!r) return;
+  registrar('nova árvore');
+  const raiz = noNovo('keystone', {nome:'Origem', graus:[{custos:{}, texto:''}]});
+  const a = {id:novoId('a'), nome:r.nome.trim(), categoria:r.cat, secreta:false, senha:'', nodes:[raiz]};
+  bib().arvores.push(a); ui.arvoreMestre = a.id; selecionado = raiz.id;
+  salvar(); pintarTudo(); centralizar();
+}
+async function renomearArvore(){
+  const a = arvoreVisivel(); if(!a) return;
+  const r = await dialogo({titulo:'Renomear árvore', campos:[
+      {nome:'nome', rotulo:'Nome', valor:a.nome},
+      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:a.categoria, opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))}],
+    botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Salvar', valor:true, classe:'ouro', validar:v=>v.nome.trim() ? '' : 'Dê um nome à árvore.'}]});
+  if(!r) return;
+  const nome = r.nome.trim(), cat = CATEGORIAS.some(c=>c.id===r.cat) ? r.cat : a.categoria;
+  const mudouNome = nome!==a.nome, mudouCat = cat!==a.categoria;
+  if(!mudouNome && !mudouCat) return;
+  registrar(mudouNome && mudouCat ? 'renomear árvore e mudar a categoria' : mudouCat ? 'categoria da árvore' : 'renomear árvore');
+  a.nome = nome; a.categoria = cat; salvar(); pintarTudo();
+}
+function duplicarArvore(){
+  const a = arvoreVisivel(); if(!a) return;
+  registrar('duplicar árvore');
+  const c = clone(a); c.id = novoId('a'); c.nome = a.nome + ' (cópia)';
+  const mapa = {}; c.nodes.forEach(n=>{ mapa[n.id] = novoId(); });
+  c.nodes.forEach(n=>{ n.id = mapa[n.id]; n.pais = n.pais.map(x=>mapa[x] || x); });
+  const lista = bib().arvores; lista.splice(lista.indexOf(a)+1, 0, c);
+  ui.arvoreMestre = c.id; selecionado = null; salvar(); pintarTudo(); centralizar();
+}
+async function excluirArvore(){
+  const a = arvoreVisivel(); if(!a) return;
+  const usam = doc.personagens.filter(p=>p.arvores.includes(a.id));
+  const ok = await confirmar('Excluir árvore', `Excluir “${esc(a.nome)}” com ${plural(a.nodes.length,'nódulo','nódulos')}?` +
+    (usam.length ? ` Ela está equipada em ${plural(usam.length,'personagem','personagens')}.` : '') + ' Dá para desfazer com Ctrl+Z.', 'Excluir árvore', true);
+  if(!ok) return;
+  registrar('excluir árvore ' + a.nome);
+  const ids = new Set(a.nodes.map(n=>n.id));
+  const orfaos = bib().arvores.filter(x=>x!==a).flatMap(x=>x.nodes).filter(n=>n.pais.some(pid=>ids.has(pid)));
+  bib().arvores = bib().arvores.filter(x=>x!==a);
+  doc.personagens.forEach(p=>{ p.arvores = p.arvores.filter(id=>id!==a.id); ids.forEach(id=>{ delete p.alocados[id]; }); });
+  selecionado = null; podarTodos(); garantirSelecoes(); salvar(); pintarTudo(); centralizar();
+  if(orfaos.length) aviso(`${plural(orfaos.length,'nódulo de outra árvore exigia','nódulos de outras árvores exigiam')} algo desta; a checagem aponta ${orfaos.length===1 ? 'qual' : 'quais'}.`, 'err', 6000);
+}
+async function novoPersonagem(){
+  const nome = await pedirTexto('Novo personagem', 'Nome', ''); if(nome===null) return;
+  registrar('novo personagem');
+  const p = personagemNovo(nome, bib());
+  doc.personagens.push(p); ui.personagem = p.id; selecionado = null;
+  salvar(); pintarTudo(); centralizar();
+  if(bib().arvores.length) abrirEquipar();
+}
+async function renomearPersonagem(){
+  const p = personagemAtual(); if(!p) return;
+  const nome = await pedirTexto('Renomear personagem', 'Nome', p.nome); if(nome===null) return;
+  registrar('renomear personagem'); p.nome = nome; salvar(); pintarTudo();
+}
+function duplicarPersonagem(){
+  const p = personagemAtual(); if(!p) return;
+  registrar('duplicar personagem');
+  const c = clone(p); c.id = novoId('c'); c.nome = p.nome + ' (cópia)';
+  doc.personagens.splice(doc.personagens.indexOf(p)+1, 0, c); ui.personagem = c.id;
+  salvar(); pintarTudo();
+}
+async function excluirPersonagem(){
+  if(doc.personagens.length<=1) return aviso('É preciso ter ao menos um personagem.');
+  const p = personagemAtual();
+  const ok = await confirmar('Excluir personagem', `Excluir “${esc(p.nome)}” e a build dele? Dá para desfazer com Ctrl+Z.`, 'Excluir personagem', true);
+  if(!ok) return;
+  registrar('excluir personagem ' + p.nome);
+  const i = doc.personagens.indexOf(p);
+  doc.personagens.splice(i, 1); ui.personagem = doc.personagens[Math.max(0, i-1)].id;
+  salvar(); pintarTudo(); centralizar();
+}
+
+/* ---------- seletor de árvores do personagem (sobre a tela) ---------- */
+function pintarSeletor(){
+  const s = $('#seletor');
+  if(ui.modo!=='jogador'){ s.innerHTML = ''; return; }
+  const p = personagemAtual(); const atual = arvoreVisivel();
+  // na ordem do personagem (o jogador arrasta para mudar)
+  const eq = p ? p.arvores.map(arvorePorId).filter(Boolean) : [];
+  const dica = eq.length>1 ? ' · arraste para mudar a ordem' : '';
+  s.innerHTML = eq.map(a=>`<button class="arv" data-id="${esc(a.id)}" aria-selected="${!!atual && a.id===atual.id}" title="${esc(a.nome + dica)}"><small>${esc(nomeCat(a.categoria))}</small>${esc(a.nome)}</button>`).join('')
+              + `<button class="arv mais" id="btEquiparChip" title="Equipar árvore">+ Equipar</button>`;
+  s.querySelectorAll('.arv[data-id]').forEach(b=>b.onclick = ()=>trocarArvoreJogador(b.dataset.id));
+  $('#btEquiparChip').onclick = abrirEquipar;
+}
+function pintarFiltroNat(a){
+  const f = $('#filtroNat');
+  const presentes = a ? bib().naturezas.filter(t=>a.nodes.some(n=>n.natureza===t.id)) : [];
+  [...filtroNat].forEach(id=>{ if(!presentes.some(t=>t.id===id)) filtroNat.delete(id); });
+  f.innerHTML = presentes.length<1 ? '' : presentes.map(t=>
+    `<button class="chip" data-nat="${esc(t.id)}" aria-pressed="${filtroNat.has(t.id)}" title="Destacar ${esc(t.nome)}"><i style="background:${esc(t.cor)}"></i>${esc(t.nome)}</button>`).join('');
+  f.querySelectorAll('[data-nat]').forEach(b=>b.onclick = ()=>{
+    const id = b.dataset.nat; filtroNat.has(id) ? filtroNat.delete(id) : filtroNat.add(id); desenhar();
+  });
+}
+async function abrirEquipar(){
+  const p = personagemAtual(); if(!p) return;
+  if(!bib().arvores.length) return abrirTroca();
+  const livres = bib().arvores.filter(a=>!p.arvores.includes(a.id));
+  if(!livres.length) return aviso('Todas as árvores da biblioteca já estão equipadas.');
+  const html = `<div class="cat-lista">` + CATEGORIAS.map(c=>{
+    const l = livres.filter(a=>a.categoria===c.id);
+    return l.length ? `<div><h3>${c.nome}</h3><div class="opcoes">${l.map(a=>`<button class="btn" data-eq="${esc(a.id)}">${esc(a.nome)}</button>`).join('')}</div></div>` : '';
+  }).join('') + `</div>`;
+  const id = await dialogo({titulo:`Equipar em ${p.nome}`, texto:'Escolha uma árvore da biblioteca.', html,
+    botoes:[{rotulo:'Fechar', valor:null}],
+    aoMontar:(m, fim)=>m.querySelectorAll('[data-eq]').forEach(b=>b.onclick = ()=>fim(b.dataset.eq))});
+  if(!id) return;
+  const a = arvorePorId(id); if(!a) return;
+  registrar('equipar ' + a.nome);
+  p.arvores.push(id); p.arvoreAtual = id; selecionado = null;
+  salvar(); pintarTudo(); centralizar();
+}
+async function desequipar(id){
+  const p = personagemAtual(); const a = arvorePorId(id); if(!p || !a) return;
+  const gastosNela = Object.keys(p.alocados).filter(x=>arvDe.get(x)===a).length;
+  if(gastosNela){
+    const ok = await confirmar('Tirar árvore', `Tirar “${esc(a.nome)}” de ${esc(p.nome)}? Os ${plural(gastosNela,'nódulo alocado','nódulos alocados')} nela voltam a ficar livres.`, 'Tirar árvore', true);
+    if(!ok) return;
+  }
+  if(!(await podeSoltarComTrancados(p))) return;
+  registrar('tirar ' + a.nome);
+  p.arvores = p.arvores.filter(x=>x!==id); podarPersonagem(p); garantirSelecoes();
+  selecionado = null; salvar(); pintarTudo(); centralizar();
+}
+// põe a árvore `id` antes de `antesDe` (null = no fim). Árvores ainda trancadas não aparecem e ficam no fim da lista.
+function reordenarEquipada(id, antesDe, peloTeclado){
+  const p = personagemAtual(); if(!p) return;
+  const vis = p.arvores.filter(x=>arvorePorId(x));
+  if(!vis.includes(id) || id===antesDe) return;
+  const nova = vis.filter(x=>x!==id);
+  const i = antesDe==null ? nova.length : nova.indexOf(antesDe);
+  if(i<0) return;
+  nova.splice(i, 0, id);
+  if(nova.every((x,k)=>x===vis[k])) return;
+  registrar('mudar a ordem das árvores', peloTeclado ? 'ordem' + p.id : null);
+  p.arvores = nova.concat(p.arvores.filter(x=>!arvorePorId(x)));
+  salvar(); pintarSeletor(); pintarPainel();
+}
+
+/* ============================================================
+   PAINEL
+   ============================================================ */
+function pintarPainel(){
+  const pn = $('#painel'); const rolagem = pn.scrollTop;
+  pn.innerHTML = ui.modo==='mestre' ? painelMestre() : painelJogador();
+  ui.modo==='mestre' ? ligarMestre() : ligarJogador();
+  pn.querySelectorAll('details[data-chave]').forEach(d=>d.addEventListener('toggle', ()=>{ ui.abertos[d.dataset.chave] = d.open; salvar(); }));
+  pn.scrollTop = rolagem;
+}
+function noSelecionadoNa(a){
+  return (a && selecionado && porId.has(selecionado) && arvDe.get(selecionado)===a) ? porId.get(selecionado) : null;
+}
+
+/* ---------- mestre ---------- */
+function painelMestre(){
+  const a = arvoreVisivel();
+  if(!a) return `<div class="bloco"><h2>Biblioteca</h2><p class="vazio">Nenhuma árvore ainda. Crie a primeira: raça, classe ou escola.</p>
+    <div class="acoes" style="margin-top:10px"><button class="btn ouro" id="btNovaArvore2">+ Árvore</button></div></div>` + blocosGlobais();
+  const n = noSelecionadoNa(a);
+  return blocoConstruir(n) + blocoNo(a, n) + blocoArvore(a) + blocosGlobais();
+}
+function blocoConstruir(n){
+  return `<div class="bloco"><h2>Construir</h2>
+    <div class="acoes" style="margin-bottom:8px">
+      <button class="btn ouro" id="btNovo" ${n ? '' : 'disabled'}>+ Nódulo filho</button>
+      <button class="btn" id="btNovaRaiz">+ Raiz</button>
+      <button class="btn" id="btTexto">Criar por texto</button>
+    </div>
+    <p class="nota">${n ? 'O novo nódulo nasce ligado a <b>' + esc(n.nome) + '</b>.' : 'Selecione um nódulo para ramificar a partir dele.'}</p></div>`;
+}
+function linhasCusto(g, i){
+  return bib().pools.map(pl=>`<div class="moeda"><i style="background:${esc(pl.cor)}"></i><span>${esc(pl.nome)}</span>
+    <input class="campo gcusto" data-g="${i}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${g.custos[pl.id]||0}" aria-label="Custo em ${esc(pl.nome)}"></div>`).join('');
+}
+function blocoNo(a, n){
+  if(!n) return `<div class="bloco"><h2>Nódulo</h2><p class="vazio">Nenhum nódulo selecionado. Clique num nódulo da árvore para editar.</p></div>`;
+  const G = n.graus.length;
+  const grupos = [...new Set([...porId.values()].map(m=>m.exclusivo).filter(Boolean))];
+  const colegas = colegasExclusivos(n);
+  const candidatos = [...porId.values()].filter(o=>o.id!==n.id && !n.pais.includes(o.id) && !ehAncestral(n.id, o.id));
+  const grupoOpcoes = (arv) => candidatos.filter(o=>arvDe.get(o.id)===arv).map(o=>`<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
+  const outras = arvoresOrdenadas(bib().arvores).filter(x=>x!==a);
+  const membros = n.escola ? membrosDaEscola(n.id).length - 1 : 0;
+  return `<div class="bloco"><h2>Nódulo</h2>
+    <div class="grupo"><label class="rot" for="eNome">Nome</label><input id="eNome" class="campo" value="${esc(n.nome)}"></div>
+    <div class="grupo linha2">
+      <div><label class="rot" for="eTipo">Tamanho</label><select id="eTipo" class="campo">
+        ${Object.entries(bib().tipos).map(([k,t])=>`<option value="${esc(k)}"${n.tipo===k ? ' selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></div>
+      <div><label class="rot" for="eGlifo">Glifo</label><input id="eGlifo" class="campo" value="${esc(n.glifo)}" placeholder="力 ou A" autocomplete="off"></div>
+    </div>
+    <div class="grupo"><span class="rot">Forma</span><div class="formas">
+      ${FORMAS.map(f=>`<button data-forma="${esc(f.id)}" aria-pressed="${n.forma===f.id}" title="${f.nome}" aria-label="${f.nome}">${iconeForma(f.id)}</button>`).join('')}</div></div>
+    <div class="grupo"><span class="rot">Cor</span><div class="paleta">
+      <button class="tinta auto" data-cor="" aria-pressed="${!n.cor}" title="Automática: segue o tema" aria-label="Cor automática"></button>
+      ${TINTAS.map(c=>`<button class="tinta" data-cor="${esc(c)}" style="background:${esc(c)}" aria-pressed="${norm(n.cor)===norm(c)}" aria-label="Cor ${esc(c)}"></button>`).join('')}
+      <input type="color" class="livre" id="corLivre" value="${n.cor || '#8a7a5a'}" aria-label="Cor livre"></div></div>
+    <div class="grupo"><span class="rot">Natureza</span><div class="chips">
+      <button class="chip" data-nat="" aria-pressed="${!n.natureza}">Nenhuma</button>
+      ${bib().naturezas.map(t=>`<button class="chip" data-nat="${esc(t.id)}" aria-pressed="${n.natureza===t.id}"><i style="background:${esc(t.cor)}"></i>${esc(t.nome)}</button>`).join('')}</div></div>
+    <div class="grupo"><span class="rot">Tipos de uso · pode marcar vários</span><div class="chips">
+      <button class="chip" data-uso="" aria-pressed="${!n.usos.length}">Nenhum</button>
+      ${bib().usos.map(u=>`<button class="chip" data-uso="${esc(u.id)}" aria-pressed="${n.usos.includes(u.id)}">${esc(u.nome)}</button>`).join('')}</div></div>
+    <div class="grupo">
+      <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
+        <div class="passo"><button class="btn" id="grauMenos" ${G<=1 ? 'disabled' : ''} aria-label="Menos um grau">−</button><b>${G}</b>
+        <button class="btn" id="grauMais" ${G>=MAX_GRAUS ? 'disabled' : ''} aria-label="Mais um grau">+</button></div></div>
+      ${G===1 ? linhasCusto(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
+        ${linhasCusto(g, i)}
+        <textarea class="campo gtexto" data-g="${i}" placeholder="O que o grau ${i+1} acrescenta…" style="min-height:46px;margin-top:4px">${esc(g.texto)}</textarea></div>`).join('')}
+      <p class="nota">${G===1 ? 'Zero num tipo de ponto = não consome aquele tipo.' : 'O jogador compra os graus em ordem; cada um tem custo e texto próprios.'}</p>
+    </div>
+    <div class="grupo"><span class="rot">Pré-requisitos</span>
+      ${n.pais.length ? n.pais.map(pid=>{
+        const m = porId.get(pid), am = arvDe.get(pid);
+        return `<div class="pre" data-pid="${esc(pid)}"><i style="background:${esc(corDoNo(m))}"></i><span>${m ? esc(m.nome) : '(requisito que não existe mais)'}</span>
+          ${am && am!==a ? `<em>${esc(nomeCat(am.categoria))} · ${esc(am.nome)}</em>` : ''}<button class="btn mini pre-x" title="Remover requisito" aria-label="Remover requisito">×</button></div>`;
+      }).join('') : `<p class="vazio" style="margin:0 0 8px">Sem requisitos: é uma raiz, sempre liberada.</p>`}
+      <select class="campo" id="addPre" aria-label="Adicionar pré-requisito">
+        <option value="">+ adicionar pré-requisito…</option>
+        <optgroup label="Esta árvore">${grupoOpcoes(a)}</optgroup>
+        ${outras.map(x=>{ const o = grupoOpcoes(x); return o ? `<optgroup label="${esc(nomeCat(x.categoria))} · ${esc(x.nome)}">${o}</optgroup>` : ''; }).join('')}
+      </select>
+      ${n.pais.length>1 ? `<div class="regra">
+        <button class="btn ${n.regra!=='ou' ? 'ouro' : ''}" data-regra="e">Exige todos · E</button>
+        <button class="btn ${n.regra==='ou' ? 'ouro' : ''}" data-regra="ou">Basta um · OU</button></div>
+        <p class="nota">${n.regra==='ou' ? 'Libera assim que qualquer um dos requisitos for alocado.' : 'Só libera quando todos os requisitos estiverem alocados.'}</p>` : ''}
+    </div>
+    <div class="grupo"><label class="rot" for="eExcl">Caminho exclusivo</label>
+      <input id="eExcl" class="campo" list="gruposEx" value="${esc(n.exclusivo)}" placeholder="Nome do grupo, ex.: Ortodoxo ou Proibido" autocomplete="off">
+      <datalist id="gruposEx">${grupos.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+      <p class="nota">${n.exclusivo ? (colegas.length ? 'Pegar este fecha: ' + colegas.map(m=>esc(m.nome)).join(', ') + '.' : 'Ainda não há outro nódulo neste grupo.')
+        : 'Nódulos com o mesmo nome de grupo se excluem: pegar um fecha os outros.'}</p></div>
+    <div class="grupo">
+      <label class="caixa"><input type="checkbox" id="eEscola" ${n.escola ? 'checked' : ''}> Este nódulo abre uma escola (ramo)</label>
+      ${n.escola ? `<div class="recuo">
+        <div class="grupo"><label class="rot" for="eEscNome">Nome da escola</label><input id="eEscNome" class="campo" value="${esc(n.escola.nome)}"></div>
+        <div class="grupo"><span class="rot">Cor do território</span><div class="paleta">
+          ${[COR_ESCOLA, ...TINTAS.slice(0,11)].map(c=>`<button class="tinta esc-cor" data-cor="${esc(c)}" style="background:${esc(c)}" aria-pressed="${norm(n.escola.cor)===norm(c)}" aria-label="Cor ${esc(c)}"></button>`).join('')}</div></div>
+        <label class="caixa"><input type="checkbox" id="eEscSecreta" ${n.escola.secreta ? 'checked' : ''}> Secreta: só aparece para quem digitar a senha</label>
+        ${n.escola.secreta ? `<div class="grupo" style="margin-top:8px"><label class="rot" for="eEscSenha">Senha</label>
+          <input id="eEscSenha" class="campo" value="${esc(n.escola.senha)}" autocomplete="off" spellcheck="false" placeholder="Ex.: garça branca">
+          <p class="nota">Maiúsculas, acentos e espaços a mais não contam.</p></div>` : ''}
+        <p class="nota">${membros ? `${plural(membros,'nódulo depende','nódulos dependem')} só desta entrada e ${membros===1 ? 'faz' : 'fazem'} parte da escola.` : 'Os filhos que só existirem através deste nódulo entram na escola.'}</p>
+      </div>` : ''}
+    </div>
+    <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz…">${esc(n.desc)}</textarea></div>
+    <div class="acoes">
+      <button class="btn" id="btDuplicar">Duplicar</button>
+      <button class="btn perigo" id="btExcluir">Excluir nódulo</button>
+      <button class="btn perigo" id="btExcluirRamo">Excluir ramificação</button>
+    </div></div>`;
+}
+function blocoArvore(a){
+  const escolas = a.nodes.filter(n=>n.escola).length;
+  return `<div class="bloco"><h2>Árvore</h2>
+    <div class="grupo"><label class="rot" for="aNome">Nome</label><input id="aNome" class="campo" value="${esc(a.nome)}"></div>
+    <div class="grupo"><span class="rot">Categoria</span><div class="chips">
+      ${CATEGORIAS.map(c=>`<button class="chip" data-cat="${esc(c.id)}" aria-pressed="${a.categoria===c.id}">${c.nome}</button>`).join('')}</div></div>
+    <label class="caixa"><input type="checkbox" id="aSecreta" ${a.secreta ? 'checked' : ''}> Árvore secreta: só aparece para quem digitar a senha</label>
+    ${a.secreta ? `<div class="grupo recuo"><label class="rot" for="aSenha">Senha</label>
+      <input id="aSenha" class="campo" value="${esc(a.senha)}" autocomplete="off" spellcheck="false">
+      <p class="nota">Maiúsculas, acentos e espaços a mais não contam.</p></div>` : ''}
+    <p class="nota">${plural(a.nodes.length,'nódulo','nódulos')} · ${plural(escolas,'escola-ramo','escolas-ramo')}</p>
+    <div class="acoes" style="margin-top:10px"><button class="btn" id="btChecar">Checar biblioteca</button></div></div>`;
+}
+function blocosGlobais(){
+  const b = bib();
+  const ab = k => ui.abertos[k] ? 'open' : '';
+  return `
+  <details class="bloco" data-chave="pools" ${ab('pools')}><summary>Tipos de ponto</summary>
+    ${b.pools.map(p=>`<div class="lista-ed pool" data-id="${esc(p.id)}">
+      <input type="color" class="pool-cor" value="${esc(p.cor)}" aria-label="Cor de ${esc(p.nome)}">
+      <input class="campo pool-nome" value="${esc(p.nome)}" aria-label="Nome do tipo de ponto">
+      <input class="campo pool-padrao" type="number" min="0" step="1" value="${p.padrao}" title="Total de um personagem novo" aria-label="Total inicial">
+      <button class="btn pool-x" title="Remover" aria-label="Remover" ${b.pools.length<=1 ? 'disabled' : ''}>×</button></div>`).join('')}
+    <div class="acoes"><button class="btn mini" id="btNovoPool">+ Tipo de ponto</button></div>
+    <p class="nota">O número é o total que um personagem novo recebe. Os tipos valem para todas as árvores: se um tipo só aparece nas árvores de classe, os pontos ficam separados.</p>
+  </details>
+  <details class="bloco" data-chave="nat" ${ab('nat')}><summary>Naturezas</summary>
+    ${b.naturezas.map(t=>`<div class="lista-ed nat" data-id="${esc(t.id)}">
+      <input type="color" class="nat-cor" value="${esc(t.cor)}" aria-label="Cor de ${esc(t.nome)}">
+      <input class="campo nat-nome" value="${esc(t.nome)}" aria-label="Nome da natureza">
+      <button class="btn nat-x" title="Remover" aria-label="Remover">×</button></div>`).join('')}
+    <div class="acoes"><button class="btn mini" id="btNovaNat">+ Natureza</button></div>
+    <p class="nota">A aura em volta do nódulo usa a cor da natureza.</p>
+  </details>
+  <details class="bloco" data-chave="uso" ${ab('uso')}><summary>Tipos de uso</summary>
+    ${b.usos.map(u=>`<div class="lista-ed uso" data-id="${esc(u.id)}">
+      <input class="campo uso-nome" value="${esc(u.nome)}" aria-label="Nome do tipo de uso">
+      <input class="campo uso-sigla" value="${esc(u.sigla)}" maxlength="3" aria-label="Sigla">
+      <button class="btn uso-x" title="Remover" aria-label="Remover">×</button></div>`).join('')}
+    <div class="acoes"><button class="btn mini" id="btNovoUso">+ Tipo de uso</button></div>
+    <p class="nota">A sigla aparece no selinho do canto do nódulo.</p>
+  </details>
+  <details class="bloco" data-chave="tam" ${ab('tam')}><summary>Tamanhos de nódulo</summary>
+    ${Object.entries(b.tipos).map(([k,t])=>`<div class="grupo linha2">
+      <div><label class="rot">${esc(t.nome)} · custo</label><input class="campo tp-custo" data-tipo="${esc(k)}" type="number" min="0" step="1" value="${t.custo}"></div>
+      <div><label class="rot">Tamanho</label><input class="campo tp-raio" data-tipo="${esc(k)}" type="number" min="4" max="60" step="1" value="${t.raio}"></div></div>`).join('')}
+    <button class="btn mini" id="btAplicarCustos">Aplicar custo padrão nesta árvore</button>
+    <p class="nota">O custo padrão entra no grau 1, em ${esc(b.pools[0].nome)}.</p>
+  </details>`;
+}
+
+function ligarMestre(){
+  const a = arvoreVisivel();
+  const on = (sel, ev, fn) => { const e = $(sel); if(e) e.addEventListener(ev, fn); };
+  on('#btNovaArvore2', 'click', novaArvore);
+  on('#btNovo', 'click', ()=>criarNo(selecionado));
+  on('#btNovaRaiz', 'click', ()=>criarNo(null));
+  on('#btTexto', 'click', abrirTexto);
+  on('#btChecar', 'click', ()=>abrirChecagem(false));
+  ligarGlobais();
+  if(!a) return;
+
+  // árvore
+  on('#aNome', 'input', e=>{ registrar('renomear árvore', 'anome'+a.id); a.nome = e.target.value; salvar(); pintarAbas(); atualizarMarca(a); });
+  on('#aNome', 'change', e=>{ if(!e.target.value.trim()){ a.nome = 'Árvore'; salvar(); pintarAbas(); pintarPainel(); } });
+  $$('[data-cat]').forEach(b=>b.onclick = ()=>{ registrar('categoria da árvore'); a.categoria = b.dataset.cat; salvar(); pintarAbas(); desenhar(); pintarPainel(); });
+  on('#aSecreta', 'change', e=>{ registrar(e.target.checked ? 'tornar árvore secreta' : 'tirar segredo da árvore'); a.secreta = e.target.checked; salvar(); pintarAbas(); desenhar(); pintarPainel(); if(a.secreta) setTimeout(()=>$('#aSenha')?.focus(), 30); });
+  on('#aSenha', 'input', e=>{ registrar('senha da árvore', 'asenha'+a.id); a.senha = e.target.value; salvar(); });
+
+  const n = noSelecionadoNa(a); if(!n) return;
+  const muda = (rot, chave, fn, opts) => { registrar(rot, chave); fn(); if(opts?.podar) podarTodos(); salvar(); if(!opts?.semDesenho) desenhar(); if(opts?.painel) pintarPainel(); };
+  on('#eNome', 'input', e=>muda('renomear nódulo', 'nome'+n.id, ()=>{ n.nome = e.target.value; }));
+  on('#eNome', 'change', e=>{ if(!e.target.value.trim()){ n.nome = 'Sem nome'; salvar(); desenhar(); pintarPainel(); } });
+  on('#eGlifo', 'input', e=>muda('glifo', 'glifo'+n.id, ()=>{ n.glifo = [...e.target.value].slice(0,2).join(''); }));
+  on('#eTipo', 'change', e=>muda('mudar tamanho', null, ()=>{
+    const antigo = bib().tipos[n.tipo], novo = bib().tipos[e.target.value], p0 = bib().pools[0].id;
+    const c = n.graus[0].custos;
+    const eraPadrao = n.graus.length===1 && Object.keys(c).every(k=>k===p0) && (c[p0]||0)===antigo.custo;
+    if(eraPadrao) n.graus[0].custos = novo.custo>0 ? {[p0]:novo.custo} : {};
+    if(n.forma===antigo.forma) n.forma = novo.forma;
+    n.tipo = e.target.value;
+  }, {painel:true}));
+  $$('[data-forma]').forEach(b=>b.onclick = ()=>muda('mudar forma', null, ()=>{ n.forma = b.dataset.forma; }, {painel:true}));
+  $$('.paleta [data-cor]:not(.esc-cor)').forEach(b=>b.onclick = ()=>muda('mudar cor', 'cor'+n.id, ()=>{ n.cor = b.dataset.cor; }, {painel:true}));
+  on('#corLivre', 'input', e=>muda('mudar cor', 'cor'+n.id, ()=>{ n.cor = e.target.value; }));
+  $$('[data-nat]').forEach(b=>{ if(b.closest('#painel')) b.onclick = ()=>muda('mudar natureza', null, ()=>{ n.natureza = b.dataset.nat; }, {painel:true}); });
+  $$('[data-uso]').forEach(b=>b.onclick = ()=>muda('mudar tipo de uso', null, ()=>{
+    const id = b.dataset.uso;
+    if(!id) n.usos = [];
+    else{ const tem = n.usos.includes(id); n.usos = bib().usos.map(u=>u.id).filter(x=>x===id ? !tem : n.usos.includes(x)); }
+  }, {painel:true}));
+  on('#grauMais', 'click', ()=>muda('mais um grau', null, ()=>{
+    const ult = n.graus[n.graus.length-1]; n.graus.push({custos:clone(ult.custos), texto:''});
+  }, {painel:true, podar:true}));
+  on('#grauMenos', 'click', ()=>muda('menos um grau', null, ()=>{ n.graus.pop(); }, {painel:true, podar:true}));
+  $$('.gcusto').forEach(i=>i.onchange = e=>muda('mudar custo', 'custo'+n.id+i.dataset.g+i.dataset.pool, ()=>{
+    const v = Math.max(0, Math.floor(+e.target.value || 0)); const g = n.graus[+i.dataset.g];
+    if(v>0) g.custos[i.dataset.pool] = v; else delete g.custos[i.dataset.pool];
+    e.target.value = v;
+  }, {semDesenho:true}));
+  $$('.gtexto').forEach(t=>t.oninput = e=>muda('texto do grau', 'gtexto'+n.id+t.dataset.g, ()=>{ n.graus[+t.dataset.g].texto = e.target.value; }, {semDesenho:true}));
+  on('#addPre', 'change', e=>{
+    const alvo = e.target.value; if(!alvo) return;
+    if(alvo===n.id || ehAncestral(n.id, alvo)){ pintarPainel(); return aviso('Isso criaria uma dependência circular.'); }
+    muda('adicionar pré-requisito', null, ()=>{ if(!n.pais.includes(alvo)) n.pais.push(alvo); }, {painel:true, podar:true});
+  });
+  $$('.pre-x').forEach(b=>b.onclick = ()=>{
+    const pid = b.closest('.pre').dataset.pid;
+    muda('remover pré-requisito', null, ()=>{ n.pais = n.pais.filter(x=>x!==pid); }, {painel:true, podar:true});
+  });
+  $$('[data-regra]').forEach(b=>b.onclick = ()=>muda('regra ' + (b.dataset.regra==='ou' ? 'OU' : 'E'), null, ()=>{ n.regra = b.dataset.regra; }, {painel:true, podar:true}));
+  on('#eExcl', 'change', e=>muda('caminho exclusivo', null, ()=>{ n.exclusivo = e.target.value.trim(); }, {painel:true, podar:true}));
+  on('#eEscola', 'change', e=>muda(e.target.checked ? 'abrir escola' : 'tirar escola', null, ()=>{
+    n.escola = e.target.checked ? {nome:n.nome, cor:COR_ESCOLA, secreta:false, senha:''} : null;
+  }, {painel:true}));
+  on('#eEscNome', 'input', e=>muda('nome da escola', 'escnome'+n.id, ()=>{ n.escola.nome = e.target.value; }));
+  $$('.esc-cor').forEach(b=>b.onclick = ()=>muda('cor da escola', 'esccor'+n.id, ()=>{ n.escola.cor = b.dataset.cor; }, {painel:true}));
+  on('#eEscSecreta', 'change', e=>{
+    muda(e.target.checked ? 'tornar escola secreta' : 'tirar segredo da escola', null, ()=>{ n.escola.secreta = e.target.checked; }, {painel:true});
+    if(e.target.checked) setTimeout(()=>$('#eEscSenha')?.focus(), 30);
+  });
+  on('#eEscSenha', 'input', e=>muda('senha da escola', 'escsenha'+n.id, ()=>{ n.escola.senha = e.target.value; }, {semDesenho:true}));
+  on('#eDesc', 'input', e=>muda('editar descrição', 'desc'+n.id, ()=>{ n.desc = e.target.value; }, {semDesenho:true}));
+  on('#btDuplicar', 'click', ()=>{
+    registrar('duplicar nódulo');
+    const c = clone(n); c.id = novoId(); c.nome = n.nome + ' (cópia)'; c.escola = null;
+    a.nodes.push(c); selecionado = c.id; salvar(); pintarTudo();
+  });
+  on('#btExcluir', 'click', ()=>{
+    registrar('excluir ' + n.nome);
+    // quem dependia deste nó herda os requisitos dele
+    (dependentes.get(n.id) || []).forEach(c=>{
+      c.pais = [...new Set(c.pais.filter(x=>x!==n.id).concat(n.pais))].filter(x=>x!==c.id);
+    });
+    removerNos([n.id]);
+  });
+  on('#btExcluirRamo', 'click', async ()=>{
+    const ids = a.nodes.filter(m=>m.id===n.id || req(m.id).has(n.id)).map(m=>m.id);
+    if(ids.length>1){
+      const ok = await confirmar('Excluir ramificação', `Excluir “${esc(n.nome)}” e ${plural(ids.length-1,'nódulo que só existe','nódulos que só existem')} através dele? Dá para desfazer com Ctrl+Z.`, 'Excluir', true);
+      if(!ok) return;
+    }
+    registrar('excluir ramificação de ' + n.nome);
+    removerNos(ids, n);
+  });
+}
+function removerNos(ids, herdarDe){
+  const s = new Set(ids);
+  if(herdarDe) bib().arvores.forEach(a=>a.nodes.forEach(o=>{
+    if(s.has(o.id) || !o.pais.some(x=>s.has(x))) return;
+    o.pais = [...new Set(o.pais.filter(x=>!s.has(x)).concat(herdarDe.pais.filter(x=>!s.has(x))))].filter(x=>x!==o.id);
+  }));
+  bib().arvores.forEach(a=>{
+    a.nodes = a.nodes.filter(o=>!s.has(o.id));
+    a.nodes.forEach(o=>{ o.pais = o.pais.filter(x=>!s.has(x)); });
+  });
+  doc.personagens.forEach(p=>ids.forEach(id=>{ delete p.alocados[id]; }));
+  podarTodos(); selecionado = null; salvar(); pintarTudo();
+}
+function criarNo(paiId){
+  const a = arvoreVisivel(); if(!a) return;
+  registrar('criar nódulo');
+  let n;
+  if(!paiId && !a.nodes.length) n = noNovo('keystone', {nome:'Origem', graus:[{custos:{}, texto:''}]});
+  else n = noNovo('pequeno', {pais: paiId ? [paiId] : []});
+  a.nodes.push(n); selecionado = n.id;
+  salvar(); pintarTudo();
+  const campo = $('#eNome'); if(campo){ campo.focus(); campo.select(); }
+}
+function ligarGlobais(){
+  const b = bib();
+  const on = (sel, ev, fn) => { const e = $(sel); if(e) e.addEventListener(ev, fn); };
+  on('#btNovoPool', 'click', ()=>{
+    registrar('novo tipo de ponto');
+    const usadas = new Set(b.pools.map(p=>p.cor));
+    const p = {id:novoId('p'), nome:'Novo tipo', cor:TINTAS.find(c=>!usadas.has(c)) || '#9BB7C9', padrao:10};
+    b.pools.push(p); doc.personagens.forEach(x=>{ x.pontos[p.id] = p.padrao; });
+    salvar(); pintarPainel();
+  });
+  $$('.lista-ed.pool').forEach(row=>{
+    const p = poolPorId(row.dataset.id); if(!p) return;
+    row.querySelector('.pool-nome').oninput = e=>{ registrar('renomear tipo de ponto', 'pn'+p.id); p.nome = e.target.value || 'Pontos'; salvar(); };
+    row.querySelector('.pool-cor').oninput = e=>{ registrar('cor do tipo de ponto', 'pc'+p.id); p.cor = e.target.value; salvar(); };
+    row.querySelector('.pool-padrao').onchange = e=>{ registrar('total inicial', 'pp'+p.id); p.padrao = Math.max(0, Math.floor(+e.target.value || 0)); salvar(); };
+    row.querySelector('.pool-x').onclick = async ()=>{
+      if(b.pools.length<=1) return aviso('É preciso ter ao menos um tipo de ponto.');
+      const ok = await confirmar('Remover tipo de ponto', `Remover “${esc(p.nome)}”? Os custos e totais desse tipo somem de todas as árvores e personagens.`, 'Remover', true);
+      if(!ok) return;
+      registrar('remover tipo de ponto');
+      b.pools = b.pools.filter(x=>x!==p);
+      b.arvores.forEach(a=>a.nodes.forEach(n=>n.graus.forEach(g=>{ delete g.custos[p.id]; })));
+      doc.personagens.forEach(x=>{ delete x.pontos[p.id]; });
+      podarTodos(); salvar(); desenhar(); pintarPainel();
+    };
+  });
+  on('#btNovaNat', 'click', ()=>{
+    registrar('nova natureza');
+    const usadas = new Set(b.naturezas.map(t=>t.cor));
+    b.naturezas.push({id:novoId('t'), nome:'Nova natureza', cor:TINTAS.find(c=>!usadas.has(c)) || '#B07CC6'});
+    salvar(); pintarPainel();
+  });
+  $$('.lista-ed.nat').forEach(row=>{
+    const t = naturezaPorId(row.dataset.id); if(!t) return;
+    row.querySelector('.nat-nome').oninput = e=>{ registrar('renomear natureza', 'tn'+t.id); t.nome = e.target.value || 'Natureza'; salvar(); pintarFiltroNat(arvoreVisivel()); };
+    row.querySelector('.nat-cor').oninput = e=>{ registrar('cor da natureza', 'tc'+t.id); t.cor = e.target.value; salvar(); desenhar(); };
+    row.querySelector('.nat-x').onclick = async ()=>{
+      const usam = [...porId.values()].filter(n=>n.natureza===t.id).length;
+      if(usam && !(await confirmar('Remover natureza', `${plural(usam,'nódulo usa','nódulos usam')} “${esc(t.nome)}” e ${usam===1 ? 'vai ficar' : 'vão ficar'} sem natureza.`, 'Remover', true))) return;
+      registrar('remover natureza');
+      b.naturezas = b.naturezas.filter(x=>x!==t);
+      b.arvores.forEach(a=>a.nodes.forEach(n=>{ if(n.natureza===t.id) n.natureza = ''; }));
+      salvar(); desenhar(); pintarPainel();
+    };
+  });
+  on('#btNovoUso', 'click', ()=>{ registrar('novo tipo de uso'); b.usos.push({id:novoId('u'), nome:'Novo uso', sigla:'Nv'}); salvar(); pintarPainel(); });
+  $$('.lista-ed.uso').forEach(row=>{
+    const u = usoPorId(row.dataset.id); if(!u) return;
+    row.querySelector('.uso-nome').oninput = e=>{ registrar('renomear tipo de uso', 'un'+u.id); u.nome = e.target.value || 'Uso'; salvar(); };
+    row.querySelector('.uso-sigla').oninput = e=>{ registrar('sigla do tipo de uso', 'us'+u.id); u.sigla = e.target.value.slice(0,3); salvar(); desenhar(); };
+    row.querySelector('.uso-x').onclick = async ()=>{
+      const usam = [...porId.values()].filter(n=>n.usos.includes(u.id)).length;
+      if(usam && !(await confirmar('Remover tipo de uso', `${plural(usam,'nódulo usa','nódulos usam')} “${esc(u.nome)}” e ${usam===1 ? 'vai ficar' : 'vão ficar'} sem tipo de uso.`, 'Remover', true))) return;
+      registrar('remover tipo de uso');
+      b.usos = b.usos.filter(x=>x!==u);
+      b.arvores.forEach(a=>a.nodes.forEach(n=>{ n.usos = n.usos.filter(x=>x!==u.id); }));
+      salvar(); desenhar(); pintarPainel();
+    };
+  });
+  $$('.tp-custo').forEach(i=>i.onchange = e=>{ registrar('custo padrão', 'tc'+i.dataset.tipo); b.tipos[i.dataset.tipo].custo = Math.max(0, Math.floor(+e.target.value || 0)); salvar(); });
+  $$('.tp-raio').forEach(i=>i.onchange = e=>{ registrar('tamanho', 'tr'+i.dataset.tipo); b.tipos[i.dataset.tipo].raio = Math.min(60, Math.max(4, +e.target.value || 10)); salvar(); desenhar(); });
+  on('#btAplicarCustos', 'click', async ()=>{
+    const a = arvoreVisivel(); if(!a) return;
+    const ok = await confirmar('Aplicar custo padrão', `Trocar o custo do grau 1 de todos os nódulos de “${esc(a.nome)}” pelo padrão do tamanho? Os demais graus não mudam.`, 'Aplicar');
+    if(!ok) return;
+    registrar('aplicar custos padrão');
+    const p0 = b.pools[0].id;
+    a.nodes.forEach(n=>{ const c = b.tipos[n.tipo]?.custo ?? 1; n.graus[0].custos = c>0 ? {[p0]:c} : {}; });
+    podarTodos(); salvar(); desenhar(); pintarPainel(); aviso('Custos padrão aplicados.', 'ok');
+  });
+}
+
+/* ---------- jogador ---------- */
+function painelJogador(){
+  const p = personagemAtual(); if(!p) return '';
+  const a = arvoreVisivel();
+  const n = noSelecionadoNa(a);
+  const usados = new Set();
+  p.arvores.map(arvorePorId).filter(Boolean).forEach(x=>x.nodes.forEach(m=>m.graus.forEach(g=>Object.keys(g.custos).forEach(k=>usados.add(k)))));
+  const pools = bib().pools.filter(pl=>!usados.size || usados.has(pl.id) || gastos(p, pl.id)>0);
+  const carteira = pools.map(pl=>{
+    const g = gastos(p, pl.id), r = restantes(p, pl.id), tot = p.pontos[pl.id] || 0;
+    return `<div class="bolsa"><div class="bolsa-topo"><i style="background:${esc(pl.cor)}"></i><span>${esc(pl.nome)}</span>
+        <em style="color:${r<0 ? 'var(--perigo)' : 'var(--texto)'}">${r}</em></div>
+      <div class="bolsa-barra"><span style="width:${tot>0 ? Math.min(100, Math.max(0, g/tot*100)) : 0}%;background:${esc(pl.cor)}"></span></div>
+      <div class="bolsa-pe"><label for="tot_${esc(pl.id)}">Gastos ${g} de</label>
+        <input class="campo pool-total" id="tot_${esc(pl.id)}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${tot}"></div></div>`;
+  }).join('');
+
+  let detalhe = '';
+  if(n){
+    const G = n.graus.length, g0 = Math.min(p.alocados[n.id] || 0, G);
+    const est = estadoNo(p, n);
+    const nat = naturezaPorId(n.natureza), nomesUso = usosDe(n).map(u=>esc(u.nome)).join(', ');
+    const esc0 = escolaDoNo(n.id), col = colegasExclusivos(n), fech = fechadoPor(p, n);
+    const podeSubir = g0<G && (g0===0 ? est==='disp' : podePagarGrau(p, n, g0+1));
+    const txtEstado = g0>0 ? (G>1 ? `Grau ${g0} de ${G}` : 'Alocado')
+      : est==='disp' ? 'Disponível' : est==='caro' ? faltaTexto(p, n, 1) : est==='fechado' ? `Fechado por “${fech.nome}”` : 'Bloqueado';
+    detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
+      <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
+      ${n.desc ? `<p class="info" style="color:var(--texto)">${esc(n.desc)}</p>` : ''}
+      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}</span></li>`).join('')}</ul>`
+             : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>`}
+      ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
+      ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
+      ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
+      <p class="info" style="font-weight:600">${esc(txtEstado)}</p>
+      <div class="acoes" style="margin-top:10px">
+        ${(G>1 || g0===0) ? `<button class="btn ouro" id="btSubir" ${podeSubir ? '' : 'disabled'}>${g0===0 ? 'Alocar' : g0<G ? 'Subir para o ' + (g0+1) + 'º grau' : 'Grau máximo'}</button>` : ''}
+        <button class="btn perigo" id="btDescer" ${g0>0 ? '' : 'disabled'}>${g0>1 ? 'Descer grau' : 'Soltar'}</button>
+      </div></div>`;
+  }
+
+  const conta = new Map();
+  for(const id in p.alocados){ const m = porId.get(id); if(m && m.natureza) conta.set(m.natureza, (conta.get(m.natureza) || 0) + 1); }
+  const natHtml = bib().naturezas.length ? `<div class="bloco"><h2>Por natureza</h2>${conta.size
+    ? `<div class="natcont">${bib().naturezas.filter(t=>conta.has(t.id)).map(t=>`<span><i style="background:${esc(t.cor)}"></i>${esc(t.nome)} <b>${conta.get(t.id)}</b></span>`).join('')}</div>`
+    : '<p class="vazio">Nada alocado ainda.</p>'}</div>` : '';
+
+  const nesta = a ? a.nodes.filter(m=>p.alocados[m.id]) : [];
+  const caminho = `<div class="bloco"><h2>${a ? 'Nesta árvore · ' + nesta.length : 'Caminho'}</h2>${nesta.length
+    ? `<ul class="pilha">${nesta.map(m=>{ const g = p.alocados[m.id], G = m.graus.length;
+        return `<li data-id="${esc(m.id)}"><i style="background:${esc(corDoNo(m))}"></i>${esc(m.nome)}<span class="fim">${G>1 ? g + '/' + G : ''}</span></li>`; }).join('')}</ul>`
+    : `<p class="vazio">Clique num nódulo liberado para alocar. As raízes estão sempre liberadas; o botão direito solta ou desce o grau.</p>`}</div>`;
+
+  const eq = p.arvores.map(arvorePorId).filter(Boolean);
+  const movel = eq.length>1;
+  const equipadas = `<div class="bloco"><h2>Árvores equipadas</h2>
+    ${eq.length ? `<div id="listaEq">${eq.map(x=>`<div class="pre eqp${movel ? ' movel' : ''}" data-id="${esc(x.id)}">
+      ${movel ? `<div class="alca" tabindex="0" role="button" title="Arraste para mudar a ordem" aria-label="Mudar a ordem de ${esc(x.nome)}: arraste, ou Alt e as setas">${ICONE_ALCA}</div>` : ''}
+      <i style="background:${x===a ? 'var(--acento)' : 'var(--linha-forte)'}"></i><span>${esc(x.nome)}</span><em>${esc(nomeCat(x.categoria))}</em>
+      <button class="btn mini desequipar" data-id="${esc(x.id)}" title="Tirar do personagem" aria-label="Tirar ${esc(x.nome)}">×</button></div>`).join('')}</div>`
+      : '<p class="vazio" style="margin-bottom:8px">Nenhuma árvore equipada.</p>'}
+    ${movel ? '<p class="nota" style="margin:2px 0 10px">Arraste para mudar a ordem. Os botões em cima da árvore seguem a mesma.</p>' : ''}
+    <div class="acoes"><button class="btn" id="btEquipar">+ Equipar árvore</button></div></div>`;
+
+  return `<div class="bloco"><h2>${esc(p.nome)}</h2>${carteira}
+      <div class="acoes" style="margin-top:4px">
+        <button class="btn perigo" id="btZerar" ${nesta.length ? '' : 'disabled'}>Zerar esta árvore</button>
+        <button class="btn" id="btDestrancar">Destrancar escola</button>
+      </div></div>` + detalhe + natHtml + caminho + equipadas;
+}
+function ligarJogador(){
+  const p = personagemAtual(); if(!p) return;
+  $$('.pool-total').forEach(i=>i.onchange = e=>{
+    registrar('mudar total de pontos', 'tot'+p.id+i.dataset.pool);
+    p.pontos[i.dataset.pool] = Math.max(0, Math.floor(+e.target.value || 0));
+    salvar(); pintarPainel(); desenhar();
+  });
+  const on = (sel, ev, fn) => { const e = $(sel); if(e) e.addEventListener(ev, fn); };
+  on('#btZerar', 'click', async ()=>{
+    const a = arvoreVisivel(); if(!a) return;
+    const ok = await confirmar('Zerar esta árvore', `Soltar todos os pontos de ${esc(p.nome)} em “${esc(a.nome)}”? Dá para desfazer com Ctrl+Z.`, 'Zerar', true);
+    if(!ok || !(await podeSoltarComTrancados(p))) return;
+    registrar('zerar ' + a.nome);
+    a.nodes.forEach(n=>{ delete p.alocados[n.id]; });
+    podarPersonagem(p); salvar(); desenhar(); pintarPainel(); pintarAbas();
+  });
+  on('#btDestrancar', 'click', abrirDestrancar);
+  on('#btSubir', 'click', ()=>subirGrau(selecionado));
+  on('#btDescer', 'click', ()=>descerGrau(selecionado));
+  on('#btEquipar', 'click', abrirEquipar);
+  $$('.desequipar').forEach(b=>b.onclick = ()=>desequipar(b.dataset.id));
+  const lista = $('#listaEq');
+  if(lista) tornarOrdenavel(lista, '.eqp', {eixo:'y', alca:'.alca', rolar:true, soltar:reordenarEquipada,
+    focar:id=>$(`#listaEq .eqp[data-id="${CSS.escape(id)}"] .alca`)?.focus()});
+  $$('.pilha li').forEach(li=>li.onclick = ()=>{ selecionado = li.dataset.id; desenhar(); pintarPainel(); focarNo(selecionado); });
+}
+async function abrirDestrancar(){
+  const r = await dialogo({titulo:'Destrancar escola', texto:'Digite a senha que o mestre passou na mesa.',
+    campos:[{nome:'senha', rotulo:'Senha', valor:'', tipo:'senha'}],
+    botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Destrancar', valor:true, classe:'ouro', validar:v=>v.senha.trim() ? '' : 'Digite a senha.'}]});
+  if(!r) return;
+  if(!bib().cofres.length) return aviso('Essa senha não abriu nenhuma escola.', 'err');
+  aviso('Conferindo a senha…');
+  const antes = instantaneo();
+  let res;
+  try{ res = await destrancarComSenha(r.senha); }catch(e){ return aviso(e.message, 'err'); }
+  if(!res.abertas.length && !res.pendentes.length) return aviso('Essa senha não abriu nenhuma escola.', 'err');
+  if(!res.abertas.length){ salvar(); return aviso('Senha certa, mas essa escola fica dentro de outra ainda trancada. Ela abre junto quando a outra abrir.', 'ok', 6000); }
+  pilhaDesfazer.push({rotulo:'destrancar escola', estado:antes}); pilhaRefazer.length = 0; ultimoRegistro = {chave:null, t:0};
+  const antesAloc = doc.personagens.map(p=>Object.keys(p.alocados));
+  podarTodos(); garantirSelecoes(); salvar(); pintarTudo();
+  const soltos = doc.personagens.flatMap((p,i)=>antesAloc[i].filter(id=>!p.alocados[id]).map(id=>porId.get(id)?.nome || id));
+  const nomes = res.abertas.map(x=>x.nome);
+  aviso('Destrancada: ' + nomes.join(', ') + '.' + (soltos.length ? ` Soltos por falta de requisito: ${soltos.join(', ')}.` : ''), soltos.length ? 'err' : 'ok', soltos.length ? 8000 : 5000);
+  // se abriu uma árvore inteira, oferece equipar
+  const p = personagemAtual();
+  const nova = res.abertas.map(x=>x.conteudo).find(c=>c && c.tipo==='arvore');
+  if(nova && p && !p.arvores.includes(nova.arvore.id)){
+    const ok = await confirmar('Escola destrancada', `“${esc(nova.arvore.nome)}” apareceu na biblioteca. Equipar em ${esc(p.nome)} agora?`, 'Equipar');
+    if(ok){ registrar('equipar ' + nova.arvore.nome); p.arvores.push(nova.arvore.id); p.arvoreAtual = nova.arvore.id; salvar(); pintarTudo(); centralizar(); }
+  }
+}
+
+/* ============================================================
+   CRIAR POR TEXTO — lista recuada vira árvore
+   "Nome [etiquetas] | descrição", um nódulo por linha
+   ============================================================ */
+const TIPO_ALIAS = {pequena:'pequeno', notavel:'notavel', media:'notavel', medio:'notavel', chave:'keystone', 'pedra angular':'keystone', grande:'keystone'};
+let rascunhoTexto = '';
+
+function unico(lista){ return lista.length===1 ? lista[0] : null; }
+function custoPadrao(tipo){
+  const b = bib(), c = (b.tipos[tipo] || b.tipos.pequeno).custo;
+  return c>0 ? {[b.pools[0].id]:c} : {};
+}
+function interpretarTexto(txt){
+  const b = bib(), itens = [], pilha = [];
+  String(txt || '').split(/\r?\n/).forEach((bruta, i)=>{
+    if(!bruta.trim() || /^\s*(#|\/\/)/.test(bruta)) return;
+    const recuo = bruta.match(/^[\t ]*/)[0].replace(/\t/g, '  ').length;
+    let resto = bruta.trim().replace(/^[-*•·]\s+/, '');
+    let desc = '';
+    const barra = resto.indexOf('|');
+    if(barra>=0){ desc = resto.slice(barra+1).trim(); resto = resto.slice(0, barra).trim(); }
+    let etqs = [];
+    const m = resto.match(/\[([^\]]*)\]\s*$/);
+    if(m){ etqs = m[1].split(/[,;]/).map(s=>s.trim()).filter(Boolean); resto = resto.slice(0, m.index).trim(); }
+    const item = {linha:i+1, nome:resto || 'Sem nome', desc, tipo:null, forma:null, natureza:'', usos:[], glifo:'',
+                  exclusivo:'', escola:null, custos:null, graus:1, avisos:[], pai:null, nivel:0};
+    if(!resto) item.avisos.push('linha sem nome');
+    while(pilha.length && pilha[pilha.length-1].recuo >= recuo) pilha.pop();
+    item.pai = pilha.length ? pilha[pilha.length-1].item : null;
+    item.nivel = pilha.length;
+    pilha.push({recuo, item});
+    etqs.forEach(t=>interpretarEtiqueta(item, t, b));
+    itens.push(item);
+  });
+  return itens;
+}
+function interpretarEtiqueta(item, bruto, b){
+  const t = norm(bruto);
+  let m;
+  if((m = t.match(/^graus?\s*[:=]?\s*(\d+)$/)) || (m = t.match(/^(\d+)\s*graus?$/))){
+    const v = +m[1];
+    if(v<1 || v>MAX_GRAUS) item.avisos.push(`graus vão de 1 a ${MAX_GRAUS}`);
+    item.graus = Math.min(MAX_GRAUS, Math.max(1, v)); return;
+  }
+  if((m = t.match(/^(\d+)\s*(.*)$/))){
+    const v = +m[1], nomePool = m[2].trim();
+    const pool = !nomePool ? b.pools[0]
+      : (b.pools.find(p=>norm(p.nome)===nomePool) || unico(b.pools.filter(p=>norm(p.nome).includes(nomePool))) || unico(b.pools.filter(p=>nomePool.includes(norm(p.nome)))));
+    if(!pool){ item.avisos.push(`tipo de ponto “${bruto.replace(/^\s*\d+\s*/, '')}” não existe`); return; }
+    item.custos = item.custos || {};
+    item.custos[pool.id] = (item.custos[pool.id] || 0) + v;
+    return;
+  }
+  if((m = bruto.match(/^\s*(?:exclusivo|excl|x)\s*[:=]\s*(.+)$/i)) || (m = bruto.match(/^\s*exclusivo\s+(.+)$/i))){ item.exclusivo = m[1].trim(); return; }
+  if((m = bruto.match(/^\s*glifo\s*[:=]?\s*(.+)$/i))){ item.glifo = [...m[1].trim()].slice(0,2).join(''); return; }
+  if((m = bruto.match(/^\s*escola\s*[:=]\s*(.+)$/i))){ item.escola = Object.assign(item.escola || {}, {nome:m[1].trim()}); return; }
+  if(t==='escola'){ item.escola = item.escola || {}; return; }
+  if(t==='secreta' || t==='secreto'){ item.escola = Object.assign(item.escola || {}, {secreta:true}); return; }
+  const nat = b.naturezas.find(x=>norm(x.nome)===t) || (t.length>=4 ? unico(b.naturezas.filter(x=>norm(x.nome).startsWith(t))) : null);
+  if(nat){ item.natureza = nat.id; return; }
+  const uso = b.usos.find(x=>norm(x.nome)===t || norm(x.sigla)===t);
+  if(uso){ if(!item.usos.includes(uso.id)) item.usos.push(uso.id); return; }
+  const tipo = Object.keys(b.tipos).find(k=>k===t || norm(b.tipos[k].nome)===t) || TIPO_ALIAS[t];
+  if(tipo && b.tipos[tipo]){ item.tipo = tipo; return; }
+  const forma = FORMAS.find(f=>f.id===t || norm(f.nome)===t);
+  if(forma){ item.forma = forma.id; return; }
+  if([...bruto.trim()].length<=2 && /[^\x00-\x7F]/.test(bruto)){ item.glifo = bruto.trim(); return; }
+  item.avisos.push(`não entendi “${bruto.trim()}”`);
+}
+function previaHtml(itens){
+  if(!itens.length) return '<p class="vazio">A prévia aparece aqui enquanto você digita.</p>';
+  const b = bib();
+  return itens.map(it=>{
+    const tipo = it.tipo || 'pequeno', etq = [];
+    if(tipo!=='pequeno') etq.push(esc(b.tipos[tipo].nome));
+    if(it.forma) etq.push(esc(FORMAS.find(f=>f.id===it.forma).nome));
+    const nat = naturezaPorId(it.natureza); if(nat) etq.push(`<i style="background:${esc(nat.cor)}"></i>${esc(nat.nome)}`);
+    it.usos.forEach(id=>{ const u = usoPorId(id); if(u) etq.push(esc(u.nome)); });
+    etq.push(esc(custoTexto(it.custos || custoPadrao(tipo))) + (it.custos ? '' : ' (padrão)'));
+    if(it.graus>1) etq.push(it.graus + ' graus');
+    if(it.glifo) etq.push('glifo ' + esc(it.glifo));
+    if(it.exclusivo) etq.push('exclusivo: ' + esc(it.exclusivo));
+    if(it.escola) etq.push('escola' + (it.escola.secreta ? ' secreta' : ''));
+    return `<div class="pl" style="padding-left:${it.nivel*18}px">${it.nivel ? '<span style="color:var(--texto-3)">└</span>' : ''}
+      <span class="nm">${esc(it.nome)}</span>${etq.map(e=>`<span class="etq">${e}</span>`).join('')}</div>
+      ${it.desc ? `<div style="padding:0 0 2px ${it.nivel*18+14}px;color:var(--texto-3);font-size:12px">${esc(it.desc)}</div>` : ''}`;
+  }).join('');
+}
+function abrirTexto(){
+  const a = arvoreVisivel(), sel = noSelecionadoNa(a);
+  const b = bib();
+  const exemplo = 'Punho de Ferro [força, ativa, notável, 2]\n  Pele de Bronze [força, passiva, 1] | Reduz o dano de impacto.\n  Respiração Dupla [híbrida, postura, 2 graus]';
+  const destinoInicial = sel ? 'abaixo' : a ? 'raizes' : 'nova';
+  abrirModal(`<h2>Criar por texto</h2>
+    <p class="sub">Um nódulo por linha. O recuo define quem é filho de quem, os colchetes trazem as etiquetas e a barra separa a descrição.</p>
+    <div class="duas">
+      <div><label class="rot" for="txtEntrada">Texto</label>
+        <textarea id="txtEntrada" class="campo" spellcheck="false" placeholder="${esc(exemplo)}">${esc(rascunhoTexto)}</textarea>
+        <p class="nota">Etiquetas: natureza (${b.naturezas.map(t=>esc(t.nome)).join(', ') || '—'}), tipos de uso (${b.usos.map(u=>esc(u.nome)).join(', ') || '—'}; dá para pôr vários),
+          tamanho (pequeno, notável, keystone), forma (círculo, losango, hexágono…), custo (“2” ou “2 ${esc(b.pools[b.pools.length>1 ? 1 : 0].nome)}”),
+          “3 graus”, “exclusivo: grupo”, “glifo 力”, “escola”, “secreta”. Linhas com # são ignoradas.</p></div>
+      <div><span class="rot">Prévia</span><div class="previa" id="txtPrevia"></div><ul class="problemas" id="txtAvisos"></ul></div>
+    </div>
+    <div class="grupo" style="margin-top:12px"><span class="rot">Onde entra</span><div class="chips" id="txtDestino">
+      ${sel ? `<button class="chip" data-dest="abaixo" aria-pressed="${destinoInicial==='abaixo'}">Abaixo de “${esc(sel.nome)}”</button>` : ''}
+      ${a ? `<button class="chip" data-dest="raizes" aria-pressed="${destinoInicial==='raizes'}">Como raízes de “${esc(a.nome)}”</button>` : ''}
+      <button class="chip" data-dest="nova" aria-pressed="${destinoInicial==='nova'}">Numa árvore nova</button></div></div>
+    <div class="grupo linha2" id="txtNova" ${destinoInicial==='nova' ? '' : 'hidden'}>
+      <div><label class="rot" for="txtNovaNome">Nome da árvore</label><input id="txtNovaNome" class="campo" placeholder="Ex.: Monge"></div>
+      <div><label class="rot" for="txtNovaCat">Categoria</label><select id="txtNovaCat" class="campo">${CATEGORIAS.map(c=>`<option value="${esc(c.id)}"${c.id==='classe' ? ' selected' : ''}>${c.nome}</option>`).join('')}</select></div>
+    </div>
+    <div class="aviso-linha err" id="txtErro"></div>
+    <div class="rodape"><button class="btn" id="txtCancelar">Cancelar</button><div class="espaco"></div><button class="btn ouro" id="txtAplicar" disabled>Criar nódulos</button></div>`, 'largo');
+  let destino = destinoInicial, itens = [];
+  const atualizar = () => {
+    rascunhoTexto = $('#txtEntrada').value;
+    itens = interpretarTexto(rascunhoTexto);
+    $('#txtPrevia').innerHTML = previaHtml(itens);
+    const avisos = itens.flatMap(it=>it.avisos.map(t=>({linha:it.linha, t})));
+    $('#txtAvisos').innerHTML = avisos.map(x=>`<li class="aviso"><span class="tag">Linha ${x.linha}</span><div>${esc(x.t)}</div></li>`).join('');
+    const bt = $('#txtAplicar'); bt.disabled = !itens.length;
+    bt.textContent = itens.length ? `Criar ${plural(itens.length,'nódulo','nódulos')}` : 'Criar nódulos';
+    $('#txtErro').textContent = '';
+  };
+  let espera;
+  $('#txtEntrada').addEventListener('input', ()=>{ clearTimeout(espera); espera = setTimeout(atualizar, 120); });
+  $('#txtEntrada').addEventListener('keydown', e=>{
+    if(e.key==='Tab'){ e.preventDefault(); const t = e.target, s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); atualizar(); }
+  });
+  $$('#txtDestino [data-dest]').forEach(bt=>bt.onclick = ()=>{
+    destino = bt.dataset.dest;
+    $$('#txtDestino [data-dest]').forEach(x=>x.setAttribute('aria-pressed', x===bt));
+    $('#txtNova').hidden = destino!=='nova';
+  });
+  $('#txtCancelar').onclick = fecharModal;
+  $('#txtAplicar').onclick = ()=>{
+    if(!itens.length) return;
+    if(destino==='nova' && !$('#txtNovaNome').value.trim()){ $('#txtErro').textContent = 'Dê um nome à árvore nova.'; $('#txtNovaNome').focus(); return; }
+    aplicarTexto(itens, destino, $('#txtNovaNome').value.trim(), $('#txtNovaCat').value);
+  };
+  atualizar();
+  setTimeout(()=>$('#txtEntrada').focus(), 30);
+}
+function aplicarTexto(itens, destino, novaNome, novaCat){
+  registrar('criar por texto');
+  let a = arvoreVisivel(), paiBase = null;
+  if(destino==='nova' || !a){
+    a = {id:novoId('a'), nome:novaNome || 'Nova árvore', categoria:novaCat || 'classe', secreta:false, senha:'', nodes:[]};
+    bib().arvores.push(a); ui.arvoreMestre = a.id;
+  }else if(destino==='abaixo'){
+    const sel = noSelecionadoNa(a); paiBase = sel ? sel.id : null;
+  }
+  const mapa = new Map();
+  itens.forEach(it=>{
+    const tipo = it.tipo || 'pequeno';
+    const custos = it.custos || custoPadrao(tipo);
+    const n = noNovo(tipo, {
+      nome:it.nome, desc:it.desc, natureza:it.natureza, usos:bib().usos.map(u=>u.id).filter(x=>it.usos.includes(x)), glifo:it.glifo, exclusivo:it.exclusivo,
+      forma:it.forma || bib().tipos[tipo].forma,
+      pais: it.pai ? [mapa.get(it.pai).id] : (paiBase ? [paiBase] : []),
+      graus: Array.from({length:it.graus}, ()=>({custos:clone(custos), texto:''})),
+      escola: it.escola ? {nome:it.escola.nome || it.nome, cor:COR_ESCOLA, secreta:!!it.escola.secreta, senha:''} : null
+    });
+    mapa.set(it, n); a.nodes.push(n);
+  });
+  rascunhoTexto = '';
+  selecionado = mapa.get(itens[0]).id;
+  if(ui.modo!=='mestre') ui.modo = 'mestre';
+  podarTodos(); salvar(); fecharModal(); pintarTudo(); centralizar();
+  aviso(`${plural(itens.length,'nódulo criado','nódulos criados')} em “${a.nome}”.`, 'ok');
+}
+
+/* ============================================================
+   JANELAS — modal principal e diálogos
+   (em vez de prompt/confirm do navegador, que alguns sites bloqueiam)
+   ============================================================ */
+function abrirModal(html, classe){
+  const m = $('#modal'); m.className = 'modal ' + (classe || ''); m.innerHTML = html;
+  $('#veu').classList.add('on');
+}
+function fecharModal(){ $('#veu').classList.remove('on'); }
+const modalAberto = () => $('#veu').classList.contains('on');
+const dialogoAberto = () => $('#veuDlg').classList.contains('on');
+
+function dialogo(o){
+  return new Promise(resolve=>{
+    const v = $('#veuDlg'), m = $('#dlg');
+    m.className = 'modal ' + (o.largura || 'estreito');
+    const campos = o.campos || [];
+    const campoHtml = (c, i) => c.tipo==='chips'
+      ? `<div class="grupo"><span class="rot">${esc(c.rotulo)}</span><div class="chips" data-campo="${i}" data-valor="${esc(c.valor)}">
+          ${c.opcoes.map(op=>`<button type="button" class="chip" data-v="${esc(op.valor)}" aria-pressed="${op.valor===c.valor}">${esc(op.rotulo)}</button>`).join('')}</div></div>`
+      : `<div class="grupo"><label class="rot" for="dlgc${i}">${esc(c.rotulo)}</label>
+          <input id="dlgc${i}" class="campo" data-campo="${i}" value="${esc(c.valor || '')}" ${c.tipo==='senha' ? 'autocomplete="off" spellcheck="false"' : ''} ${c.dica ? `placeholder="${esc(c.dica)}"` : ''}></div>`;
+    m.innerHTML = `<h2>${esc(o.titulo)}</h2>${o.texto ? `<p class="sub">${o.texto}</p>` : ''}${campos.map(campoHtml).join('')}${o.html || ''}
+      <div class="aviso-linha err" id="dlgErro"></div>
+      <div class="rodape">${(o.botoes || []).map((b,i)=>`<button type="button" class="btn ${b.classe || ''}" data-b="${i}">${esc(b.rotulo)}</button>`).join('')}</div>`;
+    let feito = false;
+    const fim = valor => {
+      if(feito) return; feito = true;
+      v.classList.remove('on'); v.onclick = null;
+      document.removeEventListener('keydown', tecla, true);
+      resolve(valor);
+    };
+    const coletar = () => { const out = {}; campos.forEach((c,i)=>{ const e = m.querySelector(`[data-campo="${i}"]`); out[c.nome] = c.tipo==='chips' ? e.dataset.valor : e.value; }); return out; };
+    m.querySelectorAll('.chips[data-campo]').forEach(cx=>cx.querySelectorAll('[data-v]').forEach(b=>b.onclick = ()=>{
+      cx.dataset.valor = b.dataset.v; cx.querySelectorAll('[data-v]').forEach(x=>x.setAttribute('aria-pressed', x===b));
+    }));
+    m.querySelectorAll('[data-b]').forEach(bt=>bt.onclick = ()=>{
+      const b = o.botoes[+bt.dataset.b];
+      if(b.valor===null || b.valor===false) return fim(null);
+      const vals = coletar();
+      if(b.validar){ const erro = b.validar(vals); if(erro){ m.querySelector('#dlgErro').textContent = erro; return; } }
+      fim(campos.length ? vals : b.valor);
+    });
+    m.querySelectorAll('input').forEach(i=>i.addEventListener('input', ()=>{ m.querySelector('#dlgErro').textContent = ''; }));
+    const tecla = e => {
+      if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fim(null); }
+      else if(e.key==='Enter' && e.target.tagName==='INPUT'){ e.preventDefault(); const pri = m.querySelector('.rodape .btn.ouro'); if(pri) pri.click(); }
+    };
+    document.addEventListener('keydown', tecla, true);
+    v.onclick = e => { if(e.target===v) fim(null); };
+    v.classList.add('on');
+    if(o.aoMontar) o.aoMontar(m, fim);
+    setTimeout(()=>{
+      const f = m.querySelector('input.campo');
+      if(f){ f.focus(); f.select(); }
+      else{ const pri = m.querySelector('.rodape .btn.ouro') || m.querySelector('.rodape .btn'); if(pri) pri.focus({preventScroll:true}); m.scrollTop = 0; }
+    }, 30);
+  });
+}
+async function confirmar(titulo, texto, rotulo, perigo){
+  const r = await dialogo({titulo, texto, botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:rotulo || 'Confirmar', valor:true, classe:'ouro' + (perigo ? ' perigo' : '')}]});
+  return r===true;
+}
+async function pedirTexto(titulo, rotulo, valor){
+  const r = await dialogo({titulo, campos:[{nome:'v', rotulo, valor:valor || ''}],
+    botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Salvar', valor:true, classe:'ouro', validar:v=>v.v.trim() ? '' : 'Preencha o nome.'}]});
+  return r ? r.v.trim() : null;
+}
+
+/* ============================================================
+   CHECAGEM — o que parece deslize antes de chegar no jogador
+   ============================================================ */
+function checar(){
+  indexar();
+  const out = [];
+  const add = (nivel, a, n, texto) => out.push({nivel, arvore:a ? a.id : null, no:n ? n.id : null, texto,
+    onde: a ? `${nomeCat(a.categoria)} · ${a.nome}` + (n ? ` · ${n.nome}` : '') : ''});
+  const grupos = new Map();
+  for(const a of bib().arvores){
+    if(!a.nodes.length) add('aviso', a, null, 'A árvore está vazia.');
+    if(a.secreta && !a.senha.trim()) add('erro', a, null, 'Árvore secreta sem senha: vai ficar de fora do pacote para jogadores.');
+    const emCiclo = new Set(nosEmCiclo(a).map(n=>n.id));
+    const nomes = new Map(), semTexto = [], semCusto = [];
+    for(const n of a.nodes){
+      const k = norm(n.nome); nomes.set(k, (nomes.get(k) || []).concat(n));
+      if(emCiclo.has(n.id)){ add('erro', a, n, `“${n.nome}” está num ciclo de requisitos e nunca vai liberar.`); continue; }
+      if(n.pais.some(pid=>!porId.has(pid))) add('aviso', a, n, `“${n.nome}” tem um requisito que não existe mais.`);
+      if(n.pais.length && n.graus.every(g=>!Object.keys(g.custos).length)) semCusto.push(n);
+      const temTexto = n.desc.trim() || (n.graus.length>1 && n.graus.some(g=>g.texto.trim()));
+      if(!temTexto) semTexto.push(n);
+      if(n.graus.length>1) n.graus.forEach((g,i)=>{ if(!g.texto.trim()) add('aviso', a, n, `“${n.nome}”: o grau ${i+1} está sem texto.`); });
+      if(n.escola && n.escola.secreta && !n.escola.senha.trim()) add('erro', a, n, `A escola “${n.escola.nome}” é secreta mas não tem senha: vai ficar de fora do pacote.`);
+      if(n.exclusivo){ const g = grupoEx(n); grupos.set(g, (grupos.get(g) || []).concat(n)); }
+      // todo caminho até ele obriga a pegar dois nódulos que se excluem
+      if(!alternativas(n.id).length){
+        const vistos = new Map(); let par = null;
+        for(const id of req(n.id)){
+          const m = porId.get(id); if(!m || !m.exclusivo) continue;
+          const g = grupoEx(m);
+          if(vistos.has(g) && vistos.get(g)!==id){ par = [porId.get(vistos.get(g)), m]; break; }
+          vistos.set(g, id);
+        }
+        add('erro', a, n, par
+          ? `“${n.nome}” nunca vai liberar: exige “${par[0].nome}” e “${par[1].nome}”, que são caminhos exclusivos.`
+          : `“${n.nome}” nunca vai liberar: todo caminho até ele passa por caminhos exclusivos que se fecham.`);
+      }
+      // nó visível que depende de segredo deixa rastro para o jogador
+      if(!segredoDe(n.id)){
+        const pid = n.pais.find(x=>porId.has(x) && segredoDe(x));
+        if(pid) add('aviso', a, n, `“${n.nome}” fica visível, mas exige “${porId.get(pid).nome}”, que é secreto: o jogador vai ver um requisito misterioso.`);
+      }
+    }
+    nomes.forEach(lista=>{ if(lista.length>1) add('aviso', a, lista[1], `Há ${lista.length} nódulos chamados “${lista[0].nome}” nesta árvore.`); });
+    const agrupar = (lista, um, varios) => {
+      if(!lista.length) return;
+      if(lista.length===1) return add('aviso', a, lista[0], `“${lista[0].nome}” ${um}.`);
+      const nomesL = lista.slice(0, 4).map(n=>`“${n.nome}”`).join(', ') + (lista.length>4 ? ` e mais ${lista.length-4}` : '');
+      add('aviso', a, lista[0], `${lista.length} nódulos ${varios}: ${nomesL}.`);
+    };
+    agrupar(semTexto, 'está sem descrição', 'sem descrição');
+    agrupar(semCusto, 'não custa nada', 'que não custam nada');
+  }
+  grupos.forEach(lista=>{
+    if(lista.length===1) add('aviso', arvDe.get(lista[0].id), lista[0], `O caminho exclusivo “${lista[0].exclusivo}” só tem “${lista[0].nome}”: não fecha nada.`);
+  });
+  return out.sort((x,y)=>(x.nivel==='erro' ? 0 : 1) - (y.nivel==='erro' ? 0 : 1));
+}
+function problemasHtml(lista){
+  if(!lista.length) return '<p class="info" style="color:var(--ok);font-weight:600">Tudo certo: nenhum problema encontrado.</p>';
+  return `<ul class="problemas">${lista.map((pb,i)=>`<li class="${pb.nivel}" data-i="${i}" tabindex="0">
+    <span class="tag">${pb.nivel==='erro' ? 'Erro' : 'Aviso'}</span><div>${esc(pb.texto)}<small>${esc(pb.onde)}</small></div></li>`).join('')}</ul>`;
+}
+async function abrirChecagem(paraExportar){
+  const lista = checar();
+  const erros = lista.filter(p=>p.nivel==='erro').length, avisos = lista.length - erros;
+  const resumo = lista.length ? `${plural(erros,'erro','erros')} e ${plural(avisos,'aviso','avisos')}. ` : '';
+  const r = await dialogo({
+    titulo: paraExportar ? 'Antes de exportar' : 'Checagem da biblioteca', largura:'largo',
+    texto: resumo + (lista.length ? (paraExportar ? 'Clique num item para ir até ele, ou exporte assim mesmo.' : 'Clique num item para ir até ele.') : ''),
+    html: problemasHtml(lista),
+    botoes: paraExportar ? [{rotulo:'Voltar e corrigir', valor:null}, {rotulo:'Exportar assim mesmo', valor:true, classe:'ouro'}]
+                         : [{rotulo:'Fechar', valor:null, classe:'ouro'}],
+    aoMontar:(m, fim)=>m.querySelectorAll('.problemas li').forEach(li=>{
+      const ir = () => { fim(null); irPara(lista[+li.dataset.i]); };
+      li.onclick = ir; li.onkeydown = e=>{ if(e.key==='Enter') ir(); };
+    })
+  });
+  return r===true;
+}
+function irPara(pb){
+  if(!pb || !pb.arvore) return;
+  fecharModal();
+  ui.modo = 'mestre'; ui.arvoreMestre = pb.arvore; selecionado = pb.no || null;
+  salvar(); pintarTudo(); centralizar();
+  if(pb.no){ zoomPara(Math.max(cam.k, 1)); focarNo(pb.no); desenhar(); }
+}
+
+/* ============================================================
+   IMPORTAR / EXPORTAR
+   ============================================================ */
+function nomeArquivo(s){ return norm(s).replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '') || 'arvores'; }
+function baixar(obj, nome){
+  const b = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = nomeArquivo(nome) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+}
+function abrirTroca(){
+  const p = personagemAtual();
+  abrirModal(`<h2>Importar / Exportar</h2>
+    <p class="sub">O mestre manda o pacote; cada jogador carrega o pacote e monta os próprios personagens. Escolas secretas viajam trancadas.</p>
+    <div class="saidas">
+      <div class="saida"><b>Pacote para jogadores</b><span>A biblioteca inteira, com as escolas secretas trancadas por senha. Passa pela checagem antes.</span>
+        <button class="btn ouro" id="exPacote">Baixar pacote</button></div>
+      <div class="saida"><b>Personagem</b><span>A build de ${esc(p ? p.nome : '—')}, para o mestre conferir.</span>
+        <button class="btn" id="exPers" ${p ? '' : 'disabled'}>Baixar personagem</button></div>
+      <div class="saida"><b>Backup completo</b><span>Tudo deste navegador, com senhas e segredos abertos. Não mande para os jogadores.</span>
+        <button class="btn" id="exBackup">Baixar backup</button></div>
+    </div>
+    <div class="acoes" style="margin-bottom:12px"><button class="btn" id="imArquivo">Abrir arquivo…</button></div>
+    <label class="rot" for="json">Ou cole / copie o JSON</label>
+    <textarea id="json" class="campo" spellcheck="false" placeholder="Cole aqui o conteúdo de um arquivo para carregar."></textarea>
+    <div class="aviso-linha" id="exAviso" aria-live="polite"></div>
+    <div class="rodape"><button class="btn ouro" id="imTexto">Carregar do texto</button><button class="btn" id="exCopiar">Copiar</button>
+      <div class="espaco"></div><button class="btn" id="exFechar">Fechar</button></div>`, 'largo');
+  const nota = (t, c) => { const e = $('#exAviso'); if(e){ e.textContent = t; e.className = 'aviso-linha ' + (c || ''); } };
+  $('#exFechar').onclick = fecharModal;
+  $('#exPacote').onclick = async ()=>{
+    if(checar().length && !(await abrirChecagem(true))) return;
+    const segredos = bib().arvores.some(a=>a.secreta) || [...porId.values()].some(n=>n.escola && n.escola.secreta);
+    if(segredos && !criptoOk()) return nota('Este navegador não oferece criptografia nesta página; abra o arquivo pelo GitHub Pages ou direto do computador.', 'err');
+    nota('Trancando as escolas secretas…');
+    try{
+      const {pacote, fora} = await montarPacote();
+      baixar(pacote, 'pacote-' + bib().nome);
+      $('#json').value = JSON.stringify(pacote, null, 2);
+      nota('Pacote baixado.' + (fora.length ? ' Ficaram de fora: ' + fora.join(', ') + '.' : ''), fora.length ? 'err' : 'ok');
+    }catch(e){ nota('Não consegui montar o pacote: ' + e.message, 'err'); }
+  };
+  $('#exPers').onclick = ()=>{
+    const pp = personagemAtual(); if(!pp) return;
+    const obj = {formato:FORMATO+'-personagem', versao:4, biblioteca:bib().nome, personagem:clone(pp)};
+    baixar(obj, 'personagem-' + pp.nome);
+    $('#json').value = JSON.stringify(obj, null, 2);
+    nota(`Personagem “${pp.nome}” baixado.`, 'ok');
+  };
+  $('#exBackup').onclick = ()=>{
+    const obj = clone(doc);
+    baixar(obj, 'backup-' + bib().nome);
+    $('#json').value = JSON.stringify(obj, null, 2);
+    nota('Backup baixado. Ele tem as senhas: guarde com você.', 'ok');
+  };
+  $('#imArquivo').onclick = ()=>$('#arquivo').click();
+  $('#arquivo').onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const fr = new FileReader();
+    fr.onload = async ()=>{
+      try{ const msg = await importar(JSON.parse(fr.result)); if(msg) nota(msg, 'ok'); }
+      catch(err){ nota(err instanceof SyntaxError ? 'Este arquivo não é um JSON válido.' : err.message, 'err'); }
+    };
+    fr.readAsText(f); e.target.value = '';
+  };
+  $('#imTexto').onclick = async ()=>{
+    const txt = $('#json').value.trim(); if(!txt) return nota('Cole um JSON primeiro.', 'err');
+    try{ const msg = await importar(JSON.parse(txt)); if(msg) nota(msg, 'ok'); }
+    catch(err){ nota(err instanceof SyntaxError ? 'Isso não é um JSON válido.' : err.message, 'err'); }
+  };
+  $('#exCopiar').onclick = async ()=>{
+    const t = $('#json');
+    if(!t.value) return nota('Nada para copiar: baixe algo primeiro ou cole um JSON.', 'err');
+    try{ await navigator.clipboard.writeText(t.value); nota('JSON copiado.', 'ok'); }
+    catch(e){ t.select(); nota('Selecionado: use Ctrl+C.', 'ok'); }
+  };
+}
+
+async function importar(obj){
+  if(!obj || typeof obj!=='object') throw new Error('Este arquivo não tem o formato esperado.');
+  const f = obj.formato || '';
+  if(f===FORMATO+'-pacote') return importarPacote(obj);
+  if(f===FORMATO+'-doc' && obj.biblioteca) return importarBackup(obj);
+  if(f===FORMATO+'-personagem' && obj.personagem) return importarPersonagem(obj);
+  // formatos das versões anteriores
+  if(f===FORMATO+'-doc' && obj.doc && Array.isArray(obj.doc.fichas)) return importarAntigo(migrarV3(obj.doc), true);
+  if((f===FORMATO+'-ficha' || f===FORMATO+'-build') && obj.arvore)
+    return importarAntigo(migrarV3({fichas:[{nome:obj.nome || obj.arvore.nome, arvore:obj.arvore, build:obj.build || {}}]}), true);
+  if(Array.isArray(obj.nodes)) return importarAntigo(migrarV3({fichas:[{nome:obj.nome, arvore:obj, build:{}}]}), false);
+  throw new Error('Não reconheci o formato deste arquivo.');
+}
+async function importarPacote(pk){
+  const b = bib();
+  const doMestre = b.arvores.some(a=>(a.secreta && a.senha) || a.nodes.some(n=>n.escola && n.escola.secreta && n.escola.senha));
+  const texto = doMestre
+    ? 'Esta biblioteca tem escolas secretas com senha — parece ser a biblioteca do mestre. O pacote vai trocá-la por uma versão com os segredos trancados. Se tiver dúvida, baixe um backup antes.'
+    : `A biblioteca deste navegador será trocada pela do pacote (${plural((pk.arvores || []).length,'árvore','árvores')}). Os personagens continuam.`;
+  const nova = clone({nome:pk.nome, pools:pk.pools, naturezas:pk.naturezas, usos:pk.usos, tipos:pk.tipos,
+                      arvores:Array.isArray(pk.arvores) ? pk.arvores : [], cofres:Array.isArray(pk.cofres) ? pk.cofres : []});
+  try{ normalizarBiblioteca(nova); }catch(e){ throw new Error('O pacote tem dados inválidos: ' + e.message); }
+  if(!(await confirmar('Carregar pacote', esc(texto), 'Carregar pacote', doMestre))) return null;
+  registrar('carregar pacote');
+  doc.biblioteca = nova;
+  const reabertas = await reabrirGuardadas();
+  normalizarDoc(); podarTodos(); garantirSelecoes(); selecionado = null;
+  salvar(); pintarTudo(); centralizar();
+  return `Pacote carregado: ${plural(bib().arvores.length,'árvore','árvores')}.` + (reabertas.length ? ` Reabertas com senhas já usadas aqui: ${reabertas.join(', ')}.` : '');
+}
+async function importarBackup(obj){
+  let novo;
+  try{ novo = normalizarObjDoc(clone(obj)); }catch(e){ throw new Error('O backup tem dados inválidos: ' + e.message); }
+  const ok = await confirmar('Carregar backup', 'O backup vai substituir tudo deste navegador: biblioteca e personagens. Dá para desfazer com Ctrl+Z.', 'Carregar backup', true);
+  if(!ok) return null;
+  registrar('carregar backup');
+  doc = novo; podarTodos(); garantirSelecoes(); selecionado = null;
+  salvar(); pintarTudo(); centralizar();
+  return `Backup carregado: ${plural(bib().arvores.length,'árvore','árvores')} e ${plural(doc.personagens.length,'personagem','personagens')}.`;
+}
+function importarPersonagem(obj){
+  const p = clone(obj.personagem);
+  if(!p || typeof p!=='object' || Array.isArray(p)) throw new Error('O arquivo de personagem está vazio.');
+  normalizarPersonagem(p, bib());
+  registrar('carregar personagem');
+  const i = doc.personagens.findIndex(x=>x.id===p.id);
+  if(i>=0) doc.personagens[i] = p; else doc.personagens.push(p);
+  ui.personagem = p.id; ui.modo = 'jogador'; selecionado = null;
+  indexar(); podarPersonagem(p); garantirSelecoes();
+  salvar(); pintarTudo(); centralizar();
+  const faltam = p.arvores.filter(id=>!arvorePorId(id)).length;
+  return `Personagem “${p.nome}” ${i>=0 ? 'atualizado' : 'carregado'}.` + (faltam ? ` ${plural(faltam,'árvore dele não existe','árvores dele não existem')} nesta biblioteca.` : '');
+}
+function importarAntigo(m, comPersonagens){
+  try{ normalizarBiblioteca(m.biblioteca); }catch(e){ throw new Error('O arquivo antigo tem dados inválidos: ' + e.message); }
+  registrar('importar arquivo antigo');
+  const mapas = fundirBiblioteca(bib(), m.biblioteca);
+  const novas = Object.values(mapas.arvores);
+  let nPers = 0;
+  if(comPersonagens){
+    m.personagens.forEach(p=>{
+      const pontos = {}; for(const k in p.pontos) if(mapas.pools[k]) pontos[mapas.pools[k]] = p.pontos[k];
+      const alocados = {}; for(const k in p.alocados) alocados[mapas.nos[k] || k] = p.alocados[k];
+      const arvores = p.arvores.map(id=>mapas.arvores[id] || id);
+      doc.personagens.push({id:novoId('c'), nome:p.nome, arvores, arvoreAtual:arvores[0] || null, pontos, alocados});
+      nPers++;
+    });
+  }else if(ui.modo==='jogador'){
+    const p = personagemAtual();
+    if(p){ novas.forEach(id=>{ if(!p.arvores.includes(id)) p.arvores.push(id); }); p.arvoreAtual = novas[0] || p.arvoreAtual; }
+  }
+  if(ui.modo==='mestre' && novas.length) ui.arvoreMestre = novas[0];
+  if(ui.modo==='jogador' && nPers) ui.personagem = doc.personagens[doc.personagens.length - nPers].id;
+  normalizarDoc(); podarTodos(); garantirSelecoes(); selecionado = null;
+  salvar(); pintarTudo(); centralizar();
+  return `Arquivo da versão anterior importado: ${plural(novas.length,'árvore','árvores')}` + (nPers ? ` e ${plural(nPers,'personagem','personagens')}` : '') + '.';
+}
+// junta árvores de outra biblioteca nesta, trocando ids repetidos
+function fundirBiblioteca(dest, orig){
+  normalizarBiblioteca(orig);
+  const mapas = {pools:{}, nat:{}, uso:{}, nos:{}, arvores:{}};
+  const juntarLista = (origem, destino, mapa, pref) => {
+    const usados = new Set();
+    origem.forEach(x=>{
+      let ex = destino.find(y=>norm(y.nome)===norm(x.nome) && !usados.has(y.id));
+      if(!ex){ ex = Object.assign({}, x, {id: destino.some(y=>y.id===x.id) ? novoId(pref) : x.id}); destino.push(ex); }
+      usados.add(ex.id); mapa[x.id] = ex.id;
+    });
+  };
+  juntarLista(orig.pools, dest.pools, mapas.pools, 'p');
+  juntarLista(orig.naturezas, dest.naturezas, mapas.nat, 't');
+  juntarLista(orig.usos, dest.usos, mapas.uso, 'u');
+  const existentes = new Set(); dest.arvores.forEach(a=>a.nodes.forEach(n=>existentes.add(n.id)));
+  orig.arvores.forEach(a=>{
+    const c = clone(a);
+    c.id = dest.arvores.some(x=>x.id===a.id) ? novoId('a') : a.id; mapas.arvores[a.id] = c.id;
+    c.nodes.forEach(n=>{ const id = existentes.has(n.id) ? novoId() : n.id; mapas.nos[n.id] = id; existentes.add(id); });
+    c.nodes.forEach(n=>{
+      n.id = mapas.nos[n.id]; n.natureza = mapas.nat[n.natureza] || ''; n.usos = [...new Set(n.usos.map(x=>mapas.uso[x]).filter(Boolean))];
+      n.graus.forEach(g=>{ const nc = {}; for(const k in g.custos) if(mapas.pools[k]) nc[mapas.pools[k]] = g.custos[k]; g.custos = nc; });
+    });
+    c.nodes.forEach(n=>{ n.pais = n.pais.map(x=>mapas.nos[x] || x); });
+    dest.arvores.push(c);
+  });
+  normalizarBiblioteca(dest);
+  return mapas;
+}
+
+/* ============================================================
+   DICA FLUTUANTE, AVISOS E EVENTOS
+   ============================================================ */
+function mostrarDica(n){
+  if(!n) return;
+  const t = bib().tipos[n.tipo] || {}, nat = naturezaPorId(n.natureza), nomesUso = usosDe(n).map(u=>u.nome).join(', ');
+  const G = n.graus.length, jog = ui.modo==='jogador', p = jog ? personagemAtual() : null;
+  const g0 = p ? Math.min(p.alocados[n.id] || 0, G) : 0;
+  const meta = [t.nome, nat ? nat.nome : '', nomesUso, G===1 ? custoTexto(n.graus[0].custos) : G + ' graus'].filter(Boolean).join(' · ');
+  const esc0 = escolaDoNo(n.id), col = colegasExclusivos(n);
+  let estado = '';
+  if(jog && p){
+    const e = estadoNo(p, n);
+    const [txt, cor] = g0>0 ? [G>1 ? `Grau ${g0} de ${G}` : 'Alocado', 'var(--acento)']
+      : e==='disp' ? ['Disponível', 'var(--ok)'] : e==='caro' ? [faltaTexto(p, n, 1), 'var(--perigo)']
+      : e==='fechado' ? [`Fechado por “${fechadoPor(p, n).nome}”`, 'var(--perigo)'] : ['Bloqueado', 'var(--texto-3)'];
+    estado = `<div class="estado" style="color:${esc(cor)}">${esc(txt)}</div>`;
+  }
+  $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
+    <div class="meta">${esc(meta)}</div>
+    ${n.desc ? `<p>${esc(n.desc)}</p>` : ''}
+    ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}</li>`).join('')}</ul>` : ''}
+    ${(n.pais.length>1 || paisFora(n).length) ? `<p class="exige">${esc(exigencia(n))}</p>` : ''}
+    ${col.length ? `<p>Caminho exclusivo com ${col.map(m=>'“' + esc(m.nome) + '”').join(', ')}.</p>` : ''}
+    ${esc0 ? `<p>Escola: ${esc(esc0.escola.nome)}${esc0.escola.secreta && !jog ? ' · secreta' : ''}</p>` : ''}
+    ${estado}`;
+  $('#dica2').classList.add('on');
+}
+function posicionarDica(x, y){
+  const d = $('#dica2'), r = d.getBoundingClientRect();
+  let px = x + 16, py = y + 16;
+  if(px + r.width > innerWidth - 8) px = x - r.width - 16;
+  if(py + r.height > innerHeight - 8) py = Math.max(8, y - r.height - 16);
+  d.style.transform = `translate(${Math.max(8, px)}px,${py}px)`;
+}
+function esconderDica(){ pairado = null; $('#dica2').classList.remove('on'); }
+
+let timerAviso;
+function dicaPadrao(){
+  return ui.modo==='jogador'
+    ? 'Clique aloca ou sobe o grau · Botão direito desce ou solta · Arraste para mover'
+    : 'Clique seleciona · Arraste para mover · Rolagem aproxima';
+}
+function aviso(txt, tipo, ms){
+  const d = $('#dica'); if(!d) return;
+  d.textContent = txt; d.dataset.aviso = '1';
+  d.style.color = tipo==='ok' ? 'var(--ok)' : tipo==='err' ? 'var(--perigo)' : 'var(--texto-2)';
+  d.style.display = 'block';
+  clearTimeout(timerAviso);
+  timerAviso = setTimeout(()=>{ delete d.dataset.aviso; d.textContent = dicaPadrao(); d.style.color = ''; d.style.display = ''; }, ms || 2800);
+}
+
+/* ---------- tela: arrastar, clicar, rolar ---------- */
+let arrasto = null, moveu = false, ultimoPtr = null;
+function noEmPonto(x, y){
+  const alvo = document.elementFromPoint(x, y);
+  const g = alvo && alvo.closest ? alvo.closest('.no') : null;
+  return g ? g.dataset.id : null;
+}
+function atualizarPaire(x, y, forcar){
+  const id = noEmPonto(x, y);
+  if(id!==pairado || forcar){ pairado = id; if(id) mostrarDica(porId.get(id)); else esconderDica(); }
+  if(pairado) posicionarDica(x, y);
+}
+function revalidarPaire(){ if(ultimoPtr) atualizarPaire(ultimoPtr.x, ultimoPtr.y, true); }
+
+function ligarTela(){
+  const tela = $('#tela');
+  tela.addEventListener('pointerdown', ev=>{
+    if(ev.button!==0) return;
+    if(ev.target.closest('#topoTela, #zoom, #nada .btn')) return;
+    arrasto = {x:ev.clientX, y:ev.clientY, cx:cam.x, cy:cam.y, id:ev.pointerId}; moveu = false;
+  });
+  tela.addEventListener('pointermove', ev=>{
+    if(ordenando) return;                       // arrastando um botão de árvore: nada de dica nem de mover a tela
+    const toque = ev.pointerType==='touch';
+    if(!toque) ultimoPtr = {x:ev.clientX, y:ev.clientY};
+    if(arrasto){
+      const dx = ev.clientX-arrasto.x, dy = ev.clientY-arrasto.y;
+      if(!moveu && (Math.abs(dx)>3 || Math.abs(dy)>3)){
+        moveu = true; esconderDica(); tela.classList.add('arrastando');
+        try{ tela.setPointerCapture(arrasto.id); }catch(e){}
+      }
+      if(moveu){ cam.x = arrasto.cx+dx; cam.y = arrasto.cy+dy; aplicarCam(); return; }
+    }
+    if(!toque) atualizarPaire(ev.clientX, ev.clientY);
+  });
+  const encerrar = () => {
+    if(!arrasto) return;
+    tela.classList.remove('arrastando');
+    try{ tela.releasePointerCapture(arrasto.id); }catch(e){}
+    arrasto = null;
+  };
+  tela.addEventListener('pointerup', ev=>{
+    const tinha = !!arrasto, arrastou = moveu;
+    encerrar();
+    if(!tinha || arrastou || ev.button!==0) return;
+    const id = noEmPonto(ev.clientX, ev.clientY);
+    if(id){
+      selecionado = id;
+      if(ui.modo==='jogador') subirGrau(id);
+      desenhar(); pintarPainel();
+    }else if(selecionado){ selecionado = null; desenhar(); pintarPainel(); }
+  });
+  tela.addEventListener('pointercancel', encerrar);
+  tela.addEventListener('pointerleave', ()=>{ ultimoPtr = null; esconderDica(); });
+  // botão direito: sem o menu do navegador; no jogador desce o grau / solta
+  tela.addEventListener('contextmenu', ev=>{
+    ev.preventDefault();
+    const id = noEmPonto(ev.clientX, ev.clientY); if(!id) return;
+    selecionado = id;
+    const p = personagemAtual();
+    if(ui.modo==='jogador' && p && p.alocados[id]) descerGrau(id);
+    desenhar(); pintarPainel();
+  });
+  tela.addEventListener('wheel', ev=>{
+    ev.preventDefault();
+    const r = tela.getBoundingClientRect();
+    zoomPara(cam.k * (ev.deltaY<0 ? 1.12 : 1/1.12), ev.clientX-r.left, ev.clientY-r.top);
+    desenhar();
+  }, {passive:false});
+  $('#btMais').onclick = ()=>{ zoomPara(cam.k*1.25); desenhar(); };
+  $('#btMenos').onclick = ()=>{ zoomPara(cam.k/1.25); desenhar(); };
+  $('#btCentro').onclick = ()=>{ centralizar(); desenhar(); };
+}
+
+/* ---------- arrastar para mudar a ordem (mouse e toque) ----------
+   cont: onde ficam os itens; selItem: cada item (com data-id).
+   o.eixo 'x' (botões que quebram linha) ou 'y' (lista); o.alca: no toque, só arrasta por ela
+   (o resto continua rolando o painel); o.rolar: rola o painel perto das bordas;
+   o.soltar(id, antesDe, peloTeclado): antesDe null = no fim; o.focar(id): foco depois do teclado. */
+let ordenando = null, cliqueAposArrasto = 0;
+// o clique que o navegador gera ao soltar um arrasto não conta como clique (vale para a página toda)
+document.addEventListener('click', e=>{
+  if(cliqueAposArrasto && Date.now()-cliqueAposArrasto < 600){ cliqueAposArrasto = 0; e.stopPropagation(); e.preventDefault(); }
+}, true);
+document.addEventListener('pointerdown', ()=>{ cliqueAposArrasto = 0; }, true);
+function tornarOrdenavel(cont, selItem, o){
+  // teclado: Alt + setas
+  cont.addEventListener('keydown', e=>{
+    if(!e.altKey || e.ctrlKey || e.metaKey || !/^Arrow(Left|Right|Up|Down)$/.test(e.key)) return;
+    const item = e.target.closest(selItem); if(!item || !cont.contains(item)) return;
+    if(o.alca && e.target!==item && !e.target.closest(o.alca)) return;
+    e.preventDefault(); e.stopPropagation();
+    const itens = [...cont.querySelectorAll(selItem)], i = itens.indexOf(item);
+    const j = i + (/Left|Up/.test(e.key) ? -1 : 1);
+    if(j<0 || j>=itens.length) return;
+    const antes = j<i ? itens[j] : itens[j+1];
+    const id = item.dataset.id;
+    o.soltar(id, antes ? antes.dataset.id : null, true);
+    if(o.focar) o.focar(id);
+  });
+  cont.addEventListener('pointerdown', ev=>{
+    if(ordenando || ev.button!==0 || !ev.isPrimary) return;
+    const item = ev.target.closest(selItem); if(!item || !cont.contains(item)) return;
+    const bt = ev.target.closest('button, input, select, textarea, a');
+    if(bt && bt!==item) return;                                              // o × e outros botões de dentro
+    if(o.alca && ev.pointerType!=='mouse' && !ev.target.closest(o.alca)) return;   // no toque, só pela alça
+    const itens = [...cont.querySelectorAll(selItem)];
+    if(itens.length<2) return;
+    const est = {item, itens, de:itens.indexOf(item), pid:ev.pointerId, x0:ev.clientX, y0:ev.clientY,
+                 x:ev.clientX, y:ev.clientY, ativo:false, cancelado:false, antes:undefined, raf:0, fantasma:null, marca:null};
+    const limiar = ev.pointerType==='mouse' ? 4 : 7;
+    const painel = o.rolar ? cont.closest('#painel') : null;
+
+    const atualizar = () => {
+      if(!est.itens.every(x=>x.isConnected)){ cancelar(); return false; }      // a lista foi redesenhada no meio
+      // na lista o fantasma só sobe e desce
+      est.fantasma.style.transform = o.eixo==='y' ? `translate(10px,${est.y-est.y0}px)` : `translate(${est.x-est.x0}px,${est.y-est.y0}px) rotate(-2deg)`;
+      const {s, marca} = slotOrdem(est.itens, est.x, est.y, o.eixo);
+      const igual = s===est.de || s===est.de+1;
+      est.antes = igual ? undefined : (s<est.itens.length ? est.itens[s].dataset.id : null);
+      est.marca.classList.toggle('on', !igual);
+      if(!igual) Object.assign(est.marca.style, {left:marca.left+'px', top:marca.top+'px', width:marca.width+'px', height:marca.height+'px'});
+      return true;
+    };
+    const rolar = () => {
+      if(!est.ativo) return;
+      if(painel){
+        const r = painel.getBoundingClientRect(), borda = 44;
+        let v = 0;
+        if(est.y < r.top + borda) v = -Math.min(16, Math.ceil((r.top + borda - est.y)/3));
+        else if(est.y > r.bottom - borda) v = Math.min(16, Math.ceil((est.y - r.bottom + borda)/3));
+        if(v){ const t = painel.scrollTop; painel.scrollTop += v; if(painel.scrollTop!==t && !atualizar()) return; }
+      }
+      est.raf = requestAnimationFrame(rolar);
+    };
+    const comecar = () => {
+      if(ordenando){ desligar(); return; }
+      est.ativo = true; ordenando = est;
+      const r = item.getBoundingClientRect();
+      const f = item.cloneNode(true);
+      f.removeAttribute('id'); f.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
+      f.classList.add('fantasma-ordem'); f.setAttribute('aria-hidden', 'true');
+      Object.assign(f.style, {left:r.left+'px', top:r.top+'px', width:r.width+'px', height:r.height+'px'});
+      document.body.appendChild(f); est.fantasma = f;
+      est.marca = document.createElement('div'); est.marca.className = 'marca-ordem ' + o.eixo; document.body.appendChild(est.marca);
+      item.classList.add('levantada'); document.body.classList.add('ordenando');
+      try{ item.setPointerCapture(est.pid); }catch(_){}
+      esconderDica();
+      if(ev.pointerType!=='mouse') try{ navigator.vibrate && navigator.vibrate(8); }catch(_){}
+      if(painel) est.raf = requestAnimationFrame(rolar);
+    };
+    const mover = e => {
+      if(e.pointerId!==est.pid || est.cancelado) return;
+      if(e.pointerType==='mouse' && !(e.buttons & 1)){ apagar(); desligar(); return; }   // o botão subiu sem a página ver
+      est.x = e.clientX; est.y = e.clientY;
+      if(!est.ativo){
+        if(Math.hypot(est.x-est.x0, est.y-est.y0) < limiar) return;
+        comecar(); if(!est.ativo) return;
+      }
+      e.preventDefault();
+      atualizar();
+    };
+    const soltar = e => {
+      if(e.pointerId!==est.pid) return;
+      desligar();
+      if(est.cancelado){ cliqueAposArrasto = Date.now(); return; }
+      if(!est.ativo) return;                                                   // foi só um clique
+      est.x = e.clientX; est.y = e.clientY;
+      if(!atualizar()){ cliqueAposArrasto = Date.now(); return; }
+      const antes = est.antes;
+      apagar(); cliqueAposArrasto = Date.now();
+      if(antes!==undefined) o.soltar(item.dataset.id, antes, false);
+    };
+    // Esc ou lista redesenhada: desiste, mas ainda espera o dedo/botão subir para engolir o clique
+    const cancelar = () => { if(est.ativo){ apagar(); est.cancelado = true; } };
+    const cancelarPtr = e => { if(e.pointerId===est.pid){ apagar(); desligar(); } };
+    const tecla = e => { if(e.key==='Escape' && est.ativo){ e.preventDefault(); e.stopPropagation(); cancelar(); } };
+    const saiu = () => { apagar(); desligar(); };                                // trocou de janela no meio do arrasto
+    function apagar(){
+      cancelAnimationFrame(est.raf);
+      if(est.fantasma) est.fantasma.remove();
+      if(est.marca) est.marca.remove();
+      item.classList.remove('levantada');
+      try{ if(item.hasPointerCapture && item.hasPointerCapture(est.pid)) item.releasePointerCapture(est.pid); }catch(_){}
+      if(ordenando===est){ ordenando = null; document.body.classList.remove('ordenando'); }
+      est.ativo = false;
+    }
+    function desligar(){
+      removeEventListener('pointermove', mover, true); removeEventListener('pointerup', soltar, true);
+      removeEventListener('pointercancel', cancelarPtr, true); removeEventListener('keydown', tecla, true);
+      removeEventListener('blur', saiu);
+    }
+    addEventListener('pointermove', mover, true); addEventListener('pointerup', soltar, true);
+    addEventListener('pointercancel', cancelarPtr, true); addEventListener('keydown', tecla, true);
+    addEventListener('blur', saiu);
+  });
+}
+// onde o item cairia: índice de inserção (0..n) e o traço que mostra o lugar
+function slotOrdem(itens, x, y, eixo){
+  const rs = itens.map(e=>e.getBoundingClientRect()), n = itens.length;
+  if(eixo==='y'){
+    let s = n;
+    for(let i=0;i<n;i++) if(y < rs[i].top + rs[i].height/2){ s = i; break; }
+    const r = rs[Math.min(s, n-1)];
+    return {s, marca:{left:r.left-5, width:r.width+10, height:3, top: s<n ? r.top-4 : r.bottom+1}};
+  }
+  // botões em linhas que quebram: acha a linha mais perto e, nela, o vão mais perto
+  const linhas = [];
+  rs.forEach((r,i)=>{
+    const l = linhas.find(l=>r.top < l.bottom - 4 && r.bottom > l.top + 4);
+    if(l){ l.idx.push(i); l.top = Math.min(l.top, r.top); l.bottom = Math.max(l.bottom, r.bottom); }
+    else linhas.push({top:r.top, bottom:r.bottom, idx:[i]});
+  });
+  let lin = linhas[0], perto = Infinity;
+  for(const l of linhas){ const d = y<l.top ? l.top-y : y>l.bottom ? y-l.bottom : 0; if(d<perto){ perto = d; lin = l; } }
+  for(const i of lin.idx) if(x < rs[i].left + rs[i].width/2){ const r = rs[i]; return {s:i, marca:{left:r.left-4.5, top:r.top, width:3, height:r.height}}; }
+  const u = lin.idx[lin.idx.length-1], r = rs[u];
+  return {s:u+1, marca:{left:r.right+1.5, top:r.top, width:3, height:r.height}};
+}
+
+/* ---------- tema e modo ---------- */
+function trocarTema(t){
+  ui.tema = t; document.documentElement.setAttribute('data-tema', t);
+  salvar(); atualizarModoUI(); desenhar(); pintarPainel();
+}
+function trocarModo(m){
+  if(ui.modo===m) return;
+  ui.modo = m; selecionado = null; filtroNat.clear();
+  salvar(); pintarTudo(); centralizar(); desenhar();
+  if(!$('#dica').dataset.aviso) $('#dica').textContent = dicaPadrao();
+}
+
+/* ============================================================
+   INÍCIO
+   ============================================================ */
+function iniciar(){
+  carregar();
+  document.documentElement.setAttribute('data-tema', temaResolvido());
+  gerarPapel();
+  $('#nomeBib').addEventListener('input', e=>{ registrar('renomear biblioteca', 'bib'); bib().nome = e.target.value; salvar(); });
+  $('#nomeBib').addEventListener('change', e=>{ if(!e.target.value.trim()){ bib().nome = 'Árvores de Habilidade'; e.target.value = bib().nome; salvar(); } });
+  $('#busca').addEventListener('input', e=>{ filtro = e.target.value; desenhar(); });
+  $('#btTinta').onclick = ()=>trocarTema('tinta');
+  $('#btPedra').onclick = ()=>trocarTema('pedra');
+  $('#btMestre').onclick = ()=>trocarModo('mestre');
+  $('#btJogador').onclick = ()=>trocarModo('jogador');
+  $('#btDesfazer').onclick = desfazer;
+  $('#btRefazer').onclick = refazer;
+  $('#btTroca').onclick = abrirTroca;
+  $('#btNovaAba').onclick = novaAba;
+  $('#btRenomearAba').onclick = renomearAba;
+  $('#btDuplicarAba').onclick = duplicarAba;
+  $('#btExcluirAba').onclick = excluirAba;
+  $('#veu').addEventListener('click', e=>{ if(e.target.id==='veu') fecharModal(); });
+  if(window.matchMedia){
+    const mq = matchMedia('(prefers-color-scheme: light)');
+    const seguir = () => { if(ui.tema!=='tinta' && ui.tema!=='pedra'){ document.documentElement.setAttribute('data-tema', temaResolvido()); atualizarModoUI(); desenhar(); } };
+    if(mq.addEventListener) mq.addEventListener('change', seguir); else if(mq.addListener) mq.addListener(seguir);
+  }
+  document.addEventListener('keydown', e=>{
+    if(dialogoAberto()) return;
+    const emCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    if((e.ctrlKey || e.metaKey) && !emCampo && !modalAberto()){
+      const k = e.key.toLowerCase();
+      if(k==='z' && !e.shiftKey){ e.preventDefault(); return desfazer(); }
+      if((k==='z' && e.shiftKey) || k==='y'){ e.preventDefault(); return refazer(); }
+    }
+    if(e.key==='Escape'){
+      if(modalAberto()) return fecharModal();
+      if(selecionado){ selecionado = null; desenhar(); pintarPainel(); }
+    }
+  });
+  ligarTela();
+  // botões das árvores do personagem, em cima da tela: arrastar muda a ordem
+  tornarOrdenavel($('#seletor'), '.arv[data-id]', {eixo:'x', soltar:reordenarEquipada,
+    focar:id=>$(`#seletor .arv[data-id="${CSS.escape(id)}"]`)?.focus()});
+  indexar(); garantirSelecoes(); podarTodos();
+  pintarTudo(); centralizar(); desenhar();
+  let espera;
+  addEventListener('resize', ()=>{ clearTimeout(espera); espera = setTimeout(desenhar, 80); });
+  if(migrado){ salvarJa(); aviso('Seus dados foram convertidos: cada aba antiga virou um personagem com a árvore dela.', 'ok', 7000); }
+  if(danificado) aviso('Os dados salvos neste navegador estavam danificados. Guardei uma cópia e comecei do zero: carregue um backup em Importar / Exportar.', 'err', 12000);
+  // não perde a última edição se a aba for fechada logo em seguida
+  // (só grava se houver mudança pendente: uma aba antiga não pode sobrescrever a mais nova)
+  addEventListener('pagehide', ()=>{ if(sujo) salvarJa(); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && sujo) salvarJa(); });
+  // outra aba deste navegador salvou: acompanha
+  addEventListener('storage', e=>{
+    if(e.key!==CHAVE_DOC || !e.newValue || sujo) return;
+    try{ doc = JSON.parse(e.newValue); normalizarDoc(); pintarTudo(); }catch(_){}
+  });
+}
+iniciar();
+
+</script>
+</body>
+</html>

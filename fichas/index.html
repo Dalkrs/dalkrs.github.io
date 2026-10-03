@@ -1,0 +1,2801 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichas · Tiny Cats</title>
+<script>
+/* aplica o tema antes de desenhar a página, para não piscar branco */
+(function(){
+  var t='auto';
+  try{ t = localStorage.getItem('urgm_calc_tema') || 'auto'; }catch(e){}
+  var escuro = t==='pedra' || (t==='auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-tema', escuro ? 'pedra' : 'claro');
+  document.documentElement.setAttribute('data-tema-escolha', t);
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root, :root[data-tema="claro"]{
+  --ink:#111c2e; --ink-2:#2c3d57; --ink-soft:#6b7b95; --ink-fraco:#a9b5c7;
+  --paper:#e7ecf2; --grid:rgba(17,28,46,.045);
+  --panel:#fbfcfe; --campo:#fff; --campo-sut:#eef2f7; --zebra:#f6f8fb;
+  --hover:#f0f4f9; --sel:#eaf0f7;
+  --line:#c9d3e0; --line-2:#dde4ee; --linha-sut:#eef2f7;
+  --forte:#111c2e; --forte-txt:#fff; --forte-hover:#23334f;
+  --topo:#111c2e; --topo-txt:#fff; --topo-sub:#93a4c0; --topo-hover:#1a2739;
+  --topo-borda:#3d4f6b; --topo-btn:#cdd8e8;
+  --topo-perigo:#f0b3b5; --topo-perigo-borda:#6b3a3d; --topo-perigo-hover:#4a2326; --topo-perigo-b2:#9c4a4e;
+  --brass:#9a7220; --brass-soft:#e8dcbe; --brass-fundo:#fdf9ee; --brass-ink:#7d5d19; --brass-luz:#d9bb6a;
+  --teal:#1c6f6a; --teal-fundo:#eaf5f4; --teal-borda:#a9cfcc;
+  --rubric:#9a2f33; --rubric-fundo:#fbeff0; --rubric-borda:#e0bfc0; --rubric-forte:#7e2427; --rubric-off:#e6cfd0;
+  --flor-petala:#f2ecd9; --flor-borda:#e0d0a6; --radar:#dbe2ec; --radar-miolo:rgba(28,111,106,.16);
+  --roxo:#6b4d8f; --roxo-fundo:#f3eef8; --roxo-borda:#d6c6e6;
+  --a-for:#C0392B; --a-agi:#A87609; --a-vit:#2F7A55; --a-can:#6b4d8f; --a-des:#5d6e86;
+  --a-for-f:#fbefed; --a-agi-f:#fbf4e3; --a-vit-f:#ecf6f1; --a-can-f:#f3eef8; --a-des-f:#eef1f5;
+  --sombra:0 8px 22px rgba(17,28,46,.22);
+  --r:4px;
+  color-scheme:light;
+}
+/* modo escuro — pedra e ouro, a mesma paleta do app de árvores */
+:root[data-tema="pedra"]{
+  --ink:#E9E3D6; --ink-2:rgba(233,227,214,.76); --ink-soft:rgba(233,227,214,.52); --ink-fraco:rgba(233,227,214,.3);
+  --paper:#0B0E13; --grid:rgba(233,227,214,.04);
+  --panel:#111722; --campo:#19202C; --campo-sut:#1b2330; --zebra:#161d28;
+  --hover:#1d2634; --sel:#232e40;
+  --line:rgba(233,227,214,.18); --line-2:rgba(233,227,214,.14); --linha-sut:rgba(233,227,214,.09);
+  --forte:#D9A441; --forte-txt:#0B0E13; --forte-hover:#e6b559;
+  --topo:#070a0e; --topo-txt:#E9E3D6; --topo-sub:rgba(233,227,214,.5); --topo-hover:#161d28;
+  --topo-borda:rgba(233,227,214,.22); --topo-btn:rgba(233,227,214,.82);
+  --topo-perigo:#E79AA3; --topo-perigo-borda:rgba(231,154,163,.34); --topo-perigo-hover:#3b1c20; --topo-perigo-b2:#8C2F39;
+  --brass:#D9A441; --brass-soft:rgba(217,164,65,.42); --brass-fundo:rgba(217,164,65,.1); --brass-ink:#E2C07C; --brass-luz:#D9A441;
+  --teal:#6FBF9F; --teal-fundo:rgba(111,191,159,.13); --teal-borda:rgba(111,191,159,.42);
+  --rubric:#E79AA3; --rubric-fundo:rgba(140,47,57,.2); --rubric-borda:rgba(231,154,163,.36); --rubric-forte:#8C2F39; --rubric-off:rgba(140,47,57,.45);
+  --flor-petala:#1a212e; --flor-borda:rgba(217,164,65,.32); --radar:rgba(233,227,214,.13); --radar-miolo:rgba(111,191,159,.2);
+  --roxo:#B07CC6; --roxo-fundo:rgba(176,124,198,.14); --roxo-borda:rgba(176,124,198,.4);
+  --a-for:#E0705E; --a-agi:#E3B341; --a-vit:#6FBF9F; --a-can:#B07CC6; --a-des:#9FAFC4;
+  --a-for-f:rgba(224,112,94,.13); --a-agi-f:rgba(227,179,65,.13); --a-vit-f:rgba(111,191,159,.13);
+  --a-can-f:rgba(176,124,198,.13); --a-des-f:rgba(159,175,196,.13);
+  --sombra:0 12px 32px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Inter Tight",-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:15px;line-height:1.5;
+  background-image:linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:34px 100%;
+  transition:background-color .18s,color .18s;
+}
+h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:600;margin:0;letter-spacing:-.01em}
+.mono,input[type=number],.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+
+/* ---------- topbar ---------- */
+#topbar{position:sticky;top:0;z-index:30;transition:transform .24s ease;will-change:transform;
+        box-shadow:0 1px 0 rgba(0,0,0,.2)}
+#topbar.esconde{transform:translateY(-100%)}
+
+header.top{
+  background:var(--topo);color:var(--topo-txt);padding:14px 20px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border-bottom:3px solid var(--brass);
+}
+header.top .flor{flex:0 0 auto}
+header.top h1{font-size:19px;color:var(--topo-txt);line-height:1.1}
+header.top .sub{font-size:11.5px;color:var(--topo-sub);font-family:"IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+header.top .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- buttons / fields ---------- */
+button{
+  font-family:inherit;font-size:13px;cursor:pointer;
+  background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r);padding:7px 11px;transition:.14s;
+}
+button:hover{border-color:var(--ink-2);background:var(--campo)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+button.ghost{background:transparent;color:var(--topo-btn);border-color:var(--topo-borda)}
+button.ghost:hover{background:var(--topo-hover);color:var(--topo-txt);border-color:var(--topo-btn)}
+button.primary{background:var(--forte);color:var(--forte-txt);border-color:var(--forte)}
+button.primary:hover{background:var(--forte-hover);border-color:var(--forte-hover)}
+button.danger{color:var(--rubric);border-color:var(--rubric-borda)}
+button.danger:hover{background:var(--rubric-fundo);border-color:var(--rubric)}
+button.mini{padding:3px 7px;font-size:11.5px}
+input,select,textarea{
+  font-family:inherit;font-size:14px;color:var(--ink);background:var(--campo);
+  border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;width:100%;
+}
+textarea{resize:vertical}
+label.f{display:block}
+label.f > span{display:block;margin-bottom:3px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px;display:grid;grid-template-columns:246px 1fr;gap:18px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.panel > .hd{padding:9px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.panel > .bd{padding:12px}
+
+/* ---------- sidebar ---------- */
+.roster{position:sticky;top:calc(var(--topH, 96px) + 12px)}
+.roster ul{list-style:none;margin:0;padding:0}
+#lista{max-height:56vh;overflow:auto}
+.roster button.pc{
+  width:100%;text-align:left;border:0;border-left:3px solid transparent;background:transparent;
+  border-radius:0;padding:7px 10px 7px 4px;display:block;
+}
+.roster button.pc:hover{background:var(--hover)}
+.roster button.pc.on{background:var(--sel);border-left-color:var(--brass)}
+.roster .nm{font-weight:500;font-size:14px;display:block;line-height:1.25}
+.roster .mt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase}
+.searchrow{padding:8px 10px;border-bottom:1px solid var(--line)}
+
+/* seções por grupo */
+.sec{border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:0}
+.sechd{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--campo-sut)}
+.sechd .caret{border:0;background:transparent;padding:0 2px;color:var(--ink-soft);font-size:11px;border-radius:0}
+.sechd .secnome{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+.sechd .cnt{font-size:10.5px;color:var(--ink-soft)}
+.sechd .secacts{margin-left:auto;display:flex;gap:2px;opacity:0;transition:.12s}
+.sec:hover .sechd .secacts{opacity:1}
+.sechd .secacts button{padding:1px 5px;font-size:10.5px;line-height:1.4}
+.secitens{min-height:8px}
+.pcrow{display:flex;align-items:stretch;border-bottom:1px solid var(--linha-sut)}
+.pcrow:last-child{border-bottom:0}
+.pcrow.arrastando{opacity:.35}
+.pcrow.fantasma{background:var(--campo);border:1px solid var(--brass);box-shadow:var(--sombra);border-radius:var(--r);opacity:.96}
+.grab{display:flex;align-items:center;padding:0 4px 0 6px;color:var(--ink-fraco);cursor:grab;
+  touch-action:none;user-select:none;font-size:13px;letter-spacing:-2px}
+.grab:hover{color:var(--brass)}
+body.arrastando-agora{cursor:grabbing;user-select:none}
+.vazio{padding:8px 12px;font-size:11.5px;font-style:italic}
+.linhatags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center}
+.tagbar{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.04em;padding:2px 6px;
+  border:1px solid var(--line);border-radius:10px;background:var(--campo);color:var(--ink-2);line-height:1.5}
+.tag.on{background:var(--forte);color:var(--forte-txt);border-color:var(--forte)}
+.tag.limpar{color:var(--rubric);border-color:var(--rubric-borda)}
+.mini-tag{border-color:var(--brass-soft);background:var(--brass-fundo);color:var(--brass-ink)}
+.idcard2{display:grid;grid-template-columns:minmax(150px,.7fr) 1fr;gap:10px;margin-top:10px}
+@media (max-width:900px){.idcard2{grid-template-columns:1fr}}
+
+/* ---------- ficha ---------- */
+.idcard{display:grid;grid-template-columns:1.5fr 1fr repeat(3,minmax(84px,.62fr));gap:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+
+table.attr{width:100%;border-collapse:collapse;font-size:14px}
+table.attr th{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:500;text-align:right;padding:0 6px 6px;border-bottom:1px solid var(--line)
+}
+table.attr th:first-child{text-align:left}
+table.attr td{padding:7px 6px;border-bottom:1px solid var(--linha-sut);text-align:right;vertical-align:middle}
+table.attr td:first-child{text-align:left}
+table.attr tr:last-child td{border-bottom:0}
+.aname{font-weight:500}
+.tsel{width:62px;padding:3px 4px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;text-align:center}
+.vbase{color:var(--ink-soft);font-size:13.5px}
+.vequip{color:var(--teal);font-size:13px}
+.vtot{font-weight:600;font-size:16px}
+.delta{font-size:11.5px;font-family:"IBM Plex Mono",monospace}
+.delta.up{color:var(--teal)}
+.delta.zero{color:var(--ink-fraco)}
+.pctnote{font-size:11.5px;color:var(--ink-soft);margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.warn{color:var(--rubric)}
+
+/* flower */
+.florwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink-soft);font-family:"IBM Plex Mono",monospace}
+.legend i{display:inline-block;width:16px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
+
+/* recursos */
+.res{display:grid;gap:10px}
+.rescard{border:1px solid var(--line);border-radius:var(--r);padding:10px;background:var(--campo)}
+.rescard .top{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.rescard .val{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:600;margin-left:auto;line-height:1}
+.rescard .val.err{font-size:13px;color:var(--rubric);font-weight:500}
+.rescard input.fml{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.fmlerr{color:var(--rubric);font-size:11.5px;margin-top:4px;font-family:"IBM Plex Mono",monospace}
+.vars{font-size:11.5px;color:var(--ink-soft);line-height:1.7}
+.vars code{background:var(--campo-sut);border:1px solid var(--line-2);border-radius:3px;padding:1px 4px;font-family:"IBM Plex Mono",monospace;font-size:11px;cursor:pointer}
+.vars code:hover{background:var(--brass-soft);border-color:var(--brass)}
+
+/* itens */
+table.items{width:100%;border-collapse:collapse;font-size:13.5px}
+table.items th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;padding:0 4px 6px;border-bottom:1px solid var(--line)}
+table.items td{padding:4px;border-bottom:1px solid var(--linha-sut)}
+table.items input[type=number]{width:56px;padding:4px;text-align:right}
+table.items input.inm{padding:4px 6px}
+table.items td.c{text-align:center}
+.off{opacity:.42}
+
+/* config / modal */
+.modal{position:fixed;inset:0;background:rgba(4,6,10,.62);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:40}
+.modal .sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);max-width:860px;width:100%}
+.modal .sheet .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal .sheet .bd{padding:14px}
+.cfggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+table.cfg{width:100%;border-collapse:collapse;font-size:13.5px}
+table.cfg th,table.cfg td{padding:3px 5px;text-align:right;border-bottom:1px solid var(--linha-sut)}
+table.cfg th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+table.cfg th:first-child,table.cfg td:first-child{text-align:left}
+table.cfg input{width:78px;padding:3px 5px;text-align:right}
+.lvlscroll{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);padding:6px}
+.empty{padding:40px 16px;text-align:center;color:var(--ink-soft)}
+
+/* ---------- abas ---------- */
+nav.tabs{background:var(--topo);padding:0 18px;display:flex;gap:2px;border-bottom:1px solid var(--topo-hover)}
+nav.tabs button{
+  background:transparent;border:0;border-radius:0;color:var(--topo-sub);padding:9px 15px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+  border-bottom:2px solid transparent;
+}
+nav.tabs button:hover{color:var(--topo-txt);background:var(--topo-hover)}
+nav.tabs button.on{color:var(--topo-txt);border-bottom-color:var(--brass);background:var(--topo-hover)}
+.wrap.solo{grid-template-columns:1fr}
+
+/* ---------- mesa ---------- */
+.sitbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+table.roll{width:100%;border-collapse:collapse;font-size:13.5px}
+table.roll th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;padding:0 5px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.roll td{padding:5px;border-bottom:1px solid var(--linha-sut);vertical-align:middle}
+table.roll select,table.roll input{padding:4px 6px;font-size:13px}
+table.roll input[type=number]{width:64px;text-align:right}
+table.roll .dado{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);white-space:nowrap}
+table.roll .tot{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:600}
+table.roll .tot small{font-size:11px;font-weight:400;color:var(--ink-soft);display:block;line-height:1.3}
+.lado{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:1px 5px;border-radius:3px;border:1px solid}
+.lado.aliado{color:var(--teal);border-color:var(--teal-borda);background:var(--teal-fundo)}
+.lado.inimigo{color:var(--rubric);border-color:var(--rubric-borda);background:var(--rubric-fundo)}
+.lado.neutro{color:var(--ink-soft);border-color:var(--line);background:var(--campo-sut)}
+.veredito{border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r);padding:11px 13px;margin-top:12px}
+.veredito h3{font-size:16px;margin-bottom:6px}
+.vlinha{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-size:13.5px}
+.vlinha .p{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft);width:24px}
+.vlinha .n{flex:1}
+.vlinha .v{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.ok{color:var(--teal)} .no{color:var(--rubric)}
+.bigroll{font-family:"IBM Plex Mono",monospace;font-size:44px;font-weight:600;line-height:1}
+.bigroll small{display:block;font-size:12px;font-weight:400;color:var(--ink-soft);letter-spacing:.04em}
+.quick{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.log{max-height:320px;overflow:auto;font-size:12.5px}
+.log .row{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--linha-sut);align-items:baseline}
+.log .ts{font-family:"IBM Plex Mono",monospace;color:var(--ink-fraco);font-size:10.5px}
+.log .who{font-weight:500;min-width:110px}
+.log .det{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:11.5px;flex:1}
+.log .tt{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.tab-ev{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media (max-width:900px){.tab-ev{grid-template-columns:1fr}}
+.bars{display:flex;align-items:flex-end;gap:2px;height:90px;margin-top:8px}
+.bars div{flex:1;background:var(--teal);opacity:.75;border-radius:1px 1px 0 0}
+.entrada{width:100%;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+
+/* ---------- poderes divinos ---------- */
+/* ---------- rolagem rápida na ficha ---------- */
+.rolbox{border-top:1px solid var(--line);padding:11px 12px 12px}
+.rolhd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.rolfix{display:flex;align-items:center;gap:5px;margin-left:auto}
+.rolfix input{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
+.rolhd select{width:auto;padding:3px 6px;font-size:12px}
+.rolbts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
+.atrbt{flex:1 1 60px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 4px;line-height:1.15}
+.atrbt b{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;color:var(--ink-soft);font-weight:500}
+.atrbt span{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600}
+.atrbt:hover{border-color:var(--brass);background:var(--brass-fundo)}
+.atrbt:hover b{color:var(--brass-ink)}
+.atrbt.der span{color:var(--ink-2)}
+.rolsaida{display:flex;align-items:center;gap:10px;margin-top:9px;padding:8px 10px;
+  border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r)}
+.rolsaida.vazia{border-style:dashed;border-color:var(--line);background:transparent;
+  color:var(--ink-soft);font-size:12.5px;justify-content:center;padding:10px}
+.rolnum{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;line-height:1}
+.roldet{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft);line-height:1.45}
+.roldet strong{color:var(--ink);font-weight:600}
+
+/* cores dos cinco atributos na rolagem */
+.atrbt.c-for b,.rolsaida.c-for .rolnum{color:var(--a-for)}
+.atrbt.c-agi b,.rolsaida.c-agi .rolnum{color:var(--a-agi)}
+.atrbt.c-vit b,.rolsaida.c-vit .rolnum{color:var(--a-vit)}
+.atrbt.c-can b,.rolsaida.c-can .rolnum{color:var(--a-can)}
+.atrbt.c-des b,.rolsaida.c-des .rolnum{color:var(--a-des)}
+.atrbt.c-for{border-left:3px solid var(--a-for)}
+.atrbt.c-agi{border-left:3px solid var(--a-agi)}
+.atrbt.c-vit{border-left:3px solid var(--a-vit)}
+.atrbt.c-can{border-left:3px solid var(--a-can)}
+.atrbt.c-des{border-left:3px solid var(--a-des)}
+.atrbt.c-for:hover{background:var(--a-for-f);border-color:var(--a-for)}
+.atrbt.c-agi:hover{background:var(--a-agi-f);border-color:var(--a-agi)}
+.atrbt.c-vit:hover{background:var(--a-vit-f);border-color:var(--a-vit)}
+.atrbt.c-can:hover{background:var(--a-can-f);border-color:var(--a-can)}
+.atrbt.c-des:hover{background:var(--a-des-f);border-color:var(--a-des)}
+.atrbt.c-for:hover b,.atrbt.c-agi:hover b,.atrbt.c-vit:hover b,.atrbt.c-can:hover b,.atrbt.c-des:hover b{color:inherit}
+.rolsaida.c-for{border-color:var(--a-for);background:var(--a-for-f)}
+.rolsaida.c-agi{border-color:var(--a-agi);background:var(--a-agi-f)}
+.rolsaida.c-vit{border-color:var(--a-vit);background:var(--a-vit-f)}
+.rolsaida.c-can{border-color:var(--a-can);background:var(--a-can-f)}
+.rolsaida.c-des{border-color:var(--a-des);background:var(--a-des-f)}
+.atrbt.disputar{flex:1 1 100%;flex-direction:row;justify-content:center;gap:7px;
+  border-style:dashed;border-color:var(--brass);color:var(--brass-ink)}
+.atrbt.disputar b{font-size:14px;color:var(--brass)}
+.atrbt.disputar span{font-size:12.5px;font-family:inherit;font-weight:500}
+.atrbt.disputar:hover{background:var(--brass-fundo);border-style:solid}
+table.attr tr.defesa td{background:var(--zebra)}
+input.defbase{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
+
+/* ---------- disputa de rolagens ---------- */
+.dislados{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:start}
+.dislado{border:1px solid var(--line);border-radius:var(--r);padding:11px;background:var(--campo)}
+.dislado.venceu{border-color:var(--teal);background:var(--teal-fundo)}
+.disnome{font-weight:600;font-size:15px;margin-bottom:8px;display:block}
+.discampos{display:grid;gap:7px}
+.discampos label{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.discampos label > span{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-soft)}
+.discampos select,.discampos input{width:auto;flex:1;max-width:160px;padding:4px 7px}
+.disvs{font-family:"Fraunces",Georgia,serif;font-size:20px;color:var(--ink-soft);align-self:center;padding-top:28px}
+.disval{font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--ink);font-weight:600}
+.disnum{font-family:"IBM Plex Mono",monospace;font-size:34px;font-weight:600;line-height:1;margin-top:9px}
+.disdet{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.disveredito{margin-top:14px;padding:11px 13px;border:1px solid var(--brass);background:var(--brass-fundo);
+  border-radius:var(--r);text-align:center}
+.disveredito strong{font-size:16px}
+.disveredito .emp{color:var(--ink-soft)}
+
+/* ---------- aba Skills ---------- */
+.semarv{text-align:center;padding:26px 16px;max-width:520px;margin:0 auto}
+.semarv h3{font-size:18px;margin-bottom:6px}
+.semarv p{color:var(--ink-soft);font-size:13.5px;margin:0 0 14px}
+.poolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.poolcard{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:var(--r);
+  padding:7px 10px;background:var(--campo)}
+.pooldot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.18) inset}
+.poolnome{font-weight:500;font-size:13.5px}
+.poolcard input{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
+.poolconta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft)}
+.poolconta strong{color:var(--ink);font-size:13px}
+.poolconta.warn strong{color:var(--rubric)}
+
+.skbloco{border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px;background:var(--panel)}
+.skbloco:last-child{margin-bottom:0}
+.skhd{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;border-radius:0;
+  background:var(--campo-sut);padding:8px 11px;border-bottom:1px solid var(--line)}
+.skhd:hover{background:var(--hover)}
+.skhd.estatico{cursor:default;background:var(--campo-sut)}
+.skhd .caret{color:var(--ink-soft);font-size:10px}
+.skcorpo{padding:11px}
+.skcat{margin-bottom:10px}
+.skchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.skchip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:var(--r);
+  padding:5px 9px;background:var(--campo);cursor:pointer;font-size:13.5px}
+.skchip:hover{border-color:var(--ink-2)}
+.skchip.on{border-color:var(--brass);background:var(--brass-fundo)}
+.skchip input{width:auto;flex:0 0 auto}
+.skchip small{display:block;font-size:10.5px;color:var(--ink-soft);font-family:"IBM Plex Mono",monospace}
+.skarv{margin-bottom:16px}
+.skarv:last-child{margin-bottom:0}
+.skarvhd{display:flex;align-items:center;gap:8px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.skarvnome{font-family:"Fraunces",Georgia,serif;font-size:15px;font-weight:600}
+
+.skno{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--linha-sut)}
+.skno:last-child{border-bottom:0}
+.sknobt{flex:0 0 auto;width:26px;height:26px;padding:0;border-radius:50%;font-family:"IBM Plex Mono",monospace;
+  font-size:12px;font-weight:600;line-height:1;border:1.5px solid var(--line);background:var(--campo);color:var(--ink-soft)}
+.st-disp .sknobt{border-color:var(--brass);color:var(--brass)}
+.st-disp .sknobt:hover{background:var(--brass);color:var(--forte-txt)}
+.st-on .sknobt{border-color:var(--teal);background:var(--teal);color:var(--panel)}
+.st-caro .sknobt{border-style:dashed;border-color:var(--rubric-borda);color:var(--rubric)}
+.sknobt:disabled{opacity:.4;cursor:not-allowed}
+.sknocorpo{min-width:0;flex:1}
+.sknolinha{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sknome{font-weight:500;font-size:13.5px;display:inline-flex;align-items:center;gap:5px}
+.st-bloq .sknome,.st-fechado .sknome{color:var(--ink-soft)}
+.skdot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
+.sktipo,.skestado,.skcusto{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.skcusto{color:var(--brass-ink)}
+.st-on .skestado{color:var(--teal)}
+.st-caro .skestado{color:var(--rubric)}
+.skuso{font-family:"IBM Plex Mono",monospace;font-size:10px;padding:1px 5px;border-radius:9px;
+  border:1px solid var(--line);color:var(--ink-2);background:var(--campo-sut)}
+.u-ativa{color:var(--teal);border-color:var(--teal-borda);background:var(--teal-fundo)}
+.u-reacao{color:var(--brass-ink);border-color:var(--brass-soft);background:var(--brass-fundo)}
+.u-postura{color:var(--roxo);border-color:var(--roxo-borda);background:var(--roxo-fundo)}
+.sknodesc{font-size:12.5px;color:var(--ink-soft);margin-top:2px;line-height:1.45}
+.sknograu{font-size:12px;color:var(--teal);margin-top:2px;font-weight:500}
+.sknotrava{font-size:11.5px;color:var(--ink-fraco);margin-top:2px;font-style:italic}
+
+table.sktab{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+table.sktab th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:500;text-align:left;padding:0 6px 6px;border-bottom:1px solid var(--line)}
+table.sktab td{padding:6px;border-bottom:1px solid var(--linha-sut);vertical-align:top}
+table.sktab tr.skdesc td{padding:0 6px 7px;font-size:12.5px;color:var(--ink-soft);border-bottom:1px solid var(--linha-sut)}
+table.sktab tr.skdesc strong{color:var(--teal);font-weight:500}
+.sknat{display:inline-flex;align-items:center;gap:5px;font-size:12.5px}
+
+/* ---------- apagar dados (flush) ---------- */
+button.ghost.perigo{color:var(--topo-perigo);border-color:var(--topo-perigo-borda)}
+button.ghost.perigo:hover{background:var(--topo-perigo-hover);color:#fff;border-color:var(--topo-perigo-b2)}
+.sheet.risco{border-color:var(--rubric);border-top:3px solid var(--rubric)}
+.flushlist{display:grid;gap:2px;margin:10px 0}
+.flushitem{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--campo);cursor:pointer}
+.flushitem:hover{border-color:var(--ink-2)}
+.flushitem input{width:auto;margin-top:2px;flex:0 0 auto}
+.flushitem.marcado{border-color:var(--rubric);background:var(--rubric-fundo)}
+.flushitem .rot{font-weight:500;font-size:14px;display:block}
+.flushitem .dsc{font-size:12px;color:var(--ink-soft)}
+.avisobox{border:1px solid var(--rubric);background:var(--rubric-fundo);border-radius:var(--r);padding:12px 14px;margin:12px 0}
+.avisobox h3{font-size:16px;color:var(--rubric);margin-bottom:6px}
+.avisobox ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.avisobox li{margin:2px 0}
+.digite{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.digite input{max-width:190px;font-family:"IBM Plex Mono",monospace;letter-spacing:.18em;text-transform:uppercase;font-size:15px}
+button.apagar{background:var(--rubric);color:#fff;border-color:var(--rubric)}
+:root[data-tema="pedra"] button.apagar{color:#1a0e11}
+button.apagar:hover:not(:disabled){background:var(--rubric-forte);border-color:var(--rubric-forte);color:#fff}
+button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-borda);color:var(--panel);cursor:not-allowed}
+.modalacts{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+
+/* ---------- abas internas da ficha ---------- */
+.subtabs{gap:2px;flex-wrap:wrap}
+.subtabs .sub{border:0;border-radius:0;background:transparent;color:var(--ink-soft);
+  padding:4px 10px;border-bottom:2px solid transparent;
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+.subtabs .sub:hover{color:var(--ink);background:var(--hover)}
+.subtabs .sub.on{color:var(--ink);border-bottom-color:var(--brass);background:var(--zebra)}
+.subtabs .mk{color:var(--brass);font-size:10px;margin-left:3px}
+.colunas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.habrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--linha-sut)}
+.habrow:last-child{border-bottom:0}
+.habrow textarea{grid-column:1/-1}
+.tipohab{width:auto;padding:3px 6px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  letter-spacing:.06em;text-transform:uppercase;border-radius:10px;font-weight:500}
+.t-ativo{color:var(--teal);border-color:var(--teal-borda);background:var(--teal-fundo)}
+.t-reativo{color:var(--brass-ink);border-color:var(--brass-soft);background:var(--brass-fundo)}
+.t-passivo{color:var(--ink-2);border-color:var(--line-2);background:var(--campo-sut)}
+.t-inativo{color:var(--ink-soft);border-color:var(--line);background:var(--zebra)}
+.habrow.off .habnome,.habrow.off textarea{opacity:.5}
+@media (max-width:700px){.colunas{grid-template-columns:1fr}}
+.scrollx{overflow-x:auto}
+.scrollx table.items{min-width:800px}
+.pdlist{display:grid;gap:2px}
+.pdrow{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--linha-sut)}
+.pdrow:last-child{border-bottom:0}
+.pdctl{display:flex;align-items:center;gap:8px}
+.pdctl .step{width:30px;height:30px;padding:0;font-size:17px;line-height:1;border-radius:50%}
+.pdctl .step:disabled{opacity:.3;cursor:default}
+.pdval{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;min-width:62px;text-align:center;line-height:1}
+.pdval small{font-size:11px;font-weight:400;color:var(--ink-soft)}
+.pdrow .pips{grid-column:1/-1;margin-top:2px}
+.pips{display:flex;flex-wrap:wrap;gap:6px}
+.pip{width:18px;height:18px;padding:0;border-radius:50%;border:1.5px solid var(--brass);background:var(--campo)}
+.pip.on{background:var(--brass);box-shadow:inset 0 0 0 2px #fdf9ee}
+.pip:hover{border-color:var(--ink)}
+table.attr tr.derived td{background:var(--zebra)}
+@media (max-width:700px){.pdrow{grid-template-columns:1fr auto;row-gap:8px}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--forte);color:var(--forte-txt);padding:9px 15px;border-radius:var(--r);font-size:13px;z-index:60;box-shadow:var(--sombra)}
+.hint{font-size:11.5px;color:var(--ink-soft)}
+hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .roster{position:static}
+  .two{grid-template-columns:1fr}
+  .idcard{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+<header class="top">
+  <svg class="flor" width="30" height="30" viewBox="0 0 100 100" aria-hidden="true">
+    <g id="florglyph" fill="none" stroke="var(--brass-luz)" stroke-width="4" stroke-linejoin="round">
+      <path d="M50 12 L61 38 L88 40 L67 58 L74 85 L50 70 L26 85 L33 58 L12 40 L39 38 Z"/>
+    </g>
+  </svg>
+  <div>
+    <h1>Calculadora de Atributos</h1>
+    <div class="sub">Tiny Cats · Sistema de RPG</div>
+  </div>
+  <div class="acts">
+    <button class="ghost" id="btnTema" title="Alternar entre automático, claro e escuro"></button>
+    <button class="ghost" id="btnCfg">Tabelas base</button>
+    <button class="ghost" id="btnExport">Exportar</button>
+    <button class="ghost" id="btnImport">Importar</button>
+    <button class="ghost perigo" id="btnFlush">Apagar dados</button>
+    <input type="file" id="fileIn" accept=".json" style="display:none">
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="fichas" class="on">Fichas</button>
+  <button data-tab="mesa">Mesa</button>
+  <button data-tab="eventos">Eventos</button>
+</nav>
+</div>
+
+<div class="wrap" id="tab-fichas">
+  <!-- ============ elenco ============ -->
+  <aside class="panel roster">
+    <div class="hd"><span class="eyebrow">Elenco</span>
+      <span style="margin-left:auto;display:flex;gap:5px">
+        <button class="mini" id="btnGrupo">+ Grupo</button>
+        <button class="mini primary" id="btnNew">+ Personagem</button>
+      </span>
+    </div>
+    <div class="searchrow">
+      <input id="busca" placeholder="Buscar nome, raça, grupo ou tag">
+      <div class="tagbar" id="tagbar"></div>
+    </div>
+    <ul id="lista"></ul>
+  </aside>
+
+  <!-- ============ ficha ============ -->
+  <main id="ficha"></main>
+</div>
+
+<div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
+<div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
+
+<script>
+/* =======================================================================
+   CALCULADORA DE ATRIBUTOS — TINY CATS
+   Um arquivo. Salva no navegador. Exporta/importa JSON.
+   ======================================================================= */
+
+/* ---------- atributos do sistema ---------- */
+const ATRIBS = [
+  {k:'FOR', nome:'Força',             aliases:['FORCA','FORÇA']},
+  {k:'DES', nome:'Destreza',          aliases:['DESTREZA']},
+  {k:'VIT', nome:'Vitalidade',        aliases:['VITALIDADE']},
+  {k:'CAN', nome:'Canalização Mágica',aliases:['CANALIZACAO','CANALIZAÇÃO','CM','MAG']},
+  {k:'AGI', nome:'Agilidade',         aliases:['AGILIDADE']},
+];
+/* Derivados: não recebem pontos. Somam atributos BASE (sem equipamento) mais o
+   campo especial do próprio derivado nos equipamentos. Metades arredondam pra baixo. */
+const DERIV = [
+  {k:'ESQ', nome:'Esquiva',     desc:'AGI',           calc:b=>b.AGI,
+   aliases:['ESQUIVA']},
+  {k:'FUR', nome:'Furtividade', desc:'AGI + DES/2',   calc:b=>b.AGI+Math.floor(b.DES/2),
+   aliases:['FURTIVIDADE']},
+  {k:'PER', nome:'Percepção',   desc:'DES + CAN/2',   calc:b=>b.DES+Math.floor(b.CAN/2),
+   aliases:['PERCEPCAO','PERCEPÇÃO']},
+];
+const ehDerivado = k => DERIV.some(d=>d.k===k);
+/* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
+   Não entram na distribuição de pontos do level. */
+const DEFESAS = [
+  {k:'DFF', nome:'Defesa Física', rot:'DEF F', aliases:['DEFF','DEFESAFISICA']},
+  {k:'DFM', nome:'Defesa Mágica', rot:'DEF M', aliases:['DEFM','DEFESAMAGICA']},
+];
+const ehDefesa = k => DEFESAS.some(d=>d.k===k);
+/* cores dos cinco atributos principais, usadas na rolagem */
+const COR_ATR = {FOR:'for', DES:'des', VIT:'vit', CAN:'can', AGI:'agi'};
+const TIPOS_HAB = ['Ativo','Reativo','Passivo','Inativo'];
+const TIERS_ATR = ['A','B','C','D','E'];
+
+/* ---------- FORMULA ENGINE (parser próprio, sem eval) ---------- */
+/* ##PARSER_START## */
+function tokenize(src){
+  const t=[]; let i=0;
+  const isD=c=>c>='0'&&c<='9';
+  const isA=c=>/[A-Za-zÀ-ÿ_]/.test(c);
+  while(i<src.length){
+    const c=src[i];
+    if(c===' '||c==='\t'||c==='\n'){i++;continue}
+    if(isD(c)||(c==='.'&&isD(src[i+1]))){
+      let j=i; while(j<src.length&&(isD(src[j])||src[j]==='.'))j++;
+      t.push({t:'num',v:parseFloat(src.slice(i,j))}); i=j; continue;
+    }
+    if(isA(c)){
+      let j=i; while(j<src.length&&(isA(src[j])||isD(src[j])))j++;
+      t.push({t:'id',v:src.slice(i,j)}); i=j; continue;
+    }
+    if('><=!'.includes(c)){
+      const dois=src.slice(i,i+2);
+      if(['>=','<=','==','!='].includes(dois)){t.push({t:'cmp',v:dois});i+=2;continue}
+      if(c==='>'||c==='<'){t.push({t:'cmp',v:c});i++;continue}
+      if(c==='='){t.push({t:'cmp',v:'=='});i++;continue}
+      throw new Error('Use >, <, >=, <=, == ou !=');
+    }
+    if(';'===c){t.push({t:','});i++;continue}
+    if('+-*/%^(),'.includes(c)){t.push({t:c});i++;continue}
+    throw new Error('Caractere inválido: "'+c+'"');
+  }
+  return t;
+}
+const FUNCS={
+  min:Math.min, max:Math.max, floor:Math.floor, ceil:Math.ceil,
+  round:Math.round, abs:Math.abs, sqrt:Math.sqrt, pow:Math.pow,
+  arredondar:Math.round, teto:Math.ceil, piso:Math.floor, raiz:Math.sqrt,
+  se:(c,a,b)=>c?a:b
+};
+function evalFormula(src, vars){
+  if(src==null||String(src).trim()==='') return null;
+  const tk=tokenize(String(src)); let p=0;
+  const peek=()=>tk[p], next=()=>tk[p++];
+  function comparacao(){
+    let v=expr();
+    while(peek()&&peek().t==='cmp'){
+      const o=next().v, r=expr();
+      v = (o==='>'?v>r : o==='<'?v<r : o==='>='?v>=r : o==='<='?v<=r : o==='=='?v===r : v!==r) ? 1 : 0;
+    }
+    return v;
+  }
+  function expr(){
+    let v=term();
+    while(peek()&&(peek().t==='+'||peek().t==='-')){ const o=next().t; const r=term(); v = o==='+'? v+r : v-r; }
+    return v;
+  }
+  function term(){
+    let v=unary();
+    while(peek()&&(peek().t==='*'||peek().t==='/'||peek().t==='%')){
+      const o=next().t; const r=unary();
+      if(o==='*')v=v*r; else if(o==='/'){ if(r===0) throw new Error('Divisão por zero'); v=v/r; } else { if(r===0) throw new Error('Divisão por zero'); v=v%r; }
+    }
+    return v;
+  }
+  function unary(){
+    if(peek()&&peek().t==='-'){next();return -unary()}
+    if(peek()&&peek().t==='+'){next();return unary()}
+    return power();
+  }
+  function power(){
+    const b=atom();
+    if(peek()&&peek().t==='^'){next(); return Math.pow(b,unary())}
+    return b;
+  }
+  function atom(){
+    const tok=next();
+    if(!tok) throw new Error('Fórmula incompleta');
+    if(tok.t==='num') return tok.v;
+    if(tok.t==='('){ const v=comparacao(); if(!peek()||next().t!==')') throw new Error('Falta fechar ")"'); return v; }
+    if(tok.t==='id'){
+      const nm=tok.v;
+      if(peek()&&peek().t==='('){
+        next();
+        const f=FUNCS[nm.toLowerCase()];
+        if(!f) throw new Error('Função desconhecida: '+nm);
+        const args=[];
+        if(peek()&&peek().t===')'){next()}
+        else{
+          for(;;){ args.push(comparacao()); const s=next(); if(!s) throw new Error('Falta fechar ")"'); if(s.t===')')break; if(s.t!==',') throw new Error('Esperado "," ou ")"'); }
+        }
+        return f.apply(null,args);
+      }
+      const key=nm.toUpperCase();
+      if(key in vars) return vars[key];
+      throw new Error('Variável desconhecida: '+nm);
+    }
+    throw new Error('Trecho inesperado na fórmula');
+  }
+  const out=comparacao();
+  if(p<tk.length) throw new Error('Sobrou conteúdo depois da fórmula');
+  if(!isFinite(out)) throw new Error('Resultado inválido');
+  return out;
+}
+/* ##PARSER_END## */
+
+/* ---------- ALEATORIEDADE ----------
+   Usa crypto.getRandomValues (gerador criptográfico do navegador), com
+   amostragem por rejeição para não distorcer as faces do dado. Nenhum
+   Math.random em rolagem. Cada rolagem guarda o sorteio bruto no registro. */
+function randInt(max){ // inteiro de 0 a max-1, uniforme
+  if(max<=0) return 0;
+  const cr = (window.crypto||window.msCrypto);
+  const limite = Math.floor(4294967296/max)*max;   // corta o resto que enviesaria
+  const buf=new Uint32Array(1);
+  for(let i=0;i<64;i++){
+    cr.getRandomValues(buf);
+    if(buf[0]<limite) return buf[0]%max;
+  }
+  return buf[0]%max;
+}
+function rolarDado(faces){ return randInt(faces)+1 }
+function rolarVarios(qtd,faces){ const r=[]; for(let i=0;i<qtd;i++) r.push(rolarDado(faces)); return r }
+
+/* expressão livre: "2d6+1d8+5" / "d20-2" */
+function rolarExpressao(txt){
+  const s=String(txt||'').replace(/\s+/g,'').toLowerCase();
+  if(!s) throw new Error('Escreva algo como 1d20+3');
+  if(!/^[+-]?(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/.test(s)) throw new Error('Formato inválido. Use 2d6+3, d20, 1d100-5…');
+  const partes=s.match(/[+-]?(?:\d*d\d+|\d+)/g)||[];
+  let total=0; const detalhe=[];
+  partes.forEach(p=>{
+    const sinal = p[0]==='-'? -1 : 1;
+    const corpo = p.replace(/^[+-]/,'');
+    if(corpo.includes('d')){
+      const [q,f]=corpo.split('d');
+      const qtd=q===''?1:parseInt(q,10), faces=parseInt(f,10);
+      if(qtd<1||qtd>200) throw new Error('Quantidade de dados fora do razoável (1 a 200)');
+      if(faces<2||faces>10000) throw new Error('Faces do dado fora do razoável (2 a 10000)');
+      const rs=rolarVarios(qtd,faces);
+      total += sinal*rs.reduce((a,b)=>a+b,0);
+      detalhe.push((sinal<0?'−':'')+qtd+'d'+faces+' ['+rs.join(', ')+']');
+    }else{
+      const v=parseInt(corpo,10); total+=sinal*v;
+      detalhe.push((sinal<0?'−':'+')+v);
+    }
+  });
+  return {total, detalhe:detalhe.join(' '), expr:s};
+}
+
+/* fixa: atributo 60 fixando 20 → 1d40 + 20 */
+function rolarFixa(valorAtributo, fixado){
+  const v=Math.max(0,Math.round(+valorAtributo||0));
+  const f=Math.min(v,Math.max(0,Math.round(+fixado||0)));
+  const faces=v-f;
+  if(faces<=0) return {dado:0, bruto:f, fixado:f, total:v, texto:'fixo em '+v};
+  const bruto=rolarDado(faces);
+  return {dado:faces, bruto, fixado:f, total:bruto+f, texto:'1d'+faces+' + '+f};
+}
+
+/* ---------- registro da mesa ---------- */
+function logar(e){
+  S.log = S.log||[];
+  S.log.unshift({id:uid(), ts:Date.now(), ...e});
+  if(S.log.length>300) S.log.length=300;
+  save();
+}
+function horaCurta(ts){
+  const d=new Date(ts);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+/* ---------- estado padrão ---------- */
+function tabelaNiveisPadrao(){
+  const t=[]; for(let l=1;l<=50;l++) t.push({lvl:l, pts: l===50?445:45+(l-1)*8});
+  return t;
+}
+function estadoPadrao(){
+  return {
+    v:1,
+    cfg:{
+      niveis:tabelaNiveisPadrao(),
+      tiersPersonagem:[{t:'S',m:1.12},{t:'A',m:1.08},{t:'B',m:1.04},{t:'C',m:1.00},{t:'D',m:0.85},{t:'E',m:0.75}],
+      pct:{A:0.30,B:0.26,C:0.22,D:0.17,E:0.05},
+      arredondar:'floor'
+    },
+    personagens:[personagemPadrao('Dain X','Humano', 'S', 19, {FOR:'A',DES:'C',AGI:'D',VIT:'B',CAN:'E'})],
+    situacoes:[],
+    tabelas:[{id:uid(), nome:'Encontros na estrada', itens:'Caravana de mercadores nervosos\nPatrulha da Ordem dos Cruzados\nCorpo recente, sem ferimentos visíveis\nNeblina densa e silêncio absoluto\nNada acontece\nEmboscada'}],
+    log:[],
+    bib:null,
+    sel:null, selSit:null, aba:'fichas'
+  };
+}
+function uid(){return Math.random().toString(36).slice(2,10)}
+function personagemPadrao(nome,raca,tier,level,tiers){
+  return {
+    id:uid(), nome:nome||'Novo personagem', raca:raca||'', lado:'Aliado', grupo:'', tags:[],
+    tier:tier||'C', level:level||1,
+    tiers: tiers||{FOR:'A',DES:'B',AGI:'C',VIT:'D',CAN:'E'},
+    pctProprio:null,
+    poderes:[],
+    skills:{arvores:[], pontos:{}, alocados:{}},
+    defesas:{DFF:0, DFM:0},
+    rol:{fixa:0, fonte:'total'}, ultRol:null,
+    disputa:{atrA:'FOR', alvoId:'', atrB:'FOR', fixaB:0, valorB:40},
+    estaque:{a:'', b:''},
+    habilidades:[],
+    itens:[],
+    recursos:[
+      {id:uid(), nome:'HP', fml:'VIT*8 + LVL*5'},
+      {id:uid(), nome:'SP', fml:'CAN*6 + LVL*3'}
+    ],
+    notas:''
+  };
+}
+let S = estadoPadrao();
+
+/* ---------- persistência ---------- */
+const KEY='urgm_calc_atributos_v1';
+async function loadState(){
+  try{
+    if(window.storage && window.storage.get){
+      const r=await window.storage.get(KEY);
+      if(r && r.value) return JSON.parse(r.value);
+    }
+  }catch(e){/* chave ainda não existe */}
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+let saveT=null;
+function save(){
+  clearTimeout(saveT);
+  saveT=setTimeout(async()=>{
+    const data=JSON.stringify(S);
+    try{ if(window.storage && window.storage.set){ await window.storage.set(KEY,data); } }catch(e){}
+    try{ localStorage.setItem(KEY,data); }catch(e){}
+  },350);
+}
+function toast(msg){
+  const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
+  document.body.appendChild(d); setTimeout(()=>d.remove(),2200);
+}
+
+/* ---------- cálculo ---------- */
+function ptsDoLevel(lvl){
+  const t=S.cfg.niveis, row=t.find(r=>+r.lvl===+lvl);
+  if(row) return +row.pts;
+  if(!t.length) return 0;
+  const last=t[t.length-1], first=t[0];
+  if(+lvl>+last.lvl) return +last.pts;      // acima da tabela: trava no último
+  return +first.pts;
+}
+function multTier(tier){
+  const r=S.cfg.tiersPersonagem.find(x=>x.t===tier);
+  return r? +r.m : 1;
+}
+function pctDe(pc,tier){
+  const tab = pc.pctProprio || S.cfg.pct;
+  const v = tab[tier];
+  return v==null?0:+v;
+}
+function arred(n){
+  if(n==null||isNaN(n))return n;
+  switch(S.cfg.arredondar){
+    case 'floor': return Math.floor(n);
+    case 'ceil':  return Math.ceil(n);
+    case 'round': return Math.round(n);
+    default:      return Math.round(n*1000)/1000;
+  }
+}
+function bonusItens(pc){
+  const b={}; ATRIBS.forEach(a=>b[a.k]=0); DERIV.forEach(d=>b[d.k]=0); DEFESAS.forEach(d=>b[d.k]=0);
+  (pc.itens||[]).forEach(it=>{ if(it.equipado!==false){
+    ATRIBS.forEach(a=>{ b[a.k]+= (+it.bonus?.[a.k]||0); });
+    DERIV.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
+    DEFESAS.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
+  }});
+  return b;
+}
+function calcular(pc){
+  const mult=multTier(pc.tier);
+  const total    = ptsDoLevel(pc.level)*mult;
+  const totalAnt = ptsDoLevel(Math.max(1,(+pc.level)-1))*mult;
+  const eq=bonusItens(pc);
+  const base={},ant={},tot={};
+  ATRIBS.forEach(a=>{
+    const p=pctDe(pc,pc.tiers[a.k]);
+    base[a.k]=arred(total*p);
+    ant[a.k] =arred(totalAnt*p);
+    tot[a.k] =base[a.k]+eq[a.k];
+  });
+  const der={}, derAnt={};                       // sempre a partir dos valores BASE
+  DERIV.forEach(d=>{ der[d.k]=d.calc(base)+eq[d.k]; derAnt[d.k]=d.calc(ant)+eq[d.k]; });
+  const def={};                                   // manual da ficha + equipamentos
+  DEFESAS.forEach(d=>{ def[d.k]=(+((pc.defesas||{})[d.k])||0)+eq[d.k]; });
+  const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(total), TOTAL:arred(total)};
+  DERIV.forEach(d=>{
+    vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base); vars[d.k+'_EQ']=eq[d.k];
+    d.aliases.forEach(al=>{vars[al]=der[d.k]});
+  });
+  DEFESAS.forEach(d=>{
+    vars[d.k]=def[d.k]; vars[d.k+'_B']=+((pc.defesas||{})[d.k])||0; vars[d.k+'_EQ']=eq[d.k];
+    d.aliases.forEach(al=>{vars[al]=def[d.k]});
+  });
+  ATRIBS.forEach(a=>{
+    vars[a.k]=tot[a.k];               // com equipamento
+    vars[a.k+'_B']=base[a.k];         // base, sem equipamento
+    vars[a.k+'_EQ']=eq[a.k];          // só o bônus
+    a.aliases.forEach(al=>{vars[al]=tot[a.k]; vars[al+'_B']=base[a.k]; vars[al+'_EQ']=eq[a.k];});
+  });
+  const recursos=(pc.recursos||[]).map(r=>{
+    let val=null,err=null;
+    try{ val=evalFormula(r.fml,vars); }catch(e){ err=e.message; }
+    return {...r, val, err};
+  });
+  return {mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos};
+}
+function somaPercentuaisUsados(pc){
+  return ATRIBS.reduce((s,a)=>s+pctDe(pc,pc.tiers[a.k]),0);
+}
+
+/* ---------- flor de atributos (5 pétalas = 5 atributos) ---------- */
+function petala(cx,cy,ang,R,largura){
+  const rad=a=>a*Math.PI/180;
+  const px=(a,r)=>[cx+r*Math.sin(rad(a)), cy-r*Math.cos(rad(a))];
+  const [tx,ty]=px(ang,R);
+  const [c1x,c1y]=px(ang-largura,R*0.62);
+  const [c2x,c2y]=px(ang+largura,R*0.62);
+  return `M${cx} ${cy} C${c1x} ${c1y} ${tx} ${ty} ${tx} ${ty} C${tx} ${ty} ${c2x} ${c2y} ${cx} ${cy} Z`;
+}
+function florSVG(c){
+  const W=300,H=300,cx=150,cy=152,R=104;
+  const angs=[0,72,144,216,288];
+  const maxv=Math.max(1,...ATRIBS.map(a=>Math.max(c.tot[a.k],c.base[a.k])));
+  const esc=v=>R*Math.max(0.04,Math.min(1,v/(maxv*1.06)));
+  const pt=(ang,r)=>[cx+r*Math.sin(ang*Math.PI/180), cy-r*Math.cos(ang*Math.PI/180)];
+  const poly=(vals)=>vals.map((v,i)=>pt(angs[i],esc(v)).map(n=>n.toFixed(1)).join(',')).join(' ');
+  const petalas=angs.map(a=>`<path d="${petala(cx,cy,a,R,34)}" fill="var(--flor-petala)" stroke="var(--flor-borda)" stroke-width="1"/>`).join('');
+  const grid=[0.25,0.5,0.75,1].map(f=>`<polygon points="${angs.map(a=>pt(a,R*f).map(n=>n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="var(--radar)" stroke-width="1"/>`).join('');
+  const eixos=angs.map(a=>{const[x,y]=pt(a,R);return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--radar)" stroke-width="1"/>`}).join('');
+  const labels=angs.map((a,i)=>{
+    const[x,y]=pt(a,R+22);
+    const anchor = Math.abs(Math.sin(a*Math.PI/180))<0.2?'middle':(Math.sin(a*Math.PI/180)>0?'start':'end');
+    return `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="${anchor}" font-family="IBM Plex Mono,monospace" font-size="11" fill="var(--ink-soft)">${ATRIBS[i].k}</text>
+            <text x="${x.toFixed(1)}" y="${(y+17).toFixed(1)}" text-anchor="${anchor}" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--ink)" font-weight="600">${c.tot[ATRIBS[i].k]}</text>`;
+  }).join('');
+  const vb=ATRIBS.map(a=>c.base[a.k]), vt=ATRIBS.map(a=>c.tot[a.k]);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:320px" role="img" aria-label="Flor de atributos">
+    ${petalas}${grid}${eixos}
+    <polygon points="${poly(vt)}" fill="var(--radar-miolo)" stroke="var(--teal)" stroke-width="2.2"/>
+    <polygon points="${poly(vb)}" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-dasharray="5 4"/>
+    ${labels}
+  </svg>`;
+}
+
+/* ---------- render: elenco ---------- */
+function renderLista(){
+  const ul=document.getElementById('lista'); ul.innerHTML='';
+  const tags=todasTags(), ft=S.filtroTags||[];
+  const barra=document.getElementById('tagbar');
+  barra.innerHTML = tags.length
+    ? tags.map(t=>`<button class="tag ${ft.includes(t)?'on':''}" data-ftag="${esc(t)}">${esc(t)}</button>`).join('')
+      + (ft.length?`<button class="tag limpar" data-ftag="__limpar__">limpar</button>`:'')
+    : '<span class="hint" style="font-size:11px">Sem tags ainda — adicione na ficha.</span>';
+
+  const secoes=[...gruposOrdenados(), ''];
+  let html='';
+  secoes.forEach(g=>{
+    const membros=S.personagens.filter(p=>(p.grupo||'')===g && casaFiltro(p));
+    const total=S.personagens.filter(p=>(p.grupo||'')===g).length;
+    if(g==='' && !total) return;                       // "Sem grupo" só aparece se tiver alguém
+    if(filtroAtivo() && !membros.length) return;       // filtrando: esconde seção vazia
+    const fechado=(S.fechados||[]).includes(g||SEM);
+    html+=`<li class="sec" data-sec="${esc(g||SEM)}">
+      <div class="sechd">
+        <button class="caret" data-toggle="${esc(g||SEM)}">${fechado?'▸':'▾'}</button>
+        <span class="secnome">${g?esc(g):'Sem grupo'}</span>
+        <span class="cnt mono">${membros.length}${membros.length!==total?'/'+total:''}</span>
+        ${g?`<span class="secacts">
+          <button class="mini" data-gmove="${esc(g)}|-1" title="Subir grupo">▲</button>
+          <button class="mini" data-gmove="${esc(g)}|1" title="Descer grupo">▼</button>
+          <button class="mini" data-gren="${esc(g)}" title="Renomear">✎</button>
+          <button class="mini danger" data-gdel="${esc(g)}" title="Desfazer grupo">×</button>
+        </span>`:''}
+      </div>
+      <ul class="secitens" data-lista="${esc(g||SEM)}" ${fechado?'hidden':''}>
+        ${membros.map(p=>linhaElenco(p)).join('') || '<li class="vazio hint">arraste alguém pra cá</li>'}
+      </ul></li>`;
+  });
+  ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
+  ligarElenco();
+}
+function linhaElenco(p){
+  return `<li class="pcrow" data-id="${p.id}">
+    <span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo">⠿</span>
+    <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
+      <span class="nm">${esc(p.nome)}</span>
+      <span class="mt">Tier ${esc(p.tier)} · Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}</span>
+      <span class="linhatags">
+        <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
+        ${(p.tags||[]).slice(0,3).map(t=>`<span class="tag mini-tag">${esc(t)}</span>`).join('')}
+        ${(p.tags||[]).length>3?`<span class="hint" style="font-size:10px">+${p.tags.length-3}</span>`:''}
+      </span>
+    </button></li>`;
+}
+function ligarElenco(){
+  const ul=document.getElementById('lista');
+  ul.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{S.sel=b.dataset.abrir; save(); render()});
+  ul.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.toggle; S.fechados=S.fechados||[];
+    S.fechados = S.fechados.includes(g)? S.fechados.filter(x=>x!==g) : [...S.fechados,g];
+    save(); renderLista();
+  });
+  ul.querySelectorAll('[data-gmove]').forEach(b=>b.onclick=()=>{
+    const [g,d]=b.dataset.gmove.split('|'); fixarGrupos();
+    const i=S.grupos.indexOf(g), j=i+ +d;
+    if(i<0||j<0||j>=S.grupos.length) return;
+    S.grupos.splice(j,0,S.grupos.splice(i,1)[0]); save(); renderLista();
+  });
+  ul.querySelectorAll('[data-gren]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.gren, novo=prompt('Novo nome do grupo:',g);
+    if(!novo||novo===g) return;
+    fixarGrupos();
+    S.grupos=S.grupos.map(x=>x===g?novo:x).filter((x,i,a)=>a.indexOf(x)===i);
+    S.personagens.forEach(p=>{if((p.grupo||'')===g)p.grupo=novo});
+    S.fechados=(S.fechados||[]).map(x=>x===g?novo:x);
+    save(); render();
+  });
+  ul.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.gdel;
+    if(!confirm('Desfazer o grupo "'+g+'"? Os personagens voltam para "Sem grupo".')) return;
+    fixarGrupos();
+    S.grupos=S.grupos.filter(x=>x!==g);
+    S.personagens.forEach(p=>{if((p.grupo||'')===g)p.grupo=''});
+    save(); render();
+  });
+  document.getElementById('tagbar').querySelectorAll('[data-ftag]').forEach(b=>b.onclick=()=>{
+    const t=b.dataset.ftag; S.filtroTags=S.filtroTags||[];
+    if(t==='__limpar__') S.filtroTags=[];
+    else S.filtroTags = S.filtroTags.includes(t)? S.filtroTags.filter(x=>x!==t) : [...S.filtroTags,t];
+    save(); renderLista();
+  });
+  ul.querySelectorAll('[data-grab]').forEach(h=>h.onpointerdown=e=>iniciarArraste(e,h.closest('.pcrow')));
+}
+
+/* ---------- arrastar para reordenar / trocar de grupo ---------- */
+let arrasto=null;
+function iniciarArraste(e,li){
+  if(!li) return;
+  if(filtroAtivo()){ toast('Limpe a busca e as tags para reordenar'); return; }
+  e.preventDefault();
+  const r=li.getBoundingClientRect();
+  const fantasma=li.cloneNode(true);
+  fantasma.classList.add('fantasma');
+  Object.assign(fantasma.style,{position:'fixed',left:r.left+'px',top:r.top+'px',
+    width:r.width+'px',pointerEvents:'none',zIndex:80,margin:0});
+  document.body.appendChild(fantasma);
+  li.classList.add('arrastando');
+  document.body.classList.add('arrastando-agora');
+  arrasto={li,fantasma,dx:e.clientX-r.left,dy:e.clientY-r.top};
+  window.addEventListener('pointermove',moverArraste);
+  window.addEventListener('pointerup',soltarArraste,{once:true});
+  window.addEventListener('pointercancel',soltarArraste,{once:true});
+}
+function moverArraste(e){
+  if(!arrasto) return;
+  arrasto.fantasma.style.left=(e.clientX-arrasto.dx)+'px';
+  arrasto.fantasma.style.top =(e.clientY-arrasto.dy)+'px';
+  const caixa=document.getElementById('lista');
+  const rc=caixa.getBoundingClientRect();                 // rola sozinho perto das bordas
+  if(e.clientY<rc.top+28) caixa.scrollTop-=8;
+  else if(e.clientY>rc.bottom-28) caixa.scrollTop+=8;
+  const alvo=document.elementFromPoint(e.clientX,e.clientY);
+  if(!alvo||!alvo.closest) return;
+  const linha=alvo.closest('.pcrow:not(.fantasma)');
+  if(linha && linha!==arrasto.li){
+    const rr=linha.getBoundingClientRect();
+    const depois=e.clientY>rr.top+rr.height/2;
+    linha.parentNode.insertBefore(arrasto.li, depois? linha.nextSibling : linha);
+    return;
+  }
+  const lista=alvo.closest('[data-lista]');
+  if(lista && !lista.contains(arrasto.li)) lista.appendChild(arrasto.li);
+}
+function soltarArraste(){
+  if(!arrasto) return;
+  window.removeEventListener('pointermove',moverArraste);
+  arrasto.fantasma.remove();
+  arrasto.li.classList.remove('arrastando');
+  document.body.classList.remove('arrastando-agora');
+  arrasto=null;
+  const mapa=new Map(S.personagens.map(p=>[p.id,p])), novos=[];
+  document.querySelectorAll('#lista [data-lista]').forEach(ulSec=>{
+    const g=ulSec.dataset.lista===SEM? '' : ulSec.dataset.lista;
+    ulSec.querySelectorAll('.pcrow').forEach(li=>{
+      const p=mapa.get(li.dataset.id);
+      if(p){ p.grupo=g; novos.push(p); mapa.delete(li.dataset.id); }
+    });
+  });
+  mapa.forEach(p=>novos.push(p));      // quem estiver escondido mantém-se no fim
+  S.personagens=novos; fixarGrupos(); save(); renderLista();
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const SEM='__sem__';
+function gruposOrdenados(){
+  const nomes=[...(S.grupos||[])];
+  S.personagens.forEach(p=>{ const g=p.grupo||''; if(g && !nomes.includes(g)) nomes.push(g); });
+  return nomes;
+}
+function fixarGrupos(){ S.grupos=gruposOrdenados(); }
+function todasTags(){
+  const t=new Set(); S.personagens.forEach(p=>(p.tags||[]).forEach(x=>t.add(x)));
+  return [...t].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+function filtroAtivo(){
+  const q=(document.getElementById('busca')?.value||'').trim();
+  return !!q || (S.filtroTags||[]).length>0;
+}
+function casaFiltro(p){
+  const q=(document.getElementById('busca')?.value||'').toLowerCase().trim();
+  const texto=(p.nome+' '+(p.raca||'')+' '+(p.grupo||'')+' '+(p.tags||[]).join(' ')).toLowerCase();
+  if(q && !texto.includes(q)) return false;
+  const ft=S.filtroTags||[];
+  if(ft.length && !ft.some(t=>(p.tags||[]).includes(t))) return false;
+  return true;
+}
+
+/* ---------- render: ficha ---------- */
+function renderFicha(){
+  const host=document.getElementById('ficha');
+  const pc=S.personagens.find(p=>p.id===S.sel);
+  if(!pc){
+    host.innerHTML=`<div class="panel"><div class="empty">
+      <h2 style="font-size:20px;margin-bottom:6px">Nenhum personagem aberto</h2>
+      <p>Escolha alguém no elenco ou crie um novo para começar a calcular.</p></div></div>`;
+    return;
+  }
+  const c=calcular(pc);
+  const pd=Array.isArray(pc.poderes)? pc.poderes : (pc.poderes=[]);
+  const sub0=S.abaFicha||'estaque';
+  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
+  const soma=somaPercentuaisUsados(pc);
+  const optTier=S.cfg.tiersPersonagem.map(t=>`<option ${t.t===pc.tier?'selected':''}>${t.t}</option>`).join('');
+  const optLvl=S.cfg.niveis.map(r=>`<option value="${r.lvl}" ${+r.lvl===+pc.level?'selected':''}>${r.lvl}</option>`).join('');
+
+  host.innerHTML=`
+  <div class="panel" style="margin-bottom:18px">
+    <div class="hd">
+      <span class="eyebrow">Ficha</span>
+      <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts · ×${c.mult}</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        <button class="mini" data-act="dup">Duplicar</button>
+        <button class="mini danger" data-act="del">Excluir</button>
+      </span>
+    </div>
+    <div class="bd">
+      <div class="idcard">
+        <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
+        <label class="f"><span class="eyebrow">Raça / classe</span><input id="f_raca" value="${esc(pc.raca||'')}"></label>
+        <label class="f"><span class="eyebrow">Lado</span><select id="f_lado">
+          ${['Aliado','Inimigo','Neutro'].map(l=>`<option ${(pc.lado||'Aliado')===l?'selected':''}>${l}</option>`).join('')}
+        </select></label>
+        <label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>
+        <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
+      </div>
+      <div class="idcard2">
+        <label class="f"><span class="eyebrow">Grupo</span>
+          <select id="f_grupo">
+            <option value="">Sem grupo</option>
+            ${gruposOrdenados().map(g=>`<option value="${esc(g)}" ${(pc.grupo||'')===g?'selected':''}>${esc(g)}</option>`).join('')}
+            <option value="__novo__">+ Criar grupo…</option>
+          </select></label>
+        <label class="f"><span class="eyebrow">Tags</span>
+          <input id="f_tags" value="${esc((pc.tags||[]).join(', '))}" placeholder="separadas por vírgula — ex: capítulo 3, boss, aliado do rei"></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="two" style="margin-bottom:18px">
+    <div class="panel">
+      <div class="hd"><span class="eyebrow">Atributos</span>
+        <span style="margin-left:auto"><button class="mini" data-act="pct">${pc.pctProprio?'Percentuais próprios':'Usar percentuais gerais'}</button></span>
+      </div>
+      <div class="bd">
+        <table class="attr">
+          <thead><tr><th>Atributo</th><th>Tier</th><th>Base</th><th>Equip.</th><th>Total</th><th>Lvl ant.</th></tr></thead>
+          <tbody>
+          ${ATRIBS.map(a=>{
+            const d=c.base[a.k]-c.ant[a.k];
+            return `<tr>
+              <td><span class="aname">${a.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${a.k}</span></td>
+              <td><select class="tsel" data-tier="${a.k}">${TIERS_ATR.map(t=>`<option ${pc.tiers[a.k]===t?'selected':''}>${t}</option>`).join('')}</select></td>
+              <td class="num vbase">${c.base[a.k]}</td>
+              <td class="num vequip">${c.eq[a.k]?'+'+c.eq[a.k]:'—'}</td>
+              <td class="num vtot">${c.tot[a.k]}</td>
+              <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.ant[a.k]}</span>
+                <span class="delta ${d>0?'up':'zero'}">${d>0?'+'+arredTxt(d):'·'}</span></td>
+            </tr>`}).join('')}
+          ${DERIV.map(d=>{const dd=c.der[d.k]-c.derAnt[d.k];return `<tr class="derived">
+            <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.k}</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.desc}</span></td>
+            <td class="num vbase">${d.calc(c.base)}</td>
+            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>
+            <td class="num vtot">${c.der[d.k]}</td>
+            <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.derAnt[d.k]}</span>
+              <span class="delta ${dd>0?'up':'zero'}">${dd>0?'+'+arredTxt(dd):'·'}</span></td>
+          </tr>`}).join('')}
+          ${DEFESAS.map(d=>`<tr class="defesa">
+            <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.rot}</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
+            <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas||{})[d.k])||0)}"></td>
+            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>
+            <td class="num vtot">${c.def[d.k]}</td>
+            <td class="num"><span class="hint">—</span></td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="hint" style="margin-top:6px">Os três derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos. As duas defesas variam por raça: você digita a base e os equipamentos somam por cima.</div>
+        <div class="pctnote">
+          ${pc.pctProprio?`<span>Percentuais deste personagem:</span>`:`<span>Percentuais gerais:</span>`}
+          ${TIERS_ATR.map(t=>`<span class="mono">${t} ${(pctDe(pc,t)*100).toFixed(0)}%</span>`).join('')}
+          <span class="${Math.abs(soma-1)>0.0001?'warn':''}">soma em uso: ${(soma*100).toFixed(0)}%</span>
+        </div>
+        ${pc.pctProprio?`<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+          ${TIERS_ATR.map(t=>`<label class="f" style="width:74px"><span class="eyebrow">${t}</span>
+            <input type="number" step="0.01" data-pct="${t}" value="${pctDe(pc,t)}"></label>`).join('')}
+          <button class="mini" data-act="pctoff">Voltar aos gerais</button></div>`:''}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="hd"><span class="eyebrow">Flor de atributos</span></div>
+      <div class="bd florwrap">
+        ${florSVG(c)}
+        <div class="legend">
+          <span><i style="border-color:var(--ink);border-top-style:dashed"></i>sem equipamento</span>
+          <span><i style="border-color:var(--teal)"></i>com equipamento</span>
+        </div>
+      </div>
+      <div class="rolbox">
+        <div class="rolhd">
+          <span class="eyebrow">Rolagem rápida</span>
+          <label class="rolfix"><span class="eyebrow">Fixar</span>
+            <input type="number" min="0" id="rolFixa" value="${rol.fixa||0}"></label>
+          <select id="rolFonte" title="valor usado nos cinco atributos principais">
+            <option value="total" ${rol.fonte!=='base'?'selected':''}>c/ equip.</option>
+            <option value="base" ${rol.fonte==='base'?'selected':''}>base</option>
+          </select>
+        </div>
+        <div class="rolbts">
+          ${ATRIBS.map(a=>{const v=valorDoAtributo(pc,a.k,rol.fonte);
+            return `<button class="atrbt c-${COR_ATR[a.k]||''}" data-rolar="${a.k}" title="${esc(a.nome)} — ${v}">
+              <b>${a.k}</b><span>${v}</span></button>`}).join('')}
+        </div>
+        <div class="rolbts">
+          ${DERIV.map(d=>{const v=c.der[d.k];
+            return `<button class="atrbt der" data-rolar="${d.k}" title="${esc(d.nome)} — ${v}">
+              <b>${d.k}</b><span>${v}</span></button>`}).join('')}
+        </div>
+        <div class="rolbts">
+          ${DEFESAS.map(d=>{const v=c.def[d.k];
+            return `<button class="atrbt der" data-rolar="${d.k}" title="${esc(d.nome)} — ${v}">
+              <b>${d.rot}</b><span>${v}</span></button>`}).join('')}
+          <button class="atrbt disputar" id="btnDisputa" title="Rolar contra outro personagem ou contra um valor avulso">
+            <b>×</b><span>Disputar</span></button>
+        </div>
+        ${pc.ultRol? `<div class="rolsaida c-${COR_ATR[pc.ultRol.k]||''}">
+          <div class="rolnum">${pc.ultRol.total}</div>
+          <div class="roldet"><strong>${esc(pc.ultRol.k)} ${pc.ultRol.valor}</strong>${pc.ultRol.base?' base':''}
+            · ${esc(pc.ultRol.texto)}${pc.ultRol.dado?` · dado ${pc.ultRol.bruto}`:''}</div>
+        </div>` : `<div class="rolsaida vazia">Clique num atributo para rolar a fixa.</div>`}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="hd"><span class="eyebrow">Poderes divinos</span>
+      <span class="hint" style="margin-left:8px">clique nos círculos para gastar ou devolver</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        ${pd.length?'<button class="mini" data-pdall="cheio">Restaurar todos</button>':''}
+        <button class="mini primary" data-pdadd="1">+ Poder</button>
+      </span></div>
+    <div class="bd">
+      ${pd.length? `<div class="pdlist">${pd.map(pw=>`
+        <div class="pdrow">
+          <input class="inm" data-pdnome="${pw.id}" value="${esc(pw.nome)}" placeholder="Nome do poder">
+          <div class="pdctl">
+            <button class="step" data-pdstep="${pw.id}|-1" ${pw.atual<=0?'disabled':''}>−</button>
+            <span class="pdval">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
+            <button class="step" data-pdstep="${pw.id}|1" ${pw.max>0&&pw.atual>=pw.max?'disabled':''}>+</button>
+          </div>
+          <label class="sitbar" style="gap:6px"><span class="eyebrow">Limite</span>
+            <input type="number" min="0" data-pdmax="${pw.id}" value="${pw.max}" style="width:64px"></label>
+          <button class="mini danger" data-pddel="${pw.id}">×</button>
+          <div class="pips">${pips(pw)}</div>
+        </div>`).join('')}</div>`
+      : '<div class="hint">Nenhum poder cadastrado. Cada poder tem o próprio contador e o próprio limite.</div>'}
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="hd"><span class="eyebrow">Vida, SP e outros recursos</span>
+      <span style="margin-left:auto"><button class="mini" data-act="addres">+ Recurso</button></span>
+    </div>
+    <div class="bd">
+      <div class="res">
+        ${(c.recursos||[]).map(r=>`
+          <div class="rescard">
+            <div class="top">
+              <input class="inm" style="width:130px;font-weight:500" data-resnome="${r.id}" value="${esc(r.nome)}">
+              <button class="mini danger" data-resdel="${r.id}">Remover</button>
+              <span class="val ${r.err?'err':''}">${r.err? 'erro' : (r.val==null?'—':fmt(r.val))}</span>
+            </div>
+            <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
+            ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
+          </div>`).join('') || '<div class="hint">Nenhum recurso. Clique em “+ Recurso” para criar HP, SP, fé, sanidade, o que precisar.</div>'}
+      </div>
+      <hr class="sep">
+      <div class="vars">
+        <span class="eyebrow">Variáveis (clique para copiar)</span><br>
+        ${ATRIBS.map(a=>`<code data-copy="${a.k}">${a.k}</code>`).join(' ')}
+        <span style="color:var(--ink-fraco)">com equip.</span> ·
+        ${ATRIBS.map(a=>`<code data-copy="${a.k}_B">${a.k}_B</code>`).join(' ')}
+        <span style="color:var(--ink-fraco)">base</span> ·
+        ${ATRIBS.map(a=>`<code data-copy="${a.k}_EQ">${a.k}_EQ</code>`).join(' ')}
+        <span style="color:var(--ink-fraco)">só o bônus</span> ·
+        ${DERIV.map(d=>`<code data-copy="${d.k}">${d.k}</code>`).join(' ')} <span style="color:var(--ink-fraco)">derivados</span> ·
+        ${DEFESAS.map(d=>`<code data-copy="${d.k}">${d.k}</code>`).join(' ')} <span style="color:var(--ink-fraco)">defesas</span><br>
+        <code data-copy="LVL">LVL</code> level ·
+        <code data-copy="PTS">PTS</code> total de pontos ·
+        <code data-copy="MULT">MULT</code> multiplicador do tier<br>
+        Operações: <code data-copy="+">+</code> <code data-copy="-">-</code> <code data-copy="*">*</code> <code data-copy="/">/</code> <code data-copy="^">^</code> <code data-copy="%">%</code>
+        · Funções: <code data-copy="floor(">floor</code> <code data-copy="ceil(">ceil</code> <code data-copy="round(">round</code> <code data-copy="min(">min</code> <code data-copy="max(">max</code> <code data-copy="sqrt(">sqrt</code> <code data-copy="se(">se(condição, a, b)</code> · Comparações: <code data-copy=">">&gt;</code> <code data-copy="<">&lt;</code> <code data-copy=">=">&gt;=</code> <code data-copy="<=">&lt;=</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="hd"><span class="eyebrow">Equipamentos</span>
+      <span class="hint" style="margin-left:8px">Desmarque para ver o personagem sem o item</span>
+      <span style="margin-left:auto"><button class="mini" data-act="additem">+ Item</button></span>
+    </div>
+    <div class="bd">
+      ${(pc.itens||[]).length? `
+      <div class="scrollx"><table class="items">
+        <thead><tr><th style="width:34px"></th><th>Item</th>${ATRIBS.map(a=>`<th>${a.k}</th>`).join('')}
+          ${DERIV.map(d=>`<th style="color:var(--brass)" title="campo especial de ${d.nome.toLowerCase()}">${d.k}</th>`).join('')}
+          ${DEFESAS.map(d=>`<th style="color:var(--teal)" title="${d.nome}">${d.rot}</th>`).join('')}<th style="width:34px"></th></tr></thead>
+        <tbody>
+        ${pc.itens.map(it=>`<tr class="${it.equipado===false?'off':''}">
+          <td class="c"><input type="checkbox" style="width:auto" data-itemon="${it.id}" ${it.equipado===false?'':'checked'}></td>
+          <td><input class="inm" data-itemnome="${it.id}" value="${esc(it.nome||'')}" placeholder="Nome do item"></td>
+          ${ATRIBS.map(a=>`<td><input type="number" step="1" data-itembon="${it.id}|${a.k}" value="${(+it.bonus?.[a.k]||0)}"></td>`).join('')}
+          ${DERIV.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--brass-soft);background:var(--brass-fundo)"></td>`).join('')}
+          ${DEFESAS.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--teal-borda);background:var(--teal-fundo)"></td>`).join('')}
+          <td class="c"><button class="mini danger" data-itemdel="${it.id}">×</button></td>
+        </tr>`).join('')}
+        <tr><td></td><td class="mono" style="color:var(--ink-soft);font-size:12px">Total equipado</td>
+        ${ATRIBS.map(a=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[a.k]?'+'+c.eq[a.k]:'—'}</td>`).join('')}
+        ${DERIV.map(d=>`<td class="num" style="text-align:right;color:var(--brass);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}
+        ${DEFESAS.map(d=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}<td></td></tr>
+        </tbody>
+      </table></div>`
+      : '<div class="hint">Sem itens. Os totais são iguais aos valores base.</div>'}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="hd subtabs">
+      ${[['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
+         ['skills','Skills', Object.keys(skillsDe(pc).alocados).length||''],
+         ['habs','Passivas e Habilidades', (pc.habilidades||[]).length||''],
+         ['notas','Anotações gerais', (pc.notas||'').trim()?'•':'']
+        ].map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
+          ${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`).join('')}
+    </div>
+    <div class="bd">
+      ${sub0==='estaque'?`
+        <div class="colunas">
+          <textarea class="entrada" rows="10" data-est="a" placeholder="Dificuldade de Visão - 0/100&#10;Sangramento - 2 turnos">${esc(pc.estaque.a||'')}</textarea>
+          <textarea class="entrada" rows="10" data-est="b" placeholder="Segunda coluna">${esc(pc.estaque.b||'')}</textarea>
+        </div>`
+      : sub0==='skills'? blocoSkills(pc)
+      : sub0==='habs'?`
+        <div class="sitbar" style="margin-bottom:10px">
+          <span class="hint">${TIPOS_HAB.map(t=>{const n=(pc.habilidades||[]).filter(h=>(h.tipo||'Ativo')===t).length;
+            return n?`${n} ${t.toLowerCase()}${n>1?'s':''}`:''}).filter(Boolean).join(' · ')||'nenhuma habilidade'}</span>
+          <button class="mini primary" style="margin-left:auto" data-habadd="1">+ Habilidade</button>
+        </div>
+        ${(pc.habilidades||[]).length? (pc.habilidades||[]).map(h=>{const tp=h.tipo||'Ativo';return `
+          <div class="habrow ${tp==='Inativo'?'off':''}">
+            <select class="tipohab t-${tp.toLowerCase()}" data-habtipo="${h.id}">
+              ${TIPOS_HAB.map(t=>`<option ${tp===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <input class="inm habnome" data-habnome="${h.id}" value="${esc(h.nome||'')}" placeholder="Nome da passiva ou habilidade">
+            <button class="mini danger" data-habdel="${h.id}">×</button>
+            <textarea rows="2" data-habdesc="${h.id}" placeholder="O que faz, custo, condição de uso…">${esc(h.desc||'')}</textarea>
+          </div>`}).join('')
+        : '<div class="hint">Nenhuma habilidade cadastrada. As inativas continuam na ficha, só ficam apagadas.</div>'}`
+      :`<textarea id="f_notas" rows="8" placeholder="O que mudou no último level up, dívidas, promessas, o que o personagem sabe e o que não sabe…">${esc(pc.notas||'')}</textarea>`}
+    </div>
+  </div>
+  `;
+  ligarFicha(pc);
+}
+function pips(pw){
+  const max=+pw.max||0;
+  if(max<=0) return '<span class="hint">Sem limite definido — use − e +.</span>';
+  if(max>24) return '<span class="hint">Limite alto demais para desenhar os círculos.</span>';
+  let h='';
+  for(let i=1;i<=max;i++) h+=`<button class="pip ${i<=pw.atual?'on':''}" data-pip="${pw.id}|${i}" title="${i} de ${max}"></button>`;
+  return h;
+}
+function arredTxt(n){return (Math.round(n*100)/100)}
+function fmt(n){ const r=Math.round(n*100)/100; return String(r) }
+
+/* ---------- eventos da ficha ---------- */
+function ligarFicha(pc){
+  const host=document.getElementById('ficha');
+  const patch=(f)=>{f(); save(); render()};
+  const patchLeve=(f)=>{f(); save(); /* sem re-render: não perde o foco */};
+
+  host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
+  host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
+  host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
+  const rfx=host.querySelector('#rolFixa');
+  if(rfx) rfx.oninput=e=>patchLeve(()=>{pc.rol.fixa=Math.max(0,+e.target.value||0)});
+  const rfo=host.querySelector('#rolFonte');
+  if(rfo) rfo.onchange=e=>patch(()=>{pc.rol.fonte=e.target.value});
+  host.querySelectorAll('[data-rolar]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolar));
+  const bdis=host.querySelector('#btnDisputa');
+  if(bdis) bdis.onclick=()=>abrirDisputa(pc);
+  host.querySelector('#f_grupo').onchange=e=>{
+    if(e.target.value==='__novo__'){
+      const g=prompt('Nome do novo grupo:','');
+      if(g && g.trim()){ fixarGrupos(); if(!S.grupos.includes(g.trim())) S.grupos.push(g.trim()); pc.grupo=g.trim(); }
+      save(); render(); return;
+    }
+    pc.grupo=e.target.value; save(); render();
+  };
+  host.querySelector('#f_tags').oninput=e=>{
+    pc.tags=e.target.value.split(',').map(t=>t.trim()).filter(Boolean); save(); renderLista();
+  };
+  host.querySelector('#f_tier').onchange=e=>patch(()=>pc.tier=e.target.value);
+  host.querySelector('#f_level').onchange=e=>patch(()=>pc.level=+e.target.value);
+  const nt=host.querySelector('#f_notas');
+  if(nt) nt.oninput=e=>patchLeve(()=>pc.notas=e.target.value);
+  host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{S.abaFicha=b.dataset.sub; save(); renderFicha()});
+  if((S.abaFicha||'estaque')==='skills') ligarSkills(pc,host);
+  host.querySelectorAll('[data-est]').forEach(i=>i.oninput=e=>patchLeve(()=>{
+    pc.estaque[e.target.dataset.est]=e.target.value;}));
+  host.querySelectorAll('[data-habadd]').forEach(b=>b.onclick=()=>patch(()=>
+    pc.habilidades.push({id:uid(), nome:'', desc:'', tipo:'Ativo'})));
+  host.querySelectorAll('[data-habtipo]').forEach(sl=>sl.onchange=e=>patch(()=>{
+    const h=pc.habilidades.find(x=>x.id===e.target.dataset.habtipo); if(h) h.tipo=e.target.value;}));
+  host.querySelectorAll('[data-habdel]').forEach(b=>b.onclick=()=>patch(()=>{
+    pc.habilidades=pc.habilidades.filter(x=>x.id!==b.dataset.habdel);}));
+  host.querySelectorAll('[data-habnome]').forEach(i=>i.oninput=e=>{
+    const h=pc.habilidades.find(x=>x.id===e.target.dataset.habnome); if(h){h.nome=e.target.value; save();}});
+  host.querySelectorAll('[data-habdesc]').forEach(i=>i.oninput=e=>{
+    const h=pc.habilidades.find(x=>x.id===e.target.dataset.habdesc); if(h){h.desc=e.target.value; save();}});
+
+  host.querySelectorAll('[data-tier]').forEach(s=>s.onchange=e=>patch(()=>pc.tiers[e.target.dataset.tier]=e.target.value));
+  host.querySelectorAll('[data-defesa]').forEach(i=>i.onchange=e=>patch(()=>{
+    pc.defesas[e.target.dataset.defesa]=+e.target.value||0; }));
+  host.querySelectorAll('[data-pct]').forEach(i=>i.onchange=e=>patch(()=>{pc.pctProprio[e.target.dataset.pct]=+e.target.value||0}));
+
+  host.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const a=b.dataset.act;
+    if(a==='dup'){ const cp=JSON.parse(JSON.stringify(pc)); cp.id=uid(); cp.nome=pc.nome+' (cópia)';
+      cp.itens.forEach(i=>i.id=uid()); cp.recursos.forEach(r=>r.id=uid());
+      S.personagens.push(cp); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
+    if(a==='del'){ if(confirm('Excluir "'+pc.nome+'"? Não tem como desfazer.')){
+        S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Personagem excluído'); } }
+    if(a==='pct'){ patch(()=>{ pc.pctProprio = pc.pctProprio? null : {...S.cfg.pct}; }); }
+    if(a==='pctoff'){ patch(()=>pc.pctProprio=null); }
+    if(a==='addres'){ patch(()=>pc.recursos.push({id:uid(),nome:'Novo recurso',fml:''})); }
+    if(a==='additem'){ const b0={}; ATRIBS.forEach(x=>b0[x.k]=0);
+      patch(()=>pc.itens.push({id:uid(),nome:'',equipado:true,bonus:b0})); }
+  });
+
+  const acharPd=id=>pc.poderes.find(x=>x.id===id);
+  const limitar=pw=>{ pw.atual=Math.max(0, pw.max>0? Math.min(pw.atual,+pw.max) : pw.atual); };
+  host.querySelectorAll('[data-pdadd]').forEach(b=>b.onclick=()=>patch(()=>
+    pc.poderes.push({id:uid(), nome:'', atual:0, max:1})));
+  host.querySelectorAll('[data-pdall]').forEach(b=>b.onclick=()=>patch(()=>
+    pc.poderes.forEach(pw=>{ if(pw.max>0) pw.atual=+pw.max; })));
+  host.querySelectorAll('[data-pdstep]').forEach(b=>b.onclick=()=>{
+    const [id,d]=b.dataset.pdstep.split('|'); const pw=acharPd(id); if(!pw)return;
+    pw.atual+= +d; limitar(pw); patch(()=>{});
+  });
+  host.querySelectorAll('[data-pip]').forEach(b=>b.onclick=()=>{
+    const [id,i]=b.dataset.pip.split('|'); const pw=acharPd(id); if(!pw)return;
+    const n=+i;
+    pw.atual = (pw.atual===n)? n-1 : n;   // clicar no último aceso devolve uma unidade
+    limitar(pw); patch(()=>{});
+  });
+  host.querySelectorAll('[data-pdnome]').forEach(i=>i.oninput=e=>{
+    const pw=acharPd(e.target.dataset.pdnome); if(pw){pw.nome=e.target.value; save();}});
+  host.querySelectorAll('[data-pdmax]').forEach(i=>i.onchange=e=>{
+    const pw=acharPd(e.target.dataset.pdmax); if(pw){pw.max=Math.max(0,+e.target.value||0); limitar(pw); patch(()=>{});}});
+  host.querySelectorAll('[data-pddel]').forEach(b=>b.onclick=()=>patch(()=>{
+    pc.poderes=pc.poderes.filter(x=>x.id!==b.dataset.pddel)}));
+
+  host.querySelectorAll('[data-resnome]').forEach(i=>i.oninput=e=>{
+    const r=pc.recursos.find(x=>x.id===e.target.dataset.resnome); if(r){r.nome=e.target.value; save();}});
+  host.querySelectorAll('[data-resfml]').forEach(i=>{
+    i.oninput=e=>{ const r=pc.recursos.find(x=>x.id===e.target.dataset.resfml); if(!r)return;
+      r.fml=e.target.value; save(); atualizaRecurso(e.target,r,pc); };
+  });
+  host.querySelectorAll('[data-resdel]').forEach(b=>b.onclick=()=>patch(()=>{
+    pc.recursos=pc.recursos.filter(x=>x.id!==b.dataset.resdel)}));
+
+  host.querySelectorAll('[data-itemon]').forEach(i=>i.onchange=e=>patch(()=>{
+    const it=pc.itens.find(x=>x.id===e.target.dataset.itemon); if(it) it.equipado=e.target.checked;}));
+  host.querySelectorAll('[data-itemnome]').forEach(i=>i.oninput=e=>{
+    const it=pc.itens.find(x=>x.id===e.target.dataset.itemnome); if(it){it.nome=e.target.value; save();}});
+  host.querySelectorAll('[data-itembon]').forEach(i=>i.onchange=e=>{
+    const [id,k]=e.target.dataset.itembon.split('|');
+    patch(()=>{const it=pc.itens.find(x=>x.id===id); if(it){it.bonus=it.bonus||{}; it.bonus[k]=+e.target.value||0;}});
+  });
+  host.querySelectorAll('[data-itemdel]').forEach(b=>b.onclick=()=>patch(()=>{
+    pc.itens=pc.itens.filter(x=>x.id!==b.dataset.itemdel)}));
+
+  host.querySelectorAll('[data-copy]').forEach(c=>c.onclick=()=>{
+    const t=c.dataset.copy;
+    navigator.clipboard?.writeText(t).then(()=>toast('Copiado: '+t),()=>toast(t));
+  });
+}
+/* atualiza o número de um recurso enquanto digita, sem re-renderizar tudo */
+function atualizaRecurso(input,r,pc){
+  const card=input.closest('.rescard');
+  const c=calcular(pc);
+  const alvo=c.recursos.find(x=>x.id===r.id);
+  const val=card.querySelector('.val');
+  const old=card.querySelector('.fmlerr'); if(old) old.remove();
+  if(alvo.err){ val.className='val err'; val.textContent='erro';
+    const d=document.createElement('div'); d.className='fmlerr'; d.textContent=alvo.err; card.appendChild(d);
+  }else{ val.className='val'; val.textContent = alvo.val==null?'—':fmt(alvo.val); }
+}
+
+/* =========================== ABA MESA =========================== */
+function novaSituacao(nome){
+  return {id:uid(), nome:nome||'Nova situação', modo:'ranking', alvo:30, participantes:[]};
+}
+function valorDoAtributo(pc,atr,fonte){
+  const c=calcular(pc);
+  if(ehDefesa(atr))   return c.def[atr];          // defesa: manual + equipamento
+  if(ehDerivado(atr)) return c.der[atr];          // derivados têm valor único
+  return fonte==='base'? c.base[atr] : c.tot[atr];
+}
+function renderMesa(){
+  const host=document.getElementById('mesa');
+  S.situacoes=S.situacoes||[];
+  const sit=S.situacoes.find(x=>x.id===S.selSit);
+  const opts=S.situacoes.map(s=>`<option value="${s.id}" ${s.id===S.selSit?'selected':''}>${esc(s.nome)}</option>`).join('');
+
+  host.innerHTML=`
+  <div class="panel" style="margin-bottom:18px">
+    <div class="hd"><span class="eyebrow">Situação</span>
+      <span class="sitbar" style="margin-left:auto">
+        ${S.situacoes.length?`<select id="selSit" style="width:auto;min-width:190px">${opts}</select>`:''}
+        <button class="mini primary" id="novaSit">+ Nova situação</button>
+      </span>
+    </div>
+    ${sit?`<div class="bd">
+      <div class="sitbar" style="margin-bottom:12px">
+        <input id="sitNome" value="${esc(sit.nome)}" style="max-width:280px">
+        <select id="sitModo" style="width:auto">
+          <option value="ranking" ${sit.modo==='ranking'?'selected':''}>Ranking do maior pro menor</option>
+          <option value="alvo" ${sit.modo==='alvo'?'selected':''}>Dificuldade alvo</option>
+          <option value="duelo" ${sit.modo==='duelo'?'selected':''}>Duelo: aliados × inimigos</option>
+        </select>
+        ${sit.modo==='alvo'?`<label class="sitbar" style="gap:5px"><span class="eyebrow">Alvo</span>
+          <input type="number" id="sitAlvo" value="${sit.alvo}" style="width:80px"></label>`:''}
+        <button class="mini danger" id="delSit" style="margin-left:auto">Excluir situação</button>
+      </div>
+
+      <div class="sitbar" style="margin-bottom:10px">
+        <select id="addPc" style="width:auto;min-width:180px">
+          <option value="">Adicionar do elenco…</option>
+          ${S.personagens.map(p=>`<option value="${p.id}">${esc(p.nome)} (${esc(p.lado||'Aliado')})</option>`).join('')}
+        </select>
+        <button class="mini" id="btnAddPc">Adicionar</button>
+        <select id="addGrupo" style="width:auto;min-width:150px">
+          <option value="">Grupo inteiro…</option>
+          ${gruposOrdenados().map(g=>{const n=S.personagens.filter(p=>(p.grupo||'')===g).length;
+            return `<option value="${esc(g)}">${esc(g)} (${n})</option>`}).join('')}
+        </select>
+        <button class="mini" id="btnAddGrupo">Adicionar grupo</button>
+        <button class="mini" id="btnAddLivre">+ Rolagem avulsa</button>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button class="mini" id="limparRes">Limpar resultados</button>
+          <button class="primary" id="rolarTodos">Rolar todos</button>
+        </span>
+      </div>
+
+      ${sit.participantes.length?`
+      <table class="roll">
+        <thead><tr>
+          <th style="width:22%">Quem</th><th>Atributo</th><th>Valor</th><th>Fixar</th><th>Dado</th><th style="width:15%">Resultado</th><th></th>
+        </tr></thead>
+        <tbody>
+        ${sit.participantes.map(pt=>linhaParticipante(sit,pt)).join('')}
+        </tbody>
+      </table>
+      ${veredito(sit)}
+      `:`<div class="hint">Nenhum participante ainda. Puxe alguém do elenco ou crie uma rolagem avulsa (útil para um inimigo genérico que você não quer cadastrar).</div>`}
+    </div>`:`<div class="empty">Crie uma situação para começar a rolar. Ela guarda os participantes, então dá para reaproveitar a mesma cena em várias rodadas.</div>`}
+  </div>
+
+  ${painelRegistro()}
+  `;
+  ligarMesa(sit);
+}
+function linhaParticipante(sit,pt){
+  const pc=pt.pcId? S.personagens.find(p=>p.id===pt.pcId):null;
+  const lado=(pt.lado||pc?.lado||'Neutro');
+  const nome=pc? pc.nome : (pt.nome||'Avulso');
+  const res=pt.res;
+  let meio;
+  if(pt.tipo==='livre'){
+    meio=`<td colspan="4"><input class="entrada" data-ptexpr="${pt.id}" value="${esc(pt.expr||'1d20')}" placeholder="1d20+3"></td>`;
+  }else{
+    const valor=pc? valorDoAtributo(pc,pt.atr,pt.fonte):0;
+    const fixa=Math.min(pt.fixa||0,valor);
+    const faces=valor-fixa;
+    meio=`
+      <td><select data-ptatr="${pt.id}">${ATRIBS.map(a=>`<option value="${a.k}" ${pt.atr===a.k?'selected':''}>${a.k}</option>`).join('')}
+            ${DERIV.map(d=>`<option value="${d.k}" ${pt.atr===d.k?'selected':''}>${d.k}</option>`).join('')}</select></td>
+      <td>${ehDerivado(pt.atr)
+            ? `<span class="dado">${esc((DERIV.find(d=>d.k===pt.atr)||{}).nome||'')} (${valor})</span>`
+            : `<select data-ptfonte="${pt.id}" style="width:auto">
+            <option value="total" ${pt.fonte!=='base'?'selected':''}>c/ equip. (${valorDoAtributo(pc,pt.atr,'total')})</option>
+            <option value="base" ${pt.fonte==='base'?'selected':''}>base (${valorDoAtributo(pc,pt.atr,'base')})</option>
+          </select>`}</td>
+      <td><input type="number" min="0" max="${valor}" data-ptfixa="${pt.id}" value="${fixa}"></td>
+      <td class="dado">${faces>0?'1d'+faces+' + '+fixa:'fixo em '+valor}</td>`;
+  }
+  return `<tr>
+    <td><span style="font-weight:500">${esc(nome)}</span>
+        <span class="lado ${lado.toLowerCase()}">${esc(lado)}</span></td>
+    ${meio}
+    <td>${res?`<span class="tot">${res.total}<small>${esc(res.texto||'')}</small></span>`:'<span class="hint">—</span>'}</td>
+    <td style="white-space:nowrap"><button class="mini" data-ptroll="${pt.id}">Rolar</button>
+        <button class="mini danger" data-ptdel="${pt.id}">×</button></td>
+  </tr>`;
+}
+function veredito(sit){
+  const rolados=sit.participantes.filter(p=>p.res);
+  if(!rolados.length) return '';
+  const nomeDe=p=>p.pcId? (S.personagens.find(x=>x.id===p.pcId)?.nome||'?') : (p.nome||'Avulso');
+  if(sit.modo==='ranking'){
+    const ord=[...rolados].sort((a,b)=>b.res.total-a.res.total);
+    return `<div class="veredito"><h3>Ordem dos resultados</h3>
+      ${ord.map((p,i)=>`<div class="vlinha"><span class="p">${i+1}º</span><span class="n">${esc(nomeDe(p))}</span>
+        <span class="v">${p.res.total}</span></div>`).join('')}</div>`;
+  }
+  if(sit.modo==='alvo'){
+    const alvo=+sit.alvo||0;
+    return `<div class="veredito"><h3>Contra dificuldade ${alvo}</h3>
+      ${rolados.map(p=>{const d=p.res.total-alvo;return `<div class="vlinha">
+        <span class="p ${d>=0?'ok':'no'}">${d>=0?'✓':'✕'}</span><span class="n">${esc(nomeDe(p))}</span>
+        <span class="v ${d>=0?'ok':'no'}">${p.res.total} <span style="color:var(--ink-soft);font-weight:400">(${d>=0?'+':''}${d})</span></span></div>`}).join('')}</div>`;
+  }
+  // duelo
+  const lados={Aliado:[],Inimigo:[],Neutro:[]};
+  rolados.forEach(p=>{const pc=p.pcId?S.personagens.find(x=>x.id===p.pcId):null;
+    (lados[p.lado||pc?.lado||'Neutro']||lados.Neutro).push(p)});
+  const melhor=arr=>arr.length?arr.reduce((a,b)=>a.res.total>=b.res.total?a:b):null;
+  const ma=melhor(lados.Aliado), mi=melhor(lados.Inimigo);
+  const soma=arr=>arr.reduce((s,p)=>s+p.res.total,0);
+  let ver;
+  if(!ma||!mi) ver='<div class="hint">Role ao menos um de cada lado para ter um vencedor.</div>';
+  else if(ma.res.total===mi.res.total) ver='<div class="vlinha"><span class="n">Empate na melhor rolagem.</span></div>';
+  else{
+    const v=ma.res.total>mi.res.total?ma:mi;
+    const pc=v.pcId?S.personagens.find(x=>x.id===v.pcId):null;
+    ver=`<div class="vlinha"><span class="n">Melhor rolagem: <strong>${esc(nomeDe(v))}</strong>
+      <span class="lado ${(v.lado||pc?.lado||'Neutro').toLowerCase()}">${esc(v.lado||pc?.lado||'Neutro')}</span></span>
+      <span class="v">${v.res.total}</span></div>`;
+  }
+  return `<div class="veredito"><h3>Duelo</h3>${ver}
+    <div class="vlinha" style="margin-top:6px"><span class="n ok">Aliados — melhor ${ma?ma.res.total:'—'} · soma ${soma(lados.Aliado)}</span></div>
+    <div class="vlinha"><span class="n no">Inimigos — melhor ${mi?mi.res.total:'—'} · soma ${soma(lados.Inimigo)}</span></div></div>`;
+}
+function rolarParticipante(sit,pt){
+  const pc=pt.pcId?S.personagens.find(p=>p.id===pt.pcId):null;
+  const nome=pc?pc.nome:(pt.nome||'Avulso');
+  if(pt.tipo==='livre'){
+    let r; try{ r=rolarExpressao(pt.expr); }catch(e){ toast(e.message); return; }
+    pt.res={total:r.total, texto:r.expr+' → '+r.detalhe};
+    logar({tipo:'livre', quem:nome, det:r.expr+'  '+r.detalhe, total:r.total, sit:sit.nome});
+  }else{
+    if(!pc){ toast('Personagem não encontrado'); return; }
+    const valor=valorDoAtributo(pc,pt.atr,pt.fonte);
+    const r=rolarFixa(valor,pt.fixa||0);
+    pt.res={total:r.total, texto:r.texto+(r.dado?' (dado '+r.bruto+')':'')};
+    logar({tipo:'fixa', quem:nome,
+      det:pt.atr+' '+valor+(!ehDerivado(pt.atr)&&pt.fonte==='base'?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
+      total:r.total, sit:sit.nome});
+  }
+}
+function ligarMesa(sit){
+  const host=document.getElementById('mesa');
+  const q=s=>host.querySelector(s);
+  q('#novaSit').onclick=()=>{const s=novaSituacao(); S.situacoes.push(s); S.selSit=s.id; save(); renderMesa()};
+  if(q('#selSit')) q('#selSit').onchange=e=>{S.selSit=e.target.value; save(); renderMesa()};
+  ligarRegistro();
+  if(!sit) return;
+
+  q('#sitNome').oninput=e=>{sit.nome=e.target.value; save()};
+  q('#sitModo').onchange=e=>{sit.modo=e.target.value; save(); renderMesa()};
+  if(q('#sitAlvo')) q('#sitAlvo').onchange=e=>{sit.alvo=+e.target.value||0; save(); renderMesa()};
+  q('#delSit').onclick=()=>{ if(confirm('Excluir a situação "'+sit.nome+'"?')){
+    S.situacoes=S.situacoes.filter(x=>x.id!==sit.id); S.selSit=S.situacoes[0]?.id||null; save(); renderMesa(); }};
+
+  q('#btnAddPc').onclick=()=>{
+    const id=q('#addPc').value; if(!id){toast('Escolha alguém do elenco');return}
+    const pc=S.personagens.find(p=>p.id===id);
+    sit.participantes.push({id:uid(), tipo:'atributo', pcId:id, lado:pc?.lado||'Aliado', atr:'FOR', fonte:'total', fixa:0, res:null});
+    save(); renderMesa();
+  };
+  q('#btnAddGrupo').onclick=()=>{
+    const g=q('#addGrupo').value; if(!g){toast('Escolha um grupo');return}
+    const membros=S.personagens.filter(p=>(p.grupo||'')===g);
+    if(!membros.length){toast('Esse grupo está vazio');return}
+    let novos=0;
+    membros.forEach(pc=>{
+      if(sit.participantes.some(x=>x.pcId===pc.id)) return;      // não duplica quem já está na cena
+      sit.participantes.push({id:uid(), tipo:'atributo', pcId:pc.id, lado:pc.lado||'Aliado',
+        atr:'FOR', fonte:'total', fixa:0, res:null});
+      novos++;
+    });
+    save(); renderMesa();
+    toast(novos? novos+' participante'+(novos>1?'s':'')+' de "'+g+'"' : 'Todos já estavam na situação');
+  };
+  q('#btnAddLivre').onclick=()=>{
+    const nome=prompt('Nome da rolagem avulsa (ex.: Goblin 3, Armadilha):','Inimigo');
+    if(nome===null) return;
+    sit.participantes.push({id:uid(), tipo:'livre', pcId:null, nome:nome||'Avulso', lado:'Inimigo', expr:'1d20', res:null});
+    save(); renderMesa();
+  };
+  q('#rolarTodos').onclick=()=>{ sit.participantes.forEach(pt=>rolarParticipante(sit,pt)); save(); renderMesa(); };
+  q('#limparRes').onclick=()=>{ sit.participantes.forEach(pt=>pt.res=null); save(); renderMesa(); };
+
+  host.querySelectorAll('[data-ptroll]').forEach(b=>b.onclick=()=>{
+    const pt=sit.participantes.find(x=>x.id===b.dataset.ptroll); if(pt){rolarParticipante(sit,pt); save(); renderMesa();}});
+  host.querySelectorAll('[data-ptdel]').forEach(b=>b.onclick=()=>{
+    sit.participantes=sit.participantes.filter(x=>x.id!==b.dataset.ptdel); save(); renderMesa();});
+  host.querySelectorAll('[data-ptatr]').forEach(s=>s.onchange=e=>{
+    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptatr); if(pt){pt.atr=e.target.value; save(); renderMesa();}});
+  host.querySelectorAll('[data-ptfonte]').forEach(s=>s.onchange=e=>{
+    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptfonte); if(pt){pt.fonte=e.target.value; save(); renderMesa();}});
+  host.querySelectorAll('[data-ptfixa]').forEach(i=>i.onchange=e=>{
+    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptfixa); if(pt){pt.fixa=Math.max(0,+e.target.value||0); save(); renderMesa();}});
+  host.querySelectorAll('[data-ptexpr]').forEach(i=>i.oninput=e=>{
+    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptexpr); if(pt){pt.expr=e.target.value; save();}});
+}
+
+/* =========================== ABA EVENTOS =========================== */
+function renderEventos(){
+  const host=document.getElementById('eventos');
+  S.tabelas=S.tabelas||[];
+  host.innerHTML=`
+  <div class="tab-ev" style="margin-bottom:18px">
+    <div class="panel">
+      <div class="hd"><span class="eyebrow">Dados livres</span></div>
+      <div class="bd">
+        <div class="sitbar">
+          <input class="entrada" id="expr" value="${esc(S.ultimaExpr||'1d20')}" placeholder="2d6+3" style="max-width:220px">
+          <button class="primary" id="rolarExpr">Rolar</button>
+        </div>
+        <div class="quick">
+          ${['1d4','1d6','1d8','1d10','1d12','1d20','1d100','2d6','3d6','1d20+5'].map(d=>`<button class="mini" data-dado="${d}">${d}</button>`).join('')}
+        </div>
+        <div id="saidaExpr" style="margin-top:14px">
+          <div class="bigroll">—<small>o resultado aparece aqui</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="hd"><span class="eyebrow">Tabelas de eventos</span>
+        <span style="margin-left:auto"><button class="mini primary" id="novaTab">+ Tabela</button></span></div>
+      <div class="bd">
+        ${S.tabelas.length? S.tabelas.map(t=>{
+          const n=(t.itens||'').split('\n').map(x=>x.trim()).filter(Boolean).length;
+          return `<div class="rescard" style="margin-bottom:12px">
+            <div class="top">
+              <input class="inm" data-tabnome="${t.id}" value="${esc(t.nome)}" style="font-weight:500;max-width:220px">
+              <span class="hint">${n} entrada${n===1?'':'s'}</span>
+              <button class="mini danger" data-tabdel="${t.id}" style="margin-left:auto">Remover</button>
+            </div>
+            <textarea rows="5" class="entrada" data-tabitens="${t.id}" placeholder="Uma entrada por linha">${esc(t.itens||'')}</textarea>
+            <div class="sitbar" style="margin-top:8px">
+              <button class="mini primary" data-tabroll="${t.id}">Sortear</button>
+              <label class="sitbar" style="gap:5px"><span class="hint">quantos</span>
+                <input type="number" min="1" value="1" data-tabqtd="${t.id}" style="width:58px"></label>
+              <label class="sitbar" style="gap:5px"><input type="checkbox" data-tabrep="${t.id}" style="width:auto" checked><span class="hint">sem repetir</span></label>
+            </div>
+            <div data-tabout="${t.id}" style="margin-top:8px"></div>
+          </div>`}).join('')
+        : '<div class="hint">Nenhuma tabela ainda. Crie uma para clima, encontros, saques, reações — o que a mesa pedir.</div>'}
+      </div>
+    </div>
+  </div>
+
+  ${painelRegistro(true)}
+  `;
+  ligarEventos();
+}
+function ligarEventos(){
+  const host=document.getElementById('eventos');
+  const q=s=>host.querySelector(s);
+  const mostrar=(r,expr)=>{
+    q('#saidaExpr').innerHTML=`<div class="bigroll">${r.total}<small>${esc(expr)} → ${esc(r.detalhe)}</small></div>`;
+  };
+  const rodar=()=>{
+    const expr=q('#expr').value; S.ultimaExpr=expr;
+    let r; try{ r=rolarExpressao(expr); }catch(e){ toast(e.message); return; }
+    mostrar(r,r.expr); logar({tipo:'livre', quem:'Mestre', det:r.expr+'  '+r.detalhe, total:r.total});
+    renderRegistroSo();
+  };
+  q('#rolarExpr').onclick=rodar;
+  q('#expr').onkeydown=e=>{if(e.key==='Enter')rodar()};
+  host.querySelectorAll('[data-dado]').forEach(b=>b.onclick=()=>{q('#expr').value=b.dataset.dado; rodar()});
+  q('#novaTab').onclick=()=>{S.tabelas.push({id:uid(),nome:'Nova tabela',itens:''}); save(); renderEventos()};
+  host.querySelectorAll('[data-tabnome]').forEach(i=>i.oninput=e=>{
+    const t=S.tabelas.find(x=>x.id===e.target.dataset.tabnome); if(t){t.nome=e.target.value; save();}});
+  host.querySelectorAll('[data-tabitens]').forEach(i=>i.oninput=e=>{
+    const t=S.tabelas.find(x=>x.id===e.target.dataset.tabitens); if(t){t.itens=e.target.value; save();}});
+  host.querySelectorAll('[data-tabdel]').forEach(b=>b.onclick=()=>{
+    if(confirm('Remover a tabela?')){S.tabelas=S.tabelas.filter(x=>x.id!==b.dataset.tabdel); save(); renderEventos();}});
+  host.querySelectorAll('[data-tabroll]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.tabroll, t=S.tabelas.find(x=>x.id===id);
+    const itens=(t.itens||'').split('\n').map(x=>x.trim()).filter(Boolean);
+    if(!itens.length){toast('A tabela está vazia');return}
+    const qtd=Math.max(1,+host.querySelector('[data-tabqtd="'+id+'"]').value||1);
+    const semRep=host.querySelector('[data-tabrep="'+id+'"]').checked;
+    const pool=[...itens], saiu=[];
+    for(let i=0;i<qtd;i++){
+      if(!pool.length) break;
+      const idx=randInt(pool.length);
+      saiu.push({txt:pool[idx], n:idx+1, de:itens.length});
+      if(semRep) pool.splice(idx,1);
+    }
+    host.querySelector('[data-tabout="'+id+'"]').innerHTML=saiu.map(s=>
+      `<div class="vlinha"><span class="p mono">${s.n}/${s.de}</span><span class="n" style="font-weight:500">${esc(s.txt)}</span></div>`).join('');
+    logar({tipo:'tabela', quem:t.nome, det:saiu.map(s=>s.txt).join(' · '), total:null});
+    renderRegistroSo();
+  });
+}
+
+/* ---------- registro compartilhado ---------- */
+function painelRegistro(comTeste){
+  const log=S.log||[];
+  return `<div class="panel" id="painelLog">
+    <div class="hd"><span class="eyebrow">Registro da mesa</span>
+      <span class="hint" style="margin-left:8px">crypto.getRandomValues · nada é reescrito depois de rolado</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        ${comTeste?'<button class="mini" id="testeRng">Testar aleatoriedade</button>':''}
+        <button class="mini" id="copiarLog">Copiar</button>
+        <button class="mini danger" id="limparLog">Limpar</button>
+      </span></div>
+    <div class="bd">
+      <div id="saidaTeste"></div>
+      <div class="log" id="logBox">
+        ${log.length? log.map(e=>`<div class="row">
+          <span class="ts">${horaCurta(e.ts)}</span>
+          <span class="who">${esc(e.quem)}${e.sit?`<span class="hint" style="font-weight:400"> · ${esc(e.sit)}</span>`:''}</span>
+          <span class="det">${esc(e.det)}</span>
+          <span class="tt">${e.total==null?'':e.total}</span>
+        </div>`).join('') : '<div class="hint">Nada rolado ainda.</div>'}
+      </div>
+    </div></div>`;
+}
+function renderRegistroSo(){
+  const box=document.getElementById('logBox'); if(!box) return;
+  const log=S.log||[];
+  box.innerHTML=log.length? log.map(e=>`<div class="row">
+      <span class="ts">${horaCurta(e.ts)}</span>
+      <span class="who">${esc(e.quem)}${e.sit?`<span class="hint" style="font-weight:400"> · ${esc(e.sit)}</span>`:''}</span>
+      <span class="det">${esc(e.det)}</span>
+      <span class="tt">${e.total==null?'':e.total}</span>
+    </div>`).join('') : '<div class="hint">Nada rolado ainda.</div>';
+}
+function ligarRegistro(){
+  const c=document.getElementById('copiarLog');
+  if(c) c.onclick=()=>{
+    const txt=(S.log||[]).map(e=>`[${new Date(e.ts).toLocaleString('pt-BR')}] ${e.quem}${e.sit?' ('+e.sit+')':''}: ${e.det}${e.total==null?'':' = '+e.total}`).join('\n');
+    navigator.clipboard?.writeText(txt).then(()=>toast('Registro copiado'),()=>toast('Não consegui copiar'));
+  };
+  const l=document.getElementById('limparLog');
+  if(l) l.onclick=()=>{ if(confirm('Apagar o registro de rolagens?')){S.log=[]; save(); renderRegistroSo();} };
+  const t=document.getElementById('testeRng');
+  if(t) t.onclick=()=>{
+    const N=6000, faces=20, cont=new Array(faces).fill(0);
+    for(let i=0;i<N;i++) cont[rolarDado(faces)-1]++;
+    const esperado=N/faces, maxc=Math.max(...cont);
+    const desvio=Math.max(...cont.map(c=>Math.abs(c-esperado)))/esperado*100;
+    document.getElementById('saidaTeste').innerHTML=`
+      <div style="border:1px solid var(--line);border-radius:var(--r);padding:10px;margin-bottom:12px;background:var(--campo)">
+        <span class="eyebrow">${N} rolagens de 1d20 · esperado ${esperado} por face</span>
+        <div class="bars">${cont.map((c,i)=>`<div style="height:${(c/maxc*100).toFixed(1)}%" title="${i+1}: ${c}"></div>`).join('')}</div>
+        <div class="hint" style="margin-top:6px">Maior desvio: ${desvio.toFixed(1)}% do esperado. Rode de novo — as barras mudam toda vez.</div>
+      </div>`;
+  };
+}
+
+/* =======================================================================
+   ÁRVORES DE HABILIDADE — mesma regra do app de árvores do mestre:
+   pais com regra E/OU, grupos exclusivos, graus com custo por pool.
+   ======================================================================= */
+const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'classe',nome:'Classe'},{id:'escola',nome:'Escola'},{id:'outra',nome:'Outra'}];
+const nomeCatArv = id => (CAT_ARV.find(c=>c.id===id)||CAT_ARV[3]).nome;
+const ARV={porId:new Map(), arvDe:new Map(), filhos:new Map()};
+
+function temBib(){ return !!(S.bib && (S.bib.arvores||[]).length); }
+function normalizarBib(b){
+  b.pools=Array.isArray(b.pools)?b.pools:[];
+  b.naturezas=Array.isArray(b.naturezas)?b.naturezas:[];
+  b.usos=Array.isArray(b.usos)?b.usos:[];
+  b.tipos=b.tipos||{pequeno:{nome:'Pequeno',custo:1}};
+  b.arvores=Array.isArray(b.arvores)?b.arvores:[];
+  b.arvores.forEach(a=>{
+    a.nodes=Array.isArray(a.nodes)?a.nodes:[];
+    if(!CAT_ARV.some(c=>c.id===a.categoria)) a.categoria='outra';
+    a.nodes.forEach(n=>{
+      n.pais=Array.isArray(n.pais)?n.pais:[];
+      n.usos=Array.isArray(n.usos)?n.usos:[];
+      n.regra = n.regra==='ou' ? 'ou' : 'e';
+      if(!Array.isArray(n.graus)||!n.graus.length) n.graus=[{custos:{},texto:''}];
+      n.graus.forEach(g=>{ g.custos=g.custos||{}; g.texto=g.texto||''; });
+    });
+  });
+  return b;
+}
+function indexarArvores(){
+  ARV.porId.clear(); ARV.arvDe.clear(); ARV.filhos.clear();
+  if(!S.bib) return;
+  (S.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
+    ARV.porId.set(n.id,n); ARV.arvDe.set(n.id,a); ARV.filhos.set(n.id,[]);
+  }));
+  (S.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
+    (n.pais||[]).forEach(pid=>{ if(ARV.arvDe.get(pid)===a) ARV.filhos.get(pid).push(n); });
+  }));
+}
+const skillsDe   = pc => (pc.skills || (pc.skills={arvores:[],pontos:{},alocados:{}}));
+const arvoreDoNo = id => ARV.arvDe.get(id)||null;
+const arvPorId   = id => (S.bib?.arvores||[]).find(a=>a.id===id)||null;
+const poolArv    = id => (S.bib?.pools||[]).find(x=>x.id===id)||null;
+const natArv     = id => (S.bib?.naturezas||[]).find(x=>x.id===id)||null;
+const usoArv     = id => (S.bib?.usos||[]).find(x=>x.id===id)||null;
+const tipoArv    = n  => (S.bib?.tipos||{})[n.tipo] || {nome:n.tipo||'Pequeno'};
+const grupoEx    = n  => String(n.exclusivo||'').trim().toLowerCase();
+const grausDe    = n  => (n.graus&&n.graus.length? n.graus : [{custos:{},texto:''}]);
+const custoGrauArv = (n,k) => (grausDe(n)[k-1]&&grausDe(n)[k-1].custos) || {};
+
+function equipadaArv(pc,id){ const a=arvoreDoNo(id); return !!a && skillsDe(pc).arvores.includes(a.id); }
+function satisfeitoNo(n,conj){
+  if(!(n.pais||[]).length) return true;
+  return n.regra==='ou' ? n.pais.some(x=>conj.has(x)) : n.pais.every(x=>conj.has(x));
+}
+function fechadoPorNo(pc,n){
+  const g=grupoEx(n); if(!g) return null;
+  for(const id in skillsDe(pc).alocados){
+    if(id===n.id) continue;
+    const m=ARV.porId.get(id);
+    if(m && grupoEx(m)===g) return m;
+  }
+  return null;
+}
+function gastosPool(pc,poolId){
+  const al=skillsDe(pc).alocados; let soma=0;
+  for(const id in al){
+    const n=ARV.porId.get(id); if(!n) continue;
+    const g=Math.min(al[id], grausDe(n).length);
+    for(let k=0;k<g;k++) soma += (grausDe(n)[k].custos||{})[poolId]||0;
+  }
+  return soma;
+}
+const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) - gastosPool(pc,poolId);
+function podePagarArv(pc,n,k){
+  const c=custoGrauArv(n,k);
+  return (S.bib.pools||[]).every(pl=>(c[pl.id]||0) <= restantesPool(pc,pl.id));
+}
+function faltamPools(pc,n,k){
+  const c=custoGrauArv(n,k);
+  return (S.bib.pools||[]).filter(pl=>(c[pl.id]||0) > restantesPool(pc,pl.id)).map(pl=>pl.nome);
+}
+function custoTextoArv(custos){
+  const ps=(S.bib?.pools||[]).filter(pl=>(custos||{})[pl.id]>0).map(pl=>pl.nome+' '+custos[pl.id]);
+  return ps.length? ps.join(' · ') : 'sem custo';
+}
+function estadoDoNo(pc,n){
+  const al=skillsDe(pc).alocados;
+  if((al[n.id]||0)>0) return 'on';
+  if(!equipadaArv(pc,n.id)) return 'bloq';
+  if(fechadoPorNo(pc,n)) return 'fechado';
+  if(!satisfeitoNo(n,new Set(Object.keys(al)))) return 'bloq';
+  return podePagarArv(pc,n,1)? 'disp' : 'caro';
+}
+/* dos alocados, quais continuam ligados a uma raiz */
+function sustentadosArv(conj){
+  const ok=new Set([...conj].filter(id=>!ARV.porId.has(id)));
+  let mudou=true;
+  while(mudou){
+    mudou=false;
+    for(const id of conj){
+      if(ok.has(id)) continue;
+      const n=ARV.porId.get(id); if(!n) continue;
+      if(satisfeitoNo(n,ok)){ ok.add(id); mudou=true; }
+    }
+  }
+  return ok;
+}
+function podeSoltarNo(pc,id){
+  const c=new Set(Object.keys(skillsDe(pc).alocados)); c.delete(id);
+  return sustentadosArv(c).size===c.size;
+}
+function podarSkills(pc){
+  const al=skillsDe(pc).alocados;
+  for(const id of Object.keys(al)){
+    const n=ARV.porId.get(id);
+    if(!n) continue;                                  // ramo trancado: fica guardado
+    if(!equipadaArv(pc,id)){ delete al[id]; continue; }
+    if(al[id]>grausDe(n).length) al[id]=grausDe(n).length;
+    if(al[id]<1) delete al[id];
+  }
+  const vistos=new Set();
+  for(const id of Object.keys(al)){
+    const n=ARV.porId.get(id); if(!n) continue;
+    const g=grupoEx(n); if(!g) continue;
+    if(vistos.has(g)) delete al[id]; else vistos.add(g);
+  }
+  const ok=sustentadosArv(new Set(Object.keys(al)));
+  for(const id of Object.keys(al)) if(!ok.has(id)) delete al[id];
+}
+function exigenciaTexto(n){
+  if(!(n.pais||[]).length) return '';
+  const a=arvoreDoNo(n.id);
+  const nomes=(n.pais||[]).map(pid=>{
+    const m=ARV.porId.get(pid); if(!m) return 'um requisito que não veio no arquivo';
+    const am=arvoreDoNo(pid);
+    return am===a ? m.nome : m.nome+' ('+am.nome+')';
+  });
+  if(nomes.length===1) return 'Exige '+nomes[0]+'.';
+  const lig = n.regra==='ou' ? ' ou ' : ' e ';
+  return 'Exige '+nomes.slice(0,-1).join(', ')+lig+nomes[nomes.length-1]+'.';
+}
+/* pools que uma árvore realmente cobra */
+function poolsDaArvore(a){
+  const ps=new Set();
+  (a.nodes||[]).forEach(n=>grausDe(n).forEach(g=>Object.keys(g.custos||{}).forEach(k=>{
+    if((g.custos[k]||0)>0) ps.add(k);
+  })));
+  return [...ps];
+}
+function equiparArvore(pc,id,ligar){
+  const sk=skillsDe(pc), a=arvPorId(id); if(!a) return;
+  if(ligar){
+    if(!sk.arvores.includes(id)) sk.arvores.push(id);
+    poolsDaArvore(a).forEach(pid=>{                   // estreia a pool no valor padrão dela
+      if(sk.pontos[pid]==null){ const pl=poolArv(pid); sk.pontos[pid]= pl&&pl.padrao!=null? +pl.padrao : 0; }
+    });
+  }else{
+    sk.arvores=sk.arvores.filter(x=>x!==id);
+  }
+  podarSkills(pc); save(); renderFicha();
+}
+function pegarNo(pc,id){
+  const n=ARV.porId.get(id); if(!n) return;
+  const sk=skillsDe(pc), atual=sk.alocados[id]||0, prox=atual+1;
+  if(prox>grausDe(n).length) return;
+  if(atual===0){
+    const e=estadoDoNo(pc,n);
+    if(e==='fechado'){ const m=fechadoPorNo(pc,n); toast('Caminho fechado por “'+m.nome+'”'); return; }
+    if(e==='bloq'){ toast(exigenciaTexto(n)||'Equipe a árvore primeiro'); return; }
+  }
+  if(!podePagarArv(pc,n,prox)){ toast('Faltam pontos: '+faltamPools(pc,n,prox).join(', ')); return; }
+  sk.alocados[id]=prox; save(); renderFicha();
+}
+function soltarNo(pc,id){
+  const sk=skillsDe(pc), atual=sk.alocados[id]||0;
+  if(atual<=0) return;
+  if(atual===1 && !podeSoltarNo(pc,id)){ toast('Outras skills dependem dessa'); return; }
+  if(atual===1) delete sk.alocados[id]; else sk.alocados[id]=atual-1;
+  save(); renderFicha();
+}
+/* lista hierárquica: cada nódulo embaixo do primeiro pai dentro da mesma árvore */
+function linhasDaArvore(a){
+  const dentro=new Set((a.nodes||[]).map(n=>n.id));
+  const kids=new Map(); (a.nodes||[]).forEach(n=>kids.set(n.id,[]));
+  const raizes=[];
+  (a.nodes||[]).forEach(n=>{
+    const pai=(n.pais||[]).filter(x=>dentro.has(x))[0];
+    if(pai) kids.get(pai).push(n); else raizes.push(n);
+  });
+  const out=[], visto=new Set();
+  const anda=(n,d)=>{
+    if(visto.has(n.id)) return;
+    visto.add(n.id); out.push({n,d});
+    (kids.get(n.id)||[]).forEach(f=>anda(f,d+1));
+  };
+  raizes.forEach(r=>anda(r,0));
+  (a.nodes||[]).forEach(n=>anda(n,0));               // sobras (ciclo ou pai de fora)
+  return out;
+}
+/* as skills escolhidas, prontas para a tabela */
+function skillsEscolhidas(pc){
+  const al=skillsDe(pc).alocados, linhas=[];
+  (S.bib?.arvores||[]).forEach(a=>{
+    if(!skillsDe(pc).arvores.includes(a.id)) return;
+    (a.nodes||[]).forEach(n=>{
+      const g=al[n.id]||0; if(g<=0) return;
+      const custo={};
+      for(let k=0;k<Math.min(g,grausDe(n).length);k++)
+        Object.entries(grausDe(n)[k].custos||{}).forEach(([pid,v])=>{custo[pid]=(custo[pid]||0)+v});
+      linhas.push({n, grau:g, arvore:a, custo, texto:(grausDe(n)[g-1]||{}).texto||''});
+    });
+  });
+  const pres=(S.bib?.usos||[]).map(u=>u.id);
+  linhas.sort((x,y)=>{
+    const ux=pres.indexOf((x.n.usos||[])[0]||''), uy=pres.indexOf((y.n.usos||[])[0]||'');
+    if(ux!==uy) return (ux<0?99:ux)-(uy<0?99:uy);
+    return x.n.nome.localeCompare(y.n.nome,'pt-BR');
+  });
+  return linhas;
+}
+function perdidasDe(pc){
+  return Object.keys(skillsDe(pc).alocados).filter(id=>!ARV.porId.has(id)).length;
+}
+
+/* =================== ROLAGEM RÁPIDA NA FICHA =================== */
+function rolarNaFicha(pc,k){
+  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
+  const valor=valorDoAtributo(pc,k,rol.fonte);
+  const r=rolarFixa(valor, rol.fixa||0);
+  const usouBase = !ehDerivado(k) && rol.fonte==='base';
+  pc.ultRol={k, valor, base:usouBase, total:r.total, texto:r.texto, dado:r.dado, bruto:r.bruto};
+  logar({tipo:'fixa', quem:pc.nome,
+    det:k+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
+    total:r.total});
+  save(); renderFicha();
+}
+
+/* =================== DISPUTA DE ROLAGENS =================== */
+function opcoesDeAtributo(k){
+  return ATRIBS.map(a=>`<option value="${a.k}" ${k===a.k?'selected':''}>${a.k} · ${esc(a.nome)}</option>`).join('')
+       + DERIV.map(d=>`<option value="${d.k}" ${k===d.k?'selected':''}>${d.k} · ${esc(d.nome)}</option>`).join('')
+       + DEFESAS.map(d=>`<option value="${d.k}" ${k===d.k?'selected':''}>${d.rot} · ${esc(d.nome)}</option>`).join('');
+}
+function rotuloAtr(k){
+  const a=ATRIBS.find(x=>x.k===k); if(a) return a.k;
+  const d=DERIV.find(x=>x.k===k); if(d) return d.k;
+  const f=DEFESAS.find(x=>x.k===k); return f? f.rot : k;
+}
+function abrirDisputa(pc){
+  const outros=S.personagens.filter(x=>x.id!==pc.id);
+  const mem=pc.disputa||(pc.disputa={});     // o oponente é lembrado por ficha
+  const est={
+    atrA: mem.atrA||'FOR', fixaA: pc.rol?.fixa||0,
+    alvo: (mem.alvoId==='__avulso__' || outros.some(x=>x.id===mem.alvoId))
+            ? mem.alvoId : (outros[0]?.id||'__avulso__'),
+    atrB: mem.atrB||'FOR', fixaB: mem.fixaB||0, valorB: mem.valorB||40,
+    res:null
+  };
+  if(!outros.length) est.alvo='__avulso__';
+  /* os valores são lidos na hora de rolar, nunca de uma cópia antiga da tela */
+  const lados=()=>{
+    const avulso = est.alvo==='__avulso__';
+    const pcB = avulso? null : S.personagens.find(x=>x.id===est.alvo);
+    return {avulso, pcB,
+      vA: valorDoAtributo(pc, est.atrA, pc.rol?.fonte||'total'),
+      vB: avulso? Math.max(0,+est.valorB||0) : valorDoAtributo(pcB, est.atrB, pcB.rol?.fonte||'total'),
+      nomeB: avulso? 'Avulso' : pcB.nome};
+  };
+  const m=document.createElement('div'); m.className='modal';
+  const fechar=()=>{ m.remove(); renderFicha(); };
+  let desenhando=false;
+  const desenhar=()=>{
+    if(desenhando) return;                       // o redesenho tira o foco e dispara change de novo
+    desenhando=true;
+    const {avulso, pcB, vA, vB} = lados();
+    const r=est.res;
+    const ganhaA = r && r.a.total>r.b.total, ganhaB = r && r.b.total>r.a.total;
+    m.innerHTML=`<div class="sheet" style="max-width:720px">
+      <div class="hd"><span class="eyebrow">Disputa de rolagens</span>
+        <span class="hint" style="margin-left:6px">cada lado rola a sua fixa; quem tirar mais, vence</span>
+        <button class="mini" id="disX" style="margin-left:auto">Fechar</button></div>
+      <div class="bd">
+        <div class="dislados">
+          <div class="dislado ${ganhaA?'venceu':''}">
+            <span class="disnome">${esc(pc.nome)}</span>
+            <div class="discampos">
+              <label><span>Atributo</span><select id="disAtrA">${opcoesDeAtributo(est.atrA)}</select></label>
+              <label><span>Valor</span><span class="disval">${vA}</span></label>
+              <label><span>Fixar</span><input type="number" min="0" id="disFixaA" value="${est.fixaA}"></label>
+            </div>
+            ${r? `<div class="disnum">${r.a.total}</div><div class="disdet">${esc(r.a.texto)}${r.a.dado?` · dado ${r.a.bruto}`:''}</div>`:''}
+          </div>
+          <div class="disvs">×</div>
+          <div class="dislado ${ganhaB?'venceu':''}">
+            <label style="display:block;margin-bottom:8px">
+              <select id="disAlvo">
+                ${outros.map(o=>`<option value="${o.id}" ${est.alvo===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}
+                <option value="__avulso__" ${avulso?'selected':''}>Valor avulso (sem ficha)</option>
+              </select></label>
+            <div class="discampos">
+              ${avulso
+                ? `<label><span>Valor</span><input type="number" min="0" id="disValorB" value="${est.valorB}"></label>`
+                : `<label><span>Atributo</span><select id="disAtrB">${opcoesDeAtributo(est.atrB)}</select></label>
+                   <label><span>Valor</span><span class="disval">${vB}</span></label>`}
+              <label><span>Fixar</span><input type="number" min="0" id="disFixaB" value="${est.fixaB}"></label>
+            </div>
+            ${r? `<div class="disnum">${r.b.total}</div><div class="disdet">${esc(r.b.texto)}${r.b.dado?` · dado ${r.b.bruto}`:''}</div>`:''}
+          </div>
+        </div>
+        ${r? `<div class="disveredito">${
+          r.a.total===r.b.total
+            ? '<span class="emp">Empate em '+r.a.total+'.</span>'
+            : `<strong>${esc(r.a.total>r.b.total? pc.nome : (pcB? pcB.nome : 'O oponente'))}</strong> venceu por ${Math.abs(r.a.total-r.b.total)}.`
+        }</div>`:''}
+        <div class="modalacts">
+          <span class="hint">O resultado vai para o registro da Mesa.</span>
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button id="disFechar">Fechar</button>
+            <button class="primary" id="disRolar">${r?'Rolar de novo':'Rolar disputa'}</button>
+          </span>
+        </div>
+      </div></div>`;
+    desenhando=false;
+    m.querySelector('#disX').onclick=fechar;
+    m.querySelector('#disFechar').onclick=fechar;
+    /* números: só guardam o valor, sem redesenhar (senão o campo perde o foco a cada tecla) */
+    const num=(id,fn)=>{ const e=m.querySelector(id); if(e) e.oninput=ev=>fn(Math.max(0,+ev.target.value||0)); };
+    num('#disFixaA', v=>{est.fixaA=v; pc.rol.fixa=v; save();});   // é a mesma fixa do rolador da ficha
+    num('#disFixaB', v=>{est.fixaB=v; mem.fixaB=v; save();});
+    num('#disValorB', v=>{est.valorB=v; mem.valorB=v; save();});
+    /* seletores mudam a estrutura, então redesenham */
+    const sel=(id,fn)=>{ const e=m.querySelector(id); if(e) e.onchange=ev=>{ fn(ev.target.value); est.res=null; desenhar(); }; };
+    sel('#disAtrA', v=>{est.atrA=v; mem.atrA=v; save();});
+    sel('#disAtrB', v=>{est.atrB=v; mem.atrB=v; save();});
+    sel('#disAlvo', v=>{est.alvo=v; mem.alvoId=v; save();});
+    m.querySelector('#disRolar').onclick=()=>{
+      const {avulso, vA, vB, nomeB} = lados();
+      const ra=rolarFixa(vA, est.fixaA);
+      const rb=rolarFixa(vB, est.fixaB);
+      est.res={a:ra, b:rb};
+      const rotB = avulso? 'valor '+vB : rotuloAtr(est.atrB)+' '+vB;
+      const vencedor = ra.total===rb.total ? 'empate'
+        : (ra.total>rb.total ? pc.nome+' por '+(ra.total-rb.total) : nomeB+' por '+(rb.total-ra.total));
+      logar({tipo:'disputa', quem:pc.nome+' × '+nomeB,
+        det:`${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}) = ${ra.total}`
+           +` × ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}) = ${rb.total} · ${vencedor}`,
+        total:null});
+      save(); desenhar();
+    };
+  };
+  m.onclick=e=>{ if(e.target===m) fechar(); };
+  document.body.appendChild(m); desenhar();
+}
+
+/* =================== ABA SKILLS DA FICHA =================== */
+function blocoSkills(pc){
+  if(!temBib()) return `
+    <div class="semarv">
+      <h3>Nenhuma árvore carregada</h3>
+      <p>Importe o arquivo que o mestre exporta no app de árvores — o backup completo ou o pacote. As árvores ficam disponíveis para todos os personagens; o que cada um equipa e aloca fica na ficha dele.</p>
+      <button class="primary" data-skimport="1">Importar árvores</button>
+    </div>`;
+
+  const sk=skillsDe(pc);
+  const equipadas=(S.bib.arvores||[]).filter(a=>sk.arvores.includes(a.id));
+  const poolsEmUso=[...new Set(equipadas.flatMap(poolsDaArvore))];
+  const ui=S.skillsUI||{};
+  const perdidas=perdidasDe(pc);
+
+  const barra = poolsEmUso.length? `<div class="poolbar">
+      ${poolsEmUso.map(pid=>{
+        const pl=poolArv(pid)||{nome:pid,cor:'#888'};
+        const total=sk.pontos[pid]||0, gasto=gastosPool(pc,pid), resta=total-gasto;
+        return `<div class="poolcard">
+          <span class="pooldot" style="background:${esc(pl.cor||'#888')}"></span>
+          <span class="poolnome">${esc(pl.nome)}</span>
+          <input type="number" min="0" data-skpontos="${esc(pid)}" value="${total}" title="Total de pontos nesta pool">
+          <span class="poolconta ${resta<0?'warn':''}">${gasto} gastos · <strong>${resta}</strong> ${resta===1?'livre':'livres'}</span>
+        </div>`}).join('')}
+    </div>` : '';
+
+  const equipar = `<div class="skbloco">
+    <button class="skhd" data-skui="equipar">
+      <span class="caret">${ui.equipar?'▾':'▸'}</span>
+      <span class="eyebrow">Árvores equipadas</span>
+      <span class="hint">${equipadas.length? equipadas.map(a=>esc(a.nome)).join(' · ') : 'nenhuma'}</span>
+    </button>
+    ${ui.equipar?`<div class="skcorpo">
+      ${CAT_ARV.map(cat=>{
+        const lista=(S.bib.arvores||[]).filter(a=>a.categoria===cat.id);
+        if(!lista.length) return '';
+        return `<div class="skcat"><span class="eyebrow">${cat.nome}</span>
+          <div class="skchips">${lista.map(a=>{
+            const on=sk.arvores.includes(a.id);
+            const n=(a.nodes||[]).length;
+            return `<label class="skchip ${on?'on':''}">
+              <input type="checkbox" data-skarv="${esc(a.id)}" ${on?'checked':''}>
+              <span>${esc(a.nome)}<small>${n} nódulo${n===1?'':'s'}</small></span></label>`}).join('')}</div></div>`;
+      }).join('')}
+      <div class="sitbar" style="margin-top:10px">
+        <button class="mini" data-skimport="1">Atualizar árvores do arquivo</button>
+        <span class="hint">Biblioteca atual: ${esc(S.bib.nome||'sem nome')} · ${(S.bib.arvores||[]).length} árvore(s)</span>
+      </div>
+    </div>`:''}
+  </div>`;
+
+  const distribuir = `<div class="skbloco">
+    <button class="skhd" data-skui="distribuir">
+      <span class="caret">${ui.distribuir?'▾':'▸'}</span>
+      <span class="eyebrow">Distribuir pontos</span>
+      <span class="hint">${equipadas.length? 'clique no nódulo para pegar; de novo para subir o grau' : 'equipe uma árvore primeiro'}</span>
+    </button>
+    ${ui.distribuir? `<div class="skcorpo">
+      ${equipadas.length? equipadas.map(a=>`
+        <div class="skarv">
+          <div class="skarvhd">
+            <span class="skarvnome">${esc(a.nome)}</span>
+            <span class="hint">${nomeCatArv(a.categoria)}</span>
+            <button class="mini danger" data-skzerar="${esc(a.id)}" style="margin-left:auto">Zerar esta árvore</button>
+          </div>
+          ${linhasDaArvore(a).map(({n,d})=>linhaNo(pc,n,d)).join('')}
+        </div>`).join('')
+      : '<div class="hint">Abra “Árvores equipadas” e marque as árvores deste personagem.</div>'}
+    </div>`:''}
+  </div>`;
+
+  const escolhidas=skillsEscolhidas(pc);
+  const tabela = `<div class="skbloco">
+    <div class="skhd estatico">
+      <span class="eyebrow">Tabela de skills</span>
+      <span class="hint">${escolhidas.length} escolhida(s)${perdidas?` · ${perdidas} de ramo trancado`:''}</span>
+      ${escolhidas.length?'<button class="mini" data-skcopiar="1" style="margin-left:auto">Copiar tabela</button>':''}
+    </div>
+    <div class="skcorpo">
+      ${escolhidas.length? `<div class="scrollx"><table class="sktab">
+        <thead><tr><th>Skill</th><th>Uso</th><th>Natureza</th><th>Grau</th><th>Árvore</th></tr></thead>
+        <tbody>
+        ${escolhidas.map(({n,grau,arvore,texto})=>{
+          const nat=natArv(n.natureza);
+          const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean);
+          const gs=grausDe(n).length;
+          return `<tr>
+            <td><span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome)}</span>
+                <span class="sktipo">${esc(tipoArv(n).nome||'')}</span></td>
+            <td>${us.length? us.map(u=>`<span class="skuso u-${esc(u.id)}" title="${esc(u.nome)}">${esc(u.sigla||u.nome)}</span>`).join(' ') : '<span class="hint">—</span>'}</td>
+            <td>${nat?`<span class="sknat"><span class="skdot" style="background:${esc(nat.cor||'#888')}"></span>${esc(nat.nome)}</span>`:'<span class="hint">—</span>'}</td>
+            <td class="mono">${gs>1? grau+'/'+gs : '—'}</td>
+            <td class="hint">${esc(arvore.nome)}</td>
+          </tr>
+          ${(n.desc||texto)? `<tr class="skdesc"><td colspan="5">${texto?`<strong>${esc(texto)}</strong> · `:''}${esc(n.desc||'')}</td></tr>`:''}`;
+        }).join('')}
+        </tbody></table></div>`
+      : '<div class="hint">Nada escolhido ainda. O que você pegar aqui embaixo aparece nesta tabela.</div>'}
+    </div>
+  </div>`;
+
+  return barra + tabela + distribuir + equipar;
+}
+function linhaNo(pc,n,prof){
+  const e=estadoDoNo(pc,n), al=skillsDe(pc).alocados;
+  const grau=al[n.id]||0, gs=grausDe(n).length;
+  const nat=natArv(n.natureza);
+  const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean);
+  const rot={on:'pego',disp:'livre',caro:'sem pontos',bloq:'trancado',fechado:'fechado'}[e];
+  const proxCusto = grau<gs? custoTextoArv(custoGrauArv(n,grau+1)) : '';
+  const trava = e==='bloq'? exigenciaTexto(n) : (e==='fechado'? 'Fechado por “'+(fechadoPorNo(pc,n)||{}).nome+'”' : '');
+  return `<div class="skno st-${e}" style="margin-left:${Math.min(prof,8)*16}px">
+    <button class="sknobt" data-skpegar="${esc(n.id)}" ${e==='bloq'||e==='fechado'?'disabled':''}
+      title="${e==='on'?'clique para subir o grau':'pegar'}">
+      ${grau>0? (gs>1? grau : '✓') : '+'}
+    </button>
+    <div class="sknocorpo">
+      <div class="sknolinha">
+        <span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}</span>
+        <span class="sktipo">${esc(tipoArv(n).nome||'')}</span>
+        ${us.map(u=>`<span class="skuso u-${esc(u.id)}" title="${esc(u.nome)}">${esc(u.sigla||u.nome)}</span>`).join('')}
+        ${nat?`<span class="skdot" style="background:${esc(nat.cor||'#888')}" title="${esc(nat.nome)}"></span>`:''}
+        <span class="skestado">${rot}${gs>1?` · grau ${grau}/${gs}`:''}</span>
+        ${proxCusto?`<span class="skcusto">${esc(proxCusto)}</span>`:''}
+        ${grau>0?`<button class="mini" data-sksoltar="${esc(n.id)}" title="devolver 1 grau">−</button>`:''}
+      </div>
+      ${n.desc?`<div class="sknodesc">${esc(n.desc)}</div>`:''}
+      ${grau>0&&(grausDe(n)[grau-1]||{}).texto?`<div class="sknograu">${esc(grausDe(n)[grau-1].texto)}</div>`:''}
+      ${trava?`<div class="sknotrava">${esc(trava)}</div>`:''}
+    </div>
+  </div>`;
+}
+function textoTabelaSkills(pc){
+  const linhas=skillsEscolhidas(pc);
+  const cab=`${pc.nome} — skills (${linhas.length})`;
+  const corpo=linhas.map(({n,grau,arvore,texto})=>{
+    const us=(n.usos||[]).map(u=>(usoArv(u)||{}).nome).filter(Boolean).join('/');
+    const gs=grausDe(n).length;
+    return `• ${n.nome}${gs>1?` (grau ${grau}/${gs})`:''}${us?` [${us}]`:''} — ${arvore.nome}`
+      + (texto?`\n    ${texto}`:'')
+      + (n.desc?`\n    ${n.desc}`:'');
+  }).join('\n');
+  return cab+'\n'+corpo;
+}
+function ligarSkills(pc,host){
+  host.querySelectorAll('[data-skimport]').forEach(b=>b.onclick=()=>{
+    document.getElementById('fileIn').click();
+  });
+  host.querySelectorAll('[data-skui]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.skui; S.skillsUI=S.skillsUI||{};
+    S.skillsUI[k]=!S.skillsUI[k]; save(); renderFicha();
+  });
+  host.querySelectorAll('[data-skarv]').forEach(i=>i.onchange=e=>
+    equiparArvore(pc, e.target.dataset.skarv, e.target.checked));
+  host.querySelectorAll('[data-skpontos]').forEach(i=>i.onchange=e=>{
+    skillsDe(pc).pontos[e.target.dataset.skpontos]=Math.max(0,+e.target.value||0);
+    save(); renderFicha();
+  });
+  host.querySelectorAll('[data-skpegar]').forEach(b=>b.onclick=()=>pegarNo(pc,b.dataset.skpegar));
+  host.querySelectorAll('[data-sksoltar]').forEach(b=>b.onclick=()=>soltarNo(pc,b.dataset.sksoltar));
+  host.querySelectorAll('[data-skzerar]').forEach(b=>b.onclick=()=>{
+    const a=arvPorId(b.dataset.skzerar); if(!a) return;
+    if(!confirm('Devolver todos os pontos gastos em “'+a.nome+'”?')) return;
+    (a.nodes||[]).forEach(n=>{ delete skillsDe(pc).alocados[n.id]; });
+    podarSkills(pc); save(); renderFicha(); toast('Pontos devolvidos');
+  });
+  host.querySelectorAll('[data-skcopiar]').forEach(b=>b.onclick=()=>{
+    const t=textoTabelaSkills(pc);
+    navigator.clipboard?.writeText(t).then(()=>toast('Tabela copiada'),()=>toast('Não consegui copiar'));
+  });
+}
+
+/* ---------- configurações (tabelas base) ---------- */
+function abrirCfg(){
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="sheet">
+    <div class="hd"><span class="eyebrow">Tabelas base</span>
+      <span class="hint" style="margin-left:6px">Valem para todos os personagens</span>
+      <button class="mini" id="cfgClose" style="margin-left:auto">Fechar</button></div>
+    <div class="bd">
+      <div class="cfggrid">
+        <div>
+          <span class="eyebrow">Tier de herói → multiplicador</span>
+          <table class="cfg"><tbody>
+            ${S.cfg.tiersPersonagem.map((t,i)=>`<tr><td><input data-ct="${i}" value="${esc(t.t)}" style="width:58px"></td>
+              <td><input type="number" step="0.01" data-cm="${i}" value="${t.m}"></td>
+              <td><button class="mini danger" data-ctdel="${i}">×</button></td></tr>`).join('')}
+          </tbody></table>
+          <button class="mini" id="addTier" style="margin-top:6px">+ Tier</button>
+        </div>
+        <div>
+          <span class="eyebrow">Tier de atributo → percentual</span>
+          <table class="cfg"><tbody>
+            ${TIERS_ATR.map(t=>`<tr><td>${t}</td><td><input type="number" step="0.01" data-cp="${t}" value="${S.cfg.pct[t]}"></td>
+              <td class="mono" style="color:var(--ink-soft)">${(S.cfg.pct[t]*100).toFixed(0)}%</td></tr>`).join('')}
+            <tr><td class="mono" style="color:var(--ink-soft)">soma</td><td class="mono" id="somaPct">${(TIERS_ATR.reduce((s,t)=>s+ +S.cfg.pct[t],0)*100).toFixed(0)}%</td><td></td></tr>
+          </tbody></table>
+          <div style="margin-top:12px">
+            <label class="f"><span class="eyebrow">Arredondamento dos atributos</span>
+              <select id="cfgArred">
+                <option value="floor" ${S.cfg.arredondar==='floor'?'selected':''}>Para baixo</option>
+                <option value="round" ${S.cfg.arredondar==='round'?'selected':''}>Normal</option>
+                <option value="ceil" ${S.cfg.arredondar==='ceil'?'selected':''}>Para cima</option>
+                <option value="none" ${S.cfg.arredondar==='none'?'selected':''}>Sem arredondar</option>
+              </select></label>
+            <div class="hint" style="margin-top:5px">As fórmulas de HP/SP usam o valor já arredondado.</div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Pontos por level</span>
+          <div class="lvlscroll" style="margin-top:4px">
+            <table class="cfg"><tbody>
+              ${S.cfg.niveis.map((r,i)=>`<tr><td class="mono">Lvl ${r.lvl}</td><td><input type="number" data-cn="${i}" value="${r.pts}"></td></tr>`).join('')}
+            </tbody></table>
+          </div>
+          <button class="mini" id="addLvl" style="margin-top:6px">+ Level</button>
+          <button class="mini" id="resetLvl" style="margin-top:6px">Restaurar padrão</button>
+        </div>
+      </div>
+    </div></div>`;
+  document.body.appendChild(m);
+  const fechar=()=>{m.remove(); render()};
+  m.querySelector('#cfgClose').onclick=fechar;
+  m.onclick=e=>{if(e.target===m)fechar()};
+  m.querySelectorAll('[data-ct]').forEach(i=>i.onchange=e=>{S.cfg.tiersPersonagem[+e.target.dataset.ct].t=e.target.value.trim()||'?';save()});
+  m.querySelectorAll('[data-cm]').forEach(i=>i.onchange=e=>{S.cfg.tiersPersonagem[+e.target.dataset.cm].m=+e.target.value||0;save()});
+  m.querySelectorAll('[data-ctdel]').forEach(b=>b.onclick=()=>{S.cfg.tiersPersonagem.splice(+b.dataset.ctdel,1);save();m.remove();abrirCfg()});
+  m.querySelector('#addTier').onclick=()=>{S.cfg.tiersPersonagem.push({t:'X',m:1});save();m.remove();abrirCfg()};
+  m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();m.remove();abrirCfg()});
+  m.querySelector('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
+  m.querySelectorAll('[data-cn]').forEach(i=>i.onchange=e=>{S.cfg.niveis[+e.target.dataset.cn].pts=+e.target.value||0;save()});
+  m.querySelector('#addLvl').onclick=()=>{
+    const last=S.cfg.niveis[S.cfg.niveis.length-1]||{lvl:0,pts:37};
+    S.cfg.niveis.push({lvl:+last.lvl+1,pts:+last.pts+8});save();m.remove();abrirCfg()};
+  m.querySelector('#resetLvl').onclick=()=>{if(confirm('Restaurar a tabela de levels padrão (1 a 50)?')){S.cfg.niveis=tabelaNiveisPadrao();save();m.remove();abrirCfg()}};
+}
+
+/* ---------- apagar dados (flush, com duas confirmações) ---------- */
+const ALVOS_FLUSH=[
+  {k:'personagens', rot:'Personagens',          conta:()=>S.personagens.length,
+   dsc:()=>`${S.personagens.length} ficha(s) com atributos, equipamentos, poderes, habilidades e anotações — e também os grupos e tags`},
+  {k:'situacoes',   rot:'Situações da Mesa',    conta:()=>(S.situacoes||[]).length,
+   dsc:()=>`${(S.situacoes||[]).length} cena(s) montada(s) e seus participantes`},
+  {k:'tabelas',     rot:'Tabelas de eventos',   conta:()=>(S.tabelas||[]).length,
+   dsc:()=>`${(S.tabelas||[]).length} tabela(s) de sorteio`},
+  {k:'log',         rot:'Registro de rolagens', conta:()=>(S.log||[]).length,
+   dsc:()=>`${(S.log||[]).length} rolagem(ns) guardada(s) no histórico`},
+  {k:'bib',         rot:'Árvores de habilidade', conta:()=>(S.bib?.arvores||[]).length,
+   dsc:()=>temBib()? `biblioteca “${S.bib.nome||'sem nome'}” com ${(S.bib.arvores||[]).length} árvore(s) — a distribuição de cada personagem fica sem referência`
+                   : 'nenhuma biblioteca carregada'},
+  {k:'cfg',         rot:'Tabelas base',         conta:()=>1,
+   dsc:()=>'níveis, multiplicadores de tier, percentuais e arredondamento voltam ao padrão'},
+];
+function abrirFlush(){
+  const marcados=new Set();
+  const m=document.createElement('div'); m.className='modal';
+  const desenhar=()=>{
+    m.innerHTML=`<div class="sheet risco" style="max-width:560px">
+      <div class="hd"><span class="eyebrow">Apagar dados</span>
+        <span class="hint" style="margin-left:6px">passo 1 de 2</span>
+        <button class="mini" id="flushX" style="margin-left:auto">Cancelar</button></div>
+      <div class="bd">
+        <p style="margin:0 0 4px;font-size:14px">Escolha o que vai ser apagado. Nada acontece até você confirmar na próxima tela.</p>
+        <div class="flushlist">
+          ${ALVOS_FLUSH.map(a=>`<label class="flushitem ${marcados.has(a.k)?'marcado':''}">
+            <input type="checkbox" data-alvo="${a.k}" ${marcados.has(a.k)?'checked':''}>
+            <span><span class="rot">${a.rot}</span><span class="dsc">${a.dsc()}</span></span>
+          </label>`).join('')}
+        </div>
+        <div class="modalacts">
+          <button class="mini" id="flushTudo">Marcar tudo</button>
+          <button class="mini" id="flushNada">Desmarcar</button>
+          <button class="mini" id="flushBackup">Exportar backup antes</button>
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button id="flushCancel">Cancelar</button>
+            <button class="apagar" id="flushNext" ${marcados.size?'':'disabled'}>Continuar</button>
+          </span>
+        </div>
+      </div></div>`;
+    m.querySelector('#flushX').onclick=fechar;
+    m.querySelector('#flushCancel').onclick=fechar;
+    m.querySelector('#flushTudo').onclick=()=>{ALVOS_FLUSH.forEach(a=>marcados.add(a.k));desenhar()};
+    m.querySelector('#flushNada').onclick=()=>{marcados.clear();desenhar()};
+    m.querySelector('#flushBackup').onclick=()=>exportar();
+    m.querySelectorAll('[data-alvo]').forEach(i=>i.onchange=e=>{
+      const k=e.target.dataset.alvo;
+      e.target.checked? marcados.add(k) : marcados.delete(k);
+      desenhar();
+    });
+    m.querySelector('#flushNext').onclick=()=>{ if(marcados.size) confirmarFlush([...marcados], fechar); };
+  };
+  const fechar=()=>m.remove();
+  m.onclick=e=>{ if(e.target===m) fechar(); };
+  document.body.appendChild(m); desenhar();
+}
+function confirmarFlush(chaves, fecharAnterior){
+  const m=document.createElement('div'); m.className='modal';
+  const itens=ALVOS_FLUSH.filter(a=>chaves.includes(a.k));
+  m.innerHTML=`<div class="sheet risco" style="max-width:520px">
+    <div class="hd"><span class="eyebrow">Confirmação final</span>
+      <span class="hint" style="margin-left:6px">passo 2 de 2</span>
+      <button class="mini" id="f2X" style="margin-left:auto">Cancelar</button></div>
+    <div class="bd">
+      <div class="avisobox">
+        <h3>Isso não tem como desfazer</h3>
+        <p style="margin:0;font-size:13.5px">Vai ser apagado do navegador, para sempre:</p>
+        <ul>${itens.map(a=>`<li><strong>${a.rot}</strong> — ${a.dsc()}</li>`).join('')}</ul>
+      </div>
+      <p style="margin:0;font-size:13.5px">Para liberar o botão, escreva <strong>APAGAR</strong> no campo abaixo.</p>
+      <div class="digite">
+        <input id="f2Palavra" placeholder="APAGAR" autocomplete="off" spellcheck="false">
+        <span class="hint" id="f2Dica">o botão continua travado até a palavra estar certa</span>
+      </div>
+      <div class="modalacts">
+        <button class="mini" id="f2Backup">Exportar backup antes</button>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button id="f2Cancel">Cancelar, não apagar</button>
+          <button class="apagar" id="f2Go" disabled>Apagar definitivamente</button>
+        </span>
+      </div>
+    </div></div>`;
+  const fechar=()=>m.remove();
+  m.onclick=e=>{ if(e.target===m) fechar(); };
+  document.body.appendChild(m);
+  const campo=m.querySelector('#f2Palavra'), botao=m.querySelector('#f2Go');
+  campo.oninput=()=>{
+    const certo = campo.value.trim().toUpperCase()==='APAGAR';
+    botao.disabled=!certo;
+    m.querySelector('#f2Dica').textContent = certo? 'pode apagar' : 'o botão continua travado até a palavra estar certa';
+  };
+  campo.onkeydown=e=>{ if(e.key==='Enter') e.preventDefault(); };   // nada de apagar sem clicar
+  m.querySelector('#f2X').onclick=fechar;
+  m.querySelector('#f2Cancel').onclick=fechar;
+  m.querySelector('#f2Backup').onclick=()=>exportar();
+  botao.onclick=()=>{
+    if(campo.value.trim().toUpperCase()!=='APAGAR') return;
+    executarFlush(chaves);
+    fechar(); if(fecharAnterior) fecharAnterior();
+  };
+  setTimeout(()=>campo.focus(),30);
+}
+function executarFlush(chaves){
+  const padrao=estadoPadrao();
+  if(chaves.includes('personagens')){
+    S.personagens=[]; S.sel=null; S.grupos=[]; S.fechados=[]; S.filtroTags=[];
+    (S.situacoes||[]).forEach(sit=>{                       // tira da Mesa quem deixou de existir
+      sit.participantes=(sit.participantes||[]).filter(pt=>!pt.pcId);
+    });
+  }
+  if(chaves.includes('situacoes')){ S.situacoes=[]; S.selSit=null; }
+  if(chaves.includes('tabelas')) S.tabelas=[];
+  if(chaves.includes('bib')){ S.bib=null; indexarArvores(); }
+  if(chaves.includes('log'))     S.log=[];
+  if(chaves.includes('cfg'))     S.cfg=padrao.cfg;
+  migrar(); save(); render();
+  toast('Dados apagados');
+}
+
+/* ---------- exportar / importar ---------- */
+function exportar(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='tinycats-fichas-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('Arquivo exportado');
+}
+function ehArquivoDeArvores(d){
+  if(!d || typeof d!=='object') return false;
+  if(d.formato==='urgm-skilltree-doc' || d.formato==='urgm-skilltree-pacote') return true;
+  if(d.biblioteca && Array.isArray(d.biblioteca.arvores)) return true;
+  return Array.isArray(d.arvores) && Array.isArray(d.pools);
+}
+function importarArvores(d){
+  const b = (d.biblioteca && Array.isArray(d.biblioteca.arvores)) ? d.biblioteca : d;
+  const bib = normalizarBib({
+    nome: b.nome || 'Árvores de Habilidade',
+    pools: b.pools || [], naturezas: b.naturezas || [], usos: b.usos || [],
+    tipos: b.tipos || null, arvores: b.arvores || []
+  });
+  if(!bib.arvores.length){ toast('Esse arquivo não traz nenhuma árvore'); return; }
+  S.bib=bib; indexarArvores();
+  // o arquivo do mestre também guarda a distribuição dele — só traz se você mandar
+  const vindos=Array.isArray(d.personagens)? d.personagens : [];
+  const chave=t=>String(t||'').trim().toLowerCase();
+  const pares=vindos.map(v=>({v, pc:S.personagens.find(p=>chave(p.nome)===chave(v.nome))})).filter(x=>x.pc);
+  let trazidos=0;
+  if(pares.length && confirm('O arquivo traz a distribuição de '+pares.length+' personagem(ns) com o mesmo nome ('
+      +pares.map(x=>x.pc.nome).join(', ')+'). Trazer a alocação deles para cá? Isso substitui o que estiver na ficha.')){
+    pares.forEach(({v,pc})=>{
+      pc.skills={
+        arvores:(v.arvores||[]).filter(id=>arvPorId(id)),
+        pontos:Object.assign({}, v.pontos||{}),
+        alocados:Object.assign({}, v.alocados||{})
+      };
+      trazidos++;
+    });
+  }
+  S.personagens.forEach(podarSkills);
+  if(S.abaFicha!=='skills'){ S.abaFicha='skills'; }
+  save(); render();
+  toast(bib.arvores.length+' árvore(s) carregada(s)'+(trazidos?' · alocação de '+trazidos+' personagem(ns)':''));
+}
+function importar(file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const d=JSON.parse(fr.result);
+      if(ehArquivoDeArvores(d)){ importarArvores(d); return; }
+      if(!d.personagens) throw new Error('sem personagens');
+      if(confirm('Substituir os dados atuais pelos do arquivo?')){
+        S=d; migrar(); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Dados importados');
+      }
+    }catch(e){ toast('Arquivo inválido: '+e.message); }
+  };
+  fr.readAsText(file);
+}
+
+/* ---------- tema: automático, claro ou escuro ---------- */
+const TEMAS=[
+  {k:'auto',  rot:'Tema: automático', icone:'◐'},
+  {k:'claro', rot:'Tema: claro',      icone:'☀'},
+  {k:'pedra', rot:'Tema: escuro',     icone:'☾'},
+];
+function temaEscolhido(){ return document.documentElement.getAttribute('data-tema-escolha')||'auto'; }
+function aplicarTema(k){
+  const mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
+  const escuro = k==='pedra' || (k==='auto' && mq && mq.matches);
+  document.documentElement.setAttribute('data-tema', escuro?'pedra':'claro');
+  document.documentElement.setAttribute('data-tema-escolha', k);
+  try{ localStorage.setItem('urgm_calc_tema', k); }catch(e){}
+  const b=document.getElementById('btnTema');
+  if(b){ const t=TEMAS.find(x=>x.k===k)||TEMAS[0]; b.textContent=t.icone+' '+t.rot.replace('Tema: ',''); b.title=t.rot; }
+}
+(function ligarTema(){
+  aplicarTema(temaEscolhido());
+  document.getElementById('btnTema').onclick=()=>{
+    const i=TEMAS.findIndex(x=>x.k===temaEscolhido());
+    aplicarTema(TEMAS[(i+1)%TEMAS.length].k);
+  };
+  const mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
+  if(mq&&mq.addEventListener) mq.addEventListener('change',()=>{ if(temaEscolhido()==='auto') aplicarTema('auto'); });
+})();
+
+/* ---------- header que some ao descer e volta ao subir ---------- */
+(function barraEsperta(){
+  const bar=document.getElementById('topbar');
+  let ultimo=window.scrollY, parado=null;
+  const alturaVar=()=>document.documentElement.style.setProperty('--topH', bar.offsetHeight+'px');
+  alturaVar(); window.addEventListener('resize',alturaVar);
+  window.addEventListener('scroll',()=>{
+    const y=Math.max(0,window.scrollY);
+    if(y<=90){ bar.classList.remove('esconde'); ultimo=y; return; }   // perto do topo, sempre visível
+    if(y>ultimo+8){ bar.classList.add('esconde'); ultimo=y; }          // descendo
+    else if(y<ultimo-8){ bar.classList.remove('esconde'); ultimo=y; }  // subindo: volta na hora
+    clearTimeout(parado);
+    parado=setTimeout(()=>{ultimo=Math.max(0,window.scrollY)},140);    // solta a âncora quando para
+  },{passive:true});
+  window.mostrarBarra=()=>bar.classList.remove('esconde');
+})();
+
+/* ---------- bootstrap ---------- */
+function render(){
+  const aba=S.aba||'fichas';
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===aba));
+  ['fichas','mesa','eventos'].forEach(t=>{document.getElementById('tab-'+t).hidden = (t!==aba)});
+  if(aba==='fichas'){renderLista();renderFicha()}
+  else if(aba==='mesa') renderMesa();
+  else renderEventos();
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  S.aba=b.dataset.tab; save(); render();
+  window.mostrarBarra&&window.mostrarBarra();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+/* completa estados salvos por versões anteriores */
+function migrar(){
+  const p=estadoPadrao();
+  if(!S.cfg) S.cfg=p.cfg;
+  S.situacoes=S.situacoes||[];
+  S.tabelas=S.tabelas||p.tabelas;
+  S.log=S.log||[];
+  S.aba=S.aba||'fichas';
+  S.grupos=S.grupos||[];
+  if(S.bib) normalizarBib(S.bib);
+  S.skillsUI=S.skillsUI||{equipar:false, distribuir:true};
+  S.skillsUI.distribuir = S.skillsUI.distribuir!==false;
+  S.fechados=S.fechados||[];
+  S.filtroTags=S.filtroTags||[];
+  if(!S.selSit) S.selSit=S.situacoes[0]?.id||null;
+  (S.personagens||[]).forEach(pc=>{
+    pc.lado=pc.lado||'Aliado';
+    pc.grupo=pc.grupo||'';
+    pc.tags=Array.isArray(pc.tags)? pc.tags
+      : (pc.tags? String(pc.tags).split(',').map(t=>t.trim()).filter(Boolean) : []);
+    if(pc.poderes && !Array.isArray(pc.poderes)){          // formato antigo (contador único)
+      const a=pc.poderes, nomes=(a.lista||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      pc.poderes = nomes.length
+        ? nomes.map(n=>({id:uid(), nome:n, atual: nomes.length===1?(+a.atual||0):0, max: nomes.length===1?(+a.max||0):0}))
+        : ((+a.max||0)||(+a.atual||0) ? [{id:uid(), nome:'Poder divino', atual:+a.atual||0, max:+a.max||0}] : []);
+    }
+    pc.poderes=pc.poderes||[];
+    pc.estaque=pc.estaque||{a:'',b:''};
+    /* fixa, fonte e a configuração da disputa ficam em cada ficha, para o mestre
+       voltar num personagem no meio da batalha e achar tudo como deixou */
+    pc.rol=pc.rol||{fixa:(+(S.rol||{}).fixa||0), fonte:((S.rol||{}).fonte==='base'?'base':'total')};
+    pc.rol.fixa=Math.max(0,+pc.rol.fixa||0);
+    pc.rol.fonte = pc.rol.fonte==='base' ? 'base' : 'total';
+    pc.disputa=pc.disputa||Object.assign({atrA:'FOR', alvoId:'', atrB:'FOR', fixaB:0, valorB:40}, S.disputa||{});
+    pc.defesas=pc.defesas||{DFF:0,DFM:0};
+    DEFESAS.forEach(d=>{ if(pc.defesas[d.k]==null) pc.defesas[d.k]=0; });
+    pc.skills=pc.skills||{arvores:[],pontos:{},alocados:{}};
+    pc.skills.arvores=Array.isArray(pc.skills.arvores)?pc.skills.arvores:[];
+    pc.skills.pontos=pc.skills.pontos||{}; pc.skills.alocados=pc.skills.alocados||{};
+    pc.habilidades=pc.habilidades||[];
+    pc.habilidades.forEach(h=>{ if(!h.tipo) h.tipo = (h.ativa===false)?'Inativo':'Ativo'; delete h.ativa; });
+    pc.itens=pc.itens||[]; pc.recursos=pc.recursos||[]; pc.tiers=pc.tiers||{FOR:'A',DES:'B',AGI:'C',VIT:'D',CAN:'E'};
+    pc.itens.forEach(it=>{ it.bonus=it.bonus||{};
+      DERIV.forEach(d=>{ if(it.bonus[d.k]==null) it.bonus[d.k]=0; });
+      DEFESAS.forEach(d=>{ if(it.bonus[d.k]==null) it.bonus[d.k]=0; }); });
+  });
+  indexarArvores();
+  (S.personagens||[]).forEach(podarSkills);
+}
+document.getElementById('btnNew').onclick=()=>{
+  const p=personagemPadrao('Novo personagem','','C',1);
+  S.personagens.push(p); S.sel=p.id; save(); render();
+  document.getElementById('f_nome')?.select();
+};
+document.getElementById('btnGrupo').onclick=()=>{
+  const g=prompt('Nome do grupo:','');
+  if(!g||!g.trim()) return;
+  fixarGrupos(); if(!S.grupos.includes(g.trim())) S.grupos.push(g.trim());
+  save(); renderLista();
+};
+document.getElementById('busca').oninput=renderLista;
+document.getElementById('btnCfg').onclick=abrirCfg;
+document.getElementById('btnExport').onclick=exportar;
+document.getElementById('btnImport').onclick=()=>document.getElementById('fileIn').click();
+document.getElementById('btnFlush').onclick=abrirFlush;
+document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.target.files[0])};
+
+(async function init(){
+  const saved=await loadState();
+  if(saved && saved.personagens){ S=saved; }
+  migrar();
+  if(!S.sel) S.sel=S.personagens[0]?.id||null;
+  render();
+})();
+</script>
+</body>
+</html>
