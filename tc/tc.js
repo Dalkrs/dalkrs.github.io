@@ -133,7 +133,7 @@
     mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, meuNome: eu.nome, minhaCor: eu.cor, codigo, membros };
     guarda.gravar(CHAVE_MESA, id);
     mesas.emit('muda', mesas.atual);
-    await aoVivo.iniciar(id);
+    aoVivo.iniciar(id);      // o registro carrega em segundo plano: a mesa já está aberta e a janela pode fechar
     return mesas.atual;
   };
   mesas.fechar = () => {
