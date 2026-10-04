@@ -648,7 +648,7 @@ table.items tr.itfx.off textarea{opacity:.55}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=3"></script>
+<script src="../tc/ponte.js?v=4"></script>
 <script src="../tc/rules.js?v=2"></script>
 <script src="mesa.js?v=3"></script>
 <script src="extras.js?v=1"></script>
@@ -3000,6 +3000,8 @@ document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.t
   if(!S.sel) S.sel=S.personagens[0]?.id||null;
   render();
   FichasMesa.depoisDeAbrir();
+  // outro sistema do site pediu para abrir uma ficha ("Abrir a ficha", no Acampamento)
+  try{ if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{ if(a && a.pc && S.personagens.some(p=>p.id===a.pc)){ S.sel=a.pc; S.aba='fichas'; save(); render(); window.scrollTo({top:0}); } }); }catch(e){}
 })();
 </script>
 </body>

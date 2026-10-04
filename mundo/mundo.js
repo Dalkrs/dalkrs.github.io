@@ -462,7 +462,15 @@
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const tem = !!dadosDoc(D.pegar(PRE_PUB + id));
     if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
-    const p = N.projetar(m), jp = j(p);
+    const p = N.projetar(m);
+    // atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para cena, sem o nome dela
+    const abertos = new Set(App.mapas.filter(x => !x.oculto).map(x => x.id));
+    for (const o of p.objs) {
+      if (!o.liga) continue;
+      if (o.liga.t === 'mapa' && !abertos.has(o.liga.id)) o.liga = null;
+      else if (o.liga.t === 'cena') o.liga = { t: 'cena', id: o.liga.id, nome: '' };
+    }
+    const jp = j(p);
     if (tem && sombraPub.get(id) === jp) return;
     gravarDocMesa(PRE_PUB + id, { dados: p, vis: 'mesa' });
     sombraPub.set(id, jp);
@@ -521,7 +529,10 @@
       }
     }
     if (oculto && App.mostrado === id) App.mostrado = null;
-    if (modo === 'mesa') { salvarJa(); sincronizarPub(id); sincronizarIndice(); }      // esconder vale na hora, sem esperar
+    atualizarLista();
+    // esconder vale na hora, sem esperar. Os outros mapas também conferem a projeção: um atalho para este mapa
+    // aparece ou some para os jogadores junto com ele.
+    if (modo === 'mesa') { salvarJa(); for (const x of App.mapas) sincronizarPub(x.id); sincronizarIndice(); }
     atualizarLista();
     App.emit('mapas', App.mapas);
     return true;

@@ -191,6 +191,24 @@ async function start(snap) {
   // Dentro do site, com uma mesa aberta: as rolagens daqui (iniciativa) também vão para a mesa ao vivo.
   // Token que os jogadores não veem, ou de nome escondido, sai marcado como oculto: a rolagem dele fica só com o mestre.
   Fichas.start(() => { try { UI.renderAll(); } catch (e) { /* ainda abrindo */ } });
+  // A lista das cenas, para os outros sistemas do site (o Acampamento e o Mapa-múndi abrem uma cena pelo nome).
+  const listar = () => { try { localStorage.setItem('tinycats:cenas:lista', JSON.stringify(Store.S.order.filter(id => Store.S.scenes[id]).map(id => ({ id, nome: Store.S.scenes[id].name })))); } catch (e) { /* sem armazenamento: os atalhos só não mostram a lista */ } };
+  Store.on('meta', listar);
+  Store.on('commit', e => { if (e.ops.some(op => op.t === 'scn' && op.p && 'name' in op.p)) listar(); });
+  listar();
+  // Outro sistema pediu uma cena: { cena: id } abre a que existe; { criar: { id, nome } } cria (uma vez) e abre.
+  if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
+    if (!alvo || !isGM()) return;
+    const pedido = alvo.criar && typeof alvo.criar.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(alvo.criar.id) ? alvo.criar : null;
+    const id = pedido ? pedido.id : alvo.cena;
+    if (pedido && !Store.S.scenes[id]) {
+      const sc = newScene(String(pedido.nome || 'Acampamento').slice(0, 60));
+      sc.id = id; sc.tone = 'noite'; sc.light = 'penumbra';
+      Store.addScene(sc); Persist.scene(sc.id);
+      UI.toast(`Cena "${sc.name}" criada. Monte o mapa do acampamento aqui.`);
+    }
+    if (typeof id === 'string' && Store.S.scenes[id] && Store.S.current !== id) UI.switchScene(id);
+  });
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;

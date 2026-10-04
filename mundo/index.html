@@ -171,7 +171,7 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
 .toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
 .jogador .rail, .jogador #comoJogBox, .jogador #btDesfazer, .jogador #diaMenos, .jogador #diaMais { display: none; }
-@media (max-width: 900px) { .side { width: 280px; } }
+@media (max-width: 900px) { .side { width: 280px; } .atalhos { display: none; } }
 @media (max-width: 680px) { .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; width: min(300px, 86%); box-shadow: var(--shadow); } .work { position: relative; } .side.fechado { display: none; } }
 
 /* ================= tela (tela.js): mapa, camadas do SVG, trilho, opções e dica ================= */
@@ -274,6 +274,9 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 #dataTxt[role="button"] { cursor: pointer; border-radius: 6px; }
 #dataTxt[role="button"]:hover { background: var(--hover); }
 #dataTxt .dt-curta { display: none; }
+.atalhos { display: inline-flex; gap: 6px; }
+.liga-bola { fill: #14171f; stroke: #f3ead2; stroke-width: 1.4; }
+.liga-seta { fill: none; stroke: #f3ead2; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .como-chip { display: none; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .salvo { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 
@@ -429,6 +432,10 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
       <b id="dataTxt">Dia 1</b>
       <button type="button" class="ib" id="diaMais" title="Avançar um dia" aria-label="Avançar um dia"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
+    <span class="atalhos" id="atalhos" hidden>
+      <button type="button" class="btn sm" id="irCenas" title="Vai para a aba Cenas (os mapas de batalha)">Cenas</button>
+      <button type="button" class="btn sm" id="irAcamp" title="Vai para a aba Acampamento">Acampamento</button>
+    </span>
     <span class="grow"></span>
     <span class="salvo" id="salvo" role="status"></span>
     <label class="sw" id="comoJogBox" title="Mostra o mapa como os jogadores veem: sem o que é só do mestre e com a névoa fechada"><input type="checkbox" id="comoJog"> Ver como jogador</label>
@@ -458,11 +465,11 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
-<script src="../tc/ponte.js?v=3"></script>
+<script src="../tc/ponte.js?v=4"></script>
 <script src="../tc/dice.js?v=1"></script>
-<script src="nucleo.js?v=1"></script>
-<script src="tela.js?v=1"></script>
-<script src="painel.js?v=1"></script>
-<script src="mundo.js?v=1"></script>
+<script src="nucleo.js?v=2"></script>
+<script src="tela.js?v=2"></script>
+<script src="painel.js?v=2"></script>
+<script src="mundo.js?v=2"></script>
 </body>
 </html>

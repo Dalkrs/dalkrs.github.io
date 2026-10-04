@@ -417,9 +417,11 @@
     c.linhas.set(r.id, n);
     dados.emit('muda', nome, n, 'remota', null);
   }
+  /* As duas voltas abaixo esperam a rede no meio do caminho; nesse meio-tempo a mesa pode ser fechada ou trocada
+     (e `cols` passa a ser outro). Por isso andam sobre as coleções que existiam quando a volta começou. */
   async function dadosBuscar() {
-    for (const nome in cols) {
-      const c = cols[nome];
+    for (const c of Object.values(cols)) {
+      const nome = c.nome;
       if (c.morta || c.buscando) continue;
       c.buscando = true;
       try {
@@ -435,8 +437,8 @@
      do que ainda pode ver e tira da tela o resto. (O mestre vê tudo: para ele não há o que conferir.) */
   async function dadosConferir() {
     if (!mesas.atual || mesas.atual.papel === 'mestre') return;
-    for (const nome in cols) {
-      const c = cols[nome];
+    for (const c of Object.values(cols)) {
+      const nome = c.nome;
       if (c.morta || c.conferindo) continue;
       c.conferindo = true;
       try {
@@ -581,8 +583,10 @@
   /* Rolagens que vêm do mapa-múndi (encontros sorteados, por exemplo) entram na mesa como as outras. */
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
-    if (origem === 'mundo' && d && typeof d === 'object' && mesas.atual) {
-      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Mapa-múndi').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem: 'mundo', quem: null, secreta: d.secreta ? true : undefined });
+    // O Mapa-múndi (encontros sorteados) e o Acampamento (descansos, momentos) mandam um título e um resumo.
+    if ((origem === 'mundo' || origem === 'acampamento') && d && typeof d === 'object' && mesas.atual) {
+      const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : undefined });
     }
     return deSistemaAntes(origem, d);
   };

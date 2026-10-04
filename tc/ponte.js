@@ -4,6 +4,8 @@
      TC.ponte.pronta             — promessa: resolve quando o estado chegou (ou logo, se não há casca)
      TC.ponte.publicar           — "rolei isto": a casca decide se e como vai para a mesa ao vivo
      TC.dados.col(nome)          — personagens e documentos da mesa aberta (só dentro da casca, com mesa)
+     TC.ponte.ir(aba, alvo)      — abre outro sistema do site (ex.: ir('cenas', { cena: id })); só dentro da casca
+     TC.ponte.aoIr(fn)           — este sistema foi aberto por outro, com um alvo: fn(alvo)
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -11,13 +13,15 @@
   const naCasca = window.parent !== window;
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* navegador sem BroadcastChannel: só funciona dentro da casca */ }
-  const ouvintes = [];
-  let avisar;
+  const ouvintes = [], ouvintesIr = [];
+  let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   const ponte = {
     // mesa: { id, nome } | null · papel: 'mestre' | 'jogador' | null · eu: id do usuário · membros: [{ id, nome, papel, cor }]
     estado: { mesa: null, papel: null, segredo: false, eu: null, membros: [] },
     naCasca,
     publicar(origem, dados) { enviar({ t: 'rolagem', origem, dados }); },
+    ir(aba, alvo) { if (!naCasca) return false; enviar({ t: 'ir', aba, alvo: alvo || null }); return true; },
+    aoIr(fn) { ouvintesIr.push(fn); if (alvoGuardado) { const a = alvoGuardado; alvoGuardado = null; try { fn(a); } catch (e) { console.error(e); } } },
     aoMudar(fn) { ouvintes.push(fn); try { fn(ponte.estado); } catch (e) { console.error(e); } },
   };
   ponte.pronta = new Promise(ok => { avisar = ok; });
@@ -65,6 +69,12 @@
     if ((m.t === 'arquivo.ok' || m.t === 'arquivo.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'arquivo.ok') e.ok(m.url); else e.falha(new Error(m.erro || 'Não deu para enviar a imagem.'));
+      return;
+    }
+    if (m.t === 'alvo') {
+      if (!m.alvo) return;
+      if (!ouvintesIr.length) { alvoGuardado = m.alvo; return; }
+      for (const f of ouvintesIr.slice()) { try { f(m.alvo); } catch (e) { console.error(e); } }
       return;
     }
     if (m.t === 'estado') {

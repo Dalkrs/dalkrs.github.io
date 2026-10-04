@@ -59,7 +59,7 @@
   const MAX_OBJS = 2000, MAX_OPS = 4000, MAX_TXT = 4000, MAX_FAC = 500, MAX_PTS = 2000, MAX_COORD = 1e6;
   const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr' };
   const PADROES = {
-    m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false },
+    m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
     g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', ritmo: 'normal', rota: null, prog: 0 },
     r: { pts: [], fac: null, cor: '', enc: { chance: 0, itens: [] } },
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
@@ -95,6 +95,16 @@
     return padrao;
   }
   const idOk = v => (typeof v === 'string' && v.length <= 80 && /^[A-Za-z0-9_:.-]+$/.test(v) && v !== '__proto__' ? v : '');
+  /* O atalho de um marcador: para onde ele leva quem clica em "abrir".
+       { t: 'cena', id, nome }   uma cena da aba Cenas (o nome fica guardado para quem não tem a lista de cenas)
+       { t: 'mapa', id, nome }   outro mapa do Mapa-múndi
+       { t: 'acampamento' }      o acampamento da mesa */
+  function normLiga(v) {
+    if (!ehObj(v)) return null;
+    if (v.t === 'acampamento') return { t: 'acampamento' };
+    if ((v.t === 'cena' || v.t === 'mapa') && idOk(v.id)) return { t: v.t, id: v.id, nome: texto(v.nome, '', 80) };
+    return null;
+  }
   function unico(id, vistos) {
     let r = id, n = 2;
     while (vistos.has(r)) r = id + '_' + n++;
@@ -382,7 +392,7 @@
     switch (o.k) {
       case 'm':
         if (!lugar()) return null;
-        return Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso) });
+        return Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
       case 'g':
         if (!lugar()) return null;
         return Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), ritmo: escolha(RITMOS, o.ritmo, 'normal'), rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acampamento · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Acampamento: a cena da fogueira no meio (os personagens em volta dela), o painel à direita.
+   As cores da interface são as da mesa de cenas; a cena em si é sempre noturna (é uma ilustração). */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --secret: #b39cf0;
+  --san: #b39cf0; --conf: #e6ab4f; --hp: #e0695f; --sp: #5aa8e6; --outro: #7fc98f;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+    --line: #d2d8e2; --line-strong: #aeb8c9;
+    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
+    --san: #6a4fc0; --conf: #a86a08; --hp: #c0453b; --sp: #2f78b8; --outro: #3f8a55;
+    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- barra de cima ---- */
+.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; flex-wrap: wrap; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.nome-acamp { height: 34px; min-width: 120px; width: 220px; max-width: 34vw; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font: 600 17px/1 var(--display); }
+.nome-acamp[readonly] { border-color: transparent; background: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); font-size: 12.5px; color: var(--fg-2); white-space: nowrap; }
+.chip b { color: var(--fg); font-weight: 700; }
+.chip.pouco { border-color: var(--danger); color: var(--danger); }
+.chip.pouco b { color: var(--danger); }
+.grow { flex: 1; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.per { color: var(--danger); }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
+.ib { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg-2); flex: none; }
+.ib:hover:not(:disabled) { background: var(--hover); color: var(--fg); border-color: var(--line); }
+.ib:disabled { opacity: .4; cursor: default; }
+.ib.sm { width: 26px; height: 26px; }
+.salvo { font: 12px var(--mono); color: var(--fg-3); white-space: nowrap; }
+.salvo.ruim { color: var(--danger); }
+
+/* ---- área de trabalho ---- */
+.work { flex: 1; min-height: 0; display: flex; position: relative; }
+.palco-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.palco { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--ceu1, #070a14); }
+.palco.hora-noite { --ceu1: #070a18; --ceu2: #131b3a; --ceu3: #27305a; --chao: #0c1420; --chao2: #16212c; --mata: #060a12; --astro: #f2f0e0; --luz-fogo: 1; }
+.palco.hora-entardecer { --ceu1: #1b1f48; --ceu2: #6b3a5c; --ceu3: #d9774a; --chao: #1a1c22; --chao2: #2a2826; --mata: #120f18; --astro: #ffd9a0; --luz-fogo: .8; }
+.palco.hora-amanhecer { --ceu1: #25365e; --ceu2: #6f86a8; --ceu3: #f0c6a0; --chao: #1c2622; --chao2: #2b3830; --mata: #131c1c; --astro: #fff2cf; --luz-fogo: .6; }
+.cena16 { position: absolute; left: 50%; bottom: 0; width: 1600px; height: 900px; transform-origin: bottom center; }
+.cena16 > svg, .cena16 > img.fundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cena16 > svg { overflow: visible; }
+.cena16 > img.fundo { object-fit: cover; user-select: none; -webkit-user-drag: none; }
+.com-fundo .cenario { display: none; }
+/* Em tela estreita a cena não chega ao alto do palco (--faixa) e pode subir um pouco para os retratos caberem
+   embaixo (--vao). Com a ilustração, o céu e o chão simplesmente continuam. Com uma imagem do mestre, a beirada de
+   cima e a de baixo da própria imagem continuam, esticadas e desfocadas, e a imagem se desfaz nelas — sem faixa lisa
+   e sem emenda. Tudo em px da cena (1600×900). */
+.cena16 > .longe { position: absolute; left: 0; width: 100%; overflow: hidden; display: none; pointer-events: none; }
+.cena16 > .longe img { position: absolute; left: -4%; width: 108%; max-width: none; object-fit: fill; filter: blur(22px); user-select: none; }
+.com-fundo.com-faixa .longe.cima { display: block; top: calc(-1 * var(--faixa)); height: calc(var(--faixa) + 150px); }
+.com-fundo.com-faixa .longe.cima img { top: -60px; height: calc(var(--faixa) / .15 + 60px); }
+.com-fundo.com-vao .longe.baixo { display: block; top: 820px; height: calc(80px + var(--vao)); }
+.com-fundo.com-vao .longe.baixo img { bottom: -60px; height: calc(var(--vao) / .1 + 60px); }
+.cena16 > img.fundo { --m1: 0%; --m2: 100%; }
+.com-faixa .cena16 > img.fundo { --m1: 16%; }
+.com-vao .cena16 > img.fundo { --m2: 93%; }
+.com-faixa .cena16 > img.fundo, .com-vao .cena16 > img.fundo { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1), #000 var(--m2), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1), #000 var(--m2), transparent 100%); }
+.estrela { fill: #fff; animation: piscar 4s ease-in-out infinite; }
+@keyframes piscar { 0%, 100% { opacity: .9; } 50% { opacity: .35; } }
+.hora-entardecer .estrela, .hora-amanhecer .estrela { opacity: .25; animation: none; }
+.brilho { animation: pulsar 3.4s ease-in-out infinite; transform-origin: 800px 600px; opacity: calc(.55 * var(--luz-fogo)); }
+@keyframes pulsar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.chama { transform-origin: 800px 606px; animation: chama 1.1s ease-in-out infinite alternate; }
+.chama.b { animation-duration: .8s; animation-delay: -.3s; }
+.chama.c { animation-duration: .65s; animation-delay: -.5s; }
+@keyframes chama { 0% { transform: scale(1, 1) skewX(0deg); } 50% { transform: scale(.94, 1.07) skewX(-3deg); } 100% { transform: scale(1.05, .95) skewX(3deg); } }
+.fagulha { fill: #ffd27a; opacity: 0; animation: subir 3.6s linear infinite; }
+@keyframes subir { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(var(--dx, 20px), -230px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .estrela, .brilho, .chama, .fagulha { animation: none; } .fagulha { opacity: 0; } }
+
+/* quem está em volta da fogueira */
+.roda { position: absolute; inset: 0; }
+.pers { position: absolute; width: 132px; margin-left: -66px; margin-top: -62px; display: grid; justify-items: center; gap: 5px; padding: 0; border: 0; background: none; color: #f4f1e6; text-align: center; touch-action: none; transform: scale(var(--pk, 1)); transform-origin: 50% 62px; }
+.pers .rt { width: 96px; height: 96px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #2a3247; border: 3px solid #e9d7b0; box-shadow: 0 0 0 2px rgba(10, 12, 20, .8), 0 10px 24px rgba(0, 0, 0, .55), 0 0 34px rgba(255, 170, 80, calc(.28 * var(--luz-fogo, 1))); font: 600 30px/1 var(--display); color: #e9d7b0; }
+.pers .rt img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; pointer-events: none; }
+.pers .nm { max-width: 100%; padding: 2px 9px; border-radius: 999px; background: rgba(8, 10, 18, .78); font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pers .bs { width: 104px; display: grid; gap: 3px; }
+.pers .b { height: 7px; border-radius: 4px; background: rgba(8, 10, 18, .82); border: 1px solid rgba(0, 0, 0, .7); overflow: hidden; }
+.pers .b i { display: block; height: 100%; background: var(--c, var(--hp)); }
+.pers.sel .rt { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp), 0 10px 24px rgba(0, 0, 0, .55); }
+.pers[data-pode] { cursor: grab; }
+.pers.arrastando { cursor: grabbing; z-index: 3; }
+.pers:focus-visible { outline: none; }
+.pers:focus-visible .rt { outline: 3px solid var(--lamp); outline-offset: 3px; }
+.vazio { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); max-width: min(460px, calc(100% - 32px)); padding: 12px 16px; border-radius: 12px; background: rgba(8, 10, 18, .8); color: #e8eaf0; text-align: center; font-size: 14px; }
+.acoes { flex: none; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 9px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+.avisos-cena { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.avisos-cena .chip { background: rgba(8, 10, 18, .78); border-color: rgba(255, 255, 255, .16); color: #e8eaf0; pointer-events: auto; max-width: 100%; height: auto; min-height: 26px; padding-top: 3px; padding-bottom: 3px; white-space: normal; border-radius: 13px; }
+.avisos-cena .chip b { color: #ffd27a; }
+
+/* ---- painel ---- */
+.side { flex: none; width: 372px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
+.tabs { flex: none; display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.tab { position: relative; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--fg-2); font-weight: 600; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--lamp-ink); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
+.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pane h3 { margin: 0; font: 600 19px/1.2 var(--display); }
+.pane .sub { margin: -6px 0 0; color: var(--fg-3); font-size: 12.5px; }
+.sec { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 9px; }
+.sec > .rot { display: flex; align-items: center; gap: 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.sec > .rot .btn { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.note { margin: 0; color: var(--fg-3); font-size: 12.5px; }
+.in { width: 100%; min-width: 0; height: 32px; padding: 0 9px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.in.num { width: 62px; text-align: right; font-family: var(--mono); padding: 0 6px; }
+textarea.in { height: auto; min-height: 52px; padding: 7px 9px; resize: vertical; line-height: 1.4; }
+.in[readonly], .in:disabled { border-color: var(--line); background: none; color: var(--fg-2); }
+.cartao { display: grid; gap: 7px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.cartao.off { opacity: .6; }
+.cartao .lin { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.cartao .lin .in { flex: 1; }
+.efs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.efs label { display: grid; gap: 2px; font-size: 11px; color: var(--fg-3); }
+.efs .in.num { width: 100%; font-weight: 600; color: var(--fg); }
+.passo { display: inline-flex; align-items: center; gap: 2px; }
+.passo b { min-width: 34px; text-align: center; font: 700 15px var(--mono); }
+.sw { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-2); white-space: nowrap; }
+.gente { display: grid; gap: 8px; }
+.pcard { display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); text-align: left; }
+.pcard.sel { border-color: var(--lamp); }
+.pcard .av { grid-row: span 2; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: top center; background: var(--hover); border: 1px solid var(--line-strong); display: grid; place-items: center; font: 600 15px var(--display); color: var(--fg-2); overflow: hidden; }
+.pcard .av img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.pcard .tit { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard .tit small { font-weight: 400; color: var(--fg-3); }
+.pcard .med { grid-column: 2 / -1; display: grid; gap: 4px; }
+.medidor { display: grid; grid-template-columns: 78px 1fr 62px; gap: 7px; align-items: center; font-size: 12px; color: var(--fg-2); }
+.medidor .tr { height: 7px; border-radius: 4px; background: var(--hover); overflow: hidden; }
+.medidor .tr i { display: block; height: 100%; background: var(--c, var(--hp)); }
+.medidor span:last-child { font-family: var(--mono); text-align: right; color: var(--fg); }
+.bonus-lista { display: flex; flex-wrap: wrap; gap: 6px; }
+.diario { display: grid; gap: 8px; }
+.diario .dl { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.diario .dl time { display: block; font: 11.5px var(--mono); color: var(--fg-3); margin-bottom: 2px; }
+.regras { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 13px; }
+.regras .cab { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+details.dobra > summary { cursor: pointer; font-weight: 600; color: var(--fg-2); padding: 4px 0; }
+details.dobra[open] > summary { margin-bottom: 8px; }
+
+/* ---- janelas e avisos ---- */
+dialog { max-width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(4, 6, 12, .6); }
+.dl-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+.dl-h h2 { margin: 0; font: 600 22px/1.15 var(--display); }
+.dl-b { padding: 0 16px 6px; display: grid; gap: 10px; overflow-y: auto; max-height: calc(100vh - 190px); }
+.dl-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px; flex-wrap: wrap; }
+.plano { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.plano th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; padding: 4px 8px 6px; border-bottom: 1px solid var(--line); }
+.plano td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.plano tr.fora td { opacity: .45; }
+.plano .mud { display: grid; gap: 2px; font-family: var(--mono); font-size: 12.5px; }
+.plano .mud b { color: var(--ok); font-weight: 600; }
+.plano .mud .igual { color: var(--fg-3); }
+.aviso { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--raised); font-size: 13.5px; }
+.aviso.ruim { border-color: var(--danger); color: var(--danger); }
+.menu { position: fixed; z-index: 20; min-width: 240px; max-width: 340px; max-height: 60vh; overflow: auto; padding: 6px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); }
+.menu .rot { padding: 5px 10px 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 7px; background: none; font-weight: 600; }
+.menu button:hover { background: var(--hover); }
+.toasts { position: fixed; z-index: 30; left: 50%; bottom: 70px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
+.jogador .so-mestre { display: none !important; }
+.side.fechado { display: none; }
+@media (max-width: 980px) { .side { width: 320px; } }
+@media (max-width: 720px) {
+  .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; width: min(340px, 90%); box-shadow: var(--shadow); }
+  .nome-acamp { width: 150px; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <span class="brand">Acampamento</span>
+    <input class="nome-acamp" id="nome" maxlength="80" aria-label="Nome do acampamento" autocomplete="off">
+    <span class="chip" id="chipRacoes" title="Rações: a soma das provisões guardadas"></span>
+    <span class="grow"></span>
+    <span class="salvo" id="salvo" role="status"></span>
+    <div class="seg so-mestre" id="hora" role="group" aria-label="Hora no acampamento"></div>
+    <button type="button" class="btn sm" id="btCena" hidden title="Abre o mapa do acampamento na aba Cenas, com tokens, luz e paredes">Mapa tático</button>
+    <button type="button" class="btn sm" id="btMundo" hidden title="Vai para o Mapa-múndi">Mapa-múndi</button>
+    <button type="button" class="ib so-mestre" id="btDesfazer" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button type="button" class="ib" id="btPainel" title="Mostrar ou esconder o painel" aria-label="Mostrar ou esconder o painel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+  </header>
+  <div class="work">
+    <div class="palco-col">
+      <div class="palco hora-noite" id="palco">
+        <div class="cena16" id="cena16">
+          <svg class="cenario" id="cenario" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="roda" id="roda"></div>
+        </div>
+        <div class="avisos-cena" id="avisosCena"></div>
+        <div class="vazio" id="vazio" hidden></div>
+      </div>
+      <div class="acoes so-mestre" id="acoes">
+        <button type="button" class="btn" id="btCurto" title="Uma pausa: recupera uma parte das barras, sem gastar provisões">Descanso curto</button>
+        <button type="button" class="btn pri" id="btLongo" title="A noite no acampamento: recupera as barras, gasta provisões e mexe em Conforto e Sanidade">Descanso longo</button>
+        <button type="button" class="btn" id="btMomento" title="Um momento entre dois personagens em volta da fogueira: mexe no Relacionamento de cada um pelo outro">Momento…</button>
+      </div>
+    </div>
+    <aside class="side" id="side">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="pane" id="pane"></div>
+    </aside>
+  </div>
+</div>
+<dialog id="dlg"></dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
+<noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o acampamento.</p></noscript>
+<script src="../tc/ponte.js?v=4"></script>
+<script src="../tc/rules.js?v=2"></script>
+<script src="nucleo.js?v=1"></script>
+<script src="acampamento.js?v=1"></script>
+</body>
+</html>

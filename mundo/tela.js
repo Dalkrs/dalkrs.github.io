@@ -587,6 +587,8 @@
       glifo(def, 19));
     if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
+    // marcador com atalho (abre uma cena, outro mapa ou o acampamento): uma setinha no canto de baixo
+    if (o.liga) { g0.classList.add('com-liga'); fx.append(s('circle', { class: 'liga-bola', cx: 12, cy: 12, r: 7 }), s('path', { class: 'liga-seta', d: 'M9.5 14.5l5-5M11 9.5h3.5V13' })); }
     if (o.nome) fx.append(rotulo(o.nome, 30));
     g0.append(fx);
   }
@@ -1489,6 +1491,13 @@
     palco.addEventListener('lostpointercapture', e => { if (g && e.pointerId === g.pid) cancelarGesto(); });
     palco.addEventListener('pointerleave', e => { if (!g && e.pointerType !== 'touch') { cursor = null; desenharRascunho(); } });
     palco.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });   // sem a rolagem automática do botão do meio
+    // dois cliques num marcador com atalho seguem o atalho (abrem a cena, o mapa ou o acampamento)
+    palco.addEventListener('dblclick', e => {
+      if (!M || App.ferramenta !== 'sel' || (e.target.closest && e.target.closest('.opts, .zoom, .vazio'))) return;
+      // (o gesto captura o ponteiro, então o alvo do evento é o palco: quem está embaixo do cursor é achado pelo ponto)
+      const id = idDoAlvo(document.elementFromPoint(e.clientX, e.clientY) || e.target), o = id ? M.objs.find(x => x.id === id) : null;
+      if (o && o.k === 'm' && o.liga && window.MundoPainel && MundoPainel.seguirLiga) { e.preventDefault(); MundoPainel.seguirLiga(o); }
+    });
     palco.addEventListener('contextmenu', e => {
       if (e.target.closest && e.target.closest('.opts, .zoom, .vazio')) return;
       e.preventDefault();

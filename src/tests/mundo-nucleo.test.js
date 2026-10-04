@@ -382,4 +382,20 @@ function mundo() {
   ok(j(N.escalarMapa(M, 1, 1)) === j(M), 'escala 1: nada muda');
 }
 
+/* ================= atalhos dos marcadores (cena, outro mapa, acampamento) ================= */
+{
+  const M = N.normalizarMapa({ objs: [
+    { id: 'a', k: 'm', x: 1, y: 1, liga: { t: 'acampamento', id: 'x', lixo: 1 } },
+    { id: 'b', k: 'm', x: 2, y: 2, liga: { t: 'cena', id: 'cena_1', nome: 'Emboscada na ponte' } },
+    { id: 'c', k: 'm', x: 3, y: 3, liga: { t: 'mapa', id: 'mp_2', nome: 'Capital' } },
+    { id: 'd', k: 'm', x: 4, y: 4, liga: { t: 'cena', id: '../x' } }, { id: 'e', k: 'm', x: 5, y: 5, liga: { t: 'site', id: 'x' } }, { id: 'f', k: 'm', x: 6, y: 6, liga: 'acampamento' },
+    { id: 'g', k: 'g', x: 7, y: 7, liga: { t: 'acampamento' } }] });
+  ok(j(M.objs.map(o => o.liga)) === j([{ t: 'acampamento' }, { t: 'cena', id: 'cena_1', nome: 'Emboscada na ponte' }, { t: 'mapa', id: 'mp_2', nome: 'Capital' }, null, null, null, undefined]),
+    'atalho: acampamento, cena e mapa valem; id estranho, tipo desconhecido e texto solto saem; só o marcador tem atalho — ' + j(M.objs.map(o => o.liga)));
+  ok(j(N.normalizarMapa(M)) === j(M), 'atalho: normalizar de novo dá no mesmo');
+  ok(N.objNovo('m', { x: 0, y: 0 }).liga === null, 'marcador novo nasce sem atalho');
+  const P = N.projetar(M);
+  ok(j(P.objs.filter(o => o.k === 'm').map(o => o.liga && o.liga.t)) === j(['acampamento', 'cena', 'mapa', null, null, null]), 'atalho: vai junto na projeção dos jogadores (quem esconde o que não pode aparecer é o aplicativo, que conhece os outros mapas)');
+}
+
 end();

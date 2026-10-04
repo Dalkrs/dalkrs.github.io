@@ -108,7 +108,7 @@ const arvLocal = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   // de volta sem mesa: a biblioteca local intacta
   ok(await ate(async () => { A = await quadro(M, /\/arvore\//); return A && await A.evaluate(() => typeof doc === 'object' && bib().nome === 'Campanha' && bib().arvores[0].nodes[1].nome === 'Punho de Ferro' && doc.personagens[0].nome === 'Rascunho local'); }), 'fora da mesa, a árvore do navegador continua como era');
   const fora = t.errs.filter(e => !/status of (400|401|409)/.test(e));
-  if (fora.length) console.log('CONSOLE:\n' + fora.join('\n'));
+  if (fora.length) console.log('CONSOLE:\n' + fora.join('\n') + '\nRESPOSTAS DE ERRO:\n' + t.ruins.join('\n'));
   ok(fora.length === 0, 'sem erros inesperados no console');
   await t.close(); end();
 })().catch(e => { console.error(e); process.exit(1); });

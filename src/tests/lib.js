@@ -31,7 +31,7 @@ async function start(opt = {}) {
   const proxy = opt.net ? (process.env.HTTPS_PROXY || process.env.https_proxy) : null;
   const browser = await chromium.launch(proxy ? { proxy: { server: proxy, bypass: '127.0.0.1,localhost' } } : {});
   const base = `http://127.0.0.1:${srv.address().port}/`;
-  const errs = [];
+  const errs = [], ruins = [];
   async function device(o = {}) {
     const ctx = await browser.newContext({ ignoreHTTPSErrors: !!opt.net, viewport: { width: o.w || 1440, height: o.h || 900 }, colorScheme: o.theme || 'dark', acceptDownloads: true });
     // Com o proxy ligado, o Chromium manda até o endereço local por ele; então os arquivos locais são entregues daqui mesmo.
@@ -49,9 +49,11 @@ async function start(opt = {}) {
     const IGNORE = /Failed to load resource: net::ERR_(FAILED|INTERNET_DISCONNECTED|NAME_NOT_RESOLVED|CERT_AUTHORITY_INVALID|TUNNEL_CONNECTION_FAILED|PROXY_CONNECTION_FAILED)|fonts\.g(oogleapis|static)\.com|WebSocket connection to 'wss:\/\/[a-z]+\.supabase\.co/;
     page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !IGNORE.test(m.text())) errs.push(`[${tag}] [${m.type()}] ${m.text()}`); });
     page.on('pageerror', e => errs.push(`[${tag}] [pageerror] ${e.message}`));
+    // as respostas de erro, com o método e o caminho: o console só diz "status of 403", sem dizer de quê
+    page.on('response', r => { if (r.status() >= 400) { let u; try { u = new URL(r.url()); } catch (e) { return; } ruins.push(`[${tag}] ${r.status()} ${r.request().method()} ${u.pathname}${u.search.replace(/(apikey|token|code)=[^&]*/g, '$1=…').slice(0, 160)}`); } });
     return { ctx, page };
   }
-  return { base, browser, errs, device, close: async () => { await browser.close(); srv.close(); } };
+  return { base, browser, errs, ruins, device, close: async () => { await browser.close(); srv.close(); } };
 }
 
 function checker() {

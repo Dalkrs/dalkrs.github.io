@@ -540,6 +540,9 @@
     on('diaMenos', () => passarDias(-1));
     on('diaMais', () => passarDias(1));
     on('btDesfazer', desfazerPeloBotao);
+    on('irCenas', () => { antesDeSair(); TC.ponte.ir('cenas'); });
+    on('irAcamp', () => { antesDeSair(); TC.ponte.ir('acampamento'); });
+    const at = $('atalhos'); if (at) at.hidden = !naCasca();
     on('btPainel', () => definirPainel($('side').classList.contains('fechado'), true));
     const cj = $('comoJog');
     if (cj) cj.addEventListener('change', () => { App.comoJogador = cj.checked; pintar(); });
@@ -990,7 +993,7 @@
     }
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
-    out.push(linha(botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
+    out.push(linha(o.k === 'm' && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
     return out;
   }
 
@@ -1029,8 +1032,44 @@
         h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Cor do ícone' }),
         o.cor ? botao('Usar a cor do ícone', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null),
       caixa('o:' + id + ':rumor', 'É boato', o.rumor, grava('marcar como boato', (x, v) => { x.rumor = !!v; if (!v) x.falso = false; }),
-        { dica: 'Os jogadores veem com um "?": pode ser verdade ou não.' }));
+        { dica: 'Os jogadores veem com um "?": pode ser verdade ou não.' }),
+      campoEscolha('o:' + id + ':liga', 'Atalho', valorLiga(o.liga), opcoesLiga(o), grava('mudar o atalho', (x, v) => { x.liga = ligaDe(v); }),
+        { dica: 'Para onde este marcador leva: dois cliques nele (ou o botão "Abrir") abrem a cena, o outro mapa ou o acampamento.' }),
+      o.liga ? linha(botaoLiga(o)) : null);
   }
+  /* ---- atalhos: do Mapa-múndi para as Cenas, para outro mapa e para o Acampamento ---- */
+  const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
+  // as cenas que este navegador conhece (a aba Cenas guarda a lista para os outros sistemas)
+  function cenasConhecidas() {
+    try { const v = JSON.parse(localStorage.getItem('tinycats:cenas:lista') || 'null'); return Array.isArray(v) ? v.filter(x => x && typeof x.id === 'string').map(x => ({ id: x.id, nome: String(x.nome || 'Cena') })) : []; }
+    catch (e) { return []; }
+  }
+  const valorLiga = l => (!l ? '' : l.t === 'acampamento' ? 'acampamento' : l.t + ':' + l.id);
+  function opcoesLiga(o) {
+    const ops = [['', 'Nenhum'], ['acampamento', 'Acampamento']], atual = valorLiga(o.liga);
+    for (const c of cenasConhecidas()) ops.push(['cena:' + c.id, 'Cena · ' + c.nome]);
+    for (const m of App.mapas) if (!App.mapa || m.id !== App.mapa.id) ops.push(['mapa:' + m.id, 'Mapa · ' + m.nome]);
+    if (atual && !ops.some(x => x[0] === atual)) ops.push([atual, (o.liga.t === 'cena' ? 'Cena · ' : 'Mapa · ') + (o.liga.nome || 'sem nome') + ' (não está na lista)']);
+    return ops;
+  }
+  function ligaDe(v) {
+    if (!v) return null;
+    if (v === 'acampamento') return { t: 'acampamento' };
+    const i = v.indexOf(':'), t = v.slice(0, i), id = v.slice(i + 1);
+    const nome = t === 'cena' ? (cenasConhecidas().find(c => c.id === id) || {}).nome : (App.mapas.find(m => m.id === id) || {}).nome;
+    return { t, id, nome: nome || '' };
+  }
+  const textoLiga = l => (l.t === 'acampamento' ? 'Ir para o acampamento' : l.t === 'cena' ? 'Abrir a cena' + (l.nome ? ' "' + l.nome + '"' : '') : 'Abrir o mapa' + (l.nome ? ' "' + l.nome + '"' : ''));
+  function seguirLiga(o) {
+    const l = o && o.liga;
+    if (!l) return false;
+    if (l.t === 'mapa') { antesDeSair(); return App.trocarMapa(l.id); }
+    if (!naCasca()) { App.toast('Este atalho funciona dentro do site Tiny Cats (pela aba Mapa-múndi).'); return false; }
+    if (l.t === 'acampamento') return TC.ponte.ir('acampamento');
+    return TC.ponte.ir('cenas', { cena: l.id });
+  }
+  const botaoLiga = o => botao(textoLiga(o.liga), () => seguirLiga(o), { c: 'pri', k: 'o:' + o.id + ':seguir', title: 'Também abre com dois cliques no marcador' });
+  const botaoAcampar = () => (naCasca() ? botao('Ir para o acampamento', () => TC.ponte.ir('acampamento'), { k: 'o:acampar', title: 'Abre a aba Acampamento: a fogueira, as provisões e o descanso do grupo' }) : null);
   function setasNaGrade(ev) {
     const bs = [...this.querySelectorAll('button')], i = bs.indexOf(document.activeElement), col = 6;
     if (i < 0) return;
@@ -1064,6 +1103,7 @@
       out.push(linha(botao('Pôr no começo da rota', () => mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; }), { c: 'sm', k: 'o:comeco' })));
     }
     out.push(nota('Andar não muda a data. Passe o dia quando quiser, na barra de cima ou na aba Hoje.'));
+    if (naCasca()) out.push(linha(botaoAcampar()));
     if (encontro && encontro.grupo === id) out.push(cartaoEncontro());
     return secao('Grupo', out);
   }
@@ -1471,5 +1511,5 @@
     pintar();
   }
 
-  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar };
+  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga };
 })();

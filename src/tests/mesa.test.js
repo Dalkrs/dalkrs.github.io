@@ -54,7 +54,7 @@ const { ok, end } = checker();
   await J.keyboard.press('Escape');
   // o Rolador é ferramenta do mestre: numa mesa, o jogador não tem a aba (nem chega nela pelo endereço)
   ok(await J.locator('#tab-rolador').isHidden() && await M.locator('#tab-rolador').isVisible(), 'na mesa, só o mestre vê a aba Rolador');
-  ok(await J.locator('.tab:visible').count() === 4, 'o jogador fica com as outras quatro abas');
+  ok(await J.locator('.tab:visible').count() === 5, 'o jogador fica com as outras cinco abas');
   await J.evaluate(() => { location.hash = '#/rolador'; }); await w(500, J);
   ok(await J.locator('#tab-rolador').getAttribute('aria-selected') !== 'true' && !J.frame({ url: /\/rolador\// }), 'e o endereço #/rolador não abre o Rolador para ele');
 
@@ -126,6 +126,19 @@ const { ok, end } = checker();
   await J.locator('.toast button', { hasText: 'Desfazer' }).click();
   ok(await espera(M, 'olá, mesa!'), 'desfazer devolve a fala');
   await J.screenshot({ path: 'shot-mesa-jogador.png' });
+
+  // ---------- fechar a mesa com uma leitura no meio do caminho não quebra nada ----------
+  const errosAntes = t.errs.length;
+  await J.evaluate(async () => {
+    const id = TC.mesas.atual.id;
+    await Promise.all([TC.dados.col('personagens').pronta, TC.dados.col('documentos').pronta]);
+    document.dispatchEvent(new Event('visibilitychange'));     // pede uma leitura agora, com duas coleções abertas...
+    TC.mesas.fechar();                                         // ...e fecha a mesa antes de a primeira responder
+    await new Promise(r => setTimeout(r, 1800));
+    await TC.mesas.abrir(id);
+  });
+  await w(1200);
+  ok(t.errs.length === errosAntes && (await J.locator('#btnConta').innerText()).includes(nomeMesa), 'fechar e reabrir a mesa com uma leitura no meio do caminho não dá erro: ' + t.errs.slice(errosAntes).join(' | '));
   await M.reload({ waitUntil: 'load' });
   await M.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
   ok((await M.locator('#btnConta').innerText()).includes(nomeMesa), 'ao recarregar, a conta e a mesa continuam abertas');
