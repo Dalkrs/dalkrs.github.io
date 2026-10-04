@@ -228,6 +228,15 @@ const Render = (() => {
     tokPath(c, t.shape, cx, cy, r);
     c.lineWidth = lw + 2 * px; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke();
     c.lineWidth = lw; c.strokeStyle = owner ? owner.color : (im ? '#e3ded2' : inkOn(fill) === '#ffffff' ? hexA('#ffffff', 0.85) : hexA('#15181f', 0.8)); c.stroke();
+    // Sobrevida: um aro claro por fora do token (o "sobre-efeito"), para quem pode ver as barras dele
+    if (barsShown(t).some(x => barX(x.b) > 0)) {
+      c.save();
+      tokPath(c, t.shape, cx, cy, r + lw * 1.5);
+      c.lineWidth = Math.max(1.5 * px, lw * 0.7); c.strokeStyle = hexA(SOBRE_COR, 0.9);
+      c.shadowColor = SOBRE_COR; c.shadowBlur = 10 * px;
+      c.stroke();
+      c.restore();
+    }
     if (dead) {
       c.strokeStyle = 'rgba(214,52,46,0.85)'; c.lineWidth = s * 0.09; c.lineCap = 'round';
       const k = r * 0.6;
@@ -317,9 +326,15 @@ const Render = (() => {
           if (mode === 'num' && bh * z >= 9) {
             c.font = `700 ${bh * 0.84}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.lineWidth = bh * 0.22; c.strokeStyle = 'rgba(0,0,0,0.75)'; c.lineJoin = 'round';
-            const tx = `${fmt(b.v)}/${fmt(b.m)}`;
+            const tx = `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
             c.strokeText(tx, cx, y + bh * 0.54); c.fillStyle = '#fff'; c.fillText(tx, cx, y + bh * 0.54);
           }
+        }
+        // Sobrevida: uma barrinha clara por cima da barra, saindo um pouco para o alto (ela absorve o dano antes).
+        if (barX(b) > 0) {
+          const xw = Math.max(bh * 0.9, w * clamp(barX(b) / b.m, 0, 1)), xh = Math.max(2 * px, bh * 0.5), xy = y - xh * 0.45;
+          c.fillStyle = SOBRE_COR; rr(c, x, xy, xw, xh, xh * 0.45); c.fill();
+          c.strokeStyle = 'rgba(6,26,36,0.85)'; c.lineWidth = 1 * px; rr(c, x, xy, xw, xh, xh * 0.45); c.stroke();
         }
         y += bh + gap;
       }
@@ -338,6 +353,23 @@ const Render = (() => {
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
+    // Sobrevida: o escudo no canto do token, com o total (para quem vê os números)
+    if (rows.some(r => barX(r.b) > 0)) {
+      const d = clamp(s * 0.36, 16 * px, 30 * px), bx = t.x + s - d * 0.4, by = t.y + d * 0.42, k = d / 19;
+      const tot = rows.reduce((a, r) => a + (r.mode === 'num' ? barX(r.b) : 0), 0);
+      c.save();
+      c.translate(bx - 12 * k, by - 12 * k); c.scale(k, k);
+      const sh = iconPath('shield');
+      c.fillStyle = '#1f7fa3'; c.fill(sh);
+      c.lineJoin = 'round'; c.lineWidth = 2.4; c.strokeStyle = 'rgba(6,20,30,0.9)'; c.stroke(sh);
+      c.lineWidth = 1; c.strokeStyle = SOBRE_COR; c.stroke(sh);
+      c.restore();
+      if (tot > 0 && d * z >= 15) {
+        const tx = tot >= 1000 ? '999+' : fmt(tot, 0), fs = d * (tx.length > 2 ? 0.36 : 0.48);
+        c.font = `800 ${fs}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#ffffff'; c.fillText(tx, bx, by - d * 0.02);
+      }
+    }
     c.restore();
   }
 

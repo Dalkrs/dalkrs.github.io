@@ -15,6 +15,8 @@
    Formatos
      pc      a ficha como a calculadora salva (ver personagemPadrao), mais
              ini: fórmula da iniciativa
+             modoAtr: 'livre' + atrLivre:{FOR,DES,VIT,CAN,AGI} — ficha de jogador, que
+             distribui os próprios pontos em vez de seguir tiers e percentuais
      cfg     { niveis:[{lvl,pts}], tiersPersonagem:[{t,m}], pct:{A..E},
                arredondar:'floor'|'round'|'ceil'|'none' }  (ver cfgPadrao;
              se faltar, vale o padrão)
@@ -22,6 +24,8 @@
              árvore somam (sai de bonusDaArvore). Chave que é uma das
              CHAVES_BONUS soma no atributo; qualquer outra é nome de recurso.
      estado  { rec:{ [idDoRecurso]: valorAtual } } — faltando = cheio
+             sob:{ [idDoRecurso]: sobrevida } — pontos por cima do recurso, que
+             absorvem o dano antes dele (faltando = nenhuma)
    ======================================================================= */
 (function (root) {
   'use strict';
@@ -303,7 +307,21 @@
                    erro) val fica null e nada é somado. Cada recurso ganha arv (quanto
                    entrou em val) e max (val no arredondamento da configuração).
        variáveis   as de sempre, com a base nova; mais X_ARV nas dez chaves e X_NAT nos
-                   cinco atributos (os apelidos dos atributos também: FORCA_ARV, ...) */
+                   cinco atributos (os apelidos dos atributos também: FORCA_ARV, ...)
+
+     Distribuição livre (pc.modoAtr === 'livre', fichas de jogador): nat vem de
+     pc.atrLivre — os pontos que a pessoa pôs em cada atributo — em vez de tiers e
+     percentuais; o total do level vira só a referência de quantos pontos há para
+     distribuir. O resultado ganha livre (true), usados (soma dos pontos postos) e
+     limite (pontos do level, inteiros). Sem atrLivre ainda (ninguém distribuiu),
+     os números continuam os da tabela até a primeira mudança. ant = base (não há
+     "level anterior" numa distribuição feita à mão). */
+  function pontosLivres(pc){
+    if(pc.modoAtr!=='livre' || !pc.atrLivre || typeof pc.atrLivre!=='object') return null;
+    const o={};
+    ATRIBS.forEach(a=>{ const v=numFinito(tem(pc.atrLivre,a.k)?pc.atrLivre[a.k]:null); o[a.k]=v==null?0:Math.max(0,Math.round(v)); });
+    return o;
+  }
   function calcular(pc,cfg,extra){
     cfg=cfg||CFG_PADRAO;
     const mult=multTier(cfg,pc.tier);
@@ -312,12 +330,13 @@
     const eq=bonusItens(pc);
     const {arv,arvRec}=separarArvore(extra&&extra.arvore);
     const tiers=pc.tiers||{};
+    const livres=pontosLivres(pc);
     const nat={},base={},ant={},tot={};
     ATRIBS.forEach(a=>{
       const p=pctDe(pc,cfg,tiers[a.k]);
-      nat[a.k] =arred(cfg,total*p);
+      nat[a.k] =livres? livres[a.k] : arred(cfg,total*p);
       base[a.k]=mais(nat[a.k],arv[a.k]);
-      ant[a.k] =mais(arred(cfg,totalAnt*p),arv[a.k]);
+      ant[a.k] =livres? base[a.k] : mais(arred(cfg,totalAnt*p),arv[a.k]);
       tot[a.k] =base[a.k]+eq[a.k];
     });
     const der={}, derAnt={};                       // sempre a partir dos valores BASE
@@ -357,7 +376,13 @@
       const max=arred(cfg,val);
       return {...r, val, err, arv:b, max:max===0?0:max};     // o teste com 0 tira o −0 (teto(-0.3))
     });
-    return {mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec};
+    const r={mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec};
+    if(pc.modoAtr==='livre'){
+      r.livre=true;
+      r.usados=ATRIBS.reduce((s,a)=>s+(+nat[a.k]||0),0);
+      r.limite=Math.floor(total+1e-9);
+    }
+    return r;
   }
   function somaPercentuaisUsados(pc,cfg){
     cfg=cfg||CFG_PADRAO;
@@ -441,16 +466,19 @@
     if (max == null) return g;                   // sem máximo não há "cheio" nem limite
     return g == null ? max : limitar(g, max);
   }
-  /* → [{id, nome, max, atual}] na ordem da ficha. max vem de calc (null se o recurso
+  /* → [{id, nome, max, atual, sobre}] na ordem da ficha. max vem de calc (null se o recurso
      não tem fórmula ou ela deu erro); atual é o guardado em estado.rec, cheio quando
-     não há nada guardado, e só é preso em 0..max quando existe max. */
+     não há nada guardado, e só é preso em 0..max quando existe max. sobre é a sobrevida
+     guardada em estado.sob (0 quando não há). */
   function estadoRecursos(pc, calc, estado) {
     const rec = (estado && estado.rec) || {};
+    const sob = (estado && estado.sob) || {};
+    const sobreDe = id => { const v = numFinito(tem(sob, id) ? sob[id] : null); return v == null || v < 0 ? 0 : v; };
     const calcs = (calc && calc.recursos) || [];
     return ((pc && pc.recursos) || []).map((r, i) => {
       const c = calcs[i] && calcs[i].id === r.id ? calcs[i] : calcs.find(x => x.id === r.id);
       const max = c ? numFinito(c.max) : null;
-      return { id: r.id, nome: r.nome, max, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, max) };
+      return { id: r.id, nome: r.nome, max, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, max), sobre: sobreDe(r.id) };
     });
   }
   /* → um estado NOVO com o recurso somado de delta (dano negativo, cura positiva),

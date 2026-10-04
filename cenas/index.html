@@ -28,6 +28,7 @@
   --danger: #f0786e;
   --scrim: rgba(5, 7, 12, .62);
   --veil: rgba(6, 9, 20, .52);  /* véu do mestre sobre o que os jogadores não veem */
+  --sobre: #8fe3ff;             /* sobrevida, nos painéis (no mapa a cor é fixa: SOBRE_COR) */
   --shadow: 0 12px 34px rgba(0, 0, 0, .5);
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -43,6 +44,7 @@
     --danger: #b9342a;
     --scrim: rgba(30, 38, 54, .42);
     --veil: rgba(16, 24, 48, .5);
+    --sobre: #1f7fa3;
     --shadow: 0 12px 34px rgba(40, 50, 72, .24);
   }
 }
@@ -55,6 +57,7 @@
   --danger: #b9342a;
   --scrim: rgba(30, 38, 54, .42);
   --veil: rgba(16, 24, 48, .5);
+  --sobre: #1f7fa3;
   --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
 
@@ -424,6 +427,14 @@ kbd { padding: 1px 6px; background: var(--raised); border: 1px solid var(--line-
 .bar-pips { padding: 0 0 2px 16px; }
 .bar-pips.full { padding-left: 37px; }
 .bar-opt { display: flex; flex-direction: column; gap: 8px; margin: 0 0 6px 7px; padding: 4px 0 4px 12px; border-left: 2px solid var(--line-strong); }
+/* Sobrevida: pontos por cima de uma barra */
+.bar-xb.tem { color: var(--sobre); }
+.bar-x { display: flex; align-items: center; gap: 8px; margin: -2px 0 2px 16px; padding: 3px 8px; border-left: 2px solid var(--sobre); font-size: 12.5px; color: var(--fg-2); }
+.bar-x.full { margin-left: 37px; }
+.bar-x .in.num { width: 58px; flex: none; text-align: right; font-family: var(--mono); }
+.bar-x-l { font-weight: 600; color: var(--fg); }
+.bar-x-n { color: var(--fg-3); }
+
 .pips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; vertical-align: middle; }
 .pip { display: block; flex: none; width: 16px; height: 16px; padding: 0; border: 2px solid var(--c); border-radius: 50%; background: transparent; }
 .pip.on { background: var(--c); }
@@ -550,7 +561,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=3"></script>
 <script src="../tc/dice.js?v=1"></script>
-<script src="../tc/rules.js?v=1"></script>
+<script src="../tc/rules.js?v=2"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -611,7 +622,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
                     combatente na rodada; as avulsas têm bonus e grp),
                     targets (miras), tone (hora do dia), weather (clima)
      - token ...... bars (lista livre: nome, cor, valor, máximo, estilo
-                    'bar' ou 'pts', regra de quem vê), conds + cinfo
+                    'bar' ou 'pts', regra de quem vê; x = sobrevida, que absorve
+                    o dano antes da barra), conds + cinfo
                     (contador e duração de cada condição), auras, visão, luz,
                     ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4)
      - parede ..... k: wall | door | window | veil; porta secreta = door + secret
@@ -810,6 +822,7 @@ const ICONS = {
   reset: 'M4 5v5h5M4.6 10A8 8 0 1 1 4 13.5',
   brush: 'M14 4l6 6-8.5 8.5a3 3 0 0 1-2 .9l-3 .1c-.9 0-1.6-.6-1.6-1.5l.1-3a3 3 0 0 1 .9-2zM11 7l6 6',
   shield: 'M12 3l7.5 2.8v5.4c0 4.6-3 8.3-7.5 9.8-4.5-1.5-7.5-5.2-7.5-9.8V5.8z',
+  heart: 'M12 20.5s-7.5-4.6-7.5-10.4A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.5 2.9c0 5.8-7.5 10.4-7.5 10.4zM12 10.2v4.6M9.7 12.5h4.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
@@ -887,7 +900,14 @@ function cleanBar(b) {
   }, o);
 }
 // Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
-const cleanBarRef = (b, o) => { if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64); return b; };
+// Sobrevida (x): pontos por cima da barra, que absorvem o dano antes dela. Só fica guardada quando há alguma.
+const cleanBarRef = (b, o) => {
+  if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
+  if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  return b;
+};
+const barX = b => Math.max(0, Number(b && b.x) || 0);
+const SOBRE_COR = '#8fe3ff';                // a cor da sobrevida, no mapa e nos painéis
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
   return (Array.isArray(p) && p.length ? p : BAR_DEFAULTS).slice(0, MAX_BARS).map(cleanBar);
@@ -1617,6 +1637,7 @@ const Assets = (() => {
       if (!a) return null;
       im = new Image();
       im.decoding = 'async';
+      if (/^https?:/.test(a.url)) im.crossOrigin = 'anonymous';      // imagem que vem do banco: sem isto o canvas fica "sujo" e não exporta
       im.onload = () => { im.ok = true; Render.request(); };
       im.src = a.url;
       imgs.set(id, im);
@@ -2683,9 +2704,9 @@ function tokensIn(path, sc) {
 
 // Número de dano ou cura que sobe do token quando uma barra muda: o nome da barra e o quanto, com sinal
 // ("Vida −8", "Fé +2"). Vale para qualquer caminho que mexa numa barra, porque nasce da própria alteração.
-function floatDelta(t, delta, tag) {
+function floatDelta(t, delta, tag, color) {
   if (!delta) return;
-  App.floats.push({ id: t.id, text: (tag ? tag + ' ' : '') + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta)), c: delta > 0 ? '#86e8ad' : '#ff8f80', t0: performance.now() });
+  App.floats.push({ id: t.id, text: (tag ? tag + ' ' : '') + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta)), c: color || (delta > 0 ? '#86e8ad' : '#ff8f80'), t0: performance.now() });
   if (App.floats.length > 30) App.floats.shift();
   Render.request();
 }
@@ -2698,10 +2719,19 @@ function applyLabel(a) {
   return parts.join(' + ');
 }
 // Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem fica negativo.
-function areaNext(b, amt, half) {
-  const a = half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt;
-  return clamp(Math.round((b.v + a) * 10) / 10, 0, Math.max(b.m, b.v));
+// Uma barra com um remendo por cima; a sobrevida zerada sai do objeto (não fica guardada à toa).
+function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) delete o.x; return o; }
+/* Uma variação numa barra. O dano (delta negativo) gasta primeiro a sobrevida; a cura não mexe nela.
+   Devolve o remendo { v } ou { v, x }. */
+function barAfter(b, delta) {
+  let x = barX(b), d = delta;
+  if (d < 0 && x > 0) { const usa = Math.min(x, -d); x = Math.round((x - usa) * 10) / 10; d += usa; }
+  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, 0, Math.max(b.m, b.v)) };
+  if (x !== barX(b)) p.x = x;
+  return p;
 }
+const areaDelta = (amt, half) => (half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt);
+function areaNext(b, amt, half) { return barAfter(b, areaDelta(amt, half)).v; }
 
 /* ---- Seleção ---- */
 const selHas = (c, id) => App.sel.some(s => s.c === c && s.id === id);
@@ -2786,10 +2816,33 @@ function turnKeepCur(tn, before) {
 const Act = {
   barSet(t, i, text) {
     const b = t.bars[i];
-    const v = parseBar(text, b.v, b.m);
-    if (v == null || v === b.v) return false;
-    Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, { v }) : x)) }));
+    const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
+    let p;
+    if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
+    else { const v = parseBar(text, b.v, b.m); if (v == null) return false; p = { v }; }
+    if (p.v === b.v && p.x === undefined) return false;
+    Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
+  },
+  // Sobrevida de uma barra: pontos por cima dela, que absorvem o dano primeiro. Zero tira.
+  barExtra(t, i, value) {
+    const b = t.bars[i]; if (!b) return false;
+    const x = Math.max(0, Math.round((Number(value) || 0) * 10) / 10);
+    if (x === barX(b)) return false;
+    Store.tx('Sobrevida de ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) }));
+    return true;
+  },
+  // Cura total: enche todas as barras em uso de cada token. Devolve quantos tokens mudaram.
+  fullHeal(tokens) {
+    let n = 0;
+    Store.tx('Cura total', () => {
+      for (const t of tokens) {
+        let mudou = false;
+        const bars = t.bars.map(b => { if (!b.on || !(b.m > 0) || b.v >= b.m) return b; mudou = true; return Object.assign({}, b, { v: b.m }); });
+        if (mudou) { Store.upd('tokens', t.id, { bars }); n++; }
+      }
+    });
+    return n;
   },
   barPatch(t, i, patch) {
     Store.tx('Alterar barra', () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, patch) : x)) }));
@@ -2853,8 +2906,8 @@ const Act = {
         if (amt) {
           const i = t.bars.findIndex(b => b.on && b.n === barName);
           if (i >= 0) {
-            const v = areaNext(t.bars[i], amt, r.half);
-            if (v !== t.bars[i].v) p.bars = t.bars.map((x, j) => (j === i ? Object.assign({}, x, { v }) : x));
+            const q = barAfter(t.bars[i], areaDelta(amt, r.half));
+            if (q.v !== t.bars[i].v || q.x !== undefined) p.bars = t.bars.map((x, j) => (j === i ? barWith(x, q) : x));
           }
         }
         if (cond && cond.id) {
@@ -3185,8 +3238,9 @@ const Act = {
    7b. FICHAS — o token ligado à ficha do personagem
    Só existe dentro do site, com uma mesa aberta (a ponte entrega os personagens da mesa).
    O token aponta para um personagem (t.char). A ficha manda: cada recurso dela (HP, SP…) vira uma
-   barra do token, com o máximo calculado pelas fórmulas e o valor atual anotado na ficha; e o bônus
-   de iniciativa vem da fórmula de iniciativa da ficha, quando ela tem uma.
+   barra do token, com o máximo calculado pelas fórmulas e o valor atual (e a sobrevida) anotados na ficha;
+   o bônus de iniciativa vem da fórmula de iniciativa da ficha, quando ela tem uma; e a imagem do
+   personagem vira a imagem do token (a não ser que o mestre escolha outra para este token).
    Na volta, mexer numa dessas barras no mapa (dano, cura, área, reaplicar, desfazer) grava o valor
    atual na ficha. Também dá para rolar um atributo da ficha direto do token, com a regra da fixa.
    --------------------------------------------------------------- */
@@ -3199,6 +3253,8 @@ const Fichas = (() => {
   const get = id => (P && id ? P.pegar(id) : null);
   const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
+  // a imagem do personagem, quando está guardada no banco (endereço https)
+  const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
   // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe)
   const bib = () => { const d = D && D.pegar('arvore:biblioteca'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
   const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()) });
@@ -3221,6 +3277,8 @@ const Fichas = (() => {
       if (b.n !== nome) { b.n = nome; mudou = true; }
       if (b.m !== rec.max) { b.m = rec.max; mudou = true; }
       if (b.v !== rec.atual) { b.v = rec.atual; mudou = true; }
+      const sx = Math.max(0, Number(rec.sobre) || 0);
+      if (barX(b) !== sx) { if (sx > 0) b.x = sx; else delete b.x; mudou = true; }
     }
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -3233,6 +3291,13 @@ const Fichas = (() => {
     const bars = barrasDe(t, r);
     if (bars) p.bars = bars;
     if (String((l.ficha && l.ficha.ini) || '').trim() !== '' && clampIni(r.ini) !== t.ini) p.ini = clampIni(r.ini);
+    // a imagem da ficha vai para o token (imgChar marca que a imagem dele é a da ficha; uma escolhida à mão fica)
+    const url = imagemDe(l);
+    if (url) {
+      const a = Assets.register(url, 0, 0, 'token', l.nome || '');
+      if (t.img !== a.id && (!t.img || t.imgChar)) { p.img = a.id; p.imgChar = true; }
+      else if (t.img === a.id && !t.imgChar) p.imgChar = true;
+    } else if (t.imgChar) { p.img = null; p.imgChar = false; }
     if (!Object.keys(p).length) return false;
     applying = true;
     try { Store.remote({ t: 'upd', c: 'tokens', id: t.id, p }); } finally { applying = false; }
@@ -3251,16 +3316,22 @@ const Fichas = (() => {
     if (!t || !t.char) return;
     const l = get(t.char);
     if (!l) return;
-    const rec = Object.assign({}, (l.estado && l.estado.rec) || {});
+    const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
     let mudou = false;
-    for (const b of t.bars) if (b.ref && isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
+    for (const b of t.bars) {
+      if (!b.ref) continue;
+      if (isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
+      const x = barX(b);
+      if ((Number(sob[b.ref]) || 0) !== x) { if (x > 0) sob[b.ref] = x; else delete sob[b.ref]; mudou = true; }
+    }
     if (!mudou) return;
-    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec }) });
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob }) });
     syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
   }
   function link(t, charId) {
     if (!charId) {
-      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
+      // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
+      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, imgChar: false, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
       return;
     }
     Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, { char: charId }));
@@ -3305,7 +3376,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar };
+  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar, imagemDe };
 })();
 /* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
@@ -3537,6 +3608,15 @@ const Render = (() => {
     tokPath(c, t.shape, cx, cy, r);
     c.lineWidth = lw + 2 * px; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke();
     c.lineWidth = lw; c.strokeStyle = owner ? owner.color : (im ? '#e3ded2' : inkOn(fill) === '#ffffff' ? hexA('#ffffff', 0.85) : hexA('#15181f', 0.8)); c.stroke();
+    // Sobrevida: um aro claro por fora do token (o "sobre-efeito"), para quem pode ver as barras dele
+    if (barsShown(t).some(x => barX(x.b) > 0)) {
+      c.save();
+      tokPath(c, t.shape, cx, cy, r + lw * 1.5);
+      c.lineWidth = Math.max(1.5 * px, lw * 0.7); c.strokeStyle = hexA(SOBRE_COR, 0.9);
+      c.shadowColor = SOBRE_COR; c.shadowBlur = 10 * px;
+      c.stroke();
+      c.restore();
+    }
     if (dead) {
       c.strokeStyle = 'rgba(214,52,46,0.85)'; c.lineWidth = s * 0.09; c.lineCap = 'round';
       const k = r * 0.6;
@@ -3626,9 +3706,15 @@ const Render = (() => {
           if (mode === 'num' && bh * z >= 9) {
             c.font = `700 ${bh * 0.84}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.lineWidth = bh * 0.22; c.strokeStyle = 'rgba(0,0,0,0.75)'; c.lineJoin = 'round';
-            const tx = `${fmt(b.v)}/${fmt(b.m)}`;
+            const tx = `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
             c.strokeText(tx, cx, y + bh * 0.54); c.fillStyle = '#fff'; c.fillText(tx, cx, y + bh * 0.54);
           }
+        }
+        // Sobrevida: uma barrinha clara por cima da barra, saindo um pouco para o alto (ela absorve o dano antes).
+        if (barX(b) > 0) {
+          const xw = Math.max(bh * 0.9, w * clamp(barX(b) / b.m, 0, 1)), xh = Math.max(2 * px, bh * 0.5), xy = y - xh * 0.45;
+          c.fillStyle = SOBRE_COR; rr(c, x, xy, xw, xh, xh * 0.45); c.fill();
+          c.strokeStyle = 'rgba(6,26,36,0.85)'; c.lineWidth = 1 * px; rr(c, x, xy, xw, xh, xh * 0.45); c.stroke();
         }
         y += bh + gap;
       }
@@ -3647,6 +3733,23 @@ const Render = (() => {
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
+    // Sobrevida: o escudo no canto do token, com o total (para quem vê os números)
+    if (rows.some(r => barX(r.b) > 0)) {
+      const d = clamp(s * 0.36, 16 * px, 30 * px), bx = t.x + s - d * 0.4, by = t.y + d * 0.42, k = d / 19;
+      const tot = rows.reduce((a, r) => a + (r.mode === 'num' ? barX(r.b) : 0), 0);
+      c.save();
+      c.translate(bx - 12 * k, by - 12 * k); c.scale(k, k);
+      const sh = iconPath('shield');
+      c.fillStyle = '#1f7fa3'; c.fill(sh);
+      c.lineJoin = 'round'; c.lineWidth = 2.4; c.strokeStyle = 'rgba(6,20,30,0.9)'; c.stroke(sh);
+      c.lineWidth = 1; c.strokeStyle = SOBRE_COR; c.stroke(sh);
+      c.restore();
+      if (tot > 0 && d * z >= 15) {
+        const tx = tot >= 1000 ? '999+' : fmt(tot, 0), fs = d * (tx.length > 2 ? 0.36 : 0.48);
+        c.font = `800 ${fs}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#ffffff'; c.fillText(tx, bx, by - d * 0.02);
+      }
+    }
     c.restore();
   }
 
@@ -5118,6 +5221,7 @@ const UI = (() => {
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
+  const barXOpen = {};              // campo de sobrevida aberto numa barra que ainda não tem sobrevida
   let modalEl = null, modalCfg = null, menuEl = null, menuAnchor = null, skipOpen = false;
   let pressing = false, pending = false, timer = 0;
   let downloads = null, imgTarget = null, zoomLabel = null, statusText = '', saveState = 'ok';
@@ -5306,7 +5410,7 @@ const UI = (() => {
   async function setTokenImage(t, file) {
     try {
       const a = await Assets.fromFile(file, 'token');
-      Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: a.id }));
+      Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: a.id, imgChar: false }));
     } catch (err) { toast(err.message || 'Não consegui abrir essa imagem.'); }
   }
   async function tokensFromFiles(files, at) {
@@ -5893,6 +5997,7 @@ const UI = (() => {
     t.bars.forEach((b, i) => {
       if (!full && !b.on) return;
       const key = t.id + ':' + i, open = full && !!barOpen[key], m = Math.round(b.m);
+      const xAberta = barX(b) > 0 || !!barXOpen[key];
       const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
       const val = h('input', {
         id: `tk-b${i}-v`, class: 'in bar-v', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
@@ -5905,8 +6010,14 @@ const UI = (() => {
         full ? inText(`tk-b${i}-n`, b.n, v => Act.barPatch(t, i, { n: v.trim().slice(0, 24) || b.n }), { class: 'in bar-n', 'aria-label': 'Nome da barra', maxlength: 24 }) : h('span', { class: 'bar-n ro', text: b.n }),
         val, h('span', { class: 'bar-sl', text: '/' }),
         full ? inNum(`tk-b${i}-m`, b.m, v => Act.barPatch(t, i, { m: v }), { min: 0, label: b.n + ' máximo' }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
+        b.on ? iconBtn('shield', (xAberta ? 'Sobrevida de ' : 'Dar sobrevida a ') + b.n, () => { barXOpen[key] = !xAberta; renderSide(); if (!xAberta) { const n = document.getElementById(`tk-b${i}-x`); if (n) n.focus(); } }, { size: 16, cls: 'bar-more bar-xb' + (barX(b) > 0 ? ' tem' : ''), on: xAberta, id: `tk-b${i}-xb` }) : null,
         full ? iconBtn('more', 'Opções da barra ' + b.n, () => { barOpen[key] = !barOpen[key]; renderSide(); }, { size: 16, cls: 'bar-more', on: open, id: `tk-b${i}-more` }) : null));
       if (b.k === 'pts' && b.on && m >= 1 && m <= 20) rows.push(h('div', { class: 'bar-pips' + (full ? ' full' : '') }, pips(t, b, i, true, 'tk-b')));
+      if (xAberta && b.on) rows.push(h('div', { class: 'bar-x' + (full ? ' full' : '') },
+        h('span', { class: 'bar-x-l', text: 'Sobrevida' }),
+        // depois de digitado, quem mantém o campo aberto é a própria sobrevida: quando ela acabar, o campo fecha
+        inNum(`tk-b${i}-x`, barX(b), v => { delete barXOpen[key]; if (!Act.barExtra(t, i, v)) renderSide(); }, { min: 0, step: 1, label: 'Sobrevida de ' + b.n, title: 'Pontos por cima da barra: o dano gasta a sobrevida antes de chegar em ' + b.n }),
+        h('span', { class: 'bar-x-n', text: 'leva o dano antes' })));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
@@ -5928,7 +6039,7 @@ const UI = (() => {
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
         : h('span', { class: 'meter' }, h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
-      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` }) : null)));
+      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
   /* Barras padrão: a lista com que todo token novo nasce (vale para a mesa inteira). */
@@ -6005,7 +6116,7 @@ const UI = (() => {
         if (!r.on) res = 'fica de fora';
         else if (!names.length) res = '';
         else if (!b) res = 'sem ' + name;
-        else if (a) res = `${fmt(b.v)} → ${fmt(areaNext(b, a, r.half))}`;
+        else if (a) { const q = barAfter(b, areaDelta(a, r.half)); res = `${fmt(b.v)} → ${fmt(q.v)}` + (q.x !== undefined ? ` · sobrevida ${fmt(barX(b))} → ${fmt(q.x)}` : ''); }
         else res = `${fmt(b.v)}/${fmt(b.m)}`;
         return h('li', { class: 'area-row' + (r.on ? '' : ' off') },
           h('label', { class: 'area-who' },
@@ -6075,12 +6186,14 @@ const UI = (() => {
 
   function imageField(t) {
     const a = t.img ? Store.S.assets[t.img] : null;
+    const daFicha = !!(a && t.imgChar && t.char);         // a imagem veio da ficha do personagem (e acompanha a de lá)
     const others = Object.values(Store.S.assets).filter(x => x.kind === 'token' && x.id !== t.img).slice(0, 12);
     return h('div', { class: 'field stack' }, h('span', { class: 'lb', text: 'Imagem' }),
       h('div', { class: 'row' },
         btn(a ? 'Trocar' : 'Escolher imagem', () => pickImage(f => setTokenImage(t, f[0])), { icon: 'image' }),
-        a ? btn('Remover', () => Store.tx('Remover imagem', () => Store.upd('tokens', t.id, { img: null }))) : null),
-      others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id })) }))) : null);
+        a && !daFicha ? btn('Remover', () => Store.tx('Remover imagem', () => Store.upd('tokens', t.id, { img: null, imgChar: false }))) : null),
+      daFicha ? note('É a imagem da ficha do personagem. Trocar aqui vale só para este token.') : null,
+      others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id, imgChar: false })) }))) : null);
   }
 
   /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
@@ -6129,6 +6242,7 @@ const UI = (() => {
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' })),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
@@ -6161,6 +6275,13 @@ const UI = (() => {
           btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
     ];
   }
+  // Cura total com aviso e Desfazer.
+  function healToast(toks, quem) {
+    const n = Act.fullHeal(toks);
+    if (!n) { toast(toks.length ? (toks.length === 1 ? `${toks[0].name} já está com as barras cheias.` : 'Todos já estavam com as barras cheias.') : 'Não há tokens para curar.'); return 0; }
+    toast(n === 1 && toks.length === 1 ? `Cura total em ${toks[0].name}.` : `Cura total em ${n} ${n === 1 ? 'token' : 'tokens'}${quem ? ' ' + quem : ''}.`, { action: 'Desfazer', run: Tools.undo });
+    return n;
+  }
   function deleteSelToast() {
     const n = Act.deleteSel();
     if (n) toast(n === 1 ? 'Item apagado.' : `${n} itens apagados.`, { action: 'Desfazer', run: Tools.undo });
@@ -6187,7 +6308,9 @@ const UI = (() => {
       editable.length && names.length ? sec('s-mbar', 'Somar ou subtrair de todos', true,
         h('div', { class: 'row' }, sel, amt, btn('Aplicar', apply, { kind: 'primary' })),
         note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
-        gm ? h('div', { class: 'row' }, btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' })) : null) : null,
+        gm ? h('div', { class: 'row' },
+          btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
+          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' })) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -6576,6 +6699,11 @@ const UI = (() => {
           }), { size: 16 }));
       })) : h('p', { class: 'muted', text: 'Nenhum jogador cadastrado.' }),
       h('div', { class: 'row' }, btn('Adicionar jogador', addPlayer, { icon: 'plus', kind: 'primary' })),
+      sec('pl-heal', 'Descanso rápido', true,
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        h('div', { class: 'row' },
+          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
     ];
   }
 
@@ -6591,6 +6719,7 @@ const UI = (() => {
       items.push({ head: toks.length > 1 ? `${toks.length} tokens` : tokName(o) });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
+      if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
       if (gm) {
@@ -7120,9 +7249,10 @@ function barFloats(op, inv) {
   if (!t || was.length !== now.length) return;
   now.forEach((b, i) => {
     const a = was[i];
-    if (!a.on || !b.on || a.n !== b.n || a.m !== b.m || a.v === b.v) return;     // só conta quando foi o valor que mudou
+    if (!a.on || !b.on || a.n !== b.n || a.m !== b.m) return;                    // só conta quando foi o valor que mudou
     if (barMode(t, b) !== 'num') return;                                         // quem não vê os números não vê o quanto mudou
-    floatDelta(t, Math.round((b.v - a.v) * 10) / 10, b.n);
+    if (barX(a) !== barX(b)) floatDelta(t, Math.round((barX(b) - barX(a)) * 10) / 10, 'Sobrevida', SOBRE_COR);
+    if (a.v !== b.v) floatDelta(t, Math.round((b.v - a.v) * 10) / 10, b.n);
   });
 }
 
@@ -7182,7 +7312,8 @@ async function start(snap) {
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
-    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)) }));
+    // char: a ficha ligada ao token (a mesa ao vivo mostra a imagem do personagem ao lado de quem rolou)
+    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
   };
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
@@ -7190,7 +7321,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

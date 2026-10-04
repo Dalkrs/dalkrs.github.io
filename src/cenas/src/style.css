@@ -18,6 +18,7 @@
   --danger: #f0786e;
   --scrim: rgba(5, 7, 12, .62);
   --veil: rgba(6, 9, 20, .52);  /* véu do mestre sobre o que os jogadores não veem */
+  --sobre: #8fe3ff;             /* sobrevida, nos painéis (no mapa a cor é fixa: SOBRE_COR) */
   --shadow: 0 12px 34px rgba(0, 0, 0, .5);
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -33,6 +34,7 @@
     --danger: #b9342a;
     --scrim: rgba(30, 38, 54, .42);
     --veil: rgba(16, 24, 48, .5);
+    --sobre: #1f7fa3;
     --shadow: 0 12px 34px rgba(40, 50, 72, .24);
   }
 }
@@ -45,6 +47,7 @@
   --danger: #b9342a;
   --scrim: rgba(30, 38, 54, .42);
   --veil: rgba(16, 24, 48, .5);
+  --sobre: #1f7fa3;
   --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
 
@@ -414,6 +417,14 @@ kbd { padding: 1px 6px; background: var(--raised); border: 1px solid var(--line-
 .bar-pips { padding: 0 0 2px 16px; }
 .bar-pips.full { padding-left: 37px; }
 .bar-opt { display: flex; flex-direction: column; gap: 8px; margin: 0 0 6px 7px; padding: 4px 0 4px 12px; border-left: 2px solid var(--line-strong); }
+/* Sobrevida: pontos por cima de uma barra */
+.bar-xb.tem { color: var(--sobre); }
+.bar-x { display: flex; align-items: center; gap: 8px; margin: -2px 0 2px 16px; padding: 3px 8px; border-left: 2px solid var(--sobre); font-size: 12.5px; color: var(--fg-2); }
+.bar-x.full { margin-left: 37px; }
+.bar-x .in.num { width: 58px; flex: none; text-align: right; font-family: var(--mono); }
+.bar-x-l { font-weight: 600; color: var(--fg); }
+.bar-x-n { color: var(--fg-3); }
+
 .pips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; vertical-align: middle; }
 .pip { display: block; flex: none; width: 16px; height: 16px; padding: 0; border: 2px solid var(--c); border-radius: 50%; background: transparent; }
 .pip.on { background: var(--c); }

@@ -121,6 +121,7 @@ const Assets = (() => {
       if (!a) return null;
       im = new Image();
       im.decoding = 'async';
+      if (/^https?:/.test(a.url)) im.crossOrigin = 'anonymous';      // imagem que vem do banco: sem isto o canvas fica "sujo" e não exporta
       im.onload = () => { im.ok = true; Render.request(); };
       im.src = a.url;
       imgs.set(id, im);

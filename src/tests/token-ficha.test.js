@@ -73,10 +73,47 @@ const { ok, end } = checker();
   ok(chegou, 'a rolagem de atributo pelo token aparece na mesa ao vivo');
   ok(chegou && /20 de fixa/.test(await M.locator('#feed .rol', { hasText: 'Dain X · Força' }).first().innerText()) && (await M.locator('#feed .rol', { hasText: 'Dain X · Força' }).first().locator('.or').innerText()) === 'Cenas', 'com a fixa e a origem "Cenas"');
 
+  // ---------- sobrevida: token ⇄ ficha ----------
+  await C.evaluate(id => { const u = __tc, tk = u.Store.get('tokens', id), i = tk.bars.findIndex(b => b.n === 'HP'); u.Act.barExtra(tk, i, 15); }, tok.id); await w(300);
+  ok(await ate(async () => { const l = await linha(); return l.estado.sob && l.estado.sob[idHP] === 15; }), 'sobrevida posta no token vai para a ficha');
+  const hpAgora = await C.evaluate(id => __tc.Store.get('tokens', id).bars.find(b => b.n === 'HP').v, tok.id);
+  await C.evaluate(id => { const u = __tc, tk = u.Store.get('tokens', id), i = tk.bars.findIndex(b => b.n === 'HP'); u.Act.barSet(tk, i, '-20'); }, tok.id); await w(300);
+  ok(await ate(async () => { const l = await linha(); return (!l.estado.sob || l.estado.sob[idHP] === undefined) && l.estado.rec[idHP] === hpAgora - 5; }), 'dano de 20 no mapa: a sobrevida (15) acaba e 5 saem do HP, também na ficha');
+  await M.locator('#tab-fichas').click(); await w(600);
+  ok(await ate(async () => (await F.locator(`[data-ressob="${idHP}"]`).inputValue()) === '0' && (await F.locator(`[data-resatual="${idHP}"]`).inputValue()) === String(hpAgora - 5)), 'a ficha mostra o recurso com a sobrevida ao lado');
+  await F.locator(`[data-ressob="${idHP}"]`).fill('9'); await F.locator('#f_nome').click(); await w(1200);
+  await M.locator('#tab-cenas').click(); await w(500);
+  ok(await ate(async () => (await C.evaluate(id => __tc.Store.get('tokens', id).bars.find(b => b.n === 'HP').x, tok.id)) === 9), 'sobrevida posta na ficha aparece no token');
+
+  // ---------- a imagem da ficha vira a imagem do token ----------
+  await M.locator('#tab-fichas').click(); await w(500);
+  await F.evaluate(async () => {
+    const cv = document.createElement('canvas'); cv.width = 300; cv.height = 300;
+    const cx = cv.getContext('2d'); cx.fillStyle = '#b5462f'; cx.fillRect(0, 0, 300, 300); cx.fillStyle = '#f2d16b'; cx.fillRect(100, 60, 100, 100);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'dain.png', { type: 'image/png' }));
+    const arq = document.querySelector('#imgIn'); arq.files = dt.files; arq.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  let urlImg = null;
+  ok(await ate(async () => { urlImg = await M.evaluate(() => { const l = TC.dados.col('personagens').todas()[0]; return l && l.ficha && l.ficha.img; }); return typeof urlImg === 'string' && urlImg.startsWith('https://'); }, 25000), 'a ficha ganha uma imagem (guardada no banco)');
+  await M.locator('#tab-cenas').click(); await w(500);
+  ok(await ate(async () => await C.evaluate(([id, url]) => { const u = __tc, tk = u.Store.get('tokens', id), a = tk.img && u.Store.S.assets[tk.img]; return !!a && a.url === url && tk.imgChar === true; }, [tok.id, urlImg])), 'o token ligado passa a usar a imagem da ficha');
+  ok(await ate(async () => await C.evaluate(id => { const u = __tc, tk = u.Store.get('tokens', id); u.Render.request(); return !!u.Assets.img(tk.img); }, tok.id), 20000), 'a imagem carrega no mapa');
+  ok(await C.evaluate(() => { try { return __tc.Render.cv.toDataURL('image/png').length > 1000; } catch (e) { return false; } }), 'e o mapa continua exportável (a imagem vem com permissão de uso no canvas)');
+  await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, tok.id); await w(400);
+  ok((await C.locator('#side').innerText()).includes('É a imagem da ficha do personagem'), 'o painel do token avisa que a imagem vem da ficha');
+  if (!(await C.locator('#tk-rolar').isVisible())) { await C.locator('#s-ficha > summary').click(); await w(200); }
+  await C.locator('#tk-atr').selectOption('DES'); await C.locator('#tk-rolar').click();
+  const rolDes = M.locator('#feed .rol', { hasText: 'Dain X · Destreza' }).first();
+  let veio = false;
+  try { await rolDes.waitFor({ timeout: 10000 }); veio = true; } catch (e) { /* não chegou */ }
+  ok(veio && (await rolDes.locator('img.av').getAttribute('src')) === urlImg, 'a rolagem pelo token chega à mesa ao vivo com a imagem do personagem');
+
   // ---------- desligar ----------
   await C.locator('#tk-char').selectOption({ label: 'Sem ficha' }); await w(500);
   const solto = await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return { char: tk.char, refs: tk.bars.filter(b => b.ref).length, hp: !!tk.bars.find(b => b.n === 'HP') }; }, tok.id);
   ok(solto.char === null && solto.refs === 0 && solto.hp, 'desligado, as barras ficam no token como barras comuns: ' + JSON.stringify(solto));
+  ok(await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return !!tk.img && tk.imgChar === false; }, tok.id), 'e a imagem fica com o token');
 
   await apagarMesaTela(M, nomeMesa);
   const fora = t.errs.filter(e => !/status of (400|401|409)/.test(e));

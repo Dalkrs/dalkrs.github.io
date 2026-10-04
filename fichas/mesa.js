@@ -16,6 +16,9 @@ const FichasMesa = (() => {
 
   const mestre = () => !!st && st.papel === 'mestre';
   const podeEditar = pc => !ativo || mestre() || (!!pc && pc._dono === st.eu);
+  const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && m.papel === 'jogador');
+  // ficha de jogador: controlada por alguém da mesa que não é o mestre
+  const deJogador = pc => ativo && !!pc && ehJogador(pc._dono);
 
   /* personagem da calculadora ⇄ linha da mesa */
   // A biblioteca de árvores vem da mesa: para o mestre, a original; para o jogador, o pacote publicado.
@@ -23,7 +26,10 @@ const FichasMesa = (() => {
 
   function daLinha(l, antigo) {
     // personagem criado em outra aba (na Árvore) ainda não tem ficha: nasce com a ficha padrão
-    const pc = l.ficha && Object.keys(l.ficha).length ? Object.assign({}, l.ficha) : personagemPadrao(l.nome);
+    // (a de jogador, já em distribuição livre, com os pontos por distribuir)
+    const semFicha = !(l.ficha && Object.keys(l.ficha).length);
+    const pc = semFicha ? personagemPadrao(l.nome) : Object.assign({}, l.ficha);
+    if (semFicha && ehJogador(l.dono_id)) FichasExtras.tornarLivre(pc, true);
     pc.id = l.id;
     pc.nome = l.nome || pc.nome || 'Sem nome';
     pc.skills = l.skills && Array.isArray(l.skills.arvores) ? l.skills : { arvores: [], pontos: {}, alocados: {} };
@@ -57,6 +63,7 @@ const FichasMesa = (() => {
       log: Array.isArray(tela.log) ? tela.log : [],
       bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
+      alvos: tela.alvos, ultimoAlvo: tela.ultimoAlvo,          // memória dos alvos de disputa: é desta tela
       abaFicha: tela.abaFicha, skillsUI: tela.skillsUI, fechados: tela.fechados, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
     sombra = { pcs: new Map(), docs: {} };
@@ -119,6 +126,7 @@ const FichasMesa = (() => {
           S.personagens.sort((a, b) => ord(a.id) - ord(b.id));
         }
         if (!S.sel) S.sel = pc.id;
+        if (garantirRelacoes()) save();           // entrou ou mudou de nome um personagem de jogador
       }
     } else {
       if (l0.id === 'arvore:biblioteca' || l0.id === 'arvore:pacote') {       // as árvores mudaram na aba Árvore
@@ -186,6 +194,35 @@ const FichasMesa = (() => {
     if (alvo) new MutationObserver(limitar).observe(alvo, { childList: true });
     limitar();
     oferecerLocal();
+    if (mestre()) {
+      // fichas de jogador não seguem a tabela de tiers: as que ainda seguiam passam para a distribuição livre,
+      // com os valores que tinham (nada muda de número; daqui em diante é o jogador quem distribui)
+      const viradas = S.personagens.filter(pc => deJogador(pc) && pc.modoAtr === undefined);
+      viradas.forEach(pc => FichasExtras.tornarLivre(pc, false));
+      const rel = garantirRelacoes();
+      if (viradas.length || rel) { save(); render(); }
+      if (viradas.length) toast(viradas.length === 1 ? 'A ficha de ' + viradas[0].nome + ' passou para a distribuição livre de atributos (os valores foram mantidos).' : viradas.length + ' fichas de jogador passaram para a distribuição livre de atributos (os valores foram mantidos).');
+    }
+  }
+  /* Cada personagem de jogador tem a própria barra de Relacionamento para cada outro personagem de jogador.
+     Só o mestre enxerga todas as fichas, então é a tela dele que cria as que faltam (e acerta o nome se mudou). */
+  function garantirRelacoes() {
+    if (!ativo || !mestre()) return false;
+    const dj = S.personagens.filter(deJogador);
+    let mudou = false;
+    for (const a of dj) {
+      const est = a.estado && typeof a.estado === 'object' ? a.estado : (a.estado = {});
+      const rel = Array.isArray(est.rel) ? est.rel : [];
+      let aqui = false;
+      for (const b of dj) {
+        if (b.id === a.id) continue;
+        const e = rel.find(x => x && x.alvo === b.id);
+        if (!e) { rel.push({ id: uid(), alvo: b.id, nome: b.nome, v: 0 }); aqui = true; }
+        else if (e.nome !== b.nome) { e.nome = b.nome; aqui = true; }
+      }
+      if (aqui) { est.rel = rel; mudou = true; }
+    }
+    return mudou;
   }
   function limitar() {
     if (!ativo) return;
@@ -220,8 +257,36 @@ const FichasMesa = (() => {
   }
   function ligarDono(host, pc) {
     const d = host.querySelector('#f_dono'), v = host.querySelector('#f_vis');
-    if (d) d.onchange = e => { pc._dono = e.target.value || null; save(); renderLista(); toast(pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' : 'Só o mestre vê esta ficha.'); };
-    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; save(); };
+    if (d) d.onchange = e => {
+      pc._dono = e.target.value || null;
+      // ficha entregue a um jogador: os atributos passam a ser distribuídos por ele (os valores de agora ficam como ponto de partida)
+      const virou = deJogador(pc) && pc.modoAtr === undefined;
+      if (virou) FichasExtras.tornarLivre(pc, false);
+      garantirRelacoes();
+      save(); render();
+      toast(pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' + (virou ? ' Os atributos ficaram em distribuição livre.' : '') : 'Só o mestre vê esta ficha.');
+    };
+    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; save(); renderLista(); };
+  }
+  /* No elenco, o mestre escolhe com um clique quais fichas os jogadores podem ver. */
+  const OLHO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.6-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
+  const OLHO_FECHADO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12c2.2 2.6 5.3 4 9 4s6.8-1.4 9-4"/><path d="M6.5 15.2 5 17.5M12 16v2.7M17.5 15.2 19 17.5"/></svg>';
+  function htmlOlho(pc) {
+    if (!ativo || !mestre()) return '';
+    const aberta = pc._vis === 'mesa';
+    const dono = nomeDoDono(pc);
+    const txt = aberta ? 'Todos os jogadores veem esta ficha. Clique para esconder.' : (dono ? 'Só você e ' + dono + ' veem esta ficha. Clique para mostrar a todos.' : 'Só você vê esta ficha. Clique para mostrar aos jogadores.');
+    return `<button type="button" class="olho" data-olho="${esc(pc.id)}" aria-pressed="${aberta}" title="${esc(txt)}" aria-label="${esc(pc.nome + ': ' + txt)}">${aberta ? OLHO : OLHO_FECHADO}</button>`;
+  }
+  function ligarOlhos(ul) {
+    if (!ativo || !mestre()) return;
+    ul.querySelectorAll('[data-olho]').forEach(b => b.onclick = () => {
+      const pc = S.personagens.find(p => p.id === b.dataset.olho); if (!pc) return;
+      pc._vis = pc._vis === 'mesa' ? 'mestre' : 'mesa';
+      save(); renderLista();
+      const v = document.querySelector('#f_vis'); if (v && S.sel === pc.id) v.checked = pc._vis === 'mesa';
+      toast(pc._vis === 'mesa' ? 'Os jogadores agora veem a ficha de ' + pc.nome + '.' : 'A ficha de ' + pc.nome + ' voltou a ficar escondida dos jogadores.');
+    });
   }
   function nomeDoDono(pc) {
     if (!ativo || !pc._dono) return '';
@@ -272,5 +337,5 @@ const FichasMesa = (() => {
     lista.parentNode.insertBefore(box, lista);
   }
 
-  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre };
+  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes };
 })();

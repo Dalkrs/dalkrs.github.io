@@ -2,8 +2,9 @@
    7b. FICHAS — o token ligado à ficha do personagem
    Só existe dentro do site, com uma mesa aberta (a ponte entrega os personagens da mesa).
    O token aponta para um personagem (t.char). A ficha manda: cada recurso dela (HP, SP…) vira uma
-   barra do token, com o máximo calculado pelas fórmulas e o valor atual anotado na ficha; e o bônus
-   de iniciativa vem da fórmula de iniciativa da ficha, quando ela tem uma.
+   barra do token, com o máximo calculado pelas fórmulas e o valor atual (e a sobrevida) anotados na ficha;
+   o bônus de iniciativa vem da fórmula de iniciativa da ficha, quando ela tem uma; e a imagem do
+   personagem vira a imagem do token (a não ser que o mestre escolha outra para este token).
    Na volta, mexer numa dessas barras no mapa (dano, cura, área, reaplicar, desfazer) grava o valor
    atual na ficha. Também dá para rolar um atributo da ficha direto do token, com a regra da fixa.
    --------------------------------------------------------------- */
@@ -16,6 +17,8 @@ const Fichas = (() => {
   const get = id => (P && id ? P.pegar(id) : null);
   const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
+  // a imagem do personagem, quando está guardada no banco (endereço https)
+  const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
   // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe)
   const bib = () => { const d = D && D.pegar('arvore:biblioteca'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
   const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()) });
@@ -38,6 +41,8 @@ const Fichas = (() => {
       if (b.n !== nome) { b.n = nome; mudou = true; }
       if (b.m !== rec.max) { b.m = rec.max; mudou = true; }
       if (b.v !== rec.atual) { b.v = rec.atual; mudou = true; }
+      const sx = Math.max(0, Number(rec.sobre) || 0);
+      if (barX(b) !== sx) { if (sx > 0) b.x = sx; else delete b.x; mudou = true; }
     }
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -50,6 +55,13 @@ const Fichas = (() => {
     const bars = barrasDe(t, r);
     if (bars) p.bars = bars;
     if (String((l.ficha && l.ficha.ini) || '').trim() !== '' && clampIni(r.ini) !== t.ini) p.ini = clampIni(r.ini);
+    // a imagem da ficha vai para o token (imgChar marca que a imagem dele é a da ficha; uma escolhida à mão fica)
+    const url = imagemDe(l);
+    if (url) {
+      const a = Assets.register(url, 0, 0, 'token', l.nome || '');
+      if (t.img !== a.id && (!t.img || t.imgChar)) { p.img = a.id; p.imgChar = true; }
+      else if (t.img === a.id && !t.imgChar) p.imgChar = true;
+    } else if (t.imgChar) { p.img = null; p.imgChar = false; }
     if (!Object.keys(p).length) return false;
     applying = true;
     try { Store.remote({ t: 'upd', c: 'tokens', id: t.id, p }); } finally { applying = false; }
@@ -68,16 +80,22 @@ const Fichas = (() => {
     if (!t || !t.char) return;
     const l = get(t.char);
     if (!l) return;
-    const rec = Object.assign({}, (l.estado && l.estado.rec) || {});
+    const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
     let mudou = false;
-    for (const b of t.bars) if (b.ref && isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
+    for (const b of t.bars) {
+      if (!b.ref) continue;
+      if (isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
+      const x = barX(b);
+      if ((Number(sob[b.ref]) || 0) !== x) { if (x > 0) sob[b.ref] = x; else delete sob[b.ref]; mudou = true; }
+    }
     if (!mudou) return;
-    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec }) });
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob }) });
     syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
   }
   function link(t, charId) {
     if (!charId) {
-      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
+      // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
+      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, imgChar: false, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
       return;
     }
     Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, { char: charId }));
@@ -122,5 +140,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar };
+  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar, imagemDe };
 })();

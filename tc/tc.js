@@ -244,6 +244,7 @@
     relogio = setInterval(() => {
       volta++;
       if (!aoVivo.conectado || volta % 10 === 0) { buscarNovos(); dadosBuscar(); }
+      if (volta % 3 === 0) dadosConferir();
       if (volta % 8 === 0) presenca();
       else if (!aoVivo.conectado && volta % 2 === 0) recarregarMembros();   // sem tempo real, quem entrou aparece em poucos segundos
     }, 3000);
@@ -259,6 +260,13 @@
 
   async function gravar(tipo, dados, opt = {}) {
     const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    // Quem aparece na linha: o personagem de quem a rolagem é (ficha, token) ou aquele com que a pessoa fala na mesa.
+    const quem = opt.quem !== undefined ? opt.quem : aoVivo.como();
+    if (quem && (quem.nome || quem.av)) {
+      dados = Object.assign({}, dados);
+      if (quem.nome) dados.como = String(quem.nome).slice(0, 80);
+      if (aoVivo.imagemValida(quem.av)) dados.av = quem.av;
+    }
     const linha = { mesa_id: a.id, id: opt.id || novoId(tipo === 'rolagem' ? 'r' : 'm'), tipo, origem: opt.origem || 'mesa', secreta: !!opt.secreta && a.papel === 'mestre', dados };
     const { data, error } = await cliente().from('registro').insert(linha).select().single();
     if (error) {
@@ -275,7 +283,7 @@
   }
   aoVivo.fala = texto => gravar('fala', { texto: String(texto).slice(0, 1500) });
   aoVivo.acao = texto => gravar('acao', { texto: String(texto).slice(0, 1500) });
-  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
+  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, quem: opt.quem, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
   aoVivo.revelar = async id => {
     const a = mesas.atual; if (!a) return;
     const { data, error } = await cliente().from('registro').update({ secreta: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
@@ -335,14 +343,18 @@
       const v = d.check && d.total != null ? D().verdict(d.total, d.check) : null;
       dados = { k: d.mode, titulo: String(d.title || '').slice(0, 120), total: d.total == null ? null : d.total, resumo: semTotal(D().summary(d)).slice(0, 600), veredito: v ? v.text : null, passou: v ? v.passed : null, cor: d.color || null };
       opt.id = String(d.id || '').slice(0, 60) || undefined;
+      opt.quem = null;                       // o Rolador é a mesa de dados do mestre: sai sem personagem
     } else if (origem === 'ficha') {
+      opt.quem = d.pc ? aoVivo.personagem(d.pc) : null;      // a ficha de onde a rolagem saiu
       dados = { k: 'ficha', titulo: String(d.quem || '').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.det || '').slice(0, 600), veredito: null, passou: null };
       opt.id = d.id ? 'f_' + String(d.id).slice(0, 50) : undefined;
     } else if (origem === 'cena' && d.kind === 'iniciativa') {
       const b = Number(d.bonus) || 0;
       dados = { k: 'iniciativa', titulo: 'Iniciativa · ' + String(d.name || '?').slice(0, 80), total: d.total, resumo: '1d20 (' + d.d + ')' + (b ? (b > 0 ? ' + ' : ' − ') + Math.abs(b) : ''), veredito: null, passou: null };
       if (d.oculto) opt.secreta = true;      // token que os jogadores não veem: a iniciativa dele fica só com o mestre
+      opt.quem = d.char ? aoVivo.personagem(d.char) : null;
     } else if (origem === 'cena' && d.kind === 'atributo') {
+      opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
       if (d.oculto) opt.secreta = true;
     }
@@ -416,6 +428,31 @@
         if (!error && !c.morta) for (const r of data || []) dadosRemoto(nome, r);
       } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
       c.buscando = false;
+    }
+  }
+  /* O que deixou de ser visível para o jogador (o mestre escondeu a ficha, ou passou para outra pessoa) não chega
+     como mudança: o banco simplesmente para de mostrar a linha. Então, de tempos em tempos, o jogador confere a lista
+     do que ainda pode ver e tira da tela o resto. (O mestre vê tudo: para ele não há o que conferir.) */
+  async function dadosConferir() {
+    if (!mesas.atual || mesas.atual.papel === 'mestre') return;
+    for (const nome in cols) {
+      const c = cols[nome];
+      if (c.morta || c.conferindo) continue;
+      c.conferindo = true;
+      try {
+        await c.pronta;
+        const ate = c.maxRev;                                 // o que chegar depois disto ainda não está na lista: fica
+        const { data, error } = await cliente().from(nome).select('id').eq('mesa_id', c.mesa).eq('apagado', false).limit(5000);
+        if (!error && !c.morta && data.length < 5000) {
+          const vivos = new Set(data.map(r => r.id));
+          for (const [id, l] of [...c.linhas]) {
+            if (vivos.has(id) || c.sujos.has(id) || c.emVoo.has(id) || !l.rev || l.rev > ate) continue;
+            c.linhas.delete(id);
+            dados.emit('muda', nome, { id, apagado: true }, 'remota', null);
+          }
+        }
+      } catch (e) { /* sem rede: a próxima volta confere */ }
+      c.conferindo = false;
     }
   }
   function agendar(c, id, ms) {
@@ -492,16 +529,43 @@
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
   window.addEventListener('pagehide', () => dados.descarregar());
 
+  /* ---------------- quem fala: o personagem que aparece na mesa ao vivo ---------------- */
+  /* Cada pessoa escolhe com que personagem fala (a imagem dele aparece ao lado do nome). O jogador escolhe entre os
+     personagens que controla; o mestre, entre todos — ou nenhum (fala como mestre). A escolha fica neste navegador,
+     por mesa. Só vale como imagem o que está guardado na pasta desta mesa. */
+  const imgBase = () => CFG.url + '/storage/v1/object/public/mesas/';
+  aoVivo.imagemValida = u => typeof u === 'string' && u.length < 500 && !!mesas.atual && u.startsWith(imgBase() + mesas.atual.id + '/');
+  function linhasPcs() { const c = cols.personagens; return c && !c.morta && mesas.atual && c.mesa === mesas.atual.id ? [...c.linhas.values()] : []; }
+  const resumoPc = l => ({ id: l.id, nome: l.nome || 'Sem nome', av: l.ficha && aoVivo.imagemValida(l.ficha.img) ? l.ficha.img : null });
+  aoVivo.personagens = () => {
+    const a = mesas.atual; if (!a || !conta.usuario) return [];
+    const eu = conta.usuario.id;
+    return linhasPcs().filter(l => a.papel === 'mestre' || l.dono_id === eu).sort((x, y) => ((x.ordem || 0) - (y.ordem || 0)) || (x.id < y.id ? -1 : 1)).map(resumoPc);
+  };
+  aoVivo.personagem = id => { const l = linhasPcs().find(x => x.id === id); return l ? resumoPc(l) : null; };
+  aoVivo.como = () => {
+    const a = mesas.atual; if (!a) return null;
+    const esc = guarda.ler('tinycats:como:' + a.id);
+    if (esc === '-') return null;                                   // escolheu falar sem personagem
+    const lista = aoVivo.personagens(), p = lista.find(x => x.id === esc);
+    if (p) return p;
+    return a.papel === 'mestre' ? null : (lista[0] || null);         // o jogador fala com o personagem dele; o mestre, como mestre
+  };
+  aoVivo.falarComo = id => { const a = mesas.atual; if (!a) return; guarda.gravar('tinycats:como:' + a.id, id || '-'); aoVivo.emit('como', aoVivo.como()); };
+  dados.on('muda', col => { if (col === 'personagens') aoVivo.emit('como', aoVivo.como()); });
+
   /* ---------------- imagens da mesa ---------------- */
   const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
   const arquivos = {
-    /* Envia uma imagem para a pasta da mesa e devolve o endereço público dela. Só o mestre envia. */
+    /* Envia uma imagem para a pasta da mesa e devolve o endereço público dela. */
     async subir(blob) {
       const a = mesas.atual;
       if (!a) throw new Error('Abra uma mesa primeiro.');
       if (!blob || !EXT[blob.type]) throw new Error('Envie uma imagem JPG, PNG ou WebP.');
       if (blob.size > 15 * 1024 * 1024) throw new Error('A imagem passa de 15 MB. Diminua e tente de novo.');
-      const caminho = a.id + '/' + novoId('img') + '.' + EXT[blob.type];
+      // o mestre guarda na pasta da mesa; o jogador, na pasta dele dentro dela (o banco só aceita assim)
+      const pasta = a.papel === 'mestre' ? a.id : a.id + '/j/' + conta.usuario.id;
+      const caminho = pasta + '/' + novoId('img') + '.' + EXT[blob.type];
       const { error } = await cliente().storage.from('mesas').upload(caminho, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false });
       if (error) throw falha(error, 'Não deu para enviar a imagem agora.');
       return cliente().storage.from('mesas').getPublicUrl(caminho).data.publicUrl;
@@ -518,7 +582,7 @@
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
     if (origem === 'mundo' && d && typeof d === 'object' && mesas.atual) {
-      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Mapa-múndi').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem: 'mundo', secreta: d.secreta ? true : undefined });
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Mapa-múndi').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem: 'mundo', quem: null, secreta: d.secreta ? true : undefined });
     }
     return deSistemaAntes(origem, d);
   };

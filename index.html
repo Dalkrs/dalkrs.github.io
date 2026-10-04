@@ -100,6 +100,11 @@ button { cursor: pointer; }
 .it-h time { margin-left: auto; font: 11px var(--mono); flex: none; }
 .it-h .or { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); }
 .fala .tx { white-space: pre-wrap; }
+.it .av { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; object-position: top center; flex: none; align-self: center; border: 1px solid var(--line-strong); background: var(--raised); }
+.it-h .como { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.it-h .como::before { content: "· "; color: var(--fg-3); }
+.acao { display: flex; align-items: center; gap: 6px; }
+.acao .av { width: 20px; height: 20px; }
 .acao { color: var(--fg-2); font-style: italic; }
 .rol { padding: 8px 10px 9px; background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--line-strong); }
 .rol .tt { margin-top: 3px; font-weight: 600; }
@@ -131,6 +136,17 @@ button { cursor: pointer; }
 .compor.seg .dica { color: var(--secret); font-weight: 600; }
 .chave { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg-2); font-size: 12px; font-weight: 600; flex: none; }
 .chave[aria-pressed="true"] { background: var(--secret); border-color: var(--secret); color: #fff; }
+.compor { position: relative; }
+.chave.como { margin-left: auto; max-width: 55%; padding-left: 4px; }
+.chave.como span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chave.como .av, .comolista .av { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; object-position: top center; flex: none; }
+.chave.como .semav, .comolista .semav { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; color: var(--fg-3); }
+.comolista { position: absolute; right: 10px; bottom: 34px; z-index: 6; width: min(260px, calc(100% - 20px)); max-height: 280px; overflow: auto; padding: 5px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); }
+.comolista .rot { padding: 4px 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.comolista button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 7px; background: none; text-align: left; font-weight: 600; color: var(--fg); }
+.comolista button:hover { background: var(--hover); }
+.comolista button[aria-checked="true"] { color: var(--lamp-ink); }
+.comolista button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .btn { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
 .btn:hover { background: var(--hover); }
@@ -243,12 +259,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=6"></script>
+<script src="tc/tc.js?v=7"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-8';
+  const VERSAO = '2026.10.03-9';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -589,21 +605,30 @@ dialog::backdrop { background: var(--scrim); }
     for (const m of ord) q.append(h('span', { class: 'pes' + (aoVivo.online(m) ? '' : ' fora'), title: m.nome + (aoVivo.online(m) ? ' está na mesa' : ' não está com a mesa aberta') }, h('i', { style: 'background:' + (m.cor || '#888') }), m.nome, m.papel === 'mestre' ? h('small', { text: 'mestre' }) : null));
   }
   function corDe(uid) { const m = mesas.atual && mesas.atual.membros.find(x => x.usuario_id === uid); return (m && m.cor) || 'var(--fg-3)'; }
+  // A imagem do personagem ao lado do nome de quem falou ou rolou (só imagens guardadas na pasta desta mesa).
+  function retrato(d) {
+    if (!d || !aoVivo.imagemValida(d.av)) return null;
+    const im = h('img', { class: 'av', src: d.av, alt: '', title: d.como || null, loading: 'lazy' });
+    im.addEventListener('error', () => im.remove());
+    return im;
+  }
+  // "· Dain X" depois do nome do jogador, quando o título da rolagem ainda não diz de quem é
+  const comoQuem = d => (d && d.como && !String(d.titulo || '').includes(d.como) ? h('span', { class: 'como', text: d.como }) : null);
   function linha(l) {
     const meu = l.autor_id === conta.usuario.id, mestre = mesas.atual.papel === 'mestre', d = l.dados || {};
     let el;
     if (l.tipo === 'rolagem') {
       el = h('li', { class: 'it rol' + (l.secreta ? ' secreta' : ''), 'data-id': l.id, style: l.secreta ? null : 'border-left-color:' + corDe(l.autor_id) },
-        h('div', { class: 'it-h' }, h('b', { text: l.autor_nome }), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
+        h('div', { class: 'it-h' }, retrato(d), h('b', { text: l.autor_nome }), comoQuem(d), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
         h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
         d.veredito ? h('div', { class: 'vd ' + (d.passou ? 'sim' : 'nao'), text: d.veredito }) : null);
       if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
     } else if (l.tipo === 'acao') {
-      el = h('li', { class: 'it acao', 'data-id': l.id }, h('span', { text: '✦ ' + l.autor_nome + ' ' + (d.texto || '') }));
+      el = h('li', { class: 'it acao', 'data-id': l.id, title: d.como ? l.autor_nome + ', como ' + d.como : null }, retrato(d), h('span', { text: '✦ ' + (d.como || l.autor_nome) + ' ' + (d.texto || '') }));
     } else {
       el = h('li', { class: 'it fala', 'data-id': l.id },
-        h('div', { class: 'it-h' }, h('b', { style: 'color:' + corDe(l.autor_id), text: l.autor_nome }), h('time', { text: hora(l.criado_em) })),
+        h('div', { class: 'it-h' }, retrato(d), h('b', { style: 'color:' + corDe(l.autor_id), text: l.autor_nome }), comoQuem(d), h('time', { text: hora(l.criado_em) })),
         h('div', { class: 'tx', text: d.texto || '' }));
     }
     if (meu || (mestre && !l.secreta)) {
@@ -631,7 +656,36 @@ dialog::backdrop { background: var(--scrim); }
     } else {
       dica.append(h('span', { text: '/r 2d6+3 rola dados · /fixa 60 20 · /ajuda' }));
     }
+    // com que personagem a pessoa aparece na mesa (só há o que escolher quando existe algum personagem)
+    fecharComo();
+    if (aoVivo.personagens().length) {
+      const c = aoVivo.como();
+      dica.append(h('button', { type: 'button', class: 'chave como', id: 'como', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+        title: 'Com que personagem você aparece na mesa ao vivo: a imagem dele vai ao lado do seu nome', onclick: abrirComo },
+        miniRetrato(c), h('span', { text: c ? c.nome : (a.papel === 'mestre' ? 'Mestre' : 'Sem personagem') })));
+    }
   }
+  const PESSOA_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5"/></svg>';
+  function miniRetrato(p) {
+    if (p && p.av) { const im = h('img', { class: 'av', src: p.av, alt: '' }); im.addEventListener('error', () => im.replaceWith(semRetrato())); return im; }
+    return semRetrato();
+  }
+  function semRetrato() { const s = h('span', { class: 'semav' }); s.innerHTML = PESSOA_SVG; return s; }
+  function fecharComo() { const l = $('comoLista'); if (l) l.remove(); const b = $('como'); if (b) b.setAttribute('aria-expanded', 'false'); }
+  function abrirComo() {
+    if ($('comoLista')) { fecharComo(); return; }
+    const a = mesas.atual; if (!a) return;
+    const atual = aoVivo.como(), lista = h('div', { class: 'comolista', id: 'comoLista', role: 'menu', 'aria-label': 'Falar como' });
+    const opcao = (p, rotulo) => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String((atual ? atual.id : null) === (p ? p.id : null)),
+      onclick: () => { aoVivo.falarComo(p ? p.id : null); $('msg').focus(); } }, miniRetrato(p), h('span', { text: rotulo }));
+    lista.append(h('div', { class: 'rot', text: 'Falar como' }), opcao(null, a.papel === 'mestre' ? 'Mestre (sem personagem)' : 'Sem personagem'));
+    for (const p of aoVivo.personagens()) lista.append(opcao(p, p.nome));
+    $('compor').append(lista);
+    $('como').setAttribute('aria-expanded', 'true');
+    const marcado = lista.querySelector('[aria-checked="true"]'); if (marcado) marcado.focus();
+  }
+  document.addEventListener('pointerdown', ev => { const l = $('comoLista'); if (l && !l.contains(ev.target) && !(ev.target.closest && ev.target.closest('#como'))) fecharComo(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('comoLista')) { fecharComo(); const b = $('como'); if (b) b.focus(); } });
   $('compor').addEventListener('submit', async ev => {
     ev.preventDefault();
     const campo = $('msg'), texto = campo.value.trim();
@@ -664,6 +718,12 @@ dialog::backdrop { background: var(--scrim); }
   aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
+  let comoAntes = '';
+  aoVivo.on('como', () => {           // só redesenha quando muda o que aparece (as fichas mudam o tempo todo)
+    const c = aoVivo.como(), chave = JSON.stringify([c, aoVivo.personagens().length]);
+    if (chave !== comoAntes && !$('comoLista')) { comoAntes = chave; pintarCompor(); }
+    else if (chave !== comoAntes) comoAntes = '';
+  });
   mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); difundir(); });
   mesas.on('removido', () => toast('Você não participa mais desta mesa.'));
   let mesaDasMolduras = null;
@@ -678,7 +738,10 @@ dialog::backdrop { background: var(--scrim); }
     papelNaMesa = a ? a.papel : null; pintarAbas();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
-    if (a) { $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false); }
+    if (a) {
+      $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false);
+      try { TC.dados.col('personagens').pronta.then(() => { if (mesas.atual && mesas.atual.id === a.id) pintarCompor(); }, () => { /* sem os personagens, só não há o que escolher */ }); } catch (e) { /* idem */ }
+    }
   });
   conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); });
 

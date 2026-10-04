@@ -202,9 +202,9 @@ function tokensIn(path, sc) {
 
 // Número de dano ou cura que sobe do token quando uma barra muda: o nome da barra e o quanto, com sinal
 // ("Vida −8", "Fé +2"). Vale para qualquer caminho que mexa numa barra, porque nasce da própria alteração.
-function floatDelta(t, delta, tag) {
+function floatDelta(t, delta, tag, color) {
   if (!delta) return;
-  App.floats.push({ id: t.id, text: (tag ? tag + ' ' : '') + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta)), c: delta > 0 ? '#86e8ad' : '#ff8f80', t0: performance.now() });
+  App.floats.push({ id: t.id, text: (tag ? tag + ' ' : '') + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta)), c: color || (delta > 0 ? '#86e8ad' : '#ff8f80'), t0: performance.now() });
   if (App.floats.length > 30) App.floats.shift();
   Render.request();
 }
@@ -217,10 +217,19 @@ function applyLabel(a) {
   return parts.join(' + ');
 }
 // Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem fica negativo.
-function areaNext(b, amt, half) {
-  const a = half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt;
-  return clamp(Math.round((b.v + a) * 10) / 10, 0, Math.max(b.m, b.v));
+// Uma barra com um remendo por cima; a sobrevida zerada sai do objeto (não fica guardada à toa).
+function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) delete o.x; return o; }
+/* Uma variação numa barra. O dano (delta negativo) gasta primeiro a sobrevida; a cura não mexe nela.
+   Devolve o remendo { v } ou { v, x }. */
+function barAfter(b, delta) {
+  let x = barX(b), d = delta;
+  if (d < 0 && x > 0) { const usa = Math.min(x, -d); x = Math.round((x - usa) * 10) / 10; d += usa; }
+  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, 0, Math.max(b.m, b.v)) };
+  if (x !== barX(b)) p.x = x;
+  return p;
 }
+const areaDelta = (amt, half) => (half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt);
+function areaNext(b, amt, half) { return barAfter(b, areaDelta(amt, half)).v; }
 
 /* ---- Seleção ---- */
 const selHas = (c, id) => App.sel.some(s => s.c === c && s.id === id);
@@ -305,10 +314,33 @@ function turnKeepCur(tn, before) {
 const Act = {
   barSet(t, i, text) {
     const b = t.bars[i];
-    const v = parseBar(text, b.v, b.m);
-    if (v == null || v === b.v) return false;
-    Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, { v }) : x)) }));
+    const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
+    let p;
+    if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
+    else { const v = parseBar(text, b.v, b.m); if (v == null) return false; p = { v }; }
+    if (p.v === b.v && p.x === undefined) return false;
+    Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
+  },
+  // Sobrevida de uma barra: pontos por cima dela, que absorvem o dano primeiro. Zero tira.
+  barExtra(t, i, value) {
+    const b = t.bars[i]; if (!b) return false;
+    const x = Math.max(0, Math.round((Number(value) || 0) * 10) / 10);
+    if (x === barX(b)) return false;
+    Store.tx('Sobrevida de ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) }));
+    return true;
+  },
+  // Cura total: enche todas as barras em uso de cada token. Devolve quantos tokens mudaram.
+  fullHeal(tokens) {
+    let n = 0;
+    Store.tx('Cura total', () => {
+      for (const t of tokens) {
+        let mudou = false;
+        const bars = t.bars.map(b => { if (!b.on || !(b.m > 0) || b.v >= b.m) return b; mudou = true; return Object.assign({}, b, { v: b.m }); });
+        if (mudou) { Store.upd('tokens', t.id, { bars }); n++; }
+      }
+    });
+    return n;
   },
   barPatch(t, i, patch) {
     Store.tx('Alterar barra', () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, patch) : x)) }));
@@ -372,8 +404,8 @@ const Act = {
         if (amt) {
           const i = t.bars.findIndex(b => b.on && b.n === barName);
           if (i >= 0) {
-            const v = areaNext(t.bars[i], amt, r.half);
-            if (v !== t.bars[i].v) p.bars = t.bars.map((x, j) => (j === i ? Object.assign({}, x, { v }) : x));
+            const q = barAfter(t.bars[i], areaDelta(amt, r.half));
+            if (q.v !== t.bars[i].v || q.x !== undefined) p.bars = t.bars.map((x, j) => (j === i ? barWith(x, q) : x));
           }
         }
         if (cond && cond.id) {

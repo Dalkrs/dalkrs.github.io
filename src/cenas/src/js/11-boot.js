@@ -131,9 +131,10 @@ function barFloats(op, inv) {
   if (!t || was.length !== now.length) return;
   now.forEach((b, i) => {
     const a = was[i];
-    if (!a.on || !b.on || a.n !== b.n || a.m !== b.m || a.v === b.v) return;     // só conta quando foi o valor que mudou
+    if (!a.on || !b.on || a.n !== b.n || a.m !== b.m) return;                    // só conta quando foi o valor que mudou
     if (barMode(t, b) !== 'num') return;                                         // quem não vê os números não vê o quanto mudou
-    floatDelta(t, Math.round((b.v - a.v) * 10) / 10, b.n);
+    if (barX(a) !== barX(b)) floatDelta(t, Math.round((barX(b) - barX(a)) * 10) / 10, 'Sobrevida', SOBRE_COR);
+    if (a.v !== b.v) floatDelta(t, Math.round((b.v - a.v) * 10) / 10, b.n);
   });
 }
 
@@ -193,7 +194,8 @@ async function start(snap) {
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
-    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)) }));
+    // char: a ficha ligada ao token (a mesa ao vivo mostra a imagem do personagem ao lado de quem rolou)
+    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
   };
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
@@ -201,7 +203,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

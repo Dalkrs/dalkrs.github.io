@@ -26,7 +26,8 @@
                     combatente na rodada; as avulsas têm bonus e grp),
                     targets (miras), tone (hora do dia), weather (clima)
      - token ...... bars (lista livre: nome, cor, valor, máximo, estilo
-                    'bar' ou 'pts', regra de quem vê), conds + cinfo
+                    'bar' ou 'pts', regra de quem vê; x = sobrevida, que absorve
+                    o dano antes da barra), conds + cinfo
                     (contador e duração de cada condição), auras, visão, luz,
                     ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4)
      - parede ..... k: wall | door | window | veil; porta secreta = door + secret
@@ -225,6 +226,7 @@ const ICONS = {
   reset: 'M4 5v5h5M4.6 10A8 8 0 1 1 4 13.5',
   brush: 'M14 4l6 6-8.5 8.5a3 3 0 0 1-2 .9l-3 .1c-.9 0-1.6-.6-1.6-1.5l.1-3a3 3 0 0 1 .9-2zM11 7l6 6',
   shield: 'M12 3l7.5 2.8v5.4c0 4.6-3 8.3-7.5 9.8-4.5-1.5-7.5-5.2-7.5-9.8V5.8z',
+  heart: 'M12 20.5s-7.5-4.6-7.5-10.4A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.5 2.9c0 5.8-7.5 10.4-7.5 10.4zM12 10.2v4.6M9.7 12.5h4.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
@@ -302,7 +304,14 @@ function cleanBar(b) {
   }, o);
 }
 // Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
-const cleanBarRef = (b, o) => { if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64); return b; };
+// Sobrevida (x): pontos por cima da barra, que absorvem o dano antes dela. Só fica guardada quando há alguma.
+const cleanBarRef = (b, o) => {
+  if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
+  if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  return b;
+};
+const barX = b => Math.max(0, Number(b && b.x) || 0);
+const SOBRE_COR = '#8fe3ff';                // a cor da sobrevida, no mapa e nos painéis
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
   return (Array.isArray(p) && p.length ? p : BAR_DEFAULTS).slice(0, MAX_BARS).map(cleanBar);

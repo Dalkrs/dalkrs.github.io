@@ -51,7 +51,7 @@ mkdir -p "$(dirname "$SITE")"
   # só a página do site fala com a casca: mesa ao vivo, fichas da mesa, regras da ficha e dados
   echo '<script src="../tc/ponte.js?v=3"></script>'
   echo '<script src="../tc/dice.js?v=1"></script>'
-  echo '<script src="../tc/rules.js?v=1"></script>'
+  echo '<script src="../tc/rules.js?v=2"></script>'
   body_parts
   echo '</body>'
   echo '</html>'

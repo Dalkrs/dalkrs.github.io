@@ -11,6 +11,7 @@ const UI = (() => {
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
+  const barXOpen = {};              // campo de sobrevida aberto numa barra que ainda não tem sobrevida
   let modalEl = null, modalCfg = null, menuEl = null, menuAnchor = null, skipOpen = false;
   let pressing = false, pending = false, timer = 0;
   let downloads = null, imgTarget = null, zoomLabel = null, statusText = '', saveState = 'ok';
@@ -199,7 +200,7 @@ const UI = (() => {
   async function setTokenImage(t, file) {
     try {
       const a = await Assets.fromFile(file, 'token');
-      Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: a.id }));
+      Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: a.id, imgChar: false }));
     } catch (err) { toast(err.message || 'Não consegui abrir essa imagem.'); }
   }
   async function tokensFromFiles(files, at) {
@@ -786,6 +787,7 @@ const UI = (() => {
     t.bars.forEach((b, i) => {
       if (!full && !b.on) return;
       const key = t.id + ':' + i, open = full && !!barOpen[key], m = Math.round(b.m);
+      const xAberta = barX(b) > 0 || !!barXOpen[key];
       const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
       const val = h('input', {
         id: `tk-b${i}-v`, class: 'in bar-v', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
@@ -798,8 +800,14 @@ const UI = (() => {
         full ? inText(`tk-b${i}-n`, b.n, v => Act.barPatch(t, i, { n: v.trim().slice(0, 24) || b.n }), { class: 'in bar-n', 'aria-label': 'Nome da barra', maxlength: 24 }) : h('span', { class: 'bar-n ro', text: b.n }),
         val, h('span', { class: 'bar-sl', text: '/' }),
         full ? inNum(`tk-b${i}-m`, b.m, v => Act.barPatch(t, i, { m: v }), { min: 0, label: b.n + ' máximo' }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
+        b.on ? iconBtn('shield', (xAberta ? 'Sobrevida de ' : 'Dar sobrevida a ') + b.n, () => { barXOpen[key] = !xAberta; renderSide(); if (!xAberta) { const n = document.getElementById(`tk-b${i}-x`); if (n) n.focus(); } }, { size: 16, cls: 'bar-more bar-xb' + (barX(b) > 0 ? ' tem' : ''), on: xAberta, id: `tk-b${i}-xb` }) : null,
         full ? iconBtn('more', 'Opções da barra ' + b.n, () => { barOpen[key] = !barOpen[key]; renderSide(); }, { size: 16, cls: 'bar-more', on: open, id: `tk-b${i}-more` }) : null));
       if (b.k === 'pts' && b.on && m >= 1 && m <= 20) rows.push(h('div', { class: 'bar-pips' + (full ? ' full' : '') }, pips(t, b, i, true, 'tk-b')));
+      if (xAberta && b.on) rows.push(h('div', { class: 'bar-x' + (full ? ' full' : '') },
+        h('span', { class: 'bar-x-l', text: 'Sobrevida' }),
+        // depois de digitado, quem mantém o campo aberto é a própria sobrevida: quando ela acabar, o campo fecha
+        inNum(`tk-b${i}-x`, barX(b), v => { delete barXOpen[key]; if (!Act.barExtra(t, i, v)) renderSide(); }, { min: 0, step: 1, label: 'Sobrevida de ' + b.n, title: 'Pontos por cima da barra: o dano gasta a sobrevida antes de chegar em ' + b.n }),
+        h('span', { class: 'bar-x-n', text: 'leva o dano antes' })));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
@@ -821,7 +829,7 @@ const UI = (() => {
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
         : h('span', { class: 'meter' }, h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
-      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` }) : null)));
+      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
   /* Barras padrão: a lista com que todo token novo nasce (vale para a mesa inteira). */
@@ -898,7 +906,7 @@ const UI = (() => {
         if (!r.on) res = 'fica de fora';
         else if (!names.length) res = '';
         else if (!b) res = 'sem ' + name;
-        else if (a) res = `${fmt(b.v)} → ${fmt(areaNext(b, a, r.half))}`;
+        else if (a) { const q = barAfter(b, areaDelta(a, r.half)); res = `${fmt(b.v)} → ${fmt(q.v)}` + (q.x !== undefined ? ` · sobrevida ${fmt(barX(b))} → ${fmt(q.x)}` : ''); }
         else res = `${fmt(b.v)}/${fmt(b.m)}`;
         return h('li', { class: 'area-row' + (r.on ? '' : ' off') },
           h('label', { class: 'area-who' },
@@ -968,12 +976,14 @@ const UI = (() => {
 
   function imageField(t) {
     const a = t.img ? Store.S.assets[t.img] : null;
+    const daFicha = !!(a && t.imgChar && t.char);         // a imagem veio da ficha do personagem (e acompanha a de lá)
     const others = Object.values(Store.S.assets).filter(x => x.kind === 'token' && x.id !== t.img).slice(0, 12);
     return h('div', { class: 'field stack' }, h('span', { class: 'lb', text: 'Imagem' }),
       h('div', { class: 'row' },
         btn(a ? 'Trocar' : 'Escolher imagem', () => pickImage(f => setTokenImage(t, f[0])), { icon: 'image' }),
-        a ? btn('Remover', () => Store.tx('Remover imagem', () => Store.upd('tokens', t.id, { img: null }))) : null),
-      others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id })) }))) : null);
+        a && !daFicha ? btn('Remover', () => Store.tx('Remover imagem', () => Store.upd('tokens', t.id, { img: null, imgChar: false }))) : null),
+      daFicha ? note('É a imagem da ficha do personagem. Trocar aqui vale só para este token.') : null,
+      others.length ? h('div', { class: 'thumbs' }, others.map(x => h('button', { type: 'button', class: 'thumb', title: 'Usar ' + (x.name || 'esta imagem'), 'aria-label': 'Usar ' + (x.name || 'esta imagem'), style: { backgroundImage: `url("${x.url}")` }, onclick: () => Store.tx('Imagem do token', () => Store.upd('tokens', t.id, { img: x.id, imgChar: false })) }))) : null);
   }
 
   /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
@@ -1022,6 +1032,7 @@ const UI = (() => {
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' })),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
@@ -1054,6 +1065,13 @@ const UI = (() => {
           btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
     ];
   }
+  // Cura total com aviso e Desfazer.
+  function healToast(toks, quem) {
+    const n = Act.fullHeal(toks);
+    if (!n) { toast(toks.length ? (toks.length === 1 ? `${toks[0].name} já está com as barras cheias.` : 'Todos já estavam com as barras cheias.') : 'Não há tokens para curar.'); return 0; }
+    toast(n === 1 && toks.length === 1 ? `Cura total em ${toks[0].name}.` : `Cura total em ${n} ${n === 1 ? 'token' : 'tokens'}${quem ? ' ' + quem : ''}.`, { action: 'Desfazer', run: Tools.undo });
+    return n;
+  }
   function deleteSelToast() {
     const n = Act.deleteSel();
     if (n) toast(n === 1 ? 'Item apagado.' : `${n} itens apagados.`, { action: 'Desfazer', run: Tools.undo });
@@ -1080,7 +1098,9 @@ const UI = (() => {
       editable.length && names.length ? sec('s-mbar', 'Somar ou subtrair de todos', true,
         h('div', { class: 'row' }, sel, amt, btn('Aplicar', apply, { kind: 'primary' })),
         note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
-        gm ? h('div', { class: 'row' }, btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' })) : null) : null,
+        gm ? h('div', { class: 'row' },
+          btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
+          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' })) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -1469,6 +1489,11 @@ const UI = (() => {
           }), { size: 16 }));
       })) : h('p', { class: 'muted', text: 'Nenhum jogador cadastrado.' }),
       h('div', { class: 'row' }, btn('Adicionar jogador', addPlayer, { icon: 'plus', kind: 'primary' })),
+      sec('pl-heal', 'Descanso rápido', true,
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        h('div', { class: 'row' },
+          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
     ];
   }
 
@@ -1484,6 +1509,7 @@ const UI = (() => {
       items.push({ head: toks.length > 1 ? `${toks.length} tokens` : tokName(o) });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
+      if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
       if (gm) {
