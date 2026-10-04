@@ -1,7 +1,7 @@
 // Cenas numa mesa de verdade (projeto real): as cenas e as imagens guardadas no banco, o mestre escolhendo a cena
 // que está no ar, o jogador vendo só o que pode ver, e o que ele faz chegando ao mestre (e só o que ele pode fazer).
 const { start, checker } = require('./lib');
-const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
+const { contas, entrar, loginTela, criarMesaTela, codigoDaMesa, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const fs = require('fs');
 const R = require('../../tc/rules.js');
@@ -42,7 +42,7 @@ void R;
   await M.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500);
   await loginTela(M, c.mestre, c.senha);
   const nomeMesa = 'Cenas E2E ' + Date.now().toString(36);
-  const codigo = await criarMesaTela(M, nomeMesa);
+  await criarMesaTela(M, nomeMesa, { semCodigo: true });
   const mesaId = await M.evaluate(() => TC.mesas.atual.id);
   let C = await cenasDe(M);
   ok(!!C && await ate(async () => { C = await quadro(M, /\/cenas\//); return C && await C.evaluate(() => !!window.__tc && __tc.Nuvem.modo() === 'mestre' && !!__tc.Store.scene()); }), 'com a mesa aberta, as Cenas entram no modo da mesa (mestre)');
@@ -79,6 +79,7 @@ void R;
   ok(await C.evaluate(async () => { const rq = indexedDB.open('cenas-de-urgm', 1); const db = await new Promise(r => { rq.onsuccess = () => r(rq.result); }); const ks = await new Promise(r => { const q = db.transaction('kv').objectStore('kv').getAllKeys(); q.onsuccess = () => r(q.result); }); db.close(); return ks.filter(k => String(k).startsWith('scene:')).length === 2; }), 'as cenas do navegador não foram tocadas');
 
   // ---------- o jogador entra: sem cena no ar, não vê nada do mestre ----------
+  const codigo = await codigoDaMesa(M);
   await J.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500, J);
   await loginTela(J, c.jog1, c.senha); await entrarMesaTela(J, codigo, 'Dalmo');
   const jogId = await J.evaluate(() => TC.conta.usuario.id);

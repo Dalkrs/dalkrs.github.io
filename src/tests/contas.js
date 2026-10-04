@@ -26,10 +26,15 @@ async function loginTela(page, email, senha) {
   await page.locator('#c-email').fill(email); await page.locator('#c-senha').fill(senha); await page.locator('#c-ok').click();
   await page.locator('#m-nome').waitFor({ timeout: 20000 });
 }
-async function criarMesaTela(page, nome) {
+// Cria a mesa e devolve o código de convite. Com { semCodigo: true } não abre o menu da mesa (o Esc que o fecha pode
+// cair na janela que um sistema acabou de abrir, como a oferta de trazer as cenas); o código se lê depois, com codigoDaMesa.
+async function criarMesaTela(page, nome, o) {
   await page.locator('#m-nome').fill(nome); await page.locator('#m-criar').click();
   await page.locator('#vivo').waitFor({ state: 'visible', timeout: 20000 });
   await page.locator('dialog[open]').waitFor({ state: 'hidden', timeout: 20000 });
+  return o && o.semCodigo ? null : codigoDaMesa(page);
+}
+async function codigoDaMesa(page) {
   await page.locator('#btnConta').click(); await page.waitForTimeout(350);
   const codigo = (await page.locator('#codigo').innerText()).trim();
   await page.keyboard.press('Escape');
@@ -46,4 +51,4 @@ async function apagarMesaTela(page, nome) {
   await page.locator('#a-nome').fill(nome); await page.locator('dialog .btn.per').click();
   await page.locator('#vivo').waitFor({ state: 'hidden', timeout: 20000 });
 }
-Object.assign(module.exports, { loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela });
+Object.assign(module.exports, { loginTela, criarMesaTela, codigoDaMesa, entrarMesaTela, apagarMesaTela });

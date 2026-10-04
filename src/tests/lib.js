@@ -46,7 +46,7 @@ async function start(opt = {}) {
     const page = await ctx.newPage();
     const tag = o.name || 'pg';
     // o proxy deste ambiente não aceita WebSocket: o tempo real do Supabase falha aqui (e a leitura periódica assume)
-    const IGNORE = /Failed to load resource: net::ERR_(FAILED|INTERNET_DISCONNECTED|NAME_NOT_RESOLVED|CERT_AUTHORITY_INVALID|TUNNEL_CONNECTION_FAILED|PROXY_CONNECTION_FAILED)|fonts\.g(oogleapis|static)\.com|WebSocket connection to 'wss:\/\/[a-z]+\.supabase\.co/;
+    const IGNORE = /Failed to load resource: net::ERR_(FAILED|INTERNET_DISCONNECTED|NAME_NOT_RESOLVED|CERT_AUTHORITY_INVALID|TUNNEL_CONNECTION_FAILED|PROXY_CONNECTION_FAILED)|fonts\.g(oogleapis|static)\.com|WebSocket connection to 'wss:\/\/[a-z]+\.supabase\.co|Access to fetch at 'https:\/\/[a-z]+\.supabase\.co\/[^']*' from origin '[^']*' has been blocked by CORS policy: No 'Access-Control-Allow-Origin'/;      // (o último: uma resposta de erro do proxy, que vem sem os cabeçalhos; o programa tenta de novo sozinho)
     page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !IGNORE.test(m.text())) errs.push(`[${tag}] [${m.type()}] ${m.text()}`); });
     page.on('pageerror', e => errs.push(`[${tag}] [pageerror] ${e.message}`));
     // as respostas de erro, com o método e o caminho: o console só diz "status of 403", sem dizer de quê

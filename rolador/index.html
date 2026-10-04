@@ -213,6 +213,11 @@ dialog.wide{width:min(900px,96vw)}
 textarea.items-area{min-height:280px;font-size:16px}
 .table-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .tables-empty{align-self:center;color:var(--muted)}
+.bring-intro{margin-bottom:12px}
+.bring-list{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+.bring-list .check{display:flex;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px}
+.bring-list .bring-meta{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap}
+.bring-list .bring-head{margin:8px 0 0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .trash-list{list-style:none;margin:14px 0 0;padding:0}
 .trash-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
 .trash-info{display:flex;flex-direction:column;min-width:0}
@@ -536,6 +541,16 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   <div class="dlg-head"><h2 id="trashHead">Lixeira</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
   <div class="dlg-body"><p class="note">Tudo o que é apagado fica aqui por 30 dias. Depois disso some de vez.</p><ul class="trash-list" id="trashList"></ul></div>
   <div class="dlg-foot"><span></span><button type="button" class="btn danger" id="emptyTrashBtn">Esvaziar lixeira</button></div>
+</dialog>
+
+<dialog id="bringDlg" aria-labelledby="bringHead">
+  <div class="dlg-head"><h2 id="bringHead">Trazer históricos deste navegador</h2><button type="button" class="btn ghost" data-close="1">Agora não</button></div>
+  <div class="dlg-body">
+    <p class="bring-intro" id="bringIntro"></p>
+    <ul class="bring-list" id="bringList"></ul>
+    <p class="note">Os históricos e as tabelas deste navegador continuam onde estão: aqui só entra uma cópia do que você marcar.</p>
+  </div>
+  <div class="dlg-foot"><span class="note" id="bringNote"></span><button type="button" class="btn primary" id="bringOk">Trazer os marcados</button></div>
 </dialog>
 
 <dialog id="promptDlg" aria-labelledby="promptHead">
@@ -894,6 +909,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
   function save() {
     if (pendingSave) { clearTimeout(pendingSave); pendingSave = null; }
+    if (mesa.on) return mesaGravar();          // numa mesa, quem guarda é o banco
     if (!storageAvailable || saveBlocked) { renderSaveStatus(); renderBanner(); return false; }
     const json = JSON.stringify(state);
     try { window.localStorage.setItem(STORAGE_KEY, json); lastSavedSize = json.length; saveFailed = false; }
@@ -928,6 +944,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     return m;
   }
   function backupOverdue() {
+    if (mesa.on) return false;                 // na mesa, os dados já estão guardados fora do navegador
     const n = totalRolls();
     if (!n) return false;
     if (!state.lastBackupAt) return n >= 10;
@@ -1679,6 +1696,11 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   function renderSaveStatus() {
     const el = $('saveStatus');
     el.replaceChildren();
+    if (mesa.on) {
+      if (saveFailed) { el.className = 'save-status bad'; el.append('Não foi salvo'); }
+      else { el.className = 'save-status'; el.append(icon('check'), 'Salvo na mesa'); }
+      return;
+    }
     if (!storageAvailable || saveBlocked) { el.className = 'save-status bad'; el.append('Salvamento desligado'); }
     else if (saveFailed) { el.className = 'save-status bad'; el.append('Não foi salvo'); }
     else { el.className = 'save-status'; el.append(icon('check'), 'Salvo no navegador'); }
@@ -1687,7 +1709,10 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   function renderBanner() {
     const b = $('banner');
     let n = null;
-    if (!storageAvailable) {
+    if (mesa.on) {
+      if (saveFailed) n = { kind: 'error', text: 'Um trecho dos históricos ficou grande demais para o banco e não foi salvo. Exporte um backup completo e apague rolagens antigas com descrições muito longas.',
+        actions: [['Exportar backup completo', exportAll]] };
+    } else if (!storageAvailable) {
       n = { kind: 'error', text: 'Este navegador está bloqueando o salvamento. O que for rolado agora some quando a aba fechar. Antes de sair, use Menu > Exportar backup completo.',
         actions: [['Exportar backup completo', exportAll]] };
     } else if (saveBlocked) {
@@ -2097,9 +2122,12 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
         onclick: () => setTimeout(() => closeMenus(false), 0),
         onkeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openImportPicker(); } } },
         h('span', { class: 'dd-name', text: 'Importar backup' })),
-      h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
-        text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
-      h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
+      mesa.on && mesaTemLocal() ? menuItem('Trazer históricos deste navegador…', () => mesaAbrirTrazer(false)) : null,
+      mesa.on
+        ? h('p', { class: 'dd-note', text: 'Nesta mesa, os históricos e as tabelas ficam guardados no banco. A lixeira fica neste navegador.' })
+        : h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
+          text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
+      mesa.on ? null : h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
   }
 
   /* ================= aviso flutuante ================= */
@@ -2713,6 +2741,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     window.addEventListener('pagehide', flushSave);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
     window.addEventListener('storage', (ev) => {
+      if (mesa.on) return;                     // na mesa, os dados deste navegador não são os que estão na tela
       if (ev.key !== STORAGE_KEY || ev.newValue == null) return;
       let parsed;
       try { parsed = JSON.parse(ev.newValue); } catch (err) { return; }
@@ -2725,8 +2754,178 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     });
   }
 
+  /* ================= na mesa: históricos e tabelas guardados no banco =================
+     Dentro do site, com uma mesa aberta, o Rolador (que ali é do mestre) guarda os históricos e as tabelas nos
+     documentos da mesa, que só o mestre lê — abrem em qualquer aparelho. Fora de uma mesa, tudo continua no
+     navegador, como sempre; os dados do navegador não são tocados enquanto a mesa está aberta.
+       rol:est ............ qual histórico está aberto, o modo e a data do último backup
+       rol:h:<id> ......... um histórico (nome e datas)
+       rol:c:<id>:<n> ..... as rolagens dele, em trechos de até MESA_TRECHO (uma rolagem nova regrava um trecho só)
+       rol:t:<id> ......... uma tabela de eventos
+     A lixeira fica neste navegador (por mesa). */
+  const MESA_TRECHO = 60, MESA_LIMITE = 1100000;
+  const mesa = { on: false, D: null, id: null, sombra: new Map(), trecho: new Map(), ult: new Map(), local: null, tRecarga: 0 };
+  const idSeguro = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) && !(v in Object.prototype);
+  const dadosDoc = (l) => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
+  const chaveLixo = () => 'rolador-urgm:lixeira:' + mesa.id;
+  // igualdade de conteúdo, sem ligar para a ordem das chaves (o banco devolve os objetos com as chaves reordenadas)
+  function igual(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return a == null && b == null;
+    if (typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (!igual(a[i], b[i])) return false; return true; }
+    for (const k in a) if (a[k] !== undefined && !igual(a[k], b[k])) return false;
+    for (const k in b) if (b[k] !== undefined && a[k] === undefined) return false;
+    return true;
+  }
+
+  // O que deve estar no banco agora: Map id do documento → conteúdo.
+  function mesaDocs() {
+    const out = new Map();
+    for (const hist of state.histories) {
+      if (!idSeguro(hist.id)) { const novo = uid('h'); if (state.activeHistoryId === hist.id) state.activeHistoryId = novo; hist.id = novo; }
+      out.set('rol:h:' + hist.id, { name: hist.name, createdAt: hist.createdAt, updatedAt: hist.updatedAt });
+      const grupos = new Map();
+      let ult = mesa.ult.get(hist.id) || { k: 0, n: 0 };
+      for (const e of hist.entries) {
+        let c = mesa.trecho.get(e.id);
+        if (!c || c.h !== hist.id) {                       // rolagem nova (ou movida para cá): vai para o último trecho, ou abre outro
+          if (ult.n >= MESA_TRECHO) ult = { k: ult.k + 1, n: 0 };
+          c = { h: hist.id, k: ult.k }; ult.n++;
+          mesa.trecho.set(e.id, c);
+        }
+        if (!grupos.has(c.k)) grupos.set(c.k, []);
+        grupos.get(c.k).push(e);
+      }
+      mesa.ult.set(hist.id, ult);
+      for (const [k, es] of grupos) out.set('rol:c:' + hist.id + ':' + k, { e: es });
+    }
+    for (const t of state.tables) { if (!idSeguro(t.id)) t.id = uid('tb'); out.set('rol:t:' + t.id, { name: t.name, text: t.text, createdAt: t.createdAt, updatedAt: t.updatedAt }); }
+    out.set('rol:est', { v: 1, ativo: state.activeHistoryId, modo: state.mode, backup: state.lastBackupAt || null });
+    return out;
+  }
+  function mesaGravar() {
+    const quer = mesaDocs();
+    let cheio = false, tam = 0;
+    for (const [id, dados] of quer) {
+      const j = JSON.stringify(dados);
+      tam += j.length;
+      if (mesa.sombra.get(id) === j) continue;
+      if (j.length > MESA_LIMITE) { cheio = true; continue; }
+      mesa.sombra.set(id, j);
+      if (igual(dadosDoc(mesa.D.pegar(id)), dados)) continue;       // já está assim no banco (só a ordem das chaves mudou)
+      mesa.D.gravar(id, { vis: 'mestre', dados: JSON.parse(j) });
+    }
+    // o que não existe mais (histórico ou tabela apagados, trecho que esvaziou) sai do banco
+    for (const l of mesa.D.todas()) if (typeof l.id === 'string' && l.id.startsWith('rol:') && !quer.has(l.id)) { mesa.sombra.delete(l.id); mesa.D.apagar(l.id); }
+    try { window.localStorage.setItem(chaveLixo(), JSON.stringify(state.trash)); } catch (err) { /* sem espaço: a lixeira vale só nesta visita */ }
+    lastSavedSize = tam; saveFailed = cheio;
+    renderSaveStatus();
+    renderBanner();
+    return !cheio;
+  }
+  // Monta o estado a partir dos documentos da mesa.
+  function mesaLer() {
+    const hs = new Map(), tabelas = [];
+    const hist = (id) => { if (!hs.has(id)) hs.set(id, { id, entries: [] }); return hs.get(id); };
+    mesa.sombra.clear(); mesa.trecho.clear(); mesa.ult.clear();
+    for (const l of mesa.D.todas()) {
+      const d = dadosDoc(l);
+      if (!d || typeof l.id !== 'string' || !l.id.startsWith('rol:')) continue;
+      mesa.sombra.set(l.id, JSON.stringify(d));
+      let m;
+      if ((m = /^rol:h:([A-Za-z0-9_-]{1,60})$/.exec(l.id))) Object.assign(hist(m[1]), { name: d.name, createdAt: d.createdAt, updatedAt: d.updatedAt });
+      else if ((m = /^rol:c:([A-Za-z0-9_-]{1,60}):(\d{1,6})$/.exec(l.id)) && Array.isArray(d.e)) {
+        const hh = hist(m[1]), k = Number(m[2]);
+        for (const e of d.e) if (e && typeof e === 'object' && typeof e.id === 'string') { hh.entries.push(e); mesa.trecho.set(e.id, { h: m[1], k }); }
+        const u = mesa.ult.get(m[1]);
+        if (!u || k >= u.k) mesa.ult.set(m[1], { k, n: d.e.length });
+      } else if ((m = /^rol:t:([A-Za-z0-9_-]{1,60})$/.exec(l.id))) tabelas.push(Object.assign({}, d, { id: m[1] }));
+    }
+    const est = dadosDoc(mesa.D.pegar('rol:est')) || {};
+    let lixo = [];
+    try { lixo = JSON.parse(window.localStorage.getItem(chaveLixo()) || '[]'); } catch (err) { lixo = []; }
+    return normalizeState({ activeHistoryId: est.ativo, mode: est.modo, lastBackupAt: est.backup, histories: Array.from(hs.values()), tables: tabelas, trash: lixo });
+  }
+  const mesaVazia = () => !mesa.D.todas().some((l) => typeof l.id === 'string' && l.id.startsWith('rol:') && dadosDoc(l));
+  // O mesmo mestre com o site aberto em outro aparelho: o que ele faz lá aparece aqui.
+  function mesaDeFora(l) {
+    if (!mesa.on || !l || typeof l.id !== 'string' || !l.id.startsWith('rol:')) return;
+    const j = mesa.sombra.get(l.id);
+    let antes = null;
+    try { antes = j ? JSON.parse(j) : null; } catch (err) { antes = null; }
+    if (igual(antes, dadosDoc(l))) return;
+    clearTimeout(mesa.tRecarga);
+    mesa.tRecarga = setTimeout(() => {
+      if (pendingSave) return;                             // há algo daqui por salvar: o que está na tela vale
+      state = mesaLer();
+      renderAll();
+      refreshOpenDialogs();
+    }, 250);
+  }
+  /* Abre a mesa (se for o caso). Devolve true quando o Rolador passou a usar os dados da mesa. */
+  async function mesaEntrar() {
+    const T = window.TC;
+    if (!T || !T.ponte || !T.dados || !T.ponte.naCasca || !/[?&]casca\b/.test(location.search)) return false;
+    const st = await T.ponte.pronta;
+    if (!st.mesa || st.papel !== 'mestre' || !T.dados.disponivel()) return false;
+    let D;
+    try { D = T.dados.col('documentos'); await D.pronta; }
+    catch (err) { toast('Não deu para ler os históricos da mesa agora. O Rolador abriu com os deste navegador.', { error: true }); return false; }
+    save();                                                // os dados do navegador ficam salvos como estavam...
+    mesa.local = state;                                    // ...e guardados à parte, para o mestre poder trazê-los
+    mesa.D = D; mesa.id = st.mesa.id;
+    const primeira = mesaVazia();
+    mesa.on = true;
+    state = mesaLer();
+    purgeTrash();
+    D.aoMudar(mesaDeFora);
+    return primeira ? 'primeira' : true;
+  }
+  // O navegador tem algo que valha trazer? (rolagens, separadores ou tabelas)
+  function mesaTemLocal() { return !!mesa.local && (mesa.local.tables.length > 0 || mesa.local.histories.some((x) => x.entries.length > 0)); }
+  function mesaAbrirTrazer(primeira) {
+    if (!mesa.on || !mesaTemLocal()) return;
+    const loc = mesa.local, marcados = new Set();
+    const linha = (chave, nome, meta, marcar) => {
+      if (marcar) marcados.add(chave);
+      return h('li', null, h('label', { class: 'check' },
+        h('input', { type: 'checkbox', checked: marcar ? '' : null, 'data-bring': chave, onchange: (ev) => { if (ev.target.checked) marcados.add(chave); else marcados.delete(chave); } }),
+        h('span', { text: nome }), h('span', { class: 'bring-meta', text: meta })));
+    };
+    const hs = loc.histories.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    $('bringIntro').textContent = (primeira ? 'Esta mesa ainda não tem históricos do Rolador, e este navegador guarda os que você já fez. ' : '') + 'Na mesa, eles ficam salvos no banco e abrem em qualquer aparelho. Escolha o que trazer:';
+    $('bringList').replaceChildren(
+      ...hs.map((x) => linha('h:' + x.id, x.name, plural(rollsOf(x).length, 'rolagem', 'rolagens') + ', ' + dayWord(x.updatedAt), x.entries.length > 0)),
+      loc.tables.length ? h('li', { class: 'bring-head', text: 'Tabelas de eventos' }) : null,
+      ...loc.tables.map((t) => linha('t:' + t.id, t.name, plural(tableItems(t).length, 'item', 'itens'), true)));
+    $('bringNote').textContent = '';
+    $('bringOk').onclick = () => {
+      if (!marcados.size) { $('bringNote').textContent = 'Marque pelo menos um item.'; return; }
+      // a cópia entra pelo mesmo caminho de "Importar backup": só acrescenta, nada do que já está na mesa muda
+      const copia = JSON.parse(JSON.stringify({ histories: loc.histories.filter((x) => marcados.has('h:' + x.id)), tables: loc.tables.filter((t) => marcados.has('t:' + t.id)) }));
+      const eraSoOVazio = state.histories.length === 1 && !state.histories[0].entries.length ? state.histories[0].id : null;
+      const r = mergeImport(copia);
+      // o histórico vazio criado só para a mesa não abrir sem nada sai, se entrou algum de verdade
+      if (eraSoOVazio && state.histories.length > 1) { state.histories = state.histories.filter((x) => x.id !== eraSoOVazio); state.activeHistoryId = mostRecent(state.histories).id; }
+      save();
+      renderAll();
+      refreshOpenDialogs();
+      $('bringDlg').close();
+      const partes = [];
+      if (r.newHistories) partes.push(plural(r.newHistories, 'histórico', 'históricos'));
+      if (r.rolls) partes.push(plural(r.rolls, 'rolagem', 'rolagens'));
+      if (r.newTables) partes.push(plural(r.newTables, 'tabela', 'tabelas'));
+      toast(partes.length ? 'Entrou na mesa: ' + joinPt(partes) + '. O que está no navegador continua lá.' : 'Tudo o que você marcou já estava na mesa.');
+    };
+    const d = $('bringDlg');
+    // fechou sem trazer, na primeira vez: lembra onde isso fica
+    d.onclose = () => { d.onclose = null; if (primeira && state.histories.every((x) => !x.entries.length)) toast('Quando quiser, está em Menu > Trazer históricos deste navegador.'); };
+    if (!d.open) d.showModal();
+  }
+
   /* ================= início ================= */
-  function init() {
+  async function init() {
     state = load();
     purgeTrash();
     buildPalette($('palette'), (cid) => { formColor = cid; markPalette($('palette'), cid); $('colorName').textContent = colorLabel(cid); });
@@ -2742,11 +2941,20 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     for (const id of ['fOp', 'd0Op', 'd1Op']) fillOpSelect($(id));
     bindEvents();
     bindAiEvents();
+    window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
+    // Dentro do site, com uma mesa aberta: os históricos passam a ser os da mesa (a página só desenha depois de saber).
+    let naMesa = false;
+    try { naMesa = await mesaEntrar(); } catch (err) { console.error(err); naMesa = false; }
     save();
     if (!lastSavedSize) lastSavedSize = JSON.stringify(state).length;
     renderAll();
     if (!isNarrow()) $('fTitle').focus({ preventScroll: true });
-    window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
+    // Primeira vez do Rolador nesta mesa: oferece trazer o que este navegador guarda (uma vez; depois fica no Menu).
+    if (naMesa === 'primeira' && mesaTemLocal()) {
+      let jaOfereceu = false;
+      try { jaOfereceu = !!window.localStorage.getItem('rolador-urgm:oferta:' + mesa.id); window.localStorage.setItem('rolador-urgm:oferta:' + mesa.id, '1'); } catch (err) { /* sem armazenamento: oferece de novo */ }
+      if (!jaOfereceu) mesaAbrirTrazer(true);
+    }
   }
 
   /* ================= resumo com IA (Claude ou Gemini) ================= */
@@ -3121,7 +3329,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     $('aiDlg').addEventListener('close', () => { if (aiBusy) aiBusy.abort(); });
   }
 
-  init();
+  init().catch((err) => { console.error(err); try { renderAll(); } catch (e) { /* a página fica como estiver */ } });
 })();
 </script>
 </body>
