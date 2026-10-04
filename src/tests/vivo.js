@@ -13,7 +13,7 @@ const { contas } = require('./contas');
   await page.goto((process.argv[2] || 'https://dalkrs.github.io/') + '?t=' + Date.now(), { waitUntil: 'load', timeout: 60000 });
   await page.waitForTimeout(2500);
   out.titulo = await page.title();
-  for (const id of ['cenas', 'fichas', 'arvore', 'rolador']) {
+  for (const id of ['cenas', 'mundo', 'fichas', 'arvore', 'rolador']) {
     await page.locator('#tab-' + id).click(); await page.waitForTimeout(2000);
     const f = page.frame({ url: new RegExp('/' + id + '/') });
     out[id] = f ? await f.title() : 'SEM MOLDURA';
