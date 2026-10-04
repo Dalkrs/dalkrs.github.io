@@ -419,6 +419,18 @@
   function gravarDocMesa(id, campos) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, campos); }
   function apagarDocMesa(id) { if (modo === 'mesa' && App.papel === 'mestre' && D && D.pegar(id)) D.apagar(id); }
   const dadosDoc = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
+  /* As cenas da mesa, como a aba Cenas as guarda nos documentos da mesa: [{ id, nome }], na ordem do mestre.
+     Devolve null fora de uma mesa (aí vale a lista que a aba Cenas deixa neste navegador). O jogador não recebe
+     as cenas do mestre, então para ele a lista vem vazia. */
+  App.cenasDaMesa = () => {
+    if (modo !== 'mesa' || !D) return null;
+    const idx = dadosDoc(D.pegar('cenas:indice')), ordem = idx && Array.isArray(idx.ordem) ? idx.ordem : [], cenas = [];
+    for (const l of D.todas()) {
+      const m = /^cena:([A-Za-z0-9_-]{1,60}):m$/.exec(l.id || ''), d = dadosDoc(l);
+      if (m && d && m[1] !== 'pub' && m[1] !== 'pedido') cenas.push({ id: m[1], nome: String(d.name || 'Cena') });
+    }
+    return cenas.sort((a, b) => (ordem.indexOf(a.id) + 1 || 1e9) - (ordem.indexOf(b.id) + 1 || 1e9));
+  };
   function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && idValido(l.id.slice(PRE_MAPA.length)) && dadosDoc(l)) : []; }
   function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
   function docPub(id) { const d = D ? dadosDoc(D.pegar(PRE_PUB + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }

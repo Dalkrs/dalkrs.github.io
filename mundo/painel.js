@@ -1039,8 +1039,11 @@
   }
   /* ---- atalhos: do Mapa-múndi para as Cenas, para outro mapa e para o Acampamento ---- */
   const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
-  // as cenas que este navegador conhece (a aba Cenas guarda a lista para os outros sistemas)
+  // as cenas para onde um atalho pode levar: numa mesa, as da mesa; fora dela, as que este navegador guarda
+  // (a aba Cenas deixa a lista para os outros sistemas)
   function cenasConhecidas() {
+    const daMesa = App && App.cenasDaMesa ? App.cenasDaMesa() : null;
+    if (daMesa) return daMesa;
     try { const v = JSON.parse(localStorage.getItem('tinycats:cenas:lista') || 'null'); return Array.isArray(v) ? v.filter(x => x && typeof x.id === 'string').map(x => ({ id: x.id, nome: String(x.nome || 'Cena') })) : []; }
     catch (e) { return []; }
   }

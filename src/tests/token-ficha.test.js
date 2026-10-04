@@ -32,6 +32,11 @@ const { ok, end } = checker();
   await M.locator('#tab-cenas').click();
   let C = null;
   ok(await ate(async () => { C = await quadro(/\/cenas\//); return C && await C.evaluate(() => !!window.__tc && __tc.Fichas.on()); }, 20000), 'na cena, a ligação com as fichas fica disponível para o mestre');
+  // numa mesa, as cenas são as da mesa (ela começa com uma cena vazia): o mestre pede a de exemplo pelo menu de cenas
+  ok(await C.evaluate(() => __tc.Nuvem.modo() === 'mestre' && __tc.Store.S.order.length === 1 && __tc.Store.scene().tokens.length === 0), 'a mesa nova começa com uma cena vazia, guardada na mesa');
+  await C.locator('#sceneBtn').click(); await w(250);
+  await C.locator('.menu-i', { hasText: 'Nova cena de exemplo' }).click();
+  ok(await ate(async () => await C.evaluate(() => __tc.Store.scene().tokens.length === 7 && /^https:/.test((__tc.Store.S.assets[__tc.Store.scene().bg.asset] || {}).url || '')), 30000), 'a cena de exemplo criada na mesa guarda o mapa dela no banco');
   const tok = await C.evaluate(() => { const u = __tc, tk = u.Store.scene().tokens.find(x => x.name === 'Dain X'); u.setSel([{ c: 'tokens', id: tk.id }]); u.UI.openTab('sel'); return { id: tk.id, bars: tk.bars.map(b => b.n + ':' + b.v + '/' + b.m) }; });
   await w(400);
   await C.locator('#s-ficha > summary').click(); await w(200);

@@ -30,6 +30,19 @@ const { contas } = require('./contas');
   await page.locator('#msg').fill('/r 2d6+3'); await page.locator('#msg').press('Enter');
   await page.locator('#feed .rol').first().waitFor({ timeout: 15000 });
   out.rolagem = (await page.locator('#feed .rol').first().innerText()).replace(/\s+/g, ' ');
+  // as Cenas, dentro da mesa: guardadas no banco, e a cena vai ao ar quando o mestre manda
+  await page.locator('#tab-cenas').click(); await page.waitForTimeout(3500);
+  const C = page.frame({ url: /\/cenas\// });
+  if (C) {
+    if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await page.waitForTimeout(400); }
+    if (await C.locator('.modal').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+    out.cenas_salvas = (await C.locator('#status').innerText()).trim();
+    out.cenas_no_ar = (await C.locator('#airBtn').innerText()).trim();
+    await C.locator('#airBtn').click(); await page.waitForTimeout(300);
+    await C.locator('.menu-i', { hasText: 'Mostrar esta cena aos jogadores' }).click(); await page.waitForTimeout(2500);
+    out.cenas_depois = (await C.locator('#airBtn').innerText()).trim();
+    out.projecao = await page.evaluate(() => TC.dados.col('documentos').todas().filter(l => l.id.startsWith('cena:pub:')).map(l => l.id + ' ' + l.vis + (l.rev > 0 ? ' gravado' : ' pendente')).sort().join(' · '));
+  } else out.cenas_salvas = 'SEM MOLDURA';
   await page.locator('#tab-rolador').click(); await page.waitForTimeout(1500);
   const R = page.frame({ url: /\/rolador\// });
   out.aviso_no_rolador = await R.locator('#mesaDest').innerText();

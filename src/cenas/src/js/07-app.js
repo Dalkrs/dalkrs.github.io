@@ -578,6 +578,7 @@ const Act = {
     App.pings.push({ x, y, t0: performance.now(), c: viewerColor(), n: viewerName() });
     if (App.pings.length > 8) App.pings.shift();
     Render.request();
+    Nuvem.ping(x, y);                 // numa mesa, o ping aparece para todos que estão na cena
   },
 
   /* ---- Ordem de turnos ---- */

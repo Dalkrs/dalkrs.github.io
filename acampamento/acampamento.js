@@ -642,9 +642,18 @@
   }
 
   /* ---- a cena tática (na aba Cenas) ---- */
+  // As cenas para onde o "Mapa tático" pode ir: numa mesa, as da mesa (os documentos que a aba Cenas guarda);
+  // fora dela, as que este navegador guarda (a aba Cenas deixa a lista para os outros sistemas).
   function listaCenas() {
-    const chaves = st.mesa ? ['tinycats:cenas:lista:' + st.mesa.id, 'tinycats:cenas:lista'] : ['tinycats:cenas:lista'];
-    for (const k of chaves) { try { const v = JSON.parse(guarda.ler(k) || 'null'); if (Array.isArray(v)) return v.filter(x => x && typeof x.id === 'string').map(x => ({ id: x.id, nome: String(x.nome || 'Cena') })); } catch (e) { /* tenta a próxima */ } }
+    if (naMesa() && D) {
+      const idx = D.pegar('cenas:indice'), ordem = idx && !idx.apagado && idx.dados && Array.isArray(idx.dados.ordem) ? idx.dados.ordem : [], cenas = [];
+      for (const l of D.todas()) {
+        const m = /^cena:([A-Za-z0-9_-]{1,60}):m$/.exec(l.id || '');
+        if (m && !l.apagado && l.dados && m[1] !== 'pub' && m[1] !== 'pedido') cenas.push({ id: m[1], nome: String(l.dados.name || 'Cena') });
+      }
+      return cenas.sort((a, b) => (ordem.indexOf(a.id) + 1 || 1e9) - (ordem.indexOf(b.id) + 1 || 1e9));
+    }
+    try { const v = JSON.parse(guarda.ler('tinycats:cenas:lista') || 'null'); if (Array.isArray(v)) return v.filter(x => x && typeof x.id === 'string').map(x => ({ id: x.id, nome: String(x.nome || 'Cena') })); } catch (e) { /* lista estragada: como se não houvesse */ }
     return [];
   }
   let menu = null;

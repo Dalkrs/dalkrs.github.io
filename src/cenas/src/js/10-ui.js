@@ -88,7 +88,7 @@ const UI = (() => {
     const host = modalEl ? el.toastsTop : el.toasts;       // com uma janela aberta, o aviso sobe para a frente dela
     host.append(t);
     while (host.children.length > 3) host.firstChild.remove();
-    setTimeout(() => t.remove(), o && o.action ? 6500 : 3400);
+    setTimeout(() => t.remove(), o && o.long ? 12000 : o && o.action ? 6500 : 3400);
   }
 
   function closeMenus() { if (menuEl) { menuEl.remove(); menuEl = null; menuAnchor = null; } }
@@ -358,30 +358,49 @@ const UI = (() => {
      (normalizeScene completa o que faltar). */
   const FILE_SCENE = 'tinycats-cena', FILE_TABLE = 'tinycats-mesa', FILE_VERSION = 3;
   const FILE_SCENE_IDS = [FILE_SCENE, 'urgm-cena'], FILE_TABLE_IDS = [FILE_TABLE, 'urgm-mesa'];
-  function exportScene() {
+  // Numa mesa, as imagens estão no banco: para o arquivo abrir em qualquer lugar, elas voltam embutidas nele.
+  async function assetsForFile(scenes) {
+    const a = sceneAssets(scenes);
+    if (!Nuvem.on()) return a;
+    toast('Preparando o arquivo com as imagens…');
+    return Nuvem.embutir(a);
+  }
+  async function exportScene() {
     const sc = Store.scene();
     const copy = clone(sc); copy.explored = {};
-    saveFile(`tinycats-cena-${slug(sc.name)}.json`, JSON.stringify({ format: FILE_SCENE, version: FILE_VERSION, scene: copy, players: Store.S.players, assets: sceneAssets([sc]) }));
+    saveFile(`tinycats-cena-${slug(sc.name)}.json`, JSON.stringify({ format: FILE_SCENE, version: FILE_VERSION, scene: copy, players: Store.S.players, assets: await assetsForFile([sc]) }));
   }
-  function exportAll() {
+  async function exportAll() {
     Vision.flushExplored();
     const scenes = Store.S.order.map(id => Store.S.scenes[id]);
-    saveFile('tinycats-cenas.json', JSON.stringify({ format: FILE_TABLE, version: FILE_VERSION, scenes, players: Store.S.players, barDefaults: Store.S.prefs.barDefaults || null, assets: sceneAssets(scenes) }));
+    saveFile('tinycats-cenas.json', JSON.stringify({ format: FILE_TABLE, version: FILE_VERSION, scenes: scenes.map(x => (Nuvem.on() ? Object.assign({}, x, { explored: {} }) : x)), players: Store.S.players, barDefaults: Store.S.prefs.barDefaults || null, assets: await assetsForFile(scenes) }));
   }
-  function importText(text) {
+  async function importText(text) {
     let d;
     try { d = JSON.parse(text); } catch (e) { toast('Esse arquivo não é um JSON válido.'); return; }
     const scenes = d && FILE_SCENE_IDS.includes(d.format) && d.scene ? [d.scene] : d && FILE_TABLE_IDS.includes(d.format) && Array.isArray(d.scenes) ? d.scenes : null;
     if (!scenes || !scenes.length) { toast('Esse arquivo não parece ter sido exportado por esta mesa.'); return; }
-    for (const id in d.assets || {}) Assets.fromData(d.assets[id]);
-    for (const p of d.players || []) if (p && p.id && !playerById(p.id)) Store.S.players.push({ id: p.id, name: p.name || 'Jogador', color: p.color || PLAYER_COLORS[Store.S.players.length % PLAYER_COLORS.length] });
+    const nuvem = Nuvem.on();
+    if (nuvem && Object.keys(d.assets || {}).length) toast('Enviando as imagens do arquivo para a mesa…');
+    // (numa mesa, cada imagem do arquivo sobe para o banco; se uma falhar, a cena entra sem ela)
+    let semImagem = 0;
+    for (const id in d.assets || {}) { try { await Assets.fromData(d.assets[id]); } catch (e) { semImagem++; } }
+    // Fora de uma mesa, os jogadores do arquivo entram na lista daqui. Numa mesa, os jogadores são os participantes:
+    // quem tem o mesmo nome continua dono do que era dele; o resto passa a ser do mestre.
+    const donos = nuvem ? Proj.mapaDeDonos(d.players, Store.S.players) : null;
+    if (!nuvem) for (const p of d.players || []) if (p && p.id && !playerById(p.id)) Store.S.players.push({ id: p.id, name: p.name || 'Jogador', color: p.color || PLAYER_COLORS[Store.S.players.length % PLAYER_COLORS.length] });
     // As barras padrão do arquivo só entram se esta mesa ainda não tiver as dela.
     if (Array.isArray(d.barDefaults) && d.barDefaults.length && !Store.S.prefs.barDefaults) Store.S.prefs.barDefaults = d.barDefaults.slice(0, MAX_BARS).map(cleanBar);
     let first = null;
     for (const raw of scenes) {
       if (!raw || !Array.isArray(raw.tokens)) continue;
       const sc = normalizeScene(clone(raw));
-      if (!sc.id || Store.S.scenes[sc.id]) sc.id = uid('cena');
+      if (!sc.id || Store.S.scenes[sc.id] || (nuvem && !Proj.idOk(sc.id))) sc.id = uid('cena');
+      if (nuvem) {
+        Proj.trocarDonos(sc, donos, Store.S.players);
+        if (sc.bg.asset && !Store.S.assets[sc.bg.asset]) sc.bg.asset = null;
+        for (const t of sc.tokens) if (t.img && !Store.S.assets[t.img]) t.img = null;
+      }
       Store.addScene(sc);
       Persist.scene(sc.id);
       first = first || sc.id;
@@ -389,13 +408,13 @@ const UI = (() => {
     if (!first) { toast('Não encontrei nenhuma cena dentro do arquivo.'); return; }
     Persist.meta();
     switchScene(first);
-    toast(scenes.length === 1 ? 'Cena importada.' : `${scenes.length} cenas importadas.`);
+    toast((scenes.length === 1 ? 'Cena importada.' : `${scenes.length} cenas importadas.`) + (semImagem ? ` ${semImagem === 1 ? 'Uma imagem não pôde' : semImagem + ' imagens não puderam'} ser enviada${semImagem === 1 ? '' : 's'} para a mesa.` : ''));
   }
   el.fileJson.addEventListener('change', () => {
     const f = el.fileJson.files && el.fileJson.files[0];
     if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => importText(String(rd.result || ''));
+    rd.onload = () => { importText(String(rd.result || '')).catch(err => { console.error(err); toast('Não consegui importar esse arquivo.'); }); };
     rd.onerror = () => toast('Não consegui ler o arquivo.');
     rd.readAsText(f);
   });
@@ -421,10 +440,10 @@ const UI = (() => {
     });
   }
   // Uma cena de exemplo novinha, sem tocar nas cenas que já existem: boa para experimentar os recursos.
-  function sampleScene() {
+  async function sampleScene() {
     Tools.cancel();
     const prev = Store.S.current;
-    const sc = buildSample();              // já deixa a cena nova como a atual e o token principal selecionado
+    const sc = await buildSample();        // já deixa a cena nova como a atual e o token principal selecionado
     const keep = App.sel;
     Store.S.current = prev;
     switchScene(sc.id);
@@ -445,7 +464,7 @@ const UI = (() => {
   }
   function deleteScene() {
     const sc = Store.scene();
-    confirmBox('Apagar esta cena?', `"${sc.name}" e tudo o que está nela serão apagados. Isso não pode ser desfeito.`, 'Apagar cena', true).then(ok => {
+    confirmBox('Apagar esta cena?', `"${sc.name}" e tudo o que está nela serão apagados. Isso não pode ser desfeito.` + (Nuvem.noAr() === sc.id ? ' Os jogadores estão vendo esta cena: ela sai do ar.' : ''), 'Apagar cena', true).then(ok => {
       if (!ok) return;
       const id = sc.id;
       Store.removeScene(id); Persist.removeScene(id);
@@ -454,6 +473,7 @@ const UI = (() => {
     });
   }
   function setViewer(v) {
+    if (Nuvem.jogador()) return;                 // na mesa, o jogador é ele mesmo: não há outra visão para escolher
     if (v !== 'gm' && !playerById(v)) v = 'gm';
     Tools.cancel();
     App.viewer = v;
@@ -484,32 +504,118 @@ const UI = (() => {
     const more = iconBtn('more', 'Arquivo e ajuda', () => anchorMenu(more, fileMenu(), true), { id: 'moreBtn' });
     zoomLabel = h('button', { type: 'button', class: 'zoom-l', id: 'zoomBtn', title: 'Enquadrar a cena (0)', text: Math.round(App.view.z * 100) + '%', onclick: () => { Render.fit(); status(); } });
     const zoomBy = k => { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z * k); status(); };
-    el.top.replaceChildren(
+    // Numa mesa, o mestre vê (e escolhe) qual cena está no ar para os jogadores.
+    let air = null;
+    if (gm && Nuvem.mestre()) {
+      const ar = Nuvem.noAr(), aqui = ar === sc.id, outra = ar && Store.S.scenes[ar] ? Store.S.scenes[ar].name : '';
+      const txt = aqui ? 'No ar' : ar ? 'No ar: ' + outra : 'Fora do ar';
+      air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
+        icon(ar ? 'eye' : 'eyeOff', 16), h('span', { class: 'air-t', text: txt }), icon('down', 13));
+    }
+    el.top.replaceChildren(...[
       h('span', { class: 'brand', text: 'Tiny Cats' }),
-      gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: sc.name })),
+      gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: Nuvem.semCena() ? 'Sem cena' : sc.name })),
+      air,
       h('div', { class: 'grp' },
         iconBtn('undo', 'Desfazer (Ctrl+Z)', Tools.undo, { disabled: !Store.canUndo(), id: 'undoBtn' }),
         iconBtn('redo', 'Refazer (Ctrl+Shift+Z)', Tools.redo, { disabled: !Store.canRedo(), id: 'redoBtn' })),
       h('span', { class: 'spacer' }),
-      h('label', { class: 'viewer' }, h('span', { class: 'viewer-l', text: 'Vendo como' }),
+      Nuvem.jogador() ? null : h('label', { class: 'viewer' }, h('span', { class: 'viewer-l', text: 'Vendo como' }),
         inSelect('viewerSel', App.viewer, [['gm', 'Mestre']].concat(Store.S.players.map(p => [p.id, p.name])), setViewer, { title: 'Testar a cena como o mestre ou como um jogador' })),
       h('div', { class: 'grp zoom' }, iconBtn('minus', 'Afastar (-)', () => zoomBy(1 / 1.25), { size: 16 }), zoomLabel, iconBtn('plus', 'Aproximar (+)', () => zoomBy(1.25), { size: 16 })),
       more,
-      iconBtn('panel', App.sideOpen ? 'Esconder o painel' : 'Mostrar o painel', () => { App.sideOpen = !App.sideOpen; refresh(); }, { on: App.sideOpen, id: 'panelBtn' }));
+      iconBtn('panel', App.sideOpen ? 'Esconder o painel' : 'Mostrar o painel', () => { App.sideOpen = !App.sideOpen; refresh(); }, { on: App.sideOpen, id: 'panelBtn' }),
+    ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
   function sceneMenu() {
-    const items = [{ head: 'Cenas' }];
-    for (const id of Store.S.order) { const s = Store.S.scenes[id]; items.push({ label: s.name, check: id === Store.S.current, run: () => switchScene(id) }); }
+    const items = [{ head: 'Cenas' }], ar = Nuvem.noAr();
+    for (const id of Store.S.order) { const s = Store.S.scenes[id]; items.push({ label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
   }
+
+  /* ---- No ar: a cena que os jogadores da mesa veem. Só muda quando o mestre manda, e dá para desfazer. ---- */
+  function showToPlayers(id) {
+    const antes = Nuvem.noAr(), sc = Store.S.scenes[id];
+    if (!sc || !Nuvem.mostrar(id)) return;
+    toast(`Os jogadores agora veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); else Nuvem.esconder(); } });
+    // a mesa ao vivo avisa: quem está em outra aba fica sabendo que há cena nova para ver
+    try { window.TC.ponte.publicar('cena', { kind: 'aviso', titulo: 'Cena: ' + sc.name, resumo: 'O mestre mostrou esta cena aos jogadores. Ela está na aba Cenas.' }); } catch (e) { /* sem a casca, não há mesa ao vivo */ }
+  }
+  function hideFromPlayers() {
+    const antes = Nuvem.noAr();
+    if (!Nuvem.esconder()) return;
+    toast('Os jogadores não veem mais nenhuma cena.', { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); } });
+  }
+  function airMenu() {
+    const cur = Store.S.current, ar = Nuvem.noAr(), outra = ar && ar !== cur && Store.S.scenes[ar];
+    return [
+      { head: ar === cur ? 'Os jogadores veem esta cena' : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
+      ar === cur ? null : { label: 'Mostrar esta cena aos jogadores', icon: 'eye', run: () => showToPlayers(cur) },
+      outra ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
+      ar ? { label: 'Tirar a cena do ar', icon: 'eyeOff', run: hideFromPlayers } : null,
+    ];
+  }
+
+  /* ---- As cenas guardadas neste navegador (de antes da mesa): o mestre escolhe quais levar para a mesa. ---- */
+  const offeredKey = () => 'tinycats:cenas:oferta:' + ((window.TC && window.TC.ponte && window.TC.ponte.estado.mesa) || {}).id;
+  async function offerLocal() {
+    if (!Nuvem.mestre()) return;
+    const lista = await Nuvem.cenasDoNavegador();
+    refresh();                                    // o painel passa a lembrar que há cenas neste navegador (ver emptySel)
+    if (!lista.length || modalEl || Tour.active()) return;
+    try { if (localStorage.getItem(offeredKey())) return; localStorage.setItem(offeredKey(), '1'); } catch (e) { /* sem armazenamento: oferece de novo na próxima vez */ }
+    localScenesBox(lista, true);
+  }
+  // A mesa só tem a cena vazia do começo? (é quando vale lembrar o mestre das cenas que ele deixou no navegador)
+  const onlyBlank = () => { const sc = Store.scene(); return Store.S.order.length === 1 && !sc.tokens.length && !sc.walls.length && !sc.shapes.length && !sc.bg.asset; };
+  async function bringLocal() {
+    const lista = await Nuvem.cenasDoNavegador();
+    if (!lista.length) { toast('Este navegador não tem cenas guardadas fora da mesa.'); return; }
+    localScenesBox(lista, false);
+  }
+  function localScenesBox(lista, primeira) {
+    const marcadas = new Set(lista.filter(c => !c.exemplo).map(c => c.id));
+    const linhas = lista.map(c => h('label', { class: 'pick' },
+      h('input', { type: 'checkbox', id: 'lc-' + c.id, checked: marcadas.has(c.id), onchange: e => { if (e.target.checked) marcadas.add(c.id); else marcadas.delete(c.id); } }),
+      h('span', { class: 'pick-n', text: c.nome }),
+      h('span', { class: 'pick-s', text: (c.tokens === 1 ? '1 token' : c.tokens + ' tokens') + (c.fundo ? ' · com mapa' : '') + (c.exemplo ? ' · exemplo' : '') })));
+    const andamento = h('p', { class: 'note', id: 'lc-status', role: 'status' });
+    modal({
+      title: primeira ? 'Trazer as suas cenas para esta mesa?' : 'Trazer cenas deste navegador', wide: true,
+      text: (primeira ? 'Esta mesa ainda não tem cenas, e este navegador guarda as que você fez antes. ' : '') + 'Na mesa, as cenas e as imagens ficam salvas no banco: abrem em qualquer aparelho e os jogadores podem vê-las ao vivo. As cenas do navegador continuam onde estão.',
+      body: [h('div', { class: 'picks' }, linhas), note('Os tokens de um jogador com o mesmo nome de um participante desta mesa continuam com ele; os outros passam a ser do mestre.'), andamento],
+      actions: [
+        { label: primeira ? 'Agora não' : 'Cancelar' },
+        {
+          label: 'Trazer as marcadas', kind: 'primary', keep: true, run: async () => {
+            const ids = lista.map(c => c.id).filter(id => marcadas.has(id));
+            if (!ids.length) { andamento.textContent = 'Marque pelo menos uma cena.'; return; }
+            for (const b of modalEl.querySelectorAll('button, input')) b.disabled = true;
+            andamento.textContent = 'Enviando as imagens e as cenas…';
+            const vazia = primeira && Store.S.order.length === 1 ? Store.scene() : null;     // a "Nova cena" criada só para a mesa não abrir vazia
+            let feitas = [];
+            try { feitas = await Nuvem.trazer(ids, (n, total) => { andamento.textContent = `Enviando… ${n} de ${total}`; }); }
+            catch (err) { closeModal(); toast('Não deu para trazer tudo: ' + ((err && err.message) || 'falha no envio') + ' O que já tinha subido ficou na mesa.', { long: true }); if (Store.S.order.length) refresh(); return; }
+            closeModal();
+            if (!feitas.length) { toast('Nenhuma cena foi trazida.'); return; }
+            if (vazia && Store.S.scenes[vazia.id] && !vazia.tokens.length && !vazia.walls.length && !vazia.shapes.length && !vazia.bg.asset) { Store.removeScene(vazia.id); Persist.removeScene(vazia.id); }
+            switchScene(feitas[0]);
+            toast(feitas.length === 1 ? 'Cena trazida para a mesa. Os jogadores só a veem quando você a puser no ar.' : `${feitas.length} cenas trazidas para a mesa. Os jogadores só veem a que você puser no ar.`, { long: true });
+          },
+        },
+      ],
+    });
+  }
+
   function fileMenu() {
     const gm = isGM();
     return [
       gm ? { label: 'Exportar esta cena', icon: 'download', run: exportScene } : null,
       gm ? { label: 'Exportar todas as cenas', icon: 'download', run: exportAll } : null,
       gm ? { label: 'Importar cena…', icon: 'upload', run: importFile } : null,
+      gm && Nuvem.mestre() ? { label: 'Trazer cenas deste navegador…', icon: 'upload', run: bringLocal } : null,
       gm ? { label: 'Barras padrão dos tokens…', icon: 'sliders', run: () => barDefaultsBox(null) } : null,
       gm ? '-' : null,
       { label: 'Animar efeitos e clima', check: App.anim, run: () => { App.anim = !App.anim; Store.S.prefs.anim = App.anim; Persist.meta(); Render.request(); } },
@@ -535,6 +641,14 @@ const UI = (() => {
 
   function renderBanner() {
     if (isGM()) { el.banner.hidden = true; return; }
+    if (Nuvem.jogador()) {
+      // O jogador de verdade, na mesa: a faixa só aparece quando há algo a dizer.
+      const aviso = Nuvem.semCena() ? 'O mestre ainda não está mostrando nenhuma cena. Ela aparece aqui sozinha quando ele mostrar.'
+        : Vision.out.noSource ? 'Você não tem um token com visão nesta cena; por isso a névoa cobre tudo.' : '';
+      el.banner.hidden = !aviso;
+      if (aviso) el.banner.replaceChildren(h('span', { class: 'dot', style: { background: viewerColor() } }), h('span', { class: 'banner-t', id: 'bannerText', text: aviso }));
+      return;
+    }
     const p = playerById(App.viewer);
     el.banner.hidden = false;
     el.banner.replaceChildren(
@@ -696,6 +810,10 @@ const UI = (() => {
       sc.sample && gm ? h('div', { class: 'callout' },
         h('strong', { text: 'Esta é uma cena de exemplo.' }),
         h('span', { text: ' Os tokens, as barras e a ordem de turnos são inventados para mostrar o que a mesa faz. Mexa à vontade, ou crie a sua pelo menu de cenas.' })) : null,
+      gm && Nuvem.mestre() && Nuvem.locais() > 0 && onlyBlank() ? h('div', { class: 'callout', id: 'localHint' },
+        h('strong', { text: 'As suas cenas de antes continuam guardadas neste navegador.' }),
+        h('span', { text: ' Esta mesa ainda não tem nenhuma. Você escolhe quais trazer; as do navegador não mudam.' }),
+        h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
       gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' })) : null,
     ];
   }
@@ -990,7 +1108,10 @@ const UI = (() => {
   function fichaBox(t) {
     const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
     const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
-      v => { Fichas.link(t, v || null); const c = v ? Fichas.get(v) : null; toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` : `${t.name} não segue mais nenhuma ficha.`); }))];
+      v => {
+        const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
+        toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
+      }))];
     if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token pega dela HP, SP e os outros recursos, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
     if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
     const itens = Fichas.rolaveis(t);
@@ -1390,6 +1511,7 @@ const UI = (() => {
     return [
       sec('c-scene', 'Cena', true,
         field('Nome', inText('sc-name', sc.name, v => { if (v.trim()) S({ name: v.trim() }, 'Renomear cena'); })),
+        Nuvem.mestre() ? note('Os jogadores veem este nome quando a cena está no ar.') : null,
         h('div', { class: 'grid2' },
           field('Largura (q)', inNum('sc-cols', sc.cols, v => S({ cols: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 })),
           field('Altura (q)', inNum('sc-rows', sc.rows, v => S({ rows: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 }))),
@@ -1440,7 +1562,7 @@ const UI = (() => {
         toggle('fg-man', f.manual, v => fogSet({ manual: v }, 'Névoa manual'), 'Névoa manual (pintada por você)'),
         toggle('sc-block', sc.blockMove, v => S({ blockMove: v }), 'Paredes barram o movimento dos jogadores'),
         f.manual ? h('div', { class: 'row' }, btn('Revelar tudo', () => fogAll('r'), { icon: 'eye' }), btn('Esconder tudo', () => fogAll('h'), { icon: 'eyeOff' })) : null,
-        f.dynamic && f.explored ? btn('Esquecer áreas exploradas', () => confirmBox('Esquecer o que foi explorado?', 'Os jogadores voltam a ver só o que enxergam agora. Isso não pode ser desfeito.', 'Esquecer', true).then(ok => { if (ok) { Vision.resetExplored(sc); Render.request(); toast('Áreas exploradas esquecidas.'); } }), { icon: 'reset' }) : null,
+        f.dynamic && f.explored ? btn('Esquecer áreas exploradas', () => confirmBox('Esquecer o que foi explorado?', 'Os jogadores voltam a ver só o que enxergam agora. Isso não pode ser desfeito.', 'Esquecer', true).then(ok => { if (ok) { Vision.resetExplored(sc); Nuvem.esquecerExplorado(sc); Render.request(); toast('Áreas exploradas esquecidas.'); } }), { icon: 'reset' }) : null,
         note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.')),
       sec('c-perm', 'O que os jogadores podem', true,
         PERMS.map(([k, label]) => toggle('pm-' + k, !!sc.perms[k], v => S({ perms: Object.assign({}, sc.perms, { [k]: v }) }, 'Permissões'), label)),
@@ -1464,11 +1586,32 @@ const UI = (() => {
   }
 
   /* ---- Aba Jogadores ---- */
+  // Numa mesa, os jogadores são os participantes dela: entram com o código de convite, não por aqui.
+  function tabPlayersMesa() {
+    const sc = Store.scene();
+    return [
+      h('p', { class: 'muted', text: 'Os jogadores são os participantes desta mesa. Dê um token a cada um (campo "Dono" do token) e use "Ver como" para conferir o que ele enxerga.' }),
+      Store.S.players.length ? h('ul', { class: 'list' }, Store.S.players.map(p => {
+        const n = sc.tokens.filter(t => t.owner === p.id).length;
+        return h('li', { class: 'li player' },
+          h('span', { class: 'li-dot', style: { background: p.color } }),
+          h('span', { class: 'li-n', text: p.name }),
+          h('span', { class: 'li-s', text: n === 1 ? '1 token' : n + ' tokens' }),
+          iconBtn('eye', 'Ver como ' + p.name, () => setViewer(p.id), { size: 16 }));
+      })) : h('p', { class: 'muted', text: 'Ainda não há jogadores nesta mesa. Convide pelo menu da mesa, no alto da página (o código de convite).' }),
+      sec('pl-heal', 'Descanso rápido', true,
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        h('div', { class: 'row' },
+          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
+    ];
+  }
   function tabPlayers() {
+    if (Nuvem.on()) return tabPlayersMesa();
     const sc = Store.scene();
     const save = () => { Persist.meta(); Store.meta(); Render.request(); };
     return [
-      h('p', { class: 'muted', text: 'Enquanto não há login, os jogadores são cadastrados aqui. Dê um token a cada um e use "Ver como" para conferir o que ele enxerga.' }),
+      h('p', { class: 'muted', text: 'Fora de uma mesa, os jogadores são cadastrados aqui (numa mesa do site, são os participantes dela). Dê um token a cada um e use "Ver como" para conferir o que ele enxerga.' }),
       Store.S.players.length ? h('ul', { class: 'list' }, Store.S.players.map(p => {
         const n = sc.tokens.filter(t => t.owner === p.id).length;
         return h('li', { class: 'li player' },
@@ -1673,9 +1816,10 @@ const UI = (() => {
     const m = App.mouse;
     let txt = '';
     if (m.inside && m.x >= 0 && m.y >= 0 && m.x < sceneW(sc) && m.y < sceneH(sc)) txt = `Coluna ${Math.floor(m.x / sc.cell) + 1} · Linha ${Math.floor(m.y / sc.cell) + 1}`;
-    const sv = saveState === 'mem' ? 'Sem salvamento neste navegador' : saveState === 'erro' ? 'Não foi possível salvar' : saveState === 'saving' ? 'Salvando…' : 'Salvo neste navegador';
+    const sv = Nuvem.jogador() ? (saveState === 'saving' ? 'Enviando…' : saveState === 'espera' ? 'Esperando o mestre: o que você fez entra quando ele estiver na mesa' : 'Ao vivo com a mesa')
+      : saveState === 'mem' ? 'Sem salvamento neste navegador' : saveState === 'erro' ? 'Não foi possível salvar' : saveState === 'saving' ? 'Salvando…' : Nuvem.mestre() ? 'Salvo na mesa' : 'Salvo neste navegador';
     const full = (txt ? txt + '  ·  ' : '') + sv;
-    if (full !== statusText) { statusText = full; el.status.textContent = full; el.status.classList.toggle('warn', saveState === 'mem' || saveState === 'erro'); }
+    if (full !== statusText) { statusText = full; el.status.textContent = full; el.status.classList.toggle('warn', saveState === 'mem' || saveState === 'erro' || saveState === 'espera'); }
     if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; }
   }
 
@@ -1701,7 +1845,7 @@ const UI = (() => {
 
   return {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
-    prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene,
+    prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },

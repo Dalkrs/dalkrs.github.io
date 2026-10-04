@@ -1,16 +1,18 @@
 /* ---------------------------------------------------------------
    4. ASSETS + SALVAMENTO
-   As imagens ficam em Store.S.assets como data URL (no site final,
-   cada uma vira um arquivo no Supabase Storage). Tudo é guardado no
-   IndexedDB deste navegador; se ele não estiver disponível, a mesa
+   Fora de uma mesa (página aberta sozinha, ou o site sem mesa aberta), tudo fica no IndexedDB deste navegador:
+   as cenas e as imagens (em Store.S.assets, como data URL). Se o IndexedDB não estiver disponível, a mesa
    funciona só em memória e avisa.
+   Com uma mesa aberta no site, quem guarda é o banco (ver 7d. NUVEM): as cenas viram documentos da mesa e
+   cada imagem vira um arquivo no Storage (em Store.S.assets fica o endereço dela). Persist e Assets são a
+   porta única: o resto do programa não precisa saber onde as coisas ficam.
    --------------------------------------------------------------- */
-const DB = (() => {
+function makeDB(name) {
   let db = null;
   function open() {
     return new Promise(res => {
       try {
-        const rq = indexedDB.open('cenas-de-urgm', 1);      // nome antigo, mantido de propósito: é onde estão as cenas de quem já usava a mesa
+        const rq = indexedDB.open(name, 1);
         rq.onupgradeneeded = () => { rq.result.createObjectStore('kv'); };
         rq.onsuccess = () => { db = rq.result; res(true); };
         rq.onerror = () => res(false);
@@ -18,12 +20,13 @@ const DB = (() => {
       } catch (e) { res(false); }
     });
   }
-  function all() {
+  // Tudo o que está guardado; com um prefixo, só as chaves que começam por ele.
+  function all(prefix) {
     return new Promise(res => {
       try {
         const st = db.transaction('kv', 'readonly').objectStore('kv');
         const out = new Map();
-        const rq = st.openCursor();
+        const rq = prefix ? st.openCursor(IDBKeyRange.bound(prefix, prefix + '\uffff')) : st.openCursor();
         rq.onsuccess = () => { const c = rq.result; if (c) { out.set(c.key, c.value); c.continue(); } else res(out); };
         rq.onerror = () => res(new Map());
       } catch (e) { res(new Map()); }
@@ -43,7 +46,8 @@ const DB = (() => {
     });
   }
   return { open, all, write, ready: () => !!db };
-})();
+}
+const DB = makeDB('cenas-de-urgm');        // nome antigo, mantido de propósito: é onde estão as cenas de quem já usava a mesa
 
 const Persist = (() => {
   const S = Store.S;
@@ -97,14 +101,18 @@ const Persist = (() => {
   }
   const save = debounce(flush, 450);
 
+  // Com uma mesa aberta, quem guarda é a nuvem; sem mesa, o IndexedDB daqui.
   return {
-    load, flush,
-    status: () => status,
-    onStatus(fn) { onStatus = fn; },
-    scene(id) { if (id) { dScenes.add(id); dMeta = true; save(); } },
-    asset(id) { dAssets.add(id); save(); },
-    meta() { dMeta = true; save(); },
-    removeScene(id) { removed.add('scene:' + id); dMeta = true; save(); },
+    load: () => (Nuvem.on() ? Nuvem.carregar() : load()),
+    flush: () => (Nuvem.on() ? Nuvem.descarregar() : flush()),
+    status: () => (Nuvem.on() ? Nuvem.estado() : status),
+    onStatus(fn) { onStatus = fn; Nuvem.aoEstado(fn); },
+    scene(id) { if (Nuvem.on()) { Nuvem.cena(id); return; } if (id) { dScenes.add(id); dMeta = true; save(); } },
+    // O que cada um já explorou do mapa: na mesa, fica no aparelho de cada um (não vai para o banco).
+    explored(id) { if (Nuvem.on()) { Nuvem.explorado(id); return; } if (id) { dScenes.add(id); dMeta = true; save(); } },
+    asset(id) { if (Nuvem.on()) return; dAssets.add(id); save(); },
+    meta() { if (Nuvem.on()) { Nuvem.meta(); return; } dMeta = true; save(); },
+    removeScene(id) { if (Nuvem.on()) { Nuvem.tirarCena(id); return; } removed.add('scene:' + id); dMeta = true; save(); },
   };
 })();
 
@@ -151,6 +159,13 @@ const Assets = (() => {
     return S.assets[id];
   }
 
+  // Guarda o que está num canvas: neste navegador (data URL) ou, com uma mesa aberta, no banco (arquivo no Storage).
+  // É sempre uma promessa; na mesa, pode falhar (sem internet, por exemplo) e quem chamou avisa.
+  async function fromCanvas(cv, kind, name) {
+    if (Nuvem.on()) return Nuvem.guardarImagem(cv, kind, name);
+    return register(encode(cv, kind), cv.width, cv.height, kind, name);
+  }
+
   // Lê um arquivo de imagem, reduz se for grande demais e guarda.
   async function fromFile(file, kind) {
     if (!file || !/^image\//.test(file.type || '')) throw new Error('Esse arquivo não é uma imagem.');
@@ -163,16 +178,21 @@ const Assets = (() => {
       const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
       cv.getContext('2d').drawImage(im, 0, 0, w, hh);
       const name = String(file.name || '').replace(/\.[a-z0-9]+$/i, '');
-      return register(encode(cv, kind), w, hh, kind, name);
+      return await fromCanvas(cv, kind, name);
     } finally { URL.revokeObjectURL(src); }
   }
 
-  // Guarda uma imagem já em data URL (cena importada ou fundo de exemplo).
+  // Guarda uma imagem que veio num arquivo de cena: embutida (data URL) ou já guardada no banco de uma mesa
+  // (endereço do Storage). Na mesa, a embutida sobe para o banco (promessa); fora, fica aqui, na hora.
+  const NO_BANCO = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/mesas\/[A-Za-z0-9/_.-]+$/;
   function fromData(a) {
-    if (!a || !a.id || !/^data:image\//.test(String(a.url || ''))) return null;   // só imagens embutidas
-    if (a.id && !S.assets[a.id]) { S.assets[a.id] = a; Persist.asset(a.id); }
+    if (!a || !a.id) return null;
+    const url = String(a.url || ''), embutida = /^data:image\//.test(url);
+    if (!embutida && !NO_BANCO.test(url)) return null;
+    if (embutida && Nuvem.on()) return Nuvem.guardarDeDados(a);
+    if (!S.assets[a.id]) { S.assets[a.id] = { id: a.id, url, w: a.w || 0, h: a.h || 0, kind: a.kind || '', name: a.name || '' }; Persist.asset(a.id); }
     return S.assets[a.id];
   }
 
-  return { img, fromFile, fromData, register, encode };
+  return { img, fromFile, fromCanvas, fromData, register, encode };
 })();

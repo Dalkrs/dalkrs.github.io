@@ -47,8 +47,8 @@ const Fichas = (() => {
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
   }
-  // ficha → token (não entra no desfazer: quem manda é a ficha)
-  function syncToken(t) {
+  // ficha → token (não entra no desfazer: quem manda é a ficha). `cena`: o id da cena do token (a aberta, se não vier).
+  function syncToken(t, cena) {
     const l = get(t.char);
     if (!l) return false;
     const r = resumo(l), p = {};
@@ -64,22 +64,24 @@ const Fichas = (() => {
     } else if (t.imgChar) { p.img = null; p.imgChar = false; }
     if (!Object.keys(p).length) return false;
     applying = true;
-    try { Store.remote({ t: 'upd', c: 'tokens', id: t.id, p }); } finally { applying = false; }
+    try { Store.remoteIn(cena || Store.S.current, [{ t: 'upd', c: 'tokens', id: t.id, p }]); } finally { applying = false; }
     return true;
   }
+  /* Acerta pela ficha os tokens ligados (de um personagem, ou de todos): os da cena aberta e, numa mesa, também os
+     da cena que está no ar — os jogadores veem a barra mudar mesmo com o mestre preparando outra cena. */
   function syncAll(charId) {
     if (!on) return;
     let n = 0;
-    for (const t of Store.scene().tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t)) n++;
+    const cenas = [Store.scene()], ar = Nuvem.noAr();
+    if (ar && ar !== Store.S.current && Store.S.scenes[ar]) cenas.push(Store.S.scenes[ar]);
+    for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
     return n;
   }
-  // token → ficha: o valor atual das barras ligadas
-  function onLive(op) {
-    if (!on || applying || op.t !== 'upd' || op.c !== 'tokens' || !op.p || !op.p.bars) return;
-    const t = Store.get('tokens', op.id);
-    if (!t || !t.char) return;
+  // token → ficha: o valor atual (e a sobrevida) das barras ligadas. Serve para um token de qualquer cena da mesa.
+  function paraFicha(t) {
+    if (!on || !t || !t.char) return false;
     const l = get(t.char);
-    if (!l) return;
+    if (!l) return false;
     const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
     let mudou = false;
     for (const b of t.bars) {
@@ -88,19 +90,28 @@ const Fichas = (() => {
       const x = barX(b);
       if ((Number(sob[b.ref]) || 0) !== x) { if (x > 0) sob[b.ref] = x; else delete sob[b.ref]; mudou = true; }
     }
-    if (!mudou) return;
+    if (!mudou) return false;
     P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob }) });
-    syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
+    return true;
   }
+  function onLive(op) {
+    if (!on || applying || op.t !== 'upd' || op.c !== 'tokens' || !op.p || !op.p.bars) return;
+    const t = Store.get('tokens', op.id);
+    if (t && paraFicha(t)) syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
+  }
+  /* Liga (ou desliga) o token a uma ficha. Ao ligar um token sem dono a uma ficha que é de um jogador da mesa, o
+     jogador passa a ser o dono do token, no mesmo passo de desfazer. Devolve { dono } com o nome dele, se foi o caso. */
   function link(t, charId) {
     if (!charId) {
       // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
       Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, imgChar: false, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
-      return;
+      return {};
     }
-    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, { char: charId }));
+    const l = get(charId), jog = l && l.dono_id && !t.owner ? playerById(l.dono_id) : null;
+    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, jog ? { char: charId, owner: jog.id } : { char: charId }));
     const now = Store.get('tokens', t.id);
     if (now) syncToken(now);
+    return { dono: jog ? jog.name : null };
   }
   // O que dá para rolar pela ficha deste token: [chave, nome, valor]
   function rolaveis(t) {
@@ -140,5 +151,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, syncAll, paraFicha, rolaveis, fixaPadrao, rolar, imagemDe };
 })();

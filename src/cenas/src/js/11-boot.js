@@ -67,11 +67,12 @@ function makeSampleBg(cols, rows, cell) {
   return c;
 }
 
-// Monta a cena de exemplo. Na primeira visita ela é a cena inicial; depois, o mestre pode pedir outra pelo menu de cenas.
-function buildSample() {
+// Monta a cena de exemplo. Na primeira visita (fora de uma mesa) ela é a cena inicial; depois, o mestre pode pedir
+// outra pelo menu de cenas. Numa mesa, o fundo dela sobe para o banco como qualquer imagem — por isso é uma promessa.
+async function buildSample() {
   const S = Store.S;
-  const me = { id: 'jg_dalmo', name: 'Dalmo', color: PLAYER_COLORS[0] };
-  if (!S.players.length) S.players.push(me);
+  // fora de uma mesa, o primeiro jogador de exemplo; numa mesa, os jogadores são os participantes dela
+  if (!S.players.length && !Nuvem.on()) S.players.push({ id: 'jg_dalmo', name: 'Dalmo', color: PLAYER_COLORS[0] });
   const taken = S.order.map(id => S.scenes[id].name);
   let name = 'Cena de exemplo';
   for (let k = 2; taken.includes(name); k++) name = `Cena de exemplo ${k}`;
@@ -80,7 +81,7 @@ function buildSample() {
   const c = sc.cell;
   try {
     const cv = makeSampleBg(sc.cols, sc.rows, c);
-    const a = Assets.register(Assets.encode(cv, 'bg'), cv.width, cv.height, 'bg', 'Estrada e guarita (exemplo)');
+    const a = await Assets.fromCanvas(cv, 'bg', 'Estrada e guarita (exemplo)');
     sc.bg.asset = a.id;
   } catch (e) { sc.bgColor = '#4b5b40'; }
   sc.light = 'penumbra';
@@ -98,7 +99,7 @@ function buildSample() {
   ].map(cleanBar);
   // Dain X mostra os dois estilos: três barras e um recurso em pontos.
   const dainBars = bars(62, 80, 24, 40, 20, 100, 'Fé').concat(cleanBar({ n: 'Poder divino', c: '#b07ad9', v: 3, m: 5, k: 'pts', on: true }));
-  const dain = tok('Dain X', 9, 12, { owner: S.players[0].id, color: '#b9892f', barVis: 'num', bars: dainBars, auras: [{ id: uid('au'), k: 'circ', r: 1.5, c: '#f0cf6a', a: 0.16, ang: 60, dir: 0, pub: true }] });
+  const dain = tok('Dain X', 9, 12, { owner: S.players.length ? S.players[0].id : null, color: '#b9892f', barVis: 'num', bars: dainBars, auras: [{ id: uid('au'), k: 'circ', r: 1.5, c: '#f0cf6a', a: 0.16, ang: 60, dir: 0, pub: true }] });
   const astie = tok('Astie', 8, 13, { color: '#5f8fb8', bars: bars(38, 45, 30, 30) });
   const kairo = tok('Kairo', 10, 13, { color: '#6f9a62', bars: bars(51, 60, 12, 25), light: { on: true, bright: 4, dim: 8, c: '#ffc477' } });
   // Bandido: sangrando e com um contador de queimadura; Capitão: proteção que dura três rodadas.
@@ -140,9 +141,11 @@ function barFloats(op, inv) {
 
 async function start(snap) {
   Render.readTheme();
+  await Nuvem.iniciar();                 // dentro do site, com uma mesa aberta, as cenas são as da mesa
   const had = await Persist.load();
-  if (!had) buildSample();
-  if (!Store.scene()) { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; }
+  if (!had && !Nuvem.on()) await buildSample();
+  // (numa mesa que ainda não tem cenas, o mestre começa com uma cena vazia; a de exemplo fica no menu de cenas)
+  if (!Store.scene()) { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); }
   App.anim = Store.S.prefs.anim !== false;
   App.showVision = !!Store.S.prefs.showVision;
   if (window.innerWidth < 900) App.sideOpen = false;
@@ -160,7 +163,7 @@ async function start(snap) {
   // Estado de tela de antes de uma atualização da página (quando o visualizador oferece).
   if (snap && typeof snap === 'object') {
     if (snap.scene && Store.S.scenes[snap.scene]) Store.S.current = snap.scene;
-    if (snap.viewer && (snap.viewer === 'gm' || playerById(snap.viewer))) App.viewer = snap.viewer;
+    if (snap.viewer && (snap.viewer === 'gm' || playerById(snap.viewer)) && !Nuvem.jogador()) App.viewer = snap.viewer;
     if (snap.tab) App.tab = snap.tab;
     if (snap.tour) Store.S.prefs.tour = 1;      // já viu o tutorial antes desta atualização da página
   }
@@ -192,7 +195,8 @@ async function start(snap) {
   // Token que os jogadores não veem, ou de nome escondido, sai marcado como oculto: a rolagem dele fica só com o mestre.
   Fichas.start(() => { try { UI.renderAll(); } catch (e) { /* ainda abrindo */ } });
   // A lista das cenas, para os outros sistemas do site (o Acampamento e o Mapa-múndi abrem uma cena pelo nome).
-  const listar = () => { try { localStorage.setItem('tinycats:cenas:lista', JSON.stringify(Store.S.order.filter(id => Store.S.scenes[id]).map(id => ({ id, nome: Store.S.scenes[id].name })))); } catch (e) { /* sem armazenamento: os atalhos só não mostram a lista */ } };
+  // (numa mesa, eles leem a lista direto dos documentos da mesa; esta aqui é a das cenas deste navegador)
+  const listar = () => { if (Nuvem.on()) return; try { localStorage.setItem('tinycats:cenas:lista', JSON.stringify(Store.S.order.filter(id => Store.S.scenes[id]).map(id => ({ id, nome: Store.S.scenes[id].name })))); } catch (e) { /* sem armazenamento: os atalhos só não mostram a lista */ } };
   Store.on('meta', listar);
   Store.on('commit', e => { if (e.ops.some(op => op.t === 'scn' && op.p && 'name' in op.p)) listar(); });
   listar();
@@ -217,11 +221,14 @@ async function start(snap) {
   };
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
+  // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
+  // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
+  if (Nuvem.mestre()) setTimeout(() => { if (!had) UI.offerLocal(); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);
 }
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

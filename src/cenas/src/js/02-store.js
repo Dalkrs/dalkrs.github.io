@@ -24,9 +24,9 @@ const Store = (() => {
   const get = (c, id) => { const sc = scene(); return sc && sc[c] ? sc[c].find(o => o.id === id) : undefined; };
   const H = () => { let x = hist.get(S.current); if (!x) { x = { undo: [], redo: [] }; hist.set(S.current, x); } return x; };
 
-  // Aplica a operação e devolve a operação inversa.
-  function raw(op) {
-    const sc = scene();
+  // Aplica a operação (na cena aberta, ou na cena `em`) e devolve a operação inversa.
+  function raw(op, em) {
+    const sc = em || scene();
     switch (op.t) {
       case 'add': {
         const arr = sc[op.c];
@@ -152,6 +152,23 @@ const Store = (() => {
       emit('live', op, inv);
       emit('commit', { sceneId: S.current, label: '', ops: [op], remote: true });
       return true;
+    },
+    /* Várias operações de fora de uma vez, numa cena qualquer da mesa (a que os jogadores estão vendo pode não ser a
+       que o mestre tem aberta). Na cena aberta, a tela acompanha cada uma; nas outras, só o estado muda. Avisa uma
+       vez no fim. Devolve quantas valeram. */
+    remoteIn(sceneId, ops) {
+      const sc = S.scenes[sceneId];
+      if (!sc || !ops.length) return 0;
+      const aqui = sceneId === S.current, done = [];
+      if (aqui && tx) commit();
+      for (const op of ops) {
+        const inv = raw(op, sc);
+        if (!inv) continue;
+        done.push(op);
+        if (aqui) emit('live', op, inv);
+      }
+      if (done.length) emit('commit', { sceneId, label: '', ops: done, remote: true });
+      return done.length;
     },
     // Agrupa várias operações num único passo de desfazer.
     tx(label, fn) { const own = !tx; begin(label); try { fn(); } finally { if (own) commit(); } },

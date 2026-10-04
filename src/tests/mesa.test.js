@@ -112,6 +112,11 @@ const { ok, end } = checker();
   await M.locator('#tab-cenas').click(); await w(2500);
   const C = M.frame({ url: /\/cenas\// });
   if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await w(400); }
+  // (numa mesa, as cenas são as da mesa, e ela começa com uma cena vazia: o mestre pede a de exemplo, que já tem ordem de turnos)
+  await C.locator('#sceneBtn').click(); await w(250);
+  await C.locator('.menu-i', { hasText: 'Nova cena de exemplo' }).click();
+  for (let i = 0; i < 80 && (await C.locator('#sceneBtn .scene-n').innerText()) !== 'Cena de exemplo'; i++) await w(300);
+  ok((await C.locator('#sceneBtn .scene-n').innerText()) === 'Cena de exemplo' && (await C.locator('#airBtn').innerText()).includes('Fora do ar'), 'a cena de exemplo é criada na mesa, fora do ar até o mestre mostrar');
   await C.locator('#tab-turn').click(); await w(400);
   await C.locator('#turnRoll').click(); await w(600);
   if (await C.getByRole('button', { name: /Rolar de novo|Rolar/ }).count() > 1) { /* já tinham iniciativa: confirma */ const b = C.locator('.modal .btn.primary'); if (await b.count()) await b.click(); }

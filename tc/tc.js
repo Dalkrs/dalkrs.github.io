@@ -588,6 +588,11 @@
       const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
       return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : undefined });
     }
+    // As Cenas também avisam a mesa (o mestre pôs uma cena no ar): só o mestre pode.
+    if (origem === 'cena' && d && d.kind === 'aviso' && mesas.atual) {
+      if (mesas.atual.papel !== 'mestre') return null;
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Cenas').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null });
+    }
     return deSistemaAntes(origem, d);
   };
 

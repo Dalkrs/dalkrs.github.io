@@ -66,7 +66,7 @@ const Vision = (() => {
       try { url = c.toDataURL('image/webp', 0.7); if (!url.startsWith('data:image/webp')) url = c.toDataURL('image/png'); } catch (e) { url = ''; }
       if (url) { sc.explored[k] = url; any = true; }
     }
-    if (any) Persist.scene(sc.id);
+    if (any) Persist.explored(sc.id);
   }
   const saveExplored = debounce(flushExplored, 1500);
 
@@ -226,7 +226,8 @@ const Vision = (() => {
     const vkey = gm ? null : (fog.shared ? '*' : viewer);
     let nViewer = 0;
     if (fog.dynamic) {
-      const keys = fog.shared ? ['*'] : Store.S.players.map(p => p.id);
+      // (o jogador de verdade, na mesa, só precisa da própria visão; o mestre calcula a de todos, para o "Vendo como")
+      const keys = fog.shared ? ['*'] : Nuvem.jogador() ? [viewer] : Store.S.players.map(p => p.id);
       for (const key of keys) {
         const isViewer = key === vkey;
         if (!isViewer && !fog.explored) continue;
@@ -352,7 +353,7 @@ const Vision = (() => {
     for (const c of expl.values()) clear(c);
     expl.clear();
     sc.explored = {};
-    Persist.scene(sc.id);
+    Persist.explored(sc.id);
     dirty = true;
   }
 
