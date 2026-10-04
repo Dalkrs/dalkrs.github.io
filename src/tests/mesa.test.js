@@ -52,6 +52,11 @@ const { ok, end } = checker();
   ok(await J.locator('#codigo').count() === 0, 'o jogador não vê o código de convite');
   ok(await J.locator('#membros .mb').count() === 2, 'o jogador vê os dois participantes');
   await J.keyboard.press('Escape');
+  // o Rolador é ferramenta do mestre: numa mesa, o jogador não tem a aba (nem chega nela pelo endereço)
+  ok(await J.locator('#tab-rolador').isHidden() && await M.locator('#tab-rolador').isVisible(), 'na mesa, só o mestre vê a aba Rolador');
+  ok(await J.locator('.tab:visible').count() === 4, 'o jogador fica com as outras quatro abas');
+  await J.evaluate(() => { location.hash = '#/rolador'; }); await w(500, J);
+  ok(await J.locator('#tab-rolador').getAttribute('aria-selected') !== 'true' && !J.frame({ url: /\/rolador\// }), 'e o endereço #/rolador não abre o Rolador para ele');
 
   // ---------- conversa e comandos ----------
   await J.locator('#msg').fill('olá, mesa!'); await J.locator('#msg').press('Enter');

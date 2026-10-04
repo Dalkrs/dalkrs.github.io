@@ -71,6 +71,19 @@ const arvLocal = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   }, idLi); await w(600, J);
   ok(await B.evaluate(() => { const p = personagemAtual(); return p.nome === 'Li' && p.alocados.n_origem === 1 && p.alocados.n_punho === 2; }), 'o jogador equipa a árvore e compra os graus (regras do aplicativo)');
   ok(await ate(async () => { const l = (await linhas(M)).pcs.find(p => p.id === idLi); return l && l.skills && l.skills.alocados && l.skills.alocados.n_punho === 2 && l.skills.arvores.join() === 'a_monge'; }), 'as escolhas ficam guardadas no personagem da mesa');
+  // clicar de novo no que já foi aprendido até o fim não esquece nada; só o botão direito desfaz
+  await B.evaluate(async () => { await subirGrau('n_punho'); await subirGrau('n_origem'); }); await w(300, J);
+  ok(await B.evaluate(() => { const p = personagemAtual(); return p.alocados.n_origem === 1 && p.alocados.n_punho === 2 && /botão direito/.test(document.querySelector('#dica').textContent); }), 'clicar de novo num nódulo já no grau máximo não o esquece (e a dica aponta o botão direito)');
+  {
+    const cx = await B.evaluate(() => { const r = document.querySelector('.no[data-id="n_punho"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    const off = await (await B.frameElement()).boundingBox();
+    await J.mouse.click(off.x + cx[0], off.y + cx[1]); await w(300, J);
+    ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2), 'o clique esquerdo de verdade, na tela, também não esquece');
+    await J.mouse.click(off.x + cx[0], off.y + cx[1], { button: 'right' }); await w(300, J);
+    ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 1), 'o botão direito desce um grau');
+    await J.mouse.click(off.x + cx[0], off.y + cx[1]); await w(300, J);
+    ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2), 'e o clique esquerdo sobe de volta');
+  }
 
   // ---------- os bônus entram na ficha ----------
   ok(await ate(async () => { const d = await F.evaluate(() => { const pc = S.personagens.find(p => p.nome === 'Li'), c0 = calcular(pc); return { FOR: c0.tot.FOR, arv: c0.arv.FOR, hp: c0.recursos.find(r => r.nome === 'HP').val, alo: pc.skills.alocados.n_punho }; }); return d.alo === 2 && d.FOR === antes.FOR + 3 && d.arv === 3 && d.hp === antes.hp + 10; }), 'na ficha do mestre, Força sobe 3 (2 + 1) e o HP ganha 10 — antes: ' + JSON.stringify(antes));

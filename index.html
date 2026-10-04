@@ -248,7 +248,7 @@ dialog::backdrop { background: var(--scrim); }
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.03-7';
+  const VERSAO = '2026.10.03-8';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -261,7 +261,7 @@ dialog::backdrop { background: var(--scrim); }
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
     { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true },
-    { id: 'rolador', nome: 'Rolador', src: 'rolador/' },
+    { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true },      // ferramenta do mestre: numa mesa, os jogadores não a veem
   ];
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore' };
   const CHAVE = 'tinycats:aba';
@@ -273,6 +273,9 @@ dialog::backdrop { background: var(--scrim); }
   const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: só não lembra */ } };
   const existe = id => ABAS.some(a => a.id === id);
+  // Numa mesa, o jogador não vê as abas que são só do mestre. Sem mesa, cada um é o próprio mestre e vê todas.
+  let papelNaMesa = null;
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && papelNaMesa === 'jogador'); };
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
 
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto. */
@@ -305,10 +308,10 @@ dialog::backdrop { background: var(--scrim); }
   // Primeira visita: quem já usava o Rolador neste endereço cai direto nele.
   function inicial() {
     const hs = daHash();
-    if (existe(hs)) return hs;
+    if (pode(hs)) return hs;
     const salvo = ler(CHAVE);
-    if (existe(salvo)) return salvo;
-    return ler('rolador-urgm:dados:v1') ? 'rolador' : 'cenas';
+    if (pode(salvo)) return salvo;
+    return ler('rolador-urgm:dados:v1') && pode('rolador') ? 'rolador' : 'cenas';
   }
   for (const a of ABAS) {
     const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
@@ -317,8 +320,16 @@ dialog::backdrop { background: var(--scrim); }
     el.addEventListener('click', ev => { ev.preventDefault(); abrir(a.id); });
     tabs.append(el);
   }
+  function pintarAbas() {
+    for (const a of ABAS) {
+      const ok = pode(a.id);
+      $('tab-' + a.id).hidden = !ok;
+      if (!ok && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
+    }
+    if (atual && !pode(atual)) abrir('cenas');
+  }
   function abrir(id) {
-    if (!existe(id)) id = 'cenas';
+    if (!pode(id)) id = 'cenas';
     const a = ABAS.find(x => x.id === id);
     if (atual !== id) {
       atual = id;
@@ -347,7 +358,7 @@ dialog::backdrop { background: var(--scrim); }
     if ((document.activeElement && $('vivo').contains(document.activeElement)) || !$('menu').hidden || $('dlg').open) return;
     try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ }
   }
-  window.addEventListener('hashchange', () => { const hs = daHash(); if (existe(hs) && hs !== atual) abrir(hs); });
+  window.addEventListener('hashchange', () => { const hs = daHash(); if (pode(hs) && hs !== atual) abrir(hs); });
   $('brand').addEventListener('click', ev => { ev.preventDefault(); if (atual) foco(frames[atual]); });
 
   /* ================= conta, mesas e mesa ao vivo ================= */
@@ -664,6 +675,7 @@ dialog::backdrop { background: var(--scrim); }
     if (atual && !frames[atual]) abrir(atual);
   }
   mesas.on('muda', a => {
+    papelNaMesa = a ? a.papel : null; pintarAbas();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
     if (a) { $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false); }
@@ -682,7 +694,7 @@ dialog::backdrop { background: var(--scrim); }
     pintarConta();
     const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
-  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; abrir(inicial()); });
+  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; papelNaMesa = mesas.atual ? mesas.atual.papel : null; pintarAbas(); abrir(inicial()); });
 })();
 </script>
 </body>

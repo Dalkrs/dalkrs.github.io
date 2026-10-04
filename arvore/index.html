@@ -1399,10 +1399,10 @@ async function subirGrau(id){
     p.alocados[id] = g+1;
     aviso(`${n.nome}: grau ${g+1} de ${max}`, 'ok');
   }else{
-    if(!podeSoltar(p, id)) return aviso('Solte primeiro os nódulos que dependem deste.');
-    if(!(await podeSoltarComTrancados(p))) return;
-    registrar('soltar ' + n.nome);
-    delete p.alocados[id];
+    // já aprendido até o fim: o clique não desfaz nada (era fácil esquecer uma habilidade sem querer).
+    // Desfazer é só com o botão direito ou pelo botão do painel.
+    return aviso(max>1 ? `${n.nome} já está no grau máximo. Para descer um grau, use o botão direito.`
+                       : `${n.nome} já está aprendida. Para esquecer, use o botão direito.`);
   }
   salvar(); desenhar(); pintarPainel(); pintarAbas();
 }
@@ -2503,7 +2503,7 @@ function painelJogador(){
   const caminho = `<div class="bloco"><h2>${a ? 'Nesta árvore · ' + nesta.length : 'Caminho'}</h2>${nesta.length
     ? `<ul class="pilha">${nesta.map(m=>{ const g = p.alocados[m.id], G = m.graus.length;
         return `<li data-id="${esc(m.id)}"><i style="background:${esc(corDoNo(m))}"></i>${esc(m.nome)}<span class="fim">${G>1 ? g + '/' + G : ''}</span></li>`; }).join('')}</ul>`
-    : `<p class="vazio">Clique num nódulo liberado para alocar. As raízes estão sempre liberadas; o botão direito solta ou desce o grau.</p>`}</div>`;
+    : `<p class="vazio">Clique num nódulo liberado para aprender. As raízes estão sempre liberadas; só o botão direito desce o grau ou esquece.</p>`}</div>`;
 
   const eq = p.arvores.map(arvorePorId).filter(Boolean);
   const movel = eq.length>1;
@@ -3131,7 +3131,7 @@ function esconderDica(){ pairado = null; $('#dica2').classList.remove('on'); }
 let timerAviso;
 function dicaPadrao(){
   return ui.modo==='jogador'
-    ? 'Clique aloca ou sobe o grau · Botão direito desce ou solta · Arraste para mover'
+    ? 'Clique aprende ou sobe o grau · Botão direito desce ou esquece · Arraste para mover'
     : 'Clique seleciona · Arraste para mover · Rolagem aproxima';
 }
 function aviso(txt, tipo, ms){
