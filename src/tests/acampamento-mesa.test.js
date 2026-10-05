@@ -123,9 +123,35 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await A.locator('#mo-db').fill('-3'); await A.locator('#mo-db').press('Tab'); await w(150);
   await A.locator('#mo-txt').fill('Dain dividiu a última ração; Lia desconfiou do gesto.'); await w(100);
   await A.locator('#mo-ok').click(); await w(500);
-  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); const ra = (a.estado.rel || []).find(e => e.alvo === 'pc_lia'), rb = (b.estado.rel || []).find(e => e.alvo === 'pc_dain'); return ra && ra.v === 8 && rb && rb.v === -3 && await semPendencia(M); }), 'o momento mexe no Relacionamento de cada um pelo outro (+8 e −3)');
+  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); const ra = R.relacoes(a.estado).find(e => e.alvo === 'pc_lia'), rb = R.relacoes(b.estado).find(e => e.alvo === 'pc_dain'); return ra && ra.v === 8 && rb && rb.v === -3 && await semPendencia(M); }), 'o momento mexe no Relacionamento de cada um pelo outro (+8 e −3)');
   ok(await ate(async () => { const d = await doc(M); return d.dados.diario.length === 1 && d.dados.diario[0].texto.includes('Momento entre Dain X e Lia') && d.dados.diario[0].texto.includes('Dain X → Lia +8'); }), 'entra no diário');
   ok(await ate(async () => (await J.locator('#feed .rol', { hasText: 'Dain dividiu a última ração' }).count()) === 1), 'e na mesa ao vivo');
+
+  // ---------- um momento com um NPC: o que o NPC sente fica guardado com o mestre, fora da ficha ----------
+  const segredos = p => p.evaluate(() => { const d = TC.dados.col('documentos').pegar('fichas:segredos'); return d && !d.apagado ? { vis: d.vis, v: d.dados && d.dados.v } : null; });
+  await A.locator('#btMomento').click(); await w(400);
+  const temOgro = await A.locator('#mo-b option[value="pc_ogro"]').count();
+  if (temOgro) {
+    await A.locator('#mo-a').selectOption('pc_dain'); await w(150); await A.locator('#mo-b').selectOption('pc_ogro'); await w(150);
+    await A.locator('#mo-da').fill('4'); await A.locator('#mo-da').press('Tab'); await w(150);
+    await A.locator('#mo-db').fill('6'); await A.locator('#mo-db').press('Tab'); await w(150);
+    await A.locator('#mo-ok').click(); await w(500);
+  }
+  ok(temOgro === 1 && await ate(async () => { const a = await linha(M, 'pc_dain'), o = await linha(M, 'pc_ogro'), sg = await segredos(M); const ra = R.relacoes(a.estado).find(e => e.alvo === 'pc_ogro'), so = sg && sg.v && sg.v.rel && sg.v.rel.pc_ogro ? Object.values(sg.v.rel.pc_ogro) : [];
+    return ra && ra.v === 4 && !R.temRelacoes(o.estado) && so.length === 1 && so[0].l === 1 && so[0].alvo === 'pc_dain' && so[0].v === 6 && sg.vis === 'mestre' && await semPendencia(M); }), 'num momento com um NPC, o que o jogador sente vai para a ficha dele (+4); o que o NPC sente (+6) fica num documento só do mestre, e a ficha do NPC não ganha relacionamento nenhum');
+  ok((await segredos(J)) === null, 'o aparelho do jogador não recebe esse documento');
+  const lidoPeloJogador = await J.evaluate(async mesa => { const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave); const { data, error } = await a.from('documentos').select('id').eq('mesa_id', mesa).eq('id', 'fichas:segredos'); return error ? 'erro: ' + error.message : (data || []).length; }, mesaId);
+  ok(lidoPeloJogador === 0, 'e, pedindo direto ao banco com a conta do jogador, ele não vem: ' + lidoPeloJogador);
+  // de novo com o mesmo NPC: soma no que o mestre guarda
+  await A.locator('#btMomento').click(); await w(400);
+  await A.locator('#mo-a').selectOption('pc_dain'); await w(150); await A.locator('#mo-b').selectOption('pc_ogro'); await w(150);
+  ok((await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ').includes('+6'), 'a janela do momento mostra o valor que o mestre guarda (o Ogro está em +6 pelo Dain)');
+  await A.locator('#mo-da').fill('0'); await A.locator('#mo-da').press('Tab'); await w(150);
+  await A.locator('#mo-db').fill('-10'); await A.locator('#mo-db').press('Tab'); await w(150);
+  await A.locator('#mo-ok').click(); await w(500);
+  ok(await ate(async () => { const sg = await segredos(M), so = sg && sg.v && sg.v.rel && sg.v.rel.pc_ogro ? Object.values(sg.v.rel.pc_ogro) : []; return so.length === 1 && so[0].v === -4 && R.relacoes((await linha(M, 'pc_dain')).estado).find(e => e.alvo === 'pc_ogro').v === 4 && await semPendencia(M); }), 'outro momento: o Ogro passa de +6 para −4 (no que o mestre guarda); o Dain não muda');
+  await A.locator('.toast button', { hasText: 'Desfazer' }).first().click(); await w(600);
+  ok(await ate(async () => { const sg = await segredos(M), so = sg && sg.v && sg.v.rel && sg.v.rel.pc_ogro ? Object.values(sg.v.rel.pc_ogro) : []; return so.length === 1 && so[0].v === 6 && await semPendencia(M); }), 'e o Desfazer devolve o +6');
 
   // ---------- a imagem de fundo vai para o banco ----------
   await A.evaluate(async () => {

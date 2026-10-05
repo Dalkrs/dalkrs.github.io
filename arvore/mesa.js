@@ -102,7 +102,9 @@ const ArvoreMesa = (() => {
       const ant = sombra.pcs.get(p.id), sk = skillsDe(p), js = j(sk), campos = {};
       if (!ant) Object.assign(campos, { nome: p.nome, skills: sk, ficha: {}, estado: {}, dono_id: mestre() ? null : st.eu, vis: 'mestre', ordem: 5000 + i });
       else { if (ant.nome !== p.nome) campos.nome = p.nome; if (ant.skills !== js) campos.skills = sk; }
-      if (Object.keys(campos).length) P.gravar(p.id, campos);
+      // (as skills vão como "o que mudou desde o que esta tela tinha": o que outra pessoa mexeu nesse meio-tempo — os
+      //  pontos que o mestre deu, por exemplo — não é desfeito)
+      if (Object.keys(campos).length) P.gravar(p.id, campos, ant && campos.skills !== undefined ? { skills: JSON.parse(ant.skills) } : undefined);
       sombra.pcs.set(p.id, { nome: p.nome, skills: js });
     });
   }

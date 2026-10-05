@@ -7,7 +7,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, e a bolsa do personagem usada pelo token. |
 | **Mapa-múndi** | O mapa do mundo da campanha: marcadores, grupos viajando, regiões e facções, calendário, névoa e rumores. |
 | **Acampamento** | A cena da fogueira: quem está no acampamento, provisões, melhorias, equipamentos, descansos e momentos. |
-| **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, Sanidade, Conforto, Relacionamento. |
+| **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
 | **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos. |
 
@@ -39,9 +39,10 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa.
 - `registro`: a mesa ao vivo (rolagens e conversa).
 - `personagens`: uma linha por ficha, em três colunas: `ficha` (o que o personagem é: atributos, barras, itens,
-  bolsas…), `skills` (a árvore) e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a
-  sobrevida em `sob`, as quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade,
-  Conforto e Relacionamentos).
+  bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
+  `alocados`) e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a sobrevida em `sob`, as
+  quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade e Conforto, os
+  relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis` e o XP em `xp`).
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
   - Mapa-múndi: `mundo:mapa:<id>` (mestre) e `mundo:pub:<id>` (o que os jogadores veem).
   - Acampamento: `acampamento`.
@@ -51,6 +52,9 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
     projeção é o programa do mestre — um aparelho só, mesmo que ele tenha o site aberto em vários.
   - Rolador: `rol:est`, `rol:h:<id>`, `rol:c:<id>:<aparelho>-<n>` (as rolagens, em trechos; cada aparelho do mestre
     escreve nos trechos dele) e `rol:t:<id>` (tabelas).
+  - Fichas: `fichas:cfg` e `fichas:grupos` (da mesa: as tabelas base e os grupos), `fichas:situacoes` e
+    `fichas:tabelas` (mestre), `fichas:missoes` (da mesa: as missões do grupo) e `fichas:segredos` (mestre: ver
+    "O que o mestre guarda só para ele").
   - Todos os documentos são escritos pelo mestre (sem dono). A única exceção, e a única coisa que o banco deixa
     um jogador criar, é o `cena:pedido:` dele mesmo.
 - Storage, pasta `mesas/<mesa>/`: as imagens (mapas, retratos, fundos).
@@ -59,9 +63,14 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 O estado de um personagem é mexido por mais de uma pessoa ao mesmo tempo: o mestre dá dano pelo token enquanto o
 jogador gasta SP pela ficha, ou usa uma poção pela cena. Por isso o `estado` nunca sobe inteiro ("o meu por cima do
-seu"): sobe só o que mudou, e o banco junta (`estado_juntar`, no formato "JSON Merge Patch": objeto se junta chave por
-chave, `null` apaga, o resto troca). Cada barra, cada item da bolsa e cada bônus é uma chave: mudanças em chaves
-diferentes ficam todas valendo; na mesma chave, vale a última.
+seu"): sobe só o que mudou, e o banco junta (`personagem_juntar`, no formato "JSON Merge Patch": objeto se junta chave
+por chave, `null` apaga, o resto troca). Cada barra, cada item da bolsa, cada bônus, cada relacionamento, cada
+ferimento e cada missão é uma chave: mudanças em chaves diferentes ficam todas valendo; na mesma chave, vale a última.
+
+As `skills` sobem do mesmo jeito: o mestre dá pontos (no quadro de Ascensão da ficha, ou na aba Árvore) enquanto o
+jogador gasta os dele na árvore — um mexe em `pontos`, o outro em `alocados`, e os dois ficam valendo. (A lista das
+árvores equipadas, `arvores`, é uma lista: troca inteira.) Páginas ainda abertas com uma versão anterior do site
+continuam usando `estado_juntar`, que faz a mesma conta só para o estado.
 
 Toda gravação devolve a revisão nova da linha e a que ela tinha logo antes (`rev_ant`). Se a anterior não é a que o
 aparelho conhecia, outra pessoa mexeu na linha antes dessa gravação; se, quando a resposta chega, o aparelho já está
@@ -74,6 +83,34 @@ saem juntos, são dois pedidos (o estado, depois a ficha): assim que o do estado
 O que foi apagado fica apagado: cada aparelho anota a revisão em que uma linha (um personagem, uma cena) foi apagada,
 e dali em diante ela só volta por uma revisão maior que essa — isto é, se alguém a recriou. Uma leitura que saiu do
 banco antes do apagar e chegou depois (numa rede lenta, por exemplo) não traz a linha de volta.
+
+### O que o mestre guarda só para ele
+
+Três coisas da ficha podem ficar escondidas dos jogadores, e nenhuma delas chega ao aparelho de quem não é o mestre
+(não é a tela que deixa de mostrar: o banco não entrega):
+
+- **O valor de um relacionamento.** A linha fica na ficha só com o nome (`oc`); o número e a trilha de romance ficam
+  em `fichas:segredos`. O jogador vê que o relacionamento existe, sem saber quanto.
+- **O que um NPC sente.** Os relacionamentos de uma ficha sem dono ficam inteiros em `fichas:segredos` — mesmo que a
+  ficha esteja aberta a todos. (Os que já estavam na ficha no formato antigo passam para lá na primeira mudança; e
+  na hora em que o mestre abre as fichas, se a ficha está — ou fica — aberta a todos.)
+- **Uma missão que o mestre ainda não revelou.** Toda missão criada por ele nasce escondida, em `fichas:segredos`;
+  "Revelar" a passa para `fichas:missoes` (do grupo) ou para o `estado` da ficha (de um personagem). O jogador cria as
+  dele direto na própria ficha, e só nessas ele mexe.
+
+### Redesenhar sem atrapalhar quem está usando
+
+A ficha é redesenhada inteira quando algo muda — por quem a está usando, ou por outra pessoa da mesa. Três cuidados
+para isso não atrapalhar (em `fichas/mesa.js` e `fichas/extras.js`):
+
+- **Quem está digitando não perde o campo.** "Digitando" é ter o cursor num campo em que algo foi escrito desde o
+  último desenho (ou numa lista que acabou de abrir): o desenho espera a pessoa sair dali, e enquanto isso só os
+  quadros em que ela não está são atualizados no lugar. Com o cursor só parado num campo, a ficha é redesenhada e o
+  cursor volta para o mesmo campo, com a mesma seleção.
+- **O clique que vem depois de um campo pega de primeira.** Um campo de número só avisa que mudou quando o cursor
+  sai dele — isto é, no meio do clique em outra coisa. O que mudou é guardado na hora, e o desenho espera o clique
+  terminar (ou, saindo pelo Tab, o cursor chegar ao campo seguinte; ou, se o clique abriu uma lista, a escolha).
+- **Uma mudança que chega de fora no meio de um clique** espera o botão do mouse subir.
 
 ### Para nada ficar para trás
 
@@ -97,6 +134,13 @@ faltava subir.
   diferentes do mesmo personagem não se atropelam; ver "Duas pessoas mexendo na mesma ficha").
 - **A ficha em si** (`ficha`: atributos, itens, o cadastro das bolsas) é gravada inteira por quem a edita. Mestre e
   jogador editando o cadastro da mesma ficha no mesmo segundo: fica o de quem gravou por último, e o outro vê na hora.
+- **`fichas:missoes` e `fichas:segredos` são documentos inteiros**, e só o mestre os escreve: com o mestre em dois
+  aparelhos mexendo em missões do grupo (ou em valores escondidos) no mesmo segundo, fica o de quem gravou por último.
+- **Missão de um personagem numa ficha aberta a todos**: depois de revelada, mora no `estado` da ficha, e quem vê a
+  ficha vê a missão. Para uma missão que só o dono deve ver, a ficha não pode estar aberta a todos.
+- **O sinal de ferido no token** aparece para o mestre em qualquer token ligado a uma ficha; para os jogadores, só nos
+  tokens de jogador cuja ficha eles podem ver. Um token do mestre não diz aos jogadores a que ficha está ligado (isso
+  entregaria um disfarce), então os ferimentos de um NPC não aparecem para eles na cena.
 - **Poção usada pelo jogador na cena**: a ficha muda na hora; a barra do token acompanha quando o programa do mestre
   (que é quem acerta os tokens pela ficha) está aberto.
 - **As paredes valem para o jogador na tela dele**: o banco não confere por onde um token passou.
@@ -108,10 +152,14 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa; do node $f.js; done
-cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas fichas-regras arvore mundo acampamento; do node $f.test.js; done
+cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
 fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-ficha`, `arvore-mesa`, `mundo-mesa`,
 `acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `estado.rede` (duas pessoas na mesma ficha, o mestre em dois
-aparelhos) e `bolsa.rede` (barras negativas e bolsas na cena). `vivo.js` confere o site publicado.
+aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
+esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores). `vivo.js` confere o site publicado.
+
+`fichas-quadros` também confere os gestos com o mouse, o teclado e o toque de verdade (o botão desce, espera e sobe):
+o clique que vem depois de um campo, o Tab, o Enter e a lista aberta.

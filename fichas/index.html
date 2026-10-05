@@ -656,10 +656,130 @@ table.items tr.itfx.off textarea{opacity:.55}
 .relval input{width:64px;text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600;padding:3px 6px}
 .relnovo{margin-top:8px}
 .relnovo select{max-width:300px}
+/* a barra de XP, junto do nível */
+.xpbox{margin-top:10px;display:grid;gap:8px}
+.xprow{display:grid;grid-template-columns:auto minmax(110px,1fr) auto auto auto auto;gap:10px;align-items:center}
+.xpbar{height:10px;border-radius:5px;background:var(--campo-sut);border:1px solid var(--line-2);overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--brass);transition:width .18s ease}
+.xpbar.cheia i{background:var(--teal)}
+.xpval{display:inline-flex;align-items:baseline;gap:6px}
+.xpval input{width:72px;text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600;padding:3px 6px}
+.xpval small,.xpfalta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft);white-space:nowrap}
+.xplim{display:inline-flex;gap:8px}
+.xplim label{display:inline-flex;align-items:center;gap:4px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.xplim input{width:66px;text-align:right;font-family:"IBM Plex Mono",monospace;padding:2px 5px}
+@media (max-width:900px){.xprow{grid-template-columns:auto 1fr auto}}
+@media (prefers-reduced-motion:reduce){.xpbar i{transition:none}}
+/* Ascensão: um tipo de ponto por linha */
+.asclist{display:grid;gap:6px}
+.ascrow{display:grid;grid-template-columns:minmax(140px,1fr) auto minmax(150px,1.2fr);gap:12px;align-items:center;padding:6px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo)}
+.ascnome{display:flex;align-items:center;gap:8px;font-weight:500;min-width:0}
+.ascpts{display:inline-flex;gap:4px;align-items:center}
+.ascpts input{width:64px;text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600;padding:3px 6px}
+.ascpts .mini{min-width:30px;font-family:"IBM Plex Mono",monospace}
+.ascconta{font-size:12.5px;color:var(--ink-soft)} .ascconta strong{color:var(--ink)} .ascconta.warn,.ascconta.warn strong{color:var(--rubric)}
+/* Corpo e ferimentos */
+.corpo2{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+.boneco svg{width:150px;height:auto;display:block}
+.parte{cursor:pointer;outline:none}
+.parte > .pf{fill:var(--campo-sut);stroke:var(--line);stroke-width:1.6;stroke-linejoin:round}
+.parte:hover > .pf{stroke:var(--ink-soft)}
+.parte.g1 > .pf{fill:var(--brass-fundo);stroke:var(--brass)}
+.parte.g2 > .pf{fill:var(--brass-soft);stroke:var(--brass)}
+.parte.g3 > .pf{fill:var(--rubric-off);stroke:var(--rubric)}
+.parte.sel > .pf,.parte:focus-visible > .pf{stroke:var(--teal);stroke-width:2.8}
+.parte .pb{fill:var(--panel);stroke:var(--ink-soft);stroke-width:1.1}
+.parte .pn{font:600 10px "IBM Plex Mono",monospace;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.plado{font:9px "IBM Plex Mono",monospace;fill:var(--ink-soft);text-anchor:middle}
+.ferlado{display:grid;gap:8px;min-width:0}
+.ferhd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fertit{font-weight:600}
+.ferlist{display:grid;gap:6px}
+.ferrow{border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo);padding:6px 8px;display:grid;gap:8px}
+.ferrow.aberta{border-color:var(--line)}
+.fercab{display:flex;align-items:center;gap:8px}
+.fergrav{flex:none;width:10px;height:10px;border-radius:50%;border:1px solid var(--brass);background:var(--brass-fundo)}
+.fergrav.g2{background:var(--brass)} .fergrav.g3{background:var(--rubric);border-color:var(--rubric)}
+.fertxt{flex:1;min-width:0;font-size:13.5px}
+.fernota{color:var(--ink-soft)}
+.ferbts{display:inline-flex;gap:4px;flex:none}
+.fered{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:8px 10px;padding-top:8px;border-top:1px dashed var(--line-2)}
+.fered .fpen,.fered .ferest,.fered .fnota{grid-column:1 / -1}
+label.f > span.penbox{display:flex;gap:6px;align-items:center;margin:0}
+.penbox select{flex:1 1 auto;width:auto;min-width:0} .penbox input{flex:none;width:74px;text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600}
+.penmenos{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--ink-soft)}
+.ferest{display:flex;flex-wrap:wrap;gap:6px 16px}
+.ferest label{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.ferest input{width:auto}
+.fernota2{margin-top:2px}
+.tmpfer{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.chipfer{font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid var(--rubric-borda);background:var(--rubric-fundo);color:var(--rubric)}
+/* Missões */
+.missec + .missec{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.mishead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.mislist{display:grid;gap:6px}
+.miscard{border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo)}
+.miscard.oculta{border-style:dashed}
+.miscard.e-feita .mistit,.miscard.e-falhou .mistit{color:var(--ink-soft)}
+.mishd{display:flex;align-items:center;gap:8px;width:100%;padding:7px 9px;border:0;background:transparent;text-align:left;color:inherit;border-radius:var(--r)}
+.mishd:hover{background:var(--hover)}
+.mishd .caret{flex:none;color:var(--ink-soft);width:12px}
+.mistit{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.misprog{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft)}
+.misest,.misde{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:1px 7px;border-radius:10px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.misest.e-ativa{color:var(--teal);border-color:var(--teal-borda);background:var(--teal-fundo)}
+.misest.e-falhou{color:var(--rubric);border-color:var(--rubric-borda);background:var(--rubric-fundo)}
+.misbd{display:grid;gap:10px;padding:4px 10px 10px 29px}
+.misobjs{display:grid;gap:5px}
+.misobj{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.misobj input[type=checkbox]{width:auto}
+.mispe{display:grid;grid-template-columns:1fr minmax(140px,auto);gap:10px}
+.misacoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.misacoes select{max-width:200px}
+ul.misobjs.ro{list-style:none;margin:0;padding:0}
+ul.misobjs.ro li{display:flex;gap:8px;align-items:baseline}
+ul.misobjs.ro li.ok{color:var(--ink-soft);text-decoration:line-through}
+.mischeck{flex:none;font-family:"IBM Plex Mono",monospace;color:var(--teal);text-decoration:none;display:inline-block}
+.misdesc{white-space:pre-wrap;margin:0}
+.misrec{margin:0}
+.misdica{margin-top:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:820px){
+  .ascrow{grid-template-columns:1fr auto}.ascconta{grid-column:1 / -1}
+  .corpo2{grid-template-columns:1fr}.boneco svg{width:128px;margin:0 auto}
+  .fered{grid-template-columns:1fr 1fr}
+  .mispe{grid-template-columns:1fr}.misbd{padding-left:10px}
+}
+/* o fim da linha (romance, olho, tirar), a linha guardada pelo mestre e a trilha de corações */
+.relfim{display:inline-flex;gap:4px;align-items:center}
+.relrow .olho{width:26px;height:26px;padding:0;border:0;background:transparent;border-radius:50%;color:var(--ink-fraco);display:grid;place-items:center}
+.relrow .olho:hover{background:var(--hover);color:var(--ink)}
+.relrow .olho[aria-pressed="true"]{color:var(--teal)}
+.relrow.guardada{border-style:dashed}
+.relmarca,.romrow,.relconf{grid-column:1 / -1}
+.relmarca{margin-top:-4px}
+.tagseg{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--brass-ink);border:1px dashed var(--brass-soft);border-radius:10px;padding:1px 7px;background:var(--brass-fundo)}
+.relrow.sovalor{grid-template-columns:minmax(120px,1fr) 2fr}
+.relsegredo{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);font-size:12.5px}
+.romrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--line-2)}
+.romrot{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.coracoes{display:inline-flex;gap:1px}
+.cor{padding:2px;border:0;background:transparent;border-radius:6px;display:grid;place-items:center;color:var(--ink-fraco)}
+.cor:hover:not(:disabled){background:var(--hover)}
+.cor .cf,.romadd .cf{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
+.cor.cheio{color:var(--rubric)} .cor.cheio .cf{fill:currentColor}
+.cor.partido{color:var(--ink-soft)} .cor.partido .cf{fill:currentColor}
+.cor.partido .cr{fill:none;stroke:var(--campo);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.romval{font-family:"IBM Plex Mono",monospace;font-weight:600;min-width:30px;text-align:right}
+.romval.neg{color:var(--ink-soft)}
+button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(--ink-soft)}
+.relconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r);font-size:13px}
 @media (max-width:900px){
   .mente2{grid-template-columns:1fr}
   .relrow{grid-template-columns:1fr auto auto;row-gap:6px}
   .relrow .relbar{grid-column:1 / -1;order:5}
+  .relrow .relmarca{order:6} .relrow .romrow{order:7} .relrow .relconf{order:8}
+  .relrow.sovalor{grid-template-columns:1fr}
   .idtopo{flex-direction:column}
   .idcard2{grid-template-columns:1fr 1fr}
 }
@@ -719,10 +839,11 @@ table.items tr.itfx.off textarea{opacity:.55}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=6"></script>
-<script src="../tc/rules.js?v=3"></script>
-<script src="mesa.js?v=5"></script>
-<script src="extras.js?v=3"></script>
+<script src="../tc/ponte.js?v=7"></script>
+<script src="../tc/rules.js?v=4"></script>
+<script src="mesa.js?v=6"></script>
+<script src="extras.js?v=4"></script>
+<script src="quadros.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1059,7 +1180,7 @@ function calcular(pc){
   // As contas são as das regras compartilhadas do site (conferidas contra as daqui): as mesmas, mais os bônus dos
   // nódulos escolhidos na árvore. O cálculo original, logo abaixo, fica de reserva se a biblioteca não carregar.
   if(window.TC && TC.rules && !calcular.semLib){
-    try{ return TC.rules.calcular(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp}); }
+    try{ return TC.rules.calcular(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp, fer: pc.estado && pc.estado.fer}); }
     catch(e){ console.error(e); calcular.semLib=true; }
   }
   const mult=multTier(pc.tier);
@@ -1176,7 +1297,7 @@ function renderLista(){
 }
 /* iniciativa da ficha: um número ou uma fórmula (as mesmas variáveis dos recursos) */
 function iniciativaDe(pc){
-  if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp}); }catch(e){} }
+  if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp, fer: pc.estado && pc.estado.fer}); }catch(e){} }
   const n=parseInt(pc.ini,10); return {val: isFinite(n)? n : 0, err:null};
 }
 function iniTexto(pc){ const r=iniciativaDe(pc); return r.err? 'fórmula com erro' : (String(pc.ini||'').trim()===''? 'sem bônus' : '= '+(r.val>=0?'+':'−')+Math.abs(r.val)); }
@@ -1222,6 +1343,8 @@ function pintarAoVivo(){
   const lp=host.querySelector('#f_lapros');
   if(lp && lp!==foco){ const v=String(FichasExtras.laprosDe(pc)); if(lp.value!==v) lp.value=v; }
   pintarBarrinhas(host, pc);
+  // (e os quadros em que a pessoa não está: relacionamentos, bônus temporários, corpo, ascensão, XP, missões)
+  try{ FichasExtras.aoVivo(pc); FichasQuadros.aoVivo(pc); }catch(e){ console.error(e); }
 }
 function linhaElenco(p){
   return `<li class="pcrow" data-id="${p.id}">
@@ -1403,6 +1526,7 @@ function renderFicha(){
         ${FichasMesa.deJogador(pc)? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
         <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
       </div>
+      ${FichasQuadros.htmlXp(pc)}
       ${FichasMesa.htmlDono(pc)}
       <div class="idcard2">
         <label class="f"><span class="eyebrow">Grupo</span>
@@ -1598,6 +1722,8 @@ function renderFicha(){
     </div>
   </div>
 
+  ${FichasQuadros.painelCorpo(pc)}
+
   ${FichasExtras.painelTemporarios(pc,c)}
 
   ${FichasExtras.painelMente(pc)}
@@ -1634,11 +1760,14 @@ function renderFicha(){
 
   ${FichasExtras.painelBolsa(pc,c)}
 
+  ${FichasQuadros.painelAscensao(pc)}
+
   <div class="panel">
     <div class="hd subtabs">
       ${[['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
          ['skills','Skills', Object.keys(skillsDe(pc).alocados).length||''],
          ['habs','Passivas e Habilidades', (pc.habilidades||[]).length||''],
+         ['missoes','Missões', FichasQuadros.contaAtivas(pc)||''],
          ['notas','Anotações gerais', (pc.notas||'').trim()?'•':'']
         ].map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
           ${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`).join('')}
@@ -1650,6 +1779,7 @@ function renderFicha(){
           <textarea class="entrada" rows="10" data-est="b" placeholder="Segunda coluna">${esc(pc.estaque.b||'')}</textarea>
         </div>`
       : sub0==='skills'? blocoSkills(pc)
+      : sub0==='missoes'? FichasQuadros.blocoMissoes(pc)
       : sub0==='habs'?`
         <div class="sitbar" style="margin-bottom:10px">
           <span class="hint">${TIPOS_HAB.map(t=>{const n=(pc.habilidades||[]).filter(h=>(h.tipo||'Ativo')===t).length;
@@ -1687,7 +1817,8 @@ function fmt(n){ const r=Math.round(n*100)/100; return String(r) }
 /* ---------- eventos da ficha ---------- */
 function ligarFicha(pc){
   const host=document.getElementById('ficha');
-  const patch=(f)=>{f(); save(); render()};
+  // (o desenho não atrapalha o gesto que causou a mudança — o clique noutro lugar, o Tab —, e o cursor fica onde o gesto o deixou)
+  const patch=(f)=>{f(); save(); FichasExtras.desenhar(render)};
   const patchLeve=(f)=>{f(); save(); /* sem re-render: não perde o foco */};
 
   host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
@@ -1701,6 +1832,7 @@ function ligarFicha(pc){
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
   FichasExtras.ligarNovos(host, pc);
+  FichasQuadros.ligar(host, pc);
   const fini=host.querySelector('#f_ini');
   if(fini) fini.oninput=e=>patchLeve(()=>{ pc.ini=e.target.value; const v=host.querySelector('#iniVal'); if(v) v.textContent=iniTexto(pc); });
   const bini=host.querySelector('#btnIni');
@@ -1788,10 +1920,10 @@ function ligarFicha(pc){
     const a=b.dataset.act;
     if(a==='dup'){ const cp=JSON.parse(JSON.stringify(pc)); cp.id=uid(); cp.nome=pc.nome+' (cópia)';
       // (as barras ficam com o mesmo id: os itens e as poções da cópia apontam para elas. A cópia nasce com as barras no começo.)
-      cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; }
+      cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; delete cp.estado.fer; delete cp.estado.mis; }   // (e sem os ferimentos e as missões do original)
       S.personagens.push(cp); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
     if(a==='del'){ if(confirm('Excluir "'+pc.nome+'"? Não tem como desfazer.')){
-        S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Personagem excluído'); } }
+        S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; FichasMesa.esquecer(pc.id); save(); render(); toast('Personagem excluído'); } }
     if(a==='pct'){ patch(()=>{ pc.pctProprio = pc.pctProprio? null : {...S.cfg.pct}; }); }
     if(a==='pctoff'){ patch(()=>pc.pctProprio=null); }
     if(a==='addres'){ patch(()=>pc.recursos.push({id:uid(),nome:'Novo recurso',fml:''})); }
@@ -2032,7 +2164,8 @@ function ligarMesa(sit){
 
   q('#sitNome').oninput=e=>{sit.nome=e.target.value; save()};
   q('#sitModo').onchange=e=>{sit.modo=e.target.value; save(); renderMesa()};
-  if(q('#sitAlvo')) q('#sitAlvo').onchange=e=>{sit.alvo=+e.target.value||0; save(); renderMesa()};
+  // (o que muda ao sair de um campo de número é desenhado sem atrapalhar o clique ou o Tab que tirou o cursor dali)
+  if(q('#sitAlvo')) q('#sitAlvo').onchange=e=>{sit.alvo=+e.target.value||0; save(); FichasExtras.desenhar(renderMesa)};
   q('#delSit').onclick=()=>{ if(confirm('Excluir a situação "'+sit.nome+'"?')){
     S.situacoes=S.situacoes.filter(x=>x.id!==sit.id); S.selSit=S.situacoes[0]?.id||null; save(); renderMesa(); }};
 
@@ -2074,7 +2207,7 @@ function ligarMesa(sit){
   host.querySelectorAll('[data-ptfonte]').forEach(s=>s.onchange=e=>{
     const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptfonte); if(pt){pt.fonte=e.target.value; save(); renderMesa();}});
   host.querySelectorAll('[data-ptfixa]').forEach(i=>i.onchange=e=>{
-    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptfixa); if(pt){pt.fixa=Math.max(0,+e.target.value||0); save(); renderMesa();}});
+    const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptfixa); if(pt){pt.fixa=Math.max(0,+e.target.value||0); save(); FichasExtras.desenhar(renderMesa);}});
   host.querySelectorAll('[data-ptexpr]').forEach(i=>i.oninput=e=>{
     const pt=sit.participantes.find(x=>x.id===e.target.dataset.ptexpr); if(pt){pt.expr=e.target.value; save();}});
 }
@@ -2772,7 +2905,7 @@ function ligarSkills(pc,host){
     equiparArvore(pc, e.target.dataset.skarv, e.target.checked));
   host.querySelectorAll('[data-skpontos]').forEach(i=>i.onchange=e=>{
     skillsDe(pc).pontos[e.target.dataset.skpontos]=Math.max(0,+e.target.value||0);
-    save(); renderFicha();
+    save(); FichasExtras.desenhar(renderFicha);
   });
   host.querySelectorAll('[data-skpegar]').forEach(b=>b.onclick=()=>pegarNo(pc,b.dataset.skpegar));
   host.querySelectorAll('[data-sksoltar]').forEach(b=>b.onclick=()=>soltarNo(pc,b.dataset.sksoltar));

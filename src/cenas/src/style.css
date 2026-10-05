@@ -477,6 +477,12 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .in.cnt { width: 54px; padding: 4px; text-align: center; }
 .opts .in.cnt { width: 52px; }
 .cpick { display: flex; flex-direction: column; gap: 12px; }
+/* ferimentos do personagem, no painel do token */
+.ferl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.ferl-i { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; line-height: 1.35; color: var(--fg-2); }
+.ferl-d { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #86754a; transform: translateY(-1px); }
+.ferl-i.g2 .ferl-d { background: #b0792a; }
+.ferl-i.g3 .ferl-d { background: #c2473d; }
 /* a bolsa do personagem, aberta pelo token */
 .bag { display: flex; flex-direction: column; gap: 14px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
 .bag-g { display: flex; flex-direction: column; gap: 6px; }

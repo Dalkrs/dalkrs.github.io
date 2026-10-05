@@ -12,6 +12,49 @@ const FichasExtras = (() => {
   const limitar = (n, a, b) => Math.min(b, Math.max(a, n));
   const inteiro = v => { const n = Math.round(+v); return Number.isFinite(n) ? n : 0; };
 
+  /* Redesenhar depois de uma mudança num campo, sem atrapalhar o gesto que a causou.
+     A mudança de um campo de texto ou de número chega, quase sempre, quando o cursor está saindo dele: a pessoa
+     clicou noutro lugar, apertou Tab, tocou em "próximo" no teclado do celular. Trocar o desenho ali mesmo faria o
+     clique cair num botão que já não existe (ele "não pega") e deixaria o cursor perdido — ou de volta no campo de
+     onde a pessoa acabou de sair. Então, nesse caso, o que mudou é guardado na hora e só o desenho espera: o clique
+     terminar, ou o cursor chegar ao campo seguinte. Depois o cursor fica onde o gesto o deixou.
+     Quando a mudança chega com o cursor ainda no campo (Enter, as setas de um número), ou vem de uma lista, de uma
+     caixinha ou de um botão, o desenho é feito na hora, e o cursor fica em `focar` (ou onde estava). */
+  let saindo = false, esperaLista = null;
+  const fila = [];
+  document.addEventListener('change', e => {              // (antes de quem trata a mudança)
+    const t = e.target;
+    saindo = !!e.isTrusted && !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') && t.type !== 'checkbox' && t.type !== 'radio' && document.activeElement !== t;
+    if (saindo) setTimeout(() => { saindo = false; }, 0);
+  }, true);
+  document.addEventListener('change', () => { saindo = false; });       // (e depois)
+  const marcaDaFicha = () => document.querySelector('#ficha > *');
+  function esvaziarFila() {
+    if (!fila.length) return;
+    const s = FichasMesa.listaEmUso();
+    if (s) {                                 // o clique abriu uma lista: o desenho espera a pessoa escolher, ou sair dela
+      if (esperaLista === s) return;
+      esperaLista = s;
+      // (a pessoa pode sair da lista clicando num botão: aí o desenho espera também esse clique)
+      const depois = () => { s.removeEventListener('change', depois); s.removeEventListener('blur', depois); if (esperaLista === s) esperaLista = null; if (!FichasMesa.depoisDoGesto(esvaziarFila)) setTimeout(esvaziarFila, 0); };
+      s.addEventListener('change', depois); s.addEventListener('blur', depois);
+      return;
+    }
+    // (o que estava à espera quando a ficha inteira foi redesenhada por outro motivo já está desenhado)
+    const fs = fila.splice(0).filter(x => !x.marca || x.marca.isConnected);
+    if (fs.length) FichasMesa.comCursor(() => fs.forEach(x => { try { x.fn(); } catch (e) { console.error(e); } }));
+  }
+  function desenhar(fn, focar) {
+    const i = fila.findIndex(x => x.fn === fn); if (i >= 0) fila.splice(i, 1);
+    if (saindo) {
+      fila.push({ fn, marca: marcaDaFicha() });
+      if (!FichasMesa.depoisDoGesto(esvaziarFila)) setTimeout(esvaziarFila, 0);
+      return;
+    }
+    if (focar) { fn(); const n = document.querySelector(focar); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    else FichasMesa.comCursor(fn);
+  }
+
   /* Aviso com um botão (Desfazer). Some sozinho. */
   function aviso(texto, acao, fn, ms) {
     document.querySelectorAll('.toast').forEach(t => t.remove());
@@ -251,12 +294,11 @@ const FichasExtras = (() => {
       else { pc.modoAtr = 'tabela'; save(); render(); toast('Atributos de volta à tabela de tiers. Os pontos distribuídos ficaram guardados.'); }
     });
     if (!ehLivre(pc)) return;
-    const mudar = (k, v) => { const c = calcular(pc), pts = pontosDe(pc, c); pts[k] = Math.max(0, inteiro(v)); pc.atrLivre = pts; save(); render(); };
-    qa(host, '[data-pts]').forEach(i => i.onchange = () => { const k = i.dataset.pts; mudar(k, i.value); const de = document.querySelector('[data-pts="' + k + '"]'); if (de) de.focus(); });
+    const mudar = (k, v, focar) => { const c = calcular(pc), pts = pontosDe(pc, c); pts[k] = Math.max(0, inteiro(v)); pc.atrLivre = pts; save(); desenhar(render, focar); };
+    qa(host, '[data-pts]').forEach(i => i.onchange = () => { const k = i.dataset.pts; mudar(k, i.value, '[data-pts="' + k + '"]'); });
     qa(host, '[data-ptsstep]').forEach(b => b.onclick = () => {
       const [k, d] = b.dataset.ptsstep.split('|'), c = calcular(pc);
-      mudar(k, pontosDe(pc, c)[k] + (+d));
-      const de = document.querySelector('[data-ptsstep="' + b.dataset.ptsstep + '"]'); if (de && !de.disabled) de.focus();
+      mudar(k, pontosDe(pc, c)[k] + (+d), '[data-ptsstep="' + b.dataset.ptsstep + '"]');
     });
   }
 
@@ -269,13 +311,19 @@ const FichasExtras = (() => {
   };
   const REL_FAIXAS = [[60, 'Leal'], [20, 'Amigável'], [-19, 'Neutro'], [-59, 'Desconfiado'], [-100, 'Hostil']];
   const REL_SVG = '<circle cx="9" cy="12" r="5"/><circle cx="15" cy="12" r="5"/>';
+  const SEGREDO_SVG = '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
   const glifo = d => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const valorMente = (pc, k) => { const v = pc.estado && pc.estado[k]; return v != null && v !== '' && Number.isFinite(+v) ? limitar(inteiro(v), 0, 100) : MENTE[k].padrao; };
   const faixaMente = (k, v) => MENTE[k].faixas.find(f => v >= f[0])[1];
   const nivelMente = v => (v >= 50 ? 'bom' : v >= 25 ? 'medio' : 'ruim');
   const faixaRel = v => REL_FAIXAS.find(f => v >= f[0])[1];
   const nivelRel = v => (v >= 20 ? 'bom' : v <= -20 ? 'ruim' : 'medio');
-  const relsDe = pc => (pc.estado && Array.isArray(pc.estado.rel) ? pc.estado.rel.filter(e => e && typeof e === 'object' && e.id) : []);
+  /* As linhas de relacionamento que quem está olhando pode ver (as contas e os formatos são de TC.rules). Cada
+     uma vem com o `modo`: 'aberta' (está na ficha), 'valor' (o nome na ficha, o valor guardado pelo mestre) ou
+     'mestre' (a linha inteira guardada pelo mestre — é assim com os NPCs). */
+  const relsDe = pc => FichasMesa.relsDe(pc);
+  const comoMestre = () => FichasMesa.ativo() && FichasMesa.mestre();
+  const ROM = () => (window.TC && TC.rules && TC.rules.ROM_MAX) || 10;
   const sinal = v => (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '0');
   // em uso quando a ficha é de um jogador da mesa, ou quando alguém já ligou (tem algum valor guardado)
   const usaMente = pc => FichasMesa.deJogador(pc) || !!(pc.estado && (pc.estado.san != null || pc.estado.conf != null || relsDe(pc).length));
@@ -290,16 +338,59 @@ const FichasExtras = (() => {
       <div class="mbts">${passos('data-mstep', k)}</div>
     </div>`;
   }
+  /* ---- a trilha de Romance: dez corações, cheios (de +1 a +10) ou partidos (de −1 a −10) ---- */
+  const COR_FORMA = 'M12 20.4 4.7 13.1a4.7 4.7 0 0 1 6.6-6.6l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.6z';
+  const coracao = tipo => `<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path class="cf" d="${COR_FORMA}"/>${tipo === 'partido' ? '<path class="cr" d="M12.9 6.6 10.6 10.4l3 2.2-2.2 4.2"/>' : ''}</svg>`;
+  const romTexto = v => { const n = Math.abs(v); return v > 0 ? n + (n === 1 ? ' coração' : ' corações') : v < 0 ? n + (n === 1 ? ' coração partido' : ' corações partidos') : 'nenhum coração'; };
+  function htmlRomance(e, nome, pode) {
+    if (e.rom == null) return '';
+    const v = e.rom, n = Math.abs(v), max = ROM(), id = esc(e.id);
+    const tipo = i => (i <= n ? (v > 0 ? 'cheio' : 'partido') : 'vazio');
+    return `<div class="romrow" data-romrow="${id}">
+      <span class="romrot">Romance</span>
+      <span class="coracoes" role="img" aria-label="Romance com ${esc(nome)}: ${romTexto(v)} de ${max}">${Array.from({ length: max }, (_, i) =>
+        `<button type="button" class="cor ${tipo(i + 1)}" data-rom="${id}|${i + 1}" tabindex="-1" ${pode ? '' : 'disabled'} title="${i + 1} de ${max}" aria-hidden="true">${coracao(tipo(i + 1))}</button>`).join('')}</span>
+      <span class="romval ${v < 0 ? 'neg' : ''}">${sinal(v)}</span>
+      ${pode ? `<span class="mbts"><button type="button" class="mini" data-romstep="${id}|-1" title="Um coração a menos (abaixo de zero, eles se partem)" aria-label="Romance com ${esc(nome)}: um coração a menos">−</button><button type="button" class="mini" data-romstep="${id}|1" title="Um coração a mais" aria-label="Romance com ${esc(nome)}: um coração a mais">+</button></span>
+      <button type="button" class="mini" data-romdel="${id}" title="Tirar a trilha de Romance desta linha">Tirar</button>` : ''}
+    </div>`;
+  }
+  /* ---- o olho de cada linha (só o mestre, numa mesa): o que os jogadores veem dela ---- */
+  let relConf = null;                       // { pc, id }: a linha que está perguntando "revelar?"
+  function olhoDaLinha(pc, e, nome) {
+    const npc = FichasMesa.ehNpc(pc), dono = FichasMesa.nomeDoDono(pc) || 'o jogador';
+    const [aberto, txt] = e.modo === 'valor' ? [false, dono + ' vê o nome, sem o valor nem os corações. Clique para revelar.']
+      : e.modo === 'mestre' ? [false, 'Só você vê esta linha. Clique para mostrá-la a quem vê a ficha.']
+      : npc ? [true, 'Quem vê a ficha vê esta linha. Clique para guardá-la só com você.']
+      : [true, dono + ' vê o valor. Clique para esconder (o nome continua à vista).'];
+    return `<button type="button" class="olho" data-relolho="${esc(e.id)}" aria-pressed="${aberto}" title="${esc(txt)}" aria-label="${esc('Relacionamento com ' + nome + ': ' + txt)}">${aberto ? FichasMesa.OLHO : FichasMesa.OLHO_FECHADO}</button>`;
+  }
   function linhaRel(pc, e) {
     const v = limitar(inteiro(e.v), -100, 100), outro = e.alvo ? S.personagens.find(p => p.id === e.alvo) : null;
-    const nome = (outro && outro.nome) || e.nome || 'Sem nome';
-    return `<div class="relrow n-${nivelRel(v)}">
-      <span class="relnome">${outro ? miniatura(outro) : `<span class="avmini semimg" aria-hidden="true">${esc(iniciais(nome))}</span>`}<span>${esc(nome)}</span></span>
+    const nome = (outro && outro.nome) || e.nome || 'Sem nome', mestre = comoMestre(), id = esc(e.id);
+    const quem = `<span class="relnome">${outro ? miniatura(outro) : `<span class="avmini semimg" aria-hidden="true">${esc(iniciais(nome))}</span>`}<span>${esc(nome)}</span></span>`;
+    // o valor está com o mestre: quem não é ele vê só com quem é
+    if (e.modo === 'valor' && !mestre) return `<div class="relrow guardada sovalor" data-rel="${id}">${quem}<span class="relsegredo">${glifo(SEGREDO_SVG)} o valor está guardado com o mestre</span></div>`;
+    const marca = e.modo === 'mestre' ? '<span class="tagseg" title="Esta linha fica guardada com você: os jogadores não a recebem">só você vê</span>' : e.modo === 'valor' ? '<span class="tagseg" title="O jogador vê o nome; o valor e os corações ficam guardados com você">valor escondido</span>' : '';
+    const conf = relConf && relConf.pc === pc.id && relConf.id === e.id;
+    return `<div class="relrow n-${nivelRel(v)} ${e.modo !== 'aberta' ? 'guardada' : ''}" data-rel="${id}">
+      ${quem}
       <div class="relbar" role="img" aria-label="Relacionamento com ${esc(nome)}: ${sinal(v)}, ${faixaRel(v)}"><i style="${v >= 0 ? 'left:50%;width:' + (v / 2) + '%' : 'right:50%;width:' + (-v / 2) + '%'}"></i></div>
-      <span class="relval"><input type="number" min="-100" max="100" step="1" data-relval="${esc(e.id)}" value="${v}" aria-label="Relacionamento com ${esc(nome)}, de −100 a 100"></span>
+      <span class="relval"><input type="number" min="-100" max="100" step="1" data-relval="${id}" value="${v}" aria-label="Relacionamento com ${esc(nome)}, de −100 a 100"></span>
       <span class="relfaixa">${faixaRel(v)}</span>
-      <span class="mbts">${passos('data-relstep', esc(e.id))}</span>
-      <button type="button" class="mini danger" data-reldel="${esc(e.id)}" title="Tirar este relacionamento" aria-label="Tirar o relacionamento com ${esc(nome)}">×</button>
+      <span class="mbts">${passos('data-relstep', id)}</span>
+      <span class="relfim">
+        ${e.rom == null ? `<button type="button" class="mini romadd" data-romadd="${id}" title="Acrescentar a trilha de Romance (corações)" aria-label="Acrescentar a trilha de Romance com ${esc(nome)}">${coracao('vazio')}</button>` : ''}
+        ${mestre ? olhoDaLinha(pc, e, nome) : ''}
+        <button type="button" class="mini danger" data-reldel="${id}" title="Tirar este relacionamento" aria-label="Tirar o relacionamento com ${esc(nome)}">×</button>
+      </span>
+      ${marca ? `<span class="relmarca">${marca}</span>` : ''}
+      ${htmlRomance(e, nome, true)}
+      ${conf ? `<div class="relconf" role="group" aria-label="Confirmar"><span>${e.modo === 'valor'
+        ? `Revelar a ${esc(FichasMesa.nomeDoDono(pc) || 'o jogador')} o valor (${sinal(v)}${e.rom != null ? ' · ' + romTexto(e.rom) : ''})?`
+        : 'Mostrar esta linha a quem vê a ficha?'}</span>
+        <button type="button" class="mini primary" data-relsim="${id}">${e.modo === 'valor' ? 'Revelar' : 'Mostrar'}</button>
+        <button type="button" class="mini" data-relnao="1">Cancelar</button></div>` : ''}
     </div>`;
   }
   function painelMente(pc) {
@@ -316,7 +407,7 @@ const FichasExtras = (() => {
       </div>
       <div class="bd">
         <div class="mente2">${cartaoMente(pc, 'san')}${cartaoMente(pc, 'conf')}</div>
-        <div class="relhd"><span class="mnome">${glifo(REL_SVG)} Relacionamentos</span><span class="hint">o que este personagem sente por cada um — de −100 (hostil) a +100 (leal)</span></div>
+        <div class="relhd"><span class="mnome">${glifo(REL_SVG)} Relacionamentos</span><span class="hint">o que este personagem sente por cada um — de −100 (hostil) a +100 (leal)${comoMestre() && FichasMesa.ehNpc(pc) ? ' · os de um NPC ficam só com você, mesmo com a ficha aberta aos jogadores' : ''}</span></div>
         <div class="rels">${rels.map(e => linhaRel(pc, e)).join('') || '<div class="hint">Nenhum relacionamento ainda.</div>'}</div>
         <div class="relnovo">
           <select id="relNovo" aria-label="Acrescentar um relacionamento">
@@ -343,31 +434,86 @@ const FichasExtras = (() => {
     const guardar = focar => { save(); pintarMente(pc, focar); };
     qa(painel, '[data-mente]').forEach(b => b.onclick = () => {
       if (b.dataset.mente === 'usar') { est().san = MENTE.san.padrao; est().conf = MENTE.conf.padrao; guardar(); return; }
-      const antes = { san: est().san, conf: est().conf, rel: est().rel };
-      delete est().san; delete est().conf; delete est().rel; guardar();
-      aviso('Sanidade, Conforto e Relacionamentos saíram desta ficha.', 'Desfazer', () => { for (const k in antes) if (antes[k] !== undefined) est()[k] = antes[k]; guardar(); });
+      const antes = { san: est().san, conf: est().conf, rel: est().rel, rels: est().rels }, seg = FichasMesa.segDe(pc);
+      delete est().san; delete est().conf; delete est().rel; delete est().rels;
+      if (seg) FichasMesa.porSeg(pc, null);
+      guardar();
+      aviso('Sanidade, Conforto e Relacionamentos saíram desta ficha.', 'Desfazer', () => { for (const k in antes) if (antes[k] !== undefined) est()[k] = antes[k]; if (seg) FichasMesa.porSeg(pc, seg); guardar(); });
     });
-    qa(painel, '[data-mval]').forEach(i => i.onchange = () => { const k = i.dataset.mval; est()[k] = limitar(inteiro(i.value), 0, 100); guardar('[data-mval="' + k + '"]'); });
+    // (o que muda ao sair de um campo é desenhado sem atrapalhar o clique ou o Tab que tirou o cursor dali)
+    const guardarCampo = focar => { save(); desenhar(() => pintarMente(pc), focar); };
+    qa(painel, '[data-mval]').forEach(i => i.onchange = () => { const k = i.dataset.mval; est()[k] = limitar(inteiro(i.value), 0, 100); guardarCampo('[data-mval="' + k + '"]'); });
     qa(painel, '[data-mstep]').forEach(b => b.onclick = () => { const [k, d] = b.dataset.mstep.split('|'); est()[k] = limitar(valorMente(pc, k) + (+d), 0, 100); guardar('[data-mstep="' + b.dataset.mstep + '"]'); });
     const acha = id => relsDe(pc).find(e => e.id === id);
-    qa(painel, '[data-relval]').forEach(i => i.onchange = () => { const e = acha(i.dataset.relval); if (!e) return; e.v = limitar(inteiro(i.value), -100, 100); guardar('[data-relval="' + i.dataset.relval + '"]'); });
-    qa(painel, '[data-relstep]').forEach(b => b.onclick = () => { const [id, d] = b.dataset.relstep.split('|'), e = acha(id); if (!e) return; e.v = limitar(inteiro(e.v) + (+d), -100, 100); guardar('[data-relstep="' + b.dataset.relstep + '"]'); });
+    const mexe = (op, focar) => { if (FichasMesa.mexerRel(pc, op)) guardar(focar); else pintarMente(pc, focar); };
+    qa(painel, '[data-relval]').forEach(i => i.onchange = () => { FichasMesa.mexerRel(pc, { t: 'valor', id: i.dataset.relval, v: limitar(inteiro(i.value), -100, 100) }); guardarCampo('[data-relval="' + i.dataset.relval + '"]'); });
+    qa(painel, '[data-relstep]').forEach(b => b.onclick = () => { const [id, d] = b.dataset.relstep.split('|'), e = acha(id); if (!e) return; mexe({ t: 'valor', id, v: limitar(inteiro(e.v) + (+d), -100, 100) }, '[data-relstep="' + b.dataset.relstep + '"]'); });
+    // de volta como estava: a linha (com o valor, o romance, a ordem) e onde ela ficava guardada
+    const repor = e => { FichasMesa.mexerRel(pc, { t: 'nova', id: e.id, alvo: e.alvo, nome: e.nome, v: e.v, rom: e.rom, o: e.o, comMestre: e.modo === 'mestre' }); if (e.modo === 'valor') FichasMesa.mexerRel(pc, { t: 'esconder', id: e.id }); guardar(); };
     qa(painel, '[data-reldel]').forEach(b => b.onclick = () => {
-      const lista = relsDe(pc), i = lista.findIndex(e => e.id === b.dataset.reldel); if (i < 0) return;
-      const [fora] = lista.splice(i, 1); est().rel = lista; guardar();
-      aviso('Relacionamento com ' + (fora.nome || 'o personagem') + ' tirado.', 'Desfazer', () => { const l = relsDe(pc); l.splice(Math.min(i, l.length), 0, fora); est().rel = l; guardar(); });
+      const fora = acha(b.dataset.reldel); if (!fora) return;
+      if (!FichasMesa.mexerRel(pc, { t: 'tirar', id: fora.id })) return;
+      guardar();
+      aviso('Relacionamento com ' + (fora.nome || 'o personagem') + ' tirado.', 'Desfazer', () => repor(fora));
+    });
+    // romance
+    qa(painel, '[data-romadd]').forEach(b => b.onclick = () => mexe({ t: 'rom', id: b.dataset.romadd, rom: 0 }, '[data-romstep="' + b.dataset.romadd + '|1"]'));
+    qa(painel, '[data-romdel]').forEach(b => b.onclick = () => {
+      const e = acha(b.dataset.romdel); if (!e) return;
+      if (!FichasMesa.mexerRel(pc, { t: 'rom', id: e.id, rom: null })) return;
+      guardar('[data-romadd="' + e.id + '"]');
+      if (e.rom) aviso('Trilha de Romance com ' + (e.nome || 'o personagem') + ' tirada.', 'Desfazer', () => { FichasMesa.mexerRel(pc, { t: 'rom', id: e.id, rom: e.rom }); guardar(); });
+    });
+    qa(painel, '[data-romstep]').forEach(b => b.onclick = () => { const [id, d] = b.dataset.romstep.split('|'), e = acha(id); if (!e || e.rom == null) return; mexe({ t: 'rom', id, rom: limitar(e.rom + (+d), -ROM(), ROM()) }, '[data-romstep="' + b.dataset.romstep + '"]'); });
+    // clicar num coração: até ali (no último aceso, apaga-o); os partidos continuam partidos
+    qa(painel, '[data-rom]').forEach(b => b.onclick = () => {
+      const [id, k] = b.dataset.rom.split('|'), e = acha(id); if (!e || e.rom == null) return;
+      const n = Math.abs(e.rom), alvo = (+k === n ? n - 1 : +k);
+      mexe({ t: 'rom', id, rom: e.rom < 0 ? -alvo : alvo }, '[data-romstep="' + id + '|1"]');
+    });
+    // o olho: esconder é na hora; mostrar o que estava escondido pergunta antes
+    qa(painel, '[data-relolho]').forEach(b => b.onclick = () => {
+      const e = acha(b.dataset.relolho); if (!e) return;
+      const foco = '[data-relolho="' + e.id + '"]', quem = FichasMesa.nomeDoDono(pc) || 'O jogador';
+      if (e.modo === 'aberta') {
+        relConf = null;
+        const npc = FichasMesa.ehNpc(pc);
+        if (!FichasMesa.mexerRel(pc, { t: npc ? 'guardar' : 'esconder', id: e.id })) return;
+        guardar(foco);
+        aviso(npc ? 'A linha de ' + e.nome + ' ficou guardada só com você.' : quem + ' continua vendo ' + e.nome + ' na lista, mas não o valor.');
+      } else { relConf = relConf && relConf.id === e.id ? null : { pc: pc.id, id: e.id }; pintarMente(pc, relConf ? '[data-relsim="' + e.id + '"]' : foco); }
+    });
+    qa(painel, '[data-relnao]').forEach(b => b.onclick = () => { const id = relConf && relConf.id; relConf = null; pintarMente(pc, id ? '[data-relolho="' + id + '"]' : null); });
+    qa(painel, '[data-relsim]').forEach(b => b.onclick = () => {
+      const e = acha(b.dataset.relsim); relConf = null; if (!e) return;
+      if (!FichasMesa.mexerRel(pc, { t: e.modo === 'valor' ? 'revelar' : 'abrir', id: e.id })) { pintarMente(pc); return; }
+      guardar('[data-relolho="' + e.id + '"]');
+      aviso(e.modo === 'valor' ? (FichasMesa.nomeDoDono(pc) || 'O jogador') + ' agora vê o valor do relacionamento com ' + e.nome + '.' : 'A linha de ' + e.nome + ' agora aparece para quem vê a ficha.');
     });
     const novo = q(painel, '#relNovo');
     if (novo) novo.onchange = () => {
       const v = novo.value; if (!v) return;
       let entrada = null;
-      if (v === '__nome__') { const n = (prompt('Relacionamento com quem? (um nome)', '') || '').trim(); if (n) entrada = { id: uid(), alvo: null, nome: n.slice(0, 80), v: 0 }; }
-      else { const p = S.personagens.find(x => x.id === v); if (p) entrada = { id: uid(), alvo: p.id, nome: p.nome, v: 0 }; }
+      if (v === '__nome__') { const n = (prompt('Relacionamento com quem? (um nome)', '') || '').trim(); if (n) entrada = { id: uid(), alvo: null, nome: n.slice(0, 80) }; }
+      else { const p = S.personagens.find(x => x.id === v); if (p) entrada = { id: uid(), alvo: p.id, nome: p.nome }; }
       if (!entrada) { novo.value = ''; return; }
-      est().rel = relsDe(pc).concat([entrada]);
+      // (o relacionamento de um NPC nasce guardado com o mestre; o de uma ficha de jogador, aberto)
+      if (!FichasMesa.mexerRel(pc, Object.assign({ t: 'nova', comMestre: comoMestre() && FichasMesa.ehNpc(pc) }, entrada))) { novo.value = ''; return; }
       if (est().san == null) est().san = valorMente(pc, 'san');          // a ficha passa a usar o painel de vez
       guardar('[data-relval="' + entrada.id + '"]');
     };
+  }
+
+  /* Chegou mudança de fora enquanto a pessoa digita noutro lugar da ficha: os quadros em que ela não está (este, e o
+     dos bônus temporários) são redesenhados no lugar. */
+  function aoVivo(pc) {
+    const foco = document.activeElement, m = document.getElementById('painelMente'), t = document.getElementById('painelTmp');
+    if (m && !m.contains(foco)) pintarMente(pc);
+    if (t && !t.contains(foco)) {
+      const tmp = document.createElement('div'); tmp.innerHTML = painelTemporarios(pc, calcular(pc));
+      const novo = tmp.firstElementChild;
+      if (novo) { t.replaceWith(novo); ligarTemporarios(novo.parentNode, pc); }
+    }
   }
 
   /* ======================= o que entrou com as regras novas =======================
@@ -463,7 +609,7 @@ const FichasExtras = (() => {
     const campo = (attr, chave) => qa(host, '[data-' + attr + ']').forEach(i => {
       const rec = () => (pc.recursos || []).find(x => x.id === i.dataset[attr]);
       i.oninput = () => { const r = rec(); if (!r) return; const v = i.value.trim().slice(0, 80); if (v) r[chave] = v; else delete r[chave]; save(); };
-      i.onchange = () => { if (!rec()) return; save(); render(); refocar('[data-' + attr + '="' + CSS.escape(i.dataset[attr]) + '"]'); };
+      i.onchange = () => { if (!rec()) return; save(); desenhar(render, '[data-' + attr + '="' + CSS.escape(i.dataset[attr]) + '"]'); };
     });
     campo('rescomeca', 'comeca'); campo('respiso', 'piso');
   }
@@ -505,8 +651,7 @@ const FichasExtras = (() => {
     qa(host, '[data-itx]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.it); if (!it) return;
       mapa(it, i.dataset.itx)[i.dataset.ch] = Math.round(+i.value) || 0;
-      save(); render();
-      refocar('[data-itx="' + i.dataset.itx + '"][data-it="' + CSS.escape(i.dataset.it) + '"][data-ch="' + CSS.escape(i.dataset.ch) + '"]');
+      save(); desenhar(render, '[data-itx="' + i.dataset.itx + '"][data-it="' + CSS.escape(i.dataset.it) + '"][data-ch="' + CSS.escape(i.dataset.ch) + '"]');
     });
     qa(host, '[data-itxdel]').forEach(b => b.onclick = () => {
       const it = item(b.dataset.it); if (!it) return;
@@ -535,13 +680,14 @@ const FichasExtras = (() => {
             <button type="button" class="mini danger" data-tmpdel="${esc(b.id)}" title="Tirar este bônus" aria-label="Tirar o bônus ${esc(b.n || '')}">×</button>
           </div>`).join('')}</div>`
         : '<div class="hint">Nenhum bônus temporário. Use para o que passa: +3 de Vitalidade do ensopado, +5 de Agilidade da poção. A duração é só uma anotação — quem desliga é você.</div>'}
+        ${typeof FichasQuadros !== 'undefined' ? FichasQuadros.htmlPenalidades(c) : ''}
       </div>
     </div>`;
   }
   function ligarTemporarios(host, pc) {
     const painel = q(host, '#painelTmp'); if (!painel) return;
     const tmp = () => mapaDe(pc, 'tmp');
-    const redesenhar = sel => { save(); render(); if (sel) refocar(sel); };
+    const redesenhar = sel => { save(); desenhar(render, sel); };
     qa(painel, '[data-tmpadd]').forEach(b => b.onclick = () => { const id = 't' + uid(); tmp()[id] = { n: '', k: 'FOR', v: 0, d: '', t: Date.now() }; redesenhar('[data-tmpn="' + id + '"]'); });
     const texto = (attr, chave, max) => qa(painel, '[data-' + attr + ']').forEach(i => { i.oninput = () => { const b = tmp()[i.dataset[attr]]; if (b) { b[chave] = i.value.slice(0, max); save(); } }; });
     texto('tmpn', 'n', 60); texto('tmpd', 'd', 40);
@@ -645,7 +791,7 @@ const FichasExtras = (() => {
     const painel = q(host, '#painelBolsa'); if (!painel) return;
     const lista = () => (Array.isArray(pc.bolsa) ? pc.bolsa : (pc.bolsa = []));
     const item = id => lista().find(x => x && x.id === id);
-    const redesenhar = sel => { save(); render(); if (sel) refocar(sel); };
+    const redesenhar = sel => { save(); desenhar(render, sel); };
     qa(painel, '[data-ababolsa]').forEach(b => b.onclick = () => { S.abaBolsa = b.dataset.ababolsa; bolsaPede = null; redesenhar('[data-ababolsa="' + b.dataset.ababolsa + '"]'); });
     qa(painel, '[data-boladd]').forEach(b => b.onclick = () => {
       const id = 'b' + uid(); lista().push({ id, t: b.dataset.boladd, nome: '' }); mapaDe(pc, 'qtd')[id] = 1;
@@ -712,7 +858,7 @@ const FichasExtras = (() => {
       const k = i.dataset.defesp, v = Math.round(+i.value) || 0;
       if (!pc.defEsp || typeof pc.defEsp !== 'object') pc.defEsp = {};
       if (v) pc.defEsp[k] = v; else delete pc.defEsp[k];
-      save(); render(); refocar('[data-defesp="' + k + '"]');
+      save(); desenhar(render, '[data-defesp="' + k + '"]');
     });
     ligarIdentidade(host, pc); ligarBarras(host, pc); ligarMaisDoItem(host, pc); ligarTemporarios(host, pc); ligarBolsa(host, pc);
   }
@@ -727,5 +873,6 @@ const FichasExtras = (() => {
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,
     htmlAbasAtr, abaDefesas, painelDefesas, htmlTemp, htmlOpcoesBarra, htmlMaisDoItem, htmlTotaisExtras,
     painelTemporarios, painelBolsa, htmlIdentidade, ligarNovos, icoDef,
+    util: { q, qa, glifo, optBonus, refocar, mapaDe, estadoDe, sinalTxt, menos, comoMestre, desenhar }, aoVivo, desenhar,
   };
 })();

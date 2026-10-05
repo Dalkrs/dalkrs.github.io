@@ -156,6 +156,35 @@ const selene = ficha('Selene', {
   ok(await ate(async () => await B.locator('#hud-b0').evaluate(e => e.classList.contains('neg') && e.value === '-10')), 'e a faixa dela mostra o valor negativo em destaque');
   await foto(J, 'bolsa-5-jogadora-negativa');
 
+  // ---------- ferimentos da ficha: o sinal no token e a lista no painel ----------
+  await M.evaluate(() => {
+    const P = TC.dados.col('personagens');
+    const com = (id, fer) => { const l = P.pegar(id); P.gravar(id, { estado: Object.assign({}, l.estado, { fer }) }); };
+    com('pc_selene', { f1: { p: 'bracoE', t: 'corte', g: 3, s: { sg: 1 }, n: 'faca', k: 'DES', v: -2, c: 1 }, f2: { p: 'peito', t: 'queim', g: 1, c: 2 } });
+    com('pc_ogro', { g1: { p: 'cabeca', t: 'cont', g: 2, c: 1 } });
+  });
+  ok(await ate(() => parado(M)), '(o mestre anota dois ferimentos na ficha da Selene e um na do Ogro)');
+  const sinal = (f, id) => f.evaluate(id => __tc.Fichas.ferido(__tc.Store.get('tokens', id)), id);
+  ok(await ate(async () => j(await sinal(C, ids.sel)) === j({ n: 2, grave: 3, sangra: true, inf: false }) && j(await sinal(C, ids.ogro)) === j({ n: 1, grave: 2, sangra: false, inf: false })), 'para o mestre, os dois tokens ganham o sinal de ferido (dois ferimentos, um grave e sangrando; e um médio): ' + j([await sinal(C, ids.sel), await sinal(C, ids.ogro)]));
+  await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.sel); await w(400);
+  ok(await ate(async () => (await C.locator('#tk-feridas li').count()) === 2) && (await C.locator('#tk-feridas li').first().innerText()).includes('Corte grave · Braço esquerdo · sangrando · −2 Destreza — faca') && (await C.locator('#tk-feridas li.g3').count()) === 1, 'o painel do token lista os ferimentos, com o que a ficha diz de cada um: ' + (await C.locator('#tk-feridas').innerText().catch(() => '(sem lista)')).replace(/\n/g, ' | '));
+  // no mapa: o sinal é desenhado no canto do token (procura a cor dele nos pixels dali)
+  const pintado = await C.evaluate(id => {
+    const u = __tc, tk = u.Store.get('tokens', id), s = tk.size * u.Store.scene().cell, cv = u.Render.cv, cx = cv.getContext('2d'), k = cv.width / cv.getBoundingClientRect().width;
+    const [x0, y0] = u.Render.toScreen(tk.x - s * 0.1, tk.y - s * 0.1), [x1, y1] = u.Render.toScreen(tk.x + s * 0.4, tk.y + s * 0.4);
+    const d = cx.getImageData(Math.round(x0 * k), Math.round(y0 * k), Math.max(1, Math.round((x1 - x0) * k)), Math.max(1, Math.round((y1 - y0) * k))).data;
+    let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 0xc2) < 14 && Math.abs(d[i + 1] - 0x47) < 14 && Math.abs(d[i + 2] - 0x3d) < 14) n++;
+    return n;
+  }, ids.sel);
+  ok(pintado > 12, 'e o sinal aparece desenhado no canto do token (' + pintado + ' pixels na cor dele)');
+  await foto(M, 'ferido-1-mestre');
+  // a jogadora: vê o sinal e a lista no token dela; no token do mestre (NPC), nada — o vínculo com a ficha não vai para os jogadores
+  ok(await ate(async () => j(await sinal(B, ids.sel)) === j({ n: 2, grave: 3, sangra: true, inf: false }), 20000) && (await sinal(B, ids.ogro)) === null, 'a jogadora vê o sinal no token dela, e não no do NPC (mesmo com a ficha dele aberta a todos)');
+  await B.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.sel); await w(400, J);
+  ok(await ate(async () => (await B.locator('#tk-feridas li').count()) === 2 && (await B.locator('#s-fer').count()) === 1), 'e, no painel do token dela, a lista dos ferimentos');
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'); const e = JSON.parse(JSON.stringify(l.estado)); delete e.fer; P.gravar('pc_selene', { estado: e }); });
+  ok(await ate(async () => (await sinal(C, ids.sel)) === null && (await sinal(B, ids.sel)) === null, 20000) && await ate(async () => (await B.locator('#tk-feridas').count()) === 0), 'curados os ferimentos na ficha, o sinal e a lista somem nas duas telas');
+
   // ---------- limpeza ----------
   await apagarMesaTela(M, nomeMesa);
   const fora = t.errs.filter(e => !/status of (400|401|403|404|409)/.test(e));

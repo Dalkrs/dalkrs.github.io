@@ -1,15 +1,22 @@
 /* Tiny Cats · Fichas na mesa.
    Com a página aberta dentro do site e uma mesa aberta, as fichas deixam de morar só neste navegador:
      · cada personagem é uma linha da mesa (ficha, skills e estado atual), com dono (jogador) e visibilidade;
-     · tabelas base, grupos, situações e tabelas de eventos são documentos da mesa.
+     · tabelas base, grupos, situações e tabelas de eventos são documentos da mesa;
+     · as missões do grupo são um documento que todos leem (fichas:missoes); o que o mestre guarda só para ele —
+       valores de relacionamento escondidos, relacionamentos dos NPCs, missões ainda não reveladas — é outro, que
+       só ele recebe (fichas:segredos).
    A calculadora continua trabalhando com o mesmo "estado inteiro" de sempre (a variável S). Este arquivo traduz
    esse estado para as linhas da mesa e de volta, pelo gancho de armazenamento que ela já tinha (window.storage).
    Sem mesa (ou com a página aberta sozinha) nada daqui age: vale o que está salvo no navegador. */
 const FichasMesa = (() => {
   'use strict';
   const LOCAL = 'urgm_calc_atributos_v1';            // onde a calculadora guarda as fichas sem mesa
-  const DOCS = { cfg: 'fichas:cfg', grupos: 'fichas:grupos', situacoes: 'fichas:situacoes', tabelas: 'fichas:tabelas' };
-  const VIS = { cfg: 'mesa', grupos: 'mesa', situacoes: 'mestre', tabelas: 'mestre' };
+  const DOCS = { cfg: 'fichas:cfg', grupos: 'fichas:grupos', situacoes: 'fichas:situacoes', tabelas: 'fichas:tabelas', missoes: 'fichas:missoes', segredos: 'fichas:segredos' };
+  const VIS = { cfg: 'mesa', grupos: 'mesa', situacoes: 'mestre', tabelas: 'mestre', missoes: 'mesa', segredos: 'mestre' };
+  const MAPAS = { missoes: true, segredos: true };     // estes dois são mapas ({}); os outros, listas
+  const vazioDe = k => (MAPAS[k] ? {} : []);
+  // um mapa sem nada dentro (nem em nenhum nível): não vale criar o documento só para guardar isso
+  const oco = v => !v || typeof v !== 'object' || Object.keys(v).every(k => v[k] && typeof v[k] === 'object' && oco(v[k]));
   const j = JSON.stringify;
   let st = null, P = null, D = null, ativo = false, renderPendente = false;
   let sombra = { pcs: new Map(), docs: {} };          // o que a mesa já tem, para mandar só o que mudou
@@ -63,6 +70,8 @@ const FichasMesa = (() => {
       grupos: doc('grupos') || [],
       situacoes: doc('situacoes') || [],
       tabelas: doc('tabelas') || [],
+      missoes: doc('missoes') || {},
+      segredos: (mestre() && doc('segredos')) || {},
       log: Array.isArray(tela.log) ? tela.log : [],
       bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
@@ -95,15 +104,20 @@ const FichasMesa = (() => {
       if (novo || (mestre() && ant.dono !== r.dono)) campos.dono_id = p.dono_id;
       if (novo || (mestre() && ant.vis !== r.vis)) campos.vis = p.vis;
       if (novo || (mestre() && ant.ordem !== i)) campos.ordem = i;
-      /* O estado vai como "o que mudou desde o que esta tela tinha" (a sombra): se outra pessoa mexeu em outra barra
-         deste personagem nesse meio-tempo, as duas mudanças ficam valendo. */
-      if (Object.keys(campos).length) P.gravar(pc.id, campos, !novo && campos.estado !== undefined ? { estado: JSON.parse(ant.estado) } : undefined);
+      /* O estado e as skills vão como "o que mudou desde o que esta tela tinha" (a sombra): se outra pessoa mexeu em
+         outra barra deste personagem nesse meio-tempo — ou o mestre deu pontos enquanto o jogador gastava os dele —,
+         as duas mudanças ficam valendo. */
+      const base = {};
+      if (!novo && campos.estado !== undefined) base.estado = JSON.parse(ant.estado);
+      if (!novo && campos.skills !== undefined) base.skills = JSON.parse(ant.skills);
+      if (Object.keys(campos).length) P.gravar(pc.id, campos, novo ? undefined : base);
       sombra.pcs.set(pc.id, r);
     });
     if (mestre()) {
       for (const id of [...sombra.pcs.keys()]) if (!vistos.has(id)) { P.apagar(id); sombra.pcs.delete(id); }
       for (const k in DOCS) {
-        const v = k === 'cfg' ? s.cfg : (s[k] || []), jv = j(v);
+        const v = k === 'cfg' ? s.cfg : (s[k] || vazioDe(k)), jv = j(v);
+        if (MAPAS[k] && sombra.docs[k] === undefined && oco(v)) continue;      // (ainda não existe e não há o que guardar)
         if (sombra.docs[k] !== jv) { D.gravar(DOCS[k], { dados: { v }, vis: VIS[k] }); sombra.docs[k] = jv; }
       }
     }
@@ -149,22 +163,100 @@ const FichasMesa = (() => {
       const v = l0.apagado || !l0.dados ? undefined : l0.dados.v, jv = v === undefined ? undefined : j(v);
       if (sombra.docs[k] === jv) return;
       sombra.docs[k] = jv;
-      if (k === 'cfg') S.cfg = v || estadoPadrao().cfg; else S[k] = v || [];
+      if (k === 'segredos' && !mestre()) return;                  // (só o mestre recebe; por garantia)
+      if (k === 'cfg') S.cfg = v || estadoPadrao().cfg; else S[k] = v || vazioDe(k);
     }
     guardarTela();
     redesenhar();
   }
-  // Não tira o campo de quem está digitando: o redesenho espera a pessoa sair do campo.
-  const digitando = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button' && !!a.closest('#ficha, #mesa, #eventos'); };
+  /* Não tira o campo de quem está digitando: o redesenho espera a pessoa sair do campo.
+     "Digitando" é ter o cursor num campo em que algo foi escrito desde que ele foi desenhado, ou numa lista que a
+     pessoa acabou de abrir. Com o cursor só parado num campo (nada escrito ali desde o último desenho), a ficha é
+     redesenhada e o cursor volta para o mesmo campo — senão quem deixa o cursor num campo deixaria de ver o que os
+     outros fazem até clicar fora. */
+  let listaAberta = null;                    // a lista (select) em que a pessoa clicou ou teclou, e ainda não escolheu nem saiu
+  /* O gesto em andamento. Um clique começa quando o botão desce e só termina quando ele sobe; trocar o desenho nesse
+     meio faz o clique cair num botão que já não existe — ele "não pega", e a pessoa precisa clicar de novo. Então
+     quem redesenha (por uma mudança que veio da mesa, ou por uma que a própria pessoa fez ao sair de um campo) espera
+     o gesto acabar. `apertado` guarda quando o botão desceu (0 = solto); um aperto de mais de alguns segundos não é
+     um clique, e deixa de valer — assim um "soltar" que nunca chegou não segura o desenho para sempre. */
+  let apertado = 0, tGesto = 0, ultimoTab = 0;
+  const filaGesto = [];
+  const noGesto = () => !!apertado && Date.now() - apertado < 4000;
+  function fimDoGesto() {
+    clearTimeout(tGesto); tGesto = 0; apertado = 0;
+    filaGesto.splice(0).forEach(f => { try { f(); } catch (e) { console.error(e); } });
+  }
+  function soltou() {                        // (o que esperava roda logo depois do clique, que vem atrás do "soltar")
+    apertado = 0;
+    if (filaGesto.length) { clearTimeout(tGesto); tGesto = setTimeout(fimDoGesto, 0); }
+  }
+  // devolve true se há um gesto em andamento — e então `fn` fica para logo depois dele
+  function depoisDoGesto(fn) {
+    if (!noGesto()) return false;
+    if (!filaGesto.includes(fn)) filaGesto.push(fn);
+    if (!tGesto) tGesto = setTimeout(fimDoGesto, 1500);
+    return true;
+  }
+  document.addEventListener('pointerdown', e => { apertado = Date.now(); listaAberta = e.target && e.target.closest ? e.target.closest('select') : null; }, true);
+  for (const ev of ['pointerup', 'pointercancel', 'contextmenu', 'dragstart']) document.addEventListener(ev, soltou, true);
+  window.addEventListener('blur', soltou);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Tab') ultimoTab = Date.now();
+    if (!e.repeat && !/^(Shift|Control|Alt|Meta)$/.test(e.key)) soltou();
+    if (e.target && e.target.tagName === 'SELECT' && !/^(Tab|Shift|Control|Alt|Meta|Escape)$/.test(e.key)) listaAberta = e.target;
+  }, true);
+  document.addEventListener('change', e => {
+    if (e.target === listaAberta) listaAberta = null;
+    if (e.target && e.target.tagName === 'SELECT') soltou();       // (a lista aberta pode ter ficado com o "soltar" do clique que a abriu)
+  }, true);
+  document.addEventListener('focusout', e => { if (e.target === listaAberta) listaAberta = null; }, true);
+  const listaEmUso = () => (listaAberta && listaAberta.isConnected && document.activeElement === listaAberta ? listaAberta : null);
+  const emCampo = () => { const a = document.activeElement; return a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button' && a.closest('#ficha, #mesa, #eventos') ? a : null; };
+  const mexido = a => (a.tagName === 'SELECT' ? a === listaAberta || Array.from(a.options).some(o => o.selected !== o.defaultSelected) : a.value !== a.defaultValue);
+  /* Por onde reencontrar um campo (ou botão) depois de redesenhar: o id dele, ou os data-… que ele tem. Devolve uma
+     função que acha o equivalente no desenho novo, ou null se não há por onde. */
+  function ancorar(a) {
+    const onde = a && a.closest ? a.closest('#ficha, #mesa, #eventos') : null;
+    if (!onde || typeof CSS === 'undefined' || !CSS.escape) return null;
+    const base = '#' + onde.id + ' ';
+    if (a.id) { const s = base + '#' + CSS.escape(a.id); return () => document.querySelector(s); }
+    const ds = Array.from(a.attributes).filter(at => at.name.indexOf('data-') === 0);
+    if (!ds.length) return null;
+    const par = at => '[' + at.name + '="' + CSS.escape(at.value) + '"]', tag = a.tagName.toLowerCase();
+    const todos = base + tag + ds.map(par).join(''), um = base + tag + par(ds[0]);
+    const i = Array.prototype.indexOf.call(document.querySelectorAll(todos), a);       // (se houver mais de um igual: o mesmo da fila)
+    return () => { const l = document.querySelectorAll(todos); return l[i] || l[0] || document.querySelector(um); };
+  }
+  /* Desenha e devolve o cursor ao lugar em que ele estava: o mesmo campo, com a mesma seleção. Num campo de número o
+     navegador não diz onde o cursor está; ali, o conteúdo volta selecionado se estava (é como o Tab deixa), e senão o
+     cursor vai para o fim — nunca para o começo, onde o próximo dígito entraria na frente do número. */
+  function comCursor(fn) {
+    const a = document.activeElement, achar = a && a !== document.body ? ancorar(a) : null;
+    let ini = null, fim = null, tudo = false;
+    if (achar && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
+      try { ini = a.selectionStart; fim = a.selectionEnd; } catch (e) { /* campo sem cursor de texto */ }
+      if (ini == null) { try { tudo = Date.now() - ultimoTab < 400 || String(window.getSelection()).length > 0; } catch (e) { /* fica no fim */ } }
+    }
+    fn();
+    const n = achar ? achar() : null;
+    if (!n || n.disabled || n === document.activeElement) return;
+    n.focus({ preventScroll: true });
+    if (n.tagName !== 'INPUT' && n.tagName !== 'TEXTAREA') return;
+    if (ini != null) { try { n.setSelectionRange(ini, fim); } catch (e) { /* campo de outro tipo */ } }
+    else if (n.type === 'number') { try { if (tudo) n.select(); else { const v = n.value; n.value = ''; n.value = v; } } catch (e) { /* fica como o navegador deixar */ } }
+  }
+  const digitando = () => { const a = emCampo(); return !!a && (mexido(a) || !ancorar(a)); };
   function redesenhar() {
+    if (depoisDoGesto(redesenhar)) return;   // no meio de um clique: logo depois dele
     if (digitando()) {                       // a ficha espera; o elenco, que fica ao lado, já pode se atualizar
       renderPendente = true;
       try { renderLista(); } catch (e) { /* ainda abrindo */ }
-      try { pintarAoVivo(); } catch (e) { /* ainda abrindo */ }      // (e os valores das barras, nos campos em que ninguém está)
+      try { pintarAoVivo(); } catch (e) { /* ainda abrindo */ }      // (e o que dá para atualizar no lugar, onde a pessoa não está)
       return;
     }
     renderPendente = false;
-    render();
+    comCursor(render);                       // o cursor parado num campo volta para o mesmo campo, no mesmo ponto
   }
   document.addEventListener('focusout', () => { if (renderPendente) setTimeout(() => { if (renderPendente && !digitando()) redesenhar(); }, 60); });
   function guardarTela() { try { localStorage.setItem(KEY, j(S)); } catch (e) { /* sem espaço: a mesa continua valendo */ } }
@@ -181,10 +273,11 @@ const FichasMesa = (() => {
     window.storage = { get: async () => ({ value: j(montar()) }), set: async (k, texto) => { gravar(JSON.parse(texto)); } };
     P.aoMudar(l => remoto('pc', l));
     D.aoMudar(l => remoto('doc', l));
+    const membrosMudaram = () => { try { if (digitando()) { renderPendente = true; pintarDono(); renderLista(); } else redesenhar(); } catch (x) { /* ainda abrindo */ } };
     TC.ponte.aoMudar(e => {
       const antes = j(st && st.membros); st = e;
       if (antes === j(e.membros)) return;
-      try { if (digitando()) { renderPendente = true; pintarDono(); renderLista(); } else render(); } catch (x) { /* ainda abrindo */ }
+      if (!depoisDoGesto(membrosMudaram)) membrosMudaram();
     });
     document.documentElement.classList.add('na-mesa', mestre() ? 'papel-mestre' : 'papel-jogador');
     return true;
@@ -213,25 +306,58 @@ const FichasMesa = (() => {
       if (viradas.length) toast(viradas.length === 1 ? 'A ficha de ' + viradas[0].nome + ' passou para a distribuição livre de atributos (os valores foram mantidos).' : viradas.length + ' fichas de jogador passaram para a distribuição livre de atributos (os valores foram mantidos).');
     }
   }
+  /* O que o mestre guarda de um personagem fora da ficha (valores de relacionamento escondidos, relacionamentos de
+     um NPC). Para quem não é o mestre, null: ele só mexe no que está na ficha. */
+  const R = () => (window.TC && TC.rules && TC.rules.mexerRelacao ? TC.rules : null);
+  const ehNpc = pc => !pc._dono;
+  const segDe = pc => (ativo && mestre() ? ((S.segredos && S.segredos.rel && S.segredos.rel[pc.id]) || {}) : null);
+  function porSeg(pc, seg) {
+    if (!ativo || !mestre()) return;
+    const s = S.segredos && typeof S.segredos === 'object' && !Array.isArray(S.segredos) ? S.segredos : (S.segredos = {});
+    const rel = s.rel && typeof s.rel === 'object' ? s.rel : (s.rel = {});
+    if (seg && Object.keys(seg).length) rel[pc.id] = seg; else delete rel[pc.id];
+  }
+  // uma mudança nos relacionamentos do personagem (ver TC.rules.mexerRelacao); devolve true se algo mudou
+  function mexerRel(pc, op) {
+    const regras = R(); if (!regras) return false;
+    const seg = segDe(pc), r = regras.mexerRelacao(pc.estado || {}, seg, Object.assign({ npc: ehNpc(pc) }, op));
+    if (!r.mudou) return false;
+    pc.estado = r.estado;
+    if (seg) porSeg(pc, r.seg);
+    return true;
+  }
+  // as linhas que quem está olhando pode ver, cada uma com o `modo` (aberta, valor escondido, só do mestre)
+  function relsDe(pc) {
+    const regras = R(); if (!regras) return [];
+    const seg = segDe(pc);
+    return seg ? regras.relacoesDoMestre(pc.estado, seg, ehNpc(pc)) : regras.relacoes(pc.estado).map(e => Object.assign(e, { modo: e.oc ? 'valor' : 'aberta' }));
+  }
   /* Cada personagem de jogador tem a própria barra de Relacionamento para cada outro personagem de jogador.
-     Só o mestre enxerga todas as fichas, então é a tela dele que cria as que faltam (e acerta o nome se mudou). */
+     Só o mestre enxerga todas as fichas, então é a tela dele que cria as que faltam (e acerta o nome se mudou).
+     E os relacionamentos de um NPC são do mestre: se a ficha de um está aberta aos jogadores e ainda os guarda no
+     formato antigo (dentro da ficha), eles passam para o mestre. */
   function garantirRelacoes() {
-    if (!ativo || !mestre()) return false;
+    const regras = R();
+    if (!ativo || !mestre() || !regras) return false;
     const dj = S.personagens.filter(deJogador);
     let mudou = false;
-    for (const a of dj) {
-      const est = a.estado && typeof a.estado === 'object' ? a.estado : (a.estado = {});
-      const rel = Array.isArray(est.rel) ? est.rel : [];
-      let aqui = false;
-      for (const b of dj) {
-        if (b.id === a.id) continue;
-        const e = rel.find(x => x && x.alvo === b.id);
-        if (!e) { rel.push({ id: uid(), alvo: b.id, nome: b.nome, v: 0 }); aqui = true; }
-        else if (e.nome !== b.nome) { e.nome = b.nome; aqui = true; }
-      }
-      if (aqui) { est.rel = rel; mudou = true; }
+    for (const a of dj) for (const b of dj) {
+      if (b.id === a.id) continue;
+      const e = regras.relacaoCom(a.estado, segDe(a), b.id, false);
+      if (!e) mudou = mexerRel(a, { t: 'nova', id: uid(), alvo: b.id, nome: b.nome }) || mudou;
+      else if (e.nome !== b.nome) mudou = mexerRel(a, { t: 'nome', id: e.id, nome: b.nome }) || mudou;
     }
+    for (const pc of S.personagens) if (ehNpc(pc) && pc._vis === 'mesa') mudou = mexerRel(pc, { t: 'guardar-legado' }) || mudou;
     return mudou;
+  }
+  /* O mestre apaga um personagem: o que ele guardava dele (fora da ficha) vai junto. Devolve o que saiu, para um
+     eventual "desfazer". */
+  function esquecer(id) {
+    const s = S.segredos, fora = {};
+    if (!s || typeof s !== 'object') return fora;
+    if (s.rel && s.rel[id]) { fora.rel = s.rel[id]; delete s.rel[id]; }
+    if (s.mis && s.mis.p && s.mis.p[id]) { fora.mis = s.mis.p[id]; delete s.mis.p[id]; }
+    return fora;
   }
   function limitar() {
     if (!ativo) return;
@@ -275,7 +401,7 @@ const FichasMesa = (() => {
       save(); render();
       toast(pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' + (virou ? ' Os atributos ficaram em distribuição livre.' : '') : 'Só o mestre vê esta ficha.');
     };
-    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; save(); renderLista(); };
+    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); };
   }
   /* No elenco, o mestre escolhe com um clique quais fichas os jogadores podem ver. */
   const OLHO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.6-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
@@ -292,7 +418,8 @@ const FichasMesa = (() => {
     ul.querySelectorAll('[data-olho]').forEach(b => b.onclick = () => {
       const pc = S.personagens.find(p => p.id === b.dataset.olho); if (!pc) return;
       pc._vis = pc._vis === 'mesa' ? 'mestre' : 'mesa';
-      save(); renderLista();
+      const g = garantirRelacoes();
+      save(); if (g && S.sel === pc.id) render(); else renderLista();
       const v = document.querySelector('#f_vis'); if (v && S.sel === pc.id) v.checked = pc._vis === 'mesa';
       toast(pc._vis === 'mesa' ? 'Os jogadores agora veem a ficha de ' + pc.nome + '.' : 'A ficha de ' + pc.nome + ' voltou a ficar escondida dos jogadores.');
     });
@@ -346,5 +473,6 @@ const FichasMesa = (() => {
     lista.parentNode.insertBefore(box, lista);
   }
 
-  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes };
+  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes,
+    ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso };
 })();

@@ -11,6 +11,9 @@
    (onde ela nasce; a cura total a leva para lá). E as bolsas da ficha (poções, bombas, runas, munições,
    materiais) podem ser usadas daqui: pelo mestre, em qualquer token ligado, e pelo jogador, no token do
    personagem dele — quem usa grava direto na ficha, e a ficha acerta o token.
+   Os ferimentos abertos do personagem (marcados na ficha, no quadro "Corpo") aparecem no token como um sinal,
+   e em lista no painel dele — para quem recebe a ficha: o mestre, todas; o jogador, a dele e as abertas a todos.
+   A penalidade de um ferimento conta nas contas da ficha como um bônus temporário.
    --------------------------------------------------------------- */
 const Fichas = (() => {
   let P = null, D = null, on = false, applying = false, papel = null, eu = null;
@@ -26,7 +29,7 @@ const Fichas = (() => {
   // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe; para o jogador, o pacote publicado)
   const bib = () => { const d = D && D.pegar(papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
   // (os bônus temporários — comida, poção — moram no estado do personagem e contam como um equipamento)
-  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp });
+  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer });
   const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
 
   // O piso da barra (quanto ela pode ficar negativa) e o começo dela, como a ficha manda.
@@ -216,6 +219,19 @@ const Fichas = (() => {
     const it = R().bolsa(pc, est).find(x => x.id === id);
     return it ? R().previaDoUso(pc, R().calcular(pc, cfg(), extra(l)), est, it) : [];
   }
+  /* ---- os ferimentos do personagem do token ---- */
+  const feridasDaLinha = l => (l && l.estado && l.estado.fer && R() && R().ferimentos ? l.estado.fer : null);
+  // a lista (do mais antigo para o mais novo); vazia se o token não tem ficha, ou se quem olha não a recebe
+  function feridas(t) { const f = feridasDaLinha(t && t.char ? get(t.char) : null); return f ? R().ferimentos(f).lista : []; }
+  // o sinal do token: { n, grave, sangra, inf } ou null. (Guardado por linha: o desenho do mapa pede isto a cada quadro.)
+  const sinais = new WeakMap();
+  function ferido(t) {
+    const l = t && t.char ? get(t.char) : null, f = feridasDaLinha(l);
+    if (!f) return null;
+    let s = sinais.get(l);
+    if (!s) { s = R().sinalDeFerido(f); sinais.set(l, s); }
+    return s.n ? s : null;
+  }
   const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
   // avisa a mesa ao vivo (a casca decide como mostrar); token oculto ou sem nome à mostra: só o mestre vê
   function avisarUso(t, charId, titulo, resumo, total) {
@@ -288,5 +304,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido };
 })();

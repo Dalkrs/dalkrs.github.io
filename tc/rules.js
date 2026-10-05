@@ -42,6 +42,23 @@
                nota, e nas poções: rec (id da barra), val ("30", "-10", "2d6+3"),
                bk/bv/bd (bônus temporário: chave, valor, duração) }]
      extra     temp: o estado.tmp do personagem (resumo() passa sozinho)
+
+   E depois ainda (relacionamentos com romance, ferimentos e missões):
+     estado    rels:{ [id]: { alvo, nome, v, rom, oc, o } } — o que o personagem sente por cada um:
+               v de −100 a +100; rom, a trilha de romance, de −10 (dez corações partidos) a +10 (dez
+               cheios), ausente = sem trilha; oc: o valor está escondido do jogador (aí v e rom não
+               ficam aqui: ficam com o mestre); o: a ordem na lista. O formato antigo, a lista
+               rel:[{ id, alvo, nome, v }], continua sendo lido.
+               fer:{ [id]: { p: parte do corpo, t: tipo, g: gravidade 1–3, s:{ sg, en, su, ta, inf },
+               n: nota, k/v: penalidade (chave e valor, sempre ≤ 0), c: quando } } — ferimentos
+               abertos; a penalidade soma como um bônus temporário enquanto o ferimento existir
+               mis:{ [id]: missão } — as missões do personagem (ver missoes)
+               xp:{ v, min, max } — a barra de XP: sem mínimo guardado, 0; sem máximo guardado,
+               10 por nível. O XP não fica abaixo do mínimo, mas pode passar do máximo (ver xpDe)
+     extra     fer: o estado.fer do personagem (resumo() passa sozinho)
+     seg       o que o mestre guarda de um personagem, fora da ficha (documento só dele):
+               { [idDaLinha]: { v, rom } } para a linha de valor escondido, ou a linha inteira
+               { l: 1, alvo, nome, v, rom, o } quando ela nem aparece na ficha (é o caso dos NPCs)
    ======================================================================= */
 (function (root) {
   'use strict';
@@ -102,6 +119,28 @@
     {t:'material', nome:'Materiais', um:'Material'},
   ];
 
+  /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */
+  const PARTES = [
+    {k:'cabeca',  nome:'Cabeça'},        {k:'pescoco', nome:'Pescoço'},
+    {k:'peito',   nome:'Peito'},         {k:'abdomen', nome:'Abdômen'},
+    {k:'bracoE',  nome:'Braço esquerdo'},{k:'bracoD',  nome:'Braço direito'},
+    {k:'maoE',    nome:'Mão esquerda'},  {k:'maoD',    nome:'Mão direita'},
+    {k:'pernaE',  nome:'Perna esquerda'},{k:'pernaD',  nome:'Perna direita'},
+    {k:'peE',     nome:'Pé esquerdo'},   {k:'peD',     nome:'Pé direito'},
+  ];
+  const TIPOS_FER = [
+    {k:'corte', nome:'Corte',      f:false}, {k:'perf',  nome:'Perfuração', f:true},
+    {k:'cont',  nome:'Contusão',   f:true},  {k:'queim', nome:'Queimadura', f:true},
+    {k:'frat',  nome:'Fratura',    f:true},  {k:'mord',  nome:'Mordida',    f:true},
+  ];
+  const GRAVIDADES = [{k:1, nome:'Leve', m:'leve', f:'leve'}, {k:2, nome:'Médio', m:'médio', f:'média'}, {k:3, nome:'Grave', m:'grave', f:'grave'}];
+  const ESTADOS_FER = [
+    {k:'sg',  nome:'Sangrando'}, {k:'en', nome:'Enfaixado'}, {k:'su', nome:'Suturado'},
+    {k:'ta',  nome:'Com tala'},  {k:'inf', nome:'Infeccionado'},
+  ];
+  const ROM_MAX = 10;                       // a trilha de romance vai de −10 a +10
+  const MIS_ESTADOS = [{k:'ativa', nome:'Ativa'}, {k:'feita', nome:'Concluída'}, {k:'falhou', nome:'Falhou'}];
+
   /* as dez chaves que um equipamento (e a árvore) pode somar, e o nome de cada uma */
   const CHAVES_BONUS = [].concat(ATRIBS, DERIV, DEFESAS).map(x => x.k);
   const NOMES = {};
@@ -115,7 +154,7 @@
     Object.keys(o).forEach(k => { if (o[k] && typeof o[k] === 'object') congelar(o[k]); });
     return Object.freeze(o);
   };
-  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, DEFESAS_ESP, CHAVES_ESP, BOLSAS, NOMES_BONUS].forEach(congelar);
+  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, DEFESAS_ESP, CHAVES_ESP, BOLSAS, NOMES_BONUS, PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, MIS_ESTADOS].forEach(congelar);
 
   /* ---------- FORMULA ENGINE (parser próprio, sem eval) — da calculadora ---------- */
   /* ##PARSER_START## */
@@ -335,6 +374,50 @@
     return { lista, soma, esp };
   }
 
+  /* ---------- ferimentos ---------- */
+  const ehObjeto = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  const inteiroEntre = (v, a, b) => { const n = numFinito(v); return n == null ? 0 : Math.max(a, Math.min(b, Math.round(n))); };
+  const porChave = lista => { const o = {}; lista.forEach(x => { o[x.k] = x; }); return o; };
+  const PARTE = porChave(PARTES), TIPO_FER = porChave(TIPOS_FER);
+  const porOrdem = (campo) => (a, b) => (a[campo] - b[campo]) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  /* Os ferimentos abertos (estado.fer), dos mais antigos para os mais novos, e o que as penalidades deles somam.
+     → { lista: [{ id, p, t, g, s:{ sg, en, su, ta, inf }, n, k, v, c }], soma: { as dez chaves }, esp: { as 13 } }
+     A penalidade é sempre para menos (v ≤ 0). Ferimento numa parte que não existe não entra. */
+  function ferimentos(mapa) {
+    const soma = {}, esp = {}, lista = [];
+    CHAVES_BONUS.forEach(k => { soma[k] = 0; });
+    CHAVES_ESP.forEach(k => { esp[k] = 0; });
+    if (ehObjeto(mapa)) {
+      Object.keys(mapa).forEach(id => {
+        const f = mapa[id];
+        if (!ehObjeto(f) || !tem(PARTE, f.p)) return;
+        const k = String(f.k == null ? '' : f.k).toUpperCase(), v = numFinito(f.v), s = {};
+        ESTADOS_FER.forEach(e => { s[e.k] = !!(ehObjeto(f.s) && f.s[e.k]); });
+        lista.push({ id, p: f.p, t: tem(TIPO_FER, f.t) ? f.t : 'corte', g: inteiroEntre(f.g == null ? 1 : f.g, 1, 3), s,
+          n: String(f.n == null ? '' : f.n).slice(0, 200), k: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '',
+          v: v ? -Math.abs(v) : 0, c: numFinito(f.c) || 0 });
+      });
+      lista.sort(porOrdem('c'));
+      lista.forEach(f => { if (!f.k || !f.v) return; if (ehDefesaEsp(f.k)) esp[f.k] += f.v; else soma[f.k] += f.v; });
+    }
+    return { lista, soma, esp };
+  }
+  /* "Corte grave · Braço esquerdo · sangrando, enfaixado · −2 Destreza" (as partes que houver) */
+  function textoDoFerimento(f, semParte) {
+    const t = TIPO_FER[f.t] || TIPOS_FER[0], g = GRAVIDADES[(f.g || 1) - 1] || GRAVIDADES[0];
+    const partes = [t.nome + ' ' + (t.f ? g.f : g.m)];
+    if (!semParte && PARTE[f.p]) partes.push(PARTE[f.p].nome);
+    const est = ESTADOS_FER.filter(e => f.s && f.s[e.k]).map(e => e.nome.toLowerCase());
+    if (est.length) partes.push(est.join(', '));
+    if (f.k && f.v) partes.push('−' + Math.abs(f.v) + ' ' + (NOMES_BONUS[f.k] || f.k));
+    return partes.join(' · ');
+  }
+  /* O que o token mostra: quantos ferimentos, o mais grave, e se algum sangra ou está infeccionado. */
+  function sinalDeFerido(mapa) {
+    const l = ferimentos(mapa).lista;
+    return { n: l.length, grave: l.reduce((m, f) => Math.max(m, f.g), 0), sangra: l.some(f => f.s.sg), inf: l.some(f => f.s.inf) };
+  }
+
   /* ---------- cálculo (da calculadora, com cfg por parâmetro) ---------- */
   function ptsDoLevel(cfg,lvl){
     const t=cfg.niveis||[], row=t.find(r=>+r.lvl===+lvl);
@@ -437,6 +520,8 @@
     const totalAnt = ptsDoLevel(cfg,Math.max(1,(+pc.level)-1))*mult;
     const eq=bonusItens(pc);
     const ext=bonusExtras(pc), tp=temporarios(extra&&extra.temp), tmp=tp.soma;
+    const fp=ferimentos(extra&&extra.fer);           // as penalidades dos ferimentos abertos contam junto
+    if(fp.lista.length){ CHAVES_BONUS.forEach(k=>{ tmp[k]+=fp.soma[k]; }); CHAVES_ESP.forEach(k=>{ tp.esp[k]+=fp.esp[k]; }); }
     const {arv,arvRec}=separarArvore(extra&&extra.arvore);
     const tiers=pc.tiers||{};
     const livres=pontosLivres(pc);
@@ -497,7 +582,8 @@
       return Object.assign(o, limitesDoRecurso(r, o.max, vars, cfg));
     });
     const r={mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec,
-      tmp, temporarios:tp.lista, defEsp, baseEsp, eqEsp:ext.esp, tmpEsp:tp.esp, eqRec:ext.rec};
+      tmp, temporarios:tp.lista, defEsp, baseEsp, eqEsp:ext.esp, tmpEsp:tp.esp, eqRec:ext.rec,
+      ferimentos:fp.lista, fer:fp.soma, ferEsp:fp.esp};
     if(pc.modoAtr==='livre'){
       r.livre=true;
       r.usados=ATRIBS.reduce((s,a)=>s+(+nat[a.k]||0),0);
@@ -704,6 +790,167 @@
     return p.join(' · ');
   }
 
+  /* ---------- relacionamentos (com romance, e com o que o mestre esconde) ---------- */
+  const copiaJ = x => (x == null ? x : JSON.parse(JSON.stringify(x)));
+  const romDe = v => (v == null || v === '' || numFinito(v) == null ? null : inteiroEntre(v, -ROM_MAX, ROM_MAX));
+  function umaRelacao(id, e, ordem) {
+    const o = numFinito(e.o);
+    return { id: String(id), alvo: e.alvo ? String(e.alvo) : null, nome: String(e.nome == null ? '' : e.nome).slice(0, 80),
+      v: inteiroEntre(e.v, -100, 100), rom: romDe(e.rom), oc: !!e.oc, o: o == null ? ordem : o };
+  }
+  /* As linhas que estão na ficha, em ordem. Numa linha de valor escondido (oc) o v e o rom vêm zerados: não estão ali. */
+  function relacoes(estado) {
+    const out = [];
+    if (estado && ehObjeto(estado.rels)) Object.keys(estado.rels).forEach((id, i) => { const e = estado.rels[id]; if (ehObjeto(e)) out.push(umaRelacao(id, e, i)); });
+    else if (estado && Array.isArray(estado.rel)) estado.rel.forEach((e, i) => { if (ehObjeto(e) && e.id) out.push(umaRelacao(e.id, e, i)); });
+    out.forEach(e => { if (e.oc) { e.v = 0; e.rom = null; } });
+    return out.sort(porOrdem('o'));
+  }
+  const temRelacoes = estado => relacoes(estado).length > 0;
+  // a ficha ainda guarda os relacionamentos no formato antigo (a lista)?
+  const relLegado = estado => !!estado && Array.isArray(estado.rel) && !ehObjeto(estado.rels);
+  function visaoDoMestre(lista, seg, tudoDoMestre) {
+    const out = [], vistos = {};
+    lista.forEach(e => {
+      por(vistos, e.id, true);
+      const s = ehObjeto(seg) && tem(seg, e.id) && ehObjeto(seg[e.id]) ? seg[e.id] : null;
+      if (e.oc) out.push(Object.assign({}, e, { v: s ? inteiroEntre(s.v, -100, 100) : 0, rom: s ? romDe(s.rom) : null, modo: 'valor' }));
+      else out.push(Object.assign({}, e, { modo: tudoDoMestre ? 'mestre' : 'aberta' }));
+    });
+    if (ehObjeto(seg)) Object.keys(seg).forEach((id, i) => {
+      const s = seg[id];
+      if (tem(vistos, id) || !ehObjeto(s) || !s.l) return;
+      out.push(Object.assign(umaRelacao(id, s, 1e6 + i), { oc: false, modo: 'mestre' }));
+    });
+    return out.sort(porOrdem('o'));
+  }
+  /* O que o mestre vê: as linhas da ficha (as de valor escondido, com o valor que ele guarda) e as que só ele tem.
+     Cada linha ganha `modo`: 'aberta' (está toda na ficha), 'valor' (o nome na ficha, o valor com o mestre) ou
+     'mestre' (a linha inteira com o mestre).
+     `npc`: a ficha não é de jogador. Os relacionamentos de um NPC são do mestre; os que ainda estão na ficha no
+     formato antigo contam como dele (e passam para ele na primeira mudança — ver mexerRelacao). */
+  function relacoesDoMestre(estado, seg, npc) {
+    return visaoDoMestre(relacoes(estado), seg, !!npc && relLegado(estado));
+  }
+  // o estado com as linhas dadas, no formato novo (o antigo sai)
+  function comRelacoes(estado, lista) {
+    const e = Object.assign({}, estado), m = {};
+    lista.forEach(x => {
+      const o = { nome: x.nome, o: x.o };
+      if (x.alvo) o.alvo = x.alvo;
+      if (x.oc) o.oc = 1; else { o.v = x.v; if (x.rom != null) o.rom = x.rom; }
+      por(m, x.id, o);
+    });
+    delete e.rel;
+    if (lista.length) e.rels = m; else delete e.rels;
+    return e;
+  }
+  const linhaDoMestre = x => { const o = { l: 1, nome: x.nome, v: x.v, o: x.o }; if (x.alvo) o.alvo = x.alvo; if (x.rom != null) o.rom = x.rom; return o; };
+  const valorDoMestre = x => { const o = { v: x.v }; if (x.rom != null) o.rom = x.rom; return o; };
+  /* Uma mudança nos relacionamentos de um personagem → { estado, seg, mudou }, sem alterar o que recebeu.
+     `seg` é o que o mestre guarda desse personagem (quem não é o mestre passa null: só mexe nas linhas abertas).
+     op.t:
+       'nova'      { id, alvo, nome, v, rom, o, comMestre }   cria (com o mestre, se comMestre; senão, aberta na ficha)
+       'valor'     { id, v }      'rom' { id, rom }  (rom null tira a trilha)      'nome' { id, nome }
+       'esconder'  { id }   aberta → valor escondido          'revelar' { id }   valor escondido → aberta
+       'guardar'   { id }   aberta → só com o mestre          'abrir'   { id }   só com o mestre → aberta
+       'tirar'     { id }
+       'guardar-legado'  {}   (só com op.npc) passa para o mestre o que a ficha de um NPC tem no formato antigo
+     op.npc: a ficha é de um NPC. Antes de qualquer mudança do mestre, o que ela tem no formato antigo passa para ele. */
+  function mexerRelacao(estado, seg, op) {
+    const mestre = seg !== null && seg !== undefined, t = op && op.t;
+    const s = ehObjeto(seg) ? copiaJ(seg) : {};
+    let lista = relacoes(estado), mudouE = false, mudouS = false;
+    if (mestre && op && op.npc && relLegado(estado)) {
+      lista.forEach(e => { if (!(tem(s, e.id) && ehObjeto(s[e.id]) && s[e.id].l)) por(s, e.id, linhaDoMestre(e)); });
+      lista = []; mudouE = mudouS = true;
+    }
+    const todas = mestre ? visaoDoMestre(lista, s, false) : lista.map(e => Object.assign({}, e, { modo: e.oc ? 'valor' : 'aberta' }));
+    const achar = id => todas.find(e => e.id === String(id)) || null;
+    const naFicha = id => lista.find(e => e.id === String(id)) || null;
+    const proxima = () => todas.reduce((m, e) => Math.max(m, e.o < 1e6 ? e.o : -1), -1) + 1;
+    const fim = () => ({ estado: mudouE ? comRelacoes(estado, lista) : estado, seg: mudouS ? s : seg, mudou: mudouE || mudouS });
+    if (t === 'guardar-legado') return fim();
+    if (t === 'nova') {
+      const id = String(op.id || uid());
+      if (achar(id)) return fim();
+      const e = umaRelacao(id, { alvo: op.alvo, nome: op.nome, v: op.v || 0, rom: op.rom, o: numFinito(op.o) == null ? proxima() : op.o }, 0);
+      if (op.comMestre && mestre) { por(s, id, linhaDoMestre(e)); mudouS = true; }
+      else { lista.push(e); mudouE = true; }
+      return fim();
+    }
+    const e = achar(op && op.id);
+    if (!e) return fim();
+    const f = naFicha(e.id);
+    if (t === 'valor' || t === 'rom' || t === 'nome') {
+      const antes = { v: e.v, rom: e.rom, nome: e.nome };
+      if (t === 'valor') e.v = inteiroEntre(op.v, -100, 100);
+      else if (t === 'rom') e.rom = romDe(op.rom);
+      else e.nome = String(op.nome == null ? '' : op.nome).slice(0, 80);
+      if (antes.v === e.v && antes.rom === e.rom && antes.nome === e.nome) return fim();
+      if (e.modo === 'aberta') { Object.assign(f, { v: e.v, rom: e.rom, nome: e.nome }); mudouE = true; }
+      else if (!mestre) return fim();                                         // o valor não está com quem pediu
+      else if (e.modo === 'valor') { if (t === 'nome') { f.nome = e.nome; mudouE = true; } else { por(s, e.id, valorDoMestre(e)); mudouS = true; } }
+      else { por(s, e.id, linhaDoMestre(e)); mudouS = true; }
+    } else if (t === 'tirar') {
+      if (e.modo !== 'aberta' && !mestre) return fim();
+      if (f) { lista = lista.filter(x => x.id !== e.id); mudouE = true; }
+      if (tem(s, e.id)) { delete s[e.id]; mudouS = true; }
+    } else if (!mestre) return fim();
+    else if (t === 'esconder' && e.modo === 'aberta') { por(s, e.id, valorDoMestre(e)); f.oc = true; mudouE = mudouS = true; }
+    else if (t === 'revelar' && e.modo === 'valor') { Object.assign(f, { oc: false, v: e.v, rom: e.rom }); delete s[e.id]; mudouE = mudouS = true; }
+    else if (t === 'guardar' && e.modo !== 'mestre') { por(s, e.id, linhaDoMestre(e)); lista = lista.filter(x => x.id !== e.id); mudouE = mudouS = true; }
+    else if (t === 'abrir' && e.modo === 'mestre') { lista.push(Object.assign(umaRelacao(e.id, e, e.o), { oc: false })); delete s[e.id]; mudouE = mudouS = true; }
+    return fim();
+  }
+  // a linha (na visão de quem pede) do que o personagem sente por `alvo`
+  function relacaoCom(estado, seg, alvo, npc) {
+    const l = seg === null || seg === undefined ? relacoes(estado) : relacoesDoMestre(estado, seg, npc);
+    return l.find(e => e.alvo === alvo) || null;
+  }
+
+  /* ---------- missões ---------- */
+  /* As missões de um mapa { [id]: { t: título, d: descrição, r: recompensa, e: estado, de: 'm' | 'j' (quem criou),
+     c: quando, o:{ [id]: { t: texto, ok, n: ordem } } } } → lista em ordem (as ativas primeiro, cada grupo pela criação),
+     com os objetivos em ordem e a conta de quantos estão feitos. */
+  function missoes(mapa) {
+    const out = [];
+    if (ehObjeto(mapa)) Object.keys(mapa).forEach(id => {
+      const m = mapa[id];
+      if (!ehObjeto(m)) return;
+      const objs = [];
+      if (ehObjeto(m.o)) Object.keys(m.o).forEach((oid, i) => { const o = m.o[oid]; if (ehObjeto(o)) objs.push({ id: oid, t: String(o.t == null ? '' : o.t).slice(0, 200), ok: !!o.ok, n: numFinito(o.n) == null ? i : numFinito(o.n) }); });
+      objs.sort(porOrdem('n'));
+      out.push({ id, t: String(m.t == null ? '' : m.t).slice(0, 120), d: String(m.d == null ? '' : m.d).slice(0, 2000), r: String(m.r == null ? '' : m.r).slice(0, 300),
+        e: MIS_ESTADOS.some(x => x.k === m.e) ? m.e : 'ativa', de: m.de === 'j' ? 'j' : 'm', c: numFinito(m.c) || 0,
+        objs, feitos: objs.filter(o => o.ok).length, total: objs.length });
+    });
+    const peso = { ativa: 0, feita: 1, falhou: 2 };
+    return out.sort((a, b) => (peso[a.e] - peso[b.e]) || (a.c - b.c) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+
+  /* ---------- a barra de XP ---------- */
+  const XP_PASSO = 10;                      // a cada nível o máximo cresce isto (sem máximo digitado, vale isto × nível)
+  /* estado.xp → { v, min, max, falta, fracao (0 a 1), cheia, minProprio, maxProprio }.
+     minProprio / maxProprio: o limite foi digitado (está guardado); senão é o de costume. */
+  function xpDe(estado, nivel) {
+    const x = estado && ehObjeto(estado.xp) ? estado.xp : {};
+    const minP = numFinito(x.min), maxP = numFinito(x.max), lv = Math.max(1, Math.round(numFinito(nivel) || 1));
+    const min = minP == null ? 0 : minP, max = Math.max(min, maxP == null ? XP_PASSO * lv : maxP);
+    const vP = numFinito(x.v), v = Math.max(min, vP == null ? min : vP), faixa = max - min;
+    return { v, min, max, falta: Math.max(0, max - v), fracao: faixa > 0 ? Math.max(0, Math.min(1, (v - min) / faixa)) : 1, cheia: v >= max,
+      minProprio: minP != null, maxProprio: maxP != null };
+  }
+  /* O estado depois de subir de nível (de `nivel` para o seguinte): o que passou do máximo fica, o mínimo não muda,
+     o máximo ganha XP_PASSO (o digitado é somado; o de costume acompanha o nível sozinho). Não altera o que recebeu. */
+  function subirNivelXp(estado, nivel) {
+    const x = xpDe(estado, nivel), e = Object.assign({}, estado), novo = Object.assign({}, estado && ehObjeto(estado.xp) ? estado.xp : {});
+    novo.v = x.min + Math.max(0, x.v - x.max);
+    if (x.maxProprio) novo.max = x.max + XP_PASSO;
+    e.xp = novo;
+    return e;
+  }
+
   /* ---------- resumo para os outros apps ---------- */
   /* objeto pequeno e plano (vai bem em JSON) com o que a mesa, o rolador e as cenas
      precisam de uma ficha sem ter de recalcular */
@@ -711,6 +958,7 @@
     // os bônus temporários moram no estado: entram sozinhos, a não ser que quem chama já os tenha passado
     const ex = Object.assign({}, extra);
     if (ex.temp === undefined && estado) ex.temp = estado.tmp;
+    if (ex.fer === undefined && estado) ex.fer = estado.fer;
     const c = calcular(pc, cfg, ex);
     const attrs = {}, base = {}, der = {}, def = {}, defEsp = {};
     ATRIBS.forEach(a => { attrs[a.k] = c.tot[a.k]; base[a.k] = c.base[a.k]; });
@@ -734,7 +982,11 @@
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, BOLSAS,
-    temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso
+    temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso,
+    PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido,
+    ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
+    MIS_ESTADOS, missoes,
+    XP_PASSO, xpDe, subirNivelXp
   };
 
   (root.TC || (root.TC = {})).rules = api;

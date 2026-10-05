@@ -168,6 +168,109 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(j(R.previaDoUso(pb, cb, estB, B[0])) === j(['HP 60 → 90 (+30)']) && j(R.previaDoUso(pb, cb, estB, B[1])) === j(['Sangue 30 − 2d6, rolado na hora', 'Força +4 (3 turnos)']) && R.previaDoUso(pb, cb, estB, B[2]).length === 0 && R.previaDoUso(pb, cb, estB, B[5]).length === 0 && j(R.previaDoUso(pb, cb, { rec: { hp: 95 } }, B[0])) === j(['HP 95 → 100 (+30)']), 'a prévia do uso, em palavras: ' + j(B.map(x => R.previaDoUso(pb, cb, estB, x))));
   ok(R.DEFESAS_ESP.length === 13 && R.BOLSAS.length === 5 && R.NOMES_BONUS.FOR === 'Força' && R.NOMES_BONUS.PSI === 'Defesa: Psicológico' && Object.isFrozen(R.DEFESAS_ESP), 'as 13 defesas específicas e os 5 tipos de bolsa');
 }
+// ---------- ferimentos, relacionamentos (romance e segredo) e missões ----------
+{
+  const pf = R.personagemPadrao('Ferido');
+  pf.defEsp = { FOGO: 4 };
+  const c0 = R.calcular(pf, cfg0);
+  const fer = { f1: { p: 'bracoE', t: 'corte', g: 3, s: { sg: 1, en: 1 }, n: 'faca', k: 'des', v: 2, c: 20 }, f2: { p: 'peito', t: 'queim', g: 2, k: 'FOGO', v: -3, c: 10 },
+    f3: { p: 'cauda', t: 'corte', k: 'FOR', v: 9 }, f4: 'lixo', f5: { p: 'peD', t: 'inventado', g: 9, k: 'NADA', v: 5, c: 30 }, f6: { p: 'maoD', c: 30 } };
+  const F = R.ferimentos(fer);
+  ok(F.lista.length === 4 && j(F.lista.map(f => f.id)) === j(['f2', 'f1', 'f5', 'f6']), 'ferimentos: só os de partes que existem, do mais antigo para o mais novo — ' + j(F.lista.map(f => f.id)));
+  ok(F.lista[1].k === 'DES' && F.lista[1].v === -2 && F.lista[1].s.sg && F.lista[1].s.en && !F.lista[1].s.inf && F.lista[1].n === 'faca', 'a penalidade é sempre para menos (2 vira −2); os estados vêm como sim/não');
+  ok(F.lista[2].t === 'corte' && F.lista[2].g === 3 && F.lista[2].k === '' && F.lista[3].g === 1 && F.lista[3].v === 0, 'tipo desconhecido vira corte, gravidade fica entre 1 e 3, chave desconhecida não soma');
+  ok(F.soma.DES === -2 && F.soma.FOR === 0 && F.esp.FOGO === -3, 'a soma das penalidades, nas dez chaves e nas defesas específicas');
+  const c1 = R.calcular(pf, cfg0, { fer });
+  ok(c1.tot.DES === c0.tot.DES - 2 && c1.base.DES === c0.base.DES && c1.defEsp.FOGO === 1 && c1.tmp.DES === -2 && c1.fer.DES === -2 && c1.ferEsp.FOGO === -3 && c1.ferimentos.length === 4 && c1.vars.DES_TMP === -2, 'no cálculo, a penalidade conta como um bônus temporário (e não mexe na base)');
+  const c2 = R.calcular(pf, cfg0, { fer, temp: { t1: { n: 'Ensopado', k: 'DES', v: 5 } } });
+  ok(c2.tot.DES === c0.tot.DES + 3 && c2.tmp.DES === 3 && c2.fer.DES === -2 && c2.temporarios.length === 1, 'ferimento e bônus temporário na mesma chave se somam (o que é de cada um fica à parte)');
+  ok(j(R.calcular(pf, cfg0, { fer: {} })) === j(c0) && j(R.calcular(pf, cfg0, { fer: null })) === j(c0), 'sem ferimentos, a conta é a de sempre');
+  ok(R.resumo(pf, cfg0, null, { fer }).attrs.DES === c0.tot.DES - 2 && R.resumo(pf, cfg0, { fer: {} }, { fer }).attrs.DES === c0.tot.DES, 'o resumo pega os ferimentos do estado sozinho (a não ser que quem chama já os tenha passado)');
+  ok(R.textoDoFerimento(F.lista[1]) === 'Corte grave · Braço esquerdo · sangrando, enfaixado · −2 Destreza' && R.textoDoFerimento(F.lista[0]) === 'Queimadura média · Peito · −3 Defesa: Fogo' && R.textoDoFerimento(F.lista[3], true) === 'Corte leve', 'o texto de um ferimento: "' + R.textoDoFerimento(F.lista[1]) + '" · "' + R.textoDoFerimento(F.lista[0]) + '"');
+  ok(j(R.sinalDeFerido(fer)) === j({ n: 4, grave: 3, sangra: true, inf: false }) && j(R.sinalDeFerido(null)) === j({ n: 0, grave: 0, sangra: false, inf: false }), 'o sinal do token: quantos, o mais grave, se sangra');
+  ok(R.PARTES.length === 12 && R.TIPOS_FER.length === 6 && R.GRAVIDADES.length === 3 && R.ESTADOS_FER.length === 5 && Object.isFrozen(R.PARTES), 'o corpo tem 12 partes; 6 tipos, 3 gravidades e 5 estados de ferimento');
+
+  // relacionamentos: o formato antigo (lista) e o novo (mapa), em ordem
+  const antigo = { san: 80, rel: [{ id: 'a', alvo: 'pc2', nome: 'Kaito', v: 30 }, { id: 'b', nome: 'Velho do porto', v: -150 }, 'lixo', { nome: 'sem id' }] };
+  const L0 = R.relacoes(antigo);
+  ok(L0.length === 2 && L0[0].id === 'a' && L0[0].alvo === 'pc2' && L0[0].rom === null && L0[1].v === -100 && L0[1].alvo === null && R.temRelacoes(antigo) && !R.temRelacoes({}) && !R.temRelacoes(null), 'a lista antiga continua sendo lida (valor dentro de −100..100, sem trilha de romance)');
+  const novo = { rels: { z: { nome: 'Z', v: 1, o: 0 }, b: { nome: 'B', v: 2, o: 2, rom: 99 }, a: { nome: 'A', alvo: 'pc9', oc: 1, v: 77, rom: 3, o: 1 } }, rel: [{ id: 'velha', nome: 'não conta', v: 1 }] };
+  const L1 = R.relacoes(novo);
+  ok(j(L1.map(e => e.id)) === j(['z', 'a', 'b']) && L1[2].rom === 10 && L1[1].oc && L1[1].v === 0 && L1[1].rom === null, 'o mapa novo vale no lugar da lista, na ordem guardada; romance entre −10 e +10; a linha de valor escondido não mostra valor mesmo que ele esteja ali');
+  // o que o mestre vê
+  const seg = { a: { v: 40, rom: -4 }, s1: { l: 1, nome: 'Segredo', alvo: 'pc3', v: -20, rom: 2, o: 5 }, orfa: { v: 9 }, z: { l: 1, nome: 'duplicada', v: 0, o: 9 } };
+  const LM = R.relacoesDoMestre(novo, seg);
+  ok(j(LM.map(e => e.id + ':' + e.modo)) === j(['z:aberta', 'a:valor', 'b:aberta', 's1:mestre']) && LM[1].v === 40 && LM[1].rom === -4 && LM[3].v === -20 && LM[3].alvo === 'pc3', 'o mestre vê as abertas, a de valor escondido com o valor que ele guarda, e as que só ele tem (o que a ficha já tem não se repete; valor sem linha é ignorado) — ' + j(LM.map(e => e.id + ':' + e.modo)));
+  ok(R.relacaoCom(novo, seg, 'pc3').id === 's1' && R.relacaoCom(novo, null, 'pc3') === null && R.relacaoCom(novo, seg, 'pc9').v === 40 && R.relacaoCom(novo, null, 'pc9').v === 0, 'o que o personagem sente por alguém, na visão do mestre e na do jogador');
+
+  // mudanças: nada do que entra é alterado
+  const antes = j(antigo);
+  let r = R.mexerRelacao(antigo, {}, { t: 'rom', id: 'a', rom: 4 });
+  ok(r.mudou && j(antigo) === antes && !('rel' in r.estado) && r.estado.san === 80 && j(r.estado.rels) === j({ a: { nome: 'Kaito', o: 0, alvo: 'pc2', v: 30, rom: 4 }, b: { nome: 'Velho do porto', o: 1, v: -100 } }), 'a primeira mudança passa a lista antiga para o mapa (o resto do estado fica) — ' + j(r.estado));
+  let m = R.mexerRelacao(r.estado, r.seg, { t: 'esconder', id: 'a' });
+  ok(m.mudou && j(m.estado.rels.a) === j({ nome: 'Kaito', o: 0, alvo: 'pc2', oc: 1 }) && j(m.seg) === j({ a: { v: 30, rom: 4 } }) && j(r.seg) === j({}), 'esconder o valor: na ficha fica só o nome; o valor e o romance vão para o mestre');
+  ok(!R.mexerRelacao(m.estado, null, { t: 'valor', id: 'a', v: 99 }).mudou && !R.mexerRelacao(m.estado, null, { t: 'rom', id: 'a', rom: 1 }).mudou && !R.mexerRelacao(m.estado, null, { t: 'tirar', id: 'a' }).mudou && !R.mexerRelacao(m.estado, null, { t: 'revelar', id: 'a' }).mudou, 'quem não é o mestre não muda, não tira nem revela uma linha de valor escondido');
+  ok(R.mexerRelacao(m.estado, null, { t: 'valor', id: 'b', v: 12 }).estado.rels.b.v === 12 && R.mexerRelacao(m.estado, null, { t: 'valor', id: 'b', v: 12 }).seg === null, 'mas muda as abertas');
+  let m2 = R.mexerRelacao(m.estado, m.seg, { t: 'valor', id: 'a', v: 55 });
+  ok(m2.mudou && m2.estado === m.estado && m2.seg.a.v === 55 && m2.seg.a.rom === 4, 'o mestre muda o valor escondido: só o que ele guarda muda (a ficha nem é tocada)');
+  let m3 = R.mexerRelacao(m2.estado, m2.seg, { t: 'revelar', id: 'a' });
+  ok(j(m3.estado.rels.a) === j({ nome: 'Kaito', o: 0, alvo: 'pc2', v: 55, rom: 4 }) && j(m3.seg) === j({}), 'revelar devolve o valor (o de agora) à ficha e o mestre deixa de guardá-lo');
+  ok(!R.mexerRelacao(m3.estado, m3.seg, { t: 'revelar', id: 'a' }).mudou && !R.mexerRelacao(m3.estado, m3.seg, { t: 'valor', id: 'a', v: 55 }).mudou && !R.mexerRelacao(m3.estado, m3.seg, { t: 'valor', id: 'nada', v: 1 }).mudou, 'o que não muda nada diz que não mudou');
+  ok(R.mexerRelacao(m3.estado, m3.seg, { t: 'rom', id: 'a', rom: null }).estado.rels.a.rom === undefined && R.mexerRelacao(m3.estado, m3.seg, { t: 'rom', id: 'b', rom: 0 }).estado.rels.b.rom === 0, 'tirar a trilha de romance é diferente de romance zero');
+  // NPC: a linha inteira com o mestre
+  let n1 = R.mexerRelacao({ rec: { hp: 3 } }, {}, { t: 'nova', id: 'n1', alvo: 'pc2', nome: 'Kaito', comMestre: true });
+  ok(n1.mudou && j(n1.estado) === j({ rec: { hp: 3 } }) && j(n1.seg) === j({ n1: { l: 1, nome: 'Kaito', v: 0, o: 0, alvo: 'pc2' } }), 'linha nova de um NPC: nasce só com o mestre; a ficha não muda');
+  n1 = R.mexerRelacao(n1.estado, n1.seg, { t: 'nova', id: 'n2', nome: 'Rei', comMestre: true });
+  n1 = R.mexerRelacao(n1.estado, n1.seg, { t: 'valor', id: 'n2', v: -40 });
+  n1 = R.mexerRelacao(n1.estado, n1.seg, { t: 'rom', id: 'n1', rom: -3 });
+  ok(n1.seg.n2.o === 1 && n1.seg.n2.v === -40 && n1.seg.n1.rom === -3 && !R.temRelacoes(n1.estado) && R.relacoesDoMestre(n1.estado, n1.seg).length === 2, 'valor e romance dessas linhas mudam só no que o mestre guarda');
+  let n2 = R.mexerRelacao(n1.estado, n1.seg, { t: 'abrir', id: 'n2' });
+  ok(j(n2.estado.rels) === j({ n2: { nome: 'Rei', o: 1, v: -40 } }) && !('n2' in n2.seg) && R.relacoesDoMestre(n2.estado, n2.seg).length === 2, 'abrir uma linha aos jogadores passa-a para a ficha');
+  let n3 = R.mexerRelacao(n2.estado, n2.seg, { t: 'guardar', id: 'n2' });
+  ok(!R.temRelacoes(n3.estado) && !('rels' in n3.estado) && n3.seg.n2.l === 1 && n3.seg.n2.v === -40, 'e guardar de volta tira-a da ficha');
+  let n4 = R.mexerRelacao(n3.estado, n3.seg, { t: 'tirar', id: 'n1' });
+  ok(j(Object.keys(n4.seg)) === j(['n2']) && !R.mexerRelacao(n3.estado, null, { t: 'tirar', id: 'n1' }).mudou, 'tirar uma linha que só o mestre tem');
+  ok(R.mexerRelacao(n3.estado, n3.seg, { t: 'nova', id: 'n2', nome: 'de novo', comMestre: true }).mudou === false && R.mexerRelacao(n3.estado, null, { t: 'nova', id: 'j1', nome: 'Do jogador', comMestre: true }).estado.rels.j1.v === 0, 'id repetido não cria outra; "com o mestre" pedido por quem não é o mestre cria aberta');
+  // a lista antiga na ficha de um NPC: conta como do mestre, e passa para ele na primeira mudança
+  const npc = { lapros: 4, rel: [{ id: 'k1', alvo: 'pc1', nome: 'Dain', v: 25 }, { id: 'k2', nome: 'A cidade', v: -10 }] };
+  ok(j(R.relacoesDoMestre(npc, {}, true).map(e => e.id + ':' + e.modo)) === j(['k1:mestre', 'k2:mestre']) && j(R.relacoesDoMestre(npc, {}, false).map(e => e.modo)) === j(['aberta', 'aberta']) && R.relacaoCom(npc, {}, 'pc1', true).modo === 'mestre', 'na ficha de um NPC, a lista antiga já aparece para o mestre como "só dele"');
+  const gl = R.mexerRelacao(npc, {}, { t: 'guardar-legado', npc: true });
+  ok(gl.mudou && !('rel' in gl.estado) && !('rels' in gl.estado) && gl.estado.lapros === 4 && j(gl.seg) === j({ k1: { l: 1, nome: 'Dain', v: 25, o: 0, alvo: 'pc1' }, k2: { l: 1, nome: 'A cidade', v: -10, o: 1 } }) && j(npc.rel.length) === '2', 'guardar o que é antigo: as linhas saem da ficha e ficam com o mestre, com os mesmos valores');
+  ok(!R.mexerRelacao(gl.estado, gl.seg, { t: 'guardar-legado', npc: true }).mudou && !R.mexerRelacao(npc, {}, { t: 'guardar-legado' }).mudou && !R.mexerRelacao(npc, null, { t: 'guardar-legado', npc: true }).mudou, 'de novo não muda nada; sem ser NPC, ou sem ser o mestre, também não');
+  const gv = R.mexerRelacao(npc, {}, { t: 'valor', id: 'k1', v: 60, npc: true });
+  ok(gv.mudou && !('rel' in gv.estado) && !('rels' in gv.estado) && gv.seg.k1.v === 60 && gv.seg.k2.v === -10, 'qualquer mudança do mestre na ficha de um NPC leva junto o que era antigo');
+  const gn = R.mexerRelacao(npc, {}, { t: 'nova', id: 'k3', nome: 'Novo', comMestre: true, npc: true });
+  ok(gn.seg.k3.o === 2 && Object.keys(gn.seg).length === 3 && !R.temRelacoes(gn.estado), 'e a linha nova entra depois das que já existiam');
+  const ga = R.mexerRelacao(gl.estado, gl.seg, { t: 'abrir', id: 'k2', npc: true });
+  ok(j(ga.estado.rels) === j({ k2: { nome: 'A cidade', o: 1, v: -10 } }) && j(R.relacoesDoMestre(ga.estado, ga.seg, true).map(e => e.id + ':' + e.modo)) === j(['k1:mestre', 'k2:aberta']) && !R.mexerRelacao(ga.estado, ga.seg, { t: 'guardar-legado', npc: true }).mudou, 'uma linha que o mestre abriu (formato novo) fica aberta: não é "antiga"');
+  const tn = R.mexerRelacao(m3.estado, m3.seg, { t: 'tirar', id: 'b' }), vn = R.mexerRelacao(tn.estado, tn.seg, { t: 'nova', id: 'b', nome: 'Velho do porto', v: -100, o: 1 });
+  ok(j(R.relacoes(vn.estado)) === j(R.relacoes(m3.estado)), 'tirar e pôr de volta (com a ordem que tinha) dá na mesma lista');
+  ok(R.ROM_MAX === 10, 'a trilha de romance tem 10 corações');
+
+  // missões
+  const mis = { m1: { t: 'Achar a espada', d: 'x'.repeat(3000), r: '50 lapros', e: 'feita', c: 2, de: 'j', o: { a: { t: 'Falar com o ferreiro', ok: 1, n: 1 }, b: { t: 'Ir à forja', n: 0 }, c: 'lixo' } },
+    m2: { t: 'Outra', c: 5 }, m3: { t: 'Perdida', e: 'falhou', c: 1 }, m4: { t: 'Primeira', e: 'inventado', c: 3 }, m5: 7 };
+  const M = R.missoes(mis);
+  ok(j(M.map(x => x.id)) === j(['m4', 'm2', 'm1', 'm3']) && M[0].e === 'ativa' && M[2].de === 'j' && M[0].de === 'm', 'missões em ordem: as ativas primeiro (pela criação), depois as concluídas, depois as que falharam — ' + j(M.map(x => x.id)));
+  ok(M[2].total === 2 && M[2].feitos === 1 && j(M[2].objs.map(o => o.id)) === j(['b', 'a']) && M[2].d.length === 2000 && M[2].r === '50 lapros' && M[1].total === 0, 'cada missão traz os objetivos em ordem e quantos estão feitos');
+  ok(R.missoes(null).length === 0 && R.missoes([1, 2]).length === 0 && R.MIS_ESTADOS.length === 3, 'sem missões, lista vazia');
+
+  // a barra de XP
+  ok(j(R.xpDe(null, 3)) === j({ v: 0, min: 0, max: 30, falta: 30, fracao: 0, cheia: false, minProprio: false, maxProprio: false }) && R.xpDe({}, 1).max === 10 && R.xpDe({}, 'x').max === 10 && R.xpDe({ xp: 'lixo' }, 2).max === 20, 'sem nada guardado: de 0 a 10 por nível, vazia — ' + j(R.xpDe(null, 3)));
+  const x1 = R.xpDe({ xp: { v: 45, min: 20, max: 120 } }, 5);
+  ok(x1.v === 45 && x1.min === 20 && x1.max === 120 && x1.falta === 75 && x1.fracao === 0.25 && !x1.cheia && x1.minProprio && x1.maxProprio, 'com mínimo e máximo digitados: a fração é entre os dois (25 de 100 → 25%)');
+  ok(R.xpDe({ xp: { v: 5, min: 20 } }, 4).v === 20 && R.xpDe({ xp: { v: -3 } }, 1).v === 0, 'o XP não fica abaixo do mínimo');
+  const x2 = R.xpDe({ xp: { v: 12 } }, 1);
+  ok(x2.v === 12 && x2.cheia && x2.falta === 0 && x2.fracao === 1, 'mas pode passar do máximo (12 de 10: cheia)');
+  ok(R.xpDe({ xp: { v: 3, min: 50, max: 10 } }, 1).max === 50 && R.xpDe({ xp: { v: 3, min: 50, max: 10 } }, 1).cheia && R.xpDe({ xp: { min: 5, max: 5 } }, 1).fracao === 1, 'máximo abaixo do mínimo vale o mínimo (e a barra conta como cheia)');
+  const e0 = { rec: { hp: 3 }, xp: { v: 12 } }, s1 = R.subirNivelXp(e0, 1);
+  ok(j(s1) === j({ rec: { hp: 3 }, xp: { v: 2 } }) && j(e0.xp) === j({ v: 12 }) && R.xpDe(s1, 2).max === 20 && R.xpDe(s1, 2).v === 2, 'subir de nível: o que passou do máximo fica (12 de 10 → 2 de 20); sem máximo digitado, ele acompanha o nível');
+  const s2 = R.subirNivelXp({ xp: { v: 100, min: 0, max: 100 } }, 7);
+  ok(j(s2.xp) === j({ v: 0, min: 0, max: 110 }), 'com máximo digitado: ganha +10 (100 → 110), o mínimo fica, o XP volta ao mínimo');
+  const s3 = R.subirNivelXp({ xp: { v: 57, min: 20, max: 50 } }, 2);
+  ok(j(s3.xp) === j({ v: 27, min: 20, max: 60 }), 'com mínimo diferente de zero, a sobra conta a partir dele (57 de 20–50 → 27 de 20–60)');
+  ok(R.XP_PASSO === 10, 'o passo do máximo é 10');
+}
 // carrega também como script de página
 const pg = vm.createContext({}); pg.window = pg; pg.globalThis = pg;
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../tc/rules.js'), 'utf8'), pg);

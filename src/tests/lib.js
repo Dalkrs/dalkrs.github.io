@@ -33,7 +33,8 @@ async function start(opt = {}) {
   const base = `http://127.0.0.1:${srv.address().port}/`;
   const errs = [], ruins = [], saidas = [];          // saidas: quem recebeu do navegador o "Sair da página?"
   async function device(o = {}) {
-    const ctx = await browser.newContext({ ignoreHTTPSErrors: !!opt.net, viewport: { width: o.w || 1440, height: o.h || 900 }, colorScheme: o.theme || 'dark', acceptDownloads: true });
+    // (o.toque: um aparelho de tela de toque — o toque chega à página como chega num celular)
+    const ctx = await browser.newContext({ ignoreHTTPSErrors: !!opt.net, viewport: { width: o.w || 1440, height: o.h || 900 }, colorScheme: o.theme || 'dark', acceptDownloads: true, hasTouch: !!o.toque });
     // Com o proxy ligado, o Chromium manda até o endereço local por ele; então os arquivos locais são entregues daqui mesmo.
     if (opt.net) await ctx.route(base + '**', route => {
       let p = decodeURIComponent(new URL(route.request().url()).pathname);

@@ -26,8 +26,8 @@ const { ok, end } = checker();
   const mesa = await M.evaluate(() => TC.mesas.atual.id), uidJ = await J.evaluate(() => TC.conta.usuario.id);
 
   // no banco, direto (pela conta do mestre, que vê tudo)
-  const noBanco = id => M.evaluate(async ([mesa, id]) => { const r = await __sb.from('personagens').select('estado,rev,rev_ant,ficha,nome').eq('mesa_id', mesa).eq('id', id).maybeSingle(); return r.data; }, [mesa, id]);
-  const espelho = (p, id) => p.evaluate(id => { const l = TC.dados.col('personagens').pegar(id); return l ? { estado: l.estado, rev: l.rev, nome: l.nome, ficha: l.ficha } : null; }, id);
+  const noBanco = id => M.evaluate(async ([mesa, id]) => { const r = await __sb.from('personagens').select('estado,skills,rev,rev_ant,ficha,nome').eq('mesa_id', mesa).eq('id', id).maybeSingle(); return r.data; }, [mesa, id]);
+  const espelho = (p, id) => p.evaluate(id => { const l = TC.dados.col('personagens').pegar(id); return l ? { estado: l.estado, skills: l.skills, rev: l.rev, nome: l.nome, ficha: l.ficha } : null; }, id);
   const parado = p => p.evaluate(() => TC.dados.pendentes === 0);
   const esvaziar = p => p.evaluate(() => TC.dados.esvaziar(8000));
 
@@ -61,6 +61,29 @@ const { ok, end } = checker();
   ok(igual(r1.estado, { rec: { hp: 30, sp: 5 }, lapros: 10 }), 'no banco ficam as DUAS mudanças (HP do mestre e SP do jogador): ' + j(r1.estado));
   ok(r1.rev_ant != null && r1.rev > r1.rev_ant, 'a linha guarda a revisão que tinha antes da última gravação');
   ok(await ate(async () => igual((await espelho(M, 'pc_tessa')).estado, r1.estado) && igual((await espelho(J, 'pc_tessa')).estado, r1.estado), 12000), 'e os dois aparelhos ficam com o mesmo estado do banco');
+
+  // ---------- as skills também se juntam: o mestre dá pontos enquanto o jogador gasta os dele ----------
+  const mudaSk = (p, fn) => p.evaluate(fn => { const P = TC.dados.col('personagens'), l = P.pegar('pc_tessa'); const s = JSON.parse(JSON.stringify(l.skills || {})); (new Function('s', fn))(s); P.gravar('pc_tessa', { skills: s }); }, fn);
+  await Promise.all([mudaSk(M, 's.pontos = Object.assign({}, s.pontos, { pr: 5, pc: 2 })'), mudaSk(J, 's.alocados = Object.assign({}, s.alocados, { n1: 1 })')]);
+  ok(await esvaziar(M) && await esvaziar(J), 'o mestre dá pontos e o jogador pega um nódulo, no mesmo instante: as duas gravações sobem');
+  const rs1 = await noBanco('pc_tessa');
+  ok(igual(rs1.skills, { arvores: [], pontos: { pr: 5, pc: 2 }, alocados: { n1: 1 } }) && igual(rs1.estado, r1.estado), 'no banco ficam os pontos que o mestre deu E o nódulo do jogador (e o estado não foi tocado): ' + j(rs1.skills));
+  ok(await ate(async () => igual((await espelho(M, 'pc_tessa')).skills, rs1.skills) && igual((await espelho(J, 'pc_tessa')).skills, rs1.skills), 12000), 'e os dois aparelhos ficam com as mesmas skills do banco');
+  await Promise.all([mudaSk(M, 's.pontos.pr = 6; s.arvores = ["a1"]'), mudaSk(J, 'delete s.alocados.n1; s.alocados.n2 = 2')]);
+  await esvaziar(M); await esvaziar(J);
+  const rs2 = await noBanco('pc_tessa');
+  ok(igual(rs2.skills, { arvores: ['a1'], pontos: { pr: 6, pc: 2 }, alocados: { n2: 2 } }), 'de novo, cada um na sua: mais um ponto e uma árvore equipada (mestre); um nódulo solto e outro pego (jogador) — ' + j(rs2.skills));
+  ok(await ate(async () => igual((await espelho(M, 'pc_tessa')).skills, rs2.skills) && igual((await espelho(J, 'pc_tessa')).skills, rs2.skills), 12000), 'os dois aparelhos acompanham');
+  // estado e skills na mesma gravação (dois pedidos, um por coluna), enquanto o outro mexe nas duas
+  await Promise.all([
+    M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_tessa'); P.gravar('pc_tessa', { estado: Object.assign({}, l.estado, { lapros: 11 }), skills: Object.assign({}, l.skills, { pontos: Object.assign({}, l.skills.pontos, { pe: 4 }) }) }); }),
+    J.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_tessa'); P.gravar('pc_tessa', { estado: Object.assign({}, l.estado, { san: 66 }), skills: Object.assign({}, l.skills, { alocados: Object.assign({}, l.skills.alocados, { n3: 1 }) }) }); })]);
+  await esvaziar(M); await esvaziar(J);
+  const rs3 = await noBanco('pc_tessa');
+  ok(rs3.estado.lapros === 11 && rs3.estado.san === 66 && igual(rs3.skills, { arvores: ['a1'], pontos: { pr: 6, pc: 2, pe: 4 }, alocados: { n2: 2, n3: 1 } }), 'estado e skills juntos, dos dois lados: as quatro mudanças ficam — ' + j([rs3.estado, rs3.skills]));
+  ok(await ate(async () => { const a = await espelho(M, 'pc_tessa'), b = await espelho(J, 'pc_tessa'); return igual(a.skills, rs3.skills) && igual(b.skills, rs3.skills) && igual(a.estado, rs3.estado) && igual(b.estado, rs3.estado); }, 12000), 'e os dois aparelhos ficam iguais ao banco');
+  await muda(M, 'e.lapros = 10; delete e.san'); await esvaziar(M);          // (de volta como estava, para o que vem a seguir)
+  await ate(async () => igual((await espelho(J, 'pc_tessa')).estado, r1.estado), 12000);
 
   // ---------- quem grava sem ter visto a mudança do outro ----------
   // (a leitura periódica do jogador fica presa: ele só fica sabendo da mudança do mestre pela resposta da própria gravação)
@@ -121,19 +144,28 @@ const { ok, end } = checker();
   ok(/inválida/.test(ruim[0] || '') && /inválida/.test(ruim[1] || ''), 'mudança que não é objeto (ou lista que não é lista) é recusada: ' + j(ruim));
   const anon = await M.evaluate(async mesa => { const guarda = window.__sb; const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave, { auth: { persistSession: false, storageKey: 'anon-estado' } }); window.__sb = guarda; const r = await a.rpc('estado_juntar', { p_mesa: mesa, p_id: 'pc_tessa', p_mudas: [{ lapros: 1 }] }); return r.error ? 'recusado' : 'ACEITO'; }, mesa);
   ok(anon === 'recusado' && (await noBanco('pc_tessa')).estado.lapros === 5, 'sem conta, a função nem roda');
+  // a função nova (a que o site usa agora: serve para o estado e para as skills) tem as mesmas travas
+  const nova = await J.evaluate(async mesa => {
+    const f = (id, col, mudas) => __sb.rpc('personagem_juntar', { p_mesa: mesa, p_id: id, p_coluna: col, p_mudas: mudas });
+    const alheio = await f('pc_npc', 'skills', [{ pontos: { pr: 99 } }]), coluna = await f('pc_tessa', 'ficha', [{ nome: 'x' }]), semColuna = await f('pc_tessa', null, [{ a: 1 }]), ruim = await f('pc_tessa', 'skills', [5]);
+    return { alheio: [alheio.error ? alheio.error.message : null, (alheio.data || []).length], coluna: coluna.error && coluna.error.message, semColuna: semColuna.error && semColuna.error.message, ruim: ruim.error && ruim.error.message };
+  }, mesa);
+  ok(nova.alheio[0] === null && nova.alheio[1] === 0 && /Coluna inválida/.test(nova.coluna || '') && /Coluna inválida/.test(nova.semColuna || '') && /inválida/.test(nova.ruim || ''), 'personagem_juntar: quem não pode alterar a linha não altera nada; só junta o estado e as skills (a ficha, não); mudança que não é objeto é recusada — ' + j(nova));
+  const anonNova = await M.evaluate(async mesa => { const guarda = window.__sb; const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave, { auth: { persistSession: false, storageKey: 'anon-skills' } }); window.__sb = guarda; const r = await a.rpc('personagem_juntar', { p_mesa: mesa, p_id: 'pc_tessa', p_coluna: 'skills', p_mudas: [{ pontos: { pr: 1 } }] }); return r.error ? 'recusado' : 'ACEITO'; }, mesa);
+  ok(anonNova === 'recusado', 'e sem conta ela também não roda');
 
   // ---------- a mudança do outro chega enquanto a daqui ainda está subindo ----------
   // (a gravação do jogador fica presa no caminho por alguns segundos; nesse meio-tempo a leitura periódica dele traz a do mestre)
   await ate(async () => igual((await espelho(J, 'pc_tessa')).estado, (await noBanco('pc_tessa')).estado) && igual((await espelho(M, 'pc_tessa')).estado, (await noBanco('pc_tessa')).estado), 12000);
   let seguradas = 0;
-  await dJ.ctx.route(/\/rest\/v1\/rpc\/estado_juntar/, async route => { seguradas++; await new Promise(r => setTimeout(r, 7000)); route.continue().catch(() => {}); });
+  await dJ.ctx.route(/\/rest\/v1\/rpc\/personagem_juntar/, async route => { seguradas++; await new Promise(r => setTimeout(r, 7000)); route.continue().catch(() => {}); });
   await muda(J, 'e.lapros = 321');
   await w(1000, J);
   ok(seguradas === 1 && !(await parado(J)), 'a gravação do jogador saiu e ainda não voltou');
   await muda(M, 'e.rec.sp = 17'); await esvaziar(M);
   ok(await ate(async () => { const e = (await espelho(J, 'pc_tessa')).estado; return e.rec.sp === 17 && e.lapros === 321; }, 5500), 'a mudança do mestre chega nesse meio-tempo e a tela do jogador fica com as duas (o SP do mestre e as moedas dele): ' + j((await espelho(J, 'pc_tessa')).estado));
   ok(!(await parado(J)), '(a gravação do jogador continuava a caminho)');
-  await dJ.ctx.unroute(/\/rest\/v1\/rpc\/estado_juntar/);
+  await dJ.ctx.unroute(/\/rest\/v1\/rpc\/personagem_juntar/);
   ok(await ate(() => parado(J), 15000), 'a gravação do jogador chega');
   const r6 = await noBanco('pc_tessa');
   ok(r6.estado.rec.sp === 17 && r6.estado.lapros === 321, 'e no banco ficam as duas: ' + j(r6.estado));
@@ -143,13 +175,13 @@ const { ok, end } = checker();
   // ---------- a mesma chave, e a resposta da gravação daqui que demora: vale a do banco (a última), também na tela ----------
   // (a gravação do jogador chega ao banco na hora, mas a resposta fica presa; o mestre muda a mesma coisa logo depois)
   let respostas = 0;
-  await dJ.ctx.route(/\/rest\/v1\/rpc\/estado_juntar/, async route => { respostas++; const resp = await route.fetch(); await new Promise(r => setTimeout(r, 7000)); route.fulfill({ response: resp }).catch(() => {}); });
+  await dJ.ctx.route(/\/rest\/v1\/rpc\/personagem_juntar/, async route => { respostas++; const resp = await route.fetch(); await new Promise(r => setTimeout(r, 7000)); route.fulfill({ response: resp }).catch(() => {}); });
   await muda(J, 'e.lapros = 500');
   ok(await ate(async () => (await noBanco('pc_tessa')).estado.lapros === 500, 8000) && respostas === 1 && !(await parado(J)), 'a gravação do jogador chegou ao banco (500 moedas), e a resposta ainda não voltou');
   await ate(async () => (await espelho(M, 'pc_tessa')).estado.lapros === 500, 8000);
   await muda(M, 'e.lapros = 777'); await esvaziar(M);
   ok(await ate(async () => !(await parado(J)) && (await espelho(J, 'pc_tessa')).rev === (await noBanco('pc_tessa')).rev, 5500), 'a mudança do mestre (777) chega ao jogador antes da resposta da gravação dele');
-  await dJ.ctx.unroute(/\/rest\/v1\/rpc\/estado_juntar/);
+  await dJ.ctx.unroute(/\/rest\/v1\/rpc\/personagem_juntar/);
   ok(await ate(() => parado(J), 15000), 'a resposta chega');
   ok(await ate(async () => (await espelho(J, 'pc_tessa')).estado.lapros === 777, 6000) && (await noBanco('pc_tessa')).estado.lapros === 777, 'e a tela do jogador fica com o que está no banco (777, do mestre, que gravou por último) — não com o dele por cima: ' + j((await espelho(J, 'pc_tessa')).estado.lapros));
 

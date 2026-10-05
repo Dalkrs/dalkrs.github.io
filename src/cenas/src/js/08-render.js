@@ -365,6 +365,20 @@ const Render = (() => {
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
+    // Ferido: a ficha do personagem tem ferimentos abertos. Um sinal no canto de cima (abaixo do "oculto", se houver),
+    // com a conta quando há mais de um. A cor acompanha o mais grave; o que é cada um está no painel do token.
+    const fer = Fichas.ferido(t);
+    if (fer) {
+      const d = clamp(s * 0.3, 14 * px, 24 * px), bx = t.x + s * 0.14, by = t.y + s * 0.14 + (t.hidden && isGM() ? d * 1.1 : 0);
+      badge(c, bx, by, d, fer.grave >= 3 || fer.sangra ? '#c2473d' : fer.grave === 2 ? '#b0792a' : '#86754a', 'wound', px);
+      if (fer.n > 1) {
+        const r = d * 0.32, nx = bx + d * 0.36, ny = by - d * 0.36;
+        c.beginPath(); c.arc(nx, ny, r, 0, TAU); c.fillStyle = '#10131b'; c.fill();
+        c.strokeStyle = '#ffffff'; c.lineWidth = 1 * px; c.stroke();
+        c.fillStyle = '#ffffff'; c.font = `700 ${r * (fer.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
+      }
+    }
     // Sobrevida: o escudo no canto do token, com o total (para quem vê os números)
     if (rows.some(r => barX(r.b) > 0)) {
       const d = clamp(s * 0.36, 16 * px, 30 * px), bx = t.x + s - d * 0.4, by = t.y + d * 0.42, k = d / 19;

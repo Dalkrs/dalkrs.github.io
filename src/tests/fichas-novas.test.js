@@ -81,13 +81,13 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   // ---------- relacionamento: cada um tem a sua barra para cada outro ----------
   await abrir(F, 'Lia');
   await F.locator('#f_dono').selectOption({ label: 'Dalmo' }); await w(600);
-  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); return a.estado.rel && a.estado.rel.some(e => e.alvo === 'pc_lia' && e.nome === 'Lia' && e.v === 0) && b.estado.rel && b.estado.rel.some(e => e.alvo === 'pc_dain' && e.v === 0); }), 'com dois personagens de jogador, cada um ganha a barra de Relacionamento para o outro');
+  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); return R.relacoes(a.estado).some(e => e.alvo === 'pc_lia' && e.nome === 'Lia' && e.v === 0) && R.relacoes(b.estado).some(e => e.alvo === 'pc_dain' && e.v === 0) && !a.estado.rel && !b.estado.rel; }), 'com dois personagens de jogador, cada um ganha a barra de Relacionamento para o outro (guardada por linha, no formato novo)');
   await abrir(G, 'Dain X', J);
   ok(await ate(async () => (await G.locator('.relrow').count()) === 1 && (await G.locator('.relrow .relnome').innerText()).includes('Lia')), 'o jogador vê, na ficha do Dain, o relacionamento com a Lia');
-  const relId = await G.evaluate(() => S.personagens.find(p => p.id === 'pc_dain').estado.rel[0].id);
+  const relId = await G.evaluate(() => TC.rules.relacoes(S.personagens.find(p => p.id === 'pc_dain').estado)[0].id);
   for (let i = 0; i < 4; i++) await G.locator(`[data-relstep="${relId}|5"]`).click();
   await w(400, J);
-  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); return a.estado.rel[0].v === 20 && b.estado.rel.find(e => e.alvo === 'pc_dain').v === 0; }), 'o que o Dain sente pela Lia sobe para 20; o que a Lia sente pelo Dain continua em 0');
+  ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); return R.relacoes(a.estado)[0].v === 20 && R.relacoes(b.estado).find(e => e.alvo === 'pc_dain').v === 0; }), 'o que o Dain sente pela Lia sobe para 20; o que a Lia sente pelo Dain continua em 0');
   await G.locator('[data-mstep="san|-5"]').click(); await G.locator('#f_lapros').fill('240'); await w(500, J);
   ok(await ate(async () => { const a = await linha(M, 'pc_dain'); return a.estado.san === 95 && a.estado.lapros === 240; }), 'Sanidade e Lapros mudados pelo jogador chegam à mesa');
 

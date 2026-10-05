@@ -63,18 +63,21 @@
         pronta,
         todas: () => [...c.linhas.values()],
         pegar: id => c.linhas.get(id) || null,
-        /* O estado de um personagem não vai inteiro: vai só o que mudou, contado a partir do que este sistema tinha
-           em mãos — a cópia daqui ou, se quem grava trabalhava sobre outra, a que ele passar em `base.estado`. Assim
-           o que outra pessoa mexeu no mesmo personagem nesse meio-tempo (outra barra, as moedas) não é desfeito. */
+        /* O estado e as skills de um personagem não vão inteiros: vai só o que mudou, contado a partir do que este
+           sistema tinha em mãos — a cópia daqui ou, se quem grava trabalhava sobre outra, a que ele passar em
+           `base.estado` / `base.skills`. Assim o que outra pessoa mexeu no mesmo personagem nesse meio-tempo (outra
+           barra, as moedas, os pontos que o mestre deu) não é desfeito.
+           (Quais colunas vão assim é a casca que diz: uma casca mais antiga só junta o estado, e recebe as skills inteiras.) */
         gravar(id, campos, base) {
           const atual = c.linhas.get(id), R = remendo();
-          if (nome === 'personagens' && atual && campos && campos.estado !== undefined && R) {
-            const muda = R.diferenca(base && base.estado !== undefined ? base.estado : atual.estado, campos.estado);
-            const resto = Object.assign({}, campos); delete resto.estado;
+          const cols = nome === 'personagens' && atual && campos && R ? (R.colunas || ['estado']).filter(k => campos[k] !== undefined) : [];
+          if (cols.length) {
+            const resto = Object.assign({}, campos), mudas = {};
+            for (const k of cols) { delete resto[k]; const muda = R.diferenca(base && base[k] !== undefined ? base[k] : atual[k], campos[k]); if (muda) mudas[k] = muda; }
             const l = Object.assign({}, atual, resto);
-            if (muda) l.estado = R.aplicar(atual.estado, muda);
+            for (const k in mudas) l[k] = R.aplicar(atual[k], mudas[k]);
             c.linhas.set(id, l);
-            if (muda || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, muda, mesa: c.mesa });
+            if (Object.keys(mudas).length || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, mudas, muda: mudas.estado || null, mesa: c.mesa });
             return l;
           }
           const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa }); return l;

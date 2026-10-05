@@ -104,7 +104,7 @@
       const pc = Object.assign({}, ficha, { id: l.id, nome: l.nome });
       recursos = R().resumo(pc, cfgAtual(), { arvore: R().bonusDaArvore(l.skills, bibAtual()) }, est).recursos.filter(x => x.max != null && Number.isFinite(x.max) && x.max > 0);
     } catch (e) { recursos = []; }
-    const usa = est.san != null || est.conf != null || (Array.isArray(est.rel) && est.rel.length > 0) || ehJogador(l.dono_id);
+    const usa = est.san != null || est.conf != null || R().temRelacoes(est) || (mestre() && Object.keys(segDe(l.id)).length > 0) || ehJogador(l.dono_id);
     return {
       id, nome: l.nome || 'Sem nome', img: imagemOk(ficha.img), dono: l.dono_id || null, semFicha: false, recursos,
       san: usa ? dentro(est.san, 100) : null, conf: usa ? dentro(est.conf, 50) : null,
@@ -139,11 +139,21 @@
     pintar();
     return true;
   }
+  /* O que o mestre guarda fora das fichas (documento que só ele recebe): o valor dos relacionamentos escondidos e
+     os relacionamentos dos NPCs. As contas são as de TC.rules (as mesmas da aba Fichas). */
+  const SEG = 'fichas:segredos';
+  const segredos = () => { const d = D && naMesa() && mestre() ? D.pegar(SEG) : null; return d && !d.apagado && d.dados && d.dados.v && typeof d.dados.v === 'object' ? d.dados.v : {}; };
+  const segDe = id => { const s = segredos(); return (s.rel && s.rel[id]) || {}; };
+  function porSeg(id, seg) {
+    const s = N.copia(segredos()), rel = s.rel && typeof s.rel === 'object' ? s.rel : (s.rel = {});
+    if (seg && Object.keys(seg).length) rel[id] = seg; else delete rel[id];
+    D.gravar(SEG, { dados: { v: s }, vis: 'mestre' });
+  }
   function desfazer() {
     if (!mestre() || !pilha.length) return false;
     const p = pilha.pop();
     camp = N.normalizar(JSON.parse(p.json));
-    if (p.fichas && naMesa()) for (const f of p.fichas) { const campos = { estado: f.estado }; if (f.ficha) campos.ficha = f.ficha; P.gravar(f.id, campos); }
+    if (p.fichas && naMesa()) for (const f of p.fichas) { const campos = { estado: f.estado }; if (f.ficha) campos.ficha = f.ficha; P.gravar(f.id, campos); if (f.seg !== undefined) porSeg(f.id, f.seg); }
     gravar(); pintar();
     toast('Desfeito: ' + p.rotulo + '.');
     if (p.fichas && naMesa() && p.publicar) publicar(camp.nome, 'Desfeito: ' + p.rotulo + '.');
@@ -576,7 +586,7 @@
     const corpo = h('div', { style: 'display:grid;gap:12px' });
     const ok = h('button', { type: 'button', class: 'btn pri', id: 'mo-ok', text: 'Registrar o momento' });
     const nome = id => (gente.find(p => p.id === id) || {}).nome || '?';
-    const relAtual = (de, para) => { const l = P.pegar(de), e = l && l.estado && Array.isArray(l.estado.rel) ? l.estado.rel.find(x => x && x.alvo === para) : null; return e ? N.limitar(Math.round(+e.v || 0), -100, 100) : 0; };
+    const relAtual = (de, para) => { const l = P.pegar(de), e = l ? R().relacaoCom(l.estado, segDe(de), para, !l.dono_id) : null; return e ? e.v : 0; };
     const desenhar = () => {
       const opcoes = (atual, outro) => gente.filter(p => p.id !== outro).map(p => h('option', { value: p.id, selected: p.id === atual ? '' : null, text: p.nome }));
       const linhaRel = (de, para, chave, id) => { const v0 = relAtual(de, para), v1 = N.limitar(v0 + estado[chave], -100, 100); return h('div', { class: 'lin', style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' },
@@ -601,14 +611,18 @@
     const mexer = (de, para, nomePara, delta) => {
       if (!delta) return;
       const l = P.pegar(de); if (!l) return;
-      const est = N.copia(l.estado || {}), rel = Array.isArray(est.rel) ? est.rel : [];
-      let e = rel.find(x => x && x.alvo === para);
-      if (!e) { e = { id: N.novoId('rel'), alvo: para, nome: nomePara, v: 0 }; rel.push(e); }
-      e.v = N.limitar(Math.round(+e.v || 0) + delta, -100, 100);
-      est.rel = rel;
-      if (est.san == null) est.san = dentro(est.san, 100);           // a ficha passa a usar o painel de Sanidade e Conforto
-      fichas.push({ id: l.id, estado: l.estado || {}, ficha: null });
-      P.gravar(de, { estado: est });
+      // (o valor pode estar na ficha ou guardado com o mestre — escondido do jogador, ou de um NPC: muda onde estiver)
+      const npc = !l.dono_id, seg0 = segDe(de), antes = R().relacaoCom(l.estado, seg0, para, npc);
+      let r = { estado: l.estado || {}, seg: seg0 };
+      if (!antes) r = R().mexerRelacao(r.estado, r.seg, { t: 'nova', id: N.novoId('rel'), alvo: para, nome: nomePara, comMestre: npc, npc });
+      const e = R().relacaoCom(r.estado, r.seg, para, npc); if (!e) return;
+      const depois = R().mexerRelacao(r.estado, r.seg, { t: 'valor', id: e.id, v: e.v + delta, npc });
+      if (depois.mudou) r = depois;
+      let est = r.estado;
+      if (est.san == null) est = Object.assign({}, est, { san: dentro(est.san, 100) });      // a ficha passa a usar o painel de Sanidade e Conforto
+      fichas.push({ id: l.id, estado: l.estado || {}, ficha: null, seg: seg0 });
+      if (est !== l.estado) P.gravar(de, { estado: est });
+      if (r.seg !== seg0) porSeg(de, r.seg);
     };
     mexer(m.a, m.b, nomeB, m.da); mexer(m.b, m.a, nomeA, m.db);
     const partes = [];

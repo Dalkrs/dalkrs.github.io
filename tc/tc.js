@@ -452,11 +452,14 @@
   const dados = emissor({ pendentes: 0, erro: null });
   let cols = {};
 
-  /* ---- o estado atual de um personagem viaja como diferença ----
+  /* ---- o estado atual e as skills de um personagem viajam como diferença ----
      O estado (pontos das barras, sobrevida, bolsas, bônus temporários, moedas…) é mexido por mais de uma pessoa ao
-     mesmo tempo: o mestre pelo token, o jogador pela ficha. Por isso ele não sobe inteiro ("o meu por cima do seu"):
-     sobe só o que mudou, e o banco junta. O formato é o "JSON Merge Patch" (RFC 7396): objeto se junta chave por
-     chave, null apaga a chave, qualquer outro valor (número, texto, lista) troca o que havia. */
+     mesmo tempo: o mestre pelo token, o jogador pela ficha. As skills também: o mestre dá pontos enquanto o jogador
+     gasta os dele na árvore. Por isso essas duas colunas não sobem inteiras ("o meu por cima do seu"): sobe só o
+     que mudou, e o banco junta. O formato é o "JSON Merge Patch" (RFC 7396): objeto se junta chave por chave, null
+     apaga a chave, qualquer outro valor (número, texto, lista) troca o que havia. */
+  const JUNTAM = ['estado', 'skills'];                 // as colunas de `personagens` que viajam assim
+  const RPC_JUNTAR = 'personagem_juntar';              // (p_mesa, p_id, p_coluna, p_mudas) → { rev, rev_ant }
   const ehMapa = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const chavesDe = o => Object.keys(o).filter(k => k !== '__proto__');
@@ -506,19 +509,23 @@
     }
     return out;
   }
-  const remendo = { diferenca, aplicar: juntar, compor, igual };
+  const remendo = { diferenca, aplicar: juntar, compor, igual, colunas: JUNTAM.slice() };
+  /* As filas (c.rems: o que ainda vai subir; c.remsVoo: o que está subindo agora) são por linha e por coluna. */
+  const kq = (col, id) => col + '\n' + id;
+  const temFila = (c, col, id) => c.rems.has(kq(col, id)) || c.remsVoo.has(kq(col, id));
+  const largarFilas = (c, id) => { for (const col of JUNTAM) c.rems.delete(kq(col, id)); };
   // a mudança entra na fila da linha (junta-se à última, quando dá)
-  function empilhar(c, id, muda) {
-    const fila = c.rems.get(id) || [];
+  function empilhar(c, id, col, muda) {
+    const k = kq(col, id), fila = c.rems.get(k) || [];
     const junto = fila.length ? compor(fila[fila.length - 1], muda) : null;
     if (junto) fila[fila.length - 1] = junto; else fila.push(muda);
-    c.rems.set(id, fila);
+    c.rems.set(k, fila);
   }
-  // o estado que veio do banco, com as mudanças daqui que ainda não subiram (as que estão a caminho e as da fila)
-  function refazerEstado(c, id, doBanco) {
+  // a coluna como veio do banco, com as mudanças daqui que ainda não subiram (as que estão a caminho e as da fila)
+  function refazer(c, id, col, doBanco) {
     let e = ehMapa(doBanco) ? doBanco : {};
-    for (const m of c.remsVoo.get(id) || []) e = juntar(e, m);
-    for (const m of c.rems.get(id) || []) e = juntar(e, m);
+    for (const m of c.remsVoo.get(kq(col, id)) || []) e = juntar(e, m);
+    for (const m of c.rems.get(kq(col, id)) || []) e = juntar(e, m);
     return e;
   }
   /* Os documentos da mesa são escritos pelo mestre e não têm dono. O único documento com dono que vale é o pedido
@@ -550,7 +557,7 @@
     if (!TABELAS[nome]) throw new Error('Coleção desconhecida: ' + nome);
     if (!mesas.atual) throw new Error('Abra uma mesa primeiro.');
     if (cols[nome]) return cols[nome];
-    // (rems / remsVoo: as mudanças do estado de cada personagem que ainda vão subir / que estão subindo agora)
+    // (rems / remsVoo: as mudanças do estado e das skills de cada personagem que ainda vão subir / que estão subindo agora)
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
     const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
@@ -610,9 +617,9 @@
     if (foiApagada != null) { if (r.rev <= foiApagada) return; c.apagadas.delete(r.id); }      // mais velha que o apagar: não volta
     const n = Object.assign({}, r);
     if (l) for (const k of meus) if (k !== '*' && k in l) n[k] = l[k];
-    /* O estado de um personagem não é "o daqui por cima": é o que chegou, com as mudanças daqui que ainda não
-       subiram refeitas por cima. Quem mexeu em outra barra, lá, aparece aqui na hora. */
-    if (l && nome === 'personagens' && meus.has('estado') && !meus.has('*') && (c.rems.has(r.id) || c.remsVoo.has(r.id))) n.estado = refazerEstado(c, r.id, r.estado);
+    /* O estado (e as skills) de um personagem não é "o daqui por cima": é o que chegou, com as mudanças daqui que
+       ainda não subiram refeitas por cima. Quem mexeu em outra barra, lá, aparece aqui na hora. */
+    if (l && nome === 'personagens' && !meus.has('*')) for (const col of JUNTAM) if (meus.has(col) && temFila(c, col, r.id)) n[col] = refazer(c, r.id, col, r[col]);
     c.linhas.set(r.id, n);
     // nada mudou para quem usa a linha (é a volta de algo que já estava aqui): só a revisão anda
     if (l && TABELAS[nome].every(k => igual(n[k], l[k]))) return;
@@ -726,10 +733,13 @@
     const voando = new Set(campos);                    // os campos que estão a caminho (o que chega do banco não passa por cima deles)
     c.sujos.delete(id); c.emVoo.set(id, voando);
     const l = c.linhas.get(id);
-    // as mudanças do estado que vão agora (o que passar do limite vai na volta seguinte)
-    const fila = c.rems.get(id) || [], indo = fila.splice(0, MAX_MUDAS);
-    if (fila.length) c.rems.set(id, fila); else c.rems.delete(id);
-    if (indo.length) c.remsVoo.set(id, indo);
+    // as mudanças (do estado, das skills) que vão agora, por coluna (o que passar do limite vai na volta seguinte)
+    const indo = {};
+    for (const col of JUNTAM) {
+      const k = kq(col, id), fila = c.rems.get(k) || [], vai = fila.splice(0, MAX_MUDAS);
+      if (fila.length) c.rems.set(k, fila); else c.rems.delete(k);
+      if (vai.length) { indo[col] = vai; c.remsVoo.set(k, vai); }
+    }
     const tb = () => cliente().from(c.nome), certas = [], subiu = new Set();      // subiu: os campos que já chegaram ao banco
     let r = null;
     try {
@@ -741,15 +751,16 @@
           r = await tb().insert(inteira()).select(REV).single();
           if (r.error && r.error.code === '23505') r = await tb().update(inteira()).eq('mesa_id', c.mesa).eq('id', id).select(REV).maybeSingle();
         } else {
-          // o estado vai como mudança (o banco junta); os outros campos, como estão
-          const o = {}; for (const k of campos) if (!(k === 'estado' && indo.length)) o[k] = l[k];
-          if (indo.length) {
-            const e = await cliente().rpc('estado_juntar', { p_mesa: c.mesa, p_id: id, p_mudas: indo });
+          // o estado e as skills vão como mudança (o banco junta), um pedido por coluna; os outros campos, como estão
+          const o = {}; for (const k of campos) if (!indo[k]) o[k] = l[k];
+          for (const col of JUNTAM) {
+            if (!indo[col] || (r && (r.error || !r.data))) continue;       // (um pedido que falhou, ou a linha não existe: para aqui)
+            const e = await cliente().rpc(RPC_JUNTAR, { p_mesa: c.mesa, p_id: id, p_coluna: col, p_mudas: indo[col] });
             r = e.error ? { error: e.error } : { data: (Array.isArray(e.data) ? e.data[0] : e.data) || null };
-            /* O estado chegou ao banco. Daqui em diante ele já não está "a caminho": o que vier do banco traz o
-               estado como ficou lá (com o que os outros mexeram), e é esse que vale — mesmo que os outros campos
-               desta linha ainda estejam subindo. A linha passa já à revisão dessa gravação. */
-            if (!r.error && r.data) { certas.push(r.data); subiu.add('estado'); c.remsVoo.delete(id); voando.delete('estado'); if (!c.morta) assentar(c, id, r.data); }
+            /* A coluna chegou ao banco. Daqui em diante ela já não está "a caminho": o que vier do banco a traz
+               como ficou lá (com o que os outros mexeram), e é essa que vale — mesmo que os outros campos desta
+               linha ainda estejam subindo. A linha passa já à revisão dessa gravação. */
+            if (!r.error && r.data) { certas.push(r.data); subiu.add(col); c.remsVoo.delete(kq(col, id)); voando.delete(col); if (!c.morta) assentar(c, id, r.data); }
           }
           if ((!r || (!r.error && r.data)) && Object.keys(o).length) r = await tb().update(o).eq('mesa_id', c.mesa).eq('id', id).select(REV).maybeSingle();
           if (!r.error && !r.data) r = await tb().insert(inteira()).select(REV).single();   // a linha não existia no banco
@@ -757,53 +768,54 @@
       }
     } catch (e) { r = { error: e }; }
     c.emVoo.delete(id);
-    const voltam = r.error ? c.remsVoo.get(id) : null;      // as mudanças de estado que não chegaram
-    c.remsVoo.delete(id);
+    const voltam = {};                                       // por coluna, as mudanças que não chegaram
+    for (const col of JUNTAM) { const k = kq(col, id); if (r.error && c.remsVoo.has(k)) voltam[col] = c.remsVoo.get(k); c.remsVoo.delete(k); }
     if (c.morta) { if (!r.error && !ultima && c.sujos.has(id)) enviarLinha(c, id, true); return; }
     if (r.error) {
       // volta para a fila (junto com o que mudou nesse meio-tempo) e tenta de novo, cada vez mais devagar
       const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) if (!subiu.has(k)) de_novo.add(k); c.sujos.set(id, de_novo);
-      if (voltam) c.rems.set(id, voltam.concat(c.rems.get(id) || []));
+      for (const col in voltam) c.rems.set(kq(col, id), voltam[col].concat(c.rems.get(kq(col, id)) || []));
       const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(r.error.message || ''));
       dados.erro = erroPt(r.error, 'Não deu para salvar na mesa agora.');
-      if (semPermissao) { c.sujos.delete(id); c.rems.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
+      if (semPermissao) { c.sujos.delete(id); largarFilas(c, id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
       else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
       dados.emit('erro', dados.erro);
     } else {
       c.falhas = 0; dados.erro = null;
       if (!l && r.data && r.data.rev) enterrar(c, id, r.data.rev);      // (foi um apagar: a linha só volta por uma revisão maior que esta)
       if (!certas.includes(r.data)) assentar(c, id, r.data);
-      if (c.rems.has(id)) { const s = c.sujos.get(id) || new Set(); s.add('estado'); c.sujos.set(id, s); }      // sobrou mudança de estado para a volta seguinte
+      for (const col of JUNTAM) if (c.rems.has(kq(col, id))) { const s = c.sujos.get(id) || new Set(); s.add(col); c.sujos.set(id, s); }      // sobrou mudança para a volta seguinte
       if (c.sujos.has(id)) agendar(c, id, 300);
     }
     contarPendentes();
   }
   /* Grava campos de uma linha (cria se não existir). `de` identifica quem pediu, para não receber o próprio eco.
-     O estado de um personagem entra como mudança: `muda` (o que quem pediu mexeu, contado a partir do que ele tinha
-     em mãos) ou, se veio o estado inteiro em `campos.estado`, o que ele muda no estado que está aqui. */
-  function dadosGravar(nome, id, campos, de, muda) {
+     O estado e as skills de um personagem entram como mudança: `mudas.estado` / `mudas.skills` (o que quem pediu
+     mexeu, contado a partir do que ele tinha em mãos) ou, se a coluna veio inteira em `campos`, o que ela muda na
+     que está aqui. */
+  function dadosGravar(nome, id, campos, de, mudas) {
     const c = abrirCol(nome);
     let l = c.linhas.get(id);
     const suj = c.sujos.get(id) || new Set();
     campos = campos || {};
     if (campos.apagado) {
       if (!l) return null;
-      c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj); c.rems.delete(id);
+      c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj); largarFilas(c, id);
       dados.emit('muda', nome, { id, apagado: true }, 'local', de);
     } else {
       const nova = !l, comMuda = nome === 'personagens' && !nova;
       if (nova) { l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado'); }
       else l = Object.assign({}, l);
       let mudou = nova;
-      for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(k === 'estado' && comMuda)) { l[k] = campos[k]; suj.add(k); mudou = true; }
-      if (nome === 'personagens') {
-        const m = ehMapa(muda) ? copiar(muda) : comMuda && campos.estado !== undefined ? diferenca(l.estado, campos.estado) : null;
+      for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(comMuda && JUNTAM.includes(k))) { l[k] = campos[k]; suj.add(k); mudou = true; }
+      if (nome === 'personagens') for (const col of JUNTAM) {
+        const m = mudas && ehMapa(mudas[col]) ? copiar(mudas[col]) : comMuda && campos[col] !== undefined ? diferenca(l[col], campos[col]) : null;
         if (m && Object.keys(m).length) {
-          l.estado = juntar(l.estado, m); suj.add('estado'); mudou = true;
-          if (!suj.has('*')) empilhar(c, id, m);            // a linha que ainda vai inteira já leva o estado como ficou
+          l[col] = juntar(l[col], m); suj.add(col); mudou = true;
+          if (!suj.has('*')) empilhar(c, id, col, m);       // a linha que ainda vai inteira já leva a coluna como ficou
         }
       }
-      if (!mudou) return l;                                 // (um estado igual ao que já estava aqui: nada a gravar)
+      if (!mudou) return l;                                 // (igual ao que já estava aqui: nada a gravar)
       c.linhas.set(id, l); c.sujos.set(id, suj);
       dados.emit('muda', nome, l, 'local', de);
     }
@@ -813,7 +825,7 @@
   }
   dados.col = nome => {
     const c = abrirCol(nome);
-    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, muda) => dadosGravar(nome, id, campos, de, muda), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
+    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, mudas) => dadosGravar(nome, id, campos, de, mudas), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
   };
   dados.remendo = remendo;
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
@@ -843,16 +855,17 @@
     const campos = c.sujos.get(id);
     if (!campos) return true;
     const l = c.linhas.get(id), filtro = '?mesa_id=eq.' + encodeURIComponent(c.mesa) + '&id=eq.' + encodeURIComponent(id) + '&select=' + REV;
-    if (!l && campos.has('*')) { c.sujos.delete(id); c.rems.delete(id); return true; }     // criada e apagada antes de subir: nada a fazer
-    const mudas = c.rems.get(id) || [];
-    if (mudas.length > MAX_MUDAS) return false;                                     // (coisa demais acumulada: segue pelo caminho comum)
-    // os pedidos desta linha: um só, ou dois quando o estado (que vai como mudança) sai junto com outros campos
+    if (!l && campos.has('*')) { c.sujos.delete(id); largarFilas(c, id); return true; }     // criada e apagada antes de subir: nada a fazer
+    const mudas = {};                                                               // por coluna, o que vai como mudança
+    for (const col of JUNTAM) { const f = c.rems.get(kq(col, id)); if (f && f.length) mudas[col] = f; }
+    if (Object.keys(mudas).some(col => mudas[col].length > MAX_MUDAS)) return false;   // (coisa demais acumulada: segue pelo caminho comum)
+    // os pedidos desta linha: um só, ou mais de um quando o estado ou as skills (que vão como mudança) saem com outros campos
     const pedidos = [];
     if (!l) pedidos.push(['PATCH', c.nome + filtro, 'return=representation', { apagado: true }]);
     else if (campos.has('*')) pedidos.push(['POST', c.nome + '?on_conflict=mesa_id,id&select=' + REV, 'resolution=merge-duplicates,return=representation', linhaInteira(c, id, l)]);   // linha nova: cria (ou, se já existir, troca)
     else {
-      const o = {}; for (const k of campos) if (!(k === 'estado' && mudas.length)) o[k] = l[k];
-      if (mudas.length) pedidos.push(['POST', 'rpc/estado_juntar', '', { p_mesa: c.mesa, p_id: id, p_mudas: mudas }]);
+      const o = {}; for (const k of campos) if (!mudas[k]) o[k] = l[k];
+      for (const col in mudas) pedidos.push(['POST', 'rpc/' + RPC_JUNTAR, '', { p_mesa: c.mesa, p_id: id, p_coluna: col, p_mudas: mudas[col] }]);
       if (Object.keys(o).length) pedidos.push(['PATCH', c.nome + filtro, 'return=representation', o]);
     }
     let peso = 0;
@@ -867,17 +880,18 @@
       });
     } catch (e) { return false; }
     c.sujos.delete(id); c.emVoo.set(id, campos); c.naSaida.add(id); pesoNoAr += peso;
-    c.rems.delete(id); if (mudas.length) c.remsVoo.set(id, mudas);
+    for (const col of JUNTAM) { const k = kq(col, id); c.rems.delete(k); if (mudas[col]) c.remsVoo.set(k, mudas[col]); }
     // (o que vem depois só acontece se a página, afinal, não fechou)
     // (null: não chegou · 'ok': chegou, mas a resposta não pôde ser lida · lista: as linhas mudadas, com a revisão)
     Promise.all(idas.map(p => p.then(r => (r.ok ? r.json().then(x => x, () => 'ok') : null), () => null))).then(voltas => {
       pesoNoAr -= peso; c.emVoo.delete(id); c.naSaida.delete(id);
-      const iam = c.remsVoo.get(id); c.remsVoo.delete(id);
+      const iam = {};
+      for (const col of JUNTAM) { const k = kq(col, id); if (c.remsVoo.has(k)) iam[col] = c.remsVoo.get(k); c.remsVoo.delete(k); }
       if (c.morta) return;
       if (voltas.some(v => !v)) {
         // algum pedido não chegou: volta tudo para a fila (mandar de novo o que já tinha chegado não muda nada)
         const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
-        if (iam) c.rems.set(id, iam.concat(c.rems.get(id) || []));
+        for (const col in iam) c.rems.set(kq(col, id), iam[col].concat(c.rems.get(kq(col, id)) || []));
         c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 1500);
       } else {
         for (const linhas of voltas) if (Array.isArray(linhas) && linhas[0]) { if (!l) enterrar(c, id, linhas[0].rev); assentar(c, id, linhas[0]); }

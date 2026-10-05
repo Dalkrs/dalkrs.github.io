@@ -128,6 +128,35 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   ok(await ate(async () => (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '212'), 'e o valor novo aparece');
   ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '212' && (await G.locator('#f_nome').inputValue()) === 'Dain X'), 'para o jogador também');
 
+  // ---------- uma mudança que chega de fora no meio de um clique espera o clique terminar ----------
+  /* A ficha é redesenhada inteira quando chega uma mudança. Se isso acontecesse com o botão do mouse apertado, o botão
+     em que a pessoa está clicando deixaria de existir antes de o clique terminar — e o clique "não pegaria". */
+  const preparar = hp => M.evaluate(async hp => {
+    const col = TC.dados.col('personagens'), l = col.todas().find(x => x.nome === 'Dain X');
+    const estado = Object.assign({}, l.estado, { rec: Object.assign({}, (l.estado || {}).rec, { hppc_dain: hp }) });
+    const { data, error } = await window.__sb.from('personagens').update({ estado }).eq('mesa_id', l.mesa_id).eq('id', l.id).select('rev').single();
+    if (error) return { erro: error.message };
+    window.__aviso = { id: l.id, mesa_id: l.mesa_id, nome: l.nome, dono_id: l.dono_id, vis: l.vis, ordem: l.ordem, ficha: l.ficha, skills: l.skills, estado, rev: data.rev, apagado: false };
+    return {};
+  }, hp);
+  const entregar = () => M.evaluate(() => {
+    const canal = window.__sb.getChannels().find(c => ((c.bindings || {}).postgres_changes || []).some(b => b.filter && b.filter.table === 'personagens'));
+    for (const b of canal.bindings.postgres_changes) if (b.filter.table === 'personagens') b.callback({ eventType: 'UPDATE', schema: 'public', table: 'personagens', new: window.__aviso, old: { id: window.__aviso.id }, errors: null });
+  });
+  const abaDef = F.locator('#ficha [data-abaatr="def"]');
+  await abaDef.evaluate(e => e.scrollIntoView({ block: 'center' })); await w(150);
+  const cx = await abaDef.boundingBox();
+  const pr = await preparar(205);
+  await M.mouse.move(cx.x + cx.width / 2, cx.y + cx.height / 2); await M.mouse.down();
+  await F.locator('#f_raca').evaluate(e => { e.__marca = 1; });
+  await entregar(); await w(350);
+  const noMeio = await F.locator('#f_raca').evaluate(e => e.__marca === 1);
+  await M.mouse.up(); await w(500);
+  ok(!pr.erro && noMeio && await F.locator('#ficha [data-abaatr="def"].on').count() === 1 && (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '205' && await F.locator('#f_raca').evaluate(e => e.__marca === undefined),
+    'uma mudança que chega com o botão do mouse apertado espera: a ficha não é trocada por baixo do clique, o clique pega (abre as defesas) e só então a mudança é desenhada (HP 205)');
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '205'), '(e chega ao jogador)');
+  await F.locator('#ficha [data-abaatr="atr"]').click(); await w(300);
+
   // ---------- os dois mexem na mesma ficha ao mesmo tempo, cada um numa coisa ----------
   const estadoNoBanco = () => M.evaluate(async () => { const a = TC.mesas.atual; const r = await __sb.from('personagens').select('estado,ficha').eq('mesa_id', a.id).eq('id', 'pc_dain').single(); return r.data; });
   await Promise.all([

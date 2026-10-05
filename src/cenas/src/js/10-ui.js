@@ -1197,8 +1197,17 @@ const UI = (() => {
     ];
   }
 
+  // No painel do token: os ferimentos abertos do personagem (marcados na ficha), para quem recebe a ficha.
+  function feridasLista(t) {
+    const fs = Fichas.feridas(t);
+    if (!fs.length) return null;
+    const R = window.TC.rules;
+    return [h('ul', { class: 'ferl', id: 'tk-feridas' }, ...fs.map(f => h('li', { class: 'ferl-i g' + f.g }, h('span', { class: 'ferl-d', 'aria-hidden': 'true' }), h('span', { text: R.textoDoFerimento(f) + (f.n ? ' — ' + f.n : '') })))),
+      note('Os ferimentos são marcados e tratados na ficha, no quadro “Corpo” (dois cliques no token abrem a ficha).')];
+  }
+
   function tokenPanel(t) {
-    const gm = isGM(), sc = Store.scene();
+    const gm = isGM(), sc = Store.scene(), feridas = feridasLista(t);
     const U = (p, label) => Store.tx(label || 'Editar token', () => Store.upd('tokens', t.id, p));
     const head = h('div', { class: 'p-head' }, tokenAvatar(t, 44),
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: tokName(t) }), h('div', { class: 'p-sub', text: ownerLabel(t) + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
@@ -1207,6 +1216,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
         Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
         can('target') ? h('div', { class: 'row' }, btn(isTargeted([t]) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle([t]), { icon: 'center', id: 'tk-mira', title: 'Marca este token como seu alvo, para a mesa toda ver (tecla A)' })) : null];
@@ -1231,6 +1241,7 @@ const UI = (() => {
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
       Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
+      feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)),
       sec('s-vis', 'Visão e luz', false,
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),

@@ -487,6 +487,12 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .in.cnt { width: 54px; padding: 4px; text-align: center; }
 .opts .in.cnt { width: 52px; }
 .cpick { display: flex; flex-direction: column; gap: 12px; }
+/* ferimentos do personagem, no painel do token */
+.ferl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.ferl-i { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; line-height: 1.35; color: var(--fg-2); }
+.ferl-d { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #86754a; transform: translateY(-1px); }
+.ferl-i.g2 .ferl-d { background: #b0792a; }
+.ferl-i.g3 .ferl-d { background: #c2473d; }
 /* a bolsa do personagem, aberta pelo token */
 .bag { display: flex; flex-direction: column; gap: 14px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
 .bag-g { display: flex; flex-direction: column; gap: 6px; }
@@ -598,9 +604,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=6"></script>
+<script src="../tc/ponte.js?v=7"></script>
 <script src="../tc/dice.js?v=1"></script>
-<script src="../tc/rules.js?v=3"></script>
+<script src="../tc/rules.js?v=4"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -848,6 +854,7 @@ const ICONS = {
   help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.2a2.6 2.6 0 1 1 3.9 2.2c-.9.6-1.4 1.1-1.4 2.1M12 16.9v.2',
   more: 'M5 12v.2M12 12v.2M19 12v.2',
   bag: 'M8.5 8L7 4h10l-1.5 4M8.5 8h7c2.6 2.4 4.5 5.4 4.5 8.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.500C4 13.400 5.900 10.400 8.500 8zM10 13h4M12 11v4',
+  wound: 'M5.5 18.5L18.5 5.5M7 13l4 4M10 10l4 4M13 7l4 4',
   center: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0',
   panel: 'M4 5h16v14H4zM15 5v14',
   front: 'M4 4h10v10H4zM10 14v6h10V10h-6',
@@ -3368,6 +3375,9 @@ const Act = {
    (onde ela nasce; a cura total a leva para lá). E as bolsas da ficha (poções, bombas, runas, munições,
    materiais) podem ser usadas daqui: pelo mestre, em qualquer token ligado, e pelo jogador, no token do
    personagem dele — quem usa grava direto na ficha, e a ficha acerta o token.
+   Os ferimentos abertos do personagem (marcados na ficha, no quadro "Corpo") aparecem no token como um sinal,
+   e em lista no painel dele — para quem recebe a ficha: o mestre, todas; o jogador, a dele e as abertas a todos.
+   A penalidade de um ferimento conta nas contas da ficha como um bônus temporário.
    --------------------------------------------------------------- */
 const Fichas = (() => {
   let P = null, D = null, on = false, applying = false, papel = null, eu = null;
@@ -3383,7 +3393,7 @@ const Fichas = (() => {
   // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe; para o jogador, o pacote publicado)
   const bib = () => { const d = D && D.pegar(papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
   // (os bônus temporários — comida, poção — moram no estado do personagem e contam como um equipamento)
-  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp });
+  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer });
   const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
 
   // O piso da barra (quanto ela pode ficar negativa) e o começo dela, como a ficha manda.
@@ -3573,6 +3583,19 @@ const Fichas = (() => {
     const it = R().bolsa(pc, est).find(x => x.id === id);
     return it ? R().previaDoUso(pc, R().calcular(pc, cfg(), extra(l)), est, it) : [];
   }
+  /* ---- os ferimentos do personagem do token ---- */
+  const feridasDaLinha = l => (l && l.estado && l.estado.fer && R() && R().ferimentos ? l.estado.fer : null);
+  // a lista (do mais antigo para o mais novo); vazia se o token não tem ficha, ou se quem olha não a recebe
+  function feridas(t) { const f = feridasDaLinha(t && t.char ? get(t.char) : null); return f ? R().ferimentos(f).lista : []; }
+  // o sinal do token: { n, grave, sangra, inf } ou null. (Guardado por linha: o desenho do mapa pede isto a cada quadro.)
+  const sinais = new WeakMap();
+  function ferido(t) {
+    const l = t && t.char ? get(t.char) : null, f = feridasDaLinha(l);
+    if (!f) return null;
+    let s = sinais.get(l);
+    if (!s) { s = R().sinalDeFerido(f); sinais.set(l, s); }
+    return s.n ? s : null;
+  }
   const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
   // avisa a mesa ao vivo (a casca decide como mostrar); token oculto ou sem nome à mostra: só o mestre vê
   function avisarUso(t, charId, titulo, resumo, total) {
@@ -3645,7 +3668,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido };
 })();
 /* ---------------------------------------------------------------
    7c. PROJEÇÃO — a cena como ela vai para o banco e para os jogadores
@@ -5317,6 +5340,20 @@ const Render = (() => {
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
+    // Ferido: a ficha do personagem tem ferimentos abertos. Um sinal no canto de cima (abaixo do "oculto", se houver),
+    // com a conta quando há mais de um. A cor acompanha o mais grave; o que é cada um está no painel do token.
+    const fer = Fichas.ferido(t);
+    if (fer) {
+      const d = clamp(s * 0.3, 14 * px, 24 * px), bx = t.x + s * 0.14, by = t.y + s * 0.14 + (t.hidden && isGM() ? d * 1.1 : 0);
+      badge(c, bx, by, d, fer.grave >= 3 || fer.sangra ? '#c2473d' : fer.grave === 2 ? '#b0792a' : '#86754a', 'wound', px);
+      if (fer.n > 1) {
+        const r = d * 0.32, nx = bx + d * 0.36, ny = by - d * 0.36;
+        c.beginPath(); c.arc(nx, ny, r, 0, TAU); c.fillStyle = '#10131b'; c.fill();
+        c.strokeStyle = '#ffffff'; c.lineWidth = 1 * px; c.stroke();
+        c.fillStyle = '#ffffff'; c.font = `700 ${r * (fer.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
+      }
+    }
     // Sobrevida: o escudo no canto do token, com o total (para quem vê os números)
     if (rows.some(r => barX(r.b) > 0)) {
       const d = clamp(s * 0.36, 16 * px, 30 * px), bx = t.x + s - d * 0.4, by = t.y + d * 0.42, k = d / 19;
@@ -7993,8 +8030,17 @@ const UI = (() => {
     ];
   }
 
+  // No painel do token: os ferimentos abertos do personagem (marcados na ficha), para quem recebe a ficha.
+  function feridasLista(t) {
+    const fs = Fichas.feridas(t);
+    if (!fs.length) return null;
+    const R = window.TC.rules;
+    return [h('ul', { class: 'ferl', id: 'tk-feridas' }, ...fs.map(f => h('li', { class: 'ferl-i g' + f.g }, h('span', { class: 'ferl-d', 'aria-hidden': 'true' }), h('span', { text: R.textoDoFerimento(f) + (f.n ? ' — ' + f.n : '') })))),
+      note('Os ferimentos são marcados e tratados na ficha, no quadro “Corpo” (dois cliques no token abrem a ficha).')];
+  }
+
   function tokenPanel(t) {
-    const gm = isGM(), sc = Store.scene();
+    const gm = isGM(), sc = Store.scene(), feridas = feridasLista(t);
     const U = (p, label) => Store.tx(label || 'Editar token', () => Store.upd('tokens', t.id, p));
     const head = h('div', { class: 'p-head' }, tokenAvatar(t, 44),
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: tokName(t) }), h('div', { class: 'p-sub', text: ownerLabel(t) + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
@@ -8003,6 +8049,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
         Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
         can('target') ? h('div', { class: 'row' }, btn(isTargeted([t]) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle([t]), { icon: 'center', id: 'tk-mira', title: 'Marca este token como seu alvo, para a mesa toda ver (tecla A)' })) : null];
@@ -8027,6 +8074,7 @@ const UI = (() => {
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
       Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
+      feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)),
       sec('s-vis', 'Visão e luz', false,
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),

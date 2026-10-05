@@ -120,25 +120,50 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.locator('[data-mval="conf"]').fill('999'); await P.locator('[data-mval="conf"]').press('Enter'); await w(200);
   ok(await S0(() => S.personagens[0].estado.conf) === 100 && (await P.locator('.m-conf .mfaixa').innerText()).toLowerCase() === 'aconchegado', 'nem de cem: Conforto 100, "Aconchegado"');
   ok(await P.locator('.m-conf .mbar i').evaluate(el => el.style.width) === '100%', 'a barra acompanha o valor');
-  // relacionamentos
+  // relacionamentos (guardados como um mapa por linha; quem lê é TC.rules.relacoes)
+  const rels = () => S0(() => TC.rules.relacoes(S.personagens[0].estado));
   await P.locator('#relNovo').selectOption({ label: 'Capitão Orrin' }); await w(250);
-  ok(await S0(() => S.personagens[0].estado.rel.length === 1 && S.personagens[0].estado.rel[0].alvo === 'pc_cap' && S.personagens[0].estado.rel[0].v === 0), 'acrescenta um relacionamento com outro personagem, começando em 0');
+  let rl = await rels();
+  ok(rl.length === 1 && rl[0].alvo === 'pc_cap' && rl[0].v === 0 && rl[0].rom === null && await S0(() => !('rel' in S.personagens[0].estado) && Object.keys(S.personagens[0].estado.rels).length === 1), 'acrescenta um relacionamento com outro personagem, começando em 0 (sem trilha de romance)');
   ok(await P.locator('#relNovo option', { hasText: 'Capitão Orrin' }).count() === 0, 'quem já está na lista sai das opções');
-  const relId = await S0(() => S.personagens[0].estado.rel[0].id);
+  const relId = rl[0].id;
   for (let i = 0; i < 5; i++) await P.locator(`[data-relstep="${relId}|5"]`).click();
   await w(200);
-  ok(await S0(() => S.personagens[0].estado.rel[0].v) === 25 && (await P.locator('.relrow .relfaixa').first().innerText()).toLowerCase() === 'amigável', '+25: "Amigável"');
+  ok((await rels())[0].v === 25 && (await P.locator('.relrow .relfaixa').first().innerText()).toLowerCase() === 'amigável', '+25: "Amigável"');
   await P.locator(`[data-relval="${relId}"]`).fill('-150'); await P.locator(`[data-relval="${relId}"]`).press('Enter'); await w(200);
-  ok(await S0(() => S.personagens[0].estado.rel[0].v) === -100 && (await P.locator('.relrow .relfaixa').first().innerText()).toLowerCase() === 'hostil' && await P.locator('.relrow.n-ruim').count() === 1, 'o valor fica entre −100 e +100: "Hostil"');
+  ok((await rels())[0].v === -100 && (await P.locator('.relrow .relfaixa').first().innerText()).toLowerCase() === 'hostil' && await P.locator('.relrow.n-ruim').count() === 1, 'o valor fica entre −100 e +100: "Hostil"');
   P.once('dialog', d => d.accept('Irmã Calla'));
   await P.locator('#relNovo').selectOption('__nome__'); await w(300);
-  ok(await S0(() => S.personagens[0].estado.rel.length === 2 && S.personagens[0].estado.rel[1].nome === 'Irmã Calla' && S.personagens[0].estado.rel[1].alvo === null), 'também dá para escrever um nome (alguém sem ficha)');
-  await P.locator(`[data-reldel="${relId}"]`).click(); await w(200);
-  ok(await S0(() => S.personagens[0].estado.rel.length) === 1, 'o × tira o relacionamento');
+  rl = await rels();
+  ok(rl.length === 2 && rl[1].nome === 'Irmã Calla' && rl[1].alvo === null, 'também dá para escrever um nome (alguém sem ficha)');
+  // romance: a trilha é de cada linha, e só aparece quando alguém a acrescenta
+  ok(await P.locator('.romrow').count() === 0 && await P.locator('[data-romadd]').count() === 2 && await P.locator('[data-relolho]').count() === 0, 'sem trilha de romance até alguém pedir (e, fora de uma mesa, sem o olho do mestre)');
+  await P.locator(`[data-romadd="${relId}"]`).click(); await w(200);
+  ok(await P.locator('.romrow').count() === 1 && await P.locator('.romrow .cor').count() === 10 && await P.locator('.romrow .cor.vazio').count() === 10 && (await rels())[0].rom === 0 && await P.locator(`[data-romadd="${relId}"]`).count() === 0, 'a trilha nasce com dez corações vazios');
+  await P.locator(`[data-rom="${relId}|4"]`).click(); await w(200);
+  ok((await rels())[0].rom === 4 && await P.locator('.romrow .cor.cheio').count() === 4 && (await P.locator('.romval').innerText()) === '+4' && /4 corações de 10/.test(await P.locator('.coracoes').getAttribute('aria-label')), 'clicar no quarto coração enche quatro: ' + await P.locator('.coracoes').getAttribute('aria-label'));
+  await P.locator(`[data-rom="${relId}|4"]`).click(); await w(200);
+  ok((await rels())[0].rom === 3, 'clicar de novo no último aceso apaga só ele');
+  for (let i = 0; i < 5; i++) await P.locator(`[data-romstep="${relId}|-1"]`).click();
+  await w(200);
+  ok((await rels())[0].rom === -2 && await P.locator('.romrow .cor.partido').count() === 2 && await P.locator('.romrow .cor.cheio').count() === 0 && await P.locator('.romrow .cor.partido .cr').count() === 2 && /2 corações partidos de 10/.test(await P.locator('.coracoes').getAttribute('aria-label')), 'descendo abaixo de zero, os corações se partem: ' + await P.locator('.coracoes').getAttribute('aria-label'));
+  await P.locator(`[data-rom="${relId}|6"]`).click(); await w(200);
+  ok((await rels())[0].rom === -6, 'num romance partido, clicar num coração parte até ali');
+  for (let i = 0; i < 20; i++) await P.locator(`[data-romstep="${relId}|1"]`).click();
+  await w(200);
+  ok((await rels())[0].rom === 10 && await P.locator('.romrow .cor.cheio').count() === 10, 'e não passa de dez');
+  ok((await rels())[0].v === -100 && (await rels())[1].rom === null, 'o romance não mexe no número do relacionamento, nem nas outras linhas');
+  await P.locator(`[data-romdel="${relId}"]`).click(); await w(200);
+  ok((await rels())[0].rom === null && await P.locator('.romrow').count() === 0, '"Tirar" tira a trilha');
   await P.locator('.toast.comacao button').click(); await w(250);
-  ok(await S0(() => S.personagens[0].estado.rel.length === 2 && S.personagens[0].estado.rel[0].alvo === 'pc_cap' && S.personagens[0].estado.rel[0].v === -100), 'e o Desfazer devolve, no mesmo lugar e com o mesmo valor');
+  ok((await rels())[0].rom === 10 && await P.locator('.romrow .cor.cheio').count() === 10, 'e o Desfazer devolve os dez corações');
+  await P.locator(`[data-reldel="${relId}"]`).click(); await w(200);
+  ok((await rels()).length === 1, 'o × tira o relacionamento');
+  await P.locator('.toast.comacao button').click(); await w(250);
+  rl = await rels();
+  ok(rl.length === 2 && rl[0].alvo === 'pc_cap' && rl[0].v === -100 && rl[0].rom === 10, 'e o Desfazer devolve, no mesmo lugar, com o mesmo valor e o mesmo romance');
   // cada um tem a sua: a ficha do Capitão não ganhou nada
-  ok(await S0(() => !S.personagens[1].estado || !S.personagens[1].estado.rel), 'o relacionamento é de quem sente: a ficha do outro não muda');
+  ok(await S0(() => !S.personagens[1].estado || (!S.personagens[1].estado.rel && !S.personagens[1].estado.rels)), 'o relacionamento é de quem sente: a ficha do outro não muda');
 
   // ---------- imagem do personagem ----------
   ok(await P.locator('.retrato .ini').innerText() === 'DX' && await P.locator('#lista .pcrow').first().locator('.avmini.semimg').count() === 1, 'sem imagem, aparecem as iniciais (na ficha e no elenco)');
@@ -197,7 +222,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   // ---------- tudo continua lá depois de recarregar ----------
   await w(500);
   await P.reload({ waitUntil: 'load' }); await w(1200);
-  ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.estado.lapros === 380 && p.modoAtr === 'livre' && p.atrLivre.DES === 0 && p.estado.san === 0 && p.estado.conf === 100 && p.estado.rel.length === 2 && !!p.img && p.itens[0].efeito.length > 10 && p.disputa.alvos.pc_cap.atr === 'DFF' && S.alvos.pc_cap.atr === 'ESQ'; }), 'recarregando a página, tudo o que foi posto continua na ficha');
+  ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.estado.lapros === 380 && p.modoAtr === 'livre' && p.atrLivre.DES === 0 && p.estado.san === 0 && p.estado.conf === 100 && TC.rules.relacoes(p.estado).length === 2 && TC.rules.relacoes(p.estado)[0].rom === 10 && !!p.img && p.itens[0].efeito.length > 10 && p.disputa.alvos.pc_cap.atr === 'DFF' && S.alvos.pc_cap.atr === 'ESQ'; }), 'recarregando a página, tudo o que foi posto continua na ficha');
 
   ok(await S0(() => S.personagens.find(x => x.id === 'pc_dain').tamPenis) === '18 cm' && await (async () => { await abrirFicha('Dain X'); return (await P.locator('#f_tampenis').inputValue()) === '18 cm' && (await P.locator('#barrinhas .bz').count()) === 2; })(), 'o campo novo e as barrinhas também');
 
