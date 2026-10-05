@@ -340,6 +340,9 @@ button { cursor: pointer; }
 .bar-ro .bar-n { flex: 0 0 76px; }
 .meter { flex: 1 1 auto; height: 9px; overflow: hidden; background: var(--raised); border: 1px solid var(--line); border-radius: 5px; }
 .meter-f { display: block; height: 100%; }
+/* barra abaixo de zero: a parte negativa, riscada */
+.meter-f.neg { background: repeating-linear-gradient(135deg, #ff5d73 0 3px, rgba(255, 93, 115, .25) 3px 6px); }
+.bar-v.neg, .hud-in.neg, .hud-m.neg, .hud-v.neg, .bar-m.neg { color: #ff8a9a; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
@@ -484,6 +487,18 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .in.cnt { width: 54px; padding: 4px; text-align: center; }
 .opts .in.cnt { width: 52px; }
 .cpick { display: flex; flex-direction: column; gap: 12px; }
+/* a bolsa do personagem, aberta pelo token */
+.bag { display: flex; flex-direction: column; gap: 14px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
+.bag-g { display: flex; flex-direction: column; gap: 6px; }
+.bag-h { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+.bag-r { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+.bag-r.sem .bag-n, .bag-r.sem .bag-q { color: var(--fg-3); }
+.bag-l { display: flex; align-items: center; gap: 10px; }
+.bag-n { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.bag-q { flex: none; font: 600 13px var(--mono); color: var(--fg-2); }
+.bag-d { color: var(--fg-2); font-size: 12.5px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bag-c { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--lamp); border-radius: 8px; background: color-mix(in srgb, var(--lamp) 12%, transparent); font-size: 13px; }
+.bag-ct { flex: 1 1 220px; }
 
 .hud-c { display: inline-flex; align-items: center; gap: 1px; padding: 2px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; }
 .hud-c.one, .hud-c.ro { padding: 3px; }
@@ -583,9 +598,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=5"></script>
+<script src="../tc/ponte.js?v=6"></script>
 <script src="../tc/dice.js?v=1"></script>
-<script src="../tc/rules.js?v=2"></script>
+<script src="../tc/rules.js?v=3"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -832,6 +847,7 @@ const ICONS = {
   map: 'M9 4L3 6.5V20l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20',
   help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.2a2.6 2.6 0 1 1 3.9 2.2c-.9.6-1.4 1.1-1.4 2.1M12 16.9v.2',
   more: 'M5 12v.2M12 12v.2M19 12v.2',
+  bag: 'M8.5 8L7 4h10l-1.5 4M8.5 8h7c2.6 2.4 4.5 5.4 4.5 8.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.500C4 13.400 5.900 10.400 8.500 8zM10 13h4M12 11v4',
   center: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0',
   panel: 'M4 5h16v14H4zM15 5v14',
   front: 'M4 4h10v10H4zM10 14v6h10V10h-6',
@@ -924,11 +940,11 @@ const BAR_DEFAULTS = [
 ];
 const BAR_COLORS = ['#d6524b', '#4a9be0', '#e2b23e', '#6fbf73', '#b07ad9', '#e58a4e', '#4fc3c0', '#d96aa0'];
 function cleanBar(b) {
-  const o = b || {};
+  const o = b || {}, lo = barLo(o);
   return cleanBarRef({
     n: String(o.n == null ? 'Barra' : o.n).slice(0, 24) || 'Barra',
     c: /^#[0-9a-f]{6}$/i.test(o.c || '') ? o.c : BAR_COLORS[0],
-    v: Math.max(0, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
+    v: Math.max(-lo, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
     k: o.k === 'pts' ? 'pts' : 'bar',
     on: o.on !== false,
     vis: ['num', 'bar', 'none'].includes(o.vis) ? o.vis : '',     // '' = segue a regra do token
@@ -936,12 +952,23 @@ function cleanBar(b) {
 }
 // Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
 // Sobrevida (x): pontos por cima da barra, que absorvem o dano antes dela. Só fica guardada quando há alguma.
+// Piso (lo): até quanto abaixo de zero a barra pode ir (a barra comum para em zero). Começo (st): onde a barra
+// começa — é para lá que a cura total a leva, em vez do máximo. Os dois só ficam guardados quando existem.
 const cleanBarRef = (b, o) => {
   if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
   if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  if (barLo(o) > 0) b.lo = barLo(o);
+  if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   return b;
 };
 const barX = b => Math.max(0, Number(b && b.x) || 0);
+const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
+// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um.
+const barFull = b => (b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m);
+const NEG_COR = '#ff5d73';                  // a cor da parte negativa de uma barra (riscada), no mapa e nos painéis
+const fmtV = v => fmt(v).replace('-', '−');   // valor de barra, com o sinal de menos de verdade
+// Quanto do piso uma barra negativa já gastou (0 a 1); 0 quando ela não está abaixo de zero.
+const barNeg = b => (b && b.v < 0 && barLo(b) > 0 ? clamp(-b.v / barLo(b), 0, 1) : 0);
 const SOBRE_COR = '#8fe3ff';                // a cor da sobrevida, no mapa e nos painéis
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
@@ -2804,7 +2831,8 @@ function applyLabel(a) {
   if (a && a.cond && a.cond.id) parts.push((COND_BY_ID[a.cond.id] || {}).n || a.cond.id);
   return parts.join(' + ');
 }
-// Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem fica negativo.
+// Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem desce do piso
+// (zero, ou o quanto a barra pode ficar negativa).
 // Uma barra com um remendo por cima; a sobrevida zerada sai do objeto (não fica guardada à toa).
 function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) delete o.x; return o; }
 /* Uma variação numa barra. O dano (delta negativo) gasta primeiro a sobrevida; a cura não mexe nela.
@@ -2812,7 +2840,7 @@ function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) dele
 function barAfter(b, delta) {
   let x = barX(b), d = delta;
   if (d < 0 && x > 0) { const usa = Math.min(x, -d); x = Math.round((x - usa) * 10) / 10; d += usa; }
-  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, 0, Math.max(b.m, b.v)) };
+  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, -barLo(b), Math.max(b.m, b.v)) };
   if (x !== barX(b)) p.x = x;
   return p;
 }
@@ -2851,9 +2879,9 @@ function gridDist(sc, ax, ay, bx, by) {
 const distLabel = (sc, q) => `${fmt(q)} q · ${fmt(q * sc.grid.unit)} ${sc.grid.unitName}`;
 
 // Interpreta o que foi digitado numa barra: "12" define, "+5" e "-8" somam.
-function parseBar(text, cur, max) {
+function parseBar(text, cur, max, lo) {
   const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
-  if (/^[+-]\d+(\.\d+)?$/.test(s)) return clamp(Math.round((cur + Number(s)) * 10) / 10, 0, Math.max(max, cur));
+  if (/^[+-]\d+(\.\d+)?$/.test(s)) return clamp(Math.round((cur + Number(s)) * 10) / 10, -(lo || 0), Math.max(max, cur));
   if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
   return null;
 }
@@ -2905,7 +2933,7 @@ const Act = {
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
     if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
-    else { const v = parseBar(text, b.v, b.m); if (v == null) return false; p = { v }; }
+    else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v }; }
     if (p.v === b.v && p.x === undefined) return false;
     Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
@@ -2918,13 +2946,19 @@ const Act = {
     Store.tx('Sobrevida de ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) }));
     return true;
   },
-  // Cura total: enche todas as barras em uso de cada token. Devolve quantos tokens mudaram.
+  // Cura total: enche todas as barras em uso de cada token (a barra que tem um começo próprio volta para ele).
+  // Devolve quantos tokens mudaram.
   fullHeal(tokens) {
     let n = 0;
     Store.tx('Cura total', () => {
       for (const t of tokens) {
         let mudou = false;
-        const bars = t.bars.map(b => { if (!b.on || !(b.m > 0) || b.v >= b.m) return b; mudou = true; return Object.assign({}, b, { v: b.m }); });
+        const bars = t.bars.map(b => {
+          if (!b.on || !(b.m > 0)) return b;
+          const alvo = barFull(b);
+          if (b.st != null ? b.v === alvo : b.v >= alvo) return b;
+          mudou = true; return Object.assign({}, b, { v: alvo });
+        });
         if (mudou) { Store.upd('tokens', t.id, { bars }); n++; }
       }
     });
@@ -3330,9 +3364,13 @@ const Act = {
    personagem vira a imagem do token (a não ser que o mestre escolha outra para este token).
    Na volta, mexer numa dessas barras no mapa (dano, cura, área, reaplicar, desfazer) grava o valor
    atual na ficha. Também dá para rolar um atributo da ficha direto do token, com a regra da fixa.
+   A barra leva da ficha, além do máximo, o piso (até quanto abaixo de zero ela pode ir) e o começo
+   (onde ela nasce; a cura total a leva para lá). E as bolsas da ficha (poções, bombas, runas, munições,
+   materiais) podem ser usadas daqui: pelo mestre, em qualquer token ligado, e pelo jogador, no token do
+   personagem dele — quem usa grava direto na ficha, e a ficha acerta o token.
    --------------------------------------------------------------- */
 const Fichas = (() => {
-  let P = null, D = null, on = false, applying = false;
+  let P = null, D = null, on = false, applying = false, papel = null, eu = null;
   const R = () => window.TC.rules;
   const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -3342,11 +3380,15 @@ const Fichas = (() => {
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
   // a imagem do personagem, quando está guardada no banco (endereço https)
   const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
-  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe)
-  const bib = () => { const d = D && D.pegar('arvore:biblioteca'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
-  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()) });
+  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe; para o jogador, o pacote publicado)
+  const bib = () => { const d = D && D.pegar(papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
+  // (os bônus temporários — comida, poção — moram no estado do personagem e contam como um equipamento)
+  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp });
   const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
 
+  // O piso da barra (quanto ela pode ficar negativa) e o começo dela, como a ficha manda.
+  const pisoDe = rec => (rec.min < 0 ? Math.round(-rec.min * 10) / 10 : 0);
+  const comecoDe = rec => (rec.inicio != null && isFinite(rec.inicio) && rec.inicio !== rec.max ? rec.inicio : null);
   // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
   function barrasDe(t, r) {
     const bars = t.bars.map(b => Object.assign({}, b));
@@ -3366,6 +3408,9 @@ const Fichas = (() => {
       if (b.v !== rec.atual) { b.v = rec.atual; mudou = true; }
       const sx = Math.max(0, Number(rec.sobre) || 0);
       if (barX(b) !== sx) { if (sx > 0) b.x = sx; else delete b.x; mudou = true; }
+      const lo = pisoDe(rec), st = comecoDe(rec);
+      if (barLo(b) !== lo) { if (lo > 0) b.lo = lo; else delete b.lo; mudou = true; }
+      if ((b.st == null ? null : b.st) !== st) { if (st == null) delete b.st; else b.st = st; mudou = true; }
     }
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -3380,7 +3425,7 @@ const Fichas = (() => {
       if (rec.max == null || !isFinite(rec.max) || out.length >= MAX_BARS) continue;
       const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length] }, velha,
-        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0) })));
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec) })));
     }
     return out.length ? out : null;
   }
@@ -3509,13 +3554,84 @@ const Fichas = (() => {
     return Object.assign({ nome: item[1] }, r);
   }
 
+  /* ---- as bolsas do personagem, usadas pelo token ----
+     Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
+  function podeBolsa(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && !!R().bolsa && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  // → os itens da bolsa (com a quantidade) ou null se este token não dá acesso a uma
+  function bolsa(t) {
+    if (!podeBolsa(t)) return null;
+    const l = get(t.char);
+    return R().bolsa(pcDe(l), l.estado || {});
+  }
+  // o que usar o item vai fazer, em palavras (lista vazia: só gasta uma unidade)
+  function previaUso(t, id) {
+    if (!podeBolsa(t)) return [];
+    const l = get(t.char), pc = pcDe(l), est = l.estado || {};
+    const it = R().bolsa(pc, est).find(x => x.id === id);
+    return it ? R().previaDoUso(pc, R().calcular(pc, cfg(), extra(l)), est, it) : [];
+  }
+  const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
+  // avisa a mesa ao vivo (a casca decide como mostrar); token oculto ou sem nome à mostra: só o mestre vê
+  function avisarUso(t, charId, titulo, resumo, total) {
+    try { window.TC.ponte.publicar('cena', { kind: 'uso', titulo, resumo, total: total == null ? null : total, char: charId, oculto: !!(t && (t.hidden || t.showName === false)) }); } catch (e) { /* sem a casca não há mesa */ }
+  }
+  /* Usa um item da bolsa: gasta uma unidade, aplica o que a poção faz (rolando os dados, se for o caso), grava na
+     ficha e avisa a mesa. Devolve { ok:false, error } ou { ok:true, texto, desfazer }. */
+  function usar(t, id) {
+    if (!podeBolsa(t)) return { ok: false, error: 'Este token não dá acesso a uma bolsa.' };
+    const charId = t.char, l = get(charId), pc = pcDe(l), antes = l.estado || {};
+    const it = R().bolsa(pc, antes).find(x => x.id === id);
+    if (!it) return { ok: false, error: 'Este item não está mais na bolsa.' };
+    const ef = it.t === 'pocao' && it.rec ? R().lerEfeito(it.val) : null;
+    let rolado = null, conta = '';
+    if (ef && ef.dados) {
+      const r = window.TC.dice.rollExpr(ef.dados);
+      if (!r.ok) return { ok: false, error: r.error };
+      rolado = r.total; conta = semTotal(window.TC.dice.summary({ mode: 'dados', expr: r.expr, terms: r.terms, total: r.total })) + ' = ' + r.total;
+    }
+    const u = R().usarItem(pc, R().calcular(pc, cfg(), extra(l)), antes, id, rolado, Date.now(), uid('t'));
+    if (!u.ok) return { ok: false, error: u.erro };
+    P.gravar(charId, { estado: u.estado });
+    if (on) syncAll(charId);                               // (no aparelho do mestre, a barra do token acompanha já)
+    const tipo = (R().BOLSAS.find(b => b.t === it.t) || {}).um || 'Item', nome = it.nome || tipo;
+    const titulo = (l.nome || t.name || '?') + ' · ' + nome, texto = R().textoDoUso(u);
+    avisarUso(t, charId, titulo, 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, u.barra && rolado != null ? rolado : null);
+    const desfazer = () => {
+      // só o que este uso mexeu volta (o que mudou no personagem nesse meio-tempo, por outro caminho, fica)
+      const agora = get(charId); if (!agora) return false;
+      const e = agora.estado || {}, qtd = Object.assign({}, e.qtd || {}), rec = Object.assign({}, e.rec || {}), tmp = Object.assign({}, e.tmp || {});
+      qtd[it.id] = Math.max(0, Math.floor(Number(qtd[it.id]) || 0)) + 1;
+      if (u.barra) {
+        const tinha = antes.rec && antes.rec[u.barra.id] != null;
+        if (Number(rec[u.barra.id]) === u.barra.para) { if (tinha) rec[u.barra.id] = antes.rec[u.barra.id]; else delete rec[u.barra.id]; }
+        else if (rec[u.barra.id] != null) rec[u.barra.id] = Math.round((Number(rec[u.barra.id]) - (u.barra.para - u.barra.de)) * 10) / 10;
+      }
+      if (u.bonus) delete tmp[u.bonus.id];
+      P.gravar(charId, { estado: Object.assign({}, e, { qtd, rec, tmp }) });
+      if (on) syncAll(charId);
+      avisarUso(t, charId, titulo, 'desfeito: ' + nome + ' voltou para a bolsa' + (u.barra ? ' e ' + u.barra.nome + ' voltou ao que era' : '') + (u.bonus ? '; o bônus saiu' : ''), null);
+      return true;
+    };
+    return { ok: true, texto: nome + ': ' + texto, desfazer };
+  }
+
   async function start(refresh) {
     const T = window.TC;
     if (!T || !T.ponte || !T.dados || !T.rules || !T.dice) return false;
     const st = await T.ponte.pronta;
     if (!T.dados.disponivel()) return false;
-    // só o mestre liga token a ficha; o jogador só consulta as fichas que pode ver (para abrir a dele pelo token)
-    if (st.papel !== 'mestre') { try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; } return false; }
+    papel = st.papel; eu = st.eu || null;
+    /* Só o mestre liga token a ficha. O jogador consulta as fichas que pode ver (para abrir a dele pelo token) e usa
+       a bolsa do personagem dele: para isso lê também as tabelas da mesa (as contas da ficha precisam delas). */
+    if (st.papel !== 'mestre') {
+      try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; }
+      try { const d = T.dados.col('documentos'); await d.pronta; D = d; } catch (e) { D = null; }
+      if (P) P.aoMudar(() => refresh());
+      return false;
+    }
     try {
       P = T.dados.col('personagens'); D = T.dados.col('documentos');
       await Promise.all([P.pronta, D.pronta]);
@@ -3529,7 +3645,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar };
 })();
 /* ---------------------------------------------------------------
    7c. PROJEÇÃO — a cena como ela vai para o banco e para os jogadores
@@ -3627,7 +3743,9 @@ const Proj = (() => {
   function barraPublica(b, modo) {
     if (modo === 'num') return b;
     if (modo === 'none' || !b.on || !(b.m > 0)) return { n: 'Barra', c: b.c, k: 'bar', on: false, vis: '', v: 0, m: 0 };     // nem o nome vai
-    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };     // só a proporção
+    // só a proporção — e, abaixo de zero, a proporção da parte negativa (quanto do piso já foi), sem os números
+    if (b.v < 0 && barLo(b) > 0) return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: -Math.round(1000 * clamp(-b.v / barLo(b), 0, 1)) / 10, m: 100, lo: 100 };
+    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
   function tokenPublico(t, jogadores) {
@@ -3698,7 +3816,7 @@ const Proj = (() => {
       const nv = nu(n.v), av = ehObj(a) ? nu(a.v) : NaN;
       if (isFinite(nv)) {
         const alvo = isFinite(av) ? b.v + (nv - av) : nv;
-        const v = clamp(r1(alvo), 0, Math.min(999999, Math.max(b.m, b.v, nv)));
+        const v = clamp(r1(alvo), -barLo(b), Math.min(999999, Math.max(b.m, b.v, nv)));      // (a barra que pode ficar negativa desce até o piso dela)
         if (v !== b.v && (isFinite(av) ? nv !== av : true)) o.v = v;
       }
       const nx = Math.max(0, nu(n.x) || 0), ax = ehObj(a) ? Math.max(0, nu(a.x) || 0) : NaN;
@@ -3781,9 +3899,9 @@ const Proj = (() => {
         const val = igual(nb[k], b[k]) ? a[k] : nb[k];        // não mexida aqui: como chegou; mexida aqui: a daqui
         if (val !== undefined) o[k] = val;
       }
-      const tres = (n, bb, aa) => (n === bb ? aa : aa === bb ? n : Math.max(0, r1(aa + (n - bb))));
-      o.v = tres(nu(nb.v) || 0, nu(b.v) || 0, nu(a.v) || 0);
-      const x = tres(barX(nb), barX(b), barX(a));
+      const tres = (n, bb, aa, piso) => (n === bb ? aa : aa === bb ? n : Math.max(piso, r1(aa + (n - bb))));
+      o.v = tres(nu(nb.v) || 0, nu(b.v) || 0, nu(a.v) || 0, -barLo(o));
+      const x = tres(barX(nb), barX(b), barX(a), 0);
       if (x > 0) o.x = x;
       out.push(o);
     }
@@ -5154,13 +5272,25 @@ const Render = (() => {
           }
         } else {
           c.fillStyle = 'rgba(10,12,18,0.82)'; rr(c, x, y, w, bh, bh * 0.3); c.fill();
-          const f = clamp(b.v / b.m, 0, 1);
+          const f = clamp(b.v / b.m, 0, 1), fn = barNeg(b);
           if (f > 0) { c.fillStyle = b.c; rr(c, x, y, w * f, bh, bh * 0.3); c.fill(); }
+          // Abaixo de zero: a parte negativa, riscada, cresce da esquerda (quanto do piso já foi gasto).
+          if (fn > 0) {
+            const wn = Math.max(bh * 0.7, w * fn), passo = Math.max(3 * px, bh * 0.62);
+            c.save();
+            rr(c, x, y, wn, bh, bh * 0.3); c.clip();
+            c.fillStyle = hexA(NEG_COR, 0.28); c.fillRect(x, y, wn, bh);
+            c.strokeStyle = NEG_COR; c.lineWidth = Math.max(1 * px, bh * 0.2); c.lineCap = 'butt';
+            c.beginPath();
+            for (let sx = x - bh; sx < x + wn + bh; sx += passo) { c.moveTo(sx, y + bh); c.lineTo(sx + bh, y); }
+            c.stroke();
+            c.restore();
+          }
           c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 1 * px; rr(c, x, y, w, bh, bh * 0.3); c.stroke();
           if (mode === 'num' && bh * z >= 9) {
             c.font = `700 ${bh * 0.84}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.lineWidth = bh * 0.22; c.strokeStyle = 'rgba(0,0,0,0.75)'; c.lineJoin = 'round';
-            const tx = `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
+            const tx = `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
             c.strokeText(tx, cx, y + bh * 0.54); c.fillStyle = '#fff'; c.fillText(tx, cx, y + bh * 0.54);
           }
         }
@@ -7576,8 +7706,8 @@ const UI = (() => {
       const xAberta = barX(b) > 0 || !!barXOpen[key];
       const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
       const val = h('input', {
-        id: `tk-b${i}-v`, class: 'in bar-v', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
-        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair',
+        id: `tk-b${i}-v`, class: 'in bar-v' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
+        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair' + (barLo(b) > 0 ? `. Esta barra pode ficar negativa até −${fmt(barLo(b))}.` : ''),
         onchange: e => { if (!Act.barSet(t, i, e.target.value)) e.target.value = b.v; },
       });
       rows.push(h('div', { class: 'bar-row' + (b.on ? '' : ' off') },
@@ -7598,6 +7728,8 @@ const UI = (() => {
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
+        b.ref ? (barLo(b) > 0 || b.st != null ? note((barLo(b) > 0 ? `Pode ficar negativa até −${fmt(barLo(b))}. ` : '') + (b.st != null ? `Começa em ${fmtV(b.st)}: a cura total leva para lá. ` : '') + 'Isso vem da ficha (Opções da barra).') : null)
+          : field('Negativa até −', inNum(`tk-b${i}-lo`, barLo(b), v => Act.barPatch(t, i, { lo: Math.max(0, Math.round((Number(v) || 0) * 10) / 10), v: Math.max(-Math.max(0, Number(v) || 0), b.v) }), { min: 0, step: 1, label: `Até quanto abaixo de zero ${b.n} pode ir`, title: 'Zero: a barra para em zero. Com um valor, ela pode ficar negativa até esse tanto (a parte negativa aparece riscada).' })),
         b.k === 'pts' && m > PIP_MAX ? note(`No mapa, os pontos aparecem como barra quando o máximo passa de ${PIP_MAX}.`) : null,
         h('div', { class: 'row' }, btn('Remover barra', () => removeBar(t, i), { icon: 'trash', kind: 'danger small', id: `tk-b${i}-del` }))));
     });
@@ -7614,8 +7746,9 @@ const UI = (() => {
     return h('div', { class: 'bars' }, rows.map(({ b, i, mode }) => h('div', { class: 'bar-ro' },
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
-        : h('span', { class: 'meter' }, h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
-      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
+        : h('span', { class: 'meter' }, barNeg(b) > 0 ? h('span', { class: 'meter-f neg', style: { width: clamp(barNeg(b) * 100, 4, 100) + '%' } })
+          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
+      mode === 'num' ? h('span', { class: 'bar-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
   /* Barras padrão: a lista com que todo token novo nasce (vale para a mesa inteira). */
@@ -7798,7 +7931,66 @@ const UI = (() => {
         const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
         toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
       }, { icon: 'die', id: 'tk-rolar' })));
+    out.push(...bagResumo(t));
     return out;
+  }
+
+  /* A bolsa do personagem deste token: as poções, bombas, runas, munições e materiais da ficha dele.
+     A poção que faz alguma coisa mostra antes o que vai acontecer ("Usar agora"); os outros itens só gastam uma
+     unidade. Tudo avisa a mesa ao vivo e dá para desfazer. */
+  function bagBox(t) {
+    const tid = t.id, R = window.TC.rules;
+    let pede = null;
+    const body = h('div', { class: 'bag' });
+    const doUse = (tk, it) => {
+      pede = null;
+      const r = Fichas.usar(tk, it.id);
+      if (!r.ok) { toast(r.error); paint(); return; }
+      toast(r.texto + '.', { action: 'Desfazer', run: () => { if (r.desfazer()) toast(`Desfeito: ${it.nome || 'o item'} voltou para a bolsa.`); if (modalEl && modalLive) modalLive(); } });
+      paint();
+    };
+    const use = (tk, it) => {
+      if (!Fichas.previaUso(tk, it.id).length) { doUse(tk, it); return; }      // nada é aplicado sozinho: um clique gasta e avisa
+      pede = it.id; paint();
+      const n = document.getElementById('bag-ok-' + it.id); if (n) n.focus();
+    };
+    function paint() {
+      const tk = Store.get('tokens', tid), itens = tk ? Fichas.bolsa(tk) : null;
+      const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
+      body.replaceChildren();
+      if (!itens) { addKids(body, [note('Este token não dá mais acesso a uma bolsa.')]); return; }
+      if (!itens.length) { addKids(body, [note('A bolsa está vazia. Os itens são cadastrados na ficha do personagem, em Bolsas.')]); return; }
+      addKids(body, R.BOLSAS.map(b => {
+        const lista = itens.filter(x => x.t === b.t);
+        if (!lista.length) return null;
+        return h('div', { class: 'bag-g' }, h('div', { class: 'bag-h', text: b.nome }), lista.map(it => {
+          const previa = pede === it.id && it.qtd > 0 ? Fichas.previaUso(tk, it.id) : null, resta = it.qtd - 1;
+          return h('div', { class: 'bag-r' + (it.qtd ? '' : ' sem') },
+            h('div', { class: 'bag-l' },
+              h('span', { class: 'bag-n', text: it.nome || b.um }), h('span', { class: 'bag-q', title: 'Quantas há na bolsa', text: '×' + it.qtd }),
+              btn('Usar', () => use(tk, it), { kind: 'small', id: 'bag-u-' + it.id, disabled: it.qtd < 1, title: it.qtd < 1 ? 'Não há nenhuma na bolsa' : it.t === 'pocao' ? 'Gasta uma e aplica o efeito (mostra antes o que vai acontecer)' : 'Gasta uma e avisa a mesa. Nada é aplicado sozinho.' })),
+            it.nota ? h('div', { class: 'bag-d', text: it.nota }) : null,
+            previa ? h('div', { class: 'bag-c' },
+              h('span', { class: 'bag-ct' }, h('strong', { text: `Usar ${it.nome || 'a poção'}? ` }), previa.join(' · ') + ' · ' + (resta === 0 ? 'é a última' : resta === 1 ? 'sobra 1' : 'sobram ' + resta)),
+              btn('Usar agora', () => doUse(tk, it), { kind: 'primary small', id: 'bag-ok-' + it.id }),
+              btn('Cancelar', () => { pede = null; paint(); const n = document.getElementById('bag-u-' + it.id); if (n) n.focus(); }, { kind: 'small', id: 'bag-no' })) : null);
+        }));
+      }));
+      if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    }
+    paint();
+    modal({ title: 'Bolsa de ' + tokName(t), body, wide: true, focusPrimary: true, actions: [{ label: 'Fechar', kind: 'primary' }] });
+    modalLive = paint;
+  }
+  // No painel do token: o que há na bolsa, em uma linha, e o botão que a abre.
+  function bagResumo(t) {
+    const itens = Fichas.bolsa(t);
+    if (!itens) return [];
+    const partes = window.TC.rules.BOLSAS.map(b => { const n = itens.filter(x => x.t === b.t).reduce((s, x) => s + x.qtd, 0); return n ? `${n} ${(n === 1 ? b.um : b.nome).toLowerCase()}` : ''; }).filter(Boolean);
+    return [
+      note(partes.length ? 'Na bolsa: ' + partes.join(' · ') + '.' : itens.length ? 'A bolsa está sem unidades.' : 'A bolsa está vazia: os itens são cadastrados na ficha, em Bolsas.'),
+      h('div', { class: 'row' }, btn('Abrir a bolsa…', () => bagBox(t), { icon: 'bag', id: 'tk-bolsa', disabled: !itens.length, title: 'Poções, bombas, runas, munições e materiais da ficha' })),
+    ];
   }
 
   function tokenPanel(t) {
@@ -7811,6 +8003,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
         can('target') ? h('div', { class: 'row' }, btn(isTargeted([t]) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle([t]), { icon: 'center', id: 'tk-mira', title: 'Marca este token como seu alvo, para a mesa toda ver (tecla A)' })) : null];
     }
@@ -8272,7 +8465,7 @@ const UI = (() => {
           iconBtn('eye', 'Ver como ' + p.name, () => setViewer(p.id), { size: 16 }));
       })) : h('p', { class: 'muted', text: 'Ainda não há jogadores nesta mesa. Convide pelo menu da mesa, no alto da página (o código de convite).' }),
       sec('pl-heal', 'Descanso rápido', true,
-        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
           btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
           btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
@@ -8305,7 +8498,7 @@ const UI = (() => {
       })) : h('p', { class: 'muted', text: 'Nenhum jogador cadastrado.' }),
       h('div', { class: 'row' }, btn('Adicionar jogador', addPlayer, { icon: 'plus', kind: 'primary' })),
       sec('pl-heal', 'Descanso rápido', true,
-        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
           btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
           btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
@@ -8324,6 +8517,7 @@ const UI = (() => {
       items.push({ head: toks.length > 1 ? `${toks.length} tokens` : tokName(o) });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
+      if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
@@ -8388,17 +8582,17 @@ const UI = (() => {
     for (const { b, i, mode } of barsShown(t)) {
       const dots = b.k === 'pts' && Math.round(b.m) >= 1 && Math.round(b.m) <= PIP_MAX;
       if (edit && dots) {
-        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), pips(t, b, i, true, 'hud-b'), h('span', { class: 'hud-m', text: `${fmt(b.v)}/${fmt(b.m)}` })));
+        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), pips(t, b, i, true, 'hud-b'), h('span', { class: 'hud-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` })));
       } else if (edit) {
         kids.push(h('label', { class: 'hud-b', style: { '--c': b.c }, title: `${b.n}: digite um valor, ou +5 e -8 para somar e subtrair` },
           h('span', { class: 'hud-n', text: b.n }),
-          h('input', { id: 'hud-b' + i, class: 'hud-in', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off', 'aria-label': b.n,
+          h('input', { id: 'hud-b' + i, class: 'hud-in' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off', 'aria-label': b.n,
             onfocus: e => e.target.select(),
             onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } else if (e.key === 'Escape') { e.target.value = b.v; e.target.blur(); } },
             onchange: e => { if (!Act.barSet(t, i, e.target.value)) e.target.value = b.v; } }),
           h('span', { class: 'hud-m', text: '/' + fmt(b.m) })));
       } else if (mode === 'num') {
-        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), dots ? pips(t, b, i, false) : null, h('span', { class: 'hud-v', text: `${fmt(b.v)}/${fmt(b.m)}` })));
+        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), dots ? pips(t, b, i, false) : null, h('span', { class: 'hud-v' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` })));
       }
     }
     // Condições ativas: as que têm contador ganham + e − aqui mesmo; as outras abrem a janela de condições.
@@ -8420,6 +8614,7 @@ const UI = (() => {
     }
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
     if (canCond) kids.push(iconBtn('shield', 'Condições', () => condPicker([t]), { size: 16, cls: 'hud-i', id: 'hud-cond' }));
+    if (Fichas.podeBolsa(t) && (Fichas.bolsa(t) || []).some(x => x.qtd > 0)) kids.push(iconBtn('bag', 'Bolsa: poções e itens do personagem', () => bagBox(t), { size: 16, cls: 'hud-i', id: 'hud-bolsa' }));
     if (can('target')) { const on = isTargeted([t]); kids.push(iconBtn('center', on ? 'Tirar a mira (A)' : 'Mirar: marca este token como alvo (A)', () => Act.targetToggle([t]), { size: 16, cls: 'hud-i', on, id: 'hud-mira' })); }
     if (gm) kids.push(iconBtn(t.hidden ? 'eyeOff' : 'eye', t.hidden ? 'Oculto dos jogadores (clique para mostrar)' : 'Visível aos jogadores (clique para ocultar)', () => Store.tx(t.hidden ? 'Mostrar token' : 'Ocultar token', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { size: 16, cls: 'hud-i', on: t.hidden, id: 'hud-hide' }));
     if (!kids.length) { hide(); return; }
@@ -8519,7 +8714,7 @@ const UI = (() => {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox,
+    closeModal, condPicker, barDefaultsBox, areaBox, bagBox,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

@@ -92,7 +92,7 @@
 
   /* A conta de um descanso, sem mudar nada.
        tipo        'longo' | 'curto'
-       pessoas     [{ id, nome, recursos: [{ id, nome, max, atual }], san, conf (número ou null = a ficha não usa),
+       pessoas     [{ id, nome, recursos: [{ id, nome, max, atual, min?, inicio? }], san, conf (número ou null = a ficha não usa),
                       poderes: [{ id, nome, atual, max }] }] — só quem vai descansar
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.
      Só o descanso longo usa a estrutura (melhorias e equipamentos) e gasta provisões pela regra "por personagem". */
@@ -109,8 +109,15 @@
     if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
     const linhas = pessoas.map(p => {
       const recursos = (p.recursos || []).filter(r => r.max != null && Number.isFinite(r.max) && r.max > 0).map(r => {
-        const de = limitar(num(r.atual, r.max), 0, r.max);
-        const para = limitar(Math.round((de + Math.ceil(r.max * rec / 100 - 1e-9)) * 10) / 10, 0, r.max);
+        // min: até onde a barra desce (0, ou negativo na que pode ficar negativa); inicio: onde ela começa (null = cheia)
+        const min = Number.isFinite(r.min) && r.min < 0 ? r.min : 0;
+        const inicio = r.inicio != null && Number.isFinite(r.inicio) ? limitar(r.inicio, min, r.max) : null;
+        const de = limitar(num(r.atual, inicio == null ? r.max : inicio), min, r.max);
+        /* A barra que tem um começo próprio (a que nasce em 4 de 20, por exemplo) não "recupera": o descanso longo a
+           leva de volta ao começo, de onde ela estiver, e o curto não mexe nela. */
+        if (inicio != null) return { id: r.id, nome: r.nome, max: r.max, de, para: longo ? inicio : de, inicio };
+        // recuperar 100% (ou mais) é encher a barra, mesmo a que estava abaixo de zero
+        const para = rec >= 100 ? r.max : limitar(Math.round((de + Math.ceil(r.max * rec / 100 - 1e-9)) * 10) / 10, min, r.max);
         return { id: r.id, nome: r.nome, max: r.max, de, para: Math.max(de, para) };
       });
       const barra = (v, d) => (v == null ? null : { de: v, para: limitar(v + d, 0, 100) });

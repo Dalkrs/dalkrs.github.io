@@ -235,6 +235,70 @@ table.items input.inm{padding:4px 6px}
 table.items td.c{text-align:center}
 .off{opacity:.42}
 
+/* ---- regras novas: abas do painel de atributos, defesas, opções das barras, itens, temporários e bolsas ---- */
+.abasatr{display:inline-flex;gap:2px;margin:-9px 0 -10px -12px;align-self:stretch}
+.abasatr .sub{border:0;border-radius:0;background:transparent;color:var(--ink-soft);padding:9px 12px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;border-bottom:2px solid transparent}
+.abasatr .sub:hover{color:var(--ink);background:var(--hover)}
+.abasatr .sub.on{color:var(--ink);border-bottom-color:var(--brass);background:var(--zebra)}
+.abasatr .mk{color:var(--brass);font-size:10px;margin-left:5px;letter-spacing:0}
+table.attr.defs td{padding-top:3px;padding-bottom:3px}
+table.attr.defs tr.ini td{border-top:1px solid var(--line)}
+table.attr.defs tr.zero .vtot{color:var(--ink-fraco)}
+.defnome{display:inline-flex;align-items:center;gap:8px}
+.defnome .icodef{flex:none;color:var(--brass)}
+.defnome.t-golpe .icodef{color:var(--ink-soft)}
+.defnome.t-mente .icodef{color:var(--teal)}
+.dtmp{display:block;font-size:10.5px;color:var(--brass-ink);font-weight:500;white-space:nowrap}
+.idcard3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+/* barra abaixo de zero: a parte negativa, riscada */
+.barrinhas .bz.neg .bzv{color:var(--rubric);font-weight:600}
+.barrinhas .bz.neg .bzt i{background:repeating-linear-gradient(135deg,var(--rubric) 0 3px,transparent 3px 6px)}
+.rescard .atual.neg input[data-resatual]{color:var(--rubric);border-color:var(--rubric-borda)}
+.resopc{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.resopc summary{cursor:pointer;font-size:11.5px;color:var(--ink-soft);display:flex;gap:10px;align-items:baseline;list-style:none}
+.resopc summary::-webkit-details-marker{display:none}
+.resopc summary::before{content:"▸";font-size:10px}
+.resopc[open] summary::before{content:"▾"}
+.resopc summary:hover .resopc-t{color:var(--ink)}
+.resopc-r{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--brass-ink)}
+.resopc-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0 6px}
+.resopc .hint code{background:var(--campo-sut);border:1px solid var(--line-2);border-radius:3px;padding:0 4px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+label.f > span.pisoin{display:flex;align-items:center;gap:6px;margin:0}
+.pisoin b{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft)}
+.pisoin input{flex:1;min-width:0}
+/* o que um item soma além das dez colunas */
+.itmais{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 5px}
+.chipb{display:inline-flex;align-items:center;gap:5px;padding:2px 3px 2px 8px;border:1px solid var(--teal-borda);background:var(--teal-fundo);border-radius:999px;font-size:12px}
+.chipb.rec{border-color:var(--brass-soft);background:var(--brass-fundo)}
+.chipb b{font-weight:600;white-space:nowrap}
+table.items .chipb input[type=number]{width:52px;padding:2px 4px;border-radius:6px}
+.chipb .chipx{border:0;background:transparent;color:var(--ink-soft);padding:0 6px;font-size:14px;line-height:1;border-radius:999px}
+.chipb .chipx:hover{color:var(--rubric);background:var(--rubric-fundo)}
+.itmais-s{width:auto;max-width:210px;padding:2px 6px;font-size:12px;color:var(--ink-soft)}
+.itextras{margin-top:8px}
+/* bônus temporários */
+.tmplist{display:grid;gap:6px}
+.tmprow{display:grid;grid-template-columns:auto minmax(120px,1.4fr) minmax(130px,1fr) 74px minmax(110px,1fr) auto;gap:8px;align-items:center}
+.tmprow.off > :not(.tmpon):not(button){opacity:.45}
+.tmprow .tmpon{display:grid;place-items:center;padding:0 2px}
+.tmprow .tmpon input{width:auto}
+.tmprow .tmpv{text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600}
+@media (max-width:820px){.tmprow{grid-template-columns:auto 1fr 74px auto}.tmprow .tmpn{grid-column:2/4}.tmprow .tmpd{grid-column:2/4}}
+/* bolsas */
+.bollist{display:grid;gap:10px}
+.bolrow{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:var(--campo);display:grid;gap:7px}
+.bolrow.sem .bolnome{color:var(--ink-soft)}
+.bolcab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bolcab .bolnome{flex:1 1 180px;min-width:0;font-weight:500}
+.bolqtd{display:inline-flex;align-items:center;gap:4px}
+.bolqtd input{width:64px;text-align:center;font-family:"IBM Plex Mono",monospace;font-weight:600}
+.bolfx{display:grid;grid-template-columns:minmax(120px,1fr) minmax(110px,.9fr) minmax(140px,1.1fr) 76px minmax(100px,.9fr);gap:8px;align-items:end}
+.bolfx input.ruim{border-color:var(--rubric);color:var(--rubric)}
+@media (max-width:820px){.bolfx{grid-template-columns:1fr 1fr}}
+.bolconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r);font-size:13px}
+.bolconf span{flex:1 1 240px}
+.bolrow textarea{min-height:30px;resize:vertical}
+
 /* config / modal */
 .modal{position:fixed;inset:0;background:rgba(4,6,10,.62);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:40}
 .modal .sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);max-width:860px;width:100%}
@@ -655,10 +719,10 @@ table.items tr.itfx.off textarea{opacity:.55}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=5"></script>
-<script src="../tc/rules.js?v=2"></script>
-<script src="mesa.js?v=4"></script>
-<script src="extras.js?v=2"></script>
+<script src="../tc/ponte.js?v=6"></script>
+<script src="../tc/rules.js?v=3"></script>
+<script src="mesa.js?v=5"></script>
+<script src="extras.js?v=3"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -995,7 +1059,7 @@ function calcular(pc){
   // As contas são as das regras compartilhadas do site (conferidas contra as daqui): as mesmas, mais os bônus dos
   // nódulos escolhidos na árvore. O cálculo original, logo abaixo, fica de reserva se a biblioteca não carregar.
   if(window.TC && TC.rules && !calcular.semLib){
-    try{ return TC.rules.calcular(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib)}); }
+    try{ return TC.rules.calcular(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp}); }
     catch(e){ console.error(e); calcular.semLib=true; }
   }
   const mult=multTier(pc.tier);
@@ -1112,13 +1176,13 @@ function renderLista(){
 }
 /* iniciativa da ficha: um número ou uma fórmula (as mesmas variáveis dos recursos) */
 function iniciativaDe(pc){
-  if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib)}); }catch(e){} }
+  if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp}); }catch(e){} }
   const n=parseInt(pc.ini,10); return {val: isFinite(n)? n : 0, err:null};
 }
 function iniTexto(pc){ const r=iniciativaDe(pc); return r.err? 'fórmula com erro' : (String(pc.ini||'').trim()===''? 'sem bônus' : '= '+(r.val>=0?'+':'−')+Math.abs(r.val)); }
-/* valor atual de um recurso: o que foi anotado; sem anotação, está cheio */
+/* valor atual de um recurso: o que foi anotado; sem anotação, está no começo da barra (cheia, se ela não tem "começa em") */
 function temAtual(pc,r){ const rec=pc.estado&&pc.estado.rec; return !!rec && isFinite(rec[r.id]) && rec[r.id]!==null; }
-function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : arred(r.val); }
+function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : (r.inicio!=null? r.inicio : arred(r.val)); }
 /* As barrinhas embaixo da imagem do personagem: cada recurso (HP, SP…) com o valor atual, só para ver de relance.
    Mexer continua sendo no quadro dos recursos; as cores são as das barras dos tokens, na mesma ordem. */
 const CORES_BARRINHA=['#d6524b','#4a9be0','#e2b23e','#6fbf73','#b07ad9','#e58a4e','#4fc3c0','#d96aa0'];
@@ -1126,10 +1190,12 @@ function htmlBarrinhas(pc, c){
   const rs=((c||calcular(pc)).recursos||[]).filter(r=>!r.err && r.val!=null && isFinite(r.val) && arred(r.val)>0);
   if(!rs.length) return '';
   return `<div class="barrinhas" id="barrinhas" role="group" aria-label="Recursos do personagem">${rs.map((r,i)=>{
-    const max=arred(r.val), at=atualDoRecurso(pc,r), pct=Math.max(0,Math.min(100,at/max*100));
-    return `<div class="bz" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at)} de ${fmt(max)}">
-      <span class="bzn">${esc(r.nome)}</span><span class="bzv">${fmt(at)}/${fmt(max)}</span>
-      <span class="bzt"><i style="width:${pct.toFixed(1)}%;background:${CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i></span></div>`;
+    // abaixo de zero (na barra que pode ficar negativa), a barrinha mostra a parte negativa, riscada
+    const max=arred(r.val), at=atualDoRecurso(pc,r), neg=at<0 && r.min<0;
+    const pct=neg? Math.min(100,at/r.min*100) : Math.max(0,Math.min(100,at/max*100));
+    return `<div class="bz${neg?' neg':''}" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at).replace('-','−')} de ${fmt(max)}${neg?' (pode ir até '+fmt(r.min).replace('-','−')+')':''}">
+      <span class="bzn">${esc(r.nome)}</span><span class="bzv">${fmt(at).replace('-','−')}/${fmt(max)}</span>
+      <span class="bzt"><i style="width:${pct.toFixed(1)}%;${neg?'':'background:'+CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i></span></div>`;
   }).join('')}</div>`;
 }
 // (depois de mexer num valor atual sem redesenhar a ficha inteira)
@@ -1137,6 +1203,25 @@ function pintarBarrinhas(host, pc){
   const el=host.querySelector('#barrinhas'); if(!el) return;
   const t=document.createElement('template'); t.innerHTML=htmlBarrinhas(pc);
   const novo=t.content.firstElementChild; if(novo) el.replaceWith(novo); else el.remove();
+}
+/* Chegou uma mudança da mesa enquanto alguém digita nesta ficha. A ficha inteira só é redesenhada quando a pessoa
+   sai do campo (para não tirar o cursor de quem escreve), mas o que muda no meio do jogo — o valor das barras, a
+   sobrevida, as moedas — aparece já, nos outros campos. */
+function pintarAoVivo(){
+  const host=document.getElementById('ficha'), pc=S.personagens.find(p=>p.id===S.sel);
+  if(!host||!pc) return;
+  const c=calcular(pc), foco=document.activeElement;
+  host.querySelectorAll('[data-resatual]').forEach(i=>{
+    const r=(c.recursos||[]).find(x=>x.id===i.dataset.resatual);
+    if(i===foco||!r||r.err||r.val==null) return;
+    const at=atualDoRecurso(pc,r), v=String(at);
+    if(i.value!==v) i.value=v;
+    const box=i.closest('.atual'); if(box) box.classList.toggle('neg', at<0);
+  });
+  host.querySelectorAll('[data-ressob]').forEach(i=>{ if(i===foco) return; const v=String(FichasExtras.sobrevidaDe(pc,{id:i.dataset.ressob})); if(i.value!==v) i.value=v; });
+  const lp=host.querySelector('#f_lapros');
+  if(lp && lp!==foco){ const v=String(FichasExtras.laprosDe(pc)); if(lp.value!==v) lp.value=v; }
+  pintarBarrinhas(host, pc);
 }
 function linhaElenco(p){
   return `<li class="pcrow" data-id="${p.id}">
@@ -1329,18 +1414,17 @@ function renderFicha(){
         <label class="f"><span class="eyebrow">Tags</span>
           <input id="f_tags" value="${esc((pc.tags||[]).join(', '))}" placeholder="separadas por vírgula — ex: capítulo 3, boss, aliado do rei"></label>
         ${FichasExtras.htmlLapros(pc)}
-        <label class="f"><span class="eyebrow">Tamanho do pênis</span>
-          <input id="f_tampenis" maxlength="24" value="${esc(pc.tamPenis||'')}" placeholder="ex.: 15 cm" autocomplete="off"></label>
       </div>
+      ${FichasExtras.htmlIdentidade(pc)}
       </div>
       </div>
     </div>
   </div>
 
   <div class="two" style="margin-bottom:18px">
-    ${FichasExtras.ehLivre(pc)? FichasExtras.painelAtributosLivre(pc,c) : `
+    ${FichasExtras.abaDefesas(c)? FichasExtras.painelDefesas(pc,c) : FichasExtras.ehLivre(pc)? FichasExtras.painelAtributosLivre(pc,c) : `
     <div class="panel">
-      <div class="hd"><span class="eyebrow">Atributos</span>
+      <div class="hd">${FichasExtras.htmlAbasAtr(pc,c)}
         <span style="margin-left:auto;display:flex;gap:6px"><button class="mini" data-act="pct">${pc.pctProprio?'Percentuais próprios':'Usar percentuais gerais'}</button>${FichasExtras.htmlBotaoModo(pc)}</span>
       </div>
       <div class="bd">
@@ -1353,7 +1437,7 @@ function renderFicha(){
               <td><span class="aname">${a.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${a.k}</span></td>
               <td><select class="tsel" data-tier="${a.k}">${TIERS_ATR.map(t=>`<option ${pc.tiers[a.k]===t?'selected':''}>${t}</option>`).join('')}</select></td>
               <td class="num vbase" ${arv?`title="${c.nat[a.k]} do nível ${arv>0?'+':'−'} ${Math.abs(arv)} da árvore"`:''}>${c.base[a.k]}${arv?`<span class="darv">${arv>0?'+':'−'}${Math.abs(arv)} árv.</span>`:''}</td>
-              <td class="num vequip">${c.eq[a.k]?(c.eq[a.k]>0?'+':'')+c.eq[a.k]:'—'}</td>
+              <td class="num vequip">${c.eq[a.k]?(c.eq[a.k]>0?'+':'')+c.eq[a.k]:'—'}${FichasExtras.htmlTemp(c,a.k)}</td>
               <td class="num vtot">${c.tot[a.k]}</td>
               <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.ant[a.k]}</span>
                 <span class="delta ${d>0?'up':'zero'}">${d>0?'+'+arredTxt(d):'·'}</span></td>
@@ -1362,7 +1446,7 @@ function renderFicha(){
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.k}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.desc}</span></td>
             <td class="num vbase">${d.calc(c.base)}</td>
-            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>
+            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.der[d.k]}</td>
             <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.derAnt[d.k]}</span>
               <span class="delta ${dd>0?'up':'zero'}">${dd>0?'+'+arredTxt(dd):'·'}</span></td>
@@ -1371,7 +1455,7 @@ function renderFicha(){
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.rot}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
             <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas||{})[d.k])||0)}"></td>
-            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>
+            <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.def[d.k]}</td>
             <td class="num"><span class="hint">—</span></td>
           </tr>`).join('')}
@@ -1478,16 +1562,20 @@ function renderFicha(){
               <button class="mini danger" data-resdel="${r.id}">Remover</button>
               <span class="val ${r.err?'err':''}">${r.err? 'erro' : (r.val==null?'—':fmt(r.val))}</span>
             </div>
-            ${r.err||r.val==null?'':`<div class="atual">
+            ${r.err||r.val==null?'':`<div class="atual${atualDoRecurso(pc,r)<0?' neg':''}">
               <span class="eyebrow">Atual</span>
-              <input class="inm" type="number" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}">
-              <span class="de">de ${fmt(arred(r.val))}</span>
-              ${temAtual(pc,r)?`<button class="mini" data-rescheio="${r.id}" title="Voltar ao máximo">Encher</button>`:''}
+              <input class="inm" type="number" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" ${r.min<0?`min="${r.min}"`:''} aria-label="Valor atual de ${esc(r.nome)}">
+              <span class="de">de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
+              ${temAtual(pc,r)?(r.inicio!=null && r.inicio!==arred(r.val)
+                ? `<button class="mini" data-rescheio="${r.id}" title="Voltar ao valor em que a barra começa">Voltar a ${fmt(r.inicio).replace('-','−')}</button>`
+                : `<button class="mini" data-rescheio="${r.id}" title="Voltar ao máximo">Encher</button>`):''}
               ${FichasExtras.htmlSobrevida(pc,r)}
             </div>`}
             <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
             ${r.arv?`<div class="hint">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} dos nódulos da árvore.</div>`:''}
+            ${r.eq?`<div class="hint">Inclui ${r.eq>0?'+':'−'}${Math.abs(r.eq)} dos equipamentos em uso.</div>`:''}
+            ${r.err||r.val==null?'':FichasExtras.htmlOpcoesBarra(pc,r)}
           </div>`).join('') || '<div class="hint">Nenhum recurso. Clique em “+ Recurso” para criar HP, SP, fé, sanidade, o que precisar.</div>'}
       </div>
       <hr class="sep">
@@ -1510,6 +1598,8 @@ function renderFicha(){
     </div>
   </div>
 
+  ${FichasExtras.painelTemporarios(pc,c)}
+
   ${FichasExtras.painelMente(pc)}
 
   <div class="panel" style="margin-bottom:18px">
@@ -1531,16 +1621,18 @@ function renderFicha(){
           ${DERIV.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--brass-soft);background:var(--brass-fundo)"></td>`).join('')}
           ${DEFESAS.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--teal-borda);background:var(--teal-fundo)"></td>`).join('')}
           <td class="c"><button class="mini danger" data-itemdel="${it.id}">×</button></td>
-        </tr>${FichasExtras.htmlEfeitoItem(it)}`).join('')}
+        </tr>${FichasExtras.htmlEfeitoItem(it, pc)}`).join('')}
         <tr><td></td><td class="mono" style="color:var(--ink-soft);font-size:12px">Total equipado</td>
         ${ATRIBS.map(a=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[a.k]?(c.eq[a.k]>0?'+':'')+c.eq[a.k]:'—'}</td>`).join('')}
         ${DERIV.map(d=>`<td class="num" style="text-align:right;color:var(--brass);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}
         ${DEFESAS.map(d=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}<td></td></tr>
         </tbody>
-      </table></div>`
+      </table></div>${FichasExtras.htmlTotaisExtras(pc,c)}`
       : '<div class="hint">Sem itens. Os totais são iguais aos valores base.</div>'}
     </div>
   </div>
+
+  ${FichasExtras.painelBolsa(pc,c)}
 
   <div class="panel">
     <div class="hd subtabs">
@@ -1601,7 +1693,6 @@ function ligarFicha(pc){
   host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
   host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
-  host.querySelector('#f_tampenis').oninput=e=>patchLeve(()=>{ const v=e.target.value.trim().slice(0,24); if(v) pc.tamPenis=v; else delete pc.tamPenis; });
   FichasMesa.ligarDono(host, pc);
   FichasExtras.ligarRetrato(host, pc);
   FichasExtras.ligarLapros(host, pc);
@@ -1609,6 +1700,7 @@ function ligarFicha(pc){
   FichasExtras.ligarMente(host, pc);
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
+  FichasExtras.ligarNovos(host, pc);
   const fini=host.querySelector('#f_ini');
   if(fini) fini.oninput=e=>patchLeve(()=>{ pc.ini=e.target.value; const v=host.querySelector('#iniVal'); if(v) v.textContent=iniTexto(pc); });
   const bini=host.querySelector('#btnIni');
@@ -1618,13 +1710,37 @@ function ligarFicha(pc){
     logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val), total});
     render();
   };
-  // valor atual de cada recurso (HP, SP...): vazio = cheio
+  // valor atual de cada recurso (HP, SP...): vazio = no começo da barra (cheia, se ela não tem um começo próprio)
+  const encher=id=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[id]; });
+  // (o botão de voltar ao começo aparece assim que há um valor anotado, sem redesenhar a ficha: quem está digitando não perde o campo)
+  const mostrarEncher=i=>{
+    const box=i.closest('.atual'), id=i.dataset.resatual;
+    if(!box) return;
+    const r=(calcular(pc).recursos||[]).find(x=>x.id===id); if(!r) return;
+    box.classList.toggle('neg', atualDoRecurso(pc,r)<0);
+    let b=box.querySelector('[data-rescheio]');
+    if(!temAtual(pc,r)){ if(b) b.remove(); return; }
+    if(b) return;
+    b=document.createElement('button'); b.className='mini'; b.dataset.rescheio=id;
+    const comeco=r.inicio!=null && r.inicio!==arred(r.val);
+    b.textContent=comeco? 'Voltar a '+fmt(r.inicio).replace('-','−') : 'Encher';
+    b.title=comeco? 'Voltar ao valor em que a barra começa' : 'Voltar ao máximo';
+    b.onclick=()=>encher(id);
+    box.querySelector('.de').after(b);
+  };
   host.querySelectorAll('[data-resatual]').forEach(i=>i.oninput=e=>patchLeve(()=>{
     const est=pc.estado||(pc.estado={}); const rec=est.rec||(est.rec={});
     const v=e.target.value.trim(); if(v===''||!isFinite(+v)) delete rec[i.dataset.resatual]; else rec[i.dataset.resatual]=+v;
-    pintarBarrinhas(host, pc);
+    pintarBarrinhas(host, pc); mostrarEncher(i);
   }));
-  host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[b.dataset.rescheio]; }));
+  // (ao sair do campo: um valor abaixo do que a barra aguenta fica no piso dela)
+  host.querySelectorAll('[data-resatual]').forEach(i=>i.onchange=()=>{
+    const r=(calcular(pc).recursos||[]).find(x=>x.id===i.dataset.resatual), rec=pc.estado&&pc.estado.rec, v=rec? rec[i.dataset.resatual] : null;
+    if(!r||v==null||!isFinite(v)) return;
+    const piso=r.min<0? r.min : 0;
+    if(v<piso){ rec[r.id]=piso; i.value=piso; save(); pintarBarrinhas(host, pc); mostrarEncher(i); toast(r.nome+' não desce de '+fmt(piso).replace('-','−')+'.'); }
+  });
+  host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>encher(b.dataset.rescheio));
   const rfx=host.querySelector('#rolFixa');
   if(rfx) rfx.oninput=e=>patchLeve(()=>{pc.rol.fixa=Math.max(0,+e.target.value||0)});
   const rfo=host.querySelector('#rolFonte');
@@ -1671,7 +1787,8 @@ function ligarFicha(pc){
   host.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.act;
     if(a==='dup'){ const cp=JSON.parse(JSON.stringify(pc)); cp.id=uid(); cp.nome=pc.nome+' (cópia)';
-      cp.itens.forEach(i=>i.id=uid()); cp.recursos.forEach(r=>r.id=uid());
+      // (as barras ficam com o mesmo id: os itens e as poções da cópia apontam para elas. A cópia nasce com as barras no começo.)
+      cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; }
       S.personagens.push(cp); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
     if(a==='del'){ if(confirm('Excluir "'+pc.nome+'"? Não tem como desfazer.')){
         S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Personagem excluído'); } }
@@ -1748,6 +1865,7 @@ function novaSituacao(nome){
 }
 function valorDoAtributo(pc,atr,fonte){
   const c=calcular(pc);
+  if(c.defEsp && Object.prototype.hasOwnProperty.call(c.defEsp,atr)) return c.defEsp[atr];   // defesa específica
   if(ehDefesa(atr))   return c.def[atr];          // defesa: manual + equipamento
   if(ehDerivado(atr)) return c.der[atr];          // derivados têm valor único
   return fonte==='base'? c.base[atr] : c.tot[atr];
@@ -2340,10 +2458,12 @@ function rolarNaFicha(pc,k){
   const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
   const valor=valorDoAtributo(pc,k,rol.fonte);
   const r=rolarFixa(valor, rol.fixa||0);
-  const usouBase = !ehDerivado(k) && rol.fonte==='base';
-  pc.ultRol={k, valor, base:usouBase, total:r.total, texto:r.texto, dado:r.dado, bruto:r.bruto};
+  const usouBase = ATRIBS.some(a=>a.k===k) && rol.fonte==='base';      // "base" só existe nos cinco atributos
+  const esp = window.TC && TC.rules && TC.rules.DEFESAS_ESP ? TC.rules.DEFESAS_ESP.find(d=>d.k===k) : null;
+  const rot = esp? 'Defesa contra '+esp.nome.toLowerCase() : k;
+  pc.ultRol={k:rot, valor, base:usouBase, total:r.total, texto:r.texto, dado:r.dado, bruto:r.bruto};
   logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
-    det:k+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
+    det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
     total:r.total});
   save(); renderFicha();
 }

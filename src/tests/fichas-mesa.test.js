@@ -128,6 +128,31 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   ok(await ate(async () => (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '212'), 'e o valor novo aparece');
   ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '212' && (await G.locator('#f_nome').inputValue()) === 'Dain X'), 'para o jogador também');
 
+  // ---------- os dois mexem na mesma ficha ao mesmo tempo, cada um numa coisa ----------
+  const estadoNoBanco = () => M.evaluate(async () => { const a = TC.mesas.atual; const r = await __sb.from('personagens').select('estado,ficha').eq('mesa_id', a.id).eq('id', 'pc_dain').single(); return r.data; });
+  await Promise.all([
+    (async () => { await F.locator('[data-resatual="hppc_dain"]').fill('111'); await F.locator('#f_nome').click(); })(),
+    (async () => { await G.locator('[data-resatual="sppc_dain"]').fill('7'); await G.locator('#f_nome').click(); })(),
+  ]);
+  ok(await ate(async () => { const e = (await estadoNoBanco()).estado; return e.rec.hppc_dain === 111 && e.rec.sppc_dain === 7; }), 'o mestre muda o HP e o jogador muda o SP no mesmo instante: no banco ficam os dois — ' + JSON.stringify((await estadoNoBanco()).estado.rec));
+  ok(await ate(async () => (await F.locator('[data-resatual="sppc_dain"]').inputValue()) === '7' && (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '111'), 'a tela do mestre fica com os dois valores');
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '111' && (await G.locator('[data-resatual="sppc_dain"]').inputValue()) === '7'), 'e a do jogador também');
+  // o jogador está escrevendo nas anotações quando chega uma mudança do mestre: o que ele escreve depois não se perde
+  await G.locator('[data-sub="notas"]').click(); await w(300, J);
+  await G.locator('#f_notas').click(); await G.locator('#f_notas').pressSequentially('Antes do golpe. ', { delay: 15 });
+  await F.locator('[data-resatual="hppc_dain"]').fill('64'); await F.locator('#f_nome').click();
+  ok(await ate(async () => (await J.evaluate(() => { const l = TC.dados.col('personagens').pegar('pc_dain'); return l && l.estado.rec.hppc_dain; })) === 64), '(a mudança do mestre chega ao aparelho do jogador enquanto ele escreve)');
+  await w(500, J);
+  ok(await G.evaluate(() => document.activeElement && document.activeElement.id === 'f_notas'), 'o cursor do jogador continua nas anotações');
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '64' && (await G.locator('#barrinhas .bz').first().locator('.bzv').innerText()).startsWith('64/')), 'e o HP novo já aparece na ficha dele (no campo e na barrinha), sem tirar o cursor de onde está');
+  await G.locator('#f_notas').pressSequentially('Depois do golpe.', { delay: 15 }); await w(900, J);
+  ok(await ate(async () => { const d = await estadoNoBanco(); return d.ficha.notas === 'Antes do golpe. Depois do golpe.' && d.estado.rec.hppc_dain === 64 && d.estado.rec.sppc_dain === 7; }), 'o que ele escreveu antes e depois do aviso fica guardado, junto com o HP que o mestre mudou: ' + JSON.stringify((await estadoNoBanco()).ficha.notas));
+  await G.locator('#lista').click({ position: { x: 5, y: 5 } }).catch(() => {}); await G.evaluate(() => document.activeElement && document.activeElement.blur()); await w(500, J);
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '64' && (await G.locator('#f_notas').inputValue()) === 'Antes do golpe. Depois do golpe.'), 'saindo do campo, a ficha é redesenhada e continua com o texto e o HP novo');
+  await G.locator('[data-sub="estaque"]').click(); await w(200, J);
+  await F.locator('[data-resatual="hppc_dain"]').fill('212'); await F.locator('#f_nome').click();
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '212'), '(o HP volta a 212)');
+
   // ---------- recarregar, excluir, sair da mesa ----------
   await M.reload({ waitUntil: 'load' });
   ok(await ate(async () => { F = await fichas(M); return F && (await nomes(F)) === 'Dain X|Capitão'; }), 'recarregando, as fichas da mesa voltam do banco');

@@ -910,8 +910,8 @@ const UI = (() => {
       const xAberta = barX(b) > 0 || !!barXOpen[key];
       const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
       const val = h('input', {
-        id: `tk-b${i}-v`, class: 'in bar-v', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
-        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair',
+        id: `tk-b${i}-v`, class: 'in bar-v' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
+        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair' + (barLo(b) > 0 ? `. Esta barra pode ficar negativa até −${fmt(barLo(b))}.` : ''),
         onchange: e => { if (!Act.barSet(t, i, e.target.value)) e.target.value = b.v; },
       });
       rows.push(h('div', { class: 'bar-row' + (b.on ? '' : ' off') },
@@ -932,6 +932,8 @@ const UI = (() => {
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
+        b.ref ? (barLo(b) > 0 || b.st != null ? note((barLo(b) > 0 ? `Pode ficar negativa até −${fmt(barLo(b))}. ` : '') + (b.st != null ? `Começa em ${fmtV(b.st)}: a cura total leva para lá. ` : '') + 'Isso vem da ficha (Opções da barra).') : null)
+          : field('Negativa até −', inNum(`tk-b${i}-lo`, barLo(b), v => Act.barPatch(t, i, { lo: Math.max(0, Math.round((Number(v) || 0) * 10) / 10), v: Math.max(-Math.max(0, Number(v) || 0), b.v) }), { min: 0, step: 1, label: `Até quanto abaixo de zero ${b.n} pode ir`, title: 'Zero: a barra para em zero. Com um valor, ela pode ficar negativa até esse tanto (a parte negativa aparece riscada).' })),
         b.k === 'pts' && m > PIP_MAX ? note(`No mapa, os pontos aparecem como barra quando o máximo passa de ${PIP_MAX}.`) : null,
         h('div', { class: 'row' }, btn('Remover barra', () => removeBar(t, i), { icon: 'trash', kind: 'danger small', id: `tk-b${i}-del` }))));
     });
@@ -948,8 +950,9 @@ const UI = (() => {
     return h('div', { class: 'bars' }, rows.map(({ b, i, mode }) => h('div', { class: 'bar-ro' },
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
-        : h('span', { class: 'meter' }, h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
-      mode === 'num' ? h('span', { class: 'bar-m', text: `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
+        : h('span', { class: 'meter' }, barNeg(b) > 0 ? h('span', { class: 'meter-f neg', style: { width: clamp(barNeg(b) * 100, 4, 100) + '%' } })
+          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
+      mode === 'num' ? h('span', { class: 'bar-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
   /* Barras padrão: a lista com que todo token novo nasce (vale para a mesa inteira). */
@@ -1132,7 +1135,66 @@ const UI = (() => {
         const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
         toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
       }, { icon: 'die', id: 'tk-rolar' })));
+    out.push(...bagResumo(t));
     return out;
+  }
+
+  /* A bolsa do personagem deste token: as poções, bombas, runas, munições e materiais da ficha dele.
+     A poção que faz alguma coisa mostra antes o que vai acontecer ("Usar agora"); os outros itens só gastam uma
+     unidade. Tudo avisa a mesa ao vivo e dá para desfazer. */
+  function bagBox(t) {
+    const tid = t.id, R = window.TC.rules;
+    let pede = null;
+    const body = h('div', { class: 'bag' });
+    const doUse = (tk, it) => {
+      pede = null;
+      const r = Fichas.usar(tk, it.id);
+      if (!r.ok) { toast(r.error); paint(); return; }
+      toast(r.texto + '.', { action: 'Desfazer', run: () => { if (r.desfazer()) toast(`Desfeito: ${it.nome || 'o item'} voltou para a bolsa.`); if (modalEl && modalLive) modalLive(); } });
+      paint();
+    };
+    const use = (tk, it) => {
+      if (!Fichas.previaUso(tk, it.id).length) { doUse(tk, it); return; }      // nada é aplicado sozinho: um clique gasta e avisa
+      pede = it.id; paint();
+      const n = document.getElementById('bag-ok-' + it.id); if (n) n.focus();
+    };
+    function paint() {
+      const tk = Store.get('tokens', tid), itens = tk ? Fichas.bolsa(tk) : null;
+      const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
+      body.replaceChildren();
+      if (!itens) { addKids(body, [note('Este token não dá mais acesso a uma bolsa.')]); return; }
+      if (!itens.length) { addKids(body, [note('A bolsa está vazia. Os itens são cadastrados na ficha do personagem, em Bolsas.')]); return; }
+      addKids(body, R.BOLSAS.map(b => {
+        const lista = itens.filter(x => x.t === b.t);
+        if (!lista.length) return null;
+        return h('div', { class: 'bag-g' }, h('div', { class: 'bag-h', text: b.nome }), lista.map(it => {
+          const previa = pede === it.id && it.qtd > 0 ? Fichas.previaUso(tk, it.id) : null, resta = it.qtd - 1;
+          return h('div', { class: 'bag-r' + (it.qtd ? '' : ' sem') },
+            h('div', { class: 'bag-l' },
+              h('span', { class: 'bag-n', text: it.nome || b.um }), h('span', { class: 'bag-q', title: 'Quantas há na bolsa', text: '×' + it.qtd }),
+              btn('Usar', () => use(tk, it), { kind: 'small', id: 'bag-u-' + it.id, disabled: it.qtd < 1, title: it.qtd < 1 ? 'Não há nenhuma na bolsa' : it.t === 'pocao' ? 'Gasta uma e aplica o efeito (mostra antes o que vai acontecer)' : 'Gasta uma e avisa a mesa. Nada é aplicado sozinho.' })),
+            it.nota ? h('div', { class: 'bag-d', text: it.nota }) : null,
+            previa ? h('div', { class: 'bag-c' },
+              h('span', { class: 'bag-ct' }, h('strong', { text: `Usar ${it.nome || 'a poção'}? ` }), previa.join(' · ') + ' · ' + (resta === 0 ? 'é a última' : resta === 1 ? 'sobra 1' : 'sobram ' + resta)),
+              btn('Usar agora', () => doUse(tk, it), { kind: 'primary small', id: 'bag-ok-' + it.id }),
+              btn('Cancelar', () => { pede = null; paint(); const n = document.getElementById('bag-u-' + it.id); if (n) n.focus(); }, { kind: 'small', id: 'bag-no' })) : null);
+        }));
+      }));
+      if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    }
+    paint();
+    modal({ title: 'Bolsa de ' + tokName(t), body, wide: true, focusPrimary: true, actions: [{ label: 'Fechar', kind: 'primary' }] });
+    modalLive = paint;
+  }
+  // No painel do token: o que há na bolsa, em uma linha, e o botão que a abre.
+  function bagResumo(t) {
+    const itens = Fichas.bolsa(t);
+    if (!itens) return [];
+    const partes = window.TC.rules.BOLSAS.map(b => { const n = itens.filter(x => x.t === b.t).reduce((s, x) => s + x.qtd, 0); return n ? `${n} ${(n === 1 ? b.um : b.nome).toLowerCase()}` : ''; }).filter(Boolean);
+    return [
+      note(partes.length ? 'Na bolsa: ' + partes.join(' · ') + '.' : itens.length ? 'A bolsa está sem unidades.' : 'A bolsa está vazia: os itens são cadastrados na ficha, em Bolsas.'),
+      h('div', { class: 'row' }, btn('Abrir a bolsa…', () => bagBox(t), { icon: 'bag', id: 'tk-bolsa', disabled: !itens.length, title: 'Poções, bombas, runas, munições e materiais da ficha' })),
+    ];
   }
 
   function tokenPanel(t) {
@@ -1145,6 +1207,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
         can('target') ? h('div', { class: 'row' }, btn(isTargeted([t]) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle([t]), { icon: 'center', id: 'tk-mira', title: 'Marca este token como seu alvo, para a mesa toda ver (tecla A)' })) : null];
     }
@@ -1606,7 +1669,7 @@ const UI = (() => {
           iconBtn('eye', 'Ver como ' + p.name, () => setViewer(p.id), { size: 16 }));
       })) : h('p', { class: 'muted', text: 'Ainda não há jogadores nesta mesa. Convide pelo menu da mesa, no alto da página (o código de convite).' }),
       sec('pl-heal', 'Descanso rápido', true,
-        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
           btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
           btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
@@ -1639,7 +1702,7 @@ const UI = (() => {
       })) : h('p', { class: 'muted', text: 'Nenhum jogador cadastrado.' }),
       h('div', { class: 'row' }, btn('Adicionar jogador', addPlayer, { icon: 'plus', kind: 'primary' })),
       sec('pl-heal', 'Descanso rápido', true,
-        note('Enche todas as barras em uso (Vida, SP…) de uma vez. Dá para desfazer.'),
+        note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
           btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
           btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
@@ -1658,6 +1721,7 @@ const UI = (() => {
       items.push({ head: toks.length > 1 ? `${toks.length} tokens` : tokName(o) });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
+      if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
@@ -1722,17 +1786,17 @@ const UI = (() => {
     for (const { b, i, mode } of barsShown(t)) {
       const dots = b.k === 'pts' && Math.round(b.m) >= 1 && Math.round(b.m) <= PIP_MAX;
       if (edit && dots) {
-        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), pips(t, b, i, true, 'hud-b'), h('span', { class: 'hud-m', text: `${fmt(b.v)}/${fmt(b.m)}` })));
+        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), pips(t, b, i, true, 'hud-b'), h('span', { class: 'hud-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` })));
       } else if (edit) {
         kids.push(h('label', { class: 'hud-b', style: { '--c': b.c }, title: `${b.n}: digite um valor, ou +5 e -8 para somar e subtrair` },
           h('span', { class: 'hud-n', text: b.n }),
-          h('input', { id: 'hud-b' + i, class: 'hud-in', type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off', 'aria-label': b.n,
+          h('input', { id: 'hud-b' + i, class: 'hud-in' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off', 'aria-label': b.n,
             onfocus: e => e.target.select(),
             onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } else if (e.key === 'Escape') { e.target.value = b.v; e.target.blur(); } },
             onchange: e => { if (!Act.barSet(t, i, e.target.value)) e.target.value = b.v; } }),
           h('span', { class: 'hud-m', text: '/' + fmt(b.m) })));
       } else if (mode === 'num') {
-        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), dots ? pips(t, b, i, false) : null, h('span', { class: 'hud-v', text: `${fmt(b.v)}/${fmt(b.m)}` })));
+        kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), dots ? pips(t, b, i, false) : null, h('span', { class: 'hud-v' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` })));
       }
     }
     // Condições ativas: as que têm contador ganham + e − aqui mesmo; as outras abrem a janela de condições.
@@ -1754,6 +1818,7 @@ const UI = (() => {
     }
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
     if (canCond) kids.push(iconBtn('shield', 'Condições', () => condPicker([t]), { size: 16, cls: 'hud-i', id: 'hud-cond' }));
+    if (Fichas.podeBolsa(t) && (Fichas.bolsa(t) || []).some(x => x.qtd > 0)) kids.push(iconBtn('bag', 'Bolsa: poções e itens do personagem', () => bagBox(t), { size: 16, cls: 'hud-i', id: 'hud-bolsa' }));
     if (can('target')) { const on = isTargeted([t]); kids.push(iconBtn('center', on ? 'Tirar a mira (A)' : 'Mirar: marca este token como alvo (A)', () => Act.targetToggle([t]), { size: 16, cls: 'hud-i', on, id: 'hud-mira' })); }
     if (gm) kids.push(iconBtn(t.hidden ? 'eyeOff' : 'eye', t.hidden ? 'Oculto dos jogadores (clique para mostrar)' : 'Visível aos jogadores (clique para ocultar)', () => Store.tx(t.hidden ? 'Mostrar token' : 'Ocultar token', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { size: 16, cls: 'hud-i', on: t.hidden, id: 'hud-hide' }));
     if (!kids.length) { hide(); return; }
@@ -1853,7 +1918,7 @@ const UI = (() => {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox,
+    closeModal, condPicker, barDefaultsBox, areaBox, bagBox,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

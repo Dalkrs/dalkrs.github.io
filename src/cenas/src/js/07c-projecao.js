@@ -94,7 +94,9 @@ const Proj = (() => {
   function barraPublica(b, modo) {
     if (modo === 'num') return b;
     if (modo === 'none' || !b.on || !(b.m > 0)) return { n: 'Barra', c: b.c, k: 'bar', on: false, vis: '', v: 0, m: 0 };     // nem o nome vai
-    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };     // só a proporção
+    // só a proporção — e, abaixo de zero, a proporção da parte negativa (quanto do piso já foi), sem os números
+    if (b.v < 0 && barLo(b) > 0) return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: -Math.round(1000 * clamp(-b.v / barLo(b), 0, 1)) / 10, m: 100, lo: 100 };
+    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
   function tokenPublico(t, jogadores) {
@@ -165,7 +167,7 @@ const Proj = (() => {
       const nv = nu(n.v), av = ehObj(a) ? nu(a.v) : NaN;
       if (isFinite(nv)) {
         const alvo = isFinite(av) ? b.v + (nv - av) : nv;
-        const v = clamp(r1(alvo), 0, Math.min(999999, Math.max(b.m, b.v, nv)));
+        const v = clamp(r1(alvo), -barLo(b), Math.min(999999, Math.max(b.m, b.v, nv)));      // (a barra que pode ficar negativa desce até o piso dela)
         if (v !== b.v && (isFinite(av) ? nv !== av : true)) o.v = v;
       }
       const nx = Math.max(0, nu(n.x) || 0), ax = ehObj(a) ? Math.max(0, nu(a.x) || 0) : NaN;
@@ -248,9 +250,9 @@ const Proj = (() => {
         const val = igual(nb[k], b[k]) ? a[k] : nb[k];        // não mexida aqui: como chegou; mexida aqui: a daqui
         if (val !== undefined) o[k] = val;
       }
-      const tres = (n, bb, aa) => (n === bb ? aa : aa === bb ? n : Math.max(0, r1(aa + (n - bb))));
-      o.v = tres(nu(nb.v) || 0, nu(b.v) || 0, nu(a.v) || 0);
-      const x = tres(barX(nb), barX(b), barX(a));
+      const tres = (n, bb, aa, piso) => (n === bb ? aa : aa === bb ? n : Math.max(piso, r1(aa + (n - bb))));
+      o.v = tres(nu(nb.v) || 0, nu(b.v) || 0, nu(a.v) || 0, -barLo(o));
+      const x = tres(barX(nb), barX(b), barX(a), 0);
       if (x > 0) o.x = x;
       out.push(o);
     }

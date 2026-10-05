@@ -330,6 +330,9 @@ button { cursor: pointer; }
 .bar-ro .bar-n { flex: 0 0 76px; }
 .meter { flex: 1 1 auto; height: 9px; overflow: hidden; background: var(--raised); border: 1px solid var(--line); border-radius: 5px; }
 .meter-f { display: block; height: 100%; }
+/* barra abaixo de zero: a parte negativa, riscada */
+.meter-f.neg { background: repeating-linear-gradient(135deg, #ff5d73 0 3px, rgba(255, 93, 115, .25) 3px 6px); }
+.bar-v.neg, .hud-in.neg, .hud-m.neg, .hud-v.neg, .bar-m.neg { color: #ff8a9a; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
@@ -474,6 +477,18 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .in.cnt { width: 54px; padding: 4px; text-align: center; }
 .opts .in.cnt { width: 52px; }
 .cpick { display: flex; flex-direction: column; gap: 12px; }
+/* a bolsa do personagem, aberta pelo token */
+.bag { display: flex; flex-direction: column; gap: 14px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
+.bag-g { display: flex; flex-direction: column; gap: 6px; }
+.bag-h { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+.bag-r { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+.bag-r.sem .bag-n, .bag-r.sem .bag-q { color: var(--fg-3); }
+.bag-l { display: flex; align-items: center; gap: 10px; }
+.bag-n { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.bag-q { flex: none; font: 600 13px var(--mono); color: var(--fg-2); }
+.bag-d { color: var(--fg-2); font-size: 12.5px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bag-c { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--lamp); border-radius: 8px; background: color-mix(in srgb, var(--lamp) 12%, transparent); font-size: 13px; }
+.bag-ct { flex: 1 1 220px; }
 
 .hud-c { display: inline-flex; align-items: center; gap: 1px; padding: 2px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; }
 .hud-c.one, .hud-c.ro { padding: 3px; }

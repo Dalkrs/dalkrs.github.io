@@ -481,6 +481,7 @@
           h('span', { text: 'Devolve os poderes gastos' }),
           h('input', { type: 'checkbox', id: 'rg-longo-poderes', checked: rg.longo.poderes, 'aria-label': 'Descanso longo devolve os poderes gastos', onchange: e => mudar('regras do descanso', c => { c.regras.longo.poderes = e.target.checked; }) }),
           h('input', { type: 'checkbox', id: 'rg-curto-poderes', checked: rg.curto.poderes, 'aria-label': 'Descanso curto devolve os poderes gastos', onchange: e => mudar('regras do descanso', c => { c.regras.curto.poderes = e.target.checked; }) })),
+        h('p', { class: 'note', id: 'rg-comeco', text: 'A barra que “começa em” um valor próprio (na ficha, em Opções da barra) não recupera por porcentagem: o descanso longo a leva de volta ao começo dela, e o curto não mexe nela. Recuperar 100% enche também a barra que estava abaixo de zero.' }),
         h('p', { class: 'note', text: 'Quando faltam rações para o descanso longo:' }),
         h('div', { class: 'regras' },
           h('span', { text: 'A recuperação fica em (% do normal)' }), campoNum('rg-sem-rec', rg.semProv.rec, 'Sem rações: a recuperação fica em % do normal', v => mudar('regras do descanso', c => { c.regras.semProv.rec = v; }), 0, 100), h('span'),
@@ -524,7 +525,7 @@
         const ln = plano.linhas.find(x => x.id === p.id), dentroD = !!ln;
         return h('tr', { class: dentroD ? '' : 'fora' },
           h('td', {}, h('label', { class: 'sw', style: 'color:var(--fg);font-weight:600' }, h('input', { type: 'checkbox', id: 'ds-' + p.id, checked: dentroD, onchange: e => { if (e.target.checked) marcados.add(p.id); else marcados.delete(p.id); refazer(); const c0 = document.getElementById('ds-' + p.id); if (c0) c0.focus(); } }), p.nome)),
-          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max))), ...ln.poderes.map(x => h('span', {}, x.nome + ' ', seta(x.de, x.para)))) : h('span', { class: 'note', text: 'fica de fora' })),
+          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '')), ...ln.poderes.map(x => h('span', {}, x.nome + ' ', seta(x.de, x.para)))) : h('span', { class: 'note', text: 'fica de fora' })),
           h('td', {}, dentroD && ln.san ? h('div', { class: 'mud' }, seta(ln.san.de, ln.san.para)) : '—'),
           h('td', {}, dentroD && ln.conf ? h('div', { class: 'mud' }, seta(ln.conf.de, ln.conf.para)) : '—'));
       });
@@ -542,7 +543,8 @@
       for (const ln of plano.linhas) {
         const l = P.pegar(ln.id); if (!l) continue;
         const est = N.copia(l.estado || {}), rec = est.rec && typeof est.rec === 'object' ? est.rec : (est.rec = {});
-        for (const r of ln.recursos) if (r.para !== r.de) rec[r.id] = r.para;
+        // (a barra que voltou ao começo dela fica sem valor anotado: é o mesmo que o "voltar ao começo" da ficha)
+        for (const r of ln.recursos) if (r.para !== r.de) { if (r.inicio != null && r.para === r.inicio) delete rec[r.id]; else rec[r.id] = r.para; }
         if (ln.san) est.san = ln.san.para;
         if (ln.conf) est.conf = ln.conf.para;
         const campos = { estado: est }, antes = { id: l.id, estado: l.estado || {}, ficha: null };

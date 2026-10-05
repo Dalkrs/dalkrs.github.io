@@ -23,9 +23,25 @@
      extra   { arvore:{ FOR:2, HP:10, ... } } — o que os nódulos alocados da
              árvore somam (sai de bonusDaArvore). Chave que é uma das
              CHAVES_BONUS soma no atributo; qualquer outra é nome de recurso.
-     estado  { rec:{ [idDoRecurso]: valorAtual } } — faltando = cheio
+     estado  { rec:{ [idDoRecurso]: valorAtual } } — faltando = no valor inicial
+             da barra (cheia, se ela não tem "começa em")
              sob:{ [idDoRecurso]: sobrevida } — pontos por cima do recurso, que
              absorvem o dano antes dele (faltando = nenhuma)
+             tmp:{ [id]: { n: nome, k: chave, v: valor, d: duração (texto), off, t } }
+             — bônus temporários (comida, poção): somam enquanto não estão desligados
+             qtd:{ [idDoItemDaBolsa]: quantidade } — faltando = 0
+
+   O que entrou depois (nada disto muda as contas de quem não usa):
+     recurso   comeca: onde a barra começa e para onde volta ao "encher" e no
+               descanso longo (número ou fórmula; MAX = o máximo da barra);
+               piso: até quanto abaixo de zero ela pode ir (número ou fórmula)
+     item      rec:{ [idDoRecurso]: n } soma no máximo da barra; def:{ FOGO: n }
+               soma numa das defesas específicas
+     pc        defEsp:{ FOGO: n, ... } a base digitada das 13 defesas específicas;
+               bolsa:[{ id, t:'pocao'|'bomba'|'runa'|'municao'|'material', nome,
+               nota, e nas poções: rec (id da barra), val ("30", "-10", "2d6+3"),
+               bk/bv/bd (bônus temporário: chave, valor, duração) }]
+     extra     temp: o estado.tmp do personagem (resumo() passa sozinho)
    ======================================================================= */
 (function (root) {
   'use strict';
@@ -58,17 +74,48 @@
   const ehDefesa = k => DEFESAS.some(d=>d.k===k);
   const TIERS_ATR = ['A','B','C','D','E'];
 
+  /* Defesas específicas: contra um elemento ou um tipo de golpe. Base digitada na ficha + o que os equipamentos e
+     os bônus temporários somam. Ficam à parte das dez chaves: a árvore não as conhece (lá, "Gelo" é nome de barra). */
+  const DEFESAS_ESP = [
+    {k:'FOGO',   nome:'Fogo',        tipo:'elemento'},
+    {k:'AGUA',   nome:'Água',        tipo:'elemento'},
+    {k:'PEDRA',  nome:'Pedra',       tipo:'elemento'},
+    {k:'GELO',   nome:'Gelo',        tipo:'elemento'},
+    {k:'TROVAO', nome:'Trovão',      tipo:'elemento'},
+    {k:'PLANTA', nome:'Planta',      tipo:'elemento'},
+    {k:'VENTO',  nome:'Vento',       tipo:'elemento'},
+    {k:'LUZ',    nome:'Luz',         tipo:'elemento'},
+    {k:'SOMBRAS',nome:'Sombras',     tipo:'elemento'},
+    {k:'PSI',    nome:'Psicológico', tipo:'mente'},
+    {k:'CORTE',  nome:'Corte',       tipo:'golpe'},
+    {k:'PERF',   nome:'Perfuração',  tipo:'golpe'},
+    {k:'CONT',   nome:'Contusão',    tipo:'golpe'},
+  ];
+  const CHAVES_ESP = DEFESAS_ESP.map(d => d.k);
+  const ehDefesaEsp = k => CHAVES_ESP.indexOf(k) >= 0;
+  /* os tipos de item que uma bolsa guarda */
+  const BOLSAS = [
+    {t:'pocao',    nome:'Poções',    um:'Poção'},
+    {t:'bomba',    nome:'Bombas',    um:'Bomba'},
+    {t:'runa',     nome:'Runas',     um:'Runa'},
+    {t:'municao',  nome:'Munições',  um:'Munição'},
+    {t:'material', nome:'Materiais', um:'Material'},
+  ];
+
   /* as dez chaves que um equipamento (e a árvore) pode somar, e o nome de cada uma */
   const CHAVES_BONUS = [].concat(ATRIBS, DERIV, DEFESAS).map(x => x.k);
   const NOMES = {};
   [].concat(ATRIBS, DERIV, DEFESAS).forEach(x => { NOMES[x.k] = x.nome; });
+  /* o nome de qualquer chave que recebe bônus: as dez de sempre e as 13 defesas específicas ("Defesa: Fogo") */
+  const NOMES_BONUS = Object.assign({}, NOMES);
+  DEFESAS_ESP.forEach(d => { NOMES_BONUS[d.k] = 'Defesa: ' + d.nome; });
 
   /* são tabelas compartilhadas por todos os apps: ninguém altera por engano */
   const congelar = o => {
     Object.keys(o).forEach(k => { if (o[k] && typeof o[k] === 'object') congelar(o[k]); });
     return Object.freeze(o);
   };
-  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES].forEach(congelar);
+  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, DEFESAS_ESP, CHAVES_ESP, BOLSAS, NOMES_BONUS].forEach(congelar);
 
   /* ---------- FORMULA ENGINE (parser próprio, sem eval) — da calculadora ---------- */
   /* ##PARSER_START## */
@@ -255,6 +302,39 @@
     return { arv, arvRec };
   }
 
+  /* ---------- o que entrou depois: itens que dão barra e defesa, bônus temporários ---------- */
+  /* o que os itens equipados somam no máximo das barras (por id do recurso) e nas defesas específicas */
+  function bonusExtras(pc) {
+    const rec = {}, esp = {};
+    CHAVES_ESP.forEach(k => { esp[k] = 0; });
+    (pc.itens || []).forEach(it => {
+      if (!it || it.equipado === false) return;
+      if (it.rec && typeof it.rec === 'object') Object.keys(it.rec).forEach(id => { const v = numFinito(it.rec[id]); if (v) somar(rec, id, v); });
+      if (it.def && typeof it.def === 'object') CHAVES_ESP.forEach(k => { const v = numFinito(tem(it.def, k) ? it.def[k] : null); if (v) esp[k] += v; });
+    });
+    return { rec, esp };
+  }
+  /* Os bônus temporários do estado (estado.tmp), dos mais antigos para os mais novos, e a soma dos que estão ligados.
+     → { lista: [{ id, n, k, v, d, off, t }], soma: { as dez chaves }, esp: { as 13 defesas específicas } }
+     Um bônus com chave desconhecida ou valor zero continua na lista (dá para consertar na ficha), só não soma. */
+  function temporarios(mapa) {
+    const soma = {}, esp = {}, lista = [];
+    CHAVES_BONUS.forEach(k => { soma[k] = 0; });
+    CHAVES_ESP.forEach(k => { esp[k] = 0; });
+    if (mapa && typeof mapa === 'object' && !Array.isArray(mapa)) {
+      Object.keys(mapa).forEach(id => {
+        const b = mapa[id];
+        if (!b || typeof b !== 'object') return;
+        const k = String(b.k == null ? '' : b.k).toUpperCase(), v = numFinito(b.v);
+        lista.push({ id, n: String(b.n == null ? '' : b.n), k: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '', v: v == null ? 0 : v,
+          d: String(b.d == null ? '' : b.d), off: !!b.off, t: numFinito(b.t) || 0 });
+      });
+      lista.sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      lista.forEach(b => { if (b.off || !b.k || !b.v) return; if (ehDefesaEsp(b.k)) esp[b.k] += b.v; else soma[b.k] += b.v; });
+    }
+    return { lista, soma, esp };
+  }
+
   /* ---------- cálculo (da calculadora, com cfg por parâmetro) ---------- */
   function ptsDoLevel(cfg,lvl){
     const t=cfg.niveis||[], row=t.find(r=>+r.lvl===+lvl);
@@ -315,7 +395,35 @@
      distribuir. O resultado ganha livre (true), usados (soma dos pontos postos) e
      limite (pontos do level, inteiros). Sem atrLivre ainda (ninguém distribuiu),
      os números continuam os da tabela até a primeira mudança. ant = base (não há
-     "level anterior" numa distribuição feita à mão). */
+     "level anterior" numa distribuição feita à mão).
+
+     O que entrou depois (com extra.temp vazio e sem os campos novos na ficha, nada acima muda):
+       temporários tmp = a soma dos bônus temporários ligados (extra.temp). Entram como um
+                   equipamento: tot = base + eq + tmp; derivados e defesas somam o próprio tmp.
+                   Variáveis X_TMP nas dez chaves.
+       defesas     defEsp = base digitada (pc.defEsp) + itens (it.def) + temporários, nas 13
+       específicas defesas específicas; eqEsp e tmpEsp dizem quanto veio de cada lado.
+                   Variáveis DEF_FOGO, DEF_AGUA…
+       recursos    val soma também o que os itens equipados dão àquela barra (it.rec, por id);
+                   cada recurso ganha eq (quanto), min (até onde desce: 0 ou negativo),
+                   inicio (onde começa; null = cheia) e errMin/errInicio (fórmula com erro). */
+  /* Os limites de uma barra além do máximo. `piso` e `comeca` aceitam número ou fórmula, com as variáveis de
+     sempre e MAX (o máximo da barra). */
+  function limitesDoRecurso(r, max, vars, cfg) {
+    const o = { min: 0, inicio: null, errMin: null, errInicio: null };
+    const m = numFinito(max);
+    if (m == null) return o;
+    let v2 = null;
+    const conta = txt => {
+      const t = String(txt == null ? '' : txt).trim();
+      if (t === '') return null;
+      if (!v2) v2 = Object.assign({}, vars, { MAX: m });
+      return evalFormula(t, v2);
+    };
+    try { const p = conta(r.piso); if (p != null) { const a = arred(cfg, Math.abs(p)); o.min = a > 0 ? -a : 0; } } catch (e) { o.errMin = e.message; }
+    try { const i = conta(r.comeca); if (i != null) { const a = arred(cfg, i); o.inicio = Math.min(m, Math.max(o.min, a === 0 ? 0 : a)); } } catch (e) { o.errInicio = e.message; }
+    return o;
+  }
   function pontosLivres(pc){
     if(pc.modoAtr!=='livre' || !pc.atrLivre || typeof pc.atrLivre!=='object') return null;
     const o={};
@@ -328,6 +436,7 @@
     const total    = ptsDoLevel(cfg,pc.level)*mult;
     const totalAnt = ptsDoLevel(cfg,Math.max(1,(+pc.level)-1))*mult;
     const eq=bonusItens(pc);
+    const ext=bonusExtras(pc), tp=temporarios(extra&&extra.temp), tmp=tp.soma;
     const {arv,arvRec}=separarArvore(extra&&extra.arvore);
     const tiers=pc.tiers||{};
     const livres=pontosLivres(pc);
@@ -337,15 +446,20 @@
       nat[a.k] =livres? livres[a.k] : arred(cfg,total*p);
       base[a.k]=mais(nat[a.k],arv[a.k]);
       ant[a.k] =livres? base[a.k] : mais(arred(cfg,totalAnt*p),arv[a.k]);
-      tot[a.k] =base[a.k]+eq[a.k];
+      tot[a.k] =mais(base[a.k]+eq[a.k],tmp[a.k]);
     });
     const der={}, derAnt={};                       // sempre a partir dos valores BASE
     DERIV.forEach(d=>{
-      der[d.k]   =mais(d.calc(base)+eq[d.k],arv[d.k]);
-      derAnt[d.k]=mais(d.calc(ant)+eq[d.k],arv[d.k]);
+      der[d.k]   =mais(mais(d.calc(base)+eq[d.k],arv[d.k]),tmp[d.k]);
+      derAnt[d.k]=mais(mais(d.calc(ant)+eq[d.k],arv[d.k]),tmp[d.k]);
     });
-    const def={};                                   // manual da ficha + equipamentos + árvore
-    DEFESAS.forEach(d=>{ def[d.k]=mais((+((pc.defesas||{})[d.k])||0)+eq[d.k],arv[d.k]); });
+    const def={};                                   // manual da ficha + equipamentos + árvore (+ temporários)
+    DEFESAS.forEach(d=>{ def[d.k]=mais(mais((+((pc.defesas||{})[d.k])||0)+eq[d.k],arv[d.k]),tmp[d.k]); });
+    const defEsp={}, baseEsp={};                    // as 13 específicas: digitada + itens + temporários
+    DEFESAS_ESP.forEach(d=>{
+      const b=numFinito(pc.defEsp&&tem(pc.defEsp,d.k)?pc.defEsp[d.k]:null)||0;
+      baseEsp[d.k]=b; defEsp[d.k]=b+ext.esp[d.k]+tp.esp[d.k];
+    });
     const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(cfg,total), TOTAL:arred(cfg,total)};
     DERIV.forEach(d=>{
       vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base); vars[d.k+'_EQ']=eq[d.k];
@@ -367,16 +481,23 @@
       vars[a.k+'_NAT']=nat[a.k];                                    // level + tier, antes da árvore
       a.aliases.forEach(al=>{vars[al+'_ARV']=arv[a.k]; vars[al+'_NAT']=nat[a.k];});
     });
+    CHAVES_BONUS.forEach(k=>{ vars[k+'_TMP']=tmp[k]; });            // só os bônus temporários
+    DEFESAS_ESP.forEach(d=>{ vars['DEF_'+d.k]=defEsp[d.k]; });
     const recursos=(pc.recursos||[]).map(r=>{
       let val=null,err=null;
       try{ val=evalFormula(r.fml,vars); }catch(e){ err=e.message; }
       const n=val==null?'':normNome(r.nome);
       const b=n&&tem(arvRec,n)?arvRec[n]:0;
       if(b) val=val+b;
+      const q=val!=null&&tem(ext.rec,r.id)?ext.rec[r.id]:0;  // o que os itens equipados somam nesta barra
+      if(q) val=val+q;
       const max=arred(cfg,val);
-      return {...r, val, err, arv:b, max:max===0?0:max};     // o teste com 0 tira o −0 (teto(-0.3))
+      const o={...r, val, err, arv:b, max:max===0?0:max};     // o teste com 0 tira o −0 (teto(-0.3))
+      o.eq=q;
+      return Object.assign(o, limitesDoRecurso(r, o.max, vars, cfg));
     });
-    const r={mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec};
+    const r={mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec,
+      tmp, temporarios:tp.lista, defEsp, baseEsp, eqEsp:ext.esp, tmpEsp:tp.esp, eqRec:ext.rec};
     if(pc.modoAtr==='livre'){
       r.livre=true;
       r.usados=ATRIBS.reduce((s,a)=>s+(+nat[a.k]||0),0);
@@ -391,6 +512,7 @@
   }
   /* o número que se rola: c é o resultado de calcular(); fonte 'base' só muda os cinco atributos */
   function valorDoAtributo(c,atr,fonte){
+    if(ehDefesaEsp(atr)) return c.defEsp[atr];      // defesa específica: digitada + itens + temporários
     if(ehDefesa(atr))   return c.def[atr];          // defesa: manual + equipamento + árvore
     if(ehDerivado(atr)) return c.der[atr];          // derivados têm valor único
     return fonte==='base'? c.base[atr] : c.tot[atr];
@@ -459,17 +581,20 @@
   }
 
   /* ---------- valor atual dos recursos ---------- */
-  /* dentro de 0..max; com max negativo (fórmula estranha) fica no próprio max */
-  const limitar = (v, max) => Math.min(max, Math.max(0, v));
-  function atualDe(guardado, max) {              // max: número finito ou null
+  /* dentro de min..max (min é 0, ou negativo na barra que pode ficar negativa); com max negativo (fórmula
+     estranha) fica no próprio max */
+  const limitar = (v, max, min) => Math.min(max, Math.max(numFinito(min) || 0, v));
+  function atualDe(guardado, max, min, inicio) { // max: número finito ou null
     const g = numFinito(guardado);
     if (max == null) return g;                   // sem máximo não há "cheio" nem limite
-    return g == null ? max : limitar(g, max);
+    if (g == null) { const i = numFinito(inicio); return i == null ? max : limitar(i, max, min); }   // nada anotado: no começo da barra
+    return limitar(g, max, min);
   }
-  /* → [{id, nome, max, atual, sobre}] na ordem da ficha. max vem de calc (null se o recurso
-     não tem fórmula ou ela deu erro); atual é o guardado em estado.rec, cheio quando
-     não há nada guardado, e só é preso em 0..max quando existe max. sobre é a sobrevida
-     guardada em estado.sob (0 quando não há). */
+  /* → [{id, nome, max, min, inicio, atual, sobre}] na ordem da ficha. max vem de calc (null se o recurso
+     não tem fórmula ou ela deu erro); min é até onde a barra desce (0, ou negativo); inicio é onde ela
+     começa (null = cheia). atual é o guardado em estado.rec — no começo da barra quando não há nada
+     guardado — e só é preso em min..max quando existe max. sobre é a sobrevida guardada em estado.sob
+     (0 quando não há). */
   function estadoRecursos(pc, calc, estado) {
     const rec = (estado && estado.rec) || {};
     const sob = (estado && estado.sob) || {};
@@ -477,36 +602,124 @@
     const calcs = (calc && calc.recursos) || [];
     return ((pc && pc.recursos) || []).map((r, i) => {
       const c = calcs[i] && calcs[i].id === r.id ? calcs[i] : calcs.find(x => x.id === r.id);
-      const max = c ? numFinito(c.max) : null;
-      return { id: r.id, nome: r.nome, max, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, max), sobre: sobreDe(r.id) };
+      const max = c ? numFinito(c.max) : null, min = c ? Math.min(0, numFinito(c.min) || 0) : 0, inicio = c ? numFinito(c.inicio) : null;
+      return { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, max, min, inicio), sobre: sobreDe(r.id) };
     });
   }
   /* → um estado NOVO com o recurso somado de delta (dano negativo, cura positiva),
-     preso em 0..max. Quem ainda não tem valor guardado parte de cheio. O estado
-     recebido não é alterado. */
-  function aplicarDelta(estado, id, max, delta) {
+     preso em min..max (min: 0 se não vier). Quem ainda não tem valor guardado parte do
+     começo da barra (inicio; cheia se não vier). O estado recebido não é alterado. */
+  function aplicarDelta(estado, id, max, delta, min, inicio) {
     const rec = (estado && estado.rec) || {};
     const m = numFinito(max);
-    const atual = atualDe(tem(rec, id) ? rec[id] : null, m);
+    const atual = atualDe(tem(rec, id) ? rec[id] : null, m, min, inicio);
     let novo = (atual == null ? 0 : atual) + (numFinito(delta) || 0);
-    if (m != null) novo = limitar(novo, m);
+    if (m != null) novo = limitar(novo, m, min);
     const rec2 = Object.assign({}, rec);
     por(rec2, id, novo);
     return Object.assign({}, estado, { rec: rec2 });
+  }
+
+  /* ---------- bolsas: poções, bombas, runas, munições e materiais ---------- */
+  const TIPOS_BOLSA = BOLSAS.map(b => b.t);
+  const numTxt = n => String(Math.round(n * 100) / 100).replace('-', '−');
+  /* A bolsa da ficha, arrumada: só itens com id, cada um com a quantidade que o estado guarda (0 se não guarda).
+     → [{ id, t, nome, nota, qtd, rec, val, bk, bv, bd }] na ordem da ficha */
+  function bolsa(pc, estado) {
+    const q = (estado && estado.qtd) || {};
+    return (Array.isArray(pc && pc.bolsa) ? pc.bolsa : []).filter(it => it && typeof it === 'object' && it.id != null && it.id !== '').map(it => {
+      const id = String(it.id), n = numFinito(tem(q, id) ? q[id] : null), k = String(it.bk == null ? '' : it.bk).toUpperCase();
+      return { id, t: TIPOS_BOLSA.indexOf(it.t) >= 0 ? it.t : 'material', nome: String(it.nome == null ? '' : it.nome), nota: String(it.nota == null ? '' : it.nota),
+        qtd: n == null || n < 0 ? 0 : Math.floor(n),
+        rec: it.rec ? String(it.rec) : '', val: String(it.val == null ? '' : it.val).trim(),
+        bk: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '', bv: numFinito(it.bv) || 0, bd: String(it.bd == null ? '' : it.bd) };
+    });
+  }
+  /* O efeito de uma poção numa barra, do jeito que foi escrito: "30", "+30", "-10", "2d6+3", "-1d4".
+     → null (vazio) · { erro } · { fixo: n } · { sinal: 1|-1, dados: "2d6+3" } — o sinal na frente vale para a conta
+     inteira, e quem chama é que rola os dados. */
+  function lerEfeito(txt) {
+    let s = String(txt == null ? '' : txt).replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(',', '.').toLowerCase();
+    if (s === '') return null;
+    let sinal = 1;
+    if (s[0] === '+') s = s.slice(1); else if (s[0] === '-') { sinal = -1; s = s.slice(1); }
+    if (/^\d+(\.\d+)?$/.test(s)) return { fixo: sinal * Number(s) };
+    if (/^\d*d\d+([+-](\d*d\d+|\d+))*$/.test(s)) return { sinal, dados: s };
+    return { erro: 'Escreva um valor (30) ou dados (2d6+3).' };
+  }
+  /* Usar um item da bolsa: gasta uma unidade e, se for poção, faz o que ela faz — mexe na barra (rolado = o total
+     dos dados, quando o efeito é uma rolagem) e põe o bônus temporário. Bomba, runa, munição e material só gastam.
+       calc     o calcular() da ficha, já com os temporários
+       agora    a hora (ms), para o bônus novo entrar no fim da lista · novoId: o id dele (sorteado se não vier)
+     → { ok:false, erro } ou { ok:true, estado (novo; o recebido não muda), item, sobra,
+         barra: { id, nome, de, para, delta } | null, bonus: { id, n, k, v, d } | null } */
+  function usarItem(pc, calc, estado, idItem, rolado, agora, novoId) {
+    const it = bolsa(pc, estado).find(x => x.id === idItem);
+    if (!it) return { ok: false, erro: 'Este item não está mais na bolsa.' };
+    if (it.qtd < 1) return { ok: false, erro: 'Não há mais ' + (it.nome || 'deste item') + ' na bolsa.' };
+    let est = Object.assign({}, estado);
+    const qtd = Object.assign({}, (estado && estado.qtd) || {});
+    por(qtd, it.id, it.qtd - 1); est.qtd = qtd;
+    let barra = null, bonus = null;
+    if (it.t === 'pocao') {
+      const ef = lerEfeito(it.val);
+      if (it.rec && ef && !ef.erro) {
+        const r = estadoRecursos(pc, calc, estado).find(x => x.id === it.rec);
+        if (r && r.max != null) {
+          const delta = Math.round((ef.fixo != null ? ef.fixo : ef.sinal * (numFinito(rolado) || 0)) * 10) / 10;
+          est = aplicarDelta(est, r.id, r.max, delta, r.min, r.inicio);
+          barra = { id: r.id, nome: r.nome, de: r.atual, para: est.rec[r.id], delta };
+        }
+      }
+      if (it.bk && it.bv) {
+        const id = novoId || ('t' + uid());
+        const tmp = Object.assign({}, (estado && estado.tmp) || {});
+        por(tmp, id, { n: it.nome || 'Poção', k: it.bk, v: it.bv, d: it.bd, t: numFinito(agora) || 0 });
+        est.tmp = tmp;
+        bonus = { id, n: it.nome || 'Poção', k: it.bk, v: it.bv, d: it.bd };
+      }
+    }
+    return { ok: true, estado: est, item: it, sobra: it.qtd - 1, barra, bonus };
+  }
+  /* O que usar este item vai fazer, em palavras, antes de usar (só as poções fazem alguma coisa sozinhas):
+     ["HP 20 → 50 (+30)"] · ["HP 20 + 2d6+3, rolado na hora"] · ["Força +4 (3 turnos)"] · [] (só gasta) */
+  function previaDoUso(pc, calc, estado, it) {
+    const p = [];
+    if (!it || it.t !== 'pocao') return p;
+    const ef = lerEfeito(it.val), r = it.rec ? estadoRecursos(pc, calc, estado).find(x => x.id === it.rec) : null;
+    if (r && r.max != null && ef && !ef.erro) {
+      if (ef.fixo != null) p.push(r.nome + ' ' + numTxt(r.atual) + ' → ' + numTxt(limitar(r.atual + ef.fixo, r.max, r.min)) + ' (' + (ef.fixo < 0 ? '−' : '+') + numTxt(Math.abs(ef.fixo)) + ')');
+      else p.push(r.nome + ' ' + numTxt(r.atual) + (ef.sinal < 0 ? ' − ' : ' + ') + ef.dados + ', rolado na hora');
+    }
+    if (it.bk && it.bv) p.push((NOMES_BONUS[it.bk] || it.bk) + ' ' + (it.bv > 0 ? '+' : '−') + numTxt(Math.abs(it.bv)) + (it.bd ? ' (' + it.bd + ')' : ''));
+    return p;
+  }
+  /* O resultado de um uso, numa linha (para o aviso e para a mesa ao vivo):
+     "HP 20 → 29 (+9) · Força +3 (3 turnos) · restam 2" */
+  function textoDoUso(u) {
+    const p = [];
+    if (u.barra) p.push(u.barra.nome + ' ' + numTxt(u.barra.de) + ' → ' + numTxt(u.barra.para) + (u.barra.delta ? ' (' + (u.barra.delta > 0 ? '+' : '−') + numTxt(Math.abs(u.barra.delta)) + ')' : ''));
+    if (u.bonus) p.push((NOMES_BONUS[u.bonus.k] || u.bonus.k) + ' ' + (u.bonus.v > 0 ? '+' : '−') + numTxt(Math.abs(u.bonus.v)) + (u.bonus.d ? ' (' + u.bonus.d + ')' : ''));
+    p.push(u.sobra === 0 ? 'era a última unidade' : u.sobra === 1 ? 'resta 1' : 'restam ' + u.sobra);
+    return p.join(' · ');
   }
 
   /* ---------- resumo para os outros apps ---------- */
   /* objeto pequeno e plano (vai bem em JSON) com o que a mesa, o rolador e as cenas
      precisam de uma ficha sem ter de recalcular */
   function resumo(pc, cfg, extra, estado) {
-    const c = calcular(pc, cfg, extra);
-    const attrs = {}, base = {}, der = {}, def = {};
+    // os bônus temporários moram no estado: entram sozinhos, a não ser que quem chama já os tenha passado
+    const ex = Object.assign({}, extra);
+    if (ex.temp === undefined && estado) ex.temp = estado.tmp;
+    const c = calcular(pc, cfg, ex);
+    const attrs = {}, base = {}, der = {}, def = {}, defEsp = {};
     ATRIBS.forEach(a => { attrs[a.k] = c.tot[a.k]; base[a.k] = c.base[a.k]; });
     DERIV.forEach(d => { der[d.k] = c.der[d.k]; });
     DEFESAS.forEach(d => { def[d.k] = c.def[d.k]; });
+    DEFESAS_ESP.forEach(d => { defEsp[d.k] = c.defEsp[d.k]; });
     return {
       nome: pc.nome || '', lado: pc.lado || 'Aliado',
-      attrs, base, der, def,
+      attrs, base, der, def, defEsp,
       recursos: estadoRecursos(pc, c, estado),
       ini: iniDe(pc, c.vars).val,
       fixa: (pc.rol && pc.rol.fixa) || 0,
@@ -519,7 +732,9 @@
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
-    normNome
+    normNome,
+    DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, BOLSAS,
+    temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso
   };
 
   (root.TC || (root.TC = {})).rules = api;

@@ -431,6 +431,11 @@
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
       if (d.oculto) opt.secreta = true;
+    } else if (origem === 'cena' && d.kind === 'uso') {
+      // um item da bolsa usado pelo token (poção, bomba…): o título e o resumo vêm prontos da cena
+      opt.quem = d.char ? aoVivo.personagem(d.char) : null;
+      dados = { k: 'ficha', titulo: String(d.titulo || 'Bolsa').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
+      if (d.oculto) opt.secreta = true;
     }
     if (!dados) return null;
     return aoVivo.rolagem(dados, opt);
@@ -446,6 +451,76 @@
   };
   const dados = emissor({ pendentes: 0, erro: null });
   let cols = {};
+
+  /* ---- o estado atual de um personagem viaja como diferença ----
+     O estado (pontos das barras, sobrevida, bolsas, bônus temporários, moedas…) é mexido por mais de uma pessoa ao
+     mesmo tempo: o mestre pelo token, o jogador pela ficha. Por isso ele não sobe inteiro ("o meu por cima do seu"):
+     sobe só o que mudou, e o banco junta. O formato é o "JSON Merge Patch" (RFC 7396): objeto se junta chave por
+     chave, null apaga a chave, qualquer outro valor (número, texto, lista) troca o que havia. */
+  const ehMapa = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const chavesDe = o => Object.keys(o).filter(k => k !== '__proto__');
+  const copiar = x => (x && typeof x === 'object' ? JSON.parse(JSON.stringify(x)) : x);
+  function igual(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return a == b;           // (sem valor é sem valor: null e "não veio" são a mesma coisa)
+    if (typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => igual(x, b[i]));
+    const ka = Object.keys(a).filter(k => a[k] !== undefined), kb = Object.keys(b).filter(k => b[k] !== undefined);
+    return ka.length === kb.length && ka.every(k => proprio(b, k) && igual(a[k], b[k]));
+  }
+  /* O que muda de `base` para `novo` → a mudança, ou null se nada muda. (Sem valor — null ou ausente — é a mesma coisa.) */
+  function diferenca(base, novo) {
+    const b = ehMapa(base) ? base : {}, n = ehMapa(novo) ? novo : {}, out = {};
+    let tem = false;
+    for (const k of chavesDe(n)) {
+      const vn = n[k], vb = proprio(b, k) ? b[k] : undefined;
+      if (vn == null) continue;
+      if (ehMapa(vn) && ehMapa(vb)) { const d = diferenca(vb, vn); if (d) { out[k] = d; tem = true; } }
+      else if (!igual(vn, vb)) { out[k] = copiar(vn); tem = true; }
+    }
+    for (const k of chavesDe(b)) if (b[k] != null && (!proprio(n, k) || n[k] == null)) { out[k] = null; tem = true; }
+    return tem ? out : null;
+  }
+  /* `alvo` com a mudança aplicada (um objeto novo; o que recebeu não é alterado). */
+  function juntar(alvo, muda) {
+    if (!ehMapa(muda)) return muda;
+    const out = {};
+    if (ehMapa(alvo)) for (const k of chavesDe(alvo)) out[k] = alvo[k];
+    for (const k of chavesDe(muda)) {
+      if (muda[k] == null) delete out[k];
+      else out[k] = juntar(out[k], muda[k]);
+    }
+    return out;
+  }
+  /* Duas mudanças seguidas numa só — quando dá. Não dá quando a segunda põe um objeto onde a primeira tinha apagado
+     ou posto um valor simples (juntas, deixariam de apagar o que a primeira apagou): aí vão as duas, em ordem. */
+  function compor(a, b) {
+    const out = {};
+    for (const k of chavesDe(a)) out[k] = a[k];
+    for (const k of chavesDe(b)) {
+      const va = proprio(a, k) ? a[k] : undefined, vb = b[k];
+      if (ehMapa(vb) && va !== undefined && !ehMapa(va)) return null;
+      if (ehMapa(vb) && ehMapa(va)) { const j = compor(va, vb); if (!j) return null; out[k] = j; }
+      else out[k] = vb;
+    }
+    return out;
+  }
+  const remendo = { diferenca, aplicar: juntar, compor, igual };
+  // a mudança entra na fila da linha (junta-se à última, quando dá)
+  function empilhar(c, id, muda) {
+    const fila = c.rems.get(id) || [];
+    const junto = fila.length ? compor(fila[fila.length - 1], muda) : null;
+    if (junto) fila[fila.length - 1] = junto; else fila.push(muda);
+    c.rems.set(id, fila);
+  }
+  // o estado que veio do banco, com as mudanças daqui que ainda não subiram (as que estão a caminho e as da fila)
+  function refazerEstado(c, id, doBanco) {
+    let e = ehMapa(doBanco) ? doBanco : {};
+    for (const m of c.remsVoo.get(id) || []) e = juntar(e, m);
+    for (const m of c.rems.get(id) || []) e = juntar(e, m);
+    return e;
+  }
   /* Os documentos da mesa são escritos pelo mestre e não têm dono. O único documento com dono que vale é o pedido
      do próprio dono para a cena que está no ar (é a única coisa que o banco deixa um jogador criar). Qualquer outro
      documento com dono não é entregue a nenhum sistema. */
@@ -466,16 +541,24 @@
     for (const k in cols) n += cols[k].sujos.size + cols[k].emVoo.size;
     if (n !== dados.pendentes) { dados.pendentes = n; dados.emit('pendentes', n); }
   }
+  /* Uma linha apagada sai do espelho, e com ela vai a revisão que servia para recusar o que chegasse mais velho. Por
+     isso fica anotada a revisão em que ela foi apagada: dali em diante a linha só volta por uma revisão MAIOR que
+     essa (alguém a recriou). Uma leitura que saiu do banco antes de a linha ser apagada e chegou depois — a periódica
+     que demorou, ou a de uma linha sozinha — não a traz de volta. */
+  function enterrar(c, id, rev) { if (rev > (c.apagadas.get(id) || 0)) c.apagadas.set(id, rev); }
   function abrirCol(nome) {
     if (!TABELAS[nome]) throw new Error('Coleção desconhecida: ' + nome);
     if (!mesas.atual) throw new Error('Abra uma mesa primeiro.');
     if (cols[nome]) return cols[nome];
-    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), naSaida: new Set(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
+    // (rems / remsVoo: as mudanças do estado de cada personagem que ainda vão subir / que estão subindo agora)
+    // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
+    // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
+    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
       for (let de = 0; ; de += 1000) {
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
         if (error) throw falha(error, 'Não deu para ler os dados da mesa.');
-        for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (!l.apagado && aceita(nome, l) && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
+        for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (l.apagado) enterrar(c, l.id, l.rev); else if (aceita(nome, l) && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
         if (data.length < 1000) break;
       }
       return true;
@@ -501,26 +584,38 @@
     if (!c || c.morta) return;
     try {
       const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).eq('id', id).maybeSingle();
-      if (!error && data && !c.morta) dadosRemoto(nome, data);
+      if (!error && data && !c.morta) dadosRemoto(nome, data, 'avulsa');
     } catch (e) { /* sem rede: a leitura periódica traz depois */ }
   }
-  /* Uma linha que veio do banco (tempo real ou leitura periódica). */
-  function dadosRemoto(nome, r) {
+  /* Uma linha que veio do banco (tempo real ou leitura periódica). `modo`:
+       'avulsa'  a linha foi lida sozinha (não numa leitura em ordem de revisão);
+       'relida'  idem, e de propósito: vale mesmo estando na revisão que já está aqui (ver relerLinha).
+     Uma linha lida sozinha não diz nada sobre as outras: ela não empurra a marca de "até onde já li" (maxRev). Se
+     empurrasse, a leitura periódica pularia o que outras linhas ganharam antes dela e este aparelho ainda não leu. */
+  function dadosRemoto(nome, r, modo) {
     const c = cols[nome];
     if (!c || c.morta || r.mesa_id !== c.mesa) return;
-    if (r.rev > c.maxRev) c.maxRev = r.rev;
+    if (!modo && r.rev > c.maxRev) c.maxRev = r.rev;
     if (!aceita(nome, r)) return;
     const l = c.linhas.get(r.id), meus = new Set([...(c.sujos.get(r.id) || []), ...(c.emVoo.get(r.id) || [])]);
-    if (l && l.rev >= r.rev) return;
+    if (l && (modo === 'relida' ? l.rev > r.rev : l.rev >= r.rev)) return;
     if (r.apagado) {
+      enterrar(c, r.id, r.rev);
       if (meus.has('*')) return;                 // acabei de recriar aqui: a minha versão sobe
       if (l) { c.linhas.delete(r.id); dados.emit('muda', nome, { id: r.id, apagado: true }, 'remota', null); }
       return;
     }
     if (meus.has('apagado')) return;             // apaguei aqui e ainda não subiu
+    const foiApagada = c.apagadas.get(r.id);
+    if (foiApagada != null) { if (r.rev <= foiApagada) return; c.apagadas.delete(r.id); }      // mais velha que o apagar: não volta
     const n = Object.assign({}, r);
     if (l) for (const k of meus) if (k !== '*' && k in l) n[k] = l[k];
+    /* O estado de um personagem não é "o daqui por cima": é o que chegou, com as mudanças daqui que ainda não
+       subiram refeitas por cima. Quem mexeu em outra barra, lá, aparece aqui na hora. */
+    if (l && nome === 'personagens' && meus.has('estado') && !meus.has('*') && (c.rems.has(r.id) || c.remsVoo.has(r.id))) n.estado = refazerEstado(c, r.id, r.estado);
     c.linhas.set(r.id, n);
+    // nada mudou para quem usa a linha (é a volta de algo que já estava aqui): só a revisão anda
+    if (l && TABELAS[nome].every(k => igual(n[k], l[k]))) return;
     dados.emit('muda', nome, n, 'remota', null);
   }
   /* As duas voltas abaixo esperam a rede no meio do caminho; nesse meio-tempo a mesa pode ser fechada ou trocada
@@ -532,8 +627,22 @@
       c.buscando = true;
       try {
         await c.pronta;
-        const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).gt('rev', c.maxRev).order('rev').limit(500);
+        const de = c.maxRev;
+        const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).gt('rev', de).order('rev').limit(500);
         if (!error && !c.morta) for (const r of data || []) dadosRemoto(nome, r);
+        /* Duas gravações feitas no mesmo instante podem aparecer no banco fora de ordem: a de revisão menor fica
+           visível depois da de revisão maior, que a leitura anterior já tinha passado. Então a faixa da leitura
+           anterior é conferida de novo, só com o nome e a revisão de cada linha; a que estiver à frente da daqui é
+           lida inteira. (Só há o que conferir quando algo mudou desde a leitura anterior.) */
+        if (!error && !c.morta && c.anterior != null && c.anterior < de) {
+          const leve = await cliente().from(nome).select('id,rev,apagado').eq('mesa_id', c.mesa).gt('rev', c.anterior).lte('rev', de).limit(1000);
+          if (!leve.error && !c.morta) for (const x of leve.data || []) {
+            const l = c.linhas.get(x.id);
+            if (l ? (l.rev || 0) < x.rev : !x.apagado && !c.sujos.has(x.id) && !c.emVoo.has(x.id)) buscarLinha(nome, x.id);
+          }
+        }
+        if (!error) c.anterior = de;
+        if (!c.morta) for (const id of [...c.reler]) relerLinha(c, id);      // (as que ficaram por reler: sem rede na hora, por exemplo)
       } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
       c.buscando = false;
     }
@@ -575,60 +684,126 @@
     if (c.nome === 'documentos' && c.doMestre && o.dono_id === undefined) o.dono_id = null;
     return o;
   }
+  /* Uma gravação deu certo e o banco devolveu a revisão nova (rev) e a que a linha tinha logo antes (rev_ant).
+     A linha daqui passa a estar na revisão nova (o que chegar de mais antigo que ela já não vale). Mas "tenho tudo
+     até aqui" só é verdade se a linha estava, no banco, na revisão que este aparelho conhecia. Se não estava, outra
+     pessoa mexeu nela nesse meio-tempo — em outra coluna, ou em outra chave do estado — e o aviso dessa mudança,
+     que tem revisão mais antiga que a minha, seria descartado: a linha é lida de novo, inteira. */
+  const REV = 'rev,rev_ant';
+  const MAX_MUDAS = 200;                       // mudanças de estado num envio só (o banco recusa mais que isso)
+  // (certas, em enviarLinha: as respostas que já passaram por aqui — a do estado passa assim que chega)
+  function assentar(c, id, d) {
+    const agora = c.linhas.get(id);
+    if (!agora || !d) return;
+    const ant = d.rev_ant == null ? null : Number(d.rev_ant), sabia = agora.rev || 0;
+    if (d.rev > sabia) agora.rev = d.rev;
+    /* Relê quando: (1) a linha estava em outra revisão quando esta gravação chegou (alguém mexeu antes dela); ou
+       (2) já chegou aqui uma revisão mais nova que a desta gravação (alguém mexeu depois dela, enquanto a resposta
+       não vinha — e, na tela, o que estava "a caminho" ficou por cima do que o outro fez). */
+    if (d.rev < sabia || (ant != null && ant !== sabia)) relerLinha(c, id);
+  }
+  /* Lê a linha inteira e a aplica mesmo que a revisão seja a que já está aqui (o que está aqui é só o que este
+     aparelho gravou; o que veio do banco tem também o que os outros gravaram). Se a leitura sair mais velha que uma
+     gravação daqui que chegou depois, lê de novo. Sem rede, fica marcada e a volta periódica tenta outra vez. */
+  async function relerLinha(c, id) {
+    c.reler.add(id);
+    if (c.relendo.has(id)) return;                    // (já há uma leitura desta linha a caminho)
+    c.relendo.add(id);
+    try {
+      for (let i = 0; i < 3 && c.reler.has(id) && !c.morta; i++) {
+        const r = await cliente().from(c.nome).select('*').eq('mesa_id', c.mesa).eq('id', id).maybeSingle();
+        if (r.error) return;
+        const l = c.linhas.get(id);
+        if (c.morta || !l || !r.data) { c.reler.delete(id); return; }
+        if (r.data.rev >= (l.rev || 0)) { c.reler.delete(id); dadosRemoto(c.nome, r.data, 'relida'); return; }
+      }
+    } catch (e) { /* sem rede: fica marcada para a volta periódica */ } finally { c.relendo.delete(id); }
+  }
   async function enviarLinha(c, id, ultima) {
     if ((c.morta && !ultima) || c.emVoo.has(id)) return;
     const campos = c.sujos.get(id);
     if (!campos) return;
-    c.sujos.delete(id); c.emVoo.set(id, campos);
+    const voando = new Set(campos);                    // os campos que estão a caminho (o que chega do banco não passa por cima deles)
+    c.sujos.delete(id); c.emVoo.set(id, voando);
     const l = c.linhas.get(id);
+    // as mudanças do estado que vão agora (o que passar do limite vai na volta seguinte)
+    const fila = c.rems.get(id) || [], indo = fila.splice(0, MAX_MUDAS);
+    if (fila.length) c.rems.set(id, fila); else c.rems.delete(id);
+    if (indo.length) c.remsVoo.set(id, indo);
+    const tb = () => cliente().from(c.nome), certas = [], subiu = new Set();      // subiu: os campos que já chegaram ao banco
     let r = null;
     try {
       if (!l && campos.has('*')) r = { data: { rev: 0 } };                         // criada e apagada antes de subir: nada a fazer
-      else if (!l) r = await cliente().from(c.nome).update({ apagado: true }).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
+      else if (!l) r = await tb().update({ apagado: true }).eq('mesa_id', c.mesa).eq('id', id).select(REV).maybeSingle();
       else {
         const inteira = () => linhaInteira(c, id, l);
         if (campos.has('*')) {
-          r = await cliente().from(c.nome).insert(inteira()).select('rev').single();
-          if (r.error && r.error.code === '23505') r = await cliente().from(c.nome).update(inteira()).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
+          r = await tb().insert(inteira()).select(REV).single();
+          if (r.error && r.error.code === '23505') r = await tb().update(inteira()).eq('mesa_id', c.mesa).eq('id', id).select(REV).maybeSingle();
         } else {
-          const o = {}; for (const k of campos) o[k] = l[k];
-          r = await cliente().from(c.nome).update(o).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
-          if (!r.error && !r.data) r = await cliente().from(c.nome).insert(inteira()).select('rev').single();   // a linha não existia no banco
+          // o estado vai como mudança (o banco junta); os outros campos, como estão
+          const o = {}; for (const k of campos) if (!(k === 'estado' && indo.length)) o[k] = l[k];
+          if (indo.length) {
+            const e = await cliente().rpc('estado_juntar', { p_mesa: c.mesa, p_id: id, p_mudas: indo });
+            r = e.error ? { error: e.error } : { data: (Array.isArray(e.data) ? e.data[0] : e.data) || null };
+            /* O estado chegou ao banco. Daqui em diante ele já não está "a caminho": o que vier do banco traz o
+               estado como ficou lá (com o que os outros mexeram), e é esse que vale — mesmo que os outros campos
+               desta linha ainda estejam subindo. A linha passa já à revisão dessa gravação. */
+            if (!r.error && r.data) { certas.push(r.data); subiu.add('estado'); c.remsVoo.delete(id); voando.delete('estado'); if (!c.morta) assentar(c, id, r.data); }
+          }
+          if ((!r || (!r.error && r.data)) && Object.keys(o).length) r = await tb().update(o).eq('mesa_id', c.mesa).eq('id', id).select(REV).maybeSingle();
+          if (!r.error && !r.data) r = await tb().insert(inteira()).select(REV).single();   // a linha não existia no banco
         }
       }
     } catch (e) { r = { error: e }; }
     c.emVoo.delete(id);
+    const voltam = r.error ? c.remsVoo.get(id) : null;      // as mudanças de estado que não chegaram
+    c.remsVoo.delete(id);
     if (c.morta) { if (!r.error && !ultima && c.sujos.has(id)) enviarLinha(c, id, true); return; }
     if (r.error) {
       // volta para a fila (junto com o que mudou nesse meio-tempo) e tenta de novo, cada vez mais devagar
-      const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
+      const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) if (!subiu.has(k)) de_novo.add(k); c.sujos.set(id, de_novo);
+      if (voltam) c.rems.set(id, voltam.concat(c.rems.get(id) || []));
       const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(r.error.message || ''));
       dados.erro = erroPt(r.error, 'Não deu para salvar na mesa agora.');
-      if (semPermissao) { c.sujos.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
+      if (semPermissao) { c.sujos.delete(id); c.rems.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
       else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
       dados.emit('erro', dados.erro);
     } else {
       c.falhas = 0; dados.erro = null;
-      const agora = c.linhas.get(id);
-      if (agora && r.data && r.data.rev > (agora.rev || 0)) agora.rev = r.data.rev;
-      if (r.data && r.data.rev > c.maxRev && !aoVivo.conectado) { /* a leitura periódica traz o resto */ }
+      if (!l && r.data && r.data.rev) enterrar(c, id, r.data.rev);      // (foi um apagar: a linha só volta por uma revisão maior que esta)
+      if (!certas.includes(r.data)) assentar(c, id, r.data);
+      if (c.rems.has(id)) { const s = c.sujos.get(id) || new Set(); s.add('estado'); c.sujos.set(id, s); }      // sobrou mudança de estado para a volta seguinte
       if (c.sujos.has(id)) agendar(c, id, 300);
     }
     contarPendentes();
   }
-  /* Grava campos de uma linha (cria se não existir). `de` identifica quem pediu, para não receber o próprio eco. */
-  function dadosGravar(nome, id, campos, de) {
+  /* Grava campos de uma linha (cria se não existir). `de` identifica quem pediu, para não receber o próprio eco.
+     O estado de um personagem entra como mudança: `muda` (o que quem pediu mexeu, contado a partir do que ele tinha
+     em mãos) ou, se veio o estado inteiro em `campos.estado`, o que ele muda no estado que está aqui. */
+  function dadosGravar(nome, id, campos, de, muda) {
     const c = abrirCol(nome);
     let l = c.linhas.get(id);
     const suj = c.sujos.get(id) || new Set();
-    if (campos && campos.apagado) {
+    campos = campos || {};
+    if (campos.apagado) {
       if (!l) return null;
-      c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj);
+      c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj); c.rems.delete(id);
       dados.emit('muda', nome, { id, apagado: true }, 'local', de);
     } else {
-      if (!l) { l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado'); }
+      const nova = !l, comMuda = nome === 'personagens' && !nova;
+      if (nova) { l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado'); }
       else l = Object.assign({}, l);
-      for (const k of TABELAS[nome]) if (campos[k] !== undefined) { l[k] = campos[k]; suj.add(k); }
+      let mudou = nova;
+      for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(k === 'estado' && comMuda)) { l[k] = campos[k]; suj.add(k); mudou = true; }
+      if (nome === 'personagens') {
+        const m = ehMapa(muda) ? copiar(muda) : comMuda && campos.estado !== undefined ? diferenca(l.estado, campos.estado) : null;
+        if (m && Object.keys(m).length) {
+          l.estado = juntar(l.estado, m); suj.add('estado'); mudou = true;
+          if (!suj.has('*')) empilhar(c, id, m);            // a linha que ainda vai inteira já leva o estado como ficou
+        }
+      }
+      if (!mudou) return l;                                 // (um estado igual ao que já estava aqui: nada a gravar)
       c.linhas.set(id, l); c.sujos.set(id, suj);
       dados.emit('muda', nome, l, 'local', de);
     }
@@ -638,8 +813,9 @@
   }
   dados.col = nome => {
     const c = abrirCol(nome);
-    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de) => dadosGravar(nome, id, campos, de), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
+    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, muda) => dadosGravar(nome, id, campos, de, muda), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
   };
+  dados.remendo = remendo;
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
   /* Manda agora e espera subir, até `ms` (antes de fechar ou trocar de mesa, ou de sair da conta). Devolve true se
@@ -666,33 +842,46 @@
     if (!passe || (passeAte && Date.now() / 1000 > passeAte - 10) || c.falhas > 0 || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
     const campos = c.sujos.get(id);
     if (!campos) return true;
-    const l = c.linhas.get(id), filtro = '?mesa_id=eq.' + encodeURIComponent(c.mesa) + '&id=eq.' + encodeURIComponent(id) + '&select=rev';
-    let metodo = 'PATCH', consulta = filtro, prefer = 'return=representation', corpo;
-    if (!l && campos.has('*')) { c.sujos.delete(id); return true; }                 // criada e apagada antes de subir: nada a fazer
-    if (!l) corpo = { apagado: true };
-    else if (campos.has('*')) {                                                     // linha nova: cria (ou, se já existir, troca)
-      metodo = 'POST'; consulta = '?on_conflict=mesa_id,id&select=rev'; prefer = 'resolution=merge-duplicates,return=representation';
-      corpo = linhaInteira(c, id, l);
-    } else { corpo = {}; for (const k of campos) corpo[k] = l[k]; }
-    let texto, peso;
-    try { texto = JSON.stringify(corpo); peso = new TextEncoder().encode(texto).length; } catch (e) { return false; }
+    const l = c.linhas.get(id), filtro = '?mesa_id=eq.' + encodeURIComponent(c.mesa) + '&id=eq.' + encodeURIComponent(id) + '&select=' + REV;
+    if (!l && campos.has('*')) { c.sujos.delete(id); c.rems.delete(id); return true; }     // criada e apagada antes de subir: nada a fazer
+    const mudas = c.rems.get(id) || [];
+    if (mudas.length > MAX_MUDAS) return false;                                     // (coisa demais acumulada: segue pelo caminho comum)
+    // os pedidos desta linha: um só, ou dois quando o estado (que vai como mudança) sai junto com outros campos
+    const pedidos = [];
+    if (!l) pedidos.push(['PATCH', c.nome + filtro, 'return=representation', { apagado: true }]);
+    else if (campos.has('*')) pedidos.push(['POST', c.nome + '?on_conflict=mesa_id,id&select=' + REV, 'resolution=merge-duplicates,return=representation', linhaInteira(c, id, l)]);   // linha nova: cria (ou, se já existir, troca)
+    else {
+      const o = {}; for (const k of campos) if (!(k === 'estado' && mudas.length)) o[k] = l[k];
+      if (mudas.length) pedidos.push(['POST', 'rpc/estado_juntar', '', { p_mesa: c.mesa, p_id: id, p_mudas: mudas }]);
+      if (Object.keys(o).length) pedidos.push(['PATCH', c.nome + filtro, 'return=representation', o]);
+    }
+    let peso = 0;
+    try { for (const p of pedidos) { p[3] = JSON.stringify(p[3]); peso += new TextEncoder().encode(p[3]).length; } } catch (e) { return false; }
     if (pesoNoAr + peso > LIMITE_SAIDA) return false;
-    let pedido;
+    let idas;
     try {
-      pedido = fetch(CFG.url + '/rest/v1/' + c.nome + consulta, { method: metodo, keepalive: true, body: texto,
-        headers: { apikey: CFG.chave, Authorization: 'Bearer ' + passe, 'Content-Type': 'application/json', Prefer: prefer } });
+      idas = pedidos.map(([metodo, caminho, prefer, texto]) => {
+        const headers = { apikey: CFG.chave, Authorization: 'Bearer ' + passe, 'Content-Type': 'application/json' };
+        if (prefer) headers.Prefer = prefer;
+        return fetch(CFG.url + '/rest/v1/' + caminho, { method: metodo, keepalive: true, body: texto, headers });
+      });
     } catch (e) { return false; }
     c.sujos.delete(id); c.emVoo.set(id, campos); c.naSaida.add(id); pesoNoAr += peso;
+    c.rems.delete(id); if (mudas.length) c.remsVoo.set(id, mudas);
     // (o que vem depois só acontece se a página, afinal, não fechou)
     // (null: não chegou · 'ok': chegou, mas a resposta não pôde ser lida · lista: as linhas mudadas, com a revisão)
-    pedido.then(r => (r.ok ? r.json().then(x => x, () => 'ok') : null), () => null).then(linhas => {
+    Promise.all(idas.map(p => p.then(r => (r.ok ? r.json().then(x => x, () => 'ok') : null), () => null))).then(voltas => {
       pesoNoAr -= peso; c.emVoo.delete(id); c.naSaida.delete(id);
+      const iam = c.remsVoo.get(id); c.remsVoo.delete(id);
       if (c.morta) return;
-      if (!linhas) { const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo); c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 1500); }
-      else {
-        const agora = c.linhas.get(id), rev = Array.isArray(linhas) && linhas[0] ? linhas[0].rev : 0;
-        if (agora && rev > (agora.rev || 0)) agora.rev = rev;
-        if (Array.isArray(linhas) && !linhas.length && l) { const de_novo = c.sujos.get(id) || new Set(); de_novo.add('*'); c.sujos.set(id, de_novo); }   // a linha não existia no banco: vai inteira
+      if (voltas.some(v => !v)) {
+        // algum pedido não chegou: volta tudo para a fila (mandar de novo o que já tinha chegado não muda nada)
+        const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
+        if (iam) c.rems.set(id, iam.concat(c.rems.get(id) || []));
+        c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 1500);
+      } else {
+        for (const linhas of voltas) if (Array.isArray(linhas) && linhas[0]) { if (!l) enterrar(c, id, linhas[0].rev); assentar(c, id, linhas[0]); }
+        if (voltas.some(v => Array.isArray(v) && !v.length) && l) { const de_novo = c.sujos.get(id) || new Set(); de_novo.add('*'); c.sujos.set(id, de_novo); }   // a linha não existia no banco: vai inteira
         if (c.sujos.has(id)) agendar(c, id, 300);
       }
       contarPendentes();

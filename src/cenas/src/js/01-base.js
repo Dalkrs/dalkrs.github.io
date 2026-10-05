@@ -212,6 +212,7 @@ const ICONS = {
   map: 'M9 4L3 6.5V20l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20',
   help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.2a2.6 2.6 0 1 1 3.9 2.2c-.9.6-1.4 1.1-1.4 2.1M12 16.9v.2',
   more: 'M5 12v.2M12 12v.2M19 12v.2',
+  bag: 'M8.5 8L7 4h10l-1.5 4M8.5 8h7c2.6 2.4 4.5 5.4 4.5 8.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.500C4 13.400 5.900 10.400 8.500 8zM10 13h4M12 11v4',
   center: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0',
   panel: 'M4 5h16v14H4zM15 5v14',
   front: 'M4 4h10v10H4zM10 14v6h10V10h-6',
@@ -304,11 +305,11 @@ const BAR_DEFAULTS = [
 ];
 const BAR_COLORS = ['#d6524b', '#4a9be0', '#e2b23e', '#6fbf73', '#b07ad9', '#e58a4e', '#4fc3c0', '#d96aa0'];
 function cleanBar(b) {
-  const o = b || {};
+  const o = b || {}, lo = barLo(o);
   return cleanBarRef({
     n: String(o.n == null ? 'Barra' : o.n).slice(0, 24) || 'Barra',
     c: /^#[0-9a-f]{6}$/i.test(o.c || '') ? o.c : BAR_COLORS[0],
-    v: Math.max(0, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
+    v: Math.max(-lo, Number(o.v) || 0), m: Math.max(0, Number(o.m) || 0),
     k: o.k === 'pts' ? 'pts' : 'bar',
     on: o.on !== false,
     vis: ['num', 'bar', 'none'].includes(o.vis) ? o.vis : '',     // '' = segue a regra do token
@@ -316,12 +317,23 @@ function cleanBar(b) {
 }
 // Barra ligada a um recurso da ficha do personagem (HP, SP…): guarda de qual recurso ela é.
 // Sobrevida (x): pontos por cima da barra, que absorvem o dano antes dela. Só fica guardada quando há alguma.
+// Piso (lo): até quanto abaixo de zero a barra pode ir (a barra comum para em zero). Começo (st): onde a barra
+// começa — é para lá que a cura total a leva, em vez do máximo. Os dois só ficam guardados quando existem.
 const cleanBarRef = (b, o) => {
   if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
   if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  if (barLo(o) > 0) b.lo = barLo(o);
+  if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   return b;
 };
 const barX = b => Math.max(0, Number(b && b.x) || 0);
+const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
+// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um.
+const barFull = b => (b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m);
+const NEG_COR = '#ff5d73';                  // a cor da parte negativa de uma barra (riscada), no mapa e nos painéis
+const fmtV = v => fmt(v).replace('-', '−');   // valor de barra, com o sinal de menos de verdade
+// Quanto do piso uma barra negativa já gastou (0 a 1); 0 quando ela não está abaixo de zero.
+const barNeg = b => (b && b.v < 0 && barLo(b) > 0 ? clamp(-b.v / barLo(b), 0, 1) : 0);
 const SOBRE_COR = '#8fe3ff';                // a cor da sobrevida, no mapa e nos painéis
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;

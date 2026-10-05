@@ -7,9 +7,13 @@
    personagem vira a imagem do token (a não ser que o mestre escolha outra para este token).
    Na volta, mexer numa dessas barras no mapa (dano, cura, área, reaplicar, desfazer) grava o valor
    atual na ficha. Também dá para rolar um atributo da ficha direto do token, com a regra da fixa.
+   A barra leva da ficha, além do máximo, o piso (até quanto abaixo de zero ela pode ir) e o começo
+   (onde ela nasce; a cura total a leva para lá). E as bolsas da ficha (poções, bombas, runas, munições,
+   materiais) podem ser usadas daqui: pelo mestre, em qualquer token ligado, e pelo jogador, no token do
+   personagem dele — quem usa grava direto na ficha, e a ficha acerta o token.
    --------------------------------------------------------------- */
 const Fichas = (() => {
-  let P = null, D = null, on = false, applying = false;
+  let P = null, D = null, on = false, applying = false, papel = null, eu = null;
   const R = () => window.TC.rules;
   const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -19,11 +23,15 @@ const Fichas = (() => {
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
   // a imagem do personagem, quando está guardada no banco (endereço https)
   const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
-  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe)
-  const bib = () => { const d = D && D.pegar('arvore:biblioteca'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
-  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()) });
+  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe; para o jogador, o pacote publicado)
+  const bib = () => { const d = D && D.pegar(papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
+  // (os bônus temporários — comida, poção — moram no estado do personagem e contam como um equipamento)
+  const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp });
   const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
 
+  // O piso da barra (quanto ela pode ficar negativa) e o começo dela, como a ficha manda.
+  const pisoDe = rec => (rec.min < 0 ? Math.round(-rec.min * 10) / 10 : 0);
+  const comecoDe = rec => (rec.inicio != null && isFinite(rec.inicio) && rec.inicio !== rec.max ? rec.inicio : null);
   // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
   function barrasDe(t, r) {
     const bars = t.bars.map(b => Object.assign({}, b));
@@ -43,6 +51,9 @@ const Fichas = (() => {
       if (b.v !== rec.atual) { b.v = rec.atual; mudou = true; }
       const sx = Math.max(0, Number(rec.sobre) || 0);
       if (barX(b) !== sx) { if (sx > 0) b.x = sx; else delete b.x; mudou = true; }
+      const lo = pisoDe(rec), st = comecoDe(rec);
+      if (barLo(b) !== lo) { if (lo > 0) b.lo = lo; else delete b.lo; mudou = true; }
+      if ((b.st == null ? null : b.st) !== st) { if (st == null) delete b.st; else b.st = st; mudou = true; }
     }
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -57,7 +68,7 @@ const Fichas = (() => {
       if (rec.max == null || !isFinite(rec.max) || out.length >= MAX_BARS) continue;
       const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length] }, velha,
-        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0) })));
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec) })));
     }
     return out.length ? out : null;
   }
@@ -186,13 +197,84 @@ const Fichas = (() => {
     return Object.assign({ nome: item[1] }, r);
   }
 
+  /* ---- as bolsas do personagem, usadas pelo token ----
+     Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
+  function podeBolsa(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && !!R().bolsa && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  // → os itens da bolsa (com a quantidade) ou null se este token não dá acesso a uma
+  function bolsa(t) {
+    if (!podeBolsa(t)) return null;
+    const l = get(t.char);
+    return R().bolsa(pcDe(l), l.estado || {});
+  }
+  // o que usar o item vai fazer, em palavras (lista vazia: só gasta uma unidade)
+  function previaUso(t, id) {
+    if (!podeBolsa(t)) return [];
+    const l = get(t.char), pc = pcDe(l), est = l.estado || {};
+    const it = R().bolsa(pc, est).find(x => x.id === id);
+    return it ? R().previaDoUso(pc, R().calcular(pc, cfg(), extra(l)), est, it) : [];
+  }
+  const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
+  // avisa a mesa ao vivo (a casca decide como mostrar); token oculto ou sem nome à mostra: só o mestre vê
+  function avisarUso(t, charId, titulo, resumo, total) {
+    try { window.TC.ponte.publicar('cena', { kind: 'uso', titulo, resumo, total: total == null ? null : total, char: charId, oculto: !!(t && (t.hidden || t.showName === false)) }); } catch (e) { /* sem a casca não há mesa */ }
+  }
+  /* Usa um item da bolsa: gasta uma unidade, aplica o que a poção faz (rolando os dados, se for o caso), grava na
+     ficha e avisa a mesa. Devolve { ok:false, error } ou { ok:true, texto, desfazer }. */
+  function usar(t, id) {
+    if (!podeBolsa(t)) return { ok: false, error: 'Este token não dá acesso a uma bolsa.' };
+    const charId = t.char, l = get(charId), pc = pcDe(l), antes = l.estado || {};
+    const it = R().bolsa(pc, antes).find(x => x.id === id);
+    if (!it) return { ok: false, error: 'Este item não está mais na bolsa.' };
+    const ef = it.t === 'pocao' && it.rec ? R().lerEfeito(it.val) : null;
+    let rolado = null, conta = '';
+    if (ef && ef.dados) {
+      const r = window.TC.dice.rollExpr(ef.dados);
+      if (!r.ok) return { ok: false, error: r.error };
+      rolado = r.total; conta = semTotal(window.TC.dice.summary({ mode: 'dados', expr: r.expr, terms: r.terms, total: r.total })) + ' = ' + r.total;
+    }
+    const u = R().usarItem(pc, R().calcular(pc, cfg(), extra(l)), antes, id, rolado, Date.now(), uid('t'));
+    if (!u.ok) return { ok: false, error: u.erro };
+    P.gravar(charId, { estado: u.estado });
+    if (on) syncAll(charId);                               // (no aparelho do mestre, a barra do token acompanha já)
+    const tipo = (R().BOLSAS.find(b => b.t === it.t) || {}).um || 'Item', nome = it.nome || tipo;
+    const titulo = (l.nome || t.name || '?') + ' · ' + nome, texto = R().textoDoUso(u);
+    avisarUso(t, charId, titulo, 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, u.barra && rolado != null ? rolado : null);
+    const desfazer = () => {
+      // só o que este uso mexeu volta (o que mudou no personagem nesse meio-tempo, por outro caminho, fica)
+      const agora = get(charId); if (!agora) return false;
+      const e = agora.estado || {}, qtd = Object.assign({}, e.qtd || {}), rec = Object.assign({}, e.rec || {}), tmp = Object.assign({}, e.tmp || {});
+      qtd[it.id] = Math.max(0, Math.floor(Number(qtd[it.id]) || 0)) + 1;
+      if (u.barra) {
+        const tinha = antes.rec && antes.rec[u.barra.id] != null;
+        if (Number(rec[u.barra.id]) === u.barra.para) { if (tinha) rec[u.barra.id] = antes.rec[u.barra.id]; else delete rec[u.barra.id]; }
+        else if (rec[u.barra.id] != null) rec[u.barra.id] = Math.round((Number(rec[u.barra.id]) - (u.barra.para - u.barra.de)) * 10) / 10;
+      }
+      if (u.bonus) delete tmp[u.bonus.id];
+      P.gravar(charId, { estado: Object.assign({}, e, { qtd, rec, tmp }) });
+      if (on) syncAll(charId);
+      avisarUso(t, charId, titulo, 'desfeito: ' + nome + ' voltou para a bolsa' + (u.barra ? ' e ' + u.barra.nome + ' voltou ao que era' : '') + (u.bonus ? '; o bônus saiu' : ''), null);
+      return true;
+    };
+    return { ok: true, texto: nome + ': ' + texto, desfazer };
+  }
+
   async function start(refresh) {
     const T = window.TC;
     if (!T || !T.ponte || !T.dados || !T.rules || !T.dice) return false;
     const st = await T.ponte.pronta;
     if (!T.dados.disponivel()) return false;
-    // só o mestre liga token a ficha; o jogador só consulta as fichas que pode ver (para abrir a dele pelo token)
-    if (st.papel !== 'mestre') { try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; } return false; }
+    papel = st.papel; eu = st.eu || null;
+    /* Só o mestre liga token a ficha. O jogador consulta as fichas que pode ver (para abrir a dele pelo token) e usa
+       a bolsa do personagem dele: para isso lê também as tabelas da mesa (as contas da ficha precisam delas). */
+    if (st.papel !== 'mestre') {
+      try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; }
+      try { const d = T.dados.col('documentos'); await d.pronta; D = d; } catch (e) { D = null; }
+      if (P) P.aoMudar(() => refresh());
+      return false;
+    }
     try {
       P = T.dados.col('personagens'); D = T.dados.col('documentos');
       await Promise.all([P.pronta, D.pronta]);
@@ -206,5 +288,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar };
 })();

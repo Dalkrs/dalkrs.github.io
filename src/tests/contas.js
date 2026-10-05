@@ -22,7 +22,16 @@ module.exports = { contas, entrar };
 
 /* Atalhos pela tela da casca (usados pelos testes de mesa). */
 async function loginTela(page, email, senha) {
-  await page.locator('#btnConta').click();
+  try { await page.locator('#btnConta').click(); }
+  catch (e) {
+    // (para saber o que havia na página quando o botão não veio: outra página? a casca sem terminar de abrir?)
+    let d;
+    try {
+      d = await Promise.race([page.evaluate(() => { const b = document.getElementById('btnConta'); return { url: location.href, pronto: document.readyState, corpo: document.body ? document.body.innerHTML.length : -1, tc: typeof TC, botao: b ? (b.hidden ? 'escondido' : 'visível') : 'não existe' }; }),
+        new Promise(r => setTimeout(() => r('a página não responde'), 5000))]);
+    } catch (x) { d = 'sem resposta: ' + String(x.message).split('\n')[0]; }
+    throw new Error('O botão da conta não apareceu — ' + JSON.stringify(d) + ' — ' + String(e.message).split('\n')[0]);
+  }
   await page.locator('#c-email').fill(email); await page.locator('#c-senha').fill(senha); await page.locator('#c-ok').click();
   await page.locator('#m-nome').waitFor({ timeout: 20000 });
 }

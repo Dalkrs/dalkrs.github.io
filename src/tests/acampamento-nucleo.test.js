@@ -77,6 +77,27 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   eq([um.custo, N.resumoDescanso(um)], [0, 'Descanso longo: Lia descansou · recuperação de 100% · Conforto +25 · Sanidade +10'], 'uma pessoa só, com o fogão: custo zero (não fica negativo), e o resumo diz o nome');
 }
 
+/* ---- barras que começam pela metade e barras negativas ---- */
+{
+  const selene = { id: 's', nome: 'Selene', san: null, conf: null, poderes: [], recursos: [
+    { id: 'hp', nome: 'HP', max: 100, atual: -8, min: -10 },                       // pode ficar negativa até −10
+    { id: 'gelo', nome: 'Gelo de Selene', max: 20, atual: 13, min: 0, inicio: 4 },   // começa em 4
+    { id: 'furia', nome: 'Fúria', max: 10, atual: 0, inicio: 0 },                    // começa vazia
+    { id: 'sp', nome: 'SP', max: 40, atual: 10, min: 0, inicio: null }] };
+  const longo = N.planejar(camp, 'longo', [selene]).linhas[0].recursos;
+  eq(longo, [{ id: 'hp', nome: 'HP', max: 100, de: -8, para: 100 }, { id: 'gelo', nome: 'Gelo de Selene', max: 20, de: 13, para: 4, inicio: 4 }, { id: 'furia', nome: 'Fúria', max: 10, de: 0, para: 0, inicio: 0 }, { id: 'sp', nome: 'SP', max: 40, de: 10, para: 40 }],
+    'descanso longo: a barra negativa enche; a que começa em 4 volta a 4 (de cima para baixo também); a que começa vazia fica vazia');
+  const curto = N.planejar(camp, 'curto', [selene]).linhas[0].recursos;
+  eq(curto.map(r => [r.de, r.para]), [[-8, 17], [13, 13], [0, 0], [10, 20]], 'descanso curto (25%): soma 25% do máximo a partir do valor negativo, e não mexe nas barras que têm começo próprio');
+  const abaixo = N.planejar(camp, 'longo', [{ id: 'g', nome: 'G', san: null, conf: null, poderes: [], recursos: [{ id: 'gelo', nome: 'Gelo', max: 20, atual: 1, inicio: 4 }, { id: 'sem', nome: 'Sem anotação', max: 20, atual: null, inicio: 6 }, { id: 'fora', nome: 'Fora', max: 20, atual: 3, inicio: 99, min: -5 }] }]).linhas[0].recursos;
+  eq(abaixo.map(r => [r.de, r.para]), [[1, 4], [6, 6], [3, 20]], 'abaixo do começo, sobe até ele; sem valor anotado, já está nele; começo acima do máximo fica no máximo');
+  const pouco = N.normalizar(Object.assign(N.copia(camp), { provisoes: [], melhorias: [] }));
+  const semRacao = N.planejar(pouco, 'longo', [selene]).linhas[0].recursos;
+  eq(semRacao.map(r => [r.de, r.para]), [[-8, 42], [13, 4], [0, 0], [10, 30]], 'faltando rações (50%): as barras comuns recuperam a metade; a que tem começo próprio volta a ele do mesmo jeito');
+  const piso = N.planejar(N.normalizar({ regras: { curto: { rec: 1 } } }), 'curto', [{ id: 'p', nome: 'P', san: null, conf: null, poderes: [], recursos: [{ id: 'hp', nome: 'HP', max: 100, atual: -50, min: -30 }, { id: 'x', nome: 'X', max: 100, atual: -50 }] }]).linhas[0].recursos;
+  eq(piso.map(r => [r.de, r.para]), [[-30, -29], [0, 1]], 'valor anotado abaixo do piso conta a partir do piso (e a barra sem piso, a partir de zero)');
+}
+
 /* ---- lugares em volta da fogueira ---- */
 {
   eq(N.lugarPadrao(0, 1), { x: 50, y: 82 }, 'uma pessoa: de frente para o fogo');

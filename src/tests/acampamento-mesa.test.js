@@ -84,6 +84,33 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   ok(await ate(async () => (await linha(J, 'pc_dain')).estado.rec.hppc_dain === 40), 'e o jogador vê a ficha de volta');
   ok(await ate(async () => (await M.locator('#feed .rol', { hasText: 'Desfeito: o descanso longo' }).count()) === 1), 'a mesa ao vivo avisa que foi desfeito');
 
+  // ---------- barra que começa pela metade e barra negativa: o descanso respeita as duas ----------
+  await M.evaluate(() => {
+    const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'), f = JSON.parse(JSON.stringify(l.ficha));
+    f.recursos[0].piso = '20';                                                     // o HP do Ogro pode ir até −20
+    f.recursos.push({ id: 'furia', nome: 'Fúria', fml: '20', comeca: '4' });       // a Fúria começa em 4 de 20
+    P.gravar('pc_ogro', { ficha: f, estado: Object.assign({}, l.estado, { rec: Object.assign({}, l.estado.rec, { hppc_ogro: -5, furia: 13 }) }) });
+  });
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.furia === 13 && l.estado.rec.hppc_ogro === -5 && await semPendencia(M); }), '(o Ogro ganha uma Fúria que começa em 4 — agora em 13 — e fica com o HP em −5)');
+  await w(600);
+  await A.locator('#btCurto').click(); await w(400);
+  const previaC = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  ok(/HP -5 → \d+\/\d+/.test(previaC) && /Fúria 13\/20/.test(previaC) && !/volta ao começo/.test(previaC), 'descanso curto: o HP negativo recupera a partir de −5; a Fúria (que tem começo próprio) não muda — ' + (/Ogro.*$/.exec(previaC) || [''])[0].slice(0, 160));
+  await A.locator('#ds-ok').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.furia === 13 && l.estado.rec.hppc_ogro > -5 && await semPendencia(M); }), 'feito o descanso curto, a Fúria continua em 13 e o HP subiu');
+  await A.locator('#btDesfazer').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.hppc_ogro === -5 && l.estado.rec.furia === 13 && await semPendencia(M); }), '(desfeito)');
+  await A.locator('#btLongo').click(); await w(400);
+  const previaL = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  ok(/HP -5 → (\d+)\/\1/.test(previaL) && /Fúria 13 → 4\/20 \(volta ao começo\)/.test(previaL), 'descanso longo: o HP enche (mesmo vindo de baixo de zero) e a Fúria volta ao começo dela — ' + (/Ogro.*$/.exec(previaL) || [''])[0].slice(0, 160));
+  await A.locator('#ds-ok').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.furia === undefined && l.estado.rec.hppc_ogro > 50 && await semPendencia(M); }), 'na ficha, a Fúria fica sem valor anotado (é o mesmo que "voltar ao começo") e o HP, cheio');
+  ok(await A.evaluate(() => { const r = TC.rules, l = TC.dados.col('personagens').pegar('pc_ogro'); return r.resumo(Object.assign({}, l.ficha, { id: l.id, nome: l.nome }), null, null, l.estado).recursos.find(x => x.id === 'furia').atual; }) === 4, 'ou seja: a Fúria está em 4');
+  await A.locator('#btDesfazer').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.hppc_ogro === -5 && l.estado.rec.furia === 13 && await semPendencia(M); }), 'e Desfazer devolve o −5 e os 13');
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'), f = JSON.parse(JSON.stringify(l.ficha)); f.recursos = f.recursos.filter(r => r.id !== 'furia'); delete f.recursos[0].piso; P.gravar('pc_ogro', { ficha: f, estado: Object.assign({}, l.estado, { rec: { hppc_ogro: 10 } }) }); });
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.ficha.recursos.length === 2 && l.estado.rec.hppc_ogro === 10 && await semPendencia(M); }), '(o Ogro volta a ser como era)');
+
   // ---------- um momento entre dois personagens ----------
   await M.locator('#tab-fichas').click(); await w(500);
   await F.locator('#lista .pc', { has: F.locator('.nm', { hasText: /^Lia$/ }) }).click(); await w(300);

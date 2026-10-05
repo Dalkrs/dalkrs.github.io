@@ -67,7 +67,7 @@ const FichasMesa = (() => {
       bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
       alvos: tela.alvos, ultimoAlvo: tela.ultimoAlvo,          // memória dos alvos de disputa: é desta tela
-      abaFicha: tela.abaFicha, skillsUI: tela.skillsUI, fechados: tela.fechados, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
+      abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
     sombra = { pcs: new Map(), docs: {} };
     linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre' }, l.ordem)));
@@ -95,7 +95,9 @@ const FichasMesa = (() => {
       if (novo || (mestre() && ant.dono !== r.dono)) campos.dono_id = p.dono_id;
       if (novo || (mestre() && ant.vis !== r.vis)) campos.vis = p.vis;
       if (novo || (mestre() && ant.ordem !== i)) campos.ordem = i;
-      if (Object.keys(campos).length) P.gravar(pc.id, campos);
+      /* O estado vai como "o que mudou desde o que esta tela tinha" (a sombra): se outra pessoa mexeu em outra barra
+         deste personagem nesse meio-tempo, as duas mudanças ficam valendo. */
+      if (Object.keys(campos).length) P.gravar(pc.id, campos, !novo && campos.estado !== undefined ? { estado: JSON.parse(ant.estado) } : undefined);
       sombra.pcs.set(pc.id, r);
     });
     if (mestre()) {
@@ -122,7 +124,10 @@ const FichasMesa = (() => {
         const pc = daLinha(l, i >= 0 ? S.personagens[i] : null, true), p = partes(pc);
         const r = retrato(p, l.ordem), ant = sombra.pcs.get(l.id);
         if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.ordem === r.ordem) return;   // eco do que já está aqui
-        if (i >= 0) S.personagens[i] = pc; else S.personagens.push(pc);
+        /* O personagem que já está na tela é atualizado no lugar (o mesmo objeto): quem está digitando na ficha dele
+           continua digitando no personagem de verdade, e o que digitar depois deste aviso não se perde. */
+        if (i >= 0) { const alvo = S.personagens[i]; for (const k of Object.keys(alvo)) delete alvo[k]; Object.assign(alvo, pc); }
+        else S.personagens.push(pc);
         sombra.pcs.set(l.id, r);
         if (mestre() && (!ant || ant.ordem !== l.ordem)) {
           const ord = id => { const x = sombra.pcs.get(id); return x ? x.ordem : 1e9; };
@@ -155,6 +160,7 @@ const FichasMesa = (() => {
     if (digitando()) {                       // a ficha espera; o elenco, que fica ao lado, já pode se atualizar
       renderPendente = true;
       try { renderLista(); } catch (e) { /* ainda abrindo */ }
+      try { pintarAoVivo(); } catch (e) { /* ainda abrindo */ }      // (e os valores das barras, nos campos em que ninguém está)
       return;
     }
     renderPendente = false;

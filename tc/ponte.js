@@ -48,6 +48,8 @@
   /* ---- dados da mesa ---- */
   const cols = {}, esperas = {};
   let seq = 0;
+  // as contas de "o que mudou" são as da casca (a página de fora, do mesmo site)
+  const remendo = () => { try { const d = naCasca && window.parent.TC && window.parent.TC.dados; return (d && d.remendo) || null; } catch (e) { return null; } };
   const dados = {
     disponivel: () => naCasca && !!ponte.estado.mesa,
     col(nome) {
@@ -61,7 +63,22 @@
         pronta,
         todas: () => [...c.linhas.values()],
         pegar: id => c.linhas.get(id) || null,
-        gravar(id, campos) { const l = Object.assign({}, c.linhas.get(id) || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa }); return l; },
+        /* O estado de um personagem não vai inteiro: vai só o que mudou, contado a partir do que este sistema tinha
+           em mãos — a cópia daqui ou, se quem grava trabalhava sobre outra, a que ele passar em `base.estado`. Assim
+           o que outra pessoa mexeu no mesmo personagem nesse meio-tempo (outra barra, as moedas) não é desfeito. */
+        gravar(id, campos, base) {
+          const atual = c.linhas.get(id), R = remendo();
+          if (nome === 'personagens' && atual && campos && campos.estado !== undefined && R) {
+            const muda = R.diferenca(base && base.estado !== undefined ? base.estado : atual.estado, campos.estado);
+            const resto = Object.assign({}, campos); delete resto.estado;
+            const l = Object.assign({}, atual, resto);
+            if (muda) l.estado = R.aplicar(atual.estado, muda);
+            c.linhas.set(id, l);
+            if (muda || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, muda, mesa: c.mesa });
+            return l;
+          }
+          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa }); return l;
+        },
         apagar(id) { c.linhas.delete(id); enviar({ t: 'dados.gravar', col: nome, id, campos: { apagado: true }, mesa: c.mesa }); },
         aoMudar(fn) { c.ouvintes.push(fn); },
       };

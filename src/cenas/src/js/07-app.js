@@ -216,7 +216,8 @@ function applyLabel(a) {
   if (a && a.cond && a.cond.id) parts.push((COND_BY_ID[a.cond.id] || {}).n || a.cond.id);
   return parts.join(' + ');
 }
-// Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem fica negativo.
+// Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem desce do piso
+// (zero, ou o quanto a barra pode ficar negativa).
 // Uma barra com um remendo por cima; a sobrevida zerada sai do objeto (não fica guardada à toa).
 function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) delete o.x; return o; }
 /* Uma variação numa barra. O dano (delta negativo) gasta primeiro a sobrevida; a cura não mexe nela.
@@ -224,7 +225,7 @@ function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) dele
 function barAfter(b, delta) {
   let x = barX(b), d = delta;
   if (d < 0 && x > 0) { const usa = Math.min(x, -d); x = Math.round((x - usa) * 10) / 10; d += usa; }
-  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, 0, Math.max(b.m, b.v)) };
+  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, -barLo(b), Math.max(b.m, b.v)) };
   if (x !== barX(b)) p.x = x;
   return p;
 }
@@ -263,9 +264,9 @@ function gridDist(sc, ax, ay, bx, by) {
 const distLabel = (sc, q) => `${fmt(q)} q · ${fmt(q * sc.grid.unit)} ${sc.grid.unitName}`;
 
 // Interpreta o que foi digitado numa barra: "12" define, "+5" e "-8" somam.
-function parseBar(text, cur, max) {
+function parseBar(text, cur, max, lo) {
   const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
-  if (/^[+-]\d+(\.\d+)?$/.test(s)) return clamp(Math.round((cur + Number(s)) * 10) / 10, 0, Math.max(max, cur));
+  if (/^[+-]\d+(\.\d+)?$/.test(s)) return clamp(Math.round((cur + Number(s)) * 10) / 10, -(lo || 0), Math.max(max, cur));
   if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
   return null;
 }
@@ -317,7 +318,7 @@ const Act = {
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
     if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
-    else { const v = parseBar(text, b.v, b.m); if (v == null) return false; p = { v }; }
+    else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v }; }
     if (p.v === b.v && p.x === undefined) return false;
     Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
@@ -330,13 +331,19 @@ const Act = {
     Store.tx('Sobrevida de ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) }));
     return true;
   },
-  // Cura total: enche todas as barras em uso de cada token. Devolve quantos tokens mudaram.
+  // Cura total: enche todas as barras em uso de cada token (a barra que tem um começo próprio volta para ele).
+  // Devolve quantos tokens mudaram.
   fullHeal(tokens) {
     let n = 0;
     Store.tx('Cura total', () => {
       for (const t of tokens) {
         let mudou = false;
-        const bars = t.bars.map(b => { if (!b.on || !(b.m > 0) || b.v >= b.m) return b; mudou = true; return Object.assign({}, b, { v: b.m }); });
+        const bars = t.bars.map(b => {
+          if (!b.on || !(b.m > 0)) return b;
+          const alvo = barFull(b);
+          if (b.st != null ? b.v === alvo : b.v >= alvo) return b;
+          mudou = true; return Object.assign({}, b, { v: alvo });
+        });
         if (mudou) { Store.upd('tokens', t.id, { bars }); n++; }
       }
     });

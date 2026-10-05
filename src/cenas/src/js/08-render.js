@@ -320,13 +320,25 @@ const Render = (() => {
           }
         } else {
           c.fillStyle = 'rgba(10,12,18,0.82)'; rr(c, x, y, w, bh, bh * 0.3); c.fill();
-          const f = clamp(b.v / b.m, 0, 1);
+          const f = clamp(b.v / b.m, 0, 1), fn = barNeg(b);
           if (f > 0) { c.fillStyle = b.c; rr(c, x, y, w * f, bh, bh * 0.3); c.fill(); }
+          // Abaixo de zero: a parte negativa, riscada, cresce da esquerda (quanto do piso já foi gasto).
+          if (fn > 0) {
+            const wn = Math.max(bh * 0.7, w * fn), passo = Math.max(3 * px, bh * 0.62);
+            c.save();
+            rr(c, x, y, wn, bh, bh * 0.3); c.clip();
+            c.fillStyle = hexA(NEG_COR, 0.28); c.fillRect(x, y, wn, bh);
+            c.strokeStyle = NEG_COR; c.lineWidth = Math.max(1 * px, bh * 0.2); c.lineCap = 'butt';
+            c.beginPath();
+            for (let sx = x - bh; sx < x + wn + bh; sx += passo) { c.moveTo(sx, y + bh); c.lineTo(sx + bh, y); }
+            c.stroke();
+            c.restore();
+          }
           c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 1 * px; rr(c, x, y, w, bh, bh * 0.3); c.stroke();
           if (mode === 'num' && bh * z >= 9) {
             c.font = `700 ${bh * 0.84}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.lineWidth = bh * 0.22; c.strokeStyle = 'rgba(0,0,0,0.75)'; c.lineJoin = 'round';
-            const tx = `${fmt(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
+            const tx = `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
             c.strokeText(tx, cx, y + bh * 0.54); c.fillStyle = '#fff'; c.fillText(tx, cx, y + bh * 0.54);
           }
         }
