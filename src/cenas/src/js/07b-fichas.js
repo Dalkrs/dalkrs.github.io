@@ -159,6 +159,13 @@ const Fichas = (() => {
     if (now) syncToken(now);
     return { dono: jog ? jog.name : null };
   }
+  /* Abre a ficha do personagem deste token, na aba Fichas do site (dois cliques no token). Só quando a ficha está ao
+     alcance de quem clicou: o mestre vê todas; o jogador, a dele e as que o mestre deixou à mostra. */
+  function abrir(t) {
+    const T = window.TC;
+    if (!t || !t.char || !get(t.char) || !T || !T.ponte || !T.ponte.ir) return false;
+    return !!T.ponte.ir('fichas', { pc: t.char });
+  }
   // O que dá para rolar pela ficha deste token: [chave, nome, valor]
   function rolaveis(t) {
     const l = get(t.char);
@@ -183,7 +190,9 @@ const Fichas = (() => {
     const T = window.TC;
     if (!T || !T.ponte || !T.dados || !T.rules || !T.dice) return false;
     const st = await T.ponte.pronta;
-    if (!T.dados.disponivel() || st.papel !== 'mestre') return false;      // por enquanto, só o mestre liga token a ficha
+    if (!T.dados.disponivel()) return false;
+    // só o mestre liga token a ficha; o jogador só consulta as fichas que pode ver (para abrir a dele pelo token)
+    if (st.papel !== 'mestre') { try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; } return false; }
     try {
       P = T.dados.col('personagens'); D = T.dados.col('documentos');
       await Promise.all([P.pronta, D.pronta]);
@@ -197,5 +206,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
 })();

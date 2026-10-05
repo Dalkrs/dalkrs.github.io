@@ -397,6 +397,8 @@ const Tools = (() => {
       // Texto solto: dois cliques editam. Texto travado: dois cliques selecionam, como qualquer desenho travado
       // (é o caminho para destravar ou apagar; editar continua no painel e no botão direito).
       if (hit.c === 'shapes') { const s = Store.get('shapes', hit.id); if (s.k === 'text' && !s.lock && (isGM() || can('editShape', s))) { UI.editText(s); return; } }
+      // Token ligado a uma ficha: dois cliques abrem a ficha dele (na aba Fichas do site).
+      if (hit.c === 'tokens' && Fichas.abrir(Store.get('tokens', hit.id))) { setSel([hit]); return; }
       setSel([hit]);
       UI.openTab('sel', hit.c === 'tokens' && isGM() ? 'tk-name' : null);
       hover();                               // a dica acompanha: de "dois cliques para selecionar" para "destrave para mover"

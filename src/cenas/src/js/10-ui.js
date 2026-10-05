@@ -1125,7 +1125,7 @@ const UI = (() => {
       note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
       h('div', { class: 'row' }, btn('Usar só as barras da ficha', () => { if (Fichas.usarBarras(t)) toast('O token ficou só com as barras da ficha.', { action: 'Desfazer', run: Tools.undo }); }, { id: 'tk-so-ficha' })));
     out.push(
-      note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha.'),
+      note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha. Dois cliques no token abrem a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
       field('Fixando', inNum('tk-fixa', fixa0, v => { App.opt.fichaFixa = Math.max(0, Math.round(v) || 0); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
       h('div', { class: 'row' }, btn('Rolar', () => {

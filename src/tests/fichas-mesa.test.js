@@ -66,6 +66,15 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   await G.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(500, J);
   ok(await G.locator('#f_nome').isDisabled() && (await G.locator('.so-consulta').count()) === 1, 'ficha de outra pessoa: só consulta');
 
+  // ---------- a ficha de jogador não mostra tier ----------
+  await G.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400, J);
+  ok(await G.locator('#f_tier').count() === 0 && await G.locator('#f_level').count() === 1 && await G.locator('[data-modo="tabela"]').count() === 0, 'para o jogador, a ficha dele não mostra o Tier (nem o botão de voltar à tabela de tiers); o Level continua');
+  ok(!/tier/i.test(await G.locator('#lista .pc', { hasText: 'Dain X' }).locator('.mt').innerText()), 'nem no elenco: ' + await G.locator('#lista .pc', { hasText: 'Dain X' }).locator('.mt').innerText());
+  await F.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400);
+  ok(await F.locator('#f_tier').count() === 0 && await F.locator('[data-modo="tabela"]').count() === 0 && !/tier/i.test(await F.locator('#lista .pc', { hasText: 'Dain X' }).locator('.mt').innerText()), 'para o mestre também não, na ficha que é de um jogador');
+  await F.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(400);
+  ok(await F.locator('#f_tier').count() === 1 && /tier/i.test(await F.locator('#lista .pc', { hasText: 'Capitão' }).locator('.mt').innerText()), 'a ficha que não é de jogador continua com o Tier');
+
   // ---------- o jogador rola pela ficha e a mesa vê ----------
   await G.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400, J);
   await G.locator('[data-rolar]').first().click(); await w(500, J);
@@ -73,6 +82,18 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   try { await M.locator('#feed .rol', { hasText: 'Dain X' }).first().waitFor({ timeout: 10000 }); chegou = true; } catch (e) { /* não chegou */ }
   ok(chegou, 'a rolagem do jogador pela ficha aparece na mesa ao vivo do mestre');
   ok(chegou && (await M.locator('#feed .rol', { hasText: 'Dain X' }).first().locator('.it-h b').innerText()) === 'Dalmo', 'com o nome do jogador');
+  // uma disputa contra um NPC: a mesa lê quem venceu
+  await G.locator('#btnDisputa').click(); await w(300, J);
+  await G.locator('#disAlvo').selectOption('__avulso__'); await w(200, J);
+  await G.locator('#disNomeB').fill('Goblin'); await G.locator('#disValorB').fill('40'); await w(200, J);
+  await G.locator('#disRolar').click(); await w(400, J);
+  const disputa = M.locator('#feed .rol', { hasText: 'Disputa · Dain X × Goblin' }).first();
+  let veio = false;
+  try { await disputa.waitFor({ timeout: 10000 }); veio = true; } catch (e) { /* não chegou */ }
+  const vd = veio ? await disputa.locator('.vd').innerText() : '';
+  ok(veio && (/^(Dain X venceu Goblin|Goblin venceu Dain X) por \d+ \(\d+ × \d+\)$/.test(vd) || /^Empate em \d+$/.test(vd)), 'a disputa chega à mesa ao vivo dizendo quem venceu, por quanto e com os dois totais: ' + vd);
+  ok(veio && (await disputa.locator('.vd').getAttribute('class')).includes(vd.startsWith('Dain X venceu') ? 'sim' : vd.startsWith('Empate') ? 'emp' : 'nao'), 'em destaque: verde se venceu quem rolou, vermelho se perdeu, neutro no empate');
+  await G.locator('#disFechar').click(); await w(300, J);
 
   // ---------- o aviso em tempo real de uma ficha chega sem as colunas grandes que não mudaram ----------
   /* É assim que o banco avisa: quem muda só os pontos atuais (a coluna "estado") faz o aviso chegar sem a ficha e sem

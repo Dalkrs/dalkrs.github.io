@@ -192,6 +192,13 @@ const ASSETS = {
   eq(C({ cinfo: { fogo: { n: 3 }, gelo: { d: 2, d0: 3 } } }, { cinfo: { fogo: { n: 1 }, gelo: { d: 2, d0: 3 } } }).p, { cinfo: { fogo: { n: 3 }, gelo: { d: 2, d0: 3 } } }, 'contador: muda só o da condição em que o jogador mexeu');
   eq(C({ conds: ['fogo', 'gelo'] }, { conds: ['fogo', 'gelo'] }), null, 'condições iguais ao "como estava" não viram mudança');
   dain.conds = []; dain.cinfo = {};
+  // as condições novas: existem para o programa (nome, cor e desenho), e um jogador pode pedi-las como as outras
+  const NOVAS = ['inconsciente', 'oleo', 'molhado', 'emaranhado', 'fraco', 'exausto', 'paranoico', 'inspirado', 'hemorragia', 'regen', 'tratado'];
+  const lista = JSON.parse(vm.runInContext('JSON.stringify(CONDS.map(c => [c.id, c.n, c.c, !!ICONS[c.i]]))', sandbox));
+  ok(lista.length === 27 && new Set(lista.map(c => c[0])).size === 27 && new Set(lista.map(c => c[1])).size === 27 && lista.every(c => /^#[0-9a-f]{6}$/.test(c[2]) && c[3]), 'as 27 condições têm id e nome únicos, cor e desenho');
+  eq(NOVAS.map(id => (lista.find(c => c[0] === id) || [])[1]), ['Inconsciente', 'Óleo', 'Molhado', 'Emaranhado', 'Fraquejado', 'Exausto', 'Paranoico', 'Inspirado', 'Hemorragia', 'Regeneração', 'Tratado'], 'as onze condições novas estão na lista, com os nomes pedidos');
+  eq(C({ conds: NOVAS, cinfo: { hemorragia: { n: 2 } } }).p, { conds: NOVAS, cinfo: { hemorragia: { n: 2 } } }, 'e valem num pedido de jogador, com contador, como as outras');
+  eq(lista.findIndex(c => c[0] === 'hemorragia') - lista.findIndex(c => c[0] === 'sangue'), 1, 'Hemorragia fica logo depois de Sangrando nos painéis');
 
   /* Auras: "os jogadores veem" é escolha do mestre */
   eq(C({ auras: [{ id: 'au9', k: 'losango', r: 999, c: 'vermelho', a: 5, ang: 1, dir: 720, pub: false }] }).p.auras, [{ id: 'au9', k: 'circ', r: 60, c: '#e6ab4f', a: 0.8, ang: 10, dir: 360, pub: true }], 'auras: forma, raio, cor e opacidade dentro do que a mesa aceita; aura criada por jogador nasce visível');

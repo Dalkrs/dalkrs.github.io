@@ -510,6 +510,13 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
   .idcard{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ---------- as barrinhas dos recursos, embaixo da imagem ---------- */
+.barrinhas{width:104px;display:grid;gap:6px;margin-top:2px}
+.barrinhas .bz{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 4px;align-items:baseline;font-size:10.5px;line-height:1.2}
+.barrinhas .bzn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-soft);font-weight:600}
+.barrinhas .bzv{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft);font-size:10px}
+.barrinhas .bzt{grid-column:1/-1;height:6px;border-radius:3px;background:var(--campo-sut);border:1px solid var(--line);overflow:hidden}
+.barrinhas .bzt i{display:block;height:100%;border-radius:2px}
 /* ---------- imagem do personagem, Lapros ---------- */
 .idtopo{display:flex;gap:14px;align-items:flex-start}
 .idtopo .idcorpo{flex:1;min-width:0}
@@ -651,7 +658,7 @@ table.items tr.itfx.off textarea{opacity:.55}
 <script src="../tc/ponte.js?v=5"></script>
 <script src="../tc/rules.js?v=2"></script>
 <script src="mesa.js?v=4"></script>
-<script src="extras.js?v=1"></script>
+<script src="extras.js?v=2"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1112,6 +1119,25 @@ function iniTexto(pc){ const r=iniciativaDe(pc); return r.err? 'fórmula com err
 /* valor atual de um recurso: o que foi anotado; sem anotação, está cheio */
 function temAtual(pc,r){ const rec=pc.estado&&pc.estado.rec; return !!rec && isFinite(rec[r.id]) && rec[r.id]!==null; }
 function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : arred(r.val); }
+/* As barrinhas embaixo da imagem do personagem: cada recurso (HP, SP…) com o valor atual, só para ver de relance.
+   Mexer continua sendo no quadro dos recursos; as cores são as das barras dos tokens, na mesma ordem. */
+const CORES_BARRINHA=['#d6524b','#4a9be0','#e2b23e','#6fbf73','#b07ad9','#e58a4e','#4fc3c0','#d96aa0'];
+function htmlBarrinhas(pc, c){
+  const rs=((c||calcular(pc)).recursos||[]).filter(r=>!r.err && r.val!=null && isFinite(r.val) && arred(r.val)>0);
+  if(!rs.length) return '';
+  return `<div class="barrinhas" id="barrinhas" role="group" aria-label="Recursos do personagem">${rs.map((r,i)=>{
+    const max=arred(r.val), at=atualDoRecurso(pc,r), pct=Math.max(0,Math.min(100,at/max*100));
+    return `<div class="bz" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at)} de ${fmt(max)}">
+      <span class="bzn">${esc(r.nome)}</span><span class="bzv">${fmt(at)}/${fmt(max)}</span>
+      <span class="bzt"><i style="width:${pct.toFixed(1)}%;background:${CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i></span></div>`;
+  }).join('')}</div>`;
+}
+// (depois de mexer num valor atual sem redesenhar a ficha inteira)
+function pintarBarrinhas(host, pc){
+  const el=host.querySelector('#barrinhas'); if(!el) return;
+  const t=document.createElement('template'); t.innerHTML=htmlBarrinhas(pc);
+  const novo=t.content.firstElementChild; if(novo) el.replaceWith(novo); else el.remove();
+}
 function linhaElenco(p){
   return `<li class="pcrow" data-id="${p.id}">
     <span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo">⠿</span>
@@ -1119,7 +1145,7 @@ function linhaElenco(p){
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
       <span class="nm">${esc(p.nome)}</span>
-      <span class="mt">Tier ${esc(p.tier)} · Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
+      <span class="mt">${FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
         ${(p.tags||[]).slice(0,3).map(t=>`<span class="tag mini-tag">${esc(t)}</span>`).join('')}
@@ -1273,7 +1299,7 @@ function renderFicha(){
   <div class="panel" style="margin-bottom:18px">
     <div class="hd">
       <span class="eyebrow">Ficha</span>
-      <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts · ×${c.mult}</span>
+      <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
       <span style="margin-left:auto;display:flex;gap:6px">
         <button class="mini" data-act="dup">Duplicar</button>
         <button class="mini danger" data-act="del">Excluir</button>
@@ -1281,7 +1307,7 @@ function renderFicha(){
     </div>
     <div class="bd">
       <div class="idtopo">
-      ${FichasExtras.htmlRetrato(pc)}
+      ${FichasExtras.htmlRetrato(pc, htmlBarrinhas(pc, c))}
       <div class="idcorpo">
       <div class="idcard">
         <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
@@ -1289,7 +1315,7 @@ function renderFicha(){
         <label class="f"><span class="eyebrow">Lado</span><select id="f_lado">
           ${['Aliado','Inimigo','Neutro'].map(l=>`<option ${(pc.lado||'Aliado')===l?'selected':''}>${l}</option>`).join('')}
         </select></label>
-        <label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>
+        ${FichasMesa.deJogador(pc)? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
         <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
       </div>
       ${FichasMesa.htmlDono(pc)}
@@ -1303,6 +1329,8 @@ function renderFicha(){
         <label class="f"><span class="eyebrow">Tags</span>
           <input id="f_tags" value="${esc((pc.tags||[]).join(', '))}" placeholder="separadas por vírgula — ex: capítulo 3, boss, aliado do rei"></label>
         ${FichasExtras.htmlLapros(pc)}
+        <label class="f"><span class="eyebrow">Tamanho do pênis</span>
+          <input id="f_tampenis" maxlength="24" value="${esc(pc.tamPenis||'')}" placeholder="ex.: 15 cm" autocomplete="off"></label>
       </div>
       </div>
       </div>
@@ -1395,7 +1423,7 @@ function renderFicha(){
           ${DEFESAS.map(d=>{const v=c.def[d.k];
             return `<button class="atrbt der" data-rolar="${d.k}" title="${esc(d.nome)} — ${v}">
               <b>${d.rot}</b><span>${v}</span></button>`}).join('')}
-          <button class="atrbt disputar" id="btnDisputa" title="Rolar contra outro personagem ou contra um valor avulso">
+          <button class="atrbt disputar" id="btnDisputa" title="Rolar contra outro personagem ou contra um NPC (sem ficha)">
             <b>×</b><span>Disputar</span></button>
         </div>
         <div class="inirow">
@@ -1573,6 +1601,7 @@ function ligarFicha(pc){
   host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
   host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
+  host.querySelector('#f_tampenis').oninput=e=>patchLeve(()=>{ const v=e.target.value.trim().slice(0,24); if(v) pc.tamPenis=v; else delete pc.tamPenis; });
   FichasMesa.ligarDono(host, pc);
   FichasExtras.ligarRetrato(host, pc);
   FichasExtras.ligarLapros(host, pc);
@@ -1593,6 +1622,7 @@ function ligarFicha(pc){
   host.querySelectorAll('[data-resatual]').forEach(i=>i.oninput=e=>patchLeve(()=>{
     const est=pc.estado||(pc.estado={}); const rec=est.rec||(est.rec={});
     const v=e.target.value.trim(); if(v===''||!isFinite(+v)) delete rec[i.dataset.resatual]; else rec[i.dataset.resatual]=+v;
+    pintarBarrinhas(host, pc);
   }));
   host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[b.dataset.rescheio]; }));
   const rfx=host.querySelector('#rolFixa');
@@ -1613,7 +1643,8 @@ function ligarFicha(pc){
   host.querySelector('#f_tags').oninput=e=>{
     pc.tags=e.target.value.split(',').map(t=>t.trim()).filter(Boolean); save(); renderLista();
   };
-  host.querySelector('#f_tier').onchange=e=>patch(()=>pc.tier=e.target.value);
+  const ftier=host.querySelector('#f_tier');             // (ficha de jogador não mostra o tier)
+  if(ftier) ftier.onchange=e=>patch(()=>pc.tier=e.target.value);
   host.querySelector('#f_level').onchange=e=>patch(()=>pc.level=+e.target.value);
   const nt=host.querySelector('#f_notas');
   if(nt) nt.oninput=e=>patchLeve(()=>pc.notas=e.target.value);
@@ -1760,7 +1791,7 @@ function renderMesa(){
             return `<option value="${esc(g)}">${esc(g)} (${n})</option>`}).join('')}
         </select>
         <button class="mini" id="btnAddGrupo">Adicionar grupo</button>
-        <button class="mini" id="btnAddLivre">+ Rolagem avulsa</button>
+        <button class="mini" id="btnAddLivre">+ NPC (sem ficha)</button>
         <span style="margin-left:auto;display:flex;gap:6px">
           <button class="mini" id="limparRes">Limpar resultados</button>
           <button class="primary" id="rolarTodos">Rolar todos</button>
@@ -1777,7 +1808,7 @@ function renderMesa(){
         </tbody>
       </table>
       ${veredito(sit)}
-      `:`<div class="hint">Nenhum participante ainda. Puxe alguém do elenco ou crie uma rolagem avulsa (útil para um inimigo genérico que você não quer cadastrar).</div>`}
+      `:`<div class="hint">Nenhum participante ainda. Puxe alguém do elenco ou acrescente um NPC sem ficha (útil para um inimigo genérico que você não quer cadastrar).</div>`}
     </div>`:`<div class="empty">Crie uma situação para começar a rolar. Ela guarda os participantes, então dá para reaproveitar a mesma cena em várias rodadas.</div>`}
   </div>
 
@@ -1788,7 +1819,7 @@ function renderMesa(){
 function linhaParticipante(sit,pt){
   const pc=pt.pcId? S.personagens.find(p=>p.id===pt.pcId):null;
   const lado=(pt.lado||pc?.lado||'Neutro');
-  const nome=pc? pc.nome : (pt.nome||'Avulso');
+  const nome=pc? pc.nome : (pt.nome||'NPC');
   const res=pt.res;
   let meio;
   if(pt.tipo==='livre'){
@@ -1821,7 +1852,7 @@ function linhaParticipante(sit,pt){
 function veredito(sit){
   const rolados=sit.participantes.filter(p=>p.res);
   if(!rolados.length) return '';
-  const nomeDe=p=>p.pcId? (S.personagens.find(x=>x.id===p.pcId)?.nome||'?') : (p.nome||'Avulso');
+  const nomeDe=p=>p.pcId? (S.personagens.find(x=>x.id===p.pcId)?.nome||'?') : (p.nome||'NPC');
   if(sit.modo==='ranking'){
     const ord=[...rolados].sort((a,b)=>b.res.total-a.res.total);
     return `<div class="veredito"><h3>Ordem dos resultados</h3>
@@ -1858,7 +1889,7 @@ function veredito(sit){
 }
 function rolarParticipante(sit,pt){
   const pc=pt.pcId?S.personagens.find(p=>p.id===pt.pcId):null;
-  const nome=pc?pc.nome:(pt.nome||'Avulso');
+  const nome=pc?pc.nome:(pt.nome||'NPC');
   if(pt.tipo==='livre'){
     let r; try{ r=rolarExpressao(pt.expr); }catch(e){ toast(e.message); return; }
     pt.res={total:r.total, texto:r.expr+' → '+r.detalhe};
@@ -1908,9 +1939,9 @@ function ligarMesa(sit){
     toast(novos? novos+' participante'+(novos>1?'s':'')+' de "'+g+'"' : 'Todos já estavam na situação');
   };
   q('#btnAddLivre').onclick=()=>{
-    const nome=prompt('Nome da rolagem avulsa (ex.: Goblin 3, Armadilha):','Inimigo');
+    const nome=prompt('Nome do NPC (ex.: Goblin 3, Armadilha):','Inimigo');
     if(nome===null) return;
-    sit.participantes.push({id:uid(), tipo:'livre', pcId:null, nome:nome||'Avulso', lado:'Inimigo', expr:'1d20', res:null});
+    sit.participantes.push({id:uid(), tipo:'livre', pcId:null, nome:nome||'NPC', lado:'Inimigo', expr:'1d20', res:null});
     save(); renderMesa();
   };
   q('#rolarTodos').onclick=()=>{ sit.participantes.forEach(pt=>rolarParticipante(sit,pt)); save(); renderMesa(); };
@@ -2041,7 +2072,7 @@ function painelRegistro(comTeste){
         ${log.length? log.map(e=>`<div class="row">
           <span class="ts">${horaCurta(e.ts)}</span>
           <span class="who">${esc(e.quem)}${e.sit?`<span class="hint" style="font-weight:400"> · ${esc(e.sit)}</span>`:''}</span>
-          <span class="det">${esc(e.det)}</span>
+          <span class="det">${esc(e.det)}${e.veredito?' — <b>'+esc(e.veredito)+'</b>':''}</span>
           <span class="tt">${e.total==null?'':e.total}</span>
         </div>`).join('') : '<div class="hint">Nada rolado ainda.</div>'}
       </div>
@@ -2053,14 +2084,14 @@ function renderRegistroSo(){
   box.innerHTML=log.length? log.map(e=>`<div class="row">
       <span class="ts">${horaCurta(e.ts)}</span>
       <span class="who">${esc(e.quem)}${e.sit?`<span class="hint" style="font-weight:400"> · ${esc(e.sit)}</span>`:''}</span>
-      <span class="det">${esc(e.det)}</span>
+      <span class="det">${esc(e.det)}${e.veredito?' — <b>'+esc(e.veredito)+'</b>':''}</span>
       <span class="tt">${e.total==null?'':e.total}</span>
     </div>`).join('') : '<div class="hint">Nada rolado ainda.</div>';
 }
 function ligarRegistro(){
   const c=document.getElementById('copiarLog');
   if(c) c.onclick=()=>{
-    const txt=(S.log||[]).map(e=>`[${new Date(e.ts).toLocaleString('pt-BR')}] ${e.quem}${e.sit?' ('+e.sit+')':''}: ${e.det}${e.total==null?'':' = '+e.total}`).join('\n');
+    const txt=(S.log||[]).map(e=>`[${new Date(e.ts).toLocaleString('pt-BR')}] ${e.quem}${e.sit?' ('+e.sit+')':''}: ${e.det}${e.total==null?'':' = '+e.total}${e.veredito?' — '+e.veredito:''}`).join('\n');
     navigator.clipboard?.writeText(txt).then(()=>toast('Registro copiado'),()=>toast('Não consegui copiar'));
   };
   const l=document.getElementById('limparLog');
@@ -2342,6 +2373,7 @@ function abrirDisputa(pc){
     atrA: mem.atrA||'FOR', fixaA: pc.rol?.fixa||0,
     alvo: valeAlvo(mem.alvoId) ? mem.alvoId : (valeAlvo(S.ultimoAlvo) ? S.ultimoAlvo : (outros[0]?.id||'__avulso__')),
     atrB: mem.atrB||'FOR', fixaB: mem.fixaB||0, valorB: mem.valorB||40,
+    nomeB: typeof mem.nomeB==='string' ? mem.nomeB : '',      // o nome do NPC (um oponente sem ficha)
     res:null
   };
   if(!outros.length) est.alvo='__avulso__';
@@ -2353,12 +2385,13 @@ function abrirDisputa(pc){
     if(l.atr) est.atrB=l.atr;
     if(l.fixa!=null) est.fixaB=Math.max(0,+l.fixa||0);
     if(l.valor!=null) est.valorB=Math.max(0,+l.valor||0);
+    if(typeof l.nome==='string') est.nomeB=l.nome;
   };
   const guardarAlvo=()=>{
-    const d = est.alvo==='__avulso__' ? {valor:est.valorB, fixa:est.fixaB} : {atr:est.atrB, fixa:est.fixaB};
+    const d = est.alvo==='__avulso__' ? {valor:est.valorB, fixa:est.fixaB, nome:est.nomeB} : {atr:est.atrB, fixa:est.fixaB};
     meus[est.alvo]=d; gerais[est.alvo]=Object.assign({},d);
     mem.alvoId=est.alvo; S.ultimoAlvo=est.alvo;
-    mem.atrB=est.atrB; mem.fixaB=est.fixaB; mem.valorB=est.valorB;
+    mem.atrB=est.atrB; mem.fixaB=est.fixaB; mem.valorB=est.valorB; mem.nomeB=est.nomeB;
     save();
   };
   if(est.alvo!==mem.alvoId || Object.keys(meus).length) carregarAlvo();
@@ -2369,7 +2402,7 @@ function abrirDisputa(pc){
     return {avulso, pcB,
       vA: valorDoAtributo(pc, est.atrA, pc.rol?.fonte||'total'),
       vB: avulso? Math.max(0,+est.valorB||0) : valorDoAtributo(pcB, est.atrB, pcB.rol?.fonte||'total'),
-      nomeB: avulso? 'Avulso' : pcB.nome};
+      nomeB: avulso? (String(est.nomeB||'').trim().slice(0,40) || 'NPC') : pcB.nome};
   };
   const m=document.createElement('div'); m.className='modal';
   const fechar=()=>{ m.remove(); renderFicha(); };
@@ -2377,7 +2410,7 @@ function abrirDisputa(pc){
   const desenhar=()=>{
     if(desenhando) return;                       // o redesenho tira o foco e dispara change de novo
     desenhando=true;
-    const {avulso, pcB, vA, vB} = lados();
+    const {avulso, pcB, vA, vB, nomeB} = lados();
     const r=est.res;
     const ganhaA = r && r.a.total>r.b.total, ganhaB = r && r.b.total>r.a.total;
     m.innerHTML=`<div class="sheet" style="max-width:720px">
@@ -2400,11 +2433,12 @@ function abrirDisputa(pc){
             <label style="display:block;margin-bottom:8px">
               <select id="disAlvo">
                 ${outros.map(o=>`<option value="${o.id}" ${est.alvo===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}
-                <option value="__avulso__" ${avulso?'selected':''}>Valor avulso (sem ficha)</option>
+                <option value="__avulso__" ${avulso?'selected':''}>NPC (sem ficha)</option>
               </select></label>
             <div class="discampos">
               ${avulso
-                ? `<label><span>Valor</span><input type="number" min="0" id="disValorB" value="${est.valorB}"></label>`
+                ? `<label><span>Nome</span><input type="text" id="disNomeB" maxlength="40" value="${esc(est.nomeB||'')}" placeholder="NPC" style="width:120px"></label>
+                   <label><span>Valor</span><input type="number" min="0" id="disValorB" value="${est.valorB}"></label>`
                 : `<label><span>Atributo</span><select id="disAtrB">${opcoesDeAtributo(est.atrB)}</select></label>
                    <label><span>Valor</span><span class="disval">${vB}</span></label>`}
               <label><span>Fixar</span><input type="number" min="0" id="disFixaB" value="${est.fixaB}"></label>
@@ -2415,7 +2449,7 @@ function abrirDisputa(pc){
         ${r? `<div class="disveredito">${
           r.a.total===r.b.total
             ? '<span class="emp">Empate em '+r.a.total+'.</span>'
-            : `<strong>${esc(r.a.total>r.b.total? pc.nome : (pcB? pcB.nome : 'O oponente'))}</strong> venceu por ${Math.abs(r.a.total-r.b.total)}.`
+            : `<strong>${esc(r.a.total>r.b.total? pc.nome : nomeB)}</strong> venceu <strong>${esc(r.a.total>r.b.total? nomeB : pc.nome)}</strong> por ${Math.abs(r.a.total-r.b.total)} (${Math.max(r.a.total,r.b.total)} × ${Math.min(r.a.total,r.b.total)}).`
         }</div>`:''}
         <div class="modalacts">
           <span class="hint">O resultado vai para o registro da Mesa.</span>
@@ -2433,6 +2467,7 @@ function abrirDisputa(pc){
     num('#disFixaA', v=>{est.fixaA=v; pc.rol.fixa=v; save();});   // é a mesma fixa do rolador da ficha
     num('#disFixaB', v=>{est.fixaB=v; guardarAlvo();});
     num('#disValorB', v=>{est.valorB=v; guardarAlvo();});
+    const nb=m.querySelector('#disNomeB'); if(nb) nb.oninput=ev=>{ est.nomeB=ev.target.value.slice(0,40); guardarAlvo(); };
     /* seletores mudam a estrutura, então redesenham */
     const sel=(id,fn)=>{ const e=m.querySelector(id); if(e) e.onchange=ev=>{ fn(ev.target.value); est.res=null; desenhar(); }; };
     sel('#disAtrA', v=>{est.atrA=v; mem.atrA=v; save();});
@@ -2445,12 +2480,14 @@ function abrirDisputa(pc){
       const rb=rolarFixa(vB, est.fixaB);
       est.res={a:ra, b:rb};
       const rotB = avulso? 'valor '+vB : rotuloAtr(est.atrB)+' '+vB;
-      const vencedor = ra.total===rb.total ? 'empate'
-        : (ra.total>rb.total ? pc.nome+' por '+(ra.total-rb.total) : nomeB+' por '+(rb.total-ra.total));
-      logar({tipo:'disputa', quem:pc.nome+' × '+nomeB, pc:pc.id,
-        det:`${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}) = ${ra.total}`
-           +` × ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}) = ${rb.total} · ${vencedor}`,
-        total:null});
+      // quem venceu vai dito por extenso (na mesa ao vivo, em destaque): "Dain venceu Goblin por 4 (32 × 28)"
+      const empate = ra.total===rb.total, venceuA = ra.total>rb.total;
+      const veredito = empate ? 'Empate em '+ra.total
+        : (venceuA? pc.nome : nomeB)+' venceu '+(venceuA? nomeB : pc.nome)+' por '+Math.abs(ra.total-rb.total)+' ('+Math.max(ra.total,rb.total)+' × '+Math.min(ra.total,rb.total)+')';
+      logar({tipo:'disputa', quem:'Disputa · '+pc.nome+' × '+nomeB, pc:pc.id,
+        det:`${pc.nome}: ${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}) = ${ra.total}`
+           +`  ·  ${nomeB}: ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}) = ${rb.total}`,
+        total:null, veredito, passou: empate? null : venceuA});
       save(); desenhar();
     };
   };

@@ -32,7 +32,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
 | `src/tests/` | Testes do site. Os `*-mesa.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade. |
 | `src/legado/` | As versões originais de cada sistema, guardadas para comparação nos testes. |
-| `supabase/` | O banco: migrações (tabelas, regras de acesso, Storage) e a função `criar-conta`. |
+| `supabase/` | O banco: migrações (tabelas, regras de acesso, Storage) e as funções `criar-conta` e `faxina`. |
 
 ### Como os dados da mesa ficam no banco
 
@@ -71,13 +71,15 @@ faltava subir.
   pedidos esperam; valem quando ele volta.
 - **Sem a ligação em tempo real**, a mesa lê o banco a cada 3 segundos: tudo funciona, com esse atraso.
 - **As paredes valem para o jogador na tela dele**: o banco não confere por onde um token passou.
-- **Arquivos no Storage** de mesas apagadas, e imagens que foram trocadas, continuam lá.
+- **Imagens que foram trocadas** (um retrato, o fundo de uma cena) continuam no Storage até a mesa ser apagada.
+  Apagar a mesa apaga a pasta dela; a função `faxina` (em `supabase/functions/`) apaga as pastas de mesas que não
+  existem mais — o que sobrou de antes disso, ou de um apagar que parou no meio.
 
 ## Testes
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 v3 v4 e2e ui2 faixa; do node $f.js; done
-cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas mundo acampamento; do node $f.test.js; done
+cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas arvore mundo acampamento; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

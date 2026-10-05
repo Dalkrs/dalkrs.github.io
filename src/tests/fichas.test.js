@@ -46,11 +46,32 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   }
 
   // ---------- Lapros ----------
-  await P.locator('#f_lapros').fill('1250'); await w(500);
-  ok(await S0(() => S.personagens[0].estado.lapros === 1250), 'Lapros fica guardado na ficha');
-  await P.locator('#f_lapros').fill('-7'); await P.locator('#f_nome').focus(); await w(300);
-  ok(await S0(() => S.personagens[0].estado.lapros === 0) && await P.locator('#f_lapros').inputValue() === '0', 'Lapros não fica negativo');
-  await P.locator('#f_lapros').fill('380'); await w(500);
+  const lapros = async txt => { await P.locator('#f_lapros').fill(txt); await P.locator('#f_lapros').press('Enter'); await w(350); return [await S0(() => S.personagens[0].estado.lapros), await P.locator('#f_lapros').inputValue()]; };
+  ok(JSON.stringify(await lapros('1250')) === '[1250,"1250"]', 'Lapros fica guardado na ficha');
+  ok(JSON.stringify(await lapros('-50')) === '[1200,"1200"]', 'digitar −50 no Lapros subtrai do que o personagem tem (1250 − 50 = 1200)');
+  ok((await P.locator('.toast').innerText()).includes('1250 − 50 = 1200') && await P.locator('.toast button', { hasText: 'Desfazer' }).count() === 1, 'e um aviso mostra a conta, com "Desfazer": ' + await P.locator('.toast').innerText());
+  ok(JSON.stringify(await lapros('+ 30')) === '[1230,"1230"]', 'digitar +30 soma');
+  ok(JSON.stringify(await lapros('−5000')) === '[0,"0"]', 'o Lapros nunca fica abaixo de zero (com o sinal de menos tipográfico também)');
+  await P.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(300);
+  ok(await S0(() => S.personagens[0].estado.lapros) === 1230 && await P.locator('#f_lapros').inputValue() === '1230', '"Desfazer" devolve o valor de antes');
+  ok(JSON.stringify(await lapros('muitos')) === '[1230,"1230"]', 'o que não é número não muda nada');
+  ok(await S0(() => JSON.stringify([FichasExtras.lerLapros('250', 100), FichasExtras.lerLapros('+30', 100), FichasExtras.lerLapros('-200', 100), FichasExtras.lerLapros('', 100), FichasExtras.lerLapros('3x', 100)])) === '[{"total":250,"delta":null},{"total":130,"delta":30},{"total":0,"delta":-200},null,null]', 'a leitura do campo: valor troca, com sinal soma ou subtrai, sem número não vale');
+  await lapros('380');
+
+  // ---------- as barrinhas dos recursos, embaixo da imagem ----------
+  const barrinhas = () => P.locator('#barrinhas .bz').evaluateAll(els => els.map(e => [e.querySelector('.bzn').textContent, e.querySelector('.bzv').textContent, Math.round(parseFloat(e.querySelector('.bzt i').style.width))]));
+  const b0 = await barrinhas();
+  ok(b0.length === 2 && b0[0][0] === 'HP' && b0[1][0] === 'SP' && b0.every(x => x[2] === 100) && /^(\d+)\/\1$/.test(b0[0][1]), 'embaixo da imagem aparecem as barrinhas dos recursos, cheias: ' + JSON.stringify(b0));
+  const hpMax = +b0[0][1].split('/')[1];
+  await P.locator('[data-resatual="hppc_dain"]').fill(String(Math.round(hpMax / 4))); await w(300);
+  const b1 = await barrinhas();
+  ok(b1[0][1] === Math.round(hpMax / 4) + '/' + hpMax && b1[0][2] >= 24 && b1[0][2] <= 26 && await P.evaluate(() => document.activeElement && document.activeElement.dataset.resatual === 'hppc_dain'), 'mudar o HP atual encolhe a barrinha na hora, sem tirar o foco do campo: ' + JSON.stringify(b1[0]));
+  await P.locator('[data-rescheio="hppc_dain"]').count() ? await P.locator('#f_nome').click() : null; await w(200);
+
+  // ---------- o campo novo da ficha ----------
+  await P.locator('#f_tampenis').fill('18 cm'); await w(500);
+  ok(await S0(() => S.personagens[0].tamPenis) === '18 cm', 'o campo "Tamanho do pênis" fica guardado na ficha');
+  ok(await P.locator('#f_tier').count() === 1 && /^tier /i.test((await P.locator('#lista .pc .mt').first().innerText()).trim()), 'sem mesa, a ficha continua com o Tier (só as fichas de jogador, numa mesa, deixam de mostrá-lo): ' + await P.locator('#lista .pc .mt').first().innerText());
 
   // ---------- passivas e efeitos nos equipamentos ----------
   await P.locator('[data-itemfx="it1"]').fill('Serra: sangramento 2 por turno.\n1×/combate: arranca uma parte do inimigo.'); await w(500);
@@ -150,22 +171,35 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.locator('#disAtrB').selectOption('ESQ'); await P.locator('#disFixaB').fill('7'); await w(200);
   await P.locator('#disRolar').click(); await w(300);
   ok((await P.locator('.disveredito').innerText()).length > 5, 'a disputa rola');
+  const reg = await S0(() => { const e = S.log[0]; return { tipo: e.tipo, quem: e.quem, det: e.det, veredito: e.veredito, passou: e.passou }; });
+  ok(reg.tipo === 'disputa' && reg.quem === 'Disputa · Goblin batedor × Capitão Orrin' && reg.det.startsWith('Goblin batedor: ') && reg.det.includes('  ·  Capitão Orrin: '), 'o registro da disputa diz de quem é cada rolagem: ' + JSON.stringify(reg));
+  ok(/^(Goblin batedor venceu Capitão Orrin|Capitão Orrin venceu Goblin batedor) por \d+ \(\d+ × \d+\)$/.test(reg.veredito) ? reg.passou === reg.veredito.startsWith('Goblin batedor') : (/^Empate em \d+$/.test(reg.veredito) && reg.passou === null), 'e quem venceu, por extenso: ' + reg.veredito + ' (passou: ' + reg.passou + ')');
   await P.locator('#disFechar').click(); await w(250);
   await abrirFicha('Dain X');
   await P.locator('#btnDisputa').click(); await w(250);
   ok(await P.locator('#disAlvo').inputValue() === 'pc_cap' && await P.locator('#disAtrB').inputValue() === 'DFF' && await P.locator('#disFixaB').inputValue() === '12', 'cada ficha lembra o que ELA usou contra o alvo (o Dain continua com DEF F e 12)');
   await P.locator('#disAlvo').selectOption('__avulso__'); await w(200);
-  ok(await P.locator('#disValorB').inputValue() === '55' && await P.locator('#disFixaB').inputValue() === '3', 'e o valor avulso guardado por outro personagem também aparece para este');
+  ok(await P.locator('#disValorB').inputValue() === '55' && await P.locator('#disFixaB').inputValue() === '3', 'e o valor do NPC guardado por outro personagem também aparece para este');
+  ok((await P.locator('#disAlvo option[value="__avulso__"]').innerText()) === 'NPC (sem ficha)' && await P.locator('#disNomeB').count() === 1, 'o oponente sem ficha se chama NPC, e pode ganhar um nome');
+  await P.locator('#disRolar').click(); await w(300);
+  ok(await S0(() => S.log[0].quem) === 'Disputa · Dain X × NPC', 'sem nome, ele aparece como "NPC": ' + await S0(() => S.log[0].quem));
+  await P.locator('#disNomeB').fill('Goblin chefe'); await w(200);
+  await P.locator('#disRolar').click(); await w(300);
+  const regN = await S0(() => ({ quem: S.log[0].quem, veredito: S.log[0].veredito }));
+  ok(regN.quem === 'Disputa · Dain X × Goblin chefe' && (regN.veredito.includes('Goblin chefe') || regN.veredito.startsWith('Empate')) && (await P.locator('.disveredito').innerText()).replace(/\s+/g, ' ').includes(regN.veredito.startsWith('Empate') ? 'Empate' : 'venceu'), 'com nome, a disputa e o veredito usam o nome do NPC: ' + JSON.stringify(regN));
   await P.locator('#disFechar').click(); await w(250);
   await abrirFicha('Capitão Orrin');
   await P.locator('#btnDisputa').click(); await w(250);
   ok(await P.locator('#disAlvo').inputValue() === '__avulso__', 'ficha que nunca disputou começa pelo último alvo usado');
+  ok(await P.locator('#disNomeB').inputValue() === 'Goblin chefe', 'e encontra o NPC com o nome que lhe deram por último');
   await P.locator('#disFechar').click(); await w(250);
 
   // ---------- tudo continua lá depois de recarregar ----------
   await w(500);
   await P.reload({ waitUntil: 'load' }); await w(1200);
   ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.estado.lapros === 380 && p.modoAtr === 'livre' && p.atrLivre.DES === 0 && p.estado.san === 0 && p.estado.conf === 100 && p.estado.rel.length === 2 && !!p.img && p.itens[0].efeito.length > 10 && p.disputa.alvos.pc_cap.atr === 'DFF' && S.alvos.pc_cap.atr === 'ESQ'; }), 'recarregando a página, tudo o que foi posto continua na ficha');
+
+  ok(await S0(() => S.personagens.find(x => x.id === 'pc_dain').tamPenis) === '18 cm' && await (async () => { await abrirFicha('Dain X'); return (await P.locator('#f_tampenis').inputValue()) === '18 cm' && (await P.locator('#barrinhas .bz').count()) === 2; })(), 'o campo novo e as barrinhas também');
 
   if (t.errs.length) console.log(t.errs.slice(0, 10).join('\n'));
   ok(t.errs.length === 0, 'sem erros no console');

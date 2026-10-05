@@ -572,10 +572,30 @@ function garantirSelecoes(){
   if(selecionado && !porId.has(selecionado)) selecionado = null;
 }
 
+/* ---------- o tipo de ponto de cada árvore ----------
+   O tipo de ponto padrão de uma árvore vem da categoria dela: árvore de Raça gasta pontos de "Raça"; de Classe,
+   pontos de "Classe". Nas outras categorias (e enquanto esses tipos não existirem), é o primeiro tipo da lista.
+   O tipo é criado quando a primeira árvore da categoria aparece; cada personagem começa com 0 dele (é o mestre quem dá). */
+const POOL_DA_CATEGORIA = {raca:{nome:'Raça', cor:'#5FA37A'}, classe:{nome:'Classe', cor:'#6F8FD6'}};
+function poolPadrao(a){
+  const b = bib(), alvo = a && POOL_DA_CATEGORIA[a.categoria];
+  return (alvo && b.pools.find(p=>norm(p.nome)===norm(alvo.nome))) || b.pools[0] || null;
+}
+// Cria o tipo de ponto da categoria, se ainda não existe. Devolve o nome do tipo criado, ou ''.
+function garantirPoolDaCategoria(cat){
+  const alvo = POOL_DA_CATEGORIA[cat], b = bib();
+  if(!alvo || b.pools.some(p=>norm(p.nome)===norm(alvo.nome))) return '';
+  const usadas = new Set(b.pools.map(p=>p.cor));
+  const p = {id:novoId('p'), nome:alvo.nome, cor:usadas.has(alvo.cor) ? (TINTAS.find(c=>!usadas.has(c)) || alvo.cor) : alvo.cor, padrao:0};
+  b.pools.push(p); doc.personagens.forEach(x=>{ x.pontos[p.id] = p.padrao; });
+  return p.nome;
+}
+const avisoDoPool = nome => nome ? ` Criei o tipo de ponto “${nome}”: cada personagem começa com 0 (ajuste em Tipos de ponto).` : '';
+
 /* ---------- moldes ---------- */
-function noNovo(tipo, extra){
+function noNovo(tipo, extra, a){
   const b = bib(); const t = b.tipos[tipo] || b.tipos.pequeno;
-  const p0 = b.pools[0]?.id;
+  const p0 = (poolPadrao(a === undefined ? arvoreVisivel() : a) || {}).id;
   return Object.assign({
     id:novoId(), pais:[], regra:'e', nome:'Novo nódulo', tipo: b.tipos[tipo] ? tipo : 'pequeno',
     forma:t.forma||'circulo', glifo:'', cor:'', natureza:'', usos:[], desc:'', exclusivo:'', escola:null,
@@ -1955,10 +1975,13 @@ async function novaArvore(){
     botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Criar árvore', valor:true, classe:'ouro', validar:v=>v.nome.trim() ? '' : 'Dê um nome à árvore.'}]});
   if(!r) return;
   registrar('nova árvore');
-  const raiz = noNovo('keystone', {nome:'Origem', graus:[{custos:{}, texto:''}]});
+  const criado = garantirPoolDaCategoria(r.cat);            // árvore de Raça ou de Classe: os pontos dela são os de Raça ou de Classe
+  const raiz = noNovo('keystone', {nome:'Origem', graus:[{custos:{}, texto:''}]}, null);
   const a = {id:novoId('a'), nome:r.nome.trim(), categoria:r.cat, secreta:false, senha:'', nodes:[raiz]};
   bib().arvores.push(a); ui.arvoreMestre = a.id; selecionado = raiz.id;
   salvar(); pintarTudo(); centralizar();
+  const pp = poolPadrao(a);
+  if(POOL_DA_CATEGORIA[a.categoria] && pp) aviso(`Os nódulos desta árvore custam pontos de “${pp.nome}”.` + avisoDoPool(criado), 'ok', 7000);
 }
 async function renomearArvore(){
   const a = arvoreVisivel(); if(!a) return;
@@ -1970,8 +1993,31 @@ async function renomearArvore(){
   const nome = r.nome.trim(), cat = CATEGORIAS.some(c=>c.id===r.cat) ? r.cat : a.categoria;
   const mudouNome = nome!==a.nome, mudouCat = cat!==a.categoria;
   if(!mudouNome && !mudouCat) return;
+  /* Mudou a categoria para Raça ou Classe: o tipo de ponto padrão da árvore muda junto (vale para os nódulos novos).
+     Se todos os custos da árvore estão num tipo só, e não é o da categoria nova, eles podem passar para ele — mas
+     isso mexe em custos já postos, então é perguntado. (Árvore que mistura tipos de ponto fica como está.) */
+  let trocar = false, depoisNome = '', de = null;
+  if(mudouCat && POOL_DA_CATEGORIA[cat]){
+    depoisNome = POOL_DA_CATEGORIA[cat].nome;
+    const usados = new Set();
+    a.nodes.forEach(n=>n.graus.forEach(g=>{ for(const k in g.custos) if(g.custos[k]>0) usados.add(k); }));
+    de = usados.size===1 ? poolPorId([...usados][0]) : null;
+    if(de && norm(de.nome)===norm(depoisNome)) de = null;
+    if(de){
+      const quantos = a.nodes.filter(n=>n.graus.some(g=>(g.custos[de.id]||0)>0)).length;
+      trocar = await confirmar('Pontos de ' + depoisNome, `“${esc(nome)}” passa a ser uma árvore de ${depoisNome}. Trocar o custo de ${plural(quantos,'nódulo','nódulos')} de “${esc(de.nome)}” para “${esc(depoisNome)}”? Se não, só os nódulos novos usam “${esc(depoisNome)}”. Dá para desfazer com Ctrl+Z.`, 'Trocar os custos');
+    }
+  }
   registrar(mudouNome && mudouCat ? 'renomear árvore e mudar a categoria' : mudouCat ? 'categoria da árvore' : 'renomear árvore');
-  a.nome = nome; a.categoria = cat; salvar(); pintarTudo();
+  const criado = mudouCat ? garantirPoolDaCategoria(cat) : '';
+  a.nome = nome; a.categoria = cat;
+  if(trocar){
+    const novo = poolPadrao(a);
+    if(novo && de && novo.id!==de.id) a.nodes.forEach(n=>n.graus.forEach(g=>{ const v = g.custos[de.id]||0; if(v>0){ g.custos[novo.id] = (g.custos[novo.id]||0) + v; delete g.custos[de.id]; } }));
+    podarTodos();
+  }
+  salvar(); pintarTudo();
+  if(mudouCat && POOL_DA_CATEGORIA[cat]) aviso((trocar ? `Os nódulos desta árvore agora custam pontos de “${depoisNome}”.` : `Os nódulos novos desta árvore custam pontos de “${depoisNome}”.`) + avisoDoPool(criado), 'ok', 7000);
 }
 function duplicarArvore(){
   const a = arvoreVisivel(); if(!a) return;
@@ -2257,7 +2303,7 @@ function blocosGlobais(){
       <div><label class="rot">${esc(t.nome)} · custo</label><input class="campo tp-custo" data-tipo="${esc(k)}" type="number" min="0" step="1" value="${t.custo}"></div>
       <div><label class="rot">Tamanho</label><input class="campo tp-raio" data-tipo="${esc(k)}" type="number" min="4" max="60" step="1" value="${t.raio}"></div></div>`).join('')}
     <button class="btn mini" id="btAplicarCustos">Aplicar custo padrão nesta árvore</button>
-    <p class="nota">O custo padrão entra no grau 1, em ${esc(b.pools[0].nome)}.</p>
+    <p class="nota">O custo padrão entra no grau 1, em ${esc((poolPadrao(arvoreVisivel()) || b.pools[0]).nome)} (árvore de Raça usa pontos de “Raça”; de Classe, pontos de “Classe”).</p>
   </details>`;
 }
 
@@ -2285,7 +2331,7 @@ function ligarMestre(){
   on('#eNome', 'change', e=>{ if(!e.target.value.trim()){ n.nome = 'Sem nome'; salvar(); desenhar(); pintarPainel(); } });
   on('#eGlifo', 'input', e=>muda('glifo', 'glifo'+n.id, ()=>{ n.glifo = [...e.target.value].slice(0,2).join(''); }));
   on('#eTipo', 'change', e=>muda('mudar tamanho', null, ()=>{
-    const antigo = bib().tipos[n.tipo], novo = bib().tipos[e.target.value], p0 = bib().pools[0].id;
+    const antigo = bib().tipos[n.tipo], novo = bib().tipos[e.target.value], p0 = poolPadrao(arvoreVisivel()).id;
     const c = n.graus[0].custos;
     const eraPadrao = n.graus.length===1 && Object.keys(c).every(k=>k===p0) && (c[p0]||0)===antigo.custo;
     if(eraPadrao) n.graus[0].custos = novo.custo>0 ? {[p0]:novo.custo} : {};
@@ -2446,7 +2492,7 @@ function ligarGlobais(){
     const ok = await confirmar('Aplicar custo padrão', `Trocar o custo do grau 1 de todos os nódulos de “${esc(a.nome)}” pelo padrão do tamanho? Os demais graus não mudam.`, 'Aplicar');
     if(!ok) return;
     registrar('aplicar custos padrão');
-    const p0 = b.pools[0].id;
+    const p0 = poolPadrao(a).id;
     a.nodes.forEach(n=>{ const c = b.tipos[n.tipo]?.custo ?? 1; n.graus[0].custos = c>0 ? {[p0]:c} : {}; });
     podarTodos(); salvar(); desenhar(); pintarPainel(); aviso('Custos padrão aplicados.', 'ok');
   });
@@ -2583,9 +2629,9 @@ const TIPO_ALIAS = {pequena:'pequeno', notavel:'notavel', media:'notavel', medio
 let rascunhoTexto = '';
 
 function unico(lista){ return lista.length===1 ? lista[0] : null; }
-function custoPadrao(tipo){
+function custoPadrao(tipo, a){
   const b = bib(), c = (b.tipos[tipo] || b.tipos.pequeno).custo;
-  return c>0 ? {[b.pools[0].id]:c} : {};
+  return c>0 ? {[(poolPadrao(a === undefined ? arvoreVisivel() : a) || b.pools[0]).id]:c} : {};
 }
 function interpretarTexto(txt){
   const b = bib(), itens = [], pilha = [];
@@ -2723,6 +2769,7 @@ function aplicarTexto(itens, destino, novaNome, novaCat){
   let a = arvoreVisivel(), paiBase = null;
   if(destino==='nova' || !a){
     a = {id:novoId('a'), nome:novaNome || 'Nova árvore', categoria:novaCat || 'classe', secreta:false, senha:'', nodes:[]};
+    garantirPoolDaCategoria(a.categoria);
     bib().arvores.push(a); ui.arvoreMestre = a.id;
   }else if(destino==='abaixo'){
     const sel = noSelecionadoNa(a); paiBase = sel ? sel.id : null;
@@ -2730,7 +2777,7 @@ function aplicarTexto(itens, destino, novaNome, novaCat){
   const mapa = new Map();
   itens.forEach(it=>{
     const tipo = it.tipo || 'pequeno';
-    const custos = it.custos || custoPadrao(tipo);
+    const custos = it.custos || custoPadrao(tipo, a);
     const n = noNovo(tipo, {
       nome:it.nome, desc:it.desc, natureza:it.natureza, usos:bib().usos.map(u=>u.id).filter(x=>it.usos.includes(x)), glifo:it.glifo, exclusivo:it.exclusivo,
       forma:it.forma || bib().tipos[tipo].forma,

@@ -67,6 +67,18 @@ const { ok, end } = checker();
   ok(await C.evaluate(id => __tc.Store.get('tokens', id).bars.every(b => b.ref), tok.id) && JSON.stringify((await barrasDe(tok.id)).map(x => x.split(':')[0])) === JSON.stringify(daFicha) && (await C.locator('#tk-so-ficha').count()) === 0,
     'um clique deixa o token só com as barras da ficha, e a oferta some: ' + (await barrasDe(tok.id)).join(', '));
 
+  // ---------- dois cliques no token ligado abrem a ficha dele ----------
+  await M.locator('#tab-fichas').click(); await w(500);
+  await F.locator('#btnNew').click(); await w(500);                                   // (uma segunda ficha, que fica selecionada na aba Fichas)
+  ok(await ate(async () => (await M.evaluate(() => TC.dados.col('personagens').todas().length)) === 2 && (await F.locator('#f_nome').inputValue()) !== 'Dain X'), '(a aba Fichas está em outra ficha)');
+  await M.locator('#tab-cenas').click(); await w(600);
+  const centro = await C.evaluate(id => { const u = __tc, tk = u.Store.get('tokens', id), sc = u.Store.scene(), r = u.Render.cv.getBoundingClientRect(); const [x, y] = u.Render.toScreen(tk.x + tk.size * sc.cell / 2, tk.y + tk.size * sc.cell / 2); return [r.left + x, r.top + y]; }, tok.id);
+  const moldura = await (await C.frameElement()).boundingBox();
+  await M.mouse.dblclick(moldura.x + centro[0], moldura.y + centro[1]);
+  ok(await ate(async () => (await M.locator('#tab-fichas').getAttribute('aria-selected')) === 'true' && (await F.locator('#f_nome').inputValue()) === 'Dain X', 8000), 'dois cliques no token ligado: o site vai para a aba Fichas, já na ficha dele');
+  await M.locator('#tab-cenas').click(); await w(600);
+  ok(await C.evaluate(id => __tc.App.sel.length === 1 && __tc.App.sel[0].id === id, tok.id), 'de volta à cena, o token continua selecionado');
+
   // ---------- dano no mapa → ficha ----------
   await C.evaluate(([id]) => { const u = __tc, tk = u.Store.get('tokens', id), i = tk.bars.findIndex(b => b.n === 'HP'); u.Act.barSet(tk, i, tk.bars[i].v - 30); }, [tok.id]); await w(300);
   ok(await ate(async () => { const l = await linha(); return l && l.estado && l.estado.rec && l.estado.rec[idHP] === hpMax - 30; }), 'dano no token vai para a ficha (HP atual = ' + (hpMax - 30) + ')');
@@ -138,7 +150,13 @@ const { ok, end } = checker();
   ok(solto.char === null && solto.refs === 0 && solto.hp, 'desligado, as barras ficam no token como barras comuns: ' + JSON.stringify(solto));
   ok(await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return !!tk.img && tk.imgChar === false; }, tok.id), 'e a imagem fica com o token');
 
+  // ---------- apagar a mesa leva os arquivos dela ----------
+  const existe = async url => { try { const r = await M.evaluate(async u => (await fetch(u + '?conferir=' + Date.now() + Math.random(), { cache: 'no-store' })).status, url); return r; } catch (e) { return -1; } };
+  const antesDeApagar = await existe(urlImg);
   await apagarMesaTela(M, nomeMesa);
+  let depoisDeApagar = null;
+  for (let i = 0; i < 10; i++) { depoisDeApagar = await existe(urlImg); if (depoisDeApagar !== 200) break; await w(1000); }
+  ok(antesDeApagar === 200 && depoisDeApagar >= 400, 'apagada a mesa, a imagem que estava guardada nela deixa de existir no armazenamento (antes ' + antesDeApagar + ', depois ' + depoisDeApagar + ')');
   const fora = t.errs.filter(e => !/status of (400|401|409)/.test(e));
   if (fora.length) console.log('CONSOLE:\n' + fora.join('\n'));
   ok(fora.length === 0, 'sem erros inesperados no console');

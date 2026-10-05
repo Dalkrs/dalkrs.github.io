@@ -27,7 +27,7 @@ const FichasExtras = (() => {
   const iniciais = nome => { const p = String(nome || '').trim().split(/\s+/).filter(Boolean); return ((p[0] ? Array.from(p[0])[0] : '?') + (p[1] ? Array.from(p[1])[0] : '')).toUpperCase(); };
   // só aceita como imagem o que é imagem: endereço https ou a imagem embutida que esta página mesma gerou
   const imagemOk = u => typeof u === 'string' && (/^https:\/\//.test(u) || /^data:image\/(png|jpeg|webp);base64,/.test(u));
-  function htmlRetrato(pc) {
+  function htmlRetrato(pc, embaixo) {
     const tem = imagemOk(pc.img);
     return `<div class="retrato">
       <button type="button" class="quadro" id="btnImg" title="${tem ? 'Trocar a imagem' : 'Pôr uma imagem do personagem'}" aria-label="${tem ? 'Trocar a imagem do personagem' : 'Pôr uma imagem do personagem'}">
@@ -38,6 +38,7 @@ const FichasExtras = (() => {
         ${tem ? '<button type="button" class="mini danger" id="btnImgX" title="Tirar a imagem" aria-label="Tirar a imagem">×</button>' : ''}
       </div>
       <input type="file" id="imgIn" accept="image/png,image/jpeg,image/webp" hidden>
+      ${embaixo || ''}
     </div>`;
   }
   const miniatura = p => (imagemOk(p.img) ? `<img class="avmini" src="${esc(p.img)}" alt="" loading="lazy">` : `<span class="avmini semimg" aria-hidden="true">${esc(iniciais(p.nome))}</span>`);
@@ -101,12 +102,34 @@ const FichasExtras = (() => {
   const laprosDe = pc => { const v = pc.estado && pc.estado.lapros; return Number.isFinite(+v) && v !== null && v !== '' ? Math.max(0, inteiro(v)) : 0; };
   function htmlLapros(pc) {
     return `<label class="f lapros"><span class="eyebrow">Lapros</span>${MOEDA}
-      <input type="number" id="f_lapros" min="0" step="1" value="${laprosDe(pc)}" title="As moedas do personagem"></label>`;
+      <input type="text" inputmode="numeric" id="f_lapros" autocomplete="off" value="${laprosDe(pc)}" title="As moedas do personagem. Digite o valor, ou +30 e −50 para somar e subtrair do que ele tem."></label>`;
+  }
+  /* O que foi digitado no campo de Lapros: um valor ("120") troca o total; com sinal na frente ("+30", "-50", "−50")
+     soma ou subtrai do que o personagem tem. Nunca fica abaixo de zero. Devolve { total, delta } ou null (não é número). */
+  function lerLapros(texto, atual) {
+    const t = String(texto || '').replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(',', '.');
+    const m = /^([+-]?)(\d+(?:\.\d+)?)$/.exec(t);
+    if (!m) return null;
+    const n = inteiro(m[2]);
+    if (!m[1]) return { total: Math.max(0, n), delta: null };
+    const delta = m[1] === '-' ? -n : n;
+    return { total: Math.max(0, atual + delta), delta };
   }
   function ligarLapros(host, pc) {
     const i = q(host, '#f_lapros'); if (!i) return;
-    i.oninput = () => { const est = pc.estado || (pc.estado = {}); est.lapros = Math.max(0, inteiro(i.value)); save(); };
-    i.onchange = () => { i.value = laprosDe(pc); };
+    const valer = () => {
+      const antes = laprosDe(pc), r = lerLapros(i.value, antes);
+      if (r && r.total !== antes) {
+        const est = pc.estado || (pc.estado = {}); est.lapros = r.total; save();
+        if (r.delta != null) aviso('Lapros: ' + antes + (r.delta < 0 ? ' − ' : ' + ') + Math.abs(r.delta) + ' = ' + r.total + '.', 'Desfazer', () => { (pc.estado || (pc.estado = {})).lapros = antes; save(); i.value = laprosDe(pc); });
+      }
+      i.value = laprosDe(pc);
+    };
+    // Um valor sem sinal vale a cada tecla, como sempre foi. Com sinal na frente, só ao sair do campo ou com Enter:
+    // "−5" a caminho de "−50" não pode valer no meio do caminho.
+    i.oninput = () => { const t = i.value.trim(); if (/^\d+$/.test(t)) { (pc.estado || (pc.estado = {})).lapros = Math.max(0, inteiro(t)); save(); } };
+    i.onchange = valer;
+    i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } };
   }
 
   /* ======================= sobrevida de um recurso ======================= */
@@ -174,6 +197,7 @@ const FichasExtras = (() => {
   }
   function htmlBotaoModo(pc) {
     if (!podeTrocarModo()) return '';
+    if (ehLivre(pc) && FichasMesa.deJogador(pc)) return '';        // ficha de jogador não usa a tabela de tiers
     return ehLivre(pc)
       ? '<button class="mini" data-modo="tabela" title="Volta a calcular os atributos pelos tiers e percentuais da tabela de levels. Os pontos distribuídos ficam guardados.">Usar a tabela</button>'
       : '<button class="mini" data-modo="livre" title="O dono da ficha distribui os pontos do level como quiser (ficha de jogador). Os valores atuais são mantidos como ponto de partida.">Distribuição livre</button>';
@@ -348,7 +372,7 @@ const FichasExtras = (() => {
   return {
     aviso, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
-    htmlLapros, ligarLapros, laprosDe,
+    htmlLapros, ligarLapros, laprosDe, lerLapros,
     htmlEfeitoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,

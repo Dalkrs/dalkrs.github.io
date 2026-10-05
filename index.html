@@ -114,6 +114,7 @@ button { cursor: pointer; }
 .rol .vd { margin-top: 3px; font-weight: 600; font-size: 13px; }
 .rol .vd.sim { color: var(--ok); }
 .rol .vd.nao { color: var(--danger); }
+.rol .vd.emp { color: var(--fg-2); }
 .rol.secreta { background: var(--secret-soft); border-color: var(--secret); border-left-color: var(--secret); }
 .rol .sg { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--secret); font-size: 12.5px; font-weight: 600; }
 .it .acts { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
@@ -259,12 +260,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=10"></script>
+<script src="tc/tc.js?v=11"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.04-4';
+  const VERSAO = '2026.10.04-5';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -509,6 +510,10 @@ dialog::backdrop { background: var(--scrim); }
       menu.append(h('h3', { text: 'Nenhuma mesa aberta' }), h('div', { class: 'sub', text: 'Sem mesa, cada sistema guarda os dados só neste navegador.' }));
     }
     const sec = h('div', { class: 'sec' });
+    if (a && a.papel === 'mestre') {
+      sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-renomear', text: 'Renomear a mesa…', onclick: () => { fecharMenu(); janelaRenomear(a); } }));
+      sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-limpar', text: 'Limpar a mesa ao vivo…', onclick: () => { fecharMenu(); confirmar('Limpar a mesa ao vivo?', 'A conversa e as rolagens somem do painel de todos. Dá para desfazer logo em seguida.', 'Limpar', limparVivo); } }));
+    }
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
     if (a && a.papel === 'jogador') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
@@ -602,12 +607,39 @@ dialog::backdrop { background: var(--scrim); }
       for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { if (mesas.atual) await assentar(); await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + papelPt(m.papel) })));
     } catch (e) { lista.replaceChildren(h('div', { class: 'nt', text: e.message })); }
   }
+  // O mestre troca o nome da mesa (os outros veem o nome novo em instantes).
+  function janelaRenomear(a) {
+    const campo = h('input', { id: 'r-nome', maxlength: 80, autocomplete: 'off', required: true });
+    campo.value = a.nome;
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', text: 'Renomear' });
+    const f = h('form', { class: 'dl' }, h('h2', { text: 'Renomear a mesa' }),
+      h('label', {}, 'Nome da mesa', campo), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => {
+      const antes = a.nome, novo = campo.value.trim();
+      if (!novo) throw new Error('Dê um nome à mesa.');
+      if (novo !== antes) {
+        const ficou = await mesas.renomear(novo);
+        toast('A mesa agora se chama ' + ficou + '.', 'Desfazer', async () => { try { await mesas.renomear(antes); toast('A mesa voltou a se chamar ' + antes + '.'); } catch (e) { toast(e.message); } });
+      }
+      fecharJanela();
+    });
+    abrirJanela(f); campo.focus(); campo.select();
+  }
+  // O mestre limpa o painel da mesa ao vivo inteiro, para todos; quem limpou pode desfazer em seguida.
+  async function limparVivo() {
+    const r = await aoVivo.limpar();
+    if (!r.n) { toast('A mesa ao vivo já estava vazia.'); return; }
+    toast('Mesa ao vivo limpa: ' + r.n + (r.n === 1 ? ' linha saiu' : ' linhas saíram') + ' do painel de todos.', 'Desfazer',
+      async () => { try { const n = await r.desfazer(); toast(n ? (n === 1 ? 'A linha voltou.' : 'As ' + n + ' linhas voltaram.') : 'Não havia o que trazer de volta.'); } catch (e) { toast(e.message); } }, 20000);
+  }
   function janelaApagar(a) {
     const campo = h('input', { id: 'a-nome', autocomplete: 'off', required: true });
     const err = h('div', { class: 'err', role: 'alert' });
     const ok = h('button', { type: 'submit', class: 'btn per', text: 'Apagar a mesa' });
     const f = h('form', { class: 'dl' }, h('h2', { text: 'Apagar a mesa?' }),
-      h('p', { text: 'Isto apaga a mesa ' + a.nome + ' para todos: participantes, rolagens e conversa. Não dá para desfazer.' }),
+      h('p', { text: 'Isto apaga a mesa ' + a.nome + ' para todos: participantes, fichas, cenas, imagens, rolagens e conversa. Não dá para desfazer.' }),
       h('label', {}, 'Para confirmar, digite o nome da mesa', campo), err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => {
@@ -656,7 +688,7 @@ dialog::backdrop { background: var(--scrim); }
         h('div', { class: 'it-h' }, retrato(d), h('b', { text: l.autor_nome }), comoQuem(d), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
         h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
-        d.veredito ? h('div', { class: 'vd ' + (d.passou ? 'sim' : 'nao'), text: d.veredito }) : null);
+        d.veredito ? h('div', { class: 'vd ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null);
       if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
     } else if (l.tipo === 'acao') {
       el = h('li', { class: 'it acao', 'data-id': l.id, title: d.como ? l.autor_nome + ', como ' + d.como : null }, retrato(d), h('span', { text: '✦ ' + (d.como || l.autor_nome) + ' ' + (d.texto || '') }));

@@ -455,8 +455,16 @@
   function abaDiario() {
     const rg = camp.regras;
     const regra = (tipo, k, rotulo, min, max) => campoNum(`rg-${tipo}-${k}`, rg[tipo][k], rotulo, v => mudar('regras do descanso', c => { c.regras[tipo][k] = v; }), min, max);
+    // O mestre recomeça o diário (um grupo novo, uma campanha nova): confirma antes, e dá para desfazer depois.
+    const limparDiario = () => {
+      const n = camp.diario.length;
+      abrirJanela('Limpar o Diário?', h('p', { text: (n === 1 ? 'A anotação do Diário sai' : 'As ' + n + ' anotações do Diário saem') + ' para todos. As provisões, a estrutura e as fichas não mudam. Dá para desfazer logo em seguida.' }),
+        [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }),
+          h('button', { type: 'button', class: 'btn per', id: 'di-limpar-ok', text: 'Limpar o Diário', onclick: () => { fecharJanela(); if (mudar('limpar o Diário', c => { c.diario = []; })) toast(n === 1 ? 'Diário limpo: 1 anotação saiu.' : 'Diário limpo: ' + n + ' anotações saíram.', 'Desfazer', desfazer, 15000); } })]);
+    };
     return [
-      h('h3', { text: 'Diário' }),
+      h('div', { class: 'lin', style: 'display:flex;gap:8px;align-items:baseline' }, h('h3', { style: 'flex:1', text: 'Diário' }),
+        mestre() && camp.diario.length ? h('button', { type: 'button', class: 'btn sm', id: 'di-limpar', text: 'Limpar o Diário…', onclick: limparDiario }) : null),
       h('p', { class: 'sub', text: 'Os descansos e os momentos do acampamento.' }),
       mestre() ? h('form', { class: 'lin', style: 'display:flex;gap:8px', onsubmit: e => { e.preventDefault(); const c0 = $('di-txt'), v = c0.value.trim(); if (!v) return; focoDepois = 'di-txt'; mudar('anotar no diário', c => { c.diario.unshift({ id: N.novoId('di'), t: Date.now(), texto: v }); }); } },
         h('input', { class: 'in', id: 'di-txt', maxlength: 600, placeholder: 'Anotar algo que aconteceu…', 'aria-label': 'Anotação para o diário', autocomplete: 'off' }), h('button', { type: 'submit', class: 'btn', text: 'Anotar' })) : null,

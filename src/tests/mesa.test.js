@@ -1,5 +1,5 @@
 // A mesa ao vivo, de ponta a ponta, no projeto real: o mestre e um jogador, cada um no seu aparelho.
-const { start, checker } = require('./lib');
+const { start, checker, espiarBanco } = require('./lib');
 const { contas, entrar } = require('./contas');
 const { ok, end } = checker();
 (async () => {
@@ -8,7 +8,8 @@ const { ok, end } = checker();
   // garante as contas (numa página em branco) e sai, para o teste entrar pela tela
   { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await d.ctx.close(); }
 
-  const M = (await t.device({ name: 'mestre' })).page, J = (await t.device({ name: 'jogador', w: 1200, h: 800 })).page;
+  const dM = await t.device({ name: 'mestre' }), M = dM.page, J = (await t.device({ name: 'jogador', w: 1200, h: 800 })).page;
+  await espiarBanco(dM.ctx);                                 // (para conferir o banco por fora do programa)
   const w = (ms, p) => (p || M).waitForTimeout(ms);
   const feed = p => p.locator('#feed');
   const espera = async (p, texto, ms = 9000) => { try { await feed(p).getByText(texto, { exact: false }).first().waitFor({ timeout: ms }); return true; } catch (e) { return false; } };
@@ -132,6 +133,43 @@ const { ok, end } = checker();
   ok(await espera(M, 'olá, mesa!'), 'desfazer devolve a fala');
   await J.screenshot({ path: 'shot-mesa-jogador.png' });
 
+  // ---------- o mestre renomeia a mesa ----------
+  const naBarra = (p, nome, ms = 12000) => p.waitForFunction(n => { const e = document.querySelector('#btnConta .nm'); return !!e && e.textContent.trim() === n; }, nome, { timeout: ms }).then(() => true, () => false);
+  await J.locator('#btnConta').click(); await w(300, J);
+  ok((await J.locator('#menu').isVisible()) && (await J.locator('#mn-renomear').count()) === 0 && (await J.locator('#mn-limpar').count()) === 0, 'o jogador não tem "Renomear a mesa" nem "Limpar a mesa ao vivo" no menu');
+  await J.locator('#btnConta').click(); await w(200, J);
+  const nomeNovo = nomeMesa + ' II';
+  await M.locator('#btnConta').click(); await w(300);
+  await M.locator('#mn-renomear').click(); await w(300);
+  ok((await M.locator('#r-nome').inputValue()) === nomeMesa, 'renomear a mesa: a janela abre com o nome atual');
+  await M.locator('#r-nome').fill(nomeNovo); await M.locator('dialog .btn.pri').click();
+  ok(await naBarra(M, nomeNovo), 'o nome novo aparece na barra do mestre');
+  await J.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));      // (o jogador confere a mesa ao voltar para a página; parado nela, em até meio minuto)
+  ok(await naBarra(J, nomeNovo, 20000), 'e na do jogador, sem recarregar');
+  await M.locator('.toast button', { hasText: 'Desfazer' }).last().click();
+  ok(await naBarra(M, nomeMesa), '"Desfazer" devolve o nome de antes');
+
+  // ---------- o mestre limpa a mesa ao vivo inteira, e desfaz ----------
+  const vazio = (p, ms = 15000) => p.waitForFunction(() => document.querySelectorAll('#feed .it').length === 0, null, { timeout: ms }).then(() => true, () => false);
+  const linhasAntes = await feed(M).locator('.it').count();
+  await M.locator('#msg').fill('some antes da limpeza'); await M.locator('#msg').press('Enter');
+  ok(await espera(J, 'some antes da limpeza'), '(uma fala do mestre chega ao jogador)');
+  await feed(M).locator('.fala', { hasText: 'some antes da limpeza' }).hover(); await feed(M).locator('.fala', { hasText: 'some antes da limpeza' }).locator('.mini').click();
+  ok(await some(J, 'some antes da limpeza'), '(…e o mestre a apaga, sozinha, antes de limpar o painel)');
+  await M.locator('#btnConta').click(); await w(300);
+  await M.locator('#mn-limpar').click(); await w(300);
+  ok((await M.locator('dialog h2').innerText()).includes('Limpar a mesa ao vivo'), 'limpar a mesa ao vivo pede confirmação');
+  await M.locator('dialog .btn.per').click();
+  ok(linhasAntes >= 3 && await vazio(M), 'confirmado, o painel do mestre fica vazio (tinha ' + linhasAntes + ' linhas)');
+  ok(await vazio(J), 'e o do jogador também, sem recarregar');
+  const noBanco = await M.evaluate(async () => { const r = await window.__sb.from('registro').select('id', { count: 'exact', head: true }).eq('mesa_id', TC.mesas.atual.id).eq('apagado', false); return r.error ? -1 : r.count; });
+  ok(noBanco === 0, 'no banco não sobra linha à mostra (quem recarregar também vê o painel vazio): ' + noBanco);
+  await M.locator('.toast button', { hasText: 'Desfazer' }).last().click();
+  ok(await espera(M, 'olá, mesa!') && await espera(J, 'olá, mesa!', 15000), '"Desfazer" traz as linhas de volta, para os dois');
+  await w(1500);
+  ok((await feed(M).locator('.it').count()) === linhasAntes && (await feed(M).getByText('some antes da limpeza').count()) === 0,
+    'voltam exatamente as linhas que a limpeza tirou (' + (await feed(M).locator('.it').count()) + ' de ' + linhasAntes + '); a que já tinha sido apagada antes não volta');
+
   // ---------- fechar a mesa com uma leitura no meio do caminho não quebra nada ----------
   const errosAntes = t.errs.length;
   await J.evaluate(async () => {
@@ -207,7 +245,7 @@ const { ok, end } = checker();
   await M.locator('#btnConta').click(); await w(200); await M.locator('#menu .lk', { hasText: 'Sair da conta' }).click(); await w(1500);
   ok((await M.locator('#btnConta').innerText()).trim() === 'Entrar', 'sair da conta volta ao começo');
 
-  if (t.errs.length) console.log('CONSOLE:\n' + t.errs.join('\n'));
+  if (t.errs.length) console.log('CONSOLE:\n' + t.errs.join('\n') + '\nRESPOSTAS COM ERRO:\n' + t.ruins.join('\n'));
   ok(t.errs.filter(e => !/status of (400|401|409)/.test(e)).length === 0, 'sem erros inesperados no console');
   await t.close();
   end();

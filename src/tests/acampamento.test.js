@@ -137,6 +137,17 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     ok(await A(() => __acamp.camp.regras.curto.rec === 25), '"Voltar às regras padrão" desfaz as mudanças');
     await P.locator('#di-txt').fill('Lia ensinou uma canção antiga.'); await P.locator('#di-txt').press('Enter'); await w();
     ok((await P.locator('#diario .dl').first().innerText()).includes('canção antiga'), 'dá para anotar no diário');
+    // limpar o Diário inteiro: pede confirmação, e dá para desfazer
+    await P.locator('#di-txt').fill('Choveu a noite toda.'); await P.locator('#di-txt').press('Enter'); await w();
+    const nDiario = await A(() => __acamp.camp.diario.length);
+    await P.locator('#di-limpar').click(); await w();
+    ok(nDiario >= 2 && (await P.locator('#dlg h2').innerText()) === 'Limpar o Diário?' && (await P.locator('#dlg .dl-b').innerText()).includes(nDiario + ' anotações'), 'limpar o Diário pede confirmação, dizendo quantas anotações saem');
+    await P.locator('#dlg .btn', { hasText: 'Cancelar' }).click(); await w();
+    ok(await A(() => __acamp.camp.diario.length) === nDiario, 'cancelando, nada muda');
+    await P.locator('#di-limpar').click(); await w(); await P.locator('#di-limpar-ok').click(); await w();
+    ok(await A(() => __acamp.camp.diario.length) === 0 && (await P.locator('#diario').innerText()).includes('Nada anotado ainda') && await P.locator('#di-limpar').count() === 0, 'confirmando, o Diário fica vazio (e o botão some: não há o que limpar)');
+    await P.locator('.toast button', { hasText: 'Desfazer' }).click(); await w();
+    ok(await A(() => __acamp.camp.diario.length) === nDiario && (await P.locator('#diario .dl').first().innerText()).includes('Choveu a noite toda'), '"Desfazer" traz as anotações de volta');
 
     // ---------- nome, hora e fundo ----------
     await P.locator('#nome').fill('Clareira do Vau'); await P.locator('#nome').press('Enter'); await w();
@@ -183,7 +194,7 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
 
     // ---------- tudo continua lá ao recarregar ----------
     await P.reload({ waitUntil: 'load' }); await w(900);
-    ok(await A(() => __acamp.camp.nome === 'Clareira do Vau' && __acamp.camp.presentes.length === 3 && __acamp.camp.melhorias.length === 1 && __acamp.camp.equipamentos[0].qtd === 4 && __acamp.camp.diario.length === 1), 'recarregando, o acampamento continua como estava');
+    ok(await A(() => __acamp.camp.nome === 'Clareira do Vau' && __acamp.camp.presentes.length === 3 && __acamp.camp.melhorias.length === 1 && __acamp.camp.equipamentos[0].qtd === 4 && __acamp.camp.diario.length === 2), 'recarregando, o acampamento continua como estava (com as duas anotações do Diário)');
     await P.setViewportSize({ width: 390, height: 780 }); await w(400);
     ok(await P.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1) && await P.locator('#roda .pers').first().isVisible(), 'no celular a página não rola para o lado e a roda continua à vista');
   }

@@ -252,6 +252,17 @@ const ICONS = {
   c_maldicao: { d: 'M15.500 3.500a9 9 0 1 0 5 13.600A7.500 7.500 0 0 1 15.500 3.500z', fill: true },
   c_foco: 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 12m-2.500 0a2.500 2.500 0 1 0 5 0a2.500 2.500 0 1 0-5 0',
   c_morto: 'M6 6l12 12M18 6L6 18',
+  c_hemorragia: { d: 'M9 3.500c2.600 3.400 4.400 5.700 4.400 8.100a4.400 4.400 0 0 1-8.800 0c0-2.400 1.800-4.700 4.400-8.100zM17 12c1.600 2.100 2.700 3.500 2.700 5a2.700 2.700 0 0 1-5.400 0c0-1.500 1.100-2.900 2.700-5z', fill: true },
+  c_molhado: 'M3 8.500c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14.500c2-2 4-2 6 0s4 2 6 0 4-2 6 0',
+  c_oleo: 'M12 3.500c3.200 4.200 5.500 7 5.500 10a5.500 5.500 0 0 1-11 0c0-3 2.300-5.800 5.500-10zM9.300 13.800a2.800 2.800 0 0 0 2.500 2.600',
+  c_emaranhado: 'M4 8c4-4 12-4 16 0M4 16c4 4 12 4 16 0M8 4c-3 5-3 11 0 16M16 4c3 5 3 11 0 16',
+  c_inconsciente: 'M5 5.500h6l-6 7h6M13.500 12h5l-5 6.500h5',
+  c_paranoico: 'M2.500 12s3.500-6.500 9.500-6.500 9.500 6.500 9.500 6.500-3.500 6.500-9.500 6.500S2.500 12 2.500 12zM12 12m-2.600 0a2.600 2.600 0 1 0 5.200 0a2.600 2.600 0 1 0-5.200 0',
+  c_fraco: 'M4 7l6 6 4-4 6 7M20 16v-4.500M20 16h-4.500',
+  c_exausto: 'M3.500 8.500h14.500v7H3.500zM20.500 10.800v2.400M6.500 11v2',
+  c_inspirado: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.600 10.800c.6.5 1 1.200 1 2v.2h5.200v-.2c0-.8.4-1.500 1-2A6 6 0 0 0 12 3z',
+  c_regen: 'M20 12a8 8 0 0 1-14.200 5M4 12a8 8 0 0 1 14.200-5M18.200 3.500V7h-3.500M5.800 20.500V17h3.500',
+  c_tratado: { d: 'M9.500 4h5v5.500H20v5h-5.500V20h-5v-5.500H4v-5h5.500z', fill: true },
 };
 
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -325,20 +336,33 @@ const clampIni = v => clamp(Math.round(Number(v)) || 0, -99, 99);
 const PLAYER_COLORS = ['#4fb8e0', '#ee8a4a', '#8fd05a', '#c084fc', '#ff7396', '#ffd25e'];
 const TOKEN_COLORS = ['#7c8fb8', '#b87c7c', '#7cb88c', '#b8a77c', '#9b7cb8', '#7cb4b8', '#b88d7c', '#8a98a8'];
 
+// As condições são só marcadores (com contador e duração opcionais): nenhuma muda barras nem tira outra sozinha.
+// A ordem é a dos painéis: as parecidas ficam juntas (Sangrando e Hemorragia, o grau acima dela).
 const CONDS = [
   { id: 'veneno', n: 'Envenenado', c: '#4ea84a', i: 'c_veneno' },
   { id: 'sangue', n: 'Sangrando', c: '#c93a3a', i: 'c_sangue' },
+  { id: 'hemorragia', n: 'Hemorragia', c: '#8f1d1d', i: 'c_hemorragia' },
   { id: 'fogo', n: 'Queimando', c: '#e8792b', i: 'c_fogo' },
   { id: 'gelo', n: 'Congelado', c: '#5fb6e0', i: 'c_gelo' },
+  { id: 'molhado', n: 'Molhado', c: '#3b8fd1', i: 'c_molhado' },
+  { id: 'oleo', n: 'Óleo', c: '#6b5b2a', i: 'c_oleo' },
   { id: 'atordoado', n: 'Atordoado', c: '#d9a821', i: 'c_atordoado' },
   { id: 'paralisia', n: 'Paralisado', c: '#9a9f2e', i: 'c_paralisia' },
+  { id: 'emaranhado', n: 'Emaranhado', c: '#5a8f3c', i: 'c_emaranhado' },
   { id: 'caido', n: 'Caído', c: '#8a6a4c', i: 'c_caido' },
+  { id: 'inconsciente', n: 'Inconsciente', c: '#4b5568', i: 'c_inconsciente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego' },
   { id: 'silencio', n: 'Silenciado', c: '#8b62c9', i: 'c_silencio' },
   { id: 'medo', n: 'Amedrontado', c: '#b0559f', i: 'c_medo' },
+  { id: 'paranoico', n: 'Paranoico', c: '#a13d63', i: 'c_paranoico' },
+  { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco' },
+  { id: 'exausto', n: 'Exausto', c: '#7a6a8f', i: 'c_exausto' },
   { id: 'invisivel', n: 'Invisível', c: '#6f8aa6', i: 'c_invisivel' },
   { id: 'escudo', n: 'Protegido', c: '#3f7fc0', i: 'c_escudo' },
   { id: 'bencao', n: 'Abençoado', c: '#c9a227', i: 'c_bencao' },
+  { id: 'inspirado', n: 'Inspirado', c: '#e6a700', i: 'c_inspirado' },
+  { id: 'regen', n: 'Regeneração', c: '#58b368', i: 'c_regen' },
+  { id: 'tratado', n: 'Tratado', c: '#d06a5a', i: 'c_tratado' },
   { id: 'maldicao', n: 'Amaldiçoado', c: '#5b3f8f', i: 'c_maldicao' },
   { id: 'foco', n: 'Concentrando', c: '#2f9d93', i: 'c_foco' },
   { id: 'morto', n: 'Morto', c: '#1c1c22', i: 'c_morto' },

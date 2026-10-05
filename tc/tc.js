@@ -164,8 +164,45 @@
     if (error) throw falha(error);
     await recarregarMembros();
   };
+  mesas.renomear = async nome => {       // o mestre troca o nome da mesa; devolve o nome que ficou
+    const a = mesas.atual; if (!a) return null;
+    const novo = String(nome || '').trim().slice(0, 80);
+    if (!novo) throw new Error('Dê um nome à mesa.');
+    const { data, error } = await cliente().from('mesas').update({ nome: novo }).eq('id', a.id).select('nome').maybeSingle();
+    if (error || !data) throw falha(error, 'Só o mestre pode renomear a mesa.');
+    a.nome = data.nome; mesas.emit('muda', a);
+    return data.nome;
+  };
+  // O nome da mesa pode ter sido trocado pelo mestre em outro aparelho: quem está com ela aberta acompanha.
+  async function conferirNome() {
+    const a = mesas.atual; if (!a) return;
+    try {
+      const { data } = await cliente().from('mesas').select('nome').eq('id', a.id).maybeSingle();
+      if (data && mesas.atual === a && data.nome && data.nome !== a.nome) { a.nome = data.nome; mesas.emit('muda', a); }
+    } catch (e) { /* sem rede: a próxima volta confere */ }
+  }
+  /* Os arquivos da mesa (imagens de mapas, tokens e retratos) ficam numa pasta com o id dela. Apagar a mesa leva a
+     pasta junto — antes de apagar a mesa, porque depois dela ninguém mais tem permissão sobre a pasta. */
+  async function apagarArquivos(id) {
+    const balde = cliente().storage.from('mesas');
+    const fila = [id], vistas = new Set(fila);            // a pasta da mesa e as de dentro (os retratos dos jogadores: <mesa>/j/<jogador>/)
+    while (fila.length) {
+      const pasta = fila.shift();
+      for (let volta = 0; volta < 100; volta++) {
+        const { data, error } = await balde.list(pasta, { limit: 100 });
+        if (error || !data || !data.length) break;
+        for (const x of data) if (x && x.name && !x.id && !vistas.has(pasta + '/' + x.name)) { vistas.add(pasta + '/' + x.name); fila.push(pasta + '/' + x.name); }     // (pasta não tem id)
+        const nomes = data.filter(x => x && x.name && x.id).map(x => pasta + '/' + x.name);
+        if (!nomes.length) break;
+        const r = await balde.remove(nomes);
+        if (r.error || !(r.data || []).length) break;     // nada saiu: não insiste
+      }
+    }
+  }
   mesas.apagar = async () => {          // o dono apaga a mesa inteira
     const a = mesas.atual; if (!a) return;
+    if (!a.dono) throw new Error('Só quem criou a mesa pode apagá-la.');
+    try { await apagarArquivos(a.id); } catch (e) { /* os arquivos que sobrarem não impedem de apagar a mesa */ }
     const { data, error } = await cliente().from('mesas').delete().eq('id', a.id).select('id');
     if (error || !data || !data.length) throw falha(error, 'Só quem criou a mesa pode apagá-la.');
     mesas.esquecer();
@@ -219,24 +256,35 @@
       const { data } = await cliente().rpc('marcar_presenca', { p_mesa: mesaId });
       if (data) folga = Date.parse(data) - Date.now();
     } catch (e) { /* idem */ }
-    recarregarMembros();
+    recarregarMembros(); conferirNome();
+  }
+  // As últimas linhas do painel, lidas do banco.
+  async function carregarItens(id) {
+    try {
+      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).eq('apagado', false).order('criado_em', { ascending: false }).limit(200);
+      if (error) throw error;
+      if (mesaId !== id) return;
+      for (const l of (data || []).reverse()) aplicar(l, true);
+      const topo = await cliente().from('registro').select('rev').eq('mesa_id', id).order('rev', { ascending: false }).limit(1);
+      if (topo.data && topo.data[0]) maxRev = Math.max(maxRev, topo.data[0].rev);
+    } catch (e) { /* começa vazio; a leitura periódica completa depois */ }
   }
   aoVivo.iniciar = async id => {
     aoVivo.parar();
     mesaId = id; maxRev = 0; aoVivo.itens = [];
     aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1';
-    try {
-      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).eq('apagado', false).order('criado_em', { ascending: false }).limit(200);
-      if (error) throw error;
-      for (const l of (data || []).reverse()) aplicar(l, true);
-      const topo = await cliente().from('registro').select('rev').eq('mesa_id', id).order('rev', { ascending: false }).limit(1);
-      if (topo.data && topo.data[0]) maxRev = Math.max(maxRev, topo.data[0].rev);
-    } catch (e) { /* começa vazio; a leitura periódica completa depois */ }
+    await carregarItens(id);
     if (mesaId !== id) return;
     aoVivo.emit('reinicio');
     try {
       canal = cliente().channel('mesa-' + id)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) aplicar(p.new); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => {
+          if (!p.new || !p.new.id) return;
+          // (uma linha grande que só mudou de estado — revelada, desapagada — chega sem o conteúdo: é lida do banco)
+          if (!p.new.apagado && (p.new.dados === undefined || (p.errors && p.errors.length))) { buscarNovos(); return; }
+          aplicar(p.new);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mesas', filter: 'id=eq.' + id }, () => conferirNome())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => doTempoReal('personagens', p))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => doTempoReal('documentos', p))
@@ -304,6 +352,27 @@
     const { data } = await cliente().from('registro').update({ apagado: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
     if (data) aplicar(data);
   };
+  /* O mestre limpa o painel inteiro — conversa e rolagens —, para todos. As linhas ficam marcadas como apagadas (as
+     antigas também, para não voltarem ao recarregar). Devolve { n, desfazer }: desfazer traz de volta exatamente as
+     linhas desta limpeza (todas levam a mesma hora de mudança), e não as que alguém já tinha apagado antes. */
+  aoVivo.limpar = async () => {
+    const a = mesas.atual;
+    if (!a || a.papel !== 'mestre') throw new Error('Só o mestre limpa a mesa ao vivo.');
+    const { data, error, count } = await cliente().from('registro').update({ apagado: true }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', false).select('id,atualizado_em');
+    if (error) throw falha(error, 'Não deu para limpar agora. Tente de novo.');
+    const quando = data && data[0] ? data[0].atualizado_em : null, n = count == null ? (data || []).length : count;
+    if (mesaId === a.id) { aoVivo.itens = []; aoVivo.emit('reinicio'); }
+    return {
+      n,
+      desfazer: async () => {
+        if (!quando) return 0;
+        const r = await cliente().from('registro').update({ apagado: false }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', true).eq('atualizado_em', quando);
+        if (r.error) throw falha(r.error, 'Não deu para desfazer agora.');
+        if (mesaId === a.id) { await carregarItens(a.id); if (mesaId === a.id) aoVivo.emit('reinicio'); }
+        return r.count || 0;
+      },
+    };
+  };
   aoVivo.definirSegredo = v => {
     aoVivo.segredo = !!v && !!mesas.atual && mesas.atual.papel === 'mestre';
     if (mesas.atual) guarda.gravar('tinycats:segredo:' + mesas.atual.id, aoVivo.segredo ? '1' : null);
@@ -349,7 +418,9 @@
       opt.quem = null;                       // o Rolador é a mesa de dados do mestre: sai sem personagem
     } else if (origem === 'ficha') {
       opt.quem = d.pc ? aoVivo.personagem(d.pc) : null;      // a ficha de onde a rolagem saiu
-      dados = { k: 'ficha', titulo: String(d.quem || '').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.det || '').slice(0, 600), veredito: null, passou: null };
+      // (uma disputa diz quem venceu: o veredito vem pronto da ficha; passou = venceu quem rolou, null = empate)
+      const vd = typeof d.veredito === 'string' && d.veredito.trim() ? d.veredito.trim().slice(0, 160) : null;
+      dados = { k: 'ficha', titulo: String(d.quem || '').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.det || '').slice(0, 600), veredito: vd, passou: vd && typeof d.passou === 'boolean' ? d.passou : null };
       opt.id = d.id ? 'f_' + String(d.id).slice(0, 50) : undefined;
     } else if (origem === 'cena' && d.kind === 'iniciativa') {
       const b = Number(d.bonus) || 0;
