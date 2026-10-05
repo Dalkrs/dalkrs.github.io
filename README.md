@@ -76,7 +76,7 @@ faltava subir.
 ## Testes
 
 ```
-cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 v3 v4 e2e ui2; do node $f.js; done
+cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 v3 v4 e2e ui2 faixa; do node $f.js; done
 cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas mundo acampamento; do node $f.test.js; done
 ```
 

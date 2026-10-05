@@ -172,13 +172,18 @@ button { cursor: pointer; }
   position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
 }
-.foot { align-self: stretch; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
-.hint, .status {
+/* A dica e o estado ficam numa faixa de altura fixa (a de uma dica em duas linhas; mais do que isso, a dica é
+   cortada com reticências). O que aparece e some ali com o mouse — a dica de um item travado, "Coluna · Linha",
+   "Salvando…" — não pode mudar essa altura: a faixa do token fica logo acima, e se ela andasse com o mouse em cima
+   dela, o mouse sairia, a dica mudaria de novo, e a faixa ficaria subindo e descendo. */
+.foot { align-self: stretch; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 46px; }
+.hintbox, .status {
   padding: 5px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
   color: var(--fg-2); font-size: 12.5px;
 }
-.hint { flex: 0 1 auto; min-width: 0; max-width: 640px; }
-.hint:empty { display: none; }
+.hintbox { flex: 0 1 auto; min-width: 0; max-width: 640px; }
+.hintbox[hidden] { display: none; }
+.hint { line-height: 17px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .foot-r { flex: none; max-width: 100%; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .status { flex: none; font: 12px var(--mono); white-space: nowrap; }
 .status.warn { color: var(--lamp-ink); }
@@ -565,7 +570,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   .bd-row .seg { grid-column: 3 / 5; }
   .bd-row .ib { grid-column: 5; }
   .top { flex-wrap: wrap; gap: 6px; }
-  .zoom, .hint { display: none; }
+  .zoom, .hintbox { display: none; }
+  .foot { min-height: 0; }
   .scene-b { max-width: 150px; }
   .air-b { max-width: 120px; }
   .keys { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
@@ -593,7 +599,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
         <div class="toasts" id="toasts" aria-live="polite"></div>
         <div class="hud" id="hud" hidden></div>
         <div class="foot">
-          <div class="hint" id="hint"></div>
+          <div class="hintbox" id="hintBox"><div class="hint" id="hint"></div></div>
           <div class="foot-r">
             <div class="veilchip" id="veilchip" role="note" hidden></div>
             <div class="status" id="status"></div>
@@ -3340,9 +3346,37 @@ const Fichas = (() => {
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
   }
+  /* As barras de um token que segue uma ficha são as da ficha, na ordem dela: cada recurso com máximo vira uma barra
+     ligada, à mostra. Uma barra que o token já tinha do mesmo recurso — ou com o mesmo nome — empresta o jeito dela
+     (cor, estilo, quem vê); as outras saem (a "Vida" de fábrica, por exemplo). Devolve null se a ficha não tem
+     recurso nenhum: aí o token fica como está. */
+  function soDaFicha(t, r) {
+    const out = [];
+    for (const rec of r.recursos) {
+      if (rec.max == null || !isFinite(rec.max) || out.length >= MAX_BARS) continue;
+      const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length] }, velha,
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0) })));
+    }
+    return out.length ? out : null;
+  }
+  // A ficha inteira deste token, se ela está aqui (uma linha que chegou incompleta não serve para acertar nada).
+  const fichaDe = t => { const l = get(t.char); return l && l.ficha != null ? l : null; };
+  // O token ligado tem barras que não são da ficha, ou falta alguma dela?
+  function foraDaFicha(t) {
+    const l = fichaDe(t), alvo = l ? soDaFicha(t, resumo(l)) : null;
+    return !!alvo && (alvo.length !== t.bars.length || !t.bars.every(b => b.ref && alvo.some(a => a.ref === b.ref)));
+  }
+  // Deixa o token só com as barras da ficha (um passo de desfazer).
+  function usarBarras(t) {
+    const l = fichaDe(t), bars = l ? soDaFicha(t, resumo(l)) : null;
+    if (!bars) return false;
+    Store.tx('Barras da ficha', () => Store.upd('tokens', t.id, { bars }));
+    return true;
+  }
   // O que a ficha muda no token (barras, iniciativa, imagem); null se nada.
   function remendo(t) {
-    const l = get(t.char);
+    const l = fichaDe(t);
     if (!l) return null;
     const r = resumo(l), p = {};
     const bars = barrasDe(t, r);
@@ -3401,8 +3435,10 @@ const Fichas = (() => {
     const t = Store.get('tokens', op.id);
     if (t && paraFicha(t)) syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
   }
-  /* Liga (ou desliga) o token a uma ficha. Ao ligar um token sem dono a uma ficha que é de um jogador da mesa, o
-     jogador passa a ser o dono do token, no mesmo passo de desfazer. Devolve { dono } com o nome dele, se foi o caso. */
+  /* Liga (ou desliga) o token a uma ficha. Ligado, o token passa a ter o nome do personagem e só as barras da ficha;
+     e, se ele não tinha dono e a ficha é de um jogador da mesa, o jogador passa a ser o dono do token. Tudo no mesmo
+     passo de desfazer (desfazer traz de volta o nome e as barras de antes). Devolve { dono } com o nome dele, se foi
+     o caso. */
   function link(t, charId) {
     if (!charId) {
       // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
@@ -3410,7 +3446,14 @@ const Fichas = (() => {
       return {};
     }
     const l = get(charId), jog = l && l.dono_id && !t.owner ? playerById(l.dono_id) : null;
-    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, jog ? { char: charId, owner: jog.id } : { char: charId }));
+    const p = { char: charId };
+    if (jog) p.owner = jog.id;
+    if (l && l.ficha != null) {
+      const nome = String(l.nome || '').trim().slice(0, 60), bars = soDaFicha(t, resumo(l));
+      if (nome) p.name = nome;
+      if (bars) p.bars = bars;
+    }
+    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, p));
     const now = Store.get('tokens', t.id);
     if (now) syncToken(now);
     return { dono: jog ? jog.name : null };
@@ -3453,7 +3496,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
 })();
 /* ---------------------------------------------------------------
    7c. PROJEÇÃO — a cena como ela vai para o banco e para os jogadores
@@ -6593,7 +6636,7 @@ const Tools = (() => {
    --------------------------------------------------------------- */
 const UI = (() => {
   const el = {
-    top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'),
+    top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
     fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'),
   };
@@ -7337,8 +7380,10 @@ const UI = (() => {
     }
     el.opts.hidden = !kids.length;
     el.opts.replaceChildren(...kids);
-    el.hint.textContent = Tools.hint();
+    setHint();
   }
+  // A linha de dica (a caixa some quando não há o que dizer).
+  function setHint() { const t = Tools.hint(); el.hint.textContent = t; el.hintBox.hidden = !t; }
   function fogAll(m) {
     const sc = Store.scene();
     Store.tx(m === 'r' ? 'Revelar tudo' : 'Esconder tudo', () => {
@@ -7698,14 +7743,18 @@ const UI = (() => {
     const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
       v => {
         const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
-        toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
+        toast(c ? `O token agora segue a ficha de ${c.nome || 'sem nome'}: o nome e as barras vieram dela.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
       }))];
-    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token pega dela HP, SP e os outros recursos, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
+    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token passa a ter o nome do personagem, as barras dela (HP, SP…) no lugar das que tinha, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
     if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
     const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
     App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    // um token ligado antes (ou que ganhou uma barra à mão) pode ter barras que não são da ficha: um clique acerta
+    if (Fichas.foraDaFicha(t)) out.push(
+      note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
+      h('div', { class: 'row' }, btn('Usar só as barras da ficha', () => { if (Fichas.usarBarras(t)) toast('O token ficou só com as barras da ficha.', { action: 'Desfazer', run: Tools.undo }); }, { id: 'tk-so-ficha' })));
     out.push(
       note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
@@ -8438,7 +8487,7 @@ const UI = (() => {
     closeModal, condPicker, barDefaultsBox, areaBox,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
-    hint() { el.hint.textContent = Tools.hint(); },      // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
+    hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
   };
 })();
 /* ---------------------------------------------------------------

@@ -26,6 +26,7 @@ const { ok, end } = checker();
   ok(await ate(async () => { const l = await linha(); return l && l.nome === 'Dain X' && l.rev > 0 && await M.evaluate(() => TC.dados.pendentes === 0); }), 'a ficha criada sobe para a mesa');
   const hpMax = await F.evaluate(() => { const pc = S.personagens[0]; return Math.floor(calcular(pc).recursos.find(r => r.nome === 'HP').val); });
   const idHP = await F.evaluate(() => S.personagens[0].recursos.find(r => r.nome === 'HP').id);
+  const daFicha = await F.evaluate(() => calcular(S.personagens[0]).recursos.filter(r => r.val != null && isFinite(r.val)).map(r => r.nome));
   ok(hpMax > 100, 'HP máximo calculado pela fórmula da ficha: ' + hpMax);
 
   // ---------- a cena: ligar o token ----------
@@ -37,17 +38,34 @@ const { ok, end } = checker();
   await C.locator('#sceneBtn').click(); await w(250);
   await C.locator('.menu-i', { hasText: 'Nova cena de exemplo' }).click();
   ok(await ate(async () => await C.evaluate(() => __tc.Store.scene().tokens.length === 7 && /^https:/.test((__tc.Store.S.assets[__tc.Store.scene().bg.asset] || {}).url || '')), 30000), 'a cena de exemplo criada na mesa guarda o mapa dela no banco');
-  const tok = await C.evaluate(() => { const u = __tc, tk = u.Store.scene().tokens.find(x => x.name === 'Dain X'); u.setSel([{ c: 'tokens', id: tk.id }]); u.UI.openTab('sel'); return { id: tk.id, bars: tk.bars.map(b => b.n + ':' + b.v + '/' + b.m) }; });
+  // (o token começa com outro nome e com as barras de fábrica dele: "Vida" à mostra, as outras desligadas)
+  const barrasDe = id => C.evaluate(id => __tc.Store.get('tokens', id).bars.map(b => b.n + ':' + b.v + '/' + b.m + (b.on ? '' : ' (desligada)') + (b.ref ? ' (da ficha)' : '')), id);
+  const tok = await C.evaluate(() => { const u = __tc, tk = u.Store.scene().tokens.find(x => x.name === 'Dain X'); u.Store.tx('Renomear token', () => u.Store.upd('tokens', tk.id, { name: 'Guerreiro' })); u.setSel([{ c: 'tokens', id: tk.id }]); u.UI.openTab('sel'); return { id: tk.id }; });
+  tok.bars = await barrasDe(tok.id);
   await w(400);
   await C.locator('#s-ficha > summary').click(); await w(200);
   ok(await C.locator('#tk-char option').count() === 2, 'a lista mostra as fichas da mesa');
   await C.locator('#tk-char').selectOption({ label: 'Dain X' }); await w(700);
-  const depois = await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return { char: tk.char, bars: tk.bars.map(b => ({ n: b.n, v: b.v, m: b.m, ref: b.ref || null })) }; }, tok.id);
+  const depois = await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return { char: tk.char, nome: tk.name, bars: tk.bars.map(b => ({ n: b.n, v: b.v, m: b.m, ref: b.ref || null, on: b.on })) }; }, tok.id);
   const bHP = depois.bars.find(b => b.n === 'HP');
   ok(!!depois.char && !!bHP && bHP.m === hpMax && bHP.v === hpMax && bHP.ref === idHP, 'ligado, o token ganha a barra HP da ficha, cheia: ' + JSON.stringify(bHP) + ' (antes: ' + tok.bars.join(', ') + ')');
   ok(depois.bars.some(b => b.n === 'SP' && b.ref), 'e a barra SP também vem da ficha');
-  ok(depois.bars.some(b => b.n === 'Vida' && !b.ref), 'as barras que o token já tinha continuam lá');
-  ok(await C.evaluate(() => !__tc.Store.canUndo() || true), 'a cena continua funcionando');
+  ok(daFicha.length >= 2 && JSON.stringify(depois.bars.map(b => b.n)) === JSON.stringify(daFicha) && depois.bars.every(b => b.ref && b.on),
+    'o token fica só com as barras da ficha, na ordem dela e todas à mostra (a "Vida" de fábrica sai): ' + depois.bars.map(b => b.n).join(', ') + ' · ficha: ' + daFicha.join(', '));
+  ok(depois.nome === 'Dain X', 'e passa a ter o nome do personagem (era "Guerreiro"): ' + depois.nome);
+  ok((await C.locator('#tk-so-ficha').count()) === 0, 'o painel não oferece acertar as barras: elas já são as da ficha');
+  // desfazer traz de volta o nome e as barras de antes; refazer liga de novo
+  await C.evaluate(() => __tc.Store.undo()); await w(400);
+  const desfeito = await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return { char: tk.char, nome: tk.name }; }, tok.id);
+  ok(desfeito.char === null && desfeito.nome === 'Guerreiro' && JSON.stringify(await barrasDe(tok.id)) === JSON.stringify(tok.bars), 'desfazer devolve o nome e as barras que o token tinha: ' + JSON.stringify(desfeito) + ' ' + (await barrasDe(tok.id)).join(', '));
+  await C.evaluate(() => __tc.Store.redo()); await w(600);
+  ok(await C.evaluate(id => { const tk = __tc.Store.get('tokens', id); return !!tk.char && tk.name === 'Dain X' && tk.bars.every(b => b.ref && b.on); }, tok.id), 'refazer liga de novo, com o nome e as barras da ficha');
+  // um token ligado que tem uma barra que não é da ficha (ligado numa versão antiga, ou com uma barra posta à mão)
+  await C.evaluate(id => { const u = __tc, tk = u.Store.get('tokens', id); u.Store.tx('Barra a mais', () => u.Store.upd('tokens', id, { bars: [{ n: 'Vida', c: '#d6524b', v: 10, m: 10, k: 'bar', on: true, vis: '' }].concat(tk.bars) })); u.setSel([{ c: 'tokens', id }]); u.UI.openTab('sel'); }, tok.id); await w(500);
+  ok(await C.locator('#tk-so-ficha').isVisible(), 'com uma barra que não é da ficha, o painel oferece "Usar só as barras da ficha"');
+  await C.locator('#tk-so-ficha').click(); await w(500);
+  ok(await C.evaluate(id => __tc.Store.get('tokens', id).bars.every(b => b.ref), tok.id) && JSON.stringify((await barrasDe(tok.id)).map(x => x.split(':')[0])) === JSON.stringify(daFicha) && (await C.locator('#tk-so-ficha').count()) === 0,
+    'um clique deixa o token só com as barras da ficha, e a oferta some: ' + (await barrasDe(tok.id)).join(', '));
 
   // ---------- dano no mapa → ficha ----------
   await C.evaluate(([id]) => { const u = __tc, tk = u.Store.get('tokens', id), i = tk.bars.findIndex(b => b.n === 'HP'); u.Act.barSet(tk, i, tk.bars[i].v - 30); }, [tok.id]); await w(300);

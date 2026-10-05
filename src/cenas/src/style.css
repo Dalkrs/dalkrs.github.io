@@ -162,13 +162,18 @@ button { cursor: pointer; }
   position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
 }
-.foot { align-self: stretch; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
-.hint, .status {
+/* A dica e o estado ficam numa faixa de altura fixa (a de uma dica em duas linhas; mais do que isso, a dica é
+   cortada com reticências). O que aparece e some ali com o mouse — a dica de um item travado, "Coluna · Linha",
+   "Salvando…" — não pode mudar essa altura: a faixa do token fica logo acima, e se ela andasse com o mouse em cima
+   dela, o mouse sairia, a dica mudaria de novo, e a faixa ficaria subindo e descendo. */
+.foot { align-self: stretch; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 46px; }
+.hintbox, .status {
   padding: 5px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
   color: var(--fg-2); font-size: 12.5px;
 }
-.hint { flex: 0 1 auto; min-width: 0; max-width: 640px; }
-.hint:empty { display: none; }
+.hintbox { flex: 0 1 auto; min-width: 0; max-width: 640px; }
+.hintbox[hidden] { display: none; }
+.hint { line-height: 17px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .foot-r { flex: none; max-width: 100%; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .status { flex: none; font: 12px var(--mono); white-space: nowrap; }
 .status.warn { color: var(--lamp-ink); }
@@ -555,7 +560,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   .bd-row .seg { grid-column: 3 / 5; }
   .bd-row .ib { grid-column: 5; }
   .top { flex-wrap: wrap; gap: 6px; }
-  .zoom, .hint { display: none; }
+  .zoom, .hintbox { display: none; }
+  .foot { min-height: 0; }
   .scene-b { max-width: 150px; }
   .air-b { max-width: 120px; }
   .keys { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }

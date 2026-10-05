@@ -5,7 +5,7 @@
    --------------------------------------------------------------- */
 const UI = (() => {
   const el = {
-    top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'),
+    top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
     fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'),
   };
@@ -749,8 +749,10 @@ const UI = (() => {
     }
     el.opts.hidden = !kids.length;
     el.opts.replaceChildren(...kids);
-    el.hint.textContent = Tools.hint();
+    setHint();
   }
+  // A linha de dica (a caixa some quando não há o que dizer).
+  function setHint() { const t = Tools.hint(); el.hint.textContent = t; el.hintBox.hidden = !t; }
   function fogAll(m) {
     const sc = Store.scene();
     Store.tx(m === 'r' ? 'Revelar tudo' : 'Esconder tudo', () => {
@@ -1110,14 +1112,18 @@ const UI = (() => {
     const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
       v => {
         const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
-        toast(c ? `${t.name} agora segue a ficha de ${c.nome || 'sem nome'}.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
+        toast(c ? `O token agora segue a ficha de ${c.nome || 'sem nome'}: o nome e as barras vieram dela.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
       }))];
-    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token pega dela HP, SP e os outros recursos, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
+    if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token passa a ter o nome do personagem, as barras dela (HP, SP…) no lugar das que tinha, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
     if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
     const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
     App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    // um token ligado antes (ou que ganhou uma barra à mão) pode ter barras que não são da ficha: um clique acerta
+    if (Fichas.foraDaFicha(t)) out.push(
+      note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
+      h('div', { class: 'row' }, btn('Usar só as barras da ficha', () => { if (Fichas.usarBarras(t)) toast('O token ficou só com as barras da ficha.', { action: 'Desfazer', run: Tools.undo }); }, { id: 'tk-so-ficha' })));
     out.push(
       note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
@@ -1850,6 +1856,6 @@ const UI = (() => {
     closeModal, condPicker, barDefaultsBox, areaBox,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
-    hint() { el.hint.textContent = Tools.hint(); },      // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
+    hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
   };
 })();

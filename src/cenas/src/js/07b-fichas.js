@@ -47,9 +47,37 @@ const Fichas = (() => {
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
   }
+  /* As barras de um token que segue uma ficha são as da ficha, na ordem dela: cada recurso com máximo vira uma barra
+     ligada, à mostra. Uma barra que o token já tinha do mesmo recurso — ou com o mesmo nome — empresta o jeito dela
+     (cor, estilo, quem vê); as outras saem (a "Vida" de fábrica, por exemplo). Devolve null se a ficha não tem
+     recurso nenhum: aí o token fica como está. */
+  function soDaFicha(t, r) {
+    const out = [];
+    for (const rec of r.recursos) {
+      if (rec.max == null || !isFinite(rec.max) || out.length >= MAX_BARS) continue;
+      const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length] }, velha,
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0) })));
+    }
+    return out.length ? out : null;
+  }
+  // A ficha inteira deste token, se ela está aqui (uma linha que chegou incompleta não serve para acertar nada).
+  const fichaDe = t => { const l = get(t.char); return l && l.ficha != null ? l : null; };
+  // O token ligado tem barras que não são da ficha, ou falta alguma dela?
+  function foraDaFicha(t) {
+    const l = fichaDe(t), alvo = l ? soDaFicha(t, resumo(l)) : null;
+    return !!alvo && (alvo.length !== t.bars.length || !t.bars.every(b => b.ref && alvo.some(a => a.ref === b.ref)));
+  }
+  // Deixa o token só com as barras da ficha (um passo de desfazer).
+  function usarBarras(t) {
+    const l = fichaDe(t), bars = l ? soDaFicha(t, resumo(l)) : null;
+    if (!bars) return false;
+    Store.tx('Barras da ficha', () => Store.upd('tokens', t.id, { bars }));
+    return true;
+  }
   // O que a ficha muda no token (barras, iniciativa, imagem); null se nada.
   function remendo(t) {
-    const l = get(t.char);
+    const l = fichaDe(t);
     if (!l) return null;
     const r = resumo(l), p = {};
     const bars = barrasDe(t, r);
@@ -108,8 +136,10 @@ const Fichas = (() => {
     const t = Store.get('tokens', op.id);
     if (t && paraFicha(t)) syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
   }
-  /* Liga (ou desliga) o token a uma ficha. Ao ligar um token sem dono a uma ficha que é de um jogador da mesa, o
-     jogador passa a ser o dono do token, no mesmo passo de desfazer. Devolve { dono } com o nome dele, se foi o caso. */
+  /* Liga (ou desliga) o token a uma ficha. Ligado, o token passa a ter o nome do personagem e só as barras da ficha;
+     e, se ele não tinha dono e a ficha é de um jogador da mesa, o jogador passa a ser o dono do token. Tudo no mesmo
+     passo de desfazer (desfazer traz de volta o nome e as barras de antes). Devolve { dono } com o nome dele, se foi
+     o caso. */
   function link(t, charId) {
     if (!charId) {
       // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
@@ -117,7 +147,14 @@ const Fichas = (() => {
       return {};
     }
     const l = get(charId), jog = l && l.dono_id && !t.owner ? playerById(l.dono_id) : null;
-    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, jog ? { char: charId, owner: jog.id } : { char: charId }));
+    const p = { char: charId };
+    if (jog) p.owner = jog.id;
+    if (l && l.ficha != null) {
+      const nome = String(l.nome || '').trim().slice(0, 60), bars = soDaFicha(t, resumo(l));
+      if (nome) p.name = nome;
+      if (bars) p.bars = bars;
+    }
+    Store.tx('Ligar à ficha', () => Store.upd('tokens', t.id, p));
     const now = Store.get('tokens', t.id);
     if (now) syncToken(now);
     return { dono: jog ? jog.name : null };
@@ -160,5 +197,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe };
 })();

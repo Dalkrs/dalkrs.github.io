@@ -24,12 +24,15 @@ const FichasMesa = (() => {
   // A biblioteca de árvores vem da mesa: para o mestre, a original; para o jogador, o pacote publicado.
   const bibDaMesa = () => { const d = D.pegar(mestre() ? 'arvore:biblioteca' : 'arvore:pacote'), b = d && d.dados; return b && Array.isArray(b.arvores) ? b : null; };
 
-  function daLinha(l, antigo) {
+  function daLinha(l, antigo, manter) {
     // personagem criado em outra aba (na Árvore) ainda não tem ficha: nasce com a ficha padrão
     // (a de jogador, já em distribuição livre, com os pontos por distribuir)
     const semFicha = !(l.ficha && Object.keys(l.ficha).length);
-    const pc = semFicha ? personagemPadrao(l.nome) : Object.assign({}, l.ficha);
-    if (semFicha && ehJogador(l.dono_id)) FichasExtras.tornarLivre(pc, true);
+    /* …mas uma linha que chega sem a ficha nunca apaga a ficha que esta tela já tem (manter): fica a daqui. Sem isso,
+       a ficha aberta apareceria em branco, e a primeira coisa digitada nela iria por cima da de verdade. */
+    const daqui = semFicha && manter && antigo ? partes(antigo).ficha : null, tem = !!daqui && Object.keys(daqui).length > 3;
+    const pc = !semFicha ? Object.assign({}, l.ficha) : tem ? daqui : personagemPadrao(l.nome);
+    if (semFicha && !tem && ehJogador(l.dono_id)) FichasExtras.tornarLivre(pc, true);
     pc.id = l.id;
     pc.nome = l.nome || pc.nome || 'Sem nome';
     pc.skills = l.skills && Array.isArray(l.skills.arvores) ? l.skills : { arvores: [], pontos: {}, alocados: {} };
@@ -116,7 +119,7 @@ const FichasMesa = (() => {
         S.personagens.splice(i, 1); sombra.pcs.delete(l.id);
         if (S.sel === l.id) S.sel = S.personagens[0] ? S.personagens[0].id : null;
       } else {
-        const pc = daLinha(l, i >= 0 ? S.personagens[i] : null), p = partes(pc);
+        const pc = daLinha(l, i >= 0 ? S.personagens[i] : null, true), p = partes(pc);
         const r = retrato(p, l.ordem), ant = sombra.pcs.get(l.id);
         if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.ordem === r.ordem) return;   // eco do que já está aqui
         if (i >= 0) S.personagens[i] = pc; else S.personagens.push(pc);
