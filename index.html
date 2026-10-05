@@ -259,12 +259,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=9"></script>
+<script src="tc/tc.js?v=10"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.04-2';
+  const VERSAO = '2026.10.04-3';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -407,6 +407,7 @@ dialog::backdrop { background: var(--scrim); }
       try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas() }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
       catch (e) { responder({ t: 'dados.erro', n: m.n, erro: e.message }); }
     } else if (m.t === 'dados.gravar' && mesas.atual) {
+      if (m.mesa && m.mesa !== mesas.atual.id) return;        // gravação de uma mesa que já não é a aberta (chegou atrasada): não entra nesta
       try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte); } catch (e) { toast(e.message); }
     } else if (m.t === 'arquivo.subir') {
       TC.arquivos.subir(m.blob).then(url => responder({ t: 'arquivo.ok', n: m.n, url }), e => responder({ t: 'arquivo.erro', n: m.n, erro: e.message }));
@@ -432,6 +433,23 @@ dialog::backdrop { background: var(--scrim); }
     for (const k in frames) { const jan = frames[k].contentWindow; if (jan && jan !== de) { try { jan.postMessage({ tinycats: { t: 'dado', col, linha } }, location.origin); } catch (e) { /* moldura saindo */ } } }
   });
   TC.dados.on('recusado', (col, id, msg) => toast(msg));
+  /* Nada do que foi feito no último instante pode ficar para trás quando a página fecha ou a mesa troca.
+     Cada sistema segura as mudanças por uma fração de segundo antes de entregá-las à casca, e a casca, antes de
+     mandá-las ao banco. Então: os sistemas entregam agora (direto, sem mensagem) e a casca manda agora, de um jeito
+     que o navegador termina mesmo depois de a página fechar. Só quando algo não cabe nesse jeito (um documento
+     grande) é que o navegador pergunta antes de sair. */
+  TC.daPonteDireto = (m, fonte) => { let c; try { c = structuredClone(m); } catch (e) { c = JSON.parse(JSON.stringify(m)); } daPonte(c, () => {}, fonte); };
+  function descarregarMolduras() {
+    for (const k in frames) { try { const P = frames[k].contentWindow.TC; if (P && P.ponte && P.ponte.fechando) P.ponte.fechando(); } catch (e) { /* moldura ainda carregando */ } }
+  }
+  // Antes de fechar ou trocar de mesa, ou de sair da conta: espera subir (um pouco) o que faltava.
+  const assentar = () => { descarregarMolduras(); return TC.dados.esvaziar(2500); };
+  window.addEventListener('beforeunload', ev => {
+    if (!mesas.atual) return;
+    descarregarMolduras();
+    if (TC.dados.sair() > 0) { ev.preventDefault(); ev.returnValue = ''; }
+  });
+  window.addEventListener('pagehide', () => { if (mesas.atual) { descarregarMolduras(); TC.dados.sair(); } });
   TC.dados.on('pendentes', pintarNuvem);
   TC.dados.on('erro', pintarNuvem);
   function pintarNuvem() {
@@ -492,10 +510,10 @@ dialog::backdrop { background: var(--scrim); }
     }
     const sec = h('div', { class: 'sec' });
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
-    if (a && a.papel === 'jogador') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
+    if (a && a.papel === 'jogador') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
-    if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: () => { fecharMenu(); mesas.esquecer(); } }));
-    sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); await conta.sair(); toast('Você saiu da conta.'); } }));
+    if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
+    sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
     sec.append(h('div', { class: 'sub', style: 'padding:4px 8px 0', text: u.email }));
     menu.append(sec);
     menu.hidden = false;
@@ -567,8 +585,8 @@ dialog::backdrop { background: var(--scrim); }
     const eNome = h('input', { id: 'm-meu', maxlength: 40, value: u.nome, required: true });
     const bEntrar = h('button', { type: 'submit', class: 'btn pri', id: 'm-entrar', text: 'Entrar' });
     const fEntrar = h('form', { class: 'lin' }, h('label', { style: 'flex:0 0 112px' }, 'Código', eCod), h('label', {}, 'Seu nome na mesa', eNome), bEntrar);
-    enviarCom(fCriar, err, bCriar, async () => { await mesas.criar(nNome.value.trim(), u.nome); fecharJanela(); toast('Mesa criada. Você é o mestre; o código de convite está no menu da mesa.'); });
-    enviarCom(fEntrar, err, bEntrar, async () => { await mesas.entrarComCodigo(eCod.value, eNome.value.trim()); fecharJanela(); });
+    enviarCom(fCriar, err, bCriar, async () => { if (mesas.atual) await assentar(); await mesas.criar(nNome.value.trim(), u.nome); fecharJanela(); toast('Mesa criada. Você é o mestre; o código de convite está no menu da mesa.'); });
+    enviarCom(fEntrar, err, bEntrar, async () => { if (mesas.atual) await assentar(); await mesas.entrarComCodigo(eCod.value, eNome.value.trim()); fecharJanela(); });
     abrirJanela(h('div', { class: 'dl' },
       h('h2', { text: 'Mesas' }),
       h('p', { text: 'A mesa é onde o mestre e os jogadores se encontram: todos veem as rolagens e a conversa na hora.' }),
@@ -581,7 +599,7 @@ dialog::backdrop { background: var(--scrim); }
       const ms = await mesas.lista();
       lista.replaceChildren();
       if (!ms.length) lista.append(h('div', { class: 'nt', text: 'Você ainda não participa de nenhuma mesa. Crie uma ou entre com um código.' }));
-      for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + papelPt(m.papel) })));
+      for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { if (mesas.atual) await assentar(); await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + papelPt(m.papel) })));
     } catch (e) { lista.replaceChildren(h('div', { class: 'nt', text: e.message })); }
   }
   function janelaApagar(a) {

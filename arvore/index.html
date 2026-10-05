@@ -462,8 +462,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
-<script src="../tc/ponte.js?v=4"></script>
-<script src="mesa.js?v=1"></script>
+<script src="../tc/ponte.js?v=5"></script>
+<script src="mesa.js?v=2"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -3428,6 +3428,7 @@ function iniciar(){
   // não perde a última edição se a aba for fechada logo em seguida
   // (só grava se houver mudança pendente: uma aba antiga não pode sobrescrever a mais nova)
   addEventListener('pagehide', ()=>{ if(sujo) salvarJa(); });
+  if(window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(()=>{ if(sujo) salvarJa(); });   // dentro do site: a casca avisa antes de fechar
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && sujo) salvarJa(); });
   // outra aba deste navegador salvou: acompanha
   addEventListener('storage', e=>{

@@ -1507,6 +1507,7 @@
     }
     window.addEventListener('beforeunload', antesDeSair);
     window.addEventListener('pagehide', antesDeSair);
+    if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(antesDeSair);     // dentro do site: a casca avisa antes de fechar
     document.addEventListener('visibilitychange', () => { if (document.hidden) antesDeSair(); });
     for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista']) App.on(ev, agendar);
     App.on('mapas', () => { if (menu) abrirMenu(); });

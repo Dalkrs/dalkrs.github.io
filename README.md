@@ -42,15 +42,41 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
   - Mapa-múndi: `mundo:mapa:<id>` (mestre) e `mundo:pub:<id>` (o que os jogadores veem).
   - Acampamento: `acampamento`.
-  - Cenas: `cena:<id>:m` e `cena:<id>:v` (mestre), `cena:pub:m` e `cena:pub:v` (a cena que está no ar, sem o que é
-    só do mestre) e `cena:pedido:<jogador>` (o que o jogador fez e o mestre ainda vai aplicar).
-  - Rolador: `rol:est`, `rol:h:<id>`, `rol:c:<id>:<n>` (as rolagens, em trechos) e `rol:t:<id>` (tabelas).
+  - Cenas: `cenas:indice` (a ordem das cenas, qual está no ar e qual aparelho do mestre a transmite), `cena:<id>:m`
+    e `cena:<id>:v` (mestre), `cena:pub:m` e `cena:pub:v` (a cena que está no ar, sem o que é só do mestre) e
+    `cena:pedido:<jogador>` (o que o jogador fez e o mestre ainda vai aplicar). Quem aplica os pedidos e escreve a
+    projeção é o programa do mestre — um aparelho só, mesmo que ele tenha o site aberto em vários.
+  - Rolador: `rol:est`, `rol:h:<id>`, `rol:c:<id>:<aparelho>-<n>` (as rolagens, em trechos; cada aparelho do mestre
+    escreve nos trechos dele) e `rol:t:<id>` (tabelas).
+  - Todos os documentos são escritos pelo mestre (sem dono). A única exceção, e a única coisa que o banco deixa
+    um jogador criar, é o `cena:pedido:` dele mesmo.
 - Storage, pasta `mesas/<mesa>/`: as imagens (mapas, retratos, fundos).
+
+### Para nada ficar para trás
+
+Cada sistema entrega as mudanças à casca na hora (chamada direta: são páginas do mesmo site), e a casca as manda ao
+banco logo em seguida, só os campos que mudaram. Ao fechar a página, a casca pede a cada sistema o que ele ainda
+segurava e envia tudo de um jeito que o navegador termina mesmo com a página fechada (`keepalive`, até 64 KB). Se
+algo não couber nisso, o navegador pergunta antes de sair. Fechar ou trocar de mesa, e sair da conta, esperam o que
+faltava subir.
+
+### Limites conhecidos
+
+- **O mestre em dois aparelhos, na mesma cena, no mesmo instante.** Um aparelho só transmite a cena que está no ar, e
+  o que o mestre faz num e noutro é juntado (barras, condições e auras pela variação; o resto, por objeto). Mas se as
+  gravações dos dois se cruzam no mesmo segundo, o documento da cena fica com a que chegou por último, e um gesto pode
+  ser desfeito. Os pedidos recentes dos jogadores não se perdem nesse caso: cada um guarda os dele por dois minutos
+  depois de confirmados, e o aparelho que transmite aplica de novo os que a cena que ficou não tiver.
+- **Quem aplica o que os jogadores fazem é o programa do mestre.** Com o mestre fora (ou com a aba dormindo), os
+  pedidos esperam; valem quando ele volta.
+- **Sem a ligação em tempo real**, a mesa lê o banco a cada 3 segundos: tudo funciona, com esse atraso.
+- **As paredes valem para o jogador na tela dele**: o banco não confere por onde um token passou.
+- **Arquivos no Storage** de mesas apagadas, e imagens que foram trocadas, continuam lá.
 
 ## Testes
 
 ```
-cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 v3 v4 e2e ui2; do node $f.js; done
+cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 v3 v4 e2e ui2; do node $f.js; done
 cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas mundo acampamento; do node $f.test.js; done
 ```
 

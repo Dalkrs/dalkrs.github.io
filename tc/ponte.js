@@ -6,6 +6,7 @@
      TC.dados.col(nome)          — personagens e documentos da mesa aberta (só dentro da casca, com mesa)
      TC.ponte.ir(aba, alvo)      — abre outro sistema do site (ex.: ir('cenas', { cena: id })); só dentro da casca
      TC.ponte.aoIr(fn)           — este sistema foi aberto por outro, com um alvo: fn(alvo)
+     TC.ponte.aoFechar(fn)       — a página vai fechar (ou a mesa, trocar): fn() entrega agora o que o sistema ainda segurava
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -13,7 +14,7 @@
   const naCasca = window.parent !== window;
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* navegador sem BroadcastChannel: só funciona dentro da casca */ }
-  const ouvintes = [], ouvintesIr = [];
+  const ouvintes = [], ouvintesIr = [], ouvintesFechar = [];
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   const ponte = {
     // mesa: { id, nome } | null · papel: 'mestre' | 'jogador' | null · eu: id do usuário · membros: [{ id, nome, papel, cor }]
@@ -23,12 +24,21 @@
     ir(aba, alvo) { if (!naCasca) return false; enviar({ t: 'ir', aba, alvo: alvo || null }); return true; },
     aoIr(fn) { ouvintesIr.push(fn); if (alvoGuardado) { const a = alvoGuardado; alvoGuardado = null; try { fn(a); } catch (e) { console.error(e); } } },
     aoMudar(fn) { ouvintes.push(fn); try { fn(ponte.estado); } catch (e) { console.error(e); } },
+    aoFechar(fn) { ouvintesFechar.push(fn); },
+    /* A casca chama isto (direto, não por mensagem) quando a página vai fechar ou a mesa vai trocar: cada sistema
+       entrega agora o que ainda segurava. */
+    fechando() { for (const f of ouvintesFechar.slice()) { try { f(); } catch (e) { console.error(e); } } },
   };
   ponte.pronta = new Promise(ok => { avisar = ok; });
   // Dentro da casca a resposta sempre vem; o prazo é só para a página não ficar presa se algo der errado.
   setTimeout(() => avisar(ponte.estado), naCasca ? 5000 : 350);
 
   function enviar(msg) {
+    /* O que é gravado vai para a casca na hora, por chamada direta (a casca e os sistemas são páginas do mesmo
+       site). Por mensagem, uma gravação feita no instante em que a página fecha não chegaria: a casca sairia antes. */
+    if (naCasca && msg.t === 'dados.gravar') {
+      try { const d = window.parent.TC && window.parent.TC.daPonteDireto; if (d) { d(msg, window); return; } } catch (e) { /* segue por mensagem */ }
+    }
     try {
       if (naCasca) window.parent.postMessage({ tinycats: msg }, location.origin);
       else if (canal) canal.postMessage(msg);
@@ -42,7 +52,8 @@
     disponivel: () => naCasca && !!ponte.estado.mesa,
     col(nome) {
       if (cols[nome]) return cols[nome].api;
-      const c = cols[nome] = { linhas: new Map(), ouvintes: [] };
+      // (a mesa de quando a coleção foi aberta vai em cada gravação: se a casca já estiver em outra mesa, ela não aceita)
+      const c = cols[nome] = { linhas: new Map(), ouvintes: [], mesa: ponte.estado.mesa ? ponte.estado.mesa.id : null };
       const n = ++seq;
       const pronta = new Promise((ok, falha) => { esperas[n] = { ok, falha, c }; });
       enviar({ t: 'dados.abrir', col: nome, n });
@@ -50,8 +61,8 @@
         pronta,
         todas: () => [...c.linhas.values()],
         pegar: id => c.linhas.get(id) || null,
-        gravar(id, campos) { const l = Object.assign({}, c.linhas.get(id) || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos }); return l; },
-        apagar(id) { c.linhas.delete(id); enviar({ t: 'dados.gravar', col: nome, id, campos: { apagado: true } }); },
+        gravar(id, campos) { const l = Object.assign({}, c.linhas.get(id) || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa }); return l; },
+        apagar(id) { c.linhas.delete(id); enviar({ t: 'dados.gravar', col: nome, id, campos: { apagado: true }, mesa: c.mesa }); },
         aoMudar(fn) { c.ouvintes.push(fn); },
       };
       return c.api;

@@ -90,6 +90,18 @@ void R;
   // (um segundo cliente, com a sessão do próprio jogador: pergunta direto ao banco, sem passar pelo programa)
   const vistoJ = await J.evaluate(async mesa => { const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave); const { data } = await a.from('documentos').select('id, vis').eq('mesa_id', mesa); return (data || []).map(d => d.id); }, mesaId);
   ok(vistoJ.every(id => !id.startsWith('cena')), 'o banco não entrega ao jogador nenhum documento das cenas do mestre: ' + JSON.stringify(vistoJ));
+  // e não deixa o jogador criar documento nenhum com nome de coisa do mestre (a projeção ainda não existe: seria o primeiro a criá-la)
+  const invasao = await J.evaluate(async ([mesa, eu]) => {
+    const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave);
+    const tenta = async (id, extra) => { const { error } = await a.from('documentos').insert(Object.assign({ mesa_id: mesa, id, dono_id: eu, vis: 'mesa', dados: { invasor: true } }, extra || {})); return error ? (error.code || 'erro') : 'entrou'; };
+    const r = {};
+    r.projecao = await tenta('cena:pub:m'); r.indice = await tenta('cenas:indice'); r.cena = await tenta('cena:invasora:m'); r.rolador = await tenta('rol:est'); r.mundo = await tenta('mundo:indice'); r.acampamento = await tenta('acampamento');
+    r.pedidoDeOutro = await tenta('cena:pedido:00000000-0000-4000-8000-000000000000'); r.semDono = await tenta('cena:pedido:' + eu, { dono_id: null });
+    r.proprio = await tenta('cena:pedido:' + eu, { vis: 'mestre', dados: { cena: null, lote: [] } });
+    return r;
+  }, [mesaId, jogId]);
+  ok(['projecao', 'indice', 'cena', 'rolador', 'mundo', 'acampamento', 'pedidoDeOutro', 'semDono'].every(k => invasao[k] === '42501') && invasao.proprio === 'entrou',
+    'o banco recusa: a projeção, o índice, uma cena, o estado do Rolador, o Mapa-múndi, o Acampamento, o pedido de outro jogador e um pedido sem dono; o pedido dele mesmo entra: ' + JSON.stringify(invasao));
   await foto(J, 'cenas-3-jogador-sem-cena');
 
   // ---------- o mestre prepara e põe a cena no ar ----------
@@ -103,12 +115,19 @@ void R;
     });
     return { cena: sc.id, dain: por('Dain X').id, cap: por('Capitão').id, arq: por('Arqueira').id, band: por('Bandido').id, astie: por('Astie').id, porta: sc.walls.find(x => x.k === 'door').id };
   }, jogId);
+  // (o mestre está rolando "em segredo": o aviso de cena no ar é para os jogadores e chega do mesmo jeito)
+  await M.evaluate(() => TC.aoVivo.definirSegredo(true));
   await C.locator('#airBtn').click(); await w(250);
   await C.locator('.menu-i', { hasText: 'Mostrar esta cena aos jogadores' }).click(); await w(300);
   ok((await C.locator('.toast').last().innerText()).includes('Os jogadores agora veem "Cena de exemplo"') && (await C.locator('#airBtn').innerText()).includes('No ar') && await C.locator('#airBtn.on').count() === 1, 'pôr no ar é um pedido do mestre, com aviso e Desfazer; a barra passa a dizer "No ar"');
   ok(await ate(async () => { const d = await docs(M, 'cena:pub:'); return d.length === 2 && d.every(x => x.vis === 'mesa' && x.rev > 0) && await semPendencia(M); }), 'a cena no ar ganha dois documentos que a mesa inteira lê (a projeção)');
-  ok(await ate(async () => (await J.locator('#feed .rol', { hasText: 'Cena: Cena de exemplo' }).count()) === 1 && (await J.locator('#feed .rol', { hasText: 'Cena: Cena de exemplo' }).locator('.or').innerText()) === 'Cenas'), 'e a mesa ao vivo avisa os jogadores de que há cena para ver');
+  ok(await ate(async () => (await J.locator('#feed .rol', { hasText: 'Cena: Cena de exemplo' }).count()) === 1 && (await J.locator('#feed .rol', { hasText: 'Cena: Cena de exemplo' }).locator('.or').innerText()) === 'Cenas'), 'e a mesa ao vivo avisa os jogadores de que há cena para ver (mesmo com o mestre rolando "em segredo")');
+  await M.evaluate(() => TC.aoVivo.definirSegredo(false));
   const pm = await doc(M, 'cena:pub:m'), pv = await doc(M, 'cena:pub:v'), texto = JSON.stringify([pm, pv]);
+  ok(typeof pm.ver === 'string' && pm.ver.length >= 6 && pv.mv === pm.ver, 'as duas metades da projeção dizem que são do mesmo momento (versão do mapa ' + pm.ver + ')');
+  const doMestre = await doc(M, 'cena:' + ids.cena + ':m');
+  ok(Object.values(pm.imgs).length === 1 && Object.values(pm.imgs).every(a => a.name === '' && /^https:/.test(a.url)) && Object.values(doMestre.imgs).every(a => a.name !== '') && pm.lights.every(l => l.name === ''),
+    'a projeção leva o endereço da imagem do mapa, mas não o nome do arquivo nem o nome das luzes (que ficam nos documentos do mestre)');
   ok(pv.tokens.length === 6 && !pv.tokens.some(x => x.id === ids.arq) && !texto.includes('Arqueira') && !texto.includes('fraqueza-secreta') && !texto.includes('Só ataca quando') && !texto.includes('"gm":true'),
     'a projeção não leva o token oculto, as anotações do mestre nem os desenhos só dele');
   const pCap = pv.tokens.find(x => x.id === ids.cap), pBand = pv.tokens.find(x => x.id === ids.band), pDain = pv.tokens.find(x => x.id === ids.dain);
@@ -145,6 +164,30 @@ void R;
   // ---------- o mestre mexe; o jogador vê ----------
   await C.evaluate(ids => { const u = __tc; u.Act.barSet(u.Store.get('tokens', ids.cap), 0, '-35'); u.Act.barSet(u.Store.get('tokens', ids.dain), 0, '+5'); }, ids);
   ok(await ate(async () => await B.evaluate(ids => { const u = __tc, c = u.Store.get('tokens', ids.cap), d = u.Store.get('tokens', ids.dain); return c.bars[0].v === 50 && c.bars[0].m === 100 && d.bars[0].v === 55 && d.bars[0].m === 80; }, ids)), 'dano no Capitão chega ao jogador só como proporção (50%); a cura no token dele, com o número (55/80)');
+  // ---------- os dois mexem ao mesmo tempo nas barras do mesmo token: um não apaga o outro ----------
+  ok(await ate(async () => await B.evaluate(() => __tc.Nuvem.pendentes() === 0) && await semPendencia(M) && await semPendencia(J)), '(tudo assentado antes de começar)');
+  const verAntes = (await doc(M, 'cena:pub:m')).ver;
+  // o mestre dá 20 de dano em Vida; o jogador, que ainda vê 55 na tela dele, gasta 10 de SP
+  await C.evaluate(id => { const u = __tc; u.Act.barSet(u.Store.get('tokens', id), 0, '-20'); }, ids.dain);
+  ok(await B.evaluate(id => { const u = __tc, t = u.Store.get('tokens', id); const antes = t.bars[0].v; u.Act.barSet(t, 1, '-10'); return antes === 55; }, ids.dain), '(o jogador mexe no SP ainda vendo a Vida em 55: o dano do mestre não tinha chegado)');
+  ok(await ate(async () => await C.evaluate(id => { const b = __tc.Store.get('tokens', id).bars; return b[0].v === 35 && b[1].v === 14; }, ids.dain)), 'no mestre: a Vida fica em 35 (o dano dele não foi desfeito pelo pedido do jogador) e o SP vai a 14');
+  ok(await ate(async () => await B.evaluate(id => { const u = __tc, b = u.Store.get('tokens', id).bars; return u.Nuvem.pendentes() === 0 && b[0].v === 35 && b[1].v === 14; }, ids.dain)), 'e o jogador termina vendo o mesmo: Vida 35, SP 14');
+  // na mesma barra, ao mesmo tempo: as duas variações valem (−5 do mestre, −3 do jogador)
+  await C.evaluate(id => { const u = __tc; u.Act.barSet(u.Store.get('tokens', id), 0, '-5'); }, ids.dain);
+  await B.evaluate(id => { const u = __tc; u.Act.barSet(u.Store.get('tokens', id), 0, '-3'); }, ids.dain);
+  ok(await ate(async () => await C.evaluate(id => __tc.Store.get('tokens', id).bars[0].v === 27, ids.dain) && await B.evaluate(id => __tc.Nuvem.pendentes() === 0 && __tc.Store.get('tokens', id).bars[0].v === 27, ids.dain)), 'na mesma barra, valem as duas variações: 35 − 5 − 3 = 27, nos dois');
+  // desfazer do jogador: volta só o que ele fez
+  await B.evaluate(() => __tc.Store.undo());
+  ok(await ate(async () => await C.evaluate(id => __tc.Store.get('tokens', id).bars[0].v === 30, ids.dain) && await B.evaluate(id => __tc.Nuvem.pendentes() === 0 && __tc.Store.get('tokens', id).bars[0].v === 30, ids.dain)), 'o jogador desfaz o −3 dele: volta para 30 (o −5 do mestre continua)');
+  // (de volta aos valores que o resto do teste espera)
+  await C.evaluate(id => { const u = __tc; u.Act.barSet(u.Store.get('tokens', id), 0, '55'); u.Act.barSet(u.Store.get('tokens', id), 1, '24'); }, ids.dain);
+  ok(await ate(async () => await B.evaluate(id => { const b = __tc.Store.get('tokens', id).bars; return b[0].v === 55 && b[1].v === 24; }, ids.dain) && await semPendencia(M)), '(barras de volta a 55 e 24)');
+  // só os tokens mudaram: o mapa da projeção não foi regravado; mudando o mapa, a versão anda e a parte viva acompanha
+  ok((await doc(M, 'cena:pub:m')).ver === verAntes && (await doc(M, 'cena:pub:v')).mv === verAntes, 'mexer só nos tokens não regrava o mapa da projeção (a versão dele continua ' + verAntes + ')');
+  await C.evaluate(() => { const u = __tc; u.Store.tx('Hora do dia', () => u.Store.scn({ tone: 'entardecer' })); });
+  ok(await ate(async () => { const a = await doc(M, 'cena:pub:m'), b = await doc(M, 'cena:pub:v'); return a.ver !== verAntes && b.mv === a.ver && a.tone === 'entardecer' && await semPendencia(M); }), 'mudando o mapa (a hora do dia), a versão muda e a parte viva diz que é desse mapa');
+  ok(await ate(async () => await B.evaluate(() => __tc.Store.scene().tone === 'entardecer' && __tc.Store.scene().tokens.length === 6)), 'e o jogador recebe o par certo');
+
   await C.evaluate(ids => { const u = __tc; u.Store.tx('revelar', () => u.Store.upd('tokens', ids.arq, { hidden: false })); }, ids);
   ok(await ate(async () => await B.evaluate(id => __tc.Store.scene().tokens.some(x => x.id === id && x.name === 'Arqueira'), ids.arq)), 'o mestre revela a Arqueira e ela aparece para o jogador');
   await C.evaluate(ids => { const u = __tc; u.Store.tx('esconder', () => u.Store.upd('tokens', ids.arq, { hidden: true })); }, ids);
@@ -204,11 +247,19 @@ void R;
   await C.locator('.toast-a', { hasText: 'Desfazer' }).last().click(); await w(300);
   ok(await ate(async () => await B.evaluate(id => !__tc.Nuvem.semCena() && __tc.Store.scene().id === id, ids.cena)), 'Desfazer põe a cena de volta no ar');
 
+  // ---------- fechar a página logo depois de mexer: a última mudança não fica para trás ----------
+  ok(await ate(async () => await semPendencia(M) && await C.evaluate(() => __tc.Persist.status() === 'ok')), '(tudo salvo antes)');
+  const tav = await C.evaluate(() => { const u = __tc, t = u.Store.scene().tokens.find(x => x.name === 'Taverneiro'); u.Store.tx('Mover', () => u.Store.upd('tokens', t.id, { x: 448, y: 320 })); return { cena: u.Store.scene().id, id: t.id, salvo: u.Persist.status() }; });
+  ok(tav.salvo === 'saving' && await M.evaluate(() => TC.dados.pendentes === 0), '(o mestre move um token: a mudança ainda está no programa das Cenas, nem chegou à casca)');
+  const saidasAntes = t.saidas.length;
+
   // ---------- recarregar: tudo continua lá ----------
   await M.reload({ waitUntil: 'load' });
   ok(await ate(async () => { C = await quadro(M, /\/cenas\//); return C && await C.evaluate(() => !!window.__tc && __tc.Nuvem.modo() === 'mestre' && __tc.Store.S.order.length === 2); }, 40000), 'o mestre recarrega a página e as cenas voltam do banco');
   const dep = await C.evaluate(ids => { const u = __tc, sc = u.Store.S.scenes[ids.cena], d = sc.tokens.find(t => t.id === ids.dain); return { atual: u.Store.scene().name, noAr: u.Nuvem.noAr(), vida: d.bars[0].v, dono: d.owner, porta: sc.walls.find(x => x.id === ids.porta).open, forma: sc.shapes.some(s => s.id === 'sh_do_jogador'), oculta: sc.tokens.find(t => t.id === ids.arq).hidden, notas: sc.tokens.find(t => t.id === ids.cap).notes, toks: sc.tokens.length }; }, ids);
   ok(dep.atual === 'Taverna do Javali' && dep.noAr === ids.cena && dep.vida === 55 && dep.dono === jogId && dep.porta && dep.forma && dep.oculta && dep.notas === 'fraqueza-secreta-do-capitao' && dep.toks === 7, 'como estavam: a cena aberta, a que está no ar, barras, dono, porta, o desenho do jogador, o token oculto e as anotações: ' + JSON.stringify(dep));
+  ok(await ate(async () => await C.evaluate(tav => { const x = __tc.Store.S.scenes[tav.cena].tokens.find(k => k.id === tav.id); return x.x === 448 && x.y === 320; }, tav)), 'e o token movido um instante antes de recarregar está onde foi posto: a mudança subiu na saída');
+  ok(t.saidas.length === saidasAntes, 'sem o navegador perguntar "sair da página?" (a mudança era pequena: sai garantida)');
   await J.reload({ waitUntil: 'load' });
   ok(await ate(async () => { B = await quadro(J, /\/cenas\//); return B && await B.evaluate(id => !!window.__tc && __tc.Nuvem.modo() === 'jogador' && __tc.Store.scene().id === id && __tc.Store.scene().tokens.length === 6, ids.cena); }, 40000), 'o jogador recarrega e cai de novo na cena que está no ar');
   ok(await B.evaluate(() => Object.keys(__tc.Store.scene().explored).length > 0), 'com o que ele já tinha explorado');
@@ -251,12 +302,60 @@ void R;
   });
   ok(await ate(async () => { const d = await doc(M, 'cena:' + (await C.evaluate(() => __tc.Store.scene().id)) + ':m'); return d && d.bg.asset && d.imgs[d.bg.asset] && d.imgs[d.bg.asset].url.startsWith(base) && d.imgs[d.bg.asset].name === 'salão' && await semPendencia(M); }), 'uma imagem nova escolhida pelo mestre vai para o Storage e a cena guarda o endereço dela');
 
+  // ---------- um pedido malfeito não para a mesa ----------
+  await C.evaluate(id => __tc.UI.switchScene(id), ids.cena); await w(400);
+  ok(await ate(async () => await B.evaluate(() => __tc.Nuvem.pendentes() === 0) && await semPendencia(M) && await semPendencia(J)), '(tudo assentado)');
+  const contaAntes = ((await doc(M, 'cena:pub:v')).ack || {})[jogId] || 0;
+  await J.evaluate(([eu, cena, dain, n]) => {
+    // (escrito direto no documento de pedidos do jogador, por fora do programa das Cenas)
+    const ruim = JSON.parse('{"toString":1,"valueOf":1}');
+    TC.dados.col('documentos').gravar('cena:pedido:' + eu, { dono_id: eu, vis: 'mestre', dados: { cena, lote: [{ n, ops: [
+      { t: 'upd', c: 'tokens', id: dain, p: { bars: [{ n: 'Vida', v: ruim, x: ruim }], auras: [{ id: ruim, r: ruim }] }, b: { bars: [{ n: 'Vida', v: ruim }] } },
+      { t: 'add', c: 'shapes', v: { id: 'sx_ruim', k: 'text', txt: ruim, x: ruim } }, ruim, null, 7,
+      { t: 'upd', c: 'tokens', id: dain, p: { y: 704 } }] }, ruim, { n: ruim, ops: [] }] } });
+  }, [jogId, ids.cena, ids.dain, contaAntes + 1]);
+  ok(await ate(async () => await C.evaluate(id => __tc.Store.get('tokens', id).y === 704, ids.dain)), 'um pedido feito para dar erro em quem o lê é pulado, e o pedido de verdade que veio no mesmo lote vale');
+  ok(await ate(async () => ((await doc(M, 'cena:pub:v')).ack || {})[jogId] === contaAntes + 1 && await C.evaluate(() => !__tc.Store.get('shapes', 'sx_ruim'))), 'a conta do jogador anda, e nada do que era malfeito entrou na cena');
+
+  // ---------- o mestre com o site aberto em dois aparelhos: só um transmite a cena que está no ar ----------
+  const M2 = (await t.device({ name: 'mestre-2', seed: { 'tinycats:aba': 'cenas', 'tinycats-tour': '1' } })).page;
+  await M2.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500, M2);
+  await loginTela(M2, c.mestre, c.senha);
+  await M2.locator('#m-lista button', { hasText: nomeMesa }).click();
+  await M2.locator('#vivo').waitFor({ state: 'visible', timeout: 20000 });
+  let C2 = null;
+  ok(await ate(async () => { C2 = await quadro(M2, /\/cenas\//); return C2 && await C2.evaluate(id => !!window.__tc && __tc.Nuvem.modo() === 'mestre' && !!__tc.Store.S.scenes[id] && __tc.Nuvem.transmito(), ids.cena); }, 40000), 'o mestre abre a mesa num segundo aparelho: as cenas chegam, e é esse aparelho que passa a transmitir');
+  ok(await ate(async () => await C.evaluate(id => !__tc.Nuvem.transmito() && __tc.Nuvem.noAr() === id, ids.cena)), 'o primeiro passa a acompanhar (a cena continua no ar)');
+  const vidaEm = (F, id) => F.evaluate(([cena, id]) => __tc.Store.S.scenes[cena].tokens.find(k => k.id === id).bars[0].v, [ids.cena, id]);
+  const vida0 = await vidaEm(C2, ids.dain);
+  await B.evaluate(id => { const u = __tc; u.Act.barSet(u.Store.get('tokens', id), 0, '-4'); }, ids.dain);
+  ok(await ate(async () => await vidaEm(C2, ids.dain) === vida0 - 4 && await vidaEm(C, ids.dain) === vida0 - 4 && await B.evaluate(([id, v]) => __tc.Nuvem.pendentes() === 0 && __tc.Store.get('tokens', id).bars[0].v === v, [ids.dain, vida0 - 4])), 'o jogador tira 4 de Vida: fica −4 nos dois aparelhos do mestre e na tela dele');
+  await w(5000);
+  ok(await vidaEm(C2, ids.dain) === vida0 - 4 && await vidaEm(C, ids.dain) === vida0 - 4 && await B.evaluate(([id, v]) => __tc.Store.get('tokens', id).bars[0].v === v, [ids.dain, vida0 - 4]), 'e continua assim depois de tudo assentar (o pedido não é aplicado duas vezes)');
+  // o mestre mexe no primeiro aparelho: ele volta a transmitir
+  const capX = await C.evaluate(id => { const u = __tc, k = u.Store.get('tokens', id); u.Store.tx('Mover', () => u.Store.upd('tokens', id, { x: k.x + 64 })); return u.Store.get('tokens', id).x; }, ids.cap);
+  ok(await ate(async () => await C.evaluate(() => __tc.Nuvem.transmito()) && await C2.evaluate(() => !__tc.Nuvem.transmito())), 'o mestre mexe na cena no primeiro aparelho: ele assume a transmissão, e o segundo passa a acompanhar');
+  ok(await ate(async () => await B.evaluate(([id, x]) => __tc.Store.get('tokens', id).x === x, [ids.cap, capX]) && await C2.evaluate(([cena, id, x]) => __tc.Store.S.scenes[cena].tokens.find(k => k.id === id).x === x, [ids.cena, ids.cap, capX])), 'o jogador vê a mudança, e o segundo aparelho também');
+  ok(await ate(async () => { const a = await doc(M, 'cena:pub:m'), b = await doc(M, 'cena:pub:v'); return !!a && !!b && a.ver === b.mv && await semPendencia(M) && await semPendencia(M2); }), 'a projeção continua com as duas metades combinando');
+  // o segundo aparelho assume de novo e é fechado: o primeiro assume sozinho quando um pedido do jogador fica sem resposta
+  await C2.evaluate(([cena, id]) => { const u = __tc; u.UI.switchScene(cena); const k = u.Store.get('tokens', id); u.Store.tx('Mover', () => u.Store.upd('tokens', id, { x: k.x - 64 })); }, [ids.cena, ids.cap]);
+  ok(await ate(async () => await C2.evaluate(() => __tc.Nuvem.transmito()) && await C.evaluate(() => !__tc.Nuvem.transmito()) && await semPendencia(M2) && await B.evaluate(([id, x]) => __tc.Store.get('tokens', id).x === x, [ids.cap, capX - 64])), 'o mestre mexe no segundo aparelho: a transmissão vai para ele');
+  await M2.close();
+  const dainX = await B.evaluate(id => { const u = __tc, k = u.Store.get('tokens', id); u.Store.tx('Mover', () => u.Store.upd('tokens', id, { x: k.x - 64 })); return u.Store.get('tokens', id).x; }, ids.dain);
+  ok(await ate(async () => await C.evaluate(([id, x]) => __tc.Nuvem.transmito() && __tc.Store.get('tokens', id).x === x, [ids.dain, dainX]) && await B.evaluate(() => __tc.Nuvem.pendentes() === 0), 60000), 'o aparelho que transmitia foi fechado: o outro assume sozinho e aplica o pedido do jogador');
+
   // ---------- o mestre apaga a mesa ----------
+  // (antes, o que o jogador acabou de fazer termina de subir: com a mesa apagada, o banco recusaria)
+  await ate(async () => await semPendencia(J) && await semPendencia(M) && await B.evaluate(() => __tc.Nuvem.pendentes() === 0));
+  await w(800, J);
+  await ate(async () => await semPendencia(J));
   await apagarMesaTela(M, nomeMesa);
   ok(await ate(async () => { C = await quadro(M, /\/cenas\//); return C && await C.evaluate(() => !!window.__tc && __tc.Nuvem.modo() === 'local' && __tc.Store.S.order.length === 2 && __tc.Store.S.order.map(id => __tc.Store.S.scenes[id].name).join('|') === 'Cena de exemplo|Taverna do Javali'); }, 30000), 'fora da mesa, as cenas do navegador estão como eram');
   // (esperados: a conta de teste que já existe, a recriação de um documento apagado, e o segundo cliente que o próprio teste abre)
-  const fora = t.errs.filter(e => !/status of (400|401|409)|Multiple GoTrueClient instances/.test(e));
-  if (fora.length) console.log('CONSOLE:\n' + fora.join('\n') + '\nRESPOSTAS DE ERRO:\n' + t.ruins.join('\n'));
-  ok(fora.length === 0, 'sem erros inesperados no console');
+  // (e as oito tentativas de invasão do jogador, que o banco recusou com 403)
+  const recusas = t.errs.filter(e => /^\[jogador\].*status of 403/.test(e)).length;
+  const fora = t.errs.filter(e => !/status of (400|401|409)|Multiple GoTrueClient instances/.test(e) && !/^\[jogador\].*status of 403/.test(e));
+  if (fora.length || recusas !== 8) console.log('CONSOLE:\n' + t.errs.join('\n') + '\nRESPOSTAS DE ERRO:\n' + t.ruins.join('\n'));
+  ok(fora.length === 0 && recusas === 8, 'sem erros inesperados no console (as 8 recusas do banco ao jogador são as do teste): ' + recusas);
   await t.close(); end();
 })().catch(e => { console.error(e); process.exit(1); });

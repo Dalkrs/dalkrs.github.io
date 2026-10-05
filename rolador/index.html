@@ -629,7 +629,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
 <input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
-<script src="../tc/ponte.js?v=4"></script>
+<script src="../tc/ponte.js?v=5"></script>
 <script>
 (function () {
   'use strict';
@@ -2739,6 +2739,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
     // salvar antes de sair e manter duas abas em sincronia
     window.addEventListener('pagehide', flushSave);
+    if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(flushSave);      // dentro do site: a casca avisa antes de fechar
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
     window.addEventListener('storage', (ev) => {
       if (mesa.on) return;                     // na mesa, os dados deste navegador não são os que estão na tela
@@ -2760,14 +2761,25 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
      navegador, como sempre; os dados do navegador não são tocados enquanto a mesa está aberta.
        rol:est ............ qual histórico está aberto, o modo e a data do último backup
        rol:h:<id> ......... um histórico (nome e datas)
-       rol:c:<id>:<n> ..... as rolagens dele, em trechos de até MESA_TRECHO (uma rolagem nova regrava um trecho só)
+       rol:c:<id>:<trecho> as rolagens dele, em trechos de até MESA_TRECHO (uma rolagem nova regrava um trecho só).
+                            Cada aparelho (cada aba aberta) escreve as rolagens novas nos trechos DELE (o nome do
+                            trecho começa pelo código dele): dois aparelhos rolando ao mesmo tempo não pisam um no outro.
        rol:t:<id> ......... uma tabela de eventos
      A lixeira fica neste navegador (por mesa). */
   const MESA_TRECHO = 60, MESA_LIMITE = 1100000;
-  const mesa = { on: false, D: null, id: null, sombra: new Map(), trecho: new Map(), ult: new Map(), local: null, tRecarga: 0 };
+  const mesa = { on: false, D: null, id: null, sombra: new Map(), trecho: new Map(), ult: new Map(), local: null, tRecarga: 0, chegou: false };
   const idSeguro = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) && !(v in Object.prototype);
-  const dadosDoc = (l) => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
+  /* Os documentos do Rolador são do mestre e não têm dono (dono_id vazio). Um documento com dono foi criado por um
+     jogador e não vale (o banco já não deixa criar; isto é a segunda tranca). */
+  const dadosDoc = (l) => (l && !l.apagado && l.dono_id == null && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
   const chaveLixo = () => 'rolador-urgm:lixeira:' + mesa.id;
+  /* O código deste aparelho — desta aba: fica guardado na sessão dela (continua o mesmo quando ela recarrega; outra
+     aba, outro navegador ou outro computador têm o deles). Sem armazenamento, vale só nesta visita. */
+  const aparelho = (() => {
+    const novo = () => Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+    try { let v = window.sessionStorage.getItem('rolador-urgm:aparelho'); if (!/^[a-z0-9]{6}$/.test(v || '')) { v = novo(); window.sessionStorage.setItem('rolador-urgm:aparelho', v); } return v; }
+    catch (err) { return novo(); }
+  })();
   // igualdade de conteúdo, sem ligar para a ordem das chaves (o banco devolve os objetos com as chaves reordenadas)
   function igual(a, b) {
     if (a === b) return true;
@@ -2789,9 +2801,9 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
       let ult = mesa.ult.get(hist.id) || { k: 0, n: 0 };
       for (const e of hist.entries) {
         let c = mesa.trecho.get(e.id);
-        if (!c || c.h !== hist.id) {                       // rolagem nova (ou movida para cá): vai para o último trecho, ou abre outro
+        if (!c || c.h !== hist.id) {                       // rolagem nova (ou movida para cá): vai para o último trecho deste aparelho, ou abre outro
           if (ult.n >= MESA_TRECHO) ult = { k: ult.k + 1, n: 0 };
-          c = { h: hist.id, k: ult.k }; ult.n++;
+          c = { h: hist.id, k: aparelho + '-' + ult.k }; ult.n++;
           mesa.trecho.set(e.id, c);
         }
         if (!grupos.has(c.k)) grupos.set(c.k, []);
@@ -2804,25 +2816,72 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     out.set('rol:est', { v: 1, ativo: state.activeHistoryId, modo: state.mode, backup: state.lastBackupAt || null });
     return out;
   }
+  /* Um trecho de rolagens que mudou no banco por outra mão desde a última leitura daqui (o mestre com o Rolador
+     aberto em outro aparelho, ou em outra aba): em vez de gravar por cima, junta. O que o outro criou entra; o que
+     ele apagou sai (a não ser que tenha sido mudado aqui); o que foi mudado aqui vale; o resto fica como está lá.
+       base = o trecho como este aparelho o conhecia · la = como está no banco agora · meu = como este aparelho quer */
+  function juntarTrecho(base, la, meu) {
+    const lista = (d) => (d && Array.isArray(d.e) ? d.e.filter((e) => e && typeof e === 'object' && typeof e.id === 'string') : []);
+    const B = new Map(lista(base).map((e) => [e.id, e])), L = new Map(lista(la).map((e) => [e.id, e])), M = new Set(lista(meu).map((e) => e.id));
+    const out = [];
+    for (const e of lista(meu)) {
+      const b = B.get(e.id), l = L.get(e.id);
+      if (b && !l) { if (!igual(b, e)) out.push(e); continue; }      // apagada lá: sai, a não ser que tenha sido mudada aqui
+      out.push(b && l && igual(b, e) ? l : e);                       // não mexida aqui: vale a de lá; mexida (ou criada) aqui: vale a daqui
+    }
+    for (const e of lista(la)) if (!B.has(e.id) && !M.has(e.id)) out.push(e);      // criada lá: entra
+    out.sort((x, y) => (Number(x.createdAt) || 0) - (Number(y.createdAt) || 0));
+    return { e: out };
+  }
+  const conhecido = (id) => { try { return JSON.parse(mesa.sombra.get(id) || 'null'); } catch (err) { return null; } };
   function mesaGravar() {
     const quer = mesaDocs();
-    let cheio = false, tam = 0;
-    for (const [id, dados] of quer) {
-      const j = JSON.stringify(dados);
+    let cheio = false, tam = 0, juntou = false;
+    const gravarDoc = (id, j) => mesa.D.gravar(id, { dono_id: null, vis: 'mestre', dados: JSON.parse(j) });
+    for (const [id, querido] of quer) {
+      let dados = querido, j = JSON.stringify(dados);
       tam += j.length;
-      if (mesa.sombra.get(id) === j) continue;
+      if (mesa.sombra.get(id) === j) continue;                       // nada mudou aqui neste documento
+      const trecho = id.startsWith('rol:c:'), base = conhecido(id), la = dadosDoc(mesa.D.pegar(id));
+      // (igual ao que este aparelho conhecia, só com as chaves em outra ordem: também não mudou — o que está no banco fica)
+      if (base && igual(base, dados)) { mesa.sombra.set(id, j); continue; }
+      // um trecho que mudou no banco por outra mão desde a última leitura daqui: junta, em vez de gravar por cima
+      if (trecho && la && !igual(base, la)) { dados = juntarTrecho(base || { e: [] }, la, dados); j = JSON.stringify(dados); juntou = true; }
+      if (trecho && !dados.e.length) { mesa.sombra.delete(id); if (la) mesa.D.apagar(id); continue; }     // juntando, o trecho ficou vazio: sai
       if (j.length > MESA_LIMITE) { cheio = true; continue; }
       mesa.sombra.set(id, j);
-      if (igual(dadosDoc(mesa.D.pegar(id)), dados)) continue;       // já está assim no banco (só a ordem das chaves mudou)
-      mesa.D.gravar(id, { vis: 'mestre', dados: JSON.parse(j) });
+      if (igual(la, dados)) continue;                                // já está assim no banco
+      gravarDoc(id, j);
     }
-    // o que não existe mais (histórico ou tabela apagados, trecho que esvaziou) sai do banco
-    for (const l of mesa.D.todas()) if (typeof l.id === 'string' && l.id.startsWith('rol:') && !quer.has(l.id)) { mesa.sombra.delete(l.id); mesa.D.apagar(l.id); }
+    /* O que não existe mais (histórico ou tabela apagados, trecho que esvaziou) sai do banco — mas só o que ESTE
+       aparelho conhecia (estava na sombra). Um documento que chegou de outro aparelho e ainda não entrou na tela
+       daqui não é apagado por engano: ele entra na próxima leitura. E, num trecho que este aparelho esvaziou, as
+       rolagens que outro aparelho pôs ali nesse meio-tempo ficam. */
+    for (const id of Array.from(mesa.sombra.keys())) {
+      if (quer.has(id)) continue;
+      const la = dadosDoc(mesa.D.pegar(id)), base = id.startsWith('rol:c:') && la ? conhecido(id) : null;
+      if (base && !igual(base, la)) {
+        const r = juntarTrecho(base, la, { e: [] });
+        juntou = true;
+        if (r.e.length) { const j = JSON.stringify(r); mesa.sombra.set(id, j); if (!igual(la, r)) gravarDoc(id, j); continue; }
+      }
+      mesa.sombra.delete(id); if (mesa.D.pegar(id)) mesa.D.apagar(id);
+    }
     try { window.localStorage.setItem(chaveLixo(), JSON.stringify(state.trash)); } catch (err) { /* sem espaço: a lixeira vale só nesta visita */ }
     lastSavedSize = tam; saveFailed = cheio;
+    /* Juntou com o que veio de outro aparelho: o que entrou tem de passar a fazer parte do que está aberto aqui AGORA
+       (não só na próxima leitura) — senão a gravação seguinte, feita ainda sem essas rolagens, as tiraria de novo. */
+    if (juntou) mesaReler();
     renderSaveStatus();
     renderBanner();
+    if (mesa.chegou) mesaRecarregarLogo();                           // algo chegou de outro aparelho: a tela acompanha em seguida
     return !cheio;
+  }
+  // Lê de novo os documentos da mesa para dentro do estado (este aparelho continua no histórico em que estava).
+  function mesaReler() {
+    const aberto = state.activeHistoryId;
+    state = mesaLer();
+    if (state.histories.some((x) => x.id === aberto)) state.activeHistoryId = aberto;
   }
   // Monta o estado a partir dos documentos da mesa.
   function mesaLer() {
@@ -2835,11 +2894,13 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
       mesa.sombra.set(l.id, JSON.stringify(d));
       let m;
       if ((m = /^rol:h:([A-Za-z0-9_-]{1,60})$/.exec(l.id))) Object.assign(hist(m[1]), { name: d.name, createdAt: d.createdAt, updatedAt: d.updatedAt });
-      else if ((m = /^rol:c:([A-Za-z0-9_-]{1,60}):(\d{1,6})$/.exec(l.id)) && Array.isArray(d.e)) {
-        const hh = hist(m[1]), k = Number(m[2]);
+      else if ((m = /^rol:c:([A-Za-z0-9_-]{1,60}):([A-Za-z0-9-]{1,24})$/.exec(l.id)) && Array.isArray(d.e)) {
+        const hh = hist(m[1]), k = m[2];
         for (const e of d.e) if (e && typeof e === 'object' && typeof e.id === 'string') { hh.entries.push(e); mesa.trecho.set(e.id, { h: m[1], k }); }
+        // o último trecho DESTE aparelho neste histórico (é onde entram as próximas rolagens daqui)
+        const meu = k.startsWith(aparelho + '-') ? Number(k.slice(aparelho.length + 1)) : NaN;
         const u = mesa.ult.get(m[1]);
-        if (!u || k >= u.k) mesa.ult.set(m[1], { k, n: d.e.length });
+        if (Number.isInteger(meu) && meu >= 0 && (!u || meu >= u.k)) mesa.ult.set(m[1], { k: meu, n: d.e.length });
       } else if ((m = /^rol:t:([A-Za-z0-9_-]{1,60})$/.exec(l.id))) tabelas.push(Object.assign({}, d, { id: m[1] }));
     }
     const est = dadosDoc(mesa.D.pegar('rol:est')) || {};
@@ -2855,10 +2916,17 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     let antes = null;
     try { antes = j ? JSON.parse(j) : null; } catch (err) { antes = null; }
     if (igual(antes, dadosDoc(l))) return;
+    mesaRecarregarLogo();
+  }
+  /* Relê os documentos da mesa e redesenha. Se há algo daqui por salvar, primeiro salva (o que chegou de fora não é
+     apagado: ver mesaGravar) e relê em seguida — assim nenhum dos dois lados some. */
+  function mesaRecarregarLogo() {
+    mesa.chegou = true;
     clearTimeout(mesa.tRecarga);
     mesa.tRecarga = setTimeout(() => {
-      if (pendingSave) return;                             // há algo daqui por salvar: o que está na tela vale
-      state = mesaLer();
+      if (pendingSave) return;                             // o salvamento que está para sair chama de volta
+      mesa.chegou = false;
+      mesaReler();
       renderAll();
       refreshOpenDialogs();
     }, 250);
@@ -2873,11 +2941,14 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     try { D = T.dados.col('documentos'); await D.pronta; }
     catch (err) { toast('Não deu para ler os históricos da mesa agora. O Rolador abriu com os deste navegador.', { error: true }); return false; }
     save();                                                // os dados do navegador ficam salvos como estavam...
-    mesa.local = state;                                    // ...e guardados à parte, para o mestre poder trazê-los
     mesa.D = D; mesa.id = st.mesa.id;
     const primeira = mesaVazia();
+    let daMesa;
+    try { daMesa = mesaLer(); }                            // só passa a valer a mesa depois de ela ter sido lida inteira
+    catch (err) { console.error(err); mesa.D = null; mesa.id = null; toast('Não deu para abrir os históricos da mesa. O Rolador abriu com os deste navegador.', { error: true }); return false; }
+    mesa.local = state;                                    // ...e os do navegador ficam guardados à parte, para o mestre poder trazê-los
     mesa.on = true;
-    state = mesaLer();
+    state = daMesa;
     purgeTrash();
     D.aoMudar(mesaDeFora);
     return primeira ? 'primeira' : true;
@@ -2941,7 +3012,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     for (const id of ['fOp', 'd0Op', 'd1Op']) fillOpSelect($(id));
     bindEvents();
     bindAiEvents();
-    window.__roladorUrgm = Object.freeze({ randInt, parseDice, versao: 1 });
+    window.__roladorUrgm = Object.freeze({ randInt, parseDice, juntarTrecho, versao: 1 });
     // Dentro do site, com uma mesa aberta: os históricos passam a ser os da mesa (a página só desenha depois de saber).
     let naMesa = false;
     try { naMesa = await mesaEntrar(); } catch (err) { console.error(err); naMesa = false; }

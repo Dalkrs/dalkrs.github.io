@@ -98,12 +98,22 @@ const arvLocal = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   ok(await ate(async () => await B.evaluate(() => bib().arvores[0].nodes[1].nome === 'Punho de Aço'), 20000), 'o que o mestre muda na árvore chega ao jogador (pacote novo)');
   ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2), 'e as escolhas do jogador continuam');
   ok(await ate(async () => (await F.evaluate(() => calcular(S.personagens.find(p => p.nome === 'Li')).arv.FOR)) === 6), 'o bônus novo (FOR +5 e +1) já vale na ficha');
+  // o mestre muda a árvore e fecha a página na mesma hora: a biblioteca sobe na saída; o pacote dos jogadores, que
+  // é montado um instante depois, fica para trás — e é refeito quando o mestre abre a Árvore de novo
+  await A.evaluate(() => { registrar('renomear nódulo'); bib().arvores[0].nodes[1].nome = 'Punho de Titânio'; salvar(); pintarTudo(); });
+  await M.reload({ waitUntil: 'load' });
+  ok(await ate(async () => { A = await quadro(M, /\/arvore\//); return A && await A.evaluate(() => typeof doc === 'object' && typeof bib === 'function' && bib().arvores[0].nodes[1].nome === 'Punho de Titânio'); }, 40000), 'o mestre renomeia um nódulo e recarrega a página na mesma hora: a mudança não fica para trás');
+  ok(await ate(async () => await B.evaluate(() => bib().arvores[0].nodes[1].nome === 'Punho de Titânio'), 40000), 'e o pacote dos jogadores, que tinha ficado para trás, é refeito quando o mestre abre a Árvore: o jogador recebe o nome novo');
+  ok(t.saidas.length === 0, 'sem o navegador precisar perguntar "sair da página?"');
+  ok(await ate(async () => await M.evaluate(() => TC.dados.pendentes === 0)), '(tudo salvo)');
   // desfazer do jogador não volta por cima do que é dos outros
   await B.evaluate(async () => { await descerGrau('n_punho'); }); await w(400, J);
   await B.evaluate(() => desfazer()); await w(500, J);
-  ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2 && bib().arvores[0].nodes[1].nome === 'Punho de Aço'), 'o desfazer do jogador volta só a escolha dele, não a árvore do mestre');
+  ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2 && bib().arvores[0].nodes[1].nome === 'Punho de Titânio'), 'o desfazer do jogador volta só a escolha dele, não a árvore do mestre');
   ok(await B.evaluate(() => excluirPersonagem().then(() => doc.personagens.some(p => p.nome === 'Li'))), 'na mesa, personagem não é excluído pela Árvore');
 
+  // (antes de o mestre apagar a mesa, o que o jogador acabou de fazer termina de subir: depois de apagada, o banco recusaria)
+  await ate(async () => await J.evaluate(() => TC.dados.pendentes === 0) && await M.evaluate(() => TC.dados.pendentes === 0));
   await apagarMesaTela(M, nomeMesa);
   // de volta sem mesa: a biblioteca local intacta
   ok(await ate(async () => { A = await quadro(M, /\/arvore\//); return A && await A.evaluate(() => typeof doc === 'object' && bib().nome === 'Campanha' && bib().arvores[0].nodes[1].nome === 'Punho de Ferro' && doc.personagens[0].nome === 'Rascunho local'); }), 'fora da mesa, a árvore do navegador continua como era');

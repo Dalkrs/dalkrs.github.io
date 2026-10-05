@@ -395,7 +395,7 @@ const UI = (() => {
     for (const raw of scenes) {
       if (!raw || !Array.isArray(raw.tokens)) continue;
       const sc = normalizeScene(clone(raw));
-      if (!sc.id || Store.S.scenes[sc.id] || (nuvem && !Proj.idOk(sc.id))) sc.id = uid('cena');
+      if (!sc.id || Store.S.scenes[sc.id] || (nuvem && !Proj.idCena(sc.id))) sc.id = uid('cena');
       if (nuvem) {
         Proj.trocarDonos(sc, donos, Store.S.players);
         if (sc.bg.asset && !Store.S.assets[sc.bg.asset]) sc.bg.asset = null;

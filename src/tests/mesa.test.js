@@ -149,6 +149,53 @@ const { ok, end } = checker();
   ok((await M.locator('#btnConta').innerText()).includes(nomeMesa), 'ao recarregar, a conta e a mesa continuam abertas');
   ok(await espera(M, 'Furtividade do bandido', 6000) && await feed(M).locator('.it').count() >= antes - 1, 'e o registro volta inteiro');
 
+  // ---------- sair, fechar ou trocar de mesa com mudanças ainda por subir: nada fica para trás ----------
+  const sai1 = await M.evaluate(async () => {
+    const D = TC.dados.col('documentos'); await D.pronta;
+    D.gravar('teste:pequeno', { dono_id: null, vis: 'mestre', dados: { n: 1 } });
+    const ev = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(ev);      // o que a página faz quando vai fechar
+    return { perguntou: ev.defaultPrevented, naFila: TC.dados.pendentes };
+  });
+  ok(!sai1.perguntou && sai1.naFila === 1, 'fechar a página com uma mudança pequena por subir: ela sai na hora, do jeito que o navegador garante, e ele não pergunta nada');
+  ok(await M.waitForFunction(() => TC.dados.pendentes === 0 && TC.dados.col('documentos').pegar('teste:pequeno').rev > 0, null, { timeout: 15000 }).then(() => true, () => false), '(como a página não fechou de verdade, a mudança aparece confirmada)');
+  const sai2 = await M.evaluate(() => {
+    TC.dados.col('documentos').gravar('teste:grande', { dono_id: null, vis: 'mestre', dados: { s: 'x'.repeat(90000) } });
+    const ev = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  ok(sai2, 'com um documento grande por subir (não cabe na garantia do navegador), o navegador pergunta antes de sair');
+  ok(await M.waitForFunction(() => TC.dados.pendentes === 0 && TC.dados.col('documentos').pegar('teste:grande').rev > 0, null, { timeout: 20000 }).then(() => true, () => false), 'ficando na página, o documento grande sobe pelo caminho comum');
+  // sem rede: mandar agora não garante nada — o navegador pergunta
+  await M.context().setOffline(true);
+  const sai3 = await M.evaluate(() => {
+    TC.dados.col('documentos').gravar('teste:sem-rede', { dono_id: null, vis: 'mestre', dados: { n: 1 } });
+    const ev = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  await M.context().setOffline(false);
+  ok(sai3, 'sem rede, com algo por subir, o navegador pergunta antes de sair (o envio de saída não teria como chegar)');
+  ok(await M.waitForFunction(() => TC.dados.pendentes === 0 && (TC.dados.col('documentos').pegar('teste:sem-rede') || {}).rev > 0, null, { timeout: 40000 }).then(() => true, () => false), 'com a rede de volta, a mudança sobe sozinha');
+  const fechou = await M.evaluate(async () => {
+    const id = TC.mesas.atual.id;
+    TC.dados.col('documentos').gravar('teste:fechando', { dono_id: null, vis: 'mestre', dados: { n: 7 } });
+    TC.mesas.fechar();                                         // fecha a mesa com a mudança ainda na fila
+    await new Promise(r => setTimeout(r, 2500));
+    await TC.mesas.abrir(id);
+    const D = TC.dados.col('documentos'); await D.pronta;
+    const l = D.pegar('teste:fechando');
+    return l ? l.dados.n : null;
+  });
+  ok(fechou === 7, 'fechar a mesa com uma mudança ainda na fila: ela sobe mesmo assim (ao reabrir, está lá)');
+  const outra = await M.evaluate(async () => {
+    TC.daPonteDireto({ t: 'dados.gravar', col: 'documentos', id: 'teste:de-outra-mesa', campos: { dono_id: null, vis: 'mestre', dados: { n: 1 } }, mesa: '00000000-0000-4000-8000-000000000000' }, window);
+    TC.daPonteDireto({ t: 'dados.gravar', col: 'documentos', id: 'teste:desta-mesa', campos: { dono_id: null, vis: 'mestre', dados: { n: 1 } }, mesa: TC.mesas.atual.id }, window);
+    const D = TC.dados.col('documentos');
+    return [!!D.pegar('teste:de-outra-mesa'), !!D.pegar('teste:desta-mesa')];
+  });
+  ok(outra[0] === false && outra[1] === true, 'uma gravação que chega de um sistema ainda na mesa anterior não entra na mesa aberta (a desta mesa entra)');
+  await M.waitForFunction(() => TC.dados.pendentes === 0, null, { timeout: 15000 }).catch(() => {});
+  await M.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
+
   // ---------- o mestre apaga a mesa ----------
   await M.locator('#btnConta').click(); await w(300);
   await M.locator('#menu .lk', { hasText: 'Apagar esta mesa' }).click(); await w(300);

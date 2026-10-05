@@ -577,7 +577,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=4"></script>
+<script src="../tc/ponte.js?v=5"></script>
 <script src="../tc/dice.js?v=1"></script>
 <script src="../tc/rules.js?v=2"></script>
 <div class="app" id="app">
@@ -1216,7 +1216,7 @@ const Store = (() => {
     hh.undo.push({ label: t.label, fwd: t.fwd, inv: t.inv });
     if (hh.undo.length > MAX_UNDO) hh.undo.shift();
     hh.redo.length = 0;
-    emit('commit', { sceneId: S.current, label: t.label, ops: t.fwd });
+    emit('commit', { sceneId: S.current, label: t.label, ops: t.fwd, inv: t.inv });     // inv: como cada coisa estava antes
   }
 
   function cancel() {
@@ -1232,7 +1232,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.inv) { raw(op); emit('live', op); }
     hh.redo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd });
     return e;
   }
   function redo() {
@@ -1241,7 +1241,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.fwd) { raw(op); emit('live', op); }
     hh.undo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv });
     return e;
   }
 
@@ -1260,7 +1260,7 @@ const Store = (() => {
       const inv = raw(op);
       if (!inv) return false;
       emit('live', op, inv);
-      emit('commit', { sceneId: S.current, label: '', ops: [op], remote: true });
+      emit('commit', { sceneId: S.current, label: '', ops: [op], inv: [inv], remote: true });
       return true;
     },
     /* Várias operações de fora de uma vez, numa cena qualquer da mesa (a que os jogadores estão vendo pode não ser a
@@ -1269,15 +1269,15 @@ const Store = (() => {
     remoteIn(sceneId, ops) {
       const sc = S.scenes[sceneId];
       if (!sc || !ops.length) return 0;
-      const aqui = sceneId === S.current, done = [];
+      const aqui = sceneId === S.current, done = [], invs = [];
       if (aqui && tx) commit();
       for (const op of ops) {
         const inv = raw(op, sc);
         if (!inv) continue;
-        done.push(op);
+        done.push(op); invs.unshift(inv);
         if (aqui) emit('live', op, inv);
       }
-      if (done.length) emit('commit', { sceneId, label: '', ops: done, remote: true });
+      if (done.length) emit('commit', { sceneId, label: '', ops: done, inv: invs, remote: true });
       return done.length;
     },
     // Agrupa várias operações num único passo de desfazer.
@@ -3340,10 +3340,10 @@ const Fichas = (() => {
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
   }
-  // ficha → token (não entra no desfazer: quem manda é a ficha). `cena`: o id da cena do token (a aberta, se não vier).
-  function syncToken(t, cena) {
+  // O que a ficha muda no token (barras, iniciativa, imagem); null se nada.
+  function remendo(t) {
     const l = get(t.char);
-    if (!l) return false;
+    if (!l) return null;
     const r = resumo(l), p = {};
     const bars = barrasDe(t, r);
     if (bars) p.bars = bars;
@@ -3355,7 +3355,16 @@ const Fichas = (() => {
       if (t.img !== a.id && (!t.img || t.imgChar)) { p.img = a.id; p.imgChar = true; }
       else if (t.img === a.id && !t.imgChar) p.imgChar = true;
     } else if (t.imgChar) { p.img = null; p.imgChar = false; }
-    if (!Object.keys(p).length) return false;
+    return Object.keys(p).length ? p : null;
+  }
+  const falta = t => !!remendo(t);
+  // ficha → token (não entra no desfazer: quem manda é a ficha). `cena`: o id da cena do token (a aberta, se não vier).
+  function syncToken(t, cena) {
+    const p = remendo(t);
+    if (!p) return false;
+    /* O mestre com o site aberto em mais de um aparelho: a cena que está no ar é acertada pelo aparelho que
+       transmite. Este acompanha (e assume, se depois de alguns segundos ainda faltar: ver Nuvem.cobrar). */
+    if (Nuvem.segue(cena || Store.S.current)) { Nuvem.cobrar(); return false; }
     applying = true;
     try { Store.remoteIn(cena || Store.S.current, [{ t: 'upd', c: 'tokens', id: t.id, p }]); } finally { applying = false; }
     return true;
@@ -3444,7 +3453,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, paraFicha, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, rolaveis, fixaPadrao, rolar, imagemDe };
 })();
 /* ---------------------------------------------------------------
    7c. PROJEÇÃO — a cena como ela vai para o banco e para os jogadores
@@ -3469,12 +3478,25 @@ const Proj = (() => {
   const FORMAS = ['free', 'line', 'rect', 'ell', 'poly', 'text'];
   const FX_FORMAS = ['circ', 'quad', 'rect', 'cone', 'line'];
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
-  const num = (v, a, b, padrao) => { const n = Number(v); return isFinite(n) ? clamp(n, a, b) : padrao; };
-  const cor = (v, padrao) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : padrao);
+  /* O que vem de um jogador pode ser qualquer coisa. Número é só o que já é número (converter um objeto estranho
+     em número ou em texto pode dar erro, e um erro aqui pararia os pedidos de todos). */
+  const nu = v => (typeof v === 'number' ? v : NaN);
+  const num = (v, a, b, padrao) => { const n = nu(v); return isFinite(n) ? clamp(n, a, b) : padrao; };
+  const cor = (v, padrao) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : padrao);
+  // Um resumo do conteúdo (texto → número em base 36): muda quando o conteúdo muda. Serve de "versão" do mapa.
+  function resumo(texto) {
+    let a = 0xdeadbeef, b = 0x41c6ce57;
+    for (let i = 0; i < texto.length; i++) { const c = texto.charCodeAt(i); a = Math.imul(a ^ c, 2654435761); b = Math.imul(b ^ c, 1597334677); }
+    a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909);
+    b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909);
+    return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36);
+  }
   // Um id que pode vir de fora (de um jogador, de um arquivo): curto, sem caracteres estranhos e nunca o nome de algo
   // que todo objeto já tem ("__proto__", "constructor", "toString"…), que confundiria quem guarda coisas por id.
   const idOk = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) && !(v in Object.prototype);
   const tem = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+  // Id de cena: além disso, não pode ser uma das palavras que os documentos da mesa já usam (cena:pub:…, cena:pedido:…).
+  const idCena = v => idOk(v) && v !== 'pub' && v !== 'pedido';
 
   // Igualdade de conteúdo, sem ligar para a ordem das chaves (o banco devolve os objetos com as chaves reordenadas).
   function igual(a, b) {
@@ -3493,11 +3515,12 @@ const Proj = (() => {
   }
 
   // As imagens que uma parte da cena usa: { id: { url, w, h, kind, name } } — só as que estão guardadas no banco.
-  function imgsDe(ids, assets) {
+  // Para os jogadores (publico), sem o nome: o nome do arquivo pode dizer o que o mestre escondeu ("Dragão.png").
+  function imgsDe(ids, assets, publico) {
     const o = {};
     for (const id of ids) {
       const a = id && assets ? assets[id] : null;
-      if (a && /^https:\/\//.test(a.url || '')) o[id] = { url: a.url, w: a.w || 0, h: a.h || 0, kind: a.kind || '', name: a.name || '' };
+      if (a && /^https:\/\//.test(a.url || '')) o[id] = { url: a.url, w: a.w || 0, h: a.h || 0, kind: a.kind || '', name: publico ? '' : a.name || '' };
     }
     return o;
   }
@@ -3527,19 +3550,21 @@ const Proj = (() => {
   // Barra de um token do mestre: com números, só a proporção, ou nada — conforme a regra de quem não é dono.
   function barraPublica(b, modo) {
     if (modo === 'num') return b;
-    const o = { n: b.n, c: b.c, k: b.k, on: b.on, vis: b.vis, v: 0, m: 0 };
-    if (modo === 'none' || !b.on || !(b.m > 0)) { o.on = false; return o; }
-    o.v = Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10; o.m = 100;      // só a proporção: os números ficam com o mestre
-    return o;
+    if (modo === 'none' || !b.on || !(b.m > 0)) return { n: 'Barra', c: b.c, k: 'bar', on: false, vis: '', v: 0, m: 0 };     // nem o nome vai
+    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };     // só a proporção
   }
-  function tokenPublico(t) {
+  // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
+  function tokenPublico(t, jogadores) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
-    if (!t.owner) {
+    const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
+    if (!deJogador) {
+      o.owner = null;
       if (t.showName === false) o.name = '???';
       o.bars = t.bars.map(b => barraPublica(b, b.vis || t.barVis));
       o.auras = (t.auras || []).filter(a => a.pub).map(a => clone(a));
       o.char = null; o.ini = 0;
+      o.vis = { on: false, range: 0, dark: 0 };                       // o que o token do mestre enxerga não é da conta dos jogadores
     }
     return o;
   }
@@ -3548,37 +3573,76 @@ const Proj = (() => {
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };
-    return {
-      on: !!tn.on, round: tn.round || 1, cur: tn.cur || null,
-      list: tn.list.filter(e => !(e.token && fora.has(e.token))).map(e => ({
-        id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null,
-      })),
-    };
+    const list = tn.list.filter(e => !(e.token && fora.has(e.token))).map(e => ({
+      id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null,
+    }));
+    // (a vez de um token oculto não aponta para ninguém: os jogadores não ficam sabendo que há mais alguém na ordem)
+    return { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
   }
-  function projetar(sc, assets) {
+  function projetar(sc, assets, jogadores) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
-    const tokens = sc.tokens.filter(t => !t.hidden).map(tokenPublico);
+    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
     for (const k in sc) if (k !== 'explored' && !VIVO.includes(k)) m[k] = sc[k];
     m.walls = sc.walls.map(paredePublica);
+    m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);
-    m.imgs = imgsDe([sc.bg && sc.bg.asset], assets);
+    m.imgs = imgsDe([sc.bg && sc.bg.asset], assets, true);
     const v = {
       id: sc.id, tokens,
       effects: sc.effects.filter(e => !e.gm && !(e.token && fora.has(e.token))).map(e => Object.assign({}, e, { apply: null })),
       turn: turnoPublico(sc, fora, nomes),
       targets: (sc.targets || []).filter(x => !fora.has(x.t)),
-      imgs: imgsDe(tokens.map(t => t.img), assets),
+      imgs: imgsDe(tokens.map(t => t.img), assets, true),
     };
     return { m, v };
   }
 
-  /* ---- o que um jogador pediu: vale? ---- */
+  /* ---- o que um jogador pediu: vale? ----
+     Barras, condições e auras viajam como "como estava → como ficou" (op.b guarda o "como estava"). O mestre aplica
+     só a diferença por cima do que ele tem agora: se nesse meio-tempo ele deu dano em Vida e o jogador gastou SP,
+     as duas coisas valem. */
   const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras' };
-  function auraLimpa(a) {
-    if (!ehObj(a)) return null;
-    return { id: idOk(a.id) ? a.id : uid('au'), k: ['circ', 'quad', 'cone'].includes(a.k) ? a.k : 'circ', r: num(a.r, 0.5, 60, 2), c: cor(a.c, '#e6ab4f'), a: num(a.a, 0.05, 0.8, 0.2), ang: num(a.ang, 10, 340, 60), dir: num(a.dir, 0, 360, 0), pub: a.pub !== false };
+  const MAX_FORMAS = 150, MAX_EFEITOS = 40, MAX_PONTOS = 3000, MAX_AURAS = 12;      // por jogador, por cena
+  const MAX_PESO_FORMAS = 120000;                    // e o tamanho de todos os desenhos de um jogador numa cena, em caracteres
+  const r1 = n => Math.round(n * 10) / 10;
+  /* Barras: o jogador só mexe no valor e na sobrevida das barras que existem e estão em uso (é o que a tela dele
+     deixa). Com a base, vale a variação (−12 continua −12 sobre o valor de agora); sem ela, o valor pedido.
+     O resultado não passa do maior entre o máximo da barra, o valor que o mestre tem e o valor que o jogador
+     ficou vendo: uma cura somada a outra não estoura o máximo, mas quem digitou um valor acima dele fica com ele. */
+  function fundirBarras(atual, base, novo) {
+    if (!Array.isArray(novo)) return null;
+    let mudou = false;
+    const out = atual.map((b, i) => {
+      const n = novo[i], a = Array.isArray(base) ? base[i] : null;
+      // a barra saiu do lugar nesse meio-tempo (o mestre tirou ou trocou a ordem): o pedido não se aplica a ela
+      if (!ehObj(n) || !b.on || (ehObj(a) && a.n !== b.n) || (typeof n.n === 'string' && n.n !== b.n)) return b;
+      const o = Object.assign({}, b);
+      const nv = nu(n.v), av = ehObj(a) ? nu(a.v) : NaN;
+      if (isFinite(nv)) {
+        const alvo = isFinite(av) ? b.v + (nv - av) : nv;
+        const v = clamp(r1(alvo), 0, Math.min(999999, Math.max(b.m, b.v, nv)));
+        if (v !== b.v && (isFinite(av) ? nv !== av : true)) o.v = v;
+      }
+      const nx = Math.max(0, nu(n.x) || 0), ax = ehObj(a) ? Math.max(0, nu(a.x) || 0) : NaN;
+      if (isFinite(ax) ? nx !== ax : nx !== barX(b)) {
+        const x = clamp(r1(isFinite(ax) ? barX(b) + (nx - ax) : nx), 0, 99999);
+        if (x > 0) o.x = x; else delete o.x;
+      }
+      if (o.v !== b.v || barX(o) !== barX(b)) mudou = true;
+      return o;
+    });
+    return mudou ? out : null;
+  }
+  function fundirConds(atual, base, novo) {
+    const limpa = lista => Array.from(new Set((Array.isArray(lista) ? lista : []).filter(c => tem(COND_BY_ID, c))));
+    const n = limpa(novo);
+    if (!Array.isArray(base)) return n;
+    const b = limpa(base), tirar = new Set(b.filter(c => !n.includes(c)));
+    const out = atual.filter(c => !tirar.has(c));
+    for (const c of n) if (!b.includes(c) && !out.includes(c)) out.push(c);
+    return out;
   }
   function cinfoLimpo(x) {
     const out = {};
@@ -3586,19 +3650,91 @@ const Proj = (() => {
     for (const id in x) {
       if (!tem(COND_BY_ID, id) || !ehObj(x[id])) continue;
       const o = {};
-      for (const k of ['n', 'd', 'd0']) { const n = Math.round(Number(x[id][k]) || 0); if (n > 0) o[k] = Math.min(n, 999); }
+      for (const k of ['n', 'd', 'd0']) { const n = Math.round(nu(x[id][k]) || 0); if (n > 0) o[k] = Math.min(n, 999); }
       if (Object.keys(o).length) out[id] = o;
     }
     return out;
   }
-  const pontos = p => (Array.isArray(p) && p.length >= 2 && p.length <= 6000 && p.length % 2 === 0 && p.every(n => typeof n === 'number' && isFinite(n)) ? p.slice() : null);
+  function fundirCinfo(atual, base, novo) {
+    const n = cinfoLimpo(novo);
+    if (!ehObj(base)) return n;
+    const b = cinfoLimpo(base), out = Object.assign({}, atual);
+    for (const c of CONDS) {
+      if (igual(b[c.id], n[c.id])) continue;                           // o jogador não mexeu nesta
+      if (n[c.id]) out[c.id] = n[c.id]; else delete out[c.id];
+    }
+    return out;
+  }
+  function auraLimpa(a, pub) {
+    if (!ehObj(a)) return null;
+    return { id: idOk(a.id) ? a.id : uid('au'), k: ['circ', 'quad', 'cone'].includes(a.k) ? a.k : 'circ', r: num(a.r, 0.5, 60, 2), c: cor(a.c, '#e6ab4f'), a: num(a.a, 0.05, 0.8, 0.2), ang: num(a.ang, 10, 340, 60), dir: num(a.dir, 0, 360, 0), pub };
+  }
+  // Auras, por id. "Os jogadores veem esta aura" é escolha do mestre: a que já existe mantém a dela; a nova nasce visível.
+  function fundirAuras(atual, base, novo) {
+    if (!Array.isArray(novo)) return null;
+    const pubDe = id => { const x = atual.find(a => a.id === id); return x ? x.pub !== false : true; };
+    const n = novo.slice(0, MAX_AURAS).map(a => auraLimpa(a, ehObj(a) ? pubDe(a.id) : true)).filter(Boolean);
+    if (!Array.isArray(base)) return n;
+    const eraDele = new Map(base.filter(ehObj).map(a => [a.id, a])), ficou = new Map(n.map(a => [a.id, a]));
+    const out = [];
+    for (const a of atual) {
+      if (eraDele.has(a.id) && !ficou.has(a.id)) continue;                                  // ele tirou
+      const nova = ficou.get(a.id);
+      out.push(nova && eraDele.has(a.id) && !igual(auraLimpa(eraDele.get(a.id), a.pub !== false), nova) ? nova : a);   // ele mexeu nesta (ou não)
+    }
+    for (const a of n) if (!eraDele.has(a.id) && !out.some(x => x.id === a.id) && out.length < MAX_AURAS) out.push(a);   // ele criou
+    return out;
+  }
+  // (os pontos entram com uma casa decimal e dentro de um limite: um traço não pesa mais do que precisa)
+  /* O mesmo "juntar", para o que o MESTRE fez num aparelho dele e é refeito por cima da cena que chegou de outro: sem
+     os limites dos jogadores. O que ele mudou vale (nome, máximo, quem vê, barras e auras novas, visíveis ou não); o
+     que ele não tocou fica como chegou; valor e sobrevida mudados nos dois lados valem pela variação. */
+  function juntarBarrasMestre(atual, base, novo) {
+    if (!Array.isArray(novo)) return atual;
+    if (!Array.isArray(base) || !Array.isArray(atual) || igual(atual, base)) return novo;      // lá ninguém mexeu: vale o daqui, inteiro
+    const porNome = (lista, n) => lista.find(x => ehObj(x) && x.n === n);
+    const out = [];
+    for (const nb of novo) {
+      if (!ehObj(nb)) continue;
+      const a = porNome(atual, nb.n), b = porNome(base, nb.n);
+      if (!b) { out.push(nb); continue; }                    // criada (ou renomeada) aqui: como ficou aqui
+      if (!a) { if (!igual(nb, b)) out.push(nb); continue; } // tirada lá: sai, a não ser que tenha sido mudada aqui
+      const o = {};
+      for (const k of new Set(Object.keys(a).concat(Object.keys(b), Object.keys(nb)))) {
+        if (k === 'v' || k === 'x') continue;
+        const val = igual(nb[k], b[k]) ? a[k] : nb[k];        // não mexida aqui: como chegou; mexida aqui: a daqui
+        if (val !== undefined) o[k] = val;
+      }
+      const tres = (n, bb, aa) => (n === bb ? aa : aa === bb ? n : Math.max(0, r1(aa + (n - bb))));
+      o.v = tres(nu(nb.v) || 0, nu(b.v) || 0, nu(a.v) || 0);
+      const x = tres(barX(nb), barX(b), barX(a));
+      if (x > 0) o.x = x;
+      out.push(o);
+    }
+    for (const a of atual) if (ehObj(a) && !porNome(base, a.n) && !porNome(novo, a.n)) out.push(a);      // criada lá: entra
+    return out;
+  }
+  function juntarAurasMestre(atual, base, novo) {
+    if (!Array.isArray(novo)) return atual;
+    if (!Array.isArray(base) || !Array.isArray(atual) || igual(atual, base)) return novo;
+    const B = new Map(base.filter(ehObj).map(a => [a.id, a])), N = new Map(novo.filter(ehObj).map(a => [a.id, a])), out = [];
+    for (const a of atual) {
+      if (!ehObj(a)) continue;
+      const b = B.get(a.id), n = N.get(a.id);
+      if (b && !n) continue;                                 // tirada aqui
+      out.push(n && b && !igual(n, b) ? n : a);              // mudada aqui: a daqui; senão, como chegou
+    }
+    for (const n of novo) if (ehObj(n) && !B.has(n.id) && !out.some(x => x.id === n.id)) out.push(n);      // criada aqui, como o mestre a fez
+    return out;
+  }
+  const pontos = (p, max) => (Array.isArray(p) && p.length >= 2 && p.length <= (max || 6000) && p.length % 2 === 0 && p.every(n => typeof n === 'number' && isFinite(n)) ? p.map(n => r1(clamp(n, -1e5, 1e5))) : null);
   // Uma forma desenhada por um jogador: só os campos de forma, com ele como autor e nunca "só do mestre".
   function formaLimpa(v, quem) {
     if (!ehObj(v) || !idOk(v.id) || !FORMAS.includes(v.k)) return null;
-    const o = { id: v.id, k: v.k, s: cor(v.s, '#f2c14e'), sw: num(v.sw, 0, 200, 4), f: v.f ? cor(v.f, null) : null, a: num(v.a, 0.05, 1, 1), top: !!v.top, gm: false, lock: false, by: quem };
-    if (v.k === 'text') { o.x = num(v.x, -1e5, 1e5, 0); o.y = num(v.y, -1e5, 1e5, 0); o.txt = String(v.txt == null ? '' : v.txt).slice(0, 600); o.fs = num(v.fs, 6, 400, 28); if (!o.txt.trim()) return null; }
+    const o = { id: v.id, k: v.k, s: cor(v.s, '#f2c14e'), sw: num(v.sw, 0, 200, 4), f: v.f ? cor(v.f, null) : null, a: num(v.a, 0.05, 1, 1), top: !!v.top, gm: false, lock: !!v.lock, by: quem };
+    if (v.k === 'text') { o.x = num(v.x, -1e5, 1e5, 0); o.y = num(v.y, -1e5, 1e5, 0); o.txt = (typeof v.txt === 'string' ? v.txt : '').slice(0, 600); o.fs = num(v.fs, 6, 400, 28); if (!o.txt.trim()) return null; }
     else if (v.k === 'rect' || v.k === 'ell') { o.x = num(v.x, -1e5, 1e5, 0); o.y = num(v.y, -1e5, 1e5, 0); o.w = num(v.w, 0, 1e5, 0); o.h = num(v.h, 0, 1e5, 0); }
-    else { o.pts = pontos(v.pts); if (!o.pts) return null; if (v.k === 'line') o.arrow = !!v.arrow; }
+    else { o.pts = pontos(v.pts, MAX_PONTOS); if (!o.pts) return null; if (v.k === 'line') o.arrow = !!v.arrow; }
     return o;
   }
   // Um remendo numa forma que já existe: a forma continua do mesmo tipo e com o mesmo autor; só passam os campos dela.
@@ -3606,12 +3742,15 @@ const Proj = (() => {
     if (!ehObj(p)) return null;
     const novo = formaLimpa(Object.assign({}, s, p, { id: s.id, k: s.k }), s.by), q = {};
     if (!novo) return null;
-    for (const k in p) if (tem(novo, k) && k !== 'id' && k !== 'by' && k !== 'gm' && k !== 'k' && k !== 'lock') q[k] = novo[k];
+    for (const k in p) if (tem(novo, k) && k !== 'id' && k !== 'by' && k !== 'gm' && k !== 'k') q[k] = novo[k];
     return Object.keys(q).length ? q : null;
   }
+  // Quanto pesam os desenhos de um jogador nesta cena (sem contar o de id `menos`): o limite é por jogador.
+  const pesoDasFormas = (sc, quem, menos) => sc.shapes.reduce((t, s) => (s.by === quem && s.id !== menos ? t + JSON.stringify(s).length : t), 0);
   function efeitoLimpo(v, quem, sc) {
     if (!ehObj(v) || !idOk(v.id) || !FX_FORMAS.includes(v.k) || !tem(FX.P, v.fx)) return null;      // só os efeitos da biblioteca
-    const tk = v.token ? sc.tokens.find(t => t.id === v.token && !t.hidden) : null;
+    // preso a um token: só a um dele (ou de todos), como a tela do jogador deixa
+    const tk = v.token ? sc.tokens.find(t => t.id === v.token && !t.hidden && (t.owner === quem || t.owner === '*')) : null;
     const dur = Math.round(num(v.dur, 0, 99, 0));
     return {
       id: v.id, fx: v.fx, k: v.k, x: num(v.x, -1e5, 1e5, 0), y: num(v.y, -1e5, 1e5, 0), r: num(v.r, 0.5, 60, 2), w: num(v.w, 0.25, 60, 1), rw: num(v.rw, 0.5, 120, 3), rh: num(v.rh, 0.5, 120, 2),
@@ -3635,32 +3774,56 @@ const Proj = (() => {
       if (op.t !== 'upd' || !ehObj(op.p)) return null;                // criar e apagar tokens é com o mestre
       const t = sc.tokens.find(x => x.id === op.id);
       if (!t || t.hidden || !(t.owner === quem || t.owner === '*')) return null;
-      const q = {};
+      const q = {}, base = ehObj(op.b) ? op.b : {};
       for (const k in op.p) {
         if (!tem(DO_TOKEN, k) || !p[DO_TOKEN[k]]) continue;
         const val = op.p[k];
         if (k === 'x' || k === 'y') {
           if (t.locked || typeof val !== 'number' || !isFinite(val)) continue;
           q[k] = clamp(val, 0, Math.max(0, (k === 'x' ? sc.cols : sc.rows) * sc.cell - t.size * sc.cell));
-        } else if (k === 'bars') { if (Array.isArray(val) && val.length) q.bars = val.slice(0, MAX_BARS).map(cleanBar); }
-        else if (k === 'conds') { if (Array.isArray(val)) q.conds = Array.from(new Set(val.filter(c => tem(COND_BY_ID, c)))); }
-        else if (k === 'cinfo') q.cinfo = cinfoLimpo(val);
-        else if (k === 'auras') { if (Array.isArray(val)) q.auras = val.slice(0, 12).map(auraLimpa).filter(Boolean); }
+        } else if (k === 'bars') { const nb = fundirBarras(t.bars, base.bars, val); if (nb) q.bars = nb; }
+        else if (k === 'conds') { if (Array.isArray(val)) { const nc = fundirConds(t.conds, base.conds, val); if (!igual(nc, t.conds)) q.conds = nc; } }
+        else if (k === 'cinfo') { const ni = fundirCinfo(t.cinfo || {}, base.cinfo, val); if (!igual(ni, t.cinfo || {})) q.cinfo = ni; }
+        else if (k === 'auras') { const na = fundirAuras(t.auras || [], base.auras, val); if (na && !igual(na, t.auras || [])) q.auras = na; }
       }
+      // contador de uma condição que não está mais no token não fica sobrando
+      if (q.conds || q.cinfo) { const conds = q.conds || t.conds, ci = Object.assign({}, q.cinfo || t.cinfo || {}); let tirou = false; for (const id in ci) if (!conds.includes(id)) { delete ci[id]; tirou = true; } if (tirou || q.cinfo) q.cinfo = ci; }
       return Object.keys(q).length ? { t: 'upd', c: 'tokens', id: t.id, p: q } : null;
     }
     if (op.c === 'shapes') {
       if (!p.desenhar) return null;
-      if (op.t === 'add') { const v = formaLimpa(op.v, quem); return v && !sc.shapes.some(s => s.id === v.id) ? { t: 'add', c: 'shapes', v } : null; }
+      if (op.t === 'add') {
+        const v = formaLimpa(op.v, quem);
+        if (!v || sc.shapes.some(s => s.id === v.id) || sc.shapes.filter(s => s.by === quem).length >= MAX_FORMAS) return null;
+        if (pesoDasFormas(sc, quem) + JSON.stringify(v).length > MAX_PESO_FORMAS) return null;
+        return { t: 'add', c: 'shapes', v };
+      }
+      /* A ordem dos desenhos (trazer para frente, enviar para trás): vale se for só uma troca de lugar dos desenhos
+         que o jogador vê. Os que são só do mestre (e que ele nem recebe) ficam exatamente onde estão. */
+      if (op.t === 'ord') {
+        const ids = Array.isArray(op.ids) ? op.ids.filter(id => typeof id === 'string') : [], vistos = sc.shapes.filter(s => !s.gm).map(s => s.id);
+        if (ids.length !== vistos.length || new Set(ids).size !== ids.length || !ids.every(id => vistos.includes(id))) return null;
+        let i = 0;
+        const nova = sc.shapes.map(s => (s.gm ? s.id : ids[i++]));
+        return nova.every((id, k) => id === sc.shapes[k].id) ? null : { t: 'ord', c: 'shapes', ids: nova };
+      }
       const s = sc.shapes.find(x => x.id === op.id);
       if (!s || s.by !== quem || s.gm) return null;
       if (op.t === 'del') return { t: 'del', c: 'shapes', id: s.id };
-      if (op.t === 'upd') { const q = remendoForma(s, op.p); return q ? { t: 'upd', c: 'shapes', id: s.id, p: q } : null; }
+      if (op.t === 'upd') {
+        const q = remendoForma(s, op.p);
+        if (!q || pesoDasFormas(sc, quem, s.id) + JSON.stringify(Object.assign({}, s, q)).length > MAX_PESO_FORMAS) return null;
+        return { t: 'upd', c: 'shapes', id: s.id, p: q };
+      }
       return null;
     }
     if (op.c === 'effects') {
       if (!p.efeitos) return null;
-      if (op.t === 'add') { const v = efeitoLimpo(op.v, quem, sc); return v && !sc.effects.some(e => e.id === v.id) ? { t: 'add', c: 'effects', v } : null; }
+      if (op.t === 'add') {
+        const v = efeitoLimpo(op.v, quem, sc);
+        if (!v || sc.effects.some(e => e.id === v.id) || sc.effects.filter(e => e.by === quem).length >= MAX_EFEITOS) return null;
+        return { t: 'add', c: 'effects', v };
+      }
       const e = sc.effects.find(x => x.id === op.id);
       if (!e || e.by !== quem || e.gm) return null;
       if (op.t === 'del') return { t: 'del', c: 'effects', id: e.id };
@@ -3712,17 +3875,34 @@ const Proj = (() => {
     }
     return ops;
   }
-  // Aplica operações numa cena solta (fora do Store): é como o jogador repõe, por cima da projeção que chegou,
-  // o que ele fez e o mestre ainda não aplicou.
-  function aplicarEm(sc, ops) {
+  /* Aplica operações numa cena solta (fora do Store). É como o jogador repõe, por cima da projeção que chegou, o que
+     ele fez e o mestre ainda não aplicou — e como o programa do mestre refaz, por cima da cena que chegou de outro
+     aparelho dele, o que tinha sido feito aqui (`comoMestre`: sem os limites dos jogadores). */
+  function aplicarEm(sc, ops, comoMestre) {
     for (const op of ops || []) {
       if (!ehObj(op)) continue;
       if (op.t === 'scn') { for (const k in op.p || {}) sc[k] = clone(op.p[k]); continue; }
+      if (!COLS.includes(op.c)) continue;
       const arr = sc[op.c];
-      if (!COLS.includes(op.c) || !Array.isArray(arr)) continue;
+      if (!Array.isArray(arr)) continue;
       if (op.t === 'add') { if (ehObj(op.v) && !arr.some(o => o.id === op.v.id)) arr.splice(op.i == null ? arr.length : clamp(op.i, 0, arr.length), 0, clone(op.v)); }
       else if (op.t === 'del') { const i = arr.findIndex(o => o.id === op.id); if (i >= 0) arr.splice(i, 1); }
-      else if (op.t === 'upd') { const o = arr.find(x => x.id === op.id); if (o) for (const k in op.p || {}) o[k] = clone(op.p[k]); }
+      else if (op.t === 'upd') {
+        const o = arr.find(x => x.id === op.id);
+        if (!o) continue;
+        // barras, condições e auras com o "como estava": entra só a diferença, como o mestre vai fazer (ver validar)
+        const base = op.c === 'tokens' && ehObj(op.b) ? op.b : {};
+        for (const k in op.p || {}) {
+          const val = op.p[k];
+          if (k === 'bars' && Array.isArray(base.bars) && Array.isArray(o.bars)) {
+            if (comoMestre) o.bars = clone(juntarBarrasMestre(o.bars, base.bars, val));
+            else { const nb = fundirBarras(o.bars, base.bars, val); if (nb) o.bars = nb; }
+          } else if (k === 'conds' && Array.isArray(base.conds) && Array.isArray(o.conds) && Array.isArray(val)) o.conds = fundirConds(o.conds, base.conds, val);
+          else if (k === 'cinfo' && ehObj(base.cinfo)) o.cinfo = fundirCinfo(o.cinfo || {}, base.cinfo, val);
+          else if (k === 'auras' && Array.isArray(base.auras) && Array.isArray(val)) o.auras = comoMestre ? clone(juntarAurasMestre(o.auras || [], base.auras, val)) : fundirAuras(o.auras || [], base.auras, val);
+          else o[k] = clone(val);
+        }
+      }
       else if (op.t === 'ord' && Array.isArray(op.ids)) {
         const por = new Map(arr.map(o => [o.id, o])), nova = op.ids.map(id => por.get(id)).filter(Boolean);
         for (const o of arr) if (!op.ids.includes(o.id)) nova.push(o);
@@ -3735,10 +3915,11 @@ const Proj = (() => {
   /* ---- o índice das cenas da mesa ---- */
   function normIndice(d) {
     d = ehObj(d) ? d : {};
-    const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idOk)));
+    const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idCena)));
     const prefs = ehObj(d.prefs) ? d.prefs : {};
     return {
-      v: 1, ordem, atual: idOk(d.atual) ? d.atual : null, noAr: idOk(d.noAr) ? d.noAr : null,
+      v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
+      tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
       prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null },
     };
   }
@@ -3767,7 +3948,7 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, mapaDeDonos, trocarDonos, idOk };
+  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();
 /* ---------------------------------------------------------------
    7d. NUVEM — as cenas de uma mesa, guardadas no banco e vistas ao vivo
@@ -3783,26 +3964,87 @@ const Nuvem = (() => {
   const S = Store.S;
   const INDICE = 'cenas:indice', PUB_M = 'cena:pub:m', PUB_V = 'cena:pub:v', PRE_PED = 'cena:pedido:';
   const RE_PARTE = /^cena:([A-Za-z0-9_-]{1,60}):([mv])$/;
-  const LIMITE = 1100000;                                  // o banco aceita 1,5 MB por documento, contados do jeito dele (com espaços e acentos em bytes)
+  /* O banco aceita 1,5 MB por documento, contados do jeito dele: em bytes (acento pesa mais de um) e com um espaço
+     depois de cada vírgula e de cada dois-pontos. (O aviso em tempo real de uma mudança só leva até 1 MB; acima
+     disso a casca lê o documento inteiro por conta própria.) */
+  const LIMITE = 1400000;
+  function pesoNoBanco(j) {
+    let n = 0;
+    for (let i = 0; i < j.length; i++) { const c = j.charCodeAt(i); n += c === 44 || c === 58 ? 2 : c < 128 ? 1 : c < 2048 ? 2 : 3; }
+    return n;
+  }
   const PREFS_AQUI = 'tinycats:cenas:prefs';               // preferências de quem está neste aparelho (animação, véu, tutorial)
-  const idCena = id => Proj.idOk(id) && id !== 'pub' && id !== 'pedido';
+  const ATUAL_AQUI = 'tinycats:cenas:atual:';              // + mesa: a cena que o mestre deixou aberta neste aparelho
+  const atualDaqui = () => { try { return localStorage.getItem(ATUAL_AQUI + mesa) || null; } catch (e) { return null; } };
+  const idCena = Proj.idCena;
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const dadosDe = l => (l && !l.apagado && ehObj(l.dados) ? l.dados : null);
+  /* Os documentos das cenas são do mestre e não têm dono (dono_id vazio). Um documento com dono foi criado por um
+     jogador: só vale se for o de pedidos dele. O banco já não deixa um jogador criar outro; isto é a segunda tranca. */
+  const doMestre = l => !!l && l.dono_id == null;
+  const dadosMestre = id => { const l = D.pegar(id); return doMestre(l) ? dadosDe(l) : null; };
   const docM = id => 'cena:' + id + ':m', docV = id => 'cena:' + id + ':v';
 
   let modo = 'local', D = null, mesa = null, eu = null;
   let idx = Proj.normIndice(null);
   const sombra = new Map();                                // documento → o JSON que foi gravado por último (para não regravar igual)
   const sujas = new Set(), expSujas = new Set();
-  let metaSuja = false, pubSuja = false, tGravar = 0, tExp = 0;
+  let metaSuja = false, pubSuja = false, arSujo = false, tGravar = 0, tExp = 0;      // arSujo: este aparelho acabou de mudar o que está no ar (ou quem transmite)
   let estado = 'ok', ouvinte = () => {};
   const banco = makeDB('tinycats-cenas-mesa');             // deste aparelho: o que já foi explorado em cada cena de cada mesa
   const expAqui = new Map();                               // cena → { seq, mapa } lido do aparelho
   // mestre
-  const acks = {};                                         // jogador → número do último pedido dele que já valeu
-  let pings = [], tPedidos = 0, grandes = new Set();
+  /* Até que pedido de cada jogador a cópia DESTE aparelho da cena que está no ar já tem aplicado. A conta anda junto
+     com a cena: é guardada no documento dela e lida de lá, e de nenhum outro lugar — se viesse de outro lugar, este
+     aparelho poderia dar por aplicado um pedido que a cópia dele não tem. */
+  const acks = Object.create(null);
+  /* O que foi feito aqui em cada cena e ainda não subiu para o banco: [{ op, de }] (de = { quem, n } quando a operação
+     veio de um pedido de jogador). Se nesse meio-tempo chega do banco a mesma cena, mudada em outro aparelho do
+     mestre, o que foi feito aqui é refeito por cima do que chegou: nenhum dos dois lados some. */
+  const feito = new Map();
+  let aplicando = null;                                    // o pedido de jogador que está sendo aplicado agora: { quem, n }
+  const visto = new Map();                                 // documento → a linha do banco à qual `sombra` corresponde
+  let pings = [], tPedidos = 0, tAssumir = 0, tCobrar = 0, grandes = new Set();
+  const esperando = new Map();                             // jogador → { n, t }: o pedido mais antigo dele sem resposta, e desde quando
+  /* Este aparelho (esta página aberta). O mestre pode ter o site aberto em mais de um lugar ao mesmo tempo — outro
+     computador, outra aba esquecida —, mas só UM transmite a cena que está no ar: é ele quem aplica os pedidos dos
+     jogadores e escreve a projeção. Transmite o aparelho em que o mestre abriu a mesa ou mexeu por último; os outros
+     acompanham (e assumem sozinhos se os pedidos dos jogadores ficarem sem resposta). O código vale enquanto a
+     página está aberta: recarregar é abrir de novo. */
+  const meu = 'ap' + Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+  const transmito = () => modo === 'mestre' && !!idx.noAr && idx.tx === meu;
+  /* Quanto um aparelho que acompanha espera antes de assumir por conta própria. Tem de ser mais do que o aparelho
+     que transmite leva, no pior caso, para responder (ele recebe o pedido, aplica, grava, e a resposta ainda viaja
+     até aqui: uns 8 segundos quando a mesa está sem o tempo real e lê o banco de tempos em tempos). */
+  const ESPERA_ASSUMIR = 12000;
+  /* Quanto quem abre a mesa espera antes de limpar o que parece sobra (projeção sem cena no ar; índice apontando para
+     uma cena que não está aqui). Cada documento viaja sozinho até o banco: outro aparelho do mestre pode ter acabado
+     de pôr a cena no ar, com uma parte já lá e a outra a caminho. */
+  const ESPERA_LIMPAR = 5000;
+  const relogio = () => performance.now();
+  const esquecer = id => { sombra.delete(id); visto.delete(id); };
+  // O documento como está no banco agora passa a ser o ponto de partida deste aparelho.
+  const anotar = id => { const l = D.pegar(id), x = doMestre(l) ? dadosDe(l) : null; if (x) { sombra.set(id, JSON.stringify(x)); visto.set(id, l); } else esquecer(id); };
+  const contasDe = d => { const o = {}; if (d && ehObj(d.ack)) for (const k in d.ack) { const n = d.ack[k]; if (typeof n === 'number' && isFinite(n) && n > 0) o[k] = n; } return o; };
+  function definirAcks(o) { for (const k in acks) delete acks[k]; for (const k in o) acks[k] = o[k]; }
+  /* Junta a cada mudança de barras, condições ou auras de um token o "como estava" (b): quem for aplicá-la por cima
+     de outra versão da cena junta, em vez de trocar. (A lista do "como estava" vem na ordem contrária à das
+     operações: a última desfaz a primeira.) */
+  const COM_BASE = ['bars', 'conds', 'cinfo', 'auras'];
+  function comBase(ops, inv) {
+    const par = Array.isArray(inv) && inv.length === ops.length;
+    return ops.map((op, i) => {
+      if (op.t !== 'upd' || op.c !== 'tokens' || !op.p) return op;
+      const x = par ? inv[ops.length - 1 - i] : null, antes = x && x.t === 'upd' && x.c === 'tokens' && x.id === op.id ? x : null, b = {};
+      if (antes && antes.p) for (const k of COM_BASE) if (k in op.p && antes.p[k] !== undefined) b[k] = antes.p[k];
+      return Object.keys(b).length ? Object.assign({}, op, { b }) : op;
+    });
+  }
   // jogador
   let caixa = [], seq = 0, vazia = false, tReceber = 0, tPedido = 0, desde = 0, tEspera = 0;
+  /* Os pedidos que o mestre já confirmou, guardados por um tempo. Se a conta dele voltar atrás (a cena passou a ser
+     transmitida por outro aparelho dele, que ainda não tinha os últimos pedidos aplicados), eles voltam para a fila. */
+  let confirmados = [], ultimaConta = 0;
   const pingsVistos = new Set();
 
   function marcar(e) { if (estado !== e) { estado = e; try { ouvinte(e); } catch (err) { console.error(err); } } }
@@ -3852,61 +4094,119 @@ const Nuvem = (() => {
   function exploradoDe(sc) { const e = expAqui.get(sc.id); return e && (e.seq || 0) === (sc.expSeq || 0) ? Object.assign({}, e.mapa) : {}; }
 
   /* ---------------- mestre: ler ---------------- */
+  // Uma cena montada a partir dos documentos dela; null se não há, ou se o conteúdo está estragado (aí ela é
+  // pulada, com um aviso no console, em vez de impedir as outras de abrir).
   function cenaDosDocs(id) {
-    const m = dadosDe(D.pegar(docM(id)));
+    const m = dadosMestre(docM(id));
     if (!m) return null;
-    const v = dadosDe(D.pegar(docV(id)));
-    const sc = Proj.juntar(m, v);
-    sc.id = id;
-    normalizeScene(sc);
-    registrarImgs(m.imgs); if (v) registrarImgs(v.imgs);
-    return sc;
+    const v = dadosMestre(docV(id));
+    try {
+      const sc = Proj.juntar(m, v);
+      sc.id = id;
+      normalizeScene(sc);
+      registrarImgs(m.imgs); if (v) registrarImgs(v.imgs);
+      return sc;
+    } catch (e) { console.warn('Cena ' + id + ': o que está guardado no banco não pôde ser aberto.', e); return null; }
   }
   function carregarMestre() {
-    idx = Proj.normIndice(dadosDe(D.pegar(INDICE)));
+    idx = Proj.normIndice(dadosMestre(INDICE));
+    anotar(INDICE);
     for (const l of D.todas()) {
       const mm = RE_PARTE.exec(l.id || '');
-      if (!mm || mm[2] !== 'm' || !idCena(mm[1])) continue;
+      if (!mm || mm[2] !== 'm' || !idCena(mm[1]) || !doMestre(l)) continue;
       const sc = cenaDosDocs(mm[1]);
       if (!sc) continue;
       sc.explored = exploradoDe(sc);
       S.scenes[sc.id] = sc;
+      anotar(docM(sc.id)); anotar(docV(sc.id));
     }
     S.order = idx.ordem.filter(id => S.scenes[id]);
     for (const id in S.scenes) if (!S.order.includes(id)) S.order.push(id);
-    S.current = S.scenes[idx.atual] ? idx.atual : S.order[0] || null;
-    if (idx.noAr && !S.scenes[idx.noAr]) idx.noAr = null;
+    // a cena aberta por último: a que este aparelho lembra; se ele não lembra, a que o índice diz
+    const lembrada = atualDaqui();
+    S.current = S.scenes[lembrada] ? lembrada : S.scenes[idx.atual] ? idx.atual : S.order[0] || null;
+    /* O índice pode apontar para uma cena que (ainda) não chegou a este aparelho: fica como veio. Se ela não chegar,
+       a limpeza, mais abaixo, desfaz o apontamento. */
+    const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
-    /* Até onde os pedidos de cada jogador já valeram. Com uma cena no ar, a própria projeção diz (e o que eles
-       pediram enquanto o mestre estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
-    const pv = dadosDe(D.pegar(PUB_V));
-    if (idx.noAr && pv && pv.id === idx.noAr) {
-      if (ehObj(pv.ack)) for (const k in pv.ack) if (Number(pv.ack[k]) > 0) acks[k] = Number(pv.ack[k]);
-      if (Array.isArray(pv.pings)) pings = pv.pings.filter(ehObj).slice(-6);
-    } else darPorVistos();
-    if (idx.noAr) { pubSuja = true; agendar(); }             // a projeção é conferida a cada vez que o mestre abre a mesa
+    /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
+       estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
+    const cv = idx.noAr ? dadosMestre(docV(idx.noAr)) : null, pv = dadosMestre(PUB_V), daProj = !!idx.noAr && !!pv && pv.id === idx.noAr;
+    if (cv && ehObj(cv.ack)) definirAcks(contasDe(cv));
+    else if (daProj) definirAcks(contasDe(pv));            // (cena guardada antes de a conta ir junto com ela: vale a da projeção)
+    else darPorVistos();
+    if (daProj && Array.isArray(pv.pings)) pings = pv.pings.filter(ehObj).slice(-6);
+    /* Quem abre a mesa passa a transmitir (é onde o mestre está agora) e confere a projeção. */
+    const abrirTransmitindo = () => { if (!idx.noAr) return; if (idx.tx !== meu) { idx.tx = meu; metaSuja = true; arSujo = true; } pubSuja = true; agendar(); };
+    /* …a não ser que quem transmite seja outra aba deste mesmo navegador, aberta e viva (uma aba a mais, aberta sem
+       querer, não toma a transmissão da que o mestre está usando). As abas se perguntam por um canal do navegador. */
+    let canal = null, outraViva = false;
+    try { canal = new BroadcastChannel('tinycats:cenas:' + mesa); } catch (e) { canal = null; }
+    if (canal) canal.onmessage = ev => {
+      const d = ev.data;
+      if (ehObj(d) && d.t === 'quem' && transmito()) canal.postMessage({ t: 'eu', id: meu });
+      else if (ehObj(d) && d.t === 'eu' && d.id === idx.tx && d.id !== meu) outraViva = true;
+    };
+    /* Sem cena no ar (ou com o índice apontando para uma cena que não está aqui), este aparelho não transmite nada; e,
+       passada a espera, se continuar assim, o que sobrou é sobra mesmo: o apontamento é desfeito e a projeção sai. */
+    const limpar = () => {
+      if (modo !== 'mestre') return;
+      if (semACena()) { idx.noAr = null; idx.tx = null; }
+      if (!idx.noAr) despublicar();
+    };
+    if (!idx.noAr || semACena()) setTimeout(limpar, ESPERA_LIMPAR);
+    else if (canal && idx.tx && idx.tx !== meu) { canal.postMessage({ t: 'quem' }); setTimeout(() => { if (!outraViva) abrirTransmitindo(); }, 400); }
+    else abrirTransmitindo();
     D.aoMudar(doBanco);
+    Store.on('commit', e => {
+      if (!e.ops || !e.ops.length || !S.scenes[e.sceneId]) return;
+      // fica anotado o que foi feito aqui e ainda não subiu (ver `feito`)
+      const lista = feito.get(e.sceneId) || [];
+      for (const op of comBase(e.ops, e.inv)) lista.push({ op: clone(op), de: aplicando });
+      if (lista.length > 5000) lista.splice(0, lista.length - 5000);
+      feito.set(e.sceneId, lista);
+      // o mestre mexeu aqui na cena que está no ar: é este aparelho que transmite
+      if (!e.remote && e.sceneId === idx.noAr) assumir();
+    });
     setTimeout(pedidos, 300);
     return S.order.length > 0;
   }
+  // Este aparelho passa a transmitir a cena que está no ar.
+  function assumir() {
+    if (modo !== 'mestre' || !idx.noAr || idx.tx === meu) return false;
+    idx.tx = meu;
+    const pv = dadosMestre(PUB_V);
+    if (pv && pv.id === idx.noAr && Array.isArray(pv.pings)) pings = pv.pings.filter(ehObj).slice(-6);
+    esquecer(PUB_M); esquecer(PUB_V);                      // o que está lá foi escrito por outro aparelho: a projeção daqui vai inteira
+    pararVigias();
+    metaSuja = true; arSujo = true; pubSuja = true; agendar();
+    if (!tPedidos) tPedidos = setTimeout(pedidos, 60);
+    setTimeout(() => { if (transmito()) Fichas.syncAll(); }, 0);      // as barras ligadas a fichas, pela ficha como está agora
+    return true;
+  }
+  function pararVigias() { clearTimeout(tAssumir); tAssumir = 0; clearTimeout(tCobrar); tCobrar = 0; esperando.clear(); }
   // Tudo o que está nas filas dos jogadores agora passa a contar como já visto (não será aplicado).
   function darPorVistos() {
     for (const l of D.todas()) {
       if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PED)) continue;
       const d = dadosDe(l), quem = l.id.slice(PRE_PED.length);
-      for (const b of (d && Array.isArray(d.lote) ? d.lote : [])) if (ehObj(b) && typeof b.n === 'number' && b.n < Date.now() + 86400000 && b.n > (acks[quem] || 0)) acks[quem] = b.n;
+      for (const b of (d && Array.isArray(d.lote) ? d.lote : [])) if (ehObj(b) && typeof b.n === 'number' && isFinite(b.n) && b.n > (acks[quem] || 0)) acks[quem] = b.n;
     }
+    if (idx.noAr) sujas.add(idx.noAr);                     // (a conta vai guardada junto com a cena)
   }
 
   /* ---------------- mestre: gravar ---------------- */
-  // Grava um documento só se o conteúdo mudou. Devolve false se ele não cabe no banco.
+  /* Grava um documento só se o conteúdo mudou — em relação ao que está no banco AGORA, não ao que este aparelho
+     gravou por último (outro aparelho do mestre pode ter gravado por cima nesse meio-tempo). Devolve false se o
+     documento não cabe no banco. */
   function escrever(id, dados, vis) {
-    const j = JSON.stringify(dados);
-    if (sombra.get(id) === j) return true;
-    if (j.length > LIMITE) return false;
+    const j = JSON.stringify(dados), l = D.pegar(id);
+    if (l && sombra.get(id) === j && visto.get(id) === l) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
+    if (j.length > LIMITE / 3 && pesoNoBanco(j) > LIMITE) return false;
     sombra.set(id, j);
-    D.gravar(id, { vis, dados: JSON.parse(j) });
+    if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados)) { visto.set(id, l); return true; }      // já está assim no banco
+    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }) || D.pegar(id));       // sem dono: é do mestre
     return true;
   }
   function avisarGrande(sc) {
@@ -3922,29 +4222,55 @@ const Nuvem = (() => {
       const sc = S.scenes[id];
       if (!sc) continue;
       const { m, v } = Proj.partes(sc, S.assets);
-      const ok = escrever(docM(id), m, 'mestre') & escrever(docV(id), v, 'mestre');
-      if (ok) grandes.delete(id); else { falhou = true; avisarGrande(sc); }
+      /* Até onde os pedidos dos jogadores já foram aplicados vai guardado junto com a cena que eles mudaram: quem
+         abrir esta cena depois (o mestre de novo, ou outro aparelho dele) não aplica o mesmo pedido duas vezes. */
+      if (id === idx.noAr) v.ack = Object.assign({}, acks);
+      const okM = escrever(docM(id), m, 'mestre'), okV = escrever(docV(id), v, 'mestre');
+      if (okM && okV) { grandes.delete(id); feito.delete(id); }
+      else {
+        falhou = true; avisarGrande(sc);
+        // (do que foi feito aqui, só continua "por subir" o que é da metade que não coube)
+        const resto = (feito.get(id) || []).filter(x => (daParteViva(x.op) ? !okV : !okM));
+        if (resto.length) feito.set(id, resto); else feito.delete(id);
+      }
     }
     if (idx.noAr && (pubSuja || sujas.has(idx.noAr))) publicar();
     sujas.clear(); pubSuja = false;
     if (metaSuja) {
       metaSuja = false;
-      escrever(INDICE, { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, prefs: { barDefaults: S.prefs.barDefaults || null } }, 'mestre');
+      /* A cena aberta por último fica lembrada neste aparelho. No índice ela vai junto quando ele é gravado por outro
+         motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
+         um ficaria regravando o que o outro acabou de gravar). */
+      try { localStorage.setItem(ATUAL_AQUI + mesa, S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null } };
+      const la = dadosMestre(INDICE);
+      if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre');
+      arSujo = false;
       guardarPrefsDaqui();
     }
     marcar(falhou ? 'erro' : 'ok');
   }
   const agendar = () => { marcar('saving'); if (!tGravar) tGravar = setTimeout(gravar, 450); };
+  const daParteViva = op => (op.t === 'scn' ? Object.keys(op.p || {}).every(k => Proj.VIVO.includes(k)) : Proj.VIVO.includes(op.c));
 
+  /* A projeção vai em dois documentos, que chegam aos jogadores um de cada vez. Para ninguém montar o mapa novo com
+     os tokens antigos (ou o contrário), o mapa leva uma versão (ver: um resumo do próprio conteúdo) e a parte viva
+     diz para qual versão do mapa ela foi feita (mv): o jogador só usa o par que combina. O mapa só é regravado
+     quando muda de fato. Só o aparelho que transmite escreve a projeção. */
   function publicar() {
+    if (!transmito()) return;
     const sc = S.scenes[idx.noAr];
     if (!sc) { despublicar(); return; }
-    const { m, v } = Proj.projetar(sc, S.assets);
+    const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
+    m.ver = Proj.resumo(JSON.stringify(m));
+    const coube = escrever(PUB_M, m, 'mesa'), la = dadosMestre(PUB_M);
+    // se o mapa novo não coube no banco, os jogadores continuam com o mapa que está lá — e com os tokens ao vivo
+    v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
-    if (!(escrever(PUB_M, m, 'mesa') & escrever(PUB_V, v, 'mesa'))) avisarGrande(sc);
+    if (!(escrever(PUB_V, v, 'mesa') & coube)) avisarGrande(sc);
   }
   function despublicar() {
-    for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); sombra.delete(id); }
+    for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); esquecer(id); }
     pings = [];
   }
 
@@ -3952,42 +4278,93 @@ const Nuvem = (() => {
   function doBanco(l) {
     if (!l || typeof l.id !== 'string') return;
     if (l.id.startsWith(PRE_PED)) { if (!tPedidos) tPedidos = setTimeout(pedidos, 60); return; }
+    if (!l.apagado && !doMestre(l)) return;                  // documento com dono não é do mestre: não é cena nem índice
     if (l.id === INDICE) { indiceDeFora(l); return; }
+    if (l.id === PUB_M || l.id === PUB_V) { projecaoDeFora(l); return; }
     const mm = RE_PARTE.exec(l.id);
     if (mm && idCena(mm[1])) cenaDeFora(mm[1], l);
   }
   // O mesmo mestre com o site aberto em outro aparelho: o que ele muda lá aparece aqui (se aqui não há nada por salvar).
   function mudouDeFato(l) { const j = sombra.get(l.id); let antes = null; try { antes = j ? JSON.parse(j) : null; } catch (e) { antes = null; } return !Proj.igual(antes, dadosDe(l)); }
+  /* A projeção mudou no banco por outra mão (outro aparelho do mestre). Quem acompanha confere se os pedidos dos
+     jogadores estão sendo respondidos. Quem transmite escreve a dele de novo — a não ser que o banco diga que quem
+     transmite agora é o outro: aí este para. */
+  function projecaoDeFora(l) {
+    if (l.id === PUB_V && !tPedidos) tPedidos = setTimeout(pedidos, 60);
+    if (!transmito() || !mudouDeFato(l)) return;
+    const n = Proj.normIndice(dadosMestre(INDICE));
+    if (!arSujo && (n.noAr !== idx.noAr || (n.noAr ? n.tx : null) !== meu)) { adotarAr(n); return; }
+    esquecer(l.id); pubSuja = true; agendar();
+  }
+  /* O índice mudou em outro aparelho do mestre. O que está no ar e quem transmite valem na hora (a não ser que este
+     aparelho tenha acabado de mudar isso também); a ordem das cenas e as barras padrão esperam se há algo daqui por
+     salvar (o daqui vai por cima, já com o que foi adotado). */
   function indiceDeFora(l) {
-    if (metaSuja || !mudouDeFato(l)) return;
+    if (!mudouDeFato(l)) return;
     const n = Proj.normIndice(dadosDe(l));
-    sombra.set(INDICE, JSON.stringify(dadosDe(l) || null));
-    idx.noAr = S.scenes[n.noAr] ? n.noAr : null;
+    if (!arSujo) adotarAr(n);
+    anotar(INDICE);                                          // a próxima gravação daqui é comparada com o que chegou
+    if (metaSuja) return;
     const ordem = n.ordem.filter(id => S.scenes[id]);
     for (const id of S.order) if (!ordem.includes(id)) ordem.push(id);
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
     Store.meta();
   }
+  // (a cena apontada pode ainda nem ter chegado a este aparelho: o que vale é o que o índice diz, guardado como veio)
+  function adotarAr(n) {
+    const tx = n.noAr ? n.tx : null;
+    if (n.noAr === idx.noAr && tx === idx.tx) return;
+    const transmitia = transmito(), outraCena = n.noAr !== idx.noAr;
+    idx.noAr = n.noAr; idx.tx = tx;
+    // este aparelho transmitia e a cena saiu do ar por outro: ele pode ter reescrito a projeção nesse meio-tempo
+    if (transmitia && !idx.noAr) despublicar();
+    // outra cena no ar: a conta dos pedidos é a que está guardada com ela
+    if (outraCena && idx.noAr) { const cv = dadosMestre(docV(idx.noAr)); if (cv && ehObj(cv.ack)) definirAcks(contasDe(cv)); }
+    pararVigias();
+    if (!tPedidos) tPedidos = setTimeout(pedidos, 60);
+    Store.meta();
+  }
+  /* Uma cena mudou no banco por outra mão. Sem nada daqui por salvar, a cena daqui passa a ser a que chegou. Com algo
+     por salvar, o que foi feito aqui é refeito por cima da que chegou (e vai junto na próxima gravação). */
   function cenaDeFora(id, l) {
-    if (sujas.has(id) || !mudouDeFato(l)) return;
-    if (l.apagado || !dadosDe(D.pegar(docM(id)))) {
+    if (!mudouDeFato(l)) return;
+    // no meio de um gesto do mestre na cena aberta: espera ele soltar (sem esquecer o que chegou)
+    if (Store.inTx() && id === S.current) { setTimeout(() => { const agora = D.pegar(l.id); cenaDeFora(id, agora || l); }, 300); return; }
+    if (l.apagado || !dadosMestre(docM(id))) {
       if (!S.scenes[id] || l.id !== docM(id)) return;
-      sombra.delete(docM(id)); sombra.delete(docV(id));
+      esquecer(docM(id)); esquecer(docV(id)); feito.delete(id); sujas.delete(id);
       const era = S.current === id;
       Store.removeScene(id);
-      if (idx.noAr === id) idx.noAr = null;
+      if (idx.noAr === id) { idx.noAr = null; idx.tx = null; }
       if (!S.order.length) { const n = newScene('Nova cena'); Store.addScene(n); cena(n.id); }
       if (era) UI.switchScene(S.order[0]);
       return;
     }
+    const antes = S.scenes[id];
+    let meus = sujas.has(id) ? feito.get(id) || [] : [];
+    // mudou aqui por um caminho que não deixou o que refazer (uma cena recém-trazida, por exemplo): vale a daqui
+    if (sujas.has(id) && antes && !meus.length) return;
     const sc = cenaDosDocs(id);
     if (!sc) return;
-    for (const d of [docM(id), docV(id)]) { const x = dadosDe(D.pegar(d)); if (x) sombra.set(d, JSON.stringify(x)); }
-    const antes = S.scenes[id];
+    anotar(docM(id)); anotar(docV(id));
+    if (id === idx.noAr) {
+      /* A conta dos pedidos vem com a cena que chegou: é ela que diz o que essa cena já tem aplicado. O que este
+         aparelho tinha aplicado de pedidos de jogadores e ainda não tinha subido NÃO é refeito por cima: os pedidos
+         continuam no documento de cada jogador, e quem transmite aplica de novo, na ordem, os que passam da conta
+         (refazer só os daqui poderia deixar a cena com o pedido 2 e sem o pedido 1 — e a conta dizendo 2). */
+      const cv = dadosMestre(docV(id));
+      if (cv && ehObj(cv.ack)) { meus = meus.filter(x => !x.de); definirAcks(contasDe(cv)); }
+      if (!tPedidos) tPedidos = setTimeout(pedidos, 60);
+    }
+    if (meus.length) {
+      try { Proj.aplicarEm(sc, meus.map(x => x.op), true); normalizeScene(sc); }
+      catch (e) { console.warn('Cena ' + id + ': não deu para refazer por cima do que chegou o que tinha sido feito aqui.', e); }
+      feito.set(id, meus);
+    } else feito.delete(id);
     sc.explored = antes ? antes.explored : exploradoDe(sc);
+    if (id === idx.noAr && transmito()) { pubSuja = true; agendar(); }      // os jogadores recebem por aqui
     if (!antes) { Store.addScene(sc); return; }
-    if (Store.inTx() && id === S.current) return;            // no meio de um gesto: fica para a próxima mudança
     S.scenes[id] = sc;
     if (id === S.current) { pruneSel(); Vision.invalidate(); Store.emit('scene', id); } else Store.meta();
   }
@@ -3998,27 +4375,84 @@ const Nuvem = (() => {
     if (modo !== 'mestre' || !idx.noAr) return;
     const sc = S.scenes[idx.noAr];
     if (!sc) return;
+    if (!transmito()) { vigiar(sc); return; }                // quem aplica os pedidos é o aparelho que transmite
     if (Store.inTx() && sc.id === S.current) { tPedidos = setTimeout(pedidos, 150); return; }   // o mestre está no meio de um gesto
     let andou = false;
-    for (const l of D.todas()) {
-      if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PED)) continue;
-      const quem = l.id.slice(PRE_PED.length), d = dadosDe(l);
-      if (!d || d.cena !== sc.id || !Array.isArray(d.lote) || l.dono_id !== quem || !playerById(quem)) continue;
-      // (o número de cada lote é a hora em que foi feito: um número do futuro distante travaria os pedidos seguintes do jogador)
-      const teto = Date.now() + 86400000;
-      for (const b of d.lote.filter(x => ehObj(x) && Array.isArray(x.ops) && typeof x.n === 'number' && x.n > 0 && x.n < teto).sort((x, y) => x.n - y.n)) {
-        if (!(b.n > (acks[quem] || 0))) continue;
-        for (const op of b.ops.slice(0, 300)) {
-          if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
-          const v = Proj.validar(op, quem, sc);             // contra a cena como está agora: as anteriores do lote já valeram
-          if (!v || !Store.remoteIn(sc.id, [v])) continue;
-          // token ligado a uma ficha, numa cena que o mestre não tem aberta: a ficha acompanha mesmo assim
-          if (sc.id !== S.current && v.c === 'tokens' && v.p.bars) Fichas.paraFicha(sc.tokens.find(t => t.id === v.id));
-        }
+    for (const { quem, lotes } of filas(sc, acks)) {
+      for (const b of lotes) {
+        aplicando = { quem, n: b.n };
+        try {
+          for (const op of b.ops.slice(0, 300)) {
+            /* Um pedido malfeito (de propósito ou não) não pode parar os dos outros: se der erro, é pulado, e a
+               conta do jogador anda do mesmo jeito. */
+            try {
+              if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
+              const v = Proj.validar(op, quem, sc);         // contra a cena como está agora: as anteriores do lote já valeram
+              if (!v || !Store.remoteIn(sc.id, [v])) continue;
+              // token ligado a uma ficha, numa cena que o mestre não tem aberta: a ficha acompanha mesmo assim
+              if (sc.id !== S.current && v.c === 'tokens' && v.p.bars) Fichas.paraFicha(sc.tokens.find(t => t.id === v.id));
+            } catch (e) { console.warn('Um pedido de um jogador não pôde ser lido e foi ignorado.', e); }
+          }
+        } finally { aplicando = null; }
         acks[quem] = b.n; andou = true;
       }
     }
-    if (andou) { pubSuja = true; agendar(); }
+    if (andou) { sujas.add(sc.id); pubSuja = true; agendar(); }      // (a conta vai guardada com a cena e na projeção)
+  }
+  /* Os pedidos de cada jogador que passam da conta dada (a deste aparelho, ou a que está publicada na projeção), na
+     ordem: cada lote tem um número, que só cresce. */
+  function filas(sc, contas) {
+    const out = [];
+    for (const l of D.todas()) {
+      try {
+        if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PED)) continue;
+        const quem = l.id.slice(PRE_PED.length), d = dadosDe(l);
+        if (!d || d.cena !== sc.id || !Array.isArray(d.lote) || l.dono_id !== quem || !playerById(quem)) continue;
+        const lotes = d.lote.filter(x => ehObj(x) && Array.isArray(x.ops) && typeof x.n === 'number' && x.n > (contas[quem] || 0) && isFinite(x.n)).sort((x, y) => x.n - y.n);
+        if (lotes.length) out.push({ quem, lotes });
+      } catch (e) { console.warn('A fila de pedidos de um jogador não pôde ser lida e foi ignorada.', e); }
+    }
+    return out;
+  }
+  /* Outro aparelho do mestre é quem transmite. Este acompanha pela projeção: enquanto ela vai confirmando os pedidos
+     dos jogadores, está tudo bem. Se o MESMO pedido fica sem resposta por um bom tempo, quem transmitia não está
+     mais lá (fechou, dormiu, ficou sem rede): este aparelho assume. */
+  function vigiar(sc) {
+    const pv = dadosMestre(PUB_V), publicadas = contasDe(pv && pv.id === sc.id ? pv : null), agora = relogio(), vistos = new Set();
+    for (const { quem, lotes } of filas(sc, publicadas)) {
+      vistos.add(quem);
+      const e = esperando.get(quem);
+      if (!e || e.n !== lotes[0].n) esperando.set(quem, { n: lotes[0].n, t: agora });
+    }
+    for (const q of Array.from(esperando.keys())) if (!vistos.has(q)) esperando.delete(q);
+    clearTimeout(tAssumir); tAssumir = 0;
+    if (!esperando.size) return;
+    let falta = Infinity;
+    for (const e of esperando.values()) falta = Math.min(falta, ESPERA_ASSUMIR - (agora - e.t));
+    if (falta <= 0) { assumir(); return; }
+    tAssumir = setTimeout(pedidos, falta + 30);              // confere de novo quando a espera do mais antigo vencer
+  }
+  /* O mesmo vale para o que vem das fichas (o HP anotado na ficha muda a barra do token): quem acerta a cena que
+     está no ar é o aparelho que transmite. Este acompanha — e, se depois da espera um token continua exatamente como
+     estava, ainda por acertar, assume e acerta. */
+  const segue = id => modo === 'mestre' && !!idx.noAr && id === idx.noAr && idx.tx !== meu;
+  function porAcertar() {
+    const cena = S.scenes[idx.noAr], m = new Map();
+    if (cena) for (const t of cena.tokens) if (t.char && Fichas.falta(t)) m.set(t.id, JSON.stringify([t.bars, t.ini, t.img]));
+    return m;
+  }
+  function cobrar() {
+    if (tCobrar) return;
+    const antes = porAcertar();
+    if (!antes.size) return;
+    tCobrar = setTimeout(() => {
+      tCobrar = 0;
+      if (!idx.noAr || !segue(idx.noAr)) return;
+      const agora = porAcertar();
+      let parado = false;
+      for (const [id, j] of agora) if (antes.get(id) === j) parado = true;
+      if (parado) assumir(); else if (agora.size) cobrar();
+    }, ESPERA_ASSUMIR);
   }
   function pingDe(quem, op, sc) {
     if (!sc.perms.ping || typeof op.x !== 'number' || typeof op.y !== 'number' || !isFinite(op.x) || !isFinite(op.y)) return;
@@ -4035,9 +4469,10 @@ const Nuvem = (() => {
   /* ---------------- jogador ---------------- */
   // O que está no ar: { st: 'ok', m, v } · 'nada' (o mestre não está mostrando cena) · 'espera' (chegou só metade)
   function noArAgora() {
-    const m = dadosDe(D.pegar(PUB_M)), v = dadosDe(D.pegar(PUB_V));
+    const m = dadosMestre(PUB_M), v = dadosMestre(PUB_V);
     if (!m && !v) return { st: 'nada' };
-    if (!m || !v || !idCena(m.id) || m.id !== v.id) return { st: 'espera' };
+    // metade ainda não chegou, ou as duas metades não são do mesmo momento (mapa de uma versão, tokens de outra)
+    if (!m || !v || !idCena(m.id) || m.id !== v.id || (m.ver || 0) !== (v.mv || 0)) return { st: 'espera' };
     return { st: 'ok', m, v };
   }
   function cenaVazia() {
@@ -4045,7 +4480,7 @@ const Nuvem = (() => {
     sc.id = 'sem-cena'; sc.grid.on = false; sc.bgColor = '#1b1f2a'; sc.cols = 24; sc.rows = 14;
     for (const k in sc.perms) sc.perms[k] = false;
     S.scenes = { [sc.id]: sc }; S.order = [sc.id]; S.current = sc.id;
-    vazia = true; caixa = [];
+    vazia = true; caixa = []; confirmados = [];
   }
   function montar(a) {
     const sc = Proj.juntar(a.m, a.v);
@@ -4054,8 +4489,9 @@ const Nuvem = (() => {
     registrarImgs(a.m.imgs); registrarImgs(a.v.imgs);
     sc.explored = exploradoDe(sc);
     S.scenes = { [sc.id]: sc }; S.order = [sc.id]; S.current = sc.id;
-    vazia = false; caixa = [];
-    seq = Math.max(seq, ackDe(a.v));                       // os próximos pedidos têm de vir depois do que o mestre já contou
+    vazia = false; caixa = []; confirmados = [];
+    ultimaConta = ackDe(a.v);
+    seq = Math.max(seq, ultimaConta);                      // os próximos pedidos têm de vir depois do que o mestre já contou
     for (const p of Array.isArray(a.v.pings) ? a.v.pings : []) if (ehObj(p)) pingsVistos.add(p.id);
   }
   // Até que número o mestre já aplicou os pedidos deste jogador.
@@ -4069,7 +4505,7 @@ const Nuvem = (() => {
     const a = noArAgora();
     if (a.st === 'ok') montar(a); else cenaVazia();
     D.aoMudar(l => { if (l && (l.id === PUB_M || l.id === PUB_V)) { if (!tReceber) tReceber = setTimeout(receber, 30); } });
-    Store.on('commit', e => { if (!e.remote && !vazia && e.ops.length && e.sceneId === S.current) pedir(e.ops); });
+    Store.on('commit', e => { if (!e.remote && !vazia && e.ops.length && e.sceneId === S.current) pedir(e.ops, e.inv || []); });
     return true;
   }
   function trocou() {
@@ -4087,10 +4523,20 @@ const Nuvem = (() => {
     if (a.st === 'nada') { if (!vazia) { cenaVazia(); trocou(); marcar('ok'); } return; }
     if (vazia || a.m.id !== S.current) { montar(a); trocou(); marcar('ok'); return; }
     // a mesma cena: o que o mestre já aplicou sai da fila; o que falta continua valendo por cima do que chegou
-    const ack = ackDe(a.v), antes = caixa.length;
+    const ack = ackDe(a.v), agora = relogio();
+    let mudou = false;
     seq = Math.max(seq, ack);
+    if (ack < ultimaConta) {                               // a conta voltou atrás: o que tinha sido confirmado depois dela volta para a fila
+      const voltam = confirmados.filter(b => b.n > ack);
+      if (voltam.length) { caixa = voltam.map(b => ({ n: b.n, ops: b.ops })).concat(caixa).sort((x, y) => x.n - y.n); mudou = true; }
+      confirmados = confirmados.filter(b => b.n <= ack);
+    }
+    ultimaConta = ack;
+    const saem = caixa.filter(b => b.n <= ack);
+    if (saem.length) { mudou = true; confirmados = confirmados.concat(saem.map(b => ({ n: b.n, ops: b.ops, t: agora }))); }
+    confirmados = confirmados.filter(b => agora - b.t < 120000).slice(-40);
     caixa = caixa.filter(b => b.n > ack);
-    if (caixa.length !== antes) desde = caixa.length ? Date.now() : 0;      // o mestre está respondendo: a espera recomeça
+    if (mudou) desde = caixa.length ? Date.now() : 0;      // o mestre está respondendo: a espera recomeça
     const alvo = Proj.juntar(a.m, a.v);
     alvo.id = a.m.id;
     normalizeScene(alvo);
@@ -4105,13 +4551,15 @@ const Nuvem = (() => {
       pingsVistos.add(p.id);
       if (p.by !== eu && isFinite(p.x) && isFinite(p.y)) { App.pings.push({ x: p.x, y: p.y, t0: performance.now(), c: p.c || '#e6ab4f', n: p.n || '' }); if (App.pings.length > 8) App.pings.shift(); Render.request(); }
     }
-    if (caixa.length !== antes) gravarPedido();
+    if (mudou) gravarPedido();
     situacao();
   }
-  // O que o jogador fez vai para a fila; o mestre aplica e confirma na projeção seguinte.
-  function pedir(ops) {
-    seq = Math.max(seq + 1, Date.now());
-    caixa.push({ n: seq, ops: clone(ops) });
+  /* O que o jogador fez vai para a fila; o mestre aplica e confirma na projeção seguinte. Barras, condições e auras
+     vão com o "como estava" (b), para o mestre aplicar só a diferença por cima do que ele tem agora. */
+  function pedir(ops, inv) {
+    const lote = comBase(ops, inv);
+    seq += 1;                                              // (seq nunca fica atrás do que o mestre já confirmou: ver montar e receber)
+    caixa.push({ n: seq, ops: clone(lote) });
     if (caixa.length > 80) caixa.shift();
     if (!desde) desde = Date.now();
     if (!tPedido) tPedido = setTimeout(gravarPedido, 120);
@@ -4120,8 +4568,12 @@ const Nuvem = (() => {
   function gravarPedido() {
     clearTimeout(tPedido); tPedido = 0;
     if (modo !== 'jogador') return;
-    // (o documento é do próprio jogador: o banco só aceita que ele crie o que é dele)
-    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote: caixa })) });
+    /* Além do que ainda falta o mestre aplicar, ficam no documento os pedidos confirmados há pouco: se a cena passar a
+       ser transmitida por um aparelho do mestre que ainda não os tinha, ele os encontra aqui, na ordem — e aplica os
+       que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
+    let lote = confirmados.map(b => ({ n: b.n, ops: b.ops })).concat(caixa);
+    while (lote.length > caixa.length && JSON.stringify(lote).length > 120000) lote = lote.slice(1);
+    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) });
   }
   // "Ao vivo" quando não há nada na fila; "enviando" enquanto o mestre não confirma; depois de um tempo, "esperando o mestre".
   function situacao() {
@@ -4139,9 +4591,9 @@ const Nuvem = (() => {
   function meta() { if (modo === 'mestre') { metaSuja = true; agendar(); } else guardarPrefsDaqui(); }
   function tirarCena(id) {
     if (modo !== 'mestre') return;
-    sujas.delete(id);
-    for (const d of [docM(id), docV(id)]) { if (D.pegar(d)) D.apagar(d); sombra.delete(d); }
-    if (idx.noAr === id) { idx.noAr = null; despublicar(); }
+    sujas.delete(id); feito.delete(id);
+    for (const d of [docM(id), docV(id)]) { if (D.pegar(d)) D.apagar(d); esquecer(d); }
+    if (idx.noAr === id) { idx.noAr = null; idx.tx = null; arSujo = true; despublicar(); }
     metaSuja = true; agendar();
   }
   function descarregar() {
@@ -4160,26 +4612,28 @@ const Nuvem = (() => {
     banco.write(puts, []);
   }
   // O mestre manda esquecer o que foi explorado: os jogadores esquecem junto (cada um no seu aparelho).
-  function esquecerExplorado(sc) { if (modo === 'mestre') Store.remoteIn(sc.id, [{ t: 'scn', p: { expSeq: (sc.expSeq || 0) + 1 } }]); }
+  function esquecerExplorado(sc) { if (modo !== 'mestre') return; if (sc.id === idx.noAr) assumir(); Store.remoteIn(sc.id, [{ t: 'scn', p: { expSeq: (sc.expSeq || 0) + 1 } }]); }
 
   /* ---- no ar ---- */
   function mostrar(id) {
     if (modo !== 'mestre' || !S.scenes[id] || idx.noAr === id) return false;
+    idx.noAr = id; idx.tx = meu; arSujo = true;            // quem põe no ar transmite
     darPorVistos();                                        // o que os jogadores tinham pedido em outra cena não vale nesta
     pings = [];
-    idx.noAr = id; metaSuja = true; pubSuja = true; agendar();
+    sombra.delete(PUB_M); sombra.delete(PUB_V);
+    metaSuja = true; pubSuja = true; agendar();
     Store.meta();
     return true;
   }
   function esconder() {
-    if (modo !== 'mestre' || !idx.noAr) return false;
-    idx.noAr = null; despublicar(); metaSuja = true; agendar();
+    if (modo !== 'mestre' || (!idx.noAr && !D.pegar(PUB_M) && !D.pegar(PUB_V))) return false;
+    idx.noAr = null; idx.tx = null; arSujo = true; despublicar(); metaSuja = true; agendar();
     Store.meta();
     return true;
   }
   function ping(x, y) {
     if (modo === 'jogador') { if (!vazia) pedir([{ t: 'ping', x, y }]); return; }
-    if (modo === 'mestre' && idx.noAr && idx.noAr === S.current && isGM()) porPing({ id: uid('pg'), x, y, c: '#e6ab4f', n: 'Mestre', by: 'gm' }, false);
+    if (modo === 'mestre' && idx.noAr && idx.noAr === S.current && isGM()) { assumir(); porPing({ id: uid('pg'), x, y, c: '#e6ab4f', n: 'Mestre', by: 'gm' }, false); }
   }
 
   /* ---------------- imagens ---------------- */
@@ -4297,7 +4751,7 @@ const Nuvem = (() => {
     iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
-    noAr: () => idx.noAr, mostrar, esconder, ping, semCena: () => vazia,
+    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, mostrar, esconder, ping, semCena: () => vazia,
     guardarImagem, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
     eu: () => eu, pendentes: () => caixa.length,
   };
@@ -6529,7 +6983,7 @@ const UI = (() => {
     for (const raw of scenes) {
       if (!raw || !Array.isArray(raw.tokens)) continue;
       const sc = normalizeScene(clone(raw));
-      if (!sc.id || Store.S.scenes[sc.id] || (nuvem && !Proj.idOk(sc.id))) sc.id = uid('cena');
+      if (!sc.id || Store.S.scenes[sc.id] || (nuvem && !Proj.idCena(sc.id))) sc.id = uid('cena');
       if (nuvem) {
         Proj.trocarDonos(sc, donos, Store.S.players);
         if (sc.bg.asset && !Store.S.assets[sc.bg.asset]) sc.bg.asset = null;
@@ -8371,6 +8825,7 @@ async function start(snap) {
 
   const flush = () => { try { Vision.flushExplored(); Persist.flush(); } catch (e) { /* nada a fazer */ } };
   window.addEventListener('pagehide', flush);
+  if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(flush);       // dentro do site: a casca avisa antes de fechar
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
   // Tutorial de primeiro uso: abre sozinho uma vez, quando quem entra é o mestre.

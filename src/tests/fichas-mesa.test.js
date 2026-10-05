@@ -1,5 +1,5 @@
 // Fichas dentro de uma mesa, no projeto real: o mestre traz as fichas, entrega uma a um jogador, e os dois veem as mudanças.
-const { start, checker } = require('./lib');
+const { start, checker, espiarBanco } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const pc = (id, nome, lvl) => ({ id, nome, raca: 'Humano', lado: 'Aliado', grupo: '', tags: [], tier: 'S', level: lvl, tiers: { FOR: 'A', DES: 'C', AGI: 'D', VIT: 'B', CAN: 'E' }, pctProprio: null, poderes: [],
@@ -11,7 +11,8 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   const t = await start({ net: true });
   const c = contas();
   { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await d.ctx.close(); }
-  const M = (await t.device({ name: 'mestre', seed: { urgm_calc_atributos_v1: local, 'tinycats:aba': 'fichas' } })).page;
+  const dM = await t.device({ name: 'mestre', seed: { urgm_calc_atributos_v1: local, 'tinycats:aba': 'fichas' } }), M = dM.page;
+  await espiarBanco(dM.ctx);
   const J = (await t.device({ name: 'jogador', w: 1250, h: 820, seed: { 'tinycats:aba': 'fichas' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);
   const fichas = async p => { for (let i = 0; i < 40; i++) { const f = p.frame({ url: /\/fichas\// }); if (f) return f; await p.waitForTimeout(250); } return null; };
@@ -72,6 +73,39 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   try { await M.locator('#feed .rol', { hasText: 'Dain X' }).first().waitFor({ timeout: 10000 }); chegou = true; } catch (e) { /* não chegou */ }
   ok(chegou, 'a rolagem do jogador pela ficha aparece na mesa ao vivo do mestre');
   ok(chegou && (await M.locator('#feed .rol', { hasText: 'Dain X' }).first().locator('.it-h b').innerText()) === 'Dalmo', 'com o nome do jogador');
+
+  // ---------- o aviso em tempo real de uma ficha chega sem as colunas grandes que não mudaram ----------
+  /* É assim que o banco avisa: quem muda só os pontos atuais (a coluna "estado") faz o aviso chegar sem a ficha e sem
+     a árvore. Aplicado como vem, a ficha fica em branco na tela de todo mundo até recarregar. */
+  await F.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400);
+  const avisar = (hp, vazias) => M.evaluate(async ([hp, vazias]) => {
+    const col = TC.dados.col('personagens'), l = col.todas().find(x => x.nome === 'Dain X');
+    const canal = window.__sb ? window.__sb.getChannels().find(c => ((c.bindings || {}).postgres_changes || []).some(b => b.filter && b.filter.table === 'personagens')) : null;
+    if (!canal) return { erro: 'não achei o canal da mesa' };
+    const estado = Object.assign({}, l.estado, { rec: Object.assign({}, (l.estado || {}).rec, { hppc_dain: hp }) });
+    // outro aparelho muda só os pontos atuais, direto no banco…
+    const { data, error } = await window.__sb.from('personagens').update({ estado }).eq('mesa_id', l.mesa_id).eq('id', l.id).select('rev').single();
+    if (error) return { erro: error.message };
+    // …e o aviso chega sem a ficha e sem a árvore (ou com elas vazias)
+    const novo = { id: l.id, mesa_id: l.mesa_id, nome: l.nome, dono_id: l.dono_id, vis: l.vis, ordem: l.ordem, estado, rev: data.rev, apagado: false };
+    if (vazias) { novo.ficha = null; novo.skills = null; }
+    for (const b of canal.bindings.postgres_changes) if (b.filter.table === 'personagens') b.callback({ eventType: 'UPDATE', schema: 'public', table: 'personagens', new: novo, old: { id: l.id }, errors: null });
+    const logo = col.pegar(l.id);
+    return { tinhaFicha: !!(l.ficha && Object.keys(l.ficha).length > 3), temFicha: !!(logo && logo.ficha && Object.keys(logo.ficha).length > 3) };
+  }, [hp, vazias]);
+  let av = await avisar(180, false);
+  ok(!av.erro && av.tinhaFicha && av.temFicha, 'um aviso em tempo real sem as colunas grandes não tira a ficha da memória: ' + JSON.stringify(av));
+  await w(700);
+  ok((await F.locator('#f_raca').inputValue()) === 'Humano paladino' && (await F.locator('#f_nome').inputValue()) === 'Dain X', 'a ficha aberta continua preenchida na tela (não fica em branco)');
+  await F.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(300); await F.locator('#lista .pc', { hasText: 'Dain X' }).click();
+  ok(await ate(async () => (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '180' && (await F.locator('#f_raca').inputValue()) === 'Humano paladino'), 'a casca lê a linha inteira do banco: o valor novo aparece, e o resto da ficha continua lá');
+  av = await avisar(212, true);
+  ok(!av.erro && av.temFicha, 'o mesmo se as colunas chegarem vazias: ' + JSON.stringify(av));
+  await w(700);
+  ok((await F.locator('#f_raca').inputValue()) === 'Humano paladino', 'a ficha continua preenchida na tela');
+  await F.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(300); await F.locator('#lista .pc', { hasText: 'Dain X' }).click();
+  ok(await ate(async () => (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '212'), 'e o valor novo aparece');
+  ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '212' && (await G.locator('#f_nome').inputValue()) === 'Dain X'), 'para o jogador também');
 
   // ---------- recarregar, excluir, sair da mesa ----------
   await M.reload({ waitUntil: 'load' });

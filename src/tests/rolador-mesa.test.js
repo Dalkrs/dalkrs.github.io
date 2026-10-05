@@ -70,7 +70,7 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
   ok(await ate(async () => { const d = await docs(M); return d.filter(x => x.n != null).map(x => x.n).join() === '60,60,12' && await semPendencia(M); }), 'uma rolagem nova entra no último trecho');
   const d2 = await docs(M);
   const rev = (lista, fim) => lista.find(x => x.id.endsWith(fim)).rev;
-  ok(rev(d2, ':0') === rev(d1, ':0') && rev(d2, ':1') === rev(d1, ':1') && rev(d2, ':2') > rev(d1, ':2'), 'os trechos antigos não são regravados (só o último mudou)');
+  ok(rev(d2, '-0') === rev(d1, '-0') && rev(d2, '-1') === rev(d1, '-1') && rev(d2, '-2') > rev(d1, '-2'), 'os trechos antigos não são regravados (só o último mudou)');
   ok(await local(M) === antes, 'e a rolagem feita na mesa não vai para os dados do navegador');
 
   // ---------- o jogador não tem acesso ----------
@@ -106,6 +106,69 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
   ok(await ate(async () => (await R2.locator('#log').innerText()).includes('Rolagem do primeiro aparelho'), 25000), 'o que o mestre rola num aparelho aparece no outro');
   await R2.locator('#fTitle').fill('Rolagem do segundo aparelho'); await rolar(R2);
   ok(await ate(async () => (await R.locator('#log').innerText()).includes('Rolagem do segundo aparelho') && (await R.locator('#log').innerText()).includes('Rolagem do primeiro aparelho'), 25000), 'e a do segundo aparece no primeiro, sem apagar a outra');
+  // cada aparelho escreve as rolagens novas nos trechos dele: rolando os dois ao mesmo tempo, nenhuma se perde
+  const ap = await Promise.all([R, R2].map(x => x.evaluate(() => sessionStorage.getItem('rolador-urgm:aparelho'))));
+  const trechos = (await docs(M)).filter(d => d.n != null).map(d => d.id.split(':').pop());
+  ok(/^[a-z0-9]{6}$/.test(ap[0]) && /^[a-z0-9]{6}$/.test(ap[1]) && ap[0] !== ap[1] && trechos.some(k => k.startsWith(ap[0] + '-')) && trechos.some(k => k.startsWith(ap[1] + '-')), 'cada aparelho tem o código dele, e as rolagens de cada um ficam em trechos com esse código: ' + trechos.join(', '));
+  ok(await ate(async () => await semPendencia(M) && await semPendencia(M2)), '(tudo assentado)');
+  for (let i = 1; i <= 3; i++) {
+    await R.locator('#fTitle').fill('Juntos ' + i + ' A'); await R2.locator('#fTitle').fill('Juntos ' + i + ' B');
+    await Promise.all([rolar(R), rolar(R2)]);
+    await w(700);                                             // (o Rolador ignora um segundo clique em menos de meio segundo: é a proteção contra clique duplo)
+  }
+  const todas = ['Juntos 1 A', 'Juntos 1 B', 'Juntos 2 A', 'Juntos 2 B', 'Juntos 3 A', 'Juntos 3 B'];
+  ok(await ate(async () => { const a = await R.locator('#log').innerText(), b = await R2.locator('#log').innerText(); return todas.every(x => a.includes(x) && b.includes(x)); }, 40000), 'os dois aparelhos rolando ao mesmo tempo (três vezes cada): as seis rolagens ficam nos dois');
+  ok(await ate(async () => await semPendencia(M) && await semPendencia(M2)) && (await R.locator('#logCount').innerText()) === (await R2.locator('#logCount').innerText()) && /139/.test(await R.locator('#logCount').innerText()), 'e os dois contam o mesmo total: ' + await R.locator('#logCount').innerText() + ' / ' + await R2.locator('#logCount').innerText());
+  // apagar num aparelho uma rolagem feita no outro
+  await R.locator('#log li', { hasText: 'Juntos 3 B' }).first().click(); await w(300);
+  await R.locator('#eDelete').click(); await w(400);
+  ok(await ate(async () => !(await R2.locator('#log').innerText()).includes('Juntos 3 B') && (await R2.locator('#log').innerText()).includes('Juntos 3 A'), 25000), 'apagar num aparelho uma rolagem feita no outro também vale nos dois');
+
+  // um aparelho com algo por salvar num trecho em que o outro acabou de mexer: junta, em vez de gravar por cima
+  const junta = await R.evaluate(() => {
+    const e = (id, t, extra) => Object.assign({ id, type: 'roll', title: t, createdAt: Number(id.slice(1)) }, extra || {});
+    const J = (base, la, meu) => __roladorUrgm.juntarTrecho({ e: base }, { e: la }, { e: meu }).e.map(x => x.id + ':' + x.title).join(' ');
+    return {
+      criadaLa: J([e('r1', 'a'), e('r2', 'b')], [e('r1', 'a'), e('r2', 'b'), e('r3', 'c')], [e('r1', 'a+'), e('r2', 'b')]),            // o outro rolou r3 enquanto eu editava r1
+      criadaAqui: J([e('r1', 'a')], [e('r1', 'a'), e('r3', 'c')], [e('r1', 'a'), e('r2', 'b')]),                                      // os dois criaram
+      apagadaLa: J([e('r1', 'a'), e('r2', 'b')], [e('r2', 'b')], [e('r1', 'a'), e('r2', 'b'), e('r4', 'd')]),                          // o outro apagou r1; eu criei r4
+      apagadaLaMudadaAqui: J([e('r1', 'a'), e('r2', 'b')], [e('r2', 'b')], [e('r1', 'a+'), e('r2', 'b')]),                             // o outro apagou r1, que eu tinha mudado: fica a minha
+      apagadaAqui: J([e('r1', 'a'), e('r2', 'b')], [e('r1', 'a!'), e('r2', 'b'), e('r3', 'c')], [e('r2', 'b')]),                        // eu apaguei r1; o outro mudou r1 e criou r3
+      mudadaLa: J([e('r1', 'a'), e('r2', 'b')], [e('r1', 'a!'), e('r2', 'b')], [e('r1', 'a'), e('r2', 'b+')]),                          // cada um mudou uma
+      mudadaNosDois: J([e('r1', 'a')], [e('r1', 'a!')], [e('r1', 'a+')]),                                                              // os dois mudaram a mesma: vale a daqui
+      esvaziei: __roladorUrgm.juntarTrecho({ e: [e('r1', 'a')] }, { e: [e('r1', 'a'), e('r3', 'c')] }, { e: [] }).e.map(x => x.id).join(' '),   // esvaziei o trecho; o outro pôs r3
+      lixo: J([e('r1', 'a')], [null, 7, { id: 5 }, e('r1', 'a'), e('r3', 'c')], [e('r1', 'a')]),
+    };
+  });
+  ok(junta.criadaLa === 'r1:a+ r2:b r3:c' && junta.criadaAqui === 'r1:a r2:b r3:c', 'juntar um trecho: a rolagem que o outro aparelho criou entra junto com o que foi mudado ou criado aqui: ' + JSON.stringify(junta));
+  ok(junta.apagadaLa === 'r2:b r4:d' && junta.apagadaLaMudadaAqui === 'r1:a+ r2:b' && junta.apagadaAqui === 'r2:b r3:c', 'o que o outro apagou sai (a não ser que tenha sido mudado aqui); o que foi apagado aqui não volta');
+  ok(junta.mudadaLa === 'r1:a! r2:b+' && junta.mudadaNosDois === 'r1:a+' && junta.esvaziei === 'r3' && junta.lixo === 'r1:a r3:c', 'cada um mudou uma rolagem: valem as duas mudanças; a mesma rolagem mudada nos dois: vale a daqui; e num trecho esvaziado aqui fica o que o outro pôs');
+  // na prática: o primeiro aparelho está com a descrição de uma rolagem por salvar quando chega, do outro, uma rolagem nova no mesmo trecho
+  await R2.locator('#fTitle').fill('Do segundo aparelho'); await rolar(R2);
+  ok(await ate(async () => (await R.locator('#log').innerText()).includes('Do segundo aparelho') && await semPendencia(M) && await semPendencia(M2), 25000), '(uma rolagem do segundo aparelho chega ao primeiro)');
+  await R.locator('#log li', { hasText: 'Do segundo aparelho' }).first().click(); await w(400);
+  const juntou = await M.evaluate(async () => {
+    const moldura = document.getElementById('f-rolador').contentWindow, D = TC.dados.col('documentos');
+    const linha = D.todas().find(l => l.id.startsWith('rol:c:') && (l.dados.e || []).some(x => x.title === 'Do segundo aparelho'));
+    // 1) o mestre digita a descrição (fica um instante por salvar)…
+    const campo = moldura.document.getElementById('eDesc');
+    campo.value = 'anotado no primeiro aparelho'; campo.dispatchEvent(new moldura.Event('input', { bubbles: true }));
+    // 2) …e nesse instante chega do banco o mesmo trecho com uma rolagem a mais (a que o outro aparelho acabou de fazer)
+    const nova = Object.assign({}, linha.dados.e[linha.dados.e.length - 1], { id: 'r_do_outro', title: 'Chegou no meio', createdAt: Date.now() });
+    const chegou = Object.assign({}, linha, { rev: linha.rev + 1, dados: { e: linha.dados.e.concat([nova]) } });
+    moldura.postMessage({ tinycats: { t: 'dado', col: 'documentos', linha: chegou } }, location.origin);
+    // 3) …e o mestre continua digitando, com pausas: cada pausa é uma gravação, antes de a tela ter tempo de reler
+    for (const resto of [' — e', ' continuou', ' digitando']) {
+      await new Promise(r => setTimeout(r, 420));
+      campo.value += resto; campo.dispatchEvent(new moldura.Event('input', { bubbles: true }));
+    }
+    await new Promise(r => setTimeout(r, 1500));
+    const agora = D.pegar(linha.id);
+    return { id: linha.id, titulos: agora.dados.e.map(x => x.title), desc: (agora.dados.e.find(x => x.title === 'Do segundo aparelho') || {}).description };
+  });
+  ok(juntou.titulos.includes('Chegou no meio') && juntou.desc === 'anotado no primeiro aparelho — e continuou digitando', 'com uma edição por salvar (e o mestre ainda digitando) e uma rolagem nova chegando no mesmo trecho, ficam as duas no banco — nenhuma pisa na outra, nem nas gravações seguintes: ' + JSON.stringify(juntou));
+  if (await R.locator('#editDlg').evaluate(d => d.open)) { await R.locator('#editDlg [data-close]').click(); await w(300); }
+  ok(await ate(async () => { const a = await R.locator('#log').innerText(), b = await R2.locator('#log').innerText(); return a.includes('Chegou no meio') && a.includes('continuou digitando') && b.includes('Chegou no meio') && b.includes('continuou digitando'); }, 30000), 'e os dois aparelhos terminam com a edição e com a rolagem nova');
 
   // ---------- tabelas e novo histórico ----------
   await R.locator('#histBtn').click(); await w(250);
@@ -114,11 +177,15 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
   ok(await ate(async () => { const d = await docs(M); return d.filter(x => x.id.startsWith('rol:h:')).length === 2 && await semPendencia(M); }), 'um histórico novo vira um documento novo');
   ok(await ate(async () => { const e = await M.evaluate(() => TC.dados.col('documentos').pegar('rol:est').dados); const h = await M.evaluate(() => TC.dados.col('documentos').todas().filter(l => l.id.startsWith('rol:h:') && l.dados.name === 'Sessão nova')[0].id.slice(6)); return e.ativo === h; }), 'e o estado guarda qual é o histórico aberto');
 
-  // ---------- recarregar ----------
+  // ---------- recarregar (logo depois de rolar: a rolagem não fica para trás) ----------
+  ok(await ate(async () => await semPendencia(M)), '(tudo salvo antes)');
+  await R.locator('#fTitle').fill('Rolagem de última hora'); await rolar(R);
   await M.reload({ waitUntil: 'load' });
   ok(await ate(async () => { R = await quadro(M, /\/rolador\//); return R && (await R.locator('#saveStatus').innerText()).includes('Salvo na mesa') && (await R.locator('#histName').innerText()).includes('Sessão nova'); }, 40000), 'recarregando, o Rolador volta no histórico que estava aberto');
+  ok(await ate(async () => (await R.locator('#log').innerText()).includes('Rolagem de última hora'), 20000), 'com a rolagem feita um instante antes de recarregar');
+  ok(t.saidas.length === 0, 'e o navegador não precisou perguntar "sair da página?" em nenhum momento do teste: ' + t.saidas.join());
   await R.locator('#histBtn').click(); await w(250);
-  ok(/Sessão antiga do Bruno/.test(await R.locator('#histMenu').innerText()) && /13[23] rolagens/.test(await R.locator('#histMenu').innerText()), 'com o outro histórico e todas as rolagens dele: ' + (await R.locator('#histMenu').innerText()).replace(/\s+/g, ' ').slice(0, 160));
+  ok(/Sessão antiga do Bruno/.test(await R.locator('#histMenu').innerText()) && /1(3[5-9]|4[0-2]) rolagens/.test(await R.locator('#histMenu').innerText()), 'com o outro histórico e todas as rolagens dele: ' + (await R.locator('#histMenu').innerText()).replace(/\s+/g, ' ').slice(0, 160));
   await M.keyboard.press('Escape');
   ok(await R.locator('#bringDlg').evaluate(d => !d.open), 'sem oferecer de novo');
 

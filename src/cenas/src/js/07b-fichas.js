@@ -47,10 +47,10 @@ const Fichas = (() => {
     for (const b of bars) if (b.ref && !r.recursos.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
   }
-  // ficha → token (não entra no desfazer: quem manda é a ficha). `cena`: o id da cena do token (a aberta, se não vier).
-  function syncToken(t, cena) {
+  // O que a ficha muda no token (barras, iniciativa, imagem); null se nada.
+  function remendo(t) {
     const l = get(t.char);
-    if (!l) return false;
+    if (!l) return null;
     const r = resumo(l), p = {};
     const bars = barrasDe(t, r);
     if (bars) p.bars = bars;
@@ -62,7 +62,16 @@ const Fichas = (() => {
       if (t.img !== a.id && (!t.img || t.imgChar)) { p.img = a.id; p.imgChar = true; }
       else if (t.img === a.id && !t.imgChar) p.imgChar = true;
     } else if (t.imgChar) { p.img = null; p.imgChar = false; }
-    if (!Object.keys(p).length) return false;
+    return Object.keys(p).length ? p : null;
+  }
+  const falta = t => !!remendo(t);
+  // ficha → token (não entra no desfazer: quem manda é a ficha). `cena`: o id da cena do token (a aberta, se não vier).
+  function syncToken(t, cena) {
+    const p = remendo(t);
+    if (!p) return false;
+    /* O mestre com o site aberto em mais de um aparelho: a cena que está no ar é acertada pelo aparelho que
+       transmite. Este acompanha (e assume, se depois de alguns segundos ainda faltar: ver Nuvem.cobrar). */
+    if (Nuvem.segue(cena || Store.S.current)) { Nuvem.cobrar(); return false; }
     applying = true;
     try { Store.remoteIn(cena || Store.S.current, [{ t: 'upd', c: 'tokens', id: t.id, p }]); } finally { applying = false; }
     return true;
@@ -151,5 +160,5 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, syncAll, paraFicha, rolaveis, fixaPadrao, rolar, imagemDe };
+  return { start, on: () => on, chars, get, link, syncAll, paraFicha, falta, rolaveis, fixaPadrao, rolar, imagemDe };
 })();

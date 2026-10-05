@@ -648,7 +648,7 @@ table.items tr.itfx.off textarea{opacity:.55}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=4"></script>
+<script src="../tc/ponte.js?v=5"></script>
 <script src="../tc/rules.js?v=2"></script>
 <script src="mesa.js?v=3"></script>
 <script src="extras.js?v=1"></script>
@@ -926,11 +926,23 @@ let saveT=null;
 function save(){
   clearTimeout(saveT);
   saveT=setTimeout(async()=>{
+    saveT=null;
     const data=JSON.stringify(S);
     try{ if(window.storage && window.storage.set){ await window.storage.set(KEY,data); } }catch(e){}
     try{ localStorage.setItem(KEY,data); }catch(e){}
   },350);
 }
+// Agora, sem esperar: a página vai fechar e a última mudança ainda estava na espera.
+function saveJa(){
+  if(!saveT) return;
+  clearTimeout(saveT); saveT=null;
+  const data=JSON.stringify(S);
+  try{ if(window.storage && window.storage.set) window.storage.set(KEY,data); }catch(e){}
+  try{ localStorage.setItem(KEY,data); }catch(e){}
+}
+addEventListener('pagehide', saveJa);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveJa(); });
+if(window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(saveJa);     // dentro do site: a casca avisa antes de fechar
 function toast(msg){
   const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
   document.body.appendChild(d); setTimeout(()=>d.remove(),2200);

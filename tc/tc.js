@@ -48,8 +48,11 @@
 
   /* ---------------- conta ---------------- */
   const conta = emissor({ usuario: null, pronta: null, disponivel: temNuvem });
+  let passe = null, passeAte = 0;   // o passe da sessão de agora e até quando vale (o envio de saída não pode esperar por ele)
   const deSessao = s => {
     const u = s && s.user;
+    passe = u && s.access_token ? s.access_token : null;
+    passeAte = passe ? Number(s.expires_at) || 0 : 0;
     return u ? { id: u.id, email: u.email || '', nome: (u.user_metadata && u.user_metadata.nome) || (u.email || '').split('@')[0] } : null;
   };
   conta.pronta = (async () => {
@@ -84,7 +87,7 @@
   conta.sair = async () => {
     mesas.fechar();
     try { await cliente().auth.signOut(); } catch (e) { /* sem rede: a sessão local some do mesmo jeito */ }
-    conta.usuario = null;
+    conta.usuario = null; passe = null; passeAte = 0;
   };
 
   /* ---------------- mesas ---------------- */
@@ -235,8 +238,8 @@
       canal = cliente().channel('mesa-' + id)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) aplicar(p.new); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) dadosRemoto('personagens', p.new); })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => { if (p.new && p.new.id) dadosRemoto('documentos', p.new); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => doTempoReal('personagens', p))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => doTempoReal('documentos', p))
         .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); } } });
     } catch (e) { canal = null; }
     // Rede de segurança: sem o tempo real, lê a cada 3 s; com ele, confere a cada 30 s. A presença vai a cada 25 s.
@@ -372,8 +375,18 @@
   };
   const dados = emissor({ pendentes: 0, erro: null });
   let cols = {};
+  /* Os documentos da mesa são escritos pelo mestre e não têm dono. O único documento com dono que vale é o pedido
+     do próprio dono para a cena que está no ar (é a única coisa que o banco deixa um jogador criar). Qualquer outro
+     documento com dono não é entregue a nenhum sistema. */
+  const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id;
   function dadosZerar() {
-    for (const k in cols) { const c = cols[k]; c.morta = true; for (const t of c.tempo.values()) clearTimeout(t); }
+    for (const k in cols) {
+      const c = cols[k];
+      /* O que ainda não tinha subido sobe agora (a mesa está fechando; o envio segue o caminho dele mesmo assim).
+         A linha que já tinha um envio a caminho manda o que mudou depois quando esse envio voltar (uma última volta). */
+      for (const id of [...c.sujos.keys()]) enviarLinha(c, id);
+      c.morta = true; for (const t of c.tempo.values()) clearTimeout(t);
+    }
     cols = {};
     if (dados.pendentes) { dados.pendentes = 0; dados.emit('pendentes', 0); }
   }
@@ -386,12 +399,12 @@
     if (!TABELAS[nome]) throw new Error('Coleção desconhecida: ' + nome);
     if (!mesas.atual) throw new Error('Abra uma mesa primeiro.');
     if (cols[nome]) return cols[nome];
-    const c = cols[nome] = { nome, mesa: mesas.atual.id, linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
+    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), naSaida: new Set(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
       for (let de = 0; ; de += 1000) {
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
         if (error) throw falha(error, 'Não deu para ler os dados da mesa.');
-        for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (!l.apagado && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
+        for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (!l.apagado && aceita(nome, l) && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
         if (data.length < 1000) break;
       }
       return true;
@@ -399,11 +412,33 @@
     c.pronta.catch(() => { if (cols[nome] === c) delete cols[nome]; });   // falhou: a próxima abertura tenta de novo
     return c;
   }
+  /* O aviso em tempo real de uma mudança nem sempre traz a linha inteira: as colunas grandes que NÃO mudaram ficam
+     de fora (numa ficha, quem muda só os pontos atuais faz o aviso chegar sem a ficha e sem a árvore), e uma linha
+     de mais de 1 MB chega só com as colunas pequenas. Uma linha assim não é aplicada como veio — a ficha apareceria
+     em branco na tela, e o que fosse gravado em seguida iria por cima da de verdade: ela é lida inteira do banco.
+     (Vale o mesmo, por segurança, se uma coluna que aqui tem conteúdo chegar vazia.) */
+  function doTempoReal(nome, p) {
+    const r = p && p.new;
+    if (!r || !r.id) return;
+    const c = cols[nome], l = c ? c.linhas.get(r.id) : null;
+    const falta = k => r[k] === undefined || (r[k] === null && !!l && l[k] != null);
+    if ((p.errors && p.errors.length) || TABELAS[nome].some(falta)) { buscarLinha(nome, r.id); return; }
+    dadosRemoto(nome, r);
+  }
+  async function buscarLinha(nome, id) {
+    const c = cols[nome];
+    if (!c || c.morta) return;
+    try {
+      const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).eq('id', id).maybeSingle();
+      if (!error && data && !c.morta) dadosRemoto(nome, data);
+    } catch (e) { /* sem rede: a leitura periódica traz depois */ }
+  }
   /* Uma linha que veio do banco (tempo real ou leitura periódica). */
   function dadosRemoto(nome, r) {
     const c = cols[nome];
     if (!c || c.morta || r.mesa_id !== c.mesa) return;
     if (r.rev > c.maxRev) c.maxRev = r.rev;
+    if (!aceita(nome, r)) return;
     const l = c.linhas.get(r.id), meus = new Set([...(c.sujos.get(r.id) || []), ...(c.emVoo.get(r.id) || [])]);
     if (l && l.rev >= r.rev) return;
     if (r.apagado) {
@@ -461,8 +496,16 @@
     clearTimeout(c.tempo.get(id));
     c.tempo.set(id, setTimeout(() => { c.tempo.delete(id); enviarLinha(c, id); }, ms));
   }
-  async function enviarLinha(c, id) {
-    if (c.morta || c.emVoo.has(id)) return;
+  /* A linha inteira, como vai para o banco. Um documento escrito pelo mestre vai sempre sem dono: se já existir no
+     banco um documento com esse nome e com dono (que nenhum sistema lê), ele volta a ser do mestre. */
+  function linhaInteira(c, id, l) {
+    const o = { mesa_id: c.mesa, id, apagado: false };
+    for (const k of TABELAS[c.nome]) if (l[k] !== undefined) o[k] = l[k];
+    if (c.nome === 'documentos' && c.doMestre && o.dono_id === undefined) o.dono_id = null;
+    return o;
+  }
+  async function enviarLinha(c, id, ultima) {
+    if ((c.morta && !ultima) || c.emVoo.has(id)) return;
     const campos = c.sujos.get(id);
     if (!campos) return;
     c.sujos.delete(id); c.emVoo.set(id, campos);
@@ -472,7 +515,7 @@
       if (!l && campos.has('*')) r = { data: { rev: 0 } };                         // criada e apagada antes de subir: nada a fazer
       else if (!l) r = await cliente().from(c.nome).update({ apagado: true }).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
       else {
-        const inteira = () => { const o = { mesa_id: c.mesa, id, apagado: false }; for (const k of TABELAS[c.nome]) if (l[k] !== undefined) o[k] = l[k]; return o; };
+        const inteira = () => linhaInteira(c, id, l);
         if (campos.has('*')) {
           r = await cliente().from(c.nome).insert(inteira()).select('rev').single();
           if (r.error && r.error.code === '23505') r = await cliente().from(c.nome).update(inteira()).eq('mesa_id', c.mesa).eq('id', id).select('rev').maybeSingle();
@@ -484,15 +527,14 @@
       }
     } catch (e) { r = { error: e }; }
     c.emVoo.delete(id);
-    if (c.morta) return;
+    if (c.morta) { if (!r.error && !ultima && c.sujos.has(id)) enviarLinha(c, id, true); return; }
     if (r.error) {
       // volta para a fila (junto com o que mudou nesse meio-tempo) e tenta de novo, cada vez mais devagar
       const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
       const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(r.error.message || ''));
       dados.erro = erroPt(r.error, 'Não deu para salvar na mesa agora.');
-      c.falhas = Math.min(c.falhas + 1, 6);
-      if (semPermissao) { c.sujos.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir
-      else agendar(c, id, 2000 * Math.pow(2, c.falhas));
+      if (semPermissao) { c.sujos.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
+      else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
       dados.emit('erro', dados.erro);
     } else {
       c.falhas = 0; dados.erro = null;
@@ -529,7 +571,79 @@
   };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
-  window.addEventListener('pagehide', () => dados.descarregar());
+  /* Manda agora e espera subir, até `ms` (antes de fechar ou trocar de mesa, ou de sair da conta). Devolve true se
+     subiu tudo. Não trava: se algo não sobe (sem rede, por exemplo), segue depois do prazo. */
+  dados.esvaziar = ms => new Promise(ok => {
+    const t0 = Date.now();
+    dados.descarregar();
+    (function olhar() {
+      if (!dados.pendentes) return ok(true);
+      if (Date.now() - t0 >= (ms || 0)) return ok(false);
+      setTimeout(olhar, 80);
+    })();
+  });
+  /* ---- a página está fechando ----
+     Um envio comum não sai a tempo: antes de cada um a biblioteca do banco faz uma pequena espera, e a página some
+     antes. Aqui o envio é feito à mão, na hora, e marcado para o navegador terminá-lo mesmo depois de a página
+     fechar ("keepalive"). O navegador só garante isso para pouco conteúdo (64 KB, somando tudo o que está indo):
+     o que não couber segue pelo caminho comum, sem garantia. */
+  let pesoNoAr = 0;
+  const LIMITE_SAIDA = 60000;
+  function enviarNaSaida(c, id) {
+    if (c.morta || c.emVoo.has(id) || typeof fetch !== 'function') return false;
+    // sem rede, com envios falhando ou com o passe vencido, mandar assim não garante nada: melhor o navegador perguntar
+    if (!passe || (passeAte && Date.now() / 1000 > passeAte - 10) || c.falhas > 0 || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
+    const campos = c.sujos.get(id);
+    if (!campos) return true;
+    const l = c.linhas.get(id), filtro = '?mesa_id=eq.' + encodeURIComponent(c.mesa) + '&id=eq.' + encodeURIComponent(id) + '&select=rev';
+    let metodo = 'PATCH', consulta = filtro, prefer = 'return=representation', corpo;
+    if (!l && campos.has('*')) { c.sujos.delete(id); return true; }                 // criada e apagada antes de subir: nada a fazer
+    if (!l) corpo = { apagado: true };
+    else if (campos.has('*')) {                                                     // linha nova: cria (ou, se já existir, troca)
+      metodo = 'POST'; consulta = '?on_conflict=mesa_id,id&select=rev'; prefer = 'resolution=merge-duplicates,return=representation';
+      corpo = linhaInteira(c, id, l);
+    } else { corpo = {}; for (const k of campos) corpo[k] = l[k]; }
+    let texto, peso;
+    try { texto = JSON.stringify(corpo); peso = new TextEncoder().encode(texto).length; } catch (e) { return false; }
+    if (pesoNoAr + peso > LIMITE_SAIDA) return false;
+    let pedido;
+    try {
+      pedido = fetch(CFG.url + '/rest/v1/' + c.nome + consulta, { method: metodo, keepalive: true, body: texto,
+        headers: { apikey: CFG.chave, Authorization: 'Bearer ' + passe, 'Content-Type': 'application/json', Prefer: prefer } });
+    } catch (e) { return false; }
+    c.sujos.delete(id); c.emVoo.set(id, campos); c.naSaida.add(id); pesoNoAr += peso;
+    // (o que vem depois só acontece se a página, afinal, não fechou)
+    // (null: não chegou · 'ok': chegou, mas a resposta não pôde ser lida · lista: as linhas mudadas, com a revisão)
+    pedido.then(r => (r.ok ? r.json().then(x => x, () => 'ok') : null), () => null).then(linhas => {
+      pesoNoAr -= peso; c.emVoo.delete(id); c.naSaida.delete(id);
+      if (c.morta) return;
+      if (!linhas) { const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo); c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 1500); }
+      else {
+        const agora = c.linhas.get(id), rev = Array.isArray(linhas) && linhas[0] ? linhas[0].rev : 0;
+        if (agora && rev > (agora.rev || 0)) agora.rev = rev;
+        if (Array.isArray(linhas) && !linhas.length && l) { const de_novo = c.sujos.get(id) || new Set(); de_novo.add('*'); c.sujos.set(id, de_novo); }   // a linha não existia no banco: vai inteira
+        if (c.sujos.has(id)) agendar(c, id, 300);
+      }
+      contarPendentes();
+    });
+    return true;
+  }
+  /* Manda agora tudo o que está na fila, do jeito que sobrevive ao fechamento da página. Devolve quantas linhas
+     ficaram sem essa garantia (grandes demais, ou já a caminho pelo envio comum): é quando vale perguntar antes de sair. */
+  dados.sair = () => {
+    let semGarantia = 0;
+    for (const c of Object.values(cols)) {
+      for (const id of c.emVoo.keys()) if (!c.naSaida.has(id)) semGarantia++;
+      for (const id of [...c.sujos.keys()]) {
+        clearTimeout(c.tempo.get(id)); c.tempo.delete(id);
+        if (c.emVoo.has(id)) continue;                       // (já contada: a parte dela que está indo não tem garantia)
+        if (!enviarNaSaida(c, id)) { semGarantia++; enviarLinha(c, id); }
+      }
+    }
+    contarPendentes();
+    return semGarantia;
+  };
+  window.addEventListener('pagehide', () => dados.sair());
 
   /* ---------------- quem fala: o personagem que aparece na mesa ao vivo ---------------- */
   /* Cada pessoa escolhe com que personagem fala (a imagem dele aparece ao lado do nome). O jogador escolhe entre os
@@ -586,12 +700,13 @@
     // O Mapa-múndi (encontros sorteados) e o Acampamento (descansos, momentos) mandam um título e um resumo.
     if ((origem === 'mundo' || origem === 'acampamento') && d && typeof d === 'object' && mesas.atual) {
       const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
-      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : undefined });
+      // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : origem === 'acampamento' ? false : undefined });
     }
     // As Cenas também avisam a mesa (o mestre pôs uma cena no ar): só o mestre pode.
     if (origem === 'cena' && d && d.kind === 'aviso' && mesas.atual) {
       if (mesas.atual.papel !== 'mestre') return null;
-      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Cenas').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null });
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Cenas').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: false });     // é um aviso para os jogadores: nunca "em segredo"
     }
     return deSistemaAntes(origem, d);
   };

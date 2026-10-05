@@ -106,7 +106,7 @@ const Store = (() => {
     hh.undo.push({ label: t.label, fwd: t.fwd, inv: t.inv });
     if (hh.undo.length > MAX_UNDO) hh.undo.shift();
     hh.redo.length = 0;
-    emit('commit', { sceneId: S.current, label: t.label, ops: t.fwd });
+    emit('commit', { sceneId: S.current, label: t.label, ops: t.fwd, inv: t.inv });     // inv: como cada coisa estava antes
   }
 
   function cancel() {
@@ -122,7 +122,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.inv) { raw(op); emit('live', op); }
     hh.redo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd });
     return e;
   }
   function redo() {
@@ -131,7 +131,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.fwd) { raw(op); emit('live', op); }
     hh.undo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv });
     return e;
   }
 
@@ -150,7 +150,7 @@ const Store = (() => {
       const inv = raw(op);
       if (!inv) return false;
       emit('live', op, inv);
-      emit('commit', { sceneId: S.current, label: '', ops: [op], remote: true });
+      emit('commit', { sceneId: S.current, label: '', ops: [op], inv: [inv], remote: true });
       return true;
     },
     /* Várias operações de fora de uma vez, numa cena qualquer da mesa (a que os jogadores estão vendo pode não ser a
@@ -159,15 +159,15 @@ const Store = (() => {
     remoteIn(sceneId, ops) {
       const sc = S.scenes[sceneId];
       if (!sc || !ops.length) return 0;
-      const aqui = sceneId === S.current, done = [];
+      const aqui = sceneId === S.current, done = [], invs = [];
       if (aqui && tx) commit();
       for (const op of ops) {
         const inv = raw(op, sc);
         if (!inv) continue;
-        done.push(op);
+        done.push(op); invs.unshift(inv);
         if (aqui) emit('live', op, inv);
       }
-      if (done.length) emit('commit', { sceneId, label: '', ops: done, remote: true });
+      if (done.length) emit('commit', { sceneId, label: '', ops: done, inv: invs, remote: true });
       return done.length;
     },
     // Agrupa várias operações num único passo de desfazer.

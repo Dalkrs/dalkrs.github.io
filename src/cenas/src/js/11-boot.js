@@ -185,6 +185,7 @@ async function start(snap) {
 
   const flush = () => { try { Vision.flushExplored(); Persist.flush(); } catch (e) { /* nada a fazer */ } };
   window.addEventListener('pagehide', flush);
+  if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(flush);       // dentro do site: a casca avisa antes de fechar
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
   // Tutorial de primeiro uso: abre sozinho uma vez, quando quem entra é o mestre.

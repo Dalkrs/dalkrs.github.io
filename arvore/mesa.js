@@ -106,6 +106,16 @@ const ArvoreMesa = (() => {
       sombra.pcs.set(p.id, { nome: p.nome, skills: js });
     });
   }
+  /* O pacote dos jogadores é montado um instante depois de cada mudança na biblioteca. Se a página fechou nesse
+     instante, ele ficou para trás: o banco numera as gravações (rev), e a do pacote tem de ser a mais nova.
+     Devolve true se o pacote estava para trás (e manda montar de novo). */
+  function conferirPacote() {
+    if (!ativo || !mestre() || !dadosDe('arvore:biblioteca')) return false;
+    const lb = D.pegar('arvore:biblioteca'), lp = D.pegar('arvore:pacote');
+    if (dadosDe('arvore:pacote') && (lp.rev || 0) >= (lb.rev || 0)) return false;
+    publicarPacote();
+    return true;
+  }
   // O que os jogadores recebem: a biblioteca sem os segredos, com as escolas secretas trancadas por senha.
   async function publicarPacote() {
     if (!ativo || !mestre()) return;
@@ -175,7 +185,8 @@ const ArvoreMesa = (() => {
     // o que o aplicativo ajustou ao abrir (personagem criado, poda) sobe agora
     if (mestre() && sombra.bib === null && dadosDe('arvore:biblioteca') === null) { sombra.bib = j(bib()); oferecerLocal(); }
     depoisDeSalvar();
-    if (mestre() && !dadosDe('arvore:pacote') && dadosDe('arvore:biblioteca')) publicarPacote();
+    // (confere de novo daqui a pouco: uma gravação feita no instante em que a página fechou pode chegar depois)
+    if (!conferirPacote()) setTimeout(conferirPacote, 6000);
     P.aoMudar(remoto); D.aoMudar(l => { if (l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') remoto(); });
     if (!mestre()) reabrirGuardadas().then(r => { if (r && r.length) { normalizarDoc(); indexar(); garantirSelecoes(); pintarTudo(); desenhar(); } }, () => {});
   }
