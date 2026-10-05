@@ -530,7 +530,8 @@ const FichasExtras = (() => {
   const refocar = sel => { const n = document.querySelector(sel); if (n && !n.disabled) n.focus({ preventScroll: true }); };
   const optBonus = (k, vazio) => {
     const g = (rot, lista) => `<optgroup label="${rot}">${lista.map(x => `<option value="${x.k}" ${k === x.k ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</optgroup>`;
-    return (vazio ? `<option value="">${vazio}</option>` : '') + g('Atributos', ATRIBS) + g('Derivados', DERIV) + g('Defesas', DEFESAS) + g('Defesa contra', ESP());
+    const todos = RR() && RR().CHAVE_TODOS ? [{ k: RR().CHAVE_TODOS, nome: 'Todos os atributos' }] : [];      // (os cinco de uma vez)
+    return (vazio ? `<option value="">${vazio}</option>` : '') + g('Atributos', todos.concat(ATRIBS)) + g('Derivados', DERIV) + g('Defesas', DEFESAS) + g('Defesa contra', ESP());
   };
 
   /* ---- as duas abas do painel de atributos: Atributos | Defesas ---- */
@@ -684,6 +685,27 @@ const FichasExtras = (() => {
       </div>
     </div>`;
   }
+  /* Os números que saem das contas, atualizados no lugar (sem redesenhar a ficha) enquanto alguém digita o valor de
+     um bônus: na tabela de atributos, a coluna do equipamento com os temporários e o total; e os botões da rolagem
+     rápida. As linhas da tabela estão na ordem de sempre: atributos, derivados, defesas. */
+  function contasAoVivo(pc) {
+    const c = calcular(pc), chaves = ATRIBS.map(a => a.k).concat(DERIV.map(d => d.k), DEFESAS.map(d => d.k));
+    const eAtr = k => ATRIBS.some(a => a.k === k), eDer = k => DERIV.some(d => d.k === k);
+    qa(document, '#ficha table.attr:not(.defs) tbody tr').forEach((tr, n) => {
+      const k = chaves[n]; if (!k) return;
+      const eq = tr.querySelector('.vequip'), tot = tr.querySelector('.vtot');
+      if (eq) eq.innerHTML = (c.eq[k] ? (c.eq[k] > 0 ? '+' : '') + c.eq[k] : '—') + htmlTemp(c, k);
+      if (tot) tot.textContent = eAtr(k) ? c.tot[k] : eDer(k) ? c.der[k] : c.def[k];
+    });
+    const fonte = (pc.rol && pc.rol.fonte) || 'total';
+    qa(document, '#ficha .rolbox [data-rolar]').forEach(b => {
+      const k = b.dataset.rolar, s = b.querySelector('span'); if (!s) return;
+      const v = eAtr(k) ? (fonte === 'base' ? c.base[k] : c.tot[k]) : eDer(k) ? c.der[k] : c.def[k];
+      if (v == null) return;
+      s.textContent = v;
+      if (b.title) b.title = b.title.replace(/— .*$/, '— ' + v);
+    });
+  }
   function ligarTemporarios(host, pc) {
     const painel = q(host, '#painelTmp'); if (!painel) return;
     const tmp = () => mapaDe(pc, 'tmp');
@@ -693,7 +715,13 @@ const FichasExtras = (() => {
     texto('tmpn', 'n', 60); texto('tmpd', 'd', 40);
     qa(painel, '[data-tmpon]').forEach(i => i.onchange = () => { const b = tmp()[i.dataset.tmpon]; if (!b) return; if (i.checked) delete b.off; else b.off = true; redesenhar('[data-tmpon="' + i.dataset.tmpon + '"]'); });
     qa(painel, '[data-tmpk]').forEach(s => s.onchange = () => { const b = tmp()[s.dataset.tmpk]; if (!b || !s.value) return; b.k = s.value; redesenhar('[data-tmpk="' + s.dataset.tmpk + '"]'); });
-    qa(painel, '[data-tmpv]').forEach(i => i.onchange = () => { const b = tmp()[i.dataset.tmpv]; if (!b) return; b.v = Math.round((+i.value || 0) * 10) / 10; redesenhar('[data-tmpv="' + i.dataset.tmpv + '"]'); });
+    /* O valor vale enquanto é digitado: a rolagem rápida e a tabela de atributos acompanham na hora, sem esperar o
+       cursor sair do campo (só o que é um número inteiro vale no meio do caminho: "-" a caminho de "-5" ainda não é
+       nada). O resto da ficha é redesenhado quando o cursor sai. */
+    qa(painel, '[data-tmpv]').forEach(i => {
+      i.oninput = () => { const b = tmp()[i.dataset.tmpv], t = i.value.trim(); if (!b || !/^-?\d+([.,]\d+)?$/.test(t)) return; const v = Math.round((+t.replace(',', '.') || 0) * 10) / 10; if (v === b.v) return; b.v = v; save(); contasAoVivo(pc); };
+      i.onchange = () => { const b = tmp()[i.dataset.tmpv]; if (!b) return; b.v = Math.round((+i.value || 0) * 10) / 10; redesenhar('[data-tmpv="' + i.dataset.tmpv + '"]'); };
+    });
     qa(painel, '[data-tmpdel]').forEach(b => b.onclick = () => {
       const id = b.dataset.tmpdel, era = tmp()[id]; if (!era) return;
       delete tmp()[id]; redesenhar();

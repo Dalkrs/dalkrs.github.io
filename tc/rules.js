@@ -148,6 +148,19 @@
   /* o nome de qualquer chave que recebe bônus: as dez de sempre e as 13 defesas específicas ("Defesa: Fogo") */
   const NOMES_BONUS = Object.assign({}, NOMES);
   DEFESAS_ESP.forEach(d => { NOMES_BONUS[d.k] = 'Defesa: ' + d.nome; });
+  /* "Todos os atributos": uma chave só, que soma nos cinco atributos de uma vez. Vale onde o bônus é escolhido numa
+     lista — bônus temporário, poção, penalidade de ferimento. (Não é uma das dez de CHAVES_BONUS: equipamento e
+     árvore continuam com um campo por atributo.) */
+  const CHAVE_TODOS = 'ATR';
+  NOMES_BONUS[CHAVE_TODOS] = 'Todos os atributos';
+  // a chave como é guardada, ou '' se não é uma chave de bônus
+  const chaveDeBonus = k => (k === CHAVE_TODOS || CHAVES_BONUS.indexOf(k) >= 0 || CHAVES_ESP.indexOf(k) >= 0 ? k : '');
+  // soma v onde a chave manda: nas dez (soma), nas 13 específicas (esp), ou nos cinco atributos de uma vez
+  const somarBonus = (soma, esp, k, v) => {
+    if (k === CHAVE_TODOS) ATRIBS.forEach(a => { soma[a.k] += v; });
+    else if (CHAVES_ESP.indexOf(k) >= 0) esp[k] += v;
+    else soma[k] += v;
+  };
 
   /* são tabelas compartilhadas por todos os apps: ninguém altera por engano */
   const congelar = o => {
@@ -365,11 +378,11 @@
         const b = mapa[id];
         if (!b || typeof b !== 'object') return;
         const k = String(b.k == null ? '' : b.k).toUpperCase(), v = numFinito(b.v);
-        lista.push({ id, n: String(b.n == null ? '' : b.n), k: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '', v: v == null ? 0 : v,
+        lista.push({ id, n: String(b.n == null ? '' : b.n), k: chaveDeBonus(k), v: v == null ? 0 : v,
           d: String(b.d == null ? '' : b.d), off: !!b.off, t: numFinito(b.t) || 0 });
       });
       lista.sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      lista.forEach(b => { if (b.off || !b.k || !b.v) return; if (ehDefesaEsp(b.k)) esp[b.k] += b.v; else soma[b.k] += b.v; });
+      lista.forEach(b => { if (b.off || !b.k || !b.v) return; somarBonus(soma, esp, b.k, b.v); });
     }
     return { lista, soma, esp };
   }
@@ -394,11 +407,11 @@
         const k = String(f.k == null ? '' : f.k).toUpperCase(), v = numFinito(f.v), s = {};
         ESTADOS_FER.forEach(e => { s[e.k] = !!(ehObjeto(f.s) && f.s[e.k]); });
         lista.push({ id, p: f.p, t: tem(TIPO_FER, f.t) ? f.t : 'corte', g: inteiroEntre(f.g == null ? 1 : f.g, 1, 3), s,
-          n: String(f.n == null ? '' : f.n).slice(0, 200), k: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '',
+          n: String(f.n == null ? '' : f.n).slice(0, 200), k: chaveDeBonus(k),
           v: v ? -Math.abs(v) : 0, c: numFinito(f.c) || 0 });
       });
       lista.sort(porOrdem('c'));
-      lista.forEach(f => { if (!f.k || !f.v) return; if (ehDefesaEsp(f.k)) esp[f.k] += f.v; else soma[f.k] += f.v; });
+      lista.forEach(f => { if (!f.k || !f.v) return; somarBonus(soma, esp, f.k, f.v); });
     }
     return { lista, soma, esp };
   }
@@ -409,7 +422,7 @@
     if (!semParte && PARTE[f.p]) partes.push(PARTE[f.p].nome);
     const est = ESTADOS_FER.filter(e => f.s && f.s[e.k]).map(e => e.nome.toLowerCase());
     if (est.length) partes.push(est.join(', '));
-    if (f.k && f.v) partes.push('−' + Math.abs(f.v) + ' ' + (NOMES_BONUS[f.k] || f.k));
+    if (f.k && f.v) partes.push('−' + Math.abs(f.v) + ' ' + (f.k === CHAVE_TODOS ? 'em todos os atributos' : NOMES_BONUS[f.k] || f.k));
     return partes.join(' · ');
   }
   /* O que o token mostra: quantos ferimentos, o mais grave, e se algum sangra ou está infeccionado. */
@@ -718,7 +731,7 @@
       return { id, t: TIPOS_BOLSA.indexOf(it.t) >= 0 ? it.t : 'material', nome: String(it.nome == null ? '' : it.nome), nota: String(it.nota == null ? '' : it.nota),
         qtd: n == null || n < 0 ? 0 : Math.floor(n),
         rec: it.rec ? String(it.rec) : '', val: String(it.val == null ? '' : it.val).trim(),
-        bk: CHAVES_BONUS.indexOf(k) >= 0 || ehDefesaEsp(k) ? k : '', bv: numFinito(it.bv) || 0, bd: String(it.bd == null ? '' : it.bd) };
+        bk: chaveDeBonus(k), bv: numFinito(it.bv) || 0, bd: String(it.bd == null ? '' : it.bd) };
     });
   }
   /* O efeito de uma poção numa barra, do jeito que foi escrito: "30", "+30", "-10", "2d6+3", "-1d4".
@@ -981,7 +994,7 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     normNome,
-    DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, BOLSAS,
+    DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
     temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso,
     PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido,
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,

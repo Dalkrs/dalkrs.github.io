@@ -69,6 +69,8 @@ button { cursor: pointer; }
 .conta .nm { overflow: hidden; text-overflow: ellipsis; }
 .conta .pp { font-weight: 500; color: var(--fg-3); font-size: 12px; }
 .conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.versao { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.versao:hover { filter: brightness(1.08); }
 .nuvem { font-size: 12px; color: var(--fg-3); white-space: nowrap; }
 .nuvem.ruim { color: var(--danger); font-weight: 600; }
 .selo { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9px; background: var(--lamp); color: var(--on-lamp); font: 700 10px/16px var(--ui); text-align: center; }
@@ -212,6 +214,8 @@ dialog::backdrop { background: var(--scrim); }
   .tab svg { display: none; }
   .conta .pp { display: none; }
   .conta { max-width: 130px; }
+  .versao span { display: none; }
+  .versao { padding: 0 7px; }
 }
 </style>
 </head>
@@ -223,6 +227,10 @@ dialog::backdrop { background: var(--scrim); }
   </a>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
   <div class="bar-r">
+    <button type="button" class="versao" id="versaoNova" hidden title="Há uma versão nova do site. Clique para recarregar quando puder." aria-label="Há uma versão nova do site: recarregar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+      <span>Versão nova</span>
+    </button>
     <button type="button" class="ib" id="btnVivo" hidden aria-pressed="false" title="Mesa ao vivo: rolagens e conversa" aria-label="Mesa ao vivo">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8"/><path d="M8 12.5h5"/></svg>
       <span class="selo" id="selo" hidden></span>
@@ -265,7 +273,7 @@ dialog::backdrop { background: var(--scrim); }
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.05-2';
+  const VERSAO = '2026.10.05-3';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -358,18 +366,20 @@ dialog::backdrop { background: var(--scrim); }
       for (const x of ABAS) $('tab-' + x.id).setAttribute('aria-selected', x.id === id ? 'true' : 'false');
       pop.href = a.src;
     }
-    let f = frames[id];
-    if (!f) {
-      f = frames[id] = h('iframe', { title: a.nome, id: 'f-' + id, allow: 'clipboard-read; clipboard-write; fullscreen' });
-      wait.hidden = false;
-      f.addEventListener('load', () => { if (atual === id) { wait.hidden = true; foco(f); } });
-      f.src = a.src + '?casca=1&v=' + encodeURIComponent(VERSAO) + (/[?&]debug\b/.test(location.search) ? '&debug' : '');   // ?debug na casca passa adiante (testes)
-      stage.append(f);
-    } else {
-      wait.hidden = true;
-    }
+    const f = frames[id] || moldura(a);
+    wait.hidden = prontas.has(f);              // (uma moldura aberta em segundo plano pode ainda estar carregando)
     for (const k in frames) frames[k].hidden = k !== id;
     foco(f);
+  }
+  // A moldura de um sistema. Nasce escondida; quem a abre (abrir) é que a mostra.
+  const prontas = new WeakSet();
+  function moldura(a) {
+    const f = frames[a.id] = h('iframe', { title: a.nome, id: 'f-' + a.id, allow: 'clipboard-read; clipboard-write; fullscreen' });
+    f.hidden = true;
+    f.addEventListener('load', () => { prontas.add(f); if (atual === a.id && frames[a.id] === f) { wait.hidden = true; foco(f); } });
+    f.src = a.src + '?casca=1&v=' + encodeURIComponent(VERSAO) + (/[?&]debug\b/.test(location.search) ? '&debug' : '');   // ?debug na casca passa adiante (testes)
+    stage.append(f);
+    return f;
   }
   // O teclado vai para o sistema aberto, para os atalhos dele funcionarem sem um clique antes.
   // (Mas não tira o foco de quem está escrevendo na mesa ao vivo, nem fecha um menu ou janela que a pessoa acabou de abrir.)
@@ -800,6 +810,26 @@ dialog::backdrop { background: var(--scrim); }
     mesaDasMolduras = id;
     for (const a of ABAS) if (a.dados && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     if (atual && !frames[atual]) abrir(atual);
+    cenasEmSegundoPlano();
+  }
+  /* O programa das Cenas do mestre é quem aplica na cena o que os jogadores fazem e acerta os tokens pelas fichas.
+     Com a mesa aberta ele precisa estar rodando mesmo que o mestre esteja em outra aba (nas Fichas, por exemplo):
+     as Cenas são abertas em segundo plano, escondidas, um instante depois da aba em que ele está. Só quando a mesa
+     já tem cenas — numa mesa sem cenas não há o que transmitir, e nada é criado sem o mestre ir até lá. */
+  let tFundo = 0;
+  function cenasEmSegundoPlano() {
+    clearTimeout(tFundo);
+    const mesa = mesas.atual;
+    if (!mesa || mesa.papel !== 'mestre' || frames.cenas) return;
+    tFundo = setTimeout(async () => {
+      try {
+        const D = TC.dados.col('documentos');
+        await D.pronta;
+        if (!mesas.atual || mesas.atual.id !== mesa.id || mesas.atual.papel !== 'mestre' || frames.cenas || !pode('cenas')) return;
+        if (!D.todas().some(l => /^cena:(?!pub:|pedido:)[A-Za-z0-9_-]+:m$/.test(l.id || '') && !l.apagado)) return;
+        moldura(ABAS.find(x => x.id === 'cenas'));
+      } catch (e) { /* sem os dados da mesa, as Cenas abrem quando o mestre for até elas */ }
+    }, 2500);
   }
   mesas.on('muda', a => {
     papelNaMesa = a ? a.papel : null; pintarAbas();
@@ -811,6 +841,36 @@ dialog::backdrop { background: var(--scrim); }
     }
   });
   conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); });
+
+  /* ================= versão nova do site =================
+     A página aberta fica na versão em que foi carregada. De tempos em tempos, e quando a pessoa volta para a aba, a
+     casca pergunta ao servidor qual é a versão publicada (versao.json). Se for outra, aparece um botão discreto na
+     barra de cima. Nada recarrega sozinho: quem escolhe a hora é a pessoa (e o botão pergunta antes). */
+  const btnVersao = $('versaoNova');
+  let publicada = null, conferidaEm = 0;
+  async function conferirVersao() {
+    conferidaEm = Date.now();
+    try {
+      const r = await fetch('versao.json?t=' + conferidaEm, { cache: 'no-store' });
+      if (!r.ok) return;
+      const v = (await r.json()).versao;
+      if (typeof v !== 'string' || !v || v === VERSAO || v === publicada) return;
+      publicada = v;
+      btnVersao.hidden = false;
+      toast('Há uma versão nova do site. Recarregue quando puder: botão “Versão nova”, no topo.', null, null, 9000);
+    } catch (e) { /* sem rede agora: confere de novo depois */ }
+  }
+  btnVersao.addEventListener('click', () => {
+    const f = h('form', { class: 'dl' }, h('h2', { text: 'Recarregar para a versão nova?' }),
+      h('p', { text: 'O site foi atualizado. O que você fez já está guardado. Recarregar leva alguns segundos e traz as correções e as novidades.' }),
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Depois', onclick: fecharJanela }), h('button', { type: 'submit', class: 'btn pri', text: 'Recarregar agora' })));
+    f.addEventListener('submit', ev => { ev.preventDefault(); location.reload(); });
+    abrirJanela(f);
+  });
+  setTimeout(conferirVersao, 60 * 1000);
+  setInterval(() => { if (!document.hidden) conferirVersao(); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - conferidaEm > 60 * 1000) conferirVersao(); });
+  window.__conferirVersao = conferirVersao;      // (para os testes)
 
   async function aoEntrar() {
     pintarConta();
@@ -824,7 +884,7 @@ dialog::backdrop { background: var(--scrim); }
     pintarConta();
     const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
-  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; papelNaMesa = mesas.atual ? mesas.atual.papel : null; pintarAbas(); abrir(inicial()); });
+  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; papelNaMesa = mesas.atual ? mesas.atual.papel : null; pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); });
 })();
 </script>
 </body>

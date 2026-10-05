@@ -248,6 +248,33 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.mouse.up(); await w(200);
   ok(esperou === true && antesDeSoltar === undefined && await S0(() => window.__quando) === String(agi0 - 2) && (await sel()).atrLivre.AGI === agi0 - 2, 'com o botão do mouse apertado, o desenho fica para depois: o clique pega (AGI ' + (agi0 - 2) + ') e só então roda o que esperava');
 
+  // ---------- bônus temporário: "todos os atributos" de uma vez, e o valor valendo enquanto é digitado ----------
+  const rolagem = () => S0(() => { const o = {}; document.querySelectorAll('#ficha .rolbox [data-rolar]').forEach(b => { o[b.dataset.rolar] = b.querySelector('span').textContent; }); return o; });
+  const totais = () => S0(() => [...document.querySelectorAll('#ficha table.attr:not(.defs) tbody tr')].slice(0, 5).map(tr => tr.querySelector('.vtot').textContent).join(','));
+  const r0 = await rolagem(), t0 = await totais();
+  await P.locator('#ficha [data-tmpadd]').click(); await w(300);
+  const tid = await S0(() => { const m = S.personagens[0].estado.tmp; return Object.keys(m).sort((a, b) => m[b].t - m[a].t)[0]; });
+  ok(await P.locator(`[data-tmpk="${tid}"] optgroup[label="Atributos"] option`).first().evaluate(o => o.value + '|' + o.textContent) === 'ATR|Todos os atributos', 'na lista de onde o bônus soma, a primeira opção é "Todos os atributos"');
+  await P.locator(`[data-tmpk="${tid}"]`).selectOption('ATR'); await w(300);
+  await P.locator(`[data-tmpv="${tid}"]`).click(); await P.keyboard.press('Control+A'); await P.keyboard.type('3'); await w(300);
+  let r1 = await rolagem();
+  ok(await S0(i => document.activeElement === document.querySelector(`[data-tmpv="${i}"]`), tid) && ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].every(k => +r1[k] === +r0[k] + 3) && r1.ESQ === r0.ESQ && r1.DFF === r0.DFF,
+    'digitando 3 (com o cursor ainda no campo), os cinco botões de atributo da rolagem rápida já mostram +3 — e derivados e defesas não mudam: ' + j(r1));
+  ok(await totais() === t0.split(',').map(v => +v + 3).join(',') && await P.locator('#ficha table.attr:not(.defs) tbody tr').first().locator('.dtmp').innerText() === '+3 temp.', 'a tabela de atributos acompanha na hora (total e "+3 temp."): ' + await totais());
+  ok((await sel()).estado.tmp[tid].v === 3 && (await sel()).estado.tmp[tid].k === 'ATR', 'e o valor já está guardado (não espera o cursor sair do campo)');
+  await apertar(P.locator('#ficha .rolbox [data-rolar="FOR"]')); await w(350);
+  ok((await P.locator('.rolsaida .roldet').innerText()).startsWith('FOR ' + (+r0.FOR + 3)), 'clicar no FOR logo em seguida rola com o bônus, num clique só: ' + (await P.locator('.rolsaida .roldet').innerText()));
+  // um número pela metade ("-" a caminho de "-2") não vale nada no meio do caminho
+  await P.locator(`[data-tmpv="${tid}"]`).click(); await P.keyboard.press('Control+A'); await P.keyboard.type('-'); await w(250);
+  ok((await sel()).estado.tmp[tid].v === 3 && +(await rolagem()).FOR === +r0.FOR + 3, '"−" sozinho ainda não muda nada (o bônus continua +3)');
+  await P.keyboard.type('2'); await w(250);
+  r1 = await rolagem();
+  ok((await sel()).estado.tmp[tid].v === -2 && ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].every(k => +r1[k] === +r0[k] - 2), 'completando "−2", os cinco descem 2: ' + j(r1));
+  await P.keyboard.press('Tab'); await w(300);
+  ok(await totais() === t0.split(',').map(v => +v - 2).join(',') && await P.locator(`[data-tmpv="${tid}"]`).inputValue() === '-2', 'saindo do campo, a ficha inteira é redesenhada com o mesmo valor');
+  await P.locator(`[data-tmpdel="${tid}"]`).click(); await w(300);
+  ok(j(await rolagem()) === j(r0) && await totais() === t0, 'tirado o bônus, tudo volta ao que era');
+
   // ---------- tudo continua lá depois de recarregar ----------
   await w(600);
   await P.reload({ waitUntil: 'load' }); await w(1200);

@@ -139,6 +139,21 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(R.resumo(pv, cfg0, { temp: {} }, { tmp }).attrs.VIT === rr0.attrs.VIT, 'a não ser que quem chama já os tenha passado');
   ok(rr0.recursos[0].min === 0 && rr0.recursos[0].inicio === null, 'no resumo, cada barra diz o piso e o começo');
 
+  // "todos os atributos": uma chave só, que soma nos cinco de uma vez (bônus temporário, poção, ferimento)
+  {
+    const todos = { a: { n: 'Banquete', k: 'ATR', v: 2, t: 1 }, b: { n: 'Força', k: 'FOR', v: 3, t: 2 }, c: { n: 'minúscula', k: 'atr', v: 1, t: 3 }, d: { n: 'desligado', k: 'ATR', v: 50, off: true, t: 4 } };
+    const Tt = R.temporarios(todos), c0t = R.calcular(pv, cfg0), c1t = R.calcular(pv, cfg0, { temp: todos });
+    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 10, 'a chave "todos os atributos" existe à parte das dez de sempre');
+    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, DFF: 0, DFM: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
+    ok(R.ATRIBS.every(a => c1t.tot[a.k] === c0t.tot[a.k] + (a.k === 'FOR' ? 6 : 3) && c1t.base[a.k] === c0t.base[a.k]) && c1t.der.ESQ === c0t.der.ESQ && c1t.def.DFF === c0t.def.DFF && c1t.vars.DES_TMP === 3, 'na ficha: cada atributo sobe o seu tanto, a base não muda, derivados e defesas ficam como estavam');
+    ok(c1t.recursos[0].max === c0t.recursos[0].max + 30, 'e as barras que dependem de um atributo acompanham (HP = VIT*10 sobe 30)');
+    const ft = R.ferimentos({ x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } }), cft = R.calcular(pv, cfg0, { fer: { x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } } });
+    ok(ft.lista[0].k === 'ATR' && ft.soma.FOR === -2 && ft.soma.AGI === -2 && ft.soma.ESQ === 0 && R.ATRIBS.every(a => cft.tot[a.k] === c0t.tot[a.k] - 2) && R.textoDoFerimento(ft.lista[0]) === 'Corte médio · Peito · −2 em todos os atributos', 'ferimento que pesa em todos os atributos: "' + R.textoDoFerimento(ft.lista[0]) + '"');
+    const pbt = Object.assign(base(), { bolsa: [{ id: 'p9', t: 'pocao', nome: 'Elixir do herói', bk: 'atr', bv: 2, bd: '1 cena' }] }), ut = R.usarItem(pbt, R.calcular(pbt, cfg0), { qtd: { p9: 1 } }, 'p9', null, 77, 'tX');
+    ok(R.bolsa(pbt, { qtd: { p9: 1 } })[0].bk === 'ATR' && ut.ok && ut.estado.tmp.tX.k === 'ATR' && R.textoDoUso(ut) === 'Todos os atributos +2 (1 cena) · era a última unidade' && R.previaDoUso(pbt, R.calcular(pbt, cfg0), { qtd: { p9: 1 } }, R.bolsa(pbt, { qtd: { p9: 1 } })[0]).join(' | ').includes('Todos os atributos +2'), 'poção que dá bônus em todos os atributos: "' + R.textoDoUso(ut) + '"');
+    ok(R.ATRIBS.every(a => R.calcular(pbt, cfg0, { temp: ut.estado.tmp }).tot[a.k] === R.calcular(pbt, cfg0).tot[a.k] + 2), 'e, usada, os cinco sobem 2');
+  }
+
   // bolsas
   const pb = base();
   pb.bolsa = [{ id: 'p1', t: 'pocao', nome: 'Poção de cura', rec: 'hp', val: '30' }, { id: 'p2', t: 'pocao', nome: 'Elixir', rec: 'san', val: '-2d6', bk: 'for', bv: 4, bd: '3 turnos' }, { id: 'b1', t: 'bomba', nome: 'Bomba de fumaça', nota: 'cega por 1 turno' }, { id: 'm1', t: 'coisa', nome: 'Ferro' }, { nome: 'sem id' }, null, { id: 'p3', t: 'pocao', nome: 'Só bônus', bk: 'FOGO', bv: 5 }, { id: 'p4', t: 'pocao', nome: 'Torta', rec: 'hp', val: 'abc' }];

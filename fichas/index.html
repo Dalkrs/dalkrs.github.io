@@ -545,6 +545,14 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .t-passivo{color:var(--ink-2);border-color:var(--line-2);background:var(--campo-sut)}
 .t-inativo{color:var(--ink-soft);border-color:var(--line);background:var(--zebra)}
 .habrow.off .habnome,.habrow.off textarea{opacity:.5}
+/* o que veio da árvore de habilidades: só leitura, no mesmo quadro das escritas à mão */
+.habarv{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.habarv .sitbar{margin-bottom:4px}
+.habrow.daarv{align-items:baseline}
+.habuso{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:10px;border:1px solid var(--line-2);background:var(--campo-sut);color:var(--ink-2);white-space:nowrap}
+.habrow.daarv .habnome{font-weight:500;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.habgrau{font-size:11px;color:var(--ink-soft);font-weight:400}
+.habtexto{grid-column:1/-1;font-size:13px;color:var(--ink-2);white-space:pre-wrap}
 @media (max-width:700px){.colunas{grid-template-columns:1fr}}
 .scrollx{overflow-x:auto}
 .scrollx table.items{min-width:800px}
@@ -840,9 +848,9 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=7"></script>
-<script src="../tc/rules.js?v=4"></script>
+<script src="../tc/rules.js?v=5"></script>
 <script src="mesa.js?v=6"></script>
-<script src="extras.js?v=4"></script>
+<script src="extras.js?v=5"></script>
 <script src="quadros.js?v=1"></script>
 <script>
 /* =======================================================================
@@ -1766,7 +1774,7 @@ function renderFicha(){
     <div class="hd subtabs">
       ${[['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
          ['skills','Skills', Object.keys(skillsDe(pc).alocados).length||''],
-         ['habs','Passivas e Habilidades', (pc.habilidades||[]).length||''],
+         ['habs','Passivas e Habilidades', ((pc.habilidades||[]).length + habsDaArvore(pc).length)||''],
          ['missoes','Missões', FichasQuadros.contaAtivas(pc)||''],
          ['notas','Anotações gerais', (pc.notas||'').trim()?'•':'']
         ].map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
@@ -1796,6 +1804,7 @@ function renderFicha(){
             <textarea rows="2" data-habdesc="${h.id}" placeholder="O que faz, custo, condição de uso…">${esc(h.desc||'')}</textarea>
           </div>`}).join('')
         : '<div class="hint">Nenhuma habilidade cadastrada. As inativas continuam na ficha, só ficam apagadas.</div>'}
+        ${htmlHabsDaArvore(pc)}
         ${FichasExtras.htmlEfeitosEquipados(pc)}`
       :`<textarea id="f_notas" rows="8" placeholder="O que mudou no último level up, dívidas, promessas, o que o personagem sabe e o que não sabe…">${esc(pc.notas||'')}</textarea>`}
     </div>
@@ -2582,6 +2591,26 @@ function skillsEscolhidas(pc){
   });
   return linhas;
 }
+/* O que o personagem aprendeu na árvore aparece também no quadro "Passivas e Habilidades", junto das escritas à mão.
+   É só leitura, e não é uma cópia: é a própria árvore, lida na hora — muda quando alguém distribui ou tira um ponto,
+   pela aba Skills da ficha ou pela aba Árvore do site. */
+function habsDaArvore(pc){ try{ return temBib()? skillsEscolhidas(pc) : []; }catch(e){ return []; } }
+function htmlHabsDaArvore(pc){
+  const linhas=habsDaArvore(pc);
+  if(!linhas.length) return '';
+  return `<div class="habarv" id="habsDaArvore">
+    <div class="sitbar"><span class="eyebrow">Da árvore de habilidades</span>
+      <span class="hint">${linhas.length===1?'1 aprendida':linhas.length+' aprendidas'} · entram aqui sozinhas; para mudar, use a aba Skills ou a Árvore</span></div>
+    ${linhas.map(({n,grau,arvore,texto})=>{
+      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length;
+      return `<div class="habrow daarv" data-habarv="${esc(n.id)}">
+        <span class="habuso">${us.length? us.map(u=>esc(u.nome)).join(' · ') : 'Árvore'}</span>
+        <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
+        <span class="hint">${esc(arvore.nome)}</span>
+        ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${esc(texto)}</strong>${n.desc?' · ':''}`:''}${esc(n.desc||'')}</div>`:''}
+      </div>`}).join('')}
+  </div>`;
+}
 function perdidasDe(pc){
   return Object.keys(skillsDe(pc).alocados).filter(id=>!ARV.porId.has(id)).length;
 }
@@ -2614,27 +2643,41 @@ function rotuloAtr(k){
 }
 function abrirDisputa(pc){
   const outros=S.personagens.filter(x=>x.id!==pc.id);
-  const mem=pc.disputa||(pc.disputa={});     // o oponente é lembrado por ficha
-  /* Os dados de rolagem de cada alvo (atributo, fixa, valor avulso) ficam guardados por alvo:
-       · mem.alvos — o que ESTA ficha usou contra cada um;
-       · S.alvos   — o que foi usado por último contra cada um, por qualquer ficha.
-     Assim, ao escolher um alvo, qualquer personagem já encontra os dados dele preenchidos. */
-  const meus = (mem.alvos && typeof mem.alvos==='object') ? mem.alvos : (mem.alvos={});
-  const gerais = (S.alvos && typeof S.alvos==='object') ? S.alvos : (S.alvos={});
+  const tem=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  /* A memória da disputa mora na ficha (pc.disputa): o oponente escolhido por último e o que foi usado contra cada um.
+     Ela é lida de novo a cada uso, nunca por uma referência guardada ao abrir a janela — se a ficha é atualizada por
+     outra pessoa com a janela aberta (o mestre deu dano no token, por exemplo), o objeto antigo deixa de ser o da
+     ficha, e o que fosse escrito nele não seria guardado. */
+  const mem=()=>pc.disputa||(pc.disputa={});
+  const meus=()=>{ const m=mem(); return (m.alvos && typeof m.alvos==='object') ? m.alvos : (m.alvos={}); };
+  const gerais=()=>(S.alvos && typeof S.alvos==='object') ? S.alvos : (S.alvos={});
   const valeAlvo = id => id==='__avulso__' || outros.some(x=>x.id===id);
+  const m0=mem();
   const est={
-    atrA: mem.atrA||'FOR', fixaA: pc.rol?.fixa||0,
-    alvo: valeAlvo(mem.alvoId) ? mem.alvoId : (valeAlvo(S.ultimoAlvo) ? S.ultimoAlvo : (outros[0]?.id||'__avulso__')),
-    atrB: mem.atrB||'FOR', fixaB: mem.fixaB||0, valorB: mem.valorB||40,
-    nomeB: typeof mem.nomeB==='string' ? mem.nomeB : '',      // o nome do NPC (um oponente sem ficha)
+    atrA: m0.atrA||'FOR', fixaA: pc.rol?.fixa||0,
+    alvo: valeAlvo(m0.alvoId) ? m0.alvoId : (valeAlvo(S.ultimoAlvo) ? S.ultimoAlvo : (outros[0]?.id||'__avulso__')),
+    atrB: m0.atrB||'FOR', fixaB: m0.fixaB||0, valorB: m0.valorB||40,
+    nomeB: typeof m0.nomeB==='string' ? m0.nomeB : '',      // o nome do NPC (um oponente sem ficha)
     res:null
   };
   if(!outros.length) est.alvo='__avulso__';
-  // traz o que está guardado para o alvo escolhido; sem nada guardado, fica o que já estava na tela
+  /* Os dados de rolagem de um oponente (o atributo e a fixa dele; para o NPC sem ficha: nome, valor e fixa) valem
+     para todas as fichas: o que foi usado por último contra ele, em qualquer uma, é o que aparece ao escolhê-lo em
+     qualquer outra. Cada ficha guarda o que usou e quando (alvos[id].t); a mais recente de todas vence. O que foi
+     guardado antes de existir a data conta como mais antigo — e, entre esses, vale o último usado nesta tela (S.alvos),
+     depois o desta ficha. */
+  const maisRecente = id => {
+    let melhor=null;
+    const ver = l => { if(l && typeof l==='object' && (!melhor || (+l.t||0) > (+melhor.t||0))) melhor=l; };
+    if(tem(gerais(),id)) ver(gerais()[id]);
+    if(tem(meus(),id)) ver(meus()[id]);
+    S.personagens.forEach(p=>{ const al=p!==pc && p.disputa && p.disputa.alvos; if(al && typeof al==='object' && tem(al,id)) ver(al[id]); });
+    return melhor;
+  };
+  // traz o que está guardado para o oponente escolhido; sem nada guardado, fica o que já estava na tela
   const carregarAlvo=()=>{
-    const l = Object.prototype.hasOwnProperty.call(meus,est.alvo) ? meus[est.alvo]
-            : (Object.prototype.hasOwnProperty.call(gerais,est.alvo) ? gerais[est.alvo] : null);
-    if(!l || typeof l!=='object') return;
+    const l = maisRecente(est.alvo);
+    if(!l) return;
     if(l.atr) est.atrB=l.atr;
     if(l.fixa!=null) est.fixaB=Math.max(0,+l.fixa||0);
     if(l.valor!=null) est.valorB=Math.max(0,+l.valor||0);
@@ -2642,12 +2685,14 @@ function abrirDisputa(pc){
   };
   const guardarAlvo=()=>{
     const d = est.alvo==='__avulso__' ? {valor:est.valorB, fixa:est.fixaB, nome:est.nomeB} : {atr:est.atrB, fixa:est.fixaB};
-    meus[est.alvo]=d; gerais[est.alvo]=Object.assign({},d);
-    mem.alvoId=est.alvo; S.ultimoAlvo=est.alvo;
-    mem.atrB=est.atrB; mem.fixaB=est.fixaB; mem.valorB=est.valorB; mem.nomeB=est.nomeB;
+    d.t=Date.now();
+    meus()[est.alvo]=d; gerais()[est.alvo]=Object.assign({},d);
+    const m=mem();
+    m.alvoId=est.alvo; S.ultimoAlvo=est.alvo;
+    m.atrB=est.atrB; m.fixaB=est.fixaB; m.valorB=est.valorB; m.nomeB=est.nomeB;
     save();
   };
-  if(est.alvo!==mem.alvoId || Object.keys(meus).length) carregarAlvo();
+  carregarAlvo();
   /* os valores são lidos na hora de rolar, nunca de uma cópia antiga da tela */
   const lados=()=>{
     const avulso = est.alvo==='__avulso__';
@@ -2723,7 +2768,7 @@ function abrirDisputa(pc){
     const nb=m.querySelector('#disNomeB'); if(nb) nb.oninput=ev=>{ est.nomeB=ev.target.value.slice(0,40); guardarAlvo(); };
     /* seletores mudam a estrutura, então redesenham */
     const sel=(id,fn)=>{ const e=m.querySelector(id); if(e) e.onchange=ev=>{ fn(ev.target.value); est.res=null; desenhar(); }; };
-    sel('#disAtrA', v=>{est.atrA=v; mem.atrA=v; save();});
+    sel('#disAtrA', v=>{est.atrA=v; mem().atrA=v; save();});
     sel('#disAtrB', v=>{est.atrB=v; guardarAlvo();});
     sel('#disAlvo', v=>{est.alvo=v; carregarAlvo(); guardarAlvo();});
     m.querySelector('#disRolar').onclick=()=>{

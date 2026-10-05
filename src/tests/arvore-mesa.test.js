@@ -112,11 +112,44 @@ const arvLocal = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   ok(await B.evaluate(() => personagemAtual().alocados.n_punho === 2 && bib().arvores[0].nodes[1].nome === 'Punho de Titânio'), 'o desfazer do jogador volta só a escolha dele, não a árvore do mestre');
   ok(await B.evaluate(() => excluirPersonagem().then(() => doc.personagens.some(p => p.nome === 'Li'))), 'na mesa, personagem não é excluído pela Árvore');
 
+  // ---------- a ficha e a árvore acompanham uma à outra, sem recarregar ----------
+  // (o mestre recarregou a página há pouco: as Fichas ainda não tinham sido abertas nesta página)
+  await M.locator('#tab-fichas').click();
+  ok(await ate(async () => { F = await quadro(M, /\/fichas\//); return F && (await F.locator('#lista .pc').count()) > 0 && await F.evaluate(() => !!S.bib && S.bib.arvores[0].nodes[1].nome === 'Punho de Titânio'); }, 40000), '(o mestre abre as Fichas, já com a árvore de agora)');
+  await F.locator('#lista .pc', { has: F.locator('.nm', { hasText: /^Li$/ }) }).click(); await w(300);
+  // o que foi aprendido na árvore aparece sozinho em "Passivas e Habilidades"
+  await F.locator('#ficha [data-sub="habs"]').click(); await w(300);
+  const habs = await F.locator('#habsDaArvore .habrow.daarv').evaluateAll(l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
+  ok(habs.length === 2 && habs.some(x => x.includes('Punho de Titânio') && x.includes('grau 2/2') && /passiva/i.test(x) && x.includes('+2 dano') && x.includes('Golpes desarmados.') && x.includes('Monge')) && habs.some(x => x.includes('Origem') && x.includes('Ponto de partida.')),
+    'na ficha, "Passivas e Habilidades" lista sozinha o que foi aprendido na árvore — uso, nome, grau, o texto do grau, a descrição e de que árvore veio: ' + JSON.stringify(habs));
+  ok((await F.locator('#ficha [data-sub="habs"] .mk').innerText()) === '2' && await F.locator('#habsDaArvore input, #habsDaArvore textarea, #habsDaArvore button').count() === 0, 'a aba conta essas habilidades, e elas são só leitura (mudam pela árvore)');
+  await B.evaluate(async () => { await descerGrau('n_punho'); }); await w(400, J);
+  ok(await ate(async () => (await F.locator('#habsDaArvore .habrow.daarv', { hasText: 'Punho de Titânio' }).innerText()).replace(/\s+/g, ' ').includes('grau 1/2'), 15000), 'o jogador desce um grau na Árvore dele: a lista na ficha do mestre acompanha sozinha (grau 1/2)');
+  // o cursor parado num campo da Árvore não segura o que vem da mesa
+  await B.locator('#busca').click(); await w(200, J);
+  await F.locator('#ficha [data-sub="skills"]').click(); await w(300);
+  if (!await F.locator('#ficha [data-skpegar]').count()) { await F.locator('#ficha [data-skui="distribuir"]').click(); await w(300); }
+  await F.locator('#ficha [data-skpegar="n_punho"]').click(); await w(500);
+  ok(await ate(async () => await B.evaluate(() => personagemAtual().alocados.n_punho === 2 && !!document.activeElement && document.activeElement.id === 'busca'), 15000), 'o mestre sobe o grau pela ficha (aba Skills): a Árvore do jogador acompanha mesmo com o cursor dele parado no campo de busca — e o cursor continua lá');
+  // quem está digitando de verdade não é interrompido — e nada do que os dois fizeram se perde
+  await B.locator('#tot_p1').click(); await J.keyboard.press('Control+A'); await J.keyboard.type('25'); await w(200, J);
+  await F.locator('#ficha [data-sksoltar="n_punho"]').click(); await w(500);
+  ok(await ate(async () => (await linhas(M)).pcs.find(p => p.id === idLi).skills.alocados.n_punho === 1 && (await linhas(M)).pend === 0), '(o mestre desce um grau pela ficha; a mudança está no banco)');
+  await w(4500, J);
+  ok(await B.evaluate(() => { const i = document.querySelector('#tot_p1'); return document.activeElement === i && i.value === '25' && personagemAtual().alocados.n_punho === 2; }), 'o jogador está digitando o total de pontos: o que chegou da mesa espera (o campo continua com o 25 e com o cursor)');
+  await J.keyboard.press('Tab');
+  ok(await ate(async () => await B.evaluate(() => { const p = personagemAtual(); return p.pontos.p1 === 25 && p.alocados.n_punho === 1; }), 15000), 'ele sai do campo: o total dele vale (25) e o que o mestre fez entra em seguida (grau 1)');
+  ok(await ate(async () => { const l = (await linhas(M)).pcs.find(p => p.id === idLi); return l.skills.pontos.p1 === 25 && l.skills.alocados.n_punho === 1 && l.skills.alocados.n_origem === 1; }, 15000), 'e no banco ficam as duas coisas: os pontos do jogador e a escolha do mestre');
+  await B.evaluate(async () => { await subirGrau('n_punho'); }); await w(500, J);
+  ok(await ate(async () => await F.evaluate(() => { const b = document.querySelector('#ficha [data-skpegar="n_punho"]'); return !!b && b.textContent.trim() === '2'; }), 15000), '(de volta ao grau 2, e a aba Skills da ficha do mestre mostra)');
+
   // (antes de o mestre apagar a mesa, o que o jogador acabou de fazer termina de subir: depois de apagada, o banco recusaria)
   await ate(async () => await J.evaluate(() => TC.dados.pendentes === 0) && await M.evaluate(() => TC.dados.pendentes === 0));
   await apagarMesaTela(M, nomeMesa);
-  // de volta sem mesa: a biblioteca local intacta
-  ok(await ate(async () => { A = await quadro(M, /\/arvore\//); return A && await A.evaluate(() => typeof doc === 'object' && bib().nome === 'Campanha' && bib().arvores[0].nodes[1].nome === 'Punho de Ferro' && doc.personagens[0].nome === 'Rascunho local'); }), 'fora da mesa, a árvore do navegador continua como era');
+  // de volta sem mesa: a biblioteca local intacta (o mestre estava nas Fichas; a Árvore só carrega quando ele abre a aba)
+  await M.locator('#tab-arvore').click();
+  const comoFicou = async () => { const q = M.frame({ url: /\/arvore\// }); if (!q) return { quadro: false, aba: await M.evaluate(() => (document.querySelector('.tab[aria-selected="true"]') || {}).id || null) }; try { return await q.evaluate(() => ({ bib: bib().nome, nodulo: bib().arvores[0].nodes[1].nome, pcs: doc.personagens.map(p => p.nome) })); } catch (e) { return { erro: String(e).slice(0, 120) }; } };
+  ok(await ate(async () => { A = await quadro(M, /\/arvore\//); return A && await A.evaluate(() => typeof doc === 'object' && bib().nome === 'Campanha' && bib().arvores[0].nodes[1].nome === 'Punho de Ferro' && doc.personagens[0].nome === 'Rascunho local'); }), 'fora da mesa, a árvore do navegador continua como era: ' + JSON.stringify(await comoFicou()));
   const fora = t.errs.filter(e => !/status of (400|401|409)/.test(e));
   if (fora.length) console.log('CONSOLE:\n' + fora.join('\n') + '\nRESPOSTAS DE ERRO:\n' + t.ruins.join('\n'));
   ok(fora.length === 0, 'sem erros inesperados no console');

@@ -125,13 +125,47 @@ const ArvoreMesa = (() => {
     catch (e) { console.warn('Não deu para publicar o pacote das árvores:', e); }
   }
 
+  /* Quem está digitando: o cursor num campo em que algo foi escrito desde que ele ganhou o cursor. Com o cursor só
+     parado num campo, ninguém está digitando — e a busca não conta em nenhum caso (ela só filtra o que aparece). */
+  const eCampo = a => !!a && /^(INPUT|TEXTAREA)$/.test(a.tagName || '');
+  document.addEventListener('input', e => { if (eCampo(e.target)) e.target.__mexido = true; }, true);
+  document.addEventListener('focusout', e => { if (e.target) e.target.__mexido = false; }, true);
+  const digitando = () => { const a = document.activeElement; return eCampo(a) && a.id !== 'busca' && !!a.__mexido; };
+  /* Onde o cursor está, para devolvê-lo ao mesmo campo (ou botão) depois de redesenhar: pelo id, ou pelas classes e
+     data-… do elemento (e, havendo vários iguais, pelo lugar na fila). */
+  function cursorDe() {
+    const a = document.activeElement, nada = () => {};
+    if (!a || !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(a.tagName || '') || typeof CSS === 'undefined' || !CSS.escape) return nada;
+    let sel, i = 0;
+    if (a.id) sel = '#' + CSS.escape(a.id);
+    else {
+      const cls = Array.from(a.classList).map(c => '.' + CSS.escape(c)).join('');
+      const ds = Array.from(a.attributes).filter(x => x.name.indexOf('data-') === 0).map(x => '[' + x.name + '="' + CSS.escape(x.value) + '"]').join('');
+      if (!cls && !ds) return nada;
+      sel = a.tagName.toLowerCase() + cls + ds;
+      i = Math.max(0, Array.prototype.indexOf.call(document.querySelectorAll(sel), a));
+    }
+    let ini = null, fim = null;
+    try { ini = a.selectionStart; fim = a.selectionEnd; } catch (e) { /* campo sem cursor de texto */ }
+    return () => {
+      const l = document.querySelectorAll(sel), n = l[i] || l[0];
+      if (!n || n === document.activeElement || n.disabled) return;
+      n.focus({ preventScroll: true });
+      if (ini != null) { try { n.setSelectionRange(ini, fim); } catch (e) { /* campo de número */ } }
+    };
+  }
+
   /* Chegou mudança da mesa (outra pessoa, outra aba, outro aparelho). */
   function remoto() {
     if (!ativo) return;
     clearTimeout(adiado);
-    const ocupado = (typeof modalAberto === 'function' && modalAberto()) || (typeof dialogoAberto === 'function' && dialogoAberto()) || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '');
-    if (ocupado) { adiado = setTimeout(remoto, 900); return; }      // não troca o chão de quem está digitando ou numa janela
+    /* Não troca o chão de quem está digitando, nem de quem está numa janela: o que chegou espera. Com o cursor só
+       parado num campo, entra na hora — senão quem deixasse o cursor num campo (o total de pontos, a busca) deixaria
+       de ver o que os outros fazem até clicar fora, e mexeria numa árvore que já não é a de agora. */
+    const ocupado = (typeof modalAberto === 'function' && modalAberto()) || (typeof dialogoAberto === 'function' && dialogoAberto()) || digitando();
+    if (ocupado) { adiado = setTimeout(remoto, 900); return; }
     if (sujo) salvarJa();                                           // primeiro sobe o que acabou de ser feito aqui
+    const visAntes = (() => { try { const a = arvoreVisivel(); return a ? a.id : null; } catch (e) { return null; } })();
     let mudou = false, trocouBib = false;
     // personagens
     const linhas = meus(), ids = new Set(linhas.map(l => l.id));
@@ -156,14 +190,18 @@ const ArvoreMesa = (() => {
     }
     if (!mudou) return;
     const fim = () => {
+      const volta = cursorDe();
       normalizarDoc(); if (trocouBib) podarTodos(); else indexar();
-      garantirSelecoes(); selecionado = null;
+      garantirSelecoes();                          // (o nódulo selecionado continua selecionado, se ainda existe)
       if (mestre()) sombra.bib = j(bib());
       try { localStorage.setItem(CHAVE_DOC, j(doc)); } catch (e) { /* a mesa continua valendo */ }
       pilhaDesfazer.length = 0; pilhaRefazer.length = 0; atualizarHistorico();    // o desfazer não volta por cima do que veio de fora
       pintarTudo();
-      if (trocouBib) centralizar();
+      // a câmera só se mexe se a árvore à vista passou a ser outra (a mesma árvore, mudada, continua onde a pessoa a deixou)
+      const vis = (() => { try { return arvoreVisivel(); } catch (e) { return null; } })();
+      if (trocouBib && (!vis || vis.id !== visAntes)) centralizar();
       desenhar();
+      volta();
     };
     if (trocouBib && !mestre()) reabrirGuardadas().then(fim, fim); else fim();
   }

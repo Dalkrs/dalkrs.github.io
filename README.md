@@ -27,6 +27,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | Pasta | O que é |
 |---|---|
 | `index.html` | A casca: barra com a marca, as abas, a conta, a mesa e a mesa ao vivo. Cada sistema roda na própria página, dentro de uma moldura. |
+| `versao.json` | A versão publicada (a mesma de `VERSAO`, na casca). A casca aberta a consulta de tempos em tempos: se for outra, mostra o botão "Versão nova" na barra — nada recarrega sozinho. Os dois mudam juntos a cada publicação. |
 | `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
@@ -84,6 +85,23 @@ O que foi apagado fica apagado: cada aparelho anota a revisão em que uma linha 
 e dali em diante ela só volta por uma revisão maior que essa — isto é, se alguém a recriou. Uma leitura que saiu do
 banco antes do apagar e chegou depois (numa rede lenta, por exemplo) não traz a linha de volta.
 
+### O programa das Cenas do mestre
+
+Quem aplica na cena o que os jogadores fazem (os "pedidos"), escreve o que eles veem (a projeção) e acerta as barras
+dos tokens pelas fichas é o programa das Cenas do mestre. Com a mesa aberta, ele roda em qualquer aba do site: se o
+mestre está nas Fichas, a casca abre as Cenas em segundo plano (escondidas), um instante depois — desde que a mesa
+já tenha cenas; numa mesa sem cenas nada abre sozinho, e nada é criado.
+
+- **Ao abrir a mesa**, os tokens ligados a fichas são acertados pelas fichas como estão agora: o que mudou nelas com
+  as Cenas fechadas (uma poção usada pela ficha, um HP corrigido) aparece nos tokens. O mesmo quando uma cena entra
+  no ar.
+- **Só um aparelho do mestre transmite** a cena que está no ar (ver `07d-nuvem.js`). Quem abre a mesa passa a
+  transmitir — com duas exceções: outra aba deste mesmo navegador, aberta e viva, continua com a transmissão; e uma
+  página aberta **em segundo plano** não toma a transmissão de outro aparelho: só acompanha, e assume se os pedidos
+  dos jogadores ficarem sem resposta, ou quando o mestre vier para as Cenas nela. Se quem transmitia era uma página
+  deste mesmo navegador que já não existe (o mestre recarregou), a página nova assume na hora — cada navegador
+  anota os códigos das páginas que abriu (`tinycats:cenas:paginas:<mesa>`).
+
 ### O que o mestre guarda só para ele
 
 Três coisas da ficha podem ficar escondidas dos jogadores, e nenhuma delas chega ao aparelho de quem não é o mestre
@@ -112,6 +130,14 @@ para isso não atrapalhar (em `fichas/mesa.js` e `fichas/extras.js`):
   terminar (ou, saindo pelo Tab, o cursor chegar ao campo seguinte; ou, se o clique abriu uma lista, a escolha).
 - **Uma mudança que chega de fora no meio de um clique** espera o botão do mouse subir.
 
+A Árvore segue a mesma ideia (`arvore/mesa.js`): o que chega da mesa só espera por quem está digitando de verdade
+(ou com uma janela aberta). Com o cursor parado num campo — a busca, o total de pontos —, entra na hora, o cursor
+volta para o mesmo campo, o nódulo selecionado continua selecionado e a câmera fica onde estava.
+
+**A ficha e a árvore são a mesma informação** (`skills`, no personagem): o que é distribuído na aba Árvore aparece na
+aba Skills da ficha, e o contrário. O que o personagem aprendeu aparece também em "Passivas e Habilidades", só para
+leitura — não é uma cópia: é a própria árvore, lida na hora.
+
 ### Para nada ficar para trás
 
 Cada sistema entrega as mudanças à casca na hora (chamada direta: são páginas do mesmo site), e a casca as manda ao
@@ -127,8 +153,9 @@ faltava subir.
   gravações dos dois se cruzam no mesmo segundo, o documento da cena fica com a que chegou por último, e um gesto pode
   ser desfeito. Os pedidos recentes dos jogadores não se perdem nesse caso: cada um guarda os dele por dois minutos
   depois de confirmados, e o aparelho que transmite aplica de novo os que a cena que ficou não tiver.
-- **Quem aplica o que os jogadores fazem é o programa do mestre.** Com o mestre fora (ou com a aba dormindo), os
-  pedidos esperam; valem quando ele volta.
+- **Quem aplica o que os jogadores fazem é o programa do mestre** — que roda com a mesa aberta, em qualquer aba do
+  site (ver "O programa das Cenas do mestre"). Com o mestre fora do site (ou com o aparelho dormindo), os pedidos
+  esperam; valem quando ele volta.
 - **Sem a ligação em tempo real**, a mesa lê o banco a cada 3 segundos: tudo funciona, com esse atraso.
 - **A mesma barra mudada por duas pessoas no mesmo instante** fica com o valor de quem gravou por último (barras
   diferentes do mesmo personagem não se atropelam; ver "Duas pessoas mexendo na mesma ficha").
@@ -141,8 +168,8 @@ faltava subir.
 - **O sinal de ferido no token** aparece para o mestre em qualquer token ligado a uma ficha; para os jogadores, só nos
   tokens de jogador cuja ficha eles podem ver. Um token do mestre não diz aos jogadores a que ficha está ligado (isso
   entregaria um disfarce), então os ferimentos de um NPC não aparecem para eles na cena.
-- **Poção usada pelo jogador na cena**: a ficha muda na hora; a barra do token acompanha quando o programa do mestre
-  (que é quem acerta os tokens pela ficha) está aberto.
+- **Poção usada com o mestre fora do site**: a ficha muda na hora; a barra do token é acertada quando o mestre abre
+  a mesa (é o programa dele que acerta os tokens pela ficha).
 - **As paredes valem para o jogador na tela dele**: o banco não confere por onde um token passou.
 - **Imagens que foram trocadas** (um retrato, o fundo de uma cena) continuam no Storage até a mesa ser apagada.
   Apagar a mesa apaga a pasta dela; a função `faxina` (em `supabase/functions/`) apaga as pastas de mesas que não
@@ -157,9 +184,11 @@ cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas 
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
 fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-ficha`, `arvore-mesa`, `mundo-mesa`,
-`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `estado.rede` (duas pessoas na mesma ficha, o mestre em dois
-aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
+`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `estado.rede` (duas pessoas na mesma ficha, o mestre
+em dois aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
 esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores). `vivo.js` confere o site publicado.
 
 `fichas-quadros` também confere os gestos com o mouse, o teclado e o toque de verdade (o botão desce, espera e sobe):
-o clique que vem depois de um campo, o Tab, o Enter e a lista aberta.
+o clique que vem depois de um campo, o Tab, o Enter e a lista aberta. `fundo.rede` confere o programa das Cenas do
+mestre em segundo plano (a poção e o token, o pedido do jogador com o mestre em outra aba, dois aparelhos do mestre),
+e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira.

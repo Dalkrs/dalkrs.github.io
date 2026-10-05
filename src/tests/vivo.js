@@ -13,6 +13,16 @@ const { contas } = require('./contas');
   await page.goto((process.argv[2] || 'https://dalkrs.github.io/') + '?t=' + Date.now(), { waitUntil: 'load', timeout: 60000 });
   await page.waitForTimeout(2500);
   out.titulo = await page.title();
+  // a versão publicada: a casca e versao.json dizem a mesma coisa (senão o aviso de "versão nova" apareceria à toa)
+  out.versao = await page.evaluate(async () => {
+    const ler = (u, como) => fetch(u, { cache: 'no-store' }).then(r => r[como]()).catch(() => null);
+    const casca = ((await ler('./?t=' + Date.now(), 'text') || '').match(/VERSAO = '([^']+)'/) || [])[1] || null;
+    const simples = ((await ler('./', 'text') || '').match(/VERSAO = '([^']+)'/) || [])[1] || null;
+    const arq = (await ler('versao.json?t=' + Date.now(), 'json') || {}).versao || null;
+    if (window.__conferirVersao) await window.__conferirVersao();
+    const b = document.getElementById('versaoNova');
+    return 'casca ' + casca + (simples !== casca ? ' (sem ?t: ' + simples + ')' : '') + ' · versao.json ' + arq + ' · aviso ' + (b ? (b.hidden ? 'escondido' : 'À MOSTRA') : 'não existe');
+  });
   for (const id of ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador']) {
     await page.locator('#tab-' + id).click(); await page.waitForTimeout(2000);
     const f = page.frame({ url: new RegExp('/' + id + '/') });

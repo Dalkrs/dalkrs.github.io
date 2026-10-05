@@ -47,8 +47,8 @@ function banco() {
    No meio do caminho fica o que a casca (tc.js) faz: junta as gravações de cada documento por meio segundo, manda
    uma de cada vez, e — enquanto um documento tem algo daqui por subir — o que chega dele do banco não é entregue ao
    programa (vale o daqui, que vai por cima). O que chega mais velho do que o que já se tem também não. */
-function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5 }) {
-  const ap = { nome, papel, eu, atrasoRx, morto: false, surdo: false, perdidos: new Set(), bloqueado: new Set(), segura: new Set(), avisos: [], alertas: [] };
+function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5, fundo = false, navegador = null }) {
+  const ap = { nome, papel, eu, atrasoRx, morto: false, surdo: false, perdidos: new Set(), bloqueado: new Set(), segura: new Set(), avisos: [], alertas: [], acertos: 0 };
   const espelho = new Map(DB.visiveis(ap).map(l => [l.id, l])), ouvintes = [];
   const fila = new Map(), emVoo = new Set(), tempo = new Map();
   const mandar = id => {
@@ -83,7 +83,7 @@ function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5 })
   };
   ap.porSubir = () => fila.size + emVoo.size;
   const st = { mesa: { id: 'mesa1', nome: 'Mesa' }, papel, eu, segredo: false, membros };
-  const local = {};
+  const local = navegador || {};            // (dois "aparelhos" com o mesmo `navegador` são duas páginas do mesmo navegador)
   const guarda = o => ({ getItem: k => (k in o ? o[k] : null), setItem: (k, v) => { o[k] = String(v); } });
   const sandbox = {
     console: { log() {}, error: (...a) => console.error(...a), warn: (...a) => ap.alertas.push(a.map(String).join(' ')) },
@@ -92,13 +92,16 @@ function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5 })
     document: { createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 10 }), isPointInPath: () => false }) }), createElementNS: () => ({ setAttribute() {}, append() {} }) },
     Path2D: function () {}, performance: { now: () => Date.now() * ESCALA },          // (o relógio do programa anda junto com os temporizadores dele)
     Render: { request() {}, fit() {} }, UI: { toast(t) { ap.avisos.push(String(t)); }, setViewer() {}, switchScene() {} }, Tools: { undo() {}, cancel() {}, busy: () => false },
-    Vision: { invalidate() {}, resetExplored() {} }, Fichas: { paraFicha() {}, falta: () => false, syncAll() {} }, pruneSel() {},
+    Vision: { invalidate() {}, resetExplored() {} }, Fichas: { paraFicha() {}, falta: () => false, syncAll() { ap.acertos++; } }, pruneSel() {},
     FX: { P: { fogo: { n: 'Fogo' } } },
     crypto: { getRandomValues(buf) { buf[0] = Math.floor(Math.random() * 4294967296); return buf; } },
     makeDB: () => ({ open: async () => false, ready: () => false, all: async () => new Map(), write: async () => {} }),
     location: { search: '?casca=1' }, localStorage: guarda(local),
   };
   sandbox.window = { TC: { ponte: { naCasca: true, pronta: Promise.resolve(st), aoMudar() {} }, dados: { disponivel: () => true, col: () => D }, arquivos: {} } };
+  // aberta pela casca em segundo plano (o mestre está em outra aba do site): a página não tem tamanho
+  if (fundo) { sandbox.window.innerWidth = 0; sandbox.window.innerHeight = 0; }
+  ap.aparecer = () => { sandbox.window.innerWidth = 1280; sandbox.window.innerHeight = 800; ap.Nuvem.apareceu(); };
   vm.createContext(sandbox);
   vm.runInContext(FONTE + '\n;globalThis.T = { Store, Proj, Nuvem, App, newScene, newToken, normalizeScene, cleanBar, clone, uid };', sandbox);
   Object.assign(ap, sandbox.T, { D, espelho });
@@ -527,6 +530,57 @@ const soTransmite = async (DB, quem, outro, msg) => {
     }
     ok(await ate(() => PA.Nuvem.pendentes() === 0 && PB.Nuvem.pendentes() === 0 && B.tok('Dain').x === 304 && B.tok('Lia').y === 304 && A.tok('Dain').x === 304), 'todos os pedidos valem');
     eq([quemTransmite(A, B), DB.gravacoes.slice(n0).filter(g => g.startsWith('A ')).length], ['B', 0], 'quem acompanha não assumiu (quem transmite estava respondendo) e não gravou nada');
+    for (const ap of DB.aparelhos) ap.fechar();
+  }
+
+  /* ============ as Cenas do mestre abertas em segundo plano ============ */
+  cenario = 'em segundo plano: quem abre a mesa acerta as fichas, e não toma a transmissão de outro aparelho';
+  {
+    const { DB, A, J, cena } = await mesa(['u-ana']);
+    const P = J['u-ana'];
+    ok(await ate(() => A.acertos > 0), 'quem põe a cena no ar e transmite acerta os tokens pelas fichas');
+    // outro aparelho do mestre, com o site aberto em outra aba (as Cenas em segundo plano): só acompanha
+    const B = aparelho(DB, { nome: 'B', papel: 'mestre', eu: 'gm', membros: MEMBROS, fundo: true }); await B.abrir(); B.cena = cena;
+    await espera(300);
+    eq([quemTransmite(A, B), (DB.doc('cenas:indice') || {}).tx === (A.espelho.get('cenas:indice').dados || {}).tx, B.acertos], ['A', true, 0], 'em segundo plano, com outro aparelho transmitindo, a página só acompanha (não transmite, não acerta, não grava quem transmite)');
+    P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 256 }));
+    ok(await ate(() => P.Nuvem.pendentes() === 0 && A.tok('Dain').x === 256 && B.tok('Dain').x === 256) && quemTransmite(A, B) === 'A', 'o pedido do jogador é respondido por quem transmite; a que acompanha recebe a cena e continua acompanhando');
+    // o mestre vem para as Cenas nesse aparelho: ele assume
+    B.aparecer();
+    await soTransmite(DB, B, A, 'o mestre vem para as Cenas no aparelho que acompanhava: ele passa a transmitir');
+    ok(await ate(() => B.acertos > 0), 'e, ao assumir, acerta os tokens pelas fichas');
+    for (const ap of DB.aparelhos) ap.fechar();
+  }
+
+  cenario = 'em segundo plano: quem transmitia era uma página deste navegador que já fechou';
+  {
+    const DB = banco(), navegador = {};
+    const A = await aparelho(DB, { nome: 'A', papel: 'mestre', eu: 'gm', membros: MEMBROS, navegador }).abrir();
+    const sc = A.Store.scene(); A.cena = sc.id;
+    A.Store.tx('preparar', () => A.Store.add('tokens', A.newToken(sc, 64, 64, { name: 'Dain', owner: 'u-ana', bars: [A.cleanBar({ n: 'Vida', v: 20, m: 30 })] })));
+    A.Nuvem.mostrar(sc.id);
+    await ate(() => casado(DB) && !A.porSubir());
+    const P = await aparelho(DB, { nome: 'u-ana', papel: 'jogador', eu: 'u-ana', membros: MEMBROS }).abrir();
+    await ate(() => !P.Nuvem.semCena());
+    A.fechar();                               // o mestre recarrega a página (em outra aba do site): a de antes deixa de existir
+    const B = aparelho(DB, { nome: 'B', papel: 'mestre', eu: 'gm', membros: MEMBROS, fundo: true, navegador }); await B.abrir(); B.cena = sc.id;
+    ok(await ate(() => B.Nuvem.transmito(), 1500), 'a página nova, mesmo em segundo plano, assume na hora: quem transmitia era uma página deste mesmo navegador (não há a quem esperar)');
+    ok(await ate(() => B.acertos > 0), 'e acerta os tokens pelas fichas ao abrir');
+    P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 320 }));
+    ok(await ate(() => P.Nuvem.pendentes() === 0 && B.tok('Dain').x === 320, 3000), 'o que o jogador faz é aplicado sem demora');
+    for (const ap of DB.aparelhos) ap.fechar();
+  }
+
+  cenario = 'em segundo plano: quem transmitia, em outro aparelho, sumiu';
+  {
+    const { DB, A, J, cena } = await mesa(['u-ana']);
+    const P = J['u-ana'];
+    const B = aparelho(DB, { nome: 'B', papel: 'mestre', eu: 'gm', membros: MEMBROS, fundo: true }); await B.abrir(); B.cena = cena;
+    await espera(200);
+    ok(quemTransmite(A, B) === 'A', '(o A transmite; o B, em segundo plano, acompanha)');
+    A.fechar();
+    P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 448 }));
+    ok(await ate(() => B.Nuvem.transmito() && B.tok('Dain').x === 448 && P.Nuvem.pendentes() === 0, 6000), 'o pedido do jogador fica sem resposta: passada a espera, a página em segundo plano assume sozinha e aplica');
     for (const ap of DB.aparelhos) ap.fechar();
   }
 

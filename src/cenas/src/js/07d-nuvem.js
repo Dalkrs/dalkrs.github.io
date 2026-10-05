@@ -61,6 +61,22 @@ const Nuvem = (() => {
      página está aberta: recarregar é abrir de novo. */
   const meu = 'ap' + Math.random().toString(36).slice(2, 10).padEnd(8, '0');
   const transmito = () => modo === 'mestre' && !!idx.noAr && idx.tx === meu;
+  /* As páginas que ESTE navegador já abriu nesta mesa (os códigos delas). Com isso, uma página recém-aberta sabe
+     quando quem aparece transmitindo era uma página daqui mesmo, que já foi fechada ou recarregada — e assume na
+     hora, sem esperar para ver se os pedidos dos jogadores ficam sem resposta. */
+  const PAGINAS_AQUI = 'tinycats:cenas:paginas:';          // + mesa
+  let minhasDeAntes = [];
+  function anotarPagina() {
+    try {
+      const l = JSON.parse(localStorage.getItem(PAGINAS_AQUI + mesa) || '[]');
+      minhasDeAntes = Array.isArray(l) ? l.filter(x => typeof x === 'string').slice(-30) : [];
+      localStorage.setItem(PAGINAS_AQUI + mesa, JSON.stringify(minhasDeAntes.concat([meu]).slice(-30)));
+    } catch (e) { minhasDeAntes = []; }
+  }
+  /* A casca do site abre as Cenas do mestre também em segundo plano (ele está em outra aba — Fichas, por exemplo —
+     e o que os jogadores fazem na cena precisa de alguém para aplicar). Em segundo plano a página não tem tamanho. */
+  const emSegundoPlano = () => window.innerWidth === 0 || window.innerHeight === 0;
+  let canal = null, outraViva = false;                     // as abas deste navegador se perguntam quem transmite
   /* Quanto um aparelho que acompanha espera antes de assumir por conta própria. Tem de ser mais do que o aparelho
      que transmite leva, no pior caso, para responder (ele recebe o pedido, aplica, grava, e a resposta ainda viaja
      até aqui: uns 8 segundos quando a mesa está sem o tempo real e lê o banco de tempos em tempos). */
@@ -186,10 +202,18 @@ const Nuvem = (() => {
     else darPorVistos();
     if (daProj && Array.isArray(pv.pings)) pings = pv.pings.filter(ehObj).slice(-6);
     /* Quem abre a mesa passa a transmitir (é onde o mestre está agora) e confere a projeção. */
-    const abrirTransmitindo = () => { if (!idx.noAr) return; if (idx.tx !== meu) { idx.tx = meu; metaSuja = true; arSujo = true; } pubSuja = true; agendar(); };
+    const abrirTransmitindo = () => {
+      if (!idx.noAr) return;
+      if (idx.tx !== meu) { idx.tx = meu; metaSuja = true; arSujo = true; }
+      pubSuja = true; agendar();
+      /* As barras ligadas a fichas, pela ficha como está agora: o que mudou nelas enquanto as Cenas estavam fechadas
+         (uma poção usada pela ficha, um valor que o mestre acertou) aparece nos tokens assim que a mesa abre. */
+      setTimeout(() => { if (transmito()) Fichas.syncAll(); }, 0);
+    };
     /* …a não ser que quem transmite seja outra aba deste mesmo navegador, aberta e viva (uma aba a mais, aberta sem
        querer, não toma a transmissão da que o mestre está usando). As abas se perguntam por um canal do navegador. */
-    let canal = null, outraViva = false;
+    anotarPagina();
+    canal = null; outraViva = false;
     try { canal = new BroadcastChannel('tinycats:cenas:' + mesa); } catch (e) { canal = null; }
     if (canal) canal.onmessage = ev => {
       const d = ev.data;
@@ -204,7 +228,17 @@ const Nuvem = (() => {
       if (!idx.noAr) despublicar();
     };
     if (!idx.noAr || semACena()) setTimeout(limpar, ESPERA_LIMPAR);
-    else if (canal && idx.tx && idx.tx !== meu) { canal.postMessage({ t: 'quem' }); setTimeout(() => { if (!outraViva) abrirTransmitindo(); }, 400); }
+    else if (idx.tx && idx.tx !== meu) {
+      /* Outra página aparece transmitindo.
+           · É outra aba deste navegador, aberta e viva: ela continua, e esta acompanha.
+           · Era uma página deste navegador que já não existe (o mestre recarregou): esta assume.
+           · É de outro aparelho: com o mestre olhando para esta página, ela assume (é onde ele está agora); aberta
+             em segundo plano, acompanha — e assume sozinha se os pedidos dos jogadores ficarem sem resposta, ou
+             quando o mestre vier para cá (ver apareceu). */
+      const daqui = minhasDeAntes.includes(idx.tx);
+      if (canal) canal.postMessage({ t: 'quem' });
+      setTimeout(() => { if (!outraViva && (daqui || !emSegundoPlano())) abrirTransmitindo(); }, canal ? 400 : 0);
+    }
     else abrirTransmitindo();
     D.aoMudar(doBanco);
     Store.on('commit', e => {
@@ -232,6 +266,14 @@ const Nuvem = (() => {
     if (!tPedidos) tPedidos = setTimeout(pedidos, 60);
     setTimeout(() => { if (transmito()) Fichas.syncAll(); }, 0);      // as barras ligadas a fichas, pela ficha como está agora
     return true;
+  }
+  /* O mestre veio para esta página, que estava aberta em segundo plano. Se outro aparelho transmite a cena que está
+     no ar, esta assume: é onde ele está agora. (Outra aba deste navegador, aberta e viva, continua com ela.) */
+  function apareceu() {
+    if (modo !== 'mestre' || !idx.noAr || idx.tx === meu) return;
+    outraViva = false;
+    if (canal) canal.postMessage({ t: 'quem' });
+    setTimeout(() => { if (!outraViva) assumir(); }, canal ? 400 : 0);
   }
   function pararVigias() { clearTimeout(tAssumir); tAssumir = 0; clearTimeout(tCobrar); tCobrar = 0; esperando.clear(); }
   // Tudo o que está nas filas dos jogadores agora passa a contar como já visto (não será aplicado).
@@ -495,7 +537,8 @@ const Nuvem = (() => {
     if (!antes.size) return;
     tCobrar = setTimeout(() => {
       tCobrar = 0;
-      if (!idx.noAr || !segue(idx.noAr)) return;
+      if (!idx.noAr) return;
+      if (!segue(idx.noAr)) { Fichas.syncAll(); return; }    // este aparelho passou a transmitir nesse meio-tempo: acerta ele mesmo
       const agora = porAcertar();
       let parado = false;
       for (const [id, j] of agora) if (antes.get(id) === j) parado = true;
@@ -671,6 +714,8 @@ const Nuvem = (() => {
     sombra.delete(PUB_M); sombra.delete(PUB_V);
     metaSuja = true; pubSuja = true; agendar();
     Store.meta();
+    // a cena que entra no ar pode ter ficado um tempo fechada: os tokens dela são acertados pelas fichas como estão agora
+    setTimeout(() => { if (transmito()) Fichas.syncAll(); }, 0);
     return true;
   }
   function esconder() {
@@ -799,7 +844,7 @@ const Nuvem = (() => {
     iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
-    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, mostrar, esconder, ping, semCena: () => vazia,
+    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, semCena: () => vazia,
     guardarImagem, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
     eu: () => eu, pendentes: () => caixa.length,
   };

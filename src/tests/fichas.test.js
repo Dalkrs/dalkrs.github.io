@@ -202,7 +202,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.locator('#disFechar').click(); await w(250);
   await abrirFicha('Dain X');
   await P.locator('#btnDisputa').click(); await w(250);
-  ok(await P.locator('#disAlvo').inputValue() === 'pc_cap' && await P.locator('#disAtrB').inputValue() === 'DFF' && await P.locator('#disFixaB').inputValue() === '12', 'cada ficha lembra o que ELA usou contra o alvo (o Dain continua com DEF F e 12)');
+  ok(await P.locator('#disAlvo').inputValue() === 'pc_cap' && await P.locator('#disAtrB').inputValue() === 'ESQ' && await P.locator('#disFixaB').inputValue() === '7', 'os dados do oponente passam de uma ficha a outra: o Dain, que tinha usado DEF F e 12 contra o Capitão, encontra o que o Goblin usou por último (Esquiva e 7)');
   await P.locator('#disAlvo').selectOption('__avulso__'); await w(200);
   ok(await P.locator('#disValorB').inputValue() === '55' && await P.locator('#disFixaB').inputValue() === '3', 'e o valor do NPC guardado por outro personagem também aparece para este');
   ok((await P.locator('#disAlvo option[value="__avulso__"]').innerText()) === 'NPC (sem ficha)' && await P.locator('#disNomeB').count() === 1, 'o oponente sem ficha se chama NPC, e pode ganhar um nome');
@@ -217,6 +217,30 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.locator('#btnDisputa').click(); await w(250);
   ok(await P.locator('#disAlvo').inputValue() === '__avulso__', 'ficha que nunca disputou começa pelo último alvo usado');
   ok(await P.locator('#disNomeB').inputValue() === 'Goblin chefe', 'e encontra o NPC com o nome que lhe deram por último');
+  await P.locator('#disFechar').click(); await w(250);
+  // o NPC sem ficha: o que foi posto por último, em qualquer ficha, aparece em todas — mesmo nas que já tinham os seus
+  await P.locator('#btnDisputa').click(); await w(250);
+  await P.locator('#disNomeB').fill('Ogro'); await P.locator('#disValorB').fill('70'); await P.locator('#disFixaB').fill('9'); await w(250);
+  await P.locator('#disFechar').click(); await w(250);
+  for (const nome of ['Dain X', 'Goblin batedor']) {
+    await abrirFicha(nome);
+    await P.locator('#btnDisputa').click(); await w(250);
+    await P.locator('#disAlvo').selectOption('__avulso__'); await w(200);
+    const v = [await P.locator('#disNomeB').inputValue(), await P.locator('#disValorB').inputValue(), await P.locator('#disFixaB').inputValue()].join('|');
+    ok(v === 'Ogro|70|9', 'na disputa de ' + nome + ' (que já tinha guardado outro NPC), o oponente vem como foi deixado por último na do Capitão: ' + v);
+    await P.locator('#disFechar').click(); await w(250);
+  }
+  ok(await S0(() => { const a = S.personagens.find(p => p.nome === 'Capitão Orrin').disputa.alvos.__avulso__; return a.nome === 'Ogro' && a.valor === 70 && a.fixa === 9 && a.t > 1.7e12; }), 'cada ficha guarda o que usou e quando (é a data que decide qual é o mais recente)');
+  // a memória da disputa é a da ficha de agora: se a ficha é trocada por baixo da janela aberta, o que se digita depois ainda fica guardado
+  await abrirFicha('Dain X');
+  await P.locator('#btnDisputa').click(); await w(250);
+  await P.locator('#disAlvo').selectOption('__avulso__'); await w(200);
+  await S0(() => { const pc = S.personagens.find(p => p.nome === 'Dain X'); pc.disputa = JSON.parse(JSON.stringify(pc.disputa)); });      // (é o que acontece quando chega uma mudança da mesa)
+  await P.locator('#disValorB').fill('81'); await w(250);
+  await P.locator('#disFechar').click(); await w(250);
+  ok(await S0(() => S.personagens.find(p => p.nome === 'Dain X').disputa.alvos.__avulso__.valor) === 81, 'o valor digitado depois de a ficha ser atualizada com a janela aberta fica guardado na ficha (81)');
+  await P.locator('#btnDisputa').click(); await w(250);
+  ok(await P.locator('#disValorB').inputValue() === '81', 'e reaparece ao abrir a disputa de novo');
   await P.locator('#disFechar').click(); await w(250);
 
   // ---------- tudo continua lá depois de recarregar ----------

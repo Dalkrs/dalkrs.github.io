@@ -139,6 +139,16 @@ function barFloats(op, inv) {
   });
 }
 
+/* A casca do site abre as Cenas do mestre também em segundo plano (ele está em outra aba): a página roda, mas não
+   tem tamanho. O que só faz sentido à vista — o passeio de primeiro uso, a oferta de trazer cenas, fechar o painel
+   numa tela estreita — espera o mestre vir para cá. */
+const naTela = () => !(window.innerWidth === 0 || window.innerHeight === 0);
+function aoAparecer(fn) {
+  if (naTela()) { fn(); return; }
+  const ver = () => { if (!naTela()) return; window.removeEventListener('resize', ver); fn(); };
+  window.addEventListener('resize', ver);
+}
+
 async function start(snap) {
   Render.readTheme();
   await Nuvem.iniciar();                 // dentro do site, com uma mesa aberta, as cenas são as da mesa
@@ -148,7 +158,8 @@ async function start(snap) {
   if (!Store.scene()) { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); }
   App.anim = Store.S.prefs.anim !== false;
   App.showVision = !!Store.S.prefs.showVision;
-  if (window.innerWidth < 900) App.sideOpen = false;
+  const nasceuEscondida = !naTela();
+  if (!nasceuEscondida && window.innerWidth < 900) App.sideOpen = false;
 
   Store.on('live', (op, inv) => { Vision.onOp(op); barFloats(op, inv); Render.request(); });
   Store.on('commit', e => { Persist.scene(e.sceneId); UI.refresh(); Render.request(); });
@@ -221,10 +232,16 @@ async function start(snap) {
     window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
   };
   const dbg = /[?&]debug\b/.test(location.search);
-  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) setTimeout(() => { if (!UI.modalOpen()) Tour.start(); }, 700);
+  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(() => { if (!UI.modalOpen() && !Tour.seen()) Tour.start(); }, 700));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
   // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
-  if (Nuvem.mestre()) setTimeout(() => { if (!had) UI.offerLocal(); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);
+  if (Nuvem.mestre()) setTimeout(() => { if (!had) aoAparecer(() => UI.offerLocal()); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);
+  // Aberta em segundo plano: quando o mestre vier para cá, a página se ajeita (e passa a transmitir a cena no ar).
+  if (nasceuEscondida) aoAparecer(() => {
+    if (window.innerWidth < 900) App.sideOpen = false;
+    try { Render.resize(); UI.renderAll(); } catch (e) { console.error(e); }
+    Nuvem.apareceu();
+  });
 }
 
 (function boot() {
