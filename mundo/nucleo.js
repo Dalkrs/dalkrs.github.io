@@ -266,7 +266,16 @@
     }
     return null;
   }
-  function sortearEncontro(regiao, rng = Math.random) {
+  /* Um número de 0 (inclusive) a 1 (exclusive), do gerador criptográfico do navegador — o mesmo dos dados do site.
+     Sem ele (um ambiente de teste, um navegador muito antigo), vale o Math.random. */
+  function sorteio() {
+    const c = typeof crypto !== 'undefined' && crypto && typeof crypto.getRandomValues === 'function' ? crypto : null;
+    if (!c) return Math.random();
+    const b = new Uint32Array(1);
+    c.getRandomValues(b);
+    return b[0] / 4294967296;
+  }
+  function sortearEncontro(regiao, rng = sorteio) {
     const enc = ehObj(regiao) && ehObj(regiao.enc) ? regiao.enc : {};
     const chance = inteiro(enc.chance, 0, 0, 100);
     const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt, '') }));

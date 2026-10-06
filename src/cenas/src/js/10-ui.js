@@ -1450,6 +1450,46 @@ const UI = (() => {
   }
 
   /* ---- Aba Turnos ---- */
+  /* A iniciativa que alguém rolou pela telinha de dados da mesa ao vivo (App.iniRolls, por ficha) fica oferecida ao
+     mestre por 15 minutos: num aviso, na hora, e num botão ao lado da entrada do token na ordem de turnos. Nada é
+     anotado sozinho. Vale para a entrada que receberia o valor: a primeira sem iniciativa (ou a primeira). */
+  const INI_OFFER_MS = 15 * 60 * 1000;
+  function iniPending(t) {
+    const r = t && t.char ? App.iniRolls.get(t.char) : null;
+    if (!r) return null;
+    if (Date.now() - r.at > INI_OFFER_MS) { App.iniRolls.delete(t.char); return null; }
+    return r;
+  }
+  function iniOffer(t, e) {
+    const r = iniPending(t);
+    if (!r) return null;
+    const es = Store.scene().turn.list.filter(x => x.token === t.id).sort((p, q) => (p.k || 1) - (q.k || 1));
+    const alvo = es.find(x => x.init == null) || es[0];
+    return alvo && alvo.id === e.id && e.init !== r.v ? r : null;
+  }
+  function noteIni(t) {
+    const r = iniPending(t);
+    if (!r) return;
+    App.iniRolls.delete(t.char);
+    Act.turnNote(t, r.v, r.d, r.b);
+    toast(`Iniciativa de ${t.name} anotada: ${r.v}.`, { action: 'Desfazer', run: Tools.undo });
+  }
+  /* Chegou da mesa ao vivo uma iniciativa rolada pela telinha de dados. Só o mestre trata, e só quando a cena aberta
+     tem um token ligado àquela ficha. Quem rolou tem de ser o dono da ficha, ou o próprio mestre. */
+  function iniFromTable(l) {
+    const s = l && l.dados && l.dados.sis;
+    if (!isGM() || !Fichas.on() || !s || s.t !== 'ini' || !l.nova || typeof s.c !== 'string') return;
+    const v = Math.round(Number(s.v)), d = Math.round(Number(s.d)), b = Math.round(Number(s.b));
+    if (!isFinite(v) || Math.abs(v) > 999 || !(d >= 1 && d <= 20) || !isFinite(b) || d + b !== v) return;
+    const ficha = Fichas.get(s.c), eu = window.TC && window.TC.ponte ? window.TC.ponte.estado.eu : null;
+    if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
+    const sc = Store.scene(), t = sc.tokens.find(x => x.char === s.c);
+    if (!t) return;
+    App.iniRolls.set(s.c, { v, d, b, nome: String(l.autor_nome || '').slice(0, 40) || 'Alguém', at: Date.now() });
+    const naOrdem = sc.turn.list.some(e => e.token === t.id);
+    if (window.innerWidth > 0) toast(`${ficha.nome || t.name} rolou iniciativa: ${v}.`, { action: naOrdem ? 'Anotar na ordem' : 'Pôr na ordem', run: () => noteIni(t), long: true });
+    refresh();
+  }
   // Aviso do que saiu numa rolagem de iniciativa: uma só, por extenso; várias, um resumo curto (as 4 maiores e "+N").
   function rollToast(res) {
     if (!res.length) return;
@@ -1510,6 +1550,8 @@ const UI = (() => {
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
         gm ? iconBtn('die', `Rolar a iniciativa de ${label} (1d20 ${rollText('', turnBonus(e)).trim()})`, () => rollToast(Act.turnRoll([e.id])), { size: 15, cls: 'turn-d', id: `tr-${e.id}` }) : null,
+        gm && t && iniOffer(t, e) ? h('button', { type: 'button', class: 'turn-mesa', id: `tm-${e.id}`, title: `${iniOffer(t, e).nome} rolou ${iniOffer(t, e).v} de iniciativa pela mesa ao vivo. Clique para anotar aqui.`, onclick: () => noteIni(t) },
+          icon('down', 12), h('span', { text: String(iniOffer(t, e).v) })) : null,
         gm ? h('span', { class: 'turn-a' },
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
@@ -1929,7 +1971,7 @@ const UI = (() => {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox, bagBox,
+    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

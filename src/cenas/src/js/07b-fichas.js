@@ -234,8 +234,8 @@ const Fichas = (() => {
   }
   const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
   // avisa a mesa ao vivo (a casca decide como mostrar); token oculto ou sem nome à mostra: só o mestre vê
-  function avisarUso(t, charId, titulo, resumo, total) {
-    try { window.TC.ponte.publicar('cena', { kind: 'uso', titulo, resumo, total: total == null ? null : total, char: charId, oculto: !!(t && (t.hidden || t.showName === false)) }); } catch (e) { /* sem a casca não há mesa */ }
+  function avisarUso(t, charId, titulo, resumo, total, dd) {
+    try { window.TC.ponte.publicar('cena', { kind: 'uso', titulo, resumo, total: total == null ? null : total, char: charId, oculto: !!(t && (t.hidden || t.showName === false)), dd: dd || [] }); } catch (e) { /* sem a casca não há mesa */ }
   }
   /* Usa um item da bolsa: gasta uma unidade, aplica o que a poção faz (rolando os dados, se for o caso), grava na
      ficha e avisa a mesa. Devolve { ok:false, error } ou { ok:true, texto, desfazer }. */
@@ -245,11 +245,12 @@ const Fichas = (() => {
     const it = R().bolsa(pc, antes).find(x => x.id === id);
     if (!it) return { ok: false, error: 'Este item não está mais na bolsa.' };
     const ef = it.t === 'pocao' && it.rec ? R().lerEfeito(it.val) : null;
-    let rolado = null, conta = '';
+    let rolado = null, conta = '', dd = [];
     if (ef && ef.dados) {
       const r = window.TC.dice.rollExpr(ef.dados);
       if (!r.ok) return { ok: false, error: r.error };
       rolado = r.total; conta = semTotal(window.TC.dice.summary({ mode: 'dados', expr: r.expr, terms: r.terms, total: r.total })) + ' = ' + r.total;
+      dd = window.TC.dice.diceOf ? window.TC.dice.diceOf(r) : [];       // o que cada dado sorteou (para o auditor da mesa)
     }
     const u = R().usarItem(pc, R().calcular(pc, cfg(), extra(l)), antes, id, rolado, Date.now(), uid('t'));
     if (!u.ok) return { ok: false, error: u.erro };
@@ -257,7 +258,7 @@ const Fichas = (() => {
     if (on) syncAll(charId);                               // (no aparelho do mestre, a barra do token acompanha já)
     const tipo = (R().BOLSAS.find(b => b.t === it.t) || {}).um || 'Item', nome = it.nome || tipo;
     const titulo = (l.nome || t.name || '?') + ' · ' + nome, texto = R().textoDoUso(u);
-    avisarUso(t, charId, titulo, 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, u.barra && rolado != null ? rolado : null);
+    avisarUso(t, charId, titulo, 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, u.barra && rolado != null ? rolado : null, dd);
     const desfazer = () => {
       // só o que este uso mexeu volta (o que mudou no personagem nesse meio-tempo, por outro caminho, fica)
       const agora = get(charId); if (!agora) return false;

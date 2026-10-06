@@ -793,14 +793,14 @@ const FichasExtras = (() => {
     bolsaPede = null;
     if (!it) { render(); return; }
     const ef = it.t === 'pocao' && it.rec ? R.lerEfeito(it.val) : null;
-    let rolado = null, conta = '';
-    if (ef && ef.dados) { try { const r = rolarExpressao(ef.dados); rolado = r.total; conta = ef.dados + ' → ' + r.detalhe + ' = ' + r.total; } catch (e) { toast(e.message); render(); return; } }
+    let rolado = null, conta = '', dd = [];
+    if (ef && ef.dados) { try { const r = rolarExpressao(ef.dados); rolado = r.total; dd = r.dd || []; conta = ef.dados + ' → ' + r.detalhe + ' = ' + r.total; } catch (e) { toast(e.message); render(); return; } }
     const antes = pc.estado || {};
     const u = R.usarItem(pc, c, antes, id, rolado, Date.now(), 't' + uid());
     if (!u.ok) { toast(u.erro); render(); return; }
     pc.estado = u.estado;
     const nome = it.nome || (BOLSAS().find(b => b.t === it.t) || {}).um || 'Item', titulo = pc.nome + ' · ' + nome, texto = R.textoDoUso(u);
-    logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, total: u.barra && rolado != null ? rolado : null });
+    logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, total: u.barra && rolado != null ? rolado : null, dd });
     render();
     aviso(nome + ': ' + texto + '.', 'Desfazer', () => {
       // só o que este uso mexeu volta (o que outra pessoa mudou no personagem nesse meio-tempo fica)

@@ -87,7 +87,11 @@ button { cursor: pointer; }
 .vivo-h strong { font: 600 17px/1.1 var(--display); letter-spacing: .01em; }
 .sinal { width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); flex: none; }
 .sinal.on { background: var(--ok); }
-.vivo-h .ib { margin-left: auto; }
+.vivo-h .esp { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.vivo-h .ib.ch { width: 28px; height: 28px; color: var(--fg-3); }
+.vivo-h .ib.ch[aria-pressed="true"] { color: var(--lamp-ink); background: var(--lamp-soft); }
+.vivo-h .ib.ch .corte { display: none; }
+.vivo-h .ib.ch[aria-pressed="false"] .corte { display: inline; }
 .quem { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .pes { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); font-size: 12.5px; }
 .pes i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
@@ -130,8 +134,38 @@ button { cursor: pointer; }
 .nota .fechar { float: right; margin: -2px -4px 0 6px; }
 .novo { animation: surge .9s ease-out; }
 @keyframes surge { from { background-color: var(--lamp-soft); } }
-@media (prefers-reduced-motion: reduce) { .novo { animation: none; } }
+/* o efeito de uma rolagem que acabou de chegar (com a chave "Efeito" ligada): o cartão acende e o total salta */
+.rol.rolou { animation: surge .9s ease-out, acende 1s ease-out; }
+.rol.rolou .tot { display: inline-block; transform-origin: left 70%; animation: salta .6s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes acende { from { box-shadow: 0 0 0 2px var(--lamp), 0 0 22px var(--lamp-soft); } to { box-shadow: 0 0 0 0 transparent, 0 0 0 transparent; } }
+@keyframes salta { 0% { transform: scale(.55) rotate(-8deg); opacity: .15; } 55% { transform: scale(1.2) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+.ib.pulso { animation: pulso .9s ease-out; }
+@keyframes pulso { from { box-shadow: 0 0 0 0 var(--lamp); } to { box-shadow: 0 0 0 9px transparent; } }
+@media (prefers-reduced-motion: reduce) { .novo, .rol.rolou, .rol.rolou .tot, .ib.pulso { animation: none; } }
 .novas { flex: none; align-self: center; margin: -34px 0 6px; z-index: 1; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--lamp); background: var(--surface); color: var(--lamp-ink); font-weight: 600; box-shadow: var(--shadow); }
+/* ---- a telinha de dados: rolar pela ficha, sem digitar comando ---- */
+.dados { flex: none; border-top: 1px solid var(--line); background: var(--surface); }
+.dados-h { display: flex; align-items: center; gap: 7px; width: 100%; height: 32px; padding: 0 10px 0 12px; border: 0; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; text-align: left; }
+.dados-h:hover { color: var(--fg); background: var(--hover); }
+.dados-h svg { flex: none; }
+.dados-h .qm { color: var(--fg-3); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dados-h .seta { margin-left: auto; transition: transform .15s; }
+.dados-h[aria-expanded="true"] .seta { transform: rotate(180deg); }
+.dados-c { padding: 2px 10px 9px; display: grid; gap: 7px; }
+.dados-l { display: flex; align-items: center; gap: 8px; }
+.dados-l select { flex: 1; min-width: 0; height: 30px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-weight: 600; }
+.dados-l label { display: flex; align-items: center; gap: 6px; flex: none; font-size: 12.5px; color: var(--fg-2); font-weight: 600; }
+.dados-l input { width: 58px; height: 30px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); text-align: center; font-family: var(--mono); }
+.dados-b { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.dados-b button { display: grid; justify-items: center; gap: 0; min-width: 0; padding: 4px 0 5px; border-radius: 7px; border: 1px solid var(--line); background: var(--raised); color: var(--fg); line-height: 1.15; }
+.dados-b button:hover:not(:disabled) { border-color: var(--lamp); background: var(--hover); }
+.dados-b button:disabled { opacity: .5; cursor: default; }
+.dados-b button small { font-size: 10.5px; letter-spacing: .04em; color: var(--fg-3); font-weight: 700; }
+.dados-b button b { font: 600 15px/1.2 var(--mono); }
+.dados-b button.ini { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px 0; }
+.dados-b button.ini small { font-size: 12px; letter-spacing: 0; color: var(--fg-2); font-weight: 600; }
+.dados-n { font-size: 12px; color: var(--fg-3); }
+@media (prefers-reduced-motion: reduce) { .dados-h .seta { transition: none; } }
 .compor { flex: none; padding: 8px 10px 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 6px; }
 .compor.seg { background: var(--secret-soft); border-top-color: var(--secret); }
 .compor input { min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
@@ -249,11 +283,33 @@ dialog::backdrop { background: var(--scrim); }
   <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
     <div class="vivo-h">
       <strong>Mesa ao vivo</strong><span class="sinal" id="sinal"></span>
-      <button type="button" class="ib" id="vivoX" title="Fechar o painel" aria-label="Fechar o painel da mesa ao vivo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <span class="esp">
+        <button type="button" class="ib ch" id="chaveSom" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.500 9.500z"/><path d="M15.500 9.200a4 4 0 0 1 0 5.600"/><path d="M18 6.700a7.500 7.500 0 0 1 0 10.600"/><path class="corte" d="M3 3l18 18"/></svg>
+        </button>
+        <button type="button" class="ib ch" id="chaveEfeito" aria-pressed="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.500l1.900 5.100 5.100 1.900-5.100 1.900L12 17.500l-1.900-5.100L5 10.500l5.100-1.900z"/><path d="M18.500 15.500l.7 1.800 1.800.7-1.800.7-.7 1.800-.7-1.800-1.800-.7 1.800-.7z"/><path class="corte" d="M3 3l18 18"/></svg>
+        </button>
+        <button type="button" class="ib" id="vivoX" title="Fechar o painel" aria-label="Fechar o painel da mesa ao vivo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </span>
     </div>
     <div class="quem" id="quem"></div>
     <ol class="feed" id="feed" role="log" aria-live="polite" aria-label="Rolagens e conversa da mesa"></ol>
     <button type="button" class="novas" id="novas" hidden>Novidades abaixo ↓</button>
+    <section class="dados" id="dados" hidden aria-label="Dados do personagem">
+      <button type="button" class="dados-h" id="dadosAbre" aria-expanded="false" aria-controls="dadosCorpo" title="Rolar pela ficha, sem digitar comando">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        <span>Dados</span><span class="qm" id="dadosQuem"></span>
+        <svg class="seta" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <div class="dados-c" id="dadosCorpo" hidden>
+        <div class="dados-l">
+          <select id="dadosPc" aria-label="Personagem que rola"></select>
+          <label title="Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa">Fixando <input id="dadosFixa" type="number" min="0" step="1" inputmode="numeric" aria-label="Quanto fixar"></label>
+        </div>
+        <div class="dados-b" id="dadosBotoes"></div>
+      </div>
+    </section>
     <form class="compor" id="compor" autocomplete="off">
       <input id="msg" maxlength="1500" placeholder="Mensagem ou /r 2d6+3" aria-label="Mensagem ou comando" enterkeyhint="send">
       <button class="btn pri" type="submit">Enviar</button>
@@ -267,13 +323,14 @@ dialog::backdrop { background: var(--scrim); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o Tiny Cats.</p></noscript>
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
-<script src="tc/dice.js?v=1"></script>
-<script src="tc/tc.js?v=13"></script>
+<script src="tc/dice.js?v=2"></script>
+<script src="tc/rules.js?v=5"></script>
+<script src="tc/tc.js?v=14"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.05-3';
+  const VERSAO = '2026.10.06-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -425,6 +482,9 @@ dialog::backdrop { background: var(--scrim); }
       TC.arquivos.subir(m.blob).then(url => responder({ t: 'arquivo.ok', n: m.n, url }), e => responder({ t: 'arquivo.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'arquivo.apagar') {
       TC.arquivos.apagar(m.url);
+    } else if (m.t === 'registro.ler') {
+      // todas as rolagens da mesa, para o auditor dos dados (a casca só entrega ao mestre)
+      aoVivo.historico().then(linhas => responder({ t: 'registro.tudo', n: m.n, linhas }), e => responder({ t: 'registro.erro', n: m.n, erro: e.message }));
     }
   }
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura
@@ -778,8 +838,10 @@ dialog::backdrop { background: var(--scrim); }
   });
 
   aoVivo.on('reinicio', () => { pintarFeed(); pintarQuem(); pintarCompor(); });
+  const saidas = new Set();            // linhas que saíram do painel nesta visita: se uma voltar (alguém desfez o apagar), não é rolagem nova
   aoVivo.on('item', (l, novo) => {
     const velho = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'), el = linha(l), embaixo = perto();
+    if (saidas.delete(l.id)) novo = false;
     if (velho) velho.replaceWith(el);
     else {
       // entra na posição certa (as linhas chegam quase sempre em ordem; revelações antigas podem entrar no meio)
@@ -790,9 +852,186 @@ dialog::backdrop { background: var(--scrim); }
       if (vivo.hidden) { if (!meu) { naoLidas++; pintarSelo(); } }
       else if (embaixo || meu) descer();
       else $('novas').hidden = false;
+      // uma rolagem que acabou de acontecer (ou de ser mostrada à mesa): o efeito e o som, para quem está com a chave de cada um ligada
+      if (novo && ehSorteio(l) && aoVivo.idade(l) < 90000) {
+        if (prefs.efeito) { el.classList.add('rolou'); if (vivo.hidden) pulsar(btnVivo); }
+        if (prefs.som) tocarDados();
+      }
     }
+    recadoAosSistemas(l, novo);
   });
-  aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); });
+  aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); saidas.add(l.id); if (saidas.size > 500) saidas.clear(); });
+  aoVivo.on('reinicio', () => saidas.clear());
+
+  /* Uma linha da mesa ao vivo pode levar um recado para os sistemas (dados.sis) — a iniciativa que alguém rolou pela
+     telinha de dados, por exemplo: as Cenas do mestre oferecem anotá-la na ordem de turnos. A casca só repassa; quem
+     recebe confere de quem veio e se faz sentido. Linhas antigas (que chegam ao reabrir a mesa) não são repassadas. */
+  function recadoAosSistemas(l, novo) {
+    const d = l && l.dados;
+    if (!d || !d.sis || typeof d.sis !== 'object') return;
+    const idade = aoVivo.idade(l);
+    if (novo && idade > 90000) return;
+    const linha = { id: l.id, autor_id: l.autor_id, autor_nome: l.autor_nome, origem: l.origem, secreta: !!l.secreta, criado_em: l.criado_em, nova: !!novo, idade, dados: d };
+    for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: { t: 'registro.item', linha } }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
+  }
+
+  /* ---- som e efeito ao rolar: uma chave para cada um, guardada neste aparelho ----
+     Valem para toda rolagem que chega à mesa (a de qualquer pessoa), na hora em que chega. O efeito começa ligado; o
+     som começa desligado — quem quiser liga, e a escolha fica neste navegador. Com "reduzir movimento" ligado no
+     aparelho, o efeito não se mexe. O som é feito aqui mesmo (três batidas de dado e um toque), sem arquivo. */
+  const prefs = { som: ler('tinycats:som') === '1', efeito: ler('tinycats:efeito') !== '0' };
+  const ehSorteio = l => { const d = l.dados || {}; return l.tipo === 'rolagem' && (d.total != null || (Array.isArray(d.dd) && d.dd.length > 0) || (d.k === 'tabela' && (l.origem === 'rolador' || l.origem === 'mundo'))); };
+  function pulsar(b) { b.classList.remove('pulso'); void b.offsetWidth; b.classList.add('pulso'); setTimeout(() => b.classList.remove('pulso'), 1000); }
+  let audio = null, ruido = null, saidaSom = null, ultimoSom = 0;
+  function tocarDados(agora) {
+    const t = Date.now();
+    if (!agora && t - ultimoSom < 350) return;            // várias rolagens juntas (a iniciativa de todos): um som só
+    ultimoSom = t;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audio) {
+        audio = new AC();
+        saidaSom = audio.createGain(); saidaSom.gain.value = 0.32; saidaSom.connect(audio.destination);
+        ruido = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.25), audio.sampleRate);
+        const b = ruido.getChannelData(0); for (let i = 0; i < b.length; i++) b[i] = Math.random() * 2 - 1;
+      }
+      const soar = () => {
+        const t0 = audio.currentTime + 0.01;
+        const batida = (quando, freq, forca, dura) => {
+          const n = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+          n.buffer = ruido; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.4;
+          g.gain.setValueAtTime(0.0001, quando); g.gain.linearRampToValueAtTime(forca, quando + 0.004); g.gain.exponentialRampToValueAtTime(0.0006, quando + dura);
+          n.connect(f); f.connect(g); g.connect(saidaSom);
+          n.start(quando); n.stop(quando + dura + 0.03);
+        };
+        batida(t0, 2700, 0.9, 0.05); batida(t0 + 0.075, 3200, 0.6, 0.045); batida(t0 + 0.14, 2300, 0.5, 0.05); batida(t0 + 0.225, 1500, 0.55, 0.1);
+      };
+      // o navegador só deixa tocar depois de um clique na página; se ainda não deixou, o som desta vez é perdido (não fica para depois)
+      if (audio.state === 'suspended') { const pedido = Date.now(); audio.resume().then(() => { if (Date.now() - pedido < 400) soar(); }, () => {}); }
+      else soar();
+    } catch (e) { /* sem som neste aparelho */ }
+  }
+  function pintarChaves() {
+    const s = $('chaveSom'), e = $('chaveEfeito');
+    s.setAttribute('aria-pressed', String(prefs.som)); e.setAttribute('aria-pressed', String(prefs.efeito));
+    s.title = 'Som ao rolar os dados: ' + (prefs.som ? 'ligado' : 'desligado') + ' neste aparelho. Vale para as rolagens de todos.';
+    e.title = 'Efeito ao rolar os dados: ' + (prefs.efeito ? 'ligado' : 'desligado') + ' neste aparelho. Vale para as rolagens de todos.';
+    s.setAttribute('aria-label', 'Som ao rolar os dados'); e.setAttribute('aria-label', 'Efeito ao rolar os dados');
+  }
+  $('chaveSom').addEventListener('click', () => { prefs.som = !prefs.som; gravar('tinycats:som', prefs.som ? '1' : '0'); pintarChaves(); if (prefs.som) tocarDados(true); toast(prefs.som ? 'Som ao rolar: ligado neste aparelho.' : 'Som ao rolar: desligado.'); });
+  $('chaveEfeito').addEventListener('click', () => {
+    prefs.efeito = !prefs.efeito; gravar('tinycats:efeito', prefs.efeito ? '1' : '0'); pintarChaves();
+    toast(prefs.efeito ? 'Efeito ao rolar: ligado neste aparelho.' : 'Efeito ao rolar: desligado.');
+    if (prefs.efeito) { const ult = [...feed.querySelectorAll('.rol')].pop(); if (ult) { ult.classList.remove('rolou'); void ult.offsetWidth; ult.classList.add('rolou'); } }     // (uma amostra, na última rolagem)
+  });
+  pintarChaves();
+
+  /* ---- telinha de dados: rolar pela ficha sem digitar /r nem /fixa ----
+     Fica no painel da mesa ao vivo, em todas as abas. A pessoa escolhe o personagem (o jogador, entre os dele; o
+     mestre, entre todos), ajusta a fixa e clica no atributo; "Iniciativa" rola 1d20 + a iniciativa da ficha. As
+     contas são as mesmas das Fichas (tc/rules.js), com as tabelas da mesa, a árvore, os bônus temporários e os
+     ferimentos. A fixa começa na da ficha; a que a pessoa digitar aqui fica neste aparelho (não muda a ficha). */
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
+  const dadosEl = $('dados'), dadosPc = $('dadosPc'), dadosFixa = $('dadosFixa'), dadosBotoes = $('dadosBotoes');
+  let dadosMem = { pc: '', fx: {}, aberta: null }, dadosLista = '', dadosProntos = false, dadosOcupado = false, tDados = 0;
+  const chaveDados = () => 'tinycats:dados:' + (mesas.atual ? mesas.atual.id : '');
+  function lerDadosMem() {
+    try { const o = JSON.parse(ler(chaveDados()) || '{}') || {}; return { pc: typeof o.pc === 'string' ? o.pc : '', fx: o.fx && typeof o.fx === 'object' && !Array.isArray(o.fx) ? o.fx : {}, aberta: typeof o.aberta === 'boolean' ? o.aberta : null }; }
+    catch (e) { return { pc: '', fx: {}, aberta: null }; }
+  }
+  const guardarDadosMem = () => gravar(chaveDados(), JSON.stringify(dadosMem));
+  function contasDe(id) {
+    const R = TC.rules, a = mesas.atual;
+    if (!R || !a || !id) return null;
+    let l, D;
+    try { l = TC.dados.col('personagens').pegar(id); D = TC.dados.col('documentos'); } catch (e) { return null; }
+    if (!l || l.ficha == null) return null;
+    try {
+      const dc = D.pegar('fichas:cfg'), cfg = (dc && dc.dados && dc.dados.v) || R.cfgPadrao();
+      const db = D.pegar(a.papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'), bib = db && db.dados && Array.isArray(db.dados.arvores) ? db.dados : null;
+      const pc = Object.assign({}, l.ficha, { id: l.id, nome: l.nome });
+      const extra = { arvore: R.bonusDaArvore(l.skills, bib), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer };
+      const c = R.calcular(pc, cfg, extra), fonte = (pc.rol && pc.rol.fonte) || 'total';
+      const rotulo = k => { const d = R.DEFESAS.find(x => x.k === k); return (d && d.rot) || k; };
+      return { nome: l.nome || 'Sem nome', fixa: pc.rol ? Math.max(0, Math.round(+pc.rol.fixa || 0)) : 0, ini: R.iniciativa(pc, cfg, extra).val || 0,
+        itens: ROLAVEIS.map(k => ({ k, rot: rotulo(k), nome: R.NOMES[k] || k, valor: Math.max(0, Math.round(R.valorDoAtributo(c, k, fonte) || 0)) })) };
+    } catch (e) { console.error(e); return null; }
+  }
+  // quanto fixar agora: o que está no campo; com o campo vazio, a fixa da ficha
+  function fixaAgora(ct) { const t = dadosFixa.value.trim(), n = Math.round(Number(t.replace(',', '.'))); return t !== '' && isFinite(n) && n >= 0 ? n : ct.fixa; }
+  function prepararDados() {
+    clearTimeout(tDados);
+    dadosProntos = false; dadosLista = ''; dadosMem = lerDadosMem(); dadosEl.hidden = true;
+    const a = mesas.atual;
+    if (!a || !TC.rules) return;
+    let P, D;
+    try { P = TC.dados.col('personagens'); D = TC.dados.col('documentos'); } catch (e) { return; }
+    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; pintarDados(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
+  }
+  function pintarDados() {
+    const a = mesas.atual;
+    if (!a || !dadosProntos) { dadosEl.hidden = true; return; }
+    let lista = [];
+    try { const P = TC.dados.col('personagens'); lista = aoVivo.personagens().filter(p => { const l = P.pegar(p.id); return !!l && l.ficha != null; }); } catch (e) { lista = []; }
+    dadosEl.hidden = !lista.length;
+    if (!lista.length) return;
+    // o personagem: o que a pessoa escolheu aqui; senão aquele com que ela aparece na mesa; senão o primeiro
+    if (!lista.some(p => p.id === dadosMem.pc)) { const c = aoVivo.como(); dadosMem.pc = c && lista.some(p => p.id === c.id) ? c.id : lista[0].id; }
+    const chave = lista.map(p => p.id + '\u0001' + p.nome).join('\u0002');
+    if (chave !== dadosLista) { dadosLista = chave; dadosPc.replaceChildren(...lista.map(p => h('option', { value: p.id, text: p.nome }))); }
+    if (dadosPc.value !== dadosMem.pc) dadosPc.value = dadosMem.pc;
+    const aberta = dadosMem.aberta == null ? a.papel !== 'mestre' : dadosMem.aberta;      // (para o mestre, começa recolhida)
+    $('dadosAbre').setAttribute('aria-expanded', String(aberta)); $('dadosCorpo').hidden = !aberta;
+    const ct = contasDe(dadosMem.pc);
+    $('dadosQuem').textContent = ct ? '· ' + ct.nome : '';
+    if (!ct) { dadosBotoes.replaceChildren(h('div', { class: 'dados-n', text: 'A ficha ainda está chegando…' })); return; }
+    const guardada = dadosMem.fx[dadosMem.pc];
+    dadosFixa.placeholder = String(ct.fixa);
+    if (document.activeElement !== dadosFixa || dadosFixa.dataset.pc !== dadosMem.pc) dadosFixa.value = guardada == null ? String(ct.fixa) : String(guardada);
+    dadosFixa.dataset.pc = dadosMem.pc;
+    const fixa = fixaAgora(ct);
+    const comoRola = v => (v < 1 ? 'nada a rolar' : fixa >= v ? 'fixa total: ' + v : '1d' + (v - fixa) + (fixa ? ' + ' + fixa : ''));
+    if (dadosBotoes.querySelectorAll('button[data-k]').length !== ct.itens.length + 1) {
+      dadosBotoes.replaceChildren(...ct.itens.map(it => h('button', { type: 'button', 'data-k': it.k, onclick: () => rolarDaTelinha(it.k) }, h('small', { text: it.rot }), h('b', {}))),
+        h('button', { type: 'button', class: 'ini', 'data-k': 'INI', onclick: () => rolarDaTelinha('INI') }, h('small', { text: 'Iniciativa' }), h('b', {})));
+    }
+    for (const it of ct.itens) {
+      const b = dadosBotoes.querySelector('button[data-k="' + it.k + '"]');
+      b.querySelector('b').textContent = String(it.valor);
+      b.title = it.nome + ' ' + it.valor + ' — ' + comoRola(it.valor);
+      b.setAttribute('aria-label', 'Rolar ' + it.nome + ', ' + it.valor + ': ' + comoRola(it.valor));
+      b.disabled = dadosOcupado || it.valor < 1;
+    }
+    const bi = dadosBotoes.querySelector('button[data-k="INI"]');
+    bi.querySelector('b').textContent = '1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini);
+    bi.title = 'Rola 1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini) + ' (a iniciativa da ficha) e mostra à mesa';
+    bi.disabled = dadosOcupado;
+  }
+  async function rolarDaTelinha(k) {
+    if (dadosOcupado) return;
+    const ct = contasDe(dadosMem.pc), pc = aoVivo.personagem(dadosMem.pc);
+    if (!ct || !pc) return;
+    dadosOcupado = true; pintarDados();
+    try {
+      if (k === 'INI') await aoVivo.rolarIniciativa(pc, ct.ini);
+      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = await aoVivo.rolarAtributo(pc, it.nome, it.valor, Math.min(fixaAgora(ct), it.valor)); if (!r.ok) toast(r.error); } }
+      descer();
+    } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
+    dadosOcupado = false; pintarDados();
+    // (o botão ficou travado durante o envio e perdeu o foco: volta para ele, se a pessoa não foi para outro lugar)
+    const b = dadosBotoes.querySelector('button[data-k="' + k + '"]'); if (b && !b.disabled && (!document.activeElement || document.activeElement === document.body)) b.focus({ preventScroll: true });
+  }
+  $('dadosAbre').addEventListener('click', () => { const aberta = $('dadosCorpo').hidden; dadosMem.aberta = aberta; guardarDadosMem(); pintarDados(); if (aberta) descer(); });
+  dadosPc.addEventListener('change', () => { dadosMem.pc = dadosPc.value; guardarDadosMem(); pintarDados(); });
+  dadosFixa.addEventListener('input', () => {
+    const t = dadosFixa.value.trim(), n = Math.round(Number(t.replace(',', '.')));
+    if (t === '' || !isFinite(n) || n < 0) delete dadosMem.fx[dadosMem.pc]; else dadosMem.fx[dadosMem.pc] = n;
+    guardarDadosMem(); pintarDados();
+  });
+  dadosFixa.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); dadosFixa.blur(); } });
+  // a ficha, as tabelas da mesa ou a árvore mudaram: os números da telinha acompanham
+  TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(pintarDados, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
   let comoAntes = '';
@@ -835,8 +1074,10 @@ dialog::backdrop { background: var(--scrim); }
     papelNaMesa = a ? a.papel : null; pintarAbas();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
+    if (!a) prepararDados();
     if (a) {
       $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false);
+      prepararDados();
       try { TC.dados.col('personagens').pronta.then(() => { if (mesas.atual && mesas.atual.id === a.id) pintarCompor(); }, () => { /* sem os personagens, só não há o que escolher */ }); } catch (e) { /* idem */ }
     }
   });

@@ -9,7 +9,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | **Acampamento** | A cena da fogueira: quem está no acampamento, provisões, melhorias, equipamentos, descansos e momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
-| **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos. |
+| **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos — e, numa mesa, o auditor dos dados (o que saiu de cada dado, de todo mundo, contra o esperado). |
 
 ## Conta, mesa e dados
 
@@ -20,7 +20,10 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - **Mestre e jogadores.** A mesa tem um mestre e jogadores que entram com o código de convite. O banco só entrega a
   cada um o que ele pode ver: o jogador vê a própria ficha (e as que o mestre liberar), a cena que o mestre pôs no
   ar (sem o que é só do mestre), o mapa-múndi revelado e o acampamento. O Rolador, numa mesa, é só do mestre.
-- **Mesa ao vivo**: o painel da direita mostra as rolagens e a conversa de todos, na hora.
+- **Mesa ao vivo**: o painel da direita mostra as rolagens e a conversa de todos, na hora. Nele fica também a
+  **telinha de dados** (rolar um atributo com fixa, ou a iniciativa, pela ficha, sem digitar comando — o jogador
+  pelos personagens dele, o mestre por qualquer um) e as duas chaves de **som** e **efeito** das rolagens, que cada
+  pessoa liga ou desliga no próprio aparelho.
 
 ## Como está organizado
 
@@ -29,7 +32,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `index.html` | A casca: barra com a marca, as abas, a conta, a mesa e a mesa ao vivo. Cada sistema roda na própria página, dentro de uma moldura. |
 | `versao.json` | A versão publicada (a mesma de `VERSAO`, na casca). A casca aberta a consulta de tempos em tempos: se for outra, mostra o botão "Versão nova" na barra — nada recarrega sozinho. Os dois mudam juntos a cada publicação. |
 | `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
-| `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `config.js` (endereço e chave pública do banco). |
+| `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
 | `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade. |
 | `src/legado/` | As versões originais de cada sistema, guardadas para comparação nos testes. |
@@ -84,6 +87,34 @@ saem juntos, são dois pedidos (o estado, depois a ficha): assim que o do estado
 O que foi apagado fica apagado: cada aparelho anota a revisão em que uma linha (um personagem, uma cena) foi apagada,
 e dali em diante ela só volta por uma revisão maior que essa — isto é, se alguém a recriou. Uma leitura que saiu do
 banco antes do apagar e chegou depois (numa rede lenta, por exemplo) não traz a linha de volta.
+
+### As rolagens e o auditor
+
+Toda rolagem do site é sorteada no aparelho de quem rolou, com o gerador de números do navegador
+(`crypto.getRandomValues`, com sobra descartada para nenhuma face sair mais que as outras), e vai para a mesa ao vivo
+(tabela `registro`). Além do texto que aparece no painel, cada linha guarda os dados que sorteou, um a um —
+`dados.dd: [[lados, valor], …]` (`TC.dice.diceOf`) —, venha ela do chat (`/r`, `/fixa`), da telinha de dados, da
+ficha (rolagem rápida, iniciativa, disputa, situações, tabelas), de um token nas Cenas, de uma poção ou do Rolador.
+
+O **auditor** (Rolador → Menu → Auditor dos dados; só o mestre, só leitura) lê o registro inteiro da mesa — inclusive
+o que já foi limpo do painel — e mostra, por pessoa e por tamanho de dado, quantas vezes saiu cada face contra o
+esperado, com um veredito em palavras. As contas estão em `tc/auditoria.js`:
+
+- **Duas perguntas** ao mesmo conjunto: alguma face saiu demais ou de menos (qui-quadrado)? E, no conjunto, os
+  resultados caíram mais alto ou mais baixo do que deviam (a altura média)? Cada uma responde com metade da
+  tolerância, para que as duas juntas estranhem um dado honesto em 5% das conferências e o acusem em 1%.
+- **Dados de tamanhos diferentes** (toda rolagem com fixa é um dado de outro tamanho) entram na mesma conta em dez
+  faixas da altura do dado; o esperado de cada faixa leva em conta que um d6 não se espalha por igual em dez.
+- **Rolagens antigas**, de antes de existir o `dd`, têm os dados lidos do texto do painel (`doResumo`), que cada tipo
+  de rolagem escreve sempre do mesmo jeito; o que não dá para ler com certeza fica de fora.
+- **Valor que o dado não tem** (um 0 num d20) não entra nas contas e aparece num alerta: é defeito, não sorte. Foi
+  assim que apareceu o do botão "Rolar iniciativa" da ficha, que sorteava de 0 a 19 (corrigido em 05/10/2026;
+  `fichas.test.js` agora troca o sorteio do navegador por um controlado e confere a face mais baixa e a mais alta).
+
+Uma linha do registro pode levar um **recado para os sistemas** (`dados.sis`), que a casca repassa às molduras
+(`TC.ponte.registro.aoChegar`). É assim que a iniciativa rolada pela telinha chega às Cenas do mestre, que a
+oferecem ao lado do token na ordem de turnos — nada é anotado sozinho, e só vale se quem rolou é o dono da ficha
+(ou o próprio mestre).
 
 ### O programa das Cenas do mestre
 
@@ -165,6 +196,11 @@ faltava subir.
   aparelhos mexendo em missões do grupo (ou em valores escondidos) no mesmo segundo, fica o de quem gravou por último.
 - **Missão de um personagem numa ficha aberta a todos**: depois de revelada, mora no `estado` da ficha, e quem vê a
   ficha vê a missão. Para uma missão que só o dono deve ver, a ficha não pode estar aberta a todos.
+- **O som das rolagens** começa desligado em cada aparelho, e o navegador só o deixa tocar depois de um clique na
+  página. O efeito segue o "reduzir movimento" do aparelho. A fixa digitada na telinha de dados fica no aparelho: não
+  muda a ficha.
+- **O auditor** confere o que foi rolado pelo site; de um dado rolado fora dele, não tem como saber. Dos duelos
+  antigos do Rolador só ficaram os totais, e eles não entram nas contas.
 - **O sinal de ferido no token** aparece para o mestre em qualquer token ligado a uma ficha; para os jogadores, só nos
   tokens de jogador cuja ficha eles podem ver. Um token do mestre não diz aos jogadores a que ficha está ligado (isso
   entregaria um disfarce), então os ferimentos de um NPC não aparecem para eles na cena.
@@ -179,16 +215,18 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa; do node $f.js; done
-cd src/tests && for f in dice rules mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
 fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-ficha`, `arvore-mesa`, `mundo-mesa`,
-`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `estado.rede` (duas pessoas na mesma ficha, o mestre
-em dois aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
+`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `dados.rede` (a telinha de dados, o som e o efeito, a
+iniciativa oferecida ao mestre, os dados guardados por todo caminho de rolagem e o auditor), `estado.rede` (duas
+pessoas na mesma ficha, o mestre em dois aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
 esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores). `vivo.js` confere o site publicado.
 
 `fichas-quadros` também confere os gestos com o mouse, o teclado e o toque de verdade (o botão desce, espera e sobe):
 o clique que vem depois de um campo, o Tab, o Enter e a lista aberta. `fundo.rede` confere o programa das Cenas do
 mestre em segundo plano (a poção e o token, o pedido do jogador com o mestre em outra aba, dois aparelhos do mestre),
-e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira.
+e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira. `auditoria` confere as contas do
+auditor (inclusive que ele não acusa dados honestos mais vezes do que o combinado) e `auditor`, a janela dele.

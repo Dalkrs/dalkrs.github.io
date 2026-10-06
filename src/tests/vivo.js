@@ -40,6 +40,12 @@ const { contas } = require('./contas');
   await page.locator('#msg').fill('/r 2d6+3'); await page.locator('#msg').press('Enter');
   await page.locator('#feed .rol').first().waitFor({ timeout: 15000 });
   out.rolagem = (await page.locator('#feed .rol').first().innerText()).replace(/\s+/g, ' ');
+  // o que entrou com "Dados": as chaves de som e efeito, as contas da ficha na casca, os dados guardados na rolagem e o histórico para o auditor
+  out.dados = await page.evaluate(async () => {
+    const r = TC.aoVivo.itens.filter(l => l.tipo === 'rolagem').pop(), h = await TC.aoVivo.historico().then(x => x.length + ' no histórico', e => 'histórico: ' + e.message);
+    return [document.getElementById('chaveSom') && document.getElementById('chaveEfeito') ? 'chaves de som e efeito' : 'SEM AS CHAVES', TC.rules && TC.rules.calcular ? 'regras da ficha na casca' : 'SEM AS REGRAS',
+      r && Array.isArray(r.dados.dd) ? 'dd ' + JSON.stringify(r.dados.dd) : 'SEM dd', h, document.getElementById('dados') ? 'telinha ' + (document.getElementById('dados').hidden ? 'escondida (mesa sem fichas)' : 'à mostra') : 'SEM A TELINHA'].join(' · ');
+  });
   // as Cenas, dentro da mesa: guardadas no banco, e a cena vai ao ar quando o mestre manda
   await page.locator('#tab-cenas').click(); await page.waitForTimeout(3500);
   const C = page.frame({ url: /\/cenas\// });

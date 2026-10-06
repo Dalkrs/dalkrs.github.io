@@ -10,6 +10,7 @@ const App = {
   keys: { space: false },
   tab: 'sel', sideOpen: true,
   clip: [], pings: [], floats: [],
+  iniRolls: new Map(),              // iniciativas roladas pela mesa ao vivo que o mestre ainda pode anotar: id da ficha → { v, d, b, nome, at }
   anim: true,
   showVision: false,                // mestre: escurecer no mapa o que os jogadores não veem (o "véu")
   opt: {
@@ -654,6 +655,25 @@ const Act = {
       Store.scn({ turn: tn });
     });
     return true;
+  },
+  /* Anota uma iniciativa que veio de fora (o jogador rolou pela telinha de dados da mesa ao vivo): na primeira
+     entrada do token que ainda não tem iniciativa — ou na primeira, se todas têm. Se o token não está na ordem,
+     entra. A lista é reordenada, como quando se rola por aqui. Um passo de desfazer. Devolve a entrada. */
+  turnNote(t, total, d, b) {
+    const sc = Store.scene(), tn = clone(sc.turn);
+    let es = tn.list.filter(e => e.token === t.id);
+    if (!es.length) {
+      for (let k = 1, want = clampTurns(t.turns); k <= want; k++) tn.list.push(turnEntry(t, k));
+      turnRenumber(tn.list);
+      if (!tn.cur && tn.list.length) tn.cur = tn.list[0].id;
+      es = tn.list.filter(e => e.token === t.id);
+    }
+    es.sort((p, q) => (p.k || 1) - (q.k || 1));
+    const e = es.find(x => x.init == null) || es[0];
+    e.init = total; e.roll = isFinite(d) && isFinite(b) ? { d, b } : null;
+    turnSort(tn.list);
+    Store.tx('Anotar iniciativa', () => Store.scn({ turn: tn }));
+    return e;
   },
   /* Rola a iniciativa (1d20 + bônus) das entradas pedidas e reordena a lista, a maior primeiro. Tudo num passo
      de desfazer. A vez é guardada pelo id da entrada, então reordenar não muda de quem é a vez.

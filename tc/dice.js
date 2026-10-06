@@ -388,6 +388,31 @@
     return '';
   }
 
+  /* ================= os dados, um a um ================= */
+  /*
+    O que cada dado sorteou numa rolagem: [[lados, valor], …], na ordem em que saíram. É o que o auditor da mesa
+    confere (quantas vezes saiu cada face). Aceita o resultado de rollFixa, rollExpr e rollTable e os registros do
+    rolador (fixa, dados, duelo com todas as rodadas, tabela — o sorteio de um item é um dado de tantos lados quantos
+    são os itens). Dado de um lado só, e fixa total, não sorteiam nada: ficam de fora. No máximo `max` dados (60).
+  */
+  function diceOf(e, max) {
+    const out = [];
+    const lim = Number.isSafeInteger(max) && max > 0 ? max : 60;
+    const push = (sides, v) => {
+      if (out.length < lim && Number.isSafeInteger(sides) && sides >= 2 && Number.isSafeInteger(v) && v >= 1 && v <= sides) out.push([sides, v]);
+    };
+    const terms = (ts) => { for (const t of Array.isArray(ts) ? ts : []) if (t && t.kind === 'dice' && Array.isArray(t.rolls)) for (const r of t.rolls) push(t.sides, r); };
+    if (!e || typeof e !== 'object') return out;
+    const mode = e.mode || (Array.isArray(e.sides) ? 'duelo' : Array.isArray(e.terms) ? 'dados' : e.atributo != null ? 'fixa' : e.itemIndex != null ? 'tabela' : '');
+    if (mode === 'fixa') push(e.atributo - e.fixa, e.dieValue);
+    else if (mode === 'dados') terms(e.terms);
+    else if (mode === 'tabela') push(e.itemCount, e.itemIndex);
+    else if (mode === 'duelo' && hasRounds(e)) {
+      for (const r of e.rounds) r.forEach((x, i) => { const s = e.sides[i]; if (s.mode === 'fixa') push(s.atributo - s.fixa, x.dieValue); else terms(x.terms); });
+    }
+    return out;
+  }
+
   /* ================= registros ================= */
   /*
     Montam a rolagem no formato que o rolador guarda. Antes de sortear, conferem tudo
@@ -643,6 +668,8 @@
     OPS, readSigned, readCheck, normCheck, evalCheck, checkReach, verdict,
     // textos
     fold, fixaComp, dadosComp, compText, duelSummary, summary,
+    // os dados, um a um (para o auditor)
+    diceOf,
     // registros
     buildFixa, buildDados, buildTabela, buildDuel, addDuelRound, rollSide,
     // chat

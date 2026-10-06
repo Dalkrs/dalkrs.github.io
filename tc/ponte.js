@@ -7,6 +7,8 @@
      TC.ponte.ir(aba, alvo)      — abre outro sistema do site (ex.: ir('cenas', { cena: id })); só dentro da casca
      TC.ponte.aoIr(fn)           — este sistema foi aberto por outro, com um alvo: fn(alvo)
      TC.ponte.aoFechar(fn)       — a página vai fechar (ou a mesa, trocar): fn() entrega agora o que o sistema ainda segurava
+     TC.ponte.registro.ler()     — promessa: todas as rolagens da mesa (só o mestre; é o que o auditor dos dados lê)
+     TC.ponte.registro.aoChegar(fn) — chegou à mesa ao vivo uma linha com recado para os sistemas (dados.sis): fn(linha)
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -14,7 +16,7 @@
   const naCasca = window.parent !== window;
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* navegador sem BroadcastChannel: só funciona dentro da casca */ }
-  const ouvintes = [], ouvintesIr = [], ouvintesFechar = [];
+  const ouvintes = [], ouvintesIr = [], ouvintesFechar = [], ouvintesRegistro = [];
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   const ponte = {
     // mesa: { id, nome } | null · papel: 'mestre' | 'jogador' | null · eu: id do usuário · membros: [{ id, nome, papel, cor }]
@@ -28,6 +30,22 @@
     /* A casca chama isto (direto, não por mensagem) quando a página vai fechar ou a mesa vai trocar: cada sistema
        entrega agora o que ainda segurava. */
     fechando() { for (const f of ouvintesFechar.slice()) { try { f(); } catch (e) { console.error(e); } } },
+    /* A mesa ao vivo, para os sistemas. `ler` pede à casca todas as rolagens da mesa (ela só entrega ao mestre).
+       `aoChegar` avisa de cada linha nova que traz um recado para os sistemas — a iniciativa que um jogador rolou
+       pela telinha de dados, a defesa que ele rolou a pedido do mestre. Quem escreve a linha é o aparelho de quem
+       rolou: quem recebe confere o que vier (de quem é, se o valor faz sentido) antes de usar. */
+    registro: {
+      ler() {
+        if (!naCasca) return Promise.reject(new Error('O auditor só funciona dentro do site, com uma mesa aberta.'));
+        const n = ++seq;
+        const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+        enviar({ t: 'registro.ler', n });
+        // (uma casca de antes desta função não responde: em vez de esperar para sempre, diz o que fazer)
+        setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e abra o auditor de novo.')); } }, 45000);
+        return p;
+      },
+      aoChegar(fn) { ouvintesRegistro.push(fn); },
+    },
   };
   ponte.pronta = new Promise(ok => { avisar = ok; });
   // Dentro da casca a resposta sempre vem; o prazo é só para a página não ficar presa se algo der errado.
@@ -100,6 +118,15 @@
     if ((m.t === 'arquivo.ok' || m.t === 'arquivo.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'arquivo.ok') e.ok(m.url); else e.falha(new Error(m.erro || 'Não deu para enviar a imagem.'));
+      return;
+    }
+    if ((m.t === 'registro.tudo' || m.t === 'registro.erro') && esperas[m.n]) {
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (m.t === 'registro.tudo') e.ok(Array.isArray(m.linhas) ? m.linhas : []); else e.falha(new Error(m.erro || 'Não deu para ler as rolagens da mesa.'));
+      return;
+    }
+    if (m.t === 'registro.item') {
+      if (m.linha && typeof m.linha === 'object') for (const f of ouvintesRegistro.slice()) { try { f(m.linha); } catch (e) { console.error(e); } }
       return;
     }
     if (m.t === 'alvo') {

@@ -847,10 +847,10 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=7"></script>
+<script src="../tc/ponte.js?v=8"></script>
 <script src="../tc/rules.js?v=5"></script>
 <script src="mesa.js?v=6"></script>
-<script src="extras.js?v=5"></script>
+<script src="extras.js?v=6"></script>
 <script src="quadros.js?v=1"></script>
 <script>
 /* =======================================================================
@@ -1015,7 +1015,7 @@ function rolarExpressao(txt){
   if(!s) throw new Error('Escreva algo como 1d20+3');
   if(!/^[+-]?(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/.test(s)) throw new Error('Formato inválido. Use 2d6+3, d20, 1d100-5…');
   const partes=s.match(/[+-]?(?:\d*d\d+|\d+)/g)||[];
-  let total=0; const detalhe=[];
+  let total=0; const detalhe=[], dd=[];           // dd: [[lados, valor], …] — o que cada dado sorteou (para o auditor da mesa)
   partes.forEach(p=>{
     const sinal = p[0]==='-'? -1 : 1;
     const corpo = p.replace(/^[+-]/,'');
@@ -1025,6 +1025,7 @@ function rolarExpressao(txt){
       if(qtd<1||qtd>200) throw new Error('Quantidade de dados fora do razoável (1 a 200)');
       if(faces<2||faces>10000) throw new Error('Faces do dado fora do razoável (2 a 10000)');
       const rs=rolarVarios(qtd,faces);
+      rs.forEach(r=>dd.push([faces,r]));
       total += sinal*rs.reduce((a,b)=>a+b,0);
       detalhe.push((sinal<0?'−':'')+qtd+'d'+faces+' ['+rs.join(', ')+']');
     }else{
@@ -1032,8 +1033,10 @@ function rolarExpressao(txt){
       detalhe.push((sinal<0?'−':'+')+v);
     }
   });
-  return {total, detalhe:detalhe.join(' '), expr:s};
+  return {total, detalhe:detalhe.join(' '), expr:s, dd};
 }
+/* o dado de uma rolagem com fixa, no mesmo formato (nada, quando a fixa é o atributo inteiro) */
+const ddDaFixa = r => (r && r.dado>=2 ? [[r.dado, r.bruto]] : []);
 
 /* fixa: atributo 60 fixando 20 → 1d40 + 20 */
 function rolarFixa(valorAtributo, fixado){
@@ -1846,9 +1849,9 @@ function ligarFicha(pc){
   if(fini) fini.oninput=e=>patchLeve(()=>{ pc.ini=e.target.value; const v=host.querySelector('#iniVal'); if(v) v.textContent=iniTexto(pc); });
   const bini=host.querySelector('#btnIni');
   if(bini) bini.onclick=()=>{
-    const r=iniciativaDe(pc), d=randInt(20), total=d+r.val;
+    const r=iniciativaDe(pc), d=rolarDado(20), total=d+r.val;      // (1 a 20: rolarDado, não randInt, que conta do zero)
     pc.ultRol={k:'INI', valor:r.val, base:false, total, texto:'1d20 '+(r.val<0?'− ':'+ ')+Math.abs(r.val), dado:20, bruto:d};
-    logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val), total});
+    logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val), total, dd:[[20,d]]});
     render();
   };
   // valor atual de cada recurso (HP, SP...): vazio = no começo da barra (cheia, se ela não tem um começo próprio)
@@ -2152,7 +2155,7 @@ function rolarParticipante(sit,pt){
   if(pt.tipo==='livre'){
     let r; try{ r=rolarExpressao(pt.expr); }catch(e){ toast(e.message); return; }
     pt.res={total:r.total, texto:r.expr+' → '+r.detalhe};
-    logar({tipo:'livre', quem:nome, pc:pc?pc.id:undefined, det:r.expr+'  '+r.detalhe, total:r.total, sit:sit.nome});
+    logar({tipo:'livre', quem:nome, pc:pc?pc.id:undefined, det:r.expr+'  '+r.detalhe, total:r.total, sit:sit.nome, dd:r.dd});
   }else{
     if(!pc){ toast('Personagem não encontrado'); return; }
     const valor=valorDoAtributo(pc,pt.atr,pt.fonte);
@@ -2160,7 +2163,7 @@ function rolarParticipante(sit,pt){
     pt.res={total:r.total, texto:r.texto+(r.dado?' (dado '+r.bruto+')':'')};
     logar({tipo:'fixa', quem:nome, pc:pc.id,
       det:pt.atr+' '+valor+(!ehDerivado(pt.atr)&&pt.fonte==='base'?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
-      total:r.total, sit:sit.nome});
+      total:r.total, sit:sit.nome, dd:ddDaFixa(r)});
   }
 }
 function ligarMesa(sit){
@@ -2282,7 +2285,7 @@ function ligarEventos(){
   const rodar=()=>{
     const expr=q('#expr').value; S.ultimaExpr=expr;
     let r; try{ r=rolarExpressao(expr); }catch(e){ toast(e.message); return; }
-    mostrar(r,r.expr); logar({tipo:'livre', quem:'Mestre', det:r.expr+'  '+r.detalhe, total:r.total});
+    mostrar(r,r.expr); logar({tipo:'livre', quem:'Mestre', det:r.expr+'  '+r.detalhe, total:r.total, dd:r.dd});
     renderRegistroSo();
   };
   q('#rolarExpr').onclick=rodar;
@@ -2305,12 +2308,12 @@ function ligarEventos(){
     for(let i=0;i<qtd;i++){
       if(!pool.length) break;
       const idx=randInt(pool.length);
-      saiu.push({txt:pool[idx], n:idx+1, de:itens.length});
+      saiu.push({txt:pool[idx], n:idx+1, de:itens.length, entre:pool.length});
       if(semRep) pool.splice(idx,1);
     }
     host.querySelector('[data-tabout="'+id+'"]').innerHTML=saiu.map(s=>
       `<div class="vlinha"><span class="p mono">${s.n}/${s.de}</span><span class="n" style="font-weight:500">${esc(s.txt)}</span></div>`).join('');
-    logar({tipo:'tabela', quem:t.nome, det:saiu.map(s=>s.txt).join(' · '), total:null});
+    logar({tipo:'tabela', quem:t.nome, det:saiu.map(s=>s.txt).join(' · '), total:null, dd:saiu.filter(s=>s.entre>=2).map(s=>[s.entre,s.n])});
     renderRegistroSo();
   });
 }
@@ -2626,7 +2629,7 @@ function rolarNaFicha(pc,k){
   pc.ultRol={k:rot, valor, base:usouBase, total:r.total, texto:r.texto, dado:r.dado, bruto:r.bruto};
   logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
     det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
-    total:r.total});
+    total:r.total, dd:ddDaFixa(r)});
   save(); renderFicha();
 }
 
@@ -2785,7 +2788,7 @@ function abrirDisputa(pc){
       logar({tipo:'disputa', quem:'Disputa · '+pc.nome+' × '+nomeB, pc:pc.id,
         det:`${pc.nome}: ${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}) = ${ra.total}`
            +`  ·  ${nomeB}: ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}) = ${rb.total}`,
-        total:null, veredito, passou: empate? null : venceuA});
+        total:null, veredito, passou: empate? null : venceuA, dd:ddDaFixa(ra).concat(ddDaFixa(rb))});
       save(); desenhar();
     };
   };

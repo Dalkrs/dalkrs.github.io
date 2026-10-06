@@ -886,6 +886,38 @@ ok(Array.isArray(D.HELP) && D.HELP.length >= 4 && D.HELP.every((h) => typeof h.c
   ok(tried.length >= 5 && tried.every((x) => !['erro', 'chat'].includes(D.command(x).type)), 'HELP: os exemplos da ajuda são comandos válidos — ' + tried.map((x) => x + ' → ' + D.command(x).type).join('; '));
 }
 
+/* ================= os dados, um a um (diceOf) ================= */
+{
+  // fixa: um dado de (atributo − fixa) lados
+  const f = D.rollFixa(60, 20);
+  eq(D.diceOf(f), [[40, f.dieValue]], 'diceOf(rollFixa): um dado de (atributo − fixa) lados, com o que saiu');
+  eq(D.diceOf(D.rollFixa(20, 20)), [], 'diceOf: fixa total não sorteia nada');
+  eq(D.diceOf(D.rollFixa(21, 20)), [], 'diceOf: dado de um lado só não conta');
+  eq(D.diceOf({ mode: 'fixa', atributo: 60, fixa: 0, dieValue: 60, total: 60 }), [[60, 60]], 'diceOf: sem fixa, o dado é o atributo inteiro');
+  // dados livres: cada dado de cada parte, na ordem; números soltos não entram; o sinal não muda o que o dado mostrou
+  const r = D.rollExpr('2d6+1d20-1d4+3');
+  const esperado = [].concat(r.terms[0].rolls.map((v) => [6, v]), r.terms[1].rolls.map((v) => [20, v]), r.terms[2].rolls.map((v) => [4, v]));
+  eq(D.diceOf(r), esperado, 'diceOf(rollExpr): todos os dados, na ordem');
+  ok(D.diceOf(r).length === 4 && D.diceOf(r).every(([n, v]) => v >= 1 && v <= n), 'diceOf: cada valor está dentro do dado');
+  eq(D.diceOf(D.buildDados({ expr: '3d8' }, {})).map((x) => x[0]), [8, 8, 8], 'diceOf(buildDados): o registro do rolador serve igual');
+  eq(D.diceOf(D.rollExpr('100d6'), 5).length, 5, 'diceOf: respeita o máximo pedido');
+  eq(D.diceOf(D.rollExpr('100d6')).length, 60, 'diceOf: sem máximo, até 60 dados');
+  // tabela: o sorteio de um item é um dado de tantos lados quantos são os itens
+  const t = D.rollTable(['a', 'b', 'c', 'd']);
+  eq(D.diceOf(t), [[4, t.itemIndex]], 'diceOf(rollTable): um dado do tamanho da tabela');
+  eq(D.diceOf(D.rollTable(['só um'])), [], 'diceOf: tabela de um item só não sorteia nada');
+  // duelo: os dois lados, todas as rodadas
+  const d = D.buildDuel([{ name: 'A', atributo: 50, fixa: 10 }, { name: 'B', expr: '2d10' }], {});
+  const rd = d.rounds[0];
+  eq(D.diceOf(d), [[40, rd[0].dieValue]].concat(rd[1].terms[0].rolls.map((v) => [10, v])), 'diceOf(duelo): fixa de um lado, dados do outro');
+  const emp = { mode: 'duelo', sides: [{ name: 'A', mode: 'fixa', atributo: 10, fixa: 0 }, { name: 'B', mode: 'fixa', atributo: 10, fixa: 0 }],
+    rounds: [[{ total: 7, dieValue: 7 }, { total: 7, dieValue: 7 }], [{ total: 3, dieValue: 3 }, { total: 9, dieValue: 9 }]], winner: 1, decidedBy: 'rolagem' };
+  eq(D.diceOf(emp), [[10, 7], [10, 7], [10, 3], [10, 9]], 'diceOf(duelo): o desempate conta junto');
+  // o que não é rolagem, ou vem estragado, não quebra nem inventa dado
+  eq([null, undefined, 7, 'x', {}, { mode: 'dados' }, { mode: 'fixa', atributo: 'a', fixa: 1, dieValue: 2 }, { mode: 'dados', terms: [{ kind: 'dice', sides: 6, rolls: [0, 7, 2.5, '3', 4] }] }, { mode: 'tabela', itemCount: 3, itemIndex: 9 }].map((x) => D.diceOf(x)),
+    [[], [], [], [], [], [], [], [[6, 4]], []], 'diceOf: entrada estranha dá lista vazia; valor fora do dado é descartado');
+}
+
 /* ================= fim ================= */
 if (fails) { console.log((n - fails) + ' verificações passaram, ' + fails + ' falharam'); process.exit(1); }
 console.log(n + ' verificações passaram');

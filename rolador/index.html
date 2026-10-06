@@ -318,6 +318,53 @@ body[data-mode="duelo"] .kbd-hint{display:none}
 .ai-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:16px 0 4px}
 .ai-busy{color:var(--muted)}
 textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
+/* auditor dos dados (rolador/auditor.js) */
+.aud-filtros{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0 12px}
+.aud-campo{display:grid;gap:5px;flex:1;min-width:210px;font-size:13px;color:var(--muted)}
+.aud-sel{height:40px;font-size:15px}
+.aud-veredito{padding:12px 14px;border:1px solid var(--line-strong);border-left:4px solid var(--faint);border-radius:10px;background:var(--panel-2)}
+.aud-veredito strong{display:block;font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:3px}
+.aud-veredito p{font-size:15px;color:var(--parchment)}
+.aud-veredito .aud-altura{margin-top:5px;font-size:14px;color:var(--muted)}
+.aud-veredito.ok{border-left-color:#6fbf8f}
+.aud-veredito.atencao{border-left-color:var(--warn)}
+.aud-veredito.fora{border-left-color:var(--error)}
+.aud-graf{margin-top:14px;padding:8px 6px 2px;border:1px solid var(--line);border-radius:10px;background:var(--field);overflow-x:auto}
+.aud-svg{display:block;width:100%;min-width:520px;height:auto}
+.aud-grade{stroke:var(--line);stroke-width:1}
+.aud-base{stroke:var(--line-strong);stroke-width:1.5}
+.aud-eixo{fill:var(--muted);font:11px var(--sans)}
+.aud-eixo.leg{fill:var(--faint);font-size:12px}
+.aud-faixa{fill:rgba(237,229,209,.09)}
+.aud-barra{fill:var(--gold)}
+.aud-barra.fora{fill:var(--warn)}
+.aud-esp{stroke:var(--parchment);stroke-width:2;stroke-linecap:round}
+.aud-marca{fill:var(--warn);font:10px var(--sans)}
+.aud-legenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:8px;font-size:13px;color:var(--muted)}
+.aud-legenda .lg{display:inline-block;width:16px;height:10px;border-radius:2px;margin-left:8px}
+.aud-legenda .lg:first-child{margin-left:0}
+.aud-legenda .lg.barra{background:var(--gold)}
+.aud-legenda .lg.esp{height:2px;background:var(--parchment)}
+.aud-legenda .lg.faixa{background:rgba(237,229,209,.16);border:1px solid var(--line-strong)}
+.aud-legenda .lg-m{margin-left:8px;color:var(--warn);font-size:11px}
+.aud-nums{margin-top:10px;font-size:14px}
+.aud-nums summary{cursor:pointer;color:var(--muted)}
+.aud-tab{width:100%;margin-top:8px;border-collapse:collapse;font-size:14px}
+.aud-tab th{padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line-strong)}
+.aud-tab td{padding:6px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.aud-tab tr.fora td{color:var(--warn)}
+.aud-tab.pes tr.atual td{background:var(--panel-2)}
+.aud-h{margin:20px 0 2px;font-family:var(--serif);font-size:18px;font-weight:600}
+.aud-link{padding:0;border:0;background:none;color:var(--gold);font-weight:600;text-align:left}
+.aud-link:hover{text-decoration:underline}
+.aud-chip{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;color:var(--muted)}
+.aud-chip.ok{border-color:#3f7a5b;color:#9fdcb8}
+.aud-chip.atencao{border-color:#8a6230;color:var(--warn)}
+.aud-chip.fora{border-color:#8a3a3a;color:var(--error)}
+.aud-alerta{margin:12px 0;padding:10px 12px;border:1px solid #6e2a2e;border-radius:10px;background:#2b1518;color:#ffdada;font-size:14px}
+.aud-ler{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.aud-ler strong{display:block;margin-bottom:4px;color:var(--parchment)}
+.aud-ler p{margin-top:6px}
 .ai-out-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
 </style>
 </head>
@@ -543,6 +590,11 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   <div class="dlg-foot"><span></span><button type="button" class="btn danger" id="emptyTrashBtn">Esvaziar lixeira</button></div>
 </dialog>
 
+<dialog id="audDlg" class="wide" aria-labelledby="audHead">
+  <div class="dlg-head"><h2 id="audHead">Auditor dos dados</h2><button type="button" class="btn ghost" data-close="1">Fechar</button></div>
+  <div class="dlg-body" id="audBody"></div>
+</dialog>
+
 <dialog id="bringDlg" aria-labelledby="bringHead">
   <div class="dlg-head"><h2 id="bringHead">Trazer históricos deste navegador</h2><button type="button" class="btn ghost" data-close="1">Agora não</button></div>
   <div class="dlg-body">
@@ -629,7 +681,9 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
 <input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
-<script src="../tc/ponte.js?v=7"></script>
+<script src="../tc/ponte.js?v=8"></script>
+<script src="../tc/auditoria.js?v=1"></script>
+<script src="auditor.js?v=1"></script>
 <script>
 (function () {
   'use strict';
@@ -2115,6 +2169,8 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
       menuItem('Tabelas de eventos', () => openTables(), '', state.tables.length ? String(state.tables.length) : 'nenhuma'),
       menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
       menuItem('Resumo da sessão com IA', openAi),
+      // numa mesa: o que saiu de cada dado, de todo mundo, contra o esperado (só leitura)
+      mesa.on && window.RoladorAuditor ? menuItem('Auditor dos dados', () => { if (!window.RoladorAuditor.abrir()) toast('O auditor só funciona dentro do site, com a mesa aberta.', { error: true }); }, '', 'da mesa') : null,
       h('div', { class: 'dd-sep' }),
       menuItem('Exportar backup completo', exportAll),
       // rótulo ligado ao campo de arquivo: o próprio navegador abre a escolha do arquivo

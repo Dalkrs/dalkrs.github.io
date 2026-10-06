@@ -224,6 +224,9 @@
 
   const online = m => !!(m && m.visto_em && (Date.now() + folga - Date.parse(m.visto_em)) < 75000);
   aoVivo.online = online;
+  /* Há quanto tempo (ms) uma linha do registro chegou à mesa — foi escrita ou, se era secreta, mostrada —, pelo
+     relógio do banco (o do aparelho pode estar errado). */
+  aoVivo.idade = l => { const t = l ? Date.parse(l.atualizado_em || l.criado_em || '') : NaN; return isFinite(t) ? Math.max(0, Date.now() + folga - t) : 0; };
 
   function aplicar(linha, silencioso) {
     if (!linha || linha.mesa_id !== mesaId) return;
@@ -379,13 +382,65 @@
     aoVivo.emit('segredo', aoVivo.segredo);
   };
 
+  /* Todas as rolagens da mesa, da mais antiga para a mais nova, para o auditor do mestre: de cada linha, só o que o
+     auditor usa. Entram também as que foram limpas do painel (foram roladas do mesmo jeito). */
+  aoVivo.historico = async (opt = {}) => {
+    const a = mesas.atual;
+    if (!a) throw new Error('Abra uma mesa primeiro.');
+    if (a.papel !== 'mestre') throw new Error('Só o mestre abre o auditor dos dados.');
+    const out = [], LIMITE_LINHAS = opt.limite || 20000, PAGINA = 1000;
+    for (let de = 0; de < LIMITE_LINHAS; de += PAGINA) {
+      const { data, error } = await cliente().from('registro')
+        .select('id,autor_id,autor_nome,origem,secreta,apagado,criado_em,k:dados->>k,titulo:dados->>titulo,total:dados->total,resumo:dados->>resumo,dd:dados->dd')
+        .eq('mesa_id', a.id).eq('tipo', 'rolagem').order('criado_em').order('id').range(de, de + PAGINA - 1);
+      if (error) throw falha(error, 'Não deu para ler as rolagens da mesa agora.');
+      for (const l of data || []) out.push(l);
+      if (!data || data.length < PAGINA) break;
+    }
+    return out;
+  };
+
   /* Monta o que a mesa mostra de uma rolagem: total em destaque, uma linha de como saiu e o veredito, se houver. */
   const D = () => TC.dice;
   const semTotal = s => String(s || '').replace(/^[-−]?\d+ · /, '');
+  /* Cada rolagem guarda também os dados que sorteou, um a um — dd: [[lados, valor], …] —, para o auditor do mestre
+     conferir quantas vezes saiu cada face. Aqui só se confere a forma (pares de inteiros, no máximo 60): se um valor
+     não cabe no dado (um defeito de quem sorteou), é o auditor que tem de ver isso — não é para sumir aqui. */
+  function limparDd(dd) {
+    const out = [];
+    if (!Array.isArray(dd)) return out;
+    for (const p of dd) {
+      if (out.length >= 60) break;
+      if (Array.isArray(p) && p.length === 2 && Number.isSafeInteger(p[0]) && Number.isSafeInteger(p[1]) && p[0] >= 1 && p[0] <= 1000000 && p[1] >= 0 && p[1] <= 1000000) out.push([p[0], p[1]]);
+    }
+    return out;
+  }
+  const comDd = (dados, dd) => { const l = limparDd(dd); if (l.length) dados.dd = l; return dados; };
   function deResultado(k, titulo, x, check) {
     const v = check ? D().verdict(x.total, check) : null;
-    return { k, titulo: titulo || '', total: x.total, resumo: semTotal(D().summary(x)), veredito: v ? v.text : null, passou: v ? v.passed : null };
+    return comDd({ k, titulo: titulo || '', total: x.total, resumo: semTotal(D().summary(x)), veredito: v ? v.text : null, passou: v ? v.passed : null }, D().diceOf(x));
   }
+  /* As rolagens da telinha de dados da mesa ao vivo (sem digitar comando). `pc`: o personagem de quem é a rolagem
+     ({ id, nome, av }), que aparece ao lado de quem rolou.
+       rolarAtributo  um atributo com a regra da fixa → { ok, total, die, dieValue, fixa } | { ok:false, error }
+       rolarIniciativa  1d20 + o bônus de iniciativa da ficha. A linha leva um recado para as Cenas do mestre
+                      (sis: { t:'ini', c, v, d, b }): lá, o mestre pode anotar o valor na ordem de turnos. */
+  aoVivo.rolarAtributo = async (pc, rotulo, valor, fixa) => {
+    const v = Math.max(0, Math.round(Number(valor) || 0));
+    const r = D().rollFixa(v, Math.min(Math.max(0, Math.round(Number(fixa) || 0)), v));
+    if (!r.ok) return r;
+    const d = deResultado('fixa', ((pc && pc.nome ? pc.nome + ' · ' : '') + String(rotulo || '')).slice(0, 120), { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total });
+    await aoVivo.rolagem(d, { quem: pc || null });
+    return r;
+  };
+  aoVivo.rolarIniciativa = async (pc, bonus) => {
+    const b = Math.max(-99, Math.min(99, Math.round(Number(bonus) || 0))), dado = D().randInt(20), total = dado + b;
+    const d = comDd({ k: 'iniciativa', titulo: ('Iniciativa · ' + ((pc && pc.nome) || '?')).slice(0, 120), total, resumo: '1d20 (' + dado + ')' + (b ? (b > 0 ? ' + ' : ' − ') + Math.abs(b) : ''), veredito: null, passou: null }, [[20, dado]]);
+    if (pc && pc.id) d.sis = { t: 'ini', c: String(pc.id).slice(0, 64), v: total, d: dado, b };
+    await aoVivo.rolagem(d, { quem: pc || null });
+    return { ok: true, total, d: dado, bonus: b };
+  };
+
   /* Uma linha digitada no chat: fala, ação ou comando (/r, /fixa, /me, /ajuda). Devolve { ok } | { erro } | { ajuda }. */
   aoVivo.comando = async texto => {
     const c = D().command(texto);
@@ -414,6 +469,7 @@
     if (origem === 'rolador' && d.type === 'roll') {
       const v = d.check && d.total != null ? D().verdict(d.total, d.check) : null;
       dados = { k: d.mode, titulo: String(d.title || '').slice(0, 120), total: d.total == null ? null : d.total, resumo: semTotal(D().summary(d)).slice(0, 600), veredito: v ? v.text : null, passou: v ? v.passed : null, cor: d.color || null };
+      comDd(dados, D().diceOf(d));
       opt.id = String(d.id || '').slice(0, 60) || undefined;
       opt.quem = null;                       // o Rolador é a mesa de dados do mestre: sai sem personagem
     } else if (origem === 'ficha') {
@@ -421,20 +477,24 @@
       // (uma disputa diz quem venceu: o veredito vem pronto da ficha; passou = venceu quem rolou, null = empate)
       const vd = typeof d.veredito === 'string' && d.veredito.trim() ? d.veredito.trim().slice(0, 160) : null;
       dados = { k: 'ficha', titulo: String(d.quem || '').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.det || '').slice(0, 600), veredito: vd, passou: vd && typeof d.passou === 'boolean' ? d.passou : null };
+      comDd(dados, d.dd);                    // os dados que a ficha sorteou, um a um
       opt.id = d.id ? 'f_' + String(d.id).slice(0, 50) : undefined;
     } else if (origem === 'cena' && d.kind === 'iniciativa') {
       const b = Number(d.bonus) || 0;
       dados = { k: 'iniciativa', titulo: 'Iniciativa · ' + String(d.name || '?').slice(0, 80), total: d.total, resumo: '1d20 (' + d.d + ')' + (b ? (b > 0 ? ' + ' : ' − ') + Math.abs(b) : ''), veredito: null, passou: null };
+      comDd(dados, [[20, d.d]]);
       if (d.oculto) opt.secreta = true;      // token que os jogadores não veem: a iniciativa dele fica só com o mestre
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
     } else if (origem === 'cena' && d.kind === 'atributo') {
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
+      comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
       if (d.oculto) opt.secreta = true;
     } else if (origem === 'cena' && d.kind === 'uso') {
       // um item da bolsa usado pelo token (poção, bomba…): o título e o resumo vêm prontos da cena
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       dados = { k: 'ficha', titulo: String(d.titulo || 'Bolsa').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
+      comDd(dados, d.dd);                    // (uma poção que rola dados)
       if (d.oculto) opt.secreta = true;
     }
     if (!dados) return null;

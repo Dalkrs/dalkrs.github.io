@@ -243,6 +243,28 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await P.locator('#disValorB').inputValue() === '81', 'e reaparece ao abrir a disputa de novo');
   await P.locator('#disFechar').click(); await w(250);
 
+  // ---------- os dados da ficha: cada botão sorteia de 1 até o número de lados ----------
+  // (o sorteio é do navegador; aqui ele é trocado por um que devolve o número que o teste mandar: 0 é a face mais
+  //  baixa, lados − 1 é a mais alta. O botão de iniciativa já rolou de 0 a 19 em vez de 1 a 20.)
+  {
+    await abrirFicha('Dain X');
+    await P.evaluate(() => { window.__prox = 0; window.crypto.getRandomValues = buf => { buf[0] = window.__prox; return buf; }; });
+    const rolou = async prox => { await P.evaluate(v => { window.__prox = v; }, prox); await P.locator('#btnIni').click(); await w(200); return S0(() => { const u = S.personagens.find(p => p.nome === 'Dain X').ultRol; return { dado: u.dado, bruto: u.bruto, total: u.total, valor: u.valor }; }); };
+    const baixa = await rolou(0), alta = await rolou(19);
+    ok(baixa.dado === 20 && baixa.bruto === 1 && baixa.total === 1 + baixa.valor, 'iniciativa pela ficha: a face mais baixa do d20 é 1 (e não 0): ' + JSON.stringify(baixa));
+    ok(alta.bruto === 20 && alta.total === 20 + alta.valor, 'iniciativa pela ficha: a face mais alta do d20 é 20 (e não 19): ' + JSON.stringify(alta));
+    ok(await S0(() => /Iniciativa · 1d20 \(20\)/.test(S.log[0].det) && /Iniciativa · 1d20 \(1\)/.test(S.log[1].det)), 'e é isso que vai para o registro: ' + await S0(() => S.log[0].det + ' | ' + S.log[1].det));
+    // a rolagem rápida de um atributo: um dado de (atributo − fixa) lados, de 1 até ele
+    const faces = await S0(() => { const pc = S.personagens.find(p => p.nome === 'Dain X'); pc.rol.fixa = 5; return valorDoAtributo(pc, 'FOR', pc.rol.fonte) - 5; });
+    const rapida = async prox => { await P.evaluate(v => { window.__prox = v; }, prox); await P.locator('#ficha .rolbox [data-rolar="FOR"]').click(); await w(200); return S0(() => { const u = S.personagens.find(p => p.nome === 'Dain X').ultRol; return { dado: u.dado, bruto: u.bruto, total: u.total }; }); };
+    const r1 = await rapida(0), r2 = await rapida(faces - 1);
+    ok(faces > 5 && r1.dado === faces && r1.bruto === 1 && r1.total === 6 && r2.bruto === faces && r2.total === faces + 5, 'rolagem rápida: o dado vai de 1 ao número de lados (' + faces + '): ' + JSON.stringify([r1, r2]));
+    // os dados livres, pela mesma função
+    ok(await S0(() => { window.__prox = 0; const a = rolarExpressao('1d6').total; window.__prox = 5; const b = rolarExpressao('1d6').total; window.__prox = 99; const c = rolarExpressao('1d100').total; return a === 1 && b === 6 && c === 100; }), 'dados livres: 1d6 vai de 1 a 6 e 1d100 chega a 100');
+    await P.evaluate(() => { delete window.crypto.getRandomValues; });
+    ok(await S0(() => { const b = new Uint32Array(4); crypto.getRandomValues(b); return b.some(x => x > 0); }), '(o sorteio do navegador volta a valer)');
+  }
+
   // ---------- tudo continua lá depois de recarregar ----------
   await w(500);
   await P.reload({ waitUntil: 'load' }); await w(1200);
