@@ -9,6 +9,8 @@
      TC.ponte.aoFechar(fn)       — a página vai fechar (ou a mesa, trocar): fn() entrega agora o que o sistema ainda segurava
      TC.ponte.registro.ler()     — promessa: todas as rolagens da mesa (só o mestre; é o que o auditor dos dados lê)
      TC.ponte.registro.aoChegar(fn) — chegou à mesa ao vivo uma linha com recado para os sistemas (dados.sis): fn(linha)
+     TC.ponte.registro.pedir(d)  — promessa: o mestre pede aos jogadores que rolem a defesa → { id } (a linha do pedido)
+     TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -20,7 +22,7 @@
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   const ponte = {
     // mesa: { id, nome } | null · papel: 'mestre' | 'jogador' | null · eu: id do usuário · membros: [{ id, nome, papel, cor }]
-    estado: { mesa: null, papel: null, segredo: false, eu: null, membros: [] },
+    estado: { mesa: null, papel: null, segredo: false, eu: null, membros: [], v: 1 },
     naCasca,
     publicar(origem, dados) { enviar({ t: 'rolagem', origem, dados }); },
     ir(aba, alvo) { if (!naCasca) return false; enviar({ t: 'ir', aba, alvo: alvo || null }); return true; },
@@ -45,6 +47,18 @@
         return p;
       },
       aoChegar(fn) { ouvintesRegistro.push(fn); },
+      /* O ataque com defesa das Cenas: o mestre pede que os jogadores rolem a defesa dos personagens deles.
+         d = { rot: nome do ataque, defs: [chaves das defesas que se somam], alvos: [{ c: id do personagem, n: nome }] }.
+         A casca escreve o pedido na mesa ao vivo e devolve o id da linha; as respostas chegam por aoChegar. */
+      pedir(d) {
+        if (!naCasca) return Promise.reject(new Error('O pedido de defesa só funciona dentro do site, com uma mesa aberta.'));
+        const n = ++seq;
+        const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+        enviar({ t: 'registro.pedir', n, dados: d });
+        setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+        return p;
+      },
+      encerrar(id, fim) { if (naCasca && typeof id === 'string' && id) enviar({ t: 'registro.encerrar', id, fim: fim === 'aplicado' ? 'aplicado' : 'cancelado' }); },
     },
   };
   ponte.pronta = new Promise(ok => { avisar = ok; });
@@ -125,6 +139,11 @@
       if (m.t === 'registro.tudo') e.ok(Array.isArray(m.linhas) ? m.linhas : []); else e.falha(new Error(m.erro || 'Não deu para ler as rolagens da mesa.'));
       return;
     }
+    if (m.t === 'registro.pedido' && esperas[m.n]) {
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (typeof m.id === 'string' && m.id) e.ok({ id: m.id }); else e.falha(new Error('O pedido não chegou à mesa.'));
+      return;
+    }
     if (m.t === 'registro.item') {
       if (m.linha && typeof m.linha === 'object') for (const f of ouvintesRegistro.slice()) { try { f(m.linha); } catch (e) { console.error(e); } }
       return;
@@ -136,7 +155,8 @@
       return;
     }
     if (m.t === 'estado') {
-      ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [] };
+      // v: a versão da conversa com a casca (2: ela entende a disputa e a defesa das Cenas e o pedido de defesa)
+      ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [], v: Number(m.v) || 1 };
       avisar(ponte.estado);
       for (const f of ouvintes.slice()) { try { f(ponte.estado); } catch (e) { console.error(e); } }
     } else if (m.t === 'dados.tudo' && esperas[m.n]) {

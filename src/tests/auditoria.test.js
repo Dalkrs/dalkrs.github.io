@@ -198,8 +198,22 @@ eq(A.contarFaces([[6, 1], [6, 6], [6, 6], [20, 3]], 6), { n: 3, obs: [1, 0, 0, 0
   linha('u2', 'Dalmo', { resumo: 'Iniciativa · 1d20 (0) + 2', origem: 'ficha' });
   linha('u1', 'Bruno', { resumo: 'A cena está no ar', k: 'tabela', origem: 'cena' });
   linha('u1', 'Bruno', { k: 'tabela', origem: 'rolador', resumo: 'Encontros → Lobos (3 de 10)' });
+  // o pedido de defesa mora no registro, mas não é rolagem (nem conta como "sem dado"); a defesa rolada a pedido e a disputa das Cenas, sim
+  linha('u1', 'Bruno', { k: 'pedido', origem: 'cena', resumo: 'Defesa Mágica + Fogo. Para: R2d2 (3), Dain.' });
+  linhas.push({ id: 'px', autor_id: 'u1', autor_nome: 'Bruno', origem: 'cena', dados: { k: 'pedido', resumo: 'Defesa Física. Para: 1d20 (7).' } });
+  const antesDoCombate = linhas.length;
   linhas.push(null, 'x');
   const m = A.juntar(linhas);
+  {
+    const extra = linhas.slice(0, antesDoCombate).concat([
+      { id: 'd1', autor_id: 'u2', autor_nome: 'Dalmo', origem: 'mesa', k: 'fixa', resumo: '4 no d7 + 3 de fixa (atributo 10)', dd: [[7, 4]] },
+      { id: 'd2', autor_id: 'u1', autor_nome: 'Bruno', origem: 'cena', k: 'ficha', resumo: 'Selene: AGI 13 (1d13 + 0, dado 8) = 8  ·  Goblin: DEF F 12 (fixo em 12) = 12' },
+      { id: 'd3', autor_id: 'u1', autor_nome: 'Bruno', origem: 'cena', k: 'tabela', resumo: 'Dano 30 · defesa: Mágica + Fogo. Selene −20 HP (defesa 10, rolada); Orc: nada passou (defesa 31).' },
+    ]);
+    const m2 = A.juntar(extra);
+    ok(m2.total === m.total + 3 && m2.rolagens.length === m.rolagens.length + 2 && m2.semDado === m.semDado + 1 && m2.impossiveis.length === m.impossiveis.length, 'juntar: a defesa rolada e a disputa das Cenas entram na conta; o aviso do ataque fica como "sem dado": ' + [m2.total, m2.rolagens.length, m2.semDado].join(' · '));
+    eq(A.dadosDaLinha(extra[extra.length - 2]).bons, [[13, 8]], 'a disputa das Cenas, lida do texto: só o lado que rolou dado');
+  }
   ok(m.total === 503 && m.rolagens.length === 501 && m.semDado === 2 && m.lidasDoTexto === 201, 'juntar: ' + m.total + ' linhas, ' + m.rolagens.length + ' com dado, ' + m.semDado + ' sem, ' + m.lidasDoTexto + ' lidas do texto');
   ok(m.impossiveis.length === 1 && m.impossiveis[0].nome === 'Dalmo' && m.impossiveis[0].origem === 'ficha' && j(m.impossiveis[0].dado) === '[20,0]', 'juntar: o dado impossível fica listado, com quem rolou e de onde');
   eq(m.pessoas.map(p => [p.nome, p.n]), [['Bruno', 301], ['Dalmo', 200]], 'juntar: quantos dados cada pessoa rolou');

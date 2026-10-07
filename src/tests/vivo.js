@@ -53,6 +53,10 @@ const { contas } = require('./contas');
     if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await page.waitForTimeout(400); }
     if (await C.locator('.modal').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
     out.cenas_salvas = (await C.locator('#status').innerText()).trim();
+    // o que entrou com "Combate": o pedido de defesa na casca, a conversa nova entre a casca e as Cenas, a ferramenta Terreno e o grupo
+    out.combate = [await page.evaluate(() => (typeof TC.aoVivo.pedirDefesa === 'function' && typeof TC.aoVivo.responderDefesa === 'function' ? 'pedido de defesa na casca' : 'SEM O PEDIDO')),
+      'conversa v' + await C.evaluate(() => (window.TC && TC.ponte ? TC.ponte.estado.v : '?')), await C.locator('#tool-terrain').count() ? 'ferramenta Terreno' : 'SEM O TERRENO', await C.locator('#sel-grupo').count() ? 'puxar o grupo' : 'SEM O GRUPO',
+      await C.evaluate(() => (window.TC && TC.ponte && TC.ponte.registro && typeof TC.ponte.registro.pedir === 'function' ? 'ponte com pedido' : 'PONTE ANTIGA'))].join(' · ');
     out.cenas_no_ar = (await C.locator('#airBtn').innerText()).trim();
     await C.locator('#airBtn').click(); await page.waitForTimeout(300);
     await C.locator('.menu-i', { hasText: 'Mostrar esta cena aos jogadores' }).click(); await page.waitForTimeout(2500);

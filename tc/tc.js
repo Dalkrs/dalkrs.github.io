@@ -325,6 +325,7 @@
     const { data, error } = await cliente().from('registro').insert(linha).select().single();
     if (error) {
       // a mesma rolagem publicada duas vezes (duelo que ganhou outra rodada, ou duas abas abertas): atualiza a que já existe
+      if (error.code === '23505' && opt.unico) throw new Error(opt.unico);     // (essa linha só existe uma vez: a primeira vale)
       if (error.code === '23505' && opt.id) {
         const up = await cliente().from('registro').update({ dados }).eq('mesa_id', a.id).eq('id', opt.id).select().maybeSingle();
         if (up.data) aplicar(up.data);
@@ -337,7 +338,7 @@
   }
   aoVivo.fala = texto => gravar('fala', { texto: String(texto).slice(0, 1500) });
   aoVivo.acao = texto => gravar('acao', { texto: String(texto).slice(0, 1500) });
-  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, quem: opt.quem, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
+  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, quem: opt.quem, unico: opt.unico, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
   aoVivo.revelar = async id => {
     const a = mesas.atual; if (!a) return;
     const { data, error } = await cliente().from('registro').update({ secreta: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
@@ -441,6 +442,104 @@
     return { ok: true, total, d: dado, bonus: b };
   };
 
+  /* ---- o pedido de defesa (o "ataque com defesa" das Cenas) ----
+     O mestre pede, pela janela do ataque, que os jogadores rolem a defesa dos personagens deles. O pedido é uma linha
+     da mesa ao vivo (dados.k = 'pedido', dados.pd = { rot: nome do ataque, defs: chaves das defesas que se somam,
+     alvos: [{ c: id do personagem, n: nome }], fim? }). Cada jogador responde pelo cartão do pedido: a casca dele
+     soma as defesas da própria ficha, rola com a regra da fixa e escreve uma rolagem comum com o recado
+     sis = { t: 'rd', p: id da linha do pedido, c, v: total, a: defesa, f: fixa, d: dado }. O valor da defesa não
+     viaja no pedido: cada um calcula o seu. Quando o mestre aplica ou cancela, o pedido ganha pd.fim; sem isso, ele
+     expira sozinho em 10 minutos. Quem confere a resposta (de quem é, se cabe na defesa) é a janela do mestre. */
+  const PEDIDO_MS = 10 * 60 * 1000;
+  const chavesDeDefesa = () => { const R = TC.rules; return R && R.DEFESAS && R.CHAVES_ESP ? R.DEFESAS.map(x => x.k).concat(R.CHAVES_ESP) : []; };
+  // "Física + Fogo", na ordem da ficha
+  aoVivo.nomeDasDefesas = chaves => {
+    const R = TC.rules, quer = new Set(Array.isArray(chaves) ? chaves : []);
+    if (!R || !R.DEFESAS || !R.DEFESAS_ESP) return '';
+    return R.DEFESAS.filter(x => quer.has(x.k)).map(x => String(x.nome).replace(/^Defesa\s+/i, '')).concat(R.DEFESAS_ESP.filter(x => quer.has(x.k)).map(x => x.nome)).join(' + ');
+  };
+  const curto = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
+  aoVivo.pedirDefesa = async d => {
+    const a = mesas.atual;
+    if (!a) throw new Error('Abra uma mesa primeiro.');
+    if (a.papel !== 'mestre') throw new Error('Só o mestre pede a defesa.');
+    const validas = chavesDeDefesa(), defs = [], alvos = [];
+    for (const k of (d && Array.isArray(d.defs) ? d.defs : [])) if (typeof k === 'string' && validas.includes(k) && !defs.includes(k)) defs.push(k);
+    for (const x of (d && Array.isArray(d.alvos) ? d.alvos : [])) {
+      if (alvos.length >= 40 || !x || typeof x.c !== 'string' || !x.c || x.c.length > 64 || alvos.some(y => y.c === x.c)) continue;
+      alvos.push({ c: x.c, n: curto(x.n, 60) || '?' });
+    }
+    if (!defs.length || !alvos.length) throw new Error('O pedido veio vazio: escolha a defesa e quem defende.');
+    const rot = curto(d.rot, 40), nome = aoVivo.nomeDasDefesas(defs);
+    // (o título e o resumo servem a quem ainda não recarregou o site: lá o pedido aparece como um aviso comum)
+    const dados = { k: 'pedido', titulo: 'Rolem a defesa' + (rot ? ' · ' + rot : ''), total: null, resumo: ('Defesa ' + nome + '. Para: ' + alvos.map(x => x.n).join(', ') + '.').slice(0, 600), veredito: null, passou: null, pd: { rot, defs, alvos } };
+    return gravar('rolagem', dados, { origem: 'cena', quem: null, secreta: false });
+  };
+  // 'aberto' | 'aplicado' | 'cancelado' | 'expirado' (ou null, se a linha não é um pedido)
+  aoVivo.estadoDoPedido = l => {
+    const pd = l && l.dados && l.dados.k === 'pedido' ? l.dados.pd : null;
+    if (!pd || typeof pd !== 'object' || !Array.isArray(pd.alvos) || !Array.isArray(pd.defs)) return null;
+    if (pd.fim === 'aplicado' || pd.fim === 'cancelado') return pd.fim;
+    const t = Date.parse(l.criado_em || '');
+    return isFinite(t) && Date.now() + folga - t > PEDIDO_MS ? 'expirado' : 'aberto';
+  };
+  /* As respostas que já chegaram a um pedido: { idDoPersonagem: linha } — de cada personagem, a primeira rolagem
+     escrita pelo dono dele ou pelo mestre. */
+  aoVivo.respostasDoPedido = l => {
+    const out = {}, a = mesas.atual;
+    if (!a || !l) return out;
+    const mestres = new Set((a.membros || []).filter(m => m.papel === 'mestre').map(m => m.usuario_id));
+    const donos = new Map(linhasPcs().map(p => [p.id, p.dono_id]));
+    for (const x of aoVivo.itens) {
+      const s = x.dados && x.dados.sis;
+      if (!s || s.t !== 'rd' || s.p !== l.id || typeof s.c !== 'string' || out[s.c] || x.secreta) continue;
+      if (!(mestres.has(x.autor_id) || (donos.get(s.c) && donos.get(s.c) === x.autor_id))) continue;
+      out[s.c] = x;
+    }
+    return out;
+  };
+  // um identificador curto e estável para "a resposta deste autor, por este personagem, a este pedido"
+  function resumoCurto(texto) {
+    let a = 0xdeadbeef, b = 0x41c6ce57;
+    for (let i = 0; i < texto.length; i++) { const c = texto.charCodeAt(i); a = Math.imul(a ^ c, 2654435761); b = Math.imul(b ^ c, 1597334677); }
+    a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909);
+    b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909);
+    return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36);
+  }
+  /* O jogador (ou o mestre, por um personagem) rola a defesa pedida. `valor` é a soma das defesas do personagem,
+     calculada por quem chama a partir da ficha; `fixa`, quanto fixar. Devolve { ok, total, die, dieValue, fixa }. */
+  aoVivo.responderDefesa = async (l, charId, valor, fixa) => {
+    const a = mesas.atual;
+    if (!a || !conta.usuario) throw new Error('Abra uma mesa primeiro.');
+    const est = aoVivo.estadoDoPedido(l);
+    if (est !== 'aberto') throw new Error(est === 'expirado' ? 'Este pedido já expirou.' : 'Este pedido já foi encerrado.');
+    const pd = l.dados.pd, alvo = pd.alvos.find(x => x && x.c === charId), pc = linhasPcs().find(x => x.id === charId);
+    if (!alvo || !pc) throw new Error('Esse personagem não está neste pedido.');
+    if (!(a.papel === 'mestre' || pc.dono_id === conta.usuario.id)) throw new Error('Esse personagem não é seu.');
+    const v = Math.max(0, Math.round(Number(valor) || 0)), f = Math.min(Math.max(0, Math.round(Number(fixa) || 0)), v);
+    let r = { ok: true, atributo: v, fixa: f, die: 0, dieValue: 0, total: 0 };
+    if (v >= 1) { r = D().rollFixa(v, f); if (!r.ok) throw new Error(r.error); }
+    const nome = aoVivo.nomeDasDefesas(pd.defs), titulo = ((pc.nome || alvo.n || '?') + ' · Defesa' + (nome ? ' (' + nome + ')' : '')).slice(0, 120);
+    const dados = v >= 1 ? deResultado('fixa', titulo, { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total })
+      : { k: 'fixa', titulo, total: 0, resumo: 'A defesa está em 0: nada a rolar', veredito: null, passou: null };
+    dados.sis = { t: 'rd', p: l.id, c: charId, v: r.total, a: r.atributo, f: r.fixa, d: r.dieValue };
+    await aoVivo.rolagem(dados, { quem: resumoPc(pc), secreta: false, id: 'rd' + resumoCurto(l.id + '|' + charId + '|' + conta.usuario.id), unico: 'Essa defesa já foi rolada.' });
+    return r;
+  };
+  // O mestre encerra o pedido: 'aplicado' (o ataque foi aplicado) ou 'cancelado'.
+  aoVivo.encerrarPedido = async (id, fim) => {
+    const a = mesas.atual;
+    if (!a || a.papel !== 'mestre' || typeof id !== 'string' || !id) return null;
+    let l = aoVivo.itens.find(x => x.id === id);
+    if (!l) { const r = await cliente().from('registro').select('*').eq('mesa_id', a.id).eq('id', id).maybeSingle(); l = r.data || null; }
+    if (!l || aoVivo.estadoDoPedido(l) == null || l.dados.pd.fim) return null;
+    const dados = Object.assign({}, l.dados, { pd: Object.assign({}, l.dados.pd, { fim: fim === 'aplicado' ? 'aplicado' : 'cancelado' }) });
+    const { data, error } = await cliente().from('registro').update({ dados }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
+    if (error) throw falha(error, 'Não deu para encerrar o pedido agora.');
+    if (data) aplicar(data);
+    return data;
+  };
+
   /* Uma linha digitada no chat: fala, ação ou comando (/r, /fixa, /me, /ajuda). Devolve { ok } | { erro } | { ajuda }. */
   aoVivo.comando = async texto => {
     const c = D().command(texto);
@@ -490,6 +589,24 @@
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
       comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
       if (d.oculto) opt.secreta = true;
+    } else if (origem === 'cena' && d.kind === 'disputa') {
+      // disputa entre dois tokens: o título, o resumo e o veredito vêm prontos (passou = venceu o primeiro lado; null = empate)
+      const vd = typeof d.veredito === 'string' && d.veredito.trim() ? d.veredito.trim().slice(0, 160) : null;
+      dados = { k: 'ficha', titulo: String(d.titulo || 'Disputa').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: vd, passou: vd && typeof d.passou === 'boolean' ? d.passou : null };
+      comDd(dados, d.dd);
+      opt.quem = null;
+      if (d.oculto) opt.secreta = true;      // um dos dois lados é um token que os jogadores não veem
+    } else if (origem === 'cena' && d.kind === 'defesa') {
+      // a defesa que o mestre rolou por um token, num ataque com defesa
+      opt.quem = d.char ? aoVivo.personagem(d.char) : null;
+      dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · Defesa' + (d.defNome ? ' (' + String(d.defNome) + ')' : '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
+      comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
+      if (d.oculto) opt.secreta = true;
+      // rolada no lugar de um jogador, com o pedido em aberto: vale como a resposta dele (e todos veem, como veriam a dele)
+      else if (typeof d.pedido === 'string' && d.pedido && typeof d.alvo === 'string' && d.alvo) {
+        dados.sis = { t: 'rd', p: d.pedido.slice(0, 64), c: d.alvo.slice(0, 64), v: d.total, a: d.atributo, f: d.fixa, d: d.d };
+        opt.secreta = false;
+      }
     } else if (origem === 'cena' && d.kind === 'uso') {
       // um item da bolsa usado pelo token (poção, bomba…): o título e o resumo vêm prontos da cena
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;

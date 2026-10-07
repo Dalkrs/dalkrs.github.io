@@ -267,6 +267,8 @@
     let semDado = 0, lidasDoTexto = 0, total = 0;
     for (const l of Array.isArray(linhas) ? linhas : []) {
       if (!l || typeof l !== 'object') continue;
+      // o pedido de defesa (o mestre pedindo que os jogadores rolem) mora no registro, mas não é uma rolagem: fica de fora
+      if ((l.k || (l.dados && l.dados.k)) === 'pedido') continue;
       total++;
       const d = dadosDaLinha(l), nome = String(l.autor_nome || '?'), quando = l.criado_em || null;
       for (const r of d.ruins) impossiveis.push({ id: l.id, nome, origem: l.origem || '', quando, dado: r });

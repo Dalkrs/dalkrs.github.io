@@ -20,6 +20,7 @@ const App = {
     fx: 'fogo', fxShape: 'circ', fxR: 2, fxAng: 60, fxW: 1, fxRW: 3, fxRH: 2, fxDir: 0, fxAttach: true, fxDur: 0,
     lightPreset: 'tocha',
     tokOwner: '', tokSize: 1,
+    terMode: 'paint', terShape: 'brush', terType: 'morro', terH: null, terSize: 2,     // terreno: terH vazio = a altura de fábrica do tipo
   },
 };
 

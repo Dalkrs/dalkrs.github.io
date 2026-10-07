@@ -123,6 +123,17 @@ button { cursor: pointer; }
 .rol .vd.emp { color: var(--fg-2); }
 .rol.secreta { background: var(--secret-soft); border-color: var(--secret); border-left-color: var(--secret); }
 .rol .sg { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: var(--secret); font-size: 12.5px; font-weight: 600; }
+.ped .ped-d { margin-top: 1px; color: var(--fg-2); font-size: 13px; }
+.ped-l { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.ped-a { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 13px; color: var(--fg-2); }
+.ped-a b { color: var(--fg); font-weight: 600; }
+.ped-a.ok span { color: var(--ok); font-weight: 600; }
+.ped-a.meu { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 9px; border: 1px solid var(--lamp); border-radius: 8px; background: var(--lamp-soft); }
+.ped-q { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.ped-r { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ped-r label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
+.ped-fx { width: 62px; height: 28px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); text-align: center; font: 13px var(--mono); }
+.ped-f { margin-top: 6px; font-size: 12.5px; color: var(--fg-3); }
 .it .acts { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
 .it:hover .acts, .it:focus-within .acts { display: flex; }
 .mini { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; border: 0; background: var(--surface); color: var(--fg-3); }
@@ -325,12 +336,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=2"></script>
 <script src="tc/rules.js?v=5"></script>
-<script src="tc/tc.js?v=14"></script>
+<script src="tc/tc.js?v=15"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.06-1';
+  const VERSAO = '2026.10.07-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -460,7 +471,7 @@ dialog::backdrop { background: var(--scrim); }
   /* ---- ponte com os sistemas ---- */
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* sem BroadcastChannel: só as molduras recebem */ }
-  const estadoPonte = () => { const a = mesas.atual; return { t: 'estado', mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? a.papel : null, segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null, membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cor: x.cor })) : [] }; };
+  const estadoPonte = () => { const a = mesas.atual; return { t: 'estado', v: 2, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? a.papel : null, segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null, membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cor: x.cor })) : [] }; };
   function difundir() {
     const m = estadoPonte();
     for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: m }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
@@ -485,6 +496,11 @@ dialog::backdrop { background: var(--scrim); }
     } else if (m.t === 'registro.ler') {
       // todas as rolagens da mesa, para o auditor dos dados (a casca só entrega ao mestre)
       aoVivo.historico().then(linhas => responder({ t: 'registro.tudo', n: m.n, linhas }), e => responder({ t: 'registro.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'registro.pedir') {
+      // o ataque com defesa das Cenas: o pedido vira uma linha da mesa ao vivo (só o mestre pede)
+      aoVivo.pedirDefesa(m.dados).then(l => responder({ t: 'registro.pedido', n: m.n, id: l && l.id }), e => responder({ t: 'registro.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'registro.encerrar') {
+      aoVivo.encerrarPedido(m.id, m.fim).catch(e => toast(e.message));
     }
   }
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura
@@ -754,7 +770,8 @@ dialog::backdrop { background: var(--scrim); }
   function linha(l) {
     const meu = l.autor_id === conta.usuario.id, mestre = mesas.atual.papel === 'mestre', d = l.dados || {};
     let el;
-    if (l.tipo === 'rolagem') {
+    if (l.tipo === 'rolagem' && aoVivo.estadoDoPedido(l)) el = cartaoDoPedido(l);
+    else if (l.tipo === 'rolagem') {
       el = h('li', { class: 'it rol' + (l.secreta ? ' secreta' : ''), 'data-id': l.id, style: l.secreta ? null : 'border-left-color:' + corDe(l.autor_id) },
         h('div', { class: 'it-h' }, retrato(d), h('b', { text: l.autor_nome }), comoQuem(d), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
@@ -778,6 +795,76 @@ dialog::backdrop { background: var(--scrim); }
     return el;
   }
   function pintarFeed() { feed.replaceChildren(...aoVivo.itens.map(linha)); descer(); }
+
+  /* ---- o pedido de defesa (o "ataque com defesa" das Cenas) ----
+     O mestre pede que os jogadores rolem a defesa: o pedido chega como um cartão na mesa ao vivo. Quem é dono de um
+     dos personagens vê a defesa dele (somada da própria ficha), o campo "Fixando" e o botão de rolar; os outros
+     veem quem já rolou. A rolagem sai como as outras, e a janela do mestre a recebe. Nada é aplicado daqui. */
+  const pedFixa = new Map(), pedOcupado = new Set();
+  // a soma das defesas pedidas, pela ficha do personagem → { valor, fixa } (null enquanto a ficha não chegou)
+  function defesaDaFicha(id, chaves) {
+    const k = calculoDe(id);
+    if (!k) return null;
+    let soma = 0;
+    for (const c of chaves) soma += Number(k.R.valorDoAtributo(k.c, c, k.fonte)) || 0;
+    const valor = Math.max(0, Math.round(soma));
+    return { valor, fixa: Math.min(valor, k.pc.rol ? Math.max(0, Math.round(+k.pc.rol.fixa || 0)) : 0) };
+  }
+  function cartaoDoPedido(l) {
+    const d = l.dados, pd = d.pd, est = aoVivo.estadoDoPedido(l), resp = aoVivo.respostasDoPedido(l), a = mesas.atual, mestre = a.papel === 'mestre', eu = conta.usuario.id;
+    const nome = aoVivo.nomeDasDefesas(pd.defs), validas = pd.defs.filter(k => typeof k === 'string');
+    let P = null;
+    try { P = TC.dados.col('personagens'); } catch (e) { P = null; }
+    const ehMestre = uid => a.membros.some(m => m.usuario_id === uid && m.papel === 'mestre');
+    const linhas = pd.alvos.filter(x => x && typeof x.c === 'string').slice(0, 40).map(x => {
+      const r = resp[x.c], pc = P ? P.pegar(x.c) : null, meu = !mestre && !!pc && pc.dono_id === eu, quem = (pc && pc.nome) || String(x.n || '?');
+      if (r) return h('li', { class: 'ped-a ok' }, h('b', { text: quem }), h('span', { text: 'rolou ' + (r.dados && r.dados.total != null ? r.dados.total : '?') + (ehMestre(r.autor_id) && !(pc && pc.dono_id === r.autor_id) ? ' (pelo mestre)' : '') }));
+      if (est !== 'aberto') return h('li', { class: 'ped-a' }, h('b', { text: quem }), h('span', { text: 'não rolou' }));
+      if (!meu) return h('li', { class: 'ped-a' }, h('b', { text: quem }), h('span', { text: 'aguardando' }));
+      const df = defesaDaFicha(x.c, validas);
+      if (!df) return h('li', { class: 'ped-a meu' }, h('b', { text: quem }), h('span', { text: 'A ficha ainda está chegando…' }));
+      const chave = l.id + '|' + x.c, ocupado = pedOcupado.has(chave);
+      const lerFixa = () => { const t = fx.value.trim(), n = Math.round(Number(t.replace(',', '.'))); return t !== '' && isFinite(n) && n >= 0 ? Math.min(n, df.valor) : df.fixa; };
+      const como = () => { const f = lerFixa(); return df.valor < 1 ? 'defesa em 0: nada a rolar' : f >= df.valor ? 'fixa total: ' + df.valor : '1d' + (df.valor - f) + (f ? ' + ' + f : ''); };
+      const fx = h('input', { type: 'number', class: 'ped-fx', id: 'pedfx-' + chave, min: '0', max: String(df.valor), step: '1', value: pedFixa.has(chave) ? pedFixa.get(chave) : String(df.fixa), 'aria-label': 'Quanto fixar na defesa de ' + quem, title: 'Regra da fixa: rola um dado de (defesa − fixa) lados e soma a fixa', disabled: ocupado });
+      const b = h('button', { type: 'button', class: 'btn pri sm', id: 'pedb-' + chave, disabled: ocupado, text: ocupado ? 'Rolando…' : 'Rolar a defesa' });
+      b.title = 'Rola ' + como();
+      fx.addEventListener('input', () => { pedFixa.set(chave, fx.value); b.title = 'Rola ' + como(); });
+      fx.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); b.click(); } });
+      b.addEventListener('click', async () => {
+        if (pedOcupado.has(chave)) return;
+        const fixa = lerFixa();
+        pedOcupado.add(chave); repintarPedido(l.id);
+        try { await aoVivo.responderDefesa(l, x.c, df.valor, fixa); pedFixa.delete(chave); } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
+        pedOcupado.delete(chave); repintarPedido(l.id);
+      });
+      return h('li', { class: 'ped-a meu' }, h('div', { class: 'ped-q' }, h('b', { text: quem }), h('span', { text: 'defesa ' + df.valor + (nome ? ' (' + nome + ')' : '') })),
+        h('div', { class: 'ped-r' }, h('label', {}, h('span', { text: 'Fixando' }), fx), b));
+    });
+    const fim = est === 'aplicado' ? 'O mestre já aplicou o ataque.' : est === 'cancelado' ? 'O mestre cancelou este pedido.' : est === 'expirado' ? 'Este pedido expirou.' : mestre ? 'Você acompanha e aplica pela janela do ataque, nas Cenas.' : null;
+    return h('li', { class: 'it rol ped ' + est, 'data-id': l.id, 'data-ped': est, style: 'border-left-color:' + corDe(l.autor_id) },
+      h('div', { class: 'it-h' }, h('b', { text: l.autor_nome }), h('span', { class: 'or', text: 'Cenas' }), h('time', { text: hora(l.criado_em) })),
+      h('div', { class: 'tt', text: (pd.rot ? String(pd.rot).slice(0, 40) + ': ' : '') + 'rolem a defesa' }),
+      nome ? h('div', { class: 'ped-d', text: 'Defesa ' + nome }) : null,
+      h('ul', { class: 'ped-l' }, ...linhas),
+      fim ? h('div', { class: 'ped-f', text: fim }) : null);
+  }
+  // o cartão de um pedido é redesenhado quando chega uma resposta, quando o pedido muda e quando a ficha muda
+  function repintarPedido(id) {
+    const l = aoVivo.itens.find(x => x.id === id), velho = feed.querySelector('[data-id="' + CSS.escape(id) + '"]');
+    if (!l || !velho || !aoVivo.estadoDoPedido(l)) return;
+    const at = document.activeElement, fid = at && at.id && velho.contains(at) ? at.id : null;
+    velho.replaceWith(linha(l));
+    if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+  }
+  function repintarPedidosAbertos() { for (const el of [...feed.querySelectorAll('.ped[data-ped="aberto"]')]) repintarPedido(el.getAttribute('data-id')); }
+  setInterval(() => { if (mesas.atual && feed.querySelector('.ped[data-ped="aberto"]')) repintarPedidosAbertos(); }, 20000);    // (um pedido esquecido expira sozinho)
+  // este pedido é para um personagem de quem está olhando?
+  function pedidoParaMim(l) {
+    const a = mesas.atual;
+    if (!a || a.papel === 'mestre' || aoVivo.estadoDoPedido(l) !== 'aberto') return false;
+    try { const P = TC.dados.col('personagens'), eu = conta.usuario.id; return l.dados.pd.alvos.some(x => { const pc = x && P.pegar(x.c); return !!pc && pc.dono_id === eu; }); } catch (e) { return false; }
+  }
   function nota(conteudo, erro) {
     const x = h('button', { type: 'button', class: 'mini fechar', title: 'Fechar', 'aria-label': 'Fechar este aviso', onclick: () => n.remove() }); x.innerHTML = X_SVG;
     const n = h('li', { class: 'nota' + (erro ? ' erro' : '') }, x, conteudo);
@@ -858,9 +945,17 @@ dialog::backdrop { background: var(--scrim); }
         if (prefs.som) tocarDados();
       }
     }
+    // a defesa que alguém rolou a pedido aparece no cartão do pedido
+    const sis = l.dados && l.dados.sis;
+    if (sis && sis.t === 'rd' && typeof sis.p === 'string') repintarPedido(sis.p);
+    // um pedido de defesa para um personagem meu: se a mesa ao vivo está fechada, um aviso leva até ela
+    if (novo && !velho && aoVivo.idade(l) < 90000 && pedidoParaMim(l)) {
+      if (vivo.hidden) { pulsar(btnVivo); toast('O mestre pediu que você role a defesa.', 'Abrir a mesa ao vivo', () => mostrarVivo(true, true), 12000); }
+      else descer();
+    }
     recadoAosSistemas(l, novo);
   });
-  aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); saidas.add(l.id); if (saidas.size > 500) saidas.clear(); });
+  aoVivo.on('saiu', l => { const el = feed.querySelector('[data-id="' + CSS.escape(l.id) + '"]'); if (el) el.remove(); saidas.add(l.id); if (saidas.size > 500) saidas.clear(); repintarPedidosAbertos(); });
   aoVivo.on('reinicio', () => saidas.clear());
 
   /* Uma linha da mesa ao vivo pode levar um recado para os sistemas (dados.sis) — a iniciativa que alguém rolou pela
@@ -941,7 +1036,8 @@ dialog::backdrop { background: var(--scrim); }
     catch (e) { return { pc: '', fx: {}, aberta: null }; }
   }
   const guardarDadosMem = () => gravar(chaveDados(), JSON.stringify(dadosMem));
-  function contasDe(id) {
+  // as contas da ficha de um personagem da mesa, com as tabelas da mesa, a árvore, os bônus temporários e os ferimentos
+  function calculoDe(id) {
     const R = TC.rules, a = mesas.atual;
     if (!R || !a || !id) return null;
     let l, D;
@@ -952,10 +1048,17 @@ dialog::backdrop { background: var(--scrim); }
       const db = D.pegar(a.papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'), bib = db && db.dados && Array.isArray(db.dados.arvores) ? db.dados : null;
       const pc = Object.assign({}, l.ficha, { id: l.id, nome: l.nome });
       const extra = { arvore: R.bonusDaArvore(l.skills, bib), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer };
-      const c = R.calcular(pc, cfg, extra), fonte = (pc.rol && pc.rol.fonte) || 'total';
-      const rotulo = k => { const d = R.DEFESAS.find(x => x.k === k); return (d && d.rot) || k; };
+      return { R, l, pc, cfg, extra, c: R.calcular(pc, cfg, extra), fonte: (pc.rol && pc.rol.fonte) || 'total' };
+    } catch (e) { console.error(e); return null; }
+  }
+  function contasDe(id) {
+    const k = calculoDe(id);
+    if (!k) return null;
+    try {
+      const { R, l, pc, cfg, extra, c, fonte } = k;
+      const rotulo = x => { const d = R.DEFESAS.find(y => y.k === x); return (d && d.rot) || x; };
       return { nome: l.nome || 'Sem nome', fixa: pc.rol ? Math.max(0, Math.round(+pc.rol.fixa || 0)) : 0, ini: R.iniciativa(pc, cfg, extra).val || 0,
-        itens: ROLAVEIS.map(k => ({ k, rot: rotulo(k), nome: R.NOMES[k] || k, valor: Math.max(0, Math.round(R.valorDoAtributo(c, k, fonte) || 0)) })) };
+        itens: ROLAVEIS.map(x => ({ k: x, rot: rotulo(x), nome: R.NOMES[x] || x, valor: Math.max(0, Math.round(R.valorDoAtributo(c, x, fonte) || 0)) })) };
     } catch (e) { console.error(e); return null; }
   }
   // quanto fixar agora: o que está no campo; com o campo vazio, a fixa da ficha
@@ -967,7 +1070,7 @@ dialog::backdrop { background: var(--scrim); }
     if (!a || !TC.rules) return;
     let P, D;
     try { P = TC.dados.col('personagens'); D = TC.dados.col('documentos'); } catch (e) { return; }
-    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; pintarDados(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
+    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
   }
   function pintarDados() {
     const a = mesas.atual;
@@ -1031,7 +1134,7 @@ dialog::backdrop { background: var(--scrim); }
   });
   dadosFixa.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); dadosFixa.blur(); } });
   // a ficha, as tabelas da mesa ou a árvore mudaram: os números da telinha acompanham
-  TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(pintarDados, 200); } });
+  TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
   let comoAntes = '';

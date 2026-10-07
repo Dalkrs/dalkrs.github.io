@@ -627,8 +627,9 @@ const UI = (() => {
     const rows = [
       ['V', 'Selecionar'], ['H ou espaço + arrastar', 'Mover a câmera'], ['Roda do mouse', 'Aproximar e afastar'], ['0', 'Enquadrar a cena'],
       ['T', 'Novo token'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
-      ['I', 'Luz'], ['N', 'Névoa manual'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
+      ['I', 'Luz'], ['N', 'Névoa manual'], ['Q', 'Terreno'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
+      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -706,6 +707,7 @@ const UI = (() => {
     if (t === 'token') {
       kids.push(oGroup('Dono', inSelect('o-owner', o.tokOwner, [['', 'Mestre (NPC)'], ['*', 'Todos os jogadores']].concat(Store.S.players.map(p => [p.id, p.name])), v => optSet('tokOwner', v))));
       kids.push(oGroup('Tamanho', seg('o-size', o.tokSize, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => optSet('tokSize', v, true))));
+      if (Fichas.on()) kids.push(btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', kind: 'small', id: 'o-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }));
     } else if (['free', 'line', 'rect', 'ell', 'poly', 'text'].includes(t)) {
       kids.push(oGroup(t === 'text' ? 'Cor' : 'Traço', oColor('o-stroke', 'stroke', 'Cor do traço')));
       if (t === 'rect' || t === 'ell' || t === 'poly') kids.push(oGroup(null, oCheck('o-fillon', 'fillOn', 'Preencher', true), o.fillOn ? oColor('o-fill', 'fill', 'Cor do preenchimento') : null));
@@ -733,6 +735,17 @@ const UI = (() => {
         if (o.fogShape === 'brush') kids.push(oRange('o-fsize', 'fogSize', 0.5, 8, 0.5, 'Pincel', v => fmt(v) + ' q'));
         kids.push(btn('Revelar tudo', () => fogAll('r'), { kind: 'small' }), btn('Esconder tudo', () => fogAll('h'), { kind: 'small' }));
       }
+    } else if (t === 'terrain') {
+      const u = String(sc.grid.unitName || '').trim(), passo = sc.grid.unit || 1, def = TERRENO_POR_ID[o.terType] || TERRENOS[0];
+      kids.push(seg('o-tm', o.terMode, [['paint', 'Pintar', null, 'Criar áreas de terreno'], ['edit', 'Ajustar', null, 'Selecionar uma área para mover, esticar, trocar ou apagar']], v => { Tools.cancel(); optSet('terMode', v, true); }));
+      if (o.terMode !== 'edit') {
+        kids.push(seg('o-ts', o.terShape, [['brush', 'Pincel'], ['rect', 'Retângulo'], ['ell', 'Elipse'], ['poly', 'Polígono']], v => { Tools.cancel(); optSet('terShape', v, true); }));
+        kids.push(oGroup('Tipo', inSelect('o-tt', o.terType, TERRENOS.map(x => [x.id, x.n]), v => { o.terH = null; optSet('terType', v, true); })));
+        const alt = o.terH == null || !isFinite(o.terH) ? Math.round(def.hq * passo * 100) / 100 : o.terH;
+        kids.push(oGroup('Altura', h('input', { id: 'o-th', type: 'number', class: 'in num', step: passo, min: -9999, max: 9999, value: alt, 'aria-label': 'Altura da área' + (u ? ', em ' + u : ''), title: 'Altura da área, na unidade da cena. Negativa é um buraco (fosso). Zero não mostra altura.',
+          onchange: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); optSet('terH', isFinite(v) ? clamp(Math.round(v * 100) / 100, -9999, 9999) : null, true); } }), u ? h('span', { class: 'o-u', text: u }) : null));
+        if (o.terShape === 'brush') kids.push(oRange('o-tz', 'terSize', 0.5, 6, 0.5, 'Pincel', v => fmt(v) + ' q'));
+      } else kids.push(h('span', { class: 'o-l', text: selOf('shapes').some(isTer) ? 'Os dados da área estão no painel ao lado.' : 'Clique numa área do mapa.' }));
     } else if (t === 'fx') {
       kids.push(oGroup('Efeito', inSelect('o-fx', o.fx, FX.ORDER.map(id => [id, FX.P[id].n]), v => optSet('fx', v, true))));
       kids.push(seg('o-fxk', o.fxShape, FX_SHAPES, v => optSet('fxShape', v, true)));
@@ -816,7 +829,8 @@ const UI = (() => {
         h('strong', { text: 'As suas cenas de antes continuam guardadas neste navegador.' }),
         h('span', { text: ' Esta mesa ainda não tem nenhuma. Você escolhe quais trazer; as do navegador não mudam.' }),
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
-      gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' })) : null,
+      gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
+        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null) : null,
     ];
   }
   function ownerLabel(t) {
@@ -1053,6 +1067,7 @@ const UI = (() => {
       title, wide: true,
       body: h('div', { class: 'area' },
         names.length ? h('div', { class: 'area-top' }, field('Barra', selBar, 'stack'), field('Quanto', amt, 'stack')) : note('Nenhum destes tokens tem barra ligada; dá para aplicar só a condição.'),
+        names.length && Luta.podeAtaque() ? h('div', { class: 'row' }, btn('Descontar a defesa de cada um…', () => Luta.ataque(toks, { titulo: title, dano: amt.value, barra: selBar.value, fora: rows.filter(r => !r.on).map(r => r.t.id) }), { icon: 'shield', kind: 'small', id: 'ar-defesa', title: 'Abre o ataque com defesa para estes mesmos tokens: cada um desconta a defesa que você escolher' })) : null,
         names.length ? note('Sem sinal, o número é tirado (dano). Com +, é devolvido (cura). O botão ½ aplica a metade, para quem resistiu.') : null,
         h('div', { class: 'area-bar' }, count, h('span', { class: 'spacer' }), btn('Todos', () => all(true), { kind: 'small' }), btn('Nenhum', () => all(false), { kind: 'small' })),
         list,
@@ -1121,8 +1136,7 @@ const UI = (() => {
     if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
-    const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
-    App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    const fixa0 = Luta.fixaAtual(t), doTurno = Combate.fixaDoTurno(t);
     // um token ligado antes (ou que ganhou uma barra à mão) pode ter barras que não são da ficha: um clique acerta
     if (Fichas.foraDaFicha(t)) out.push(
       note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
@@ -1130,9 +1144,10 @@ const UI = (() => {
     out.push(
       note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha. Dois cliques no token abrem a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
-      field('Fixando', inNum('tk-fixa', fixa0, v => { App.opt.fichaFixa = Math.max(0, Math.round(v) || 0); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      field('Fixando', inNum('tk-fixa', fixa0, v => { Luta.guardarFixa(t, v); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      doTurno ? note(`É o ${doTurno.k}º turno dele nesta rodada: a fixa anotada para esse turno é ${doTurno.v}.`) : null,
       h('div', { class: 'row' }, btn('Rolar', () => {
-        const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
+        const r = Fichas.rolar(t, App.opt.fichaAtr, Luta.fixaAtual(t));
         toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
       }, { icon: 'die', id: 'tk-rolar' })));
     out.push(...bagResumo(t));
@@ -1232,12 +1247,14 @@ const UI = (() => {
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
-        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' })),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
+        Luta.fixasBox(t),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
       Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
@@ -1301,7 +1318,8 @@ const UI = (() => {
         note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
         gm ? h('div', { class: 'row' },
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
-          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' })) : null) : null,
+          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -1439,7 +1457,7 @@ const UI = (() => {
     const total = toks.length + shapes.length + fxs.length + lights.length + walls.length;
     if (!total) return emptySel();
     if (toks.length === total) return toks.length === 1 ? tokenPanel(toks[0]) : multiTokenPanel(toks);
-    if (shapes.length === total) return shapePanel(shapes);
+    if (shapes.length === total) return shapes.every(isTer) ? Luta.terrainPanel(shapes) : shapePanel(shapes);
     if (fxs.length === 1 && total === 1) return fxPanel(fxs[0]);
     if (lights.length === 1 && total === 1) return lightPanel(lights[0]);
     if (walls.length === total) return wallPanel(walls);
@@ -1777,7 +1795,10 @@ const UI = (() => {
       if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
+      if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
+      if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
+      if (gm && Luta.podeAtaque()) items.push({ label: 'Ataque com defesa…', icon: 'shield', run: () => Luta.ataque(toks) });
       if (gm) {
         const allHidden = toks.every(t => t.hidden), allLocked = toks.every(t => t.locked);
         items.push({ label: 'Adicionar aos turnos', icon: 'turns', run: () => { Act.turnAdd(toks); openTab('turn'); } });
@@ -1808,6 +1829,12 @@ const UI = (() => {
       const l = Store.get('lights', hit.id);
       items.push({ head: l.name || 'Luz' }, { label: l.on ? 'Apagar a luz' : 'Acender a luz', icon: 'light', run: () => Store.tx(l.on ? 'Apagar luz' : 'Acender luz', () => Store.upd('lights', l.id, { on: !l.on })) },
         { label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') }, '-', { label: 'Remover', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
+    } else if (gm && App.tool === 'terrain' && Tools.hitTerrain(p)) {
+      const th = Tools.hitTerrain(p), s = Store.get('shapes', th.id);
+      if (!selHas(th.c, th.id)) setSel([th]);
+      items.push({ head: Combate.terText(s, sc) }, { label: 'Ver no painel', icon: 'sliders', run: () => { if (App.opt.terMode !== 'edit') { App.opt.terMode = 'edit'; Tools.cancel(); } openTab('sel'); refresh(); } },
+        { label: 'Trazer para frente', icon: 'front', run: () => Act.toFront('shapes', [s.id], true) }, { label: 'Enviar para trás', icon: 'back', run: () => Act.toFront('shapes', [s.id], false) },
+        '-', { label: 'Apagar a área', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
     } else {
       items.push({ head: 'Mapa' });
       if (gm) items.push({ label: 'Novo token aqui', icon: 'token', run: () => {
@@ -1816,6 +1843,7 @@ const UI = (() => {
         Store.tx('Criar token', () => Store.add('tokens', t));
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
+      if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
       if (can('ping')) items.push({ label: 'Ping aqui', icon: 'ping', key: 'G', run: () => Act.ping(p.x, p.y) });
       items.push({ label: 'Enquadrar a cena', icon: 'fit', key: '0', run: () => { Render.fit(); status(); } });
@@ -1872,6 +1900,7 @@ const UI = (() => {
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
     if (canCond) kids.push(iconBtn('shield', 'Condições', () => condPicker([t]), { size: 16, cls: 'hud-i', id: 'hud-cond' }));
     if (Fichas.podeBolsa(t) && (Fichas.bolsa(t) || []).some(x => x.qtd > 0)) kids.push(iconBtn('bag', 'Bolsa: poções e itens do personagem', () => bagBox(t), { size: 16, cls: 'hud-i', id: 'hud-bolsa' }));
+    if (Luta.podeAtributos(t)) kids.push(iconBtn('die', 'Rolar atributo (F)', () => Luta.alternar(t), { size: 16, cls: 'hud-i', id: 'hud-rolar' }));
     if (can('target')) { const on = isTargeted([t]); kids.push(iconBtn('center', on ? 'Tirar a mira (A)' : 'Mirar: marca este token como alvo (A)', () => Act.targetToggle([t]), { size: 16, cls: 'hud-i', on, id: 'hud-mira' })); }
     if (gm) kids.push(iconBtn(t.hidden ? 'eyeOff' : 'eye', t.hidden ? 'Oculto dos jogadores (clique para mostrar)' : 'Visível aos jogadores (clique para ocultar)', () => Store.tx(t.hidden ? 'Mostrar token' : 'Ocultar token', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { size: 16, cls: 'hud-i', on: t.hidden, id: 'hud-hide' }));
     if (!kids.length) { hide(); return; }
@@ -1940,6 +1969,11 @@ const UI = (() => {
     const m = App.mouse;
     let txt = '';
     if (m.inside && m.x >= 0 && m.y >= 0 && m.x < sceneW(sc) && m.y < sceneH(sc)) txt = `Coluna ${Math.floor(m.x / sc.cell) + 1} · Linha ${Math.floor(m.y / sc.cell) + 1}`;
+    // Terreno sob o cursor: o rodapé diz o que é, e o mapa também (a dica que aparece ao parar o mouse)
+    let chao = '';
+    if (txt && sc.shapes.length) { const ter = Combate.terrainAt(sc, m.x, m.y); if (ter && !Vision.covered(m.x, m.y)) chao = Combate.terText(ter, sc); }
+    if (chao) txt += '  ·  ' + chao;
+    if (Render.cv.title !== chao) Render.cv.title = chao;
     const sv = Nuvem.jogador() ? (saveState === 'saving' ? 'Enviando…' : saveState === 'espera' ? 'Esperando o mestre: o que você fez entra quando ele estiver na mesa' : 'Ao vivo com a mesa')
       : saveState === 'mem' ? 'Sem salvamento neste navegador' : saveState === 'erro' ? 'Não foi possível salvar' : saveState === 'saving' ? 'Salvando…' : Nuvem.mestre() ? 'Salvo na mesa' : 'Salvo neste navegador';
     const full = (txt ? txt + '  ·  ' : '') + sv;
@@ -1956,6 +1990,7 @@ const UI = (() => {
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
     if (modalEl && modalLive) modalLive();
+    Luta.refresh();
     document.title = 'Cenas · Tiny Cats';
   }
   function refresh() {
@@ -1975,5 +2010,7 @@ const UI = (() => {
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
+    // as peças de formulário e as janelas, para as telas de combate (10c-combate.js)
+    kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
   };
 })();

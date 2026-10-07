@@ -349,6 +349,22 @@ const Vision = (() => {
     return cSample.g.getImageData(px, py, 1, 1).data[3] > 60;
   }
 
+  // Para o jogador: este ponto do mapa está coberto pela névoa (nunca visto, ou escondido pelo mestre)? O que
+  // ele já explorou e não vê agora aparece esmaecido: não conta como coberto.
+  // (o ponto da névoa é copiado para uma folha de um pixel, feita para leitura: ler direto da névoa inteira é lento)
+  let cPonto = null;
+  function covered(x, y) {
+    if (isGM() || !out.fog) return false;
+    const px = Math.floor(x * M), py = Math.floor(y * M);
+    if (px < 0 || py < 0 || px >= mw || py >= mh) return true;
+    try {
+      if (!cPonto) cPonto = mk(1, 1, { willReadFrequently: true });
+      cPonto.g.clearRect(0, 0, 1, 1);
+      cPonto.g.drawImage(out.fog, px, py, 1, 1, 0, 0, 1, 1);
+      return cPonto.g.getImageData(0, 0, 1, 1).data[3] > 200;
+    } catch (e) { return false; }
+  }
+
   function resetExplored(sc) {
     for (const c of expl.values()) clear(c);
     expl.clear();
@@ -375,7 +391,7 @@ const Vision = (() => {
   }
 
   return {
-    update, canSee, onOp, out, stats, resetExplored, flushExplored,
+    update, canSee, covered, onOp, out, stats, resetExplored, flushExplored,
     isDirty: () => dirty,
     invalidate() { dirty = true; },
     // A seleção mudou: o véu do mestre pode passar a valer para outro token (ou voltar ao grupo). Só então refaz.

@@ -229,10 +229,12 @@ async function start(snap) {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
     // char: a ficha ligada ao token (a mesa ao vivo mostra a imagem do personagem ao lado de quem rolou)
-    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
+    // (numa disputa, basta um dos dois lados estar oculto — quem publica já marca: r.oculto)
+    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!r.oculto || !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
   };
   // A iniciativa que alguém rolou pela telinha de dados da mesa ao vivo: o mestre pode anotá-la na ordem de turnos.
-  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } });
+  // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
+  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(() => { if (!UI.modalOpen() && !Tour.seen()) Tour.start(); }, 700));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
@@ -248,7 +250,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanFixas, cleanTer, isTer, TERRENOS, selOf };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

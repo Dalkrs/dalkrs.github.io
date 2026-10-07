@@ -12,6 +12,7 @@
      7. Render ...... desenho no canvas
      8. Tools ....... ferramentas e gestos de mouse e teclado
      9. UI .......... painéis, menus e janelas
+        Luta ........ as telas de combate (atributos do token, disputa, grupo, ataque, terreno)
     10. Tour ........ tutorial de primeiro uso
     11. Boot ........ cena de exemplo e inicialização
 
@@ -29,7 +30,10 @@
                     'bar' ou 'pts', regra de quem vê; x = sobrevida, que absorve
                     o dano antes da barra), conds + cinfo
                     (contador e duração de cada condição), auras, visão, luz,
-                    ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4)
+                    ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4),
+                    fixas (a fixa de cada turno, para quem tem mais de um)
+     - desenho .... k: free | line | rect | ell | poly | text; com ter = { t, h } é uma
+                    área de terreno (tipo e altura), pintada à parte e fora do clique comum
      - parede ..... k: wall | door | window | veil; porta secreta = door + secret
      - efeito ..... k: circ | quad | rect | cone | line; r, ang, w conforme a forma;
                     rw/rh (largura e altura do retângulo); dir; dur/dur0 (rodadas) e
@@ -237,6 +241,7 @@ const ICONS = {
   die: 'M12 2.800l8 4.600v9.200l-8 4.600-8-4.600V7.400zM12 8l4.600 7.600H7.400zM12 2.800V8M7.400 15.600L4 16.600M16.600 15.600l3.400 1',
   veil: 'M4 4h16M6 4c0 6-1.500 10-1.500 16M10 4c0 6 .5 10 .5 16M14 4c0 6-.5 10-.5 16M18 4c0 6 1.500 10 1.500 16',
   veilOpen: 'M4 4h16M5.500 4c0 7-.4 11-1.500 16M8.500 4c-.2 6-1.300 9.500-4.300 11.500M18.500 4c0 7 .4 11 1.500 16M15.500 4c.2 6 1.300 9.500 4.300 11.500',
+  terrain: 'M2.500 19.500L9 8l4 6.600 2.400-3.300 6.100 8.200zM7.400 10.900l1.600 1.400 1.400-1.100',
   // Condições (as marcadas com fill são preenchidas)
   c_veneno: { d: 'M8 4c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0C4.8 8.4 6 6.6 8 4zM16 10c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-1.8 1.2-3.6 3.2-6.2z', fill: true },
   c_sangue: { d: 'M12 3.5c3.2 4.2 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.3-5.800 5.5-10z', fill: true },
@@ -345,6 +350,28 @@ function barDefaults() {
 const MAX_TURNS = 4;
 const clampTurns = v => clamp(Math.round(Number(v)) || 1, 1, MAX_TURNS);
 const clampIni = v => clamp(Math.round(Number(v)) || 0, -99, 99);
+
+// Fixa de cada turno de um token com mais de um turno por rodada (um chefe: 8 no primeiro, 6 no segundo…).
+// Uma posição vazia (null) quer dizer "a fixa de sempre" — a da ficha, ou a que for digitada na hora.
+const cleanFixas = v => (Array.isArray(v) ? v.slice(0, MAX_TURNS).map(x => (x == null || x === '' || !isFinite(Number(x)) ? null : clamp(Math.round(Number(x)), 0, 9999))) : []);
+
+/* Terreno: uma área do mapa com tipo e altura. É um desenho (coleção shapes) com o campo ter = { t: tipo, h: altura
+   na unidade da cena } — negativa num fosso. É só visual: o token que está em cima mostra a altura, e passar o
+   mouse diz o que é. hq: a altura de fábrica de cada tipo, em quadrados. */
+const TERRENOS = [
+  { id: 'morro', n: 'Morro', c: '#9a8552', hq: 2 },
+  { id: 'montanha', n: 'Montanha', c: '#8b8f99', hq: 6 },
+  { id: 'plataforma', n: 'Plataforma', c: '#b08d5c', hq: 1 },
+  { id: 'fosso', n: 'Fosso', c: '#3a3344', hq: -2 },
+  { id: 'agua', n: 'Água', c: '#3f86c2', hq: 0 },
+  { id: 'mata', n: 'Mata', c: '#4c8c4f', hq: 0 },
+];
+const TERRENO_POR_ID = Object.fromEntries(TERRENOS.map(t => [t.id, t]));
+function cleanTer(o) {
+  if (!o || typeof o !== 'object' || typeof o.t !== 'string' || !Object.prototype.hasOwnProperty.call(TERRENO_POR_ID, o.t)) return null;
+  return { t: o.t, h: clamp(Math.round((Number(o.h) || 0) * 100) / 100, -9999, 9999) };
+}
+const isTer = s => !!(s && s.ter && Object.prototype.hasOwnProperty.call(TERRENO_POR_ID, s.ter.t));
 
 const PLAYER_COLORS = ['#4fb8e0', '#ee8a4a', '#8fd05a', '#c084fc', '#ff7396', '#ffd25e'];
 const TOKEN_COLORS = ['#7c8fb8', '#b87c7c', '#7cb88c', '#b8a77c', '#9b7cb8', '#7cb4b8', '#b88d7c', '#8a98a8'];
@@ -485,6 +512,7 @@ function newToken(scene, x, y, extra) {
     vis: { on: true, range: 0, dark: 0 },
     light: { on: false, bright: 4, dim: 8, c: '#ffc477' },
     ini: 0, turns: 1,                     // bônus de iniciativa; turnos por rodada
+    fixas: [],                            // fixa de cada turno (quem tem mais de um por rodada); vazio = a de sempre
     notes: '',
   }, extra || {});
 }
@@ -519,6 +547,8 @@ function normalizeScene(sc) {
     if (!(e.rh > 0)) e.rh = side;
     e.apply = cleanApply(e.apply);
   }
+  // terreno: o tipo tem de ser um dos que existem; senão, o desenho fica sendo um desenho comum
+  for (const s of sc.shapes) if (s && s.ter !== undefined) { const c = cleanTer(s.ter); if (c) s.ter = c; else delete s.ter; }
   for (const t of sc.tokens) {
     const d = newToken({ tokens: [] }, t.x || 0, t.y || 0, { name: t.name });
     for (const k in d) if (t[k] === undefined) t[k] = d[k];
@@ -527,6 +557,7 @@ function normalizeScene(sc) {
     t.bars = (Array.isArray(t.bars) ? t.bars : barDefaults()).slice(0, MAX_BARS).map(cleanBar);
     if (!t.cinfo || typeof t.cinfo !== 'object') t.cinfo = {};
     t.ini = clampIni(t.ini); t.turns = clampTurns(t.turns);
+    t.fixas = cleanFixas(t.fixas);
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
   }
   return sc;

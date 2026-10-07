@@ -108,7 +108,7 @@ const Proj = (() => {
       if (t.showName === false) o.name = '???';
       o.bars = t.bars.map(b => barraPublica(b, b.vis || t.barVis));
       o.auras = (t.auras || []).filter(a => a.pub).map(a => clone(a));
-      o.char = null; o.ini = 0;
+      o.char = null; o.ini = 0; o.fixas = [];                         // (nem a fixa de cada turno de um chefe)
       o.vis = { on: false, range: 0, dark: 0 };                       // o que o token do mestre enxerga não é da conta dos jogadores
     }
     return o;

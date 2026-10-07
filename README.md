@@ -4,7 +4,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 | Aba | O que é |
 |---|---|
-| **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, e a bolsa do personagem usada pelo token. |
+| **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, terreno com altura, a bolsa do personagem usada pelo token — e o combate: rolar atributo pelo token (F), disputa (C), puxar um grupo das Fichas e o ataque com defesa. |
 | **Mapa-múndi** | O mapa do mundo da campanha: marcadores, grupos viajando, regiões e facções, calendário, névoa e rumores. |
 | **Acampamento** | A cena da fogueira: quem está no acampamento, provisões, melhorias, equipamentos, descansos e momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
@@ -23,7 +23,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - **Mesa ao vivo**: o painel da direita mostra as rolagens e a conversa de todos, na hora. Nele fica também a
   **telinha de dados** (rolar um atributo com fixa, ou a iniciativa, pela ficha, sem digitar comando — o jogador
   pelos personagens dele, o mestre por qualquer um) e as duas chaves de **som** e **efeito** das rolagens, que cada
-  pessoa liga ou desliga no próprio aparelho.
+  pessoa liga ou desliga no próprio aparelho. Quando o mestre pede (num ataque com defesa), é ali que o jogador rola
+  a defesa do personagem dele.
 
 ## Como está organizado
 
@@ -116,6 +117,51 @@ Uma linha do registro pode levar um **recado para os sistemas** (`dados.sis`), q
 oferecem ao lado do token na ordem de turnos — nada é anotado sozinho, e só vale se quem rolou é o dono da ficha
 (ou o próprio mestre).
 
+### O combate nas Cenas
+
+As contas ficam em `src/cenas/src/js/07e-combate.js` e as telas em `10c-combate.js`. Nada age sozinho: toda mudança
+na cena passa por um botão e vira um passo de desfazer.
+
+- **F — rolar atributo pelo token.** Uma janelinha ao lado do token (o que está sob o cursor; senão, o selecionado),
+  com um botão por atributo da ficha e o campo "Fixando". Fica aberta até fechar (Esc, F, o × ou um clique fora) e
+  não muda a seleção. O mestre usa em qualquer token ligado a uma ficha; o jogador, no token do personagem dele.
+  Token sem ficha: um valor digitado, com a mesma regra da fixa.
+- **A fixa de cada turno.** Quem joga mais de uma vez por rodada (um chefe) pode ter uma fixa para cada turno
+  (`token.fixas`, no painel do token, em Turnos). Na vez dele, o "Fixando" da janelinha e do painel já vem com a
+  fixa daquele turno. A fixa que o mestre digita fica lembrada por token enquanto a página está aberta; não muda a
+  ficha. Para os jogadores, o token de um NPC vai sem as fixas.
+- **C — disputa** (só o mestre): dois lados, cada um com um token da cena ou um valor avulso; lado com ficha escolhe
+  o atributo. Vai para a mesa ao vivo com o que cada lado rolou — em segredo, se um dos tokens está oculto ou com o
+  nome escondido. O veredito sai em verde ou vermelho só quando um dos lados (e só um) é de jogador.
+- **Puxar o grupo**: cria de uma vez os tokens de um grupo das Fichas (ou dos personagens dos jogadores), já ligados
+  às fichas — nome, barras, iniciativa, imagem e dono —, em quadrados livres a partir do meio da tela. Quem já tem
+  token na cena fica de fora; um Desfazer tira todos.
+- **Ataque com defesa.** O mestre diz o dano, a barra e quais defesas descontam (as duas gerais e as 13 específicas;
+  as marcadas se somam; nenhuma = o dano entra inteiro), o mínimo e o máximo (que valem depois do desconto), e a
+  janela mostra, alvo por alvo, o que vai sobrar. Token sem ficha: o mestre digita quanto ele tomou. Nada muda antes
+  de "Aplicar". O aviso do resultado para a mesa lista só quem os jogadores podem ver com números (token de
+  jogador, ou barra com "Números" para quem não é dono) e nunca um token oculto.
+  - **Quem defende pode rolar.** Com "Rola a defesa", cada alvo com ficha precisa de uma rolagem da soma das
+    defesas, com a regra da fixa; desconta o que sair. O mestre rola pelos NPCs ali mesmo; para os personagens de
+    jogador, manda um **pedido**, e pode rolar por quem demorar ou valer a defesa inteira.
+  - **O pedido** é uma linha da mesa ao vivo (`dados.k = 'pedido'`, `dados.pd = { rot, defs, alvos: [{ c, n }], fim? }`),
+    sem o dano e sem o valor da defesa de ninguém: a casca de cada jogador soma as defesas da própria ficha, rola e
+    escreve uma rolagem comum com o recado `sis = { t: 'rd', p: id do pedido, c, v, a, f, d }`. A linha da resposta
+    tem um id que depende do pedido, do personagem e de quem rolou: a mesma pessoa não rola duas vezes. A janela do
+    mestre só aceita a resposta de quem é o dono da ficha (ou do próprio mestre) e que caiba na defesa de agora; a
+    primeira vale. Ao aplicar ou fechar a janela, o pedido ganha `pd.fim` (`aplicado` ou `cancelado`); esquecido,
+    expira sozinho em 10 minutos. (`TC.ponte.registro.pedir / encerrar`, `TC.aoVivo.pedirDefesa /
+    responderDefesa / encerrarPedido`.)
+- **Terreno** (ferramenta Q, só o mestre): áreas com tipo (morro, montanha, plataforma, fosso, água, mata) e altura
+  na unidade da cena, pintadas com pincel, retângulo, elipse ou polígono. É um desenho da cena com o campo
+  `ter = { t, h }`, pintado logo acima do fundo, e é só visual: o token que está em cima mostra a altura junto do
+  nome (▲3 m; ▼ num fosso), e o rodapé e a dica do mapa dizem o que há sob o mouse — para o jogador, só onde a névoa
+  não cobre. Fora da ferramenta Terreno, a área não se deixa selecionar (é parte do mapa). Um desenho de jogador
+  nunca vira terreno (`Proj.formaLimpa` não deixa passar o campo).
+
+A casca avisa os sistemas da versão da conversa com ela (`TC.ponte.estado.v`): uma aba das Cenas aberta numa casca
+que ainda não foi recarregada depois desta atualização avisa que a disputa não chegou à mesa, em vez de calar.
+
 ### O programa das Cenas do mestre
 
 Quem aplica na cena o que os jogadores fazem (os "pedidos"), escreve o que eles veem (a projeção) e acerta as barras
@@ -201,6 +247,12 @@ faltava subir.
   muda a ficha.
 - **O auditor** confere o que foi rolado pelo site; de um dado rolado fora dele, não tem como saber. Dos duelos
   antigos do Rolador só ficaram os totais, e eles não entram nas contas.
+- **O ataque com defesa** só existe dentro do site, com uma mesa aberta (ele usa as defesas das fichas). A fixa com
+  que o mestre rola a defesa de alguém é a do token (a do turno, a que ele digitou, ou a da ficha). Quem confere a
+  resposta de um jogador é a janela do mestre: com a janela fechada (ou a página recarregada), o pedido fica sem
+  efeito e expira. O banco não impede um jogador de escrever uma rolagem com o recado de outro pedido; a janela é
+  que não a aceita.
+- **O terreno é só visual**: não pesa na régua nem muda a visão. A altura do token é a da área sob o centro dele.
 - **O sinal de ferido no token** aparece para o mestre em qualquer token ligado a uma ficha; para os jogadores, só nos
   tokens de jogador cuja ficha eles podem ver. Um token do mestre não diz aos jogadores a que ficha está ligado (isso
   entregaria um disfarce), então os ferimentos de um NPC não aparecem para eles na cena.
@@ -214,14 +266,16 @@ faltava subir.
 ## Testes
 
 ```
-cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa; do node $f.js; done
+cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
 cd src/tests && for f in dice rules auditoria mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
 fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-ficha`, `arvore-mesa`, `mundo-mesa`,
 `acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `dados.rede` (a telinha de dados, o som e o efeito, a
-iniciativa oferecida ao mestre, os dados guardados por todo caminho de rolagem e o auditor), `estado.rede` (duas
+iniciativa oferecida ao mestre, os dados guardados por todo caminho de rolagem e o auditor), `combate.rede` (puxar o
+grupo, terreno, F e C, a fixa de cada turno e o ataque com defesa, com o pedido de defesa entre o mestre e um
+jogador), `estado.rede` (duas
 pessoas na mesma ficha, o mestre em dois aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
 esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores). `vivo.js` confere o site publicado.
 
@@ -230,3 +284,5 @@ o clique que vem depois de um campo, o Tab, o Enter e a lista aberta. `fundo.red
 mestre em segundo plano (a poção e o token, o pedido do jogador com o mestre em outra aba, dois aparelhos do mestre),
 e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira. `auditoria` confere as contas do
 auditor (inclusive que ele não acusa dados honestos mais vezes do que o combinado) e `auditor`, a janela dele.
+`src/cenas/test/combate.js` confere, sem o site, as contas do combate, a ferramenta Terreno, a janelinha de atributos
+num token sem ficha e a disputa.

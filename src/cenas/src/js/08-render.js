@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
-   Ordem das camadas: fundo, grade, desenhos de baixo, efeitos sem brilho,
-   luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
+   Ordem das camadas: fundo, terreno, grade, desenhos de baixo, efeitos sem
+   brilho, luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
    névoa, véu do mestre e, por fim, o que é só da interface (paredes do
    mestre, portas, seleção, régua, pings).
    --------------------------------------------------------------- */
@@ -124,6 +124,117 @@ const Render = (() => {
     ctx.strokeStyle = hexA(g.color, g.alpha);
     ctx.lineWidth = Math.max(1, px);
     ctx.stroke();
+  }
+
+  /* ---- Terreno ----
+     As áreas de terreno (desenhos com `ter`) são pintadas logo acima do fundo e abaixo da grade. Cada tipo tem a
+     cor e uma textura própria; o que é alto ganha uma sombra para baixo e para a direita, e o fosso, uma sombra
+     por dentro. Tudo é desenhado opaco numa folha à parte, e a folha entra translúcida no mapa: assim, onde duas
+     áreas se cruzam, a de cima cobre a de baixo (é ela que vale), e o fundo continua aparecendo por baixo. */
+  const TER_ALPHA = 0.62;
+  const tone = (hex, k) => {
+    const n = parseInt(String(hex).slice(1), 16) || 0, f = v => clamp(Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k), 0, 255);
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  };
+  const terPats = {};
+  function terPattern(c, d) {
+    if (terPats[d.id] !== undefined) return terPats[d.id];
+    let pat = null;
+    try {
+      const S = 64, cv2 = document.createElement('canvas'), g = cv2.getContext('2d');
+      cv2.width = cv2.height = S;
+      const claro = tone(d.c, 0.38), escuro = tone(d.c, -0.42);
+      g.lineCap = g.lineJoin = 'round'; g.lineWidth = 3;
+      const linha = (cor, pts) => { g.strokeStyle = cor; g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.stroke(); };
+      if (d.id === 'morro') {                               // curvas de nível
+        g.strokeStyle = claro;
+        g.beginPath(); g.arc(18, 44, 13, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+        g.beginPath(); g.arc(50, 20, 11, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+      } else if (d.id === 'montanha') {                     // picos
+        linha(claro, [8, 26, 18, 10, 28, 26]); linha(claro, [36, 58, 46, 42, 56, 58]);
+        linha(escuro, [18, 10, 22, 22]); linha(escuro, [46, 42, 50, 54]);
+      } else if (d.id === 'plataforma') {                   // tábuas
+        linha(escuro, [0, 16, 64, 16]); linha(escuro, [0, 48, 64, 48]); linha(escuro, [22, 16, 22, 48]); linha(escuro, [50, 48, 50, 64]); linha(escuro, [50, 0, 50, 16]);
+      } else if (d.id === 'fosso') {                        // hachura fechada
+        g.lineWidth = 4;
+        for (let k = -64; k < 64; k += 16) linha('rgba(0,0,0,0.55)', [k, 64, k + 64, 0]);
+      } else if (d.id === 'agua') {                         // ondas
+        g.strokeStyle = claro;
+        for (const y of [16, 48]) { const x0 = y === 16 ? 0 : -16; g.beginPath(); g.moveTo(x0, y); for (let x = x0; x < 80; x += 32) g.bezierCurveTo(x + 8, y - 7, x + 24, y + 7, x + 32, y); g.stroke(); }
+      } else {                                              // mata: copas
+        g.fillStyle = escuro;
+        for (const [x, y, r] of [[14, 14, 7], [44, 22, 9], [22, 46, 9], [54, 52, 6]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+        g.fillStyle = claro;
+        for (const [x, y, r] of [[12, 12, 3], [41, 19, 4], [19, 43, 4], [53, 50, 2.500]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+      }
+      pat = c.createPattern(cv2, 'repeat');
+      if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().scale(0.5));     // 32 unidades do mapa por ladrilho
+    } catch (e) { pat = null; }
+    terPats[d.id] = pat;
+    return pat;
+  }
+  // O contorno da área (para preencher ou traçar). No pincel, é o caminho pintado (a largura vem do traço).
+  function terPath(c, s) {
+    c.beginPath();
+    if (s.k === 'rect') c.rect(s.x, s.y, s.w, s.h);
+    else if (s.k === 'ell') c.ellipse(s.x + s.w / 2, s.y + s.h / 2, Math.abs(s.w / 2), Math.abs(s.h / 2), 0, 0, TAU);
+    else {
+      const p = s.pts, n = p.length / 2;
+      c.moveTo(p[0], p[1]);
+      if (s.k === 'poly') { for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]); c.closePath(); }
+      else if (n < 3) c.lineTo(p[n * 2 - 2] + 0.01, p[n * 2 - 1]);
+      else {
+        for (let i = 1; i < n - 1; i++) c.quadraticCurveTo(p[i * 2], p[i * 2 + 1], (p[i * 2] + p[i * 2 + 2]) / 2, (p[i * 2 + 1] + p[i * 2 + 3]) / 2);
+        c.lineTo(p[n * 2 - 2], p[n * 2 - 1]);
+      }
+    }
+  }
+  function drawTer(c, s, sc, px) {
+    const d = TERRENO_POR_ID[s.ter.t], h = Number(s.ter.h) || 0, pat = terPattern(c, d);
+    const borda = tone(d.c, -0.5), pincel = s.k === 'free', w = pincel ? Math.max(4, s.sw || 0) : 0;
+    // quanto mais alto, mais longe a sombra cai (até um limite); medido em quadrados da cena
+    const niveis = clamp(Math.abs(h) / (sc.grid.unit || 1), 0, 6), desloc = h > 0 ? (2 + niveis * 1.6) * Math.max(px, sc.cell / 90) : 0;
+    c.save();
+    c.lineJoin = c.lineCap = 'round';
+    if (desloc) {                                           // a sombra de quem é alto
+      c.save(); c.translate(desloc, desloc); terPath(c, s);
+      if (pincel) { c.lineWidth = w; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke(); } else { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fill(); }
+      c.restore();
+    }
+    terPath(c, s);
+    if (pincel) {
+      c.lineWidth = w + 4 * px; c.strokeStyle = borda; c.stroke();
+      c.lineWidth = w; c.strokeStyle = d.c; c.stroke();
+      if (pat) { c.strokeStyle = pat; c.stroke(); }
+    } else {
+      c.fillStyle = d.c; c.fill();
+      if (pat) { c.fillStyle = pat; c.fill(); }
+      if (h < 0) {                                          // o fosso: sombra por dentro da borda
+        c.save(); c.clip();
+        c.lineWidth = Math.min(sc.cell * 0.5, (6 + niveis * 3) * Math.max(px, sc.cell / 90)); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke();
+        c.restore();
+      }
+      c.lineWidth = 2.500 * px; c.strokeStyle = borda; c.stroke();
+    }
+    c.restore();
+  }
+  function drawTerrain(sc, px, W, H) {
+    let any = false;
+    for (const s of sc.shapes) if (isTer(s) && shapeShown(s)) { any = true; break; }
+    if (!any) return;
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.globalCompositeOperation = 'source-over'; lctx.globalAlpha = 1;
+    lctx.clearRect(0, 0, live.width, live.height);
+    setWorld(lctx);
+    lctx.save();
+    lctx.beginPath(); lctx.rect(0, 0, W, H); lctx.clip();
+    for (const s of sc.shapes) if (isTer(s) && shapeShown(s)) drawTer(lctx, s, sc, px);
+    lctx.restore();
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = TER_ALPHA;
+    ctx.drawImage(live, 0, 0);
+    ctx.restore();
   }
 
   function drawShape(c, s) {
@@ -352,16 +463,18 @@ const Render = (() => {
       }
     }
 
-    // Nome
+    // Nome — e, na mesma etiqueta, a altura do terreno em que o token está ("▲3 m" em cima de um morro, "▼3 m" num fosso)
     if (sp >= 26) {
-      const name = tokName(t);
-      if (name) {
+      const name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
+      if (name || alt) {
         const fs = clamp(s * 0.2, 11 * px, 15 * px);
         c.font = `600 ${fs}px ${FONT_UI}`;
-        const w = c.measureText(name).width, padX = fs * 0.5, hh = fs * 1.5, y = t.y + s + fs * 0.3;
-        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, cx - w / 2 - padX, y, w + padX * 2, hh, hh * 0.35); c.fill();
-        c.fillStyle = '#f4f5f8'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(name, cx, y + hh * 0.54);
+        const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
+        const w = wn + gap + wa, padX = fs * 0.5, hh = fs * 1.5, y = t.y + s + fs * 0.3, x0 = cx - w / 2;
+        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, x0 - padX, y, w + padX * 2, hh, hh * 0.35); c.fill();
+        c.textAlign = 'left'; c.textBaseline = 'middle';
+        if (name) { c.fillStyle = '#f4f5f8'; c.fillText(name, x0, y + hh * 0.54); }
+        if (alt) { c.fillStyle = '#f0c26a'; c.fillText(alt, x0 + wn + gap, y + hh * 0.54); }
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
@@ -738,10 +851,11 @@ const Render = (() => {
       if (sc.bg.stretch) ctx.drawImage(bg, 0, 0, W, H);
       else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
     }
+    drawTerrain(sc, px, W, H);
     drawGrid(sc, px);
     ctx.restore();
 
-    for (const s of sc.shapes) if (!s.top && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
+    for (const s of sc.shapes) if (!s.top && !isTer(s) && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
     ctx.globalAlpha = 1;
 
     // Para os jogadores com névoa, cada nível vivo só aparece dentro do que eles enxergam.
@@ -784,7 +898,7 @@ const Render = (() => {
 
     layer(c => drawUpper(c, sc, px, t));
 
-    for (const s of sc.shapes) if (s.top && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
+    for (const s of sc.shapes) if (s.top && !isTer(s) && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
     ctx.globalAlpha = 1;
 
     if (!mist) drawWeather(sc, px, t);
@@ -808,5 +922,5 @@ const Render = (() => {
     UI.frame();
   }
 
-  return { request, resize, readTheme, fit, zoomAt, centerOn, toScreen, drawShape, drawMeasure, label, rr, size: () => [cw, ch], cv, stats };
+  return { request, resize, readTheme, fit, zoomAt, centerOn, toScreen, drawShape, drawTer, drawMeasure, label, rr, size: () => [cw, ch], cv, stats };
 })();

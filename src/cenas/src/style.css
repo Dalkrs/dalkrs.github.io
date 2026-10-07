@@ -572,12 +572,77 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .tour-skip { padding: 4px 2px; background: none; border: 0; border-radius: 5px; color: var(--fg-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
 .tour-skip:hover { color: var(--fg); }
 
+/* ---- Combate: a janelinha de atributos (F), a disputa (C), o ataque com defesa e o grupo ---- */
+/* A janelinha fica ao lado do token e não empurra nada: é uma folha solta por cima do mapa. */
+.pop {
+  position: fixed; z-index: 45; width: 252px; max-width: calc(100% - 16px); display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow);
+}
+.pop:focus, .pop:focus-visible { outline: none; }      /* (o foco vai para a folha inteira ao abrir; a borda dela já a destaca) */
+.pop-h { display: flex; align-items: center; gap: 8px; }
+.pop-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.pop-f, .pop-v { display: flex; align-items: center; gap: 8px; }
+.pop-f .in.num, .pop-v .in.num { width: 76px; flex: none; }
+.pop-l { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
+.pop-c { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.pop-c .chip { padding: 2px 8px; font: 600 12px var(--mono); }
+.pop-g { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.pop-b {
+  display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 5px 2px 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--fg);
+}
+.pop-b small { color: var(--fg-3); font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.pop-b b { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+.pop-b:hover:not(:disabled) { background: var(--hover); border-color: var(--lamp); }
+.pop-b:disabled { opacity: .4; cursor: default; }
+.pop-r { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; padding: 6px 9px; background: var(--lamp-soft); border-radius: 8px; font-size: 13px; }
+.pop-r small { color: var(--fg-2); font: 12px var(--mono); }
+.pop-r.erro { background: none; border: 1px solid var(--line-strong); color: var(--fg-2); }
+.pop-tot { font: 700 20px/1 var(--mono); color: var(--lamp-ink); font-variant-numeric: tabular-nums; }
+
+/* a fixa de cada turno, no painel do token */
+.fixas { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.fixa-t { display: inline-flex; align-items: center; gap: 5px; color: var(--fg-2); font-size: 12.5px; }
+
+.dis { display: flex; flex-direction: column; gap: 12px; }
+.dis-2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.dis-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dis-t { color: var(--fg-3); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.dis-x { align-self: center; color: var(--fg-3); font: 600 20px var(--display); }
+.dis-r { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--lamp-soft); border: 1px solid var(--line-strong); border-radius: 10px; }
+.dis-n { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 600 17px var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.dis-n .v { color: var(--fg); }
+.dis-n .dis-x { align-self: auto; font-size: 15px; }
+.dis-v { font-weight: 700; }
+.dis-d { color: var(--fg-2); font: 12px var(--mono); }
+
+.area.atq { display: flex; flex-direction: column; gap: 10px; }
+.atq-top { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
+.atq-top .bar-v { width: 100%; }
+.atq-defs { align-items: center; }
+.atq-defs .chip { padding: 3px 9px; font-size: 12.5px; }
+.atq-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--line-strong); }
+.atq-modo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.atq-mm { display: grid; grid-template-columns: 96px 96px minmax(0, 1fr); gap: 10px; align-items: end; }
+.atq-ped { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.atq-list { max-height: 268px; }
+.atq-row { flex-direction: column; align-items: stretch; gap: 4px; }
+.atq-1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.atq-2 { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; padding-left: 23px; }
+.atq-como { flex: 1 1 150px; min-width: 0; color: var(--fg-2); font-size: 12.5px; }
+.atq-como.falta { color: var(--lamp-ink); }
+.atq-man { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); font-size: 12.5px; }
+.atq-man .in.num { width: 70px; }
+
 /* ---- Telas estreitas: o painel vira gaveta por cima do mapa ---- */
 @media (max-width: 900px) {
   .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 8; width: min(340px, calc(100% - 50px)); box-shadow: var(--shadow); }
   .brand, .viewer-l { display: none; }
 }
 @media (max-width: 640px) {
+  .dis-2 { grid-template-columns: minmax(0, 1fr); }
+  .dis-2 > .dis-x { display: none; }
+  .atq-top, .atq-mm { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   /* barras padrão: nome e máximo numa linha; estilo e lixeira na de baixo */
   .bd-list { grid-template-columns: auto 38px minmax(0, 1fr) 62px 32px; }
   .bd-h > span:nth-child(n+5) { display: none; }

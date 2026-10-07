@@ -200,6 +200,39 @@ const Fichas = (() => {
     return Object.assign({ nome: item[1] }, r);
   }
 
+  /* Quem pode rolar pela ficha deste token: o mestre, em qualquer token ligado; o jogador, no token do personagem
+     que é dele (a ficha chega a ele pela mesa, e a rolagem sai no nome dele). */
+  function podeRolar(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  /* As defesas da ficha deste token, pela chave: as duas gerais (DFF, DFM) e as 13 específicas (FOGO, CORTE…), já com
+     equipamentos, árvore, bônus temporários e ferimentos. null se o token não tem ficha aqui. */
+  function defesas(t) {
+    const l = t && t.char ? fichaDe(t) : null;
+    if (!l) return null;
+    const r = resumo(l), out = {};
+    for (const k in r.def) out[k] = Math.round(Number(r.def[k]) || 0);
+    for (const k in r.defEsp) out[k] = Math.round(Number(r.defEsp[k]) || 0);
+    return out;
+  }
+  // O jogador da mesa que é dono desta ficha (ou null: ficha do mestre, de NPC, ou de alguém que saiu da mesa).
+  const donoDe = l => (l && l.dono_id ? playerById(l.dono_id) || null : null);
+  const donoDoToken = t => donoDe(t && t.char ? get(t.char) : null);
+  /* Um token novo para um personagem da mesa, já ligado à ficha: nome, barras, iniciativa e dono (se a ficha é de
+     um jogador). Não entra na cena aqui: quem chama é que o inclui (e depois acerta a imagem, com syncToken). */
+  function novoToken(sc, charId, x, y, extra) {
+    const l = get(charId);
+    if (!l || l.ficha == null) return null;
+    const jog = donoDe(l), r = resumo(l);
+    const t = newToken(sc, x, y, Object.assign({ name: String(l.nome || 'Sem nome').trim().slice(0, 60) || 'Sem nome', char: charId, owner: jog ? jog.id : null }, extra || {}));
+    if (t.owner) t.barVis = 'num';
+    const bars = soDaFicha(t, r);
+    if (bars) t.bars = bars;
+    if (String((l.ficha && l.ficha.ini) || '').trim() !== '') t.ini = clampIni(r.ini);
+    return t;
+  }
+
   /* ---- as bolsas do personagem, usadas pelo token ----
      Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
   function podeBolsa(t) {
@@ -305,5 +338,6 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
+    podeRolar, defesas, donoDe, donoDoToken, novoToken, papel: () => papel, eu: () => eu };
 })();

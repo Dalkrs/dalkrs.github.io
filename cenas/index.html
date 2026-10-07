@@ -582,12 +582,77 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .tour-skip { padding: 4px 2px; background: none; border: 0; border-radius: 5px; color: var(--fg-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
 .tour-skip:hover { color: var(--fg); }
 
+/* ---- Combate: a janelinha de atributos (F), a disputa (C), o ataque com defesa e o grupo ---- */
+/* A janelinha fica ao lado do token e não empurra nada: é uma folha solta por cima do mapa. */
+.pop {
+  position: fixed; z-index: 45; width: 252px; max-width: calc(100% - 16px); display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow);
+}
+.pop:focus, .pop:focus-visible { outline: none; }      /* (o foco vai para a folha inteira ao abrir; a borda dela já a destaca) */
+.pop-h { display: flex; align-items: center; gap: 8px; }
+.pop-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.pop-f, .pop-v { display: flex; align-items: center; gap: 8px; }
+.pop-f .in.num, .pop-v .in.num { width: 76px; flex: none; }
+.pop-l { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
+.pop-c { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.pop-c .chip { padding: 2px 8px; font: 600 12px var(--mono); }
+.pop-g { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.pop-b {
+  display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 5px 2px 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--fg);
+}
+.pop-b small { color: var(--fg-3); font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.pop-b b { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+.pop-b:hover:not(:disabled) { background: var(--hover); border-color: var(--lamp); }
+.pop-b:disabled { opacity: .4; cursor: default; }
+.pop-r { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; padding: 6px 9px; background: var(--lamp-soft); border-radius: 8px; font-size: 13px; }
+.pop-r small { color: var(--fg-2); font: 12px var(--mono); }
+.pop-r.erro { background: none; border: 1px solid var(--line-strong); color: var(--fg-2); }
+.pop-tot { font: 700 20px/1 var(--mono); color: var(--lamp-ink); font-variant-numeric: tabular-nums; }
+
+/* a fixa de cada turno, no painel do token */
+.fixas { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.fixa-t { display: inline-flex; align-items: center; gap: 5px; color: var(--fg-2); font-size: 12.5px; }
+
+.dis { display: flex; flex-direction: column; gap: 12px; }
+.dis-2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.dis-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dis-t { color: var(--fg-3); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.dis-x { align-self: center; color: var(--fg-3); font: 600 20px var(--display); }
+.dis-r { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--lamp-soft); border: 1px solid var(--line-strong); border-radius: 10px; }
+.dis-n { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 600 17px var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.dis-n .v { color: var(--fg); }
+.dis-n .dis-x { align-self: auto; font-size: 15px; }
+.dis-v { font-weight: 700; }
+.dis-d { color: var(--fg-2); font: 12px var(--mono); }
+
+.area.atq { display: flex; flex-direction: column; gap: 10px; }
+.atq-top { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
+.atq-top .bar-v { width: 100%; }
+.atq-defs { align-items: center; }
+.atq-defs .chip { padding: 3px 9px; font-size: 12.5px; }
+.atq-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--line-strong); }
+.atq-modo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.atq-mm { display: grid; grid-template-columns: 96px 96px minmax(0, 1fr); gap: 10px; align-items: end; }
+.atq-ped { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.atq-list { max-height: 268px; }
+.atq-row { flex-direction: column; align-items: stretch; gap: 4px; }
+.atq-1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.atq-2 { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; padding-left: 23px; }
+.atq-como { flex: 1 1 150px; min-width: 0; color: var(--fg-2); font-size: 12.5px; }
+.atq-como.falta { color: var(--lamp-ink); }
+.atq-man { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); font-size: 12.5px; }
+.atq-man .in.num { width: 70px; }
+
 /* ---- Telas estreitas: o painel vira gaveta por cima do mapa ---- */
 @media (max-width: 900px) {
   .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 8; width: min(340px, calc(100% - 50px)); box-shadow: var(--shadow); }
   .brand, .viewer-l { display: none; }
 }
 @media (max-width: 640px) {
+  .dis-2 { grid-template-columns: minmax(0, 1fr); }
+  .dis-2 > .dis-x { display: none; }
+  .atq-top, .atq-mm { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   /* barras padrão: nome e máximo numa linha; estilo e lixeira na de baixo */
   .bd-list { grid-template-columns: auto 38px minmax(0, 1fr) 62px 32px; }
   .bd-h > span:nth-child(n+5) { display: none; }
@@ -607,7 +672,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=8"></script>
+<script src="../tc/ponte.js?v=9"></script>
 <script src="../tc/dice.js?v=2"></script>
 <script src="../tc/rules.js?v=5"></script>
 <div class="app" id="app">
@@ -656,6 +721,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
      7. Render ...... desenho no canvas
      8. Tools ....... ferramentas e gestos de mouse e teclado
      9. UI .......... painéis, menus e janelas
+        Luta ........ as telas de combate (atributos do token, disputa, grupo, ataque, terreno)
     10. Tour ........ tutorial de primeiro uso
     11. Boot ........ cena de exemplo e inicialização
 
@@ -673,7 +739,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
                     'bar' ou 'pts', regra de quem vê; x = sobrevida, que absorve
                     o dano antes da barra), conds + cinfo
                     (contador e duração de cada condição), auras, visão, luz,
-                    ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4)
+                    ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4),
+                    fixas (a fixa de cada turno, para quem tem mais de um)
+     - desenho .... k: free | line | rect | ell | poly | text; com ter = { t, h } é uma
+                    área de terreno (tipo e altura), pintada à parte e fora do clique comum
      - parede ..... k: wall | door | window | veil; porta secreta = door + secret
      - efeito ..... k: circ | quad | rect | cone | line; r, ang, w conforme a forma;
                     rw/rh (largura e altura do retângulo); dir; dur/dur0 (rodadas) e
@@ -881,6 +950,7 @@ const ICONS = {
   die: 'M12 2.800l8 4.600v9.200l-8 4.600-8-4.600V7.400zM12 8l4.600 7.600H7.400zM12 2.800V8M7.400 15.600L4 16.600M16.600 15.600l3.400 1',
   veil: 'M4 4h16M6 4c0 6-1.500 10-1.500 16M10 4c0 6 .5 10 .5 16M14 4c0 6-.5 10-.5 16M18 4c0 6 1.500 10 1.500 16',
   veilOpen: 'M4 4h16M5.500 4c0 7-.4 11-1.500 16M8.500 4c-.2 6-1.300 9.500-4.300 11.500M18.500 4c0 7 .4 11 1.500 16M15.500 4c.2 6 1.300 9.500 4.300 11.500',
+  terrain: 'M2.500 19.500L9 8l4 6.600 2.400-3.300 6.100 8.200zM7.400 10.900l1.600 1.400 1.400-1.100',
   // Condições (as marcadas com fill são preenchidas)
   c_veneno: { d: 'M8 4c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0C4.8 8.4 6 6.6 8 4zM16 10c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-1.8 1.2-3.6 3.2-6.2z', fill: true },
   c_sangue: { d: 'M12 3.5c3.2 4.2 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.3-5.800 5.5-10z', fill: true },
@@ -989,6 +1059,28 @@ function barDefaults() {
 const MAX_TURNS = 4;
 const clampTurns = v => clamp(Math.round(Number(v)) || 1, 1, MAX_TURNS);
 const clampIni = v => clamp(Math.round(Number(v)) || 0, -99, 99);
+
+// Fixa de cada turno de um token com mais de um turno por rodada (um chefe: 8 no primeiro, 6 no segundo…).
+// Uma posição vazia (null) quer dizer "a fixa de sempre" — a da ficha, ou a que for digitada na hora.
+const cleanFixas = v => (Array.isArray(v) ? v.slice(0, MAX_TURNS).map(x => (x == null || x === '' || !isFinite(Number(x)) ? null : clamp(Math.round(Number(x)), 0, 9999))) : []);
+
+/* Terreno: uma área do mapa com tipo e altura. É um desenho (coleção shapes) com o campo ter = { t: tipo, h: altura
+   na unidade da cena } — negativa num fosso. É só visual: o token que está em cima mostra a altura, e passar o
+   mouse diz o que é. hq: a altura de fábrica de cada tipo, em quadrados. */
+const TERRENOS = [
+  { id: 'morro', n: 'Morro', c: '#9a8552', hq: 2 },
+  { id: 'montanha', n: 'Montanha', c: '#8b8f99', hq: 6 },
+  { id: 'plataforma', n: 'Plataforma', c: '#b08d5c', hq: 1 },
+  { id: 'fosso', n: 'Fosso', c: '#3a3344', hq: -2 },
+  { id: 'agua', n: 'Água', c: '#3f86c2', hq: 0 },
+  { id: 'mata', n: 'Mata', c: '#4c8c4f', hq: 0 },
+];
+const TERRENO_POR_ID = Object.fromEntries(TERRENOS.map(t => [t.id, t]));
+function cleanTer(o) {
+  if (!o || typeof o !== 'object' || typeof o.t !== 'string' || !Object.prototype.hasOwnProperty.call(TERRENO_POR_ID, o.t)) return null;
+  return { t: o.t, h: clamp(Math.round((Number(o.h) || 0) * 100) / 100, -9999, 9999) };
+}
+const isTer = s => !!(s && s.ter && Object.prototype.hasOwnProperty.call(TERRENO_POR_ID, s.ter.t));
 
 const PLAYER_COLORS = ['#4fb8e0', '#ee8a4a', '#8fd05a', '#c084fc', '#ff7396', '#ffd25e'];
 const TOKEN_COLORS = ['#7c8fb8', '#b87c7c', '#7cb88c', '#b8a77c', '#9b7cb8', '#7cb4b8', '#b88d7c', '#8a98a8'];
@@ -1129,6 +1221,7 @@ function newToken(scene, x, y, extra) {
     vis: { on: true, range: 0, dark: 0 },
     light: { on: false, bright: 4, dim: 8, c: '#ffc477' },
     ini: 0, turns: 1,                     // bônus de iniciativa; turnos por rodada
+    fixas: [],                            // fixa de cada turno (quem tem mais de um por rodada); vazio = a de sempre
     notes: '',
   }, extra || {});
 }
@@ -1163,6 +1256,8 @@ function normalizeScene(sc) {
     if (!(e.rh > 0)) e.rh = side;
     e.apply = cleanApply(e.apply);
   }
+  // terreno: o tipo tem de ser um dos que existem; senão, o desenho fica sendo um desenho comum
+  for (const s of sc.shapes) if (s && s.ter !== undefined) { const c = cleanTer(s.ter); if (c) s.ter = c; else delete s.ter; }
   for (const t of sc.tokens) {
     const d = newToken({ tokens: [] }, t.x || 0, t.y || 0, { name: t.name });
     for (const k in d) if (t[k] === undefined) t[k] = d[k];
@@ -1171,6 +1266,7 @@ function normalizeScene(sc) {
     t.bars = (Array.isArray(t.bars) ? t.bars : barDefaults()).slice(0, MAX_BARS).map(cleanBar);
     if (!t.cinfo || typeof t.cinfo !== 'object') t.cinfo = {};
     t.ini = clampIni(t.ini); t.turns = clampTurns(t.turns);
+    t.fixas = cleanFixas(t.fixas);
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
   }
   return sc;
@@ -2165,6 +2261,22 @@ const Vision = (() => {
     return cSample.g.getImageData(px, py, 1, 1).data[3] > 60;
   }
 
+  // Para o jogador: este ponto do mapa está coberto pela névoa (nunca visto, ou escondido pelo mestre)? O que
+  // ele já explorou e não vê agora aparece esmaecido: não conta como coberto.
+  // (o ponto da névoa é copiado para uma folha de um pixel, feita para leitura: ler direto da névoa inteira é lento)
+  let cPonto = null;
+  function covered(x, y) {
+    if (isGM() || !out.fog) return false;
+    const px = Math.floor(x * M), py = Math.floor(y * M);
+    if (px < 0 || py < 0 || px >= mw || py >= mh) return true;
+    try {
+      if (!cPonto) cPonto = mk(1, 1, { willReadFrequently: true });
+      cPonto.g.clearRect(0, 0, 1, 1);
+      cPonto.g.drawImage(out.fog, px, py, 1, 1, 0, 0, 1, 1);
+      return cPonto.g.getImageData(0, 0, 1, 1).data[3] > 200;
+    } catch (e) { return false; }
+  }
+
   function resetExplored(sc) {
     for (const c of expl.values()) clear(c);
     expl.clear();
@@ -2191,7 +2303,7 @@ const Vision = (() => {
   }
 
   return {
-    update, canSee, onOp, out, stats, resetExplored, flushExplored,
+    update, canSee, covered, onOp, out, stats, resetExplored, flushExplored,
     isDirty: () => dirty,
     invalidate() { dirty = true; },
     // A seleção mudou: o véu do mestre pode passar a valer para outro token (ou voltar ao grupo). Só então refaz.
@@ -2645,6 +2757,7 @@ const App = {
     fx: 'fogo', fxShape: 'circ', fxR: 2, fxAng: 60, fxW: 1, fxRW: 3, fxRH: 2, fxDir: 0, fxAttach: true, fxDur: 0,
     lightPreset: 'tocha',
     tokOwner: '', tokSize: 1,
+    terMode: 'paint', terShape: 'brush', terType: 'morro', terH: null, terSize: 2,     // terreno: terH vazio = a altura de fábrica do tipo
   },
 };
 
@@ -3587,6 +3700,39 @@ const Fichas = (() => {
     return Object.assign({ nome: item[1] }, r);
   }
 
+  /* Quem pode rolar pela ficha deste token: o mestre, em qualquer token ligado; o jogador, no token do personagem
+     que é dele (a ficha chega a ele pela mesa, e a rolagem sai no nome dele). */
+  function podeRolar(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  /* As defesas da ficha deste token, pela chave: as duas gerais (DFF, DFM) e as 13 específicas (FOGO, CORTE…), já com
+     equipamentos, árvore, bônus temporários e ferimentos. null se o token não tem ficha aqui. */
+  function defesas(t) {
+    const l = t && t.char ? fichaDe(t) : null;
+    if (!l) return null;
+    const r = resumo(l), out = {};
+    for (const k in r.def) out[k] = Math.round(Number(r.def[k]) || 0);
+    for (const k in r.defEsp) out[k] = Math.round(Number(r.defEsp[k]) || 0);
+    return out;
+  }
+  // O jogador da mesa que é dono desta ficha (ou null: ficha do mestre, de NPC, ou de alguém que saiu da mesa).
+  const donoDe = l => (l && l.dono_id ? playerById(l.dono_id) || null : null);
+  const donoDoToken = t => donoDe(t && t.char ? get(t.char) : null);
+  /* Um token novo para um personagem da mesa, já ligado à ficha: nome, barras, iniciativa e dono (se a ficha é de
+     um jogador). Não entra na cena aqui: quem chama é que o inclui (e depois acerta a imagem, com syncToken). */
+  function novoToken(sc, charId, x, y, extra) {
+    const l = get(charId);
+    if (!l || l.ficha == null) return null;
+    const jog = donoDe(l), r = resumo(l);
+    const t = newToken(sc, x, y, Object.assign({ name: String(l.nome || 'Sem nome').trim().slice(0, 60) || 'Sem nome', char: charId, owner: jog ? jog.id : null }, extra || {}));
+    if (t.owner) t.barVis = 'num';
+    const bars = soDaFicha(t, r);
+    if (bars) t.bars = bars;
+    if (String((l.ficha && l.ficha.ini) || '').trim() !== '') t.ini = clampIni(r.ini);
+    return t;
+  }
+
   /* ---- as bolsas do personagem, usadas pelo token ----
      Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
   function podeBolsa(t) {
@@ -3692,7 +3838,8 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido };
+  return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
+    podeRolar, defesas, donoDe, donoDoToken, novoToken, papel: () => papel, eu: () => eu };
 })();
 /* ---------------------------------------------------------------
    7c. PROJEÇÃO — a cena como ela vai para o banco e para os jogadores
@@ -3804,7 +3951,7 @@ const Proj = (() => {
       if (t.showName === false) o.name = '???';
       o.bars = t.bars.map(b => barraPublica(b, b.vis || t.barVis));
       o.auras = (t.auras || []).filter(a => a.pub).map(a => clone(a));
-      o.char = null; o.ini = 0;
+      o.char = null; o.ini = 0; o.fixas = [];                         // (nem a fixa de cada turno de um chefe)
       o.vis = { on: false, range: 0, dark: 0 };                       // o que o token do mestre enxerga não é da conta dos jogadores
     }
     return o;
@@ -5043,9 +5190,233 @@ const Nuvem = (() => {
   };
 })();
 /* ---------------------------------------------------------------
+   7e. COMBATE — o que as telas de combate usam e que não depende de tela
+   - terreno: qual área (tipo e altura) há num ponto do mapa e debaixo de um token;
+   - a fixa de cada turno de quem joga mais de uma vez por rodada (um chefe);
+   - a regra da fixa para um valor qualquer (token sem ficha, disputa);
+   - as defesas que descontam um ataque e a conta do dano que passa;
+   - onde colocar os tokens de um grupo que chega à cena.
+   As telas (a janelinha de atributos, a disputa, o ataque, o grupo, a ferramenta Terreno) ficam em 10c-combate.js.
+   --------------------------------------------------------------- */
+const Combate = (() => {
+  /* ================= Terreno ================= */
+  let terRev = 0;                        // muda quando um desenho (ou a cena) muda: o que estava guardado deixa de valer
+  const terCache = new Map();            // id do token → { key, ref, s }
+  Store.on('live', op => { if (op.c === 'shapes' || op.t === 'scn') terRev++; });
+  Store.on('scene', () => { terRev++; terCache.clear(); });
+  Store.on('meta', () => { terRev++; });
+
+  // O ponto está dentro desta área? (pincel: a faixa pintada; as outras formas: o lado de dentro)
+  function inTer(s, x, y) {
+    switch (s.k) {
+      case 'rect': return x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h;
+      case 'ell': {
+        const rx = s.w / 2, ry = s.h / 2;
+        if (!(rx > 0 && ry > 0)) return false;
+        return Math.hypot((x - s.x - rx) / rx, (y - s.y - ry) / ry) <= 1;
+      }
+      case 'poly': return Array.isArray(s.pts) && s.pts.length >= 6 && Geo.inPoly(x, y, s.pts);
+      case 'free': return Array.isArray(s.pts) && s.pts.length >= 2 && Geo.distPolyline(x, y, s.pts, false) <= Math.max(1, (s.sw || 0) / 2);
+      default: return false;
+    }
+  }
+  // A área de terreno num ponto do mapa: a que foi feita por último (a de cima) manda. null se não há.
+  function terrainAt(sc, x, y) {
+    if (!sc || !Array.isArray(sc.shapes)) return null;
+    for (let i = sc.shapes.length - 1; i >= 0; i--) {
+      const s = sc.shapes[i];
+      if (isTer(s) && shapeShown(s) && inTer(s, x, y)) return s;
+    }
+    return null;
+  }
+  // A área em que o token está (pelo centro dele). Guardada enquanto nem ele nem os desenhos mudam: o mapa pede isto a cada quadro.
+  function terrainOf(t, sc) {
+    if (!sc || !sc.shapes.length) return null;
+    const key = sc.id + '|' + terRev + '|' + t.x + '|' + t.y + '|' + t.size + '|' + sc.cell;
+    const c = terCache.get(t.id);
+    if (c && c.key === key && c.ref === sc.shapes) return c.s;
+    const [cx, cy] = tokC(t, sc), s = terrainAt(sc, cx, cy);
+    if (terCache.size > 600) terCache.clear();
+    terCache.set(t.id, { key, ref: sc.shapes, s });
+    return s;
+  }
+  const terDef = s => TERRENO_POR_ID[s.ter.t];
+  const unidade = sc => String((sc && sc.grid && sc.grid.unitName) || '').trim();
+  // "Morro · altura 3 m", "Fosso · 3 m de fundura", "Água"
+  function terText(s, sc) {
+    const d = terDef(s), h = Number(s.ter.h) || 0, u = unidade(sc);
+    if (!h) return d.n;
+    return d.n + ' · ' + (h > 0 ? 'altura ' + fmt(h) + (u ? ' ' + u : '') : fmt(-h) + (u ? ' ' + u : '') + ' de fundura');
+  }
+  // O selo do token: "▲3 m" em cima de algo, "▼3 m" dentro de um fosso; vazio no terreno sem altura.
+  function terBadge(s, sc) {
+    const h = s ? Number(s.ter.h) || 0 : 0, u = unidade(sc);
+    return h ? (h > 0 ? '▲' : '▼') + fmt(Math.abs(h)) + (u ? ' ' + u : '') : '';
+  }
+  // Uma área nova, a partir do que a ferramenta desenhou. geo: { k, x, y, w, h } | { k, pts } | { k:'free', pts, sw }.
+  // (a cor e a opacidade guardadas são para uma página que ainda não foi atualizada: lá a área aparece como um
+  // desenho comum, translúcido; aqui quem pinta é o desenho do terreno, pelo tipo)
+  function newTerrain(geo, tipo, altura) {
+    const d = TERRENO_POR_ID[tipo] || TERRENOS[0];
+    const s = { id: uid('tr'), k: geo.k, s: d.c, sw: geo.k === 'free' ? Math.max(4, geo.sw || 0) : 0, f: geo.k === 'free' ? null : d.c, a: 0.55, top: false, gm: false, lock: false, by: null, ter: cleanTer({ t: d.id, h: altura }) };
+    if (geo.pts) s.pts = geo.pts; else { s.x = geo.x; s.y = geo.y; s.w = geo.w; s.h = geo.h; }
+    return s;
+  }
+  // Trocar o tipo troca também a cor (que é a do tipo); a altura fica a que estava, a não ser que venha outra.
+  function terPatch(s, tipo, altura) {
+    const d = TERRENO_POR_ID[tipo] || terDef(s), p = { ter: cleanTer({ t: d.id, h: altura == null ? s.ter.h : altura }), s: d.c };
+    if (s.k !== 'free') p.f = d.c;
+    return p;
+  }
+
+  /* ================= Fixa ================= */
+  /* A fixa do turno que este token está jogando agora: { k, v } — só quando o combate está em andamento, a vez é
+     dele e o mestre anotou uma fixa para aquele turno (t.fixas[k − 1]). Senão, null. */
+  function fixaDoTurno(t) {
+    const sc = Store.scene(), tn = sc && sc.turn;
+    if (!t || !tn || !tn.on || !tn.cur || !Array.isArray(t.fixas)) return null;
+    const e = tn.list.find(x => x.id === tn.cur);
+    if (!e || e.token !== t.id) return null;
+    const k = e.k || 1, v = t.fixas[k - 1];
+    return v == null || !isFinite(v) ? null : { k, v: Math.max(0, Math.round(v)) };
+  }
+  // As fixas anotadas de um token, só até o número de turnos que ele tem: [8, 6, null] → [{ k: 1, v: 8 }, { k: 2, v: 6 }]
+  function fixasDe(t) {
+    const out = [], n = clampTurns(t && t.turns);
+    if (!t || !Array.isArray(t.fixas) || n < 2) return out;
+    for (let k = 1; k <= n; k++) { const v = t.fixas[k - 1]; if (v != null && isFinite(v)) out.push({ k, v: Math.max(0, Math.round(v)) }); }
+    return out;
+  }
+  /* A regra da fixa para um valor qualquer: um dado de (valor − fixa) lados, mais a fixa. Fixa igual ao valor não
+     rola dado. Mesmo formato do TC.dice.rollFixa, com o dado daqui (que é sorteado do mesmo jeito). */
+  function rolarFixa(valor, fixa) {
+    const a = Math.round(Number(valor) || 0);
+    if (!(a >= 1)) return { ok: false, error: 'O valor está em 0: não há o que rolar.' };
+    if (a > 100000) return { ok: false, error: 'O valor é grande demais.' };
+    const f = clamp(Math.round(Number(fixa) || 0), 0, a), die = a - f, d = die > 0 ? rollDie(die) : 0;
+    return { ok: true, atributo: a, fixa: f, die, dieValue: d, total: f + d };
+  }
+  // Como a rolagem saiu, em poucas palavras: "17 no d40 + 20", "14 no d60", "fixa total"
+  const comoSaiu = r => (r.die ? `${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''}` : 'fixa total');
+  // Como vai para a mesa (o mesmo texto das disputas da ficha, que o auditor dos dados sabe ler): "1d40 + 20, dado 17" | "fixo em 12"
+  const comoFoi = r => (r.die ? `1d${r.die} + ${r.fixa}, dado ${r.dieValue}` : `fixo em ${r.atributo}`);
+  const dadosDe = r => (r && r.die ? [[r.die, r.dieValue]] : []);
+
+  /* ================= Ataque com defesa ================= */
+  // As defesas que podem descontar um ataque: as duas gerais e as 13 específicas. Vazio fora do site (sem as regras da ficha).
+  function listaDefesas() {
+    const R = window.TC && window.TC.rules;
+    if (!R || !R.DEFESAS || !R.DEFESAS_ESP) return [];
+    return R.DEFESAS.map(d => ({ k: d.k, n: String(d.nome || d.k).replace(/^Defesa\s+/i, ''), g: 'geral' }))
+      .concat(R.DEFESAS_ESP.map(d => ({ k: d.k, n: d.nome || d.k, g: d.tipo || 'elemento' })));
+  }
+  // "Física + Fogo" (na ordem da lista); vazio se nenhuma
+  function nomeDasDefesas(chaves) {
+    const quer = new Set(chaves || []);
+    return listaDefesas().filter(d => quer.has(d.k)).map(d => d.n).join(' + ');
+  }
+  // A soma das defesas escolhidas de um token com ficha (nunca abaixo de zero); null se ele não tem ficha aqui.
+  function defesaDe(t, chaves) {
+    const d = Fichas.defesas(t);
+    if (!d) return null;
+    let soma = 0;
+    for (const k of chaves || []) soma += Number(d[k]) || 0;
+    return Math.max(0, Math.round(soma));
+  }
+  /* O dano que passa: o do ataque menos a defesa, e só então o mínimo e o máximo que o mestre definiu.
+     min: nunca passa menos que isto (padrão 0); max: nunca passa mais que isto (null = sem teto). */
+  function danoFinal(dano, defesa, min, max) {
+    const lo = Math.max(0, Number(min) || 0);
+    let f = (Number(dano) || 0) - (Number(defesa) || 0);
+    if (f < lo) f = lo;
+    if (max != null && isFinite(max) && f > Math.max(lo, max)) f = Math.max(lo, max);
+    return Math.round(f * 10) / 10;
+  }
+  // A barra de um token pelo nome (só as que estão em uso)
+  const barraDe = (t, nome) => t.bars.findIndex(b => b.on && b.n === nome);
+  /* Aplica o ataque: tira de cada token o dano que passou, num passo só de desfazer. A sobrevida gasta primeiro.
+     linhas: [{ t, final }]. Devolve [{ t, de, para, sobre }] com quem mudou. */
+  function aplicarAtaque(linhas, barra, rotulo) {
+    const out = [];
+    Store.tx(rotulo || 'Ataque', () => {
+      for (const l of linhas) {
+        const t = Store.get('tokens', l.t.id), i = t ? barraDe(t, barra) : -1;
+        if (i < 0 || !(l.final > 0)) continue;
+        const b = t.bars[i], q = barAfter(b, -l.final);
+        if (q.v === b.v && q.x === undefined) continue;
+        Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, q) : x)) });
+        out.push({ t, de: b.v, para: q.v, sobre: q.x !== undefined });
+      }
+    });
+    return out;
+  }
+  // Quem não é dono vê os números desta barra? (é o que decide se o resultado de um ataque pode ir para a mesa)
+  const barraAberta = (t, b) => !t.hidden && ((!!t.owner && (t.owner === '*' || !!playerById(t.owner))) || ((b && b.vis) || t.barVis) === 'num');
+
+  /* ================= O grupo que chega ================= */
+  /* n quadrados livres para tokens de tamanho 1, o mais perto possível do ponto (cx, cy): do centro para fora,
+     pulando os ocupados e o que fica fora do mapa. Se o mapa não tem lugar, os que sobram ficam no centro. */
+  function vagas(sc, n, cx, cy) {
+    const cell = sc.cell, occ = new Set();
+    for (const t of sc.tokens) {
+      const s = Math.max(1, Math.ceil(t.size)), c0 = Math.floor((t.x + 1) / cell), r0 = Math.floor((t.y + 1) / cell);
+      for (let i = 0; i < s; i++) for (let j = 0; j < s; j++) occ.add((c0 + i) + ',' + (r0 + j));
+    }
+    const c0 = clamp(Math.floor(cx / cell), 0, Math.max(0, sc.cols - 1)), r0 = clamp(Math.floor(cy / cell), 0, Math.max(0, sc.rows - 1)), out = [];
+    const maxRing = Math.max(sc.cols, sc.rows);
+    for (let ring = 0; out.length < n && ring <= maxRing; ring++) {
+      for (let dy = -ring; dy <= ring && out.length < n; dy++) {
+        for (let dx = -ring; dx <= ring && out.length < n; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+          const c = c0 + dx, r = r0 + dy;
+          if (c < 0 || r < 0 || c >= sc.cols || r >= sc.rows || occ.has(c + ',' + r)) continue;
+          occ.add(c + ',' + r); out.push([c * cell, r * cell]);
+        }
+      }
+    }
+    while (out.length < n) out.push([c0 * cell, r0 * cell]);
+    return out;
+  }
+  /* Os personagens da mesa, para a janela "Puxar o grupo": cada um com o dono (jogador da mesa ou null), o grupo
+     da ficha e se já tem token nesta cena. */
+  function elenco(sc) {
+    const naCena = new Set(sc.tokens.map(t => t.char).filter(Boolean));
+    return Fichas.chars().filter(l => l.ficha != null).map(l => {
+      const dono = Fichas.donoDe(l);
+      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id) };
+    });
+  }
+  /* Cria, num passo só de desfazer, um token para cada personagem pedido (os que já têm token nesta cena ficam de
+     fora), em quadrados livres perto de (cx, cy). Devolve os ids dos tokens criados. */
+  function trazer(ids, cx, cy, extra) {
+    const sc = Store.scene(), ja = new Set(sc.tokens.map(t => t.char).filter(Boolean));
+    const quer = ids.filter((id, i) => !ja.has(id) && ids.indexOf(id) === i && Fichas.get(id));
+    if (!quer.length) return [];
+    const pos = vagas(sc, quer.length, cx, cy), feitos = [];
+    Store.tx(quer.length === 1 ? 'Trazer personagem' : 'Trazer o grupo', () => {
+      quer.forEach((id, i) => {
+        const t = Fichas.novoToken(sc, id, pos[i][0], pos[i][1], extra);
+        if (!t) return;
+        Store.add('tokens', t);
+        feitos.push(t.id);
+      });
+    });
+    // a imagem de cada ficha vai para o token dela (quem manda é a ficha: não entra no desfazer)
+    for (const id of feitos) { const t = Store.get('tokens', id); if (t) { try { Fichas.syncToken(t); } catch (e) { console.error(e); } } }
+    return feitos;
+  }
+
+  return {
+    inTer, terrainAt, terrainOf, terText, terBadge, terDef, newTerrain, terPatch,
+    fixaDoTurno, fixasDe, rolarFixa, comoSaiu, comoFoi, dadosDe,
+    listaDefesas, nomeDasDefesas, defesaDe, danoFinal, barraDe, aplicarAtaque, barraAberta,
+    vagas, elenco, trazer,
+  };
+})();
+/* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
-   Ordem das camadas: fundo, grade, desenhos de baixo, efeitos sem brilho,
-   luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
+   Ordem das camadas: fundo, terreno, grade, desenhos de baixo, efeitos sem
+   brilho, luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
    névoa, véu do mestre e, por fim, o que é só da interface (paredes do
    mestre, portas, seleção, régua, pings).
    --------------------------------------------------------------- */
@@ -5168,6 +5539,117 @@ const Render = (() => {
     ctx.strokeStyle = hexA(g.color, g.alpha);
     ctx.lineWidth = Math.max(1, px);
     ctx.stroke();
+  }
+
+  /* ---- Terreno ----
+     As áreas de terreno (desenhos com `ter`) são pintadas logo acima do fundo e abaixo da grade. Cada tipo tem a
+     cor e uma textura própria; o que é alto ganha uma sombra para baixo e para a direita, e o fosso, uma sombra
+     por dentro. Tudo é desenhado opaco numa folha à parte, e a folha entra translúcida no mapa: assim, onde duas
+     áreas se cruzam, a de cima cobre a de baixo (é ela que vale), e o fundo continua aparecendo por baixo. */
+  const TER_ALPHA = 0.62;
+  const tone = (hex, k) => {
+    const n = parseInt(String(hex).slice(1), 16) || 0, f = v => clamp(Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k), 0, 255);
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  };
+  const terPats = {};
+  function terPattern(c, d) {
+    if (terPats[d.id] !== undefined) return terPats[d.id];
+    let pat = null;
+    try {
+      const S = 64, cv2 = document.createElement('canvas'), g = cv2.getContext('2d');
+      cv2.width = cv2.height = S;
+      const claro = tone(d.c, 0.38), escuro = tone(d.c, -0.42);
+      g.lineCap = g.lineJoin = 'round'; g.lineWidth = 3;
+      const linha = (cor, pts) => { g.strokeStyle = cor; g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.stroke(); };
+      if (d.id === 'morro') {                               // curvas de nível
+        g.strokeStyle = claro;
+        g.beginPath(); g.arc(18, 44, 13, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+        g.beginPath(); g.arc(50, 20, 11, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+      } else if (d.id === 'montanha') {                     // picos
+        linha(claro, [8, 26, 18, 10, 28, 26]); linha(claro, [36, 58, 46, 42, 56, 58]);
+        linha(escuro, [18, 10, 22, 22]); linha(escuro, [46, 42, 50, 54]);
+      } else if (d.id === 'plataforma') {                   // tábuas
+        linha(escuro, [0, 16, 64, 16]); linha(escuro, [0, 48, 64, 48]); linha(escuro, [22, 16, 22, 48]); linha(escuro, [50, 48, 50, 64]); linha(escuro, [50, 0, 50, 16]);
+      } else if (d.id === 'fosso') {                        // hachura fechada
+        g.lineWidth = 4;
+        for (let k = -64; k < 64; k += 16) linha('rgba(0,0,0,0.55)', [k, 64, k + 64, 0]);
+      } else if (d.id === 'agua') {                         // ondas
+        g.strokeStyle = claro;
+        for (const y of [16, 48]) { const x0 = y === 16 ? 0 : -16; g.beginPath(); g.moveTo(x0, y); for (let x = x0; x < 80; x += 32) g.bezierCurveTo(x + 8, y - 7, x + 24, y + 7, x + 32, y); g.stroke(); }
+      } else {                                              // mata: copas
+        g.fillStyle = escuro;
+        for (const [x, y, r] of [[14, 14, 7], [44, 22, 9], [22, 46, 9], [54, 52, 6]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+        g.fillStyle = claro;
+        for (const [x, y, r] of [[12, 12, 3], [41, 19, 4], [19, 43, 4], [53, 50, 2.500]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+      }
+      pat = c.createPattern(cv2, 'repeat');
+      if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().scale(0.5));     // 32 unidades do mapa por ladrilho
+    } catch (e) { pat = null; }
+    terPats[d.id] = pat;
+    return pat;
+  }
+  // O contorno da área (para preencher ou traçar). No pincel, é o caminho pintado (a largura vem do traço).
+  function terPath(c, s) {
+    c.beginPath();
+    if (s.k === 'rect') c.rect(s.x, s.y, s.w, s.h);
+    else if (s.k === 'ell') c.ellipse(s.x + s.w / 2, s.y + s.h / 2, Math.abs(s.w / 2), Math.abs(s.h / 2), 0, 0, TAU);
+    else {
+      const p = s.pts, n = p.length / 2;
+      c.moveTo(p[0], p[1]);
+      if (s.k === 'poly') { for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]); c.closePath(); }
+      else if (n < 3) c.lineTo(p[n * 2 - 2] + 0.01, p[n * 2 - 1]);
+      else {
+        for (let i = 1; i < n - 1; i++) c.quadraticCurveTo(p[i * 2], p[i * 2 + 1], (p[i * 2] + p[i * 2 + 2]) / 2, (p[i * 2 + 1] + p[i * 2 + 3]) / 2);
+        c.lineTo(p[n * 2 - 2], p[n * 2 - 1]);
+      }
+    }
+  }
+  function drawTer(c, s, sc, px) {
+    const d = TERRENO_POR_ID[s.ter.t], h = Number(s.ter.h) || 0, pat = terPattern(c, d);
+    const borda = tone(d.c, -0.5), pincel = s.k === 'free', w = pincel ? Math.max(4, s.sw || 0) : 0;
+    // quanto mais alto, mais longe a sombra cai (até um limite); medido em quadrados da cena
+    const niveis = clamp(Math.abs(h) / (sc.grid.unit || 1), 0, 6), desloc = h > 0 ? (2 + niveis * 1.6) * Math.max(px, sc.cell / 90) : 0;
+    c.save();
+    c.lineJoin = c.lineCap = 'round';
+    if (desloc) {                                           // a sombra de quem é alto
+      c.save(); c.translate(desloc, desloc); terPath(c, s);
+      if (pincel) { c.lineWidth = w; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke(); } else { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fill(); }
+      c.restore();
+    }
+    terPath(c, s);
+    if (pincel) {
+      c.lineWidth = w + 4 * px; c.strokeStyle = borda; c.stroke();
+      c.lineWidth = w; c.strokeStyle = d.c; c.stroke();
+      if (pat) { c.strokeStyle = pat; c.stroke(); }
+    } else {
+      c.fillStyle = d.c; c.fill();
+      if (pat) { c.fillStyle = pat; c.fill(); }
+      if (h < 0) {                                          // o fosso: sombra por dentro da borda
+        c.save(); c.clip();
+        c.lineWidth = Math.min(sc.cell * 0.5, (6 + niveis * 3) * Math.max(px, sc.cell / 90)); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke();
+        c.restore();
+      }
+      c.lineWidth = 2.500 * px; c.strokeStyle = borda; c.stroke();
+    }
+    c.restore();
+  }
+  function drawTerrain(sc, px, W, H) {
+    let any = false;
+    for (const s of sc.shapes) if (isTer(s) && shapeShown(s)) { any = true; break; }
+    if (!any) return;
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.globalCompositeOperation = 'source-over'; lctx.globalAlpha = 1;
+    lctx.clearRect(0, 0, live.width, live.height);
+    setWorld(lctx);
+    lctx.save();
+    lctx.beginPath(); lctx.rect(0, 0, W, H); lctx.clip();
+    for (const s of sc.shapes) if (isTer(s) && shapeShown(s)) drawTer(lctx, s, sc, px);
+    lctx.restore();
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = TER_ALPHA;
+    ctx.drawImage(live, 0, 0);
+    ctx.restore();
   }
 
   function drawShape(c, s) {
@@ -5396,16 +5878,18 @@ const Render = (() => {
       }
     }
 
-    // Nome
+    // Nome — e, na mesma etiqueta, a altura do terreno em que o token está ("▲3 m" em cima de um morro, "▼3 m" num fosso)
     if (sp >= 26) {
-      const name = tokName(t);
-      if (name) {
+      const name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
+      if (name || alt) {
         const fs = clamp(s * 0.2, 11 * px, 15 * px);
         c.font = `600 ${fs}px ${FONT_UI}`;
-        const w = c.measureText(name).width, padX = fs * 0.5, hh = fs * 1.5, y = t.y + s + fs * 0.3;
-        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, cx - w / 2 - padX, y, w + padX * 2, hh, hh * 0.35); c.fill();
-        c.fillStyle = '#f4f5f8'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(name, cx, y + hh * 0.54);
+        const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
+        const w = wn + gap + wa, padX = fs * 0.5, hh = fs * 1.5, y = t.y + s + fs * 0.3, x0 = cx - w / 2;
+        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, x0 - padX, y, w + padX * 2, hh, hh * 0.35); c.fill();
+        c.textAlign = 'left'; c.textBaseline = 'middle';
+        if (name) { c.fillStyle = '#f4f5f8'; c.fillText(name, x0, y + hh * 0.54); }
+        if (alt) { c.fillStyle = '#f0c26a'; c.fillText(alt, x0 + wn + gap, y + hh * 0.54); }
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
@@ -5782,10 +6266,11 @@ const Render = (() => {
       if (sc.bg.stretch) ctx.drawImage(bg, 0, 0, W, H);
       else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
     }
+    drawTerrain(sc, px, W, H);
     drawGrid(sc, px);
     ctx.restore();
 
-    for (const s of sc.shapes) if (!s.top && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
+    for (const s of sc.shapes) if (!s.top && !isTer(s) && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
     ctx.globalAlpha = 1;
 
     // Para os jogadores com névoa, cada nível vivo só aparece dentro do que eles enxergam.
@@ -5828,7 +6313,7 @@ const Render = (() => {
 
     layer(c => drawUpper(c, sc, px, t));
 
-    for (const s of sc.shapes) if (s.top && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
+    for (const s of sc.shapes) if (s.top && !isTer(s) && shapeShown(s)) { ctx.globalAlpha = s.gm ? 0.7 : 1; drawShape(ctx, s); }
     ctx.globalAlpha = 1;
 
     if (!mist) drawWeather(sc, px, t);
@@ -5852,7 +6337,7 @@ const Render = (() => {
     UI.frame();
   }
 
-  return { request, resize, readTheme, fit, zoomAt, centerOn, toScreen, drawShape, drawMeasure, label, rr, size: () => [cw, ch], cv, stats };
+  return { request, resize, readTheme, fit, zoomAt, centerOn, toScreen, drawShape, drawTer, drawMeasure, label, rr, size: () => [cw, ch], cv, stats };
 })();
 /* ---------------------------------------------------------------
    9. TOOLS — ferramentas e gestos de mouse e teclado
@@ -5869,7 +6354,7 @@ const Tools = (() => {
   let ghost = null;          // posição do cursor para pré-visualizações
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
-  const KEYS = { v: 'select', h: 'pan', t: 'token', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', e: 'fx', m: 'ruler' };
+  const KEYS = { v: 'select', h: 'pan', t: 'token', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
@@ -5883,6 +6368,7 @@ const Tools = (() => {
     { id: 'wall', n: 'Paredes e portas', k: 'W', i: 'wall', grp: 3, gm: true },
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'N', i: 'fog', grp: 3, gm: true },
+    { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
     { id: 'fx', n: 'Efeito de magia', k: 'E', i: 'fx', grp: 4, perm: 'fx' },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
@@ -5927,7 +6413,7 @@ const Tools = (() => {
     for (const top of [true, false]) {
       for (let i = sc.shapes.length - 1; i >= 0; i--) {
         const s = sc.shapes[i];
-        if (!!s.top !== top || !shapeShown(s)) continue;
+        if (!!s.top !== top || !shapeShown(s) || isTer(s)) continue;
         if (s.lock && !o.locked) continue;
         if (!(gm || can('editShape', s))) continue;
         if (hitShape(s, p.x, p.y, tol)) return { c: 'shapes', id: s.id };
@@ -5980,7 +6466,7 @@ const Tools = (() => {
     const s = App.sel[0], o = Store.get(s.c, s.id), sc = Store.scene();
     if (!o) return [];
     const out = [], gm = isGM(), selTool = App.tool === 'select';
-    if (s.c === 'shapes' && selTool) {
+    if (s.c === 'shapes' && (selTool || (App.tool === 'terrain' && gm && isTer(o)))) {
       if (!(gm || can('editShape', o)) || o.lock) return out;
       if (o.k === 'line') out.push({ kind: 'end', i: 0, x: o.pts[0], y: o.pts[1] }, { kind: 'end', i: 1, x: o.pts[2], y: o.pts[3] });
       else if (o.k !== 'text') {
@@ -6020,7 +6506,7 @@ const Tools = (() => {
   function moveHandle(p, e) {
     const sc = Store.scene(), free = e.altKey, hd = g.hd, o0 = g.o0;
     if (!g.started) { Store.begin('Ajustar'); g.started = true; }
-    const snapShape = App.opt.snap !== free;
+    const snapShape = App.tool === 'terrain' ? !free : App.opt.snap !== free;
     if (hd.kind === 'box') {
       const b0 = g.b0;
       let x0 = b0.x, y0 = b0.y, x1 = b0.x + b0.w, y1 = b0.y + b0.h;
@@ -6087,7 +6573,7 @@ const Tools = (() => {
     const free = e.altKey, L = g.lead;
     if (L.c === 'tokens') { const [nx, ny] = snapTok(sc, L.x + dx, L.y + dy, L.size, free); dx = nx - L.x; dy = ny - L.y; }
     else if (L.c === 'shapes') {
-      if (App.opt.snap !== free) {
+      if (App.tool === 'terrain' ? !free : App.opt.snap !== free) {
         const ax = L.o0.pts ? L.o0.pts[0] : L.o0.x, ay = L.o0.pts ? L.o0.pts[1] : L.o0.y;
         const [nx, ny] = snapPt(sc, ax + dx, ay + dy);
         dx = nx - ax; dy = ny - ay;
@@ -6142,7 +6628,7 @@ const Tools = (() => {
     }
     if (!picked.length) {
       for (const s of sc.shapes) {
-        if (!shapeShown(s) || s.lock || !(gm || can('editShape', s))) continue;
+        if (!shapeShown(s) || s.lock || isTer(s) || !(gm || can('editShape', s))) continue;
         const b = shapeBBox(s);
         if (inR(b.x, b.y) && inR(b.x + b.w, b.y + b.h)) picked.push({ c: 'shapes', id: s.id });
       }
@@ -6616,6 +7102,150 @@ const Tools = (() => {
     },
   };
 
+  /* ---- Terreno ----
+     Áreas do mapa com tipo e altura (morro, montanha, plataforma, fosso, água, mata). "Pintar" cria: com o pincel
+     (uma faixa), com retângulo ou elipse (arrastando) ou com polígono (canto a canto). "Ajustar" seleciona uma
+     área para mover, esticar, trocar o tipo e a altura ou apagar. Só o mestre mexe; todos veem. */
+  const TER_HINTS = {
+    brush: 'Arraste para pintar uma faixa de terreno. A largura do pincel está na barra acima.',
+    rect: 'Arraste para marcar um retângulo de terreno. Alt solta da grade.',
+    ell: 'Arraste para marcar uma elipse de terreno. Alt solta da grade.',
+    poly: 'Clique para marcar cada canto da área. Clique duplo ou Enter fecha; Backspace desfaz o último canto; Esc cancela.',
+  };
+  // A altura das áreas novas: a que o mestre digitou; sem isso, a de fábrica do tipo (em quadrados × a unidade da cena).
+  function terAlt(sc) {
+    const o = App.opt;
+    if (o.terH == null || !isFinite(o.terH)) return Math.round((TERRENO_POR_ID[o.terType] || TERRENOS[0]).hq * (sc.grid.unit || 1) * 100) / 100;
+    return o.terH;
+  }
+  function addTerrain(geo) {
+    const sc = Store.scene(), s = Combate.newTerrain(geo, App.opt.terType, terAlt(sc));
+    Store.tx('Terreno', () => Store.add('shapes', s));
+    return s;
+  }
+  function hitTerrain(p) {
+    const s = Combate.terrainAt(Store.scene(), p.x, p.y);
+    return s ? { c: 'shapes', id: s.id } : null;
+  }
+  function finishTerPoly() {
+    const d = poly;
+    poly = null;
+    if (!d) return;
+    const z = App.view.z, pts = [];
+    for (let i = 0; i < d.pts.length; i += 2) {
+      const n = pts.length;
+      if (n && Math.hypot(d.pts[i] - pts[n - 2], d.pts[i + 1] - pts[n - 1]) * z < 3) continue;
+      pts.push(d.pts[i], d.pts[i + 1]);
+    }
+    if (pts.length >= 6) addTerrain({ k: 'poly', pts });
+    else UI.toast('Uma área precisa de pelo menos três cantos.');
+    Render.request();
+  }
+  T.terrain = {
+    get hint() { return App.opt.terMode === 'edit' ? 'Clique numa área de terreno para selecionar; arraste para mover e puxe as alças para esticar. Delete apaga.' : TER_HINTS[App.opt.terShape] || TER_HINTS.brush; },
+    cursor: 'crosshair',
+    down(p, e) {
+      const o = App.opt, sc = Store.scene();
+      if (o.terMode === 'edit') {
+        const hd = hitHandle(p);
+        if (hd) { startHandle(hd); return; }
+        const hit = hitTerrain(p);
+        if (!hit) { if (App.sel.length) setSel([]); return; }
+        if (e.shiftKey) {
+          if (selHas(hit.c, hit.id)) { setSel(App.sel.filter(x => !(x.c === hit.c && x.id === hit.id))); return; }
+          setSel(App.sel.filter(x => x.c === 'shapes' && isTer(Store.get('shapes', x.id))).concat(hit));
+        } else if (!selHas(hit.c, hit.id)) setSel([hit]);
+        g = startMove(p);
+        return;
+      }
+      if (o.terShape === 'poly') {
+        const q = snapPt(sc, p.x, p.y, e.altKey, 0.5);
+        if (!poly) poly = { pts: [], x: q[0], y: q[1] };
+        if (poly.pts.length >= 6 && Math.hypot(q[0] - poly.pts[0], q[1] - poly.pts[1]) * App.view.z < 9) { finishTerPoly(); return; }
+        poly.pts.push(q[0], q[1]);
+      } else if (o.terShape === 'rect' || o.terShape === 'ell') {
+        const q = snapPt(sc, p.x, p.y, e.altKey, 1);
+        g = { type: 'ter', k: o.terShape, x0: q[0], y0: q[1], x1: q[0], y1: q[1] };
+      } else g = { type: 'ter', k: 'free', pts: [r1(p.x), r1(p.y)], sw: Math.max(0.25, Number(o.terSize) || 1) * sc.cell };
+      Render.request();
+    },
+    move(p, e) {
+      ghost = p;
+      const sc = Store.scene();
+      if (g && g.type === 'handle') moveHandle(p, e);
+      else if (g && g.type === 'move') { doMove(p, e); if (g.moved) cv.style.cursor = 'grabbing'; }
+      else if (g && g.type === 'ter') {
+        if (g.k === 'free') {
+          const n = g.pts.length;
+          if (Math.hypot(p.x - g.pts[n - 2], p.y - g.pts[n - 1]) > Math.max(2 / App.view.z, g.sw * 0.08)) g.pts.push(r1(p.x), r1(p.y));
+        } else { const q = snapPt(sc, p.x, p.y, e.altKey, 1); g.x1 = q[0]; g.y1 = q[1]; }
+      } else if (poly) [poly.x, poly.y] = snapPt(sc, p.x, p.y, e.altKey, 0.5);
+      else if (App.opt.terMode === 'edit') cv.style.cursor = hitHandle(p) ? 'crosshair' : hitTerrain(p) ? 'grab' : 'default';
+      Render.request();
+    },
+    up() {
+      if (!g) return;
+      if (g.type === 'handle') { endHandle(); cursor(); Render.request(); return; }
+      if (g.type === 'move') { endMove(); g = null; cursor(); Render.request(); return; }
+      if (g.type !== 'ter') return;
+      const d = g;
+      g = null;
+      if (d.k === 'free') {
+        let pts = d.pts;
+        if (pts.length > 6) pts = Geo.simplify(pts, d.sw * 0.04);
+        if (pts.length < 4) pts = [pts[0], pts[1], pts[0] + 0.1, pts[1]];
+        addTerrain({ k: 'free', pts, sw: d.sw });
+      } else {
+        const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1), w = Math.abs(d.x1 - d.x0), hh = Math.abs(d.y1 - d.y0);
+        if (w > 1 && hh > 1) addTerrain({ k: d.k, x, y, w, h: hh });
+      }
+      Render.request();
+    },
+    dbl() { if (poly) finishTerPoly(); },
+    key(e) {
+      if (!poly) return false;
+      if (e.key === 'Enter') { finishTerPoly(); return true; }
+      if (e.key === 'Escape') { poly = null; Render.request(); return true; }
+      if (e.key === 'Backspace') { poly.pts.length = Math.max(0, poly.pts.length - 2); if (!poly.pts.length) poly = null; Render.request(); return true; }
+      return false;
+    },
+    preview(ctx, px, sc) {
+      const o = App.opt, d = TERRENO_POR_ID[o.terType] || TERRENOS[0];
+      // o que cada área é, por extenso, enquanto a ferramenta está na mão
+      for (const s of sc.shapes) {
+        if (!isTer(s)) continue;
+        let cx, cy;
+        if (s.k === 'free') { const i = Math.floor(s.pts.length / 4) * 2; cx = s.pts[i]; cy = s.pts[i + 1]; }
+        else { const b = shapeBBox(s); cx = b.x + b.w / 2; cy = b.y + b.h / 2; }
+        Render.label(ctx, Combate.terText(s, sc), cx, cy, px, { size: 11.5, stroke: selHas('shapes', s.id) ? '#ffffff' : null });
+      }
+      ctx.save();
+      if (g && g.type === 'ter') {
+        const tmp = g.k === 'free' ? Combate.newTerrain({ k: 'free', pts: g.pts.length >= 4 ? g.pts : [g.pts[0], g.pts[1], g.pts[0] + 0.1, g.pts[1]], sw: g.sw }, o.terType, terAlt(sc))
+          : Combate.newTerrain({ k: g.k, x: Math.min(g.x0, g.x1), y: Math.min(g.y0, g.y1), w: Math.abs(g.x1 - g.x0), h: Math.abs(g.y1 - g.y0) }, o.terType, terAlt(sc));
+        ctx.globalAlpha = 0.6;
+        Render.drawTer(ctx, tmp, sc, px);
+      } else if (poly && poly.pts.length) {
+        const p = poly.pts;
+        ctx.lineJoin = ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+        ctx.lineTo(poly.x, poly.y);
+        ctx.fillStyle = hexA(d.c, 0.4); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 4 * px; ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.8 * px; ctx.setLineDash([7 * px, 5 * px]); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1 * px;
+        ctx.beginPath(); ctx.arc(p[0], p[1], 4.5 * px, 0, TAU); ctx.fill(); ctx.stroke();
+      } else if (ghost && o.terMode !== 'edit' && o.terShape === 'brush') {
+        ctx.beginPath(); ctx.arc(ghost.x, ghost.y, Math.max(0.25, Number(o.terSize) || 1) * sc.cell / 2, 0, TAU);
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3 * px; ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4 * px; ctx.setLineDash([6 * px, 4 * px]); ctx.stroke();
+      }
+      ctx.restore();
+    },
+  };
+
   /* ---- Efeitos de magia ---- */
   function fxFromOpt(x, y, tok) {
     const o = App.opt, sc = Store.scene();
@@ -6751,6 +7381,7 @@ const Tools = (() => {
     App.tool = id;
     if (opt && opt.wallKind) { App.opt.wallKind = opt.wallKind; if (opt.wallKind === 'door') App.opt.wallMode = 'line'; }   // porta não fecha sala
     if (id !== 'wall' && App.sel.some(s => s.c === 'walls')) setSel(App.sel.filter(s => s.c !== 'walls'));
+    if (id !== 'terrain' && App.sel.some(s => s.c === 'shapes' && isTer(Store.get('shapes', s.id)))) setSel(App.sel.filter(s => !(s.c === 'shapes' && isTer(Store.get('shapes', s.id)))));
     cursor();
     Store.emit('tool');
     Render.request();
@@ -6880,6 +7511,8 @@ const Tools = (() => {
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
+    if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
+    if (lk === 'c') { Luta.disputa(); return; }            // disputa entre dois tokens (só o mestre)
     if (lk === 'a') {                       // mira: o token sob o cursor, ou os selecionados
       if (!can('target')) return;
       const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true }) : null;
@@ -6898,7 +7531,7 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, set, allowed, handles, drawPreview, hitTest, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
 /* ---------------------------------------------------------------
    10. UI — barra do topo, trilho de ferramentas, painel, menus e janelas
@@ -7529,8 +8162,9 @@ const UI = (() => {
     const rows = [
       ['V', 'Selecionar'], ['H ou espaço + arrastar', 'Mover a câmera'], ['Roda do mouse', 'Aproximar e afastar'], ['0', 'Enquadrar a cena'],
       ['T', 'Novo token'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
-      ['I', 'Luz'], ['N', 'Névoa manual'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
+      ['I', 'Luz'], ['N', 'Névoa manual'], ['Q', 'Terreno'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
+      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -7608,6 +8242,7 @@ const UI = (() => {
     if (t === 'token') {
       kids.push(oGroup('Dono', inSelect('o-owner', o.tokOwner, [['', 'Mestre (NPC)'], ['*', 'Todos os jogadores']].concat(Store.S.players.map(p => [p.id, p.name])), v => optSet('tokOwner', v))));
       kids.push(oGroup('Tamanho', seg('o-size', o.tokSize, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => optSet('tokSize', v, true))));
+      if (Fichas.on()) kids.push(btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', kind: 'small', id: 'o-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }));
     } else if (['free', 'line', 'rect', 'ell', 'poly', 'text'].includes(t)) {
       kids.push(oGroup(t === 'text' ? 'Cor' : 'Traço', oColor('o-stroke', 'stroke', 'Cor do traço')));
       if (t === 'rect' || t === 'ell' || t === 'poly') kids.push(oGroup(null, oCheck('o-fillon', 'fillOn', 'Preencher', true), o.fillOn ? oColor('o-fill', 'fill', 'Cor do preenchimento') : null));
@@ -7635,6 +8270,17 @@ const UI = (() => {
         if (o.fogShape === 'brush') kids.push(oRange('o-fsize', 'fogSize', 0.5, 8, 0.5, 'Pincel', v => fmt(v) + ' q'));
         kids.push(btn('Revelar tudo', () => fogAll('r'), { kind: 'small' }), btn('Esconder tudo', () => fogAll('h'), { kind: 'small' }));
       }
+    } else if (t === 'terrain') {
+      const u = String(sc.grid.unitName || '').trim(), passo = sc.grid.unit || 1, def = TERRENO_POR_ID[o.terType] || TERRENOS[0];
+      kids.push(seg('o-tm', o.terMode, [['paint', 'Pintar', null, 'Criar áreas de terreno'], ['edit', 'Ajustar', null, 'Selecionar uma área para mover, esticar, trocar ou apagar']], v => { Tools.cancel(); optSet('terMode', v, true); }));
+      if (o.terMode !== 'edit') {
+        kids.push(seg('o-ts', o.terShape, [['brush', 'Pincel'], ['rect', 'Retângulo'], ['ell', 'Elipse'], ['poly', 'Polígono']], v => { Tools.cancel(); optSet('terShape', v, true); }));
+        kids.push(oGroup('Tipo', inSelect('o-tt', o.terType, TERRENOS.map(x => [x.id, x.n]), v => { o.terH = null; optSet('terType', v, true); })));
+        const alt = o.terH == null || !isFinite(o.terH) ? Math.round(def.hq * passo * 100) / 100 : o.terH;
+        kids.push(oGroup('Altura', h('input', { id: 'o-th', type: 'number', class: 'in num', step: passo, min: -9999, max: 9999, value: alt, 'aria-label': 'Altura da área' + (u ? ', em ' + u : ''), title: 'Altura da área, na unidade da cena. Negativa é um buraco (fosso). Zero não mostra altura.',
+          onchange: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); optSet('terH', isFinite(v) ? clamp(Math.round(v * 100) / 100, -9999, 9999) : null, true); } }), u ? h('span', { class: 'o-u', text: u }) : null));
+        if (o.terShape === 'brush') kids.push(oRange('o-tz', 'terSize', 0.5, 6, 0.5, 'Pincel', v => fmt(v) + ' q'));
+      } else kids.push(h('span', { class: 'o-l', text: selOf('shapes').some(isTer) ? 'Os dados da área estão no painel ao lado.' : 'Clique numa área do mapa.' }));
     } else if (t === 'fx') {
       kids.push(oGroup('Efeito', inSelect('o-fx', o.fx, FX.ORDER.map(id => [id, FX.P[id].n]), v => optSet('fx', v, true))));
       kids.push(seg('o-fxk', o.fxShape, FX_SHAPES, v => optSet('fxShape', v, true)));
@@ -7718,7 +8364,8 @@ const UI = (() => {
         h('strong', { text: 'As suas cenas de antes continuam guardadas neste navegador.' }),
         h('span', { text: ' Esta mesa ainda não tem nenhuma. Você escolhe quais trazer; as do navegador não mudam.' }),
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
-      gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' })) : null,
+      gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
+        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null) : null,
     ];
   }
   function ownerLabel(t) {
@@ -7955,6 +8602,7 @@ const UI = (() => {
       title, wide: true,
       body: h('div', { class: 'area' },
         names.length ? h('div', { class: 'area-top' }, field('Barra', selBar, 'stack'), field('Quanto', amt, 'stack')) : note('Nenhum destes tokens tem barra ligada; dá para aplicar só a condição.'),
+        names.length && Luta.podeAtaque() ? h('div', { class: 'row' }, btn('Descontar a defesa de cada um…', () => Luta.ataque(toks, { titulo: title, dano: amt.value, barra: selBar.value, fora: rows.filter(r => !r.on).map(r => r.t.id) }), { icon: 'shield', kind: 'small', id: 'ar-defesa', title: 'Abre o ataque com defesa para estes mesmos tokens: cada um desconta a defesa que você escolher' })) : null,
         names.length ? note('Sem sinal, o número é tirado (dano). Com +, é devolvido (cura). O botão ½ aplica a metade, para quem resistiu.') : null,
         h('div', { class: 'area-bar' }, count, h('span', { class: 'spacer' }), btn('Todos', () => all(true), { kind: 'small' }), btn('Nenhum', () => all(false), { kind: 'small' })),
         list,
@@ -8023,8 +8671,7 @@ const UI = (() => {
     if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
-    const fixa0 = App.opt.fichaFixa == null || App.opt.fichaTok !== t.id ? Fichas.fixaPadrao(t) : App.opt.fichaFixa;
-    App.opt.fichaTok = t.id; App.opt.fichaFixa = fixa0;
+    const fixa0 = Luta.fixaAtual(t), doTurno = Combate.fixaDoTurno(t);
     // um token ligado antes (ou que ganhou uma barra à mão) pode ter barras que não são da ficha: um clique acerta
     if (Fichas.foraDaFicha(t)) out.push(
       note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
@@ -8032,9 +8679,10 @@ const UI = (() => {
     out.push(
       note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha. Dois cliques no token abrem a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
-      field('Fixando', inNum('tk-fixa', fixa0, v => { App.opt.fichaFixa = Math.max(0, Math.round(v) || 0); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      field('Fixando', inNum('tk-fixa', fixa0, v => { Luta.guardarFixa(t, v); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
+      doTurno ? note(`É o ${doTurno.k}º turno dele nesta rodada: a fixa anotada para esse turno é ${doTurno.v}.`) : null,
       h('div', { class: 'row' }, btn('Rolar', () => {
-        const r = Fichas.rolar(t, App.opt.fichaAtr, App.opt.fichaFixa);
+        const r = Fichas.rolar(t, App.opt.fichaAtr, Luta.fixaAtual(t));
         toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
       }, { icon: 'die', id: 'tk-rolar' })));
     out.push(...bagResumo(t));
@@ -8134,12 +8782,14 @@ const UI = (() => {
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
-        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' })),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
+        Luta.fixasBox(t),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
       Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
@@ -8203,7 +8853,8 @@ const UI = (() => {
         note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
         gm ? h('div', { class: 'row' },
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
-          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' })) : null) : null,
+          btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -8341,7 +8992,7 @@ const UI = (() => {
     const total = toks.length + shapes.length + fxs.length + lights.length + walls.length;
     if (!total) return emptySel();
     if (toks.length === total) return toks.length === 1 ? tokenPanel(toks[0]) : multiTokenPanel(toks);
-    if (shapes.length === total) return shapePanel(shapes);
+    if (shapes.length === total) return shapes.every(isTer) ? Luta.terrainPanel(shapes) : shapePanel(shapes);
     if (fxs.length === 1 && total === 1) return fxPanel(fxs[0]);
     if (lights.length === 1 && total === 1) return lightPanel(lights[0]);
     if (walls.length === total) return wallPanel(walls);
@@ -8679,7 +9330,10 @@ const UI = (() => {
       if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
+      if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
+      if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
+      if (gm && Luta.podeAtaque()) items.push({ label: 'Ataque com defesa…', icon: 'shield', run: () => Luta.ataque(toks) });
       if (gm) {
         const allHidden = toks.every(t => t.hidden), allLocked = toks.every(t => t.locked);
         items.push({ label: 'Adicionar aos turnos', icon: 'turns', run: () => { Act.turnAdd(toks); openTab('turn'); } });
@@ -8710,6 +9364,12 @@ const UI = (() => {
       const l = Store.get('lights', hit.id);
       items.push({ head: l.name || 'Luz' }, { label: l.on ? 'Apagar a luz' : 'Acender a luz', icon: 'light', run: () => Store.tx(l.on ? 'Apagar luz' : 'Acender luz', () => Store.upd('lights', l.id, { on: !l.on })) },
         { label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') }, '-', { label: 'Remover', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
+    } else if (gm && App.tool === 'terrain' && Tools.hitTerrain(p)) {
+      const th = Tools.hitTerrain(p), s = Store.get('shapes', th.id);
+      if (!selHas(th.c, th.id)) setSel([th]);
+      items.push({ head: Combate.terText(s, sc) }, { label: 'Ver no painel', icon: 'sliders', run: () => { if (App.opt.terMode !== 'edit') { App.opt.terMode = 'edit'; Tools.cancel(); } openTab('sel'); refresh(); } },
+        { label: 'Trazer para frente', icon: 'front', run: () => Act.toFront('shapes', [s.id], true) }, { label: 'Enviar para trás', icon: 'back', run: () => Act.toFront('shapes', [s.id], false) },
+        '-', { label: 'Apagar a área', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
     } else {
       items.push({ head: 'Mapa' });
       if (gm) items.push({ label: 'Novo token aqui', icon: 'token', run: () => {
@@ -8718,6 +9378,7 @@ const UI = (() => {
         Store.tx('Criar token', () => Store.add('tokens', t));
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
+      if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
       if (can('ping')) items.push({ label: 'Ping aqui', icon: 'ping', key: 'G', run: () => Act.ping(p.x, p.y) });
       items.push({ label: 'Enquadrar a cena', icon: 'fit', key: '0', run: () => { Render.fit(); status(); } });
@@ -8774,6 +9435,7 @@ const UI = (() => {
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
     if (canCond) kids.push(iconBtn('shield', 'Condições', () => condPicker([t]), { size: 16, cls: 'hud-i', id: 'hud-cond' }));
     if (Fichas.podeBolsa(t) && (Fichas.bolsa(t) || []).some(x => x.qtd > 0)) kids.push(iconBtn('bag', 'Bolsa: poções e itens do personagem', () => bagBox(t), { size: 16, cls: 'hud-i', id: 'hud-bolsa' }));
+    if (Luta.podeAtributos(t)) kids.push(iconBtn('die', 'Rolar atributo (F)', () => Luta.alternar(t), { size: 16, cls: 'hud-i', id: 'hud-rolar' }));
     if (can('target')) { const on = isTargeted([t]); kids.push(iconBtn('center', on ? 'Tirar a mira (A)' : 'Mirar: marca este token como alvo (A)', () => Act.targetToggle([t]), { size: 16, cls: 'hud-i', on, id: 'hud-mira' })); }
     if (gm) kids.push(iconBtn(t.hidden ? 'eyeOff' : 'eye', t.hidden ? 'Oculto dos jogadores (clique para mostrar)' : 'Visível aos jogadores (clique para ocultar)', () => Store.tx(t.hidden ? 'Mostrar token' : 'Ocultar token', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { size: 16, cls: 'hud-i', on: t.hidden, id: 'hud-hide' }));
     if (!kids.length) { hide(); return; }
@@ -8842,6 +9504,11 @@ const UI = (() => {
     const m = App.mouse;
     let txt = '';
     if (m.inside && m.x >= 0 && m.y >= 0 && m.x < sceneW(sc) && m.y < sceneH(sc)) txt = `Coluna ${Math.floor(m.x / sc.cell) + 1} · Linha ${Math.floor(m.y / sc.cell) + 1}`;
+    // Terreno sob o cursor: o rodapé diz o que é, e o mapa também (a dica que aparece ao parar o mouse)
+    let chao = '';
+    if (txt && sc.shapes.length) { const ter = Combate.terrainAt(sc, m.x, m.y); if (ter && !Vision.covered(m.x, m.y)) chao = Combate.terText(ter, sc); }
+    if (chao) txt += '  ·  ' + chao;
+    if (Render.cv.title !== chao) Render.cv.title = chao;
     const sv = Nuvem.jogador() ? (saveState === 'saving' ? 'Enviando…' : saveState === 'espera' ? 'Esperando o mestre: o que você fez entra quando ele estiver na mesa' : 'Ao vivo com a mesa')
       : saveState === 'mem' ? 'Sem salvamento neste navegador' : saveState === 'erro' ? 'Não foi possível salvar' : saveState === 'saving' ? 'Salvando…' : Nuvem.mestre() ? 'Salvo na mesa' : 'Salvo neste navegador';
     const full = (txt ? txt + '  ·  ' : '') + sv;
@@ -8858,6 +9525,7 @@ const UI = (() => {
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
     if (modalEl && modalLive) modalLive();
+    Luta.refresh();
     document.title = 'Cenas · Tiny Cats';
   }
   function refresh() {
@@ -8877,6 +9545,8 @@ const UI = (() => {
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
+    // as peças de formulário e as janelas, para as telas de combate (10c-combate.js)
+    kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
   };
 })();
 /* ---------------------------------------------------------------
@@ -9075,6 +9745,622 @@ const Tour = (() => {
   const seen = () => { if (Store.S.prefs.tour) return true; try { return localStorage.getItem(SEEN_KEY) === '1' || localStorage.getItem(SEEN_KEY_OLD) === '1'; } catch (e) { return false; } };
 
   return { start, finish, seen, active: () => !!root, step: () => at };
+})();
+/* ---------------------------------------------------------------
+   10c. LUTA — as telas de combate (as contas ficam em 07e-combate.js)
+   - F ........ a janelinha de atributos do token: rola com a regra da fixa e mostra o resultado;
+   - a fixa de cada turno de quem joga mais de uma vez por rodada (painel do token);
+   - C ........ a disputa entre dois tokens (ou contra um valor avulso);
+   - o grupo .. cria de uma vez os tokens de um grupo de personagens das Fichas;
+   - o ataque . dano com defesa: o mestre escolhe a defesa que desconta, quem defende pode rolar,
+                a janela mostra o que vai acontecer e nada muda antes de "Aplicar";
+   - o painel de uma área de terreno.
+   Nada aqui age sozinho: toda mudança na cena passa por um botão e vira um passo de desfazer.
+   --------------------------------------------------------------- */
+const Luta = (() => {
+  const K = UI.kit;
+  const { field, inNum, inSelect, toggle, seg, btn, iconBtn, sec, note, tokenAvatar } = K;
+  const toast = (t, o) => UI.toast(t, o);
+  const ponte = () => (window.TC && window.TC.ponte) || null;
+  /* A casca do site (a página de fora) pode ser de antes desta atualização — se a pessoa ainda não a recarregou e só
+     agora abriu as Cenas. Aí ela não conhece a disputa nem a defesa: a rolagem aparece aqui, mas não chega à mesa
+     ao vivo. Avisamos uma vez, dizendo o que fazer. */
+  let avisouVelha = false;
+  function mesaEntende() {
+    const P = ponte();
+    if (!P || !P.estado || !P.estado.mesa || P.estado.v >= 2) return true;
+    if (!avisouVelha) { avisouVelha = true; UI.toast('O resultado apareceu aqui, mas não foi para a mesa ao vivo: o site foi atualizado. Recarregue a página quando puder.', { long: true }); }
+    return false;
+  }
+  const int = (v, pad) => { const n = Math.round(parseFloat(String(v == null ? '' : v).replace(',', '.'))); return isFinite(n) ? n : pad; };
+  // o rótulo curto de um atributo, como na ficha ("FOR", "DEF F")
+  const rot = k => { const R = window.TC && window.TC.rules, d = R && R.DEFESAS ? R.DEFESAS.find(x => x.k === k) : null; return (d && d.rot) || k; };
+
+  /* ================= A fixa de agora =================
+     Para cada token, a fixa que os campos "Fixando" mostram: a que o mestre digitou por último (lembrada enquanto a
+     página está aberta); sem isso, a da ficha. Quem tem uma fixa anotada para o turno que está jogando começa por
+     ela — e o que for digitado nesse turno vale só para ele. */
+  const fixaMem = new Map();
+  function chaveFixa(t) {
+    const sc = Store.scene(), tf = Combate.fixaDoTurno(t);
+    return t.id + (tf ? '|' + sc.turn.cur + '|' + sc.turn.round : '');
+  }
+  function fixaAtual(t) {
+    const k = chaveFixa(t);
+    if (fixaMem.has(k)) return fixaMem.get(k);
+    const tf = Combate.fixaDoTurno(t);
+    return tf ? tf.v : t.char && Fichas.get(t.char) ? Fichas.fixaPadrao(t) : 0;
+  }
+  function guardarFixa(t, v) {
+    if (fixaMem.size > 400) fixaMem.clear();
+    fixaMem.set(chaveFixa(t), clamp(int(v, 0), 0, 99999));
+  }
+
+  // No painel do token (seção Turnos): a fixa de cada turno, para quem tem mais de um por rodada.
+  function fixasBox(t) {
+    const n = clampTurns(t.turns);
+    if (n < 2) return null;
+    const cur = cleanFixas(t.fixas);
+    const set = (i, v) => {
+      const f = [];
+      for (let k = 0; k < Math.max(n, cur.length); k++) f.push(k === i ? v : cur[k] == null ? null : cur[k]);
+      Store.tx('Fixa de cada turno', () => Store.upd('tokens', t.id, { fixas: cleanFixas(f) }));
+    };
+    return [
+      h('div', { class: 'field stack', id: 'tk-fixas' }, h('span', { class: 'lb', text: 'Fixa de cada turno' }),
+        h('div', { class: 'fixas' }, Array.from({ length: n }, (_, i) => h('label', { class: 'fixa-t' }, h('span', { text: `${i + 1}º` }),
+          h('input', { id: `tk-fixa-${i + 1}`, type: 'number', class: 'in num cnt', min: 0, max: 9999, step: 1, value: cur[i] == null ? '' : cur[i], placeholder: '–',
+            'aria-label': `Fixa do ${i + 1}º turno`, title: `Quanto ele fixa no ${i + 1}º turno da rodada. Vazio: a fixa de sempre.`,
+            onchange: e => { const raw = String(e.target.value).trim(); set(i, raw === '' ? null : clamp(int(raw, 0), 0, 9999)); } }))))),
+      note('Na vez dele, rolar atributo (tecla F) já começa fixando o valor daquele turno. Vazio: a fixa de sempre.'),
+    ];
+  }
+
+  /* ================= F: a janelinha de atributos =================
+     Abre ao lado do token (o que está sob o cursor; senão, o único selecionado) e fica aberta até fechar: Esc, F de
+     novo, o × ou um clique fora. Com ficha: um botão por atributo, com o valor de agora. Sem ficha: um valor
+     digitado. Tudo com a regra da fixa; a rolagem vai para a mesa ao vivo como as outras. */
+  let pop = null;                        // { el, tokId, res, grid, fx, chips, out, valor }
+  const valorMem = new Map();            // token sem ficha: o último valor rolado por ele
+  function modoDoF(t) {
+    if (!t) return null;
+    if (t.char && Fichas.get(t.char)) return Fichas.podeRolar(t) ? 'ficha' : null;
+    if (isGM()) return 'avulso';
+    return ownsTok(t) && !t.char ? 'avulso' : null;
+  }
+  const podeAtributos = t => !!modoDoF(t);
+  function alvoDoF() {
+    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true }) : null;
+    if (hit) return Store.get('tokens', hit.id) || null;
+    const sel = selOf('tokens');
+    return sel.length === 1 ? sel[0] : null;
+  }
+  function fecharPop() { if (pop) { pop.el.remove(); pop = null; } }
+  function atributos(tokArg) {
+    const t = tokArg || alvoDoF();
+    if (pop && !tokArg && (!t || t.id === pop.tokId)) { fecharPop(); return; }       // F de novo fecha
+    if (!t) { toast('Para rolar um atributo, passe o mouse sobre um token (ou selecione um) e aperte F.'); return; }
+    if (!tokShown(t, Store.scene())) return;
+    if (!modoDoF(t)) { toast(isGM() ? 'Não dá para rolar por este token.' : 'Você rola pelos tokens do seu personagem.'); return; }
+    abrirPop(t);
+  }
+  function lerFixaDoPop() { return clamp(int(pop.fx.value, 0), 0, 99999); }
+  function rolarDoPop(k) {
+    const t = pop ? Store.get('tokens', pop.tokId) : null;
+    if (!t) { fecharPop(); return; }
+    const fixa = lerFixaDoPop();
+    let r, nome;
+    if (k === '@valor') {
+      const v = clamp(int(pop.valor.value, 0), 0, 100000);
+      valorMem.set(t.id, v);
+      r = Combate.rolarFixa(v, fixa); nome = 'Valor ' + v;
+      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total }); } catch (e) { console.error(e); } }
+    } else { r = Fichas.rolar(t, k, fixa); nome = r.nome || k; }
+    pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) } : { ok: false, txt: r.error };
+    pintarPop();
+  }
+  function pintarPop() {
+    if (!pop) return;
+    const sc = Store.scene(), t = Store.get('tokens', pop.tokId), modo = t ? modoDoF(t) : null;
+    if (!t || !modo || !tokShown(t, sc)) { fecharPop(); return; }
+    const a = document.activeElement, fid = a && a.id && pop.el.contains(a) ? a.id : null;
+    pop.nome.textContent = tokName(t);
+    if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
+    const fixa = lerFixaDoPop();
+    // as fixas anotadas por turno: um toque põe o valor no campo
+    const tf = Combate.fixaDoTurno(t), fs = Combate.fixasDe(t);
+    pop.chips.hidden = !fs.length;
+    pop.chips.replaceChildren(...(fs.length ? [h('span', { class: 'pop-l', text: 'Por turno' })].concat(fs.map(f => h('button', { type: 'button', class: 'chip' + (tf && tf.k === f.k ? ' on' : ''), id: `fp-t${f.k}`, title: `Fixa do ${f.k}º turno: ${f.v}` + (tf && tf.k === f.k ? ' (é o turno de agora)' : ''), text: `${f.k}º · ${f.v}`,
+      onclick: () => { guardarFixa(t, f.v); pop.fx.value = f.v; pintarPop(); } }))) : []));
+    const como = v => (v < 1 ? 'nada a rolar' : fixa >= v ? 'fixa total: ' + v : '1d' + (v - fixa) + (fixa ? ' + ' + fixa : ''));
+    if (modo === 'ficha') {
+      pop.grid.className = 'pop-g';
+      pop.grid.replaceChildren(...Fichas.rolaveis(t).map(([k, nome, v]) => h('button', { type: 'button', class: 'pop-b', id: 'fp-' + k, 'data-k': k, disabled: v < 1, title: `${nome} ${v}: ${como(v)}`, 'aria-label': `Rolar ${nome}, ${v}: ${como(v)}`, onclick: () => rolarDoPop(k) },
+        h('small', { text: rot(k) }), h('b', { text: String(v) }))));
+    } else {
+      // (o campo do valor é feito uma vez só: redesenhar tiraria o foco de quem está digitando)
+      if (!pop.valor) {
+        pop.valor = h('input', { id: 'fp-valor', type: 'number', class: 'in num', min: 1, max: 100000, step: 1, value: valorMem.has(t.id) ? valorMem.get(t.id) : 40, 'aria-label': 'Valor a rolar',
+          oninput: () => pintarPop(), onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); rolarDoPop('@valor'); } } });
+        pop.grid.className = 'pop-v';
+        pop.grid.replaceChildren(h('label', { class: 'pop-l', for: 'fp-valor', text: 'Valor' }), pop.valor, btn('Rolar', () => rolarDoPop('@valor'), { icon: 'die', kind: 'primary', id: 'fp-rolar' }));
+      }
+      const v = clamp(int(pop.valor.value, 0), 0, 100000);
+      const b = pop.grid.querySelector('#fp-rolar');
+      b.title = 'Rola ' + como(v); b.disabled = v < 1;
+    }
+    const r = pop.res;
+    pop.out.hidden = !r;
+    pop.out.className = 'pop-r' + (r && !r.ok ? ' erro' : '');
+    pop.out.replaceChildren(...(r ? (r.ok ? [h('b', { class: 'pop-tot', id: 'fp-total', text: String(r.total) }), h('span', { text: r.txt }), h('small', { text: r.det })] : [h('span', { text: r.txt })]) : []));
+    if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
+  }
+  function abrirPop(t) {
+    fecharPop(); UI.closeMenus();
+    const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
+      oninput: () => { const cur = pop && Store.get('tokens', pop.tokId); if (cur) { guardarFixa(cur, fx.value); pintarPop(); } },
+      onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); fx.blur(); pop.el.focus({ preventScroll: true }); } } });
+    const nome = h('strong', { class: 'pop-n' }), grid = h('div', { class: 'pop-g' }), chips = h('div', { class: 'pop-c', hidden: true }), out = h('div', { class: 'pop-r', id: 'fp-res', role: 'status', hidden: true });
+    const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
+      h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
+      h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx), chips, grid, out);
+    K.layer.append(el);
+    pop = { el, tokId: t.id, res: null, grid, fx, chips, out, nome, valor: null };
+    pintarPop();
+    if (!pop) return;
+    // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
+    const sc = Store.scene(), r = Render.cv.getBoundingClientRect(), [sx, sy] = Render.toScreen(t.x, t.y), lado = t.size * sc.cell * App.view.z;
+    const w = el.offsetWidth, hh = el.offsetHeight;
+    let left = r.left + sx + lado + 14;
+    if (left + w > window.innerWidth - 8) left = r.left + sx - w - 14;
+    el.style.left = clamp(left, 8, Math.max(8, window.innerWidth - w - 8)) + 'px';
+    el.style.top = clamp(r.top + sy - 6, 8, Math.max(8, window.innerHeight - hh - 8)) + 'px';
+    el.focus({ preventScroll: true });
+  }
+  // o botão da faixa do token (para quem não usa o teclado): abre e, de novo, fecha
+  function alternar(t) { if (pop && t && pop.tokId === t.id) fecharPop(); else atributos(t); }
+  document.addEventListener('pointerdown', e => { if (pop && !pop.el.contains(e.target) && !(e.target.closest && e.target.closest('#hud-rolar'))) fecharPop(); }, true);
+  document.addEventListener('keydown', e => {
+    if (!pop || e.key !== 'Escape' || UI.modalOpen()) return;
+    fecharPop(); e.stopPropagation(); e.preventDefault();
+  }, true);
+
+  /* ================= C: a disputa =================
+     Dois lados, cada um com um token da cena (ou um valor avulso, sem token). Lado com ficha: escolhe o atributo;
+     sem ficha: digita o valor. Cada lado rola com a regra da fixa; quem tirar mais vence. O resultado aparece na
+     janela e vai para a mesa ao vivo (em segredo, se um dos tokens está oculto ou com o nome escondido). */
+  const atrMem = new Map();              // o último atributo usado por cada token numa disputa
+  function ladoDe(t) {
+    if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '' };
+    const comFicha = !!(t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const itens = comFicha ? Fichas.rolaveis(t) : [];
+    const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
+    return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr };
+  }
+  function disputa(toksArg) {
+    if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
+    fecharPop();
+    const sc = Store.scene(), sel = (toksArg && toksArg.length ? toksArg : selOf('tokens')).slice();
+    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true }) : null, sob = hit ? Store.get('tokens', hit.id) : null;
+    const a0 = sel[0] || sob || null;
+    let b0 = sel.find(t => a0 && t.id !== a0.id) || null;
+    if (!b0) { const mira = sc.targets.find(x => x.by === App.viewer && (!a0 || x.t !== a0.id)); if (mira) b0 = Store.get('tokens', mira.t) || null; }
+    if (!b0 && sob && a0 && sob.id !== a0.id) b0 = sob;
+    const st = { a: ladoDe(a0), b: ladoDe(b0), res: null };
+    const corpo = h('div', { class: 'dis' });
+    const tokDe = L => (L.tok ? Store.get('tokens', L.tok) : null);
+    const comFicha = t => !!(t && t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    // o que cada lado vai rolar agora: { nome, rotulo, valor, fixa, tok }
+    const conta = L => {
+      const t = tokDe(L);
+      if (comFicha(t)) { const it = Fichas.rolaveis(t).find(x => x[0] === L.atr) || Fichas.rolaveis(t)[0]; return { t, nome: t.name, rotulo: rot(it[0]), valor: it[2], fixa: Math.min(L.fixa, it[2]) }; }
+      const v = clamp(int(L.valor, 0), 0, 100000);
+      return { t, nome: (t ? t.name : String(L.nome || '').trim()) || 'NPC', rotulo: 'valor', valor: v, fixa: Math.min(L.fixa, v) };
+    };
+    const opcoes = [['', 'Avulso (sem token)']].concat(sc.tokens.map(t => [t.id, t.name + (t.hidden ? ' (oculto)' : '')]));
+    const lado = (L, p, titulo) => {
+      const t = tokDe(L), ficha = comFicha(t);
+      const trocar = v => { const novo = ladoDe(v ? Store.get('tokens', v) : null); Object.assign(L, novo); st.res = null; paint(); };
+      return h('div', { class: 'dis-l' }, h('div', { class: 'dis-t', text: titulo }),
+        field('Quem', inSelect(`dis-${p}-tok`, L.tok, opcoes, trocar), 'stack'),
+        ficha ? field('Atributo', inSelect(`dis-${p}-atr`, L.atr, Fichas.rolaveis(t).map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { L.atr = v; atrMem.set(t.id, v); st.res = null; paint(); }), 'stack')
+          : [t ? null : field('Nome', h('input', { id: `dis-${p}-nome`, class: 'in', type: 'text', maxlength: 40, value: L.nome, autocomplete: 'off', oninput: e => { L.nome = e.target.value; } }), 'stack'),
+            field('Valor', h('input', { id: `dis-${p}-valor`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: L.valor, oninput: e => { L.valor = clamp(int(e.target.value, 0), 0, 100000); if (t) valorMem.set(t.id, L.valor); } }), 'stack')],
+        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'),
+        t && Combate.fixaDoTurno(t) ? note(`É o ${Combate.fixaDoTurno(t).k}º turno dele: fixa anotada ${Combate.fixaDoTurno(t).v}.`) : null);
+    };
+    const paint = () => {
+      const a = document.activeElement, fid = a && a.id && corpo.contains(a) ? a.id : null;
+      const r = st.res;
+      corpo.replaceChildren(...[
+        h('div', { class: 'dis-2' }, lado(st.a, 'a', 'Um lado'), h('div', { class: 'dis-x', 'aria-hidden': 'true', text: '×' }), lado(st.b, 'b', 'O outro')),
+        r ? h('div', { class: 'dis-r', id: 'dis-res', role: 'status' },
+          h('div', { class: 'dis-n' }, h('span', { class: r.a.total > r.b.total ? 'v' : '', text: `${r.na} ${r.a.total}` }), h('span', { class: 'dis-x', text: '×' }), h('span', { class: r.b.total > r.a.total ? 'v' : '', text: `${r.b.total} ${r.nb}` })),
+          h('div', { class: 'dis-v', id: 'dis-veredito', text: r.veredito }),
+          h('div', { class: 'dis-d', text: `${Combate.comoSaiu(r.a)}  ·  ${Combate.comoSaiu(r.b)}` })) : null].filter(Boolean));
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+      const b = K.card() && K.card().querySelector('.btn.primary span'); if (b) b.textContent = st.res ? 'Rolar de novo' : 'Rolar disputa';
+    };
+    const rolar = () => {
+      const ca = conta(st.a), cb = conta(st.b);
+      if (ca.t && cb.t && ca.t.id === cb.t.id) { toast('Os dois lados são o mesmo token. Escolha outro num deles.'); return false; }
+      const ra = Combate.rolarFixa(ca.valor, ca.fixa), rb = Combate.rolarFixa(cb.valor, cb.fixa);
+      if (!ra.ok || !rb.ok) { toast((!ra.ok ? ca.nome : cb.nome) + ': ' + (!ra.ok ? ra.error : rb.error)); return false; }
+      const empate = ra.total === rb.total, venceuA = ra.total > rb.total;
+      const veredito = empate ? 'Empate em ' + ra.total
+        : `${venceuA ? ca.nome : cb.nome} venceu ${venceuA ? cb.nome : ca.nome} por ${Math.abs(ra.total - rb.total)} (${Math.max(ra.total, rb.total)} × ${Math.min(ra.total, rb.total)})`;
+      st.res = { a: ra, b: rb, na: ca.nome, nb: cb.nome, veredito };
+      if (Ext.roll) {
+        const esconde = t => !!(t && (t.hidden || t.showName === false));
+        // na mesa ao vivo, o veredito sai verde ou vermelho só quando um dos lados (e só um) é de jogador: é a vitória ou a derrota dele
+        const deJog = t => !!(t && t.owner && (t.owner === '*' || playerById(t.owner)));
+        const passou = empate || deJog(ca.t) === deJog(cb.t) ? null : deJog(ca.t) ? venceuA : !venceuA;
+        mesaEntende();
+        try {
+          Ext.roll({ kind: 'disputa', titulo: `Disputa · ${ca.nome} × ${cb.nome}`, tokenId: ca.t ? ca.t.id : null, oculto: esconde(ca.t) || esconde(cb.t),
+            resumo: `${ca.nome}: ${ca.rotulo} ${ca.valor} (${Combate.comoFoi(ra)}) = ${ra.total}  ·  ${cb.nome}: ${cb.rotulo} ${cb.valor} (${Combate.comoFoi(rb)}) = ${rb.total}`,
+            veredito, passou, dd: Combate.dadosDe(ra).concat(Combate.dadosDe(rb)) });
+        } catch (e) { console.error(e); }
+      }
+      paint();
+      return false;                        // a janela fica aberta: dá para rolar de novo
+    };
+    UI.modal({ title: 'Disputa', wide: true, body: corpo, focusPrimary: true, actions: [{ label: 'Fechar' }, { label: 'Rolar disputa', kind: 'primary', run: rolar }] });
+    paint();
+  }
+
+  /* ================= Puxar o grupo =================
+     Cria de uma vez os tokens de vários personagens das Fichas, já ligados a elas (nome, barras, iniciativa,
+     imagem e dono). O mestre vê a lista antes e marca quem vem; quem já tem token nesta cena fica de fora. */
+  function grupo(onde) {
+    if (!isGM() || !Fichas.on()) { toast('Puxar o grupo funciona dentro do site, com uma mesa aberta.'); return; }
+    fecharPop();
+    const sc = Store.scene(), lista = Combate.elenco(sc);
+    if (!lista.length) { toast('Esta mesa ainda não tem fichas. Crie na aba Fichas.'); return; }
+    const conjuntos = [];
+    const jog = lista.filter(x => x.dono);
+    if (jog.length) conjuntos.push({ id: '@jog', n: 'Personagens dos jogadores', ids: jog.map(x => x.id) });
+    const nomes = [...new Set(lista.map(x => x.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    for (const g of nomes) conjuntos.push({ id: 'g:' + g, n: 'Grupo: ' + g, ids: lista.filter(x => x.grupo === g).map(x => x.id) });
+    const soltos = lista.filter(x => !x.grupo);
+    if (nomes.length && soltos.length) conjuntos.push({ id: '@sem', n: 'Sem grupo', ids: soltos.map(x => x.id) });
+    conjuntos.push({ id: '@todos', n: 'Todas as fichas da mesa', ids: lista.map(x => x.id) });
+    const st = { cj: App.opt.grupoCj && conjuntos.some(c => c.id === App.opt.grupoCj) ? App.opt.grupoCj : conjuntos[0].id, marcados: new Set(), oculto: false };
+    const porId = new Map(lista.map(x => [x.id, x]));
+    const doConjunto = () => conjuntos.find(c => c.id === st.cj).ids.map(id => porId.get(id));
+    const marcarTodos = on => { st.marcados = new Set(on ? doConjunto().filter(x => !x.aqui).map(x => x.id) : []); };
+    marcarTodos(true);
+    const ul = h('ul', { class: 'area-list', id: 'gr-lista' }), conta = h('span', { class: 'area-count', id: 'gr-conta' });
+    const paint = () => {
+      const a = document.activeElement, fid = a && a.id && ul.contains(a) ? a.id : null;
+      const itens = doConjunto(), livres = itens.filter(x => !x.aqui).length;
+      conta.textContent = livres ? `${st.marcados.size} de ${livres} marcados` : 'Todos já estão nesta cena';
+      ul.replaceChildren(...itens.map((x, k) => {
+        const l = Fichas.get(x.id), img = l ? Fichas.imagemDe(l) : null, on = st.marcados.has(x.id);
+        const sub = (x.dono ? 'de ' + x.dono.name : 'NPC') + (x.grupo ? ' · ' + x.grupo : '');
+        return h('li', { class: 'area-row' + (on ? '' : ' off') },
+          h('label', { class: 'area-who' },
+            h('input', { type: 'checkbox', class: 'ck', id: `gr-on-${k}`, checked: on, disabled: x.aqui, 'aria-label': 'Trazer ' + x.nome, onchange: e => { if (e.target.checked) st.marcados.add(x.id); else st.marcados.delete(x.id); paint(); } }),
+            h('span', { class: 'av', 'aria-hidden': 'true', style: Object.assign({ width: '26px', height: '26px', fontSize: '10px', backgroundColor: 'var(--hover)', color: 'var(--fg-2)', borderColor: x.dono ? x.dono.color : 'var(--line-strong)' }, img ? { backgroundImage: `url("${img}")` } : {}) }, img ? null : initials(x.nome)),
+            h('span', { class: 'area-n', text: x.nome })),
+          h('span', { class: 'area-res', text: x.aqui ? 'já está na cena' : sub }));
+      }));
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+    };
+    paint();
+    const sel = inSelect('gr-cj', st.cj, conjuntos.map(c => [c.id, `${c.n} (${c.ids.length})`]), v => { st.cj = v; App.opt.grupoCj = v; marcarTodos(true); paint(); });
+    UI.modal({
+      title: 'Puxar o grupo', wide: true, focusPrimary: true,
+      text: 'Cria um token para cada personagem marcado, já ligado à ficha dele: nome, barras, iniciativa, imagem e dono.',
+      body: h('div', { class: 'area' },
+        field('De onde', sel, 'stack'),
+        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Todos', () => { marcarTodos(true); paint(); }, { kind: 'small' }), btn('Nenhum', () => { marcarTodos(false); paint(); }, { kind: 'small' })),
+        ul,
+        toggle('gr-oculto', st.oculto, v => { st.oculto = v; }, 'Criar ocultos dos jogadores'),
+        note('Os tokens entram em quadrados livres, a partir ' + (onde ? 'do ponto clicado' : 'do meio da tela') + '. Quem já tem token nesta cena fica de fora. Um Desfazer tira todos de uma vez.')),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Trazer', kind: 'primary', run: () => {
+          const ids = doConjunto().filter(x => !x.aqui && st.marcados.has(x.id)).map(x => x.id);
+          if (!ids.length) { toast('Marque pelo menos um personagem.'); return false; }
+          const [cw, ch] = Render.size();
+          const cx = onde ? onde.x : App.view.x + cw / (2 * App.view.z), cy = onde ? onde.y : App.view.y + ch / (2 * App.view.z);
+          const feitos = Combate.trazer(ids, cx, cy, st.oculto ? { hidden: true } : null);
+          if (!feitos.length) { toast('Nenhum token foi criado: as fichas marcadas saíram da mesa.'); return; }
+          setSel(feitos.map(id => ({ c: 'tokens', id })));
+          if (App.tool !== 'select') Tools.set('select');
+          toast(feitos.length === 1 ? 'Um token criado, ligado à ficha.' : `${feitos.length} tokens criados, ligados às fichas.`, { action: 'Desfazer', run: Tools.undo });
+        },
+      }],
+    });
+  }
+
+  /* ================= Painel de uma área de terreno ================= */
+  function terrainPanel(shapes) {
+    const sc = Store.scene(), s = shapes[0], many = shapes.length > 1, u = String(sc.grid.unitName || '').trim(), passo = sc.grid.unit || 1;
+    const all = (fn, label) => Store.tx(label, () => shapes.forEach(x => { const cur = Store.get('shapes', x.id); if (cur && isTer(cur)) Store.upd('shapes', cur.id, fn(cur)); }));
+    const tipo = shapes.every(x => x.ter.t === s.ter.t) ? s.ter.t : '', alt = shapes.every(x => x.ter.h === s.ter.h) ? s.ter.h : '';
+    const ids = shapes.map(x => x.id);
+    return [
+      h('div', { class: 'p-head' }, h('span', { class: 'av', style: { width: '44px', height: '44px', backgroundColor: tipo ? TERRENO_POR_ID[tipo].c : 'var(--hover)', color: '#fff', borderColor: 'var(--line-strong)' } }, icon('terrain', 22)),
+        h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${shapes.length} áreas de terreno` : Combate.terDef(s).n }), h('div', { class: 'p-sub', text: many ? 'O que você mudar aqui vale para todas.' : 'Arraste para mover; puxe as alças para esticar.' }))),
+      sec('s-ter', 'Terreno', true,
+        field('Tipo', inSelect('tr-tipo', tipo, (tipo ? [] : [['', 'Vários']]).concat(TERRENOS.map(x => [x.id, x.n])), v => { if (v) all(x => Combate.terPatch(x, v), 'Tipo de terreno'); })),
+        field('Altura' + (u ? ` (${u})` : ''), h('input', { id: 'tr-alt', type: 'number', class: 'in num', step: passo, min: -9999, max: 9999, value: alt, placeholder: alt === '' ? 'várias' : '',
+          onchange: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v)) all(x => Combate.terPatch(x, x.ter.t, v), 'Altura do terreno'); else e.target.value = alt; } })),
+        !many && s.k === 'free' ? field('Largura (q)', inNum('tr-larg', Math.round(s.sw / sc.cell * 100) / 100, v => all(() => ({ sw: v * sc.cell }), 'Largura da faixa'), { min: 0.25, max: 12, step: 0.25 })) : null,
+        note('O token que estiver em cima mostra a altura (▲). Negativa é um buraco, e mostra ▼. Com zero, a área só tem o nome (água rasa, mata). Passando o mouse, o mapa diz o que é.')),
+      h('div', { class: 'row' },
+        btn('Duplicar', Act.duplicateSel, { icon: 'copy' }),
+        btn('Frente', () => Act.toFront('shapes', ids, true), { icon: 'front', title: 'Onde duas áreas se cruzam, vale a que está na frente' }),
+        btn('Trás', () => Act.toFront('shapes', ids, false), { icon: 'back' }),
+        btn('Apagar', K.deleteSelToast, { icon: 'trash', kind: 'danger', id: 'tr-apagar' })),
+    ];
+  }
+
+  /* ================= Ataque com defesa =================
+     O mestre diz o dano, a barra e quais defesas descontam (uma ou mais: elas se somam; nenhuma: o dano entra
+     inteiro). Para cada alvo com ficha a janela mostra a defesa e o que vai sobrar na barra. Quem defende pode
+     rolar a defesa com a regra da fixa: os jogadores recebem o pedido na mesa ao vivo e rolam de lá; o mestre vê
+     quem já rolou, pode rolar por quem demorar (ou valer a defesa inteira) e só então aplica. O mínimo e o máximo
+     valem depois do desconto. Token sem ficha: o mestre diz quanto de dano ele tomou. */
+  let atq = null, atqRelogio = 0;
+  const podeAtaque = () => isGM() && Fichas.on() && Combate.listaDefesas().length > 0;
+  function encerrarPedido(fim) {
+    const p = atq && atq.pedido;
+    if (!p || p.fim) return;
+    p.fim = fim;
+    try { const P = ponte(); if (P && P.registro && P.registro.encerrar) P.registro.encerrar(p.id, fim); } catch (e) { console.error(e); }
+  }
+  function fecharAtaque(fim) {
+    if (!atq) return;
+    encerrarPedido(fim || 'cancelado');
+    atq = null;
+    clearInterval(atqRelogio); atqRelogio = 0;
+  }
+  function ataque(toks, pre) {
+    if (!podeAtaque()) { toast('O ataque com defesa funciona dentro do site, com uma mesa aberta (ele usa as defesas das fichas).'); return; }
+    const alvos = (toks || []).filter(Boolean);
+    if (!alvos.length) { toast('Selecione no mapa quem recebe o ataque.'); return; }
+    fecharPop(); fecharAtaque('cancelado');
+    const o = pre || {}, P = ponte();
+    const names = [];
+    for (const t of alvos) for (const b of t.bars) if (b.on && !names.includes(b.n)) names.push(b.n);
+    if (!names.length) { toast('Nenhum destes tokens tem uma barra em uso.'); return; }
+    const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+    const barra0 = names.includes(o.barra) ? o.barra : names.find(n => norm(n) === 'hp') || names.find(n => norm(n) === 'vida') || names[0];
+    const fora = new Set(o.fora || []);
+    const defs = Combate.listaDefesas();
+    const st = atq = {
+      rows: alvos.map(t => ({ id: t.id, on: !fora.has(t.id), st: '', r: null, manual: null })),
+      defs: new Set((App.opt.atqDefs || []).filter(k => defs.some(d => d.k === k))),
+      modo: App.opt.atqModo === 'rolam' ? 'rolam' : 'nao',
+      avisar: App.opt.atqAvisar == null ? !(P && P.estado && P.estado.segredo) : !!App.opt.atqAvisar,
+      pedido: null, pedindo: false, card: null, cena: Store.S.current,
+    };
+    const dano0 = String(o.dano == null ? '' : o.dano).replace(/^[+-]/, '').trim();
+    const inNome = h('input', { id: 'at-nome', class: 'in', type: 'text', maxlength: 40, placeholder: 'Ataque', autocomplete: 'off', 'aria-label': 'Nome do ataque (opcional)' });
+    const inDano = h('input', { id: 'at-dano', class: 'in bar-v', type: 'text', inputmode: 'decimal', placeholder: '30', autocomplete: 'off', 'data-focus': '', value: /^\d+([.,]\d+)?$/.test(dano0) ? dano0 : '', 'aria-label': 'Dano do ataque' });
+    const selBar = h('select', { id: 'at-barra', class: 'in' }, names.map(n => h('option', { value: n, text: n })));
+    selBar.value = barra0;
+    const inMin = h('input', { id: 'at-min', class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: App.opt.atqMin > 0 ? App.opt.atqMin : 0, 'aria-label': 'Dano mínimo, depois do desconto', title: 'Mesmo com a defesa alta, passa pelo menos isto' });
+    const inMax = h('input', { id: 'at-max', class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: '', placeholder: '–', 'aria-label': 'Dano máximo, depois do desconto', title: 'Nunca passa mais que isto. Vazio: sem teto' });
+    const chips = h('div', { class: 'chips atq-defs', id: 'at-defs', role: 'group', 'aria-label': 'Defesas que descontam' });
+    const linhaModo = h('div', { class: 'atq-modo' }), lista = h('ul', { class: 'area-list atq-list', id: 'at-lista' }), conta = h('span', { class: 'area-count', id: 'at-conta' }), pedidoEl = h('div', { class: 'atq-ped', id: 'at-pedido' });
+    const num = el => { const s = String(el.value || '').trim().replace(',', '.'); return /^\d+(\.\d+)?$/.test(s) ? Number(s) : null; };
+    const dano = () => num(inDano);
+    const minimo = () => Math.max(0, num(inMin) || 0);
+    const maximo = () => { const v = num(inMax); return v == null ? null : Math.max(minimo(), v); };
+    const chaves = () => defs.filter(d => st.defs.has(d.k)).map(d => d.k);
+    const rolando = () => st.modo === 'rolam' && st.defs.size > 0;
+    // tudo o que a janela precisa saber de uma linha, com a cena como está agora
+    const ver = r => {
+      const t = Store.get('tokens', r.id);
+      if (!t) return null;
+      const i = Combate.barraDe(t, selBar.value), b = i >= 0 ? t.bars[i] : null, def = Combate.defesaDe(t, chaves()), comFicha = def != null, d = dano();
+      const dono = comFicha ? Fichas.donoDoToken(t) : null;
+      let usada = 0, falta = false, como = '';
+      if (comFicha && st.defs.size) {
+        if (!rolando()) { usada = def; como = 'defesa ' + def; }
+        else if (r.st === 'rolou') { usada = r.r.total; como = `rolou ${r.r.total} de ${def}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : ''); }
+        else if (r.st === 'inteira') { usada = def; como = 'defesa inteira: ' + def; }
+        else { falta = true; como = (st.pedido && !st.pedido.fim && dono && st.pedido.chars.has(t.char) ? `esperando ${dono.name}` : 'falta rolar') + ` · defesa ${def}`; }
+      } else if (comFicha) como = 'sem desconto';
+      const final = !comFicha ? (r.manual != null ? r.manual : d == null ? null : Combate.danoFinal(d, 0, minimo(), maximo())) : d == null || falta ? null : Combate.danoFinal(d, usada, minimo(), maximo());
+      return { t, b, def, comFicha, dono, usada, falta, como, final };
+    };
+    const fixaDaDefesa = (t, def) => Math.min(fixaAtual(t), def);
+    // o mestre rola a defesa de um alvo (dele mesmo, ou por um jogador que demorou)
+    const rolarPor = r => {
+      const v = ver(r);
+      if (!v || !v.comFicha || !st.defs.size) return;
+      const nomeDef = Combate.nomeDasDefesas(chaves());
+      let res = { ok: true, atributo: 0, fixa: 0, die: 0, dieValue: 0, total: 0 };
+      if (v.def >= 1) res = Combate.rolarFixa(v.def, fixaDaDefesa(v.t, v.def));
+      if (!res.ok) { toast(res.error); return; }
+      r.st = 'rolou'; r.r = { total: res.total, det: v.def >= 1 ? Combate.comoSaiu(res) : '', por: v.dono ? 'pelo mestre' : '' };
+      if (Ext.roll && v.def >= 1) {
+        try { Ext.roll({ kind: 'defesa', name: v.t.name, tokenId: v.t.id, defNome: nomeDef, atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total, pedido: st.pedido && !st.pedido.fim && v.dono ? st.pedido.id : null, alvo: v.t.char || null }); }
+        catch (e) { console.error(e); }
+      }
+    };
+    const zerarRolagens = () => { for (const r of st.rows) { r.st = ''; r.r = null; } };
+    const paint = () => {
+      if (atq !== st) return;
+      const a = document.activeElement, card = K.card(), fid = a && a.id && card && card.contains(a) && (lista.contains(a) || chips.contains(a) || linhaModo.contains(a) || pedidoEl.contains(a)) ? a.id : null;
+      const travado = !!(st.pedido && !st.pedido.fim);
+      const cs = [];
+      defs.forEach((d, k) => {
+        if (k > 0 && defs[k - 1].g !== d.g) cs.push(h('span', { class: 'atq-sep', 'aria-hidden': 'true' }));
+        cs.push(h('button', { type: 'button', class: 'chip' + (st.defs.has(d.k) ? ' on' : ''), id: 'at-d-' + d.k, 'aria-pressed': String(st.defs.has(d.k)), disabled: travado, title: travado ? 'O pedido aos jogadores já foi feito com estas defesas' : (d.g === 'geral' ? 'Defesa ' : 'Defesa contra ') + d.n,
+          onclick: () => { if (st.defs.has(d.k)) st.defs.delete(d.k); else st.defs.add(d.k); App.opt.atqDefs = [...st.defs]; zerarRolagens(); paint(); } }, d.n));
+      });
+      chips.replaceChildren(...cs);
+      linhaModo.replaceChildren(...[
+        h('span', { class: 'lb', text: 'Quem defende rola?' }),
+        seg('at-modo', st.modo, [['nao', 'Não', null, 'Desconta a defesa inteira'], ['rolam', 'Rola a defesa', null, 'Cada um rola a defesa com a regra da fixa: desconta o que sair']], v => { if (travado) { toast('Há um pedido em aberto. Cancele o pedido para mudar.'); return; } st.modo = v; App.opt.atqModo = v; zerarRolagens(); paint(); }),
+        !st.defs.size ? h('span', { class: 'note', text: 'Sem defesa marcada, o dano entra inteiro.' }) : null].filter(Boolean));
+      const vs = st.rows.map(r => ({ r, v: ver(r) })).filter(x => x.v);
+      const dentro = vs.filter(x => x.r.on);
+      conta.textContent = `${dentro.length} de ${vs.length} marcados`;
+      const faltam = dentro.filter(x => x.v.falta && x.v.b);
+      const deJogador = faltam.filter(x => x.v.dono);
+      // o pedido aos jogadores e os atalhos de quem falta
+      const filhos = [];
+      if (rolando()) {
+        if (!st.pedido || st.pedido.fim) {
+          filhos.push(btn(st.pedindo ? 'Pedindo…' : 'Pedir aos jogadores que rolem', pedir, { icon: 'users', kind: 'small', id: 'at-pedir', disabled: st.pedindo || !deJogador.length,
+            title: deJogador.length ? 'Manda o pedido para a mesa ao vivo: cada jogador rola a defesa do personagem dele' : 'Nenhum dos alvos que faltam é de jogador: role você mesmo' }));
+        } else {
+          filhos.push(h('span', { class: 'note', text: deJogador.length ? 'Pedido feito: os jogadores rolam pela mesa ao vivo.' : 'Pedido feito.' }),
+            btn('Cancelar o pedido', () => { encerrarPedido('cancelado'); zerarRolagens(); paint(); }, { kind: 'small', id: 'at-despedir', title: 'Encerra o pedido na mesa ao vivo (para mudar as defesas, por exemplo). As rolagens já feitas deixam de valer.' }));
+        }
+        if (faltam.length) filhos.push(btn('Rolar por quem falta', () => { for (const x of faltam) rolarPor(x.r); paint(); }, { icon: 'die', kind: 'small', id: 'at-rolar-todos', title: 'Você rola agora a defesa de todos os que ainda não rolaram' }));
+      }
+      pedidoEl.hidden = !filhos.length;
+      pedidoEl.replaceChildren(...filhos);
+      lista.replaceChildren(...vs.map(({ r, v }, k) => {
+        const t = v.t, b = v.b;
+        let res = '';
+        if (!r.on) res = 'fica de fora';
+        else if (!b) res = 'sem ' + selBar.value;
+        else if (v.final == null) res = `${fmtV(b.v)}/${fmt(b.m)}`;
+        else { const q = barAfter(b, -v.final); res = `−${fmt(v.final)} · ${fmtV(b.v)} → ${fmtV(q.v)}` + (q.x !== undefined ? ` · sobrevida ${fmt(barX(b))} → ${fmt(q.x)}` : ''); }
+        const acoes = [];
+        if (r.on && b && v.comFicha && rolando()) {
+          if (v.falta) acoes.push(btn(v.dono ? 'Rolar por ele' : 'Rolar', () => { rolarPor(r); paint(); document.getElementById(`at-de-novo-${k}`) && document.getElementById(`at-de-novo-${k}`).focus(); }, { icon: 'die', kind: 'small', id: `at-rolar-${k}` }),
+            btn('Inteira', () => { r.st = 'inteira'; r.r = null; paint(); }, { kind: 'small', id: `at-inteira-${k}`, title: 'Não rola: desconta a defesa inteira' }));
+          else acoes.push(btn(r.st === 'rolou' ? 'Descartar' : 'Voltar', () => { r.st = ''; r.r = null; paint(); }, { kind: 'small', id: `at-de-novo-${k}`, title: r.st === 'rolou' ? 'Descarta esta rolagem: o alvo volta a ficar sem defesa decidida' : 'Volta atrás: o alvo fica de novo sem defesa decidida' }));
+        }
+        const manual = r.on && b && !v.comFicha ? h('label', { class: 'atq-man' }, h('span', { text: 'tomou' }),
+          h('input', { id: `at-man-${k}`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: v.final == null ? '' : v.final, placeholder: '–', 'aria-label': `Dano que ${t.name} tomou`, title: 'Este token não tem ficha: diga quanto de dano ele tomou',
+            onchange: e => { const n = String(e.target.value).trim() === '' ? null : Math.max(0, Number(String(e.target.value).replace(',', '.')) || 0); r.manual = n; paint(); } })) : null;
+        return h('li', { class: 'area-row atq-row' + (r.on ? '' : ' off') },
+          h('div', { class: 'atq-1' },
+            h('label', { class: 'area-who' },
+              h('input', { type: 'checkbox', class: 'ck', id: `at-on-${k}`, checked: r.on, 'aria-label': 'Incluir ' + t.name, onchange: e => { r.on = e.target.checked; paint(); } }),
+              tokenAvatar(t, 26), h('span', { class: 'area-n', text: t.name + (t.hidden ? ' (oculto)' : '') })),
+            h('span', { class: 'area-res', id: `at-res-${k}`, text: res })),
+          r.on && b ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (v.falta ? ' falta' : ''), id: `at-como-${k}`, text: v.comFicha ? v.como : 'sem ficha' }), manual, acoes) : null);
+      }));
+      if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    };
+    function pedir() {
+      const Pt = ponte();
+      if (!Pt || !Pt.registro || !Pt.registro.pedir) { toast('Esta mesa ainda não recebe pedidos. Recarregue a página e tente de novo.'); return; }
+      const vistos = new Set(), lst = [];
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || !r.on || !v.b || !v.comFicha || !v.dono || !v.falta || vistos.has(v.t.char)) continue;
+        vistos.add(v.t.char); lst.push({ c: v.t.char, n: String((Fichas.get(v.t.char) || {}).nome || v.t.name).slice(0, 60) });
+      }
+      if (!lst.length) return;
+      st.pedindo = true; paint();
+      Pt.registro.pedir({ rot: inNome.value.trim().slice(0, 40), defs: chaves(), alvos: lst }).then(res => {
+        st.pedindo = false;
+        if (atq !== st) { try { Pt.registro.encerrar(res.id, 'cancelado'); } catch (e) { /* a janela já fechou */ } return; }
+        st.pedido = { id: res.id, fim: null, chars: new Set(lst.map(x => x.c)) };
+        toast(lst.length === 1 ? `Pedido enviado: ${lst[0].n} rola a defesa pela mesa ao vivo.` : `Pedido enviado: ${lst.length} personagens rolam a defesa pela mesa ao vivo.`);
+        paint();
+      }, err => { st.pedindo = false; if (atq === st) { toast((err && err.message) || 'O pedido não chegou à mesa. Tente de novo.'); paint(); } });
+    }
+    // a defesa que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa)
+    st.chegou = (l, s) => {
+      if (!st.pedido || st.pedido.fim || s.p !== st.pedido.id || !l.nova || typeof s.c !== 'string') return;
+      const Pt = ponte(), eu = Pt ? Pt.estado.eu : null, ficha = Fichas.get(s.c);
+      if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
+      const total = Math.round(Number(s.v));
+      let mudou = false;
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || v.t.char !== s.c || !v.comFicha || r.st === 'rolou' || r.st === 'inteira') continue;
+        if (!isFinite(total) || total < 0 || total > v.def) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe na defesa dele agora (${v.def}). Role por ele, ou use a defesa inteira.`); continue; }
+        const dado = Math.round(Number(s.d)), fx = Math.round(Number(s.f)), at = Math.round(Number(s.a));
+        r.st = 'rolou'; r.r = { total, det: at === v.def && dado >= 1 && fx >= 0 && fx + dado === total ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '', por: l.autor_id === eu ? 'pelo mestre' : '' };
+        mudou = true;
+      }
+      if (mudou) paint();
+    };
+    const aplicar = () => {
+      const d = dano();
+      if (d == null || !(d > 0)) { toast('Em "Dano", digite um número maior que zero.'); inDano.focus(); return false; }
+      const vs = st.rows.map(r => ({ r, v: ver(r) })).filter(x => x.v && x.r.on && x.v.b);
+      if (!vs.length) { toast('Marque pelo menos um token que tenha a barra escolhida.'); return false; }
+      const falta = vs.filter(x => x.v.falta);
+      if (falta.length) { toast(falta.length === 1 ? `Falta a defesa de ${falta[0].v.t.name}: role por ele ou use a defesa inteira.` : `Faltam ${falta.length} defesas: role por eles ou use a defesa inteira.`); return false; }
+      App.opt.atqMin = minimo(); App.opt.atqAvisar = st.avisar;
+      const nome = inNome.value.trim().slice(0, 40), rotulo = 'Ataque' + (nome ? ': ' + nome : ''), barra = selBar.value, nomeDef = Combate.nomeDasDefesas(chaves());
+      const linhas = vs.map(x => ({ t: x.v.t, final: x.v.final, v: x.v, r: x.r }));
+      const feitos = Combate.aplicarAtaque(linhas, barra, rotulo);
+      fecharAtaque('aplicado');
+      // o resultado, para a mesa: só de quem os jogadores podem ver com números (nunca de um token oculto)
+      let avisou = false;
+      const titulo = rotulo.replace(':', ' ·');
+      if (st.avisar && Ext.roll) {
+        const partes = [];
+        for (const l of linhas) {
+          const t = l.t, i = Combate.barraDe(t, barra);
+          if (i < 0 || !Combate.barraAberta(t, t.bars[i])) continue;
+          const quem = t.showName === false ? '???' : t.name;
+          const def = l.v.comFicha && st.defs.size ? ` (defesa ${l.v.usada}${l.r.st === 'rolou' ? ', rolada' : ''})` : '';
+          partes.push(l.final > 0 ? `${quem} −${fmt(l.final)} ${barra}${def}` : `${quem}: nada passou${def}`);
+        }
+        if (partes.length) {
+          const regra = [`Dano ${fmt(d)}`, nomeDef ? 'defesa: ' + nomeDef : 'sem defesa', minimo() > 0 ? 'mínimo ' + fmt(minimo()) : '', maximo() != null ? 'máximo ' + fmt(maximo()) : ''].filter(Boolean).join(' · ');
+          try { Ext.roll({ kind: 'aviso', titulo, resumo: regra + '. ' + partes.join('; ') + '.' }); avisou = true; } catch (e) { console.error(e); }
+        }
+      }
+      const desfazer = () => {
+        const e = Store.undo();
+        if (!e) return;
+        pruneSel();
+        toast('Desfeito' + (e.label ? ': ' + e.label.toLowerCase() : '') + '.');
+        if (avisou && e.label === rotulo && Ext.roll) { try { Ext.roll({ kind: 'aviso', titulo, resumo: 'Desfeito: as barras voltaram ao que eram antes deste ataque.' }); } catch (err) { console.error(err); } }
+      };
+      if (feitos.length) toast(`${rotulo}: aplicado em ${feitos.length} ${feitos.length === 1 ? 'token' : 'tokens'}.`, { action: 'Desfazer', run: desfazer });
+      else toast('Nada mudou: nenhum dano passou.');
+    };
+    for (const el of [inDano, inMin, inMax]) el.addEventListener('input', paint);
+    selBar.addEventListener('change', paint);
+    const todos = on => { st.rows.forEach(r => { r.on = on; }); paint(); };
+    const card = UI.modal({
+      title: o.titulo ? 'Ataque com defesa · ' + String(o.titulo).replace(/^Aplicar a /, '') : 'Ataque com defesa', wide: true,
+      onCancel: () => fecharAtaque('cancelado'),
+      body: h('div', { class: 'area atq' },
+        h('div', { class: 'atq-top' }, field('Dano', inDano, 'stack'), field('Barra', selBar, 'stack'), field('Nome (opcional)', inNome, 'stack')),
+        h('div', { class: 'field stack' }, h('span', { class: 'lb', text: 'Defesa que desconta' }), chips,
+          note('Marque uma ou mais: elas se somam. Vale para os alvos com ficha.')),
+        linhaModo,
+        h('div', { class: 'atq-mm' }, field('Mínimo', inMin, 'stack'), field('Máximo', inMax, 'stack'), h('span', { class: 'note', text: 'O mínimo e o máximo valem depois do desconto.' })),
+        pedidoEl,
+        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Todos', () => todos(true), { kind: 'small' }), btn('Nenhum', () => todos(false), { kind: 'small' })),
+        lista,
+        toggle('at-avisar', st.avisar, v => { st.avisar = v; }, 'Avisar a mesa do resultado'),
+        note('O aviso lista só quem os jogadores podem ver com números; token oculto nunca entra. Nada muda antes de "Aplicar", e dá para desfazer.')),
+      actions: [{ label: 'Cancelar', run: () => fecharAtaque('cancelado') }, { label: 'Aplicar', kind: 'primary', run: aplicar }],
+    });
+    st.card = card;
+    K.live(paint);
+    paint();
+    // se a janela sumir por outro caminho (outra janela por cima, a página trocando de cena), o pedido não fica aberto
+    atqRelogio = setInterval(() => { if (atq === st && !document.body.contains(card)) fecharAtaque('cancelado'); }, 1500);
+  }
+  // Chegou da mesa ao vivo uma linha com recado para as Cenas (ver 11-boot.js): a defesa rolada a pedido.
+  function daMesa(l) {
+    const s = l && l.dados && l.dados.sis;
+    if (!s || typeof s !== 'object' || s.t !== 'rd' || !atq || !isGM()) return;
+    try { atq.chegou(l, s); } catch (e) { console.error(e); }
+  }
+  window.addEventListener('pagehide', () => { if (atq) encerrarPedido('cancelado'); });
+  // a cena aberta passou a ser outra: os alvos eram da cena de antes, então a janela do ataque fecha (e o pedido, se havia, é cancelado)
+  Store.on('scene', () => {
+    if (atq && atq.cena !== Store.S.current) { const c = atq.card; fecharAtaque('cancelado'); if (c && K.card() && K.card().contains(c)) UI.closeModal(); }
+    if (pop) { try { pintarPop(); } catch (e) { fecharPop(); } }
+  });
+
+  // A cada redesenho geral: a janelinha de atributos acompanha (valores da ficha, turno, token que saiu).
+  function refresh() { if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } } }
+
+  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, fixasBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop };
 })();
 /* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização
@@ -9307,10 +10593,12 @@ async function start(snap) {
     if (!window.TC.ponte.estado.mesa) return;
     const t = r.tokenId ? Store.get('tokens', r.tokenId) : null;
     // char: a ficha ligada ao token (a mesa ao vivo mostra a imagem do personagem ao lado de quem rolou)
-    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
+    // (numa disputa, basta um dos dois lados estar oculto — quem publica já marca: r.oculto)
+    window.TC.ponte.publicar('cena', Object.assign({}, r, { oculto: !!r.oculto || !!(t && (t.hidden || t.showName === false)), char: (t && t.char) || null }));
   };
   // A iniciativa que alguém rolou pela telinha de dados da mesa ao vivo: o mestre pode anotá-la na ordem de turnos.
-  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } });
+  // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
+  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(() => { if (!UI.modalOpen() && !Tour.seen()) Tour.start(); }, 700));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
@@ -9326,7 +10614,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanFixas, cleanTer, isTer, TERRENOS, selOf };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

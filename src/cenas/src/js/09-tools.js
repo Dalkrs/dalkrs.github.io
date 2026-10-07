@@ -13,7 +13,7 @@ const Tools = (() => {
   let ghost = null;          // posição do cursor para pré-visualizações
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
-  const KEYS = { v: 'select', h: 'pan', t: 'token', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', e: 'fx', m: 'ruler' };
+  const KEYS = { v: 'select', h: 'pan', t: 'token', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
@@ -27,6 +27,7 @@ const Tools = (() => {
     { id: 'wall', n: 'Paredes e portas', k: 'W', i: 'wall', grp: 3, gm: true },
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'N', i: 'fog', grp: 3, gm: true },
+    { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
     { id: 'fx', n: 'Efeito de magia', k: 'E', i: 'fx', grp: 4, perm: 'fx' },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
@@ -71,7 +72,7 @@ const Tools = (() => {
     for (const top of [true, false]) {
       for (let i = sc.shapes.length - 1; i >= 0; i--) {
         const s = sc.shapes[i];
-        if (!!s.top !== top || !shapeShown(s)) continue;
+        if (!!s.top !== top || !shapeShown(s) || isTer(s)) continue;
         if (s.lock && !o.locked) continue;
         if (!(gm || can('editShape', s))) continue;
         if (hitShape(s, p.x, p.y, tol)) return { c: 'shapes', id: s.id };
@@ -124,7 +125,7 @@ const Tools = (() => {
     const s = App.sel[0], o = Store.get(s.c, s.id), sc = Store.scene();
     if (!o) return [];
     const out = [], gm = isGM(), selTool = App.tool === 'select';
-    if (s.c === 'shapes' && selTool) {
+    if (s.c === 'shapes' && (selTool || (App.tool === 'terrain' && gm && isTer(o)))) {
       if (!(gm || can('editShape', o)) || o.lock) return out;
       if (o.k === 'line') out.push({ kind: 'end', i: 0, x: o.pts[0], y: o.pts[1] }, { kind: 'end', i: 1, x: o.pts[2], y: o.pts[3] });
       else if (o.k !== 'text') {
@@ -164,7 +165,7 @@ const Tools = (() => {
   function moveHandle(p, e) {
     const sc = Store.scene(), free = e.altKey, hd = g.hd, o0 = g.o0;
     if (!g.started) { Store.begin('Ajustar'); g.started = true; }
-    const snapShape = App.opt.snap !== free;
+    const snapShape = App.tool === 'terrain' ? !free : App.opt.snap !== free;
     if (hd.kind === 'box') {
       const b0 = g.b0;
       let x0 = b0.x, y0 = b0.y, x1 = b0.x + b0.w, y1 = b0.y + b0.h;
@@ -231,7 +232,7 @@ const Tools = (() => {
     const free = e.altKey, L = g.lead;
     if (L.c === 'tokens') { const [nx, ny] = snapTok(sc, L.x + dx, L.y + dy, L.size, free); dx = nx - L.x; dy = ny - L.y; }
     else if (L.c === 'shapes') {
-      if (App.opt.snap !== free) {
+      if (App.tool === 'terrain' ? !free : App.opt.snap !== free) {
         const ax = L.o0.pts ? L.o0.pts[0] : L.o0.x, ay = L.o0.pts ? L.o0.pts[1] : L.o0.y;
         const [nx, ny] = snapPt(sc, ax + dx, ay + dy);
         dx = nx - ax; dy = ny - ay;
@@ -286,7 +287,7 @@ const Tools = (() => {
     }
     if (!picked.length) {
       for (const s of sc.shapes) {
-        if (!shapeShown(s) || s.lock || !(gm || can('editShape', s))) continue;
+        if (!shapeShown(s) || s.lock || isTer(s) || !(gm || can('editShape', s))) continue;
         const b = shapeBBox(s);
         if (inR(b.x, b.y) && inR(b.x + b.w, b.y + b.h)) picked.push({ c: 'shapes', id: s.id });
       }
@@ -760,6 +761,150 @@ const Tools = (() => {
     },
   };
 
+  /* ---- Terreno ----
+     Áreas do mapa com tipo e altura (morro, montanha, plataforma, fosso, água, mata). "Pintar" cria: com o pincel
+     (uma faixa), com retângulo ou elipse (arrastando) ou com polígono (canto a canto). "Ajustar" seleciona uma
+     área para mover, esticar, trocar o tipo e a altura ou apagar. Só o mestre mexe; todos veem. */
+  const TER_HINTS = {
+    brush: 'Arraste para pintar uma faixa de terreno. A largura do pincel está na barra acima.',
+    rect: 'Arraste para marcar um retângulo de terreno. Alt solta da grade.',
+    ell: 'Arraste para marcar uma elipse de terreno. Alt solta da grade.',
+    poly: 'Clique para marcar cada canto da área. Clique duplo ou Enter fecha; Backspace desfaz o último canto; Esc cancela.',
+  };
+  // A altura das áreas novas: a que o mestre digitou; sem isso, a de fábrica do tipo (em quadrados × a unidade da cena).
+  function terAlt(sc) {
+    const o = App.opt;
+    if (o.terH == null || !isFinite(o.terH)) return Math.round((TERRENO_POR_ID[o.terType] || TERRENOS[0]).hq * (sc.grid.unit || 1) * 100) / 100;
+    return o.terH;
+  }
+  function addTerrain(geo) {
+    const sc = Store.scene(), s = Combate.newTerrain(geo, App.opt.terType, terAlt(sc));
+    Store.tx('Terreno', () => Store.add('shapes', s));
+    return s;
+  }
+  function hitTerrain(p) {
+    const s = Combate.terrainAt(Store.scene(), p.x, p.y);
+    return s ? { c: 'shapes', id: s.id } : null;
+  }
+  function finishTerPoly() {
+    const d = poly;
+    poly = null;
+    if (!d) return;
+    const z = App.view.z, pts = [];
+    for (let i = 0; i < d.pts.length; i += 2) {
+      const n = pts.length;
+      if (n && Math.hypot(d.pts[i] - pts[n - 2], d.pts[i + 1] - pts[n - 1]) * z < 3) continue;
+      pts.push(d.pts[i], d.pts[i + 1]);
+    }
+    if (pts.length >= 6) addTerrain({ k: 'poly', pts });
+    else UI.toast('Uma área precisa de pelo menos três cantos.');
+    Render.request();
+  }
+  T.terrain = {
+    get hint() { return App.opt.terMode === 'edit' ? 'Clique numa área de terreno para selecionar; arraste para mover e puxe as alças para esticar. Delete apaga.' : TER_HINTS[App.opt.terShape] || TER_HINTS.brush; },
+    cursor: 'crosshair',
+    down(p, e) {
+      const o = App.opt, sc = Store.scene();
+      if (o.terMode === 'edit') {
+        const hd = hitHandle(p);
+        if (hd) { startHandle(hd); return; }
+        const hit = hitTerrain(p);
+        if (!hit) { if (App.sel.length) setSel([]); return; }
+        if (e.shiftKey) {
+          if (selHas(hit.c, hit.id)) { setSel(App.sel.filter(x => !(x.c === hit.c && x.id === hit.id))); return; }
+          setSel(App.sel.filter(x => x.c === 'shapes' && isTer(Store.get('shapes', x.id))).concat(hit));
+        } else if (!selHas(hit.c, hit.id)) setSel([hit]);
+        g = startMove(p);
+        return;
+      }
+      if (o.terShape === 'poly') {
+        const q = snapPt(sc, p.x, p.y, e.altKey, 0.5);
+        if (!poly) poly = { pts: [], x: q[0], y: q[1] };
+        if (poly.pts.length >= 6 && Math.hypot(q[0] - poly.pts[0], q[1] - poly.pts[1]) * App.view.z < 9) { finishTerPoly(); return; }
+        poly.pts.push(q[0], q[1]);
+      } else if (o.terShape === 'rect' || o.terShape === 'ell') {
+        const q = snapPt(sc, p.x, p.y, e.altKey, 1);
+        g = { type: 'ter', k: o.terShape, x0: q[0], y0: q[1], x1: q[0], y1: q[1] };
+      } else g = { type: 'ter', k: 'free', pts: [r1(p.x), r1(p.y)], sw: Math.max(0.25, Number(o.terSize) || 1) * sc.cell };
+      Render.request();
+    },
+    move(p, e) {
+      ghost = p;
+      const sc = Store.scene();
+      if (g && g.type === 'handle') moveHandle(p, e);
+      else if (g && g.type === 'move') { doMove(p, e); if (g.moved) cv.style.cursor = 'grabbing'; }
+      else if (g && g.type === 'ter') {
+        if (g.k === 'free') {
+          const n = g.pts.length;
+          if (Math.hypot(p.x - g.pts[n - 2], p.y - g.pts[n - 1]) > Math.max(2 / App.view.z, g.sw * 0.08)) g.pts.push(r1(p.x), r1(p.y));
+        } else { const q = snapPt(sc, p.x, p.y, e.altKey, 1); g.x1 = q[0]; g.y1 = q[1]; }
+      } else if (poly) [poly.x, poly.y] = snapPt(sc, p.x, p.y, e.altKey, 0.5);
+      else if (App.opt.terMode === 'edit') cv.style.cursor = hitHandle(p) ? 'crosshair' : hitTerrain(p) ? 'grab' : 'default';
+      Render.request();
+    },
+    up() {
+      if (!g) return;
+      if (g.type === 'handle') { endHandle(); cursor(); Render.request(); return; }
+      if (g.type === 'move') { endMove(); g = null; cursor(); Render.request(); return; }
+      if (g.type !== 'ter') return;
+      const d = g;
+      g = null;
+      if (d.k === 'free') {
+        let pts = d.pts;
+        if (pts.length > 6) pts = Geo.simplify(pts, d.sw * 0.04);
+        if (pts.length < 4) pts = [pts[0], pts[1], pts[0] + 0.1, pts[1]];
+        addTerrain({ k: 'free', pts, sw: d.sw });
+      } else {
+        const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1), w = Math.abs(d.x1 - d.x0), hh = Math.abs(d.y1 - d.y0);
+        if (w > 1 && hh > 1) addTerrain({ k: d.k, x, y, w, h: hh });
+      }
+      Render.request();
+    },
+    dbl() { if (poly) finishTerPoly(); },
+    key(e) {
+      if (!poly) return false;
+      if (e.key === 'Enter') { finishTerPoly(); return true; }
+      if (e.key === 'Escape') { poly = null; Render.request(); return true; }
+      if (e.key === 'Backspace') { poly.pts.length = Math.max(0, poly.pts.length - 2); if (!poly.pts.length) poly = null; Render.request(); return true; }
+      return false;
+    },
+    preview(ctx, px, sc) {
+      const o = App.opt, d = TERRENO_POR_ID[o.terType] || TERRENOS[0];
+      // o que cada área é, por extenso, enquanto a ferramenta está na mão
+      for (const s of sc.shapes) {
+        if (!isTer(s)) continue;
+        let cx, cy;
+        if (s.k === 'free') { const i = Math.floor(s.pts.length / 4) * 2; cx = s.pts[i]; cy = s.pts[i + 1]; }
+        else { const b = shapeBBox(s); cx = b.x + b.w / 2; cy = b.y + b.h / 2; }
+        Render.label(ctx, Combate.terText(s, sc), cx, cy, px, { size: 11.5, stroke: selHas('shapes', s.id) ? '#ffffff' : null });
+      }
+      ctx.save();
+      if (g && g.type === 'ter') {
+        const tmp = g.k === 'free' ? Combate.newTerrain({ k: 'free', pts: g.pts.length >= 4 ? g.pts : [g.pts[0], g.pts[1], g.pts[0] + 0.1, g.pts[1]], sw: g.sw }, o.terType, terAlt(sc))
+          : Combate.newTerrain({ k: g.k, x: Math.min(g.x0, g.x1), y: Math.min(g.y0, g.y1), w: Math.abs(g.x1 - g.x0), h: Math.abs(g.y1 - g.y0) }, o.terType, terAlt(sc));
+        ctx.globalAlpha = 0.6;
+        Render.drawTer(ctx, tmp, sc, px);
+      } else if (poly && poly.pts.length) {
+        const p = poly.pts;
+        ctx.lineJoin = ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+        ctx.lineTo(poly.x, poly.y);
+        ctx.fillStyle = hexA(d.c, 0.4); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 4 * px; ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.8 * px; ctx.setLineDash([7 * px, 5 * px]); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1 * px;
+        ctx.beginPath(); ctx.arc(p[0], p[1], 4.5 * px, 0, TAU); ctx.fill(); ctx.stroke();
+      } else if (ghost && o.terMode !== 'edit' && o.terShape === 'brush') {
+        ctx.beginPath(); ctx.arc(ghost.x, ghost.y, Math.max(0.25, Number(o.terSize) || 1) * sc.cell / 2, 0, TAU);
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3 * px; ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4 * px; ctx.setLineDash([6 * px, 4 * px]); ctx.stroke();
+      }
+      ctx.restore();
+    },
+  };
+
   /* ---- Efeitos de magia ---- */
   function fxFromOpt(x, y, tok) {
     const o = App.opt, sc = Store.scene();
@@ -895,6 +1040,7 @@ const Tools = (() => {
     App.tool = id;
     if (opt && opt.wallKind) { App.opt.wallKind = opt.wallKind; if (opt.wallKind === 'door') App.opt.wallMode = 'line'; }   // porta não fecha sala
     if (id !== 'wall' && App.sel.some(s => s.c === 'walls')) setSel(App.sel.filter(s => s.c !== 'walls'));
+    if (id !== 'terrain' && App.sel.some(s => s.c === 'shapes' && isTer(Store.get('shapes', s.id)))) setSel(App.sel.filter(s => !(s.c === 'shapes' && isTer(Store.get('shapes', s.id)))));
     cursor();
     Store.emit('tool');
     Render.request();
@@ -1024,6 +1170,8 @@ const Tools = (() => {
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
+    if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
+    if (lk === 'c') { Luta.disputa(); return; }            // disputa entre dois tokens (só o mestre)
     if (lk === 'a') {                       // mira: o token sob o cursor, ou os selecionados
       if (!can('target')) return;
       const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true }) : null;
@@ -1042,5 +1190,5 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, set, allowed, handles, drawPreview, hitTest, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
