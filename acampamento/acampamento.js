@@ -54,9 +54,12 @@
   let sel = null, aba = guarda.ler('tinycats:acampamento:aba') || 'grupo';
   let pronto = false;
   const mestre = () => papel === 'mestre';
+  // quem usa mestra a aba tal? (o mestre auxiliar pode mestrar o Acampamento sem mestrar as Fichas ou a Árvore)
+  const mestraAba = aba => { const T = window.TC && window.TC.ponte; return naMesa() && T && typeof T.mestra === 'function' ? T.mestra(aba) : mestre(); };
   const naMesa = () => modo === 'mesa';
   const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
-  const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && m.papel === 'jogador');
+  // (dono de ficha: qualquer participante menos o mestre — o mestre auxiliar conta, mestrando ou jogando)
+  const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && (m.cargo ? m.cargo !== 'mestre' : m.papel === 'jogador'));
 
   /* ---------------- avisos ---------------- */
   function toast(texto, acao, fn, ms) {
@@ -89,7 +92,7 @@
     const s = estadoLocalFichas(); return (s && s.cfg) || R().cfgPadrao();
   }
   function bibAtual() {
-    if (naMesa()) { const d = D.pegar(mestre() ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; }
+    if (naMesa()) { const d = D.pegar(mestraAba('arvore') ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; }
     const s = estadoLocalFichas(); return (s && s.bib) || null;
   }
   const dentro = (v, padrao) => (v != null && v !== '' && Number.isFinite(+v) ? N.limitar(Math.round(+v), 0, 100) : padrao);
@@ -142,9 +145,13 @@
   /* O que o mestre guarda fora das fichas (documento que só ele recebe): o valor dos relacionamentos escondidos e
      os relacionamentos dos NPCs. As contas são as de TC.rules (as mesmas da aba Fichas). */
   const SEG = 'fichas:segredos';
-  const segredos = () => { const d = D && naMesa() && mestre() ? D.pegar(SEG) : null; return d && !d.apagado && d.dados && d.dados.v && typeof d.dados.v === 'object' ? d.dados.v : {}; };
+  /* Esse documento é das Fichas: só quem mestra a aba Fichas o recebe. O mestre auxiliar pode mestrar o Acampamento
+     sem ela — aí os segredos não chegam a ele, e ele NÃO os grava (gravaria por cima, sem ter lido). */
+  const comSegredos = () => mestre() && mestraAba('fichas');
+  const segredos = () => { const d = D && naMesa() && comSegredos() ? D.pegar(SEG) : null; return d && !d.apagado && d.dados && d.dados.v && typeof d.dados.v === 'object' ? d.dados.v : {}; };
   const segDe = id => { const s = segredos(); return (s.rel && s.rel[id]) || {}; };
   function porSeg(id, seg) {
+    if (!naMesa() || !comSegredos()) return;
     const s = N.copia(segredos()), rel = s.rel && typeof s.rel === 'object' ? s.rel : (s.rel = {});
     if (seg && Object.keys(seg).length) rel[id] = seg; else delete rel[id];
     D.gravar(SEG, { dados: { v: s }, vis: 'mestre' });
@@ -579,6 +586,8 @@
   /* ---- um momento entre dois personagens ---- */
   function abrirMomento() {
     if (!mestre() || !naMesa()) return;
+    // (o momento mexe nos relacionamentos, e parte deles — os escondidos, os dos NPCs — fica guardada com as Fichas)
+    if (!comSegredos()) { toast('O momento mexe nos relacionamentos, que são das Fichas. Para registrar um, peça ao mestre a aba Fichas.'); return; }
     const gente = presentes().filter(p => !p.semFicha);
     if (gente.length < 2) { toast('Um momento precisa de dois personagens com ficha em volta da fogueira.'); return; }
     const estado = { a: sel && gente.some(p => p.id === sel) ? sel : gente[0].id, b: null, da: 5, db: 5, texto: '' };

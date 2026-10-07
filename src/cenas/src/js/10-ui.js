@@ -1127,13 +1127,19 @@ const UI = (() => {
   /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
   function fichaBox(t) {
     const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
-    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, '(ficha que saiu da mesa)']] : []),
+    // (a ficha ligada pode não chegar a quem olha: o mestre auxiliar sem a aba Fichas não recebe as escondidas)
+    const escondida = Fichas.escondida(t);
+    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),
       v => {
         const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
         toast(c ? `O token agora segue a ficha de ${c.nome || 'sem nome'}: o nome e as barras vieram dela.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
       }))];
     if (!t.char) { out.push(note(lista.length ? 'Ligado a uma ficha, o token passa a ter o nome do personagem, as barras dela (HP, SP…) no lugar das que tinha, e a iniciativa.' : 'Esta mesa ainda não tem fichas. Crie na aba Fichas.')); return out; }
-    if (!ligado) { out.push(note('A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".')); return out; }
+    if (!ligado) {
+      out.push(note(escondida ? 'Este token segue uma ficha que o mestre esconde dos jogadores, e ela só chega a quem mestra a aba Fichas. Deixe-o ligado: o dano e a cura que você der nas barras dele vão para a ficha mesmo assim.'
+        : 'A ficha ligada não está mais na mesa. Escolha outra ou "Sem ficha".'));
+      return out;
+    }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
     const fixa0 = Luta.fixaAtual(t), doTurno = Combate.fixaDoTurno(t);

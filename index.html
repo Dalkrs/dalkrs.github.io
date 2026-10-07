@@ -215,9 +215,23 @@ button { cursor: pointer; }
 .mb { display: flex; align-items: center; gap: 7px; padding: 3px 0; }
 .mb i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .mb.fora i { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--fg-3); }
-.mb span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mb small { color: var(--fg-3); }
-.mb .btn { margin-left: auto; }
+.mb .nm { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 7px; min-width: 0; }
+.mb span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb small { color: var(--fg-3); white-space: nowrap; }
+.mb small:empty { display: none; }
+.mb .ac { margin-left: auto; display: flex; gap: 5px; flex: none; }
+.mb .ac .btn { padding: 0 8px; }
+.dl .op { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-weight: 400; }
+.dl .op:has(input:checked) { border-color: var(--lamp); background: var(--raised); }
+.dl .op input, .dl .cx input { width: 18px; height: 18px; margin: 2px 0 0; padding: 0; accent-color: var(--lamp); }
+.dl .op span { display: grid; gap: 2px; }
+.dl .op b { color: var(--fg); font-size: 14.5px; }
+.dl .op small { color: var(--fg-3); font-size: 12.5px; line-height: 1.4; }
+.dl fieldset.abas:disabled { opacity: .5; }
+.dl .cxs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+.dl .cx { display: flex; grid-template-columns: none; align-items: center; gap: 7px; font-weight: 500; color: var(--fg); cursor: pointer; }
+.dl .cx input { margin: 0; flex: none; }
+@media (max-width: 420px) { .dl .cxs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .menu .lk { display: block; width: 100%; text-align: left; padding: 8px 8px; border: 0; border-radius: 7px; background: none; font-weight: 600; }
 .menu .lk:hover { background: var(--hover); }
 .menu .lk.per { color: var(--danger); }
@@ -336,12 +350,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=2"></script>
 <script src="tc/rules.js?v=5"></script>
-<script src="tc/tc.js?v=15"></script>
+<script src="tc/tc.js?v=16"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.07-1';
+  const VERSAO = '2026.10.07-2';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -368,9 +382,10 @@ dialog::backdrop { background: var(--scrim); }
   const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: só não lembra */ } };
   const existe = id => ABAS.some(a => a.id === id);
-  // Numa mesa, o jogador não vê as abas que são só do mestre. Sem mesa, cada um é o próprio mestre e vê todas.
-  let papelNaMesa = null;
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && papelNaMesa === 'jogador'); };
+  // Numa mesa, quem não mestra uma aba que é só do mestre não a vê (o jogador; o auxiliar sem essa aba, ou jogando
+  // como jogador). Sem mesa, cada um é o próprio mestre e vê todas.
+  let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && !mestraAba(id)); };
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
 
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto. */
@@ -464,22 +479,36 @@ dialog::backdrop { background: var(--scrim); }
   const { conta, mesas, aoVivo } = TC;
   const btnConta = $('btnConta'), btnVivo = $('btnVivo'), vivo = $('vivo'), feed = $('feed'), menu = $('menu'), dlg = $('dlg');
   let naoLidas = 0;
-  const papelPt = p => (p === 'mestre' ? 'Mestre' : 'Jogador');
+  // o papel de alguém numa mesa, em palavras (m: a mesa aberta, um participante ou uma linha da lista de mesas)
+  const cargoPt = m => (m.cargo === 'mestre' ? 'Mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'Auxiliar · jogando' : 'Mestre auxiliar') : 'Jogador');
+  mestraAba = id => !mesas.atual || mesas.mestra(id);
+  const nomeDaAba = id => { const a = ABAS.find(x => x.id === id); return a ? a.nome : id; };
   const hora = iso => { const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   const codigoBonito = c => (c ? c.slice(0, 3) + '-' + c.slice(3) : '');
 
   /* ---- ponte com os sistemas ---- */
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* sem BroadcastChannel: só as molduras recebem */ }
-  const estadoPonte = () => { const a = mesas.atual; return { t: 'estado', v: 2, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? a.papel : null, segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null, membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cor: x.cor })) : [] }; };
+  /* O que cada sistema fica sabendo da mesa. `papel` é o de quem usa NAQUELA aba: 'mestre' se ele a mestra (o mestre,
+     ou o auxiliar com a aba liberada, enquanto está mestrando), 'jogador' se não. `mestra` diz o mesmo de cada aba
+     (um sistema às vezes precisa saber de outra: o Acampamento só mexe nos segredos das fichas com a aba Fichas).
+     Dos outros participantes, `papel` é o que estão fazendo agora (o auxiliar mestrando conta como mestre). */
+  const abaDaMoldura = jan => { for (const k in frames) if (frames[k].contentWindow === jan) return k; return null; };
+  const estadoPonte = aba => {
+    const a = mesas.atual, mestra = {};
+    if (a) for (const k of mesas.abasDeMestre) mestra[k] = mesas.mestra(k);
+    return { t: 'estado', v: 3, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? (aba ? (mesas.mestra(aba) ? 'mestre' : 'jogador') : a.papel) : null,
+      cargo: a ? a.cargo : null, jogando: !!(a && a.jogando), mestra: a ? mestra : null,
+      segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null,
+      membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cargo: x.cargo, cor: x.cor })) : [] };
+  };
   function difundir() {
-    const m = estadoPonte();
-    for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: m }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
-    if (canal) canal.postMessage(m);
+    for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: estadoPonte(k) }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
+    if (canal) canal.postMessage(estadoPonte(null));
   }
   function daPonte(m, responder, fonte) {
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'ola') { responder(estadoPonte()); entregarAlvo(fonte, responder); }
+    if (m.t === 'ola') { responder(estadoPonte(abaDaMoldura(fonte))); entregarAlvo(fonte, responder); }
     else if (m.t === 'ir') { if (typeof m.aba === 'string' && pode(m.aba)) irPara(m.aba, m.alvo); }
     else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast('A rolagem não chegou à mesa: ' + e.message));
     else if (m.t === 'dados.abrir') {
@@ -488,7 +517,12 @@ dialog::backdrop { background: var(--scrim); }
     } else if (m.t === 'dados.gravar' && mesas.atual) {
       if (m.mesa && m.mesa !== mesas.atual.id) return;        // gravação de uma mesa que já não é a aberta (chegou atrasada): não entra nesta
       // (m.mudas: o estado e as skills como diferença, por coluna; m.muda: só o estado — é o que uma página antiga manda)
-      try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte, m.mudas || (m.muda ? { estado: m.muda } : null)); } catch (e) { toast(e.message); }
+      // (m.cas: o documento é gravado conferindo a versão — se outra pessoa gravou antes, as duas mudanças se juntam)
+      try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte, m.mudas || (m.muda ? { estado: m.muda } : null), m.cas ? { cas: true } : null); } catch (e) { toast(e.message); }
+    } else if (m.t === 'ficha.barras' && mesas.atual) {
+      // as Cenas levam à ficha as barras de um token cuja ficha não chega a quem mexeu (ver TC.dados.barrasDoToken)
+      if (m.mesa && m.mesa !== mesas.atual.id) return;
+      TC.dados.barrasDoToken(m.id, m.rec, m.sob).catch(e => toast(e.message));
     } else if (m.t === 'arquivo.subir') {
       TC.arquivos.subir(m.blob).then(url => responder({ t: 'arquivo.ok', n: m.n, url }), e => responder({ t: 'arquivo.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'arquivo.apagar') {
@@ -562,7 +596,7 @@ dialog::backdrop { background: var(--scrim); }
     const a = mesas.atual;
     if (!conta.usuario) { btnConta.classList.add('entrar'); btnConta.append(h('span', { class: 'nm', text: 'Entrar' })); btnConta.title = 'Entrar para jogar com a mesa'; }
     else if (!a) { btnConta.append(h('span', { class: 'nm', text: 'Escolher mesa' })); btnConta.title = 'Conta de ' + conta.usuario.email; }
-    else { btnConta.append(h('span', { class: 'nm', text: a.nome }), h('span', { class: 'pp', text: papelPt(a.papel) })); btnConta.title = 'Mesa ' + a.nome + ' · ' + papelPt(a.papel); }
+    else { btnConta.append(h('span', { class: 'nm', text: a.nome }), h('span', { class: 'pp', text: cargoPt(a) })); btnConta.title = 'Mesa ' + a.nome + ' · ' + cargoPt(a); }
     btnVivo.hidden = !a;
     if (!a) { vivo.hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
   }
@@ -578,8 +612,19 @@ dialog::backdrop { background: var(--scrim); }
     const a = mesas.atual, u = conta.usuario;
     menu.replaceChildren();
     if (a) {
-      menu.append(h('h3', { text: a.nome }), h('div', { class: 'sub', text: 'Você é ' + (a.papel === 'mestre' ? 'o mestre' : 'jogador') + ' · ' + a.meuNome }));
-      if (a.papel === 'mestre' && a.codigo) {
+      menu.append(h('h3', { text: a.nome }), h('div', { class: 'sub', text: 'Você é ' + (a.cargo === 'mestre' ? 'o mestre' : a.cargo === 'auxiliar' ? 'mestre auxiliar' : 'jogador') + ' · ' + a.meuNome }));
+      if (a.cargo === 'auxiliar') {
+        // o auxiliar alterna entre mestrar e jogar como jogador; a permissão de auxiliar continua com ele
+        const fora = mesas.abasDeMestre.filter(x => !a.abas.includes(x)).map(nomeDaAba);
+        menu.append(h('div', { class: 'sec', id: 'mn-aux' },
+          h('div', { class: 'rot', text: a.jogando ? 'Jogando como jogador' : 'Mestrando' }),
+          h('div', { class: 'sub', text: a.jogando ? 'O que é só do mestre não chega a este aparelho. Você continua mestre auxiliar e volta quando quiser.'
+            : !a.abas.length ? 'O mestre não liberou nenhuma aba: você mestra a mesa ao vivo e as barras das fichas que os jogadores veem.'
+            : fora.length ? 'Você mestra: ' + a.abas.map(nomeDaAba).join(', ') + '. Nas outras abas (' + fora.join(', ') + '), vê o que os jogadores veem.'
+            : 'Você mestra todas as abas.' }),
+          h('button', { type: 'button', class: 'btn sm', id: 'mn-modo', style: 'margin-top:8px', text: a.jogando ? 'Voltar a mestrar' : 'Jogar como jogador', onclick: () => { fecharMenu(); janelaModo(a, !a.jogando); } })));
+      }
+      if (a.cargo === 'mestre' && a.codigo) {
         menu.append(h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'Código de convite' }),
           h('div', { class: 'cod' }, h('code', { id: 'codigo', text: codigoBonito(a.codigo) }),
             h('button', { type: 'button', class: 'btn sm', text: 'Copiar', onclick: async () => { try { await navigator.clipboard.writeText(codigoBonito(a.codigo)); toast('Código copiado.'); } catch (e) { toast('Não deu para copiar. O código é ' + codigoBonito(a.codigo)); } } }),
@@ -588,8 +633,13 @@ dialog::backdrop { background: var(--scrim); }
       }
       const lista = h('div', { class: 'sec', id: 'membros' }, h('div', { class: 'rot', text: 'Quem participa' }));
       for (const m of a.membros) {
-        const lin = h('div', { class: 'mb' + (aoVivo.online(m) ? '' : ' fora') }, h('i', { style: 'background:' + (m.cor || '#888') }), h('span', { text: m.nome }), h('small', { text: m.papel === 'mestre' ? 'mestre' : '' }));
-        if (a.papel === 'mestre' && m.papel === 'jogador') lin.append(h('button', { type: 'button', class: 'btn sm', text: 'Tirar', onclick: () => confirmar('Tirar ' + m.nome + ' da mesa?', 'A pessoa deixa de ver esta mesa. Ela pode voltar com o código de convite.', 'Tirar', async () => { await mesas.tirar(m.usuario_id); toast(m.nome + ' saiu da mesa.'); }) }));
+        // (o nome e o papel dividem a linha; se não couberem lado a lado — nome comprido, botões ao lado —, o papel desce)
+        const lin = h('div', { class: 'mb' + (aoVivo.online(m) ? '' : ' fora'), 'data-m': m.usuario_id }, h('i', { style: 'background:' + (m.cor || '#888') }),
+          h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '' })));
+        // só o mestre mexe em quem participa: o papel de cada um (jogador ou mestre auxiliar) e tirar da mesa
+        if (a.cargo === 'mestre' && m.cargo !== 'mestre') lin.append(h('div', { class: 'ac' },
+          h('button', { type: 'button', class: 'btn sm', text: 'Papel…', title: 'Jogador ou mestre auxiliar', onclick: () => { fecharMenu(); janelaPapel(m); } }),
+          h('button', { type: 'button', class: 'btn sm', text: 'Tirar', onclick: () => confirmar('Tirar ' + m.nome + ' da mesa?', 'A pessoa deixa de ver esta mesa. Ela pode voltar com o código de convite' + (m.cargo === 'auxiliar' ? ' — como jogador.' : '.'), 'Tirar', async () => { await mesas.tirar(m.usuario_id); toast(m.nome + ' saiu da mesa.'); }) })));
         lista.append(lin);
       }
       menu.append(lista);
@@ -597,12 +647,12 @@ dialog::backdrop { background: var(--scrim); }
       menu.append(h('h3', { text: 'Nenhuma mesa aberta' }), h('div', { class: 'sub', text: 'Sem mesa, cada sistema guarda os dados só neste navegador.' }));
     }
     const sec = h('div', { class: 'sec' });
-    if (a && a.papel === 'mestre') {
-      sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-renomear', text: 'Renomear a mesa…', onclick: () => { fecharMenu(); janelaRenomear(a); } }));
+    if (a && a.cargo === 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-renomear', text: 'Renomear a mesa…', onclick: () => { fecharMenu(); janelaRenomear(a); } }));
+    if (a && a.papel === 'mestre') {              // (limpar o painel é de quem está mestrando; dá para desfazer)
       sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-limpar', text: 'Limpar a mesa ao vivo…', onclick: () => { fecharMenu(); confirmar('Limpar a mesa ao vivo?', 'A conversa e as rolagens somem do painel de todos. Dá para desfazer logo em seguida.', 'Limpar', limparVivo); } }));
     }
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
-    if (a && a.papel === 'jogador') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
+    if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
     sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
@@ -630,9 +680,9 @@ dialog::backdrop { background: var(--scrim); }
       botao.disabled = false;
     });
   }
-  function confirmar(titulo, texto, rotulo, fn) {
+  function confirmar(titulo, texto, rotulo, fn, calmo) {      // calmo: o que se confirma não é uma perda (o botão não vai em vermelho)
     const err = h('div', { class: 'err', role: 'alert' });
-    const ok = h('button', { type: 'submit', class: 'btn per', text: rotulo });
+    const ok = h('button', { type: 'submit', class: 'btn ' + (calmo ? 'pri' : 'per'), text: rotulo });
     const f = h('form', { class: 'dl' }, h('h2', { text: titulo }), h('p', { text: texto }), err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => { await fn(); fecharJanela(); });
@@ -691,8 +741,45 @@ dialog::backdrop { background: var(--scrim); }
       const ms = await mesas.lista();
       lista.replaceChildren();
       if (!ms.length) lista.append(h('div', { class: 'nt', text: 'Você ainda não participa de nenhuma mesa. Crie uma ou entre com um código.' }));
-      for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { if (mesas.atual) await assentar(); await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + papelPt(m.papel) })));
+      for (const m of ms) lista.append(h('button', { type: 'button', onclick: async () => { err.textContent = ''; try { if (mesas.atual) await assentar(); await mesas.abrir(m.id); fecharJanela(); } catch (e) { err.textContent = e.message; } } }, h('span', { text: m.nome }), h('small', { text: (mesas.atual && mesas.atual.id === m.id ? 'aberta · ' : '') + cargoPt(m) })));
     } catch (e) { lista.replaceChildren(h('div', { class: 'nt', text: e.message })); }
+  }
+  /* O mestre escolhe o papel de um participante: jogador ou mestre auxiliar — e, para o auxiliar, as abas que ele
+     mestra. Nada muda antes de "Salvar"; depois, dá para desfazer pelo aviso. */
+  function janelaPapel(m) {
+    const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice();
+    const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
+    const caixas = ABAS.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
+    const grupo = h('fieldset', { class: 'abas', id: 'pp-abas' }, h('legend', { text: 'Abas que ' + m.nome + ' mestra' }),
+      h('div', { class: 'cxs' }, ABAS.map((x, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: x.nome })))),
+      h('div', { class: 'nt', text: 'Sem uma aba, ' + m.nome + ' a vê como os jogadores veem (o Rolador some). Sem a aba Fichas, não recebe as fichas escondidas nem os segredos; nas fichas que os jogadores veem, mexe enquanto mestra.' }));
+    const pintar = () => { grupo.disabled = !rAux.checked; };
+    rJog.addEventListener('change', pintar); rAux.addEventListener('change', pintar); pintar();
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'pp-ok', text: 'Salvar' });
+    const f = h('form', { class: 'dl', id: 'f-papel' }, h('h2', { text: 'Papel de ' + m.nome }),
+      h('label', { class: 'op' }, rJog, h('span', {}, h('b', { text: 'Jogador' }), h('small', { text: 'Joga com as fichas dele e vê o que a mesa mostra aos jogadores.' }))),
+      h('label', { class: 'op' }, rAux, h('span', {}, h('b', { text: 'Mestre auxiliar' }), h('small', { text: 'Mestra junto com você, nas abas marcadas, e pode jogar como jogador quando quiser. Não tira ninguém da mesa, não vê nem troca o código de convite, não renomeia nem apaga a mesa e não nomeia outros auxiliares.' }))),
+      grupo, err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => {
+      const sim = rAux.checked, abas = ABAS.filter((x, i) => caixas[i].checked).map(x => x.id);
+      if (sim === eraAux && (!sim || abas.join() === abasAntes.join())) { fecharJanela(); return; }      // nada mudou
+      await mesas.definirAuxiliar(m.usuario_id, sim, abas);
+      fecharJanela();
+      toast(!sim ? m.nome + ' voltou a ser jogador.' : eraAux ? 'As abas de ' + m.nome + ' foram atualizadas.' : m.nome + ' agora é mestre auxiliar.', 'Desfazer',
+        async () => { try { await mesas.definirAuxiliar(m.usuario_id, eraAux, abasAntes); toast('Desfeito: ' + m.nome + (eraAux ? ' continua mestre auxiliar, com as abas de antes.' : ' continua jogador.')); } catch (e) { toast(e.message); } });
+    });
+    abrirJanela(f);
+  }
+  /* O auxiliar alterna entre mestrar e jogar como jogador. A troca vale para a conta dele (em todos os aparelhos) e
+     as abas abertas são carregadas de novo, já com o que ele pode ver. */
+  function janelaModo(a, jogar) {
+    confirmar(jogar ? 'Jogar como jogador?' : 'Voltar a mestrar?',
+      jogar ? 'Você passa a ver a mesa como os jogadores veem: as cenas escondidas, as fichas só do mestre e os segredos deixam de chegar aos seus aparelhos. Você continua mestre auxiliar: para voltar, é este mesmo botão, no menu da mesa.'
+        : 'Você volta a ver e a mexer no que é do mestre, nas abas que ele liberou para você.',
+      jogar ? 'Jogar como jogador' : 'Voltar a mestrar',
+      async () => { await assentar(); await mesas.jogar(jogar); toast(jogar ? 'Você está jogando como jogador.' : 'Você voltou a mestrar.'); }, true);
   }
   // O mestre troca o nome da mesa (os outros veem o nome novo em instantes).
   function janelaRenomear(a) {
@@ -754,8 +841,10 @@ dialog::backdrop { background: var(--scrim); }
   function pintarQuem() {
     const a = mesas.atual, q = $('quem'); q.replaceChildren();
     if (!a) return;
-    const ord = a.membros.slice().sort((x, y) => (aoVivo.online(y) - aoVivo.online(x)) || (x.papel === 'mestre' ? -1 : y.papel === 'mestre' ? 1 : 0));
-    for (const m of ord) q.append(h('span', { class: 'pes' + (aoVivo.online(m) ? '' : ' fora'), title: m.nome + (aoVivo.online(m) ? ' está na mesa' : ' não está com a mesa aberta') }, h('i', { style: 'background:' + (m.cor || '#888') }), m.nome, m.papel === 'mestre' ? h('small', { text: 'mestre' }) : null));
+    const peso = m => (m.cargo === 'mestre' ? 0 : m.cargo === 'auxiliar' ? 1 : 2);        // o mestre, os auxiliares, os jogadores
+    const ord = a.membros.slice().sort((x, y) => (aoVivo.online(y) - aoVivo.online(x)) || (peso(x) - peso(y)));
+    for (const m of ord) q.append(h('span', { class: 'pes' + (aoVivo.online(m) ? '' : ' fora'), title: m.nome + (m.cargo === 'auxiliar' ? (m.jogando ? ', mestre auxiliar (jogando como jogador),' : ', mestre auxiliar,') : '') + (aoVivo.online(m) ? ' está na mesa' : ' não está com a mesa aberta') }, h('i', { style: 'background:' + (m.cor || '#888') }), m.nome,
+      m.cargo === 'mestre' ? h('small', { text: 'mestre' }) : m.cargo === 'auxiliar' && !m.jogando ? h('small', { text: 'auxiliar' }) : null));
   }
   function corDe(uid) { const m = mesas.atual && mesas.atual.membros.find(x => x.usuario_id === uid); return (m && m.cor) || 'var(--fg-3)'; }
   // A imagem do personagem ao lado do nome de quem falou ou rolou (só imagens guardadas na pasta desta mesa).
@@ -1045,7 +1134,7 @@ dialog::backdrop { background: var(--scrim); }
     if (!l || l.ficha == null) return null;
     try {
       const dc = D.pegar('fichas:cfg'), cfg = (dc && dc.dados && dc.dados.v) || R.cfgPadrao();
-      const db = D.pegar(a.papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'), bib = db && db.dados && Array.isArray(db.dados.arvores) ? db.dados : null;
+      const db = D.pegar(mesas.mestra('arvore') ? 'arvore:biblioteca' : 'arvore:pacote'), bib = db && db.dados && Array.isArray(db.dados.arvores) ? db.dados : null;
       const pc = Object.assign({}, l.ficha, { id: l.id, nome: l.nome });
       const extra = { arvore: R.bonusDaArvore(l.skills, bib), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer };
       return { R, l, pc, cfg, extra, c: R.calcular(pc, cfg, extra), fonte: (pc.rol && pc.rol.fonte) || 'total' };
@@ -1145,9 +1234,20 @@ dialog::backdrop { background: var(--scrim); }
   });
   mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); difundir(); });
   mesas.on('removido', () => toast('Você não participa mais desta mesa.'));
+  /* O meu papel mudou com a mesa aberta (o mestre me nomeou, mexeu nas minhas abas ou me devolveu a jogador; ou eu
+     alternei entre mestrar e jogar em outro aparelho). A mesa já foi aberta de novo; aqui só se diz o que houve. */
+  mesas.antesDeReabrir = () => descarregarMolduras();
+  mesas.on('permissao', (antes, agora) => {
+    if (agora.cargo !== antes.cargo) toast(agora.cargo === 'auxiliar' ? 'Você agora é mestre auxiliar desta mesa. O que você mestra está no menu da mesa.' : agora.cargo === 'mestre' ? 'Você agora é o mestre desta mesa.' : 'Você voltou a ser jogador nesta mesa.', null, null, 9000);
+    else if (agora.jogando !== antes.jogando) toast(agora.jogando ? 'Você está jogando como jogador.' : 'Você voltou a mestrar.');
+    else toast('O mestre mudou as abas que você mestra. Elas estão no menu da mesa.', null, null, 9000);
+  });
+  /* Os sistemas abertos são de uma mesa e de um papel: quando a mesa troca, ou quando muda o que a pessoa pode ver
+     nela (virou auxiliar, ganhou ou perdeu uma aba, passou a jogar como jogador), eles são carregados de novo. */
+  const assinatura = () => { const a = mesas.atual; return a ? [a.id, a.cargo, a.jogando ? 1 : 0, a.abas.join(',')].join('|') : null; };
   let mesaDasMolduras = null;
   function recarregarSistemas() {
-    const id = mesas.atual ? mesas.atual.id : null;
+    const id = assinatura();
     if (id === mesaDasMolduras) return;
     mesaDasMolduras = id;
     for (const a of ABAS) if (a.dados && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
@@ -1162,19 +1262,19 @@ dialog::backdrop { background: var(--scrim); }
   function cenasEmSegundoPlano() {
     clearTimeout(tFundo);
     const mesa = mesas.atual;
-    if (!mesa || mesa.papel !== 'mestre' || frames.cenas) return;
+    if (!mesa || !mesas.mestra('cenas') || frames.cenas) return;
     tFundo = setTimeout(async () => {
       try {
         const D = TC.dados.col('documentos');
         await D.pronta;
-        if (!mesas.atual || mesas.atual.id !== mesa.id || mesas.atual.papel !== 'mestre' || frames.cenas || !pode('cenas')) return;
+        if (!mesas.atual || mesas.atual !== mesa || !mesas.mestra('cenas') || frames.cenas || !pode('cenas')) return;
         if (!D.todas().some(l => /^cena:(?!pub:|pedido:)[A-Za-z0-9_-]+:m$/.test(l.id || '') && !l.apagado)) return;
         moldura(ABAS.find(x => x.id === 'cenas'));
       } catch (e) { /* sem os dados da mesa, as Cenas abrem quando o mestre for até elas */ }
     }, 2500);
   }
   mesas.on('muda', a => {
-    papelNaMesa = a ? a.papel : null; pintarAbas();
+    pintarAbas();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
     if (!a) prepararDados();
@@ -1228,7 +1328,7 @@ dialog::backdrop { background: var(--scrim); }
     pintarConta();
     const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
-  })]).then(() => { mesaDasMolduras = mesas.atual ? mesas.atual.id : null; papelNaMesa = mesas.atual ? mesas.atual.papel : null; pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); });
+  })]).then(() => { mesaDasMolduras = assinatura(); pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); });
 })();
 </script>
 </body>

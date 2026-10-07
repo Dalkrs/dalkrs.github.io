@@ -194,7 +194,7 @@ async function start(snap) {
   new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { Render.request(); UI.refresh(); });
 
-  const flush = () => { try { Vision.flushExplored(); Persist.flush(); } catch (e) { /* nada a fazer */ } };
+  const flush = () => { try { Vision.flushExplored(); Fichas.flush(); Persist.flush(); } catch (e) { /* nada a fazer */ } };
   window.addEventListener('pagehide', flush);
   if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(flush);       // dentro do site: a casca avisa antes de fechar
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });

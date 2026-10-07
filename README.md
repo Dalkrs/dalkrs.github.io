@@ -20,6 +20,13 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - **Mestre e jogadores.** A mesa tem um mestre e jogadores que entram com o código de convite. O banco só entrega a
   cada um o que ele pode ver: o jogador vê a própria ficha (e as que o mestre liberar), a cena que o mestre pôs no
   ar (sem o que é só do mestre), o mapa-múndi revelado e o acampamento. O Rolador, numa mesa, é só do mestre.
+- **Mestre auxiliar.** No menu da mesa, o mestre pode dar a um jogador o papel de mestre auxiliar ("Papel…") e
+  escolher as abas que ele mestra. O auxiliar mestra junto — cenas, fichas, mapa, acampamento, mesa ao vivo —, mas
+  não administra a mesa: não tira ninguém, não vê nem troca o código de convite, não renomeia nem apaga a mesa e não
+  nomeia outros auxiliares. Numa aba que o mestre não liberou ele vê o que os jogadores veem (o Rolador some). E
+  pode, quando quiser, **jogar como jogador** (botão no menu da mesa): enquanto joga, o que é só do mestre deixa de
+  chegar aos aparelhos dele; a permissão de auxiliar continua, e o mesmo botão o leva de volta. Ver "O mestre
+  auxiliar".
 - **Mesa ao vivo**: o painel da direita mostra as rolagens e a conversa de todos, na hora. Nele fica também a
   **telinha de dados** (rolar um atributo com fixa, ou a iniciativa, pela ficha, sem digitar comando — o jogador
   pelos personagens dele, o mestre por qualquer um) e as duas chaves de **som** e **efeito** das rolagens, que cada
@@ -41,7 +48,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 ### Como os dados da mesa ficam no banco
 
-- `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa.
+- `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa. Em `mesa_membros`, `papel` é `mestre`,
+  `auxiliar` ou `jogador`; o auxiliar tem ainda `jogando` (está jogando como jogador) e `abas` (as que ele mestra).
 - `registro`: a mesa ao vivo (rolagens e conversa).
 - `personagens`: uma linha por ficha, em três colunas: `ficha` (o que o personagem é: atributos, barras, itens,
   bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
@@ -88,6 +96,31 @@ saem juntos, são dois pedidos (o estado, depois a ficha): assim que o do estado
 O que foi apagado fica apagado: cada aparelho anota a revisão em que uma linha (um personagem, uma cena) foi apagada,
 e dali em diante ela só volta por uma revisão maior que essa — isto é, se alguém a recriou. Uma leitura que saiu do
 banco antes do apagar e chegou depois (numa rede lenta, por exemplo) não traz a linha de volta.
+
+A mesa ao vivo é lida por revisão ("o que tem revisão maior que a última que vi"). Duas linhas gravadas no mesmo
+instante podem ficar visíveis fora de ordem — a de revisão menor depois da de revisão maior —, e a menor ficaria para
+trás. Por isso cada leitura confere de novo, só pelos números (`id`, `rev`, `apagado`), a faixa da leitura anterior e
+busca o que faltar; e, ao abrir a mesa, a revisão mais alta é lida antes das linhas, não depois.
+
+### Duas pessoas mestrando a mesma cena
+
+A cena é um documento (dois: o mapa, `cena:<id>:m`, e a parte viva — tokens, efeitos, turnos —, `cena:<id>:v`), e é
+gravada inteira. Com o mestre e o mestre auxiliar na mesma cena (ou o mestre em dois aparelhos), duas gravações no
+mesmo instante se atropelariam: a que chegasse por último apagaria o que a outra fez. Por isso as cenas e o índice
+(`cenas:indice`) são gravados **conferindo a versão**: a gravação só vale se o documento ainda está, no banco, na
+revisão de que o aparelho partiu (`update … where rev = …`). Se não está, o núcleo (`tc/tc.js`) lê o que está lá,
+**junta em três vias** — o ponto de partida, o que foi feito aqui e o que o outro gravou (`juntar3`) — e grava de
+novo. O sistema recebe o documento juntado como uma mudança que veio de fora e refaz por cima dele o que ainda tiver
+por salvar.
+
+Como a conta junta: o que só um dos dois mudou fica como ele deixou; objetos se juntam chave por chave; listas de
+objetos com `id` (tokens, desenhos, paredes, luzes) se juntam objeto por objeto, e listas de nomes sem repetição (a
+ordem das cenas, a fila de turnos), nome por nome; a ordem é a de quem mexeu na ordem, e o que o outro incluiu entra
+ao lado do vizinho que tinha lá. Só quando os dois mexem na **mesma coisa** (o mesmo token arrastado para dois
+lugares, a mesma barra) fica uma só — a de quem gravou por último —, igual para todos. Quem apagou, apagou.
+
+A projeção que os jogadores recebem (`cena:pub:*`) não passa por isso: só o aparelho que transmite a escreve,
+inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais quem receba um documento juntado).
 
 ### As rolagens e o auditor
 
@@ -193,6 +226,42 @@ Três coisas da ficha podem ficar escondidas dos jogadores, e nenhuma delas cheg
   "Revelar" a passa para `fichas:missoes` (do grupo) ou para o `estado` da ficha (de um personagem). O jogador cria as
   dele direto na própria ficha, e só nessas ele mexe.
 
+### O mestre auxiliar
+
+No banco, quem é quem está em `mesa_membros`: o **cargo** (`papel`: `mestre`, `auxiliar`, `jogador`), o modo do
+auxiliar (`jogando`) e as abas dele (`abas`). Três perguntas decidem tudo, e são funções do banco:
+
+- `privado.e_mestre(mesa)` — é O mestre: administra (renomear, código de convite, tirar gente, nomear auxiliares).
+- `privado.mestrando(mesa)` — o mestre, ou o auxiliar que não está jogando: rola em segredo, mexe na linha dos outros
+  na mesa ao vivo, envia imagens para a pasta da mesa e mexe nas fichas que os jogadores veem.
+- `privado.mestra(mesa, aba)` — o mestre, ou o auxiliar mestrando com a aba liberada. Cada documento é de uma aba,
+  pelo nome (`cena:`/`cenas:` → Cenas, `mundo:` → Mapa-múndi, `acampamento` → Acampamento, `fichas:` → Fichas,
+  `arvore:` → Árvore, `rol:` → Rolador): só quem mestra a aba recebe e grava os documentos de mestre dela. As fichas
+  escondidas (e trocar dono, visibilidade ou apagar uma ficha) são da aba Fichas.
+
+Quem nomeia é o mestre (`definir_auxiliar`); quem alterna entre mestrar e jogar é o próprio auxiliar
+(`auxiliar_jogar`). Ninguém muda o próprio papel direto na tabela.
+
+No site, o núcleo guarda de cada participante o `cargo` e o `papel` — o que a pessoa está fazendo agora: o auxiliar
+mestrando conta como `mestre`; jogando, como `jogador`. A casca entrega a cada sistema o papel de quem usa **naquela
+aba** (`TC.ponte.estado.papel`) e o que ele mestra, aba por aba (`TC.ponte.mestra(aba)`): um sistema não precisa
+saber que existe auxiliar, a não ser quando mexe no que é de outra aba. Os casos em que isso acontece:
+
+- **A biblioteca das árvores** (`arvore:biblioteca`) só chega a quem mestra a Árvore; os outros usam o pacote
+  publicado (`arvore:pacote`), como os jogadores.
+- **Os segredos das fichas** (`fichas:segredos`) só chegam a quem mestra as Fichas. O Acampamento, sem ela, não os
+  lê nem grava — e o "Momento", que mexe nos relacionamentos, fica de fora.
+- **Token ligado a uma ficha escondida**, nas Cenas, para quem não mestra as Fichas: o token está na cena (com as
+  barras dele), a ficha não chega. O dano e a cura dados ali vão para a ficha "às cegas" (`barras_do_token`: só o
+  valor atual e a sobrevida das barras que a ficha tem, sem devolver nada dela) — sem isso seriam desfeitos quando o
+  aparelho do mestre acertasse o token pela ficha.
+
+O personagem e os tokens do auxiliar continuam dele quando ele mestra: ele aparece em "Jogador que controla" e
+como dono do token. Só a defesa é que não é pedida a ele enquanto mestra (quem mestra rola pelo token).
+
+Quando o papel de alguém muda com a mesa aberta (nomeado, abas trocadas, devolvido a jogador, ou alternando entre
+mestrar e jogar), o aparelho dele percebe, abre a mesa de novo e recarrega os sistemas — o que ele pode ver é outro.
+
 ### Redesenhar sem atrapalhar quem está usando
 
 A ficha é redesenhada inteira quando algo muda — por quem a está usando, ou por outra pessoa da mesa. Três cuidados
@@ -225,11 +294,18 @@ faltava subir.
 
 ### Limites conhecidos
 
-- **O mestre em dois aparelhos, na mesma cena, no mesmo instante.** Um aparelho só transmite a cena que está no ar, e
-  o que o mestre faz num e noutro é juntado (barras, condições e auras pela variação; o resto, por objeto). Mas se as
-  gravações dos dois se cruzam no mesmo segundo, o documento da cena fica com a que chegou por último, e um gesto pode
-  ser desfeito. Os pedidos recentes dos jogadores não se perdem nesse caso: cada um guarda os dele por dois minutos
-  depois de confirmados, e o aparelho que transmite aplica de novo os que a cena que ficou não tiver.
+- **Duas pessoas mestrando a mesma cena no mesmo instante** (o mestre e o auxiliar, ou o mestre em dois aparelhos):
+  o que cada um faz é juntado (ver "Duas pessoas mestrando a mesma cena"). Só na mesma coisa — o mesmo token
+  arrastado pelos dois, a mesma barra — fica uma das duas. As barras de um mesmo token são uma lista só: um mudando
+  o HP e o outro o SP do mesmo token, no mesmo segundo, fica a lista de quem gravou por último (se o token segue uma
+  ficha, a ficha guarda as duas e acerta o token). Um aparelho só transmite a cena que está no ar; os pedidos
+  recentes dos jogadores não se perdem numa troca: cada um guarda os dele por dois minutos depois de confirmados.
+- **O mestre auxiliar e as imagens.** As imagens da mesa ficam numa pasta só, e têm endereço público (quem tem o
+  endereço abre). O auxiliar mestrando pode listar a pasta inteira — inclusive imagens de abas que ele não mestra.
+- **O mestre auxiliar com a Árvore e sem as Fichas** cria, pela aba Árvore, só personagens dele mesmo (personagem sem
+  dono é coisa de quem mestra as Fichas). Com as Fichas e sem a Árvore, usa as árvores do pacote publicado.
+- **Jogar como jogador vale para a conta**, não para um aparelho: todos os aparelhos do auxiliar mudam juntos. E é
+  uma proteção contra ver sem querer, não contra o próprio auxiliar — ele volta a mestrar quando quiser.
 - **Quem aplica o que os jogadores fazem é o programa do mestre** — que roda com a mesa aberta, em qualquer aba do
   site (ver "O programa das Cenas do mestre"). Com o mestre fora do site (ou com o aparelho dormindo), os pedidos
   esperam; valem quando ele volta.
@@ -267,12 +343,15 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
-cd src/tests && for f in dice rules auditoria mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
 fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-ficha`, `arvore-mesa`, `mundo-mesa`,
-`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `dados.rede` (a telinha de dados, o som e o efeito, a
+`acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `auxiliar.rede` (o mestre auxiliar: no banco, o que
+cada papel lê e grava, aba por aba; na tela, o menu da mesa, as abas e o botão de jogar/mestrar), `versao.rede` (o
+mestre e o auxiliar na mesma cena, no mesmo instante), `ordem.rede` (a mesa ao vivo quando duas linhas ficam visíveis
+fora de ordem no banco), `dados.rede` (a telinha de dados, o som e o efeito, a
 iniciativa oferecida ao mestre, os dados guardados por todo caminho de rolagem e o auditor), `combate.rede` (puxar o
 grupo, terreno, F e C, a fixa de cada turno e o ataque com defesa, com o pedido de defesa entre o mestre e um
 jogador), `estado.rede` (duas
@@ -285,4 +364,5 @@ mestre em segundo plano (a poção e o token, o pedido do jogador com o mestre e
 e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira. `auditoria` confere as contas do
 auditor (inclusive que ele não acusa dados honestos mais vezes do que o combinado) e `auditor`, a janela dele.
 `src/cenas/test/combate.js` confere, sem o site, as contas do combate, a ferramenta Terreno, a janelinha de atributos
-num token sem ficha e a disputa.
+num token sem ficha e a disputa. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+de rodadas ao acaso).

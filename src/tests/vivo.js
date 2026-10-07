@@ -46,6 +46,13 @@ const { contas } = require('./contas');
     return [document.getElementById('chaveSom') && document.getElementById('chaveEfeito') ? 'chaves de som e efeito' : 'SEM AS CHAVES', TC.rules && TC.rules.calcular ? 'regras da ficha na casca' : 'SEM AS REGRAS',
       r && Array.isArray(r.dados.dd) ? 'dd ' + JSON.stringify(r.dados.dd) : 'SEM dd', h, document.getElementById('dados') ? 'telinha ' + (document.getElementById('dados').hidden ? 'escondida (mesa sem fichas)' : 'à mostra') : 'SEM A TELINHA'].join(' · ');
   });
+  // o que entrou com o mestre auxiliar: o papel por aba, a gravação conferindo a versão e o menu com os papéis
+  out.auxiliar = await page.evaluate(() => {
+    const a = TC.mesas.atual || {};
+    return [typeof TC.mesas.mestra === 'function' && typeof TC.mesas.definirAuxiliar === 'function' && typeof TC.mesas.jogar === 'function' ? 'papéis no núcleo' : 'SEM OS PAPÉIS',
+      'cargo ' + a.cargo + ' · mestra as Cenas: ' + (typeof TC.mesas.mestra === 'function' ? TC.mesas.mestra('cenas') : '?'),
+      TC.dados.remendo && typeof TC.dados.remendo.juntar3 === 'function' ? 'junta em três vias' : 'SEM A JUNÇÃO', typeof TC.dados.barrasDoToken === 'function' ? 'barras pelo token' : 'SEM AS BARRAS'].join(' · ');
+  });
   // as Cenas, dentro da mesa: guardadas no banco, e a cena vai ao ar quando o mestre manda
   await page.locator('#tab-cenas').click(); await page.waitForTimeout(3500);
   const C = page.frame({ url: /\/cenas\// });

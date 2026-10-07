@@ -136,9 +136,16 @@ const Nuvem = (() => {
     });
     return modo;
   }
-  // Os jogadores são os participantes da mesa (menos o mestre), com a cor que cada um tem nela.
+  /* Os jogadores são os participantes da mesa (menos o mestre), com a cor que cada um tem nela. O mestre auxiliar é
+     um deles — tem os personagens e os tokens dele —, esteja mestrando ou jogando como jogador: o que é dele continua
+     dele quando ele alterna. `gm` marca que agora ele está mestrando (aí não é a ele que se pede a defesa: quem está
+     mestrando rola pelo token). Uma casca de antes do mestre auxiliar não diz o cargo: lá vale só o papel. */
   function jogadores(st) {
-    S.players = (st.membros || []).filter(m => m.papel !== 'mestre' && m.id).map((m, i) => ({ id: m.id, name: m.nome || 'Jogador', color: /^#[0-9a-f]{6}$/i.test(m.cor || '') ? m.cor : PLAYER_COLORS[i % PLAYER_COLORS.length] }));
+    S.players = (st.membros || []).filter(m => (m.cargo ? m.cargo !== 'mestre' : m.papel !== 'mestre') && m.id).map((m, i) => {
+      const p = { id: m.id, name: m.nome || 'Jogador', color: /^#[0-9a-f]{6}$/i.test(m.cor || '') ? m.cor : PLAYER_COLORS[i % PLAYER_COLORS.length] };
+      if (m.cargo === 'auxiliar' && m.papel === 'mestre') p.gm = true;
+      return p;
+    });
   }
   function prefsDaqui() { try { const o = JSON.parse(localStorage.getItem(PREFS_AQUI) || '{}'); return ehObj(o) ? o : {}; } catch (e) { return {}; } }
   function guardarPrefsDaqui() {
@@ -290,13 +297,16 @@ const Nuvem = (() => {
   /* Grava um documento só se o conteúdo mudou — em relação ao que está no banco AGORA, não ao que este aparelho
      gravou por último (outro aparelho do mestre pode ter gravado por cima nesse meio-tempo). Devolve false se o
      documento não cabe no banco. */
-  function escrever(id, dados, vis) {
+  function escrever(id, dados, vis, cas) {
     const j = JSON.stringify(dados), l = D.pegar(id);
     if (l && sombra.get(id) === j && visto.get(id) === l) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
     if (j.length > LIMITE / 3 && pesoNoBanco(j) > LIMITE) return false;
     sombra.set(id, j);
     if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados)) { visto.set(id, l); return true; }      // já está assim no banco
-    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }) || D.pegar(id));       // sem dono: é do mestre
+    /* cas: as cenas e o índice são gravados conferindo a versão. Com o mestre e o mestre auxiliar (ou o mestre em dois
+       aparelhos) mexendo na mesma cena no mesmo instante, a gravação de um não passa por cima da do outro: a casca
+       junta as duas e devolve a cena juntada (que chega por doBanco, como qualquer mudança de fora). */
+    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));       // sem dono: é do mestre
     return true;
   }
   function avisarGrande(sc) {
@@ -315,7 +325,7 @@ const Nuvem = (() => {
       /* Até onde os pedidos dos jogadores já foram aplicados vai guardado junto com a cena que eles mudaram: quem
          abrir esta cena depois (o mestre de novo, ou outro aparelho dele) não aplica o mesmo pedido duas vezes. */
       if (id === idx.noAr) v.ack = Object.assign({}, acks);
-      const okM = escrever(docM(id), m, 'mestre'), okV = escrever(docV(id), v, 'mestre');
+      const okM = escrever(docM(id), m, 'mestre', true), okV = escrever(docV(id), v, 'mestre', true);
       if (okM && okV) { grandes.delete(id); feito.delete(id); }
       else {
         falhou = true; avisarGrande(sc);
@@ -334,7 +344,7 @@ const Nuvem = (() => {
       try { localStorage.setItem(ATUAL_AQUI + mesa, S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
       const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null } };
       const la = dadosMestre(INDICE);
-      if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre');
+      if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
       guardarPrefsDaqui();
     }

@@ -1,6 +1,8 @@
 /* Tiny Cats · ponte entre um sistema (Cenas, Fichas, Árvore, Rolador) e a casca do site.
    A casca cuida da conta, da mesa e do banco; o sistema fala com ela por aqui:
      TC.ponte.estado / aoMudar   — qual mesa está aberta, o papel de quem usa, quem participa
+     TC.ponte.mestra(aba)        — quem usa mestra essa aba? (o mestre, todas; o auxiliar, as que o mestre liberou)
+     TC.ponte.barrasDaFicha(id, rec, sob) — leva à ficha as barras de um token cuja ficha não chega a quem mexeu
      TC.ponte.pronta             — promessa: resolve quando o estado chegou (ou logo, se não há casca)
      TC.ponte.publicar           — "rolei isto": a casca decide se e como vai para a mesa ao vivo
      TC.dados.col(nome)          — personagens e documentos da mesa aberta (só dentro da casca, com mesa)
@@ -21,10 +23,20 @@
   const ouvintes = [], ouvintesIr = [], ouvintesFechar = [], ouvintesRegistro = [];
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   const ponte = {
-    // mesa: { id, nome } | null · papel: 'mestre' | 'jogador' | null · eu: id do usuário · membros: [{ id, nome, papel, cor }]
-    estado: { mesa: null, papel: null, segredo: false, eu: null, membros: [], v: 1 },
+    /* mesa: { id, nome } | null · eu: id do usuário · membros: [{ id, nome, papel, cargo, cor }]
+       papel: 'mestre' | 'jogador' | null — o de quem usa, NESTA aba: 'mestre' se ele a mestra (o mestre da mesa, ou o
+         mestre auxiliar com esta aba liberada, enquanto está mestrando); 'jogador' se não.
+       cargo: 'mestre' | 'auxiliar' | 'jogador' — o que a pessoa é na mesa · jogando: o auxiliar está jogando como jogador
+       mestra: { cenas, mundo, acampamento, fichas, arvore, rolador } — o que ela mestra, aba por aba (null numa casca antiga) */
+    estado: { mesa: null, papel: null, cargo: null, jogando: false, mestra: null, segredo: false, eu: null, membros: [], v: 1 },
     naCasca,
+    /* Quem usa mestra a aba tal? Serve para um sistema que mexe no que é de outra aba (o Acampamento e os segredos
+       das fichas, por exemplo). Uma casca de antes do mestre auxiliar não diz aba por aba: lá, quem é mestre mestra tudo. */
+    mestra(aba) { const e = ponte.estado; return e.mestra && typeof e.mestra === 'object' ? !!e.mestra[aba] : e.papel === 'mestre'; },
     publicar(origem, dados) { enviar({ t: 'rolagem', origem, dados }); },
+    /* O valor atual (rec) e a sobrevida (sob) das barras de uma ficha, por id da barra — para quem mestra as Cenas sem
+       receber a ficha (escondida dos jogadores, e ele sem a aba Fichas). A casca manda por um caminho próprio do banco. */
+    barrasDaFicha(id, rec, sob) { if (!naCasca || !ponte.estado.mesa) return false; enviar({ t: 'ficha.barras', id, rec: rec || {}, sob: sob || null, mesa: ponte.estado.mesa.id }); return true; },
     ir(aba, alvo) { if (!naCasca) return false; enviar({ t: 'ir', aba, alvo: alvo || null }); return true; },
     aoIr(fn) { ouvintesIr.push(fn); if (alvoGuardado) { const a = alvoGuardado; alvoGuardado = null; try { fn(a); } catch (e) { console.error(e); } } },
     aoMudar(fn) { ouvintes.push(fn); try { fn(ponte.estado); } catch (e) { console.error(e); } },
@@ -99,8 +111,11 @@
            sistema tinha em mãos — a cópia daqui ou, se quem grava trabalhava sobre outra, a que ele passar em
            `base.estado` / `base.skills`. Assim o que outra pessoa mexeu no mesmo personagem nesse meio-tempo (outra
            barra, as moedas, os pontos que o mestre deu) não é desfeito.
-           (Quais colunas vão assim é a casca que diz: uma casca mais antiga só junta o estado, e recebe as skills inteiras.) */
-        gravar(id, campos, base) {
+           (Quais colunas vão assim é a casca que diz: uma casca mais antiga só junta o estado, e recebe as skills inteiras.)
+           opt.cas (documentos): gravar conferindo a versão. Se outra pessoa gravou o mesmo documento nesse meio-tempo,
+           a casca junta as duas mudanças em vez de pôr a daqui por cima, e devolve o documento juntado como uma
+           mudança que veio de fora (aoMudar). Serve para o que duas pessoas mexem ao mesmo tempo: as cenas. */
+        gravar(id, campos, base, opt) {
           const atual = c.linhas.get(id), R = remendo();
           const cols = nome === 'personagens' && atual && campos && R ? (R.colunas || ['estado']).filter(k => campos[k] !== undefined) : [];
           if (cols.length) {
@@ -112,7 +127,7 @@
             if (Object.keys(mudas).length || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, mudas, muda: mudas.estado || null, mesa: c.mesa });
             return l;
           }
-          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa }); return l;
+          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa, cas: !!(opt && opt.cas) }); return l;
         },
         apagar(id) { c.linhas.delete(id); enviar({ t: 'dados.gravar', col: nome, id, campos: { apagado: true }, mesa: c.mesa }); },
         aoMudar(fn) { c.ouvintes.push(fn); },
@@ -155,8 +170,10 @@
       return;
     }
     if (m.t === 'estado') {
-      // v: a versão da conversa com a casca (2: ela entende a disputa e a defesa das Cenas e o pedido de defesa)
-      ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [], v: Number(m.v) || 1 };
+      // v: a versão da conversa com a casca (2: ela entende a disputa e a defesa das Cenas e o pedido de defesa;
+      //    3: diz o cargo de cada um e o que quem usa mestra, aba por aba)
+      ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, cargo: m.cargo || (m.papel || null), jogando: !!m.jogando, mestra: m.mestra && typeof m.mestra === 'object' ? m.mestra : null,
+        segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [], v: Number(m.v) || 1 };
       avisar(ponte.estado);
       for (const f of ouvintes.slice()) { try { f(ponte.estado); } catch (e) { console.error(e); } }
     } else if (m.t === 'dados.tudo' && esperas[m.n]) {

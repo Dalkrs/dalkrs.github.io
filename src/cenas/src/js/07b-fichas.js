@@ -26,8 +26,10 @@ const Fichas = (() => {
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
   // a imagem do personagem, quando está guardada no banco (endereço https)
   const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
-  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, quando existe; para o jogador, o pacote publicado)
-  const bib = () => { const d = D && D.pegar(papel === 'mestre' ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
+  // bônus dos nódulos escolhidos na árvore (a biblioteca da mesa, para quem mestra a aba Árvore; para os outros, o
+  // pacote publicado — o mestre auxiliar pode mestrar as Cenas sem a Árvore, e aí a biblioteca não chega a ele)
+  const mestraArvore = () => { const T = window.TC && window.TC.ponte; return T && typeof T.mestra === 'function' ? T.mestra('arvore') : papel === 'mestre'; };
+  const bib = () => { const d = D && D.pegar(mestraArvore() ? 'arvore:biblioteca' : 'arvore:pacote'); return d && d.dados && Array.isArray(d.dados.arvores) ? d.dados : null; };
   // (os bônus temporários — comida, poção — moram no estado do personagem e contam como um equipamento)
   const extra = l => ({ arvore: R().bonusDaArvore(l.skills, bib()), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer });
   const resumo = l => R().resumo(pcDe(l), cfg(), extra(l), l.estado || {});
@@ -128,11 +130,41 @@ const Fichas = (() => {
     for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
     return n;
   }
+  /* Quem mestra as Cenas recebe todas as fichas da mesa? O mestre, sim. O mestre auxiliar, só com a aba Fichas: sem
+     ela, as fichas escondidas dos jogadores não chegam a ele — mas os tokens ligados a elas estão na cena. */
+  const vejoTodas = () => { const T = window.TC && window.TC.ponte; return papel === 'mestre' && (!T || typeof T.mestra !== 'function' || T.mestra('fichas')); };
+  // a ficha deste token existe mas não chega a quem está olhando (e não "saiu da mesa")
+  const escondida = t => !!t && !!t.char && papel === 'mestre' && !vejoTodas() && !get(t.char);
+  /* token → ficha "às cegas", para a ficha que não chega a este aparelho: só o valor atual e a sobrevida das barras
+     ligadas, por um caminho próprio do banco. Sem isso, o dano dado aqui seria desfeito quando o aparelho do mestre
+     acertasse o token pela ficha. Junta o que muda num instante (arrastar uma barra gera muitas mudanças). */
+  const cegas = new Map();
+  function mandarCegas(id) {
+    const e = cegas.get(id); if (!e) return;
+    clearTimeout(e.t); cegas.delete(id);
+    const T = window.TC && window.TC.ponte;
+    if (T && typeof T.barrasDaFicha === 'function') T.barrasDaFicha(id, e.rec, e.sob);
+  }
+  function paraFichaAsCegas(t) {
+    const T = window.TC && window.TC.ponte;
+    if (!escondida(t) || !T || typeof T.barrasDaFicha !== 'function') return false;
+    const e = cegas.get(t.char) || { rec: {}, sob: {}, t: 0 };
+    let n = 0;
+    for (const b of t.bars) {
+      if (!b.ref) continue;
+      if (isFinite(b.v)) { e.rec[b.ref] = b.v; n++; }
+      const x = barX(b); e.sob[b.ref] = x > 0 ? x : null;
+    }
+    if (!n) return false;
+    clearTimeout(e.t); e.t = setTimeout(() => mandarCegas(t.char), 400);
+    cegas.set(t.char, e);
+    return true;
+  }
   // token → ficha: o valor atual (e a sobrevida) das barras ligadas. Serve para um token de qualquer cena da mesa.
   function paraFicha(t) {
     if (!on || !t || !t.char) return false;
     const l = get(t.char);
-    if (!l) return false;
+    if (!l) { paraFichaAsCegas(t); return false; }          // (a ficha não está aqui: se é das escondidas, as barras vão às cegas)
     const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
     let mudou = false;
     for (const b of t.bars) {
@@ -219,6 +251,8 @@ const Fichas = (() => {
   // O jogador da mesa que é dono desta ficha (ou null: ficha do mestre, de NPC, ou de alguém que saiu da mesa).
   const donoDe = l => (l && l.dono_id ? playerById(l.dono_id) || null : null);
   const donoDoToken = t => donoDe(t && t.char ? get(t.char) : null);
+  // …e quem joga com ele agora: o dono, a não ser que seja o mestre auxiliar e esteja mestrando (aí quem mestra rola por ele)
+  const donoQueJoga = t => { const p = donoDoToken(t); return p && !p.gm ? p : null; };
   /* Um token novo para um personagem da mesa, já ligado à ficha: nome, barras, iniciativa e dono (se a ficha é de
      um jogador). Não entra na cena aqui: quem chama é que o inclui (e depois acerta a imagem, com syncToken). */
   function novoToken(sc, charId, x, y, extra) {
@@ -333,11 +367,13 @@ const Fichas = (() => {
     Store.on('live', onLive);
     Store.on('scene', () => syncAll());
     P.aoMudar(l => { if (!l.apagado) syncAll(l.id); refresh(); });
-    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca') { syncAll(); refresh(); } });
+    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') { syncAll(); refresh(); } });
     syncAll();
     refresh();
     return true;
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
-    podeRolar, defesas, donoDe, donoDoToken, novoToken, papel: () => papel, eu: () => eu };
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
+    flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };
 })();

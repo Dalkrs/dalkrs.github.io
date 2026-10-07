@@ -409,7 +409,7 @@ const Luta = (() => {
       const t = Store.get('tokens', r.id);
       if (!t) return null;
       const i = Combate.barraDe(t, selBar.value), b = i >= 0 ? t.bars[i] : null, def = Combate.defesaDe(t, chaves()), comFicha = def != null, d = dano();
-      const dono = comFicha ? Fichas.donoDoToken(t) : null;
+      const dono = comFicha ? Fichas.donoQueJoga(t) : null;        // (quem rola a defesa: o jogador dono — se não está mestrando)
       let usada = 0, falta = false, como = '';
       if (comFicha && st.defs.size) {
         if (!rolando()) { usada = def; como = 'defesa ' + def; }

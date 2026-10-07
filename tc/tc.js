@@ -35,7 +35,7 @@
   /* Erros em português. O que o banco escreve (código errado, mesa cheia…) já chega em português e passa inteiro. */
   function erroPt(e, padrao) {
     const m = String((e && (e.message || e.error_description || e.erro)) || e || '');
-    if (/^(Entre na sua conta|Dê um nome|Você |Código |Esta mesa|Só o mestre|Já existe|Digite |A senha |Diga |O cadastro |Não foi possível)/.test(m)) return m;
+    if (/^(Entre na sua conta|Dê um nome|Você |Código |Esta mesa|Só o mestre|Já existe|Digite |A senha |Diga |O cadastro |Não foi possível|Essa pessoa |O mestre da mesa )/.test(m)) return m;
     if (/Invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
     if (/Email not confirmed/i.test(m)) return 'Esta conta ainda não foi confirmada.';
     if (/Failed to fetch|NetworkError|Load failed|ERR_|network/i.test(m)) return 'Sem conexão com o servidor. Confira a internet e tente de novo.';
@@ -97,9 +97,9 @@
 
   mesas.lista = async () => {
     const u = exigir();
-    const { data, error } = await cliente().from('mesa_membros').select('papel, nome, mesas(id, nome, criada_em)').eq('usuario_id', u.id);
+    const { data, error } = await cliente().from('mesa_membros').select('papel, jogando, nome, mesas(id, nome, criada_em)').eq('usuario_id', u.id);
     if (error) throw falha(error);
-    return (data || []).filter(x => x.mesas).map(x => ({ id: x.mesas.id, nome: x.mesas.nome, papel: x.papel, criada: x.mesas.criada_em }))
+    return (data || []).filter(x => x.mesas).map(x => { const m = membroDe(x); return { id: x.mesas.id, nome: x.mesas.nome, papel: m.papel, cargo: m.cargo, jogando: m.jogando, criada: x.mesas.criada_em }; })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   };
   mesas.criar = async (nome, meuNome) => {
@@ -114,11 +114,23 @@
     if (error) throw falha(error, 'Não deu para entrar na mesa agora.');
     return mesas.abrir(data.id);
   };
-  async function lerMembros(id) {
-    const { data, error } = await cliente().from('mesa_membros').select('usuario_id, papel, nome, cor, visto_em').eq('mesa_id', id).order('entrou_em');
-    if (error) throw error;
-    return data || [];
+  /* Os participantes, como o site os usa. `cargo` é o que o banco guarda: 'mestre', 'auxiliar' ou 'jogador'. `papel` é
+     o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
+     jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
+     `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador'];
+  function membroDe(x) {
+    const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
+    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando,
+      abas: cargo === 'auxiliar' && Array.isArray(x.abas) ? ABAS_DE_MESTRE.filter(a => x.abas.includes(a)) : [],
+      papel: cargo === 'mestre' || (cargo === 'auxiliar' && !jogando) ? 'mestre' : 'jogador' };
   }
+  async function lerMembros(id) {
+    const { data, error } = await cliente().from('mesa_membros').select('usuario_id, papel, nome, cor, visto_em, jogando, abas').eq('mesa_id', id).order('entrou_em');
+    if (error) throw error;
+    return (data || []).map(membroDe);
+  }
+  const meuJeito = m => [m.cargo, m.jogando ? 1 : 0, (m.abas || []).join(',')].join('|');      // o que decide o que eu posso ver
   mesas.abrir = async id => {
     const u = exigir();
     const { data: m, error } = await cliente().from('mesas').select('id, nome, dono_id').eq('id', id).maybeSingle();
@@ -128,12 +140,12 @@
     const eu = membros.find(x => x.usuario_id === u.id);
     if (!eu) throw new Error('Você não participa desta mesa.');
     let codigo = null;
-    if (eu.papel === 'mestre') {
+    if (eu.cargo === 'mestre') {                             // (o código de convite é de quem administra a mesa)
       const cv = await cliente().from('mesa_convites').select('codigo').eq('mesa_id', id).maybeSingle();
       codigo = cv.data ? cv.data.codigo : null;
     }
     aoVivo.parar(); dadosZerar();
-    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, meuNome: eu.nome, minhaCor: eu.cor, codigo, membros };
+    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros };
     guarda.gravar(CHAVE_MESA, id);
     mesas.emit('muda', mesas.atual);
     aoVivo.iniciar(id);      // o registro carrega em segundo plano: a mesa já está aberta e a janela pode fechar
@@ -145,6 +157,38 @@
   };
   mesas.esquecer = () => { guarda.gravar(CHAVE_MESA, null); mesas.fechar(); };
   mesas.ultima = () => guarda.ler(CHAVE_MESA);
+  /* Quem mestra o quê. O mestre mestra todas as abas; o auxiliar, enquanto está mestrando, as que o mestre liberou;
+     o jogador (e o auxiliar que está jogando como jogador), nenhuma. Administrar a mesa — o código de convite, tirar
+     gente, renomear, nomear auxiliares — é só do mestre. */
+  mesas.abasDeMestre = ABAS_DE_MESTRE.slice();
+  mesas.mestra = aba => { const a = mesas.atual; return !!a && (a.cargo === 'mestre' || (a.cargo === 'auxiliar' && !a.jogando && a.abas.includes(aba))); };
+  mesas.administra = () => !!mesas.atual && mesas.atual.cargo === 'mestre';
+  /* O mestre nomeia um mestre auxiliar (ou o devolve a jogador) e diz que abas ele mestra. Sem lista de abas, todas. */
+  mesas.definirAuxiliar = async (usuarioId, auxiliar, abas) => {
+    const a = mesas.atual; if (!a) return null;
+    const args = { p_mesa: a.id, p_usuario: usuarioId, p_auxiliar: !!auxiliar };
+    if (auxiliar && Array.isArray(abas)) args.p_abas = abas.filter(x => ABAS_DE_MESTRE.includes(x));
+    const { data, error } = await cliente().rpc('definir_auxiliar', args);
+    if (error) throw falha(error, 'Não deu para mudar o papel agora. Tente de novo.');
+    await recarregarMembros();
+    return data ? membroDe(data) : null;
+  };
+  /* O auxiliar alterna entre mestrar e jogar como jogador. Vale para a conta dele, em todos os aparelhos: o banco passa
+     a tratá-lo como jogador (ou de novo como quem mestra), e a mesa é aberta outra vez, com o que ele pode ver agora. */
+  let reabrindo = false;
+  mesas.jogar = async jogando => {
+    const a = mesas.atual; if (!a) return null;
+    if (a.cargo !== 'auxiliar') throw new Error('Você não é mestre auxiliar desta mesa.');
+    reabrindo = true;
+    try {
+      const { error } = await cliente().rpc('auxiliar_jogar', { p_mesa: a.id, p_jogando: !!jogando });
+      if (error) throw falha(error, 'Não deu para trocar agora. Tente de novo.');
+      return await mesas.abrir(a.id);
+    } finally { reabrindo = false; }
+  };
+  /* A casca diz aqui o que fazer logo antes de a mesa ser aberta de novo por causa de uma mudança de papel (entregar o
+     que os sistemas ainda seguravam). */
+  mesas.antesDeReabrir = null;
   mesas.novoCodigo = async () => {
     const a = mesas.atual; if (!a) return null;
     const { data, error } = await cliente().rpc('novo_codigo', { p_mesa: a.id });
@@ -212,7 +256,21 @@
     try {
       const membros = await lerMembros(a.id);
       if (mesas.atual !== a) return;
-      if (!membros.some(x => x.usuario_id === (conta.usuario && conta.usuario.id))) { mesas.esquecer(); mesas.emit('removido'); return; }
+      const eu = membros.find(x => x.usuario_id === (conta.usuario && conta.usuario.id));
+      if (!eu) { mesas.esquecer(); mesas.emit('removido'); return; }
+      /* O meu papel mudou — o mestre me nomeou auxiliar, mexeu nas minhas abas ou me devolveu a jogador; ou eu mesmo
+         alternei entre mestrar e jogar em outro aparelho. O que posso ver é outro: a mesa é aberta de novo. */
+      if (meuJeito(eu) !== meuJeito(a)) {
+        if (reabrindo) return;
+        reabrindo = true;
+        const antes = { cargo: a.cargo, jogando: a.jogando, abas: a.abas.slice() };
+        try {
+          if (typeof mesas.antesDeReabrir === 'function') { try { mesas.antesDeReabrir(); } catch (e) { console.error(e); } }
+          const nova = await mesas.abrir(a.id);
+          mesas.emit('permissao', antes, { cargo: nova.cargo, jogando: nova.jogando, abas: nova.abas.slice() });
+        } finally { reabrindo = false; }
+        return;
+      }
       a.membros = membros; mesas.emit('membros', membros);
     } catch (e) { /* sem rede: tenta de novo na próxima volta */ }
   }
@@ -243,13 +301,30 @@
     if (aoVivo.itens.length > LIMITE) aoVivo.itens.splice(0, aoVivo.itens.length - LIMITE);
     if (!silencioso) aoVivo.emit('item', linha, true);
   }
+  /* A leitura periódica pede "o que tem revisão maior que a última que vi". Mas duas linhas escritas no mesmo instante
+     podem aparecer no banco fora de ordem: a de revisão menor fica visível depois da de revisão maior, que a leitura
+     já passou — e ficaria para trás para sempre (a rolagem de um jogador que nunca aparece no painel de outro).
+     Então a faixa da leitura anterior é conferida de novo, só com o nome e a revisão de cada linha, e a que não
+     estiver aqui é lida inteira. (Só há o que conferir quando algo chegou na leitura anterior.) */
+  let anterior = null;             // até onde ia o registro antes da última leitura
   async function buscarNovos() {
     if (!mesaId || buscando) return;
     buscando = true;
-    const id = mesaId;
+    const id = mesaId, de = maxRev;
     try {
-      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).gt('rev', maxRev).order('rev').limit(200);
+      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).gt('rev', de).order('rev').limit(200);
       if (!error && id === mesaId) for (const l of data || []) aplicar(l);
+      if (!error && id === mesaId && anterior != null && anterior < de) {
+        const leve = await cliente().from('registro').select('id,rev,apagado').eq('mesa_id', id).gt('rev', anterior).lte('rev', de).limit(1000);
+        if (!leve.error && id === mesaId) {
+          const faltam = (leve.data || []).filter(x => { const l = aoVivo.itens.find(y => y.id === x.id); return l ? (l.rev || 0) < x.rev : !x.apagado; }).map(x => x.id);
+          if (faltam.length) {
+            const r = await cliente().from('registro').select('*').eq('mesa_id', id).in('id', faltam.slice(0, 200));
+            if (!r.error && id === mesaId) for (const l of (r.data || []).sort((a, b) => a.rev - b.rev)) aplicar(l);
+          }
+        }
+      }
+      if (!error && id === mesaId) anterior = de;
     } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
     buscando = false;
   }
@@ -262,20 +337,29 @@
     recarregarMembros(); conferirNome();
   }
   // As últimas linhas do painel, lidas do banco.
+  /* A revisão mais alta é lida ANTES das linhas, e é dela que a leitura periódica parte: o que alguém escrever
+     enquanto as linhas são lidas tem revisão maior e chega na primeira leitura periódica. (Lida depois, uma linha
+     escrita entre uma leitura e a outra ficava com revisão "já vista" sem nunca ter sido lida.) A primeira leitura
+     periódica ainda confere de novo a faixa das últimas linhas: uma que estivesse sendo escrita no instante em que
+     a mesa abriu pode ter revisão menor que a mais alta. */
   async function carregarItens(id) {
     try {
+      const topo = await cliente().from('registro').select('rev').eq('mesa_id', id).order('rev', { ascending: false }).limit(1);
       const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).eq('apagado', false).order('criado_em', { ascending: false }).limit(200);
       if (error) throw error;
       if (mesaId !== id) return;
       for (const l of (data || []).reverse()) aplicar(l, true);
-      const topo = await cliente().from('registro').select('rev').eq('mesa_id', id).order('rev', { ascending: false }).limit(1);
-      if (topo.data && topo.data[0]) maxRev = Math.max(maxRev, topo.data[0].rev);
+      const ate = topo.error ? null : topo.data && topo.data[0] ? topo.data[0].rev : 0;
+      if (ate != null) maxRev = ate;                         // (sem a revisão mais alta, vale a maior das linhas lidas)
+      const recentes = (data || []).map(l => l.rev).sort((a, b) => b - a);
+      anterior = ate != null && recentes.length ? Math.min(ate, recentes[Math.min(recentes.length, 20) - 1]) - 1 : null;
     } catch (e) { /* começa vazio; a leitura periódica completa depois */ }
   }
   aoVivo.iniciar = async id => {
     aoVivo.parar();
-    mesaId = id; maxRev = 0; aoVivo.itens = [];
-    aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1';
+    mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = [];
+    // (o "em segredo" lembrado só vale para quem está mestrando: o auxiliar que passou a jogar como jogador não rola em segredo)
+    aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1' && !!mesas.atual && mesas.atual.papel === 'mestre';
     await carregarItens(id);
     if (mesaId !== id) return;
     aoVivo.emit('reinicio');
@@ -388,7 +472,7 @@
   aoVivo.historico = async (opt = {}) => {
     const a = mesas.atual;
     if (!a) throw new Error('Abra uma mesa primeiro.');
-    if (a.papel !== 'mestre') throw new Error('Só o mestre abre o auditor dos dados.');
+    if (!mesas.mestra('rolador')) throw new Error('Só o mestre abre o auditor dos dados.');
     const out = [], LIMITE_LINHAS = opt.limite || 20000, PAGINA = 1000;
     for (let de = 0; de < LIMITE_LINHAS; de += PAGINA) {
       const { data, error } = await cliente().from('registro')
@@ -686,7 +770,56 @@
     }
     return out;
   }
-  const remendo = { diferenca, aplicar: juntar, compor, igual, colunas: JUNTAM.slice() };
+  /* Junta em três vias o que duas pessoas fizeram ao mesmo documento, a partir de onde as duas partiram (`base`):
+       · o que só uma delas mudou fica como ela deixou;
+       · objetos se juntam chave por chave;
+       · listas de objetos com `id` (os tokens, os desenhos, as paredes de uma cena…) se juntam objeto por objeto, e
+         listas de nomes sem repetição (a ordem das cenas, as condições de um token), nome por nome; a ordem é a de
+         quem mexeu na ordem — se as duas mexeram, a daqui —, e o que a outra incluiu entra logo depois do vizinho
+         que tinha lá;
+       · no resto (número, texto, lista de números ou de pontos), se as duas mexeram, vale o daqui (`meu`).
+     "Sem valor" (a chave que saiu, o objeto que foi apagado) é um valor como os outros: quem apagou, apagou. */
+  // Uma lista que dá para juntar item por item: de objetos com `id` ('ids') ou de nomes ('nomes'), sem repetição.
+  const tipoDaLista = l => (!Array.isArray(l) ? null : !l.length ? 'vazia'
+    : l.every(x => typeof x === 'string' && x !== '') ? (new Set(l).size === l.length ? 'nomes' : null)
+    : l.every(x => ehMapa(x) && (typeof x.id === 'string' || typeof x.id === 'number') && x.id !== '') ? (new Set(l.map(x => x.id)).size === l.length ? 'ids' : null) : null);
+  const chaveDoItem = x => (typeof x === 'string' ? x : x.id);
+  function juntar3(base, meu, deles, fundo = 0) {
+    if (igual(meu, deles)) return meu;
+    if (igual(meu, base)) return deles;
+    if (igual(deles, base)) return meu;
+    if (fundo < 16 && ehMapa(meu) && ehMapa(deles)) {
+      const b = ehMapa(base) ? base : {}, out = {};
+      for (const k of new Set([...chavesDe(deles), ...chavesDe(meu)])) {
+        const v = juntar3(proprio(b, k) ? b[k] : undefined, proprio(meu, k) ? meu[k] : undefined, proprio(deles, k) ? deles[k] : undefined, fundo + 1);
+        if (v !== undefined) out[k] = v;
+      }
+      return out;
+    }
+    const tm = tipoDaLista(meu), td = tipoDaLista(deles), tb = base == null ? 'vazia' : tipoDaLista(base);
+    const tipo = tm && td && tb ? [tm, td, tb].find(x => x !== 'vazia') || null : null;
+    if (fundo < 16 && tipo && [tm, td, tb].every(x => x === 'vazia' || x === tipo)) {
+      const mapa = l => new Map((l || []).map(x => [chaveDoItem(x), x])), B = mapa(base), M = mapa(meu), T = mapa(deles), fica = new Map();
+      for (const k of new Set([...T.keys(), ...M.keys()])) {
+        const v = juntar3(B.get(k), M.get(k), T.get(k), fundo + 1);
+        if (v != null) fica.set(k, v);
+      }
+      // a ordem dos que as três versões têm: mexi nela? então vale a daqui; senão, a de lá
+      const comuns = l => (l || []).map(chaveDoItem).filter(k => B.has(k) && M.has(k) && T.has(k)).join('\n');
+      const guia = comuns(meu) !== comuns(base) || comuns(deles) === comuns(base) ? meu : deles, outra = guia === meu ? deles : meu;
+      const ordem = guia.map(chaveDoItem).filter(k => fica.has(k)), tem = new Set(ordem);
+      outra.forEach((x, i) => {
+        const k = chaveDoItem(x);
+        if (!fica.has(k) || tem.has(k)) return;
+        let pos = 0;                                          // logo depois do vizinho de antes que ele tinha na outra lista
+        for (let n = i - 1; n >= 0; n--) { const q = ordem.indexOf(chaveDoItem(outra[n])); if (q >= 0) { pos = q + 1; break; } }
+        ordem.splice(pos, 0, k); tem.add(k);
+      });
+      return ordem.map(k => fica.get(k));
+    }
+    return meu;
+  }
+  const remendo = { diferenca, aplicar: juntar, compor, igual, juntar3, colunas: JUNTAM.slice() };
   /* As filas (c.rems: o que ainda vai subir; c.remsVoo: o que está subindo agora) são por linha e por coluna. */
   const kq = (col, id) => col + '\n' + id;
   const temFila = (c, col, id) => c.rems.has(kq(col, id)) || c.remsVoo.has(kq(col, id));
@@ -714,6 +847,7 @@
       const c = cols[k];
       /* O que ainda não tinha subido sobe agora (a mesa está fechando; o envio segue o caminho dele mesmo assim).
          A linha que já tinha um envio a caminho manda o que mudou depois quando esse envio voltar (uma última volta). */
+      c.fechando = true;                                    // (daqui em diante nada é gravado "conferindo a versão": ver enviarComVersao)
       for (const id of [...c.sujos.keys()]) enviarLinha(c, id);
       c.morta = true; for (const t of c.tempo.values()) clearTimeout(t);
     }
@@ -737,7 +871,7 @@
     // (rems / remsVoo: as mudanças do estado e das skills de cada personagem que ainda vão subir / que estão subindo agora)
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
-    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
+    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
       for (let de = 0; ; de += 1000) {
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
@@ -833,9 +967,10 @@
   }
   /* O que deixou de ser visível para o jogador (o mestre escondeu a ficha, ou passou para outra pessoa) não chega
      como mudança: o banco simplesmente para de mostrar a linha. Então, de tempos em tempos, o jogador confere a lista
-     do que ainda pode ver e tira da tela o resto. (O mestre vê tudo: para ele não há o que conferir.) */
+     do que ainda pode ver e tira da tela o resto. (O mestre vê tudo: para ele não há o que conferir. O auxiliar, mesmo
+     mestrando, pode não ter todas as abas: confere como os jogadores.) */
   async function dadosConferir() {
-    if (!mesas.atual || mesas.atual.papel === 'mestre') return;
+    if (!mesas.atual || mesas.atual.cargo === 'mestre') return;
     for (const c of Object.values(cols)) {
       const nome = c.nome;
       if (c.morta || c.conferindo) continue;
@@ -910,6 +1045,7 @@
     const voando = new Set(campos);                    // os campos que estão a caminho (o que chega do banco não passa por cima deles)
     c.sujos.delete(id); c.emVoo.set(id, voando);
     const l = c.linhas.get(id);
+    if (c.nome === 'documentos' && l && !campos.has('*') && campos.has('dados') && c.cas.has(id) && c.bases.has(id) && !c.fechando && !c.morta) { enviarComVersao(c, id, campos, voando, l); return; }
     // as mudanças (do estado, das skills) que vão agora, por coluna (o que passar do limite vai na volta seguinte)
     const indo = {};
     for (const col of JUNTAM) {
@@ -966,17 +1102,93 @@
     }
     contarPendentes();
   }
+  /* Um documento gravado "conferindo a versão": a gravação só vale se ele ainda está, no banco, na revisão de que este
+     aparelho partiu. Se outra pessoa gravou antes — o mestre e o mestre auxiliar na mesma cena, no mesmo instante —,
+     o que está lá é lido, junta-se a ele o que foi feito aqui (juntar3) e a gravação vai de novo. Sem isso a daqui
+     passaria por cima da dela, e o que ela fez sumiria para todos. O sistema recebe o documento juntado como uma
+     mudança que veio de fora, e refaz por cima dele o que ainda tiver por salvar. */
+  async function enviarComVersao(c, id, campos, voando, l) {
+    const tb = () => cliente().from(c.nome), base = c.bases.get(id), o = {};
+    for (const k of campos) o[k] = l[k];
+    let r = null, erro = null, deles = null;
+    try {
+      r = await tb().update(o).eq('mesa_id', c.mesa).eq('id', id).eq('rev', base.rev).select(REV).maybeSingle();
+      if (r.error) erro = r.error;
+      else if (!r.data) {
+        // nada mudou no banco: ou o documento não está mais na revisão que este aparelho conhecia, ou não existe
+        const la = await tb().select('*').eq('mesa_id', c.mesa).eq('id', id).maybeSingle();
+        if (la.error) erro = la.error;
+        else if (la.data) deles = la.data;
+        else { r = await tb().insert(linhaInteira(c, id, l)).select(REV).single(); if (r.error) erro = r.error; }
+      }
+    } catch (e) { erro = e; }
+    c.emVoo.delete(id);
+    if (c.morta) {
+      // a mesa fechou enquanto a gravação ia: o que não valeu, e o que mudou depois, vai agora do jeito simples
+      if (erro) return;
+      if (deles) { const s = c.sujos.get(id) || new Set(); for (const k of campos) s.add(k); c.sujos.set(id, s); }
+      if (c.sujos.has(id)) enviarLinha(c, id, true);
+      return;
+    }
+    if (erro) {
+      const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
+      const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(erro.message || ''));
+      dados.erro = erroPt(erro, 'Não deu para salvar na mesa agora.');
+      if (semPermissao) { c.sujos.delete(id); c.bases.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }
+      else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
+      dados.emit('erro', dados.erro);
+    } else if (deles) {
+      juntarComODeLa(c, id, deles, voando);
+    } else {
+      c.falhas = 0; dados.erro = null;
+      // o que acabou de ser gravado passa a ser o ponto de partida do que este aparelho ainda tem por mandar
+      const falta = c.sujos.get(id);
+      if (falta && falta.has('dados')) c.bases.set(id, { rev: r.data.rev, dados: o.dados }); else c.bases.delete(id);
+      assentar(c, id, r.data);
+      if (c.sujos.has(id)) agendar(c, id, 300);
+    }
+    contarPendentes();
+  }
+  /* A gravação daqui não valeu: no banco está `deles`, que outra pessoa gravou. O documento daqui passa a ser o dela
+     com o que foi feito aqui juntado; se isso muda alguma coisa, é o que vai na gravação seguinte. */
+  function juntarComODeLa(c, id, deles, voando) {
+    const l = c.linhas.get(id), base = c.bases.get(id), pend = c.sujos.get(id) || new Set();
+    if (deles.apagado) {
+      // o documento foi apagado por outra pessoa: o que foi feito aqui em cima dele não tem mais onde ficar
+      c.sujos.delete(id); c.bases.delete(id); enterrar(c, id, deles.rev);
+      if (l) { c.linhas.delete(id); dados.emit('muda', c.nome, { id, apagado: true }, 'remota', null); }
+      return;
+    }
+    if (!l) return;                                          // (apagado aqui nesse meio-tempo: o apagar segue o caminho dele)
+    const junto = juntar3(base ? base.dados : undefined, l.dados, deles.dados), n = Object.assign({}, deles, { dados: junto });
+    for (const k of new Set([...voando, ...pend])) if (k !== 'dados' && k !== '*' && k !== 'apagado' && k in l) { n[k] = l[k]; pend.add(k); }     // as outras colunas daqui continuam por subir
+    c.linhas.set(id, n);
+    c.bases.set(id, { rev: deles.rev, dados: deles.dados });
+    if (!igual(junto, deles.dados)) pend.add('dados');       // (se o que foi feito aqui já está lá, não há o que regravar)
+    if (pend.size) { c.sujos.set(id, pend); agendar(c, id, 60); } else { c.sujos.delete(id); c.bases.delete(id); }
+    c.falhas = 0; dados.erro = null;
+    dados.juntados = (dados.juntados || 0) + 1;              // (quantas vezes isso aconteceu: para os testes e para quem investigar)
+    dados.emit('muda', c.nome, n, 'remota', null);
+  }
   /* Grava campos de uma linha (cria se não existir). `de` identifica quem pediu, para não receber o próprio eco.
      O estado e as skills de um personagem entram como mudança: `mudas.estado` / `mudas.skills` (o que quem pediu
      mexeu, contado a partir do que ele tinha em mãos) ou, se a coluna veio inteira em `campos`, o que ela muda na
      que está aqui. */
-  function dadosGravar(nome, id, campos, de, mudas) {
+  function dadosGravar(nome, id, campos, de, mudas, opt) {
     const c = abrirCol(nome);
     let l = c.linhas.get(id);
     const suj = c.sujos.get(id) || new Set();
     campos = campos || {};
+    /* opt.cas: este documento é gravado conferindo a versão (ver enviarComVersao). O ponto de partida é o documento
+       como está aqui antes desta mudança — se já não há outra mudança dele por subir (aí o ponto de partida é o dela). */
+    if (nome === 'documentos' && opt && opt.cas && l && !campos.apagado && campos.dados !== undefined) {
+      c.cas.add(id);
+      const indo = c.emVoo.get(id);
+      if (!c.bases.has(id)) c.bases.set(id, suj.has('dados') || suj.has('*') || (indo && (indo.has('dados') || indo.has('*'))) ? { rev: l.rev || 0, dados: undefined } : { rev: l.rev || 0, dados: l.dados });
+    }
     if (campos.apagado) {
       if (!l) return null;
+      c.bases.delete(id);
       c.linhas.delete(id); suj.add('apagado'); c.sujos.set(id, suj); largarFilas(c, id);
       dados.emit('muda', nome, { id, apagado: true }, 'local', de);
     } else {
@@ -1002,9 +1214,18 @@
   }
   dados.col = nome => {
     const c = abrirCol(nome);
-    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, mudas) => dadosGravar(nome, id, campos, de, mudas), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
+    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, mudas, opt) => dadosGravar(nome, id, campos, de, mudas, opt), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
   };
   dados.remendo = remendo;
+  /* As barras de uma ficha que não chega a este aparelho: o mestre auxiliar mestrando as Cenas sem a aba Fichas, num
+     token ligado a uma ficha escondida dos jogadores. Vão só o valor atual e a sobrevida, por um caminho próprio do
+     banco (que confere se quem pede mestra as Cenas e só aceita as barras que a ficha tem). */
+  dados.barrasDoToken = async (id, rec, sob) => {
+    const a = mesas.atual; if (!a) return null;
+    const { data, error } = await cliente().rpc('barras_do_token', { p_mesa: a.id, p_id: String(id), p_rec: rec || {}, p_sob: sob || null });
+    if (error) throw falha(error, 'Não deu para levar as barras à ficha agora.');
+    return (Array.isArray(data) ? data[0] : data) || null;
+  };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
   /* Manda agora e espera subir, até `ms` (antes de fechar ou trocar de mesa, ou de sair da conta). Devolve true se

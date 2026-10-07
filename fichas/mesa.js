@@ -23,13 +23,18 @@ const FichasMesa = (() => {
 
   const mestre = () => !!st && st.papel === 'mestre';
   const podeEditar = pc => !ativo || mestre() || (!!pc && pc._dono === st.eu);
-  const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && m.papel === 'jogador');
+  /* Quem pode ser dono de ficha: os participantes da mesa, menos o mestre. O mestre auxiliar conta — a ficha dele é
+     de jogador, esteja ele mestrando ou jogando. (Uma casca de antes do mestre auxiliar não diz o cargo: vale o papel.) */
+  const jogadorDaMesa = m => !!m && (m.cargo ? m.cargo !== 'mestre' : m.papel === 'jogador');
+  const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && jogadorDaMesa(m));
   // ficha de jogador: controlada por alguém da mesa que não é o mestre
   const deJogador = pc => ativo && !!pc && ehJogador(pc._dono);
 
   /* personagem da calculadora ⇄ linha da mesa */
-  // A biblioteca de árvores vem da mesa: para o mestre, a original; para o jogador, o pacote publicado.
-  const bibDaMesa = () => { const d = D.pegar(mestre() ? 'arvore:biblioteca' : 'arvore:pacote'), b = d && d.dados; return b && Array.isArray(b.arvores) ? b : null; };
+  // A biblioteca de árvores vem da mesa: para quem mestra a aba Árvore, a original; para os outros, o pacote publicado.
+  // (O mestre auxiliar pode mestrar as Fichas sem a Árvore: aí a original não chega a ele, e vale o pacote.)
+  const mestraArvore = () => { const T = window.TC && window.TC.ponte; return T && typeof T.mestra === 'function' ? T.mestra('arvore') : mestre(); };
+  const bibDaMesa = () => { const d = D.pegar(mestraArvore() ? 'arvore:biblioteca' : 'arvore:pacote'), b = d && d.dados; return b && Array.isArray(b.arvores) ? b : null; };
 
   function daLinha(l, antigo, manter) {
     // personagem criado em outra aba (na Árvore) ainda não tem ficha: nasce com a ficha padrão
@@ -372,11 +377,11 @@ const FichasMesa = (() => {
   /* O que aparece na ficha só para o mestre, dentro de uma mesa: de quem é a ficha e quem a vê. */
   function htmlDono(pc) {
     if (!ativo || !mestre()) return '';
-    const jog = (st.membros || []).filter(m => m.papel === 'jogador');
+    const jog = (st.membros || []).filter(jogadorDaMesa);
     return `<div class="idmesa">
       <label class="f"><span class="eyebrow">Jogador que controla</span><select id="f_dono">
         <option value="">Ninguém (só o mestre)</option>
-        ${jog.map(m => `<option value="${esc(m.id)}" ${pc._dono === m.id ? 'selected' : ''}>${esc(m.nome)}</option>`).join('')}
+        ${jog.map(m => `<option value="${esc(m.id)}" ${pc._dono === m.id ? 'selected' : ''}>${esc(m.nome)}${m.cargo === 'auxiliar' ? ' (mestre auxiliar)' : ''}</option>`).join('')}
         ${pc._dono && !jog.some(m => m.id === pc._dono) ? `<option value="${esc(pc._dono)}" selected>(jogador que saiu da mesa)</option>` : ''}
       </select></label>
       <label class="chk"><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Todos os jogadores veem esta ficha</span></label>

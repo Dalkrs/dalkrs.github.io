@@ -16,6 +16,7 @@ const ArvoreMesa = (() => {
   let sombra = { bib: null, pcs: new Map() };     // o que a mesa já tem, para mandar só o que mudou
 
   const mestre = () => !!st && st.papel === 'mestre';
+  const mestraFichas = () => { const T = window.TC && window.TC.ponte; return T && typeof T.mestra === 'function' ? T.mestra('fichas') : mestre(); };
   const meuNome = () => { const m = (st.membros || []).find(x => x.id === st.eu); return m ? m.nome : 'jogador'; };
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
   const dadosDe = id => { const d = D.pegar(id); return d && d.dados && typeof d.dados === 'object' ? d.dados : null; };
@@ -100,7 +101,8 @@ const ArvoreMesa = (() => {
       if (p.id === TESTE) return;
       vistos.add(p.id);
       const ant = sombra.pcs.get(p.id), sk = skillsDe(p), js = j(sk), campos = {};
-      if (!ant) Object.assign(campos, { nome: p.nome, skills: sk, ficha: {}, estado: {}, dono_id: mestre() ? null : st.eu, vis: 'mestre', ordem: 5000 + i });
+      // (personagem sem dono é coisa de quem mestra as Fichas; o mestre auxiliar que mestra só a Árvore cria o dele)
+      if (!ant) Object.assign(campos, { nome: p.nome, skills: sk, ficha: {}, estado: {}, dono_id: mestre() && mestraFichas() ? null : st.eu, vis: 'mestre', ordem: 5000 + i });
       else { if (ant.nome !== p.nome) campos.nome = p.nome; if (ant.skills !== js) campos.skills = sk; }
       // (as skills vão como "o que mudou desde o que esta tela tinha": o que outra pessoa mexeu nesse meio-tempo — os
       //  pontos que o mestre deu, por exemplo — não é desfeito)
