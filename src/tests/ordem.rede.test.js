@@ -6,6 +6,9 @@
 // ela ainda não estivesse visível. Na leitura seguinte ela tem de chegar.
 //   · durante o jogo: duas mensagens seguidas, a primeira "atrasada";
 //   · ao abrir a mesa: a linha mais nova "atrasada" bem na hora em que o painel é lido.
+// E um terceiro jeito de uma linha ficar para trás, sem atraso nenhum: quem fala assim que abre a mesa, logo depois
+// de outra pessoa. A volta da própria gravação traz uma revisão alta; se ela empurrasse a marca de "até onde já li",
+// a fala da outra pessoa (revisão menor, ainda não lida) nunca mais seria pedida.
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
@@ -42,8 +45,13 @@ const { ok, end } = checker();
   try {
     await J.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500, J);
     await loginTela(J, c.jog1, c.senha); await entrarMesaTela(J, codigo, 'Dalmo');
+    // ---------- falar assim que abre a mesa, logo depois de outra pessoa ----------
+    // (a mesa ainda não tem conversa nenhuma, e o jogador ainda não fez a primeira leitura periódica)
+    await M.evaluate(() => TC.aoVivo.fala('chegou alguém'));
     await J.evaluate(() => TC.aoVivo.fala('aquecimento'));
     ok(await ate(async () => (await falas(M)).includes('aquecimento')), '(a conversa chega do jogador ao mestre)');
+    ok(await ate(async () => (await falas(J)).includes('chegou alguém'), 12000), 'quem fala assim que entra na mesa, logo depois de outra pessoa, não deixa de ver o que ela disse: ' + JSON.stringify(await falas(J)));
+    ok(JSON.stringify(await falas(J)) === '["chegou alguém","aquecimento"]', 'e as duas falas ficam na ordem em que foram ditas');
     await w(3500);                                          // (uma volta da leitura periódica, para o mestre ficar em dia)
 
     // ---------- durante o jogo ----------
@@ -62,7 +70,7 @@ const { ok, end } = checker();
     ok(await ate(() => M.evaluate(() => !!(window.TC && TC.mesas && TC.mesas.atual) && TC.aoVivo.itens.length > 0), 30000), '(o mestre recarrega a página)');
     ok(atraso.feito === 2, '(a mais nova foi segurada na leitura de abertura: ' + atraso.feito + ')');
     ok(await ate(async () => (await falas(M)).includes('bem na hora'), 15000), 'a linha que não veio na leitura de abertura chega na primeira leitura periódica: ' + JSON.stringify(await falas(M)));
-    ok(JSON.stringify(await falas(M)) === '["aquecimento","primeira","segunda","bem na hora"]', 'e o painel fica completo e na ordem: ' + JSON.stringify(await falas(M)));
+    ok(JSON.stringify(await falas(M)) === '["chegou alguém","aquecimento","primeira","segunda","bem na hora"]', 'e o painel fica completo e na ordem: ' + JSON.stringify(await falas(M)));
     await M.locator('#tab-fichas').click(); await w(400);
     await apagarMesaTela(M, nomeMesa); apagada = true;
   } finally {

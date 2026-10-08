@@ -32,6 +32,8 @@ const { ok, end } = checker();
   await M.locator('#m-nome').fill(nomeMesa); await M.locator('#m-criar').click();
   await M.locator('#vivo').waitFor({ state: 'visible', timeout: 15000 });
   ok((await M.locator('#btnConta').innerText()).includes(nomeMesa) && (await M.locator('#btnConta').innerText()).includes('Mestre'), 'a barra mostra a mesa e o papel: ' + (await M.locator('#btnConta').innerText()).replace(/\s+/g, ' '));
+  // (e mais nada: cada pedaço do botão é um elemento com texto — nenhum "null" ou "undefined" escrito ao lado)
+  ok(await M.evaluate(n => { const b = document.getElementById('btnConta'); return [...b.childNodes].every(x => x.nodeType === 1) && b.textContent === n + 'Mestre'; }, nomeMesa), 'numa mesa sem campanhas, a barra tem só o nome da mesa e o papel: ' + JSON.stringify(await M.locator('#btnConta').evaluate(b => b.textContent)));
   ok(await M.locator('#vivo').isVisible(), 'o painel da mesa ao vivo abre');
   await M.locator('#btnConta').click(); await w(400);
   const codigo = (await M.locator('#codigo').innerText()).trim();
@@ -114,7 +116,10 @@ const { ok, end } = checker();
   const C = M.frame({ url: /\/cenas\// });
   if (await C.locator('#tour-skip').count()) { await C.locator('#tour-skip').click(); await w(400); }
   // (numa mesa, as cenas são as da mesa, e ela começa com uma cena vazia: o mestre pede a de exemplo, que já tem ordem de turnos)
-  await C.locator('#sceneBtn').click(); await w(250);
+  /* (a oferta "Trazer as suas cenas para esta mesa?" pode abrir um instante depois de as Cenas abrirem, por cima de tudo:
+      não é o assunto aqui — se ela estiver na frente, fecha-se com Esc e tenta-se de novo) */
+  for (let i = 0; ; i++) { try { await C.locator('#sceneBtn').click({ timeout: i < 4 ? 5000 : 30000 }); break; } catch (e) { if (i >= 4) throw e; await M.keyboard.press('Escape'); await w(400); } }
+  await w(250);
   await C.locator('.menu-i', { hasText: 'Nova cena de exemplo' }).click();
   for (let i = 0; i < 80 && (await C.locator('#sceneBtn .scene-n').innerText()) !== 'Cena de exemplo'; i++) await w(300);
   ok((await C.locator('#sceneBtn .scene-n').innerText()) === 'Cena de exemplo' && (await C.locator('#airBtn').innerText()).includes('Fora do ar'), 'a cena de exemplo é criada na mesa, fora do ar até o mestre mostrar');

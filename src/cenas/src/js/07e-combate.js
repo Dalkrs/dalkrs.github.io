@@ -192,7 +192,7 @@ const Combate = (() => {
     const naCena = new Set(sc.tokens.map(t => t.char).filter(Boolean));
     return Fichas.chars().filter(l => l.ficha != null).map(l => {
       const dono = Fichas.donoDe(l);
-      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id) };
+      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id), camp: Fichas.campDa(l) || '' };      // (camp: a campanha da ficha; '' = do mundo)
     });
   }
   /* Cria, num passo só de desfazer, um token para cada personagem pedido (os que já têm token nesta cena ficam de

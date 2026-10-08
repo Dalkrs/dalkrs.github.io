@@ -380,7 +380,7 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 .mundo-dl h2 { margin: 0; font: 600 22px/1.15 var(--display); }
 .mundo-dl p { margin: 0; color: var(--fg-2); }
 .mundo-dl label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--fg-2); }
-.mundo-dl input:not([type="radio"]), .mundo-dl select { width: 100%; min-width: 0; height: 38px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 400; color: var(--fg); }
+.mundo-dl input:not([type="radio"]):not([type="checkbox"]), .mundo-dl select { width: 100%; min-width: 0; height: 38px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 400; color: var(--fg); }
 .mundo-dl .lin { display: flex; gap: 8px; align-items: end; }
 .mundo-dl .lin label { flex: 1; min-width: 0; }
 .mundo-dl .lin label:first-child, .mundo-dl .lin label:last-child { flex: 0 0 84px; }
@@ -388,7 +388,7 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 .mundo-dl legend { padding: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--fg-2); }
 .mundo-dl label.op { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font-weight: 600; cursor: pointer; }
 .mundo-dl label.op:has(input:checked) { border-color: var(--lamp); background: var(--lamp-soft); }
-.mundo-dl label.op input { accent-color: var(--lamp); margin: 0; }
+.mundo-dl label.op input { accent-color: var(--lamp); margin: 0; flex: none; width: 16px; height: 16px; }
 .mundo-dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 .mundo-dl .err { color: var(--danger); font-weight: 600; }
 .mundo-dl .err:empty { display: none; }
@@ -465,11 +465,11 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
-<script src="../tc/ponte.js?v=10"></script>
+<script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/dice.js?v=2"></script>
 <script src="nucleo.js?v=3"></script>
 <script src="tela.js?v=2"></script>
-<script src="painel.js?v=4"></script>
-<script src="mundo.js?v=3"></script>
+<script src="painel.js?v=5"></script>
+<script src="mundo.js?v=4"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 // ficha à vista (o mestre abre e fecha as outras pelo olho do elenco), imagem do personagem guardada no banco e
 // aparecendo no chat, "falar como", Relacionamento de cada um para cada outro, Sanidade e Lapros indo e voltando.
 const zlib = require('zlib');
-const { start, checker } = require('./lib');
+const { start, checker, BANCO } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const R = require('../../tc/rules.js');
@@ -95,7 +95,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await G.locator('#imgIn').setInputFiles({ name: 'dain.png', mimeType: 'image/png', buffer: png(700, 500, (x, y) => [200, 80 + (x >> 3), 30 + (y >> 2)]) });
   ok(await ate(async () => { const l = await linha(J, 'pc_dain'); return l && l.ficha && typeof l.ficha.img === 'string' && l.ficha.img.startsWith('https://'); }, 25000), 'o jogador põe a imagem do personagem');
   const img = (await linha(J, 'pc_dain')).ficha.img;
-  ok(img.startsWith('https://kzvhiuhbnsfkmhhgvqlm.supabase.co/storage/v1/object/public/mesas/' + mesaId + '/j/' + jogId + '/'), 'ela fica no banco, na pasta do jogador dentro da mesa');
+  ok(img.startsWith(BANCO + '/storage/v1/object/public/mesas/' + mesaId + '/j/' + jogId + '/'), 'ela fica no banco, na pasta do jogador dentro da mesa');
   const baixou = await M.evaluate(async u => { const r = await fetch(u); const b = await r.blob(); return { st: r.status, tipo: b.type }; }, img);
   ok(baixou.st === 200 && /^image\/(webp|png)$/.test(baixou.tipo), 'e abre pelo endereço: ' + JSON.stringify(baixou));
   ok(await ate(async () => (await F.locator('#lista .pcrow', { hasText: 'Dain X' }).locator('img.avmini').getAttribute('src')) === img), 'o mestre vê a imagem no elenco, sem recarregar');

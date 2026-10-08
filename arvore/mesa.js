@@ -21,7 +21,25 @@ const ArvoreMesa = (() => {
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
   const dadosDe = id => { const d = D.pegar(id); return d && d.dados && typeof d.dados === 'object' ? d.dados : null; };
   const skillsDe = p => ({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} });
-  const meus = () => P.todas().filter(l => mestre() || l.dono_id === st.eu).sort((a, b) => (a.ordem - b.ordem) || (a.id < b.id ? -1 : 1));
+  /* Campanhas (numa mesa que as tem): os personagens da campanha em vista vêm primeiro, depois os do mundo e os das
+     outras campanhas (a aba diz de qual). O personagem criado aqui nasce na campanha em vista. As árvores são do mundo:
+     a biblioteca é uma só para a mesa inteira. */
+  const comCampanhas = () => !!st && Array.isArray(st.campanhas) && st.campanhas.length > 0;
+  const campVista = () => (st && st.campanha ? st.campanha.id : null);
+  const campanhaPorId = id => (comCampanhas() ? st.campanhas.find(c => c.id === id) || null : null);
+  const pesoCamp = l => (!comCampanhas() || (l.campanha || null) === campVista() ? 0 : !l.campanha ? 1 : 2);
+  const meus = () => P.todas().filter(l => mestre() || l.dono_id === st.eu).sort((a, b) => (pesoCamp(a) - pesoCamp(b)) || (a.ordem - b.ordem) || (a.id < b.id ? -1 : 1));
+  /* O que a aba de um personagem diz sobre a campanha dele: nada (é da campanha em vista), "mundo", ou o nome da
+     outra campanha — e "encerrada", quando a campanha dele está só para consulta. */
+  function etiqueta(id) {
+    if (!ativo || !comCampanhas()) return '';
+    const l = P.pegar(id), c = l ? l.campanha || null : null;
+    if (!l) return '';
+    if (!c) return campVista() ? 'mundo' : '';
+    const x = campanhaPorId(c), fim = x && x.encerrada ? 'encerrada' : '';
+    if (c === campVista()) return fim;
+    return (x ? x.nome : 'outra campanha') + (fim ? ' · ' + fim : '');
+  }
   const bibVazia = () => ({ nome: 'Árvores de Habilidade', arvores: [], cofres: [] });
 
   function daLinha(l, antigo) {
@@ -102,7 +120,12 @@ const ArvoreMesa = (() => {
       vistos.add(p.id);
       const ant = sombra.pcs.get(p.id), sk = skillsDe(p), js = j(sk), campos = {};
       // (personagem sem dono é coisa de quem mestra as Fichas; o mestre auxiliar que mestra só a Árvore cria o dele)
-      if (!ant) Object.assign(campos, { nome: p.nome, skills: sk, ficha: {}, estado: {}, dono_id: mestre() && mestraFichas() ? null : st.eu, vis: 'mestre', ordem: 5000 + i });
+      if (!ant) {
+        // (o personagem novo nasce na campanha em vista; se ela está encerrada — nela não nasce ficha —, nasce no mundo, como nas Fichas)
+        const cv = campanhaPorId(campVista());
+        Object.assign(campos, { nome: p.nome, skills: sk, ficha: {}, estado: {}, dono_id: mestre() && mestraFichas() ? null : st.eu, vis: 'mestre', ordem: 5000 + i });
+        if (cv && !cv.encerrada) campos.campanha = cv.id;
+      }
       else { if (ant.nome !== p.nome) campos.nome = p.nome; if (ant.skills !== js) campos.skills = sk; }
       // (as skills vão como "o que mudou desde o que esta tela tinha": o que outra pessoa mexeu nesse meio-tempo — os
       //  pontos que o mestre deu, por exemplo — não é desfeito)
@@ -256,5 +279,5 @@ const ArvoreMesa = (() => {
     document.getElementById('app').prepend(box);
   }
 
-  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre };
+  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta };
 })();

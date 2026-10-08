@@ -270,13 +270,28 @@ const Luta = (() => {
     const sc = Store.scene(), lista = Combate.elenco(sc);
     if (!lista.length) { toast('Esta mesa ainda não tem fichas. Crie na aba Fichas.'); return; }
     const conjuntos = [];
-    const jog = lista.filter(x => x.dono);
-    if (jog.length) conjuntos.push({ id: '@jog', n: 'Personagens dos jogadores', ids: jog.map(x => x.id) });
-    const nomes = [...new Set(lista.map(x => x.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    for (const g of nomes) conjuntos.push({ id: 'g:' + g, n: 'Grupo: ' + g, ids: lista.filter(x => x.grupo === g).map(x => x.id) });
-    const soltos = lista.filter(x => !x.grupo);
-    if (nomes.length && soltos.length) conjuntos.push({ id: '@sem', n: 'Sem grupo', ids: soltos.map(x => x.id) });
-    conjuntos.push({ id: '@todos', n: 'Todas as fichas da mesa', ids: lista.map(x => x.id) });
+    /* Numa mesa com campanhas, a campanha em vista fica em evidência: os conjuntos dela vêm primeiro (os personagens
+       dos jogadores dela, os grupos dela); depois os do mundo e, por fim, cada uma das outras campanhas. */
+    const vista = Fichas.vista(), comCamp = !!vista && Nuvem.comCampanhas();
+    const base = comCamp ? lista.filter(x => x.camp === vista) : lista, ids = l => l.map(x => x.id);
+    const grupos = (l, prefixo, rotulo) => {
+      const nomes = [...new Set(l.map(x => x.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      for (const g of nomes) conjuntos.push({ id: prefixo + g, n: rotulo + 'Grupo: ' + g, ids: ids(l.filter(x => x.grupo === g)) });
+      return nomes.length;
+    };
+    const jog = base.filter(x => x.dono);
+    if (jog.length) conjuntos.push({ id: '@jog', n: 'Personagens dos jogadores', ids: ids(jog) });
+    const nGrupos = grupos(base, 'g:', '');
+    const soltos = base.filter(x => !x.grupo);
+    if (nGrupos && soltos.length) conjuntos.push({ id: '@sem', n: 'Sem grupo', ids: ids(soltos) });
+    if (comCamp) {
+      if (base.length) conjuntos.push({ id: '@camp', n: 'Toda a campanha ' + Fichas.nomeDaCampanha(vista), ids: ids(base) });
+      const mundo = lista.filter(x => !x.camp);
+      grupos(mundo, 'm:', 'Do mundo · ');
+      if (mundo.length) conjuntos.push({ id: '@mundo', n: 'Todas as fichas do mundo', ids: ids(mundo) });
+      for (const c of Nuvem.campanhas()) { const dela = c.id === vista ? [] : lista.filter(x => x.camp === c.id); if (dela.length) conjuntos.push({ id: 'c:' + c.id, n: 'Outra campanha: ' + c.nome, ids: ids(dela) }); }
+    }
+    conjuntos.push({ id: '@todos', n: 'Todas as fichas da mesa', ids: ids(lista) });
     const st = { cj: App.opt.grupoCj && conjuntos.some(c => c.id === App.opt.grupoCj) ? App.opt.grupoCj : conjuntos[0].id, marcados: new Set(), oculto: false };
     const porId = new Map(lista.map(x => [x.id, x]));
     const doConjunto = () => conjuntos.find(c => c.id === st.cj).ids.map(id => porId.get(id));

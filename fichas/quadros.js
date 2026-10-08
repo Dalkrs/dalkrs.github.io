@@ -307,9 +307,16 @@ const FichasQuadros = (() => {
   const mapa = (o, k) => (o[k] && typeof o[k] === 'object' && !Array.isArray(o[k]) ? o[k] : (o[k] = {}));
   const ler = (o, ...ks) => { for (const k of ks) { if (!o || typeof o !== 'object') return null; o = o[k]; } return o && typeof o === 'object' && !Array.isArray(o) ? o : null; };
   /* Onde mora cada missão:  grupo → S.missoes (todos leem) · do personagem → estado.mis da ficha dele ·
-     ainda escondida → com o mestre (S.segredos.mis.g, ou .p[idDoPersonagem]) */
+     ainda escondida → com o mestre (S.segredos.mis.g, ou .p[idDoPersonagem])
+     Com campanhas, cada uma tem as missões do grupo dela: S.missoesCamp[campanha] (e, escondidas, S.segredos.mis.gc[campanha]).
+     As de uma ficha são as da campanha dela; a ficha do mundo mostra as da campanha em vista. */
+  const campDasMissoes = pc => { const cs = FichasMesa.campanhas(); if (!cs.length) return ''; const c = (pc && pc._camp) || FichasMesa.campEmVista() || ''; return cs.some(x => x.id === c) ? c : ''; };
   const lugar = (pc, esc0, oculta, criar) => {
-    if (esc0 === 'g') return oculta ? (criar ? mapa(mapa(mapa(S, 'segredos'), 'mis'), 'g') : ler(S.segredos, 'mis', 'g')) : (criar ? mapa(S, 'missoes') : ler(S, 'missoes'));
+    if (esc0 === 'g') {
+      const c = campDasMissoes(pc);
+      if (c) return oculta ? (criar ? mapa(mapa(mapa(mapa(S, 'segredos'), 'mis'), 'gc'), c) : ler(S.segredos, 'mis', 'gc', c)) : (criar ? mapa(mapa(S, 'missoesCamp'), c) : ler(S.missoesCamp, c));
+      return oculta ? (criar ? mapa(mapa(mapa(S, 'segredos'), 'mis'), 'g') : ler(S.segredos, 'mis', 'g')) : (criar ? mapa(S, 'missoes') : ler(S, 'missoes'));
+    }
     return oculta ? (criar ? mapa(mapa(mapa(mapa(S, 'segredos'), 'mis'), 'p'), pc.id) : ler(S.segredos, 'mis', 'p', pc.id)) : (criar ? mapa(U().estadoDe(pc), 'mis') : ler(pc.estado, 'mis'));
   };
   function missoesDe(pc, esc0) {
@@ -320,7 +327,9 @@ const FichasQuadros = (() => {
     return a.concat(b).sort((x, y) => (peso[x.e] - peso[y.e]) || (x.c - y.c) || (x.id < y.id ? -1 : 1));
   }
   // quem pode mudar a missão: fora de uma mesa, qualquer um; na mesa, o mestre — e o dono da ficha, nas que ele mesmo criou
-  const podeMissao = (pc, m) => !FichasMesa.ativo() || mestre() || (m.esc === 'p' && m.de === 'j' && FichasMesa.podeEditar(pc));
+  // (numa campanha encerrada, as missões do grupo dela — e as das fichas dela — são só para consulta, para todos)
+  const missaoFechada = (pc, esc0) => FichasMesa.encerrada(esc0 === 'g' ? campDasMissoes(pc) : pc && pc._camp);
+  const podeMissao = (pc, m) => !FichasMesa.ativo() || (!missaoFechada(pc, m.esc) && (mestre() || (m.esc === 'p' && m.de === 'j' && FichasMesa.podeEditar(pc))));
   const contaAtivas = pc => missoesDe(pc, 'g').concat(missoesDe(pc, 'p')).filter(m => m.e === 'ativa').length;
   const chaveDe = m => m.esc + '|' + m.id;
   function htmlMissao(pc, m) {
@@ -353,7 +362,7 @@ const FichasQuadros = (() => {
           ${mestre() ? (m.oculta
             ? `<button type="button" class="mini primary" data-misrevelar="${k}">${m.esc === 'g' ? 'Revelar aos jogadores' : dono ? 'Revelar a ' + esc(dono) : 'Pôr na ficha'}</button><span class="hint">${m.esc === 'g' ? 'Por enquanto só você vê.' : dono ? 'Por enquanto só você vê.' : 'Por enquanto fica só com você (quem vê a ficha não vê).'}</span>`
             : `<button type="button" class="mini" data-misesconder="${k}" title="A missão volta a ficar só com você">Esconder de novo</button>`) : ''}
-          ${mestre() && m.esc === 'p' ? `<select data-miscopiar="${k}" aria-label="Copiar esta missão para outro personagem"><option value="">Copiar para…</option>${S.personagens.filter(p => p.id !== pc.id).map(p => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('')}</select>` : ''}
+          ${mestre() && m.esc === 'p' ? `<select data-miscopiar="${k}" aria-label="Copiar esta missão para outro personagem"><option value="">Copiar para…</option>${FichasMesa.opcoesDePcs(S.personagens.filter(p => p.id !== pc.id && !FichasMesa.encerrada(p._camp)), '')}</select>` : ''}
           <button type="button" class="mini danger" data-misdel="${k}" style="margin-left:auto">Excluir</button>
         </div>` : `
         ${m.d ? `<p class="misdesc">${esc(m.d)}</p>` : ''}
@@ -365,15 +374,17 @@ const FichasQuadros = (() => {
   function blocoMissoes(pc) {
     if (!RR()) return '<div class="hint">As missões precisam das regras do site.</div>';
     const g = missoesDe(pc, 'g'), p = missoesDe(pc, 'p'), naMesa = FichasMesa.ativo(), m = mestre(), dono = FichasMesa.podeEditar(pc);
+    // (com campanhas, as missões do grupo são as da campanha da ficha — ou, para a ficha do mundo, as da campanha em vista)
+    const camp = campDasMissoes(pc), fechadaG = missaoFechada(pc, 'g'), fechadaP = missaoFechada(pc, 'p');
     const secao = (titulo, dica, lista, botao, vazio) => `<div class="missec">
       <div class="mishead"><span class="eyebrow">${titulo}</span><span class="hint">${dica}</span>${botao ? `<span style="margin-left:auto">${botao}</span>` : ''}</div>
       ${lista.length ? `<div class="mislist">${lista.map(x => htmlMissao(pc, x)).join('')}</div>` : `<div class="hint">${vazio}</div>`}</div>`;
     return `<div id="blocoMissoes">
-      ${secao('Do grupo', naMesa ? 'as mesmas para a mesa toda' + (m ? '' : ' · quem escreve é o mestre') : 'valem para todos os personagens',
-        g, !naMesa || m ? '<button type="button" class="mini primary" data-misnova="g">+ Missão do grupo</button>' : '', 'Nenhuma missão do grupo ainda.')}
+      ${secao('Do grupo', (naMesa ? (camp ? 'as mesmas para toda a campanha ' + esc(FichasMesa.nomeDaCampanha(camp)) : 'as mesmas para a mesa toda') + (fechadaG ? ' · campanha encerrada: só consulta' : m ? '' : ' · quem escreve é o mestre') : 'valem para todos os personagens'),
+        g, (!naMesa || m) && !fechadaG ? '<button type="button" class="mini primary" data-misnova="g">+ Missão do grupo</button>' : '', 'Nenhuma missão do grupo ainda.')}
       ${secao('De ' + esc(pc.nome), naMesa ? (m ? 'as que você deu a este personagem e as que o jogador criou' : 'as que o mestre deu e as que você criou') : 'só deste personagem',
-        p, !naMesa || m ? `<button type="button" class="mini primary" data-misnova="p">+ Missão para ${esc(pc.nome)}</button>` : dono ? '<button type="button" class="mini primary" data-misnova="p">+ Missão pessoal</button>' : '', 'Nenhuma missão deste personagem ainda.')}
-      ${m ? '<p class="hint misdica">Uma missão criada por você nasce escondida: só aparece para os jogadores quando você clicar em “Revelar”.</p>' : ''}
+        p, fechadaP ? '' : !naMesa || m ? `<button type="button" class="mini primary" data-misnova="p">+ Missão para ${esc(pc.nome)}</button>` : dono ? '<button type="button" class="mini primary" data-misnova="p">+ Missão pessoal</button>' : '', 'Nenhuma missão deste personagem ainda.')}
+      ${m && !(fechadaG && fechadaP) ? '<p class="hint misdica">Uma missão criada por você nasce escondida: só aparece para os jogadores quando você clicar em “Revelar”.</p>' : ''}
     </div>`;
   }
   function ligarMissoes(host, pc) {

@@ -672,7 +672,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=10"></script>
+<script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/dice.js?v=2"></script>
 <script src="../tc/rules.js?v=5"></script>
 <div class="app" id="app">
@@ -3522,7 +3522,15 @@ const Fichas = (() => {
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
   const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
   const get = id => (P && id ? P.pegar(id) : null);
-  const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
+  /* As fichas da mesa, por nome. Numa mesa com campanhas, "campanha em evidência": primeiro as da campanha em vista,
+     depois as do mundo (sem campanha) e por fim as das outras campanhas — estas duas com o lugar de onde são no rótulo. */
+  const vista = () => { const T = window.TC && window.TC.ponte, c = T && T.estado && T.estado.campanha; return c ? c.id : null; };
+  const campDa = l => (l && l.campanha) || null;
+  const pesoDa = l => { const v = vista(), c = campDa(l); return !v || c === v ? 0 : !c ? 1 : 2; };
+  const chars = () => (P ? P.todas().slice().sort((a, b) => (pesoDa(a) - pesoDa(b)) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
+  const nomeDaCampanha = id => { const T = window.TC && window.TC.ponte, c = T && T.estado && (T.estado.campanhas || []).find(x => x.id === id); return c ? c.nome : 'outra campanha'; };
+  // o nome da ficha onde se escolhe uma: as de fora da campanha em vista dizem de onde são
+  const rotulo = l => (l.nome || 'Sem nome') + (pesoDa(l) === 1 ? ' — do mundo' : pesoDa(l) === 2 ? ' — ' + nomeDaCampanha(campDa(l)) : '');
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
   // a imagem do personagem, quando está guardada no banco (endereço https)
   const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
@@ -3874,6 +3882,7 @@ const Fichas = (() => {
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };
 })();
@@ -4398,8 +4407,26 @@ const Nuvem = (() => {
     return n;
   }
   const PREFS_AQUI = 'tinycats:cenas:prefs';               // preferências de quem está neste aparelho (animação, véu, tutorial)
-  const ATUAL_AQUI = 'tinycats:cenas:atual:';              // + mesa: a cena que o mestre deixou aberta neste aparelho
-  const atualDaqui = () => { try { return localStorage.getItem(ATUAL_AQUI + mesa) || null; } catch (e) { return null; } };
+  const ATUAL_AQUI = 'tinycats:cenas:atual:';              // + mesa (+ @campanha): a cena que o mestre deixou aberta neste aparelho
+  const chaveAtual = () => ATUAL_AQUI + mesa + (camp ? '@' + camp : '');
+  const atualDaqui = () => { try { return localStorage.getItem(chaveAtual()) || null; } catch (e) { return null; } };
+  /* ---- campanhas ----
+     Numa mesa com campanhas, cada cena é de uma campanha — ou de nenhuma: "do mundo", que aparece em todas. A campanha
+     fica na linha dos documentos da cena (coluna `campanhas`), não dentro deles. O mestre trabalha na campanha em
+     vista: a lista mostra as cenas dela e as do mundo, e a cena nova nasce nela. A projeção (o que os jogadores
+     recebem) leva a campanha da cena que está no ar: só quem participa dela a recebe. */
+  let camp = null, campsDaMesa = [];                       // a campanha em vista (id) e as campanhas que quem usa vê
+  const campDe = new Map();                                // cena → [campanhas] ([] = do mundo)
+  const listaDe = l => (l && Array.isArray(l.campanhas) ? l.campanhas.filter(x => typeof x === 'string') : []);
+  const iguais = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+  // (a cena que ainda não foi gravada — acabou de ser criada — já é da campanha em vista: é nela que vai nascer)
+  const campanhasDaCena = id => (campDe.has(id) ? campDe.get(id) : camp ? [camp] : []).slice();
+  const naVista = id => { const cs = campanhasDaCena(id); return !camp || !cs.length || cs.includes(camp); };
+  const comCampanhas = () => modo === 'mestre' && campsDaMesa.length > 0;
+  /* Dizer de que campanha é uma cena é organizar as campanhas: só o mestre da mesa. O mestre auxiliar mestra as cenas
+     da campanha em que está (e as cria nela), mas não as passa de uma para outra. */
+  let organiza = false;
+  const podeOrganizar = () => comCampanhas() && organiza;
   const idCena = Proj.idCena;
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const dadosDe = l => (l && !l.apagado && ehObj(l.dados) ? l.dados : null);
@@ -4501,6 +4528,10 @@ const Nuvem = (() => {
     try { await D.pronta; } catch (e) { throw new Error('não deu para ler as cenas da mesa (' + ((e && e.message) || 'sem resposta') + ')'); }
     mesa = st.mesa.id; eu = st.eu;
     modo = st.papel === 'mestre' ? 'mestre' : 'jogador';
+    // (a campanha em vista é lida uma vez: quando ela muda, a casca abre esta página de novo)
+    camp = st.campanha ? st.campanha.id : null;
+    campsDaMesa = Array.isArray(st.campanhas) ? st.campanhas.slice() : [];
+    organiza = modo === 'mestre' && (!st.cargo || st.cargo === 'mestre');
     await banco.open();
     if (banco.ready()) for (const [k, v] of await banco.all('exp:' + mesa + ':')) if (ehObj(v) && ehObj(v.mapa)) expAqui.set(k.slice(('exp:' + mesa + ':').length), v);
     jogadores(st);
@@ -4565,13 +4596,15 @@ const Nuvem = (() => {
       if (!sc) continue;
       sc.explored = exploradoDe(sc);
       S.scenes[sc.id] = sc;
+      campDe.set(sc.id, listaDe(l));
       anotar(docM(sc.id)); anotar(docV(sc.id));
     }
     S.order = idx.ordem.filter(id => S.scenes[id]);
     for (const id in S.scenes) if (!S.order.includes(id)) S.order.push(id);
     // a cena aberta por último: a que este aparelho lembra; se ele não lembra, a que o índice diz
-    const lembrada = atualDaqui();
-    S.current = S.scenes[lembrada] ? lembrada : S.scenes[idx.atual] ? idx.atual : S.order[0] || null;
+    // (com campanhas, entre as cenas da campanha em vista e as do mundo; se não há nenhuma, fica sem cena aberta)
+    const lembrada = atualDaqui(), vale = id => !!S.scenes[id] && naVista(id);
+    S.current = vale(lembrada) ? lembrada : vale(idx.atual) ? idx.atual : S.order.find(naVista) || null;
     /* O índice pode apontar para uma cena que (ainda) não chegou a este aparelho: fica como veio. Se ela não chegar,
        a limpeza, mais abaixo, desfaz o apontamento. */
     const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
@@ -4673,12 +4706,20 @@ const Nuvem = (() => {
   /* Grava um documento só se o conteúdo mudou — em relação ao que está no banco AGORA, não ao que este aparelho
      gravou por último (outro aparelho do mestre pode ter gravado por cima nesse meio-tempo). Devolve false se o
      documento não cabe no banco. */
-  function escrever(id, dados, vis, cas) {
+  /* camps: as campanhas do documento. Para a projeção, sempre as da cena que está no ar (o documento é o mesmo de
+     uma cena para a outra). Para os documentos de uma cena, só vão quando ela é criada: depois, quem muda a campanha
+     de uma cena é definirCampanhas (e o que outro aparelho mudou chega por doBanco). */
+  function escrever(id, dados, vis, cas, camps) {
     const j = JSON.stringify(dados), l = D.pegar(id);
-    if (l && sombra.get(id) === j && visto.get(id) === l) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
+    const outras = !!camps && (!l || !iguais(listaDe(l), camps));        // a campanha (ainda) não está assim no banco
+    if (l && sombra.get(id) === j && visto.get(id) === l && !outras) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
     if (j.length > LIMITE / 3 && pesoNoBanco(j) > LIMITE) return false;
     sombra.set(id, j);
-    if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados)) { visto.set(id, l); return true; }      // já está assim no banco
+    if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados) && !outras) { visto.set(id, l); return true; }      // já está assim no banco
+    if (outras && camps.length + listaDe(l).length > 0) {      // (numa mesa sem campanhas não há o que dizer: a coluna nem vai)
+      visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j), campanhas: camps.slice() }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));
+      return true;
+    }
     /* cas: as cenas e o índice são gravados conferindo a versão. Com o mestre e o mestre auxiliar (ou o mestre em dois
        aparelhos) mexendo na mesma cena no mesmo instante, a gravação de um não passa por cima da do outro: a casca
        junta as duas e devolve a cena juntada (que chega por doBanco, como qualquer mudança de fora). */
@@ -4701,7 +4742,10 @@ const Nuvem = (() => {
       /* Até onde os pedidos dos jogadores já foram aplicados vai guardado junto com a cena que eles mudaram: quem
          abrir esta cena depois (o mestre de novo, ou outro aparelho dele) não aplica o mesmo pedido duas vezes. */
       if (id === idx.noAr) v.ack = Object.assign({}, acks);
-      const okM = escrever(docM(id), m, 'mestre', true), okV = escrever(docV(id), v, 'mestre', true);
+      // a cena que ainda não está no banco nasce na campanha em vista (numa mesa sem campanhas, em nenhuma)
+      if (!campDe.has(id)) campDe.set(id, camp ? [camp] : []);
+      const nasce = part => (D.pegar(part) ? undefined : campanhasDaCena(id));
+      const okM = escrever(docM(id), m, 'mestre', true, nasce(docM(id))), okV = escrever(docV(id), v, 'mestre', true, nasce(docV(id)));
       if (okM && okV) { grandes.delete(id); feito.delete(id); }
       else {
         falhou = true; avisarGrande(sc);
@@ -4717,7 +4761,7 @@ const Nuvem = (() => {
       /* A cena aberta por último fica lembrada neste aparelho. No índice ela vai junto quando ele é gravado por outro
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
-      try { localStorage.setItem(ATUAL_AQUI + mesa, S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
+      try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
       const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null } };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
@@ -4739,11 +4783,13 @@ const Nuvem = (() => {
     if (!sc) { despublicar(); return; }
     const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
     m.ver = Proj.resumo(JSON.stringify(m));
-    const coube = escrever(PUB_M, m, 'mesa'), la = dadosMestre(PUB_M);
+    // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
+    const cs = campanhasDaCena(sc.id);
+    const coube = escrever(PUB_M, m, 'mesa', false, cs), la = dadosMestre(PUB_M);
     // se o mapa novo não coube no banco, os jogadores continuam com o mapa que está lá — e com os tokens ao vivo
     v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
-    if (!(escrever(PUB_V, v, 'mesa') & coube)) avisarGrande(sc);
+    if (!(escrever(PUB_V, v, 'mesa', false, cs) & coube)) avisarGrande(sc);
   }
   function despublicar() {
     for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); esquecer(id); }
@@ -4758,7 +4804,27 @@ const Nuvem = (() => {
     if (l.id === INDICE) { indiceDeFora(l); return; }
     if (l.id === PUB_M || l.id === PUB_V) { projecaoDeFora(l); return; }
     const mm = RE_PARTE.exec(l.id);
-    if (mm && idCena(mm[1])) cenaDeFora(mm[1], l);
+    if (!mm || !idCena(mm[1])) return;
+    // a campanha da cena mudou em outro aparelho (é a da linha do mapa da cena): a lista daqui acompanha
+    if (mm[2] === 'm' && !l.apagado && !iguais(campDe.get(mm[1]), listaDe(l))) {
+      const tinha = campDe.has(mm[1]);
+      campDe.set(mm[1], listaDe(l));
+      if (tinha && S.scenes[mm[1]]) { if (mm[1] === idx.noAr && transmito()) { pubSuja = true; agendar(); } Store.meta(); }
+    }
+    cenaDeFora(mm[1], l);
+  }
+  /* O mestre diz de que campanha é uma cena ([] = do mundo: aparece em todas). Vai para a linha dos dois documentos
+     dela; se ela está no ar, a projeção acompanha (quem recebe passa a ser quem participa da campanha nova). */
+  function definirCampanhas(id, lista) {
+    if (modo !== 'mestre' || !organiza || !S.scenes[id]) return false;
+    const nova = (Array.isArray(lista) ? lista : []).filter(x => typeof x === 'string' && campsDaMesa.some(c => c.id === x));
+    if (iguais(campanhasDaCena(id), nova)) return false;
+    campDe.set(id, nova);
+    // (a cena que ainda não subiu leva a campanha quando subir; a que já está no banco muda só a linha)
+    for (const d of [docM(id), docV(id)]) if (D.pegar(d)) visto.set(d, D.gravar(d, { campanhas: nova.slice() }) || D.pegar(d));
+    if (id === idx.noAr) { if (transmito()) { pubSuja = true; agendar(); } else assumir(); }
+    Store.meta();
+    return true;
   }
   // O mesmo mestre com o site aberto em outro aparelho: o que ele muda lá aparece aqui (se aqui não há nada por salvar).
   function mudouDeFato(l) { const j = sombra.get(l.id); let antes = null; try { antes = j ? JSON.parse(j) : null; } catch (e) { antes = null; } return !Proj.igual(antes, dadosDe(l)); }
@@ -4811,10 +4877,10 @@ const Nuvem = (() => {
       if (!S.scenes[id] || l.id !== docM(id)) return;
       esquecer(docM(id)); esquecer(docV(id)); feito.delete(id); sujas.delete(id);
       const era = S.current === id;
-      Store.removeScene(id);
+      Store.removeScene(id); campDe.delete(id);
       if (idx.noAr === id) { idx.noAr = null; idx.tx = null; }
       if (!S.order.length) { const n = newScene('Nova cena'); Store.addScene(n); cena(n.id); }
-      if (era) UI.switchScene(S.order[0]);
+      if (era) UI.switchScene(S.order.find(naVista) || S.order[0]);      // (de preferência, outra cena da campanha em vista)
       return;
     }
     const antes = S.scenes[id];
@@ -4945,9 +5011,16 @@ const Nuvem = (() => {
 
   /* ---------------- jogador ---------------- */
   // O que está no ar: { st: 'ok', m, v } · 'nada' (o mestre não está mostrando cena) · 'espera' (chegou só metade)
+  /* Quem participa de mais de uma campanha escolhe qual está vendo: a cena no ar só aparece para ele quando é da
+     campanha em vista (ou do mundo). Sendo de outra campanha dele, a tela fica sem cena — e diz de qual é, para ele
+     trocar de campanha se quiser (arDeFora: as campanhas dessa cena). */
+  let arDeFora = [];
   function noArAgora() {
     const m = dadosMestre(PUB_M), v = dadosMestre(PUB_V);
+    arDeFora = [];
     if (!m && !v) return { st: 'nada' };
+    const cs = listaDe(D.pegar(PUB_M) || D.pegar(PUB_V));
+    if (camp && cs.length && !cs.includes(camp)) { arDeFora = cs; return { st: 'nada' }; }
     // metade ainda não chegou, ou as duas metades não são do mesmo momento (mapa de uma versão, tokens de outra)
     if (!m || !v || !idCena(m.id) || m.id !== v.id || (m.ver || 0) !== (v.mv || 0)) return { st: 'espera' };
     return { st: 'ok', m, v };
@@ -4995,9 +5068,10 @@ const Nuvem = (() => {
     clearTimeout(tReceber); tReceber = 0;
     if (modo !== 'jogador') return;
     if (Store.inTx() || Tools.busy()) { tReceber = setTimeout(receber, 150); return; }     // no meio de um gesto: espera soltar
-    const a = noArAgora();
+    const foraAntes = arDeFora.join(), a = noArAgora();
     if (a.st === 'espera') return;
-    if (a.st === 'nada') { if (!vazia) { cenaVazia(); trocou(); marcar('ok'); } return; }
+    // (sem cena — ou com a cena no ar sendo de outra campanha: aí a faixa diz de qual, e acompanha se isso mudar)
+    if (a.st === 'nada') { if (!vazia) { cenaVazia(); trocou(); marcar('ok'); } else if (arDeFora.join() !== foraAntes) Store.emit('scene', S.current); return; }
     if (vazia || a.m.id !== S.current) { montar(a); trocou(); marcar('ok'); return; }
     // a mesma cena: o que o mestre já aplicou sai da fila; o que falta continua valendo por cima do que chegou
     const ack = ackDe(a.v), agora = relogio();
@@ -5068,7 +5142,7 @@ const Nuvem = (() => {
   function meta() { if (modo === 'mestre') { metaSuja = true; agendar(); } else guardarPrefsDaqui(); }
   function tirarCena(id) {
     if (modo !== 'mestre') return;
-    sujas.delete(id); feito.delete(id);
+    sujas.delete(id); feito.delete(id); campDe.delete(id);
     for (const d of [docM(id), docV(id)]) { if (D.pegar(d)) D.apagar(d); esquecer(d); }
     if (idx.noAr === id) { idx.noAr = null; idx.tx = null; arSujo = true; despublicar(); }
     metaSuja = true; agendar();
@@ -5231,6 +5305,9 @@ const Nuvem = (() => {
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
     noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, semCena: () => vazia,
+    // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
+    comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
+    arDeFora: () => arDeFora.slice(),
     guardarImagem, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
     eu: () => eu, pendentes: () => caixa.length,
   };
@@ -5429,7 +5506,7 @@ const Combate = (() => {
     const naCena = new Set(sc.tokens.map(t => t.char).filter(Boolean));
     return Fichas.chars().filter(l => l.ficha != null).map(l => {
       const dono = Fichas.donoDe(l);
-      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id) };
+      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id), camp: Fichas.campDa(l) || '' };      // (camp: a campanha da ficha; '' = do mundo)
     });
   }
   /* Cria, num passo só de desfazer, um token para cada personagem pedido (os que já têm token nesta cena ficam de
@@ -8049,8 +8126,38 @@ const UI = (() => {
       if (!ok) return;
       const id = sc.id;
       Store.removeScene(id); Persist.removeScene(id);
-      if (!Store.S.order.length) { const n = newScene('Nova cena'); Store.addScene(n); Persist.scene(n.id); }
-      switchScene(Store.S.order[0]);
+      irParaUmaDaVista();
+    });
+  }
+  /* Abre outra cena da lista que o mestre está vendo (numa mesa com campanhas: as da campanha em vista e as do
+     mundo). Se não sobrou nenhuma, nasce uma cena vazia — a tela sempre tem uma cena aberta. */
+  function irParaUmaDaVista() {
+    let alvo = Store.S.order.find(id => Nuvem.naVista(id));
+    if (!alvo) { const n = newScene('Nova cena'); Store.addScene(n); Persist.scene(n.id); alvo = n.id; }
+    switchScene(alvo);
+  }
+  /* ---- Campanhas: de que campanha é a cena (só numa mesa com campanhas) ---- */
+  const nomeDaCampanha = id => { const c = Nuvem.campanhas().find(x => x.id === id); return c ? c.nome : 'outra campanha'; };
+  function sceneCampaignBox() {
+    const sc = Store.scene(), atual = Nuvem.campanhasDaCena(sc.id)[0] || '';
+    let escolha = atual;
+    const opcoes = [['', 'Do mundo — aparece em todas as campanhas']].concat(Nuvem.campanhas().map(c => [c.id, c.nome + (c.encerrada ? ' (encerrada)' : '')]));
+    modal({
+      title: 'Campanha desta cena',
+      text: `"${sc.name}" fica na lista de cenas da campanha escolhida, e no ar só os jogadores dessa campanha a veem. Uma cena do mundo fica na lista de todas as campanhas, e no ar todos a veem.`,
+      body: h('div', { class: 'picks', role: 'radiogroup', 'aria-label': 'Campanha da cena' }, opcoes.map(([id, nome]) => h('label', { class: 'pick' },
+        h('input', { type: 'radio', name: 'sc-camp', id: 'sc-camp-' + (id || 'mundo'), checked: id === escolha, onchange: () => { escolha = id; } }), h('span', { class: 'pick-n', text: nome })))),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Salvar', kind: 'primary', run: () => {
+          if (escolha === atual) return;
+          const antes = Nuvem.campanhasDaCena(sc.id), id = sc.id;
+          if (!Nuvem.definirCampanhas(id, escolha ? [escolha] : [])) return;
+          const saiu = !Nuvem.naVista(id);
+          toast(escolha ? `"${sc.name}" agora é da campanha ${nomeDaCampanha(escolha)}.` + (saiu ? ' Ela saiu desta lista: está na daquela campanha.' : '') : `"${sc.name}" agora é do mundo: aparece em todas as campanhas.`,
+            { action: 'Desfazer', run: () => { Nuvem.definirCampanhas(id, antes); if (Store.S.scenes[id] && Nuvem.naVista(id)) switchScene(id); } });
+          if (saiu) irParaUmaDaVista(); else refresh();
+        },
+      }],
     });
   }
   function setViewer(v) {
@@ -8089,8 +8196,10 @@ const UI = (() => {
     let air = null;
     if (gm && Nuvem.mestre()) {
       const ar = Nuvem.noAr(), aqui = ar === sc.id, outra = ar && Store.S.scenes[ar] ? Store.S.scenes[ar].name : '';
+      // (com campanhas, a cena que está no ar pode ser de outra campanha — uma que não aparece na lista daqui)
+      const deFora = !!ar && !aqui && !Nuvem.naVista(ar);
       const txt = aqui ? 'No ar' : ar ? 'No ar: ' + outra : 'Fora do ar';
-      air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
+      air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : deFora ? `Está no ar "${outra}", uma cena de outra campanha: quem a vê são os jogadores daquela campanha` : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
         icon(ar ? 'eye' : 'eyeOff', 16), h('span', { class: 'air-t', text: txt }), icon('down', 13));
     }
     el.top.replaceChildren(...[
@@ -8109,10 +8218,18 @@ const UI = (() => {
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
   function sceneMenu() {
-    const items = [{ head: 'Cenas' }], ar = Nuvem.noAr();
-    for (const id of Store.S.order) { const s = Store.S.scenes[id]; items.push({ label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
+    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas();
+    const linha = id => { const s = Store.S.scenes[id]; return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }; };
+    if (!comCamp) { items.push({ head: 'Cenas' }); for (const id of Store.S.order) items.push(linha(id)); }
+    else {
+      // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
+      const c = Nuvem.campanha(), dela = Store.S.order.filter(id => Nuvem.campanhasDaCena(id).includes(c)), mundo = Store.S.order.filter(id => !Nuvem.campanhasDaCena(id).length);
+      items.push({ head: 'Cenas · ' + nomeDaCampanha(c) });
+      for (const id of dela) items.push(linha(id));
+      if (mundo.length) { items.push({ head: 'Do mundo' }); for (const id of mundo) items.push(linha(id)); }
+    }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
-      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
+      { label: 'Renomear', icon: 'edit', run: renameScene }, Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
   }
 
@@ -8120,7 +8237,8 @@ const UI = (() => {
   function showToPlayers(id) {
     const antes = Nuvem.noAr(), sc = Store.S.scenes[id];
     if (!sc || !Nuvem.mostrar(id)) return;
-    toast(`Os jogadores agora veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); else Nuvem.esconder(); } });
+    const cs = Nuvem.campanhasDaCena(id);          // (numa mesa com campanhas, quem vê a cena são os jogadores da campanha dela)
+    toast(cs.length ? `Os jogadores da campanha ${nomeDaCampanha(cs[0])} agora veem "${sc.name}".` : `Os jogadores agora veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); else Nuvem.esconder(); } });
     // a mesa ao vivo avisa: quem está em outra aba fica sabendo que há cena nova para ver
     try { window.TC.ponte.publicar('cena', { kind: 'aviso', titulo: 'Cena: ' + sc.name, resumo: 'O mestre mostrou esta cena aos jogadores. Ela está na aba Cenas.' }); } catch (e) { /* sem a casca, não há mesa ao vivo */ }
   }
@@ -8131,10 +8249,11 @@ const UI = (() => {
   }
   function airMenu() {
     const cur = Store.S.current, ar = Nuvem.noAr(), outra = ar && ar !== cur && Store.S.scenes[ar];
+    const deFora = !!outra && !Nuvem.naVista(ar);      // (a cena no ar é de outra campanha: não está na lista daqui)
     return [
-      { head: ar === cur ? 'Os jogadores veem esta cena' : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
+      { head: ar === cur ? 'Os jogadores veem esta cena' : deFora ? `No ar: "${outra.name}", de outra campanha` : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
       ar === cur ? null : { label: 'Mostrar esta cena aos jogadores', icon: 'eye', run: () => showToPlayers(cur) },
-      outra ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
+      outra && !deFora ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
       ar ? { label: 'Tirar a cena do ar', icon: 'eyeOff', run: hideFromPlayers } : null,
     ];
   }
@@ -8225,7 +8344,10 @@ const UI = (() => {
     if (isGM()) { el.banner.hidden = true; return; }
     if (Nuvem.jogador()) {
       // O jogador de verdade, na mesa: a faixa só aparece quando há algo a dizer.
-      const aviso = Nuvem.semCena() ? 'O mestre ainda não está mostrando nenhuma cena. Ela aparece aqui sozinha quando ele mostrar.'
+      // (quem joga em mais de uma campanha: a cena no ar pode ser de outra campanha dele — não da que ele tem em vista)
+      const fora = Nuvem.semCena() ? Nuvem.arDeFora() : [];
+      const aviso = fora.length ? `A cena que está no ar é da campanha ${nomeDaCampanha(fora[0])}. Para vê-la, troque de campanha no menu da mesa.`
+        : Nuvem.semCena() ? 'O mestre ainda não está mostrando nenhuma cena. Ela aparece aqui sozinha quando ele mostrar.'
         : Vision.out.noSource ? 'Você não tem um token com visão nesta cena; por isso a névoa cobre tudo.' : '';
       el.banner.hidden = !aviso;
       if (aviso) el.banner.replaceChildren(h('span', { class: 'dot', style: { background: viewerColor() } }), h('span', { class: 'banner-t', id: 'bannerText', text: aviso }));
@@ -8710,7 +8832,7 @@ const UI = (() => {
     const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
     // (a ficha ligada pode não chegar a quem olha: o mestre auxiliar sem a aba Fichas não recebe as escondidas)
     const escondida = Fichas.escondida(t);
-    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),
+    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, Fichas.rotulo(c)])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),
       v => {
         const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
         toast(c ? `O token agora segue a ficha de ${c.nome || 'sem nome'}: o nome e as barras vieram dela.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });
@@ -10070,13 +10192,28 @@ const Luta = (() => {
     const sc = Store.scene(), lista = Combate.elenco(sc);
     if (!lista.length) { toast('Esta mesa ainda não tem fichas. Crie na aba Fichas.'); return; }
     const conjuntos = [];
-    const jog = lista.filter(x => x.dono);
-    if (jog.length) conjuntos.push({ id: '@jog', n: 'Personagens dos jogadores', ids: jog.map(x => x.id) });
-    const nomes = [...new Set(lista.map(x => x.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    for (const g of nomes) conjuntos.push({ id: 'g:' + g, n: 'Grupo: ' + g, ids: lista.filter(x => x.grupo === g).map(x => x.id) });
-    const soltos = lista.filter(x => !x.grupo);
-    if (nomes.length && soltos.length) conjuntos.push({ id: '@sem', n: 'Sem grupo', ids: soltos.map(x => x.id) });
-    conjuntos.push({ id: '@todos', n: 'Todas as fichas da mesa', ids: lista.map(x => x.id) });
+    /* Numa mesa com campanhas, a campanha em vista fica em evidência: os conjuntos dela vêm primeiro (os personagens
+       dos jogadores dela, os grupos dela); depois os do mundo e, por fim, cada uma das outras campanhas. */
+    const vista = Fichas.vista(), comCamp = !!vista && Nuvem.comCampanhas();
+    const base = comCamp ? lista.filter(x => x.camp === vista) : lista, ids = l => l.map(x => x.id);
+    const grupos = (l, prefixo, rotulo) => {
+      const nomes = [...new Set(l.map(x => x.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      for (const g of nomes) conjuntos.push({ id: prefixo + g, n: rotulo + 'Grupo: ' + g, ids: ids(l.filter(x => x.grupo === g)) });
+      return nomes.length;
+    };
+    const jog = base.filter(x => x.dono);
+    if (jog.length) conjuntos.push({ id: '@jog', n: 'Personagens dos jogadores', ids: ids(jog) });
+    const nGrupos = grupos(base, 'g:', '');
+    const soltos = base.filter(x => !x.grupo);
+    if (nGrupos && soltos.length) conjuntos.push({ id: '@sem', n: 'Sem grupo', ids: ids(soltos) });
+    if (comCamp) {
+      if (base.length) conjuntos.push({ id: '@camp', n: 'Toda a campanha ' + Fichas.nomeDaCampanha(vista), ids: ids(base) });
+      const mundo = lista.filter(x => !x.camp);
+      grupos(mundo, 'm:', 'Do mundo · ');
+      if (mundo.length) conjuntos.push({ id: '@mundo', n: 'Todas as fichas do mundo', ids: ids(mundo) });
+      for (const c of Nuvem.campanhas()) { const dela = c.id === vista ? [] : lista.filter(x => x.camp === c.id); if (dela.length) conjuntos.push({ id: 'c:' + c.id, n: 'Outra campanha: ' + c.nome, ids: ids(dela) }); }
+    }
+    conjuntos.push({ id: '@todos', n: 'Todas as fichas da mesa', ids: ids(lista) });
     const st = { cj: App.opt.grupoCj && conjuntos.some(c => c.id === App.opt.grupoCj) ? App.opt.grupoCj : conjuntos[0].id, marcados: new Set(), oculto: false };
     const porId = new Map(lista.map(x => [x.id, x]));
     const doConjunto = () => conjuntos.find(c => c.id === st.cj).ids.map(id => porId.get(id));
@@ -10571,7 +10708,17 @@ async function start(snap) {
   const had = await Persist.load();
   if (!had && !Nuvem.on()) await buildSample();
   // (numa mesa que ainda não tem cenas, o mestre começa com uma cena vazia; a de exemplo fica no menu de cenas)
-  if (!Store.scene()) { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); }
+  if (!Store.scene()) {
+    const criar = () => { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); return sc.id; };
+    /* Numa mesa com campanhas, a que está em vista pode ainda não ter cena (as da mesa são de outras campanhas). Com a
+       página aberta em segundo plano, nada é criado sem o mestre ver: ela fica numa cena qualquer da mesa e, quando
+       ele vem para cá, abre uma cena da campanha — ou cria a primeira dela. */
+    const emprestada = Nuvem.mestre() && !naTela() ? Store.S.order[0] : null;
+    if (emprestada) {
+      Store.S.current = emprestada;
+      aoAparecer(() => { if (Nuvem.naVista(Store.S.current)) return; const v = Store.S.order.find(id => Nuvem.naVista(id)); UI.switchScene(v || criar()); });
+    } else criar();
+  }
   App.anim = Store.S.prefs.anim !== false;
   App.showVision = !!Store.S.prefs.showVision;
   const nasceuEscondida = !naTela();
@@ -10639,6 +10786,7 @@ async function start(snap) {
       Store.addScene(sc); Persist.scene(sc.id);
       UI.toast(`Cena "${sc.name}" criada. Monte o mapa do acampamento aqui.`);
     }
+    if (typeof id === 'string' && Store.S.scenes[id] && !Nuvem.naVista(id)) { UI.toast('Essa cena é de outra campanha. Para abri-la, escolha a campanha dela no menu da mesa.'); return; }
     if (typeof id === 'string' && Store.S.scenes[id] && Store.S.current !== id) UI.switchScene(id);
   });
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {

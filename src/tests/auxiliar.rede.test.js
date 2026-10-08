@@ -366,7 +366,7 @@ const { ok, end } = checker();
     ok(/Só o mestre abre o auditor/.test(auditor), 'sem a aba Rolador, o auditor dos dados não abre para ele: "' + auditor + '"');
     ok(!/rol:h:teste/.test(await docsQueVejo(TA)), 'nem o documento do Rolador: ' + await docsQueVejo(TA));
     let pc = await papelNaAba(TA, 'cenas', /\/cenas\//);
-    ok(pc && pc.papel === 'mestre' && pc.cargo === 'auxiliar' && pc.v === 3 && pc.mestra === 'acampamento,arvore,cenas,mundo' && pc.fn[0] === true && pc.fn[1] === false, 'as Cenas o recebem como mestre (e sabem o que ele mestra, aba por aba) — ' + JSON.stringify(pc));
+    ok(pc && pc.papel === 'mestre' && pc.cargo === 'auxiliar' && pc.v === 4 && pc.mestra === 'acampamento,arvore,cenas,mundo' && pc.fn[0] === true && pc.fn[1] === false, 'as Cenas o recebem como mestre (e sabem o que ele mestra, aba por aba) — ' + JSON.stringify(pc));
     // o token ligado à ficha escondida: ele vê o token (é da cena), não a ficha — e o dano que dá vai para ela mesmo assim
     const CA = await quadro(TA, /\/cenas\//);
     ok(await ate(() => CA.evaluate(id => !!window.__tc && __tc.Nuvem.modo() === 'mestre' && !!__tc.Store.get('tokens', id), vilao), 30000), 'nas Cenas do auxiliar, o token do Vilão está lá');

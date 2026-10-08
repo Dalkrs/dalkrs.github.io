@@ -155,7 +155,17 @@ async function start(snap) {
   const had = await Persist.load();
   if (!had && !Nuvem.on()) await buildSample();
   // (numa mesa que ainda não tem cenas, o mestre começa com uma cena vazia; a de exemplo fica no menu de cenas)
-  if (!Store.scene()) { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); }
+  if (!Store.scene()) {
+    const criar = () => { const sc = newScene('Nova cena'); Store.addScene(sc); Store.S.current = sc.id; Persist.scene(sc.id); Persist.meta(); return sc.id; };
+    /* Numa mesa com campanhas, a que está em vista pode ainda não ter cena (as da mesa são de outras campanhas). Com a
+       página aberta em segundo plano, nada é criado sem o mestre ver: ela fica numa cena qualquer da mesa e, quando
+       ele vem para cá, abre uma cena da campanha — ou cria a primeira dela. */
+    const emprestada = Nuvem.mestre() && !naTela() ? Store.S.order[0] : null;
+    if (emprestada) {
+      Store.S.current = emprestada;
+      aoAparecer(() => { if (Nuvem.naVista(Store.S.current)) return; const v = Store.S.order.find(id => Nuvem.naVista(id)); UI.switchScene(v || criar()); });
+    } else criar();
+  }
   App.anim = Store.S.prefs.anim !== false;
   App.showVision = !!Store.S.prefs.showVision;
   const nasceuEscondida = !naTela();
@@ -223,6 +233,7 @@ async function start(snap) {
       Store.addScene(sc); Persist.scene(sc.id);
       UI.toast(`Cena "${sc.name}" criada. Monte o mapa do acampamento aqui.`);
     }
+    if (typeof id === 'string' && Store.S.scenes[id] && !Nuvem.naVista(id)) { UI.toast('Essa cena é de outra campanha. Para abri-la, escolha a campanha dela no menu da mesa.'); return; }
     if (typeof id === 'string' && Store.S.scenes[id] && Store.S.current !== id) UI.switchScene(id);
   });
   if (window.TC && window.TC.ponte && !Ext.roll) Ext.roll = r => {

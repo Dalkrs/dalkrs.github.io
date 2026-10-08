@@ -5,7 +5,13 @@
    É o último script da página: monta o App, carrega os mapas e só então chama MundoTela.iniciar e MundoPainel.iniciar.
 
    Na mesa, cada mapa é o documento "mundo:mapa:<id>" (só o mestre lê); o que os jogadores recebem é
-   "mundo:pub:<id>" (a projeção) e "mundo:indice" (quais mapas existem para eles e qual está sendo mostrado). */
+   "mundo:pub:<id>" (a projeção) e "mundo:indice" (quais mapas existem para eles e qual está sendo mostrado).
+
+   Numa mesa com campanhas, cada mapa é de uma ou mais campanhas — ou de nenhuma: "do mundo", que aparece em todas.
+   As campanhas ficam na linha do documento do mapa (a coluna `campanhas`), não dentro dele, e a projeção leva as
+   mesmas: o banco só a entrega a quem participa de alguma delas. Quem mestra trabalha na campanha em vista: a lista
+   tem os mapas dela e os do mundo. No índice (que a mesa inteira recebe) só entram os nomes dos mapas do mundo; os de
+   campanha, cada jogador conhece pelas projeções que recebe. Numa mesa sem campanhas nada disso existe. */
 (() => {
   'use strict';
   const N = window.MundoNucleo;
@@ -47,6 +53,14 @@
   let jAtual = null;                                 // JSON do mapa aberto, para comparar sem custo
   let pilhaDesfazer = [], pilhaRefazer = [], contaPasso = 0;   // cada passo tem um número: o "Desfazer" de um aviso confere se é o dele
   let comoJog = false, cacheVista = { de: null, v: null };
+  let camp = null, campsMesa = [];                   // a campanha em vista (id) e as que quem usa vê ([{ id, nome, encerrada }])
+  /* Dizer de que campanhas é um mapa é organizar as campanhas: só o mestre da mesa. O mestre auxiliar mestra os mapas
+     da campanha em que está (e os cria nela), mas não os passa de uma para outra. */
+  let organiza = false;
+  const campsDoc = l => (l && Array.isArray(l.campanhas) ? l.campanhas.filter(x => typeof x === 'string' && x) : []);
+  const naVista = cs => !cs.length || (!!camp && cs.includes(camp));       // do mundo, ou da campanha em vista
+  const mesmas = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+  const porNome = (a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || (a.id < b.id ? -1 : 1);
 
   const App = {
     N,
@@ -125,6 +139,20 @@
 
     trocarMapa, criarMapa, duplicarMapa, renomearMapa, apagarMapa,
     definirImagem, urlImagem, mostrarAosJogadores, esconderMapa, publicarNaMesa,
+    // campanhas (numa mesa que as tem): a em vista, as da mesa, as de um mapa — e trocar as de um mapa (só quem mestra)
+    campanha: () => camp,
+    campanhas: () => campsMesa.map(c => Object.assign({}, c)),
+    organizaCampanhas: () => organiza,                                   // (só o mestre da mesa diz de que campanha é cada mapa)
+    campanhasDoMapa(id) {
+      id = id || (App.mapa && App.mapa.id);
+      if (App.papel === 'mestre') return campsDoMapa(id);
+      const it = App.mapas.find(x => x.id === id);                       // (o jogador não recebe o documento do mapa: vale o da lista)
+      return it && it.camps ? it.camps.slice() : [];
+    },
+    definirCampanhas,
+    deQuais: cs => deQuais(Array.isArray(cs) ? cs : []),                 // "do mundo", "da campanha X", "das campanhas X e Y"
+    // o mapa que está sendo mostrado é de outra campanha (não está na lista daqui)
+    mostradoDeFora: () => !!App.mostrado && App.papel === 'mestre' && !App.mapas.some(m => m.id === App.mostrado),
     exportar, importar,
     salvarJa,
 
@@ -203,6 +231,35 @@
     const n = N.normalizarMapa({ nome: d && d.nome, oculto: d && d.oculto });       // só o nome e o "escondido", do jeito normalizado
     return { id, nome: n.nome, oculto: n.oculto };
   }
+  // Numa mesa com campanhas, cada item da lista diz de quais o mapa é ([] = do mundo). Sem campanhas, o item é o de sempre.
+  const comCamps = (r, cs) => (campsMesa.length ? Object.assign(r, { camps: cs.slice() }) : r);
+  const itemDoJogador = m => comCamps({ id: m.id, nome: m.nome, oculto: false }, m.camps || []);
+  // As campanhas de um mapa da mesa: as da linha do documento dele (a que ainda não está aqui: nenhuma).
+  function campsDoMapa(id) { return modo === 'mesa' && D && id ? campsDoc(D.pegar(PRE_MAPA + id)) : []; }
+  const nomeDaCampanha = id => { const c = campsMesa.find(x => x.id === id); return c ? c.nome : null; };
+  // "do mundo", "da campanha X", "das campanhas X e Y" (a que quem usa não vê fica sem nome: "de outra campanha")
+  function deQuais(cs) {
+    if (!cs.length) return 'do mundo';
+    const nomes = cs.map(nomeDaCampanha).filter(Boolean);
+    if (!nomes.length) return 'de outra campanha';
+    if (nomes.length === 1) return 'da campanha ' + nomes[0];
+    return 'das campanhas ' + nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
+  }
+  /* Os campos de uma gravação com as campanhas do documento. A coluna só vai quando há o que dizer: numa mesa sem
+     campanhas ela nem existe para quem grava (e num banco de antes das campanhas, não existe mesmo). */
+  function comColuna(campos, cs, idDoc) {
+    if (cs.length || campsDoc(D && D.pegar(idDoc)).length) campos.campanhas = cs.slice();
+    return campos;
+  }
+  // Todos os mapas da mesa (de todas as campanhas), como estão agora: o aberto vale como está na tela.
+  function todosOsMapas() {
+    const lista = docsMapas().map(l => Object.assign(resumo(l.dados, l.id.slice(PRE_MAPA.length)), { camps: campsDoc(l) }));
+    if (App.mapa && App.papel === 'mestre') {
+      const i = lista.findIndex(x => x.id === App.mapa.id), r = { id: App.mapa.id, nome: App.mapa.nome, oculto: App.mapa.oculto, camps: campsDoMapa(App.mapa.id) };
+      if (i >= 0) lista[i] = r; else lista.push(r);
+    }
+    return lista.sort(porNome);
+  }
   // A lista do seletor de mapas. O mapa aberto vale como está agora (pode ainda não ter sido gravado).
   function atualizarLista() {
     let lista;
@@ -211,13 +268,15 @@
       for (const [id, m] of pendentes) est.mapas[id] = m;                        // os que não couberam no navegador
       lista = Object.keys(est.mapas).map(id => resumo(est.mapas[id], id));
     }
-    else if (App.papel === 'mestre') lista = docsMapas().map(l => resumo(l.dados, l.id.slice(PRE_MAPA.length)));
-    else lista = lerIndice().mapas.map(m => ({ id: m.id, nome: m.nome, oculto: false }));
+    // (na mesa, quem mestra tem na lista os mapas da campanha em vista e os do mundo)
+    else if (App.papel === 'mestre') lista = docsMapas().filter(l => naVista(campsDoc(l))).map(l => comCamps(resumo(l.dados, l.id.slice(PRE_MAPA.length)), campsDoc(l)));
+    else lista = lerIndice().mapas.map(itemDoJogador);
     if (App.mapa && App.papel === 'mestre') {
-      const i = lista.findIndex(x => x.id === App.mapa.id), r = { id: App.mapa.id, nome: App.mapa.nome, oculto: App.mapa.oculto };
-      if (i >= 0) lista[i] = r; else lista.push(r);
+      const cs = campsDoMapa(App.mapa.id);
+      const i = lista.findIndex(x => x.id === App.mapa.id), r = comCamps({ id: App.mapa.id, nome: App.mapa.nome, oculto: App.mapa.oculto }, cs);
+      if (i >= 0) lista[i] = r; else if (naVista(cs)) lista.push(r);
     }
-    if (App.papel === 'mestre') lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || (a.id < b.id ? -1 : 1));
+    if (App.papel === 'mestre') lista.sort(porNome);
     const mudou = j(lista) !== j(App.mapas);
     App.mapas = lista;
     return mudou;
@@ -230,9 +289,11 @@
     }
     return App.papel === 'mestre' ? docMapa(id) : docPub(id);
   }
+  // (o último mapa aberto é lembrado por mesa e por campanha em vista: cada campanha reabre no mapa dela)
+  const chaveAtual = () => 'tinycats:mundo:atual:' + App.mesa.id + (camp ? '@' + camp : '');
   function lembrarAtual(id) {
     if (App.papel !== 'mestre') return;
-    if (modo === 'mesa') { guarda.gravar('tinycats:mundo:atual:' + App.mesa.id, id); return; }
+    if (modo === 'mesa') { guarda.gravar(chaveAtual(), id); return; }
     const est = lerLocal();
     if (est.atual === id || !est.mapas[id]) return;
     est.atual = id;
@@ -243,6 +304,11 @@
   function trocarMapa(id) {
     if (App.mapa && App.mapa.id === id) return true;
     salvarJa();
+    // (um atalho pode apontar para um mapa de outra campanha: quem mestra o abre na campanha dele)
+    if (id && modo === 'mesa' && App.papel === 'mestre' && D.pegar(PRE_MAPA + id) && !naVista(campsDoMapa(id))) {
+      App.toast('Este mapa é ' + deQuais(campsDoMapa(id)) + ': para abri-lo, troque de campanha no menu da mesa.');
+      return false;
+    }
     const m = id ? carregarMapa(id) : null;
     if (!m) {
       App.toast(App.papel === 'mestre' ? 'Este mapa não existe mais.' : 'Este mapa ainda não chegou. Tente de novo em instantes.');
@@ -255,7 +321,9 @@
   /* Põe um mapa novo na coleção (navegador ou mesa) e abre. Na mesa, o que entra (criado, importado, duplicado) começa
      escondido dos jogadores: só vai para eles com o clique em "Mostrar aos jogadores". O "Desfazer" de um mapa
      apagado (esconder = false) devolve o mapa como ele era. */
-  function adicionarMapa(m, esconder = true) {
+  /* camps: as campanhas do mapa que entra. Sem dizer, ele nasce na campanha em vista (numa mesa sem campanhas, em
+     nenhuma); a cópia de um mapa fica nas do original, e o mapa que volta de um "Apagar", nas que tinha. */
+  function adicionarMapa(m, esconder = true, camps) {
     salvarJa();
     if (modo === 'mesa' && esconder) m.oculto = true;
     let gravou = true;
@@ -265,7 +333,7 @@
       gravou = gravarEstado(est);
       if (!gravou) pendentes.set(m.id, m);                                      // fica na tela; o aviso de espaço já saiu
     } else {
-      gravarDocMesa(PRE_MAPA + m.id, { dados: N.copia(m), vis: 'mestre' });
+      gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: N.copia(m), vis: 'mestre' }, camps || (camp ? [camp] : []), PRE_MAPA + m.id));
       sombraDoc.set(m.id, j(m));
       tirarOferta();
     }
@@ -286,7 +354,7 @@
     const m = carregarMapa(id || (App.mapa && App.mapa.id));
     if (!m) return null;
     const c = N.normalizarMapa(Object.assign(N.copia(m), { id: N.novoId('mp'), nome: m.nome + ' (cópia)' }));
-    adicionarMapa(c);
+    adicionarMapa(c, true, modo === 'mesa' ? campsDoMapa(m.id) : undefined);
     App.toast('Mapa duplicado: ' + c.nome + '.' + avisoEscondido());
     return c;
   }
@@ -301,7 +369,7 @@
     id = id || (App.mapa && App.mapa.id);
     if (!id) return false;
     salvarJa();
-    const m = carregarMapa(id);
+    const m = carregarMapa(id), cs = campsDoMapa(id);
     if (!m) return false;
     if (modo === 'local') {
       const est = lerLocal();
@@ -320,13 +388,13 @@
       abrir(prox);
     } else if (atualizarLista()) App.emit('mapas', App.mapas);
     if (modo === 'mesa') { sincronizarPub(id); sincronizarIndice(); soltarImagemDepois(m); }
-    App.toast('Mapa apagado: ' + m.nome, 'Desfazer', () => restaurarMapa(m), 10000);
+    App.toast('Mapa apagado: ' + m.nome, 'Desfazer', () => restaurarMapa(m, cs), 10000);
     return true;
   }
-  function restaurarMapa(m) {
+  function restaurarMapa(m, cs) {
     if (carregarMapa(m.id)) { trocarMapa(m.id); return; }
     restaurados.add(m.id);
-    adicionarMapa(N.copia(m), false);
+    adicionarMapa(N.copia(m), false, modo === 'mesa' ? cs : undefined);
     App.toast('Mapa de volta: ' + m.nome);
   }
 
@@ -421,26 +489,42 @@
   const dadosDoc = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
   /* As cenas da mesa, como a aba Cenas as guarda nos documentos da mesa: [{ id, nome }], na ordem do mestre.
      Devolve null fora de uma mesa (aí vale a lista que a aba Cenas deixa neste navegador). O jogador não recebe
-     as cenas do mestre, então para ele a lista vem vazia. */
+     as cenas do mestre, então para ele a lista vem vazia. Com campanhas: as cenas da campanha em vista e as do mundo. */
   App.cenasDaMesa = () => {
     if (modo !== 'mesa' || !D) return null;
     const idx = dadosDoc(D.pegar('cenas:indice')), ordem = idx && Array.isArray(idx.ordem) ? idx.ordem : [], cenas = [];
     for (const l of D.todas()) {
       const m = /^cena:([A-Za-z0-9_-]{1,60}):m$/.exec(l.id || ''), d = dadosDoc(l);
-      if (m && d && m[1] !== 'pub' && m[1] !== 'pedido') cenas.push({ id: m[1], nome: String(d.name || 'Cena') });
+      if (m && d && m[1] !== 'pub' && m[1] !== 'pedido' && naVista(campsDoc(l))) cenas.push({ id: m[1], nome: String(d.name || 'Cena') });
     }
     return cenas.sort((a, b) => (ordem.indexOf(a.id) + 1 || 1e9) - (ordem.indexOf(b.id) + 1 || 1e9));
   };
   function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && idValido(l.id.slice(PRE_MAPA.length)) && dadosDoc(l)) : []; }
   function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
   function docPub(id) { const d = D ? dadosDoc(D.pegar(PRE_PUB + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
+  /* O índice: os mapas do mundo que os jogadores podem abrir (com o nome) e o mapa que está sendo mostrado — que, numa
+     mesa com campanhas, pode ser um mapa de campanha, que não está na lista do índice. */
   function normIndice(d) {
     const ok = typeof d === 'object' && d && Array.isArray(d.mapas) ? d.mapas : [];
     const mapas = ok.filter(m => m && idValido(m.id)).map(m => ({ id: m.id, nome: typeof m.nome === 'string' && m.nome.trim() ? m.nome : 'Mapa sem nome' }));
-    const mostrado = d && typeof d.mostrado === 'string' && mapas.some(m => m.id === d.mostrado) ? d.mostrado : null;
+    const mostrado = d && idValido(d.mostrado) ? d.mostrado : null;
     return { mapas, mostrado };
   }
-  function lerIndice() { return normIndice(D ? dadosDoc(D.pegar(INDICE)) : null); }
+  /* O que o jogador pode abrir: os mapas do mundo (pelo índice) e os da campanha em vista (pelas projeções que ele
+     recebe: o banco só entrega as das campanhas de que ele participa). O mapa mostrado só vale se for um desses. */
+  function lerIndice() {
+    const idx = normIndice(D ? dadosDoc(D.pegar(INDICE)) : null), mapas = idx.mapas.map(m => ({ id: m.id, nome: m.nome, camps: [] }));
+    let deCampanha = false;
+    if (D) for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PUB)) continue;
+      const id = l.id.slice(PRE_PUB.length), d = dadosDoc(l), cs = campsDoc(l);
+      if (!d || !cs.length || !naVista(cs) || !idValido(id) || mapas.some(m => m.id === id)) continue;
+      mapas.push({ id, nome: resumo(d, id).nome, camps: cs });
+      deCampanha = true;
+    }
+    if (deCampanha) mapas.sort(porNome);
+    return { mapas, mostrado: mapas.some(m => m.id === idx.mostrado) ? idx.mostrado : null };
+  }
 
   /* Antes de gravar, confere se outro aparelho mexeu neste mapa desde a última vez (a mudança de fora fica esperando
      enquanto alguém digita ou arrasta aqui). Gravar por cima às cegas desfaria o que foi feito lá — um "Esconder dos
@@ -469,28 +553,36 @@
   // Escondido no que está gravado na mesa (outro aparelho pode ter escondido agora há pouco): esconder vence.
   function escondidoNaMesa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return !!d && resumo(d, id).oculto; }
   // A projeção de um mapa: só quando mudou desde a última vez; mapa escondido não tem projeção nenhuma.
+  // A projeção leva as campanhas do mapa: é por elas que o banco decide a quem entregar.
   function sincronizarPub(id) {
     if (modo !== 'mesa' || App.papel !== 'mestre') return;
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
-    const tem = !!dadosDoc(D.pegar(PRE_PUB + id));
+    const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
     if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
-    const p = N.projetar(m);
-    // atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para cena, sem o nome dela
-    const abertos = new Set(App.mapas.filter(x => !x.oculto).map(x => x.id));
+    const p = N.projetar(m), cs = campsDoMapa(id);
+    /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
+       que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
+    const todos = todosOsMapas();
+    const abertoParaQuemVe = alvo => {
+      const a = todos.find(x => x.id === alvo);
+      return !!a && !a.oculto && (!a.camps.length || (cs.length > 0 && cs.every(c => a.camps.includes(c))));
+    };
     for (const o of p.objs) {
       if (!o.liga) continue;
-      if (o.liga.t === 'mapa' && !abertos.has(o.liga.id)) o.liga = null;
+      if (o.liga.t === 'mapa' && !abertoParaQuemVe(o.liga.id)) o.liga = null;
       else if (o.liga.t === 'cena') o.liga = { t: 'cena', id: o.liga.id, nome: '' };
     }
     const jp = j(p);
-    if (tem && sombraPub.get(id) === jp) return;
-    gravarDocMesa(PRE_PUB + id, { dados: p, vis: 'mesa' });
+    if (tem && sombraPub.get(id) === jp && mesmas(campsDoc(lp), cs)) return;
+    gravarDocMesa(PRE_PUB + id, comColuna({ dados: p, vis: 'mesa' }, cs, PRE_PUB + id));
     sombraPub.set(id, jp);
   }
+  /* No índice (que a mesa inteira recebe) só entram os nomes dos mapas do mundo. O mapa mostrado pode ser de uma
+     campanha: quem não o recebe continua com o que tem aberto. */
   function indiceAgora() {
     atualizarLista();
-    const mapas = App.mapas.filter(m => !m.oculto).map(m => ({ id: m.id, nome: m.nome }));
-    return { mapas, mostrado: mapas.some(m => m.id === App.mostrado) ? App.mostrado : null };
+    const abertos = todosOsMapas().filter(m => !m.oculto);
+    return { mapas: abertos.filter(m => !m.camps.length).map(m => ({ id: m.id, nome: m.nome })), mostrado: abertos.some(m => m.id === App.mostrado) ? App.mostrado : null };
   }
   // O índice que está na mesa mudou em outro aparelho desde a última vez (o mapa mostrado, por exemplo): vale o de lá.
   function adotarIndice() {
@@ -507,7 +599,7 @@
     adotarIndice();
     const idx = indiceAgora(), ji = j(idx), d = dadosDoc(D.pegar(INDICE));
     if (d && j(normIndice(d)) === ji) { sombraIndice = ji; return; }
-    if (!d && !idx.mapas.length) return;                                 // mesa sem mapas públicos e sem índice: nada a dizer
+    if (!d && !idx.mapas.length && !idx.mostrado) return;                // mesa sem mapas públicos e sem índice: nada a dizer
     gravarDocMesa(INDICE, { dados: idx, vis: 'mesa' });
     sombraIndice = ji;
   }
@@ -542,9 +634,9 @@
     }
     if (oculto && App.mostrado === id) App.mostrado = null;
     atualizarLista();
-    // esconder vale na hora, sem esperar. Os outros mapas também conferem a projeção: um atalho para este mapa
-    // aparece ou some para os jogadores junto com ele.
-    if (modo === 'mesa') { salvarJa(); for (const x of App.mapas) sincronizarPub(x.id); sincronizarIndice(); }
+    // esconder vale na hora, sem esperar. Os outros mapas (os de todas as campanhas) também conferem a projeção: um
+    // atalho para este mapa aparece ou some para os jogadores junto com ele.
+    if (modo === 'mesa') { salvarJa(); for (const x of todosOsMapas()) sincronizarPub(x.id); sincronizarIndice(); }
     atualizarLista();
     App.emit('mapas', App.mapas);
     return true;
@@ -565,12 +657,38 @@
     sincronizarIndice();
     App.emit('mapas', App.mapas);
     const item = id && App.mapas.find(m => m.id === id);
-    if (item) App.toast('Os jogadores agora veem: ' + item.nome);
+    // (numa mesa com campanhas, quem vê um mapa de campanha são os jogadores dela)
+    if (item) App.toast((campsDoMapa(id).length ? 'Os jogadores ' + deQuais(campsDoMapa(id)) : 'Os jogadores') + ' agora veem: ' + item.nome);
     else {
       // parar de mostrar não esconde: quem já está com o mapa aberto continua vendo (e recebendo o que mudar nele)
       const aberto = antes && App.mapas.find(m => m.id === antes && !m.oculto);
       if (aberto) App.toast('Nenhum mapa está sendo mostrado. "' + aberto.nome + '" continua aberto para os jogadores; para tirar da vista deles, esconda.', 'Esconder', () => esconderMapa(aberto.id, true), 12000);
       else App.toast('Nenhum mapa está sendo mostrado aos jogadores.');
+    }
+    return true;
+  }
+  /* De que campanhas é um mapa (só quem mestra, numa mesa com campanhas). Lista vazia = do mundo: aparece em todas.
+     A projeção passa a ir para os jogadores das campanhas novas — e os atalhos dos outros mapas para este aparecem ou
+     somem junto. Se o mapa aberto deixa de ser da campanha em vista, sai da lista daqui (abre-se outro, ou nenhum).
+     Devolve true se mudou. */
+  function definirCampanhas(id, lista) {
+    if (modo !== 'mesa' || App.papel !== 'mestre' || !organiza || !campsMesa.length) return false;
+    id = id || (App.mapa && App.mapa.id);
+    const l = id ? D.pegar(PRE_MAPA + id) : null;
+    if (!l || !dadosDoc(l)) return false;
+    const validas = new Set(campsMesa.map(c => c.id));
+    const nova = [...new Set((Array.isArray(lista) ? lista : []).filter(c => validas.has(c)))], antes = campsDoc(l);
+    if (mesmas(antes, nova)) return false;
+    gravarDocMesa(PRE_MAPA + id, { campanhas: nova });
+    for (const x of todosOsMapas()) sincronizarPub(x.id);
+    sincronizarIndice();
+    if (App.mapa && App.mapa.id === id && !naVista(nova)) {
+      App.mapa = null; jAtual = null;
+      atualizarLista();
+      abrir(App.mapas[0] ? carregarMapa(App.mapas[0].id) : null);
+    } else {
+      atualizarLista();
+      App.emit('mapas', App.mapas);
     }
     return true;
   }
@@ -687,6 +805,15 @@
   function conferirMestre() {
     adotarIndice();
     if (docsMapas().length) tirarOferta();
+    // em outro aparelho, o mapa aberto passou para outra campanha: sai da lista daqui
+    if (App.mapa && D.pegar(PRE_MAPA + App.mapa.id) && !naVista(campsDoMapa(App.mapa.id))) {
+      const nome = App.mapa.nome, cs = campsDoMapa(App.mapa.id);
+      App.mapa = null; jAtual = null;
+      atualizarLista();
+      abrir(App.mapas[0] ? carregarMapa(App.mapas[0].id) : null);
+      App.toast('"' + nome + '" agora é ' + deQuais(cs) + ': saiu desta lista.');
+      return;
+    }
     const mudouLista = atualizarLista();
     if (!App.mapa) {
       if (App.mapas.length) abrir(carregarMapa(App.mapas[0].id));
@@ -708,7 +835,7 @@
   // O jogador segue o índice: se o mestre mostra outro mapa, troca e avisa; o conteúdo chega pela projeção.
   function conferirJogador() {
     const idx = lerIndice();
-    const lista = idx.mapas.map(m => ({ id: m.id, nome: m.nome, oculto: false }));
+    const lista = idx.mapas.map(itemDoJogador);
     let alvo = App.mapa ? App.mapa.id : null, aviso = null;
     if (idx.mostrado && idx.mostrado !== App.mostrado) {
       alvo = idx.mostrado;
@@ -775,7 +902,8 @@
       prontos.push(N.normalizarMapa(m));
     }
     if (docsMapas().length) throw new Error('A mesa ganhou mapas enquanto isso. Nada foi trazido.');
-    for (const m of prontos) { gravarDocMesa(PRE_MAPA + m.id, { dados: m, vis: 'mestre' }); sombraDoc.set(m.id, j(m)); }
+    // (numa mesa com campanhas, os mapas trazidos entram na campanha em vista)
+    for (const m of prontos) { gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: m, vis: 'mestre' }, camp ? [camp] : [], PRE_MAPA + m.id)); sombraDoc.set(m.id, j(m)); }
     const primeiro = prontos.find(m => m.id === est.atual) || prontos[0];
     abrir(primeiro);
     for (const m of prontos) sincronizarPub(m.id);
@@ -976,6 +1104,9 @@
     App.eu = st.eu || null;
     App.papel = st.papel === 'mestre' ? 'mestre' : 'jogador';
     if (App.papel === 'jogador') document.documentElement.classList.add('jogador');
+    campsMesa = Array.isArray(st.campanhas) ? st.campanhas.filter(c => c && typeof c.id === 'string').map(c => ({ id: c.id, nome: String(c.nome || 'Campanha'), encerrada: !!c.encerrada })) : [];
+    camp = st.campanha && campsMesa.some(c => c.id === st.campanha.id) ? st.campanha.id : null;
+    organiza = App.papel === 'mestre' && (!st.cargo || st.cargo === 'mestre');
     D = TC.dados.col('documentos');
     await D.pronta;
   }
@@ -1000,18 +1131,18 @@
       const idxDoc = dadosDoc(D.pegar(INDICE));
       if (idxDoc) { const idx = normIndice(idxDoc); sombraIndice = j(idx); App.mostrado = idx.mostrado; }
       atualizarLista();
-      const pref = guarda.ler('tinycats:mundo:atual:' + App.mesa.id);
+      const pref = guarda.ler(chaveAtual());
       const id = [pref, App.mostrado, App.mapas[0] && App.mapas[0].id].find(x => x && App.mapas.some(m => m.id === x));
       if (id) abrir(carregarMapa(id), false);
-      // a projeção que está na mesa acompanha os mapas como estão (e some a de mapa que já não existe)
-      for (const m of App.mapas) sincronizarPub(m.id);
+      // a projeção que está na mesa acompanha os mapas como estão — os de todas as campanhas — (e some a de mapa que já não existe)
+      for (const m of todosOsMapas()) sincronizarPub(m.id);
       for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUB) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUB.length))) apagarDocMesa(l.id);
       sincronizarIndice();
       marcarSalvo('ok', 'Salvo na mesa');
-      if (!App.mapas.length) oferecerLocais();
+      if (!docsMapas().length) oferecerLocais();                         // (a mesa não tem mapa nenhum, em campanha nenhuma)
     } else {
       const idx = lerIndice();
-      App.mapas = idx.mapas.map(m => ({ id: m.id, nome: m.nome, oculto: false }));
+      App.mapas = idx.mapas.map(itemDoJogador);
       App.mostrado = idx.mostrado;
       const id = idx.mostrado || (idx.mapas[0] && idx.mapas[0].id);
       const pub = id ? docPub(id) : null;

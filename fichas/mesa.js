@@ -22,7 +22,19 @@ const FichasMesa = (() => {
   let sombra = { pcs: new Map(), docs: {} };          // o que a mesa já tem, para mandar só o que mudou
 
   const mestre = () => !!st && st.papel === 'mestre';
-  const podeEditar = pc => !ativo || mestre() || (!!pc && pc._dono === st.eu);
+  /* As campanhas da mesa (as que quem usa vê) e a que está em vista neste aparelho. Cada ficha é de uma campanha, ou de
+     nenhuma ("do mundo": aparece em todas); a campanha vem da linha da mesa e fica em pc._camp. Numa campanha
+     encerrada, as fichas são só para consulta — para todos, o mestre também. Sem mesa, ou numa mesa sem campanhas,
+     nada disto aparece. */
+  const campanhas = () => (ativo && st && Array.isArray(st.campanhas) ? st.campanhas : []);
+  const campEmVista = () => (ativo && st && st.campanha ? st.campanha.id : null);
+  const encerrada = id => !!id && campanhas().some(c => c.id === id && c.encerrada);
+  const nomeDaCampanha = id => { const c = campanhas().find(x => x.id === id); return c ? c.nome : id ? 'Outra campanha' : 'Do mundo'; };
+  const podeEditar = pc => !ativo || (!encerrada(pc && pc._camp) && (mestre() || (!!pc && pc._dono === st.eu)));
+  /* Passar uma ficha (ou um grupo) de uma campanha para outra é organizar as campanhas: só o mestre da mesa. O mestre
+     auxiliar, mesmo mestrando as Fichas, trabalha dentro das campanhas que existem. (Uma casca de antes do mestre
+     auxiliar não diz o cargo: vale o papel.) */
+  const organiza = () => ativo && mestre() && (!st.cargo || st.cargo === 'mestre');
   /* Quem pode ser dono de ficha: os participantes da mesa, menos o mestre. O mestre auxiliar conta — a ficha dele é
      de jogador, esteja ele mestrando ou jogando. (Uma casca de antes do mestre auxiliar não diz o cargo: vale o papel.) */
   const jogadorDaMesa = m => !!m && (m.cargo ? m.cargo !== 'mestre' : m.papel === 'jogador');
@@ -51,17 +63,22 @@ const FichasMesa = (() => {
     pc.estado = l.estado && typeof l.estado === 'object' && !Array.isArray(l.estado) ? l.estado : {};
     pc._dono = l.dono_id || null;
     pc._vis = l.vis === 'mesa' ? 'mesa' : 'mestre';
+    pc._camp = l.campanha || null;
     pc.ultRol = antigo ? antigo.ultRol || null : null;     // a última rolagem mostrada na ficha é só desta tela
     return pc;
   }
   function partes(pc) {
     const ficha = Object.assign({}, pc);
-    for (const k of ['id', 'skills', 'estado', '_dono', '_vis', 'ultRol']) delete ficha[k];
-    return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre' };
+    for (const k of ['id', 'skills', 'estado', '_dono', '_vis', '_camp', 'ultRol']) delete ficha[k];
+    return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null };
   }
-  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, ordem });
+  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem });
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
-  const doc = k => { const d = D.pegar(DOCS[k]); return d && d.dados && 'v' in d.dados ? d.dados.v : undefined; };
+  /* Os documentos "um por campanha": a ordem dos grupos e as missões do grupo de cada campanha ficam em
+     fichas:grupos@<campanha> e fichas:missoes@<campanha> (os sem "@" são os do mundo). */
+  const POR_CAMPANHA = ['grupos', 'missoes'];
+  const doc = (k, camp) => { const d = D.pegar(DOCS[k] + (camp ? '@' + camp : '')); return d && d.dados && 'v' in d.dados ? d.dados.v : undefined; };
+  const noEstado = k => (k === 'grupos' ? 'gruposCamp' : 'missoesCamp');      // onde ficam, no estado da calculadora: { campanha: valor }
 
   /* Monta o estado inteiro a partir da mesa (mais o que é só desta tela, guardado neste navegador). */
   function montar() {
@@ -76,31 +93,53 @@ const FichasMesa = (() => {
       situacoes: doc('situacoes') || [],
       tabelas: doc('tabelas') || [],
       missoes: doc('missoes') || {},
+      gruposCamp: {}, missoesCamp: {},                         // os de cada campanha: { campanha: valor }
       segredos: (mestre() && doc('segredos')) || {},
       log: Array.isArray(tela.log) ? tela.log : [],
       bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
       alvos: tela.alvos, ultimoAlvo: tela.ultimoAlvo,          // memória dos alvos de disputa: é desta tela
-      abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
+      abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, abertos: tela.abertos, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
     sombra = { pcs: new Map(), docs: {} };
-    linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre' }, l.ordem)));
+    linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre', campanha: l.campanha || null }, l.ordem)));
     // o retrato guarda a ficha como a calculadora a escreveria: assim a primeira gravação não reenvia tudo à toa
     s.personagens.forEach((pc, i) => { const p = partes(pc), r = sombra.pcs.get(pc.id); r.ficha = j(p.ficha); r.skills = j(p.skills); r.estado = j(p.estado); r.nome = p.nome; if (mestre()) r.ordem = linhas[i].ordem; });
     for (const k in DOCS) { const v = doc(k); sombra.docs[k] = v === undefined ? undefined : j(v); }
+    for (const c of campanhas()) for (const k of POR_CAMPANHA) {
+      const v = doc(k, c.id);
+      sombra.docs[k + '@' + c.id] = v === undefined ? undefined : j(v);
+      if (v !== undefined) s[noEstado(k)][c.id] = v;
+    }
     sombra.bib = bibDaMesa() ? j(bibDaMesa()) : null;
     return s;
+  }
+
+  /* A ficha que acabou de nascer nesta tela: de quem é e de que campanha. O jogador só cria personagem dele. A ficha
+     nova nasce na campanha em vista (a cópia de uma ficha, na da original). Numa campanha encerrada não nasce ficha:
+     a cópia de uma ficha de lá vai para a campanha em vista — ou para o mundo, se essa é a encerrada.
+     Vale já para o personagem que está na tela (quem cria chama; e a gravação confere): a ficha aparece logo no
+     bloco certo da lista, e o que se fizer com ela em seguida — mudar de grupo, desfazer — parte do lugar certo. */
+  function nascer(pc) {
+    if (!ativo || !pc || sombra.pcs.has(pc.id)) return pc;
+    if (!mestre()) pc._dono = st.eu;
+    if (pc._camp === undefined || encerrada(pc._camp) || (!mestre() && pc._camp && !campanhas().some(c => c.id === pc._camp))) pc._camp = encerrada(campEmVista()) ? null : campEmVista();
+    return pc;
   }
 
   /* Compara o estado inteiro com o que a mesa já tem e manda só as diferenças. */
   function gravar(s) {
     if (!ativo || !s || !Array.isArray(s.personagens)) return;
     const vistos = new Set();
+    // (`s` costuma ser uma cópia do estado: o que se decide aqui para a ficha nova fica valendo também na da tela)
+    const naTela = s !== S && S && Array.isArray(S.personagens) ? new Map(S.personagens.map(p => [p.id, p])) : null;
     s.personagens.forEach((pc, i) => {
       vistos.add(pc.id);
       const ant = sombra.pcs.get(pc.id), novo = !ant;
-      if (novo && !mestre()) pc._dono = st.eu;                       // jogador só cria personagem dele
+      if (novo) { nascer(pc); const t = naTela && naTela.get(pc.id); if (t) { if (pc._dono !== undefined) t._dono = pc._dono; t._camp = pc._camp; } }
       if (!novo && !mestre() && ant.dono !== st.eu) return;          // ficha de outra pessoa: só consulta
+      if (!novo && encerrada(ant.camp)) return;                      // ficha de campanha encerrada: só consulta (nem a ordem dela muda)
+      if (!novo && (!organiza() || encerrada(pc._camp))) pc._camp = ant.camp;      // (só o mestre da mesa muda a campanha de uma ficha, e nunca para uma encerrada)
       const p = partes(pc), campos = {}, r = retrato(p, mestre() ? i : (ant ? ant.ordem : i));
       if (novo || ant.nome !== r.nome) campos.nome = p.nome;
       if (novo || ant.ficha !== r.ficha) campos.ficha = p.ficha;
@@ -108,6 +147,7 @@ const FichasMesa = (() => {
       if (novo || ant.estado !== r.estado) campos.estado = p.estado;
       if (novo || (mestre() && ant.dono !== r.dono)) campos.dono_id = p.dono_id;
       if (novo || (mestre() && ant.vis !== r.vis)) campos.vis = p.vis;
+      if (novo ? !!p.campanha : ant.camp !== r.camp) campos.campanha = p.campanha;      // (numa mesa sem campanhas, nem vai)
       if (novo || (mestre() && ant.ordem !== i)) campos.ordem = i;
       /* O estado e as skills vão como "o que mudou desde o que esta tela tinha" (a sombra): se outra pessoa mexeu em
          outra barra deste personagem nesse meio-tempo — ou o mestre deu pontos enquanto o jogador gastava os dele —,
@@ -124,6 +164,15 @@ const FichasMesa = (() => {
         const v = k === 'cfg' ? s.cfg : (s[k] || vazioDe(k)), jv = j(v);
         if (MAPAS[k] && sombra.docs[k] === undefined && oco(v)) continue;      // (ainda não existe e não há o que guardar)
         if (sombra.docs[k] !== jv) { D.gravar(DOCS[k], { dados: { v }, vis: VIS[k] }); sombra.docs[k] = jv; }
+      }
+      // a ordem dos grupos e as missões do grupo de cada campanha (as de uma campanha encerrada não mudam)
+      for (const c of campanhas()) {
+        if (encerrada(c.id)) continue;
+        for (const k of POR_CAMPANHA) {
+          const ks = k + '@' + c.id, v = (s[noEstado(k)] || {})[c.id] || vazioDe(k), jv = j(v);
+          if (sombra.docs[ks] === undefined && (MAPAS[k] ? oco(v) : !v.length)) continue;
+          if (sombra.docs[ks] !== jv) { D.gravar(DOCS[k] + '@' + c.id, { dados: { v }, vis: VIS[k] }); sombra.docs[ks] = jv; }
+        }
       }
     }
   }
@@ -142,7 +191,7 @@ const FichasMesa = (() => {
       } else {
         const pc = daLinha(l, i >= 0 ? S.personagens[i] : null, true), p = partes(pc);
         const r = retrato(p, l.ordem), ant = sombra.pcs.get(l.id);
-        if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.ordem === r.ordem) return;   // eco do que já está aqui
+        if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.camp === r.camp && ant.ordem === r.ordem) return;   // eco do que já está aqui
         /* O personagem que já está na tela é atualizado no lugar (o mesmo objeto): quem está digitando na ficha dele
            continua digitando no personagem de verdade, e o que digitar depois deste aviso não se perde. */
         if (i >= 0) { const alvo = S.personagens[i]; for (const k of Object.keys(alvo)) delete alvo[k]; Object.assign(alvo, pc); }
@@ -161,6 +210,17 @@ const FichasMesa = (() => {
         if (!b || j(b) === sombra.bib) return;
         sombra.bib = j(b); S.bib = JSON.parse(sombra.bib);
         migrar(); guardarTela(); redesenhar();
+        return;
+      }
+      // a ordem dos grupos ou as missões do grupo de uma campanha (fichas:grupos@<campanha>, fichas:missoes@<campanha>)
+      const pc = /^fichas:(grupos|missoes)@(.+)$/.exec(l0.id || '');
+      if (pc) {
+        const kc = pc[1], c = pc[2], ks = kc + '@' + c, v = l0.apagado || !l0.dados ? undefined : l0.dados.v, jv = v === undefined ? undefined : j(v);
+        if (sombra.docs[ks] === jv) return;
+        sombra.docs[ks] = jv;
+        const onde = S[noEstado(kc)] && typeof S[noEstado(kc)] === 'object' ? S[noEstado(kc)] : (S[noEstado(kc)] = {});
+        if (v === undefined) delete onde[c]; else onde[c] = v;
+        guardarTela(); redesenhar();
         return;
       }
       const k = Object.keys(DOCS).find(x => DOCS[x] === l0.id);
@@ -279,9 +339,11 @@ const FichasMesa = (() => {
     P.aoMudar(l => remoto('pc', l));
     D.aoMudar(l => remoto('doc', l));
     const membrosMudaram = () => { try { if (digitando()) { renderPendente = true; pintarDono(); renderLista(); } else redesenhar(); } catch (x) { /* ainda abrindo */ } };
+    // (os participantes, quem participa de cada campanha e os nomes das campanhas: a tela acompanha)
+    const doEstado = e => j([e && e.membros, e && e.campanhas]);
     TC.ponte.aoMudar(e => {
-      const antes = j(st && st.membros); st = e;
-      if (antes === j(e.membros)) return;
+      const antes = doEstado(st); st = e;
+      if (antes === doEstado(e)) return;
       if (!depoisDoGesto(membrosMudaram)) membrosMudaram();
     });
     document.documentElement.classList.add('na-mesa', mestre() ? 'papel-mestre' : 'papel-jogador');
@@ -304,7 +366,7 @@ const FichasMesa = (() => {
     if (mestre()) {
       // fichas de jogador não seguem a tabela de tiers: as que ainda seguiam passam para a distribuição livre,
       // com os valores que tinham (nada muda de número; daqui em diante é o jogador quem distribui)
-      const viradas = S.personagens.filter(pc => deJogador(pc) && pc.modoAtr === undefined);
+      const viradas = S.personagens.filter(pc => deJogador(pc) && pc.modoAtr === undefined && !encerrada(pc._camp));
       viradas.forEach(pc => FichasExtras.tornarLivre(pc, false));
       const rel = garantirRelacoes();
       if (viradas.length || rel) { save(); render(); }
@@ -340,19 +402,25 @@ const FichasMesa = (() => {
   /* Cada personagem de jogador tem a própria barra de Relacionamento para cada outro personagem de jogador.
      Só o mestre enxerga todas as fichas, então é a tela dele que cria as que faltam (e acerta o nome se mudou).
      E os relacionamentos de um NPC são do mestre: se a ficha de um está aberta aos jogadores e ainda os guarda no
-     formato antigo (dentro da ficha), eles passam para o mestre. */
+     formato antigo (dentro da ficha), eles passam para o mestre.
+     Com campanhas, a barra nasce entre personagens que jogam juntos: os da mesma campanha (e os do mundo, que
+     aparecem em todas). Nas fichas de uma campanha encerrada nada é criado nem acertado. */
+  const jogamJuntos = (a, b) => !a._camp || !b._camp || a._camp === b._camp;
   function garantirRelacoes() {
     const regras = R();
     if (!ativo || !mestre() || !regras) return false;
     const dj = S.personagens.filter(deJogador);
     let mudou = false;
-    for (const a of dj) for (const b of dj) {
-      if (b.id === a.id) continue;
-      const e = regras.relacaoCom(a.estado, segDe(a), b.id, false);
-      if (!e) mudou = mexerRel(a, { t: 'nova', id: uid(), alvo: b.id, nome: b.nome }) || mudou;
-      else if (e.nome !== b.nome) mudou = mexerRel(a, { t: 'nome', id: e.id, nome: b.nome }) || mudou;
+    for (const a of dj) {
+      if (encerrada(a._camp)) continue;
+      for (const b of dj) {
+        if (b.id === a.id) continue;
+        const e = regras.relacaoCom(a.estado, segDe(a), b.id, false);
+        if (!e) { if (jogamJuntos(a, b)) mudou = mexerRel(a, { t: 'nova', id: uid(), alvo: b.id, nome: b.nome }) || mudou; }
+        else if (e.nome !== b.nome) mudou = mexerRel(a, { t: 'nome', id: e.id, nome: b.nome }) || mudou;
+      }
     }
-    for (const pc of S.personagens) if (ehNpc(pc) && pc._vis === 'mesa') mudou = mexerRel(pc, { t: 'guardar-legado' }) || mudou;
+    for (const pc of S.personagens) if (ehNpc(pc) && pc._vis === 'mesa' && !encerrada(pc._camp)) mudou = mexerRel(pc, { t: 'guardar-legado' }) || mudou;
     return mudou;
   }
   /* O mestre apaga um personagem: o que ele guardava dele (fora da ficha) vai junto. Devolve o que saiu, para um
@@ -370,18 +438,63 @@ const FichasMesa = (() => {
     if (!alvo || !pc) return;
     if (!mestre()) alvo.querySelectorAll('[data-act="del"]').forEach(b => { b.disabled = true; b.title = 'Só o mestre exclui personagens da mesa'; });
     if (podeEditar(pc)) return;
-    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = true; });
-    if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">Ficha de outra pessoa: só para consulta.</div>');
+    /* Só consulta: nada se edita — mas dá para andar pela ficha. As abas de dentro dela (Atributos e Defesas; itens,
+       poderes, missões…; as bolsas) continuam valendo: sem elas, "consultar" seria ver só a parte que estava aberta. */
+    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-sub], [data-abaatr], [data-ababolsa]')) el.disabled = true; });
+    const fechada = encerrada(pc._camp);
+    if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
+  }
+
+  /* ---------------- campanhas ---------------- */
+  /* A lista de fichas em blocos: o da campanha em vista (aberto), o do mundo e os das outras campanhas (recolhidos).
+     Numa mesa sem campanhas — e fora de uma mesa — é um bloco só, sem nome: a lista de sempre.
+     { camp: id ('' = do mundo; '?' = de uma campanha que quem usa não vê), nome, vista, encerrada } */
+  function blocos() {
+    const cs = campanhas();
+    if (!cs.length) return [{ camp: '', nome: '', vista: true, unico: true }];
+    const v = campEmVista(), em = cs.find(c => c.id === v), out = [];
+    if (em) out.push({ camp: em.id, nome: em.nome, vista: true, encerrada: !!em.encerrada });
+    out.push({ camp: '', nome: 'Do mundo', vista: !em });
+    for (const c of cs) if (c !== em) out.push({ camp: c.id, nome: c.nome, vista: false, encerrada: !!c.encerrada });
+    if (S.personagens.some(p => blocoDe(p) === '?')) out.push({ camp: '?', nome: 'Outra campanha', vista: false });
+    return out;
+  }
+  // em que bloco a ficha aparece
+  const blocoDe = pc => { const c = (pc && pc._camp) || '', cs = campanhas(); return !cs.length ? '' : !c || cs.some(x => x.id === c) ? c : '?'; };
+  /* "Campanha em evidência" onde se escolhe um personagem: os da campanha em vista primeiro, depois os do mundo e os
+     das outras. As opções de um <select>, já em grupos (rotulo: como escrever cada um; sel: o id marcado). */
+  const emGrupos = pcs => (ativo && TC.ponte.porCampanha ? TC.ponte.porCampanha(pcs, p => p._camp) : (pcs.length ? [{ id: '', nome: '', vista: true, itens: pcs.slice() }] : []));
+  const emOrdem = pcs => emGrupos(pcs).reduce((l, g) => l.concat(g.itens), []);
+  function opcoesDePcs(pcs, sel, rotulo) {
+    const op = p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(rotulo ? rotulo(p) : p.nome)}</option>`;
+    const gs = emGrupos(pcs);
+    return gs.length === 1 && !gs[0].nome ? gs[0].itens.map(op).join('') : gs.map(g => `<optgroup label="${esc(g.nome)}">${g.itens.map(op).join('')}</optgroup>`).join('');
+  }
+  /* Uma ficha de uma campanha ficou com alguém que não participa dela (o mestre deu a ficha, ou passou o grupo para
+     outra campanha): a casca pergunta ao mestre se é para incluir essa pessoa. Sem participar, ela só vê a própria ficha. */
+  function avisarDeFora(pcs) {
+    if (!ativo || !mestre() || !TC.ponte.incluirNaCampanha) return;
+    const por = new Map();                                   // campanha → { usuarios, ficha }
+    for (const pc of pcs) {
+      const m = pc._dono && (st.membros || []).find(x => x.id === pc._dono);
+      if (!m || !pc._camp || !campanhas().some(c => c.id === pc._camp) || (m.campanhas || []).includes(pc._camp)) continue;
+      const o = por.get(pc._camp) || { usuarios: [], ficha: pc.nome };
+      if (!o.usuarios.includes(m.id)) o.usuarios.push(m.id);
+      por.set(pc._camp, o);
+    }
+    for (const [campanha, o] of por) TC.ponte.incluirNaCampanha({ usuarios: o.usuarios, campanha, ficha: o.usuarios.length === 1 ? o.ficha : '' });
   }
 
   /* O que aparece na ficha só para o mestre, dentro de uma mesa: de quem é a ficha e quem a vê. */
   function htmlDono(pc) {
     if (!ativo || !mestre()) return '';
     const jog = (st.membros || []).filter(jogadorDaMesa);
+    // (quem não participa da campanha da ficha aparece marcado: se receber a ficha, só vê essa ficha da campanha)
+    const fora = m => !!pc._camp && campanhas().some(c => c.id === pc._camp) && !(m.campanhas || []).includes(pc._camp);
     return `<div class="idmesa">
       <label class="f"><span class="eyebrow">Jogador que controla</span><select id="f_dono">
         <option value="">Ninguém (só o mestre)</option>
-        ${jog.map(m => `<option value="${esc(m.id)}" ${pc._dono === m.id ? 'selected' : ''}>${esc(m.nome)}${m.cargo === 'auxiliar' ? ' (mestre auxiliar)' : ''}</option>`).join('')}
+        ${jog.map(m => `<option value="${esc(m.id)}" ${pc._dono === m.id ? 'selected' : ''}>${esc(m.nome)}${m.cargo === 'auxiliar' ? ' (mestre auxiliar)' : ''}${fora(m) ? ' — fora desta campanha' : ''}</option>`).join('')}
         ${pc._dono && !jog.some(m => m.id === pc._dono) ? `<option value="${esc(pc._dono)}" selected>(jogador que saiu da mesa)</option>` : ''}
       </select></label>
       <label class="chk"><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Todos os jogadores veem esta ficha</span></label>
@@ -405,6 +518,7 @@ const FichasMesa = (() => {
       garantirRelacoes();
       save(); render();
       toast(pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' + (virou ? ' Os atributos ficaram em distribuição livre.' : '') : 'Só o mestre vê esta ficha.');
+      avisarDeFora([pc]);
     };
     if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); };
   }
@@ -445,8 +559,8 @@ const FichasMesa = (() => {
       const pc = JSON.parse(j(p0));
       if (!pc || typeof pc !== 'object') continue;
       if (!pc.id || ids.has(pc.id)) pc.id = uid();
-      ids.add(pc.id); delete pc._dono; delete pc._vis;
-      S.personagens.push(pc); n++;
+      ids.add(pc.id); delete pc._dono; delete pc._vis; delete pc._camp;      // (entra na campanha em vista)
+      S.personagens.push(nascer(pc)); n++;
     }
     for (const g of d.grupos || []) if (typeof g === 'string' && !(S.grupos || []).includes(g)) (S.grupos = S.grupos || []).push(g);
     const junta = (campo) => { const tem = new Set((S[campo] || []).map(x => x.id)); for (const x of d[campo] || []) { if (!x || typeof x !== 'object') continue; const c = JSON.parse(j(x)); if (!c.id || tem.has(c.id)) c.id = uid(); tem.add(c.id); (S[campo] = S[campo] || []).push(c); } };
@@ -479,5 +593,6 @@ const FichasMesa = (() => {
   }
 
   return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes,
-    ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso };
+    ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
+    campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza };
 })();

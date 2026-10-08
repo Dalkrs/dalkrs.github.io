@@ -468,8 +468,38 @@ const UI = (() => {
       if (!ok) return;
       const id = sc.id;
       Store.removeScene(id); Persist.removeScene(id);
-      if (!Store.S.order.length) { const n = newScene('Nova cena'); Store.addScene(n); Persist.scene(n.id); }
-      switchScene(Store.S.order[0]);
+      irParaUmaDaVista();
+    });
+  }
+  /* Abre outra cena da lista que o mestre está vendo (numa mesa com campanhas: as da campanha em vista e as do
+     mundo). Se não sobrou nenhuma, nasce uma cena vazia — a tela sempre tem uma cena aberta. */
+  function irParaUmaDaVista() {
+    let alvo = Store.S.order.find(id => Nuvem.naVista(id));
+    if (!alvo) { const n = newScene('Nova cena'); Store.addScene(n); Persist.scene(n.id); alvo = n.id; }
+    switchScene(alvo);
+  }
+  /* ---- Campanhas: de que campanha é a cena (só numa mesa com campanhas) ---- */
+  const nomeDaCampanha = id => { const c = Nuvem.campanhas().find(x => x.id === id); return c ? c.nome : 'outra campanha'; };
+  function sceneCampaignBox() {
+    const sc = Store.scene(), atual = Nuvem.campanhasDaCena(sc.id)[0] || '';
+    let escolha = atual;
+    const opcoes = [['', 'Do mundo — aparece em todas as campanhas']].concat(Nuvem.campanhas().map(c => [c.id, c.nome + (c.encerrada ? ' (encerrada)' : '')]));
+    modal({
+      title: 'Campanha desta cena',
+      text: `"${sc.name}" fica na lista de cenas da campanha escolhida, e no ar só os jogadores dessa campanha a veem. Uma cena do mundo fica na lista de todas as campanhas, e no ar todos a veem.`,
+      body: h('div', { class: 'picks', role: 'radiogroup', 'aria-label': 'Campanha da cena' }, opcoes.map(([id, nome]) => h('label', { class: 'pick' },
+        h('input', { type: 'radio', name: 'sc-camp', id: 'sc-camp-' + (id || 'mundo'), checked: id === escolha, onchange: () => { escolha = id; } }), h('span', { class: 'pick-n', text: nome })))),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Salvar', kind: 'primary', run: () => {
+          if (escolha === atual) return;
+          const antes = Nuvem.campanhasDaCena(sc.id), id = sc.id;
+          if (!Nuvem.definirCampanhas(id, escolha ? [escolha] : [])) return;
+          const saiu = !Nuvem.naVista(id);
+          toast(escolha ? `"${sc.name}" agora é da campanha ${nomeDaCampanha(escolha)}.` + (saiu ? ' Ela saiu desta lista: está na daquela campanha.' : '') : `"${sc.name}" agora é do mundo: aparece em todas as campanhas.`,
+            { action: 'Desfazer', run: () => { Nuvem.definirCampanhas(id, antes); if (Store.S.scenes[id] && Nuvem.naVista(id)) switchScene(id); } });
+          if (saiu) irParaUmaDaVista(); else refresh();
+        },
+      }],
     });
   }
   function setViewer(v) {
@@ -508,8 +538,10 @@ const UI = (() => {
     let air = null;
     if (gm && Nuvem.mestre()) {
       const ar = Nuvem.noAr(), aqui = ar === sc.id, outra = ar && Store.S.scenes[ar] ? Store.S.scenes[ar].name : '';
+      // (com campanhas, a cena que está no ar pode ser de outra campanha — uma que não aparece na lista daqui)
+      const deFora = !!ar && !aqui && !Nuvem.naVista(ar);
       const txt = aqui ? 'No ar' : ar ? 'No ar: ' + outra : 'Fora do ar';
-      air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
+      air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : deFora ? `Está no ar "${outra}", uma cena de outra campanha: quem a vê são os jogadores daquela campanha` : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
         icon(ar ? 'eye' : 'eyeOff', 16), h('span', { class: 'air-t', text: txt }), icon('down', 13));
     }
     el.top.replaceChildren(...[
@@ -528,10 +560,18 @@ const UI = (() => {
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
   function sceneMenu() {
-    const items = [{ head: 'Cenas' }], ar = Nuvem.noAr();
-    for (const id of Store.S.order) { const s = Store.S.scenes[id]; items.push({ label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
+    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas();
+    const linha = id => { const s = Store.S.scenes[id]; return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }; };
+    if (!comCamp) { items.push({ head: 'Cenas' }); for (const id of Store.S.order) items.push(linha(id)); }
+    else {
+      // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
+      const c = Nuvem.campanha(), dela = Store.S.order.filter(id => Nuvem.campanhasDaCena(id).includes(c)), mundo = Store.S.order.filter(id => !Nuvem.campanhasDaCena(id).length);
+      items.push({ head: 'Cenas · ' + nomeDaCampanha(c) });
+      for (const id of dela) items.push(linha(id));
+      if (mundo.length) { items.push({ head: 'Do mundo' }); for (const id of mundo) items.push(linha(id)); }
+    }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
-      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
+      { label: 'Renomear', icon: 'edit', run: renameScene }, Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
   }
 
@@ -539,7 +579,8 @@ const UI = (() => {
   function showToPlayers(id) {
     const antes = Nuvem.noAr(), sc = Store.S.scenes[id];
     if (!sc || !Nuvem.mostrar(id)) return;
-    toast(`Os jogadores agora veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); else Nuvem.esconder(); } });
+    const cs = Nuvem.campanhasDaCena(id);          // (numa mesa com campanhas, quem vê a cena são os jogadores da campanha dela)
+    toast(cs.length ? `Os jogadores da campanha ${nomeDaCampanha(cs[0])} agora veem "${sc.name}".` : `Os jogadores agora veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (antes && Store.S.scenes[antes]) Nuvem.mostrar(antes); else Nuvem.esconder(); } });
     // a mesa ao vivo avisa: quem está em outra aba fica sabendo que há cena nova para ver
     try { window.TC.ponte.publicar('cena', { kind: 'aviso', titulo: 'Cena: ' + sc.name, resumo: 'O mestre mostrou esta cena aos jogadores. Ela está na aba Cenas.' }); } catch (e) { /* sem a casca, não há mesa ao vivo */ }
   }
@@ -550,10 +591,11 @@ const UI = (() => {
   }
   function airMenu() {
     const cur = Store.S.current, ar = Nuvem.noAr(), outra = ar && ar !== cur && Store.S.scenes[ar];
+    const deFora = !!outra && !Nuvem.naVista(ar);      // (a cena no ar é de outra campanha: não está na lista daqui)
     return [
-      { head: ar === cur ? 'Os jogadores veem esta cena' : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
+      { head: ar === cur ? 'Os jogadores veem esta cena' : deFora ? `No ar: "${outra.name}", de outra campanha` : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
       ar === cur ? null : { label: 'Mostrar esta cena aos jogadores', icon: 'eye', run: () => showToPlayers(cur) },
-      outra ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
+      outra && !deFora ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
       ar ? { label: 'Tirar a cena do ar', icon: 'eyeOff', run: hideFromPlayers } : null,
     ];
   }
@@ -644,7 +686,10 @@ const UI = (() => {
     if (isGM()) { el.banner.hidden = true; return; }
     if (Nuvem.jogador()) {
       // O jogador de verdade, na mesa: a faixa só aparece quando há algo a dizer.
-      const aviso = Nuvem.semCena() ? 'O mestre ainda não está mostrando nenhuma cena. Ela aparece aqui sozinha quando ele mostrar.'
+      // (quem joga em mais de uma campanha: a cena no ar pode ser de outra campanha dele — não da que ele tem em vista)
+      const fora = Nuvem.semCena() ? Nuvem.arDeFora() : [];
+      const aviso = fora.length ? `A cena que está no ar é da campanha ${nomeDaCampanha(fora[0])}. Para vê-la, troque de campanha no menu da mesa.`
+        : Nuvem.semCena() ? 'O mestre ainda não está mostrando nenhuma cena. Ela aparece aqui sozinha quando ele mostrar.'
         : Vision.out.noSource ? 'Você não tem um token com visão nesta cena; por isso a névoa cobre tudo.' : '';
       el.banner.hidden = !aviso;
       if (aviso) el.banner.replaceChildren(h('span', { class: 'dot', style: { background: viewerColor() } }), h('span', { class: 'banner-t', id: 'bannerText', text: aviso }));
@@ -1129,7 +1174,7 @@ const UI = (() => {
     const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
     // (a ficha ligada pode não chegar a quem olha: o mestre auxiliar sem a aba Fichas não recebe as escondidas)
     const escondida = Fichas.escondida(t);
-    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, c.nome || 'Sem nome'])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),
+    const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, Fichas.rotulo(c)])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),
       v => {
         const r = Fichas.link(t, v || null), c = v ? Fichas.get(v) : null;
         toast(c ? `O token agora segue a ficha de ${c.nome || 'sem nome'}: o nome e as barras vieram dela.` + (r.dono ? ` O dono do token passou a ser ${r.dono}, que é o dono da ficha.` : '') : `${t.name} não segue mais nenhuma ficha.`, { action: 'Desfazer', run: Tools.undo });

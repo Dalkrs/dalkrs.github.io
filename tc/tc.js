@@ -35,7 +35,7 @@
   /* Erros em português. O que o banco escreve (código errado, mesa cheia…) já chega em português e passa inteiro. */
   function erroPt(e, padrao) {
     const m = String((e && (e.message || e.error_description || e.erro)) || e || '');
-    if (/^(Entre na sua conta|Dê um nome|Você |Código |Esta mesa|Só o mestre|Já existe|Digite |A senha |Diga |O cadastro |Não foi possível|Essa pessoa |O mestre da mesa )/.test(m)) return m;
+    if (/^(Entre na sua conta|Dê um nome|Você |Código |Esta mesa|Esta campanha|Só o mestre|Só a primeira |Só dá para |Já existe|Digite |A senha |Diga |O cadastro |Não foi possível|Essa pessoa |O mestre da mesa )/.test(m)) return m;
     if (/Invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
     if (/Email not confirmed/i.test(m)) return 'Esta conta ainda não foi confirmada.';
     if (/Failed to fetch|NetworkError|Load failed|ERR_|network/i.test(m)) return 'Sem conexão com o servidor. Confira a internet e tente de novo.';
@@ -130,13 +130,43 @@
     if (error) throw error;
     return (data || []).map(membroDe);
   }
-  const meuJeito = m => [m.cargo, m.jogando ? 1 : 0, (m.abas || []).join(',')].join('|');      // o que decide o que eu posso ver
+  /* As campanhas da mesa que esta pessoa vê — quem mestra, todas; o jogador, as de que participa —, na ordem do mestre,
+     e quem participa de cada uma ({ usuário: [campanhas] }). Num banco de antes das campanhas, não há nenhuma. */
+  const semEsquema = e => /does not exist|schema cache|Could not find/i.test(String((e && e.message) || '')) || /^(42P01|42703|PGRST20\d)$/.test(String((e && e.code) || ''));
+  const SEM_CAMPANHAS = { lista: [], de: {}, ligadas: false };
+  // (ligadas: o banco desta mesa já tem as campanhas — quem diz é a linha da mesa, que nesse caso traz a conta delas)
+  async function lerCampanhas(id, ligadas) {
+    if (!ligadas) return SEM_CAMPANHAS;
+    const [c, p] = await Promise.all([
+      cliente().from('campanhas').select('id, nome, ordem, encerrada').eq('mesa_id', id),
+      cliente().from('campanha_membros').select('campanha_id, usuario_id').eq('mesa_id', id),
+    ]);
+    if (c.error || p.error) { if (semEsquema(c.error || p.error)) return SEM_CAMPANHAS; throw c.error || p.error; }
+    const lista = (c.data || []).map(x => ({ id: x.id, nome: x.nome, ordem: Number(x.ordem) || 0, encerrada: !!x.encerrada })).sort((a, b) => (a.ordem - b.ordem) || (a.id < b.id ? -1 : 1));
+    const de = {};
+    for (const x of p.data || []) (de[x.usuario_id] = de[x.usuario_id] || []).push(x.campanha_id);
+    return { lista, de, ligadas: true };
+  }
+  const comCampanhas = (membros, camps) => { for (const x of membros) x.campanhas = (camps.de[x.usuario_id] || []).filter(id => camps.lista.some(c => c.id === id)).sort(); return membros; };
+  /* O que decide o que eu posso ver: o cargo, se estou jogando, as abas e — para quem não está mestrando — as campanhas
+     de que participo. Quando isso muda, a mesa é aberta de novo. */
+  const meuJeito = m => [m.cargo, m.jogando ? 1 : 0, (m.abas || []).join(','), m.papel === 'mestre' ? '' : (m.campanhas || []).join(',')].join('|');
+  /* A campanha em vista neste aparelho: a que a pessoa escolheu por último nesta mesa; sem isso (ou se ela já não
+     está na lista), a primeira em que ainda se joga; sem nenhuma aberta, a primeira. Mesa sem campanhas: nenhuma. */
+  const CHAVE_VISTA = 'tinycats:campanha:';
+  function escolherVista(a) {
+    const l = a.campanhas || [], salva = guarda.ler(CHAVE_VISTA + a.id);
+    const c = l.find(x => x.id === salva) || l.find(x => !x.encerrada) || l[0];
+    return c ? c.id : null;
+  }
   mesas.abrir = async id => {
     const u = exigir();
-    const { data: m, error } = await cliente().from('mesas').select('id, nome, dono_id').eq('id', id).maybeSingle();
+    // (a linha inteira: num banco que já tem as campanhas ela traz `campanhas`, a conta de quantas a mesa tem)
+    const { data: m, error } = await cliente().from('mesas').select('*').eq('id', id).maybeSingle();
     if (error) throw falha(error);
     if (!m) { guarda.gravar(CHAVE_MESA, null); throw new Error('Esta mesa não existe mais, ou você saiu dela.'); }
-    const membros = await lerMembros(id).catch(e => { throw falha(e); });
+    const [membros, camps] = await Promise.all([lerMembros(id), lerCampanhas(id, 'campanhas' in m)]).catch(e => { throw falha(e); });
+    comCampanhas(membros, camps);
     const eu = membros.find(x => x.usuario_id === u.id);
     if (!eu) throw new Error('Você não participa desta mesa.');
     let codigo = null;
@@ -145,7 +175,11 @@
       codigo = cv.data ? cv.data.codigo : null;
     }
     aoVivo.parar(); dadosZerar();
-    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros };
+    /* campanhas: as que vejo ([{ id, nome, ordem, encerrada }]) · campanha: a em vista (id) · temCampanhas: a mesa tem
+       campanhas, mesmo que eu não participe de nenhuma (aí só vejo o que é do mundo) */
+    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros,
+      campanhas: camps.lista, campanha: null, temCampanhas: camps.lista.length > 0 || (Number(m.campanhas) || 0) > 0, campanhasLigadas: camps.ligadas, jeito: meuJeito(eu) };      // (campanhasLigadas: o banco desta mesa já tem as campanhas)
+    mesas.atual.campanha = escolherVista(mesas.atual);
     guarda.gravar(CHAVE_MESA, id);
     mesas.emit('muda', mesas.atual);
     aoVivo.iniciar(id);      // o registro carrega em segundo plano: a mesa já está aberta e a janela pode fechar
@@ -189,6 +223,59 @@
   /* A casca diz aqui o que fazer logo antes de a mesa ser aberta de novo por causa de uma mudança de papel (entregar o
      que os sistemas ainda seguravam). */
   mesas.antesDeReabrir = null;
+
+  /* ---- campanhas ----
+     A mesa é um mundo; cada campanha tem os jogadores, os grupos de fichas, a conversa, o acampamento, as missões do
+     grupo, as cenas e os mapas dela. O que não é de nenhuma campanha é "do mundo" e aparece em todas. Cada aparelho
+     tem uma campanha em vista (mesas.atual.campanha): é nela que a pessoa está jogando ou mestrando agora. */
+  /* "Campanha em evidência": onde se escolhe um personagem (ou uma cena, um mapa), o que é da campanha em vista vem
+     primeiro, depois o que é do mundo (sem campanha) e por fim o das outras campanhas. Devolve os grupos que têm
+     alguém, nessa ordem: [{ id, nome, vista, itens }] (id '' = do mundo; vista: é o grupo em evidência). Numa mesa sem
+     campanhas, um grupo só, sem nome. (A mesma conta está em tc/ponte.js, para os sistemas.) */
+  function agruparPorCampanha(itens, campDe, vista, lista) {
+    itens = itens || []; lista = lista || [];
+    if (!lista.length && !itens.some(x => campDe(x))) return itens.length ? [{ id: '', nome: '', vista: true, itens: itens.slice() }] : [];
+    const por = new Map(), out = [];
+    for (const x of itens) { const c = campDe(x) || ''; if (!por.has(c)) por.set(c, []); por.get(c).push(x); }
+    const nomeDe = id => { const c = lista.find(y => y.id === id); return c ? c.nome + (c.encerrada ? ' (encerrada)' : '') : 'Outra campanha'; };
+    const poe = (id, nome, v) => { if (por.has(id)) { out.push({ id, nome, vista: v, itens: por.get(id) }); por.delete(id); } };
+    if (vista) poe(vista, nomeDe(vista), true);
+    poe('', 'Do mundo', !vista);
+    for (const c of lista) poe(c.id, nomeDe(c.id), false);
+    for (const id of [...por.keys()]) poe(id, nomeDe(id), false);
+    return out;
+  }
+  TC.agruparPorCampanha = agruparPorCampanha;
+  mesas.porCampanha = (itens, campDe) => { const a = mesas.atual; return agruparPorCampanha(itens, campDe, a ? a.campanha : null, a ? a.campanhas : []); };
+  const ENCERRADA = 'Esta campanha está encerrada: só consulta. Para mexer nela, o mestre a reabre no menu da mesa.';
+  mesas.campanha = () => { const a = mesas.atual; return (a && a.campanha && a.campanhas.find(c => c.id === a.campanha)) || null; };
+  // a campanha tal está encerrada? (a conversa, as fichas, o acampamento e as missões do grupo dela são só para consulta)
+  mesas.encerrada = id => { const a = mesas.atual; return !!id && !!a && a.campanhas.some(c => c.id === id && c.encerrada); };
+  /* Troca a campanha em vista neste aparelho: a conversa da mesa ao vivo passa a ser a dela, e a casca abre as abas de
+     novo (cada sistema mostra o que é dela). */
+  mesas.verCampanha = id => {
+    const a = mesas.atual; if (!a) return null;
+    if (!a.campanhas.some(c => c.id === id)) throw new Error('Esta campanha não existe mais.');
+    if (a.campanha !== id) { a.campanha = id; guarda.gravar(CHAVE_VISTA + a.id, id); aoVivo.recarregar(); mesas.emit('muda', a); }
+    return mesas.campanha();
+  };
+  /* Organizar as campanhas — criar, renomear, encerrar ou reabrir, ordenar, dizer quem participa, apagar — é só do
+     mestre da mesa (o banco confere). Depois de cada mudança, a lista e o que mudou nos dados da mesa são lidos de novo. */
+  async function organizar(funcao, args, padrao) {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    const { data, error } = await cliente().rpc(funcao, Object.assign({ p_mesa: a.id }, args));
+    if (error) throw falha(error, semEsquema(error) ? 'As campanhas ainda não estão ligadas no banco desta mesa.' : padrao || 'Não deu para mudar as campanhas agora. Tente de novo.');
+    if (mesas.atual === a) { await recarregarMembros(); buscarNovos(); dadosBuscar(); }
+    return data;
+  }
+  /* Com `adotar`, a PRIMEIRA campanha da mesa recebe o que a mesa já tinha: as fichas, a conversa, o acampamento, as
+     missões do grupo, as cenas e os mapas; e quem já joga na mesa passa a participar dela. */
+  mesas.criarCampanha = (nome, adotar) => organizar('campanha_criar', { p_nome: String(nome || ''), p_adotar: !!adotar }, 'Não deu para criar a campanha agora. Tente de novo.');
+  mesas.mudarCampanha = (id, o) => organizar('campanha_mudar', { p_id: id, p_nome: o && o.nome != null ? String(o.nome) : null, p_encerrada: o && o.encerrada != null ? !!o.encerrada : null });
+  mesas.ordenarCampanhas = ids => organizar('campanha_ordenar', { p_ids: ids });
+  mesas.participar = (id, usuarioId, sim) => organizar('campanha_participa', { p_id: id, p_usuario: usuarioId, p_sim: !!sim });
+  mesas.apagarCampanha = id => organizar('campanha_apagar', { p_id: id });                // (só a que não guarda nada)
+  mesas.desfazerCampanhas = id => organizar('campanha_desfazer', { p_id: id });           // (só com uma campanha: tudo volta a ser da mesa)
   mesas.novoCodigo = async () => {
     const a = mesas.atual; if (!a) return null;
     const { data, error } = await cliente().rpc('novo_codigo', { p_mesa: a.id });
@@ -202,6 +289,8 @@
     if (error) throw falha(error);
     mesas.esquecer();
   };
+  // Ler de novo quem participa da mesa (e as campanhas): para a janela que vai dizer nomes não ficar um passo atrás.
+  mesas.conferirMembros = () => recarregarMembros();
   mesas.tirar = async usuarioId => {    // mestre tira um jogador
     const a = mesas.atual; if (!a) return;
     const { error } = await cliente().from('mesa_membros').delete().eq('mesa_id', a.id).eq('usuario_id', usuarioId);
@@ -221,8 +310,11 @@
   async function conferirNome() {
     const a = mesas.atual; if (!a) return;
     try {
-      const { data } = await cliente().from('mesas').select('nome').eq('id', a.id).maybeSingle();
-      if (data && mesas.atual === a && data.nome && data.nome !== a.nome) { a.nome = data.nome; mesas.emit('muda', a); }
+      const { data } = await cliente().from('mesas').select('*').eq('id', a.id).maybeSingle();
+      if (!data || mesas.atual !== a) return;
+      // (quem não participa de nenhuma campanha fica sabendo por aqui que a mesa passou a ter — ou deixou de ter — campanhas)
+      const tem = a.campanhas.length > 0 || (Number(data.campanhas) || 0) > 0, ligadas = 'campanhas' in data;
+      if ((data.nome && data.nome !== a.nome) || tem !== a.temCampanhas || ligadas !== a.campanhasLigadas) { if (data.nome) a.nome = data.nome; a.temCampanhas = tem; a.campanhasLigadas = ligadas; mesas.emit('muda', a); }
     } catch (e) { /* sem rede: a próxima volta confere */ }
   }
   /* Os arquivos da mesa (imagens de mapas, tokens e retratos) ficam numa pasta com o id dela. Apagar a mesa leva a
@@ -254,31 +346,48 @@
   async function recarregarMembros() {
     const a = mesas.atual; if (!a) return;
     try {
-      const membros = await lerMembros(a.id);
+      const [membros, camps] = await Promise.all([lerMembros(a.id), lerCampanhas(a.id, a.campanhasLigadas)]);
       if (mesas.atual !== a) return;
+      comCampanhas(membros, camps);
       const eu = membros.find(x => x.usuario_id === (conta.usuario && conta.usuario.id));
       if (!eu) { mesas.esquecer(); mesas.emit('removido'); return; }
       /* O meu papel mudou — o mestre me nomeou auxiliar, mexeu nas minhas abas ou me devolveu a jogador; ou eu mesmo
-         alternei entre mestrar e jogar em outro aparelho. O que posso ver é outro: a mesa é aberta de novo. */
-      if (meuJeito(eu) !== meuJeito(a)) {
+         alternei entre mestrar e jogar em outro aparelho —, ou mudaram as campanhas de que participo. O que posso ver é
+         outro: a mesa é aberta de novo. */
+      if (meuJeito(eu) !== a.jeito) {
         if (reabrindo) return;
         reabrindo = true;
-        const antes = { cargo: a.cargo, jogando: a.jogando, abas: a.abas.slice() };
+        const antes = { cargo: a.cargo, jogando: a.jogando, abas: a.abas.slice(), campanhas: a.campanhas.map(c => c.id) };
         try {
+          /* A mesa reabre na campanha que a pessoa estava vendo: quem vira auxiliar (e passa a ver todas), ou entra em
+             mais uma, não é levado para outra campanha sem pedir. */
+          if (a.campanha) guarda.gravar(CHAVE_VISTA + a.id, a.campanha);
           if (typeof mesas.antesDeReabrir === 'function') { try { mesas.antesDeReabrir(); } catch (e) { console.error(e); } }
           const nova = await mesas.abrir(a.id);
-          mesas.emit('permissao', antes, { cargo: nova.cargo, jogando: nova.jogando, abas: nova.abas.slice() });
+          mesas.emit('permissao', antes, { cargo: nova.cargo, jogando: nova.jogando, abas: nova.abas.slice(), campanhas: nova.campanhas.map(c => c.id) });
         } finally { reabrindo = false; }
         return;
       }
       a.membros = membros; mesas.emit('membros', membros);
+      /* As campanhas mudaram (o mestre criou, renomeou, encerrou, reordenou ou apagou uma)? A lista acompanha; se a que
+         estava em vista saiu, outra entra no lugar — e a conversa da mesa ao vivo passa a ser a dela. */
+      const jAntes = JSON.stringify(a.campanhas), vistaAntes = a.campanha, tinha = a.temCampanhas;
+      a.campanhas = camps.lista;
+      if (a.papel === 'mestre') a.temCampanhas = camps.lista.length > 0;      // (quem mestra vê todas: a lista diz tudo)
+      else if (camps.lista.length) a.temCampanhas = true;
+      if (!a.campanhas.some(c => c.id === a.campanha)) a.campanha = escolherVista(a);
+      if (JSON.stringify(a.campanhas) !== jAntes || a.campanha !== vistaAntes || a.temCampanhas !== tinha) {
+        if (a.campanha !== vistaAntes) aoVivo.recarregar();
+        mesas.emit('campanhas', a.campanhas);
+        mesas.emit('muda', a);
+      }
     } catch (e) { /* sem rede: tenta de novo na próxima volta */ }
   }
 
   /* ---------------- mesa ao vivo ---------------- */
   const LIMITE = 300;          // linhas guardadas na tela
   const aoVivo = emissor({ itens: [], conectado: false, segredo: false });
-  let mesaId = null, canal = null, relogio = 0, volta = 0, maxRev = 0, folga = 0, buscando = false;
+  let mesaId = null, canal = null, canalCamp = null, relogio = 0, volta = 0, maxRev = 0, folga = 0, buscando = false;
 
   const online = m => !!(m && m.visto_em && (Date.now() + folga - Date.parse(m.visto_em)) < 75000);
   aoVivo.online = online;
@@ -286,9 +395,19 @@
      relógio do banco (o do aparelho pode estar errado). */
   aoVivo.idade = l => { const t = l ? Date.parse(l.atualizado_em || l.criado_em || '') : NaN; return isFinite(t) ? Math.max(0, Date.now() + folga - t) : 0; };
 
-  function aplicar(linha, silencioso) {
+  /* Cada campanha tem a sua conversa. O painel mostra as linhas da campanha em vista e as "do mundo" (sem campanha);
+     numa mesa sem campanhas, todas são do mundo. Quem mestra recebe do banco as linhas de todas as campanhas: as das
+     outras não entram aqui. */
+  const vista = () => (mesas.atual && mesas.atual.campanha) || null;
+  const daVista = q => { const c = vista(); return c ? q.or('campanha.is.null,campanha.eq.' + c) : q; };
+  /* `avulsa`: a linha chegou sozinha — é a volta de uma gravação daqui —, não numa leitura em ordem nem pelo aviso em
+     tempo real. Uma linha assim não diz nada sobre as outras: não empurra a marca de "até onde já li" (maxRev). Se
+     empurrasse, a leitura seguinte pularia o que os outros escreveram logo antes e este aparelho ainda não leu — quem
+     falasse assim que abre a mesa, logo depois de outra pessoa, ficava sem ver a fala dela. */
+  function aplicar(linha, silencioso, avulsa) {
     if (!linha || linha.mesa_id !== mesaId) return;
-    if (linha.rev > maxRev) maxRev = linha.rev;
+    if (!avulsa && linha.rev > maxRev) maxRev = linha.rev;
+    if (linha.campanha && linha.campanha !== vista()) return;
     const i = aoVivo.itens.findIndex(x => x.id === linha.id);
     if (linha.apagado) { if (i >= 0) { aoVivo.itens.splice(i, 1); if (!silencioso) aoVivo.emit('saiu', linha); } return; }
     if (i >= 0) {
@@ -307,24 +426,26 @@
      Então a faixa da leitura anterior é conferida de novo, só com o nome e a revisão de cada linha, e a que não
      estiver aqui é lida inteira. (Só há o que conferir quando algo chegou na leitura anterior.) */
   let anterior = null;             // até onde ia o registro antes da última leitura
+  let leitura = 0;                 // muda quando o painel recomeça (outra mesa, outra campanha em vista): o que estava sendo lido antes não vale mais
   async function buscarNovos() {
     if (!mesaId || buscando) return;
     buscando = true;
-    const id = mesaId, de = maxRev;
+    const id = mesaId, de = maxRev, minhaLeitura = leitura;
     try {
-      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).gt('rev', de).order('rev').limit(200);
-      if (!error && id === mesaId) for (const l of data || []) aplicar(l);
-      if (!error && id === mesaId && anterior != null && anterior < de) {
-        const leve = await cliente().from('registro').select('id,rev,apagado').eq('mesa_id', id).gt('rev', anterior).lte('rev', de).limit(1000);
-        if (!leve.error && id === mesaId) {
+      const { data, error } = await daVista(cliente().from('registro').select('*').eq('mesa_id', id).gt('rev', de)).order('rev').limit(200);
+      const vale = () => id === mesaId && leitura === minhaLeitura;            // (a mesa não fechou, e a campanha em vista não mudou no meio)
+      if (!error && vale()) for (const l of data || []) aplicar(l);
+      if (!error && vale() && anterior != null && anterior < de) {
+        const leve = await daVista(cliente().from('registro').select('id,rev,apagado').eq('mesa_id', id).gt('rev', anterior).lte('rev', de)).limit(1000);
+        if (!leve.error && vale()) {
           const faltam = (leve.data || []).filter(x => { const l = aoVivo.itens.find(y => y.id === x.id); return l ? (l.rev || 0) < x.rev : !x.apagado; }).map(x => x.id);
           if (faltam.length) {
             const r = await cliente().from('registro').select('*').eq('mesa_id', id).in('id', faltam.slice(0, 200));
-            if (!r.error && id === mesaId) for (const l of (r.data || []).sort((a, b) => a.rev - b.rev)) aplicar(l);
+            if (!r.error && vale()) for (const l of (r.data || []).sort((a, b) => a.rev - b.rev)) aplicar(l);
           }
         }
       }
-      if (!error && id === mesaId) anterior = de;
+      if (!error && vale()) anterior = de;
     } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
     buscando = false;
   }
@@ -343,11 +464,12 @@
      periódica ainda confere de novo a faixa das últimas linhas: uma que estivesse sendo escrita no instante em que
      a mesa abriu pode ter revisão menor que a mais alta. */
   async function carregarItens(id) {
+    const minhaLeitura = leitura;
     try {
       const topo = await cliente().from('registro').select('rev').eq('mesa_id', id).order('rev', { ascending: false }).limit(1);
-      const { data, error } = await cliente().from('registro').select('*').eq('mesa_id', id).eq('apagado', false).order('criado_em', { ascending: false }).limit(200);
+      const { data, error } = await daVista(cliente().from('registro').select('*').eq('mesa_id', id).eq('apagado', false)).order('criado_em', { ascending: false }).limit(200);
       if (error) throw error;
-      if (mesaId !== id) return;
+      if (mesaId !== id || leitura !== minhaLeitura) return;
       for (const l of (data || []).reverse()) aplicar(l, true);
       const ate = topo.error ? null : topo.data && topo.data[0] ? topo.data[0].rev : 0;
       if (ate != null) maxRev = ate;                         // (sem a revisão mais alta, vale a maior das linhas lidas)
@@ -355,14 +477,31 @@
       anterior = ate != null && recentes.length ? Math.min(ate, recentes[Math.min(recentes.length, 20) - 1]) - 1 : null;
     } catch (e) { /* começa vazio; a leitura periódica completa depois */ }
   }
+  /* A campanha em vista mudou: o painel recomeça, com a conversa dela. */
+  aoVivo.recarregar = async () => {
+    const id = mesaId; if (!id) return;
+    const minha = ++leitura;
+    maxRev = 0; anterior = null; aoVivo.itens = [];
+    aoVivo.emit('reinicio');
+    await carregarItens(id);
+    if (mesaId === id && leitura === minha) aoVivo.emit('reinicio');
+  };
   aoVivo.iniciar = async id => {
     aoVivo.parar();
-    mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = [];
+    mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = []; leitura++;
     // (o "em segredo" lembrado só vale para quem está mestrando: o auxiliar que passou a jogar como jogador não rola em segredo)
     aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1' && !!mesas.atual && mesas.atual.papel === 'mestre';
     await carregarItens(id);
     if (mesaId !== id) return;
     aoVivo.emit('reinicio');
+    /* As campanhas e quem participa delas têm um canal só delas: num banco de antes das campanhas essas tabelas não
+       existem, e o pedido de avisos delas não pode derrubar os avisos do resto. */
+    if (mesas.atual && mesas.atual.campanhasLigadas) try {
+      canalCamp = cliente().channel('mesa-camp-' + id)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'campanhas', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'campanha_membros', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
+        .subscribe();
+    } catch (e) { canalCamp = null; }
     try {
       canal = cliente().channel('mesa-' + id)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => {
@@ -391,7 +530,8 @@
   aoVivo.parar = () => {
     clearInterval(relogio); relogio = 0;
     if (canal) { try { cliente().removeChannel(canal); } catch (e) { /* já fechado */ } canal = null; }
-    mesaId = null; aoVivo.itens = [];
+    if (canalCamp) { try { cliente().removeChannel(canalCamp); } catch (e) { /* já fechado */ } canalCamp = null; }
+    mesaId = null; aoVivo.itens = []; leitura++;
     if (aoVivo.conectado) { aoVivo.conectado = false; aoVivo.emit('estado', false); }
   };
   document.addEventListener('visibilitychange', () => { if (!document.hidden && mesaId) { buscarNovos(); dadosBuscar(); presenca(); } });
@@ -406,18 +546,21 @@
       if (aoVivo.imagemValida(quem.av)) dados.av = quem.av;
     }
     const linha = { mesa_id: a.id, id: opt.id || novoId(tipo === 'rolagem' ? 'r' : 'm'), tipo, origem: opt.origem || 'mesa', secreta: !!opt.secreta && a.papel === 'mestre', dados };
+    // a linha é da campanha em vista (numa mesa sem campanhas, de nenhuma); numa campanha encerrada ninguém escreve
+    if (mesas.encerrada(a.campanha)) throw new Error(ENCERRADA);
+    if (a.campanha) linha.campanha = a.campanha;
     const { data, error } = await cliente().from('registro').insert(linha).select().single();
     if (error) {
       // a mesma rolagem publicada duas vezes (duelo que ganhou outra rodada, ou duas abas abertas): atualiza a que já existe
       if (error.code === '23505' && opt.unico) throw new Error(opt.unico);     // (essa linha só existe uma vez: a primeira vale)
       if (error.code === '23505' && opt.id) {
         const up = await cliente().from('registro').update({ dados }).eq('mesa_id', a.id).eq('id', opt.id).select().maybeSingle();
-        if (up.data) aplicar(up.data);
+        if (up.data) aplicar(up.data, false, true);
         return up.data;
       }
       throw falha(error, 'Não deu para enviar agora. Tente de novo.');
     }
-    aplicar(data);
+    aplicar(data, false, true);
     return data;
   }
   aoVivo.fala = texto => gravar('fala', { texto: String(texto).slice(0, 1500) });
@@ -427,18 +570,18 @@
     const a = mesas.atual; if (!a) return;
     const { data, error } = await cliente().from('registro').update({ secreta: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
     if (error) throw falha(error);
-    if (data) aplicar(data);
+    if (data) aplicar(data, false, true);
   };
   aoVivo.apagar = async id => {
     const a = mesas.atual; if (!a) return;
     const { data, error } = await cliente().from('registro').update({ apagado: true }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
     if (error) throw falha(error);
-    if (data) aplicar(data); else aplicar({ mesa_id: a.id, id, apagado: true, rev: 0 });
+    if (data) aplicar(data, false, true); else aplicar({ mesa_id: a.id, id, apagado: true, rev: 0 }, false, true);
   };
   aoVivo.desfazerApagar = async id => {
     const a = mesas.atual; if (!a) return;
     const { data } = await cliente().from('registro').update({ apagado: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
-    if (data) aplicar(data);
+    if (data) aplicar(data, false, true);
   };
   /* O mestre limpa o painel inteiro — conversa e rolagens —, para todos. As linhas ficam marcadas como apagadas (as
      antigas também, para não voltarem ao recarregar). Devolve { n, desfazer }: desfazer traz de volta exatamente as
@@ -446,7 +589,11 @@
   aoVivo.limpar = async () => {
     const a = mesas.atual;
     if (!a || a.papel !== 'mestre') throw new Error('Só o mestre limpa a mesa ao vivo.');
-    const { data, error, count } = await cliente().from('registro').update({ apagado: true }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', false).select('id,atualizado_em');
+    if (mesas.encerrada(a.campanha)) throw new Error(ENCERRADA);
+    // (com campanhas, sai o que este painel mostra: a conversa da campanha em vista e a que é do mundo)
+    /* (a campanha vai entre as colunas devolvidas: o filtro "desta campanha ou de nenhuma" é conferido também sobre o
+        que a gravação devolve, e sem a coluna ali o banco recusa o pedido inteiro) */
+    const { data, error, count } = await daVista(cliente().from('registro').update({ apagado: true }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', false)).select('id,atualizado_em' + (vista() ? ',campanha' : ''));
     if (error) throw falha(error, 'Não deu para limpar agora. Tente de novo.');
     const quando = data && data[0] ? data[0].atualizado_em : null, n = count == null ? (data || []).length : count;
     if (mesaId === a.id) { aoVivo.itens = []; aoVivo.emit('reinicio'); }
@@ -454,12 +601,21 @@
       n,
       desfazer: async () => {
         if (!quando) return 0;
-        const r = await cliente().from('registro').update({ apagado: false }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', true).eq('atualizado_em', quando);
+        const r = await cliente().from('registro').update({ apagado: false }, { count: 'exact' }).eq('mesa_id', a.id).eq('apagado', true).eq('atualizado_em', quando);      // (todas as linhas de uma limpeza levam a mesma hora)
         if (r.error) throw falha(r.error, 'Não deu para desfazer agora.');
         if (mesaId === a.id) { await carregarItens(a.id); if (mesaId === a.id) aoVivo.emit('reinicio'); }
         return r.count || 0;
       },
     };
+  };
+  // quantas linhas à vista a conversa sem campanha tem (é o que a primeira campanha da mesa recebe)
+  aoVivo.contarDoMundo = async () => {
+    const a = mesas.atual; if (!a) return 0;
+    let q = cliente().from('registro').select('id', { count: 'exact', head: true }).eq('mesa_id', a.id).eq('apagado', false);
+    if (a.campanhasLigadas) q = q.is('campanha', null);
+    const { count, error } = await q;
+    if (error) throw falha(error);
+    return count || 0;
   };
   aoVivo.definirSegredo = v => {
     aoVivo.segredo = !!v && !!mesas.atual && mesas.atual.papel === 'mestre';
@@ -620,7 +776,7 @@
     const dados = Object.assign({}, l.dados, { pd: Object.assign({}, l.dados.pd, { fim: fim === 'aplicado' ? 'aplicado' : 'cancelado' }) });
     const { data, error } = await cliente().from('registro').update({ dados }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
     if (error) throw falha(error, 'Não deu para encerrar o pedido agora.');
-    if (data) aplicar(data);
+    if (data) aplicar(data, false, true);
     return data;
   };
 
@@ -707,9 +863,20 @@
      e manda para o banco só os campos que mudaram. O que ainda não subiu continua valendo aqui até subir;
      se a rede cair, tenta de novo sozinho. Cada linha: { id, ...campos, rev }. */
   const TABELAS = {
-    personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado'],
-    documentos: ['dono_id', 'vis', 'dados'],
+    personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado', 'campanha'],
+    documentos: ['dono_id', 'vis', 'dados', 'campanhas'],
   };
+  /* A campanha de um personagem (uma, ou nenhuma: do mundo) e as de um documento (uma lista; vazia: do mundo). Num banco
+     de antes das campanhas essas colunas não existem — a linha que chega sem elas não "chegou incompleta". */
+  const OPCIONAIS = ['campanha', 'campanhas'];
+  /* Campanha encerrada: as fichas dela e os documentos "dela" (nome@campanha: o acampamento, as missões do grupo) são só
+     para consulta — o banco recusa, do mestre também. Aqui a gravação nem sai: quem pediu recebe um aviso e a linha de
+     volta, como está, para a tela dele voltar atrás. */
+  function trancada(nome, id, l, campos) {
+    if (nome === 'personagens') return mesas.encerrada(l ? l.campanha : null) || (campos.campanha != null && mesas.encerrada(campos.campanha));
+    const i = String(id).indexOf('@');
+    return i > 0 && mesas.encerrada(String(id).slice(i + 1));
+  }
   const dados = emissor({ pendentes: 0, erro: null });
   let cols = {};
 
@@ -893,7 +1060,7 @@
     const r = p && p.new;
     if (!r || !r.id) return;
     const c = cols[nome], l = c ? c.linhas.get(r.id) : null;
-    const falta = k => r[k] === undefined || (r[k] === null && !!l && l[k] != null);
+    const falta = k => !OPCIONAIS.includes(k) && (r[k] === undefined || (r[k] === null && !!l && l[k] != null));
     if ((p.errors && p.errors.length) || TABELAS[nome].some(falta)) { buscarLinha(nome, r.id); return; }
     dadosRemoto(nome, r);
   }
@@ -1179,6 +1346,13 @@
     let l = c.linhas.get(id);
     const suj = c.sujos.get(id) || new Set();
     campos = campos || {};
+    // (num banco de antes das campanhas essas colunas não existem: o que viesse nelas faria a gravação inteira falhar)
+    if (!mesas.atual.campanhasLigadas && OPCIONAIS.some(k => campos[k] !== undefined)) { campos = Object.assign({}, campos); for (const k of OPCIONAIS) delete campos[k]; }
+    if (trancada(nome, id, l, campos)) {
+      dados.emit('recusado', nome, id, ENCERRADA);
+      dados.emit('muda', nome, l || { id, apagado: true }, 'remota', null);
+      return l || null;
+    }
     /* opt.cas: este documento é gravado conferindo a versão (ver enviarComVersao). O ponto de partida é o documento
        como está aqui antes desta mudança — se já não há outra mudança dele por subir (aí o ponto de partida é o dela). */
     if (nome === 'documentos' && opt && opt.cas && l && !campos.apagado && campos.dados !== undefined) {
@@ -1193,7 +1367,12 @@
       dados.emit('muda', nome, { id, apagado: true }, 'local', de);
     } else {
       const nova = !l, comMuda = nome === 'personagens' && !nova;
-      if (nova) { l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado'); }
+      if (nova) {
+        l = { mesa_id: c.mesa, id, rev: 0, apagado: false }; suj.add('*'); suj.delete('apagado');
+        /* O documento novo nasce aqui como vai nascer no banco: de campanha nenhuma — ou, o "nome@campanha", só dela.
+           Sem isso a volta da própria gravação (que traz a coluna) pareceria uma mudança feita por outra pessoa. */
+        if (nome === 'documentos' && mesas.atual.campanhasLigadas) { const i = String(id).indexOf('@'); l.campanhas = i > 0 ? [String(id).slice(i + 1)] : []; }
+      }
       else l = Object.assign({}, l);
       let mudou = nova;
       for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(comMuda && JUNTAM.includes(k))) { l[k] = campos[k]; suj.add(k); mudou = true; }
@@ -1324,22 +1503,26 @@
   const imgBase = () => CFG.url + '/storage/v1/object/public/mesas/';
   aoVivo.imagemValida = u => typeof u === 'string' && u.length < 500 && !!mesas.atual && u.startsWith(imgBase() + mesas.atual.id + '/');
   function linhasPcs() { const c = cols.personagens; return c && !c.morta && mesas.atual && c.mesa === mesas.atual.id ? [...c.linhas.values()] : []; }
-  const resumoPc = l => ({ id: l.id, nome: l.nome || 'Sem nome', av: l.ficha && aoVivo.imagemValida(l.ficha.img) ? l.ficha.img : null });
+  const resumoPc = l => ({ id: l.id, nome: l.nome || 'Sem nome', av: l.ficha && aoVivo.imagemValida(l.ficha.img) ? l.ficha.img : null, camp: l.campanha || null });
+  /* Os personagens com que a pessoa pode falar e rolar: o jogador, os que ele controla; quem mestra, todos. Com
+     campanhas, primeiro os da campanha em vista, depois os do mundo, depois os das outras. */
   aoVivo.personagens = () => {
     const a = mesas.atual; if (!a || !conta.usuario) return [];
-    const eu = conta.usuario.id;
-    return linhasPcs().filter(l => a.papel === 'mestre' || l.dono_id === eu).sort((x, y) => ((x.ordem || 0) - (y.ordem || 0)) || (x.id < y.id ? -1 : 1)).map(resumoPc);
+    const eu = conta.usuario.id, peso = l => (!l.campanha ? 1 : l.campanha === a.campanha ? 0 : 2);
+    return linhasPcs().filter(l => a.papel === 'mestre' || l.dono_id === eu).sort((x, y) => (peso(x) - peso(y)) || ((x.ordem || 0) - (y.ordem || 0)) || (x.id < y.id ? -1 : 1)).map(resumoPc);
   };
   aoVivo.personagem = id => { const l = linhasPcs().find(x => x.id === id); return l ? resumoPc(l) : null; };
+  // (a escolha é guardada por mesa e por campanha em vista: quem joga em duas campanhas tem um personagem em cada)
+  const chaveComo = a => 'tinycats:como:' + a.id + (a.campanha ? '@' + a.campanha : '');
   aoVivo.como = () => {
     const a = mesas.atual; if (!a) return null;
-    const esc = guarda.ler('tinycats:como:' + a.id);
+    const esc = guarda.ler(chaveComo(a));
     if (esc === '-') return null;                                   // escolheu falar sem personagem
     const lista = aoVivo.personagens(), p = lista.find(x => x.id === esc);
     if (p) return p;
     return a.papel === 'mestre' ? null : (lista[0] || null);         // o jogador fala com o personagem dele; o mestre, como mestre
   };
-  aoVivo.falarComo = id => { const a = mesas.atual; if (!a) return; guarda.gravar('tinycats:como:' + a.id, id || '-'); aoVivo.emit('como', aoVivo.como()); };
+  aoVivo.falarComo = id => { const a = mesas.atual; if (!a) return; guarda.gravar(chaveComo(a), id || '-'); aoVivo.emit('como', aoVivo.como()); };
   dados.on('muda', col => { if (col === 'personagens') aoVivo.emit('como', aoVivo.como()); });
 
   /* ---------------- imagens da mesa ---------------- */

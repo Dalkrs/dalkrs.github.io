@@ -1,7 +1,7 @@
 // Acampamento numa mesa de verdade (projeto real): a roda com os personagens dos jogadores, o descanso que mexe nas
 // fichas (barras, Sanidade, Conforto, poderes) e gasta provisões, o Desfazer, o momento entre dois personagens,
 // a imagem de fundo no banco — e o jogador vendo tudo sem poder mexer.
-const { start, checker } = require('./lib');
+const { start, checker, BANCO } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const R = require('../../tc/rules.js');
@@ -161,7 +161,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
     const dt = new DataTransfer(); dt.items.add(new File([blob], 'fundo.png', { type: 'image/png' }));
     const arq = document.querySelector('#arq'); arq.files = dt.files; arq.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  ok(await ate(async () => { const d = await doc(M); return d.dados.fundo && d.dados.fundo.url.startsWith('https://kzvhiuhbnsfkmhhgvqlm.supabase.co/storage/v1/object/public/mesas/' + mesaId + '/'); }, 25000), 'o fundo escolhido pelo mestre fica guardado no banco');
+  ok(await ate(async () => { const d = await doc(M); return d.dados.fundo && d.dados.fundo.url.startsWith(BANCO + '/storage/v1/object/public/mesas/' + mesaId + '/'); }, 25000), 'o fundo escolhido pelo mestre fica guardado no banco');
   ok(await ate(async () => (await B.locator('#cena16 img.fundo').count()) === 1 && await B.locator('#cena16 img.fundo').evaluate(el => el.naturalWidth === 640)), 'e aparece para o jogador');
 
   if (process.env.FOTOS) { await M.screenshot({ path: process.env.FOTOS + '/acamp-mestre.png' }); await J.locator('#tab-acampamento').click(); await w(400, J); await B.locator('#tab-grupo').click(); await w(300, J); await J.screenshot({ path: process.env.FOTOS + '/acamp-jogador.png' }); }

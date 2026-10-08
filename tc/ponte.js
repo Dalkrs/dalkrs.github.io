@@ -3,6 +3,9 @@
      TC.ponte.estado / aoMudar   — qual mesa está aberta, o papel de quem usa, quem participa
      TC.ponte.mestra(aba)        — quem usa mestra essa aba? (o mestre, todas; o auxiliar, as que o mestre liberou)
      TC.ponte.barrasDaFicha(id, rec, sob) — leva à ficha as barras de um token cuja ficha não chega a quem mexeu
+     TC.ponte.estado.campanha    — a campanha em vista: { id, nome, encerrada } | null (mesa sem campanhas, ou a pessoa em nenhuma)
+     TC.ponte.porCampanha(itens, campDe) — "campanha em evidência": os itens agrupados, os da campanha em vista primeiro
+     TC.ponte.incluirNaCampanha(o) — pede à casca que pergunte ao mestre se inclui alguém numa campanha
      TC.ponte.pronta             — promessa: resolve quando o estado chegou (ou logo, se não há casca)
      TC.ponte.publicar           — "rolei isto": a casca decide se e como vai para a mesa ao vivo
      TC.dados.col(nome)          — personagens e documentos da mesa aberta (só dentro da casca, com mesa)
@@ -22,14 +25,46 @@
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* navegador sem BroadcastChannel: só funciona dentro da casca */ }
   const ouvintes = [], ouvintesIr = [], ouvintesFechar = [], ouvintesRegistro = [];
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
+  /* "Campanha em evidência": onde se escolhe um personagem (ou uma cena, um mapa), o que é da campanha em vista vem
+     primeiro, depois o que é do mundo (sem campanha) e por fim o das outras campanhas. Devolve os grupos que têm
+     alguém, nessa ordem: [{ id, nome, vista, itens }] (id '' = do mundo; vista: é o grupo em evidência). Numa mesa sem
+     campanhas, um grupo só, sem nome. (A mesma conta está em tc/tc.js, para a casca.) */
+  function agruparPorCampanha(itens, campDe, vista, lista) {
+    itens = itens || []; lista = lista || [];
+    if (!lista.length && !itens.some(x => campDe(x))) return itens.length ? [{ id: '', nome: '', vista: true, itens: itens.slice() }] : [];
+    const por = new Map(), out = [];
+    for (const x of itens) { const c = campDe(x) || ''; if (!por.has(c)) por.set(c, []); por.get(c).push(x); }
+    const nomeDe = id => { const c = lista.find(y => y.id === id); return c ? c.nome + (c.encerrada ? ' (encerrada)' : '') : 'Outra campanha'; };
+    const poe = (id, nome, v) => { if (por.has(id)) { out.push({ id, nome, vista: v, itens: por.get(id) }); por.delete(id); } };
+    if (vista) poe(vista, nomeDe(vista), true);
+    poe('', 'Do mundo', !vista);
+    for (const c of lista) poe(c.id, nomeDe(c.id), false);
+    for (const id of [...por.keys()]) poe(id, nomeDe(id), false);
+    return out;
+  }
+  TC.agruparPorCampanha = agruparPorCampanha;
   const ponte = {
     /* mesa: { id, nome } | null · eu: id do usuário · membros: [{ id, nome, papel, cargo, cor }]
        papel: 'mestre' | 'jogador' | null — o de quem usa, NESTA aba: 'mestre' se ele a mestra (o mestre da mesa, ou o
          mestre auxiliar com esta aba liberada, enquanto está mestrando); 'jogador' se não.
        cargo: 'mestre' | 'auxiliar' | 'jogador' — o que a pessoa é na mesa · jogando: o auxiliar está jogando como jogador
        mestra: { cenas, mundo, acampamento, fichas, arvore, rolador } — o que ela mestra, aba por aba (null numa casca antiga) */
-    estado: { mesa: null, papel: null, cargo: null, jogando: false, mestra: null, segredo: false, eu: null, membros: [], v: 1 },
+    /* campanha: a campanha em vista neste aparelho ({ id, nome, encerrada }), ou null · campanhas: as que a pessoa vê, na
+         ordem do mestre ([{ id, nome, encerrada }]) · temCampanhas: a mesa tem campanhas (mesmo que a pessoa não esteja
+         em nenhuma) · de cada participante, `campanhas`: as de que ele participa (ids). Quando a campanha em vista
+         muda, a casca abre o sistema de novo: dá para ler isto uma vez só, na partida. */
+    estado: { mesa: null, papel: null, cargo: null, jogando: false, mestra: null, segredo: false, eu: null, membros: [], campanha: null, campanhas: [], temCampanhas: false, v: 1 },
     naCasca,
+    porCampanha(itens, campDe) { const e = ponte.estado; return agruparPorCampanha(itens, campDe, e.campanha ? e.campanha.id : null, e.campanhas || []); },
+    /* Uma ficha de uma campanha ficou com alguém que não participa dela: a casca pergunta ao mestre se é para incluir
+       essa pessoa (só o mestre da mesa organiza as campanhas). o = { usuarios: [ids], campanha, ficha: nome da ficha } */
+    incluirNaCampanha(o) {
+      if (!naCasca || !ponte.estado.mesa || !o || !o.campanha) return false;
+      const usuarios = (Array.isArray(o.usuarios) ? o.usuarios : o.usuario ? [o.usuario] : []).filter(x => typeof x === 'string');
+      if (!usuarios.length) return false;
+      enviar({ t: 'campanha.incluir', usuarios, campanha: o.campanha, ficha: o.ficha || '', mesa: ponte.estado.mesa.id });
+      return true;
+    },
     /* Quem usa mestra a aba tal? Serve para um sistema que mexe no que é de outra aba (o Acampamento e os segredos
        das fichas, por exemplo). Uma casca de antes do mestre auxiliar não diz aba por aba: lá, quem é mestre mestra tudo. */
     mestra(aba) { const e = ponte.estado; return e.mestra && typeof e.mestra === 'object' ? !!e.mestra[aba] : e.papel === 'mestre'; },
@@ -171,9 +206,11 @@
     }
     if (m.t === 'estado') {
       // v: a versão da conversa com a casca (2: ela entende a disputa e a defesa das Cenas e o pedido de defesa;
-      //    3: diz o cargo de cada um e o que quem usa mestra, aba por aba)
+      //    3: diz o cargo de cada um e o que quem usa mestra, aba por aba; 4: diz a campanha em vista e as campanhas)
+      const camps = Array.isArray(m.campanhas) ? m.campanhas.filter(c => c && typeof c.id === 'string').map(c => ({ id: c.id, nome: String(c.nome || ''), encerrada: !!c.encerrada })) : [];
       ponte.estado = { mesa: m.mesa || null, papel: m.papel || null, cargo: m.cargo || (m.papel || null), jogando: !!m.jogando, mestra: m.mestra && typeof m.mestra === 'object' ? m.mestra : null,
-        segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [], v: Number(m.v) || 1 };
+        segredo: !!m.segredo, eu: m.eu || null, membros: m.membros || [],
+        campanha: (m.campanha && camps.find(c => c.id === m.campanha.id)) || null, campanhas: camps, temCampanhas: !!m.temCampanhas || camps.length > 0, v: Number(m.v) || 1 };
       avisar(ponte.estado);
       for (const f of ouvintes.slice()) { try { f(ponte.estado); } catch (e) { console.error(e); } }
     } else if (m.t === 'dados.tudo' && esperas[m.n]) {

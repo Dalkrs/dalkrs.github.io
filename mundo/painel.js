@@ -563,18 +563,27 @@
       o.marcado == null ? null : h('i', { class: 'marca' }, o.marcado ? glifo(CHECK_SVG, 14) : null),
       h('span', { text: texto }), o.tag ? h('small', { text: o.tag }) : null);
     const sep = () => h('hr', { role: 'separator' });
-    if (App.mapas.length) {
-      itens.push(h('div', { class: 'menu-tit', role: 'presentation', text: mestre ? 'Mapas' : 'Mapas da mesa' }));
-      for (const x of App.mapas) {
-        const tags = [];
-        if (App.naMesa && App.mostrado === x.id) tags.push(mestre ? 'mostrando' : 'o mestre mostra');
-        if (mestre && x.oculto) tags.push('escondido');
-        itens.push(item(x.nome, () => { if (!m || m.id !== x.id) App.trocarMapa(x.id); }, { role: 'menuitemradio', marcado: !!m && m.id === x.id, tag: tags.join(' · ') }));
-      }
-    } else itens.push(h('p', { class: 'menu-nada', text: mestre ? 'Nenhum mapa ainda.' : 'O mestre ainda não mostrou nenhum mapa.' }));
+    const titulo = t => h('div', { class: 'menu-tit', role: 'presentation', text: t });
+    const cv = campanhaEmVista();
+    const linhaMapa = x => {
+      const tags = [];
+      if (App.naMesa && App.mostrado === x.id) tags.push(mestre ? 'mostrando' : 'o mestre mostra');
+      if (mestre && x.oculto) tags.push('escondido');
+      if (mestre && (x.camps || []).length > 1) tags.push('em ' + x.camps.length + ' campanhas');
+      return item(x.nome, () => { if (!m || m.id !== x.id) App.trocarMapa(x.id); }, { role: 'menuitemradio', marcado: !!m && m.id === x.id, tag: tags.join(' · ') });
+    };
+    if (App.mapas.length && cv) {
+      // com campanhas: primeiro os mapas da campanha em vista, depois os do mundo (que aparecem em todas)
+      const dela = App.mapas.filter(x => (x.camps || []).includes(cv.id)), mundo = App.mapas.filter(x => !(x.camps || []).includes(cv.id));
+      if (dela.length) itens.push(titulo('Mapas · ' + cv.nome), dela.map(linhaMapa));
+      if (mundo.length) itens.push(titulo('Do mundo'), mundo.map(linhaMapa));
+    } else if (App.mapas.length) {
+      itens.push(titulo(mestre ? 'Mapas' : 'Mapas da mesa'), App.mapas.map(linhaMapa));
+    } else itens.push(h('p', { class: 'menu-nada', text: mestre ? (cv ? 'Nenhum mapa nesta campanha ainda.' : 'Nenhum mapa ainda.') : 'O mestre ainda não mostrou nenhum mapa.' }));
     if (mestre) {
       itens.push(sep(), item('Novo mapa…', novoMapa));
       if (m) itens.push(item('Renomear…', renomearMapa), item('Duplicar', duplicarMapa));
+      if (m && temCampanhas() && App.organizaCampanhas()) itens.push(item('Campanhas deste mapa…', campanhasDoMapa));
       if (App.naMesa && m) {
         itens.push(sep(),
           App.mostrado === m.id ? item('Parar de mostrar aos jogadores', () => App.mostrarAosJogadores(null)) : item('Mostrar este mapa aos jogadores', () => App.mostrarAosJogadores(m.id)),
@@ -621,9 +630,38 @@
     else if (ev.key === 'End') { ev.preventDefault(); if (bs.length) bs[bs.length - 1].focus(); }
   }
 
+  /* ---------------- campanhas (numa mesa que as tem) ---------------- */
+  // a mesa tem campanhas (para quem usa) · a que está em vista: { id, nome, encerrada } ou null
+  const temCampanhas = () => !!App.naMesa && typeof App.campanhas === 'function' && App.campanhas().length > 0;
+  function campanhaEmVista() {
+    if (!temCampanhas()) return null;
+    const id = App.campanha();
+    return (id && App.campanhas().find(c => c.id === id)) || null;
+  }
+  // "Este mapa é da campanha X." / "…do mundo: aparece em todas as campanhas."
+  function fraseDasCampanhas(cs) {
+    return cs.length ? 'Este mapa é ' + App.deQuais(cs) + '.' : 'Este mapa é do mundo: aparece em todas as campanhas.';
+  }
+  /* De que campanhas é o mapa aberto. Marcar mais de uma serve ao mapa que duas campanhas dividem (e veem igual); para
+     cada uma ter o seu — outra geração, por exemplo —, o caminho é duplicar o mapa. */
+  async function campanhasDoMapa() {
+    const m = App.mapa;
+    if (!m || App.papel !== 'mestre' || !temCampanhas()) return;
+    const antes = App.campanhasDoMapa(m.id), id = m.id, nome = m.nome;
+    const r = await janela({ titulo: 'Campanhas de "' + nome + '"', ok: 'Guardar',
+      texto: 'Os jogadores só veem este mapa nas campanhas marcadas. Sem nenhuma marcada, ele é do mundo: aparece em todas. Para cada campanha ter a sua versão (outra geração, por exemplo), duplique o mapa.',
+      campos: [{ id: 'camps', rotulo: 'Este mapa é das campanhas', tipo: 'caixas', valor: antes, opcoes: App.campanhas().map(c => [c.id, c.nome + (c.encerrada ? ' (encerrada)' : '')]) }] });
+    if (!r) return;
+    if (!App.definirCampanhas(id, r.camps)) return;                       // (nada mudou, ou o mapa já não existe)
+    const agora = App.campanhasDoMapa(id), saiu = !App.mapas.some(x => x.id === id);
+    toast('"' + nome + '" agora é ' + App.deQuais(agora) + (agora.length ? '.' : ': aparece em todas as campanhas.') + (saiu ? ' Saiu desta lista: está na daquela campanha.' : ''),
+      'Desfazer', () => { if (App.definirCampanhas(id, antes) && App.mapas.some(x => x.id === id)) App.trocarMapa(id); }, 10000);
+  }
+
   /* ---------------- ações do mapa (menu e aba Mapa) ---------------- */
   async function novoMapa() {
-    const r = await janela({ titulo: 'Novo mapa', ok: 'Criar mapa', texto: App.naMesa ? 'O mapa novo começa escondido dos jogadores. Quando quiser, use "Mostrar este mapa aos jogadores".' : null, campos: [
+    const cv = campanhaEmVista();
+    const r = await janela({ titulo: 'Novo mapa', ok: 'Criar mapa', texto: App.naMesa ? (cv ? 'O mapa novo é da campanha ' + cv.nome + ' e começa' : 'O mapa novo começa') + ' escondido dos jogadores. Quando quiser, use "Mostrar este mapa aos jogadores".' : null, campos: [
       { id: 'nome', rotulo: 'Nome', valor: '', ph: 'Mundo conhecido', max: 120 },
       { id: 'fundo', rotulo: 'Começar com', tipo: 'opcoes', valor: 'imagem', opcoes: [['imagem', 'Uma imagem sua (PNG, JPG ou WebP)'], ['papel', 'Papel em branco, para desenhar por cima']] },
     ] });
@@ -750,6 +788,12 @@
           const radios = c.opcoes.map(([v, t]) => h('label', { class: 'op' }, h('input', { type: 'radio', name: 'dl-' + c.id, value: v, checked: String(v) === String(c.valor) }), h('span', { text: t })));
           el = radios.map(l => l.querySelector('input'));
           bloco = h('fieldset', null, h('legend', { text: c.rotulo }), radios);
+        } else if (c.tipo === 'caixas') {                                        // várias de uma vez: o valor é a lista das marcadas
+          const marcadas = Array.isArray(c.valor) ? c.valor.map(String) : [];
+          const caixas = c.opcoes.map(([v, t]) => h('label', { class: 'op' }, h('input', { type: 'checkbox', name: 'dl-' + c.id, value: v, checked: marcadas.includes(String(v)) }), h('span', { text: t })));
+          el = caixas.map(l => l.querySelector('input'));
+          el.varias = true;
+          bloco = h('fieldset', null, h('legend', { text: c.rotulo }), caixas);
         } else {
           el = c.tipo === 'select'
             ? h('select', { id: 'dl-' + c.id, value: String(c.valor) }, c.opcoes.map(([v, t]) => h('option', { value: String(v), text: t })))
@@ -784,7 +828,7 @@
       form.addEventListener('submit', ev => {
         ev.preventDefault();
         const vals = {};
-        for (const c of campos) vals[c.id] = Array.isArray(ent[c.id]) ? ((ent[c.id].find(r => r.checked) || {}).value || '') : ent[c.id].value;
+        for (const c of campos) vals[c.id] = !Array.isArray(ent[c.id]) ? ent[c.id].value : ent[c.id].varias ? ent[c.id].filter(r => r.checked).map(r => r.value) : ((ent[c.id].find(r => r.checked) || {}).value || '');
         let res = campos.length ? vals : true;
         if (o.ler) { try { res = o.ler(vals); } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; return; } }
         fim(res);
@@ -798,7 +842,7 @@
       document.body.append(dl);
       dl.showModal();
       const prim = campos.length ? (Array.isArray(ent[campos[0].id]) ? ent[campos[0].id].find(r => r.checked) || ent[campos[0].id][0] : ent[campos[0].id]) : o.perigo ? bNao : bOk;
-      if (prim) { prim.focus(); if (prim.select && prim.type !== 'radio') prim.select(); }
+      if (prim) { prim.focus(); if (prim.select && prim.type !== 'radio' && prim.type !== 'checkbox') prim.select(); }
     });
   }
   function confirmar(o) {
@@ -1407,13 +1451,17 @@
         botao('Cobrir tudo', cobrirTudo, { c: 'sm', k: 'mapa:cobrir' }))));
     // jogadores (mesa)
     if (App.naMesa) {
-      const mostrando = App.mostrado === m.id;
-      const st = m.oculto ? 'Escondido: os jogadores não veem este mapa.' : mostrando ? 'Os jogadores estão vendo este mapa agora.'
-        : App.mostrado ? 'Os jogadores podem abrir este mapa, mas você está mostrando outro.' : 'Os jogadores podem abrir este mapa. Nenhum está sendo mostrado.';
+      const mostrando = App.mostrado === m.id, comCamp = temCampanhas(), cs = comCamp ? App.campanhasDoMapa(m.id) : [];
+      // (numa mesa com campanhas, "os jogadores" de um mapa de campanha são os dela)
+      const quem = cs.length ? 'Os jogadores ' + App.deQuais(cs) : 'Os jogadores';
+      const st = m.oculto ? 'Escondido: os jogadores não veem este mapa.' : mostrando ? quem + ' estão vendo este mapa agora.'
+        : App.mostrado ? quem + ' podem abrir este mapa, mas você está mostrando outro' + (App.mostradoDeFora() ? ' (de outra campanha).' : '.') : quem + ' podem abrir este mapa. Nenhum está sendo mostrado.';
       out.push(secao('Jogadores', nota(st),
         linha(mostrando ? botao('Parar de mostrar', () => App.mostrarAosJogadores(null), { k: 'mapa:parar' })
           : botao('Mostrar aos jogadores', () => App.mostrarAosJogadores(m.id), { c: 'pri', k: 'mapa:mostrar' })),
-        caixa('mapa:oculto', 'Esconder este mapa dos jogadores', m.oculto, v => App.esconderMapa(m.id, !!v))));
+        caixa('mapa:oculto', 'Esconder este mapa dos jogadores', m.oculto, v => App.esconderMapa(m.id, !!v)),
+        comCamp ? nota(fraseDasCampanhas(cs)) : null,
+        comCamp && App.organizaCampanhas() ? linha(botao('Campanhas deste mapa…', campanhasDoMapa, { c: 'sm', k: 'mapa:campanhas' })) : null));
     }
     // arquivo
     out.push(secao('Arquivo',

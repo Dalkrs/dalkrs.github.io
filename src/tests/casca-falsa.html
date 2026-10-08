@@ -23,19 +23,35 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
      arquivo.subir → arquivo.ok com o endereço que o Node devolve (window.__tcSubir: um https:// servido pelo próprio
                      teste, que funciona em qualquer aparelho); sem o Node, um data URL da imagem
    O Node entrega o que mudou em outro aparelho chamando window.__chegou(col, linha); a casca só passa adiante o que
-   este papel pode ver. Endereço: casca-falsa.html?papel=mestre|jogador&eu=<id>&mesa=<id>[&nome=<nome da mesa>]
-   Cada linha: { id, mesa_id, dono_id, vis, dados, rev } (documentos) — as mesmas colunas de tc/tc.js. */
+   este papel pode ver. Endereço: casca-falsa.html?papel=mestre|jogador&eu=<id>&mesa=<id>[&nome=<nome da mesa>][&cargo=auxiliar]
+   Cada linha: { id, mesa_id, dono_id, vis, dados, rev } (documentos) — as mesmas colunas de tc/tc.js.
+
+   Campanhas (supabase/migrations/0012), quando o endereço as traz:
+     &camps=<JSON: [{ id, nome, encerrada }]>  as campanhas da mesa (o mestre vê todas)
+     &minhas=<ids separados por vírgula>       as de que o jogador participa (ele só vê essas)
+     &camp=<id>                                a campanha em vista neste aparelho
+   Aí o estado leva a campanha em vista e as campanhas, cada documento tem a coluna `campanhas` e o jogador só
+   recebe os documentos do mundo (sem campanha) e os das campanhas dele. */
 (() => {
   'use strict';
   const q = new URLSearchParams(location.search);
   const papel = q.get('papel') === 'jogador' ? 'jogador' : 'mestre';
+  const cargo = q.get('cargo') || null;                    // (cargo=auxiliar: o mestre auxiliar mestrando — para a aba, papel 'mestre')
   const eu = q.get('eu') || (papel === 'mestre' ? 'u_mestre' : 'u_jogador');
   const mesa = { id: q.get('mesa') || 'mesa_teste', nome: q.get('nome') || 'Mesa de teste' };
   const idMestre = papel === 'mestre' ? eu : q.get('mestre') || 'u_mestre';
   const membros = [{ id: idMestre, nome: 'Mestre', papel: 'mestre', cor: '#e6ab4f' }];
   if (papel === 'jogador') membros.push({ id: eu, nome: 'Jogador', papel: 'jogador', cor: '#6fbf8f' });
-  const COLUNAS = { personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado'], documentos: ['dono_id', 'vis', 'dados'] };
+  const COLUNAS = { personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado', 'campanha'], documentos: ['dono_id', 'vis', 'dados', 'campanhas'] };
   const copia = x => JSON.parse(JSON.stringify(x));
+  // campanhas: as da mesa, as que quem usa vê (o mestre, todas; o jogador, as dele) e a que está em vista
+  let campsDaMesa = [];
+  try { const v = JSON.parse(q.get('camps') || '[]'); if (Array.isArray(v)) campsDaMesa = v.filter(c => c && typeof c.id === 'string').map(c => ({ id: c.id, nome: String(c.nome || c.id), encerrada: !!c.encerrada })); } catch (e) { campsDaMesa = []; }
+  const minhas = (q.get('minhas') || '').split(',').filter(Boolean);
+  const campsVistas = papel === 'mestre' ? campsDaMesa : campsDaMesa.filter(c => minhas.includes(c.id));
+  const campVista = campsVistas.find(c => c.id === q.get('camp')) || campsVistas[0] || null;
+  const campsDe = l => (l && Array.isArray(l.campanhas) ? l.campanhas : l && l.campanha ? [l.campanha] : []);
+  const veCampanha = l => !campsDe(l).length || campsDe(l).some(c => minhas.includes(c));
 
   // o que o "servidor" tem (o Node manda); a moldura só recebe o recorte que este papel pode ler
   const banco = { personagens: new Map(), documentos: new Map() };
@@ -47,7 +63,7 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
   window.__arquivos = [];
   window.__arquivosApagados = [];
 
-  const podeVer = l => !!l && !l.apagado && (papel === 'mestre' || l.vis === 'mesa' || (!!eu && l.dono_id === eu));
+  const podeVer = l => !!l && !l.apagado && (papel === 'mestre' || (l.vis === 'mesa' && veCampanha(l)) || (!!eu && l.dono_id === eu));
   // As regras de documentos/personagens para quem não é o mestre (políticas *_criar e *_editar e o gatilho tocar()).
   function recusa(col, id, campos) {
     if (papel === 'mestre') return null;
@@ -57,6 +73,7 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
     if (l.dono_id !== eu) return 'Só o mestre altera isto.';
     if ('dono_id' in campos && campos.dono_id !== l.dono_id) return 'O jogador não troca o dono.';
     if ('vis' in campos && campos.vis !== l.vis) return 'O jogador não troca a visibilidade.';
+    if ('campanhas' in campos || 'campanha' in campos) return 'O jogador não troca a campanha.';
     return null;
   }
 
@@ -79,7 +96,8 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
 
   async function daMoldura(m) {
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'ola') entregar({ t: 'estado', mesa: copia(mesa), papel, segredo: false, eu, membros: copia(membros) });
+    if (m.t === 'ola') entregar(Object.assign({ t: 'estado', mesa: copia(mesa), papel, segredo: false, eu, membros: copia(membros) }, cargo ? { cargo } : {},
+      campsDaMesa.length ? { campanha: copia(campVista), campanhas: copia(campsVistas), temCampanhas: true, v: 4 } : {}));
     else if (m.t === 'dados.abrir') {
       if (!banco[m.col]) { entregar({ t: 'dados.erro', n: m.n, erro: 'Coleção desconhecida: ' + m.col }); return; }
       try { await lerDoNode(m.col); } catch (e) { entregar({ t: 'dados.erro', n: m.n, erro: 'Não deu para ler os dados da mesa.' }); return; }
@@ -96,7 +114,7 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
         banco[col].delete(id);
         linha = { id, mesa_id: mesa.id, apagado: true, rev: ++rev };
       } else {
-        linha = Object.assign({ id, mesa_id: mesa.id, dono_id: null, vis: 'mestre' }, ant || {});
+        linha = Object.assign({ id, mesa_id: mesa.id, dono_id: null, vis: 'mestre' }, campsDaMesa.length && col === 'documentos' ? { campanhas: [] } : {}, ant || {});
         for (const k of COLUNAS[col]) if (campos[k] !== undefined) linha[k] = copia(campos[k]);
         linha.rev = ++rev;
         banco[col].set(id, linha);
@@ -133,7 +151,7 @@ iframe { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0;
     else if (via) entregar({ t: 'dado', col, linha: { id: linha.id, apagado: true, rev: linha.rev } });
     return true;
   };
-  window.__casca = { papel, eu, mesa, banco };
+  window.__casca = { papel, eu, mesa, banco, campanha: campVista, campanhas: campsVistas };
 
   moldura.src = '/mundo/?casca=1&debug';
   document.body.append(moldura);

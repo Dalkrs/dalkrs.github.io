@@ -27,6 +27,14 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   pode, quando quiser, **jogar como jogador** (botão no menu da mesa): enquanto joga, o que é só do mestre deixa de
   chegar aos aparelhos dele; a permissão de auxiliar continua, e o mesmo botão o leva de volta. Ver "O mestre
   auxiliar".
+- **Campanhas.** A mesa é um mundo; nele podem jogar vários grupos, em campanhas diferentes — a geração de um
+  personagem é uma campanha, a geração seguinte é outra. O mestre as organiza em "Campanhas…", no menu da mesa:
+  cria, dá nome, põe em ordem, diz quem participa, encerra e reabre. Cada campanha tem os jogadores, os grupos de
+  fichas, a conversa da mesa ao vivo, o acampamento, as missões do grupo, as cenas e os mapas dela; o que não é de
+  nenhuma campanha é **do mundo**, e aparece em todas. Cada aparelho tem uma **campanha em vista** (ao lado do nome
+  da mesa, na barra): é nela que a pessoa está jogando ou mestrando agora, e em toda lista — fichas, quem fala, quem
+  entra na cena — o que é dela vem primeiro. O jogador só recebe o que é das campanhas de que participa; quem mestra
+  vê todas. Numa mesa sem campanha nenhuma, nada disso aparece. Ver "As campanhas".
 - **Mesa ao vivo**: o painel da direita mostra as rolagens e a conversa de todos, na hora. Nele fica também a
   **telinha de dados** (rolar um atributo com fixa, ou a iniciativa, pela ficha, sem digitar comando — o jogador
   pelos personagens dele, o mestre por qualquer um) e as duas chaves de **som** e **efeito** das rolagens, que cada
@@ -42,7 +50,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
-| `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade. |
+| `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade — ou, com `TC_LOCAL`, o banco local de ensaio. |
+| `src/tests/local/` | O banco local de ensaio: um PostgreSQL daqui mesmo com as migrações aplicadas, para ensaiar uma migração antes de aplicá-la no projeto de verdade e rodar os testes de rede sem tocar nele. Ver `src/tests/local/LEIA.md`. |
 | `src/legado/` | As versões originais de cada sistema, guardadas para comparação nos testes. |
 | `supabase/` | O banco: migrações (tabelas, regras de acesso, Storage) e as funções `criar-conta` e `faxina`. |
 
@@ -50,6 +59,10 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 - `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa. Em `mesa_membros`, `papel` é `mestre`,
   `auxiliar` ou `jogador`; o auxiliar tem ainda `jogando` (está jogando como jogador) e `abas` (as que ele mestra).
+- `campanhas` e `campanha_membros`: as campanhas da mesa (nome, ordem, encerrada) e quem participa de cada uma. De
+  que campanha é cada coisa fica na linha dela: `personagens.campanha` e `registro.campanha` (uma, ou nenhuma) e
+  `documentos.campanhas` (uma lista: um mapa pode ser de mais de uma). Sem campanha = do mundo. `mesas.campanhas`
+  é quantas a mesa tem (para quem não participa de nenhuma saber que elas existem). Ver "As campanhas".
 - `registro`: a mesa ao vivo (rolagens e conversa).
 - `personagens`: uma linha por ficha, em três colunas: `ficha` (o que o personagem é: atributos, barras, itens,
   bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
@@ -57,8 +70,9 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade e Conforto, os
   relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis` e o XP em `xp`).
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
-  - Mapa-múndi: `mundo:mapa:<id>` (mestre) e `mundo:pub:<id>` (o que os jogadores veem).
-  - Acampamento: `acampamento`.
+  - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem) e `mundo:indice` (os nomes
+    dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado).
+  - Acampamento: `acampamento` — numa mesa com campanhas, um por campanha: `acampamento@<campanha>`.
   - Cenas: `cenas:indice` (a ordem das cenas, qual está no ar e qual aparelho do mestre a transmite), `cena:<id>:m`
     e `cena:<id>:v` (mestre), `cena:pub:m` e `cena:pub:v` (a cena que está no ar, sem o que é só do mestre) e
     `cena:pedido:<jogador>` (o que o jogador fez e o mestre ainda vai aplicar). Quem aplica os pedidos e escreve a
@@ -67,7 +81,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
     escreve nos trechos dele) e `rol:t:<id>` (tabelas).
   - Fichas: `fichas:cfg` e `fichas:grupos` (da mesa: as tabelas base e os grupos), `fichas:situacoes` e
     `fichas:tabelas` (mestre), `fichas:missoes` (da mesa: as missões do grupo) e `fichas:segredos` (mestre: ver
-    "O que o mestre guarda só para ele").
+    "O que o mestre guarda só para ele"). Com campanhas, os grupos e as missões do grupo são de cada uma:
+    `fichas:grupos@<campanha>` e `fichas:missoes@<campanha>`.
   - Todos os documentos são escritos pelo mestre (sem dono). A única exceção, e a única coisa que o banco deixa
     um jogador criar, é o `cena:pedido:` dele mesmo.
 - Storage, pasta `mesas/<mesa>/`: as imagens (mapas, retratos, fundos).
@@ -262,6 +277,76 @@ como dono do token. Só a defesa é que não é pedida a ele enquanto mestra (qu
 Quando o papel de alguém muda com a mesa aberta (nomeado, abas trocadas, devolvido a jogador, ou alternando entre
 mestrar e jogar), o aparelho dele percebe, abre a mesa de novo e recarrega os sistemas — o que ele pode ver é outro.
 
+### As campanhas
+
+A mesa é um mundo aberto, com vários grupos jogando — e gerações: a de um personagem é uma campanha, a seguinte é
+outra. **De que campanha é cada coisa** fica na linha dela, no banco:
+
+| O quê | Onde fica a campanha | Como passa de uma para outra |
+|---|---|---|
+| Ficha | `personagens.campanha` | Pelos **grupos**: a campanha é dona dos grupos; "⇄" no grupo o passa inteiro para outra campanha (ou para o mundo), e arrastar uma ficha para um grupo de outra campanha a leva junto. |
+| Conversa e rolagens | `registro.campanha` | Não passa: cada linha fica na campanha em que foi dita (a que estava em vista). |
+| Acampamento, missões do grupo, ordem dos grupos | No nome do documento: `acampamento@<campanha>`, `fichas:missoes@<campanha>`, `fichas:grupos@<campanha>` (as missões do grupo que o mestre ainda esconde: `fichas:segredos`, em `mis.gc.<campanha>`) | Cada campanha tem o seu. |
+| Cena | `documentos.campanhas` de `cena:<id>:m` e `:v` (uma campanha, ou nenhuma) | "Campanha desta cena…", no menu das cenas. A projeção da cena que está no ar (`cena:pub:*`) leva a campanha dela: só os jogadores dessa campanha a recebem. |
+| Mapa | `documentos.campanhas` de `mundo:mapa:<id>` e de `mundo:pub:<id>` (uma **ou mais**) | "Campanhas deste mapa…", no menu de mapas. Para cada geração ter a sua versão do mapa, duplica-se o mapa. |
+
+O que não tem campanha é **do mundo** e aparece em todas: um mercador, um mapa do continente, um aviso geral. As
+árvores de habilidade, as tabelas base das fichas, os históricos do Rolador e o auditor dos dados são da mesa inteira.
+
+**Quem vê o quê** é o banco que decide (`privado.ve_campanha`, `privado.ve_campanhas`): o jogador recebe o que é do
+mundo e o que é das campanhas de que participa (`campanha_membros`) — a ficha dele, sempre. Quem mestra (o mestre, e
+o auxiliar enquanto mestra) recebe tudo. O jogador não fica sabendo das campanhas de que não participa; quem não
+está em nenhuma sabe só que elas existem (`mesas.campanhas`) e vê o que é do mundo.
+
+**Só o mestre da mesa organiza**, por funções do banco que conferem isso: `campanha_criar`, `campanha_mudar`
+(renomear, encerrar, reabrir), `campanha_ordenar`, `campanha_participa`, `campanha_apagar` e `campanha_desfazer`.
+**Passar uma ficha (ou um grupo), uma cena ou um mapa de uma campanha para outra** também é organizar: só o mestre
+da mesa (`privado.tocar` recusa a mudança de campanha de quem não é ele). O mestre auxiliar mestra **dentro** das
+campanhas que existem — cria ficha, cena e mapa na campanha em vista, mexe em tudo o que as abas dele alcançam —, e
+as telas dele não oferecem o "⇄" dos grupos, "Campanha desta cena…" nem "Campanhas deste mapa…". A projeção (o que
+os jogadores recebem da cena no ar e de cada mapa) acompanha a campanha da cena ou do mapa, e quem a regrava é o
+aparelho que transmite, seja de quem for.
+
+- **A primeira campanha recebe o que a mesa já tinha** (`campanha_criar` com `p_adotar`): as fichas, a conversa, o
+  acampamento, as missões do grupo, as cenas e os mapas passam para ela, e quem já jogava passa a participar. Antes,
+  a casca mostra a lista do que vai passar, e só passa depois do OK. Enquanto ela é a única, "Desfazer as
+  campanhas…" (`campanha_desfazer`) devolve tudo à mesa inteira — com mais de uma isso mostraria a uns o que é dos
+  outros, e por isso não vale. As outras campanhas nascem vazias.
+- **Campanha encerrada** fica guardada, só para consulta: a conversa, as fichas, o acampamento e as missões do grupo
+  dela não mudam mais, para ninguém — o mestre também — até ele reabrir. O banco recusa (`privado.campanha_aberta`);
+  o núcleo nem tenta (devolve a linha como estava, com um aviso); e as telas dizem o porquê. As cenas e os mapas dela
+  continuam com o mestre: são o preparo dele.
+- **Apagar** só vale para a campanha que não guarda nada (sem fichas, conversa, cenas nem mapas): a que foi jogada se
+  encerra. O que ela deixa para trás — fichas e documentos dela que já estavam apagados, e a projeção da cena no ar,
+  se ainda dizia ser dela — **não passa a ser do mundo** (seria entregue a todos os jogadores da mesa): a ficha
+  apagada fica só com o mestre, e os documentos continuam dizendo de que campanha eram, que é como nenhum jogador os
+  recebe. A projeção, o aparelho do mestre regrava com a campanha certa quando as Cenas dele abrem de novo.
+- **O mestre coloca os jogadores** (`campanha_participa`). Quando ele dá uma ficha de uma campanha a quem não
+  participa dela — ou passa para outra campanha um grupo com a ficha de alguém de fora —, a casca pergunta se é para
+  incluir essa pessoa. Sem participar, ela vê só a própria ficha.
+
+No site, o núcleo (`tc/tc.js`) guarda as campanhas que a pessoa vê e a **campanha em vista** deste aparelho (por
+mesa; lembrada no navegador). Trocar de campanha é escolher outra no menu da mesa: a conversa passa a ser a dela e os
+sistemas abrem de novo — cada um lê a campanha em vista uma vez, na partida (`TC.ponte.estado.campanha`). Quem mestra
+tem sempre uma campanha em vista: o que ele cria nasce nela (com a campanha em vista encerrada, a ficha nova nasce
+no mundo: numa campanha encerrada nada nasce). "Campanha em evidência" (`TC.agruparPorCampanha`, igual
+em `tc/tc.js` e em `tc/ponte.js`) é a ordem de toda lista onde se escolhe algo: o que é da campanha em vista, depois o
+que é do mundo, depois o das outras.
+
+No Mapa-múndi, o índice (`mundo:indice`, que a mesa inteira recebe) só leva os nomes dos mapas do mundo: os de
+campanha, cada jogador conhece pelas projeções que recebe. O mapa "mostrado aos jogadores" é um só para a mesa — se
+for de uma campanha, quem não participa dela continua no mapa que tinha aberto. Um atalho de um mapa para outro só
+vai para os jogadores quando todos os que veem o primeiro podem ver o segundo.
+
+Nas Cenas, a cena que está no ar é uma só para a mesa. O jogador que participa de mais de uma campanha e está com
+outra em vista não a recebe na tela: vê um aviso dizendo de qual campanha é a cena no ar, e que é só trocar de
+campanha no menu da mesa.
+
+Um banco de antes das campanhas (sem essas tabelas e colunas) continua servindo ao site: o núcleo percebe pela linha
+da mesa e, aí, nem pergunta por campanhas. E um aparelho com o site de antes das campanhas ainda aberto continua
+servindo à mesa: o que ele grava sem dizer a campanha é do mundo — menos a fala e a rolagem de um jogador que
+participa de uma campanha só, que o banco põe nela (`privado.registro_antes`), para não aparecer às outras.
+
 ### Redesenhar sem atrapalhar quem está usando
 
 A ficha é redesenhada inteira quando algo muda — por quem a está usando, ou por outra pessoa da mesa. Três cuidados
@@ -300,6 +385,20 @@ faltava subir.
   o HP e o outro o SP do mesmo token, no mesmo segundo, fica a lista de quem gravou por último (se o token segue uma
   ficha, a ficha guarda as duas e acerta o token). Um aparelho só transmite a cena que está no ar; os pedidos
   recentes dos jogadores não se perdem numa troca: cada um guarda os dele por dois minutos depois de confirmados.
+- **Uma campanha de cada vez.** A campanha em vista é de cada aparelho, mas a cena no ar e o mapa mostrado são um
+  só para a mesa: o mestre joga com um grupo por vez. Pôr no ar uma cena de outra campanha tira do ar a que estava.
+- **Até 40 campanhas por mesa** (as encerradas contam; as vazias podem ser apagadas).
+- **Uma ficha é de uma campanha só** (ou do mundo). Um personagem que aparece em duas campanhas fica no mundo — aí
+  todos o veem — ou ganha uma cópia em cada uma. As barras de relacionamento entre personagens de jogador só nascem
+  sozinhas entre os da mesma campanha (ou do mundo).
+- **O que sai de uma campanha some da tela de quem não a vê em até uns 10 segundos**, não na hora: o banco deixa de
+  entregar a linha, mas não avisa disso; cada aparelho confere de tempos em tempos o que ainda pode ver.
+- **Apagar uma campanha** (que só vale para a vazia) leva junto o acampamento e as missões do grupo que ela tiver, e
+  isso não tem desfazer. Para guardar, é "Encerrar".
+- **Com a campanha encerrada**, o mestre ainda mexe nas cenas e nos mapas dela (é o preparo dele), mas um token
+  ligado a uma ficha dela não leva dano nem cura para a ficha: a ficha está só para consulta.
+- **O Rolador e o auditor dos dados são da mesa inteira**: os históricos do mestre não se dividem por campanha, e o
+  auditor conta as rolagens de todas (é a conta do dado, não da campanha).
 - **O mestre auxiliar e as imagens.** As imagens da mesa ficam numa pasta só, e têm endereço público (quem tem o
   endereço abre). O auxiliar mestrando pode listar a pasta inteira — inclusive imagens de abas que ele não mestra.
 - **O mestre auxiliar com a Árvore e sem as Fichas** cria, pela aba Árvore, só personagens dele mesmo (personagem sem
@@ -343,7 +442,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo acampamento auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas acampamento auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -351,12 +450,32 @@ fora do repositório): `banco`, `mesa`, `fichas-mesa`, `fichas-novas`, `token-fi
 `acampamento-mesa`, `cenas-mesa`, `rolador-mesa`, `fundo.rede`, `auxiliar.rede` (o mestre auxiliar: no banco, o que
 cada papel lê e grava, aba por aba; na tela, o menu da mesa, as abas e o botão de jogar/mestrar), `versao.rede` (o
 mestre e o auxiliar na mesma cena, no mesmo instante), `ordem.rede` (a mesa ao vivo quando duas linhas ficam visíveis
-fora de ordem no banco), `dados.rede` (a telinha de dados, o som e o efeito, a
+fora de ordem no banco, e quando alguém fala logo depois de outra pessoa, antes da primeira leitura), `dados.rede` (a telinha de dados, o som e o efeito, a
 iniciativa oferecida ao mestre, os dados guardados por todo caminho de rolagem e o auditor), `combate.rede` (puxar o
 grupo, terreno, F e C, a fixa de cada turno e o ataque com defesa, com o pedido de defesa entre o mestre e um
 jogador), `estado.rede` (duas
 pessoas na mesma ficha, o mestre em dois aparelhos), `bolsa.rede` (barras negativas, bolsas e o sinal de ferido na cena) e `social.rede` (o que o mestre
-esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores). `vivo.js` confere o site publicado.
+esconde, missões, ferimentos, Ascensão e XP entre mestre e jogadores) e `campanhas.rede` (as campanhas: no banco,
+quem organiza, o que cada um recebe, a primeira campanha levando o que a mesa tinha, desfazer, encerrar, apagar; na
+tela, com o mestre e dois jogadores, da criação da primeira campanha até o jogador que fica sem nenhuma — `SO=banco`
+ou `SO=tela` roda só uma das partes) e `campanhas-sistemas.rede` (uma mesa com duas campanhas, sistema por sistema:
+as cenas e a que está no ar, os mapas, as missões do grupo, a ficha nova e a que muda de campanha, a roda do
+acampamento, a campanha encerrada, a Árvore, "falar como" e limpar a mesa ao vivo). `vivo.js` confere o site
+publicado.
+
+Todo teste que abre o site no navegador também fica de olho em **texto solto** na tela — "null", "undefined", "NaN"
+ou "[object Object]" como o texto inteiro de um pedaço da página, que é o que o navegador escreve quando um valor vazio
+vai parar num `append` — em toda página e moldura que abrir (`src/tests/lib.js`): achou, o teste falha.
+
+**Sem tocar no projeto de verdade:** `src/tests/local/banco.sh ligar` sobe o banco local de ensaio, e
+`TC_LOCAL=https://127.0.0.1:54331 node <teste>` faz qualquer um desses testes falar com ele. É onde uma migração nova
+roda primeiro (`banco.sh aplicar <arquivo.sql>`). O que ele não tem é a ligação em tempo real. Ver
+`src/tests/local/LEIA.md`.
+
+`campanhas` confere a regra da "campanha em evidência" (a mesma tabela de casos na casca e na ponte dos sistemas) e
+`mundo-campanhas`, o Mapa-múndi numa mesa com campanhas, com a casca falsa em vários aparelhos: o mestre com cada
+campanha em vista e jogadores de uma, da outra, das duas e de nenhuma — de que campanha nasce cada mapa, a quem a
+projeção chega, o que vai no índice e os atalhos entre mapas de campanhas diferentes.
 
 `fichas-quadros` também confere os gestos com o mouse, o teclado e o toque de verdade (o botão desce, espera e sobe):
 o clique que vem depois de um campo, o Tab, o Enter e a lista aberta. `fundo.rede` confere o programa das Cenas do

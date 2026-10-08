@@ -68,6 +68,10 @@ button { cursor: pointer; }
 .conta:hover { border-color: var(--line-strong); background: var(--hover); }
 .conta .nm { overflow: hidden; text-overflow: ellipsis; }
 .conta .pp { font-weight: 500; color: var(--fg-3); font-size: 12px; }
+/* a campanha em vista, ao lado do nome da mesa (o nome da mesa cede espaço antes dela) */
+.conta .cp { flex: 0 1 auto; min-width: 34px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--lamp-ink); padding-left: 7px; border-left: 1px solid var(--line-strong); }
+.conta.com-camp { max-width: 340px; }
+.conta.com-camp .nm { flex: 0 2 auto; min-width: 28px; }
 .conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
 .versao { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .versao:hover { filter: brightness(1.08); }
@@ -235,6 +239,26 @@ button { cursor: pointer; }
 .menu .lk { display: block; width: 100%; text-align: left; padding: 8px 8px; border: 0; border-radius: 7px; background: none; font-weight: 600; }
 .menu .lk:hover { background: var(--hover); }
 .menu .lk.per { color: var(--danger); }
+/* as campanhas, no menu: uma por linha; a que está em vista fica marcada */
+.menu .cv { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; padding: 7px 8px; border: 1px solid transparent; border-radius: 7px; background: none; font-weight: 600; }
+.menu .cv:hover { background: var(--hover); }
+.menu .cv[aria-pressed="true"] { border-color: var(--lamp); background: var(--raised); }
+.menu .cv span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu .cv small { margin-left: auto; flex: none; color: var(--fg-3); font-weight: 500; white-space: nowrap; }
+.menu .cv[aria-pressed="true"] small { color: var(--lamp-ink); }
+/* a janela das campanhas */
+.cps { display: grid; gap: 8px; }
+.cpl { display: grid; gap: 6px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.cpl.vista { border-color: var(--lamp); }
+.cpl .cpn { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.cpl .cpn b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.cpl .cpn small { margin-left: auto; flex: none; color: var(--fg-3); white-space: nowrap; }
+.cpl .cpa { display: flex; flex-wrap: wrap; gap: 5px; }
+.cpl .cpa .btn { padding: 0 9px; }
+.cpl .cpa .seta { width: 28px; padding: 0; }
+.dl .lista { margin: 0; padding: 0 0 0 18px; display: grid; gap: 3px; color: var(--fg-2); }
+.dl .cxs.uma { grid-template-columns: 1fr; }
+.compor.fechada input, .compor.fechada .btn { opacity: .55; }
 
 /* ---- janelas ---- */
 dialog { width: min(440px, calc(100% - 24px)); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
@@ -272,7 +296,10 @@ dialog::backdrop { background: var(--scrim); }
   .tab { padding: 0 10px; }
   .tab svg { display: none; }
   .conta .pp { display: none; }
-  .conta { max-width: 130px; }
+  .conta, .conta.com-camp { max-width: 130px; }
+  /* numa mesa com campanhas, na tela estreita fica a campanha em vista (é nela que a pessoa está); o nome da mesa está no menu */
+  .conta.com-camp .nm { display: none; }
+  .conta .cp { padding-left: 0; border-left: 0; }
   .versao span { display: none; }
   .versao { padding: 0 7px; }
 }
@@ -350,12 +377,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=2"></script>
 <script src="tc/rules.js?v=5"></script>
-<script src="tc/tc.js?v=16"></script>
+<script src="tc/tc.js?v=17"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.07-2';
+  const VERSAO = '2026.10.07-3';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -497,10 +524,15 @@ dialog::backdrop { background: var(--scrim); }
   const estadoPonte = aba => {
     const a = mesas.atual, mestra = {};
     if (a) for (const k of mesas.abasDeMestre) mestra[k] = mesas.mestra(k);
-    return { t: 'estado', v: 3, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? (aba ? (mesas.mestra(aba) ? 'mestre' : 'jogador') : a.papel) : null,
+    /* campanha: a que está em vista neste aparelho · campanhas: as que a pessoa vê, na ordem do mestre · de cada
+       participante, as campanhas de que participa. (Quando a campanha em vista muda, os sistemas são abertos de novo.) */
+    const camp = a ? mesas.campanha() : null;
+    return { t: 'estado', v: 4, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? (aba ? (mesas.mestra(aba) ? 'mestre' : 'jogador') : a.papel) : null,
       cargo: a ? a.cargo : null, jogando: !!(a && a.jogando), mestra: a ? mestra : null,
       segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null,
-      membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cargo: x.cargo, cor: x.cor })) : [] };
+      campanha: camp ? { id: camp.id, nome: camp.nome, encerrada: camp.encerrada } : null,
+      campanhas: a ? a.campanhas.map(c => ({ id: c.id, nome: c.nome, encerrada: c.encerrada })) : [], temCampanhas: !!(a && a.temCampanhas),
+      membros: a ? a.membros.map(x => ({ id: x.usuario_id, nome: x.nome, papel: x.papel, cargo: x.cargo, cor: x.cor, campanhas: (x.campanhas || []).slice() })) : [] };
   };
   function difundir() {
     for (const k in frames) { try { frames[k].contentWindow.postMessage({ tinycats: estadoPonte(k) }, location.origin); } catch (e) { /* moldura ainda carregando */ } }
@@ -523,6 +555,10 @@ dialog::backdrop { background: var(--scrim); }
       // as Cenas levam à ficha as barras de um token cuja ficha não chega a quem mexeu (ver TC.dados.barrasDoToken)
       if (m.mesa && m.mesa !== mesas.atual.id) return;
       TC.dados.barrasDoToken(m.id, m.rec, m.sob).catch(e => toast(e.message));
+    } else if (m.t === 'campanha.incluir' && mesas.atual) {
+      // as Fichas avisam: uma ficha de uma campanha foi dada a quem não participa dela
+      if (m.mesa && m.mesa !== mesas.atual.id) return;
+      perguntarInclusao(m);
     } else if (m.t === 'arquivo.subir') {
       TC.arquivos.subir(m.blob).then(url => responder({ t: 'arquivo.ok', n: m.n, url }), e => responder({ t: 'arquivo.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'arquivo.apagar') {
@@ -554,7 +590,9 @@ dialog::backdrop { background: var(--scrim); }
   TC.dados.on('muda', (col, linha, origem, de) => {
     for (const k in frames) { const jan = frames[k].contentWindow; if (jan && jan !== de) { try { jan.postMessage({ tinycats: { t: 'dado', col, linha } }, location.origin); } catch (e) { /* moldura saindo */ } } }
   });
-  TC.dados.on('recusado', (col, id, msg) => toast(msg));
+  // (o mesmo aviso não se repete em seguida: um sistema pode tentar gravar várias linhas de uma vez)
+  let ultimaRecusa = '', quandoRecusa = 0;
+  TC.dados.on('recusado', (col, id, msg) => { const t = Date.now(); if (msg === ultimaRecusa && t - quandoRecusa < 3000) return; ultimaRecusa = msg; quandoRecusa = t; toast(msg); });
   /* Nada do que foi feito no último instante pode ficar para trás quando a página fecha ou a mesa troca.
      Cada sistema segura as mudanças por uma fração de segundo antes de entregá-las à casca, e a casca, antes de
      mandá-las ao banco. Então: os sistemas entregam agora (direto, sem mensagem) e a casca manda agora, de um jeito
@@ -596,7 +634,14 @@ dialog::backdrop { background: var(--scrim); }
     const a = mesas.atual;
     if (!conta.usuario) { btnConta.classList.add('entrar'); btnConta.append(h('span', { class: 'nm', text: 'Entrar' })); btnConta.title = 'Entrar para jogar com a mesa'; }
     else if (!a) { btnConta.append(h('span', { class: 'nm', text: 'Escolher mesa' })); btnConta.title = 'Conta de ' + conta.usuario.email; }
-    else { btnConta.append(h('span', { class: 'nm', text: a.nome }), h('span', { class: 'pp', text: cargoPt(a) })); btnConta.title = 'Mesa ' + a.nome + ' · ' + cargoPt(a); }
+    else {
+      // (com campanhas, a que está em vista aparece ao lado do nome da mesa: é nela que a pessoa está jogando ou mestrando)
+      const camp = mesas.campanha(), nomeCamp = camp ? camp.nome + (camp.encerrada ? ' (encerrada)' : '') : '';
+      // (o que não há — a campanha, numa mesa sem campanhas — não entra na lista: o navegador escreveria "null" no botão)
+      btnConta.append(...[h('span', { class: 'nm', text: a.nome }), camp ? h('span', { class: 'cp', id: 'contaCamp', text: nomeCamp }) : null, h('span', { class: 'pp', text: cargoPt(a) })].filter(Boolean));
+      if (camp) btnConta.classList.add('com-camp');
+      btnConta.title = 'Mesa ' + a.nome + (camp ? ' · campanha ' + nomeCamp : '') + ' · ' + cargoPt(a);
+    }
     btnVivo.hidden = !a;
     if (!a) { vivo.hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
   }
@@ -624,6 +669,20 @@ dialog::backdrop { background: var(--scrim); }
             : 'Você mestra todas as abas.' }),
           h('button', { type: 'button', class: 'btn sm', id: 'mn-modo', style: 'margin-top:8px', text: a.jogando ? 'Voltar a mestrar' : 'Jogar como jogador', onclick: () => { fecharMenu(); janelaModo(a, !a.jogando); } })));
       }
+      /* As campanhas: a que está em vista (é nela que a pessoa joga ou mestra agora) e, para escolher outra, as que
+         ela vê — quem mestra, todas; o jogador, as de que participa. Organizar é só do mestre da mesa. */
+      if (a.campanhas.length || a.temCampanhas || (a.cargo === 'mestre' && a.campanhasLigadas)) {
+        const sec = h('div', { class: 'sec', id: 'mn-camp' }, h('div', { class: 'rot', text: a.campanhas.length > 1 ? 'Campanha em vista' : 'Campanha' }));
+        for (const c of a.campanhas) {
+          const naVista = c.id === a.campanha;
+          sec.append(h('button', { type: 'button', class: 'cv', 'data-camp': c.id, 'aria-pressed': String(naVista), title: naVista ? 'É a campanha em vista neste aparelho' : 'Passar a ver esta campanha neste aparelho',
+            onclick: () => { fecharMenu(); trocarCampanha(c); } }, h('span', { text: c.nome }), h('small', { text: [c.encerrada ? 'encerrada' : '', naVista ? 'em vista' : ''].filter(Boolean).join(' · ') })));
+        }
+        if (!a.campanhas.length) sec.append(h('div', { class: 'sub', id: 'mn-semcamp', text: a.cargo === 'mestre' ? 'Esta mesa ainda não tem campanhas. Com elas, cada grupo de jogadores tem a própria conversa, o próprio acampamento, as próprias missões, cenas e mapas.'
+          : 'O mestre ainda não colocou você em nenhuma campanha desta mesa. Por enquanto você vê só o que é do mundo.' }));
+        if (a.cargo === 'mestre') sec.append(h('button', { type: 'button', class: 'btn sm', id: 'mn-campanhas', style: 'margin-top:8px', text: a.campanhas.length ? 'Campanhas…' : 'Criar a primeira campanha…', onclick: () => { fecharMenu(); janelaCampanhas(); mesas.conferirMembros(); } }));      // (a lista de jogadores de cada campanha parte de quem está na mesa agora)
+        menu.append(sec);
+      }
       if (a.cargo === 'mestre' && a.codigo) {
         menu.append(h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'Código de convite' }),
           h('div', { class: 'cod' }, h('code', { id: 'codigo', text: codigoBonito(a.codigo) }),
@@ -634,8 +693,10 @@ dialog::backdrop { background: var(--scrim); }
       const lista = h('div', { class: 'sec', id: 'membros' }, h('div', { class: 'rot', text: 'Quem participa' }));
       for (const m of a.membros) {
         // (o nome e o papel dividem a linha; se não couberem lado a lado — nome comprido, botões ao lado —, o papel desce)
+        // (com campanhas, quem mestra vê ao lado do nome quem ainda não está em nenhuma: essa pessoa só vê o que é do mundo)
+        const semCamp = a.campanhas.length > 0 && a.papel === 'mestre' && m.cargo !== 'mestre' && !(m.campanhas || []).length;
         const lin = h('div', { class: 'mb' + (aoVivo.online(m) ? '' : ' fora'), 'data-m': m.usuario_id }, h('i', { style: 'background:' + (m.cor || '#888') }),
-          h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '' })));
+          h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: [m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '', semCamp ? 'sem campanha' : ''].filter(Boolean).join(' · ') })));
         // só o mestre mexe em quem participa: o papel de cada um (jogador ou mestre auxiliar) e tirar da mesa
         if (a.cargo === 'mestre' && m.cargo !== 'mestre') lin.append(h('div', { class: 'ac' },
           h('button', { type: 'button', class: 'btn sm', text: 'Papel…', title: 'Jogador ou mestre auxiliar', onclick: () => { fecharMenu(); janelaPapel(m); } }),
@@ -649,7 +710,9 @@ dialog::backdrop { background: var(--scrim); }
     const sec = h('div', { class: 'sec' });
     if (a && a.cargo === 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-renomear', text: 'Renomear a mesa…', onclick: () => { fecharMenu(); janelaRenomear(a); } }));
     if (a && a.papel === 'mestre') {              // (limpar o painel é de quem está mestrando; dá para desfazer)
-      sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-limpar', text: 'Limpar a mesa ao vivo…', onclick: () => { fecharMenu(); confirmar('Limpar a mesa ao vivo?', 'A conversa e as rolagens somem do painel de todos. Dá para desfazer logo em seguida.', 'Limpar', limparVivo); } }));
+      const camp = mesas.campanha();         // (com campanhas, limpa-se a conversa da que está em vista — e a de uma campanha encerrada não se limpa)
+      if (!(camp && camp.encerrada)) sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-limpar', text: 'Limpar a mesa ao vivo…', onclick: () => { fecharMenu(); confirmar(camp ? 'Limpar a mesa ao vivo da campanha ' + camp.nome + '?' : 'Limpar a mesa ao vivo?',
+        camp ? 'A conversa e as rolagens desta campanha somem do painel de quem participa dela — e, junto, o que foi dito fora de qualquer campanha (que aparece em todas). A conversa das outras campanhas não muda. Dá para desfazer logo em seguida.' : 'A conversa e as rolagens somem do painel de todos. Dá para desfazer logo em seguida.', 'Limpar', limparVivo); } }));
     }
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
@@ -665,11 +728,16 @@ dialog::backdrop { background: var(--scrim); }
   window.addEventListener('blur', () => { if (!menu.hidden && document.activeElement && document.activeElement.tagName === 'IFRAME') fecharMenu(); });
 
   /* ---- janelas ---- */
-  function abrirJanela(conteudo) { dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); }
-  function fecharJanela() { if (dlg.open) dlg.close(); dlg.replaceChildren(); }
+  /* Com uma janela aberta, o que está fora dela não recebe clique nem teclado — o "Desfazer" de um aviso também não.
+     Por isso, enquanto ela está aberta, os avisos moram dentro dela (continuam no mesmo lugar da tela); quando ela
+     fecha ou troca de conteúdo, voltam para a página, sem sumir. */
+  const caixaDeAvisos = $('toasts');
+  const avisosNaPagina = () => { if (caixaDeAvisos.parentNode !== document.body) document.body.append(caixaDeAvisos); };
+  function abrirJanela(conteudo) { avisosNaPagina(); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
+  function fecharJanela() { avisosNaPagina(); if (dlg.open) dlg.close(); dlg.replaceChildren(); }
   dlg.addEventListener('click', ev => { if (ev.target === dlg) fecharJanela(); });
   // o aviso de "fechou" chega atrasado: se outra janela já abriu no lugar (entrar → mesas), não é para esvaziá-la
-  dlg.addEventListener('close', () => { if (!dlg.open) dlg.replaceChildren(); });
+  dlg.addEventListener('close', () => { if (!dlg.open) { avisosNaPagina(); dlg.replaceChildren(); } });
   /* Um formulário que trava o botão enquanto envia e mostra o erro logo acima dele. */
   function enviarCom(form, err, botao, fn) {
     form.addEventListener('submit', async ev => {
@@ -780,6 +848,215 @@ dialog::backdrop { background: var(--scrim); }
         : 'Você volta a ver e a mexer no que é do mestre, nas abas que ele liberou para você.',
       jogar ? 'Jogar como jogador' : 'Voltar a mestrar',
       async () => { await assentar(); await mesas.jogar(jogar); toast(jogar ? 'Você está jogando como jogador.' : 'Você voltou a mestrar.'); }, true);
+  }
+  /* ---- campanhas ----
+     Cada aparelho tem uma campanha em vista. Trocar é só escolher outra no menu: o que os sistemas ainda seguravam
+     sobe antes, a conversa da mesa ao vivo passa a ser a dela e as abas abrem de novo. Organizar as campanhas (criar,
+     renomear, ordenar, encerrar, dizer quem participa, apagar) é só do mestre da mesa, pela janela abaixo. */
+  const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
+  async function trocarCampanha(c) {
+    const a = mesas.atual; if (!a || a.campanha === c.id) return;
+    try { await assentar(); mesas.verCampanha(c.id); toast('Agora você vê a campanha ' + c.nome + (c.encerrada ? ' (encerrada: só consulta).' : '.')); } catch (e) { toast(e.message); }
+  }
+  const jogadoresDa = c => (mesas.atual ? mesas.atual.membros.filter(m => m.cargo !== 'mestre' && (m.campanhas || []).includes(c.id)) : []);
+  function janelaCampanhas() {
+    const a = mesas.atual; if (!a || a.cargo !== 'mestre') return;
+    const err = h('div', { class: 'err', role: 'alert', id: 'cp-erro' });
+    const tentar = async fn => { err.textContent = ''; try { await fn(); return true; } catch (e) { err.textContent = (e && e.message) || 'Não deu certo agora. Tente de novo.'; return false; } };
+    const lista = h('div', { class: 'cps', id: 'cp-lista' });
+    a.campanhas.forEach((c, i) => {
+      const n = jogadoresDa(c).length, naVista = c.id === a.campanha;
+      const seta = (d, rot) => h('button', { type: 'button', class: 'btn sm seta', 'data-a': d < 0 ? 'subir' : 'descer', title: rot, 'aria-label': rot + ': ' + c.nome, disabled: d < 0 ? i === 0 : i === a.campanhas.length - 1,
+        onclick: async () => { const ids = a.campanhas.map(x => x.id); ids.splice(i + d, 0, ids.splice(i, 1)[0]); if (await tentar(() => mesas.ordenarCampanhas(ids))) janelaCampanhas(); } }, d < 0 ? '▲' : '▼');
+      lista.append(h('div', { class: 'cpl' + (naVista ? ' vista' : ''), 'data-camp': c.id },
+        h('div', { class: 'cpn' }, h('b', { text: c.nome }), h('small', { text: [naVista ? 'em vista' : '', c.encerrada ? 'encerrada' : '', plural(n, 'jogador', 'jogadores')].filter(Boolean).join(' · ') })),
+        h('div', { class: 'cpa' }, seta(-1, 'Subir na lista'), seta(1, 'Descer na lista'),
+          h('button', { type: 'button', class: 'btn sm', 'data-a': 'jogadores', text: 'Jogadores…', onclick: () => janelaParticipantes(c) }),
+          h('button', { type: 'button', class: 'btn sm', 'data-a': 'renomear', text: 'Renomear…', onclick: () => janelaRenomearCampanha(c) }),
+          c.encerrada ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'reabrir', text: 'Reabrir', onclick: async () => {
+              if (!await tentar(() => mesas.mudarCampanha(c.id, { encerrada: false }))) return;
+              janelaCampanhas();
+              toast('Campanha ' + c.nome + ' reaberta: dá para jogar nela de novo.', 'Desfazer', async () => { try { await assentar(); await mesas.mudarCampanha(c.id, { encerrada: true }); toast('Desfeito: a campanha ' + c.nome + ' continua encerrada.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
+            } })
+            : h('button', { type: 'button', class: 'btn sm', 'data-a': 'encerrar', text: 'Encerrar…', onclick: () => janelaEncerrar(c) }),
+          a.campanhas.length === 1 ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'desfazer', text: 'Desfazer as campanhas…', title: 'Tudo volta a ser da mesa inteira, como antes das campanhas', onclick: () => janelaDesfazer(c) })
+            : h('button', { type: 'button', class: 'btn sm per', 'data-a': 'apagar', text: 'Apagar…', title: 'Só para a campanha que não guarda nada', onclick: () => janelaApagarCampanha(c) }))));
+    });
+    const nenhuma = !a.campanhas.length;
+    const nome = h('input', { id: 'cp-nome', maxlength: 60, autocomplete: 'off', required: true, placeholder: nenhuma ? 'Ex.: Geração do Dain' : 'Ex.: A geração seguinte' });
+    const criar = h('button', { type: 'submit', class: 'btn pri', id: 'cp-criar', text: nenhuma ? 'Continuar' : 'Criar' });
+    const fNova = h('form', { class: 'lin' }, h('label', {}, 'Nome da campanha', nome), criar);
+    fNova.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const n = nome.value.trim();
+      if (!n || criar.disabled) return;
+      if (nenhuma) { janelaPrimeira(n); return; }          // a primeira recebe o que a mesa já tem: antes, a lista do que vai passar
+      criar.disabled = true;
+      let nova = null;
+      const deu = await tentar(async () => { nova = await mesas.criarCampanha(n, false); });
+      criar.disabled = false;
+      if (!deu) return;
+      janelaCampanhas();
+      toast('Campanha ' + nova.nome + ' criada. Ela começa vazia: diga quem participa em “Jogadores…”.', 'Desfazer', async () => { try { await mesas.apagarCampanha(nova.id); toast('Desfeito: a campanha ' + nova.nome + ' não existe mais.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } }, 12000);
+    });
+    abrirJanela(h('div', { class: 'dl', id: 'f-camps' },
+      h('h2', { text: 'Campanhas' }),
+      h('p', { text: 'Cada campanha tem os jogadores, os grupos de fichas, a conversa, o acampamento, as missões do grupo, as cenas e os mapas dela. O que não é de nenhuma campanha é do mundo, e aparece em todas.' }),
+      nenhuma ? null : lista,
+      h('fieldset', {}, h('legend', { text: nenhuma ? 'Criar a primeira campanha' : 'Nova campanha' }), fNova,
+        h('div', { class: 'nt', text: nenhuma ? 'A primeira campanha recebe o que a mesa já tem. Antes de criar, você vê a lista do que vai passar para ela.' : 'Uma campanha nova começa vazia. Para levar um grupo de fichas, uma cena ou um mapa para ela, use a aba de cada um.' })),
+      err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Fechar', onclick: fecharJanela }))));
+    if (nenhuma) nome.focus();
+  }
+  /* O que a mesa tem hoje sem campanha — é o que a primeira campanha recebe. */
+  async function contarDaMesa() {
+    const P = TC.dados.col('personagens'), D = TC.dados.col('documentos');
+    // (quem entrou na mesa agora há pouco também passa a participar: a lista de nomes é lida de novo, não a de memória)
+    await Promise.all([P.pronta, D.pronta, mesas.conferirMembros()]);
+    const a = mesas.atual; if (!a) throw new Error('A mesa foi fechada.');
+    const vivos = D.todas().filter(l => !l.apagado), semCamp = l => !(l.campanhas || []).length;
+    const dadosDe = id => { const d = D.pegar(id); return d && !d.apagado && d.dados && typeof d.dados === 'object' ? d.dados : null; };
+    const quantas = o => (o && typeof o === 'object' && !Array.isArray(o) ? Object.keys(o).length : 0);
+    const fichas = P.todas().filter(l => !l.campanha), grupos = new Set(fichas.map(l => String((l.ficha && l.ficha.grupo) || '')).filter(Boolean));
+    const mis = dadosDe('fichas:missoes'), seg = dadosDe('fichas:segredos');
+    let conversa = null;
+    try { conversa = await aoVivo.contarDoMundo(); } catch (e) { conversa = null; }
+    return { fichas: fichas.length, grupos: grupos.size, conversa, acampamento: !!dadosDe('acampamento'),
+      missoes: quantas(mis && mis.v) + quantas(seg && seg.v && seg.v.mis && seg.v.mis.g),
+      cenas: vivos.filter(l => /^cena:(?!pub:|pedido:)[A-Za-z0-9_-]+:m$/.test(l.id) && semCamp(l)).length,
+      mapas: vivos.filter(l => /^mundo:mapa:/.test(l.id) && semCamp(l)).length,
+      jogadores: a.membros.filter(m => m.cargo !== 'mestre').map(m => m.nome) };
+  }
+  /* A primeira campanha: a lista do que vai passar para ela, e só passa depois do OK. */
+  function janelaPrimeira(nome) {
+    const a = mesas.atual; if (!a || a.cargo !== 'mestre') return;
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'cp-ok', text: 'Criar a campanha', disabled: true });
+    const itens = h('ul', { class: 'lista', id: 'cp-previa' }, h('li', { text: 'Contando o que a mesa tem…' }));
+    const f = h('form', { class: 'dl', id: 'f-primeira' }, h('h2', { text: 'Criar a campanha ' + nome }),
+      h('p', { text: 'Ela recebe o que a mesa já tem. Para os jogadores nada muda de lugar: continuam vendo tudo, agora como parte desta campanha.' }),
+      itens,
+      h('div', { class: 'nt', text: 'Depois dá para tirar dela o que você quiser (um grupo de fichas, uma cena, um mapa, um jogador) e criar outras campanhas, que começam vazias. Enquanto esta for a única, dá para desfazer tudo de uma vez.' }),
+      err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Voltar', onclick: janelaCampanhas }), ok));
+    enviarCom(f, err, ok, async () => {
+      await assentar();
+      const c = await mesas.criarCampanha(nome, true);
+      fecharJanela();
+      toast('Campanha ' + c.nome + ' criada, com o que a mesa já tinha.', 'Desfazer', async () => { try { await assentar(); await mesas.desfazerCampanhas(c.id); toast('Desfeito: a mesa voltou a ser como era, sem campanhas.'); } catch (e) { toast(e.message); } }, 20000);
+    });
+    abrirJanela(f);
+    contarDaMesa().then(n => {
+      if (!f.isConnected) return;
+      itens.replaceChildren(...[
+        n.fichas ? plural(n.fichas, 'ficha', 'fichas') + (n.grupos ? ', em ' + plural(n.grupos, 'grupo', 'grupos') : '') : 'Nenhuma ficha ainda',
+        n.conversa == null ? 'A conversa e as rolagens da mesa ao vivo' : n.conversa ? 'A conversa e as rolagens da mesa ao vivo (' + plural(n.conversa, 'linha', 'linhas') + ')' : null,
+        n.acampamento ? 'O acampamento' : null,
+        n.missoes ? plural(n.missoes, 'missão do grupo', 'missões do grupo') : null,
+        n.cenas ? plural(n.cenas, 'cena', 'cenas') + ' (a que estiver no ar continua no ar)' : null,
+        n.mapas ? plural(n.mapas, 'mapa', 'mapas') + ' do Mapa-múndi' : null,
+        n.jogadores.length ? 'Passam a participar: ' + n.jogadores.join(', ') : 'Nenhum jogador na mesa ainda',
+      ].filter(Boolean).map(t => h('li', { text: t })));
+      ok.disabled = false; ok.focus();
+    }, () => { if (!f.isConnected) return; itens.replaceChildren(h('li', { text: 'Não deu para contar agora. A campanha recebe tudo o que a mesa tiver: fichas, conversa, acampamento, missões do grupo, cenas e mapas.' })); ok.disabled = false; });
+  }
+  /* Quem participa de uma campanha: os participantes da mesa (menos o mestre), cada um com uma caixa. Nada muda antes
+     de "Salvar"; depois, dá para desfazer pelo aviso. */
+  function janelaParticipantes(c) {
+    const a = mesas.atual; if (!a || a.cargo !== 'mestre') return;
+    const gente = a.membros.filter(m => m.cargo !== 'mestre');
+    const antes = new Set(gente.filter(m => (m.campanhas || []).includes(c.id)).map(m => m.usuario_id));
+    const caixas = gente.map(m => h('input', { type: 'checkbox', 'data-u': m.usuario_id, checked: antes.has(m.usuario_id) }));
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'cj-ok', text: 'Salvar' });
+    const f = h('form', { class: 'dl', id: 'f-jogadores' }, h('h2', { text: 'Jogadores de ' + c.nome }),
+      h('p', { text: 'Quem participa vê as fichas abertas, a conversa, o acampamento, as missões do grupo, as cenas e os mapas desta campanha. Quem não participa, não.' }),
+      gente.length ? h('div', { class: 'cxs uma', id: 'cj-lista' }, gente.map((m, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: m.nome + (m.cargo === 'auxiliar' ? ' (mestre auxiliar)' : '') }))))
+        : h('div', { class: 'nt', text: 'Ainda não há jogadores nesta mesa. Passe a eles o código de convite, que está no menu da mesa.' }),
+      h('div', { class: 'nt', text: 'Você vê todas as campanhas. O mestre auxiliar também, enquanto mestra; jogando como jogador, vê as de que participa.' }),
+      err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Voltar', onclick: janelaCampanhas }), ok));
+    enviarCom(f, err, ok, async () => {
+      const mudas = gente.map((m, i) => ({ m, sim: caixas[i].checked })).filter(x => x.sim !== antes.has(x.m.usuario_id));
+      for (const x of mudas) await mesas.participar(c.id, x.m.usuario_id, x.sim);
+      janelaCampanhas();
+      if (!mudas.length) return;
+      toast(mudas.length > 1 ? 'Os jogadores da campanha ' + c.nome + ' foram atualizados.' : mudas[0].m.nome + (mudas[0].sim ? ' agora participa da campanha ' : ' não participa mais da campanha ') + c.nome + '.', 'Desfazer',
+        async () => { try { for (const x of mudas) await mesas.participar(c.id, x.m.usuario_id, !x.sim); toast('Desfeito: os jogadores da campanha ' + c.nome + ' voltaram a ser os de antes.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } }, 12000);
+    });
+    abrirJanela(f);
+  }
+  function janelaRenomearCampanha(c) {
+    const campo = h('input', { id: 'cr-nome', maxlength: 60, autocomplete: 'off', required: true });
+    campo.value = c.nome;
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'cr-ok', text: 'Renomear' });
+    const f = h('form', { class: 'dl', id: 'f-renomear-camp' }, h('h2', { text: 'Renomear a campanha' }),
+      h('label', {}, 'Nome da campanha', campo), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Voltar', onclick: janelaCampanhas }), ok));
+    enviarCom(f, err, ok, async () => {
+      const antes = c.nome, novo = campo.value.trim();
+      if (!novo) throw new Error('Dê um nome à campanha.');
+      if (novo !== antes) {
+        const r = await mesas.mudarCampanha(c.id, { nome: novo });
+        toast('A campanha agora se chama ' + r.nome + '.', 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { nome: antes }); toast('A campanha voltou a se chamar ' + antes + '.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
+      }
+      janelaCampanhas();
+    });
+    abrirJanela(f); campo.focus(); campo.select();
+  }
+  function janelaEncerrar(c) {
+    confirmar('Encerrar a campanha ' + c.nome + '?',
+      'Ela fica guardada. A conversa, as fichas, o acampamento e as missões do grupo dela passam a ser só para consulta — para os jogadores e para você. As cenas e os mapas dela continuam com você. Dá para reabrir quando quiser.',
+      'Encerrar', async () => {
+        await assentar();
+        await mesas.mudarCampanha(c.id, { encerrada: true });
+        toast('Campanha ' + c.nome + ' encerrada: agora é só para consulta.', 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { encerrada: false }); toast('Desfeito: a campanha ' + c.nome + ' continua aberta.'); } catch (e) { toast(e.message); } }, 12000);
+      }, true);
+  }
+  function janelaApagarCampanha(c) {
+    confirmar('Apagar a campanha ' + c.nome + '?',
+      'Só dá para apagar uma campanha que não guarda nada: sem fichas, sem conversa, sem cenas e sem mapas. O acampamento e as missões do grupo dela, se houver, vão junto, e isso não dá para desfazer. Para guardar uma campanha que já foi jogada, use “Encerrar”.',
+      'Apagar', async () => { await mesas.apagarCampanha(c.id); toast('Campanha ' + c.nome + ' apagada.'); });
+  }
+  /* Com uma campanha só, dá para voltar atrás em tudo: o que é dela volta a ser da mesa inteira. */
+  function janelaDesfazer(c) {
+    const a = mesas.atual; if (!a) return;
+    const quem = jogadoresDa(c).map(m => m.usuario_id);
+    confirmar('Voltar a mesa ao que era antes das campanhas?',
+      'Tudo o que é da campanha ' + c.nome + ' — fichas, conversa, acampamento, missões do grupo, cenas e mapas — volta a ser da mesa inteira, e a campanha some. Nada é apagado, e todos os jogadores voltam a ver tudo junto.',
+      'Desfazer as campanhas', async () => {
+        await assentar();
+        await mesas.desfazerCampanhas(c.id);
+        toast('A mesa voltou a ser como era, sem campanhas.', 'Desfazer', async () => {
+          try {
+            await assentar();
+            const n = await mesas.criarCampanha(c.nome, true);
+            // (quem não participava antes volta a não participar; e a campanha volta encerrada, se estava)
+            for (const m of (mesas.atual ? mesas.atual.membros : [])) if (m.cargo !== 'mestre' && !quem.includes(m.usuario_id)) await mesas.participar(n.id, m.usuario_id, false);
+            if (c.encerrada) await mesas.mudarCampanha(n.id, { encerrada: true });
+            toast('Desfeito: a campanha ' + c.nome + ' voltou, com o que a mesa tem.');
+          } catch (e) { toast(e.message); }
+        }, 20000);
+      }, true);
+  }
+  /* As Fichas avisam que uma ficha de uma campanha foi dada a alguém que não participa dela. Só o mestre da mesa
+     inclui; para quem mestra sem ser o mestre (o auxiliar), fica o recado. */
+  function perguntarInclusao(m) {
+    const a = mesas.atual; if (!a) return;
+    const c = a.campanhas.find(x => x.id === m.campanha), ids = Array.isArray(m.usuarios) ? m.usuarios : [];
+    const gente = a.membros.filter(p => ids.includes(p.usuario_id) && p.cargo !== 'mestre' && !(p.campanhas || []).includes(m.campanha));
+    if (!c || !gente.length) return;
+    const nomes = gente.map(p => p.nome), quem = nomes.length === 1 ? nomes[0] : nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1], um = gente.length === 1;
+    const ficha = typeof m.ficha === 'string' && m.ficha ? m.ficha.slice(0, 80) : '';
+    if (a.cargo !== 'mestre') { toast(quem + (um ? ' não participa' : ' não participam') + ' da campanha ' + c.nome + ': sem isso, só ' + (um ? 'vê a ficha dele' : 'veem as fichas deles') + '. Quem inclui é o mestre.', null, null, 9000); return; }
+    confirmar('Incluir ' + quem + ' na campanha ' + c.nome + '?',
+      (ficha ? 'A ficha ' + ficha + ' é dessa campanha, mas ' : '') + quem + (um ? ' não participa dela. Sem participar, vê só a ficha dele' : ' não participam dela. Sem participar, veem só as fichas deles') + ' — não as outras fichas, a conversa, o acampamento nem as cenas da campanha.',
+      'Incluir', async () => {
+        for (const p of gente) await mesas.participar(c.id, p.usuario_id, true);
+        toast(quem + (um ? ' agora participa' : ' agora participam') + ' da campanha ' + c.nome + '.', 'Desfazer', async () => { try { for (const p of gente) await mesas.participar(c.id, p.usuario_id, false); toast('Desfeito: ' + quem + (um ? ' não participa' : ' não participam') + ' da campanha ' + c.nome + '.'); } catch (e) { toast(e.message); } }, 12000);
+      }, true);
   }
   // O mestre troca o nome da mesa (os outros veem o nome novo em instantes).
   function janelaRenomear(a) {
@@ -963,6 +1240,12 @@ dialog::backdrop { background: var(--scrim); }
     const a = mesas.atual, dica = $('dica'), c = $('compor'); if (!a) return;
     dica.replaceChildren();
     c.classList.toggle('seg', !!aoVivo.segredo);
+    // campanha encerrada: a conversa dela é só para consulta (o campo e o botão ficam travados, com o motivo ao lado)
+    const fechada = mesas.encerrada(a.campanha);
+    c.classList.toggle('fechada', fechada);
+    $('msg').disabled = fechada; c.querySelector('button[type="submit"]').disabled = fechada;
+    $('msg').placeholder = fechada ? 'Campanha encerrada' : 'Mensagem ou /r 2d6+3';
+    if (fechada) { fecharComo(); dica.append(h('span', { id: 'dicaFechada', text: 'Campanha encerrada: só consulta.' + (a.cargo === 'mestre' ? ' Para jogar nela de novo, reabra em Campanhas…, no menu da mesa.' : '') })); return; }
     if (a.papel === 'mestre') {
       const b = h('button', { type: 'button', class: 'chave', id: 'segredo', 'aria-pressed': String(!!aoVivo.segredo), title: 'Ligado: as rolagens que você fizer (aqui, no Rolador, nas Fichas e nas Cenas) ficam só para você, até mostrar à mesa', onclick: () => aoVivo.definirSegredo(!aoVivo.segredo) }, icone(CAD_SVG), h('span', { text: 'Em segredo' }));
       dica.append(b, h('span', { id: 'dicaTxt', text: aoVivo.segredo ? 'Só você vê as suas rolagens.' : 'A mesa vê as suas rolagens.' }));
@@ -992,7 +1275,11 @@ dialog::backdrop { background: var(--scrim); }
     const opcao = (p, rotulo) => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String((atual ? atual.id : null) === (p ? p.id : null)),
       onclick: () => { aoVivo.falarComo(p ? p.id : null); $('msg').focus(); } }, miniRetrato(p), h('span', { text: rotulo }));
     lista.append(h('div', { class: 'rot', text: 'Falar como' }), opcao(null, a.papel === 'mestre' ? 'Mestre (sem personagem)' : 'Sem personagem'));
-    for (const p of aoVivo.personagens()) lista.append(opcao(p, p.nome));
+    // (com campanhas: primeiro os personagens da que está em vista, depois os do mundo, depois os das outras)
+    for (const g of mesas.porCampanha(aoVivo.personagens(), p => p.camp)) {
+      if (g.nome) lista.append(h('div', { class: 'rot', text: g.nome }));
+      for (const p of g.itens) lista.append(opcao(p, p.nome));
+    }
     $('compor').append(lista);
     $('como').setAttribute('aria-expanded', 'true');
     const marcado = lista.querySelector('[aria-checked="true"]'); if (marcado) marcado.focus();
@@ -1119,7 +1406,7 @@ dialog::backdrop { background: var(--scrim); }
   const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
   const dadosEl = $('dados'), dadosPc = $('dadosPc'), dadosFixa = $('dadosFixa'), dadosBotoes = $('dadosBotoes');
   let dadosMem = { pc: '', fx: {}, aberta: null }, dadosLista = '', dadosProntos = false, dadosOcupado = false, tDados = 0;
-  const chaveDados = () => 'tinycats:dados:' + (mesas.atual ? mesas.atual.id : '');
+  const chaveDados = () => 'tinycats:dados:' + (mesas.atual ? mesas.atual.id + (mesas.atual.campanha ? '@' + mesas.atual.campanha : '') : '');      // (por mesa e por campanha em vista)
   function lerDadosMem() {
     try { const o = JSON.parse(ler(chaveDados()) || '{}') || {}; return { pc: typeof o.pc === 'string' ? o.pc : '', fx: o.fx && typeof o.fx === 'object' && !Array.isArray(o.fx) ? o.fx : {}, aberta: typeof o.aberta === 'boolean' ? o.aberta : null }; }
     catch (e) { return { pc: '', fx: {}, aberta: null }; }
@@ -1163,15 +1450,17 @@ dialog::backdrop { background: var(--scrim); }
   }
   function pintarDados() {
     const a = mesas.atual;
-    if (!a || !dadosProntos) { dadosEl.hidden = true; return; }
+    if (!a || !dadosProntos || mesas.encerrada(a.campanha)) { dadosEl.hidden = true; return; }      // (numa campanha encerrada não se rola)
     let lista = [];
     try { const P = TC.dados.col('personagens'); lista = aoVivo.personagens().filter(p => { const l = P.pegar(p.id); return !!l && l.ficha != null; }); } catch (e) { lista = []; }
     dadosEl.hidden = !lista.length;
     if (!lista.length) return;
     // o personagem: o que a pessoa escolheu aqui; senão aquele com que ela aparece na mesa; senão o primeiro
     if (!lista.some(p => p.id === dadosMem.pc)) { const c = aoVivo.como(); dadosMem.pc = c && lista.some(p => p.id === c.id) ? c.id : lista[0].id; }
-    const chave = lista.map(p => p.id + '\u0001' + p.nome).join('\u0002');
-    if (chave !== dadosLista) { dadosLista = chave; dadosPc.replaceChildren(...lista.map(p => h('option', { value: p.id, text: p.nome }))); }
+    // (com campanhas, a lista vem em grupos: os personagens da campanha em vista primeiro, depois os do mundo e os das outras)
+    const grupos = mesas.porCampanha(lista, p => p.camp), opcao = p => h('option', { value: p.id, text: p.nome });
+    const chave = grupos.map(g => g.nome + '\u0003' + g.itens.map(p => p.id + '\u0001' + p.nome).join('\u0002')).join('\u0004');
+    if (chave !== dadosLista) { dadosLista = chave; dadosPc.replaceChildren(...(grupos.length === 1 && !grupos[0].nome ? grupos[0].itens.map(opcao) : grupos.map(g => h('optgroup', { label: g.nome }, g.itens.map(opcao))))); }
     if (dadosPc.value !== dadosMem.pc) dadosPc.value = dadosMem.pc;
     const aberta = dadosMem.aberta == null ? a.papel !== 'mestre' : dadosMem.aberta;      // (para o mestre, começa recolhida)
     $('dadosAbre').setAttribute('aria-expanded', String(aberta)); $('dadosCorpo').hidden = !aberta;
@@ -1240,16 +1529,25 @@ dialog::backdrop { background: var(--scrim); }
   mesas.on('permissao', (antes, agora) => {
     if (agora.cargo !== antes.cargo) toast(agora.cargo === 'auxiliar' ? 'Você agora é mestre auxiliar desta mesa. O que você mestra está no menu da mesa.' : agora.cargo === 'mestre' ? 'Você agora é o mestre desta mesa.' : 'Você voltou a ser jogador nesta mesa.', null, null, 9000);
     else if (agora.jogando !== antes.jogando) toast(agora.jogando ? 'Você está jogando como jogador.' : 'Você voltou a mestrar.');
-    else toast('O mestre mudou as abas que você mestra. Elas estão no menu da mesa.', null, null, 9000);
+    else if (agora.abas.join() !== antes.abas.join()) toast('O mestre mudou as abas que você mestra. Elas estão no menu da mesa.', null, null, 9000);
+    else {
+      // mudaram as campanhas de que participo (o mestre me pôs numa, me tirou de uma, ou desfez as campanhas)
+      const a = mesas.atual, antigas = antes.campanhas || [], novas = (agora.campanhas || []).filter(x => !antigas.includes(x));
+      const nome = id => { const c = a && a.campanhas.find(x => x.id === id); return c ? c.nome : ''; };
+      toast(novas.length === 1 && nome(novas[0]) ? 'O mestre colocou você na campanha ' + nome(novas[0]) + '.' : novas.length ? 'O mestre colocou você em ' + (antigas.length ? 'mais campanhas' : novas.length + ' campanhas') + ' desta mesa. Você escolhe qual ver no menu da mesa.'
+        : (agora.campanhas || []).length ? 'Você não participa mais de uma das campanhas desta mesa.' : a && a.temCampanhas ? 'Você não participa mais de nenhuma campanha desta mesa: por enquanto, vê só o que é do mundo.' : 'As campanhas desta mesa foram desfeitas: tudo voltou a ser da mesa inteira.', null, null, 9000);
+    }
   });
-  /* Os sistemas abertos são de uma mesa e de um papel: quando a mesa troca, ou quando muda o que a pessoa pode ver
-     nela (virou auxiliar, ganhou ou perdeu uma aba, passou a jogar como jogador), eles são carregados de novo. */
-  const assinatura = () => { const a = mesas.atual; return a ? [a.id, a.cargo, a.jogando ? 1 : 0, a.abas.join(',')].join('|') : null; };
+  /* Os sistemas abertos são de uma mesa, de um papel e de uma campanha: quando a mesa troca, quando muda o que a pessoa
+     pode ver nela (virou auxiliar, ganhou ou perdeu uma aba, passou a jogar como jogador), quando ela passa a ver
+     outra campanha, ou quando uma campanha é criada, apagada, encerrada ou reaberta, eles são carregados de novo. */
+  const assinatura = () => { const a = mesas.atual; return a ? [a.id, a.cargo, a.jogando ? 1 : 0, a.abas.join(','), a.campanha || '', a.campanhas.map(c => c.id + (c.encerrada ? '!' : '')).sort().join(','), a.temCampanhas ? 1 : 0].join('|') : null; };
   let mesaDasMolduras = null;
   function recarregarSistemas() {
     const id = assinatura();
     if (id === mesaDasMolduras) return;
     mesaDasMolduras = id;
+    descarregarMolduras();           // (o que os sistemas ainda seguravam é entregue antes de eles fecharem)
     for (const a of ABAS) if (a.dados && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     if (atual && !frames[atual]) abrir(atual);
     cenasEmSegundoPlano();

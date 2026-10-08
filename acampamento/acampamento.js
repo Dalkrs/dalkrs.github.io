@@ -15,7 +15,10 @@
   const R = () => (window.TC && TC.rules) || null;
   const j = JSON.stringify;
   const $ = id => document.getElementById(id);
-  const CHAVE = 'tinycats:acampamento:v1', DOC = 'acampamento', FICHAS_LOCAL = 'urgm_calc_atributos_v1';
+  const CHAVE = 'tinycats:acampamento:v1', FICHAS_LOCAL = 'urgm_calc_atributos_v1';
+  /* O documento do acampamento na mesa. Numa mesa com campanhas, cada campanha tem o acampamento dela
+     ("acampamento@<campanha>"): esta página mostra o da campanha em vista (a casca a abre de novo quando ela muda). */
+  let DOC = 'acampamento', campId = null;
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
   const NS = 'http://www.w3.org/2000/svg';
   const HORA_NOME = { entardecer: 'Entardecer', noite: 'Noite', amanhecer: 'Amanhecer' };
@@ -49,6 +52,7 @@
 
   /* ---------------- estado ---------------- */
   let modo = 'local', papel = 'mestre', st = { mesa: null, papel: null, eu: null, membros: [] }, P = null, D = null;
+  let encerrada = false;                             // a campanha em vista está encerrada: o acampamento é só para consulta
   let camp = N.normalizar(null), jCamp = j(camp);
   let pilha = [];                                    // desfazer: [{ rotulo, json, fichas? }]
   let sel = null, aba = guarda.ler('tinycats:acampamento:aba') || 'grupo';
@@ -185,7 +189,8 @@
     if (!naMesa() || !mestre()) return;
     const todas = linhas(), ids = new Set(todas.map(l => l.id));
     mudar('roda', c => {
-      for (const l of todas) if (ehJogador(l.dono_id) && !c.autoVistos.includes(l.id)) { c.autoVistos.push(l.id); if (!c.presentes.includes(l.id)) c.presentes.push(l.id); }
+      // (numa mesa com campanhas, entram sozinhos os personagens de jogador DESTA campanha; os do mundo e os das outras, só chamados)
+      for (const l of todas) if (ehJogador(l.dono_id) && (!campId || l.campanha === campId) && !c.autoVistos.includes(l.id)) { c.autoVistos.push(l.id); if (!c.presentes.includes(l.id)) c.presentes.push(l.id); }
       c.roda = c.presentes.filter(id => ids.has(id)).map(id => { const l = todas.find(x => x.id === id), img = l.ficha && l.ficha.img; return { id, nome: l.nome || 'Sem nome', img: typeof img === 'string' && /^https:\/\//.test(img) ? img : null, dono: l.dono_id || null }; });
     }, { silencioso: true });
   }
@@ -317,9 +322,10 @@
     vz.hidden = n > 0;
     if (!n) vz.textContent = mestre() ? (linhas().length ? 'Ninguém em volta da fogueira ainda. Chame os personagens pela aba Grupo.' : (naMesa() ? 'A mesa ainda não tem fichas. Crie os personagens na aba Fichas e chame-os para cá.' : 'Sem fichas neste navegador. Crie os personagens na aba Fichas e chame-os para cá.')) : 'O mestre ainda não chamou ninguém para o acampamento.';
     const ef = N.efeitos(camp), txt = N.textoEfeitos(ef);
-    $('avisosCena').replaceChildren(
+    // (sem melhorias em uso não há o que dizer da estrutura: o null sai no filtro — o navegador o escreveria na cena)
+    $('avisosCena').replaceChildren(...[
       ...camp.bonus.map(b => h('span', { class: 'chip', title: b.desc || null }, h('b', { text: b.nome || 'Bônus' }), b.ateDescanso ? ' até o descanso' : null)),
-      txt ? h('span', { class: 'chip', title: 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, 'Estrutura: ', h('b', { text: txt })) : null);
+      txt ? h('span', { class: 'chip', title: 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, 'Estrutura: ', h('b', { text: txt })) : null].filter(Boolean));
     ajustarPalco();
   }
 
@@ -400,8 +406,11 @@
         mestre() ? h('button', { type: 'button', class: 'btn sm per', text: 'Tirar do acampamento', onclick: () => { const nome = p.nome; sel = null; if (mudar('tirar ' + nome + ' do acampamento', c => { c.presentes = c.presentes.filter(x => x !== p.id); delete c.lugares[p.id]; })) { manterRoda(); toast(nome + ' saiu do acampamento.', 'Desfazer', desfazer); } } }) : null)) : null;
       return [cab, acoes];
     });
+    // (com campanhas, a lista vem em grupos: os personagens da campanha em vista primeiro, depois os do mundo e os das outras)
+    const opcao = l => h('option', { value: l.id, text: l.nome || 'Sem nome' });
+    const grupos = naMesa() && TC.ponte.porCampanha ? TC.ponte.porCampanha(fora, l => l.campanha) : [{ nome: '', itens: fora }];
     const chamar = mestre() && fora.length ? h('select', { class: 'in', id: 'chamar', 'aria-label': 'Chamar para o acampamento', onchange: e => { const id = e.target.value; if (!id) return; const l = linha(id); mudar('chamar ' + (l ? l.nome : 'personagem'), c => { c.presentes.push(id); if (!c.autoVistos.includes(id)) c.autoVistos.push(id); }); manterRoda(); } },
-      h('option', { value: '', text: '+ Chamar para o acampamento…' }), ...fora.map(l => h('option', { value: l.id, text: l.nome || 'Sem nome' }))) : null;
+      h('option', { value: '', text: '+ Chamar para o acampamento…' }), ...(grupos.length === 1 && !grupos[0].nome ? grupos[0].itens.map(opcao) : grupos.map(g => h('optgroup', { label: g.nome }, g.itens.map(opcao))))) : null;
     const bonus = camp.bonus.map(b => h('div', { class: 'cartao' },
       h('div', { class: 'lin' }, campoTexto('bn-n-' + b.id, b.nome, 'Nome do bônus', v => mudar('renomear o bônus', c => { acha(c.bonus, b.id).nome = v; }), { placeholder: 'Nome do bônus' }),
         mestre() ? botaoIcone('bn-x-' + b.id, X, 'Tirar o bônus ' + (b.nome || ''), () => { if (mudar('tirar o bônus ' + (b.nome || ''), c => { c.bonus = c.bonus.filter(x => x.id !== b.id); })) toast('Bônus tirado.', 'Desfazer', desfazer); }) : null),
@@ -682,7 +691,9 @@
       const idx = D.pegar('cenas:indice'), ordem = idx && !idx.apagado && idx.dados && Array.isArray(idx.dados.ordem) ? idx.dados.ordem : [], cenas = [];
       for (const l of D.todas()) {
         const m = /^cena:([A-Za-z0-9_-]{1,60}):m$/.exec(l.id || '');
-        if (m && !l.apagado && l.dados && m[1] !== 'pub' && m[1] !== 'pedido') cenas.push({ id: m[1], nome: String(l.dados.name || 'Cena') });
+        // (com campanhas: as cenas da campanha em vista e as do mundo)
+        const cs = Array.isArray(l.campanhas) ? l.campanhas : [];
+        if (m && !l.apagado && l.dados && m[1] !== 'pub' && m[1] !== 'pedido' && (!campId || !cs.length || cs.includes(campId))) cenas.push({ id: m[1], nome: String(l.dados.name || 'Cena') });
       }
       return cenas.sort((a, b) => (ordem.indexOf(a.id) + 1 || 1e9) - (ordem.indexOf(b.id) + 1 || 1e9));
     }
@@ -740,7 +751,12 @@
       if (TCx.ponte.naCasca) document.documentElement.classList.add('na-casca');
       if (TCx.dados && TCx.dados.disponivel()) {
         modo = 'mesa';
-        papel = st.papel === 'mestre' ? 'mestre' : 'jogador';
+        // a campanha em vista: o acampamento é o dela; numa campanha encerrada, é só para consulta (para todos)
+        const cv = st.campanha || null;
+        campId = cv ? cv.id : null;
+        if (campId) DOC = 'acampamento@' + campId;
+        encerrada = !!(cv && cv.encerrada);
+        papel = st.papel === 'mestre' && !encerrada ? 'mestre' : 'jogador';
         P = TCx.dados.col('personagens'); D = TCx.dados.col('documentos');
         await Promise.all([P.pronta, D.pronta]);
       }
@@ -750,7 +766,7 @@
       const d = D.pegar(DOC);
       camp = N.normalizar(d && !d.apagado ? d.dados : null);
       jCamp = j(camp);
-      marcarSalvo('Salvo na mesa');
+      marcarSalvo(encerrada ? 'Campanha encerrada: só consulta' : st.temCampanhas && !campId ? 'Você ainda não está numa campanha' : 'Salvo na mesa');
       D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') pintar(); });
       P.aoMudar(() => { if (arrasto) return; manterRoda(); if (!digitando() && !dlg.open) pintar(); else pintarCena(); });
     } else {

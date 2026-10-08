@@ -681,7 +681,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 
 <input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
-<script src="../tc/ponte.js?v=10"></script>
+<script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/auditoria.js?v=2"></script>
 <script src="auditor.js?v=1"></script>
 <script>
@@ -2165,7 +2165,8 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   function buildMainMenu(menu) {
     const overdue = backupOverdue();
     const trashN = state.trash.length;
-    menu.replaceChildren(
+    // (o que não vale agora entra como null e sai no filtro: o navegador escreveria "null" no menu)
+    menu.replaceChildren(...[
       menuItem('Tabelas de eventos', () => openTables(), '', state.tables.length ? String(state.tables.length) : 'nenhuma'),
       menuItem('Lixeira', openTrash, '', trashN ? plural(trashN, 'item', 'itens') : 'vazia'),
       menuItem('Resumo da sessão com IA', openAi),
@@ -2183,7 +2184,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
         ? h('p', { class: 'dd-note', text: 'Nesta mesa, os históricos e as tabelas ficam guardados no banco. A lixeira fica neste navegador.' })
         : h('p', { class: 'dd-note' + (overdue ? ' warn' : ''),
           text: 'Último backup: ' + ago(state.lastBackupAt) + '.' + (overdue ? ' Faça um agora: se o navegador for limpo, só o arquivo de backup guarda tudo.' : '') }),
-      mesa.on ? null : h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' }));
+      mesa.on ? null : h('p', { class: 'dd-note', text: 'Espaço usado: ' + sizeLabel(lastSavedSize) + ' de cerca de 5 MB.' })].filter(Boolean));
   }
 
   /* ================= aviso flutuante ================= */
@@ -3022,10 +3023,10 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     };
     const hs = loc.histories.slice().sort((a, b) => b.updatedAt - a.updatedAt);
     $('bringIntro').textContent = (primeira ? 'Esta mesa ainda não tem históricos do Rolador, e este navegador guarda os que você já fez. ' : '') + 'Na mesa, eles ficam salvos no banco e abrem em qualquer aparelho. Escolha o que trazer:';
-    $('bringList').replaceChildren(
+    $('bringList').replaceChildren(...[
       ...hs.map((x) => linha('h:' + x.id, x.name, plural(rollsOf(x).length, 'rolagem', 'rolagens') + ', ' + dayWord(x.updatedAt), x.entries.length > 0)),
       loc.tables.length ? h('li', { class: 'bring-head', text: 'Tabelas de eventos' }) : null,
-      ...loc.tables.map((t) => linha('t:' + t.id, t.name, plural(tableItems(t).length, 'item', 'itens'), true)));
+      ...loc.tables.map((t) => linha('t:' + t.id, t.name, plural(tableItems(t).length, 'item', 'itens'), true))].filter(Boolean));
     $('bringNote').textContent = '';
     $('bringOk').onclick = () => {
       if (!marcados.size) { $('bringNote').textContent = 'Marque pelo menos um item.'; return; }
@@ -3296,7 +3297,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
   function showAiError(boxId, text, detail) {
     const box = $(boxId);
     box.hidden = false;
-    box.replaceChildren(h('span', { text }), detail ? h('span', { class: 'ai-error-detail', text: 'Detalhe da IA: ' + detail }) : null);
+    box.replaceChildren(...[h('span', { text }), detail ? h('span', { class: 'ai-error-detail', text: 'Detalhe da IA: ' + detail }) : null].filter(Boolean));
   }
   function hideAiError(boxId) { $(boxId).hidden = true; $(boxId).replaceChildren(); }
 

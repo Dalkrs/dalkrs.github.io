@@ -462,8 +462,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
-<script src="../tc/ponte.js?v=10"></script>
-<script src="mesa.js?v=5"></script>
+<script src="../tc/ponte.js?v=11"></script>
+<script src="mesa.js?v=6"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1934,10 +1934,11 @@ function pintarAbas(){
     $('#btRenomearAba').title = 'Renomear ou mudar a categoria';
     $('#btRenomearAba').disabled = $('#btDuplicarAba').disabled = $('#btExcluirAba').disabled = !lista.length;
   }else{
-    cx.innerHTML = doc.personagens.map(p=>`
+    // (numa mesa com campanhas, a aba diz de onde é o personagem que não é da campanha em vista)
+    cx.innerHTML = doc.personagens.map(p=>{ const et = ArvoreMesa.etiqueta(p.id); return `
       <button class="aba" role="tab" data-id="${esc(p.id)}" aria-selected="${p.id===ui.personagem}">
-        ${esc(p.nome)}<b>${Object.keys(p.alocados).filter(id=>porId.has(id)).length}</b>
-      </button>`).join('');
+        ${et ? `<small>${esc(et)}</small>` : ''}${esc(p.nome)}<b>${Object.keys(p.alocados).filter(id=>porId.has(id)).length}</b>
+      </button>`; }).join('');
     $('#btNovaAba').title = 'Novo personagem';
     $('#btNovaAba').setAttribute('aria-label', 'Novo personagem');
     $('#btRenomearAba').title = 'Renomear personagem';

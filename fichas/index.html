@@ -135,6 +135,23 @@ label.f > span{display:block;margin-bottom:3px}
 .roster .mt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase}
 .searchrow{padding:8px 10px;border-bottom:1px solid var(--line)}
 
+/* blocos por campanha (só numa mesa com campanhas): o da campanha em vista, o do mundo e os das outras */
+.bloco{border-bottom:1px solid var(--line)}
+.bloco:last-child{border-bottom:0}
+.blocohd{display:flex;align-items:center;gap:6px;padding:7px 8px;background:var(--campo);border-bottom:1px solid var(--line)}
+.bloco.vista>.blocohd{box-shadow:inset 3px 0 0 var(--brass)}
+.blocohd .caret{border:0;background:transparent;padding:0 2px;color:var(--ink-soft);font-size:11px;border-radius:0}
+.blocohd .bloconome{font-weight:600;font-size:13px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blocohd .cnt{font-size:10.5px;color:var(--ink-soft)}
+.blocohd .blocotag{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--line);border-radius:10px;padding:1px 6px;white-space:nowrap}
+.blocohd .blocotag.vis{color:var(--brass-ink);border-color:var(--brass-soft);background:var(--brass-fundo)}
+.blocoitens{list-style:none;margin:0;padding:0}
+.blocoitens>.vazio{display:block}
+.grab.fixo{cursor:default;width:17px;padding:0}
+.pgops{display:grid;gap:6px}
+.pgop{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;font-size:14px}
+.pgop input{width:auto;flex:none;margin:0;padding:0}      /* (os campos desta página ocupam a largura toda; a bolinha de escolher, não) */
+.pgop:has(input:checked){border-color:var(--brass);background:var(--brass-fundo)}
 /* seções por grupo */
 .sec{border-bottom:1px solid var(--line)}
 .sec:last-child{border-bottom:0}
@@ -847,11 +864,11 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=10"></script>
+<script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/rules.js?v=5"></script>
-<script src="mesa.js?v=7"></script>
+<script src="mesa.js?v=8"></script>
 <script src="extras.js?v=6"></script>
-<script src="quadros.js?v=1"></script>
+<script src="quadros.js?v=2"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1279,33 +1296,63 @@ function renderLista(){
       + (ft.length?`<button class="tag limpar" data-ftag="__limpar__">limpar</button>`:'')
     : '<span class="hint" style="font-size:11px">Sem tags ainda — adicione na ficha.</span>';
 
-  const secoes=[...gruposOrdenados(), ''];
+  /* Com campanhas na mesa, a lista vem em blocos: o da campanha em vista (aberto, em cima), o do mundo e os das outras
+     campanhas (recolhidos). Cada bloco tem os grupos dele. Sem campanhas, é um bloco só, sem nome: a lista de sempre. */
+  const blocos=FichasMesa.blocos(), mestre=!FichasMesa.ativo()||FichasMesa.mestre(), comCamp=blocos.length>1 || !!blocos[0].nome;
+  const organiza=FichasMesa.organiza();        // (passar ficha ou grupo de uma campanha para outra: só o mestre da mesa)
   let html='';
-  secoes.forEach(g=>{
-    const membros=S.personagens.filter(p=>(p.grupo||'')===g && casaFiltro(p));
-    const total=S.personagens.filter(p=>(p.grupo||'')===g).length;
-    if(g==='' && !total) return;                       // "Sem grupo" só aparece se tiver alguém
-    if(filtroAtivo() && !membros.length) return;       // filtrando: esconde seção vazia
-    const fechado=(S.fechados||[]).includes(g||SEM);
-    html+=`<li class="sec" data-sec="${esc(g||SEM)}">
-      <div class="sechd">
-        <button class="caret" data-toggle="${esc(g||SEM)}">${fechado?'▸':'▾'}</button>
-        <span class="secnome">${g?esc(g):'Sem grupo'}</span>
-        <span class="cnt mono">${membros.length}${membros.length!==total?'/'+total:''}</span>
-        ${g?`<span class="secacts">
-          <button class="mini" data-gmove="${esc(g)}|-1" title="Subir grupo">▲</button>
-          <button class="mini" data-gmove="${esc(g)}|1" title="Descer grupo">▼</button>
-          <button class="mini" data-gren="${esc(g)}" title="Renomear">✎</button>
-          <button class="mini danger" data-gdel="${esc(g)}" title="Desfazer grupo">×</button>
-        </span>`:''}
+  blocos.forEach(b=>{
+    const doBloco=b.unico? S.personagens : S.personagens.filter(p=>FichasMesa.blocoDe(p)===b.camp);
+    const trancado=!!b.encerrada || b.camp==='?';      // (campanha encerrada: só consulta)
+    /* Só o mestre da mesa passa ficha de um bloco para outro: para os outros, um bloco sem nenhuma ficha (que não seja o
+       da campanha em vista) não diz nada, e não aparece. */
+    if(comCamp && !organiza && !b.vista && !doBloco.length) return;
+    // um bloco sem ninguém em que dá para soltar uma ficha: o da campanha em vista e, para o mestre da mesa, qualquer um aberto
+    const soltarAqui=comCamp && !doBloco.length && (b.vista || (organiza && !trancado));
+    const secoes=[...gruposOrdenados(b.camp), ''];
+    let dentro='';
+    secoes.forEach(g=>{
+      const membros=doBloco.filter(p=>(p.grupo||'')===g && casaFiltro(p));
+      const total=doBloco.filter(p=>(p.grupo||'')===g).length;
+      if(g==='' && !total && !soltarAqui) return;        // "Sem grupo" só aparece se tiver alguém (ou para o bloco vazio ter onde soltar)
+      if(filtroAtivo() && !membros.length) return;       // filtrando: esconde seção vazia
+      const chave=chaveSec(b.camp,g), fechado=(S.fechados||[]).includes(chave);
+      dentro+=`<li class="sec" data-sec="${esc(g||SEM)}" data-camp="${esc(b.camp)}">
+        <div class="sechd">
+          <button class="caret" data-toggle="${esc(g||SEM)}">${fechado?'▸':'▾'}</button>
+          <span class="secnome">${g?esc(g):'Sem grupo'}</span>
+          <span class="cnt mono">${membros.length}${membros.length!==total?'/'+total:''}</span>
+          ${g && !trancado?`<span class="secacts">
+            <button class="mini" data-gmove="${esc(g)}|-1" title="Subir grupo">▲</button>
+            <button class="mini" data-gmove="${esc(g)}|1" title="Descer grupo">▼</button>
+            <button class="mini" data-gren="${esc(g)}" title="Renomear">✎</button>
+            ${comCamp && organiza?`<button class="mini" data-gcamp="${esc(g)}" title="Passar o grupo para outra campanha…" aria-label="Passar o grupo ${esc(g)} para outra campanha">⇄</button>`:''}
+            <button class="mini danger" data-gdel="${esc(g)}" title="Desfazer grupo">×</button>
+          </span>`:''}
+        </div>
+        <ul class="secitens" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" ${trancado?'data-trancado="1"':''} ${fechado?'hidden':''}>
+          ${membros.map(p=>linhaElenco(p)).join('') || (trancado?'<li class="vazio hint">ninguém aqui</li>':'<li class="vazio hint">arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':'')+'</li>')}
+        </ul></li>`;
+    });
+    if(!comCamp){ html+=dentro; return; }
+    if(filtroAtivo() && !dentro) return;                 // filtrando: esconde o bloco sem ninguém
+    // o bloco em vista começa aberto (dá para recolher); os outros começam recolhidos (dá para abrir)
+    const kb=chaveBloco(b.camp), fechadoB = filtroAtivo()? false : b.vista ? (S.fechados||[]).includes(kb) : !(S.abertos||[]).includes(kb);
+    html+=`<li class="bloco${b.vista?' vista':''}" data-bloco="${esc(b.camp)}">
+      <div class="blocohd">
+        <button class="caret" data-btoggle="${esc(b.camp)}" aria-expanded="${!fechadoB}" aria-label="${fechadoB?'Abrir':'Recolher'} ${esc(b.nome)}">${fechadoB?'▸':'▾'}</button>
+        <span class="bloconome">${esc(b.nome)}</span>
+        <span class="cnt mono">${doBloco.length}</span>
+        ${b.encerrada?'<span class="blocotag">encerrada</span>':b.vista && b.camp?'<span class="blocotag vis">em vista</span>':''}
       </div>
-      <ul class="secitens" data-lista="${esc(g||SEM)}" ${fechado?'hidden':''}>
-        ${membros.map(p=>linhaElenco(p)).join('') || '<li class="vazio hint">arraste alguém pra cá</li>'}
-      </ul></li>`;
+      <ul class="blocoitens" ${fechadoB?'hidden':''}>${dentro || '<li class="vazio hint">'+(b.camp?'nenhuma ficha nesta campanha ainda':'nenhuma ficha do mundo: o que estiver aqui aparece em todas as campanhas')+'</li>'}</ul></li>`;
   });
   ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
   ligarElenco();
 }
+// a chave com que a tela lembra se uma seção (ou um bloco) está recolhida; as do mundo ficam como sempre foram
+function chaveSec(camp,g){ return (camp? camp+'\u0001' : '')+(g||SEM); }
+function chaveBloco(camp){ return 'bloco\u0001'+(camp||''); }
 /* iniciativa da ficha: um número ou uma fórmula (as mesmas variáveis dos recursos) */
 function iniciativaDe(pc){
   if(window.TC && TC.rules){ try{ return TC.rules.iniciativa(pc, S.cfg, {arvore: TC.rules.bonusDaArvore(pc.skills, S.bib), temp: pc.estado && pc.estado.tmp, fer: pc.estado && pc.estado.fer}); }catch(e){} }
@@ -1358,8 +1405,10 @@ function pintarAoVivo(){
   try{ FichasExtras.aoVivo(pc); FichasQuadros.aoVivo(pc); }catch(e){ console.error(e); }
 }
 function linhaElenco(p){
+  // (ficha de campanha encerrada — ou de uma campanha que não aparece aqui — não se arrasta: fica onde está)
+  const fixa=FichasMesa.encerrada(p._camp) || FichasMesa.blocoDe(p)==='?';
   return `<li class="pcrow" data-id="${p.id}">
-    <span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo">⠿</span>
+    ${fixa? '<span class="grab fixo" aria-hidden="true"></span>' : `<span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo${FichasMesa.campanhas().length && FichasMesa.organiza()?' (ou de campanha)':''}">⠿</span>`}
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
@@ -1377,34 +1426,45 @@ function ligarElenco(){
   const ul=document.getElementById('lista');
   ul.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{S.sel=b.dataset.abrir; save(); render()});
   FichasMesa.ligarOlhos(ul);
+  // (cada seção é de um bloco: o grupo "Heróis" da campanha em vista não é o "Heróis" de outra)
+  const campDe=b=>{ const s=b.closest('[data-camp]'); return s? s.dataset.camp||'' : ''; };
+  const doGrupo=(camp,g)=>S.personagens.filter(p=>FichasMesa.blocoDe(p)===camp && (p.grupo||'')===g);
   ul.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{
-    const g=b.dataset.toggle; S.fechados=S.fechados||[];
+    const g=chaveSec(campDe(b), b.dataset.toggle===SEM?'':b.dataset.toggle); S.fechados=S.fechados||[];
     S.fechados = S.fechados.includes(g)? S.fechados.filter(x=>x!==g) : [...S.fechados,g];
     save(); renderLista();
   });
+  ul.querySelectorAll('[data-btoggle]').forEach(b=>b.onclick=()=>{
+    // o bloco em vista lembra se foi recolhido; os outros, se foram abertos
+    const camp=b.dataset.btoggle, k=chaveBloco(camp), vista=b.closest('.bloco').classList.contains('vista'), campo=vista?'fechados':'abertos';
+    S[campo]=S[campo]||[];
+    S[campo] = S[campo].includes(k)? S[campo].filter(x=>x!==k) : [...S[campo],k];
+    save(); renderLista();
+  });
   ul.querySelectorAll('[data-gmove]').forEach(b=>b.onclick=()=>{
-    const [g,d]=b.dataset.gmove.split('|'); fixarGrupos();
-    const i=S.grupos.indexOf(g), j=i+ +d;
-    if(i<0||j<0||j>=S.grupos.length) return;
-    S.grupos.splice(j,0,S.grupos.splice(i,1)[0]); save(); renderLista();
+    const [g,d]=b.dataset.gmove.split('|'), camp=campDe(b); fixarGrupos();
+    const l=gruposDe(camp), i=l.indexOf(g), j=i+ +d;
+    if(i<0||j<0||j>=l.length) return;
+    l.splice(j,0,l.splice(i,1)[0]); save(); renderLista();
   });
   ul.querySelectorAll('[data-gren]').forEach(b=>b.onclick=()=>{
-    const g=b.dataset.gren, novo=prompt('Novo nome do grupo:',g);
+    const g=b.dataset.gren, camp=campDe(b), novo=prompt('Novo nome do grupo:',g);
     if(!novo||novo===g) return;
     fixarGrupos();
-    S.grupos=S.grupos.map(x=>x===g?novo:x).filter((x,i,a)=>a.indexOf(x)===i);
-    S.personagens.forEach(p=>{if((p.grupo||'')===g)p.grupo=novo});
-    S.fechados=(S.fechados||[]).map(x=>x===g?novo:x);
+    porGrupos(camp, gruposDe(camp).map(x=>x===g?novo:x).filter((x,i,a)=>a.indexOf(x)===i));
+    doGrupo(camp,g).forEach(p=>{p.grupo=novo});
+    S.fechados=(S.fechados||[]).map(x=>x===chaveSec(camp,g)?chaveSec(camp,novo):x);
     save(); render();
   });
   ul.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>{
-    const g=b.dataset.gdel;
+    const g=b.dataset.gdel, camp=campDe(b);
     if(!confirm('Desfazer o grupo "'+g+'"? Os personagens voltam para "Sem grupo".')) return;
     fixarGrupos();
-    S.grupos=S.grupos.filter(x=>x!==g);
-    S.personagens.forEach(p=>{if((p.grupo||'')===g)p.grupo=''});
+    porGrupos(camp, gruposDe(camp).filter(x=>x!==g));
+    doGrupo(camp,g).forEach(p=>{p.grupo=''});
     save(); render();
   });
+  ul.querySelectorAll('[data-gcamp]').forEach(b=>b.onclick=()=>abrirPassarGrupo(campDe(b), b.dataset.gcamp));
   document.getElementById('tagbar').querySelectorAll('[data-ftag]').forEach(b=>b.onclick=()=>{
     const t=b.dataset.ftag; S.filtroTags=S.filtroTags||[];
     if(t==='__limpar__') S.filtroTags=[];
@@ -1459,26 +1519,130 @@ function soltarArraste(){
   arrasto.fantasma.remove();
   arrasto.li.classList.remove('arrastando');
   document.body.classList.remove('arrastando-agora');
+  const movido=arrasto.li.dataset.id;
   arrasto=null;
-  const mapa=new Map(S.personagens.map(p=>[p.id,p])), novos=[];
+  const mapa=new Map(S.personagens.map(p=>[p.id,p])), novos=[], antes=S.personagens.slice();
+  let mudou=null, recusado=false;     // mudou: a ficha arrastada passou para outra campanha (dá para desfazer)
   document.querySelectorAll('#lista [data-lista]').forEach(ulSec=>{
-    const g=ulSec.dataset.lista===SEM? '' : ulSec.dataset.lista;
+    const g=ulSec.dataset.lista===SEM? '' : ulSec.dataset.lista, camp=ulSec.dataset.camp||'', trancado=!!ulSec.dataset.trancado;
     ulSec.querySelectorAll('.pcrow').forEach(li=>{
       const p=mapa.get(li.dataset.id);
-      if(p){ p.grupo=g; novos.push(p); mapa.delete(li.dataset.id); }
+      if(!p) return;
+      const de=FichasMesa.blocoDe(p);
+      /* Soltar numa seção de outro bloco passa a ficha para aquela campanha (ou para o mundo) — o que só o mestre da
+         mesa faz. Não vale para a campanha encerrada — nem para tirar ficha dela, nem para pôr —, nem para o bloco das
+         campanhas que não aparecem aqui. */
+      if(de!==camp && !FichasMesa.organiza()){ if(p.id===movido) recusado='papel'; novos.push(p); mapa.delete(li.dataset.id); return; }
+      if(de!==camp && (trancado || FichasMesa.encerrada(p._camp) || de==='?')){ if(p.id===movido) recusado=true; novos.push(p); mapa.delete(li.dataset.id); return; }
+      if(de!==camp){ if(p.id===movido) mudou={pc:p, camp:p._camp||null, grupo:p.grupo||''}; p._camp=camp||null; }
+      p.grupo=g; novos.push(p); mapa.delete(li.dataset.id);
     });
   });
   mapa.forEach(p=>novos.push(p));      // quem estiver escondido mantém-se no fim
   S.personagens=novos; fixarGrupos(); save(); renderLista();
+  if(recusado) toast(recusado==='papel'? 'Só o mestre da mesa passa fichas de uma campanha para outra.' : 'Campanha encerrada: as fichas dela não saem, e nenhuma entra.');
+  if(mudou){
+    const pc=mudou.pc;
+    FichasMesa.garantirRelacoes(); save(); if(S.sel===pc.id) renderFicha();
+    FichasExtras.aviso(pc.nome+' passou para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{
+      pc._camp=mudou.camp; pc.grupo=mudou.grupo;
+      S.personagens=antes.filter(p=>S.personagens.includes(p)).concat(S.personagens.filter(p=>!antes.includes(p)));
+      fixarGrupos(); save(); render();
+    }, 9000);
+    FichasMesa.avisarDeFora([pc]);
+  }
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 const SEM='__sem__';
-function gruposOrdenados(){
-  const nomes=[...(S.grupos||[])];
-  S.personagens.forEach(p=>{ const g=p.grupo||''; if(g && !nomes.includes(g)) nomes.push(g); });
+/* Os grupos de um bloco da lista, na ordem do mestre: os do mundo ficam em S.grupos; os de cada campanha, em
+   S.gruposCamp[campanha]. (Sem campanhas, o bloco é um só — camp '' — e tudo é como sempre foi.) */
+function gruposDe(camp){
+  if(!camp) return (S.grupos=S.grupos||[]);
+  if(camp==='?') return [];
+  const m=(S.gruposCamp && typeof S.gruposCamp==='object' && !Array.isArray(S.gruposCamp))? S.gruposCamp : (S.gruposCamp={});
+  return Array.isArray(m[camp])? m[camp] : (m[camp]=[]);
+}
+function porGrupos(camp,lista){ if(!camp) S.grupos=lista; else if(camp!=='?'){ gruposDe(camp); S.gruposCamp[camp]=lista; } }
+function gruposOrdenados(camp){
+  camp=camp||'';
+  const nomes=[...gruposDe(camp)];
+  S.personagens.forEach(p=>{ if(FichasMesa.blocoDe(p)!==camp) return; const g=p.grupo||''; if(g && !nomes.includes(g)) nomes.push(g); });
   return nomes;
 }
-function fixarGrupos(){ S.grupos=gruposOrdenados(); }
+function fixarGrupos(){ S.grupos=gruposOrdenados(''); FichasMesa.campanhas().forEach(c=>{ const l=gruposOrdenados(c.id); if(l.length || (S.gruposCamp||{})[c.id]) porGrupos(c.id,l); }); }
+/* As opções do campo "Grupo" da ficha. Sem campanhas: "Sem grupo" e os grupos, como sempre (o valor é o nome do grupo).
+   Com campanhas, o valor é "campanha/grupo", e quem mestra escolhe também o bloco — a campanha da ficha, o mundo ou
+   outra campanha: escolher um grupo de outro bloco passa a ficha para lá. */
+function opcoesDeGrupo(pc){
+  const bloco=FichasMesa.blocoDe(pc), g0=pc.grupo||'';
+  const ops=(camp,codigo)=>['', ...gruposOrdenados(camp)].map(g=>`<option value="${esc(codigo? camp+'/'+g : g)}" ${camp===bloco && g===g0?'selected':''}>${g?esc(g):'Sem grupo'}</option>`).join('');
+  if(!FichasMesa.campanhas().length) return ops('',false);
+  // quem não é o mestre da mesa — e a ficha de campanha encerrada, ou de uma campanha que não aparece aqui — só troca de grupo dentro do bloco
+  if(!FichasMesa.organiza() || bloco==='?' || FichasMesa.encerrada(pc._camp)) return ops(bloco,true);
+  return FichasMesa.blocos().filter(b=>b.camp!=='?' && (!b.encerrada || b.camp===bloco)).map(b=>`<optgroup label="${esc(b.nome)}">${ops(b.camp,true)}</optgroup>`).join('');
+}
+function lerOpcaoDeGrupo(v, bloco){
+  const i=FichasMesa.campanhas().length? String(v).indexOf('/') : -1;
+  return i<0? {camp:bloco||'', g:v} : {camp:v.slice(0,i), g:v.slice(i+1)};
+}
+// todos os grupos que têm alguém, para "adicionar o grupo inteiro" (com campanhas, em blocos: o da campanha em vista primeiro)
+function opcoesDeGruposCheios(){
+  const comCamp=FichasMesa.campanhas().length>0;
+  return FichasMesa.blocos().map(b=>{
+    const doBloco=b.unico? S.personagens : S.personagens.filter(p=>FichasMesa.blocoDe(p)===b.camp);
+    const ops=gruposOrdenados(b.camp).map(g=>{ const n=doBloco.filter(p=>(p.grupo||'')===g).length; return n? `<option value="${esc(comCamp? b.camp+'/'+g : g)}">${esc(g)} (${n})</option>` : (comCamp? '' : `<option value="${esc(g)}">${esc(g)} (0)</option>`); }).join('');
+    return !comCamp? ops : ops? `<optgroup label="${esc(b.nome)}">${ops}</optgroup>` : '';
+  }).join('');
+}
+/* Passar um grupo inteiro para outra campanha (ou para o mundo): as fichas dele vão junto. Só o mestre da mesa. */
+function abrirPassarGrupo(camp, g){
+  if(!FichasMesa.organiza()){ toast('Só o mestre da mesa passa um grupo para outra campanha.'); return; }
+  const fichas=S.personagens.filter(p=>FichasMesa.blocoDe(p)===camp && (p.grupo||'')===g);
+  const destinos=FichasMesa.blocos().filter(b=>b.camp!==camp && b.camp!=='?' && !b.encerrada);
+  if(!destinos.length){ toast('Não há outra campanha aberta para onde passar o grupo.'); return; }
+  let escolhido=destinos[0].camp;
+  const m=document.createElement('div'); m.className='modal';
+  const fechar=()=>m.remove();
+  const desenhar=()=>{
+    const jaTem=gruposOrdenados(escolhido).includes(g);
+    m.innerHTML=`<div class="sheet" style="max-width:520px">
+      <div class="hd"><span class="eyebrow">Passar o grupo para outra campanha</span>
+        <button class="mini" id="pgX" style="margin-left:auto">Cancelar</button></div>
+      <div class="bd">
+        <p style="margin:0 0 10px;font-size:14px">O grupo <strong>${esc(g)}</strong> (${fichas.length} ficha${fichas.length===1?'':'s'}) sai de <strong>${esc(camp? FichasMesa.nomeDaCampanha(camp) : 'Do mundo')}</strong> e vai para:</p>
+        <div class="pgops" role="radiogroup" aria-label="Para onde vai o grupo">
+          ${destinos.map(b=>`<label class="pgop"><input type="radio" name="pgdest" value="${esc(b.camp)}" ${b.camp===escolhido?'checked':''}> <span>${esc(b.camp? b.nome : 'Do mundo')}${b.camp?'':' <span class="hint">— aparece em todas as campanhas</span>'}</span></label>`).join('')}
+        </div>
+        <p class="hint" id="pgNota" style="margin:10px 0 0">${escolhido? 'Só quem participa dessa campanha passa a ver as fichas abertas desse grupo (o dono de cada ficha continua vendo a dele).' : 'Todos os jogadores da mesa passam a ver as fichas abertas desse grupo.'}${jaTem? ' Lá já existe um grupo com esse nome: as fichas se juntam a ele.' : ''}</p>
+        <div class="modalacts">
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button id="pgCancel">Cancelar</button>
+            <button class="primary" id="pgOk">Passar o grupo</button>
+          </span>
+        </div>
+      </div></div>`;
+    m.querySelector('#pgX').onclick=fechar; m.querySelector('#pgCancel').onclick=fechar;
+    m.querySelectorAll('[name="pgdest"]').forEach(r=>r.onchange=()=>{ escolhido=r.value; desenhar(); const marcado=m.querySelector('[name="pgdest"]:checked'); if(marcado) marcado.focus(); });
+    m.querySelector('#pgOk').onclick=()=>{ fechar(); passarGrupo(camp, g, escolhido); };
+  };
+  m.onclick=e=>{ if(e.target===m) fechar(); };
+  document.body.appendChild(m); desenhar();
+}
+function passarGrupo(camp, g, para){
+  const fichas=S.personagens.filter(p=>FichasMesa.blocoDe(p)===camp && (p.grupo||'')===g && !FichasMesa.encerrada(p._camp));
+  fixarGrupos();
+  const antes={origem:[...gruposDe(camp)], destino:[...gruposDe(para)]};
+  fichas.forEach(p=>{ p._camp=para||null; });
+  porGrupos(camp, gruposDe(camp).filter(x=>x!==g));
+  const ld=gruposDe(para); if(!ld.includes(g)) ld.push(g);
+  FichasMesa.garantirRelacoes(); save(); render();
+  FichasExtras.aviso('O grupo '+g+' passou para '+(para? 'a campanha '+FichasMesa.nomeDaCampanha(para) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{
+    fichas.forEach(p=>{ p._camp=camp||null; });
+    porGrupos(camp, antes.origem); porGrupos(para, antes.destino);
+    save(); render();
+  }, 12000);
+  FichasMesa.avisarDeFora(fichas);
+}
 function todasTags(){
   const t=new Set(); S.personagens.forEach(p=>(p.tags||[]).forEach(x=>t.add(x)));
   return [...t].sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -1540,10 +1704,9 @@ function renderFicha(){
       ${FichasQuadros.htmlXp(pc)}
       ${FichasMesa.htmlDono(pc)}
       <div class="idcard2">
-        <label class="f"><span class="eyebrow">Grupo</span>
+        <label class="f"><span class="eyebrow">${FichasMesa.campanhas().length?'Campanha e grupo':'Grupo'}</span>
           <select id="f_grupo">
-            <option value="">Sem grupo</option>
-            ${gruposOrdenados().map(g=>`<option value="${esc(g)}" ${(pc.grupo||'')===g?'selected':''}>${esc(g)}</option>`).join('')}
+            ${opcoesDeGrupo(pc)}
             <option value="__novo__">+ Criar grupo…</option>
           </select></label>
         <label class="f"><span class="eyebrow">Tags</span>
@@ -1893,12 +2056,21 @@ function ligarFicha(pc){
   const bdis=host.querySelector('#btnDisputa');
   if(bdis) bdis.onclick=()=>abrirDisputa(pc);
   host.querySelector('#f_grupo').onchange=e=>{
+    const bloco=FichasMesa.blocoDe(pc);
     if(e.target.value==='__novo__'){
+      // o grupo novo é do bloco em que a ficha está (a campanha dela, ou o mundo)
       const g=prompt('Nome do novo grupo:','');
-      if(g && g.trim()){ fixarGrupos(); if(!S.grupos.includes(g.trim())) S.grupos.push(g.trim()); pc.grupo=g.trim(); }
+      if(g && g.trim()){ fixarGrupos(); const l=gruposDe(bloco); if(!l.includes(g.trim())) l.push(g.trim()); pc.grupo=g.trim(); }
       save(); render(); return;
     }
-    pc.grupo=e.target.value; save(); render();
+    const alvo=lerOpcaoDeGrupo(e.target.value, bloco);
+    if(alvo.camp===bloco){ pc.grupo=alvo.g; save(); render(); return; }
+    // escolheu um grupo de outro bloco: a ficha passa para aquela campanha (ou para o mundo) — dá para desfazer
+    const antes={camp:pc._camp||null, grupo:pc.grupo||''};
+    pc._camp=alvo.camp||null; pc.grupo=alvo.g;
+    FichasMesa.garantirRelacoes(); fixarGrupos(); save(); render();
+    FichasExtras.aviso(pc.nome+' passou para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{ pc._camp=antes.camp; pc.grupo=antes.grupo; fixarGrupos(); save(); render(); }, 9000);
+    FichasMesa.avisarDeFora([pc]);
   };
   host.querySelector('#f_tags').oninput=e=>{
     pc.tags=e.target.value.split(',').map(t=>t.trim()).filter(Boolean); save(); renderLista();
@@ -1933,7 +2105,7 @@ function ligarFicha(pc){
     if(a==='dup'){ const cp=JSON.parse(JSON.stringify(pc)); cp.id=uid(); cp.nome=pc.nome+' (cópia)';
       // (as barras ficam com o mesmo id: os itens e as poções da cópia apontam para elas. A cópia nasce com as barras no começo.)
       cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; delete cp.estado.fer; delete cp.estado.mis; }   // (e sem os ferimentos e as missões do original)
-      S.personagens.push(cp); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
+      S.personagens.push(FichasMesa.nascer(cp)); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
     if(a==='del'){ if(confirm('Excluir "'+pc.nome+'"? Não tem como desfazer.')){
         S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; FichasMesa.esquecer(pc.id); save(); render(); toast('Personagem excluído'); } }
     if(a==='pct'){ patch(()=>{ pc.pctProprio = pc.pctProprio? null : {...S.cfg.pct}; }); }
@@ -2044,13 +2216,12 @@ function renderMesa(){
       <div class="sitbar" style="margin-bottom:10px">
         <select id="addPc" style="width:auto;min-width:180px">
           <option value="">Adicionar do elenco…</option>
-          ${S.personagens.map(p=>`<option value="${p.id}">${esc(p.nome)} (${esc(p.lado||'Aliado')})</option>`).join('')}
+          ${FichasMesa.opcoesDePcs(S.personagens, '', p=>p.nome+' ('+(p.lado||'Aliado')+')')}
         </select>
         <button class="mini" id="btnAddPc">Adicionar</button>
         <select id="addGrupo" style="width:auto;min-width:150px">
           <option value="">Grupo inteiro…</option>
-          ${gruposOrdenados().map(g=>{const n=S.personagens.filter(p=>(p.grupo||'')===g).length;
-            return `<option value="${esc(g)}">${esc(g)} (${n})</option>`}).join('')}
+          ${opcoesDeGruposCheios()}
         </select>
         <button class="mini" id="btnAddGrupo">Adicionar grupo</button>
         <button class="mini" id="btnAddLivre">+ NPC (sem ficha)</button>
@@ -2188,8 +2359,9 @@ function ligarMesa(sit){
     save(); renderMesa();
   };
   q('#btnAddGrupo').onclick=()=>{
-    const g=q('#addGrupo').value; if(!g){toast('Escolha um grupo');return}
-    const membros=S.personagens.filter(p=>(p.grupo||'')===g);
+    const v=q('#addGrupo').value; if(!v){toast('Escolha um grupo');return}
+    const {camp,g}=lerOpcaoDeGrupo(v,'');       // (com campanhas, o grupo é o daquele bloco: "campanha/grupo")
+    const membros=S.personagens.filter(p=>FichasMesa.blocoDe(p)===camp && (p.grupo||'')===g);
     if(!membros.length){toast('Esse grupo está vazio');return}
     let novos=0;
     membros.forEach(pc=>{
@@ -2645,7 +2817,7 @@ function rotuloAtr(k){
   const f=DEFESAS.find(x=>x.k===k); return f? f.rot : k;
 }
 function abrirDisputa(pc){
-  const outros=S.personagens.filter(x=>x.id!==pc.id);
+  const outros=FichasMesa.emOrdem(S.personagens.filter(x=>x.id!==pc.id));      // (com campanhas: os da campanha em vista primeiro)
   const tem=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
   /* A memória da disputa mora na ficha (pc.disputa): o oponente escolhido por último e o que foi usado contra cada um.
      Ela é lida de novo a cada uso, nunca por uma referência guardada ao abrir a janela — se a ficha é atualizada por
@@ -2733,7 +2905,7 @@ function abrirDisputa(pc){
           <div class="dislado ${ganhaB?'venceu':''}">
             <label style="display:block;margin-bottom:8px">
               <select id="disAlvo">
-                ${outros.map(o=>`<option value="${o.id}" ${est.alvo===o.id?'selected':''}>${esc(o.nome)}</option>`).join('')}
+                ${FichasMesa.opcoesDePcs(outros, est.alvo)}
                 <option value="__avulso__" ${avulso?'selected':''}>NPC (sem ficha)</option>
               </select></label>
             <div class="discampos">
@@ -3035,9 +3207,20 @@ function abrirCfg(){
 }
 
 /* ---------- apagar dados (flush, com duas confirmações) ---------- */
+/* Numa mesa com campanhas, "Personagens" apaga só as fichas da campanha em vista (as do mundo e as das outras
+   campanhas ficam; as de uma campanha encerrada não se apagam). Sem campanhas, todas, como sempre. */
+function fichasDoFlush(){
+  const bs=FichasMesa.blocos();
+  if(bs.length===1 && bs[0].unico) return S.personagens;
+  const v=bs.find(b=>b.vista);
+  return !v || v.encerrada || !v.camp ? [] : S.personagens.filter(p=>FichasMesa.blocoDe(p)===v.camp);
+}
+const campDoFlush=()=>{ const bs=FichasMesa.blocos(), v=bs.find(b=>b.vista); return bs.length===1 && bs[0].unico ? null : (v && v.camp ? v : {camp:'', nome:''}); };
 const ALVOS_FLUSH=[
-  {k:'personagens', rot:'Personagens',          conta:()=>S.personagens.length,
-   dsc:()=>`${S.personagens.length} ficha(s) com atributos, equipamentos, poderes, habilidades e anotações — e também os grupos e tags`},
+  {k:'personagens', rot:'Personagens',          conta:()=>fichasDoFlush().length,
+   dsc:()=>{ const c=campDoFlush();
+     if(c && c.encerrada) return `nenhuma ficha: a campanha ${esc(c.nome)} está encerrada, e as fichas dela não se apagam (para mexer nela, o mestre a reabre)`;
+     return `${fichasDoFlush().length} ficha(s)${c? (c.camp? ' da campanha '+esc(c.nome) : ' (nenhuma: escolha no menu da mesa a campanha de onde apagar)') : ''} com atributos, equipamentos, poderes, habilidades e anotações — e também os grupos${c?' dela':' e tags'}`; }},
   {k:'situacoes',   rot:'Situações da Mesa',    conta:()=>(S.situacoes||[]).length,
    dsc:()=>`${(S.situacoes||[]).length} cena(s) montada(s) e seus participantes`},
   {k:'tabelas',     rot:'Tabelas de eventos',   conta:()=>(S.tabelas||[]).length,
@@ -3140,10 +3323,19 @@ function confirmarFlush(chaves, fecharAnterior){
 }
 function executarFlush(chaves){
   const padrao=estadoPadrao();
+  let semFichas=false;                                     // (pediu para apagar as fichas, e não havia nenhuma que pudesse sair)
   if(chaves.includes('personagens')){
-    S.personagens=[]; S.sel=null; S.grupos=[]; S.fechados=[]; S.filtroTags=[];
+    const c=campDoFlush(), saem=new Set(fichasDoFlush().map(p=>p.id));
+    semFichas=!!c && !saem.size;
+    if(!c){ S.personagens=[]; S.sel=null; S.grupos=[]; S.fechados=[]; S.filtroTags=[]; }
+    else {                                                 // (com campanhas: só as fichas e os grupos da campanha em vista)
+      S.personagens=S.personagens.filter(p=>!saem.has(p.id));
+      if(saem.has(S.sel)) S.sel=S.personagens[0]?.id||null;
+      if(c.camp && saem.size) porGrupos(c.camp, []);
+      saem.forEach(id=>FichasMesa.esquecer(id));
+    }
     (S.situacoes||[]).forEach(sit=>{                       // tira da Mesa quem deixou de existir
-      sit.participantes=(sit.participantes||[]).filter(pt=>!pt.pcId);
+      sit.participantes=(sit.participantes||[]).filter(pt=>!pt.pcId || S.personagens.some(p=>p.id===pt.pcId));
     });
   }
   if(chaves.includes('situacoes')){ S.situacoes=[]; S.selSit=null; }
@@ -3152,7 +3344,7 @@ function executarFlush(chaves){
   if(chaves.includes('log'))     S.log=[];
   if(chaves.includes('cfg'))     S.cfg=padrao.cfg;
   migrar(); save(); render();
-  toast('Dados apagados');
+  toast(semFichas && chaves.length===1? 'Nenhuma ficha foi apagada.' : 'Dados apagados');
 }
 
 /* ---------- exportar / importar ---------- */
@@ -3282,6 +3474,10 @@ function migrar(){
   S.log=S.log||[];
   S.aba=S.aba||'fichas';
   S.grupos=S.grupos||[];
+  // (os grupos e as missões do grupo de cada campanha da mesa, e os blocos da lista que a pessoa deixou abertos)
+  const mapaDe=k=>{ if(!S[k] || typeof S[k]!=='object' || Array.isArray(S[k])) S[k]={}; };
+  mapaDe('gruposCamp'); mapaDe('missoesCamp');
+  S.abertos=Array.isArray(S.abertos)? S.abertos : [];
   if(S.bib) normalizarBib(S.bib);
   S.skillsUI=S.skillsUI||{equipar:false, distribuir:true};
   S.skillsUI.distribuir = S.skillsUI.distribuir!==false;
@@ -3325,13 +3521,16 @@ function migrar(){
 document.getElementById('btnNew').onclick=()=>{
   const p=personagemPadrao('Novo personagem','','C',1);
   if(FichasMesa.ativo() && !FichasMesa.mestre()) FichasExtras.tornarLivre(p, true);
-  S.personagens.push(p); S.sel=p.id; save(); render();
+  S.personagens.push(FichasMesa.nascer(p)); S.sel=p.id; save(); render();
   document.getElementById('f_nome')?.select();
 };
 document.getElementById('btnGrupo').onclick=()=>{
-  const g=prompt('Nome do grupo:','');
+  // (com campanhas, o grupo novo é da que está em vista)
+  const b=FichasMesa.blocos().find(x=>x.vista)||{camp:''};
+  if(b.encerrada){ toast('Campanha encerrada: só consulta.'); return; }
+  const g=prompt(b.camp? 'Nome do grupo (na campanha '+b.nome+'):' : 'Nome do grupo:','');
   if(!g||!g.trim()) return;
-  fixarGrupos(); if(!S.grupos.includes(g.trim())) S.grupos.push(g.trim());
+  fixarGrupos(); const l=gruposDe(b.camp); if(!l.includes(g.trim())) l.push(g.trim());
   save(); renderLista();
 };
 document.getElementById('busca').oninput=renderLista;

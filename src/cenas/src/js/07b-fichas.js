@@ -22,7 +22,15 @@ const Fichas = (() => {
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
   const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
   const get = id => (P && id ? P.pegar(id) : null);
-  const chars = () => (P ? P.todas().slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
+  /* As fichas da mesa, por nome. Numa mesa com campanhas, "campanha em evidência": primeiro as da campanha em vista,
+     depois as do mundo (sem campanha) e por fim as das outras campanhas — estas duas com o lugar de onde são no rótulo. */
+  const vista = () => { const T = window.TC && window.TC.ponte, c = T && T.estado && T.estado.campanha; return c ? c.id : null; };
+  const campDa = l => (l && l.campanha) || null;
+  const pesoDa = l => { const v = vista(), c = campDa(l); return !v || c === v ? 0 : !c ? 1 : 2; };
+  const chars = () => (P ? P.todas().slice().sort((a, b) => (pesoDa(a) - pesoDa(b)) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')) : []);
+  const nomeDaCampanha = id => { const T = window.TC && window.TC.ponte, c = T && T.estado && (T.estado.campanhas || []).find(x => x.id === id); return c ? c.nome : 'outra campanha'; };
+  // o nome da ficha onde se escolhe uma: as de fora da campanha em vista dizem de onde são
+  const rotulo = l => (l.nome || 'Sem nome') + (pesoDa(l) === 1 ? ' — do mundo' : pesoDa(l) === 2 ? ' — ' + nomeDaCampanha(campDa(l)) : '');
   const pcDe = l => Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome });
   // a imagem do personagem, quando está guardada no banco (endereço https)
   const imagemDe = l => (l && l.ficha && typeof l.ficha.img === 'string' && /^https:\/\//.test(l.ficha.img) ? l.ficha.img : null);
@@ -374,6 +382,7 @@ const Fichas = (() => {
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };
 })();

@@ -1,6 +1,6 @@
 // Mapa-múndi numa mesa de verdade (projeto real): o mestre cria o mapa, envia a imagem para o banco e mostra aos
 // jogadores; o jogador recebe só a projeção pública — e o banco não entrega a ele o mapa do mestre nem aceita imagem dele.
-const { start, checker } = require('./lib');
+const { start, checker, BANCO } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const SEG = 'Z9917Q';                                   // vai em tudo o que é só do mestre
@@ -32,7 +32,7 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
     return { fez, img: __mundo.App.mapa.img, larg: __mundo.App.mapa.larg };
   });
   ok(img.fez && img.img && img.larg === 640, 'a imagem entra no mapa (640 px de largura): ' + JSON.stringify(img.img));
-  ok(img.img && img.img.url.startsWith('https://kzvhiuhbnsfkmhhgvqlm.supabase.co/storage/v1/object/public/mesas/' + mesaId + '/'), 'a imagem fica guardada no banco, na pasta da mesa');
+  ok(img.img && img.img.url.startsWith(BANCO + '/storage/v1/object/public/mesas/' + mesaId + '/'), 'a imagem fica guardada no banco, na pasta da mesa');
   const baixou = await M.evaluate(async u => { const r = await fetch(u); const b = await r.blob(); return { st: r.status, tipo: b.type, tam: b.size }; }, img.img.url);
   ok(baixou.st === 200 && baixou.tipo === 'image/png' && baixou.tam > 200, 'e abre pelo endereço público: ' + JSON.stringify(baixou));
 
