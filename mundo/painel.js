@@ -15,10 +15,15 @@
     { id: 'terreno', nome: 'Terreno', mestre: true },
     { id: 'mapa', nome: 'Mapa', mestre: true },
   ];
-  const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente' };
-  const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.' };
-  const ORDEM = { g: 0, m: 1, e: 2, r: 3, t: 4, f: 5 };
-  const PLURAL = { m: ['marcador', 'marcadores'], g: ['grupo', 'grupos'], r: ['região', 'regiões'], e: ['evento', 'eventos'], t: ['rota', 'rotas'], f: ['frente', 'frentes'] };
+  const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto' };
+  const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
+    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.' };
+  const ORDEM = { g: 0, m: 1, e: 2, z: 3, r: 4, t: 5, f: 6, l: 7, x: 8, c: 9 };
+  const PLURAL = { m: ['marcador', 'marcadores'], g: ['grupo', 'grupos'], r: ['região', 'regiões'], e: ['evento', 'eventos'], t: ['rota', 'rotas'], f: ['frente', 'frentes'],
+    z: ['zona de guerra', 'zonas de guerra'], l: ['linha', 'linhas'], c: ['carimbo', 'carimbos'], x: ['texto', 'textos'] };
+  const ESPACOS = [['0', 'Normal'], ['0.15', 'Aberto'], ['0.35', 'Bem aberto']];
+  const TEXTO_SVG = '<path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/>';
+  const LINHA_SVG = '<path d="M3 18c4 0 4-6 9-6s5-6 9-6"/>';
   const NOMES_CORES = ['Vermelho', 'Azul', 'Verde', 'Ocre', 'Roxo', 'Magenta', 'Turquesa', 'Oliva', 'Ferrugem', 'Anil'];
   const FORCAS = [['1', '1 · leve'], ['2', '2 · séria'], ['3', '3 · grave']];
   const MAX_LISTA = 150;                          // a lista do mapa mostra até tantos; o resto, pela busca
@@ -74,6 +79,17 @@
     s.innerHTML = markup;
     return s;
   }
+  // o desenho de um carimbo (markup fixo do núcleo), com as cores do CSS do mapa (.carimbo)
+  function glifoCarimbo(markup, tam) {
+    const s0 = document.createElementNS(NS, 'svg');
+    for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: tam || 18, height: tam || 18, 'aria-hidden': 'true', focusable: 'false' })) s0.setAttribute(k, v);
+    const g0 = document.createElementNS(NS, 'g');
+    g0.setAttribute('class', 'carimbo');
+    g0.innerHTML = markup || '';
+    s0.append(g0);
+    return s0;
+  }
+  const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t);
   const fmt = (n, casas = 1) => (Number.isFinite(n) ? n : 0).toLocaleString('pt-BR', { maximumFractionDigits: casas });
   // número para um campo de texto: vírgula decimal, sem separador de milhar (para ler de volta sem confusão)
   const fmtCampo = (n, casas = 3) => (Number.isFinite(n) ? String(Math.round(n * 10 ** casas) / 10 ** casas).replace('.', ',') : '');
@@ -113,7 +129,7 @@
   /* ---------------- nomes e descrições ---------------- */
   function nomeDe(o, m) {
     const n = (o && o.nome || '').trim();
-    if (n) return n;
+    if (n) return o.k === 'x' ? curto(n.split('\n')[0].trim() || 'Texto', 60) : n;
     const I = N().ICONES, E = N().EVENTOS;
     switch (o && o.k) {
       case 'm': return (I[o.ic] || I.cidade).nome;
@@ -122,6 +138,10 @@
       case 'r': { const f = facDe(m, o.fac); return f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
       case 't': return 'Rota sem nome';
       case 'f': return 'Frente sem nome';
+      case 'z': { const a = facDe(m, o.a), b = facDe(m, o.b); return a && b ? 'Guerra: ' + nomeFac(a) + ' × ' + nomeFac(b) : 'Zona de guerra'; }
+      case 'l': return ((N().LINHAS || {})[o.estilo] || { nome: 'Linha' }).nome + ' sem nome';
+      case 'c': return ((N().CARIMBOS || {})[o.ic] || { nome: 'Carimbo' }).nome;
+      case 'x': return 'Texto';
     }
     return 'Sem nome';
   }
@@ -143,8 +163,18 @@
       case 'e': return (N_.EVENTOS[o.tipo] || N_.EVENTOS.guerra).nome + ' · ' + (mestre ? statusEvento(o, m.cal.dia) : 'força ' + o.forca);
       case 't': return 'Rota · ' + (N_.VIAS[o.via] || N_.VIAS.trilha).nome;
       case 'f': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Frente' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : ''); }
+      case 'z': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Zona de guerra' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : '') + (mestre ? ' · ' + statusZona(o, m.cal.dia) : ''); }
+      case 'l': return ((N_.LINHAS || {})[o.estilo] || { nome: 'Linha' }).nome;
+      case 'c': return 'Carimbo';
+      case 'x': return 'Texto' + ((N_.FONTES || {})[o.fonte] ? ' · ' + N_.FONTES[o.fonte].nome.toLocaleLowerCase('pt-BR') : '');
     }
     return '';
+  }
+  function statusZona(o, dia) {
+    const ini = o.ini == null ? dia : o.ini;
+    if (dia < ini) { const n = ini - dia; return n === 1 ? 'começa amanhã' : 'começa em ' + fmt(n, 0) + ' dias'; }
+    if (o.fim != null && dia > o.fim) { const n = dia - o.fim; return n === 1 ? 'terminou ontem' : 'terminou há ' + fmt(n, 0) + ' dias'; }
+    return 'acontecendo hoje';
   }
   function icone(o, m) {
     const I = N().ICONES, E = N().EVENTOS;
@@ -158,6 +188,13 @@
       case 'r': { const f = facDe(m, o.fac), c = f ? f.cor : o.cor; return h('span', { class: 'ico reg' + (c ? '' : ' semcor'), style: c ? { background: c } : null }); }
       case 't': return h('span', { class: 'ico linha' }, glifo(ROTA_SVG, 18));
       case 'f': return h('span', { class: 'ico linha' }, glifo(FRENTE_SVG, 18));
+      case 'z': {
+        const a = facDe(m, o.a), b = facDe(m, o.b), ca = a ? a.cor : '#9aa3b5', cb = b ? b.cor : '#5f6675';
+        return h('span', { class: 'ico reg', style: { background: 'repeating-linear-gradient(45deg, ' + ca + ' 0 4px, ' + cb + ' 4px 8px)' } });
+      }
+      case 'l': { const L0 = (N().LINHAS || {})[o.estilo]; return h('span', { class: 'ico linha', style: { color: o.cor || (L0 && L0.cor) || '#4f86c0' } }, glifo(LINHA_SVG, 18)); }
+      case 'c': { const C0 = (N().CARIMBOS || {})[o.ic]; return h('span', { class: 'ico carimbo-ico', style: { color: o.cor || (C0 && C0.cor) || '#5d9a4e' } }, glifoCarimbo(C0 ? C0.svg : '', 18)); }
+      case 'x': return h('span', { class: 'ico linha' }, glifo(TEXTO_SVG, 18));
     }
     return h('span', { class: 'ico' });
   }
@@ -1042,6 +1079,11 @@
       const a = facDe(v, o.a), b = facDe(v, o.b);
       out.push(nota((a || b ? 'Entre ' + (a ? nomeFac(a) : 'lado desconhecido') + ' e ' + (b ? nomeFac(b) : 'lado desconhecido') : 'Lados desconhecidos') + (o.ativa ? ' · em combate' : ' · parada')));
     }
+    if (o.k === 'z') {
+      const a = facDe(v, o.a), b = facDe(v, o.b);
+      out.push(nota((a || b ? 'Guerra entre ' + (a ? nomeFac(a) : 'lado desconhecido') + ' e ' + (b ? nomeFac(b) : 'lado desconhecido') : 'Guerra de lados desconhecidos') + ' · desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini)));
+    }
+    if (o.k === 'l' && temGrade(v)) out.push(nota('Cerca de ' + fmt(cubos(v, N_.compPolilinha(o.pts)), 0) + ' cubos de ponta a ponta.'));
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
     out.push(linha(o.k === 'm' && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
@@ -1053,8 +1095,13 @@
     const id = o.id, N_ = N(), out = [];
     const grava = (rotulo, fn) => v => mudarObj(id, rotulo, x => fn(x, v));
     out.push(h('h3', { text: nomeDe(o, m) }), h('p', { class: 'sub', text: descricao(o, m, true) }));
-    out.push(campoTexto('o:' + id + ':nome', 'Nome', o.nome, grava('mudar o nome', (x, v) => { x.nome = v.trim(); }), { max: 120, ph: nomeDe(Object.assign({}, o, { nome: '' }), m) }));
+    if (o.k === 'x') out.push(campoTexto('o:' + id + ':nome', 'Texto', o.nome, grava('mudar o texto', (x, v) => { if (!v.trim()) return false; x.nome = v.replace(/\s+$/, ''); }), { area: true, linhas: 2, max: 400, ph: 'O que está escrito no mapa' }));
+    else out.push(campoTexto('o:' + id + ':nome', 'Nome', o.nome, grava('mudar o nome', (x, v) => { x.nome = v.trim(); }), { max: 120, ph: nomeDe(Object.assign({}, o, { nome: '' }), m) }));
     if (o.k === 'm') out.push(secMarcador(o, grava));
+    if (o.k === 'z') out.push(...secZona(o, m, grava));
+    if (o.k === 'l') out.push(secLinha(o, m, grava));
+    if (o.k === 'c') out.push(secCarimbo(o, grava));
+    if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava));
     if (o.k === 'r') out.push(secRegiao(o, m, grava));
     if (o.k === 'e') out.push(secEvento(o, m, grava));
@@ -1289,6 +1336,107 @@
     return secao('Frente', out);
   }
 
+  /* A zona de guerra: os lados (as cores das listras), quando começa e quanto dura (como o evento), e as fases: a
+     forma da zona a partir de cada dia (a de hoje é a que se arrasta no mapa). */
+  function secZona(o, m, grava) {
+    const N_ = N(), id = o.id, dia = m.cal.dia, ini = o.ini == null ? dia : o.ini, ops = [['', 'Nenhuma']].concat(m.faccoes.map(f => [f.id, nomeFac(f)])), out = [];
+    if (!m.faccoes.length) out.push(h('div', { class: 'row' }, nota('Crie facções para dar os lados (e as cores) da guerra.'), botao('Criar facção', () => { abrirAba('faccoes'); novaFaccao(); }, { c: 'sm', k: 'o:criar-fac' })));
+    out.push(h('div', { class: 'row' },
+      campoEscolha('o:' + id + ':a', 'Lado A', o.a || '', ops, grava('mudar o lado A', (x, v) => { x.a = v || null; })),
+      campoEscolha('o:' + id + ':b', 'Lado B', o.b || '', ops, grava('mudar o lado B', (x, v) => { x.b = v || null; }))));
+    out.push(h('div', { class: 'field' }, h('span', { text: 'Começa em' }),
+      h('div', { class: 'data-linha' }, h('b', { text: dataTxt(m, ini) }),
+        botao('Hoje', () => mudarObj(id, 'mudar o começo', x => { moverInicio(x, dia); }), { c: 'sm', k: 'o:ini-hoje', off: ini === dia }),
+        botao('Escolher…', async () => {
+          const idMapa = m.id, d = await escolherData('Quando a guerra começa?', ini, { ok: 'Escolher' });
+          if (d != null && mesmoMapa(idMapa)) mudarObj(id, 'mudar o começo', x => { moverInicio(x, d); });
+        }, { c: 'sm', k: 'o:ini-escolher' }))));
+    const semFim = o.fim == null;
+    out.push(h('div', { class: 'row' },
+      campoNumero('o:' + id + ':dura', 'Dura (dias)', semFim ? '' : o.fim - ini + 1, grava('mudar a duração', (x, n) => { x.fim = (x.ini == null ? dia : x.ini) + n - 1; }),
+        { min: 1, max: 1e6, off: semFim, ph: semFim ? 'sem fim' : null }),
+      h('div', { class: 'field fim-campo' }, caixa('o:' + id + ':semfim', 'Sem fim', semFim, grava('mudar a duração', (x, v) => { x.fim = v ? null : (x.ini == null ? dia : x.ini) + 29; })))));
+    const st = statusZona(o, dia);
+    out.push(h('p', { class: 'status' }, h('span', { class: 'tag' + (st === 'acontecendo hoje' ? ' guerra' : ''), text: st }), o.fim != null ? ' · termina em ' + dataTxt(m, o.fim) : ''));
+    out.push(nota('Enquanto acontece, a zona pulsa no mapa; fora das datas, os jogadores não a veem.'));
+    // as fases
+    const fases = o.fases || [], iHoje = N_.faseNoDia(o, dia), temHoje = fases.some(f => f.dia === dia), fs = [];
+    fs.push(h('div', { class: 'tabela fases' },
+      h('div', null, h('span', { text: 'Desde ' + dataTxt(m, ini) }), h('b', { text: iHoje < 0 && dia >= ini ? 'hoje' : '' })),
+      fases.map((f, i) => h('div', null, h('span', { text: 'A partir de ' + dataTxt(m, f.dia) }), h('b', { text: i === iHoje ? 'hoje' : '' }),
+        h('button', { type: 'button', class: 'ib', 'data-k': 'o:' + id + ':fase-x:' + f.dia, title: 'Tirar esta fase', 'aria-label': 'Tirar a fase de ' + dataTxt(m, f.dia),
+          onclick: () => { if (mudarObj(id, 'tirar a fase', x => { x.fases = x.fases.filter(y => y.dia !== f.dia); }) !== false) avisoDesfazer('A fase saiu: nesses dias vale a forma de antes.'); } }, glifo(X_SVG, 14))))));
+    fs.push(linha(botao('Mudar a forma a partir de hoje', () => {
+      const r = mudarObj(id, 'nova fase da zona', x => {
+        if (x.fases.some(y => y.dia === dia)) return false;
+        x.fases.push({ dia, pts: N_.copia(N_.formaNoDia(x, dia)) });
+        x.fases.sort((a, b) => a.dia - b.dia);
+      });
+      if (r !== false) { App.usarFerramenta('sel'); avisoDesfazer('Nova fase a partir de hoje: arraste os pontos da zona para mudar a forma dela. Nos dias de antes, vale a forma antiga.'); }
+    }, { c: 'sm', k: 'o:' + id + ':fase', off: temHoje || dia < ini || fases.length >= ((N_.LIMITES && N_.LIMITES.fases) || 60) })));
+    fs.push(nota(temHoje ? 'Uma fase começa hoje: arraste os pontos da zona no mapa para mudar a forma dela.'
+      : 'A zona pode crescer, encolher ou mudar de lugar com o tempo: cada fase guarda a forma dela a partir de um dia. Crie uma hoje e arraste os pontos.'));
+    return [secao('Zona de guerra', out), secao('Fases', fs)];
+  }
+  function secLinha(o, m, grava) {
+    const N_ = N(), L0 = N_.LINHAS || {}, id = o.id, def = L0[o.estilo] || { nome: 'Linha', cor: '#4f86c0' }, out = [];
+    out.push(campoEscolha('o:' + id + ':estilo', 'Desenho', o.estilo, Object.keys(L0).map(k => [k, L0[k].nome]), grava('mudar o desenho da linha', (x, v) => { x.estilo = v; })));
+    out.push(campoNumero('o:' + id + ':larg', 'Largura (unidades do mapa)', o.larg, grava('mudar a largura', (x, n) => { x.larg = n; }),
+      { decimal: true, min: 0.5, max: 100000, erro: 'Use uma largura maior que zero.', dica: o.estilo === 'rio' ? 'A largura na foz (o último ponto); na nascente, um quinto dela.' : null }));
+    out.push(h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor', o.cor || def.cor, grava('mudar a cor', (x, v) => { x.cor = v; })),
+      h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Cor do desenho' }),
+      o.cor ? botao('Usar a cor do desenho', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null));
+    const un = N_.compPolilinha(o.pts);
+    out.push(nota((temGrade(m) ? 'Cerca de ' + fmt(cubos(m, un), 0) + ' cubos' : fmt(un, 0) + ' unidades do mapa') + ' de ponta a ponta. O nome aparece ao longo da linha.'));
+    if (o.estilo === 'rio') out.push(linha(botao('Inverter o sentido', () => mudarObj(id, 'inverter o rio', x => { x.pts.reverse(); }), { c: 'sm', k: 'o:' + id + ':inverter', title: 'O rio corre do primeiro ponto (a nascente) ao último (a foz)' })));
+    return secao(def.nome, out);
+  }
+  function secCarimbo(o, grava) {
+    const C0 = N().CARIMBOS || {}, id = o.id, def = C0[o.ic] || { cor: '#5d9a4e' };
+    return secao('Carimbo',
+      h('div', { class: 'grade carimbos', role: 'group', 'aria-label': 'Desenho do carimbo', onkeydown: setasNaGrade }, Object.keys(C0).map(k => h('button', { type: 'button', 'data-k': 'cb:' + id + ':' + k,
+        'aria-pressed': String(o.ic === k), tabindex: o.ic === k ? '0' : '-1', title: C0[k].nome, 'aria-label': C0[k].nome, style: { color: C0[k].cor },
+        onclick: () => mudarObj(id, 'trocar o carimbo', x => { x.ic = k; }) }, glifoCarimbo(C0[k].svg, 24)))),
+      campoNumero('o:' + id + ':tam', 'Tamanho (unidades do mapa)', o.tam, grava('mudar o tamanho', (x, n) => { x.tam = n; }), { decimal: true, min: 1, max: 100000, erro: 'Use um tamanho maior que zero.' }),
+      h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor do carimbo', o.cor || def.cor, grava('mudar a cor', (x, v) => { x.cor = v; })),
+        h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Cor do desenho' }),
+        o.cor ? botao('Usar a cor do desenho', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null),
+      caixa('o:' + id + ':vira', 'Espelhado', o.vira, grava('espelhar o carimbo', (x, v) => { x.vira = !!v; })));
+  }
+  function secTexto(o, grava) {
+    const F = N().FONTES || {}, id = o.id;
+    const esp = ESPACOS.reduce((a, b) => (Math.abs(Number(b[0]) - (o.esp || 0)) < Math.abs(Number(a[0]) - (o.esp || 0)) ? b : a))[0];
+    return secao('Texto',
+      h('div', { class: 'row' },
+        campoEscolha('o:' + id + ':fonte', 'Letra', o.fonte, Object.keys(F).map(k => [k, F[k].nome]), grava('mudar a letra', (x, v) => { x.fonte = v; })),
+        campoEscolha('o:' + id + ':esp', 'Espaço entre as letras', esp, ESPACOS, grava('mudar o espaço entre as letras', (x, v) => { x.esp = Number(v); }))),
+      h('div', { class: 'row' },
+        campoNumero('o:' + id + ':tam', 'Tamanho', o.tam, grava('mudar o tamanho do texto', (x, n) => { x.tam = n; }), { decimal: true, min: 1, max: 100000, erro: 'Use um tamanho maior que zero (em unidades do mapa).' }),
+        campoNumero('o:' + id + ':rot', 'Girar (graus)', o.rot, grava('girar o texto', (x, n) => { x.rot = n; }), { min: -180, max: 180, vazio: 0, erro: 'Use de -180 a 180 graus.' })),
+      h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor do texto', o.cor || '#2a2118', grava('mudar a cor', (x, v) => { x.cor = v; })),
+        h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Tinta de mapa' }),
+        o.cor ? botao('Usar a tinta de mapa', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null));
+  }
+  // O texto novo (ferramenta Desenho → Texto, ou o menu do mapa): pergunta o que escrever e põe no ponto.
+  async function novoTexto(campos) {
+    if (!App.podeEditar() || !App.mapa) return;
+    const idMapa = App.mapa.id;
+    const r = await janela({ titulo: 'Novo texto', ok: 'Pôr no mapa', texto: 'O que vai escrito no mapa (o nome de um mar, de uma cordilheira, um aviso…).',
+      campos: [{ id: 't', rotulo: 'Texto', tipo: 'text', valor: '', ph: 'Ex.: Mar das Brumas', max: 400 }],
+      ler: v => { const t = String(v.t || '').trim(); if (!t) throw new Error('Escreva o texto.'); return t; } });
+    if (r == null || !mesmoMapa(idMapa)) return;
+    let id = null;
+    App.mudar('novo texto', mm => {
+      const o = N().objNovo('x', Object.assign({}, campos, { nome: r, oculto: !!(App.opt && App.opt.oculto) }));
+      if (!o) return false;
+      mm.objs.push(o); id = o.id;
+    });
+    if (!id) return;
+    if (App.ferramenta !== 'sel') App.usarFerramenta('sel');
+    App.selecionar([id]);
+    if (!estreito()) abrirAba('selecao');
+  }
+
   /* ---------------- aba Hoje ---------------- */
   function abaHoje(v) {
     const N_ = N(), ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, dia = v.cal.dia, out = [];
@@ -1306,6 +1454,8 @@
     out.push(secao('Eventos de hoje', ativos.length
       ? h('div', { class: 'lista' }, ativos.map(e => itemLista(e, v, mestre, (N_.EVENTOS[e.tipo] || N_.EVENTOS.guerra).nome + ' · força ' + e.forca + (ed && e.fim != null ? ' · até ' + dataTxt(v, e.fim) : ''))))
       : nota('Nenhum evento acontecendo hoje.')));
+    const guerras = v.objs.filter(o => o.k === 'z' && N_.zonaAtiva(o, dia));
+    if (guerras.length) out.push(secao('Guerras de hoje', h('div', { class: 'lista' }, guerras.map(z => itemLista(z, v, mestre, 'Desde ' + dataTxt(v, z.ini == null ? dia : z.ini) + (ed && z.fim != null ? ' · até ' + dataTxt(v, z.fim) : ''))))));
     if (ed) {
       const breve = v.objs.filter(e => e.k === 'e' && e.ini != null && e.ini > dia && e.ini - dia <= 30).sort((a, b) => a.ini - b.ini);
       if (breve.length) out.push(secao('Nos próximos 30 dias', h('div', { class: 'lista' }, breve.map(e => itemLista(e, v, true, statusEvento(e, dia) + ' · ' + dataTxt(v, e.ini))))));
@@ -1348,10 +1498,11 @@
     const m = App.mapa, f = facDe(m, id);
     if (!f) return;
     const regs = m.objs.filter(o => o.k === 'r' && o.fac === id).length, fres = m.objs.filter(o => o.k === 'f' && (o.a === id || o.b === id)).length;
-    if (regs || fres) {
-      const usos = [regs ? plural(regs, 'região', 'regiões') : '', fres ? plural(fres, 'frente', 'frentes') : ''].filter(Boolean).join(' e ');
+    const zons = m.objs.filter(o => o.k === 'z' && (o.a === id || o.b === id)).length;
+    if (regs || fres || zons) {
+      const usos = [regs ? plural(regs, 'região', 'regiões') : '', fres ? plural(fres, 'frente', 'frentes') : '', zons ? plural(zons, 'zona de guerra', 'zonas de guerra') : ''].filter(Boolean).join(' e ');
       const ok = await App.confirmar({ titulo: 'Apagar a facção "' + nomeFac(f) + '"?', perigo: true, ok: 'Apagar facção',
-        texto: usos + (regs + fres === 1 ? ' usa' : ' usam') + ' esta facção e vão ficar sem ela. Dá para desfazer.' });
+        texto: usos + (regs + fres + zons === 1 ? ' usa' : ' usam') + ' esta facção e vão ficar sem ela. Dá para desfazer.' });
       if (!ok || !mesmoMapa(m.id)) return;
     }
     const r = App.mudar('apagar a facção', mm => {
@@ -1359,7 +1510,7 @@
       for (const x of mm.faccoes) delete x.rel[id];
       for (const o of mm.objs) {
         if (o.k === 'r' && o.fac === id) o.fac = null;
-        if (o.k === 'f') { if (o.a === id) o.a = null; if (o.b === id) o.b = null; }
+        if (o.k === 'f' || o.k === 'z') { if (o.a === id) o.a = null; if (o.b === id) o.b = null; }
       }
     });
     if (r === false) return;
@@ -1518,7 +1669,7 @@
     } else gs.push(nota('Sem grade, o mapa não tem escala: a viagem e a régua falam em unidades do mapa. Com ela, tudo passa a ser em cubos.'));
     out.push(secao('Grade de hexágonos', gs));
     // os tipos de terreno
-    const uso = new Map();
+    const uso = new Map(), TX = N().TEXTURAS || { liso: { nome: 'Lisa' } };
     for (const k of Object.keys(m.hexes || {})) { const v = m.hexes[k], t = typeof v === 'string' ? v : v[0]; if (t) uso.set(t, (uso.get(t) || 0) + 1); }
     const ts = m.terrenos.map(t => {
       const grava = (rot, fn) => v => App.mudar(rot, mm => { const x = mm.terrenos.find(y => y.id === t.id); if (!x) return false; return fn(x, v); });
@@ -1528,20 +1679,47 @@
         campoCor('ter:' + t.id + ':cor', 'Cor de ' + t.nome, t.cor, grava('mudar a cor de ' + t.nome, (x, v) => { x.cor = v; })),
         campoTexto('ter:' + t.id + ':nome', null, t.nome, grava('renomear o terreno', (x, v) => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 40, rotulo: 'Nome do terreno' }),
         custo, h('span', { class: 'un', text: 'cubos' }),
-        h('button', { type: 'button', class: 'ib', 'data-k': 'ter:' + t.id + ':x', title: 'Tirar ' + t.nome + (uso.get(t.id) ? ' (' + plHex(uso.get(t.id)) + ')' : ''), 'aria-label': 'Tirar ' + t.nome, onclick: () => tirarTerreno(t.id) }, glifo(X_SVG, 14)));
+        h('button', { type: 'button', class: 'ib', 'data-k': 'ter:' + t.id + ':x', title: 'Tirar ' + t.nome + (uso.get(t.id) ? ' (' + plHex(uso.get(t.id)) + ')' : ''), 'aria-label': 'Tirar ' + t.nome, onclick: () => tirarTerreno(t.id) }, glifo(X_SVG, 14)),
+        campoEscolha('ter:' + t.id + ':tex', null, t.tex || 'liso', Object.keys(TX).map(k => [k, 'Textura: ' + TX[k].nome]), grava('mudar a textura de ' + t.nome, (x, v) => { x.tex = v; }), { rotulo: 'Textura de ' + t.nome + ' no desenho à mão' }));
     });
     out.push(secao('Tipos de terreno',
       nota('Custo: quantos cubos se gastam para atravessar um hexágono desse terreno. Sem terreno, um hexágono custa os 5 cubos dele.'),
       ts.length ? h('div', { class: 'ter-lista' }, ts) : nota('Nenhum tipo de terreno.'),
       linha(botao('+ Tipo de terreno', novoTerreno, { c: 'sm', k: 'ter:novo', off: m.terrenos.length >= N().LIMITES.terrenos }),
         m.terrenos.length ? null : botao('Os tipos de começo', () => App.mudar('voltar aos tipos de terreno de começo', mm => { mm.terrenos = N().copia(N().TERRENOS_PADRAO); }), { c: 'sm', k: 'ter:padrao' }))));
-    // pintar
-    const pintados = Object.keys(m.hexes || {}).length;
-    out.push(secao('Pintar',
-      nota(pintados ? plHex(pintados) + ' com terreno ou custo próprio.' + [...uso].map(([id, n]) => { const t = m.terrenos.find(x => x.id === id); return t ? ' ' + t.nome + ': ' + n + '.' : ''; }).join('') : 'Nenhum hexágono pintado ainda.'),
-      linha(botao('Pincel de terreno (H)', () => App.usarFerramenta('h'), { c: tem ? 'pri' : 'sm', k: 'ter:pincel', off: !tem, title: tem ? 'Arraste sobre os hexágonos para pintar' : 'Defina a grade primeiro' })),
+    // o desenho à mão
+    const pint = m.pintura || { alfa: 1, ops: [] }, nOps = pint.ops.length;
+    const fortes = [['0.35', 'Bem clara'], ['0.6', 'Meio a meio'], ['0.85', 'Forte'], ['1', 'Inteira']];
+    const forca = fortes.reduce((a, b) => (Math.abs(Number(b[0]) - pint.alfa) < Math.abs(Number(a[0]) - pint.alfa) ? b : a))[0];
+    out.push(secao('Desenho à mão',
+      nota(nOps ? plural(nOps, 'pincelada', 'pinceladas') + '.' + (tem ? ' Cada hexágono fica com o terreno que o desenho tem no centro dele (o que se pinta por hexágono vale mais).' : ' Com a grade de hexágonos, cada hexágono ganha o terreno do desenho.')
+        : 'Pinte o terreno à mão livre, com a textura de cada tipo: dá para desenhar o mapa do zero ou por cima da imagem.'),
+      linha(botao('Pincel livre (H)', () => ferramentaTerreno('livre'), { c: 'pri', k: 'ter:livre', title: 'Arraste no mapa para pintar (ou apagar, com a borracha)' }),
+        nOps ? botao('Apagar o desenho…', apagarDesenho, { c: 'sm per', k: 'ter:apagar-desenho' }) : null),
+      nOps ? campoEscolha('ter:forca', 'Força do desenho', forca, fortes, v => App.mudar('mudar a força do desenho', mm => { mm.pintura.alfa = Number(v); }), { dica: 'Mais clara deixa a imagem do mapa aparecer por baixo.' }) : null));
+    // pintar por hexágono
+    const pintados = Object.keys(m.hexes || {}).length, nada = uso.get('-') || 0;
+    out.push(secao('Pintar por hexágono',
+      nota(pintados ? plHex(pintados) + ' com terreno ou custo próprio.' + [...uso].map(([id, n]) => { const t = m.terrenos.find(x => x.id === id); return t ? ' ' + t.nome + ': ' + n + '.' : ''; }).join('') + (nada ? ' Sem terreno (por cima do desenho): ' + nada + '.' : '') : 'Nenhum hexágono pintado ainda.'),
+      linha(botao('Por hexágono (H)', () => ferramentaTerreno('hex'), { c: 'sm', k: 'ter:pincel', off: !tem, title: tem ? 'Arraste sobre os hexágonos para pintar (ou corrigir o desenho)' : 'Defina a grade primeiro' })),
       nota('Uma região também pode ter um custo por hexágono (Seleção → a região). O custo próprio de um hexágono vale mais que o da região, que vale mais que o do terreno.')));
     return out;
+  }
+  // abre a ferramenta Terreno num dos dois pincéis (o livre ou o de hexágono)
+  function ferramentaTerreno(modo) {
+    if (!App.opt) App.opt = {};
+    App.opt.terPincel = modo;
+    App.usarFerramenta('h');
+    const T = Tela();
+    if (T && T.redesenhar) T.redesenhar();
+  }
+  async function apagarDesenho() {
+    const m = App.mapa, n = m && m.pintura ? m.pintura.ops.length : 0;
+    if (!n) return;
+    const ok = await App.confirmar({ titulo: 'Apagar todo o desenho à mão?', perigo: true, ok: 'Apagar o desenho',
+      texto: plural(n, 'pincelada sai', 'pinceladas saem') + ' do mapa (o que foi pintado por hexágono fica). Dá para desfazer.' });
+    if (!ok || !mesmoMapa(m.id)) return;
+    if (App.mudar('apagar o desenho à mão', mm => { mm.pintura.ops = []; }) !== false) avisoDesfazer('O desenho à mão saiu do mapa.');
   }
   function novoTerreno() {
     let id = null;
@@ -1549,7 +1727,7 @@
       const usados = new Set(mm.terrenos.map(t => t.id));
       let n = 1; while (usados.has('t' + n)) n++;
       id = 't' + n;
-      mm.terrenos.push({ id, nome: 'Terreno ' + n, cor: N().CORES[(mm.terrenos.length + 3) % N().CORES.length], custo: 5 });
+      mm.terrenos.push({ id, nome: 'Terreno ' + n, cor: N().CORES[(mm.terrenos.length + 3) % N().CORES.length], custo: 5, tex: 'liso' });
     });
     if (feito !== false) focarDepois = 'ter:' + id + ':nome';
   }
@@ -1557,8 +1735,10 @@
     const t = App.mapa.terrenos.find(x => x.id === id);
     if (!t) return;
     const n = Object.values(App.mapa.hexes || {}).filter(v => (typeof v === 'string' ? v : v[0]) === id).length;
+    const np = ((App.mapa.pintura && App.mapa.pintura.ops) || []).filter(o => o.t === id).length;
     if (App.mudar('tirar ' + t.nome, mm => { mm.terrenos = mm.terrenos.filter(x => x.id !== id); }) !== false) {
-      avisoDesfazer(t.nome + ' saiu da lista.' + (n ? ' ' + (n === 1 ? 'O hexágono pintado com ele ficou' : 'Os ' + n + ' hexágonos pintados com ele ficaram') + ' sem terreno.' : ''));
+      avisoDesfazer(t.nome + ' saiu da lista.' + (n ? ' ' + (n === 1 ? 'O hexágono pintado com ele ficou' : 'Os ' + n + ' hexágonos pintados com ele ficaram') + ' sem terreno.' : '')
+        + (np ? ' ' + (np === 1 ? 'A pincelada do desenho com ele saiu.' : 'As ' + np + ' pinceladas do desenho com ele saíram.') : ''));
     }
   }
   function lerMeses(s) {
@@ -1654,5 +1834,5 @@
     pintar();
   }
 
-  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga };
+  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto };
 })();

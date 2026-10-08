@@ -42,7 +42,13 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
     m.objs.push(N.objNovo('m', { x: 260, y: 100, nome: 'Covil ' + seg, oculto: true }));
     m.objs.push(N.objNovo('g', { x: 200, y: 220, nome: 'Os Heróis', sigla: 'HER' }));
     m.objs.push(N.objNovo('e', { x: 420, y: 260, nome: 'Praga', tipo: 'praga', r: 60 }));
-  }); }, SEG), 'o mestre põe um marcador público (com nota), um escondido, um grupo e um evento');
+    // o desenho: uma pincelada de floresta, um carimbo, um texto, um rio e uma zona de guerra (com uma fase que ainda vem)
+    m.pintura.ops.push({ t: 'fl', r: 20, pts: [[50, 50], [200, 60]] });
+    m.objs.push(N.objNovo('c', { x: 300, y: 300, ic: 'montanha', tam: 30, nome: 'Pico' }));
+    m.objs.push(N.objNovo('x', { x: 320, y: 40, nome: 'Mar Raso', tam: 20 }));
+    m.objs.push(N.objNovo('l', { pts: [[10, 300], [300, 380]], estilo: 'rio', larg: 8, nome: 'Rio Lento' }));
+    m.objs.push(N.objNovo('z', { pts: [[400, 300], [500, 300], [500, 380]], ini: m.cal.dia, nome: 'Guerra Fria', nota: 'plano ' + seg, fases: [{ dia: m.cal.dia + 5, pts: [[0, 0], [1, 0], [1, 1]] }] }));
+  }); }, SEG), 'o mestre põe um marcador público (com nota), um escondido, um grupo, um evento e o desenho (pincelada, carimbo, texto, rio e zona de guerra)');
   ok(await noMundo(M, () => __mundo.App.mostrarAosJogadores()), 'e mostra o mapa aos jogadores');
   ok(await ate(async () => await M.evaluate(() => TC.dados.pendentes === 0)), 'tudo sobe para a mesa');
   const docsM = await M.evaluate(() => TC.dados.col('documentos').todas().filter(d => d.id.startsWith('mundo:')).map(d => d.id.replace(/mp_[a-z0-9_]+/, '*') + ':' + d.vis).sort().join());
@@ -52,8 +58,11 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
   await J.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500, J);
   await loginTela(J, c.jog1, c.senha); await entrarMesaTela(J, codigo, 'Dalmo');
   ok(await ate(async () => quadro(J) && await noMundo(J, () => window.__mundo && __mundo.App.pronto && __mundo.App.papel === 'jogador' && __mundo.App.mapa && __mundo.App.mapa.nome === 'Terras do Teste')), 'o jogador abre o Mapa-múndi e recebe o mapa mostrado');
-  const visto = await noMundo(J, () => ({ nomes: __mundo.App.mapa.objs.map(o => o.nome).sort().join('|'), tudo: JSON.stringify(__mundo.App.mapa), img: __mundo.App.mapa.img && __mundo.App.mapa.img.url, podeEditar: __mundo.App.podeEditar(), trilho: getComputedStyle(document.getElementById('rail')).display }));
-  ok(visto.nomes === 'Os Heróis|Praga|Vila Pública', 'ele vê o que é público: ' + visto.nomes);
+  const visto = await noMundo(J, () => ({ nomes: __mundo.App.mapa.objs.map(o => o.nome).sort().join('|'), tudo: JSON.stringify(__mundo.App.mapa), img: __mundo.App.mapa.img && __mundo.App.mapa.img.url, podeEditar: __mundo.App.podeEditar(), trilho: getComputedStyle(document.getElementById('rail')).display,
+    zona: __mundo.App.mapa.objs.find(o => o.k === 'z'), pint: __mundo.App.mapa.pintura.ops.length }));
+  ok(visto.nomes === 'Guerra Fria|Mar Raso|Os Heróis|Pico|Praga|Rio Lento|Vila Pública', 'ele vê o que é público (o desenho também): ' + visto.nomes);
+  ok(visto.pint === 1 && !!visto.zona && visto.zona.fases.length === 0 && visto.zona.fim === null, 'o desenho à mão chega inteiro; a zona de guerra chega como está hoje, sem a fase que ainda vem');
+  ok(await ate(async () => await noMundo(J, () => { const c = document.querySelector('#mundo canvas.pintura'); return !!c && !c.hidden; })), 'e o desenho à mão aparece na tela dele');
   ok(!visto.tudo.includes(SEG), 'nada do que é só do mestre chega até ele (nem a nota, nem o marcador escondido)');
   ok(visto.img === img.img.url, 'a imagem é a mesma, pelo endereço do banco');
   ok(visto.podeEditar === false && visto.trilho === 'none', 'o jogador não edita o mapa');

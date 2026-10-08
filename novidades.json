@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.08-4",
+      "data": "2026-10-08",
+      "titulo": "Mapa-múndi desenhado: terreno à mão, carimbos, rios e zonas de guerra",
+      "itens": [
+        { "tipo": "novo", "mestre": true, "texto": "Pincel livre de terreno, na ferramenta Terreno: pinte à mão com a textura de cada tipo (árvores na floresta, montes na montanha, ondas na água…), por cima da imagem ou num mapa do zero, com borracha e desfazer. Não precisa de grade." },
+        { "tipo": "novo", "mestre": true, "texto": "Com a grade, cada hexágono ganha o terreno do desenho, e o custo dele conta na viagem. Pintar por hexágono corrige um a um: “Sem terreno” vale mais que o desenho, e “Seguir o desenho” tira a correção." },
+        { "tipo": "novo", "mestre": true, "texto": "Ferramenta nova, Desenho (tecla P), com carimbos: árvore, pinheiro, bosque, montanha, serra, colinas, vulcão, rochas, ondas, juncos, dunas, navio, casario e ruínas. Um clique põe um; arrastando, você espalha vários de uma vez." },
+        { "tipo": "novo", "mestre": true, "texto": "Textos livres no mapa, com letra de mapa antigo, clássica ou simples, e o tamanho, o giro, o espaço entre as letras e a cor que você quiser." },
+        { "tipo": "novo", "mestre": true, "texto": "Rios, estradas e trilhas com desenho orgânico: a linha passa suave por todos os pontos, o rio engrossa da nascente até a foz, a estrada é tracejada, a trilha é pontilhada, e o nome vai ao longo da linha." },
+        { "tipo": "novo", "mestre": true, "texto": "Zonas de guerra, na ferramenta Frente: a área das duas facções, em listras com as cores delas, pulsando enquanto a guerra acontece. Com as fases, a zona cresce, encolhe ou muda de lugar com o passar dos dias." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Na aba Terreno: a textura de cada tipo de terreno, a força do desenho por cima da imagem e “Apagar o desenho” (com desfazer)." },
+        { "tipo": "melhorou", "texto": "Os jogadores veem o desenho, os carimbos, os textos, os rios e as guerras de hoje (também listadas na aba Hoje). O que a névoa cobre, as fases que ainda vêm e quando a guerra termina continuam só com o mestre." }
+      ]
+    },
+    {
       "versao": "2026.10.08-3",
       "data": "2026-10-08",
       "titulo": "Mapa-múndi: hexágonos, terreno e viagem em cubos",

@@ -111,7 +111,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(!!m && m.nome === 'Terras de Teste' && m.img === null && m.larg === 2000 && m.alt === 1400, 'papel em branco criado com o nome escolhido, 2000 × 1400, sem imagem');
     ok(await L.F.locator('#vazio').isHidden() && await L.F.locator('#mundo .papel').count() === 1, 'o papel em branco aparece no lugar do estado vazio');
     ok((await L.F.locator('#nomeMapa').innerText()) === 'Terras de Teste', 'o nome do mapa na barra de cima');
-    ok(await L.F.locator('#rail .tool').count() === 10, 'trilho com as 10 ferramentas (com a Terreno)');
+    ok(await L.F.locator('#rail .tool').count() === 11, 'trilho com as 11 ferramentas (com a Terreno e a Desenho)');
     ok(await ate(() => A(L, id => { const v = JSON.parse(localStorage.getItem('tinycats:mundo:v1') || 'null'); return !!v && v.atual === id && !!v.mapas[id]; }, m.id)), 'o mapa fica no localStorage (tinycats:mundo:v1)');
     ok(/Salvo neste navegador/.test(await L.F.locator('#salvo').innerText()), 'indicador: "Salvo neste navegador"');
   });

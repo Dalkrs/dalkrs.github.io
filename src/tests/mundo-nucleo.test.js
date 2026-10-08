@@ -143,7 +143,7 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
     terrenos: [{ id: 'fl', nome: 'Mata', cor: '#00ff00', custo: '12.5' }, { id: 'fl', nome: 'repetido' }, { id: 'id com espaço' }, { id: 'lava', nome: '', custo: -3 }, 7],
     hexes: { '1,0': 'fl', '2,0': ['lava', 30], '3,0': 'sumiu', '4,0': ['sumiu', 9], 'x,y': 'fl', '5,0': ['', 'abc'], '-1,2': ['fl', 0.04] },
   });
-  ok(j(t.terrenos) === j([{ id: 'fl', nome: 'Mata', cor: '#00ff00', custo: 12.5 }, { id: 'lava', nome: 'Terreno', cor: '#9aa3b5', custo: 5 }]), 'terrenos: id válido e sem repetir, nome, cor e custo com padrões: ' + j(t.terrenos));
+  ok(j(t.terrenos) === j([{ id: 'fl', nome: 'Mata', cor: '#00ff00', custo: 12.5, tex: 'arvores' }, { id: 'lava', nome: 'Terreno', cor: '#9aa3b5', custo: 5, tex: 'liso' }]), 'terrenos: id válido e sem repetir, nome, cor, custo e textura com padrões (a de um terreno de começo, pelo id): ' + j(t.terrenos));
   ok(j(t.hexes) === j({ '1,0': 'fl', '2,0': ['lava', 30], '4,0': ['', 9], '-1,2': ['fl', 0.1] }), 'hexágonos: terreno que sumiu cai (o custo próprio fica), o que não diz nada sai: ' + j(t.hexes));
   ok(N.normalizarMapa({ terrenos: [] }).terrenos.length === 0 && N.normalizarMapa({ terrenos: [], hexes: { '1,1': 'fl' } }).hexes['1,1'] === undefined, 'uma lista vazia de terrenos é escolha do mestre (não volta aos padrões)');
 
@@ -470,6 +470,99 @@ function mundo() {
   ok(N.objNovo('m', { x: 0, y: 0 }).liga === null, 'marcador novo nasce sem atalho');
   const P = N.projetar(M);
   ok(j(P.objs.filter(o => o.k === 'm').map(o => o.liga && o.liga.t)) === j(['acampamento', 'cena', 'mapa', null, null, null]), 'atalho: vai junto na projeção dos jogadores (quem esconde o que não pode aparecer é o aplicativo, que conhece os outros mapas)');
+}
+
+/* ================= o desenho: carimbos, textos, linhas, zonas de guerra e o terreno à mão ================= */
+{
+  // catálogos
+  ok(Object.keys(N.CARIMBOS).length >= 12 && Object.values(N.CARIMBOS).every(c => c.nome && /^#[0-9a-f]{6}$/.test(c.cor) && /^<path/.test(c.svg) && !/<script|on\w+=|href/i.test(c.svg)),
+    'carimbos: pelo menos 12, com nome, cor e desenho (só path, nada executável)');
+  ok(j(Object.keys(N.LINHAS)) === j(['rio', 'estrada', 'trilha']) && Object.keys(N.FONTES).length === 3 && Object.keys(N.TEXTURAS).length === 10 && N.TERRENOS_PADRAO.every(t => N.TEXTURAS[t.tex]),
+    'linhas (rio, estrada, trilha), três letras para os textos, dez texturas — e cada terreno de começo com a sua');
+
+  // objetos novos
+  const M0 = N.normalizarMapa({ cal: { dia: 12 }, faccoes: [{ id: 'fa', nome: 'Norte' }, { id: 'fb', nome: 'Sul' }], objs: [
+    { id: 'z1', k: 'z', pts: [[0, 0], [100, 0], [100, 100]], a: 'fa', b: 'nao-existe', fim: 3,
+      fases: [{ dia: 20, pts: [[0, 0], [50, 0], [50, 50]] }, { dia: 15, pts: [[0, 0], [9, 0], [9, 9]] }, { dia: 20, pts: [[0, 0], [60, 0], [60, 60]] }, { dia: 'x', pts: [[0, 0], [1, 1], [2, 0]] }, { dia: 30, pts: [[0, 0], [1, 1]] }] },
+    { id: 'l1', k: 'l', pts: [[0, 0], [10, 10]], estilo: 'canal', larg: -4 }, { k: 'l', pts: [[0, 0]] },
+    { id: 'c1', k: 'c', x: 5, y: 6, ic: 'dragao', tam: 0, vira: 'sim', cor: 'azul' },
+    { id: 'x1', k: 'x', x: 7, y: 8, nome: 'Mar das Brumas', fonte: 'gotica', rot: 400, esp: 3, tam: 'abc' }] });
+  const [z1, l1, c1, x1] = M0.objs;
+  ok(M0.objs.length === 4 && z1.ini === 12 && z1.fim === 12 && z1.a === 'fa' && z1.b === null && j(z1.fases.map(f => f.dia)) === '[15,20]' && j(z1.fases[1].pts) === '[[0,0],[60,0],[60,60]]',
+    'zona: começa hoje ao entrar no mapa, o fim não vem antes do começo, facção que não existe sai, fases em ordem (a do mesmo dia: a de depois; sem dia ou com menos de 3 pontos, fora): ' + j(z1));
+  ok(l1.estilo === 'rio' && l1.larg === 0.5 && l1.cor === '' && c1.ic === 'arvore' && c1.tam === 1 && c1.vira === true && c1.cor === '' && x1.fonte === 'mapa' && x1.rot === 180 && x1.esp === 1 && x1.tam === 28 && x1.nome === 'Mar das Brumas',
+    'linha (desenho desconhecido vira rio; largura mínima), carimbo (desenho desconhecido vira árvore), texto (letra desconhecida, giro e espaço no limite): ' + j([l1, c1, x1]));
+  ok(N.objNovo('z').ini === null && N.objNovo('c').ic === 'arvore' && N.objNovo('x').fonte === 'mapa' && N.objNovo('l').estilo === 'rio' && /^zg_/.test(N.objNovo('z').id) && /^tx_/.test(N.objNovo('x').id),
+    'objetos novos com os padrões (a zona sem começo: começa no dia em que entra no mapa)');
+  ok(j(N.normalizarMapa(M0)) === j(M0), 'normalizar de novo dá no mesmo');
+
+  // a forma da zona no dia
+  ok(N.faseNoDia(z1, 14) === -1 && j(N.formaNoDia(z1, 14)) === j(z1.pts) && N.faseNoDia(z1, 15) === 0 && j(N.formaNoDia(z1, 19)) === '[[0,0],[9,0],[9,9]]' && j(N.formaNoDia(z1, 99)) === '[[0,0],[60,0],[60,60]]',
+    'zona: antes da primeira fase, a forma de partida; depois, a da última fase que já começou');
+  ok(N.zonaAtiva({ ini: 5, fim: 8 }, 5) && N.zonaAtiva({ ini: 5, fim: 8 }, 8) && !N.zonaAtiva({ ini: 5, fim: 8 }, 9) && !N.zonaAtiva({ ini: 5, fim: null }, 4) && N.zonaAtiva({ ini: 5, fim: null }, 1e6),
+    'zona ativa: do dia do começo ao dia do fim (sem fim: para sempre)');
+
+  // a linha suave e o rio
+  const pts = [[0, 0], [100, 40], [200, 0], [300, 60]], sv = N.suavizar(pts, 10);
+  ok(j(sv[0]) === '[0,0]' && j(sv[sv.length - 1]) === '[300,60]' && sv.length > 20 && pts.every(p => sv.some(q => perto(q[0], p[0], 1e-9) && perto(q[1], p[1], 1e-9))) && j(N.suavizar([[1, 2], [3, 4]], 5)) === '[[1,2],[3,4]]',
+    'a linha suave passa por todos os pontos, do começo ao fim (com dois pontos, fica reta)');
+  let curva = 0;
+  for (let i = 2; i < sv.length; i++) {
+    const a1 = Math.atan2(sv[i - 1][1] - sv[i - 2][1], sv[i - 1][0] - sv[i - 2][0]), a2 = Math.atan2(sv[i][1] - sv[i - 1][1], sv[i][0] - sv[i - 1][0]);
+    curva = Math.max(curva, Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1))) * 180 / Math.PI);
+  }
+  ok(curva < 15, 'e é suave: nos cantos do zigue-zague, a direção vira aos poucos (no máximo ' + curva.toFixed(1) + '° de um trecho ao outro)');
+  const rio = N.contornoRio([[0, 0], [400, 0]], 20, 'rio-a'), meio = rio.length / 2;
+  const larg = i => Math.hypot(rio[i][0] - rio[rio.length - 1 - i][0], rio[i][1] - rio[rio.length - 1 - i][1]);
+  ok(rio.length % 2 === 0 && larg(0) < 6 && larg(meio - 1) > 15 && larg(meio - 1) < 25 && j(N.contornoRio([[0, 0], [400, 0]], 20, 'rio-a')) === j(rio) && j(N.contornoRio([[0, 0], [400, 0]], 20, 'rio-b')) !== j(rio),
+    'o rio engrossa da nascente (um quinto da largura) à foz (a largura), com a ondulação sempre igual para o mesmo rio (e outra para outro): ' + [larg(0), larg(meio - 1)].map(v => v.toFixed(1)));
+
+  // o terreno à mão
+  const base = { grade: { tam: 40 }, terrenos: [{ id: 'fl', nome: 'Floresta', custo: 10 }, { id: 'mo', nome: 'Montanha', custo: 15 }] };
+  const T = N.normalizarMapa(Object.assign({}, base, { pintura: { alfa: 7, ops: [
+    { t: '', r: 30, pts: [[0, 0]] },                                     // borracha antes de qualquer tinta: sai
+    { t: 'fl', r: 25, pts: [[0, 0], [160.4, 0.6]] },                     // floresta do hexágono 0 ao 4
+    { t: 'lava', r: 30, pts: [[0, 0]] },                                 // terreno que não existe: sai
+    { t: '', r: 10, pts: [[80, 0]] },                                    // borracha no hexágono 2
+    { t: 'mo', r: 10, pts: [[40, 0]] },                                  // montanha por cima do hexágono 1
+    { t: 'fl', r: -1, pts: [[0, 0]] }, { t: 'fl', r: 5, pts: [] }, 'lixo'] } }));
+  ok(T.pintura.alfa === 1 && j(T.pintura.ops) === j([{ t: 'fl', r: 25, pts: [[0, 0], [160, 1]] }, { t: '', r: 10, pts: [[80, 0]] }, { t: 'mo', r: 10, pts: [[40, 0]] }]),
+    'desenho à mão: borracha no começo, terreno que não existe, raio inválido e linha vazia saem; pontos inteiros; força até 1: ' + j(T.pintura));
+  const tp = N.terrenoPintado(T);
+  ok(j([...tp].sort()) === j([['0,0', 'fl'], ['1,0', 'mo'], ['3,0', 'fl'], ['4,0', 'fl']]) && N.terrenoPintado(T) === tp && N.terrenoPintado(N.normalizarMapa(base)).size === 0,
+    'o terreno de cada hexágono vem do desenho: a última pincelada que cobre o centro vale (a borracha tira); guardado por mapa: ' + j([...tp]));
+  const T2 = N.normalizarMapa(Object.assign({}, T, { hexes: { '0,0': 'mo', '1,0': '-', '3,0': ['', 3], '4,0': ['-', 7], '9,9': '-', '5,0': 'sumiu' } }));
+  const info = q => { const i = N.hexInfo(T2, q, 0); return [i.terreno ? i.terreno.id : null, i.custo, i.de, i.desenho]; };
+  ok(j([0, 1, 2, 3, 4].map(info)) === j([['mo', 15, 'terreno', false], [null, 5, 'base', false], [null, 5, 'base', false], ['fl', 3, 'hex', true], [null, 7, 'hex', false]]) && T2.hexes['9,9'] === '-' && !('5,0' in T2.hexes),
+    'o hexágono pintado à mão vale mais que o desenho; "-" tira o terreno do desenho; "" com custo próprio segue o desenho: ' + j([0, 1, 2, 3, 4].map(info)));
+  ok(N.medirHex(T2, [0, 0], [160, 0]).terreno === 5 + 5 + 3 + 7 && N.medirHex(T, [0, 0], [160, 0]).terreno === 15 + 5 + 10 + 10,
+    'a régua e a viagem contam o terreno do desenho');
+  ok(N.terrenoPintado(N.normalizarMapa(Object.assign({}, T, { grade: null }))).size === 0, 'sem grade, o desenho não dá terreno a hexágono nenhum');
+  let muitos = [];
+  for (let i = 0; i < 80; i++) muitos.push({ t: 'fl', r: 5, pts: Array.from({ length: 1000 }, (_, k) => [k, i]) });
+  const cheio = N.normalizarMapa(Object.assign({}, base, { pintura: { ops: muitos } }));
+  ok(cheio.pintura.ops.length === N.LIMITES.pontosPintura / 1000 && N.LIMITES.pinceladas >= 1000, 'desenho à mão: até o limite de pontos (as pinceladas de depois saem): ' + cheio.pintura.ops.length);
+
+  // a projeção
+  const P0 = N.normalizarMapa(Object.assign({}, T2, { cal: { dia: 16 }, nevoa: { on: true, ops: [{ t: '+', x: 0, y: 0, r: 200 }] },
+    faccoes: [{ id: 'fa', nome: 'Norte' }, { id: 'fb', nome: 'Sul', oculta: true }], objs: [
+      { id: 'zv', k: 'z', pts: [[0, 0], [100, 0], [100, 100]], a: 'fa', b: 'fb', ini: 10, fim: 40, fases: [{ dia: 15, pts: [[0, 0], [9, 0], [9, 9]] }, { dia: 30, pts: [[1, 1], [2, 1], [2, 2]] }] },
+      { id: 'zf', k: 'z', pts: [[0, 0], [100, 0], [100, 100]], ini: 20 }, { id: 'zp', k: 'z', pts: [[0, 0], [100, 0], [100, 100]], ini: 1, fim: 15 },
+      { id: 'zc', k: 'z', pts: [[500, 500], [600, 500], [600, 600]], ini: 1 },
+      { id: 'cv', k: 'c', x: 10, y: 10 }, { id: 'cc', k: 'c', x: 900, y: 900 }, { id: 'xv', k: 'x', x: 20, y: 20, nome: 'Aqui' }, { id: 'xc', k: 'x', x: 900, y: 10, nome: 'Lá' },
+      { id: 'lv', k: 'l', pts: [[0, 0], [900, 900]] }, { id: 'lc', k: 'l', pts: [[800, 800], [900, 900]] }] }));
+  const P = N.projetar(P0), po = id => P.objs.find(o => o.id === id);
+  ok(j(P.objs.map(o => o.id)) === j(['zv', 'cv', 'xv', 'lv']), 'projeção: só a zona ativa hoje e à mostra; carimbo e texto sob a névoa saem; linha toda coberta sai: ' + j(P.objs.map(o => o.id)));
+  ok(j(po('zv').pts) === '[[0,0],[9,0],[9,9]]' && j(po('zv').fases) === '[]' && po('zv').fim === null && po('zv').a === 'fa' && po('zv').b === null && po('zv').ini === 10,
+    'projeção: a zona vai com a forma de hoje, sem as fases que vêm, sem o fim planejado e sem a facção escondida: ' + j(po('zv')));
+  ok(j(P.pintura) === j(P0.pintura) && !Object.values(P.hexes).includes('-') && P.hexes['0,0'] === 'mo', 'projeção: o desenho à mão vai inteiro (é a arte do mapa); o "-" do mestre não vai');
+
+  // escalar
+  const E0 = N.normalizarMapa(Object.assign({}, T, { objs: [{ id: 'c', k: 'c', x: 10, y: 10, tam: 20 }, { id: 'x', k: 'x', x: 1, y: 1, nome: 'a', tam: 10 }, { id: 'l', k: 'l', pts: [[0, 0], [5, 5]], larg: 4 },
+    { id: 'z', k: 'z', pts: [[0, 0], [10, 0], [10, 10]], ini: 0, fases: [{ dia: 3, pts: [[0, 0], [5, 0], [5, 5]] }] }] }));
+  const E = N.escalarMapa(E0, 2, 2);
+  ok(E.objs[0].tam === 40 && E.objs[1].tam === 20 && E.objs[2].larg === 8 && j(E.objs[3].fases[0].pts) === '[[0,0],[10,0],[10,10]]' && j(E.pintura.ops[0]) === j({ t: 'fl', r: 50, pts: [[0, 0], [320, 2]] }),
+    'escalar: carimbos, textos, linhas, as fases da zona e o desenho à mão acompanham: ' + j(E.pintura.ops[0]));
 }
 
 end();

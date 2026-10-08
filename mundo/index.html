@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mapa-múndi · Tiny Cats</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap">
 <style>
 /* Mapa-múndi: a imagem do mundo no centro, com marcadores, grupos, regiões, eventos, rotas, facções e névoa por cima.
    Trilho de ferramentas à esquerda (só o mestre), painel à direita. Mesmas cores da mesa de cenas. */
@@ -67,12 +67,13 @@ button { cursor: pointer; }
 .tool[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
 .rail hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 3px 0; }
 .palco { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--table); touch-action: none; cursor: grab; }
-.palco.t-m, .palco.t-g, .palco.t-r, .palco.t-e, .palco.t-t, .palco.t-f, .palco.t-h, .palco.t-n, .palco.t-d { cursor: crosshair; }
+.palco.t-m, .palco.t-g, .palco.t-r, .palco.t-e, .palco.t-t, .palco.t-f, .palco.t-h, .palco.t-p, .palco.t-n, .palco.t-d { cursor: crosshair; }
 .palco.pan { cursor: grabbing; }
 .mundo { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .mundo img { display: block; user-select: none; -webkit-user-drag: none; }
 .mundo .papel { background: var(--paper); background-image: linear-gradient(rgba(127,127,127,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(127,127,127,.12) 1px, transparent 1px); background-size: 100px 100px; }
 .mundo svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.mundo canvas.pintura { position: absolute; left: 0; top: 0; pointer-events: none; }
 .opts { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
 .opts > * { pointer-events: auto; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--fg-2); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
@@ -127,6 +128,32 @@ svg text { font-family: var(--ui); paint-order: stroke; stroke: rgba(10, 12, 18,
 .regua-hex { fill: rgba(230,171,79,.10); stroke: var(--lamp); stroke-width: 1; stroke-opacity: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
 .pincel-hex { fill: rgba(230,171,79,.08); stroke: var(--lamp); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .c-tra.hexes { opacity: .62; }
+.hex-nada { fill: none; stroke: var(--ink-map); stroke-width: 1.5; stroke-dasharray: 3 4; stroke-opacity: .75; vector-effect: non-scaling-stroke; }
+/* o desenho: carimbos, textos livres, rios, estradas e trilhas (crescem e encolhem com o mapa) */
+.carimbo path { fill: none; stroke: #2a2118; stroke-width: 1.15; stroke-linejoin: round; stroke-linecap: round; }
+.carimbo .cc { fill: currentColor; }
+.carimbo .tc { stroke: currentColor; stroke-width: 1.5; }
+.car.oculto, .txt.oculto, .lin.oculto, .zon.oculto { opacity: .55; }
+.car.previa { opacity: .75; pointer-events: none; }
+.car.previa.fantasma { opacity: .38; }
+svg text.texto-livre { pointer-events: auto; paint-order: stroke; stroke-linejoin: round; user-select: none; cursor: inherit; }
+.rio { stroke-width: 1.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.lin-fundo { fill: none; stroke: rgba(246,239,224,.42); stroke-linecap: round; stroke-linejoin: round; }
+.lin-traco { fill: none; stroke-linejoin: round; }
+.lin-hit { fill: none; stroke: transparent; stroke-width: 16; vector-effect: non-scaling-stroke; }
+.lin-guia { fill: none; stroke: none; }
+svg text.nome-linha { font-family: 'IM Fell English', Georgia, serif; letter-spacing: .08em; stroke: rgba(246,239,224,.85); paint-order: stroke; }
+svg text.rio-nome { font-style: italic; }
+/* a zona de guerra: listras nas cores das duas facções; pulsa enquanto está ativa */
+.zona { fill-opacity: .36; }
+.zona-pulsa { animation: zona-pulsa 3s ease-in-out infinite; }
+@keyframes zona-pulsa { 0%, 100% { fill-opacity: .24; } 50% { fill-opacity: .5; } }
+.zona-borda { fill: none; stroke-width: 2.5; stroke-dasharray: 10 10; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.zona-borda.b { stroke-dashoffset: 10; }
+.zon.inativa { opacity: .45; }
+.zon.inativa .zona { fill-opacity: .14; }
+svg.sem-pulso .zona-pulsa { animation: none; }
+@media (prefers-reduced-motion: reduce) { .zona-pulsa { animation: none; fill-opacity: .4; } }
 .chip .amostra { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line-strong); flex: none; }
 .chip input.num { width: 62px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--raised); font: 600 13px var(--mono); }
 
@@ -353,6 +380,12 @@ input[type="search"].in { padding-right: 6px; }
 .ter-linha .cor { width: 34px; height: 30px; }
 .ter-linha .in { height: 30px; }
 .ter-linha .un { font-size: 12px; color: var(--fg-3); }
+.ter-linha > select.in { grid-column: 2 / 5; height: 28px; font-size: 12px; }
+.ico.carimbo-ico { background: none; border-radius: 0; box-shadow: none; }
+.grade.carimbos button { height: 42px; }
+.tabela.fases > div { align-items: center; }
+.tabela.fases > div > b { margin-left: auto; font-size: 12px; color: var(--lamp-ink); }
+.tabela.fases .ib { width: 26px; height: 26px; }
 .row.setas { align-items: center; gap: 4px; }
 .row.setas .btn { min-width: 34px; font: 600 15px var(--ui); }
 .row.setas .ajuda { margin-left: 4px; }
@@ -486,9 +519,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
 <script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/dice.js?v=2"></script>
-<script src="nucleo.js?v=4"></script>
-<script src="tela.js?v=3"></script>
-<script src="painel.js?v=6"></script>
-<script src="mundo.js?v=5"></script>
+<script src="nucleo.js?v=5"></script>
+<script src="tela.js?v=4"></script>
+<script src="painel.js?v=7"></script>
+<script src="mundo.js?v=6"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@
   const $ = id => document.getElementById(id);
   const CHAVE = 'tinycats:mundo:v1';                 // { atual, mapas: { [id]: Mapa } } — sem mesa
   const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
-  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'n', 'd'];
+  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd'];
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
@@ -69,8 +69,12 @@
     sel: [], ferramenta: 'sel',
     // opções das ferramentas; oculto = o que for criado já nasce escondido dos jogadores (para preparar um segredo
     // num mapa que eles estão vendo, sem que ele apareça no meio do caminho)
-    // (ter/terModo/custo/hexPincel: o pincel da ferramenta Terreno — o terreno, ou o custo próprio, e quantos hexágonos)
-    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0 },
+    // (ter/terModo/custo/hexPincel: o pincel da ferramenta Terreno por hexágono — o terreno, ou o custo próprio, e quantos
+    //  hexágonos; terPincel: 'livre' ou 'hex' ('' = pela grade); pinTer/pinRaio: o pincel livre (o terreno, ou '-' = a
+    //  borracha, e o tamanho na tela); freModo: linha de frente ou zona de guerra; des: o que a ferramenta Desenho põe —
+    //  carimbo (qual, tamanho na tela), texto (letra, tamanho na tela) ou linha (estilo e largura: de 1, fina, a 4, bem larga))
+    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
+      terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2 },
     gesto: false,                                    // a tela liga durante um arrasto ou desenho
     salvo: { estado: 'ok', texto: '' },
     pronto: false,

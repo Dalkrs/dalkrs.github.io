@@ -5,7 +5,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | Aba | O que é |
 |---|---|
 | **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, terreno com altura, a bolsa do personagem usada pelo token — e o combate: rolar atributo pelo token (F), disputa (C), puxar um grupo das Fichas e o ataque com defesa. |
-| **Mapa-múndi** | O mapa do mundo da campanha: a grade de hexágonos com o terreno de cada um, marcadores, grupos viajando (em cubos, de hexágono em hexágono), regiões e facções, calendário, névoa e rumores. |
+| **Mapa-múndi** | O mapa do mundo da campanha: o desenho à mão do terreno (com textura), carimbos, textos, rios, estradas e trilhas, a grade de hexágonos com o terreno de cada um, marcadores, grupos viajando (em cubos, de hexágono em hexágono), regiões, facções e zonas de guerra, calendário, névoa e rumores. |
 | **Acampamento** | A cena da fogueira: quem está no acampamento (com a aura da emoção de cada um), as provisões (rações com efeito), melhorias e equipamentos (para todos ou só para alguns), a caravana, os descansos e os momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
@@ -231,6 +231,27 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   andando 10 por dia, leva dois dias. A régua mede em hexágonos, em cubos e pelo terreno.
 - **Para os jogadores** vão a grade, os tipos de terreno e o terreno dos hexágonos que a névoa não cobre — sem os
   custos próprios (de hexágono e de região), que são do mestre.
+
+### O mapa-múndi desenhado
+
+- **O desenho à mão do terreno** (ferramenta Terreno, "Pincel livre"; não precisa de grade): pinceladas em ordem em
+  `pintura.ops` (`{ t: terreno | '' = borracha, r, pts }`, em pontos inteiros), desenhadas num `<canvas>` entre a
+  imagem e o SVG, com a textura do terreno (`terrenos[].tex`) e a borda macia; a borracha tira o que estava pintado.
+  `pintura.alfa` é a força do desenho por cima da imagem. Com a grade, cada hexágono fica com o terreno da última
+  pincelada que cobre o centro dele (`terrenoPintado`); o que se pinta por hexágono vale mais, e `'-'` no hexágono
+  quer dizer "sem terreno" mesmo com o desenho por baixo ("Seguir o desenho" tira a correção). Limites: 4000
+  pinceladas e 60 000 pontos (o documento do mapa tem tamanho máximo). O desenho vai inteiro para os jogadores: é a
+  arte do mapa, como a imagem, e a névoa o cobre na tela.
+- **A ferramenta Desenho (P)**: carimbos (`k: 'c'`, arte própria em `CARIMBOS`, do tamanho escolhido na tela; um
+  clique põe um, arrastar espalha vários num passo de desfazer), textos livres (`k: 'x'`, o texto é o nome; letra,
+  tamanho, giro, espaço entre as letras e cor) e linhas (`k: 'l'`: o rio engrossa da nascente, o primeiro ponto, até a
+  foz, com uma ondulação que só depende do id; a estrada é tracejada e a trilha, pontilhada; todas suaves, passando
+  pelos pontos, com o nome ao longo). Carimbos e textos sob a névoa e linhas todas cobertas não vão para os jogadores.
+- **A zona de guerra** (ferramenta Frente → "Zona de guerra", `k: 'z'`): a área das duas facções, em listras nas
+  cores delas, com começo e fim (como o evento); pulsa enquanto acontece. As fases (`fases: [{ dia, pts }]`) mudam a
+  forma com o tempo: vale a da última fase que já começou; "Mudar a forma a partir de hoje" cria uma, e as alças do
+  mapa mexem na forma do dia que está na tela. Os jogadores só recebem a zona ativa, com a forma de hoje — sem as
+  fases que vêm, sem o fim planejado e sem facção escondida.
 
 ### O acampamento
 
@@ -486,7 +507,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

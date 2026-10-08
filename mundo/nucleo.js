@@ -58,15 +58,46 @@
   /* Os tipos de terreno de um mapa novo. custo = quantos cubos se gastam para atravessar um hexágono dele (o mestre
      muda; sem terreno, um hexágono custa os 5 cubos dele). Os ids curtos deixam o terreno dos hexágonos pequeno. */
   const TERRENOS_PADRAO = [
-    { id: 'pl', nome: 'Planície', cor: '#a3bf6a', custo: 5 },
-    { id: 'fl', nome: 'Floresta', cor: '#3f7a46', custo: 10 },
-    { id: 'co', nome: 'Colina', cor: '#b39a62', custo: 8 },
-    { id: 'mo', nome: 'Montanha', cor: '#8b8178', custo: 15 },
-    { id: 'pa', nome: 'Pântano', cor: '#5f7d5c', custo: 15 },
-    { id: 'de', nome: 'Deserto', cor: '#e0c07a', custo: 10 },
-    { id: 'ne', nome: 'Neve', cor: '#e3ecf2', custo: 15 },
-    { id: 'ag', nome: 'Água', cor: '#4f86c0', custo: 10 },
+    { id: 'pl', nome: 'Planície', cor: '#a3bf6a', custo: 5, tex: 'mato' },
+    { id: 'fl', nome: 'Floresta', cor: '#3f7a46', custo: 10, tex: 'arvores' },
+    { id: 'co', nome: 'Colina', cor: '#b39a62', custo: 8, tex: 'colinas' },
+    { id: 'mo', nome: 'Montanha', cor: '#8b8178', custo: 15, tex: 'montes' },
+    { id: 'pa', nome: 'Pântano', cor: '#5f7d5c', custo: 15, tex: 'juncos' },
+    { id: 'de', nome: 'Deserto', cor: '#e0c07a', custo: 10, tex: 'areia' },
+    { id: 'ne', nome: 'Neve', cor: '#e3ecf2', custo: 15, tex: 'neve' },
+    { id: 'ag', nome: 'Água', cor: '#4f86c0', custo: 10, tex: 'ondas' },
   ];
+  // A textura de cada terreno no desenho à mão: o desenho miúdo que se repete dentro da pincelada (a tela é quem
+  // desenha; aqui ficam os nomes). Um terreno de antes, sem textura, fica com a do terreno de começo de mesmo id.
+  const TEXTURAS = {
+    liso: { nome: 'Lisa' }, mato: { nome: 'Capim' }, arvores: { nome: 'Árvores' }, colinas: { nome: 'Colinas' },
+    montes: { nome: 'Montes' }, juncos: { nome: 'Juncos' }, areia: { nome: 'Areia' }, neve: { nome: 'Neve' },
+    ondas: { nome: 'Ondas' }, pedras: { nome: 'Pedras' },
+  };
+  const TEX_PADRAO = Object.fromEntries(TERRENOS_PADRAO.map(t => [t.id, t.tex]));
+  /* Carimbos: desenhos para enfeitar o mapa (arte própria, numa caixa 24×24). Na tela, .cc é preenchido com a cor do
+     carimbo, .tc é um traço nessa cor, e o resto é traço de tinta escura. */
+  const CARIMBOS = {
+    arvore: { nome: 'Árvore', cor: '#5d9a4e', svg: '<path class="cc" d="M12 3.2c2.7 0 4.7 2 4.7 4.4 1.6.6 2.7 2.1 2.7 3.9 0 2.5-2.1 4.3-4.6 4.3H8.6C6 15.8 4 14 4 11.5c0-1.8 1-3.3 2.7-3.9 0-2.4 2.1-4.4 5.3-4.4z"/><path d="M12 15.8V21M12 18.2l-2.2-1.6M12 17.6l2-1.4M9 9.5c.5-1 1.4-1.6 2.4-1.7"/>' },
+    pinheiro: { nome: 'Pinheiro', cor: '#3f7a46', svg: '<path class="cc" d="M12 2.5 7.6 8.8h2.3L6 14.2h3.1L5.2 19.6h13.6l-3.9-5.4H18l-3.9-5.4h2.3z"/><path d="M12 19.6v2.4M10 12.2l2 1.2 2-1.2"/>' },
+    bosque: { nome: 'Bosque', cor: '#4f8a4a', svg: '<path class="cc" d="M6.5 4.5 3.6 9.2h1.7l-2.6 4.1h7.6L7.7 9.2h1.7z"/><path class="cc" d="M17.5 3.5l-3.1 4.8h1.7l-2.7 4.3h8.2l-2.7-4.3h1.7z"/><path class="cc" d="M12 8.8 8.9 13.6h1.7l-2.9 4.8h8.6l-2.9-4.8h1.7z"/><path d="M6.5 13.3v2.2M17.5 12.6v2.2M12 18.4v2.8"/>' },
+    montanha: { nome: 'Montanha', cor: '#a39a8c', svg: '<path class="cc" d="M2.5 20 10 5.5l3.4 5.6 1.9-2.6L21.5 20z"/><path d="M10 5.5l.9 4.2-1.5 2.3 1.3 2.5-.7 5.5M7.6 10.4l2.4 1.1 1.1-.9M15.3 8.5l.5 3-1 1.6"/>' },
+    serra: { nome: 'Serra', cor: '#988f82', svg: '<path class="cc" d="M1.5 20 6.8 9.8l2.7 4.1L14 6.5l4 6.2 1.6-2.2L22.5 20z"/><path d="M14 6.5l.7 4-1.3 2.1.9 3.2M6.8 9.8l.6 3-.9 2.2M12.3 9.3l1.7 1.2 1.2-1"/>' },
+    colinas: { nome: 'Colinas', cor: '#b9a26a', svg: '<path class="cc" d="M1.8 19.5c1.5-5.2 4.6-7.8 7.7-7.8s6.2 2.6 7.2 7.8z"/><path class="cc" d="M9.8 19.5c1.2-4.1 3.7-6.2 6.2-6.2s5 2.1 6.2 6.2z"/><path d="M5.6 15.8c.9-1 2-1.5 3.1-1.7M13.8 16.6c.7-.7 1.5-1.1 2.3-1.2"/>' },
+    vulcao: { nome: 'Vulcão', cor: '#8d6e63', svg: '<path class="cc" d="M2.8 20.5 9.4 10.2h5.2L21.2 20.5z"/><path d="M9.4 10.2c.9 1 4.3 1 5.2 0M11.8 12.4l-.6 3 1 2.2-.5 2.9M12 8.4c-1.6-1.1-1.2-2.9.4-3.4-.1-1.6 1.7-2.5 3-1.5 1.2-.9 3 0 2.8 1.6"/>' },
+    rochas: { nome: 'Rochas', cor: '#9e9a92', svg: '<path class="cc" d="M2.8 19.5 4.6 14l3.8-2.4 3.4 2.6 1.4 5.3z"/><path class="cc" d="M11.6 19.5l2.3-6.4 3.7-1.8 3.4 3.6.4 4.6z"/><path d="M8.4 11.6l-.6 3.8M17.6 11.3l-1 4.2M4.6 14l2.2 1.4"/>' },
+    ondas: { nome: 'Ondas', cor: '#4f86c0', svg: '<path class="tc" d="M2.5 8.5c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0M9 13.5c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0M3.5 18.5c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0"/>' },
+    juncos: { nome: 'Juncos', cor: '#6f8f5a', svg: '<path class="tc" d="M6 19.5c0-4 .5-7 1.6-9.2M9 19.5c0-3.1-.4-5.7-1.2-7.6M12 19.5c0-5 .8-8.6 2.1-11.2M15.2 19.5c0-3 .5-5.1 1.6-6.6M18.2 19.5c0-2-.3-3.6-1.1-4.6"/><path class="cc" d="M13.6 8.6c.5-1.7 1.4-2.3 1.9-1.9.5.4.1 1.8-1.2 2.8z"/><path d="M3 19.5h18M4.5 21.5h4M14 21.5h5"/>' },
+    dunas: { nome: 'Dunas', cor: '#e0c07a', svg: '<path class="cc" d="M1.8 18.5c3-4.2 6.1-5.8 9.2-5.8 2 0 3.6 1 5.1 2.6 1.6-1.1 3.3-1.1 6.1 1v2.9H1.8z"/><path d="M11 12.7c-1 2-1.3 4.1-.8 6.5M16.1 15.3c-.4 1-.5 2.5-.2 3.9"/>' },
+    navio: { nome: 'Navio', cor: '#b0844f', svg: '<path class="cc" d="M3.8 14.6h16.4l-2.6 4.1H6.4z"/><path class="cc" d="M12 4.2v9.4H6.2z"/><path d="M12 3.2v11.4M12 5.4l4.6 7.4H12"/><path class="tc" d="M2.5 21c1.6-1 3.2-1 4.8 0s3.2 1 4.8 0 3.2-1 4.8 0 3.2 1 4.8 0"/>' },
+    casario: { nome: 'Casario', cor: '#c98f5a', svg: '<path class="cc" d="M2.8 20v-6.2l3.6-3.1 3.6 3.1V20zM10 20v-8.2l4-3.6 4 3.6V20zM18 20v-4.6l2-1.8 2 1.8V20z"/><path d="M1.8 20h20.6M5.4 20v-2.6h2V20M13 20v-3h2v3M14 11.4v.01"/>' },
+    ruinas: { nome: 'Ruínas', cor: '#b3ab98', svg: '<path class="cc" d="M4 20v-9.5h3V20zM10.5 20v-5.5l2.2-1.5.8 1V20zM17 20V8.5h3V20z"/><path d="M2.5 20h19M3.5 10.5h4M16.5 8.5h4M18.5 8.5l-.8-1.5"/>' },
+  };
+  // As linhas do mapa (geografia, não viagem): o rio engrossa da nascente (o primeiro ponto) até a foz (o último);
+  // a estrada é tracejada; a trilha, pontilhada. A cor de cada uma vem daqui, se o mestre não escolher outra.
+  const LINHAS = { rio: { nome: 'Rio', cor: '#4f86c0' }, estrada: { nome: 'Estrada', cor: '#8a5a2b' }, trilha: { nome: 'Trilha', cor: '#6b4a2b' } };
+  // As letras dos textos livres (a tela diz qual fonte é cada uma)
+  const FONTES = { mapa: { nome: 'De mapa antigo' }, classica: { nome: 'Clássica, inclinada' }, simples: { nome: 'Simples' } };
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
   const CAL_PADRAO = {
     dia: 0, ano0: 1, era: '',
@@ -77,7 +108,9 @@
   /* ---------------- limites ---------------- */
   const MAX_OBJS = 2000, MAX_OPS = 4000, MAX_TXT = 4000, MAX_FAC = 500, MAX_PTS = 2000, MAX_COORD = 1e6;
   const MAX_HEX = 20000, MAX_TER = 40, MAX_CUSTO = 9999;
-  const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr' };
+  // o desenho à mão: quantas pinceladas e quantos pontos ao todo (o documento do mapa tem limite de tamanho)
+  const MAX_PINC = 4000, MAX_PONTOS_PINT = 60000, MAX_FASES = 60;
+  const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
     g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0 },
@@ -85,6 +118,11 @@
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
     t: { pts: [], via: 'trilha' },
     f: { pts: [], a: null, b: null, ativa: true },
+    // zona de guerra: a área das duas facções; muda de forma com o tempo (fases: a partir de tal dia, tal forma)
+    z: { pts: [], a: null, b: null, ini: null, fim: null, fases: [] },
+    l: { pts: [], estilo: 'rio', larg: 10, cor: '' },                  // linha: rio, estrada ou trilha
+    c: { x: 0, y: 0, ic: 'arvore', tam: 40, cor: '', vira: false },    // carimbo (tam: a largura, em unidades do mapa)
+    x: { x: 0, y: 0, fonte: 'mapa', tam: 28, cor: '', rot: 0, esp: 0 }, // texto livre: o texto é o nome
   };
 
   /* ---------------- apoio ---------------- */
@@ -201,6 +239,54 @@
     }
     return { x: cx / (3 * A), y: cy / (3 * A) };
   }
+  function distSegmento(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    const t = l2 ? limitar(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1) : 0;
+    return Math.hypot(px - ax - dx * t, py - ay - dy * t);
+  }
+  // A linha suave que passa por todos os pontos (Catmull-Rom), amostrada mais ou menos a cada `passo` unidades.
+  function suavizar(pts, passo) {
+    const p = Array.isArray(pts) ? pts.map(q => { const v = xy(q); return [v.x, v.y]; }) : [];
+    if (p.length < 3) return p;
+    const out = [], P = i => p[limitar(i, 0, p.length - 1)], d = Math.max(0.5, num(passo, 8));
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+      const n = limitar(Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / d), 2, 64);
+      for (let k = 0; k < n; k++) {
+        const t = k / n, t2 = t * t, t3 = t2 * t;
+        out.push([0, 1].map(c => 0.5 * (2 * p1[c] + (p2[c] - p0[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (3 * p1[c] - p0[c] - 3 * p2[c] + p3[c]) * t3)));
+      }
+    }
+    out.push(p[p.length - 1].slice());
+    return out;
+  }
+  // Um número de 0 a 1 que só depende do texto: a ondulação de cada rio fica sempre igual, em qualquer aparelho.
+  function semente(s) {
+    let h = 2166136261;
+    for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); }
+    return (h >>> 0) / 4294967296;
+  }
+  /* O contorno do rio (um polígono): engrossa da nascente (o primeiro ponto, um quinto da largura) até a foz (o
+     último, a largura toda), com uma ondulação leve nas margens e no curso — sempre a mesma para o mesmo rio. */
+  function contornoRio(pts, larg, id) {
+    const w0 = Math.max(0.5, num(larg, 10)), c = suavizar(pts, Math.max(1, w0 * 0.8)), n = c.length;
+    if (n < 2) return [];
+    const s = [0];
+    for (let i = 1; i < n; i++) s.push(s[i - 1] + Math.hypot(c[i][0] - c[i - 1][0], c[i][1] - c[i - 1][1]));
+    const S = s[n - 1] || 1, f1 = semente(id) * 2 * Math.PI, f2 = semente(id + '~') * 2 * Math.PI, esq = [], dir = [];
+    for (let i = 0; i < n; i++) {
+      const a = c[Math.max(0, i - 1)], b = c[Math.min(n - 1, i + 1)];
+      let nx = a[1] - b[1], ny = b[0] - a[0];
+      const l = Math.hypot(nx, ny) || 1;
+      nx /= l; ny /= l;
+      const t = s[i] / S, meia = w0 * (0.2 + 0.8 * Math.pow(t, 0.75)) * (1 + 0.12 * Math.sin(s[i] / (w0 * 2.2) + f1)) / 2;
+      const curso = w0 * 0.12 * Math.sin(s[i] / (w0 * 3.7) + f2) * Math.min(1, t * 4);    // (a nascente fica onde foi posta)
+      const x = c[i][0] + nx * curso, y = c[i][1] + ny * curso;
+      esq.push([arred(x + nx * meia), arred(y + ny * meia)]);
+      dir.push([arred(x - nx * meia), arred(y - ny * meia)]);
+    }
+    return esq.concat(dir.reverse());
+  }
 
   /* ---------------- calendário ---------------- */
   const mesesDe = cal => (ehObj(cal) && Array.isArray(cal.meses) && cal.meses.some(ehObj) ? cal.meses.filter(ehObj) : CAL_PADRAO.meses);
@@ -239,6 +325,25 @@
     const objs = ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : [];
     if (dia == null) dia = ehObj(mapa) && ehObj(mapa.cal) ? mapa.cal.dia : 0;
     return objs.filter(o => ehObj(o) && o.k === 'e' && eventoAtivo(o, dia));
+  }
+
+  /* ---------------- zonas de guerra ---------------- */
+  // A fase da zona que vale no dia (a última que já começou), ou -1: antes de qualquer fase vale a forma de partida.
+  function faseNoDia(z, dia) {
+    const d = num(dia, 0), fases = ehObj(z) && Array.isArray(z.fases) ? z.fases : [];
+    let i = -1, melhor = -Infinity;
+    fases.forEach((f, k) => { const fd = ehObj(f) ? num(f.dia, NaN) : NaN; if (fd <= d && fd >= melhor && Array.isArray(f.pts)) { melhor = fd; i = k; } });
+    return i;
+  }
+  function formaNoDia(z, dia) {
+    const i = faseNoDia(z, dia);
+    return i >= 0 ? z.fases[i].pts : ehObj(z) && Array.isArray(z.pts) ? z.pts : [];
+  }
+  // Ativa: já começou e não terminou (o dia do fim conta).
+  function zonaAtiva(z, dia) {
+    if (!ehObj(z)) return false;
+    const d = num(dia, 0), ini = num(z.ini, 0), fim = z.fim == null || z.fim === '' ? null : num(z.fim, null);
+    return d >= ini && (fim == null || d <= fim);
   }
 
   /* ---------------- a grade de hexágonos ----------------
@@ -317,16 +422,50 @@
     }
     return null;
   }
-  // Tudo sobre um hexágono: o terreno, o custo e de onde ele vem ('hex', 'regiao', 'terreno' ou 'base').
+  /* O terreno que o desenho à mão dá a cada hexágono ("q,r" → id): as pinceladas em ordem; o hexágono cujo centro
+     cai dentro de uma pincelada (a até r da linha dela) fica com o terreno dela — a borracha tira. Guardado por mapa
+     (toda mudança no mapa faz outro objeto, então o guardado nunca fica velho). */
+  const pintadoDe = typeof WeakMap === 'function' ? new WeakMap() : null;
+  const SEM_PINTURA = new Map();
+  function terrenoPintado(m) {
+    if (!temGrade(m) || !ehObj(m.pintura) || !Array.isArray(m.pintura.ops) || !m.pintura.ops.length) return SEM_PINTURA;
+    if (pintadoDe && pintadoDe.has(m)) return pintadoDe.get(m);
+    const out = new Map();
+    for (const op of m.pintura.ops) if (ehObj(op) && Array.isArray(op.pts) && op.pts.length) pincelarHexes(m, op, out);
+    if (pintadoDe) pintadoDe.set(m, out);
+    return out;
+  }
+  function pincelarHexes(m, op, out) {
+    const r = num(op.r, 0), pts = op.pts;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    x0 -= r; y0 -= r; x1 += r; y1 += r;
+    // os hexágonos que podem ter o centro na caixa da pincelada (q e r variam em linha reta com x e y: os cantos bastam)
+    const cs = [hexDe(m, x0, y0), hexDe(m, x1, y0), hexDe(m, x0, y1), hexDe(m, x1, y1)];
+    const q0 = Math.min(...cs.map(h => h.q)) - 1, q1 = Math.max(...cs.map(h => h.q)) + 1;
+    const r0 = Math.min(...cs.map(h => h.r)) - 1, r1 = Math.max(...cs.map(h => h.r)) + 1;
+    if ((q1 - q0 + 1) * (r1 - r0 + 1) > 1e6) return;            // (hexágonos minúsculos sob uma pincelada do tamanho do mundo)
+    for (let q = q0; q <= q1; q++) for (let rr = r0; rr <= r1; rr++) {
+      const c = centroHex(m, q, rr);
+      if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1) continue;
+      let dentro = pts.length === 1 && Math.hypot(c.x - pts[0][0], c.y - pts[0][1]) <= r;
+      for (let i = 1; i < pts.length && !dentro; i++) dentro = distSegmento(c.x, c.y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]) <= r;
+      if (!dentro) continue;
+      if (op.t) out.set(q + ',' + rr, op.t); else out.delete(q + ',' + rr);
+    }
+  }
+  /* Tudo sobre um hexágono: o terreno, o custo e de onde ele vem ('hex', 'regiao', 'terreno' ou 'base'). O terreno é
+     o que o mestre deu ao hexágono ('-' = nenhum, mesmo com o desenho por baixo), senão o do desenho à mão (desenho:
+     true). */
   function hexInfo(m, q, r) {
-    const v = ehObj(m) && ehObj(m.hexes) ? m.hexes[q + ',' + r] : undefined;
-    const tid = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', proprio = Array.isArray(v) && v[1] != null ? num(v[1], null) : null;
-    const t = terrenoDe(m, tid);
-    if (proprio != null) return { q, r, terreno: t, custo: proprio, de: 'hex', regiao: null };
+    const k = q + ',' + r, v = ehObj(m) && ehObj(m.hexes) ? m.hexes[k] : undefined;
+    const ex = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', proprio = Array.isArray(v) && v[1] != null ? num(v[1], null) : null;
+    const t = ex === '-' ? null : terrenoDe(m, ex || terrenoPintado(m).get(k) || ''), desenho = !ex && !!t;
+    if (proprio != null) return { q, r, terreno: t, custo: proprio, de: 'hex', regiao: null, desenho };
     const c = centroHex(m, q, r), reg = regiaoComCusto(m, c.x, c.y);
-    if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg };
-    if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null };
-    return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null };
+    if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg, desenho };
+    if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null, desenho };
+    return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null, desenho };
   }
   const custoHex = (m, q, r) => hexInfo(m, q, r).custo;
   // Medir de um ponto a outro: hexágonos em linha reta, os cubos disso e quanto custa pelo terreno de cada um.
@@ -558,12 +697,14 @@
       const id = idOk(t.id);
       if (!id || id.length > 12 || vistos.has(id)) continue;
       vistos.add(id);
-      out.push({ id, nome: texto(t.nome, '', 40).trim() || 'Terreno', cor: cor(t.cor, '#9aa3b5'), custo: custoOuNada(t.custo) || CUBOS_HEX });
+      out.push({ id, nome: texto(t.nome, '', 40).trim() || 'Terreno', cor: cor(t.cor, '#9aa3b5'), custo: custoOuNada(t.custo) || CUBOS_HEX,
+        tex: escolha(TEXTURAS, t.tex, TEX_PADRAO[id] || 'liso') });
     }
     return out;
   }
-  /* O terreno de cada hexágono: "q,r" → id do terreno, ou [id, custo] quando o mestre mudou o custo ali (id '' =
-     sem terreno). Terreno que não existe mais some (o custo próprio fica); o que não diz nada sai. */
+  /* O terreno de cada hexágono: "q,r" → id do terreno, ou [id, custo] quando o mestre mudou o custo ali (id '' = o
+     do desenho à mão, se houver; '-' = nenhum terreno, mesmo com o desenho por baixo). Terreno que não existe mais
+     some (o custo próprio fica); o que não diz nada sai. */
   function normHexes(v, terrenos) {
     const out = {};
     if (!ehObj(v)) return out;
@@ -574,12 +715,46 @@
       const h = lerChaveHex(k);
       if (!h) continue;
       const x = v[k], tid = typeof x === 'string' ? x : Array.isArray(x) && typeof x[0] === 'string' ? x[0] : '';
-      const t = ids.has(tid) ? tid : '', c = Array.isArray(x) ? custoOuNada(x[1]) : null;
+      const t = tid === '-' || ids.has(tid) ? tid : '', c = Array.isArray(x) ? custoOuNada(x[1]) : null;
       if (!t && c == null) continue;
       out[chaveHex(h)] = c == null ? t : [t, c];
       n++;
     }
     return out;
+  }
+  /* O desenho à mão do terreno: pinceladas em ordem, cada uma com o terreno (ou '' = borracha), o raio e a linha (em
+     pontos inteiros: são pixels da imagem). Pincelada de um terreno que não existe mais sai; borracha antes de
+     qualquer tinta não apaga nada (sai também). alfa = a força do desenho por cima da imagem. */
+  function normPintura(v, terrenos) {
+    const p = ehObj(v) ? v : {}, ids = new Set(terrenos.map(t => t.id)), ops = [];
+    let total = 0;
+    for (const op of Array.isArray(p.ops) ? p.ops : []) {
+      if (ops.length >= MAX_PINC) break;
+      if (!ehObj(op) || !Array.isArray(op.pts)) continue;
+      const t = op.t === '' ? '' : typeof op.t === 'string' && ids.has(op.t) ? op.t : null, r = num(op.r, NaN);
+      if (t === null || !(r > 0) || (!t && !ops.length)) continue;
+      const pts = [];
+      for (const q of op.pts) {
+        if (pts.length >= MAX_PTS) break;
+        const x = Array.isArray(q) ? num(q[0], NaN) : NaN, y = Array.isArray(q) ? num(q[1], NaN) : NaN;
+        if (Number.isFinite(x) && Number.isFinite(y)) pts.push([Math.round(limitar(x, -MAX_COORD, MAX_COORD)) + 0, Math.round(limitar(y, -MAX_COORD, MAX_COORD)) + 0]);
+      }
+      if (!pts.length) continue;
+      if (total + pts.length > MAX_PONTOS_PINT) break;
+      total += pts.length;
+      ops.push({ t, r: arred(limitar(r, 0.5, MAX_COORD)), pts });
+    }
+    return { alfa: Math.round(limitar(num(p.alfa, 1), 0.1, 1) * 100) / 100, ops };
+  }
+  // As fases de uma zona de guerra: [{ dia, pts }], na ordem dos dias, um dia só uma vez (vale a que vem depois).
+  function normFases(v) {
+    const por = new Map();
+    for (const f of Array.isArray(v) ? v : []) {
+      if (!ehObj(f)) continue;
+      const dia = inteiro(f.dia, null, 0, 1e9), pts = pontos(f.pts, 3);
+      if (dia != null && pts) por.set(dia, pts);
+    }
+    return [...por.keys()].sort((a, b) => a - b).slice(0, MAX_FASES).map(dia => ({ dia, pts: por.get(dia) }));
   }
   const idRef = v => idOk(v) || null;
   const escolha = (cat, v, padrao) => (tem(cat, v) ? v : padrao);
@@ -621,6 +796,26 @@
         if (!pts) return null;
         return Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ativa: o.ativa === undefined ? true : sim(o.ativa) });
       }
+      case 'z': {
+        const pts = pontos(o.pts, leve ? 0 : 3);
+        if (!pts) return null;
+        const ini = o.ini == null || o.ini === '' ? (dia == null ? null : dia) : inteiro(o.ini, dia == null ? 0 : dia, 0, 1e9);
+        let fim = o.fim == null || o.fim === '' ? null : inteiro(o.fim, null, 0, 1e9);
+        if (fim != null && ini != null && fim < ini) fim = ini;
+        return Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ini, fim, fases: normFases(o.fases) });
+      }
+      case 'l': {
+        const pts = pontos(o.pts, leve ? 0 : 2);
+        if (!pts) return null;
+        return Object.assign(b, { pts, estilo: escolha(LINHAS, o.estilo, 'rio'), larg: arred(limitar(num(o.larg, 10), 0.5, MAX_COORD)), cor: cor(o.cor, '') });
+      }
+      case 'c':
+        if (!lugar()) return null;
+        return Object.assign(b, { ic: escolha(CARIMBOS, o.ic, 'arvore'), tam: arred(limitar(num(o.tam, 40), 1, MAX_COORD)), cor: cor(o.cor, ''), vira: sim(o.vira) });
+      case 'x':
+        if (!lugar()) return null;
+        return Object.assign(b, { fonte: escolha(FONTES, o.fonte, 'mapa'), tam: arred(limitar(num(o.tam, 28), 1, MAX_COORD)), cor: cor(o.cor, ''),
+          rot: inteiro(o.rot, 0, -180, 180), esp: Math.round(limitar(num(o.esp, 0), 0, 1) * 100) / 100 });
     }
     return null;
   }
@@ -662,12 +857,13 @@
     const mapa = {
       v: 1, id: idOk(m.id) || novoId('mp'), nome: texto(m.nome, 'Mundo conhecido').trim() || 'Mapa sem nome', oculto: talvez(m.oculto),
       img, larg: img ? img.w : inteiro(m.larg, 2000, 100, 30000), alt: img ? img.h : inteiro(m.alt, 1400, 100, 30000),
-      grade: normGrade(m.grade, m.escala), terrenos: null, hexes: null,
+      grade: normGrade(m.grade, m.escala), terrenos: null, hexes: null, pintura: null,
       cal, nevoa: { on: sim(nev.on), ops: normOps(nev.ops) },
       faccoes: normFaccoes(m.faccoes), objs: [],
     };
     mapa.terrenos = normTerrenos(m.terrenos);
     mapa.hexes = normHexes(m.hexes, mapa.terrenos);
+    mapa.pintura = normPintura(m.pintura, mapa.terrenos);
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -681,7 +877,7 @@
     for (const o of mapa.objs) if (o.k === 't') rotas.set(o.id, o);
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
-      if (o.k === 'f') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
+      if (o.k === 'f' || o.k === 'z') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
       if (o.k === 'g') {
         if (!rotas.has(o.rota)) o.rota = null;
         if (!o.rota) o.prog = 0;
@@ -693,7 +889,7 @@
   function normalizarMapa(x) {
     try { return normalizar(x); } catch (e) {
       return { v: 1, id: novoId('mp'), nome: 'Mapa sem nome', oculto: false, img: null, larg: 2000, alt: 1400, grade: normGrade(null),
-        terrenos: copia(TERRENOS_PADRAO), hexes: {}, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] };
+        terrenos: copia(TERRENOS_PADRAO), hexes: {}, pintura: { alfa: 1, ops: [] }, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] };
     }
   }
 
@@ -702,7 +898,7 @@
     o = ehObj(o) ? o : {};
     const img = ehObj(o.img) ? o.img : null;
     return normalizarMapa({ v: 1, id: novoId('mp'), nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Mundo conhecido', oculto: false,
-      img, larg: img ? img.w : o.larg, alt: img ? img.h : o.alt, grade: null, terrenos: copia(TERRENOS_PADRAO), hexes: {}, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] });
+      img, larg: img ? img.w : o.larg, alt: img ? img.h : o.alt, grade: null, terrenos: copia(TERRENOS_PADRAO), hexes: {}, pintura: null, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] });
   }
   // Objeto novo com os padrões do tipo. Evento sem `ini` fica com null: ao entrar no mapa, começa "hoje".
   function objNovo(k, campos) {
@@ -728,8 +924,12 @@
       if ('x' in o) { o.x = arred(o.x * sx); o.y = arred(o.y * sy); }
       if (o.pts) o.pts = o.pts.map(P);
       if (o.k === 'e') { o.r = arred(o.r * s); o.cresce = arred(o.cresce * s); }
+      if (o.k === 'z') o.fases = o.fases.map(f => ({ dia: f.dia, pts: f.pts.map(P) }));
+      if (o.k === 'l') o.larg = arred(o.larg * s);
+      if (o.k === 'c' || o.k === 'x') o.tam = arred(o.tam * s);
     }
     m.nevoa.ops = m.nevoa.ops.map(o => ({ t: o.t, x: arred(o.x * sx), y: arred(o.y * sy), r: arred(o.r * s) }));
+    m.pintura.ops = m.pintura.ops.map(o => ({ t: o.t, r: arred(o.r * s), pts: o.pts.map(p => [Math.round(p[0] * sx), Math.round(p[1] * sy)]) }));
     if (m.grade.tam > 0) m.grade.tam = arred(m.grade.tam * s);
     m.grade.x = arred(m.grade.x * sx); m.grade.y = arred(m.grade.y * sy);
     if (!m.img) { m.larg = Math.round(m.larg * sx); m.alt = Math.round(m.alt * sy); }
@@ -739,9 +939,10 @@
   /* ---------------- projeção pública ---------------- */
   /* O que os jogadores recebem. Tudo o que é só do mestre sai aqui — e nada além deste recorte vai para eles:
      notas, o "escondido" do mapa, objetos e facções escondidos, o "é falso" dos boatos, a tabela de encontros,
-     eventos fora do dia de hoje (e o futuro dos de hoje: quando acabam, quanto crescem), os custos que o mestre deu
-     a um hexágono ou a uma região, e o que a névoa cobre (menos os grupos: são os próprios jogadores) — inclusive o
-     terreno dos hexágonos cobertos. */
+     eventos e zonas de guerra fora do dia de hoje (e o futuro dos de hoje: quando acabam, quanto crescem, as fases
+     que vêm), os custos que o mestre deu a um hexágono ou a uma região, e o que a névoa cobre (menos os grupos: são
+     os próprios jogadores) — inclusive o terreno dos hexágonos cobertos. O desenho à mão vai inteiro: é a arte do
+     mapa, como a imagem (a névoa cobre os dois na tela). */
   function projetar(mapa) {
     const m = normalizarMapa(mapa);                          // já é uma cópia
     const dia = m.cal.dia, nevoa = m.nevoa.on, ops = m.nevoa.ops;
@@ -751,7 +952,7 @@
     const hexes = {};
     for (const k of Object.keys(m.hexes)) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : v[0], h = lerChaveHex(k);
-      if (!t || !h || !temGrade(m)) continue;
+      if (!t || t === '-' || !h || !temGrade(m)) continue;
       const c = centroHex(m, h.q, h.r);
       if (!coberto(c.x, c.y)) hexes[k] = t;
     }
@@ -773,8 +974,17 @@
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
       }
       else if (o.k === 'r') { delete o.enc; o.custo = null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
-      else if (o.k === 't') { if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'z') {
+        // a zona como ela está hoje: as fases que vêm (e o fim planejado) são do mestre
+        if (!zonaAtiva(o, dia)) continue;
+        o.pts = formaNoDia(o, dia); o.fases = []; o.fim = null;
+        if (escondidas.has(o.a)) o.a = null;
+        if (escondidas.has(o.b)) o.b = null;
+        if (todoCoberto(o.pts)) continue;
+      }
+      else if (o.k === 'c' || o.k === 'x') { if (coberto(o.x, o.y)) continue; }
       objs.push(o);
     }
     const rotas = new Set(objs.filter(o => o.k === 't').map(o => o.id));
@@ -784,15 +994,15 @@
   }
 
   const MundoNucleo = {
-    ICONES, EVENTOS, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO,
+    ICONES, EVENTOS, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,
     novoId, mapaNovo, objNovo, faccaoNova, normalizarMapa,
     diasNoAno, dataDe, textoData,
-    dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide,
-    eventoAtivo, raioNoDia, eventosDoDia,
+    dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,
+    eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
-    terrenoDe, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
+    terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     nevoaCobre, projetar, copia, escalarMapa,
-    LIMITES: { objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER },
+    LIMITES: { objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

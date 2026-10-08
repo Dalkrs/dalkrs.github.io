@@ -64,7 +64,10 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
     ok(/Sem grade, o mapa não tem escala/.test(await L.F.locator('#pane').innerText()) && await campo(L, 'ter:pincel').isDisabled(), 'sem grade: a aba diz que não há escala, e o pincel espera a grade');
     await aba(L, 'selecao');
     await ferramenta(L, 'h');
-    ok(await L.F.locator('#opts').innerText().then(x => /Definir a grade de hexágonos/.test(x)), 'a ferramenta Terreno sem grade oferece definir a grade');
+    ok(await L.F.locator('#opts .chip', { hasText: 'Pincel livre' }).getAttribute('aria-pressed') === 'true' && await L.F.locator('#opts select[aria-label="Com o que o pincel pinta"]').isVisible(),
+      'sem grade, a ferramenta Terreno começa no pincel livre (o desenho à mão não precisa de grade)');
+    await L.F.locator('#opts .chip', { hasText: 'Por hexágono' }).click(); await espera(120);
+    ok(await L.F.locator('#opts').innerText().then(x => /Definir a grade de hexágonos/.test(x)), 'por hexágono, sem grade: oferece definir a grade');
     await clicar(L, 500, 500);
     ok(/Defina a grade de hexágonos primeiro/.test(await textoDoAviso(L)) && await L.F.locator('#tab-terreno').getAttribute('aria-selected') === 'true' && j((await mapa(L)).hexes) === '{}', 'e o clique no mapa avisa e abre a aba Terreno, sem pintar nada');
   });

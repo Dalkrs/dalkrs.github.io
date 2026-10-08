@@ -1,6 +1,7 @@
 /* Tiny Cats · Mapa-múndi · a tela.
-   O mapa no meio: zoom e arrasto (roda, pinça, botões), o fundo (imagem ou papel em branco) e, por cima, um SVG
-   com as camadas (regiões, frentes, rotas, eventos, marcadores, névoa, grupos, seleção, rascunho e régua).
+   O mapa no meio: zoom e arrasto (roda, pinça, botões), o fundo (imagem ou papel em branco), o desenho à mão do
+   terreno (um <canvas>) e, por cima, um SVG com as camadas (grade, linhas, carimbos, regiões, zonas de guerra,
+   textos, frentes, rotas, eventos, marcadores, névoa, grupos, seleção, rascunho e régua).
    Também o trilho de ferramentas, as opções da ferramenta (#opts), a dica (#dica), os gestos e os atalhos.
    Nada aqui muda o mapa direto: tudo passa por App.mudar, um passo de desfazer por gesto. O que está no meio de
    um gesto (arrastar, pincelar, desenhar) é desenhado provisoriamente e só vira mudança ao soltar. */
@@ -10,11 +11,21 @@
   const MASCARA = 'mundoNevoaMascara';
   const Z_MAX = 8;
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
-  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0 };
-  const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru' };
-  const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.' };
+  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
+    terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2 };
+  // a largura de cada desenho de linha, em pixels da tela, para Fina, Média, Larga e Bem larga (no rio: a da foz)
+  const LARGURAS = { rio: [6, 12, 20, 32], estrada: [2, 3.5, 5, 8], trilha: [1.5, 2.5, 4, 6] };
+  const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt' };
+  const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
+    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.' };
   // rótulos do desfazer em minúsculas, como os do painel e do App ("Desfazer: novo marcador")
-  const NOVO = { m: 'novo marcador', g: 'novo grupo', r: 'nova região', e: 'novo evento', t: 'nova rota', f: 'nova frente' };
+  const NOVO = { m: 'novo marcador', g: 'novo grupo', r: 'nova região', e: 'novo evento', t: 'nova rota', f: 'nova frente',
+    z: 'nova zona de guerra', l: 'nova linha', c: 'novo carimbo', x: 'novo texto' };
+  // o que só se escolhe ao soltar (arrastar por cima ainda anda pelo mapa): áreas, linhas e os enfeites
+  const LARGOS = new Set(['r', 't', 'f', 'z', 'l', 'c', 'x']);
+  // as fontes dos textos livres (Grenze e IM Fell English vêm do Google Fonts, no index.html)
+  const FONTE_CSS = { mapa: "'Grenze', Georgia, serif", classica: "'IM Fell English', Georgia, 'Times New Roman', serif", simples: "'Atkinson Hyperlegible Next', system-ui, sans-serif" };
+  const TINTA = '#2a2118';                        // a tinta escura dos carimbos e dos textos de mapa
 
   const FERRAMENTAS = [
     { id: 'sel', nome: 'Selecionar', tecla: 'V' },
@@ -25,6 +36,7 @@
     { id: 't', nome: 'Rota', tecla: 'T' },
     { id: 'f', nome: 'Frente', tecla: 'F' },
     { id: 'h', nome: 'Terreno', tecla: 'H' },
+    { id: 'p', nome: 'Desenho', tecla: 'P' },
     { id: 'n', nome: 'Névoa', tecla: 'N' },
     { id: 'd', nome: 'Régua', tecla: 'D' },
   ];
@@ -41,6 +53,7 @@
     t: '<path d="M4.5 19c3.5 0 4.5-4.5 8-4.5s3.5-6 7-6" stroke-dasharray="2.6 3.2"/><circle cx="4.5" cy="19" r="1.7"/><circle cx="19.5" cy="8.5" r="1.7"/>',
     f: '<path d="M4 4l10.5 10.5M12 17l5-5M15.5 15.5l4 4M20 4 9.5 14.5M7 12l5 5M8.5 15.5l-4 4"/>',
     h: '<path d="M12 2.8l7.9 4.6v9.2L12 21.2l-7.9-4.6V7.4z"/><path d="M7.4 15.6l3.1-4.6 2 3 1.3-1.7 2.8 3.3"/>',
+    p: '<path d="M14.6 4.4l5 5L9.2 19.8l-5.6.6.6-5.6z"/><path d="M12.6 6.4l5 5"/>',
     n: '<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.7-1.2A4.6 4.6 0 0 0 7 18.5z"/>',
     d: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
   };
@@ -137,31 +150,56 @@
     const t = trecho(pts, comprimento(pts) / 2);
     return t[t.length - 1];
   }
+  // a forma de hoje (a zona de guerra muda com as fases; o resto tem uma forma só)
+  function formaDe(o, dia) { try { return o.k === 'z' ? N().formaNoDia(o, dia == null ? diaDaVista() : dia) : o.pts; } catch (e) { return o.pts; } }
+  // os pontos que o mestre ajusta agora: os da fase de hoje (zona) ou os do objeto
+  function ptsEditaveis(o) {
+    if (o.k !== 'z' || !Array.isArray(o.fases)) return o.pts;
+    let i = -1;
+    try { i = N().faseNoDia(o, diaDaVista()); } catch (e) { /* núcleo antigo: sem fases */ }
+    return i >= 0 ? o.fases[i].pts : o.pts;
+  }
+  const fechada = k => k === 'r' || k === 'z';
   function centroObj(o) {
     if (Number.isFinite(o.x) && Number.isFinite(o.y)) return [o.x, o.y];
-    if (Array.isArray(o.pts) && o.pts.length) return o.k === 'r' ? centroDe(o.pts) : meioDe(o.pts);
+    const pts = formaDe(o);
+    if (Array.isArray(pts) && pts.length) return fechada(o.k) ? centroDe(pts) : meioDe(pts);
     return null;
   }
   function caixaDe(objs) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     const p = (x, y) => { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; };
     for (const o of objs) {
-      if (Array.isArray(o.pts)) for (const q of o.pts) p(q[0], q[1]);
-      else if (Number.isFinite(o.x)) p(o.x, o.y);
+      if (Array.isArray(o.pts)) {
+        for (const q of o.pts) p(q[0], q[1]);
+        if (o.k === 'z' && Array.isArray(o.fases)) for (const f of o.fases) for (const q of f.pts || []) p(q[0], q[1]);
+      } else if (Number.isFinite(o.x)) p(o.x, o.y);
     }
     return x0 <= x1 ? { x0, y0, x1, y1 } : null;
   }
   function deslocar(o, dx, dy) {
     if (Number.isFinite(o.x) && Number.isFinite(o.y)) { o.x = um(o.x + dx); o.y = um(o.y + dy); }
-    if (Array.isArray(o.pts)) o.pts = o.pts.map(q => [um(q[0] + dx), um(q[1] + dy)]);
+    const mover = pts => pts.map(q => [um(q[0] + dx), um(q[1] + dy)]);
+    if (Array.isArray(o.pts)) o.pts = mover(o.pts);
+    if (o.k === 'z' && Array.isArray(o.fases)) o.fases = o.fases.map(f => ({ dia: f.dia, pts: mover(f.pts || []) }));   // todas as fases andam juntas
   }
 
   /* ---- o que está no núcleo, lido na hora (pode faltar algo num núcleo antigo: a tela não quebra por isso) ---- */
   const dicionario = nome => (N() && N()[nome]) || {};
   function defIcone(k) { const I = dicionario('ICONES'); return I[k] || I.cidade || I[Object.keys(I)[0]] || { nome: 'Lugar', cor: '#e6ab4f', svg: '' }; }
   function defEvento(k) { const E = dicionario('EVENTOS'); return E[k] || E[Object.keys(E)[0]] || { nome: 'Evento', cor: '#f0786e', svg: '' }; }
+  function defCarimbo(k) { const C0 = dicionario('CARIMBOS'); return C0[k] || C0.arvore || C0[Object.keys(C0)[0]] || { nome: 'Carimbo', cor: '#5d9a4e', svg: '' }; }
+  function defLinha(k) { const L0 = dicionario('LINHAS'); return L0[k] || L0.rio || { nome: 'Linha', cor: '#4f86c0' }; }
+  // uma cor mais escura (ou mais clara) que a outra: a margem do rio, o contorno, a tinta do nome
+  function misturar(cor, alvo, t) {
+    const a = /^#[0-9a-f]{6}$/i.test(cor) ? parseInt(cor.slice(1), 16) : 0x888888, b = parseInt(alvo.slice(1), 16);
+    const c = sh => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t));
+    return '#' + [16, 8, 0].map(sh => c(sh).toString(16).padStart(2, '0')).join('');
+  }
   function eventoAtivo(o, dia) { try { return !!N().eventoAtivo(o, dia); } catch (e) { return true; } }
   function raioNoDia(o, dia) { try { const r = N().raioNoDia(o, dia); return Number.isFinite(r) ? Math.max(0, r) : o.r; } catch (e) { return o.r; } }
+  function zonaAtiva(o, dia) { try { return !!N().zonaAtiva(o, dia); } catch (e) { return true; } }
+  function faseNoDia(o, dia) { try { return N().faseNoDia(o, dia); } catch (e) { return -1; } }
   // a distância do mundo é em cubos, e é a grade de hexágonos que diz quantas unidades do mapa dá um cubo
   function temGrade(m) { return !!(m && m.grade && m.grade.tam > 0); }
   function cubosDe(m, u) { try { const c = N().cubosDe(m, u); return Number.isFinite(c) ? c : 0; } catch (e) { return 0; } }
@@ -313,6 +351,7 @@
     svg.setAttribute('height', Math.max(1, A * V.z));
     svg.style.transform = `scale(${1 / V.z})`;
     for (const el of svg.getElementsByClassName('fixo')) el.setAttribute('transform', tf(el.__x, el.__y));
+    for (const el of svg.getElementsByClassName('nome-linha')) ajustarNomeLinha(el, V.z);
     if (gradePath) gradePath.setAttribute('stroke-width', (1.2 / V.z).toFixed(4));
     arrumarRotulos();
     if (!g) desenharSelecao();
@@ -384,7 +423,7 @@
     if (qTudo) { cancelAnimationFrame(qTudo); qTudo = 0; }
     if (!App || !svg) return;
     // no meio de um arrasto o provisório manda; o resto espera o gesto acabar
-    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel' || g.tipo === 'hexpincel')) { adiado = true; return; }
+    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel' || g.tipo === 'hexpincel' || g.tipo === 'pintura' || g.tipo === 'carimbos')) { adiado = true; return; }
     adiado = false;
     const m = safeVista();
     M = m;
@@ -407,13 +446,14 @@
     svg.setAttribute('viewBox', `0 0 ${L} ${A}`);
     aplicarVista(!tAssentar);
     desenharFundo(m);
+    desenharPintura(m);
     desenharGrade(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
     ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe() };
     desenharObjetos(m, ctxAtual);
     // As animações (pulso dos eventos, marcha das frentes) repintam o SVG a cada quadro, fora da placa de vídeo.
     // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
-    svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length > 24);
+    svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length + C.zon.getElementsByClassName('zona-pulsa').length > 24);
     svg.classList.toggle('sem-marcha', C.fre.getElementsByClassName('frente-anda').length > 12);
     // Para quem vê a névoa fechada (jogador, "ver como jogador"), marcadores e selos vão por cima dela: só chega aqui o
     // que está à mostra (a projeção tira o que ela cobre), e perto da borda de uma clareira eles ficariam cortados.
@@ -449,10 +489,147 @@
         try { pr = Promise.resolve(App.urlImagem(m.img)); } catch (e) { pr = Promise.reject(e); }
         pr.then(url => { if (fundoChave === pedido && fundoEl === img) { if (url) img.src = url; else falhou(); } }, falhou);
       }
-      mundoEl.insertBefore(fundoEl, svg);
+      mundoEl.insertBefore(fundoEl, mundoEl.firstChild);          // por baixo de tudo (do desenho à mão também)
     }
     fundoEl.style.width = L + 'px';
     fundoEl.style.height = A + 'px';
+  }
+
+  /* ---- o desenho à mão do terreno ----
+     Um <canvas> entre a imagem e o SVG, do tamanho do mapa (até uns 4 milhões de pixels: um mapa enorme fica um pouco
+     macio de perto). As pinceladas valem em ordem: a tinta tem a textura do terreno e a borda macia; a borracha tira
+     o que já estava pintado. Só é refeito quando o desenho (ou os tipos de terreno) mudam. */
+  let pintEl = null, pintCtx = null, pintChave = null, pintK = 1;
+  const texturas = new Map();
+  function garantirPintura() {
+    if (!pintEl) {
+      pintEl = h('canvas', { class: 'pintura', 'aria-hidden': 'true' });
+      mundoEl.insertBefore(pintEl, svg);
+      pintCtx = pintEl.getContext('2d');
+    }
+    const k = Math.min(2, 4096 / Math.max(L, A, 1), Math.sqrt(4e6 / Math.max(1, L * A)));
+    const w = Math.max(1, Math.round(L * k)), hh = Math.max(1, Math.round(A * k));
+    if (pintEl.width !== w || pintEl.height !== hh) { pintEl.width = w; pintEl.height = hh; pintChave = null; }
+    pintK = w / Math.max(1, L);
+    pintEl.style.width = L + 'px';
+    pintEl.style.height = A + 'px';
+    return !!pintCtx;
+  }
+  function chaveDaPintura(m) {
+    const ops = m.pintura.ops, u = ops[ops.length - 1];
+    let n = 0;
+    for (const op of ops) n += op.pts.length;
+    return [ops.length, n, u.t, u.r, String(u.pts[0]), String(u.pts[u.pts.length - 1]), L, A, JSON.stringify((m.terrenos || []).map(t => [t.id, t.cor, t.tex]))].join('|');
+  }
+  function desenharPintura(m, forcar) {
+    const p = m && m.pintura, tem = !!(p && Array.isArray(p.ops) && p.ops.length);
+    if (!tem) {
+      // (sem desenho: limpa também o que uma prévia deixou, para o próximo traço começar do zero)
+      if (pintEl) { pintEl.hidden = true; if (pintCtx) { pintCtx.setTransform(1, 0, 0, 1, 0, 0); pintCtx.clearRect(0, 0, pintEl.width, pintEl.height); } }
+      pintChave = null;
+      return;
+    }
+    if (!garantirPintura()) return;
+    pintEl.hidden = false;
+    pintEl.style.opacity = String(p.alfa == null ? 1 : p.alfa);
+    const chave = chaveDaPintura(m);
+    if (!forcar && chave === pintChave) return;
+    pintChave = chave;
+    pintCtx.setTransform(1, 0, 0, 1, 0, 0);
+    pintCtx.globalCompositeOperation = 'source-over';
+    pintCtx.clearRect(0, 0, pintEl.width, pintEl.height);
+    const ters = new Map((m.terrenos || []).map(t => [t.id, t]));
+    for (const op of p.ops) tracar(op, ters, true);
+  }
+  // Uma pincelada (ou um trecho dela, enquanto pinta: sem a borda macia, que somaria nas emendas).
+  function tracar(op, ters, macio, trecho) {
+    const c = pintCtx, t = op.t ? ters.get(op.t) : null, P = trecho || op.pts;
+    if (!c || (op.t && !t) || !P || !P.length) return;
+    c.save();
+    c.setTransform(pintK, 0, 0, pintK, 0, 0);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const linha = () => { c.beginPath(); c.moveTo(P[0][0], P[0][1]); if (P.length === 1) c.lineTo(P[0][0] + 0.01, P[0][1]); for (let i = 1; i < P.length; i++) c.lineTo(P[i][0], P[i][1]); };
+    c.globalCompositeOperation = t ? 'source-over' : 'destination-out';
+    if (macio) {
+      c.strokeStyle = t ? t.cor : '#000';
+      c.globalAlpha = t ? 0.16 : 0.3; c.lineWidth = op.r * 2.5; linha(); c.stroke();
+      c.globalAlpha = t ? 0.3 : 0.5; c.lineWidth = op.r * 2.22; linha(); c.stroke();
+    }
+    c.globalAlpha = 1; c.strokeStyle = t ? texturaDe(t) : '#000'; c.lineWidth = op.r * 2; linha(); c.stroke();
+    c.restore();
+  }
+  // A textura de um terreno: um ladrilho que se repete, de 1/26 do mapa (o desenho miúdo acompanha o tamanho do mapa).
+  function texturaDe(t) {
+    const unid = limitar(Math.max(L, A) / 26, 16, 800), px = Math.round(limitar(unid * pintK, 24, 192));
+    const chave = [t.cor, t.tex, px, unid].join('|');
+    let pat = texturas.get(chave);
+    if (pat) return pat;
+    pat = pintCtx.createPattern(ladrilho(t.cor, t.tex || 'liso', px), 'repeat');
+    try { pat.setTransform(new DOMMatrix([unid / px, 0, 0, unid / px, 0, 0])); } catch (e) { /* sem setTransform: o ladrilho fica do tamanho dos pixels */ }
+    if (texturas.size > 80) texturas.clear();
+    texturas.set(chave, pat);
+    return pat;
+  }
+  // O ladrilho (desenhado numa caixa de 64 e escalado): a cor do terreno, manchas de aquarela e o desenho da textura,
+  // espalhado sem amontoar e repetido nas bordas, para emendar sem costura.
+  function ladrilho(cor, tex, T) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = T;
+    const x = cv.getContext('2d'), esc = misturar(cor, '#000000', 0.32), cla = misturar(cor, '#ffffff', 0.28);
+    let sem = 7;
+    for (const ch of tex) sem = (sem * 31 + ch.charCodeAt(0)) % 2147483647;
+    const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+    x.fillStyle = cor; x.fillRect(0, 0, T, T);
+    x.scale(T / 64, T / 64);
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    const em = (px, py, fn) => { for (const dx of [-64, 0, 64]) for (const dy of [-64, 0, 64]) { x.save(); x.translate(px + dx, py + dy); fn(); x.restore(); } };
+    for (let i = 0; i < 6; i++) {
+      const px = rnd() * 64, py = rnd() * 64, r = 8 + rnd() * 14, c0 = rnd() < 0.5 ? esc : cla;
+      em(px, py, () => { x.fillStyle = c0; x.globalAlpha = 0.08; x.beginPath(); x.arc(0, 0, r, 0, 7); x.fill(); });
+    }
+    x.globalAlpha = 1;
+    const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8 }[tex] || 0, pos = [];
+    for (let i = 0; i < n; i++) {
+      let melhor = null, dm = -1;
+      for (let k = 0; k < 8; k++) {
+        const p = [rnd() * 64, rnd() * 64];
+        let d = Infinity;
+        for (const q of pos) for (const dx of [-64, 0, 64]) for (const dy of [-64, 0, 64]) d = Math.min(d, Math.hypot(p[0] - q[0] - dx, p[1] - q[1] - dy));
+        if (d > dm) { dm = d; melhor = p; }
+      }
+      pos.push(melhor);
+    }
+    const linhas = (...segs) => { x.beginPath(); for (const [a, b, c, d] of segs) { x.moveTo(a, b); x.lineTo(c, d); } x.stroke(); };
+    for (const [px, py] of pos) em(px, py, () => {
+      x.strokeStyle = esc; x.fillStyle = esc; x.lineWidth = 1.3;
+      switch (tex) {
+        case 'mato': linhas([-3, 1, -1.5, -2], [0, 1.5, 0, -3], [3, 1, 1.5, -2]); break;
+        case 'arvores': x.fillStyle = misturar(cor, '#000000', 0.18); x.beginPath(); x.arc(0, 0, 4.6, 0, 7); x.fill(); x.stroke(); x.fillStyle = cla; x.beginPath(); x.arc(-1.4, -1.6, 1.6, 0, 7); x.fill(); break;
+        case 'colinas': x.beginPath(); x.moveTo(-8, 3); x.quadraticCurveTo(0, -7, 8, 3); x.stroke(); x.beginPath(); x.moveTo(-3, 0); x.quadraticCurveTo(0, -2.5, 2, -1); x.stroke(); break;
+        case 'montes': x.fillStyle = misturar(cor, '#000000', 0.2); x.beginPath(); x.moveTo(-8, 5); x.lineTo(0, -7); x.lineTo(8, 5); x.closePath(); x.fill(); x.stroke();
+          x.fillStyle = cla; x.beginPath(); x.moveTo(0, -7); x.lineTo(-3, -2.5); x.lineTo(0, -3.5); x.lineTo(2.2, -2.2); x.closePath(); x.fill(); break;
+        case 'juncos': linhas([-3, 3, -3.5, -3], [0, 3, 0, -5], [3, 3, 3.6, -2.5], [-6, 4, 6, 4]); break;
+        case 'areia': x.globalAlpha = 0.55; x.beginPath(); x.arc(0, 0, 0.7, 0, 7); x.fill(); x.globalAlpha = 1; break;
+        case 'neve': x.strokeStyle = misturar('#9fb6c9', cor, 0.2); x.lineWidth = 1; linhas([-2.5, 0, 2.5, 0], [0, -2.5, 0, 2.5]); break;
+        case 'ondas': x.strokeStyle = cla; x.lineWidth = 1.4; x.beginPath(); x.moveTo(-9, 0); x.quadraticCurveTo(-4.5, -4, 0, 0); x.quadraticCurveTo(4.5, 4, 9, 0); x.stroke(); break;
+        case 'pedras': x.fillStyle = misturar(cor, '#000000', 0.15); x.beginPath(); x.moveTo(-3, 2); x.lineTo(-2, -2); x.lineTo(1.5, -2.5); x.lineTo(3.2, 1); x.lineTo(1, 2.6); x.closePath(); x.fill(); x.stroke(); break;
+      }
+    });
+    return cv;
+  }
+  // a linha da pincelada, mais leve (Douglas-Peucker): tira os pontos que quase não mudam o traço
+  function simplificar(pts, eps) {
+    if (pts.length < 3) return pts;
+    const manter = new Uint8Array(pts.length), pilha = [[0, pts.length - 1]];
+    manter[0] = manter[pts.length - 1] = 1;
+    const dseg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? limitar(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t); };
+    while (pilha.length) {
+      const [a, b] = pilha.pop();
+      let iMax = -1, dMax = eps;
+      for (let i = a + 1; i < b; i++) { const d = dseg(pts[i], pts[a], pts[b]); if (d > dMax) { dMax = d; iMax = i; } }
+      if (iMax >= 0) { manter[iMax] = 1; pilha.push([a, iMax], [iMax, b]); }
+    }
+    return pts.filter((_, i) => manter[i]);
   }
 
   /* A grade de hexágonos: um <pattern> que se repete (barato com qualquer tamanho de mapa), por cima da tinta do
@@ -488,14 +665,17 @@
     if (chaveT === hexChave) return;
     hexChave = chaveT;
     const por = new Map(), custos = [];
+    let nada = '';
     for (const k of Object.keys(m.hexes || {})) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', hx = N().lerChaveHex(k);
       if (!hx) continue;
-      if (t) por.set(t, (por.get(t) || '') + caminho(N().cantosHex(m, hx.q, hx.r), true));
+      if (t === '-') { if (custo) nada += caminho(N().cantosHex(m, hx.q, hx.r), true); }        // "sem terreno", por cima do desenho
+      else if (t) por.set(t, (por.get(t) || '') + caminho(N().cantosHex(m, hx.q, hx.r), true));
       if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
     }
     const frag = document.createDocumentFragment();
     for (const t of m.terrenos || []) { const d = por.get(t.id); if (d) frag.append(s('path', { class: 'hex-ter', d, fill: t.cor, 'data-ter': t.id })); }
+    if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
     // o custo próprio de cada hexágono, para o mestre, enquanto ele pinta o terreno
     if (custo) for (const [hx, c] of custos) {
       const p = N().centroHex(m, hx.q, hx.r), fx = fixo(p.x, p.y, 'hex-custo');
@@ -512,11 +692,12 @@
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : ''); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
+    else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia); }
     return JSON.stringify(o) + extra;
   }
   let avisouErro = false;
   function desenharObjetos(m, ctx) {
-    const vistos = new Set(), por = { reg: [], fre: [], rot: [], eve: [], mar: [], gru: [] };
+    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] };
     for (const o of m.objs || []) {
       const cam = CAMADA[o.k];
       if (!cam || !o.id) continue;
@@ -560,6 +741,10 @@
       case 'e': evento(g0, o, ctx); break;
       case 'm': marcador(g0, o); break;
       case 'g': grupo(g0, o); break;
+      case 'z': zona(g0, o, ctx); break;
+      case 'l': linhaGeo(g0, o); break;
+      case 'c': carimbo(g0, o); break;
+      case 'x': textoLivre(g0, o); break;
     }
     return g0;
   }
@@ -669,6 +854,94 @@
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }
+  // id seguro para o SVG (o padrão das listras, o caminho do nome)
+  const idSvg = (pre, id) => pre + String(id).replace(/[^A-Za-z0-9_-]/g, '_');
+  /* Zona de guerra: a área das duas facções, em listras com as duas cores; enquanto ativa, pulsa devagar. A forma é
+     a do dia que está na tela (as fases mudam a área com o tempo). */
+  function zona(g0, o, ctx) {
+    const pts = formaDe(o, ctx.dia);
+    if (!Array.isArray(pts) || pts.length < 3) return;
+    const ativa = zonaAtiva(o, ctx.dia), ca = corFac(ctx, o.a), cb0 = corFac(ctx, o.b), cb = cb0 === ca ? misturar(ca, '#000000', 0.4) : cb0;
+    g0.classList.add('zon');
+    if (!ativa) g0.classList.add('inativa');
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    const W = um(limitar(Math.hypot(x1 - x0, y1 - y0) / 18, 3, 600)), pid = idSvg('zg-', o.id), d = caminho(pts, true);
+    g0.append(
+      s('defs', null, s('pattern', { id: pid, patternUnits: 'userSpaceOnUse', width: W, height: W, patternTransform: 'rotate(45)' },
+        s('rect', { width: um(W / 2), height: W, fill: ca }), s('rect', { x: um(W / 2), width: um(W / 2), height: W, fill: cb }))),
+      s('path', { class: 'zona' + (ativa ? ' zona-pulsa' : ''), d, fill: `url(#${pid})` }),
+      s('path', { class: 'zona-borda', d, stroke: ca }),
+      s('path', { class: 'zona-borda b', d, stroke: cb }));
+    if (o.nome) { const c = pontoDoNome(pts), fx = fixo(c[0], c[1]); fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg')); g0.append(fx); }
+  }
+  /* Linha do mapa (geografia): suave, passando por todos os pontos. O rio engrossa da nascente até a foz; a estrada é
+     tracejada e a trilha, pontilhada, as duas com um fundo claro por baixo. O nome vai ao longo da linha, sempre da
+     esquerda para a direita, no tamanho dos outros nomes (refeito a cada zoom). */
+  function linhaGeo(g0, o) {
+    if (!Array.isArray(o.pts) || o.pts.length < 2) return;
+    const def = defLinha(o.estilo), cor = o.cor || def.cor, w = Math.max(0.5, Number(o.larg) || 1);
+    g0.classList.add('lin', 'lin-' + o.estilo);
+    let centro = o.pts;
+    try { centro = N().suavizar(o.pts, Math.max(1, w * 0.8)); } catch (e) { /* núcleo antigo: a linha reta */ }
+    const d = caminho(centro);
+    if (o.estilo === 'rio') {
+      let cont = [];
+      try { cont = N().contornoRio(o.pts, w, o.id); } catch (e) { /* núcleo antigo */ }
+      g0.append(cont.length ? s('path', { class: 'rio', d: caminho(cont, true), fill: cor, stroke: misturar(cor, '#000000', 0.35) })
+        : s('path', { class: 'lin-traco', d, stroke: cor, 'stroke-width': um(w) }));
+    } else {
+      const est = o.estilo === 'estrada';
+      g0.append(s('path', { class: 'lin-fundo', d, 'stroke-width': um(w * 1.9) }),
+        s('path', { class: 'lin-traco', d, stroke: cor, 'stroke-width': um(w), 'stroke-dasharray': est ? um(w * 2.6) + ' ' + um(w * 1.5) : '0.01 ' + um(w * 2.2), 'stroke-linecap': est ? 'butt' : 'round' }));
+    }
+    g0.append(s('path', { class: 'lin-hit', d }));
+    if (o.nome) {
+      const ida = centro[centro.length - 1][0] >= centro[0][0], pid = idSvg('ln-', o.id);
+      g0.append(s('path', { id: pid, class: 'lin-guia', d: ida ? d : caminho(centro.slice().reverse()) }));
+      const t = s('text', { class: 'nome-linha' + (o.estilo === 'rio' ? ' rio-nome' : ''), fill: misturar(cor, '#000000', 0.45), 'text-anchor': 'middle' });
+      t.__w = o.estilo === 'rio' ? w * 0.55 : w * 1.1;
+      t.append(s('textPath', { href: '#' + pid, startOffset: '50%', texto: curto(String(o.nome), 60) }));
+      ajustarNomeLinha(t, zAplicado || V.z);
+      g0.append(t);
+    }
+  }
+  function ajustarNomeLinha(t, z) {
+    t.setAttribute('font-size', (14 / z).toFixed(3));
+    t.setAttribute('dy', (-((t.__w || 0) + 5 / z)).toFixed(3));
+    t.setAttribute('stroke-width', (2.4 / z).toFixed(3));
+  }
+  // os desenhos (carimbos) vêm do núcleo como markup fixo; um molde de cada, clonado
+  function molde(markup) {
+    let m0 = moldes.get(markup);
+    if (!m0) { m0 = s('g'); m0.innerHTML = markup || ''; moldes.set(markup, m0); }     // markup fixo do núcleo
+    return m0.cloneNode(true);
+  }
+  // Carimbo: o desenho na caixa tam × tam, com o centro no ponto (virado, se pedido). Cresce e encolhe com o mapa.
+  function carimbo(g0, o) {
+    const def = defCarimbo(o.ic), t = Math.max(1, Number(o.tam) || 40), x0 = o.x - t / 2, y0 = o.y - t / 2, k = t / 24;
+    g0.classList.add('car');
+    const arte = molde(def.svg);
+    arte.setAttribute('class', 'carimbo');
+    arte.setAttribute('style', 'color:' + (o.cor || def.cor || '#5d9a4e'));
+    arte.setAttribute('transform', `translate(${um(o.vira ? x0 + t : x0)} ${um(y0)}) scale(${(o.vira ? -k : k).toFixed(5)} ${k.toFixed(5)})`);
+    g0.append(s('rect', { class: 'alvo', x: um(x0), y: um(y0), width: um(t), height: um(t), fill: 'transparent' }), arte);
+    if (o.nome) { const fx = fixo(o.x, o.y + t / 2); fx.append(rotulo(o.nome, 14)); g0.append(fx); }
+  }
+  /* Texto livre: as letras crescem e encolhem com o mapa (é parte do desenho). Cor escura de mapa, com um halo claro
+     (ou o contrário, numa cor clara); pode girar e ter várias linhas. */
+  function textoLivre(g0, o) {
+    const linhas = String(o.nome || '').split('\n').slice(0, 12), tam = Math.max(1, Number(o.tam) || 28), cor = o.cor || TINTA;
+    const halo = clara(cor) ? 'rgba(20,16,10,.72)' : 'rgba(246,239,224,.85)';
+    g0.classList.add('txt');
+    const st = 'font-family:' + (FONTE_CSS[o.fonte] || FONTE_CSS.mapa) + ';fill:' + cor + ';stroke:' + halo + ';stroke-width:' + um(tam * 0.14) + 'px'
+      + (o.fonte === 'classica' ? ';font-style:italic' : '') + (o.esp ? ';letter-spacing:' + o.esp + 'em' : '');
+    const t = s('text', { class: 'texto-livre', x: um(o.x), y: um(o.y), 'text-anchor': 'middle', 'font-size': um(tam), style: st,
+      transform: o.rot ? `rotate(${o.rot} ${um(o.x)} ${um(o.y)})` : null });
+    const n = linhas.length;
+    linhas.forEach((l, i) => t.append(s('tspan', { x: um(o.x), dy: i ? '1.15em' : (0.35 - (n - 1) * 0.575).toFixed(3) + 'em', texto: l || ' ' })));
+    g0.append(t);
+  }
 
   /* névoa: tudo coberto, e as operações em ordem por cima. Operações seguidas do mesmo tipo viram um path só
      (círculos no mesmo sentido se somam), então 2000 pinceladas viram poucos nós na máscara. */
@@ -711,8 +984,11 @@
       const o = prov && prov.id === id ? prov : indice.get(id);
       if (!o) continue;
       unico = o;
-      if (o.k === 'r' || o.k === 't' || o.k === 'f') {
-        if (Array.isArray(o.pts) && o.pts.length > 1) C.sel.append(s('path', { class: 'sel-anel', d: caminho(o.pts, o.k === 'r') }));
+      if (Array.isArray(o.pts)) {
+        const pts = formaDe(o);
+        if (Array.isArray(pts) && pts.length > 1) C.sel.append(s('path', { class: 'sel-anel', d: caminho(pts, fechada(o.k)) }));
+      } else if (o.k === 'c' || o.k === 'x') {
+        C.sel.append(anelDoEnfeite(o));
       } else {
         const fx = fixo(o.x, o.y);
         fx.append(s('circle', { class: 'sel-anel', r: o.k === 'g' ? 25 : 22 }));
@@ -726,13 +1002,26 @@
     // a alça do raio nunca fica em cima do selo (raio 0 ainda dá para puxar)
     if (o.k === 'e') { C.sel.append(alca('raio', 0, o.x + Math.max(raioNoDia(o, diaDaVista()), 30 / V.z), o.y)); return; }
     if (!Array.isArray(o.pts)) return;
-    const n = o.pts.length, fecha = o.k === 'r';
+    const pts = ptsEditaveis(o), n = pts.length, fecha = fechada(o.k);
     for (let i = 0; i < (fecha ? n : n - 1); i++) {
-      const a = o.pts[i], b = o.pts[(i + 1) % n];
+      const a = pts[i], b = pts[(i + 1) % n];
       // o ponto do meio só aparece se o lado tem espaço na tela para ele
       if (Math.hypot(b[0] - a[0], b[1] - a[1]) * V.z > 34) C.sel.append(alca('meio', i, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2));
     }
-    o.pts.forEach((p, i) => C.sel.append(alca('v', i, p[0], p[1])));
+    pts.forEach((p, i) => C.sel.append(alca('v', i, p[0], p[1])));
+  }
+  // O contorno de um carimbo ou de um texto escolhido: a caixa dele (o texto gira junto).
+  function anelDoEnfeite(o) {
+    const z = zAplicado || V.z, folga = 3 / z;
+    if (o.k === 'c') { const t = (Number(o.tam) || 40) / 2 + folga; return s('rect', { class: 'sel-anel', x: um(o.x - t), y: um(o.y - t), width: um(2 * t), height: um(2 * t) }); }
+    let b = null;
+    try { const r = recs.get(o.id), el = r && r.el.querySelector('text'); if (el) b = el.getBBox(); } catch (e) { /* ainda não desenhado */ }
+    if (!b || !(b.width > 0)) {
+      const linhas = String(o.nome || ' ').split('\n'), tam = Number(o.tam) || 28, w = Math.max(...linhas.map(l => l.length)) * tam * 0.55, hh = linhas.length * tam * 1.15;
+      b = { x: o.x - w / 2, y: o.y - hh / 2, width: w, height: hh };
+    }
+    return s('rect', { class: 'sel-anel', x: um(b.x - folga), y: um(b.y - folga), width: um(b.width + 2 * folga), height: um(b.height + 2 * folga),
+      transform: o.rot ? `rotate(${o.rot} ${um(o.x)} ${um(o.y)})` : null });
   }
   function alca(tipo, i, x, y) {
     const fx = fixo(x, y);
@@ -750,9 +1039,9 @@
     if (rasc && rasc.pts.length) {
       const pts = rasc.pts.slice();
       if (cursor && !(g && g.toque)) pts.push([cursor.x, cursor.y]);
-      c.append(s('path', { class: 'rasc' + (rasc.k === 'r' ? '' : ' linha'), d: caminho(pts, rasc.k === 'r') }));
+      c.append(s('path', { class: 'rasc' + (fechada(rasc.k) ? '' : ' linha'), d: caminho(pts, fechada(rasc.k)) }));
       rasc.pts.forEach((p, i) => {
-        const fecha = i === 0 && rasc.k === 'r' && rasc.pts.length >= 3;
+        const fecha = i === 0 && fechada(rasc.k) && rasc.pts.length >= 3;
         const fx = fixo(p[0], p[1]);
         fx.append(s('circle', { class: 'rasc-ponto' + (fecha ? ' fecha' : ''), r: fecha ? 7 : 4.5 }));
         c.append(fx);
@@ -780,8 +1069,16 @@
     if (ferramenta() === 'n' && cursor && podeEditar() && !(g && g.toque)) {
       c.append(s('circle', { class: 'pincel', cx: um(cursor.x), cy: um(cursor.y), r: um(raioPincel()) }));
     }
+    // o pincel livre: o círculo embaixo do cursor; o carimbo: uma prévia clarinha onde ele vai cair
+    if (ferramenta() === 'h' && modoTerreno() === 'livre' && cursor && podeEditar() && !(g && g.toque)) {
+      c.append(s('circle', { class: 'pincel', cx: um(cursor.x), cy: um(cursor.y), r: um(raioLivre()) }));
+    } else if (ferramenta() === 'p' && modoDesenho() === 'carimbo' && cursor && podeEditar() && !g && !toqueGrosso()) {
+      const el = s('g', { class: 'car previa fantasma' });
+      carimbo(el, { id: 'fantasma', x: cursor.x, y: cursor.y, ic: opt('carimbo'), tam: tamCarimbo(), cor: '', vira: false, nome: '' });
+      c.append(el);
+    }
     // a ferramenta Terreno: os hexágonos que o pincel pega, embaixo do cursor
-    if (ferramenta() === 'h' && cursor && podeEditar() && temGrade(M) && !(g && g.toque)) {
+    else if (ferramenta() === 'h' && cursor && podeEditar() && temGrade(M) && !(g && g.toque)) {
       const hx = N().hexDe(M, cursor.x, cursor.y);
       let d = '';
       for (const x of hexesDoPincel(hx)) d += caminho(N().cantosHex(M, x.q, x.r), true);
@@ -790,6 +1087,77 @@
   }
   // O tamanho do pincel é em pixels da tela: afastar o zoom pinta áreas maiores, aproximar dá precisão.
   const raioPincel = () => limitar(Number(opt('raio')) || 60, 4, 400) / V.z;
+
+  /* ---- a ferramenta Terreno, à mão livre: pinceladas com a textura do terreno (ou a borracha) ----
+     Sem escolha feita, com a grade vale "por hexágono" (o que já havia) e sem a grade, "pincel livre". */
+  const modoTerreno = () => (opt('terPincel') === 'livre' || opt('terPincel') === 'hex' ? opt('terPincel') : M && temGrade(M) ? 'hex' : 'livre');
+  function pinTerreno() { const ts = (M && M.terrenos) || []; return ts.find(t => t.id === opt('pinTer')) || ts[0] || null; }
+  const raioLivre = () => limitar(Number(opt('pinRaio')) || 24, 2, 400) / V.z;
+  // enquanto arrasta: o trecho novo vai direto para o canvas (a pincelada inteira, com a borda macia, vem ao soltar)
+  function pintarAoVivo(p) {
+    const ult = g.pts[g.pts.length - 1], q = [Math.round(p.x), Math.round(p.y)];
+    if (ult && Math.hypot(q[0] - ult[0], q[1] - ult[1]) < Math.max(0.5, g.r * 0.25)) return;
+    g.pts.push(q);
+    tracar({ t: g.t, r: g.r }, g.ters, false, ult ? [ult, q] : [q]);
+  }
+  function gravarPincelada(gg) {
+    const pts = simplificar(gg.pts, Math.max(0.5, gg.r * 0.15)), lim = N().LIMITES || {}, maxP = lim.pontosPintura || 60000, maxN = lim.pinceladas || 4000;
+    const op = { t: gg.t, r: um(gg.r), pts };
+    let cheio = false;
+    const ok = App.mudar(gg.t ? 'pintar à mão' : 'apagar o desenho', d => {
+      if (!d.pintura || typeof d.pintura !== 'object') d.pintura = { alfa: 1, ops: [] };
+      if (!Array.isArray(d.pintura.ops)) d.pintura.ops = [];
+      if (!gg.t && !d.pintura.ops.length) return false;                       // borracha sem nada pintado
+      let n = pts.length;
+      for (const o of d.pintura.ops) n += (o.pts || []).length;
+      if (n > maxP || d.pintura.ops.length >= maxN) { cheio = true; return false; }
+      d.pintura.ops.push(op);
+    });
+    if (cheio) App.toast('O desenho à mão chegou ao limite deste mapa. Nada mudou. (Desfazer ou "Apagar o desenho", na aba Terreno, libera espaço.)');
+    if (ok === false || cheio) desenharPintura(M, true);
+  }
+
+  /* ---- a ferramenta Desenho: carimbos, textos e linhas ---- */
+  const tamCarimbo = () => limitar(Number(opt('carTam')) || 40, 8, 400) / V.z;
+  // arrastando: um carimbo a cada passo, um pouco fora da linha e de tamanhos um pouco diferentes (fica natural)
+  function espalhar(p) {
+    const tam = tamCarimbo(), passo = tam * 0.85;
+    if (!g.ult) { g.ult = [g.p0.x, g.p0.y]; previaCarimbo(g.p0, tam, false); }
+    let d = Math.hypot(p.x - g.ult[0], p.y - g.ult[1]);
+    while (d >= passo && g.lista.length < 300) {
+      const k = passo / d, q = [g.ult[0] + (p.x - g.ult[0]) * k, g.ult[1] + (p.y - g.ult[1]) * k];
+      g.ult = q;
+      previaCarimbo({ x: q[0] + (Math.random() - 0.5) * tam * 0.35, y: q[1] + (Math.random() - 0.5) * tam * 0.35 }, tam * (0.85 + Math.random() * 0.3), Math.random() < 0.3);
+      d = Math.hypot(p.x - g.ult[0], p.y - g.ult[1]);
+    }
+  }
+  function previaCarimbo(q, tam, vira) {
+    if (!dentroDoMapa(q, 2)) return;
+    const c = { x: um(limitar(q.x, 0, L)), y: um(limitar(q.y, 0, A)), ic: opt('carimbo'), tam: um(tam), vira };
+    g.lista.push(c);
+    const el = s('g', { class: 'obj car previa' });
+    carimbo(el, Object.assign({ id: 'previa', nome: '', cor: '' }, c));
+    C.tra.append(el);
+  }
+  // Os carimbos de um clique ou de um arrasto: um passo de desfazer. A ferramenta continua (carimbar é repetitivo).
+  function porCarimbos(lista) {
+    const lim = (N().LIMITES && N().LIMITES.objs) || 2000, ids = [];
+    let cheio = false;
+    App.mudar(lista.length === 1 ? NOVO.c : 'espalhar ' + lista.length + ' carimbos', d => {
+      if (!Array.isArray(d.objs)) d.objs = [];
+      if (d.objs.length + lista.length > lim) { cheio = true; return false; }
+      for (const c of lista) { const o = N().objNovo('c', Object.assign({ oculto: !!opt('oculto') }, c)); if (o) { d.objs.push(o); ids.push(o.id); } }
+      if (!ids.length) return false;
+    });
+    if (cheio) { App.toast('O mapa chegou ao limite de ' + num(lim, 0) + ' objetos. Nada mudou.'); return; }
+    if (ids.length) App.selecionar(ids);
+  }
+  // O texto: o painel pergunta o que escrever; ele aparece no ponto, no tamanho escolhido (em pixels da tela).
+  function novoTexto(q) {
+    const P = window.MundoPainel;
+    const campos = { x: q.x, y: q.y, fonte: opt('fonte'), tam: um(limitar(Number(opt('txtTam')) || 28, 6, 400) / V.z) };
+    if (P && typeof P.novoTexto === 'function') P.novoTexto(campos);
+  }
 
   /* ---- a ferramenta Terreno: pinta o terreno (ou o custo próprio) de hexágono em hexágono ---- */
   function terrenoEscolhido() { const ts = (M && M.terrenos) || []; return ts.find(t => t.id === opt('ter')) || ts[0] || null; }
@@ -819,14 +1187,17 @@
     const modo = opt('terModo'), t = terrenoEscolhido(), custo = limitar(Number(opt('custo')) || 0, 0.1, 9999);
     if (modo === 'ter' && !t) { App.toast('Este mapa não tem tipos de terreno. Crie um na aba Terreno.'); return; }
     const lim = (N().LIMITES && N().LIMITES.hexes) || 20000;
-    const rot = modo === 'ter' ? 'pintar o terreno' : modo === 'nada' ? 'tirar o terreno' : modo === 'custo' ? 'dar custo próprio aos hexágonos' : 'tirar o custo próprio';
+    const rot = modo === 'ter' ? 'pintar o terreno' : modo === 'nada' ? 'tirar o terreno' : modo === 'desenho' ? 'seguir o desenho' : modo === 'custo' ? 'dar custo próprio aos hexágonos' : 'tirar o custo próprio';
+    // "sem terreno" onde o desenho à mão dá um terreno precisa vencer o desenho ('-'); onde não dá, só tira o do hexágono
+    let pint = null;
+    try { pint = N().terrenoPintado(App.mapa); } catch (e) { pint = new Map(); }
     let passou = false;
     App.mudar(rot, d => {
       if (!d.hexes || typeof d.hexes !== 'object') d.hexes = {};
       for (const k of chaves) {
         const v = d.hexes[k], tid = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '';
         let nt = tid, nc = Array.isArray(v) ? v[1] : null;
-        if (modo === 'ter') nt = t.id; else if (modo === 'nada') nt = ''; else if (modo === 'custo') nc = custo; else nc = null;
+        if (modo === 'ter') nt = t.id; else if (modo === 'nada') nt = pint.has(k) ? '-' : ''; else if (modo === 'desenho') nt = ''; else if (modo === 'custo') nc = custo; else nc = null;
         if (!nt && nc == null) delete d.hexes[k]; else d.hexes[k] = nc == null ? nt : [nt, nc];
       }
       if (Object.keys(d.hexes).length > lim) { passou = true; return false; }
@@ -839,7 +1210,7 @@
     if (!hx) return '';
     const i = N().hexInfo(M, hx.q, hx.r);
     const de = i.de === 'hex' ? ' (custo próprio)' : i.de === 'regiao' ? ' (da região ' + ((i.regiao.nome || '').trim() || 'sem nome') + ')' : i.de === 'base' ? ' (sem terreno)' : '';
-    return 'Aqui: ' + (i.terreno ? i.terreno.nome : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.';
+    return 'Aqui: ' + (i.terreno ? i.terreno.nome + (i.desenho ? ' (do desenho)' : '') : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.';
   }
 
   /* ---- trilho, opções e dica ---- */
@@ -882,7 +1253,7 @@
     const f = ferramenta(), editar = podeEditar() && !!M;
     const facs = M ? (M.faccoes || []).map(x => [x.id, x.nome, x.cor]) : [];
     const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null, !!medindo,
-      f === 'h' && M ? [temGrade(M), (M.terrenos || []).map(t => [t.id, t.nome, t.cor])] : null]);
+      f === 'h' && M ? [temGrade(M), (M.terrenos || []).map(t => [t.id, t.nome, t.cor]), !!(M.pintura && M.pintura.ops && M.pintura.ops.length)] : null]);
     if (!forcar && chave === optsChave) return;
     optsChave = chave;
     // não derruba um seletor aberto: quem está escolhendo termina antes
@@ -890,6 +1261,9 @@
     optsEl.replaceChildren();
     if (!editar) return;
     const reabrir = () => desenharOpts(true);
+    // trocar o modo de uma ferramenta (o desenho por pontos que estava pela metade fica para trás)
+    const trocarModo = (nome, v) => { porOpt(nome, v); rasc = null; reabrir(); atualizarDica(); desenharRascunho(); };
+    const chips = (nome, atual, lista) => lista.map(([v, tx, dica]) => chip({ 'aria-pressed': String(atual === v), title: dica, onclick: () => trocarModo(nome, v) }, tx));
     if (f === 'm') {
       const def = defIcone(opt('ic'));
       optsEl.append(
@@ -905,16 +1279,51 @@
       const lista = [['', 'Sem facção']].concat(facs.map(x => [x[0], x[1] || 'Facção sem nome']));
       const val = id => (id && facs.some(x => x[0] === id) ? id : '');
       optsEl.append(
+        ...chips('freModo', opt('freModo') === 'zona' ? 'zona' : 'linha', [['linha', 'Linha de frente', 'Uma linha de combate entre duas facções'], ['zona', 'Zona de guerra', 'A área em guerra entre duas facções (pode mudar com o tempo)']]),
         seletor('Lado A', val(opt('a')), lista, v => porOpt('a', v || null)),
         seletor('Lado B', val(opt('b')), lista, v => porOpt('b', v || null)));
+    } else if (f === 'p') {
+      const md = modoDesenho();
+      optsEl.append(...chips('des', md, [['carimbo', 'Carimbo', 'Árvores, montanhas, ondas… (arraste para espalhar vários)'], ['texto', 'Texto', 'Um texto livre no mapa'], ['linha', 'Rio e estrada', 'Rios, estradas e trilhas']]));
+      if (md === 'carimbo') {
+        const def = defCarimbo(opt('carimbo'));
+        optsEl.append(
+          chip({ 'aria-haspopup': 'menu', title: 'Escolher o carimbo', onclick: ev => abrirCarimbos(ev.currentTarget) }, miniCarimbo(def), def.nome),
+          seletor('Tamanho', String(opt('carTam')), [['24', 'Pequeno'], ['40', 'Médio'], ['64', 'Grande'], ['100', 'Enorme']], v => { porOpt('carTam', Number(v)); desenharRascunho(); }));
+      } else if (md === 'texto') {
+        const F = dicionario('FONTES');
+        optsEl.append(
+          seletor('Letra', opt('fonte'), Object.keys(F).map(k => [k, F[k].nome]), v => porOpt('fonte', v)),
+          seletor('Tamanho', String(opt('txtTam')), [['16', 'Pequeno'], ['24', 'Médio'], ['36', 'Grande'], ['56', 'Enorme']], v => porOpt('txtTam', Number(v))));
+      } else {
+        const Li = dicionario('LINHAS');
+        optsEl.append(
+          seletor('Linha', opt('estilo'), Object.keys(Li).map(k => [k, Li[k].nome]), v => porOpt('estilo', v)),
+          seletor('Largura', String(limitar(Math.round(Number(opt('linNivel')) || 2), 1, 4)), [['1', 'Fina'], ['2', 'Média'], ['3', 'Larga'], ['4', 'Bem larga']], v => porOpt('linNivel', Number(v))));
+      }
     } else if (f === 'h') {
-      if (!temGrade(M)) optsEl.append(chip({ class: 'chip pri', title: 'A grade de hexágonos fica na aba Terreno', onclick: () => abrirAba('terreno') }, 'Definir a grade de hexágonos…'));
+      const livre = modoTerreno() === 'livre', temDesenho = !!(M.pintura && M.pintura.ops && M.pintura.ops.length);
+      optsEl.append(...chips('terPincel', livre ? 'livre' : 'hex', [['livre', 'Pincel livre', 'Pinta à mão, com a textura do terreno; o terreno de cada hexágono vem do desenho'], ['hex', 'Por hexágono', 'Pinta (ou corrige) hexágono por hexágono']]));
+      if (livre) {
+        const t = pinTerreno(), borracha = opt('pinTer') === '-' || !t;
+        const sel = h('select', { 'aria-label': 'Com o que o pincel pinta' });
+        for (const x of M.terrenos || []) sel.append(h('option', { value: x.id, texto: x.nome }));
+        sel.append(h('option', { value: '-', texto: 'Borracha' }));
+        sel.value = borracha ? '-' : t.id;
+        sel.addEventListener('change', () => { porOpt('pinTer', sel.value); reabrir(); atualizarDica(); });
+        const faixa = h('input', { type: 'range', min: 4, max: 160, step: 2, value: limitar(Number(opt('pinRaio')) || 24, 4, 160), 'aria-label': 'Tamanho do pincel livre' });
+        faixa.addEventListener('input', () => { porOpt('pinRaio', Number(faixa.value)); desenharRascunho(); });
+        optsEl.append(
+          h('label', { class: 'chip', title: 'O terreno que o pincel pinta, ou a borracha' }, h('span', { class: 'amostra', style: 'background:' + (borracha ? 'transparent' : t.cor) }), h('span', { texto: 'Pincel' }), sel),
+          h('label', { class: 'chip', title: 'Tamanho do pincel na tela' }, h('span', { texto: 'Tamanho' }), faixa));
+      } else if (!temGrade(M)) optsEl.append(chip({ class: 'chip pri', title: 'A grade de hexágonos fica na aba Terreno', onclick: () => abrirAba('terreno') }, 'Definir a grade de hexágonos…'));
       else {
-        const t = terrenoEscolhido(), modo = ['ter', 'nada', 'custo', 'semcusto'].includes(opt('terModo')) ? opt('terModo') : 'ter';
+        const t = terrenoEscolhido(), modo = ['ter', 'nada', 'desenho', 'custo', 'semcusto'].includes(opt('terModo')) ? opt('terModo') : 'ter';
         const sel = h('select', { 'aria-label': 'O que o pincel faz' });
         for (const x of M.terrenos || []) sel.append(h('option', { value: 'ter:' + x.id, texto: x.nome }));
-        for (const [v, tx] of [['nada', 'Sem terreno'], ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio']]) sel.append(h('option', { value: v, texto: tx }));
-        sel.value = modo === 'ter' ? (t ? 'ter:' + t.id : 'nada') : modo;
+        const modos = [['nada', 'Sem terreno'], temDesenho ? ['desenho', 'Seguir o desenho'] : null, ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio']].filter(Boolean);
+        for (const [v, tx] of modos) sel.append(h('option', { value: v, texto: tx }));
+        sel.value = modo === 'ter' ? (t ? 'ter:' + t.id : 'nada') : modo === 'desenho' && !temDesenho ? 'nada' : modo;
         sel.addEventListener('change', () => {
           const v = sel.value;
           if (v.startsWith('ter:')) { porOpt('terModo', 'ter'); porOpt('ter', v.slice(4)); } else porOpt('terModo', v);
@@ -940,14 +1349,14 @@
     }
     // o que for criado com esta opção já nasce escondido: um segredo preparado num mapa que os jogadores estão vendo
     // não aparece para eles no meio do caminho (antes de dar tempo de marcar "Esconder")
-    if (f in NOVO) optsEl.append(chip({ 'aria-pressed': String(!!opt('oculto')), title: 'O que você criar agora já nasce escondido dos jogadores',
+    if (f in NOVO || f === 'p') optsEl.append(chip({ 'aria-pressed': String(!!opt('oculto')), title: 'O que você criar agora já nasce escondido dos jogadores',
       onclick: () => { porOpt('oculto', !opt('oculto')); reabrir(); } }, 'Criar escondido'));
     // medindo para a escala: no celular não há Esc, então um botão
     if (medindo) optsEl.append(chip({ title: 'Cancelar a medida (Esc)', onclick: () => cancelarMedida() }, 'Cancelar a medida'));
-    if (rasc && rasc.pts.length && (f === 'r' || f === 't' || f === 'f')) {
-      const min = f === 'r' ? 3 : 2;
+    if (rasc && rasc.pts.length && tipoDoRasc()) {
+      const k = rasc.k, min = fechada(k) ? 3 : 2;
       optsEl.append(
-        chip({ class: 'chip pri', disabled: rasc.pts.length < min, title: 'Terminar (Enter)', onclick: () => terminarRascunho() }, f === 'r' ? 'Fechar a região' : 'Terminar'),
+        chip({ class: 'chip pri', disabled: rasc.pts.length < min, title: 'Terminar (Enter)', onclick: () => terminarRascunho() }, k === 'r' ? 'Fechar a região' : k === 'z' ? 'Fechar a zona' : 'Terminar'),
         chip({ title: 'Tirar o último ponto (Backspace)', onclick: () => tirarPonto() }, 'Tirar o último ponto'),
         chip({ title: 'Cancelar (Esc)', onclick: () => cancelarRascunho() }, 'Cancelar'));
     }
@@ -967,6 +1376,30 @@
     }
     const r = botao.getBoundingClientRect();
     mostrarMenu(h('div', { class: 'menu menu-icones', role: 'dialog', 'aria-label': 'Ícone do marcador' }, grade), r.left, r.bottom + 6);
+  }
+
+  // um carimbo pequeno, para os chips e a grade de escolher
+  function miniCarimbo(def, tam) {
+    const el = s('svg', { width: tam || 18, height: tam || 18, viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+    const g1 = molde(def.svg);
+    g1.setAttribute('class', 'carimbo');
+    g1.setAttribute('style', 'color:' + (def.cor || '#5d9a4e'));
+    el.append(g1);
+    return el;
+  }
+  function abrirCarimbos(botao) {
+    fecharMenus();
+    const C0 = dicionario('CARIMBOS'), atual = opt('carimbo');
+    const grade = h('div', { class: 'grade' });
+    for (const k of Object.keys(C0)) {
+      grade.append(h('button', { type: 'button', title: C0[k].nome, 'aria-label': C0[k].nome, 'aria-pressed': String(k === atual), onclick: () => {
+        porOpt('carimbo', k); fecharMenus(); desenharOpts(true);
+        const novo = optsEl.querySelector('[aria-haspopup]');
+        if (novo) novo.focus();
+      } }, miniCarimbo(C0[k], 26)));
+    }
+    const r = botao.getBoundingClientRect();
+    mostrarMenu(h('div', { class: 'menu menu-icones', role: 'dialog', 'aria-label': 'Carimbo' }, grade), r.left, r.bottom + 6);
   }
 
   function atualizarDica() {
@@ -996,8 +1429,21 @@
         if (n < 3) return `${Cl} para pôr mais pontos (uma região tem pelo menos 3).` + fim;
         return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
       case 't': case 'f': {
+        if (f === 'f' && opt('freModo') === 'zona') {
+          if (!n) return `${Cl} para pôr o primeiro ponto da zona de guerra (as cores vêm dos lados A e B).`;
+          if (n < 3) return `${Cl} para pôr mais pontos (uma zona tem pelo menos 3).` + fim;
+          return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
+        }
         if (!n) return `${Cl} para pôr o começo ${f === 't' ? 'da rota' : 'da frente de batalha'}.`;
         return tq ? 'Toque para mais pontos; toque de novo no último para terminar.' : 'Clique para mais pontos. Duplo clique ou Enter termina.' + fim;
+      }
+      case 'p': {
+        const md = modoDesenho();
+        if (md === 'carimbo') return `${Cl} para pôr ${defCarimbo(opt('carimbo')).nome.toLocaleLowerCase('pt-BR')}; arraste para espalhar vários.` + (tq ? '' : ' Cada clique ou traço é um passo de desfazer.');
+        if (md === 'texto') return `${Cl} onde vai o texto.` + (tq ? '' : ' Esc volta para Selecionar.');
+        const qual = { rio: 'do rio (a nascente; ele engrossa até o último ponto, a foz)', estrada: 'da estrada', trilha: 'da trilha' }[opt('estilo')] || 'da linha';
+        if (!n) return `${Cl} para pôr o começo ${qual}.`;
+        return tq ? 'Toque para mais pontos; toque de novo no último para terminar.' : 'Clique para mais pontos (a linha passa por todos, suave). Duplo clique ou Enter termina.' + fim;
       }
       case 'n': {
         const nv = M.nevoa || {};
@@ -1008,9 +1454,14 @@
         if (regua) { const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y); if (u > 0) return textoRegua(M, regua.a, regua.b) + '. Nada é gravado.'; }
         return 'Arraste para medir uma distância. Nada é gravado.' + (temGrade(M) ? '' : ' Sem a grade de hexágonos (aba Terreno), a medida sai em unidades do mapa.');
       case 'h': {
+        if (modoTerreno() === 'livre') {
+          const t = pinTerreno(), borracha = opt('pinTer') === '-' || !t, sob = cursor && !tq && temGrade(M) ? sobOCursor(cursor) : '';
+          return (borracha ? 'Arraste para apagar o desenho à mão.' : 'Arraste para pintar à mão: ' + t.nome + '.') + (sob ? ' ' + sob : '')
+            + (temGrade(M) ? '' : ' Com a grade de hexágonos, cada hexágono ganha o terreno do desenho.') + (tq ? '' : ' Cada traço é um passo de desfazer.');
+        }
         if (!temGrade(M)) return 'Defina a grade de hexágonos primeiro (aba Terreno).';
         const modo = opt('terModo'), t = terrenoEscolhido();
-        const o = modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
+        const o = modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'desenho' ? 'Arraste sobre os hexágonos para que voltem a seguir o desenho à mão.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
           : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.';
         const sob = cursor && !tq ? sobOCursor(cursor) : '';
         return o + (sob ? ' ' + sob : '') + (tq ? '' : ' Cada traço é um passo de desfazer.');
@@ -1032,10 +1483,10 @@
   const preso = p => ({ x: um(limitar(p.x, 0, L)), y: um(limitar(p.y, 0, A)) });
   function abrirAba(id) { try { if (window.MundoPainel && MundoPainel.abrirAba) MundoPainel.abrirAba(id); } catch (e) { console.error(e); } }
   function painelVisivel() { const sd = document.getElementById('side'); return !!(sd && sd.offsetParent !== null && !sd.classList.contains('fechado')); }
-  function criar(k, campos) {
+  function criar(k, campos, rotulo) {
     if (!podeEditar()) return null;
     let id = null;
-    App.mudar(NOVO[k], d => {
+    App.mudar(rotulo || NOVO[k], d => {
       const o = N().objNovo(k, Object.assign({ oculto: !!opt('oculto') }, campos));   // "Criar escondido" nas opções
       if (!o) return false;
       if (!Array.isArray(d.objs)) d.objs = [];
@@ -1121,41 +1572,58 @@
       return;
     }
     if (!Array.isArray(o.pts)) return;
-    if (a.tipo === 'v') o.pts[a.i] = [q.x, q.y];
-    else if (a.tipo === 'meio') o.pts.splice(a.i + 1, 0, [q.x, q.y]);
+    const pts = ptsEditaveis(o);                                // (zona de guerra: a forma da fase de hoje)
+    if (a.tipo === 'v') pts[a.i] = [q.x, q.y];
+    else if (a.tipo === 'meio') pts.splice(a.i + 1, 0, [q.x, q.y]);
   }
   function tirarVertice(id, i) {
     const o = objEditavel(id);
     if (!o || !Array.isArray(o.pts)) return;
-    const min = o.k === 'r' ? 3 : 2;
-    if (o.pts.length <= min) { App.toast(o.k === 'r' ? 'Uma região precisa de pelo menos 3 pontos.' : 'Uma linha precisa de pelo menos 2 pontos.'); return; }
-    App.mudar('tirar o ponto', d => { const x = d.objs.find(y => y.id === id); if (!x || x.pts.length <= min) return false; x.pts.splice(i, 1); });
+    const min = fechada(o.k) ? 3 : 2;
+    if (ptsEditaveis(o).length <= min) { App.toast(o.k === 'r' ? 'Uma região precisa de pelo menos 3 pontos.' : o.k === 'z' ? 'Uma zona precisa de pelo menos 3 pontos.' : 'Uma linha precisa de pelo menos 2 pontos.'); return; }
+    App.mudar('tirar o ponto', d => { const x = d.objs.find(y => y.id === id); if (!x) return false; const px = ptsEditaveis(x); if (px.length <= min) return false; px.splice(i, 1); });
   }
 
-  /* desenho de região, rota e frente, ponto a ponto */
-  function adicionarPonto(p, toque) {
+  /* desenho de região, rota, frente, zona de guerra e linha (rio, estrada, trilha), ponto a ponto */
+  const modoDesenho = () => (['carimbo', 'texto', 'linha'].includes(opt('des')) ? opt('des') : 'carimbo');
+  function tipoDoRasc() {
     const f = ferramenta();
-    if (f !== 'r' && f !== 't' && f !== 'f') return;
+    if (f === 'r' || f === 't') return f;
+    if (f === 'f') return opt('freModo') === 'zona' ? 'z' : 'f';
+    if (f === 'p' && modoDesenho() === 'linha') return 'l';
+    return null;
+  }
+  function adicionarPonto(p, toque) {
+    const k = tipoDoRasc();
+    if (!k) return;
     if (!dentroDoMapa(p, 2)) return;
     const q = preso(p);
-    if (!rasc || rasc.k !== f) rasc = { k: f, pts: [] };
-    const pts = rasc.pts, raio = toque ? 18 : 9;
+    if (!rasc || rasc.k !== k) rasc = { k, pts: [] };
+    const pts = rasc.pts, raio = toque ? 18 : 9, min = fechada(k) ? 3 : 2;
     const perto = r => Math.hypot((r[0] - q.x) * V.z, (r[1] - q.y) * V.z) < raio;
-    if (f === 'r' && pts.length >= 3 && perto(pts[0])) { terminarRascunho(); return; }
+    if (fechada(k) && pts.length >= 3 && perto(pts[0])) { terminarRascunho(); return; }
     // clicar de novo no último ponto (o segundo clique de um duplo clique) termina
-    if (pts.length && perto(pts[pts.length - 1])) { if (pts.length >= (f === 'r' ? 3 : 2)) terminarRascunho(); return; }
+    if (pts.length && perto(pts[pts.length - 1])) { if (pts.length >= min) terminarRascunho(); return; }
     pts.push([q.x, q.y]);
     desenharRascunho(); desenharOpts(); atualizarDica();
   }
   function terminarRascunho() {
     if (!rasc) return;
-    const { k, pts } = rasc, min = k === 'r' ? 3 : 2;
-    if (pts.length < min) { App.toast(k === 'r' ? 'Uma região precisa de pelo menos 3 pontos.' : 'Uma linha precisa de pelo menos 2 pontos.'); return; }
+    const { k, pts } = rasc, min = fechada(k) ? 3 : 2;
+    if (pts.length < min) { App.toast(k === 'r' ? 'Uma região precisa de pelo menos 3 pontos.' : k === 'z' ? 'Uma zona precisa de pelo menos 3 pontos.' : 'Uma linha precisa de pelo menos 2 pontos.'); return; }
     rasc = null;
     const campos = { pts: pts.map(q => q.slice()) };
+    let rot = null;
     if (k === 't') campos.via = opt('via');
-    if (k === 'f') { campos.a = opt('a') || null; campos.b = opt('b') || null; }
-    criar(k, campos);
+    if (k === 'f' || k === 'z') { campos.a = opt('a') || null; campos.b = opt('b') || null; }
+    if (k === 'z') campos.ini = (App.mapa.cal && App.mapa.cal.dia) || 0;
+    if (k === 'l') {
+      campos.estilo = opt('estilo');
+      const ls = LARGURAS[campos.estilo] || LARGURAS.rio;
+      campos.larg = um(Math.max(0.5, ls[limitar(Math.round(Number(opt('linNivel')) || 2), 1, 4) - 1] / V.z));     // em pixels da tela, como o pincel
+      rot = { rio: 'novo rio', estrada: 'nova estrada', trilha: 'nova trilha' }[campos.estilo] || null;
+    }
+    criar(k, campos, rot);
     desenharRascunho(); desenharOpts(); atualizarDica();
   }
   function tirarPonto() {
@@ -1208,7 +1676,7 @@
       const id = idDoAlvo(e.target);
       if (id) {
         const o = indice.get(id) || {};
-        const area = o.k === 'r' || o.k === 't' || o.k === 'f' || !!(e.target.classList && e.target.classList.contains('eve-area'));
+        const area = LARGOS.has(o.k) || !!(e.target.classList && e.target.classList.contains('eve-area'));
         const jaSel = (App.sel || []).includes(id);
         // um ponto (marcador, grupo, selo) se pega ao apertar; área e linha só se escolhem ao soltar, para que
         // arrastar por cima de uma região ou de uma estrada ainda ande pelo mapa (depois de escolhidas, arrastam)
@@ -1228,6 +1696,22 @@
       cursor = g.p0; pincelar(g.p0); desenharRascunho(); return;
     }
     if (f === 'd') { comecar(e, 'regua'); regua = { a: g.p0, b: g.p0 }; desenharRascunho(); return; }
+    if (f === 'p') {
+      const modo = modoDesenho();
+      if (modo === 'carimbo') { comecar(e, 'carimbos', { lista: [], ult: null }); C.tra.replaceChildren(); C.tra.setAttribute('class', 'c-tra'); return; }
+      comecar(e, modo === 'texto' ? 'texto' : 'ponto');
+      return;
+    }
+    if (f === 'h' && modoTerreno() === 'livre') {
+      const borracha = opt('pinTer') === '-', t = borracha ? null : pinTerreno();
+      if (!borracha && !t) { App.toast('Este mapa não tem tipos de terreno. Crie um na aba Terreno.'); abrirAba('terreno'); return; }
+      if (!garantirPintura()) return;
+      pintEl.hidden = false;
+      if (!(M.pintura && M.pintura.ops && M.pintura.ops.length)) pintEl.style.opacity = String((M.pintura && M.pintura.alfa) || 1);
+      comecar(e, 'pintura', { t: t ? t.id : '', r: raioLivre(), pts: [], ters: new Map((M.terrenos || []).map(x => [x.id, x])) });
+      cursor = g.p0; pintarAoVivo(g.p0); desenharRascunho();
+      return;
+    }
     if (f === 'h') {
       if (!temGrade(M)) { App.toast('Defina a grade de hexágonos primeiro, na aba Terreno.'); abrirAba('terreno'); return; }
       comecar(e, 'hexpincel', { hexes: new Map(), ult: null });
@@ -1246,7 +1730,7 @@
     if (!g) {
       if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
         cursor = p;
-        if (rasc || ferramenta() === 'n') desenharRascunho();
+        if (rasc || ferramenta() === 'n' || ferramenta() === 'p') desenharRascunho();
         else if (ferramenta() === 'h') { desenharRascunho(); atualizarDica(); }
       }
       return;
@@ -1255,7 +1739,7 @@
     cursor = p;
     const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
     if (!g.moveu) {
-      if (g.tipo !== 'pincel' && g.tipo !== 'hexpincel' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
+      if (g.tipo !== 'pincel' && g.tipo !== 'hexpincel' && g.tipo !== 'pintura' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
       g.moveu = true;
       clearTimeout(tLongo);
       comecouArrastar();
@@ -1273,13 +1757,15 @@
       case 'evento': g.r = Math.hypot(p.x - g.p0.x, p.y - g.p0.y); desenharRascunho(); break;
       case 'pincel': pincelar(p); desenharRascunho(); break;
       case 'hexpincel': pintarHex(p); desenharRascunho(); break;
+      case 'pintura': pintarAoVivo(p); desenharRascunho(); break;
+      case 'carimbos': espalhar(p); break;
       case 'regua': regua.b = p; desenharRascunho(); atualizarDica(); break;
     }
   }
   // Passou do limite de um clique: decide o que o arrasto vira.
   function comecouArrastar() {
     const editar = podeEditar();
-    if (g.tipo === 'fundo' || g.tipo === 'por' || g.tipo === 'ponto') { g.tipo = 'pan'; palco.classList.add('pan'); return; }
+    if (g.tipo === 'fundo' || g.tipo === 'por' || g.tipo === 'ponto' || g.tipo === 'texto') { g.tipo = 'pan'; palco.classList.add('pan'); return; }
     if (g.tipo === 'objeto') {
       if (!editar || (g.area && !g.jaSel)) { g.tipo = 'pan'; palco.classList.add('pan'); return; }
       let ids = selecao();
@@ -1345,7 +1831,7 @@
     const p = paraMundo(e.clientX, e.clientY);
     if (gg.tipo === 'pan') soltarMovendo();
     try { terminarGesto(gg, p, e); }
-    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel' || gg.tipo === 'hexpincel') redesenhar(); }
+    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel' || gg.tipo === 'hexpincel' || gg.tipo === 'pintura' || gg.tipo === 'carimbos') redesenhar(); }
   }
   function terminarGesto(gg, p, e) {
     const editar = podeEditar();
@@ -1372,7 +1858,7 @@
           if (a.tipo === 'v' && (duplo || gg.alt)) tirarVertice(id, a.i);
           else if (a.tipo === 'meio') {
             const o = objEditavel(id);
-            if (o && o.pts) { const n = o.pts.length, q0 = o.pts[a.i], q1 = o.pts[(a.i + 1) % n]; App.mudar('novo ponto', d => { const x = d.objs.find(y => y.id === id); if (!x) return false; x.pts.splice(a.i + 1, 0, [um((q0[0] + q1[0]) / 2), um((q0[1] + q1[1]) / 2)]); }); }
+            if (o && o.pts) { const po = ptsEditaveis(o), n = po.length, q0 = po[a.i], q1 = po[(a.i + 1) % n]; App.mudar('novo ponto', d => { const x = d.objs.find(y => y.id === id); if (!x) return false; ptsEditaveis(x).splice(a.i + 1, 0, [um((q0[0] + q1[0]) / 2), um((q0[1] + q1[1]) / 2)]); }); }
           }
           break;
         }
@@ -1409,6 +1895,18 @@
         C.tra.replaceChildren();
         if (editar && gg.hexes.size) aplicarPincelHex([...gg.hexes.keys()]);
         break;
+      case 'pintura':
+        if (editar && gg.pts.length) gravarPincelada(gg);
+        else desenharPintura(M, true);
+        break;
+      case 'carimbos':
+        C.tra.replaceChildren();
+        if (!gg.moveu) { const q = preso(gg.p0); gg.lista = dentroDoMapa(gg.p0, 2) ? [{ x: q.x, y: q.y, ic: opt('carimbo'), tam: um(tamCarimbo()), vira: false }] : []; }
+        if (editar && gg.lista.length) porCarimbos(gg.lista);
+        break;
+      case 'texto':
+        if (editar && dentroDoMapa(p, 2)) novoTexto(preso(p));
+        break;
       case 'regua': {
         regua.b = p;
         const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y);
@@ -1436,7 +1934,8 @@
     palco.classList.remove('pan');
     if (!mundoEl.classList.contains('movendo')) quieto(false);
     if (gg.tipo === 'regua') regua = null;
-    if (gg.tipo === 'hexpincel') C.tra.replaceChildren();
+    if (gg.tipo === 'hexpincel' || gg.tipo === 'carimbos') C.tra.replaceChildren();
+    if (gg.tipo === 'pintura') desenharPintura(M, true);             // tira a prévia do traço que não vai ser gravado
     if (gg.tipo === 'mover') soltarProvisorio(gg);
     if (gg.tipo === 'pan') soltarMovendo();
     redesenhar();
@@ -1507,6 +2006,7 @@
         item('Novo marcador aqui', () => criarEm('m', p)),
         item('Novo grupo aqui', () => criarEm('g', p)),
         item('Novo evento aqui', () => criarEm('e', p)),
+        item('Novo texto aqui', () => novoTexto(preso(p))),
       ];
     }
     mostrarMenu(h('div', { class: 'menu', role: 'menu', 'aria-label': 'Opções do mapa' }, ...itens), x, y);
@@ -1653,7 +2153,7 @@
     gradePath = s('path', { class: 'grade-linha', fill: 'none' });
     gradePat = s('pattern', { id: GRADE, patternUnits: 'userSpaceOnUse', width: 1, height: 1 }, gradePath);
     svg.append(s('defs', null, mascara, gradePat));
-    for (const n of ['hex', 'reg', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    for (const n of ['hex', 'lin', 'car', 'reg', 'zon', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
     hexTer = s('g', { class: 'hex-tinta' });
     gradeRect = s('rect', { class: 'grade', x: 0, y: 0, fill: `url(#${GRADE})` });
     C.hex.append(hexTer, gradeRect);
@@ -1720,7 +2220,7 @@
     App.on('mapas', agendar);
     App.on('ferramenta', () => {
       const f = ferramenta();
-      if (rasc && rasc.k !== f) rasc = null;
+      if (rasc && rasc.k !== tipoDoRasc()) rasc = null;
       if (f !== 'd' && regua && !regua.manter) regua = null;
       if (medindo && App.ferramenta !== 'd') { const m = medindo; medindo = null; m.ok(null); }
       if (g) cancelarGesto();
