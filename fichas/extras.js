@@ -55,7 +55,8 @@ const FichasExtras = (() => {
     else FichasMesa.comCursor(fn);
   }
 
-  /* Aviso com um botão (Desfazer). Some sozinho. */
+  /* Aviso com um botão (Desfazer). Some sozinho — mas não enquanto o ponteiro (ou o teclado) está nele: quem ia clicar
+     em "Desfazer" não o perde no caminho. Saindo dele, fica o tempo que faltava (e pelo menos mais um pouco). */
   function aviso(texto, acao, fn, ms) {
     document.querySelectorAll('.toast').forEach(t => t.remove());
     const d = document.createElement('div');
@@ -63,7 +64,12 @@ const FichasExtras = (() => {
     const s = document.createElement('span'); s.textContent = texto; d.append(s);
     if (acao) { const b = document.createElement('button'); b.type = 'button'; b.textContent = acao; b.onclick = () => { d.remove(); fn(); }; d.append(b); }
     document.body.append(d);
-    setTimeout(() => d.remove(), ms || (acao ? 8000 : 2600));
+    const tempo = ms || (acao ? 8000 : 2600), fim = Date.now() + tempo;
+    let relogio = setTimeout(() => d.remove(), tempo), dentro = 0;
+    const segura = () => { dentro++; clearTimeout(relogio); };
+    const solta = () => { dentro = Math.max(0, dentro - 1); if (!dentro) { clearTimeout(relogio); relogio = setTimeout(() => d.remove(), Math.max(2500, fim - Date.now())); } };
+    d.addEventListener('pointerenter', segura); d.addEventListener('pointerleave', solta);
+    d.addEventListener('focusin', segura); d.addEventListener('focusout', solta);
   }
 
   /* ======================= imagem do personagem ======================= */

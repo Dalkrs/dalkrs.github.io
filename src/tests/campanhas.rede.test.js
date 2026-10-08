@@ -525,6 +525,7 @@ const { ok, end } = checker();
     ok(await noBanco(async mesa => (await window.__sb.from('campanhas').select('id').eq('mesa_id', mesa)).data.length, mesaT) === 0, 'e nada mudou no banco antes do OK');
     await TM.locator('#cp-ok').click();
     ok(await comAviso(TM, /Campanha Geração do Dain criada, com o que a mesa já tinha\./), 'criada: o aviso diz e oferece desfazer — ' + await avisos(TM));
+    await TM.locator('#toasts .toast', { hasText: 'Desfazer' }).last().hover();      // (o aviso espera com o ponteiro em cima: o banco de verdade e os outros aparelhos podem demorar mais que ele)
     ok(await ate(async () => (await barra(TM)) === 'Geração do Dain'), 'a barra do mestre passa a mostrar a campanha em vista');
     // (os dois aparelhos percebem sozinhos, em instantes: o aviso de cada um fica uns segundos na tela)
     const avisados = await Promise.all([TA, TJ].map(p => comAviso(p, /O mestre colocou você na campanha Geração do Dain\./, 25000)));
@@ -570,6 +571,7 @@ const { ok, end } = checker();
     ok(await TM.locator('#cr-nome').inputValue() === 'Geração do Dain', 'renomear abre com o nome de agora');
     await TM.locator('#cr-nome').fill('  A primeira geração  '); await TM.locator('#cr-ok').click();
     ok(await comAviso(TM, /A campanha agora se chama A primeira geração\./) && await ate(async () => (await barra(TM)) === 'A primeira geração'), 'renomeada (sem os espaços das pontas): a barra acompanha');
+    await TM.locator('#toasts .toast', { hasText: 'A campanha agora se chama' }).last().hover();
     ok(await TM.locator('#f-camps').isVisible() && /A primeira geração/.test(await TM.locator('#cp-lista .cpl').first().innerText()), 'e a janela das campanhas continua aberta, com o nome novo');
     ok(await ate(async () => (await barra(TA)) === 'A primeira geração', 25000), 'o jogador vê o nome novo');
     await TM.locator('#toasts .toast button', { hasText: 'Desfazer' }).click();
@@ -589,6 +591,7 @@ const { ok, end } = checker();
     ok(await ate(async () => /Voltar a mesa ao que era antes das campanhas\?/.test(await TM.locator('dialog[open] h2').innerText())) && /Nada é apagado, e todos os jogadores voltam a ver tudo junto/.test(await TM.locator('dialog[open] p').first().innerText()), '"Desfazer as campanhas…" pede confirmação e diz o que acontece');
     await TM.locator('dialog[open] button[type="submit"]').click();
     ok(await comAviso(TM, /A mesa voltou a ser como era, sem campanhas\./) && await ate(async () => (await barra(TM)) === '' && (await estado(TM)).lista.length === 0), 'desfeitas: a mesa fica sem campanhas');
+    await TM.locator('#toasts .toast', { hasText: 'A mesa voltou a ser como era' }).last().hover();
     ok(await ate(async () => (await estado(TJ)).tem === false && (await barra(TJ)) === '', 25000) && await noFeed(TJ, 'boa noite, mesa'), 'e o Visitante, que tinha ficado de fora, volta a ver a conversa da mesa');
     await TM.locator('#toasts .toast button', { hasText: 'Desfazer' }).click();
     ok(await comAviso(TM, /Desfeito: a campanha Geração do Dain voltou, com o que a mesa tem\./, 20000) && await ate(async () => (await barra(TM)) === 'Geração do Dain'), 'o "Desfazer" traz a campanha de volta');
@@ -691,8 +694,9 @@ const { ok, end } = checker();
       await TM.mouse.move(para.x + para.width / 2, para.y + para.height / 2, { steps: 12 });
       await w(120); await TM.mouse.up(); await w(400);
     }
-    ok(await ate(async () => /^Vilão passou para o mundo \(aparece em todas as campanhas\)\./.test(await F.locator('.toast').innerText())) && await ate(async () => { b = await doBanco(); return b.fichas.includes('npc_esc:mundo'); }),
-      'o Vilão, arrastado para lá, passa para o mundo (com aviso e desfazer): ' + await F.locator('.toast').innerText().catch(() => '(sem aviso)'));
+    ok(await ate(async () => /^Vilão passou para o mundo \(aparece em todas as campanhas\)\./.test(await F.locator('.toast').innerText())), 'o Vilão, arrastado para lá, passa para o mundo (com aviso e desfazer): ' + await F.locator('.toast').innerText().catch(() => '(sem aviso)'));
+    await F.locator('.toast', { hasText: 'Desfazer' }).hover();      // (o aviso espera com o ponteiro em cima: o banco de verdade e os outros aparelhos podem demorar mais que ele)
+    ok(await ate(async () => { b = await doBanco(); return b.fichas.includes('npc_esc:mundo'); }), 'no banco, o Vilão fica sem campanha (do mundo): ' + b.fichas);
     await F.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(400);
     ok(await ate(async () => { b = await doBanco(); return b.fichas.includes('npc_esc:' + C1); }) && (await blocosDe(F))[0].fichas === 'Dain,Guarda,Selene,Vilão', '"Desfazer" o devolve à campanha: ' + b.fichas);
     await F.locator('#lista [data-btoggle=""]').click(); await w(200);
@@ -704,6 +708,7 @@ const { ok, end } = checker();
     await F.locator('.modal #pgOk').waitFor();
     await F.locator(`.modal [name="pgdest"][value="${C2}"]`).check(); await w(250);
     await F.locator('.modal #pgOk').click();
+    await F.locator('.toast', { hasText: 'Desfazer' }).hover();      // (o aviso espera com o ponteiro em cima: o banco de verdade e os outros aparelhos podem demorar mais que ele)
     ok(await ate(async () => { b = await doBanco(); return b.fichas.includes('npc_esc:' + C2) && b.fichas.includes('npc_pub:' + C2); }) && await ate(async () => { const g = await gruposNoBanco(); return !g[0].includes('Vila') && g[1].includes('Vila'); }),
       'o grupo Vila passa para a Geração 2, com as duas fichas dele, e muda de lista de grupos: ' + b.fichas);
     await F.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(400);
@@ -850,6 +855,7 @@ const { ok, end } = checker();
     await semAvisos(TM);
     await abrirMenu(TM); await TM.locator('#mn-campanhas').click(); await TM.locator('#f-camps').waitFor();
     await TM.locator('#cp-nome').fill('Engano'); await TM.locator('#cp-criar').click();
+    await TM.locator('#toasts .toast', { hasText: 'Campanha Engano criada' }).last().hover();
     ok(await ate(async () => (await TM.locator('#cp-lista .cpl').count()) === 3), 'uma terceira campanha, criada por engano');
     await TM.locator('#toasts .toast button', { hasText: 'Desfazer' }).click();
     ok(await comAviso(TM, /Desfeito: a campanha Engano não existe mais\./) && await ate(async () => (await TM.locator('#cp-lista .cpl').count()) === 2), 'o "Desfazer" do aviso a tira da lista');
@@ -869,11 +875,22 @@ const { ok, end } = checker();
 
     // ---------- quem fica sem campanha vê só o que é do mundo ----------
     await semAvisos(TA);
+    // (na primeira, o banco demora a responder e o mestre fecha a janela enquanto ele salva: quando o banco responde,
+    // a janela não volta sozinha — e o aviso diz o que mudou)
+    const devagar = async r => { await new Promise(fim => setTimeout(fim, 2500)); await r.continue(); };
     for (const cid of [C1, C2]) {
       await abrirMenu(TM); await TM.locator('#mn-campanhas').click(); await TM.locator('#f-camps').waitFor();
       await TM.locator(`#cp-lista .cpl[data-camp="${cid}"] [data-a="jogadores"]`).click(); await TM.locator('#f-jogadores').waitFor();
-      await TM.locator(`#cj-lista input[data-u="${ea.uid}"]`).uncheck(); await TM.locator('#cj-ok').click(); await w(600);
-      await TM.keyboard.press('Escape'); await w(300);
+      if (cid === C1) await TM.context().route('**/rest/v1/rpc/campanha_participa*', devagar);
+      await TM.locator(`#cj-lista input[data-u="${ea.uid}"]`).uncheck(); await TM.locator('#cj-ok').click();
+      if (cid === C1) {
+        await w(300); await TM.keyboard.press('Escape');
+        const fechou = !(await TM.locator('#dlg').evaluate(d => d.open));
+        const avisou = await comAviso(TM, /Dalmo não participa mais da campanha/, 15000);
+        ok(fechou && avisou && !(await TM.locator('#dlg').evaluate(d => d.open)), 'fechada a janela enquanto o banco salvava, ela não volta sozinha quando ele responde, e o aviso diz o que mudou: ' + await avisos(TM));
+        await TM.context().unroute('**/rest/v1/rpc/campanha_participa*', devagar);
+        await semAvisos(TM);
+      } else { await w(600); await TM.keyboard.press('Escape'); await w(300); }
     }
     ok(await ate(async () => { const e = await estado(TA); return e.lista.length === 0 && e.tem === true && e.vista === null; }, 25000), 'tirado das duas campanhas, o Dalmo fica sem campanha (mas sabe que a mesa tem campanhas)');
     ok(/não participa mais de (uma das campanhas|nenhuma campanha) desta mesa/.test(await avisos(TA)) || await comAviso(TA, /não participa mais de nenhuma campanha desta mesa: por enquanto, vê só o que é do mundo\./, 12000), 'e é avisado: ' + await avisos(TA));

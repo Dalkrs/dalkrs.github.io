@@ -1,0 +1,26 @@
+{
+  "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
+  "versoes": [
+    {
+      "versao": "2026.10.08-1",
+      "data": "2026-10-08",
+      "titulo": "Campanhas",
+      "itens": [
+        { "tipo": "novo", "mestre": true, "texto": "A mesa pode ser dividida em campanhas. No menu da mesa, “Criar a primeira campanha…” mostra a lista do que vai para ela antes de mover qualquer coisa, e dá para desfazer." },
+        { "tipo": "novo", "mestre": true, "texto": "Em “Campanhas…”, no menu da mesa: criar, renomear, ordenar, encerrar e reabrir campanhas, e escolher quem joga em cada uma." },
+        { "tipo": "novo", "texto": "Cada campanha tem a própria mesa ao vivo, acampamento, missões do grupo, cenas e mapas. O que não é de nenhuma campanha é “do mundo” e aparece em todas." },
+        { "tipo": "novo", "texto": "A campanha em vista aparece ao lado do nome da mesa. Quem joga em mais de uma escolhe qual ver no menu da mesa." },
+        { "tipo": "novo", "texto": "Nas Fichas, a campanha em vista vem primeiro e o resto fica recolhido. O mesmo vale ao escolher ficha nas Cenas, na mesa ao vivo e no Acampamento." },
+        { "tipo": "novo", "mestre": true, "texto": "“⇄”, nas Fichas, passa um grupo inteiro para outra campanha (com desfazer). Cenas e mapas também dizem de que campanha são." },
+        { "tipo": "novo", "texto": "Campanha encerrada fica guardada para consulta: a conversa, as fichas, o acampamento e as missões dela não mudam até o mestre reabrir." },
+        { "tipo": "novo", "texto": "Novidades: o que muda em cada versão fica aqui, no menu da conta. Uma bolinha avisa quando há algo que você ainda não viu." },
+        { "tipo": "melhorou", "mestre": true, "texto": "O mestre auxiliar mestra dentro das campanhas que existem. Passar fichas, cenas e mapas de uma campanha para outra é só do mestre da mesa." },
+        { "tipo": "melhorou", "texto": "Os avisos com “Desfazer” não somem enquanto o ponteiro está em cima deles." },
+        { "tipo": "consertado", "texto": "A palavra “null” aparecia na cena do Acampamento e no menu principal do Rolador." },
+        { "tipo": "consertado", "texto": "Na ficha “só para consulta”, as abas de dentro (itens, poderes, missões…) voltaram a abrir." },
+        { "tipo": "consertado", "texto": "Na mesa ao vivo, quem falava logo ao abrir a mesa podia não ver a fala de quem tinha falado pouco antes." },
+        { "tipo": "consertado", "texto": "Uma janela fechada enquanto o site ainda salvava podia abrir de novo sozinha (ou fechar outra) quando ele terminava." }
+      ]
+    }
+  ]
+}

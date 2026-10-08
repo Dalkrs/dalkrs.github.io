@@ -83,10 +83,18 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     const fs = require('fs'), path = require('path'), { ROOT } = require('./lib');
     const V = /const VERSAO = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
     ok(JSON.parse(fs.readFileSync(path.join(ROOT, 'versao.json'), 'utf8')).versao === V, 'versao.json diz a mesma versão da casca (' + V + ')');
+    // toda publicação diz o que mudou: a lista de novidades começa pela versão da casca
+    const nov = JSON.parse(fs.readFileSync(path.join(ROOT, 'novidades.json'), 'utf8'));
+    ok(Array.isArray(nov.versoes) && !!nov.versoes[0] && nov.versoes[0].versao === V && nov.versoes[0].itens.length > 0 && nov.versoes[0].itens.every(i => ['novo', 'melhorou', 'consertado'].includes(i.tipo) && typeof i.texto === 'string' && i.texto.trim().length > 0),
+      'novidades.json começa pela versão da casca (' + V + '), com o que mudou nela');
     const { page, ctx } = await t.device({ name: 'versao' });
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1300);
     await page.evaluate(() => window.__conferirVersao()); await w(page, 300);
     ok(await page.locator('#versaoNova').isHidden() && await page.locator('.toast').count() === 0, 'com a mesma versão publicada, nenhum aviso');
+    // a versão nova publicada traz as novidades dela (e a lista publicada continua com as de antes)
+    const NOVA = { versao: '9999.01.01-1', data: '9999-01-01', titulo: 'Teste da versão nova', itens: [
+      { tipo: 'consertado', texto: 'Conserto de teste.' }, { tipo: 'novo', mestre: true, texto: 'Coisa nova só do mestre.' }, { tipo: 'melhorou', texto: 'Melhoria de teste.' }] };
+    await ctx.route('**/novidades.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ versoes: [NOVA, ...nov.versoes] }) }));
     await ctx.route('**/versao.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: '{"versao":"9999.01.01-1"}' }));
     let recarregou = false;
     page.on('framenavigated', f => { if (f === page.mainFrame()) recarregou = true; });
@@ -96,11 +104,46 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     ok(!recarregou && await page.locator('.toast').count() === 1, 'nada recarrega sozinho, e o aviso não se repete para a mesma versão');
     await page.locator('#versaoNova').click(); await w(page, 300);
     ok(/Recarregar para a versão nova\?/.test(await page.locator('#dlg').innerText()), 'o botão pergunta antes de recarregar');
+    const naJanela = await page.evaluate(([nova, atual]) => {
+      const caixa = document.getElementById('nov-nova');
+      return { nova: !!caixa && !!caixa.querySelector(`[data-versao="${nova}"]`), atual: !!caixa && !!caixa.querySelector(`[data-versao="${atual}"]`),
+        tipos: caixa ? [...caixa.querySelectorAll('.nov-g')].map(g => g.dataset.tipo).join(',') : '', titulo: caixa ? caixa.querySelector('h3').textContent : '',
+        mestre: caixa ? [...caixa.querySelectorAll('li')].filter(li => li.querySelector('.pm')).map(li => li.textContent).join('|') : '' };
+    }, [NOVA.versao, V]);
+    ok(naJanela.nova && !naJanela.atual && naJanela.titulo === NOVA.titulo, 'a pergunta mostra o que a versão nova traz (e não repete o que esta página já tem): ' + JSON.stringify(naJanela));
+    ok(naJanela.tipos === 'novo,melhorou,consertado', 'separado em Novo, Melhorou e Consertado, nessa ordem: ' + naJanela.tipos);
+    ok(naJanela.mestre === 'Coisa nova só do mestre.para o mestre', 'o que é só do mestre vem marcado "para o mestre": ' + naJanela.mestre);
+    ok(await page.evaluate(() => localStorage.getItem('tinycats:novidades')) === NOVA.versao, 'quem já viu o que a versão nova traz não ganha a bolinha por isso depois de recarregar');
     await page.locator('#dlg button', { hasText: 'Depois' }).click(); await w(page, 300);
     ok(!(await page.locator('#dlg').evaluate(d => d.open)) && !recarregou && await page.locator('#versaoNova').isVisible(), '"Depois" fecha a pergunta, e o botão continua na barra');
     await page.locator('#versaoNova').click(); await w(page, 250);
     await page.locator('#dlg button', { hasText: 'Recarregar agora' }).click(); await w(page, 1800);
     ok(recarregou, '"Recarregar agora" recarrega a página');
+    await ctx.close();
+  }
+
+  // novidades sem conta: um link na janela de entrar abre a lista (sem bolinha nenhuma no botão "Entrar")
+  {
+    const fs = require('fs'), path = require('path'), { ROOT } = require('./lib');
+    const V = /const VERSAO = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
+    const nov = JSON.parse(fs.readFileSync(path.join(ROOT, 'novidades.json'), 'utf8')).versoes[0];
+    const { page, ctx } = await t.device({ name: 'novidades', w: 420, h: 820 });
+    await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
+    ok(await page.locator('#btnConta > .pt').count() === 0 && !(await page.locator('#dlg').evaluate(d => d.open)), 'sem conta, nada de bolinha, e nada abre sozinho');
+    await page.locator('#btnConta').click(); await page.locator('#f-conta').waitFor();
+    await page.locator('#c-novidades').click(); await page.locator('#f-novidades').waitFor({ timeout: 8000 });
+    const lista = await page.evaluate(v => {
+      const s = document.querySelector(`#nov-lista [data-versao="${v}"]`);
+      return s ? { titulo: s.querySelector('h3').textContent, quando: s.querySelector('.qd').textContent, itens: s.querySelectorAll('li').length, mestre: s.querySelectorAll('.pm').length } : null;
+    }, V);
+    const nMestre = nov.itens.filter(i => i.mestre).length;
+    ok(!!lista && lista.titulo === nov.titulo && lista.itens === nov.itens.length && lista.mestre === nMestre && lista.quando.includes('versão ' + V),
+      '"Novidades do site" mostra a versão ' + V + ' inteira, com ' + nMestre + ' itens marcados para o mestre: ' + JSON.stringify(lista));
+    const cabe = await page.evaluate(() => { const d = document.getElementById('dlg').getBoundingClientRect(), l = document.getElementById('nov-lista'); return d.right <= innerWidth && d.bottom <= innerHeight && l.scrollWidth <= l.clientWidth + 1; });
+    ok(cabe, 'a janela cabe na tela estreita, e a lista rola por dentro sem estourar para os lados');
+    if (process.env.TC_SCRATCH) await page.screenshot({ path: path.join(process.env.TC_SCRATCH, 'shot-novidades-420.png') });     // (para olhar)
+    await page.locator('#f-novidades button', { hasText: 'Fechar' }).click(); await w(page, 300);
+    ok(!(await page.locator('#dlg').evaluate(d => d.open)), '"Fechar" fecha a lista');
     await ctx.close();
   }
 

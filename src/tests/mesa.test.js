@@ -41,6 +41,25 @@ const { ok, end } = checker();
   await M.keyboard.press('Escape'); await w(200);
   ok(await M.locator('#menu').isHidden(), 'Esc fecha o menu');
 
+  // ---------- novidades: uma bolinha no botão da conta até a pessoa abrir a lista; nada abre sozinho ----------
+  {
+    const fs = require('fs'), path = require('path'), { ROOT } = require('./lib');
+    const V = /const VERSAO = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
+    const ponto = () => M.locator('#btnConta > .pt').count();
+    let acesa = false; for (let i = 0; i < 30 && !acesa; i++) { acesa = (await ponto()) === 1; if (!acesa) await w(300); }
+    ok(acesa && !(await M.locator('#dlg').evaluate(d => d.open)), 'novidades: a bolinha acende no canto do botão da conta, e nada abre sozinho');
+    ok(await M.evaluate(n => document.getElementById('btnConta').textContent === n + 'Mestre', nomeMesa), 'a bolinha não escreve nada no botão');
+    await M.locator('#btnConta').click(); await w(300);
+    ok(await M.locator('#mn-novidades .pt').count() === 1, 'o item "Novidades" do menu também tem a bolinha');
+    await M.locator('#mn-novidades').click(); await M.locator('#f-novidades').waitFor({ timeout: 8000 });
+    ok(await M.locator(`#nov-lista [data-versao="${V}"]`).count() === 1 && await M.locator('#menu').isHidden(), 'o item fecha o menu e abre a lista, com a versão ' + V);
+    await M.locator('#f-novidades button', { hasText: 'Fechar' }).click(); await w(300);
+    ok(!(await M.locator('#dlg').evaluate(d => d.open)) && (await ponto()) === 0, 'depois de abrir a lista, a bolinha apaga');
+    await M.locator('#btnConta').click(); await w(300);
+    ok(await M.locator('#mn-novidades .pt').count() === 0 && await M.evaluate(() => localStorage.getItem('tinycats:novidades')) === V, 'o item do menu fica sem ela, e o aparelho lembra o que já foi visto');
+    await M.keyboard.press('Escape'); await w(200);
+  }
+
   // ---------- o jogador entra com o código ----------
   await J.goto(t.base, { waitUntil: 'load' }); await w(1200, J);
   await J.locator('#btnConta').click(); await J.locator('#c-email').fill(c.jog1); await J.locator('#c-senha').fill(c.senha); await J.locator('#c-ok').click();
@@ -149,10 +168,20 @@ const { ok, end } = checker();
   ok((await M.locator('#r-nome').inputValue()) === nomeMesa, 'renomear a mesa: a janela abre com o nome atual');
   await M.locator('#r-nome').fill(nomeNovo); await M.locator('dialog .btn.pri').click();
   ok(await naBarra(M, nomeNovo), 'o nome novo aparece na barra do mestre');
+  // (o aviso com "Desfazer" some sozinho em 8 s — mas não com o ponteiro em cima: quem ia clicar não o perde no caminho)
+  const avisoNome = M.locator('#toasts .toast', { hasText: 'A mesa agora se chama' }).last();
+  await avisoNome.hover(); const t0 = Date.now();
   await J.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));      // (o jogador confere a mesa ao voltar para a página; parado nela, em até meio minuto)
   ok(await naBarra(J, nomeNovo, 20000), 'e na do jogador, sem recarregar');
+  await w(Math.max(0, 9500 - (Date.now() - t0)));
+  ok(await avisoNome.isVisible(), 'com o ponteiro em cima, o aviso com "Desfazer" continua lá depois dos 8 s');
   await M.locator('.toast button', { hasText: 'Desfazer' }).last().click();
   ok(await naBarra(M, nomeMesa), '"Desfazer" devolve o nome de antes');
+  const avisoVolta = M.locator('#toasts .toast', { hasText: 'A mesa voltou a se chamar' }).last();
+  await avisoVolta.hover(); await w(6000);
+  ok(await avisoVolta.isVisible(), 'um aviso sem botão também espera enquanto o ponteiro está nele');
+  await M.mouse.move(5, 420);
+  ok(await avisoVolta.waitFor({ state: 'detached', timeout: 5000 }).then(() => true, () => false), 'e some logo depois que o ponteiro sai');
 
   // ---------- o mestre limpa a mesa ao vivo inteira, e desfaz ----------
   const vazio = (p, ms = 15000) => p.waitForFunction(() => document.querySelectorAll('#feed .it').length === 0, null, { timeout: ms }).then(() => true, () => false);
@@ -166,6 +195,7 @@ const { ok, end } = checker();
   ok((await M.locator('dialog h2').innerText()).includes('Limpar a mesa ao vivo'), 'limpar a mesa ao vivo pede confirmação');
   await M.locator('dialog .btn.per').click();
   ok(linhasAntes >= 3 && await vazio(M), 'confirmado, o painel do mestre fica vazio (tinha ' + linhasAntes + ' linhas)');
+  await M.locator('#toasts .toast', { hasText: 'Desfazer' }).last().hover();      // (o aviso espera, enquanto o resto é conferido)
   ok(await vazio(J), 'e o do jogador também, sem recarregar');
   const noBanco = await M.evaluate(async () => { const r = await window.__sb.from('registro').select('id', { count: 'exact', head: true }).eq('mesa_id', TC.mesas.atual.id).eq('apagado', false); return r.error ? -1 : r.count; });
   ok(noBanco === 0, 'no banco não sobra linha à mostra (quem recarregar também vê o painel vazio): ' + noBanco);

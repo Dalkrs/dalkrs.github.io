@@ -214,6 +214,7 @@ const { ok, end } = checker();
     ok(opcoes.length === 3 && /^Geração 2 → /.test(opcoes[0]) && /^Do mundo → /.test(opcoes[1]) && /^Geração do Dain → /.test(opcoes[2]) && opcoes[2].includes(C1 + '/Heróis'), 'o seletor de grupo da ficha mostra os grupos de cada campanha (a em vista primeiro): ' + JSON.stringify(opcoes));
     await FM.locator('#f_grupo').selectOption(C1 + '/Heróis'); await w(500);
     ok(/passou para a campanha Geração do Dain\./.test(await FM.locator('.toast').innerText()), 'escolher um grupo de outra campanha leva a ficha para ela (com aviso e desfazer): ' + await FM.locator('.toast').innerText());
+    await FM.locator('.toast', { hasText: 'Desfazer' }).hover();      // (o aviso espera com o ponteiro em cima: o banco de verdade e os outros aparelhos podem demorar mais que ele)
     ok(await ate(async () => { const l = await linhaPc(novoPc); return l.campanha === C1 && l.ficha.grupo === 'Heróis'; }), 'no banco, a ficha passou para a primeira campanha, no grupo escolhido');
     await FM.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(500);
     ok(await ate(async () => { const l = await linhaPc(novoPc); return l.campanha === C2; }), '"Desfazer" a devolve à Geração 2');
@@ -239,6 +240,8 @@ const { ok, end } = checker();
     const erroArr = await arrastar(FM, novoPc, '#lista .pcrow[data-id="npc_mundo"]');
     ok(!erroArr && await blocoNaTela(FM, novoPc) === '', 'arrastada para junto do Mercador, a ficha passa para o bloco "Do mundo"' + (erroArr ? ' — ' + erroArr : ''));
     ok(/^Recruta passou para o mundo \(aparece em todas as campanhas\)\./.test(await FM.locator('.toast').innerText().catch(() => '')), 'com aviso e desfazer: ' + await FM.locator('.toast').innerText().catch(() => '(sem aviso)'));
+    await FM.locator('.toast', { hasText: 'Desfazer' }).hover(); await w(9500);
+    ok(/^Recruta passou para o mundo/.test(await FM.locator('.toast').innerText().catch(() => '')), 'com o ponteiro em cima, o aviso das Fichas continua lá depois dos 9 s dele');
     ok(await ate(async () => (await linhaPc(novoPc)).campanha === null), 'no banco, a ficha ficou sem campanha (do mundo)');
     await FM.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(400);
     ok(await blocoNaTela(FM, novoPc) === C2 && await ordemNaTela() === ordemAntes, '"Desfazer" a devolve ao bloco da Geração 2, na ordem em que estava');
@@ -319,6 +322,7 @@ const { ok, end } = checker();
     ok(/desta campanha somem do painel de quem participa dela/.test(textoLimpar) && /fora de qualquer campanha/.test(textoLimpar) && /A conversa das outras campanhas não muda/.test(textoLimpar) && /Dá para desfazer/.test(textoLimpar), 'e o que sai (e o que não sai): ' + textoLimpar);
     await TM.locator('dialog[open] button[type="submit"]').click();
     ok(await ate(async () => (await foraDoFeed(TM, 'fala da segunda')) && (await foraDoFeed(TM, 'aviso do mundo'))), 'a conversa da Geração 2 (e a do mundo, que aparece nela) sai do painel');
+    await TM.locator('#toasts .toast', { hasText: 'Desfazer' }).last().hover();      // (o aviso espera com o ponteiro em cima: o banco de verdade e os outros aparelhos podem demorar mais que ele)
     const sobrou = await noBanco(async mesa => ((await window.__sb.from('registro').select('id,campanha,apagado,dados').eq('mesa_id', mesa)).data || []).filter(x => !x.apagado && x.dados && x.dados.texto).map(x => x.dados.texto).sort(), mesa);
     ok(JSON.stringify(sobrou) === JSON.stringify(['fala da primeira']), 'a da primeira campanha fica como estava: ' + JSON.stringify(sobrou));
     ok(await noFeed(TA, 'fala da primeira') && await ate(async () => foraDoFeed(TA, 'aviso do mundo')), 'na tela do Dalmo: a fala da campanha dele continua; o aviso do mundo, que foi limpo, sai');

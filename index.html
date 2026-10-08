@@ -64,7 +64,7 @@ button { cursor: pointer; }
 .ib { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; color: var(--fg-2); background: none; border: 1px solid transparent; text-decoration: none; }
 .ib:hover { color: var(--fg); background: var(--hover); border-color: var(--line); }
 .ib[aria-pressed="true"] { color: var(--lamp-ink); background: var(--lamp-soft); }
-.conta { display: flex; align-items: center; gap: 7px; height: 32px; max-width: 250px; padding: 0 11px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
+.conta { position: relative; display: flex; align-items: center; gap: 7px; height: 32px; max-width: 250px; padding: 0 11px; border-radius: 7px; background: var(--raised); border: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
 .conta:hover { border-color: var(--line-strong); background: var(--hover); }
 .conta .nm { overflow: hidden; text-overflow: ellipsis; }
 .conta .pp { font-weight: 500; color: var(--fg-3); font-size: 12px; }
@@ -75,6 +75,9 @@ button { cursor: pointer; }
 .conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
 .versao { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .versao:hover { filter: brightness(1.08); }
+/* a bolinha das novidades que a pessoa ainda não abriu: no canto do botão da conta (por cima, sem empurrar nada) e no item do menu */
+.conta .pt { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--surface); }
+.menu .lk .pt { display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: var(--lamp); vertical-align: 1px; }
 .nuvem { font-size: 12px; color: var(--fg-3); white-space: nowrap; }
 .nuvem.ruim { color: var(--danger); font-weight: 600; }
 .selo { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9px; background: var(--lamp); color: var(--on-lamp); font: 700 10px/16px var(--ui); text-align: center; }
@@ -274,6 +277,16 @@ dialog::backdrop { background: var(--scrim); }
 .dl .err { color: var(--danger); font-weight: 600; min-height: 0; }
 .dl .err:empty { display: none; }
 .dl .nt { font-size: 12.5px; color: var(--fg-3); }
+.dl .lkn { justify-self: start; padding: 0; border: 0; background: none; color: var(--lamp-ink); font-size: 12.5px; font-weight: 600; }
+.dl .lkn:hover { text-decoration: underline; }
+/* as novidades de cada versão: título, data, e o que é novo, o que melhorou e o que foi consertado */
+.nov { display: grid; gap: 16px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
+.nov-v h3 { margin: 0; font: 600 17px/1.2 var(--display); }
+.nov-v .qd { margin-top: 2px; color: var(--fg-3); font-size: 12px; }
+.nov-g { margin-top: 8px; }
+.nov-g b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); }
+.nov-g ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 5px; color: var(--fg-2); }
+.nov .pm { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 17px; color: var(--lamp-ink); background: var(--lamp-soft); white-space: nowrap; }
 .dl fieldset { margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 .dl legend { padding: 0; font-weight: 700; float: left; width: 100%; margin-bottom: 2px; }
 .seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 3px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); }
@@ -382,7 +395,7 @@ dialog::backdrop { background: var(--scrim); }
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.07-3';
+  const VERSAO = '2026.10.08-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -405,6 +418,10 @@ dialog::backdrop { background: var(--scrim); }
   const stage = $('stage'), tabs = $('tabs'), wait = $('wait'), pop = $('pop');
   const frames = {};
   let atual = null;
+  // As novidades do site (novidades.json): as versões que esta página conhece, a mais nova primeiro, e as que a versão
+  // nova publicada traz (ver "novidades", mais abaixo).
+  let novidades = null, novasDaPublicada = null;
+  const CHAVE_NOV = 'tinycats:novidades';      // a versão mais nova cujas novidades a pessoa já viu, neste aparelho
 
   const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento: só não lembra */ } };
@@ -438,7 +455,14 @@ dialog::backdrop { background: var(--scrim); }
     const t = h('div', { class: 'toast' }, h('span', { text: texto }));
     if (acao) t.append(h('button', { type: 'button', text: acao, onclick: () => { t.remove(); fn(); } }));
     $('toasts').append(t);
-    setTimeout(() => t.remove(), ms || (acao ? 8000 : 4500));
+    // Some sozinho, mas não enquanto o ponteiro (ou o teclado) está nele: quem ia clicar em "Desfazer" não o perde no
+    // caminho. Saindo dele, fica o tempo que faltava (e pelo menos mais um pouco).
+    const tempo = ms || (acao ? 8000 : 4500), fim = Date.now() + tempo;
+    let relogio = setTimeout(() => t.remove(), tempo), dentro = 0;
+    const segura = () => { dentro++; clearTimeout(relogio); };
+    const solta = () => { dentro = Math.max(0, dentro - 1); if (!dentro) { clearTimeout(relogio); relogio = setTimeout(() => t.remove(), Math.max(2500, fim - Date.now())); } };
+    t.addEventListener('pointerenter', segura); t.addEventListener('pointerleave', solta);
+    t.addEventListener('focusin', segura); t.addEventListener('focusout', solta);
   }
 
   /* ================= abas e molduras ================= */
@@ -644,6 +668,7 @@ dialog::backdrop { background: var(--scrim); }
     }
     btnVivo.hidden = !a;
     if (!a) { vivo.hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
+    pintarPonto();
   }
   btnConta.addEventListener('click', () => {
     if (!menu.hidden) { fecharMenu(); return; }
@@ -718,6 +743,8 @@ dialog::backdrop { background: var(--scrim); }
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
+    sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-novidades', onclick: () => { fecharMenu(); janelaNovidades(); } },
+      'Novidades', naoVistas().length ? h('i', { class: 'pt', 'aria-hidden': 'true', title: 'Há novidade que você ainda não viu' }) : null));
     sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
     sec.append(h('div', { class: 'sub', style: 'padding:4px 8px 0', text: u.email }));
     menu.append(sec);
@@ -744,16 +771,21 @@ dialog::backdrop { background: var(--scrim); }
       ev.preventDefault();
       if (botao.disabled) return;
       err.textContent = ''; botao.disabled = true;
-      try { await fn(); } catch (e) { err.textContent = (e && e.message) || 'Não deu certo agora. Tente de novo.'; }
+      // (se a pessoa fechou a janela enquanto esperava, o erro vira aviso: a janela não volta só para mostrá-lo)
+      try { await fn(); } catch (e) { const m = (e && e.message) || 'Não deu certo agora. Tente de novo.'; if (form.isConnected) err.textContent = m; else toast(m); }
       botao.disabled = false;
     });
   }
+  /* Uma janela que espera o banco e, enquanto isso, a pessoa fecha (Esc, clique fora) não volta sozinha quando ele
+     responde — nem fecha a janela que a pessoa abriu no lugar dela. Por isso, depois de cada espera, quem mexe na janela
+     confere antes se a sua ainda está aberta (aqui: o formulário dela ainda está na tela). */
+  const aberta = el => !!el && el.isConnected;
   function confirmar(titulo, texto, rotulo, fn, calmo) {      // calmo: o que se confirma não é uma perda (o botão não vai em vermelho)
     const err = h('div', { class: 'err', role: 'alert' });
     const ok = h('button', { type: 'submit', class: 'btn ' + (calmo ? 'pri' : 'per'), text: rotulo });
     const f = h('form', { class: 'dl' }, h('h2', { text: titulo }), h('p', { text: texto }), err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
-    enviarCom(f, err, ok, async () => { await fn(); fecharJanela(); });
+    enviarCom(f, err, ok, async () => { await fn(); if (aberta(f)) fecharJanela(); });
     abrirJanela(f);
   }
   function janelaConta(modo) {
@@ -774,11 +806,12 @@ dialog::backdrop { background: var(--scrim); }
       h('label', {}, criar ? 'Senha (8 caracteres ou mais)' : 'Senha', senha),
       err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok),
-      h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Guarde a senha; por enquanto, quem redefine é quem cuida do site.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }));
+      h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Guarde a senha; por enquanto, quem redefine é quem cuida do site.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }),
+      h('button', { type: 'button', class: 'lkn', id: 'c-novidades', text: 'Novidades do site', onclick: () => janelaNovidades() }));
     enviarCom(f, err, ok, async () => {
       if (criar) await conta.criar(email.value, senha.value, nome.value.trim());
       else await conta.entrar(email.value, senha.value);
-      fecharJanela();
+      if (aberta(f)) fecharJanela();
       await aoEntrar();
     });
     abrirJanela(f);
@@ -795,8 +828,8 @@ dialog::backdrop { background: var(--scrim); }
     const eNome = h('input', { id: 'm-meu', maxlength: 40, value: u.nome, required: true });
     const bEntrar = h('button', { type: 'submit', class: 'btn pri', id: 'm-entrar', text: 'Entrar' });
     const fEntrar = h('form', { class: 'lin' }, h('label', { style: 'flex:0 0 112px' }, 'Código', eCod), h('label', {}, 'Seu nome na mesa', eNome), bEntrar);
-    enviarCom(fCriar, err, bCriar, async () => { if (mesas.atual) await assentar(); await mesas.criar(nNome.value.trim(), u.nome); fecharJanela(); toast('Mesa criada. Você é o mestre; o código de convite está no menu da mesa.'); });
-    enviarCom(fEntrar, err, bEntrar, async () => { if (mesas.atual) await assentar(); await mesas.entrarComCodigo(eCod.value, eNome.value.trim()); fecharJanela(); });
+    enviarCom(fCriar, err, bCriar, async () => { if (mesas.atual) await assentar(); await mesas.criar(nNome.value.trim(), u.nome); if (aberta(fCriar)) fecharJanela(); toast('Mesa criada. Você é o mestre; o código de convite está no menu da mesa.'); });
+    enviarCom(fEntrar, err, bEntrar, async () => { if (mesas.atual) await assentar(); await mesas.entrarComCodigo(eCod.value, eNome.value.trim()); if (aberta(fEntrar)) fecharJanela(); });
     abrirJanela(h('div', { class: 'dl' },
       h('h2', { text: 'Mesas' }),
       h('p', { text: 'A mesa é onde o mestre e os jogadores se encontram: todos veem as rolagens e a conversa na hora.' }),
@@ -834,7 +867,7 @@ dialog::backdrop { background: var(--scrim); }
       const sim = rAux.checked, abas = ABAS.filter((x, i) => caixas[i].checked).map(x => x.id);
       if (sim === eraAux && (!sim || abas.join() === abasAntes.join())) { fecharJanela(); return; }      // nada mudou
       await mesas.definirAuxiliar(m.usuario_id, sim, abas);
-      fecharJanela();
+      if (aberta(f)) fecharJanela();
       toast(!sim ? m.nome + ' voltou a ser jogador.' : eraAux ? 'As abas de ' + m.nome + ' foram atualizadas.' : m.nome + ' agora é mestre auxiliar.', 'Desfazer',
         async () => { try { await mesas.definirAuxiliar(m.usuario_id, eraAux, abasAntes); toast('Desfeito: ' + m.nome + (eraAux ? ' continua mestre auxiliar, com as abas de antes.' : ' continua jogador.')); } catch (e) { toast(e.message); } });
     });
@@ -862,12 +895,12 @@ dialog::backdrop { background: var(--scrim); }
   function janelaCampanhas() {
     const a = mesas.atual; if (!a || a.cargo !== 'mestre') return;
     const err = h('div', { class: 'err', role: 'alert', id: 'cp-erro' });
-    const tentar = async fn => { err.textContent = ''; try { await fn(); return true; } catch (e) { err.textContent = (e && e.message) || 'Não deu certo agora. Tente de novo.'; return false; } };
+    const tentar = async fn => { err.textContent = ''; try { await fn(); return true; } catch (e) { const m = (e && e.message) || 'Não deu certo agora. Tente de novo.'; if (aberta(err)) err.textContent = m; else toast(m); return false; } };
     const lista = h('div', { class: 'cps', id: 'cp-lista' });
     a.campanhas.forEach((c, i) => {
       const n = jogadoresDa(c).length, naVista = c.id === a.campanha;
       const seta = (d, rot) => h('button', { type: 'button', class: 'btn sm seta', 'data-a': d < 0 ? 'subir' : 'descer', title: rot, 'aria-label': rot + ': ' + c.nome, disabled: d < 0 ? i === 0 : i === a.campanhas.length - 1,
-        onclick: async () => { const ids = a.campanhas.map(x => x.id); ids.splice(i + d, 0, ids.splice(i, 1)[0]); if (await tentar(() => mesas.ordenarCampanhas(ids))) janelaCampanhas(); } }, d < 0 ? '▲' : '▼');
+        onclick: async () => { const ids = a.campanhas.map(x => x.id); ids.splice(i + d, 0, ids.splice(i, 1)[0]); if (await tentar(() => mesas.ordenarCampanhas(ids)) && aberta(fNova)) janelaCampanhas(); } }, d < 0 ? '▲' : '▼');
       lista.append(h('div', { class: 'cpl' + (naVista ? ' vista' : ''), 'data-camp': c.id },
         h('div', { class: 'cpn' }, h('b', { text: c.nome }), h('small', { text: [naVista ? 'em vista' : '', c.encerrada ? 'encerrada' : '', plural(n, 'jogador', 'jogadores')].filter(Boolean).join(' · ') })),
         h('div', { class: 'cpa' }, seta(-1, 'Subir na lista'), seta(1, 'Descer na lista'),
@@ -875,7 +908,7 @@ dialog::backdrop { background: var(--scrim); }
           h('button', { type: 'button', class: 'btn sm', 'data-a': 'renomear', text: 'Renomear…', onclick: () => janelaRenomearCampanha(c) }),
           c.encerrada ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'reabrir', text: 'Reabrir', onclick: async () => {
               if (!await tentar(() => mesas.mudarCampanha(c.id, { encerrada: false }))) return;
-              janelaCampanhas();
+              if (aberta(fNova)) janelaCampanhas();
               toast('Campanha ' + c.nome + ' reaberta: dá para jogar nela de novo.', 'Desfazer', async () => { try { await assentar(); await mesas.mudarCampanha(c.id, { encerrada: true }); toast('Desfeito: a campanha ' + c.nome + ' continua encerrada.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
             } })
             : h('button', { type: 'button', class: 'btn sm', 'data-a': 'encerrar', text: 'Encerrar…', onclick: () => janelaEncerrar(c) }),
@@ -896,7 +929,7 @@ dialog::backdrop { background: var(--scrim); }
       const deu = await tentar(async () => { nova = await mesas.criarCampanha(n, false); });
       criar.disabled = false;
       if (!deu) return;
-      janelaCampanhas();
+      if (aberta(fNova)) janelaCampanhas();
       toast('Campanha ' + nova.nome + ' criada. Ela começa vazia: diga quem participa em “Jogadores…”.', 'Desfazer', async () => { try { await mesas.apagarCampanha(nova.id); toast('Desfeito: a campanha ' + nova.nome + ' não existe mais.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } }, 12000);
     });
     abrirJanela(h('div', { class: 'dl', id: 'f-camps' },
@@ -943,7 +976,7 @@ dialog::backdrop { background: var(--scrim); }
     enviarCom(f, err, ok, async () => {
       await assentar();
       const c = await mesas.criarCampanha(nome, true);
-      fecharJanela();
+      if (aberta(f)) fecharJanela();
       toast('Campanha ' + c.nome + ' criada, com o que a mesa já tinha.', 'Desfazer', async () => { try { await assentar(); await mesas.desfazerCampanhas(c.id); toast('Desfeito: a mesa voltou a ser como era, sem campanhas.'); } catch (e) { toast(e.message); } }, 20000);
     });
     abrirJanela(f);
@@ -980,7 +1013,7 @@ dialog::backdrop { background: var(--scrim); }
     enviarCom(f, err, ok, async () => {
       const mudas = gente.map((m, i) => ({ m, sim: caixas[i].checked })).filter(x => x.sim !== antes.has(x.m.usuario_id));
       for (const x of mudas) await mesas.participar(c.id, x.m.usuario_id, x.sim);
-      janelaCampanhas();
+      if (aberta(f)) janelaCampanhas();         // (fechada enquanto salvava: continua fechada; o aviso abaixo diz o que mudou)
       if (!mudas.length) return;
       toast(mudas.length > 1 ? 'Os jogadores da campanha ' + c.nome + ' foram atualizados.' : mudas[0].m.nome + (mudas[0].sim ? ' agora participa da campanha ' : ' não participa mais da campanha ') + c.nome + '.', 'Desfazer',
         async () => { try { for (const x of mudas) await mesas.participar(c.id, x.m.usuario_id, !x.sim); toast('Desfeito: os jogadores da campanha ' + c.nome + ' voltaram a ser os de antes.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } }, 12000);
@@ -1002,7 +1035,7 @@ dialog::backdrop { background: var(--scrim); }
         const r = await mesas.mudarCampanha(c.id, { nome: novo });
         toast('A campanha agora se chama ' + r.nome + '.', 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { nome: antes }); toast('A campanha voltou a se chamar ' + antes + '.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
       }
-      janelaCampanhas();
+      if (aberta(f)) janelaCampanhas();
     });
     abrirJanela(f); campo.focus(); campo.select();
   }
@@ -1074,7 +1107,7 @@ dialog::backdrop { background: var(--scrim); }
         const ficou = await mesas.renomear(novo);
         toast('A mesa agora se chama ' + ficou + '.', 'Desfazer', async () => { try { await mesas.renomear(antes); toast('A mesa voltou a se chamar ' + antes + '.'); } catch (e) { toast(e.message); } });
       }
-      fecharJanela();
+      if (aberta(f)) fecharJanela();
     });
     abrirJanela(f); campo.focus(); campo.select();
   }
@@ -1095,7 +1128,7 @@ dialog::backdrop { background: var(--scrim); }
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => {
       if (campo.value.trim().toLowerCase() !== a.nome.trim().toLowerCase()) throw new Error('O nome não confere. Nada foi apagado.');
-      await mesas.apagar(); fecharJanela(); toast('Mesa apagada.');
+      await mesas.apagar(); if (aberta(f)) fecharJanela(); toast('Mesa apagada.');
     });
     abrirJanela(f); campo.focus();
   }
@@ -1599,20 +1632,84 @@ dialog::backdrop { background: var(--scrim); }
       if (typeof v !== 'string' || !v || v === VERSAO || v === publicada) return;
       publicada = v;
       btnVersao.hidden = false;
+      // o que a versão nova traz já vem agora: a janela do botão abre com a lista pronta (nada aparece depois, empurrando)
+      lerNovidades(true).then(l => { if (publicada === v && l) novasDaPublicada = l.filter(x => cmpVersao(x.versao, VERSAO) > 0); });
       toast('Há uma versão nova do site. Recarregue quando puder: botão “Versão nova”, no topo.', null, null, 9000);
     } catch (e) { /* sem rede agora: confere de novo depois */ }
   }
   btnVersao.addEventListener('click', () => {
+    const novas = novasDaPublicada || [];
     const f = h('form', { class: 'dl' }, h('h2', { text: 'Recarregar para a versão nova?' }),
-      h('p', { text: 'O site foi atualizado. O que você fez já está guardado. Recarregar leva alguns segundos e traz as correções e as novidades.' }),
+      h('p', { text: 'O site foi atualizado. O que você fez já está guardado. Recarregar leva alguns segundos e traz as correções e as novidades' + (novas.length ? ':' : '.') }),
+      novas.length ? h('div', { class: 'nov', id: 'nov-nova' }, novas.map(blocoNovidades)) : null,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Depois', onclick: fecharJanela }), h('button', { type: 'submit', class: 'btn pri', text: 'Recarregar agora' })));
     f.addEventListener('submit', ev => { ev.preventDefault(); location.reload(); });
     abrirJanela(f);
+    if (novas.length) marcarVistas(novas);        // (já viu o que vem: depois de recarregar, a bolinha não acende por isso)
   });
   setTimeout(conferirVersao, 60 * 1000);
   setInterval(() => { if (!document.hidden) conferirVersao(); }, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - conferidaEm > 60 * 1000) conferirVersao(); });
   window.__conferirVersao = conferirVersao;      // (para os testes)
+
+  /* ================= novidades =================
+     O que muda em cada versão (novidades.json, a mais nova primeiro). Nada abre sozinho: a janela do botão "Versão
+     nova" mostra o que a versão nova traz, e o item "Novidades" do menu da conta guarda a lista. Uma bolinha no canto
+     do botão da conta avisa, neste aparelho, que há novidade que a pessoa ainda não abriu. Todos veem tudo; o que é só
+     do mestre vem marcado "para o mestre". */
+  function cmpVersao(a, b) {           // '2026.10.08-1' contra '2026.10.07-3', parte por parte (e '-10' depois de '-9')
+    const x = String(a).split(/[.-]/).map(Number), y = String(b).split(/[.-]/).map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; }
+    return 0;
+  }
+  async function lerNovidades(fresca) {          // fresca: a lista que está publicada agora (para a versão nova)
+    try {
+      const r = await fetch('novidades.json?' + (fresca ? 't=' + Date.now() : 'v=' + encodeURIComponent(VERSAO)), { cache: fresca ? 'no-store' : 'default' });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return (j && Array.isArray(j.versoes) ? j.versoes : [])
+        .filter(v => v && typeof v.versao === 'string' && v.versao && Array.isArray(v.itens) && v.itens.some(i => i && typeof i.texto === 'string' && i.texto.trim()))
+        .sort((a, b) => cmpVersao(b.versao, a.versao));
+    } catch (e) { return null; }
+  }
+  function naoVistas() { const vista = ler(CHAVE_NOV) || '0'; return (novidades || []).filter(v => cmpVersao(v.versao, vista) > 0); }
+  function marcarVistas(lista) {
+    const vista = ler(CHAVE_NOV) || '0', nova = (lista || []).reduce((m, v) => cmpVersao(v.versao, m) > 0 ? v.versao : m, vista);
+    if (nova !== vista) gravar(CHAVE_NOV, nova);
+    pintarPonto();
+  }
+  function pintarPonto() {            // (chamada também pela pintura do botão da conta, que pode vir antes desta parte)
+    const dica = ' · há novidades no site', tem = !!conta.usuario && naoVistas().length > 0, p = btnConta.querySelector(':scope > .pt');
+    if (tem && !p) btnConta.append(h('i', { class: 'pt', 'aria-hidden': 'true' }));
+    else if (!tem && p) p.remove();
+    btnConta.title = btnConta.title.replace(dica, '') + (tem ? dica : '');
+  }
+  function dataPt(d) { const x = /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d + 'T12:00:00') : null; return x && !isNaN(x) ? x.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
+  function blocoNovidades(v) {
+    const tipos = [['novo', 'Novo'], ['melhorou', 'Melhorou'], ['consertado', 'Consertado']];
+    const b = h('section', { class: 'nov-v', 'data-versao': v.versao },
+      h('h3', { text: v.titulo ? String(v.titulo) : 'Versão ' + v.versao }),
+      h('div', { class: 'qd', text: [dataPt(v.data), 'versão ' + v.versao].filter(Boolean).join(' · ') }));
+    const itens = v.itens.filter(i => i && typeof i.texto === 'string' && i.texto.trim());
+    for (const [k, rot] of tipos) {
+      const doTipo = itens.filter(i => (tipos.some(t => t[0] === i.tipo) ? i.tipo : 'novo') === k);
+      if (doTipo.length) b.append(h('div', { class: 'nov-g', 'data-tipo': k }, h('b', { text: rot }),
+        h('ul', {}, doTipo.map(i => h('li', {}, i.texto.trim(), i.mestre ? h('span', { class: 'pm', text: 'para o mestre' }) : null)))));
+    }
+    return b;
+  }
+  async function janelaNovidades() {
+    if (!novidades) { const l = await lerNovidades(false); if (l) novidades = l.filter(v => cmpVersao(v.versao, VERSAO) <= 0); }
+    const f = h('form', { class: 'dl', id: 'f-novidades' }, h('h2', { text: 'Novidades' }),
+      novidades && novidades.length ? h('div', { class: 'nov', id: 'nov-lista' }, novidades.map(blocoNovidades))
+        : h('p', { text: novidades ? 'Ainda não há novidades registradas.' : 'Não deu para carregar as novidades agora. Tente de novo daqui a pouco.' }),
+      h('div', { class: 'pe' }, h('button', { type: 'submit', class: 'btn pri', text: 'Fechar' })));
+    f.addEventListener('submit', ev => { ev.preventDefault(); fecharJanela(); });
+    abrirJanela(f);
+    if (novidades) marcarVistas(novidades);
+  }
+  // a lista desta versão vem uma vez, logo ao abrir (o navegador guarda; muda só quando a versão muda)
+  lerNovidades(false).then(l => { if (l && !novidades) { novidades = l.filter(v => cmpVersao(v.versao, VERSAO) <= 0); pintarPonto(); } });
 
   async function aoEntrar() {
     pintarConta();
