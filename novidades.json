@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.08-3",
+      "data": "2026-10-08",
+      "titulo": "Mapa-múndi: hexágonos, terreno e viagem em cubos",
+      "itens": [
+        { "tipo": "novo", "mestre": true, "texto": "A grade de hexágonos no Mapa-múndi: na nova aba Terreno, o mestre define o tamanho do hexágono — ou mede com a régua, arrastando sobre alguns hexágonos da imagem —, a orientação (com a ponta ou com um lado para cima), a posição e se a grade aparece para todos." },
+        { "tipo": "melhorou", "texto": "As distâncias do mundo agora são em cubos, como nas fichas: um hexágono tem 5 cubos. A rota diz quantos hexágonos tem, quanto custa pelo terreno e quantos dias leva." },
+        { "tipo": "novo", "mestre": true, "texto": "Tipos de terreno, cada um com o seu custo em cubos por hexágono (Planície 5, Colina 8, Floresta 10, Montanha 15…): dá para mudar o nome, a cor e o custo, criar outros, e pintar o terreno de hexágono em hexágono com a ferramenta Terreno (tecla H), num pincel de 1, 7 ou 19 hexágonos." },
+        { "tipo": "novo", "mestre": true, "texto": "Custo próprio: o mestre pode mudar quanto custa um hexágono só, ou dar um custo a uma região inteira. Com a ferramenta Terreno, a dica diz quanto custa o hexágono embaixo do cursor e de onde vem esse custo." },
+        { "tipo": "novo", "mestre": true, "texto": "A régua mede em hexágonos: quantos há em linha reta, os cubos disso e quanto dá pelo terreno de cada um." },
+        { "tipo": "novo", "mestre": true, "texto": "Viagem de hexágono em hexágono: cada grupo anda os cubos por dia dele (30 de começo) e gasta, em cada hexágono, o custo do terreno. O que sobra fica para o dia seguinte — atravessar uma montanha de 15 cubos andando 10 por dia leva dois dias." },
+        { "tipo": "melhorou", "mestre": true, "texto": "“Andar 1 dia” também passa o dia no calendário (um Desfazer volta as duas coisas), e com dois ou mais grupos viajando a aba Hoje oferece “Andar 1 dia com todos”: cada um anda o seu, num dia só." },
+        { "tipo": "melhorou", "texto": "Os jogadores veem a grade, quando o mestre a mostra, e o terreno dos hexágonos à vista; o que está sob a névoa e os custos que o mestre mudou continuam só com ele." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Os mapas que já existiam continuam iguais: a escala em km vira a grade que dá a mesma escala (1 km = 1 cubo), escondida, e o ritmo de cada grupo vira cubos por dia (lento 20, normal 30, rápido 40)." }
+      ]
+    },
+    {
       "versao": "2026.10.08-2",
       "data": "2026-10-08",
       "titulo": "Acampamento: rações, aura e caravana",

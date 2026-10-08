@@ -19,7 +19,7 @@
   const $ = id => document.getElementById(id);
   const CHAVE = 'tinycats:mundo:v1';                 // { atual, mapas: { [id]: Mapa } } — sem mesa
   const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
-  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'n', 'd'];
+  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'n', 'd'];
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
@@ -69,7 +69,8 @@
     sel: [], ferramenta: 'sel',
     // opções das ferramentas; oculto = o que for criado já nasce escondido dos jogadores (para preparar um segredo
     // num mapa que eles estão vendo, sem que ele apareça no meio do caminho)
-    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false },
+    // (ter/terModo/custo/hexPincel: o pincel da ferramenta Terreno — o terreno, ou o custo próprio, e quantos hexágonos)
+    opt: { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0 },
     gesto: false,                                    // a tela liga durante um arrasto ou desenho
     salvo: { estado: 'ok', texto: '' },
     pronto: false,

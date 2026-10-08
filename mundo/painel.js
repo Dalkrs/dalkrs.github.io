@@ -1,6 +1,6 @@
 /* Tiny Cats · Mapa-múndi · o painel.
    A barra de cima (seletor de mapas, data, "salvo", ver como jogador, desfazer, mostrar ou esconder o painel), o painel
-   com as abas Seleção, Hoje, Facções e Mapa, o estado vazio, as janelas (<dialog>) e os avisos (App.toast).
+   com as abas Seleção, Hoje, Facções, Terreno e Mapa, o estado vazio, as janelas (<dialog>) e os avisos (App.toast).
    Nada aqui muda o mapa direto: tudo passa por App.mudar. Campo de texto vira UM passo de desfazer quando a pessoa
    termina de editar (change: Enter ou ao sair do campo), nunca a cada tecla.
    O painel é refeito a cada mudança, mas por cima do que já está na tela (compara e ajusta só o que mudou): quem está
@@ -12,6 +12,7 @@
     { id: 'selecao', nome: 'Seleção' },
     { id: 'hoje', nome: 'Hoje' },
     { id: 'faccoes', nome: 'Facções' },
+    { id: 'terreno', nome: 'Terreno', mestre: true },
     { id: 'mapa', nome: 'Mapa', mestre: true },
   ];
   const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente' };
@@ -87,8 +88,17 @@
   const achar = (m, id) => (m && Array.isArray(m.objs) && id ? m.objs.find(o => o.id === id) : null) || null;
   const mesmoMapa = id => !!App.mapa && App.mapa.id === id && App.podeEditar();   // depois de uma janela: ainda é o mesmo mapa?
   const facDe = (m, id) => (m && Array.isArray(m.faccoes) && id ? m.faccoes.find(f => f.id === id) : null) || null;
-  const temEscala = m => !!(m && m.escala && m.escala.kmPorUn > 0);
-  const km = (m, un) => N().kmDe(m, un);
+  // a distância do mundo é em cubos (um hexágono = 5), e é a grade de hexágonos que diz quantas unidades dá um cubo
+  const temGrade = m => !!(m && m.grade && m.grade.tam > 0);
+  const cubos = (m, un) => N().cubosDe(m, un);
+  const plHex = n => (n === 1 ? '1 hexágono' : fmt(n, 0) + ' hexágonos');
+  const diasTxt = d => (d <= 0 ? 'menos de um dia' : fmt(d, 1) + (Math.round(d * 10) / 10 <= 1 ? ' dia' : ' dias'));
+  // uma rota em hexágonos: quantos, e quanto custa de ponta a ponta pelo terreno (sem grade: null)
+  function rotaHex(m, rt) {
+    if (!temGrade(m) || !rt || !Array.isArray(rt.pts) || rt.pts.length < 2) return null;
+    const v = N().viagem(m, { rota: rt.id });
+    return v ? { hexes: v.cam.length - 1, cubos: v.total } : null;
+  }
   const dataTxt = (m, dia) => N().textoData(m.cal, dia);
   const ler = () => { try { const v = JSON.parse(localStorage.getItem(CHAVE_UI) || 'null'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } };
   function lembrar(campos) { try { localStorage.setItem(CHAVE_UI, JSON.stringify(Object.assign(ler(), campos))); } catch (e) { /* sem armazenamento: só não lembra */ } }
@@ -160,16 +170,16 @@
     const diag = Math.hypot(m.larg, m.alt);
     if (perto && dm <= diag * 0.12) {
       const n = perto.nome.trim();
-      partes.push(dm < diag * 0.008 ? 'em ' + n : temEscala(m) ? 'a ' + fmt(km(m, dm), 0) + ' km de ' + n : 'perto de ' + n);
+      partes.push(dm < diag * 0.008 ? 'em ' + n : temGrade(m) ? 'a ' + fmt(cubos(m, dm), 0) + ' cubos de ' + n : 'perto de ' + n);
     }
     return partes.length ? partes.join(' · ') : 'Em terras sem nome';
   }
   function progressoTxt(m, g) {
     const r = achar(m, g.rota);
     if (!r) return '';
-    if (!temEscala(m)) return 'Na rota ' + nomeDe(r, m);
-    const total = km(m, N().compPolilinha(r.pts));
-    return fmt(g.prog, 0) + ' de ' + fmt(total, 0) + ' km · ' + nomeDe(r, m);
+    const v = temGrade(m) ? N().viagem(m, g) : null;
+    if (!v) return 'Na rota ' + nomeDe(r, m);
+    return fmt(Math.min(g.prog, v.total), 0) + ' de ' + fmt(v.total, 0) + ' cubos · ' + nomeDe(r, m);
   }
 
   /* ---------------- re-render por cima (morph) ---------------- */
@@ -743,33 +753,30 @@
     });
     document.body.append(jsonArq);
   }
-  async function medirEscala() {
+  /* A grade pela régua: a pessoa arrasta sobre alguns hexágonos da imagem (ou uma distância que ela conhece) e diz
+     quantos hexágonos — ou quantos cubos — a linha tem. */
+  async function medirGrade() {
     const T = Tela();
     if (!T || typeof T.medir !== 'function' || !App.podeEditar()) { App.toast('A régua não está disponível agora.'); return; }
     const idMapa = App.mapa.id, sd = $('side'), saiu = estreito() && sd && !sd.classList.contains('fechado');
     if (saiu) definirPainel(false);                     // no celular o painel cobre o mapa
     const toque = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
-    const dica = toast('Arraste no mapa sobre uma distância que você conhece.' + (toque ? '' : ' Esc cancela.'), 'Cancelar', () => App.usarFerramenta('sel'), 15000);
+    const dica = toast('Arraste no mapa sobre alguns hexágonos da imagem, de um centro a outro (ou sobre uma distância que você conhece).' + (toque ? '' : ' Esc cancela.'), 'Cancelar', () => App.usarFerramenta('sel'), 20000);
     let un = null;
     try { un = await T.medir(); } catch (e) { console.error(e); }
     dica();
     if (saiu) definirPainel(true);
     if (un == null || !mesmoMapa(idMapa)) return;
-    if (!(un >= 1)) { App.toast('A linha ficou curta demais. Tente de novo, de uma ponta à outra.'); return; }
-    const kmLinha = await janela({ titulo: 'Quantos km tem essa linha?', ok: 'Definir a escala', texto: 'A linha mede ' + fmt(un, 0) + ' unidades do mapa.',
-      campos: [{ id: 'km', rotulo: 'Distância em km', tipo: 'decimal', valor: '', ph: 'Ex.: 120' }],
-      ler: v => { const n = lerNum(v.km); if (!(n > 0)) throw new Error('Escreva quantos km, um número maior que zero.'); return n; } });
-    if (kmLinha == null || !mesmoMapa(idMapa)) return;
-    App.mudar('definir a escala', m => { definirEscala(m, kmLinha / un); });
-    App.toast('Escala definida: 100 unidades = ' + fmt(kmLinha / un * 100, 2) + ' km.');
-  }
-
-  // Trocar a escala leva junto o progresso dos grupos (guardado em km): cada um continua no mesmo ponto da rota, sem
-  // pular para trás nem para o fim no próximo "Andar 1 dia".
-  function definirEscala(m, kmPorUn) {
-    const antes = m.escala.kmPorUn;
-    m.escala.kmPorUn = kmPorUn;
-    if (antes > 0 && kmPorUn > 0) for (const g of m.objs) if (g.k === 'g' && g.prog > 0) g.prog = g.prog * kmPorUn / antes;
+    if (!(un >= 4)) { App.toast('A linha ficou curta demais. Tente de novo, de uma ponta à outra.'); return; }
+    const r = await janela({ titulo: 'Quanto tem essa linha?', ok: 'Definir a grade', texto: 'A linha mede ' + fmt(un, 0) + ' unidades do mapa. Um hexágono tem 5 cubos.',
+      campos: [{ id: 'n', rotulo: 'Quanto', tipo: 'decimal', valor: '', ph: 'Ex.: 4' }, { id: 'u', rotulo: 'Em', tipo: 'select', valor: 'hex', opcoes: [['hex', 'hexágonos'], ['cubos', 'cubos']] }],
+      ler: v => { const n = lerNum(v.n); if (!(n > 0)) throw new Error('Escreva quantos, um número maior que zero.'); return { n, u: v.u }; } });
+    if (r == null || !mesmoMapa(idMapa)) return;
+    const hexes = r.u === 'cubos' ? r.n / N().CUBOS_HEX : r.n, tam = un / hexes;
+    if (!(tam >= 4 && tam <= 20000)) { App.toast('Com essa medida, cada hexágono teria ' + fmt(tam, 1) + ' unidades do mapa. Use de 4 a 20.000.'); return; }
+    if (App.mudar('definir a grade', m => { m.grade.tam = Math.round(tam * 100) / 100; }) !== false) {
+      avisoDesfazer('Grade definida: cada hexágono tem ' + fmt(tam, 1) + ' unidades do mapa (5 cubos).' + (App.mapa.grade.on ? '' : ' Para ver a grade, marque "Mostrar a grade".'));
+    }
   }
 
   /* ================= janelas e avisos ================= */
@@ -954,7 +961,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 
@@ -1019,7 +1026,7 @@
     if (o.k === 'm' && o.rumor) out.push(h('p', null, h('span', { class: 'tag tensao', text: 'boato' }), ' ', h('small', { class: 'note', text: 'Pode ser verdade ou não.' })));
     if (o.k === 'e') {
       out.push(nota('Desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini) + ' · força ' + o.forca + ' de 3'));
-      if (temEscala(v)) out.push(nota('Alcance hoje: cerca de ' + fmt(km(v, N_.raioNoDia(o, v.cal.dia)), 0) + ' km ao redor.'));
+      if (temGrade(v)) out.push(nota('Alcance hoje: cerca de ' + fmt(cubos(v, N_.raioNoDia(o, v.cal.dia)), 0) + ' cubos ao redor.'));
     }
     if (o.k === 'g') {
       out.push(nota(ondeEsta(v, o)));
@@ -1028,8 +1035,8 @@
     }
     if (o.k === 'r') { const f = facDe(v, o.fac); if (f) out.push(h('p', { class: 'note' }, h('i', { class: 'bola', style: { background: f.cor } }), ' Território de ' + nomeFac(f))); }
     if (o.k === 't') {
-      const un = N_.compPolilinha(o.pts);
-      out.push(nota((N_.VIAS[o.via] || N_.VIAS.trilha).nome + ' · ' + (temEscala(v) ? fmt(km(v, un), 0) + ' km' : fmt(un, 0) + ' unidades do mapa')));
+      const rh = rotaHex(v, o);
+      out.push(nota((N_.VIAS[o.via] || N_.VIAS.trilha).nome + ' · ' + (rh ? plHex(rh.hexes) + ' · ' + fmt(rh.cubos, 0) + ' cubos pelo terreno' : fmt(N_.compPolilinha(o.pts), 0) + ' unidades do mapa')));
     }
     if (o.k === 'f') {
       const a = facDe(v, o.a), b = facDe(v, o.b);
@@ -1130,36 +1137,52 @@
     out.push(h('div', { class: 'row' },
       h('label', { class: 'field cor-campo' }, h('span', { text: 'Cor' }), campoCor('o:' + id + ':cor', 'Cor do grupo', o.cor, grava('mudar a cor', (x, v) => { x.cor = v; }))),
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
-      campoEscolha('o:' + id + ':ritmo', 'Ritmo (por dia)', o.ritmo, Object.keys(N_.RITMOS).map(k => [k, N_.RITMOS[k].nome + ' · ' + N_.RITMOS[k].km + ' km']),
-        grava('mudar o ritmo', (x, v) => { x.ritmo = v; }))));
+      campoNumero('o:' + id + ':cubos', 'Anda por dia (cubos)', o.cubos, grava('mudar quanto o grupo anda', (x, n) => { x.cubos = n; }),
+        { decimal: true, min: 1, max: 9999, erro: 'Use um número de cubos por dia, de 1 a 9999.' })));
     out.push(campoEscolha('o:' + id + ':rota', 'Rota', o.rota || '', [['', rotas.length ? 'Sem rota' : 'Sem rota (desenhe uma com a ferramenta Rota)']].concat(rotas.map(t => [t.id, nomeDe(t, m) + ' · ' + (N_.VIAS[t.via] || N_.VIAS.trilha).nome])),
       grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; })));
     if (rota) {
-      if (temEscala(m)) {
-        const total = km(m, N_.compPolilinha(rota.pts)), pct = total > 0 ? Math.min(100, (o.prog / total) * 100) : 0;
+      const vg = temGrade(m) ? N_.viagem(m, o) : null;
+      if (vg) {
+        const total = vg.total, andado = Math.min(o.prog, total), pct = total > 0 ? Math.min(100, (andado / total) * 100) : 0;
+        const onde = N_.ondeNoCaminho(m, o, vg), falta = Math.max(0, total - andado), ult = vg.cam.length - 1;
         out.push(h('div', { class: 'progresso' },
-          h('div', { class: 'barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(Math.round(total)), 'aria-valuenow': String(Math.round(o.prog)), 'aria-label': 'Progresso na rota' },
+          h('div', { class: 'barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(Math.round(total)), 'aria-valuenow': String(Math.round(andado)), 'aria-label': 'Progresso na rota' },
             h('i', { style: { width: pct.toFixed(1) + '%' } })),
-          h('small', { text: fmt(o.prog, 0) + ' de ' + fmt(total, 0) + ' km · anda ' + fmt(N_.kmPorDia(m, o), 1) + ' km por dia nesta rota' })));
-      } else out.push(h('div', { class: 'row' }, nota('Defina a escala do mapa para medir a viagem.'), botao('Abrir a aba Mapa', () => abrirAba('mapa'), { c: 'sm', k: 'o:ir-escala' })));
+          h('small', { text: fmt(andado, 0) + ' de ' + fmt(total, 0) + ' cubos · ' + (onde.longe ? 'fora da rota' : 'hexágono ' + onde.i + ' de ' + ult)
+            + (falta > 0 ? ' · faltam cerca de ' + diasTxt(falta / Math.max(1, o.cubos)) : ' · chegou') })));
+      } else out.push(h('div', { class: 'row' }, nota('Defina a grade de hexágonos do mapa para medir a viagem.'), botao('Abrir a aba Terreno', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
     }
     out.push(linha(
-      botao('Andar 1 dia', () => andar(id), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'Move o grupo pela rota. A data não muda.' : 'Escolha uma rota primeiro' }),
+      botao('Andar 1 dia', () => andar(id), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'Move o grupo pela rota, de hexágono em hexágono, e passa o dia' : 'Escolha uma rota primeiro' }),
       botao('Sortear encontro', () => sortearGrupo(id), { k: 'o:sortear', title: 'Usa a tabela de encontros da região onde o grupo está' })));
     if (rota && (o.prog > 0 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5)) {
       out.push(linha(botao('Pôr no começo da rota', () => mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; }), { c: 'sm', k: 'o:comeco' })));
     }
-    out.push(nota('Andar não muda a data. Passe o dia quando quiser, na barra de cima ou na aba Hoje.'));
+    out.push(nota('Andar 1 dia passa o dia: cada hexágono gasta os cubos do terreno dele (Floresta, Montanha… na aba Terreno). O que sobra rumo ao próximo fica para o dia seguinte.'));
     if (naCasca()) out.push(linha(botaoAcampar()));
     if (encontro && encontro.grupo === id) out.push(cartaoEncontro());
     return secao('Grupo', out);
   }
+  // Um dia de viagem com todos os grupos que têm rota: cada um anda o dele, e o dia passa uma vez só.
+  function andarTodos() {
+    if (!App.podeEditar()) return;
+    const m0 = App.mapa, feitos = [];
+    for (const g of m0.objs) if (g.k === 'g' && g.rota) { const r = N().andarUmDia(m0, g.id); if (r.ok) feitos.push([g.id, r]); }
+    if (!feitos.length) { App.toast('Nenhum grupo andou: sem rota, fora dela ou já no fim.'); return; }
+    const ok = App.mudar('andar 1 dia com todos', mm => {
+      for (const [id, r] of feitos) { const g = achar(mm, id); if (g) { g.x = r.x; g.y = r.y; g.prog = r.prog; } }
+      mm.cal.dia += 1;
+    });
+    if (ok !== false) avisoDesfazer((feitos.length === 1 ? 'Um grupo andou' : feitos.length + ' grupos andaram') + '. Passou o dia: hoje é ' + dataTxt(App.mapa, App.mapa.cal.dia) + '.');
+  }
+  // Um dia de viagem: o grupo anda pela rota e o dia passa (um passo de desfazer só, para as duas coisas).
   function andar(id) {
     if (!App.podeEditar()) return;
     const r = N().andarUmDia(App.mapa, id);
     if (!r.ok) { App.toast((r.msg || 'O grupo não andou') + '.'); return; }
-    const ok = mudarObj(id, 'andar 1 dia', g => { g.x = r.x; g.y = r.y; g.prog = r.prog; });
-    if (ok !== false) avisoDesfazer(r.msg + '. A data não mudou.');
+    const ok = App.mudar('andar 1 dia', mm => { const g = achar(mm, id); if (!g) return false; g.x = r.x; g.y = r.y; g.prog = r.prog; mm.cal.dia += 1; });
+    if (ok !== false) avisoDesfazer(r.msg + '. Passou o dia: hoje é ' + dataTxt(App.mapa, App.mapa.cal.dia) + '.');
   }
   function secRegiao(o, m, grava) {
     const id = o.id, f = facDe(m, o.fac), out = [];
@@ -1173,6 +1196,9 @@
         h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Sem cor: aparece tracejada' }),
         o.cor ? botao('Tirar a cor', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null));
     }
+    // o custo de viajar por aqui: vale para cada hexágono com o centro dentro dela (menos o que tem custo próprio)
+    out.push(campoNumero('o:' + id + ':custo', 'Custo de cada hexágono aqui (cubos)', o.custo, grava('mudar o custo da região', (x, n) => { x.custo = n; }),
+      { decimal: true, min: 0.1, max: 9999, vazio: null, ph: 'o do terreno', dica: 'Vazio: cada hexágono custa o do terreno dele. Só o mestre vê.' }));
     return secao('Região', out);
   }
   // Tabela de encontros: uma linha por resultado; "3: Lobos famintos" = peso 3.
@@ -1202,8 +1228,8 @@
       encontro && !encontro.grupo && encontro.regiao === id ? cartaoEncontro() : null);
   }
   function secEvento(o, m, grava) {
-    const N_ = N(), E = N_.EVENTOS, id = o.id, dia = m.cal.dia, ini = o.ini == null ? dia : o.ini, ke = temEscala(m), un = ke ? 'km' : 'unid.';
-    const paraUn = n => (ke ? N_.unidadesDe(m, n) : n), deUn = n => (ke ? km(m, n) : n);
+    const N_ = N(), E = N_.EVENTOS, id = o.id, dia = m.cal.dia, ini = o.ini == null ? dia : o.ini, ke = temGrade(m), un = ke ? 'cubos' : 'unid.';
+    const paraUn = n => (ke ? N_.unidadesDeCubos(m, n) : n), deUn = n => (ke ? cubos(m, n) : n);
     const out = [];
     out.push(h('div', { class: 'row' },
       campoEscolha('o:' + id + ':tipo', 'Tipo', o.tipo, Object.keys(E).map(k => [k, E[k].nome]), grava('mudar o tipo do evento', (x, v) => { x.tipo = v; })),
@@ -1228,7 +1254,7 @@
     out.push(nota('O raio é o do primeiro dia. Crescimento negativo encolhe; quando o raio chega a zero, o evento acaba.'));
     const st = statusEvento(o, dia), r = N_.raioNoDia(o, dia);
     out.push(h('p', { class: 'status' }, h('span', { class: 'tag' + (st === 'acontecendo hoje' ? ' alianca' : ''), text: st }),
-      st === 'acontecendo hoje' ? ' raio hoje: ' + (ke ? fmt(km(m, r), 1) + ' km' : fmt(r, 0) + ' unidades') : '',
+      st === 'acontecendo hoje' ? ' raio hoje: ' + (ke ? fmt(cubos(m, r), 1) + ' cubos' : fmt(r, 0) + ' unidades') : '',
       o.fim != null ? ' · termina em ' + dataTxt(m, o.fim) : ''));
     return secao('Evento', out);
   }
@@ -1241,17 +1267,15 @@
     if (dur != null) x.fim = d + dur;
   }
   function secRota(o, m, grava) {
-    const N_ = N(), id = o.id, via = N_.VIAS[o.via] || N_.VIAS.trilha, un = N_.compPolilinha(o.pts), out = [];
-    out.push(campoEscolha('o:' + id + ':via', 'Por onde', o.via, Object.keys(N_.VIAS).map(k => [k, N_.VIAS[k].nome]), grava('mudar a via', (x, v) => { x.via = v; })));
-    if (temEscala(m)) {
-      const k = km(m, un);
-      out.push(h('p', { class: 'status' }, h('b', { text: fmt(k, 0) + ' km' }), ' de ponta a ponta'));
-      out.push(h('div', { class: 'tabela' }, Object.keys(N_.RITMOS).map(r => {
-        const rr = N_.RITMOS[r], d = k / (rr.km * via.mult);
-        return h('div', null, h('span', { text: 'Ritmo ' + rr.nome.toLowerCase() }), h('b', { text: fmt(d, 1) + (d > 0 && d <= 1 ? ' dia' : ' dias') }));
-      })));
-    } else out.push(h('div', { class: 'row' }, nota(fmt(un, 0) + ' unidades do mapa. Com a escala, aparecem km e dias de viagem.'), botao('Definir a escala', () => abrirAba('mapa'), { c: 'sm', k: 'o:ir-escala' })));
-    const grupos = m.objs.filter(g => g.k === 'g' && g.rota === id);
+    const N_ = N(), id = o.id, un = N_.compPolilinha(o.pts), out = [];
+    out.push(campoEscolha('o:' + id + ':via', 'Desenho', o.via, Object.keys(N_.VIAS).map(k => [k, N_.VIAS[k].nome]), grava('mudar o desenho da rota', (x, v) => { x.via = v; }),
+      { dica: 'É só o desenho: quanto se anda por dia é o grupo quem diz, e o terreno de cada hexágono pesa no caminho.' }));
+    const rh = rotaHex(m, o), grupos = m.objs.filter(g => g.k === 'g' && g.rota === id);
+    if (rh) {
+      out.push(h('p', { class: 'status' }, h('b', { text: plHex(rh.hexes) }), ' · ' + fmt(rh.cubos, 0) + ' cubos pelo terreno, de ponta a ponta'));
+      const ritmos = grupos.length ? grupos.map(g => [nomeDe(g, m), g.cubos]) : [['A ' + fmt(N_.CUBOS_DIA, 0) + ' cubos por dia', N_.CUBOS_DIA]];
+      out.push(h('div', { class: 'tabela' }, ritmos.map(([nome, c]) => h('div', null, h('span', { text: nome }), h('b', { text: diasTxt(rh.cubos / Math.max(1, c)) })))));
+    } else out.push(h('div', { class: 'row' }, nota(fmt(un, 0) + ' unidades do mapa. Com a grade de hexágonos, aparecem os cubos e os dias de viagem.'), botao('Definir a grade', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
     if (grupos.length) out.push(nota('Nesta rota: ' + grupos.map(g => nomeDe(g, m)).join(', ') + '.'));
     return secao('Rota', out);
   }
@@ -1297,10 +1321,13 @@
         h('button', { type: 'button', class: 'li clic', 'data-k': 'gr-li:' + g.id, onclick: () => irPara(g.id) }, icone(g, v),
           h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: ondeEsta(v, g) }), p ? h('small', { class: 'linha2', text: p }) : null)),
         ed ? h('div', { class: 'row' },
-          botao('Andar 1 dia', () => andar(g.id), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota, title: g.rota ? 'Move o grupo pela rota. A data não muda.' : 'Este grupo não tem rota' }),
+          botao('Andar 1 dia', () => andar(g.id), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota, title: g.rota ? 'Move o grupo pela rota, de hexágono em hexágono, e passa o dia' : 'Este grupo não tem rota' }),
           botao('Sortear encontro', () => sortearGrupo(g.id), { c: 'sm', k: 'gr-sortear:' + g.id })) : null));
     }
-    if (ed && grupos.some(g => g.rota)) gs.push(nota('Andar 1 dia move só o grupo; a data não muda sozinha.'));
+    // (cada "Andar 1 dia" passa o dia: com mais de um grupo viajando, todos andam juntos num dia só)
+    const viajando = grupos.filter(g => g.rota).length;
+    if (ed && viajando > 1) gs.push(linha(botao('Andar 1 dia com todos', andarTodos, { c: 'pri sm', k: 'gr-andar-todos', title: 'Os ' + viajando + ' grupos com rota andam e o dia passa uma vez só' })));
+    if (ed && viajando) gs.push(nota(viajando > 1 ? 'Cada "Andar 1 dia" passa o dia. Com mais de um grupo viajando, "Andar 1 dia com todos" leva todos no mesmo dia.' : 'Andar 1 dia passa o dia.'));
     out.push(secao(grupos.length === 1 ? 'Onde está o grupo' : 'Grupos', gs));
     return out;
   }
@@ -1418,13 +1445,7 @@
       img.push(nota('Em unidades do mapa (de 100 a 30.000).'));
     }
     out.push(secao('Imagem', img));
-    // escala
-    const k100 = temEscala(m) ? m.escala.kmPorUn * 100 : null;
-    out.push(secao('Escala',
-      campoNumero('mapa:escala', '100 unidades do mapa equivalem a (km)', k100, n => App.mudar('mudar a escala', mm => { definirEscala(mm, n / 100); }),
-        { decimal: true, min: 0, vazio: 0, ph: 'sem escala', erro: 'Use um número de km, zero ou mais.' }),
-      nota(k100 ? 'O mapa tem cerca de ' + fmt(km(m, m.larg), 0) + ' × ' + fmt(km(m, m.alt), 0) + ' km.' : 'Sem escala, as viagens e a régua falam em unidades do mapa.'),
-      linha(botao('Medir com a régua…', medirEscala, { k: 'mapa:medir', title: 'Arraste no mapa sobre uma distância conhecida e diga quantos km ela tem' }))));
+    out.push(nota('A escala do mapa é a grade de hexágonos (um hexágono = 5 cubos): fica na aba Terreno.'));
     // calendário
     const cal = m.cal, d = N_.dataDe(cal, cal.dia);
     out.push(secao('Calendário',
@@ -1469,6 +1490,76 @@
       nota('Exportar baixa o mapa inteiro, com a imagem, para guardar ou abrir em outro lugar. Importar cria um mapa novo.'),
       linha(botao('Apagar este mapa…', apagarMapa, { c: 'per', k: 'mapa:apagar' }))));
     return out;
+  }
+  /* ---------------- aba Terreno (só o mestre) ---------------- */
+  function abaTerreno(m) {
+    if (!m || !App.podeEditar()) return [];
+    const gr = m.grade, tem = temGrade(m), out = [h('h3', { text: 'Terreno' })];
+    // a grade
+    const gs = [];
+    gs.push(campoNumero('ter:tam', 'Tamanho do hexágono (unidades do mapa)', tem ? gr.tam : '', n => App.mudar(n ? 'mudar o tamanho da grade' : 'tirar a grade', mm => { mm.grade.tam = n; }),
+      { decimal: true, min: 4, max: 20000, vazio: 0, ph: 'sem grade', erro: 'Use um tamanho de 4 a 20.000 unidades (vazio: sem grade).', dica: 'De um centro ao centro vizinho. Um hexágono = 5 cubos.' }));
+    gs.push(linha(botao('Medir com a régua…', medirGrade, { c: tem ? 'sm' : 'pri', k: 'ter:medir', title: 'Arraste sobre alguns hexágonos e diga quantos são (ou quantos cubos)' })));
+    if (tem) {
+      const passo = Math.max(0.5, Math.round(gr.tam / 10 * 10) / 10);
+      const mover = (dx, dy) => App.mudar('deslocar a grade', mm => { mm.grade.x = Math.round((mm.grade.x + dx) * 100) / 100; mm.grade.y = Math.round((mm.grade.y + dy) * 100) / 100; });
+      gs.push(campoEscolha('ter:orient', 'Hexágonos', gr.orient, [['pe', 'Em pé (com a ponta para cima)'], ['deitado', 'Deitados (com um lado para cima)']], v => App.mudar('virar a grade', mm => { mm.grade.orient = v; })));
+      gs.push(h('div', { class: 'field' }, h('span', { text: 'Encaixar na imagem' }),
+        h('div', { class: 'row setas' },
+          botao('←', () => mover(-passo, 0), { c: 'sm', k: 'ter:esq', title: 'Grade para a esquerda' }), botao('→', () => mover(passo, 0), { c: 'sm', k: 'ter:dir', title: 'Grade para a direita' }),
+          botao('↑', () => mover(0, -passo), { c: 'sm', k: 'ter:cima', title: 'Grade para cima' }), botao('↓', () => mover(0, passo), { c: 'sm', k: 'ter:baixo', title: 'Grade para baixo' }),
+          h('small', { class: 'ajuda', text: 'cada toque: ' + fmt(passo, 1) + ' unidades' }))));
+      gs.push(caixa('ter:on', 'Mostrar a grade', gr.on, v => App.mudar(v ? 'mostrar a grade' : 'esconder a grade', mm => { mm.grade.on = !!v; }),
+        { dica: 'Os jogadores também a veem. Escondida, ela continua medindo as viagens e a régua.' }));
+      const forcas = [['0.15', 'Bem clara'], ['0.35', 'Clara'], ['0.6', 'Forte'], ['0.9', 'Bem forte']];
+      const perto = forcas.reduce((a, b) => (Math.abs(Number(b[0]) - gr.alfa) < Math.abs(Number(a[0]) - gr.alfa) ? b : a))[0];
+      gs.push(campoEscolha('ter:alfa', 'Linhas da grade', perto, forcas, v => App.mudar('mudar as linhas da grade', mm => { mm.grade.alfa = Number(v); }), { off: !gr.on }));
+      gs.push(nota('O mapa tem cerca de ' + fmt(m.larg / gr.tam, 0) + ' × ' + fmt(m.alt / gr.tam, 0) + ' hexágonos (' + fmt(cubos(m, m.larg), 0) + ' × ' + fmt(cubos(m, m.alt), 0) + ' cubos).'));
+    } else gs.push(nota('Sem grade, o mapa não tem escala: a viagem e a régua falam em unidades do mapa. Com ela, tudo passa a ser em cubos.'));
+    out.push(secao('Grade de hexágonos', gs));
+    // os tipos de terreno
+    const uso = new Map();
+    for (const k of Object.keys(m.hexes || {})) { const v = m.hexes[k], t = typeof v === 'string' ? v : v[0]; if (t) uso.set(t, (uso.get(t) || 0) + 1); }
+    const ts = m.terrenos.map(t => {
+      const grava = (rot, fn) => v => App.mudar(rot, mm => { const x = mm.terrenos.find(y => y.id === t.id); if (!x) return false; return fn(x, v); });
+      const custo = campoNumero('ter:' + t.id + ':custo', null, t.custo, grava('mudar o custo de ' + t.nome, (x, n) => { x.custo = n; }), { decimal: true, min: 0.1, max: 9999, erro: 'Use um custo de 0,1 a 9999 cubos.' });
+      custo.setAttribute('aria-label', 'Custo de ' + t.nome + ', em cubos por hexágono');
+      return h('div', { class: 'ter-linha', 'data-ter': t.id },
+        campoCor('ter:' + t.id + ':cor', 'Cor de ' + t.nome, t.cor, grava('mudar a cor de ' + t.nome, (x, v) => { x.cor = v; })),
+        campoTexto('ter:' + t.id + ':nome', null, t.nome, grava('renomear o terreno', (x, v) => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 40, rotulo: 'Nome do terreno' }),
+        custo, h('span', { class: 'un', text: 'cubos' }),
+        h('button', { type: 'button', class: 'ib', 'data-k': 'ter:' + t.id + ':x', title: 'Tirar ' + t.nome + (uso.get(t.id) ? ' (' + plHex(uso.get(t.id)) + ')' : ''), 'aria-label': 'Tirar ' + t.nome, onclick: () => tirarTerreno(t.id) }, glifo(X_SVG, 14)));
+    });
+    out.push(secao('Tipos de terreno',
+      nota('Custo: quantos cubos se gastam para atravessar um hexágono desse terreno. Sem terreno, um hexágono custa os 5 cubos dele.'),
+      ts.length ? h('div', { class: 'ter-lista' }, ts) : nota('Nenhum tipo de terreno.'),
+      linha(botao('+ Tipo de terreno', novoTerreno, { c: 'sm', k: 'ter:novo', off: m.terrenos.length >= N().LIMITES.terrenos }),
+        m.terrenos.length ? null : botao('Os tipos de começo', () => App.mudar('voltar aos tipos de terreno de começo', mm => { mm.terrenos = N().copia(N().TERRENOS_PADRAO); }), { c: 'sm', k: 'ter:padrao' }))));
+    // pintar
+    const pintados = Object.keys(m.hexes || {}).length;
+    out.push(secao('Pintar',
+      nota(pintados ? plHex(pintados) + ' com terreno ou custo próprio.' + [...uso].map(([id, n]) => { const t = m.terrenos.find(x => x.id === id); return t ? ' ' + t.nome + ': ' + n + '.' : ''; }).join('') : 'Nenhum hexágono pintado ainda.'),
+      linha(botao('Pincel de terreno (H)', () => App.usarFerramenta('h'), { c: tem ? 'pri' : 'sm', k: 'ter:pincel', off: !tem, title: tem ? 'Arraste sobre os hexágonos para pintar' : 'Defina a grade primeiro' })),
+      nota('Uma região também pode ter um custo por hexágono (Seleção → a região). O custo próprio de um hexágono vale mais que o da região, que vale mais que o do terreno.')));
+    return out;
+  }
+  function novoTerreno() {
+    let id = null;
+    const feito = App.mudar('novo tipo de terreno', mm => {
+      const usados = new Set(mm.terrenos.map(t => t.id));
+      let n = 1; while (usados.has('t' + n)) n++;
+      id = 't' + n;
+      mm.terrenos.push({ id, nome: 'Terreno ' + n, cor: N().CORES[(mm.terrenos.length + 3) % N().CORES.length], custo: 5 });
+    });
+    if (feito !== false) focarDepois = 'ter:' + id + ':nome';
+  }
+  function tirarTerreno(id) {
+    const t = App.mapa.terrenos.find(x => x.id === id);
+    if (!t) return;
+    const n = Object.values(App.mapa.hexes || {}).filter(v => (typeof v === 'string' ? v : v[0]) === id).length;
+    if (App.mudar('tirar ' + t.nome, mm => { mm.terrenos = mm.terrenos.filter(x => x.id !== id); }) !== false) {
+      avisoDesfazer(t.nome + ' saiu da lista.' + (n ? ' ' + (n === 1 ? 'O hexágono pintado com ele ficou' : 'Os ' + n + ' hexágonos pintados com ele ficaram') + ' sem terreno.' : ''));
+    }
   }
   function lerMeses(s) {
     const meses = [];

@@ -10,7 +10,7 @@
   const MASCARA = 'mundoNevoaMascara';
   const Z_MAX = 8;
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
-  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false };
+  const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0 };
   const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.' };
   // rótulos do desfazer em minúsculas, como os do painel e do App ("Desfazer: novo marcador")
@@ -24,6 +24,7 @@
     { id: 'e', nome: 'Evento', tecla: 'E' },
     { id: 't', nome: 'Rota', tecla: 'T' },
     { id: 'f', nome: 'Frente', tecla: 'F' },
+    { id: 'h', nome: 'Terreno', tecla: 'H' },
     { id: 'n', nome: 'Névoa', tecla: 'N' },
     { id: 'd', nome: 'Régua', tecla: 'D' },
   ];
@@ -39,6 +40,7 @@
     e: '<circle cx="12" cy="12" r="2.6"/><path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M5.6 5.6l2.5 2.5M15.9 15.9l2.5 2.5M5.6 18.4l2.5-2.5M15.9 8.1l2.5-2.5"/>',
     t: '<path d="M4.5 19c3.5 0 4.5-4.5 8-4.5s3.5-6 7-6" stroke-dasharray="2.6 3.2"/><circle cx="4.5" cy="19" r="1.7"/><circle cx="19.5" cy="8.5" r="1.7"/>',
     f: '<path d="M4 4l10.5 10.5M12 17l5-5M15.5 15.5l4 4M20 4 9.5 14.5M7 12l5 5M8.5 15.5l-4 4"/>',
+    h: '<path d="M12 2.8l7.9 4.6v9.2L12 21.2l-7.9-4.6V7.4z"/><path d="M7.4 15.6l3.1-4.6 2 3 1.3-1.7 2.8 3.3"/>',
     n: '<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.7-1.2A4.6 4.6 0 0 0 7 18.5z"/>',
     d: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
   };
@@ -160,15 +162,22 @@
   function defEvento(k) { const E = dicionario('EVENTOS'); return E[k] || E[Object.keys(E)[0]] || { nome: 'Evento', cor: '#f0786e', svg: '' }; }
   function eventoAtivo(o, dia) { try { return !!N().eventoAtivo(o, dia); } catch (e) { return true; } }
   function raioNoDia(o, dia) { try { const r = N().raioNoDia(o, dia); return Number.isFinite(r) ? Math.max(0, r) : o.r; } catch (e) { return o.r; } }
-  function kmDe(m, u) { try { const k = N().kmDe(m, u); return Number.isFinite(k) ? k : 0; } catch (e) { return 0; } }
-  function temEscala(m) { return !!(m && m.escala && m.escala.kmPorUn > 0); }
+  // a distância do mundo é em cubos, e é a grade de hexágonos que diz quantas unidades do mapa dá um cubo
+  function temGrade(m) { return !!(m && m.grade && m.grade.tam > 0); }
+  function cubosDe(m, u) { try { const c = N().cubosDe(m, u); return Number.isFinite(c) ? c : 0; } catch (e) { return 0; } }
+  const plHex = n => (Math.round(n * 10) / 10 === 1 ? '1 hexágono' : num(n, n < 10 ? 1 : 0) + ' hexágonos');
+  // "12 cubos · 2,4 hexágonos" (sem grade: em unidades do mapa)
   function textoDistancia(m, u) {
-    if (!temEscala(m)) return num(u, 0) + ' unidades';
-    const km = kmDe(m, u), rit = (dicionario('RITMOS').normal || {}).km || 30;
-    const tk = km < 10 ? num(km, 1) : num(km, 0), dias = km / rit, d = Math.round(dias * 10) / 10;
-    // arredonda primeiro e escolhe a palavra pelo número que aparece (como no painel): "1,5 dias", "2 dias", "1 dia"
-    const td = dias < 0.1 ? 'menos de um décimo de dia' : num(d, 1) + (d <= 1 ? ' dia' : ' dias');
-    return tk + ' km · ' + td + ' a ritmo normal';
+    if (!temGrade(m)) return num(u, 0) + ' unidades';
+    const c = cubosDe(m, u);
+    return num(c, c < 10 ? 1 : 0) + ' cubos · ' + plHex(c / 5);
+  }
+  // A régua na grade: hexágonos em linha reta, os cubos disso e quanto dá pelo terreno de cada hexágono.
+  function medidaHex(m, a, b) { try { return temGrade(m) ? N().medirHex(m, a, b) : null; } catch (e) { return null; } }
+  function textoRegua(m, a, b) {
+    const r = medidaHex(m, a, b);
+    if (!r) return textoDistancia(m, Math.hypot(b.x - a.x, b.y - a.y));
+    return plHex(r.hexes) + ' · ' + num(r.cubos, 0) + ' cubos' + (Math.abs(r.terreno - r.cubos) > 1e-9 ? ' · pelo terreno: ' + num(r.terreno, 1) + ' cubos' : '');
   }
   function opt(nome) { const o = App && App.opt; return o && o[nome] !== undefined ? o[nome] : OPT_PADRAO[nome]; }
   const diaDaVista = () => (ctxAtual ? ctxAtual.dia : (M && M.cal && M.cal.dia) || 0);
@@ -179,6 +188,8 @@
   let palco, mundoEl, optsEl, dicaEl, railEl, zTxt, svg, fundoEl = null, fundoChave = null;
   const C = {};                                  // camadas do SVG
   let mascara, mascBase, mascOps, nevRect;
+  const GRADE = 'mundoGradeHex';
+  let gradePat = null, gradePath = null, gradeRect = null, hexTer = null, hexChave = null;
   let M = null, indice = new Map(), ctxAtual = null;   // o mapa desenhado no último quadro (App.vista())
   let mapaId = null, L = 0, A = 0, zAplicado = 0;
   const recs = new Map();                        // id → { el, chave }: só reconstrói o objeto que mudou
@@ -302,6 +313,7 @@
     svg.setAttribute('height', Math.max(1, A * V.z));
     svg.style.transform = `scale(${1 / V.z})`;
     for (const el of svg.getElementsByClassName('fixo')) el.setAttribute('transform', tf(el.__x, el.__y));
+    if (gradePath) gradePath.setAttribute('stroke-width', (1.2 / V.z).toFixed(4));
     arrumarRotulos();
     if (!g) desenharSelecao();
     desenharRascunho();
@@ -372,7 +384,7 @@
     if (qTudo) { cancelAnimationFrame(qTudo); qTudo = 0; }
     if (!App || !svg) return;
     // no meio de um arrasto o provisório manda; o resto espera o gesto acabar
-    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel')) { adiado = true; return; }
+    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel' || g.tipo === 'hexpincel')) { adiado = true; return; }
     adiado = false;
     const m = safeVista();
     M = m;
@@ -395,6 +407,7 @@
     svg.setAttribute('viewBox', `0 0 ${L} ${A}`);
     aplicarVista(!tAssentar);
     desenharFundo(m);
+    desenharGrade(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
     ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe() };
     desenharObjetos(m, ctxAtual);
@@ -440,6 +453,56 @@
     }
     fundoEl.style.width = L + 'px';
     fundoEl.style.height = A + 'px';
+  }
+
+  /* A grade de hexágonos: um <pattern> que se repete (barato com qualquer tamanho de mapa), por cima da tinta do
+     terreno de cada hexágono. Aparece com "mostrar a grade" (aba Terreno) e, para o mestre, enquanto ele usa a
+     ferramenta Terreno. */
+  const d3 = v => Math.round(v * 1000) / 1000;
+  function caminhoDaGrade(gr) {
+    // um ladrilho com dois hexágonos (em pé: W × 3s; deitado: o mesmo com x e y trocados); as duas bordas de cada
+    // linha que cai na emenda entram, para ela não sair com meia espessura
+    const s0 = gr.tam / Math.sqrt(3), W = gr.tam, dt = gr.orient === 'deitado';
+    const P = (x, y) => (dt ? d3(y) + ' ' + d3(x) : d3(x) + ' ' + d3(y));
+    const d = 'M' + P(0, 0) + 'L' + P(W / 2, s0 / 2) + 'L' + P(W, 0) + 'M' + P(W / 2, s0 / 2) + 'L' + P(W / 2, 1.5 * s0)
+      + 'M' + P(0, 2 * s0) + 'L' + P(W / 2, 1.5 * s0) + 'L' + P(W, 2 * s0) + 'M' + P(0, 2 * s0) + 'L' + P(0, 3 * s0) + 'M' + P(W, 2 * s0) + 'L' + P(W, 3 * s0);
+    return { d, w: dt ? 3 * s0 : W, h: dt ? W : 3 * s0, x: dt ? gr.x - s0 : gr.x, y: dt ? gr.y : gr.y - s0 };
+  }
+  const usandoTerreno = () => podeEditar() && ferramenta() === 'h';
+  function desenharGrade(m) {
+    const gr = m.grade || {}, ferr = usandoTerreno(), mostrar = temGrade(m) && (!!gr.on || ferr);
+    C.hex.style.display = mostrar ? '' : 'none';
+    if (!mostrar) return;
+    const cg = caminhoDaGrade(gr), chaveG = [cg.d, cg.w, cg.h, cg.x, cg.y].join('|');
+    if (gradePat.__chave !== chaveG) {
+      gradePat.__chave = chaveG;
+      for (const [k, v] of [['x', cg.x], ['y', cg.y], ['width', cg.w], ['height', cg.h]]) gradePat.setAttribute(k, d3(v));
+      gradePath.setAttribute('d', cg.d);
+    }
+    gradePath.setAttribute('stroke-width', (1.2 / (zAplicado || V.z)).toFixed(4));
+    gradeRect.setAttribute('width', L); gradeRect.setAttribute('height', A);
+    gradeRect.style.opacity = String(ferr ? Math.max(gr.alfa || 0, 0.5) : gr.alfa);
+    // a tinta: um path por tipo de terreno, refeito só quando o terreno ou a grade mudam
+    const custo = ferr && mestreVe();
+    const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, custo]);
+    if (chaveT === hexChave) return;
+    hexChave = chaveT;
+    const por = new Map(), custos = [];
+    for (const k of Object.keys(m.hexes || {})) {
+      const v = m.hexes[k], t = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', hx = N().lerChaveHex(k);
+      if (!hx) continue;
+      if (t) por.set(t, (por.get(t) || '') + caminho(N().cantosHex(m, hx.q, hx.r), true));
+      if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
+    }
+    const frag = document.createDocumentFragment();
+    for (const t of m.terrenos || []) { const d = por.get(t.id); if (d) frag.append(s('path', { class: 'hex-ter', d, fill: t.cor, 'data-ter': t.id })); }
+    // o custo próprio de cada hexágono, para o mestre, enquanto ele pinta o terreno
+    if (custo) for (const [hx, c] of custos) {
+      const p = N().centroHex(m, hx.q, hx.r), fx = fixo(p.x, p.y, 'hex-custo');
+      fx.append(s('text', { y: 4, 'text-anchor': 'middle', 'font-size': 11, texto: num(c, 1) }));
+      frag.append(fx);
+    }
+    hexTer.replaceChildren(frag);
   }
 
   /* objetos: cada um vira um <g data-id>; a chave diz quando precisa reconstruir */
@@ -534,12 +597,14 @@
       s('path', { class: 'fre-hit', d }));
     if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
-  // o maior progresso dos grupos nesta rota, em unidades do mapa
+  // até onde os grupos desta rota já andaram (em unidades ao longo dela): o ponto da rota mais perto do mais adiantado
   function andadoDe(m, rt) {
-    let km = 0;
-    for (const o of m.objs || []) if (o.k === 'g' && o.rota === rt.id && o.prog > km) km = o.prog;
-    if (!km || !temEscala(m)) return 0;
-    try { const u = N().unidadesDe(m, km); return Number.isFinite(u) && u > 0 ? um(u) : 0; } catch (e) { return 0; }
+    let s0 = 0;
+    for (const o of m.objs || []) {
+      if (o.k !== 'g' || o.rota !== rt.id || !(o.prog > 0)) continue;
+      try { const q = N().maisPerto(rt.pts, [o.x, o.y]); if (q && q.s > s0) s0 = q.s; } catch (e) { /* núcleo antigo: sem o trecho andado */ }
+    }
+    return s0 > 0 ? um(s0) : 0;
   }
   function rota(g0, o, ctx) {
     if (!Array.isArray(o.pts) || o.pts.length < 2) return;
@@ -613,7 +678,7 @@
     const pincelando = ferramenta() === 'n' && podeEditar();
     const mostrar = !!nv.on || pincelando;
     C.nev.style.display = mostrar ? '' : 'none';
-    if (!g || g.tipo !== 'pincel') C.tra.replaceChildren();
+    if (!g || (g.tipo !== 'pincel' && g.tipo !== 'hexpincel')) C.tra.replaceChildren();
     if (!mostrar) return;
     for (const el of [mascara, mascBase, nevRect]) { el.setAttribute('x', 0); el.setAttribute('y', 0); el.setAttribute('width', L); el.setAttribute('height', A); }
     // mestre vê através (translúcida); jogador e "ver como jogador", opaca. Desligada, só uma sombra enquanto pinta.
@@ -701,20 +766,81 @@
     }
     if (regua) {
       const { a, b } = regua, u = Math.hypot(b.x - a.x, b.y - a.y);
+      // na grade, os hexágonos por onde a régua passa (medindo a grade, não: ela ainda vai mudar)
+      const mh = medindo ? null : medidaHex(M, a, b);
+      if (mh && mh.linha.length <= 600) { let d = ''; for (const hx of mh.linha) d += caminho(N().cantosHex(M, hx.q, hx.r), true); c.append(s('path', { class: 'regua-hex', d })); }
       c.append(s('line', { class: 'regua', x1: um(a.x), y1: um(a.y), x2: um(b.x), y2: um(b.y) }));
       for (const p of [a, b]) { const fx = fixo(p.x, p.y); fx.append(s('circle', { class: 'regua-ponta', r: 4.5 })); c.append(fx); }
       if (u * V.z > 4) {
         const fx = fixo((a.x + b.x) / 2, (a.y + b.y) / 2);
-        fx.append(rotulo(textoDistancia(M, u), -12, 'rotulo regua-txt'));
+        fx.append(rotulo(medindo ? num(u, 0) + ' unidades do mapa' : textoRegua(M, a, b), -12, 'rotulo regua-txt'));
         c.append(fx);
       }
     }
     if (ferramenta() === 'n' && cursor && podeEditar() && !(g && g.toque)) {
       c.append(s('circle', { class: 'pincel', cx: um(cursor.x), cy: um(cursor.y), r: um(raioPincel()) }));
     }
+    // a ferramenta Terreno: os hexágonos que o pincel pega, embaixo do cursor
+    if (ferramenta() === 'h' && cursor && podeEditar() && temGrade(M) && !(g && g.toque)) {
+      const hx = N().hexDe(M, cursor.x, cursor.y);
+      let d = '';
+      for (const x of hexesDoPincel(hx)) d += caminho(N().cantosHex(M, x.q, x.r), true);
+      c.append(s('path', { class: 'pincel-hex', d }));
+    }
   }
   // O tamanho do pincel é em pixels da tela: afastar o zoom pinta áreas maiores, aproximar dá precisão.
   const raioPincel = () => limitar(Number(opt('raio')) || 60, 4, 400) / V.z;
+
+  /* ---- a ferramenta Terreno: pinta o terreno (ou o custo próprio) de hexágono em hexágono ---- */
+  function terrenoEscolhido() { const ts = (M && M.terrenos) || []; return ts.find(t => t.id === opt('ter')) || ts[0] || null; }
+  // o hexágono do meio e, com o pincel maior, os vizinhos (1, 7 ou 19 hexágonos)
+  function hexesDoPincel(hx) {
+    const r = limitar(Math.round(Number(opt('hexPincel')) || 0), 0, 2), out = [];
+    for (let dq = -r; dq <= r; dq++) for (let dr = Math.max(-r, -dq - r); dr <= Math.min(r, -dq + r); dr++) out.push({ q: hx.q + dq, r: hx.r + dr });
+    return out;
+  }
+  function corDoPincel() {
+    const modo = opt('terModo'), t = terrenoEscolhido();
+    return modo === 'ter' ? (t ? t.cor : '#9aa3b5') : modo === 'custo' ? '#e6ab4f' : '#05070c';
+  }
+  function pintarHex(p) {
+    const hx = N().hexDe(M, p.x, p.y);
+    if (!hx) return;
+    const linha = g.ult ? N().linhaHex(g.ult, hx) : [hx], cor = corDoPincel(), meio = (M.grade.tam || 0) / 2;
+    g.ult = hx;
+    for (const c0 of linha) for (const x of hexesDoPincel(c0)) {
+      const k = x.q + ',' + x.r;
+      if (g.hexes.has(k) || !dentroDoMapa(N().centroHex(M, x.q, x.r), meio)) continue;
+      g.hexes.set(k, x);
+      C.tra.append(s('path', { d: caminho(N().cantosHex(M, x.q, x.r), true), fill: cor }));     // a prévia, numa camada à parte
+    }
+  }
+  function aplicarPincelHex(chaves) {
+    const modo = opt('terModo'), t = terrenoEscolhido(), custo = limitar(Number(opt('custo')) || 0, 0.1, 9999);
+    if (modo === 'ter' && !t) { App.toast('Este mapa não tem tipos de terreno. Crie um na aba Terreno.'); return; }
+    const lim = (N().LIMITES && N().LIMITES.hexes) || 20000;
+    const rot = modo === 'ter' ? 'pintar o terreno' : modo === 'nada' ? 'tirar o terreno' : modo === 'custo' ? 'dar custo próprio aos hexágonos' : 'tirar o custo próprio';
+    let passou = false;
+    App.mudar(rot, d => {
+      if (!d.hexes || typeof d.hexes !== 'object') d.hexes = {};
+      for (const k of chaves) {
+        const v = d.hexes[k], tid = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '';
+        let nt = tid, nc = Array.isArray(v) ? v[1] : null;
+        if (modo === 'ter') nt = t.id; else if (modo === 'nada') nt = ''; else if (modo === 'custo') nc = custo; else nc = null;
+        if (!nt && nc == null) delete d.hexes[k]; else d.hexes[k] = nc == null ? nt : [nt, nc];
+      }
+      if (Object.keys(d.hexes).length > lim) { passou = true; return false; }
+    });
+    if (passou) App.toast('O mapa chegou ao limite de ' + num(lim, 0) + ' hexágonos com terreno ou custo próprio. Nada mudou.');
+  }
+  // o que há no hexágono embaixo do cursor (para a dica)
+  function sobOCursor(p) {
+    const hx = N().hexDe(M, p.x, p.y);
+    if (!hx) return '';
+    const i = N().hexInfo(M, hx.q, hx.r);
+    const de = i.de === 'hex' ? ' (custo próprio)' : i.de === 'regiao' ? ' (da região ' + ((i.regiao.nome || '').trim() || 'sem nome') + ')' : i.de === 'base' ? ' (sem terreno)' : '';
+    return 'Aqui: ' + (i.terreno ? i.terreno.nome : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.';
+  }
 
   /* ---- trilho, opções e dica ---- */
   function montarTrilho() {
@@ -755,7 +881,8 @@
     if (!optsEl) return;
     const f = ferramenta(), editar = podeEditar() && !!M;
     const facs = M ? (M.faccoes || []).map(x => [x.id, x.nome, x.cor]) : [];
-    const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null, !!medindo]);
+    const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null, !!medindo,
+      f === 'h' && M ? [temGrade(M), (M.terrenos || []).map(t => [t.id, t.nome, t.cor])] : null]);
     if (!forcar && chave === optsChave) return;
     optsChave = chave;
     // não derruba um seletor aberto: quem está escolhendo termina antes
@@ -780,6 +907,28 @@
       optsEl.append(
         seletor('Lado A', val(opt('a')), lista, v => porOpt('a', v || null)),
         seletor('Lado B', val(opt('b')), lista, v => porOpt('b', v || null)));
+    } else if (f === 'h') {
+      if (!temGrade(M)) optsEl.append(chip({ class: 'chip pri', title: 'A grade de hexágonos fica na aba Terreno', onclick: () => abrirAba('terreno') }, 'Definir a grade de hexágonos…'));
+      else {
+        const t = terrenoEscolhido(), modo = ['ter', 'nada', 'custo', 'semcusto'].includes(opt('terModo')) ? opt('terModo') : 'ter';
+        const sel = h('select', { 'aria-label': 'O que o pincel faz' });
+        for (const x of M.terrenos || []) sel.append(h('option', { value: 'ter:' + x.id, texto: x.nome }));
+        for (const [v, tx] of [['nada', 'Sem terreno'], ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio']]) sel.append(h('option', { value: v, texto: tx }));
+        sel.value = modo === 'ter' ? (t ? 'ter:' + t.id : 'nada') : modo;
+        sel.addEventListener('change', () => {
+          const v = sel.value;
+          if (v.startsWith('ter:')) { porOpt('terModo', 'ter'); porOpt('ter', v.slice(4)); } else porOpt('terModo', v);
+          reabrir(); atualizarDica(); desenharRascunho();
+        });
+        optsEl.append(h('label', { class: 'chip', title: 'O que o pincel pinta nos hexágonos' },
+          h('span', { class: 'amostra', style: 'background:' + (modo === 'ter' && t ? t.cor : modo === 'custo' ? '#e6ab4f' : 'transparent') }), h('span', { texto: 'Pincel' }), sel));
+        if (modo === 'custo') {
+          const ci = h('input', { type: 'number', min: 0.1, max: 9999, step: 0.5, value: String(Number(opt('custo')) || 10), 'aria-label': 'Custo próprio, em cubos por hexágono', class: 'num' });
+          ci.addEventListener('change', () => { const n = Number(String(ci.value).replace(',', '.')); if (Number.isFinite(n) && n > 0) porOpt('custo', Math.round(limitar(n, 0.1, 9999) * 10) / 10); ci.value = String(opt('custo')); atualizarDica(); });
+          optsEl.append(h('label', { class: 'chip', title: 'Quantos cubos custa atravessar estes hexágonos' }, h('span', { texto: 'Custo' }), ci, h('span', { texto: 'cubos' })));
+        }
+        optsEl.append(seletor('Tamanho', String(limitar(Math.round(Number(opt('hexPincel')) || 0), 0, 2)), [['0', '1 hexágono'], ['1', '7 hexágonos'], ['2', '19 hexágonos']], v => { porOpt('hexPincel', Number(v)); desenharRascunho(); }));
+      }
     } else if (f === 'n') {
       const p = opt('pincel') === 'cobrir' ? 'cobrir' : 'revelar';
       const faixa = h('input', { type: 'range', min: 10, max: 240, step: 5, value: limitar(Number(opt('raio')) || 60, 10, 240), 'aria-label': 'Tamanho do pincel' });
@@ -831,7 +980,7 @@
     const tq = toqueGrosso(), Cl = tq ? 'Toque' : 'Clique';
     if (medindo) {
       const u = regua ? Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y) : 0;
-      return u > 0 ? textoDistancia(M, u) + '. Solte para usar esta medida.' : 'Arraste sobre uma distância que você conhece no mapa.' + (tq ? '' : ' Esc cancela.');
+      return u > 0 ? num(u, 0) + ' unidades do mapa. Solte para usar esta medida.' : 'Arraste sobre uma distância que você conhece no mapa (alguns hexágonos da imagem, por exemplo).' + (tq ? '' : ' Esc cancela.');
     }
     if (App.papel === 'mestre' && App.comoJogador) return 'Vendo como jogador: assim os jogadores veem o mapa. Nada aqui muda o mapa.';
     if (!podeEditar()) return tq ? 'Toque num lugar para ler sobre ele. Arraste para andar; pince para aproximar.' : 'Clique num lugar para ler sobre ele. Arraste para andar pelo mapa; a roda do mouse aproxima.';
@@ -856,8 +1005,16 @@
         return base + (nv.on ? (tq ? '' : ' Cada traço é um passo de desfazer.') : ' A névoa está desligada (aba Mapa): os jogadores ainda veem tudo.');
       }
       case 'd':
-        if (regua) { const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y); if (u > 0) return textoDistancia(M, u) + '. Nada é gravado.'; }
-        return 'Arraste para medir uma distância. Nada é gravado.' + (temEscala(M) ? '' : ' Sem escala definida, a medida sai em unidades do mapa.');
+        if (regua) { const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y); if (u > 0) return textoRegua(M, regua.a, regua.b) + '. Nada é gravado.'; }
+        return 'Arraste para medir uma distância. Nada é gravado.' + (temGrade(M) ? '' : ' Sem a grade de hexágonos (aba Terreno), a medida sai em unidades do mapa.');
+      case 'h': {
+        if (!temGrade(M)) return 'Defina a grade de hexágonos primeiro (aba Terreno).';
+        const modo = opt('terModo'), t = terrenoEscolhido();
+        const o = modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
+          : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.';
+        const sob = cursor && !tq ? sobOCursor(cursor) : '';
+        return o + (sob ? ' ' + sob : '') + (tq ? '' : ' Cada traço é um passo de desfazer.');
+      }
     }
     const sel = selecao();
     if (sel.length) {
@@ -1070,7 +1227,14 @@
       C.tra.setAttribute('class', 'c-tra' + (opt('pincel') === 'cobrir' ? ' cobre' : ''));
       cursor = g.p0; pincelar(g.p0); desenharRascunho(); return;
     }
-    if (f === 'd') { comecar(e, 'regua'); regua = { a: g.p0, b: g.p0 }; desenharRascunho(); }
+    if (f === 'd') { comecar(e, 'regua'); regua = { a: g.p0, b: g.p0 }; desenharRascunho(); return; }
+    if (f === 'h') {
+      if (!temGrade(M)) { App.toast('Defina a grade de hexágonos primeiro, na aba Terreno.'); abrirAba('terreno'); return; }
+      comecar(e, 'hexpincel', { hexes: new Map(), ult: null });
+      C.tra.replaceChildren();
+      C.tra.setAttribute('class', 'c-tra hexes');
+      cursor = g.p0; pintarHex(g.p0); desenharRascunho();
+    }
   }
   function aoMover(e) {
     if (!App || !M) return;
@@ -1080,14 +1244,18 @@
     }
     const p = paraMundo(e.clientX, e.clientY);
     if (!g) {
-      if (e.pointerType === 'mouse' || e.pointerType === 'pen') { cursor = p; if (rasc || ferramenta() === 'n') desenharRascunho(); }
+      if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
+        cursor = p;
+        if (rasc || ferramenta() === 'n') desenharRascunho();
+        else if (ferramenta() === 'h') { desenharRascunho(); atualizarDica(); }
+      }
       return;
     }
     if (e.pointerId !== g.pid) return;
     cursor = p;
     const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
     if (!g.moveu) {
-      if (g.tipo !== 'pincel' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
+      if (g.tipo !== 'pincel' && g.tipo !== 'hexpincel' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
       g.moveu = true;
       clearTimeout(tLongo);
       comecouArrastar();
@@ -1104,6 +1272,7 @@
       case 'alca': alcaProvisoria(p); break;
       case 'evento': g.r = Math.hypot(p.x - g.p0.x, p.y - g.p0.y); desenharRascunho(); break;
       case 'pincel': pincelar(p); desenharRascunho(); break;
+      case 'hexpincel': pintarHex(p); desenharRascunho(); break;
       case 'regua': regua.b = p; desenharRascunho(); atualizarDica(); break;
     }
   }
@@ -1176,7 +1345,7 @@
     const p = paraMundo(e.clientX, e.clientY);
     if (gg.tipo === 'pan') soltarMovendo();
     try { terminarGesto(gg, p, e); }
-    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel') redesenhar(); }
+    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel' || gg.tipo === 'hexpincel') redesenhar(); }
   }
   function terminarGesto(gg, p, e) {
     const editar = podeEditar();
@@ -1236,6 +1405,10 @@
           });
         }
         break;
+      case 'hexpincel':
+        C.tra.replaceChildren();
+        if (editar && gg.hexes.size) aplicarPincelHex([...gg.hexes.keys()]);
+        break;
       case 'regua': {
         regua.b = p;
         const u = Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y);
@@ -1263,6 +1436,7 @@
     palco.classList.remove('pan');
     if (!mundoEl.classList.contains('movendo')) quieto(false);
     if (gg.tipo === 'regua') regua = null;
+    if (gg.tipo === 'hexpincel') C.tra.replaceChildren();
     if (gg.tipo === 'mover') soltarProvisorio(gg);
     if (gg.tipo === 'pan') soltarMovendo();
     redesenhar();
@@ -1476,8 +1650,13 @@
     mascBase = s('rect', { fill: '#fff' });
     mascOps = s('g');
     mascara.append(mascBase, mascOps);
-    svg.append(s('defs', null, mascara));
-    for (const n of ['reg', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    gradePath = s('path', { class: 'grade-linha', fill: 'none' });
+    gradePat = s('pattern', { id: GRADE, patternUnits: 'userSpaceOnUse', width: 1, height: 1 }, gradePath);
+    svg.append(s('defs', null, mascara, gradePat));
+    for (const n of ['hex', 'reg', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    hexTer = s('g', { class: 'hex-tinta' });
+    gradeRect = s('rect', { class: 'grade', x: 0, y: 0, fill: `url(#${GRADE})` });
+    C.hex.append(hexTer, gradeRect);
     nevRect = s('rect', { class: 'nevoa', mask: `url(#${MASCARA})` });
     C.nev.append(nevRect);
     mundoEl.append(svg);

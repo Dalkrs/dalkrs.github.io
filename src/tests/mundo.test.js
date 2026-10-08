@@ -78,6 +78,7 @@ async function janela(a) { const d = a.F.locator('dialog.mundo-dl[open]'); await
 const sel = a => A(a, () => __mundo.App.sel[0] || null);
 const obj = (a, id) => A(a, id => (__mundo.App.mapa && __mundo.App.mapa.objs.find(o => o.id === id)) || null, id);
 const rotulo = a => A(a, () => __mundo.App.rotuloDesfazer());
+const hexDe = (a, x, y) => A(a, ([x, y]) => __mundo.N.chaveHex(__mundo.N.hexDe(__mundo.App.mapa, x, y)), [x, y]);
 const mapa = a => A(a, () => __mundo.App.mapa);
 const perto = (v, alvo, folga = 1.5) => typeof v === 'number' && Math.abs(v - alvo) <= folga;
 // objetos desenhados (o selo de um evento fica num grupo à parte, na camada dos ícones: conta pelo id)
@@ -110,7 +111,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(!!m && m.nome === 'Terras de Teste' && m.img === null && m.larg === 2000 && m.alt === 1400, 'papel em branco criado com o nome escolhido, 2000 × 1400, sem imagem');
     ok(await L.F.locator('#vazio').isHidden() && await L.F.locator('#mundo .papel').count() === 1, 'o papel em branco aparece no lugar do estado vazio');
     ok((await L.F.locator('#nomeMapa').innerText()) === 'Terras de Teste', 'o nome do mapa na barra de cima');
-    ok(await L.F.locator('#rail .tool').count() === 9, 'trilho com as 9 ferramentas');
+    ok(await L.F.locator('#rail .tool').count() === 10, 'trilho com as 10 ferramentas (com a Terreno)');
     ok(await ate(() => A(L, id => { const v = JSON.parse(localStorage.getItem('tinycats:mundo:v1') || 'null'); return !!v && v.atual === id && !!v.mapas[id]; }, m.id)), 'o mapa fica no localStorage (tinycats:mundo:v1)');
     ok(/Salvo neste navegador/.test(await L.F.locator('#salvo').innerText()), 'indicador: "Salvo neste navegador"');
   });
@@ -179,7 +180,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     o = await obj(L, id.t);
     ok(!!o && o.k === 't' && o.pts.length === 3 && o.via === 'estrada', 'rota: 3 pontos, duplo clique termina, via das opções');
     await escolher(L, `o:${id.t}:via`, 'rio');
-    ok((await obj(L, id.t)).via === 'rio' && await rotulo(L) === 'mudar a via', 'via da rota pelo painel');
+    ok((await obj(L, id.t)).via === 'rio' && await rotulo(L) === 'mudar o desenho da rota', 'o desenho da rota (rio) pelo painel');
 
     await ferramenta(L, 'f');
     await clicar(L, 1100, 150); await clicar(L, 1700, 250);
@@ -367,10 +368,12 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(m.oculto === true && doc(PRE_MAPA + id.mapa1).dados.oculto === true && !doc(PRE_PUB + id.mapa1) && !doc(INDICE), 'o mapa novo nasce escondido dos jogadores: sem projeção e sem índice na mesa');
   });
 
-  await passo('mesa: escala e facções', async () => {
-    await aba(M, 'mapa');
-    await escrever(M, 'mapa:escala', '20');
-    ok(perto(await A(M, () => __mundo.App.mapa.escala.kmPorUn), 0.2, 1e-9), 'escala pela aba Mapa: 100 unidades = 20 km');
+  await passo('mesa: grade e facções', async () => {
+    await aba(M, 'terreno');
+    await escrever(M, 'ter:tam', '25');
+    // (a seta encaixa a grade: 2,5 unidades para a direita — e o grupo e a rota não caem bem na aresta de dois hexágonos)
+    await botao(M, 'ter:dir');
+    ok(await A(M, () => { const g = __mundo.App.mapa.grade; return g.tam === 25 && g.x === 2.5 && g.y === 0 && g.on === false; }), 'a grade pela aba Terreno: um hexágono de 25 unidades = 5 cubos (100 unidades = 20 cubos), encaixada pela seta, escondida');
     await aba(M, 'faccoes');
     await botao(M, 'fac:nova');
     id.reino = await A(M, () => __mundo.App.mapa.faccoes.slice(-1)[0].id);
@@ -428,7 +431,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     id.estrada = await sel(M);
     await escrever(M, `o:${id.estrada}:nome`, 'Estrada Velha');
     o = await obj(M, id.estrada);
-    ok(!!o && o.k === 't' && o.via === 'trilha' && perto(o.pts[0][0], 150) && perto(o.pts[1][0], 750), 'rota de 600 unidades (120 km)');
+    ok(!!o && o.k === 't' && o.via === 'trilha' && perto(o.pts[0][0], 150) && perto(o.pts[1][0], 750), 'rota de 600 unidades (120 cubos)');
 
     await ferramenta(M, 'g');
     await clicar(M, 150, 450);
@@ -439,7 +442,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await escrever(M, `o:${id.herois}:nota`, 'nota do grupo ' + SEG);
     o = await obj(M, id.herois);
     ok(o.k === 'g' && o.rota === id.estrada && o.prog === 0 && o.sigla === 'HER', 'grupo na rota, pelo painel');
-    ok(/0 de 120 km/.test(await M.F.locator('#pane .progresso').innerText()), 'o painel mostra o progresso: ' + await M.F.locator('#pane .progresso').innerText());
+    ok(/^0 de 120 cubos · hexágono 0 de 24 · faltam cerca de 4 dias$/.test((await M.F.locator('#pane .progresso small').innerText()).trim()), 'o painel mostra o progresso, em cubos e hexágonos (30 cubos por dia: 4 dias): ' + await M.F.locator('#pane .progresso').innerText());
   });
 
   await passo('mesa: eventos e frente', async () => {
@@ -464,7 +467,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await escrever(M, `o:${id.praga}:nome`, 'Praga Ativa');
     await escrever(M, `o:${id.praga}:cresce`, '2');
     o = await obj(M, id.praga);
-    ok(o.tipo === 'praga' && o.ini === 0 && o.r === 80 && perto(o.cresce, 10, 0.01), 'evento ativo que cresce 2 km (10 unidades) por dia: ' + j({ r: o.r, cresce: o.cresce }));
+    ok(o.tipo === 'praga' && o.ini === 0 && o.r === 80 && perto(o.cresce, 10, 0.01), 'evento ativo que cresce 2 cubos (10 unidades) por dia: ' + j({ r: o.r, cresce: o.cresce }));
 
     await ferramenta(M, 'f');
     await M.F.selectOption('#opts select[aria-label="Lado A"]', id.reino);
@@ -494,6 +497,23 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(j(cobre) === j([true, false, false, false, false]), 'a névoa cobre só a ruína: ' + j(cobre));
     await M.P.keyboard.press('Escape'); await espera(100);
     await M.P.keyboard.press('Escape'); await espera(100);
+  });
+
+  await passo('mesa: terreno nos hexágonos', async () => {
+    // um hexágono de mata sob a névoa (o da ruína) e outro à mostra, com custo próprio; e a grade à mostra
+    await aba(M, 'terreno');
+    await alternar(M, 'ter:on');
+    await ferramenta(M, 'h');
+    await clicar(M, 850, 600);
+    await clicar(M, 200, 150);
+    await M.F.selectOption('#opts select[aria-label="O que o pincel faz"]', 'custo'); await espera(100);
+    await M.F.fill('#opts input[aria-label="Custo próprio, em cubos por hexágono"]', '25'); await M.F.press('#opts input[aria-label="Custo próprio, em cubos por hexágono"]', 'Enter'); await espera(100);
+    await clicar(M, 200, 150);
+    await M.F.selectOption('#opts select[aria-label="O que o pincel faz"]', 'ter:fl'); await espera(100);
+    id.hexNevoa = await hexDe(M, 850, 600); id.hexVisto = await hexDe(M, 200, 150);
+    const m2 = await mapa(M);
+    ok(m2.grade.on === true && m2.hexes[id.hexNevoa] === 'fl' && j(m2.hexes[id.hexVisto]) === j(['fl', 25]), 'o mestre pinta dois hexágonos de mata (um sob a névoa) e dá custo próprio a um: ' + j(m2.hexes));
+    await ferramenta(M, 'sel');
   });
 
   await passo('mesa: mostrar aos jogadores', async () => {
@@ -555,13 +575,15 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(p.faccoes.length === 1 && p.faccoes[0].id === id.reino && !(id.culto in p.faccoes[0].rel), 'na projeção: a facção escondida não está, nem a relação com ela');
     ok(!!f(id.floresta) && f(id.floresta).fac === null && !!f(id.frente) && f(id.frente).a === id.reino && f(id.frente).b === null, 'na projeção: região e frente que apontavam para a facção escondida ficam sem ela');
     ok(!!f(id.herois) && f(id.herois).rota === id.estrada && !!f(id.estrada), 'na projeção: o grupo continua na rota');
+    ok(p.grade.on === true && p.grade.tam === 25 && p.hexes[id.hexVisto] === 'fl' && !(id.hexNevoa in p.hexes) && Object.keys(p.hexes).length === 1, 'na projeção: a grade, e o terreno do hexágono à mostra sem o custo próprio — o que a névoa cobre não vai: ' + j(p.hexes));
     ok(j(await mapa(J)) === j(p), 'o mapa do jogador é a projeção que chegou');
   });
 
   await passo('jogador: a tela', async () => {
     ok(await A(J, () => ['#rail', '#btDesfazer', '#diaMais', '#diaMenos', '#comoJogBox'].every(s => getComputedStyle(document.querySelector(s)).display === 'none')), 'jogador: sem trilho, sem desfazer, sem botões de data, sem "ver como jogador"');
-    ok(await A(J, () => document.getElementById('tab-mapa').hidden && !document.getElementById('tab-hoje').hidden && !document.getElementById('tab-faccoes').hidden), 'jogador: sem a aba Mapa');
+    ok(await A(J, () => document.getElementById('tab-mapa').hidden && document.getElementById('tab-terreno').hidden && !document.getElementById('tab-hoje').hidden && !document.getElementById('tab-faccoes').hidden), 'jogador: sem as abas Mapa e Terreno');
     ok((await J.F.locator('#salvo').innerText()) === '', 'jogador: sem indicador de "salvo"');
+    ok(await A(J, () => getComputedStyle(document.querySelector('#mundo svg .c-hex')).display !== 'none' && document.querySelectorAll('#mundo svg .hex-ter').length === 1 && !document.querySelector('#mundo svg .hex-custo')), 'o jogador vê a grade e a mata do hexágono à mostra (sem o custo)');
     ok(await imagemAberta(J, 1000), 'a imagem da mesa abre no aparelho do jogador');
     const tela = [];
     await aba(J, 'selecao');
@@ -631,14 +653,14 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
   await passo('mesa: andar 1 dia', async () => {
     await botao(M, `gr-andar:${id.herois}`);
     o = await obj(M, id.herois);
-    ok(perto(o.x, 300) && perto(o.y, 450) && perto(o.prog, 30, 0.01), 'Andar 1 dia: o grupo anda 30 km (150 unidades) pela rota: ' + j({ x: o.x, y: o.y, prog: o.prog }));
-    ok(await A(M, () => __mundo.App.mapa.cal.dia) === 1 && await rotulo(M) === 'andar 1 dia', 'andar não muda a data');
-    ok(/Andou 30 km; faltam (89|90)(,\d)? km\. A data não mudou\./.test(await textoDoAviso(M)), 'o aviso diz quanto andou e que a data não mudou: ' + await textoDoAviso(M));
-    ok(await ate(() => A(J, x => { const g = __mundo.App.mapa.objs.find(y => y.id === x); return Math.abs(g.x - 300) < 1.5 && __mundo.App.mapa.cal.dia === 1; }, id.herois)), 'o jogador vê o grupo no lugar novo, com a mesma data');
+    ok(perto(o.x, 290) && perto(o.y, 454.66, 0.02) && perto(o.prog, 30, 0.01), 'Andar 1 dia: o grupo anda 30 cubos pela rota — 6 hexágonos de 5, de centro em centro: ' + j({ x: o.x, y: o.y, prog: o.prog }));
+    ok(await A(M, () => __mundo.App.mapa.cal.dia) === 2 && await rotulo(M) === 'andar 1 dia', 'e o dia passa (no mesmo passo de desfazer)');
+    ok(/^Andou 6 hexágonos \(30 cubos\); faltam 18 hexágonos \(90 cubos\)\. Passou o dia: hoje é 3 de Alvorada, ano 1\./.test(await textoDoAviso(M)), 'o aviso diz quanto andou, quanto falta e a data nova: ' + await textoDoAviso(M));
+    ok(await ate(() => A(J, x => { const g = __mundo.App.mapa.objs.find(y => y.id === x); return Math.abs(g.x - 290) < 1.5 && __mundo.App.mapa.cal.dia === 2; }, id.herois)), 'o jogador vê o grupo no lugar novo e a data nova');
     // o desenho vem no quadro seguinte ao dado: espera por ele
     const tr = () => A(J, x => document.querySelector(`#mundo svg [data-id="${x}"] .fixo`).getAttribute('transform'), id.herois);
     const lugar = async () => (/translate\(([-\d.]+) ([-\d.]+)\)/.exec((await tr()) || '') || []).slice(1).map(Number);
-    ok(await ate(async () => { const n = await lugar(); return perto(n[0], 300) && perto(n[1], 450); }, 3000), 'e o grupo é desenhado lá: ' + await tr());
+    ok(await ate(async () => { const n = await lugar(); return perto(n[0], 290) && perto(n[1], 454.66, 0.02); }, 3000), 'e o grupo é desenhado lá: ' + await tr());
   });
 
   await passo('mesa: sortear encontro', async () => {
@@ -679,8 +701,8 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
 
   await passo('mesa: o evento futuro chega', async () => {
     await botao(M, 'hoje:+7');
-    ok(await ate(() => A(J, x => __mundo.App.mapa.cal.dia === 8 && __mundo.App.mapa.objs.some(y => y.id === x), id.invasao)), '+7 dias: o evento que começava no dia 3 aparece para o jogador');
-    ok(await ate(async () => (await raioJ()) === '160'), 'e a praga já tem raio 160: ' + await raioJ());
+    ok(await ate(() => A(J, x => __mundo.App.mapa.cal.dia === 9 && __mundo.App.mapa.objs.some(y => y.id === x), id.invasao)), '+7 dias: o evento que começava no dia 3 aparece para o jogador');
+    ok(await ate(async () => (await raioJ()) === '170'), 'e a praga já tem raio 170: ' + await raioJ());
   });
 
   /* ---- mostrar outro mapa, esconder ---- */
@@ -726,7 +748,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await ate(() => !doc(PRE_PUB + id.mapa1) && doc(INDICE).dados.mapas.length === 0), 'nenhum mapa público na mesa');
     ok(await ate(() => A(J, () => __mundo.App.mapa === null && !document.getElementById('vazio').hidden && /O mestre ainda não mostrou nenhum mapa\./.test(document.getElementById('vazio').textContent))), 'o jogador sem mapa vê: "O mestre ainda não mostrou nenhum mapa."');
     await menuMapa(M, 'Deixar os jogadores verem este mapa');
-    ok(await ate(() => A(J, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x && __mundo.App.mapa.cal.dia === 8, id.mapa1)), 'o mestre deixa ver de novo: o mapa volta para o jogador');
+    ok(await ate(() => A(J, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x && __mundo.App.mapa.cal.dia === 9, id.mapa1)), 'o mestre deixa ver de novo: o mapa volta para o jogador');
   });
 
   await passo('mesa: dois aparelhos do mestre', async () => {

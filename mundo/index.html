@@ -67,7 +67,7 @@ button { cursor: pointer; }
 .tool[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
 .rail hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 3px 0; }
 .palco { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--table); touch-action: none; cursor: grab; }
-.palco.t-m, .palco.t-g, .palco.t-r, .palco.t-e, .palco.t-t, .palco.t-f, .palco.t-n, .palco.t-d { cursor: crosshair; }
+.palco.t-m, .palco.t-g, .palco.t-r, .palco.t-e, .palco.t-t, .palco.t-f, .palco.t-h, .palco.t-n, .palco.t-d { cursor: crosshair; }
 .palco.pan { cursor: grabbing; }
 .mundo { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .mundo img { display: block; user-select: none; -webkit-user-drag: none; }
@@ -119,11 +119,21 @@ svg text { font-family: var(--ui); paint-order: stroke; stroke: rgba(10, 12, 18,
 .rasc { fill: rgba(230,171,79,.14); fill-rule: evenodd; stroke: var(--lamp); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
 .regua { stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .pincel { fill: rgba(230,171,79,.12); stroke: var(--lamp); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* a grade de hexágonos e o terreno de cada um (por baixo de tudo, sem pegar o clique) */
+.c-hex { pointer-events: none; }
+.grade-linha { stroke: var(--ink-map); stroke-linecap: round; }
+.hex-ter { fill-opacity: .5; stroke: none; }
+.hex-custo text { font: 700 11px var(--mono); fill: #ffe2a8; }
+.regua-hex { fill: rgba(230,171,79,.10); stroke: var(--lamp); stroke-width: 1; stroke-opacity: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pincel-hex { fill: rgba(230,171,79,.08); stroke: var(--lamp); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+.c-tra.hexes { opacity: .62; }
+.chip .amostra { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line-strong); flex: none; }
+.chip input.num { width: 62px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--raised); font: 600 13px var(--mono); }
 
 /* ---- painel ---- */
 .side { flex: none; width: 330px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .tabs { flex: none; display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); }
-.tab { position: relative; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--fg-2); font-weight: 600; }
+.tab { position: relative; height: 40px; padding: 0 8px; border: 0; background: none; color: var(--fg-2); font-weight: 600; white-space: nowrap; }
 .tab:hover { color: var(--fg); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
 .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
@@ -337,6 +347,15 @@ input[type="search"].in { padding-right: 6px; }
 .data-linha { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .data-linha b { flex-basis: 100%; font-weight: 600; }
 .status { margin: 0; font-size: 13px; color: var(--fg-2); }
+/* a aba Terreno: os tipos de terreno (cor, nome, custo, tirar) e as setas que encaixam a grade na imagem */
+.ter-lista { display: grid; gap: 6px; }
+.ter-linha { display: grid; grid-template-columns: 34px minmax(0, 1fr) 66px auto 32px; gap: 6px; align-items: center; }
+.ter-linha .cor { width: 34px; height: 30px; }
+.ter-linha .in { height: 30px; }
+.ter-linha .un { font-size: 12px; color: var(--fg-3); }
+.row.setas { align-items: center; gap: 4px; }
+.row.setas .btn { min-width: 34px; font: 600 15px var(--ui); }
+.row.setas .ajuda { margin-left: 4px; }
 .tabela { display: grid; gap: 4px; font-size: 13px; }
 .tabela > div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 9px; border-radius: 7px; background: var(--raised); }
 .tabela span { color: var(--fg-2); }
@@ -467,9 +486,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
 <script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/dice.js?v=2"></script>
-<script src="nucleo.js?v=3"></script>
-<script src="tela.js?v=2"></script>
-<script src="painel.js?v=5"></script>
-<script src="mundo.js?v=4"></script>
+<script src="nucleo.js?v=4"></script>
+<script src="tela.js?v=3"></script>
+<script src="painel.js?v=6"></script>
+<script src="mundo.js?v=5"></script>
 </body>
 </html>

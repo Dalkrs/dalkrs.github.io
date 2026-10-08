@@ -5,7 +5,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | Aba | O que é |
 |---|---|
 | **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, terreno com altura, a bolsa do personagem usada pelo token — e o combate: rolar atributo pelo token (F), disputa (C), puxar um grupo das Fichas e o ataque com defesa. |
-| **Mapa-múndi** | O mapa do mundo da campanha: marcadores, grupos viajando, regiões e facções, calendário, névoa e rumores. |
+| **Mapa-múndi** | O mapa do mundo da campanha: a grade de hexágonos com o terreno de cada um, marcadores, grupos viajando (em cubos, de hexágono em hexágono), regiões e facções, calendário, névoa e rumores. |
 | **Acampamento** | A cena da fogueira: quem está no acampamento (com a aura da emoção de cada um), as provisões (rações com efeito), melhorias e equipamentos (para todos ou só para alguns), a caravana, os descansos e os momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
@@ -211,6 +211,26 @@ na cena passa por um botão e vira um passo de desfazer.
 
 A casca avisa os sistemas da versão da conversa com ela (`TC.ponte.estado.v`): uma aba das Cenas aberta numa casca
 que ainda não foi recarregada depois desta atualização avisa que a disputa não chegou à mesa, em vez de calar.
+
+### O mapa-múndi: a grade, o terreno e a viagem
+
+- **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
+  entre os centros de dois hexágonos vizinhos, em unidades do mapa, e um hexágono tem 5 cubos. Sem grade não há
+  escala (a régua e a viagem falam em unidades do mapa). A grade se encaixa numa imagem pelo tamanho (à mão ou
+  medindo alguns hexágonos dela com a régua), pela orientação (em pé ou deitados) e pelas setas; pode ficar à mostra
+  (os jogadores também veem) ou escondida, medindo do mesmo jeito. Um mapa de antes, com a escala em km, ganhou a
+  grade da mesma escala, escondida (1 km virou 1 cubo).
+- **O terreno**: os tipos ficam no mapa (`terrenos`, cada um com o custo em cubos para atravessar um hexágono; os
+  de começo são Planície, Floresta, Colina, Montanha, Pântano, Deserto, Neve e Água) e o de cada hexágono, em
+  `hexes` ("q,r" → o tipo, ou [tipo, custo próprio]). O custo de entrar num hexágono é o próprio dele, senão o da
+  região que tem custo e cobre o centro dele, senão o do terreno, senão os 5 cubos de um hexágono sem nada. A
+  ferramenta Terreno (H) pinta o tipo, tira, dá custo próprio ou tira o custo, de 1, 7 ou 19 hexágonos.
+- **A viagem**: cada grupo anda os cubos por dia dele (`cubos`); o tipo de caminho da rota é só o desenho. "Andar
+  1 dia" leva o grupo pelos hexágonos da rota, gastando o custo de cada um, e passa o dia (um passo de desfazer
+  só). O que sobra rumo ao próximo hexágono fica guardado no andado (`prog`, em cubos): uma montanha de 15 cubos,
+  andando 10 por dia, leva dois dias. A régua mede em hexágonos, em cubos e pelo terreno.
+- **Para os jogadores** vão a grade, os tipos de terreno e o terreno dos hexágonos que a névoa não cobre — sem os
+  custos próprios (de hexágono e de região), que são do mestre.
 
 ### O acampamento
 
@@ -466,7 +486,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

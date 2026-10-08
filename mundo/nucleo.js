@@ -1,7 +1,9 @@
 /* Tiny Cats · Mapa-múndi: a lógica pura do mundo (sem página, sem DOM).
-   O modelo do mapa, o calendário, a geometria, as viagens, os encontros, a névoa e — o que mais importa — a projeção
-   pública: o recorte do mapa que os jogadores recebem. Roda igual no navegador (window.MundoNucleo) e no Node (testes).
-   Unidades do mapa = pixels da imagem original. */
+   O modelo do mapa, o calendário, a geometria, a grade de hexágonos e o terreno, as viagens, os encontros, a névoa e
+   — o que mais importa — a projeção pública: o recorte do mapa que os jogadores recebem. Roda igual no navegador
+   (window.MundoNucleo) e no Node (testes).
+   Unidades do mapa = pixels da imagem original. A distância do mundo é em cubos: um hexágono da grade tem 5 cubos de
+   um centro ao outro, e é a grade que diz quantas unidades do mapa dá um cubo (sem grade, não há escala). */
 (() => {
   'use strict';
 
@@ -43,11 +45,28 @@
   };
   // Cores de facção: médias, para a região (preenchida a 20%) e a frente lerem bem no tema escuro e no claro.
   const CORES = ['#c0503a', '#3f7fbf', '#3f9a5c', '#c9922e', '#8a5cc0', '#c0457f', '#2f9a9a', '#8a9a3a', '#a0623a', '#5a6fd0'];
-  const RITMOS = { lento: { nome: 'Lento', km: 20 }, normal: { nome: 'Normal', km: 30 }, rapido: { nome: 'Rápido', km: 40 } };
+  // O tipo do caminho de uma rota é só o desenho dela: quanto o grupo anda é ele quem diz (cubos por dia), e o que
+  // pesa no caminho é o terreno de cada hexágono.
   const VIAS = {
-    estrada: { nome: 'Estrada', mult: 1.25 }, trilha: { nome: 'Trilha', mult: 1 }, selvagem: { nome: 'Terreno selvagem', mult: 0.6 },
-    rio: { nome: 'Rio (barco)', mult: 1.5 }, mar: { nome: 'Mar (navio)', mult: 2.5 },
+    estrada: { nome: 'Estrada' }, trilha: { nome: 'Trilha' }, selvagem: { nome: 'Terreno selvagem' },
+    rio: { nome: 'Rio (barco)' }, mar: { nome: 'Mar (navio)' },
   };
+  // os ritmos dos mapas de antes viram cubos por dia (eram km por dia: 1 km vira 1 cubo)
+  const RITMO_ANTIGO = { lento: 20, normal: 30, rapido: 40 };
+  const CUBOS_HEX = 5;                            // um hexágono da grade, de um centro ao vizinho
+  const CUBOS_DIA = 30;                           // o quanto um grupo novo anda por dia
+  /* Os tipos de terreno de um mapa novo. custo = quantos cubos se gastam para atravessar um hexágono dele (o mestre
+     muda; sem terreno, um hexágono custa os 5 cubos dele). Os ids curtos deixam o terreno dos hexágonos pequeno. */
+  const TERRENOS_PADRAO = [
+    { id: 'pl', nome: 'Planície', cor: '#a3bf6a', custo: 5 },
+    { id: 'fl', nome: 'Floresta', cor: '#3f7a46', custo: 10 },
+    { id: 'co', nome: 'Colina', cor: '#b39a62', custo: 8 },
+    { id: 'mo', nome: 'Montanha', cor: '#8b8178', custo: 15 },
+    { id: 'pa', nome: 'Pântano', cor: '#5f7d5c', custo: 15 },
+    { id: 'de', nome: 'Deserto', cor: '#e0c07a', custo: 10 },
+    { id: 'ne', nome: 'Neve', cor: '#e3ecf2', custo: 15 },
+    { id: 'ag', nome: 'Água', cor: '#4f86c0', custo: 10 },
+  ];
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
   const CAL_PADRAO = {
     dia: 0, ano0: 1, era: '',
@@ -57,11 +76,12 @@
 
   /* ---------------- limites ---------------- */
   const MAX_OBJS = 2000, MAX_OPS = 4000, MAX_TXT = 4000, MAX_FAC = 500, MAX_PTS = 2000, MAX_COORD = 1e6;
+  const MAX_HEX = 20000, MAX_TER = 40, MAX_CUSTO = 9999;
   const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
-    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', ritmo: 'normal', rota: null, prog: 0 },
-    r: { pts: [], fac: null, cor: '', enc: { chance: 0, itens: [] } },
+    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0 },
+    r: { pts: [], fac: null, cor: '', custo: null, enc: { chance: 0, itens: [] } },
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
     t: { pts: [], via: 'trilha' },
     f: { pts: [], a: null, b: null, ativa: true },
@@ -221,42 +241,163 @@
     return objs.filter(o => ehObj(o) && o.k === 'e' && eventoAtivo(o, dia));
   }
 
-  /* ---------------- escala e viagem ---------------- */
-  const kmPorUn = mapa => Math.max(0, num(ehObj(mapa) && ehObj(mapa.escala) ? mapa.escala.kmPorUn : 0, 0));
-  const kmDe = (mapa, unidades) => num(unidades, 0) * kmPorUn(mapa);
-  const unidadesDe = (mapa, km) => (kmPorUn(mapa) > 0 ? num(km, 0) / kmPorUn(mapa) : 0);
+  /* ---------------- a grade de hexágonos ----------------
+     grade = { tam, x, y, orient, on, alfa }: tam é a distância entre os centros de dois hexágonos vizinhos, em
+     unidades do mapa (0 = sem grade); (x, y) é o centro do hexágono (0, 0); orient 'pe' (com a ponta para cima) ou
+     'deitado' (com um lado em cima). Coordenadas axiais (q, r), como as de quem joga com hexágonos. */
+  const R3 = Math.sqrt(3);
+  const gradeDe = m => (ehObj(m) && ehObj(m.grade) ? m.grade : null);
+  const temGrade = m => { const g = gradeDe(m); return !!g && num(g.tam, 0) > 0; };
   const objDe = (mapa, id, k) => (ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs.find(o => ehObj(o) && o.id === id && (!k || o.k === k)) || null : null);
-  function kmPorDia(mapa, grupo) {
-    const rit = (grupo && tem(RITMOS, grupo.ritmo) ? RITMOS[grupo.ritmo] : RITMOS.normal).km;
-    const rota = grupo && grupo.rota ? objDe(mapa, grupo.rota, 't') : null;
-    return rit * (rota ? (tem(VIAS, rota.via) ? VIAS[rota.via] : VIAS.trilha).mult : 1);
+  // o hexágono de coordenadas fracionárias mais perto (arredonda em cubo: a soma q + r + s fica zero)
+  function arredHex(q, r) {
+    const s = -q - r;
+    let rq = Math.round(q), rr = Math.round(r);
+    const rs = Math.round(s), dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
+    if (dq > dr && dq > ds) rq = -rr - rs; else if (dr > ds) rr = -rq - rs;
+    return { q: rq + 0, r: rr + 0 };                           // (+ 0: sem -0)
   }
-  const km1 = n => String(Math.round(n * 10) / 10).replace('.', ',');
-  // Um dia de marcha pela rota. Não muda o mapa: devolve onde o grupo fica; quem chama aplica com App.mudar.
+  // O hexágono onde cai o ponto (x, y). Sem grade: null.
+  function hexDe(m, x, y) {
+    if (!temGrade(m)) return null;
+    const g = m.grade, s = num(g.tam, 0) / R3, px = num(x, 0) - num(g.x, 0), py = num(y, 0) - num(g.y, 0);
+    if (g.orient === 'deitado') return arredHex((2 / 3 * px) / s, (-1 / 3 * px + R3 / 3 * py) / s);
+    return arredHex((R3 / 3 * px - 1 / 3 * py) / s, (2 / 3 * py) / s);
+  }
+  function centroHex(m, q, r) {
+    const g = gradeDe(m) || {}, s = num(g.tam, 0) / R3, gx = num(g.x, 0), gy = num(g.y, 0);
+    if (g.orient === 'deitado') return { x: gx + s * 1.5 * q, y: gy + s * (R3 / 2 * q + R3 * r) };
+    return { x: gx + s * (R3 * q + R3 / 2 * r), y: gy + s * 1.5 * r };
+  }
+  // os 6 cantos (para desenhar o hexágono)
+  function cantosHex(m, q, r) {
+    const g = gradeDe(m) || {}, s = num(g.tam, 0) / R3, c = centroHex(m, q, r), a0 = g.orient === 'deitado' ? 0 : -30;
+    const out = [];
+    for (let i = 0; i < 6; i++) { const a = (a0 + 60 * i) * Math.PI / 180; out.push([c.x + s * Math.cos(a), c.y + s * Math.sin(a)]); }
+    return out;
+  }
+  const distHex = (a, b) => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+  const chaveHex = h => h.q + ',' + h.r;
+  function lerChaveHex(k) {
+    const m = /^(-?\d{1,6}),(-?\d{1,6})$/.exec(String(k));
+    return m ? { q: Number(m[1]) + 0, r: Number(m[2]) + 0 } : null;
+  }
+  // Os hexágonos de a até b, cada um vizinho do anterior: a linha reta da grade.
+  function linhaHex(a, b) {
+    const n = distHex(a, b), out = [];
+    // (o empurrãozinho deixa o ponto que cai bem na aresta sempre do mesmo lado)
+    for (let i = 0; i <= n; i++) { const t = n ? i / n : 0; out.push(arredHex(a.q + (b.q - a.q) * t + 1e-6, a.r + (b.r - a.r) * t + 1e-6)); }
+    return out;
+  }
+  // Os hexágonos por onde passa uma linha (a rota), do começo ao fim, cada um vizinho do anterior.
+  function caminhoHex(m, pts) {
+    if (!temGrade(m) || !Array.isArray(pts) || !pts.length) return [];
+    const out = [];
+    let ant = null;
+    for (const p of pts) {
+      const q = xy(p), h = hexDe(m, q.x, q.y);
+      for (const x of ant ? linhaHex(ant, h) : [h]) { const u = out[out.length - 1]; if (!u || u.q !== x.q || u.r !== x.r) out.push(x); }
+      ant = h;
+    }
+    return out;
+  }
+  // Distâncias: um hexágono = 5 cubos. Sem grade não há escala (0).
+  const cubosDe = (m, unidades) => (temGrade(m) ? num(unidades, 0) * CUBOS_HEX / num(m.grade.tam, 1) : 0);
+  const unidadesDeCubos = (m, cubos) => (temGrade(m) ? num(cubos, 0) * num(m.grade.tam, 0) / CUBOS_HEX : 0);
+
+  /* ---------------- o terreno ----------------
+     O custo de entrar num hexágono, do mais forte para o mais fraco: o custo próprio dele (o mestre mudou só ali), o
+     da região que tem custo e cobre o centro dele, o do terreno dele, e os 5 cubos de um hexágono sem nada. */
+  const terrenoDe = (m, id) => (ehObj(m) && Array.isArray(m.terrenos) && id ? m.terrenos.find(t => t.id === id) || null : null);
+  function regiaoComCusto(m, x, y) {
+    const objs = ehObj(m) && Array.isArray(m.objs) ? m.objs : [];
+    for (let i = objs.length - 1; i >= 0; i--) {             // a de cima é a desenhada por último
+      const o = objs[i];
+      if (ehObj(o) && o.k === 'r' && o.custo != null && dentroPoligono([x, y], o.pts)) return o;
+    }
+    return null;
+  }
+  // Tudo sobre um hexágono: o terreno, o custo e de onde ele vem ('hex', 'regiao', 'terreno' ou 'base').
+  function hexInfo(m, q, r) {
+    const v = ehObj(m) && ehObj(m.hexes) ? m.hexes[q + ',' + r] : undefined;
+    const tid = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', proprio = Array.isArray(v) && v[1] != null ? num(v[1], null) : null;
+    const t = terrenoDe(m, tid);
+    if (proprio != null) return { q, r, terreno: t, custo: proprio, de: 'hex', regiao: null };
+    const c = centroHex(m, q, r), reg = regiaoComCusto(m, c.x, c.y);
+    if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg };
+    if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null };
+    return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null };
+  }
+  const custoHex = (m, q, r) => hexInfo(m, q, r).custo;
+  // Medir de um ponto a outro: hexágonos em linha reta, os cubos disso e quanto custa pelo terreno de cada um.
+  function medirHex(m, a, b) {
+    if (!temGrade(m)) return null;
+    const p = xy(a), q = xy(b), ha = hexDe(m, p.x, p.y), hb = hexDe(m, q.x, q.y), linha = linhaHex(ha, hb);
+    let terreno = 0;
+    for (let i = 1; i < linha.length; i++) terreno += custoHex(m, linha[i].q, linha[i].r);
+    return { hexes: linha.length - 1, cubos: (linha.length - 1) * CUBOS_HEX, terreno: arred(terreno), linha };
+  }
+
+  /* ---------------- viagem ---------------- */
+  const n1 = n => String(Math.round(n * 10) / 10).replace('.', ',');
+  const plHex = n => (n === 1 ? '1 hexágono' : n + ' hexágonos');
+  // o custo acumulado até cada hexágono do caminho (o primeiro é de onde se sai: 0)
+  function custosDoCaminho(m, cam) {
+    const acum = [0];
+    for (let i = 1; i < cam.length; i++) acum.push(acum[i - 1] + custoHex(m, cam[i].q, cam[i].r));
+    return acum;
+  }
+  // A rota de um grupo em hexágonos: o caminho, o custo acumulado e o total (null sem rota ou sem grade).
+  function viagem(mapa, g) {
+    const rota = g && g.rota ? objDe(mapa, g.rota, 't') : null;
+    if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2 || !temGrade(mapa)) return null;
+    const cam = caminhoHex(mapa, rota.pts), acum = custosDoCaminho(mapa, cam);
+    return { rota, cam, acum, total: acum[acum.length - 1] };
+  }
+  /* Em que hexágono do caminho o grupo está: o dele, se o caminho passa por ali (passando mais de uma vez, o que bate
+     com o que ele já andou); fora do caminho, o mais perto — e a distância até ele, em hexágonos. */
+  function ondeNoCaminho(mapa, g, v) {
+    const aqui = hexDe(mapa, g.x, g.y), prog = num(g.prog, 0);
+    let i = -1, melhor = Infinity, k0 = 0, d0 = Infinity;
+    v.cam.forEach((h, k) => {
+      const d = distHex(h, aqui);
+      if (d === 0 && Math.abs(v.acum[k] - prog) < melhor) { melhor = Math.abs(v.acum[k] - prog); i = k; }
+      if (d < d0) { d0 = d; k0 = k; }
+    });
+    return i >= 0 ? { i, longe: 0 } : { i: k0, longe: d0 };
+  }
+  /* Um dia de marcha pela rota, de hexágono em hexágono: o grupo tem os cubos do dia dele e gasta, para entrar em
+     cada hexágono, o custo do terreno de lá. O que sobra rumo ao próximo (que custa mais do que sobrou) fica guardado
+     no andado: atravessar uma montanha de 15 cubos andando 10 por dia leva dois dias. Não muda o mapa: devolve onde o
+     grupo fica; quem chama aplica (e passa o dia) com App.mudar. */
   function andarUmDia(mapa, grupoId) {
     const g = objDe(mapa, grupoId, 'g');
-    if (!g) return { ok: false, km: 0, x: null, y: null, prog: 0, chegou: false, msg: 'Grupo não encontrado' };
-    const base = { ok: false, km: 0, x: g.x, y: g.y, prog: num(g.prog, 0), chegou: false };
+    if (!g) return { ok: false, cubos: 0, hexes: 0, x: null, y: null, prog: 0, chegou: false, msg: 'Grupo não encontrado' };
+    const base = { ok: false, cubos: 0, hexes: 0, x: g.x, y: g.y, prog: num(g.prog, 0), chegou: false };
     const rota = g.rota ? objDe(mapa, g.rota, 't') : null;
     if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2) return Object.assign(base, { msg: 'Sem rota' });
-    if (!(kmPorUn(mapa) > 0)) return Object.assign(base, { msg: 'Defina a escala do mapa primeiro' });
-    const comp = compPolilinha(rota.pts), total = kmDe(mapa, comp);
-    let antes = limitar(num(g.prog, 0), 0, total);
-    // Anda de onde o grupo está de fato. Arrastado para fora do lugar (ou com a escala trocada) o progresso guardado
-    // já não bate com ele: perto da rota, segue do ponto dela mais perto; longe, não anda (seria um salto pelo mapa).
-    if (dist(pontoNaPolilinha(rota.pts, unidadesDe(mapa, antes)), g) > 0.5) {
-      const q = maisPerto(rota.pts, g), longe = Math.max(comp * 0.05, Math.hypot(num(mapa.larg, 2000), num(mapa.alt, 1400)) * 0.01);
-      if (q.d > longe) return Object.assign(base, { msg: 'O grupo está longe da rota (a ' + km1(kmDe(mapa, q.d)) + ' km dela). Arraste-o para a rota ou use "Pôr no começo da rota"' });
-      antes = kmDe(mapa, q.s);
+    if (!temGrade(mapa)) return Object.assign(base, { msg: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' });
+    const v = viagem(mapa, g), { cam, acum, total } = v, onde = ondeNoCaminho(mapa, g, v);
+    // longe da rota não anda (seria um salto pelo mapa); no hexágono vizinho dela, segue do mais perto
+    if (onde.longe > 1) return Object.assign(base, { msg: 'O grupo está fora da rota (a ' + plHex(onde.longe) + ' dela). Arraste-o para a rota ou use "Pôr no começo da rota"' });
+    const i = onde.i, ult = cam.length - 1;
+    if (i >= ult) {
+      const c = centroHex(mapa, cam[ult].q, cam[ult].r);
+      return Object.assign(base, { x: arred(c.x), y: arred(c.y), prog: arred(total), chegou: true, msg: 'Chegou ao fim da rota' });
     }
-    if (antes >= total - 1e-6) {
-      const p = pontoNaPolilinha(rota.pts, Infinity);
-      return Object.assign(base, { x: arred(p.x), y: arred(p.y), prog: arred(total), chegou: true, msg: 'Chegou ao fim da rota' });
+    // o que já tinha andado rumo ao próximo hexágono (num dia que não deu para entrar nele) continua valendo
+    const sobra = onde.longe ? 0 : limitar(base.prog - acum[i], 0, Math.max(0, acum[i + 1] - acum[i] - 1e-6));
+    const antes = acum[i] + sobra, prog = Math.min(total, antes + Math.max(0, num(g.cubos, CUBOS_DIA)));
+    let j = i;
+    while (j < ult && acum[j + 1] <= prog + 1e-9) j++;
+    const c = centroHex(mapa, cam[j].q, cam[j].r), chegou = j === ult, anda = j - i;
+    let msg;
+    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(prog - antes) + ' cubos)' + (chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(total - prog) + ' cubos)');
+    else {
+      const prox = hexInfo(mapa, cam[j + 1].q, cam[j + 1].r);
+      msg = 'Ainda no caminho do próximo hexágono' + (prox.terreno ? ' (' + (prox.terreno.nome || 'terreno') + ')' : '') + ': ' + n1(prog - acum[j]) + ' de ' + n1(acum[j + 1] - acum[j]) + ' cubos';
     }
-    const prog = Math.min(total, antes + kmPorDia(mapa, g));
-    const p = pontoNaPolilinha(rota.pts, unidadesDe(mapa, prog)), chegou = prog >= total - 1e-6;
-    return { ok: true, km: arred(prog - antes), x: arred(p.x), y: arred(p.y), prog: arred(prog), chegou,
-      msg: chegou ? 'Chegou ao fim da rota' : 'Andou ' + km1(prog - antes) + ' km; faltam ' + km1(total - prog) + ' km' };
+    return { ok: true, cubos: arred(prog - antes), hexes: anda, x: arred(c.x), y: arred(c.y), prog: arred(prog), chegou, msg };
   }
   function regiaoEm(mapa, x, y) {
     const objs = ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : [];
@@ -390,6 +531,56 @@
     return r.length >= min ? r : null;
   }
   const sigla = v => { const s = Array.from(texto(v, '', 40).trim().toUpperCase()).slice(0, 3).join(''); return s || 'GR'; };
+  // um custo em cubos (de 0,1 a 9999, com uma casa); vazio ou inválido = nenhum (null)
+  const custoOuNada = v => { if (v == null || v === '') return null; const n = num(v, NaN); return Number.isFinite(n) && n > 0 ? Math.round(limitar(n, 0.1, MAX_CUSTO) * 10) / 10 : null; };
+  // os cubos por dia de um grupo (um grupo de antes tinha o ritmo, em km por dia)
+  const cubosDoDia = o => { const n = num(o.cubos, NaN); return Number.isFinite(n) && n > 0 ? Math.round(limitar(n, 1, MAX_CUSTO) * 10) / 10 : (tem(RITMO_ANTIGO, o.ritmo) ? RITMO_ANTIGO[o.ritmo] : CUBOS_DIA); };
+  /* A grade. Um mapa de antes (sem grade, com a escala em km) ganha a grade que dá a mesma escala, com 1 km = 1 cubo,
+     escondida: nada muda na tela de quem já tinha o mapa. */
+  function normGrade(v, escalaAntiga) {
+    const g = ehObj(v) ? v : null;
+    let tam = g ? num(g.tam, 0) : 0;
+    if (!g) { const k = ehObj(escalaAntiga) ? num(escalaAntiga.kmPorUn, 0) : 0; if (k > 0) tam = CUBOS_HEX / k; }
+    return {
+      tam: tam > 0 ? arred(limitar(tam, 4, 20000)) : 0,
+      x: g ? coord(g.x) || 0 : 0, y: g ? coord(g.y) || 0 : 0,
+      orient: g && g.orient === 'deitado' ? 'deitado' : 'pe',
+      on: !!g && sim(g.on),
+      alfa: g ? Math.round(limitar(num(g.alfa, 0.35), 0.05, 1) * 100) / 100 : 0.35,
+    };
+  }
+  // Os tipos de terreno. Sem a lista (mapa de antes), os padrões; uma lista vazia é a escolha do mestre.
+  function normTerrenos(v) {
+    if (!Array.isArray(v)) return copia(TERRENOS_PADRAO);
+    const out = [], vistos = new Set();
+    for (const t of v) {
+      if (!ehObj(t) || out.length >= MAX_TER) continue;
+      const id = idOk(t.id);
+      if (!id || id.length > 12 || vistos.has(id)) continue;
+      vistos.add(id);
+      out.push({ id, nome: texto(t.nome, '', 40).trim() || 'Terreno', cor: cor(t.cor, '#9aa3b5'), custo: custoOuNada(t.custo) || CUBOS_HEX });
+    }
+    return out;
+  }
+  /* O terreno de cada hexágono: "q,r" → id do terreno, ou [id, custo] quando o mestre mudou o custo ali (id '' =
+     sem terreno). Terreno que não existe mais some (o custo próprio fica); o que não diz nada sai. */
+  function normHexes(v, terrenos) {
+    const out = {};
+    if (!ehObj(v)) return out;
+    const ids = new Set(terrenos.map(t => t.id));
+    let n = 0;
+    for (const k of Object.keys(v)) {
+      if (n >= MAX_HEX) break;
+      const h = lerChaveHex(k);
+      if (!h) continue;
+      const x = v[k], tid = typeof x === 'string' ? x : Array.isArray(x) && typeof x[0] === 'string' ? x[0] : '';
+      const t = ids.has(tid) ? tid : '', c = Array.isArray(x) ? custoOuNada(x[1]) : null;
+      if (!t && c == null) continue;
+      out[chaveHex(h)] = c == null ? t : [t, c];
+      n++;
+    }
+    return out;
+  }
   const idRef = v => idOk(v) || null;
   const escolha = (cat, v, padrao) => (tem(cat, v) ? v : padrao);
   // Um objeto do mapa com todos os campos do tipo, na mesma ordem sempre (o JSON sai igual para a mesma entrada).
@@ -404,13 +595,13 @@
         return Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
       case 'g':
         if (!lugar()) return null;
-        return Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), ritmo: escolha(RITMOS, o.ritmo, 'normal'), rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });
+        return Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), cubos: cubosDoDia(o), rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
         if (!pts) return null;
         const enc = ehObj(o.enc) ? o.enc : {};
         const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).slice(0, 200).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt) }));
-        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens } });
+        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens } });
       }
       case 'e': {
         if (!lugar()) return null;
@@ -471,10 +662,12 @@
     const mapa = {
       v: 1, id: idOk(m.id) || novoId('mp'), nome: texto(m.nome, 'Mundo conhecido').trim() || 'Mapa sem nome', oculto: talvez(m.oculto),
       img, larg: img ? img.w : inteiro(m.larg, 2000, 100, 30000), alt: img ? img.h : inteiro(m.alt, 1400, 100, 30000),
-      escala: { kmPorUn: Math.max(0, num(ehObj(m.escala) ? m.escala.kmPorUn : 0, 0)) },
+      grade: normGrade(m.grade, m.escala), terrenos: null, hexes: null,
       cal, nevoa: { on: sim(nev.on), ops: normOps(nev.ops) },
       faccoes: normFaccoes(m.faccoes), objs: [],
     };
+    mapa.terrenos = normTerrenos(m.terrenos);
+    mapa.hexes = normHexes(m.hexes, mapa.terrenos);
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -492,7 +685,6 @@
       if (o.k === 'g') {
         if (!rotas.has(o.rota)) o.rota = null;
         if (!o.rota) o.prog = 0;
-        else if (kmPorUn(mapa) > 0) o.prog = arred(Math.min(o.prog, kmDe(mapa, compPolilinha(rotas.get(o.rota).pts))));
       }
     }
     return mapa;
@@ -500,8 +692,8 @@
   // Nunca lança: com qualquer coisa na entrada sai um mapa válido.
   function normalizarMapa(x) {
     try { return normalizar(x); } catch (e) {
-      return { v: 1, id: novoId('mp'), nome: 'Mapa sem nome', oculto: false, img: null, larg: 2000, alt: 1400, escala: { kmPorUn: 0 },
-        cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] };
+      return { v: 1, id: novoId('mp'), nome: 'Mapa sem nome', oculto: false, img: null, larg: 2000, alt: 1400, grade: normGrade(null),
+        terrenos: copia(TERRENOS_PADRAO), hexes: {}, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] };
     }
   }
 
@@ -510,7 +702,7 @@
     o = ehObj(o) ? o : {};
     const img = ehObj(o.img) ? o.img : null;
     return normalizarMapa({ v: 1, id: novoId('mp'), nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Mundo conhecido', oculto: false,
-      img, larg: img ? img.w : o.larg, alt: img ? img.h : o.alt, escala: { kmPorUn: 0 }, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] });
+      img, larg: img ? img.w : o.larg, alt: img ? img.h : o.alt, grade: null, terrenos: copia(TERRENOS_PADRAO), hexes: {}, cal: copia(CAL_PADRAO), nevoa: { on: false, ops: [] }, faccoes: [], objs: [] });
   }
   // Objeto novo com os padrões do tipo. Evento sem `ini` fica com null: ao entrar no mapa, começa "hoje".
   function objNovo(k, campos) {
@@ -525,8 +717,8 @@
   }
 
   /* ---------------- ajuste de escala (troca de imagem) ---------------- */
-  /* Imagem nova de outro tamanho: tudo o que estava desenhado acompanha (fica no mesmo lugar relativo), e a escala
-     em km se ajusta para as distâncias continuarem as mesmas. */
+  /* Imagem nova de outro tamanho: tudo o que estava desenhado acompanha (fica no mesmo lugar relativo), e a grade
+     também — os hexágonos continuam nos mesmos lugares, com o mesmo terreno, e as distâncias em cubos, as mesmas. */
   function escalarMapa(mapa, sx, sy) {
     const m = normalizarMapa(mapa);
     sx = num(sx, 1); sy = num(sy, 1);
@@ -538,7 +730,8 @@
       if (o.k === 'e') { o.r = arred(o.r * s); o.cresce = arred(o.cresce * s); }
     }
     m.nevoa.ops = m.nevoa.ops.map(o => ({ t: o.t, x: arred(o.x * sx), y: arred(o.y * sy), r: arred(o.r * s) }));
-    if (m.escala.kmPorUn > 0) m.escala.kmPorUn = m.escala.kmPorUn / s;
+    if (m.grade.tam > 0) m.grade.tam = arred(m.grade.tam * s);
+    m.grade.x = arred(m.grade.x * sx); m.grade.y = arred(m.grade.y * sy);
     if (!m.img) { m.larg = Math.round(m.larg * sx); m.alt = Math.round(m.alt * sy); }
     return normalizarMapa(m);
   }
@@ -546,14 +739,23 @@
   /* ---------------- projeção pública ---------------- */
   /* O que os jogadores recebem. Tudo o que é só do mestre sai aqui — e nada além deste recorte vai para eles:
      notas, o "escondido" do mapa, objetos e facções escondidos, o "é falso" dos boatos, a tabela de encontros,
-     eventos fora do dia de hoje (e o futuro dos de hoje: quando acabam, quanto crescem) e o que a névoa cobre
-     (menos os grupos: são os próprios jogadores). */
+     eventos fora do dia de hoje (e o futuro dos de hoje: quando acabam, quanto crescem), os custos que o mestre deu
+     a um hexágono ou a uma região, e o que a névoa cobre (menos os grupos: são os próprios jogadores) — inclusive o
+     terreno dos hexágonos cobertos. */
   function projetar(mapa) {
     const m = normalizarMapa(mapa);                          // já é uma cópia
     const dia = m.cal.dia, nevoa = m.nevoa.on, ops = m.nevoa.ops;
     const coberto = (x, y) => nevoa && cobertoPor(ops, x, y);
     const todoCoberto = pts => nevoa && pts.every(p => cobertoPor(ops, p[0], p[1]));
     delete m.oculto;
+    const hexes = {};
+    for (const k of Object.keys(m.hexes)) {
+      const v = m.hexes[k], t = typeof v === 'string' ? v : v[0], h = lerChaveHex(k);
+      if (!t || !h || !temGrade(m)) continue;
+      const c = centroHex(m, h.q, h.r);
+      if (!coberto(c.x, c.y)) hexes[k] = t;
+    }
+    m.hexes = hexes;
     const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
     m.faccoes = m.faccoes.filter(f => !f.oculta);
     for (const f of m.faccoes) {
@@ -570,7 +772,7 @@
         // o evento como ele está hoje: o fim planejado e o quanto ainda vai crescer são do mestre
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
       }
-      else if (o.k === 'r') { delete o.enc; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.enc; o.custo = null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
       objs.push(o);
@@ -582,14 +784,15 @@
   }
 
   const MundoNucleo = {
-    ICONES, EVENTOS, CORES, RITMOS, VIAS, RELACOES, CAL_PADRAO,
+    ICONES, EVENTOS, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO,
     novoId, mapaNovo, objNovo, faccaoNova, normalizarMapa,
     diasNoAno, dataDe, textoData,
-    dist, compPolilinha, pontoNaPolilinha, dentroPoligono, centroide,
+    dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide,
     eventoAtivo, raioNoDia, eventosDoDia,
-    kmDe, unidadesDe, kmPorDia, andarUmDia, regiaoEm, sortearEncontro,
+    temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
+    terrenoDe, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     nevoaCobre, projetar, copia, escalarMapa,
-    LIMITES: { objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT },
+    LIMITES: { objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;
