@@ -674,7 +674,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=11"></script>
 <script src="../tc/dice.js?v=2"></script>
-<script src="../tc/rules.js?v=5"></script>
+<script src="../tc/rules.js?v=6"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -838,6 +838,13 @@ function mulberry(seed) {
 }
 
 /* ---- DOM ---- */
+/* Dentro do site, a casca (o que está em volta) com o menu da conta ou uma janela aberta: o que as Cenas abrem
+   sozinhas (o tutorial, a oferta das cenas do navegador) espera ela ficar livre, e nenhuma janela daqui toma o foco
+   dela — o menu fecharia sozinho na mão de quem está mexendo. */
+function cascaOcupada() {
+  try { const d = window.parent !== window ? window.parent.document : null; return !!d && !!d.querySelector('dialog[open], [role="dialog"]:not([hidden]):not(dialog)'); }
+  catch (e) { return false; }
+}
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   let val;
@@ -7804,7 +7811,7 @@ const UI = (() => {
     modalEl = h('div', { class: 'scrim', onpointerdown: e => { if (e.target === modalEl) { closeModal(); if (o.onCancel) o.onCancel(); } } }, card);
     el.layer.append(modalEl);
     const f = card.querySelector('[data-focus]') || (o.focusPrimary ? null : card.querySelector('input:not([type=hidden]), textarea, select')) || card.querySelector('.btn.primary') || card.querySelector('button');
-    if (f) { f.focus(); if (f.select && f.type !== 'range' && f.type !== 'checkbox' && f.type !== 'color') f.select(); }
+    if (f && !cascaOcupada()) { f.focus(); if (f.select && f.type !== 'range' && f.type !== 'checkbox' && f.type !== 'color') f.select(); }
     return card;
   }
   document.addEventListener('keydown', e => {
@@ -8265,6 +8272,7 @@ const UI = (() => {
     const lista = await Nuvem.cenasDoNavegador();
     refresh();                                    // o painel passa a lembrar que há cenas neste navegador (ver emptySel)
     if (!lista.length || modalEl || Tour.active()) return;
+    if (cascaOcupada()) { setTimeout(offerLocal, 1200); return; }      // (espera o menu ou a janela da casca fechar)
     try { if (localStorage.getItem(offeredKey())) return; localStorage.setItem(offeredKey(), '1'); } catch (e) { /* sem armazenamento: oferece de novo na próxima vez */ }
     localScenesBox(lista, true);
   }
@@ -9853,7 +9861,7 @@ const Tour = (() => {
         go),
     ]);
     layout();
-    go.focus({ preventScroll: true });
+    if (!cascaOcupada()) go.focus({ preventScroll: true });      // (ver cascaOcupada, na base)
     // o painel e o mapa podem acabar de se ajeitar um instante depois: mede de novo
     clearTimeout(tick);
     tick = setTimeout(layout, 260);
@@ -10800,7 +10808,9 @@ async function start(snap) {
   // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
   if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
-  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(() => { if (!UI.modalOpen() && !Tour.seen()) Tour.start(); }, 700));
+  // (o tutorial que abre sozinho espera o menu ou a janela da casca fechar: não aparece no meio do que o mestre faz)
+  const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
+  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(abrirTour, 700));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
   // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
   if (Nuvem.mestre()) setTimeout(() => { if (!had) aoAparecer(() => UI.offerLocal()); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);

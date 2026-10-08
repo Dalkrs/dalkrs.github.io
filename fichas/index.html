@@ -295,12 +295,22 @@ table.items .chipb input[type=number]{width:52px;padding:2px 4px;border-radius:6
 .itextras{margin-top:8px}
 /* bônus temporários */
 .tmplist{display:grid;gap:6px}
-.tmprow{display:grid;grid-template-columns:auto minmax(120px,1.4fr) minmax(130px,1fr) 74px minmax(110px,1fr) auto;gap:8px;align-items:center}
+.tmprow{display:grid;grid-template-columns:auto minmax(110px,1.2fr) minmax(120px,1fr) 64px minmax(250px,1.4fr) auto;gap:8px;align-items:center}
 .tmprow.off > :not(.tmpon):not(button){opacity:.45}
 .tmprow .tmpon{display:grid;place-items:center;padding:0 2px}
 .tmprow .tmpon input{width:auto}
 .tmprow .tmpv{text-align:right;font-family:"IBM Plex Mono",monospace;font-weight:600}
-@media (max-width:820px){.tmprow{grid-template-columns:auto 1fr 74px auto}.tmprow .tmpn{grid-column:2/4}.tmprow .tmpd{grid-column:2/4}}
+.tmprow .tmpdur{display:flex;gap:6px;align-items:center;min-width:0}
+.tmprow .tmpdur .tmpmodo{width:auto;flex:none;max-width:130px}
+.tmprow .tmpdur .tmpd{flex:1;min-width:0}
+.tmprow .tmpate{font-size:12.5px;color:var(--ink-soft);white-space:nowrap}
+.tmprow .tmprod{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tmprow .tmprod b{min-width:76px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.tmprow .tmprod.fim b{color:var(--ink-soft)}
+.tmprow .tmprod .step{width:26px;height:26px;padding:0;font-size:16px;line-height:1;border-radius:50%;flex:none}
+/* (na tela estreita, cada bônus em três linhas: o nome; onde soma e quanto; como acaba) */
+@media (max-width:820px){.tmplist{gap:10px}.tmprow{grid-template-columns:auto 1fr 74px auto;grid-template-areas:"on n n x" ". k v ." ". dur dur .";row-gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line-2)}.tmprow:last-child{border-bottom:0;padding-bottom:0}
+  .tmprow .tmpon{grid-area:on}.tmprow .tmpn{grid-area:n}.tmprow [data-tmpk]{grid-area:k}.tmprow .tmpv{grid-area:v}.tmprow .tmpdur{grid-area:dur}.tmprow [data-tmpdel]{grid-area:x}}
 /* bolsas */
 .bollist{display:grid;gap:10px}
 .bolrow{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:var(--campo);display:grid;gap:7px}
@@ -865,9 +875,9 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=11"></script>
-<script src="../tc/rules.js?v=5"></script>
+<script src="../tc/rules.js?v=6"></script>
 <script src="mesa.js?v=8"></script>
-<script src="extras.js?v=7"></script>
+<script src="extras.js?v=9"></script>
 <script src="quadros.js?v=2"></script>
 <script>
 /* =======================================================================

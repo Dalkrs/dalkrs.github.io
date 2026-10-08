@@ -128,6 +128,12 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const tmp = { b1: { n: 'Ensopado', k: 'VIT', v: 3, d: 'até o descanso', t: 2 }, b2: { n: 'Poção de agilidade', k: 'agi', v: 5, t: 1 }, b3: { n: 'Desligado', k: 'FOR', v: 9, off: true, t: 3 }, b4: { n: 'Fogo', k: 'FOGO', v: 7, t: 4 }, b5: { n: 'Torto', k: 'ZZZ', v: 4, t: 5 }, b6: 'lixo', b7: { n: 'Esquiva', k: 'ESQ', v: -2, t: 6 }, b8: { n: 'Def', k: 'DFF', v: 1, t: 7 } };
   const T = R.temporarios(tmp);
   ok(T.lista.map(x => x.id).join() === 'b2,b1,b3,b4,b5,b7,b8' && T.soma.VIT === 3 && T.soma.AGI === 5 && T.soma.FOR === 0 && T.esp.FOGO === 7 && T.soma.ESQ === -2 && T.lista[4].k === '', 'temporários: em ordem de chegada; o desligado e o de chave desconhecida não somam — ' + j(T.soma));
+  {
+    // a duração: anotação (d), até o próximo descanso (ate) ou rodadas (r) — com 0 rodadas, acabou e não soma
+    const Td = R.temporarios({ a: { n: 'Forja', k: 'FOR', v: 3, r: 2, t: 1 }, b: { n: 'Acabou', k: 'FOR', v: 9, r: 0, t: 2 }, c: { n: 'Ensopado', k: 'VIT', v: 2, ate: 'descanso', t: 3 }, d: { n: 'Torto', k: 'AGI', v: 1, r: -4.6, ate: 'x', t: 4 } });
+    ok(j(Td.lista.map(x => [x.r, x.ate])) === j([[2, ''], [0, ''], [null, 'descanso'], [0, '']]) && Td.soma.FOR === 3 && Td.soma.VIT === 2 && Td.soma.AGI === 0,
+      'temporários com duração: as rodadas que faltam e o "até o próximo descanso" vêm na lista; o que tem 0 rodadas (ou menos) acabou e não soma — ' + j(Td.soma));
+  }
   const pv = Object.assign(base(), { recursos: [{ id: 'hp', nome: 'HP', fml: 'VIT*10' }] }), cs = R.calcular(pv, cfg0), ct = R.calcular(pv, cfg0, { temp: tmp });
   ok(ct.tot.VIT === cs.tot.VIT + 3 && ct.base.VIT === cs.base.VIT && ct.eq.VIT === cs.eq.VIT && ct.tmp.VIT === 3, 'o temporário soma no total como um equipamento (a base e a coluna de equipamento não mudam)');
   ok(ct.recursos[0].max === cs.recursos[0].max + 30, 'e entra nas fórmulas das barras (HP = VIT*10 sobe 30)');

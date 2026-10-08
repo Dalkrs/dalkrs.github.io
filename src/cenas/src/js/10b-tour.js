@@ -128,7 +128,7 @@ const Tour = (() => {
         go),
     ]);
     layout();
-    go.focus({ preventScroll: true });
+    if (!cascaOcupada()) go.focus({ preventScroll: true });      // (ver cascaOcupada, na base)
     // o painel e o mapa podem acabar de se ajeitar um instante depois: mede de novo
     clearTimeout(tick);
     tick = setTimeout(layout, 260);

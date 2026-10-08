@@ -122,6 +122,28 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok(await P.locator('.tmprow').count() === 0 && /Chá de neve/.test(await toast()), 'tirar o bônus avisa, com Desfazer');
   await P.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(300);
   ok(await P.locator('.tmprow').count() === 1 && (await calc()).defEsp.GELO === 22, 'Desfazer devolve o bônus');
+  // como o bônus acaba: anotação (quem desliga é você), até o próximo descanso (o Acampamento tira) ou rodadas
+  await P.locator(`[data-tmpk="${idT}"]`).selectOption('CAN'); await w(300);
+  ok(await P.locator(`[data-tmpmodo="${idT}"]`).inputValue() === 'nota', 'o bônus feito à mão começa com a duração anotada');
+  await P.locator(`[data-tmpmodo="${idT}"]`).selectOption('descanso'); await w(300);
+  let b2 = (await sel()).estado.tmp[idT];
+  ok(b2.ate === 'descanso' && b2.r === undefined && b2.d === 'até o próximo descanso' && await P.locator(`[data-tmprow="${idT}"] .tmpate`).count() === 1 && await P.evaluate(id => document.activeElement && document.activeElement.dataset.tmpmodo === id, idT),
+    '"Até o descanso": quem tira é o descanso do Acampamento (e o cursor fica no seletor)');
+  await P.locator(`[data-tmpmodo="${idT}"]`).selectOption('rodadas'); await w(300);
+  b2 = (await sel()).estado.tmp[idT];
+  ok(b2.r === 3 && !b2.ate && b2.d === '3 rodadas' && (await P.locator(`[data-tmprow="${idT}"] .tmprod b`).innerText()) === '3 rodadas', 'por rodadas: começa em 3');
+  for (let i = 0; i < 2; i++) { await P.locator(`[data-tmprod="${idT}"][data-d="-1"]`).click(); await w(200); }
+  ok((await sel()).estado.tmp[idT].r === 1 && (await calc()).tot.CAN === totAntes.CAN + 5 && (await P.locator(`[data-tmprow="${idT}"] .tmprod b`).innerText()) === '1 rodada', 'descontando duas rodadas: falta 1, e o bônus ainda soma');
+  await P.locator(`[data-tmprod="${idT}"][data-d="-1"]`).click(); await w(300);
+  ok((await sel()).estado.tmp[idT].r === 0 && (await calc()).tot.CAN === totAntes.CAN && await P.locator(`[data-tmprow="${idT}"].off`).count() === 1 && (await P.locator(`[data-tmprow="${idT}"] .tmprod b`).innerText()) === 'acabou' && await P.locator(`[data-tmprod="${idT}"][data-d="-1"]`).isDisabled(),
+    'com 0, acabou: não soma mais, a linha fica apagada e o "−" desliga');
+  ok(!/somando agora/.test(await P.locator('#painelTmp .hd').innerText()), 'e o painel não o conta entre os que estão somando');
+  ok(await P.evaluate(id => document.activeElement && document.activeElement.dataset.tmprod === id && document.activeElement.dataset.d === '1', idT), '(o cursor vai para o "+")');
+  await P.locator(`[data-tmprod="${idT}"][data-d="1"]`).click(); await w(300);
+  ok((await sel()).estado.tmp[idT].r === 1 && (await calc()).tot.CAN === totAntes.CAN + 5, 'uma rodada a mais: volta a somar');
+  await P.locator(`[data-tmpmodo="${idT}"]`).selectOption('nota'); await w(300);
+  b2 = (await sel()).estado.tmp[idT];
+  ok(b2.r === undefined && !b2.ate && await P.locator(`[data-tmpd="${idT}"]`).count() === 1 && (await calc()).tot.CAN === totAntes.CAN + 5, 'de volta à anotação');
   await P.locator(`[data-tmpdel="${idT}"]`).click(); await w(300);
 
   // ---------- bolsas ----------

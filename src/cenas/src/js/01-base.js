@@ -129,6 +129,13 @@ function mulberry(seed) {
 }
 
 /* ---- DOM ---- */
+/* Dentro do site, a casca (o que está em volta) com o menu da conta ou uma janela aberta: o que as Cenas abrem
+   sozinhas (o tutorial, a oferta das cenas do navegador) espera ela ficar livre, e nenhuma janela daqui toma o foco
+   dela — o menu fecharia sozinho na mão de quem está mexendo. */
+function cascaOcupada() {
+  try { const d = window.parent !== window ? window.parent.document : null; return !!d && !!d.querySelector('dialog[open], [role="dialog"]:not([hidden]):not(dialog)'); }
+  catch (e) { return false; }
+}
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   let val;

@@ -146,7 +146,7 @@ const UI = (() => {
     modalEl = h('div', { class: 'scrim', onpointerdown: e => { if (e.target === modalEl) { closeModal(); if (o.onCancel) o.onCancel(); } } }, card);
     el.layer.append(modalEl);
     const f = card.querySelector('[data-focus]') || (o.focusPrimary ? null : card.querySelector('input:not([type=hidden]), textarea, select')) || card.querySelector('.btn.primary') || card.querySelector('button');
-    if (f) { f.focus(); if (f.select && f.type !== 'range' && f.type !== 'checkbox' && f.type !== 'color') f.select(); }
+    if (f && !cascaOcupada()) { f.focus(); if (f.select && f.type !== 'range' && f.type !== 'checkbox' && f.type !== 'color') f.select(); }
     return card;
   }
   document.addEventListener('keydown', e => {
@@ -607,6 +607,7 @@ const UI = (() => {
     const lista = await Nuvem.cenasDoNavegador();
     refresh();                                    // o painel passa a lembrar que há cenas neste navegador (ver emptySel)
     if (!lista.length || modalEl || Tour.active()) return;
+    if (cascaOcupada()) { setTimeout(offerLocal, 1200); return; }      // (espera o menu ou a janela da casca fechar)
     try { if (localStorage.getItem(offeredKey())) return; localStorage.setItem(offeredKey(), '1'); } catch (e) { /* sem armazenamento: oferece de novo na próxima vez */ }
     localScenesBox(lista, true);
   }

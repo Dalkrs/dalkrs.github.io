@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.08-2",
+      "data": "2026-10-08",
+      "titulo": "Acampamento: rações, aura e caravana",
+      "itens": [
+        { "tipo": "novo", "mestre": true, "texto": "Rações com efeito: cada provisão pode mudar o Conforto, a Sanidade e a recuperação de quem a come, e pôr na ficha um bônus (até o próximo descanso ou por algumas rodadas), uma barra que recupera (um número ou dados, como 2d6+3) ou sobrevida." },
+        { "tipo": "novo", "mestre": true, "texto": "Em Provisões, “O que cada descanso serve”: a provisão que sai primeiro no descanso longo e no curto, e quantas rações cada um come. Na hora do descanso dá para servir outra, e a prévia mostra quem come o quê e o que vai para cada ficha." },
+        { "tipo": "novo", "mestre": true, "texto": "Melhorias e equipamentos podem valer só para alguns personagens ou grupos, e também podem pôr bônus, barras ou sobrevida na ficha no descanso longo." },
+        { "tipo": "novo", "texto": "A aura da emoção: no Acampamento, cada um escolhe a emoção do próprio personagem (Calmo, Alegre, Com raiva…), e um brilho na cor dela aparece em volta do retrato, para todos." },
+        { "tipo": "novo", "mestre": true, "texto": "A aba Caravana, no Acampamento: veículos e animais (quanto levam e em que estado estão), a carga com o peso — com aviso quando passa do que os veículos levam — e quem viaja junto." },
+        { "tipo": "novo", "texto": "Nas Fichas, cada bônus temporário diz como acaba: uma anotação, até o próximo descanso (o Acampamento tira) ou rodadas, que você desconta com − e + (com 0, ele para de somar)." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Em Provisões, o nome inteiro de cada provisão aparece (a ordem e a quantidade foram para a linha de baixo)." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Na janela do momento entre dois personagens, escolher de um lado quem está do outro troca os dois de lugar." },
+        { "tipo": "consertado", "texto": "Logo depois de abrir uma mesa, o menu da conta podia fechar sozinho quando as Cenas abriam o tutorial ou a oferta de trazer as cenas do navegador. Agora elas esperam o menu fechar." },
+        { "tipo": "consertado", "texto": "Nas Fichas, em tela estreita, a lista de bônus temporários ficava embaralhada." }
+      ]
+    },
+    {
       "versao": "2026.10.08-1",
       "data": "2026-10-08",
       "titulo": "Campanhas",

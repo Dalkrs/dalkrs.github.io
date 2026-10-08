@@ -118,6 +118,101 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   const fora = N.normalizar({ lugares: { a: { x: 0, y: 100 }, b: { x: 99, y: 1 }, c: { x: 40, y: 60 } } }).lugares;
   eq(fora, { a: { x: 12, y: 86 }, b: { x: 88, y: 22 }, c: { x: 40, y: 60 } }, 'lugares guardados fora da área voltam para dentro dela');
   ok(N.item('provisoes', 'Pão').qtd === 1 && N.item('melhorias').on === true && N.item('equipamentos').qtd === 1 && N.item('bonus').ateDescanso === false && N.item('outro') === null, 'itens novos nascem com os padrões');
+  eq([N.item('melhorias').alvo, N.item('provisoes').fx, N.item('fx').dur, N.item('veiculos').tipo, N.item('carga').veiculo], [{ todos: true, pers: [], grupos: [] }, [], 'descanso', 'carroca', null], 'e com "vale para todos", sem efeitos na ficha, e a carga sem veículo');
+}
+
+/* ---- rações com tipo e efeito ---- */
+{
+  const c = N.normalizar({
+    provisoes: [{ id: 'carne', nome: 'Carne seca', qtd: 10 },
+      { id: 'enso', nome: 'Ensopado de javali', qtd: 2, ef: { conf: 5, san: 2, rec: 10, prov: 9 }, fx: [{ id: 'f1', t: 'bonus', k: 'for', v: 2, dur: 'descanso' }, { id: 'f2', t: 'barra', b: ' Vida ', val: ' 2d6 + 3 ' }, { id: 'f3', t: 'sob', b: 'Vida', v: 10.04 }] },
+      { id: 'lanche', nome: 'Lanche', qtd: 5, fx: [{ t: 'bonus', k: 'AGI', v: 1, dur: 'rodadas', r: 0 }, { t: 'xxx', k: 'DES', v: 5000 }, ...Array.from({ length: 9 }, () => ({ t: 'sob', b: 'SP', v: -3 }))] }],
+    servir: { longo: 'enso', curto: 'sumiu' },
+    regras: { curto: { prov: 1 } },
+  });
+  const [carne, enso, lanche] = c.provisoes;
+  eq([carne.ef, carne.fx], [{ conf: 0, san: 0, rec: 0 }, []], 'provisão de antes: sem efeito');
+  eq(enso.ef, { conf: 5, san: 2, rec: 10 }, 'a ração muda Conforto, Sanidade e recuperação (rações a mais não: isso é da estrutura)');
+  eq(enso.fx, [{ id: 'f1', t: 'bonus', k: 'FOR', v: 2, dur: 'descanso' }, { id: 'f2', t: 'barra', b: 'Vida', val: '2d6+3' }, { id: 'f3', t: 'sob', b: 'Vida', v: 10 }], 'efeitos na ficha: bônus (chave em maiúsculas), barra (texto sem espaços) e sobrevida');
+  eq([lanche.fx.length, lanche.fx[0].dur, lanche.fx[0].r, lanche.fx[1].t, lanche.fx[1].v, lanche.fx[2].v], [8, 'rodadas', 1, 'bonus', 999, 0], 'no máximo 8 efeitos; rodadas de 1 a 99; tipo estranho vira bônus; valores dentro dos limites; sobrevida nunca negativa');
+  eq(c.servir, { longo: 'enso', curto: null }, 'cada descanso lembra a provisão que serve (a que sumiu da lista vira "a ordem da lista")');
+  eq(N.normalizar({ servir: { longo: 'enso' }, provisoes: [] }).servir, { longo: null, curto: null }, 'sem a provisão, não serve nada');
+
+  const ana = { id: 'a', nome: 'Ana', grupo: 'Heróis', recursos: [{ id: 'hp', nome: 'Vida', max: 100, atual: 40 }], san: 50, conf: 50, poderes: [] };
+  const bia = { id: 'b', nome: 'Bia', grupo: 'Heróis', recursos: [{ id: 'hp', nome: 'Vida', max: 100, atual: 40 }], san: 50, conf: 50, poderes: [] };
+  const cid = { id: 'c', nome: 'Cid', grupo: 'Vila', recursos: [{ id: 'hp', nome: 'Vida', max: 100, atual: 40 }], san: 50, conf: 50, poderes: [] };
+  const p = N.planejar(Object.assign(N.copia(c), { regras: Object.assign(N.copia(c.regras), { longo: Object.assign({}, c.regras.longo, { rec: 50 }) }) }), 'longo', [ana, bia, cid]);
+  eq([p.servida.id, p.servida.efeito, p.comem, p.custo, p.consumo], ['enso', true, 2, 3, [{ id: 'enso', nome: 'Ensopado de javali', qtd: 2 }, { id: 'carne', nome: 'Carne seca', qtd: 1 }]], 'o descanso longo serve o ensopado primeiro: dá para dois; o terceiro come da lista');
+  eq(p.linhas.map(l => l.come.map(x => [x.id, x.qtd, x.efeito])), [[['enso', 1, true]], [['enso', 1, true]], [['carne', 1, false]]], 'quem come o ensopado são os primeiros da lista; o terceiro come a carne seca');
+  eq(p.linhas.map(l => [l.rec, l.conf.para, l.san.para, l.recursos[0].para]), [[60, 65, 57, 100], [60, 65, 57, 100], [50, 60, 55, 90]], 'o efeito da ração vale só para quem comeu: recuperação +10%, Conforto +5, Sanidade +2');
+  eq(p.linhas[0].fx.map(f => [f.de, f.t]), [['Ensopado de javali', 'bonus'], ['Ensopado de javali', 'barra'], ['Ensopado de javali', 'sob']], 'e o que vai para a ficha dela, com o nome de onde vem');
+  eq(p.linhas[2].fx, [], 'quem não comeu a ração servida não ganha o efeito dela');
+  ok(N.resumoDescanso(p).includes('2 comeram Ensopado de javali'), 'o resumo diz quem comeu a ração servida: ' + N.resumoDescanso(p));
+  const naHora = N.planejar(c, 'longo', [ana, bia], { servir: null });
+  eq([naHora.servida, naHora.comem, naHora.consumo, naHora.linhas[0].fx], [null, 0, [{ id: 'carne', nome: 'Carne seca', qtd: 2 }], []], 'escolher na hora "a ordem da lista": come da primeira provisão, sem efeito');
+  const outra = N.planejar(c, 'longo', [ana], { servir: 'lanche', prov: 2 });
+  eq([outra.servida.id, outra.prov, outra.custo, outra.comem, outra.linhas[0].fx.length], ['lanche', 2, 2, 1, 8], 'escolher na hora outra ração, e quantas cada um come neste descanso');
+  const curto = N.planejar(c, 'curto', [ana]);
+  eq([curto.servida, curto.custo, curto.consumo.length, curto.linhas[0].fx], [null, 1, 1, []], 'o curto, que serve "a ordem da lista": gasta 1 da primeira');
+  const semRegra = N.planejar(N.normalizar(Object.assign(N.copia(c), { regras: { curto: { prov: 0 } }, servir: { curto: 'enso' } })), 'curto', [ana]);
+  eq([semRegra.servida.id, semRegra.comem, semRegra.custo, semRegra.linhas[0].fx], ['enso', 0, 0, []], 'descanso que não gasta ração: ninguém come, e não há efeito');
+  // pela ordem da lista: quem come uma ração com efeito ganha o efeito, servida ou não
+  const lista = N.normalizar({ provisoes: [{ id: 'enso', nome: 'Ensopado', qtd: 3, ef: { conf: 5 } }, { id: 'carne', nome: 'Carne seca', qtd: 9 }, { id: 'doce', nome: 'Pão doce', qtd: 9, ef: { san: 3 }, fx: [{ id: 'g', t: 'sob', b: 'Vida', v: 4 }] }] });
+  const pl = N.planejar(lista, 'longo', [ana, bia, cid]);
+  eq([pl.servida, pl.comem, pl.linhas.map(l => l.conf.para), pl.comidas], [null, 0, [65, 65, 65], [{ id: 'enso', nome: 'Ensopado', n: 3 }]], 'sem servir nada, a lista de cima para baixo: o ensopado (o primeiro) dá para os três, e o efeito vale');
+  const dois = N.planejar(lista, 'longo', [ana, bia], { prov: 2 });
+  eq(dois.linhas.map(l => [l.come.map(x => x.id + '×' + x.qtd).join(' '), l.conf.para]), [['enso×2', 65], ['enso×1 carne×1', 65]], 'duas rações cada: a Bia come o último ensopado e uma carne seca — e ganha o efeito do ensopado (uma vez só)');
+  const doce = N.planejar(lista, 'longo', [ana, bia], { servir: 'doce', prov: 1 });
+  eq([doce.comem, doce.linhas.map(l => [l.san.para, l.fx.map(f => f.de + ':' + f.t).join()]), N.resumoDescanso(doce).includes('comeram Pão doce')], [2, [[58, 'Pão doce:sob'], [58, 'Pão doce:sob']], true], 'servindo o pão doce: os dois comem e ganham o efeito dele (o resumo diz)');
+  const misto = N.planejar(N.normalizar(Object.assign(N.copia(lista), { provisoes: [Object.assign({}, lista.provisoes[0], { qtd: 1 }), lista.provisoes[1], lista.provisoes[2]] })), 'longo', [ana, bia], { servir: 'doce' });
+  eq(misto.comidas, [{ id: 'doce', nome: 'Pão doce', n: 2 }], '(só o que foi comido entra no resumo)');
+  const fim = N.planejar(N.normalizar({ provisoes: [{ id: 'enso', nome: 'Ensopado', qtd: 1, ef: { conf: 5 } }, { id: 'doce', nome: 'Pão doce', qtd: 1, ef: { san: 3 } }] }), 'longo', [ana, bia, cid]);
+  eq([fim.falta, fim.linhas.map(l => l.come.map(x => x.id).join()), fim.comidas.map(x => x.nome + ':' + x.n), N.resumoDescanso(fim).includes('1 comeu Ensopado · 1 comeu Pão doce')], [1, ['enso', 'doce', ''], ['Ensopado:1', 'Pão doce:1'], true], 'faltando ração: o último não come nada (nem ganha efeito), e o resumo conta cada ração com efeito');
+  const textos = enso.fx.map(f => N.textoFx(Object.assign({ de: 'x' }, f), { FOR: 'Força' }));
+  eq(textos, ['Força +2 (até o próximo descanso)', 'Vida +2d6+3', 'Sobrevida 10 em Vida'], 'os efeitos por extenso');
+  eq([N.textoFx({ t: 'bonus', k: 'AGI', v: -1, dur: 'rodadas', r: 1 }), N.textoFx({ t: 'barra', b: 'SP', val: '-5' })], ['AGI −1 (1 rodada)', 'SP −5'], 'com sinal de menos e no singular');
+  eq([N.tmpDoFx({ de: 'Ensopado', t: 'bonus', k: 'FOR', v: 2, dur: 'descanso' }, 7), N.tmpDoFx({ de: 'Fogueira', t: 'bonus', k: 'AGI', v: 1, dur: 'rodadas', r: 3 }, 8)],
+    [{ n: 'Ensopado', k: 'FOR', v: 2, d: 'até o próximo descanso', t: 7, ate: 'descanso' }, { n: 'Fogueira', k: 'AGI', v: 1, d: '3 rodadas', t: 8, r: 3 }], 'o bônus que vai para a ficha: até o próximo descanso, ou por rodadas');
+  eq([N.barraPeloNome([{ id: 'x', nome: 'Saúde' }], 'saude'), N.barraPeloNome([{ id: 'x', nome: 'HP' }], 'Vida')], [{ id: 'x', nome: 'Saúde' }, null], 'a barra pelo nome, sem diferença de maiúsculas e acentos');
+}
+
+/* ---- melhorias e equipamentos para alguns ---- */
+{
+  const c = N.normalizar({
+    melhorias: [{ id: 'm1', nome: 'Fogueira grande', ef: { conf: 5 } },
+      { id: 'm2', nome: 'Forja', ef: { conf: 10, rec: 20, prov: -1 }, alvo: { todos: false, pers: ['a', 'a', '../x'], grupos: [' Vila ', ''] }, fx: [{ t: 'bonus', k: 'FOR', v: 3, dur: 'rodadas', r: 3 }] },
+      { id: 'm3', nome: 'Desligada', on: false, ef: { conf: 50 }, alvo: { todos: false, pers: ['a'] }, fx: [{ t: 'sob', b: 'Vida', v: 5 }] }],
+    equipamentos: [{ id: 'e1', nome: 'Rede', ef: { san: 4 }, alvo: { todos: false, grupos: ['Heróis'] } }],
+    provisoes: [{ id: 'p', nome: 'Pão', qtd: 9 }],
+  });
+  eq(c.melhorias[1].alvo, { todos: false, pers: ['a'], grupos: ['Vila'] }, 'para quem vale: personagens (sem repetir) e grupos');
+  eq(c.melhorias[0].alvo, { todos: true, pers: [], grupos: [] }, 'sem dizer, vale para todos');
+  eq(N.efeitos(c), { conf: 5, san: 0, rec: 0, prov: -1 }, 'o que vale para todos: só o das que são de todos — e as rações de todas (são do acampamento)');
+  ok(N.temParaAlguns(c) && !N.temParaAlguns(N.normalizar({ melhorias: [{ alvo: { todos: false } , on: false }] })), 'sabe dizer quando há estrutura em uso só para alguns');
+  const ana = { id: 'a', nome: 'Ana', grupo: 'Heróis' }, cid = { id: 'c', nome: 'Cid', grupo: 'Vila' }, zé = { id: 'z', nome: 'Zé', grupo: '' };
+  eq([N.efeitosDe(c, ana), N.efeitosDe(c, cid), N.efeitosDe(c, zé)], [{ conf: 15, san: 4, rec: 20 }, { conf: 15, san: 0, rec: 20 }, { conf: 5, san: 0, rec: 0 }], 'cada um recebe o que o alcança: Ana pelo nome e pelo grupo Heróis, Cid pelo grupo Vila, Zé só o de todos');
+  eq([N.fxDe(c, ana).map(f => f.de + ':' + f.k), N.fxDe(c, zé)], [['Forja:FOR'], []], 'o que vai para a ficha também (a desligada não conta)');
+  const vida = { recursos: [{ id: 'hp', nome: 'Vida', max: 100, atual: 0 }], san: 50, conf: 50, poderes: [] };
+  const p = N.planejar(N.normalizar(Object.assign(N.copia(c), { regras: { longo: { rec: 50 } } })), 'longo', [Object.assign({}, vida, ana), Object.assign({}, vida, zé)]);
+  eq([p.custo, p.conf, p.linhas.map(l => [l.recursos[0].para, l.conf.para, l.san.para, l.fx.length])], [1, 15, [[70, 75, 59, 1], [50, 65, 55, 0]]], 'no descanso longo: a forja (só para Ana) a faz recuperar 70% e ganhar o bônus; o pão economizado vale para todos');
+  eq(N.planejar(c, 'curto', [Object.assign({}, vida, ana)]).linhas[0].fx, [], 'o descanso curto não usa a estrutura');
+}
+
+/* ---- emoções e caravana ---- */
+{
+  const c = N.normalizar({ emo: { a: 'alegre', b: 'nada', 'x y': 'triste' }, roda: [{ id: 'a', nome: 'Ana', emo: 'raiva' }, { id: 'b', nome: 'Bia', emo: 'xx' }] });
+  eq([c.emo, c.roda], [{ a: 'alegre' }, [{ id: 'a', nome: 'Ana', img: null, dono: null, emo: 'raiva' }, { id: 'b', nome: 'Bia', img: null, dono: null }]], 'só emoções da lista, e só na roda de quem tem uma');
+  ok(N.EMOCOES.length === 10 && N.EMOCOES.every(e => /^#[0-9a-f]{6}$/.test(e.cor) && e.nome) && N.emocao('medo').nome === 'Com medo' && N.emocao('xx') === null, 'dez emoções, cada uma com nome e cor');
+  const cv = N.normalizar({ caravana: {
+    veiculos: [{ id: 'v1', nome: 'Carroça grande', tipo: 'carroca', cap: 500, estado: 'roda bamba' }, { id: 'v2', nome: 'Mula', tipo: 'xx', cap: -4 }],
+    carga: [{ nome: 'Barris', qtd: 3, peso: 40, veiculo: 'v1' }, { nome: 'Corda', qtd: 2, peso: 2.555, veiculo: 'sumiu' }, { nome: 'Pedras', qtd: -1, peso: 9 }],
+    gente: [{ nome: 'Tobias', papel: 'cocheiro', veiculo: 'v1' }, { nome: 'Guarda', veiculo: 'v9' }],
+    vai: { a: 'v2', b: 'v9', '../x': 'v1' } } }).caravana;
+  eq(cv.veiculos.map(v => [v.nome, v.tipo, v.cap]), [['Carroça grande', 'carroca', 500], ['Mula', 'carroca', 0]], 'veículos: tipo da lista, capacidade nunca negativa');
+  eq(cv.carga.map(k => [k.nome, k.qtd, k.peso, k.veiculo]), [['Barris', 3, 40, 'v1'], ['Corda', 2, 2.56, null], ['Pedras', 0, 9, null]], 'carga: veículo que não existe vira "sem lugar"; peso com centésimos');
+  eq([cv.gente.map(g => g.veiculo), cv.vai], [['v1', null], { a: 'v2' }], 'quem viaja: só em veículo que existe');
+  eq(N.cargaDe({ caravana: cv }), { por: { v1: 120, v2: 0 }, semLugar: 5.12, total: 125.12, cap: 500 }, 'o peso em cada veículo, o sem lugar, o total e a capacidade');
+  eq(N.normalizar(null).caravana, { veiculos: [], carga: [], gente: [], vai: {} }, 'sem caravana, uma vazia');
 }
 console.log(bad ? `${n - bad} verificações passaram, ${bad} falharam` : `${n} verificações passaram`);
 process.exit(bad ? 1 : 0);

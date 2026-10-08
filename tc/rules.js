@@ -367,8 +367,10 @@
     return { rec, esp };
   }
   /* Os bônus temporários do estado (estado.tmp), dos mais antigos para os mais novos, e a soma dos que estão ligados.
-     → { lista: [{ id, n, k, v, d, off, t }], soma: { as dez chaves }, esp: { as 13 defesas específicas } }
-     Um bônus com chave desconhecida ou valor zero continua na lista (dá para consertar na ficha), só não soma. */
+     → { lista: [{ id, n, k, v, d, off, t, r, ate }], soma: { as dez chaves }, esp: { as 13 defesas específicas } }
+     Um bônus com chave desconhecida ou valor zero continua na lista (dá para consertar na ficha), só não soma.
+     A duração pode ser uma anotação (d), "até o próximo descanso" (ate: 'descanso' — o descanso do Acampamento tira)
+     ou um contador de rodadas (r, que o mestre desconta na mão): com 0 rodadas o bônus acabou e não soma mais. */
   function temporarios(mapa) {
     const soma = {}, esp = {}, lista = [];
     CHAVES_BONUS.forEach(k => { soma[k] = 0; });
@@ -377,12 +379,13 @@
       Object.keys(mapa).forEach(id => {
         const b = mapa[id];
         if (!b || typeof b !== 'object') return;
-        const k = String(b.k == null ? '' : b.k).toUpperCase(), v = numFinito(b.v);
+        const k = String(b.k == null ? '' : b.k).toUpperCase(), v = numFinito(b.v), r = numFinito(b.r);
         lista.push({ id, n: String(b.n == null ? '' : b.n), k: chaveDeBonus(k), v: v == null ? 0 : v,
-          d: String(b.d == null ? '' : b.d), off: !!b.off, t: numFinito(b.t) || 0 });
+          d: String(b.d == null ? '' : b.d), off: !!b.off, t: numFinito(b.t) || 0,
+          r: r == null ? null : Math.max(0, Math.round(r)), ate: b.ate === 'descanso' ? 'descanso' : '' });
       });
       lista.sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      lista.forEach(b => { if (b.off || !b.k || !b.v) return; somarBonus(soma, esp, b.k, b.v); });
+      lista.forEach(b => { if (b.off || !b.k || !b.v || b.r === 0) return; somarBonus(soma, esp, b.k, b.v); });
     }
     return { lista, soma, esp };
   }

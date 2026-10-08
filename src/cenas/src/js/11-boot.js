@@ -247,7 +247,9 @@ async function start(snap) {
   // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
   if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
-  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(() => { if (!UI.modalOpen() && !Tour.seen()) Tour.start(); }, 700));
+  // (o tutorial que abre sozinho espera o menu ou a janela da casca fechar: não aparece no meio do que o mestre faz)
+  const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
+  if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(abrirTour, 700));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
   // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
   if (Nuvem.mestre()) setTimeout(() => { if (!had) aoAparecer(() => UI.offerLocal()); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);

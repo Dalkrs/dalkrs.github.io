@@ -6,7 +6,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 |---|---|
 | **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, terreno com altura, a bolsa do personagem usada pelo token — e o combate: rolar atributo pelo token (F), disputa (C), puxar um grupo das Fichas e o ataque com defesa. |
 | **Mapa-múndi** | O mapa do mundo da campanha: marcadores, grupos viajando, regiões e facções, calendário, névoa e rumores. |
-| **Acampamento** | A cena da fogueira: quem está no acampamento, provisões, melhorias, equipamentos, descansos e momentos. |
+| **Acampamento** | A cena da fogueira: quem está no acampamento (com a aura da emoção de cada um), as provisões (rações com efeito), melhorias e equipamentos (para todos ou só para alguns), a caravana, os descansos e os momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
 | **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos — e, numa mesa, o auditor dos dados (o que saiu de cada dado, de todo mundo, contra o esperado). |
@@ -69,7 +69,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
   `alocados`) e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a sobrevida em `sob`, as
   quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade e Conforto, os
-  relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis` e o XP em `xp`).
+  relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis`, o XP em `xp` e a emoção — a
+  aura no Acampamento — em `emo`).
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
   - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem) e `mundo:indice` (os nomes
     dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado).
@@ -210,6 +211,28 @@ na cena passa por um botão e vira um passo de desfazer.
 
 A casca avisa os sistemas da versão da conversa com ela (`TC.ponte.estado.v`): uma aba das Cenas aberta numa casca
 que ainda não foi recarregada depois desta atualização avisa que a disputa não chegou à mesa, em vez de calar.
+
+### O acampamento
+
+- **As rações.** Cada descanso serve uma provisão (o mestre escolhe em Provisões, e pode trocar na hora do
+  descanso, junto com quantas rações cada um come). A fila das rações é a servida primeiro e depois a lista, de cima
+  para baixo; a porção de cada personagem sai dela, na ordem da roda. Quem come uma ração com efeito ganha o efeito
+  dela — servida ou não; quem come duas diferentes ganha os dois, cada tipo uma vez. Rações a mais ou a menos da
+  estrutura (a cozinha, o caçador) são do acampamento inteiro: não mudam quem come o quê.
+- **O que vai para a ficha** (da ração que se come, ou de uma melhoria ou equipamento no descanso longo): um bônus em
+  `estado.tmp` — até o próximo descanso (`ate: 'descanso'`) ou por rodadas (`r`, que se desconta na ficha; com 0
+  para de somar) —, uma barra que recupera (um número, ou dados rolados quando o descanso acontece, a partir do valor
+  da barra depois do descanso e dentro dos limites dela) ou sobrevida em `estado.sob` (não soma com a que o
+  personagem já tem: fica a maior). Todo descanso, curto ou longo, tira de quem descansa os bônus "até o próximo
+  descanso", venham de onde vierem. O Desfazer devolve as fichas como estavam. Sem mesa, o descanso não muda as
+  fichas: a prévia mostra o que aplicar.
+- **Só para alguns.** Uma melhoria ou um equipamento vale para todos ou só para os personagens e os grupos (das
+  fichas) escolhidos.
+- **A aura.** A emoção de cada personagem fica na ficha (`estado.emo`): quem muda é o dono e quem mestra as Fichas. O
+  programa do mestre a copia para a roda do acampamento (`roda[].emo`), que é como ela chega a quem não vê a ficha.
+- **A caravana** fica no documento do acampamento (`caravana`): os veículos e animais (tipo, quanto levam, estado), a
+  carga (quantos, o peso de cada um, em que veículo vai), quem viaja junto sem ficha e onde vai cada personagem
+  (`vai`). Só quem mestra o acampamento mexe; todos veem.
 
 ### O programa das Cenas do mestre
 
@@ -443,7 +466,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas acampamento auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

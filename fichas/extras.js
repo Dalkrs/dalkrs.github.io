@@ -670,23 +670,31 @@ const FichasExtras = (() => {
   /* ---- bônus temporários: comida, poções, efeitos que passam ---- */
   function painelTemporarios(pc, c) {
     if (!RR() || !c.temporarios) return '';
-    const lista = c.temporarios, ligados = lista.filter(b => !b.off && b.k && b.v).length;
+    const lista = c.temporarios, ligados = lista.filter(b => !b.off && b.k && b.v && b.r !== 0).length;
     return `<div class="panel" id="painelTmp" style="margin-bottom:18px">
       <div class="hd"><span class="eyebrow">Bônus temporários</span>
         <span class="hint" style="margin-left:8px">comida, poções e efeitos que passam: somam no atributo enquanto estão ligados${ligados ? ' · ' + ligados + ' somando agora' : ''}</span>
         <span style="margin-left:auto"><button type="button" class="mini primary" data-tmpadd="1">+ Bônus</button></span>
       </div>
       <div class="bd">
-        ${lista.length ? `<div class="tmplist">${lista.map(b => `
-          <div class="tmprow ${b.off ? 'off' : ''}" data-tmprow="${esc(b.id)}">
-            <label class="tmpon" title="${b.off ? 'Desligado: não está somando' : 'Ligado: está somando'}"><input type="checkbox" data-tmpon="${esc(b.id)}" ${b.off ? '' : 'checked'} aria-label="${esc(b.n || 'Bônus')}: ligado"></label>
+        ${lista.length ? `<div class="tmplist">${lista.map(b => {
+          // como o bônus acaba: uma anotação (quem desliga é você), no próximo descanso (o Acampamento tira), ou um
+          // contador de rodadas que se desconta na mão (com 0, acabou: não soma mais)
+          const modo = b.r != null ? 'rodadas' : b.ate ? 'descanso' : 'nota', acabou = b.r === 0;
+          const dur = modo === 'nota' ? `<input class="inm tmpd" data-tmpd="${esc(b.id)}" value="${esc(b.d)}" maxlength="40" placeholder="Dura — ex.: 3 turnos" aria-label="Quanto dura (anotação)">`
+            : modo === 'descanso' ? `<span class="tmpate" title="O próximo descanso do Acampamento (curto ou longo) tira este bônus">o Acampamento tira</span>`
+            : `<span class="tmprod${acabou ? ' fim' : ''}"><button type="button" class="step" data-tmprod="${esc(b.id)}" data-d="-1" ${acabou ? 'disabled' : ''} aria-label="Uma rodada a menos para ${esc(b.n || 'o bônus')}">−</button><b>${acabou ? 'acabou' : b.r + (b.r === 1 ? ' rodada' : ' rodadas')}</b><button type="button" class="step" data-tmprod="${esc(b.id)}" data-d="1" aria-label="Uma rodada a mais para ${esc(b.n || 'o bônus')}">+</button></span>`;
+          return `
+          <div class="tmprow ${b.off || acabou ? 'off' : ''}" data-tmprow="${esc(b.id)}">
+            <label class="tmpon" title="${b.off ? 'Desligado: não está somando' : acabou ? 'Acabaram as rodadas: não está somando' : 'Ligado: está somando'}"><input type="checkbox" data-tmpon="${esc(b.id)}" ${b.off ? '' : 'checked'} aria-label="${esc(b.n || 'Bônus')}: ligado"></label>
             <input class="inm tmpn" data-tmpn="${esc(b.id)}" value="${esc(b.n)}" maxlength="60" placeholder="De onde vem — ex.: Ensopado de javali" aria-label="De onde vem o bônus">
             <select data-tmpk="${esc(b.id)}" aria-label="Onde soma">${optBonus(b.k, b.k ? '' : 'onde soma…')}</select>
             <input type="number" step="1" class="tmpv" data-tmpv="${esc(b.id)}" value="${b.v}" aria-label="Quanto soma">
-            <input class="inm tmpd" data-tmpd="${esc(b.id)}" value="${esc(b.d)}" maxlength="40" placeholder="Dura — ex.: 3 turnos" aria-label="Quanto dura (anotação)">
+            <div class="tmpdur"><select class="tmpmodo" data-tmpmodo="${esc(b.id)}" aria-label="Como o bônus ${esc(b.n || '')} acaba">
+              <option value="nota"${modo === 'nota' ? ' selected' : ''}>Anotação</option><option value="descanso"${modo === 'descanso' ? ' selected' : ''}>Até o descanso</option><option value="rodadas"${modo === 'rodadas' ? ' selected' : ''}>Rodadas</option></select>${dur}</div>
             <button type="button" class="mini danger" data-tmpdel="${esc(b.id)}" title="Tirar este bônus" aria-label="Tirar o bônus ${esc(b.n || '')}">×</button>
-          </div>`).join('')}</div>`
-        : '<div class="hint">Nenhum bônus temporário. Use para o que passa: +3 de Vitalidade do ensopado, +5 de Agilidade da poção. A duração é só uma anotação — quem desliga é você.</div>'}
+          </div>`; }).join('')}</div>`
+        : '<div class="hint">Nenhum bônus temporário. Use para o que passa: +3 de Vitalidade do ensopado, +5 de Agilidade da poção. A duração pode ser uma anotação (quem desliga é você), até o próximo descanso (o Acampamento tira) ou um contador de rodadas, que você desconta.</div>'}
         ${typeof FichasQuadros !== 'undefined' ? FichasQuadros.htmlPenalidades(c) : ''}
       </div>
     </div>`;
@@ -721,6 +729,21 @@ const FichasExtras = (() => {
     texto('tmpn', 'n', 60); texto('tmpd', 'd', 40);
     qa(painel, '[data-tmpon]').forEach(i => i.onchange = () => { const b = tmp()[i.dataset.tmpon]; if (!b) return; if (i.checked) delete b.off; else b.off = true; redesenhar('[data-tmpon="' + i.dataset.tmpon + '"]'); });
     qa(painel, '[data-tmpk]').forEach(s => s.onchange = () => { const b = tmp()[s.dataset.tmpk]; if (!b || !s.value) return; b.k = s.value; redesenhar('[data-tmpk="' + s.dataset.tmpk + '"]'); });
+    const rodadas = r => (r === 0 ? 'acabou' : r + (r === 1 ? ' rodada' : ' rodadas'));
+    qa(painel, '[data-tmpmodo]').forEach(s => s.onchange = () => {
+      const b = tmp()[s.dataset.tmpmodo]; if (!b) return;
+      if (s.value === 'rodadas') { b.r = Number.isFinite(+b.r) && +b.r > 0 ? Math.min(99, Math.round(+b.r)) : 3; delete b.ate; b.d = rodadas(b.r); }
+      else if (s.value === 'descanso') { b.ate = 'descanso'; delete b.r; b.d = 'até o próximo descanso'; }
+      else { delete b.r; delete b.ate; }
+      redesenhar('[data-tmpmodo="' + s.dataset.tmpmodo + '"]');
+    });
+    qa(painel, '[data-tmprod]').forEach(bt => bt.onclick = () => {
+      const id = bt.dataset.tmprod, b = tmp()[id]; if (!b) return;
+      const r = Math.max(0, Math.min(99, Math.round(+b.r || 0) + (+bt.dataset.d)));
+      b.r = r; b.d = rodadas(r);
+      // (com 0 o "−" fica desligado: o cursor vai para o "+")
+      redesenhar('[data-tmprod="' + id + '"][data-d="' + (r === 0 ? 1 : bt.dataset.d) + '"]');
+    });
     /* O valor vale enquanto é digitado: a rolagem rápida e a tabela de atributos acompanham na hora, sem esperar o
        cursor sair do campo (só o que é um número inteiro vale no meio do caminho: "-" a caminho de "-5" ainda não é
        nada). O resto da ficha é redesenhado quando o cursor sai. */

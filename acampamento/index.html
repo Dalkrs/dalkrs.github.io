@@ -118,6 +118,17 @@ button { cursor: pointer; }
 .pers .b { height: 7px; border-radius: 4px; background: rgba(8, 10, 18, .82); border: 1px solid rgba(0, 0, 0, .7); overflow: hidden; }
 .pers .b i { display: block; height: 100%; background: var(--c, var(--hp)); }
 .pers.sel .rt { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp), 0 10px 24px rgba(0, 0, 0, .55); }
+/* a aura da emoção: um brilho na cor dela atrás do retrato, que respira devagar (só visual) */
+/* (o retrato tem 102px com a borda, centrado a 51px do topo; a aura tem 176px: o brilho começa forte na borda do
+    retrato — 58% do raio — e some até a borda dela) */
+.pers .aura { position: absolute; top: -37px; left: 50%; width: 176px; height: 176px; margin-left: -88px; border-radius: 50%; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--emo) 92%, transparent) 56%, color-mix(in srgb, var(--emo) 62%, transparent) 66%, color-mix(in srgb, var(--emo) 24%, transparent) 84%, transparent 100%); animation: respira 4.6s ease-in-out infinite; }
+@keyframes respira { 0%, 100% { transform: scale(.95); opacity: .78; } 50% { transform: scale(1.03); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pers .aura { animation: none; } }
+.emo-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--emo); box-shadow: 0 0 6px var(--emo); flex: none; }
+.emos { display: flex; flex-wrap: wrap; gap: 5px; }
+.emos button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); font-size: 12.5px; color: var(--fg-2); }
+.emos button[aria-pressed="true"] { border-color: var(--emo, var(--lamp)); color: var(--fg); font-weight: 700; background: color-mix(in srgb, var(--emo, var(--lamp)) 16%, var(--raised)); }
 .pers[data-pode] { cursor: grab; }
 .pers.arrastando { cursor: grabbing; z-index: 3; }
 .pers:focus-visible { outline: none; }
@@ -130,8 +141,9 @@ button { cursor: pointer; }
 
 /* ---- painel ---- */
 .side { flex: none; width: 372px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
-.tabs { flex: none; display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); }
-.tab { position: relative; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--fg-2); font-weight: 600; }
+.tabs { flex: none; display: flex; gap: 2px; padding: 0 6px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { position: relative; flex: none; height: 40px; padding: 0 9px; border: 0; background: none; color: var(--fg-2); font-weight: 600; }
 .tab:hover { color: var(--fg); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
 .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
@@ -176,6 +188,40 @@ textarea.in { height: auto; min-height: 52px; padding: 7px 9px; resize: vertical
 .regras .cab { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
 details.dobra > summary { cursor: pointer; font-weight: 600; color: var(--fg-2); padding: 4px 0; }
 details.dobra[open] > summary { margin-bottom: 8px; }
+/* o que uma ração ou a estrutura faz (no descanso e na ficha) */
+details.efeito { border-top: 1px dashed var(--line); padding-top: 6px; }
+details.efeito > summary { cursor: pointer; font-size: 12.5px; color: var(--fg-2); list-style-position: inside; }
+details.efeito > summary b { color: var(--fg); font-weight: 600; }
+details.efeito[open] > summary { margin-bottom: 7px; }
+.efs.tres { grid-template-columns: repeat(3, 1fr); }
+.fxs { display: grid; gap: 6px; margin-top: 6px; }
+.fx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.fx select.in, .fx input.in { width: auto; height: 28px; padding: 0 6px; font-size: 13px; }
+.fx .in.chave { min-width: 90px; flex: 1; }
+.fx .in.val { width: 64px; font-family: var(--mono); text-align: right; }
+.fx .in.rod { width: 54px; font-family: var(--mono); text-align: right; }
+.fx .ro { font-size: 13px; color: var(--fg-2); }
+.fx .dur { flex-basis: 100%; display: flex; align-items: center; gap: 6px; }
+.cartao .lin.pv2 { gap: 4px; }
+.cartao .lin.pv2 .qtd-rot { margin-left: auto; margin-right: 4px; font-size: 12.5px; color: var(--fg-3); }
+.alvo { display: grid; gap: 6px; }
+.alvo .lin { flex-wrap: wrap; }
+.marcas { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.marcas label { display: inline-flex; align-items: center; gap: 5px; color: var(--fg-2); }
+.marcas .tit { width: 100%; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.servir { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 8px; align-items: center; font-size: 13px; color: var(--fg-2); }
+.servir .in { height: 30px; }
+/* a caravana */
+.peso { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12.5px; color: var(--fg-2); }
+.peso .tr { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--hover); overflow: hidden; }
+.peso .tr i { display: block; height: 100%; background: var(--ok); }
+.peso.demais .tr i { background: var(--danger); }
+.peso.demais b { color: var(--danger); }
+.peso b { font-family: var(--mono); color: var(--fg); }
+.cg { display: grid; grid-template-columns: 1fr 60px 70px; gap: 6px; align-items: center; }
+.cg .in.num { width: 100%; }
+.cg-sub { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-3); }
+.cg-sub select.in { width: auto; flex: 1; height: 28px; font-size: 12.5px; }
 
 /* ---- janelas e avisos ---- */
 dialog { max-width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
@@ -250,8 +296,9 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o acampamento.</p></noscript>
 <script src="../tc/ponte.js?v=11"></script>
-<script src="../tc/rules.js?v=5"></script>
-<script src="nucleo.js?v=2"></script>
-<script src="acampamento.js?v=7"></script>
+<script src="../tc/dice.js?v=2"></script>
+<script src="../tc/rules.js?v=6"></script>
+<script src="nucleo.js?v=3"></script>
+<script src="acampamento.js?v=9"></script>
 </body>
 </html>

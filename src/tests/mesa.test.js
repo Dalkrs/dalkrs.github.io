@@ -38,8 +38,18 @@ const { ok, end } = checker();
   await M.locator('#btnConta').click(); await w(400);
   const codigo = (await M.locator('#codigo').innerText()).trim();
   ok(/^[A-Z2-9]{3}-[A-Z2-9]{3}$/.test(codigo), 'o mestre vê o código de convite: ' + codigo);
+  /* (as Cenas acabam de abrir e, na primeira vez, abrem sozinhas o tutorial — ou a oferta de trazer as cenas que este
+     navegador guarda: com o menu aberto, elas esperam, e nada tira o foco dele) */
+  await w(3000);
+  const Cn = M.frame({ url: /\/cenas\// }), sozinha = async () => (await Cn.locator('#tour').count()) + (await Cn.locator('.scrim .modal').count());
+  ok(await M.locator('#menu').isVisible() && Cn && (await sozinha()) === 0, 'com o menu aberto, nada o fecha sozinho: o que as Cenas abrem sozinhas espera');
   await M.keyboard.press('Escape'); await w(200);
   ok(await M.locator('#menu').isHidden(), 'Esc fecha o menu');
+  let veio = false; for (let i = 0; i < 20 && !veio; i++) { await w(300); veio = (await sozinha()) === 1; }
+  ok(veio, 'fechado o menu, vem o que as Cenas tinham para abrir');
+  // (o tutorial e a oferta das cenas podem vir um depois do outro: cada um fecha com Esc — o foco vai para ele)
+  for (let i = 0; i < 3 && (await sozinha()); i++) { await M.keyboard.press('Escape'); await w(1500); }
+  ok((await sozinha()) === 0, '(e fecha com Esc: o foco foi para ela)');
 
   // ---------- novidades: uma bolinha no botão da conta até a pessoa abrir a lista; nada abre sozinho ----------
   {
