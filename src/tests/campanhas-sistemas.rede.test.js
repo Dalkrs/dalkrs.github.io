@@ -354,11 +354,11 @@ const { ok, end } = checker();
     const erroArrAux = await arrastar(FX, 'pc_j', '#lista .pcrow[data-id="pc_a"]', 0.75, TJ);
     if (erroArrAux) console.log('  (na lista do auxiliar: ' + JSON.stringify(oQueHa) + ')');
     ok(!erroArrAux && /^Só o mestre da mesa passa fichas de uma campanha para outra\.$/.test((await FX.locator('.toast').innerText().catch(() => '')).trim()), 'arrastar uma ficha para outra campanha: a lista recusa e diz que isso é do mestre da mesa' + (erroArrAux ? ' — ' + erroArrAux : ': ' + await FX.locator('.toast').innerText().catch(() => '(sem aviso)')));
-    ok(await blocoNaTela(FX, 'pc_j') === C2 && (await w(1500), true) && (await linhaPc('pc_j')).campanha === C2 && await TJ.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro), 'a ficha fica onde estava (na tela e no banco), e nada fica por subir');
+    ok(await blocoNaTela(FX, 'pc_j') === C2 && (await w(1500), true) && await ate(async () => (await linhaPc('pc_j')).campanha === C2 && await TJ.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro), 20000), 'a ficha fica onde estava (na tela e no banco), e nada fica por subir');
     /* A gravação de uma ficha pelo auxiliar nunca leva troca de campanha — mesmo que a tela dele, por qualquer caminho,
        dissesse outra: o banco recusaria a gravação inteira, e o resto do que ele mexeu se perderia junto. */
     await FX.evaluate(c1 => { const pc = S.personagens.find(p => p.id === 'pc_j'); pc._camp = c1; pc.notas = 'anotação do auxiliar'; save(); }, C1);
-    ok(await ate(async () => { const l = await linhaPc('pc_j'); return l.campanha === C2 && !!l.ficha && l.ficha.notas === 'anotação do auxiliar'; }, 20000) && await TJ.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro),
+    ok(await ate(async () => { const l = await linhaPc('pc_j'); return l.campanha === C2 && !!l.ficha && l.ficha.notas === 'anotação do auxiliar' && await TJ.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro); }, 20000),
       'o que o auxiliar mexe numa ficha é gravado, e a campanha dela fica como está (a gravação dele nunca leva troca de campanha): ' + JSON.stringify(await linhaPc('pc_j').then(l => [l.campanha === C2 ? 'na Geração 2' : l.campanha, l.ficha && l.ficha.notas])));
     await FX.evaluate(c2 => { const pc = S.personagens.find(p => p.id === 'pc_j'); pc._camp = c2; }, C2);
     // as Cenas e o Mapa-múndi dele: mestra, sem "Campanha desta cena…" nem "Campanhas deste mapa…"

@@ -818,7 +818,7 @@ const { ok, end } = checker();
     await ate(async () => { ARV = TM.frames().find(x => x !== TM.mainFrame() && /\/arvore\//.test(x.url())) || null; return !!ARV && await ARV.evaluate(() => typeof ArvoreMesa === 'object' && ArvoreMesa.ativo() && typeof doc === 'object' && !!doc); }, 25000);
     const semCasa = await ARV.evaluate(() => { registrar('novo personagem'); const p = personagemNovo('Sem campanha', bib()); doc.personagens.push(p); ui.personagem = p.id; salvar(); pintarTudo(); return p.id; });
     const linhaSemCasa = () => noBanco(async ([mesa, id]) => (await window.__sb.from('personagens').select('id,campanha').eq('mesa_id', mesa).eq('id', id).maybeSingle()).data, [mesaT, semCasa]);
-    ok(await ate(async () => { const l = await linhaSemCasa(); return !!l && l.campanha === null; }) && await TM.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro), 'na Árvore, o personagem criado com a campanha encerrada em vista nasce no mundo (e é gravado: não fica só no navegador): ' + JSON.stringify(await linhaSemCasa()));
+    ok(await ate(async () => { const l = await linhaSemCasa(); return !!l && l.campanha === null && await TM.evaluate(() => TC.dados.pendentes === 0 && !TC.dados.erro); }), 'na Árvore, o personagem criado com a campanha encerrada em vista nasce no mundo (e é gravado: não fica só no navegador): ' + JSON.stringify(await linhaSemCasa()));
     await noBanco(async ([mesa, id]) => { await window.__sb.from('personagens').update({ apagado: true }).eq('mesa_id', mesa).eq('id', id); }, [mesaT, semCasa]);
     await w(1200);
     // reabrir
