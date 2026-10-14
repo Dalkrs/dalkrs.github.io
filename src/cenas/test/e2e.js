@@ -74,7 +74,8 @@ const { open } = require('./lib');
   s = await S();
   ok(tok(s, 'Dain X').bars[2].v === 21, 'painel: +1 soma na Fé');
   ok(await page.locator('#hud-b0').inputValue() === '52', 'HUD mostra o valor novo');
-  // condição pelo painel
+  // condição pelo painel (as condições vêm em abas: Abençoado fica em Bênçãos)
+  await page.locator('#s-cond .ctab', { hasText: 'Bênçãos' }).first().click(); await page.waitForTimeout(60);
   await page.locator('.chip', { hasText: 'Abençoado' }).first().click();
   await page.waitForTimeout(80);
   s = await S();

@@ -2,10 +2,12 @@
 //   · puxar o grupo: os tokens de um grupo das Fichas entram de uma vez, ligados às fichas, num passo de desfazer;
 //   · terreno: a área que o mestre pinta chega ao jogador, diz o que é e não se deixa selecionar nem forjar;
 //   · F: a janelinha de atributos do token (o mestre, em qualquer token ligado; o jogador, no do personagem dele);
-//   · a fixa de cada turno de quem joga mais de uma vez por rodada (um chefe);
+//   · a iniciativa de cada turno de quem joga mais de uma vez por rodada (um chefe com 1d20 + 6, 1d20 + 4…);
 //   · C: a disputa entre dois tokens, que vai para a mesa ao vivo (em segredo, se um deles está oculto);
 //   · ataque com defesa: a defesa escolhida desconta o dano; mínimo e máximo depois do desconto; token sem ficha
-//     com o dano digitado; os jogadores rolam a defesa a pedido, pela mesa ao vivo; nada muda antes de "Aplicar".
+//     com o dano digitado; os jogadores rolam a defesa a pedido, pela mesa ao vivo; nada muda antes de "Aplicar";
+//   · (lote 5) a tecla K; Força, Canalização, Defesas e Esquiva da ficha no token (o mestre e o dono); Sanidade e
+//     Conforto no token, só para o mestre, gravando na ficha.
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const R = require('../../tc/rules.js');
@@ -208,33 +210,36 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   await tecla(B, 'c'); await w(300, J);
   ok(await B.locator('.modal').count() === 0 && /A disputa pelo mapa é do mestre/.test(await aviso(B)), 'e a disputa pelo mapa (C) é só do mestre');
 
-  // ---------- a fixa de cada turno (um chefe com três turnos) ----------
+  // ---------- a iniciativa de cada turno (um chefe com três turnos: 1d20 + 6, 1d20 + a de sempre, 1d20 + 0) ----------
   await C.evaluate(id => { const u = __tc; u.Act.tokenTurns(u.Store.get('tokens', id), 3); u.setSel([{ c: 'tokens', id }]); u.UI.openTab('sel'); }, ids.pc_gob); await w(400);
-  ok(await C.locator('#tk-fixa-1').count() === 1 && await C.locator('#tk-fixa-3').count() === 1 && await C.locator('#tk-fixa-4').count() === 0, 'com três turnos por rodada, o painel do token ganha a fixa de cada turno');
-  for (const [i, v] of [[1, '8'], [2, '6'], [3, '4']]) { await C.locator('#tk-fixa-' + i).fill(v); await C.locator('#tk-fixa-' + i).press('Tab'); await w(250); }
-  ok(JSON.stringify((await tok(C, ids.pc_gob)).fixas) === '[8,6,4]', 'as três ficam guardadas no token: ' + JSON.stringify((await tok(C, ids.pc_gob)).fixas));
-  ok(await ate(async () => { const k = await tok(B, ids.pc_gob); return !!k && k.turns === 3 && JSON.stringify(k.fixas) === '[]'; }, 20000), 'para a jogadora, o token do chefe chega sem as fixas (são do mestre)');
-  ok(await C.locator('#tk-fixa').inputValue() === '2', 'fora da vez dele, o "Fixando" do painel é a fixa da ficha (2)');
-  await C.evaluate(([g, s]) => { const u = __tc; u.Act.turnAdd([u.Store.get('tokens', g), u.Store.get('tokens', s)]); u.Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list.find(e => e.token === g && e.k === 1).id; x.back = 0; }, 'Iniciar combate'); }, [ids.pc_gob, ids.pc_selene]); await w(400);
-  ok(await C.locator('#tk-fixa').inputValue() === '8' && /1º turno dele nesta rodada: a fixa anotada para esse turno é 8/.test(await C.locator('#s-ficha').innerText()), 'na vez do 1º turno dele, o painel já vem fixando 8 (e diz por quê)');
+  ok(await C.locator('#tk-ini-1').count() === 1 && await C.locator('#tk-ini-3').count() === 1 && await C.locator('#tk-ini-4').count() === 0 && await C.locator('#tk-fixa-1').count() === 0,
+    'com três turnos por rodada, o painel do token ganha a iniciativa de cada turno (e não mais uma fixa por turno)');
+  for (const [i, v] of [[1, '6'], [3, '0']]) { await C.locator('#tk-ini-' + i).fill(v); await C.locator('#tk-ini-' + i).press('Tab'); await w(250); }
+  const gIni = (await tok(C, ids.pc_gob)).ini;
+  ok(JSON.stringify((await tok(C, ids.pc_gob)).inis) === '[6,null,0]' && await C.locator('#tk-ini-2').getAttribute('placeholder') === String(gIni),
+    'ficam guardadas no token; o 2º, vazio, usa a de sempre (' + gIni + '): ' + JSON.stringify((await tok(C, ids.pc_gob)).inis));
+  ok(await ate(async () => { const k = await tok(B, ids.pc_gob); return !!k && k.turns === 3 && JSON.stringify(k.inis) === '[]'; }, 20000), 'para a jogadora, o token do chefe chega sem as iniciativas (são do mestre)');
+  ok(await C.locator('#tk-fixa').inputValue() === '2', 'o "Fixando" do painel é a fixa da ficha (2)');
+  await C.evaluate(([g, s]) => { const u = __tc; u.Act.turnAdd([u.Store.get('tokens', g), u.Store.get('tokens', s)]); u.UI.openTab('turn'); }, [ids.pc_gob, ids.pc_selene]); await w(400);
+  const doChefe = () => C.evaluate(g => __tc.Store.scene().turn.list.filter(e => e.token === g).sort((p, q) => p.k - q.k).map(e => ({ id: e.id, b: e.roll ? e.roll.b : null, ok: !!e.roll && e.init === e.roll.d + e.roll.b })), ids.pc_gob);
+  for (const e of await doChefe()) { await C.locator('#tr-' + e.id).click(); await w(250); }
+  const rolados = await doChefe();
+  ok(JSON.stringify(rolados.map(e => e.b)) === JSON.stringify([6, gIni, 0]) && rolados.every(e => e.ok), 'cada turno dele rola 1d20 + a iniciativa daquele turno: ' + JSON.stringify(rolados.map(e => e.b)));
+  await C.evaluate(g => { const u = __tc; u.Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list.find(e => e.token === g && e.k === 1).id; x.back = 0; }, 'Iniciar combate'); }, ids.pc_gob); await w(400);
   { const [x, y] = await noMapa(C, ids.pc_gob); await M.mouse.move(x, y); await w(200); }
   await tecla(C, 'f'); await w(350);
-  ok(await C.locator('#fp-fixa').inputValue() === '8' && await C.locator('#fp-t1.on').count() === 1 && (await C.locator('#fpop .pop-c').innerText()).replace(/\s+/g, ' ') === 'Por turno 1º · 8 2º · 6 3º · 4', 'e a janelinha (F) também: fixando 8, com as três fixas à mão');
+  ok(await C.locator('#fp-fixa').inputValue() === '2' && await C.locator('#fpop .pop-c').count() === 0, 'na vez dele, a janelinha (F) fixa o de sempre (2), sem fixa por turno');
   await foto(M, 'combate-f-turno');
   const DFF = valor(goblin, 'pc_gob', 'DFF');
   antes = (await linhas(M)).length;
   await C.locator('#fp-DFF').click();
-  ok(await ate(async () => (await linhas(M)).length === antes + 1), '(o chefe rola a defesa física no 1º turno)');
+  ok(await ate(async () => (await linhas(M)).length === antes + 1), '(o chefe rola a defesa física)');
   r = await ultima(M);
-  ok(r.d.dd[0][0] === DFF - 8 && r.d.total === r.d.dd[0][1] + 8, 'a rolagem do 1º turno fixa 8: 1d' + (DFF - 8) + ' + 8 → ' + JSON.stringify(r.d.dd) + ' = ' + r.d.total);
+  ok(r.d.dd[0][0] === DFF - 2 && r.d.total === r.d.dd[0][1] + 2, 'a rolagem fixa 2: 1d' + (DFF - 2) + ' + 2 → ' + JSON.stringify(r.d.dd) + ' = ' + r.d.total);
   await C.evaluate(g => { const u = __tc; u.Act.turnPatch(x => { x.cur = x.list.find(e => e.token === g && e.k === 2).id; }, 'Vez'); }, ids.pc_gob); await w(400);
-  ok(await C.locator('#fp-fixa').inputValue() === '6' && await C.locator('#fp-t2.on').count() === 1 && await C.locator('#tk-fixa').inputValue() === '6', 'a vez passa para o 2º turno dele: a janelinha aberta e o painel passam a fixar 6');
-  await C.locator('#fp-t3').click(); await w(200);
-  ok(await C.locator('#fp-fixa').inputValue() === '4', 'um toque numa das fixas põe o valor no campo');
-  await C.evaluate(([g, s]) => { const u = __tc; u.Act.turnPatch(x => { x.cur = x.list.find(e => e.token === s).id; }, 'Vez'); }, [ids.pc_gob, ids.pc_selene]); await w(400);
-  ok(await C.locator('#fp-fixa').inputValue() === '2', 'na vez de outro, ele volta à fixa de sempre (a da ficha, 2)');
+  ok(await C.locator('#fp-fixa').inputValue() === '2', 'no 2º turno dele, a fixa continua a mesma');
   await M.keyboard.press('Escape'); await w(200);
-  await C.evaluate(() => { const u = __tc; u.Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'); }); await w(300);
+  await C.evaluate(() => { const u = __tc; u.Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'); u.UI.openTab('sel'); }); await w(300);
 
   // ---------- C: a disputa ----------
   await C.evaluate(([a, b]) => __tc.setSel([{ c: 'tokens', id: a }, { c: 'tokens', id: b }]), [ids.pc_selene, ids.pc_gob]); await w(250);
@@ -438,6 +443,36 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   ok((await linhas(M)).length === antes, 'com "Avisar a mesa" desligado, nada vai para a mesa ao vivo');
   await C.evaluate(() => __tc.Tools.undo()); await w(400);
   ok(await hp(C, ids.pc_selene) === 100, '(e Desfazer devolve as barras)');
+
+  // ---------- lote 5: K, os números da ficha ao lado do nome, Sanidade e Conforto (só o mestre) ----------
+  await C.evaluate(() => { __tc.setSel([]); __tc.Tools.set('select'); }); await w(250);
+  { const [x, y] = await noMapa(C, ids.pc_gob); await M.mouse.move(x, y); await M.mouse.move(x + 1, y + 1); await w(250); }
+  await tecla(C, 'k'); await w(450);
+  ok(await C.locator('#at-lista li').count() === 1 && (await C.locator('#at-lista').innerText()).includes('Goblin'), 'K com o mouse sobre o Goblin abre o ataque com defesa contra ele');
+  await M.keyboard.press('Escape'); await w(250);
+  const NUMS = ['FOR', 'CAN', 'DFF', 'DFM', 'ESQ'], numsDe = f => Promise.all(NUMS.map(k => f.locator('#tk-num-' + k).innerText()));
+  const daSelene = NUMS.map(k => String(valor(selene, 'pc_selene', k)));
+  await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_selene); await w(350);
+  ok(await C.locator('#s-nums input').count() === 0 && JSON.stringify(await numsDe(C)) === JSON.stringify(daSelene), 'num token com ficha, Força, Canalização, Defesas e Esquiva vêm da ficha, só para ler: ' + daSelene.join(' · '));
+  ok(await C.evaluate(id => __tc.App.sel.length === 1 && __tc.App.sel[0].id === id, ids.pc_selene), '(e aparecem ao lado do nome dela no mapa, enquanto ela está escolhida)');
+  // Sanidade e Conforto: a ficha da jogadora usa os dois (100 e 50, os de partida)
+  ok(await C.locator('#s-mente').count() === 1 && await C.locator('#tk-san').inputValue() === '100' && await C.locator('#tk-conf').inputValue() === '50', 'o mestre vê Sanidade e Conforto da Selene no painel do token (100 e 50)');
+  await C.locator('#tk-san-m5').click(); await w(300);
+  ok(await ate(async () => await M.evaluate(() => TC.dados.col('personagens').pegar('pc_selene').estado.san) === 95) && /Sanidade de Selene: 100 → 95/.test(await aviso(C)), '−5 grava direto na ficha (Sanidade 95), com aviso e Desfazer');
+  await C.locator('#tk-san-m5').click(); await w(300);
+  ok(await ate(async () => await M.evaluate(() => TC.dados.col('personagens').pegar('pc_selene').estado.san) === 90) && /Sanidade de Selene: 100 → 90/.test(await aviso(C)) && (await aviso(C)).split('Sanidade de').length === 2, 'os cliques em seguida ficam num aviso só, contado desde o começo (100 → 90)');
+  await C.locator('.toast-a', { hasText: 'Desfazer' }).last().click(); await w(300);
+  ok(await ate(async () => await M.evaluate(() => TC.dados.col('personagens').pegar('pc_selene').estado.san) === 100), 'Desfazer volta a 100');
+  await C.locator('#tk-conf').fill('35'); await C.locator('#tk-conf').press('Tab'); await w(300);
+  ok(await ate(async () => await M.evaluate(() => TC.dados.col('personagens').pegar('pc_selene').estado.conf) === 35), 'digitar o Conforto também grava (35)');
+  await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_gob); await w(300);
+  ok(await C.locator('#s-mente').count() === 0 && JSON.stringify(await numsDe(C)) === JSON.stringify(NUMS.map(k => String(valor(goblin, 'pc_gob', k)))), 'o Goblin (NPC sem Sanidade e Conforto) não tem a seção; os números dele vêm da ficha dele');
+  // a jogadora: os números do token dela, sim; Sanidade e Conforto, não (nem no dela)
+  await B.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_selene); await w(400);
+  ok(await B.locator('#s-mente').count() === 0 && JSON.stringify(await numsDe(B)) === JSON.stringify(daSelene), 'a jogadora vê os números da Selene (dela), mas não a Sanidade e o Conforto');
+  await B.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_gob); await w(300);
+  ok(await B.locator('#s-nums').count() === 0, 'no token do Goblin, a jogadora não vê os números');
+  await B.evaluate(() => __tc.setSel([])); await C.evaluate(() => __tc.setSel([])); await w(200);
 
   ok(await ate(async () => await parado(M) && await C.evaluate(() => __tc.Persist.status() === 'ok')), '(tudo salvo)');
   // ---------- limpeza ----------

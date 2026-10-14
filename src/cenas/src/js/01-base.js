@@ -31,7 +31,7 @@
                     o dano antes da barra), conds + cinfo
                     (contador e duração de cada condição), auras, visão, luz,
                     ini (bônus de iniciativa), turns (turnos por rodada, 1 a 4),
-                    fixas (a fixa de cada turno, para quem tem mais de um)
+                    inis (o bônus de iniciativa de cada turno, para quem tem mais de um)
      - desenho .... k: free | line | rect | ell | poly | text; com ter = { t, h } é uma
                     área de terreno (tipo e altura), pintada à parte e fora do clique comum
      - parede ..... k: wall | door | window | veil; porta secreta = door + secret
@@ -249,6 +249,8 @@ const ICONS = {
   veil: 'M4 4h16M6 4c0 6-1.500 10-1.500 16M10 4c0 6 .5 10 .5 16M14 4c0 6-.5 10-.5 16M18 4c0 6 1.500 10 1.500 16',
   veilOpen: 'M4 4h16M5.500 4c0 7-.4 11-1.500 16M8.500 4c-.2 6-1.300 9.500-4.300 11.500M18.500 4c0 7 .4 11 1.500 16M15.500 4c.2 6 1.300 9.500 4.300 11.500',
   terrain: 'M2.500 19.500L9 8l4 6.600 2.400-3.300 6.100 8.200zM7.400 10.900l1.600 1.400 1.400-1.100',
+  reac: 'M10 5.500L4 11.500l6 6M4 11.500h10a6 6 0 0 1 6 6v1',
+  obj: 'M4 10h16v9.500H4zM4 10l1.500-4.500h13L20 10M10 14h4M12 5.500V10',
   // Condições (as marcadas com fill são preenchidas)
   c_veneno: { d: 'M8 4c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0C4.8 8.4 6 6.6 8 4zM16 10c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-1.8 1.2-3.6 3.2-6.2z', fill: true },
   c_sangue: { d: 'M12 3.5c3.2 4.2 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.3-5.800 5.5-10z', fill: true },
@@ -277,6 +279,33 @@ const ICONS = {
   c_inspirado: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.600 10.800c.6.5 1 1.200 1 2v.2h5.200v-.2c0-.8.4-1.500 1-2A6 6 0 0 0 12 3z',
   c_regen: 'M20 12a8 8 0 0 1-14.200 5M4 12a8 8 0 0 1 14.200-5M18.200 3.500V7h-3.500M5.800 20.500V17h3.500',
   c_tratado: { d: 'M9.500 4h5v5.500H20v5h-5.500V20h-5v-5.500H4v-5h5.500z', fill: true },
+  // (lote 5)
+  c_resfriado: 'M10 4.500a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0zM12 9.500v6.500M17.500 5.500h3M19 4v3',
+  c_grito: 'M4 9.500h3.500L13 5.500v13L7.500 14.500H4zM16.500 9a4.500 4.500 0 0 1 0 6M19 6.500a8 8 0 0 1 0 11',
+  c_artefato: 'M12 3l6 6.500-6 11.500-6-11.500zM6 9.500h12M9.500 9.500L12 21l2.500-11.500M9 3.500L10 6M15 3.500L14 6',
+  c_furia: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM7.200 8.300l3.300 1.700M16.800 8.300l-3.300 1.700M8.300 16.800c2.200-1.900 5.200-1.900 7.400 0M9.200 12.300v.2M14.800 12.300v.2',
+  c_provocado: 'M4 5h16v11H10l-5 4v-4H4zM12 7.800v4.200M12 14v.2',
+  c_defendendo: 'M12 3l7 2.600v5c0 4.400-2.900 8-7 9.400-4.100-1.400-7-5-7-9.400v-5zM5 10h14M12 3v17',
+  c_desarmado: 'M15 4h5v5L11 18l-5-5zM8 16l-3.500 3.500M3.500 3.500l17 17',
+  c_agarrado: 'M8 12.500V6.500a1.500 1.500 0 0 1 3 0V11M11 10.500V5a1.500 1.500 0 0 1 3 0v6M14 10.500V6.500a1.500 1.500 0 0 1 3 0V14a6 6 0 0 1-6 6h-.5a5 5 0 0 1-4.300-2.500L4.200 14.200a1.500 1.500 0 0 1 2.600-1.500L8 14.500',
+  c_confuso: 'M12 12.500a1.400 1.400 0 0 1 1.400 1.400 2.800 2.800 0 0 1-2.800 2.800 4.200 4.200 0 0 1-4.200-4.200 5.600 5.600 0 0 1 5.600-5.600 7 7 0 0 1 7 7',
+  c_enfeiticado: { d: 'M12 20s-7-4.300-7-9.700A3.900 3.900 0 0 1 12 8a3.900 3.900 0 0 1 7 2.300C19 15.700 12 20 12 20zM18.500 2.500l.7 1.800 1.800.7-1.800.7-.7 1.800-.7-1.800-1.800-.7 1.800-.7z', fill: true },
+  c_marcado: 'M12 12m-6.500 0a6.500 6.500 0 1 0 13 0a6.500 6.500 0 1 0-13 0M12 3v5M12 16v5M3 12h5M16 12h5',
+  c_transformado: 'M5 8.500h12.500L14.500 5.500M19 15.500H6.500l3 3',
+  c_doente: 'M12 12m-3.800 0a3.800 3.800 0 1 0 7.600 0a3.800 3.800 0 1 0-7.600 0M12 3.500v4.700M12 15.800v4.700M3.500 12h4.700M15.800 12h4.700M6 6l3.300 3.300M14.700 14.700L18 18M6 18l3.300-3.300M14.700 9.300L18 6',
+  c_faminto: 'M3.500 12h17a8.500 8.500 0 0 1-17 0zM15 3.500L12 12M18.500 5L14.500 12',
+  c_bebado: 'M5.500 6.500h9v11a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2zM14.500 9h2a2 2 0 0 1 2 2v2.500a2 2 0 0 1-2 2h-2M8.500 10v6M11.500 10v6M6 4.500c1-1 2.500-1 3.500 0s2.500 1 3.500 0',
+  c_surdo: 'M8 17.500c0 1.700 1.300 3 3 3s3-1.300 3-3c0-2.800 4-3.800 4-8.500a6 6 0 0 0-12 0M10 9a2 2 0 0 1 4 0c0 1.500-2 1.800-2 3.500M3.500 3.500l17 17',
+  c_lento: 'M3.500 18.500h13a3 3 0 0 0 3-3v-6M10.500 18.500a5 5 0 1 1 5-5 2.500 2.500 0 1 1-2.500-2.500M19.500 9.500l1.300-3.200M19.500 9.500L17 7.200',
+  c_acelerado: 'M4 6l7 6-7 6M12.500 6l7 6-7 6',
+  c_voando: { d: 'M2 9.500c4-1.300 7.200.8 10 3.800 2.800-3 6-5.100 10-3.800-3 1-5 3-6 5.800-1.300 2.400-6.700 2.400-8 0-1-2.800-3-4.800-6-5.800z', fill: true },
+  c_oculto: 'M12 2.800c-4.100 0-7 4.400-7 9.400v8.800h14v-8.800c0-5-2.900-9.400-7-9.400zM8.300 13.200C9.300 10.800 10.600 9.800 12 9.800s2.700 1 3.700 3.400c-1 2.400-2.300 3.400-3.700 3.400s-2.700-1-3.700-3.400zM10.600 13.200v.2M13.400 13.200v.2',
+  // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
+  st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
+  st_can: 'M4 5.500C6 4.500 9 4.500 12 6c3-1.500 6-1.500 8-.5V19c-2-1-5-1-8 .5-3-1.500-6-1.500-8-.5zM12 6v13.500',
+  st_dff: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800z',
+  st_dfm: 'M9 4h6l3.500 3.500L16 9l2.500 11.500h-13L8 9 5.500 7.500zM12 4v3.500M9 4l3 3.500L15 4M10.500 20.500L12 12l1.500 8.500',
+  st_esq: { d: 'M9.200 21c-2 0-3.200-1.500-3.200-3.500 0-2.500 1-4 1-6 0-2.200 1.200-3.600 3.200-3.600 1.900 0 2.600 1.500 2.600 3.500 0 2.500-1.500 4-1.500 6.500 0 1.800-.6 3.100-2.100 3.100zM14.300 7.300a1.600 1.600 0 1 0 3.200 0 1.600 1.600 0 0 0-3.200 0zM11.900 4.300a1.300 1.300 0 1 0 2.600 0 1.300 1.300 0 0 0-2.600 0zM17 10.600a1.400 1.400 0 1 0 2.800 0 1.400 1.400 0 0 0-2.800 0z', fill: true },
 };
 
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -348,6 +377,8 @@ const fmtV = v => fmt(v).replace('-', '−');   // valor de barra, com o sinal d
 // Quanto do piso uma barra negativa já gastou (0 a 1); 0 quando ela não está abaixo de zero.
 const barNeg = b => (b && b.v < 0 && barLo(b) > 0 ? clamp(-b.v / barLo(b), 0, 1) : 0);
 const SOBRE_COR = '#8fe3ff';                // a cor da sobrevida, no mapa e nos painéis
+const MENTE_COR = { san: '#b39cf0', conf: '#e6ab4f' };     // Sanidade e Conforto, como no Acampamento
+const NUM_CORES = { FOR: '#f0937a', CAN: '#93b6ff', DFF: '#d9c08c', DFM: '#c6a6f7', ESQ: '#8ddba6' };   // os números do token
 function barDefaults() {
   const p = typeof Store !== 'undefined' ? Store.S.prefs.barDefaults : null;
   return (Array.isArray(p) && p.length ? p : BAR_DEFAULTS).slice(0, MAX_BARS).map(cleanBar);
@@ -355,12 +386,27 @@ function barDefaults() {
 
 // Combate: bônus de iniciativa (a rolagem é 1d20 + bônus) e turnos por rodada (chefes jogam mais de uma vez).
 const MAX_TURNS = 4;
+const MAX_BAND = 60;                      // tokens numa faixa de grupo
+// Os números que o mestre anota num token sem ficha, para aparecerem ao lado do nome: Força, Canalização Mágica,
+// Defesa Física, Defesa Mágica e Esquiva. Só os preenchidos ficam; nenhum preenchido, nada fica.
+const ST_CAMPOS = [['for', 'FOR', 'Força'], ['can', 'CAN', 'Canalização Mágica'], ['dff', 'DFF', 'Defesa Física'], ['dfm', 'DFM', 'Defesa Mágica'], ['esq', 'ESQ', 'Esquiva']];
+function cleanSt(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = {};
+  let tem = false;
+  for (const [k] of ST_CAMPOS) {
+    const n = v[k];
+    if (n == null || n === '' || typeof n === 'boolean' || !isFinite(Number(n))) continue;
+    o[k] = clamp(Math.round(Number(n)), -9999, 99999); tem = true;
+  }
+  return tem ? o : null;
+}
 const clampTurns = v => clamp(Math.round(Number(v)) || 1, 1, MAX_TURNS);
 const clampIni = v => clamp(Math.round(Number(v)) || 0, -99, 99);
 
-// Fixa de cada turno de um token com mais de um turno por rodada (um chefe: 8 no primeiro, 6 no segundo…).
-// Uma posição vazia (null) quer dizer "a fixa de sempre" — a da ficha, ou a que for digitada na hora.
-const cleanFixas = v => (Array.isArray(v) ? v.slice(0, MAX_TURNS).map(x => (x == null || x === '' || !isFinite(Number(x)) ? null : clamp(Math.round(Number(x)), 0, 9999))) : []);
+// O bônus de iniciativa de cada turno de quem joga mais de uma vez por rodada (um chefe: 1d20 + 6 no primeiro turno,
+// 1d20 + 4 no segundo, 1d20 + 0 no terceiro). Uma posição vazia (null) quer dizer "o bônus de sempre" (o do token).
+const cleanInis = v => (Array.isArray(v) ? v.slice(0, MAX_TURNS).map(x => (x == null || x === '' || !isFinite(Number(x)) ? null : clampIni(x))) : []);
 
 /* Terreno: uma área do mapa com tipo e altura. É um desenho (coleção shapes) com o campo ter = { t: tipo, h: altura
    na unidade da cena } — negativa num fosso. É só visual: o token que está em cima mostra a altura, e passar o
@@ -385,43 +431,76 @@ const TOKEN_COLORS = ['#7c8fb8', '#b87c7c', '#7cb88c', '#b8a77c', '#9b7cb8', '#7
 
 // As condições são só marcadores (com contador e duração opcionais): nenhuma muda barras nem tira outra sozinha.
 // A ordem é a dos painéis: as parecidas ficam juntas (Sangrando e Hemorragia, o grau acima dela).
+/* Condições. Cada uma tem uma categoria (g), que separa a lista em abas na hora de escolher. A ordem aqui é a ordem
+   em que aparecem: por categoria, e dentro dela as mais usadas primeiro. */
+const COND_TAGS = [
+  { id: 'dano', n: 'Dano', t: 'Dano e elementos' },
+  { id: 'controle', n: 'Controle', t: 'Controle' },
+  { id: 'combate', n: 'Combate', t: 'Combate' },
+  { id: 'mente', n: 'Mente', t: 'Mente e magia' },
+  { id: 'corpo', n: 'Corpo', t: 'Corpo e sentidos' },
+  { id: 'ritmo', n: 'Ritmo', t: 'Ritmo e movimento' },
+  { id: 'bencao', n: 'Bênçãos', t: 'Bênçãos e cura' },
+];
 const CONDS = [
-  { id: 'veneno', n: 'Envenenado', c: '#4ea84a', i: 'c_veneno' },
-  { id: 'sangue', n: 'Sangrando', c: '#c93a3a', i: 'c_sangue' },
-  { id: 'hemorragia', n: 'Hemorragia', c: '#8f1d1d', i: 'c_hemorragia' },
-  { id: 'fogo', n: 'Queimando', c: '#e8792b', i: 'c_fogo' },
-  { id: 'gelo', n: 'Congelado', c: '#5fb6e0', i: 'c_gelo' },
-  { id: 'molhado', n: 'Molhado', c: '#3b8fd1', i: 'c_molhado' },
-  { id: 'oleo', n: 'Óleo', c: '#6b5b2a', i: 'c_oleo' },
-  { id: 'atordoado', n: 'Atordoado', c: '#d9a821', i: 'c_atordoado' },
-  { id: 'paralisia', n: 'Paralisado', c: '#9a9f2e', i: 'c_paralisia' },
-  { id: 'emaranhado', n: 'Emaranhado', c: '#5a8f3c', i: 'c_emaranhado' },
-  { id: 'caido', n: 'Caído', c: '#8a6a4c', i: 'c_caido' },
-  { id: 'inconsciente', n: 'Inconsciente', c: '#4b5568', i: 'c_inconsciente' },
-  { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego' },
-  { id: 'silencio', n: 'Silenciado', c: '#8b62c9', i: 'c_silencio' },
-  { id: 'medo', n: 'Amedrontado', c: '#b0559f', i: 'c_medo' },
-  { id: 'paranoico', n: 'Paranoico', c: '#a13d63', i: 'c_paranoico' },
-  { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco' },
-  { id: 'exausto', n: 'Exausto', c: '#7a6a8f', i: 'c_exausto' },
-  { id: 'invisivel', n: 'Invisível', c: '#6f8aa6', i: 'c_invisivel' },
-  { id: 'escudo', n: 'Protegido', c: '#3f7fc0', i: 'c_escudo' },
-  { id: 'bencao', n: 'Abençoado', c: '#c9a227', i: 'c_bencao' },
-  { id: 'inspirado', n: 'Inspirado', c: '#e6a700', i: 'c_inspirado' },
-  { id: 'regen', n: 'Regeneração', c: '#58b368', i: 'c_regen' },
-  { id: 'tratado', n: 'Tratado', c: '#d06a5a', i: 'c_tratado' },
-  { id: 'maldicao', n: 'Amaldiçoado', c: '#5b3f8f', i: 'c_maldicao' },
-  { id: 'foco', n: 'Concentrando', c: '#2f9d93', i: 'c_foco' },
-  { id: 'morto', n: 'Morto', c: '#1c1c22', i: 'c_morto' },
+  { id: 'veneno', n: 'Envenenado', c: '#4ea84a', i: 'c_veneno', g: 'dano' },
+  { id: 'sangue', n: 'Sangrando', c: '#c93a3a', i: 'c_sangue', g: 'dano' },
+  { id: 'hemorragia', n: 'Hemorragia', c: '#8f1d1d', i: 'c_hemorragia', g: 'dano' },
+  { id: 'fogo', n: 'Queimando', c: '#e8792b', i: 'c_fogo', g: 'dano' },
+  { id: 'gelo', n: 'Congelado', c: '#5fb6e0', i: 'c_gelo', g: 'dano' },
+  { id: 'resfriado', n: 'Resfriado', c: '#6aa3c4', i: 'c_resfriado', g: 'dano' },
+  { id: 'molhado', n: 'Molhado', c: '#3b8fd1', i: 'c_molhado', g: 'dano' },
+  { id: 'oleo', n: 'Óleo', c: '#6b5b2a', i: 'c_oleo', g: 'dano' },
+  { id: 'atordoado', n: 'Atordoado', c: '#d9a821', i: 'c_atordoado', g: 'controle' },
+  { id: 'paralisia', n: 'Paralisado', c: '#9a9f2e', i: 'c_paralisia', g: 'controle' },
+  { id: 'emaranhado', n: 'Emaranhado', c: '#5a8f3c', i: 'c_emaranhado', g: 'controle' },
+  { id: 'agarrado', n: 'Agarrado', c: '#a0673a', i: 'c_agarrado', g: 'controle' },
+  { id: 'caido', n: 'Caído', c: '#8a6a4c', i: 'c_caido', g: 'controle' },
+  { id: 'inconsciente', n: 'Inconsciente', c: '#4b5568', i: 'c_inconsciente', g: 'controle' },
+  { id: 'furia', n: 'Fúria', c: '#c8242c', i: 'c_furia', g: 'combate' },
+  { id: 'grito', n: 'Grito de Batalha', c: '#d9572b', i: 'c_grito', g: 'combate' },
+  { id: 'provocado', n: 'Provocado', c: '#d4782a', i: 'c_provocado', g: 'combate' },
+  { id: 'defendendo', n: 'Defendendo', c: '#4f7fa8', i: 'c_defendendo', g: 'combate' },
+  { id: 'desarmado', n: 'Desarmado', c: '#7d838f', i: 'c_desarmado', g: 'combate' },
+  { id: 'foco', n: 'Concentrando', c: '#2f9d93', i: 'c_foco', g: 'combate' },
+  { id: 'medo', n: 'Amedrontado', c: '#b0559f', i: 'c_medo', g: 'mente' },
+  { id: 'paranoico', n: 'Paranoico', c: '#a13d63', i: 'c_paranoico', g: 'mente' },
+  { id: 'confuso', n: 'Confuso', c: '#b77ad0', i: 'c_confuso', g: 'mente' },
+  { id: 'enfeiticado', n: 'Enfeitiçado', c: '#e0609a', i: 'c_enfeiticado', g: 'mente' },
+  { id: 'silencio', n: 'Silenciado', c: '#8b62c9', i: 'c_silencio', g: 'mente' },
+  { id: 'maldicao', n: 'Amaldiçoado', c: '#5b3f8f', i: 'c_maldicao', g: 'mente' },
+  { id: 'marcado', n: 'Marcado', c: '#d94545', i: 'c_marcado', g: 'mente' },
+  { id: 'transformado', n: 'Transformado', c: '#3fa58c', i: 'c_transformado', g: 'mente' },
+  { id: 'artefato', n: 'Artefato Ativado', c: '#9a5fd6', i: 'c_artefato', g: 'mente' },
+  { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
+  { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
+  { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
+  { id: 'exausto', n: 'Exausto', c: '#7a6a8f', i: 'c_exausto', g: 'corpo' },
+  { id: 'doente', n: 'Doente', c: '#82a03a', i: 'c_doente', g: 'corpo' },
+  { id: 'faminto', n: 'Faminto', c: '#b8893a', i: 'c_faminto', g: 'corpo' },
+  { id: 'bebado', n: 'Bêbado', c: '#c0902a', i: 'c_bebado', g: 'corpo' },
+  { id: 'morto', n: 'Morto', c: '#1c1c22', i: 'c_morto', g: 'corpo' },
+  { id: 'lento', n: 'Lento', c: '#6f8f6a', i: 'c_lento', g: 'ritmo' },
+  { id: 'acelerado', n: 'Acelerado', c: '#2ea6c9', i: 'c_acelerado', g: 'ritmo' },
+  { id: 'voando', n: 'Voando', c: '#6aa8d8', i: 'c_voando', g: 'ritmo' },
+  { id: 'oculto', n: 'Oculto', c: '#4b4f63', i: 'c_oculto', g: 'ritmo' },
+  { id: 'invisivel', n: 'Invisível', c: '#6f8aa6', i: 'c_invisivel', g: 'ritmo' },
+  { id: 'escudo', n: 'Protegido', c: '#3f7fc0', i: 'c_escudo', g: 'bencao' },
+  { id: 'bencao', n: 'Abençoado', c: '#c9a227', i: 'c_bencao', g: 'bencao' },
+  { id: 'inspirado', n: 'Inspirado', c: '#e6a700', i: 'c_inspirado', g: 'bencao' },
+  { id: 'regen', n: 'Regeneração', c: '#58b368', i: 'c_regen', g: 'bencao' },
+  { id: 'tratado', n: 'Tratado', c: '#d06a5a', i: 'c_tratado', g: 'bencao' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 
+// (fl: a luz tremula, como chama; a mágica, não)
 const LIGHT_PRESETS = [
-  { id: 'vela', n: 'Vela', bright: 1, dim: 2, c: '#ffd9a0' },
-  { id: 'tocha', n: 'Tocha', bright: 4, dim: 8, c: '#ffc477' },
-  { id: 'lampiao', n: 'Lampião', bright: 6, dim: 12, c: '#ffe2ad' },
-  { id: 'fogueira', n: 'Fogueira', bright: 5, dim: 10, c: '#ff9d4d' },
-  { id: 'magica', n: 'Luz mágica', bright: 6, dim: 12, c: '#a9d4ff' },
+  { id: 'vela', n: 'Vela', bright: 1, dim: 2, c: '#ffd9a0', fl: true },
+  { id: 'tocha', n: 'Tocha', bright: 4, dim: 8, c: '#ffc477', fl: true },
+  { id: 'lampiao', n: 'Lampião', bright: 6, dim: 12, c: '#ffe2ad', fl: true },
+  { id: 'fogueira', n: 'Fogueira', bright: 5, dim: 10, c: '#ff9d4d', fl: true },
+  { id: 'braseiro', n: 'Braseiro', bright: 4, dim: 8, c: '#ff8a3d', fl: true },
+  { id: 'magica', n: 'Luz mágica', bright: 6, dim: 12, c: '#a9d4ff', fl: false },
 ];
 
 const PERMS = [
@@ -519,7 +598,7 @@ function newToken(scene, x, y, extra) {
     vis: { on: true, range: 0, dark: 0 },
     light: { on: false, bright: 4, dim: 8, c: '#ffc477' },
     ini: 0, turns: 1,                     // bônus de iniciativa; turnos por rodada
-    fixas: [],                            // fixa de cada turno (quem tem mais de um por rodada); vazio = a de sempre
+    inis: [],                             // bônus de iniciativa de cada turno (quem tem mais de um); vazio = o de sempre
     notes: '',
   }, extra || {});
 }
@@ -540,7 +619,15 @@ function normalizeScene(sc) {
     // o detalhe da rolagem só vale enquanto fecha com a iniciativa (dado + bônus); senão, é um valor digitado
     e.roll = e.roll && isFinite(e.roll.d) && isFinite(e.roll.b) && Number(e.roll.d) + Number(e.roll.b) === e.init ? { d: Number(e.roll.d), b: Number(e.roll.b) } : null;
     if (!e.token) { e.token = null; e.bonus = clampIni(e.bonus); e.grp = e.grp || null; }
+    // faixa de um grupo: uma linha só para vários tokens (os ids deles, sem repetir)
+    if (!e.token && Array.isArray(e.toks)) { e.toks = [...new Set(e.toks.filter(x => typeof x === 'string' && x))].slice(0, MAX_BAND); e.k = 1; }
+    else delete e.toks;
+    if (e.reac === true) e.reac = true; else delete e.reac;            // "esperando para reagir"
   }
+  // um token fica numa faixa só, e quem está numa faixa não tem linha própria
+  const naFaixa = new Set();
+  for (const e of sc.turn.list) if (e.toks) { e.toks = e.toks.filter(id => !naFaixa.has(id)); e.toks.forEach(id => naFaixa.add(id)); }
+  if (naFaixa.size) sc.turn.list = sc.turn.list.filter(e => !(e.token && naFaixa.has(e.token)));
   if (!Array.isArray(sc.targets)) sc.targets = [];
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
@@ -564,8 +651,15 @@ function normalizeScene(sc) {
     t.bars = (Array.isArray(t.bars) ? t.bars : barDefaults()).slice(0, MAX_BARS).map(cleanBar);
     if (!t.cinfo || typeof t.cinfo !== 'object') t.cinfo = {};
     t.ini = clampIni(t.ini); t.turns = clampTurns(t.turns);
-    t.fixas = cleanFixas(t.fixas);
+    t.inis = cleanInis(t.inis);
+    const st = cleanSt(t.st); if (st) t.st = st; else delete t.st;
+    delete t.fixas;                                               // (a "fixa de cada turno" de antes saiu: era a iniciativa)
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
+    if (t.light.fl) t.light.fl = true; else delete t.light.fl;          // luz que tremula (uma tocha na mão)
+    // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
+    if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
+    else { delete t.prop; delete t.rot; }
   }
+  for (const l of sc.lights) { if (l.fl) l.fl = true; else delete l.fl; }
   return sc;
 }

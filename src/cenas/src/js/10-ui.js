@@ -7,7 +7,7 @@ const UI = (() => {
   const el = {
     top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
-    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'),
+    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'), zonas: $('#zonas'),
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
@@ -83,9 +83,10 @@ const UI = (() => {
 
   /* ================= Toasts, menus e janelas ================= */
   function toast(text, o) {
-    const t = h('div', { class: 'toast' }, h('span', { text }),
+    const t = h('div', { class: 'toast', data: o && o.key ? { k: o.key } : null }, h('span', { text }),
       o && o.action ? h('button', { type: 'button', class: 'toast-a', text: o.action, onclick: () => { t.remove(); o.run(); } }) : null);
     const host = modalEl ? el.toastsTop : el.toasts;       // com uma janela aberta, o aviso sobe para a frente dela
+    if (o && o.key) for (const x of [...el.toasts.children, ...el.toastsTop.children]) if (x.dataset.k === o.key) x.remove();   // o aviso novo do mesmo assunto troca o velho
     host.append(t);
     while (host.children.length > 3) host.firstChild.remove();
     setTimeout(() => t.remove(), o && o.long ? 12000 : o && o.action ? 6500 : 3400);
@@ -247,7 +248,7 @@ const UI = (() => {
     if (!isGM()) { toast('Só o mestre pode trazer imagens para a cena.'); return; }
     if (list.length > 1) { tokensFromFiles(list, at); return; }
     const f = list[0];
-    const hit = at ? Tools.hitTest(at, { tokensOnly: true }) : null;
+    const hit = at ? Tools.hitTest(at, { tokensOnly: true, noProps: true }) : null;
     const tok = hit ? Store.get('tokens', hit.id) : null;
     modal({
       title: 'O que fazer com esta imagem?', text: f.name || 'Imagem colada',
@@ -669,10 +670,11 @@ const UI = (() => {
   function helpBox() {
     const rows = [
       ['V', 'Selecionar'], ['H ou espaço + arrastar', 'Mover a câmera'], ['Roda do mouse', 'Aproximar e afastar'], ['0', 'Enquadrar a cena'],
-      ['T', 'Novo token'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
+      ['T', 'Novo token'], ['J', 'Objetos de cenário: tochas, fogueiras, móveis, árvores, armadilhas'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
       ['I', 'Luz'], ['N', 'Névoa manual'], ['Q', 'Terreno'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
       ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
+      ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -770,6 +772,18 @@ const UI = (() => {
       kids.push(seg('o-wm', o.wallMode, [['line', 'Trecho', null, 'Um trecho de cada vez, de canto a canto'], ['room', 'Sala', null, 'Arraste um retângulo: as quatro paredes de uma vez']],
         v => { if (v === 'room' && isDoor(o.wallKind)) o.wallKind = 'wall'; Tools.cancel(); optSet('wallMode', v, true); }));
       if (!sc.fog.dynamic) kids.push(h('span', { class: 'o-warn' }, 'A visão por paredes está desligada nesta cena.', btn('Ligar', () => Store.tx('Ligar visão por paredes', () => Store.scn({ fog: Object.assign({}, sc.fog, { dynamic: true }) })), { kind: 'small' })));
+    } else if (t === 'obj') {
+      // os objetos da categoria escolhida, em miniaturas; um clique escolhe, e o clique no mapa põe
+      const cat = Props.G.some(g => g.id === o.objCat) ? o.objCat : 'luz';
+      kids.push(seg('o-oc', cat, Props.G.map(g => [g.id, g.n]), v => { o.objCat = v; const ids = Props.ORDER.filter(id => Props.P[id].g === v); if (!ids.includes(o.obj)) o.obj = ids[0]; optSet('objCat', v, true); }));
+      kids.push(h('div', { class: 'o-objs', role: 'group', 'aria-label': 'Objetos' }, Props.ORDER.filter(id => Props.P[id].g === cat).map(id => {
+        const cv = h('canvas', { width: 64, height: 64 });
+        Props.thumb(cv, id, 1.3);
+        return h('button', { type: 'button', class: 'o-obj' + (o.obj === id ? ' on' : ''), id: 'o-obj-' + id, title: Props.P[id].n + (Props.P[id].luz ? ' (com luz que tremula)' : ''), 'aria-pressed': String(o.obj === id), onclick: () => optSet('obj', id, true) }, cv);
+      })));
+      kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));
+      kids.push(oCheck('o-ohid', 'objHidden', 'Oculto dos jogadores'));
+      if (sc.light === 'claro' && Props.P[o.obj] && Props.P[o.obj].luz) kids.push(h('span', { class: 'o-warn' }, 'A cena está clara: a luz só aparece em penumbra ou no escuro.', btn('Pôr em penumbra', () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })), { kind: 'small' })));
     } else if (t === 'light') {
       kids.push(oGroup('Tipo', inSelect('o-lp', o.lightPreset, LIGHT_PRESETS.map(p => [p.id, `${p.n} (${p.bright}/${p.dim} q)`]), v => optSet('lightPreset', v))));
       if (sc.light === 'claro') kids.push(h('span', { class: 'o-warn' }, 'A cena está clara: as luzes só fazem efeito em penumbra ou no escuro.', btn('Pôr em penumbra', () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })), { kind: 'small' })));
@@ -793,7 +807,7 @@ const UI = (() => {
         if (o.terShape === 'brush') kids.push(oRange('o-tz', 'terSize', 0.5, 6, 0.5, 'Pincel', v => fmt(v) + ' q'));
       } else kids.push(h('span', { class: 'o-l', text: selOf('shapes').some(isTer) ? 'Os dados da área estão no painel ao lado.' : 'Clique numa área do mapa.' }));
     } else if (t === 'fx') {
-      kids.push(oGroup('Efeito', inSelect('o-fx', o.fx, FX.ORDER.map(id => [id, FX.P[id].n]), v => optSet('fx', v, true))));
+      kids.push(oGroup('Efeito', fxSelect('o-fx', o.fx, v => optSet('fx', v, true))));
       kids.push(seg('o-fxk', o.fxShape, FX_SHAPES, v => optSet('fxShape', v, true)));
       const oNum = (id, key, min, max, step, dflt, label) => h('input', { id, type: 'number', class: 'in num', min, max, step, value: o[key], 'aria-label': label, onchange: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); optSet(key, clamp(isFinite(v) ? v : dflt, min, max), true); } });
       if (o.fxShape === 'rect') {
@@ -889,7 +903,33 @@ const UI = (() => {
     return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: c.n, onclick: onClick },
       h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { text: c.n }));
   }
-  const condGrid = (toks, after) => h('div', { class: 'chips' }, CONDS.map(c => condChip(c, toks.every(t => t.conds.includes(c.id)), () => { Act.condToggle(toks, c.id); if (after) after(); })));
+  /* As condições para escolher, separadas por categoria: abas (Todas, Dano, Controle…) e uma busca pelo nome, que
+     procura em todas. A aba e a busca ficam lembradas enquanto a página está aberta. A aba que tem alguma condição
+     ativa nos tokens ganha um ponto. */
+  let condTag = 'dano', condBusca = '';
+  const semAcento = v => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function condGrid(toks, after, idp) {
+    const pre = idp || 'cg', ids = toks.map(t => t.id);
+    const live = () => ids.map(id => Store.get('tokens', id)).filter(Boolean);
+    const tabs = h('div', { class: 'ctabs', role: 'group', 'aria-label': 'Categorias de condição' });
+    const chips = h('div', { class: 'chips', id: pre + '-list' });
+    const busca = h('input', { id: pre + '-busca', class: 'in ctab-q', type: 'search', placeholder: 'Buscar condição…', autocomplete: 'off', value: condBusca, 'aria-label': 'Buscar condição pelo nome',
+      oninput: e => { condBusca = e.target.value; paint(); } });
+    const paint = () => {
+      const ts = live(), q = semAcento(condBusca.trim());
+      const lista = q ? CONDS.filter(c => semAcento(c.n).includes(q)) : condTag === 'todas' ? CONDS : CONDS.filter(c => c.g === condTag);
+      const tem = g => ts.some(t => t.conds.some(id => COND_BY_ID[id] && COND_BY_ID[id].g === g));
+      tabs.replaceChildren(...[{ id: 'todas', n: 'Todas', t: 'Todas as condições' }].concat(COND_TAGS).map(g => h('button', {
+        type: 'button', class: 'ctab' + (!q && condTag === g.id ? ' on' : '') + (g.id !== 'todas' && tem(g.id) ? ' tem' : ''), id: `${pre}-tab-${g.id}`,
+        title: g.t + (g.id !== 'todas' && tem(g.id) ? ' (há condição ativa aqui)' : ''), 'aria-pressed': String(!q && condTag === g.id),
+        onclick: () => { condTag = g.id; condBusca = ''; busca.value = ''; paint(); },
+      }, g.n)));
+      chips.replaceChildren(...(lista.length ? lista.map(c => condChip(c, ts.length > 0 && ts.every(t => t.conds.includes(c.id)), () => { Act.condToggle(live(), c.id); paint(); if (after) after(); }))
+        : [h('p', { class: 'muted', text: 'Nenhuma condição com esse nome.' })]));
+    };
+    paint();
+    return h('div', { class: 'cgrid' }, tabs, busca, chips);
+  }
 
   /* Condições ativas de um token, com contador e duração.
      O contador só muda na mão (+ e −); a duração, em rodadas, desconta sozinha na ordem de turnos. */
@@ -931,7 +971,7 @@ const UI = (() => {
       body.replaceChildren();
       addKids(body, [
         live.length === 1 ? condActive(live[0], true, null, 'cdm') : null,
-        h('div', { class: 'chips' }, CONDS.map(c => condChip(c, live.length > 0 && live.every(t => t.conds.includes(c.id)), () => Act.condToggle(live, c.id)))),
+        condGrid(live, null, 'cgm'),
         live.length === 1 ? note('O contador só muda nos botões + e −. As rodadas descontam sozinhas quando o token termina a vez.') : null,
       ]);
       if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
@@ -1075,7 +1115,8 @@ const UI = (() => {
     for (const t of toks) for (const b of t.bars) if (b.on && !names.includes(b.n)) names.push(b.n);
     const selBar = h('select', { id: 'ar-bar', class: 'in' }, names.map(n => h('option', { value: n, text: n })));
     const amt = h('input', { id: 'ar-amt', class: 'in bar-v', type: 'text', inputmode: 'decimal', placeholder: '12', autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto tirar ou devolver' });
-    const selCond = h('select', { id: 'ar-cond', class: 'in' }, [['', 'Nenhuma']].concat(CONDS.map(c => [c.id, c.n])).map(([v, l]) => h('option', { value: v, text: l })));
+    const selCond = h('select', { id: 'ar-cond', class: 'in' }, h('option', { value: '', text: 'Nenhuma' }),
+      COND_TAGS.map(g => h('optgroup', { label: g.t }, CONDS.filter(c => c.g === g.id).map(c => h('option', { value: c.id, text: c.n })))));
     const mk = (id, label) => h('input', { id, type: 'number', class: 'in num', min: 0, max: 99, step: 1, placeholder: '–', 'aria-label': label, disabled: true });
     const cn = mk('ar-cn', 'Somar ao contador'), cd = mk('ar-cd', 'Duração em rodadas');
     const int = el => clamp(Math.round(parseFloat(el.value) || 0), 0, 99);
@@ -1108,6 +1149,9 @@ const UI = (() => {
       amt.value = last.amt;
       if (last.cond) { selCond.value = last.cond.id; cn.disabled = cd.disabled = !selCond.value; cn.value = last.cond.n || ''; cd.value = last.cond.d || ''; }
     }
+    // a primeira vez numa zona: a condição que combina com ela fica sugerida, num botão (nada vem escolhido sozinho)
+    const sug = !last && fx && (FX.P[fx.fx] || {}).sug && COND_BY_ID[FX.P[fx.fx].sug] ? COND_BY_ID[FX.P[fx.fx].sug] : null;
+    const sugBtn = sug ? btn('Sugestão: ' + sug.n, () => { selCond.value = sug.id; cn.disabled = cd.disabled = false; selCond.focus(); }, { kind: 'small', icon: 'plus', id: 'ar-sug', title: 'A condição que combina com ' + (FX.P[fx.fx] || {}).n + '. Um clique escolhe; dá para trocar ou tirar.' }) : null;
     paint();
     modal({
       title, wide: true,
@@ -1118,6 +1162,7 @@ const UI = (() => {
         h('div', { class: 'area-bar' }, count, h('span', { class: 'spacer' }), btn('Todos', () => all(true), { kind: 'small' }), btn('Nenhum', () => all(false), { kind: 'small' })),
         list,
         h('div', { class: 'grid3 area-cond' }, field('Condição', selCond, 'stack'), field('Contador +', cn, 'stack'), field('Rodadas', cd, 'stack')),
+        sugBtn ? h('div', { class: 'row' }, sugBtn) : null,
         note('A condição é opcional. O contador soma ao que o token já tem; as rodadas dão um prazo, descontado na ordem de turnos.')),
       actions: [{ label: 'Cancelar' }, {
         label: 'Aplicar', kind: 'primary', run: () => {
@@ -1131,6 +1176,53 @@ const UI = (() => {
           const n = Act.areaApply(picked, names.length ? selBar.value : '', names.length ? amt.value : '', cond, keep);
           if (n > 0) toast(`Aplicado em ${n} ${n === 1 ? 'token' : 'tokens'}.`, { action: 'Desfazer', run: Tools.undo });
           else toast('Nada mudou: os tokens marcados já estavam assim.');
+        },
+      }],
+    });
+  }
+  /* Sobrevida em grupo: a barra e quanto; cada um fica com a maior (a sobrevida que já tinha ou esta — não soma).
+     A lista mostra o que vai acontecer com cada um antes de aplicar. */
+  function sobreBox(toks, title) {
+    const names = [];
+    for (const t of toks) for (const b of t.bars) if (b.on && b.m > 0 && !names.includes(b.n)) names.push(b.n);
+    if (!names.length) { toast('Nenhum destes tokens tem barra ligada.'); return; }
+    const rows = toks.map(t => ({ t, on: true }));
+    const selBar = h('select', { id: 'sb-bar', class: 'in' }, names.map(n => h('option', { value: n, text: n })));
+    const amt = h('input', { id: 'sb-amt', class: 'in num', type: 'number', min: 1, max: 99999, step: 1, placeholder: '10', autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto de sobrevida' });
+    const list = h('ul', { class: 'area-list', id: 'sb-list' }), count = h('span', { class: 'area-count' });
+    const quanto = () => Math.max(0, Math.round((Number(amt.value) || 0) * 10) / 10);
+    const paint = () => {
+      const x = quanto(), name = selBar.value;
+      count.textContent = `${rows.filter(r => r.on).length} de ${rows.length} marcados`;
+      list.replaceChildren(...rows.map((r, k) => {
+        const b = r.t.bars.find(y => y.on && y.m > 0 && y.n === name), tem = b ? barX(b) : 0;
+        const res = !r.on ? 'fica de fora' : !b ? 'sem ' + name : !(x > 0) ? (tem ? `tem ${fmt(tem)}` : 'sem sobrevida') : tem >= x ? `fica com ${fmt(tem)} (já tem mais)` : `${fmt(tem)} → ${fmt(x)}`;
+        return h('li', { class: 'area-row' + (r.on ? '' : ' off') },
+          h('label', { class: 'area-who' },
+            h('input', { type: 'checkbox', class: 'ck', id: `sb-on-${k}`, checked: r.on, 'aria-label': 'Incluir ' + r.t.name, onchange: e => { r.on = e.target.checked; paint(); document.getElementById(`sb-on-${k}`).focus(); } }),
+            tokenAvatar(r.t, 26), h('span', { class: 'area-n', text: r.t.name + (r.t.hidden ? ' (oculto)' : '') })),
+          h('span', { class: 'area-res', text: res }));
+      }));
+    };
+    amt.addEventListener('input', paint);
+    selBar.addEventListener('change', paint);
+    const all = on => { rows.forEach(r => { r.on = on; }); paint(); };
+    paint();
+    modal({
+      title, wide: true,
+      body: h('div', { class: 'area' },
+        h('div', { class: 'area-top' }, field('Barra', selBar, 'stack'), field('Sobrevida', amt, 'stack')),
+        note('Pontos por cima da barra: o dano gasta a sobrevida antes. Cada um fica com a maior — a que já tinha ou esta; não soma.'),
+        h('div', { class: 'area-bar' }, count, h('span', { class: 'spacer' }), btn('Todos', () => all(true), { kind: 'small' }), btn('Nenhum', () => all(false), { kind: 'small' })),
+        list),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Dar sobrevida', kind: 'primary', run: () => {
+          const picked = rows.filter(r => r.on).map(r => Store.get('tokens', r.t.id)).filter(Boolean);
+          if (!picked.length) { toast('Marque pelo menos um token.'); return false; }
+          if (!(quanto() > 0)) { toast('Em "Sobrevida", digite quanto dar, como 10.'); amt.focus(); return false; }
+          const n = Act.groupExtra(picked, selBar.value, quanto());
+          if (n > 0) toast(`Sobrevida ${fmt(quanto())} em ${n} ${n === 1 ? 'token' : 'tokens'}.`, { action: 'Desfazer', run: Tools.undo });
+          else toast('Nada mudou: os marcados já tinham essa sobrevida ou mais.');
         },
       }],
     });
@@ -1188,7 +1280,7 @@ const UI = (() => {
     }
     const itens = Fichas.rolaveis(t);
     if (!itens.some(x => x[0] === App.opt.fichaAtr)) App.opt.fichaAtr = itens[0][0];
-    const fixa0 = Luta.fixaAtual(t), doTurno = Combate.fixaDoTurno(t);
+    const fixa0 = Luta.fixaAtual(t);
     // um token ligado antes (ou que ganhou uma barra à mão) pode ter barras que não são da ficha: um clique acerta
     if (Fichas.foraDaFicha(t)) out.push(
       note('Este token tem barras que não vêm da ficha (ou falta alguma dela).'),
@@ -1197,7 +1289,6 @@ const UI = (() => {
       note('As barras ligadas à ficha (HP, SP…) e a iniciativa vêm dela. Dano e cura dados aqui no mapa voltam para a ficha. Dois cliques no token abrem a ficha.'),
       field('Rolar atributo', inSelect('tk-atr', App.opt.fichaAtr, itens.map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { App.opt.fichaAtr = v; })),
       field('Fixando', inNum('tk-fixa', fixa0, v => { Luta.guardarFixa(t, v); }, { min: 0, step: 1, label: 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa' })),
-      doTurno ? note(`É o ${doTurno.k}º turno dele nesta rodada: a fixa anotada para esse turno é ${doTurno.v}.`) : null,
       h('div', { class: 'row' }, btn('Rolar', () => {
         const r = Fichas.rolar(t, App.opt.fichaAtr, Luta.fixaAtual(t));
         toast(r.ok ? `${t.name} · ${r.nome}: ${r.total}` + (r.die ? ` (${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''})` : ' (fixa total)') : r.error);
@@ -1283,6 +1374,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        mine ? numsBox(t, false) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
         Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
@@ -1300,13 +1392,15 @@ const UI = (() => {
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
         h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
-          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
+      menteBox(t),
+      numsBox(t, true),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
-        Luta.fixasBox(t),
+        Luta.inisBox(t),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
       Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
@@ -1320,7 +1414,8 @@ const UI = (() => {
         V.on ? note('Alcance 0 significa sem limite. "No escuro" é até onde o token enxerga sem luz nenhuma.') : null,
         toggle('tk-light', L.on, v => U({ light: Object.assign({}, L, { on: v }) }), 'Carrega uma luz'),
         L.on ? [
-          field('Tipo', inSelect('tk-lp', '', [['', 'Escolher…']].concat(LIGHT_PRESETS.map(p => [p.id, p.n])), v => { const p = LIGHT_PRESETS.find(x => x.id === v); if (p) U({ light: { on: true, bright: p.bright, dim: p.dim, c: p.c } }, 'Tipo de luz'); })),
+          field('Tipo', inSelect('tk-lp', '', [['', 'Escolher…']].concat(LIGHT_PRESETS.map(p => [p.id, p.n])), v => { const p = LIGHT_PRESETS.find(x => x.id === v); if (p) U({ light: Object.assign({ on: true, bright: p.bright, dim: p.dim, c: p.c }, p.fl ? { fl: true } : {}) }, 'Tipo de luz'); })),
+          toggle('tk-lfl', !!L.fl, v => U({ light: Object.assign({}, L, { fl: v ? true : undefined }) }, 'Luz que tremula'), 'Tremula, como chama (uma tocha na mão)'),
           h('div', { class: 'grid2' },
             field('Luz forte (q)', inNum('tk-lb', L.bright, v => U({ light: Object.assign({}, L, { bright: Math.min(v, L.dim) }) }), { min: 0, max: 60, step: 0.5 })),
             field('Até (q)', inNum('tk-ld', L.dim, v => U({ light: Object.assign({}, L, { dim: v, bright: Math.min(L.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),
@@ -1332,6 +1427,83 @@ const UI = (() => {
         field('Anotações', h('textarea', { id: 'tk-notes', class: 'in area', rows: 3, value: t.notes || '', placeholder: 'Só você vê isto.', onchange: e => U({ notes: e.target.value }, 'Anotações') }), 'stack'),
         h('div', { class: 'row' },
           btn('Duplicar', Act.duplicateSel, { icon: 'copy' }),
+          btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
+    ];
+  }
+  /* Os números que aparecem ao lado do nome do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica e
+     Esquiva). Com ficha, vêm dela (só para ler); sem ficha, o mestre preenche os que quiser. */
+  function numsBox(t, gm) {
+    const daFicha = t.char ? Fichas.numeros(t) : null, v = tokNums(t), st = cleanSt(t.st) || {};
+    if (!gm && !v) return null;
+    const rot = (K, nome) => h('span', { class: 'num-l', title: nome }, h('span', { class: 'num-i', style: { color: NUM_CORES[K] } }, icon('st_' + K.toLowerCase(), 15)), h('span', { text: K }));
+    const corpo = daFicha || !gm
+      ? h('div', { class: 'nums', id: 'tk-nums' }, ST_CAMPOS.map(([, K, nome]) => h('div', { class: 'num-f' }, rot(K, nome), h('span', { class: 'num-v', id: 'tk-num-' + K, text: v && v[K] != null ? fmt(v[K], 0) : '–' }))))
+      : h('div', { class: 'nums', id: 'tk-nums' }, ST_CAMPOS.map(([k, K, nome]) => h('label', { class: 'num-f' }, rot(K, nome),
+        h('input', { id: 'tk-st-' + k, class: 'in num', type: 'number', step: 1, min: -9999, max: 99999, value: st[k] == null ? '' : st[k], placeholder: '–', 'aria-label': nome,
+          onchange: e => { const raw = String(e.target.value).trim(), o = Object.assign({}, st); if (raw === '') delete o[k]; else o[k] = Number(raw); const novo = cleanSt(o); Store.tx('Números do token', () => Store.upd('tokens', t.id, { st: novo || undefined })); } }))));
+    return sec('s-nums', 'Força e defesas', !!v || gm,
+      corpo,
+      note(daFicha ? 'Vêm da ficha, com equipamentos, árvore e bônus. Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre e o dono.'
+        : gm ? 'Preencha só os que quiser. Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre e o dono.'
+        : 'Aparecem ao lado do nome quando você aponta para o token ou o escolhe. Só você e o mestre veem.'));
+  }
+  /* Sanidade e Conforto da ficha ligada (só o mestre): o valor e os passos, como na ficha. Grava direto nela; o
+     Desfazer do aviso volta ao valor de antes da sequência de cliques. */
+  const menteSerie = new Map();          // `${token}:${k}` → { antes, at }
+  function mudarMente(t, k, v) {
+    const chave = t.id + ':' + k, s0 = menteSerie.get(chave), agora = Date.now();
+    const antes = Fichas.mudarMente(t, k, v);
+    if (antes == null) return;
+    const base = s0 && agora - s0.at < 6000 ? s0.antes : antes;
+    menteSerie.set(chave, { antes: base, at: agora });
+    const nome = k === 'san' ? 'Sanidade' : 'Conforto', depois = (Fichas.mente(t) || {})[k];
+    toast(`${nome} de ${t.name}: ${base} → ${depois}.`, { key: 'mente:' + chave, action: 'Desfazer', run: () => { menteSerie.delete(chave); Fichas.mudarMente(t, k, base); } });
+  }
+  function menteBox(t) {
+    const m = Fichas.mente(t);
+    if (!m) return null;
+    const linha = (k, nome) => h('div', { class: 'mente-r' },
+      h('span', { class: 'mente-n' }, h('span', { class: 'mente-dot', style: { background: MENTE_COR[k] } }), h('span', { text: nome })),
+      h('input', { id: `tk-${k}`, class: 'in num', type: 'number', min: 0, max: 100, step: 1, value: m[k], 'aria-label': nome + ', de 0 a 100', onchange: e => mudarMente(t, k, e.target.value) }),
+      h('span', { class: 'mente-m', text: '/ 100' }),
+      h('span', { class: 'mente-b' }, [-5, -1, 1, 5].map(d => h('button', { type: 'button', class: 'mini-b', id: `tk-${k}-${d > 0 ? 'p' : 'm'}${Math.abs(d)}`, text: d > 0 ? '+' + d : '−' + Math.abs(d), title: `${nome} ${d > 0 ? '+' : '−'}${Math.abs(d)}`,
+        onclick: () => { const cur = Fichas.mente(t); if (cur) mudarMente(t, k, cur[k] + d); } }))));
+    return sec('s-mente', 'Sanidade e Conforto', true, linha('san', 'Sanidade'), linha('conf', 'Conforto'),
+      note('Da ficha, de 0 a 100. Só você vê: no token aparecem tracejadas, e os jogadores não as recebem (nem o dono). Mudar aqui grava na ficha.'));
+  }
+  /* Objetos de cenário: o que é, girar, tamanho, a luz (se tem), esconder, travar. Para o jogador, só o nome. */
+  function propPanel(props) {
+    const gm = isGM(), t = props[0], many = props.length > 1, def = Props.P[t.prop] || {};
+    const all = (p, label) => Store.tx(label || 'Editar objeto', () => props.forEach(x => Store.upd('tokens', x.id, typeof p === 'function' ? p(x) : p)));
+    const prev = h('canvas', { class: 'prop-prev', width: 88, height: 88 });
+    Props.thumb(prev, t.prop, 1.3);
+    const head = h('div', { class: 'p-head' }, prev,
+      h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
+    if (!gm) return [head];
+    const girar = d => all(x => ({ rot: (((x.rot || 0) + d) % 360 + 360) % 360 }), 'Girar objeto');
+    const luz = !many && t.light && def.luz ? t.light : null;
+    return [head,
+      sec('s-prop', 'Objeto', true,
+        !many ? field('Nome', inText('pr-name', t.name, v => all({ name: v.trim() || t.name }, 'Renomear objeto'))) : null,
+        field('Girar', h('div', { class: 'row tight' },
+          btn('', () => girar(-90), { icon: 'undo', kind: 'small', id: 'pr-rot-l', title: 'Girar 90° para a esquerda' }),
+          btn('', () => girar(90), { icon: 'redo', kind: 'small', id: 'pr-rot-r', title: 'Girar 90° para a direita' }),
+          !many ? inNum('pr-rot', t.rot || 0, v => all({ rot: ((Math.round(v) % 360) + 360) % 360 }, 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
+        field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
+      luz ? sec('s-propluz', 'Luz', true,
+        toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
+        toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),
+        h('div', { class: 'grid2' },
+          field('Luz forte (q)', inNum('pr-lb', luz.bright, v => all({ light: Object.assign({}, luz, { bright: Math.min(v, luz.dim) }) }), { min: 0, max: 60, step: 0.5 })),
+          field('Até (q)', inNum('pr-ld', luz.dim, v => all({ light: Object.assign({}, luz, { dim: v, bright: Math.min(luz.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),
+        Store.scene().light === 'claro' ? note('A cena está clara: a luz só aparece em penumbra ou no escuro (aba Cena).') : null) : null,
+      sec('s-gm', 'Só do mestre', true,
+        toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
+        toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
+        h('div', { class: 'row' },
+          btn('Duplicar', Act.duplicateSel, { icon: 'copy' }),
+          btn('Frente', () => Act.toFront('tokens', props.map(x => x.id), true), { icon: 'front' }),
+          btn('Trás', () => Act.toFront('tokens', props.map(x => x.id), false), { icon: 'back' }),
           btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
     ];
   }
@@ -1347,8 +1519,8 @@ const UI = (() => {
     if (n) toast(n === 1 ? 'Item apagado.' : `${n} itens apagados.`, { action: 'Desfazer', run: Tools.undo });
   }
 
-  function multiTokenPanel(toks) {
-    const gm = isGM();
+  function multiTokenPanel(toks, props) {
+    const gm = isGM(), extra = props && props.length ? props.length : 0;
     const editable = toks.filter(t => gm || can('bars', t));
     const names = [];
     for (const t of editable) for (const b of t.bars) if (b.on && !names.includes(b.n)) names.push(b.n);
@@ -1364,14 +1536,15 @@ const UI = (() => {
     const condToks = toks.filter(t => gm || can('conds', t));
     return [
       h('div', { class: 'p-head' }, h('div', { class: 'stack-av' }, toks.slice(0, 5).map(t => tokenAvatar(t, 34))),
-        h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: `${toks.length} tokens` }), h('div', { class: 'p-sub', text: 'O que você mudar aqui vale para todos.' }))),
+        h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: `${toks.length} ${toks.length === 1 ? 'token' : 'tokens'}` + (extra ? ` e ${extra} ${extra === 1 ? 'objeto' : 'objetos'}` : '') }), h('div', { class: 'p-sub', text: extra ? 'Barras e condições valem para os tokens; os objetos de cenário ficam de fora.' : 'O que você mudar aqui vale para todos.' }))),
       editable.length && names.length ? sec('s-mbar', 'Somar ou subtrair de todos', true,
         h('div', { class: 'row' }, sel, amt, btn('Aplicar', apply, { kind: 'primary' })),
         note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
         gm ? h('div', { class: 'row' },
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
-          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar' }) : null) : null) : null,
+          btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -1439,7 +1612,7 @@ const UI = (() => {
         e.apply ? btn('Reaplicar ' + applyLabel(e.apply), () => fxReapply(e), { icon: 'reset', kind: 'primary re', id: 'fx-reapply', title: reapplyTitle }) : null,
         btn('Aplicar a quem está dentro…', () => fxApply(e), { icon: 'area', id: 'fx-apply', title: 'Dano, cura ou condição em todos os tokens dentro deste efeito' })) : null,
       sec('s-fx', 'Efeito', true,
-        field('Tipo', inSelect('fx-id', e.fx, FX.ORDER.map(id => [id, FX.P[id].n]), v => U({ fx: v }, 'Trocar efeito'))),
+        field('Tipo', fxSelect('fx-id', e.fx, v => U({ fx: v }, 'Trocar efeito'))),
         // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era)
         field('Forma', seg('fx-k', e.k, FX_SHAPES, v => U(v === 'rect' && !(e.rw > 0 && e.rh > 0) ? { k: v, rw: e.rw > 0 ? e.rw : Math.max(0.5, 2 * e.r || 1), rh: e.rh > 0 ? e.rh : Math.max(0.5, 2 * e.r || 1) } : { k: v }, 'Forma do efeito')), 'stack tight'),
         h('div', { class: 'grid2' },
@@ -1474,7 +1647,8 @@ const UI = (() => {
       sec('s-light', 'Luz', true,
         toggle('lz-on', l.on, v => U({ on: v }, v ? 'Acender luz' : 'Apagar luz'), 'Acesa'),
         field('Nome', inText('lz-name', l.name, v => U({ name: v.trim() || l.name }))),
-        field('Tipo', inSelect('lz-pre', '', [['', 'Escolher…']].concat(LIGHT_PRESETS.map(p => [p.id, p.n])), v => { const p = LIGHT_PRESETS.find(x => x.id === v); if (p) U({ name: p.n, bright: p.bright, dim: p.dim, c: p.c }, 'Tipo de luz'); })),
+        field('Tipo', inSelect('lz-pre', '', [['', 'Escolher…']].concat(LIGHT_PRESETS.map(p => [p.id, p.n])), v => { const p = LIGHT_PRESETS.find(x => x.id === v); if (p) U({ name: p.n, bright: p.bright, dim: p.dim, c: p.c, fl: p.fl || undefined }, 'Tipo de luz'); })),
+        toggle('lz-fl', !!l.fl, v => U({ fl: v ? true : undefined }, 'Luz que tremula'), 'Tremula, como chama'),
         h('div', { class: 'grid2' },
           field('Luz forte (q)', inNum('lz-b', l.bright, v => U({ bright: Math.min(v, l.dim) }), { min: 0, max: 60, step: 0.5 })),
           field('Até (q)', inNum('lz-d', l.dim, v => U({ dim: v, bright: Math.min(l.bright, v) }), { min: 0.5, max: 60, step: 0.5 }))),
@@ -1508,7 +1682,11 @@ const UI = (() => {
     const toks = selOf('tokens'), shapes = selOf('shapes'), fxs = selOf('effects'), lights = selOf('lights'), walls = selOf('walls');
     const total = toks.length + shapes.length + fxs.length + lights.length + walls.length;
     if (!total) return emptySel();
-    if (toks.length === total) return toks.length === 1 ? tokenPanel(toks[0]) : multiTokenPanel(toks);
+    if (toks.length === total) {
+      const props = toks.filter(t => t.prop), gente = toks.filter(t => !t.prop);
+      if (!gente.length) return propPanel(props);
+      return gente.length === 1 && !props.length ? tokenPanel(gente[0]) : multiTokenPanel(gente, props);
+    }
     if (shapes.length === total) return shapes.every(isTer) ? Luta.terrainPanel(shapes) : shapePanel(shapes);
     if (fxs.length === 1 && total === 1) return fxPanel(fxs[0]);
     if (lights.length === 1 && total === 1) return lightPanel(lights[0]);
@@ -1593,6 +1771,45 @@ const UI = (() => {
       }],
     });
   }
+  /* Faixa de iniciativa de um grupo: criar (com os tokens selecionados) ou mudar uma que já existe. Mostra quem fica
+     nela (dá para tirar alguém) e, ao mudar, os selecionados que ainda não estão nela (dá para pôr). */
+  function bandBox(e) {
+    const sc = Store.scene(), novo = !e, sel = selOf('tokens').filter(k => !k.prop);
+    const atuais = novo ? sel : turnToks(e), fora = novo ? [] : sel.filter(k => !e.toks.includes(k.id));
+    if (novo && !atuais.length) { toast('Selecione no mapa os tokens do grupo.'); return; }
+    // nome de partida: o nome que todos têm em comum, sem o número do fim ("Goblin 1", "Goblin 2" → "Goblin")
+    const raiz = k => tokName(k).replace(/[\s#]*\d+$/, '').trim();
+    const comum = atuais.length && atuais.every(k => raiz(k) === raiz(atuais[0])) ? raiz(atuais[0]) : '';
+    const name = h('input', { id: 'dlg-in', class: 'in', type: 'text', 'data-focus': '', autocomplete: 'off', maxlength: 40, value: novo ? comum || 'Grupo' : e.name });
+    const ini = h('input', { id: 'bd-ini', class: 'in num', type: 'number', min: -99, max: 99, step: 1, value: novo ? Math.max(...atuais.map(k => clampIni(k.ini))) : clampIni(e.bonus), title: 'A iniciativa da faixa: 1d20 + este valor, rolada uma vez no combate' });
+    const marcas = [];
+    const linha = (k, on) => {
+      const cb = h('input', { type: 'checkbox', checked: on, id: 'bd-' + k.id });
+      marcas.push([k.id, cb]);
+      const onde = novo || !on ? (bandOf(sc.turn, k.id) ? 'sai de outra faixa' : sc.turn.list.some(x => x.token === k.id) ? 'sai da linha dele' : '') : '';
+      return h('label', { class: 'band-m' }, cb, tokenAvatar(k, 22), h('span', { class: 'band-mn', text: tokName(k) }), onde ? h('span', { class: 'band-mx', text: onde }) : null);
+    };
+    const lista = h('div', { class: 'band-list', id: 'bd-list' }, atuais.map(k => linha(k, true)), fora.length ? h('div', { class: 'band-sub', text: 'Selecionados que não estão nela' }) : null, fora.map(k => linha(k, false)));
+    const quem = () => marcas.filter(([, cb]) => cb.checked).map(([id]) => id);
+    modal({
+      title: novo ? 'Faixa de iniciativa do grupo' : 'Faixa: ' + e.name,
+      text: 'Uma linha só na ordem para todos estes tokens, com uma iniciativa rolada uma vez no combate (1d20 + o valor da faixa). Quem tirar mais que a faixa joga antes do grupo; quem tirar menos, depois. Empate: o jogador vai antes.',
+      body: h('div', { class: 'bandbox' }, h('div', { class: 'grid2' }, field('Nome', name, 'stack'), field('Iniciativa (1d20 + …)', ini, 'stack')), lista),
+      actions: [
+        novo ? null : { label: 'Separar em linhas', run: () => { const n = Act.bandSplit(e.id); toast(n ? `A faixa virou ${n} ${n === 1 ? 'linha' : 'linhas'}, uma para cada turno de cada token.` : 'A faixa saiu da ordem.', { action: 'Desfazer', run: Tools.undo }); } },
+        { label: 'Cancelar' },
+        {
+          label: novo ? 'Criar a faixa' : 'Salvar', kind: 'primary', run: () => {
+            const ids = quem();
+            if (!ids.length) { toast(novo ? 'Marque pelo menos um token.' : 'Para tirar a faixa da ordem, use o × na linha dela.'); return false; }
+            const nm = name.value.trim() || 'Grupo', b = parseFloat(ini.value);
+            if (novo) { Act.turnBand(nm, b, ids); toast(`Faixa "${nm}" na ordem: ${ids.length} ${ids.length === 1 ? 'token' : 'tokens'}, 1d20 ${rollText('', clampIni(b)).trim()}.`, { action: 'Desfazer', run: Tools.undo }); }
+            else Act.bandSet(e.id, { name: nm, bonus: b, toks: ids });
+          },
+        },
+      ],
+    });
+  }
   function tabTurn() {
     const sc = Store.scene(), tn = sc.turn, gm = isGM();
     const rows = [];
@@ -1604,33 +1821,57 @@ const UI = (() => {
     tn.list.forEach((e, i) => {
       const t = e.token ? Store.get('tokens', e.token) : null;
       if (!gm && t && t.hidden) return;
+      const band = isBand(e), membros = band ? turnToks(e).filter(k => gm || !k.hidden) : [];
       const cur = tn.on && e.id === tn.cur;
       const name = t ? tokName(t) : e.name, label = turnLabel(e, name), k = e.k || 1;
       const rolled = gm && e.roll && e.init != null ? rollText(e.roll.d, e.roll.b) : '';      // o detalhe da rolagem é só do mestre
-      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') },
-        h('button', { type: 'button', class: 'turn-m', title: t ? 'Mostrar no mapa' : label, disabled: !t, onclick: () => { if (!t) return; if (tokShown(t, sc)) setSel([{ c: 'tokens', id: t.id }]); const [cx, cy] = tokC(t, sc); if (tokShown(t, sc)) Render.centerOn(cx, cy); } },
-          t ? tokenAvatar(t, 28) : h('span', { class: 'av', style: { width: '28px', height: '28px', backgroundColor: 'var(--hover)', color: 'var(--fg-2)', fontSize: '11px', borderColor: 'var(--line-strong)' } }, initials(name)),
+      // um clique na linha mostra no mapa: o token, ou os da faixa (os que quem olha enxerga)
+      const mostrar = () => {
+        const vis = (band ? membros : t ? [t] : []).filter(x => tokShown(x, sc));
+        if (!vis.length) return;
+        setSel(vis.map(x => ({ c: 'tokens', id: x.id })));
+        const cs = vis.map(x => tokC(x, sc));
+        Render.centerOn(cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length);
+      };
+      const reac = e.reac ? h('span', { class: 'turn-reac', text: 'reação', title: 'Esperando para reagir: segurou a vez para agir fora de ordem' }) : null;
+      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : ''), id: `tl-${e.id}` },
+        h('button', { type: 'button', class: 'turn-m', title: t || membros.length ? 'Mostrar no mapa' : label, disabled: !t && !membros.length, onclick: mostrar },
+          t ? tokenAvatar(t, 28)
+            : band && membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(x => tokenAvatar(x, 22)))
+            : h('span', { class: 'av', style: { width: '28px', height: '28px', backgroundColor: 'var(--hover)', color: 'var(--fg-2)', fontSize: '11px', borderColor: 'var(--line-strong)' } }, initials(name)),
           // nome, número do turno, detalhe da rolagem e a marca "vez": quebram de linha entre si quando não cabem
           // (na tela, a marca "vez" vem logo depois do nome; no texto, fica no fim, para o rótulo sair inteiro)
           h('span', { class: 'turn-t' }, h('span', { class: 'turn-n', text: name }),
             k > 1 ? h('span', { class: 'turn-k', text: ` · ${k}º turno` }) : null,
+            band ? h('span', { class: 'turn-g', text: `grupo · ${membros.length}`, title: membros.map(x => tokName(x)).join(', ') || 'Ninguém nesta faixa agora' }) : null,
             rolled ? h('span', { class: 'turn-r', text: `(${rolled})`, title: `Rolagem: ${e.init} = ${rolled}` }) : null,
-            cur ? h('span', { class: 'turn-now', text: 'vez' }) : null)),
+            cur ? h('span', { class: 'turn-now', text: 'vez' }) : null,
+            reac)),
         gm ? inNum(`tn-${e.id}`, e.init == null ? '' : e.init, v => Act.turnPatch(x => { const y = x.list.find(z => z.id === e.id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'),
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
         gm ? iconBtn('die', `Rolar a iniciativa de ${label} (1d20 ${rollText('', turnBonus(e)).trim()})`, () => rollToast(Act.turnRoll([e.id])), { size: 15, cls: 'turn-d', id: `tr-${e.id}` }) : null,
         gm && t && iniOffer(t, e) ? h('button', { type: 'button', class: 'turn-mesa', id: `tm-${e.id}`, title: `${iniOffer(t, e).nome} rolou ${iniOffer(t, e).v} de iniciativa pela mesa ao vivo. Clique para anotar aqui.`, onclick: () => noteIni(t) },
           icon('down', 12), h('span', { text: String(iniOffer(t, e).v) })) : null,
+        // a faixa (mudar) e a reação ficam num grupo à parte, antes de subir/descer/tirar
+        gm && (band || cur || e.reac) ? h('span', { class: 'turn-x' },
+          band ? iconBtn('edit', 'Mudar a faixa: nome, iniciativa e quem está nela', () => bandBox(e), { size: 14, id: `tb-${e.id}` }) : null,
+          // (segurar a vez para reagir se decide na própria vez: o botão fica na linha de quem está jogando, e na de quem
+          // está esperando, para dizer que ele reagiu)
+          cur || e.reac ? iconBtn('reac', e.reac ? `${label} reagiu: tirar a marca "esperando para reagir" (ela também sai sozinha quando a vez dele voltar)` : 'Esperando para reagir: marca quem segura a vez para agir fora de ordem', () => {
+            Act.turnReac(e.id, !e.reac);
+            if (e.reac) toast(`${label} reagiu.`, { action: 'Desfazer', run: Tools.undo });
+          }, { size: 14, on: !!e.reac, id: `tx-${e.id}` }) : null) : null,
         gm ? h('span', { class: 'turn-a' },
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
           iconBtn('x', 'Tirar da ordem', () => remove(e), { size: 14 })) : null));
     });
-    const selToks = selOf('tokens');
+    const selToks = selOf('tokens').filter(k => !k.prop);
     const step = d => {
       const ended = Act.turnStep(d);
       if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
+      zonePrompt(d > 0);
     };
     const missing = tn.list.filter(e => e.init == null).length;
     return [
@@ -1641,7 +1882,8 @@ const UI = (() => {
           btn('Próximo turno', () => step(1), { kind: 'primary', icon: 'next', disabled: !tn.list.length, id: 'turnNext' })) : null),
       rows.length ? h('ol', { class: 'turns' }, rows) : h('p', { class: 'muted', text: gm ? 'Ninguém na ordem ainda. Selecione tokens no mapa e adicione-os aqui.' : 'O mestre ainda não montou a ordem de turnos.' }),
       gm ? h('div', { class: 'row' },
-        btn(selToks.length ? `Adicionar ${selToks.length} selecionado${selToks.length > 1 ? 's' : ''}` : 'Adicionar selecionados', () => { Act.turnAdd(selToks); }, { icon: 'plus', disabled: !selToks.length }),
+        btn(selToks.length ? `Adicionar ${selToks.length} selecionado${selToks.length > 1 ? 's' : ''}` : 'Adicionar selecionados', () => { if (!Act.turnAdd(selToks)) toast(selToks.length === 1 ? 'Ele já está na ordem.' : 'Já estão todos na ordem.'); }, { icon: 'plus', disabled: !selToks.length }),
+        btn('Faixa de grupo', () => bandBox(null), { icon: 'users', id: 'turnBand', disabled: !selToks.length, title: 'Junta os tokens selecionados numa linha só da ordem, com uma iniciativa (1d20 + o valor da faixa) rolada uma vez no combate' }),
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
@@ -1653,12 +1895,20 @@ const UI = (() => {
   }
 
   /* ---- Aba Efeitos ---- */
+  // A lista de efeitos para escolher, em grupos (Elementos, Magia, Natureza, Sagrado e sombrio)
+  const fxSelect = (id, value, onChange) => h('select', { id, class: 'in', onchange: e => { const v = e.target.value; e.target.blur(); onChange(v); }, value },
+    FX.TAGS.map(g => h('optgroup', { label: g.n }, FX.ORDER.filter(k => FX.P[k].g === g.id).map(k => h('option', { value: k, text: FX.P[k].n, selected: k === value })))));
+  // a aba da biblioteca de efeitos que está aberta (null: a do efeito escolhido)
+  let fxTag = null;
   function tabFx() {
     const sc = Store.scene(), gm = isGM();
     const list = sc.effects.filter(e => fxVisible(e));
+    const tag = fxTag || (FX.P[App.opt.fx] || FX.P.fogo).g || 'elem';
+    const ids = tag === 'todos' ? FX.ORDER : FX.ORDER.filter(id => FX.P[id].g === tag);
     return [
       h('p', { class: 'muted', text: 'Escolha um efeito e clique no mapa. Ele fica na cena até alguém remover, ou pelo número de rodadas que você marcar.' }),
-      h('div', { class: 'fx-grid' }, FX.ORDER.map(id => h('button', { type: 'button', class: 'fx-card' + (App.tool === 'fx' && App.opt.fx === id ? ' on' : ''), id: 'fxc-' + id, title: 'Soltar ' + FX.P[id].n, onclick: () => { App.opt.fx = id; Tools.set('fx'); } },
+      h('div', { class: 'ctabs', role: 'group', 'aria-label': 'Tipos de efeito' }, [{ id: 'todos', n: 'Todos' }].concat(FX.TAGS).map(g => h('button', { type: 'button', class: 'ctab' + (tag === g.id ? ' on' : ''), id: 'fxt-' + g.id, 'aria-pressed': String(tag === g.id), onclick: () => { fxTag = g.id; refresh(); } }, g.n))),
+      h('div', { class: 'fx-grid' }, ids.map(id => h('button', { type: 'button', class: 'fx-card' + (App.tool === 'fx' && App.opt.fx === id ? ' on' : ''), id: 'fxc-' + id, title: 'Soltar ' + FX.P[id].n, onclick: () => { App.opt.fx = id; Tools.set('fx'); } },
         h('canvas', { class: 'fx-thumb', width: 112, height: 112, data: { fx: id } }), h('span', { class: 'fx-n', text: FX.P[id].n })))),
       sec('s-fxlist', `Na cena (${list.length})`, true,
         list.length ? h('ul', { class: 'list' }, list.map(e => {
@@ -1794,8 +2044,13 @@ const UI = (() => {
       sec('pl-heal', 'Descanso rápido', true,
         note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
-          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
-          btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
+          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner && !t.prop), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('Curar todos da cena', () => healToast(sc.tokens.filter(t => !t.prop), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
+      sec('pl-sobre', 'Sobrevida em grupo', false,
+        note('Pontos por cima da barra, para muitos de uma vez; cada um fica com a maior (não soma). A janela mostra o que muda antes de aplicar.'),
+        h('div', { class: 'row' },
+          btn('Aos tokens dos jogadores…', () => sobreBox(sc.tokens.filter(t => t.owner && !t.prop), 'Sobrevida aos tokens dos jogadores'), { icon: 'shield', id: 'pl-sobre-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('A todos da cena…', () => sobreBox(sc.tokens.filter(t => !t.prop), 'Sobrevida a todos da cena'), { id: 'pl-sobre-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
     ];
   }
   function tabPlayers() {
@@ -1827,8 +2082,13 @@ const UI = (() => {
       sec('pl-heal', 'Descanso rápido', true,
         note('Enche todas as barras em uso (Vida, SP…) de uma vez; a barra que começa pela metade volta ao começo dela. Dá para desfazer.'),
         h('div', { class: 'row' },
-          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
-          btn('Curar todos da cena', () => healToast(sc.tokens.slice(), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
+          btn('Curar os tokens dos jogadores', () => healToast(sc.tokens.filter(t => t.owner && !t.prop), 'dos jogadores'), { icon: 'heart', id: 'pl-heal-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('Curar todos da cena', () => healToast(sc.tokens.filter(t => !t.prop), 'da cena'), { id: 'pl-heal-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
+      sec('pl-sobre', 'Sobrevida em grupo', false,
+        note('Pontos por cima da barra, para muitos de uma vez; cada um fica com a maior (não soma). A janela mostra o que muda antes de aplicar.'),
+        h('div', { class: 'row' },
+          btn('Aos tokens dos jogadores…', () => sobreBox(sc.tokens.filter(t => t.owner && !t.prop), 'Sobrevida aos tokens dos jogadores'), { icon: 'shield', id: 'pl-sobre-pcs', title: 'Todos os tokens desta cena que têm um jogador como dono' }),
+          btn('A todos da cena…', () => sobreBox(sc.tokens.filter(t => !t.prop), 'Sobrevida a todos da cena'), { id: 'pl-sobre-all', title: 'Todos os tokens desta cena, inclusive os do mestre' }))),
     ];
   }
 
@@ -1838,8 +2098,23 @@ const UI = (() => {
     const hit = Tools.hitTest(p, { locked: true });
     if (hit && !selHas(hit.c, hit.id)) setSel([hit]);
     const items = [];
-    if (hit && hit.c === 'tokens') {
-      const toks = selOf('tokens'), o = Store.get('tokens', hit.id), ids = toks.map(t => t.id);
+    if (hit && hit.c === 'tokens' && selOf('tokens').every(t => t.prop)) {
+      // só objetos de cenário: girar, esconder, travar, duplicar, ordem e apagar
+      const props = selOf('tokens'), ids = props.map(t => t.id), all = (p, label) => Store.tx(label, () => props.forEach(x => Store.upd('tokens', x.id, typeof p === 'function' ? p(x) : p)));
+      items.push({ head: props.length > 1 ? `${props.length} objetos` : props[0].name });
+      items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
+      if (gm) {
+        const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked);
+        items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
+          { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
+        items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
+        items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
+        items.push('-', { label: 'Duplicar', icon: 'copy', key: 'Ctrl+D', run: Act.duplicateSel },
+          { label: 'Trazer para frente', icon: 'front', run: () => Act.toFront('tokens', ids, true) }, { label: 'Enviar para trás', icon: 'back', run: () => Act.toFront('tokens', ids, false) },
+          '-', { label: 'Apagar', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
+      }
+    } else if (hit && hit.c === 'tokens') {
+      const todos = selOf('tokens'), toks = todos.filter(t => !t.prop), o = Store.get('tokens', hit.id).prop ? toks[0] : Store.get('tokens', hit.id), ids = todos.map(t => t.id);
       const condToks = toks.filter(t => gm || can('conds', t));
       items.push({ head: toks.length > 1 ? `${toks.length} tokens` : tokName(o) });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
@@ -1850,7 +2125,8 @@ const UI = (() => {
       if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
       if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
-      if (gm && Luta.podeAtaque()) items.push({ label: 'Ataque com defesa…', icon: 'shield', run: () => Luta.ataque(toks) });
+      if (gm && toks.length > 1) items.push({ label: 'Sobrevida…', icon: 'shield', run: () => sobreBox(toks, `Sobrevida a ${toks.length} tokens`) });
+      if (gm && Luta.podeAtaque()) items.push({ label: 'Ataque com defesa…', icon: 'shield', key: 'K', run: () => Luta.ataque(toks) });
       if (gm) {
         const allHidden = toks.every(t => t.hidden), allLocked = toks.every(t => t.locked);
         items.push({ label: 'Adicionar aos turnos', icon: 'turns', run: () => { Act.turnAdd(toks); openTab('turn'); } });
@@ -1912,7 +2188,7 @@ const UI = (() => {
   function renderHud() {
     const toks = selOf('tokens');
     const hide = () => { el.hud.hidden = true; el.hud.replaceChildren(); };
-    if (toks.length !== 1 || App.sel.length !== 1 || App.tool !== 'select') { hide(); return; }
+    if (toks.length !== 1 || App.sel.length !== 1 || App.tool !== 'select' || toks[0].prop) { hide(); return; }
     const t = toks[0], gm = isGM();
     const edit = gm || can('bars', t), canCond = gm || can('conds', t);
     const kids = [];
@@ -1968,7 +2244,8 @@ const UI = (() => {
   function hideTurn() { clearTimeout(turnTimer); el.turnb.hidden = true; el.turnb.replaceChildren(); }
   function turnBanner() {
     const sc = Store.scene(), tn = sc.turn;
-    const key = sc.id + '|' + (tn.on && tn.cur ? tn.cur + ':' + tn.round : '');
+    const key = turnKeyOf(sc);
+    if (zonasKey && zonasKey !== key) { el.zonas.replaceChildren(); el.zonas.hidden = true; zonasKey = null; }     // a vez mudou: os avisos de zona saem
     const prev = turnKey;
     turnKey = key;
     if (prev === key) return;
@@ -1977,11 +2254,13 @@ const UI = (() => {
     const e = tn.list.find(x => x.id === tn.cur);
     const t = e && e.token ? Store.get('tokens', e.token) : null;
     if (!e || (t && !tokShown(t, sc))) { hideTurn(); return; }     // o jogador não fica sabendo de quem ele não vê
+    const membros = isBand(e) ? turnToks(e).filter(k => tokShown(k, sc)) : [];
+    if (isBand(e) && e.toks.length && !membros.length) { hideTurn(); return; }
     const info = t ? t.cinfo || {} : {};
     const conds = t ? t.conds.map(id => COND_BY_ID[id]).filter(Boolean) : [];
     el.turnb.replaceChildren();
     addKids(el.turnb, [
-      t ? tokenAvatar(t, 26) : null,
+      t ? tokenAvatar(t, 26) : membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(k => tokenAvatar(k, 22))) : null,
       h('span', { class: 'turnb-t' }, 'Vez de ', h('strong', { text: turnLabel(e, t ? tokName(t) : e.name) })),
       conds.map(c => {
         const ci = info[c.id] || {};
@@ -1993,6 +2272,46 @@ const UI = (() => {
     el.turnb.hidden = false;
     clearTimeout(turnTimer);
     turnTimer = setTimeout(hideTurn, conds.length ? 7000 : 4000);
+  }
+
+  /* ================= Começo da vez dentro de uma zona =================
+     Quando a vez passa para alguém que está dentro de um efeito com algo guardado para aplicar (o dano e a condição
+     do "Aplicar a quem está dentro…"), o mestre vê um aviso por zona: "Aplicar" ou "Pular". Nada acontece sozinho; o
+     aviso some quando a vez passa de novo. Numa faixa de grupo, vale para os tokens dela que estão dentro. */
+  let zonasKey = null;                                      // de que vez são os avisos que estão à mostra
+  const turnKeyOf = sc => sc.id + '|' + (sc.turn.on && sc.turn.cur ? sc.turn.cur + ':' + sc.turn.round : '');
+  function zonePrompt(avancou) {
+    const box = el.zonas;
+    box.replaceChildren(); box.hidden = true; zonasKey = null;
+    if (!avancou || !isGM()) return;
+    const sc = Store.scene(), tn = sc.turn, e = tn.on ? tn.list.find(x => x.id === tn.cur) : null;
+    zonasKey = turnKeyOf(sc);
+    const toks = e ? turnToks(e) : [];
+    if (!toks.length) return;
+    const cards = [];
+    for (const fx of sc.effects) {
+      const a = fx.apply;
+      if (!a || areaAmount(a.amt) == null) continue;
+      const skip = new Set(a.skip || []);
+      const dentro = tokensIn(FX.geom(fx, sc).path, sc).filter(t => !skip.has(t.id) && toks.some(k => k.id === t.id));
+      if (!dentro.length) continue;
+      const nomeFx = (FX.P[fx.fx] || FX.P.fogo).n, quem = dentro.length === 1 ? tokName(dentro[0]) : `${dentro.length} de ${turnName(e)}`;
+      const card = h('div', { class: 'zona', id: 'zona-' + fx.id },
+        h('span', { class: 'zona-i', style: { background: (FX.P[fx.fx] || FX.P.fogo).edge } }),
+        h('span', { class: 'zona-t' }, h('strong', { text: quem }), ` começa a vez dentro de ${nomeFx}: `, h('strong', { text: applyLabel(a) }), '.'),
+        btn('Aplicar', () => {
+          const vivos = dentro.map(t => Store.get('tokens', t.id)).filter(Boolean);
+          const n = Act.areaApply(vivos.map(t => ({ t, half: false })), a.bar, a.amt, a.cond, null, nomeFx + ' no começo da vez');
+          card.remove(); if (!box.children.length) box.hidden = true;
+          if (n > 0) toast(`${nomeFx}: ${applyLabel(a)} em ${quem}.`, { action: 'Desfazer', run: Tools.undo });
+          else toast(`${nomeFx}: nada mudou em ${quem}.`);
+        }, { kind: 'primary small', id: 'zona-ok-' + fx.id }),
+        btn('Pular', () => { card.remove(); if (!box.children.length) box.hidden = true; }, { kind: 'small', id: 'zona-no-' + fx.id }));
+      cards.push(card);
+    }
+    if (!cards.length) return;
+    box.append(...cards);
+    box.hidden = false;
   }
 
   /* ================= Véu do mestre =================

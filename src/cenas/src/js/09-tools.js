@@ -13,11 +13,12 @@ const Tools = (() => {
   let ghost = null;          // posição do cursor para pré-visualizações
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
-  const KEYS = { v: 'select', h: 'pan', t: 'token', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
+  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
     { id: 'token', n: 'Novo token', k: 'T', i: 'token', grp: 1, gm: true },
+    { id: 'obj', n: 'Objetos de cenário', k: 'J', i: 'obj', grp: 1, gm: true },
     { id: 'free', n: 'Desenho livre', k: 'B', i: 'pen', grp: 2, perm: 'draw' },
     { id: 'line', n: 'Linha', k: 'L', i: 'line', grp: 2, perm: 'draw' },
     { id: 'rect', n: 'Retângulo', k: 'R', i: 'rect', grp: 2, perm: 'draw' },
@@ -50,12 +51,16 @@ const Tools = (() => {
   /* ---- O que está debaixo do cursor ---- */
   function hitTest(p, opt) {
     const o = opt || {}, sc = Store.scene(), tol = 6 / App.view.z, gm = isGM();
-    for (let i = sc.tokens.length - 1; i >= 0; i--) {
-      const t = sc.tokens[i];
-      if (!tokShown(t, sc)) continue;
-      const [cx, cy, half] = tokC(t, sc);
-      const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= half && Math.abs(p.y - cy) <= half : Math.hypot(p.x - cx, p.y - cy) <= half;
-      if (inside) return { c: 'tokens', id: t.id };
+    // os tokens primeiro e os objetos de cenário depois (é a ordem em que aparecem, de cima para baixo);
+    // com `noProps`, os objetos ficam de fora (mirar, rolar, atacar)
+    for (const props of o.noProps ? [false] : [false, true]) {
+      for (let i = sc.tokens.length - 1; i >= 0; i--) {
+        const t = sc.tokens[i];
+        if (!!t.prop !== props || !tokShown(t, sc)) continue;
+        const [cx, cy, half] = tokC(t, sc);
+        const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= half && Math.abs(p.y - cy) <= half : Math.hypot(p.x - cx, p.y - cy) <= half;
+        if (inside) return { c: 'tokens', id: t.id };
+      }
     }
     if (o.tokensOnly) return null;
     if (gm) {
@@ -238,16 +243,39 @@ const Tools = (() => {
         dx = nx - ax; dy = ny - ay;
       }
     } else { const [nx, ny] = snapPt(sc, L.x + dx, L.y + dy, free); dx = nx - L.x; dy = ny - L.y; }
+    // O jogador, com "as paredes barram o movimento": o token PARA na parede enquanto arrasta. Ele só vai até onde o
+    // caminho reto desde a última posição boa não cruza nada — então a visão (e o mapa explorado) nunca é calculada
+    // do outro lado, nem por um instante. Contornar a parede (ou passar pela porta aberta) continua valendo.
+    if (g.barrar === undefined) g.barrar = !isGM() && !!sc.blockMove && g.items.some(it => it.c === 'tokens');
+    if (g.barrar) [dx, dy] = ateAParede(sc, L, dx, dy, free);
     for (const it of g.items) {
       if (it.c === 'tokens') { const [nx, ny] = snapTok(sc, it.x + dx, it.y + dy, it.size, true); Store.upd('tokens', it.id, { x: nx, y: ny }); }
       else if (it.c === 'shapes') Store.upd('shapes', it.id, shapeMoved(it.o0, dx, dy));
       else Store.upd(it.c, it.id, { x: it.x + dx, y: it.y + dy });
     }
   }
+  // Até onde a seleção pode ir, de (vdx, vdy) — a última posição boa — rumo a (dx, dy), sem nenhum token cruzar parede.
+  function ateAParede(sc, L, dx, dy, free) {
+    const vdx = g.vdx || 0, vdy = g.vdy || 0;
+    const livre = (ax, ay) => g.items.every(it => {
+      if (it.c !== 'tokens') return true;
+      const hf = it.size * sc.cell / 2;
+      return !blockedPath(sc, it.x + vdx + hf, it.y + vdy + hf, it.x + ax + hf, it.y + ay + hf);
+    });
+    if (livre(dx, dy)) { g.vdx = dx; g.vdy = dy; return [dx, dy]; }
+    // o mais longe que dá no caminho reto (busca binária), encaixado na grade — e conferido de novo depois de encaixar
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (livre(vdx + (dx - vdx) * m, vdy + (dy - vdy) * m)) lo = m; else hi = m; }
+    const [nx, ny] = snapTok(sc, L.x + vdx + (dx - vdx) * lo, L.y + vdy + (dy - vdy) * lo, L.size || 1, free);
+    const cx = nx - L.x, cy = ny - L.y;
+    if ((cx !== vdx || cy !== vdy) && livre(cx, cy)) { g.vdx = cx; g.vdy = cy; return [cx, cy]; }
+    return [vdx, vdy];
+  }
   function endMove() {
     if (!g.moved) return;
     const sc = Store.scene();
-    if (!isGM() && sc.blockMove) {
+    // (com o token parando na parede durante o arrasto, toda posição já foi conferida no caminho)
+    if (!isGM() && sc.blockMove && !g.barrar) {
       for (const it of g.items) {
         if (it.c !== 'tokens') continue;
         const t = Store.get('tokens', it.id), hf = it.size * sc.cell / 2;
@@ -315,12 +343,16 @@ const Tools = (() => {
   // Cursor e dica conforme o que está sob o mouse (só na ferramenta Selecionar, uma vez por quadro).
   let hoverRaf = 0, hoverCur = '', hoverHint = '';
   function setHoverHint(t) { if (t !== hoverHint) { hoverHint = t; UI.hint(); } }
+  // o token sob o cursor: o mapa mostra os números dele ao lado do nome
+  function setHoverTok(id) { if (App.hoverTok !== id) { App.hoverTok = id; Render.request(); } }
   function hover() {
     if (hoverRaf) return;
     hoverRaf = requestAnimationFrame(() => {
       hoverRaf = 0;
-      if (g || App.tool !== 'select' || !App.mouse.inside) return;
+      if (g || App.tool !== 'select' || !App.mouse.inside) { if (!g) setHoverTok(null); return; }
       const q = App.mouse;
+      const ht = hitTest(q, { tokensOnly: true, noProps: true });
+      setHoverTok(ht ? ht.id : null);
       let c = '', hint = '';
       if (hitHandle(q)) c = 'crosshair';
       else if (hitDoor(q)) c = 'pointer';
@@ -441,6 +473,31 @@ const Tools = (() => {
       const [x, y] = snapTok(sc, ghost.x - s / 2, ghost.y - s / 2, size, false);
       ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.6 * px;
       ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 - s * 0.05, 0, TAU); ctx.stroke(); ctx.restore();
+    },
+  };
+
+  /* ---- Objetos de cenário: escolha o objeto na barra de cima e clique no mapa ---- */
+  const objSize = () => { const d = Props.P[App.opt.obj] || Props.P.fogueira; return App.opt.objSize || d.size || 1; };
+  T.obj = {
+    hint: 'Escolha o objeto na barra de cima e clique no mapa para pô-lo. Depois ele anda, gira e se esconde como um token.',
+    cursor: 'crosshair',
+    down(p) {
+      const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize();
+      const [x, y] = snapTok(sc, p.x - size * sc.cell / 2, p.y - size * sc.cell / 2, size, false);
+      const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
+      Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
+      if (Props.P[id].luz && sc.light === 'claro') UI.toast('A cena está clara, então a luz do objeto ainda não aparece.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
+      else UI.toast(Props.P[id].n + ' no mapa.', { key: 'obj', action: 'Desfazer', run: undo });       // (um aviso só: o novo troca o anterior)
+    },
+    move(p) { ghost = p; Render.request(); },
+    preview(ctx, px, sc) {
+      if (!ghost) return;
+      const size = objSize(), s = size * sc.cell;
+      const [x, y] = snapTok(sc, ghost.x - s / 2, ghost.y - s / 2, size, false);
+      ctx.save(); ctx.globalAlpha = 0.6;
+      Props.draw(ctx, { id: 'previa', prop: Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', x, y, size, rot: 0 }, sc, 1.3);
+      ctx.restore();
+      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4 * px; ctx.strokeRect(x + 2 * px, y + 2 * px, s - 4 * px, s - 4 * px); ctx.restore();
     },
   };
 
@@ -686,7 +743,7 @@ const Tools = (() => {
       if (hd && hd.kind === 'light') { startHandle(hd); return; }
       const sc = Store.scene(), pr = LIGHT_PRESETS.find(x => x.id === App.opt.lightPreset) || LIGHT_PRESETS[1];
       const [x, y] = snapPt(sc, p.x, p.y, e.altKey, 0.5);
-      const l = { id: uid('lz'), name: pr.n, x, y, bright: pr.bright, dim: pr.dim, c: pr.c, on: true };
+      const l = Object.assign({ id: uid('lz'), name: pr.n, x, y, bright: pr.bright, dim: pr.dim, c: pr.c, on: true }, pr.fl ? { fl: true } : {});
       Store.tx('Colocar luz', () => Store.add('lights', l));
       setSel([{ c: 'lights', id: l.id }]);
       if (sc.light === 'claro') UI.toast('A cena está clara, então a luz não muda nada ainda.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
@@ -934,7 +991,7 @@ const Tools = (() => {
   function fxOrigin(p, e) {
     const sc = Store.scene();
     let tok = null;
-    if (App.opt.fxAttach) { const hit = hitTest(p, { tokensOnly: true }); if (hit) tok = Store.get('tokens', hit.id); }
+    if (App.opt.fxAttach) { const hit = hitTest(p, { tokensOnly: true, noProps: true }); if (hit) tok = Store.get('tokens', hit.id); }
     if (tok && !isGM() && !ownsTok(tok)) tok = null;
     const [x, y] = tok ? tokC(tok, sc) : snapPt(sc, p.x, p.y, e.altKey, 0.5);
     return { x, y, tok };
@@ -1038,6 +1095,7 @@ const Tools = (() => {
     resetState();
     if (id !== 'ruler') ruler = null;
     App.tool = id;
+    if (id !== 'select') App.hoverTok = null;
     if (opt && opt.wallKind) { App.opt.wallKind = opt.wallKind; if (opt.wallKind === 'door') App.opt.wallMode = 'line'; }   // porta não fecha sala
     if (id !== 'wall' && App.sel.some(s => s.c === 'walls')) setSel(App.sel.filter(s => s.c !== 'walls'));
     if (id !== 'terrain' && App.sel.some(s => s.c === 'shapes' && isTer(Store.get('shapes', s.id)))) setSel(App.sel.filter(s => !(s.c === 'shapes' && isTer(Store.get('shapes', s.id)))));
@@ -1117,7 +1175,7 @@ const Tools = (() => {
   }
   cv.addEventListener('pointerup', pointerEnd);
   cv.addEventListener('pointercancel', pointerEnd);
-  cv.addEventListener('pointerleave', () => { App.mouse.inside = false; if (!g) { ghost = null; Render.request(); } setHoverHint(''); UI.status(); });
+  cv.addEventListener('pointerleave', () => { App.mouse.inside = false; if (!g) { ghost = null; setHoverTok(null); Render.request(); } setHoverHint(''); UI.status(); });
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('mousedown', e => e.preventDefault());
   cv.addEventListener('wheel', e => {
@@ -1172,10 +1230,19 @@ const Tools = (() => {
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
     if (lk === 'c') { Luta.disputa(); return; }            // disputa entre dois tokens (só o mestre)
+    if (lk === 'k') {                       // ataque com defesa: o token sob o cursor, ou os selecionados (só o mestre)
+      if (!isGM()) { UI.toast('O ataque com defesa é do mestre.'); return; }
+      const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null, sel = selOf('tokens').filter(x => !x.prop);
+      // sob o cursor um dos selecionados: vale a seleção inteira; outro token: só ele
+      const toks = hit && !selHas('tokens', hit.id) ? [Store.get('tokens', hit.id)] : sel.length ? sel : [];
+      if (toks.length) Luta.ataque(toks);
+      else UI.toast('Para o ataque com defesa, passe o mouse sobre um token (ou selecione os alvos) e aperte K.');
+      return;
+    }
     if (lk === 'a') {                       // mira: o token sob o cursor, ou os selecionados
       if (!can('target')) return;
-      const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true }) : null;
-      const toks = hit ? [Store.get('tokens', hit.id)] : selOf('tokens');
+      const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null;
+      const toks = hit ? [Store.get('tokens', hit.id)] : selOf('tokens').filter(x => !x.prop);
       if (toks.length) Act.targetToggle(toks);
       else UI.toast('Para mirar, passe o mouse sobre um token e aperte A.');
       return;

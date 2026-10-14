@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------
    10c. LUTA — as telas de combate (as contas ficam em 07e-combate.js)
    - F ........ a janelinha de atributos do token: rola com a regra da fixa e mostra o resultado;
-   - a fixa de cada turno de quem joga mais de uma vez por rodada (painel do token);
+   - a iniciativa de cada turno de quem joga mais de uma vez por rodada (painel do token);
    - C ........ a disputa entre dois tokens (ou contra um valor avulso);
    - o grupo .. cria de uma vez os tokens de um grupo de personagens das Fichas;
    - o ataque . dano com defesa: o mestre escolhe a defesa que desconta, quem defende pode rolar,
@@ -30,41 +30,35 @@ const Luta = (() => {
 
   /* ================= A fixa de agora =================
      Para cada token, a fixa que os campos "Fixando" mostram: a que o mestre digitou por último (lembrada enquanto a
-     página está aberta); sem isso, a da ficha. Quem tem uma fixa anotada para o turno que está jogando começa por
-     ela — e o que for digitado nesse turno vale só para ele. */
+     página está aberta); sem isso, a da ficha. */
   const fixaMem = new Map();
-  function chaveFixa(t) {
-    const sc = Store.scene(), tf = Combate.fixaDoTurno(t);
-    return t.id + (tf ? '|' + sc.turn.cur + '|' + sc.turn.round : '');
-  }
   function fixaAtual(t) {
-    const k = chaveFixa(t);
-    if (fixaMem.has(k)) return fixaMem.get(k);
-    const tf = Combate.fixaDoTurno(t);
-    return tf ? tf.v : t.char && Fichas.get(t.char) ? Fichas.fixaPadrao(t) : 0;
+    if (fixaMem.has(t.id)) return fixaMem.get(t.id);
+    return t.char && Fichas.get(t.char) ? Fichas.fixaPadrao(t) : 0;
   }
   function guardarFixa(t, v) {
     if (fixaMem.size > 400) fixaMem.clear();
-    fixaMem.set(chaveFixa(t), clamp(int(v, 0), 0, 99999));
+    fixaMem.set(t.id, clamp(int(v, 0), 0, 99999));
   }
 
-  // No painel do token (seção Turnos): a fixa de cada turno, para quem tem mais de um por rodada.
-  function fixasBox(t) {
+  /* No painel do token (seção Turnos): a iniciativa de cada turno, para quem joga mais de uma vez por rodada — um
+     chefe com 1d20 + 6 no primeiro turno, 1d20 + 4 no segundo, 1d20 + 0 no terceiro. Vazio: a iniciativa de sempre. */
+  function inisBox(t) {
     const n = clampTurns(t.turns);
     if (n < 2) return null;
-    const cur = cleanFixas(t.fixas);
+    const cur = cleanInis(t.inis), base = clampIni(t.ini);
     const set = (i, v) => {
       const f = [];
       for (let k = 0; k < Math.max(n, cur.length); k++) f.push(k === i ? v : cur[k] == null ? null : cur[k]);
-      Store.tx('Fixa de cada turno', () => Store.upd('tokens', t.id, { fixas: cleanFixas(f) }));
+      Store.tx('Iniciativa de cada turno', () => Store.upd('tokens', t.id, { inis: cleanInis(f) }));
     };
     return [
-      h('div', { class: 'field stack', id: 'tk-fixas' }, h('span', { class: 'lb', text: 'Fixa de cada turno' }),
+      h('div', { class: 'field stack', id: 'tk-inis' }, h('span', { class: 'lb', text: 'Iniciativa de cada turno (1d20 + …)' }),
         h('div', { class: 'fixas' }, Array.from({ length: n }, (_, i) => h('label', { class: 'fixa-t' }, h('span', { text: `${i + 1}º` }),
-          h('input', { id: `tk-fixa-${i + 1}`, type: 'number', class: 'in num cnt', min: 0, max: 9999, step: 1, value: cur[i] == null ? '' : cur[i], placeholder: '–',
-            'aria-label': `Fixa do ${i + 1}º turno`, title: `Quanto ele fixa no ${i + 1}º turno da rodada. Vazio: a fixa de sempre.`,
-            onchange: e => { const raw = String(e.target.value).trim(); set(i, raw === '' ? null : clamp(int(raw, 0), 0, 9999)); } }))))),
-      note('Na vez dele, rolar atributo (tecla F) já começa fixando o valor daquele turno. Vazio: a fixa de sempre.'),
+          h('input', { id: `tk-ini-${i + 1}`, type: 'number', class: 'in num cnt', min: -99, max: 99, step: 1, value: cur[i] == null ? '' : cur[i], placeholder: String(base),
+            'aria-label': `Iniciativa do ${i + 1}º turno`, title: `Bônus de iniciativa do ${i + 1}º turno da rodada: rola 1d20 + este valor. Vazio: o de sempre (${base}).`,
+            onchange: e => { const raw = String(e.target.value).trim(); set(i, raw === '' ? null : clampIni(int(raw, 0))); } }))))),
+      note(`Cada turno rola a própria iniciativa: 1d20 + o valor dele. Vazio: a iniciativa de sempre (${base >= 0 ? '+' : ''}${base}).`),
     ];
   }
 
@@ -82,7 +76,7 @@ const Luta = (() => {
   }
   const podeAtributos = t => !!modoDoF(t);
   function alvoDoF() {
-    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true }) : null;
+    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null;
     if (hit) return Store.get('tokens', hit.id) || null;
     const sel = selOf('tokens');
     return sel.length === 1 ? sel[0] : null;
@@ -119,11 +113,6 @@ const Luta = (() => {
     pop.nome.textContent = tokName(t);
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
     const fixa = lerFixaDoPop();
-    // as fixas anotadas por turno: um toque põe o valor no campo
-    const tf = Combate.fixaDoTurno(t), fs = Combate.fixasDe(t);
-    pop.chips.hidden = !fs.length;
-    pop.chips.replaceChildren(...(fs.length ? [h('span', { class: 'pop-l', text: 'Por turno' })].concat(fs.map(f => h('button', { type: 'button', class: 'chip' + (tf && tf.k === f.k ? ' on' : ''), id: `fp-t${f.k}`, title: `Fixa do ${f.k}º turno: ${f.v}` + (tf && tf.k === f.k ? ' (é o turno de agora)' : ''), text: `${f.k}º · ${f.v}`,
-      onclick: () => { guardarFixa(t, f.v); pop.fx.value = f.v; pintarPop(); } }))) : []));
     const como = v => (v < 1 ? 'nada a rolar' : fixa >= v ? 'fixa total: ' + v : '1d' + (v - fixa) + (fixa ? ' + ' + fixa : ''));
     if (modo === 'ficha') {
       pop.grid.className = 'pop-g';
@@ -152,12 +141,12 @@ const Luta = (() => {
     const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
       oninput: () => { const cur = pop && Store.get('tokens', pop.tokId); if (cur) { guardarFixa(cur, fx.value); pintarPop(); } },
       onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); fx.blur(); pop.el.focus({ preventScroll: true }); } } });
-    const nome = h('strong', { class: 'pop-n' }), grid = h('div', { class: 'pop-g' }), chips = h('div', { class: 'pop-c', hidden: true }), out = h('div', { class: 'pop-r', id: 'fp-res', role: 'status', hidden: true });
+    const nome = h('strong', { class: 'pop-n' }), grid = h('div', { class: 'pop-g' }), out = h('div', { class: 'pop-r', id: 'fp-res', role: 'status', hidden: true });
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
-      h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx), chips, grid, out);
+      h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx), grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, chips, out, nome, valor: null };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -193,7 +182,7 @@ const Luta = (() => {
     if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
     fecharPop();
     const sc = Store.scene(), sel = (toksArg && toksArg.length ? toksArg : selOf('tokens')).slice();
-    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true }) : null, sob = hit ? Store.get('tokens', hit.id) : null;
+    const hit = App.mouse.inside ? Tools.hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null, sob = hit ? Store.get('tokens', hit.id) : null;
     const a0 = sel[0] || sob || null;
     let b0 = sel.find(t => a0 && t.id !== a0.id) || null;
     if (!b0) { const mira = sc.targets.find(x => x.by === App.viewer && (!a0 || x.t !== a0.id)); if (mira) b0 = Store.get('tokens', mira.t) || null; }
@@ -218,8 +207,7 @@ const Luta = (() => {
         ficha ? field('Atributo', inSelect(`dis-${p}-atr`, L.atr, Fichas.rolaveis(t).map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { L.atr = v; atrMem.set(t.id, v); st.res = null; paint(); }), 'stack')
           : [t ? null : field('Nome', h('input', { id: `dis-${p}-nome`, class: 'in', type: 'text', maxlength: 40, value: L.nome, autocomplete: 'off', oninput: e => { L.nome = e.target.value; } }), 'stack'),
             field('Valor', h('input', { id: `dis-${p}-valor`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: L.valor, oninput: e => { L.valor = clamp(int(e.target.value, 0), 0, 100000); if (t) valorMem.set(t.id, L.valor); } }), 'stack')],
-        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'),
-        t && Combate.fixaDoTurno(t) ? note(`É o ${Combate.fixaDoTurno(t).k}º turno dele: fixa anotada ${Combate.fixaDoTurno(t).v}.`) : null);
+        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'));
     };
     const paint = () => {
       const a = document.activeElement, fid = a && a.id && corpo.contains(a) ? a.id : null;
@@ -627,5 +615,5 @@ const Luta = (() => {
   // A cada redesenho geral: a janelinha de atributos acompanha (valores da ficha, turno, token que saiu).
   function refresh() { if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } } }
 
-  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, fixasBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop };
+  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop };
 })();

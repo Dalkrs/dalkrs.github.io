@@ -386,8 +386,378 @@ const FX = (() => {
         }
       },
     },
+
+    /* ---------- Lote 5: zonas novas ---------- */
+    lava: {
+      n: 'Lava', tint: '#ff4a10', base: 0.55, edge: '#ffb347', glow: true, g: 'elem', sug: 'fogo',
+      draw(c, g, t, pow) {
+        // a crosta escura em placas, com o brilho da lava pelas rachaduras
+        c.globalCompositeOperation = 'lighter';
+        const m = cnt(g, 1, 3, 16, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 41, g.seed), hsh(i, 42, g.seed));
+          blob(c, x, y, g.cell * (0.6 + 0.2 * Math.sin(t * 0.9 + i)), '#ffb04a', (0.18 + 0.08 * Math.sin(t * 1.3 + i * 2)) * pow);
+        }
+        c.globalCompositeOperation = 'source-over';
+        const n = cnt(g, 3, 5, 60, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const r = g.cell * (0.18 + hsh(i, 3, g.seed) * 0.16);
+          c.globalAlpha = 0.82 * pow; c.fillStyle = hsh(i, 4, g.seed) > 0.5 ? '#2a0d06' : '#3a1408';
+          c.beginPath();
+          for (let k = 0; k <= 6; k++) { const a = k / 6 * TAU + hsh(i, 5, g.seed), rr = r * (0.7 + 0.3 * hsh(i * 7 + (k % 6), 6, g.seed)); if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+          c.closePath(); c.fill();
+        }
+        // bolhas que estouram
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 0.8, 2, 12, pow);
+        for (let i = 0; i < b; i++) {
+          const sp = 0.25 + hsh(i, 7, g.seed) * 0.3, ph = t * sp + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 11, 9, g.seed), hsh(i + cyc * 11, 10, g.seed));
+          c.globalAlpha = (1 - life) * 0.8 * pow; c.strokeStyle = '#ffd27a'; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+          c.beginPath(); c.arc(x, y, g.cell * 0.12 * (0.3 + life), 0, TAU); c.stroke();
+        }
+      },
+    },
+    areia: {
+      n: 'Areia movediça', tint: '#c9a15a', base: 0.42, edge: '#e8cf98', g: 'elem', sug: 'agarrado',
+      draw(c, g, t, pow) {
+        // o funil: escuro no meio, e a areia descendo em espiral para lá
+        blob(c, g.cx, g.cy, g.inR * 0.6, '#4a3210', 0.55 * pow);
+        c.strokeStyle = '#6b4a1a'; c.lineCap = 'round';
+        for (let k = 0; k < 6; k++) {
+          const f = ((k / 6) + t * 0.06) % 1, r = g.inR * (1 - f) * 0.95, a0 = t * 0.5 + k * 1.1 + f * 4;
+          c.globalAlpha = (0.2 + 0.45 * f) * pow; c.lineWidth = Math.max(1, g.cell * 0.06 * (1 - f * 0.5));
+          c.beginPath(); c.arc(g.cx, g.cy, Math.max(1, r), a0, a0 + Math.PI * 1.1); c.stroke();
+        }
+        const n = cnt(g, 6, 10, 90, pow);
+        c.fillStyle = '#f6e2b0';
+        for (let i = 0; i < n; i++) {
+          const f = (((hsh(i, 2, g.seed) - t * 0.04) % 1) + 1) % 1, a0 = hsh(i, 1, g.seed) * TAU + t * 0.5 + f * 4, d = g.inR * 0.95 * f;
+          c.globalAlpha = (0.3 + 0.5 * f) * pow;
+          c.beginPath(); c.arc(g.cx + Math.cos(a0) * d, g.cy + Math.sin(a0) * d, Math.max(0.7, g.cell * 0.035), 0, TAU); c.fill();
+        }
+      },
+    },
+    tempestade: {
+      n: 'Tempestade de raios', tint: '#2e3a66', base: 0.32, edge: '#a8b8ff', glow: true, g: 'elem', sug: 'atordoado',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.2, 3, 14, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.3 + i) * g.cell * 0.4, y, g.cell * (0.9 + hsh(i, 13, g.seed) * 0.6), '#1a2040', 0.3 * pow);
+        }
+        // chuva em diagonal
+        c.strokeStyle = '#c9d6ff'; c.lineCap = 'round'; c.lineWidth = Math.max(0.6, g.cell * 0.018);
+        const n = cnt(g, 7, 12, 110, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (1.6 + hsh(i, 3, g.seed)) + hsh(i, 4, g.seed)) % 1;
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const dy = (ph - 0.5) * g.cell * 1.2;
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.45 * pow;
+          c.beginPath(); c.moveTo(x + dy * 0.3, y + dy); c.lineTo(x + dy * 0.3 - g.cell * 0.08, y + dy - g.cell * 0.22); c.stroke();
+        }
+        // o raio, de vez em quando, com o clarão
+        c.globalCompositeOperation = 'lighter';
+        const fr = Math.floor(t * 1.6), on = hsh(fr, 5, g.seed) > 0.45, fase = t * 1.6 - fr;
+        if (on && fase < 0.22) {
+          const a = g.sample(hsh(fr, 6, g.seed), hsh(fr, 7, g.seed)), b = g.sample(hsh(fr, 8, g.seed), hsh(fr, 9, g.seed));
+          const k = 1 - fase / 0.22;
+          blob(c, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, g.inR * 1.2, '#9fb4ff', 0.25 * k * pow);
+          c.beginPath(); c.moveTo(a[0], a[1]);
+          for (let s2 = 1; s2 < 7; s2++) { const f = s2 / 7; c.lineTo(a[0] + (b[0] - a[0]) * f + (hsh(s2, fr, g.seed) - 0.5) * g.cell * 0.6, a[1] + (b[1] - a[1]) * f + (hsh(s2, fr + 3, g.seed) - 0.5) * g.cell * 0.6); }
+          c.lineTo(b[0], b[1]);
+          c.globalAlpha = 0.35 * k * pow; c.strokeStyle = '#7aa2ff'; c.lineWidth = g.cell * 0.16; c.stroke();
+          c.globalAlpha = 0.95 * k * pow; c.strokeStyle = '#f4f7ff'; c.lineWidth = Math.max(1, g.cell * 0.04); c.stroke();
+        }
+      },
+    },
+    nevasca: {
+      n: 'Nevasca', tint: '#dcecff', base: 0.26, edge: '#ffffff', g: 'elem', sug: 'resfriado',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.3, 3, 16, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.8 + i) * g.cell * 0.6, y + Math.cos(t * 0.6 + i) * g.cell * 0.3, g.cell * (0.8 + hsh(i, 13, g.seed) * 0.6), '#ffffff', (0.16 + 0.06 * Math.sin(t + i)) * pow);
+        }
+        // flocos levados pelo vento
+        c.fillStyle = '#ffffff';
+        const n = cnt(g, 9, 14, 140, pow), span = g.R * 2.2;
+        for (let i = 0; i < n; i++) {
+          const sp = 0.25 + hsh(i, 3, g.seed) * 0.35, ph = (t * sp + hsh(i, 4, g.seed)) % 1;
+          const off = (hsh(i, 1, g.seed) - 0.5) * span, along = (ph - 0.5) * span;
+          const x = g.cx + along + Math.sin(t * 2 + i) * g.cell * 0.1, y = g.cy + off + along * 0.35;
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.85 * pow;
+          c.beginPath(); c.arc(x, y, Math.max(0.6, g.cell * (0.02 + hsh(i, 5, g.seed) * 0.03)), 0, TAU); c.fill();
+        }
+      },
+    },
+    acida: {
+      n: 'Chuva ácida', tint: '#9acd32', base: 0.18, edge: '#d4ff6a', g: 'elem', sug: 'veneno',
+      draw(c, g, t, pow) {
+        c.strokeStyle = '#d9ff8a'; c.lineCap = 'round'; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+        const n = cnt(g, 6, 10, 90, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (1.3 + hsh(i, 3, g.seed) * 0.8) + hsh(i, 4, g.seed)) % 1;
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const dy = (ph - 0.6) * g.cell * 1.1;
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.6 * pow;
+          c.beginPath(); c.moveTo(x, y + dy); c.lineTo(x, y + dy - g.cell * 0.2); c.stroke();
+        }
+        // respingos que chiam no chão
+        const b = cnt(g, 1.6, 3, 24, pow);
+        for (let i = 0; i < b; i++) {
+          const ph = t * (0.7 + hsh(i, 7, g.seed) * 0.5) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 7, 9, g.seed), hsh(i + cyc * 7, 10, g.seed));
+          c.globalAlpha = (1 - life) * 0.7 * pow; c.strokeStyle = '#eaff9a';
+          c.beginPath(); c.ellipse(x, y, g.cell * 0.18 * life + 0.5, g.cell * 0.08 * life + 0.5, 0, 0, TAU); c.stroke();
+          blob(c, x, y - life * g.cell * 0.15, g.cell * 0.06, '#c6f06a', (1 - life) * 0.5 * pow);
+        }
+      },
+    },
+    escuridao: {
+      n: 'Escuridão mágica', tint: '#020104', base: 0.8, edge: '#4a2f7a', g: 'magia', sug: 'cego',
+      draw(c, g, t, pow) {
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(0.6 + hsh(i, 1, g.seed) * 0.4, hsh(i, 2, g.seed) + t * 0.02);
+          blob(c, x, y, g.cell * (0.5 + hsh(i, 5, g.seed) * 0.6), i % 3 ? '#000000' : '#2a1648', (0.4 + 0.15 * Math.sin(t * 0.7 + i)) * pow);
+        }
+        // fiapos roxos girando na borda
+        c.strokeStyle = '#6a45a8'; c.lineCap = 'round';
+        for (let i = 0; i < 6; i++) {
+          const a = i / 6 * TAU + t * 0.25;
+          c.globalAlpha = (0.2 + 0.15 * Math.sin(t + i)) * pow; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+          c.beginPath(); c.arc(g.cx, g.cy, g.inR * (0.75 + 0.15 * Math.sin(t * 0.6 + i)), a, a + 0.7); c.stroke();
+        }
+      },
+    },
+    teia: {
+      n: 'Teia', tint: '#d8d8d8', base: 0.07, edge: '#f4f4f4', g: 'magia', sug: 'emaranhado',
+      draw(c, g, t, pow) {
+        // a teia: raios saindo do meio e voltas ligando os raios, que brilham de leve
+        const raios = 12, r = g.R * 1.05, brilho = 0.5 + 0.5 * Math.sin(t * 1.4 + g.seed);
+        c.strokeStyle = '#f2f2f2'; c.lineCap = 'round';
+        c.globalAlpha = (0.45 + 0.15 * brilho) * pow; c.lineWidth = Math.max(0.6, g.cell * 0.018);
+        const ang = k => k / raios * TAU + hsh(k, 1, g.seed) * 0.2;
+        c.beginPath();
+        for (let k = 0; k < raios; k++) { c.moveTo(g.cx, g.cy); c.lineTo(g.cx + Math.cos(ang(k)) * r, g.cy + Math.sin(ang(k)) * r); }
+        c.stroke();
+        for (let v = 1; v <= 7; v++) {
+          const rv = r * v / 7.5;
+          c.globalAlpha = (0.3 + 0.2 * brilho) * pow;
+          c.beginPath();
+          for (let k = 0; k <= raios; k++) {
+            const a0 = ang(k % raios), a1 = ang((k + 1) % raios) + (k + 1 === raios ? TAU : 0);
+            const p0 = [g.cx + Math.cos(a0) * rv, g.cy + Math.sin(a0) * rv];
+            if (!k) c.moveTo(p0[0], p0[1]);
+            if (k < raios) { const am = (a0 + a1) / 2, p1 = [g.cx + Math.cos(a1) * rv, g.cy + Math.sin(a1) * rv]; c.quadraticCurveTo(g.cx + Math.cos(am) * rv * 0.9, g.cy + Math.sin(am) * rv * 0.9, p1[0], p1[1]); }
+          }
+          c.stroke();
+        }
+        // gotas de orvalho
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) { const [x, y] = g.sample(hsh(i, 3, g.seed), hsh(i, 4, g.seed)); blob(c, x, y, g.cell * 0.05, '#ffffff', (0.3 + 0.5 * Math.max(0, Math.sin(t * 1.2 + i * 2.3))) * pow); }
+      },
+    },
+    barreira: {
+      n: 'Barreira de força', tint: '#5fd0ff', base: 0.1, edge: '#bff0ff', glow: true, g: 'magia', sug: 'escudo',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        // grade de hexágonos, com uma onda de brilho que passa
+        const s0 = g.cell * 0.42, w = s0 * Math.sqrt(3), hh = s0 * 1.5, x0 = g.cx - g.R - w, y0 = g.cy - g.R - hh;
+        const cols = Math.ceil((g.R * 2 + w * 2) / w) + 1, rows = Math.ceil((g.R * 2 + hh * 2) / hh) + 1;
+        c.strokeStyle = '#bff0ff'; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const x = x0 + i * w + (j % 2) * w / 2, y = y0 + j * hh;
+          const d = Math.hypot(x - g.cx, y - g.cy) / Math.max(1, g.R), onda = Math.max(0, Math.sin((d - t * 0.5) * TAU * 1.2));
+          c.globalAlpha = (0.12 + 0.45 * onda * onda) * pow;
+          c.beginPath();
+          for (let k = 0; k <= 6; k++) { const a = k / 6 * TAU + Math.PI / 6, px = x + Math.cos(a) * s0 * 0.92, py = y + Math.sin(a) * s0 * 0.92; if (k) c.lineTo(px, py); else c.moveTo(px, py); }
+          c.stroke();
+        }
+        blob(c, g.cx, g.cy, g.inR * 1.1, '#7fdcff', (0.08 + 0.04 * Math.sin(t * 2)) * pow);
+      },
+    },
+    circulo: {
+      n: 'Círculo arcano', tint: '#9a4fff', base: 0.1, edge: '#e6c6ff', glow: true, g: 'magia', sug: 'foco',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        blob(c, g.cx, g.cy, g.inR * 0.9, '#b27aff', (0.12 + 0.08 * Math.sin(t * 1.5)) * pow);
+        runeRing(c, g, t * 0.15, '#e6c6ff', 0.8 * pow, 5, 2);
+        runeRing(c, { cx: g.cx, cy: g.cy, inR: g.inR * 0.62, cell: g.cell }, -t * 0.3, '#c99bff', 0.7 * pow, 6, 1);
+        runeRing(c, { cx: g.cx, cy: g.cy, inR: g.inR * 0.3, cell: g.cell }, t * 0.5, '#f2e4ff', 0.6 * pow, 3, 1);
+        // glifos que piscam na volta de fora
+        const r = g.inR * 0.93;
+        for (let i = 0; i < 8; i++) {
+          const a = i / 8 * TAU + t * 0.15, tw = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 1.7);
+          blob(c, g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r, g.cell * 0.12, '#f0dcff', tw * 0.7 * pow);
+        }
+      },
+    },
+    silencio: {
+      n: 'Silêncio', tint: '#6c7a96', base: 0.16, edge: '#c9d3e6', g: 'magia', sug: 'silencio',
+      draw(c, g, t, pow) {
+        // anéis que encolhem para o meio: o som sumindo
+        c.strokeStyle = '#dfe6f2';
+        for (let k = 0; k < 4; k++) {
+          const f = ((k / 4) + t * 0.12) % 1, r = g.inR * (1 - f);
+          c.globalAlpha = f * 0.35 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+          c.beginPath(); c.arc(g.cx, g.cy, Math.max(1, r), 0, TAU); c.stroke();
+        }
+        const m = cnt(g, 1, 2, 10, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x, y, g.cell * 0.9, '#aab6cc', 0.12 * pow); }
+      },
+    },
+    toxica: {
+      n: 'Nuvem tóxica', tint: '#7fbf2a', base: 0.3, edge: '#c6f06a', g: 'natureza', sug: 'veneno',
+      draw(c, g, t, pow) {
+        const n = cnt(g, 2.6, 5, 40, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const dx = Math.sin(t * (0.15 + hsh(i, 3, g.seed) * 0.15) + i) * g.cell * 0.6, dy = Math.cos(t * (0.12 + hsh(i, 4, g.seed) * 0.1) + i * 1.3) * g.cell * 0.4;
+          blob(c, x + dx, y + dy, g.cell * (0.7 + hsh(i, 5, g.seed) * 0.8), i % 3 ? '#cdf274' : '#3e6a12', (0.34 + 0.1 * Math.sin(t * 0.5 + i)) * pow);
+        }
+        c.fillStyle = '#e6ff9a';
+        const b = cnt(g, 2, 3, 24, pow);
+        for (let i = 0; i < b; i++) {
+          const ph = (t * 0.2 + hsh(i, 7, g.seed)) % 1, [x, y] = g.sample(hsh(i, 8, g.seed), hsh(i, 9, g.seed));
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.5 * pow;
+          c.beginPath(); c.arc(x, y - ph * g.cell * 0.4, Math.max(0.6, g.cell * 0.03), 0, TAU); c.fill();
+        }
+      },
+    },
+    espinhos: {
+      n: 'Espinhos e raízes', tint: '#3d5a2a', base: 0.24, edge: '#8aa85a', g: 'natureza', sug: 'emaranhado',
+      draw(c, g, t, pow) {
+        const n = cnt(g, 1.6, 3, 22, pow);
+        c.lineCap = 'round';
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const a = hsh(i, 3, g.seed) * TAU, L = g.cell * (0.8 + hsh(i, 4, g.seed) * 0.9), bal = Math.sin(t * 0.8 + i) * 0.12;
+          const ex = x + Math.cos(a + bal) * L, ey = y + Math.sin(a + bal) * L, mx = (x + ex) / 2 + Math.cos(a + 1.6) * L * 0.25, my = (y + ey) / 2 + Math.sin(a + 1.6) * L * 0.25;
+          c.globalAlpha = 0.85 * pow; c.strokeStyle = '#4a3218'; c.lineWidth = Math.max(1, g.cell * 0.07);
+          c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(mx, my, ex, ey); c.stroke();
+          c.strokeStyle = '#6b8f3a'; c.lineWidth = Math.max(0.6, g.cell * 0.025); c.stroke();
+          // os espinhos ao longo da raiz
+          c.fillStyle = '#d8c79a';
+          for (let k = 1; k < 5; k++) {
+            const f = k / 5, px = (1 - f) * (1 - f) * x + 2 * (1 - f) * f * mx + f * f * ex, py = (1 - f) * (1 - f) * y + 2 * (1 - f) * f * my + f * f * ey;
+            const sa = a + (k % 2 ? 1.57 : -1.57), sz = g.cell * 0.07;
+            c.beginPath(); c.moveTo(px + Math.cos(sa + 1.4) * sz * 0.4, py + Math.sin(sa + 1.4) * sz * 0.4); c.lineTo(px + Math.cos(sa) * sz * 1.6, py + Math.sin(sa) * sz * 1.6); c.lineTo(px + Math.cos(sa - 1.4) * sz * 0.4, py + Math.sin(sa - 1.4) * sz * 0.4); c.closePath(); c.fill();
+          }
+        }
+      },
+    },
+    esporos: {
+      n: 'Esporos', tint: '#9a6ac0', base: 0.14, edge: '#e2c2f2', glow: true, g: 'natureza', sug: 'confuso',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const n = cnt(g, 5, 8, 80, pow);
+        for (let i = 0; i < n; i++) {
+          const sp = 0.08 + hsh(i, 3, g.seed) * 0.12, ph = t * sp + hsh(i, 4, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 13, 1, g.seed), hsh(i + cyc * 13, 2, g.seed));
+          const dx = Math.sin(t * 0.9 + i) * g.cell * 0.15;
+          blob(c, x + dx, y - life * g.cell * 0.6, g.cell * (0.05 + hsh(i, 5, g.seed) * 0.07), i % 3 ? '#e9b8ff' : '#b8ffdf', Math.sin(life * Math.PI) * 0.75 * pow);
+        }
+      },
+    },
+    pantano: {
+      n: 'Pântano', tint: '#3f4a22', base: 0.46, edge: '#7a8a4a', g: 'natureza', sug: 'lento',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.4, 3, 18, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x, y, g.cell * (0.6 + hsh(i, 13, g.seed) * 0.6), i % 2 ? '#2a3418' : '#5a6a2a', 0.3 * pow);
+        }
+        // folhas e lodo boiando
+        const f = cnt(g, 1, 2, 14, pow);
+        for (let i = 0; i < f; i++) {
+          const [x, y] = g.sample(hsh(i, 21, g.seed), hsh(i, 22, g.seed));
+          c.globalAlpha = 0.7 * pow; c.fillStyle = '#5f8a3a';
+          c.beginPath(); c.arc(x + Math.sin(t * 0.2 + i) * g.cell * 0.05, y, g.cell * 0.13, 0.4, TAU - 0.4); c.lineTo(x, y); c.closePath(); c.fill();
+        }
+        // bolhas de gás
+        const b = cnt(g, 1.2, 3, 18, pow);
+        c.strokeStyle = '#b8c98a';
+        for (let i = 0; i < b; i++) {
+          const ph = t * (0.3 + hsh(i, 7, g.seed) * 0.3) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 9, 9, g.seed), hsh(i + cyc * 9, 10, g.seed));
+          c.globalAlpha = (life < 0.85 ? 0.6 : (1 - life) / 0.15 * 0.6) * pow; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+          c.beginPath(); c.arc(x, y, g.cell * 0.09 * (0.3 + life * 0.7), 0, TAU); c.stroke();
+        }
+      },
+    },
+    aura: {
+      n: 'Aura sagrada', tint: '#ffe9a0', base: 0.12, edge: '#fff4c8', glow: true, g: 'sagrado', sug: 'bencao',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const p = 0.5 + 0.5 * Math.sin(t * 1.1);
+        blob(c, g.cx, g.cy, g.inR * (1.05 + 0.1 * p), '#ffe7a0', (0.22 + 0.1 * p) * pow);
+        blob(c, g.cx, g.cy, g.inR * 0.5, '#fff6d6', 0.2 * pow);
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.15 + hsh(i, 3, g.seed) * 0.15) + hsh(i, 4, g.seed)) % 1;
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          blob(c, x, y - ph * g.cell * 0.5, g.cell * 0.07, '#fff8de', Math.sin(ph * Math.PI) * 0.8 * pow);
+        }
+      },
+    },
+    consagrado: {
+      n: 'Chão consagrado', tint: '#f5d98a', base: 0.13, edge: '#fff1c2', glow: true, g: 'sagrado', sug: 'bencao',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        // marcas sagradas no chão, em grade, acendendo uma de cada vez
+        const passo = g.cell * 0.9, i0 = Math.floor((g.cx - g.R) / passo), i1 = Math.ceil((g.cx + g.R) / passo), j0 = Math.floor((g.cy - g.R) / passo), j1 = Math.ceil((g.cy + g.R) / passo);
+        c.strokeStyle = '#fff1c2'; c.lineCap = 'round'; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+          const x = (i + 0.5) * passo, y = (j + 0.5) * passo, k = hsh(i, j, g.seed);
+          const a = (0.15 + 0.55 * Math.max(0, Math.sin(t * 0.9 + k * TAU))) * pow, s = g.cell * 0.12;
+          c.globalAlpha = a;
+          c.beginPath(); c.moveTo(x, y - s * 1.3); c.lineTo(x, y + s * 1.3); c.moveTo(x - s, y - s * 0.4); c.lineTo(x + s, y - s * 0.4); c.stroke();
+        }
+        blob(c, g.cx, g.cy, g.inR, '#ffe6a0', (0.1 + 0.05 * Math.sin(t)) * pow);
+      },
+    },
+    chamasNegras: {
+      n: 'Chamas negras', tint: '#1a0626', base: 0.32, edge: '#a35cff', glow: true, g: 'sagrado', sug: 'fogo',
+      draw(c, g, t, pow) {
+        const n = cnt(g, 6, 10, 80, pow);
+        // primeiro o escuro das chamas; depois a borda roxa que brilha
+        for (let pass = 0; pass < 2; pass++) {
+          c.globalCompositeOperation = pass ? 'lighter' : 'source-over';
+          for (let i = 0; i < n; i++) {
+            const sp = 0.5 + hsh(i, 3, g.seed) * 0.6, ph = t * sp + hsh(i, 4, g.seed), life = ph % 1, cyc = Math.floor(ph);
+            const [x, y] = g.sample(hsh(i + cyc * 17, 1, g.seed), hsh(i + cyc * 17, 2, g.seed));
+            const r = g.cell * (0.2 + hsh(i, 5, g.seed) * 0.28) * (1 - life * 0.55);
+            if (pass) blob(c, x, y - life * g.cell * 0.3, r * 0.7, life < 0.5 ? '#c78bff' : '#7a2fd6', Math.sin(life * Math.PI) * 0.35 * pow);
+            else blob(c, x + Math.sin(t * 3 + i) * g.cell * 0.05, y - life * g.cell * 0.3, r, '#08020e', Math.sin(life * Math.PI) * 0.7 * pow);
+          }
+        }
+      },
+    },
+    maldicao: {
+      n: 'Maldição', tint: '#3a0f2c', base: 0.3, edge: '#d0407a', g: 'sagrado', sug: 'maldicao',
+      draw(c, g, t, pow) {
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const ang = hsh(i, 1, g.seed) * TAU + t * (0.2 + hsh(i, 3, g.seed) * 0.2) * (i % 2 ? 1 : -1), d = g.inR * (0.3 + hsh(i, 2, g.seed) * 0.7);
+          blob(c, g.cx + Math.cos(ang) * d, g.cy + Math.sin(ang) * d, g.cell * (0.5 + hsh(i, 5, g.seed) * 0.5), i % 3 ? '#1a0410' : '#6a1838', (0.3 + 0.1 * Math.sin(t + i)) * pow);
+        }
+        c.globalCompositeOperation = 'lighter';
+        runeRing(c, g, -t * 0.12, '#e0506a', (0.45 + 0.15 * Math.sin(t * 1.7)) * pow, 7, 3);
+      },
+    },
   };
-  const ORDER = ['fogo', 'gelo', 'raio', 'agua', 'vento', 'terra', 'veneno', 'nevoa', 'sombra', 'cura', 'sagrado', 'arcano', 'antimagia', 'tinta'];
+  /* As categorias da biblioteca (para as abas), e cada efeito antigo na dele */
+  const TAGS = [{ id: 'elem', n: 'Elementos' }, { id: 'magia', n: 'Magia' }, { id: 'natureza', n: 'Natureza' }, { id: 'sagrado', n: 'Sagrado e sombrio' }];
+  for (const [id, gr] of [['fogo', 'elem'], ['gelo', 'elem'], ['raio', 'elem'], ['agua', 'elem'], ['vento', 'elem'], ['terra', 'elem'], ['veneno', 'natureza'], ['nevoa', 'natureza'],
+    ['sombra', 'sagrado'], ['cura', 'sagrado'], ['sagrado', 'sagrado'], ['arcano', 'magia'], ['antimagia', 'magia'], ['tinta', 'magia']]) P[id].g = gr;
+  P.fogo.sug = 'fogo'; P.gelo.sug = 'gelo'; P.raio.sug = 'atordoado'; P.agua.sug = 'molhado'; P.veneno.sug = 'veneno'; P.cura.sug = 'regen'; P.sagrado.sug = 'bencao'; P.sombra.sug = 'medo'; P.tinta.sug = 'cego';
+  const ORDER = ['fogo', 'gelo', 'raio', 'agua', 'vento', 'terra', 'lava', 'areia', 'tempestade', 'nevasca', 'acida',
+    'arcano', 'antimagia', 'tinta', 'escuridao', 'teia', 'barreira', 'circulo', 'silencio',
+    'veneno', 'nevoa', 'toxica', 'espinhos', 'esporos', 'pantano',
+    'cura', 'sagrado', 'aura', 'consagrado', 'sombra', 'chamasNegras', 'maldicao'];
 
   function draw(ctx, e, g, t, px) {
     const pr = P[e.fx] || P.fogo;
@@ -418,5 +788,5 @@ const FX = (() => {
     draw(g2, e, g, t, w / 56);
   }
 
-  return { P, ORDER, geom, draw, thumb, hsh, blob };
+  return { P, ORDER, TAGS, geom, draw, thumb, hsh, blob };
 })();

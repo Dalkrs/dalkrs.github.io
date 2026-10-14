@@ -1,5 +1,5 @@
 // No navegador, sem o site: o que o combate faz sozinho na página das Cenas.
-//   · as contas (07e-combate.js): o dano que passa, a regra da fixa, a fixa de cada turno, os quadrados livres;
+//   · as contas (07e-combate.js): o dano que passa, a regra da fixa, a iniciativa de cada turno, os quadrados livres;
 //   · a ferramenta Terreno: pintar (retângulo, elipse, pincel, polígono), ajustar, apagar, desfazer; o que o token
 //     e o rodapé mostram; o terreno fora do clique comum; o que o jogador pode e não pode;
 //   · F: a janelinha de atributos num token sem ficha; C: a disputa entre dois tokens.
@@ -42,12 +42,12 @@ const { open } = require('./lib');
   ok(JSON.stringify(contas.como) === JSON.stringify(['17 no d40 + 20', '14 no d60', 'fixa total', '1d40 + 20, dado 17', 'fixo em 12']) && JSON.stringify(contas.dd) === '[[[40,17]],[],[]]', 'os textos da rolagem e os dados guardados para o auditor: ' + JSON.stringify(contas.como));
   const limpos = await ev(() => {
     const u = __tc, sc = u.normalizeScene(Object.assign(u.newScene('x'), { shapes: [{ id: 'a', k: 'rect', x: 0, y: 0, w: 10, h: 10, ter: { t: 'morro', h: '3' } }, { id: 'b', k: 'rect', x: 0, y: 0, w: 10, h: 10, ter: { t: 'vulcao', h: 3 } }, { id: 'c', k: 'rect', x: 0, y: 0, w: 10, h: 10, ter: { t: 'toString', h: 1 } }, { id: 'd', k: 'rect', x: 0, y: 0, w: 10, h: 10, ter: null }],
-      tokens: [{ id: 't1', name: 'Velho', x: 0, y: 0 }, { id: 't2', name: 'Chefe', x: 0, y: 0, turns: 3, fixas: [8, '6', null, 4, 2, 'x'] }, { id: 't3', name: 'Torto', x: 0, y: 0, fixas: 'oi' }] }));
-    return { ter: sc.shapes.map(s => (s.ter === undefined ? '-' : s.ter)), fixas: sc.tokens.map(k => k.fixas), limpa: [u.cleanFixas([-3, 2.6, 1e9, '', undefined]), u.cleanTer({ t: 'fosso', h: -1e9 }), u.cleanTer({ t: 'agua' }), u.cleanTer('morro'), u.isTer({ ter: { t: 'mata', h: 0 } }), u.isTer({ ter: { t: 'x' } }), u.isTer({})], novo: u.newToken(sc, 0, 0).fixas };
+      tokens: [{ id: 't1', name: 'Velho', x: 0, y: 0, fixas: [8, 6] }, { id: 't2', name: 'Chefe', x: 0, y: 0, turns: 3, inis: [8, '6', null, 4, 2, 'x'] }, { id: 't3', name: 'Torto', x: 0, y: 0, inis: 'oi' }] }));
+    return { ter: sc.shapes.map(s => (s.ter === undefined ? '-' : s.ter)), inis: sc.tokens.map(k => k.inis), velhas: sc.tokens.map(k => k.fixas === undefined), limpa: [u.cleanInis([-300, 2.6, 1e9, '', undefined, 'x']), u.cleanTer({ t: 'fosso', h: -1e9 }), u.cleanTer({ t: 'agua' }), u.cleanTer('morro'), u.isTer({ ter: { t: 'mata', h: 0 } }), u.isTer({ ter: { t: 'x' } }), u.isTer({})], novo: u.newToken(sc, 0, 0).inis };
   });
-  ok(JSON.stringify(limpos.ter) === JSON.stringify([{ t: 'morro', h: 3 }, '-', '-', '-']) && JSON.stringify(limpos.fixas) === '[[],[8,6,null,4],[]]' && JSON.stringify(limpos.novo) === '[]',
-    'ao abrir uma cena: terreno de tipo desconhecido vira desenho comum; as fixas de um token ficam com no máximo quatro números (ou vazio): ' + JSON.stringify(limpos));
-  ok(JSON.stringify(limpos.limpa) === JSON.stringify([[0, 3, 9999, null], { t: 'fosso', h: -9999 }, { t: 'agua', h: 0 }, null, true, false, false]), 'os limites das fixas e da altura: ' + JSON.stringify(limpos.limpa));
+  ok(JSON.stringify(limpos.ter) === JSON.stringify([{ t: 'morro', h: 3 }, '-', '-', '-']) && JSON.stringify(limpos.inis) === '[[],[8,6,null,4],[]]' && JSON.stringify(limpos.novo) === '[]' && limpos.velhas.every(Boolean),
+    'ao abrir uma cena: terreno de tipo desconhecido vira desenho comum; a iniciativa de cada turno fica com no máximo quatro números (ou vazio); a "fixa de cada turno" antiga sai: ' + JSON.stringify(limpos));
+  ok(JSON.stringify(limpos.limpa) === JSON.stringify([[-99, 3, 99, null], { t: 'fosso', h: -9999 }, { t: 'agua', h: 0 }, null, true, false, false]), 'os limites da iniciativa de cada turno e da altura: ' + JSON.stringify(limpos.limpa));
   const vagas = await ev(() => {
     const u = __tc, K = u.Combate, sc = u.Store.scene(), cell = sc.cell;
     const occ = new Set(sc.tokens.map(k => Math.floor((k.x + 1) / cell) + ',' + Math.floor((k.y + 1) / cell)));
@@ -62,31 +62,40 @@ const { open } = require('./lib');
   ok(vagas.unicas === 12 && vagas.livres && vagas.dentro && vagas.crescente && vagas.primeira <= 1, 'os quadrados para um grupo que chega: um para cada um, todos livres e dentro do mapa, do ponto pedido para fora: ' + JSON.stringify(vagas));
   ok(JSON.stringify(vagas.cheia) === JSON.stringify(['1,0', '0,1', '1,1', '0,0', '0,0']) && vagas.borda[0] === '0,19', 'num mapa sem lugar, os que sobram ficam no ponto pedido; um ponto fora do mapa vale a borda mais próxima: ' + JSON.stringify([vagas.cheia, vagas.borda]));
 
-  // ================= a fixa de cada turno =================
+  // ================= a iniciativa de cada turno =================
+  // (o chefe com três turnos: 1d20 + 6, 1d20 + o de sempre, 1d20 + 0; a fixa não muda de um turno para outro)
   const ids = await ev(() => { const o = {}; for (const k of __tc.Store.scene().tokens) o[k.name] = k.id; return o; });
   const turno = await ev(id => {
-    const u = __tc, K = u.Combate, o = {};
-    u.Store.tx('fixas', () => u.Store.upd('tokens', id, { turns: 3, fixas: [8, null, 4] }));
+    const u = __tc, o = {};
+    u.Store.tx('inis', () => u.Store.upd('tokens', id, { turns: 3, ini: 2, inis: [6, null, 0] }));
     const k = () => u.Store.get('tokens', id);
-    o.de = K.fixasDe(k()); o.parado = K.fixaDoTurno(k());
     u.Act.turnPatch(x => { x.list = []; x.on = false; }, 'limpa');
     u.Act.turnAdd([k(), u.Store.scene().tokens.find(z => z.name === 'Astie')]);
+    const meus = () => u.Store.scene().turn.list.filter(e => e.token === id).sort((p, q) => p.k - q.k);
+    o.rolagens = [];
+    for (let i = 0; i < 40; i++) {
+      const r = u.Act.turnRoll(meus().map(e => e.id)), porK = new Map(meus().map(e => [e.id, e.k]));
+      o.rolagens.push(r.map(x => ({ k: porK.get(x.id), b: x.bonus, ok: x.total === x.d + x.bonus && x.d >= 1 && x.d <= 20 })));
+    }
+    o.bonus = [...new Set(o.rolagens.map(rs => rs.slice().sort((p, q) => p.k - q.k).map(x => x.k + ':' + x.b).join(' ')))];
+    o.contas = o.rolagens.every(rs => rs.every(x => x.ok));
+    o.guardado = meus().every(e => e.roll && e.init === e.roll.d + e.roll.b);
     const vez = n => u.Act.turnPatch(x => { x.on = true; x.cur = x.list.find(e => e.token === id && e.k === n).id; }, 'vez');
-    vez(1); o.t1 = K.fixaDoTurno(k()); o.atual1 = u.Luta.fixaAtual(k());
-    vez(2); o.t2 = K.fixaDoTurno(k()); o.atual2 = u.Luta.fixaAtual(k());
-    vez(3); o.t3 = K.fixaDoTurno(k());
-    u.Luta.guardarFixa(k(), 11); o.digitada = u.Luta.fixaAtual(k());
+    vez(1); o.atual1 = u.Luta.fixaAtual(k());
+    vez(2); o.atual2 = u.Luta.fixaAtual(k());
+    u.Luta.guardarFixa(k(), 11); vez(3); o.digitada = u.Luta.fixaAtual(k());
     vez(1); o.volta = u.Luta.fixaAtual(k());
-    u.Act.turnPatch(x => { x.cur = x.list.find(e => e.token !== id).id; }, 'vez'); o.outro = K.fixaDoTurno(k());
-    u.Act.turnPatch(x => { x.on = false; }, 'para'); o.fim = K.fixaDoTurno(k());
-    u.Store.tx('um', () => u.Store.upd('tokens', id, { turns: 1 })); o.umTurno = K.fixasDe(k());
+    u.Luta.guardarFixa(k(), 0);
+    u.Store.tx('sem', () => u.Store.upd('tokens', id, { inis: [] }));
+    o.semInis = u.Act.turnRoll(meus().map(e => e.id)).map(x => x.bonus);
     u.Act.turnPatch(x => { x.list = []; x.on = false; }, 'limpa');
-    u.Store.tx('volta', () => u.Store.upd('tokens', id, { turns: 1, fixas: [] }));
+    u.Store.tx('volta', () => u.Store.upd('tokens', id, { turns: 1, ini: 0, inis: [] }));
     return o;
   }, ids.Bandido);
-  ok(JSON.stringify(turno.de) === '[{"k":1,"v":8},{"k":3,"v":4}]' && turno.parado === null && JSON.stringify(turno.t1) === '{"k":1,"v":8}' && turno.t2 === null && JSON.stringify(turno.t3) === '{"k":3,"v":4}' && turno.outro === null && turno.fim === null && JSON.stringify(turno.umTurno) === '[]',
-    'a fixa do turno só vale com o combate andando, na vez daquele turno do token, e se o mestre a anotou: ' + JSON.stringify(turno));
-  ok(turno.atual1 === 8 && turno.atual2 === 0 && turno.digitada === 11 && turno.volta === 8, 'o "Fixando" começa na fixa do turno; o que for digitado num turno vale só para ele: ' + JSON.stringify([turno.atual1, turno.atual2, turno.digitada, turno.volta]));
+  ok(JSON.stringify(turno.bonus) === '["1:6 2:2 3:0"]' && turno.contas && turno.guardado,
+    'cada turno do chefe rola a própria iniciativa (1d20 + 6, 1d20 + o de sempre, 1d20 + 0), e a conta fecha: ' + JSON.stringify(turno.bonus));
+  ok(JSON.stringify(turno.semInis) === '[2,2,2]', 'sem a iniciativa de cada turno, todos rolam com a de sempre: ' + JSON.stringify(turno.semInis));
+  ok(turno.atual1 === 0 && turno.atual2 === 0 && turno.digitada === 11 && turno.volta === 11, 'a fixa não muda de um turno para outro: a que o mestre digitou vale para todos: ' + JSON.stringify([turno.atual1, turno.atual2, turno.digitada, turno.volta]));
 
   // ================= a ferramenta Terreno =================
   // a cor de um ponto do mapa (copiado para uma folha de um pixel, própria para leitura)

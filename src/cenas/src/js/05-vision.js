@@ -21,7 +21,9 @@ const Vision = (() => {
   const stats = { ms: 0 };                // tempo do último recálculo, para acompanhar desempenho
   let viewerSrc = [];
   // veil: a camada do véu do mestre (ou null); veilOf: de quem é a visão que ele mostra ('*' = todos os jogadores, ou o id de um token)
-  const out = { dark: null, glow: null, fog: null, vis: null, w: 0, h: 0, noSource: false, veil: null, veilOf: null };
+  // flick: as luzes que tremulam (chamas), com o polígono do que cada uma alcança, para o mapa animar o brilho delas
+  const out = { dark: null, glow: null, fog: null, vis: null, w: 0, h: 0, noSource: false, veil: null, veilOf: null, flick: [] };
+  let flickS = [];                         // as das luzes fixas (refeitas só quando paredes ou luzes mudam)
 
   function ensure(sc) {
     const W = sc.cols * sc.cell, H = sc.rows * sc.cell;
@@ -114,7 +116,7 @@ const Vision = (() => {
 
   function fixedLights(sc) {
     const L = [], cell = sc.cell;
-    for (const l of sc.lights) if (l.on && l.dim > 0) L.push({ x: l.x, y: l.y, bright: l.bright * cell, dim: l.dim * cell, c: l.c });
+    for (const l of sc.lights) if (l.on && l.dim > 0) L.push({ x: l.x, y: l.y, bright: l.bright * cell, dim: l.dim * cell, c: l.c, fl: !!l.fl, k: l.id });
     return L;
   }
   function tokenLights(sc) {
@@ -122,13 +124,14 @@ const Vision = (() => {
     for (const t of sc.tokens) {
       if (!t.light || !t.light.on || t.hidden || !(t.light.dim > 0)) continue;
       const half = t.size * cell / 2;
-      L.push({ x: t.x + half, y: t.y + half, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c });
+      L.push({ x: t.x + half, y: t.y + half, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c, fl: !!t.light.fl, k: t.id });
     }
     return L;
   }
-  // Pinta uma luz (bloqueada pelas paredes) na máscara de alcance e na de cor.
-  function paintLight(L, segs, lit, glow) {
+  // Pinta uma luz (bloqueada pelas paredes) na máscara de alcance e na de cor. A que tremula fica anotada em `flick`.
+  function paintLight(L, segs, lit, glow, flick) {
     const poly = Geo.visPoly(L.x + 0.31, L.y + 0.17, segs, L.x - L.dim, L.y - L.dim, L.x + L.dim, L.y + L.dim);
+    if (L.fl && flick) flick.push({ poly, x: L.x, y: L.y, r: L.dim, c: L.c, k: L.k });
     const mid = clamp(L.bright / L.dim, 0.05, 0.95);
     for (const c of [lit, glow]) {
       const g = c.g;
@@ -214,13 +217,16 @@ const Vision = (() => {
     if (lit) {
       if (staticStale) {
         clear(cLitS); clear(cGlowS);
-        for (const L of fixedLights(sc)) paintLight(L, segs, cLitS, cGlowS);
+        flickS = [];
+        for (const L of fixedLights(sc)) paintLight(L, segs, cLitS, cGlowS, flickS);
         staticStale = false;
       }
       clear(cLit); clear(cGlow);
       cLit.g.drawImage(cLitS, 0, 0); cGlow.g.drawImage(cGlowS, 0, 0);
-      for (const L of tokenLights(sc)) paintLight(L, segs, cLit, cGlow);
-    }
+      const flickT = [];
+      for (const L of tokenLights(sc)) paintLight(L, segs, cLit, cGlow, flickT);
+      out.flick = flickS.concat(flickT);
+    } else out.flick = [];
 
     // 2) O que cada jogador (ou o grupo) enxerga
     const vkey = gm ? null : (fog.shared ? '*' : viewer);

@@ -24,7 +24,7 @@ const Tour = (() => {
   }
   function pickToken() {
     const sc = Store.scene(), sel = selOf('tokens');
-    return (sel.length === 1 && App.sel.length === 1 ? sel[0] : null) || sc.tokens.find(t => t.owner && !t.hidden) || sc.tokens.find(t => !t.hidden) || sc.tokens[0] || null;
+    return (sel.length === 1 && App.sel.length === 1 && !sel[0].prop ? sel[0] : null) || sc.tokens.find(t => t.owner && !t.hidden && !t.prop) || sc.tokens.find(t => !t.hidden && !t.prop) || sc.tokens.find(t => !t.prop) || null;
   }
 
   function build() {

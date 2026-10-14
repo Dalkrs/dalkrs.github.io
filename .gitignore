@@ -9,3 +9,4 @@ src/cenas/cenas-de-urgm.html
 .DS_Store
 src/**/test/v3/
 src/**/test/*.html
+src/**/test/v5/

@@ -19,6 +19,9 @@
   --scrim: rgba(5, 7, 12, .62);
   --veil: rgba(6, 9, 20, .52);  /* véu do mestre sobre o que os jogadores não veem */
   --sobre: #8fe3ff;             /* sobrevida, nos painéis (no mapa a cor é fixa: SOBRE_COR) */
+  --reac: #a98ee8;              /* "esperando para reagir", na ordem de turnos */
+  --reac-ink: #c9b6ff;
+  --reac-soft: rgba(169, 142, 232, .15);
   --shadow: 0 12px 34px rgba(0, 0, 0, .5);
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -35,6 +38,7 @@
     --scrim: rgba(30, 38, 54, .42);
     --veil: rgba(16, 24, 48, .5);
     --sobre: #1f7fa3;
+    --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
     --shadow: 0 12px 34px rgba(40, 50, 72, .24);
   }
 }
@@ -48,6 +52,7 @@
   --scrim: rgba(30, 38, 54, .42);
   --veil: rgba(16, 24, 48, .5);
   --sobre: #1f7fa3;
+  --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
   --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
 
@@ -343,6 +348,14 @@ button { cursor: pointer; }
 .chip.on { border-color: var(--lamp); background: var(--lamp-soft); color: var(--fg); }
 .chip:disabled { cursor: default; }
 .chip-i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; }
+/* condições: abas por categoria e a busca */
+.cgrid { display: flex; flex-direction: column; gap: 8px; }
+.ctabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.ctab { position: relative; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--fg-2); font: 600 12px var(--ui); }
+.ctab:hover { border-color: var(--line-strong); color: var(--fg); }
+.ctab.on { border-color: var(--lamp); background: var(--lamp-soft); color: var(--fg); }
+.ctab.tem::after { content: ''; position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 1.5px var(--surface); }
+.ctab-q { width: 100%; }
 
 .card { display: flex; flex-direction: column; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; }
 .card-h { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
@@ -375,6 +388,47 @@ button { cursor: pointer; }
 .turn-i { flex: none; width: 34px; text-align: right; font: 13px var(--mono); color: var(--fg-2); }
 .turn-a { display: inline-flex; flex: none; }
 .turn-a .ib { width: 22px; height: 28px; }
+.turn-x { display: inline-flex; flex: none; }
+.turn-x .ib { width: 22px; height: 28px; }
+.turn-x .ib.on { color: var(--reac-ink); background: var(--reac-soft); }
+/* faixa de um grupo: os rostos empilhados e "grupo · 5"; e a marca "esperando para reagir" */
+.band-av { display: inline-flex; flex: none; align-items: center; }
+.band-av .av + .av { margin-left: -9px; }
+.band-av .av { box-shadow: 0 0 0 2px var(--surface); }
+.turn-g { order: 2; color: var(--fg-2); font-size: 11.5px; white-space: nowrap; }
+.turn-reac { order: 4; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--reac); background: var(--reac-soft); color: var(--reac-ink); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.turn.reac { border-style: dashed; border-color: var(--reac); }
+.turn.reac.cur { border-style: solid; }
+.bandbox { display: flex; flex-direction: column; gap: 10px; }
+/* objetos de cenário: as miniaturas na barra de cima e a do painel */
+.o-objs { display: flex; flex-wrap: wrap; gap: 4px; }
+.o-obj { width: 40px; height: 40px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, #3d4a3a 70%, var(--raised)); }
+.o-obj canvas { width: 34px; height: 34px; display: block; }
+.o-obj:hover { border-color: var(--line-strong); }
+.o-obj.on { border-color: var(--lamp); box-shadow: 0 0 0 1px var(--lamp); }
+.prop-prev { flex: none; width: 44px; height: 44px; border-radius: 9px; background: #3d4a3a; border: 1px solid var(--line-strong); }
+/* Força e defesas do token; Sanidade e Conforto (só o mestre) */
+.nums { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.num-f { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.num-l { display: inline-flex; align-items: center; gap: 3px; color: var(--fg-2); font: 600 11px var(--ui); letter-spacing: .04em; }
+.num-i { display: inline-flex; }
+.num-f .in.num { width: 100%; text-align: center; padding-left: 4px; padding-right: 4px; }
+.num-v { font: 600 15px var(--mono); color: var(--fg); }
+.mente-r { display: flex; align-items: center; gap: 6px; }
+.mente-n { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.mente-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; outline: 1.5px dashed var(--line-strong); outline-offset: 1px; }
+.mente-r .in.num { width: 52px; flex: none; text-align: right; }
+.mente-m { flex: none; color: var(--fg-3); font-size: 12px; }
+.mente-b { display: inline-flex; flex: none; gap: 2px; }
+.mini-b { min-width: 28px; height: 26px; padding: 0 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); color: var(--fg-2); font: 600 12px var(--mono); }
+.mini-b:hover { border-color: var(--line-strong); color: var(--fg); }
+.band-list { display: flex; flex-direction: column; gap: 2px; max-height: 38vh; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 8px; }
+.band-m { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.band-m:hover { background: var(--hover); }
+.band-m input { accent-color: var(--lamp); width: 15px; height: 15px; margin: 0; flex: none; }
+.band-mn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.band-mx { flex: none; color: var(--fg-3); font-size: 11.5px; }
+.band-sub { margin: 6px 6px 2px; color: var(--fg-3); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
 
 .fx-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .fx-card {
@@ -528,6 +582,12 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .turnb-t { white-space: nowrap; }
 .turnb-c { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
 .turnb-x { width: 24px; height: 24px; }
+/* o aviso de zona no começo da vez (só o mestre): um por zona, até ele aplicar ou pular */
+.zonas { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.zona { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: min(620px, calc(100% - 24px)); padding: 7px 8px 7px 10px;
+  background: var(--surface); border: 1px solid var(--lamp); border-radius: 11px; box-shadow: var(--shadow); font-size: 13.5px; }
+.zona-i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--raised); }
+.zona-t { flex: 1 1 260px; min-width: 0; }
 
 /* ---- Janelas: barras padrão e aplicar em área ---- */
 .bd, .area { display: flex; flex-direction: column; gap: 10px; }

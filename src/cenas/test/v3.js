@@ -1023,23 +1023,28 @@ section('10 retângulo', async k => {
   ok(await ev(() => (__urgm.Render.stats.fail || 0)) === 0, 'rótulo de duração num retângulo girado: desenha sem erro');
   errs('painel e seleção');
 
-  /* ---- todo efeito da biblioteca, recortado no retângulo ---- */
-  const lib = await ev(() => {
-    const u = __urgm, S = u.Store, sc = S.scene();
-    S.tx('x', () => {
-      for (const ef of sc.effects.slice()) S.del('effects', ef.id);
-      for (const t of sc.tokens.slice()) S.del('tokens', t.id);
-      u.FX.ORDER.forEach((fx, i) => S.add('effects', { id: 'lib_' + fx, fx, k: 'rect', x: (1.5 + (i % 5) * 2.2) * 64, y: (1.3 + Math.floor(i / 5) * 2.6) * 64, r: 2, w: 1, rw: 2, rh: 1, ang: 60, dir: 0, pow: 1, token: null, gm: false, by: null, seed: i + 2, dur: i % 3, dur0: i % 3, at: null }));
-    });
-    u.setSel([]);
-    return u.FX.ORDER.map((fx, i) => [fx, 1.5 + (i % 5) * 2.2, 1.3 + Math.floor(i / 5) * 2.6]);
-  });
-  await w(700);
-  const bg = (await pix([[11.6, 7.6]]))[0];
+  /* ---- todo efeito da biblioteca, recortado no retângulo ----
+     (em levas de 15, nos mesmos lugares: a biblioteca cresceu, e o mapa da tela não cabe todos de uma vez) */
   const diff = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
-  const inPts = await pix(lib.map(([, x, y]) => [x - 0.6, y + 0.2])), outPts = await pix(lib.map(([, x, y]) => [x, y + 0.86]));
-  const noFill = lib.filter((_, i) => diff(inPts[i], bg) < 6).map(l => l[0]), leak = lib.filter((_, i) => diff(outPts[i], bg) > 6).map(l => l[0]);
-  ok(noFill.length === 0, 'os 14 efeitos da biblioteca desenham dentro do retângulo' + (noFill.length ? ' — sem desenho: ' + noFill.join() : ''));
+  const todos = await ev(() => __urgm.FX.ORDER.slice());
+  const noFill = [], leak = [];
+  for (let l0 = 0; l0 < todos.length; l0 += 15) {
+    const lib = await ev(l0 => {
+      const u = __urgm, S = u.Store, sc = S.scene(), leva = u.FX.ORDER.slice(l0, l0 + 15);
+      S.tx('x', () => {
+        for (const ef of sc.effects.slice()) S.del('effects', ef.id);
+        for (const t of sc.tokens.slice()) S.del('tokens', t.id);
+        leva.forEach((fx, i) => S.add('effects', { id: 'lib_' + fx, fx, k: 'rect', x: (1.5 + (i % 5) * 2.2) * 64, y: (1.3 + Math.floor(i / 5) * 2.6) * 64, r: 2, w: 1, rw: 2, rh: 1, ang: 60, dir: 0, pow: 1, token: null, gm: false, by: null, seed: l0 + i + 2, dur: i % 3, dur0: i % 3, at: null }));
+      });
+      u.setSel([]);
+      return leva.map((fx, i) => [fx, 1.5 + (i % 5) * 2.2, 1.3 + Math.floor(i / 5) * 2.6]);
+    }, l0);
+    await w(700);
+    const bg = (await pix([[11.6, 7.6]]))[0];
+    const inPts = await pix(lib.map(([, x, y]) => [x - 0.6, y + 0.2])), outPts = await pix(lib.map(([, x, y]) => [x, y + 0.86]));
+    lib.forEach((l, i) => { if (diff(inPts[i], bg) < 6) noFill.push(l[0]); if (diff(outPts[i], bg) > 6) leak.push(l[0]); });
+  }
+  ok(noFill.length === 0, `os ${todos.length} efeitos da biblioteca desenham dentro do retângulo` + (noFill.length ? ' — sem desenho: ' + noFill.join() : ''));
   ok(leak.length === 0, 'e nenhum vaza para fora dele (logo acima e abaixo do lado maior, o mapa está intacto)' + (leak.length ? ' — vazou: ' + leak.join() : ''));
   // vários quadros com animação, depois girados, depois com a animação desligada
   await ev(async () => { const u = __urgm; for (let i = 0; i < 12; i++) await new Promise(r => requestAnimationFrame(r)); u.Store.tx('x', () => { for (const ef of u.Store.scene().effects) u.Store.upd('effects', ef.id, { dir: 35, rw: 2.5, rh: 0.5 }); }); for (let i = 0; i < 12; i++) await new Promise(r => requestAnimationFrame(r)); u.App.anim = false; u.Render.request(); await new Promise(r => setTimeout(r, 200)); u.App.anim = true; });

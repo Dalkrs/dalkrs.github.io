@@ -38,7 +38,8 @@ const Render = (() => {
   function animating() {
     if (App.pings.length || App.floats.length) return true;
     const sc = Store.scene();
-    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k));
+    // (chamas dos objetos e luzes que tremulam também mexem o mapa)
+    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
   }
   function frame(ts) {
     raf = 0;
@@ -153,8 +154,18 @@ const Render = (() => {
       } else if (d.id === 'montanha') {                     // picos
         linha(claro, [8, 26, 18, 10, 28, 26]); linha(claro, [36, 58, 46, 42, 56, 58]);
         linha(escuro, [18, 10, 22, 22]); linha(escuro, [46, 42, 50, 54]);
-      } else if (d.id === 'plataforma') {                   // tábuas
-        linha(escuro, [0, 16, 64, 16]); linha(escuro, [0, 48, 64, 48]); linha(escuro, [22, 16, 22, 48]); linha(escuro, [50, 48, 50, 64]); linha(escuro, [50, 0, 50, 16]);
+      } else if (d.id === 'plataforma') {                   // tábuas de madeira: veios, emendas desencontradas e pregos
+        const tons = [0.06, -0.05, 0.1, -0.02], emendas = [40, 12, 52, 26];
+        for (let i = 0; i < 4; i++) {
+          const y = i * 16;
+          g.fillStyle = tone(d.c, tons[i]); g.fillRect(0, y, S, 16);
+          g.lineWidth = 1; g.strokeStyle = tone(d.c, 0.22);
+          for (const k of [5, 10]) { g.beginPath(); g.moveTo(0, y + k); g.bezierCurveTo(16, y + k - 2, 40, y + k + 2, 64, y + k - 1); g.stroke(); }
+          g.lineWidth = 2; linha(tone(d.c, -0.5), [0, y + 0.5, 64, y + 0.5]);                                  // a fresta entre as tábuas
+          linha(tone(d.c, -0.45), [emendas[i], y + 1, emendas[i], y + 15]);                                      // a emenda
+          g.fillStyle = tone(d.c, -0.6);
+          for (const [x, yy] of [[emendas[i] - 3, y + 4], [emendas[i] - 3, y + 12], [emendas[i] + 3, y + 4], [emendas[i] + 3, y + 12]]) { g.beginPath(); g.arc(x, yy, 0.9, 0, TAU); g.fill(); }
+        }
       } else if (d.id === 'fosso') {                        // hachura fechada
         g.lineWidth = 4;
         for (let k = -64; k < 64; k += 16) linha('rgba(0,0,0,0.55)', [k, 64, k + 64, 0]);
@@ -168,7 +179,8 @@ const Render = (() => {
         for (const [x, y, r] of [[12, 12, 3], [41, 19, 4], [19, 43, 4], [53, 50, 2.500]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
       }
       pat = c.createPattern(cv2, 'repeat');
-      if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().scale(0.5));     // 32 unidades do mapa por ladrilho
+      // 32 unidades do mapa por ladrilho (as tábuas, 64: quatro tábuas por quadrado, largas como tábuas de verdade)
+      if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().scale(d.id === 'plataforma' ? 1 : 0.5));
     } catch (e) { pat = null; }
     terPats[d.id] = pat;
     return pat;
@@ -369,6 +381,56 @@ const Render = (() => {
     c.restore();
   }
 
+  // A etiqueta do nome de um token: o que vai nela e onde (w = 0: não há etiqueta). Deixa a fonte já escolhida.
+  function nameBox(c, t, sc, px) {
+    const s = t.size * sc.cell, cx = t.x + s / 2, name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
+    const fs = clamp(s * 0.2, 11 * px, 15 * px);
+    c.font = `600 ${fs}px ${FONT_UI}`;
+    const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
+    const w = name || alt ? wn + gap + wa : 0;
+    return { name, alt, fs, wn, gap, w, padX: fs * 0.5, hh: fs * 1.5, y: t.y + s + fs * 0.3, x0: cx - w / 2, cx };
+  }
+
+  /* Os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva), numa etiqueta ao lado do
+     nome: no token sob o cursor e nos escolhidos (até quatro). Só para o mestre e o dono do token. Por cima de tudo
+     o que é do mapa, para nenhum token vizinho cobrir. */
+  function drawNums(sc, px) {
+    const ids = [];
+    if (App.hoverTok) ids.push(App.hoverTok);
+    const sel = App.sel.filter(x => x.c === 'tokens');
+    if (sel.length <= 4) for (const x of sel) if (!ids.includes(x.id)) ids.push(x.id);
+    const c = ctx, z = App.view.z;
+    for (const id of ids) {
+      const t = Store.get('tokens', id);
+      if (!t || (!isGM() && t.hidden) || !tokShown(t, sc) || !numsShown(t) || t.size * sc.cell * z < 26) continue;
+      const v = tokNums(t);
+      if (!v) continue;
+      const itens = ST_CAMPOS.map(([, K, nome]) => [K, nome]).filter(([K]) => v[K] != null && isFinite(v[K]));
+      if (!itens.length) continue;
+      const L = nameBox(c, t, sc, px), fs = L.fs, ic = fs * 0.98, sep = fs * 0.55, padX = fs * 0.45;
+      c.save();
+      c.font = `700 ${fs * 0.95}px ${FONT_UI}`;
+      const larg = itens.map(([K]) => ic + fs * 0.22 + c.measureText(fmt(v[K], 0)).width);
+      const W = larg.reduce((a, b) => a + b, 0) + sep * (itens.length - 1) + padX * 2;
+      const x0 = L.w > 0 ? L.x0 + L.w + L.padX + 4 * px : L.cx - W / 2, y = L.y;
+      c.fillStyle = 'rgba(12,14,20,0.88)'; rr(c, x0, y, W, L.hh, L.hh * 0.35); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1 * px; rr(c, x0, y, W, L.hh, L.hh * 0.35); c.stroke();
+      let x = x0 + padX;
+      itens.forEach(([K], i) => {
+        const nome = 'st_' + K.toLowerCase(), cor = NUM_CORES[K], def = ICONS[nome], k = ic / 24;
+        c.save();
+        c.translate(x, y + (L.hh - ic) / 2); c.scale(k, k);
+        if (def && def.fill) { c.fillStyle = cor; c.fill(iconPath(nome)); }
+        else { c.strokeStyle = cor; c.lineWidth = 2.3; c.lineCap = c.lineJoin = 'round'; c.stroke(iconPath(nome)); }
+        c.restore();
+        c.fillStyle = '#f4f5f8'; c.textAlign = 'left'; c.textBaseline = 'middle';
+        c.fillText(fmt(v[K], 0), x + ic + fs * 0.22, y + L.hh * 0.54);
+        x += larg[i] + sep;
+      });
+      c.restore();
+    }
+  }
+
   function drawTokenTop(c, t, sc, px) {
     const z = App.view.z, s = t.size * sc.cell, sp = s * z;
     if (sp < 16) return;
@@ -413,12 +475,16 @@ const Render = (() => {
 
     // Barras e pontos, empilhados acima do token; afinam quando são muitos
     const rows = barsShown(t);
+    // Sanidade e Conforto da ficha: só o mestre vê, no alto da pilha, com o contorno tracejado (os jogadores não veem,
+    // nem no token deles)
+    const mt = isGM() ? Fichas.mente(t) : null;
+    if (mt) rows.unshift({ b: { n: 'Sanidade', c: MENTE_COR.san, v: mt.san, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'San' }, { b: { n: 'Conforto', c: MENTE_COR.conf, v: mt.conf, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'Conf' });
     if (rows.length) {
       const n = rows.length, gap = 1.5 * px, w = s * 0.94, x = cx - w / 2;
       let bh = clamp(s * 0.11, 5 * px, 13 * px);
       if (n > 3) bh = Math.max(3 * px, Math.min(bh, (s * 0.46) / n - gap));
       let y = t.y - 2 * px - n * (bh + gap);
-      for (const { b, mode } of rows) {
+      for (const { b, mode, gm } of rows) {
         // Pontos: uma bolinha por ponto. Se não couberem com folga (token pequeno na tela), a barra comum assume.
         const m = Math.round(b.m), d = m >= 1 ? Math.min(bh, (w - (m - 1) * gap) / m) : 0;
         if (b.k === 'pts' && mode === 'num' && m >= 1 && m <= 12 && d >= 2 * px) {
@@ -445,11 +511,12 @@ const Render = (() => {
             c.stroke();
             c.restore();
           }
-          c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 1 * px; rr(c, x, y, w, bh, bh * 0.3); c.stroke();
+          if (gm) { c.save(); c.setLineDash([3 * px, 2 * px]); c.strokeStyle = hexA(b.c, 0.95); c.lineWidth = 1.2 * px; rr(c, x, y, w, bh, bh * 0.3); c.stroke(); c.restore(); }
+          else { c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 1 * px; rr(c, x, y, w, bh, bh * 0.3); c.stroke(); }
           if (mode === 'num' && bh * z >= 9) {
             c.font = `700 ${bh * 0.84}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.lineWidth = bh * 0.22; c.strokeStyle = 'rgba(0,0,0,0.75)'; c.lineJoin = 'round';
-            const tx = `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
+            const tx = gm ? `${gm} ${fmt(b.v)}` : `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '');
             c.strokeText(tx, cx, y + bh * 0.54); c.fillStyle = '#fff'; c.fillText(tx, cx, y + bh * 0.54);
           }
         }
@@ -465,16 +532,12 @@ const Render = (() => {
 
     // Nome — e, na mesma etiqueta, a altura do terreno em que o token está ("▲3 m" em cima de um morro, "▼3 m" num fosso)
     if (sp >= 26) {
-      const name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
-      if (name || alt) {
-        const fs = clamp(s * 0.2, 11 * px, 15 * px);
-        c.font = `600 ${fs}px ${FONT_UI}`;
-        const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
-        const w = wn + gap + wa, padX = fs * 0.5, hh = fs * 1.5, y = t.y + s + fs * 0.3, x0 = cx - w / 2;
-        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, x0 - padX, y, w + padX * 2, hh, hh * 0.35); c.fill();
+      const L = nameBox(c, t, sc, px);
+      if (L.w > 0) {
+        c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, L.x0 - L.padX, L.y, L.w + L.padX * 2, L.hh, L.hh * 0.35); c.fill();
         c.textAlign = 'left'; c.textBaseline = 'middle';
-        if (name) { c.fillStyle = '#f4f5f8'; c.fillText(name, x0, y + hh * 0.54); }
-        if (alt) { c.fillStyle = '#f0c26a'; c.fillText(alt, x0 + wn + gap, y + hh * 0.54); }
+        if (L.name) { c.fillStyle = '#f4f5f8'; c.fillText(L.name, L.x0, L.y + L.hh * 0.54); }
+        if (L.alt) { c.fillStyle = '#f0c26a'; c.fillText(L.alt, L.x0 + L.wn + L.gap, L.y + L.hh * 0.54); }
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
@@ -492,10 +555,11 @@ const Render = (() => {
         c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
       }
     }
-    // Sobrevida: o escudo no canto do token, com o total (para quem vê os números)
+    // Sobrevida: o escudo no canto do token, com o total — também para quem só vê a proporção das barras (numa mesa,
+    // a projeção manda os pontos dela em xn)
     if (rows.some(r => barX(r.b) > 0)) {
       const d = clamp(s * 0.36, 16 * px, 30 * px), bx = t.x + s - d * 0.4, by = t.y + d * 0.42, k = d / 19;
-      const tot = rows.reduce((a, r) => a + (r.mode === 'num' ? barX(r.b) : 0), 0);
+      const tot = rows.reduce((a, r) => a + (r.mode === 'num' || !(Number(r.b.xn) > 0) ? barX(r.b) : Number(r.b.xn)), 0);
       c.save();
       c.translate(bx - 12 * k, by - 12 * k); c.scale(k, k);
       const sh = iconPath('shield');
@@ -550,8 +614,37 @@ const Render = (() => {
       for (const a of tk.auras) { if (!a.pub && !gm && !ownsTok(tk)) continue; drawAura(c, tk, a, sc, px); }
     }
     drawFx(c, sc, px, t, true);
-    for (const tk of sc.tokens) if (gm || !tk.hidden) drawTokenBody(c, tk, sc, px);
-    for (const tk of sc.tokens) if (gm || !tk.hidden) drawTokenTop(c, tk, sc, px);
+    // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
+    for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
+    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
+    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
+  }
+  // Um objeto de cenário: o desenho dele (o oculto, para o mestre, esmaecido e com o olho riscado)
+  function drawProp(c, tk, sc, px, t) {
+    c.save();
+    if (tk.hidden) c.globalAlpha = 0.55;
+    Props.draw(c, tk, sc, t);
+    c.restore();
+    if (tk.hidden && isGM()) { const s = tk.size * sc.cell; badge(c, tk.x + s * 0.14, tk.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px); }
+  }
+  /* O brilho que tremula das chamas: um clarão quente, que cresce e diminui sem ritmo certo, dentro do que a luz
+     alcança (o polígono dela, que as paredes cortam). Só com a cena em penumbra ou no escuro. */
+  function drawFlicker(sc, t) {
+    const fl = Vision.out.flick;
+    if (!fl.length || sc.light === 'claro') return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const f of fl) {
+      const k = hashStr(String(f.k)) % 97, n = 0.5 + 0.28 * Math.sin(t * 7.3 + k) + 0.22 * Math.sin(t * 12.9 + k * 1.7);
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(f.poly[0], f.poly[1]); for (let i = 2; i < f.poly.length; i += 2) ctx.lineTo(f.poly[i], f.poly[i + 1]); ctx.closePath(); ctx.clip();
+      const r = f.r * (0.9 + 0.1 * n);
+      const gr = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
+      gr.addColorStop(0, hexA(f.c, 0.1 + 0.12 * n)); gr.addColorStop(0.45, hexA(f.c, 0.05 + 0.06 * n)); gr.addColorStop(1, hexA(f.c, 0));
+      ctx.fillStyle = gr; ctx.fillRect(f.x - r, f.y - r, r * 2, r * 2);
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   function drawWalls(sc, px) {
@@ -643,14 +736,17 @@ const Render = (() => {
     if (!tn.on || !tn.cur) return;
     if (!isGM() && !can('turns')) return;
     const e = tn.list.find(x => x.id === tn.cur);
-    const t = e && e.token ? Store.get('tokens', e.token) : null;
-    if (!t || !tokShown(t, sc)) return;
-    const [cx, cy, half] = tokC(t, sc);
-    ctx.save();
-    tokPath(ctx, t.shape, cx, cy, half + 6 * px);
-    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 5 * px; ctx.stroke();
-    ctx.strokeStyle = theme.lamp; ctx.lineWidth = 2.5 * px; ctx.setLineDash([10 * px, 6 * px]); ctx.stroke();
-    ctx.restore();
+    if (!e) return;
+    // (na vez da faixa de um grupo, o anel vai em cada token dela)
+    for (const t of turnToks(e)) {
+      if (!tokShown(t, sc)) continue;
+      const [cx, cy, half] = tokC(t, sc);
+      ctx.save();
+      tokPath(ctx, t.shape, cx, cy, half + 6 * px);
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 5 * px; ctx.stroke();
+      ctx.strokeStyle = theme.lamp; ctx.lineWidth = 2.5 * px; ctx.setLineDash([10 * px, 6 * px]); ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // Linha de medição com a distância total na ponta.
@@ -890,6 +986,7 @@ const Render = (() => {
       ctx.drawImage(vo.glow, 0, 0, vo.w, vo.h);
       ctx.globalCompositeOperation = 'source-over';
       ctx.drawImage(vo.dark, 0, 0, vo.w, vo.h);
+      if (motion()) drawFlicker(sc, t);
     }
 
     // A neblina fica por baixo dos tokens, para eles continuarem legíveis; chuva, neve e afins caem por cima de tudo.
@@ -916,6 +1013,7 @@ const Render = (() => {
     drawTurnRing(sc, px);
     drawTargets(sc, px);
     drawSelection(sc, px);
+    drawNums(sc, px);
     Tools.drawPreview(ctx, px, sc);
     drawFloats(sc, px, ts);
     drawPings(sc, px, ts);

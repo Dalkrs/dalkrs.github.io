@@ -79,23 +79,6 @@ const Combate = (() => {
   }
 
   /* ================= Fixa ================= */
-  /* A fixa do turno que este token está jogando agora: { k, v } — só quando o combate está em andamento, a vez é
-     dele e o mestre anotou uma fixa para aquele turno (t.fixas[k − 1]). Senão, null. */
-  function fixaDoTurno(t) {
-    const sc = Store.scene(), tn = sc && sc.turn;
-    if (!t || !tn || !tn.on || !tn.cur || !Array.isArray(t.fixas)) return null;
-    const e = tn.list.find(x => x.id === tn.cur);
-    if (!e || e.token !== t.id) return null;
-    const k = e.k || 1, v = t.fixas[k - 1];
-    return v == null || !isFinite(v) ? null : { k, v: Math.max(0, Math.round(v)) };
-  }
-  // As fixas anotadas de um token, só até o número de turnos que ele tem: [8, 6, null] → [{ k: 1, v: 8 }, { k: 2, v: 6 }]
-  function fixasDe(t) {
-    const out = [], n = clampTurns(t && t.turns);
-    if (!t || !Array.isArray(t.fixas) || n < 2) return out;
-    for (let k = 1; k <= n; k++) { const v = t.fixas[k - 1]; if (v != null && isFinite(v)) out.push({ k, v: Math.max(0, Math.round(v)) }); }
-    return out;
-  }
   /* A regra da fixa para um valor qualquer: um dado de (valor − fixa) lados, mais a fixa. Fixa igual ao valor não
      rola dado. Mesmo formato do TC.dice.rollFixa, com o dado daqui (que é sorteado do mesmo jeito). */
   function rolarFixa(valor, fixa) {
@@ -217,7 +200,7 @@ const Combate = (() => {
 
   return {
     inTer, terrainAt, terrainOf, terText, terBadge, terDef, newTerrain, terPatch,
-    fixaDoTurno, fixasDe, rolarFixa, comoSaiu, comoFoi, dadosDe,
+    rolarFixa, comoSaiu, comoFoi, dadosDe,
     listaDefesas, nomeDasDefesas, defesaDe, danoFinal, barraDe, aplicarAtaque, barraAberta,
     vagas, elenco, trazer,
   };

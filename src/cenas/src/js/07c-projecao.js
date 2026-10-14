@@ -91,12 +91,16 @@ const Proj = (() => {
 
   /* ---- a cena como os jogadores recebem ---- */
   // Barra de um token do mestre: com números, só a proporção, ou nada — conforme a regra de quem não é dono.
+  // A sobrevida vai também quando só a proporção vai: em proporção (x, para a barrinha) e em pontos (xn, para o escudo).
   function barraPublica(b, modo) {
     if (modo === 'num') return b;
     if (modo === 'none' || !b.on || !(b.m > 0)) return { n: 'Barra', c: b.c, k: 'bar', on: false, vis: '', v: 0, m: 0 };     // nem o nome vai
     // só a proporção — e, abaixo de zero, a proporção da parte negativa (quanto do piso já foi), sem os números
-    if (b.v < 0 && barLo(b) > 0) return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: -Math.round(1000 * clamp(-b.v / barLo(b), 0, 1)) / 10, m: 100, lo: 100 };
-    return { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
+    const o = b.v < 0 && barLo(b) > 0 ? { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: -Math.round(1000 * clamp(-b.v / barLo(b), 0, 1)) / 10, m: 100, lo: 100 }
+      : { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
+    const x = barX(b);
+    if (x > 0) { o.x = Math.max(0.1, Math.round(1000 * x / b.m) / 10); o.xn = x; }
+    return o;
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
   function tokenPublico(t, jogadores) {
@@ -108,7 +112,8 @@ const Proj = (() => {
       if (t.showName === false) o.name = '???';
       o.bars = t.bars.map(b => barraPublica(b, b.vis || t.barVis));
       o.auras = (t.auras || []).filter(a => a.pub).map(a => clone(a));
-      o.char = null; o.ini = 0; o.fixas = [];                         // (nem a fixa de cada turno de um chefe)
+      o.char = null; o.ini = 0; o.inis = [];                          // (nem a iniciativa de cada turno de um chefe)
+      delete o.st;                                                    // os números do token são do mestre e do dono
       o.vis = { on: false, range: 0, dark: 0 };                       // o que o token do mestre enxerga não é da conta dos jogadores
     }
     return o;
@@ -118,9 +123,13 @@ const Proj = (() => {
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };
-    const list = tn.list.filter(e => !(e.token && fora.has(e.token))).map(e => ({
-      id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null,
-    }));
+    // a faixa de um grupo vai só com os tokens que os jogadores veem; se todos estão ocultos, ela não vai
+    const list = tn.list.filter(e => !(e.token && fora.has(e.token)) && !(Array.isArray(e.toks) && e.toks.length && e.toks.every(id => fora.has(id) || !nomes.has(id)))).map(e => {
+      const o = { id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null };
+      if (!e.token && Array.isArray(e.toks)) o.toks = e.toks.filter(id => !fora.has(id) && nomes.has(id));
+      if (e.reac) o.reac = true;
+      return o;
+    });
     // (a vez de um token oculto não aponta para ninguém: os jogadores não ficam sabendo que há mais alguém na ordem)
     return { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
   }

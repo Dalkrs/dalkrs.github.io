@@ -227,6 +227,44 @@ const Fichas = (() => {
     const pc = pcDe(l), c = R().calcular(pc, cfg(), extra(l)), fonte = (pc.rol && pc.rol.fonte) || 'total';
     return ROLAVEIS.map(k => [k, R().NOMES[k] || k, Math.max(0, Math.round(R().valorDoAtributo(c, k, fonte) || 0))]);
   }
+  /* Os números que o token mostra ao lado do nome (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva),
+     da ficha, com tudo o que soma — os mesmos valores da janelinha F. O mapa pede isto a cada quadro: a conta fica
+     guardada para a linha da ficha (uma ficha que muda chega como linha nova) enquanto as regras da mesa não mudam. */
+  const NUMEROS = ['FOR', 'CAN', 'DFF', 'DFM', 'ESQ'];
+  const numGuardados = new WeakMap();
+  function numeros(t) {
+    const l = t && t.char ? get(t.char) : null;
+    if (!l || l.ficha == null || !R()) return null;
+    const cf = cfg(), bi = bib(), g = numGuardados.get(l);
+    if (g && g.cf === cf && g.bi === bi) return g.v;
+    let v = null;
+    try {
+      const pc = pcDe(l), c = R().calcular(pc, cf, extra(l)), fonte = (pc.rol && pc.rol.fonte) || 'total';
+      v = {};
+      for (const k of NUMEROS) v[k] = Math.round(Number(R().valorDoAtributo(c, k, fonte)) || 0);
+    } catch (e) { v = null; }
+    numGuardados.set(l, { cf, bi, v });
+    return v;
+  }
+  /* Sanidade e Conforto da ficha deste token (de 0 a 100), quando a ficha usa os dois — como na ficha: a de um
+     jogador da mesa, ou a que já tem algum dos dois anotado. No mapa, só o mestre vê. */
+  const valorMente = (v, padrao) => (v != null && v !== '' && isFinite(+v) ? clamp(Math.round(+v), 0, 100) : padrao);
+  function mente(t) {
+    const l = t && t.char ? fichaDe(t) : null;
+    if (!l) return null;
+    const e = l.estado || {};
+    if (e.san == null && e.conf == null && !donoDe(l)) return null;
+    return { san: valorMente(e.san, 100), conf: valorMente(e.conf, 50) };
+  }
+  // O mestre muda a Sanidade ou o Conforto pelo token: grava direto na ficha. Devolve o valor de antes (ou null).
+  function mudarMente(t, k, v) {
+    const l = t && t.char ? fichaDe(t) : null, antes = mente(t);
+    if (!l || !antes || !P || papel !== 'mestre' || (k !== 'san' && k !== 'conf')) return null;
+    const novo = valorMente(v, antes[k]);
+    if (novo === antes[k]) return null;
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { [k]: novo }) });
+    return antes[k];
+  }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   // Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa.
   function rolar(t, chave, fixa) {
@@ -381,7 +419,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, feridas, ferido,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };

@@ -10,6 +10,7 @@ const App = {
   keys: { space: false },
   tab: 'sel', sideOpen: true,
   clip: [], pings: [], floats: [],
+  hoverTok: null,                   // o token sob o cursor (para mostrar os números dele)
   iniRolls: new Map(),              // iniciativas roladas pela mesa ao vivo que o mestre ainda pode anotar: id da ficha → { v, d, b, nome, at }
   anim: true,
   showVision: false,                // mestre: escurecer no mapa o que os jogadores não veem (o "véu")
@@ -19,6 +20,7 @@ const App = {
     fogMode: 'r', fogShape: 'brush', fogSize: 2,
     fx: 'fogo', fxShape: 'circ', fxR: 2, fxAng: 60, fxW: 1, fxRW: 3, fxRH: 2, fxDir: 0, fxAttach: true, fxDur: 0,
     lightPreset: 'tocha',
+    objCat: 'luz', obj: 'fogueira', objSize: 0, objHidden: false,       // objetos de cenário: categoria, qual, tamanho (0 = o do objeto) e oculto
     tokOwner: '', tokSize: 1,
     terMode: 'paint', terShape: 'brush', terType: 'morro', terH: null, terSize: 2,     // terreno: terH vazio = a altura de fábrica do tipo
   },
@@ -120,6 +122,18 @@ function doorSpots(sc) {
   return out;
 }
 const tokName = t => (isGM() || ownsTok(t) || t.showName ? t.name : '???');
+// Os números do token (FOR, CAN, DFF, DFM, ESQ): os da ficha, quando ele tem uma aqui; senão, os que o mestre anotou
+// nele. null se não há nenhum. Quem vê: o mestre e o dono do token.
+function tokNums(t) {
+  const f = t.char ? Fichas.numeros(t) : null;
+  if (f) return f;
+  const st = t.st ? cleanSt(t.st) : null;
+  if (!st) return null;
+  const o = {};
+  for (const [k, K] of ST_CAMPOS) if (st[k] != null) o[K] = st[k];
+  return o;
+}
+const numsShown = t => isGM() || ownsTok(t);
 // Como quem está olhando vê uma barra: 'num' (com números), 'bar' (só a proporção) ou 'none'.
 const barMode = (t, b) => (isGM() || ownsTok(t) ? 'num' : (b && b.vis) || t.barVis);
 // Barras de um token que aparecem para quem está olhando, com o índice original.
@@ -199,7 +213,7 @@ function auraShape(t, a, sc) {
   return p;
 }
 function tokensIn(path, sc) {
-  return sc.tokens.filter(t => { const [cx, cy] = tokC(t, sc); return areaCtx.isPointInPath(path, cx, cy); });
+  return sc.tokens.filter(t => { if (t.prop) return false; const [cx, cy] = tokC(t, sc); return areaCtx.isPointInPath(path, cx, cy); });     // (objetos de cenário não levam dano)
 }
 
 // Número de dano ou cura que sobe do token quando uma barra muda: o nome da barra e o quanto, com sinal
@@ -278,23 +292,42 @@ function parseBar(text, cur, max, lo) {
      k ...... qual dos turnos daquele combatente na rodada (1, 2…): um chefe com "turnos por rodada" 2 tem duas
               entradas, k = 1 e k = 2, cada uma com a própria iniciativa;
      roll ... { d, b } da última rolagem (dado e bônus), para mostrar "17 (12 + 5)"; null se o valor foi digitado;
-     grp .... o que une as entradas de um mesmo combatente avulso. */
+     grp .... o que une as entradas de um mesmo combatente avulso;
+     toks ... só na faixa de um grupo: os tokens que jogam juntos nessa linha (uma iniciativa, rolada uma vez);
+     reac ... true: esperando para reagir (segurou a vez para agir fora de ordem). Sai quando a vez dele chega. */
 const turnEntry = (t, k) => ({ id: uid('tn'), token: t.id, name: t.name, init: null, roll: null, k });
 const turnGroup = e => (e.token ? 't:' + e.token : e.grp ? 'g:' + e.grp : 'e:' + e.id);
+const isBand = e => !!e && !e.token && Array.isArray(e.toks);
+// A faixa em que um token está (ou null).
+const bandOf = (tn, id) => tn.list.find(e => isBand(e) && e.toks.includes(id)) || null;
+// O token já está na ordem? Por uma linha dele ou dentro de uma faixa.
+const inTurn = (tn, id) => tn.list.some(e => e.token === id || (isBand(e) && e.toks.includes(id)));
+// Os tokens de uma entrada que existem na cena: o dela, ou os da faixa.
+const turnToks = e => (e.token ? [Store.get('tokens', e.token)] : isBand(e) ? e.toks.map(id => Store.get('tokens', id)) : []).filter(Boolean);
+// Tira tokens da ordem: as linhas deles e o lugar deles nas faixas (a faixa fica, mesmo vazia: quem decide é o mestre).
+function turnDrop(tn, ids) {
+  const fora = new Set(ids);
+  tn.list = tn.list.filter(e => !(e.token && fora.has(e.token)));
+  for (const e of tn.list) if (isBand(e)) e.toks = e.toks.filter(id => !fora.has(id));
+}
 // Rótulo de uma entrada: o nome puro no primeiro turno; "Nome · 2º turno" nos outros.
 const turnLabel = (e, name) => ((e.k || 1) > 1 ? `${name} · ${e.k}º turno` : name);
 const turnName = e => { const t = e.token ? Store.get('tokens', e.token) : null; return turnLabel(e, t ? tokName(t) : e.name); };
-// Bônus de iniciativa de uma entrada: o do token dela, ou o da própria entrada avulsa.
+// Bônus de iniciativa de uma entrada: o do turno dela (um chefe com 1d20 + 6, 1d20 + 4…), senão o do token, ou o da
+// própria entrada avulsa.
 function turnBonus(e) {
   if (!e.token) return clampIni(e.bonus);
   const t = Store.get('tokens', e.token);
-  return t ? clampIni(t.ini) : 0;
+  if (!t) return 0;
+  const v = Array.isArray(t.inis) ? t.inis[(e.k || 1) - 1] : null;
+  return v != null && isFinite(v) ? clampIni(v) : clampIni(t.ini);
 }
 const rollText = (d, b) => `${d} ${b < 0 ? '−' : '+'} ${Math.abs(b)}`;        // "12 + 5", "12 − 2"
-// Ordena por iniciativa, a maior primeiro; quem não tem fica no fim. Empate: maior bônus; depois, a ordem em que já estavam.
+// Ordena por iniciativa, a maior primeiro; quem não tem fica no fim. Empate com a faixa de um grupo: o outro vai antes
+// (o jogador que empata com a faixa joga primeiro). Outros empates: maior bônus; depois, a ordem em que já estavam.
 function turnSort(list) {
-  const rows = list.map((e, i) => ({ e, i, v: e.init == null || !isFinite(e.init) ? -Infinity : Number(e.init), b: turnBonus(e) }));
-  rows.sort((p, q) => (p.v === q.v ? 0 : q.v - p.v) || (q.b - p.b) || (p.i - q.i));
+  const rows = list.map((e, i) => ({ e, i, v: e.init == null || !isFinite(e.init) ? -Infinity : Number(e.init), b: turnBonus(e), f: isBand(e) ? 1 : 0 }));
+  rows.sort((p, q) => (p.v === q.v ? 0 : q.v - p.v) || (p.f - q.f) || (q.b - p.b) || (p.i - q.i));
   for (let i = 0; i < rows.length; i++) list[i] = rows[i].e;
   return list;
 }
@@ -332,6 +365,22 @@ const Act = {
     if (x === barX(b)) return false;
     Store.tx('Sobrevida de ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) }));
     return true;
+  },
+  /* Sobrevida para vários tokens de uma vez, na barra de nome `barName`: cada um fica com a MAIOR — a que já tinha ou
+     esta (não soma: dar 10 a quem tem 15 deixa 15). Um passo de desfazer. Devolve quantos tokens mudaram. */
+  groupExtra(tokens, barName, value) {
+    const x = Math.max(0, Math.round((Number(value) || 0) * 10) / 10);
+    if (!(x > 0)) return 0;
+    let n = 0;
+    Store.tx('Sobrevida', () => {
+      for (const t of tokens) {
+        const i = t.bars.findIndex(b => b.on && b.m > 0 && b.n === barName);
+        if (i < 0 || barX(t.bars[i]) >= x) continue;
+        Store.upd('tokens', t.id, { bars: t.bars.map((o, j) => (j === i ? barWith(o, { x }) : o)) });
+        n++;
+      }
+    });
+    return n;
   },
   // Cura total: enche todas as barras em uso de cada token (a barra que tem um começo próprio volta para ele).
   // Devolve quantos tokens mudaram.
@@ -446,6 +495,7 @@ const Act = {
 
   // Mira: liga ou desliga o alvo de quem está olhando em cada token.
   targetToggle(tokens) {
+    tokens = tokens.filter(t => !t.prop);                // objeto de cenário não é alvo
     if (!can('target') || !tokens.length) return;
     const sc = Store.scene(), me = App.viewer, list = sc.targets.slice();
     const all = tokens.every(t => list.some(x => x.by === me && x.t === t.id));
@@ -471,9 +521,9 @@ const Act = {
         if (s.c === 'tokens') {
           for (const e of sc.effects.filter(e => e.token === s.id)) Store.del('effects', e.id);
           if (sc.targets.some(x => x.t === s.id)) Store.scn({ targets: sc.targets.filter(x => x.t !== s.id) });
-          if (sc.turn.list.some(e => e.token === s.id)) {
+          if (inTurn(sc.turn, s.id)) {
             const tn = clone(sc.turn), before = tn.list.slice();
-            tn.list = tn.list.filter(e => e.token !== s.id);       // todas as entradas dele (um chefe tem mais de uma)
+            turnDrop(tn, [s.id]);                                   // todas as entradas dele (um chefe tem mais de uma) e o lugar numa faixa
             turnKeepCur(tn, before);
             Store.scn({ turn: tn });
           }
@@ -597,6 +647,7 @@ const Act = {
     const sc = Store.scene(), tn = clone(sc.turn);
     let n = 0;
     for (const t of tokens) {
+      if (t.prop || bandOf(tn, t.id)) continue;        // objeto de cenário não joga; e quem está numa faixa já joga nela
       const want = clampTurns(t.turns), have = tn.list.filter(e => e.token === t.id).length;
       if (have >= want) continue;
       for (let k = have + 1; k <= want; k++) tn.list.push(turnEntry(t, k));
@@ -613,6 +664,61 @@ const Act = {
     const n = clampTurns(turns), grp = uid('gr'), b = clampIni(bonus);
     Act.turnPatch(x => { for (let k = 1; k <= n; k++) x.list.push({ id: uid('tn'), token: null, name, init: null, roll: null, k, bonus: b, grp }); }, 'Adicionar aos turnos');
     return n;
+  },
+  /* Faixa de iniciativa de um grupo: uma linha só para vários tokens, com um bônus (1d20 + bônus, rolada uma vez no
+     combate). Quem tirar mais que a faixa joga antes do grupo; quem tirar menos, depois; empate, o outro vai antes.
+     Os tokens saem das linhas deles (e de outra faixa) e passam a jogar nela. Um passo de desfazer. Devolve a entrada. */
+  turnBand(name, bonus, ids) {
+    const tn = clone(Store.scene().turn), before = tn.list.slice();
+    const toks = [...new Set(ids)].filter(id => { const k = Store.get('tokens', id); return k && !k.prop; }).slice(0, MAX_BAND);
+    const cheias = new Set(tn.list.filter(e => isBand(e) && e.toks.length).map(e => e.id));
+    turnDrop(tn, toks);
+    tn.list = tn.list.filter(e => !(cheias.has(e.id) && !e.toks.length));     // a faixa que ficou vazia por isso sai
+    const e = { id: uid('tn'), token: null, name: String(name || '').trim().slice(0, 40) || 'Grupo', init: null, roll: null, k: 1, bonus: clampIni(bonus), grp: uid('gr'), toks };
+    tn.list.push(e);
+    turnKeepCur(tn, before);
+    if (!tn.cur) tn.cur = tn.list[0].id;
+    Store.tx('Faixa do grupo', () => Store.scn({ turn: tn }));
+    return e;
+  },
+  // Muda a faixa: nome, bônus e quem está nela. Quem entra sai da linha própria (ou de outra faixa).
+  bandSet(id, p) {
+    const tn = clone(Store.scene().turn), before = tn.list.slice();
+    let e = tn.list.find(x => x.id === id);
+    if (!isBand(e)) return false;
+    if (p.toks) {
+      const toks = [...new Set(p.toks)].filter(x => Store.get('tokens', x)).slice(0, MAX_BAND), novos = toks.filter(x => !e.toks.includes(x));
+      turnDrop(tn, novos);
+      e = tn.list.find(x => x.id === id);
+      e.toks = toks;
+    }
+    if (p.name !== undefined) e.name = String(p.name || '').trim().slice(0, 40) || e.name;
+    if (p.bonus !== undefined) e.bonus = clampIni(p.bonus);
+    turnKeepCur(tn, before);
+    Store.tx('Faixa do grupo', () => Store.scn({ turn: tn }));
+    return true;
+  },
+  // Desfaz a faixa: cada token volta a ter as linhas dele (sem iniciativa), no lugar onde a faixa estava.
+  bandSplit(id) {
+    const tn = clone(Store.scene().turn), i = tn.list.findIndex(x => x.id === id), e = tn.list[i];
+    if (!isBand(e)) return 0;
+    const novas = [];
+    for (const tid of e.toks) {
+      const t = Store.get('tokens', tid);
+      if (t) for (let k = 1, n = clampTurns(t.turns); k <= n; k++) novas.push(turnEntry(t, k));
+    }
+    tn.list.splice(i, 1, ...novas);
+    turnRenumber(tn.list);
+    if (tn.cur === id) tn.cur = novas.length ? novas[0].id : tn.list.length ? tn.list[Math.min(i, tn.list.length - 1)].id : null;
+    Store.tx('Separar a faixa', () => Store.scn({ turn: tn }));
+    return novas.length;
+  },
+  // "Esperando para reagir": marca (ou desmarca) quem segurou a vez para agir fora de ordem.
+  turnReac(id, on) {
+    const e = Store.scene().turn.list.find(x => x.id === id);
+    if (!e || !!e.reac === !!on) return false;
+    Act.turnPatch(x => { const y = x.list.find(z => z.id === id); if (on) y.reac = true; else delete y.reac; }, on ? 'Esperando reação' : 'Reagiu');
+    return true;
   },
   turnPatch(fn, label) {
     const tn = clone(Store.scene().turn), before = tn.list.slice();
@@ -662,6 +768,7 @@ const Act = {
      entra. A lista é reordenada, como quando se rola por aqui. Um passo de desfazer. Devolve a entrada. */
   turnNote(t, total, d, b) {
     const sc = Store.scene(), tn = clone(sc.turn);
+    for (const x of tn.list) if (isBand(x)) x.toks = x.toks.filter(id => id !== t.id);     // quem rolou a própria sai da faixa
     let es = tn.list.filter(e => e.token === t.id);
     if (!es.length) {
       for (let k = 1, want = clampTurns(t.turns); k <= want; k++) tn.list.push(turnEntry(t, k));
@@ -726,6 +833,7 @@ const Act = {
     else if (i < 0) { if (tn.round > 1) { tn.round--; i = tn.list.length - 1; } else i = 0; }
     tn.cur = tn.list[i].id;
     if (d < 0 && i === from && tn.round === fromRound) return ended;     // já está no começo: nada a voltar
+    if (d > 0 && tn.list[i].reac) delete tn.list[i].reac;               // a vez chegou: a espera pela reação acabou
     if (d > 0) { if (tn.back > 0) tn.back--; else fresh = true; }
     else tn.back = (tn.back || 0) + 1;
     Store.tx(d > 0 ? 'Próximo turno' : 'Turno anterior', () => {
@@ -734,13 +842,14 @@ const Act = {
       Store.scn(p);
       if (fresh) {
         // o turno "principal" de cada token na ordem: o de menor k (é k = 1, salvo dados estranhos)
-        const firstK = new Map();
+        const firstK = new Map(), faixa = new Map();
         for (const e of tn.list) if (e.token) firstK.set(e.token, Math.min(firstK.has(e.token) ? firstK.get(e.token) : Infinity, e.k || 1));
+        for (const e of tn.list) if (isBand(e)) for (const id of e.toks) faixa.set(id, e.id);       // quem joga numa faixa: a vez é a dela
         for (const t of sc.tokens.slice()) {
           const info = t.cinfo || {};
           const ids = t.conds.filter(id => info[id] && info[id].d > 0);
           if (!ids.length) continue;
-          if (!(firstK.has(t.id) ? leaving && leaving.token === t.id && (leaving.k || 1) === firstK.get(t.id) : wrapped)) continue;
+          if (!(firstK.has(t.id) ? leaving && leaving.token === t.id && (leaving.k || 1) === firstK.get(t.id) : faixa.has(t.id) ? !!leaving && leaving.id === faixa.get(t.id) : wrapped)) continue;
           const next = Object.assign({}, info);
           let conds = t.conds;
           for (const id of ids) {

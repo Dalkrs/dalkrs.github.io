@@ -2,6 +2,82 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.14-1",
+      "data": "2026-10-14",
+      "titulo": "Cenas: a parede de verdade, a faixa do grupo, objetos de cenário e zonas novas",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Arrastando o token, ele para na parede enquanto você arrasta (e não só ao soltar): a visão nunca passa para o outro lado, nem por um instante."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "A iniciativa de cada turno: um chefe com vários turnos por rodada tem uma iniciativa para cada um (1d20 + 6, 1d20 + 4, 1d20 + 0). A “fixa de cada turno” de antes saiu — a fixa é uma só."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Faixa de iniciativa do grupo, na aba Turnos: vários tokens numa linha só, com a iniciativa rolada uma vez (1d20 + o valor da faixa). Quem tirar mais joga antes do grupo; quem tirar menos, depois; no empate, o jogador vai antes."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Marca “reação” na ordem dos turnos: quem segurou a vez esperando para reagir fica marcado até reagir — ou até a vez dele voltar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Sobrevida em grupo: para os selecionados, pelo botão direito, ou na aba Jogadores (aos tokens dos jogadores ou a todos da cena). Cada um fica com a maior, sem somar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O escudinho com o número da sobrevida aparece também quando a barra do token só mostra a proporção."
+        },
+        {
+          "tipo": "novo",
+          "texto": "20 condições novas — Grito de Batalha, Artefato Ativado, Resfriado, Fúria, Provocado, Defendendo, Desarmado, Agarrado, Confuso, Enfeitiçado, Transformado, Marcado, Doente, Faminto, Bêbado, Surdo, Lento, Acelerado, Voando e Oculto. A escolha agora vem em abas por categoria, com busca pelo nome."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Força, Canalização Mágica, Defesa Física, Defesa Mágica e Esquiva ao lado do nome do token, ao apontar ou escolher — só o mestre e o dono veem. Vêm da ficha; num token sem ficha, o mestre preenche."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Sanidade e Conforto no token, só para o mestre (nem o dono vê), com os botões para mexer. O que muda vai direto para a ficha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tecla K: o ataque com defesa no token sob o cursor (ou nos selecionados)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Objetos de cenário (tecla J): tocha de parede, lampião, velas, fogueira e braseiro, com luz que tremula; baú, mesa, cadeira, cama, barril, caixote e estante; árvore, arbusto, pedra, tronco, toco e cogumelos; armadilha, estacas, buraco, estátua, placa, túmulo, poço e altar. Eles giram, se escondem e se apagam como um token."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A tocha na mão: a luz que o token carrega pode tremular como chama — e as luzes fixas também."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "18 zonas de efeito novas, em abas: lava, areia movediça, tempestade de raios, nevasca, chuva ácida, escuridão mágica, teia, barreira de força, círculo arcano, silêncio, nuvem tóxica, espinhos e raízes, esporos, pântano, aura sagrada, chão consagrado, chamas negras e maldição."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "No começo da vez de quem está dentro de uma zona com dano ou condição guardados, a mesa pergunta: Aplicar ou Pular. Nada acontece sozinho."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "A plataforma de madeira do Terreno agora tem tábuas de verdade (antes parecia um muro)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.08-4",
       "data": "2026-10-08",
       "titulo": "Mapa-múndi desenhado: terreno à mão, carimbos, rios e zonas de guerra",

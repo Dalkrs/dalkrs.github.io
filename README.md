@@ -176,10 +176,37 @@ na cena passa por um botão e vira um passo de desfazer.
   com um botão por atributo da ficha e o campo "Fixando". Fica aberta até fechar (Esc, F, o × ou um clique fora) e
   não muda a seleção. O mestre usa em qualquer token ligado a uma ficha; o jogador, no token do personagem dele.
   Token sem ficha: um valor digitado, com a mesma regra da fixa.
-- **A fixa de cada turno.** Quem joga mais de uma vez por rodada (um chefe) pode ter uma fixa para cada turno
-  (`token.fixas`, no painel do token, em Turnos). Na vez dele, o "Fixando" da janelinha e do painel já vem com a
-  fixa daquele turno. A fixa que o mestre digita fica lembrada por token enquanto a página está aberta; não muda a
-  ficha. Para os jogadores, o token de um NPC vai sem as fixas.
+- **A iniciativa de cada turno.** Quem joga mais de uma vez por rodada (um chefe) pode ter uma iniciativa para cada
+  turno (`token.inis`, no painel do token, em Turnos): 1d20 + 6 no primeiro, 1d20 + 4 no segundo, 1d20 + 0 no
+  terceiro; vazio, vale a iniciativa de sempre. A fixa é uma só por token (a que o mestre digita fica lembrada
+  enquanto a página está aberta; sem isso, a da ficha). Para os jogadores, o token de um NPC vai sem as iniciativas.
+  (A "fixa de cada turno" de antes, `token.fixas`, era um engano e sai das cenas ao abrir.)
+- **A faixa de iniciativa de um grupo.** Vários tokens numa linha só da ordem (`turn.list[]` com `toks: [ids]` e o
+  bônus próprio), rolada uma vez no combate: quem tirar mais que a faixa joga antes do grupo; quem tirar menos,
+  depois; empate, o outro vai antes (`turnSort`). Um token fica numa faixa só e, nela, não tem linha própria. Na vez
+  da faixa, o anel aparece em todos os tokens dela, e a duração das condições deles desconta quando a faixa termina
+  a vez. Para os jogadores, a faixa vai só com os tokens que eles veem (e não vai, se todos estão ocultos). Dá para
+  mudar nome, bônus e quem está nela, ou separar em linhas.
+- **Esperando para reagir** (`reac` na entrada): a marca de quem segurou a vez para agir fora de ordem. O botão fica
+  na linha de quem está jogando (e na de quem está esperando, para dizer que reagiu); a marca sai sozinha quando a
+  vez dele volta.
+- **K — ataque com defesa** no token sob o cursor (ou nos selecionados; sob o cursor um dos selecionados, vale a
+  seleção inteira). Só o mestre.
+- **Força e defesas ao lado do nome.** Com o mouse sobre um token (ou com até quatro escolhidos), uma etiqueta ao
+  lado do nome mostra Força, Canalização Mágica, Defesa Física, Defesa Mágica e Esquiva, cada um com o seu
+  desenho (espada, livro, escudo, manto, pé). Vêm da ficha (`Fichas.numeros`, as mesmas contas da janelinha F);
+  num token sem ficha, o mestre preenche os que quiser (`token.st`). Só o mestre e o dono veem: a projeção tira
+  `st` dos tokens do mestre.
+- **Sanidade e Conforto no token, só para o mestre.** Quando a ficha ligada usa os dois (a de um jogador, ou a que
+  já tem algum anotado), o token ganha duas barras tracejadas no alto (`Fichas.mente`), e o painel, os campos com
+  −5/−1/+1/+5, que gravam direto na ficha (`Fichas.mudarMente`). Não estão nas barras do token: não vão para os
+  jogadores, nem para o dono. O Desfazer do aviso volta ao valor de antes da sequência de cliques.
+- **Sobrevida em grupo**: na seleção de vários tokens, no botão direito e na aba Jogadores (aos dos jogadores, ou a
+  todos da cena). Cada um fica com a maior — a que já tinha ou a nova; não soma. O escudo com o número aparece
+  também para quem só vê a proporção das barras: a projeção manda a sobrevida em proporção (`x`) e em pontos (`xn`).
+- **Condições por categoria.** São 47, cada uma com uma categoria (`CONDS[].g`: Dano, Controle, Combate, Mente,
+  Corpo, Ritmo, Bênçãos); a escolha mostra uma aba de cada vez (ou Todas), com uma busca pelo nome que ignora
+  acentos. A aba que tem condição ativa ganha um ponto.
 - **C — disputa** (só o mestre): dois lados, cada um com um token da cena ou um valor avulso; lado com ficha escolhe
   o atributo. Vai para a mesa ao vivo com o que cada lado rolou — em segredo, se um dos tokens está oculto ou com o
   nome escondido. O veredito sai em verde ou vermelho só quando um dos lados (e só um) é de jogador.
@@ -202,6 +229,18 @@ na cena passa por um botão e vira um passo de desfazer.
     primeira vale. Ao aplicar ou fechar a janela, o pedido ganha `pd.fim` (`aplicado` ou `cancelado`); esquecido,
     expira sozinho em 10 minutos. (`TC.ponte.registro.pedir / encerrar`, `TC.aoVivo.pedirDefesa /
     responderDefesa / encerrarPedido`.)
+- **Objetos de cenário** (ferramenta J, só o mestre): tochas de parede, lampiões, velas, fogueiras e braseiros (com
+  a luz que tremula), móveis e baús, natureza, perigos e marcos — cada um desenhado em `06b-props.js`. Um objeto é
+  um token com `prop` (e `rot`, o giro): anda, gira, se esconde e se apaga como um token, mas não tem barras,
+  condições, nome à mostra nem visão; fica por baixo dos tokens e fora da ordem de turnos, das áreas de dano, da
+  mira, da janelinha F e do K. A luz que tremula (`light.fl`, também nas luzes fixas e na tocha que o token carrega)
+  ganha um clarão animado dentro do que ela alcança (`Vision.out.flick`, com o polígono que as paredes cortam).
+- **Zonas de efeito**: 32, em quatro categorias (Elementos, Magia, Natureza, Sagrado e sombrio). Na primeira vez em
+  que o mestre aplica uma zona, a condição que combina com ela já vem escolhida (`FX.P[].sug`). Quando a vez passa
+  para alguém que está dentro de uma zona com algo guardado (o "Aplicar a quem está dentro…"), o mestre vê um aviso
+  — "Ana começa a vez dentro de Lava: −5 Vida + Queimando" — e escolhe Aplicar ou Pular. Nada acontece sozinho.
+- **Parede durante o arrasto**: com "Paredes barram o movimento dos jogadores", o token do jogador para na parede
+  enquanto é arrastado (não só ao soltar), e a visão — e o mapa explorado — nunca é calculada do outro lado.
 - **Terreno** (ferramenta Q, só o mestre): áreas com tipo (morro, montanha, plataforma, fosso, água, mata) e altura
   na unidade da cena, pintadas com pincel, retângulo, elipse ou polígono. É um desenho da cena com o campo
   `ter = { t, h }`, pintado logo acima do fundo, e é só visual: o token que está em cima mostra a altura junto do

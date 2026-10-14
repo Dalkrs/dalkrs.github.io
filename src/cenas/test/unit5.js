@@ -108,8 +108,8 @@ const ASSETS = {
     ok(!texto.includes(segredo), 'não sai na projeção: ' + segredo);
   eq(v.tokens.map(t => t.name), ['Dain X', 'Lia', 'Carroça', 'Orc chefe', '???', 'Ex-jogador'], 'o token oculto não vai; o de nome escondido vai como "???"');
   const pOrc = v.tokens.find(t => t.id === orc.id), pDain = v.tokens.find(t => t.id === dain.id), pSombra = v.tokens.find(t => t.id === sombra.id), pSaiu = v.tokens.find(t => t.id === saiu.id);
-  eq(pOrc.bars.map(b => [b.n, b.v, b.m, b.on, b.x === undefined]), [['Vida', 50, 100, true, true], ['Fúria', 60, 100, true, true], ['Barra', 0, 0, false, true], ['Aberta', 12, 20, true, true]],
-    'token do mestre: barra "só proporção" vira porcentagem (sem números nem sobrevida); a escondida some, com o nome; a aberta vai inteira');
+  eq(pOrc.bars.map(b => [b.n, b.v, b.m, b.on, b.x === undefined ? '-' : b.x, b.xn === undefined ? '-' : b.xn]), [['Vida', 50, 100, true, 11.1, 10], ['Fúria', 60, 100, true, '-', '-'], ['Barra', 0, 0, false, '-', '-'], ['Aberta', 12, 20, true, '-', '-']],
+    'token do mestre: barra "só proporção" vira porcentagem (sem os números; a sobrevida vai em proporção e em pontos, para o escudo); a escondida some, com o nome; a aberta vai inteira');
   eq(pOrc.bars.length, orc.bars.length, 'as barras continuam na mesma posição (o índice não muda)');
   eq([pOrc.notes, pOrc.char, pOrc.ini, pOrc.auras.map(a => a.id), pOrc.vis, pOrc.owner], ['', null, 0, ['au2'], { on: false, range: 0, dark: 0 }, null], 'do token do mestre saem as anotações, a ficha, a iniciativa, o que ele enxerga e as auras que os jogadores não veem');
   eq([pDain.bars.map(b => [b.v, b.m, b.x || 0]), pDain.notes, pDain.char, pDain.auras.length, pDain.vis.on, pDain.owner], [[[62, 80, 0], [24, 40, 5]], '', 'pc_dain', 1, true, ANA], 'token de jogador: barras inteiras (com sobrevida), ficha, auras e visão; as anotações do mestre, não');
@@ -195,7 +195,14 @@ const ASSETS = {
   // as condições novas: existem para o programa (nome, cor e desenho), e um jogador pode pedi-las como as outras
   const NOVAS = ['inconsciente', 'oleo', 'molhado', 'emaranhado', 'fraco', 'exausto', 'paranoico', 'inspirado', 'hemorragia', 'regen', 'tratado'];
   const lista = JSON.parse(vm.runInContext('JSON.stringify(CONDS.map(c => [c.id, c.n, c.c, !!ICONS[c.i]]))', sandbox));
-  ok(lista.length === 27 && new Set(lista.map(c => c[0])).size === 27 && new Set(lista.map(c => c[1])).size === 27 && lista.every(c => /^#[0-9a-f]{6}$/.test(c[2]) && c[3]), 'as 27 condições têm id e nome únicos, cor e desenho');
+  ok(lista.length === 47 && new Set(lista.map(c => c[0])).size === 47 && new Set(lista.map(c => c[1])).size === 47 && lista.every(c => /^#[0-9a-f]{6}$/.test(c[2]) && c[3]), 'as 47 condições têm id e nome únicos, cor e desenho');
+  // (lote 5) as vinte novas, cada uma numa categoria; toda condição tem categoria, e toda categoria tem condição
+  const LOTE5 = ['grito', 'artefato', 'resfriado', 'furia', 'provocado', 'defendendo', 'desarmado', 'agarrado', 'confuso', 'enfeiticado', 'transformado', 'marcado', 'doente', 'faminto', 'bebado', 'surdo', 'lento', 'acelerado', 'voando', 'oculto'];
+  eq(LOTE5.map(id => (lista.find(c => c[0] === id) || [])[1]), ['Grito de Batalha', 'Artefato Ativado', 'Resfriado', 'Fúria', 'Provocado', 'Defendendo', 'Desarmado', 'Agarrado', 'Confuso', 'Enfeitiçado', 'Transformado', 'Marcado', 'Doente', 'Faminto', 'Bêbado', 'Surdo', 'Lento', 'Acelerado', 'Voando', 'Oculto'], 'as vinte condições novas do lote 5 estão na lista, com os nomes pedidos');
+  const cats = JSON.parse(vm.runInContext('JSON.stringify({ tags: COND_TAGS.map(g => g.id), por: CONDS.map(c => c.g) })', sandbox));
+  ok(cats.por.every(g => cats.tags.includes(g)) && cats.tags.every(g => cats.por.includes(g)) && cats.tags.join() === 'dano,controle,combate,mente,corpo,ritmo,bencao', 'cada condição tem uma das sete categorias, e nenhuma categoria fica vazia: ' + cats.tags.join());
+  ok(cats.por.every((g, i) => !i || cats.tags.indexOf(g) >= cats.tags.indexOf(cats.por[i - 1])), 'a lista vem arrumada por categoria (na aba "Todas", as do mesmo tipo ficam juntas)');
+  eq(C({ conds: LOTE5.slice(0, 6), cinfo: { furia: { n: 2 } } }).p, { conds: LOTE5.slice(0, 6), cinfo: { furia: { n: 2 } } }, 'e as novas também valem num pedido de jogador');
   eq(NOVAS.map(id => (lista.find(c => c[0] === id) || [])[1]), ['Inconsciente', 'Óleo', 'Molhado', 'Emaranhado', 'Fraquejado', 'Exausto', 'Paranoico', 'Inspirado', 'Hemorragia', 'Regeneração', 'Tratado'], 'as onze condições novas estão na lista, com os nomes pedidos');
   eq(C({ conds: NOVAS, cinfo: { hemorragia: { n: 2 } } }).p, { conds: NOVAS, cinfo: { hemorragia: { n: 2 } } }, 'e valem num pedido de jogador, com contador, como as outras');
   eq(lista.findIndex(c => c[0] === 'hemorragia') - lista.findIndex(c => c[0] === 'sangue'), 1, 'Hemorragia fica logo depois de Sangrando nos painéis');
