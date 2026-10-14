@@ -278,6 +278,18 @@ const { open } = require('./lib');
   ok(await page.locator('#fp-rolar').isDisabled(), 'com valor zero não há o que rolar');
   await page.locator('#fp-valor').fill('25'); await page.locator('#fp-valor').press('Enter'); await w(200);
   ok(rolagens.length === 2, 'Enter no campo do valor também rola');
+  // os bônus só desta rolagem (lote 5): +5 no atributo muda o dado (25 + 5 − 5 = d25); +3 no resultado soma no total
+  ok(await page.locator('#fp-ma').inputValue() === '' && await page.locator('#fp-mr').inputValue() === '', 'os bônus só desta rolagem começam vazios');
+  await page.locator('#fp-ma').fill('5'); await page.locator('#fp-mr').fill('3'); await w();
+  ok((await page.locator('#fp-rolar').getAttribute('title')) === 'Rola 1d25 + 5 + 3' && await page.locator('#fp-ma.tem').count() === 1, 'o botão já diz o que vai rolar com eles (1d25 + 5 + 3), e os campos com valor ficam marcados');
+  await page.locator('#fp-rolar').click(); await w(200);
+  { const r = rolagens[2];
+    ok(rolagens.length === 3 && r.atributo === 30 && r.fixa === 5 && r.base === 25 && r.ma === 5 && r.mr === 3 && r.total === r.d + 5 + 3 && r.d >= 1 && r.d <= 25 && await page.locator('#fp-total').innerText() === String(r.total) && /\+5 no atributo · \+3 no resultado/.test(await page.locator('#fp-res').innerText()),
+      'a rolagem usa o atributo com o bônus (d25) e soma o do resultado; a janelinha diz os dois: ' + JSON.stringify(r)); }
+  ok(await page.locator('#fp-ma').inputValue() === '' && await page.locator('#fp-mr').inputValue() === '' && (await page.locator('#fp-rolar').getAttribute('title')) === 'Rola 1d20 + 5', 'depois de rolar, os dois voltam a ficar vazios (valem só para uma rolagem)');
+  await page.locator('#fp-ma').fill('-30'); await w();
+  ok(await page.locator('#fp-rolar').isDisabled(), 'um bônus negativo que zera o atributo: não há o que rolar');
+  await page.locator('#fp-ma').fill(''); await w();
   await page.locator('#fp-x').click(); await w();
   ok(await page.locator('#fpop').count() === 0, 'o × fecha');
   await pairar(bandido[0], bandido[1]);
@@ -309,12 +321,12 @@ const { open } = require('./lib');
   await page.locator('#dis-b-valor').fill('30'); await page.locator('#dis-b-fixa').fill('30'); await w();
   await page.locator('.modal .btn.primary').click(); await w(250);
   let d = rolagens[rolagens.length - 1];
-  ok(rolagens.length === 3 && d.kind === 'disputa' && d.titulo === 'Disputa · Bandido × Bandida' && /^Bandido: valor 25 \(1d20 \+ 5, dado \d+\) = \d+  ·  Bandida: valor 30 \(fixo em 30\) = 30$/.test(d.resumo) && d.veredito === 'Bandida venceu Bandido por ' + (30 - (d.dd[0][1] + 5)) + ' (30 × ' + (d.dd[0][1] + 5) + ')' && d.passou === null && d.oculto === false && d.dd.length === 1 && d.dd[0][0] === 20,
+  ok(rolagens.length === 4 && d.kind === 'disputa' && d.titulo === 'Disputa · Bandido × Bandida' && /^Bandido: valor 25 \(1d20 \+ 5, dado \d+\) = \d+  ·  Bandida: valor 30 \(fixo em 30\) = 30$/.test(d.resumo) && d.veredito === 'Bandida venceu Bandido por ' + (30 - (d.dd[0][1] + 5)) + ' (30 × ' + (d.dd[0][1] + 5) + ')' && d.passou === null && d.oculto === false && d.dd.length === 1 && d.dd[0][0] === 20,
     'a disputa rola os dois lados (o que fixou tudo não rola dado) e diz quem venceu; entre dois NPCs, o veredito não é vitória nem derrota de ninguém: ' + JSON.stringify(d));
   ok(await page.locator('#dis-veredito').innerText() === d.veredito && (await page.locator('.modal .btn.primary').innerText()) === 'Rolar de novo' && await page.locator('.modal').count() === 1, 'o veredito aparece na janela, que fica aberta');
   await page.locator('#dis-b-tok').selectOption(ids.Bandido); await w();
   await page.locator('.modal .btn.primary').click(); await w(200);
-  ok(rolagens.length === 3 && /Os dois lados são o mesmo token/.test(await aviso()), 'o mesmo token dos dois lados não rola');
+  ok(rolagens.length === 4 && /Os dois lados são o mesmo token/.test(await aviso()), 'o mesmo token dos dois lados não rola');
   // um lado avulso (sem token), com nome; o outro, de jogador: aí o veredito é a vitória ou a derrota dele
   await page.locator('#dis-a-tok').selectOption(ids['Dain X']); await w();
   await page.locator('#dis-b-tok').selectOption(''); await w();
@@ -322,12 +334,12 @@ const { open } = require('./lib');
   await page.locator('#dis-a-valor').fill('50'); await page.locator('#dis-a-fixa').fill('10'); await w();
   await page.locator('.modal .btn.primary').click(); await w(250);
   d = rolagens[rolagens.length - 1];
-  ok(rolagens.length === 4 && d.titulo === 'Disputa · Dain X × Armadilha' && d.passou === true && /^Dain X venceu Armadilha por \d+ \(\d+ × 1\)$/.test(d.veredito) && d.oculto === false, 'contra um valor avulso com nome: o token do jogador vence, e o veredito sai como vitória dele: ' + JSON.stringify([d.titulo, d.veredito, d.passou]));
+  ok(rolagens.length === 5 && d.titulo === 'Disputa · Dain X × Armadilha' && d.passou === true && /^Dain X venceu Armadilha por \d+ \(\d+ × 1\)$/.test(d.veredito) && d.oculto === false, 'contra um valor avulso com nome: o token do jogador vence, e o veredito sai como vitória dele: ' + JSON.stringify([d.titulo, d.veredito, d.passou]));
   // um token oculto num dos lados: a disputa sai marcada para ficar só com o mestre
   await page.locator('#dis-b-tok').selectOption(ids.Arqueira); await w();
   await page.locator('.modal .btn.primary').click(); await w(250);
   d = rolagens[rolagens.length - 1];
-  ok(rolagens.length === 5 && d.oculto === true && /Arqueira/.test(d.titulo), 'com um token oculto num dos lados, a disputa sai marcada como oculta');
+  ok(rolagens.length === 6 && d.oculto === true && /Arqueira/.test(d.titulo), 'com um token oculto num dos lados, a disputa sai marcada como oculta');
   await page.keyboard.press('Escape'); await w();
   ok(await page.locator('.modal').count() === 0, 'Esc fecha a disputa');
   // sem seleção: os dois lados vêm para escolher

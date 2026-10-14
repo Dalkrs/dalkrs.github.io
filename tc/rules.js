@@ -83,10 +83,12 @@
   ];
   const ehDerivado = k => DERIV.some(d=>d.k===k);
   /* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
-     Não entram na distribuição de pontos do level. */
+     Não entram na distribuição de pontos do level. O Bloqueio (lote 5) segue a mesma regra — valor próprio + itens,
+     árvore e bônus — e rola como a Esquiva; na ficha, fica junto dos atributos secundários. */
   const DEFESAS = [
     {k:'DFF', nome:'Defesa Física', rot:'DEF F', aliases:['DEFF','DEFESAFISICA']},
     {k:'DFM', nome:'Defesa Mágica', rot:'DEF M', aliases:['DEFM','DEFESAMAGICA']},
+    {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ']},
   ];
   const ehDefesa = k => DEFESAS.some(d=>d.k===k);
   const TIERS_ATR = ['A','B','C','D','E'];
@@ -117,6 +119,36 @@
     {t:'runa',     nome:'Runas',     um:'Runa'},
     {t:'municao',  nome:'Munições',  um:'Munição'},
     {t:'material', nome:'Materiais', um:'Material'},
+  ];
+
+  /* As condições que um token pode ter (as mesmas das Cenas: o id, o nome e o grupo). Aqui, para a ficha escolher a
+     condição que uma poção põe no token. As Cenas conferem que as duas listas batem. */
+  const COND_GRUPOS = [
+    {id:'dano', n:'Dano e elementos'},
+    {id:'controle', n:'Controle'},
+    {id:'combate', n:'Combate'},
+    {id:'mente', n:'Mente e magia'},
+    {id:'corpo', n:'Corpo e sentidos'},
+    {id:'ritmo', n:'Ritmo e movimento'},
+    {id:'bencao', n:'Bênçãos e cura'}
+  ];
+  const CONDICOES = [
+    {id:'veneno', n:'Envenenado', g:'dano'}, {id:'sangue', n:'Sangrando', g:'dano'}, {id:'hemorragia', n:'Hemorragia', g:'dano'},
+    {id:'fogo', n:'Queimando', g:'dano'}, {id:'gelo', n:'Congelado', g:'dano'}, {id:'resfriado', n:'Resfriado', g:'dano'},
+    {id:'molhado', n:'Molhado', g:'dano'}, {id:'oleo', n:'Óleo', g:'dano'}, {id:'atordoado', n:'Atordoado', g:'controle'},
+    {id:'paralisia', n:'Paralisado', g:'controle'}, {id:'emaranhado', n:'Emaranhado', g:'controle'}, {id:'agarrado', n:'Agarrado', g:'controle'},
+    {id:'caido', n:'Caído', g:'controle'}, {id:'inconsciente', n:'Inconsciente', g:'controle'}, {id:'furia', n:'Fúria', g:'combate'},
+    {id:'grito', n:'Grito de Batalha', g:'combate'}, {id:'provocado', n:'Provocado', g:'combate'}, {id:'defendendo', n:'Defendendo', g:'combate'},
+    {id:'desarmado', n:'Desarmado', g:'combate'}, {id:'foco', n:'Concentrando', g:'combate'}, {id:'medo', n:'Amedrontado', g:'mente'},
+    {id:'paranoico', n:'Paranoico', g:'mente'}, {id:'confuso', n:'Confuso', g:'mente'}, {id:'enfeiticado', n:'Enfeitiçado', g:'mente'},
+    {id:'silencio', n:'Silenciado', g:'mente'}, {id:'maldicao', n:'Amaldiçoado', g:'mente'}, {id:'marcado', n:'Marcado', g:'mente'},
+    {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'},
+    {id:'surdo', n:'Surdo', g:'corpo'}, {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'},
+    {id:'doente', n:'Doente', g:'corpo'}, {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'},
+    {id:'morto', n:'Morto', g:'corpo'}, {id:'lento', n:'Lento', g:'ritmo'}, {id:'acelerado', n:'Acelerado', g:'ritmo'},
+    {id:'voando', n:'Voando', g:'ritmo'}, {id:'oculto', n:'Oculto', g:'ritmo'}, {id:'invisivel', n:'Invisível', g:'ritmo'},
+    {id:'escudo', n:'Protegido', g:'bencao'}, {id:'bencao', n:'Abençoado', g:'bencao'}, {id:'inspirado', n:'Inspirado', g:'bencao'},
+    {id:'regen', n:'Regeneração', g:'bencao'}, {id:'tratado', n:'Tratado', g:'bencao'}
   ];
 
   /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */
@@ -167,7 +199,7 @@
     Object.keys(o).forEach(k => { if (o[k] && typeof o[k] === 'object') congelar(o[k]); });
     return Object.freeze(o);
   };
-  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, DEFESAS_ESP, CHAVES_ESP, BOLSAS, NOMES_BONUS, PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, MIS_ESTADOS].forEach(congelar);
+  [ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, DEFESAS_ESP, CHAVES_ESP, BOLSAS, NOMES_BONUS, PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, MIS_ESTADOS, COND_GRUPOS, CONDICOES].forEach(congelar);
 
   /* ---------- FORMULA ENGINE (parser próprio, sem eval) — da calculadora ---------- */
   /* ##PARSER_START## */
@@ -298,7 +330,7 @@
       pctProprio:null,
       poderes:[],
       skills:{arvores:[], pontos:{}, alocados:{}},
-      defesas:{DFF:0, DFM:0},
+      defesas:{DFF:0, DFM:0, BLQ:0},
       rol:{fixa:0, fonte:'total'}, ultRol:null,
       disputa:{atrA:'FOR', alvoId:'', atrB:'FOR', fixaB:0, valorB:40},
       estaque:{a:'', b:''},
@@ -722,19 +754,71 @@
     return Object.assign({}, estado, { rec: rec2 });
   }
 
+  /* ---------- barras especiais (os antigos "poderes divinos") ----------
+     A lista mora na ficha (ficha.poderes: [{ id, nome, max, atual }]); o valor de agora, no estado (estado.pd: { id: n }):
+     a ficha, o token e o acampamento mexem nele sem um desfazer o do outro (o estado se junta campo a campo). Sem nada
+     anotado no estado, vale o `atual` que a ficha guardava antes.
+     → [{ id, nome, atual, max }] na ordem da ficha — max 0 é "sem limite"; atual fica entre 0 e o máximo */
+  const ESPECIAL_PADRAO = 'Barra especial';
+  function especiais(ficha, estado) {
+    const pd = ehObjeto(estado && estado.pd) ? estado.pd : {};
+    return (Array.isArray(ficha && ficha.poderes) ? ficha.poderes : []).filter(x => ehObjeto(x) && x.id != null && x.id !== '').map(x => {
+      const id = String(x.id), max = Math.max(0, Math.round(numFinito(x.max) || 0));
+      const g = numFinito(tem(pd, id) ? pd[id] : null), a = Math.max(0, Math.round(g != null ? g : numFinito(x.atual) || 0));
+      return { id, nome: String(x.nome == null ? '' : x.nome).trim().slice(0, 60) || ESPECIAL_PADRAO, atual: max > 0 ? Math.min(a, max) : a, max };
+    });
+  }
+  /* → um estado NOVO com a barra especial `id` valendo `v` (presa entre 0 e o máximo, quando ele existe). O recebido não muda. */
+  function mudarEspecial(estado, id, v, max) {
+    const m = Math.max(0, Math.round(numFinito(max) || 0)), n = Math.max(0, Math.round(numFinito(v) || 0));
+    const pd = Object.assign({}, ehObjeto(estado && estado.pd) ? estado.pd : {});
+    por(pd, String(id), m > 0 ? Math.min(n, m) : n);
+    return Object.assign({}, estado, { pd });
+  }
+
   /* ---------- bolsas: poções, bombas, runas, munições e materiais ---------- */
   const TIPOS_BOLSA = BOLSAS.map(b => b.t);
   const numTxt = n => String(Math.round(n * 100) / 100).replace('-', '−');
+  /* Os efeitos de uma poção (lote 5: uma poção pode fazer várias coisas de uma vez). Cada efeito:
+       { k:'barra', rec, val }   mexe numa barra — rec: o id do recurso da ficha (HP, SP…) ou "pd:<id>", uma barra especial;
+                                 val: quanto, escrito "30", "+30", "−10", "2d6+3" ou "−1d4"
+       { k:'sob', rec, val }     sobrevida numa barra (se a barra já tem sobrevida, fica a maior das duas)
+       { k:'bonus', bk, bv, dur, r, bd }   bônus temporário. dur: '' (dura o que a anotação bd disser), 'descanso' (até o
+                                 próximo descanso do Acampamento) ou 'rodadas' (r rodadas, que o mestre desconta na ficha)
+       { k:'cond', c, r }        uma condição no token de quem recebe (só vale pela cena): c, o id dela; r, rodadas (0: sem contador)
+     A poção de antes (rec/val e bk/bv/bd soltos no item) é lida como a lista equivalente. No máximo 8 efeitos. */
+  const FX_KS = ['barra', 'sob', 'bonus', 'cond'];
+  const FX_DURS = ['', 'descanso', 'rodadas'];
+  const FX_MAX = 8;
+  function efeitoLimpo(e) {
+    if (!ehObjeto(e) || FX_KS.indexOf(e.k) < 0) return null;
+    if (e.k === 'barra' || e.k === 'sob') return { k: e.k, rec: e.rec ? String(e.rec).slice(0, 80) : '', val: String(e.val == null ? '' : e.val).trim().slice(0, 30) };
+    if (e.k === 'bonus') {
+      const k = String(e.bk == null ? '' : e.bk).toUpperCase(), dur = FX_DURS.indexOf(e.dur) >= 0 ? e.dur : '';
+      return { k: 'bonus', bk: chaveDeBonus(k), bv: numFinito(e.bv) || 0, dur, r: dur === 'rodadas' ? inteiroEntre(e.r == null ? 1 : e.r, 1, 999) : 0, bd: dur ? '' : String(e.bd == null ? '' : e.bd).slice(0, 40) };
+    }
+    return { k: 'cond', c: String(e.c == null ? '' : e.c).slice(0, 40), r: inteiroEntre(e.r, 0, 999) };
+  }
+  function efeitosDoItem(it) {
+    if (!ehObjeto(it)) return [];
+    if (Array.isArray(it.fx)) return it.fx.map(efeitoLimpo).filter(Boolean).slice(0, FX_MAX);
+    const out = [];
+    if (it.rec) out.push({ k: 'barra', rec: String(it.rec).slice(0, 80), val: String(it.val == null ? '' : it.val).trim().slice(0, 30) });
+    const k = String(it.bk == null ? '' : it.bk).toUpperCase();
+    if (k) out.push({ k: 'bonus', bk: chaveDeBonus(k), bv: numFinito(it.bv) || 0, dur: '', r: 0, bd: String(it.bd == null ? '' : it.bd).slice(0, 40) });
+    return out;
+  }
   /* A bolsa da ficha, arrumada: só itens com id, cada um com a quantidade que o estado guarda (0 se não guarda).
-     → [{ id, t, nome, nota, qtd, rec, val, bk, bv, bd }] na ordem da ficha */
+     → [{ id, t, nome, nota, qtd, fx, rec, val, bk, bv, bd }] na ordem da ficha. fx: os efeitos (só as poções têm);
+     rec/val e bk/bv/bd são o primeiro efeito de barra e o primeiro bônus, do jeito de antes, para quem ainda lê assim. */
   function bolsa(pc, estado) {
     const q = (estado && estado.qtd) || {};
     return (Array.isArray(pc && pc.bolsa) ? pc.bolsa : []).filter(it => it && typeof it === 'object' && it.id != null && it.id !== '').map(it => {
-      const id = String(it.id), n = numFinito(tem(q, id) ? q[id] : null), k = String(it.bk == null ? '' : it.bk).toUpperCase();
-      return { id, t: TIPOS_BOLSA.indexOf(it.t) >= 0 ? it.t : 'material', nome: String(it.nome == null ? '' : it.nome), nota: String(it.nota == null ? '' : it.nota),
-        qtd: n == null || n < 0 ? 0 : Math.floor(n),
-        rec: it.rec ? String(it.rec) : '', val: String(it.val == null ? '' : it.val).trim(),
-        bk: chaveDeBonus(k), bv: numFinito(it.bv) || 0, bd: String(it.bd == null ? '' : it.bd) };
+      const id = String(it.id), n = numFinito(tem(q, id) ? q[id] : null), t = TIPOS_BOLSA.indexOf(it.t) >= 0 ? it.t : 'material';
+      const fx = t === 'pocao' ? efeitosDoItem(it) : [], b1 = fx.find(e => e.k === 'barra'), o1 = fx.find(e => e.k === 'bonus');
+      return { id, t, nome: String(it.nome == null ? '' : it.nome), nota: String(it.nota == null ? '' : it.nota),
+        qtd: n == null || n < 0 ? 0 : Math.floor(n), fx,
+        rec: b1 ? b1.rec : '', val: b1 ? b1.val : '', bk: o1 ? o1.bk : '', bv: o1 ? o1.bv : 0, bd: o1 ? o1.bd : '' };
     });
   }
   /* O efeito de uma poção numa barra, do jeito que foi escrito: "30", "+30", "-10", "2d6+3", "-1d4".
@@ -749,59 +833,146 @@
     if (/^\d*d\d+([+-](\d*d\d+|\d+))*$/.test(s)) return { sinal, dados: s };
     return { erro: 'Escreva um valor (30) ou dados (2d6+3).' };
   }
-  /* Usar um item da bolsa: gasta uma unidade e, se for poção, faz o que ela faz — mexe na barra (rolado = o total
-     dos dados, quando o efeito é uma rolagem) e põe o bônus temporário. Bomba, runa, munição e material só gastam.
-       calc     o calcular() da ficha, já com os temporários
-       agora    a hora (ms), para o bônus novo entrar no fim da lista · novoId: o id dele (sorteado se não vier)
-     → { ok:false, erro } ou { ok:true, estado (novo; o recebido não muda), item, sobra,
-         barra: { id, nome, de, para, delta } | null, bonus: { id, n, k, v, d } | null } */
-  function usarItem(pc, calc, estado, idItem, rolado, agora, novoId) {
+  /* De quanto a quanto um efeito pode dar: "30" → [30, 30]; "2d6+3" → [5, 15]; "−1d4" → [−4, −1]. null se não dá
+     para ler. (Serve para conferir um valor rolado em outro aparelho.) */
+  function faixaDoEfeito(txt) {
+    const ef = lerEfeito(txt);
+    if (!ef || ef.erro) return null;
+    if (ef.fixo != null) return [ef.fixo, ef.fixo];
+    let lo = 0, hi = 0;
+    const re = /([+-]?)(\d*)d(\d+)|([+-]?)(\d+)/g;
+    let m;
+    while ((m = re.exec(ef.dados))) {
+      if (m[3] != null) { const sg = m[1] === '-' ? -1 : 1, n = m[2] === '' ? 1 : +m[2], f = +m[3]; if (sg > 0) { lo += n; hi += n * f; } else { lo -= n * f; hi -= n; } }
+      else { const sg = m[4] === '-' ? -1 : 1; lo += sg * +m[5]; hi += sg * +m[5]; }
+    }
+    return ef.sinal < 0 ? [-hi, -lo] : [lo, hi];
+  }
+  /* A barra de um efeito em quem recebe a poção. No próprio personagem, pelo id; em outro, pelo nome (sem diferença de
+     maiúsculas e acentos): a poção de "HP" mexe no "HP" de quem bebe. quem = { pc, calc, estado }.
+     → { tipo: 'rec' | 'pd', id, nome, max, min, inicio, atual, sobre } ou null (quem recebe não tem essa barra) */
+  function barraDe(quem, rec, nomeDaOrigem, mesmo) {
+    const pd = typeof rec === 'string' && rec.indexOf('pd:') === 0;
+    if (pd) {
+      const l = especiais(quem.pc, quem.estado);
+      const x = mesmo ? l.find(e => 'pd:' + e.id === rec) : l.find(e => normNome(e.nome) === normNome(nomeDaOrigem));
+      return x ? { tipo: 'pd', id: x.id, nome: x.nome, max: x.max, min: 0, inicio: null, atual: x.atual, sobre: 0 } : null;
+    }
+    const l = estadoRecursos(quem.pc, quem.calc, quem.estado);
+    const x = mesmo ? l.find(r => r.id === rec) : l.find(r => normNome(r.nome) === normNome(nomeDaOrigem));
+    return x ? Object.assign({ tipo: 'rec' }, x) : null;
+  }
+  // o nome da barra de um efeito, na ficha de quem tem a poção (para achar a mesma barra em outro personagem)
+  function nomeDaBarra(pc, calc, estado, rec) {
+    const b = barraDe({ pc, calc, estado }, rec, '', true);
+    return b ? b.nome : '';
+  }
+  const durTxt = e => (e.dur === 'descanso' ? 'até o próximo descanso' : e.dur === 'rodadas' ? (e.r === 1 ? '1 rodada' : e.r + ' rodadas') : e.bd || '');
+  /* Usar um item da bolsa: gasta uma unidade e, se for poção, faz o que ela faz — em quem usa ou em outro personagem.
+       rolado   o total dos dados de cada efeito que rola: uma lista, na ordem dos efeitos (ou um número só, que vale
+                para o primeiro efeito com dados — o jeito de antes)
+       agora    a hora (ms), para o bônus novo entrar no fim da lista · novoId: o id dele (o segundo bônus ganha "_1"…)
+       alvo     { pc, calc, estado } de quem recebe, se não for quem usa (as barras são achadas pelo nome)
+     → { ok:false, erro } ou { ok:true, estado (de quem usa: a bolsa com uma a menos — e o efeito, se foi nele mesmo),
+         estadoAlvo (de quem recebe; o mesmo objeto, quando é o próprio), mesmo, item, sobra,
+         efeitos: [{ k:'barra', tipo, id, nome, de, para, delta } | { k:'sob', id, nome, de, para, v } | { k:'bonus', id, n, bk, bv, dur, r, bd }],
+         conds: [{ c, r }] (as condições: quem chama põe no token), faltam: ['HP', …] (barras que quem recebe não tem),
+         barra (o primeiro efeito de barra comum) e bonus ({ id, n, k, v, d }: o primeiro bônus), do jeito de antes }
+     Nada recebido é alterado. */
+  function usarItem(pc, calc, estado, idItem, rolado, agora, novoId, alvo) {
     const it = bolsa(pc, estado).find(x => x.id === idItem);
     if (!it) return { ok: false, erro: 'Este item não está mais na bolsa.' };
     if (it.qtd < 1) return { ok: false, erro: 'Não há mais ' + (it.nome || 'deste item') + ' na bolsa.' };
+    const mesmo = !alvo || !alvo.pc || (pc && alvo.pc.id != null && alvo.pc.id === pc.id);
     let est = Object.assign({}, estado);
     const qtd = Object.assign({}, (estado && estado.qtd) || {});
     por(qtd, it.id, it.qtd - 1); est.qtd = qtd;
-    let barra = null, bonus = null;
-    if (it.t === 'pocao') {
-      const ef = lerEfeito(it.val);
-      if (it.rec && ef && !ef.erro) {
-        const r = estadoRecursos(pc, calc, estado).find(x => x.id === it.rec);
-        if (r && r.max != null) {
-          const delta = Math.round((ef.fixo != null ? ef.fixo : ef.sinal * (numFinito(rolado) || 0)) * 10) / 10;
-          est = aplicarDelta(est, r.id, r.max, delta, r.min, r.inicio);
-          barra = { id: r.id, nome: r.nome, de: r.atual, para: est.rec[r.id], delta };
+    let ea = mesmo ? est : Object.assign({}, alvo.estado || {});
+    const quem = mesmo ? { pc, calc } : { pc: alvo.pc, calc: alvo.calc };
+    const efeitos = [], conds = [], faltam = [];
+    let dadoAntigo = numFinito(rolado), nb = 0;
+    it.fx.forEach((e, i) => {
+      quem.estado = ea;
+      if (e.k === 'barra' || e.k === 'sob') {
+        const ef = lerEfeito(e.val);
+        if (!e.rec || !ef || ef.erro) return;
+        const nome = nomeDaBarra(pc, calc, estado, e.rec), b = barraDe(quem, e.rec, nome, mesmo);
+        if (!b || (b.tipo === 'rec' && b.max == null) || (e.k === 'sob' && b.tipo !== 'rec')) { if (nome || !mesmo) faltam.push(nome || 'barra'); return; }
+        let r = Array.isArray(rolado) ? numFinito(rolado[i]) : null;
+        if (!Array.isArray(rolado) && ef.dados && dadoAntigo != null) { r = dadoAntigo; dadoAntigo = null; }
+        const n = Math.round((ef.fixo != null ? ef.fixo : ef.sinal * (r || 0)) * 10) / 10;
+        if (e.k === 'barra') {
+          if (b.tipo === 'pd') {
+            ea = mudarEspecial(ea, b.id, b.atual + n, b.max);
+            efeitos.push({ k: 'barra', tipo: 'pd', id: b.id, nome: b.nome, de: b.atual, para: ea.pd[b.id], delta: n });
+          } else {
+            ea = aplicarDelta(ea, b.id, b.max, n, b.min, b.inicio);
+            efeitos.push({ k: 'barra', tipo: 'rec', id: b.id, nome: b.nome, de: b.atual, para: ea.rec[b.id], delta: n });
+          }
+        } else {
+          const v = Math.max(0, n), novo = Math.max(b.sobre, v);
+          if (novo !== b.sobre) { const sob = Object.assign({}, ea.sob || {}); por(sob, b.id, novo); ea = Object.assign({}, ea, { sob }); }
+          efeitos.push({ k: 'sob', id: b.id, nome: b.nome, de: b.sobre, para: novo, v });
         }
-      }
-      if (it.bk && it.bv) {
-        const id = novoId || ('t' + uid());
-        const tmp = Object.assign({}, (estado && estado.tmp) || {});
-        por(tmp, id, { n: it.nome || 'Poção', k: it.bk, v: it.bv, d: it.bd, t: numFinito(agora) || 0 });
-        est.tmp = tmp;
-        bonus = { id, n: it.nome || 'Poção', k: it.bk, v: it.bv, d: it.bd };
-      }
-    }
-    return { ok: true, estado: est, item: it, sobra: it.qtd - 1, barra, bonus };
+      } else if (e.k === 'bonus') {
+        if (!e.bk || !e.bv) return;
+        const id = (novoId || ('t' + uid())) + (nb ? '_' + nb : ''); nb++;
+        const tmp = Object.assign({}, ea.tmp || {}), b = { n: it.nome || 'Poção', k: e.bk, v: e.bv, t: numFinito(agora) || 0 };
+        if (e.dur === 'descanso') b.ate = 'descanso'; else if (e.dur === 'rodadas') b.r = e.r; else if (e.bd) b.d = e.bd;
+        por(tmp, id, b); ea = Object.assign({}, ea, { tmp });
+        efeitos.push({ k: 'bonus', id, n: b.n, bk: e.bk, bv: e.bv, dur: e.dur, r: e.r, bd: e.bd });
+      } else if (e.k === 'cond' && e.c) conds.push({ c: e.c, r: e.r });
+    });
+    if (mesmo) est = ea;
+    const b1 = efeitos.find(x => x.k === 'barra' && x.tipo === 'rec'), o1 = efeitos.find(x => x.k === 'bonus');
+    return { ok: true, estado: est, estadoAlvo: ea, mesmo, item: it, sobra: it.qtd - 1, efeitos, conds, faltam,
+      barra: b1 ? { id: b1.id, nome: b1.nome, de: b1.de, para: b1.para, delta: b1.delta } : null,
+      bonus: o1 ? { id: o1.id, n: o1.n, k: o1.bk, v: o1.bv, d: durTxt(o1) } : null };
   }
-  /* O que usar este item vai fazer, em palavras, antes de usar (só as poções fazem alguma coisa sozinhas):
-     ["HP 20 → 50 (+30)"] · ["HP 20 + 2d6+3, rolado na hora"] · ["Força +4 (3 turnos)"] · [] (só gasta) */
-  function previaDoUso(pc, calc, estado, it) {
+  /* O nome de uma condição, pelo id (as mesmas das Cenas). */
+  const nomeDaCondicao = c => { const x = CONDICOES.find(y => y.id === c); return x ? x.n : c; };
+  /* O que usar este item vai fazer, em palavras, antes de usar (só as poções fazem alguma coisa sozinhas). Com `alvo`
+     ({ pc, calc, estado, nome }), o que faz em outro personagem. opt.semCena: as condições só valem pela cena.
+     opt.semValores: sem os valores de agora de quem recebe (o jogador não vê a vida de um inimigo): "HP +30".
+     ["HP 20 → 50 (+30)"] · ["HP 20 + 2d6+3, rolado na hora"] · ["Força +4 (3 turnos)"] · ["Sobrevida 15 em HP"] · [] (só gasta) */
+  function previaDoUso(pc, calc, estado, it, alvo, opt) {
     const p = [];
     if (!it || it.t !== 'pocao') return p;
-    const ef = lerEfeito(it.val), r = it.rec ? estadoRecursos(pc, calc, estado).find(x => x.id === it.rec) : null;
-    if (r && r.max != null && ef && !ef.erro) {
-      if (ef.fixo != null) p.push(r.nome + ' ' + numTxt(r.atual) + ' → ' + numTxt(limitar(r.atual + ef.fixo, r.max, r.min)) + ' (' + (ef.fixo < 0 ? '−' : '+') + numTxt(Math.abs(ef.fixo)) + ')');
-      else p.push(r.nome + ' ' + numTxt(r.atual) + (ef.sinal < 0 ? ' − ' : ' + ') + ef.dados + ', rolado na hora');
+    const mesmo = !alvo || !alvo.pc || (pc && alvo.pc.id != null && alvo.pc.id === pc.id);
+    const quem = mesmo ? { pc, calc, estado } : { pc: alvo.pc, calc: alvo.calc, estado: alvo.estado || {} };
+    for (const e of efeitosDoItem(it.fx ? { fx: it.fx } : it)) {
+      if (e.k === 'barra' || e.k === 'sob') {
+        const ef = lerEfeito(e.val);
+        if (!e.rec || !ef || ef.erro) continue;
+        const nome = nomeDaBarra(pc, calc, estado, e.rec), b = barraDe(quem, e.rec, nome, mesmo);
+        if (!b || (b.tipo === 'rec' && b.max == null) || (e.k === 'sob' && b.tipo !== 'rec')) { if (nome) p.push(nome + ': ' + (mesmo ? 'a barra não tem máximo' : (alvo.nome || 'quem recebe') + ' não tem essa barra')); continue; }
+        if (e.k === 'barra' && opt && opt.semValores) p.push(b.nome + ' ' + (ef.fixo != null ? (ef.fixo < 0 ? '−' : '+') + numTxt(Math.abs(ef.fixo)) : (ef.sinal < 0 ? '− ' : '+ ') + ef.dados + ', rolado na hora'));
+        else if (e.k === 'barra') {
+          const teto = b.tipo === 'pd' ? (b.max > 0 ? b.max : Infinity) : b.max;
+          if (ef.fixo != null) p.push(b.nome + ' ' + numTxt(b.atual) + ' → ' + numTxt(Math.min(teto, Math.max(b.tipo === 'pd' ? 0 : Math.min(0, b.min || 0), b.atual + ef.fixo))) + ' (' + (ef.fixo < 0 ? '−' : '+') + numTxt(Math.abs(ef.fixo)) + ')');
+          else p.push(b.nome + ' ' + numTxt(b.atual) + (ef.sinal < 0 ? ' − ' : ' + ') + ef.dados + ', rolado na hora');
+        } else if (ef.fixo != null) p.push('Sobrevida ' + numTxt(Math.max(0, ef.fixo)) + ' em ' + b.nome + (!(opt && opt.semValores) && b.sobre > Math.max(0, ef.fixo) ? ' (fica a que já tem: ' + numTxt(b.sobre) + ')' : ''));
+        else p.push('Sobrevida ' + ef.dados + ' em ' + b.nome + ', rolada na hora' + (!(opt && opt.semValores) && b.sobre ? ' (fica a maior: já tem ' + numTxt(b.sobre) + ')' : ''));
+      } else if (e.k === 'bonus') {
+        if (e.bk && e.bv) p.push((NOMES_BONUS[e.bk] || e.bk) + ' ' + (e.bv > 0 ? '+' : '−') + numTxt(Math.abs(e.bv)) + (durTxt(e) ? ' (' + durTxt(e) + ')' : ''));
+      } else if (e.k === 'cond' && e.c) p.push('Condição: ' + nomeDaCondicao(e.c) + (e.r ? ' (' + (e.r === 1 ? '1 rodada' : e.r + ' rodadas') + ')' : '') + (opt && opt.semCena ? ' — só pela cena, no token' : ''));
     }
-    if (it.bk && it.bv) p.push((NOMES_BONUS[it.bk] || it.bk) + ' ' + (it.bv > 0 ? '+' : '−') + numTxt(Math.abs(it.bv)) + (it.bd ? ' (' + it.bd + ')' : ''));
     return p;
   }
   /* O resultado de um uso, numa linha (para o aviso e para a mesa ao vivo):
-     "HP 20 → 29 (+9) · Força +3 (3 turnos) · restam 2" */
-  function textoDoUso(u) {
-    const p = [];
-    if (u.barra) p.push(u.barra.nome + ' ' + numTxt(u.barra.de) + ' → ' + numTxt(u.barra.para) + (u.barra.delta ? ' (' + (u.barra.delta > 0 ? '+' : '−') + numTxt(Math.abs(u.barra.delta)) + ')' : ''));
-    if (u.bonus) p.push((NOMES_BONUS[u.bonus.k] || u.bonus.k) + ' ' + (u.bonus.v > 0 ? '+' : '−') + numTxt(Math.abs(u.bonus.v)) + (u.bonus.d ? ' (' + u.bonus.d + ')' : ''));
+     "HP 20 → 29 (+9) · Força +3 (3 turnos) · Abençoado · restam 2". opt.semValores: sem os valores de quem recebeu
+     ("HP +9"), para a mesa não ficar sabendo da vida de um inimigo. opt.semCena: usada fora da cena, a condição não foi
+     para token nenhum ("Abençoado: só pela cena"). */
+  function textoDoUso(u, opt) {
+    const p = [], sv = !!(opt && opt.semValores);
+    for (const e of u.efeitos || []) {
+      if (e.k === 'barra' && sv) p.push(e.nome + ' ' + (e.delta < 0 ? '−' : '+') + numTxt(Math.abs(e.delta)));
+      else if (e.k === 'barra') p.push(e.nome + ' ' + numTxt(e.de) + ' → ' + numTxt(e.para) + (e.delta ? ' (' + (e.delta > 0 ? '+' : '−') + numTxt(Math.abs(e.delta)) + ')' : ''));
+      else if (e.k === 'sob') p.push('Sobrevida ' + numTxt(sv ? e.v : e.para) + ' em ' + e.nome);
+      else if (e.k === 'bonus') p.push((NOMES_BONUS[e.bk] || e.bk) + ' ' + (e.bv > 0 ? '+' : '−') + numTxt(Math.abs(e.bv)) + (durTxt(e) ? ' (' + durTxt(e) + ')' : ''));
+    }
+    for (const c of u.conds || []) p.push(nomeDaCondicao(c.c) + (opt && opt.semCena ? ': só pela cena' : c.r ? ' (' + (c.r === 1 ? '1 rodada' : c.r + ' rodadas') + ')' : ''));
+    if (u.faltam && u.faltam.length) p.push('sem ' + u.faltam.join(', '));
     p.push(u.sobra === 0 ? 'era a última unidade' : u.sobra === 1 ? 'resta 1' : 'restam ' + u.sobra);
     return p.join(' · ');
   }
@@ -996,9 +1167,10 @@
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
+    ESPECIAL_PADRAO, especiais, mudarEspecial,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
-    temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso,
+    temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso, efeitosDoItem, faixaDoEfeito, nomeDaBarra, COND_GRUPOS, CONDICOES, nomeDaCondicao,
     PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido,
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,

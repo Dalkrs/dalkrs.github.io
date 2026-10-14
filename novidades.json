@@ -2,6 +2,53 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.14-2",
+      "data": "2026-10-14",
+      "titulo": "Fichas: bloqueio, barras especiais no token, poções com vários efeitos (e em outra pessoa) e bônus só nesta rolagem",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Bloqueio, junto dos atributos secundários: um valor próprio da ficha (como as defesas), somando itens, árvore e bônus. Rola como a Esquiva — na ficha, na telinha de dados e no F das Cenas — e pode entrar no ataque com defesa."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "“Poderes divinos” agora se chamam Barras especiais (poderes, cargas, usos…) e aparecem no token do personagem, em bolinhas: gastar no mapa gasta na ficha, e o contrário também. O descanso do Acampamento enche as barras especiais, se a regra do descanso mandar. “Encher todas” e tirar uma barra especial da ficha agora têm Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Bônus só nesta rolagem: na rolagem rápida da ficha, na telinha de dados da mesa ao vivo e na janelinha F das Cenas há dois campos — “+ atributo” (soma antes de rolar e muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15) e “+ resultado” (soma no total). Depois da rolagem, voltam a zero."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Poções com vários efeitos de uma vez: mexer em mais de uma barra (as barras especiais também), dar sobrevida, dar bônus com duração de verdade (até o próximo descanso, ou por rodadas) e pôr uma condição no token."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Poção em outra pessoa: na ficha, “Usar” deixa escolher em quem (qualquer personagem que você vê); nas Cenas, “Em quem” deixa escolher qualquer token — um aliado, um NPC, até um token sem ficha. Quando o jogador usa no token de outro, o mestre aplica em seguida. A mesa vê o que mudou, sem ver a vida de quem recebeu."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Personagem ativo: na ficha, o mestre desmarca quem fica de fora (os suportes que ficam no acampamento). Em “Puxar o grupo”, nas Cenas, só os ativos vêm marcados — “Todos” traz também os outros."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Relacionamentos: “Esconder tudo” e “Revelar tudo”, ficha por ficha. Revelar pergunta antes; os dois têm Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cadeado dos ferimentos, ficha por ficha (no quadro do corpo): travado, só o mestre põe, edita e tira ferimentos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mesa ao vivo fechada para um jogador: no menu da mesa, em “Permissões…” (o antigo “Papel…”), desmarque “vê a mesa ao vivo”. Até você liberar, a pessoa só vê as próprias rolagens e mensagens — e o que ela rola continua chegando à mesa."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.14-1",
       "data": "2026-10-14",
       "titulo": "Cenas: a parede de verdade, a faixa do grupo, objetos de cenário e zonas novas",

@@ -179,6 +179,7 @@ body.arrastando-agora{cursor:grabbing;user-select:none}
 .tag.on{background:var(--forte);color:var(--forte-txt);border-color:var(--forte)}
 .tag.limpar{color:var(--rubric);border-color:var(--rubric-borda)}
 .mini-tag{border-color:var(--brass-soft);background:var(--brass-fundo);color:var(--brass-ink)}
+.mini-tag.inativo{border-color:var(--line);background:var(--campo-sut);color:var(--ink-soft);font-style:italic}
 .idcard2{display:grid;grid-template-columns:minmax(150px,.7fr) 1fr;gap:10px;margin-top:10px}
 @media (max-width:900px){.idcard2{grid-template-columns:1fr}}
 
@@ -322,6 +323,21 @@ table.items .chipb input[type=number]{width:52px;padding:2px 4px;border-radius:6
 .bolfx{display:grid;grid-template-columns:minmax(120px,1fr) minmax(110px,.9fr) minmax(140px,1.1fr) 76px minmax(100px,.9fr);gap:8px;align-items:end}
 .bolfx input.ruim{border-color:var(--rubric);color:var(--rubric)}
 @media (max-width:820px){.bolfx{grid-template-columns:1fr 1fr}}
+/* os efeitos de uma poção (lote 5): uma linha por efeito — o tipo, onde e quanto, e o × */
+.bolfxs{display:grid;gap:6px}
+.fxrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fxrow .fxk{flex:0 0 74px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.fxrow select{flex:1 1 150px;width:auto;min-width:0}
+.fxrow input{flex:0 1 120px;width:auto;min-width:0}
+.fxrow input.fxn{flex:0 0 70px}
+.fxrow input.inm{flex:1 1 110px}
+.fxrow input.ruim{border-color:var(--rubric);color:var(--rubric)}
+.fxrow .hint{font-size:11.5px;white-space:nowrap}
+.fxrow .mini.danger{flex:none;margin-left:auto}
+.fxrow .fmlerr{flex-basis:100%;margin-left:80px}
+.bolfxs .fxadd{justify-self:start;width:auto;max-width:100%;font-size:12.5px}
+@media (max-width:560px){.fxrow .fxk{flex-basis:100%}.fxrow .fmlerr{margin-left:0}}
+.bolconf select{width:auto;max-width:100%;padding:2px 6px;font-size:12.5px}
 .bolconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r);font-size:13px}
 .bolconf span{flex:1 1 240px}
 .bolrow textarea{min-height:30px;resize:vertical}
@@ -387,13 +403,18 @@ table.roll .tot small{font-size:11px;font-weight:400;color:var(--ink-soft);displ
 .bars div{flex:1;background:var(--teal);opacity:.75;border-radius:1px 1px 0 0}
 .entrada{width:100%;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
 
-/* ---------- poderes divinos ---------- */
+/* ---------- barras especiais (os antigos poderes divinos): o CSS está mais abaixo (.pdlist) ---------- */
 /* ---------- rolagem rápida na ficha ---------- */
 .rolbox{border-top:1px solid var(--line);padding:11px 12px 12px}
 .rolhd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .rolfix{display:flex;align-items:center;gap:5px;margin-left:auto}
 .rolfix input{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
 .rolhd select{width:auto;padding:3px 6px;font-size:12px}
+.rolmais{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 8px;font-size:12px;color:var(--ink-soft)}
+.rolmais .eyebrow{margin-right:auto}
+.rolmais label{display:flex;align-items:center;gap:5px}
+.rolmais input{width:54px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
+.rolmais input.tem{border-color:var(--brass);background:var(--brass-fundo)}
 .rolbts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
 .atrbt{flex:1 1 60px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 4px;line-height:1.15}
 .atrbt b{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;color:var(--ink-soft);font-weight:500}
@@ -678,6 +699,8 @@ table.items tr.itfx.off textarea{opacity:.55}
 .mbts .mini{min-width:34px;font-family:"IBM Plex Mono",monospace}
 .relhd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:14px 0 8px;padding-top:12px;border-top:1px dashed var(--line)}
 .relhd .mnome{color:var(--teal)}
+.reltodos{margin-left:auto;display:flex;gap:6px}
+.reltodosconf{flex-basis:100%}
 .rels{display:grid;gap:6px}
 .relrow{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1.4fr) auto auto auto auto;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo)}
 .relnome{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
@@ -794,6 +817,9 @@ ul.misobjs.ro li.ok{color:var(--ink-soft);text-decoration:line-through}
 .relmarca,.romrow,.relconf{grid-column:1 / -1}
 .relmarca{margin-top:-4px}
 .tagseg{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--brass-ink);border:1px dashed var(--brass-soft);border-radius:10px;padding:1px 7px;background:var(--brass-fundo)}
+#painelCorpo [data-fertrava]{display:inline-flex;align-items:center;gap:5px}
+#painelCorpo [data-fertrava][aria-pressed="true"]{border-color:var(--brass);background:var(--brass-fundo);color:var(--brass-ink)}
+#painelCorpo .tagseg svg{vertical-align:-2px}
 .relrow.sovalor{grid-template-columns:minmax(120px,1fr) 2fr}
 .relsegredo{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);font-size:12.5px}
 .romrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--line-2)}
@@ -874,11 +900,11 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=11"></script>
-<script src="../tc/rules.js?v=6"></script>
-<script src="mesa.js?v=8"></script>
-<script src="extras.js?v=9"></script>
-<script src="quadros.js?v=2"></script>
+<script src="../tc/ponte.js?v=12"></script>
+<script src="../tc/rules.js?v=7"></script>
+<script src="mesa.js?v=9"></script>
+<script src="extras.js?v=10"></script>
+<script src="quadros.js?v=3"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -909,6 +935,7 @@ const ehDerivado = k => DERIV.some(d=>d.k===k);
 const DEFESAS = [
   {k:'DFF', nome:'Defesa Física', rot:'DEF F', aliases:['DEFF','DEFESAFISICA']},
   {k:'DFM', nome:'Defesa Mágica', rot:'DEF M', aliases:['DEFM','DEFESAMAGICA']},
+  {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ']},       // valor próprio + itens; rola como a Esquiva
 ];
 const ehDefesa = k => DEFESAS.some(d=>d.k===k);
 /* cores dos cinco atributos principais, usadas na rolagem */
@@ -1121,7 +1148,7 @@ function personagemPadrao(nome,raca,tier,level,tiers){
     pctProprio:null,
     poderes:[],
     skills:{arvores:[], pontos:{}, alocados:{}},
-    defesas:{DFF:0, DFM:0},
+    defesas:{DFF:0, DFM:0, BLQ:0},
     rol:{fixa:0, fonte:'total'}, ultRol:null,
     disputa:{atrA:'FOR', alvoId:'', atrB:'FOR', fixaB:0, valorB:40},
     estaque:{a:'', b:''},
@@ -1426,6 +1453,7 @@ function linhaElenco(p){
       <span class="mt">${FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
+        ${FichasMesa.ativo() && FichasMesa.mestre() && !FichasMesa.ativoNaFicha(p) ? '<span class="tag mini-tag inativo" title="Fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado">inativo</span>' : ''}
         ${(p.tags||[]).slice(0,3).map(t=>`<span class="tag mini-tag">${esc(t)}</span>`).join('')}
         ${(p.tags||[]).length>3?`<span class="hint" style="font-size:10px">+${p.tags.length-3}</span>`:''}
       </span>
@@ -1769,7 +1797,7 @@ function renderFicha(){
           </tr>`).join('')}
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Os três derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos. As duas defesas variam por raça: você digita a base e os equipamentos somam por cima.</div>
+        <div class="hint" style="margin-top:6px">Os três derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima.</div>
         <div class="pctnote">
           ${pc.pctProprio?`<span>Percentuais deste personagem:</span>`:`<span>Percentuais gerais:</span>`}
           ${TIERS_ATR.map(t=>`<span class="mono">${t} ${(pctDe(pc,t)*100).toFixed(0)}%</span>`).join('')}
@@ -1800,6 +1828,11 @@ function renderFicha(){
             <option value="total" ${rol.fonte!=='base'?'selected':''}>c/ equip.</option>
             <option value="base" ${rol.fonte==='base'?'selected':''}>base</option>
           </select>
+        </div>
+        <div class="rolmais" role="group" aria-label="Bônus só nesta rolagem">
+          <span class="eyebrow" title="Valem só para a próxima rolagem: depois dela, voltam a zero (não ficam na ficha)">Só nesta rolagem</span>
+          <label title="Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)">+ atributo <input type="number" step="1" id="rolMaisA" value="${rolMaisDe(pc).atr||''}" placeholder="0" aria-label="Bônus no atributo, só nesta rolagem"></label>
+          <label title="Soma no resultado, depois de rolar (vale também para a iniciativa)">+ resultado <input type="number" step="1" id="rolMaisR" value="${rolMaisDe(pc).res||''}" placeholder="0" aria-label="Bônus no resultado, só nesta rolagem"></label>
         </div>
         <div class="rolbts">
           ${ATRIBS.map(a=>{const v=valorDoAtributo(pc,a.k,rol.fonte);
@@ -1832,28 +1865,28 @@ function renderFicha(){
     </div>
   </div>
 
-  <div class="panel" style="margin-bottom:18px">
-    <div class="hd"><span class="eyebrow">Poderes divinos</span>
-      <span class="hint" style="margin-left:8px">clique nos círculos para gastar ou devolver</span>
+  <div class="panel" style="margin-bottom:18px" id="especiais">
+    <div class="hd"><span class="eyebrow">Barras especiais</span>
+      <span class="hint" style="margin-left:8px">clique nos círculos para gastar ou devolver · aparecem no token, em bolinhas</span>
       <span style="margin-left:auto;display:flex;gap:6px">
-        ${pd.length?'<button class="mini" data-pdall="cheio">Restaurar todos</button>':''}
-        <button class="mini primary" data-pdadd="1">+ Poder</button>
+        ${pd.length?'<button class="mini" data-pdall="cheio">Encher todas</button>':''}
+        <button class="mini primary" data-pdadd="1">+ Barra especial</button>
       </span></div>
     <div class="bd">
-      ${pd.length? `<div class="pdlist">${pd.map(pw=>`
+      ${pd.length? `<div class="pdlist">${especiaisDe(pc).map(pw=>`
         <div class="pdrow">
-          <input class="inm" data-pdnome="${pw.id}" value="${esc(pw.nome)}" placeholder="Nome do poder">
+          <input class="inm" data-pdnome="${pw.id}" value="${esc(nomeCruDoEspecial(pc,pw.id))}" placeholder="Nome (ex.: Poder divino, Cargas da varinha)" aria-label="Nome da barra especial">
           <div class="pdctl">
-            <button class="step" data-pdstep="${pw.id}|-1" ${pw.atual<=0?'disabled':''}>−</button>
+            <button class="step" data-pdstep="${pw.id}|-1" ${pw.atual<=0?'disabled':''} aria-label="Gastar um de ${esc(pw.nome)}">−</button>
             <span class="pdval">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
-            <button class="step" data-pdstep="${pw.id}|1" ${pw.max>0&&pw.atual>=pw.max?'disabled':''}>+</button>
+            <button class="step" data-pdstep="${pw.id}|1" ${pw.max>0&&pw.atual>=pw.max?'disabled':''} aria-label="Devolver um de ${esc(pw.nome)}">+</button>
           </div>
           <label class="sitbar" style="gap:6px"><span class="eyebrow">Limite</span>
             <input type="number" min="0" data-pdmax="${pw.id}" value="${pw.max}" style="width:64px"></label>
-          <button class="mini danger" data-pddel="${pw.id}">×</button>
+          <button class="mini danger" data-pddel="${pw.id}" title="Tirar esta barra especial" aria-label="Tirar a barra especial ${esc(pw.nome)}">×</button>
           <div class="pips">${pips(pw)}</div>
         </div>`).join('')}</div>`
-      : '<div class="hint">Nenhum poder cadastrado. Cada poder tem o próprio contador e o próprio limite.</div>'}
+      : '<div class="hint">Nenhuma barra especial. Cada uma tem o próprio contador e o próprio limite (poderes divinos, cargas, usos…) — e aparece no token do personagem, em bolinhas.</div>'}
     </div>
   </div>
 
@@ -1988,6 +2021,20 @@ function renderFicha(){
   `;
   ligarFicha(pc);
 }
+/* As barras especiais (os antigos "poderes divinos"): a lista — nome e limite — mora na ficha (pc.poderes); o valor
+   de agora, no estado (estado.pd), para a ficha, o token e o acampamento mexerem nele sem um desfazer o do outro.
+   Sem nada anotado no estado, vale o que a ficha guardava (o `atual` de antes). */
+function especiaisDe(pc){
+  if(window.TC && TC.rules && TC.rules.especiais) return TC.rules.especiais(pc, pc.estado);
+  return (Array.isArray(pc.poderes)?pc.poderes:[]).filter(x=>x&&x.id).map(x=>{ const max=Math.max(0,Math.round(+x.max||0)), a=Math.max(0,Math.round(+x.atual||0));
+    return {id:String(x.id), nome:String(x.nome||'').trim()||'Barra especial', atual:max>0?Math.min(a,max):a, max}; });
+}
+function nomeCruDoEspecial(pc,id){ const pw=(pc.poderes||[]).find(x=>x.id===id); return pw? String(pw.nome==null?'':pw.nome) : ''; }
+function mudarEspecialNaFicha(pc,id,v){
+  const pw=(pc.poderes||[]).find(x=>x.id===id); if(!pw) return;
+  if(window.TC && TC.rules && TC.rules.mudarEspecial){ pc.estado=TC.rules.mudarEspecial(pc.estado||{}, id, v, pw.max); return; }
+  const m=Math.max(0,+pw.max||0), n=Math.max(0,Math.round(+v||0)); pw.atual = m>0? Math.min(n,m) : n;
+}
 function pips(pw){
   const max=+pw.max||0;
   if(max<=0) return '<span class="hint">Sem limite definido — use − e +.</span>';
@@ -2022,11 +2069,19 @@ function ligarFicha(pc){
   if(fini) fini.oninput=e=>patchLeve(()=>{ pc.ini=e.target.value; const v=host.querySelector('#iniVal'); if(v) v.textContent=iniTexto(pc); });
   const bini=host.querySelector('#btnIni');
   if(bini) bini.onclick=()=>{
-    const r=iniciativaDe(pc), d=rolarDado(20), total=d+r.val;      // (1 a 20: rolarDado, não randInt, que conta do zero)
-    pc.ultRol={k:'INI', valor:r.val, base:false, total, texto:'1d20 '+(r.val<0?'− ':'+ ')+Math.abs(r.val), dado:20, bruto:d};
-    logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val), total, dd:[[20,d]]});
+    const m=rolMaisDe(pc), r=iniciativaDe(pc), d=rolarDado(20), total=d+r.val+m.res;      // (1 a 20: rolarDado, não randInt, que conta do zero)
+    const extra=m.res? ' · '+sinalMais(m.res)+' no resultado' : '';
+    pc.ultRol={k:'INI', valor:r.val, base:false, total, texto:'1d20 '+(r.val<0?'− ':'+ ')+Math.abs(r.val)+extra, dado:20, bruto:d};
+    logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val)+extra, total, dd:[[20,d]]});
+    rolMais.res=0;                                                   // (o bônus no resultado valeu só para esta)
     render();
   };
+  // os bônus "só nesta rolagem" (não vão para a ficha: ficam nesta tela até a próxima rolagem)
+  const rma=host.querySelector('#rolMaisA'), rmr=host.querySelector('#rolMaisR');
+  const lerMais=el=>{ const n=Math.round(+String(el.value).replace(',','.')); return isFinite(n)? Math.max(-999,Math.min(999,n)) : 0; };
+  if(rma) rma.oninput=()=>{ rolMaisDe(pc).atr=lerMais(rma); rma.classList.toggle('tem',!!rolMais.atr); };
+  if(rmr) rmr.oninput=()=>{ rolMaisDe(pc).res=lerMais(rmr); rmr.classList.toggle('tem',!!rolMais.res); };
+  [rma,rmr].forEach(el=>{ if(el){ el.classList.toggle('tem',!!lerMais(el)); el.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } }; } });
   // valor atual de cada recurso (HP, SP...): vazio = no começo da barra (cheia, se ela não tem um começo próprio)
   const encher=id=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[id]; });
   // (o botão de voltar ao começo aparece assim que há um valor anotado, sem redesenhar a ficha: quem está digitando não perde o campo)
@@ -2125,28 +2180,47 @@ function ligarFicha(pc){
       patch(()=>pc.itens.push({id:uid(),nome:'',equipado:true,bonus:b0})); }
   });
 
+  /* As barras especiais: a lista (nome, limite) é da ficha; o valor de agora vai para o estado (ver especiaisDe). */
   const acharPd=id=>pc.poderes.find(x=>x.id===id);
-  const limitar=pw=>{ pw.atual=Math.max(0, pw.max>0? Math.min(pw.atual,+pw.max) : pw.atual); };
+  const valorPd=id=>{ const e=especiaisDe(pc).find(x=>x.id===id); return e? e.atual : 0; };
   host.querySelectorAll('[data-pdadd]').forEach(b=>b.onclick=()=>patch(()=>
     pc.poderes.push({id:uid(), nome:'', atual:0, max:1})));
-  host.querySelectorAll('[data-pdall]').forEach(b=>b.onclick=()=>patch(()=>
-    pc.poderes.forEach(pw=>{ if(pw.max>0) pw.atual=+pw.max; })));
+  host.querySelectorAll('[data-pdall]').forEach(b=>b.onclick=()=>{
+    const antes=especiaisDe(pc).map(e=>[e.id,e.atual]);
+    patch(()=>pc.poderes.forEach(pw=>{ if(+pw.max>0) mudarEspecialNaFicha(pc, pw.id, +pw.max); }));
+    FichasExtras.aviso('As barras especiais de '+(pc.nome||'quem joga')+' ficaram cheias.', 'Desfazer', ()=>patch(()=>antes.forEach(([id,v])=>mudarEspecialNaFicha(pc, id, v))));
+  });
   host.querySelectorAll('[data-pdstep]').forEach(b=>b.onclick=()=>{
-    const [id,d]=b.dataset.pdstep.split('|'); const pw=acharPd(id); if(!pw)return;
-    pw.atual+= +d; limitar(pw); patch(()=>{});
+    const [id,d]=b.dataset.pdstep.split('|'); if(!acharPd(id))return;
+    patch(()=>mudarEspecialNaFicha(pc, id, valorPd(id) + (+d)));
   });
   host.querySelectorAll('[data-pip]').forEach(b=>b.onclick=()=>{
-    const [id,i]=b.dataset.pip.split('|'); const pw=acharPd(id); if(!pw)return;
-    const n=+i;
-    pw.atual = (pw.atual===n)? n-1 : n;   // clicar no último aceso devolve uma unidade
-    limitar(pw); patch(()=>{});
+    const [id,i]=b.dataset.pip.split('|'); if(!acharPd(id))return;
+    const n=+i, a=valorPd(id);
+    patch(()=>mudarEspecialNaFicha(pc, id, a===n? n-1 : n));   // clicar no último aceso devolve uma unidade
   });
   host.querySelectorAll('[data-pdnome]').forEach(i=>i.oninput=e=>{
     const pw=acharPd(e.target.dataset.pdnome); if(pw){pw.nome=e.target.value; save();}});
   host.querySelectorAll('[data-pdmax]').forEach(i=>i.onchange=e=>{
-    const pw=acharPd(e.target.dataset.pdmax); if(pw){pw.max=Math.max(0,+e.target.value||0); limitar(pw); patch(()=>{});}});
-  host.querySelectorAll('[data-pddel]').forEach(b=>b.onclick=()=>patch(()=>{
-    pc.poderes=pc.poderes.filter(x=>x.id!==b.dataset.pddel)}));
+    const id=e.target.dataset.pdmax, pw=acharPd(id); if(!pw) return;
+    const a=valorPd(id);
+    patch(()=>{ pw.max=Math.max(0,Math.round(+e.target.value||0)); mudarEspecialNaFicha(pc, id, a); });   // (o valor fica dentro do limite novo)
+  });
+  host.querySelectorAll('[data-pddel]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.pddel, i=pc.poderes.findIndex(x=>x.id===id); if(i<0) return;
+    const pw=pc.poderes[i], tinha=!!(pc.estado && pc.estado.pd && Object.prototype.hasOwnProperty.call(pc.estado.pd,id)), v=tinha? pc.estado.pd[id] : null;
+    patch(()=>{
+      pc.poderes=pc.poderes.filter(x=>x.id!==id);
+      if(tinha){ const pd=Object.assign({},pc.estado.pd); delete pd[id]; pc.estado=Object.assign({},pc.estado,{pd}); }
+    });
+    // (sai sem perguntar, mas volta inteira pelo Desfazer: o nome, o limite e o valor de agora)
+    FichasExtras.aviso('A barra especial '+(String(pw.nome||'').trim()||'sem nome')+' saiu da ficha.', 'Desfazer', ()=>patch(()=>{
+      if(!Array.isArray(pc.poderes)) pc.poderes=[];
+      if(pc.poderes.some(x=>x.id===id)) return;
+      pc.poderes.splice(Math.min(i,pc.poderes.length),0,pw);
+      if(tinha){ const pd=Object.assign({},(pc.estado&&pc.estado.pd)||{}); pd[id]=v; pc.estado=Object.assign({},pc.estado||{},{pd}); }
+    }));
+  });
 
   host.querySelectorAll('[data-resnome]').forEach(i=>i.oninput=e=>{
     const r=pc.recursos.find(x=>x.id===e.target.dataset.resnome); if(r){r.nome=e.target.value; save();}});
@@ -2801,17 +2875,24 @@ function perdidasDe(pc){
 }
 
 /* =================== ROLAGEM RÁPIDA NA FICHA =================== */
+/* Os bônus "só nesta rolagem" da rolagem rápida: +atributo (soma no atributo antes de rolar — muda o dado) e +resultado
+   (soma no total). Ficam nesta tela, para a ficha aberta, e voltam a zero depois da rolagem que os usou. */
+const rolMais={pc:null, atr:0, res:0};
+function rolMaisDe(pc){ if(rolMais.pc!==pc.id){ rolMais.pc=pc.id; rolMais.atr=0; rolMais.res=0; } return rolMais; }
+const sinalMais=n=>(n<0?'−':'+')+Math.abs(n);
 function rolarNaFicha(pc,k){
-  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
-  const valor=valorDoAtributo(pc,k,rol.fonte);
-  const r=rolarFixa(valor, rol.fixa||0);
+  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'}), m=rolMaisDe(pc);
+  const valor0=valorDoAtributo(pc,k,rol.fonte), valor=Math.max(0,Math.round(valor0)+m.atr);
+  const r=rolarFixa(valor, rol.fixa||0), total=r.total+m.res;
   const usouBase = ATRIBS.some(a=>a.k===k) && rol.fonte==='base';      // "base" só existe nos cinco atributos
   const esp = window.TC && TC.rules && TC.rules.DEFESAS_ESP ? TC.rules.DEFESAS_ESP.find(d=>d.k===k) : null;
   const rot = esp? 'Defesa contra '+esp.nome.toLowerCase() : k;
-  pc.ultRol={k:rot, valor, base:usouBase, total:r.total, texto:r.texto, dado:r.dado, bruto:r.bruto};
+  const extra=(m.atr? ' · '+sinalMais(m.atr)+' no atributo ('+Math.round(valor0)+' → '+valor+')' : '')+(m.res? ' · '+sinalMais(m.res)+' no resultado' : '');
+  pc.ultRol={k:rot, valor, base:usouBase, total, texto:r.texto+extra, dado:r.dado, bruto:r.bruto};
   logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
-    det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:''),
-    total:r.total, dd:ddDaFixa(r)});
+    det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:'')+extra,
+    total, dd:ddDaFixa(r)});
+  m.atr=0; m.res=0;                                                // (valeram só para esta rolagem)
   save(); renderFicha();
 }
 
@@ -3514,7 +3595,7 @@ function migrar(){
     pc.rol.fonte = pc.rol.fonte==='base' ? 'base' : 'total';
     pc.disputa=pc.disputa||Object.assign({atrA:'FOR', alvoId:'', atrB:'FOR', fixaB:0, valorB:40}, S.disputa||{});
     pc.defesas=pc.defesas||{DFF:0,DFM:0};
-    DEFESAS.forEach(d=>{ if(pc.defesas[d.k]==null) pc.defesas[d.k]=0; });
+    ['DFF','DFM'].forEach(k=>{ if(pc.defesas[k]==null) pc.defesas[k]=0; });   // (o Bloqueio ausente vale 0: abrir a ficha não grava nada nela)
     pc.skills=pc.skills||{arvores:[],pontos:{},alocados:{}};
     pc.skills.arvores=Array.isArray(pc.skills.arvores)?pc.skills.arvores:[];
     pc.skills.pontos=pc.skills.pontos||{}; pc.skills.alocados=pc.skills.alocados||{};
@@ -3523,7 +3604,7 @@ function migrar(){
     pc.itens=pc.itens||[]; pc.recursos=pc.recursos||[]; pc.tiers=pc.tiers||{FOR:'A',DES:'B',AGI:'C',VIT:'D',CAN:'E'};
     pc.itens.forEach(it=>{ it.bonus=it.bonus||{};
       DERIV.forEach(d=>{ if(it.bonus[d.k]==null) it.bonus[d.k]=0; });
-      DEFESAS.forEach(d=>{ if(it.bonus[d.k]==null) it.bonus[d.k]=0; }); });
+      ['DFF','DFM'].forEach(k=>{ if(it.bonus[k]==null) it.bonus[k]=0; }); });   // (o Bloqueio ausente num item vale 0: a ficha não é regravada só por abrir)
   });
   indexarArvores();
   (S.personagens||[]).forEach(podarSkills);

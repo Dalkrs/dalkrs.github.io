@@ -362,7 +362,7 @@ const FichasExtras = (() => {
     </div>`;
   }
   /* ---- o olho de cada linha (só o mestre, numa mesa): o que os jogadores veem dela ---- */
-  let relConf = null;                       // { pc, id }: a linha que está perguntando "revelar?"
+  let relConf = null;                       // { pc, id }: a linha que está perguntando "revelar?"; { pc, todos: true }: "revelar tudo?"
   function olhoDaLinha(pc, e, nome) {
     const npc = FichasMesa.ehNpc(pc), dono = FichasMesa.nomeDoDono(pc) || 'o jogador';
     const [aberto, txt] = e.modo === 'valor' ? [false, dono + ' vê o nome, sem o valor nem os corações. Clique para revelar.']
@@ -407,13 +407,28 @@ const FichasExtras = (() => {
     }
     const rels = relsDe(pc), ja = new Set(rels.map(e => e.alvo).filter(Boolean));
     const outros = S.personagens.filter(p => p.id !== pc.id && !ja.has(p.id));
+    /* Revelar tudo / esconder tudo (só o mestre, numa mesa): todas as linhas desta ficha de uma vez. Esconder é na hora
+       (com Desfazer); revelar pergunta antes. */
+    const todos = comoMestre() && rels.length ? (() => {
+      const npc = FichasMesa.ehNpc(pc), escondidas = rels.filter(e => e.modo !== 'aberta').length, abertas = rels.filter(e => e.modo === 'aberta').length;
+      const conf = relConf && relConf.pc === pc.id && relConf.todos;
+      const quem = npc ? 'quem vê a ficha' : (FichasMesa.nomeDoDono(pc) || 'o jogador');
+      return `<span class="reltodos">
+        <button type="button" class="mini" data-reltodos="esconder" ${abertas ? '' : 'disabled'} title="${abertas ? (npc ? 'Guarda só com você todas as linhas deste NPC' : 'Esconde o valor de todas as linhas (os nomes continuam à vista)') : 'Nada à mostra para esconder'}">Esconder tudo</button>
+        <button type="button" class="mini" data-reltodos="revelar" ${escondidas ? '' : 'disabled'} aria-expanded="${conf ? 'true' : 'false'}" title="${escondidas ? 'Mostra a ' + esc(quem) + ' todas as linhas escondidas (pergunta antes)' : 'Nada escondido'}">Revelar tudo</button>
+      </span>${conf ? `<div class="relconf reltodosconf" role="group" aria-label="Confirmar">
+        <span>${npc ? 'Mostrar a quem vê a ficha ' + (escondidas === 1 ? 'a linha guardada' : 'as ' + escondidas + ' linhas guardadas') + '?'
+          : 'Revelar a ' + esc(quem) + ' ' + (escondidas === 1 ? 'o valor escondido' : 'os ' + escondidas + ' valores escondidos') + ' (com os corações)?'}</span>
+        <button type="button" class="mini primary" data-reltodossim="1">Revelar tudo</button>
+        <button type="button" class="mini" data-relnao="1">Cancelar</button></div>` : ''}`;
+    })() : '';
     return `<div class="panel" id="painelMente" style="margin-bottom:18px">
       <div class="hd"><span class="eyebrow">Sanidade, conforto e relacionamentos</span>
         ${FichasMesa.deJogador(pc) ? '' : '<span style="margin-left:auto"><button type="button" class="mini" data-mente="parar" title="Esta ficha deixa de mostrar Sanidade, Conforto e Relacionamentos">Deixar de usar</button></span>'}
       </div>
       <div class="bd">
         <div class="mente2">${cartaoMente(pc, 'san')}${cartaoMente(pc, 'conf')}</div>
-        <div class="relhd"><span class="mnome">${glifo(REL_SVG)} Relacionamentos</span><span class="hint">o que este personagem sente por cada um — de −100 (hostil) a +100 (leal)${comoMestre() && FichasMesa.ehNpc(pc) ? ' · os de um NPC ficam só com você, mesmo com a ficha aberta aos jogadores' : ''}</span></div>
+        <div class="relhd"><span class="mnome">${glifo(REL_SVG)} Relacionamentos</span><span class="hint">o que este personagem sente por cada um — de −100 (hostil) a +100 (leal)${comoMestre() && FichasMesa.ehNpc(pc) ? ' · os de um NPC ficam só com você, mesmo com a ficha aberta aos jogadores' : ''}</span>${todos}</div>
         <div class="rels">${rels.map(e => linhaRel(pc, e)).join('') || '<div class="hint">Nenhum relacionamento ainda.</div>'}</div>
         <div class="relnovo">
           <select id="relNovo" aria-label="Acrescentar um relacionamento">
@@ -489,7 +504,32 @@ const FichasExtras = (() => {
         aviso(npc ? 'A linha de ' + e.nome + ' ficou guardada só com você.' : quem + ' continua vendo ' + e.nome + ' na lista, mas não o valor.');
       } else { relConf = relConf && relConf.id === e.id ? null : { pc: pc.id, id: e.id }; pintarMente(pc, relConf ? '[data-relsim="' + e.id + '"]' : foco); }
     });
-    qa(painel, '[data-relnao]').forEach(b => b.onclick = () => { const id = relConf && relConf.id; relConf = null; pintarMente(pc, id ? '[data-relolho="' + id + '"]' : null); });
+    qa(painel, '[data-relnao]').forEach(b => b.onclick = () => { const id = relConf && relConf.id, eraTodos = relConf && relConf.todos; relConf = null; pintarMente(pc, id ? '[data-relolho="' + id + '"]' : eraTodos ? '[data-reltodos="revelar"]' : null); });
+    // todas as linhas de uma vez: esconder (na hora, com Desfazer) e revelar (pergunta antes, com Desfazer)
+    const todasDe = modo => relsDe(pc).filter(e => (modo === 'aberta' ? e.modo === 'aberta' : e.modo !== 'aberta'));
+    const esconderLinhas = ids => { const npc = FichasMesa.ehNpc(pc); let n = 0; for (const id of ids) if (FichasMesa.mexerRel(pc, { t: npc ? 'guardar' : 'esconder', id })) n++; return n; };
+    const revelarLinhas = lista => { let n = 0; for (const e of lista) if (FichasMesa.mexerRel(pc, { t: e.modo === 'valor' ? 'revelar' : 'abrir', id: e.id })) n++; return n; };
+    qa(painel, '[data-reltodos]').forEach(b => b.onclick = () => {
+      if (b.dataset.reltodos === 'revelar') { relConf = relConf && relConf.todos ? null : { pc: pc.id, todos: true }; pintarMente(pc, relConf ? '[data-reltodossim]' : '[data-reltodos="revelar"]'); return; }
+      relConf = null;
+      const ids = todasDe('aberta').map(e => e.id), npc = FichasMesa.ehNpc(pc);
+      if (!esconderLinhas(ids)) { pintarMente(pc); return; }
+      guardar('[data-reltodos="revelar"]');
+      aviso(npc ? 'Todas as linhas deste NPC ficaram guardadas só com você.' : (FichasMesa.nomeDoDono(pc) || 'O jogador') + ' continua vendo os nomes, mas nenhum valor.', 'Desfazer', () => {
+        revelarLinhas(relsDe(pc).filter(e => ids.includes(e.id) && e.modo !== 'aberta')); guardar();
+      });
+    });
+    qa(painel, '[data-reltodossim]').forEach(b => b.onclick = () => {
+      relConf = null;
+      const lista = todasDe('escondida'), como = new Map(lista.map(e => [e.id, e.modo])), npc = FichasMesa.ehNpc(pc);
+      if (!revelarLinhas(lista)) { pintarMente(pc); return; }
+      guardar('[data-reltodos="esconder"]');
+      aviso(npc ? 'Todas as linhas deste NPC agora aparecem para quem vê a ficha.' : (FichasMesa.nomeDoDono(pc) || 'O jogador') + ' agora vê todos os valores.', 'Desfazer', () => {
+        // cada linha volta a ficar escondida como estava: só o valor ('valor') ou a linha inteira com o mestre ('mestre')
+        for (const e of relsDe(pc)) if (como.has(e.id) && e.modo === 'aberta') FichasMesa.mexerRel(pc, { t: como.get(e.id) === 'valor' ? 'esconder' : 'guardar', id: e.id });
+        guardar();
+      });
+    });
     qa(painel, '[data-relsim]').forEach(b => b.onclick = () => {
       const e = acha(b.dataset.relsim); relConf = null; if (!e) return;
       if (!FichasMesa.mexerRel(pc, { t: e.modo === 'valor' ? 'revelar' : 'abrir', id: e.id })) { pintarMente(pc); return; }
@@ -761,18 +801,59 @@ const FichasExtras = (() => {
   /* ---- bolsas: poções, bombas, runas, munições e materiais ---- */
   const BOLSAS = () => (RR() ? RR().BOLSAS : []);
   let bolsaPede = null;                  // a poção com a prévia aberta, esperando o "Usar agora"
+  let bolsaEm = null;                    // { pc, item, alvo }: em quem a poção da prévia vai ser usada (sem isso, em quem a tem)
   const qtdDe = (pc, id) => { const v = pc.estado && pc.estado.qtd ? +pc.estado.qtd[id] : 0; return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0; };
+  /* Em quem a poção pode ser usada: em quem a tem e em qualquer outro personagem desta tela (o jogador recebe só as
+     fichas que pode ver). Numa mesa com campanhas, os da campanha em vista primeiro. */
+  const outrosPcs = pc => FichasMesa.emOrdem(S.personagens.filter(x => x.id !== pc.id));
+  const alvoDaPrevia = (pc, it) => { const id = bolsaEm && bolsaEm.pc === pc.id && bolsaEm.item === it.id ? bolsaEm.alvo : null; return id ? S.personagens.find(x => x.id === id) || null : null; };
+  const comoAlvo = a => (a ? { pc: a, calc: calcular(a), estado: a.estado || {}, nome: a.nome } : null);
+  const semCena = () => true;            // (a ficha não põe condição em token: isso é pela cena)
   // o que vai acontecer ao usar, em palavras (só as poções fazem alguma coisa sozinhas)
-  const previaDoUso = (pc, c, it) => RR().previaDoUso(pc, c, pc.estado, it);
+  const previaDoUso = (pc, c, it, alvo) => RR().previaDoUso(pc, c, pc.estado, it, comoAlvo(alvo), { semCena: semCena() });
+  const TIPOS_FX = [['barra', 'Mexe numa barra'], ['sob', 'Dá sobrevida'], ['bonus', 'Dá um bônus'], ['cond', 'Põe uma condição (no token)']];
+  const DURS = [['', 'anotação'], ['descanso', 'até o descanso'], ['rodadas', 'rodadas']];
+  // as barras que um efeito pode escolher: as da ficha (com máximo) e, para "mexe numa barra", as barras especiais
+  function opcoesDeBarra(pc, c, e, especiaisTambem) {
+    const rs = (c.recursos || []).filter(r => !r.err && r.val != null), pds = especiaisTambem && RR().especiais ? RR().especiais(pc, pc.estado).filter(x => x.max > 0) : [];
+    const sumiu = e.rec && !rs.some(r => r.id === e.rec) && !pds.some(x => 'pd:' + x.id === e.rec);
+    return `<option value="">escolha a barra</option>${rs.map(r => `<option value="${esc(r.id)}" ${e.rec === r.id ? 'selected' : ''}>${esc(r.nome || 'Barra')}</option>`).join('')}`
+      + (pds.length ? `<optgroup label="Barras especiais">${pds.map(x => `<option value="pd:${esc(x.id)}" ${e.rec === 'pd:' + x.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</optgroup>` : '')
+      + (sumiu ? `<option value="${esc(e.rec)}" selected>(barra que saiu da ficha)</option>` : '');
+  }
+  function opcoesDeCondicao(sel) {
+    const R = RR(); if (!R || !R.CONDICOES) return '';
+    return `<option value="">escolha a condição</option>` + R.COND_GRUPOS.map(g => `<optgroup label="${esc(g.n)}">${R.CONDICOES.filter(x => x.g === g.id).map(x => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
+  }
+  function linhaFx(pc, c, it, e, i) {
+    const k = esc(it.id) + '|' + i, del = `<button type="button" class="mini danger" data-fxdel="${k}" title="Tirar este efeito" aria-label="Tirar o efeito ${i + 1} de ${esc(it.nome || 'poção')}">×</button>`;
+    if (e.k === 'barra' || e.k === 'sob') {
+      const ef = RR().lerEfeito(e.val);
+      return `<div class="fxrow" data-fx="${k}"><span class="fxk">${e.k === 'barra' ? 'Barra' : 'Sobrevida'}</span>
+        <select data-fxrec="${k}" aria-label="${e.k === 'barra' ? 'Em que barra' : 'Sobrevida em que barra'}">${opcoesDeBarra(pc, c, e, e.k === 'barra')}</select>
+        <input class="mono ${ef && ef.erro ? 'ruim' : ''}" data-fxval="${k}" value="${esc(e.val)}" maxlength="30" placeholder="${e.k === 'barra' ? '30 ou 2d6+3' : '15 ou 2d6'}" autocomplete="off" aria-label="Quanto" title="${e.k === 'barra' ? 'Um valor (30) ou dados (2d6+3). Com − na frente, tira em vez de pôr (−10, −1d6).' : 'Um valor (15) ou dados (2d6). Se a barra já tem sobrevida, fica a maior das duas.'}">
+        ${del}${ef && ef.erro ? `<span class="fmlerr">${esc(ef.erro)}</span>` : ''}</div>`;
+    }
+    if (e.k === 'bonus') return `<div class="fxrow" data-fx="${k}"><span class="fxk">Bônus</span>
+        <select data-fxbk="${k}" aria-label="Em quê">${optBonus(e.bk, 'escolha')}</select>
+        <input type="number" step="1" class="fxn" data-fxbv="${k}" value="${e.bv || 0}" aria-label="De quanto">
+        <select data-fxdur="${k}" aria-label="Quanto dura">${DURS.map(d => `<option value="${d[0]}" ${e.dur === d[0] ? 'selected' : ''}>${d[1]}</option>`).join('')}</select>
+        ${e.dur === 'rodadas' ? `<input type="number" min="1" max="999" step="1" class="fxn" data-fxr="${k}" value="${e.r || 1}" aria-label="Quantas rodadas">`
+          : e.dur === 'descanso' ? '<span class="hint">o descanso tira</span>' : `<input class="inm" data-fxbd="${k}" value="${esc(e.bd)}" maxlength="40" placeholder="3 turnos" aria-label="Quanto dura (anotação)">`}
+        ${del}</div>`;
+    return `<div class="fxrow" data-fx="${k}"><span class="fxk">Condição</span>
+        <select data-fxc="${k}" aria-label="Que condição">${opcoesDeCondicao(e.c)}</select>
+        <input type="number" min="0" max="999" step="1" class="fxn" data-fxr="${k}" value="${e.r || 0}" aria-label="Rodadas (0: sem contador)" title="Rodadas na condição (0: sem contador)">
+        <span class="hint">rodadas · vai para o token, pela cena</span>${del}</div>`;
+  }
   function painelBolsa(pc, c) {
     const R = RR(); if (!R) return '';
     const itens = R.bolsa(pc, pc.estado), tipos = BOLSAS();
     const aba = tipos.some(b => b.t === S.abaBolsa) ? S.abaBolsa : 'pocao', tipo = tipos.find(b => b.t === aba);
     const total = t => itens.filter(x => x.t === t).reduce((s, x) => s + x.qtd, 0);
-    const daAba = itens.filter(x => x.t === aba), rs = (c.recursos || []).filter(r => !r.err && r.val != null);
+    const daAba = itens.filter(x => x.t === aba), outros = outrosPcs(pc);
     const linha = it => {
-      const pocao = it.t === 'pocao', ef = pocao ? R.lerEfeito(it.val) : null, pede = bolsaPede === it.id, previa = pede ? previaDoUso(pc, c, it) : [];
-      const sumiu = pocao && it.rec && !rs.some(r => r.id === it.rec);
+      const pocao = it.t === 'pocao', pede = bolsaPede === it.id, alvo = pede ? alvoDaPrevia(pc, it) : null, previa = pede ? previaDoUso(pc, c, it, alvo) : [];
       return `<div class="bolrow ${it.qtd ? '' : 'sem'}" data-bolrow="${esc(it.id)}">
         <div class="bolcab">
           <input class="inm bolnome" data-bolnome="${esc(it.id)}" value="${esc(it.nome)}" maxlength="60" placeholder="Nome ${pocao ? 'da poção' : 'do item'}" aria-label="Nome">
@@ -781,26 +862,20 @@ const FichasExtras = (() => {
             <input type="number" min="0" step="1" data-bolqtd="${esc(it.id)}" value="${it.qtd}" aria-label="Quantidade de ${esc(it.nome || 'item')}">
             <button type="button" class="step" data-bolstep="${esc(it.id)}" data-d="1" aria-label="Uma a mais de ${esc(it.nome || 'item')}">+</button>
           </span>
-          <button type="button" class="mini primary" data-boluse="${esc(it.id)}" ${it.qtd < 1 ? 'disabled' : ''} title="${it.qtd < 1 ? 'Não há nenhuma na bolsa' : pocao ? 'Gasta uma e aplica o efeito (mostra antes o que vai acontecer)' : 'Gasta uma e avisa a mesa. Nada é aplicado sozinho.'}">Usar</button>
+          <button type="button" class="mini primary" data-boluse="${esc(it.id)}" ${it.qtd < 1 ? 'disabled' : ''} title="${it.qtd < 1 ? 'Não há nenhuma na bolsa' : pocao ? 'Gasta uma e aplica o efeito (mostra antes o que vai acontecer, e em quem)' : 'Gasta uma e avisa a mesa. Nada é aplicado sozinho.'}">Usar</button>
           <button type="button" class="mini danger" data-boldel="${esc(it.id)}" title="Tirar da bolsa" aria-label="Tirar ${esc(it.nome || 'item')} da bolsa">×</button>
         </div>
         ${pede ? `<div class="bolconf" role="group" aria-label="Confirmar o uso">
-          <span><strong>Usar ${esc(it.nome || 'a poção')}?</strong> ${esc(previa.join(' · ') || 'Gasta uma unidade.')} · ${it.qtd - 1 === 0 ? 'é a última' : it.qtd - 1 === 1 ? 'sobra 1' : 'sobram ' + (it.qtd - 1)}</span>
+          <span><strong>Usar ${esc(it.nome || 'a poção')}</strong>${outros.length ? ` em <select data-bolem="${esc(it.id)}" aria-label="Em quem usar">
+              <option value="">${esc(pc.nome || 'quem tem')}</option>${FichasMesa.opcoesDePcs(outros, alvo ? alvo.id : '')}</select>` : ''}?
+            ${esc(previa.join(' · ') || 'Gasta uma unidade.')} · ${it.qtd - 1 === 0 ? 'é a última' : it.qtd - 1 === 1 ? 'sobra 1' : 'sobram ' + (it.qtd - 1)}</span>
           <button type="button" class="mini primary" data-bolsim="${esc(it.id)}">Usar agora</button>
           <button type="button" class="mini" data-bolnao="1">Cancelar</button></div>` : ''}
-        ${pocao ? `<div class="bolfx">
-          <label class="f"><span class="eyebrow">Mexe na barra</span>
-            <select data-bolrec="${esc(it.id)}"><option value="">nenhuma</option>${rs.map(r => `<option value="${esc(r.id)}" ${it.rec === r.id ? 'selected' : ''}>${esc(r.nome || 'Barra')}</option>`).join('')}${sumiu ? '<option value="' + esc(it.rec) + '" selected>(barra que saiu da ficha)</option>' : ''}</select></label>
-          <label class="f"><span class="eyebrow">Quanto</span>
-            <input class="mono ${ef && ef.erro ? 'ruim' : ''}" data-bolval="${esc(it.id)}" value="${esc(it.val)}" maxlength="30" placeholder="30 ou 2d6+3" autocomplete="off" title="Um valor (30) ou dados (2d6+3). Com − na frente, tira em vez de pôr (−10, −1d6)." ${it.rec ? '' : 'disabled'}></label>
-          <label class="f"><span class="eyebrow">Dá bônus em</span>
-            <select data-bolbk="${esc(it.id)}">${optBonus(it.bk, 'nenhum')}</select></label>
-          <label class="f bolbv"><span class="eyebrow">De</span>
-            <input type="number" step="1" data-bolbv="${esc(it.id)}" value="${it.bv || 0}" ${it.bk ? '' : 'disabled'}></label>
-          <label class="f"><span class="eyebrow">Dura</span>
-            <input class="inm" data-bolbd="${esc(it.id)}" value="${esc(it.bd)}" maxlength="40" placeholder="3 turnos" ${it.bk ? '' : 'disabled'}></label>
-        </div>${ef && ef.erro ? `<div class="fmlerr">${esc(ef.erro)}</div>` : ''}` : ''}
-        <textarea rows="1" data-bolnota="${esc(it.id)}" maxlength="400" placeholder="${pocao ? 'Outros efeitos, gosto, de onde veio…' : 'O que faz, como se usa…'}" aria-label="Anotação de ${esc(it.nome || 'item')}">${esc(it.nota)}</textarea>
+        ${pocao ? `<div class="bolfxs" role="group" aria-label="Efeitos de ${esc(it.nome || 'a poção')}">
+          ${it.fx.map((e, i) => linhaFx(pc, c, it, e, i)).join('')}
+          ${it.fx.length < 8 ? `<select class="fxadd" data-fxadd="${esc(it.id)}" aria-label="Acrescentar um efeito"><option value="">+ Efeito…</option>${TIPOS_FX.map(t => `<option value="${t[0]}">${t[1]}</option>`).join('')}</select>` : ''}
+        </div>` : ''}
+        <textarea rows="1" data-bolnota="${esc(it.id)}" maxlength="400" placeholder="${pocao ? 'Gosto, cor, de onde veio…' : 'O que faz, como se usa…'}" aria-label="Anotação de ${esc(it.nome || 'item')}">${esc(it.nota)}</textarea>
       </div>`;
     };
     return `<div class="panel" id="painelBolsa" style="margin-bottom:18px">
@@ -811,36 +886,77 @@ const FichasExtras = (() => {
       </div>
       <div class="bd">
         ${daAba.length ? `<div class="bollist">${daAba.map(linha).join('')}</div>`
-        : `<div class="hint">${aba === 'pocao' ? 'Nenhuma poção. Cada poção pode mexer numa barra (um valor fixo ou uma rolagem) e dar um bônus temporário; “Usar” gasta uma, aplica o efeito e avisa a mesa.' : 'Nada aqui ainda. “Usar” gasta uma unidade e avisa a mesa; nada é aplicado sozinho.'}</div>`}
-        ${daAba.length ? `<div class="hint" style="margin-top:8px">${aba === 'pocao' ? '“Usar” mostra antes o que vai acontecer; depois de usar, dá para desfazer. Com o token ligado a esta ficha, as bolsas também aparecem na cena.' : '“Usar” gasta uma unidade e avisa a mesa — o efeito é com vocês. Dá para desfazer.'}</div>` : ''}
+        : `<div class="hint">${aba === 'pocao' ? 'Nenhuma poção. Uma poção pode fazer várias coisas de uma vez: mexer em barras, dar sobrevida, dar bônus (até o descanso, por rodadas…) e pôr uma condição no token. “Usar” gasta uma, aplica — em quem tem ou em outro personagem — e avisa a mesa.' : 'Nada aqui ainda. “Usar” gasta uma unidade e avisa a mesa; nada é aplicado sozinho.'}</div>`}
+        ${daAba.length ? `<div class="hint" style="margin-top:8px">${aba === 'pocao' ? '“Usar” mostra antes o que vai acontecer e deixa escolher em quem; depois de usar, dá para desfazer. Com o token ligado a esta ficha, as bolsas também aparecem na cena (lá a condição vai para o token).' : '“Usar” gasta uma unidade e avisa a mesa — o efeito é com vocês. Dá para desfazer.'}</div>` : ''}
       </div>
     </div>`;
   }
-  /* Usa um item: gasta, aplica (poção), registra na mesa e deixa desfazer. */
+  /* As mudanças que um uso faz no estado de quem recebe, do jeito que o banco grava "às cegas" (ver usarItemEm): só o
+     que mudou — barras, sobrevidas, barras especiais e bônus novos. Com `volta`, o caminho de volta. */
+  function mudasDoUso(u, antes, volta) {
+    const m = { rec: {}, sob: {}, pd: {}, tmp: {} }, a = antes || {}, d = u.estadoAlvo || {};
+    for (const e of u.efeitos) {
+      if (e.k === 'barra' && e.tipo === 'rec') m.rec[e.id] = volta ? (a.rec && a.rec[e.id] != null ? a.rec[e.id] : null) : d.rec[e.id];
+      else if (e.k === 'barra' && e.tipo === 'pd') m.pd[e.id] = volta ? e.de : d.pd[e.id];
+      else if (e.k === 'sob') m.sob[e.id] = volta ? (a.sob && a.sob[e.id] != null ? a.sob[e.id] : null) : (d.sob ? d.sob[e.id] : null);
+      else if (e.k === 'bonus') m.tmp[e.id] = volta ? null : d.tmp[e.id];
+    }
+    for (const k of Object.keys(m)) if (!Object.keys(m[k]).length) delete m[k];
+    return m;
+  }
+  /* Usa um item: gasta, aplica (poção) em quem tem ou em outro personagem, registra na mesa e deixa desfazer. */
   function usarDaBolsa(pc, id) {
     const R = RR(), c = calcular(pc), it = R.bolsa(pc, pc.estado).find(x => x.id === id);
-    bolsaPede = null;
+    const alvo = it ? alvoDaPrevia(pc, it) : null;
+    bolsaPede = null; bolsaEm = null;
     if (!it) { render(); return; }
-    const ef = it.t === 'pocao' && it.rec ? R.lerEfeito(it.val) : null;
-    let rolado = null, conta = '', dd = [];
-    if (ef && ef.dados) { try { const r = rolarExpressao(ef.dados); rolado = r.total; dd = r.dd || []; conta = ef.dados + ' → ' + r.detalhe + ' = ' + r.total; } catch (e) { toast(e.message); render(); return; } }
-    const antes = pc.estado || {};
-    const u = R.usarItem(pc, c, antes, id, rolado, Date.now(), 't' + uid());
+    // os dados de cada efeito que rola (um total por efeito, na ordem)
+    const rolados = [], contas = [];
+    let dd = [];
+    for (const e of it.fx) {
+      const ef = (e.k === 'barra' || e.k === 'sob') && e.rec ? R.lerEfeito(e.val) : null;
+      if (ef && ef.dados) { try { const r = rolarExpressao(ef.dados); rolados.push(r.total); dd = dd.concat(r.dd || []); contas.push(ef.dados + ' → ' + r.detalhe + ' = ' + r.total); } catch (err) { toast(err.message); render(); return; } }
+      else rolados.push(null);
+    }
+    const antes = pc.estado || {}, antesAlvo = alvo ? (alvo.estado || {}) : null;
+    const u = R.usarItem(pc, c, antes, id, rolados, Date.now(), 't' + uid(), comoAlvo(alvo));
     if (!u.ok) { toast(u.erro); render(); return; }
+    // (na ficha, a condição da poção não vai para token nenhum: o texto diz que ela é só pela cena)
+    const nome = it.nome || (BOLSAS().find(b => b.t === it.t) || {}).um || 'Item', titulo = pc.nome + ' · ' + nome + (alvo ? ' em ' + alvo.nome : ''), texto = R.textoDoUso(u, { semCena: true });
+    const conds = '';
+    const registrar = () => logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'usou ' + nome + (alvo ? ' em ' + alvo.nome : '') + (contas.length ? ' · ' + contas.join(' · ') : '') + ' · ' + texto, total: null, dd });
+    // em outro personagem cuja ficha esta tela não grava (a de outro jogador, um NPC à mostra): pelo banco, as duas juntas
+    if (alvo && !FichasMesa.podeEditar(alvo)) {
+      const mudas = mudasDoUso(u, antesAlvo, false);
+      if (!TC.ponte || typeof TC.ponte.usarItemEm !== 'function') { toast('Para usar num personagem que não é seu, abra a ficha dentro do site, com a mesa.'); render(); return; }
+      TC.ponte.usarItemEm({ de: pc.id, item: it.id, alvo: alvo.id, mudas }).then(() => {
+        registrar();
+        aviso(nome + ' em ' + alvo.nome + ': ' + texto + '.' + conds, 'Desfazer', () => {
+          TC.ponte.usarItemEm({ de: pc.id, item: it.id, alvo: alvo.id, mudas: mudasDoUso(u, antesAlvo, true), volta: true })
+            .then(() => logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'desfeito: ' + nome + ' voltou para a bolsa e ' + alvo.nome + ' ficou como estava', total: null }))
+            .catch(e => toast(e.message));
+        });
+      }).catch(e => { toast(e.message); render(); });
+      return;
+    }
     pc.estado = u.estado;
-    const nome = it.nome || (BOLSAS().find(b => b.t === it.t) || {}).um || 'Item', titulo = pc.nome + ' · ' + nome, texto = R.textoDoUso(u);
-    logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'usou ' + nome + (conta ? ' · ' + conta : '') + ' · ' + texto, total: u.barra && rolado != null ? rolado : null, dd });
+    if (alvo) alvo.estado = u.estadoAlvo;
+    registrar();
     render();
-    aviso(nome + ': ' + texto + '.', 'Desfazer', () => {
-      // só o que este uso mexeu volta (o que outra pessoa mudou no personagem nesse meio-tempo fica)
+    aviso(nome + (alvo ? ' em ' + alvo.nome : '') + ': ' + texto + '.' + conds, 'Desfazer', () => {
+      // só o que este uso mexeu volta (o que outra pessoa mudou nos personagens nesse meio-tempo fica)
       const qtd = mapaDe(pc, 'qtd'); qtd[it.id] = qtdDe(pc, it.id) + 1;
-      if (u.barra) {
-        const rec = mapaDe(pc, 'rec'), tinha = antes.rec && antes.rec[u.barra.id] != null;
-        if (+rec[u.barra.id] === u.barra.para) { if (tinha) rec[u.barra.id] = antes.rec[u.barra.id]; else delete rec[u.barra.id]; }
-        else if (rec[u.barra.id] != null) rec[u.barra.id] = Math.round((+rec[u.barra.id] - (u.barra.para - u.barra.de)) * 10) / 10;
+      const quem = alvo || pc, a = alvo ? antesAlvo : antes;
+      for (const e of u.efeitos) {
+        if (e.k === 'barra' && e.tipo === 'rec') {
+          const rec = mapaDe(quem, 'rec'), tinha = a.rec && a.rec[e.id] != null;
+          if (+rec[e.id] === e.para) { if (tinha) rec[e.id] = a.rec[e.id]; else delete rec[e.id]; }
+          else if (rec[e.id] != null) rec[e.id] = Math.round((+rec[e.id] - (e.para - e.de)) * 10) / 10;
+        } else if (e.k === 'barra' && e.tipo === 'pd') quem.estado = R.mudarEspecial(quem.estado || {}, e.id, e.de, (R.especiais(quem, quem.estado).find(x => x.id === e.id) || {}).max);
+        else if (e.k === 'sob') { const sob = mapaDe(quem, 'sob'); if (a.sob && a.sob[e.id] != null) sob[e.id] = a.sob[e.id]; else delete sob[e.id]; }
+        else if (e.k === 'bonus') delete mapaDe(quem, 'tmp')[e.id];
       }
-      if (u.bonus) delete mapaDe(pc, 'tmp')[u.bonus.id];
-      logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'desfeito: ' + nome + ' voltou para a bolsa' + (u.barra ? ' e ' + u.barra.nome + ' voltou ao que era' : '') + (u.bonus ? '; o bônus saiu' : ''), total: null });
+      logar({ tipo: 'uso', quem: titulo, pc: pc.id, det: 'desfeito: ' + nome + ' voltou para a bolsa' + (u.efeitos.length ? ' e ' + (alvo ? alvo.nome : 'o personagem') + ' ficou como estava' : ''), total: null });
       render();
     });
   }
@@ -851,17 +967,40 @@ const FichasExtras = (() => {
     const redesenhar = sel => { save(); desenhar(render, sel); };
     qa(painel, '[data-ababolsa]').forEach(b => b.onclick = () => { S.abaBolsa = b.dataset.ababolsa; bolsaPede = null; redesenhar('[data-ababolsa="' + b.dataset.ababolsa + '"]'); });
     qa(painel, '[data-boladd]').forEach(b => b.onclick = () => {
-      const id = 'b' + uid(); lista().push({ id, t: b.dataset.boladd, nome: '' }); mapaDe(pc, 'qtd')[id] = 1;
+      const id = 'b' + uid(); lista().push(b.dataset.boladd === 'pocao' ? { id, t: 'pocao', nome: '', fx: [] } : { id, t: b.dataset.boladd, nome: '' }); mapaDe(pc, 'qtd')[id] = 1;
       redesenhar('[data-bolnome="' + id + '"]');
     });
     const texto = (attr, chave, max) => qa(painel, '[data-' + attr + ']').forEach(i => { i.oninput = () => { const it = item(i.dataset[attr]); if (!it) return; const v = i.value.slice(0, max); if (v) it[chave] = v; else delete it[chave]; save(); if (i.tagName === 'TEXTAREA') altura(i); }; });
     const altura = t => { t.style.height = 'auto'; t.style.height = Math.max(30, t.scrollHeight + 2) + 'px'; };
-    texto('bolnome', 'nome', 60); texto('bolnota', 'nota', 400); texto('bolbd', 'bd', 40);
+    texto('bolnome', 'nome', 60); texto('bolnota', 'nota', 400);
     qa(painel, '[data-bolnota]').forEach(altura);
-    qa(painel, '[data-bolval]').forEach(i => { i.oninput = () => { const it = item(i.dataset.bolval); if (!it) return; const v = i.value.trim().slice(0, 30); if (v) it.val = v; else delete it.val; save(); }; i.onchange = () => redesenhar('[data-bolval="' + i.dataset.bolval + '"]'); });
-    qa(painel, '[data-bolrec]').forEach(s => s.onchange = () => { const it = item(s.dataset.bolrec); if (!it) return; if (s.value) it.rec = s.value; else delete it.rec; redesenhar('[data-bolrec="' + s.dataset.bolrec + '"]'); });
-    qa(painel, '[data-bolbk]').forEach(s => s.onchange = () => { const it = item(s.dataset.bolbk); if (!it) return; if (s.value) it.bk = s.value; else delete it.bk; redesenhar('[data-bolbk="' + s.dataset.bolbk + '"]'); });
-    qa(painel, '[data-bolbv]').forEach(i => i.onchange = () => { const it = item(i.dataset.bolbv); if (!it) return; const v = Math.round((+i.value || 0) * 10) / 10; if (v) it.bv = v; else delete it.bv; redesenhar('[data-bolbv="' + i.dataset.bolbv + '"]'); });
+    /* Os efeitos de uma poção: a poção de antes (efeito e bônus soltos) passa para a lista na primeira mudança. */
+    const efeitos = it => { if (!Array.isArray(it.fx)) { it.fx = RR().efeitosDoItem(it); delete it.rec; delete it.val; delete it.bk; delete it.bv; delete it.bd; } return it.fx; };
+    const doFx = attr => { const [id, i] = String(attr).split('|'), it = item(id); if (!it) return null; const l = efeitos(it), e = l[+i]; return e ? { it, l, e, i: +i } : null; };
+    qa(painel, '[data-fxadd]').forEach(s => s.onchange = () => {
+      const it = item(s.dataset.fxadd); if (!it || !s.value) return;
+      const l = efeitos(it); if (l.length >= 8) return;
+      const novo = s.value === 'barra' || s.value === 'sob' ? { k: s.value, rec: '', val: '' } : s.value === 'bonus' ? { k: 'bonus', bk: '', bv: 0, dur: '', r: 0, bd: '' } : { k: 'cond', c: '', r: 0 };
+      l.push(novo);
+      const k = it.id + '|' + (l.length - 1);
+      redesenhar(novo.k === 'bonus' ? '[data-fxbk="' + k + '"]' : novo.k === 'cond' ? '[data-fxc="' + k + '"]' : '[data-fxrec="' + k + '"]');
+    });
+    qa(painel, '[data-fxdel]').forEach(b => b.onclick = () => {
+      const x = doFx(b.dataset.fxdel); if (!x) return;
+      const [era] = x.l.splice(x.i, 1);
+      redesenhar('[data-fxadd="' + x.it.id + '"]');
+      aviso('Efeito tirado de ' + (x.it.nome || 'a poção') + '.', 'Desfazer', () => { const l = efeitos(x.it); l.splice(Math.min(x.i, l.length), 0, era); redesenhar(); });
+    });
+    const campoFx = (attr, fn, sel) => qa(painel, '[data-' + attr + ']').forEach(el => el.onchange = () => { const x = doFx(el.dataset[attr.replace(/-([a-z])/g, (m, c) => c.toUpperCase())]); if (!x) return; fn(x.e, el); redesenhar('[data-' + attr + '="' + el.dataset[attr.replace(/-([a-z])/g, (m, c) => c.toUpperCase())] + '"]'); });
+    campoFx('fxrec', (e, el) => { e.rec = el.value; });
+    campoFx('fxbk', (e, el) => { e.bk = el.value; });
+    campoFx('fxbv', (e, el) => { e.bv = Math.round((+el.value || 0) * 10) / 10; });
+    campoFx('fxdur', (e, el) => { e.dur = el.value; if (e.dur === 'rodadas' && !(e.r >= 1)) e.r = 1; if (e.dur) e.bd = ''; });
+    campoFx('fxr', (e, el) => { e.r = Math.max(e.k === 'bonus' ? 1 : 0, Math.min(999, Math.round(+el.value || 0))); });
+    campoFx('fxc', (e, el) => { e.c = el.value; });
+    // o valor e a anotação do bônus vão sendo guardados enquanto se escreve (o quadro só é redesenhado ao sair do campo)
+    qa(painel, '[data-fxval]').forEach(i => { i.oninput = () => { const x = doFx(i.dataset.fxval); if (!x) return; x.e.val = i.value.trim().slice(0, 30); save(); }; i.onchange = () => redesenhar('[data-fxval="' + i.dataset.fxval + '"]'); });
+    qa(painel, '[data-fxbd]').forEach(i => { i.oninput = () => { const x = doFx(i.dataset.fxbd); if (!x) return; x.e.bd = i.value.slice(0, 40); save(); }; });
     const porQtd = (id, n) => { mapaDe(pc, 'qtd')[id] = Math.max(0, Math.min(9999, Math.round(n) || 0)); };
     qa(painel, '[data-bolqtd]').forEach(i => i.onchange = () => { if (!item(i.dataset.bolqtd)) return; porQtd(i.dataset.bolqtd, +i.value); if (bolsaPede === i.dataset.bolqtd) bolsaPede = null; redesenhar('[data-bolqtd="' + i.dataset.bolqtd + '"]'); });
     qa(painel, '[data-bolstep]').forEach(b => b.onclick = () => {
@@ -879,11 +1018,14 @@ const FichasExtras = (() => {
     });
     qa(painel, '[data-boluse]').forEach(b => b.onclick = () => {
       const id = b.dataset.boluse, c = calcular(pc), it = RR().bolsa(pc, pc.estado).find(x => x.id === id); if (!it) return;
-      if (previaDoUso(pc, c, it).length) { bolsaPede = id; render(); refocar('[data-bolsim="' + id + '"]'); }      // poção com efeito: mostra antes o que vai acontecer
+      bolsaEm = null;
+      // poção (com efeito, ou havendo em quem mais usar): mostra antes o que vai acontecer
+      if (it.t === 'pocao' && (previaDoUso(pc, c, it, null).length || outrosPcs(pc).length)) { bolsaPede = id; render(); refocar('[data-bolsim="' + id + '"]'); }
       else usarDaBolsa(pc, id);
     });
+    qa(painel, '[data-bolem]').forEach(s => s.onchange = () => { bolsaEm = { pc: pc.id, item: s.dataset.bolem, alvo: s.value || null }; render(); refocar('[data-bolem="' + s.dataset.bolem + '"]'); });
     qa(painel, '[data-bolsim]').forEach(b => b.onclick = () => usarDaBolsa(pc, b.dataset.bolsim));
-    qa(painel, '[data-bolnao]').forEach(b => b.onclick = () => { const id = bolsaPede; bolsaPede = null; render(); if (id) refocar('[data-boluse="' + id + '"]'); });
+    qa(painel, '[data-bolnao]').forEach(b => b.onclick = () => { const id = bolsaPede; bolsaPede = null; bolsaEm = null; render(); if (id) refocar('[data-boluse="' + id + '"]'); });
   }
 
   /* ---- identidade: sexo, partes íntimas e panteão ---- */

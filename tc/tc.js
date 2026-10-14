@@ -121,15 +121,20 @@
   const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador'];
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
-    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando,
+    // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
+    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando, semVivo: cargo !== 'mestre' && !!x.sem_vivo,
       abas: cargo === 'auxiliar' && Array.isArray(x.abas) ? ABAS_DE_MESTRE.filter(a => x.abas.includes(a)) : [],
       papel: cargo === 'mestre' || (cargo === 'auxiliar' && !jogando) ? 'mestre' : 'jogador' };
   }
   async function lerMembros(id) {
-    const { data, error } = await cliente().from('mesa_membros').select('usuario_id, papel, nome, cor, visto_em, jogando, abas').eq('mesa_id', id).order('entrou_em');
+    const ler = cols => cliente().from('mesa_membros').select(cols).eq('mesa_id', id).order('entrou_em');
+    let { data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas, sem_vivo');
+    // (num banco de antes da mesa ao vivo fechada por pessoa, a coluna não existe: lê sem ela)
+    if (error && semEsquemaM(error)) ({ data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas'));
     if (error) throw error;
     return (data || []).map(membroDe);
   }
+  const semEsquemaM = e => /does not exist|schema cache|Could not find/i.test(String((e && e.message) || '')) || /^(42P01|42703|PGRST20\d)$/.test(String((e && e.code) || ''));
   /* As campanhas da mesa que esta pessoa vê — quem mestra, todas; o jogador, as de que participa —, na ordem do mestre,
      e quem participa de cada uma ({ usuário: [campanhas] }). Num banco de antes das campanhas, não há nenhuma. */
   const semEsquema = e => /does not exist|schema cache|Could not find/i.test(String((e && e.message) || '')) || /^(42P01|42703|PGRST20\d)$/.test(String((e && e.code) || ''));
@@ -177,7 +182,7 @@
     aoVivo.parar(); dadosZerar();
     /* campanhas: as que vejo ([{ id, nome, ordem, encerrada }]) · campanha: a em vista (id) · temCampanhas: a mesa tem
        campanhas, mesmo que eu não participe de nenhuma (aí só vejo o que é do mundo) */
-    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros,
+    mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros, semVivo: eu.papel !== 'mestre' && eu.semVivo,
       campanhas: camps.lista, campanha: null, temCampanhas: camps.lista.length > 0 || (Number(m.campanhas) || 0) > 0, campanhasLigadas: camps.ligadas, jeito: meuJeito(eu) };      // (campanhasLigadas: o banco desta mesa já tem as campanhas)
     mesas.atual.campanha = escolherVista(mesas.atual);
     guarda.gravar(CHAVE_MESA, id);
@@ -204,6 +209,14 @@
     if (auxiliar && Array.isArray(abas)) args.p_abas = abas.filter(x => ABAS_DE_MESTRE.includes(x));
     const { data, error } = await cliente().rpc('definir_auxiliar', args);
     if (error) throw falha(error, 'Não deu para mudar o papel agora. Tente de novo.');
+    await recarregarMembros();
+    return data ? membroDe(data) : null;
+  };
+  /* O mestre fecha a mesa ao vivo para um jogador (ou libera de novo): fechada, a pessoa só vê as próprias linhas. */
+  mesas.vivoDoJogador = async (usuarioId, fechado) => {
+    const a = mesas.atual; if (!a) return null;
+    const { data, error } = await cliente().rpc('vivo_do_jogador', { p_mesa: a.id, p_usuario: usuarioId, p_fechado: !!fechado });
+    if (error) throw (semEsquemaM(error) ? new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).') : falha(error, 'Não deu para mudar agora. Tente de novo.'));
     await recarregarMembros();
     return data ? membroDe(data) : null;
   };
@@ -369,6 +382,10 @@
         return;
       }
       a.membros = membros; mesas.emit('membros', membros);
+      /* O mestre fechou (ou abriu de novo) a mesa ao vivo para mim: a conversa é lida outra vez — fechada, o banco só
+         devolve as minhas linhas; aberta, tudo de novo. */
+      const fechada = eu.papel !== 'mestre' && eu.semVivo;
+      if (fechada !== !!a.semVivo) { a.semVivo = fechada; aoVivo.recarregar(); mesas.emit('vivo', fechada); }
       /* As campanhas mudaram (o mestre criou, renomeou, encerrou, reordenou ou apagou uma)? A lista acompanha; se a que
          estava em vista saiu, outra entra no lugar — e a conversa da mesa ao vivo passa a ser a dela. */
       const jAntes = JSON.stringify(a.campanhas), vistaAntes = a.campanha, tinha = a.temCampanhas;
@@ -663,23 +680,25 @@
   }
   /* As rolagens da telinha de dados da mesa ao vivo (sem digitar comando). `pc`: o personagem de quem é a rolagem
      ({ id, nome, av }), que aparece ao lado de quem rolou.
-       rolarAtributo  um atributo com a regra da fixa → { ok, total, die, dieValue, fixa } | { ok:false, error }
-       rolarIniciativa  1d20 + o bônus de iniciativa da ficha. A linha leva um recado para as Cenas do mestre
-                      (sis: { t:'ini', c, v, d, b }): lá, o mestre pode anotar o valor na ordem de turnos. */
-  aoVivo.rolarAtributo = async (pc, rotulo, valor, fixa) => {
+       rolarAtributo  um atributo com a regra da fixa → { ok, total, die, dieValue, fixa } | { ok:false, error }.
+                      `mais`: os bônus só desta rolagem — { atr: soma no atributo antes de rolar, res: soma no resultado }
+       rolarIniciativa  1d20 + o bônus de iniciativa da ficha (e o `mais.res`, se vier). A linha leva um recado para as
+                      Cenas do mestre (sis: { t:'ini', c, v, d, b }): lá, o mestre pode anotar o valor na ordem de turnos. */
+  aoVivo.rolarAtributo = async (pc, rotulo, valor, fixa, mais) => {
     const v = Math.max(0, Math.round(Number(valor) || 0));
-    const r = D().rollFixa(v, Math.min(Math.max(0, Math.round(Number(fixa) || 0)), v));
+    const r = D().rollFixaMais(v, fixa, mais);
     if (!r.ok) return r;
-    const d = deResultado('fixa', ((pc && pc.nome ? pc.nome + ' · ' : '') + String(rotulo || '')).slice(0, 120), { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total });
+    const d = deResultado('fixa', ((pc && pc.nome ? pc.nome + ' · ' : '') + String(rotulo || '')).slice(0, 120), { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr });
     await aoVivo.rolagem(d, { quem: pc || null });
     return r;
   };
-  aoVivo.rolarIniciativa = async (pc, bonus) => {
-    const b = Math.max(-99, Math.min(99, Math.round(Number(bonus) || 0))), dado = D().randInt(20), total = dado + b;
-    const d = comDd({ k: 'iniciativa', titulo: ('Iniciativa · ' + ((pc && pc.nome) || '?')).slice(0, 120), total, resumo: '1d20 (' + dado + ')' + (b ? (b > 0 ? ' + ' : ' − ') + Math.abs(b) : ''), veredito: null, passou: null }, [[20, dado]]);
-    if (pc && pc.id) d.sis = { t: 'ini', c: String(pc.id).slice(0, 64), v: total, d: dado, b };
+  aoVivo.rolarIniciativa = async (pc, bonus, mais) => {
+    const mr = Math.max(-999, Math.min(999, Math.round(Number(mais && mais.res) || 0)));
+    const b = Math.max(-99, Math.min(99, Math.round(Number(bonus) || 0))), dado = D().randInt(20), total = dado + b + mr;
+    const d = comDd({ k: 'iniciativa', titulo: ('Iniciativa · ' + ((pc && pc.nome) || '?')).slice(0, 120), total, resumo: '1d20 (' + dado + ')' + (b ? (b > 0 ? ' + ' : ' − ') + Math.abs(b) : '') + (mr ? ' · ' + (mr > 0 ? '+' : '−') + Math.abs(mr) + ' no resultado' : ''), veredito: null, passou: null }, [[20, dado]]);
+    if (pc && pc.id) d.sis = { t: 'ini', c: String(pc.id).slice(0, 64), v: total, d: dado, b: b + mr };
     await aoVivo.rolagem(d, { quem: pc || null });
-    return { ok: true, total, d: dado, bonus: b };
+    return { ok: true, total, d: dado, bonus: b, mr };
   };
 
   /* ---- o pedido de defesa (o "ataque com defesa" das Cenas) ----
@@ -826,7 +845,8 @@
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
     } else if (origem === 'cena' && d.kind === 'atributo') {
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
-      dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total })), veredito: null, passou: null };
+      // (ma, mr: os bônus só desta rolagem — no atributo, antes de rolar, e no resultado; base: o atributo sem o bônus)
+      dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total, base: d.base, ma: d.ma, mr: d.mr })), veredito: null, passou: null };
       comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
       if (d.oculto) opt.secreta = true;
     } else if (origem === 'cena' && d.kind === 'disputa') {
@@ -1399,11 +1419,25 @@
   /* As barras de uma ficha que não chega a este aparelho: o mestre auxiliar mestrando as Cenas sem a aba Fichas, num
      token ligado a uma ficha escondida dos jogadores. Vão só o valor atual e a sobrevida, por um caminho próprio do
      banco (que confere se quem pede mestra as Cenas e só aceita as barras que a ficha tem). */
-  dados.barrasDoToken = async (id, rec, sob) => {
+  dados.barrasDoToken = async (id, rec, sob, pd) => {
     const a = mesas.atual; if (!a) return null;
-    const { data, error } = await cliente().rpc('barras_do_token', { p_mesa: a.id, p_id: String(id), p_rec: rec || {}, p_sob: sob || null });
+    // (as barras especiais — pd — só vão quando há: um banco de antes delas não conhece esse campo)
+    const args = { p_mesa: a.id, p_id: String(id), p_rec: rec || {}, p_sob: sob || null };
+    if (pd && typeof pd === 'object' && Object.keys(pd).length) args.p_pd = pd;
+    const { data, error } = await cliente().rpc('barras_do_token', args);
     if (error) throw falha(error, 'Não deu para levar as barras à ficha agora.');
     return (Array.isArray(data) ? data[0] : data) || null;
+  };
+  /* Um item da bolsa de um personagem usado em OUTRO, cuja ficha quem usa não pode gravar (a de outro jogador, um NPC à
+     mostra): a bolsa perde uma unidade e o outro recebe o efeito, juntos, por um caminho próprio do banco (que confere
+     de quem é a bolsa, se o item existe e se o outro está à vista). mudas: { rec, sob, pd, tmp } — ver usar_item_em. */
+  dados.usarItemEm = async (de, item, alvo, mudas, volta) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    // (o que esta tela ainda tem para subir dessas duas fichas vai antes: a função do banco parte do que está lá)
+    await dados.esvaziar(4000);
+    const { data, error } = await cliente().rpc('usar_item_em', { p_mesa: a.id, p_de: String(de), p_item: String(item), p_alvo: String(alvo), p_mudas: mudas || {}, p_volta: !!volta });
+    if (error) throw (semEsquemaM(error) ? new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).') : falha(error, 'Não deu para usar o item agora. Tente de novo.'));
+    return data || null;
   };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };

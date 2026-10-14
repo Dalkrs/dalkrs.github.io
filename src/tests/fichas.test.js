@@ -259,6 +259,18 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     const rapida = async prox => { await P.evaluate(v => { window.__prox = v; }, prox); await P.locator('#ficha .rolbox [data-rolar="FOR"]').click(); await w(200); return S0(() => { const u = S.personagens.find(p => p.nome === 'Dain X').ultRol; return { dado: u.dado, bruto: u.bruto, total: u.total }; }); };
     const r1 = await rapida(0), r2 = await rapida(faces - 1);
     ok(faces > 5 && r1.dado === faces && r1.bruto === 1 && r1.total === 6 && r2.bruto === faces && r2.total === faces + 5, 'rolagem rápida: o dado vai de 1 ao número de lados (' + faces + '): ' + JSON.stringify([r1, r2]));
+    // os bônus só desta rolagem: +5 no atributo (o dado ganha 5 lados) e +3 no resultado; depois, os campos voltam a zero
+    await P.locator('#rolMaisA').fill('5'); await P.locator('#rolMaisR').fill('3'); await w(150);
+    ok(await P.locator('#rolMaisA.tem').count() === 1 && await P.locator('#rolMaisR.tem').count() === 1, 'rolagem rápida: os campos de bônus com valor ficam marcados');
+    const r3 = await rapida(0);
+    const det3 = await S0(() => S.log[0].det), txt3 = await S0(() => S.personagens.find(p => p.nome === 'Dain X').ultRol.texto);
+    ok(r3.dado === faces + 5 && r3.bruto === 1 && r3.total === 1 + 5 + 3 && /\+5 no atributo \(\d+ → \d+\) · \+3 no resultado$/.test(det3) && /\+3 no resultado$/.test(txt3),
+      'com +5 no atributo e +3 no resultado: dado de ' + (faces + 5) + ' lados, total 1 + 5 + 3, e o registro diz os dois: ' + JSON.stringify(r3) + ' · ' + det3);
+    ok(await P.locator('#rolMaisA').inputValue() === '' && await P.locator('#rolMaisR').inputValue() === '' && (await rapida(0)).dado === faces, 'depois da rolagem, os bônus voltam a zero (valem só para uma)');
+    await P.locator('#rolMaisR').fill('4'); await w(150);
+    const i4 = await rolou(0);
+    ok(i4.total === 1 + i4.valor + 4 && await S0(() => /Iniciativa · 1d20 \(1\) [+−] \d+ · \+4 no resultado/.test(S.log[0].det)) && await P.locator('#rolMaisR').inputValue() === '',
+      'a iniciativa também soma o +resultado (e ele volta a zero): ' + JSON.stringify(i4) + ' · ' + await S0(() => S.log[0].det));
     // os dados livres, pela mesma função
     ok(await S0(() => { window.__prox = 0; const a = rolarExpressao('1d6').total; window.__prox = 5; const b = rolarExpressao('1d6').total; window.__prox = 99; const c = rolarExpressao('1d100').total; return a === 1 && b === 6 && c === 100; }), 'dados livres: 1d6 vai de 1 a 6 e 1d100 chega a 100');
     await P.evaluate(() => { delete window.crypto.getRandomValues; });

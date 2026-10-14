@@ -544,6 +544,7 @@ const Nuvem = (() => {
                conta do jogador anda do mesmo jeito. */
             try {
               if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
+              if (ehObj(op) && op.t === 'item') { Fichas.usoPedido(quem, op, sc); continue; }      // um item da bolsa dele, num token (lote 5)
               const v = Proj.validar(op, quem, sc);         // contra a cena como está agora: as anteriores do lote já valeram
               if (!v || !Store.remoteIn(sc.id, [v])) continue;
               // token ligado a uma ficha, numa cena que o mestre não tem aberta: a ficha acompanha mesmo assim
@@ -706,7 +707,7 @@ const Nuvem = (() => {
     const alvo = Proj.juntar(a.m, a.v);
     alvo.id = a.m.id;
     normalizeScene(alvo);
-    for (const b of caixa) Proj.aplicarEm(alvo, b.ops.filter(op => op.t !== 'ping'));
+    for (const b of caixa) Proj.aplicarEm(alvo, b.ops.filter(op => op.t !== 'ping' && op.t !== 'item'));
     registrarImgs(a.m.imgs); registrarImgs(a.v.imgs);
     const aqui = Store.scene(), seqAntes = aqui.expSeq || 0;
     const ops = Proj.diferenca(aqui, alvo);
@@ -797,6 +798,13 @@ const Nuvem = (() => {
     if (modo !== 'mestre' || (!idx.noAr && !D.pegar(PUB_M) && !D.pegar(PUB_V))) return false;
     idx.noAr = null; idx.tx = null; arSujo = true; despublicar(); metaSuja = true; agendar();
     Store.meta();
+    return true;
+  }
+  /* O jogador usa um item da bolsa do personagem dele num token: o mestre (o aparelho que transmite) confere e aplica.
+     op = { t: 'item', de: personagem, item, alvo: token, rol: os dados rolados de cada efeito }. */
+  function usarItem(op) {
+    if (modo !== 'jogador' || vazia || !ehObj(op)) return false;
+    pedir([{ t: 'item', de: String(op.de || ''), item: String(op.item || ''), alvo: String(op.alvo || ''), rol: Array.isArray(op.rol) ? op.rol.slice(0, 8).map(v => (typeof v === 'number' && isFinite(v) ? v : null)) : [] }]);
     return true;
   }
   function ping(x, y) {
@@ -919,7 +927,7 @@ const Nuvem = (() => {
     iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
-    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, semCena: () => vazia,
+    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),

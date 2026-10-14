@@ -301,6 +301,29 @@
     return { ok: true, atributo: v.atributo, fixa: v.fixa, die: v.die, dieValue, total: dieValue + v.fixa };
   }
 
+  /* A fixa com os bônus "só desta rolagem" (lote 5). `mais.atr` soma no atributo ANTES de rolar — muda o dado: atributo
+     40 com +5, fixando 15, rola 1d30 + 15 — e `mais.res` soma no resultado, depois. Os dois podem ser negativos (até
+     ±999); a fixa nunca passa do atributo com o bônus.
+     → o de rollFixa (o atributo já com o bônus), mais { base: o atributo sem o bônus, ma, mr }, e o total com o mr. */
+  const bonusMais = v => { const n = Math.round(Number(v) || 0); return Math.max(-999, Math.min(999, n)); };
+  function rollFixaMais(atributo, fixa, mais) {
+    const ma = bonusMais(mais && mais.atr), mr = bonusMais(mais && mais.res);
+    const base = Math.round(Number(atributo) || 0), a = Math.max(0, base + ma);
+    const r = rollFixa(a, Math.min(Math.max(0, Math.round(Number(fixa) || 0)), a));
+    if (!r.ok) return r;
+    return Object.assign({}, r, { base, ma, mr, total: r.total + mr });
+  }
+  /* O que os bônus desta rolagem fizeram, para juntar ao resumo: " · +5 no atributo (40 → 45) · +3 no resultado"
+     ('' sem bônus). Aceita a rolagem (com ma, mr e base) ou o registro dela. */
+  function maisTexto(e) {
+    if (!e || typeof e !== 'object') return '';
+    const ma = bonusMais(e.ma), mr = bonusMais(e.mr), p = [];
+    const sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
+    if (ma) p.push(sinal(ma) + ' no atributo' + (Number.isFinite(Number(e.base)) && e.atributo != null ? ' (' + e.base + ' → ' + e.atributo + ')' : ''));
+    if (mr) p.push(sinal(mr) + ' no resultado');
+    return p.length ? ' · ' + p.join(' · ') : '';
+  }
+
   /* ================= tabela ================= */
   /* Sorteia um item. Aceita a lista de itens, o texto com um item por linha ou a tabela { name, text }. */
   function rollTable(itemsOrText) {
@@ -378,7 +401,7 @@
     if (!e || typeof e !== 'object') return '';
     if (e.type === 'sep') return typeof e.text === 'string' ? e.text : '';
     const mode = e.mode || (Array.isArray(e.sides) ? 'duelo' : Array.isArray(e.terms) ? 'dados' : e.atributo != null ? 'fixa' : e.itemText != null ? 'tabela' : '');
-    if (mode === 'fixa') return e.total + ' · ' + fixaComp(e.atributo, e.fixa, e.dieValue);
+    if (mode === 'fixa') return e.total + ' · ' + fixaComp(e.atributo, e.fixa, e.dieValue) + maisTexto(e);
     if (mode === 'dados') return Array.isArray(e.terms) ? e.total + ' · ' + (e.expr || displayTerms(e.terms)) + ' → ' + rollsLine(e.terms, full) : '';
     if (mode === 'tabela') return (e.tableName ? e.tableName + ' → ' : '') + e.itemText + ' (' + e.itemIndex + ' de ' + e.itemCount + ')';
     if (mode === 'duelo' && hasRounds(e) && e.rounds.length) {
@@ -661,7 +684,7 @@
     // dados livres
     tokenizeDice, parseDice, displayTerms, compactTerms, bareTerms, rollTerms, rollExpr,
     // fixa
-    readInt, validateFixa, rollFixa,
+    readInt, validateFixa, rollFixa, rollFixaMais, maisTexto,
     // tabela
     tableItems, rollTable,
     // comparação

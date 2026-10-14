@@ -204,7 +204,7 @@
   /* A conta de um descanso, sem mudar nada.
        tipo        'longo' | 'curto'
        pessoas     [{ id, nome, grupo?, recursos: [{ id, nome, max, atual, min?, inicio? }], san, conf (número ou null = a ficha
-                      não usa), poderes: [{ id, nome, atual, max }] }] — só quem vai descansar
+                      não usa), poderes: [{ id, nome, atual, max }] (as barras especiais) }] — só quem vai descansar
        opt         { servir: id | null (a provisão servida neste descanso; sem vir, a do descanso), prov: rações por pessoa
                      neste descanso (sem vir, a da regra) }
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.

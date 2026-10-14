@@ -91,18 +91,24 @@ const Luta = (() => {
     abrirPop(t);
   }
   function lerFixaDoPop() { return clamp(int(pop.fx.value, 0), 0, 99999); }
+  // os bônus "só nesta rolagem": no atributo (antes de rolar: muda o dado) e no resultado. Voltam a zero depois de rolar.
+  const lerMaisDoPop = () => ({ atr: clamp(int(pop.ma.value, 0), -999, 999), res: clamp(int(pop.mr.value, 0), -999, 999) });
+  const sinalN = n => (n < 0 ? '−' : '+') + Math.abs(n);
+  const maisDet = r => (r.ma ? ' · ' + sinalN(r.ma) + ' no atributo' : '') + (r.mr ? ' · ' + sinalN(r.mr) + ' no resultado' : '');
   function rolarDoPop(k) {
     const t = pop ? Store.get('tokens', pop.tokId) : null;
     if (!t) { fecharPop(); return; }
-    const fixa = lerFixaDoPop();
+    const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     let r, nome;
     if (k === '@valor') {
       const v = clamp(int(pop.valor.value, 0), 0, 100000);
       valorMem.set(t.id, v);
-      r = Combate.rolarFixa(v, fixa); nome = 'Valor ' + v;
-      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total }); } catch (e) { console.error(e); } }
-    } else { r = Fichas.rolar(t, k, fixa); nome = r.nome || k; }
-    pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) } : { ok: false, txt: r.error };
+      r = Combate.rolarFixa(v + mais.atr, fixa); nome = 'Valor ' + v;
+      if (r.ok) r = Object.assign({}, r, { base: v, ma: mais.atr, mr: mais.res, total: r.total + mais.res });
+      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
+    } else { r = Fichas.rolar(t, k, fixa, mais); nome = r.nome || k; }
+    pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) + maisDet(r) } : { ok: false, txt: r.error };
+    if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; }
     pintarPop();
   }
   function pintarPop() {
@@ -112,11 +118,13 @@ const Luta = (() => {
     const a = document.activeElement, fid = a && a.id && pop.el.contains(a) ? a.id : null;
     pop.nome.textContent = tokName(t);
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
-    const fixa = lerFixaDoPop();
-    const como = v => (v < 1 ? 'nada a rolar' : fixa >= v ? 'fixa total: ' + v : '1d' + (v - fixa) + (fixa ? ' + ' + fixa : ''));
+    const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
+    pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
+    const com = v => Math.max(0, v + mais.atr), res = mais.res ? ' ' + sinalN(mais.res).replace(/^([+−])/, '$1 ') : '';
+    const como = v0 => { const v = com(v0), f = Math.min(fixa, v); return v < 1 ? 'nada a rolar' : f >= v ? 'fixa total: ' + v + res : '1d' + (v - f) + (f ? ' + ' + f : '') + res; };
     if (modo === 'ficha') {
       pop.grid.className = 'pop-g';
-      pop.grid.replaceChildren(...Fichas.rolaveis(t).map(([k, nome, v]) => h('button', { type: 'button', class: 'pop-b', id: 'fp-' + k, 'data-k': k, disabled: v < 1, title: `${nome} ${v}: ${como(v)}`, 'aria-label': `Rolar ${nome}, ${v}: ${como(v)}`, onclick: () => rolarDoPop(k) },
+      pop.grid.replaceChildren(...Fichas.rolaveis(t).map(([k, nome, v]) => h('button', { type: 'button', class: 'pop-b', id: 'fp-' + k, 'data-k': k, disabled: com(v) < 1, title: `${nome} ${v}: ${como(v)}`, 'aria-label': `Rolar ${nome}, ${v}: ${como(v)}`, onclick: () => rolarDoPop(k) },
         h('small', { text: rot(k) }), h('b', { text: String(v) }))));
     } else {
       // (o campo do valor é feito uma vez só: redesenhar tiraria o foco de quem está digitando)
@@ -128,13 +136,13 @@ const Luta = (() => {
       }
       const v = clamp(int(pop.valor.value, 0), 0, 100000);
       const b = pop.grid.querySelector('#fp-rolar');
-      b.title = 'Rola ' + como(v); b.disabled = v < 1;
+      b.title = 'Rola ' + como(v); b.disabled = com(v) < 1;
     }
     const r = pop.res;
     pop.out.hidden = !r;
     pop.out.className = 'pop-r' + (r && !r.ok ? ' erro' : '');
     pop.out.replaceChildren(...(r ? (r.ok ? [h('b', { class: 'pop-tot', id: 'fp-total', text: String(r.total) }), h('span', { text: r.txt }), h('small', { text: r.det })] : [h('span', { text: r.txt })]) : []));
-    if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
+    if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
   }
   function abrirPop(t) {
     fecharPop(); UI.closeMenus();
@@ -142,11 +150,19 @@ const Luta = (() => {
       oninput: () => { const cur = pop && Store.get('tokens', pop.tokId); if (cur) { guardarFixa(cur, fx.value); pintarPop(); } },
       onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); fx.blur(); pop.el.focus({ preventScroll: true }); } } });
     const nome = h('strong', { class: 'pop-n' }), grid = h('div', { class: 'pop-g' }), out = h('div', { class: 'pop-r', id: 'fp-res', role: 'status', hidden: true });
+    // os bônus só desta rolagem (vazios; voltam a ficar vazios depois de rolar)
+    const campoMais = (id, rotulo, dica) => h('input', { id, type: 'number', class: 'in num', min: -999, max: 999, step: 1, placeholder: '0', 'aria-label': rotulo, title: dica,
+      oninput: () => pintarPop(), onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); pop.el.focus({ preventScroll: true }); } } });
+    const ma = campoMais('fp-ma', 'Bônus no atributo, só nesta rolagem', 'Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)');
+    const mr = campoMais('fp-mr', 'Bônus no resultado, só nesta rolagem', 'Soma no resultado, depois de rolar');
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
-      h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx), grid, out);
+      h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
+      h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
+        h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
+      grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -284,7 +300,9 @@ const Luta = (() => {
     const porId = new Map(lista.map(x => [x.id, x]));
     const doConjunto = () => conjuntos.find(c => c.id === st.cj).ids.map(id => porId.get(id));
     const marcarTodos = on => { st.marcados = new Set(on ? doConjunto().filter(x => !x.aqui).map(x => x.id) : []); };
-    marcarTodos(true);
+    // de começo (e ao trocar o conjunto), só os personagens ativos vêm marcados; "Todos" marca também os outros
+    const marcarAtivos = () => { st.marcados = new Set(doConjunto().filter(x => !x.aqui && x.ativo).map(x => x.id)); };
+    marcarAtivos();
     const ul = h('ul', { class: 'area-list', id: 'gr-lista' }), conta = h('span', { class: 'area-count', id: 'gr-conta' });
     const paint = () => {
       const a = document.activeElement, fid = a && a.id && ul.contains(a) ? a.id : null;
@@ -292,7 +310,7 @@ const Luta = (() => {
       conta.textContent = livres ? `${st.marcados.size} de ${livres} marcados` : 'Todos já estão nesta cena';
       ul.replaceChildren(...itens.map((x, k) => {
         const l = Fichas.get(x.id), img = l ? Fichas.imagemDe(l) : null, on = st.marcados.has(x.id);
-        const sub = (x.dono ? 'de ' + x.dono.name : 'NPC') + (x.grupo ? ' · ' + x.grupo : '');
+        const sub = (x.dono ? 'de ' + x.dono.name : 'NPC') + (x.grupo ? ' · ' + x.grupo : '') + (x.ativo ? '' : ' · inativo');
         return h('li', { class: 'area-row' + (on ? '' : ' off') },
           h('label', { class: 'area-who' },
             h('input', { type: 'checkbox', class: 'ck', id: `gr-on-${k}`, checked: on, disabled: x.aqui, 'aria-label': 'Trazer ' + x.nome, onchange: e => { if (e.target.checked) st.marcados.add(x.id); else st.marcados.delete(x.id); paint(); } }),
@@ -303,16 +321,16 @@ const Luta = (() => {
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     };
     paint();
-    const sel = inSelect('gr-cj', st.cj, conjuntos.map(c => [c.id, `${c.n} (${c.ids.length})`]), v => { st.cj = v; App.opt.grupoCj = v; marcarTodos(true); paint(); });
+    const sel = inSelect('gr-cj', st.cj, conjuntos.map(c => [c.id, `${c.n} (${c.ids.length})`]), v => { st.cj = v; App.opt.grupoCj = v; marcarAtivos(); paint(); });
     UI.modal({
       title: 'Puxar o grupo', wide: true, focusPrimary: true,
       text: 'Cria um token para cada personagem marcado, já ligado à ficha dele: nome, barras, iniciativa, imagem e dono.',
       body: h('div', { class: 'area' },
         field('De onde', sel, 'stack'),
-        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Todos', () => { marcarTodos(true); paint(); }, { kind: 'small' }), btn('Nenhum', () => { marcarTodos(false); paint(); }, { kind: 'small' })),
+        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Só os ativos', () => { marcarAtivos(); paint(); }, { kind: 'small', id: 'gr-ativos', title: 'Marca só os personagens ativos (na ficha, o mestre diz quem é ativo)' }), btn('Todos', () => { marcarTodos(true); paint(); }, { kind: 'small', id: 'gr-todos' }), btn('Nenhum', () => { marcarTodos(false); paint(); }, { kind: 'small', id: 'gr-nenhum' })),
         ul,
         toggle('gr-oculto', st.oculto, v => { st.oculto = v; }, 'Criar ocultos dos jogadores'),
-        note('Os tokens entram em quadrados livres, a partir ' + (onde ? 'do ponto clicado' : 'do meio da tela') + '. Quem já tem token nesta cena fica de fora. Um Desfazer tira todos de uma vez.')),
+        note('Vêm marcados só os personagens ativos (na ficha, o mestre desmarca “Personagem ativo” de quem fica de fora, como os suportes). Os tokens entram em quadrados livres, a partir ' + (onde ? 'do ponto clicado' : 'do meio da tela') + '. Quem já tem token nesta cena fica de fora. Um Desfazer tira todos de uma vez.')),
       actions: [{ label: 'Cancelar' }, {
         label: 'Trazer', kind: 'primary', run: () => {
           const ids = doConjunto().filter(x => !x.aqui && st.marcados.has(x.id)).map(x => x.id);

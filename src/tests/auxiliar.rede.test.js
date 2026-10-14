@@ -313,16 +313,16 @@ const { ok, end } = checker();
     // ---------- o menu do mestre ----------
     await menu(TM);
     const linhas0 = await TM.evaluate(() => [...document.querySelectorAll('#membros .mb')].map(l => ({ nome: l.querySelector('span').textContent, papel: l.querySelector('small').textContent, botoes: [...l.querySelectorAll('button')].map(b => b.textContent).join('|') })));
-    ok(linhas0.length === 3 && linhas0[0].papel === 'mestre' && linhas0[0].botoes === '' && linhas0[1].botoes === 'Papel…|Tirar' && linhas0[2].botoes === 'Papel…|Tirar', 'no menu do mestre, cada jogador tem "Papel…" e "Tirar"; o próprio mestre, nada — ' + JSON.stringify(linhas0));
-    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Papel' }).click(); await w(350);
+    ok(linhas0.length === 3 && linhas0[0].papel === 'mestre' && linhas0[0].botoes === '' && linhas0[1].botoes === 'Permissões…|Tirar' && linhas0[2].botoes === 'Permissões…|Tirar', 'no menu do mestre, cada jogador tem "Permissões…" e "Tirar"; o próprio mestre, nada — ' + JSON.stringify(linhas0));
+    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     const jan0 = await TM.evaluate(() => ({ titulo: document.querySelector('#f-papel h2').textContent, jog: document.getElementById('pp-jog').checked, aux: document.getElementById('pp-aux').checked, travado: document.getElementById('pp-abas').disabled, marcadas: [...document.querySelectorAll('#pp-abas input')].filter(x => x.checked).length }));
-    ok(jan0.titulo === 'Papel de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 6, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
+    ok(jan0.titulo === 'Permissões de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 6, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
     await TM.locator('#pp-aux').check(); await w(150);
     ok(await TM.evaluate(() => !document.getElementById('pp-abas').disabled), 'ao escolher "Mestre auxiliar", as abas destravam');
     await TM.locator('dialog .btn', { hasText: 'Cancelar' }).click(); await w(300);
     ok(await TM.evaluate(() => TC.mesas.atual.membros.every(m => m.cargo !== 'auxiliar')), 'Cancelar não muda nada');
     await menu(TM);
-    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Papel' }).click(); await w(350);
+    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     await TM.locator('#pp-aux').check(); await TM.locator('#pp-rolador').uncheck(); await TM.locator('#pp-fichas').uncheck(); await w(150);
     await TM.locator('#pp-ok').click();
     ok(await ate(async () => /Dalmo agora é mestre auxiliar\./.test(await avisos(TM))), 'salvar avisa: "' + await avisos(TM) + '"');
@@ -443,7 +443,7 @@ const { ok, end } = checker();
     // ---------- o mestre muda as abas; o aviso tem Desfazer ----------
     await w(9000);                                         // (os avisos antigos saem da tela)
     await menu(TM);
-    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Papel' }).click(); await w(350);
+    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     const jan1 = await TM.evaluate(() => ({ aux: document.getElementById('pp-aux').checked, marcadas: [...document.querySelectorAll('#pp-abas input')].filter(x => x.checked).map(x => x.id.slice(3)).join(',') }));
     ok(jan1.aux && jan1.marcadas === 'cenas,mundo,acampamento,arvore', 'a janela abre com o que ele é hoje: auxiliar, com as quatro abas — ' + JSON.stringify(jan1));
     await TM.locator('#pp-rolador').check(); await TM.locator('#pp-fichas').check(); await w(150);
@@ -470,7 +470,7 @@ const { ok, end } = checker();
     // ---------- de volta a jogador ----------
     await w(9000);
     await menu(TM);
-    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Papel' }).click(); await w(350);
+    await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     await TM.locator('#pp-jog').check(); await w(150);
     ok(await TM.evaluate(() => document.getElementById('pp-abas').disabled), '(voltando a "Jogador", as abas travam)');
     await TM.locator('#pp-ok').click();

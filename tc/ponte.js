@@ -2,7 +2,9 @@
    A casca cuida da conta, da mesa e do banco; o sistema fala com ela por aqui:
      TC.ponte.estado / aoMudar   — qual mesa está aberta, o papel de quem usa, quem participa
      TC.ponte.mestra(aba)        — quem usa mestra essa aba? (o mestre, todas; o auxiliar, as que o mestre liberou)
-     TC.ponte.barrasDaFicha(id, rec, sob) — leva à ficha as barras de um token cuja ficha não chega a quem mexeu
+     TC.ponte.barrasDaFicha(id, rec, sob, pd) — leva à ficha as barras de um token cuja ficha não chega a quem mexeu
+     TC.ponte.usarItemEm(o)      — promessa: um item da bolsa de um personagem usado em outro, cuja ficha quem usa não grava
+                                   (o = { de, item, alvo, mudas, volta }); a casca manda por um caminho próprio do banco
      TC.ponte.estado.campanha    — a campanha em vista: { id, nome, encerrada } | null (mesa sem campanhas, ou a pessoa em nenhuma)
      TC.ponte.porCampanha(itens, campDe) — "campanha em evidência": os itens agrupados, os da campanha em vista primeiro
      TC.ponte.incluirNaCampanha(o) — pede à casca que pergunte ao mestre se inclui alguém numa campanha
@@ -71,8 +73,16 @@
     publicar(origem, dados) { enviar({ t: 'rolagem', origem, dados }); },
     /* O valor atual (rec) e a sobrevida (sob) das barras de uma ficha, por id da barra — para quem mestra as Cenas sem
        receber a ficha (escondida dos jogadores, e ele sem a aba Fichas). A casca manda por um caminho próprio do banco. */
-    barrasDaFicha(id, rec, sob) { if (!naCasca || !ponte.estado.mesa) return false; enviar({ t: 'ficha.barras', id, rec: rec || {}, sob: sob || null, mesa: ponte.estado.mesa.id }); return true; },
+    barrasDaFicha(id, rec, sob, pd) { if (!naCasca || !ponte.estado.mesa) return false; enviar({ t: 'ficha.barras', id, rec: rec || {}, sob: sob || null, pd: pd || null, mesa: ponte.estado.mesa.id }); return true; },
     ir(aba, alvo) { if (!naCasca) return false; enviar({ t: 'ir', aba, alvo: alvo || null }); return true; },
+    usarItemEm(o) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('Usar um item em outro personagem só funciona dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'item.usar', n, mesa: ponte.estado.mesa.id, de: o.de, item: o.item, alvo: o.alvo, mudas: o.mudas || {}, volta: !!o.volta });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
     aoIr(fn) { ouvintesIr.push(fn); if (alvoGuardado) { const a = alvoGuardado; alvoGuardado = null; try { fn(a); } catch (e) { console.error(e); } } },
     aoMudar(fn) { ouvintes.push(fn); try { fn(ponte.estado); } catch (e) { console.error(e); } },
     aoFechar(fn) { ouvintesFechar.push(fn); },
@@ -187,6 +197,11 @@
     if ((m.t === 'registro.tudo' || m.t === 'registro.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'registro.tudo') e.ok(Array.isArray(m.linhas) ? m.linhas : []); else e.falha(new Error(m.erro || 'Não deu para ler as rolagens da mesa.'));
+      return;
+    }
+    if ((m.t === 'item.ok' || m.t === 'item.erro') && esperas[m.n]) {
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {

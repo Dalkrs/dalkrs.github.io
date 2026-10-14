@@ -170,12 +170,14 @@ const Combate = (() => {
     return out;
   }
   /* Os personagens da mesa, para a janela "Puxar o grupo": cada um com o dono (jogador da mesa ou null), o grupo
-     da ficha e se já tem token nesta cena. */
+     da ficha, se já tem token nesta cena e se é um personagem ativo (o mestre marca na ficha; quem não é — um suporte
+     que fica no acampamento, por exemplo — vem desmarcado). */
   function elenco(sc) {
     const naCena = new Set(sc.tokens.map(t => t.char).filter(Boolean));
     return Fichas.chars().filter(l => l.ficha != null).map(l => {
       const dono = Fichas.donoDe(l);
-      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id), camp: Fichas.campDa(l) || '' };      // (camp: a campanha da ficha; '' = do mundo)
+      return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id), camp: Fichas.campDa(l) || '',      // (camp: a campanha da ficha; '' = do mundo)
+        ativo: !(l.estado && l.estado.ativo === false) };
     });
   }
   /* Cria, num passo só de desfazer, um token para cada personagem pedido (os que já têm token nesta cena ficam de

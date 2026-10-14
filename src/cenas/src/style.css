@@ -543,6 +543,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 /* a bolsa do personagem, aberta pelo token */
 .bag { display: flex; flex-direction: column; gap: 14px; max-height: min(60vh, 520px); overflow: auto; padding-right: 2px; }
 .bag-g { display: flex; flex-direction: column; gap: 6px; }
+.bag-em { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.bag-em .field { margin: 0; }
 .bag-h { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
 .bag-r { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
 .bag-r.sem .bag-n, .bag-r.sem .bag-q { color: var(--fg-3); }
@@ -644,6 +646,12 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .pop-f, .pop-v { display: flex; align-items: center; gap: 8px; }
 .pop-f .in.num, .pop-v .in.num { width: 76px; flex: none; }
 .pop-l { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
+/* os bônus só desta rolagem: uma linha baixa, discreta; o campo com valor ganha a borda acesa */
+.pop-m { display: flex; align-items: center; gap: 5px; }
+.pop-m > .pop-l:first-child { margin-right: auto; color: var(--fg-3); font-size: 11.5px; }
+.pop-m .pop-l { font-size: 11.5px; }
+.pop-m .in.num { width: 46px; flex: none; padding-left: 4px; padding-right: 4px; }
+.pop-m .in.num.tem { border-color: var(--lamp); }
 .pop-c { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .pop-c .chip { padding: 2px 8px; font: 600 12px var(--mono); }
 .pop-g { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }

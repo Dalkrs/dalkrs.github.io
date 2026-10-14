@@ -20,7 +20,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - **Mestre e jogadores.** A mesa tem um mestre e jogadores que entram com o código de convite. O banco só entrega a
   cada um o que ele pode ver: o jogador vê a própria ficha (e as que o mestre liberar), a cena que o mestre pôs no
   ar (sem o que é só do mestre), o mapa-múndi revelado e o acampamento. O Rolador, numa mesa, é só do mestre.
-- **Mestre auxiliar.** No menu da mesa, o mestre pode dar a um jogador o papel de mestre auxiliar ("Papel…") e
+- **Mestre auxiliar.** No menu da mesa, o mestre pode dar a um jogador o papel de mestre auxiliar ("Permissões…") e
   escolher as abas que ele mestra. O auxiliar mestra junto — cenas, fichas, mapa, acampamento, mesa ao vivo —, mas
   não administra a mesa: não tira ninguém, não vê nem troca o código de convite, não renomeia nem apaga a mesa e não
   nomeia outros auxiliares. Numa aba que o mestre não liberou ele vê o que os jogadores veem (o Rolador some). E
@@ -39,7 +39,9 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   **telinha de dados** (rolar um atributo com fixa, ou a iniciativa, pela ficha, sem digitar comando — o jogador
   pelos personagens dele, o mestre por qualquer um) e as duas chaves de **som** e **efeito** das rolagens, que cada
   pessoa liga ou desliga no próprio aparelho. Quando o mestre pede (num ataque com defesa), é ali que o jogador rola
-  a defesa do personagem dele.
+  a defesa do personagem dele. Na mesma janela "Permissões…" do menu da mesa, o mestre pode **fechar a mesa ao vivo
+  para um jogador** por um tempo: até liberar, ele só vê as próprias rolagens e mensagens (que continuam chegando à
+  mesa) e um aviso no lugar da conversa. Ver "Fichas, poções e rolagens (lote 5)".
 
 ## Como está organizado
 
@@ -59,7 +61,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 ### Como os dados da mesa ficam no banco
 
 - `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa. Em `mesa_membros`, `papel` é `mestre`,
-  `auxiliar` ou `jogador`; o auxiliar tem ainda `jogando` (está jogando como jogador) e `abas` (as que ele mestra).
+  `auxiliar` ou `jogador`; o auxiliar tem ainda `jogando` (está jogando como jogador) e `abas` (as que ele mestra);
+  `sem_vivo` diz que o mestre fechou a mesa ao vivo para essa pessoa (só muda por `vivo_do_jogador`).
 - `campanhas` e `campanha_membros`: as campanhas da mesa (nome, ordem, encerrada) e quem participa de cada uma. De
   que campanha é cada coisa fica na linha dela: `personagens.campanha` e `registro.campanha` (uma, ou nenhuma) e
   `documentos.campanhas` (uma lista: um mapa pode ser de mais de uma). Sem campanha = do mundo. `mesas.campanhas`
@@ -69,8 +72,10 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
   `alocados`) e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a sobrevida em `sob`, as
   quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade e Conforto, os
-  relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis`, o XP em `xp` e a emoção — a
-  aura no Acampamento — em `emo`).
+  relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis`, o XP em `xp`, a emoção — a
+  aura no Acampamento — em `emo` e o valor de agora das barras especiais em `pd`). As marcas que só o mestre põe
+  também moram no `estado`, para o que o jogador grava na ficha não desfazê-las: `ativo: false` (fora do grupo ativo)
+  e `ferTrava` (o cadeado dos ferimentos).
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
   - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem) e `mundo:indice` (os nomes
     dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado).
@@ -250,6 +255,42 @@ na cena passa por um botão e vira um passo de desfazer.
 
 A casca avisa os sistemas da versão da conversa com ela (`TC.ponte.estado.v`): uma aba das Cenas aberta numa casca
 que ainda não foi recarregada depois desta atualização avisa que a disputa não chegou à mesa, em vez de calar.
+
+### Fichas, poções e rolagens (lote 5)
+
+- **Bloqueio.** Uma terceira defesa (`BLQ`, "BLOQ"), ao lado da física e da mágica: na ficha, nos bônus dos itens e
+  da Árvore, na telinha de dados e no F das Cenas. Ficha antiga ganha `BLQ: 0` ao ser aberta, sem regravar o resto.
+- **Barras especiais** (os antigos "poderes divinos", agora com o nome que o mestre quiser: cargas, usos…). A lista
+  — nome e limite — fica na ficha (`ficha.poderes`); o valor de agora, no estado (`estado.pd: { id: n }`; sem nada
+  ali, vale o `atual` antigo da lista). Ligado à ficha, o token mostra cada uma em bolinhas, e mexer nelas pelo token
+  grava na ficha — "às cegas" quando quem mestra não vê a ficha (`barras_do_token`, com `p_pd`). O descanso do
+  Acampamento as enche. "Encher todas" e o "×" de cada uma têm Desfazer.
+- **Poções com vários efeitos** (até 8, em `item.fx`): mexer numa barra (ou numa barra especial: `rec: "pd:<id>"`),
+  dar sobrevida (fica a maior), dar um bônus (até o próximo descanso, por rodadas ou com uma anotação) e pôr uma
+  condição no token de quem recebe (só pela cena). A poção de antes (`rec`/`val` e `bk`/`bv`/`bd` soltos no item) é
+  lida como a lista equivalente (`efeitosDoItem`). As contas são de `TC.rules.usarItem`; a prévia, de `previaDoUso`;
+  o texto, de `textoDoUso`.
+- **Em outra pessoa.** "Usar" pergunta em quem. Em outro personagem, a barra é achada **pelo nome** (o "HP" da poção
+  mexe no "HP" de quem bebe). Pela ficha, o mestre grava as duas fichas direto; o jogador, que não grava a ficha do
+  outro, passa por `usar_item_em`: o banco confere de quem é a bolsa, se o item existe e ainda tem, se o outro está à
+  vista de quem usa e a forma de cada mudança, e grava as duas juntas (com o caminho de volta, para o Desfazer). Pela
+  cena, o jogador manda um pedido (`{ t: 'item', de, item, alvo, rol }`) e o programa do mestre confere tudo antes de
+  aplicar — a ficha é dele, o item tem, o token está à vista e cada dado rolado cabe no efeito (`faixaDoEfeito`:
+  "2d6+3" dá de 5 a 15). Num token sem ficha, as barras dele fazem papel de ficha e o bônus não vale. A mesa ao vivo
+  não fica sabendo da vida de quem recebe quando quem usa não é o dono dele: "HP +30", não "HP 20 → 50".
+- **Bônus só nesta rolagem.** Na rolagem rápida da ficha, na telinha de dados e no F das Cenas: "+ atributo" soma no
+  atributo **antes** de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15) e "+ resultado" soma no
+  total (vale também para a iniciativa). Voltam a zero depois da rolagem que os usou. A linha da mesa ao vivo guarda
+  `base`, `ma` e `mr` e diz os dois (`TC.dice.rollFixaMais`, `TC.dice.maisTexto`).
+- **Personagem ativo** (só o mestre marca, na ficha): quem está fora do grupo ativo — um suporte que fica no
+  acampamento — vem desmarcado em "Puxar o grupo", nas Cenas ("Só os ativos", "Todos" e "Nenhum" trocam a marcação).
+- **O cadeado dos ferimentos**: travado, só o mestre põe, edita e tira ferimentos da ficha; o jogador vê "travado pelo
+  mestre".
+- **Relacionamentos de uma vez**: "Esconder tudo" (na hora, com Desfazer) e "Revelar tudo" (pergunta antes; o
+  Desfazer devolve cada linha escondida do jeito que estava).
+- **A mesa ao vivo fechada para um jogador** (`mesa_membros.sem_vivo`, que só o mestre da mesa muda, por
+  `vivo_do_jogador`): a regra de leitura do `registro` passa a entregar a essa pessoa só as linhas dela. Fechar e
+  abrir avisam o aparelho dela, que lê a conversa de novo (fechada, só as dela; aberta, tudo).
 
 ### O mapa-múndi: a grade, o terreno e a viagem
 
@@ -564,7 +605,10 @@ quem organiza, o que cada um recebe, a primeira campanha levando o que a mesa ti
 tela, com o mestre e dois jogadores, da criação da primeira campanha até o jogador que fica sem nenhuma — `SO=banco`
 ou `SO=tela` roda só uma das partes) e `campanhas-sistemas.rede` (uma mesa com duas campanhas, sistema por sistema:
 as cenas e a que está no ar, os mapas, as missões do grupo, a ficha nova e a que muda de campanha, a roda do
-acampamento, a campanha encerrada, a Árvore, "falar como" e limpar a mesa ao vivo). `vivo.js` confere o site
+acampamento, a campanha encerrada, a Árvore, "falar como" e limpar a mesa ao vivo) e `lote5.rede` (com o mestre e
+duas jogadoras: as barras especiais no token, o cadeado dos ferimentos, os relacionamentos de uma vez, o personagem
+ativo, a poção em outra personagem pelo banco — e a recusa quando a bolsa não é de quem pede —, a poção num token sem
+ficha pela cena no ar, os bônus da telinha e a mesa ao vivo fechada e aberta de novo). `vivo.js` confere o site
 publicado.
 
 Todo teste que abre o site no navegador também fica de olho em **texto solto** na tela — "null", "undefined", "NaN"

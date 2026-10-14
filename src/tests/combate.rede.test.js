@@ -62,7 +62,7 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
     P.gravar('pc_selene', Object.assign({}, base, { nome: 'Selene', ficha: fs[0], dono_id: uid, vis: 'mesa', ordem: 0 }));
     P.gravar('pc_gob', Object.assign({}, base, { nome: 'Goblin batedor', ficha: fs[1], dono_id: null, vis: 'mestre', ordem: 1 }));
     P.gravar('pc_orc', Object.assign({}, base, { nome: 'Orc bruto', ficha: fs[2], dono_id: null, vis: 'mestre', ordem: 2 }));
-    P.gravar('pc_lobo', Object.assign({}, base, { nome: 'Lobo', ficha: fs[3], dono_id: null, vis: 'mesa', ordem: 3 }));      // (ficha do mestre que a mesa toda vê)
+    P.gravar('pc_lobo', Object.assign({}, base, { nome: 'Lobo', ficha: fs[3], dono_id: null, vis: 'mesa', ordem: 3, estado: { ativo: false } }));      // (ficha do mestre que a mesa toda vê; fora do grupo ativo)
   }, [[selene, goblin, orc, lobo], jogId]);
   ok(await ate(() => parado(M)), '(as fichas sobem para a mesa)');
   await M.locator('#tab-cenas').click();
@@ -101,7 +101,12 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   await C.evaluate(() => __tc.setSel([])); await w(250);
   await C.locator('#sel-grupo').click(); await w(300);
   await C.locator('#gr-cj').selectOption('@todos'); await w(250);
-  ok(await C.locator('#gr-lista input:disabled').count() === 3 && (await C.locator('#gr-conta').innerText()) === '1 de 1 marcados' && (await C.locator('#gr-lista').innerText()).split('já está na cena').length === 4, 'quem já tem token nesta cena aparece travado ("já está na cena"); só o Lobo pode vir');
+  ok(await C.locator('#gr-lista input:disabled').count() === 3 && (await C.locator('#gr-conta').innerText()) === '0 de 1 marcados' && (await C.locator('#gr-lista').innerText()).split('já está na cena').length === 4 && (await C.locator('#gr-lista').innerText()).includes('NPC · inativo'),
+    'quem já tem token nesta cena aparece travado ("já está na cena"); só o Lobo pode vir — e ele, fora do grupo ativo, vem desmarcado');
+  await C.locator('#gr-todos').click(); await w(150);
+  ok((await C.locator('#gr-conta').innerText()) === '1 de 1 marcados', '"Todos" marca também quem não é ativo');
+  await C.locator('#gr-ativos').click(); await w(150);
+  ok((await C.locator('#gr-conta').innerText()) === '0 de 1 marcados', 'e "Só os ativos" volta a deixar só os ativos');
   await M.keyboard.press('Escape'); await w(300);
   ok(await C.evaluate(() => __tc.Store.scene().tokens.length) === 3, 'cancelar a janela não cria nada');
   ok(await C.evaluate(() => __tc.Combate.trazer(['pc_selene', 'pc_gob', 'pc_nao_existe'], 0, 0).length) === 0 && await C.evaluate(() => __tc.Store.scene().tokens.length) === 3, 'quem já tem token na cena (ou não existe) não entra de novo, nem por engano');
@@ -164,7 +169,7 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   const FOR = valor(selene, 'pc_selene', 'FOR');
   { const [x, y] = await noMapa(C, ids.pc_selene); await M.mouse.move(x, y); await w(200); }
   await tecla(C, 'f'); await w(350);
-  ok(await C.locator('#fpop').count() === 1 && await C.locator('#fpop .pop-b').count() === 10 && await C.locator('#fp-fixa').inputValue() === '5' && (await C.locator('#fpop .pop-n').innerText()) === 'Selene' && (await C.locator('#fp-FOR b').innerText()) === String(FOR),
+  ok(await C.locator('#fpop').count() === 1 && await C.locator('#fpop .pop-b').count() === 11 && await C.locator('#fp-fixa').inputValue() === '5' && (await C.locator('#fpop .pop-n').innerText()) === 'Selene' && (await C.locator('#fp-FOR b').innerText()) === String(FOR),
     'o mestre aperta F sobre o token: abre a janelinha com os dez atributos da ficha (FOR ' + FOR + ') e a fixa dela (5)');
   ok(await C.evaluate(() => __tc.App.sel.length) === 0 && await C.locator('.modal').count() === 0, 'a janelinha não muda a seleção nem trava o mapa');
   let antes = (await linhas(M)).length;
@@ -197,7 +202,7 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   // a jogadora: só no token do personagem dela
   { const [x, y] = await noMapa(B, ids.pc_selene); await J.mouse.move(x, y); await w(200, J); }
   await tecla(B, 'f'); await w(350, J);
-  ok(await B.locator('#fpop .pop-b').count() === 10 && await B.locator('#fp-fixa').inputValue() === '5', 'a jogadora aperta F sobre o token dela: a mesma janelinha, com a ficha dela');
+  ok(await B.locator('#fpop .pop-b').count() === 11 && await B.locator('#fp-fixa').inputValue() === '5', 'a jogadora aperta F sobre o token dela: a mesma janelinha, com a ficha dela');
   antes = (await linhas(M)).length;
   await B.locator('#fp-AGI').click();
   ok(await ate(async () => (await linhas(M)).length === antes + 1), '(a rolagem dela chega ao mestre)');
@@ -277,7 +282,7 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   await C.evaluate(l => __tc.setSel(l.map(id => ({ c: 'tokens', id }))), [ids.pc_selene, ids.pc_gob, ids.barril]); await w(300);
   ok(await C.locator('#mt-ataque').count() === 1, 'com vários tokens selecionados, o painel oferece "Ataque com defesa…"');
   await C.locator('#mt-ataque').click(); await w(350);
-  ok(await C.locator('#at-defs .chip').count() === 15 && await C.locator('#at-barra').inputValue() === 'HP' && await C.locator('#at-lista li').count() === 3 && await C.locator('#at-avisar').isChecked(), 'a janela traz as 15 defesas (as duas gerais e as 13 específicas), a barra HP e os três alvos');
+  ok(await C.locator('#at-defs .chip').count() === 16 && await C.locator('#at-barra').inputValue() === 'HP' && await C.locator('#at-lista li').count() === 3 && await C.locator('#at-avisar').isChecked(), 'a janela traz as 15 defesas (as duas gerais e as 13 específicas), a barra HP e os três alvos');
   await C.locator('#at-dano').fill('30'); await w(200);
   ok(/−30 · 100 → 70/.test(await C.locator('#at-res-0').innerText()) && (await C.locator('#at-como-0').innerText()) === 'sem desconto' && (await C.locator('#at-como-2').innerText()) === 'sem ficha' && await C.locator('#at-man-2').inputValue() === '30',
     'sem defesa marcada, o dano entra inteiro; o token sem ficha tem um campo com o dano que ele tomou (30)');

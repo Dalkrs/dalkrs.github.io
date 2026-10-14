@@ -918,6 +918,30 @@ ok(Array.isArray(D.HELP) && D.HELP.length >= 4 && D.HELP.every((h) => typeof h.c
     [[], [], [], [], [], [], [], [[6, 4]], []], 'diceOf: entrada estranha dá lista vazia; valor fora do dado é descartado');
 }
 
+/* ================= bônus só desta rolagem (lote 5) ================= */
+{
+  // +5 no atributo antes de rolar (atributo 40 fixando 15 vira 1d30 + 15) e +3 no resultado, depois
+  let lo = Infinity, hi = -Infinity, fine = true;
+  for (let i = 0; i < 4000; i++) {
+    const r = D.rollFixaMais(40, 15, { atr: 5, res: 3 });
+    if (!r.ok || r.atributo !== 45 || r.fixa !== 15 || r.die !== 30 || r.base !== 40 || r.ma !== 5 || r.mr !== 3 || r.total !== r.dieValue + 15 + 3) fine = false;
+    lo = Math.min(lo, r.total); hi = Math.max(hi, r.total);
+  }
+  ok(fine && lo === 19 && hi === 48, 'rollFixaMais(40, 15, +5 no atributo, +3 no resultado): 1d30 + 15 + 3, de 19 a 48 — veio de ' + lo + ' a ' + hi);
+  const r0 = D.rollFixaMais(60, 60, null);
+  eq([r0.ok, r0.total, r0.die, r0.base, r0.ma, r0.mr], [true, 60, 0, 60, 0, 0], 'rollFixaMais sem bônus: como rollFixa, com base 60 e os bônus zerados');
+  const rn = D.rollFixaMais(20, 18, { atr: -5 });
+  eq([rn.atributo, rn.fixa, rn.die, rn.total, rn.base], [15, 15, 0, 15, 20], 'bônus negativo no atributo: 20 − 5 = 15, e a fixa (18) cai para 15');
+  eq(D.rollFixaMais(10, 0, { atr: -50 }), { ok: false, error: 'O atributo precisa ser pelo menos 1.' }, 'bônus que zera o atributo: recusa, como rollFixa');
+  const rg = D.rollFixaMais(10, 0, { atr: '7', res: 5000 });
+  eq([rg.atributo, rg.ma, rg.mr, rg.total - rg.dieValue], [17, 7, 999, 999], 'bônus vindo de campo de texto vale; o do resultado fica em ±999');
+  eq([D.maisTexto({ ma: 5, mr: 3, base: 40, atributo: 45 }), D.maisTexto({ ma: -2 }), D.maisTexto({ mr: -4 }), D.maisTexto({}), D.maisTexto(null)],
+    [' · +5 no atributo (40 → 45) · +3 no resultado', ' · −2 no atributo', ' · −4 no resultado', '', ''], 'maisTexto: o que os bônus fizeram, para juntar ao resumo');
+  eq(D.summary({ mode: 'fixa', total: 28, atributo: 45, fixa: 15, dieValue: 10, base: 40, ma: 5, mr: 3 }), '28 · 10 no d30 + 15 de fixa (atributo 45) · +5 no atributo (40 → 45) · +3 no resultado',
+    'summary da fixa com bônus: diz os dois');
+  eq(D.summary({ mode: 'fixa', total: 28, atributo: 45, fixa: 15, dieValue: 13 }), '28 · 13 no d30 + 15 de fixa (atributo 45)', 'summary da fixa sem bônus: como antes');
+}
+
 /* ================= fim ================= */
 if (fails) { console.log((n - fails) + ' verificações passaram, ' + fails + ' falharam'); process.exit(1); }
 console.log(n + ' verificações passaram');

@@ -48,7 +48,12 @@ for (const modo of ['floor', 'round', 'ceil', 'none']) {
       let x = a[k], y = b[k];
       if (k === 'vars') { y = {}; for (const v of Object.keys(x)) y[v] = b.vars[v]; }
       if (k === 'recursos') y = (b.recursos || []).map(r => ({ id: r.id, nome: r.nome, fml: r.fml, val: r.val, err: r.err }));
-      ok(j(x) === j(y), `(${modo}) personagem ${i}, campo ${k}: original ${j(x).slice(0, 160)} · novo ${j(y).slice(0, 160)}`);
+      // o Bloqueio (lote 5) não existe na original: nas fichas sorteadas (sem bloqueio) ele vale 0 e o resto bate
+      if (x && typeof x === 'object' && !Array.isArray(x) && y && typeof y === 'object' && 'BLQ' in y && !('BLQ' in x)) {
+        if (y.BLQ !== 0) ok(false, `(${modo}) personagem ${i}, campo ${k}: o bloqueio de quem não tem bloqueio devia ser 0 (veio ${y.BLQ})`);
+        y = Object.assign({}, y); delete y.BLQ;
+      }
+      ok(j(x) === j(y),`(${modo}) personagem ${i}, campo ${k}: original ${j(x).slice(0, 160)} · novo ${j(y).slice(0, 160)}`);
     }
     ok(O.somaPercentuaisUsados(clone(p)) === R.somaPercentuaisUsados(clone(p), cfg), `(${modo}) personagem ${i}: soma dos percentuais`);
   }
@@ -118,7 +123,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const c3 = R.calcular(p3, cfg0);
   ok(c3.recursos[0].val === 130 && c3.recursos[0].max === 130 && c3.recursos[0].eq === 30 && c3.recursos[2].max === 25 && c3.recursos[1].eq === 0, 'itens equipados somam no máximo da barra (HP 100 + 25 + 5; o desequipado não) — ' + j(c3.recursos.map(r => r.max)));
   ok(c3.defEsp.FOGO === 15 && c3.defEsp.GELO === 1 && c3.defEsp.CORTE === 4 && c3.defEsp.LUZ === 0 && c3.eqEsp.FOGO === 5 && c3.baseEsp.FOGO === 10 && Object.keys(c3.defEsp).length === 13, 'defesas específicas: a digitada mais a dos itens equipados — ' + j(c3.defEsp));
-  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 10, 'o bônus de sempre dos itens continua com as dez chaves');
+  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 11, 'o bônus de sempre dos itens continua com as onze chaves (as dez de antes e o Bloqueio)');
   ok(c3.vars.DEF_FOGO === 15 && R.valorDoAtributo(c3, 'FOGO') === 15 && R.ehDefesaEsp('PSI') && !R.ehDefesaEsp('DFF'), 'a defesa específica vira variável (DEF_FOGO) e pode ser rolada');
   // sem fórmula, a barra continua sem valor (o item não inventa um)
   const p4 = base(); p4.recursos.push({ id: 'vazia', nome: 'Vazia', fml: '' }); p4.itens = [{ id: 'i', bonus: {}, rec: { vazia: 10 } }];
@@ -149,8 +154,8 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   {
     const todos = { a: { n: 'Banquete', k: 'ATR', v: 2, t: 1 }, b: { n: 'Força', k: 'FOR', v: 3, t: 2 }, c: { n: 'minúscula', k: 'atr', v: 1, t: 3 }, d: { n: 'desligado', k: 'ATR', v: 50, off: true, t: 4 } };
     const Tt = R.temporarios(todos), c0t = R.calcular(pv, cfg0), c1t = R.calcular(pv, cfg0, { temp: todos });
-    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 10, 'a chave "todos os atributos" existe à parte das dez de sempre');
-    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, DFF: 0, DFM: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
+    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 11 && R.CHAVES_BONUS[10] === 'BLQ', 'a chave "todos os atributos" existe à parte das onze de sempre (o Bloqueio é a última)');
+    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, DFF: 0, DFM: 0, BLQ: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
     ok(R.ATRIBS.every(a => c1t.tot[a.k] === c0t.tot[a.k] + (a.k === 'FOR' ? 6 : 3) && c1t.base[a.k] === c0t.base[a.k]) && c1t.der.ESQ === c0t.der.ESQ && c1t.def.DFF === c0t.def.DFF && c1t.vars.DES_TMP === 3, 'na ficha: cada atributo sobe o seu tanto, a base não muda, derivados e defesas ficam como estavam');
     ok(c1t.recursos[0].max === c0t.recursos[0].max + 30, 'e as barras que dependem de um atributo acompanham (HP = VIT*10 sobe 30)');
     const ft = R.ferimentos({ x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } }), cft = R.calcular(pv, cfg0, { fer: { x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } } });
@@ -291,6 +296,73 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const s3 = R.subirNivelXp({ xp: { v: 57, min: 20, max: 50 } }, 2);
   ok(j(s3.xp) === j({ v: 27, min: 20, max: 60 }), 'com mínimo diferente de zero, a sobra conta a partir dele (57 de 20–50 → 27 de 20–60)');
   ok(R.XP_PASSO === 10, 'o passo do máximo é 10');
+}
+// ---------- poções com vários efeitos, e em outro personagem (lote 5) ----------
+{
+  const base5 = (id, nome, recs) => ({ id, nome, tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, pctProprio: null, defesas: { DFF: 0, DFM: 0 }, itens: [], recursos: recs, poderes: [] });
+  const ana = base5('ana', 'Ana', [{ id: 'hpA', nome: 'HP', fml: '100' }, { id: 'spA', nome: 'SP', fml: '40' }]);
+  ana.poderes = [{ id: 'pdA', nome: 'Poder divino', max: 5, atual: 1 }];
+  ana.bolsa = [{ id: 'x1', t: 'pocao', nome: 'Elixir completo', fx: [
+    { k: 'barra', rec: 'hpA', val: '30' }, { k: 'barra', rec: 'spA', val: '2d6' }, { k: 'sob', rec: 'hpA', val: '15' },
+    { k: 'bonus', bk: 'for', bv: 3, dur: 'descanso' }, { k: 'bonus', bk: 'DFF', bv: 2, dur: 'rodadas', r: 4 }, { k: 'cond', c: 'bencao', r: 3 },
+    { k: 'barra', rec: 'pd:pdA', val: '+2' }, { k: 'nada' }, { k: 'bonus', bk: 'XYZ', bv: 1 }] }, { id: 'x2', t: 'bomba', nome: 'Bomba', fx: [{ k: 'barra', rec: 'hpA', val: '30' }] }];
+  const bia = base5('bia', 'Bia', [{ id: 'vidaB', nome: 'hp', fml: '80' }]);
+  bia.poderes = [{ id: 'pdB', nome: 'PODER DIVINO', max: 3 }];
+  const ca = R.calcular(ana, cfg0), cbia = R.calcular(bia, cfg0);
+  const estA = { rec: { hpA: 50, spA: 10 }, qtd: { x1: 2, x2: 1 } }, estBia = { rec: { vidaB: 20 }, sob: { vidaB: 30 } };
+  const B5 = R.bolsa(ana, estA);
+  ok(B5[0].fx.length === 8 && B5[0].fx[3].bk === 'FOR' && B5[0].fx[4].r === 4 && B5[0].fx[7].bk === '' && B5[1].fx.length === 0 && B5[0].rec === 'hpA' && B5[0].bk === 'FOR',
+    'a poção lê os efeitos (no máximo 8; tipo desconhecido sai; chave de bônus desconhecida fica vazia); bomba não tem efeito; o primeiro de cada, do jeito de antes — ' + j(B5[0].fx.map(e => e.k)));
+  ok(j(R.efeitosDoItem({ rec: 'hp', val: '10', bk: 'des', bv: 2, bd: '1 cena' })) === j([{ k: 'barra', rec: 'hp', val: '10' }, { k: 'bonus', bk: 'DES', bv: 2, dur: '', r: 0, bd: '1 cena' }]), 'a poção de antes vira a lista equivalente');
+  // em si mesma
+  const u = R.usarItem(ana, ca, estA, 'x1', [null, 7], 500, 'tA');
+  ok(u.ok && u.mesmo && u.estado === u.estadoAlvo && u.estado.rec.hpA === 80 && u.estado.rec.spA === 17 && u.estado.sob.hpA === 15 && u.estado.qtd.x1 === 1 && u.estado.pd.pdA === 3,
+    'em si mesma: HP +30, SP +7 (o rolado), sobrevida 15, barra especial +2 e uma poção a menos — ' + j(u.estado));
+  ok(u.estado.tmp.tA.k === 'FOR' && u.estado.tmp.tA.ate === 'descanso' && u.estado.tmp.tA_1.k === 'DFF' && u.estado.tmp.tA_1.r === 4 && !('d' in u.estado.tmp.tA) && j(u.conds) === j([{ c: 'bencao', r: 3 }]),
+    'os dois bônus entram (um até o descanso, outro com 4 rodadas) e a condição volta para quem chama pôr no token — ' + j(u.estado.tmp));
+  ok(R.textoDoUso(u) === 'HP 50 → 80 (+30) · SP 10 → 17 (+7) · Sobrevida 15 em HP · Força +3 (até o próximo descanso) · Defesa Física +2 (4 rodadas) · Poder divino 1 → 3 (+2) · Abençoado (3 rodadas) · resta 1', 'o texto do uso: "' + R.textoDoUso(u) + '"');
+  ok(R.textoDoUso(u, { semValores: true, semCena: true }) === 'HP +30 · SP +7 · Sobrevida 15 em HP · Força +3 (até o próximo descanso) · Defesa Física +2 (4 rodadas) · Poder divino +2 · Abençoado: só pela cena · resta 1', 'sem os valores de quem recebeu, e com a condição que fica para a cena: "' + R.textoDoUso(u, { semValores: true, semCena: true }) + '"');
+  ok(u.barra.id === 'hpA' && u.bonus.k === 'FOR' && u.bonus.d === 'até o próximo descanso' && estA.rec.hpA === 50 && estA.qtd.x1 === 2, 'o primeiro efeito de barra e o primeiro bônus, do jeito de antes; o estado recebido não muda');
+  ok(R.calcular(ana, cfg0, { temp: u.estado.tmp }).tot.FOR === ca.tot.FOR + 3 && R.calcular(ana, cfg0, { temp: u.estado.tmp }).def.DFF === ca.def.DFF + 2, 'os bônus da poção contam na ficha');
+  // em outra personagem: as barras pelo nome
+  const v = R.usarItem(ana, ca, estA, 'x1', [null, 5], 600, 'tB', { pc: bia, calc: cbia, estado: estBia });
+  ok(v.ok && !v.mesmo && v.estado.qtd.x1 === 1 && !v.estado.tmp && v.estado.rec.hpA === 50 && v.estadoAlvo.rec.vidaB === 50 && v.estadoAlvo.sob.vidaB === 30 && v.estadoAlvo.pd.pdB === 2 && v.estadoAlvo.tmp.tB.k === 'FOR',
+    'em outra: a bolsa de quem usa perde uma; quem recebe ganha +30 no "hp" dela, a sobrevida fica a maior (30), a barra especial de mesmo nome sobe e os bônus vão para ela — ' + j(v.estadoAlvo));
+  ok(j(v.faltam) === j(['SP']) && /sem SP/.test(R.textoDoUso(v)) && estBia.rec.vidaB === 20, 'a barra que ela não tem fica de fora (e o texto diz) — ' + R.textoDoUso(v));
+  ok(j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semCena: true })) === j(['hp 20 → 50 (+30)', 'SP: Bia não tem essa barra', 'Sobrevida 15 em hp (fica a que já tem: 30)', 'Força +3 (até o próximo descanso)', 'Defesa Física +2 (4 rodadas)', 'Condição: Abençoado (3 rodadas) — só pela cena, no token', 'PODER DIVINO 0 → 2 (+2)']),
+    'a prévia em outra pessoa: ' + j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semCena: true })));
+  ok(j(R.faixaDoEfeito('30')) === j([30, 30]) && j(R.faixaDoEfeito('2d6+3')) === j([5, 15]) && j(R.faixaDoEfeito('-1d4')) === j([-4, -1]) && j(R.faixaDoEfeito('d8-2+1d4')) === j([0, 10]) && R.faixaDoEfeito('abc') === null,
+    'de quanto a quanto um efeito pode dar (para conferir o que outro aparelho rolou)');
+  ok(R.CONDICOES.length === 47 && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.COND_GRUPOS.length === 7 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas)');
+}
+// as condições da ficha (para a poção pôr no token) são as mesmas das Cenas: mesmo id, nome e grupo, na mesma ordem
+{
+  const fonte = fs.readFileSync(path.join(__dirname, '../cenas/src/js/01-base.js'), 'utf8');
+  const bloco = (ini) => { const i = fonte.indexOf(ini), k = fonte.indexOf('];', i); return fonte.slice(i, k); };
+  const cenas = [...bloco('const CONDS = [').matchAll(/\{ id: '(\w+)', n: '([^']+)', c: '[^']+', i: '[^']+', g: '(\w+)' \}/g)].map(m => ({ id: m[1], n: m[2], g: m[3] }));
+  const grupos = [...bloco('const COND_TAGS = [').matchAll(/\{ id: '(\w+)', n: '[^']+', t: '([^']+)' \}/g)].map(m => ({ id: m[1], n: m[2] }));
+  ok(cenas.length === 47 && j(cenas) === j(R.CONDICOES) && j(grupos) === j(R.COND_GRUPOS), 'as condições de TC.rules batem com as das Cenas (' + cenas.length + ')');
+}
+// ---------- barras especiais (os antigos poderes divinos), no estado ----------
+{
+  const f = { poderes: [{ id: 'a', nome: 'Fé', max: 3, atual: 2 }, { id: 'b', nome: '', max: 0, atual: 7 }, { id: 'c', nome: 'X', max: '4', atual: 9 }, { nome: 'sem id' }, null] };
+  ok(j(R.especiais(f, {})) === j([{ id: 'a', nome: 'Fé', atual: 2, max: 3 }, { id: 'b', nome: 'Barra especial', atual: 7, max: 0 }, { id: 'c', nome: 'X', atual: 4, max: 4 }]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
+  ok(R.especiais(f, { pd: { a: 0, b: 12 } })[0].atual === 0 && R.especiais(f, { pd: { a: 0, b: 12 } })[1].atual === 12, 'o estado manda quando tem o valor');
+  const e1 = R.mudarEspecial({ rec: { hp: 3 } }, 'a', 9, 3), e2 = R.mudarEspecial(e1, 'b', -4, 0);
+  ok(e1.pd.a === 3 && e1.rec.hp === 3 && e2.pd.b === 0 && e2.pd.a === 3, 'mudar: preso entre 0 e o limite (sem limite, só não fica negativo); o resto do estado fica');
+}
+// ---------- o Bloqueio (lote 5): valor próprio + itens, árvore e bônus; rola como a Esquiva ----------
+{
+  const pb = { id: 'b', nome: 'Bruna', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, pctProprio: null, defesas: { DFF: 2, DFM: 1, BLQ: 5 },
+    itens: [{ id: 'e', nome: 'Escudo', equipado: true, bonus: { BLQ: 3, DFF: 1 } }, { id: 'g', nome: 'Guardado', equipado: false, bonus: { BLQ: 50 } }], recursos: [{ id: 'hp', nome: 'HP', fml: 'BLQ*10 + BLQ_B + BLQ_EQ' }] };
+  const cb = R.calcular(pb, cfg0, { arvore: { BLQ: 2 }, temp: { t1: { n: 'Poção de pedra', k: 'BLQ', v: 4 } } });
+  ok(cb.def.BLQ === 14 && cb.eq.BLQ === 3 && cb.def.DFF === 3, 'bloqueio = o digitado (5) + o escudo equipado (3) + a árvore (2) + o bônus (4) = 14; o item guardado não conta — ' + j(cb.def));
+  ok(cb.vars.BLQ === 14 && cb.vars.BLQ_B === 5 && cb.vars.BLQ_EQ === 3 && cb.recursos[0].val === 148, 'vira variável das fórmulas (BLQ, BLQ_B, BLQ_EQ) — ' + cb.recursos[0].val);
+  ok(R.valorDoAtributo(cb, 'BLQ') === 14 && R.ehDefesa('BLQ') && R.NOMES.BLQ === 'Bloqueio' && R.CHAVES_BONUS.includes('BLQ'), 'pode ser rolado (como a Esquiva) e é uma chave de bônus de item, árvore e poção');
+  const sem = R.calcular(Object.assign({}, pb, { defesas: { DFF: 2, DFM: 1 }, itens: [] }), cfg0);
+  ok(sem.def.BLQ === 0 && sem.vars.BLQ === 0, 'ficha antiga, sem bloqueio: vale 0 (e nada é gravado nela)');
+  ok(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def.BLQ === 10, 'o resumo (o que as outras abas leem) traz o bloqueio — ' + j(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def));
+  ok(R.evalFormula('BLOQUEIO + BLOQ + BLQ_ARV + BLQ_TMP', cb.vars) === 34, 'nas fórmulas, o nome por extenso também vale (BLOQUEIO, BLOQ), e há o pedaço da árvore e o do bônus');
 }
 // carrega também como script de página
 const pg = vm.createContext({}); pg.window = pg; pg.globalThis = pg;

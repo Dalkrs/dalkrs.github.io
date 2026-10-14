@@ -123,7 +123,9 @@
     return {
       id, nome: l.nome || 'Sem nome', img: imagemOk(ficha.img), dono: l.dono_id || null, semFicha: false, recursos,
       san: usa ? dentro(est.san, 100) : null, conf: usa ? dentro(est.conf, 50) : null,
-      poderes: (Array.isArray(ficha.poderes) ? ficha.poderes : []).filter(x => x && x.id).map(x => ({ id: x.id, nome: x.nome || 'Poder', atual: Math.max(0, +x.atual || 0), max: Math.max(0, +x.max || 0) })),
+      // as barras especiais (os antigos "poderes divinos"): a lista é da ficha, o valor de agora mora no estado (estado.pd)
+      poderes: typeof R().especiais === 'function' ? R().especiais(ficha, est)
+        : (Array.isArray(ficha.poderes) ? ficha.poderes : []).filter(x => x && x.id).map(x => ({ id: x.id, nome: x.nome || 'Barra especial', atual: Math.max(0, +x.atual || 0), max: Math.max(0, +x.max || 0) })),
       grupo: String(ficha.grupo || '').trim(), emo: emoDe(id, l),
     };
   }
@@ -707,9 +709,9 @@
           h('span', { text: 'Rações por personagem' }), regra('longo', 'prov', 'Descanso longo: rações por personagem', 0, 99), regra('curto', 'prov', 'Descanso curto: rações por personagem', 0, 99),
           h('span', { text: 'Conforto' }), regra('longo', 'conf', 'Descanso longo: Conforto', -100, 100), regra('curto', 'conf', 'Descanso curto: Conforto', -100, 100),
           h('span', { text: 'Sanidade' }), regra('longo', 'san', 'Descanso longo: Sanidade', -100, 100), regra('curto', 'san', 'Descanso curto: Sanidade', -100, 100),
-          h('span', { text: 'Devolve os poderes gastos' }),
-          h('input', { type: 'checkbox', id: 'rg-longo-poderes', checked: rg.longo.poderes, 'aria-label': 'Descanso longo devolve os poderes gastos', onchange: e => mudar('regras do descanso', c => { c.regras.longo.poderes = e.target.checked; }) }),
-          h('input', { type: 'checkbox', id: 'rg-curto-poderes', checked: rg.curto.poderes, 'aria-label': 'Descanso curto devolve os poderes gastos', onchange: e => mudar('regras do descanso', c => { c.regras.curto.poderes = e.target.checked; }) })),
+          h('span', { text: 'Enche as barras especiais' }),
+          h('input', { type: 'checkbox', id: 'rg-longo-poderes', checked: rg.longo.poderes, 'aria-label': 'Descanso longo enche as barras especiais (poderes divinos, cargas…)', onchange: e => mudar('regras do descanso', c => { c.regras.longo.poderes = e.target.checked; }) }),
+          h('input', { type: 'checkbox', id: 'rg-curto-poderes', checked: rg.curto.poderes, 'aria-label': 'Descanso curto enche as barras especiais (poderes divinos, cargas…)', onchange: e => mudar('regras do descanso', c => { c.regras.curto.poderes = e.target.checked; }) })),
         h('p', { class: 'note', id: 'rg-comeco', text: 'A barra que “começa em” um valor próprio (na ficha, em Opções da barra) não recupera por porcentagem: o descanso longo a leva de volta ao começo dela, e o curto não mexe nela. Recuperar 100% enche também a barra que estava abaixo de zero.' }),
         h('p', { class: 'note', text: 'Quando faltam rações para o descanso longo:' }),
         h('div', { class: 'regras' },
@@ -832,11 +834,8 @@
           if (feito.length) naFicha.push(ln.nome + ': ' + feito.join(', '));
         }
         const campos = { estado: est }, antes = { id: l.id, estado: l.estado || {}, ficha: null };
-        if (ln.poderes.length) {
-          const f = N.copia(l.ficha || {});
-          for (const pw of (Array.isArray(f.poderes) ? f.poderes : [])) { const x = ln.poderes.find(y => y.id === pw.id); if (x) pw.atual = x.para; }
-          campos.ficha = f; antes.ficha = l.ficha || {};
-        }
+        // as barras especiais que este descanso devolve: o valor de agora delas mora no estado (estado.pd)
+        if (ln.poderes.length) { const pd = est.pd && typeof est.pd === 'object' ? est.pd : (est.pd = {}); for (const x of ln.poderes) pd[x.id] = x.para; }
         fichas.push(antes);
         P.gravar(l.id, campos);
       }

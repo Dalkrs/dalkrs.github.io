@@ -68,7 +68,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   ok(previa.includes('gasta 2 de 6 rações') && /HP 40 → (\d+)\/\1/.test(previa) && previa.includes('60 → 65') && previa.includes('30 → 45') && previa.includes('Cura 0 → 2'), 'a prévia mostra o que vai mudar em cada ficha: ' + previa.slice(0, 260));
   const hpCheio = +/HP 40 → (\d+)\//.exec(previa)[1];
   await A.locator('#ds-ok').click(); await w(500);
-  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.rec.hppc_dain === hpCheio && l.estado.san === 65 && l.estado.conf === 45 && l.ficha.poderes[0].atual === 2 && await semPendencia(M); }), 'descansando, a ficha do Dain fica com HP cheio, Sanidade 65, Conforto 45 e o poder de volta');
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.rec.hppc_dain === hpCheio && l.estado.san === 65 && l.estado.conf === 45 && (l.estado.pd || {}).pwpc_dain === 2 && l.ficha.poderes[0].atual === 0 && await semPendencia(M); }), 'descansando, a ficha do Dain fica com HP cheio, Sanidade 65, Conforto 45 e a barra especial cheia (no estado; a lista da ficha não é regravada)');
   ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.rec.hppc_ogro > 10 && l.estado.san === undefined && l.estado.conf === undefined; }), 'o Ogro recupera o HP e não ganha Sanidade nem Conforto (a ficha dele não usa)');
   ok(await ate(async () => { const d = await doc(M); return d.dados.provisoes[0].qtd === 4 && d.dados.diario.length === 1; }), 'as rações saem e o diário registra');
   ok(await ate(async () => (await M.locator('#feed .rol', { hasText: 'Descanso longo: 2 descansaram' }).count()) === 1), 'a mesa ao vivo avisa do descanso');
@@ -80,7 +80,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   // ---------- desfazer o descanso ----------
   ok(await A.locator('#btDesfazer').isEnabled() && (await A.locator('#btDesfazer').getAttribute('title')).includes('o descanso longo'), 'o botão Desfazer do acampamento aponta para o descanso');
   await A.locator('#btDesfazer').click(); await w(500);
-  ok(await ate(async () => { const l = await linha(M, 'pc_dain'), o = await linha(M, 'pc_ogro'), d = await doc(M); return l.estado.rec.hppc_dain === 40 && l.estado.san === 60 && l.estado.conf === 30 && l.ficha.poderes[0].atual === 0 && o.estado.rec.hppc_ogro === 10 && d.dados.provisoes[0].qtd === 6 && d.dados.diario.length === 0 && await semPendencia(M); }), 'o Desfazer devolve as fichas, as rações e o diário como estavam');
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'), o = await linha(M, 'pc_ogro'), d = await doc(M); return l.estado.rec.hppc_dain === 40 && l.estado.san === 60 && l.estado.conf === 30 && (l.estado.pd || {}).pwpc_dain === undefined && l.ficha.poderes[0].atual === 0 && o.estado.rec.hppc_ogro === 10 && d.dados.provisoes[0].qtd === 6 && d.dados.diario.length === 0 && await semPendencia(M); }), 'o Desfazer devolve as fichas, as rações e o diário como estavam');
   ok(await ate(async () => (await linha(J, 'pc_dain')).estado.rec.hppc_dain === 40), 'e o jogador vê a ficha de volta');
   ok(await ate(async () => (await M.locator('#feed .rol', { hasText: 'Desfeito: o descanso longo' }).count()) === 1), 'a mesa ao vivo avisa que foi desfeito');
 

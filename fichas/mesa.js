@@ -498,8 +498,13 @@ const FichasMesa = (() => {
         ${pc._dono && !jog.some(m => m.id === pc._dono) ? `<option value="${esc(pc._dono)}" selected>(jogador que saiu da mesa)</option>` : ''}
       </select></label>
       <label class="chk"><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Todos os jogadores veem esta ficha</span></label>
+      <label class="chk" title="Só o mestre muda. Na cena, “Puxar o grupo” já traz marcados só os personagens ativos (os outros — suportes que ficam no acampamento, por exemplo — vêm desmarcados, e dá para marcar na hora)."><input type="checkbox" id="f_ativo" ${ativoNaFicha(pc) ? 'checked' : ''}> <span>Personagem ativo</span></label>
     </div>`;
   }
+  /* "Personagem ativo": o mestre marca quem está jogando agora (os suportes que ficam no acampamento, não). Só pesa em
+     "Puxar o grupo", nas Cenas: os ativos já vêm marcados. Fica no estado da ficha (estado.ativo: false para quem não é),
+     que se junta campo a campo — o que o jogador grava na ficha dele não desfaz a marca do mestre. */
+  const ativoNaFicha = pc => !(pc && pc.estado && pc.estado.ativo === false);
   // Entrou ou saiu alguém da mesa enquanto o mestre digita na ficha: a lista de jogadores se atualiza no lugar.
   function pintarDono() {
     const d = document.querySelector('#f_dono'), pc = S.personagens.find(p => p.id === S.sel);
@@ -521,6 +526,13 @@ const FichasMesa = (() => {
       avisarDeFora([pc]);
     };
     if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); };
+    const at = host.querySelector('#f_ativo');
+    if (at) at.onchange = e => {
+      const marcar = on => { const est = Object.assign({}, pc.estado || {}); if (on) delete est.ativo; else est.ativo = false; pc.estado = est; save(); renderLista(); const x = document.querySelector('#f_ativo'); if (x) x.checked = on; };
+      const on = e.target.checked;
+      marcar(on);
+      FichasExtras.aviso(on ? pc.nome + ' está ativo: vem marcado ao puxar o grupo na cena.' : pc.nome + ' ficou fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado.', 'Desfazer', () => marcar(!on));
+    };
   }
   /* No elenco, o mestre escolhe com um clique quais fichas os jogadores podem ver. */
   const OLHO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.6-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
@@ -592,7 +604,7 @@ const FichasMesa = (() => {
     lista.parentNode.insertBefore(box, lista);
   }
 
-  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes,
+  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza };
 })();

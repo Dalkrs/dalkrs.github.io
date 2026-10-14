@@ -151,15 +151,16 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('[data-boladd="pocao"]').click(); await w(300);
   const idP = await S0(() => S.personagens[0].bolsa[0].id);
   await P.locator(`[data-bolnome="${idP}"]`).fill('Poção de cura'); await w(200);
-  await P.locator(`[data-bolrec="${idP}"]`).selectOption('hp'); await w(250);
-  await P.locator(`[data-bolval="${idP}"]`).fill('30'); await P.locator(`[data-bolval="${idP}"]`).press('Tab'); await w(250);
+  await P.locator(`[data-fxadd="${idP}"]`).selectOption('barra'); await w(300);
+  await P.locator(`[data-fxrec="${idP}|0"]`).selectOption('hp'); await w(250);
+  await P.locator(`[data-fxval="${idP}|0"]`).fill('30'); await P.locator(`[data-fxval="${idP}|0"]`).press('Tab'); await w(250);
   await P.locator(`[data-bolstep="${idP}"][data-d="1"]`).click(); await w(250);
   let s1 = await sel();
-  ok(s1.bolsa[0].nome === 'Poção de cura' && s1.bolsa[0].rec === 'hp' && s1.bolsa[0].val === '30' && s1.estado.qtd[idP] === 2 && (await P.locator('[data-ababolsa="pocao"] .mk').innerText()).trim() === '2', 'a poção fica na ficha (o que ela faz) e a quantidade, no estado do personagem: ' + j([s1.bolsa[0], s1.estado.qtd]));
+  ok(s1.bolsa[0].nome === 'Poção de cura' && j(s1.bolsa[0].fx) === j([{ k: 'barra', rec: 'hp', val: '30' }]) && s1.estado.qtd[idP] === 2 && (await P.locator('[data-ababolsa="pocao"] .mk').innerText()).trim() === '2', 'a poção fica na ficha (o que ela faz: a lista de efeitos) e a quantidade, no estado do personagem: ' + j([s1.bolsa[0], s1.estado.qtd]));
   ok(s1.estado.rec.hp === -10, '(o HP está em −10)');
   await P.locator(`[data-boluse="${idP}"]`).click(); await w(300);
   const previa = await P.locator('.bolconf').innerText();
-  ok(/Usar Poção de cura\?/.test(previa) && /HP −10 → 20 \(\+30\)/.test(previa) && /sobra 1/.test(previa) && (await sel()).estado.qtd[idP] === 2, '"Usar" mostra antes o que vai acontecer, sem gastar: ' + previa.replace(/\n/g, ' | '));
+  ok(/Usar Poção de cura/.test(previa) && /HP −10 → 20 \(\+30\)/.test(previa) && /sobra 1/.test(previa) && (await sel()).estado.qtd[idP] === 2 && await P.locator(`[data-bolem="${idP}"] option`).count() === 2, '"Usar" mostra antes o que vai acontecer (e em quem: ela ou a outra), sem gastar: ' + previa.replace(/\n/g, ' | '));
   await P.locator('[data-bolnao]').click(); await w(250);
   ok(await P.locator('.bolconf').count() === 0 && (await sel()).estado.rec.hp === -10, 'Cancelar fecha a prévia sem mudar nada');
   await P.locator(`[data-boluse="${idP}"]`).click(); await w(250); await P.locator(`[data-bolsim="${idP}"]`).click(); await w(350);
@@ -170,30 +171,57 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   s1 = await sel();
   ok(s1.estado.rec.hp === -10 && s1.estado.qtd[idP] === 2 && /desfeito/.test(await S0(() => S.log[0].det)), 'Desfazer devolve a poção e o HP (e o registro diz que foi desfeito)');
   // poção com rolagem e bônus temporário
-  await P.locator(`[data-bolval="${idP}"]`).fill('2d6+3'); await P.locator(`[data-bolval="${idP}"]`).press('Tab'); await w(250);
-  await P.locator(`[data-bolbk="${idP}"]`).selectOption('AGI'); await w(250);
-  await P.locator(`[data-bolbv="${idP}"]`).fill('4'); await P.locator(`[data-bolbv="${idP}"]`).press('Tab'); await w(250);
-  await P.locator(`[data-bolbd="${idP}"]`).fill('3 turnos'); await w(250);
+  await P.locator(`[data-fxval="${idP}|0"]`).fill('2d6+3'); await P.locator(`[data-fxval="${idP}|0"]`).press('Tab'); await w(250);
+  await P.locator(`[data-fxadd="${idP}"]`).selectOption('bonus'); await w(300);
+  await P.locator(`[data-fxbk="${idP}|1"]`).selectOption('AGI'); await w(250);
+  await P.locator(`[data-fxbv="${idP}|1"]`).fill('4'); await P.locator(`[data-fxbv="${idP}|1"]`).press('Tab'); await w(250);
+  await P.locator(`[data-fxbd="${idP}|1"]`).fill('3 turnos'); await w(250);
   await P.locator(`[data-boluse="${idP}"]`).click(); await w(250);
   ok(/HP −10 \+ 2d6\+3, rolado na hora · Agilidade \+4 \(3 turnos\)/.test(await P.locator('.bolconf').innerText()), 'com dados, a prévia avisa que rola na hora, e mostra o bônus: ' + (await P.locator('.bolconf').innerText()).replace(/\n/g, ' | '));
   const agiAntes = (await calc()).tot.AGI;
   await P.locator(`[data-bolsim="${idP}"]`).click(); await w(350);
   s1 = await sel();
-  const rolado = await S0(() => S.log[0].total);
-  ok(rolado >= 5 && rolado <= 15 && s1.estado.rec.hp === -10 + rolado && Object.keys(s1.estado.tmp).length === 1 && (await calc()).tot.AGI === agiAntes + 4, 'a poção rola 2d6+3 (' + rolado + '), soma no HP e põe +4 de Agilidade como bônus temporário');
-  ok(/2d6\+3 → 2d6 \[\d, \d\] \+3 = \d+/.test(await S0(() => S.log[0].det)) && await P.locator('.tmprow').count() === 1 && await P.locator('.tmprow .tmpn').inputValue() === 'Poção de cura' && await P.locator('.tmprow .tmpd').inputValue() === '3 turnos', 'o registro guarda os dados rolados, e o bônus aparece em "Bônus temporários" com o nome da poção: ' + await S0(() => S.log[0].det));
+  const rolado = s1.estado.rec.hp + 10;
+  ok(rolado >= 5 && rolado <= 15 && Object.keys(s1.estado.tmp).length === 1 && (await calc()).tot.AGI === agiAntes + 4, 'a poção rola 2d6+3 (' + rolado + '), soma no HP e põe +4 de Agilidade como bônus temporário');
+  ok(/2d6\+3 → 2d6 \[\d, \d\] \+3 = \d+/.test(await S0(() => S.log[0].det)) && (await S0(() => S.log[0].dd)).length === 2 && await P.locator('.tmprow').count() === 1 && await P.locator('.tmprow .tmpn').inputValue() === 'Poção de cura' && await P.locator('.tmprow .tmpd').inputValue() === '3 turnos', 'o registro guarda os dados rolados, e o bônus aparece em "Bônus temporários" com o nome da poção: ' + await S0(() => S.log[0].det));
   await P.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(350);
   s1 = await sel();
   ok(s1.estado.rec.hp === -10 && Object.keys(s1.estado.tmp || {}).length === 0 && s1.estado.qtd[idP] === 2 && (await calc()).tot.AGI === agiAntes, 'Desfazer tira também o bônus que a poção tinha dado');
-  await P.locator(`[data-bolval="${idP}"]`).fill('abc'); await P.locator(`[data-bolval="${idP}"]`).press('Tab'); await w(300);
-  ok(await P.locator(`[data-bolval="${idP}"].ruim`).count() === 1 && /Escreva um valor/.test(await P.locator('#painelBolsa .fmlerr').innerText()), 'valor que não é número nem dados fica marcado, com a dica');
-  await P.locator(`[data-bolval="${idP}"]`).fill('-5'); await P.locator(`[data-bolval="${idP}"]`).press('Tab'); await w(250);
+  await P.locator(`[data-fxval="${idP}|0"]`).fill('abc'); await P.locator(`[data-fxval="${idP}|0"]`).press('Tab'); await w(300);
+  ok(await P.locator(`[data-fxval="${idP}|0"].ruim`).count() === 1 && /Escreva um valor/.test(await P.locator('#painelBolsa .fmlerr').innerText()), 'valor que não é número nem dados fica marcado, com a dica');
+  await P.locator(`[data-fxval="${idP}|0"]`).fill('-5'); await P.locator(`[data-fxval="${idP}|0"]`).press('Tab'); await w(250);
+  // mais efeitos (sobrevida e condição; o bônus passa a durar até o descanso) e o uso em OUTRA personagem
+  await P.locator(`[data-fxdur="${idP}|1"]`).selectOption('descanso'); await w(250);
+  await P.locator(`[data-fxadd="${idP}"]`).selectOption('sob'); await w(300);
+  await P.locator(`[data-fxrec="${idP}|2"]`).selectOption('hp'); await w(200);
+  await P.locator(`[data-fxval="${idP}|2"]`).fill('15'); await P.locator(`[data-fxval="${idP}|2"]`).press('Tab'); await w(250);
+  await P.locator(`[data-fxadd="${idP}"]`).selectOption('cond'); await w(300);
+  await P.locator(`[data-fxc="${idP}|3"]`).selectOption('bencao'); await w(200);
+  await P.locator(`[data-fxr="${idP}|3"]`).fill('2'); await P.locator(`[data-fxr="${idP}|3"]`).press('Tab'); await w(250);
+  s1 = await sel();
+  ok(j(s1.bolsa[0].fx) === j([{ k: 'barra', rec: 'hp', val: '-5' }, { k: 'bonus', bk: 'AGI', bv: 4, dur: 'descanso', r: 0, bd: '' }, { k: 'sob', rec: 'hp', val: '15' }, { k: 'cond', c: 'bencao', r: 2 }]), 'quatro efeitos na mesma poção: ' + j(s1.bolsa[0].fx));
+  await P.locator(`[data-boluse="${idP}"]`).click(); await w(250);
+  await P.locator(`[data-bolem="${idP}"]`).selectOption('pc_out'); await w(300);
+  const pOutra = (await P.locator('.bolconf').innerText()).replace(/\n/g, ' | ');
+  ok(/HP 100 → 95 \(−5\)/.test(pOutra) && /Agilidade \+4 \(até o próximo descanso\)/.test(pOutra) && /Sobrevida 15 em HP/.test(pOutra) && /Condição: Abençoado \(2 rodadas\) — só pela cena, no token/.test(pOutra), 'em outra personagem, a prévia é a dela (o HP dela, cheio) e avisa que a condição é pela cena: ' + pOutra);
+  await P.locator(`[data-bolsim="${idP}"]`).click(); await w(350);
+  const outra = await S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_out').estado || {})));
+  s1 = await sel();
+  ok(outra.rec.hp === 95 && outra.sob.hp === 15 && Object.values(outra.tmp).some(b => b.k === 'AGI' && b.v === 4 && b.ate === 'descanso') && s1.estado.qtd[idP] === 1 && s1.estado.rec.hp === -10 && !Object.keys(s1.estado.tmp || {}).length,
+    'usada na outra: ela recebe o efeito (HP −5, sobrevida, bônus até o descanso) e a bolsa da Selene perde uma — a Selene não muda: ' + j(outra));
+  ok(/Selene · Poção de cura em Outra/.test(await S0(() => S.log[0].quem)) && /usou Poção de cura em Outra/.test(await S0(() => S.log[0].det)), 'o registro diz em quem foi: ' + await S0(() => S.log[0].det));
+  await P.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(350);
+  const outra2 = await S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_out').estado || {})));
+  ok((outra2.rec || {}).hp === undefined && (outra2.sob || {}).hp === undefined && !Object.keys(outra2.tmp || {}).length && (await sel()).estado.qtd[idP] === 2, 'Desfazer devolve a poção e tira o efeito da outra: ' + j(outra2));
+  // (a poção volta a ser só a de −5, para o resto do teste)
+  for (let k = 3; k >= 1; k--) { await P.locator(`[data-fxdel="${idP}|${k}"]`).click(); await w(250); }
+  ok(j((await sel()).bolsa[0].fx) === j([{ k: 'barra', rec: 'hp', val: '-5' }]), 'o × tira um efeito');
   // bombas: um clique gasta e avisa
   await P.locator('[data-ababolsa="bomba"]').click(); await w(250);
   await P.locator('[data-boladd="bomba"]').click(); await w(300);
   const idB = await S0(() => S.personagens[0].bolsa[1].id);
   await P.locator(`[data-bolnome="${idB}"]`).fill('Bomba de fumaça'); await P.locator(`[data-bolqtd="${idB}"]`).fill('3'); await P.locator(`[data-bolqtd="${idB}"]`).press('Tab'); await w(300);
-  ok(await P.locator('#painelBolsa .bolfx').count() === 0, 'a bomba não tem efeito para configurar (só nome, quantidade e anotação)');
+  ok(await P.locator('#painelBolsa .bolfxs').count() === 0, 'a bomba não tem efeito para configurar (só nome, quantidade e anotação)');
   const hpB = (await sel()).estado.rec.hp;
   await P.locator(`[data-boluse="${idB}"]`).click(); await w(350);
   s1 = await sel();
@@ -209,12 +237,12 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
 
   // ---------- duplicar: os itens e as poções da cópia continuam apontando para as barras dela ----------
   await P.locator('[data-act="dup"]').click(); await w(400);
-  const copia = await S0(() => { const p = S.personagens[S.personagens.length - 1], c = calcular(p); return { nome: p.nome, hpMax: c.recursos[0].max, eq: c.recursos[0].eq, rec: (p.estado || {}).rec || null, bolsa: p.bolsa.map(b => b.rec || ''), qtd: p.estado.qtd, gelo: c.recursos[2].inicio }; });
+  const copia = await S0(() => { const p = S.personagens[S.personagens.length - 1], c = calcular(p); return { nome: p.nome, hpMax: c.recursos[0].max, eq: c.recursos[0].eq, rec: (p.estado || {}).rec || null, bolsa: p.bolsa.map(b => (b.fx && b.fx[0] && b.fx[0].rec) || b.rec || ''), qtd: p.estado.qtd, gelo: c.recursos[2].inicio }; });
   ok(copia.nome === 'Selene (cópia)' && copia.hpMax === 125 && copia.eq === 25 && copia.rec === null && copia.bolsa[0] === 'hp' && copia.gelo === 4, 'a cópia mantém o item somando no HP e a poção apontando para ele, e nasce com as barras no começo: ' + j(copia));
 
   // ---------- a ficha que não usa nada disso continua igual ----------
   await P.locator('#lista .pc', { has: P.locator('.nm', { hasText: /^Outra$/ }) }).click(); await w(300);
-  ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_out'); return !('bolsa' in p) && !('defEsp' in p) && !p.estado; }), 'a outra ficha, em que ninguém mexeu, não ganhou campo nenhum');
+  ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_out'); return !('bolsa' in p) && !('defEsp' in p) && (!p.estado || Object.values(p.estado).every(v => v && typeof v === 'object' && !Object.keys(v).length)); }), 'a outra ficha (fora o uso desfeito da poção) não ganhou campo nenhum');
 
   // ---------- tudo continua lá depois de recarregar ----------
   await w(500);

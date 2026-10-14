@@ -208,6 +208,11 @@ const FichasQuadros = (() => {
       </div>
     </div>`;
   }
+  /* O cadeado dos ferimentos (o mestre, ficha por ficha): travado, só ele põe, edita e tira (cura) ferimentos. Fica no
+     estado da ficha (estado.ferTrava), que se junta campo a campo: o que o jogador grava na ficha não o desfaz. */
+  const LACRE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+  const ferTravado = pc => !!(pc && pc.estado && pc.estado.ferTrava);
+  const mestreAqui = () => FichasMesa.ativo() && FichasMesa.mestre();
   function painelCorpo(pc) {
     if (!RR()) return '';
     if (!usaCorpo(pc)) {
@@ -215,13 +220,17 @@ const FichasQuadros = (() => {
         <span class="hint">Corpo e ferimentos não estão em uso nesta ficha.</span>
         <button type="button" class="mini" data-corpo="usar">Usar nesta ficha</button></div></div>`;
     }
-    const lista = feridasDe(pc), ui = uiDe(pc), pode = FichasMesa.podeEditar(pc);
+    const trava = ferTravado(pc), lista = feridasDe(pc), ui = uiDe(pc), pode = FichasMesa.podeEditar(pc) && (!trava || mestreAqui());
     const visiveis = ui.parte ? lista.filter(f => f.p === ui.parte) : lista;
     const pesam = lista.filter(f => f.k && f.v).length;
     return `<div class="panel" id="painelCorpo" style="margin-bottom:18px">
       <div class="hd"><span class="eyebrow">Corpo e ferimentos</span>
         <span class="hint" style="margin-left:8px">${lista.length ? plural(lista.length, 'ferimento aberto', 'ferimentos abertos') + (pesam ? ' · ' + plural(pesam, 'com penalidade somando agora', 'com penalidade somando agora') : '') : 'clique numa parte do corpo para marcar um ferimento'}</span>
-        ${FichasMesa.deJogador(pc) ? '' : '<span style="margin-left:auto"><button type="button" class="mini" data-corpo="parar" title="Esta ficha deixa de mostrar o corpo (os ferimentos saem)">Deixar de usar</button></span>'}
+        <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+          ${mestreAqui() ? `<button type="button" class="mini ${trava ? 'on' : ''}" data-fertrava="1" aria-pressed="${trava}" title="${trava ? 'Travado: só você põe, edita e tira ferimentos desta ficha. Clique para destravar.' : 'Travar: só você vai poder pôr, editar e tirar ferimentos desta ficha.'}">${LACRE} ${trava ? 'Travado' : 'Travar'}</button>`
+            : trava ? `<span class="tagseg" title="Só o mestre põe, edita e tira ferimentos desta ficha">${LACRE} travado pelo mestre</span>` : ''}
+          ${FichasMesa.deJogador(pc) ? '' : '<button type="button" class="mini" data-corpo="parar" title="Esta ficha deixa de mostrar o corpo (os ferimentos saem)">Deixar de usar</button>'}
+        </span>
       </div>
       <div class="bd corpo2">
         <div class="boneco">${htmlBoneco(pc, lista, ui)}</div>
@@ -249,6 +258,13 @@ const FichasQuadros = (() => {
       if (campo) U().desenhar(contas ? render : () => pintar(), focar && '#painelCorpo ' + focar);      // (saindo de um campo: sem atrapalhar o clique ou o Tab)
       else if (contas) { render(); if (focar) U().refocar('#painelCorpo ' + focar); } else pintar(focar);
     };
+    U().qa(painel, '[data-fertrava]').forEach(b => b.onclick = () => {
+      if (!mestreAqui()) return;
+      const travar = on => { const e = U().estadoDe(pc); if (on) e.ferTrava = 1; else delete e.ferTrava; save(); pintar('[data-fertrava]'); };
+      const on = !ferTravado(pc);
+      travar(on);
+      aviso(on ? 'Ferimentos de ' + pc.nome + ' travados: só você põe, edita e tira.' : 'Ferimentos de ' + pc.nome + ' destravados: quem controla a ficha também mexe neles.', 'Desfazer', () => travar(!on));
+    });
     U().qa(painel, '[data-corpo]').forEach(b => b.onclick = () => {
       if (b.dataset.corpo === 'usar') { pc.usaCorpo = 1; guardar(); return; }
       const antes = { usa: pc.usaCorpo, fer: pc.estado && pc.estado.fer };

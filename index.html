@@ -100,6 +100,7 @@ button { cursor: pointer; }
 .vivo-h .ib.ch .corte { display: none; }
 .vivo-h .ib.ch[aria-pressed="false"] .corte { display: inline; }
 .quem { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.vivo-fechado { flex: none; margin: 8px 12px 0; padding: 8px 10px; border: 1px dashed var(--line-strong); border-radius: 8px; background: var(--hover); color: var(--fg-2); font-size: 12.5px; line-height: 1.4; }
 .pes { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); font-size: 12.5px; }
 .pes i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .pes.fora { opacity: .5; }
@@ -174,6 +175,11 @@ button { cursor: pointer; }
 .dados-l select { flex: 1; min-width: 0; height: 30px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-weight: 600; }
 .dados-l label { display: flex; align-items: center; gap: 6px; flex: none; font-size: 12.5px; color: var(--fg-2); font-weight: 600; }
 .dados-l input { width: 58px; height: 30px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); text-align: center; font-family: var(--mono); }
+.dados-mais { gap: 10px; flex-wrap: wrap; }
+.dados-mais .dm-t { flex-basis: 100%; margin-bottom: -4px; font-size: 11.5px; color: var(--fg-3); font-weight: 600; }
+.dados-mais label { font-size: 12px; }
+.dados-mais input { width: 52px; height: 28px; }
+.dados-mais input.tem { border-color: var(--lamp); }
 .dados-b { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .dados-b button { display: grid; justify-items: center; gap: 0; min-width: 0; padding: 4px 0 5px; border-radius: 7px; border: 1px solid var(--line); background: var(--raised); color: var(--fg); line-height: 1.15; }
 .dados-b button:hover:not(:disabled) { border-color: var(--lamp); background: var(--hover); }
@@ -359,6 +365,7 @@ dialog::backdrop { background: var(--scrim); }
       </span>
     </div>
     <div class="quem" id="quem"></div>
+    <div class="vivo-fechado" id="vivoFechado" role="status" hidden>O mestre fechou a mesa ao vivo para você por enquanto: aqui aparecem só as suas rolagens e mensagens. Elas continuam chegando à mesa.</div>
     <ol class="feed" id="feed" role="log" aria-live="polite" aria-label="Rolagens e conversa da mesa"></ol>
     <button type="button" class="novas" id="novas" hidden>Novidades abaixo ↓</button>
     <section class="dados" id="dados" hidden aria-label="Dados do personagem">
@@ -371,6 +378,11 @@ dialog::backdrop { background: var(--scrim); }
         <div class="dados-l">
           <select id="dadosPc" aria-label="Personagem que rola"></select>
           <label title="Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa">Fixando <input id="dadosFixa" type="number" min="0" step="1" inputmode="numeric" aria-label="Quanto fixar"></label>
+        </div>
+        <div class="dados-l dados-mais" role="group" aria-label="Bônus só nesta rolagem">
+          <span class="dm-t" title="Valem só para a próxima rolagem: depois dela, voltam a zero">Só nesta rolagem</span>
+          <label title="Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)">+ atributo <input id="dadosMaisA" type="number" step="1" inputmode="numeric" placeholder="0" aria-label="Bônus no atributo, só nesta rolagem"></label>
+          <label title="Soma no resultado, depois de rolar">+ resultado <input id="dadosMaisR" type="number" step="1" inputmode="numeric" placeholder="0" aria-label="Bônus no resultado, só nesta rolagem"></label>
         </div>
         <div class="dados-b" id="dadosBotoes"></div>
       </div>
@@ -388,14 +400,14 @@ dialog::backdrop { background: var(--scrim); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o Tiny Cats.</p></noscript>
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
-<script src="tc/dice.js?v=2"></script>
-<script src="tc/rules.js?v=6"></script>
-<script src="tc/tc.js?v=17"></script>
+<script src="tc/dice.js?v=3"></script>
+<script src="tc/rules.js?v=7"></script>
+<script src="tc/tc.js?v=18"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.14-1';
+  const VERSAO = '2026.10.14-2';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -578,7 +590,7 @@ dialog::backdrop { background: var(--scrim); }
     } else if (m.t === 'ficha.barras' && mesas.atual) {
       // as Cenas levam à ficha as barras de um token cuja ficha não chega a quem mexeu (ver TC.dados.barrasDoToken)
       if (m.mesa && m.mesa !== mesas.atual.id) return;
-      TC.dados.barrasDoToken(m.id, m.rec, m.sob).catch(e => toast(e.message));
+      TC.dados.barrasDoToken(m.id, m.rec, m.sob, m.pd).catch(e => toast(e.message));
     } else if (m.t === 'campanha.incluir' && mesas.atual) {
       // as Fichas avisam: uma ficha de uma campanha foi dada a quem não participa dela
       if (m.mesa && m.mesa !== mesas.atual.id) return;
@@ -595,6 +607,10 @@ dialog::backdrop { background: var(--scrim); }
       aoVivo.pedirDefesa(m.dados).then(l => responder({ t: 'registro.pedido', n: m.n, id: l && l.id }), e => responder({ t: 'registro.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'registro.encerrar') {
       aoVivo.encerrarPedido(m.id, m.fim).catch(e => toast(e.message));
+    } else if (m.t === 'item.usar' && mesas.atual) {
+      // as Fichas: um item da bolsa usado em outro personagem, cuja ficha quem usa não grava (ver TC.dados.usarItemEm)
+      if (m.mesa && m.mesa !== mesas.atual.id) { responder({ t: 'item.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
+      TC.dados.usarItemEm(m.de, m.item, m.alvo, m.mudas, m.volta).then(r => responder({ t: 'item.ok', n: m.n, r }), e => responder({ t: 'item.erro', n: m.n, erro: e.message }));
     }
   }
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura
@@ -721,10 +737,10 @@ dialog::backdrop { background: var(--scrim); }
         // (com campanhas, quem mestra vê ao lado do nome quem ainda não está em nenhuma: essa pessoa só vê o que é do mundo)
         const semCamp = a.campanhas.length > 0 && a.papel === 'mestre' && m.cargo !== 'mestre' && !(m.campanhas || []).length;
         const lin = h('div', { class: 'mb' + (aoVivo.online(m) ? '' : ' fora'), 'data-m': m.usuario_id }, h('i', { style: 'background:' + (m.cor || '#888') }),
-          h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: [m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '', semCamp ? 'sem campanha' : ''].filter(Boolean).join(' · ') })));
-        // só o mestre mexe em quem participa: o papel de cada um (jogador ou mestre auxiliar) e tirar da mesa
+          h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: [m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '', semCamp ? 'sem campanha' : '', m.semVivo && a.cargo === 'mestre' ? 'sem mesa ao vivo' : ''].filter(Boolean).join(' · ') })));
+        // só o mestre mexe em quem participa: o papel de cada um (jogador ou mestre auxiliar), a mesa ao vivo dele e tirar da mesa
         if (a.cargo === 'mestre' && m.cargo !== 'mestre') lin.append(h('div', { class: 'ac' },
-          h('button', { type: 'button', class: 'btn sm', text: 'Papel…', title: 'Jogador ou mestre auxiliar', onclick: () => { fecharMenu(); janelaPapel(m); } }),
+          h('button', { type: 'button', class: 'btn sm', text: 'Permissões…', title: 'Jogador ou mestre auxiliar, e se vê a mesa ao vivo', onclick: () => { fecharMenu(); janelaPapel(m); } }),
           h('button', { type: 'button', class: 'btn sm', text: 'Tirar', onclick: () => confirmar('Tirar ' + m.nome + ' da mesa?', 'A pessoa deixa de ver esta mesa. Ela pode voltar com o código de convite' + (m.cargo === 'auxiliar' ? ' — como jogador.' : '.'), 'Tirar', async () => { await mesas.tirar(m.usuario_id); toast(m.nome + ' saiu da mesa.'); }) })));
         lista.append(lin);
       }
@@ -848,7 +864,7 @@ dialog::backdrop { background: var(--scrim); }
   /* O mestre escolhe o papel de um participante: jogador ou mestre auxiliar — e, para o auxiliar, as abas que ele
      mestra. Nada muda antes de "Salvar"; depois, dá para desfazer pelo aviso. */
   function janelaPapel(m) {
-    const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice();
+    const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice(), viaAntes = !m.semVivo;
     const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
     const caixas = ABAS.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
     const grupo = h('fieldset', { class: 'abas', id: 'pp-abas' }, h('legend', { text: 'Abas que ' + m.nome + ' mestra' }),
@@ -856,20 +872,35 @@ dialog::backdrop { background: var(--scrim); }
       h('div', { class: 'nt', text: 'Sem uma aba, ' + m.nome + ' a vê como os jogadores veem (o Rolador some). Sem a aba Fichas, não recebe as fichas escondidas nem os segredos; nas fichas que os jogadores veem, mexe enquanto mestra.' }));
     const pintar = () => { grupo.disabled = !rAux.checked; };
     rJog.addEventListener('change', pintar); rAux.addEventListener('change', pintar); pintar();
+    // a mesa ao vivo: fechada, a pessoa só vê as próprias linhas até o mestre liberar de novo
+    const cVivo = h('input', { type: 'checkbox', id: 'pp-vivo', checked: viaAntes });
+    const vivo = h('fieldset', { class: 'abas', id: 'pp-vivo-g' }, h('legend', { text: 'Mesa ao vivo' }),
+      h('label', { class: 'cx' }, cVivo, h('span', { text: m.nome + ' vê a mesa ao vivo' })),
+      h('div', { class: 'nt', text: 'Desmarcado, ' + m.nome + ' só vê as próprias rolagens e mensagens: a conversa, as rolagens e os avisos dos outros não chegam até você liberar de novo (o que ' + m.nome + ' rola continua chegando à mesa).' + (eraAux ? ' Para o mestre auxiliar, vale enquanto ele joga como jogador.' : '') }));
     const err = h('div', { class: 'err', role: 'alert' });
     const ok = h('button', { type: 'submit', class: 'btn pri', id: 'pp-ok', text: 'Salvar' });
-    const f = h('form', { class: 'dl', id: 'f-papel' }, h('h2', { text: 'Papel de ' + m.nome }),
+    const f = h('form', { class: 'dl', id: 'f-papel' }, h('h2', { text: 'Permissões de ' + m.nome }),
       h('label', { class: 'op' }, rJog, h('span', {}, h('b', { text: 'Jogador' }), h('small', { text: 'Joga com as fichas dele e vê o que a mesa mostra aos jogadores.' }))),
       h('label', { class: 'op' }, rAux, h('span', {}, h('b', { text: 'Mestre auxiliar' }), h('small', { text: 'Mestra junto com você, nas abas marcadas, e pode jogar como jogador quando quiser. Não tira ninguém da mesa, não vê nem troca o código de convite, não renomeia nem apaga a mesa e não nomeia outros auxiliares.' }))),
-      grupo, err,
+      grupo, vivo, err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => {
-      const sim = rAux.checked, abas = ABAS.filter((x, i) => caixas[i].checked).map(x => x.id);
-      if (sim === eraAux && (!sim || abas.join() === abasAntes.join())) { fecharJanela(); return; }      // nada mudou
-      await mesas.definirAuxiliar(m.usuario_id, sim, abas);
+      const sim = rAux.checked, abas = ABAS.filter((x, i) => caixas[i].checked).map(x => x.id), ve = cVivo.checked;
+      const papelMudou = !(sim === eraAux && (!sim || abas.join() === abasAntes.join())), vivoMudou = ve !== viaAntes;
+      if (!papelMudou && !vivoMudou) { fecharJanela(); return; }      // nada mudou
+      if (papelMudou) await mesas.definirAuxiliar(m.usuario_id, sim, abas);
+      if (vivoMudou) await mesas.vivoDoJogador(m.usuario_id, !ve);
       if (aberta(f)) fecharJanela();
-      toast(!sim ? m.nome + ' voltou a ser jogador.' : eraAux ? 'As abas de ' + m.nome + ' foram atualizadas.' : m.nome + ' agora é mestre auxiliar.', 'Desfazer',
-        async () => { try { await mesas.definirAuxiliar(m.usuario_id, eraAux, abasAntes); toast('Desfeito: ' + m.nome + (eraAux ? ' continua mestre auxiliar, com as abas de antes.' : ' continua jogador.')); } catch (e) { toast(e.message); } });
+      const ditos = [];
+      if (papelMudou) ditos.push(!sim ? m.nome + ' voltou a ser jogador.' : eraAux ? 'As abas de ' + m.nome + ' foram atualizadas.' : m.nome + ' agora é mestre auxiliar.');
+      if (vivoMudou) ditos.push(ve ? m.nome + ' voltou a ver a mesa ao vivo.' : 'A mesa ao vivo ficou fechada para ' + m.nome + ': só as próprias linhas chegam até você liberar.');
+      toast(ditos.join(' '), 'Desfazer', async () => {
+        try {
+          if (papelMudou) await mesas.definirAuxiliar(m.usuario_id, eraAux, abasAntes);
+          if (vivoMudou) await mesas.vivoDoJogador(m.usuario_id, !viaAntes);
+          toast('Desfeito: ' + m.nome + ' ficou como estava.');
+        } catch (e) { toast(e.message); }
+      });
     });
     abrirJanela(f);
   }
@@ -1436,8 +1467,8 @@ dialog::backdrop { background: var(--scrim); }
      mestre, entre todos), ajusta a fixa e clica no atributo; "Iniciativa" rola 1d20 + a iniciativa da ficha. As
      contas são as mesmas das Fichas (tc/rules.js), com as tabelas da mesa, a árvore, os bônus temporários e os
      ferimentos. A fixa começa na da ficha; a que a pessoa digitar aqui fica neste aparelho (não muda a ficha). */
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM'];
-  const dadosEl = $('dados'), dadosPc = $('dadosPc'), dadosFixa = $('dadosFixa'), dadosBotoes = $('dadosBotoes');
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
+  const dadosEl = $('dados'), dadosPc = $('dadosPc'), dadosFixa = $('dadosFixa'), dadosBotoes = $('dadosBotoes'), dadosMaisA = $('dadosMaisA'), dadosMaisR = $('dadosMaisR');
   let dadosMem = { pc: '', fx: {}, aberta: null }, dadosLista = '', dadosProntos = false, dadosOcupado = false, tDados = 0;
   const chaveDados = () => 'tinycats:dados:' + (mesas.atual ? mesas.atual.id + (mesas.atual.campanha ? '@' + mesas.atual.campanha : '') : '');      // (por mesa e por campanha em vista)
   function lerDadosMem() {
@@ -1472,6 +1503,11 @@ dialog::backdrop { background: var(--scrim); }
   }
   // quanto fixar agora: o que está no campo; com o campo vazio, a fixa da ficha
   function fixaAgora(ct) { const t = dadosFixa.value.trim(), n = Math.round(Number(t.replace(',', '.'))); return t !== '' && isFinite(n) && n >= 0 ? n : ct.fixa; }
+  /* os bônus "só nesta rolagem": no atributo (antes de rolar, muda o dado) e no resultado. Depois da rolagem que os
+     usou, voltam a zero (não ficam guardados). */
+  const numMais = el => { const n = Math.round(Number(String(el.value).trim().replace(',', '.'))); return isFinite(n) ? Math.max(-999, Math.min(999, n)) : 0; };
+  const maisAgora = () => ({ atr: numMais(dadosMaisA), res: numMais(dadosMaisR) });
+  const pintarMais = () => { dadosMaisA.classList.toggle('tem', !!numMais(dadosMaisA)); dadosMaisR.classList.toggle('tem', !!numMais(dadosMaisR)); };
   function prepararDados() {
     clearTimeout(tDados);
     dadosProntos = false; dadosLista = ''; dadosMem = lerDadosMem(); dadosEl.hidden = true;
@@ -1504,8 +1540,11 @@ dialog::backdrop { background: var(--scrim); }
     dadosFixa.placeholder = String(ct.fixa);
     if (document.activeElement !== dadosFixa || dadosFixa.dataset.pc !== dadosMem.pc) dadosFixa.value = guardada == null ? String(ct.fixa) : String(guardada);
     dadosFixa.dataset.pc = dadosMem.pc;
-    const fixa = fixaAgora(ct);
-    const comoRola = v => (v < 1 ? 'nada a rolar' : fixa >= v ? 'fixa total: ' + v : '1d' + (v - fixa) + (fixa ? ' + ' + fixa : ''));
+    const fixa = fixaAgora(ct), mais = maisAgora();
+    const comMais = v => Math.max(0, v + mais.atr);
+    const comoRola = v0 => { const v = comMais(v0), f = Math.min(fixa, v), r = mais.res ? (mais.res > 0 ? ' + ' : ' − ') + Math.abs(mais.res) : '';
+      return v < 1 ? 'nada a rolar' : f >= v ? 'fixa total: ' + v + r : '1d' + (v - f) + (f ? ' + ' + f : '') + r; };
+    pintarMais();
     if (dadosBotoes.querySelectorAll('button[data-k]').length !== ct.itens.length + 1) {
       dadosBotoes.replaceChildren(...ct.itens.map(it => h('button', { type: 'button', 'data-k': it.k, onclick: () => rolarDaTelinha(it.k) }, h('small', { text: it.rot }), h('b', {}))),
         h('button', { type: 'button', class: 'ini', 'data-k': 'INI', onclick: () => rolarDaTelinha('INI') }, h('small', { text: 'Iniciativa' }), h('b', {})));
@@ -1515,11 +1554,11 @@ dialog::backdrop { background: var(--scrim); }
       b.querySelector('b').textContent = String(it.valor);
       b.title = it.nome + ' ' + it.valor + ' — ' + comoRola(it.valor);
       b.setAttribute('aria-label', 'Rolar ' + it.nome + ', ' + it.valor + ': ' + comoRola(it.valor));
-      b.disabled = dadosOcupado || it.valor < 1;
+      b.disabled = dadosOcupado || comMais(it.valor) < 1;
     }
     const bi = dadosBotoes.querySelector('button[data-k="INI"]');
     bi.querySelector('b').textContent = '1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini);
-    bi.title = 'Rola 1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini) + ' (a iniciativa da ficha) e mostra à mesa';
+    bi.title = 'Rola 1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini) + ' (a iniciativa da ficha)' + (mais.res ? (mais.res > 0 ? ' + ' : ' − ') + Math.abs(mais.res) + ' (só nesta rolagem)' : '') + ' e mostra à mesa';
     bi.disabled = dadosOcupado;
   }
   async function rolarDaTelinha(k) {
@@ -1528,8 +1567,9 @@ dialog::backdrop { background: var(--scrim); }
     if (!ct || !pc) return;
     dadosOcupado = true; pintarDados();
     try {
-      if (k === 'INI') await aoVivo.rolarIniciativa(pc, ct.ini);
-      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = await aoVivo.rolarAtributo(pc, it.nome, it.valor, Math.min(fixaAgora(ct), it.valor)); if (!r.ok) toast(r.error); } }
+      const mais = maisAgora();
+      if (k === 'INI') { await aoVivo.rolarIniciativa(pc, ct.ini, mais); dadosMaisR.value = ''; }        // (a iniciativa usa só o bônus no resultado)
+      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = await aoVivo.rolarAtributo(pc, it.nome, it.valor, fixaAgora(ct), mais); if (!r.ok) toast(r.error); else { dadosMaisA.value = ''; dadosMaisR.value = ''; } } }
       descer();
     } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
     dadosOcupado = false; pintarDados();
@@ -1544,6 +1584,10 @@ dialog::backdrop { background: var(--scrim); }
     guardarDadosMem(); pintarDados();
   });
   dadosFixa.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); dadosFixa.blur(); } });
+  for (const el of [dadosMaisA, dadosMaisR]) {
+    el.addEventListener('input', () => pintarDados());
+    el.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } });
+  }
   // a ficha, as tabelas da mesa ou a árvore mudaram: os números da telinha acompanham
   TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
@@ -1604,7 +1648,11 @@ dialog::backdrop { background: var(--scrim); }
       } catch (e) { /* sem os dados da mesa, as Cenas abrem quando o mestre for até elas */ }
     }, 2500);
   }
+  /* A mesa ao vivo fechada para mim (o mestre fecha no menu da mesa): o painel diz isso no alto, com calma. */
+  const pintarVivoFechado = () => { const a = mesas.atual; $('vivoFechado').hidden = !(a && a.semVivo); };
+  mesas.on('vivo', fechada => { pintarVivoFechado(); toast(fechada ? 'O mestre fechou a mesa ao vivo para você por enquanto. Suas rolagens continuam chegando à mesa.' : 'O mestre abriu a mesa ao vivo para você de novo.', null, null, 7000); });
   mesas.on('muda', a => {
+    pintarVivoFechado();
     pintarAbas();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();

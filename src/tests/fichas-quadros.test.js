@@ -194,9 +194,20 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   const pw = await S0(() => S.personagens[0].poderes[0].id);
   await digitar(P.locator(`#ficha [data-pdmax="${pw}"]`), '5');
   await apertar(P.locator(`#ficha [data-pdstep="${pw}|1"]`)); await w(250);
-  ok(j((await sel()).poderes.map(x => [x.max, x.atual])) === '[[5,1]]' && await P.locator(`#ficha [data-pdmax="${pw}"]`).inputValue() === '5', 'num poder: digitar o limite (5) e clicar no "+" — o limite vale e o clique conta 1 uso');
+  // (barra especial: o limite fica na ficha; o valor de agora, no estado — estado.pd)
+  ok(j((await sel()).poderes.map(x => x.max)) === '[5]' && ((await sel()).estado.pd || {})[pw] === 1 && await P.locator(`#ficha [data-pdmax="${pw}"]`).inputValue() === '5', 'numa barra especial: digitar o limite (5) e clicar no "+" — o limite vale e o clique conta 1');
   await apertar(P.locator(`#ficha [data-pdstep="${pw}|1"]`)); await w(200);
-  ok((await sel()).poderes[0].atual === 2 && await P.locator('#ficha .pip.on').count() === 2, 'e a ficha redesenhada depois do clique continua respondendo (2 usos, 2 círculos acesos)');
+  ok(((await sel()).estado.pd || {})[pw] === 2 && await P.locator('#ficha .pip.on').count() === 2, 'e a ficha redesenhada depois do clique continua respondendo (2, 2 círculos acesos)');
+  // "Encher todas" e o "×" de uma barra especial: os dois com Desfazer
+  await P.locator('#ficha [data-pdall]').click(); await w(250);
+  ok(((await sel()).estado.pd || {})[pw] === 5 && await P.locator('#ficha .pip.on').count() === 5, '"Encher todas": a barra especial vai ao limite (5)');
+  await desfazer();
+  ok(((await sel()).estado.pd || {})[pw] === 2 && await P.locator('#ficha .pip.on').count() === 2, 'e o Desfazer volta ao que era (2)');
+  await P.locator(`#ficha [data-pdnome="${pw}"]`).fill('Cargas'); await w(150);
+  await P.locator(`#ficha [data-pddel="${pw}"]`).click(); await w(250);
+  ok((await sel()).poderes.length === 0 && !Object.prototype.hasOwnProperty.call((await sel()).estado.pd || {}, pw) && /A barra especial Cargas saiu da ficha/.test(await toast()), 'o "×" tira a barra (e o valor dela no estado), avisando: ' + await toast());
+  await desfazer();
+  ok(j((await sel()).poderes.map(x => [x.id, x.nome, x.max])) === j([[pw, 'Cargas', 5]]) && ((await sel()).estado.pd || {})[pw] === 2 && await P.locator('#ficha .pip.on').count() === 2, 'e o Desfazer devolve a barra inteira: nome, limite e o valor de agora (2)');
   // Tab: o valor fica, e o cursor segue para o campo seguinte (não volta para o que a pessoa acabou de deixar)
   await digitar(pts('FOR'), '6'); await P.keyboard.press('Tab'); await w(200);
   let onde = await ativo();

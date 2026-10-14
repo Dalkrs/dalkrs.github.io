@@ -1299,22 +1299,31 @@ const UI = (() => {
 
   /* A bolsa do personagem deste token: as poções, bombas, runas, munições e materiais da ficha dele.
      A poção que faz alguma coisa mostra antes o que vai acontecer ("Usar agora"); os outros itens só gastam uma
-     unidade. Tudo avisa a mesa ao vivo e dá para desfazer. */
+     unidade. A poção pode ir para outro token da cena ("Em quem"): um aliado, um NPC, um token sem ficha. Tudo avisa a
+     mesa ao vivo e dá para desfazer (o jogador, no token de outro, pede ao mestre — que aplica em seguida). */
   function bagBox(t) {
     const tid = t.id, R = window.TC.rules;
-    let pede = null;
+    let pede = null, emId = tid;
     const body = h('div', { class: 'bag' });
+    const alvoAgora = () => { const a = Store.get('tokens', emId); return a && !a.prop ? a : Store.get('tokens', tid); };
     const doUse = (tk, it) => {
       pede = null;
-      const r = Fichas.usar(tk, it.id);
+      const alvo = alvoAgora(), r = Fichas.usar(tk, it.id, alvo && alvo.id !== tk.id ? alvo : null);
       if (!r.ok) { toast(r.error); paint(); return; }
-      toast(r.texto + '.', { action: 'Desfazer', run: () => { if (r.desfazer()) toast(`Desfeito: ${it.nome || 'o item'} voltou para a bolsa.`); if (modalEl && modalLive) modalLive(); } });
+      if (r.pedido) toast(r.texto + '.');
+      else toast(r.texto + '.', { action: 'Desfazer', run: () => { if (r.desfazer()) toast(`Desfeito: ${it.nome || 'o item'} voltou para a bolsa.`); if (modalEl && modalLive) modalLive(); } });
       paint();
     };
     const use = (tk, it) => {
-      if (!Fichas.previaUso(tk, it.id).length) { doUse(tk, it); return; }      // nada é aplicado sozinho: um clique gasta e avisa
+      const alvo = alvoAgora();
+      if (!Fichas.previaUso(tk, it.id, alvo && alvo.id !== tk.id ? alvo : null).length && (!alvo || alvo.id === tk.id)) { doUse(tk, it); return; }      // nada é aplicado sozinho: um clique gasta e avisa
       pede = it.id; paint();
       const n = document.getElementById('bag-ok-' + it.id); if (n) n.focus();
+    };
+    // em quem: este token (o de quem tem a bolsa) ou outro da cena — os que quem usa vê, os marcados na mira primeiro
+    const quemPode = () => {
+      const sc = Store.scene(), mira = new Set(sc.targets.filter(x => x.by === App.viewer).map(x => x.t));
+      return sc.tokens.filter(x => !x.prop && x.id !== tid && tokShown(x, sc)).sort((a, b) => (mira.has(b.id) - mira.has(a.id)) || tokName(a).localeCompare(tokName(b), 'pt-BR'));
     };
     function paint() {
       const tk = Store.get('tokens', tid), itens = tk ? Fichas.bolsa(tk) : null;
@@ -1322,18 +1331,24 @@ const UI = (() => {
       body.replaceChildren();
       if (!itens) { addKids(body, [note('Este token não dá mais acesso a uma bolsa.')]); return; }
       if (!itens.length) { addKids(body, [note('A bolsa está vazia. Os itens são cadastrados na ficha do personagem, em Bolsas.')]); return; }
+      const outros = quemPode();
+      if (!outros.some(x => x.id === emId)) emId = tid;
+      const alvo = alvoAgora(), emOutro = !!alvo && alvo.id !== tid;
+      if (outros.length) addKids(body, [h('div', { class: 'bag-em' },
+        field('Em quem', inSelect('bag-em', emId, [[tid, tokName(tk) + ' (quem tem a bolsa)']].concat(outros.map(x => [x.id, tokName(x)])), v => { emId = v; pede = null; paint(); }), 'row'),
+        emOutro && !isGM() ? note('No token de outro, o mestre aplica (em seguida, com a cena no ar).') : null)]);
       addKids(body, R.BOLSAS.map(b => {
         const lista = itens.filter(x => x.t === b.t);
         if (!lista.length) return null;
         return h('div', { class: 'bag-g' }, h('div', { class: 'bag-h', text: b.nome }), lista.map(it => {
-          const previa = pede === it.id && it.qtd > 0 ? Fichas.previaUso(tk, it.id) : null, resta = it.qtd - 1;
+          const previa = pede === it.id && it.qtd > 0 ? Fichas.previaUso(tk, it.id, emOutro ? alvo : null) : null, resta = it.qtd - 1;
           return h('div', { class: 'bag-r' + (it.qtd ? '' : ' sem') },
             h('div', { class: 'bag-l' },
               h('span', { class: 'bag-n', text: it.nome || b.um }), h('span', { class: 'bag-q', title: 'Quantas há na bolsa', text: '×' + it.qtd }),
               btn('Usar', () => use(tk, it), { kind: 'small', id: 'bag-u-' + it.id, disabled: it.qtd < 1, title: it.qtd < 1 ? 'Não há nenhuma na bolsa' : it.t === 'pocao' ? 'Gasta uma e aplica o efeito (mostra antes o que vai acontecer)' : 'Gasta uma e avisa a mesa. Nada é aplicado sozinho.' })),
             it.nota ? h('div', { class: 'bag-d', text: it.nota }) : null,
             previa ? h('div', { class: 'bag-c' },
-              h('span', { class: 'bag-ct' }, h('strong', { text: `Usar ${it.nome || 'a poção'}? ` }), previa.join(' · ') + ' · ' + (resta === 0 ? 'é a última' : resta === 1 ? 'sobra 1' : 'sobram ' + resta)),
+              h('span', { class: 'bag-ct' }, h('strong', { text: `Usar ${it.nome || 'a poção'}${emOutro ? ' em ' + tokName(alvo) : ''}? ` }), (previa.join(' · ') || 'Gasta uma unidade.') + ' · ' + (resta === 0 ? 'é a última' : resta === 1 ? 'sobra 1' : 'sobram ' + resta)),
               btn('Usar agora', () => doUse(tk, it), { kind: 'primary small', id: 'bag-ok-' + it.id }),
               btn('Cancelar', () => { pede = null; paint(); const n = document.getElementById('bag-u-' + it.id); if (n) n.focus(); }, { kind: 'small', id: 'bag-no' })) : null);
         }));
