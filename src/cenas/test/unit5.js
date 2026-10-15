@@ -451,5 +451,18 @@ const ASSETS = {
     'trazer para a mesa: quem tem par continua dono; o resto passa a ser do mestre; "todos os jogadores" continua; o explorado recomeça');
 }
 
+/* ============ (lote 6) a fadiga que a ficha manda para o token ============ */
+{
+  const sc = newScene('fadiga');
+  const fadDe = v => { const t = newToken(sc, 0, 0, { name: 'X' }); if (v !== undefined) t.fad = v; return t; };
+  sc.tokens.push(fadDe(3), fadDe(9), fadDe(-2), fadDe(2.6), fadDe('4'), fadDe(null), fadDe(NaN), fadDe());
+  normalizeScene(sc);
+  eq(sc.tokens.map(t => ('fad' in t ? t.fad : 'sem')), [3, 5, 0, 3, 'sem', 'sem', 'sem', 'sem'], 'a pilha do token fica entre 0 e 5 (número inteiro); o que não é número sai');
+  const { v } = Proj.projetar(sc, {}, new Set());
+  ok(v.tokens[0].fad === 3, 'e vai para os jogadores na projeção da cena (todos veem a pilha)');
+  const volta = normalizeScene(Proj.juntar(ida(Proj.projetar(sc, {}, new Set()).m), ida(v)));
+  ok(volta.tokens[0].fad === 3, 'do lado do jogador, a cena montada de novo continua com a pilha');
+}
+
 console.log(fails ? `${n - fails} verificações passaram, ${fails} falharam` : `${n} verificações passaram`);
 process.exit(fails ? 1 : 0);
