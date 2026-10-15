@@ -123,15 +123,18 @@ const Proj = (() => {
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };
-    // a faixa de um grupo vai só com os tokens que os jogadores veem; se todos estão ocultos, ela não vai
-    const list = tn.list.filter(e => !(e.token && fora.has(e.token)) && !(Array.isArray(e.toks) && e.toks.length && e.toks.every(id => fora.has(id) || !nomes.has(id)))).map(e => {
+    // a faixa de um grupo vai só com os tokens que os jogadores veem; se todos estão ocultos, ela não vai.
+    // A linha invisível (lote 6) não vai; na vez dela, os jogadores só ficam sabendo que o turno está com o mestre.
+    const list = tn.list.filter(e => !e.inv && !(e.token && fora.has(e.token)) && !(Array.isArray(e.toks) && e.toks.length && e.toks.every(id => fora.has(id) || !nomes.has(id)))).map(e => {
       const o = { id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null };
       if (!e.token && Array.isArray(e.toks)) o.toks = e.toks.filter(id => !fora.has(id) && nomes.has(id));
       if (e.reac) o.reac = true;
       return o;
     });
     // (a vez de um token oculto não aponta para ninguém: os jogadores não ficam sabendo que há mais alguém na ordem)
-    return { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
+    const o = { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
+    if (o.on && tn.list.some(e => e.id === tn.cur && e.inv)) o.mestre = true;
+    return o;
   }
   function projetar(sc, assets, jogadores) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
@@ -157,7 +160,7 @@ const Proj = (() => {
      Barras, condições e auras viajam como "como estava → como ficou" (op.b guarda o "como estava"). O mestre aplica
      só a diferença por cima do que ele tem agora: se nesse meio-tempo ele deu dano em Vida e o jogador gastou SP,
      as duas coisas valem. */
-  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras' };
+  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras', post: 'condicoes' };
   const MAX_FORMAS = 150, MAX_EFEITOS = 40, MAX_PONTOS = 3000, MAX_AURAS = 12;      // por jogador, por cena
   const MAX_PESO_FORMAS = 120000;                    // e o tamanho de todos os desenhos de um jogador numa cena, em caracteres
   const r1 = n => Math.round(n * 10) / 10;
@@ -339,6 +342,7 @@ const Proj = (() => {
         else if (k === 'conds') { if (Array.isArray(val)) { const nc = fundirConds(t.conds, base.conds, val); if (!igual(nc, t.conds)) q.conds = nc; } }
         else if (k === 'cinfo') { const ni = fundirCinfo(t.cinfo || {}, base.cinfo, val); if (!igual(ni, t.cinfo || {})) q.cinfo = ni; }
         else if (k === 'auras') { const na = fundirAuras(t.auras || [], base.auras, val); if (na && !igual(na, t.auras || [])) q.auras = na; }
+        else if (k === 'post') { if (typeof val === 'boolean' && val !== !!t.post) q.post = val; }      // (a postura: liga ou desliga)
       }
       // contador de uma condição que não está mais no token não fica sobrando
       if (q.conds || q.cinfo) { const conds = q.conds || t.conds, ci = Object.assign({}, q.cinfo || t.cinfo || {}); let tirou = false; for (const id in ci) if (!conds.includes(id)) { delete ci[id]; tirou = true; } if (tirou || q.cinfo) q.cinfo = ci; }

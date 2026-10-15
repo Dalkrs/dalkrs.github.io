@@ -304,6 +304,53 @@ const Fichas = (() => {
     syncAll(t.char);                    // (a mudança feita daqui não volta como "mudança de fora": o token acompanha já)
     return antes;
   }
+  /* ---- os equipamentos da ficha deste token (lote 6: a janelinha E) ----
+     Quem mexe: o mestre, em qualquer token ligado; o jogador, no token do personagem dele (a ficha é dele). */
+  function podeEquipar(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  // → [{ id, nome, on, troca, reliquia, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da ficha)
+  function itens(t) {
+    const l = t && t.char ? get(t.char) : null, R0 = R();
+    if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
+    const rotDe = k => { const d = (R0.DEFESAS || []).find(x => x.k === k); return (d && d.rot) || k; };
+    const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [];
+    return l.ficha.itens.filter(it => it && it.id != null).map(it => {
+      const bon = [], b = it.bonus || {}, rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
+      for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
+      for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
+      for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
+      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia, bon };
+    });
+  }
+  /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica
+     equipado (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
+     → { ok: true, item, guardados: [nomes], desfazer() } ou { ok: false, error } */
+  function equipar(t, id, onOff) {
+    if (!podeEquipar(t)) return { ok: false, error: papel === 'mestre' ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.' };
+    const charId = t.char, l = get(charId), antes = l.ficha, lista = Array.isArray(antes.itens) ? antes.itens : [];
+    const r = R().equiparItem(lista, id, onOff), it = r.itens.find(x => x && x.id === id);
+    if (!it) return { ok: false, error: 'Este item não está mais na ficha.' };
+    P.gravar(charId, { ficha: Object.assign({}, antes, { itens: r.itens }) });
+    syncAll(charId);
+    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, x.equipado]));
+    const nomes = r.guardados.map(g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; });
+    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: nomes, desfazer: () => {
+      const agora = get(charId);
+      if (!agora || !agora.ficha || !Array.isArray(agora.ficha.itens)) return false;
+      // (só a chave de equipado de cada item volta como estava; o resto da ficha fica como está agora)
+      const itens2 = agora.ficha.itens.map(x => {
+        if (!x || !eqAntes.has(x.id)) return x;
+        const y = Object.assign({}, x), v = eqAntes.get(x.id);
+        if (v === undefined) delete y.equipado; else y.equipado = v;
+        return y;
+      });
+      P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { itens: itens2 }) });
+      syncAll(charId);
+      return true;
+    } };
+  }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
@@ -629,7 +676,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };

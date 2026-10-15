@@ -671,10 +671,12 @@ const UI = (() => {
     const rows = [
       ['V', 'Selecionar'], ['H ou espaço + arrastar', 'Mover a câmera'], ['Roda do mouse', 'Aproximar e afastar'], ['0', 'Enquadrar a cena'],
       ['T', 'Novo token'], ['J', 'Objetos de cenário: tochas, fogueiras, móveis, árvores, armadilhas'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
-      ['I', 'Luz'], ['N', 'Névoa manual'], ['Q', 'Terreno'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
+      ['I', 'Luz'], ['U', 'Névoa manual'], ['Q', 'Terreno'], ['Y', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
       ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
+      ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
+      ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -961,6 +963,42 @@ const UI = (() => {
           edit ? iconBtn('x', 'Tirar ' + c.n, () => { Act.condToggle([t], c.id); done(); }, { size: 14, cls: 'cact-x', id: `${pre}-${c.id}-x` }) : null);
       }));
   }
+  /* Com vários tokens escolhidos (lote 6): as condições ativas em algum deles, com o contador de cada um ("3 · 2") e as
+     rodadas, e os botões que mudam em todos de uma vez — −1 e +1 no contador (de quem tem a condição; quem chega a
+     zero perde a condição, como num token só) e as mesmas rodadas para todos. Cada clique é um passo de desfazer. */
+  function condActiveMulti(toks, after, idp) {
+    const pre = idp || 'cm', ids = toks.map(t => t.id);
+    const live = () => ids.map(id => Store.get('tokens', id)).filter(Boolean);
+    const ts = live(), ativas = CONDS.filter(c => ts.some(t => t.conds.includes(c.id)));
+    if (!ativas.length) return null;
+    const done = () => { if (after) after(); };
+    const quantos = n => n + (n === 1 ? ' token' : ' tokens');
+    const lote = (c, op, texto) => { const n = Act.condLote(live(), c.id, op); if (n) toast(texto(n), { action: 'Desfazer', run: Tools.undo }); done(); };
+    return h('div', { class: 'cact cmulti', id: pre + '-ativas' },
+      h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), h('span')),
+      ativas.map(c => {
+        const com = ts.filter(t => t.conds.includes(c.id)), de = (t, k) => ((t.cinfo || {})[c.id] || {})[k] || 0;
+        const ns = com.map(t => de(t, 'n')), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]);
+        const qual = com.length === ts.length ? 'em todos' : com.length + ' de ' + ts.length;
+        // (valores diferentes: de quanto a quanto; o de cada um fica na dica)
+        const faixa = a => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? (lo ? String(lo) : '–') : (lo || '–') + ' a ' + hi; };
+        const cada = a => com.map((t, i) => tokName(t) + ': ' + (a[i] || '–')).join(' · ');
+        return h('div', { class: 'cact-r' },
+          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+            h('span', { class: 'cm-tt' }, h('span', { class: 'cact-t', text: c.n }), h('span', { class: 'cm-q', text: qual }))),
+          h('span', { class: 'stp' },
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !ns.some(n => n > 0), title: 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
+              onclick: () => lote(c, { delta: -1 }, n => `${c.n}: −1 em ${quantos(n)}.`) }, icon('minus', 13)),
+            h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, title: 'O contador de cada um: ' + cada(ns), text: faixa(ns) }),
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
+              onclick: () => lote(c, { delta: 1 }, n => `${c.n}: +1 em ${quantos(n)}.`) }, icon('plus', 13))),
+          inCount(`${pre}-${c.id}-d`, igual(ds) ? ds[0] : 0, v => lote(c, { d: v }, n => `${c.n}: ${v ? v + (v === 1 ? ' rodada' : ' rodadas') : 'sem prazo'} em ${quantos(n)}.`),
+            { label: `Rodadas de ${c.n} em todos`, title: (igual(ds) ? '' : 'Agora: ' + cada(ds) + '. ') + 'As mesmas rodadas para todos os que têm a condição. Vazio: sem prazo.' }),
+          h('span'));
+      }));
+  }
+  // a chave da postura (lote 6): a etiqueta "Postura" junto do nome, que todos veem
+  const postToggle = t => toggle('tk-post', !!t.post, v => Store.tx(v ? 'Postura' : 'Sem postura', () => Store.upd('tokens', t.id, { post: v })), 'Em postura (a etiqueta "Postura" junto do nome)');
   function condPicker(toks) {
     if (!toks.length) return;
     const ids = toks.map(t => t.id);
@@ -970,7 +1008,7 @@ const UI = (() => {
       const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
       body.replaceChildren();
       addKids(body, [
-        live.length === 1 ? condActive(live[0], true, null, 'cdm') : null,
+        live.length === 1 ? condActive(live[0], true, null, 'cdm') : condActiveMulti(live, paint, 'cmm'),
         condGrid(live, null, 'cgm'),
         live.length === 1 ? note('O contador só muda nos botões + e −. As rodadas descontam sozinhas quando o token termina a vez.') : null,
       ]);
@@ -1390,7 +1428,7 @@ const UI = (() => {
       const mine = ownsTok(t), canC = mine && can('conds', t);
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
-        sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), canC ? condGrid([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
         mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
@@ -1415,7 +1453,7 @@ const UI = (() => {
       menteBox(t),
       fadigaBox(t),
       numsBox(t, true),
-      sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
+      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -1585,7 +1623,7 @@ const UI = (() => {
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null) : null) : null,
-      condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
+      condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
         gm ? btn('Aos turnos', () => { const n = Act.turnAdd(toks); toast(n ? `${n} ${n === 1 ? 'token entrou' : 'tokens entraram'} na ordem de turnos.` : 'Todos já estavam na ordem de turnos.'); }, { icon: 'turns' }) : null,
@@ -1860,7 +1898,7 @@ const UI = (() => {
     };
     tn.list.forEach((e, i) => {
       const t = e.token ? Store.get('tokens', e.token) : null;
-      if (!gm && t && t.hidden) return;
+      if (!gm && ((t && t.hidden) || e.inv)) return;           // (a linha invisível: só o mestre a vê)
       const band = isBand(e), membros = band ? turnToks(e).filter(k => gm || !k.hidden) : [];
       const cur = tn.on && e.id === tn.cur;
       const name = t ? tokName(t) : e.name, label = turnLabel(e, name), k = e.k || 1;
@@ -1874,7 +1912,8 @@ const UI = (() => {
         Render.centerOn(cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length);
       };
       const reac = e.reac ? h('span', { class: 'turn-reac', text: 'reação', title: 'Esperando para reagir: segurou a vez para agir fora de ordem' }) : null;
-      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : ''), id: `tl-${e.id}` },
+      const inv = gm && e.inv ? h('span', { class: 'turn-inv', text: 'invisível', title: 'Os jogadores não veem esta linha; na vez dela, só ficam sabendo que o turno está com o mestre' }) : null;
+      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : '') + (gm && e.inv ? ' inv' : ''), id: `tl-${e.id}` },
         h('button', { type: 'button', class: 'turn-m', title: t || membros.length ? 'Mostrar no mapa' : label, disabled: !t && !membros.length, onclick: mostrar },
           t ? tokenAvatar(t, 28)
             : band && membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(x => tokenAvatar(x, 22)))
@@ -1886,7 +1925,7 @@ const UI = (() => {
             band ? h('span', { class: 'turn-g', text: `grupo · ${membros.length}`, title: membros.map(x => tokName(x)).join(', ') || 'Ninguém nesta faixa agora' }) : null,
             rolled ? h('span', { class: 'turn-r', text: `(${rolled})`, title: `Rolagem: ${e.init} = ${rolled}` }) : null,
             cur ? h('span', { class: 'turn-now', text: 'vez' }) : null,
-            reac)),
+            reac, inv)),
         gm ? inNum(`tn-${e.id}`, e.init == null ? '' : e.init, v => Act.turnPatch(x => { const y = x.list.find(z => z.id === e.id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'),
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
@@ -1903,16 +1942,18 @@ const UI = (() => {
             if (e.reac) toast(`${label} reagiu.`, { action: 'Desfazer', run: Tools.undo });
           }, { size: 14, on: !!e.reac, id: `tx-${e.id}` }) : null) : null,
         gm ? h('span', { class: 'turn-a' },
+          // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+          iconBtn(e.inv ? 'eyeOff' : 'eye', e.inv ? `${label}: invisível para os jogadores (clique para mostrar)` : `Esconder ${label} dos jogadores: a linha some da ordem deles e, na vez dela, eles só veem que o turno está com o mestre`, () => {
+            const n = Act.turnInv(e.id, !e.inv), quem = name;
+            if (n) toast(e.inv ? (n > 1 ? `As ${n} linhas de ${quem} voltam a aparecer para os jogadores.` : `${label} volta a aparecer para os jogadores.`)
+              : (n > 1 ? `As ${n} linhas de ${quem} ficam invisíveis para os jogadores.` : `${label} fica invisível para os jogadores.`), { action: 'Desfazer', run: Tools.undo });
+          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` }),
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
           iconBtn('x', 'Tirar da ordem', () => remove(e), { size: 14 })) : null));
     });
     const selToks = selOf('tokens').filter(k => !k.prop);
-    const step = d => {
-      const ended = Act.turnStep(d);
-      if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
-      zonePrompt(d > 0);
-    };
+    const step = d => passarTurno(d);
     const missing = tn.list.filter(e => e.init == null).length;
     return [
       h('div', { class: 'turn-head' },
@@ -1920,6 +1961,8 @@ const UI = (() => {
         gm ? h('div', { class: 'row tight' },
           iconBtn('prev', 'Turno anterior (o que já foi descontado não volta; para isso, use Desfazer)', () => step(-1), { disabled: !tn.list.length, id: 'turnPrev' }),
           btn('Próximo turno', () => step(1), { kind: 'primary', icon: 'next', disabled: !tn.list.length, id: 'turnNext' })) : null),
+      // na vez de uma linha invisível, o jogador só fica sabendo que o turno está com o mestre
+      !gm && vezDoMestre(tn) ? h('p', { class: 'turn-mestre', id: 'turnMestre' }, icon('eyeOff', 14), h('span', { text: 'O turno está com o mestre.' })) : null,
       rows.length ? h('ol', { class: 'turns' }, rows) : h('p', { class: 'muted', text: gm ? 'Ninguém na ordem ainda. Selecione tokens no mapa e adicione-os aqui.' : 'O mestre ainda não montou a ordem de turnos.' }),
       gm ? h('div', { class: 'row' },
         btn(selToks.length ? `Adicionar ${selToks.length} selecionado${selToks.length > 1 ? 's' : ''}` : 'Adicionar selecionados', () => { if (!Act.turnAdd(selToks)) toast(selToks.length === 1 ? 'Ele já está na ordem.' : 'Já estão todos na ordem.'); }, { icon: 'plus', disabled: !selToks.length }),
@@ -2282,6 +2325,15 @@ const UI = (() => {
      Aparece por alguns segundos quando a vez muda e lembra as condições de quem vai jogar.
      É só um lembrete: não altera nada. */
   function hideTurn() { clearTimeout(turnTimer); el.turnb.hidden = true; el.turnb.replaceChildren(); }
+  /* Passar (d = 1) ou voltar (d = −1) o turno: o botão da aba Turnos e as teclas N e Shift+N. O que acabou (condições
+     com rodadas, efeitos) vem num aviso com Desfazer; a zona em que o token entrou pergunta antes de agir. */
+  function passarTurno(d) {
+    const tn = Store.scene().turn;
+    if (!tn.list.length) { toast('A ordem de turnos está vazia: adicione os tokens na aba Turnos.'); return; }
+    const ended = Act.turnStep(d);
+    if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
+    zonePrompt(d > 0);
+  }
   function turnBanner() {
     const sc = Store.scene(), tn = sc.turn;
     const key = turnKeyOf(sc);
@@ -2289,8 +2341,16 @@ const UI = (() => {
     const prev = turnKey;
     turnKey = key;
     if (prev === key) return;
-    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !tn.cur) { hideTurn(); return; }
+    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { hideTurn(); return; }
     if (!isGM() && !can('turns')) { hideTurn(); return; }
+    if (!isGM() && vezDoMestre(tn)) {                      // (o jogador, na vez de uma linha invisível)
+      el.turnb.replaceChildren(h('span', { class: 'turnb-t' }, 'O turno está com o ', h('strong', { text: 'mestre' })),
+        h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)));
+      el.turnb.hidden = false;
+      clearTimeout(turnTimer);
+      turnTimer = setTimeout(hideTurn, 4000);
+      return;
+    }
     const e = tn.list.find(x => x.id === tn.cur);
     const t = e && e.token ? Store.get('tokens', e.token) : null;
     if (!e || (t && !tokShown(t, sc))) { hideTurn(); return; }     // o jogador não fica sabendo de quem ele não vê
@@ -2302,6 +2362,7 @@ const UI = (() => {
     addKids(el.turnb, [
       t ? tokenAvatar(t, 26) : membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(k => tokenAvatar(k, 22))) : null,
       h('span', { class: 'turnb-t' }, 'Vez de ', h('strong', { text: turnLabel(e, t ? tokName(t) : e.name) })),
+      isGM() && e.inv ? h('span', { class: 'turnb-inv', text: 'invisível para os jogadores' }) : null,
       conds.map(c => {
         const ci = info[c.id] || {};
         return h('span', { class: 'turnb-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
@@ -2319,7 +2380,10 @@ const UI = (() => {
      do "Aplicar a quem está dentro…"), o mestre vê um aviso por zona: "Aplicar" ou "Pular". Nada acontece sozinho; o
      aviso some quando a vez passa de novo. Numa faixa de grupo, vale para os tokens dela que estão dentro. */
   let zonasKey = null;                                      // de que vez são os avisos que estão à mostra
-  const turnKeyOf = sc => sc.id + '|' + (sc.turn.on && sc.turn.cur ? sc.turn.cur + ':' + sc.turn.round : '');
+  // (a vez de uma linha invisível chega ao jogador sem a entrada: só "o turno está com o mestre"; na prévia do mestre
+  // "como jogador", sem a projeção, a entrada está lá, com a marca)
+  const vezDoMestre = tn => !!tn.on && (!!tn.mestre || tn.list.some(e => e.id === tn.cur && e.inv));
+  const turnKeyOf = sc => sc.id + '|' + (sc.turn.on && (sc.turn.cur || sc.turn.mestre) ? (sc.turn.cur || 'mestre') + ':' + sc.turn.round : '');
   function zonePrompt(avancou) {
     const box = el.zonas;
     box.replaceChildren(); box.hidden = true; zonasKey = null;
@@ -2417,7 +2481,7 @@ const UI = (() => {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable,
+    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

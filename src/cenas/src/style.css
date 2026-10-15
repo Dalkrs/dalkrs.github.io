@@ -399,6 +399,13 @@ button { cursor: pointer; }
 .turn-reac { order: 4; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--reac); background: var(--reac-soft); color: var(--reac-ink); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
 .turn.reac { border-style: dashed; border-color: var(--reac); }
 .turn.reac.cur { border-style: solid; }
+.turn-inv { order: 5; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.turn.inv .turn-n { color: var(--fg-2); }
+.turn.inv .turn-m .av { opacity: .6; }
+.turn-a .ib.turn-v { color: var(--fg-3); }
+.turn-a .ib.turn-v.on { color: var(--fg); background: var(--hover); }
+.turn-mestre { display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px; border: 1px solid var(--lamp); border-radius: 9px; background: var(--lamp-soft); font-size: 13px; }
+.turnb-inv { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg-2); font-size: 11.5px; white-space: nowrap; }
 .bandbox { display: flex; flex-direction: column; gap: 10px; }
 /* objetos de cenário: as miniaturas na barra de cima e a do painel */
 .o-objs { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -523,6 +530,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cact-n { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .cact-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .cact-x { width: 24px; height: 24px; }
+.cm-tt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.cm-q { color: var(--fg-3); font-size: 11px; white-space: nowrap; }
+.cmulti .stp-v { min-width: 28px; padding: 0 2px; white-space: nowrap; }
 .stp { display: inline-flex; align-items: center; gap: 1px; padding: 1px; background: var(--raised); border: 1px solid var(--line); border-radius: 7px; }
 .field > .stp { justify-self: start; }
 .loose { display: flex; flex-direction: column; gap: 10px; }
@@ -667,6 +677,30 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .pop-r small { color: var(--fg-2); font: 12px var(--mono); }
 .pop-r.erro { background: none; border: 1px solid var(--line-strong); color: var(--fg-2); }
 .pop-tot { font: 700 20px/1 var(--mono); color: var(--lamp-ink); font-variant-numeric: tabular-nums; }
+
+/* E: os equipamentos do token — um cartão por item, com a chave de equipado (a mesma das chaves do painel) */
+.eqpop { width: 280px; }
+.eq-l { display: flex; flex-direction: column; gap: 4px; max-height: min(52vh, 380px); overflow-y: auto; margin: 0 -2px; padding: 0 2px; }
+.eq-c {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; color: var(--fg);
+}
+.eq-c:hover { background: var(--hover); border-color: var(--line-strong); }
+.eq-c:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.eq-c.on { border-color: var(--lamp); }
+.eq-sw { position: relative; flex: none; width: 28px; height: 16px; border-radius: 8px; background: var(--line-strong); transition: background .12s; }
+.eq-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); transition: transform .12s; }
+.eq-c.on .eq-sw { background: var(--lamp); }
+.eq-c.on .eq-sw::after { transform: translateX(12px); background: var(--on-lamp); }
+.eq-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.eq-n { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 13px; }
+.eq-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eq-i { display: inline-flex; flex: none; color: var(--fg-3); }
+.eq-c.rel .eq-n > .eq-i { color: var(--lamp-ink); }
+.eq-g { display: inline-flex; align-items: center; gap: 3px; flex: none; padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 11px; line-height: 16px; }
+.eq-b { color: var(--fg-2); font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-c:not(.on) .eq-b { color: var(--fg-3); }
+.eq-nota { margin: 0; color: var(--fg-3); font-size: 11.5px; line-height: 1.35; }
 
 /* a fixa de cada turno, no painel do token */
 .fixas { display: flex; flex-wrap: wrap; gap: 6px 10px; }

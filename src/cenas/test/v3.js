@@ -921,7 +921,7 @@ section('10 retângulo', async k => {
   const setNum = async (id, v) => { await page.locator('#' + id).fill(String(v)); await page.locator('#' + id).press('Tab'); await w(); };
 
   /* ---- ferramenta: opções e colocação ---- */
-  await key('e');
+  await key('y');
   ok((await ev(() => Array.from(document.querySelectorAll('#o-fxk .seg-b')).map(b => b.textContent).join())) === 'Círculo,Quadrado,Retângulo,Cone,Linha', 'opções da ferramenta: "Retângulo" ao lado das outras formas');
   await page.locator('#o-fxk .seg-b', { hasText: 'Retângulo' }).click(); await w();
   ok(await ev(() => __urgm.App.opt.fxShape) === 'rect' && await has('#o-fxrw') && await has('#o-fxrh') && await has('#o-fxdir') && !(await has('#o-fxr')), 'com Retângulo: Largura, Altura e Rotação no lugar do Raio');
@@ -935,20 +935,20 @@ section('10 retângulo', async k => {
   ok(e.k === 'rect' && e.rw === 3 && e.rh === 1.5 && e.x === 4 * 64 && e.y === 3 * 64 && e.dir === 0 && e.token === null, 'clique: retângulo de 3 × 1,5 centrado no ponto — ' + JSON.stringify([e.k, e.rw, e.rh, e.x / 64, e.y / 64, e.dir]));
   ok(await ev(() => __urgm.App.tool) === 'select' && await ev(() => __urgm.App.sel[0].c) === 'effects', 'depois de soltar, volta a Selecionar com o efeito selecionado (como as outras formas)');
   // arrastar a diagonal: de um canto ao outro, com a grade
-  await key('e'); await drag(2.1, 5.1, 4.9, 6.95);
+  await key('y'); await drag(2.1, 5.1, 4.9, 6.95);
   e = await last();
   ok(e.rw === 3 && e.rh === 2 && near(e.x, 3.5 * 64) && near(e.y, 6 * 64), 'diagonal de (2, 5) a (5, 7): 3 × 2 com centro em (3,5; 6), encaixado na grade — ' + JSON.stringify([e.rw, e.rh, e.x / 64, e.y / 64]));
   ok((await inside(e.id, [[2.05, 5.05], [4.95, 6.95], [1.9, 6], [3.5, 7.1]])).join() === 'true,true,false,false', 'os cantos arrastados são os cantos do retângulo');
-  await key('e'); await drag(11, 3, 8.5, 1.5);
+  await key('y'); await drag(11, 3, 8.5, 1.5);
   e = await last();
   ok(e.rw === 2.5 && e.rh === 1.5 && near(e.x, 9.75 * 64) && near(e.y, 2.25 * 64), 'arrastar no sentido contrário dá o mesmo retângulo (2,5 × 1,5)');
   // rotação pelas opções: a diagonal é lida nos eixos do retângulo girado
-  await key('e'); await setNum('o-fxdir', 90);
+  await key('y'); await setNum('o-fxdir', 90);
   await drag(6, 4, 8, 7);
   e = await last();
   ok(e.dir === 90 && e.rw === 3 && e.rh === 2 && near(e.x, 7 * 64) && near(e.y, 5.5 * 64), 'com rotação de 90°: a diagonal de (6, 4) a (8, 7) vira 3 × 2 girado — ' + JSON.stringify([e.dir, e.rw, e.rh, e.x / 64, e.y / 64]));
   ok((await inside(e.id, [[6.05, 4.05], [7.95, 6.95], [5.9, 5.5], [7, 7.1]])).join() === 'true,true,false,false', '… e ocupa exatamente a caixa arrastada');
-  await key('e'); await setNum('o-fxdir', 45);
+  await key('y'); await setNum('o-fxdir', 45);
   await drag(1, 1.5, 3, 1.5);
   e = await last();
   const c45 = [e.x / 64, e.y / 64];

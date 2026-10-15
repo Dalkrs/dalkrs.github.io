@@ -205,7 +205,7 @@ const { open } = require('./lib');
   /* ============ 5. Efeitos com duração e dano em área ============ */
   await page.locator('#tab-sel').click(); await w();
   await ev(() => { const u = __urgm; Object.assign(u.App.opt, { fx: 'fogo', fxShape: 'circ', fxR: 2.5, fxAttach: false }); });
-  await key('e');
+  await key('y');
   await fillTab('o-fxdur', 2);
   ok(await ev(() => __urgm.App.opt.fxDur) === 2, 'opção de duração da ferramenta de efeito');
   await click(14.5, 11);

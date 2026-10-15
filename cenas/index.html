@@ -409,6 +409,13 @@ button { cursor: pointer; }
 .turn-reac { order: 4; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--reac); background: var(--reac-soft); color: var(--reac-ink); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
 .turn.reac { border-style: dashed; border-color: var(--reac); }
 .turn.reac.cur { border-style: solid; }
+.turn-inv { order: 5; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.turn.inv .turn-n { color: var(--fg-2); }
+.turn.inv .turn-m .av { opacity: .6; }
+.turn-a .ib.turn-v { color: var(--fg-3); }
+.turn-a .ib.turn-v.on { color: var(--fg); background: var(--hover); }
+.turn-mestre { display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px; border: 1px solid var(--lamp); border-radius: 9px; background: var(--lamp-soft); font-size: 13px; }
+.turnb-inv { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg-2); font-size: 11.5px; white-space: nowrap; }
 .bandbox { display: flex; flex-direction: column; gap: 10px; }
 /* objetos de cenário: as miniaturas na barra de cima e a do painel */
 .o-objs { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -533,6 +540,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cact-n { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .cact-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .cact-x { width: 24px; height: 24px; }
+.cm-tt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.cm-q { color: var(--fg-3); font-size: 11px; white-space: nowrap; }
+.cmulti .stp-v { min-width: 28px; padding: 0 2px; white-space: nowrap; }
 .stp { display: inline-flex; align-items: center; gap: 1px; padding: 1px; background: var(--raised); border: 1px solid var(--line); border-radius: 7px; }
 .field > .stp { justify-self: start; }
 .loose { display: flex; flex-direction: column; gap: 10px; }
@@ -677,6 +687,30 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .pop-r small { color: var(--fg-2); font: 12px var(--mono); }
 .pop-r.erro { background: none; border: 1px solid var(--line-strong); color: var(--fg-2); }
 .pop-tot { font: 700 20px/1 var(--mono); color: var(--lamp-ink); font-variant-numeric: tabular-nums; }
+
+/* E: os equipamentos do token — um cartão por item, com a chave de equipado (a mesma das chaves do painel) */
+.eqpop { width: 280px; }
+.eq-l { display: flex; flex-direction: column; gap: 4px; max-height: min(52vh, 380px); overflow-y: auto; margin: 0 -2px; padding: 0 2px; }
+.eq-c {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; color: var(--fg);
+}
+.eq-c:hover { background: var(--hover); border-color: var(--line-strong); }
+.eq-c:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.eq-c.on { border-color: var(--lamp); }
+.eq-sw { position: relative; flex: none; width: 28px; height: 16px; border-radius: 8px; background: var(--line-strong); transition: background .12s; }
+.eq-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); transition: transform .12s; }
+.eq-c.on .eq-sw { background: var(--lamp); }
+.eq-c.on .eq-sw::after { transform: translateX(12px); background: var(--on-lamp); }
+.eq-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.eq-n { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 13px; }
+.eq-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eq-i { display: inline-flex; flex: none; color: var(--fg-3); }
+.eq-c.rel .eq-n > .eq-i { color: var(--lamp-ink); }
+.eq-g { display: inline-flex; align-items: center; gap: 3px; flex: none; padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 11px; line-height: 16px; }
+.eq-b { color: var(--fg-2); font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-c:not(.on) .eq-b { color: var(--fg-3); }
+.eq-nota { margin: 0; color: var(--fg-3); font-size: 11.5px; line-height: 1.35; }
 
 /* a fixa de cada turno, no painel do token */
 .fixas { display: flex; flex-wrap: wrap; gap: 6px 10px; }
@@ -1404,6 +1438,7 @@ function normalizeScene(sc) {
     if (!e.token && Array.isArray(e.toks)) { e.toks = [...new Set(e.toks.filter(x => typeof x === 'string' && x))].slice(0, MAX_BAND); e.k = 1; }
     else delete e.toks;
     if (e.reac === true) e.reac = true; else delete e.reac;            // "esperando para reagir"
+    if (e.inv === true) e.inv = true; else delete e.inv;               // linha invisível: os jogadores não a veem
   }
   // um token fica numa faixa só, e quem está numa faixa não tem linha própria
   const naFaixa = new Set();
@@ -1438,6 +1473,7 @@ function normalizeScene(sc) {
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
     // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
     if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
+    if (t.post === true) t.post = true; else delete t.post;               // (lote 6) em postura: a etiqueta junto do nome
     if (t.light.fl) t.light.fl = true; else delete t.light.fl;          // luz que tremula (uma tocha na mão)
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
@@ -4251,6 +4287,35 @@ const Act = {
     if (Object.keys(cur).length) info[id] = cur; else delete info[id];
     Store.tx(label || 'Condição', () => Store.upd('tokens', t.id, { cinfo: info }));
   },
+  /* O contador ou as rodadas de uma condição em vários tokens de uma vez (lote 6), num passo de desfazer. Só mexe em
+     quem tem a condição. op: { delta } soma no contador de cada um (descer de 1 tira a condição, como no + e − de um
+     token; quem está sem contador não desce); { d } as mesmas rodadas para todos (0: sem prazo). → quantos mudaram */
+  condLote(tokens, id, op) {
+    let k = 0;
+    Store.tx('Condição em vários tokens', () => {
+      for (const t of tokens) {
+        if (!t || !t.conds.includes(id)) continue;
+        const info = Object.assign({}, t.cinfo), cur = Object.assign({}, info[id]);
+        if (op.delta != null) {
+          const n = (cur.n || 0) + op.delta;
+          if (n <= 0) {
+            if (!cur.n) continue;
+            delete info[id];
+            Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== id), cinfo: info }); k++;
+            continue;
+          }
+          cur.n = n;
+        } else if (op.d != null) {
+          const d = Math.max(0, Math.round(Number(op.d) || 0));
+          if ((cur.d || 0) === d) continue;
+          if (d > 0) { cur.d = d; cur.d0 = d; } else { delete cur.d; delete cur.d0; }
+        } else continue;
+        if (Object.keys(cur).length) info[id] = cur; else delete info[id];
+        Store.upd('tokens', t.id, { cinfo: info }); k++;
+      }
+    });
+    return k;
+  },
   // + e − do contador. Descer de 1 encerra a condição; sem contador, − não faz nada.
   condStep(t, id, delta) {
     const cur = (t.cinfo || {})[id] || {};
@@ -4465,9 +4530,10 @@ const Act = {
     let n = 0;
     for (const t of tokens) {
       if (t.prop || bandOf(tn, t.id)) continue;        // objeto de cenário não joga; e quem está numa faixa já joga nela
-      const want = clampTurns(t.turns), have = tn.list.filter(e => e.token === t.id).length;
+      const linhas = tn.list.filter(e => e.token === t.id), want = clampTurns(t.turns), have = linhas.length;
       if (have >= want) continue;
-      for (let k = have + 1; k <= want; k++) tn.list.push(turnEntry(t, k));
+      const inv = have > 0 && linhas.every(e => e.inv);               // as linhas novas de quem está invisível também ficam
+      for (let k = have + 1; k <= want; k++) tn.list.push(Object.assign(turnEntry(t, k), inv ? { inv: true } : null));
       n++;
     }
     if (!n) return 0;
@@ -4522,7 +4588,7 @@ const Act = {
     const novas = [];
     for (const tid of e.toks) {
       const t = Store.get('tokens', tid);
-      if (t) for (let k = 1, n = clampTurns(t.turns); k <= n; k++) novas.push(turnEntry(t, k));
+      if (t) for (let k = 1, n = clampTurns(t.turns); k <= n; k++) novas.push(Object.assign(turnEntry(t, k), e.inv ? { inv: true } : null));   // (a faixa invisível dá linhas invisíveis)
     }
     tn.list.splice(i, 1, ...novas);
     turnRenumber(tn.list);
@@ -4536,6 +4602,18 @@ const Act = {
     if (!e || !!e.reac === !!on) return false;
     Act.turnPatch(x => { const y = x.list.find(z => z.id === id); if (on) y.reac = true; else delete y.reac; }, on ? 'Esperando reação' : 'Reagiu');
     return true;
+  },
+  /* Linha invisível (lote 6): os jogadores não veem a linha; na vez dela, só ficam sabendo que o turno está com o
+     mestre. Vale para todas as linhas do mesmo combatente (os vários turnos de um token, ou de uma entrada avulsa).
+     Um passo de desfazer. Devolve quantas linhas mudaram. */
+  turnInv(id, on) {
+    const tn = Store.scene().turn, e = tn.list.find(x => x.id === id);
+    if (!e) return 0;
+    const g = turnGroup(e), ids = tn.list.filter(x => turnGroup(x) === g && !!x.inv !== !!on).map(x => x.id);
+    if (!ids.length) return 0;
+    const muda = new Set(ids);
+    Act.turnPatch(x => { for (const y of x.list) if (muda.has(y.id)) { if (on) y.inv = true; else delete y.inv; } }, on ? 'Linha invisível' : 'Linha visível');
+    return ids.length;
   },
   turnPatch(fn, label) {
     const tn = clone(Store.scene().turn), before = tn.list.slice();
@@ -4570,7 +4648,8 @@ const Act = {
       Store.upd('tokens', t.id, { turns: n });
       if (!have.length || have.length === n) return;
       const tn = clone(sc.turn), before = tn.list.slice();
-      if (have.length < n) for (let k = have.length + 1; k <= n; k++) tn.list.push(turnEntry(t, k));
+      const inv = have.every(e => e.inv);
+      if (have.length < n) for (let k = have.length + 1; k <= n; k++) tn.list.push(Object.assign(turnEntry(t, k), inv ? { inv: true } : null));
       else {
         const drop = new Set(have.slice().sort((p, q) => (q.k || 1) - (p.k || 1)).slice(0, have.length - n).map(e => e.id));
         tn.list = tn.list.filter(e => !drop.has(e.id));
@@ -4993,6 +5072,53 @@ const Fichas = (() => {
     syncAll(t.char);                    // (a mudança feita daqui não volta como "mudança de fora": o token acompanha já)
     return antes;
   }
+  /* ---- os equipamentos da ficha deste token (lote 6: a janelinha E) ----
+     Quem mexe: o mestre, em qualquer token ligado; o jogador, no token do personagem dele (a ficha é dele). */
+  function podeEquipar(t) {
+    const l = t && t.char ? get(t.char) : null;
+    return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+  }
+  // → [{ id, nome, on, troca, reliquia, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da ficha)
+  function itens(t) {
+    const l = t && t.char ? get(t.char) : null, R0 = R();
+    if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
+    const rotDe = k => { const d = (R0.DEFESAS || []).find(x => x.k === k); return (d && d.rot) || k; };
+    const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [];
+    return l.ficha.itens.filter(it => it && it.id != null).map(it => {
+      const bon = [], b = it.bonus || {}, rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
+      for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
+      for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
+      for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
+      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia, bon };
+    });
+  }
+  /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica
+     equipado (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
+     → { ok: true, item, guardados: [nomes], desfazer() } ou { ok: false, error } */
+  function equipar(t, id, onOff) {
+    if (!podeEquipar(t)) return { ok: false, error: papel === 'mestre' ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.' };
+    const charId = t.char, l = get(charId), antes = l.ficha, lista = Array.isArray(antes.itens) ? antes.itens : [];
+    const r = R().equiparItem(lista, id, onOff), it = r.itens.find(x => x && x.id === id);
+    if (!it) return { ok: false, error: 'Este item não está mais na ficha.' };
+    P.gravar(charId, { ficha: Object.assign({}, antes, { itens: r.itens }) });
+    syncAll(charId);
+    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, x.equipado]));
+    const nomes = r.guardados.map(g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; });
+    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: nomes, desfazer: () => {
+      const agora = get(charId);
+      if (!agora || !agora.ficha || !Array.isArray(agora.ficha.itens)) return false;
+      // (só a chave de equipado de cada item volta como estava; o resto da ficha fica como está agora)
+      const itens2 = agora.ficha.itens.map(x => {
+        if (!x || !eqAntes.has(x.id)) return x;
+        const y = Object.assign({}, x), v = eqAntes.get(x.id);
+        if (v === undefined) delete y.equipado; else y.equipado = v;
+        return y;
+      });
+      P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { itens: itens2 }) });
+      syncAll(charId);
+      return true;
+    } };
+  }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
@@ -5318,7 +5444,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };
@@ -5448,15 +5574,18 @@ const Proj = (() => {
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };
-    // a faixa de um grupo vai só com os tokens que os jogadores veem; se todos estão ocultos, ela não vai
-    const list = tn.list.filter(e => !(e.token && fora.has(e.token)) && !(Array.isArray(e.toks) && e.toks.length && e.toks.every(id => fora.has(id) || !nomes.has(id)))).map(e => {
+    // a faixa de um grupo vai só com os tokens que os jogadores veem; se todos estão ocultos, ela não vai.
+    // A linha invisível (lote 6) não vai; na vez dela, os jogadores só ficam sabendo que o turno está com o mestre.
+    const list = tn.list.filter(e => !e.inv && !(e.token && fora.has(e.token)) && !(Array.isArray(e.toks) && e.toks.length && e.toks.every(id => fora.has(id) || !nomes.has(id)))).map(e => {
       const o = { id: e.id, token: e.token || null, name: e.token ? (nomes.get(e.token) || '???') : e.name, init: e.init == null ? null : e.init, roll: null, k: e.k || 1, bonus: 0, grp: e.grp || null };
       if (!e.token && Array.isArray(e.toks)) o.toks = e.toks.filter(id => !fora.has(id) && nomes.has(id));
       if (e.reac) o.reac = true;
       return o;
     });
     // (a vez de um token oculto não aponta para ninguém: os jogadores não ficam sabendo que há mais alguém na ordem)
-    return { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
+    const o = { on: !!tn.on, round: tn.round || 1, cur: list.some(e => e.id === tn.cur) ? tn.cur : null, list };
+    if (o.on && tn.list.some(e => e.id === tn.cur && e.inv)) o.mestre = true;
+    return o;
   }
   function projetar(sc, assets, jogadores) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
@@ -5482,7 +5611,7 @@ const Proj = (() => {
      Barras, condições e auras viajam como "como estava → como ficou" (op.b guarda o "como estava"). O mestre aplica
      só a diferença por cima do que ele tem agora: se nesse meio-tempo ele deu dano em Vida e o jogador gastou SP,
      as duas coisas valem. */
-  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras' };
+  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras', post: 'condicoes' };
   const MAX_FORMAS = 150, MAX_EFEITOS = 40, MAX_PONTOS = 3000, MAX_AURAS = 12;      // por jogador, por cena
   const MAX_PESO_FORMAS = 120000;                    // e o tamanho de todos os desenhos de um jogador numa cena, em caracteres
   const r1 = n => Math.round(n * 10) / 10;
@@ -5664,6 +5793,7 @@ const Proj = (() => {
         else if (k === 'conds') { if (Array.isArray(val)) { const nc = fundirConds(t.conds, base.conds, val); if (!igual(nc, t.conds)) q.conds = nc; } }
         else if (k === 'cinfo') { const ni = fundirCinfo(t.cinfo || {}, base.cinfo, val); if (!igual(ni, t.cinfo || {})) q.cinfo = ni; }
         else if (k === 'auras') { const na = fundirAuras(t.auras || [], base.auras, val); if (na && !igual(na, t.auras || [])) q.auras = na; }
+        else if (k === 'post') { if (typeof val === 'boolean' && val !== !!t.post) q.post = val; }      // (a postura: liga ou desliga)
       }
       // contador de uma condição que não está mais no token não fica sobrando
       if (q.conds || q.cinfo) { const conds = q.conds || t.conds, ci = Object.assign({}, q.cinfo || t.cinfo || {}); let tirou = false; for (const id in ci) if (!conds.includes(id)) { delete ci[id]; tirou = true; } if (tirou || q.cinfo) q.cinfo = ci; }
@@ -7359,13 +7489,18 @@ const Render = (() => {
   }
 
   // A etiqueta do nome de um token: o que vai nela e onde (w = 0: não há etiqueta). Deixa a fonte já escolhida.
+  /* A etiqueta do nome: [Postura] Nome ▲3 m. A "Postura" (lote 6: o token marcado em postura) é uma pílula âmbar no
+     começo da etiqueta, que todos veem. */
   function nameBox(c, t, sc, px) {
     const s = t.size * sc.cell, cx = t.x + s / 2, name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
-    const fs = clamp(s * 0.2, 11 * px, 15 * px);
+    const fs = clamp(s * 0.2, 11 * px, 15 * px), post = t.post ? 'Postura' : '', fp = fs * 0.74;
+    c.font = `800 ${fp}px ${FONT_UI}`;
+    const wp = post ? c.measureText(post).width + fp * 1.1 : 0;
     c.font = `600 ${fs}px ${FONT_UI}`;
     const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
-    const w = name || alt ? wn + gap + wa : 0;
-    return { name, alt, fs, wn, gap, w, padX: fs * 0.5, hh: fs * 1.5, y: t.y + s + fs * 0.3, x0: cx - w / 2, cx };
+    const gp = post && (name || alt) ? fs * 0.4 : 0;
+    const w = name || alt || post ? wp + gp + wn + gap + wa : 0;
+    return { name, alt, post, fs, fp, wp, gp, wn, gap, w, padX: fs * 0.5, hh: fs * 1.5, y: t.y + s + fs * 0.3, x0: cx - w / 2, cx };
   }
 
   /* Os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva), numa etiqueta ao lado do
@@ -7527,8 +7662,15 @@ const Render = (() => {
       if (L.w > 0) {
         c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, L.x0 - L.padX, L.y, L.w + L.padX * 2, L.hh, L.hh * 0.35); c.fill();
         c.textAlign = 'left'; c.textBaseline = 'middle';
-        if (L.name) { c.fillStyle = '#f4f5f8'; c.fillText(L.name, L.x0, L.y + L.hh * 0.54); }
-        if (L.alt) { c.fillStyle = '#f0c26a'; c.fillText(L.alt, L.x0 + L.wn + L.gap, L.y + L.hh * 0.54); }
+        if (L.post) {                          // a pílula "Postura", no começo da etiqueta
+          const ph = L.hh * 0.68, py = L.y + (L.hh - ph) / 2;
+          c.fillStyle = '#e0a43a'; rr(c, L.x0, py, L.wp, ph, ph * 0.45); c.fill();
+          c.font = `800 ${L.fp}px ${FONT_UI}`; c.fillStyle = '#1d1405'; c.fillText(L.post, L.x0 + L.fp * 0.55, L.y + L.hh * 0.54);
+          c.font = `600 ${L.fs}px ${FONT_UI}`;
+        }
+        const x1 = L.x0 + L.wp + L.gp;
+        if (L.name) { c.fillStyle = '#f4f5f8'; c.fillText(L.name, x1, L.y + L.hh * 0.54); }
+        if (L.alt) { c.fillStyle = '#f0c26a'; c.fillText(L.alt, x1 + L.wn + L.gap, L.y + L.hh * 0.54); }
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
@@ -7732,7 +7874,7 @@ const Render = (() => {
     if (!tn.on || !tn.cur) return;
     if (!isGM() && !can('turns')) return;
     const e = tn.list.find(x => x.id === tn.cur);
-    if (!e) return;
+    if (!e || (e.inv && !isGM())) return;          // (a vez de uma linha invisível não aparece para os jogadores)
     // (na vez da faixa de um grupo, o anel vai em cada token dela)
     for (const t of turnToks(e)) {
       if (!tokShown(t, sc)) continue;
@@ -8033,7 +8175,8 @@ const Tools = (() => {
   let ghost = null;          // posição do cursor para pré-visualizações
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
-  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
+  // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
+  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
@@ -8047,9 +8190,9 @@ const Tools = (() => {
     { id: 'text', n: 'Texto', k: 'X', i: 'text', grp: 2, perm: 'draw' },
     { id: 'wall', n: 'Paredes e portas', k: 'W', i: 'wall', grp: 3, gm: true },
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
-    { id: 'fog', n: 'Névoa manual', k: 'N', i: 'fog', grp: 3, gm: true },
+    { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'fx', n: 'Efeito de magia', k: 'E', i: 'fx', grp: 4, perm: 'fx' },
+    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 4, perm: 'fx' },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
   ];
@@ -9257,6 +9400,12 @@ const Tools = (() => {
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
+    if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
+    if (lk === 'n') {                       // passar (N) e voltar (Shift+N) o turno — só o mestre
+      if (!isGM()) { UI.toast('Quem passa a vez é o mestre.'); return; }
+      UI.passarTurno(e.shiftKey ? -1 : 1);
+      return;
+    }
     if (lk === 'c') { Luta.disputa(); return; }            // disputa entre dois tokens (só o mestre)
     if (lk === 'k') {                       // ataque com defesa: o token sob o cursor, ou os selecionados (só o mestre)
       if (!isGM()) { UI.toast('O ataque com defesa é do mestre.'); return; }
@@ -9960,10 +10109,12 @@ const UI = (() => {
     const rows = [
       ['V', 'Selecionar'], ['H ou espaço + arrastar', 'Mover a câmera'], ['Roda do mouse', 'Aproximar e afastar'], ['0', 'Enquadrar a cena'],
       ['T', 'Novo token'], ['J', 'Objetos de cenário: tochas, fogueiras, móveis, árvores, armadilhas'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
-      ['I', 'Luz'], ['N', 'Névoa manual'], ['Q', 'Terreno'], ['E', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
+      ['I', 'Luz'], ['U', 'Névoa manual'], ['Q', 'Terreno'], ['Y', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
       ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
+      ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
+      ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -10250,6 +10401,42 @@ const UI = (() => {
           edit ? iconBtn('x', 'Tirar ' + c.n, () => { Act.condToggle([t], c.id); done(); }, { size: 14, cls: 'cact-x', id: `${pre}-${c.id}-x` }) : null);
       }));
   }
+  /* Com vários tokens escolhidos (lote 6): as condições ativas em algum deles, com o contador de cada um ("3 · 2") e as
+     rodadas, e os botões que mudam em todos de uma vez — −1 e +1 no contador (de quem tem a condição; quem chega a
+     zero perde a condição, como num token só) e as mesmas rodadas para todos. Cada clique é um passo de desfazer. */
+  function condActiveMulti(toks, after, idp) {
+    const pre = idp || 'cm', ids = toks.map(t => t.id);
+    const live = () => ids.map(id => Store.get('tokens', id)).filter(Boolean);
+    const ts = live(), ativas = CONDS.filter(c => ts.some(t => t.conds.includes(c.id)));
+    if (!ativas.length) return null;
+    const done = () => { if (after) after(); };
+    const quantos = n => n + (n === 1 ? ' token' : ' tokens');
+    const lote = (c, op, texto) => { const n = Act.condLote(live(), c.id, op); if (n) toast(texto(n), { action: 'Desfazer', run: Tools.undo }); done(); };
+    return h('div', { class: 'cact cmulti', id: pre + '-ativas' },
+      h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), h('span')),
+      ativas.map(c => {
+        const com = ts.filter(t => t.conds.includes(c.id)), de = (t, k) => ((t.cinfo || {})[c.id] || {})[k] || 0;
+        const ns = com.map(t => de(t, 'n')), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]);
+        const qual = com.length === ts.length ? 'em todos' : com.length + ' de ' + ts.length;
+        // (valores diferentes: de quanto a quanto; o de cada um fica na dica)
+        const faixa = a => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? (lo ? String(lo) : '–') : (lo || '–') + ' a ' + hi; };
+        const cada = a => com.map((t, i) => tokName(t) + ': ' + (a[i] || '–')).join(' · ');
+        return h('div', { class: 'cact-r' },
+          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+            h('span', { class: 'cm-tt' }, h('span', { class: 'cact-t', text: c.n }), h('span', { class: 'cm-q', text: qual }))),
+          h('span', { class: 'stp' },
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !ns.some(n => n > 0), title: 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
+              onclick: () => lote(c, { delta: -1 }, n => `${c.n}: −1 em ${quantos(n)}.`) }, icon('minus', 13)),
+            h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, title: 'O contador de cada um: ' + cada(ns), text: faixa(ns) }),
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
+              onclick: () => lote(c, { delta: 1 }, n => `${c.n}: +1 em ${quantos(n)}.`) }, icon('plus', 13))),
+          inCount(`${pre}-${c.id}-d`, igual(ds) ? ds[0] : 0, v => lote(c, { d: v }, n => `${c.n}: ${v ? v + (v === 1 ? ' rodada' : ' rodadas') : 'sem prazo'} em ${quantos(n)}.`),
+            { label: `Rodadas de ${c.n} em todos`, title: (igual(ds) ? '' : 'Agora: ' + cada(ds) + '. ') + 'As mesmas rodadas para todos os que têm a condição. Vazio: sem prazo.' }),
+          h('span'));
+      }));
+  }
+  // a chave da postura (lote 6): a etiqueta "Postura" junto do nome, que todos veem
+  const postToggle = t => toggle('tk-post', !!t.post, v => Store.tx(v ? 'Postura' : 'Sem postura', () => Store.upd('tokens', t.id, { post: v })), 'Em postura (a etiqueta "Postura" junto do nome)');
   function condPicker(toks) {
     if (!toks.length) return;
     const ids = toks.map(t => t.id);
@@ -10259,7 +10446,7 @@ const UI = (() => {
       const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
       body.replaceChildren();
       addKids(body, [
-        live.length === 1 ? condActive(live[0], true, null, 'cdm') : null,
+        live.length === 1 ? condActive(live[0], true, null, 'cdm') : condActiveMulti(live, paint, 'cmm'),
         condGrid(live, null, 'cgm'),
         live.length === 1 ? note('O contador só muda nos botões + e −. As rodadas descontam sozinhas quando o token termina a vez.') : null,
       ]);
@@ -10679,7 +10866,7 @@ const UI = (() => {
       const mine = ownsTok(t), canC = mine && can('conds', t);
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
-        sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
+        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), canC ? condGrid([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
         mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
@@ -10704,7 +10891,7 @@ const UI = (() => {
       menteBox(t),
       fadigaBox(t),
       numsBox(t, true),
-      sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
+      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -10874,7 +11061,7 @@ const UI = (() => {
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null) : null) : null,
-      condToks.length ? sec('s-cond', 'Condições', true, condGrid(condToks)) : null,
+      condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
         gm ? btn('Aos turnos', () => { const n = Act.turnAdd(toks); toast(n ? `${n} ${n === 1 ? 'token entrou' : 'tokens entraram'} na ordem de turnos.` : 'Todos já estavam na ordem de turnos.'); }, { icon: 'turns' }) : null,
@@ -11149,7 +11336,7 @@ const UI = (() => {
     };
     tn.list.forEach((e, i) => {
       const t = e.token ? Store.get('tokens', e.token) : null;
-      if (!gm && t && t.hidden) return;
+      if (!gm && ((t && t.hidden) || e.inv)) return;           // (a linha invisível: só o mestre a vê)
       const band = isBand(e), membros = band ? turnToks(e).filter(k => gm || !k.hidden) : [];
       const cur = tn.on && e.id === tn.cur;
       const name = t ? tokName(t) : e.name, label = turnLabel(e, name), k = e.k || 1;
@@ -11163,7 +11350,8 @@ const UI = (() => {
         Render.centerOn(cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length);
       };
       const reac = e.reac ? h('span', { class: 'turn-reac', text: 'reação', title: 'Esperando para reagir: segurou a vez para agir fora de ordem' }) : null;
-      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : ''), id: `tl-${e.id}` },
+      const inv = gm && e.inv ? h('span', { class: 'turn-inv', text: 'invisível', title: 'Os jogadores não veem esta linha; na vez dela, só ficam sabendo que o turno está com o mestre' }) : null;
+      rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : '') + (gm && e.inv ? ' inv' : ''), id: `tl-${e.id}` },
         h('button', { type: 'button', class: 'turn-m', title: t || membros.length ? 'Mostrar no mapa' : label, disabled: !t && !membros.length, onclick: mostrar },
           t ? tokenAvatar(t, 28)
             : band && membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(x => tokenAvatar(x, 22)))
@@ -11175,7 +11363,7 @@ const UI = (() => {
             band ? h('span', { class: 'turn-g', text: `grupo · ${membros.length}`, title: membros.map(x => tokName(x)).join(', ') || 'Ninguém nesta faixa agora' }) : null,
             rolled ? h('span', { class: 'turn-r', text: `(${rolled})`, title: `Rolagem: ${e.init} = ${rolled}` }) : null,
             cur ? h('span', { class: 'turn-now', text: 'vez' }) : null,
-            reac)),
+            reac, inv)),
         gm ? inNum(`tn-${e.id}`, e.init == null ? '' : e.init, v => Act.turnPatch(x => { const y = x.list.find(z => z.id === e.id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'),
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
@@ -11192,16 +11380,18 @@ const UI = (() => {
             if (e.reac) toast(`${label} reagiu.`, { action: 'Desfazer', run: Tools.undo });
           }, { size: 14, on: !!e.reac, id: `tx-${e.id}` }) : null) : null,
         gm ? h('span', { class: 'turn-a' },
+          // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+          iconBtn(e.inv ? 'eyeOff' : 'eye', e.inv ? `${label}: invisível para os jogadores (clique para mostrar)` : `Esconder ${label} dos jogadores: a linha some da ordem deles e, na vez dela, eles só veem que o turno está com o mestre`, () => {
+            const n = Act.turnInv(e.id, !e.inv), quem = name;
+            if (n) toast(e.inv ? (n > 1 ? `As ${n} linhas de ${quem} voltam a aparecer para os jogadores.` : `${label} volta a aparecer para os jogadores.`)
+              : (n > 1 ? `As ${n} linhas de ${quem} ficam invisíveis para os jogadores.` : `${label} fica invisível para os jogadores.`), { action: 'Desfazer', run: Tools.undo });
+          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` }),
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
           iconBtn('x', 'Tirar da ordem', () => remove(e), { size: 14 })) : null));
     });
     const selToks = selOf('tokens').filter(k => !k.prop);
-    const step = d => {
-      const ended = Act.turnStep(d);
-      if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
-      zonePrompt(d > 0);
-    };
+    const step = d => passarTurno(d);
     const missing = tn.list.filter(e => e.init == null).length;
     return [
       h('div', { class: 'turn-head' },
@@ -11209,6 +11399,8 @@ const UI = (() => {
         gm ? h('div', { class: 'row tight' },
           iconBtn('prev', 'Turno anterior (o que já foi descontado não volta; para isso, use Desfazer)', () => step(-1), { disabled: !tn.list.length, id: 'turnPrev' }),
           btn('Próximo turno', () => step(1), { kind: 'primary', icon: 'next', disabled: !tn.list.length, id: 'turnNext' })) : null),
+      // na vez de uma linha invisível, o jogador só fica sabendo que o turno está com o mestre
+      !gm && vezDoMestre(tn) ? h('p', { class: 'turn-mestre', id: 'turnMestre' }, icon('eyeOff', 14), h('span', { text: 'O turno está com o mestre.' })) : null,
       rows.length ? h('ol', { class: 'turns' }, rows) : h('p', { class: 'muted', text: gm ? 'Ninguém na ordem ainda. Selecione tokens no mapa e adicione-os aqui.' : 'O mestre ainda não montou a ordem de turnos.' }),
       gm ? h('div', { class: 'row' },
         btn(selToks.length ? `Adicionar ${selToks.length} selecionado${selToks.length > 1 ? 's' : ''}` : 'Adicionar selecionados', () => { if (!Act.turnAdd(selToks)) toast(selToks.length === 1 ? 'Ele já está na ordem.' : 'Já estão todos na ordem.'); }, { icon: 'plus', disabled: !selToks.length }),
@@ -11571,6 +11763,15 @@ const UI = (() => {
      Aparece por alguns segundos quando a vez muda e lembra as condições de quem vai jogar.
      É só um lembrete: não altera nada. */
   function hideTurn() { clearTimeout(turnTimer); el.turnb.hidden = true; el.turnb.replaceChildren(); }
+  /* Passar (d = 1) ou voltar (d = −1) o turno: o botão da aba Turnos e as teclas N e Shift+N. O que acabou (condições
+     com rodadas, efeitos) vem num aviso com Desfazer; a zona em que o token entrou pergunta antes de agir. */
+  function passarTurno(d) {
+    const tn = Store.scene().turn;
+    if (!tn.list.length) { toast('A ordem de turnos está vazia: adicione os tokens na aba Turnos.'); return; }
+    const ended = Act.turnStep(d);
+    if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
+    zonePrompt(d > 0);
+  }
   function turnBanner() {
     const sc = Store.scene(), tn = sc.turn;
     const key = turnKeyOf(sc);
@@ -11578,8 +11779,16 @@ const UI = (() => {
     const prev = turnKey;
     turnKey = key;
     if (prev === key) return;
-    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !tn.cur) { hideTurn(); return; }
+    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { hideTurn(); return; }
     if (!isGM() && !can('turns')) { hideTurn(); return; }
+    if (!isGM() && vezDoMestre(tn)) {                      // (o jogador, na vez de uma linha invisível)
+      el.turnb.replaceChildren(h('span', { class: 'turnb-t' }, 'O turno está com o ', h('strong', { text: 'mestre' })),
+        h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)));
+      el.turnb.hidden = false;
+      clearTimeout(turnTimer);
+      turnTimer = setTimeout(hideTurn, 4000);
+      return;
+    }
     const e = tn.list.find(x => x.id === tn.cur);
     const t = e && e.token ? Store.get('tokens', e.token) : null;
     if (!e || (t && !tokShown(t, sc))) { hideTurn(); return; }     // o jogador não fica sabendo de quem ele não vê
@@ -11591,6 +11800,7 @@ const UI = (() => {
     addKids(el.turnb, [
       t ? tokenAvatar(t, 26) : membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(k => tokenAvatar(k, 22))) : null,
       h('span', { class: 'turnb-t' }, 'Vez de ', h('strong', { text: turnLabel(e, t ? tokName(t) : e.name) })),
+      isGM() && e.inv ? h('span', { class: 'turnb-inv', text: 'invisível para os jogadores' }) : null,
       conds.map(c => {
         const ci = info[c.id] || {};
         return h('span', { class: 'turnb-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
@@ -11608,7 +11818,10 @@ const UI = (() => {
      do "Aplicar a quem está dentro…"), o mestre vê um aviso por zona: "Aplicar" ou "Pular". Nada acontece sozinho; o
      aviso some quando a vez passa de novo. Numa faixa de grupo, vale para os tokens dela que estão dentro. */
   let zonasKey = null;                                      // de que vez são os avisos que estão à mostra
-  const turnKeyOf = sc => sc.id + '|' + (sc.turn.on && sc.turn.cur ? sc.turn.cur + ':' + sc.turn.round : '');
+  // (a vez de uma linha invisível chega ao jogador sem a entrada: só "o turno está com o mestre"; na prévia do mestre
+  // "como jogador", sem a projeção, a entrada está lá, com a marca)
+  const vezDoMestre = tn => !!tn.on && (!!tn.mestre || tn.list.some(e => e.id === tn.cur && e.inv));
+  const turnKeyOf = sc => sc.id + '|' + (sc.turn.on && (sc.turn.cur || sc.turn.mestre) ? (sc.turn.cur || 'mestre') + ':' + sc.turn.round : '');
   function zonePrompt(avancou) {
     const box = el.zonas;
     box.replaceChildren(); box.hidden = true; zonasKey = null;
@@ -11706,7 +11919,7 @@ const UI = (() => {
     refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable,
+    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
@@ -12058,7 +12271,7 @@ const Luta = (() => {
     if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
   }
   function abrirPop(t) {
-    fecharPop(); UI.closeMenus();
+    fecharPop(); fecharEquip(); UI.closeMenus();
     const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
       oninput: () => { const cur = pop && Store.get('tokens', pop.tokId); if (cur) { guardarFixa(cur, fx.value); pintarPop(); } },
       onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); fx.blur(); pop.el.focus({ preventScroll: true }); } } });
@@ -12087,6 +12300,75 @@ const Luta = (() => {
     el.style.top = clamp(r.top + sy - 6, 8, Math.max(8, window.innerHeight - hh - 8)) + 'px';
     el.focus({ preventScroll: true });
   }
+  /* ================= E: os equipamentos do token (lote 6) =================
+     Abre ao lado do token (o sob o cursor; senão, o único selecionado), como o F: um cartão por item da ficha, com a
+     chave de equipado, o nome e só o que o item soma. Um clique equipa ou guarda; dos itens do mesmo grupo de troca,
+     um só fica equipado (equipar um guarda os outros). Grava na ficha, com Desfazer. Fecha com Esc, E de novo, o × ou
+     um clique fora. O mestre mexe em qualquer token ligado a uma ficha; o jogador, no token do personagem dele. */
+  let epop = null;                       // { el, tokId, lista, nome }
+  function fecharEquip() { if (epop) { epop.el.remove(); epop = null; } }
+  function equipamentos(tokArg) {
+    const t = tokArg || alvoDoF();
+    if (epop && !tokArg && (!t || t.id === epop.tokId)) { fecharEquip(); return; }       // E de novo fecha
+    if (!t) { toast('Para ver os equipamentos, passe o mouse sobre um token (ou selecione um) e aperte E.'); return; }
+    if (!tokShown(t, Store.scene())) return;
+    if (!isGM() && !ownsTok(t)) { toast('Você mexe nos equipamentos do seu personagem.'); return; }
+    if (!t.char) { toast('Este token não está ligado a uma ficha: os equipamentos moram na ficha.'); return; }
+    if (!Fichas.podeEquipar(t)) { toast(isGM() ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.'); return; }
+    abrirEquip(t);
+  }
+  const TROCA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const GEMA_I = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18"/></svg>';
+  const svgEl = s => { const d = document.createElement('span'); d.className = 'eq-i'; d.innerHTML = s; return d; };
+  function pintarEquip() {
+    if (!epop) return;
+    const t = Store.get('tokens', epop.tokId);
+    if (!t || !tokShown(t, Store.scene()) || !Fichas.podeEquipar(t)) { fecharEquip(); return; }
+    const a = document.activeElement, fid = a && a.id && epop.el.contains(a) ? a.id : null;
+    epop.nome.textContent = tokName(t);
+    const lista = Fichas.itens(t);
+    epop.lista.replaceChildren(...(lista.length ? lista.map(it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
+      title: (it.on ? 'Equipado: clique para guardar' : 'Guardado: clique para equipar') + (it.troca ? ' (grupo de troca: ' + it.troca + ')' : ''), onclick: () => trocarItem(it) },
+      h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
+      h('span', { class: 'eq-t' },
+        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
+        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }))))
+      : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
+    if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+  }
+  function trocarItem(it) {
+    const t = epop && Store.get('tokens', epop.tokId);
+    if (!t) return;
+    const r = Fichas.equipar(t, it.id, !it.on);
+    if (!r.ok) { toast(r.error); return; }
+    const e = n => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]);
+    toast(it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.',
+      { action: 'Desfazer', run: () => { if (r.desfazer()) pintarEquip(); } });
+    pintarEquip();
+  }
+  function abrirEquip(t) {
+    fecharEquip(); fecharPop(); UI.closeMenus();
+    const nome = h('strong', { class: 'pop-n' }), lista = h('div', { class: 'eq-l', id: 'eq-lista' });
+    const el = h('div', { class: 'pop eqpop', id: 'epop', role: 'dialog', 'aria-label': 'Equipamentos de ' + tokName(t), tabindex: '-1' },
+      h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou E)', fecharEquip, { size: 15, id: 'eq-x' })),
+      lista, h('p', { class: 'eq-nota', text: 'Um clique equipa ou guarda. Do mesmo grupo de troca, um só fica equipado.' }));
+    K.layer.append(el);
+    epop = { el, tokId: t.id, lista, nome };
+    pintarEquip();
+    if (!epop) return;
+    const sc = Store.scene(), r = Render.cv.getBoundingClientRect(), [sx, sy] = Render.toScreen(t.x, t.y), lado = t.size * sc.cell * App.view.z;
+    const w = el.offsetWidth, hh = el.offsetHeight;
+    let left = r.left + sx + lado + 14;
+    if (left + w > window.innerWidth - 8) left = r.left + sx - w - 14;
+    el.style.left = clamp(left, 8, Math.max(8, window.innerWidth - w - 8)) + 'px';
+    el.style.top = clamp(r.top + sy - 6, 8, Math.max(8, window.innerHeight - hh - 8)) + 'px';
+    el.focus({ preventScroll: true });
+  }
+  document.addEventListener('pointerdown', e => { if (epop && !epop.el.contains(e.target) && !(e.target.closest && e.target.closest('.toast'))) fecharEquip(); }, true);
+  document.addEventListener('keydown', e => {
+    if (!epop || e.key !== 'Escape' || UI.modalOpen()) return;
+    fecharEquip(); e.stopPropagation(); e.preventDefault();
+  }, true);
   // o botão da faixa do token (para quem não usa o teclado): abre e, de novo, fecha
   function alternar(t) { if (pop && t && pop.tokId === t.id) fecharPop(); else atributos(t); }
   document.addEventListener('pointerdown', e => { if (pop && !pop.el.contains(e.target) && !(e.target.closest && e.target.closest('#hud-rolar'))) fecharPop(); }, true);
@@ -12347,7 +12629,7 @@ const Luta = (() => {
       let usada = 0, falta = false, como = '';
       if (comFicha && st.defs.size) {
         if (!rolando()) { usada = def; como = 'defesa ' + def; }
-        else if (r.st === 'rolou') { usada = r.r.total; como = `rolou ${r.r.total} de ${def}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : ''); }
+        else if (r.st === 'rolou') { usada = Math.max(0, r.r.total); como = `rolou ${r.r.total} de ${def}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : ''); }
         else if (r.st === 'inteira') { usada = def; como = 'defesa inteira: ' + def; }
         else { falta = true; como = (st.pedido && !st.pedido.fim && dono && st.pedido.chars.has(t.char) ? `esperando ${dono.name}` : 'falta rolar') + ` · defesa ${def}`; }
       } else if (comFicha) como = 'sem desconto';
@@ -12449,19 +12731,27 @@ const Luta = (() => {
         paint();
       }, err => { st.pedindo = false; if (atq === st) { toast((err && err.message) || 'O pedido não chegou à mesa. Tente de novo.'); paint(); } });
     }
-    // a defesa que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa)
+    /* a defesa que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa). Com os bônus só desta defesa (lote 6:
+       s.ma no atributo, s.mr no resultado), o que foi rolado (o total sem o + resultado) tem de caber na defesa com o
+       + atributo; a conta aparece na linha do alvo. */
     st.chegou = (l, s) => {
       if (!st.pedido || st.pedido.fim || s.p !== st.pedido.id || !l.nova || typeof s.c !== 'string') return;
       const Pt = ponte(), eu = Pt ? Pt.estado.eu : null, ficha = Fichas.get(s.c);
       if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
       const total = Math.round(Number(s.v));
+      const bm = n => { const x = Math.round(Number(n)); return isFinite(x) ? Math.max(-999, Math.min(999, x)) : 0; };
+      const ma = bm(s.ma), mr = bm(s.mr), rolado = total - mr;
+      const sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
       let mudou = false;
       for (const r of st.rows) {
         const v = ver(r);
         if (!v || v.t.char !== s.c || !v.comFicha || r.st === 'rolou' || r.st === 'inteira') continue;
-        if (!isFinite(total) || total < 0 || total > v.def) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe na defesa dele agora (${v.def}). Role por ele, ou use a defesa inteira.`); continue; }
+        const teto = Math.max(0, v.def + ma);
+        if (!isFinite(total) || rolado < 0 || rolado > teto) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe na defesa dele agora (${v.def}${ma ? ' ' + sinal(ma) : ''}${mr ? ', ' + sinal(mr) + ' no resultado' : ''}). Role por ele, ou use a defesa inteira.`); continue; }
         const dado = Math.round(Number(s.d)), fx = Math.round(Number(s.f)), at = Math.round(Number(s.a));
-        r.st = 'rolou'; r.r = { total, det: at === v.def && dado >= 1 && fx >= 0 && fx + dado === total ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '', por: l.autor_id === eu ? 'pelo mestre' : '' };
+        const conta = at === teto && dado >= 1 && fx >= 0 && fx + dado === rolado ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '';
+        const bonus = [ma ? `${sinal(ma)} no atributo` : '', mr ? `${sinal(mr)} no resultado` : ''].filter(Boolean).join(' · ');
+        r.st = 'rolou'; r.r = { total, det: [conta, bonus].filter(Boolean).join(' · '), por: l.autor_id === eu ? 'pelo mestre' : '' };
         mudou = true;
       }
       if (mudou) paint();
@@ -12544,9 +12834,13 @@ const Luta = (() => {
   });
 
   // A cada redesenho geral: a janelinha de atributos acompanha (valores da ficha, turno, token que saiu).
-  function refresh() { if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } } }
+  function refresh() {
+    if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } }
+    if (epop) { try { pintarEquip(); } catch (e) { console.error(e); fecharEquip(); } }
+  }
 
-  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop };
+  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
+    equipamentos, fecharEquip, equipAberto: () => !!epop };
 })();
 /* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização

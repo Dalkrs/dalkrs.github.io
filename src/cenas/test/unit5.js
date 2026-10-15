@@ -12,8 +12,8 @@ const sandbox = {
   crypto: { getRandomValues(buf) { buf[0] = Math.floor(Math.random() * 4294967296); return buf; } },
 };
 vm.createContext(sandbox);
-vm.runInContext(src + `\n;globalThis.T = { Store, Proj, newScene, newToken, normalizeScene, cleanBar, clone, uid, mulberry };`, sandbox);
-const { Store, Proj, newScene, newToken, normalizeScene, cleanBar, clone, mulberry } = sandbox.T;
+vm.runInContext(src + `\n;globalThis.T = { Store, Proj, Act, newScene, newToken, normalizeScene, cleanBar, clone, uid, mulberry };`, sandbox);
+const { Store, Proj, Act, newScene, newToken, normalizeScene, cleanBar, clone, mulberry } = sandbox.T;
 
 let fails = 0, n = 0;
 const ok = (cond, msg) => { n++; if (!cond) { fails++; console.log('FALHOU:', msg); } };
@@ -462,6 +462,84 @@ const ASSETS = {
   ok(v.tokens[0].fad === 3, 'e vai para os jogadores na projeção da cena (todos veem a pilha)');
   const volta = normalizeScene(Proj.juntar(ida(Proj.projetar(sc, {}, new Set()).m), ida(v)));
   ok(volta.tokens[0].fad === 3, 'do lado do jogador, a cena montada de novo continua com a pilha');
+}
+
+/* ============ (lote 6, Cenas) a postura: uma marca liga/desliga, junto do nome ============ */
+{
+  const sc = newScene('postura');
+  const mk = (v, extra) => { const t = newToken(sc, 0, 0, Object.assign({ name: 'P' }, extra)); if (v !== undefined) t.post = v; sc.tokens.push(t); return t; };
+  mk(true); mk(false); mk('sim'); mk(1); mk();
+  normalizeScene(sc);
+  eq(sc.tokens.map(t => ('post' in t ? t.post : 'sem')), [true, 'sem', 'sem', 'sem', 'sem'], 'a postura é só ligada ou desligada: fica só o "true"');
+  const dono = mk(undefined, { name: 'Dain', owner: ANA }), outro = mk(undefined, { name: 'Lia', owner: BETO }), todos = mk(undefined, { name: 'Carroça', owner: '*' });
+  const V = (t, p, quem) => Proj.validar({ t: 'upd', c: 'tokens', id: t.id, p }, quem || ANA, sc);
+  eq(V(dono, { post: true }), { t: 'upd', c: 'tokens', id: dono.id, p: { post: true } }, 'o jogador liga a postura do token dele');
+  eq([V(outro, { post: true }), V(dono, { post: 'sim' }), V(dono, { post: 1 }), V(dono, { post: false })], [null, null, null, null],
+    'não liga a de um token de outro jogador; só aceita verdadeiro ou falso; e desligar o que já está desligado não muda nada');
+  ok(V(todos, { post: true }) !== null, 'o token de todos os jogadores também (como as condições)');
+  dono.post = true;
+  eq(V(dono, { post: false }), { t: 'upd', c: 'tokens', id: dono.id, p: { post: false } }, 'e desliga a do token dele');
+  sc.perms.condicoes = false;
+  eq(V(dono, { post: false }), null, 'sem a permissão das condições, a postura também não muda');
+  sc.perms.condicoes = true;
+  const { v } = Proj.projetar(sc, {}, new Set([ANA, BETO]));
+  ok(v.tokens.find(t => t.id === dono.id).post === true && !('post' in v.tokens.find(t => t.id === outro.id)), 'todos veem a marca (ela vai na projeção da cena)');
+}
+
+/* ============ (lote 6, Cenas) a linha invisível na ordem de turnos e o "turno com o mestre" ============ */
+{
+  const sc = newScene('turnos invisíveis');
+  const a = newToken(sc, 0, 0, { name: 'Ana', owner: ANA }), b = newToken(sc, 0, 0, { name: 'Dragão', turns: 2 }), c = newToken(sc, 0, 0, { name: 'Escondido', hidden: true });
+  sc.tokens.push(a, b, c);
+  const L = (id, token, name, init, extra) => Object.assign({ id, token, name, init, roll: null, k: 1 }, extra);
+  sc.turn = { on: true, round: 1, cur: 't1', list: [L('t1', a.id, 'Ana', 15), L('t2', b.id, 'Dragão', 12, { inv: true }), L('t3', b.id, 'Dragão', 8, { k: 2, inv: true }), L('t4', c.id, 'Escondido', 6), L('t5', null, 'Armadilha', 3, { bonus: 0, grp: 'g1', inv: 'sim' })] };
+  normalizeScene(sc);
+  eq(sc.turn.list.map(e => !!e.inv), [false, true, true, false, false], 'a marca da linha invisível: fica só o "true"');
+  const proj = () => Proj.projetar(sc, {}, new Set([ANA])).v.turn;
+  let v = proj();
+  eq(v.list.map(e => e.id), ['t1', 't5'], 'os jogadores não recebem as linhas invisíveis (nem a do token oculto, como antes)');
+  ok(v.cur === 't1' && !('mestre' in v), 'na vez de quem eles veem, a vez aponta para a linha, como sempre');
+  sc.turn.cur = 't2'; v = proj();
+  ok(v.cur === null && v.mestre === true, 'na vez de uma linha invisível, a vez não aponta para ninguém: eles só ficam sabendo que o turno está com o mestre');
+  sc.turn.cur = 't3'; v = proj();
+  ok(v.cur === null && v.mestre === true && JSON.stringify(v) === JSON.stringify((sc.turn.cur = 't2', proj())), 'duas linhas invisíveis seguidas chegam iguais aos jogadores (eles não ficam sabendo que eram duas)');
+  sc.turn.cur = 't4'; v = proj();
+  ok(v.cur === null && !('mestre' in v), 'na vez do token oculto, como antes: nada (eles nem ficam sabendo que há mais alguém na ordem)');
+  sc.turn.on = false; sc.turn.cur = 't2'; v = proj();
+  ok(!('mestre' in v), 'com o combate parado, não há vez de ninguém');
+  sc.turn.on = true; sc.turn.cur = 't3';
+  const pj = Proj.projetar(sc, {}, new Set([ANA])), volta = normalizeScene(Proj.juntar(ida(pj.m), ida(pj.v)));
+  ok(volta.turn.mestre === true && volta.turn.list.length === 2 && volta.turn.cur === null, 'do lado do jogador, a cena montada de novo guarda o "turno com o mestre"');
+  sc.perms.turnos = false;
+  ok(!('mestre' in proj()) && proj().list.length === 0, 'sem a permissão de ver os turnos, nada vai');
+  sc.perms.turnos = true;
+
+  // o olho da linha: vale para todas as linhas do mesmo combatente; um passo de desfazer
+  Store.S.scenes = { [sc.id]: sc }; Store.S.current = sc.id;
+  const inv = () => Store.scene().turn.list.map(e => e.id + (e.inv ? '*' : '')).join(' ');
+  eq(Act.turnInv('t2', false), 2, 'mostrar o Dragão de novo: as duas linhas dele');
+  eq(inv(), 't1 t2 t3 t4 t5', '… e nenhuma fica invisível');
+  eq(Act.turnInv('t3', false), 0, 'mostrar o que já aparece não muda nada');
+  eq(Act.turnInv('t5', true), 1, 'esconder a entrada avulsa: a linha dela');
+  eq(Act.turnInv('t1', true), 1, 'esconder a Ana (um turno só): uma linha');
+  eq(inv(), 't1* t2 t3 t4 t5*', 'só as linhas pedidas ficam invisíveis');
+  Store.undo();
+  eq(inv(), 't1 t2 t3 t4 t5*', 'desfazer volta um passo (a Ana aparece de novo)');
+  Act.turnInv('t2', true);
+  eq(Act.turnInv('nao-existe', true), 0, 'linha que não existe: nada');
+  // as linhas novas de quem está invisível também ficam invisíveis
+  Act.tokenTurns(Store.get('tokens', b.id), 3);
+  eq(Store.scene().turn.list.filter(e => e.token === b.id).map(e => e.k + (e.inv ? '*' : '')), ['1*', '2*', '3*'], 'o Dragão invisível ganha um terceiro turno: a linha nova também fica invisível');
+  Act.tokenTurns(Store.get('tokens', a.id), 2);
+  eq(Store.scene().turn.list.filter(e => e.token === a.id).map(e => e.k + (e.inv ? '*' : '')), ['1', '2'], 'a Ana (visível) ganha um segundo turno visível');
+  // a faixa de um grupo invisível, desfeita, dá linhas invisíveis
+  const g1 = newToken(Store.scene(), 0, 0, { name: 'Lobo 1' }), g2 = newToken(Store.scene(), 0, 0, { name: 'Lobo 2' });
+  Store.tx('lobos', () => { Store.add('tokens', g1); Store.add('tokens', g2); });
+  const fx = Act.turnBand('Lobos', 2, [g1.id, g2.id]);
+  Act.turnInv(fx.id, true);
+  ok(Store.scene().turn.list.find(e => e.id === fx.id).inv === true, 'a faixa do grupo também fica invisível (uma linha)');
+  Act.bandSplit(fx.id);
+  eq(Store.scene().turn.list.filter(e => e.token === g1.id || e.token === g2.id).map(e => !!e.inv), [true, true], 'desfeita, a faixa invisível dá linhas invisíveis para cada lobo');
 }
 
 console.log(fails ? `${n - fails} verificações passaram, ${fails} falharam` : `${n} verificações passaram`);

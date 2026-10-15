@@ -434,6 +434,35 @@ const Act = {
     if (Object.keys(cur).length) info[id] = cur; else delete info[id];
     Store.tx(label || 'Condição', () => Store.upd('tokens', t.id, { cinfo: info }));
   },
+  /* O contador ou as rodadas de uma condição em vários tokens de uma vez (lote 6), num passo de desfazer. Só mexe em
+     quem tem a condição. op: { delta } soma no contador de cada um (descer de 1 tira a condição, como no + e − de um
+     token; quem está sem contador não desce); { d } as mesmas rodadas para todos (0: sem prazo). → quantos mudaram */
+  condLote(tokens, id, op) {
+    let k = 0;
+    Store.tx('Condição em vários tokens', () => {
+      for (const t of tokens) {
+        if (!t || !t.conds.includes(id)) continue;
+        const info = Object.assign({}, t.cinfo), cur = Object.assign({}, info[id]);
+        if (op.delta != null) {
+          const n = (cur.n || 0) + op.delta;
+          if (n <= 0) {
+            if (!cur.n) continue;
+            delete info[id];
+            Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== id), cinfo: info }); k++;
+            continue;
+          }
+          cur.n = n;
+        } else if (op.d != null) {
+          const d = Math.max(0, Math.round(Number(op.d) || 0));
+          if ((cur.d || 0) === d) continue;
+          if (d > 0) { cur.d = d; cur.d0 = d; } else { delete cur.d; delete cur.d0; }
+        } else continue;
+        if (Object.keys(cur).length) info[id] = cur; else delete info[id];
+        Store.upd('tokens', t.id, { cinfo: info }); k++;
+      }
+    });
+    return k;
+  },
   // + e − do contador. Descer de 1 encerra a condição; sem contador, − não faz nada.
   condStep(t, id, delta) {
     const cur = (t.cinfo || {})[id] || {};
@@ -648,9 +677,10 @@ const Act = {
     let n = 0;
     for (const t of tokens) {
       if (t.prop || bandOf(tn, t.id)) continue;        // objeto de cenário não joga; e quem está numa faixa já joga nela
-      const want = clampTurns(t.turns), have = tn.list.filter(e => e.token === t.id).length;
+      const linhas = tn.list.filter(e => e.token === t.id), want = clampTurns(t.turns), have = linhas.length;
       if (have >= want) continue;
-      for (let k = have + 1; k <= want; k++) tn.list.push(turnEntry(t, k));
+      const inv = have > 0 && linhas.every(e => e.inv);               // as linhas novas de quem está invisível também ficam
+      for (let k = have + 1; k <= want; k++) tn.list.push(Object.assign(turnEntry(t, k), inv ? { inv: true } : null));
       n++;
     }
     if (!n) return 0;
@@ -705,7 +735,7 @@ const Act = {
     const novas = [];
     for (const tid of e.toks) {
       const t = Store.get('tokens', tid);
-      if (t) for (let k = 1, n = clampTurns(t.turns); k <= n; k++) novas.push(turnEntry(t, k));
+      if (t) for (let k = 1, n = clampTurns(t.turns); k <= n; k++) novas.push(Object.assign(turnEntry(t, k), e.inv ? { inv: true } : null));   // (a faixa invisível dá linhas invisíveis)
     }
     tn.list.splice(i, 1, ...novas);
     turnRenumber(tn.list);
@@ -719,6 +749,18 @@ const Act = {
     if (!e || !!e.reac === !!on) return false;
     Act.turnPatch(x => { const y = x.list.find(z => z.id === id); if (on) y.reac = true; else delete y.reac; }, on ? 'Esperando reação' : 'Reagiu');
     return true;
+  },
+  /* Linha invisível (lote 6): os jogadores não veem a linha; na vez dela, só ficam sabendo que o turno está com o
+     mestre. Vale para todas as linhas do mesmo combatente (os vários turnos de um token, ou de uma entrada avulsa).
+     Um passo de desfazer. Devolve quantas linhas mudaram. */
+  turnInv(id, on) {
+    const tn = Store.scene().turn, e = tn.list.find(x => x.id === id);
+    if (!e) return 0;
+    const g = turnGroup(e), ids = tn.list.filter(x => turnGroup(x) === g && !!x.inv !== !!on).map(x => x.id);
+    if (!ids.length) return 0;
+    const muda = new Set(ids);
+    Act.turnPatch(x => { for (const y of x.list) if (muda.has(y.id)) { if (on) y.inv = true; else delete y.inv; } }, on ? 'Linha invisível' : 'Linha visível');
+    return ids.length;
   },
   turnPatch(fn, label) {
     const tn = clone(Store.scene().turn), before = tn.list.slice();
@@ -753,7 +795,8 @@ const Act = {
       Store.upd('tokens', t.id, { turns: n });
       if (!have.length || have.length === n) return;
       const tn = clone(sc.turn), before = tn.list.slice();
-      if (have.length < n) for (let k = have.length + 1; k <= n; k++) tn.list.push(turnEntry(t, k));
+      const inv = have.every(e => e.inv);
+      if (have.length < n) for (let k = have.length + 1; k <= n; k++) tn.list.push(Object.assign(turnEntry(t, k), inv ? { inv: true } : null));
       else {
         const drop = new Set(have.slice().sort((p, q) => (q.k || 1) - (p.k || 1)).slice(0, have.length - n).map(e => e.id));
         tn.list = tn.list.filter(e => !drop.has(e.id));

@@ -140,8 +140,13 @@ button { cursor: pointer; }
 .ped-q { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .ped-r { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ped-r label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
-.ped-fx { width: 62px; height: 28px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); text-align: center; font: 13px var(--mono); }
+.ped-fx, .ped-mais { width: 62px; height: 28px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); text-align: center; font: 13px var(--mono); }
 .ped-f { margin-top: 6px; font-size: 12.5px; color: var(--fg-3); }
+.ped-m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.ped-m .dm-t { flex-basis: 100%; margin-bottom: -2px; font-size: 11.5px; color: var(--fg-3); font-weight: 600; }
+.ped-m label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); }
+.ped-m .ped-mais { width: 52px; }
+.ped-mais.tem { border-color: var(--lamp); }
 .it .acts { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
 .it:hover .acts, .it:focus-within .acts { display: flex; }
 .mini { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; border: 0; background: var(--surface); color: var(--fg-3); }
@@ -402,12 +407,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=8"></script>
-<script src="tc/tc.js?v=19"></script>
+<script src="tc/tc.js?v=20"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.15-3';
+  const VERSAO = '2026.10.15-4';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1237,8 +1242,11 @@ dialog::backdrop { background: var(--scrim); }
   /* ---- o pedido de defesa (o "ataque com defesa" das Cenas) ----
      O mestre pede que os jogadores rolem a defesa: o pedido chega como um cartão na mesa ao vivo. Quem é dono de um
      dos personagens vê a defesa dele (somada da própria ficha), o campo "Fixando" e o botão de rolar; os outros
-     veem quem já rolou. A rolagem sai como as outras, e a janela do mestre a recebe. Nada é aplicado daqui. */
-  const pedFixa = new Map(), pedOcupado = new Set();
+     veem quem já rolou. A rolagem sai como as outras, e a janela do mestre a recebe. Nada é aplicado daqui.
+     Os bônus "só nesta defesa" (lote 6): + atributo (soma na defesa antes de rolar: muda o dado) e + resultado (soma
+     depois). Valem só para esta defesa; a conta vai junto, e o mestre a vê na janela do ataque. */
+  const pedFixa = new Map(), pedOcupado = new Set(), pedMais = new Map();
+  const pedNum = el => { const t = String(el.value).trim().replace(',', '.'), n = Math.round(Number(t)); return t !== '' && isFinite(n) ? Math.max(-999, Math.min(999, n)) : 0; };
   // a soma das defesas pedidas, pela ficha do personagem → { valor, fixa } (null enquanto a ficha não chegou)
   function defesaDaFicha(id, chaves) {
     const k = calculoDe(id);
@@ -1261,22 +1269,40 @@ dialog::backdrop { background: var(--scrim); }
       if (!meu) return h('li', { class: 'ped-a' }, h('b', { text: quem }), h('span', { text: 'aguardando' }));
       const df = defesaDaFicha(x.c, validas);
       if (!df) return h('li', { class: 'ped-a meu' }, h('b', { text: quem }), h('span', { text: 'A ficha ainda está chegando…' }));
-      const chave = l.id + '|' + x.c, ocupado = pedOcupado.has(chave);
-      const lerFixa = () => { const t = fx.value.trim(), n = Math.round(Number(t.replace(',', '.'))); return t !== '' && isFinite(n) && n >= 0 ? Math.min(n, df.valor) : df.fixa; };
-      const como = () => { const f = lerFixa(); return df.valor < 1 ? 'defesa em 0: nada a rolar' : f >= df.valor ? 'fixa total: ' + df.valor : '1d' + (df.valor - f) + (f ? ' + ' + f : ''); };
+      const chave = l.id + '|' + x.c, ocupado = pedOcupado.has(chave), mais0 = pedMais.get(chave) || { a: '', r: '' };
+      const campoMais = (id, rotulo, dica, val) => h('input', { type: 'number', class: 'ped-mais', id, min: '-999', max: '999', step: '1', inputmode: 'numeric', placeholder: '0', value: val, 'aria-label': rotulo + ', só nesta defesa de ' + quem, title: dica, disabled: ocupado });
+      const ma = campoMais('pedma-' + chave, 'Bônus no atributo', 'Soma na defesa antes de rolar (muda o dado: defesa 40 com +5, fixando 15, rola 1d30 + 15)', mais0.a);
+      const mr = campoMais('pedmr-' + chave, 'Bônus no resultado', 'Soma no resultado, depois de rolar', mais0.r);
+      const efetiva = () => Math.max(0, df.valor + pedNum(ma));           // a defesa com o bônus no atributo
+      const lerFixa = () => { const t = fx.value.trim(), n = Math.round(Number(t.replace(',', '.'))); return Math.min(t !== '' && isFinite(n) && n >= 0 ? n : df.fixa, efetiva()); };
+      const como = () => {
+        const v = efetiva(), f = lerFixa(), r = pedNum(mr), rs = r ? (r > 0 ? ' + ' : ' − ') + Math.abs(r) : '';
+        return v < 1 ? (r ? 'defesa em 0: fica só o bônus (' + (r > 0 ? '+' : '−') + Math.abs(r) + ')' : 'defesa em 0: nada a rolar') : f >= v ? 'fixa total: ' + v + rs : '1d' + (v - f) + (f ? ' + ' + f : '') + rs;
+      };
       const fx = h('input', { type: 'number', class: 'ped-fx', id: 'pedfx-' + chave, min: '0', max: String(df.valor), step: '1', value: pedFixa.has(chave) ? pedFixa.get(chave) : String(df.fixa), 'aria-label': 'Quanto fixar na defesa de ' + quem, title: 'Regra da fixa: rola um dado de (defesa − fixa) lados e soma a fixa', disabled: ocupado });
       const b = h('button', { type: 'button', class: 'btn pri sm', id: 'pedb-' + chave, disabled: ocupado, text: ocupado ? 'Rolando…' : 'Rolar a defesa' });
-      b.title = 'Rola ' + como();
-      fx.addEventListener('input', () => { pedFixa.set(chave, fx.value); b.title = 'Rola ' + como(); });
-      fx.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); b.click(); } });
+      const qd = h('span', { text: 'defesa ' + df.valor + (nome ? ' (' + nome + ')' : '') });
+      const pintar = () => {
+        const m1 = pedNum(ma), m2 = pedNum(mr);
+        ma.classList.toggle('tem', !!m1); mr.classList.toggle('tem', !!m2);
+        fx.max = String(efetiva());
+        qd.textContent = 'defesa ' + df.valor + (m1 ? ' ' + (m1 > 0 ? '+' : '−') + ' ' + Math.abs(m1) + ' = ' + efetiva() : '') + (nome ? ' (' + nome + ')' : '');
+        b.title = 'Rola ' + como();
+      };
+      pintar();
+      fx.addEventListener('input', () => { pedFixa.set(chave, fx.value); pintar(); });
+      for (const c of [ma, mr]) c.addEventListener('input', () => { pedMais.set(chave, { a: ma.value, r: mr.value }); pintar(); });
+      for (const c of [fx, ma, mr]) c.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); b.click(); } });
       b.addEventListener('click', async () => {
         if (pedOcupado.has(chave)) return;
-        const fixa = lerFixa();
+        const fixa = lerFixa(), mais = { atr: pedNum(ma), res: pedNum(mr) };
         pedOcupado.add(chave); repintarPedido(l.id);
-        try { await aoVivo.responderDefesa(l, x.c, df.valor, fixa); pedFixa.delete(chave); } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
+        try { await aoVivo.responderDefesa(l, x.c, df.valor, fixa, mais); pedFixa.delete(chave); pedMais.delete(chave); } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
         pedOcupado.delete(chave); repintarPedido(l.id);
       });
-      return h('li', { class: 'ped-a meu' }, h('div', { class: 'ped-q' }, h('b', { text: quem }), h('span', { text: 'defesa ' + df.valor + (nome ? ' (' + nome + ')' : '') })),
+      return h('li', { class: 'ped-a meu' }, h('div', { class: 'ped-q' }, h('b', { text: quem }), qd),
+        h('div', { class: 'ped-m', role: 'group', 'aria-label': 'Bônus só nesta defesa' }, h('span', { class: 'dm-t', text: 'Só nesta defesa', title: 'Valem só para esta rolagem de defesa' }),
+          h('label', { title: 'Soma na defesa antes de rolar (muda o dado)' }, h('span', { text: '+ atributo' }), ma), h('label', { title: 'Soma no resultado, depois de rolar' }, h('span', { text: '+ resultado' }), mr)),
         h('div', { class: 'ped-r' }, h('label', {}, h('span', { text: 'Fixando' }), fx), b));
     });
     const fim = est === 'aplicado' ? 'O mestre já aplicou o ataque.' : est === 'cancelado' ? 'O mestre cancelou este pedido.' : est === 'expirado' ? 'Este pedido expirou.' : mestre ? 'Você acompanha e aplica pela janela do ataque, nas Cenas.' : null;

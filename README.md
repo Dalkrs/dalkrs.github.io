@@ -334,6 +334,36 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **Quem vê a ficha**: "Os outros jogadores veem esta ficha (o dono sempre vê a dele)" — o banco já deixava o dono ver a
   dele com a ficha escondida; agora a chave, o olho da lista e o aviso dizem isso.
 
+### As Cenas (lote 6)
+
+- **Teclas novas.** **N** passa a vez e **Shift+N** volta (só o mestre; o jogador recebe um aviso); **E** abre os
+  equipamentos do token. Por isso a Névoa manual foi para **U** e os Efeitos de magia, para **Y** (as dicas dos botões
+  e a janela de atalhos já mostram as novas).
+- **E — os equipamentos do token.** Uma janelinha ao lado do token (o sob o cursor; senão, o selecionado), como a do F:
+  um cartão por item da ficha, com a chave de equipado, o nome, o grupo de troca, a gema da relíquia e só o que o
+  item soma. Um clique equipa ou guarda; do mesmo grupo de troca, um só fica equipado (`TC.rules.equiparItem`). Grava
+  na ficha (`Fichas.equipar`, com Desfazer, que devolve só a chave de equipado de cada item) e acompanha mudanças de
+  fora enquanto está aberta. O mestre usa em qualquer token ligado; o jogador, no token do personagem dele. Abrir a do
+  F fecha a do E, e vice-versa.
+- **Postura** (`token.post`): uma marca liga/desliga — a etiqueta âmbar "Postura" junto do nome, que todos veem. A
+  chave fica na seção Condições do painel do token; o jogador muda a do token dele (a projeção aceita só `true` ou
+  `false`, com a mesma permissão das condições).
+- **O contador de uma condição em vários tokens.** Com vários tokens selecionados (no painel e na janela de condições),
+  cada condição ativa ganha uma linha com − e + (somam ou tiram 1 de cada um; quem chega a zero perde a condição) e as
+  rodadas (o mesmo número para todos que a têm). Tudo num passo de desfazer (`Act.condLote`). A linha diz em quantos
+  tokens a condição está e o contador ("1 a 3"; o de cada um na dica).
+- **A linha invisível na ordem de turnos** (`inv` na entrada): o olho de cada linha esconde dos jogadores todas as
+  linhas daquele combatente (os vários turnos de um token, ou de uma entrada avulsa; `Act.turnInv`, com Desfazer). A
+  projeção não manda a linha; na vez dela, manda `turn.mestre = true` sem apontar a vez para ninguém, e o jogador vê
+  "O turno está com o mestre" (na aba Turnos e no aviso de vez). Duas linhas invisíveis seguidas chegam iguais. As
+  linhas novas de quem está invisível (mais turnos por rodada, a faixa desfeita) também ficam invisíveis. O token
+  continua no mapa como estiver (para sumir com ele, é o "Ocultar" de sempre).
+- **Bônus só nesta defesa.** No cartão do pedido de defesa, na mesa ao vivo: "+ atributo" (soma na defesa antes de
+  rolar: muda o dado) e "+ resultado". A rolagem diz os dois, e o recado leva `sis.ma`, `sis.mr` e `sis.b` (a defesa
+  sem o bônus). Na janela do ataque, o que foi rolado (sem o + resultado) tem de caber na defesa com o + atributo, e a
+  conta aparece na linha do alvo: "rolou 45 de 40 (27 no d30 + 15 · +5 no atributo · +3 no resultado)". Uma defesa
+  que fique negativa por um − no resultado desconta zero.
+
 ### O mapa-múndi: a grade, o terreno e a viagem
 
 - **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
@@ -673,7 +703,7 @@ faltava subir.
 ## Testes
 
 ```
-cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 e2e ui2 faixa negativa combate; do node $f.js; done
+cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6; do node $f.js; done
 cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
@@ -700,7 +730,9 @@ ficha pela cena no ar, os bônus da telinha e a mesa ao vivo fechada e aberta de
 o que ele muda e o que o banco recusa: cada parte do mestre, outro documento da mesa, dar a permissão a si mesmo; o
 acampamento gravado pela versão de antes do site; a outra jogadora sem a permissão; o mestre e o jogador gravando no
 mesmo instante, e o desfazer que volta só o próprio passo; a Sanidade e o Conforto pelo cartão; o momento com
-corações e emoção; e as linhas de relação de quem joga e de quem mestra). `vivo.js` confere o site publicado.
+corações e emoção; e as linhas de relação de quem joga e de quem mestra) e `cenas-lote6.rede` (com o mestre e uma
+jogadora: a janelinha E gravando na ficha, a Postura que a jogadora liga, a linha invisível e o "turno com o mestre",
+N e Shift+N). `vivo.js` confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -725,5 +757,7 @@ mestre em segundo plano (a poção e o token, o pedido do jogador com o mestre e
 e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de mentira. `auditoria` confere as contas do
 auditor (inclusive que ele não acusa dados honestos mais vezes do que o combinado) e `auditor`, a janela dele.
 `src/cenas/test/combate.js` confere, sem o site, as contas do combate, a ferramenta Terreno, a janelinha de atributos
-num token sem ficha e a disputa. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+num token sem ficha e a disputa; `src/cenas/test/lote6.js`, as teclas novas, a janelinha E (com uma ficha de mentira),
+a Postura, o contador em vários tokens e a linha invisível (com a prévia "como jogador"). Com `FOTOS=<pasta>`, os
+dois guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

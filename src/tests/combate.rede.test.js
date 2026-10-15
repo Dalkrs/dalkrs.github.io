@@ -425,6 +425,22 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   ok(await ate(async () => (await linhas(M)).length === antes + 1), '(o mestre pede de novo)');
   const ped4 = await ultima(M);
   ok(ped4.d.k === 'pedido' && ped4.id !== ped2.id && (await C.locator('#at-como-0').innerText()).startsWith('esperando Dalmo'), 'é um pedido novo, e a janela volta a esperar a jogadora');
+  // (lote 6) os bônus só desta defesa: + atributo (muda o dado) e + resultado, no cartão em que a jogadora rola
+  ok(await ate(async () => (await J.locator('#feed .ped').last().locator('.ped-mais').count()) === 2, 15000), 'o cartão da jogadora tem "+ atributo" e "+ resultado", só para esta defesa');
+  const cj = J.locator('#feed .ped').last();
+  await cj.locator('.ped-fx').fill('3'); await cj.locator('[id^="pedma-"]').fill('5'); await cj.locator('[id^="pedmr-"]').fill('2'); await w(250, J);
+  ok(new RegExp('Selene\\s+defesa ' + defSel + ' \\+ 5 = ' + (defSel + 5)).test(await cj.innerText()) && (await cj.locator('button.pri').getAttribute('title')) === 'Rola 1d' + (defSel + 5 - 3) + ' + 3 + 2' && await cj.locator('[id^="pedma-"].tem').count() === 1,
+    'o cartão mostra a conta antes de rolar: a defesa com o bônus e o dado que vai rolar: ' + (await cj.innerText()).replace(/\s+/g, ' ') + ' · ' + await cj.locator('button.pri').getAttribute('title'));
+  antes = (await linhas(M)).length;
+  await cj.locator('button.pri').click();
+  ok(await ate(async () => (await linhas(M)).length === antes + 1), 'a jogadora rola a defesa com os bônus');
+  r = await ultima(M);
+  const dB = r.d.total - 3 - 2;
+  ok(r.d.sis && r.d.sis.ma === 5 && r.d.sis.mr === 2 && r.d.sis.b === defSel && r.d.sis.a === defSel + 5 && r.d.sis.f === 3 && r.d.sis.d === dB && dB >= 1 && dB <= defSel + 2 && JSON.stringify(r.d.dd) === JSON.stringify([[defSel + 2, dB]]) && r.d.resumo === `${dB} no d${defSel + 2} + 3 de fixa (atributo ${defSel + 5}) · +5 no atributo (${defSel} → ${defSel + 5}) · +2 no resultado`,
+    'a rolagem leva os bônus (1d' + (defSel + 2) + ' + 3, mais 2), e o recado diz a conta inteira: ' + JSON.stringify(r.d));
+  ok(await ate(async () => (await C.locator('#at-como-0').innerText()) === `rolou ${r.d.total} de ${defSel} (${dB} no d${defSel + 2} + 3 · +5 no atributo · +2 no resultado)`, 15000), 'na janela do ataque, o mestre vê o que ela rolou e a conta, com os bônus: ' + await C.locator('#at-como-0').innerText());
+  ok((await C.locator('#at-res-0').innerText()) === (r.d.total >= 30 ? '−0 · 100 → 100' : `−${30 - r.d.total} · 100 → ${100 - (30 - r.d.total)}`), 'e o dano dela usa o total com os bônus: ' + await C.locator('#at-res-0').innerText());
+  ok(await ate(async () => new RegExp('Selene\\s+rolou ' + r.d.total).test(await cj.innerText()), 10000), 'no cartão dela: "rolou ' + r.d.total + '"');
   await M.keyboard.press('Escape'); await w(500);
   ok(await C.locator('.modal').count() === 0 && await hp(C, ids.pc_selene) === 100, 'o mestre fecha a janela sem aplicar: nada muda');
   ok(await ate(async () => { const p = (await linhas(M)).find(x => x.id === ped4.id); return !!p && p.d.pd.fim === 'cancelado'; }, 15000), 'e o pedido que estava aberto é encerrado como cancelado');

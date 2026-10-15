@@ -145,7 +145,7 @@ const Luta = (() => {
     if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
   }
   function abrirPop(t) {
-    fecharPop(); UI.closeMenus();
+    fecharPop(); fecharEquip(); UI.closeMenus();
     const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
       oninput: () => { const cur = pop && Store.get('tokens', pop.tokId); if (cur) { guardarFixa(cur, fx.value); pintarPop(); } },
       onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); fx.blur(); pop.el.focus({ preventScroll: true }); } } });
@@ -174,6 +174,75 @@ const Luta = (() => {
     el.style.top = clamp(r.top + sy - 6, 8, Math.max(8, window.innerHeight - hh - 8)) + 'px';
     el.focus({ preventScroll: true });
   }
+  /* ================= E: os equipamentos do token (lote 6) =================
+     Abre ao lado do token (o sob o cursor; senão, o único selecionado), como o F: um cartão por item da ficha, com a
+     chave de equipado, o nome e só o que o item soma. Um clique equipa ou guarda; dos itens do mesmo grupo de troca,
+     um só fica equipado (equipar um guarda os outros). Grava na ficha, com Desfazer. Fecha com Esc, E de novo, o × ou
+     um clique fora. O mestre mexe em qualquer token ligado a uma ficha; o jogador, no token do personagem dele. */
+  let epop = null;                       // { el, tokId, lista, nome }
+  function fecharEquip() { if (epop) { epop.el.remove(); epop = null; } }
+  function equipamentos(tokArg) {
+    const t = tokArg || alvoDoF();
+    if (epop && !tokArg && (!t || t.id === epop.tokId)) { fecharEquip(); return; }       // E de novo fecha
+    if (!t) { toast('Para ver os equipamentos, passe o mouse sobre um token (ou selecione um) e aperte E.'); return; }
+    if (!tokShown(t, Store.scene())) return;
+    if (!isGM() && !ownsTok(t)) { toast('Você mexe nos equipamentos do seu personagem.'); return; }
+    if (!t.char) { toast('Este token não está ligado a uma ficha: os equipamentos moram na ficha.'); return; }
+    if (!Fichas.podeEquipar(t)) { toast(isGM() ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.'); return; }
+    abrirEquip(t);
+  }
+  const TROCA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const GEMA_I = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18"/></svg>';
+  const svgEl = s => { const d = document.createElement('span'); d.className = 'eq-i'; d.innerHTML = s; return d; };
+  function pintarEquip() {
+    if (!epop) return;
+    const t = Store.get('tokens', epop.tokId);
+    if (!t || !tokShown(t, Store.scene()) || !Fichas.podeEquipar(t)) { fecharEquip(); return; }
+    const a = document.activeElement, fid = a && a.id && epop.el.contains(a) ? a.id : null;
+    epop.nome.textContent = tokName(t);
+    const lista = Fichas.itens(t);
+    epop.lista.replaceChildren(...(lista.length ? lista.map(it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
+      title: (it.on ? 'Equipado: clique para guardar' : 'Guardado: clique para equipar') + (it.troca ? ' (grupo de troca: ' + it.troca + ')' : ''), onclick: () => trocarItem(it) },
+      h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
+      h('span', { class: 'eq-t' },
+        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
+        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }))))
+      : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
+    if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+  }
+  function trocarItem(it) {
+    const t = epop && Store.get('tokens', epop.tokId);
+    if (!t) return;
+    const r = Fichas.equipar(t, it.id, !it.on);
+    if (!r.ok) { toast(r.error); return; }
+    const e = n => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]);
+    toast(it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.',
+      { action: 'Desfazer', run: () => { if (r.desfazer()) pintarEquip(); } });
+    pintarEquip();
+  }
+  function abrirEquip(t) {
+    fecharEquip(); fecharPop(); UI.closeMenus();
+    const nome = h('strong', { class: 'pop-n' }), lista = h('div', { class: 'eq-l', id: 'eq-lista' });
+    const el = h('div', { class: 'pop eqpop', id: 'epop', role: 'dialog', 'aria-label': 'Equipamentos de ' + tokName(t), tabindex: '-1' },
+      h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou E)', fecharEquip, { size: 15, id: 'eq-x' })),
+      lista, h('p', { class: 'eq-nota', text: 'Um clique equipa ou guarda. Do mesmo grupo de troca, um só fica equipado.' }));
+    K.layer.append(el);
+    epop = { el, tokId: t.id, lista, nome };
+    pintarEquip();
+    if (!epop) return;
+    const sc = Store.scene(), r = Render.cv.getBoundingClientRect(), [sx, sy] = Render.toScreen(t.x, t.y), lado = t.size * sc.cell * App.view.z;
+    const w = el.offsetWidth, hh = el.offsetHeight;
+    let left = r.left + sx + lado + 14;
+    if (left + w > window.innerWidth - 8) left = r.left + sx - w - 14;
+    el.style.left = clamp(left, 8, Math.max(8, window.innerWidth - w - 8)) + 'px';
+    el.style.top = clamp(r.top + sy - 6, 8, Math.max(8, window.innerHeight - hh - 8)) + 'px';
+    el.focus({ preventScroll: true });
+  }
+  document.addEventListener('pointerdown', e => { if (epop && !epop.el.contains(e.target) && !(e.target.closest && e.target.closest('.toast'))) fecharEquip(); }, true);
+  document.addEventListener('keydown', e => {
+    if (!epop || e.key !== 'Escape' || UI.modalOpen()) return;
+    fecharEquip(); e.stopPropagation(); e.preventDefault();
+  }, true);
   // o botão da faixa do token (para quem não usa o teclado): abre e, de novo, fecha
   function alternar(t) { if (pop && t && pop.tokId === t.id) fecharPop(); else atributos(t); }
   document.addEventListener('pointerdown', e => { if (pop && !pop.el.contains(e.target) && !(e.target.closest && e.target.closest('#hud-rolar'))) fecharPop(); }, true);
@@ -434,7 +503,7 @@ const Luta = (() => {
       let usada = 0, falta = false, como = '';
       if (comFicha && st.defs.size) {
         if (!rolando()) { usada = def; como = 'defesa ' + def; }
-        else if (r.st === 'rolou') { usada = r.r.total; como = `rolou ${r.r.total} de ${def}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : ''); }
+        else if (r.st === 'rolou') { usada = Math.max(0, r.r.total); como = `rolou ${r.r.total} de ${def}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : ''); }
         else if (r.st === 'inteira') { usada = def; como = 'defesa inteira: ' + def; }
         else { falta = true; como = (st.pedido && !st.pedido.fim && dono && st.pedido.chars.has(t.char) ? `esperando ${dono.name}` : 'falta rolar') + ` · defesa ${def}`; }
       } else if (comFicha) como = 'sem desconto';
@@ -536,19 +605,27 @@ const Luta = (() => {
         paint();
       }, err => { st.pedindo = false; if (atq === st) { toast((err && err.message) || 'O pedido não chegou à mesa. Tente de novo.'); paint(); } });
     }
-    // a defesa que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa)
+    /* a defesa que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa). Com os bônus só desta defesa (lote 6:
+       s.ma no atributo, s.mr no resultado), o que foi rolado (o total sem o + resultado) tem de caber na defesa com o
+       + atributo; a conta aparece na linha do alvo. */
     st.chegou = (l, s) => {
       if (!st.pedido || st.pedido.fim || s.p !== st.pedido.id || !l.nova || typeof s.c !== 'string') return;
       const Pt = ponte(), eu = Pt ? Pt.estado.eu : null, ficha = Fichas.get(s.c);
       if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
       const total = Math.round(Number(s.v));
+      const bm = n => { const x = Math.round(Number(n)); return isFinite(x) ? Math.max(-999, Math.min(999, x)) : 0; };
+      const ma = bm(s.ma), mr = bm(s.mr), rolado = total - mr;
+      const sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
       let mudou = false;
       for (const r of st.rows) {
         const v = ver(r);
         if (!v || v.t.char !== s.c || !v.comFicha || r.st === 'rolou' || r.st === 'inteira') continue;
-        if (!isFinite(total) || total < 0 || total > v.def) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe na defesa dele agora (${v.def}). Role por ele, ou use a defesa inteira.`); continue; }
+        const teto = Math.max(0, v.def + ma);
+        if (!isFinite(total) || rolado < 0 || rolado > teto) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe na defesa dele agora (${v.def}${ma ? ' ' + sinal(ma) : ''}${mr ? ', ' + sinal(mr) + ' no resultado' : ''}). Role por ele, ou use a defesa inteira.`); continue; }
         const dado = Math.round(Number(s.d)), fx = Math.round(Number(s.f)), at = Math.round(Number(s.a));
-        r.st = 'rolou'; r.r = { total, det: at === v.def && dado >= 1 && fx >= 0 && fx + dado === total ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '', por: l.autor_id === eu ? 'pelo mestre' : '' };
+        const conta = at === teto && dado >= 1 && fx >= 0 && fx + dado === rolado ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '';
+        const bonus = [ma ? `${sinal(ma)} no atributo` : '', mr ? `${sinal(mr)} no resultado` : ''].filter(Boolean).join(' · ');
+        r.st = 'rolou'; r.r = { total, det: [conta, bonus].filter(Boolean).join(' · '), por: l.autor_id === eu ? 'pelo mestre' : '' };
         mudou = true;
       }
       if (mudou) paint();
@@ -631,7 +708,11 @@ const Luta = (() => {
   });
 
   // A cada redesenho geral: a janelinha de atributos acompanha (valores da ficha, turno, token que saiu).
-  function refresh() { if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } } }
+  function refresh() {
+    if (pop) { try { pintarPop(); } catch (e) { console.error(e); fecharPop(); } }
+    if (epop) { try { pintarEquip(); } catch (e) { console.error(e); fecharEquip(); } }
+  }
 
-  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop };
+  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
+    equipamentos, fecharEquip, equipAberto: () => !!epop };
 })();

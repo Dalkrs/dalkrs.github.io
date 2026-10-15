@@ -382,13 +382,18 @@ const Render = (() => {
   }
 
   // A etiqueta do nome de um token: o que vai nela e onde (w = 0: não há etiqueta). Deixa a fonte já escolhida.
+  /* A etiqueta do nome: [Postura] Nome ▲3 m. A "Postura" (lote 6: o token marcado em postura) é uma pílula âmbar no
+     começo da etiqueta, que todos veem. */
   function nameBox(c, t, sc, px) {
     const s = t.size * sc.cell, cx = t.x + s / 2, name = tokName(t), alt = Combate.terBadge(Combate.terrainOf(t, sc), sc);
-    const fs = clamp(s * 0.2, 11 * px, 15 * px);
+    const fs = clamp(s * 0.2, 11 * px, 15 * px), post = t.post ? 'Postura' : '', fp = fs * 0.74;
+    c.font = `800 ${fp}px ${FONT_UI}`;
+    const wp = post ? c.measureText(post).width + fp * 1.1 : 0;
     c.font = `600 ${fs}px ${FONT_UI}`;
     const wn = name ? c.measureText(name).width : 0, gap = name && alt ? fs * 0.45 : 0, wa = alt ? c.measureText(alt).width : 0;
-    const w = name || alt ? wn + gap + wa : 0;
-    return { name, alt, fs, wn, gap, w, padX: fs * 0.5, hh: fs * 1.5, y: t.y + s + fs * 0.3, x0: cx - w / 2, cx };
+    const gp = post && (name || alt) ? fs * 0.4 : 0;
+    const w = name || alt || post ? wp + gp + wn + gap + wa : 0;
+    return { name, alt, post, fs, fp, wp, gp, wn, gap, w, padX: fs * 0.5, hh: fs * 1.5, y: t.y + s + fs * 0.3, x0: cx - w / 2, cx };
   }
 
   /* Os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva), numa etiqueta ao lado do
@@ -550,8 +555,15 @@ const Render = (() => {
       if (L.w > 0) {
         c.fillStyle = 'rgba(12,14,20,0.74)'; rr(c, L.x0 - L.padX, L.y, L.w + L.padX * 2, L.hh, L.hh * 0.35); c.fill();
         c.textAlign = 'left'; c.textBaseline = 'middle';
-        if (L.name) { c.fillStyle = '#f4f5f8'; c.fillText(L.name, L.x0, L.y + L.hh * 0.54); }
-        if (L.alt) { c.fillStyle = '#f0c26a'; c.fillText(L.alt, L.x0 + L.wn + L.gap, L.y + L.hh * 0.54); }
+        if (L.post) {                          // a pílula "Postura", no começo da etiqueta
+          const ph = L.hh * 0.68, py = L.y + (L.hh - ph) / 2;
+          c.fillStyle = '#e0a43a'; rr(c, L.x0, py, L.wp, ph, ph * 0.45); c.fill();
+          c.font = `800 ${L.fp}px ${FONT_UI}`; c.fillStyle = '#1d1405'; c.fillText(L.post, L.x0 + L.fp * 0.55, L.y + L.hh * 0.54);
+          c.font = `600 ${L.fs}px ${FONT_UI}`;
+        }
+        const x1 = L.x0 + L.wp + L.gp;
+        if (L.name) { c.fillStyle = '#f4f5f8'; c.fillText(L.name, x1, L.y + L.hh * 0.54); }
+        if (L.alt) { c.fillStyle = '#f0c26a'; c.fillText(L.alt, x1 + L.wn + L.gap, L.y + L.hh * 0.54); }
       }
     }
     if (t.hidden && isGM()) badge(c, t.x + s * 0.14, t.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px);
@@ -755,7 +767,7 @@ const Render = (() => {
     if (!tn.on || !tn.cur) return;
     if (!isGM() && !can('turns')) return;
     const e = tn.list.find(x => x.id === tn.cur);
-    if (!e) return;
+    if (!e || (e.inv && !isGM())) return;          // (a vez de uma linha invisível não aparece para os jogadores)
     // (na vez da faixa de um grupo, o anel vai em cada token dela)
     for (const t of turnToks(e)) {
       if (!tokShown(t, sc)) continue;

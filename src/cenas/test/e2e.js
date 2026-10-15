@@ -186,22 +186,22 @@ const { open } = require('./lib');
 
   /* 8. Efeitos */
   const e0 = s.effects.length;
-  await key('e'); await click(11.5, 16.5);
+  await key('y'); await click(11.5, 16.5);
   s = await S();
   ok(s.effects.length === e0 + 1 && s.sel[0].c === 'effects' && s.tool === 'select', 'efeito solto com um clique');
   await ev(() => { __urgm.App.opt.fx = 'raio'; __urgm.App.opt.fxShape = 'cone'; });
-  await key('e'); await drag(16, 16, 19, 16);
+  await key('y'); await drag(16, 16, 19, 16);
   s = await S();
   const fx = s.effects[s.effects.length - 1];
   ok(fx.fx === 'raio' && fx.k === 'cone' && fx.dir === 0 && fx.r === 3, `cone arrastado define direção e alcance (dir ${fx.dir}, r ${fx.r})`);
   await ev(() => { __urgm.App.opt.fx = 'cura'; __urgm.App.opt.fxShape = 'circ'; });
-  await key('e'); await click(10.5, 13.5);       // em cima do Kairo: prende ao token
+  await key('y'); await click(10.5, 13.5);       // em cima do Kairo: prende ao token
   s = await S();
   ok(s.effects[s.effects.length - 1].token === tok(s, 'Kairo').id, 'efeito preso ao token clicado');
   errsAt('efeitos');
 
   /* 9. Névoa manual */
-  await key('n'); await drag(2, 18, 5, 18);
+  await key('u'); await drag(2, 18, 5, 18);
   s = await S();
   ok(s.fogOps === 0, 'névoa desligada: não pinta');
   await ev(() => { const u = __urgm, sc = u.Store.scene(); u.Store.tx('x', () => u.Store.scn({ fog: Object.assign({}, sc.fog, { manual: true }) })); });

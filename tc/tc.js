@@ -776,8 +776,10 @@
     return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36);
   }
   /* O jogador (ou o mestre, por um personagem) rola a defesa pedida. `valor` é a soma das defesas do personagem,
-     calculada por quem chama a partir da ficha; `fixa`, quanto fixar. Devolve { ok, total, die, dieValue, fixa }. */
-  aoVivo.responderDefesa = async (l, charId, valor, fixa) => {
+     calculada por quem chama a partir da ficha; `fixa`, quanto fixar. `mais` (lote 6): os bônus só desta defesa —
+     { atr: soma na defesa antes de rolar (muda o dado), res: soma no resultado }; vão no recado (sis.ma, sis.mr, e
+     sis.b com a defesa sem o bônus), para o mestre ver a conta. Devolve { ok, total, die, dieValue, fixa }. */
+  aoVivo.responderDefesa = async (l, charId, valor, fixa, mais) => {
     const a = mesas.atual;
     if (!a || !conta.usuario) throw new Error('Abra uma mesa primeiro.');
     const est = aoVivo.estadoDoPedido(l);
@@ -785,13 +787,20 @@
     const pd = l.dados.pd, alvo = pd.alvos.find(x => x && x.c === charId), pc = linhasPcs().find(x => x.id === charId);
     if (!alvo || !pc) throw new Error('Esse personagem não está neste pedido.');
     if (!(a.papel === 'mestre' || pc.dono_id === conta.usuario.id)) throw new Error('Esse personagem não é seu.');
-    const v = Math.max(0, Math.round(Number(valor) || 0)), f = Math.min(Math.max(0, Math.round(Number(fixa) || 0)), v);
+    const bm = n => Math.max(-999, Math.min(999, Math.round(Number(n) || 0)));
+    const ma = bm(mais && mais.atr), mr = bm(mais && mais.res);
+    const base = Math.max(0, Math.round(Number(valor) || 0)), v = Math.max(0, base + ma), f = Math.min(Math.max(0, Math.round(Number(fixa) || 0)), v);
     let r = { ok: true, atributo: v, fixa: f, die: 0, dieValue: 0, total: 0 };
     if (v >= 1) { r = D().rollFixa(v, f); if (!r.ok) throw new Error(r.error); }
+    if (mr) r = Object.assign({}, r, { total: r.total + mr });
     const nome = aoVivo.nomeDasDefesas(pd.defs), titulo = ((pc.nome || alvo.n || '?') + ' · Defesa' + (nome ? ' (' + nome + ')' : '')).slice(0, 120);
-    const dados = v >= 1 ? deResultado('fixa', titulo, { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total })
-      : { k: 'fixa', titulo, total: 0, resumo: 'A defesa está em 0: nada a rolar', veredito: null, passou: null };
+    const x = { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total };
+    if (ma || mr) Object.assign(x, { base, ma, mr });
+    const dados = v >= 1 ? deResultado('fixa', titulo, x)
+      : { k: 'fixa', titulo, total: r.total, resumo: 'A defesa está em 0: nada a rolar' + D().maisTexto(x), veredito: null, passou: null };
     dados.sis = { t: 'rd', p: l.id, c: charId, v: r.total, a: r.atributo, f: r.fixa, d: r.dieValue };
+    if (ma) { dados.sis.ma = ma; dados.sis.b = base; }
+    if (mr) dados.sis.mr = mr;
     await aoVivo.rolagem(dados, { quem: resumoPc(pc), secreta: false, id: 'rd' + resumoCurto(l.id + '|' + charId + '|' + conta.usuario.id), unico: 'Essa defesa já foi rolada.' });
     return r;
   };

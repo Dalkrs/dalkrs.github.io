@@ -98,7 +98,7 @@ const { open } = require('./lib');
 
   /* Efeito */
   await ev(() => { __urgm.App.opt.fx = 'veneno'; __urgm.App.opt.fxShape = 'circ'; });
-  await key('e'); await click(4.5, 16.5);
+  await key('y'); await click(4.5, 16.5);
   await page.locator('#fx-id').selectOption({ label: 'Tinta' }); await w();
   await segClick('fx-k', 'Linha');
   await setNum('fx-r', 5); await setNum('fx-w', 2); await setNum('fx-d', 90);

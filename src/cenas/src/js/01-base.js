@@ -626,6 +626,7 @@ function normalizeScene(sc) {
     if (!e.token && Array.isArray(e.toks)) { e.toks = [...new Set(e.toks.filter(x => typeof x === 'string' && x))].slice(0, MAX_BAND); e.k = 1; }
     else delete e.toks;
     if (e.reac === true) e.reac = true; else delete e.reac;            // "esperando para reagir"
+    if (e.inv === true) e.inv = true; else delete e.inv;               // linha invisível: os jogadores não a veem
   }
   // um token fica numa faixa só, e quem está numa faixa não tem linha própria
   const naFaixa = new Set();
@@ -660,6 +661,7 @@ function normalizeScene(sc) {
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
     // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
     if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
+    if (t.post === true) t.post = true; else delete t.post;               // (lote 6) em postura: a etiqueta junto do nome
     if (t.light.fl) t.light.fl = true; else delete t.light.fl;          // luz que tremula (uma tocha na mão)
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }

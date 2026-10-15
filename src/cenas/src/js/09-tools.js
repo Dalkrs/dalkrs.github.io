@@ -13,7 +13,8 @@ const Tools = (() => {
   let ghost = null;          // posição do cursor para pré-visualizações
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
-  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', n: 'fog', q: 'terrain', e: 'fx', m: 'ruler' };
+  // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
+  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
@@ -27,9 +28,9 @@ const Tools = (() => {
     { id: 'text', n: 'Texto', k: 'X', i: 'text', grp: 2, perm: 'draw' },
     { id: 'wall', n: 'Paredes e portas', k: 'W', i: 'wall', grp: 3, gm: true },
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
-    { id: 'fog', n: 'Névoa manual', k: 'N', i: 'fog', grp: 3, gm: true },
+    { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'fx', n: 'Efeito de magia', k: 'E', i: 'fx', grp: 4, perm: 'fx' },
+    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 4, perm: 'fx' },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
   ];
@@ -1237,6 +1238,12 @@ const Tools = (() => {
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
+    if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
+    if (lk === 'n') {                       // passar (N) e voltar (Shift+N) o turno — só o mestre
+      if (!isGM()) { UI.toast('Quem passa a vez é o mestre.'); return; }
+      UI.passarTurno(e.shiftKey ? -1 : 1);
+      return;
+    }
     if (lk === 'c') { Luta.disputa(); return; }            // disputa entre dois tokens (só o mestre)
     if (lk === 'k') {                       // ataque com defesa: o token sob o cursor, ou os selecionados (só o mestre)
       if (!isGM()) { UI.toast('O ataque com defesa é do mestre.'); return; }

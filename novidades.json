@@ -2,6 +2,39 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-4",
+      "data": "2026-10-15",
+      "titulo": "Cenas: a tecla E dos equipamentos, N para passar a vez, Postura, linha invisível na ordem de turnos, condições em vários tokens e bônus na defesa",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Tecla E nas Cenas: com o mouse sobre um token (ou com ele selecionado), abre os equipamentos da ficha dele. Um clique equipa ou guarda, e equipar um item guarda os outros do mesmo grupo de troca. Dá para desfazer. O jogador usa no token do personagem dele."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Teclas novas: N passa a vez e Shift+N volta (só o mestre). Por isso a Névoa manual mudou para a tecla U, e os Efeitos de magia, para a Y."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Postura: no painel do token, junto das Condições, a chave “Em postura” põe a etiqueta “Postura” ao lado do nome, que todos veem. O jogador liga e desliga a do token dele."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Linha invisível na ordem de turnos: o olho de cada linha esconde aquele combatente dos jogadores (todos os turnos dele). Na vez dele, os jogadores só veem que o turno está com o mestre."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Condições em vários tokens: com vários selecionados, o contador e as rodadas de cada condição mudam em todos de uma vez (Sangrando 3 → 2 em todos), com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Bônus só nesta defesa: no cartão do pedido de defesa, na mesa ao vivo, “+ atributo” e “+ resultado” valem só para aquela rolagem. O mestre vê a conta na janela do ataque."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-3",
       "data": "2026-10-15",
       "titulo": "Fichas e Acampamento: equipamentos em cartões, grupos de troca, relíquia, pets, fadiga, amputação, Embate e as regras de cada barra especial",
