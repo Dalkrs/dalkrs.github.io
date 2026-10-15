@@ -446,10 +446,33 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   `hexes` ("q,r" → o tipo, ou [tipo, custo próprio]). O custo de entrar num hexágono é o próprio dele, senão o da
   região que tem custo e cobre o centro dele, senão o do terreno, senão os 5 cubos de um hexágono sem nada. A
   ferramenta Terreno (H) pinta o tipo, tira, dá custo próprio ou tira o custo, de 1, 7 ou 19 hexágonos.
-- **A viagem**: cada grupo anda os cubos por dia dele (`cubos`); o tipo de caminho da rota é só o desenho. "Andar
-  1 dia" leva o grupo pelos hexágonos da rota, gastando o custo de cada um, e passa o dia (um passo de desfazer
-  só). O que sobra rumo ao próximo hexágono fica guardado no andado (`prog`, em cubos): uma montanha de 15 cubos,
-  andando 10 por dia, leva dois dias. A régua mede em hexágonos, em cubos e pelo terreno.
+- **A viagem, em tempos de marcha** (lote 6): o dia tem `cal.tpd` tempos de marcha (10 de começo; o mestre muda no
+  calendário do mapa), e cada grupo anda os cubos de um tempo (`pt`); o tipo de caminho da rota é só o desenho. "Andar 1
+  tempo" leva o grupo pela rota, de hexágono em hexágono, gastando o custo de cada um, e passa um tempo de marcha
+  (`cal.tempo`; a cada `tpd` tempos, passa um dia); "Andar 1 dia" anda os tempos que faltam até o fim do dia. É um passo
+  de desfazer só (o grupo e o tempo). O calendário continua contando dias: o tempo de marcha de hoje aparece junto dos
+  grupos. O que sobra rumo ao próximo hexágono fica guardado no andado (`prog`, em cubos): uma montanha de 20 cubos,
+  andando 10 por tempo, leva dois tempos. Com mais de um grupo viajando, "com todos" leva todos no mesmo tempo.
+  "Passar o dia" (e ir para uma data) começa o dia no primeiro tempo de marcha. O grupo de antes (só com os cubos por
+  dia) anda um décimo disso por tempo; `cubos` (por dia) continua no grupo, para o site de antes.
+- **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
+  tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
+  no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
+  do mestre. O mestre ajusta à mão sem passar o tempo do mundo: "− tempo", "+ tempo" e clicar numa bolinha (marca até
+  ela; na última cheia, esvazia) — `ajustarMarcha`, com Desfazer.
+- **O tamanho do mapa em cubos** (aba Terreno, "Largura do mapa"): a largura em cubos muda o tamanho dos hexágonos
+  (cada um continua com 5 cubos); a altura acompanha a imagem. O terreno pintado hexágono por hexágono é refeito na
+  grade nova (`regradear`: cada hexágono novo fica com o terreno e o custo próprio do hexágono velho que tem o centro
+  dele); os grupos ficam onde estão (o andado passa a ser o do hexágono deles na rota nova); o desenho à mão, as rotas e
+  as regiões não mudam. Se o terreno pintado passar do limite de hexágonos do mapa, nada muda e o aviso diz por quê.
+- **As regiões de dentro** (lote 6, `r.pai`): uma região pode ficar dentro de outra (o Condado no Reino), em quantos
+  níveis precisar. Sem facção própria, ela é da facção da de fora (`facDaRegiao`); a cor dela, se tiver, vale no lugar
+  da da facção (para cada Condado se distinguir no Reino). Para o encontro e o custo de viagem, vale a mais de dentro
+  (`regioesEm`): o Condado sem custo não usa o do Reino. No painel, "Dentro de" escolhe a de fora (nunca uma que está
+  dentro dela) e, quando a região está desenhada dentro de outra sem dizer, aparece a sugestão "Pôr dentro de…" — nada
+  muda sozinho. A lista do mapa mostra as regiões em árvore; no mapa, a de dentro tem a borda mais fina, o nome menor e
+  fica por cima; o nome da de fora vai para um lugar livre das de dentro. Na projeção, cada região vai com a facção
+  que vale para ela.
 - **Para os jogadores** vão a grade, os tipos de terreno e o terreno dos hexágonos que a névoa não cobre — sem os
   custos próprios (de hexágono e de região), que são do mestre.
 
@@ -778,7 +801,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -847,5 +870,11 @@ complementar na janelinha E. `arvore-lote6` confere a Árvore sem mesa: a chave 
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre
-(a biblioteca toda) chegam à mesma biblioteca. Com `FOTOS=<pasta>`, eles guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+(a biblioteca toda) chegam à mesma biblioteca. Com `FOTOS=<pasta>`, eles guardam fotos das telas. `mundo-lote6` confere o
+Mapa-múndi do lote 6 pela interface: a marcha em tempos ("Andar 1 tempo", "Andar 1 dia" com os tempos que faltam,
+pela aba Hoje também; "Passar o dia" e "Ir para a data" começando no primeiro tempo), as bolinhas da travessia no mapa
+e no painel (para o mestre e, prontas, para quem joga; o custo da montanha mudando no meio da travessia), o ajuste à
+mão sem passar o tempo, os tempos de marcha de um dia, a largura do mapa em cubos (o terreno refeito na grade nova) e
+as regiões de dentro (a sugestão da mais de dentro, a facção e a cor herdadas, a de dentro por cima, os nomes sem se
+encavalar, a lista em árvore); `mundo-mesa` confere também as bolinhas chegando ao jogador pela mesa. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

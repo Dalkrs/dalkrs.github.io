@@ -45,8 +45,8 @@
   };
   // Cores de facção: médias, para a região (preenchida a 20%) e a frente lerem bem no tema escuro e no claro.
   const CORES = ['#c0503a', '#3f7fbf', '#3f9a5c', '#c9922e', '#8a5cc0', '#c0457f', '#2f9a9a', '#8a9a3a', '#a0623a', '#5a6fd0'];
-  // O tipo do caminho de uma rota é só o desenho dela: quanto o grupo anda é ele quem diz (cubos por dia), e o que
-  // pesa no caminho é o terreno de cada hexágono.
+  // O tipo do caminho de uma rota é só o desenho dela: quanto o grupo anda é ele quem diz (cubos por tempo de marcha),
+  // e o que pesa no caminho é o terreno de cada hexágono.
   const VIAS = {
     estrada: { nome: 'Estrada' }, trilha: { nome: 'Trilha' }, selvagem: { nome: 'Terreno selvagem' },
     rio: { nome: 'Rio (barco)' }, mar: { nome: 'Mar (navio)' },
@@ -54,7 +54,10 @@
   // os ritmos dos mapas de antes viram cubos por dia (eram km por dia: 1 km vira 1 cubo)
   const RITMO_ANTIGO = { lento: 20, normal: 30, rapido: 40 };
   const CUBOS_HEX = 5;                            // um hexágono da grade, de um centro ao vizinho
-  const CUBOS_DIA = 30;                           // o quanto um grupo novo anda por dia
+  const CUBOS_DIA = 30;                           // o quanto um grupo novo anda por dia (3 cubos por tempo, num dia de 10)
+  /* (lote 6) A marcha é contada em tempos: um dia tem TEMPOS_DIA tempos de marcha (o mestre muda, no calendário do
+     mapa), e o grupo anda os cubos de um tempo (pt) a cada um. O calendário do mundo continua contando dias. */
+  const TEMPOS_DIA = 10, MAX_TEMPOS = 100;
   /* Os tipos de terreno de um mapa novo. custo = quantos cubos se gastam para atravessar um hexágono dele (o mestre
      muda; sem terreno, um hexágono custa os 5 cubos dele). Os ids curtos deixam o terreno dos hexágonos pequeno. */
   const TERRENOS_PADRAO = [
@@ -100,7 +103,7 @@
   const FONTES = { mapa: { nome: 'De mapa antigo' }, classica: { nome: 'Clássica, inclinada' }, simples: { nome: 'Simples' } };
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
   const CAL_PADRAO = {
-    dia: 0, ano0: 1, era: '',
+    dia: 0, ano0: 1, era: '', tpd: TEMPOS_DIA, tempo: 0,
     meses: ['Alvorada', 'Degelo', 'Semeadura', 'Florada', 'Verdor', 'Solar', 'Colheita', 'Âmbar', 'Brumas', 'Geada', 'Vigília', 'Noite Longa']
       .map(nome => ({ nome, dias: 30 })),
   };
@@ -110,11 +113,12 @@
   const MAX_HEX = 20000, MAX_TER = 40, MAX_CUSTO = 9999;
   // o desenho à mão: quantas pinceladas e quantos pontos ao todo (o documento do mapa tem limite de tamanho)
   const MAX_PINC = 4000, MAX_PONTOS_PINT = 60000, MAX_FASES = 60;
+  const MAX_NIVEL = 10;                           // regiões dentro de regiões: até quantos níveis (Reino → Condado → …)
   const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
     g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0 },
-    r: { pts: [], fac: null, cor: '', custo: null, enc: { chance: 0, itens: [] } },
+    r: { pts: [], fac: null, cor: '', custo: null, enc: { chance: 0, itens: [] }, pai: null },
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
     t: { pts: [], via: 'trilha' },
     f: { pts: [], a: null, b: null, ativa: true },
@@ -414,14 +418,8 @@
      O custo de entrar num hexágono, do mais forte para o mais fraco: o custo próprio dele (o mestre mudou só ali), o
      da região que tem custo e cobre o centro dele, o do terreno dele, e os 5 cubos de um hexágono sem nada. */
   const terrenoDe = (m, id) => (ehObj(m) && Array.isArray(m.terrenos) && id ? m.terrenos.find(t => t.id === id) || null : null);
-  function regiaoComCusto(m, x, y) {
-    const objs = ehObj(m) && Array.isArray(m.objs) ? m.objs : [];
-    for (let i = objs.length - 1; i >= 0; i--) {             // a de cima é a desenhada por último
-      const o = objs[i];
-      if (ehObj(o) && o.k === 'r' && o.custo != null && dentroPoligono([x, y], o.pts)) return o;
-    }
-    return null;
-  }
+  // (a de cima é a desenhada por último; uma região de dentro de outra sem custo não usa o da de fora: regioesEm)
+  function regiaoComCusto(m, x, y) { return regioesEm(m, x, y).find(o => o.custo != null) || null; }
   /* O terreno que o desenho à mão dá a cada hexágono ("q,r" → id): as pinceladas em ordem; o hexágono cujo centro
      cai dentro de uma pincelada (a até r da linha dela) fica com o terreno dela — a borracha tira. Guardado por mapa
      (toda mudança no mapa faz outro objeto, então o guardado nunca fica velho). */
@@ -505,47 +503,125 @@
     });
     return i >= 0 ? { i, longe: 0 } : { i: k0, longe: d0 };
   }
-  /* Um dia de marcha pela rota, de hexágono em hexágono: o grupo tem os cubos do dia dele e gasta, para entrar em
-     cada hexágono, o custo do terreno de lá. O que sobra rumo ao próximo (que custa mais do que sobrou) fica guardado
-     no andado: atravessar uma montanha de 15 cubos andando 10 por dia leva dois dias. Não muda o mapa: devolve onde o
-     grupo fica; quem chama aplica (e passa o dia) com App.mudar. */
-  function andarUmDia(mapa, grupoId) {
-    const g = objDe(mapa, grupoId, 'g');
-    if (!g) return { ok: false, cubos: 0, hexes: 0, x: null, y: null, prog: 0, chegou: false, msg: 'Grupo não encontrado' };
-    const base = { ok: false, cubos: 0, hexes: 0, x: g.x, y: g.y, prog: num(g.prog, 0), chegou: false };
-    const rota = g.rota ? objDe(mapa, g.rota, 't') : null;
-    if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2) return Object.assign(base, { msg: 'Sem rota' });
-    if (!temGrade(mapa)) return Object.assign(base, { msg: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' });
-    const v = viagem(mapa, g), { cam, acum, total } = v, onde = ondeNoCaminho(mapa, g, v);
-    // longe da rota não anda (seria um salto pelo mapa); no hexágono vizinho dela, segue do mais perto
-    if (onde.longe > 1) return Object.assign(base, { msg: 'O grupo está fora da rota (a ' + plHex(onde.longe) + ' dela). Arraste-o para a rota ou use "Pôr no começo da rota"' });
-    const i = onde.i, ult = cam.length - 1;
-    if (i >= ult) {
-      const c = centroHex(mapa, cam[ult].q, cam[ult].r);
-      return Object.assign(base, { x: arred(c.x), y: arred(c.y), prog: arred(total), chegou: true, msg: 'Chegou ao fim da rota' });
-    }
-    // o que já tinha andado rumo ao próximo hexágono (num dia que não deu para entrar nele) continua valendo
-    const sobra = onde.longe ? 0 : limitar(base.prog - acum[i], 0, Math.max(0, acum[i + 1] - acum[i] - 1e-6));
-    const antes = acum[i] + sobra, prog = Math.min(total, antes + Math.max(0, num(g.cubos, CUBOS_DIA)));
-    let j = i;
-    while (j < ult && acum[j + 1] <= prog + 1e-9) j++;
-    const c = centroHex(mapa, cam[j].q, cam[j].r), chegou = j === ult, anda = j - i;
-    let msg;
-    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(prog - antes) + ' cubos)' + (chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(total - prog) + ' cubos)');
-    else {
-      const prox = hexInfo(mapa, cam[j + 1].q, cam[j + 1].r);
-      msg = 'Ainda no caminho do próximo hexágono' + (prox.terreno ? ' (' + (prox.terreno.nome || 'terreno') + ')' : '') + ': ' + n1(prog - acum[j]) + ' de ' + n1(acum[j + 1] - acum[j]) + ' cubos';
-    }
-    return { ok: true, cubos: arred(prog - antes), hexes: anda, x: arred(c.x), y: arred(c.y), prog: arred(prog), chegou, msg };
+  /* ---------------- a marcha, em tempos (lote 6) ----------------
+     O grupo anda pela rota de hexágono em hexágono: tem os cubos de um tempo (pt) por tempo de marcha e gasta, para
+     entrar em cada hexágono, o custo do terreno de lá. O que sobra rumo ao próximo (que custa mais do que sobrou) fica
+     guardado no andado (prog, em cubos): atravessar uma montanha de 20 cubos andando 10 por tempo leva dois tempos — as
+     "bolinhas" do grupo. Nada aqui muda o mapa: as funções devolvem onde o grupo fica, e quem chama aplica (e passa o
+     tempo, se for o caso) com App.mudar. */
+  const tpdDe = cal => inteiro(ehObj(cal) ? cal.tpd : null, TEMPOS_DIA, 1, MAX_TEMPOS);
+  // os cubos de um tempo de marcha do grupo (um grupo de antes só tinha os cubos por dia)
+  const passoDe = (g, tpd) => { const n = num(g && g.pt, NaN); return Number.isFinite(n) && n > 0 ? n : num(g && g.cubos, CUBOS_DIA) / (tpd || TEMPOS_DIA); };
+  // Passar n tempos de marcha no calendário: a cada tpd tempos, um dia. → { dia, tempo, dias (quantos dias passaram) }
+  function passarTempos(cal, n) {
+    const tpd = tpdDe(cal), t0 = inteiro(ehObj(cal) ? cal.tempo : 0, 0, 0, tpd - 1), dia0 = inteiro(ehObj(cal) ? cal.dia : 0, 0, 0, 1e9);
+    const tot = t0 + Math.max(0, Math.floor(num(n, 0))), dias = Math.floor(tot / tpd);
+    return { dia: dia0 + dias, tempo: tot % tpd, dias };
   }
-  function regiaoEm(mapa, x, y) {
-    const objs = ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : [];
-    for (let i = objs.length - 1; i >= 0; i--) {             // a de cima é a desenhada por último
-      const o = objs[i];
-      if (ehObj(o) && o.k === 'r' && dentroPoligono([x, y], o.pts)) return o;
+  /* Onde o grupo está na rota, conferido com o lugar dele: o hexágono do caminho (i), o andado de verdade (antes) e o
+     resto. Fora da rota (mais de um hexágono longe), não anda. */
+  function naRota(mapa, grupoId) {
+    const g = objDe(mapa, grupoId, 'g');
+    if (!g) return { erro: 'Grupo não encontrado' };
+    const rota = g.rota ? objDe(mapa, g.rota, 't') : null;
+    if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2) return { g, erro: 'Sem rota' };
+    if (!temGrade(mapa)) return { g, erro: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' };
+    const v = viagem(mapa, g), onde = ondeNoCaminho(mapa, g, v);
+    // longe da rota não anda (seria um salto pelo mapa); no hexágono vizinho dela, segue do mais perto
+    if (onde.longe > 1) return { g, v, erro: 'O grupo está fora da rota (a ' + plHex(onde.longe) + ' dela). Arraste-o para a rota ou use "Pôr no começo da rota"' };
+    const i = onde.i, ult = v.cam.length - 1;
+    // o que já tinha andado rumo ao próximo hexágono (num tempo que não deu para entrar nele) continua valendo
+    const sobra = onde.longe || i >= ult ? 0 : limitar(num(g.prog, 0) - v.acum[i], 0, Math.max(0, v.acum[i + 1] - v.acum[i] - 1e-6));
+    return { g, v, i, ult, antes: v.acum[i] + sobra, sobra };
+  }
+  // o grupo levado até o andado `prog` da rota: o hexágono onde ele fica (o último em que já entrou)
+  function noAndado(mapa, v, prog) {
+    const p = limitar(num(prog, 0), 0, v.total), ult = v.cam.length - 1;
+    let j = 0;
+    while (j < ult && v.acum[j + 1] <= p + 1e-9) j++;
+    const c = centroHex(mapa, v.cam[j].q, v.cam[j].r);
+    return { j, x: arred(c.x), y: arred(c.y), prog: arred(p), chegou: j === ult };
+  }
+  function marchar(mapa, grupoId, cubos) {
+    const r = naRota(mapa, grupoId), g = r.g;
+    const base = { ok: false, cubos: 0, hexes: 0, x: g ? g.x : null, y: g ? g.y : null, prog: g ? num(g.prog, 0) : 0, chegou: false };
+    if (r.erro) return Object.assign(base, { msg: r.erro });
+    const { v, i, ult, antes } = r;
+    if (i >= ult) {
+      const c = centroHex(mapa, v.cam[ult].q, v.cam[ult].r);
+      return Object.assign(base, { x: arred(c.x), y: arred(c.y), prog: arred(v.total), chegou: true, msg: 'Chegou ao fim da rota' });
     }
+    const n = noAndado(mapa, v, Math.min(v.total, antes + Math.max(0, num(cubos, 0)))), j = n.j, anda = j - i;
+    let msg;
+    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(n.prog - antes) + ' cubos)' + (n.chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(v.total - n.prog) + ' cubos)');
+    else {
+      const prox = hexInfo(mapa, v.cam[j + 1].q, v.cam[j + 1].r);
+      msg = 'Ainda no caminho do próximo hexágono' + (prox.terreno ? ' (' + (prox.terreno.nome || 'terreno') + ')' : '') + ': ' + n1(n.prog - v.acum[j]) + ' de ' + n1(v.acum[j + 1] - v.acum[j]) + ' cubos';
+    }
+    return { ok: true, cubos: arred(n.prog - antes), hexes: anda, x: n.x, y: n.y, prog: n.prog, chegou: n.chegou, msg };
+  }
+  // n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes)
+  function andarTempos(mapa, grupoId, n) {
+    const g = objDe(mapa, grupoId, 'g');
+    return marchar(mapa, grupoId, g ? passoDe(g, tpdDe(mapa && mapa.cal)) * Math.max(0, Math.floor(num(n, 1))) : 0);
+  }
+  // um dia inteiro de marcha (todos os tempos do dia)
+  function andarUmDia(mapa, grupoId) { return andarTempos(mapa, grupoId, tpdDe(ehObj(mapa) ? mapa.cal : null)); }
+  /* Mexer no andado à mão, sem passar o tempo do mundo: delta em tempos de marcha (+1 anda um, −1 volta um), ou
+     marcar a bolinha k do hexágono de agora (k tempos andados rumo a ele; a última leva o grupo para dentro dele). */
+  function ajustarMarcha(mapa, grupoId, o) {
+    const r = naRota(mapa, grupoId), g = r.g;
+    if (r.erro) return { ok: false, msg: r.erro };
+    const { v, i, ult, antes } = r, pt = passoDe(g, tpdDe(mapa.cal));
+    let alvo;
+    if (ehObj(o) && o.bolinha != null) {
+      if (i >= ult) return { ok: false, msg: 'Chegou ao fim da rota' };
+      alvo = v.acum[i] + Math.max(0, Math.floor(num(o.bolinha, 0))) * pt;
+      if (alvo >= v.acum[i + 1] - 1e-9) alvo = v.acum[i + 1];
+    } else alvo = antes + Math.trunc(num(ehObj(o) ? o.tempos : o, 0)) * pt;
+    const n = noAndado(mapa, v, alvo);
+    if (Math.abs(n.prog - num(g.prog, 0)) < 1e-9 && n.x === g.x && n.y === g.y) return { ok: false, msg: 'Nada mudou' };
+    return { ok: true, x: n.x, y: n.y, prog: n.prog, chegou: n.chegou, msg: '' };
+  }
+  /* As bolinhas de progresso: quando o próximo hexágono da rota custa mais do que o grupo anda num tempo, quantos
+     tempos a travessia pede (total) e quantos já foram andados (feitas). null: sem rota, no fim dela, fora dela, ou o
+     próximo hexágono se atravessa num tempo só. */
+  function bolinhas(mapa, g) {
+    if (!ehObj(g) || !g.rota) return null;
+    const r = naRota(mapa, g.id);
+    if (r.erro || r.i >= r.ult) return null;
+    const { v, i, sobra } = r, pt = passoDe(g, tpdDe(mapa.cal)), C = v.acum[i + 1] - v.acum[i];
+    if (!(pt > 0) || C <= pt + 1e-9) return null;
+    const total = Math.min(100000, Math.ceil(C / pt - 1e-9)), faltam = Math.ceil((C - sobra) / pt - 1e-9);
+    const prox = hexInfo(mapa, v.cam[i + 1].q, v.cam[i + 1].r);
+    return { total, feitas: limitar(total - faltam, 0, total - 1), terreno: prox.terreno ? prox.terreno.nome || '' : '' };
+  }
+  /* ---------------- regiões dentro de regiões (lote 6) ----------------
+     Uma região pode ficar dentro de outra (pai: o Condado dentro do Reino). Sem facção, ela é da facção do pai (e do
+     avô…). Para o encontro e o custo de viagem, vale a mais de dentro: o Condado sem custo não usa o do Reino. */
+  function facDaRegiao(mapa, r) {
+    let p = ehObj(r) ? r : null, n = 0;
+    while (p && n <= MAX_NIVEL) { if (p.fac) return p.fac; p = p.pai ? objDe(mapa, p.pai, 'r') : null; n++; }
     return null;
   }
+  // os ids dos pais, avós… de uma região
+  function acimaDe(mapa, r) {
+    const out = new Set();
+    let p = ehObj(r) && r.pai ? objDe(mapa, r.pai, 'r') : null, n = 0;
+    while (p && n <= MAX_NIVEL && !out.has(p.id)) { out.add(p.id); p = p.pai ? objDe(mapa, p.pai, 'r') : null; n++; }
+    return out;
+  }
+  // As regiões com o ponto dentro, da de cima (desenhada por último) para a de baixo — sem as que só estão ali por
+  // serem pai (ou avô…) de outra da lista: a de dentro vale.
+  function regioesEm(mapa, x, y) {
+    const objs = ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : [], todas = [];
+    for (let i = objs.length - 1; i >= 0; i--) { const o = objs[i]; if (ehObj(o) && o.k === 'r' && dentroPoligono([x, y], o.pts)) todas.push(o); }
+    if (todas.length < 2) return todas;
+    const acima = new Set();
+    for (const o of todas) for (const id of acimaDe(mapa, o)) acima.add(id);
+    return todas.filter(o => !acima.has(o.id));
+  }
+  function regiaoEm(mapa, x, y) { return regioesEm(mapa, x, y)[0] || null; }
   /* Um número de 0 (inclusive) a 1 (exclusive), do gerador criptográfico do navegador — o mesmo dos dados do site.
      Sem ele (um ambiente de teste, um navegador muito antigo), vale o Math.random. */
   function sorteio() {
@@ -760,7 +836,11 @@
   const escolha = (cat, v, padrao) => (tem(cat, v) ? v : padrao);
   // Um objeto do mapa com todos os campos do tipo, na mesma ordem sempre (o JSON sai igual para a mesma entrada).
   // null = inválido (tipo desconhecido, sem posição, linha curta). leve = aceita linha ainda curta (objNovo).
-  function normObj(o, dia, leve) {
+  // o passo do grupo (cubos por tempo de marcha): o dele, ou o de antes (cubos por dia) dividido pelos tempos do dia
+  const passoNorm = (o, tpd) => { const n = num(o.pt, NaN); return Math.round(limitar(Number.isFinite(n) && n > 0 ? n : cubosDoDia(o) / tpd, 0.1, MAX_CUSTO) * 100) / 100; };
+  // as bolinhas de um grupo, como vão para os jogadores: [feitas, total]
+  const bolNorm = v => { if (!Array.isArray(v)) return null; const f = inteiro(v[0], -1, 0, 100000), t = inteiro(v[1], 0, 0, 100000); return t >= 2 && f >= 0 && f < t ? [f, t] : null; };
+  function normObj(o, dia, leve, tpd) {
     if (!ehObj(o) || !tem(PREFIXO, o.k)) return null;
     const b = { id: idOk(o.id), k: o.k, nome: texto(o.nome), txt: texto(o.txt), nota: texto(o.nota), oculto: talvez(o.oculto) };
     const lugar = () => { const x = coord(o.x), y = coord(o.y); if (x == null || y == null) return false; b.x = x; b.y = y; return true; };
@@ -770,13 +850,18 @@
         return Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
       case 'g':
         if (!lugar()) return null;
-        return Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), cubos: cubosDoDia(o), rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });
+        // (cubos: os por dia, para quem ainda tem o site de antes; quem vale é o pt, os cubos de um tempo de marcha)
+        const t = inteiro(tpd, TEMPOS_DIA, 1, MAX_TEMPOS), pt = passoNorm(o, t);
+        const g = Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), pt, cubos: Math.round(limitar(pt * t, 0.1, MAX_CUSTO * MAX_TEMPOS) * 10) / 10, rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });
+        const bol = bolNorm(o.bol);
+        if (bol) g.bol = bol;
+        return g;
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
         if (!pts) return null;
         const enc = ehObj(o.enc) ? o.enc : {};
         const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).slice(0, 200).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt) }));
-        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens } });
+        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens }, pai: idRef(o.pai) });
       }
       case 'e': {
         if (!lugar()) return null;
@@ -824,7 +909,8 @@
     let meses = (Array.isArray(c.meses) ? c.meses : []).filter(ehObj).slice(0, 100)
       .map((m, i) => ({ nome: texto(m.nome).trim() || 'Mês ' + (i + 1), dias: diasDoMes(m) }));
     if (!meses.length) meses = copia(CAL_PADRAO.meses);
-    return { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses };
+    const tpd = inteiro(c.tpd, TEMPOS_DIA, 1, MAX_TEMPOS);
+    return { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1) };
   }
   function normImg(v, larg, alt) {
     if (!ehObj(v) || typeof v.url !== 'string' || v.url.length > 2048 || !/^(https?:\/\/|idb:)/i.test(v.url)) return null;
@@ -867,7 +953,7 @@
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
-      const n = normObj(o, cal.dia, false);
+      const n = normObj(o, cal.dia, false, cal.tpd);
       if (!n) return;
       n.id = unico(n.id || PREFIXO[n.k] + '_' + i, vistos);
       mapa.objs.push(n);
@@ -880,8 +966,18 @@
       if (o.k === 'f' || o.k === 'z') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
       if (o.k === 'g') {
         if (!rotas.has(o.rota)) o.rota = null;
-        if (!o.rota) o.prog = 0;
+        if (!o.rota) { o.prog = 0; delete o.bol; }
       }
+    }
+    // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
+    const regs = new Map();
+    for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
+    for (const o of mapa.objs) {
+      if (o.k !== 'r' || !o.pai) continue;
+      if (o.pai === o.id || !regs.has(o.pai)) { o.pai = null; continue; }
+      let p = o, n = 0;
+      while (p && p.pai && n <= MAX_NIVEL) { p = regs.get(p.pai); n++; if (p === o) break; }
+      if (p === o || n > MAX_NIVEL) o.pai = null;
     }
     return mapa;
   }
@@ -936,6 +1032,51 @@
     return normalizarMapa(m);
   }
 
+  /* ---------------- o tamanho do mapa em cubos (lote 6) ----------------
+     A grade com outro tamanho de hexágono (cada um continua com 5 cubos): o terreno pintado hexágono por hexágono é
+     refeito na grade nova — cada hexágono novo fica com o terreno (e o custo próprio) do hexágono velho que tem o centro
+     dele. Os grupos ficam onde estão, e o andado na rota passa a ser o do hexágono onde cada um está. O desenho à mão,
+     as rotas, as regiões e o resto ficam como estão (são em unidades do mapa). Muda o mapa que recebe (o rascunho de
+     App.mudar). → { ok, hexes } ou { ok: false, msg } (o terreno passaria do limite de hexágonos). */
+  function regradear(mapa, tam) {
+    if (!temGrade(mapa)) return { ok: false, msg: 'Defina a grade de hexágonos primeiro' };
+    const novoTam = arred(limitar(num(tam, 0), 4, 20000));
+    if (!(novoTam > 0) || novoTam === mapa.grade.tam) return { ok: false, msg: 'O tamanho é o mesmo' };
+    const velho = { grade: Object.assign({}, mapa.grade) }, novo = { grade: Object.assign({}, mapa.grade, { tam: novoTam }) };
+    const antes = ehObj(mapa.hexes) ? mapa.hexes : {}, ks = Object.keys(antes), hexes = {};
+    if (ks.length) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const k of ks) { const h = lerChaveHex(k); if (!h) continue; for (const c of cantosHex(velho, h.q, h.r)) { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]); } }
+      const cs = [hexDe(novo, x0, y0), hexDe(novo, x1, y0), hexDe(novo, x0, y1), hexDe(novo, x1, y1)];
+      const q0 = Math.min(...cs.map(h => h.q)) - 1, q1 = Math.max(...cs.map(h => h.q)) + 1, r0 = Math.min(...cs.map(h => h.r)) - 1, r1 = Math.max(...cs.map(h => h.r)) + 1;
+      if ((q1 - q0 + 1) * (r1 - r0 + 1) > 4e6) return { ok: false, msg: 'Hexágonos pequenos demais para refazer o terreno' };
+      let n = 0;
+      for (let q = q0; q <= q1; q++) for (let r = r0; r <= r1; r++) {
+        const c = centroHex(novo, q, r);
+        if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1) continue;
+        const h = hexDe(velho, c.x, c.y), v = antes[h.q + ',' + h.r];
+        if (v === undefined) continue;
+        if (++n > MAX_HEX) return { ok: false, msg: 'Com hexágonos desse tamanho, o terreno pintado hexágono por hexágono passaria de ' + MAX_HEX.toLocaleString('pt-BR') + ' hexágonos (o limite do mapa)' };
+        hexes[q + ',' + r] = copia(v);
+      }
+    }
+    // o andado de cada grupo: o do hexágono onde ele está na rota nova (passando mais de uma vez, o mais perto de onde ele ia)
+    const fracao = new Map();
+    for (const g of mapa.objs) if (ehObj(g) && g.k === 'g' && g.rota) { const v = viagem(mapa, g); fracao.set(g.id, v && v.total > 0 ? limitar(num(g.prog, 0) / v.total, 0, 1) : 0); }
+    mapa.grade.tam = novoTam;
+    mapa.hexes = hexes;
+    for (const g of mapa.objs) {
+      if (!ehObj(g) || g.k !== 'g' || !g.rota) continue;
+      const v = viagem(mapa, g);
+      if (!v) { g.prog = 0; continue; }
+      const aqui = hexDe(mapa, g.x, g.y), alvo = (fracao.get(g.id) || 0) * v.total;
+      let melhor = null;
+      v.cam.forEach((h, k) => { if (h.q === aqui.q && h.r === aqui.r && (melhor == null || Math.abs(v.acum[k] - alvo) < Math.abs(v.acum[melhor] - alvo))) melhor = k; });
+      g.prog = melhor == null ? 0 : arred(v.acum[melhor]);
+    }
+    return { ok: true, hexes: Object.keys(hexes).length };
+  }
+
   /* ---------------- projeção pública ---------------- */
   /* O que os jogadores recebem. Tudo o que é só do mestre sai aqui — e nada além deste recorte vai para eles:
      notas, o "escondido" do mapa, objetos e facções escondidos, o "é falso" dos boatos, a tabela de encontros,
@@ -957,6 +1098,13 @@
       if (!coberto(c.x, c.y)) hexes[k] = t;
     }
     m.hexes = hexes;
+    // (lote 6) as bolinhas dos grupos e a facção que cada região herda são contadas aqui, no mapa inteiro: os custos e
+    // as regiões de cima podem não ir para os jogadores
+    const bols = new Map(), facEf = new Map();
+    for (const o of m.objs) {
+      if (o.k === 'g') { const b = bolinhas(m, o); if (b) bols.set(o.id, [b.feitas, b.total]); }
+      else if (o.k === 'r') facEf.set(o.id, facDaRegiao(m, o));
+    }
     const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
     m.faccoes = m.faccoes.filter(f => !f.oculta);
     for (const f of m.faccoes) {
@@ -968,12 +1116,13 @@
       if (o.oculto) continue;
       delete o.nota;
       if (o.k === 'm') { delete o.falso; if (coberto(o.x, o.y)) continue; }
+      else if (o.k === 'g') { if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol; }
       else if (o.k === 'e') {
         if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue;
         // o evento como ele está hoje: o fim planejado e o quanto ainda vai crescer são do mestre
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
       }
-      else if (o.k === 'r') { delete o.enc; o.custo = null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.enc; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'z') {
@@ -988,7 +1137,7 @@
       objs.push(o);
     }
     const rotas = new Set(objs.filter(o => o.k === 't').map(o => o.id));
-    for (const o of objs) if (o.k === 'g' && o.rota && !rotas.has(o.rota)) { o.rota = null; o.prog = 0; }
+    for (const o of objs) if (o.k === 'g' && o.rota && !rotas.has(o.rota)) { o.rota = null; o.prog = 0; delete o.bol; }
     m.objs = objs;
     return normalizarMapa(m);
   }
@@ -1001,8 +1150,9 @@
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
+    TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
     nevoaCobre, projetar, copia, escalarMapa,
-    LIMITES: { objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
+    LIMITES: { niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

@@ -442,7 +442,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await escrever(M, `o:${id.herois}:nota`, 'nota do grupo ' + SEG);
     o = await obj(M, id.herois);
     ok(o.k === 'g' && o.rota === id.estrada && o.prog === 0 && o.sigla === 'HER', 'grupo na rota, pelo painel');
-    ok(/^0 de 120 cubos · hexágono 0 de 24 · faltam cerca de 4 dias$/.test((await M.F.locator('#pane .progresso small').innerText()).trim()), 'o painel mostra o progresso, em cubos e hexágonos (30 cubos por dia: 4 dias): ' + await M.F.locator('#pane .progresso').innerText());
+    ok(/^0 de 120 cubos · hexágono 0 de 24 · faltam cerca de 40 tempos \(4 dias\)$/.test((await M.F.locator('#pane .progresso small').innerText()).trim()), 'o painel mostra o progresso, em cubos e hexágonos (3 cubos por tempo, 10 tempos por dia: 40 tempos, 4 dias): ' + await M.F.locator('#pane .progresso').innerText());
   });
 
   await passo('mesa: eventos e frente', async () => {
@@ -651,7 +651,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
   });
 
   await passo('mesa: andar 1 dia', async () => {
-    await botao(M, `gr-andar:${id.herois}`);
+    await botao(M, `gr-andar-dia:${id.herois}`);
     o = await obj(M, id.herois);
     ok(perto(o.x, 290) && perto(o.y, 454.66, 0.02) && perto(o.prog, 30, 0.01), 'Andar 1 dia: o grupo anda 30 cubos pela rota — 6 hexágonos de 5, de centro em centro: ' + j({ x: o.x, y: o.y, prog: o.prog }));
     ok(await A(M, () => __mundo.App.mapa.cal.dia) === 2 && await rotulo(M) === 'andar 1 dia', 'e o dia passa (no mesmo passo de desfazer)');

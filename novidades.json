@@ -2,6 +2,41 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-7",
+      "data": "2026-10-15",
+      "titulo": "Mapa-múndi: viagem em tempos de marcha, bolinhas da travessia, tamanho do mapa em cubos e regiões dentro de regiões",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Viagem em tempos de marcha no Mapa-múndi: o dia tem 10 tempos de marcha (você muda em “Tempos de marcha por dia”, na aba Mapa). “Andar 1 tempo” leva o grupo pela rota o que ele anda num tempo; “Andar 1 dia” anda os tempos que faltam para acabar o dia. O calendário continua em dias: a cada 10 tempos, passa um dia. No grupo, “Anda por tempo (cubos)” diz quanto ele anda (quem andava 30 cubos por dia agora anda 3 por tempo). Dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Bolinhas da travessia no Mapa-múndi: quando o grupo atravessa um lugar que pede mais de um tempo de marcha (uma montanha, por exemplo), aparece junto dele, no mapa, uma fileira de bolinhas, uma por tempo, cheias as que ele já andou. Todos veem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Ajustar a marcha à mão: no painel do grupo, “− tempo” e “+ tempo”, ou um clique numa bolinha, mudam o quanto o grupo já andou, sem passar o tempo do mundo. Dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tamanho do mapa em cubos: na aba Terreno, “Largura do mapa (cubos)” muda o tamanho dos hexágonos (cada um continua valendo 5 cubos). O terreno pintado é refeito na grade nova e os grupos ficam onde estão. Dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Regiões dentro de regiões: no painel da região, “Dentro de” põe o Condado dentro do Reino. Sem facção própria, a de dentro é da facção da de fora, e a cor dela, se tiver, vale no lugar da cor da facção. Para encontros e custo de viagem, vale a região mais de dentro. Quando uma região está desenhada dentro de outra, aparece a sugestão “Pôr dentro de…”; nada muda sozinho."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a região de dentro aparece com a borda mais fina e o nome menor, e o nome da região de fora fica num lugar livre, sem cobrir os nomes das de dentro."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-6",
       "data": "2026-10-15",
       "titulo": "Árvore: caminhos trancados que o mestre abre para um personagem, contas com os números da ficha e custo de uso",

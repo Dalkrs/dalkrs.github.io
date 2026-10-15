@@ -41,6 +41,10 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
     m.objs.push(N.objNovo('m', { x: 120, y: 100, nome: 'Vila Pública', txt: 'Uma vila tranquila.', nota: 'nota ' + seg }));
     m.objs.push(N.objNovo('m', { x: 260, y: 100, nome: 'Covil ' + seg, oculto: true }));
     m.objs.push(N.objNovo('g', { x: 200, y: 220, nome: 'Os Heróis', sigla: 'HER' }));
+    // (lote 6) uma rota com uma montanha de 20 cubos (o custo próprio é do mestre) e os Batedores no meio dela: um tempo de dois
+    m.grade.tam = 40; m.hexes['1,5'] = ['mo', 20];
+    const rt = Object.assign(N.objNovo('t', { pts: [[100, 173.21], [300, 173.21]] }), { nome: 'Trilha Velha' });
+    m.objs.push(rt, N.objNovo('g', { x: 100, y: 173.21, nome: 'Batedores', sigla: 'BAT', rota: rt.id, pt: 10, prog: 10 }));
     m.objs.push(N.objNovo('e', { x: 420, y: 260, nome: 'Praga', tipo: 'praga', r: 60 }));
     // o desenho: uma pincelada de floresta, um carimbo, um texto, um rio e uma zona de guerra (com uma fase que ainda vem)
     m.pintura.ops.push({ t: 'fl', r: 20, pts: [[50, 50], [200, 60]] });
@@ -60,7 +64,10 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
   ok(await ate(async () => quadro(J) && await noMundo(J, () => window.__mundo && __mundo.App.pronto && __mundo.App.papel === 'jogador' && __mundo.App.mapa && __mundo.App.mapa.nome === 'Terras do Teste')), 'o jogador abre o Mapa-múndi e recebe o mapa mostrado');
   const visto = await noMundo(J, () => ({ nomes: __mundo.App.mapa.objs.map(o => o.nome).sort().join('|'), tudo: JSON.stringify(__mundo.App.mapa), img: __mundo.App.mapa.img && __mundo.App.mapa.img.url, podeEditar: __mundo.App.podeEditar(), trilho: getComputedStyle(document.getElementById('rail')).display,
     zona: __mundo.App.mapa.objs.find(o => o.k === 'z'), pint: __mundo.App.mapa.pintura.ops.length }));
-  ok(visto.nomes === 'Guerra Fria|Mar Raso|Os Heróis|Pico|Praga|Rio Lento|Vila Pública', 'ele vê o que é público (o desenho também): ' + visto.nomes);
+  ok(visto.nomes === 'Batedores|Guerra Fria|Mar Raso|Os Heróis|Pico|Praga|Rio Lento|Trilha Velha|Vila Pública', 'ele vê o que é público (o desenho também): ' + visto.nomes);
+  const bat = await noMundo(J, () => { const g = __mundo.App.mapa.objs.find(o => o.nome === 'Batedores'); return { id: g && g.id, bol: g && g.bol, hex: __mundo.App.mapa.hexes['1,5'] }; });
+  ok(JSON.stringify(bat.bol) === '[1,2]' && bat.hex === 'mo', 'os Batedores no meio da montanha: as bolinhas chegam prontas ao jogador (sem o custo próprio do hexágono): ' + JSON.stringify(bat));
+  ok(await ate(async () => await noMundo(J, id => { const g = document.querySelector('#mundo svg [data-id="' + id + '"]'); return !!g && g.querySelectorAll('.bolinhas .bol').length === 2 && g.querySelectorAll('.bolinhas .bol.feita').length === 1; }, bat.id)), 'e aparecem junto do grupo, no mapa dele');
   ok(visto.pint === 1 && !!visto.zona && visto.zona.fases.length === 0 && visto.zona.fim === null, 'o desenho à mão chega inteiro; a zona de guerra chega como está hoje, sem a fase que ainda vem');
   ok(await ate(async () => await noMundo(J, () => { const c = document.querySelector('#mundo canvas.pintura'); return !!c && !c.hidden; })), 'e o desenho à mão aparece na tela dele');
   ok(!visto.tudo.includes(SEG), 'nada do que é só do mestre chega até ele (nem a nota, nem o marcador escondido)');

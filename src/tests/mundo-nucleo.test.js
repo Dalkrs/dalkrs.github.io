@@ -565,4 +565,80 @@ function mundo() {
     'escalar: carimbos, textos, linhas, as fases da zona e o desenho à mão acompanham: ' + j(E.pintura.ops[0]));
 }
 
+/* ================= lote 6: a marcha em tempos, as bolinhas, o tamanho do mapa em cubos e as regiões de dentro ================= */
+{
+  const M = N.normalizarMapa({ grade: { tam: 40 }, cal: { dia: 5, tempo: 7 }, hexes: { '1,0': ['mo', 20] },
+    objs: [{ id: 'rt', k: 't', pts: [[0, 0], [400, 0]] }, { id: 'g', k: 'g', x: 0, y: 0, rota: 'rt', pt: 10 }, { id: 'velho', k: 'g', x: 0, y: 0, cubos: 30 }] });
+  const g = M.objs.find(o => o.id === 'g'), velho = M.objs.find(o => o.id === 'velho');
+  ok(M.cal.tpd === 10 && M.cal.tempo === 7 && g.pt === 10 && g.cubos === 100 && velho.pt === 3 && velho.cubos === 30,
+    'o dia tem 10 tempos de marcha; o grupo anda pt cubos por tempo (e os cubos por dia, para o site de antes); o grupo de antes (30 por dia) anda 3 por tempo');
+  ok(N.normalizarMapa({ cal: { tpd: 4, tempo: 9 } }).cal.tempo === 3 && N.normalizarMapa({ cal: { tpd: 0 } }).cal.tpd === 1 && N.normalizarMapa({ cal: { tpd: 999 } }).cal.tpd === N.LIMITES.tempos && N.mapaNovo('x').cal.tpd === 10,
+    'tempos por dia de 1 a 100 (10 num mapa novo); o tempo de hoje cabe no dia');
+  ok(j(N.passarTempos(M.cal, 1)) === j({ dia: 5, tempo: 8, dias: 0 }) && j(N.passarTempos(M.cal, 3)) === j({ dia: 6, tempo: 0, dias: 1 }) && j(N.passarTempos(M.cal, 25)) === j({ dia: 8, tempo: 2, dias: 3 }), 'passar tempos: a cada 10, um dia');
+  // a montanha de 20 cubos, andando 10 por tempo: duas bolinhas
+  const b0 = N.bolinhas(M, g);
+  ok(j(b0) === j({ total: 2, feitas: 0, terreno: 'Montanha' }), 'a montanha de 20 cubos a 10 por tempo: duas bolinhas, nenhuma andada: ' + j(b0));
+  const depois = (m, id, r) => N.normalizarMapa(Object.assign(N.copia(m), { objs: m.objs.map(o => (o.id === id ? Object.assign({}, o, { x: r.x, y: r.y, prog: r.prog }) : o)) }));
+  const t1 = N.andarTempos(M, 'g', 1), M1 = depois(M, 'g', t1);
+  ok(t1.ok && t1.prog === 10 && t1.x === 0 && t1.hexes === 0 && t1.msg === 'Ainda no caminho do próximo hexágono (Montanha): 10 de 20 cubos' && j(N.bolinhas(M1, M1.objs[1])) === j({ total: 2, feitas: 1, terreno: 'Montanha' }),
+    'um tempo: metade da montanha (uma bolinha cheia): ' + j(t1));
+  const t2 = N.andarTempos(M1, 'g', 1), M2 = depois(M1, 'g', t2);
+  ok(t2.ok && t2.prog === 20 && t2.x === 40 && t2.hexes === 1 && N.bolinhas(M2, M2.objs[1]) === null, 'o segundo tempo: entra na montanha (e o próximo hexágono, de 5, não tem bolinhas)');
+  ok(N.andarTempos(M, 'g', 2).prog === 20 && N.andarUmDia(M, 'g').prog === 65 && N.andarTempos(M, 'g', 0).prog === 0, 'andar n tempos de uma vez; um dia são os 10 tempos (até o fim da rota)');
+  // o ajuste à mão (sem passar o tempo)
+  const a1 = N.ajustarMarcha(M1, 'g', -1), a2 = N.ajustarMarcha(M1, 'g', 1), a3 = N.ajustarMarcha(M, 'g', { bolinha: 1 }), a4 = N.ajustarMarcha(M, 'g', { bolinha: 2 }), a5 = N.ajustarMarcha(M, 'g', -1);
+  ok(a1.ok && a1.prog === 0 && a2.ok && a2.prog === 20 && a2.x === 40 && a3.ok && a3.prog === 10 && a3.x === 0 && a4.ok && a4.prog === 20 && a4.x === 40 && !a5.ok && a5.msg === 'Nada mudou',
+    'ajustar à mão: − e + um tempo; a bolinha 1 marca meio caminho; a última leva para dentro da montanha; no começo, voltar não muda nada');
+  ok(N.ajustarMarcha(M, 'velho', 1).msg === 'Sem rota' && N.bolinhas(M, velho) === null, 'sem rota: nem ajuste, nem bolinhas');
+  // andando 3 por tempo, a montanha de 20 pede 7 tempos (o último, mais curto): a 7ª bolinha leva para dentro dela, sem passar
+  const M3 = N.normalizarMapa(Object.assign(N.copia(M), { objs: M.objs.map(o => (o.id === 'g' ? Object.assign({}, o, { pt: 3 }) : o)) })), g3 = M3.objs.find(o => o.id === 'g');
+  const b7 = N.ajustarMarcha(M3, 'g', { bolinha: 7 }), b6 = N.ajustarMarcha(M3, 'g', { bolinha: 6 });
+  ok(j(N.bolinhas(M3, g3)) === j({ total: 7, feitas: 0, terreno: 'Montanha' }) && b7.prog === 20 && b7.x === 40 && b6.prog === 18 && b6.x === 0,
+    'andando 3 por tempo, a montanha de 20 cubos pede 7 tempos; a 7ª bolinha leva o grupo para dentro dela (20 cubos, não 21): ' + j([N.bolinhas(M3, g3), b7.prog, b6.prog]));
+  // com 4 tempos por dia: a cada 4, um dia; andar 1 dia anda os 4
+  const Q4 = N.normalizarMapa(Object.assign(N.copia(M), { cal: { dia: 5, tempo: 3, tpd: 4 } }));
+  ok(j(N.passarTempos(Q4.cal, 1)) === j({ dia: 6, tempo: 0, dias: 1 }) && j(N.passarTempos(Q4.cal, 6)) === j({ dia: 7, tempo: 1, dias: 2 }) && N.andarUmDia(Q4, 'g').prog === 40 && Q4.objs.find(o => o.id === 'g').cubos === 40,
+    'com 4 tempos de marcha por dia: a cada 4 tempos, um dia; "andar 1 dia" anda 4 tempos (40 cubos)');
+  // para quem joga: as bolinhas vão prontas (o custo próprio do hexágono, que dá as duas, não vai)
+  const P1 = N.projetar(M1), pg = P1.objs.find(o => o.id === 'g');
+  ok(j(pg.bol) === '[1,2]' && P1.hexes['1,0'] === 'mo' && !('bol' in N.projetar(M2).objs.find(o => o.id === 'g')) && !('bol' in M1.objs[1]),
+    'projeção: as bolinhas vão prontas para quem joga (o mapa do mestre não as guarda): ' + j(pg.bol));
+  ok(N.normalizarMapa({ objs: [{ k: 'g', x: 0, y: 0, bol: [5, 2] }, { k: 'g', x: 0, y: 0, bol: [0, 1] }, { k: 'g', x: 0, y: 0, rota: 'x', bol: [1, 3] }] }).objs.every(o => !('bol' in o)), 'bolinhas tortas (ou sem rota) não ficam');
+
+  // o tamanho do mapa em cubos: a grade nova, o terreno refeito
+  const G = N.normalizarMapa({ larg: 400, alt: 200, grade: { tam: 40 }, hexes: { '2,0': 'fl', '3,0': ['mo', 12] }, objs: [{ id: 'rt', k: 't', pts: [[0, 0], [400, 0]] }, { id: 'g', k: 'g', x: 120, y: 0, rota: 'rt', prog: 25 }] });
+  const G2 = N.copia(G), rg = N.regradear(G2, 20);
+  const terr = (m, x, y) => { const h = N.hexDe(m, x, y); return m.hexes[h.q + ',' + h.r]; };
+  ok(rg.ok && G2.grade.tam === 20 && rg.hexes >= 6 && j(terr(G2, 80, 0)) === '"fl"' && j(terr(G2, 120, 0)) === j(['mo', 12]) && terr(G2, 200, 0) === undefined,
+    'hexágonos com a metade do tamanho: cada um fica com o terreno (e o custo próprio) do hexágono velho que tem o centro dele: ' + rg.hexes);
+  const gg = G2.objs.find(o => o.id === 'g');
+  ok(gg.x === 120 && gg.y === 0 && gg.prog === N.viagem(G2, gg).acum[6], 'o grupo fica onde está, e o andado é o do hexágono dele na rota nova: ' + gg.prog);
+  ok(N.regradear(N.copia(G), 40).ok === false && N.regradear(N.normalizarMapa({}), 20).ok === false, 'mesmo tamanho, ou sem grade: nada muda');
+  const cheio = {};
+  for (let q = 0; q < 120; q++) for (let r = 0; r < 50; r++) cheio[q + ',' + r] = 'pl';
+  const rc = N.regradear(N.normalizarMapa({ larg: 6000, alt: 4000, grade: { tam: 40 }, hexes: cheio }), 20);
+  ok(!rc.ok && /passaria de 20\.000 hexágonos/.test(rc.msg), 'o terreno que passaria do limite de hexágonos: não muda, e diz por quê: ' + rc.msg);
+
+  // as regiões de dentro
+  const R = N.normalizarMapa({ grade: { tam: 40 }, faccoes: [{ id: 'fa', nome: 'Aldar' }], objs: [
+    { id: 'brenn', k: 'r', pts: [[0, -50], [100, -50], [100, 50], [0, 50]], pai: 'reino' },
+    { id: 'reino', k: 'r', pts: [[-100, -100], [300, -100], [300, 100], [-100, 100]], fac: 'fa', custo: 8, enc: { chance: 50, itens: [{ p: 1, txt: 'Lobos' }] } },
+    { id: 'neta', k: 'r', pts: [[10, -10], [30, -10], [30, 10], [10, 10]], pai: 'brenn' },
+    { id: 'eu', k: 'r', pts: [[0, 0], [1, 0], [1, 1]], pai: 'eu' }, { id: 'sumiu', k: 'r', pts: [[0, 0], [1, 0], [1, 1]], pai: 'nada' }, { id: 'gx', k: 'g', x: 0, y: 0, pai: 'reino' }] });
+  const ro = id => R.objs.find(o => o.id === id);
+  ok(ro('brenn').pai === 'reino' && ro('neta').pai === 'brenn' && ro('eu').pai === null && ro('sumiu').pai === null && !('pai' in ro('gx')), 'a região de dentro: o pai existe, é região e não é ela mesma');
+  ok(N.facDaRegiao(R, ro('brenn')) === 'fa' && N.facDaRegiao(R, ro('neta')) === 'fa' && j([...N.acimaDe(R, ro('neta'))]) === j(['brenn', 'reino']), 'sem facção, ela é da facção da de fora (e da avó)');
+  ok(N.regiaoEm(R, 50, 0).id === 'brenn' && N.regiaoEm(R, 20, 0).id === 'neta' && N.regiaoEm(R, 200, 0).id === 'reino', 'o encontro: vale a região mais de dentro (mesmo com o Reino desenhado depois)');
+  ok(N.custoHex(R, 1, 0) === 5 && N.custoHex(R, 4, 0) === 8, 'o custo do Reino não vale dentro do Condado sem custo; fora dele, vale');
+  const PR = N.projetar(N.normalizarMapa(Object.assign(N.copia(R), { objs: R.objs.map(o => (o.id === 'reino' ? Object.assign({}, o, { oculto: true }) : o)) })));
+  ok(PR.objs.find(o => o.id === 'brenn').fac === 'fa' && PR.objs.find(o => o.id === 'brenn').pai === null && PR.objs.find(o => o.id === 'neta').pai === 'brenn' && !PR.objs.some(o => o.id === 'reino'),
+    'projeção: com o Reino escondido, o Condado vai com a facção que herdou (e sem o pai)');
+  const ciclo = N.normalizarMapa({ objs: [{ id: 'a', k: 'r', pts: [[0, 0], [1, 0], [1, 1]], pai: 'b' }, { id: 'b', k: 'r', pts: [[0, 0], [1, 0], [1, 1]], pai: 'a' }] });
+  ok(ciclo.objs.filter(o => o.pai).length === 1, 'duas regiões uma dentro da outra (um ciclo): uma delas deixa de ter pai');
+  // a facção escondida não vai para quem joga, nem pela região de dentro que a herda
+  const PH = N.projetar(N.normalizarMapa(Object.assign(N.copia(R), { faccoes: [{ id: 'fa', nome: 'Aldar', oculta: true }] })));
+  ok(PH.objs.find(o => o.id === 'brenn').fac === null && PH.objs.find(o => o.id === 'neta').fac === null && PH.objs.find(o => o.id === 'reino').fac === null && !PH.faccoes.length,
+    'a facção escondida não vai para quem joga, nem pela região de dentro (que a herda)');
+}
+
 end();

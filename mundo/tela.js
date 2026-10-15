@@ -135,6 +135,34 @@
     }
     return c;
   }
+  // a distância de p até a borda de um polígono
+  function distBorda(p, pts) {
+    let d = Infinity;
+    for (let i = 0, k = pts.length - 1; i < pts.length; k = i++) {
+      const [ax, ay] = pts[k], [bx, by] = pts[i], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - ay) * dy) / l2)) : 0;
+      d = Math.min(d, Math.hypot(p[0] - ax - dx * t, p[1] - ay - dy * t));
+    }
+    return d;
+  }
+  /* (lote 6) O nome de uma região que tem outras dentro (o Reino com os Condados): dentro dela e fora das de dentro, no
+     ponto mais longe das bordas — senão os nomes se encavalam. */
+  function pontoDoNomeLivre(pts, buracos) {
+    const c = pontoDoNome(pts);
+    if (!buracos.length || !buracos.some(b => N().dentroPoligono(c, b))) return c;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    const passo = Math.max(x1 - x0, y1 - y0) / 24;
+    let melhor = null, dm = -1;
+    if (!(passo > 0)) return c;
+    for (let x = x0 + passo / 2; x < x1; x += passo) for (let y = y0 + passo / 2; y < y1; y += passo) {
+      const p = [x, y];
+      if (!N().dentroPoligono(p, pts) || buracos.some(b => N().dentroPoligono(p, b))) continue;
+      const d = Math.min(distBorda(p, pts), ...buracos.map(b => distBorda(p, b)));
+      if (d > dm) { dm = d; melhor = p; }
+    }
+    return melhor || c;
+  }
   function comprimento(pts) { let t = 0; for (let i = 1; i < pts.length; i++) t += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return t; }
   // o trecho da polilinha do começo até o comprimento s (o caminho já andado)
   function trecho(pts, sAte) {
@@ -688,7 +716,8 @@
   /* objetos: cada um vira um <g data-id>; a chave diz quando precisa reconstruir */
   function chaveDe(o, ctx) {
     let extra = ctx.mestre ? 'M' : 'J';
-    if (o.k === 'r') { const f = o.fac && ctx.fac.get(o.fac); extra += f ? f.cor : ''; }
+    if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)); }
+    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o));
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : ''); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
@@ -719,6 +748,13 @@
       if (r.el2) por[r.cam2].push(r.el2);
     }
     for (const [id, r] of recs) if (!vistos.has(id)) { r.el.remove(); if (r.el2) r.el2.remove(); recs.delete(id); }
+    // (lote 6) a região de dentro (o Condado) fica por cima da de fora (o Reino), na área e no nome
+    if (m.objs && m.objs.some(o => o.k === 'r' && o.pai)) {
+      const nivel = new Map(), fundo = o => { let n = 0, p = o; while (p && p.pai && n < 12) { p = (m.objs || []).find(x => x.id === p.pai); n++; } return n; };
+      for (const o of m.objs) if (o.k === 'r') nivel.set(o.id, fundo(o));
+      const porNivel = lista => lista.map((el, i) => [el, nivel.get(el.getAttribute('data-id')) || 0, i]).sort((a, b) => (a[1] - b[1]) || (a[2] - b[2])).map(x => x[0]);
+      por.reg = porNivel(por.reg); por.nreg = porNivel(por.nreg);
+    }
     for (const cam in por) ordenar(C[cam], por[cam]);
   }
   // Põe os filhos na ordem pedida mexendo só no que saiu do lugar (mover um nó reinicia as animações dele).
@@ -740,7 +776,7 @@
       case 't': rota(g0, o, ctx); break;
       case 'e': evento(g0, o, ctx); break;
       case 'm': marcador(g0, o); break;
-      case 'g': grupo(g0, o); break;
+      case 'g': grupo(g0, o, ctx); break;
       case 'z': zona(g0, o, ctx); break;
       case 'l': linhaGeo(g0, o); break;
       case 'c': carimbo(g0, o); break;
@@ -763,17 +799,21 @@
   function regiao(g0, o, ctx) {
     if (!Array.isArray(o.pts) || o.pts.length < 3) return;
     g0.classList.add('regiao');
-    const f = o.fac ? ctx.fac.get(o.fac) : null, cor = f ? f.cor : (o.cor || '');
-    g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac'), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
+    const fid = facEfetiva(ctx.m, o), f = fid ? ctx.fac.get(fid) : null, cor = o.pai && o.cor ? o.cor : f ? f.cor : (o.cor || '');
+    g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac') + (o.pai ? ' subreg' : ''), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
     // o nome vai na camada de cima (nreg): a área fica por baixo das estradas e dos carimbos, mas o nome não some sob eles
     if (o.nome) {
-      const c = pontoDoNome(o.pts), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
-      fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg'));
+      const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
+      fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg' + (o.pai ? ' rotulo-subreg' : '')));
       g1.append(fx);
       g0.__ico = g1; g0.__cam2 = 'nreg';
     }
   }
   function corFac(ctx, id) { const f = id ? ctx.fac.get(id) : null; return f ? f.cor : '#9aa3b5'; }
+  // as áreas das regiões que ficam dentro desta (para o nome dela não cair em cima delas)
+  const filhasDe = (m, o) => ((m && m.objs) || []).filter(x => x.k === 'r' && x.pai === o.id && Array.isArray(x.pts) && x.pts.length >= 3).map(x => x.pts);
+  // a facção que vale para a região: a dela, ou a da região de fora (núcleo antigo: a dela)
+  function facEfetiva(m, o) { try { return N().facDaRegiao ? N().facDaRegiao(m, o) : o.fac; } catch (e) { return o.fac; } }
   function frente(g0, o, ctx) {
     if (!Array.isArray(o.pts) || o.pts.length < 2) return;
     g0.classList.add('fre');
@@ -844,9 +884,27 @@
     if (o.nome) fx.append(rotulo(o.nome, 30));
     g0.append(fx);
   }
-  function grupo(g0, o) {
+  /* (lote 6) As bolinhas da travessia: o hexágono seguinte custa mais do que o grupo anda num tempo — quantos tempos
+     ele pede e quantos já foram andados. O mestre conta na hora (o mapa dele tem os custos); quem joga recebe pronto
+     (bol, na projeção). → [feitas, total] ou null */
+  function bolinhasDe(ctx, o) {
+    if (Array.isArray(o.bol)) return o.bol;
+    if (!ctx.mestre || !N().bolinhas) return null;
+    try { const b = N().bolinhas(ctx.m, o); return b ? [b.feitas, b.total] : null; } catch (e) { return null; }
+  }
+  const MAX_BOL = 12;
+  function grupo(g0, o, ctx) {
     g0.classList.add('gru');
-    const fx = fixo(o.x, o.y);
+    const fx = fixo(o.x, o.y), bol = ctx ? bolinhasDe(ctx, o) : null;
+    if (bol) {
+      // uma fileira em cima do token: as cheias são os tempos andados; com muitas, as primeiras e a conta
+      const [feitas, total] = bol, n = Math.min(total, MAX_BOL), passo = 8.5, x0 = -((n - 1) * passo) / 2, cor = o.cor || '#e6ab4f';
+      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 -29)' });
+      gb.append(s('title', { texto: 'Atravessando: ' + feitas + ' de ' + total + ' tempos de marcha' }));
+      for (let i = 0; i < n; i++) gb.append(s('circle', { class: 'bol' + (i < feitas ? ' feita' : ''), cx: d3(x0 + i * passo), cy: 0, r: 3.3, style: i < feitas ? 'fill:' + cor : 'stroke:' + cor }));
+      if (total > MAX_BOL) gb.append(s('text', { class: 'bol-conta', x: d3(x0 + n * passo + 2), y: 3.5, 'font-size': 10, texto: feitas + '/' + total }));
+      fx.append(gb);
+    }
     fx.append(
       s('title', { texto: o.nome || 'Grupo' }),
       s('circle', { class: 'alvo', r: 22, fill: 'transparent' }),

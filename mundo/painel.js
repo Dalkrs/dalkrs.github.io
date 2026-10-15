@@ -109,6 +109,17 @@
   const cubos = (m, un) => N().cubosDe(m, un);
   const plHex = n => (n === 1 ? '1 hexágono' : fmt(n, 0) + ' hexágonos');
   const diasTxt = d => (d <= 0 ? 'menos de um dia' : fmt(d, 1) + (Math.round(d * 10) / 10 <= 1 ? ' dia' : ' dias'));
+  /* (lote 6) A marcha é em tempos: o dia tem tpd tempos de marcha (no calendário do mapa); o grupo anda pt cubos por
+     tempo. O calendário continua contando dias: o tempo de marcha de hoje aparece só junto dos grupos. */
+  const tpdDe = m => (m && m.cal && m.cal.tpd) || (N().TEMPOS_DIA || 10);
+  const passoDoGrupo = (m, g) => (N().passoDe ? N().passoDe(g, tpdDe(m)) : (g.cubos || 30) / 10);
+  const temposTxt = t => (t <= 0 ? 'menos de um tempo' : plural(Math.ceil(t - 1e-9), 'tempo', 'tempos'));
+  // "faltam cerca de 12 tempos (1,2 dia)"
+  const duracaoTxt = (m, tempos) => temposTxt(tempos) + (tempos > tpdDe(m) ? ' (' + diasTxt(tempos / tpdDe(m)) + ')' : '');
+  function tempoDeHojeTxt(m) {
+    const t = (m.cal && m.cal.tempo) || 0, n = tpdDe(m);
+    return t > 0 ? 'Hoje o grupo já marchou ' + plural(t, 'tempo', 'tempos') + ' de ' + n + '.' : 'O dia tem ' + n + ' tempos de marcha; hoje ainda nenhum.';
+  }
   // uma rota em hexágonos: quantos, e quanto custa de ponta a ponta pelo terreno (sem grade: null)
   function rotaHex(m, rt) {
     if (!temGrade(m) || !rt || !Array.isArray(rt.pts) || rt.pts.length < 2) return null;
@@ -135,7 +146,7 @@
       case 'm': return (I[o.ic] || I.cidade).nome;
       case 'g': return 'Grupo ' + (o.sigla || '');
       case 'e': return (E[o.tipo] || E.guerra).nome;
-      case 'r': { const f = facDe(m, o.fac); return f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
+      case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return p ? 'Parte de ' + nomeDe(p, m) : f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
       case 't': return 'Rota sem nome';
       case 'f': return 'Frente sem nome';
       case 'z': { const a = facDe(m, o.a), b = facDe(m, o.b); return a && b ? 'Guerra: ' + nomeFac(a) + ' × ' + nomeFac(b) : 'Zona de guerra'; }
@@ -146,6 +157,11 @@
     return 'Sem nome';
   }
   const nomeFac = f => (f && f.nome.trim()) || 'Facção sem nome';
+  /* (lote 6) A facção de uma região: a dela, ou a da região de fora (o Condado sem facção é do Reino). A cor: a da região
+     de dentro, se ela tem cor própria; senão a da facção; senão a dela. */
+  const facDaReg = (m, o) => facDe(m, N().facDaRegiao ? N().facDaRegiao(m, o) : o.fac);
+  function corDaReg(m, o) { const f = facDaReg(m, o); return o.pai && o.cor ? o.cor : f ? f.cor : o.cor || ''; }
+  const paiDe = (m, o) => (o && o.pai ? achar(m, o.pai) : null);
   function statusEvento(o, dia) {
     const ini = o.ini == null ? dia : o.ini;
     if (dia < ini) { const n = ini - dia; return n === 1 ? 'começa amanhã' : 'começa em ' + fmt(n, 0) + ' dias'; }
@@ -159,7 +175,7 @@
     switch (o.k) {
       case 'm': return (o.rumor ? 'Boato · ' : '') + (N_.ICONES[o.ic] || N_.ICONES.cidade).nome + (mestre && o.rumor && o.falso ? ' (falso)' : '');
       case 'g': { const r = achar(m, o.rota); return 'Grupo' + (r ? ' · viajando' : ''); }
-      case 'r': { const f = facDe(m, o.fac); return 'Região' + (f ? ' · ' + nomeFac(f) : ''); }
+      case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return (p ? 'Dentro de ' + nomeDe(p, m) : 'Região') + (f ? ' · ' + nomeFac(f) + (p && !o.fac ? ' (de ' + nomeDe(p, m) + ')' : '') : ''); }
       case 'e': return (N_.EVENTOS[o.tipo] || N_.EVENTOS.guerra).nome + ' · ' + (mestre ? statusEvento(o, m.cal.dia) : 'força ' + o.forca);
       case 't': return 'Rota · ' + (N_.VIAS[o.via] || N_.VIAS.trilha).nome;
       case 'f': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Frente' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : ''); }
@@ -185,7 +201,7 @@
       }
       case 'g': return h('span', { class: 'ico sigla', style: { background: o.cor, color: tintaSobre(o.cor) }, text: o.sigla || 'GR' });
       case 'e': { const e = E[o.tipo] || E.guerra; return h('span', { class: 'ico', style: { background: e.cor } }, glifo(e.svg, 15)); }
-      case 'r': { const f = facDe(m, o.fac), c = f ? f.cor : o.cor; return h('span', { class: 'ico reg' + (c ? '' : ' semcor'), style: c ? { background: c } : null }); }
+      case 'r': { const c = corDaReg(m, o); return h('span', { class: 'ico reg' + (c ? '' : ' semcor') + (o.pai ? ' sub' : ''), style: c ? { background: c } : null }); }
       case 't': return h('span', { class: 'ico linha' }, glifo(ROTA_SVG, 18));
       case 'f': return h('span', { class: 'ico linha' }, glifo(FRENTE_SVG, 18));
       case 'z': {
@@ -201,7 +217,10 @@
   // Onde o grupo está, em palavras: a região e o lugar com nome mais perto.
   function ondeEsta(m, g) {
     const partes = [], r = N().regiaoEm(m, g.x, g.y);
-    if (r) { const n = (r.nome || '').trim(), f = facDe(m, r.fac); partes.push(n ? 'Em ' + n : f ? 'Em território de ' + nomeFac(f) : 'Numa região sem nome'); }
+    if (r) {
+      const n = (r.nome || '').trim(), f = facDaReg(m, r), p = paiDe(m, r);
+      partes.push((n ? 'Em ' + n : f ? 'Em território de ' + nomeFac(f) : 'Numa região sem nome') + (p ? ' (' + nomeDe(p, m) + ')' : ''));
+    }
     let perto = null, dm = Infinity;
     for (const o of m.objs) if (o.k === 'm' && o.nome.trim()) { const d = N().dist(o, g); if (d < dm) { dm = d; perto = o; } }
     const diag = Math.hypot(m.larg, m.alt);
@@ -377,14 +396,14 @@
   function passarDias(n) {
     if (!App.podeEditar()) return;
     const rot = n === 1 ? 'passar o dia' : n === -1 ? 'voltar um dia' : n > 0 ? 'passar ' + n + ' dias' : 'voltar ' + -n + ' dias';
-    App.mudar(rot, m => { const d = Math.max(0, m.cal.dia + n); if (d === m.cal.dia) return false; m.cal.dia = d; });
+    App.mudar(rot, m => { const d = Math.max(0, m.cal.dia + n); if (d === m.cal.dia) return false; m.cal.dia = d; m.cal.tempo = 0; });
   }
   async function irParaData() {
     if (!App.podeEditar()) return;
     const idMapa = App.mapa.id;
     const d = await escolherData('Ir para a data', App.mapa.cal.dia, { ok: 'Ir', texto: frase('Hoje é ' + dataTxt(App.mapa, App.mapa.cal.dia)) + ' Os grupos ficam onde estão.' });
     if (d == null || !mesmoMapa(idMapa)) return;
-    App.mudar('ir para a data', m => { if (m.cal.dia === d) return false; m.cal.dia = d; });
+    App.mudar('ir para a data', m => { if (m.cal.dia === d) return false; m.cal.dia = d; m.cal.tempo = 0; });
   }
   // Escolher um dia do calendário (dia, mês e ano) e devolver o contador de dias do mundo.
   function escolherData(titulo, dia, o = {}) {
@@ -1010,8 +1029,9 @@
     const o = achar(v, ids[0]);
     return App.podeEditar() ? formulario(o, App.mapa) : leitura(o, v);
   }
-  function itemLista(o, v, mestre, extra) {
-    return h('button', { type: 'button', class: 'li clic' + (mestre && o.oculto ? ' oculto' : ''), 'data-k': 'li:' + o.id, onclick: () => irPara(o.id) },
+  function itemLista(o, v, mestre, extra, nivel) {
+    return h('button', { type: 'button', class: 'li clic' + (mestre && o.oculto ? ' oculto' : '') + (nivel ? ' dentro' : ''), 'data-k': 'li:' + o.id, onclick: () => irPara(o.id),
+      style: nivel ? { paddingLeft: (8 + Math.min(nivel, 6) * 16) + 'px' } : null },
       icone(o, v), h('span', { class: 'tx' }, h('b', { text: nomeDe(o, v) }), h('small', { text: extra || descricao(o, v, mestre) })),
       mestre && o.oculto ? h('span', { class: 'tag', text: 'escondido' }) : null);
   }
@@ -1029,9 +1049,20 @@
     const q = semAcento(busca.trim());
     const achados = v.objs.filter(o => !q || semAcento(nomeDe(o, v)).includes(q) || semAcento(TIPO[o.k]).includes(q))
       .sort((a, b) => (ORDEM[a.k] - ORDEM[b.k]) || nomeDe(a, v).localeCompare(nomeDe(b, v), 'pt-BR'));
+    // (lote 6) sem busca, as regiões vêm em árvore: cada uma seguida das que ficam dentro dela (Reino → Condados)
+    const nivelDe = new Map();
+    if (!q) {
+      const regs = achados.filter(o => o.k === 'r'), ids = new Set(regs.map(o => o.id)), filhas = new Map(), arv = [];
+      for (const o of regs) { const pai = o.pai && ids.has(o.pai) ? o.pai : ''; if (!filhas.has(pai)) filhas.set(pai, []); filhas.get(pai).push(o); }
+      const poe = (o, n) => { if (nivelDe.has(o.id)) return; nivelDe.set(o.id, n); arv.push(o); for (const c of filhas.get(o.id) || []) poe(c, n + 1); };
+      for (const o of filhas.get('') || []) poe(o, 0);
+      for (const o of regs) poe(o, 0);
+      const i0 = achados.findIndex(o => o.k === 'r');
+      if (i0 >= 0) achados.splice(i0, regs.length, ...arv);
+    }
     if (!achados.length) out.push(nota('Nada com esse nome.'));
     else {
-      out.push(h('div', { class: 'lista' }, achados.slice(0, MAX_LISTA).map(o => itemLista(o, v, mestre))));
+      out.push(h('div', { class: 'lista' }, achados.slice(0, MAX_LISTA).map(o => itemLista(o, v, mestre, null, nivelDe.get(o.id) || 0))));
       if (achados.length > MAX_LISTA) out.push(nota('Mostrando ' + MAX_LISTA + ' de ' + fmt(achados.length, 0) + '. Use a busca para achar o resto.'));
     }
     const toque = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
@@ -1069,8 +1100,15 @@
       out.push(nota(ondeEsta(v, o)));
       const p = progressoTxt(v, o);
       if (p) out.push(nota('Viagem: ' + p));
+      const b = Array.isArray(o.bol) ? { feitas: o.bol[0], total: o.bol[1], terreno: '' } : null;
+      if (b) out.push(fileiraDeBolinhas(o, b, false));
     }
-    if (o.k === 'r') { const f = facDe(v, o.fac); if (f) out.push(h('p', { class: 'note' }, h('i', { class: 'bola', style: { background: f.cor } }), ' Território de ' + nomeFac(f))); }
+    if (o.k === 'r') {
+      const f = facDaReg(v, o), p = paiDe(v, o), dentro = v.objs.filter(x => x.k === 'r' && x.pai === o.id);
+      if (p) out.push(nota('Parte de ' + nomeDe(p, v) + '.'));
+      if (f) out.push(h('p', { class: 'note' }, h('i', { class: 'bola', style: { background: f.cor } }), ' Território de ' + nomeFac(f)));
+      if (dentro.length) out.push(nota('Dentro dela: ' + dentro.map(x => nomeDe(x, v)).join(', ') + '.'));
+    }
     if (o.k === 't') {
       const rh = rotaHex(v, o);
       out.push(nota((N_.VIAS[o.via] || N_.VIAS.trilha).nome + ' · ' + (rh ? plHex(rh.hexes) + ' · ' + fmt(rh.cubos, 0) + ' cubos pelo terreno' : fmt(N_.compPolilinha(o.pts), 0) + ' unidades do mapa')));
@@ -1179,13 +1217,30 @@
     ev.preventDefault(); ev.stopPropagation();
     if (j >= 0 && j < bs.length) bs[j].focus();
   }
+  // (lote 6) as bolinhas da travessia, no painel: botões para o mestre (marcar até ali), só a fileira para quem joga
+  function fileiraDeBolinhas(o, b, mestre) {
+    const n = Math.min(b.total, 24), cor = o.cor || '#e6ab4f';
+    const bols = Array.from({ length: n }, (_, i) => {
+      const feita = i < b.feitas, attrs = { class: 'bol-bt' + (feita ? ' feita' : ''), style: { borderColor: cor, background: feita ? cor : null } };
+      if (!mestre) return h('span', attrs);
+      // clicar na última cheia a esvazia; em qualquer outra, marca até ela
+      const alvo = i + 1 === b.feitas ? i : i + 1;
+      return h('button', Object.assign(attrs, { type: 'button', 'data-k': 'o:' + o.id + ':bol:' + (i + 1), 'aria-pressed': String(feita),
+        title: alvo < i + 1 ? 'Desmarcar este tempo' : 'Marcar ' + plural(alvo, 'tempo andado', 'tempos andados') + ' nesta travessia', 'aria-label': 'Tempo ' + (i + 1) + ' de ' + b.total,
+        onclick: () => ajustarMarcha(o.id, { bolinha: alvo }, 'marcar a travessia') }));
+    });
+    return h('div', { class: 'bolinhas-linha' },
+      h('span', { class: 'note', text: 'Atravessando' + (b.terreno ? ' (' + b.terreno + ')' : '') + ': ' + b.feitas + ' de ' + b.total + ' tempos' }),
+      h('span', { class: 'bols', role: 'group', 'aria-label': 'Tempos de marcha desta travessia: ' + b.feitas + ' de ' + b.total }, bols),
+      b.total > n ? h('small', { class: 'note', text: '(mostrando ' + n + ' de ' + b.total + ')' }) : null);
+  }
   function secGrupo(o, m, grava) {
-    const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [];
+    const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [], pt = passoDoGrupo(m, o), tpd = tpdDe(m);
     out.push(h('div', { class: 'row' },
       h('label', { class: 'field cor-campo' }, h('span', { text: 'Cor' }), campoCor('o:' + id + ':cor', 'Cor do grupo', o.cor, grava('mudar a cor', (x, v) => { x.cor = v; }))),
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
-      campoNumero('o:' + id + ':cubos', 'Anda por dia (cubos)', o.cubos, grava('mudar quanto o grupo anda', (x, n) => { x.cubos = n; }),
-        { decimal: true, min: 1, max: 9999, erro: 'Use um número de cubos por dia, de 1 a 9999.' })));
+      campoNumero('o:' + id + ':pt', 'Anda por tempo (cubos)', pt, grava('mudar quanto o grupo anda', (x, n) => { x.pt = n; }),
+        { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.', dica: 'Por dia (' + tpd + ' tempos): ' + fmt(pt * tpd, 1) + ' cubos.' })));
     out.push(campoEscolha('o:' + id + ':rota', 'Rota', o.rota || '', [['', rotas.length ? 'Sem rota' : 'Sem rota (desenhe uma com a ferramenta Rota)']].concat(rotas.map(t => [t.id, nomeDe(t, m) + ' · ' + (N_.VIAS[t.via] || N_.VIAS.trilha).nome])),
       grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; })));
     if (rota) {
@@ -1197,55 +1252,104 @@
           h('div', { class: 'barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(Math.round(total)), 'aria-valuenow': String(Math.round(andado)), 'aria-label': 'Progresso na rota' },
             h('i', { style: { width: pct.toFixed(1) + '%' } })),
           h('small', { text: fmt(andado, 0) + ' de ' + fmt(total, 0) + ' cubos · ' + (onde.longe ? 'fora da rota' : 'hexágono ' + onde.i + ' de ' + ult)
-            + (falta > 0 ? ' · faltam cerca de ' + diasTxt(falta / Math.max(1, o.cubos)) : ' · chegou') })));
+            + (falta > 0 ? ' · faltam cerca de ' + duracaoTxt(m, falta / Math.max(0.1, pt)) : ' · chegou') })));
+        // a travessia de um hexágono que leva mais de um tempo: as bolinhas, e o ajuste à mão (sem passar o tempo)
+        const b = N_.bolinhas ? N_.bolinhas(m, o) : null;
+        if (b) out.push(fileiraDeBolinhas(o, b, true));
+        if (!onde.longe) out.push(h('div', { class: 'row ajuste' },
+          botao('− tempo', () => ajustarMarcha(id, -1, 'voltar um tempo de marcha'), { c: 'sm', k: 'o:menos', off: !(o.prog > 0), title: 'Volta o grupo um tempo de marcha na rota, sem mexer no tempo do mundo' }),
+          botao('+ tempo', () => ajustarMarcha(id, 1, 'avançar um tempo de marcha'), { c: 'sm', k: 'o:mais', off: falta <= 0, title: 'Avança o grupo um tempo de marcha na rota, sem mexer no tempo do mundo' }),
+          h('small', { class: 'note', text: 'Ajuste à mão: o tempo do mundo não muda.' })));
       } else out.push(h('div', { class: 'row' }, nota('Defina a grade de hexágonos do mapa para medir a viagem.'), botao('Abrir a aba Terreno', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
     }
     out.push(linha(
-      botao('Andar 1 dia', () => andar(id), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'Move o grupo pela rota, de hexágono em hexágono, e passa o dia' : 'Escolha uma rota primeiro' }),
+      botao('Andar 1 tempo', () => andar(id, 'tempo'), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'O grupo anda pela rota os cubos de um tempo de marcha, de hexágono em hexágono' : 'Escolha uma rota primeiro' }),
+      botao('Andar 1 dia', () => andar(id, 'dia'), { k: 'o:andar-dia', off: !rota, title: rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Escolha uma rota primeiro' }),
       botao('Sortear encontro', () => sortearGrupo(id), { k: 'o:sortear', title: 'Usa a tabela de encontros da região onde o grupo está' })));
     if (rota && (o.prog > 0 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5)) {
       out.push(linha(botao('Pôr no começo da rota', () => mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; }), { c: 'sm', k: 'o:comeco' })));
     }
-    out.push(nota('Andar 1 dia passa o dia: cada hexágono gasta os cubos do terreno dele (Floresta, Montanha… na aba Terreno). O que sobra rumo ao próximo fica para o dia seguinte.'));
+    out.push(nota(tempoDeHojeTxt(m) + ' A cada ' + tpd + ' tempos de marcha, passa um dia. Cada hexágono gasta os cubos do terreno dele (Floresta, Montanha… na aba Terreno); o que sobra rumo ao próximo fica para o tempo seguinte.'));
     if (naCasca()) out.push(linha(botaoAcampar()));
     if (encontro && encontro.grupo === id) out.push(cartaoEncontro());
     return secao('Grupo', out);
   }
-  // Um dia de viagem com todos os grupos que têm rota: cada um anda o dele, e o dia passa uma vez só.
-  function andarTodos() {
-    if (!App.podeEditar()) return;
-    const m0 = App.mapa, feitos = [];
-    for (const g of m0.objs) if (g.k === 'g' && g.rota) { const r = N().andarUmDia(m0, g.id); if (r.ok) feitos.push([g.id, r]); }
-    if (!feitos.length) { App.toast('Nenhum grupo andou: sem rota, fora dela ou já no fim.'); return; }
-    const ok = App.mudar('andar 1 dia com todos', mm => {
-      for (const [id, r] of feitos) { const g = achar(mm, id); if (g) { g.x = r.x; g.y = r.y; g.prog = r.prog; } }
-      mm.cal.dia += 1;
-    });
-    if (ok !== false) avisoDesfazer((feitos.length === 1 ? 'Um grupo andou' : feitos.length + ' grupos andaram') + '. Passou o dia: hoje é ' + dataTxt(App.mapa, App.mapa.cal.dia) + '.');
+  // as bolinhas de um grupo numa lista (só a fileira): quem joga recebe prontas; o mestre conta
+  function bolinhasNaLista(v, g) {
+    const b = Array.isArray(g.bol) ? { feitas: g.bol[0], total: g.bol[1], terreno: '' } : App.podeEditar() && N().bolinhas ? N().bolinhas(v, g) : null;
+    return b ? fileiraDeBolinhas(g, b, false) : null;
   }
-  // Um dia de viagem: o grupo anda pela rota e o dia passa (um passo de desfazer só, para as duas coisas).
-  function andar(id) {
+  // O que dizer depois de andar: quantos tempos, e se o dia passou.
+  function depoisDaMarcha(m, t, n) {
+    if (t.dias > 0) return 'Passou o dia: hoje é ' + dataTxt(m, m.cal.dia) + '.';
+    return plural(n, 'tempo de marcha', 'tempos de marcha') + ' (hoje: ' + t.tempo + ' de ' + tpdDe(m) + ').';
+  }
+  // quantos tempos "Andar 1 dia" anda: os que faltam para acabar o dia
+  const temposAteOFim = m => tpdDe(m) - ((m.cal && m.cal.tempo) || 0);
+  // Todos os grupos que têm rota andam (um tempo, ou até o fim do dia), e o tempo passa uma vez só.
+  function andarTodos(qual) {
     if (!App.podeEditar()) return;
-    const r = N().andarUmDia(App.mapa, id);
+    const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, feitos = [];
+    for (const g of m0.objs) if (g.k === 'g' && g.rota) { const r = N().andarTempos(m0, g.id, n); if (r.ok) feitos.push([g.id, r]); }
+    if (!feitos.length) { App.toast('Nenhum grupo andou: sem rota, fora dela ou já no fim.'); return; }
+    let t = null;
+    const ok = App.mudar(qual === 'dia' ? 'andar 1 dia com todos' : 'andar 1 tempo com todos', mm => {
+      for (const [id, r] of feitos) { const g = achar(mm, id); if (g) { g.x = r.x; g.y = r.y; g.prog = r.prog; } }
+      t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
+    });
+    if (ok !== false) avisoDesfazer((feitos.length === 1 ? 'Um grupo andou' : feitos.length + ' grupos andaram') + '. ' + depoisDaMarcha(App.mapa, t, n));
+  }
+  // O grupo anda pela rota (um tempo, ou até o fim do dia) e o tempo passa — um passo de desfazer só, para as duas coisas.
+  function andar(id, qual) {
+    if (!App.podeEditar()) return;
+    const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, r = N().andarTempos(m0, id, n);
     if (!r.ok) { App.toast((r.msg || 'O grupo não andou') + '.'); return; }
-    const ok = App.mudar('andar 1 dia', mm => { const g = achar(mm, id); if (!g) return false; g.x = r.x; g.y = r.y; g.prog = r.prog; mm.cal.dia += 1; });
-    if (ok !== false) avisoDesfazer(r.msg + '. Passou o dia: hoje é ' + dataTxt(App.mapa, App.mapa.cal.dia) + '.');
+    let t = null;
+    const ok = App.mudar(qual === 'dia' ? 'andar 1 dia' : 'andar 1 tempo', mm => { const g = achar(mm, id); if (!g) return false; g.x = r.x; g.y = r.y; g.prog = r.prog; t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo; });
+    if (ok !== false) avisoDesfazer(r.msg + '. ' + depoisDaMarcha(App.mapa, t, n));
+  }
+  // O ajuste à mão da marcha (− tempo, + tempo, as bolinhas): o grupo muda de lugar na rota, e o tempo do mundo fica.
+  function ajustarMarcha(id, o, rotulo) {
+    if (!App.podeEditar()) return;
+    const r = N().ajustarMarcha(App.mapa, id, o);
+    if (!r.ok) { if (r.msg && r.msg !== 'Nada mudou') App.toast(r.msg + '.'); return; }
+    mudarObj(id, rotulo, x => { x.x = r.x; x.y = r.y; x.prog = r.prog; });
+  }
+  // a área de um polígono (para achar, entre as regiões que contêm outra, a mais de dentro)
+  function areaDe(pts) { let a = 0; for (let i = 0, k = pts.length - 1; i < pts.length; k = i++) a += pts[k][0] * pts[i][1] - pts[i][0] * pts[k][1]; return Math.abs(a) / 2; }
+  // as regiões que ficam dentro de o (filhas, netas…) — e ela mesma
+  function deDentro(m, o) {
+    const ids = new Set([o.id]);
+    for (let mudou = true; mudou;) { mudou = false; for (const x of m.objs) if (x.k === 'r' && x.pai && ids.has(x.pai) && !ids.has(x.id)) { ids.add(x.id); mudou = true; } }
+    return ids;
   }
   function secRegiao(o, m, grava) {
-    const id = o.id, f = facDe(m, o.fac), out = [];
+    const id = o.id, f = facDe(m, o.fac), p = paiDe(m, o), fh = !o.fac && p ? facDaReg(m, p) : null, abaixo = deDentro(m, o), out = [];
+    /* (lote 6) dentro de qual região ela fica (o Condado no Reino): as outras, menos as que estão dentro dela. Desenhada
+       dentro de outra sem dizer, a região ganha a sugestão — nada muda sozinho. */
+    const fora = m.objs.filter(x => x.k === 'r' && !abaixo.has(x.id));
+    out.push(campoEscolha('o:' + id + ':pai', 'Dentro de', o.pai || '', [['', 'Nenhuma (região de fora)']].concat(fora.map(x => [x.id, nomeDe(x, m)])),
+      grava('mudar onde a região fica', (x, v) => { if ((x.pai || '') === v) return false; x.pai = v || null; }),
+      { dica: 'Uma região dentro de outra — o Condado no Reino. Sem facção própria, ela é da facção da de fora.' }));
+    if (!o.pai && o.pts.length >= 3) {
+      const cand = fora.filter(x => x.pts.length >= 3 && o.pts.every(q => N().dentroPoligono(q, x.pts))).sort((a, b) => areaDe(a.pts) - areaDe(b.pts))[0];
+      if (cand) out.push(linha(botao('Pôr dentro de ' + nomeDe(cand, m), () => mudarObj(id, 'pôr a região dentro de ' + nomeDe(cand, m), x => { x.pai = cand.id; }),
+        { c: 'sm', k: 'o:' + id + ':pai-sugere', title: 'Esta região está desenhada dentro de ' + nomeDe(cand, m) + ': ela passa a fazer parte dela' })));
+    }
     if (m.faccoes.length) {
-      out.push(campoEscolha('o:' + id + ':fac', 'Facção', o.fac || '', [['', 'Sem facção']].concat(m.faccoes.map(x => [x.id, nomeFac(x) + (x.oculta ? ' (escondida)' : '')])),
+      out.push(campoEscolha('o:' + id + ':fac', 'Facção', o.fac || '', [['', p ? 'A de ' + nomeDe(p, m) + (fh ? ' (' + nomeFac(fh) + ')' : ', sem facção') : 'Sem facção']].concat(m.faccoes.map(x => [x.id, nomeFac(x) + (x.oculta ? ' (escondida)' : '')])),
         grava('mudar a facção', (x, v) => { x.fac = v || null; })));
     } else out.push(h('div', { class: 'row' }, nota('Sem facções ainda. Elas dão cor às regiões e lados às frentes.'), botao('Criar facção', () => { abrirAba('faccoes'); novaFaccao(); }, { c: 'sm', k: 'o:criar-fac' })));
-    if (f) out.push(nota('A cor vem da facção.'));
+    // a cor: a da facção; a região de dentro pode ter a sua (para cada Condado se distinguir no Reino)
+    if ((f || fh) && !o.pai) out.push(nota('A cor vem da facção.'));
     else {
       out.push(h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor da região', o.cor, grava('mudar a cor', (x, v) => { x.cor = v; })),
-        h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Sem cor: aparece tracejada' }),
+        h('span', { class: 'note', text: o.cor ? 'Cor própria' : f || fh ? 'Sem cor própria: a da facção' : 'Sem cor: aparece tracejada' }),
         o.cor ? botao('Tirar a cor', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null));
     }
     // o custo de viajar por aqui: vale para cada hexágono com o centro dentro dela (menos o que tem custo próprio)
     out.push(campoNumero('o:' + id + ':custo', 'Custo de cada hexágono aqui (cubos)', o.custo, grava('mudar o custo da região', (x, n) => { x.custo = n; }),
-      { decimal: true, min: 0.1, max: 9999, vazio: null, ph: 'o do terreno', dica: 'Vazio: cada hexágono custa o do terreno dele. Só o mestre vê.' }));
+      { decimal: true, min: 0.1, max: 9999, vazio: null, ph: 'o do terreno', dica: 'Vazio: cada hexágono custa o do terreno dele' + (p ? ' (o custo de ' + nomeDe(p, m) + ' não vale aqui dentro)' : '') + '. Só o mestre vê.' }));
     return secao('Região', out);
   }
   // Tabela de encontros: uma linha por resultado; "3: Lobos famintos" = peso 3.
@@ -1316,13 +1420,14 @@
   function secRota(o, m, grava) {
     const N_ = N(), id = o.id, un = N_.compPolilinha(o.pts), out = [];
     out.push(campoEscolha('o:' + id + ':via', 'Desenho', o.via, Object.keys(N_.VIAS).map(k => [k, N_.VIAS[k].nome]), grava('mudar o desenho da rota', (x, v) => { x.via = v; }),
-      { dica: 'É só o desenho: quanto se anda por dia é o grupo quem diz, e o terreno de cada hexágono pesa no caminho.' }));
+      { dica: 'É só o desenho: quanto se anda por tempo é o grupo quem diz, e o terreno de cada hexágono pesa no caminho.' }));
     const rh = rotaHex(m, o), grupos = m.objs.filter(g => g.k === 'g' && g.rota === id);
     if (rh) {
       out.push(h('p', { class: 'status' }, h('b', { text: plHex(rh.hexes) }), ' · ' + fmt(rh.cubos, 0) + ' cubos pelo terreno, de ponta a ponta'));
-      const ritmos = grupos.length ? grupos.map(g => [nomeDe(g, m), g.cubos]) : [['A ' + fmt(N_.CUBOS_DIA, 0) + ' cubos por dia', N_.CUBOS_DIA]];
-      out.push(h('div', { class: 'tabela' }, ritmos.map(([nome, c]) => h('div', null, h('span', { text: nome }), h('b', { text: diasTxt(rh.cubos / Math.max(1, c)) })))));
-    } else out.push(h('div', { class: 'row' }, nota(fmt(un, 0) + ' unidades do mapa. Com a grade de hexágonos, aparecem os cubos e os dias de viagem.'), botao('Definir a grade', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
+      // (quanto leva, em tempos de marcha — e em dias, quando passa de um)
+      const p0 = N_.CUBOS_DIA / tpdDe(m), ritmos = grupos.length ? grupos.map(g => [nomeDe(g, m), passoDoGrupo(m, g)]) : [['A ' + fmt(p0, 1) + ' cubos por tempo', p0]];
+      out.push(h('div', { class: 'tabela' }, ritmos.map(([nome, c]) => h('div', null, h('span', { text: nome }), h('b', { text: duracaoTxt(m, rh.cubos / Math.max(0.1, c)) })))));
+    } else out.push(h('div', { class: 'row' }, nota(fmt(un, 0) + ' unidades do mapa. Com a grade de hexágonos, aparecem os cubos e o tempo de viagem.'), botao('Definir a grade', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
     if (grupos.length) out.push(nota('Nesta rota: ' + grupos.map(g => nomeDe(g, m)).join(', ') + '.'));
     return secao('Rota', out);
   }
@@ -1470,14 +1575,18 @@
       gs.push(h('div', { class: 'gr', 'data-k': 'gr:' + g.id },
         h('button', { type: 'button', class: 'li clic', 'data-k': 'gr-li:' + g.id, onclick: () => irPara(g.id) }, icone(g, v),
           h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: ondeEsta(v, g) }), p ? h('small', { class: 'linha2', text: p }) : null)),
+        bolinhasNaLista(v, g),
         ed ? h('div', { class: 'row' },
-          botao('Andar 1 dia', () => andar(g.id), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota, title: g.rota ? 'Move o grupo pela rota, de hexágono em hexágono, e passa o dia' : 'Este grupo não tem rota' }),
+          botao('Andar 1 tempo', () => andar(g.id, 'tempo'), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota, title: g.rota ? 'O grupo anda pela rota os cubos de um tempo de marcha' : 'Este grupo não tem rota' }),
+          botao('Andar 1 dia', () => andar(g.id, 'dia'), { c: 'sm', k: 'gr-andar-dia:' + g.id, off: !g.rota, title: g.rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Este grupo não tem rota' }),
           botao('Sortear encontro', () => sortearGrupo(g.id), { c: 'sm', k: 'gr-sortear:' + g.id })) : null));
     }
-    // (cada "Andar 1 dia" passa o dia: com mais de um grupo viajando, todos andam juntos num dia só)
+    // (cada "Andar" passa o tempo: com mais de um grupo viajando, todos andam juntos no mesmo tempo)
     const viajando = grupos.filter(g => g.rota).length;
-    if (ed && viajando > 1) gs.push(linha(botao('Andar 1 dia com todos', andarTodos, { c: 'pri sm', k: 'gr-andar-todos', title: 'Os ' + viajando + ' grupos com rota andam e o dia passa uma vez só' })));
-    if (ed && viajando) gs.push(nota(viajando > 1 ? 'Cada "Andar 1 dia" passa o dia. Com mais de um grupo viajando, "Andar 1 dia com todos" leva todos no mesmo dia.' : 'Andar 1 dia passa o dia.'));
+    if (ed && viajando > 1) gs.push(linha(
+      botao('Andar 1 tempo com todos', () => andarTodos('tempo'), { c: 'pri sm', k: 'gr-andar-todos', title: 'Os ' + viajando + ' grupos com rota andam um tempo de marcha, e o tempo passa uma vez só' }),
+      botao('Andar 1 dia com todos', () => andarTodos('dia'), { c: 'sm', k: 'gr-andar-todos-dia', title: 'Os ' + viajando + ' grupos com rota andam até o fim do dia, e o dia passa uma vez só' })));
+    if (ed && viajando) gs.push(nota(tempoDeHojeTxt(v) + (viajando > 1 ? ' Cada "Andar" passa o tempo; com mais de um grupo viajando, "com todos" leva todos no mesmo tempo.' : '')));
     out.push(secao(grupos.length === 1 ? 'Onde está o grupo' : 'Grupos', gs));
     return out;
   }
@@ -1527,7 +1636,7 @@
     if (facAberta && !facDe(v, facAberta)) facAberta = null;
     const lista = h('div', { class: 'lista' });
     for (const f of v.faccoes) {
-      const regs = v.objs.filter(o => o.k === 'r' && o.fac === f.id).length;
+      const regs = v.objs.filter(o => o.k === 'r' && N().facDaRegiao(v, o) === f.id).length;
       const sub = regs ? plural(regs, 'região', 'regiões') : 'nenhuma região';
       if (ed) {
         const aberta = facAberta === f.id;
@@ -1612,7 +1721,10 @@
           mm.cal.meses = meses;
           mm.cal.ano0 = ano - Math.floor(mm.cal.dia / N().diasNoAno(mm.cal));
         });
-      }, { area: true, linhas: 6, dica: 'O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' })));
+      }, { area: true, linhas: 6, dica: 'O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' }),
+      // (lote 6) a marcha dos grupos é contada em tempos: quantos tempos de marcha tem um dia
+      campoNumero('mapa:tpd', 'Tempos de marcha por dia', cal.tpd || N_.TEMPOS_DIA || 10, n => App.mudar('mudar os tempos de marcha do dia', mm => { if (mm.cal.tpd === n) return false; mm.cal.tpd = n; mm.cal.tempo = Math.min(mm.cal.tempo || 0, n - 1); }),
+        { min: 1, max: (N_.LIMITES && N_.LIMITES.tempos) || 100, erro: 'Use de 1 a 100 tempos.', dica: 'Os grupos andam os cubos deles a cada tempo; a cada tantos tempos de marcha, passa um dia.' })));
     // névoa
     out.push(secao('Névoa',
       caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, ligarNevoa,
@@ -1643,6 +1755,20 @@
     return out;
   }
   /* ---------------- aba Terreno (só o mestre) ---------------- */
+  // (lote 6) A largura do mapa em cubos: os hexágonos ficam do tamanho que dá essa largura (cada um com 5 cubos); o terreno
+  // pintado hexágono por hexágono é refeito na grade nova, e os grupos ficam onde estão.
+  function mudarLarguraEmCubos(n) {
+    const m0 = App.mapa;
+    if (!temGrade(m0) || !(n > 0)) return false;
+    const tam = m0.larg * N().CUBOS_HEX / n;
+    if (!(tam >= 4 && tam <= 20000)) { App.toast('Com essa largura, cada hexágono teria ' + fmt(tam, 1) + ' unidades do mapa. Use uma largura que dê hexágonos de 4 a 20.000 unidades.'); return false; }
+    const teste = N().regradear(N().copia(m0), tam);
+    if (!teste.ok) { if (teste.msg !== 'O tamanho é o mesmo') App.toast(teste.msg + '.'); return false; }
+    const ok = App.mudar('mudar o tamanho do mapa em cubos', mm => { const r = N().regradear(mm, tam); if (!r.ok) return false; });
+    if (ok !== false) avisoDesfazer('O mapa agora tem cerca de ' + fmt(cubos(App.mapa, App.mapa.larg), 0) + ' × ' + fmt(cubos(App.mapa, App.mapa.alt), 0) + ' cubos (cada hexágono com ' + fmt(App.mapa.grade.tam, 1) + ' unidades do mapa)'
+      + (teste.hexes ? '; o terreno pintado foi refeito em ' + plHex(teste.hexes) : '') + '.');
+    return ok;
+  }
   function abaTerreno(m) {
     if (!m || !App.podeEditar()) return [];
     const gr = m.grade, tem = temGrade(m), out = [h('h3', { text: 'Terreno' })];
@@ -1651,6 +1777,9 @@
     gs.push(campoNumero('ter:tam', 'Tamanho do hexágono (unidades do mapa)', tem ? gr.tam : '', n => App.mudar(n ? 'mudar o tamanho da grade' : 'tirar a grade', mm => { mm.grade.tam = n; }),
       { decimal: true, min: 4, max: 20000, vazio: 0, ph: 'sem grade', erro: 'Use um tamanho de 4 a 20.000 unidades (vazio: sem grade).', dica: 'De um centro ao centro vizinho. Um hexágono = 5 cubos.' }));
     gs.push(linha(botao('Medir com a régua…', medirGrade, { c: tem ? 'sm' : 'pri', k: 'ter:medir', title: 'Arraste sobre alguns hexágonos e diga quantos são (ou quantos cubos)' })));
+    // (lote 6) o tamanho do mapa em cubos: hexágonos menores (cada um com os 5 cubos dele) dão mais cubos à mesma imagem
+    if (tem) gs.push(campoNumero('ter:largcubos', 'Largura do mapa (cubos)', Math.round(cubos(m, m.larg)), mudarLarguraEmCubos,
+      { min: 5, max: 1000000, erro: 'Use um número de cubos, de 5 em diante.', dica: 'A altura acompanha a imagem: ' + fmt(cubos(m, m.alt), 0) + ' cubos. Mudar a largura muda o tamanho dos hexágonos; o terreno pintado por hexágono é refeito na grade nova.' }));
     if (tem) {
       const passo = Math.max(0.5, Math.round(gr.tam / 10 * 10) / 10);
       const mover = (dx, dy) => App.mudar('deslocar a grade', mm => { mm.grade.x = Math.round((mm.grade.x + dx) * 100) / 100; mm.grade.y = Math.round((mm.grade.y + dy) * 100) / 100; });

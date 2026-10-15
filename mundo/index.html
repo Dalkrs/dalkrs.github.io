@@ -99,6 +99,7 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .t-sel .obj { cursor: grab; }
 .reg { fill-opacity: .2; fill-rule: evenodd; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .reg.semfac { fill: #9aa3b5; stroke: #c3cadb; stroke-dasharray: 6 5; }
+.reg.subreg { fill-opacity: .16; stroke-width: 1.4; stroke-dasharray: 5 3; }     /* (lote 6) a região de dentro: borda mais fina */
 .reg.oculto, .mar.oculto, .eve.oculto, .rot.oculto { opacity: .55; }
 .sel-anel { fill: none; stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
 .rot { fill: none; stroke: #f3ead2; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -121,6 +122,10 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .falso .risco { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; }
 .grupo-base { stroke: #14171f; stroke-width: 2.5; }
 .grupo-anel { fill: none; stroke: #fff; stroke-width: 2; opacity: .85; }
+/* (lote 6) as bolinhas da travessia, em cima do grupo: vazias escuras com a borda na cor dele; cheias, na cor dele */
+.bolinhas .bol { fill: rgba(10, 12, 18, .78); stroke-width: 1.5; }   /* (a cor do grupo vai no estilo de cada uma) */
+.bolinhas .bol.feita { stroke: rgba(10, 12, 18, .85); stroke-width: 1.2; }
+svg text.bol-conta { font-family: var(--ui); font-weight: 700; fill: #fff3d6; stroke: rgba(10, 12, 18, .9); stroke-width: 3px; paint-order: stroke; }
 .nevoa { fill: #05070c; }
 .alca { fill: var(--lamp); stroke: #14171f; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: move; }
 .rasc { fill: rgba(230,171,79,.14); fill-rule: evenodd; stroke: var(--lamp); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
@@ -229,6 +234,7 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 /* rótulos (dentro dos grupos de tamanho fixo: 1 unidade = 1 px na tela) */
 .rotulo { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
 .rotulo-reg { font-size: 12px; font-weight: 700; letter-spacing: .12em; }   /* nome de região: versal espaçado, como num mapa */
+.rotulo-reg.rotulo-subreg { font-size: 10px; letter-spacing: .1em; }            /* (lote 6) o nome da região de dentro, menor */
 .rotulo-linha { letter-spacing: .04em; }
 .sigla { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
 .sigla.escura { fill: #14171f; stroke: none; }
@@ -341,6 +347,7 @@ button.li { width: 100%; text-align: left; color: inherit; font: inherit; }
 .ico.rumor { background: var(--raised); color: var(--fg); box-shadow: none; border: 1.5px dashed var(--fg-2); }
 .ico.reg { border-radius: 6px; opacity: .9; }
 .ico.reg.semcor { background: transparent; border: 1.5px dashed var(--fg-3); box-shadow: none; }
+.ico.reg.sub { transform: scale(.82); }       /* (lote 6) a região de dentro, na lista em árvore */
 .ico.linha { background: none; color: var(--fg-2); border-radius: 0; box-shadow: none; }
 .gr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
 .gr .row { padding-left: 4px; }
@@ -399,6 +406,14 @@ input[type="search"].in { padding-right: 6px; }
 .tabela span { color: var(--fg-2); }
 .progresso { display: grid; gap: 5px; }
 .progresso small { color: var(--fg-2); font-size: 12.5px; }
+/* (lote 6) as bolinhas da travessia, no painel: uma por tempo de marcha (as cheias já foram andadas) */
+.bolinhas-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.bols { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.bol-bt { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--lamp); background: transparent; padding: 0; display: inline-block; box-sizing: border-box; }
+button.bol-bt { cursor: pointer; }
+button.bol-bt:hover { box-shadow: 0 0 0 3px rgba(230, 171, 79, .25); }
+button.bol-bt:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.row.ajuste { align-items: center; }
 .barra { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .barra > i { display: block; height: 100%; background: var(--lamp); border-radius: 3px; }
 .acoes { padding-top: 4px; }
@@ -524,9 +539,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
 <script src="../tc/ponte.js?v=12"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="nucleo.js?v=5"></script>
-<script src="tela.js?v=6"></script>
-<script src="painel.js?v=7"></script>
+<script src="nucleo.js?v=6"></script>
+<script src="tela.js?v=7"></script>
+<script src="painel.js?v=8"></script>
 <script src="mundo.js?v=6"></script>
 </body>
 </html>
