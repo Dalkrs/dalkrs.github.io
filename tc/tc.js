@@ -118,7 +118,7 @@
      o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
-  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador'];
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal'];
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
@@ -1079,10 +1079,12 @@
     for (const m of c.rems.get(kq(col, id)) || []) e = juntar(e, m);
     return e;
   }
-  /* Os documentos da mesa são escritos pelo mestre e não têm dono. O único documento com dono que vale é o pedido
-     do próprio dono para a cena que está no ar (é a única coisa que o banco deixa um jogador criar). Qualquer outro
-     documento com dono não é entregue a nenhum sistema. */
-  const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id;
+  /* Os documentos da mesa são escritos pelo mestre e não têm dono. Os documentos com dono que valem: o pedido do
+     próprio dono para a cena que está no ar e as cartas dele ao Jornal (é o que o banco deixa um jogador criar), e as
+     respostas às cartas dele (escritas por quem mestra o Jornal, com ele como dono, para só ele e o mestre verem).
+     Qualquer outro documento com dono não é entregue a nenhum sistema. */
+  const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
+    || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id;
   function dadosZerar() {
     for (const k in cols) {
       const c = cols[k];

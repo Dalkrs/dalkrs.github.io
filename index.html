@@ -60,6 +60,8 @@ button { cursor: pointer; }
 .tab:hover { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
 .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--lamp); }
+/* (lote 6) a edição do Jornal que a pessoa ainda não leu */
+.tab.novo::before { content: ""; position: absolute; top: 6px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--surface); }
 .bar-r { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 8px; flex: none; }
 .ib { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; color: var(--fg-2); background: none; border: 1px solid transparent; text-decoration: none; }
 .ib:hover { color: var(--fg); background: var(--hover); border-color: var(--line); }
@@ -407,21 +409,23 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=10"></script>
-<script src="tc/tc.js?v=22"></script>
+<script src="tc/tc.js?v=23"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.15-9';
+  const VERSAO = '2026.10.15-10';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
     acampamento: '<path d="M3 20h18"/><path d="M5 20 12 6l7 14"/><path d="M12 6 10.5 3.5M12 6l1.5-2.5"/><path d="M12 20l-2.5-5M12 20l2.5-5"/>',
     fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
     arvore: '<circle cx="12" cy="5" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M12 7v4"/><path d="M12 11c-4 0-6 2-6 5"/><path d="M12 11c4 0 6 2 6 5"/>',
+    jornal: '<path d="M4 5h13v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v9a2 2 0 0 1-2 2h-3"/><path d="M7 9h7M7 12.5h7M7 16h4"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   const ABAS = [
+    { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true },                         // (lote 6) o jornal da mesa: a primeira aba
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true },
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true },
     { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true },
@@ -521,7 +525,9 @@ dialog::backdrop { background: var(--scrim); }
     wait.hidden = prontas.has(f);              // (uma moldura aberta em segundo plano pode ainda estar carregando)
     for (const k in frames) frames[k].hidden = k !== id;
     foco(f);
+    aoAbrirAba(id);
   }
+  let aoAbrirAba = () => {};                   // (a parte da mesa, mais abaixo, troca: o Jornal lido apaga a bolinha)
   // A moldura de um sistema. Nasce escondida; quem a abre (abrir) é que a mostra.
   const prontas = new WeakSet();
   function moldura(a) {
@@ -1694,12 +1700,65 @@ dialog::backdrop { background: var(--scrim); }
       } catch (e) { /* sem os dados da mesa, as Cenas abrem quando o mestre for até elas */ }
     }, 2500);
   }
+  /* (lote 6) O Jornal: quando sai uma edição que a pessoa ainda não leu, a aba ganha uma bolinha e o Jornal abre para
+     ela — ao entrar na mesa ou já dentro dela (se ela está escrevendo na mesa ao vivo ou com uma janela aberta, só a
+     bolinha e um aviso com "Ler"). Quem mestra o Jornal é quem publica: para ele, nada abre sozinho. A edição lida
+     fica guardada neste aparelho, mesa por mesa (a hora em que ela saiu). */
+  const chaveJornal = () => (mesas.atual ? 'tinycats:jornal:visto:' + mesas.atual.id : null);
+  let jornalAvisado = null, jornalAoVoltar = false;
+  function edicaoDoJornal() {
+    try { const l = TC.dados.col('documentos').pegar('jornal:pub'); return l && !l.apagado && l.dados && typeof l.dados.em === 'string' ? l.dados.em : null; } catch (e) { return null; }
+  }
+  function jornalLido() { const k = chaveJornal(), em = edicaoDoJornal(); if (k && em) gravar(k, em); pintarJornal(false); }
+  function pintarJornal(abrirSeNovo) {
+    const tab = $('tab-jornal');
+    if (!tab) return;
+    const a = mesas.atual, em = a ? edicaoDoJornal() : null;
+    if (a && em && atual === 'jornal' && !document.hidden) gravar(chaveJornal(), em);          // (está lendo agora)
+    const novo = !!(a && em && !mesas.mestra('jornal') && ler(chaveJornal()) !== em);
+    tab.classList.toggle('novo', novo);
+    tab.title = novo ? 'Saiu o Jornal: edição nova' : '';
+    if (!novo || !abrirSeNovo || jornalAvisado === a.id + em) return;
+    if (document.hidden) { jornalAoVoltar = true; return; }       // (o site está em segundo plano: abre quando a pessoa voltar)
+    jornalAvisado = a.id + em;
+    if (ocupadoAgora()) { toast('Saiu o Jornal.', 'Ler', () => abrir('jornal'), 10000); return; }
+    const antes = atual;
+    abrir('jornal');
+    if (antes && antes !== 'jornal') toast('Saiu o Jornal.', 'Voltar para ' + nomeDaAba(antes), () => abrir(antes), 8000);
+  }
+  // A pessoa está escrevendo (na mesa ao vivo ou num campo de texto de um sistema) ou com uma janela aberta: o Jornal
+  // não abre por cima — fica a bolinha e um aviso com "Ler".
+  function ocupadoAgora() {
+    if (!menu.hidden || dlg.open) return true;
+    try {
+      const f = atual && frames[atual], doc = f && f.contentDocument;
+      if (doc && doc.querySelector('dialog[open]')) return true;
+      let el = document.activeElement;
+      while (el && el.tagName === 'IFRAME' && el.contentDocument) el = el.contentDocument.activeElement;
+      if (!el) return false;
+      return el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|search|number|email|password|url|tel)$/i.test(el.type || 'text'));
+    } catch (e) { return false; }
+  }
+  aoAbrirAba = id => { if (id === 'jornal') jornalLido(); };
+  TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && linha.id === 'jornal:pub') pintarJornal(true); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (atual === 'jornal') jornalLido();
+    else if (jornalAoVoltar) { jornalAoVoltar = false; pintarJornal(true); }
+  });
+  function vigiarJornal() {
+    const a = mesas.atual;
+    pintarJornal(false);
+    if (!a) return;
+    try { TC.dados.col('documentos').pronta.then(() => { if (mesas.atual === a) pintarJornal(true); }, () => { /* sem os documentos, sem aviso */ }); } catch (e) { /* idem */ }
+  }
   /* A mesa ao vivo fechada para mim (o mestre fecha no menu da mesa): o painel diz isso no alto, com calma. */
   const pintarVivoFechado = () => { const a = mesas.atual; $('vivoFechado').hidden = !(a && a.semVivo); };
   mesas.on('vivo', fechada => { pintarVivoFechado(); toast(fechada ? 'O mestre fechou a mesa ao vivo para você por enquanto. Suas rolagens continuam chegando à mesa.' : 'O mestre abriu a mesa ao vivo para você de novo.', null, null, 7000); });
   mesas.on('muda', a => {
     pintarVivoFechado();
     pintarAbas();
+    vigiarJornal();
     pintarConta(); fecharMenu(); recarregarSistemas(); difundir(); pintarNuvem();
     naoLidas = 0; pintarSelo();
     if (!a) prepararDados();

@@ -2,6 +2,36 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-10",
+      "data": "2026-10-15",
+      "titulo": "Jornal da mesa, a nova primeira aba, com as cartas dos leitores",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Jornal, a nova primeira aba: o jornal da mesa, com cara de jornal antigo — uma página só, sempre a edição de agora. Quando sai uma edição nova, a aba ganha uma bolinha e o Jornal abre para você (com “Voltar” para onde você estava). Se você estiver escrevendo, nada abre por cima: fica a bolinha e um aviso com “Ler”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cartas ao jornal: escreva assinando por um personagem seu ou anônima. Você vê se cada carta está esperando o mestre, se saiu no jornal ou se não saiu — e pode retirar a que ainda espera. Só você e o mestre veem as suas cartas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "No Jornal, você escreve vendo ao lado como os jogadores vão ver: o nome do jornal, a data do mundo (do calendário do mapa que você escolher), o clima, as matérias (a primeira é a manchete; destaque, negrito e itálico, assinatura) e os boatos e anúncios. Publicar pergunta antes e tem Desfazer; cada mudança também (e Ctrl+Z)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "As cartas dos jogadores chegam ao Jornal: “Pôr no jornal” (dá para corrigir o texto antes de publicar) ou “Não publicar” (ela fica guardada em “Não saíram”, e o jogador vê que não saiu)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mestre auxiliar: a aba Jornal entra nas Permissões. Quem já é auxiliar continua com as abas que tinha — para ele mestrar o Jornal, marque a aba em “Permissões…”."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-9",
       "data": "2026-10-15",
       "titulo": "Mapa-múndi: o desenho dos hexágonos nítido em qualquer zoom",

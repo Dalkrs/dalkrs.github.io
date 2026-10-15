@@ -23,7 +23,7 @@ const { contas } = require('./contas');
     const b = document.getElementById('versaoNova');
     return 'casca ' + casca + (simples !== casca ? ' (sem ?t: ' + simples + ')' : '') + ' · versao.json ' + arq + ' · aviso ' + (b ? (b.hidden ? 'escondido' : 'À MOSTRA') : 'não existe');
   });
-  for (const id of ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador']) {
+  for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador']) {
     await page.locator('#tab-' + id).click(); await page.waitForTimeout(2000);
     const f = page.frame({ url: new RegExp('/' + id + '/') });
     out[id] = f ? await f.title() : 'SEM MOLDURA';

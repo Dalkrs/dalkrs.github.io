@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jornal · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=UnifrakturMaguntia&family=Playfair+Display:wght@700;900&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IM+Fell+English+SC&display=swap">
+<style>
+/* Jornal: o editor de quem mestra à esquerda e a folha do jornal à direita (como os jogadores vão ver). Quem joga lê
+   a folha e manda cartas. As cores da interface são as da mesa de cenas; a folha é sempre papel velho. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --secret: #b39cf0;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* a folha */
+  --papel: #efe3c4; --papel-2: #e2d0a6; --tinta: #24190f; --tinta-2: #4b3a27; --filete: #3a2a18;
+  --f-nome: "UnifrakturMaguntia", "Old English Text MT", Georgia, serif;
+  --f-tit: "Playfair Display", "Bodoni 72", Georgia, serif;
+  --f-txt: "Libre Caslon Text", "Iowan Old Style", Georgia, serif;
+  --f-sc: "IM Fell English SC", "Palatino Linotype", Georgia, serif;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+    --line: #d2d8e2; --line-strong: #aeb8c9;
+    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
+    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- barra de cima ---- */
+.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; flex-wrap: wrap; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.grow { flex: 1; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.per { color: var(--danger); }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
+.ib { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg-2); flex: none; }
+.ib:hover:not(:disabled) { background: var(--hover); color: var(--fg); border-color: var(--line); }
+.ib:disabled { opacity: .35; cursor: default; }
+.salvo { font: 12px var(--mono); color: var(--fg-3); white-space: nowrap; }
+.salvo.ruim { color: var(--danger); }
+.salvo.novo { color: var(--lamp-ink); }
+
+/* ---- área de trabalho ---- */
+.work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 470px) minmax(0, 1fr); }
+.work.so-folha { grid-template-columns: minmax(0, 1fr); }
+.ed { min-height: 0; overflow: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 12px 14px 60px; display: grid; align-content: start; gap: 14px; }
+.leitura { min-height: 0; overflow: auto; padding: 8px 14px 60px; }
+@media (max-width: 920px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .work.modo-escrever .leitura { display: none; }
+}
+.sec { display: grid; gap: 9px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sec:first-child { border-top: 0; padding-top: 0; }
+.sec > h2 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.sec > h2 .n { color: var(--lamp-ink); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+.in { width: 100%; min-width: 0; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+textarea.in { height: auto; padding: 8px 10px; line-height: 1.45; resize: vertical; }
+select.in { padding: 0 6px; }
+.ajuda { font-size: 12px; color: var(--fg-3); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.dois > * { flex: 1 1 160px; }
+.chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--fg-2); cursor: pointer; }
+.chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--lamp); }
+.cartao { display: grid; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.cartao.manchete { border-color: var(--lamp); }
+.cartao .cab { display: flex; align-items: center; gap: 6px; }
+.cartao .cab b { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-3); }
+.cartao.manchete .cab b { color: var(--lamp-ink); }
+.cartao .cab .grow { flex: 1; }
+.marcas { display: inline-flex; gap: 4px; }
+.marcas .ib { width: 28px; height: 26px; border-color: var(--line); font-family: var(--f-txt); font-size: 14px; }
+.vazio-ed { font-size: 13px; color: var(--fg-3); margin: 0; }
+.carta-ch { display: grid; gap: 6px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); font-size: 13.5px; }
+.carta-ch .de { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--fg-3); }
+.carta-ch .de b { color: var(--fg); }
+.carta-ch .txt { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
+.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid var(--line-strong); color: var(--fg-2); white-space: nowrap; }
+.tag.esperando { color: var(--lamp-ink); border-color: var(--lamp); }
+.tag.saiu { color: var(--ok); border-color: var(--ok); }
+.tag.nao { color: var(--danger); border-color: var(--danger); }
+details.dobra > summary { cursor: pointer; font-size: 13px; color: var(--fg-2); }
+details.dobra[open] > summary { margin-bottom: 8px; }
+
+/* ---- a folha do jornal ---- */
+.folha {
+  --grao: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .22  0 0 0 0 .1  0 0 0 .11 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  position: relative; max-width: 1020px; margin: 14px auto 18px; padding: 26px clamp(16px, 3.4vw, 38px) 34px; color: var(--tinta);
+  background: var(--grao), radial-gradient(ellipse at 18% 8%, rgba(255, 252, 238, .55), transparent 58%), radial-gradient(ellipse at 85% 95%, rgba(128, 82, 28, .2), transparent 55%), linear-gradient(var(--papel), var(--papel-2));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .45), inset 0 0 90px rgba(112, 72, 22, .26); border-radius: 3px;
+  font: 16px/1.55 var(--f-txt); overflow-wrap: anywhere;
+}
+.folha .cabeca { text-align: center; border-bottom: 4px double var(--filete); padding-bottom: 6px; margin-bottom: 16px; }
+.folha .lema { font: 12.5px/1.2 var(--f-sc); letter-spacing: .12em; color: var(--tinta-2); }
+.folha .nome { font: 400 clamp(34px, 7.4vw, 72px)/1.06 var(--f-nome); margin: 4px 0 8px; color: var(--tinta); }
+.folha .faixa { display: flex; justify-content: space-between; align-items: center; gap: 6px 14px; flex-wrap: wrap; border-top: 1px solid var(--filete); padding: 5px 2px 1px; font: 14px/1.3 var(--f-sc); letter-spacing: .03em; }
+.folha .faixa .clima { display: inline-flex; align-items: center; gap: 6px; }
+.folha .faixa svg { flex: none; }
+.folha h2, .folha h3 { color: var(--tinta); }
+.folha p { margin: 0 0 9px; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+.folha .ass { font-style: italic; text-align: right; margin: 4px 0 0; color: var(--tinta-2); font-size: .94em; }
+.folha .manchete h2 { font: 900 clamp(27px, 4.6vw, 48px)/1.08 var(--f-tit); text-align: center; margin: 2px 0 12px; }
+.folha .manchete .texto { max-width: 46em; margin: 0 auto; display: flow-root; }       /* (a letra grande do começo fica dentro do texto) */
+/* duas colunas só com texto comprido: com pouco texto, a letra grande do começo não cabe na coluna e pula para a outra */
+.folha .manchete .texto.colunas { max-width: none; columns: 2 260px; column-gap: 28px; column-rule: 1px solid rgba(58, 42, 24, .35); }
+.folha .manchete .texto > p:first-child::first-letter { float: left; font: 900 3.3em/.86 var(--f-tit); margin: 5px 7px 0 0; }
+.folha .materias { columns: 3 230px; column-gap: 26px; column-rule: 1px solid rgba(58, 42, 24, .35); margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--filete); }
+.folha .materia { break-inside: avoid; margin: 0 0 18px; }
+.folha .materia h3 { font: 700 21px/1.2 var(--f-tit); margin: 0 0 7px; }
+.folha .dest { border: 3px double var(--filete); padding: 10px 12px; background: rgba(255, 250, 230, .22); }
+.folha .manchete.dest { padding: 12px 16px; }
+.folha .secao { font: 16px/1 var(--f-sc); letter-spacing: .14em; text-align: center; border-top: 2px solid var(--filete); border-bottom: 1px solid var(--filete); padding: 7px 0 6px; margin: 24px 0 14px; }
+.folha .notas { columns: 3 210px; column-gap: 20px; }
+.folha .nota { break-inside: avoid; margin: 0 0 12px; padding: 9px 11px; border: 1px solid rgba(58, 42, 24, .55); font-size: 14.5px; line-height: 1.45; }
+.folha .nota p { text-align: left; margin-bottom: 5px; }
+.folha .nota p:last-child, .folha .carta p:last-child { margin-bottom: 0; }
+.folha .cartas { columns: 2 280px; column-gap: 28px; column-rule: 1px solid rgba(58, 42, 24, .35); }
+.folha .carta { break-inside: avoid; margin: 0 0 16px; font-size: 15px; }
+.folha .carta .ass::before { content: "— "; }
+.folha .fim { text-align: center; margin-top: 22px; font: 18px/1 var(--f-tit); letter-spacing: .5em; color: var(--tinta-2); }
+.folha .vazio-folha { text-align: center; margin: 26px 0; font: italic 17px/1.5 var(--f-txt); color: var(--tinta-2); }
+.folha b, .folha strong { font-weight: 700; }
+.aviso-folha { max-width: 1020px; margin: 10px auto 0; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-size: 13px; }
+
+/* ---- as cartas de quem joga ---- */
+.cartas-jog { max-width: 1020px; margin: 0 auto; display: grid; gap: 12px; padding: 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.cartas-jog h2 { margin: 0; font: 600 19px/1.2 var(--display); color: var(--lamp-ink); }
+.cartas-jog .lista { display: grid; gap: 8px; }
+.cartas-jog .minha { display: grid; gap: 5px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.cartas-jog .minha .txt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; }
+.cartas-jog .minha .de { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--fg-3); }
+
+/* ---- avisos e janelas ---- */
+.toasts { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(560px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 4px 6px; }
+dialog.dl { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); padding: 18px; width: min(460px, calc(100vw - 24px)); box-shadow: var(--shadow); }
+dialog.dl::backdrop { background: rgba(5, 7, 12, .55); }
+dialog.dl h2 { margin: 0 0 8px; font: 600 21px/1.2 var(--display); color: var(--lamp-ink); }
+dialog.dl p { margin: 0 0 12px; color: var(--fg-2); }
+dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.vazio { margin: 40px auto; max-width: 520px; text-align: center; color: var(--fg-2); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <span class="brand">Jornal</span>
+    <div class="seg" id="modos" role="group" aria-label="O que ver" hidden>
+      <button type="button" data-modo="escrever" aria-pressed="true">Escrever</button>
+      <button type="button" data-modo="ver" aria-pressed="false">Como os jogadores verão</button>
+      <button type="button" data-modo="noar" aria-pressed="false">Publicado</button>
+    </div>
+    <span class="grow"></span>
+    <span class="salvo" id="salvo" aria-live="polite"></span>
+    <button type="button" class="btn sm" id="btDesfazer" hidden disabled title="Desfazer (Ctrl+Z)">Desfazer</button>
+    <button type="button" class="btn pri" id="btPublicar" hidden>Publicar…</button>
+  </header>
+  <main class="work" id="work">
+    <section class="ed" id="ed" aria-label="Editor do jornal" hidden></section>
+    <section class="leitura" id="leitura" aria-label="O jornal"></section>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog class="dl" id="dlg"></dialog>
+<script src="../tc/ponte.js?v=12"></script>
+<script src="../mundo/nucleo.js?v=7"></script>
+<script src="nucleo.js?v=1"></script>
+<script src="jornal.js?v=1"></script>
+</body>
+</html>

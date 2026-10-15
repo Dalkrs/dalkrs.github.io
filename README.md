@@ -4,6 +4,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 | Aba | O que é |
 |---|---|
+| **Jornal** | O jornal da mesa, uma página só, sempre a de agora: o mestre escreve (o nome, a data do mundo pelo calendário de um mapa, o clima, matérias com destaque, negrito e itálico, boatos e anúncios) e publica; os jogadores leem e mandam cartas, assinadas por um personagem ou anônimas — o mestre decide quais saem. |
 | **Cenas** | O mapa tático: tokens, barras (com sobrevida e, quando a ficha manda, abaixo de zero), condições, turnos, paredes, luz, névoa, efeitos, terreno com altura, a bolsa do personagem usada pelo token — e o combate: rolar atributo pelo token (F), disputa (C), puxar um grupo das Fichas e o ataque com defesa. |
 | **Mapa-múndi** | O mapa do mundo da campanha: o desenho à mão do terreno (com textura), carimbos, textos, rios, estradas e trilhas, a grade de hexágonos com o terreno de cada um, marcadores, grupos viajando (em cubos, de hexágono em hexágono), regiões, facções e zonas de guerra, calendário, névoa e rumores. |
 | **Acampamento** | A cena da fogueira: quem está no acampamento (com a aura da emoção de cada um), as provisões (rações com efeito), melhorias e equipamentos (para todos ou só para alguns), a caravana, os descansos e os momentos. |
@@ -50,7 +51,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `index.html` | A casca: barra com a marca, as abas, a conta, a mesa e a mesa ao vivo. Cada sistema roda na própria página, dentro de uma moldura. |
 | `versao.json` | A versão publicada (a mesma de `VERSAO`, na casca). A casca aberta a consulta de tempos em tempos: se for outra, mostra o botão "Versão nova" na barra — nada recarrega sozinho. Os dois mudam juntos a cada publicação. |
 | `novidades.json` | O que muda em cada versão, a mais nova primeiro: título, data e os itens (`novo`, `melhorou` ou `consertado`; `mestre: true` marca o que é só do mestre). Aparece na janela do botão "Versão nova" (o que a versão nova traz) e no item "Novidades" do menu da conta (e no link "Novidades do site", na janela de entrar). Uma bolinha no canto do botão da conta fica acesa, em cada aparelho, até a pessoa abrir a lista; nada abre sozinho. **Toda publicação ganha uma entrada aqui**, com a mesma versão de `VERSAO` (o `site.test.js` confere). |
-| `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
+| `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
 | `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade — ou, com `TC_LOCAL`, o banco local de ensaio. |
@@ -433,6 +434,39 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   aparece, e quem usa desconta à mão: "uso: 15 SP · 7 Energia", na Árvore e na ficha. Um grau novo começa com o custo
   do anterior.
 
+### O Jornal (lote 6)
+
+- **Uma página só, sempre a de agora.** O Jornal da mesa (`jornal/`) é a primeira aba. Quem mestra o Jornal (o
+  mestre, ou o auxiliar com a aba Jornal liberada) escreve no rascunho (`jornal:rascunho`, só ele vê) e publica
+  (`jornal:pub`, a mesa lê): o publicado é a cópia do rascunho com a data do mundo, a hora (`em`) e o número da
+  publicação (`n`). Não há edições guardadas nem arquivo: publicar de novo troca a página. Desfazer a publicação volta
+  o publicado de antes (e o que cada jogador sabia das cartas dele); se não havia, o documento sai e os jogadores
+  voltam a ler "ainda não saiu".
+- **O editor**, com a folha ao lado (como os jogadores vão ver), acompanhando enquanto se escreve: o nome no alto (de
+  começo, "O Arauto"), a data do mundo (o dia do calendário de um mapa do Mapa-múndi, escolhido pelo mestre —
+  `MundoNucleo.textoData(cal, cal.dia)` —, gravada no publicado na hora de publicar), o clima (nove, cada um com o
+  ícone, e uma frase), as matérias (a primeira é a manchete; título, texto com `**negrito**` e `_itálico_` — os botões
+  N e I envolvem o trecho escolhido —, assinatura e destaque, com a moldura dupla; a ordem pelas setas), os boatos e
+  anúncios (notas curtas, que o mestre escreve) e as cartas dos leitores. Cada mudança é um passo de desfazer (o botão
+  e Ctrl+Z); tirar uma matéria, nota ou carta avisa com Desfazer. "Como os jogadores verão" mostra o rascunho na
+  página inteira; "Publicado", o que está no ar. Fora de uma mesa, o rascunho e o publicado ficam no navegador. A
+  lógica (sem tela) é `jornal/nucleo.js`.
+- **As cartas.** O jogador escreve ao jornal assinando por um personagem dele ou anônima (`jornal:cartas:<usuário>`:
+  dono ele, visível só para quem mestra; o banco deixa o jogador criar só o dele, SQL 0016). Quem mestra vê as que
+  chegaram, em ordem de chegada: "Pôr no jornal" (a carta entra no rascunho com a assinatura; ali o texto pode ser
+  corrigido) ou "Não publicar" (fica guardada em "Não saíram", de onde ainda pode ir para o jornal). O que aconteceu
+  com cada carta vai em `jornal:resp:<usuário>` (quem mestra escreve, com o jogador como dono, para só os dois verem):
+  "Saiu no jornal" quando ela é publicada, "Não saiu" quando o mestre recusa; sem nada, "Esperando o mestre" — e,
+  enquanto espera, o jogador pode retirá-la.
+- **Saiu o Jornal.** Quando sai uma edição que a pessoa ainda não leu (a hora dela, `em`, diferente da guardada no
+  aparelho, `tinycats:jornal:visto:<mesa>`), a aba ganha uma bolinha e o Jornal abre para ela — ao entrar na mesa ou
+  já dentro dela —, com o aviso "Saiu o Jornal." e "Voltar para <aba>". Se ela está escrevendo (na mesa ao vivo ou
+  num campo de um sistema) ou com uma janela aberta, nada abre por cima: fica a bolinha e o aviso com "Ler". Com o
+  site em segundo plano, abre quando ela voltar. Para quem mestra o Jornal (é quem publica), nada abre sozinho.
+- **Escrever sem ser atrapalhado.** O editor se redesenha por cima (como o painel do Mapa-múndi): o campo em que a
+  pessoa escreve não sai do lugar nem perde o que ainda não foi gravado quando chega uma carta, e o clique no campo
+  seguinte cai nele.
+
 ### O mapa-múndi: a grade, o terreno e a viagem
 
 - **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
@@ -637,7 +671,8 @@ auxiliar (`jogando`) e as abas dele (`abas`). Três perguntas decidem tudo, e s�
   na mesa ao vivo, envia imagens para a pasta da mesa e mexe nas fichas que os jogadores veem.
 - `privado.mestra(mesa, aba)` — o mestre, ou o auxiliar mestrando com a aba liberada. Cada documento é de uma aba,
   pelo nome (`cena:`/`cenas:` → Cenas, `mundo:` → Mapa-múndi, `acampamento` → Acampamento, `fichas:` → Fichas,
-  `arvore:` → Árvore, `rol:` → Rolador): só quem mestra a aba recebe e grava os documentos de mestre dela. As fichas
+  `arvore:` → Árvore, `rol:` → Rolador, `jornal:` → Jornal): só quem mestra a aba recebe e grava os documentos de
+  mestre dela. As fichas
   escondidas (e trocar dono, visibilidade ou apagar uma ficha) são da aba Fichas.
 
 Quem nomeia é o mestre (`definir_auxiliar`); quem alterna entre mestrar e jogar é o próprio auxiliar
@@ -828,7 +863,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -862,7 +897,11 @@ mesa, com o fundo no Storage, chegando à jogadora) e `arvore-lote6.rede` (com o
 trancado fora do pacote, "Aberto para" levando a cópia às skills, o aviso só para o dono — e o abrir desfeito, que
 não avisa —, o jogador aprendendo o caminho, as contas e o custo de uso com os números da ficha, na Árvore e nas
 fichas do mestre e do jogador, o mestre mudando o caminho, fechando e abrindo de novo — o bônus deixa de contar e
-volta —, e no banco quem escreve e quem lê a linha "para" alguém). `vivo.js` confere o site publicado.
+volta —, e no banco quem escreve e quem lê a linha "para" alguém) e `jornal.rede` (com o mestre e dois jogadores: a
+aba Jornal primeiro, as cartas antes da primeira edição — e o mestre vendo-as chegar enquanto escreve —, "Pôr no
+jornal" e "Não publicar", publicar com a data do mapa, o Jornal abrindo sozinho para quem está nas Fichas, a bolinha e
+o "Ler" para quem está escrevendo, o site em segundo plano e o site fechado, desfazer a publicação e, no banco, quem
+lê e quem escreve cada documento do Jornal). `vivo.js` confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -907,5 +946,8 @@ encavalar, a lista em árvore). `mundo-lote6b` confere os terrenos novos (e a of
 cada hexágono (no canvas: cada um com o seu, o mesmo sempre igual, só a cor quando desligado, o mesmo para quem
 joga), a honra (o estilo, − e +, o motivo, o selo de −5 a +5, o histórico corrigido e tirado, quem joga vendo) e o
 painel da facção (recursos, população, apoio, o histórico automático, o que os jogadores veem). `mundo-mesa` confere
-também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
+lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
+itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma
+mudança de fora no meio da digitação, desfazer, publicar, os três modos, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).
