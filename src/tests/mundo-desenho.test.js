@@ -213,14 +213,14 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
     ok(await L.F.locator('#mundo svg .c-lin .rio').count() === 1, 'o rio é desenhado como uma faixa (que engrossa até a foz)');
     await escrever(L, 'o:' + id.rio + ':nome', 'Rio Azul');
     ok(await L.F.locator('#mundo svg .c-lin text.nome-linha textPath').textContent() === 'Rio Azul', 'o nome vai ao longo do rio');
-    // o contorno claro das letras acompanha o zoom: de perto, ele não engole as letras (antes, o nome virava um amontoado)
+    // o contorno das letras acompanha o zoom: de perto, ele não engole as letras (antes, o nome virava um amontoado)
     const halo = () => A(L, () => { const t = document.querySelector('#mundo svg .c-lin text.nome-linha'); return [+(parseFloat(getComputedStyle(t).strokeWidth) * t.getScreenCTM().a).toFixed(2), +t.getScreenCTM().a.toFixed(2)]; });
     const [h1] = await halo();
     await pairar(L, 520, 520);
     for (let i = 0; i < 12; i++) { await L.P.mouse.wheel(0, -400); await espera(60); }
     await espera(400);
     const [h2, z2] = await halo();
-    ok(z2 > 3 && Math.abs(h1 - 2.4) < 0.25 && Math.abs(h2 - 2.4) < 0.25, 'o contorno claro do nome fica do mesmo tamanho na tela de longe e de perto (de perto, ele não engole as letras): ' + j([h1, h2, z2]));
+    ok(z2 > 3 && Math.abs(h1 - 3) < 0.25 && Math.abs(h2 - 3) < 0.25, 'o contorno do nome fica do mesmo tamanho na tela de longe e de perto (de perto, ele não engole as letras): ' + j([h1, h2, z2]));
     await A(L, () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
     await L.P.keyboard.press('0'); await espera(300);
     ok((await obj(L, id.rio)).nome === 'Rio Azul' && (await halo())[1] < 1, '(a tecla 0 volta a mostrar o mapa inteiro)');
@@ -247,6 +247,20 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
     const camadas = await A(L, () => ({ ordem: [...document.querySelectorAll('#mundo svg.camadas > g')].map(g => g.getAttribute('class')).filter(c => /^c-(hex|reg|lin|car|nreg)$/.test(c)).join(),
       nome: !!document.querySelector('#mundo svg .c-nreg .rotulo-reg'), area: !!document.querySelector('#mundo svg .c-reg path.reg') }));
     ok(camadas.ordem === 'c-hex,c-reg,c-lin,c-car,c-nreg' && camadas.nome && camadas.area, 'a região fica por baixo da estrada, do rio e dos carimbos, e o nome dela por cima: ' + j(camadas));
+    // (lote 6) os nomes do mapa: letra Cinzel, clara, com contorno escuro — nos dois temas; o texto livre fica com a letra dele
+    const letras = () => A(L, () => {
+      const q = sel => { const t = document.querySelector(sel); if (!t) return null; const c = getComputedStyle(t); return { f: c.fontFamily.split(',')[0].replace(/["']/g, '').trim(), fill: c.fill, stroke: c.stroke, sw: c.strokeWidth }; };
+      return { reg: q('#mundo svg .c-nreg text.rotulo-reg'), rio: q('#mundo svg .c-lin text.nome-linha'), livre: q('#mundo svg .c-txt text.texto-livre') };
+    });
+    const luz = c => { const m = /rgba?\((\d+), (\d+), (\d+)/.exec(c || ''); return m ? 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3] : -1; };
+    for (const tema of ['dark', 'light']) {
+      await L.P.emulateMedia({ colorScheme: tema }); await espera(200);
+      const lt = await letras();
+      ok(!!lt.reg && lt.reg.f === 'Cinzel' && luz(lt.reg.fill) > 200 && luz(lt.reg.stroke) >= 0 && luz(lt.reg.stroke) < 40 && !!lt.rio && lt.rio.f === 'Cinzel' && luz(lt.rio.fill) > 150 && luz(lt.rio.stroke) >= 0 && luz(lt.rio.stroke) < 40 && !!lt.livre && lt.livre.f !== 'Cinzel',
+        'tema ' + (tema === 'dark' ? 'escuro' : 'claro') + ': os nomes do mapa (a região, o rio) em Cinzel, letra clara com contorno escuro; o texto livre continua com a letra escolhida: ' + j(lt));
+      await foto('desenho-nomes-' + tema);
+    }
+    await L.P.emulateMedia({ colorScheme: 'dark' }); await espera(150);
     await A(L, id => __mundo.App.mudar('tirar a região', m => { m.objs = m.objs.filter(o => o.id !== id); }), idReg);
     await espera(200);
     ok(await L.F.locator('#mundo svg .c-nreg .rotulo-reg').count() === 0, '(tirada a região, o nome dela sai junto)');

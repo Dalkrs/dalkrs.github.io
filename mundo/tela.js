@@ -901,7 +901,10 @@
     if (o.nome) {
       const ida = centro[centro.length - 1][0] >= centro[0][0], pid = idSvg('ln-', o.id);
       g0.append(s('path', { id: pid, class: 'lin-guia', d: ida ? d : caminho(centro.slice().reverse()) }));
-      const t = s('text', { class: 'nome-linha' + (o.estilo === 'rio' ? ' rio-nome' : ''), fill: misturar(cor, '#000000', 0.45), 'text-anchor': 'middle' });
+      // (o nome vai claro, com um toque da cor da linha, e contorno escuro — como os outros nomes do mapa, nos dois
+      //  temas. A cor vai no estilo da própria letra: como atributo, a regra geral "svg text" do CSS passava por cima)
+      const t = s('text', { class: 'nome-linha' + (o.estilo === 'rio' ? ' rio-nome' : ''), 'text-anchor': 'middle' });
+      t.style.fill = misturar(cor, '#f6efe0', 0.74);
       t.__w = o.estilo === 'rio' ? w * 0.55 : w * 1.1;
       t.append(s('textPath', { href: '#' + pid, startOffset: '50%', texto: curto(String(o.nome), 60) }));
       ajustarNomeLinha(t, zAplicado || V.z);
@@ -914,7 +917,7 @@
     // (o contorno vai no estilo da própria letra: como atributo, a regra geral "svg text" do CSS — o contorno de 3,2 px dos
     //  nomes de tamanho fixo — passava por cima dele, e de perto um contorno de 3,2 unidades do mapa engolia letras de
     //  1,75: o nome virava um amontoado)
-    t.style.strokeWidth = (2.4 / z).toFixed(3) + 'px';
+    t.style.strokeWidth = (3 / z).toFixed(3) + 'px';
   }
   // os desenhos (carimbos) vêm do núcleo como markup fixo; um molde de cada, clonado
   function molde(markup) {
@@ -1055,7 +1058,7 @@
     if (g && g.tipo === 'evento' && g.moveu && g.r > 0) {
       c.append(s('circle', { class: 'rasc', cx: um(g.p0.x), cy: um(g.p0.y), r: um(g.r) }));
       const fx = fixo(g.p0.x, g.p0.y);
-      fx.append(rotulo('raio: ' + textoDistancia(M, g.r).split(' · ')[0], -14));
+      fx.append(rotulo('raio: ' + textoDistancia(M, g.r).split(' · ')[0], -14, 'rotulo regua-txt'));
       c.append(fx);
     }
     if (regua) {

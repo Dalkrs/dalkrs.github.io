@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mapa-múndi · Tiny Cats</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@600;700&display=swap">
 <style>
 /* Mapa-múndi: a imagem do mundo no centro, com marcadores, grupos, regiões, eventos, rotas, facções e névoa por cima.
    Trilho de ferramentas à esquerda (só o mestre), painel à direita. Mesmas cores da mesa de cenas. */
@@ -20,6 +20,7 @@
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+  --mapa: "Cinzel", "Grenze", Georgia, serif;           /* os nomes do mapa (lote 6) */
 }
 @media (prefers-color-scheme: light) {
   :root {
@@ -89,6 +90,11 @@ button { cursor: pointer; }
 
 /* ---- o que vai por cima do mapa ---- */
 svg text { font-family: var(--ui); paint-order: stroke; stroke: rgba(10, 12, 18, .82); stroke-width: 3.2px; stroke-linejoin: round; fill: #f6efe0; pointer-events: none; user-select: none; }
+/* os nomes do mapa (lote 6): letra de pedra (Cinzel), clara, com um contorno escuro grosso — nos dois temas, para ler
+   bem sobre qualquer imagem. A régua e as siglas dos grupos continuam na letra do site. */
+svg text.rotulo, svg text.nome-linha { font-family: var(--mapa); font-weight: 700; }
+svg text.rotulo { fill: #f6efe0; stroke: rgba(10, 12, 18, .9); stroke-width: 3.8px; }
+svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .obj { cursor: pointer; }
 .t-sel .obj { cursor: grab; }
 .reg { fill-opacity: .2; fill-rule: evenodd; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -142,8 +148,7 @@ svg text.texto-livre { pointer-events: auto; paint-order: stroke; stroke-linejoi
 .lin-traco { fill: none; stroke-linejoin: round; }
 .lin-hit { fill: none; stroke: transparent; stroke-width: 16; vector-effect: non-scaling-stroke; }
 .lin-guia { fill: none; stroke: none; }
-svg text.nome-linha { font-family: 'IM Fell English', Georgia, serif; letter-spacing: .08em; stroke: rgba(246,239,224,.85); paint-order: stroke; }
-svg text.rio-nome { font-style: italic; }
+svg text.nome-linha { letter-spacing: .06em; stroke: rgba(10, 12, 18, .88); paint-order: stroke; }
 /* a zona de guerra: listras nas cores das duas facções; pulsa enquanto está ativa */
 .zona { fill-opacity: .36; }
 .zona-pulsa { animation: zona-pulsa 3s ease-in-out infinite; }
@@ -222,9 +227,9 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .c-nev, .c-rasc, .eve-pulso { pointer-events: none; }
 
 /* rótulos (dentro dos grupos de tamanho fixo: 1 unidade = 1 px na tela) */
-.rotulo { font-size: 12.5px; font-weight: 600; }
-.rotulo-reg { font-size: 11.5px; font-weight: 700; letter-spacing: .16em; fill: #efe6cf; }   /* nome de região: versal espaçado, como num mapa */
-.rotulo-linha { font-style: italic; }
+.rotulo { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.rotulo-reg { font-size: 12px; font-weight: 700; letter-spacing: .12em; }   /* nome de região: versal espaçado, como num mapa */
+.rotulo-linha { letter-spacing: .04em; }
 .sigla { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
 .sigla.escura { fill: #14171f; stroke: none; }
 .regua-txt { font-size: 13px; font-weight: 700; fill: #fff3d6; }
@@ -277,9 +282,9 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 
 /* tema claro: letra escura com halo claro lê melhor sobre o papel claro (e continua legível sobre a imagem) */
 @media (prefers-color-scheme: light) {
-  svg text { fill: #1c1a16; stroke: rgba(250, 247, 238, .9); }
+  svg text { fill: #1c1a16; stroke: rgba(250, 247, 238, .9); }      /* (os nomes do mapa ficam claros: a regra deles é mais específica) */
+  svg text.rotulo.regua-txt { fill: #4a2f00; stroke: rgba(250, 247, 238, .9); }
   .reg.semfac { fill: #7d869a; stroke: #59627a; }        /* o cinza claro sumia no papel claro */
-  .rotulo-reg { fill: #3a3325; }
   .regua-txt { fill: #4a2f00; }
   .sigla { fill: #fff; stroke: rgba(20, 23, 31, .75); }
   .sigla.escura { fill: #14171f; stroke: none; }
@@ -520,7 +525,7 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <script src="../tc/ponte.js?v=12"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="nucleo.js?v=5"></script>
-<script src="tela.js?v=5"></script>
+<script src="tela.js?v=6"></script>
 <script src="painel.js?v=7"></script>
 <script src="mundo.js?v=6"></script>
 </body>

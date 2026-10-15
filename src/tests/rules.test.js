@@ -396,7 +396,73 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const s = R.equiparItem(itens, 'el', true), x = R.equiparItem(itens, 'nada', true);
   ok(j(s.guardados) === j([]) && s.itens[3].equipado === true && j(x.guardados) === j([]) && x.itens.length === itens.length && x.itens !== itens, 'item sem grupo: só ele; id que não existe: nada muda');
   ok(R.grupoDeTroca({ troca: '  Arma principal ' }) === 'Arma principal' && R.grupoDeTroca({}) === '' && R.grupoDeTroca(null) === '' && R.grupoDeTroca({ troca: 'x'.repeat(60) }).length === 40, 'o nome do grupo, arrumado (até 40 letras)');
-  ok(j(R.equiparItem(null, 'a', true)) === j({ itens: [], guardados: [] }), 'sem lista: nada');
+  ok(j(R.equiparItem(null, 'a', true)) === j({ itens: [], guardados: [], trocados: [], equipados: [], trocas: [] }), 'sem lista: nada');
+  ok(j(r.trocados) === j(['e1', 'e3']) && j(r.equipados) === j([]) && r.itens[1].uso === 1, 'os guardados pelo grupo de troca vêm à parte; o equipado ganha a ordem de uso (1)');
+}
+// ---------- itens complementares (lote 6): a bainha e a luva só valem com a espada ----------
+{
+  const it = (id, nome, o) => Object.assign({ id, nome, equipado: false, bonus: {} }, o);
+  const base = [
+    it('e1', 'Espada do Gelo I', { troca: 'Espada de gelo', equipado: true, bonus: { FOR: 2 }, uso: 3 }),
+    it('e2', 'Espada do Gelo II', { troca: 'Espada de gelo', bonus: { FOR: 4 }, uso: 1 }),
+    it('b', 'Bainha de Selene', { req: 'g:Espada de gelo', equipado: true, bonus: { DFF: 1 } }),
+    it('l', 'Luva da Geada', { req: 'g: espada de GÊLO', equipado: true, bonus: { DES: 1 } }),
+    it('a', 'Anel da Bainha', { req: 'i:b', bonus: { CAN: 3 } }),
+    it('x', 'Elmo', { equipado: true, bonus: { VIT: 1 } }),
+  ];
+  const eqs = l => l.filter(x => x && x.equipado !== false).map(x => x.id + (x.volta ? '*' : '')).join(',');
+  const marcas = l => l.filter(x => x && x.volta).map(x => x.id).join(',');
+  ok(j(R.reqDoItem(base[2])) === j({ t: 'g', g: 'Espada de gelo' }) && j(R.reqDoItem(base[4])) === j({ t: 'i', id: 'b' }) && R.reqDoItem(base[0]) === null && R.reqDoItem({ req: 'g:  ' }) === null && R.reqDoItem({ req: 'z:b' }) === null && R.reqDoItem({ req: 7 }) === null,
+    'o que o item precisa: "i:<id>" (um item) ou "g:<grupo>" (um grupo de troca); o resto não vale');
+  ok(R.nomeDoReq(base[2], base) === 'Espada de gelo' && R.nomeDoReq(base[4], base) === 'Bainha de Selene' && R.nomeDoReq(base[0], base) === '' && R.nomeDoReq({ req: 'i:sumiu' }, base) === '', 'o nome do requisito, para a tela');
+  ok(base.map(x => R.itemAtivo(x, base)).join() === 'true,false,true,true,false,true', 'com a espada (um nível qualquer do grupo), a bainha e a luva valem (sem diferença de maiúsculas e acentos no grupo)');
+  // guardar a espada guarda as duas, marcadas para voltar
+  let r = R.equiparItem(base, 'e1', false);
+  ok(eqs(r.itens) === 'x' && marcas(r.itens) === 'b,l' && j(r.guardados) === j(['b', 'l']) && j(r.trocados) === j([]) && j(r.equipados) === j([]), 'guardar a espada guarda a bainha e a luva (marcadas para voltar): ' + eqs(r.itens));
+  ok(R.textoDoEquipar(r.itens, r, 'e1', false) === 'Guardou Espada do Gelo I; guardou junto: Bainha de Selene e Luva da Geada.', 'o aviso diz o que foi junto: ' + R.textoDoEquipar(r.itens, r, 'e1', false));
+  ok(base[2].equipado === true && r.itens[5] === base[5], 'o recebido não muda, e o que não mudou continua o mesmo objeto');
+  // equipar outro nível da espada: as duas voltam
+  let r2 = R.equiparItem(r.itens, 'e2', true);
+  ok(eqs(r2.itens) === 'e2,b,l,x' && marcas(r2.itens) === '' && j(r2.equipados) === j(['b', 'l']) && R.textoDoEquipar(r2.itens, r2, 'e2', true) === 'Equipou Espada do Gelo II; junto: Bainha de Selene e Luva da Geada.', 'equipar outro nível da espada traz as duas de volta: ' + R.textoDoEquipar(r2.itens, r2, 'e2', true));
+  // trocar de nível não guarda as duas
+  let r3 = R.equiparItem(r2.itens, 'e1', true);
+  ok(eqs(r3.itens) === 'e1,b,l,x' && j(r3.trocados) === j(['e2']) && j(r3.guardados) === j(['e2']) && R.textoDoEquipar(r3.itens, r3, 'e1', true) === 'Equipou Espada do Gelo I no lugar de Espada do Gelo II.', 'trocar de nível guarda só a outra espada: ' + R.textoDoEquipar(r3.itens, r3, 'e1', true));
+  // equipar a bainha sem espada: a espada vem junto (a última usada do grupo)
+  const semEspada = R.equiparItem(R.equiparItem(base, 'e1', false).itens, 'l', false).itens;      // (a luva guardada à mão: perde a marca)
+  ok(eqs(semEspada) === 'x' && marcas(semEspada) === 'b', '(sem espada; a luva guardada à mão não fica marcada)');
+  let r4 = R.equiparItem(semEspada, 'b', true);
+  ok(eqs(r4.itens) === 'e1,b,x' && j(r4.equipados) === j(['e1']) && R.textoDoEquipar(r4.itens, r4, 'b', true) === 'Equipou Bainha de Selene; junto: Espada do Gelo I.', 'equipar a bainha equipa a espada usada por último (a I, uso 3) — a luva, guardada à mão, fica: ' + R.textoDoEquipar(r4.itens, r4, 'b', true));
+  const usouII = R.equiparItem(R.equiparItem(base, 'e2', true).itens, 'e2', false).itens;
+  ok(eqs(R.equiparItem(usouII, 'b', true).itens) === 'e2,b,l,x', 'se a última usada foi a II, é ela que vem (e a luva, que tinha saído junto, volta)');
+  // em cadeia: o anel precisa da bainha, que precisa da espada
+  let r5 = R.equiparItem(semEspada, 'a', true);
+  ok(eqs(r5.itens) === 'e1,b,a,x' && j(r5.equipados) === j(['e1', 'b']) && R.textoDoEquipar(r5.itens, r5, 'a', true) === 'Equipou Anel da Bainha; junto: Espada do Gelo I e Bainha de Selene.', 'em cadeia: o anel traz a bainha, que traz a espada');
+  let r6 = R.equiparItem(r5.itens, 'e1', false);
+  ok(eqs(r6.itens) === 'x' && marcas(r6.itens) === 'b,a', 'guardar a espada derruba a cadeia toda (as duas marcadas)');
+  ok(eqs(R.equiparItem(r6.itens, 'e1', true).itens) === 'e1,b,a,x', 'e a espada de volta traz a cadeia toda');
+  // as contas: o complementar sem o requisito não soma
+  const pc = { id: 'p', nome: 'P', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, defesas: {}, recursos: [] };
+  const conta = itens => { const k = R.calcular(Object.assign({}, pc, { itens }), cfg0); return [k.eq.FOR, k.eq.DFF, k.eq.DES, k.eq.VIT].join(); };
+  ok(conta(base) === '2,1,1,1', 'com a espada: a espada, a bainha, a luva e o elmo somam');
+  const torto = base.map(x => (x.id === 'e1' ? Object.assign({}, x, { equipado: false }) : x));      // (a bainha "equipada" sem espada: um estado de antes)
+  ok(conta(torto) === '0,0,0,1', 'sem espada, a bainha e a luva marcadas como equipadas não somam (só o elmo)');
+  const itensDef = [it('s', 'Escudo', { equipado: false, troca: 'Mão' }), it('t', 'Talismã', { req: 'i:s', equipado: true, rec: { hp: 10 }, def: { FOGO: 3 } })];
+  const ex = R.calcular(Object.assign({}, pc, { itens: itensDef, recursos: [{ id: 'hp', nome: 'HP', fml: '10' }] }), cfg0);
+  ok(ex.recursos[0].val === 10 && ex.defEsp.FOGO === 0, 'nem nas barras nem nas defesas específicas: ' + j({ hp: ex.recursos[0].val, fogo: ex.defEsp.FOGO }));
+  // o requisito que entra no lugar de outro: o aviso diz quem entrou no lugar de quem
+  const arco = [it('cl', 'Clava', { troca: 'Arma', equipado: true }), it('ar', 'Arco curto', { troca: 'Arma' }), it('al', 'Aljava', { req: 'i:ar' })];
+  const ra = R.equiparItem(arco, 'al', true);
+  ok(eqs(ra.itens) === 'ar,al' && j(ra.trocas) === j([{ por: 'ar', saiu: 'cl' }]) && R.textoDoEquipar(ra.itens, ra, 'al', true) === 'Equipou Aljava; junto: Arco curto (no lugar de Clava).', 'equipar a aljava traz o arco, que entra no lugar da clava: ' + R.textoDoEquipar(ra.itens, ra, 'al', true));
+  // o que não prende: requisito que sumiu, grupo vazio, um precisa do outro
+  ok(R.itemAtivo(it('z', 'Z', { req: 'i:sumiu', equipado: true }), base) && R.itemAtivo(it('z', 'Z', { req: 'g:ninguém', equipado: true }), base), 'requisito que não está na ficha não prende');
+  const ciclo = [it('p1', 'P1', { req: 'i:p2', equipado: true }), it('p2', 'P2', { req: 'i:p1', equipado: true })];
+  ok(R.itemAtivo(ciclo[0], ciclo) && R.itemAtivo(ciclo[1], ciclo) && eqs(R.equiparItem(ciclo, 'p1', false).itens) === '', 'um precisa do outro: equipados, os dois valem; guardar um guarda o outro');
+  ok(eqs(R.equiparItem(R.equiparItem(ciclo, 'p1', false).itens, 'p2', true).itens) === 'p1,p2', 'e equipar um traz o outro (sem dar volta para sempre)');
+  // o que volta respeita o grupo de troca dele
+  const dupla = [it('w', 'Varinha', { troca: 'Mão', equipado: true }), it('k', 'Cristal', { troca: 'Foco', req: 'i:w', equipado: true }), it('f', 'Orbe', { troca: 'Foco' })];
+  const sem = R.equiparItem(dupla, 'w', false).itens, comOrbe = R.equiparItem(sem, 'f', true).itens;
+  ok(eqs(sem) === '' && marcas(sem) === 'k' && eqs(comOrbe) === 'f' && marcas(comOrbe) === 'k', '(o cristal saiu com a varinha; o orbe, do mesmo grupo de troca, foi equipado)');
+  ok(eqs(R.equiparItem(comOrbe, 'w', true).itens) === 'w,f' && marcas(R.equiparItem(comOrbe, 'w', true).itens) === '', 'a varinha de volta não traz o cristal: o orbe ocupa o grupo dele (e a marca sai)');
 }
 // ---------- a fadiga (lote 6): uma pilha de 5 a 0, no estado ----------
 {

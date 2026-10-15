@@ -225,6 +225,7 @@ const Nuvem = (() => {
     const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
+    S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
     const cv = idx.noAr ? dadosMestre(docV(idx.noAr)) : null, pv = dadosMestre(PUB_V), daProj = !!idx.noAr && !!pv && pv.id === idx.noAr;
@@ -377,7 +378,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null } };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null }, pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -466,6 +467,7 @@ const Nuvem = (() => {
     for (const id of S.order) if (!ordem.includes(id)) ordem.push(id);
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
+    S.pastas = n.pastas;
     Store.meta();
   }
   // (a cena apontada pode ainda nem ter chegado a este aparelho: o que vale é o que o índice diz, guardado como veio)
@@ -923,8 +925,24 @@ const Nuvem = (() => {
     return feitas;
   }
 
+  /* As cenas que um marcador do Mapa-múndi abre (lote 6): { idDaCena: ['Urgm', …] } — dos mapas da mesa (o mestre os
+     recebe todos). Só para mostrar um ícone na lista de cenas: nada aqui muda os mapas. */
+  function noMundo() {
+    const out = {};
+    if (modo !== 'mestre' || !D) return out;
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:')) continue;
+      const d = dadosDe(l), objs = d && Array.isArray(d.objs) ? d.objs : [];
+      for (const o of objs) {
+        if (!ehObj(o) || o.k !== 'm' || !ehObj(o.liga) || o.liga.t !== 'cena' || typeof o.liga.id !== 'string') continue;
+        const nome = String(o.nome || '').trim().slice(0, 40) || 'um marcador';
+        (out[o.liga.id] = out[o.liga.id] || []).includes(nome) || out[o.liga.id].push(nome);
+      }
+    }
+    return out;
+  }
   return {
-    iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado,
+    iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado, noMundo,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
     noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,

@@ -430,10 +430,10 @@ const ASSETS = {
 
 /* ============ o índice e as cenas que vêm de fora ============ */
 {
-  eq(Proj.normIndice(null), { v: 1, ordem: [], atual: null, noAr: null, tx: null, prefs: { barDefaults: null } }, 'índice vazio');
+  eq(Proj.normIndice(null), { v: 1, ordem: [], atual: null, noAr: null, tx: null, prefs: { barDefaults: null }, pastas: { lista: [], de: {} } }, 'índice vazio');
   eq(Proj.normIndice({ ordem: ['cena_a', 'cena_a', 'com espaço', 7, 'cena_b'], atual: 'cena_b', noAr: '../x', prefs: { barDefaults: [{ n: 'PV', v: 3, m: 5, lixo: 1 }], anim: false } }),
-    { v: 1, ordem: ['cena_a', 'cena_b'], atual: 'cena_b', noAr: null, tx: null, prefs: { barDefaults: [{ n: 'PV', c: '#d6524b', v: 3, m: 5, k: 'bar', on: true, vis: '' }] } }, 'índice sujo: ids estranhos e repetidos saem; as barras padrão são limpas');
-  eq(Proj.normIndice({ ordem: ['pub', 'pedido', 'cena_a'], atual: 'pub', noAr: 'pedido' }), { v: 1, ordem: ['cena_a'], atual: null, noAr: null, tx: null, prefs: { barDefaults: null } }, 'nenhuma cena se chama "pub" nem "pedido"');
+    { v: 1, ordem: ['cena_a', 'cena_b'], atual: 'cena_b', noAr: null, tx: null, prefs: { barDefaults: [{ n: 'PV', c: '#d6524b', v: 3, m: 5, k: 'bar', on: true, vis: '' }] }, pastas: { lista: [], de: {} } }, 'índice sujo: ids estranhos e repetidos saem; as barras padrão são limpas');
+  eq(Proj.normIndice({ ordem: ['pub', 'pedido', 'cena_a'], atual: 'pub', noAr: 'pedido' }), { v: 1, ordem: ['cena_a'], atual: null, noAr: null, tx: null, prefs: { barDefaults: null }, pastas: { lista: [], de: {} } }, 'nenhuma cena se chama "pub" nem "pedido"');
   eq([Proj.normIndice({ noAr: 'cena_a', tx: 'ap1k2j3h4g' }).tx, Proj.normIndice({ noAr: 'cena_a', tx: 'com espaço' }).tx, Proj.normIndice({ noAr: 'cena_a', tx: { toString: 1 } }).tx], ['ap1k2j3h4g', null, null], 'o índice guarda qual aparelho do mestre transmite a cena que está no ar (só se for um código de verdade)');
   // o resumo que serve de versão do mapa: o mesmo conteúdo dá sempre o mesmo, conteúdo diferente dá outro
   ok(typeof Proj.resumo('abc') === 'string' && Proj.resumo('abc') === Proj.resumo('abc') && Proj.resumo('abc') !== Proj.resumo('abd') && Proj.resumo('') !== Proj.resumo(' ') && new Set(Array.from({ length: 2000 }, (_, i) => Proj.resumo('mapa ' + i))).size === 2000, 'o resumo do mapa: igual para o mesmo texto, diferente para textos diferentes');
@@ -540,6 +540,25 @@ const ASSETS = {
   ok(Store.scene().turn.list.find(e => e.id === fx.id).inv === true, 'a faixa do grupo também fica invisível (uma linha)');
   Act.bandSplit(fx.id);
   eq(Store.scene().turn.list.filter(e => e.token === g1.id || e.token === g2.id).map(e => !!e.inv), [true, true], 'desfeita, a faixa invisível dá linhas invisíveis para cada lobo');
+}
+
+/* ============ (lote 6, Cenas) as pastas da lista de cenas: só do mestre, no índice ============ */
+{
+  const p = Proj.normPastas({ lista: [{ id: 'pa_1', nome: '  Lugares   do mundo ' }, { id: 'pa_1', nome: 'repetida' }, { id: 'xx_2', nome: 'id ruim' }, { id: 'pa_3', nome: '   ' }, { id: 'pa_4', nome: 'C'.repeat(60) }, null, 'x'],
+    de: { cena_a: 'pa_1', cena_b: 'pa_9', 'id ruim!': 'pa_1', pub: 'pa_1', cena_c: 'pa_4' } });
+  eq(p.lista.map(x => x.id + ':' + x.nome.length), ['pa_1:16', 'pa_4:40'], 'as pastas: id "pa_…" sem repetir, nome arrumado (até 40 letras), sem nome não vale');
+  eq(p.lista[0].nome, 'Lugares do mundo', '(o nome sem os espaços a mais)');
+  eq(p.de, { cena_a: 'pa_1', cena_c: 'pa_4' }, 'cada cena numa pasta que existe (id de cena válido); o resto sai');
+  eq(Proj.normPastas(null), { lista: [], de: {} }, 'sem nada: nenhuma pasta');
+  const muitas = Proj.normPastas({ lista: Array.from({ length: 60 }, (_, i) => ({ id: 'pa_' + i, nome: 'P' + i })) });
+  ok(muitas.lista.length === 40, 'no máximo 40 pastas');
+  const ix = Proj.normIndice({ ordem: ['cena_a'], pastas: { lista: [{ id: 'pa_1', nome: 'Combates' }], de: { cena_a: 'pa_1' } } });
+  eq(ix.pastas, { lista: [{ id: 'pa_1', nome: 'Combates' }], de: { cena_a: 'pa_1' } }, 'o índice das cenas guarda as pastas');
+  eq(Proj.normIndice({}).pastas, { lista: [], de: {} }, 'índice de antes das pastas: nenhuma');
+  // as pastas não vão para os jogadores: não moram na cena (a projeção não as conhece)
+  const sc = newScene('com pasta');
+  const { m, v } = Proj.projetar(sc, {}, new Set());
+  ok(!('pastas' in m) && !('pastas' in v), 'a projeção da cena não leva pasta nenhuma');
 }
 
 console.log(fails ? `${n - fails} verificações passaram, ${fails} falharam` : `${n} verificações passaram`);

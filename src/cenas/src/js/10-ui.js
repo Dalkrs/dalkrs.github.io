@@ -98,9 +98,12 @@ const UI = (() => {
     menuEl = h('div', { class: 'menu', role: 'menu' }, items.filter(Boolean).map(it => {
       if (it === '-') return h('div', { class: 'menu-sep' });
       if (it.head) return h('div', { class: 'menu-h', text: it.head });
-      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
+      // (a pasta da lista de cenas: um clique abre ou fecha — quem chama desenha a lista de novo)
+      if (it.pasta) return h('button', { type: 'button', class: 'menu-i menu-pasta', role: 'menuitem', id: 'mp-' + it.pasta, 'aria-expanded': String(!!it.aberta), title: it.aberta ? 'Fechar a pasta' : 'Abrir a pasta', onclick: () => it.run() },
+        h('span', { class: 'menu-ck' }, icon(it.aberta ? 'down' : 'right', 14)), icon('folder', 15), h('span', { class: 'menu-l', text: it.label }), h('span', { class: 'menu-k', text: String(it.n) }));
+      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
         it.check != null ? h('span', { class: 'menu-ck' }, it.check ? icon('check', 15) : null) : it.icon ? icon(it.icon, 16) : h('span', { class: 'menu-ck' }),
-        h('span', { class: 'menu-l', text: it.label }), it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
+        h('span', { class: 'menu-l', text: it.label }), it.mark ? h('span', { class: 'menu-m', title: it.markTitle || '' }, icon(it.mark, 13)) : null, it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
     }));
     el.layer.append(menuEl);
     const r = menuEl.getBoundingClientRect();
@@ -455,6 +458,8 @@ const UI = (() => {
   function duplicateScene() {
     const src = Store.scene(), sc = clone(src);
     sc.id = uid('cena'); sc.name = src.name + ' (cópia)'; sc.explored = {}; delete sc.sample;
+    const pa = pastaDaCena(src.id);
+    if (pa) pastasP().de[sc.id] = pa;                  // (a cópia fica na mesma pasta)
     Store.addScene(sc); Persist.scene(sc.id);
     switchScene(sc.id);
     toast('Cena duplicada.');
@@ -469,6 +474,7 @@ const UI = (() => {
       if (!ok) return;
       const id = sc.id;
       Store.removeScene(id); Persist.removeScene(id);
+      if (pastasP().de[id]) { delete pastasP().de[id]; Persist.meta(); }
       irParaUmaDaVista();
     });
   }
@@ -561,19 +567,129 @@ const UI = (() => {
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
   function sceneMenu() {
-    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas();
-    const linha = id => { const s = Store.S.scenes[id]; return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }; };
-    if (!comCamp) { items.push({ head: 'Cenas' }); for (const id of Store.S.order) items.push(linha(id)); }
+    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas(), mundo = Nuvem.noMundo(), pastas = pastasP().lista;
+    const linha = id => {
+      const s = Store.S.scenes[id], nm = mundo[id];
+      return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, mark: nm ? 'globe' : null, markTitle: nm ? 'No Mapa-múndi: ' + nm.join(', ') : '', run: () => switchScene(id) };
+    };
+    const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
+    const soltas = visiveis.filter(id => !pastaDaCena(id));
+    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); for (const id of soltas) items.push(linha(id)); } }
     else {
       // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
-      const c = Nuvem.campanha(), dela = Store.S.order.filter(id => Nuvem.campanhasDaCena(id).includes(c)), mundo = Store.S.order.filter(id => !Nuvem.campanhasDaCena(id).length);
-      items.push({ head: 'Cenas · ' + nomeDaCampanha(c) });
-      for (const id of dela) items.push(linha(id));
-      if (mundo.length) { items.push({ head: 'Do mundo' }); for (const id of mundo) items.push(linha(id)); }
+      const c = Nuvem.campanha(), dela = soltas.filter(id => Nuvem.campanhasDaCena(id).includes(c)), doMundo = soltas.filter(id => !Nuvem.campanhasDaCena(id).length);
+      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); for (const id of dela) items.push(linha(id)); }
+      if (doMundo.length) { items.push({ head: 'Do mundo' }); for (const id of doMundo) items.push(linha(id)); }
     }
-    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
-      { label: 'Renomear', icon: 'edit', run: renameScene }, Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
+    // as pastas (lote 6): cada uma abre e fecha; fechada, fica só o nome e quantas cenas tem
+    for (const pa of pastas) {
+      const dela = visiveis.filter(id => pastaDaCena(id) === pa.id);
+      if (!dela.length) continue;
+      const aberta = !fechadas.has(pa.id);
+      items.push({ pasta: pa.id, label: pa.nome, n: dela.length, aberta, run: () => { if (aberta) fechadas.add(pa.id); else fechadas.delete(pa.id); guardarFechadas(); reabrirMenuCenas(pa.id); } });
+      if (aberta) for (const id of dela) items.push(Object.assign(linha(id), { dentro: true }));
+    }
+    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um vilarejo…', icon: 'house', run: () => Vila.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
+      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar em pastas…', icon: 'folder', run: () => organizarCenas() },
+      Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
+  }
+  function reabrirMenuCenas(pastaId) {
+    const b = document.getElementById('sceneBtn');
+    if (!b) return;
+    anchorMenu(b, sceneMenu());
+    const f = document.getElementById('mp-' + pastaId);
+    if (f) f.focus();
+  }
+
+  /* ---- As pastas da lista de cenas (lote 6) ----
+     O mestre cria pastas ("Lugares do mundo", "Combates"…) e põe as cenas nelas, na janela "Organizar em pastas…"
+     (arrastando, ou escolhendo a pasta de cada cena). Na lista do botão de cenas, cada pasta abre e fecha (lembrado
+     neste aparelho), e a cena que um marcador do Mapa-múndi abre ganha o ícone do mundo. As pastas são do mestre (na
+     mesa, vão no índice das cenas); mudar de pasta não mexe na cena. Cada mudança tem Desfazer. */
+  const pastasP = () => Store.S.pastas || (Store.S.pastas = { lista: [], de: {} });
+  const pastaDaCena = id => { const p = pastasP(), pid = p.de[id]; return pid && p.lista.some(x => x.id === pid) ? pid : null; };
+  const FECHADAS = 'tinycats:cenas:pastas-fechadas';
+  const fechadas = (() => { try { return new Set(JSON.parse(localStorage.getItem(FECHADAS) || '[]')); } catch (e) { return new Set(); } })();
+  const guardarFechadas = () => { try { localStorage.setItem(FECHADAS, JSON.stringify([...fechadas])); } catch (e) { /* sem armazenamento: vale só agora */ } };
+  // muda as pastas num passo só: fn recebe uma cópia para alterar; o aviso diz o que mudou, com Desfazer
+  function mudarPastas(fn, texto) {
+    const antes = clone(pastasP()), novo = clone(antes);
+    if (fn(novo) === false) return false;
+    const limpo = Proj.normPastas(novo);
+    if (JSON.stringify(limpo) === JSON.stringify(antes)) return false;
+    Store.S.pastas = limpo;
+    Persist.meta(); Store.meta();
+    if (texto) toast(texto, { action: 'Desfazer', run: () => { Store.S.pastas = antes; Persist.meta(); Store.meta(); } });
+    return true;
+  }
+  const nomeDaPasta = id => { const pa = pastasP().lista.find(x => x.id === id); return pa ? pa.nome : 'Sem pasta'; };
+  function moverCena(id, pastaId) {
+    const sc = Store.S.scenes[id];
+    if (!sc || (pastaDaCena(id) || '') === (pastaId || '')) return;
+    mudarPastas(p => { if (pastaId) p.de[id] = pastaId; else delete p.de[id]; }, pastaId ? `"${sc.name}" foi para a pasta ${nomeDaPasta(pastaId)}.` : `"${sc.name}" saiu da pasta.`);
+  }
+  function novaPasta(depois) {
+    if (pastasP().lista.length >= 40) { toast('Já são 40 pastas: apague uma para criar outra.'); return; }
+    promptBox('Nova pasta', 'Nome da pasta', '', { ok: 'Criar' }).then(nome => {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (nome) { const id = uid('pa'); mudarPastas(p => { p.lista.push({ id, nome }); if (depois) depois(p, id); }, `Pasta "${nome}" criada.`); }
+      organizarCenas();                                      // (de volta à janela das pastas)
+    });
+  }
+  function renomearPasta(pa) {
+    promptBox('Renomear a pasta', 'Nome da pasta', pa.nome, { ok: 'Renomear' }).then(nome => {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (nome && nome !== pa.nome) mudarPastas(p => { const x = p.lista.find(y => y.id === pa.id); if (x) x.nome = nome; }, `A pasta agora se chama "${nome}".`);
+      organizarCenas();
+    });
+  }
+  function apagarPasta(pa) {
+    const n = Object.keys(pastasP().de).filter(id => pastasP().de[id] === pa.id && Store.S.scenes[id]).length;
+    mudarPastas(p => { p.lista = p.lista.filter(x => x.id !== pa.id); for (const id of Object.keys(p.de)) if (p.de[id] === pa.id) delete p.de[id]; },
+      n ? `Pasta "${pa.nome}" apagada; ${n === 1 ? 'a cena dela voltou' : `as ${n} cenas dela voltaram`} para "Sem pasta".` : `Pasta "${pa.nome}" apagada.`);
+  }
+  // A janela "Organizar em pastas": uma seção por pasta (e "Sem pasta"), com as cenas que estão nela.
+  function organizarCenas() {
+    const body = h('div', { class: 'org' });
+    let arrastando = null;
+    const paint = () => {
+      const p = pastasP(), ar = Nuvem.noAr(), mundo = Nuvem.noMundo(), comCamp = Nuvem.comCampanhas();
+      const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
+      const opcoes = [['', 'Sem pasta']].concat(p.lista.map(x => [x.id, x.nome]));
+      const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
+      const linha = id => {
+        const sc = Store.S.scenes[id], nm = mundo[id];
+        return h('li', { class: 'org-c' + (id === Store.S.current ? ' atual' : ''), draggable: 'true', id: 'org-c-' + id,
+          ondragstart: e => { arrastando = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (err) { /* (alguns navegadores) */ } },
+          ondragend: () => { arrastando = null; body.querySelectorAll('.org-p.alvo').forEach(x => x.classList.remove('alvo')); } },
+          h('span', { class: 'org-g', 'aria-hidden': 'true', title: 'Arraste para outra pasta' }, '⠿'),
+          icon(nm ? 'globe' : 'map', 15),
+          h('span', { class: 'org-n', text: sc.name, title: nm ? 'No Mapa-múndi: ' + nm.join(', ') : sc.name }),
+          id === ar ? h('span', { class: 'org-ar', text: 'no ar' }) : null,
+          inSelect('org-s-' + id, pastaDaCena(id) || '', opcoes, v => moverCena(id, v), { title: 'A pasta desta cena', 'aria-label': 'Pasta de ' + sc.name }));
+      };
+      const secao = (pa, ids) => {
+        const alvo = pa ? pa.id : '';
+        return h('section', { class: 'org-p', id: 'org-p-' + (pa ? pa.id : 'solta'),
+          ondragover: e => { if (!arrastando) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('alvo'); },
+          ondragleave: e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('alvo'); },
+          ondrop: e => { e.preventDefault(); e.currentTarget.classList.remove('alvo'); const id = arrastando; arrastando = null; if (id) moverCena(id, alvo); } },
+          h('div', { class: 'org-h' }, icon('folder', 15), h('strong', { text: pa ? pa.nome : 'Sem pasta' }), h('span', { class: 'org-q', text: String(ids.length) }),
+            pa ? iconBtn('edit', 'Renomear a pasta', () => renomearPasta(pa), { size: 14, id: 'org-ren-' + pa.id }) : null,
+            pa ? iconBtn('trash', 'Apagar a pasta (as cenas dela voltam para "Sem pasta")', () => apagarPasta(pa), { size: 14, id: 'org-del-' + pa.id }) : null),
+          ids.length ? h('ul', { class: 'org-l' }, ids.map(linha)) : h('p', { class: 'org-vazia', text: pa ? 'Arraste uma cena para cá.' : 'Todas as cenas estão em pastas.' }));
+      };
+      body.replaceChildren(
+        secao(null, visiveis.filter(id => !pastaDaCena(id))),
+        ...p.lista.map(pa => secao(pa, visiveis.filter(id => pastaDaCena(id) === pa.id))),
+        h('div', { class: 'row' }, btn('Nova pasta', () => novaPasta(), { icon: 'plus', id: 'org-nova' })),
+        note('Arraste uma cena para outra pasta, ou escolha a pasta na lista ao lado dela. Apagar uma pasta não apaga as cenas. O ícone do mundo marca as cenas que um marcador do Mapa-múndi abre.'));
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+    };
+    paint();
+    modal({ title: 'Organizar em pastas', wide: true, body, focusPrimary: true, actions: [{ label: 'Pronto', kind: 'primary' }] });
+    modalLive = paint;
   }
 
   /* ---- No ar: a cena que os jogadores da mesa veem. Só muda quando o mestre manda, e dá para desfazer. ---- */
@@ -673,7 +789,7 @@ const UI = (() => {
       ['T', 'Novo token'], ['J', 'Objetos de cenário: tochas, fogueiras, móveis, árvores, armadilhas'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
       ['I', 'Luz'], ['U', 'Névoa manual'], ['Q', 'Terreno'], ['Y', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
-      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
+      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['Shift+F', 'Rolagem geral: o mesmo atributo para os selecionados (ou um grupo) — só o mestre'], ['C', 'Disputa entre dois tokens (só o mestre)'],
       ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
@@ -892,7 +1008,8 @@ const UI = (() => {
         h('span', { text: ' Esta mesa ainda não tem nenhuma. Você escolhe quais trazer; as do navegador não mudam.' }),
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
       gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
-        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null) : null,
+        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null,
+        sc.tokens.some(t => !t.prop) ? btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', id: 'sel-geral', title: 'O mesmo atributo para vários tokens: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }) : null) : null,
     ];
   }
   function ownerLabel(t) {
@@ -1622,7 +1739,8 @@ const UI = (() => {
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
-          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null) : null) : null,
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null,
+          btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' })) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,

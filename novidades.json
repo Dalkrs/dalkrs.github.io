@@ -2,6 +2,40 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-5",
+      "data": "2026-10-15",
+      "titulo": "Cenas: rolagem geral (Shift+F), pastas de cenas e gerador de vilarejo; equipamentos complementares; nomes do Mapa-múndi com contorno",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Shift+F nas Cenas: a rolagem geral. O mesmo atributo para vários tokens de uma vez (a Percepção do grupo, por exemplo). Você escolhe na hora: pedir aos jogadores (cada um rola pela própria ficha e escolhe a fixa; você vê quem já rolou e rola os NPCs ali mesmo) ou rolar por todos, cada um com a sua fixa. A janela diz quem tirou mais, e nada muda na cena."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Quando o mestre pede uma rolagem geral, o pedido chega como um cartão na mesa ao vivo, como o da defesa: o seu atributo, o “Fixando” e o botão “Rolar”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Pastas na lista de cenas: em “Organizar em pastas…” você cria pastas (“Lugares do mundo”, “Combates”…) e arrasta as cenas para elas. Na lista, cada pasta abre e fecha. A cena que um marcador do Mapa-múndi abre ganha o ícone do mundo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Gerar um vilarejo (no botão de cenas): escolha o tamanho (aldeia ou vila), o terreno, rio, paliçada e quantas casas; “Gerar outro” sorteia de novo. Sai uma cena nova com as paredes de cada casa (que bloqueiam a visão), uma porta, alguns móveis e o nome em cima. Tudo continua editável."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Equipamentos complementares: no “Editar” de um item, “Só funciona com…” liga o item a outro, ou a um grupo de troca (qualquer nível da espada serve). Equipado sem ele, o item fica “sem efeito”. Guardar a espada guarda a bainha e a luva junto; equipar a bainha equipa a espada; e quando a espada volta, elas voltam junto. Dá para desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: os nomes do mapa (marcadores, grupos, eventos, regiões, estradas, rios e viagens) ganharam letra de mapa antigo, clara, com contorno escuro, para ler bem sobre qualquer imagem nos dois temas. Os textos livres continuam com a letra que você escolheu."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-4",
       "data": "2026-10-15",
       "titulo": "Cenas: a tecla E dos equipamentos, N para passar a vez, Postura, linha invisível na ordem de turnos, condições em vários tokens e bônus na defesa",

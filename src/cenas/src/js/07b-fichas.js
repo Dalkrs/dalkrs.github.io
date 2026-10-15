@@ -310,7 +310,8 @@ const Fichas = (() => {
     const l = t && t.char ? get(t.char) : null;
     return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
   }
-  // → [{ id, nome, on, troca, reliquia, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da ficha)
+  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da
+  //   ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado e com o requisito)
   function itens(t) {
     const l = t && t.char ? get(t.char) : null, R0 = R();
     if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
@@ -321,12 +322,15 @@ const Fichas = (() => {
       for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
       for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
       for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
-      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia, bon };
+      const lista = l.ficha.itens;
+      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia,
+        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon };
     });
   }
   /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica
-     equipado (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
-     → { ok: true, item, guardados: [nomes], desfazer() } ou { ok: false, error } */
+     equipado; o complementar traz o que ele precisa, e guardar o requisito guarda os que dependem dele
+     (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
+     → { ok: true, item, guardados: [nomes], equipados: [nomes], texto, desfazer() } ou { ok: false, error } */
   function equipar(t, id, onOff) {
     if (!podeEquipar(t)) return { ok: false, error: papel === 'mestre' ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.' };
     const charId = t.char, l = get(charId), antes = l.ficha, lista = Array.isArray(antes.itens) ? antes.itens : [];
@@ -334,16 +338,19 @@ const Fichas = (() => {
     if (!it) return { ok: false, error: 'Este item não está mais na ficha.' };
     P.gravar(charId, { ficha: Object.assign({}, antes, { itens: r.itens }) });
     syncAll(charId);
-    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, x.equipado]));
-    const nomes = r.guardados.map(g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; });
-    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: nomes, desfazer: () => {
+    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, [x.equipado, x.volta, x.uso]]));
+    const nomeDe = g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; };
+    const texto = R().textoDoEquipar ? R().textoDoEquipar(r.itens, r, id, onOff) : '';
+    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: r.guardados.map(nomeDe), equipados: (r.equipados || []).map(nomeDe), texto, desfazer: () => {
       const agora = get(charId);
       if (!agora || !agora.ficha || !Array.isArray(agora.ficha.itens)) return false;
-      // (só a chave de equipado de cada item volta como estava; o resto da ficha fica como está agora)
+      // (só a chave de equipado, a marca de "volta junto" e a ordem de uso de cada item voltam como estavam; o resto
+      //  da ficha fica como está agora)
       const itens2 = agora.ficha.itens.map(x => {
         if (!x || !eqAntes.has(x.id)) return x;
-        const y = Object.assign({}, x), v = eqAntes.get(x.id);
-        if (v === undefined) delete y.equipado; else y.equipado = v;
+        const y = Object.assign({}, x), [eq, vt, us] = eqAntes.get(x.id);
+        const volta = (k, v) => { if (v === undefined) delete y[k]; else y[k] = v; };
+        volta('equipado', eq); volta('volta', vt); volta('uso', us);
         return y;
       });
       P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { itens: itens2 }) });
@@ -354,14 +361,17 @@ const Fichas = (() => {
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
-  function rolar(t, chave, fixa, mais) {
+  // (ped: { pedido, alvo } — a rolagem geral, quando o mestre rola no lugar de um jogador com o pedido em aberto:
+  // vale como a resposta dele, e o cartão do pedido mostra "rolou … (pelo mestre)")
+  function rolar(t, chave, fixa, mais, ped) {
     const item = rolaveis(t).find(x => x[0] === chave);
     if (!item) return { ok: false, error: 'Este token não está ligado a uma ficha.' };
     const valor = item[2], ma = Math.round(Number(mais && mais.atr) || 0), com = valor + ma;
     if (com < 1) return { ok: false, error: item[1] + ' está em ' + Math.max(0, com) + (ma ? ' (com o bônus)' : '') + ': não há o que rolar.' };
     const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
     if (!r.ok) return r;
-    if (Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
+    const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 

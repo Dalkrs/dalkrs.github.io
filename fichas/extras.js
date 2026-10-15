@@ -206,11 +206,17 @@ const FichasExtras = (() => {
      Cada item é um cartão: a chave de equipado, o nome, só os bônus que ele tem ("FOR +3 · DFF +2") e, quando há, as
      passivas. "Editar" abre os números (atributos, secundários, defesas, barras e defesas específicas), as passivas, a
      relíquia (só um destaque dourado) e o grupo de troca: dos itens do mesmo grupo, um só fica equipado — equipar um
-     guarda os outros (a conta é de TC.rules.equiparItem). */
+     guarda os outros (a conta é de TC.rules.equiparItem). E o "Só funciona com…" (it.req): um item complementar (a
+     bainha da espada) só vale com o item ou um item do grupo de troca escolhido; equipá-lo traz o requisito junto, e
+     guardar o requisito guarda os que dependem dele — que voltam quando o requisito voltar. */
   const itensAbertos = new Set();            // os cartões abertos em edição nesta tela (pelo id do item)
   const RELIQUIA_SVG = '<svg class="icorel" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18M9.5 3.5 12 9l2.5-5.5M12 9v11.5"/></svg>';
   const TROCA_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const LIGA_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>';
   const juntarE = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+  const RQ = () => (window.TC && TC.rules && TC.rules.reqDoItem ? TC.rules : null);
+  // o item vale (soma nas contas)? — equipado e com o que ele precisa
+  const ativoNa = (it, pc) => (RQ() ? RQ().itemAtivo(it, pc.itens || []) : it.equipado !== false);
   const grupoDe = it => (window.TC && TC.rules && TC.rules.grupoDeTroca ? TC.rules.grupoDeTroca(it) : String((it && it.troca) || '').trim().slice(0, 40));
   const normG = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
   // só o que o item soma: as chaves com valor, o máximo de barras e as defesas específicas — [{ rot, v, title }]
@@ -238,17 +244,30 @@ const FichasExtras = (() => {
       <div class="itopc">
         <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
         <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
+        ${opcoesReq(it, pc)}
       </div>
     </div>`;
   }
+  /* "Só funciona com…": nada, um grupo de troca (qualquer item dele serve) ou outro item da ficha */
+  function opcoesReq(it, pc) {
+    const outros = (pc.itens || []).filter(x => x && x.id !== it.id), atual = typeof it.req === 'string' ? it.req : '';
+    const grupos = [...new Set(outros.map(grupoDe).filter(Boolean))];
+    const ops = [['', 'Funciona sozinho']].concat(grupos.map(g => ['g:' + g, 'Grupo de troca: ' + g]), outros.map(x => ['i:' + x.id, 'Item: ' + (String(x.nome || '').trim() || 'sem nome')]));
+    // (o requisito de antes que não está mais na lista continua escolhido, dizendo isso)
+    if (atual && !ops.some(o => normG(o[0]) === normG(atual))) ops.push([atual, (atual.startsWith('g:') ? 'Grupo de troca: ' + atual.slice(2) : 'Item que saiu da ficha') + ' (não está mais aqui)']);
+    const escolhido = ops.find(o => normG(o[0]) === normG(atual)) || ops[0];
+    return `<label class="f itreqf"><span class="eyebrow">Só funciona com…</span><select data-itemreq="${esc(it.id)}" title="Um item complementar (a bainha da espada) só vale com o item (ou um item do grupo de troca) escolhido. Equipá-lo equipa o que ele precisa; guardar o que ele precisa guarda ele junto, e ele volta quando aquilo voltar.">${ops.map(o => `<option value="${esc(o[0])}" ${o === escolhido ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select></label>`;
+  }
   function cartaoItem(it, pc) {
     const aberto = itensAbertos.has(it.id), on = it.equipado !== false, g = grupoDe(it), fx = String(it.efeito || '').trim(), bon = bonusDoItem(it, pc);
-    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''}" data-itcard="${esc(it.id)}">
+    const req = RQ() ? RQ().nomeDoReq(it, pc.itens || []) : '', semEfeito = on && req && !ativoNa(it, pc);
+    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''}" data-itcard="${esc(it.id)}">
       <div class="ittopo">
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
         <input class="inm itnome" data-itemnome="${esc(it.id)}" value="${esc(it.nome || '')}" placeholder="Nome do item" aria-label="Nome do item">
         ${it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : ''}
         ${g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : ''}
+        ${req ? `<span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span>` : ''}
         <span class="itbts"><button type="button" class="mini" data-itemed="${esc(it.id)}" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Editar'}</button><button type="button" class="mini danger" data-itemdel="${esc(it.id)}" title="Tirar este item (dá para desfazer)" aria-label="Tirar o item ${esc(it.nome || 'sem nome')}">×</button></span>
       </div>
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
@@ -284,15 +303,16 @@ const FichasExtras = (() => {
     const sel = (attr, id) => '[' + attr + '="' + CSS.escape(id) + '"]';
     qa(painel, '[data-itemon]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.itemon); if (!it) return;
-      const on = i.checked, antes = (pc.itens || []).map(x => [x.id, x.equipado]);
+      // (o Desfazer volta, de cada item, a chave de equipado, a marca de "volta junto" e a ordem de uso)
+      const on = i.checked, antes = (pc.itens || []).filter(Boolean).map(x => [x.id, x.equipado, x.volta, x.uso]);
       const R = window.TC && TC.rules && TC.rules.equiparItem ? TC.rules : null;
-      let guardados = [];
-      if (R) { const r = R.equiparItem(pc.itens, it.id, on); pc.itens = r.itens; guardados = r.guardados; } else it.equipado = on;
+      let r = null;
+      if (R) { r = R.equiparItem(pc.itens, it.id, on); pc.itens = r.itens; } else it.equipado = on;
       save(); desenhar(render, sel('data-itemon', it.id));
-      if (guardados.length) {
-        const nomes = guardados.map(id => (item(id) || {}).nome || 'item sem nome');
-        aviso((it.nome || 'O item') + ' equipado; ' + juntarE(nomes) + (nomes.length === 1 ? ' foi guardado' : ' foram guardados') + ' (mesmo grupo de troca: ' + grupoDe(it) + ').', 'Desfazer', () => {
-          for (const [id, eq] of antes) { const x = item(id); if (x) { if (eq === undefined) delete x.equipado; else x.equipado = eq; } }
+      if (r && (r.guardados.length || r.equipados.length)) {
+        aviso(R.textoDoEquipar ? R.textoDoEquipar(pc.itens, r, it.id, on) : (it.nome || 'O item') + (on ? ' equipado.' : ' guardado.'), 'Desfazer', () => {
+          const volta = (x, k, v) => { if (v === undefined) delete x[k]; else x[k] = v; };
+          for (const [id, eq, vt, us] of antes) { const x = item(id); if (x) { volta(x, 'equipado', eq); volta(x, 'volta', vt); volta(x, 'uso', us); } }
           save(); render();
         });
       }
@@ -312,6 +332,12 @@ const FichasExtras = (() => {
       const it = item(i.dataset.itemrel); if (!it) return;
       if (i.checked) it.reliquia = true; else delete it.reliquia;
       save(); desenhar(render, sel('data-itemrel', it.id));
+    });
+    qa(painel, '[data-itemreq]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itemreq); if (!it) return;
+      if (i.value) it.req = i.value; else delete it.req;
+      delete it.volta;
+      save(); desenhar(render, sel('data-itemreq', it.id));
     });
     qa(painel, '[data-itemtroca]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.itemtroca); if (!it) return;
@@ -340,7 +366,7 @@ const FichasExtras = (() => {
   }
   // na aba "Passivas e Habilidades": o que os itens equipados dão, só para leitura (edita-se no próprio item)
   function htmlEfeitosEquipados(pc) {
-    const com = (pc.itens || []).filter(it => it.equipado !== false && String(it.efeito || '').trim());
+    const com = (pc.itens || []).filter(it => it && ativoNa(it, pc) && String(it.efeito || '').trim());
     if (!com.length) return '';
     return `<div class="fxequip"><span class="eyebrow">Dos equipamentos em uso</span>
       ${com.map(it => `<div class="fxlinha"><strong>${esc(it.nome || 'Item sem nome')}</strong><span>${esc(it.efeito)}</span></div>`).join('')}</div>`;

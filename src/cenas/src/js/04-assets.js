@@ -72,6 +72,7 @@ const Persist = (() => {
     for (const id in S.scenes) if (!S.order.includes(id)) S.order.push(id);
     S.players = Array.isArray(meta.players) ? meta.players : [];
     S.prefs = meta.prefs || {};
+    S.pastas = Proj.normPastas(meta.pastas);
     S.current = S.scenes[meta.current] ? meta.current : S.order[0] || null;
     // Remove imagens que nenhuma cena usa mais.
     const used = new Set();
@@ -92,7 +93,7 @@ const Persist = (() => {
     const puts = [];
     for (const id of dAssets) if (S.assets[id]) puts.push(['asset:' + id, S.assets[id]]);
     for (const id of dScenes) if (S.scenes[id]) puts.push(['scene:' + id, S.scenes[id]]);
-    if (dMeta) puts.push(['meta', { v: 1, order: S.order, current: S.current, players: S.players, prefs: S.prefs }]);
+    if (dMeta) puts.push(['meta', { v: 1, order: S.order, current: S.current, players: S.players, prefs: S.prefs, pastas: S.pastas }]);
     const dels = Array.from(removed);
     dScenes.clear(); dAssets.clear(); removed.clear(); dMeta = false;
     let ok = false;

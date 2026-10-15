@@ -20,6 +20,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   const barrinhas = () => P.locator('#barrinhas .bz').evaluateAll(els => els.map(e => [e.querySelector('.bzn').textContent, e.querySelector('.bzv').textContent, Math.round(parseFloat(e.querySelector('.bzt i').style.width)), e.classList.contains('neg')]));
   const toast = () => P.locator('.toast').last().innerText();
   const j = JSON.stringify;
+  const foto = async nome => { if (process.env.FOTOS) await P.screenshot({ path: process.env.FOTOS + '/' + nome + '.png' }); };
 
   await P.goto(t.base + 'fichas/', { waitUntil: 'load' }); await w(1200);
   ok(await P.locator('#f_nome').inputValue() === 'Selene', 'a ficha abre');
@@ -113,7 +114,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('[data-itemon="' + it[1].id + '"]').uncheck(); await w(250);
   await P.locator('[data-itemon="' + it[1].id + '"]').check(); await w(350);
   it = (await sel()).itens;
-  ok(it[1].equipado === true && it[0].equipado === false && it[2].equipado === false && /Manto da Brasa equipado; Manto da Geada e Manto do Vento foram guardados \(mesmo grupo de troca: manto\)/.test(await toast()), 'equipar a Brasa guarda a Geada e o Vento (o mesmo grupo, sem diferença de maiúsculas e espaços): ' + await toast());
+  ok(it[1].equipado === true && it[0].equipado === false && it[2].equipado === false && /Equipou Manto da Brasa no lugar de Manto da Geada e Manto do Vento\./.test(await toast()), 'equipar a Brasa guarda a Geada e o Vento (o mesmo grupo, sem diferença de maiúsculas e espaços): ' + await toast());
   ok(await P.locator('[data-itcard="it1"].guardado').count() === 1 && await P.locator('.itdobro').count() === 0 && (await calc()).tot.CAN === (await S0(() => calcular(S.personagens.find(x => x.id === 'pc_sel')).base.CAN)), 'o cartão guardado fica apagado, o aviso sai e o +2 do Manto da Geada deixa de somar');
   await P.locator('.toast button').last().click(); await w(350);
   it = (await sel()).itens;
@@ -128,6 +129,67 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('[data-itemrel="it1"]').uncheck(); await P.locator('[data-itemtroca="it1"]').fill(''); await P.locator('[data-itemtroca="it1"]').press('Tab'); await w(300);
   await P.locator('[data-itemed="it1"]').click(); await w(250);
   ok((await sel()).itens.length === 1 && !(await sel()).itens[0].reliquia && !('troca' in (await sel()).itens[0]) && (await sel()).itens[0].equipado !== false, '(de volta: só o Manto da Geada, equipado, sem relíquia nem grupo)');
+
+  // ---------- (lote 6) "Só funciona com…": os itens complementares ----------
+  // A Espada do Gelo em dois níveis (o mesmo grupo de troca); a Bainha de Selene só vale com uma delas (o grupo:
+  // qualquer nível serve) e a Luva da Geada, só com a Espada do Gelo I (o item).
+  const novoItem = async (nome, troca) => {
+    await P.locator('#painelItens [data-act="additem"]').click(); await w(300);
+    await P.keyboard.type(nome); await w(150);
+    const id = await P.evaluate(() => document.activeElement.dataset.itemnome);
+    if (troca) { await P.locator('[data-itemtroca="' + id + '"]').fill(troca); await P.locator('[data-itemtroca="' + id + '"]').press('Tab'); await w(250); }
+    return id;
+  };
+  const fecharItem = async id => { await P.locator('[data-itemed="' + id + '"]').click(); await w(200); };
+  const eqs = async () => (await sel()).itens.filter(x => x.equipado !== false).map(x => x.nome).join(', ');
+  const chipReq = async id => ((await P.locator('[data-itcard="' + id + '"] .itreq').count()) ? (await P.locator('[data-itcard="' + id + '"] .itreq').innerText()).replace(/\s+/g, ' ').trim() : '');
+  const e1 = await novoItem('Espada do Gelo I', 'Espada de gelo'); await fecharItem(e1);
+  const e2 = await novoItem('Espada do Gelo II', 'Espada de gelo'); await fecharItem(e2);
+  await P.locator('[data-itemon="' + e2 + '"]').uncheck(); await w(250);
+  await P.locator('[data-itemon="' + e1 + '"]').uncheck(); await w(250);
+  const dff0 = (await calc()).def.DFF;
+  const ba = await novoItem('Bainha de Selene');
+  await P.locator('[data-itembon="' + ba + '|DFF"]').fill('2'); await P.locator('[data-itembon="' + ba + '|DFF"]').press('Tab'); await w(300);
+  ok((await calc()).def.DFF === dff0 + 2 && await chipReq(ba) === '', '(a Bainha nova, equipada, soma DEF F +2 — e funciona sozinha)');
+  const opsReq = await P.locator('[data-itemreq="' + ba + '"] option').allInnerTexts();
+  ok(j(opsReq) === j(['Funciona sozinho', 'Grupo de troca: Espada de gelo', 'Item: Manto da Geada', 'Item: Espada do Gelo I', 'Item: Espada do Gelo II']) && await P.locator('[data-itemreq="' + ba + '"]').inputValue() === '',
+    'no "Editar", o "Só funciona com…": sozinho (o padrão), um grupo de troca (qualquer item dele serve) ou um item da ficha: ' + j(opsReq));
+  await P.locator('[data-itemreq="' + ba + '"]').selectOption('g:Espada de gelo'); await w(300);
+  ok((await sel()).itens.find(x => x.id === ba).req === 'g:Espada de gelo' && await chipReq(ba) === 'sem efeito · Espada de gelo' && await P.locator('[data-itcard="' + ba + '"].semfx').count() === 1 && (await calc()).def.DFF === dff0 && await eqs() === 'Manto da Geada, Bainha de Selene',
+    'só com a espada: equipada sem nenhuma espada, a Bainha fica "sem efeito" (o cartão avisa, e nada é equipado ou guardado sozinho) e o +2 deixa de somar: ' + await chipReq(ba));
+  ok(await P.evaluate(() => document.activeElement && document.activeElement.dataset.itemreq !== undefined), '(o cursor continua no "Só funciona com…")');
+  await fecharItem(ba);
+  await P.locator('[data-itemon="' + e1 + '"]').check(); await w(300);
+  ok(await chipReq(ba) === 'com Espada de gelo' && await P.locator('[data-itcard="' + ba + '"].semfx').count() === 0 && (await calc()).def.DFF === dff0 + 2, 'com a Espada do Gelo I equipada, a Bainha vale ("com Espada de gelo"), e o +2 volta a somar');
+  const lu = await novoItem('Luva da Geada');
+  await P.locator('[data-itemreq="' + lu + '"]').selectOption('i:' + e1); await w(300);
+  await fecharItem(lu);
+  ok(await chipReq(lu) === 'com Espada do Gelo I', 'a Luva da Geada, só com a Espada do Gelo I (o item, não o grupo)');
+  // guardar a espada guarda as duas
+  await P.locator('[data-itemon="' + e1 + '"]').uncheck(); await w(350);
+  ok(await eqs() === 'Manto da Geada' && /Guardou Espada do Gelo I; guardou junto: Bainha de Selene e Luva da Geada\./.test(await toast()) && (await calc()).def.DFF === dff0,
+    'guardar a espada guarda junto a Bainha e a Luva (o aviso diz): ' + await toast());
+  await P.locator('.toast button', { hasText: 'Desfazer' }).last().click(); await w(350);
+  ok(await eqs() === 'Manto da Geada, Espada do Gelo I, Bainha de Selene, Luva da Geada' && (await sel()).itens.every(x => !x.volta), 'Desfazer: as três de volta, como estavam');
+  await P.locator('[data-itemon="' + e1 + '"]').uncheck(); await w(350);
+  // equipar a Bainha sem espada: a espada vem junto (a última usada), e a Luva, que tinha saído com ela, volta
+  await P.locator('[data-itemon="' + ba + '"]').check(); await w(350);
+  ok(await eqs() === 'Manto da Geada, Espada do Gelo I, Bainha de Selene, Luva da Geada' && /Equipou Bainha de Selene; junto: Espada do Gelo I e Luva da Geada\./.test(await toast()),
+    'equipar a Bainha sem espada equipa a espada junto (a última usada) — e a Luva, que tinha saído com ela, volta: ' + await toast());
+  // trocar o nível da espada: a Bainha fica (qualquer nível serve); a Luva (só com a I) sai — e volta com a I
+  await P.locator('[data-itemon="' + e2 + '"]').check(); await w(350);
+  ok(await eqs() === 'Manto da Geada, Espada do Gelo II, Bainha de Selene' && /Equipou Espada do Gelo II no lugar de Espada do Gelo I; guardou junto: Luva da Geada\./.test(await toast()),
+    'a Espada do Gelo II no lugar da I: a Bainha continua (o grupo serve), a Luva (só com a I) é guardada: ' + await toast());
+  await P.locator('[data-itemon="' + e1 + '"]').check(); await w(350);
+  ok(await eqs() === 'Manto da Geada, Espada do Gelo I, Bainha de Selene, Luva da Geada' && /Equipou Espada do Gelo I no lugar de Espada do Gelo II; junto: Luva da Geada\./.test(await toast()), 'a I de volta traz a Luva junto: ' + await toast());
+  await foto('fichas-itens-complementares');
+  // a espada sai da ficha: a Luva (que dependia só dela) passa a funcionar sozinha; a Bainha, com a II, continua presa ao grupo
+  await P.locator('[data-itemdel="' + e1 + '"]').click(); await w(300);
+  ok(await chipReq(lu) === '' && await chipReq(ba) === 'sem efeito · Espada de gelo', 'tirar a Espada do Gelo I da ficha: a Luva fica sem requisito (não prende a nada que não existe); a Bainha, sem espada equipada, fica "sem efeito"');
+  await P.locator('.toast button', { hasText: 'Desfazer' }).last().click(); await w(300);
+  ok(await chipReq(lu) === 'com Espada do Gelo I' && await chipReq(ba) === 'com Espada de gelo', '(Desfazer devolve a espada, e as duas voltam a depender dela)');
+  for (const id of [lu, ba, e2, e1]) { await P.locator('[data-itemdel="' + id + '"]').click(); await w(200); }
+  ok((await sel()).itens.length === 1 && (await calc()).def.DFF === dff0, '(de volta: só o Manto da Geada)');
 
   // ---------- a aba Defesas ----------
   await P.locator('[data-abaatr="def"]').click(); await w(300);

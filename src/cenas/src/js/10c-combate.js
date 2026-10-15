@@ -192,6 +192,7 @@ const Luta = (() => {
     abrirEquip(t);
   }
   const TROCA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const LIGA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>';
   const GEMA_I = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18"/></svg>';
   const svgEl = s => { const d = document.createElement('span'); d.className = 'eq-i'; d.innerHTML = s; return d; };
   function pintarEquip() {
@@ -206,7 +207,9 @@ const Luta = (() => {
       h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
       h('span', { class: 'eq-t' },
         h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
-        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }))))
+        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }),
+        // o complementar, numa linha só dele: "com Espada do Gelo de Selene" (ou "sem efeito", equipado sem o que ele precisa)
+        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null)))
       : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
     if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
   }
@@ -216,7 +219,7 @@ const Luta = (() => {
     const r = Fichas.equipar(t, it.id, !it.on);
     if (!r.ok) { toast(r.error); return; }
     const e = n => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]);
-    toast(it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.',
+    toast(r.texto || (it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.'),
       { action: 'Desfazer', run: () => { if (r.desfazer()) pintarEquip(); } });
     pintarEquip();
   }
@@ -694,16 +697,200 @@ const Luta = (() => {
     // se a janela sumir por outro caminho (outra janela por cima, a página trocando de cena), o pedido não fica aberto
     atqRelogio = setInterval(() => { if (atq === st && !document.body.contains(card)) fecharAtaque('cancelado'); }, 1500);
   }
-  // Chegou da mesa ao vivo uma linha com recado para as Cenas (ver 11-boot.js): a defesa rolada a pedido.
+
+  /* ================= Shift+F: a rolagem geral (lote 6) =================
+     O mesmo atributo para vários tokens de uma vez (a Percepção do grupo todo, por exemplo). O mestre escolhe na hora:
+     pede aos jogadores (cada um rola pela mesa ao vivo, escolhendo a fixa; a janela mostra quem já rolou e o mestre
+     rola os NPCs ali) ou rola por todos (cada linha com a fixa dela; um botão rola tudo). Cada rolagem vai para a mesa
+     ao vivo como as outras (em segredo, a de um token oculto), e a janela diz quem tirou mais. Nada muda na cena. */
+  let ger = null, gerRelogio = 0;
+  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const nomeAtr = k => { const R = window.TC && window.TC.rules; return (R && R.NOMES && R.NOMES[k]) || k; };
+  function encerrarGeral(fim) {
+    const p = ger && ger.pedido;
+    if (!p || p.fim) return;
+    p.fim = fim;
+    try { const P = ponte(); if (P && P.registro && P.registro.encerrar) P.registro.encerrar(p.id, fim); } catch (e) { console.error(e); }
+  }
+  function fecharGeral() {
+    if (!ger) return;
+    const faltava = ger.rows.some(r => r.on && r.st !== 'rolou' && ger.pedido && ger.pedido.chars.has(r.char));
+    encerrarGeral(faltava ? 'cancelado' : 'aplicado');
+    ger = null;
+    clearInterval(gerRelogio); gerRelogio = 0;
+  }
+  function rolagemGeral() {
+    if (!isGM()) { toast('A rolagem geral é do mestre.'); return; }
+    fecharPop(); fecharEquip(); fecharGeral();
+    const sc = Store.scene(), sel = selOf('tokens').filter(x => !x.prop && tokShown(x, sc));
+    const todos = () => Store.scene().tokens.filter(x => !x.prop);
+    const comFicha = t => !!(t && t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const deJogador = () => todos().filter(t => comFicha(t) && Fichas.donoQueJoga(t));
+    const conjuntos = [sel.length ? ['sel', `Os selecionados (${sel.length})`] : null, ['jog', `Os personagens dos jogadores (${deJogador().length})`], ['todos', `Todos os tokens da cena (${todos().length})`]].filter(Boolean);
+    const P = ponte();
+    const st = ger = {
+      quem: sel.length ? 'sel' : deJogador().length ? 'jog' : 'todos',
+      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : 'PER',
+      rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
+    };
+    const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())
+      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40) }));
+    st.rows = linhasDe(st.quem);
+    const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 40, placeholder: 'Percepção na floresta', autocomplete: 'off', 'aria-label': 'Nome da rolagem (opcional)' });
+    const selQuem = inSelect('ger-quem', st.quem, conjuntos, v => { if (st.pedido && !st.pedido.fim) { toast('Há um pedido em aberto. Cancele o pedido para mudar.'); selQuem.value = st.quem; return; } st.quem = v; st.rows = linhasDe(v); paint(); });
+    const chips = h('div', { class: 'chips ger-atr', id: 'ger-atr', role: 'group', 'aria-label': 'O que rolar' });
+    const lista = h('ul', { class: 'area-list ger-list', id: 'ger-lista' }), conta = h('span', { class: 'area-count', id: 'ger-conta' });
+    const acoesEl = h('div', { class: 'atq-ped', id: 'ger-acoes' }), resumoEl = h('p', { class: 'ger-res', id: 'ger-resumo', role: 'status' });
+    // tudo o que uma linha precisa, com a cena e a ficha de agora
+    const ver = r => {
+      const t = Store.get('tokens', r.id);
+      if (!t) return null;
+      const ficha = comFicha(t), item = ficha ? Fichas.rolaveis(t).find(x => x[0] === st.atr) : null;
+      const dono = ficha ? Fichas.donoQueJoga(t) : null;
+      const valor = item ? item[2] : clamp(int(r.valor, 0), 0, 100000);
+      return { t, ficha, dono, valor };
+    };
+    const lerFixa = (r, v) => Math.min(clamp(int(r.fixa, 0), 0, 99999), v.valor);
+    const rolarPor = r => {
+      const v = ver(r);
+      if (!v || r.st === 'rolou') return false;
+      const fixa = lerFixa(r, v);
+      // (no lugar de um jogador, com o pedido em aberto: a rolagem vale como a resposta dele, e o cartão dele mostra)
+      const noLugar = !!(v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
+      let res;
+      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null);
+      else {
+        valorMem.set(v.t.id, v.valor);
+        res = Combate.rolarFixa(v.valor, fixa);
+        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total }); } catch (e) { console.error(e); } }
+      }
+      if (!res.ok) { toast(v.t.name + ': ' + res.error); return false; }
+      if (v.ficha) guardarFixa(v.t, fixa);
+      r.st = 'rolou'; r.r = { total: res.total, det: Combate.comoSaiu(res), por: noLugar ? 'pelo mestre' : '' };
+      return true;
+    };
+    const zerar = () => { for (const r of st.rows) { r.st = ''; r.r = null; } };
+    const paint = () => {
+      if (ger !== st) return;
+      const a = document.activeElement, card = K.card(), fid = a && a.id && card && card.contains(a) ? a.id : null;
+      const travado = !!(st.pedido && !st.pedido.fim);
+      chips.replaceChildren(...ATR_GERAL.map(k => h('button', { type: 'button', class: 'chip' + (st.atr === k ? ' on' : ''), id: 'ger-a-' + k, 'aria-pressed': String(st.atr === k), disabled: travado && st.atr !== k,
+        title: travado ? 'O pedido aos jogadores já foi feito com este atributo' : nomeAtr(k), onclick: () => { if (st.atr === k) return; st.atr = k; App.opt.gerAtr = k; zerar(); paint(); } }, rot(k))));
+      selQuem.disabled = travado;
+      const vs = st.rows.map(r => ({ r, v: ver(r) })).filter(x => x.v);
+      const dentro = vs.filter(x => x.r.on), faltam = dentro.filter(x => x.r.st !== 'rolou');
+      const jogFaltam = faltam.filter(x => x.v.dono), npcFaltam = faltam.filter(x => !x.v.dono || !(st.pedido && !st.pedido.fim && st.pedido.chars.has(x.r.char)));
+      conta.textContent = `${dentro.length} de ${vs.length} marcados`;
+      // pedir aos jogadores, ou rolar por todos
+      const filhos = [];
+      if (!travado) {
+        if (P && P.registro && P.registro.pedir && jogFaltam.length) filhos.push(btn(st.pedindo ? 'Pedindo…' : 'Pedir aos jogadores', pedir, { icon: 'users', kind: 'small', id: 'ger-pedir', disabled: st.pedindo, title: 'Manda o pedido para a mesa ao vivo: cada jogador rola pelo personagem dele, escolhendo a fixa' }));
+        if (faltam.length) filhos.push(btn(faltam.length === dentro.length ? 'Rolar tudo' : 'Rolar por quem falta', () => { for (const x of faltam) rolarPor(x.r); paint(); }, { icon: 'die', kind: 'small', id: 'ger-tudo', title: 'Você rola agora por todos os que faltam, cada um com a fixa da linha dele' }));
+      } else {
+        filhos.push(h('span', { class: 'note', text: jogFaltam.length ? 'Pedido feito: os jogadores rolam pela mesa ao vivo.' : 'Todos os jogadores já rolaram.' }),
+          btn('Cancelar o pedido', () => { encerrarGeral('cancelado'); paint(); }, { kind: 'small', id: 'ger-despedir', title: 'Encerra o pedido na mesa ao vivo. O que já foi rolado continua valendo.' }));
+        if (npcFaltam.length) filhos.push(btn('Rolar pelos NPCs', () => { for (const x of npcFaltam) rolarPor(x.r); paint(); }, { icon: 'die', kind: 'small', id: 'ger-npcs', title: 'Você rola agora pelos tokens que não são de jogador' }));
+      }
+      acoesEl.hidden = !filhos.length;
+      acoesEl.replaceChildren(...filhos);
+      lista.replaceChildren(...vs.map(({ r, v }, k) => {
+        const t = v.t, esperando = !!(r.on && r.st !== 'rolou' && v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
+        const como = !r.on ? 'fica de fora' : r.st === 'rolou' ? `rolou ${r.r.total}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : '') : esperando ? `esperando ${v.dono.name}` : 'falta rolar';
+        const valor = v.ficha ? h('span', { class: 'ger-v', id: `ger-v-${k}`, title: nomeAtr(st.atr) + ' da ficha', text: `${rot(st.atr)} ${v.valor}` })
+          : h('label', { class: 'atq-man' }, h('span', { text: rot(st.atr) }), h('input', { id: `ger-val-${k}`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: r.valor, disabled: r.st === 'rolou', 'aria-label': `Valor de ${t.name}`, title: 'Este token não tem ficha: o valor a rolar',
+            onchange: e => { r.valor = String(e.target.value); paint(); } }));
+        const fx = h('label', { class: 'atq-man' }, h('span', { text: 'fixando' }), h('input', { id: `ger-fx-${k}`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: r.fixa, disabled: r.st === 'rolou', 'aria-label': `Quanto fixar na rolagem de ${t.name}`,
+          title: 'Regra da fixa: rola um dado de (valor − fixa) lados e soma a fixa', onchange: e => { r.fixa = String(e.target.value); paint(); } }));
+        const acao = !r.on ? null : r.st === 'rolou' ? btn('Descartar', () => { r.st = ''; r.r = null; paint(); }, { kind: 'small', id: `ger-de-novo-${k}`, title: 'Descarta esta rolagem: a linha volta a esperar' })
+          : btn(esperando ? 'Rolar por ele' : 'Rolar', () => { rolarPor(r); paint(); }, { icon: 'die', kind: 'small', id: `ger-rolar-${k}` });
+        return h('li', { class: 'area-row atq-row' + (r.on ? '' : ' off') },
+          h('div', { class: 'atq-1' },
+            h('label', { class: 'area-who' },
+              h('input', { type: 'checkbox', class: 'ck', id: `ger-on-${k}`, checked: r.on, disabled: esperando || r.st === 'rolou', 'aria-label': 'Incluir ' + t.name, onchange: e => { r.on = e.target.checked; paint(); } }),
+              tokenAvatar(t, 26), h('span', { class: 'area-n', text: t.name + (t.hidden ? ' (oculto)' : '') })),
+            h('span', { class: 'area-res' + (r.st === 'rolou' ? ' ger-tot' : ''), id: `ger-res-${k}`, text: r.st === 'rolou' ? String(r.r.total) : '' })),
+          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx, acao) : null);
+      }));
+      // quem tirou mais (do maior para o menor; empate fica na ordem da lista)
+      const feitos = dentro.filter(x => x.r.st === 'rolou').slice().sort((p, q) => q.r.r.total - p.r.r.total);
+      resumoEl.hidden = !feitos.length;
+      resumoEl.textContent = feitos.length ? 'Do maior para o menor: ' + feitos.map(x => `${x.v.t.name} ${x.r.r.total}`).join(' · ') + (faltam.length ? ` (faltam ${faltam.length})` : '') : '';
+      if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    };
+    function pedir() {
+      const Pt = ponte();
+      if (!Pt || !Pt.registro || !Pt.registro.pedir) { toast('Esta mesa ainda não recebe pedidos. Recarregue a página e tente de novo.'); return; }
+      const vistos = new Set(), lst = [];
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || !r.on || r.st === 'rolou' || !v.ficha || !v.dono || vistos.has(v.t.char)) continue;
+        vistos.add(v.t.char); lst.push({ c: v.t.char, n: String((Fichas.get(v.t.char) || {}).nome || v.t.name).slice(0, 60) });
+      }
+      if (!lst.length) return;
+      st.pedindo = true; paint();
+      Pt.registro.pedir({ rot: inNome.value.trim().slice(0, 40), atr: st.atr, alvos: lst }).then(res => {
+        st.pedindo = false;
+        if (ger !== st) { try { Pt.registro.encerrar(res.id, 'cancelado'); } catch (e) { /* a janela já fechou */ } return; }
+        st.pedido = { id: res.id, fim: null, chars: new Set(lst.map(x => x.c)) };
+        toast(lst.length === 1 ? `Pedido enviado: ${lst[0].n} rola ${nomeAtr(st.atr)} pela mesa ao vivo.` : `Pedido enviado: ${lst.length} personagens rolam ${nomeAtr(st.atr)} pela mesa ao vivo.`);
+        paint();
+      }, err => { st.pedindo = false; if (ger === st) { toast((err && err.message) || 'O pedido não chegou à mesa. Tente de novo.'); paint(); } });
+    }
+    // o que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa): confere se o personagem está no pedido, de quem
+    // é a rolagem e se cabe no atributo dele
+    st.chegou = (l, s) => {
+      if (!st.pedido || st.pedido.fim || s.p !== st.pedido.id || !l.nova || typeof s.c !== 'string' || !st.pedido.chars.has(s.c)) return;
+      const Pt = ponte(), eu = Pt ? Pt.estado.eu : null, ficha = Fichas.get(s.c);
+      if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
+      const total = Math.round(Number(s.v));
+      const bm = n => { const x = Math.round(Number(n)); return isFinite(x) ? Math.max(-999, Math.min(999, x)) : 0; };
+      const ma = bm(s.ma), mr = bm(s.mr), rolado = total - mr, sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
+      let mudou = false;
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || r.char !== s.c || !v.ficha || r.st === 'rolou') continue;
+        const teto = Math.max(0, v.valor + ma);
+        if (!isFinite(total) || rolado < 0 || rolado > teto) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe em ${nomeAtr(st.atr)} dele agora (${v.valor}). Role por ele, se quiser.`); continue; }
+        const dado = Math.round(Number(s.d)), fx = Math.round(Number(s.f)), at = Math.round(Number(s.a));
+        const contaTxt = at === teto && dado >= 1 && fx >= 0 && fx + dado === rolado ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '';
+        const bonus = [ma ? `${sinal(ma)} no atributo` : '', mr ? `${sinal(mr)} no resultado` : ''].filter(Boolean).join(' · ');
+        r.st = 'rolou'; r.r = { total, det: [contaTxt, bonus].filter(Boolean).join(' · '), por: l.autor_id === eu ? 'pelo mestre' : '' };
+        mudou = true;
+      }
+      if (mudou) paint();
+    };
+    const todosMarcados = on => { for (const r of st.rows) if (r.st !== 'rolou') r.on = on; paint(); };
+    const card = UI.modal({
+      title: 'Rolagem geral', wide: true,
+      onCancel: fecharGeral,
+      body: h('div', { class: 'area atq ger' },
+        h('div', { class: 'atq-top' }, field('Quem rola', selQuem, 'stack'), field('Nome (opcional)', inNome, 'stack')),
+        h('div', { class: 'field stack' }, h('span', { class: 'lb', text: 'O que rolar' }), chips),
+        acoesEl,
+        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Todos', () => todosMarcados(true), { kind: 'small' }), btn('Nenhum', () => todosMarcados(false), { kind: 'small' })),
+        lista, resumoEl,
+        note('Cada rolagem vai para a mesa ao vivo, como as outras (a de um token oculto, em segredo). Nada muda na cena.')),
+      actions: [{ label: 'Fechar', kind: 'primary', run: fecharGeral }],
+    });
+    st.card = card;
+    K.live(paint);
+    paint();
+    // se a janela sumir por outro caminho (outra janela por cima, a página trocando de cena), o pedido não fica aberto
+    gerRelogio = setInterval(() => { if (ger === st && !document.body.contains(card)) fecharGeral(); }, 1500);
+  }
+  // Chegou da mesa ao vivo uma linha com recado para as Cenas (ver 11-boot.js): a defesa rolada a pedido, ou o
+  // atributo da rolagem geral.
   function daMesa(l) {
     const s = l && l.dados && l.dados.sis;
-    if (!s || typeof s !== 'object' || s.t !== 'rd' || !atq || !isGM()) return;
-    try { atq.chegou(l, s); } catch (e) { console.error(e); }
+    if (!s || typeof s !== 'object' || !isGM()) return;
+    if (s.t === 'rd' && atq) { try { atq.chegou(l, s); } catch (e) { console.error(e); } }
+    if (s.t === 'ra' && ger) { try { ger.chegou(l, s); } catch (e) { console.error(e); } }
   }
-  window.addEventListener('pagehide', () => { if (atq) encerrarPedido('cancelado'); });
+  window.addEventListener('pagehide', () => { if (atq) encerrarPedido('cancelado'); if (ger) encerrarGeral('cancelado'); });
   // a cena aberta passou a ser outra: os alvos eram da cena de antes, então a janela do ataque fecha (e o pedido, se havia, é cancelado)
   Store.on('scene', () => {
     if (atq && atq.cena !== Store.S.current) { const c = atq.card; fecharAtaque('cancelado'); if (c && K.card() && K.card().contains(c)) UI.closeModal(); }
+    if (ger && ger.cena !== Store.S.current) { const c = ger.card; fecharGeral(); if (c && K.card() && K.card().contains(c)) UI.closeModal(); }
     if (pop) { try { pintarPop(); } catch (e) { fecharPop(); } }
   });
 
@@ -714,5 +901,5 @@ const Luta = (() => {
   }
 
   return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
-    equipamentos, fecharEquip, equipAberto: () => !!epop };
+    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral };
 })();

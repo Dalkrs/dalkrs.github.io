@@ -326,6 +326,14 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   dourado) e o **grupo de troca** (`item.troca`). Dos itens do mesmo grupo (sem diferença de maiúsculas e acentos), um
   só fica equipado: equipar um guarda os outros (`TC.rules.equiparItem`, com Desfazer). Dois equipados no mesmo grupo
   (porque o grupo foi dado depois) só ganham um aviso.
+- **"Só funciona com…"** (`item.req`: `'i:<id do item>'` ou `'g:<grupo de troca>'`): o item complementar (a bainha da
+  espada) só vale com aquele item, ou com qualquer item do grupo (qualquer nível da espada serve). Equipado sem ele,
+  fica "sem efeito" — o cartão avisa e ele não soma (`TC.rules.itemAtivo`, que `calcular` usa no lugar de
+  `equipado`). Equipá-lo equipa o requisito junto (num grupo, o último usado: `item.uso`); guardar o requisito guarda
+  junto quem depende dele, que fica marcado (`item.volta`) e volta quando o requisito voltar. Trocar o nível da espada
+  não guarda a bainha (o grupo continua atendido). `equiparItem` devolve `{ itens, guardados, trocados, equipados,
+  trocas }`, e `textoDoEquipar` escreve o aviso ("Guardou Espada do Gelo I; guardou junto: Bainha de Selene e Luva da
+  Geada."), o mesmo nas Fichas e na janelinha E das Cenas. Um requisito que saiu da ficha não prende o item.
 - **Pets** (`ficha.petDe`: o id do dono): uma ficha suplementar, como a de um NPC — atributos à mão (distribuição livre,
   do zero), barras, habilidades, sem bolsa, sem Tier e sem ligar sozinha o que a de jogador liga (Sanidade, corpo,
   fadiga, relacionamentos: `deJogador` não conta o pet). No elenco, fica logo embaixo do dono. Quem controla o dono
@@ -363,6 +371,26 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   sem o bônus). Na janela do ataque, o que foi rolado (sem o + resultado) tem de caber na defesa com o + atributo, e a
   conta aparece na linha do alvo: "rolou 45 de 40 (27 no d30 + 15 · +5 no atributo · +3 no resultado)". Uma defesa
   que fique negativa por um − no resultado desconta zero.
+- **Shift+F, a rolagem geral** (`Luta.rolagemGeral`): o mesmo atributo para vários tokens — os selecionados, os
+  personagens dos jogadores ou todos da cena —, com o nome da rolagem e a fixa de cada linha. O mestre escolhe na hora:
+  "Pedir aos jogadores" (uma linha da mesa ao vivo, `dados.k = 'pedido'` com `pd = { rot, atr, alvos }`, que chega
+  como o cartão do pedido de defesa; cada jogador rola pela própria ficha, e a resposta leva `sis.t = 'ra'`) — e rola
+  os NPCs ali ("Rolar pelos NPCs") —, ou "Rolar tudo". "Rolar por ele", com o pedido aberto, vale como a resposta do
+  jogador (o recado vai junto, e o cartão dele mostra "(pelo mestre)"). A janela confere cada resposta como a do
+  ataque (de quem é, se cabe no atributo), diz quem tirou mais e não muda nada na cena. Fechar encerra o pedido
+  (`aplicado` com todos rolados; senão, `cancelado`).
+- **Pastas na lista de cenas** (`S.pastas = { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }`, só do mestre:
+  numa mesa, no índice das cenas; sem mesa, neste navegador): a janela "Organizar em pastas…" (arrastar a cena, ou
+  escolher a pasta ao lado dela; criar, renomear e apagar pastas — as cenas voltam para "Sem pasta"), com Desfazer.
+  Na lista do botão de cenas, cada pasta abre e fecha (lembrado neste aparelho). A cena que um marcador do Mapa-múndi
+  abre ganha o ícone do mundo (`Nuvem.noMundo`, lido dos mapas da mesa).
+- **Gerar um vilarejo…** (`Vila`, `10d-vila.js`): tamanho (aldeia ou vila), terreno, rio, paliçada e quantas casas,
+  com a prévia e "Gerar outro". O plano é uma conta pura (`Vila.gerar`, pela semente); a cena nova sai com o fundo
+  pintado (na mesa, vira arquivo no Storage) e, por cima, tudo editável: as paredes de cada casa com uma porta, os
+  móveis (objetos de cenário), o nome em cima (um texto), o poço e os lampiões da praça, a paliçada com os portões
+  abertos. A névoa dinâmica vem ligada (as paredes bloqueiam a visão).
+- **Os itens complementares na janelinha E**: o "com Espada de gelo" numa linha embaixo do nome, e "sem efeito ·
+  precisa de …" quando está equipado sem o requisito.
 
 ### O mapa-múndi: a grade, o terreno e a viagem
 
@@ -399,8 +427,13 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   tamanho, giro, espaço entre as letras e cor) e linhas (`k: 'l'`: o rio engrossa da nascente, o primeiro ponto, até a
   foz, com uma ondulação que só depende do id; a estrada é tracejada e a trilha, pontilhada; todas suaves, passando
   pelos pontos, com o nome ao longo). Carimbos e textos sob a névoa e linhas todas cobertas não vão para os jogadores.
-  O nome da linha é refeito a cada zoom (`ajustarNomeLinha`), com o contorno claro no estilo da própria letra: como
-  atributo, a regra geral `svg text` do CSS passava por cima, e de perto o contorno engolia as letras.
+  O nome da linha é refeito a cada zoom (`ajustarNomeLinha`), com o contorno no estilo da própria letra: como
+  atributo, a regra geral `svg text` do CSS passava por cima, e de perto o contorno engolia as letras. (A cor da
+  letra também vai no estilo, pelo mesmo motivo.)
+- **Os nomes do mapa** (lote 6: marcadores, grupos, eventos, regiões, estradas, rios e linhas de viagem): letra Cinzel
+  (`--mapa`), clara, com um contorno escuro grosso — nos dois temas, para ler sobre qualquer imagem. O nome de uma
+  linha leva um toque da cor dela. Os textos livres continuam com a letra escolhida; as siglas dos grupos e a régua,
+  com a letra do site.
 - **A ordem das camadas** (de baixo para cima): hexágonos, regiões, linhas, carimbos, zonas de guerra, os nomes das
   regiões (`c-nreg`), textos, frentes, rotas, eventos, marcadores, névoa, grupos. A área da região fica por baixo das
   estradas, dos rios e dos carimbos; o nome dela, por cima.
@@ -703,7 +736,7 @@ faltava subir.
 ## Testes
 
 ```
-cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6; do node $f.js; done
+cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
 cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
@@ -732,7 +765,9 @@ acampamento gravado pela versão de antes do site; a outra jogadora sem a permis
 mesmo instante, e o desfazer que volta só o próprio passo; a Sanidade e o Conforto pelo cartão; o momento com
 corações e emoção; e as linhas de relação de quem joga e de quem mestra) e `cenas-lote6.rede` (com o mestre e uma
 jogadora: a janelinha E gravando na ficha, a Postura que a jogadora liga, a linha invisível e o "turno com o mestre",
-N e Shift+N). `vivo.js` confere o site publicado.
+N e Shift+N, a rolagem geral pedida à jogadora — o cartão dela, "Rolar pelos NPCs", "Cancelar o pedido", "Rolar por
+ele" —, as pastas no índice da mesa (e em outro aparelho do mestre), o ícone do Mapa-múndi e o vilarejo gerado numa
+mesa, com o fundo no Storage, chegando à jogadora). `vivo.js` confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -758,6 +793,10 @@ e `src/cenas/test/unit6.js` roda as mesmas regras com vários aparelhos de menti
 auditor (inclusive que ele não acusa dados honestos mais vezes do que o combinado) e `auditor`, a janela dele.
 `src/cenas/test/combate.js` confere, sem o site, as contas do combate, a ferramenta Terreno, a janelinha de atributos
 num token sem ficha e a disputa; `src/cenas/test/lote6.js`, as teclas novas, a janelinha E (com uma ficha de mentira),
-a Postura, o contador em vários tokens e a linha invisível (com a prévia "como jogador"). Com `FOTOS=<pasta>`, os
-dois guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+a Postura, o contador em vários tokens e a linha invisível (com a prévia "como jogador"); `src/cenas/test/lote6b.js`,
+a rolagem geral sem mesa, as pastas (a janela, o menu, guardar neste navegador), o vilarejo (a janela, a cena criada
+e 60 sorteios conferidos — aldeia e vila, os quatro terrenos, com e sem rio e paliçada: a mesma semente dá o mesmo
+vilarejo; casas dentro da área, sem grudar, fora da rua, da praça e do rio; uma porta em cada, no lado certo; móveis
+dentro, sem um em cima do outro e sem tapar a porta) e o item
+complementar na janelinha E. Com `FOTOS=<pasta>`, eles guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

@@ -396,7 +396,7 @@
     const rec = {}, esp = {};
     CHAVES_ESP.forEach(k => { esp[k] = 0; });
     (pc.itens || []).forEach(it => {
-      if (!it || it.equipado === false) return;
+      if (!itemAtivo(it, pc.itens)) return;               // (o complementar sem o que ele precisa não soma)
       if (it.rec && typeof it.rec === 'object') Object.keys(it.rec).forEach(id => { const v = numFinito(it.rec[id]); if (v) somar(rec, id, v); });
       if (it.def && typeof it.def === 'object') CHAVES_ESP.forEach(k => { const v = numFinito(tem(it.def, k) ? it.def[k] : null); if (v) esp[k] += v; });
     });
@@ -516,7 +516,7 @@
   }
   function bonusItens(pc){
     const b={}; ATRIBS.forEach(a=>b[a.k]=0); DERIV.forEach(d=>b[d.k]=0); DEFESAS.forEach(d=>b[d.k]=0);
-    (pc.itens||[]).forEach(it=>{ if(it.equipado!==false){
+    (pc.itens||[]).forEach(it=>{ if(itemAtivo(it, pc.itens)){
       ATRIBS.forEach(a=>{ b[a.k]+= (+it.bonus?.[a.k]||0); });
       DERIV.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
       DEFESAS.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
@@ -832,17 +832,108 @@
      itens sem grupo não mudam. A relíquia (it.reliquia) é só um destaque: não muda conta nenhuma.
      → { itens: uma lista nova (os itens que mudam são cópias; o recebido não muda), guardados: [ids que foram guardados] } */
   const grupoDeTroca = it => String(it == null || it.troca == null ? '' : it.troca).trim().slice(0, 40);
+  /* ---------- itens complementares (lote 6) ----------
+     Um item pode depender de outro (it.req): "i:<id>" (aquele item) ou "g:<grupo>" (qualquer item daquele grupo de
+     troca — a bainha serve para qualquer nível da espada). Ele só vale (soma nas contas) com o que ele precisa
+     equipado e valendo também. Um requisito que não está mais na ficha (o item apagado, o grupo vazio) não prende
+     ninguém; A precisa de B que precisa de A: basta os dois estarem equipados. */
+  function reqDoItem(it) {
+    const r = ehObjeto(it) && typeof it.req === 'string' ? it.req : '';
+    if (r.startsWith('i:') && r.length > 2) return { t: 'i', id: r.slice(2) };
+    if (r.startsWith('g:') && normNome(r.slice(2))) return { t: 'g', g: r.slice(2).trim().slice(0, 40) };
+    return null;
+  }
+  function reqAtendido(it, itens, visto) {
+    const rq = reqDoItem(it);
+    if (!rq) return true;
+    const lista = Array.isArray(itens) ? itens : [], v = visto || new Set();
+    if (v.has(it)) return true;
+    v.add(it);
+    if (rq.t === 'i') { const alvo = lista.find(x => ehObjeto(x) && String(x.id) === rq.id); return !alvo || (alvo.equipado !== false && reqAtendido(alvo, lista, v)); }
+    const g = normNome(rq.g), doGrupo = lista.filter(x => ehObjeto(x) && x !== it && normNome(grupoDeTroca(x)) === g);
+    return !doGrupo.length || doGrupo.some(x => x.equipado !== false && reqAtendido(x, lista, new Set(v)));
+  }
+  // o item soma nas contas? (equipado, e com o que ele precisa)
+  function itemAtivo(it, itens) { return ehObjeto(it) && it.equipado !== false && reqAtendido(it, itens); }
+  // o nome do que o item precisa, para a tela: "Espada do Gelo de Selene" ou "Espada de gelo" (o grupo) — ou ''
+  function nomeDoReq(it, itens) {
+    const rq = reqDoItem(it);
+    if (!rq) return '';
+    if (rq.t === 'g') return rq.g;
+    const alvo = (Array.isArray(itens) ? itens : []).find(x => ehObjeto(x) && String(x.id) === rq.id);
+    return alvo ? String(alvo.nome || '').trim() || 'item sem nome' : '';
+  }
+  /* Equipar (on) ou guardar um item. Acerta tudo de uma vez, numa lista nova (os itens recebidos não mudam):
+       · dos itens do mesmo grupo de troca, um só fica equipado: equipar um guarda os outros;
+       · equipar um item sem o que ele precisa equipa o requisito junto (num grupo de troca, o que foi usado por
+         último — it.uso guarda a ordem em que os itens foram equipados);
+       · guardar o requisito guarda os que dependem dele e os marca (it.volta): quando o requisito (ou outro item do
+         grupo dele) for equipado de novo, eles voltam junto — se o grupo de troca deles deixar;
+       · mexer à mão num item tira a marca dele.
+     → { itens, guardados: [ids guardados além do clicado], trocados: [os guardados pelo grupo de troca],
+         equipados: [ids equipados além do clicado (o requisito, os que voltaram)], trocas: [{ por, saiu }] } */
   function equiparItem(itens, id, on) {
-    const lista = Array.isArray(itens) ? itens : [], alvo = lista.find(x => ehObjeto(x) && x.id === id);
-    if (!alvo) return { itens: lista.slice(), guardados: [] };
-    const g = on ? normNome(grupoDeTroca(alvo)) : '', guardados = [];
-    const out = lista.map(x => {
-      if (!ehObjeto(x)) return x;
-      if (x === alvo) return Object.assign({}, x, { equipado: !!on });
-      if (g && x.equipado !== false && normNome(grupoDeTroca(x)) === g) { guardados.push(x.id); return Object.assign({}, x, { equipado: false }); }
-      return x;
-    });
-    return { itens: out, guardados };
+    const lista = Array.isArray(itens) ? itens : [];
+    if (!lista.some(x => ehObjeto(x) && String(x.id) === String(id))) return { itens: lista.slice(), guardados: [], trocados: [], equipados: [], trocas: [] };
+    const out = lista.map(x => (ehObjeto(x) ? Object.assign({}, x) : x));
+    const itensDe = () => out.filter(ehObjeto), por = i => itensDe().find(x => String(x.id) === String(i));
+    const antes = new Map(itensDe().map(x => [x, x.equipado !== false]));
+    let uso = itensDe().reduce((m, x) => Math.max(m, Number.isFinite(+x.uso) ? +x.uso : 0), 0);
+    const trocados = [], trocas = [];
+    const doGrupo = (g, menos) => itensDe().filter(x => x !== menos && normNome(grupoDeTroca(x)) === normNome(g));
+    const ultimoDoGrupo = (g, menos) => doGrupo(g, menos).reduce((m, x) => (!m || (+x.uso || 0) > (+m.uso || 0) ? x : m), null);
+    const ligar = (x, visto) => {
+      if (!x || visto.has(x)) return;
+      visto.add(x);
+      const rq = reqDoItem(x);
+      if (rq && !reqAtendido(x, out)) ligar(rq.t === 'i' ? por(rq.id) : ultimoDoGrupo(rq.g, x), visto);
+      x.equipado = true; x.uso = ++uso; delete x.volta;
+      const g = normNome(grupoDeTroca(x));
+      if (g) for (const y of itensDe()) if (y !== x && y.equipado !== false && normNome(grupoDeTroca(y)) === g) { y.equipado = false; delete y.volta; trocados.push(y.id); trocas.push({ por: x.id, saiu: y.id }); }
+    };
+    const alvo = por(id);
+    if (on) ligar(alvo, new Set());
+    else { alvo.equipado = false; delete alvo.volta; }
+    // as dependências, até parar: quem ficou sem o requisito sai (marcado para voltar); quem saiu por isso e agora o
+    // tem de novo volta (o clicado fica como foi pedido)
+    for (let k = 0; k < 50; k++) {
+      let mudou = false;
+      for (const x of itensDe()) {
+        if (x === alvo || !reqDoItem(x)) continue;
+        if (x.equipado !== false && !reqAtendido(x, out)) { x.equipado = false; x.volta = true; mudou = true; }
+        else if (x.equipado === false && x.volta && reqAtendido(x, out)) {
+          const g = normNome(grupoDeTroca(x));
+          delete x.volta;
+          if (g && itensDe().some(y => y !== x && y.equipado !== false && normNome(grupoDeTroca(y)) === g)) continue;
+          x.equipado = true; x.uso = ++uso; mudou = true;
+        }
+      }
+      if (!mudou) break;
+    }
+    const guardados = [], equipados = [];
+    for (const x of itensDe()) {
+      if (x === alvo) continue;
+      const a = antes.get(x), d = x.equipado !== false;
+      if (a && !d) guardados.push(x.id); else if (!a && d) equipados.push(x.id);
+    }
+    // o que não mudou continua o mesmo objeto (só os que mudam viram cópia)
+    const mesmo = (x, o) => x.equipado === o.equipado && x.volta === o.volta && x.uso === o.uso;
+    const final = out.map((x, i) => (ehObjeto(x) && x !== alvo && mesmo(x, lista[i]) ? lista[i] : x));
+    return { itens: final, guardados, trocados: trocados.filter((i, k) => guardados.includes(i) && trocados.indexOf(i) === k), equipados, trocas: trocas.filter(t => guardados.includes(t.saiu)) };
+  }
+  // O aviso de um "equipar"/"guardar", com o que mudou junto: "Equipou Bainha de Selene; junto: Espada do Gelo de Selene."
+  function textoDoEquipar(itens, r, id, on) {
+    const lista = Array.isArray(itens) ? itens : [];
+    const nome = i => { const x = lista.find(y => ehObjeto(y) && String(y.id) === String(i)); return (x && String(x.nome || '').trim()) || 'item sem nome'; };
+    const e = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+    const trocas = (r && r.trocas) || [], troc = (r && r.trocados) || [], outros = ((r && r.guardados) || []).filter(i => !troc.includes(i)), eq = (r && r.equipados) || [];
+    // (quem saiu pelo grupo de troca aparece junto de quem entrou no lugar dele)
+    const noLugar = i => { const s = trocas.filter(x => String(x.por) === String(i)).map(x => nome(x.saiu)); return s.length ? e(s) : ''; };
+    let t = (on ? 'Equipou ' : 'Guardou ') + nome(id);
+    if (noLugar(id)) t += ' no lugar de ' + noLugar(id);
+    if (eq.length) t += '; junto: ' + e(eq.map(i => nome(i) + (noLugar(i) ? ' (no lugar de ' + noLugar(i) + ')' : '')));
+    if (outros.length) t += (eq.length ? '; e guardou ' : '; guardou junto: ') + e(outros.map(nome));
+    return t + '.';
   }
 
   /* ---------- a fadiga (lote 6) ----------
@@ -1253,7 +1344,7 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
-    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, grupoDeTroca, equiparItem,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, grupoDeTroca, equiparItem, reqDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
     temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso, efeitosDoItem, faixaDoEfeito, nomeDaBarra, COND_GRUPOS, CONDICOES, nomeDaCondicao,

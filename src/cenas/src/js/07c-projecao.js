@@ -471,6 +471,22 @@ const Proj = (() => {
   }
 
   /* ---- o índice das cenas da mesa ---- */
+  /* As pastas da lista de cenas (lote 6), só do mestre: { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }. Cena
+     sem pasta (ou numa pasta que não existe mais) fica fora de todas. */
+  const MAX_PASTAS = 40;
+  function normPastas(p) {
+    p = ehObj(p) ? p : {};
+    const lista = [], vistos = new Set();
+    for (const x of Array.isArray(p.lista) ? p.lista : []) {
+      if (lista.length >= MAX_PASTAS || !ehObj(x) || typeof x.id !== 'string' || !/^pa_[A-Za-z0-9]{1,24}$/.test(x.id) || vistos.has(x.id)) continue;
+      const nome = String(x.nome == null ? '' : x.nome).replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!nome) continue;
+      vistos.add(x.id); lista.push({ id: x.id, nome });
+    }
+    const de = {};
+    if (ehObj(p.de)) for (const k of Object.keys(p.de)) if (idCena(k) && vistos.has(p.de[k])) de[k] = p.de[k];
+    return { lista, de };
+  }
   function normIndice(d) {
     d = ehObj(d) ? d : {};
     const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idCena)));
@@ -479,6 +495,7 @@ const Proj = (() => {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
       prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null },
+      pastas: normPastas(d.pastas),
     };
   }
 
@@ -506,5 +523,5 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();

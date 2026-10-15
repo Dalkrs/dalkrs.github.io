@@ -710,6 +710,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .eq-i { display: inline-flex; flex: none; color: var(--fg-3); }
 .eq-c.rel .eq-n > .eq-i { color: var(--lamp-ink); }
 .eq-g { display: inline-flex; align-items: center; gap: 3px; flex: none; padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 11px; line-height: 16px; }
+.eq-req { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--fg-2); font-size: 11.5px; }
+.eq-req span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-req .eq-i { color: var(--fg-3); }
+.eq-req.falta, .eq-req.falta .eq-i { color: var(--danger); }
 .eq-b { color: var(--fg-2); font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .eq-c:not(.on) .eq-b { color: var(--fg-3); }
 .eq-nota { margin: 0; color: var(--fg-3); font-size: 11.5px; line-height: 1.35; }
@@ -747,6 +751,44 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .atq-como.falta { color: var(--lamp-ink); }
 .atq-man { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); font-size: 12.5px; }
 .atq-man .in.num { width: 70px; }
+/* a rolagem geral (Shift+F): os mesmos pedaços da janela do ataque, com o resultado em destaque */
+/* o gerador de vilarejo (lote 6): as escolhas em cima, a prévia embaixo */
+.vila { display: flex; flex-direction: column; gap: 12px; }
+.vila-c { display: flex; flex-direction: column; gap: 10px; }
+.vila-l { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; }
+.vila-p { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.vila-p .row { align-items: center; }
+.vila-prev { display: block; max-width: 100%; height: auto; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); }
+#vila-resumo { margin: 0; }
+/* as pastas da lista de cenas (lote 6): no menu, a pasta abre e fecha; as cenas dela vêm um pouco para dentro */
+.menu-pasta .menu-l { font-weight: 600; }
+.menu-i.dentro { padding-left: 22px; }
+.menu-m { display: inline-flex; flex: none; color: var(--fg-3); }
+/* a janela "Organizar em pastas" */
+.org { display: flex; flex-direction: column; gap: 10px; max-height: min(62vh, 560px); overflow-y: auto; padding-right: 2px; }
+.org-p { border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px 8px; transition: border-color .12s, background .12s; }
+.org-p.alvo { border-color: var(--lamp); background: var(--lamp-soft); }
+.org-h { display: flex; align-items: center; gap: 7px; min-height: 30px; color: var(--fg-2); }
+.org-h strong { color: var(--fg); font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org-q { margin-right: auto; padding: 0 6px; border-radius: 999px; background: var(--hover); color: var(--fg-2); font: 11.5px var(--mono); }
+.org-h .ib { width: 26px; height: 26px; }
+.org-l { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.org-c { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg-2); cursor: grab; }
+.org-c.atual { border-color: var(--lamp); }
+.org-c:active { cursor: grabbing; }
+.org-g { color: var(--fg-3); font-size: 14px; line-height: 1; user-select: none; }
+.org-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-size: 13px; }
+.org-ar { flex: none; padding: 0 6px; border-radius: 999px; background: var(--lamp); color: var(--on-lamp); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.org-c select.in { flex: none; width: 150px; height: 28px; padding-top: 0; padding-bottom: 0; font-size: 12.5px; }
+.org-vazia { margin: 4px 0 0; color: var(--fg-3); font-size: 12.5px; }
+.ger .atq-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.ger .atq-top select { width: 100%; }
+.ger-atr { align-items: center; }
+.ger-atr .chip { padding: 3px 9px; font-size: 12.5px; }
+.ger .atq-man .in.num { width: 64px; }
+.ger-v { color: var(--fg-2); font: 12.5px var(--mono); white-space: nowrap; }
+.area-res.ger-tot { font: 700 15px var(--mono); color: var(--lamp-ink); }
+.ger-res { margin: 0; padding: 7px 10px; border-radius: 8px; background: var(--lamp-soft); font-size: 13px; line-height: 1.4; }
 
 /* ---- Telas estreitas: o painel vira gaveta por cima do mapa ---- */
 @media (max-width: 900px) {
@@ -778,7 +820,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=12"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=8"></script>
+<script src="../tc/rules.js?v=9"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -1065,6 +1107,10 @@ const ICONS = {
   terrain: 'M2.500 19.500L9 8l4 6.600 2.400-3.300 6.100 8.200zM7.400 10.900l1.600 1.400 1.400-1.100',
   reac: 'M10 5.500L4 11.500l6 6M4 11.500h10a6 6 0 0 1 6 6v1',
   obj: 'M4 10h16v9.500H4zM4 10l1.500-4.500h13L20 10M10 14h4M12 5.500V10',
+  // (lote 6) as pastas da lista de cenas, o Mapa-múndi e o vilarejo
+  folder: 'M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z',
+  globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z',
+  house: 'M3.5 11.5L12 4.5l8.5 7M6 10v9.5h12V10M10 19.5v-5h4v5',
   // Condições (as marcadas com fill são preenchidas)
   c_veneno: { d: 'M8 4c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0C4.8 8.4 6 6.6 8 4zM16 10c2 2.6 3.2 4.4 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-1.8 1.2-3.6 3.2-6.2z', fill: true },
   c_sangue: { d: 'M12 3.5c3.2 4.2 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.3-5.800 5.5-10z', fill: true },
@@ -1497,7 +1543,7 @@ function normalizeScene(sc) {
    é ali que entra o envio para o Supabase.
    --------------------------------------------------------------- */
 const Store = (() => {
-  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {} };
+  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {}, pastas: { lista: [], de: {} } };
   const hist = new Map();           // id da cena → { undo: [], redo: [] }
   const subs = {};
   let tx = null;
@@ -1999,6 +2045,7 @@ const Persist = (() => {
     for (const id in S.scenes) if (!S.order.includes(id)) S.order.push(id);
     S.players = Array.isArray(meta.players) ? meta.players : [];
     S.prefs = meta.prefs || {};
+    S.pastas = Proj.normPastas(meta.pastas);
     S.current = S.scenes[meta.current] ? meta.current : S.order[0] || null;
     // Remove imagens que nenhuma cena usa mais.
     const used = new Set();
@@ -2019,7 +2066,7 @@ const Persist = (() => {
     const puts = [];
     for (const id of dAssets) if (S.assets[id]) puts.push(['asset:' + id, S.assets[id]]);
     for (const id of dScenes) if (S.scenes[id]) puts.push(['scene:' + id, S.scenes[id]]);
-    if (dMeta) puts.push(['meta', { v: 1, order: S.order, current: S.current, players: S.players, prefs: S.prefs }]);
+    if (dMeta) puts.push(['meta', { v: 1, order: S.order, current: S.current, players: S.players, prefs: S.prefs, pastas: S.pastas }]);
     const dels = Array.from(removed);
     dScenes.clear(); dAssets.clear(); removed.clear(); dMeta = false;
     let ok = false;
@@ -5080,7 +5127,8 @@ const Fichas = (() => {
     const l = t && t.char ? get(t.char) : null;
     return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
   }
-  // → [{ id, nome, on, troca, reliquia, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da ficha)
+  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da
+  //   ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado e com o requisito)
   function itens(t) {
     const l = t && t.char ? get(t.char) : null, R0 = R();
     if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
@@ -5091,12 +5139,15 @@ const Fichas = (() => {
       for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
       for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
       for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
-      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia, bon };
+      const lista = l.ficha.itens;
+      return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia,
+        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon };
     });
   }
   /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica
-     equipado (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
-     → { ok: true, item, guardados: [nomes], desfazer() } ou { ok: false, error } */
+     equipado; o complementar traz o que ele precisa, e guardar o requisito guarda os que dependem dele
+     (TC.rules.equiparItem). Grava na ficha, e o token acompanha na hora (as barras podem mudar com o item).
+     → { ok: true, item, guardados: [nomes], equipados: [nomes], texto, desfazer() } ou { ok: false, error } */
   function equipar(t, id, onOff) {
     if (!podeEquipar(t)) return { ok: false, error: papel === 'mestre' ? 'A ficha deste token não está aqui.' : 'Você mexe nos equipamentos do seu personagem.' };
     const charId = t.char, l = get(charId), antes = l.ficha, lista = Array.isArray(antes.itens) ? antes.itens : [];
@@ -5104,16 +5155,19 @@ const Fichas = (() => {
     if (!it) return { ok: false, error: 'Este item não está mais na ficha.' };
     P.gravar(charId, { ficha: Object.assign({}, antes, { itens: r.itens }) });
     syncAll(charId);
-    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, x.equipado]));
-    const nomes = r.guardados.map(g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; });
-    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: nomes, desfazer: () => {
+    const eqAntes = new Map(lista.filter(x => x && x.id != null).map(x => [x.id, [x.equipado, x.volta, x.uso]]));
+    const nomeDe = g => { const x = lista.find(y => y && y.id === g); return (x && String(x.nome || '').trim()) || 'item sem nome'; };
+    const texto = R().textoDoEquipar ? R().textoDoEquipar(r.itens, r, id, onOff) : '';
+    return { ok: true, item: String(it.nome || '').trim() || 'Item', guardados: r.guardados.map(nomeDe), equipados: (r.equipados || []).map(nomeDe), texto, desfazer: () => {
       const agora = get(charId);
       if (!agora || !agora.ficha || !Array.isArray(agora.ficha.itens)) return false;
-      // (só a chave de equipado de cada item volta como estava; o resto da ficha fica como está agora)
+      // (só a chave de equipado, a marca de "volta junto" e a ordem de uso de cada item voltam como estavam; o resto
+      //  da ficha fica como está agora)
       const itens2 = agora.ficha.itens.map(x => {
         if (!x || !eqAntes.has(x.id)) return x;
-        const y = Object.assign({}, x), v = eqAntes.get(x.id);
-        if (v === undefined) delete y.equipado; else y.equipado = v;
+        const y = Object.assign({}, x), [eq, vt, us] = eqAntes.get(x.id);
+        const volta = (k, v) => { if (v === undefined) delete y[k]; else y[k] = v; };
+        volta('equipado', eq); volta('volta', vt); volta('uso', us);
         return y;
       });
       P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { itens: itens2 }) });
@@ -5124,14 +5178,17 @@ const Fichas = (() => {
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
-  function rolar(t, chave, fixa, mais) {
+  // (ped: { pedido, alvo } — a rolagem geral, quando o mestre rola no lugar de um jogador com o pedido em aberto:
+  // vale como a resposta dele, e o cartão do pedido mostra "rolou … (pelo mestre)")
+  function rolar(t, chave, fixa, mais, ped) {
     const item = rolaveis(t).find(x => x[0] === chave);
     if (!item) return { ok: false, error: 'Este token não está ligado a uma ficha.' };
     const valor = item[2], ma = Math.round(Number(mais && mais.atr) || 0), com = valor + ma;
     if (com < 1) return { ok: false, error: item[1] + ' está em ' + Math.max(0, com) + (ma ? ' (com o bônus)' : '') + ': não há o que rolar.' };
     const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
     if (!r.ok) return r;
-    if (Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
+    const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 
@@ -5924,6 +5981,22 @@ const Proj = (() => {
   }
 
   /* ---- o índice das cenas da mesa ---- */
+  /* As pastas da lista de cenas (lote 6), só do mestre: { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }. Cena
+     sem pasta (ou numa pasta que não existe mais) fica fora de todas. */
+  const MAX_PASTAS = 40;
+  function normPastas(p) {
+    p = ehObj(p) ? p : {};
+    const lista = [], vistos = new Set();
+    for (const x of Array.isArray(p.lista) ? p.lista : []) {
+      if (lista.length >= MAX_PASTAS || !ehObj(x) || typeof x.id !== 'string' || !/^pa_[A-Za-z0-9]{1,24}$/.test(x.id) || vistos.has(x.id)) continue;
+      const nome = String(x.nome == null ? '' : x.nome).replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!nome) continue;
+      vistos.add(x.id); lista.push({ id: x.id, nome });
+    }
+    const de = {};
+    if (ehObj(p.de)) for (const k of Object.keys(p.de)) if (idCena(k) && vistos.has(p.de[k])) de[k] = p.de[k];
+    return { lista, de };
+  }
   function normIndice(d) {
     d = ehObj(d) ? d : {};
     const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idCena)));
@@ -5932,6 +6005,7 @@ const Proj = (() => {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
       prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null },
+      pastas: normPastas(d.pastas),
     };
   }
 
@@ -5959,7 +6033,7 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();
 /* ---------------------------------------------------------------
    7d. NUVEM — as cenas de uma mesa, guardadas no banco e vistas ao vivo
@@ -6188,6 +6262,7 @@ const Nuvem = (() => {
     const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
+    S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
     const cv = idx.noAr ? dadosMestre(docV(idx.noAr)) : null, pv = dadosMestre(PUB_V), daProj = !!idx.noAr && !!pv && pv.id === idx.noAr;
@@ -6340,7 +6415,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null } };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null }, pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -6429,6 +6504,7 @@ const Nuvem = (() => {
     for (const id of S.order) if (!ordem.includes(id)) ordem.push(id);
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
+    S.pastas = n.pastas;
     Store.meta();
   }
   // (a cena apontada pode ainda nem ter chegado a este aparelho: o que vale é o que o índice diz, guardado como veio)
@@ -6886,8 +6962,24 @@ const Nuvem = (() => {
     return feitas;
   }
 
+  /* As cenas que um marcador do Mapa-múndi abre (lote 6): { idDaCena: ['Urgm', …] } — dos mapas da mesa (o mestre os
+     recebe todos). Só para mostrar um ícone na lista de cenas: nada aqui muda os mapas. */
+  function noMundo() {
+    const out = {};
+    if (modo !== 'mestre' || !D) return out;
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:')) continue;
+      const d = dadosDe(l), objs = d && Array.isArray(d.objs) ? d.objs : [];
+      for (const o of objs) {
+        if (!ehObj(o) || o.k !== 'm' || !ehObj(o.liga) || o.liga.t !== 'cena' || typeof o.liga.id !== 'string') continue;
+        const nome = String(o.nome || '').trim().slice(0, 40) || 'um marcador';
+        (out[o.liga.id] = out[o.liga.id] || []).includes(nome) || out[o.liga.id].push(nome);
+      }
+    }
+    return out;
+  }
   return {
-    iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado,
+    iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado, noMundo,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
     noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
@@ -9401,7 +9493,7 @@ const Tools = (() => {
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
-    if (lk === 'f') { Luta.atributos(); return; }          // os atributos do token sob o cursor (ou do selecionado), para rolar
+    if (lk === 'f') { if (e.shiftKey) Luta.rolagemGeral(); else Luta.atributos(); return; }   // F: os atributos do token sob o cursor (ou do selecionado); Shift+F: a rolagem geral
     if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
     if (lk === 'n') {                       // passar (N) e voltar (Shift+N) o turno — só o mestre
       if (!isGM()) { UI.toast('Quem passa a vez é o mestre.'); return; }
@@ -9538,9 +9630,12 @@ const UI = (() => {
     menuEl = h('div', { class: 'menu', role: 'menu' }, items.filter(Boolean).map(it => {
       if (it === '-') return h('div', { class: 'menu-sep' });
       if (it.head) return h('div', { class: 'menu-h', text: it.head });
-      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
+      // (a pasta da lista de cenas: um clique abre ou fecha — quem chama desenha a lista de novo)
+      if (it.pasta) return h('button', { type: 'button', class: 'menu-i menu-pasta', role: 'menuitem', id: 'mp-' + it.pasta, 'aria-expanded': String(!!it.aberta), title: it.aberta ? 'Fechar a pasta' : 'Abrir a pasta', onclick: () => it.run() },
+        h('span', { class: 'menu-ck' }, icon(it.aberta ? 'down' : 'right', 14)), icon('folder', 15), h('span', { class: 'menu-l', text: it.label }), h('span', { class: 'menu-k', text: String(it.n) }));
+      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
         it.check != null ? h('span', { class: 'menu-ck' }, it.check ? icon('check', 15) : null) : it.icon ? icon(it.icon, 16) : h('span', { class: 'menu-ck' }),
-        h('span', { class: 'menu-l', text: it.label }), it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
+        h('span', { class: 'menu-l', text: it.label }), it.mark ? h('span', { class: 'menu-m', title: it.markTitle || '' }, icon(it.mark, 13)) : null, it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
     }));
     el.layer.append(menuEl);
     const r = menuEl.getBoundingClientRect();
@@ -9895,6 +9990,8 @@ const UI = (() => {
   function duplicateScene() {
     const src = Store.scene(), sc = clone(src);
     sc.id = uid('cena'); sc.name = src.name + ' (cópia)'; sc.explored = {}; delete sc.sample;
+    const pa = pastaDaCena(src.id);
+    if (pa) pastasP().de[sc.id] = pa;                  // (a cópia fica na mesma pasta)
     Store.addScene(sc); Persist.scene(sc.id);
     switchScene(sc.id);
     toast('Cena duplicada.');
@@ -9909,6 +10006,7 @@ const UI = (() => {
       if (!ok) return;
       const id = sc.id;
       Store.removeScene(id); Persist.removeScene(id);
+      if (pastasP().de[id]) { delete pastasP().de[id]; Persist.meta(); }
       irParaUmaDaVista();
     });
   }
@@ -10001,19 +10099,129 @@ const UI = (() => {
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
   function sceneMenu() {
-    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas();
-    const linha = id => { const s = Store.S.scenes[id]; return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }; };
-    if (!comCamp) { items.push({ head: 'Cenas' }); for (const id of Store.S.order) items.push(linha(id)); }
+    const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas(), mundo = Nuvem.noMundo(), pastas = pastasP().lista;
+    const linha = id => {
+      const s = Store.S.scenes[id], nm = mundo[id];
+      return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, mark: nm ? 'globe' : null, markTitle: nm ? 'No Mapa-múndi: ' + nm.join(', ') : '', run: () => switchScene(id) };
+    };
+    const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
+    const soltas = visiveis.filter(id => !pastaDaCena(id));
+    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); for (const id of soltas) items.push(linha(id)); } }
     else {
       // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
-      const c = Nuvem.campanha(), dela = Store.S.order.filter(id => Nuvem.campanhasDaCena(id).includes(c)), mundo = Store.S.order.filter(id => !Nuvem.campanhasDaCena(id).length);
-      items.push({ head: 'Cenas · ' + nomeDaCampanha(c) });
-      for (const id of dela) items.push(linha(id));
-      if (mundo.length) { items.push({ head: 'Do mundo' }); for (const id of mundo) items.push(linha(id)); }
+      const c = Nuvem.campanha(), dela = soltas.filter(id => Nuvem.campanhasDaCena(id).includes(c)), doMundo = soltas.filter(id => !Nuvem.campanhasDaCena(id).length);
+      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); for (const id of dela) items.push(linha(id)); }
+      if (doMundo.length) { items.push({ head: 'Do mundo' }); for (const id of doMundo) items.push(linha(id)); }
     }
-    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
-      { label: 'Renomear', icon: 'edit', run: renameScene }, Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
+    // as pastas (lote 6): cada uma abre e fecha; fechada, fica só o nome e quantas cenas tem
+    for (const pa of pastas) {
+      const dela = visiveis.filter(id => pastaDaCena(id) === pa.id);
+      if (!dela.length) continue;
+      const aberta = !fechadas.has(pa.id);
+      items.push({ pasta: pa.id, label: pa.nome, n: dela.length, aberta, run: () => { if (aberta) fechadas.add(pa.id); else fechadas.delete(pa.id); guardarFechadas(); reabrirMenuCenas(pa.id); } });
+      if (aberta) for (const id of dela) items.push(Object.assign(linha(id), { dentro: true }));
+    }
+    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um vilarejo…', icon: 'house', run: () => Vila.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
+      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar em pastas…', icon: 'folder', run: () => organizarCenas() },
+      Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
+  }
+  function reabrirMenuCenas(pastaId) {
+    const b = document.getElementById('sceneBtn');
+    if (!b) return;
+    anchorMenu(b, sceneMenu());
+    const f = document.getElementById('mp-' + pastaId);
+    if (f) f.focus();
+  }
+
+  /* ---- As pastas da lista de cenas (lote 6) ----
+     O mestre cria pastas ("Lugares do mundo", "Combates"…) e põe as cenas nelas, na janela "Organizar em pastas…"
+     (arrastando, ou escolhendo a pasta de cada cena). Na lista do botão de cenas, cada pasta abre e fecha (lembrado
+     neste aparelho), e a cena que um marcador do Mapa-múndi abre ganha o ícone do mundo. As pastas são do mestre (na
+     mesa, vão no índice das cenas); mudar de pasta não mexe na cena. Cada mudança tem Desfazer. */
+  const pastasP = () => Store.S.pastas || (Store.S.pastas = { lista: [], de: {} });
+  const pastaDaCena = id => { const p = pastasP(), pid = p.de[id]; return pid && p.lista.some(x => x.id === pid) ? pid : null; };
+  const FECHADAS = 'tinycats:cenas:pastas-fechadas';
+  const fechadas = (() => { try { return new Set(JSON.parse(localStorage.getItem(FECHADAS) || '[]')); } catch (e) { return new Set(); } })();
+  const guardarFechadas = () => { try { localStorage.setItem(FECHADAS, JSON.stringify([...fechadas])); } catch (e) { /* sem armazenamento: vale só agora */ } };
+  // muda as pastas num passo só: fn recebe uma cópia para alterar; o aviso diz o que mudou, com Desfazer
+  function mudarPastas(fn, texto) {
+    const antes = clone(pastasP()), novo = clone(antes);
+    if (fn(novo) === false) return false;
+    const limpo = Proj.normPastas(novo);
+    if (JSON.stringify(limpo) === JSON.stringify(antes)) return false;
+    Store.S.pastas = limpo;
+    Persist.meta(); Store.meta();
+    if (texto) toast(texto, { action: 'Desfazer', run: () => { Store.S.pastas = antes; Persist.meta(); Store.meta(); } });
+    return true;
+  }
+  const nomeDaPasta = id => { const pa = pastasP().lista.find(x => x.id === id); return pa ? pa.nome : 'Sem pasta'; };
+  function moverCena(id, pastaId) {
+    const sc = Store.S.scenes[id];
+    if (!sc || (pastaDaCena(id) || '') === (pastaId || '')) return;
+    mudarPastas(p => { if (pastaId) p.de[id] = pastaId; else delete p.de[id]; }, pastaId ? `"${sc.name}" foi para a pasta ${nomeDaPasta(pastaId)}.` : `"${sc.name}" saiu da pasta.`);
+  }
+  function novaPasta(depois) {
+    if (pastasP().lista.length >= 40) { toast('Já são 40 pastas: apague uma para criar outra.'); return; }
+    promptBox('Nova pasta', 'Nome da pasta', '', { ok: 'Criar' }).then(nome => {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (nome) { const id = uid('pa'); mudarPastas(p => { p.lista.push({ id, nome }); if (depois) depois(p, id); }, `Pasta "${nome}" criada.`); }
+      organizarCenas();                                      // (de volta à janela das pastas)
+    });
+  }
+  function renomearPasta(pa) {
+    promptBox('Renomear a pasta', 'Nome da pasta', pa.nome, { ok: 'Renomear' }).then(nome => {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (nome && nome !== pa.nome) mudarPastas(p => { const x = p.lista.find(y => y.id === pa.id); if (x) x.nome = nome; }, `A pasta agora se chama "${nome}".`);
+      organizarCenas();
+    });
+  }
+  function apagarPasta(pa) {
+    const n = Object.keys(pastasP().de).filter(id => pastasP().de[id] === pa.id && Store.S.scenes[id]).length;
+    mudarPastas(p => { p.lista = p.lista.filter(x => x.id !== pa.id); for (const id of Object.keys(p.de)) if (p.de[id] === pa.id) delete p.de[id]; },
+      n ? `Pasta "${pa.nome}" apagada; ${n === 1 ? 'a cena dela voltou' : `as ${n} cenas dela voltaram`} para "Sem pasta".` : `Pasta "${pa.nome}" apagada.`);
+  }
+  // A janela "Organizar em pastas": uma seção por pasta (e "Sem pasta"), com as cenas que estão nela.
+  function organizarCenas() {
+    const body = h('div', { class: 'org' });
+    let arrastando = null;
+    const paint = () => {
+      const p = pastasP(), ar = Nuvem.noAr(), mundo = Nuvem.noMundo(), comCamp = Nuvem.comCampanhas();
+      const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
+      const opcoes = [['', 'Sem pasta']].concat(p.lista.map(x => [x.id, x.nome]));
+      const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
+      const linha = id => {
+        const sc = Store.S.scenes[id], nm = mundo[id];
+        return h('li', { class: 'org-c' + (id === Store.S.current ? ' atual' : ''), draggable: 'true', id: 'org-c-' + id,
+          ondragstart: e => { arrastando = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (err) { /* (alguns navegadores) */ } },
+          ondragend: () => { arrastando = null; body.querySelectorAll('.org-p.alvo').forEach(x => x.classList.remove('alvo')); } },
+          h('span', { class: 'org-g', 'aria-hidden': 'true', title: 'Arraste para outra pasta' }, '⠿'),
+          icon(nm ? 'globe' : 'map', 15),
+          h('span', { class: 'org-n', text: sc.name, title: nm ? 'No Mapa-múndi: ' + nm.join(', ') : sc.name }),
+          id === ar ? h('span', { class: 'org-ar', text: 'no ar' }) : null,
+          inSelect('org-s-' + id, pastaDaCena(id) || '', opcoes, v => moverCena(id, v), { title: 'A pasta desta cena', 'aria-label': 'Pasta de ' + sc.name }));
+      };
+      const secao = (pa, ids) => {
+        const alvo = pa ? pa.id : '';
+        return h('section', { class: 'org-p', id: 'org-p-' + (pa ? pa.id : 'solta'),
+          ondragover: e => { if (!arrastando) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('alvo'); },
+          ondragleave: e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('alvo'); },
+          ondrop: e => { e.preventDefault(); e.currentTarget.classList.remove('alvo'); const id = arrastando; arrastando = null; if (id) moverCena(id, alvo); } },
+          h('div', { class: 'org-h' }, icon('folder', 15), h('strong', { text: pa ? pa.nome : 'Sem pasta' }), h('span', { class: 'org-q', text: String(ids.length) }),
+            pa ? iconBtn('edit', 'Renomear a pasta', () => renomearPasta(pa), { size: 14, id: 'org-ren-' + pa.id }) : null,
+            pa ? iconBtn('trash', 'Apagar a pasta (as cenas dela voltam para "Sem pasta")', () => apagarPasta(pa), { size: 14, id: 'org-del-' + pa.id }) : null),
+          ids.length ? h('ul', { class: 'org-l' }, ids.map(linha)) : h('p', { class: 'org-vazia', text: pa ? 'Arraste uma cena para cá.' : 'Todas as cenas estão em pastas.' }));
+      };
+      body.replaceChildren(
+        secao(null, visiveis.filter(id => !pastaDaCena(id))),
+        ...p.lista.map(pa => secao(pa, visiveis.filter(id => pastaDaCena(id) === pa.id))),
+        h('div', { class: 'row' }, btn('Nova pasta', () => novaPasta(), { icon: 'plus', id: 'org-nova' })),
+        note('Arraste uma cena para outra pasta, ou escolha a pasta na lista ao lado dela. Apagar uma pasta não apaga as cenas. O ícone do mundo marca as cenas que um marcador do Mapa-múndi abre.'));
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+    };
+    paint();
+    modal({ title: 'Organizar em pastas', wide: true, body, focusPrimary: true, actions: [{ label: 'Pronto', kind: 'primary' }] });
+    modalLive = paint;
   }
 
   /* ---- No ar: a cena que os jogadores da mesa veem. Só muda quando o mestre manda, e dá para desfazer. ---- */
@@ -10113,7 +10321,7 @@ const UI = (() => {
       ['T', 'Novo token'], ['J', 'Objetos de cenário: tochas, fogueiras, móveis, árvores, armadilhas'], ['B · L · R · O · P · X', 'Desenho livre, linha, retângulo, elipse, polígono, texto'], ['W · D', 'Parede · porta'],
       ['I', 'Luz'], ['U', 'Névoa manual'], ['Q', 'Terreno'], ['Y', 'Efeito de magia'], ['M', 'Régua'], ['G', 'Ping no ponto onde o cursor está'],
       ['A', 'Mirar no token sob o cursor (ou nos selecionados); de novo, tira a mira'],
-      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['C', 'Disputa entre dois tokens (só o mestre)'],
+      ['F', 'Atributos do token sob o cursor (ou do selecionado), para rolar com a fixa'], ['Shift+F', 'Rolagem geral: o mesmo atributo para os selecionados (ou um grupo) — só o mestre'], ['C', 'Disputa entre dois tokens (só o mestre)'],
       ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
@@ -10332,7 +10540,8 @@ const UI = (() => {
         h('span', { text: ' Esta mesa ainda não tem nenhuma. Você escolhe quais trazer; as do navegador não mudam.' }),
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
       gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
-        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null) : null,
+        Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null,
+        sc.tokens.some(t => !t.prop) ? btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', id: 'sel-geral', title: 'O mesmo atributo para vários tokens: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }) : null) : null,
     ];
   }
   function ownerLabel(t) {
@@ -11062,7 +11271,8 @@ const UI = (() => {
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
-          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null) : null) : null,
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null,
+          btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' })) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
@@ -12321,6 +12531,7 @@ const Luta = (() => {
     abrirEquip(t);
   }
   const TROCA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const LIGA_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>';
   const GEMA_I = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18"/></svg>';
   const svgEl = s => { const d = document.createElement('span'); d.className = 'eq-i'; d.innerHTML = s; return d; };
   function pintarEquip() {
@@ -12335,7 +12546,9 @@ const Luta = (() => {
       h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
       h('span', { class: 'eq-t' },
         h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
-        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }))))
+        h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }),
+        // o complementar, numa linha só dele: "com Espada do Gelo de Selene" (ou "sem efeito", equipado sem o que ele precisa)
+        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null)))
       : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
     if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
   }
@@ -12345,7 +12558,7 @@ const Luta = (() => {
     const r = Fichas.equipar(t, it.id, !it.on);
     if (!r.ok) { toast(r.error); return; }
     const e = n => (n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]);
-    toast(it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.',
+    toast(r.texto || (it.on ? `Guardou ${r.item}.` : `Equipou ${r.item}` + (r.guardados.length ? ` no lugar de ${e(r.guardados)}` : '') + '.'),
       { action: 'Desfazer', run: () => { if (r.desfazer()) pintarEquip(); } });
     pintarEquip();
   }
@@ -12823,16 +13036,200 @@ const Luta = (() => {
     // se a janela sumir por outro caminho (outra janela por cima, a página trocando de cena), o pedido não fica aberto
     atqRelogio = setInterval(() => { if (atq === st && !document.body.contains(card)) fecharAtaque('cancelado'); }, 1500);
   }
-  // Chegou da mesa ao vivo uma linha com recado para as Cenas (ver 11-boot.js): a defesa rolada a pedido.
+
+  /* ================= Shift+F: a rolagem geral (lote 6) =================
+     O mesmo atributo para vários tokens de uma vez (a Percepção do grupo todo, por exemplo). O mestre escolhe na hora:
+     pede aos jogadores (cada um rola pela mesa ao vivo, escolhendo a fixa; a janela mostra quem já rolou e o mestre
+     rola os NPCs ali) ou rola por todos (cada linha com a fixa dela; um botão rola tudo). Cada rolagem vai para a mesa
+     ao vivo como as outras (em segredo, a de um token oculto), e a janela diz quem tirou mais. Nada muda na cena. */
+  let ger = null, gerRelogio = 0;
+  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const nomeAtr = k => { const R = window.TC && window.TC.rules; return (R && R.NOMES && R.NOMES[k]) || k; };
+  function encerrarGeral(fim) {
+    const p = ger && ger.pedido;
+    if (!p || p.fim) return;
+    p.fim = fim;
+    try { const P = ponte(); if (P && P.registro && P.registro.encerrar) P.registro.encerrar(p.id, fim); } catch (e) { console.error(e); }
+  }
+  function fecharGeral() {
+    if (!ger) return;
+    const faltava = ger.rows.some(r => r.on && r.st !== 'rolou' && ger.pedido && ger.pedido.chars.has(r.char));
+    encerrarGeral(faltava ? 'cancelado' : 'aplicado');
+    ger = null;
+    clearInterval(gerRelogio); gerRelogio = 0;
+  }
+  function rolagemGeral() {
+    if (!isGM()) { toast('A rolagem geral é do mestre.'); return; }
+    fecharPop(); fecharEquip(); fecharGeral();
+    const sc = Store.scene(), sel = selOf('tokens').filter(x => !x.prop && tokShown(x, sc));
+    const todos = () => Store.scene().tokens.filter(x => !x.prop);
+    const comFicha = t => !!(t && t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const deJogador = () => todos().filter(t => comFicha(t) && Fichas.donoQueJoga(t));
+    const conjuntos = [sel.length ? ['sel', `Os selecionados (${sel.length})`] : null, ['jog', `Os personagens dos jogadores (${deJogador().length})`], ['todos', `Todos os tokens da cena (${todos().length})`]].filter(Boolean);
+    const P = ponte();
+    const st = ger = {
+      quem: sel.length ? 'sel' : deJogador().length ? 'jog' : 'todos',
+      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : 'PER',
+      rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
+    };
+    const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())
+      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40) }));
+    st.rows = linhasDe(st.quem);
+    const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 40, placeholder: 'Percepção na floresta', autocomplete: 'off', 'aria-label': 'Nome da rolagem (opcional)' });
+    const selQuem = inSelect('ger-quem', st.quem, conjuntos, v => { if (st.pedido && !st.pedido.fim) { toast('Há um pedido em aberto. Cancele o pedido para mudar.'); selQuem.value = st.quem; return; } st.quem = v; st.rows = linhasDe(v); paint(); });
+    const chips = h('div', { class: 'chips ger-atr', id: 'ger-atr', role: 'group', 'aria-label': 'O que rolar' });
+    const lista = h('ul', { class: 'area-list ger-list', id: 'ger-lista' }), conta = h('span', { class: 'area-count', id: 'ger-conta' });
+    const acoesEl = h('div', { class: 'atq-ped', id: 'ger-acoes' }), resumoEl = h('p', { class: 'ger-res', id: 'ger-resumo', role: 'status' });
+    // tudo o que uma linha precisa, com a cena e a ficha de agora
+    const ver = r => {
+      const t = Store.get('tokens', r.id);
+      if (!t) return null;
+      const ficha = comFicha(t), item = ficha ? Fichas.rolaveis(t).find(x => x[0] === st.atr) : null;
+      const dono = ficha ? Fichas.donoQueJoga(t) : null;
+      const valor = item ? item[2] : clamp(int(r.valor, 0), 0, 100000);
+      return { t, ficha, dono, valor };
+    };
+    const lerFixa = (r, v) => Math.min(clamp(int(r.fixa, 0), 0, 99999), v.valor);
+    const rolarPor = r => {
+      const v = ver(r);
+      if (!v || r.st === 'rolou') return false;
+      const fixa = lerFixa(r, v);
+      // (no lugar de um jogador, com o pedido em aberto: a rolagem vale como a resposta dele, e o cartão dele mostra)
+      const noLugar = !!(v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
+      let res;
+      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null);
+      else {
+        valorMem.set(v.t.id, v.valor);
+        res = Combate.rolarFixa(v.valor, fixa);
+        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total }); } catch (e) { console.error(e); } }
+      }
+      if (!res.ok) { toast(v.t.name + ': ' + res.error); return false; }
+      if (v.ficha) guardarFixa(v.t, fixa);
+      r.st = 'rolou'; r.r = { total: res.total, det: Combate.comoSaiu(res), por: noLugar ? 'pelo mestre' : '' };
+      return true;
+    };
+    const zerar = () => { for (const r of st.rows) { r.st = ''; r.r = null; } };
+    const paint = () => {
+      if (ger !== st) return;
+      const a = document.activeElement, card = K.card(), fid = a && a.id && card && card.contains(a) ? a.id : null;
+      const travado = !!(st.pedido && !st.pedido.fim);
+      chips.replaceChildren(...ATR_GERAL.map(k => h('button', { type: 'button', class: 'chip' + (st.atr === k ? ' on' : ''), id: 'ger-a-' + k, 'aria-pressed': String(st.atr === k), disabled: travado && st.atr !== k,
+        title: travado ? 'O pedido aos jogadores já foi feito com este atributo' : nomeAtr(k), onclick: () => { if (st.atr === k) return; st.atr = k; App.opt.gerAtr = k; zerar(); paint(); } }, rot(k))));
+      selQuem.disabled = travado;
+      const vs = st.rows.map(r => ({ r, v: ver(r) })).filter(x => x.v);
+      const dentro = vs.filter(x => x.r.on), faltam = dentro.filter(x => x.r.st !== 'rolou');
+      const jogFaltam = faltam.filter(x => x.v.dono), npcFaltam = faltam.filter(x => !x.v.dono || !(st.pedido && !st.pedido.fim && st.pedido.chars.has(x.r.char)));
+      conta.textContent = `${dentro.length} de ${vs.length} marcados`;
+      // pedir aos jogadores, ou rolar por todos
+      const filhos = [];
+      if (!travado) {
+        if (P && P.registro && P.registro.pedir && jogFaltam.length) filhos.push(btn(st.pedindo ? 'Pedindo…' : 'Pedir aos jogadores', pedir, { icon: 'users', kind: 'small', id: 'ger-pedir', disabled: st.pedindo, title: 'Manda o pedido para a mesa ao vivo: cada jogador rola pelo personagem dele, escolhendo a fixa' }));
+        if (faltam.length) filhos.push(btn(faltam.length === dentro.length ? 'Rolar tudo' : 'Rolar por quem falta', () => { for (const x of faltam) rolarPor(x.r); paint(); }, { icon: 'die', kind: 'small', id: 'ger-tudo', title: 'Você rola agora por todos os que faltam, cada um com a fixa da linha dele' }));
+      } else {
+        filhos.push(h('span', { class: 'note', text: jogFaltam.length ? 'Pedido feito: os jogadores rolam pela mesa ao vivo.' : 'Todos os jogadores já rolaram.' }),
+          btn('Cancelar o pedido', () => { encerrarGeral('cancelado'); paint(); }, { kind: 'small', id: 'ger-despedir', title: 'Encerra o pedido na mesa ao vivo. O que já foi rolado continua valendo.' }));
+        if (npcFaltam.length) filhos.push(btn('Rolar pelos NPCs', () => { for (const x of npcFaltam) rolarPor(x.r); paint(); }, { icon: 'die', kind: 'small', id: 'ger-npcs', title: 'Você rola agora pelos tokens que não são de jogador' }));
+      }
+      acoesEl.hidden = !filhos.length;
+      acoesEl.replaceChildren(...filhos);
+      lista.replaceChildren(...vs.map(({ r, v }, k) => {
+        const t = v.t, esperando = !!(r.on && r.st !== 'rolou' && v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
+        const como = !r.on ? 'fica de fora' : r.st === 'rolou' ? `rolou ${r.r.total}` + (r.r.det ? ` (${r.r.det})` : '') + (r.r.por ? ` · ${r.r.por}` : '') : esperando ? `esperando ${v.dono.name}` : 'falta rolar';
+        const valor = v.ficha ? h('span', { class: 'ger-v', id: `ger-v-${k}`, title: nomeAtr(st.atr) + ' da ficha', text: `${rot(st.atr)} ${v.valor}` })
+          : h('label', { class: 'atq-man' }, h('span', { text: rot(st.atr) }), h('input', { id: `ger-val-${k}`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: r.valor, disabled: r.st === 'rolou', 'aria-label': `Valor de ${t.name}`, title: 'Este token não tem ficha: o valor a rolar',
+            onchange: e => { r.valor = String(e.target.value); paint(); } }));
+        const fx = h('label', { class: 'atq-man' }, h('span', { text: 'fixando' }), h('input', { id: `ger-fx-${k}`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: r.fixa, disabled: r.st === 'rolou', 'aria-label': `Quanto fixar na rolagem de ${t.name}`,
+          title: 'Regra da fixa: rola um dado de (valor − fixa) lados e soma a fixa', onchange: e => { r.fixa = String(e.target.value); paint(); } }));
+        const acao = !r.on ? null : r.st === 'rolou' ? btn('Descartar', () => { r.st = ''; r.r = null; paint(); }, { kind: 'small', id: `ger-de-novo-${k}`, title: 'Descarta esta rolagem: a linha volta a esperar' })
+          : btn(esperando ? 'Rolar por ele' : 'Rolar', () => { rolarPor(r); paint(); }, { icon: 'die', kind: 'small', id: `ger-rolar-${k}` });
+        return h('li', { class: 'area-row atq-row' + (r.on ? '' : ' off') },
+          h('div', { class: 'atq-1' },
+            h('label', { class: 'area-who' },
+              h('input', { type: 'checkbox', class: 'ck', id: `ger-on-${k}`, checked: r.on, disabled: esperando || r.st === 'rolou', 'aria-label': 'Incluir ' + t.name, onchange: e => { r.on = e.target.checked; paint(); } }),
+              tokenAvatar(t, 26), h('span', { class: 'area-n', text: t.name + (t.hidden ? ' (oculto)' : '') })),
+            h('span', { class: 'area-res' + (r.st === 'rolou' ? ' ger-tot' : ''), id: `ger-res-${k}`, text: r.st === 'rolou' ? String(r.r.total) : '' })),
+          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx, acao) : null);
+      }));
+      // quem tirou mais (do maior para o menor; empate fica na ordem da lista)
+      const feitos = dentro.filter(x => x.r.st === 'rolou').slice().sort((p, q) => q.r.r.total - p.r.r.total);
+      resumoEl.hidden = !feitos.length;
+      resumoEl.textContent = feitos.length ? 'Do maior para o menor: ' + feitos.map(x => `${x.v.t.name} ${x.r.r.total}`).join(' · ') + (faltam.length ? ` (faltam ${faltam.length})` : '') : '';
+      if (fid) { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); }
+    };
+    function pedir() {
+      const Pt = ponte();
+      if (!Pt || !Pt.registro || !Pt.registro.pedir) { toast('Esta mesa ainda não recebe pedidos. Recarregue a página e tente de novo.'); return; }
+      const vistos = new Set(), lst = [];
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || !r.on || r.st === 'rolou' || !v.ficha || !v.dono || vistos.has(v.t.char)) continue;
+        vistos.add(v.t.char); lst.push({ c: v.t.char, n: String((Fichas.get(v.t.char) || {}).nome || v.t.name).slice(0, 60) });
+      }
+      if (!lst.length) return;
+      st.pedindo = true; paint();
+      Pt.registro.pedir({ rot: inNome.value.trim().slice(0, 40), atr: st.atr, alvos: lst }).then(res => {
+        st.pedindo = false;
+        if (ger !== st) { try { Pt.registro.encerrar(res.id, 'cancelado'); } catch (e) { /* a janela já fechou */ } return; }
+        st.pedido = { id: res.id, fim: null, chars: new Set(lst.map(x => x.c)) };
+        toast(lst.length === 1 ? `Pedido enviado: ${lst[0].n} rola ${nomeAtr(st.atr)} pela mesa ao vivo.` : `Pedido enviado: ${lst.length} personagens rolam ${nomeAtr(st.atr)} pela mesa ao vivo.`);
+        paint();
+      }, err => { st.pedindo = false; if (ger === st) { toast((err && err.message) || 'O pedido não chegou à mesa. Tente de novo.'); paint(); } });
+    }
+    // o que um jogador rolou pela mesa ao vivo, a pedido (ver daMesa): confere se o personagem está no pedido, de quem
+    // é a rolagem e se cabe no atributo dele
+    st.chegou = (l, s) => {
+      if (!st.pedido || st.pedido.fim || s.p !== st.pedido.id || !l.nova || typeof s.c !== 'string' || !st.pedido.chars.has(s.c)) return;
+      const Pt = ponte(), eu = Pt ? Pt.estado.eu : null, ficha = Fichas.get(s.c);
+      if (!ficha || !(l.autor_id === eu || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
+      const total = Math.round(Number(s.v));
+      const bm = n => { const x = Math.round(Number(n)); return isFinite(x) ? Math.max(-999, Math.min(999, x)) : 0; };
+      const ma = bm(s.ma), mr = bm(s.mr), rolado = total - mr, sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
+      let mudou = false;
+      for (const r of st.rows) {
+        const v = ver(r);
+        if (!v || r.char !== s.c || !v.ficha || r.st === 'rolou') continue;
+        const teto = Math.max(0, v.valor + ma);
+        if (!isFinite(total) || rolado < 0 || rolado > teto) { toast(`A rolagem de ${v.t.name} (${isFinite(total) ? total : '?'}) não cabe em ${nomeAtr(st.atr)} dele agora (${v.valor}). Role por ele, se quiser.`); continue; }
+        const dado = Math.round(Number(s.d)), fx = Math.round(Number(s.f)), at = Math.round(Number(s.a));
+        const contaTxt = at === teto && dado >= 1 && fx >= 0 && fx + dado === rolado ? `${dado} no d${at - fx}${fx ? ' + ' + fx : ''}` : '';
+        const bonus = [ma ? `${sinal(ma)} no atributo` : '', mr ? `${sinal(mr)} no resultado` : ''].filter(Boolean).join(' · ');
+        r.st = 'rolou'; r.r = { total, det: [contaTxt, bonus].filter(Boolean).join(' · '), por: l.autor_id === eu ? 'pelo mestre' : '' };
+        mudou = true;
+      }
+      if (mudou) paint();
+    };
+    const todosMarcados = on => { for (const r of st.rows) if (r.st !== 'rolou') r.on = on; paint(); };
+    const card = UI.modal({
+      title: 'Rolagem geral', wide: true,
+      onCancel: fecharGeral,
+      body: h('div', { class: 'area atq ger' },
+        h('div', { class: 'atq-top' }, field('Quem rola', selQuem, 'stack'), field('Nome (opcional)', inNome, 'stack')),
+        h('div', { class: 'field stack' }, h('span', { class: 'lb', text: 'O que rolar' }), chips),
+        acoesEl,
+        h('div', { class: 'area-bar' }, conta, h('span', { class: 'spacer' }), btn('Todos', () => todosMarcados(true), { kind: 'small' }), btn('Nenhum', () => todosMarcados(false), { kind: 'small' })),
+        lista, resumoEl,
+        note('Cada rolagem vai para a mesa ao vivo, como as outras (a de um token oculto, em segredo). Nada muda na cena.')),
+      actions: [{ label: 'Fechar', kind: 'primary', run: fecharGeral }],
+    });
+    st.card = card;
+    K.live(paint);
+    paint();
+    // se a janela sumir por outro caminho (outra janela por cima, a página trocando de cena), o pedido não fica aberto
+    gerRelogio = setInterval(() => { if (ger === st && !document.body.contains(card)) fecharGeral(); }, 1500);
+  }
+  // Chegou da mesa ao vivo uma linha com recado para as Cenas (ver 11-boot.js): a defesa rolada a pedido, ou o
+  // atributo da rolagem geral.
   function daMesa(l) {
     const s = l && l.dados && l.dados.sis;
-    if (!s || typeof s !== 'object' || s.t !== 'rd' || !atq || !isGM()) return;
-    try { atq.chegou(l, s); } catch (e) { console.error(e); }
+    if (!s || typeof s !== 'object' || !isGM()) return;
+    if (s.t === 'rd' && atq) { try { atq.chegou(l, s); } catch (e) { console.error(e); } }
+    if (s.t === 'ra' && ger) { try { ger.chegou(l, s); } catch (e) { console.error(e); } }
   }
-  window.addEventListener('pagehide', () => { if (atq) encerrarPedido('cancelado'); });
+  window.addEventListener('pagehide', () => { if (atq) encerrarPedido('cancelado'); if (ger) encerrarGeral('cancelado'); });
   // a cena aberta passou a ser outra: os alvos eram da cena de antes, então a janela do ataque fecha (e o pedido, se havia, é cancelado)
   Store.on('scene', () => {
     if (atq && atq.cena !== Store.S.current) { const c = atq.card; fecharAtaque('cancelado'); if (c && K.card() && K.card().contains(c)) UI.closeModal(); }
+    if (ger && ger.cena !== Store.S.current) { const c = ger.card; fecharGeral(); if (c && K.card() && K.card().contains(c)) UI.closeModal(); }
     if (pop) { try { pintarPop(); } catch (e) { fecharPop(); } }
   });
 
@@ -12843,7 +13240,531 @@ const Luta = (() => {
   }
 
   return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
-    equipamentos, fecharEquip, equipAberto: () => !!epop };
+    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral };
+})();
+/* ---------------------------------------------------------------
+   10d. VILA — o gerador de vilarejo (lote 6)
+   O mestre escolhe o tamanho (aldeia ou vila), o terreno, se tem rio e muralha e quantas casas; a janela mostra a
+   prévia e "Gerar outro" sorteia de novo. Sai uma cena nova: o fundo pintado (o chão, as ruas, a praça, o rio e a
+   ponte, o piso das casas, a paliçada e as árvores) e, por cima, tudo editável — as paredes de cada casa (que
+   bloqueiam a visão), uma porta, alguns móveis (objetos de cenário) e o nome em cima; o poço e os lampiões da
+   praça; a paliçada, com os portões abertos. O plano (gerar) é uma conta pura, sorteada por uma semente: a mesma
+   escolha com a mesma semente dá o mesmo vilarejo. Nada muda nas cenas que já existem.
+   --------------------------------------------------------------- */
+const Vila = (() => {
+  const TAMANHOS = {
+    aldeia: { n: 'Aldeia', W: 28, H: 20, rua: 2, praca: 2.5, casas: [3, 8], padrao: 5, lamp: 2 },
+    vila: { n: 'Vila', W: 40, H: 28, rua: 3, praca: 3.5, casas: [6, 16], padrao: 10, lamp: 4 },
+  };
+  const TERRENOS_V = [['campo', 'Campo'], ['floresta', 'Floresta'], ['areia', 'Deserto'], ['neve', 'Neve']];
+  // o que cada tipo de casa pode ter: os tamanhos (largura × altura, em quadrados), o piso e os móveis (na ordem em
+  // que entram: os primeiros são os que mais importam)
+  const TIPOS = {
+    taverna: { n: 'Taverna', tam: [[6, 5], [5, 6], [7, 5]], piso: 'madeira', moveis: ['mesa', 'barril', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], max: 6 },
+    capela: { n: 'Capela', tam: [[5, 6], [6, 5]], piso: 'pedra', moveis: ['altar', 'estatua', 'vela', 'vela'], max: 4 },
+    ferraria: { n: 'Ferraria', tam: [[5, 4], [4, 5]], piso: 'pedra', moveis: ['braseiro', 'caixote', 'barril'], max: 3 },
+    armazem: { n: 'Armazém', tam: [[5, 4], [6, 4], [4, 5]], piso: 'madeira', moveis: ['estante', 'caixote', 'barril', 'caixote', 'barril'], max: 4 },
+    casa: { n: 'Casa', tam: [[4, 3], [3, 4], [4, 4], [5, 4], [4, 5]], piso: 'madeira', moveis: ['cama', 'mesa', 'barril', 'bau', 'cadeira'], max: 3 },
+  };
+  const PESSOAS = ['Brunilda', 'Osvaldo', 'Teodora', 'Anselmo', 'Mirela', 'Gaspar', 'Lúcia', 'Benedito', 'Ilsa', 'Tomé', 'Aurora', 'Vicente', 'Rosalva', 'Joaquim', 'Hilda', 'Aldo', 'Marta', 'Rufino', 'Elvira', 'Bento', 'Cecília', 'Dário', 'Inês', 'Leandro', 'Odete', 'Severino'];
+  const TAVERNAS = ['Taverna do Javali Dourado', 'Taverna do Corvo Bêbado', 'Taverna do Caneco Cheio', 'Taverna do Gato Preto', 'Taverna do Lobo Manco', 'Taverna do Barril Furado', 'Taverna da Lua Torta', 'Taverna do Bode Risonho'];
+  const CAPELAS = ['Capela da Aurora', 'Capela de Santa Inês', 'Templo do Sol Velho', 'Capela da Colheita', 'Santuário da Geada'];
+  const LUGARES = ['Pedravale', 'Fontebranca', 'Monte Sereno', 'Pinheiral', 'Trigal', 'Lagoa Funda', 'Brejo Alto', 'Rio Manso', 'Valverde', 'Penedo', 'Carvalhal', 'Ventania', 'Areia Rubra', 'Bruma Fria'];
+
+  /* ================= o plano (conta pura) ================= */
+  const distSeg = (px, py, ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0;
+    return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+  };
+  const distLinha = (pts, x, y) => { let d = Infinity; for (let i = 1; i < pts.length; i++) d = Math.min(d, distSeg(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])); return d; };
+  function gerar(o) {
+    const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'aldeia', T = TAMANHOS[tam];
+    const terreno = TERRENOS_V.some(x => x[0] === o.terreno) ? o.terreno : 'campo';
+    const W = T.W, H = T.H, seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
+    const r = (a, b) => a + rnd() * (b - a), ri = (a, b) => Math.floor(r(a, b + 1)), pick = a => a[Math.floor(rnd() * a.length) % a.length];
+    const rio = !!o.rio, muralha = !!o.muralha;
+    const want = clamp(Math.round(Number(o.casas) || T.padrao), T.casas[0], T.casas[1]);
+    const occ = new Uint8Array(W * H);                     // 0 livre · 1 rua ou praça · 2 rio · 3 casa · 4 árvore ou enfeite
+    const at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? occ[j * W + i] : 9);
+    const pos = (i, j, v) => { if (i >= 0 && j >= 0 && i < W && j < H) occ[j * W + i] = v; };
+
+    // as ruas: a principal atravessa de um lado ao outro; na vila, uma segunda cruza de cima a baixo
+    const hw = T.rua / 2;
+    const y0 = H / 2 + r(-1.2, 1.2), A = r(0.4, 1.1), L = r(W * 0.7, W * 1.3), F = r(0, Math.PI * 2);
+    const ruaY = x => y0 + A * Math.sin(2 * Math.PI * x / L + F);
+    const amostrar = (f, de, ate, eixoX) => { const out = []; for (let t = de; t <= ate + 1e-9; t += 0.5) out.push(eixoX ? [t, f(t)] : [f(t), t]); return out; };
+    const ruas = [{ pts: amostrar(ruaY, -1, W + 1, true), hw }];
+    let ruaX = null;
+    if (tam === 'vila') {
+      const x0 = W / 2 + r(-2, 2), B = r(0.3, 0.9), M = r(H * 0.8, H * 1.4), G = r(0, Math.PI * 2);
+      ruaX = y => x0 + B * Math.sin(2 * Math.PI * y / M + G);
+      ruas.push({ pts: amostrar(ruaX, -1, H + 1, false), hw: hw * 0.85 });
+    }
+    // a praça: no cruzamento (vila) ou no meio da rua (aldeia)
+    let px = ruaX ? ruaX(y0) : W / 2 + r(-2, 2);
+    if (ruaX) for (let k = 0; k < 6; k++) px = ruaX(ruaY(px));
+    const praca = { x: px, y: ruaY(px), r: T.praca };
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const cx = i + 0.5, cy = j + 0.5;
+      if (ruas.some(ru => distLinha(ru.pts, cx, cy) <= ru.hw + 0.25) || Math.hypot(cx - praca.x, cy - praca.y) <= praca.r + 0.3) pos(i, j, 1);
+    }
+    // o rio: de cima a baixo, longe da praça (atravessa a rua principal por uma ponte)
+    let rioP = null, ponte = null;
+    if (rio) {
+      const rw = tam === 'vila' ? 1.6 : 1.3, C = r(0.6, 1.6), N = r(H * 0.7, H * 1.3), Hh = r(0, Math.PI * 2);
+      const lados = [W * 0.17, W * 0.83].filter(x => Math.abs(x - praca.x) >= praca.r + rw + 3);
+      const xr0 = (lados.length ? pick(lados) : W * 0.83) + r(-1, 1);
+      const rioX = y => xr0 + C * Math.sin(2 * Math.PI * y / N + Hh);
+      rioP = { pts: amostrar(rioX, -1, H + 1, false), hw: rw };
+      let xb = xr0;
+      for (let k = 0; k < 6; k++) xb = rioX(ruaY(xb));
+      const yb = ruaY(xb), inc = Math.atan2(ruaY(xb + 0.5) - ruaY(xb - 0.5), 1);
+      ponte = { x: xb, y: yb, comp: 2 * rw + 1.6, larg: 2 * hw + 0.5, ang: inc };
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (at(i, j) !== 1 && distLinha(rioP.pts, i + 0.5, j + 0.5) <= rw + 0.6) pos(i, j, 2);
+    }
+    // a muralha (paliçada): um retângulo a dois quadrados da borda, com portões onde as ruas saem e a água passa por baixo
+    let muro = null;
+    if (muralha) {
+      const x1 = 2, y1 = 2, x2 = W - 2, y2 = H - 2;
+      const vaos = { n: [], s: [], o: [], l: [] }, portoes = [];
+      const vao = (lado, c, meia, portao) => {
+        const a = Math.floor(c - meia - 0.5), b = Math.ceil(c + meia + 0.5);
+        vaos[lado].push([a, b]);
+        if (portao) portoes.push(lado === 'o' || lado === 'l' ? { x1: lado === 'o' ? x1 : x2, y1: a, x2: lado === 'o' ? x1 : x2, y2: b } : { x1: a, y1: lado === 'n' ? y1 : y2, x2: b, y2: lado === 'n' ? y1 : y2 });
+      };
+      vao('o', ruaY(x1), hw, true); vao('l', ruaY(x2), hw, true);
+      if (ruaX) { vao('n', ruaX(y1), hw * 0.85, true); vao('s', ruaX(y2), hw * 0.85, true); }
+      if (rioP) { const rx = y => rioP.pts.reduce((m, p) => (Math.abs(p[1] - y) < Math.abs(m[1] - y) ? p : m))[0]; vao('n', rx(y1), rioP.hw, false); vao('s', rx(y2), rioP.hw, false); }
+      // os trechos de cada lado: o lado inteiro menos os vãos
+      const trechos = (de, ate, vs) => {
+        const out = []; let a = de;
+        for (const [va, vb] of vs.slice().sort((p, q) => p[0] - q[0])) { if (va > a) out.push([a, Math.min(va, ate)]); a = Math.max(a, vb); }
+        if (a < ate) out.push([a, ate]);
+        return out.filter(([p, q]) => q - p >= 1);
+      };
+      muro = { x1, y1, x2, y2, portoes, lados: { n: trechos(x1, x2, vaos.n), s: trechos(x1, x2, vaos.s), o: trechos(y1, y2, vaos.o), l: trechos(y1, y2, vaos.l) } };
+    }
+    const reg = muralha ? { x0: 3, y0: 3, x1: W - 3, y1: H - 3 } : { x0: 1, y0: 1, x1: W - 1, y1: H - 1 };
+
+    // as casas: primeiro as que dão para a rua; se faltar lugar, as de trás (com a porta virada para a rua)
+    const cabe = (x, y, w, h) => {
+      if (x < reg.x0 || y < reg.y0 || x + w > reg.x1 || y + h > reg.y1) return false;
+      for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) {
+        const v = at(i, j), dentro = i >= x && i < x + w && j >= y && j < y + h;
+        if (dentro ? v !== 0 : v === 3 || v === 2) return false;
+      }
+      return true;
+    };
+    const tipos = [];
+    if (want >= 4) tipos.push('taverna');
+    if (tam === 'vila' && want >= 7) tipos.push('capela', 'armazem');
+    if (want >= 6) tipos.push('ferraria');
+    while (tipos.length < want) tipos.push('casa');
+    const casas = [];
+    const porta = (x, y, w, h, lado) => {
+      const len = lado === 'n' || lado === 's' ? w : h, d = clamp(Math.floor(len / 2) + ri(-1, 1) * (len >= 5 ? 1 : 0), 1, Math.max(1, len - 2));
+      if (lado === 'n') return { lado, x1: x + d, y1: y, x2: x + d + 1, y2: y };
+      if (lado === 's') return { lado, x1: x + d, y1: y + h, x2: x + d + 1, y2: y + h };
+      if (lado === 'o') return { lado, x1: x, y1: y + d, x2: x, y2: y + d + 1 };
+      return { lado, x1: x + w, y1: y + d, x2: x + w, y2: y + d + 1 };
+    };
+    const tentarNaRua = tipo => {
+      const def = TIPOS[tipo];
+      for (let k = 0; k < 300; k++) {
+        let [w, h] = pick(def.tam);
+        const naVertical = ruaX && rnd() < 0.4;
+        let x, y, lado;
+        if (!naVertical) {
+          x = ri(reg.x0, reg.x1 - w);
+          let ymin = Infinity, ymax = -Infinity;
+          for (let t = x; t <= x + w; t += 0.5) { const v = ruaY(t); ymin = Math.min(ymin, v); ymax = Math.max(ymax, v); }
+          const gap = ri(0, 1);
+          if (rnd() < 0.5) { y = Math.floor(ymin - hw - 0.25) - gap - h; lado = 's'; } else { y = Math.ceil(ymax + hw + 0.25) + gap; lado = 'n'; }
+        } else {
+          const hw2 = hw * 0.85;
+          y = ri(reg.y0, reg.y1 - h);
+          let xmin = Infinity, xmax = -Infinity;
+          for (let t = y; t <= y + h; t += 0.5) { const v = ruaX(t); xmin = Math.min(xmin, v); xmax = Math.max(xmax, v); }
+          const gap = ri(0, 1);
+          if (rnd() < 0.5) { x = Math.floor(xmin - hw2 - 0.25) - gap - w; lado = 'l'; } else { x = Math.ceil(xmax + hw2 + 0.25) + gap; lado = 'o'; }
+        }
+        if (cabe(x, y, w, h)) return { x, y, w, h, porta: porta(x, y, w, h, lado) };
+      }
+      return null;
+    };
+    const tentarAtras = tipo => {
+      const def = TIPOS[tipo];
+      for (let k = 0; k < 300; k++) {
+        const [w, h] = pick(def.tam), x = ri(reg.x0, reg.x1 - w), y = ri(reg.y0, reg.y1 - h);
+        if (!cabe(x, y, w, h)) continue;
+        // a porta vira para a rua mais perto
+        const cx = x + w / 2, cy = y + h / 2, dy = cy - ruaY(cx), dx = ruaX ? cx - ruaX(cy) : Infinity;
+        const lado = Math.abs(dx) < Math.abs(dy) ? (dx < 0 ? 'l' : 'o') : (dy < 0 ? 's' : 'n');
+        return { x, y, w, h, porta: porta(x, y, w, h, lado) };
+      }
+      return null;
+    };
+    const usados = new Set();
+    const nomeDe = tipo => {
+      const pessoa = () => { let n = pick(PESSOAS); for (let k = 0; k < 8 && usados.has(n); k++) n = pick(PESSOAS); usados.add(n); return n; };
+      if (tipo === 'taverna') return pick(TAVERNAS);
+      if (tipo === 'capela') return pick(CAPELAS);
+      if (tipo === 'ferraria') return 'Ferraria de ' + pessoa();
+      if (tipo === 'armazem') return 'Armazém de ' + pessoa();
+      return 'Casa de ' + pessoa();
+    };
+    for (const tipo of tipos) {
+      const lugar = tentarNaRua(tipo) || tentarAtras(tipo);
+      if (!lugar) continue;
+      for (let j = lugar.y; j < lugar.y + lugar.h; j++) for (let i = lugar.x; i < lugar.x + lugar.w; i++) pos(i, j, 3);
+      casas.push(Object.assign({ tipo, nome: nomeDe(tipo), moveis: [] }, lugar));
+    }
+    // os móveis de cada casa: longe da porta (a passagem fica livre), sem um em cima do outro
+    for (const c of casas) {
+      const def = TIPOS[c.tipo], dentro = new Uint8Array(c.w * c.h);
+      const livre = (i, j) => i >= 0 && j >= 0 && i < c.w && j < c.h && !dentro[j * c.w + i];
+      // a passagem: a casa do lado de dentro da porta e a seguinte
+      const p = c.porta, pi = p.lado === 'l' ? c.w - 1 : p.lado === 'o' ? 0 : p.x1 - c.x, pj = p.lado === 's' ? c.h - 1 : p.lado === 'n' ? 0 : p.y1 - c.y;
+      const di = p.lado === 'l' ? -1 : p.lado === 'o' ? 1 : 0, dj = p.lado === 's' ? -1 : p.lado === 'n' ? 1 : 0;
+      for (let k = 0; k < 2; k++) { const i = pi + di * k, j = pj + dj * k; if (i >= 0 && j >= 0 && i < c.w && j < c.h) dentro[j * c.w + i] = 2; }
+      for (const id of def.moveis) {
+        if (c.moveis.length >= def.max) break;
+        const s = Props.P[id] ? Props.P[id].size || 1 : 1, lugares = [];
+        for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
+          let ok = true;
+          for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
+          if (ok) lugares.push([i, j]);
+        }
+        if (!lugares.length) continue;
+        // perto das paredes fica mais natural (cama e estante encostadas); o meio, para a mesa
+        lugares.sort((u, v) => (id === 'mesa' ? 0 : Math.min(u[0], u[1], c.w - s - u[0], c.h - s - u[1]) - Math.min(v[0], v[1], c.w - s - v[0], c.h - s - v[1])) || 0);
+        const n = id === 'mesa' ? lugares.length : Math.max(1, Math.ceil(lugares.length / 3));
+        const [i, j] = lugares[Math.floor(rnd() * n) % lugares.length];
+        for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) dentro[(j + b) * c.w + i + a] = 1;
+        c.moveis.push({ id, x: c.x + i, y: c.y + j, s });
+      }
+    }
+    // a praça: o poço no meio e os lampiões em volta
+    const poco = { x: Math.round(praca.x - 0.5), y: Math.round(praca.y - 0.5) };
+    const lampioes = [];
+    for (let k = 0; k < T.lamp; k++) {
+      const a = (k / T.lamp) * Math.PI * 2 + Math.PI / 4, lx = Math.round(praca.x + Math.cos(a) * (praca.r - 0.6) - 0.5), ly = Math.round(praca.y + Math.sin(a) * (praca.r - 0.6) - 0.5);
+      if ((lx !== poco.x || ly !== poco.y) && !lampioes.some(q => q.x === lx && q.y === ly)) lampioes.push({ x: lx, y: ly });
+    }
+    // as árvores (pintadas no fundo) e alguns enfeites que dá para mover (pedras, arbustos, tocos)
+    const densidade = { campo: 0.05, floresta: 0.2, areia: 0.025, neve: 0.06 }[terreno];
+    const arvores = [], enfeites = [];
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      if (at(i, j) !== 0) continue;
+      let perto = false;
+      for (let b = -1; b <= 1 && !perto; b++) for (let a = -1; a <= 1 && !perto; a++) if (at(i + a, j + b) === 3) perto = true;
+      if (perto) continue;
+      const borda = Math.min(i, j, W - 1 - i, H - 1 - j), fora = muralha && (i < 2 || j < 2 || i >= W - 2 || j >= H - 2);
+      const pr = densidade * (fora ? 2.2 : borda < 3 ? 1.5 : terreno === 'floresta' ? 0.35 : 0.6);
+      if (rnd() < pr) { arvores.push({ x: i + 0.5 + r(-0.25, 0.25), y: j + 0.5 + r(-0.25, 0.25), r: r(0.55, terreno === 'floresta' ? 1.25 : 1.05) }); pos(i, j, 4); }
+    }
+    const tiposEnfeite = terreno === 'areia' ? ['pedra', 'pedra', 'caixote'] : terreno === 'neve' ? ['pedra', 'toco', 'tronco'] : ['arbusto', 'pedra', 'toco', 'arbusto'];
+    for (let k = 0, tent = 0; k < (tam === 'vila' ? 6 : 4) && tent < 200; tent++) {
+      const i = ri(reg.x0, reg.x1 - 1), j = ri(reg.y0, reg.y1 - 1), id = pick(tiposEnfeite), s = Props.P[id] ? Props.P[id].size || 1 : 1;
+      let ok = true;
+      for (let b = -1; b <= s && ok; b++) for (let a = -1; a <= s && ok; a++) { const v = at(i + a, j + b); if (v === 3 || v === 2 || ((a >= 0 && a < s && b >= 0 && b < s) && v !== 0)) ok = false; }
+      if (!ok) continue;
+      for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4);
+      enfeites.push({ id, x: i, y: j, s }); k++;
+    }
+    const nome = (tam === 'vila' ? 'Vila de ' : 'Aldeia de ') + pick(LUGARES);
+    return { v: 1, seed, tamanho: tam, terreno, rio, muralha, W, H, nome, pedidas: want, ruas, praca, rio: rioP, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+  }
+
+  /* ================= o fundo pintado ================= */
+  const PAL = {
+    campo: { base: '#4b5b40', manchas: ['#3d4c35', '#56693f', '#445637', '#5e6c46', '#39472f'], fios: ['#6c7f4e', '#33412b'], rua: ['#5c5140', '#7a6950', '#8c7a5d'], copa: ['#2c4629', '#355432', '#3f6239'], luz: '#56794a', agua: ['#2f5e7d', '#3f7396', '#5d8fb0'], margem: '#4a4232' },
+    floresta: { base: '#3a4a32', manchas: ['#2f3d29', '#465a38', '#36472e', '#4f5f3c', '#2b3826'], fios: ['#5b6e42', '#2a3524'], rua: ['#4f4536', '#6b5c45', '#7d6c52'], copa: ['#23391f', '#2c4527', '#365230'], luz: '#4b6c3f', agua: ['#2a5470', '#386886', '#5684a3'], margem: '#3f3829' },
+    areia: { base: '#c9a86a', manchas: ['#bf9c5e', '#d4b57a', '#b8935a', '#cfae72', '#b48c52'], fios: ['#d8bd85', '#a8844c'], rua: ['#a88a5a', '#bfa274', '#cdb388'], copa: ['#5e7a3a', '#6f8c45', '#4f6a30'], luz: '#87a457', agua: ['#356f8c', '#4683a0', '#69a2bc'], margem: '#9a7d4c' },
+    neve: { base: '#dfe6ec', manchas: ['#cfd8e0', '#e9eef2', '#c4ced8', '#f2f5f8', '#bcc7d2'], fios: ['#f4f7fa', '#b9c4ce'], rua: ['#8e8273', '#a99d8d', '#bdb3a6'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#e8f0f2', agua: ['#5d8aa6', '#7aa3bc', '#a9c8da'], margem: '#9aa6b0' },
+  };
+  function pintar(p, cell) {
+    const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x5bd1e995) >>> 0 || 7), c = cell;
+    const TAU2 = Math.PI * 2;
+    // o chão
+    g.fillStyle = pal.base; g.fillRect(0, 0, W, H);
+    for (let i = 0, n = Math.round(p.W * p.H * 0.9); i < n; i++) {
+      const rr = (0.45 + rnd() * 1.4) * c;
+      g.globalAlpha = 0.1 + rnd() * 0.14; g.fillStyle = pal.manchas[i % pal.manchas.length];
+      g.beginPath(); g.ellipse(rnd() * W, rnd() * H, rr, rr * (0.5 + rnd() * 0.6), rnd() * Math.PI, 0, TAU2); g.fill();
+    }
+    g.lineCap = 'round';
+    if (p.terreno === 'areia') {
+      // ondas de vento na areia
+      g.globalAlpha = 0.25; g.lineWidth = Math.max(1, c * 0.03);
+      for (let i = 0, n = Math.round(p.W * p.H * 0.35); i < n; i++) {
+        const x = rnd() * W, y = rnd() * H, l = c * (0.4 + rnd() * 0.9);
+        g.strokeStyle = pal.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - c * 0.12, x + l, y); g.stroke();
+      }
+    } else {
+      g.globalAlpha = p.terreno === 'neve' ? 0.22 : 0.3; g.lineWidth = Math.max(1, c * 0.024);
+      for (let i = 0, n = Math.round(p.W * p.H * (p.terreno === 'neve' ? 1.2 : 4)); i < n; i++) {
+        const x = rnd() * W, y = rnd() * H, a = -Math.PI / 2 + (rnd() - 0.5) * 0.9, l = c * (0.06 + rnd() * 0.1);
+        g.strokeStyle = pal.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      }
+    }
+    g.globalAlpha = 1;
+    const linha = pts => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
+    // o rio (por baixo das ruas: a ponte passa por cima)
+    if (p.rio) {
+      const pts = p.rio.pts, hw = p.rio.hw;
+      g.lineJoin = 'round'; g.lineCap = 'butt';
+      linha(pts); g.strokeStyle = pal.margem; g.lineWidth = (hw * 2 + 0.7) * c; g.stroke();
+      linha(pts); g.strokeStyle = pal.agua[0]; g.lineWidth = hw * 2 * c; g.stroke();
+      linha(pts); g.strokeStyle = pal.agua[1]; g.lineWidth = hw * 1.3 * c; g.stroke();
+      g.globalAlpha = 0.5; linha(pts); g.strokeStyle = pal.agua[2]; g.lineWidth = hw * 0.5 * c; g.stroke();
+      g.globalAlpha = 0.35; g.strokeStyle = '#e8f3f8'; g.lineWidth = Math.max(1, c * 0.03); g.lineCap = 'round';
+      for (let i = 0; i < p.H * 4; i++) {
+        const k = Math.floor(rnd() * (pts.length - 1)), [x, y] = pts[k], dx = (rnd() - 0.5) * hw * 1.4;
+        g.beginPath(); g.moveTo((x + dx) * c, y * c); g.lineTo((x + dx) * c, (y + 0.25 + rnd() * 0.4) * c); g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    // as ruas e a praça
+    g.lineJoin = 'round'; g.lineCap = 'butt';
+    for (const ru of p.ruas) {
+      linha(ru.pts); g.strokeStyle = pal.rua[0]; g.lineWidth = (ru.hw * 2 + 0.35) * c; g.stroke();
+      linha(ru.pts); g.strokeStyle = pal.rua[1]; g.lineWidth = ru.hw * 2 * c; g.stroke();
+      g.globalAlpha = 0.45; linha(ru.pts); g.strokeStyle = pal.rua[2]; g.lineWidth = ru.hw * 0.9 * c; g.stroke(); g.globalAlpha = 1;
+      // marcas de roda
+      g.globalAlpha = 0.18; g.strokeStyle = '#2a2116'; g.lineWidth = Math.max(1, c * 0.04);
+      for (const off of [-0.35, 0.35]) { g.save(); g.translate(0, off * ru.hw * c); linha(ru.pts); g.stroke(); g.restore(); }
+      g.globalAlpha = 1;
+    }
+    {
+      const pr = p.praca, x = pr.x * c, y = pr.y * c, R = pr.r * c;
+      g.fillStyle = '#6f685c'; g.beginPath(); g.arc(x, y, R + c * 0.15, 0, TAU2); g.fill();
+      g.save(); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.clip();
+      for (let j = Math.floor(pr.y - pr.r - 1); j <= pr.y + pr.r + 1; j++) for (let i = Math.floor(pr.x - pr.r - 1); i <= pr.x + pr.r + 1; i++) {
+        for (const [ox, oy] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) {
+          const s = 104 + Math.floor(rnd() * 34);
+          g.fillStyle = `rgb(${s + 6},${s + 2},${s - 8})`;
+          g.fillRect((i + ox) * c + 1.5, (j + oy) * c + 1.5, c / 2 - 3, c / 2 - 3);
+        }
+      }
+      g.restore();
+      g.strokeStyle = 'rgba(30,26,20,.55)'; g.lineWidth = Math.max(1.5, c * 0.06); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.stroke();
+    }
+    // a ponte
+    if (p.ponte) {
+      const b = p.ponte;
+      g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
+      const L = b.comp * c, Wd = b.larg * c;
+      g.fillStyle = '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
+      for (let x = -L / 2; x < L / 2; x += c * 0.33) {
+        const s = rnd();
+        g.fillStyle = s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
+        g.fillRect(x + 1, -Wd / 2, c * 0.33 - 2, Wd);
+      }
+      g.fillStyle = '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
+      g.restore();
+    }
+    // o piso de cada casa
+    for (const k of p.casas) {
+      const x = k.x * c, y = k.y * c, w = k.w * c, hh = k.h * c, pedra = TIPOS[k.tipo].piso === 'pedra';
+      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x - c * 0.08, y - c * 0.08, w + c * 0.22, hh + c * 0.22);
+      if (pedra) {
+        g.fillStyle = '#5a564e'; g.fillRect(x, y, w, hh);
+        for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
+          const s = 92 + Math.floor(rnd() * 30);
+          g.fillStyle = `rgb(${s + 6},${s + 3},${s - 4})`;
+          g.fillRect(x + i * c / 2 + 1.5, y + j * c / 2 + 1.5, c / 2 - 3, c / 2 - 3);
+        }
+      } else {
+        g.fillStyle = '#5e4128'; g.fillRect(x, y, w, hh);
+        for (let j = 0; j < k.h * 3; j++) {
+          let xx = x - rnd() * c;
+          while (xx < x + w) {
+            const l = c * (0.9 + rnd() * 1.4), s = rnd();
+            g.fillStyle = s < 0.33 ? '#8d6740' : s < 0.66 ? '#83603b' : '#97704a';
+            const a = Math.max(x, xx), b = Math.min(x + w, xx + l);
+            if (b > a) g.fillRect(a + 1, y + j * c / 3 + 1, b - a - 2, c / 3 - 2);
+            xx += l;
+          }
+        }
+      }
+      // a sombra das paredes do lado de dentro
+      const gr = g.createLinearGradient(0, y, 0, y + c * 0.35); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x, y, w, c * 0.35);
+    }
+    // a paliçada: troncos lado a lado (os portões e a água ficam de fora)
+    if (p.muro) {
+      const m = p.muro, tronco = (x, y) => {
+        g.fillStyle = '#3b2814'; g.beginPath(); g.arc(x, y, c * 0.24, 0, TAU2); g.fill();
+        g.fillStyle = rnd() < 0.5 ? '#7a5532' : '#6b4a2b'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU2); g.fill();
+        g.fillStyle = 'rgba(255,230,180,.18)'; g.beginPath(); g.arc(x - c * 0.05, y - c * 0.05, c * 0.07, 0, TAU2); g.fill();
+      };
+      const passo = 0.42;
+      for (const [a, b] of m.lados.n) for (let t = a + 0.21; t < b; t += passo) tronco(t * c, m.y1 * c);
+      for (const [a, b] of m.lados.s) for (let t = a + 0.21; t < b; t += passo) tronco(t * c, m.y2 * c);
+      for (const [a, b] of m.lados.o) for (let t = a + 0.21; t < b; t += passo) tronco(m.x1 * c, t * c);
+      for (const [a, b] of m.lados.l) for (let t = a + 0.21; t < b; t += passo) tronco(m.x2 * c, t * c);
+    }
+    // as árvores
+    for (const a of p.arvores) {
+      const x = a.x * c, y = a.y * c, R = a.r * c;
+      g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * 0.16, y + R * 0.2, R, 0, TAU2); g.fill();
+      if (p.terreno === 'neve') {
+        // pinheiro visto de cima: uma estrela escura com neve na ponta dos galhos
+        for (let camada = 0; camada < 3; camada++) {
+          const rr = R * (1 - camada * 0.28);
+          g.globalAlpha = 0.95; g.fillStyle = pal.copa[camada];
+          g.beginPath();
+          for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+          g.fill();
+        }
+        g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb';
+        for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); }
+      } else if (p.terreno === 'areia') {
+        // palmeira: folhas compridas a partir do meio
+        g.globalAlpha = 0.95; g.strokeStyle = pal.copa[1]; g.lineCap = 'round';
+        for (let i = 0; i < 7; i++) {
+          const an = (i / 7) * TAU2 + rnd() * 0.4;
+          g.lineWidth = R * 0.32; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(an + 0.3) * R * 0.6, y + Math.sin(an + 0.3) * R * 0.6, x + Math.cos(an) * R, y + Math.sin(an) * R); g.stroke();
+        }
+        g.fillStyle = '#6b4a2b'; g.beginPath(); g.arc(x, y, R * 0.16, 0, TAU2); g.fill();
+      } else {
+        for (let i = 0; i < 9; i++) {
+          const an = rnd() * TAU2, d = rnd() * R * 0.55;
+          g.globalAlpha = 0.92; g.fillStyle = pal.copa[i % 3];
+          g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
+        }
+        g.globalAlpha = 0.5; g.fillStyle = pal.luz; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+    // um escurecido de leve nas bordas
+    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
+    g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    return cv;
+  }
+
+  /* ================= a cena ================= */
+  // Monta a cena do plano: o fundo, as paredes e a porta de cada casa, os móveis, o nome em cima, a praça e a muralha.
+  async function criar(p, nome) {
+    const sc = newScene(String(nome || p.nome).trim().slice(0, 60) || p.nome);
+    sc.cols = p.W; sc.rows = p.H;
+    const c = sc.cell;
+    sc.fog.dynamic = true; sc.fog.explored = true;      // as paredes das casas escondem o que está lá dentro
+    sc.light = 'claro'; sc.tone = 'dia';
+    sc.bgColor = (PAL[p.terreno] || PAL.campo).base;
+    try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
+    const parede = (x1, y1, x2, y2, k, extra) => sc.walls.push(Object.assign({ id: uid('wl'), k: k || 'wall', x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }, extra || null));
+    const medir = document.createElement('canvas').getContext('2d');
+    const FS = 20;
+    medir.font = `600 ${FS}px ${FONT_UI}`;
+    for (const k of p.casas) {
+      const x1 = k.x, y1 = k.y, x2 = k.x + k.w, y2 = k.y + k.h, pt = k.porta;
+      // cada lado é uma parede; o da porta vira parede · porta · parede
+      const lado = (lid, ax, ay, bx, by) => {
+        if (pt.lado !== lid) { parede(ax, ay, bx, by); return; }
+        if (ax === bx) { if (pt.y1 > ay) parede(ax, ay, ax, pt.y1); parede(ax, pt.y1, ax, pt.y2, 'door'); if (pt.y2 < by) parede(ax, pt.y2, ax, by); }
+        else { if (pt.x1 > ax) parede(ax, ay, pt.x1, ay); parede(pt.x1, ay, pt.x2, ay, 'door'); if (pt.x2 < bx) parede(pt.x2, ay, bx, ay); }
+      };
+      lado('n', x1, y1, x2, y1); lado('s', x1, y2, x2, y2); lado('o', x1, y1, x1, y2); lado('l', x2, y1, x2, y2);
+      for (const mv of k.moveis) if (Props.P[mv.id]) sc.tokens.push(Props.novo(sc, mv.id, mv.x * c, mv.y * c, mv.s, false));
+      // o nome vai em cima da casa (embaixo, quando a porta é em cima: a porta não cobre o nome)
+      const tw = medir.measureText(k.nome).width, emCima = pt.lado !== 'n';
+      sc.shapes.push({ id: uid('sh'), k: 'text', x: Math.max(4, (x1 + k.w / 2) * c - tw / 2), y: emCima ? y1 * c - FS * 1.5 : y2 * c + FS * 0.35, txt: k.nome, fs: FS, s: '#f3ead2', sw: 0, f: null, a: 1, top: false, gm: false, lock: false, by: null });
+    }
+    if (p.muro) {
+      const m = p.muro;
+      for (const [a, b] of m.lados.n) parede(a, m.y1, b, m.y1);
+      for (const [a, b] of m.lados.s) parede(a, m.y2, b, m.y2);
+      for (const [a, b] of m.lados.o) parede(m.x1, a, m.x1, b);
+      for (const [a, b] of m.lados.l) parede(m.x2, a, m.x2, b);
+      for (const g of m.portoes) parede(g.x1, g.y1, g.x2, g.y2, 'door', { open: true });
+    }
+    if (Props.P.poco) sc.tokens.push(Props.novo(sc, 'poco', p.poco.x * c, p.poco.y * c, 1, false));
+    if (Props.P.lampiao) for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, 'lampiao', l.x * c, l.y * c, 1, false));
+    for (const e of p.enfeites) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
+    normalizeScene(sc);
+    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
+    return sc;
+  }
+
+  /* ================= a janela ================= */
+  const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
+  function previa(cv, p) {
+    const cell = Math.max(6, Math.floor(Math.min(420 / p.W, 300 / p.H)));
+    const fundo = pintar(p, cell);
+    cv.width = fundo.width; cv.height = fundo.height;
+    const g = cv.getContext('2d');
+    g.drawImage(fundo, 0, 0);
+    // as paredes e as portas, como no mapa; os móveis, como pontinhos
+    g.lineCap = 'round';
+    const seg = (x1, y1, x2, y2, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(x1 * cell, y1 * cell); g.lineTo(x2 * cell, y2 * cell); g.stroke(); };
+    for (const k of p.casas) {
+      for (const [a, b, cc, d] of [[k.x, k.y, k.x + k.w, k.y], [k.x, k.y + k.h, k.x + k.w, k.y + k.h], [k.x, k.y, k.x, k.y + k.h], [k.x + k.w, k.y, k.x + k.w, k.y + k.h]]) seg(a, b, cc, d, '#1b1612', Math.max(2, cell * 0.22));
+      const pt = k.porta;
+      seg(pt.x1, pt.y1, pt.x2, pt.y2, '#7fd1ff', Math.max(2, cell * 0.24));
+      g.fillStyle = '#f3ead2';
+      for (const mv of k.moveis) { g.beginPath(); g.arc((mv.x + mv.s / 2) * cell, (mv.y + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
+    }
+    if (p.muro) for (const gt of p.muro.portoes) seg(gt.x1, gt.y1, gt.x2, gt.y2, '#7fd1ff', Math.max(2, cell * 0.2));
+  }
+  function abrir() {
+    if (!isGM()) return;
+    const K = UI.kit, { field, seg, toggle, btn, note, stepper } = K;
+    const st = { tamanho: TAMANHOS[App.opt.vilaTam] ? App.opt.vilaTam : 'aldeia', terreno: TERRENOS_V.some(x => x[0] === App.opt.vilaTer) ? App.opt.vilaTer : 'campo',
+      rio: App.opt.vilaRio != null ? !!App.opt.vilaRio : true, muralha: !!App.opt.vilaMuro, casas: 0, seed: novaSemente() };
+    st.casas = TAMANHOS[st.tamanho].padrao;
+    let plano = null, nomeMexido = false;
+    const cv = h('canvas', { class: 'vila-prev', id: 'vila-prev', width: 420, height: 300, 'aria-label': 'Prévia do vilarejo' });
+    const inNome = h('input', { id: 'vila-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    const controles = h('div', { class: 'vila-c' }), resumo = h('p', { class: 'note', id: 'vila-resumo', role: 'status' });
+    const salvarOpcoes = () => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; };
+    const refazer = () => {
+      plano = gerar(st);
+      try { previa(cv, plano); } catch (e) { console.error(e); }
+      if (!nomeMexido) inNome.value = plano.nome;
+      const n = plano.casas.length, moveis = plano.casas.reduce((s, k) => s + k.moveis.length, 0);
+      resumo.textContent = `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < plano.pedidas ? ` (couberam ${n} das ${plano.pedidas})` : '') + ` · ${moveis} móveis · ${plano.W} × ${plano.H} quadrados` + (plano.rio ? ' · rio com ponte' : '') + (plano.muro ? ' · paliçada com ' + plano.muro.portoes.length + ' portões' : '') + '.';
+    };
+    const paint = () => {
+      const T = TAMANHOS[st.tamanho];
+      controles.replaceChildren(
+        h('div', { class: 'vila-l' },
+          field('Tamanho', seg('vila-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, k === 'aldeia' ? 'Uma rua, ' + TAMANHOS.aldeia.W + ' × ' + TAMANHOS.aldeia.H + ' quadrados' : 'Duas ruas que se cruzam na praça, ' + TAMANHOS.vila.W + ' × ' + TAMANHOS.vila.H + ' quadrados']),
+            v => { st.tamanho = v; st.casas = TAMANHOS[v].padrao; salvarOpcoes(); paint(); refazer(); }), 'stack'),
+          field('Terreno', seg('vila-ter', st.terreno, TERRENOS_V.map(([k, n]) => [k, n]), v => { st.terreno = v; salvarOpcoes(); paint(); refazer(); }), 'stack')),
+        h('div', { class: 'vila-l' },
+          field('Casas', stepper('vila-casas', st.casas, T.casas[0], T.casas[1], v => { st.casas = v; paint(); refazer(); }, 'Quantas casas'), 'stack'),
+          toggle('vila-rio', st.rio, v => { st.rio = v; salvarOpcoes(); refazer(); }, 'Com rio (e uma ponte)'),
+          toggle('vila-muro', st.muralha, v => { st.muralha = v; salvarOpcoes(); refazer(); }, 'Com paliçada (portões abertos)')));
+    };
+    paint(); refazer();
+    UI.modal({
+      title: 'Gerar um vilarejo', wide: true,
+      body: h('div', { class: 'vila' }, controles,
+        h('div', { class: 'vila-p' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'vila-outro', title: 'Sorteia outro vilarejo com as mesmas escolhas' }), resumo)),
+        field('Nome da cena', inNome, 'stack'),
+        note('Sai uma cena nova, com as paredes de cada casa, uma porta, alguns móveis e o nome em cima. A névoa dinâmica vem ligada: as paredes bloqueiam a visão, e os jogadores enxergam a partir dos tokens deles. Tudo continua editável; as cenas que já existem não mudam.')),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
+          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
+          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
+          const p = plano;
+          criar(p, inNome.value).then(sc => {
+            UI.closeModal();
+            UI.switchScene(sc.id);
+            const n = p.casas.length;
+            UI.toast(`"${sc.name}" criada: ${n} ${n === 1 ? 'casa' : 'casas'}, com paredes, portas, móveis e nomes. Tudo é editável.`, { long: true });
+          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
+          return false;
+        },
+      }],
+    });
+  }
+  return { TAMANHOS, TIPOS, gerar, pintar, criar, abrir };
 })();
 /* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização
@@ -13110,7 +14031,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));
