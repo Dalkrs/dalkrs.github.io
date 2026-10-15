@@ -111,6 +111,18 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.locator('#toasts .toast button').click(); await w();
   ok(await A(() => __acamp.camp.provisoes.map(p => p.qtd).join()) === '10,2' && await A(() => __acamp.camp.diario.length) === nDi, 'o Desfazer devolve as rações e tira a linha do diário');
 
+  // ================= banquete: o efeito do ensopado vale para todos que descansam =================
+  await aba('provisoes');
+  if (!(await P.locator(`#pv-${idEns}-ef`).evaluate(d => d.open))) { await P.locator(`#pv-${idEns}-ef summary`).click(); await w(); }
+  await P.locator(`#pv-todos-${idEns}`).selectOption('todos'); await w();
+  ok(await A(id => __acamp.camp.provisoes.find(p => p.id === id).todos === true, idEns) && /banquete: para todos/.test(await P.locator(`#pv-${idEns}-ef summary`).innerText()), 'o ensopado vira banquete: o resumo diz "banquete: para todos"');
+  await P.locator('#btLongo').click(); await w(300);
+  ok(/Ensopado de javali é um banquete: o efeito dela vale para todos que descansam\./.test(await dlg()) && /Força \+2 \(até o próximo descanso\)/.test(await col('pc_ogro')) && await confDe('pc_ogro') === '40 → 65',
+    'no descanso, a prévia avisa do banquete, e o Ogro — que come a carne seca — também ganha o efeito do ensopado (Força +2, Conforto +5): ' + await col('pc_ogro') + ' · ' + await confDe('pc_ogro'));
+  await P.keyboard.press('Escape'); await w(200);
+  await P.keyboard.press('Control+z'); await w(250);
+  ok(await A(id => !__acamp.camp.provisoes.find(p => p.id === id).todos, idEns), '(Ctrl+Z: o ensopado volta a valer só para quem come)');
+
   // ================= a aura da emoção =================
   await aba('grupo');
   await P.locator('#roda .pers[data-id="pc_lia"]').click(); await w();

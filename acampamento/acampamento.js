@@ -676,8 +676,12 @@
     const lista = camp.provisoes.map((p, i) => {
       const setP = (rotulo, fn) => mudar(rotulo, c => fn(acha(c.provisoes, p.id)));
       const efR = (k, rotulo) => h('label', {}, rotulo, campoNum(`pv-${k}-${p.id}`, p.ef[k], rotulo + ' de quem come ' + (p.nome || 'esta provisão'), v => setP('efeito de ' + (p.nome || 'provisão'), x => { x.ef[k] = v; }), -100, 100));
-      const resumo = resumoEfeito(p, true);
+      const resumo = resumoEfeito(p, true) + (p.todos && resumoEfeito(p, true) ? ' · banquete: para todos' : '');
       const nome = campoTexto('pv-n-' + p.id, p.nome, 'Nome da provisão', v => mudar('renomear a provisão', c => { acha(c.provisoes, p.id).nome = v; }), { placeholder: 'Ex.: carne seca' });
+      // para quem vale o efeito: quem come esta ração, ou todos que descansam (banquete: basta uma ração dela comida)
+      const paraQuem = h('label', { class: 'sw para-quem' }, 'O efeito vale para',
+        h('select', { class: 'in', id: 'pv-todos-' + p.id, 'aria-label': 'Para quem vale o efeito de ' + (p.nome || 'esta provisão'), onchange: e => { focoDepois = 'pv-todos-' + p.id; setP((e.target.value === 'todos' ? 'banquete: ' : 'efeito de quem come: ') + (p.nome || 'provisão'), x => { x.todos = e.target.value === 'todos'; }); } },
+          h('option', { value: 'quem', text: 'quem come', selected: !p.todos }), h('option', { value: 'todos', text: 'todos que descansam (banquete)', selected: p.todos })));
       const passo = h('span', { class: 'passo' },
         podeAqui ? botaoIcone('pv-m-' + p.id, MENOS, 'Tirar uma ração de ' + (p.nome || 'provisão'), () => { focoDepois = 'pv-m-' + p.id; mudar('rações de ' + (p.nome || 'provisão'), c => { const x = acha(c.provisoes, p.id); x.qtd = Math.max(0, x.qtd - 1); }, { junta: 'qtd:' + p.id }); }, { disabled: p.qtd <= 0 }) : null,
         podeAqui ? campoNum('pv-q-' + p.id, p.qtd, 'Rações de ' + (p.nome || 'provisão'), v => mudar('rações de ' + (p.nome || 'provisão'), c => { acha(c.provisoes, p.id).qtd = v; }), 0, 9999) : h('b', { text: String(p.qtd) }),
@@ -695,7 +699,8 @@
         // o que esta ração faz em quem a come: no descanso (Conforto, Sanidade, recuperação) e na ficha
         podeAqui ? dobra('pv-' + p.id + '-ef', ['Ao comer: ', h('b', { text: resumo || 'só mata a fome' })],
           h('div', { class: 'efs tres' }, efR('conf', 'Conforto'), efR('san', 'Sanidade'), efR('rec', 'Recup. %')),
-          editorFx('pv-' + p.id, p, setP))
+          editorFx('pv-' + p.id, p, setP), paraQuem,
+          h('p', { class: 'note', text: p.todos ? 'Banquete: comida uma ração dela no descanso, todos que descansam ganham o efeito.' : 'Só quem come uma ração dela ganha o efeito (as rações saem em rodízio: uma para cada, depois mais uma…).' }))
           : resumo ? h('p', { class: 'note' }, 'Ao comer: ', h('b', { text: resumo })) : null);
     });
     const nomeDe = id => { const pv = camp.provisoes.find(x => x.id === id); return pv ? pv.nome || 'Sem nome' : 'a ordem da lista'; };
@@ -711,7 +716,7 @@
       h('p', { class: 'sub', id: 'provResumo', text: (rac === 1 ? '1 ração guardada' : rac + ' rações guardadas') + (n ? ' · o descanso longo gasta ' + custo + ' (' + porP + ' por personagem' + (ef.prov ? ', ' + N.comSinal(ef.prov) + ' da estrutura' : '') + ')' : '') }),
       podeAqui ? h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'O que cada descanso serve' }),
         h('div', { class: 'servir' }, servirLinha('longo'), servirLinha('curto')),
-        h('p', { class: 'note', text: 'A provisão servida sai primeiro, depois a lista de cima para baixo. Quem come uma ração com efeito ganha o efeito dela. Na hora do descanso dá para servir outra.' }))
+        h('p', { class: 'note', text: 'A provisão servida sai primeiro, depois a lista de cima para baixo, em rodízio: uma ração para cada, depois mais uma para cada… Quem come uma ração com efeito ganha o efeito dela; numa de banquete, todos ganham. Na hora do descanso dá para servir outra.' }))
         : h('p', { class: 'note', text: 'O descanso longo serve ' + nomeDe(camp.servir.longo) + '; o curto, ' + nomeDe(camp.servir.curto) + '.' }),
       quantoComem(),
       lista.length ? lista : h('p', { class: 'note', text: 'Nenhuma provisão guardada. Cada unidade vale uma ração.' }),
@@ -963,7 +968,8 @@
         h('select', { class: 'in', id: 'ds-sv', 'aria-label': 'O que servir neste descanso', onchange: e => { escolha.servir = e.target.value || null; refazer('ds-sv'); } },
           h('option', { value: '', text: 'a ordem da lista', selected: !escolha.servir }), camp.provisoes.map(pv => h('option', { value: pv.id, text: (pv.nome || 'Sem nome') + ' (' + pv.qtd + ')', selected: escolha.servir === pv.id }))),
         h('span', { class: 'sw', title: 'Rações por personagem neste descanso, para quem não tem uma quantidade própria (por personagem ou por raça, na aba Provisões)' }, h('input', { class: 'in num', id: 'ds-qtd', type: 'number', min: 0, max: 99, step: 1, value: escolha.prov, 'aria-label': 'Rações por personagem neste descanso (o padrão)', onchange: e => { escolha.prov = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-qtd'); } }), 'cada (padrão)')));
-      if (plano.servida && plano.prov > 0 && plano.n && plano.comem < plano.n) avisos.push(h('div', { class: 'aviso', id: 'ds-da' }, (plano.servida.nome || 'A provisão servida') + (plano.comem ? ' dá para ' + plano.comem + ' de ' + plano.n + ' (abaixo, quem come); ' + (plano.n - plano.comem === 1 ? 'o outro come' : 'os outros comem') + ' do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.') : ' acabou: todos comem do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.'))));
+      if (plano.servida && plano.servida.todos && plano.servida.efeito && plano.comem) avisos.push(h('div', { class: 'aviso', id: 'ds-banquete', text: (plano.servida.nome || 'A provisão servida') + ' é um banquete: o efeito dela vale para todos que descansam.' }));
+      else if (plano.servida && plano.prov > 0 && plano.n && plano.comem < plano.n) avisos.push(h('div', { class: 'aviso', id: 'ds-da' }, (plano.servida.nome || 'A provisão servida') + (plano.comem ? ' dá para ' + plano.comem + ' de ' + plano.n + ' (abaixo, quem come); ' + (plano.n - plano.comem === 1 ? 'o outro come' : 'os outros comem') + ' do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.') : ' acabou: todos comem do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.'))));
       if (plano.custo > 0) avisos.push(h('div', { class: 'aviso' + (plano.falta ? ' ruim' : ''), id: 'ds-prov' },
         plano.falta ? `Faltam ${plano.falta} ${plano.falta === 1 ? 'ração' : 'rações'}: há ${plano.disponivel}, o descanso pede ${plano.custo}. A recuperação cai para ${camp.regras.semProv.rec}% do normal` + (camp.regras.semProv.conf ? ` e o Conforto leva ${N.comSinal(camp.regras.semProv.conf)}.` : '.')
           : `Provisões: gasta ${plano.gasto} de ${plano.disponivel} ${plano.disponivel === 1 ? 'ração' : 'rações'}` + (plano.consumo.length ? ' (' + plano.consumo.map(g => (g.nome || 'provisão') + ' −' + g.qtd).join(', ') + ')' : '') + `. Sobram ${sobra}.`));

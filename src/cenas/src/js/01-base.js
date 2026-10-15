@@ -364,6 +364,9 @@ function cleanBar(b) {
 const cleanBarRef = (b, o) => {
   if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
   if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  // (na barra "só proporção" que os jogadores recebem, x é a proporção e xn, os pontos da sobrevida: é o xn que o escudo
+  // do token mostra — sem ele, o jogador via a porcentagem no lugar dos pontos: 6 de sobrevida numa vida de 46 virava 13)
+  if (o && Number(o.xn) > 0) b.xn = Math.round(Number(o.xn) * 10) / 10;
   if (barLo(o) > 0) b.lo = barLo(o);
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   return b;

@@ -6,9 +6,11 @@
      nome, hora ('entardecer' | 'noite' | 'amanhecer'), fundo ({ url } | null), cena (id da cena tática | null)
      presentes [idDoPersonagem], autoVistos [ids já chamados sozinhos], lugares { id: { x, y } } (em % do palco)
      roda [{ id, nome, img, dono, emo? }] — quem está em volta da fogueira, do jeito que os jogadores podem ver
-     provisoes [{ id, nome, qtd, ef, fx }]      cada unidade é uma ração; a ordem é a ordem em que são gastas.
+     provisoes [{ id, nome, qtd, ef, fx, todos }]   cada unidade é uma ração; a ordem é a ordem em que são gastas.
                                                 ef = { conf, san, rec }: o que muda no descanso de quem come esta;
-                                                fx: o que ela faz na ficha de quem come (ver EFEITO, abaixo)
+                                                fx: o que ela faz na ficha de quem come (ver EFEITO, abaixo);
+                                                todos: banquete — comida uma ração dela no descanso, o efeito vale para
+                                                todos que descansam (sem isso, só para quem a come)
      melhorias [{ id, nome, desc, on, ef, alvo, fx }]   ef = { conf, san, rec, prov }: o que soma ao descanso longo;
                                                 alvo = { todos, pers: [ids], grupos: [nomes] }: para quem vale (as rações
                                                 — prov — valem para o acampamento inteiro); fx: o que faz na ficha deles
@@ -225,7 +227,7 @@
       if (idOk(k) && ehObj(p) && Number.isFinite(num(p.x, NaN)) && Number.isFinite(num(p.y, NaN))) lugares[k] = { x: Math.round(limitar(num(p.x, 50), AREA.x0, AREA.x1) * 10) / 10, y: Math.round(limitar(num(p.y, 50), AREA.y0, AREA.y1) * 10) / 10 };
     }
     const fundo = ehObj(a.fundo) && typeof a.fundo.url === 'string' && /^(https:\/\/|data:image\/(png|jpeg|webp);base64,)/.test(a.fundo.url) ? { url: a.fundo.url } : null;
-    const provisoes = unicos(listaDe(a.provisoes, MAX_ITENS).map(p => ({ id: p.id, nome: texto(p.nome, MAX_NOME), qtd: inteiro(p.qtd, 0, 0, 9999), ef: normEfRacao(p.ef), fx: normFx(p.fx) })), 'pv');
+    const provisoes = unicos(listaDe(a.provisoes, MAX_ITENS).map(p => ({ id: p.id, nome: texto(p.nome, MAX_NOME), qtd: inteiro(p.qtd, 0, 0, 9999), ef: normEfRacao(p.ef), fx: normFx(p.fx), todos: p.todos === true })), 'pv');
     const sv = ehObj(a.servir) ? a.servir : {}, servida = v => { const id = idOk(v); return id && provisoes.some(p => p.id === id) ? id : null; };
     const emo = {};
     if (ehObj(a.emo)) for (const k of Object.keys(a.emo).slice(0, 200)) { const e = emoOk(a.emo[k]); if (idOk(k) && e) emo[k] = e; }
@@ -309,7 +311,8 @@
                      por raça (comer); senão, prov. Cada linha do plano diz quanto a pessoa ia comer (quer).
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.
      Só o descanso longo usa a estrutura (melhorias e equipamentos). As rações saem primeiro da provisão servida e
-     depois da lista, de cima para baixo; quem come a servida (os primeiros, enquanto ela der) ganha o efeito dela.
+     depois da lista, de cima para baixo, em rodízio (uma para cada, depois mais uma para cada…); quem come uma ração
+     com efeito ganha o efeito dela — e, se ela é de banquete (todos), todos que descansam ganham.
      Cada linha traz também fx: o que vai para a ficha (o efeito da ração e o da estrutura), para quem chama aplicar. */
   function planejar(camp, tipo, pessoas, opt) {
     const longo = tipo !== 'curto', regra = Object.assign({}, camp.regras[longo ? 'longo' : 'curto']), ef = longo ? efeitos(camp) : Object.assign({}, EF_ZERO);
@@ -327,43 +330,53 @@
     const consumo = [];
     let resta = gasto;
     for (const p of fila) { if (resta <= 0) break; const q = Math.min(p.qtd, resta); if (q > 0) { consumo.push({ id: p.id, nome: p.nome, qtd: q }); resta -= q; } }
-    /* O que cada um come: a porção de cada pessoa (a regra diz quantas rações) sai da fila, na ordem da roda. Quem come
-       uma ração com efeito ganha o efeito dela — da servida ou da que veio pela ordem da lista; quem come duas
-       diferentes ganha os dois (cada tipo conta uma vez). Rações a mais ou a menos da estrutura não mudam quem come o
-       quê: são do acampamento. */
-    const porcoes = [];
-    for (let i = 0, fi = 0, tirado = 0; i < n; i++) {
-      const come = [];
-      for (let falta = quer[i]; falta > 0 && fi < fila.length;) {
-        const pv = fila[fi], tem = pv.qtd - tirado;
-        if (tem <= 0) { fi++; tirado = 0; continue; }
-        const q = Math.min(tem, falta), ja = come.find(x => x.p === pv);
-        if (ja) ja.qtd += q; else come.push({ p: pv, qtd: q });
-        falta -= q; tirado += q;
+    /* O que cada um come: em rodízio — uma ração para cada um, na ordem da roda, depois mais uma para cada…, até cada
+       um ter a porção dele ou as rações acabarem. Assim a comida da frente da fila (a servida, a especial) se espalha
+       por todos enquanto houver uma para cada, em vez de ficar inteira com o primeiro da roda (com 10 rações por
+       pessoa, o primeiro comia sozinho as 10 de cima). Quem come uma ração com efeito ganha o efeito dela; quem come
+       duas diferentes ganha os dois (cada tipo conta uma vez). Rações a mais ou a menos da estrutura não mudam quem come
+       o quê: são do acampamento. */
+    const porcoes = pessoas.map(() => []), restaComer = quer.slice();
+    for (let fi = 0, tirado = 0, mais = true; mais;) {
+      mais = false;
+      for (let i = 0; i < n; i++) {
+        if (restaComer[i] <= 0) continue;
+        while (fi < fila.length && fila[fi].qtd - tirado <= 0) { fi++; tirado = 0; }
+        if (fi >= fila.length) break;
+        const pv = fila[fi], ja = porcoes[i].find(x => x.p === pv);
+        if (ja) ja.qtd += 1; else porcoes[i].push({ p: pv, qtd: 1 });
+        tirado += 1; restaComer[i] -= 1; mais = true;
       }
-      porcoes.push(come);
     }
+    // as rações de banquete que alguém comeu neste descanso: o efeito delas vale para todos que descansam
+    const banquete = fila.filter(pv => pv.todos && temEfeito(pv) && porcoes.some(c => c.some(x => x.p === pv)));
     // quantos comem a provisão servida (para a prévia dizer quando ela não dá para todos)
     const comem = servida ? porcoes.filter(c => c.some(x => x.p === servida)).length : 0;
     let rec = Math.max(0, regra.rec + ef.rec), conf = regra.conf + ef.conf;
     const san = regra.san + ef.san;
     if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
     const linhas = pessoas.map((p, i) => {
-      // o que vale para esta pessoa: a estrutura que a alcança e as rações que ela come
+      // o que vale para esta pessoa: a estrutura que a alcança, as rações que ela come e as de banquete (cada tipo uma vez)
       const come = porcoes[i], eP = longo ? efeitosDe(camp, p) : { conf: 0, san: 0, rec: 0 };
-      const eR = come.reduce((a, x) => ({ conf: a.conf + x.p.ef.conf, san: a.san + x.p.ef.san, rec: a.rec + x.p.ef.rec }), { conf: 0, san: 0, rec: 0 });
+      const delas = come.map(x => x.p).filter(pv => !pv.todos).concat(banquete);
+      const eR = delas.reduce((a, pv) => ({ conf: a.conf + pv.ef.conf, san: a.san + pv.ef.san, rec: a.rec + pv.ef.rec }), { conf: 0, san: 0, rec: 0 });
       let rec = Math.max(0, regra.rec + eP.rec + eR.rec), conf = regra.conf + eP.conf + eR.conf;
       const san = regra.san + eP.san + eR.san;
       if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
-      const fx = [].concat(...come.map(x => x.p.fx.map(f => Object.assign({ de: x.p.nome || 'Ração' }, f)))).concat(longo ? fxDe(camp, p) : []);
+      const fx = [].concat(...delas.map(pv => pv.fx.map(f => Object.assign({ de: pv.nome || 'Ração' }, f)))).concat(longo ? fxDe(camp, p) : []);
       return Object.assign(linhaDoDescanso(p, longo, regra, rec, conf, san), {
         come: come.map(x => ({ id: x.p.id, nome: x.p.nome, qtd: x.qtd, efeito: temEfeito(x.p) })), quer: quer[i], rec: Math.round(rec * 10) / 10, fx });
     });
-    // as rações com efeito que alguém comeu, e quantos comeram cada uma (para o diário e a mesa ao vivo)
+    // as rações com efeito que alguém comeu, e quantos ganharam o efeito de cada uma (para o diário e a mesa ao vivo);
+    // as de banquete valem para todos (todos: true)
     const comidas = [];
-    for (const pv of fila) { if (!temEfeito(pv)) continue; const k = porcoes.filter(c => c.some(x => x.p === pv)).length; if (k) comidas.push({ id: pv.id, nome: pv.nome, n: k }); }
+    for (const pv of fila) {
+      if (!temEfeito(pv)) continue;
+      const deTodos = banquete.includes(pv), k = deTodos ? n : porcoes.filter(c => c.some(x => x.p === pv)).length;
+      if (k) comidas.push(Object.assign({ id: pv.id, nome: pv.nome, n: k }, deTodos ? { todos: true } : {}));
+    }
     return { tipo: longo ? 'longo' : 'curto', n, custo, disponivel, gasto, falta, consumo, rec: Math.round(rec * 10) / 10, conf, san, linhas, efeitos: ef,
-      servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida) } : null, comem, comidas, prov: regra.prov };
+      servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov };
   }
   // o que uma pessoa recupera, com a recuperação, o Conforto e a Sanidade que valem para ela
   function linhaDoDescanso(p, longo, regra, rec, conf, san) {
@@ -416,7 +429,8 @@
     const p = [(plano.tipo === 'longo' ? 'Descanso longo' : 'Descanso curto') + ': ' + (plano.n === 1 ? plano.linhas[0].nome + ' descansou' : plano.n + ' descansaram')];
     if (plano.gasto) p.push(plano.gasto + (plano.gasto === 1 ? ' ração gasta' : ' rações gastas'));
     // (as rações que fazem alguma coisa — têm efeito — e quantos as comeram)
-    for (const cm of plano.comidas || []) p.push((cm.n === plano.n ? (plano.n === 1 ? 'comeu ' : 'comeram ') : cm.n + (cm.n === 1 ? ' comeu ' : ' comeram ')) + (cm.nome || 'uma ração com efeito'));
+    for (const cm of plano.comidas || []) p.push(cm.todos ? 'banquete de ' + (cm.nome || 'uma ração com efeito') + ' para todos'
+      : (cm.n === plano.n ? (plano.n === 1 ? 'comeu ' : 'comeram ') : cm.n + (cm.n === 1 ? ' comeu ' : ' comeram ')) + (cm.nome || 'uma ração com efeito'));
     if (plano.falta) p.push('faltaram ' + plano.falta + (plano.falta === 1 ? ' ração' : ' rações'));
     if (plano.rec) p.push('recuperação de ' + plano.rec + '%');
     if (plano.conf) p.push('Conforto ' + comSinal(plano.conf));
@@ -445,7 +459,7 @@
   }
   const ALVO_TODOS = () => ({ todos: true, pers: [], grupos: [] });
   const item = (tipo, nome) => {
-    if (tipo === 'provisoes') return { id: novoId('pv'), nome: nome || '', qtd: 1, ef: { conf: 0, san: 0, rec: 0 }, fx: [] };
+    if (tipo === 'provisoes') return { id: novoId('pv'), nome: nome || '', qtd: 1, ef: { conf: 0, san: 0, rec: 0 }, fx: [], todos: false };
     if (tipo === 'melhorias') return { id: novoId('ml'), nome: nome || '', desc: '', on: true, ef: Object.assign({}, EF_ZERO), alvo: ALVO_TODOS(), fx: [] };
     if (tipo === 'equipamentos') return { id: novoId('eq'), nome: nome || '', desc: '', on: true, qtd: 1, ef: Object.assign({}, EF_ZERO), alvo: ALVO_TODOS(), fx: [] };
     if (tipo === 'bonus') return { id: novoId('bn'), nome: nome || '', desc: '', ateDescanso: false };

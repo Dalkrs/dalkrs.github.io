@@ -72,7 +72,8 @@ const { ok, end } = checker();
       out.editar = {}; out.criar = {};
       for (const [aba, id, novo] of [['cenas', 'cena:c1:m', 'cena:n' + n + ':m'], ['mundo', 'mundo:mapa:x', 'mundo:mapa:n' + n], ['acampamento', 'acampamento', 'acampamento@n' + n], ['fichas', 'fichas:segredos', 'fichas:n' + n],
         ['arvore', 'arvore:biblioteca', 'arvore:n' + n], ['rolador', 'rol:h:1', 'rol:h:n' + n], ['outro', 'outro:x', 'outro:n' + n]]) {
-        out.editar[aba] = mudou(await sb.from('documentos').update({ dados: { v: 2, por: uid, n } }).eq('mesa_id', mesa).eq('id', id).select('id'));
+        // (no acampamento, mudando também o nome — parte que só quem mestra muda: o banco confere quem mestra a aba, não só o mestre da mesa)
+        out.editar[aba] = mudou(await sb.from('documentos').update({ dados: aba === 'acampamento' ? { v: 2, por: uid, n, nome: 'Acampamento ' + n } : { v: 2, por: uid, n } }).eq('mesa_id', mesa).eq('id', id).select('id'));
         out.criar[aba] = criou(await sb.from('documentos').insert({ mesa_id: mesa, id: novo, vis: 'mestre', dados: { v: 1 } }));
       }
       // fichas

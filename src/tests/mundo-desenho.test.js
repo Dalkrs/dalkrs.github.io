@@ -213,6 +213,17 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
     ok(await L.F.locator('#mundo svg .c-lin .rio').count() === 1, 'o rio é desenhado como uma faixa (que engrossa até a foz)');
     await escrever(L, 'o:' + id.rio + ':nome', 'Rio Azul');
     ok(await L.F.locator('#mundo svg .c-lin text.nome-linha textPath').textContent() === 'Rio Azul', 'o nome vai ao longo do rio');
+    // o contorno claro das letras acompanha o zoom: de perto, ele não engole as letras (antes, o nome virava um amontoado)
+    const halo = () => A(L, () => { const t = document.querySelector('#mundo svg .c-lin text.nome-linha'); return [+(parseFloat(getComputedStyle(t).strokeWidth) * t.getScreenCTM().a).toFixed(2), +t.getScreenCTM().a.toFixed(2)]; });
+    const [h1] = await halo();
+    await pairar(L, 520, 520);
+    for (let i = 0; i < 12; i++) { await L.P.mouse.wheel(0, -400); await espera(60); }
+    await espera(400);
+    const [h2, z2] = await halo();
+    ok(z2 > 3 && Math.abs(h1 - 2.4) < 0.25 && Math.abs(h2 - 2.4) < 0.25, 'o contorno claro do nome fica do mesmo tamanho na tela de longe e de perto (de perto, ele não engole as letras): ' + j([h1, h2, z2]));
+    await A(L, () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+    await L.P.keyboard.press('0'); await espera(300);
+    ok((await obj(L, id.rio)).nome === 'Rio Azul' && (await halo())[1] < 1, '(a tecla 0 volta a mostrar o mapa inteiro)');
     const antes = (await obj(L, id.rio)).pts[0];
     await botao(L, 'o:' + id.rio + ':inverter');
     ok(j((await obj(L, id.rio)).pts.slice(-1)[0]) === j(antes), '"Inverter o sentido" troca a nascente e a foz');
@@ -230,6 +241,15 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
     ok(lw[1] < lw[0] / 2 && lw[2] < lw[1], 'na mesma "Larga", o rio (na foz) é bem mais largo que a estrada, e a estrada que a trilha: ' + j(lw));
     await A(L, () => __mundo.App.selecionar([]));
     await foto('desenho-linhas');
+    // uma região por cima da estrada: a área fica por baixo da estrada e dos carimbos; o nome dela, por cima deles
+    const idReg = await A(L, () => { const { App, N } = __mundo; const r = N.objNovo('r', { pts: [[1200, 100], [2000, 100], [2000, 800], [1200, 800]], nome: 'Condado Teste' }); App.mudar('nova região', m => { m.objs.push(r); }); return r.id; });
+    await espera(250);
+    const camadas = await A(L, () => ({ ordem: [...document.querySelectorAll('#mundo svg.camadas > g')].map(g => g.getAttribute('class')).filter(c => /^c-(hex|reg|lin|car|nreg)$/.test(c)).join(),
+      nome: !!document.querySelector('#mundo svg .c-nreg .rotulo-reg'), area: !!document.querySelector('#mundo svg .c-reg path.reg') }));
+    ok(camadas.ordem === 'c-hex,c-reg,c-lin,c-car,c-nreg' && camadas.nome && camadas.area, 'a região fica por baixo da estrada, do rio e dos carimbos, e o nome dela por cima: ' + j(camadas));
+    await A(L, id => __mundo.App.mudar('tirar a região', m => { m.objs = m.objs.filter(o => o.id !== id); }), idReg);
+    await espera(200);
+    ok(await L.F.locator('#mundo svg .c-nreg .rotulo-reg').count() === 0, '(tirada a região, o nome dela sai junto)');
   });
 
   await passo('a zona de guerra', async () => {

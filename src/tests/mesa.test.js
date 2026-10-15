@@ -116,6 +116,14 @@ const { ok, end } = checker();
   ok(await M.locator('#segredo').getAttribute('aria-pressed') === 'true' && (await M.locator('#dicaTxt').innerText()).includes('Só você'), 'ligar "Em segredo" muda o aviso');
   await M.locator('#msg').fill('/r 1d20'); await M.locator('#msg').press('Enter');
   ok(await espera(M, 'Só você vê'), 'a rolagem secreta aparece para o mestre, marcada');
+  // depois de escrever na conversa, um clique na cena devolve o teclado aos atalhos dela (antes, só um ping pelo botão direito devolvia)
+  await M.locator('#msg').fill('rascunho'); await M.locator('#msg').focus();
+  const caixaCena = await M.locator('#f-cenas').boundingBox();
+  await M.mouse.click(caixaCena.x + caixaCena.width * 0.45, caixaCena.y + caixaCena.height * 0.6);
+  await M.keyboard.press('m'); await w(300);
+  const Cf = M.frame({ url: /\/cenas\// });
+  ok(await Cf.locator('#tool-ruler').getAttribute('aria-pressed') === 'true' && (await M.locator('#msg').inputValue()) === 'rascunho', 'depois de escrever na conversa, um clique na cena e a tecla M já valem nela (a régua) — e nada vai parar na conversa');
+  await M.keyboard.press('v'); await w(200); await M.locator('#msg').fill('');
   // o Rolador, dentro do site, acompanha
   await M.locator('#tab-rolador').click(); await w(1800);
   const R = M.frame({ url: /\/rolador\// });

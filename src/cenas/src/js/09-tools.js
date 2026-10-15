@@ -1112,8 +1112,16 @@ const Tools = (() => {
     const m = App.mouse;
     m.sx = p.sx; m.sy = p.sy; m.x = p.x; m.y = p.y; m.inside = true;
   }
+  /* O clique no mapa não move o foco sozinho (o preventDefault abaixo): sem isto, quem acabou de escrever num campo da
+     casca — a conversa da mesa ao vivo — continuava com o teclado lá, e os atalhos da cena não chegavam (só voltavam
+     depois de um ping pelo botão direito). O foco vem para a cena aqui. */
+  function tomarFoco() {
+    try { const pa = window.parent !== window ? window.parent.document.activeElement : null; if (pa && pa !== window.frameElement && pa.blur) pa.blur(); } catch (err) { /* página de outra origem: nada a fazer */ }
+    if (!document.hasFocus()) try { window.focus(); } catch (err) { /* sem foco */ }
+  }
   cv.addEventListener('pointerdown', e => {
     if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
+    tomarFoco();
     if (Store.inTx() && !g) Store.commit();   // fecha edição ao vivo que tenha ficado aberta num campo
     UI.closeMenus();
     e.preventDefault();                      // o clique no mapa não rouba o foco nem seleciona texto

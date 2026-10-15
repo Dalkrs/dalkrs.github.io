@@ -131,6 +131,8 @@ const ASSETS = {
   // do lado do jogador: monta, e o que ele vê bate com a regra
   const j = normalizeScene(Proj.juntar(ida(m), ida(v)));
   ok(j.tokens.length === 6 && j.walls.length === 5 && j.tokens.every(t => Array.isArray(t.bars) && t.cinfo && t.vis && t.light), 'o jogador monta a cena a partir da projeção, com todos os campos no lugar');
+  const jOrc = j.tokens.find(t => t.id === orc.id);
+  eq([jOrc.bars[0].x, jOrc.bars[0].xn], [11.1, 10], 'montada a cena do lado do jogador, a sobrevida do token do mestre continua também em pontos (xn), que é o que o escudo mostra — não só a proporção');
   ok(Proj.igual(Proj.diferenca(j, normalizeScene(Proj.juntar(ida(m), ida(v)))), []), 'a mesma projeção duas vezes não gera diferença nenhuma');
 }
 

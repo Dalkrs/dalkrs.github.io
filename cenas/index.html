@@ -1142,6 +1142,9 @@ function cleanBar(b) {
 const cleanBarRef = (b, o) => {
   if (o && typeof o.ref === 'string' && o.ref) b.ref = o.ref.slice(0, 64);
   if (o && Number(o.x) > 0) b.x = Math.round(Number(o.x) * 10) / 10;
+  // (na barra "só proporção" que os jogadores recebem, x é a proporção e xn, os pontos da sobrevida: é o xn que o escudo
+  // do token mostra — sem ele, o jogador via a porcentagem no lugar dos pontos: 6 de sobrevida numa vida de 46 virava 13)
+  if (o && Number(o.xn) > 0) b.xn = Math.round(Number(o.xn) * 10) / 10;
   if (barLo(o) > 0) b.lo = barLo(o);
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   return b;
@@ -9074,8 +9077,16 @@ const Tools = (() => {
     const m = App.mouse;
     m.sx = p.sx; m.sy = p.sy; m.x = p.x; m.y = p.y; m.inside = true;
   }
+  /* O clique no mapa não move o foco sozinho (o preventDefault abaixo): sem isto, quem acabou de escrever num campo da
+     casca — a conversa da mesa ao vivo — continuava com o teclado lá, e os atalhos da cena não chegavam (só voltavam
+     depois de um ping pelo botão direito). O foco vem para a cena aqui. */
+  function tomarFoco() {
+    try { const pa = window.parent !== window ? window.parent.document.activeElement : null; if (pa && pa !== window.frameElement && pa.blur) pa.blur(); } catch (err) { /* página de outra origem: nada a fazer */ }
+    if (!document.hasFocus()) try { window.focus(); } catch (err) { /* sem foco */ }
+  }
   cv.addEventListener('pointerdown', e => {
     if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
+    tomarFoco();
     if (Store.inTx() && !g) Store.commit();   // fecha edição ao vivo que tenha ficado aberta num campo
     UI.closeMenus();
     e.preventDefault();                      // o clique no mapa não rouba o foco nem seleciona texto

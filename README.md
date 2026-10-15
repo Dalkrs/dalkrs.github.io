@@ -210,7 +210,11 @@ na cena passa por um botão e vira um passo de desfazer.
   jogadores, nem para o dono. O Desfazer do aviso volta ao valor de antes da sequência de cliques.
 - **Sobrevida em grupo**: na seleção de vários tokens, no botão direito e na aba Jogadores (aos dos jogadores, ou a
   todos da cena). Cada um fica com a maior — a que já tinha ou a nova; não soma. O escudo com o número aparece
-  também para quem só vê a proporção das barras: a projeção manda a sobrevida em proporção (`x`) e em pontos (`xn`).
+  também para quem só vê a proporção das barras: a projeção manda a sobrevida em proporção (`x`) e em pontos (`xn`),
+  e o `cleanBar` do lado do jogador guarda o `xn` (sem ele, o escudo mostrava a porcentagem: 6 de 46 virava 13).
+- **O teclado volta para a cena no clique.** O clique no mapa não muda o foco sozinho (o `preventDefault` do
+  `pointerdown`); por isso a cena puxa o foco ali (`tomarFoco`): quem acabou de escrever na conversa da mesa ao vivo
+  usa os atalhos logo depois de clicar no mapa.
 - **Condições por categoria.** São 47, cada uma com uma categoria (`CONDS[].g`: Dano, Controle, Combate, Mente,
   Corpo, Ritmo, Bênçãos); a escolha mostra uma aba de cada vez (ou Todas), com uma busca pelo nome que ignora
   acentos. A aba que tem condição ativa ganha um ponto.
@@ -329,6 +333,11 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   tamanho, giro, espaço entre as letras e cor) e linhas (`k: 'l'`: o rio engrossa da nascente, o primeiro ponto, até a
   foz, com uma ondulação que só depende do id; a estrada é tracejada e a trilha, pontilhada; todas suaves, passando
   pelos pontos, com o nome ao longo). Carimbos e textos sob a névoa e linhas todas cobertas não vão para os jogadores.
+  O nome da linha é refeito a cada zoom (`ajustarNomeLinha`), com o contorno claro no estilo da própria letra: como
+  atributo, a regra geral `svg text` do CSS passava por cima, e de perto o contorno engolia as letras.
+- **A ordem das camadas** (de baixo para cima): hexágonos, regiões, linhas, carimbos, zonas de guerra, os nomes das
+  regiões (`c-nreg`), textos, frentes, rotas, eventos, marcadores, névoa, grupos. A área da região fica por baixo das
+  estradas, dos rios e dos carimbos; o nome dela, por cima.
 - **A zona de guerra** (ferramenta Frente → "Zona de guerra", `k: 'z'`): a área das duas facções, em listras nas
   cores delas, com começo e fim (como o evento); pulsa enquanto acontece. As fases (`fases: [{ dia, pts }]`) mudam a
   forma com o tempo: vale a da última fase que já começou; "Mudar a forma a partir de hoje" cria uma, e as alças do
@@ -339,9 +348,12 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 
 - **As rações.** Cada descanso serve uma provisão (o mestre escolhe em Provisões, e pode trocar na hora do
   descanso, junto com quantas rações cada um come). A fila das rações é a servida primeiro e depois a lista, de cima
-  para baixo; a porção de cada personagem sai dela, na ordem da roda. Quem come uma ração com efeito ganha o efeito
-  dela — servida ou não; quem come duas diferentes ganha os dois, cada tipo uma vez. Rações a mais ou a menos da
-  estrutura (a cozinha, o caçador) são do acampamento inteiro: não mudam quem come o quê.
+  para baixo; as porções saem dela em rodízio, na ordem da roda — uma ração para cada um, depois mais uma para cada…
+  —, e assim a comida da frente se espalha por todos enquanto houver uma para cada (antes, com 10 rações por pessoa,
+  o primeiro da roda comia sozinho as 10 de cima). Quem come uma ração com efeito ganha o efeito dela — servida ou
+  não; quem come duas diferentes ganha os dois, cada tipo uma vez. A provisão de **banquete** (`todos`) dá o efeito a
+  todos que descansam quando pelo menos uma ração dela é comida. Rações a mais ou a menos da estrutura (a cozinha, o
+  caçador) são do acampamento inteiro: não mudam quem come o quê.
 - **O que vai para a ficha** (da ração que se come, ou de uma melhoria ou equipamento no descanso longo): um bônus em
   `estado.tmp` — até o próximo descanso (`ate: 'descanso'`) ou por rodadas (`r`, que se desconta na ficha; com 0
   para de somar) —, uma barra que recupera (um número, ou dados rolados quando o descanso acontece, a partir do valor

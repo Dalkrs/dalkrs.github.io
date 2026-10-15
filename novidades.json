@@ -2,6 +2,38 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-2",
+      "data": "2026-10-15",
+      "titulo": "Correções: os atalhos da cena depois da conversa, a sobrevida no escudo, a comida especial para todos, o nome das estradas e as regiões por baixo",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Depois de escrever na conversa da mesa ao vivo, um clique na cena já devolve os atalhos do teclado (antes era preciso dar um ping com o botão direito)."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "A sobrevida de um personagem do mestre aparecia errada para os jogadores no escudinho do token (6 de sobrevida virava 13). Agora mostra os pontos certos."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Acampamento: a comida especial ia toda para o primeiro da roda quando cada um come várias rações. Agora as rações saem em rodízio — uma para cada, depois mais uma para cada… — e a comida da frente da fila chega a todos enquanto houver uma para cada."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Banquete: em Provisões, no “Ao comer” de cada comida, escolha se o efeito vale só para quem come ou para todos que descansam. No banquete, basta uma ração dela ser comida para todos ganharem o efeito."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Mapa-múndi: o nome das estradas, rios e trilhas não fica mais com as letras amontoadas quando o mapa está bem de perto."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Mapa-múndi: as regiões ficam por baixo das estradas, dos rios e dos carimbos (o nome da região continua por cima, para ler)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-1",
       "data": "2026-10-15",
       "titulo": "Acampamento: áreas, construções desenhadas em três níveis, lugar e clima, linhas de relação e o jogador mexendo no acampamento",

@@ -697,7 +697,7 @@
   }
   let avisouErro = false;
   function desenharObjetos(m, ctx) {
-    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] };
+    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], nreg: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] };
     for (const o of m.objs || []) {
       const cam = CAMADA[o.k];
       if (!cam || !o.id) continue;
@@ -707,7 +707,7 @@
         if (!r || r.chave !== chave) {
           const el = construir(o, ctx);
           if (r) { r.el.remove(); if (r.el2) r.el2.remove(); }
-          r = { el, el2: el.__ico || null, chave };                // el2: o selo do evento, na camada dos ícones
+          r = { el, el2: el.__ico || null, cam2: el.__cam2 || 'mar', chave };      // el2: o selo do evento (na camada dos ícones) ou o nome da região (nreg)
           recs.set(o.id, r);
         }
       } catch (e) {
@@ -716,7 +716,7 @@
       }
       vistos.add(o.id);
       por[cam].push(r.el);
-      if (r.el2) por.mar.push(r.el2);
+      if (r.el2) por[r.cam2].push(r.el2);
     }
     for (const [id, r] of recs) if (!vistos.has(id)) { r.el.remove(); if (r.el2) r.el2.remove(); recs.delete(id); }
     for (const cam in por) ordenar(C[cam], por[cam]);
@@ -765,10 +765,12 @@
     g0.classList.add('regiao');
     const f = o.fac ? ctx.fac.get(o.fac) : null, cor = f ? f.cor : (o.cor || '');
     g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac'), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
+    // o nome vai na camada de cima (nreg): a área fica por baixo das estradas e dos carimbos, mas o nome não some sob eles
     if (o.nome) {
-      const c = pontoDoNome(o.pts), fx = fixo(c[0], c[1]);
+      const c = pontoDoNome(o.pts), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
       fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg'));
-      g0.append(fx);
+      g1.append(fx);
+      g0.__ico = g1; g0.__cam2 = 'nreg';
     }
   }
   function corFac(ctx, id) { const f = id ? ctx.fac.get(id) : null; return f ? f.cor : '#9aa3b5'; }
@@ -909,7 +911,10 @@
   function ajustarNomeLinha(t, z) {
     t.setAttribute('font-size', (14 / z).toFixed(3));
     t.setAttribute('dy', (-((t.__w || 0) + 5 / z)).toFixed(3));
-    t.setAttribute('stroke-width', (2.4 / z).toFixed(3));
+    // (o contorno vai no estilo da própria letra: como atributo, a regra geral "svg text" do CSS — o contorno de 3,2 px dos
+    //  nomes de tamanho fixo — passava por cima dele, e de perto um contorno de 3,2 unidades do mapa engolia letras de
+    //  1,75: o nome virava um amontoado)
+    t.style.strokeWidth = (2.4 / z).toFixed(3) + 'px';
   }
   // os desenhos (carimbos) vêm do núcleo como markup fixo; um molde de cada, clonado
   function molde(markup) {
@@ -2153,7 +2158,8 @@
     gradePath = s('path', { class: 'grade-linha', fill: 'none' });
     gradePat = s('pattern', { id: GRADE, patternUnits: 'userSpaceOnUse', width: 1, height: 1 }, gradePath);
     svg.append(s('defs', null, mascara, gradePat));
-    for (const n of ['hex', 'lin', 'car', 'reg', 'zon', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    // (a região fica por baixo de tudo — das estradas, dos rios e dos carimbos —; o nome dela, por cima deles: nreg)
+    for (const n of ['hex', 'reg', 'lin', 'car', 'zon', 'nreg', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
     hexTer = s('g', { class: 'hex-tinta' });
     gradeRect = s('rect', { class: 'grade', x: 0, y: 0, fill: `url(#${GRADE})` });
     C.hex.append(hexTer, gradeRect);

@@ -260,7 +260,7 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   eq([q.custo, q.linhas.map(l => l.quer)], [8, [2, 1, 3, 2]], 'na hora: a fada come 1 (mudado só neste descanso) e quem segue o padrão come o novo (2)');
   const pouco = N.normalizar(Object.assign(N.copia(c), { provisoes: [{ id: 'pao', nome: 'Pão', qtd: 4 }] }));
   const r = N.planejar(pouco, 'longo', [anao, zé, hum]);
-  eq([r.custo, r.gasto, r.falta, r.linhas.map(l => l.come.reduce((s, x) => s + x.qtd, 0))], [6, 4, 2, [2, 2, 0]], 'faltando, a fila segue a ordem da roda: os primeiros comem o deles, os últimos ficam sem');
+  eq([r.custo, r.gasto, r.falta, r.linhas.map(l => l.come.reduce((s, x) => s + x.qtd, 0))], [6, 4, 2, [2, 1, 1]], 'faltando, as rações saem em rodízio, na ordem da roda: uma para cada, depois mais uma para cada (o Zé fica sem duas das dele)');
   eq(N.planejar(N.normalizar({ provisoes: [{ id: 'p', qtd: 9 }] }), 'longo', [hum, hum]).custo, 2, 'sem nada anotado, como antes: a regra por pessoa');
   eq(N.chaveRaca('  Elfa  da   Floresta '), 'elfa da floresta', 'a chave de uma raça');
 }
@@ -278,6 +278,30 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   // (a lista é a mesma do gatilho do banco, privado.acamp_guarda: as duas andam juntas)
   eq(N.SO_MESTRE, ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima'], 'as partes que só o mestre muda');
   ok(N.SO_MESTRE.every(k => { const d = N.copia(antes); d[k] = 'outra coisa'; return N.mexeNoMestre(antes, d); }), 'mexer em qualquer uma delas é mexer no que é do mestre');
+}
+{
+  // lote 6: a comida especial se espalha em rodízio; a de banquete vale para todos que descansam
+  const pessoas = ['dain', 'lia', 'ogro'].map(id => ({ id, nome: id, recursos: [] }));
+  const luxo = { id: 'luxo', nome: 'Luxo', qtd: 3, ef: { conf: 20, san: 5, rec: 0 }, fx: [{ t: 'bonus', k: 'FOR', v: 2, dur: 'descanso' }] };
+  const longa = { id: 'longa', nome: 'Longa', qtd: 40 };
+  const c = N.normalizar({ provisoes: [luxo, longa], regras: { longo: { prov: 10 } } });
+  const p = N.planejar(c, 'longo', pessoas);
+  eq(p.linhas.map(l => [l.come.map(x => x.id + ':' + x.qtd).join(','), l.fx.length]), [['luxo:1,longa:9', 1], ['luxo:1,longa:9', 1], ['luxo:1,longa:9', 1]],
+    'com 10 rações por pessoa e 3 de Luxo na frente, cada um come uma de Luxo (rodízio) — e os três ganham o efeito, não só o primeiro da roda');
+  eq(p.comidas, [{ id: 'luxo', nome: 'Luxo', n: 3 }], 'o diário conta que os três comeram o Luxo');
+  const um = N.normalizar({ provisoes: [Object.assign({}, luxo, { qtd: 1 }), longa], regras: { longo: { prov: 10 } } });
+  const q = N.planejar(um, 'longo', pessoas);
+  eq(q.linhas.map(l => l.fx.length), [1, 0, 0], 'com uma só de Luxo (sem banquete), só quem a comeu ganha o efeito');
+  const banq = N.normalizar({ provisoes: [Object.assign({}, luxo, { qtd: 1, todos: true }), longa], regras: { longo: { prov: 10, conf: 0 } } });
+  ok(banq.provisoes[0].todos === true && N.normalizar({ provisoes: [{ id: 'a', todos: 'sim' }] }).provisoes[0].todos === false && N.item('provisoes').todos === false, 'banquete: só com todos === true (a provisão nova não é de banquete)');
+  const b = N.planejar(banq, 'longo', pessoas.map(x => Object.assign({ conf: 10 }, x)));
+  eq([b.linhas.map(l => [l.fx.length, l.fx[0] && l.fx[0].de, l.conf.para]), b.comidas, b.servida], [[[1, 'Luxo', 30], [1, 'Luxo', 30], [1, 'Luxo', 30]], [{ id: 'luxo', nome: 'Luxo', n: 3, todos: true }], null],
+    'banquete: uma ração de Luxo comida (pelo primeiro), e o efeito (Conforto +20, FOR +2) vale para os três');
+  ok(/banquete de Luxo para todos/.test(N.resumoDescanso(b)), 'e o diário diz: ' + N.resumoDescanso(b));
+  const vazio = N.normalizar({ provisoes: [Object.assign({}, luxo, { qtd: 0, todos: true }), longa] });
+  eq(N.planejar(vazio, 'longo', pessoas).linhas.map(l => l.fx.length), [0, 0, 0], 'banquete que ninguém comeu (acabou) não dá efeito a ninguém');
+  const servido = N.planejar(banq, 'longo', pessoas, { servir: 'luxo' });
+  eq([servido.servida.todos, servido.comem], [true, 1], 'servido, o plano diz que é de banquete (a prévia não avisa que "não dá para todos")');
 }
 {
   // os desenhos do acampamento (desenhos.js): cada construção em três níveis, a caravana só na fogueira
