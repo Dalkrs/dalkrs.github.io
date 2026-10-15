@@ -412,8 +412,10 @@ button { cursor: pointer; }
 .turn-inv { order: 5; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
 .turn.inv .turn-n { color: var(--fg-2); }
 .turn.inv .turn-m .av { opacity: .6; }
-.turn-a .ib.turn-v { color: var(--fg-3); }
-.turn-a .ib.turn-v.on { color: var(--fg); background: var(--hover); }
+.turn-o { display: inline-flex; flex: none; }
+.turn-o .ib { width: 22px; height: 28px; }
+.turn-o .ib.turn-v { color: var(--fg-3); }
+.turn-o .ib.turn-v.on { color: var(--fg); background: var(--hover); }
 .turn-mestre { display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px; border: 1px solid var(--lamp); border-radius: 9px; background: var(--lamp-soft); font-size: 13px; }
 .turnb-inv { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg-2); font-size: 11.5px; white-space: nowrap; }
 .bandbox { display: flex; flex-direction: column; gap: 10px; }
@@ -11379,13 +11381,14 @@ const UI = (() => {
             Act.turnReac(e.id, !e.reac);
             if (e.reac) toast(`${label} reagiu.`, { action: 'Desfazer', run: Tools.undo });
           }, { size: 14, on: !!e.reac, id: `tx-${e.id}` }) : null) : null,
-        gm ? h('span', { class: 'turn-a' },
-          // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+        // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+        gm ? h('span', { class: 'turn-o' },
           iconBtn(e.inv ? 'eyeOff' : 'eye', e.inv ? `${label}: invisível para os jogadores (clique para mostrar)` : `Esconder ${label} dos jogadores: a linha some da ordem deles e, na vez dela, eles só veem que o turno está com o mestre`, () => {
             const n = Act.turnInv(e.id, !e.inv), quem = name;
             if (n) toast(e.inv ? (n > 1 ? `As ${n} linhas de ${quem} voltam a aparecer para os jogadores.` : `${label} volta a aparecer para os jogadores.`)
               : (n > 1 ? `As ${n} linhas de ${quem} ficam invisíveis para os jogadores.` : `${label} fica invisível para os jogadores.`), { action: 'Desfazer', run: Tools.undo });
-          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` }),
+          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` })) : null,
+        gm ? h('span', { class: 'turn-a' },
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
           iconBtn('x', 'Tirar da ordem', () => remove(e), { size: 14 })) : null));

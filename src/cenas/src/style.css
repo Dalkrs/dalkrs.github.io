@@ -402,8 +402,10 @@ button { cursor: pointer; }
 .turn-inv { order: 5; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
 .turn.inv .turn-n { color: var(--fg-2); }
 .turn.inv .turn-m .av { opacity: .6; }
-.turn-a .ib.turn-v { color: var(--fg-3); }
-.turn-a .ib.turn-v.on { color: var(--fg); background: var(--hover); }
+.turn-o { display: inline-flex; flex: none; }
+.turn-o .ib { width: 22px; height: 28px; }
+.turn-o .ib.turn-v { color: var(--fg-3); }
+.turn-o .ib.turn-v.on { color: var(--fg); background: var(--hover); }
 .turn-mestre { display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px; border: 1px solid var(--lamp); border-radius: 9px; background: var(--lamp-soft); font-size: 13px; }
 .turnb-inv { padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg-2); font-size: 11.5px; white-space: nowrap; }
 .bandbox { display: flex; flex-direction: column; gap: 10px; }

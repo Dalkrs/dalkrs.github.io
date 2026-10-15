@@ -1941,13 +1941,14 @@ const UI = (() => {
             Act.turnReac(e.id, !e.reac);
             if (e.reac) toast(`${label} reagiu.`, { action: 'Desfazer', run: Tools.undo });
           }, { size: 14, on: !!e.reac, id: `tx-${e.id}` }) : null) : null,
-        gm ? h('span', { class: 'turn-a' },
-          // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+        // a linha invisível (lote 6): o olho fica no mesmo lugar em todas as linhas; aceso, a linha está escondida
+        gm ? h('span', { class: 'turn-o' },
           iconBtn(e.inv ? 'eyeOff' : 'eye', e.inv ? `${label}: invisível para os jogadores (clique para mostrar)` : `Esconder ${label} dos jogadores: a linha some da ordem deles e, na vez dela, eles só veem que o turno está com o mestre`, () => {
             const n = Act.turnInv(e.id, !e.inv), quem = name;
             if (n) toast(e.inv ? (n > 1 ? `As ${n} linhas de ${quem} voltam a aparecer para os jogadores.` : `${label} volta a aparecer para os jogadores.`)
               : (n > 1 ? `As ${n} linhas de ${quem} ficam invisíveis para os jogadores.` : `${label} fica invisível para os jogadores.`), { action: 'Desfazer', run: Tools.undo });
-          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` }),
+          }, { size: 14, on: !!e.inv, cls: 'turn-v', id: `tv-${e.id}` })) : null,
+        gm ? h('span', { class: 'turn-a' },
           iconBtn('up', 'Subir', () => Act.turnPatch(x => { if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }), { size: 14, disabled: i === 0 }),
           iconBtn('down', 'Descer', () => Act.turnPatch(x => { if (i < x.list.length - 1) { const [m] = x.list.splice(i, 1); x.list.splice(i + 1, 0, m); } }), { size: 14, disabled: i === tn.list.length - 1 }),
           iconBtn('x', 'Tirar da ordem', () => remove(e), { size: 14 })) : null));
