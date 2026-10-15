@@ -482,7 +482,10 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   terreno (as árvores da floresta, os picos da montanha, as fileiras da lavoura, as rachaduras da lava…), variada de
   um hexágono para outro: a semente é o lugar do hexágono, então o mesmo sai sempre igual, para o mestre e para quem
   joga. Não são carimbos (não contam como objetos). Desligado ("Desenho em cada hexágono", aba Terreno), só a cor.
-  Como antes, aparece com a grade (e, para o mestre, com a ferramenta Terreno).
+  Como antes, aparece com a grade (e, para o mestre, com a ferramenta Terreno). O canvas é desenhado na resolução da
+  tela (`pintarHexVista`): só a parte à vista do terreno pintado, com uma margem de um quarto da tela para cada lado,
+  refeita quando o zoom para ou quando a vista sai do que já foi desenhado — nítido em qualquer zoom (com um teto de
+  pixels; a tela muito densa conta como 2). De longe, com os hexágonos miúdos na tela (menos de 12 px), fica só a cor.
 - **A honra dos grupos** (lote 6, `g.estilo`, `g.honra`, `g.hhist`): de −5 a +5, com um selo junto do token no estilo
   escolhido (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal; sem
   estilo, o grupo não mostra honra). Positiva: o corpo vai do bronze ao ouro, com o aro dourado (mais grosso quanto

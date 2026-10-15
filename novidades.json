@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-9",
+      "data": "2026-10-15",
+      "titulo": "Mapa-múndi: o desenho dos hexágonos nítido em qualquer zoom",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Mapa-múndi: o desenho dos hexágonos pintados ficava borrado, sem resolução, principalmente de perto e em mapas grandes. Agora ele é desenhado na resolução da sua tela e refeito quando o zoom para, nítido de longe e de perto."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-8",
       "data": "2026-10-15",
       "titulo": "Mapa-múndi: desenho em cada hexágono, oito terrenos novos, honra dos grupos e painel das facções",

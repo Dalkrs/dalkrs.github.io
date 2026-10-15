@@ -36,11 +36,12 @@ async function janela(a) { const d = a.F.locator('dialog.mundo-dl[open]'); await
 const pixels = (a, q, r) => A(a, ([q, r]) => {
   const cv = document.querySelector('#mundo canvas.hex-desenho'), N = __mundo.N, m = __mundo.App.vista();
   if (!cv || cv.hidden) return null;
-  const k = cv.width / m.larg, c = N.centroHex(m, q, r), lado = Math.max(4, Math.round(m.grade.tam * 0.66 * k));
+  // (o canvas cobre a parte à vista, na resolução da tela: começa em x0, y0 e tem k pixels por unidade do mapa)
+  const k = Number(cv.dataset.k), x0 = Number(cv.dataset.x0), y0 = Number(cv.dataset.y0), c = N.centroHex(m, q, r), lado = Math.max(4, Math.round(m.grade.tam * 0.66 * k));
   // (lido numa cópia: ler o canvas do mapa várias vezes deixaria um aviso no console)
   const tmp = document.createElement('canvas'); tmp.width = tmp.height = lado;
   const tc = tmp.getContext('2d', { willReadFrequently: true });
-  tc.drawImage(cv, Math.round(c.x * k - lado / 2), Math.round(c.y * k - lado / 2), lado, lado, 0, 0, lado, lado);
+  tc.drawImage(cv, Math.round((c.x - x0) * k - lado / 2), Math.round((c.y - y0) * k - lado / 2), lado, lado, 0, 0, lado, lado);
   const d = tc.getImageData(0, 0, lado, lado).data;
   let cheios = 0, hs = 7;
   for (let i = 0; i < d.length; i += 4) { if (d[i + 3] > 0) cheios++; hs = (hs * 31 + d[i] * 7 + d[i + 1] * 3 + d[i + 2] + d[i + 3] * 11) % 1000000007; }
@@ -74,7 +75,7 @@ const selo = (a, id) => A(a, id => {
     await L.F.waitForFunction(() => window.__mundo && window.__mundo.App.pronto, null, { timeout: 15000 }); await espera(250);
     await L.F.fill('#vazio [data-k="vz:nome"]', 'Urgm'); await L.F.click('#vazio [data-k="vz:papel"]'); await espera(300);
     await aba(L, 'terreno');
-    await escrever(L, 'ter:tam', '40');
+    await escrever(L, 'ter:tam', '80');
     let m = await mapa(L);
     ok(m.terrenos.length === 16 && j(m.terrenos.slice(8).map(t => t.nome)) === j(['Lavoura', 'Ruínas', 'Lava', 'Cristais', 'Selva', 'Savana', 'Tundra', 'Terra corrompida']) && await campo(L, 'ter:novos').count() === 0,
       'um mapa novo já vem com os dezesseis terrenos (os oito novos com o desenho deles), sem a oferta');
@@ -111,6 +112,17 @@ const selo = (a, id) => A(a, id => {
     const todos = [];
     for (let i = 0; i < 16; i++) todos.push((await pixels(L, 4 + (i % 8) * 2, 4 + Math.floor(i / 8) * 3)).hs);
     ok(new Set(todos).size === 16, 'os dezesseis terrenos com desenhos diferentes');
+    // nítido em qualquer zoom: o canvas é desenhado na resolução da tela, só a parte à vista (refeito quando o zoom para)
+    const vista0 = await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return { k: Number(c.dataset.k), z: __mundo.Tela.zoom, dpr: Math.min(2, Math.max(1, devicePixelRatio || 1)) }; });
+    ok(Math.abs(vista0.k - vista0.z * vista0.dpr) < 1e-6, 'na vista do mapa inteiro, o desenho dos hexágonos tem a resolução da tela: ' + j(vista0));
+    await A(L, () => { __mundo.Tela.zoom = 4; }); await espera(500);
+    await A(L, () => { const N = __mundo.N, m = __mundo.App.vista(), c = N.centroHex(m, 6, 10); __mundo.Tela.centrar({ k: 'm', x: c.x, y: c.y }); }); await espera(900);
+    const perto = await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return { k: Number(c.dataset.k), z: __mundo.Tela.zoom, dpr: Math.min(2, Math.max(1, devicePixelRatio || 1)), larg: parseFloat(c.style.width) }; });
+    const p6 = await pixels(L, 6, 10);
+    ok(perto.z > 3.9 && Math.abs(perto.k - perto.z * perto.dpr) < 1e-6 && perto.larg < 700 && p6 && p6.cheios === p6.total && p6.total > 40000,
+      'de perto (zoom 4), refeito na resolução da tela: um hexágono com ' + (p6 && p6.total) + ' pixels (só a parte à vista é desenhada): ' + j(perto));
+    await foto('lote6b-hexagono-perto');
+    await A(L, () => __mundo.Tela.caber()); await espera(700);
     await foto('lote6b-hexagonos');
     // a grade escondida esconde o terreno dos hexágonos; mostrada de novo, ele volta (o mesmo desenho)
     await campo(L, 'ter:on').uncheck(); await espera(300);

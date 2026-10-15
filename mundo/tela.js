@@ -369,6 +369,7 @@
       else { clearTimeout(tAssentar); tAssentar = setTimeout(() => aplicarVista(true), 140); }
     }
     if (zTxt) zTxt.textContent = (V.z < 0.1 ? num(V.z * 100, 1) : Math.round(V.z * 100)) + '%';
+    if (hexDados && V.z === zAplicado) pintarHexVista();         // (no meio do zoom, o canvas escala como imagem)
   }
   function aplicarEscala() {
     clearTimeout(tAssentar); tAssentar = 0;
@@ -696,6 +697,7 @@
     const gr = m.grade || {}, ferr = usandoTerreno(), mostrar = temGrade(m) && (!!gr.on || ferr);
     C.hex.style.display = mostrar ? '' : 'none';
     if (!mostrar) { if (hexCv) hexCv.hidden = true; return; }
+    if (hexCv) hexCv.hidden = !hexDados;
     const cg = caminhoDaGrade(gr), chaveG = [cg.d, cg.w, cg.h, cg.x, cg.y].join('|');
     if (gradePat.__chave !== chaveG) {
       gradePat.__chave = chaveG;
@@ -708,7 +710,7 @@
     // a tinta: um path por tipo de terreno, refeito só quando o terreno ou a grade mudam
     const custo = ferr && mestreVe();
     const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, gr.des, custo, L, A]);
-    if (chaveT === hexChave) { if (hexCv) hexCv.hidden = !hexCv.dataset.ters; return; }
+    if (chaveT === hexChave) { pintarHexVista(); return; }
     hexChave = chaveT;
     const por = new Map(), custos = [];
     let nada = '';
@@ -720,7 +722,8 @@
       if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
     }
     // a cor e o desenho de cada hexágono vão no canvas; aqui, por cima, o "sem terreno" e os custos do mestre
-    pintarHexes(m, por);
+    prepararHexes(m, por);
+    if (hexDados) { hexCv.hidden = false; pintarHexVista(); }
     const frag = document.createDocumentFragment();
     if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
     // o custo próprio de cada hexágono, para o mestre, enquanto ele pinta o terreno
@@ -737,60 +740,90 @@
      do terreno — as árvores da floresta, os picos da montanha, as fileiras da lavoura… —, variado de um hexágono para
      o outro (a semente é o lugar dele: o mesmo hexágono sai sempre igual). Não são carimbos: não contam como objetos.
      Refeito só quando o terreno, a grade ou o tamanho do mapa mudam. */
-  let hexCv = null, hexCtx = null;
+  let hexCv = null, hexCtx = null, hexDados = null, hexFeito = null, hexVersao = 0;
+  // O desenho dos hexágonos é feito na resolução da tela (como o resto do mapa fica nítido em qualquer zoom): o
+  // canvas cobre só a parte à vista do terreno pintado, com uma margem, e é refeito quando o zoom para ou quando a
+  // vista sai do que já foi desenhado. Um teto de pixels guarda a memória (o celular de tela muito densa conta 2).
+  const MAX_PX_HEX = 12e6;
+  const dprHex = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
   function garantirHexCanvas() {
     if (!hexCv) {
       hexCv = h('canvas', { class: 'hex-desenho', 'aria-hidden': 'true' });
       mundoEl.insertBefore(hexCv, svg);
       hexCtx = hexCv.getContext('2d');
     }
-    const k = Math.min(2, 4096 / Math.max(L, A, 1), Math.sqrt(6e6 / Math.max(1, L * A)));
-    const w = Math.max(1, Math.round(L * k)), hh = Math.max(1, Math.round(A * k));
-    if (hexCv.width !== w || hexCv.height !== hh) { hexCv.width = w; hexCv.height = hh; }
-    hexCv.style.width = L + 'px';
-    hexCv.style.height = A + 'px';
     return !!hexCtx;
   }
   function limparHexCanvas() {
+    hexDados = null; hexFeito = null;
     if (!hexCv) return;
     hexCv.hidden = true;
-    if (hexCtx) { hexCtx.setTransform(1, 0, 0, 1, 0, 0); hexCtx.clearRect(0, 0, hexCv.width, hexCv.height); }
+    hexCv.width = hexCv.height = 1;                                  // (devolve a memória)
     hexCv.dataset.ters = '';
   }
+  // O terreno pintado (a cada mudança dele): por tipo, os hexágonos com o centro de cada um, e a caixa de todos.
   // porTer: id do terreno → [{ q, r }]
-  function pintarHexes(m, porTer) {
-    const ters = new Map((m.terrenos || []).map(t => [t.id, t])), lista = [...porTer].filter(([tid]) => ters.has(tid));
+  function prepararHexes(m, porTer) {
+    const ters = new Map((m.terrenos || []).map(t => [t.id, t])), lista = [], R = m.grade.tam / Math.sqrt(3) + 1;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const [tid, hs] of porTer) {
+      const t = ters.get(tid);
+      if (!t) continue;
+      let semT = 7;
+      for (const ch of String(t.tex || '') + tid) semT = (semT * 31 + ch.charCodeAt(0)) % 2147483647;
+      const pts = hs.map(x => {
+        const c = N().centroHex(m, x.q, x.r);
+        bx0 = Math.min(bx0, c.x - R); by0 = Math.min(by0, c.y - R); bx1 = Math.max(bx1, c.x + R); by1 = Math.max(by1, c.y + R);
+        return { q: x.q, r: x.r, x: c.x, y: c.y };
+      });
+      lista.push({ t, semT, hs: pts });
+    }
     if (!lista.length || !garantirHexCanvas()) { limparHexCanvas(); return; }
-    const c = hexCtx, k = hexCv.width / Math.max(1, L), des = !m.grade || m.grade.des !== false;
-    hexCv.hidden = false;
+    hexDados = { m, lista, R, u: m.grade.tam / 2, des: m.grade.des !== false, caixa: [bx0, by0, bx1, by1], n: ++hexVersao };
+    hexFeito = null;
+    hexCv.dataset.ters = lista.map(x => x.t.id + ':' + x.hs.length).join(',');
+    hexCv.dataset.des = hexDados.des ? '1' : '0';
+  }
+  function pintarHexVista() {
+    const d = hexDados;
+    if (!d || !hexCv || hexCv.hidden || !palco) return;
+    const z = zAplicado || V.z, t = tamanho();
+    if (!t.w || !t.h || !(z > 0)) return;
+    const [bx0, by0, bx1, by1] = d.caixa;
+    // a parte à vista do terreno pintado (nada à vista: o que já está desenhado fica como está)
+    const vx0 = Math.max(bx0, -V.x / V.z), vy0 = Math.max(by0, -V.y / V.z), vx1 = Math.min(bx1, (t.w - V.x) / V.z), vy1 = Math.min(by1, (t.h - V.y) / V.z);
+    if (!(vx1 > vx0 && vy1 > vy0)) return;
+    const dpr = dprHex(), f = hexFeito;
+    if (f && f.n === d.n && f.z === z && f.dpr === dpr && vx0 >= f.x0 - 1e-6 && vy0 >= f.y0 - 1e-6 && vx1 <= f.x1 + 1e-6 && vy1 <= f.y1 + 1e-6) return;
+    const mw = (t.w / z) * 0.25, mh = (t.h / z) * 0.25;
+    const x0 = Math.max(bx0, vx0 - mw), y0 = Math.max(by0, vy0 - mh), x1 = Math.min(bx1, vx1 + mw), y1 = Math.min(by1, vy1 + mh);
+    let k = z * dpr;
+    if ((x1 - x0) * (y1 - y0) * k * k > MAX_PX_HEX) k = Math.sqrt(MAX_PX_HEX / ((x1 - x0) * (y1 - y0)));
+    const w = Math.max(1, Math.ceil((x1 - x0) * k)), hh = Math.max(1, Math.ceil((y1 - y0) * k));
+    if (hexCv.width !== w || hexCv.height !== hh) { hexCv.width = w; hexCv.height = hh; }
+    const st = hexCv.style;
+    st.left = x0 + 'px'; st.top = y0 + 'px'; st.width = (w / k) + 'px'; st.height = (hh / k) + 'px';
+    const c = hexCtx, R = d.R, perto = p => p.x > x0 - R && p.x < x1 + R && p.y > y0 - R && p.y < y1 + R;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;
-    c.clearRect(0, 0, hexCv.width, hexCv.height);
-    c.setTransform(k, 0, 0, k, 0, 0);
+    c.clearRect(0, 0, w, hh);
+    c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     // a cor: um caminho por tipo de terreno
-    for (const [tid, hs] of lista) {
-      const t = ters.get(tid);
+    for (const { t, hs } of d.lista) {
       c.globalAlpha = 0.5; c.fillStyle = t.cor;
       c.beginPath();
-      for (const x of hs) hexNoCaminho(c, m, x.q, x.r);
+      for (const p of hs) if (perto(p)) hexNoCaminho(c, d.m, p.q, p.r);
       c.fill();
     }
-    // o desenho de cada um
-    if (des) {
-      const u = m.grade.tam / 2;
-      for (const [tid, hs] of lista) {
-        const t = ters.get(tid);
-        let semT = 7;
-        for (const ch of String(t.tex || '') + tid) semT = (semT * 31 + ch.charCodeAt(0)) % 2147483647;
-        for (const x of hs) {
-          const ctr = N().centroHex(m, x.q, x.r);
-          desenhoDoHex(c, m, x, ctr.x, ctr.y, u, t.tex || 'liso', t.cor, ((x.q * 73856093) ^ (x.r * 19349663) ^ semT) >>> 0);
-        }
+    // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a cor)
+    if (d.des && d.m.grade.tam * z >= 12) {
+      for (const { t, semT, hs } of d.lista) for (const p of hs) {
+        if (perto(p)) desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
       }
     }
     c.globalAlpha = 1;
-    hexCv.dataset.ters = lista.map(([tid, hs]) => tid + ':' + hs.length).join(',');
-    hexCv.dataset.des = des ? '1' : '0';
+    hexFeito = { n: d.n, z, dpr, x0, y0, x1, y1 };
+    hexCv.dataset.x0 = String(x0); hexCv.dataset.y0 = String(y0); hexCv.dataset.k = String(k);
   }
   function hexNoCaminho(c, m, q, r) {
     const cs = N().cantosHex(m, q, r);
