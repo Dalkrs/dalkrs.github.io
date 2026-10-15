@@ -654,6 +654,10 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .habrow.daarv .habnome{font-weight:500;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .habgrau{font-size:11px;color:var(--ink-soft);font-weight:400}
 .habtexto{grid-column:1/-1;font-size:13px;color:var(--ink-2);white-space:pre-wrap}
+/* (lote 6) as contas entre chaves das habilidades da árvore e o custo de usar */
+.conta{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--brass-ink,#9a6a1c);border-bottom:1px dotted currentColor;cursor:help;white-space:nowrap}
+.conta.sem{font-weight:400;color:var(--ink-3,#777)}
+.habcusto{grid-column:1/-1;font-size:12.5px;color:var(--ink-2)}
 @media (max-width:700px){.colunas{grid-template-columns:1fr}}
 .scrollx{overflow-x:auto}
 .pdlist{display:grid;gap:2px}
@@ -980,7 +984,7 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=12"></script>
-<script src="../tc/rules.js?v=9"></script>
+<script src="../tc/rules.js?v=10"></script>
 <script src="mesa.js?v=10"></script>
 <script src="extras.js?v=12"></script>
 <script src="quadros.js?v=4"></script>
@@ -2801,7 +2805,7 @@ function ligarRegistro(){
    ======================================================================= */
 const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'classe',nome:'Classe'},{id:'escola',nome:'Escola'},{id:'outra',nome:'Outra'}];
 const nomeCatArv = id => (CAT_ARV.find(c=>c.id===id)||CAT_ARV[3]).nome;
-const ARV={porId:new Map(), arvDe:new Map(), filhos:new Map()};
+const ARV={porId:new Map(), arvDe:new Map(), filhos:new Map(), bib:null, base:null, pc:null, ramos:null};
 
 function temBib(){ return !!(S.bib && (S.bib.arvores||[]).length); }
 function normalizarBib(b){
@@ -2823,23 +2827,39 @@ function normalizarBib(b){
   });
   return b;
 }
-function indexarArvores(){
+/* O índice das árvores é o do personagem pc (lote 6): a biblioteca da mesa só com o que ele alcança (a do mestre tem
+   os caminhos trancados) mais os que o mestre abriu para ele (skills.ramos, uma cópia do ramo). Sem pc, a biblioteca
+   de todos. arvPara(pc) refaz o índice só quando ele é de outro personagem (ou a biblioteca, ou os ramos, mudaram). */
+function indexarArvores(pc){
   ARV.porId.clear(); ARV.arvDe.clear(); ARV.filhos.clear();
-  if(!S.bib) return;
-  (S.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
+  const sk=pc?skillsDe(pc):null, ramos=(sk&&sk.ramos)||null;
+  ARV.base=S.bib; ARV.pc=pc?pc.id:null; ARV.ramos=ramos;
+  ARV.bib=S.bib;
+  if(S.bib && pc && window.TC && TC.rules && TC.rules.bibComRamos && (ramos || TC.rules.temTranca(S.bib))){
+    const com=TC.rules.bibComRamos(S.bib, {ramos:JSON.parse(JSON.stringify(ramos))});   // (uma cópia: arrumar não mexe nas skills)
+    if(com!==S.bib) ARV.bib=normalizarBib(com);
+  }
+  if(!ARV.bib) return;
+  (ARV.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
     ARV.porId.set(n.id,n); ARV.arvDe.set(n.id,a); ARV.filhos.set(n.id,[]);
   }));
-  (S.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
+  (ARV.bib.arvores||[]).forEach(a=>(a.nodes||[]).forEach(n=>{
     (n.pais||[]).forEach(pid=>{ if(ARV.arvDe.get(pid)===a) ARV.filhos.get(pid).push(n); });
   }));
 }
+function arvPara(pc){
+  const sk=pc?skillsDe(pc):null, ramos=(sk&&sk.ramos)||null;
+  if(ARV.base===S.bib && ARV.pc===(pc?pc.id:null) && ARV.ramos===ramos) return;
+  indexarArvores(pc);
+}
 const skillsDe   = pc => (pc.skills || (pc.skills={arvores:[],pontos:{},alocados:{}}));
 const arvoreDoNo = id => ARV.arvDe.get(id)||null;
-const arvPorId   = id => (S.bib?.arvores||[]).find(a=>a.id===id)||null;
-const poolArv    = id => (S.bib?.pools||[]).find(x=>x.id===id)||null;
-const natArv     = id => (S.bib?.naturezas||[]).find(x=>x.id===id)||null;
-const usoArv     = id => (S.bib?.usos||[]).find(x=>x.id===id)||null;
-const tipoArv    = n  => (S.bib?.tipos||{})[n.tipo] || {nome:n.tipo||'Pequeno'};
+const BIBX       = () => ARV.bib || S.bib;          // (a biblioteca do personagem do índice)
+const arvPorId   = id => (BIBX()?.arvores||[]).find(a=>a.id===id)||null;
+const poolArv    = id => (BIBX()?.pools||[]).find(x=>x.id===id)||null;
+const natArv     = id => (BIBX()?.naturezas||[]).find(x=>x.id===id)||null;
+const usoArv     = id => (BIBX()?.usos||[]).find(x=>x.id===id)||null;
+const tipoArv    = n  => (BIBX()?.tipos||{})[n.tipo] || {nome:n.tipo||'Pequeno'};
 const grupoEx    = n  => String(n.exclusivo||'').trim().toLowerCase();
 const grausDe    = n  => (n.graus&&n.graus.length? n.graus : [{custos:{},texto:''}]);
 const custoGrauArv = (n,k) => (grausDe(n)[k-1]&&grausDe(n)[k-1].custos) || {};
@@ -2870,14 +2890,14 @@ function gastosPool(pc,poolId){
 const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) - gastosPool(pc,poolId);
 function podePagarArv(pc,n,k){
   const c=custoGrauArv(n,k);
-  return (S.bib.pools||[]).every(pl=>(c[pl.id]||0) <= restantesPool(pc,pl.id));
+  return (BIBX().pools||[]).every(pl=>(c[pl.id]||0) <= restantesPool(pc,pl.id));
 }
 function faltamPools(pc,n,k){
   const c=custoGrauArv(n,k);
-  return (S.bib.pools||[]).filter(pl=>(c[pl.id]||0) > restantesPool(pc,pl.id)).map(pl=>pl.nome);
+  return (BIBX().pools||[]).filter(pl=>(c[pl.id]||0) > restantesPool(pc,pl.id)).map(pl=>pl.nome);
 }
 function custoTextoArv(custos){
-  const ps=(S.bib?.pools||[]).filter(pl=>(custos||{})[pl.id]>0).map(pl=>pl.nome+' '+custos[pl.id]);
+  const ps=(BIBX()?.pools||[]).filter(pl=>(custos||{})[pl.id]>0).map(pl=>pl.nome+' '+custos[pl.id]);
   return ps.length? ps.join(' · ') : 'sem custo';
 }
 function estadoDoNo(pc,n){
@@ -2907,6 +2927,7 @@ function podeSoltarNo(pc,id){
   return sustentadosArv(c).size===c.size;
 }
 function podarSkills(pc){
+  arvPara(pc);
   const al=skillsDe(pc).alocados;
   for(const id of Object.keys(al)){
     const n=ARV.porId.get(id);
@@ -2945,6 +2966,7 @@ function poolsDaArvore(a){
   return [...ps];
 }
 function equiparArvore(pc,id,ligar){
+  arvPara(pc);
   const sk=skillsDe(pc), a=arvPorId(id); if(!a) return;
   if(ligar){
     if(!sk.arvores.includes(id)) sk.arvores.push(id);
@@ -2957,6 +2979,7 @@ function equiparArvore(pc,id,ligar){
   podarSkills(pc); save(); renderFicha();
 }
 function pegarNo(pc,id){
+  arvPara(pc);
   const n=ARV.porId.get(id); if(!n) return;
   const sk=skillsDe(pc), atual=sk.alocados[id]||0, prox=atual+1;
   if(prox>grausDe(n).length) return;
@@ -2969,6 +2992,7 @@ function pegarNo(pc,id){
   sk.alocados[id]=prox; save(); renderFicha();
 }
 function soltarNo(pc,id){
+  arvPara(pc);
   const sk=skillsDe(pc), atual=sk.alocados[id]||0;
   if(atual<=0) return;
   if(atual===1 && !podeSoltarNo(pc,id)){ toast('Outras skills dependem dessa'); return; }
@@ -2996,18 +3020,19 @@ function linhasDaArvore(a){
 }
 /* as skills escolhidas, prontas para a tabela */
 function skillsEscolhidas(pc){
+  arvPara(pc);
   const al=skillsDe(pc).alocados, linhas=[];
-  (S.bib?.arvores||[]).forEach(a=>{
+  (BIBX()?.arvores||[]).forEach(a=>{
     if(!skillsDe(pc).arvores.includes(a.id)) return;
     (a.nodes||[]).forEach(n=>{
       const g=al[n.id]||0; if(g<=0) return;
       const custo={};
       for(let k=0;k<Math.min(g,grausDe(n).length);k++)
         Object.entries(grausDe(n)[k].custos||{}).forEach(([pid,v])=>{custo[pid]=(custo[pid]||0)+v});
-      linhas.push({n, grau:g, arvore:a, custo, texto:(grausDe(n)[g-1]||{}).texto||''});
+      linhas.push({n, grau:g, arvore:a, custo, texto:(grausDe(n)[g-1]||{}).texto||'', uso:(grausDe(n)[g-1]||{}).uso||null});
     });
   });
-  const pres=(S.bib?.usos||[]).map(u=>u.id);
+  const pres=(BIBX()?.usos||[]).map(u=>u.id);
   linhas.sort((x,y)=>{
     const ux=pres.indexOf((x.n.usos||[])[0]||''), uy=pres.indexOf((y.n.usos||[])[0]||'');
     if(ux!==uy) return (ux<0?99:ux)-(uy<0?99:uy);
@@ -3019,23 +3044,45 @@ function skillsEscolhidas(pc){
    É só leitura, e não é uma cópia: é a própria árvore, lida na hora — muda quando alguém distribui ou tira um ponto,
    pela aba Skills da ficha ou pela aba Árvore do site. */
 function habsDaArvore(pc){ try{ return temBib()? skillsEscolhidas(pc) : []; }catch(e){ return []; } }
+/* (lote 6) As contas entre chaves ({FOR*2 + 10}) viram o número do personagem — passando o mouse, a conta —, e o custo
+   de usar a habilidade aparece (quem usa desconta à mão). */
+function contasDe(pc){ try{ const c=calcular(pc); return c && c.vars ? {vars:c.vars, cfg:S.cfg} : null; }catch(e){ return null; } }
+function htmlConta(c){
+  const R=window.TC&&TC.rules;
+  return c.v!=null ? `<span class="conta" title="${esc(R.explicarConta(c))}">${esc(String(c.v))}</span>`
+    : `<span class="conta sem" title="${esc(R.explicarConta(c))}">${esc(c.expr)}</span>`;
+}
+function htmlComContas(texto, k){
+  const R=window.TC&&TC.rules;
+  if(!R||!R.partesComContas) return esc(texto);
+  return R.partesComContas(texto, k&&k.vars, k&&k.cfg).map(x=>x.t==='txt'? esc(x.s) : htmlConta(x)).join('');
+}
+function htmlCustoUso(uso, k){
+  const R=window.TC&&TC.rules;
+  if(!uso||!R||!R.custoDeUso) return '';
+  return R.custoDeUso(uso, k&&k.vars, k&&k.cfg).map(c=>(c.conta? htmlConta(c) : esc(String(c.v)))+' '+esc(c.barra)).join(' · ');
+}
+function textoComContas(texto, k){ const R=window.TC&&TC.rules; return R&&R.textoComContas? R.textoComContas(texto, k&&k.vars, k&&k.cfg) : String(texto||''); }
 function htmlHabsDaArvore(pc){
   const linhas=habsDaArvore(pc);
   if(!linhas.length) return '';
+  const k=contasDe(pc);
   return `<div class="habarv" id="habsDaArvore">
     <div class="sitbar"><span class="eyebrow">Da árvore de habilidades</span>
       <span class="hint">${linhas.length===1?'1 aprendida':linhas.length+' aprendidas'} · entram aqui sozinhas; para mudar, use a aba Skills ou a Árvore</span></div>
-    ${linhas.map(({n,grau,arvore,texto})=>{
-      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length;
+    ${linhas.map(({n,grau,arvore,texto,uso})=>{
+      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length, custo=htmlCustoUso(uso, k);
       return `<div class="habrow daarv" data-habarv="${esc(n.id)}">
         <span class="habuso">${us.length? us.map(u=>esc(u.nome)).join(' · ') : 'Árvore'}</span>
         <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
         <span class="hint">${esc(arvore.nome)}</span>
-        ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${esc(texto)}</strong>${n.desc?' · ':''}`:''}${esc(n.desc||'')}</div>`:''}
+        ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${htmlComContas(texto, k)}</strong>${n.desc?' · ':''}`:''}${htmlComContas(n.desc||'', k)}</div>`:''}
+        ${custo? `<div class="habcusto">Custo de uso: ${custo}</div>`:''}
       </div>`}).join('')}
   </div>`;
 }
 function perdidasDe(pc){
+  arvPara(pc);
   return Object.keys(skillsDe(pc).alocados).filter(id=>!ARV.porId.has(id)).length;
 }
 
@@ -3226,6 +3273,7 @@ function abrirDisputa(pc){
 
 /* =================== ABA SKILLS DA FICHA =================== */
 function blocoSkills(pc){
+  arvPara(pc);
   if(!temBib()) return `
     <div class="semarv">
       <h3>Nenhuma árvore carregada</h3>
@@ -3234,7 +3282,7 @@ function blocoSkills(pc){
     </div>`;
 
   const sk=skillsDe(pc);
-  const equipadas=(S.bib.arvores||[]).filter(a=>sk.arvores.includes(a.id));
+  const equipadas=(BIBX().arvores||[]).filter(a=>sk.arvores.includes(a.id));
   const poolsEmUso=[...new Set(equipadas.flatMap(poolsDaArvore))];
   const ui=S.skillsUI||{};
   const perdidas=perdidasDe(pc);
@@ -3259,7 +3307,7 @@ function blocoSkills(pc){
     </button>
     ${ui.equipar?`<div class="skcorpo">
       ${CAT_ARV.map(cat=>{
-        const lista=(S.bib.arvores||[]).filter(a=>a.categoria===cat.id);
+        const lista=(BIBX().arvores||[]).filter(a=>a.categoria===cat.id);
         if(!lista.length) return '';
         return `<div class="skcat"><span class="eyebrow">${cat.nome}</span>
           <div class="skchips">${lista.map(a=>{
@@ -3296,7 +3344,7 @@ function blocoSkills(pc){
     </div>`:''}
   </div>`;
 
-  const escolhidas=skillsEscolhidas(pc);
+  const escolhidas=skillsEscolhidas(pc), kc=contasDe(pc);
   const tabela = `<div class="skbloco">
     <div class="skhd estatico">
       <span class="eyebrow">Tabela de skills</span>
@@ -3307,7 +3355,7 @@ function blocoSkills(pc){
       ${escolhidas.length? `<div class="scrollx"><table class="sktab">
         <thead><tr><th>Skill</th><th>Uso</th><th>Natureza</th><th>Grau</th><th>Árvore</th></tr></thead>
         <tbody>
-        ${escolhidas.map(({n,grau,arvore,texto})=>{
+        ${escolhidas.map(({n,grau,arvore,texto,uso})=>{
           const nat=natArv(n.natureza);
           const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean);
           const gs=grausDe(n).length;
@@ -3319,7 +3367,7 @@ function blocoSkills(pc){
             <td class="mono">${gs>1? grau+'/'+gs : '—'}</td>
             <td class="hint">${esc(arvore.nome)}</td>
           </tr>
-          ${(n.desc||texto)? `<tr class="skdesc"><td colspan="5">${texto?`<strong>${esc(texto)}</strong> · `:''}${esc(n.desc||'')}</td></tr>`:''}`;
+          ${(n.desc||texto||uso)? `<tr class="skdesc"><td colspan="5">${texto?`<strong>${htmlComContas(texto, kc)}</strong> · `:''}${htmlComContas(n.desc||'', kc)}${uso&&htmlCustoUso(uso, kc)?` <span class="habcusto">· Custo de uso: ${htmlCustoUso(uso, kc)}</span>`:''}</td></tr>`:''}`;
         }).join('')}
         </tbody></table></div>`
       : '<div class="hint">Nada escolhido ainda. O que você pegar aqui embaixo aparece nesta tabela.</div>'}
@@ -3351,21 +3399,21 @@ function linhaNo(pc,n,prof){
         ${proxCusto?`<span class="skcusto">${esc(proxCusto)}</span>`:''}
         ${grau>0?`<button class="mini" data-sksoltar="${esc(n.id)}" title="devolver 1 grau">−</button>`:''}
       </div>
-      ${n.desc?`<div class="sknodesc">${esc(n.desc)}</div>`:''}
-      ${grau>0&&(grausDe(n)[grau-1]||{}).texto?`<div class="sknograu">${esc(grausDe(n)[grau-1].texto)}</div>`:''}
+      ${n.desc?`<div class="sknodesc">${htmlComContas(n.desc, contasDe(pc))}</div>`:''}
+      ${grau>0&&(grausDe(n)[grau-1]||{}).texto?`<div class="sknograu">${htmlComContas(grausDe(n)[grau-1].texto, contasDe(pc))}</div>`:''}
       ${trava?`<div class="sknotrava">${esc(trava)}</div>`:''}
     </div>
   </div>`;
 }
 function textoTabelaSkills(pc){
-  const linhas=skillsEscolhidas(pc);
+  const linhas=skillsEscolhidas(pc), k=contasDe(pc);
   const cab=`${pc.nome} — skills (${linhas.length})`;
   const corpo=linhas.map(({n,grau,arvore,texto})=>{
     const us=(n.usos||[]).map(u=>(usoArv(u)||{}).nome).filter(Boolean).join('/');
     const gs=grausDe(n).length;
     return `• ${n.nome}${gs>1?` (grau ${grau}/${gs})`:''}${us?` [${us}]`:''} — ${arvore.nome}`
-      + (texto?`\n    ${texto}`:'')
-      + (n.desc?`\n    ${n.desc}`:'');
+      + (texto?`\n    ${textoComContas(texto, k)}`:'')
+      + (n.desc?`\n    ${textoComContas(n.desc, k)}`:'');
   }).join('\n');
   return cab+'\n'+corpo;
 }
@@ -3635,11 +3683,11 @@ function importarArvores(d){
   if(pares.length && confirm('O arquivo traz a distribuição de '+pares.length+' personagem(ns) com o mesmo nome ('
       +pares.map(x=>x.pc.nome).join(', ')+'). Trazer a alocação deles para cá? Isso substitui o que estiver na ficha.')){
     pares.forEach(({v,pc})=>{
-      pc.skills={
+      pc.skills=Object.assign({
         arvores:(v.arvores||[]).filter(id=>arvPorId(id)),
         pontos:Object.assign({}, v.pontos||{}),
         alocados:Object.assign({}, v.alocados||{})
-      };
+      }, pc.skills&&pc.skills.ramos? {ramos:pc.skills.ramos} : null);       // (os caminhos que o mestre abriu ficam)
       trazidos++;
     });
   }

@@ -406,13 +406,13 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
-<script src="tc/rules.js?v=9"></script>
-<script src="tc/tc.js?v=21"></script>
+<script src="tc/rules.js?v=10"></script>
+<script src="tc/tc.js?v=22"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.15-5';
+  const VERSAO = '2026.10.15-6';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -583,7 +583,7 @@ dialog::backdrop { background: var(--scrim); }
     if (!m || typeof m !== 'object') return;
     if (m.t === 'ola') { responder(estadoPonte(abaDaMoldura(fonte))); entregarAlvo(fonte, responder); }
     else if (m.t === 'ir') { if (typeof m.aba === 'string' && pode(m.aba)) irPara(m.aba, m.alvo); }
-    else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast('A rolagem não chegou à mesa: ' + e.message));
+    else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast((m.origem === 'arvore' ? 'O aviso para o jogador não foi: ' : 'A rolagem não chegou à mesa: ') + e.message));
     else if (m.t === 'dados.abrir') {
       try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas() }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
       catch (e) { responder({ t: 'dados.erro', n: m.n, erro: e.message }); }
@@ -1220,7 +1220,10 @@ dialog::backdrop { background: var(--scrim); }
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
         h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
         d.veredito ? h('div', { class: 'vd ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null);
-      if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
+      // (lote 6) a linha endereçada: o mestre a mandou só para um jogador — os dois a veem, e ela não vai para a mesa
+      const para = l.para ? mesas.atual.membros.find(m => m.usuario_id === l.para) : null;
+      if (l.secreta && l.para) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: l.para === conta.usuario.id ? 'Só você e o mestre veem' : 'Só você e ' + (para ? para.nome : 'o jogador') + ' veem' })));
+      else if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
     } else if (l.tipo === 'acao') {
       el = h('li', { class: 'it acao', 'data-id': l.id, title: d.como ? l.autor_nome + ', como ' + d.como : null }, retrato(d), h('span', { text: '✦ ' + (d.como || l.autor_nome) + ' ' + (d.texto || '') }));
     } else {
@@ -1429,6 +1432,11 @@ dialog::backdrop { background: var(--scrim); }
     // um pedido de defesa para um personagem meu: se a mesa ao vivo está fechada, um aviso leva até ela
     if (novo && !velho && aoVivo.idade(l) < 90000 && pedidoParaMim(l)) {
       if (vivo.hidden) { const pd = l.dados.pd, oQue = typeof pd.atr === 'string' ? aoVivo.nomeDoPedido(pd) || 'um atributo' : 'a defesa'; pulsar(btnVivo); toast('O mestre pediu que você role ' + oQue + '.', 'Abrir a mesa ao vivo', () => mostrarVivo(true, true), 12000); }
+      else descer();
+    }
+    // (lote 6) um aviso só para mim (o caminho da árvore que o mestre abriu): com a mesa ao vivo fechada, ele leva até ela
+    if (novo && !velho && aoVivo.idade(l) < 90000 && l.para && l.para === conta.usuario.id && l.autor_id !== conta.usuario.id) {
+      if (vivo.hidden) { pulsar(btnVivo); toast((l.dados && l.dados.titulo) || 'O mestre mandou um aviso só para você.', 'Abrir a mesa ao vivo', () => mostrarVivo(true, true), 12000); }
       else descer();
     }
     recadoAosSistemas(l, novo);

@@ -673,6 +673,187 @@
     return fonte==='base'? c.base[atr] : c.tot[atr];
   }
 
+  /* ---------- os caminhos trancados da árvore (lote 6) ----------
+     O mestre tranca um nódulo da árvore (n.tranca): ele e o que só se alcança através dele somem para quem o mestre
+     não abriu o caminho. Alcançar é pela regra de cada nódulo, dentro da árvore dele — "e": todos os de antes; "ou":
+     um deles; sem nenhum antes (a raiz, ou só com requisitos de outra árvore): sempre. Só a biblioteca do mestre tem
+     trancas: o pacote dos jogadores vai com o que todos alcançam (visiveis(b, [])). Abrir o caminho para um
+     personagem põe uma cópia do ramo nas skills dele:
+       skills.ramos = { idDoNódulo: { a: id da árvore, nodes: [...], defs: { pools, naturezas, usos }, em } }
+     A biblioteca que vale para o personagem (bibComRamos) é a de todos, só com o que ele alcança, mais os ramos dele
+     que dá para alcançar: os nódulos que já estão nela ficam como estão (no aparelho do mestre, que tem tudo, a cópia
+     não muda nada), e o ramo de uma árvore que não está na biblioteca (uma árvore secreta ainda trancada) fica de fora. */
+  const temTranca = b => ehObjeto(b) && Array.isArray(b.arvores) && b.arvores.some(a => ehObjeto(a) && Array.isArray(a.nodes) && a.nodes.some(n => ehObjeto(n) && n.tranca));
+  // → um conjunto de ids por árvore (na ordem de b.arvores): o que se alcança com as trancas `abertos` abertas
+  function visiveis(biblioteca, abertos) {
+    if (!ehObjeto(biblioteca) || !Array.isArray(biblioteca.arvores)) return [];
+    const ab = new Set(abertos || []);
+    return biblioteca.arvores.map(a => {
+      const nodes = ehObjeto(a) && Array.isArray(a.nodes) ? a.nodes.filter(n => ehObjeto(n) && typeof n.id === 'string') : [];
+      const ids = new Set(nodes.map(n => n.id)), vis = new Set();
+      const pais = nodes.map(n => (Array.isArray(n.pais) ? n.pais : []).filter(p => p !== n.id && ids.has(p)));
+      for (let mudou = true; mudou;) {
+        mudou = false;
+        nodes.forEach((n, i) => {
+          if (vis.has(n.id) || (n.tranca && !ab.has(n.id))) return;
+          const ps = pais[i];
+          if (!ps.length || (n.regra === 'ou' ? ps.some(p => vis.has(p)) : ps.every(p => vis.has(p)))) { vis.add(n.id); mudou = true; }
+        });
+      }
+      return vis;
+    });
+  }
+  // a biblioteca só com o que se alcança com as trancas `abertos` (a mesma, se ela não tem trancas ou nada sai)
+  function bibVisivel(biblioteca, abertos) {
+    if (!temTranca(biblioteca)) return biblioteca;
+    const vs = visiveis(biblioteca, abertos);
+    let tirou = false;
+    const arvores = biblioteca.arvores.map((a, i) => {
+      if (!ehObjeto(a) || !Array.isArray(a.nodes)) return a;
+      const fica = a.nodes.filter(n => ehObjeto(n) && vs[i].has(n.id));
+      if (fica.length === a.nodes.length) return a;
+      tirou = true;
+      return Object.assign({}, a, { nodes: fica });
+    });
+    return tirou ? Object.assign({}, biblioteca, { arvores }) : biblioteca;
+  }
+  function ramosDe(skills) {
+    const r = skills && ehObjeto(skills.ramos) ? skills.ramos : null, out = [];
+    if (!r) return out;
+    for (const k of Object.keys(r)) {
+      const x = r[k];
+      if (!k || k === '__proto__' || !ehObjeto(x) || typeof x.a !== 'string' || !x.a || !Array.isArray(x.nodes)) continue;
+      out.push({ id: k, a: x.a, nodes: x.nodes.filter(n => ehObjeto(n) && typeof n.id === 'string' && n.id), defs: ehObjeto(x.defs) ? x.defs : {} });
+    }
+    return out;
+  }
+  function bibComRamos(biblioteca, skills) {
+    if (!ehObjeto(biblioteca) || !Array.isArray(biblioteca.arvores)) return biblioteca;
+    const rs = ramosDe(skills);
+    // (na biblioteca do mestre, que tem as trancas, fica só o que este personagem alcança; a dos jogadores já vem assim)
+    const base = bibVisivel(biblioteca, rs.map(r => r.id));
+    if (!rs.length) return base;
+    const naBase = new Set(), arvs = new Set();
+    base.arvores.forEach(a => { if (!ehObjeto(a)) return; arvs.add(a.id); (Array.isArray(a.nodes) ? a.nodes : []).forEach(n => { if (ehObjeto(n)) naBase.add(n.id); }); });
+    const novos = [], vistos = new Set();                  // [nódulo, id da árvore] que podem entrar
+    for (const r of rs) {
+      if (!arvs.has(r.a)) continue;
+      for (const n of r.nodes) {
+        if (naBase.has(n.id) || vistos.has(n.id)) continue;
+        vistos.add(n.id); novos.push([n, r.a]);
+      }
+    }
+    /* Um nódulo do ramo só entra se dá para chegar nele (pela regra dele): o que vem antes está na biblioteca ou entra
+       também. Fica de fora, assim, o ramo de dentro de outro ainda fechado, o que pede também outro caminho trancado e
+       o que fica numa escola secreta que o jogador ainda não abriu. */
+    const entra = new Set(), tem = p => naBase.has(p) || entra.has(p);
+    for (let mudou = true; mudou;) {
+      mudou = false;
+      for (const [n] of novos) {
+        if (entra.has(n.id)) continue;
+        const ps = (Array.isArray(n.pais) ? n.pais : []).filter(p => p !== n.id);
+        if (!ps.length || (n.regra === 'ou' ? ps.some(tem) : ps.every(tem))) { entra.add(n.id); mudou = true; }
+      }
+    }
+    const extra = new Map();                               // id da árvore → nódulos que entram
+    for (const [n, a] of novos) if (entra.has(n.id)) { if (!extra.has(a)) extra.set(a, []); extra.get(a).push(n); }
+    // os tipos de ponto, as naturezas e os tipos de uso que só o ramo usa vêm com ele (só os dos nódulos que entraram)
+    const usa = { pools: new Set(), naturezas: new Set(), usos: new Set() };
+    extra.forEach(ns => ns.forEach(n => {
+      (Array.isArray(n.graus) ? n.graus : []).forEach(g => { if (g && ehObjeto(g.custos)) Object.keys(g.custos).forEach(k => usa.pools.add(k)); });
+      if (n.natureza) usa.naturezas.add(n.natureza);
+      (Array.isArray(n.usos) ? n.usos : []).forEach(u => usa.usos.add(u));
+    }));
+    const defs = {};
+    for (const k of ['pools', 'naturezas', 'usos']) {
+      const ja = new Set((Array.isArray(base[k]) ? base[k] : []).filter(ehObjeto).map(x => x.id)), mais = [];
+      for (const r of rs) for (const x of Array.isArray(r.defs[k]) ? r.defs[k] : []) if (ehObjeto(x) && typeof x.id === 'string' && usa[k].has(x.id) && !ja.has(x.id)) { ja.add(x.id); mais.push(x); }
+      if (mais.length) defs[k] = (Array.isArray(base[k]) ? base[k] : []).concat(mais);
+    }
+    if (!extra.size && !Object.keys(defs).length) return base;
+    return Object.assign({}, base, defs, {
+      arvores: base.arvores.map(a => (ehObjeto(a) && extra.has(a.id) ? Object.assign({}, a, { nodes: (Array.isArray(a.nodes) ? a.nodes : []).concat(extra.get(a.id)) }) : a)),
+    });
+  }
+
+  /* ---------- contas entre chaves no texto das habilidades (lote 6) ----------
+     "{FOR*2 + 10}" vira o número do personagem: as variáveis são as das fórmulas da ficha (FOR, DES, AGI, VIT, CAN, as
+     defesas, os derivados, LVL…), e o resultado é arredondado como a mesa manda. Sem personagem (vars nulo), a conta
+     fica como está escrita. → [{ t: 'txt', s }, { t: 'conta', expr, v, erro, usa: [[variável, valor]] }] */
+  const CONTA_RE = /\{([^{}\n]{1,160})\}/g;
+  function variaveisDaConta(expr, vars) {
+    const out = [];
+    let tk = [];
+    try { tk = tokenize(String(expr)); } catch (e) { return out; }
+    for (let i = 0; i < tk.length; i++) {
+      const x = tk[i];
+      if (x.t !== 'id' || (tk[i + 1] && tk[i + 1].t === '(')) continue;
+      const k = String(x.v).toUpperCase();
+      if (vars && k in vars && !out.some(o => o[0] === k)) out.push([k, vars[k]]);
+    }
+    return out;
+  }
+  function umaConta(expr, vars, cfg) {
+    const e = String(expr == null ? '' : expr).trim();
+    let v = null, erro = null;
+    if (!e) erro = 'Conta vazia';
+    else if (!vars) erro = null;
+    else {
+      try { v = evalFormula(e, vars); if (v == null || !isFinite(v)) { v = null; erro = 'Conta vazia'; } else { v = arred(cfg || CFG_PADRAO, v); if (Object.is(v, -0)) v = 0; } }
+      catch (er) { v = null; erro = er.message; }
+    }
+    return { t: 'conta', expr: e, v, erro, usa: variaveisDaConta(e, vars) };
+  }
+  function partesComContas(texto, vars, cfg) {
+    const s = String(texto == null ? '' : texto), out = [];
+    let i = 0, m;
+    CONTA_RE.lastIndex = 0;
+    while ((m = CONTA_RE.exec(s))) {
+      if (m.index > i) out.push({ t: 'txt', s: s.slice(i, m.index) });
+      out.push(umaConta(m[1], vars, cfg));
+      i = m.index + m[0].length;
+    }
+    if (i < s.length) out.push({ t: 'txt', s: s.slice(i) });
+    return out;
+  }
+  // o texto com as contas feitas ("Causa 62 de dano"); a conta que não deu (ou sem personagem) fica como estava
+  function textoComContas(texto, vars, cfg) {
+    return partesComContas(texto, vars, cfg).map(x => (x.t === 'txt' ? x.s : x.v != null ? String(x.v) : '{' + x.expr + '}')).join('');
+  }
+  // "FOR×2 + 10 · FOR 26": a conta, para quem passar o mouse
+  function explicarConta(c) {
+    const vs = (c.usa || []).map(([k, v]) => k + ' ' + v).join(', ');
+    return c.erro ? 'Conta: ' + c.expr + ' — ' + c.erro : 'Conta: ' + c.expr + (vs ? ' · ' + vs : '');
+  }
+
+  /* ---------- o custo de usar a habilidade (lote 6) ----------
+     Em cada grau, uma lista de { b: nome da barra (SP, Energia, uma barra especial), v: quanto — um número ou uma conta
+     como "CAN/2" }. Só aparece: quem usa desconta à mão. */
+  const MAX_USO = 4;
+  function usoLimpo(lista) {
+    if (!Array.isArray(lista)) return null;
+    const out = [];
+    for (const x of lista) {
+      if (out.length >= MAX_USO || !ehObjeto(x)) continue;
+      const b = String(x.b == null ? '' : x.b).replace(/\s+/g, ' ').trim().slice(0, 30), v = String(x.v == null ? '' : x.v).replace(/[{}]/g, '').trim().slice(0, 60);
+      if (b && v) out.push({ b, v });
+    }
+    return out.length ? out : null;
+  }
+  // → [{ barra, v (número, ou null se não deu a conta), expr, erro, usa, conta (é uma conta, não um número) }]
+  function custoDeUso(lista, vars, cfg) {
+    return (usoLimpo(lista) || []).map(x => {
+      const num = /^-?\d+(?:[.,]\d+)?$/.test(x.v) ? Number(x.v.replace(',', '.')) : null;
+      if (num != null) return { barra: x.b, v: num, expr: x.v, erro: null, usa: [], conta: false };
+      const c = umaConta(x.v, vars, cfg);
+      return { barra: x.b, v: c.v, expr: c.expr, erro: c.erro, usa: c.usa, conta: true };
+    });
+  }
+  // "10 SP · 13 Energia" (a conta sem personagem aparece escrita: "CAN/2 Energia")
+  function textoDoCusto(lista, vars, cfg) {
+    return custoDeUso(lista, vars, cfg).map(c => (c.v != null ? String(c.v) : c.expr) + ' ' + c.barra).join(' · ');
+  }
+
   /* ---------- árvore de habilidades → bônus ---------- */
   /* Soma o `bonus` dos graus comprados e devolve o mapa plano de extra.arvore.
        skills      { arvores:[idsEquipados], pontos:{}, alocados:{ idDoNódulo: grau } }
@@ -687,7 +868,8 @@
     const sk = skills || {};
     const equipadas = Array.isArray(sk.arvores) ? sk.arvores : [];
     const al = sk.alocados || {};
-    const arvores = biblioteca && Array.isArray(biblioteca.arvores) ? biblioteca.arvores : [];
+    // (com os ramos trancados que o mestre abriu para este personagem)
+    const bc = bibComRamos(biblioteca, sk), arvores = bc && Array.isArray(bc.arvores) ? bc.arvores : [];
     /* mesmo índice da calculadora (indexarArvores): com id repetido vale a última definição,
        assim cada nódulo alocado conta uma vez só, do jeito que os custos contam */
     const porId = new Map(), arvDe = new Map();
@@ -1345,6 +1527,7 @@
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, grupoDeTroca, equiparItem, reqDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
+    temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
     temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso, efeitosDoItem, faixaDoEfeito, nomeDaBarra, COND_GRUPOS, CONDICOES, nomeDaCondicao,

@@ -68,10 +68,12 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   que campanha é cada coisa fica na linha dela: `personagens.campanha` e `registro.campanha` (uma, ou nenhuma) e
   `documentos.campanhas` (uma lista: um mapa pode ser de mais de uma). Sem campanha = do mundo. `mesas.campanhas`
   é quantas a mesa tem (para quem não participa de nenhuma saber que elas existem). Ver "As campanhas".
-- `registro`: a mesa ao vivo (rolagens e conversa).
+- `registro`: a mesa ao vivo (rolagens e conversa). Uma linha em segredo (`secreta`) é só de quem a escreveu — ou,
+  com `para`, também da pessoa a quem ela se destina (só quem mestra escreve uma linha "para" alguém, e sempre em
+  segredo; para quem ela vai não muda depois; quem a recebe a lê mesmo com a mesa ao vivo fechada para ele).
 - `personagens`: uma linha por ficha, em três colunas: `ficha` (o que o personagem é: atributos, barras, itens,
-  bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos` e onde gastou em
-  `alocados`) e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a sobrevida em `sob`, as
+  bolsas…), `skills` (a árvore: as árvores equipadas, os pontos que o personagem tem em `pontos`, onde gastou em
+  `alocados` e, em `ramos`, os caminhos trancados que o mestre abriu para ele — ver "A Árvore (lote 6)") e `estado` (o que muda no meio do jogo: o valor atual das barras em `rec`, a sobrevida em `sob`, as
   quantidades das bolsas em `qtd`, os bônus temporários em `tmp`, as moedas, Sanidade e Conforto, os
   relacionamentos em `rels`, os ferimentos em `fer`, as missões do personagem em `mis`, o XP em `xp`, a emoção — a
   aura no Acampamento — em `emo` e o valor de agora das barras especiais em `pd`). As marcas que só o mestre põe
@@ -391,6 +393,45 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   abertos. A névoa dinâmica vem ligada (as paredes bloqueiam a visão).
 - **Os itens complementares na janelinha E**: o "com Espada de gelo" numa linha embaixo do nome, e "sem efeito ·
   precisa de …" quando está equipado sem o requisito.
+
+### A Árvore (lote 6)
+
+- **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
+  se alcança através dele. "Alcançar" segue a regra de cada nódulo, dentro da árvore dele: "e" pede todos os de antes,
+  "ou" pede um deles, e quem não tem nenhum antes (a raiz, ou só requisitos de outra árvore) está sempre ao alcance
+  (`TC.rules.visiveis(biblioteca, trancasAbertas)`). Um nódulo que pede outro caminho trancado também fica escondido
+  até os dois abrirem. Uma tranca dentro de outra só aparece depois da de fora. O pacote dos jogadores
+  (`arvore:pacote`) vai só com o que todos alcançam, e a biblioteca do mestre guarda tudo, com a marca. O cadeado
+  aparece no desenho do mestre. A dica do nódulo diz para quem o caminho está aberto.
+- **"Aberto para…"** (no editor, embaixo da chave): um personagem por linha. Abrir põe uma cópia do ramo nas skills
+  do personagem (`skills.ramos[idDoNódulo] = { a: árvore, nodes, defs: { pools, naturezas, usos }, em }`). A cópia
+  leva o nódulo e o que vem depois dele, sem passar por outra tranca, tirando o que todos já veem. Ela vai sem a marca
+  de trancado e sem senha de escola. Quem escreve os ramos é só o mestre: a gravação do jogador nunca os leva, e o
+  Desfazer dele não os volta. A cada gravação do mestre, as cópias acompanham a biblioteca (`sincronizarRamos`):
+  mudou o nódulo, a cópia muda; destrancou ou apagou, ela sai. Fechar o caminho tira a cópia. Os nódulos que o
+  personagem tinha ali ficam guardados em `alocados`, mas não contam, e voltam se o caminho abrir de novo (o aviso diz
+  quantos são, e a aba Skills da ficha mostra "N de ramo trancado"). Abrir e fechar têm Desfazer.
+- **A biblioteca de cada personagem** é `TC.rules.bibComRamos(biblioteca, skills)`: a da mesa, só com o que ele
+  alcança, mais os nódulos dos ramos que ele consegue alcançar (o resto do ramo fica de fora, e os tipos de ponto e
+  de uso só entram com algum nódulo). No mestre, que tem a biblioteca inteira, e no jogador, que tem o pacote, o
+  resultado é o mesmo. É dela que saem os bônus na ficha (`bonusDaArvore`) — nas Fichas, nas Cenas, no Acampamento e
+  na mesa ao vivo —, o índice das Fichas (aba Skills e "Passivas e Habilidades") e, no modo jogador, a tela da Árvore
+  (`bib()`).
+- **O aviso só para o dono.** Três segundos depois de abrir (se o mestre desfizer antes, não vai), a Árvore publica
+  `{ kind: 'abriu', para, titulo, resumo }` e a casca grava uma linha da mesa ao vivo em segredo, endereçada ao dono
+  (`registro.para`, SQL 0015). Ele vê "Só você e o mestre veem"; o mestre, "Só você e <nome> veem", sem "Mostrar à
+  mesa". Com a mesa ao vivo fechada, o dono recebe um aviso na tela que leva até ela. Personagem do mestre (ou sem
+  dono) não gera aviso.
+- **Contas entre chaves** no texto das habilidades (descrição e texto de cada grau): `{FOR*2 + 10}` vira o número do
+  personagem (`TC.rules.partesComContas`). As variáveis são as das fórmulas da ficha: FOR, DES, AGI, VIT, CAN, as
+  defesas, os derivados, LVL. Os números vêm da ficha dele, com as regras da mesa (`fichas:cfg`) e os bônus da
+  árvore, e o arredondamento é o que a mesa manda. Passando o mouse, aparece a conta com os valores
+  (`explicarConta`). Sem ficha, ou no editor do mestre, a conta aparece escrita. Isso vale na Árvore, no modo
+  jogador (`ArvoreMesa.calcDe`), e na ficha ("Passivas e Habilidades" e a tabela da aba Skills).
+- **Custo de uso** por grau (`grau.uso = [{ b: barra, v: quanto }]`, até 4): "+ Custo de uso" no editor, com a lista
+  das barras das fichas da mesa. O "quanto" é um número ou uma conta (`CAN/2`; as chaves são tiradas). Ele só
+  aparece, e quem usa desconta à mão: "uso: 15 SP · 7 Energia", na Árvore e na ficha. Um grau novo começa com o custo
+  do anterior.
 
 ### O mapa-múndi: a grade, o terreno e a viagem
 
@@ -737,7 +778,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -767,7 +808,11 @@ corações e emoção; e as linhas de relação de quem joga e de quem mestra) e
 jogadora: a janelinha E gravando na ficha, a Postura que a jogadora liga, a linha invisível e o "turno com o mestre",
 N e Shift+N, a rolagem geral pedida à jogadora — o cartão dela, "Rolar pelos NPCs", "Cancelar o pedido", "Rolar por
 ele" —, as pastas no índice da mesa (e em outro aparelho do mestre), o ícone do Mapa-múndi e o vilarejo gerado numa
-mesa, com o fundo no Storage, chegando à jogadora). `vivo.js` confere o site publicado.
+mesa, com o fundo no Storage, chegando à jogadora) e `arvore-lote6.rede` (com o mestre e dois jogadores: o caminho
+trancado fora do pacote, "Aberto para" levando a cópia às skills, o aviso só para o dono — e o abrir desfeito, que
+não avisa —, o jogador aprendendo o caminho, as contas e o custo de uso com os números da ficha, na Árvore e nas
+fichas do mestre e do jogador, o mestre mudando o caminho, fechando e abrindo de novo — o bônus deixa de contar e
+volta —, e no banco quem escreve e quem lê a linha "para" alguém). `vivo.js` confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -798,5 +843,9 @@ a rolagem geral sem mesa, as pastas (a janela, o menu, guardar neste navegador),
 e 60 sorteios conferidos — aldeia e vila, os quatro terrenos, com e sem rio e paliçada: a mesma semente dá o mesmo
 vilarejo; casas dentro da área, sem grudar, fora da rua, da praça e do rio; uma porta em cada, no lado certo; móveis
 dentro, sem um em cima do outro e sem tapar a porta) e o item
-complementar na janelinha E. Com `FOTOS=<pasta>`, eles guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+complementar na janelinha E. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
+solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
+trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre
+(a biblioteca toda) chegam à mesma biblioteca. Com `FOTOS=<pasta>`, eles guardam fotos das telas. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

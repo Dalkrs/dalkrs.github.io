@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-6",
+      "data": "2026-10-15",
+      "titulo": "Árvore: caminhos trancados que o mestre abre para um personagem, contas com os números da ficha e custo de uso",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Caminho trancado na Árvore: no editor do nódulo, a chave “Trancado” esconde dos jogadores esse nódulo e o que vem depois dele. Em “Aberto para”, você marca os personagens que podem ver e aprender o caminho. Dá para desfazer. Se você fechar de novo, o que o personagem já tinha aprendido ali fica guardado e volta quando o caminho abrir."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Quando o mestre abre um caminho da árvore para o seu personagem, chega um aviso na mesa ao vivo que só você e o mestre veem. O caminho aparece na sua Árvore."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Contas nas habilidades da árvore: “{FOR*2 + 10}” na descrição vira o número do seu personagem, na Árvore e na ficha (em “Passivas e Habilidades” e na aba Skills). Passando o mouse, aparece a conta. Valem FOR, DES, AGI, VIT, CAN, as defesas, os derivados e o nível."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Custo de uso: cada grau de uma habilidade pode dizer quanto custa usá-la (“15 SP · 7 Energia”), inclusive com conta, como CAN/2. Aparece na Árvore e na ficha, e quem usa desconta à mão. O mestre preenche em “+ Custo de uso”, no editor do nódulo."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-5",
       "data": "2026-10-15",
       "titulo": "Cenas: rolagem geral (Shift+F), pastas de cenas e gerador de vilarejo; equipamentos complementares; nomes do Mapa-múndi com contorno",

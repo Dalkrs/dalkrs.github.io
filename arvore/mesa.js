@@ -3,7 +3,10 @@
      · a biblioteca de árvores é da mesa: o mestre edita a original (documento "arvore:biblioteca", só dele) e os
        jogadores recebem o pacote (documento "arvore:pacote"), com as escolas secretas trancadas, sem arquivo no meio;
      · os personagens são os da mesa: as árvores equipadas, os pontos e os nódulos escolhidos ficam no personagem
-       (a mesma informação que a ficha mostra na aba Skills).
+       (a mesma informação que a ficha mostra na aba Skills);
+     · (lote 6) os caminhos trancados que o mestre abre para um personagem vão nas skills dele (skills.ramos: a cópia
+       do ramo) — quem escreve os ramos é só o mestre; o jogador os lê. As contas entre chaves da descrição usam a
+       ficha do personagem (calcDe).
    O aplicativo continua trabalhando com o documento inteiro de sempre (a variável doc) e gravando no navegador;
    este arquivo monta esse documento a partir da mesa antes de abrir, manda para a mesa o que mudou depois de cada
    gravação e aplica o que chega dos outros. Sem mesa, nada daqui age. */
@@ -20,7 +23,9 @@ const ArvoreMesa = (() => {
   const meuNome = () => { const m = (st.membros || []).find(x => x.id === st.eu); return m ? m.nome : 'jogador'; };
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
   const dadosDe = id => { const d = D.pegar(id); return d && d.dados && typeof d.dados === 'object' ? d.dados : null; };
-  const skillsDe = p => ({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} });
+  // o que esta tela escreve nas skills (os ramos, só o mestre) e o que ela confere para saber se algo mudou (tudo)
+  const skillsDe = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, mestre() && p.ramos ? { ramos: p.ramos } : null);
+  const skillsTudo = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, p.ramos ? { ramos: p.ramos } : null);
   /* Campanhas (numa mesa que as tem): os personagens da campanha em vista vêm primeiro, depois os do mundo e os das
      outras campanhas (a aba diz de qual). O personagem criado aqui nasce na campanha em vista. As árvores são do mundo:
      a biblioteca é uma só para a mesa inteira. */
@@ -44,8 +49,10 @@ const ArvoreMesa = (() => {
 
   function daLinha(l, antigo) {
     const s = l.skills || {};
-    return { id: l.id, nome: l.nome || 'Personagem', arvores: Array.isArray(s.arvores) ? s.arvores.slice() : [], arvoreAtual: antigo ? antigo.arvoreAtual || null : null,
+    const p = { id: l.id, nome: l.nome || 'Personagem', arvores: Array.isArray(s.arvores) ? s.arvores.slice() : [], arvoreAtual: antigo ? antigo.arvoreAtual || null : null,
       pontos: Object.assign({}, s.pontos || {}), alocados: Object.assign({}, s.alocados || {}), ordemLivre: true };
+    if (s.ramos && typeof s.ramos === 'object' && !Array.isArray(s.ramos) && Object.keys(s.ramos).length) p.ramos = JSON.parse(j(s.ramos));
+    return p;
   }
   // A biblioteca que esta pessoa enxerga: o mestre, a original; o jogador, o pacote publicado.
   function bibDaMesa() {
@@ -57,7 +64,8 @@ const ArvoreMesa = (() => {
   }
   function fotografar() {
     sombra.pcs = new Map();
-    for (const l of meus()) sombra.pcs.set(l.id, { nome: l.nome || '', skills: j(skillsDe(daLinha(l))) });
+    for (const l of meus()) { const p = daLinha(l); sombra.pcs.set(l.id, { nome: l.nome || '', skills: j(skillsDe(p)), tudo: j(skillsTudo(p)) }); }
+    sombra.revs = revsDosMeus();
   }
 
   /* Antes de o aplicativo abrir: decide o modo e, na mesa, deixa pronto no navegador o documento montado a partir dela. */
@@ -130,7 +138,7 @@ const ArvoreMesa = (() => {
       // (as skills vão como "o que mudou desde o que esta tela tinha": o que outra pessoa mexeu nesse meio-tempo — os
       //  pontos que o mestre deu, por exemplo — não é desfeito)
       if (Object.keys(campos).length) P.gravar(p.id, campos, ant && campos.skills !== undefined ? { skills: JSON.parse(ant.skills) } : undefined);
-      sombra.pcs.set(p.id, { nome: p.nome, skills: js });
+      sombra.pcs.set(p.id, { nome: p.nome, skills: js, tudo: j(skillsTudo(p)) });
     });
   }
   /* O pacote dos jogadores é montado um instante depois de cada mudança na biblioteca. Se a página fechou nesse
@@ -195,10 +203,10 @@ const ArvoreMesa = (() => {
     // personagens
     const linhas = meus(), ids = new Set(linhas.map(l => l.id));
     for (const l of linhas) {
-      const i = doc.personagens.findIndex(p => p.id === l.id), novo = daLinha(l, i >= 0 ? doc.personagens[i] : null), js = j(skillsDe(novo)), ant = sombra.pcs.get(l.id);
-      if (ant && i >= 0 && ant.nome === novo.nome && ant.skills === js) continue;
+      const i = doc.personagens.findIndex(p => p.id === l.id), novo = daLinha(l, i >= 0 ? doc.personagens[i] : null), js = j(skillsDe(novo)), jt = j(skillsTudo(novo)), ant = sombra.pcs.get(l.id);
+      if (ant && i >= 0 && ant.nome === novo.nome && ant.tudo === jt) continue;
       if (i >= 0) doc.personagens[i] = novo; else doc.personagens.push(novo);
-      sombra.pcs.set(l.id, { nome: novo.nome, skills: js }); mudou = true;
+      sombra.pcs.set(l.id, { nome: novo.nome, skills: js, tudo: jt }); mudou = true;
     }
     for (let i = doc.personagens.length - 1; i >= 0; i--) {
       const p = doc.personagens[i];
@@ -213,7 +221,10 @@ const ArvoreMesa = (() => {
         doc.biblioteca = b; mudou = true; trocouBib = true;
       }
     }
-    if (!mudou) return;
+    // (lote 6) a ficha de um personagem daqui mudou (ou as regras da mesa): as contas do painel acompanham
+    const revs = revsDosMeus(), fichaMudou = revs !== sombra.revs;
+    sombra.revs = revs;
+    if (!mudou) { if (fichaMudou) { const volta = cursorDe(); pintarPainel(); volta(); } return; }
     const fim = () => {
       const volta = cursorDe();
       normalizarDoc(); if (trocouBib) podarTodos(); else indexar();
@@ -236,9 +247,23 @@ const ArvoreMesa = (() => {
   function restringir(antigo) {
     if (!ativo) return antigo;
     const agora = JSON.parse(j(doc));
-    if (ui.modo === 'mestre' && mestre()) { agora.biblioteca = antigo.biblioteca; return agora; }
+    if (ui.modo === 'mestre' && mestre()) {
+      agora.biblioteca = antigo.biblioteca;
+      // (abrir e fechar um caminho trancado também se desfaz: os ramos são do mestre)
+      for (const p of agora.personagens) {
+        const a = (antigo.personagens || []).find(x => x.id === p.id);
+        if (!a) continue;
+        if (a.ramos) p.ramos = a.ramos; else delete p.ramos;
+      }
+      return agora;
+    }
     const a = (antigo.personagens || []).find(p => p.id === ui.personagem), i = agora.personagens.findIndex(p => p.id === ui.personagem);
-    if (a && i >= 0) agora.personagens[i] = Object.assign({}, a, { nome: agora.personagens[i].nome });
+    if (a && i >= 0) {
+      // (os caminhos que o mestre abriu ficam como estão agora: são dele)
+      const ramos = agora.personagens[i].ramos;
+      agora.personagens[i] = Object.assign({}, a, { nome: agora.personagens[i].nome });
+      if (ramos) agora.personagens[i].ramos = ramos; else delete agora.personagens[i].ramos;
+    }
     return agora;
   }
 
@@ -252,7 +277,7 @@ const ArvoreMesa = (() => {
     depoisDeSalvar();
     // (confere de novo daqui a pouco: uma gravação feita no instante em que a página fechou pode chegar depois)
     if (!conferirPacote()) setTimeout(conferirPacote, 6000);
-    P.aoMudar(remoto); D.aoMudar(l => { if (l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') remoto(); });
+    P.aoMudar(remoto); D.aoMudar(l => { if (l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'fichas:cfg') remoto(); });
     if (!mestre()) reabrirGuardadas().then(r => { if (r && r.length) { normalizarDoc(); indexar(); garantirSelecoes(); pintarTudo(); desenhar(); } }, () => {});
   }
   // A mesa ainda não tem biblioteca e este navegador tem uma: oferece trazê-la.
@@ -279,5 +304,49 @@ const ArvoreMesa = (() => {
     document.getElementById('app').prepend(box);
   }
 
-  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta };
+  /* (lote 6) As contas entre chaves ({FOR*2 + 10}) usam a ficha do personagem: as variáveis das fórmulas dela (FOR,
+     DES, as defesas, LVL…), com as regras da mesa (fichas:cfg) e os bônus da árvore, como na ficha. Sem ficha (o
+     personagem criado aqui, que nunca foi às Fichas) → null: a conta aparece escrita. */
+  const calcCache = new Map();
+  function calcDe(id) {
+    if (!ativo || !window.TC || !TC.rules || !TC.rules.calcular) return null;
+    const l = P.pegar(id);
+    if (!l || !l.ficha || typeof l.ficha !== 'object' || !l.ficha.tiers) return null;
+    const dc = D.pegar('fichas:cfg'), chave = (l.rev || 0) + '|' + ((dc && dc.rev) || 0) + '|' + (typeof geracaoBib === 'number' ? geracaoBib : 0);
+    const c0 = calcCache.get(id);
+    if (c0 && c0.chave === chave) return c0.v;
+    let v = null;
+    try {
+      const R = TC.rules, cfg = (dc && dc.dados && dc.dados.v) || R.cfgPadrao();
+      const pc = Object.assign({}, l.ficha, { id: l.id, nome: l.nome });
+      const c = R.calcular(pc, cfg, { arvore: R.bonusDaArvore(l.skills, doc.biblioteca), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer });
+      v = { vars: c.vars, cfg };
+    } catch (e) { v = null; }
+    calcCache.set(id, { chave, v });
+    return v;
+  }
+  // os nomes das barras das fichas da mesa (as de sempre e as especiais), para o custo de uso
+  function barras() {
+    if (!ativo) return [];
+    const vistos = new Map(), norm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    for (const l of P.todas()) {
+      const f = l.ficha || {};
+      for (const r of (Array.isArray(f.recursos) ? f.recursos : []).concat(Array.isArray(f.poderes) ? f.poderes : [])) {
+        const nome = String((r && r.nome) || '').trim().slice(0, 30);
+        if (nome && !vistos.has(norm(nome))) vistos.set(norm(nome), nome);
+      }
+    }
+    return [...vistos.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+  // o jogador dono do personagem (para o aviso só para ele), ou null (personagem do mestre, ou sem dono). (Quem participa
+  // vem do estado de agora: quem entrou na mesa depois de a Árvore abrir também conta.)
+  function donoDe(id) {
+    if (!ativo) return null;
+    const l = P.pegar(id), d = l && l.dono_id, e = (TC.ponte && TC.ponte.estado) || st;
+    return d && d !== st.eu && (e.membros || []).some(m => m.id === d) ? d : null;
+  }
+  // de quem é cada ficha daqui (e a rev de cada uma): para saber se alguma mudou
+  function revsDosMeus() { return P ? meus().map(l => l.id + ':' + (l.rev || 0)).join(',') + '|' + ((D && D.pegar('fichas:cfg') || {}).rev || 0) : ''; }
+
+  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe };
 })();

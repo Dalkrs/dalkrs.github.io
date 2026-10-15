@@ -188,6 +188,16 @@ input[type=color].livre{width:26px;height:22px;padding:0;border:1px solid var(--
 .moeda i{width:10px;height:10px;border-radius:50%}
 .moeda span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .moeda input{padding:5px 7px;text-align:center;font-family:'JetBrains Mono',monospace}
+/* (lote 6) o custo de uso de cada grau, as contas entre chaves e a tranca */
+.usos{margin-top:6px}
+.rot-mini{display:block;font:600 10px/1.4 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:var(--texto-3);margin:4px 0 4px}
+.uso-l{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin-bottom:5px}
+.uso-l .guso-v{font-family:'JetBrains Mono',monospace;padding:5px 7px}
+.uso-l .guso-b{padding:5px 7px}
+.conta{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--acento);border-bottom:1px dotted var(--acento-borda);cursor:help;white-space:nowrap}
+.conta.sem{color:var(--texto-2);font-weight:400}
+#dica2 .tranca{color:var(--acento)}
+code{font-family:'JetBrains Mono',monospace;font-size:.92em}
 .lista-ed{display:grid;gap:6px;align-items:center;margin-bottom:6px}
 .lista-ed.pool{grid-template-columns:26px 1fr 58px 28px}
 .lista-ed.nat{grid-template-columns:26px 1fr 28px}
@@ -463,7 +473,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=12"></script>
-<script src="mesa.js?v=6"></script>
+<script src="../tc/rules.js?v=10"></script>
+<script src="mesa.js?v=7"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -545,7 +556,13 @@ let selecionado = null, pairado = null, filtro = '';
 const filtroNat = new Set();
 let migrado = false, danificado = false;
 
-const bib = () => doc.biblioteca;
+/* A biblioteca da tela. No modo jogador, a do personagem escolhido (lote 6): sem os caminhos trancados que o mestre
+   não abriu para ele, com os ramos que abriu (a cópia que vai nas skills dele). O que muda a biblioteca de verdade (o
+   editor do mestre, os cofres das escolas secretas, o pacote) usa doc.biblioteca. */
+let usarBase = 0;
+const bib = () => (!usarBase && ui && ui.modo==='jogador' ? bibDoPersonagem(personagemAtual()) : doc.biblioteca);
+// faz fn com a biblioteca de verdade no índice (o pacote, por exemplo, é montado dela, em qualquer modo)
+function comBase(fn){ usarBase++; try{ indexar(); return fn(); } finally{ usarBase--; indexar(); } }
 function arvorePorId(id){ return bib().arvores.find(a=>a.id===id) || null; }
 function personagemAtual(){ return doc.personagens.find(p=>p.id===ui.personagem) || doc.personagens[0] || null; }
 function poolPorId(id){ return bib().pools.find(p=>p.id===id) || null; }
@@ -706,8 +723,10 @@ function normalizarNo(n, b, ids){
     for(const k in orig){ const v = Math.floor(+orig[k]); if(ids.pool.has(k) && v>0) custos[k] = v; }
     const limpo = {custos, texto:String((g && g.texto) || '')};
     const bn = bonusLimpo(g && g.bonus); if(bn) limpo.bonus = bn;      // bônus que o grau dá na ficha (FOR +2, HP +10…)
+    const us = usoLimpo(g && g.uso); if(us) limpo.uso = us;            // (lote 6) o custo de usar: [{ b: barra, v: quanto }]
     return limpo;
   });
+  if(n.tranca) n.tranca = true; else delete n.tranca;                // (lote 6) caminho trancado: só para quem o mestre abrir
   if(n.escola && typeof n.escola==='object'){
     n.escola = {nome:String(n.escola.nome || n.nome), cor:corOk(n.escola.cor, COR_ESCOLA),
                 secreta:!!n.escola.secreta, senha:String(n.escola.senha || '')};
@@ -722,6 +741,13 @@ function bonusLimpo(b){
   const o = {};
   for(const k in b){ const v = +b[k], nome = String(k).trim().slice(0, 30); if(nome && Number.isFinite(v) && v!==0) o[nome] = v; }
   return Object.keys(o).length ? o : null;
+}
+// (lote 6) o custo de usar o grau: até 4 de { b: nome da barra, v: quanto — número ou conta }
+function usoLimpo(l){
+  if(window.TC && TC.rules && TC.rules.usoLimpo) return TC.rules.usoLimpo(l);
+  if(!Array.isArray(l)) return null;
+  const o = l.filter(x=>x && typeof x==='object').map(x=>({b:String(x.b||'').trim().slice(0,30), v:String(x.v||'').replace(/[{}]/g,'').trim().slice(0,60)})).filter(x=>x.b && x.v).slice(0,4);
+  return o.length ? o : null;
 }
 function bonusTexto(b){ return b ? Object.keys(b).map(k=>k + ' ' + (b[k]>=0 ? '+' : '−') + Math.abs(b[k])).join(', ') : ''; }
 function bonusLer(t){
@@ -751,6 +777,12 @@ function normalizarPersonagem(p, b, vistos){
     if(idOk(k) && g>=1) p.alocados[k] = Math.min(g, MAX_GRAUS);
   }
   if(!idOk(p.arvoreAtual)) p.arvoreAtual = null;
+  // (lote 6) os caminhos trancados que o mestre abriu para o personagem: { idDoNódulo: { a, nodes, defs, em } }
+  if(p.ramos && typeof p.ramos==='object' && !Array.isArray(p.ramos)){
+    const r = {};
+    for(const k of Object.keys(p.ramos)){ const x = p.ramos[k]; if(idOk(k) && x && typeof x==='object' && typeof x.a==='string' && Array.isArray(x.nodes)) r[k] = x; }
+    if(Object.keys(r).length) p.ramos = r; else delete p.ramos;
+  }else delete p.ramos;
   // antes as árvores equipadas apareciam sempre por categoria; agora vale a ordem do jogador.
   // Quem vem de antes começa na ordem em que já aparecia na tela.
   if(p.ordemLivre!==true){ ordenarPorCategoria(p, b); p.ordemLivre = true; }
@@ -829,6 +861,7 @@ let pendente, avisouFalha = false, sujo = false;
 function salvar(){ sujo = true; clearTimeout(pendente); pendente = setTimeout(salvarJa, 250); }
 function salvarJa(){
   clearTimeout(pendente); sujo = false;
+  try{ sincronizarRamos(); }catch(e){ console.warn(e); }     // (lote 6) as cópias dos caminhos abertos acompanham a biblioteca
   try{
     localStorage.setItem(CHAVE_DOC, JSON.stringify(doc));
     localStorage.setItem(CHAVE_UI, JSON.stringify(ui));
@@ -976,10 +1009,17 @@ function semSenhas(a){
   return a;
 }
 async function montarPacote(){
-  indexar();
-  const b = clone(bib());
+  const b = clone(doc.biblioteca);
   const fora = [], unidades = [];
-  // 1) ramos secretos (os mais internos primeiro)
+  // 0) os caminhos trancados (lote 6) não vão — o nódulo trancado e o que só se alcança através dele: chegam só a
+  //    quem o mestre abriu, nas skills do personagem
+  const trancados = [];
+  if(TC.rules.temTranca(doc.biblioteca)){
+    const v0 = TC.rules.visiveis(doc.biblioteca, []);
+    b.arvores.forEach((a, i)=>{ const sai = a.nodes.filter(n=>!v0[i].has(n.id)); if(sai.length){ trancados.push(...sai); a.nodes = a.nodes.filter(n=>v0[i].has(n.id)); } });
+  }
+  // 1) ramos secretos (os mais internos primeiro) — contados na biblioteca de verdade
+  comBase(()=>{
   for(const a of b.arvores){
     const entradas = a.nodes.filter(n=>n.escola && n.escola.secreta)
       .map(n=>({n, membros:membrosDaEscola(n.id)}))
@@ -996,6 +1036,7 @@ async function montarPacote(){
       unidades.push({id:n.id, senha:n.escola.senha, nodes, conteudo:{tipo:'ramo', arvore:a.id, dentro: dentro ? dentro.n.id : null, nodes}});
     }
   }
+  });
   // 2) árvores secretas
   const visiveis = [];
   for(const a of b.arvores){
@@ -1010,7 +1051,7 @@ async function montarPacote(){
     nodes.forEach(n=>{ n.graus.forEach(g=>Object.keys(g.custos).forEach(k=>s.pool.add(k))); if(n.natureza) s.nat.add(n.natureza); n.usos.forEach(u=>s.uso.add(u)); });
     return s;
   };
-  const vis = usa(visiveis.flatMap(a=>a.nodes)), seg = usa(unidades.flatMap(u=>u.nodes));
+  const vis = usa(visiveis.flatMap(a=>a.nodes)), seg = usa(unidades.flatMap(u=>u.nodes).concat(trancados));
   const publico = (id, t) => vis[t].has(id) || !seg[t].has(id);
   const pools = b.pools.filter(p=>publico(p.id, 'pool'));
   if(!pools.length) pools.push(b.pools[0]);
@@ -1034,7 +1075,7 @@ async function montarPacote(){
 
 /* ---------- abrir escolas no navegador do jogador ---------- */
 function aplicarCofre(cofre, conteudo){
-  const b = bib();
+  const b = doc.biblioteca;
   if(!conteudo || typeof conteudo!=='object') return false;
   let host = null;
   if(conteudo.tipo==='ramo'){
@@ -1101,6 +1142,7 @@ const dependentes = new Map(); // id -> nós de qualquer árvore que exigem este
 let reqCache = new Map(), membrosCache = new Map(), altCache = new Map();
 
 function indexar(){
+  geracaoBib++;                             // (lote 6) a biblioteca da tela é refeita a partir daqui
   porId.clear(); arvDe.clear(); filhosDe.clear(); dependentes.clear();
   reqCache = new Map(); membrosCache = new Map(); altCache = new Map();
   for(const a of bib().arvores) for(const n of a.nodes){ porId.set(n.id, n); arvDe.set(n.id, a); filhosDe.set(n.id, []); dependentes.set(n.id, []); }
@@ -1219,6 +1261,88 @@ function segredoDe(id){
     if(e.escola && e.escola.secreta && membrosDaEscola(e.id).includes(id)) return {tipo:'ramo', nome:e.escola.nome};
   }
   return null;
+}
+
+/* ============================================================
+   CAMINHOS TRANCADOS (lote 6)
+   O mestre tranca um nódulo (n.tranca): ele e o que só se alcança através dele (pela regra "e"/"ou" de cada nódulo,
+   como em TC.rules.visiveis) somem para os jogadores — o pacote da mesa vai sem eles — até o mestre abrir o caminho
+   para um personagem. Abrir põe uma cópia do ramo nas skills do personagem (p.ramos[id do nódulo] = { a, nodes,
+   defs, em }), que o mestre mantém em dia a cada mudança na biblioteca. No modo jogador, a tela mostra a biblioteca
+   do personagem escolhido (bib()): a de todos, só com o que ele alcança, mais os ramos dele.
+   ============================================================ */
+let geracaoBib = 0;
+// quantos nódulos ficam escondidos só por causa da tranca L (sem contar ele): com as outras trancas abertas, o que
+// deixa de ser alcançado quando L fecha
+function membrosDaTranca(L){
+  const b = doc.biblioteca, todas = [];
+  b.arvores.forEach(a=>a.nodes.forEach(n=>{ if(n.tranca) todas.push(n.id); }));
+  const conta = ab => TC.rules.visiveis(b, ab).reduce((s, v)=>s + v.size, 0);
+  return Math.max(0, conta(todas) - conta(todas.filter(x=>x!==L)) - 1);
+}
+const abertoPara = (p, L) => !!(p && p.ramos && p.ramos[L]);
+/* O ramo de L, para ir nas skills de quem o mestre abriu: L e o que vem depois dele e não está à vista de todos —
+   sem passar por outra tranca (o que fica atrás dela vai à parte, quando o mestre a abrir). Quem recebe vê, desse
+   ramo, só o que consegue alcançar (TC.rules.bibComRamos): o que pede também outro caminho fechado fica de fora. */
+function ramoDe(L){
+  const b = doc.biblioteca, i = b.arvores.findIndex(x=>x.nodes.some(n=>n.id===L)), a = b.arvores[i];
+  if(!a) return null;
+  const v0 = TC.rules.visiveis(b, [])[i], porIdA = new Map(a.nodes.map(n=>[n.id, n])), filhosA = new Map();
+  a.nodes.forEach(n=>n.pais.forEach(pid=>{ if(porIdA.has(pid)){ if(!filhosA.has(pid)) filhosA.set(pid, []); filhosA.get(pid).push(n.id); } }));
+  const no = new Set([L]), fila = [L];
+  while(fila.length){
+    for(const c of filhosA.get(fila.shift()) || []){
+      if(no.has(c) || v0.has(c) || porIdA.get(c).tranca) continue;
+      no.add(c); fila.push(c);
+    }
+  }
+  const todos = new Set(); b.arvores.forEach(x=>x.nodes.forEach(n=>todos.add(n.id)));
+  // (a cópia vai sem a marca de trancado, sem senha de escola e sem requisito que já não existe)
+  const nodes = a.nodes.filter(n=>no.has(n.id)).map(n=>{ const c = clone(n); delete c.tranca; if(c.escola) c.escola.senha = ''; c.pais = c.pais.filter(pid=>todos.has(pid)); return c; });
+  const usa = {pool:new Set(), nat:new Set(), uso:new Set()};
+  nodes.forEach(n=>{ n.graus.forEach(g=>Object.keys(g.custos).forEach(k=>usa.pool.add(k))); if(n.natureza) usa.nat.add(n.natureza); n.usos.forEach(u=>usa.uso.add(u)); });
+  return {a:a.id, nodes, defs:{pools:clone(b.pools.filter(x=>usa.pool.has(x.id))), naturezas:clone(b.naturezas.filter(x=>usa.nat.has(x.id))), usos:clone(b.usos.filter(x=>usa.uso.has(x.id)))}};
+}
+// a biblioteca de verdade só está aqui sem mesa, ou com o mestre da mesa (o jogador tem o pacote)
+const podeTrancar = () => !ArvoreMesa.ativo() || ArvoreMesa.mestre();
+/* Depois de mudar a biblioteca: as cópias nas skills acompanham — e somem quando o nódulo deixa de ser trancado ou
+   sai da biblioteca (o caminho passa a ser de todos, ou não existe mais). */
+function sincronizarRamos(){
+  if(!podeTrancar()) return false;
+  const nos = new Map();
+  doc.biblioteca.arvores.forEach(a=>a.nodes.forEach(n=>nos.set(n.id, n)));
+  let mudou = false;
+  for(const p of doc.personagens){
+    if(!p.ramos) continue;
+    for(const L of Object.keys(p.ramos)){
+      const n = nos.get(L), novo = n && n.tranca ? ramoDe(L) : null, velho = p.ramos[L];
+      if(!novo){ delete p.ramos[L]; mudou = true; continue; }
+      if(JSON.stringify([novo.a, novo.nodes, novo.defs])!==JSON.stringify([velho.a, velho.nodes, velho.defs])){ p.ramos[L] = Object.assign(novo, {em:velho.em}); mudou = true; }
+    }
+    if(!Object.keys(p.ramos).length) delete p.ramos;
+  }
+  return mudou;
+}
+// a biblioteca da tela para o personagem p (ver bib())
+let efetivaCache = {chave:null, base:null, b:null};
+function bibDoPersonagem(p){
+  const base = doc.biblioteca, ramos = p ? p.ramos || null : null;
+  if(!p || (!ramos && !TC.rules.temTranca(base))) return base;
+  const chave = geracaoBib + '|' + p.id + '|' + (ramos ? Object.keys(ramos).sort().join(',') : '');      // (o que muda dentro dos ramos chega com indexar(): geracaoBib)
+  if(efetivaCache.chave===chave && efetivaCache.base===base) return efetivaCache.b;
+  // o que este personagem alcança (as trancas que o mestre abriu para ele) mais os ramos dele
+  let b = TC.rules.bibComRamos(base, {ramos});
+  if(b!==base){
+    // (os nódulos que vieram do ramo passam pela mesma arrumação dos outros)
+    const ja = new Set(); base.arvores.forEach(a=>a.nodes.forEach(n=>ja.add(n.id)));
+    if(b.arvores.some(a=>a.nodes.some(n=>!ja.has(n.id)))){
+      b = Object.assign({}, b);
+      const ids = {pool:new Set(b.pools.map(x=>x.id)), nat:new Set(b.naturezas.map(x=>x.id)), uso:new Set(b.usos.map(x=>x.id)), nos:new Set(ja)};
+      b.arvores = b.arvores.map(a=>a.nodes.some(n=>!ja.has(n.id)) ? Object.assign({}, a, {nodes:a.nodes.map(n=>{ if(ja.has(n.id)) return n; const c = clone(n); normalizarNo(c, b, ids); return c; })}) : a);
+    }
+  }
+  efetivaCache = {chave, base, b};
+  return b;
 }
 
 /* ---------- layout radial por árvore ---------- */
@@ -1838,6 +1962,14 @@ function selos(grp, n, r, tema){
     grp.appendChild(el('circle', {cx:f1(x), cy:f1(y), r:5.6, fill:fundo, stroke:cor, 'stroke-width':1.2}));
     grp.appendChild(el('line', {x1:f1(x-3.3), y1:f1(y+3.3), x2:f1(x+3.3), y2:f1(y-3.3), stroke:cor, 'stroke-width':1.2}));
   }
+  if(n.tranca && ui.modo==='mestre'){
+    // (lote 6) o caminho trancado: um cadeado embaixo, à direita
+    const x = r*.8 + 5, y = r*.8 + 4, cor = tema==='tinta' ? COR_T.verm : COR_P.ouro;
+    grp.classList.add('trancado');
+    grp.appendChild(el('circle', {cx:f1(x), cy:f1(y), r:6.4, fill:fundo, stroke:cor, 'stroke-width':1.1}));
+    grp.appendChild(el('rect', {x:f1(x-2.7), y:f1(y-.4), width:5.4, height:3.9, rx:.9, fill:cor}));
+    grp.appendChild(el('path', {d:`M${f1(x-1.75)},${f1(y-.4)} v-1.3 a1.75,1.75 0 0 1 3.5,0 v1.3`, fill:'none', stroke:cor, 'stroke-width':1.1}));
+  }
   if(paisFora(n).length){
     const x = -r*.8 - 5, y = r*.8 + 4, cor = tema==='tinta' ? COR_T.tinta : COR_P.ouro;
     grp.appendChild(el('circle', {cx:f1(x), cy:f1(y), r:5.6, fill:fundo, stroke:cor, 'stroke-width':1}));
@@ -1889,6 +2021,33 @@ function gerarPapel(){
    INTERFACE — abas, seletor de árvores e painéis
    ============================================================ */
 /* campo do bônus que o grau dá na ficha (para o mestre) */
+// (lote 6) o custo de usar a habilidade neste grau: quanto (um número ou uma conta, como CAN/2) e de que barra
+function campoUso(g, i){
+  const us = Array.isArray(g.uso) ? g.uso : [];
+  return `<div class="usos" data-g="${i}">${us.length ? `<span class="rot-mini">Custo de uso${G_ROT(i)}</span>` : ''}
+    ${us.map((u,k)=>`<div class="uso-l"><input class="campo guso-v" data-g="${i}" data-k="${k}" value="${esc(u.v)}" placeholder="10 ou CAN/2" autocomplete="off" aria-label="Quanto custa usar${G_ROT(i)}">
+      <input class="campo guso-b" data-g="${i}" data-k="${k}" list="barrasDaMesa" value="${esc(u.b)}" placeholder="SP" autocomplete="off" aria-label="De que barra sai${G_ROT(i)}">
+      <button class="btn mini guso-x" data-g="${i}" data-k="${k}" title="Tirar este custo" aria-label="Tirar este custo de uso${G_ROT(i)}">×</button></div>`).join('')}
+    ${us.length < 4 ? `<button class="btn mini guso-mais" data-g="${i}" title="Quanto o personagem gasta de uma barra (SP, Energia…) ao usar a habilidade. Só aparece: quem usa desconta à mão.">+ Custo de uso</button>` : ''}</div>`;
+}
+const G_ROT = i => (i>0 || (selecionado && porId.get(selecionado) && porId.get(selecionado).graus.length>1) ? ', grau ' + (i+1) : '');
+// os nomes das barras para escolher no custo de uso: as das fichas da mesa (ou as de sempre, sem mesa)
+function barrasDaMesa(){
+  const l = (ArvoreMesa.ativo() && ArvoreMesa.barras) ? ArvoreMesa.barras() : [];
+  return l.length ? l : ['HP', 'SP', 'Energia'];
+}
+// (lote 6) a tranca do nódulo e para quem o caminho está aberto
+function blocoTranca(n){
+  const pers = doc.personagens, m = n.tranca ? membrosDaTranca(n.id) : 0;
+  return `<div class="grupo" id="blocoTranca">
+    <label class="caixa"><input type="checkbox" id="eTranca" ${n.tranca ? 'checked' : ''}> Trancado: só aparece para quem você abrir</label>
+    ${n.tranca ? `<div class="recuo" id="abertoPara">
+      <span class="rot">Aberto para</span>
+      ${pers.length ? pers.map(p=>`<label class="caixa"><input type="checkbox" data-abrir="${esc(p.id)}" ${abertoPara(p, n.id) ? 'checked' : ''}> ${esc(p.nome)}</label>`).join('') : '<p class="vazio" style="margin:0">Nenhum personagem ainda.</p>'}
+      <p class="nota">${m ? `Este nódulo e ${plural(m,'nódulo que só existe','nódulos que só existem')} através dele ficam escondidos` : 'Este nódulo (e o que só existir através dele) fica escondido'} dos jogadores até você abrir o caminho para o personagem deles.${ArvoreMesa.ativo() ? ' O dono recebe um aviso só para ele na mesa ao vivo.' : ''}</p>
+    </div>` : ''}
+  </div>`;
+}
 function campoBonus(g, i){
   return `<input class="campo gbonus" data-g="${i}" value="${esc(bonusTexto(g.bonus))}" placeholder="Bônus na ficha (opcional): FOR +2, HP +10" style="margin-top:4px"
     title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
@@ -2210,10 +2369,11 @@ function blocoNo(a, n){
       <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
         <div class="passo"><button class="btn" id="grauMenos" ${G<=1 ? 'disabled' : ''} aria-label="Menos um grau">−</button><b>${G}</b>
         <button class="btn" id="grauMais" ${G>=MAX_GRAUS ? 'disabled' : ''} aria-label="Mais um grau">+</button></div></div>
-      ${G===1 ? linhasCusto(n.graus[0], 0) + campoBonus(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
+      ${G===1 ? linhasCusto(n.graus[0], 0) + campoBonus(n.graus[0], 0) + campoUso(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
         ${linhasCusto(g, i)}
         <textarea class="campo gtexto" data-g="${i}" placeholder="O que o grau ${i+1} acrescenta…" style="min-height:46px;margin-top:4px">${esc(g.texto)}</textarea>
-        ${campoBonus(g, i)}</div>`).join('')}
+        ${campoBonus(g, i)}${campoUso(g, i)}</div>`).join('')}
+      <datalist id="barrasDaMesa">${barrasDaMesa().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       <p class="nota">${G===1 ? 'Zero num tipo de ponto = não consome aquele tipo.' : 'O jogador compra os graus em ordem; cada um tem custo e texto próprios.'}</p>
     </div>
     <div class="grupo"><span class="rot">Pré-requisitos</span>
@@ -2250,7 +2410,9 @@ function blocoNo(a, n){
         <p class="nota">${membros ? `${plural(membros,'nódulo depende','nódulos dependem')} só desta entrada e ${membros===1 ? 'faz' : 'fazem'} parte da escola.` : 'Os filhos que só existirem através deste nódulo entram na escola.'}</p>
       </div>` : ''}
     </div>
-    <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz…">${esc(n.desc)}</textarea></div>
+    ${blocoTranca(n)}
+    <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz… (contas entre chaves: {FOR*2 + 10})">${esc(n.desc)}</textarea>
+      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p></div>
     <div class="acoes">
       <button class="btn" id="btDuplicar">Duplicar</button>
       <button class="btn perigo" id="btExcluir">Excluir nódulo</button>
@@ -2349,7 +2511,7 @@ function ligarMestre(){
     else{ const tem = n.usos.includes(id); n.usos = bib().usos.map(u=>u.id).filter(x=>x===id ? !tem : n.usos.includes(x)); }
   }, {painel:true}));
   on('#grauMais', 'click', ()=>muda('mais um grau', null, ()=>{
-    const ult = n.graus[n.graus.length-1]; n.graus.push({custos:clone(ult.custos), texto:''});
+    const ult = n.graus[n.graus.length-1]; n.graus.push(Object.assign({custos:clone(ult.custos), texto:''}, ult.uso ? {uso:clone(ult.uso)} : null));
   }, {painel:true, podar:true}));
   on('#grauMenos', 'click', ()=>muda('menos um grau', null, ()=>{ n.graus.pop(); }, {painel:true, podar:true}));
   $$('.gcusto').forEach(i=>i.onchange = e=>muda('mudar custo', 'custo'+n.id+i.dataset.g+i.dataset.pool, ()=>{
@@ -2381,6 +2543,19 @@ function ligarMestre(){
   });
   on('#eEscSenha', 'input', e=>muda('senha da escola', 'escsenha'+n.id, ()=>{ n.escola.senha = e.target.value; }, {semDesenho:true}));
   on('#eDesc', 'input', e=>muda('editar descrição', 'desc'+n.id, ()=>{ n.desc = e.target.value; }, {semDesenho:true}));
+  // (lote 6) a tranca e "Aberto para"
+  on('#eTranca', 'change', e=>muda(e.target.checked ? 'trancar o caminho' : 'destrancar o caminho', null, ()=>{ if(e.target.checked) n.tranca = true; else delete n.tranca; }, {painel:true}));
+  $$('[data-abrir]').forEach(c=>c.onchange = e=>abrirCaminho(n, c.dataset.abrir, e.target.checked));
+  // (lote 6) o custo de uso
+  const usosDo = g => (g.uso = Array.isArray(g.uso) ? g.uso : []);
+  $$('.guso-mais').forEach(b=>b.onclick = ()=>{
+    const i = +b.dataset.g, k = usosDo(n.graus[i]).length;
+    muda('custo de uso', null, ()=>{ usosDo(n.graus[i]).push({b:barrasDaMesa()[0], v:''}); }, {semDesenho:true, painel:true});
+    const c = $(`.guso-v[data-g="${i}"][data-k="${k}"]`); if(c) c.focus();
+  });
+  $$('.guso-v').forEach(c=>c.onchange = e=>muda('custo de uso', 'gusov'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.v = e.target.value.replace(/[{}]/g, '').trim().slice(0, 60); }, {semDesenho:true}));
+  $$('.guso-b').forEach(c=>c.onchange = e=>muda('custo de uso', 'gusob'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.b = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 30); }, {semDesenho:true}));
+  $$('.guso-x').forEach(b=>b.onclick = ()=>muda('tirar custo de uso', null, ()=>{ const g = n.graus[+b.dataset.g]; usosDo(g).splice(+b.dataset.k, 1); if(!g.uso.length) delete g.uso; }, {semDesenho:true, painel:true}));
   on('#btDuplicar', 'click', ()=>{
     registrar('duplicar nódulo');
     const c = clone(n); c.id = novoId(); c.nome = n.nome + ' (cópia)'; c.escola = null;
@@ -2403,6 +2578,39 @@ function ligarMestre(){
     registrar('excluir ramificação de ' + n.nome);
     removerNos(ids, n);
   });
+}
+/* (lote 6) Abrir (ou fechar) o caminho trancado de n para um personagem: a cópia do ramo entra (ou sai) das skills
+   dele. Na mesa, o dono recebe um aviso só para ele, alguns segundos depois (se o mestre desfizer logo, não vai). */
+function abrirCaminho(n, pid, abrir){
+  const p = doc.personagens.find(x=>x.id===pid); if(!p) return;
+  registrar((abrir ? 'abrir' : 'fechar') + ' o caminho de ' + n.nome + ' para ' + p.nome);
+  let guardados = 0;
+  if(abrir){
+    const r = ramoDe(n.id); if(!r) return;
+    p.ramos = p.ramos || {}; p.ramos[n.id] = Object.assign(r, {em:new Date().toISOString()});
+    agendarAvisoDeCaminho(p.id, n.id, p.ramos[n.id].em);
+  }else{
+    // (os nódulos que ele tinha e deixam de ser alcançados)
+    const vis = ab => { const s = new Set(); TC.rules.visiveis(doc.biblioteca, ab).forEach(v=>v.forEach(id=>s.add(id))); return s; };
+    const antes = vis(Object.keys(p.ramos || {}));
+    if(p.ramos){ delete p.ramos[n.id]; if(!Object.keys(p.ramos).length) delete p.ramos; }
+    const depois = vis(Object.keys(p.ramos || {}));
+    guardados = Object.keys(p.alocados).filter(id=>antes.has(id) && !depois.has(id)).length;
+  }
+  salvar(); pintarPainel(); desenhar();
+  aviso(abrir ? `Caminho “${n.nome}” aberto para ${p.nome}.` : `Caminho “${n.nome}” fechado para ${p.nome}.` + (guardados ? ` ${guardados===1 ? 'O nódulo que ele tinha ali fica guardado e volta' : 'Os ' + guardados + ' nódulos que ele tinha ali ficam guardados e voltam'} se o caminho abrir de novo.` : ''), 'ok', guardados ? 8000 : 4000);
+}
+const AVISO_CAMINHO_MS = 3000;
+function agendarAvisoDeCaminho(pid, L, em){
+  if(!ArvoreMesa.ativo()) return;
+  setTimeout(()=>{
+    const p = doc.personagens.find(x=>x.id===pid), r = p && p.ramos && p.ramos[L];
+    if(!r || r.em!==em) return;
+    const dono = ArvoreMesa.donoDe(pid); if(!dono) return;
+    const no = r.nodes.find(x=>x.id===L);
+    try{ TC.ponte.publicar('arvore', {kind:'abriu', para:dono, titulo:'Caminho novo na árvore: ' + (no ? no.nome : 'um caminho'), resumo:`O mestre abriu este caminho para ${p.nome}. Ele está na aba Árvore.`}); }
+    catch(e){ console.warn('O aviso do caminho não foi:', e); }
+  }, AVISO_CAMINHO_MS);
 }
 function removerNos(ids, herdarDe){
   const s = new Set(ids);
@@ -2527,9 +2735,9 @@ function painelJogador(){
       : est==='disp' ? 'Disponível' : est==='caro' ? faltaTexto(p, n, 1) : est==='fechado' ? `Fechado por “${fech.nome}”` : 'Bloqueado';
     detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
       <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
-      ${n.desc ? `<p class="info" style="color:var(--texto)">${esc(n.desc)}</p>` : ''}
-      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}</span></li>`).join('')}</ul>`
-             : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>`}
+      ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p)}</p>` : ''}
+      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
+             : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>${n.graus[0].uso ? `<p class="info" id="usoJog">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}`}
       ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
@@ -3157,15 +3365,38 @@ function mostrarDica(n){
       : e==='fechado' ? [`Fechado por “${fechadoPor(p, n).nome}”`, 'var(--perigo)'] : ['Bloqueado', 'var(--texto-3)'];
     estado = `<div class="estado" style="color:${esc(cor)}">${esc(txt)}</div>`;
   }
+  const trancaTxt = !jog && n.tranca ? (()=>{ const ab = doc.personagens.filter(x=>abertoPara(x, n.id)).map(x=>x.nome); return 'Trancado · ' + (ab.length ? 'aberto para ' + ab.join(', ') : 'ainda não aberto para ninguém'); })() : '';
   $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
     <div class="meta">${esc(meta)}</div>
-    ${n.desc ? `<p>${esc(n.desc)}</p>` : ''}
-    ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + esc(g.texto) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}</li>`).join('')}</ul>` : ''}
+    ${n.desc ? `<p>${htmlTexto(n.desc, p)}</p>` : ''}
+    ${G===1 && n.graus[0].uso ? `<p class="uso">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}
+    ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</li>`).join('')}</ul>` : ''}
+    ${trancaTxt ? `<p class="tranca">${esc(trancaTxt)}</p>` : ''}
     ${(n.pais.length>1 || paisFora(n).length) ? `<p class="exige">${esc(exigencia(n))}</p>` : ''}
     ${col.length ? `<p>Caminho exclusivo com ${col.map(m=>'“' + esc(m.nome) + '”').join(', ')}.</p>` : ''}
     ${esc0 ? `<p>Escola: ${esc(esc0.escola.nome)}${esc0.escola.secreta && !jog ? ' · secreta' : ''}</p>` : ''}
     ${estado}`;
   $('#dica2').classList.add('on');
+}
+/* (lote 6) As contas entre chaves ({FOR*2 + 10}) com os números do personagem — na mesa, pela ficha dele (ver
+   ArvoreMesa.calcDe). Sem ficha (ou no editor), a conta aparece escrita; passando o mouse, ela se explica. */
+function contaDe(p){ return p && ArvoreMesa.ativo() && ArvoreMesa.calcDe ? ArvoreMesa.calcDe(p.id) : null; }
+function htmlConta(c){
+  const R = TC.rules;
+  return c.v!=null ? `<span class="conta" title="${esc(R.explicarConta(c))}">${esc(String(c.v))}</span>`
+    : `<span class="conta sem" title="${esc(c.erro ? R.explicarConta(c) : 'Conta: o número sai da ficha do personagem')}">${esc(c.expr)}</span>`;
+}
+function htmlTexto(texto, p){
+  const R = window.TC && TC.rules;
+  if(!R || !R.partesComContas) return esc(texto);
+  const k = contaDe(p);
+  return R.partesComContas(texto, k && k.vars, k && k.cfg).map(x=>x.t==='txt' ? esc(x.s) : htmlConta(x)).join('');
+}
+function htmlCusto(uso, p){
+  const R = window.TC && TC.rules;
+  if(!R || !R.custoDeUso) return '';
+  const k = contaDe(p);
+  return R.custoDeUso(uso, k && k.vars, k && k.cfg).map(c=>(c.conta ? htmlConta(c) : esc(String(c.v))) + ' ' + esc(c.barra)).join(' · ');
 }
 function posicionarDica(x, y){
   const d = $('#dica2'), r = d.getBoundingClientRect();

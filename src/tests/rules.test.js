@@ -493,6 +493,73 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(R.calcular(Object.assign({}, pb, { tiers: { FOR: 'E', DES: 'E', AGI: 'E', VIT: 'A', CAN: 'E' }, defesas: {} , itens: [] }), cfg0).der.EMB % 1 === 0, 'sempre um número inteiro');
   ok(R.evalFormula('BLOQUEIO + BLOQ + BLQ_ARV + BLQ_TMP', cb.vars) === 34, 'nas fórmulas, o nome por extenso também vale (BLOQUEIO, BLOQ), e há o pedaço da árvore e o do bônus');
 }
+// ---------- a árvore (lote 6): os caminhos trancados que o mestre abre, as contas entre chaves e o custo de uso ----------
+{
+  const bib = { arvores: [{ id: 'a1', nodes: [{ id: 'n1', pais: [], graus: [{ custos: {}, bonus: { FOR: 1 } }] }] }, { id: 'a2', nodes: [] }], pools: [{ id: 'p1', nome: 'Pontos' }], naturezas: [], usos: [] };
+  const ramo = { a: 'a1', nodes: [{ id: 'n2', pais: ['n1'], graus: [{ custos: { p9: 2 }, bonus: { FOR: 2, HP: 5 } }] }, { id: 'n1', pais: [], graus: [{ custos: {}, bonus: { FOR: 50 } }] }], defs: { pools: [{ id: 'p9', nome: 'Gelo' }, { id: 'p1', nome: 'outra' }] }, em: 'x' };
+  const sk = { arvores: ['a1'], pontos: {}, alocados: { n1: 1, n2: 1 }, ramos: { n2: ramo, lixo: { a: 'a1' }, outro: { a: 'a_sumiu', nodes: [{ id: 'n7', graus: [{ bonus: { FOR: 9 } }] }] } } };
+  ok(j(R.ramosDe(sk).map(r => r.id)) === j(['n2', 'outro']) && R.ramosDe({}).length === 0 && R.ramosDe(null).length === 0, 'os ramos abertos nas skills: os que têm árvore e nódulos (o torto fica de fora)');
+  const bc = R.bibComRamos(bib, sk);
+  ok(bc !== bib && bc.arvores[0].nodes.map(n => n.id).join() === 'n1,n2' && bc.arvores[0].nodes[0] === bib.arvores[0].nodes[0] && bc.arvores[1] === bib.arvores[1] && bib.arvores[0].nodes.length === 1,
+    'a biblioteca do personagem: a de todos mais os nódulos do ramo (o que já está nela fica como está; a de todos não muda)');
+  ok(j(bc.pools.map(x => x.id)) === j(['p1', 'p9']) && bc.pools[0].nome === 'Pontos', 'os tipos de ponto que só o ramo usa vêm com ele (o que já existe não é trocado)');
+  ok(R.bibComRamos(bib, { ramos: {} }) === bib && R.bibComRamos(bib, null) === bib && R.bibComRamos(null, sk) === null, 'sem ramos (ou sem biblioteca), nada muda');
+  ok(!bc.arvores.some(a => a.nodes.some(n => n.id === 'n7')), 'o ramo de uma árvore que não está na biblioteca (secreta, ainda trancada) fica de fora');
+  ok(j(R.bonusDaArvore(sk, bib)) === j({ FOR: 3, HP: 5 }) && j(R.bonusDaArvore(Object.assign({}, sk, { ramos: undefined }), bib)) === j({ FOR: 1 }), 'os bônus dos graus do ramo aberto contam na ficha (e sem o ramo, não): ' + j(R.bonusDaArvore(sk, bib)));
+  // as contas
+  const vars = { FOR: 26, CAN: 13, LVL: 3, DFF: 4 };
+  const ps = R.partesComContas('Causa {FOR*2 + 10} de dano e {floor(CAN/2)} de gelo; {xyz}{}', vars);
+  ok(j(ps.map(x => x.t === 'txt' ? x.s : x.v)) === j(['Causa ', 62, ' de dano e ', 6, ' de gelo; ', null, '{}']) && ps[5].erro === 'Variável desconhecida: xyz' && j(ps[1].usa) === j([['FOR', 26]]),
+    'as contas entre chaves viram o número do personagem (a que não dá diz por quê): ' + j(ps.map(x => x.t === 'txt' ? x.s : x.v)));
+  ok(j(R.partesComContas('{for*2 + floor(can/2)}', vars)[0].usa) === j([['FOR', 26], ['CAN', 13]]), 'a conta diz as variáveis que usou, mesmo escritas em minúsculas (e sem as funções, como floor)');
+  ok(R.textoComContas('Causa {for*2 + 10} de dano', vars) === 'Causa 62 de dano' && R.textoComContas('Causa {FOR*2 + 10}', null) === 'Causa {FOR*2 + 10}' && R.textoComContas(null, vars) === '', 'no texto: sem diferença de maiúsculas; sem personagem, a conta fica escrita');
+  ok(R.textoComContas('{CAN/2}', vars, { arredondar: 'round' }) === '7' && R.textoComContas('{CAN/2}', vars) === '6' && R.textoComContas('{CAN/2}', vars, { arredondar: 'ceil' }) === '7', 'arredonda como a mesa manda (para baixo, se nada for dito)');
+  ok(R.explicarConta(ps[1]) === 'Conta: FOR*2 + 10 · FOR 26' && /^Conta: xyz — Variável desconhecida/.test(R.explicarConta(ps[5])), 'passando o mouse: a conta e os valores que ela usou');
+  // o custo de uso
+  ok(j(R.usoLimpo([{ b: ' SP ', v: '10' }, { b: 'Energia', v: '{CAN/2}' }, { b: '', v: '3' }, { b: 'X', v: '' }, 7])) === j([{ b: 'SP', v: '10' }, { b: 'Energia', v: 'CAN/2' }]) && R.usoLimpo([]) === null && R.usoLimpo('x') === null,
+    'o custo de uso, limpo: a barra e quanto (sem chaves); o incompleto sai');
+  ok(R.usoLimpo([1, 2, 3, 4, 5].map(i => ({ b: 'B' + i, v: String(i) }))).length === R.MAX_USO, 'no máximo ' + R.MAX_USO + ' custos por grau');
+  const cu = R.custoDeUso([{ b: 'SP', v: '10' }, { b: 'Energia', v: 'CAN/2' }, { b: 'Gelo', v: '2,5' }], vars);
+  ok(j(cu.map(c => [c.barra, c.v, c.conta])) === j([['SP', 10, false], ['Energia', 6, true], ['Gelo', 2.5, false]]) && R.textoDoCusto([{ b: 'SP', v: '10' }, { b: 'Energia', v: 'CAN/2' }], vars) === '10 SP · 6 Energia',
+    'o custo: número como está, conta com o número do personagem — ' + R.textoDoCusto([{ b: 'SP', v: '10' }, { b: 'Energia', v: 'CAN/2' }], vars));
+  ok(R.textoDoCusto([{ b: 'Energia', v: 'CAN/2' }], null) === 'CAN/2 Energia' && R.custoDeUso(null, vars).length === 0, 'sem personagem, a conta do custo fica escrita');
+}
+// ---------- a árvore (lote 6): o que cada personagem alcança, com trancas umas dentro das outras e caminhos que se juntam ----------
+{
+  // o ─┬─ c
+  //    ├─ L🔒 ─ g ─┬─ L2🔒 ─ u          Z: pede g E K       W: pede g OU K
+  //    └─ M🔒 ─ K ─┴─ Z, W
+  const no = (id, pais, extra) => Object.assign({ id, pais, regra: 'e', usos: [], graus: [{ custos: { p1: 1 }, bonus: { FOR: 1 } }] }, extra);
+  const nodes = [no('o', []), no('c', ['o']), no('L', ['o'], { tranca: true }), no('g', ['L']), no('L2', ['g'], { tranca: true }), no('u', ['L2'], { graus: [{ custos: { p2: 1 } }] }),
+    no('M', ['o'], { tranca: true }), no('K', ['M']), no('Z', ['g', 'K']), no('W', ['g', 'K'], { regra: 'ou' })];
+  const bib = { arvores: [{ id: 't', nodes }], pools: [{ id: 'p1' }, { id: 'p2' }], naturezas: [], usos: [] };
+  const vis = ab => [...R.visiveis(bib, ab)[0]].sort().join();
+  ok(R.temTranca(bib) && !R.temTranca({ arvores: [{ nodes: [no('x', [])] }] }) && !R.temTranca(null), 'temTranca: só a biblioteca com um nódulo trancado');
+  ok(vis([]) === 'c,o', 'sem nada aberto, só o que todos alcançam (o W, que pede um OU outro caminho trancado, também some): ' + vis([]));
+  ok(vis(['L']) === 'L,W,c,g,o', 'aberto o L: o caminho dele, e o W (pede g OU K) — o Z (pede g E K) e o L2 (trancado) não: ' + vis(['L']));
+  ok(vis(['L', 'M']) === 'K,L,M,W,Z,c,g,o' && vis(['L2']) === 'c,o' && vis(['L', 'L2']) === 'L,L2,W,c,g,o,u',
+    'os dois abertos: o Z também; o L2 aberto com o L fechado não aparece (não dá para chegar nele)');
+  const pac = R.bibVisivel(bib, []);
+  ok(pac.arvores[0].nodes.map(n => n.id).join() === 'o,c' && pac.arvores[0].nodes[0] === nodes[0] && bib.arvores[0].nodes.length === 10 && R.bibVisivel(pac, []) === pac,
+    'bibVisivel: a biblioteca só com o que se alcança (a original não muda; sem trancas, a mesma)');
+  // os ramos como a Árvore os copia: de cada tranca, o que vem depois sem passar por outra tranca (e que não está à vista de todos)
+  const copia = ids => ids.map(id => { const c = JSON.parse(JSON.stringify(nodes.find(n => n.id === id))); delete c.tranca; return c; });
+  const ramos = { L: { a: 't', nodes: copia(['L', 'g', 'Z', 'W']), defs: {} }, M: { a: 't', nodes: copia(['M', 'K', 'Z', 'W']), defs: {} }, L2: { a: 't', nodes: copia(['L2', 'u']), defs: { pools: [{ id: 'p2' }] } } };
+  const so = (...ks) => { const r = {}; ks.forEach(k => { r[k] = ramos[k]; }); return { ramos: r }; };
+  const nos = b => b.arvores[0].nodes.map(n => n.id).sort().join();
+  const pacote = { arvores: pac.arvores, pools: [{ id: 'p1' }], naturezas: [], usos: [] };
+  // no aparelho do jogador (o pacote, sem trancas) e no do mestre (tudo): o mesmo resultado
+  for (const ks of [['L'], ['L', 'M'], ['L2'], ['L', 'L2'], ['M'], ['L', 'M', 'L2']]) {
+    const esperado = vis(ks), jog = nos(R.bibComRamos(pacote, so(...ks))), mes = nos(R.bibComRamos(bib, so(...ks)));
+    ok(jog === esperado && mes === esperado, 'aberto ' + ks.join(' e ') + ': o jogador (pacote + ramos) e o mestre (a biblioteca toda) chegam ao mesmo — ' + jog + ' / ' + mes);
+  }
+  ok(!R.bibComRamos(pacote, so('L2')).pools.some(p => p.id === 'p2') && R.bibComRamos(pacote, so('L', 'L2')).pools.some(p => p.id === 'p2'),
+    'o tipo de ponto do ramo só vem quando algum nódulo dele entra (o L2 aberto sem o L não dá pista)');
+  // os bônus: os nódulos que ele tinha num caminho que o mestre fechou não contam (no mestre e no jogador)
+  const sk = { arvores: ['t'], alocados: { o: 1, L: 1, g: 1, W: 1 } };
+  ok(j(R.bonusDaArvore(Object.assign({}, sk, so('L')), bib)) === j({ FOR: 4 }) && j(R.bonusDaArvore(sk, bib)) === j({ FOR: 1 }) && j(R.bonusDaArvore(sk, pacote)) === j({ FOR: 1 }),
+    'os bônus: com o caminho aberto, contam; fechado, os nódulos ficam guardados e não contam — nem na biblioteca do mestre');
+}
 // carrega também como script de página
 const pg = vm.createContext({}); pg.window = pg; pg.globalThis = pg;
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../tc/rules.js'), 'utf8'), pg);

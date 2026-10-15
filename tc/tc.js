@@ -573,10 +573,16 @@
       if (aoVivo.imagemValida(quem.av)) dados.av = quem.av;
     }
     const linha = { mesa_id: a.id, id: opt.id || novoId(tipo === 'rolagem' ? 'r' : 'm'), tipo, origem: opt.origem || 'mesa', secreta: !!opt.secreta && a.papel === 'mestre', dados };
+    // (lote 6) a linha endereçada: só quem mestra manda, e ela vai em segredo — quem a vê é quem a escreveu e quem a recebe
+    if (opt.para) {
+      if (a.papel !== 'mestre') throw new Error('Só o mestre manda um aviso para um jogador.');
+      linha.para = String(opt.para); linha.secreta = true;
+    }
     // a linha é da campanha em vista (numa mesa sem campanhas, de nenhuma); numa campanha encerrada ninguém escreve
     if (mesas.encerrada(a.campanha)) throw new Error(ENCERRADA);
     if (a.campanha) linha.campanha = a.campanha;
     const { data, error } = await cliente().from('registro').insert(linha).select().single();
+    if (error && linha.para && (error.code === 'PGRST204' || /\bpara\b/.test(String(error.message || '')))) throw new Error('o banco ainda não tem a mudança que deixa o mestre mandar um aviso só para um jogador (o SQL 0015).');
     if (error) {
       // a mesma rolagem publicada duas vezes (duelo que ganhou outra rodada, ou duas abas abertas): atualiza a que já existe
       if (error.code === '23505' && opt.unico) throw new Error(opt.unico);     // (essa linha só existe uma vez: a primeira vale)
@@ -592,7 +598,7 @@
   }
   aoVivo.fala = texto => gravar('fala', { texto: String(texto).slice(0, 1500) });
   aoVivo.acao = texto => gravar('acao', { texto: String(texto).slice(0, 1500) });
-  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, quem: opt.quem, unico: opt.unico, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
+  aoVivo.rolagem = (dados, opt = {}) => gravar('rolagem', dados, { origem: opt.origem, id: opt.id, quem: opt.quem, unico: opt.unico, para: opt.para, secreta: opt.secreta == null ? aoVivo.segredo : opt.secreta });
   aoVivo.revelar = async id => {
     const a = mesas.atual; if (!a) return;
     const { data, error } = await cliente().from('registro').update({ secreta: false }).eq('mesa_id', a.id).eq('id', id).select().maybeSingle();
@@ -1639,6 +1645,14 @@
       const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
       // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
       return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : origem === 'acampamento' ? false : undefined });
+    }
+    // A Árvore avisa o dono de um personagem que o mestre abriu para ele um caminho trancado (lote 6): uma linha em
+    // segredo, endereçada a ele — só os dois a veem.
+    if (origem === 'arvore' && d && d.kind === 'abriu' && mesas.atual) {
+      const a = mesas.atual;
+      if (a.papel !== 'mestre' || !mesas.mestra('arvore') || typeof d.para !== 'string' || !d.para || d.para === conta.usuario.id) return null;
+      if (!(a.membros || []).some(m => m.usuario_id === d.para)) return null;
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Árvore').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: true, para: d.para });
     }
     // As Cenas também avisam a mesa (o mestre pôs uma cena no ar): só o mestre pode.
     if (origem === 'cena' && d && d.kind === 'aviso' && mesas.atual) {
