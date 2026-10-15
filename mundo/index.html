@@ -74,7 +74,7 @@ button { cursor: pointer; }
 .mundo img { display: block; user-select: none; -webkit-user-drag: none; }
 .mundo .papel { background: var(--paper); background-image: linear-gradient(rgba(127,127,127,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(127,127,127,.12) 1px, transparent 1px); background-size: 100px 100px; }
 .mundo svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.mundo canvas.pintura { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mundo canvas.pintura, .mundo canvas.hex-desenho { position: absolute; left: 0; top: 0; pointer-events: none; }
 .opts { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
 .opts > * { pointer-events: auto; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--fg-2); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
@@ -126,6 +126,24 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .bolinhas .bol { fill: rgba(10, 12, 18, .78); stroke-width: 1.5; }   /* (a cor do grupo vai no estilo de cada uma) */
 .bolinhas .bol.feita { stroke: rgba(10, 12, 18, .85); stroke-width: 1.2; }
 svg text.bol-conta { font-family: var(--ui); font-weight: 700; fill: #fff3d6; stroke: rgba(10, 12, 18, .9); stroke-width: 3px; paint-order: stroke; }
+/* (lote 6) o selo de honra junto do grupo: o corpo na cor da honra (aço no 0, ouro no alto, escuro quando negativa) */
+.honra .hon-fundo { fill: rgba(20, 23, 31, .86); stroke: #fff; stroke-width: 1.2; }
+.honra .hon-aro { fill: none; stroke: #f0cb4c; }
+.honra .hon-raios { fill: #f6d77a; opacity: .85; }
+.honra .hon-louro { fill: #8db255; stroke: #34501e; stroke-width: .6; }
+.honra .hon-ico .hb { stroke: #1d1a16; stroke-width: 1.1; stroke-linejoin: round; }
+.honra .hon-ico .hk { fill: #1d1a16; stroke: none; }
+.honra .hon-ico .hd { fill: none; stroke: #1d1a16; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
+.honra .hon-ico .hg { fill: #9ea3a8; stroke: #1d1a16; stroke-width: .8; }
+.honra.h-pos .hon-ico .hg { fill: #4f86c0; }
+.honra.h3 .hon-ico .hg, .honra.h4 .hon-ico .hg, .honra.h5 .hon-ico .hg { fill: #d8463c; }
+.honra.h-neg .hon-ico .hg { fill: #4a4540; }
+.honra .hon-racha { fill: none; stroke: #0f0d0b; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.honra .hon-lasca { fill: rgba(20, 23, 31, .95); }
+.honra .hon-num-fundo { fill: rgba(20, 23, 31, .9); stroke: #fff; stroke-width: .8; }
+.honra.h-pos .hon-num-fundo { stroke: #f0cb4c; }
+.honra.h-neg .hon-num-fundo { stroke: #8f8981; }
+svg text.hon-num { font-family: var(--ui); font-weight: 700; fill: #fff3d6; }
 .nevoa { fill: #05070c; }
 .alca { fill: var(--lamp); stroke: #14171f; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: move; }
 .rasc { fill: rgba(230,171,79,.14); fill-rule: evenodd; stroke: var(--lamp); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
@@ -134,7 +152,6 @@ svg text.bol-conta { font-family: var(--ui); font-weight: 700; fill: #fff3d6; st
 /* a grade de hexágonos e o terreno de cada um (por baixo de tudo, sem pegar o clique) */
 .c-hex { pointer-events: none; }
 .grade-linha { stroke: var(--ink-map); stroke-linecap: round; }
-.hex-ter { fill-opacity: .5; stroke: none; }
 .hex-custo text { font: 700 11px var(--mono); fill: #ffe2a8; }
 .regua-hex { fill: rgba(230,171,79,.10); stroke: var(--lamp); stroke-width: 1; stroke-opacity: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
 .pincel-hex { fill: rgba(230,171,79,.08); stroke: var(--lamp); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -414,6 +431,42 @@ button.bol-bt { cursor: pointer; }
 button.bol-bt:hover { box-shadow: 0 0 0 3px rgba(230, 171, 79, .25); }
 button.bol-bt:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .row.ajuste { align-items: center; }
+/* (lote 6) a honra no painel do grupo, o histórico (da honra e da facção) e os recursos da facção */
+.row.honra-linha { align-items: center; gap: 8px; }
+.honra-valor { display: inline-block; min-width: 2.6em; text-align: center; font-size: 15px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); }
+.honra-valor.pos { color: var(--lamp-ink); border-color: var(--lamp); }
+.honra-valor.neg { color: var(--danger); }
+.honra-pub { margin: 2px 0 4px; display: flex; align-items: center; gap: 8px; }
+.sec-hist { display: grid; gap: 4px; }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; font-size: 13px; }
+.hist li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+.hist li:first-child { border-top: 0; }
+.hist .quando { color: var(--fg-3); font-size: 12px; }
+.hist .mud { font-weight: 600; }
+.hist .mud.pos { color: var(--ok); }
+.hist .mud.neg { color: var(--danger); }
+.hist .mot { color: var(--fg-2); font-style: italic; }
+.hist .acoes { margin-left: auto; padding: 0; display: inline-flex; align-items: center; gap: 2px; }
+.hist .ib { width: 24px; height: 24px; }
+.btn.lnk { background: none; border-color: transparent; box-shadow: none; text-decoration: underline; text-underline-offset: 2px; padding: 0 4px; min-height: 0; height: auto; color: var(--fg-2); }
+.btn.lnk:hover { color: var(--fg); background: none; }
+.field.motivo .in { height: 32px; }
+.sec-sub { display: grid; gap: 6px; }
+.rec-lista { display: grid; gap: 6px; }
+.rec-linha { display: grid; grid-template-columns: minmax(0, 1fr) 88px 56px 28px; gap: 6px; align-items: center; }
+.rec-cab span { font-size: 11.5px; color: var(--fg-3); line-height: 1.15; }
+.rec-cab .ver-cab { text-align: center; }
+.rec-linha > .chk.ver { justify-content: center; }
+.rec-linha .in { height: 30px; }
+.rec-linha .rot { font-size: 13px; font-weight: 600; }
+.rec-linha .ib { width: 28px; height: 28px; }
+.chk.ver { align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--fg-2); white-space: nowrap; }
+.chk.ver input { width: 15px; height: 15px; margin: 0; }
+.row.hist-cab { align-items: center; justify-content: space-between; }
+.fac-num { margin: 6px 0 2px; font-size: 13px; color: var(--fg-2); }
+.fac-hist-pub { font-size: 13px; }
+.fac-hist-pub summary { cursor: pointer; color: var(--fg-2); }
+.row.novos-ter { align-items: center; }
 .barra { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .barra > i { display: block; height: 100%; background: var(--lamp); border-radius: 3px; }
 .acoes { padding-top: 4px; }
@@ -539,9 +592,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
 <script src="../tc/ponte.js?v=12"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="nucleo.js?v=6"></script>
-<script src="tela.js?v=7"></script>
-<script src="painel.js?v=8"></script>
+<script src="nucleo.js?v=7"></script>
+<script src="tela.js?v=8"></script>
+<script src="painel.js?v=9"></script>
 <script src="mundo.js?v=6"></script>
 </body>
 </html>

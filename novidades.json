@@ -2,6 +2,40 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-8",
+      "data": "2026-10-15",
+      "titulo": "Mapa-múndi: desenho em cada hexágono, oito terrenos novos, honra dos grupos e painel das facções",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Desenho em cada hexágono: o terreno pintado hexágono por hexágono ganha o desenho dele (as árvores da floresta, os picos da montanha, as fileiras da lavoura…), diferente de um hexágono para o outro. Aparece com a grade, para todos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Oito terrenos novos, cada um com o seu desenho: Lavoura, Ruínas, Lava, Cristais, Selva, Savana, Tundra e Terra corrompida. Os mapas novos já vêm com eles; num mapa que você já tinha, a aba Terreno oferece “Acrescentar os 8”. Lá também fica “Desenho em cada hexágono”, para desligar o desenho e deixar só a cor."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Honra dos grupos: de −5 a +5, com um selo junto do grupo no mapa (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago ou máscara tribal). Quanto maior a honra, mais enfeitado o selo, com aro dourado, louros e raios; negativa, mais escuro e rachado. Todos veem a honra e o histórico dela."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "No painel do grupo, a seção Honra: escolha o estilo, use − e + e escreva o motivo, se quiser. Cada mudança entra no histórico com a data do mundo. Dá para corrigir o motivo ou tirar uma linha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Painel das facções: recursos (ouro, comida, soldados, magia…, o que você quiser), população e apoio geral (%). Cada mudança nos números entra sozinha no histórico, com a data do mundo e o motivo escrito no painel. No mesmo dia e com o mesmo motivo, as mudanças ficam numa linha só."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Na aba Facções, os jogadores veem os recursos, a população, o apoio e o histórico que o mestre marcar em “Jogadores veem”."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-7",
       "data": "2026-10-15",
       "titulo": "Mapa-múndi: viagem em tempos de marcha, bolinhas da travessia, tamanho do mapa em cubos e regiões dentro de regiões",

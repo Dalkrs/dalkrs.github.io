@@ -40,7 +40,11 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
   ok(await noMundo(M, seg => { const { App, N } = __mundo; return App.mudar('montar', m => {
     m.objs.push(N.objNovo('m', { x: 120, y: 100, nome: 'Vila Pública', txt: 'Uma vila tranquila.', nota: 'nota ' + seg }));
     m.objs.push(N.objNovo('m', { x: 260, y: 100, nome: 'Covil ' + seg, oculto: true }));
-    m.objs.push(N.objNovo('g', { x: 200, y: 220, nome: 'Os Heróis', sigla: 'HER' }));
+    // (lote 6) a honra dos Heróis (todos veem) e o painel de uma facção (os jogadores veem só o que o mestre marcou)
+    m.objs.push(N.objNovo('g', { x: 200, y: 220, nome: 'Os Heróis', sigla: 'HER', estilo: 'coroa', honra: 3, hhist: [{ d: 0, de: 2, para: 3, mot: 'Salvaram a vila' }] }));
+    m.faccoes.push(Object.assign(N.faccaoNova('Aldar', '#c0503a'), { pop: 12000, apoio: 70, ver: { pop: false, apoio: true, hist: true },
+      rec: [{ id: 'ouro', nome: 'Ouro', n: 500, ver: true }, { id: 'sold', nome: 'Soldados ' + seg, n: 300, ver: false }],
+      hist: [{ d: 0, mot: 'Fundação', mud: [['r:ouro', 'Ouro', null, 500], ['r:sold', 'Soldados ' + seg, null, 300]] }, { d: 0, mot: 'Plano ' + seg, mud: [['pop', '', null, 12000]] }] }));
     // (lote 6) uma rota com uma montanha de 20 cubos (o custo próprio é do mestre) e os Batedores no meio dela: um tempo de dois
     m.grade.tam = 40; m.hexes['1,5'] = ['mo', 20];
     const rt = Object.assign(N.objNovo('t', { pts: [[100, 173.21], [300, 173.21]] }), { nome: 'Trilha Velha' });
@@ -67,6 +71,11 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
   ok(visto.nomes === 'Batedores|Guerra Fria|Mar Raso|Os Heróis|Pico|Praga|Rio Lento|Trilha Velha|Vila Pública', 'ele vê o que é público (o desenho também): ' + visto.nomes);
   const bat = await noMundo(J, () => { const g = __mundo.App.mapa.objs.find(o => o.nome === 'Batedores'); return { id: g && g.id, bol: g && g.bol, hex: __mundo.App.mapa.hexes['1,5'] }; });
   ok(JSON.stringify(bat.bol) === '[1,2]' && bat.hex === 'mo', 'os Batedores no meio da montanha: as bolinhas chegam prontas ao jogador (sem o custo próprio do hexágono): ' + JSON.stringify(bat));
+  const fv = await noMundo(J, () => { const f = __mundo.App.mapa.faccoes.find(x => x.nome === 'Aldar'), g = __mundo.App.mapa.objs.find(o => o.nome === 'Os Heróis'); return { rec: f && f.rec, pop: f && f.pop, apoio: f && f.apoio, hist: f && f.hist, honra: g && [g.estilo, g.honra, g.hhist.length], gid: g && g.id }; });
+  ok(JSON.stringify(fv.rec) === JSON.stringify([{ id: 'ouro', nome: 'Ouro', n: 500, ver: true }]) && fv.pop === null && fv.apoio === 70 && JSON.stringify(fv.hist) === JSON.stringify([{ d: 0, mot: 'Fundação', mud: [['r:ouro', 'Ouro', null, 500]] }]),
+    'a facção chega ao jogador só com o que o mestre marcou (o Ouro, o apoio, e do histórico só o do Ouro): ' + JSON.stringify(fv));
+  ok(JSON.stringify(fv.honra) === '["coroa",3,1]' && await ate(async () => await noMundo(J, id => { const n = document.querySelector('#mundo svg [data-id="' + id + '"] .honra .hon-num'); return !!n && n.textContent === '+3'; }, fv.gid)),
+    'a honra dos Heróis (coroa, +3, com o histórico) chega ao jogador e aparece no mapa dele');
   ok(await ate(async () => await noMundo(J, id => { const g = document.querySelector('#mundo svg [data-id="' + id + '"]'); return !!g && g.querySelectorAll('.bolinhas .bol').length === 2 && g.querySelectorAll('.bolinhas .bol.feita').length === 1; }, bat.id)), 'e aparecem junto do grupo, no mapa dele');
   ok(visto.pint === 1 && !!visto.zona && visto.zona.fases.length === 0 && visto.zona.fim === null, 'o desenho à mão chega inteiro; a zona de guerra chega como está hoje, sem a fase que ainda vem');
   ok(await ate(async () => await noMundo(J, () => { const c = document.querySelector('#mundo canvas.pintura'); return !!c && !c.hidden; })), 'e o desenho à mão aparece na tela dele');

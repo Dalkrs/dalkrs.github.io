@@ -1102,6 +1102,10 @@
       if (p) out.push(nota('Viagem: ' + p));
       const b = Array.isArray(o.bol) ? { feitas: o.bol[0], total: o.bol[1], terreno: '' } : null;
       if (b) out.push(fileiraDeBolinhas(o, b, false));
+      // (lote 6) a honra, com o histórico (todos veem)
+      if (o.estilo) out.push(h('div', { class: 'sec' }, h('b', { text: 'Honra' }),
+        h('p', { class: 'honra-pub' }, h('b', { class: 'honra-valor' + (o.honra > 0 ? ' pos' : o.honra < 0 ? ' neg' : ''), text: honraTxt(o.honra || 0) }), ' ', h('span', { class: 'note', text: (N_.HONRA || {})[o.estilo] || '' })),
+        historicoHonra(o, v, false)));
     }
     if (o.k === 'r') {
       const f = facDaReg(v, o), p = paiDe(v, o), dentro = v.objs.filter(x => x.k === 'r' && x.pai === o.id);
@@ -1140,7 +1144,7 @@
     if (o.k === 'l') out.push(secLinha(o, m, grava));
     if (o.k === 'c') out.push(secCarimbo(o, grava));
     if (o.k === 'x') out.push(secTexto(o, grava));
-    if (o.k === 'g') out.push(secGrupo(o, m, grava));
+    if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m));
     if (o.k === 'r') out.push(secRegiao(o, m, grava));
     if (o.k === 'e') out.push(secEvento(o, m, grava));
     if (o.k === 't') out.push(secRota(o, m, grava));
@@ -1233,6 +1237,191 @@
       h('span', { class: 'note', text: 'Atravessando' + (b.terreno ? ' (' + b.terreno + ')' : '') + ': ' + b.feitas + ' de ' + b.total + ' tempos' }),
       h('span', { class: 'bols', role: 'group', 'aria-label': 'Tempos de marcha desta travessia: ' + b.feitas + ' de ' + b.total }, bols),
       b.total > n ? h('small', { class: 'note', text: '(mostrando ' + n + ' de ' + b.total + ')' }) : null);
+  }
+  /* ---------------- a honra do grupo (lote 6) ----------------
+     O estilo (sem estilo, o grupo não mostra honra), − e + (de −5 a +5) e o motivo, que vai para o histórico junto da
+     data do mundo. Todos veem a honra e o histórico. O motivo escrito fica guardado aqui até a próxima mudança. */
+  const honraTxt = v => (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0');
+  function campoMotivo(k, ref, dica) {
+    return h('label', { class: 'field motivo' }, h('span', { text: 'Motivo (opcional)' }),
+      h('input', { class: 'in', type: 'text', 'data-k': k, value: ref.txt, maxlength: (N().LIMITES && N().LIMITES.motivo) || 200, placeholder: dica, autocomplete: 'off',
+        oninput: function () { ref.txt = this.value; } }));
+  }
+  const motivoHonra = { id: null, txt: '' };
+  function secHonra(o, m) {
+    const N_ = N(), id = o.id, v = o.honra || 0, max = (N_.LIMITES && N_.LIMITES.honra) || 5, out = [];
+    if (motivoHonra.id !== id) { motivoHonra.id = id; motivoHonra.txt = ''; }
+    out.push(campoEscolha('o:' + id + ':estilo', 'Estilo', o.estilo || '', [['', 'Sem honra no mapa']].concat(Object.keys(N_.HONRA || {}).map(k => [k, N_.HONRA[k]])),
+      e => mudarObj(id, e ? 'mudar o estilo da honra' : 'tirar a honra do mapa', x => { if ((x.estilo || '') === e) return false; x.estilo = e; }),
+      { dica: 'O ícone junto do grupo, no mapa: mais enfeitado quanto maior a honra; rachado e escuro quando negativa.' }));
+    if (!o.estilo) {
+      out.push(nota('Escolha um estilo para o grupo mostrar a honra no mapa (de −5 a +5).'));
+      return secao('Honra', out);
+    }
+    out.push(h('div', { class: 'row honra-linha' },
+      botao('−', () => mudarHonraDo(id, v - 1), { c: 'sm', k: 'o:honra-menos', off: v <= -max, title: 'Baixa a honra em 1' }),
+      h('b', { class: 'honra-valor' + (v > 0 ? ' pos' : v < 0 ? ' neg' : ''), 'data-k': 'o:honra', text: honraTxt(v), title: 'Honra de −' + max + ' a +' + max }),
+      botao('+', () => mudarHonraDo(id, v + 1), { c: 'sm', k: 'o:honra-mais', off: v >= max, title: 'Sobe a honra em 1' })),
+      campoMotivo('o:honra-motivo', motivoHonra, 'Ex.: salvaram a vila'));
+    out.push(historicoHonra(o, m, true));
+    return secao('Honra', out);
+  }
+  function mudarHonraDo(id, para) {
+    if (!App.podeEditar()) return;
+    const mot = motivoHonra.id === id ? motivoHonra.txt.trim() : '';
+    let de = 0;
+    const ok = App.mudar(para > ((achar(App.mapa, id) || {}).honra || 0) ? 'subir a honra' : 'baixar a honra', mm => {
+      const g = achar(mm, id);
+      if (!g) return false;
+      de = g.honra || 0;
+      return N().mudarHonra(g, para, mm.cal.dia, mot) ? undefined : false;
+    });
+    if (ok !== false) { motivoHonra.txt = ''; avisoDesfazer('Honra ' + honraTxt(de) + ' → ' + honraTxt(Math.max(-5, Math.min(5, para))) + (mot ? ' (' + mot + ')' : '') + '.'); }
+  }
+  // O histórico da honra, do mais novo para o mais antigo. O mestre corrige o motivo de uma linha ou a tira.
+  let honraTudo = null;
+  function historicoHonra(o, m, mestre) {
+    const hs = Array.isArray(o.hhist) ? o.hhist : [], n = hs.length;
+    if (!n) return nota(mestre ? 'Cada mudança fica no histórico, com a data do mundo e o motivo. Os jogadores também veem.' : 'A honra ainda não mudou.');
+    const tudo = honraTudo === o.id, mostrar = tudo ? n : Math.min(n, 6), lista = h('ol', { class: 'hist honra-hist', reversed: true });
+    for (let i = n - 1; i >= n - mostrar; i--) {
+      const e = hs[i];
+      lista.append(h('li', { 'data-k': 'hh:' + i },
+        h('span', { class: 'quando', text: dataTxt(m, e.d) }),
+        h('span', { class: 'mud ' + (e.para > e.de ? 'pos' : 'neg'), text: honraTxt(e.de) + ' → ' + honraTxt(e.para) }),
+        e.mot ? h('span', { class: 'mot', text: e.mot }) : null,
+        mestre ? h('span', { class: 'acoes' },
+          botao('Motivo…', () => motivoDaHonra(o.id, i), { c: 'sm lnk', k: 'hh:' + i + ':mot', title: 'Escrever ou corrigir o motivo desta mudança' }),
+          h('button', { type: 'button', class: 'ib', 'data-k': 'hh:' + i + ':x', title: 'Tirar esta linha do histórico (a honra não muda)', 'aria-label': 'Tirar esta linha do histórico', onclick: () => tirarDaHonra(o.id, i) }, glifo(X_SVG, 12))) : null));
+    }
+    return h('div', { class: 'sec-hist' }, h('small', { class: 'note', text: 'Histórico' + (mestre ? ' (os jogadores também veem)' : '') }), lista,
+      n > 6 ? botao(tudo ? 'Mostrar só as últimas' : 'Mostrar todas (' + n + ')', () => { honraTudo = tudo ? null : o.id; pintar(); }, { c: 'sm lnk', k: 'hh:tudo' }) : null);
+  }
+  async function motivoDaHonra(id, i) {
+    const g0 = achar(App.mapa, id), e = g0 && g0.hhist && g0.hhist[i];
+    if (!e) return;
+    const idMapa = App.mapa.id;
+    const mot = await janela({ titulo: 'O motivo', texto: dataTxt(App.mapa, e.d) + ': honra ' + honraTxt(e.de) + ' → ' + honraTxt(e.para) + '.', ok: 'Gravar',
+      campos: [{ id: 'mot', rotulo: 'Motivo', valor: e.mot, max: (N().LIMITES && N().LIMITES.motivo) || 200, ph: 'Ex.: salvaram a vila' }], ler: v => v.mot.trim() });
+    if (mot == null || !mesmoMapa(idMapa)) return;
+    mudarObj(id, 'mudar o motivo da honra', x => { const y = x.hhist && x.hhist[i]; if (!y || y.mot === mot) return false; y.mot = mot; });
+  }
+  function tirarDaHonra(id, i) {
+    const ok = mudarObj(id, 'tirar uma linha do histórico da honra', x => { if (!x.hhist || !x.hhist[i]) return false; x.hhist.splice(i, 1); });
+    if (ok !== false) avisoDesfazer('Linha tirada do histórico (a honra continua ' + honraTxt((achar(App.mapa, id) || {}).honra || 0) + ').');
+  }
+  /* ---------------- o painel da facção (lote 6) ----------------
+     Recursos (uma lista livre: nome e número), população e apoio geral (%). Cada mudança nos números entra sozinha no
+     histórico, com a data do mundo e o motivo escrito (no mesmo dia e com o mesmo motivo, numa linha só). Tudo começa
+     só com o mestre: a caixa "Jogadores veem" de cada linha mostra aquilo a eles. */
+  const motivoFac = { id: null, txt: '' };
+  const numTxt = v => (v == null ? '—' : fmt(v, Number.isInteger(v) ? 0 : 2));
+  function nomeDoCampo(f, x) { return x[0] === 'pop' ? 'População' : x[0] === 'apoio' ? 'Apoio' : (x[1] || 'Recurso'); }
+  function mudancaTxt(f, x) {
+    const de = x[2], para = x[3], pc = x[0] === 'apoio' ? '%' : '';
+    if (de == null) return nomeDoCampo(f, x) + ': ' + numTxt(para) + pc + (x[0].slice(0, 2) === 'r:' ? ' (novo)' : '');
+    if (para == null) return nomeDoCampo(f, x) + (x[0].slice(0, 2) === 'r:' ? ': saiu (' + numTxt(de) + ')' : ': ' + numTxt(de) + pc + ' → —');
+    return nomeDoCampo(f, x) + ': ' + numTxt(de) + pc + ' → ' + numTxt(para) + pc;
+  }
+  function secNumerosFac(f, m) {
+    const id = f.id, out = [], lim = (N().LIMITES && N().LIMITES.recursos) || 40;
+    if (motivoFac.id !== id) { motivoFac.id = id; motivoFac.txt = ''; }
+    const mot = () => (motivoFac.id === id ? motivoFac.txt.trim() : '');
+    const mudar = (rot, fn) => App.mudar(rot, mm => { const x = facDe(mm, id); if (!x) return false; return fn(x, mm) === false ? false : undefined; });
+    const numero = (campo, rot) => n => mudar(rot, (x, mm) => N().facMudar(x, campo, n, mm.cal.dia, mot()));
+    // a caixa "os jogadores veem" (nas linhas da tabela, sem o texto: ele está no alto da coluna)
+    const verCaixa = (k, marcado, rot, fn, comTexto) => h('label', { class: 'chk ver', title: 'Os jogadores veem ' + rot },
+      h('input', { type: 'checkbox', 'data-k': k, checked: !!marcado, 'aria-label': 'Os jogadores veem ' + rot, _gravar: v => mudar((v ? 'mostrar ' : 'esconder ') + rot + ' aos jogadores', x => fn(x, !!v)), onchange: mudaEscolha }),
+      comTexto ? h('span', { text: 'Jogadores veem' }) : null);
+    out.push(campoMotivo('f:' + id + ':motivo', motivoFac, 'Ex.: a batalha de Brenn'),
+      h('small', { class: 'ajuda', text: 'Cada número que você mudar entra no histórico com a data de hoje e este motivo.' }));
+    // os recursos
+    const linhas = f.rec.map(r => {
+      const nome = campoTexto('f:' + id + ':r:' + r.id + ':nome', null, r.nome, v => mudar('renomear o recurso', x => { const y = x.rec.find(z => z.id === r.id); if (!y || !v.trim() || y.nome === v.trim()) return false; y.nome = v.trim(); }), { max: 60, rotulo: 'Nome do recurso' });
+      const n = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
+      n.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
+      return h('div', { class: 'rec-linha', 'data-rec': r.id }, nome, n,
+        verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }),
+        h('button', { type: 'button', class: 'ib', 'data-k': 'f:' + id + ':r:' + r.id + ':x', title: 'Tirar ' + (r.nome || 'o recurso'), 'aria-label': 'Tirar ' + (r.nome || 'o recurso'),
+          onclick: () => mudar('tirar ' + (r.nome || 'o recurso'), (x, mm) => N().facTirarRecurso(x, r.id, mm.cal.dia, mot())) }, glifo(X_SVG, 14)));
+    });
+    out.push(h('div', { class: 'sec-sub' },
+      h('div', { class: 'rec-linha rec-cab', 'aria-hidden': 'true' }, h('span', { text: 'Recursos' }), h('span', { text: 'Quanto' }), h('span', { class: 'ver-cab', text: 'Jogadores veem' }), h('span')),
+      linhas.length ? h('div', { class: 'rec-lista' }, linhas) : nota('Nenhum ainda: ouro, comida, soldados, magia…'),
+      linha(botao('+ Recurso', () => novoRecurso(id), { c: 'sm', k: 'f:' + id + ':rec-novo', off: f.rec.length >= lim }))));
+    // população e apoio
+    const pop = campoNumero('f:' + id + ':pop', null, f.pop, numero('pop', 'mudar a população'), { min: 0, max: 1e12, vazio: null, ph: '—', erro: 'Use um número de pessoas (vazio: sem número).' });
+    pop.setAttribute('aria-label', 'População');
+    const apoio = campoNumero('f:' + id + ':apoio', null, f.apoio, numero('apoio', 'mudar o apoio'), { min: 0, max: 100, vazio: null, ph: '—', erro: 'Use um apoio de 0 a 100% (vazio: sem número).' });
+    apoio.setAttribute('aria-label', 'Apoio geral, em %');
+    out.push(h('div', { class: 'rec-lista' },
+      h('div', { class: 'rec-linha' }, h('span', { class: 'rot', text: 'População' }), pop, verCaixa('f:' + id + ':ver-pop', f.ver.pop, 'a população', (x, v) => { if (x.ver.pop === v) return false; x.ver.pop = v; }), h('span')),
+      h('div', { class: 'rec-linha' }, h('span', { class: 'rot', text: 'Apoio geral (%)' }), apoio, verCaixa('f:' + id + ':ver-apoio', f.ver.apoio, 'o apoio', (x, v) => { if (x.ver.apoio === v) return false; x.ver.apoio = v; }), h('span'))));
+    // o histórico
+    out.push(h('div', { class: 'row hist-cab' }, h('small', { class: 'note', text: 'Histórico' }),
+      verCaixa('f:' + id + ':ver-hist', f.ver.hist, 'o histórico', (x, v) => { if (x.ver.hist === v) return false; x.ver.hist = v; }, true)));
+    out.push(historicoFac(f, m, true));
+    return secao('Recursos e números', out);
+  }
+  let facTudo = null;
+  const histAberto = new Set();               // os históricos de facção que quem joga deixou abertos
+  function historicoFac(f, m, mestre) {
+    const hs = Array.isArray(f.hist) ? f.hist : [], n = hs.length;
+    if (!n) return nota(mestre ? 'Nada ainda. As mudanças nos números entram aqui sozinhas.' : 'Nada ainda.');
+    const tudo = facTudo === f.id, mostrar = tudo ? n : Math.min(n, 8), lista = h('ol', { class: 'hist fac-hist', reversed: true });
+    for (let i = n - 1; i >= n - mostrar; i--) {
+      const e = hs[i];
+      lista.append(h('li', { 'data-k': 'fh:' + i },
+        h('span', { class: 'quando', text: dataTxt(m, e.d) }),
+        e.mot ? h('span', { class: 'mot', text: e.mot }) : null,
+        h('span', { class: 'mud', text: e.mud.map(x => mudancaTxt(f, x)).join(' · ') }),
+        mestre ? h('span', { class: 'acoes' },
+          botao('Motivo…', () => motivoDaFac(f.id, i), { c: 'sm lnk', k: 'fh:' + i + ':mot', title: 'Escrever ou corrigir o motivo' }),
+          h('button', { type: 'button', class: 'ib', 'data-k': 'fh:' + i + ':x', title: 'Tirar esta linha do histórico (os números não mudam)', 'aria-label': 'Tirar esta linha do histórico', onclick: () => tirarDaFac(f.id, i) }, glifo(X_SVG, 12))) : null));
+    }
+    return h('div', { class: 'sec-hist' }, lista,
+      n > 8 ? botao(tudo ? 'Mostrar só as últimas' : 'Mostrar todas (' + n + ')', () => { facTudo = tudo ? null : f.id; pintar(); }, { c: 'sm lnk', k: 'fh:tudo' }) : null);
+  }
+  async function novoRecurso(id) {
+    if (!App.podeEditar()) return;
+    const idMapa = App.mapa.id, mot = motivoFac.id === id ? motivoFac.txt.trim() : '';
+    const r = await janela({ titulo: 'Recurso novo', ok: 'Pôr', campos: [
+      { id: 'nome', rotulo: 'Nome', valor: '', max: 60, ph: 'Ouro, comida, soldados, magia…' },
+      { id: 'n', rotulo: 'Quanto', tipo: 'decimal', valor: '0' },
+    ], ler: v => {
+      if (!v.nome.trim()) throw new Error('Dê um nome ao recurso.');
+      const n = lerNum(v.n);
+      if (!Number.isFinite(n)) throw new Error('Use um número.');
+      return { nome: v.nome.trim(), n };
+    } });
+    if (!r || !mesmoMapa(idMapa)) return;
+    App.mudar('pôr o recurso ' + r.nome, mm => { const f = facDe(mm, id); if (!f) return false; return N().facNovoRecurso(f, r.nome, r.n, mm.cal.dia, mot) ? undefined : false; });
+  }
+  async function motivoDaFac(id, i) {
+    const f0 = facDe(App.mapa, id), e = f0 && f0.hist && f0.hist[i];
+    if (!e) return;
+    const idMapa = App.mapa.id;
+    const mot = await janela({ titulo: 'O motivo', texto: dataTxt(App.mapa, e.d) + ': ' + e.mud.map(x => mudancaTxt(f0, x)).join(' · ') + '.', ok: 'Gravar',
+      campos: [{ id: 'mot', rotulo: 'Motivo', valor: e.mot, max: (N().LIMITES && N().LIMITES.motivo) || 200, ph: 'Ex.: a batalha de Brenn' }], ler: v => v.mot.trim() });
+    if (mot == null || !mesmoMapa(idMapa)) return;
+    App.mudar('mudar o motivo no histórico da facção', mm => { const f = facDe(mm, id), y = f && f.hist && f.hist[i]; if (!y || y.mot === mot) return false; y.mot = mot; });
+  }
+  function tirarDaFac(id, i) {
+    const ok = App.mudar('tirar uma linha do histórico da facção', mm => { const f = facDe(mm, id); if (!f || !f.hist || !f.hist[i]) return false; f.hist.splice(i, 1); });
+    if (ok !== false) avisoDesfazer('Linha tirada do histórico (os números continuam como estão).');
+  }
+  // o que os jogadores veem da facção: os números marcados e o histórico (se marcado)
+  function numerosPublicos(f, v) {
+    const partes = f.rec.map(r => (r.nome || 'Recurso') + ': ' + numTxt(r.n));
+    if (f.pop != null) partes.push('População: ' + numTxt(f.pop));
+    if (f.apoio != null) partes.push('Apoio: ' + numTxt(f.apoio) + '%');
+    const out = [];
+    if (partes.length) out.push(h('p', { class: 'fac-num', text: partes.join(' · ') }));
+    // (aberto ou fechado fica guardado aqui: o painel se refaz a cada mudança do mapa)
+    if (f.hist && f.hist.length) out.push(h('details', { class: 'fac-hist-pub', 'data-k': 'fhp:' + f.id, open: histAberto.has(f.id) || null },
+      h('summary', { text: 'Histórico (' + f.hist.length + ')', onclick: function (ev) { ev.preventDefault(); const d = this.parentNode, abrir = !d.open; if (abrir) histAberto.add(f.id); else histAberto.delete(f.id); d.open = abrir; } }),
+      historicoFac(f, v, false)));
+    return out;
   }
   function secGrupo(o, m, grava) {
     const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [], pt = passoDoGrupo(m, o), tpd = tpdDe(m);
@@ -1651,7 +1840,8 @@
           h('div', { class: 'li' }, h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,
-          rels.length ? h('div', { class: 'tags' }, rels.map(([g, r]) => h('span', { class: 'tag ' + r, text: N().RELACOES[r] + ' com ' + nomeFac(g) }))) : null));
+          rels.length ? h('div', { class: 'tags' }, rels.map(([g, r]) => h('span', { class: 'tag ' + r, text: N().RELACOES[r] + ' com ' + nomeFac(g) }))) : null,
+          ...numerosPublicos(f, v)));
       }
     }
     out.push(lista);
@@ -1671,6 +1861,7 @@
       campoTexto('f:' + id + ':txt', 'O que os jogadores sabem', f.txt, grava('mudar o texto da facção', (x, v) => { x.txt = v; }), { area: true, linhas: 3 }),
       segredo('Só o mestre vê', campoTexto('f:' + id + ':nota', null, f.nota, grava('mudar a nota da facção', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Planos, segredos…' })),
       caixa('f:' + id + ':oculta', 'Esconder dos jogadores', f.oculta, grava('esconder a facção', (x, v) => { x.oculta = !!v; }), { dica: 'Some da lista deles; as regiões ficam sem cor de facção para eles.' }),
+      secNumerosFac(f, m),
       outras.length ? h('div', { class: 'sec' }, h('b', { text: 'Relações' }),
         outras.map(g => h('div', { class: 'rel ' + ((f.rel && f.rel[g.id]) || 'neutra') }, h('i', { style: { background: g.cor } }), h('span', { text: nomeFac(g) }),
           campoEscolha('rel:' + id + ':' + g.id, null, (f.rel && f.rel[g.id]) || 'neutra', Object.keys(N_.RELACOES).map(k => [k, N_.RELACOES[k]]),
@@ -1809,11 +2000,12 @@
         campoTexto('ter:' + t.id + ':nome', null, t.nome, grava('renomear o terreno', (x, v) => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 40, rotulo: 'Nome do terreno' }),
         custo, h('span', { class: 'un', text: 'cubos' }),
         h('button', { type: 'button', class: 'ib', 'data-k': 'ter:' + t.id + ':x', title: 'Tirar ' + t.nome + (uso.get(t.id) ? ' (' + plHex(uso.get(t.id)) + ')' : ''), 'aria-label': 'Tirar ' + t.nome, onclick: () => tirarTerreno(t.id) }, glifo(X_SVG, 14)),
-        campoEscolha('ter:' + t.id + ':tex', null, t.tex || 'liso', Object.keys(TX).map(k => [k, 'Textura: ' + TX[k].nome]), grava('mudar a textura de ' + t.nome, (x, v) => { x.tex = v; }), { rotulo: 'Textura de ' + t.nome + ' no desenho à mão' }));
+        campoEscolha('ter:' + t.id + ':tex', null, t.tex || 'liso', Object.keys(TX).map(k => [k, 'Textura: ' + TX[k].nome]), grava('mudar a textura de ' + t.nome, (x, v) => { x.tex = v; }), { rotulo: 'Textura de ' + t.nome + ' (no desenho à mão e nos hexágonos)' }));
     });
     out.push(secao('Tipos de terreno',
       nota('Custo: quantos cubos se gastam para atravessar um hexágono desse terreno. Sem terreno, um hexágono custa os 5 cubos dele.'),
       ts.length ? h('div', { class: 'ter-lista' }, ts) : nota('Nenhum tipo de terreno.'),
+      novosTerrenos(m),
       linha(botao('+ Tipo de terreno', novoTerreno, { c: 'sm', k: 'ter:novo', off: m.terrenos.length >= N().LIMITES.terrenos }),
         m.terrenos.length ? null : botao('Os tipos de começo', () => App.mudar('voltar aos tipos de terreno de começo', mm => { mm.terrenos = N().copia(N().TERRENOS_PADRAO); }), { c: 'sm', k: 'ter:padrao' }))));
     // o desenho à mão
@@ -1831,8 +2023,18 @@
     out.push(secao('Pintar por hexágono',
       nota(pintados ? plHex(pintados) + ' com terreno ou custo próprio.' + [...uso].map(([id, n]) => { const t = m.terrenos.find(x => x.id === id); return t ? ' ' + t.nome + ': ' + n + '.' : ''; }).join('') + (nada ? ' Sem terreno (por cima do desenho): ' + nada + '.' : '') : 'Nenhum hexágono pintado ainda.'),
       linha(botao('Por hexágono (H)', () => ferramentaTerreno('hex'), { c: 'sm', k: 'ter:pincel', off: !tem, title: tem ? 'Arraste sobre os hexágonos para pintar (ou corrigir o desenho)' : 'Defina a grade primeiro' })),
+      tem ? caixa('ter:des', 'Desenho em cada hexágono', gr.des !== false, v => App.mudar(v ? 'pôr o desenho nos hexágonos' : 'tirar o desenho dos hexágonos', mm => { if ((mm.grade.des !== false) === !!v) return false; mm.grade.des = !!v; }),
+        { dica: 'Cada hexágono pintado ganha o desenho do terreno (árvores, montes, fileiras…), diferente de um para o outro. Desligado: só a cor. Aparece com a grade.' }) : null,
       nota('Uma região também pode ter um custo por hexágono (Seleção → a região). O custo próprio de um hexágono vale mais que o da região, que vale mais que o do terreno.')));
     return out;
+  }
+  // (lote 6) num mapa de antes, os terrenos novos (com o desenho deles) que ele ainda não tem: um clique acrescenta
+  function novosTerrenos(m) {
+    const falta = N().terrenosQueFaltam ? N().terrenosQueFaltam(m) : [];
+    if (!falta.length || !m.terrenos.length) return null;
+    return h('div', { class: 'row novos-ter' }, nota('Terrenos novos: ' + falta.map(t => t.nome).join(', ') + '.'),
+      botao('Acrescentar ' + (falta.length === 1 ? 'este' : 'os ' + falta.length), () => App.mudar('acrescentar os terrenos novos', mm => { const f = N().terrenosQueFaltam(mm); if (!f.length) return false; mm.terrenos.push(...f); }),
+        { c: 'sm', k: 'ter:novos', title: 'Cada um com a cor, o custo e o desenho dele; dá para mudar depois' }));
   }
   // abre a ferramenta Terreno num dos dois pincéis (o livre ou o de hexágono)
   function ferramentaTerreno(modo) {

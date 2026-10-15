@@ -583,7 +583,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await A(J, () => ['#rail', '#btDesfazer', '#diaMais', '#diaMenos', '#comoJogBox'].every(s => getComputedStyle(document.querySelector(s)).display === 'none')), 'jogador: sem trilho, sem desfazer, sem botões de data, sem "ver como jogador"');
     ok(await A(J, () => document.getElementById('tab-mapa').hidden && document.getElementById('tab-terreno').hidden && !document.getElementById('tab-hoje').hidden && !document.getElementById('tab-faccoes').hidden), 'jogador: sem as abas Mapa e Terreno');
     ok((await J.F.locator('#salvo').innerText()) === '', 'jogador: sem indicador de "salvo"');
-    ok(await A(J, () => getComputedStyle(document.querySelector('#mundo svg .c-hex')).display !== 'none' && document.querySelectorAll('#mundo svg .hex-ter').length === 1 && !document.querySelector('#mundo svg .hex-custo')), 'o jogador vê a grade e a mata do hexágono à mostra (sem o custo)');
+    ok(await A(J, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return getComputedStyle(document.querySelector('#mundo svg .c-hex')).display !== 'none' && !!c && !c.hidden && /^fl:\d+$/.test(c.dataset.ters) && !document.querySelector('#mundo svg .hex-custo'); }), 'o jogador vê a grade e a mata do hexágono à mostra (sem o custo)');
     ok(await imagemAberta(J, 1000), 'a imagem da mesa abre no aparelho do jogador');
     const tela = [];
     await aba(J, 'selecao');

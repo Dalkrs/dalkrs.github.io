@@ -70,12 +70,27 @@
     { id: 'ne', nome: 'Neve', cor: '#e3ecf2', custo: 15, tex: 'neve' },
     { id: 'ag', nome: 'Água', cor: '#4f86c0', custo: 10, tex: 'ondas' },
   ];
+  /* (lote 6) Os terrenos novos, cada um com o seu desenho. Um mapa novo já vem com eles; num mapa de antes, a aba
+     Terreno oferece acrescentá-los (nada muda sozinho). */
+  const TERRENOS_NOVOS = [
+    { id: 'la', nome: 'Lavoura', cor: '#cdb85e', custo: 6, tex: 'lavoura' },
+    { id: 'ru', nome: 'Ruínas', cor: '#a99f8b', custo: 8, tex: 'ruinas' },
+    { id: 'lv', nome: 'Lava', cor: '#8c3a22', custo: 30, tex: 'lava' },
+    { id: 'cr', nome: 'Cristais', cor: '#8db7d6', custo: 12, tex: 'cristais' },
+    { id: 'se', nome: 'Selva', cor: '#2d6a3a', custo: 15, tex: 'selva' },
+    { id: 'sv', nome: 'Savana', cor: '#c6b26a', custo: 6, tex: 'savana' },
+    { id: 'tu', nome: 'Tundra', cor: '#b7c3b5', custo: 10, tex: 'tundra' },
+    { id: 'tc', nome: 'Terra corrompida', cor: '#5d4166', custo: 12, tex: 'corrompida' },
+  ];
+  TERRENOS_PADRAO.push(...TERRENOS_NOVOS);
   // A textura de cada terreno no desenho à mão: o desenho miúdo que se repete dentro da pincelada (a tela é quem
   // desenha; aqui ficam os nomes). Um terreno de antes, sem textura, fica com a do terreno de começo de mesmo id.
   const TEXTURAS = {
     liso: { nome: 'Lisa' }, mato: { nome: 'Capim' }, arvores: { nome: 'Árvores' }, colinas: { nome: 'Colinas' },
     montes: { nome: 'Montes' }, juncos: { nome: 'Juncos' }, areia: { nome: 'Areia' }, neve: { nome: 'Neve' },
     ondas: { nome: 'Ondas' }, pedras: { nome: 'Pedras' },
+    lavoura: { nome: 'Lavoura' }, ruinas: { nome: 'Ruínas' }, lava: { nome: 'Lava' }, cristais: { nome: 'Cristais' },
+    selva: { nome: 'Selva' }, savana: { nome: 'Savana' }, tundra: { nome: 'Tundra' }, corrompida: { nome: 'Corrompida' },
   };
   const TEX_PADRAO = Object.fromEntries(TERRENOS_PADRAO.map(t => [t.id, t.tex]));
   /* Carimbos: desenhos para enfeitar o mapa (arte própria, numa caixa 24×24). Na tela, .cc é preenchido com a cor do
@@ -102,6 +117,10 @@
   // As letras dos textos livres (a tela diz qual fonte é cada uma)
   const FONTES = { mapa: { nome: 'De mapa antigo' }, classica: { nome: 'Clássica, inclinada' }, simples: { nome: 'Simples' } };
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
+  /* (lote 6) A honra de um grupo, de −5 a +5, com um ícone junto dele no mapa (o estilo) — mais enfeitado quanto
+     maior, rachado e escuro quando negativa. Sem estilo, o grupo não mostra honra. */
+  const HONRA = { elmo: 'Elmo medieval', kabuto: 'Kabuto', katana: 'Katana', turbante: 'Turbante', coroa: 'Coroa',
+    escudo: 'Escudo com brasão', cajado: 'Cajado de mago', mascara: 'Máscara tribal' };
   const CAL_PADRAO = {
     dia: 0, ano0: 1, era: '', tpd: TEMPOS_DIA, tempo: 0,
     meses: ['Alvorada', 'Degelo', 'Semeadura', 'Florada', 'Verdor', 'Solar', 'Colheita', 'Âmbar', 'Brumas', 'Geada', 'Vigília', 'Noite Longa']
@@ -114,10 +133,12 @@
   // o desenho à mão: quantas pinceladas e quantos pontos ao todo (o documento do mapa tem limite de tamanho)
   const MAX_PINC = 4000, MAX_PONTOS_PINT = 60000, MAX_FASES = 60;
   const MAX_NIVEL = 10;                           // regiões dentro de regiões: até quantos níveis (Reino → Condado → …)
+  // (lote 6) a honra (de −5 a +5) e o histórico dela; o painel das facções: recursos, números, histórico
+  const MAX_HONRA = 5, MAX_HIST = 100, MAX_MOTIVO = 200, MAX_REC = 40, MAX_FHIST = 200, MAX_MUD = 40, MAX_NUM = 1e12;
   const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
-    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0 },
+    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0, estilo: '', honra: 0, hhist: [] },
     r: { pts: [], fac: null, cor: '', custo: null, enc: { chance: 0, itens: [] }, pai: null },
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
     t: { pts: [], via: 'trilha' },
@@ -762,6 +783,8 @@
       orient: g && g.orient === 'deitado' ? 'deitado' : 'pe',
       on: !!g && sim(g.on),
       alfa: g ? Math.round(limitar(num(g.alfa, 0.35), 0.05, 1) * 100) / 100 : 0.35,
+      // (lote 6) o desenho do terreno em cada hexágono pintado (desligado: só a cor, como antes)
+      des: !(g && (g.des === false || g.des === 0 || g.des === 'false')),
     };
   }
   // Os tipos de terreno. Sem a lista (mapa de antes), os padrões; uma lista vazia é a escolha do mestre.
@@ -852,7 +875,8 @@
         if (!lugar()) return null;
         // (cubos: os por dia, para quem ainda tem o site de antes; quem vale é o pt, os cubos de um tempo de marcha)
         const t = inteiro(tpd, TEMPOS_DIA, 1, MAX_TEMPOS), pt = passoNorm(o, t);
-        const g = Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), pt, cubos: Math.round(limitar(pt * t, 0.1, MAX_CUSTO * MAX_TEMPOS) * 10) / 10, rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))) });
+        const g = Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), pt, cubos: Math.round(limitar(pt * t, 0.1, MAX_CUSTO * MAX_TEMPOS) * 10) / 10, rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))),
+          estilo: escolha(HONRA, o.estilo, ''), honra: inteiro(o.honra, 0, -MAX_HONRA, MAX_HONRA), hhist: normHonras(o.hhist) });
         const bol = bolNorm(o.bol);
         if (bol) g.bol = bol;
         return g;
@@ -916,11 +940,124 @@
     if (!ehObj(v) || typeof v.url !== 'string' || v.url.length > 2048 || !/^(https?:\/\/|idb:)/i.test(v.url)) return null;
     return { url: v.url, w: inteiro(v.w, inteiro(larg, 2000, 1, 100000), 1, 100000), h: inteiro(v.h, inteiro(alt, 1400, 1, 100000), 1, 100000) };
   }
+  /* ---------------- a honra dos grupos (lote 6) ----------------
+     Cada mudança fica no histórico do grupo: a data do mundo (d), de quanto para quanto e o motivo — todos veem. */
+  function normHonras(v) {
+    const out = [];
+    for (const e of Array.isArray(v) ? v.slice(-MAX_HIST) : []) {
+      if (!ehObj(e)) continue;
+      const de = inteiro(e.de, NaN, -MAX_HONRA, MAX_HONRA), para = inteiro(e.para, NaN, -MAX_HONRA, MAX_HONRA);
+      if (!Number.isFinite(de) || !Number.isFinite(para) || de === para) continue;
+      out.push({ d: inteiro(e.d, 0, 0, 1e9), de, para, mot: texto(e.mot, '', MAX_MOTIVO).trim() });
+    }
+    return out;
+  }
+  // A honra nova de um grupo (no rascunho de App.mudar): o valor e a linha do histórico. false: nada mudou.
+  function mudarHonra(g, para, dia, mot) {
+    if (!ehObj(g)) return false;
+    const de = inteiro(g.honra, 0, -MAX_HONRA, MAX_HONRA), p = inteiro(para, de, -MAX_HONRA, MAX_HONRA);
+    if (p === de) return false;
+    g.honra = p;
+    g.hhist = (Array.isArray(g.hhist) ? g.hhist : []).concat([{ d: inteiro(dia, 0, 0, 1e9), de, para: p, mot: texto(mot, '', MAX_MOTIVO).trim() }]).slice(-MAX_HIST);
+    return true;
+  }
+
+  /* ---------------- o painel das facções (lote 6) ----------------
+     Recursos (uma lista livre: nome e número), população e apoio geral (%). Cada mudança nesses números entra sozinha
+     no histórico da facção: a data do mundo, o motivo e o que mudou ([campo, nome, de, para]; campo 'pop', 'apoio' ou
+     'r:' + o id do recurso; de null = o recurso nasceu, para null = saiu). No mesmo dia e com o mesmo motivo, as
+     mudanças juntam numa linha só. Tudo começa só com o mestre: ele marca o que os jogadores veem. */
+  const numFac = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, -MAX_NUM, MAX_NUM) * 100) / 100 || 0 : null; };
+  const numPop = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, 0, MAX_NUM)) : null; };
+  const numApoio = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, 0, 100)) : null; };
+  function normRecursos(v) {
+    const out = [], vistos = new Set();
+    for (const r of Array.isArray(v) ? v : []) {
+      if (!ehObj(r) || out.length >= MAX_REC) continue;
+      const n = numFac(r.n);
+      out.push({ id: unico(idOk(r.id) || 'rc' + out.length, vistos), nome: texto(r.nome, '', 60), n: n == null ? 0 : n, ver: sim(r.ver) });
+    }
+    return out;
+  }
+  const campoFac = c => (c === 'pop' || c === 'apoio' ? c : typeof c === 'string' && c.slice(0, 2) === 'r:' && idOk(c.slice(2)) ? c : '');
+  function normHistFac(v) {
+    const out = [];
+    for (const e of Array.isArray(v) ? v.slice(-MAX_FHIST) : []) {
+      if (!ehObj(e) || !Array.isArray(e.mud)) continue;
+      const mud = [];
+      for (const x of e.mud) {
+        if (!Array.isArray(x) || mud.length >= MAX_MUD) continue;
+        const campo = campoFac(x[0]), de = numFac(x[2]), para = numFac(x[3]);
+        if (!campo || de === para || mud.some(y => y[0] === campo)) continue;
+        mud.push([campo, texto(x[1], '', 60), de, para]);
+      }
+      if (mud.length) out.push({ d: inteiro(e.d, 0, 0, 1e9), mot: texto(e.mot, '', MAX_MOTIVO).trim(), mud });
+    }
+    return out;
+  }
+  // Uma mudança no histórico da facção (no rascunho): junta com a última linha quando é do mesmo dia e motivo.
+  function anotarFac(f, campo, nome, de, para, dia, mot) {
+    if (!Array.isArray(f.hist)) f.hist = [];
+    const d = inteiro(dia, 0, 0, 1e9), m = texto(mot, '', MAX_MOTIVO).trim(), u = f.hist[f.hist.length - 1];
+    if (u && u.d === d && u.mot === m && Array.isArray(u.mud)) {
+      const x = u.mud.find(y => y[0] === campo);
+      if (x) { x[1] = nome || x[1]; x[3] = para; if (x[2] === x[3]) u.mud.splice(u.mud.indexOf(x), 1); }
+      else if (de !== para && u.mud.length < MAX_MUD) u.mud.push([campo, nome || '', de, para]);
+      if (!u.mud.length) f.hist.pop();
+    } else if (de !== para) f.hist.push({ d, mot: m, mud: [[campo, nome || '', de, para]] });
+    if (f.hist.length > MAX_FHIST) f.hist.splice(0, f.hist.length - MAX_FHIST);
+  }
+  /* Mudar um número da facção (no rascunho de App.mudar): campo 'pop', 'apoio' ou 'r:' + id do recurso. O valor vai
+     para o histórico sozinho. false: nada mudou (ou o campo não existe). */
+  function facMudar(f, campo, valor, dia, mot) {
+    if (!ehObj(f)) return false;
+    if (campo === 'pop' || campo === 'apoio') {
+      const de = f[campo] == null ? null : f[campo], para = campo === 'pop' ? numPop(valor) : numApoio(valor);
+      if (de === para) return false;
+      f[campo] = para;
+      anotarFac(f, campo, '', de, para, dia, mot);
+      return true;
+    }
+    const r = campoFac(campo) && Array.isArray(f.rec) ? f.rec.find(x => 'r:' + x.id === campo) : null, para = numFac(valor);
+    if (!r || para == null || r.n === para) return false;
+    const de = r.n;
+    r.n = para;
+    anotarFac(f, campo, r.nome, de, para, dia, mot);
+    return true;
+  }
+  // Um recurso novo na facção (no rascunho): entra no histórico como nascido (de nada para o número). → o id
+  function facNovoRecurso(f, nome, n, dia, mot) {
+    if (!ehObj(f)) return null;
+    if (!Array.isArray(f.rec)) f.rec = [];
+    if (f.rec.length >= MAX_REC) return null;
+    const vistos = new Set(f.rec.map(r => r.id)), id = unico(novoId('rc'), vistos), v = numFac(n);
+    const r = { id, nome: texto(nome, '', 60).trim() || 'Recurso', n: v == null ? 0 : v, ver: false };
+    f.rec.push(r);
+    anotarFac(f, 'r:' + id, r.nome, null, r.n, dia, mot);
+    return id;
+  }
+  // Tirar um recurso (no rascunho): o histórico guarda que ele saiu (do número para nada).
+  function facTirarRecurso(f, id, dia, mot) {
+    const i = ehObj(f) && Array.isArray(f.rec) ? f.rec.findIndex(r => r.id === id) : -1;
+    if (i < 0) return false;
+    const r = f.rec[i];
+    f.rec.splice(i, 1);
+    anotarFac(f, 'r:' + id, r.nome, r.n, null, dia, mot);
+    return true;
+  }
+  // Os terrenos novos que o mapa ainda não tem (nem com o mesmo id, nem com o mesmo nome), cabendo no limite.
+  function terrenosQueFaltam(mapa) {
+    const ts = ehObj(mapa) && Array.isArray(mapa.terrenos) ? mapa.terrenos : [];
+    const ids = new Set(ts.map(t => t.id)), nomes = new Set(ts.map(t => String(t.nome || '').trim().toLowerCase()));
+    return TERRENOS_NOVOS.filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
+  }
   function normFaccoes(v) {
     const out = [], vistos = new Set(), crus = [];
     (Array.isArray(v) ? v : []).forEach((f, i) => {
       if (!ehObj(f) || out.length >= MAX_FAC) return;
-      out.push({ id: unico(idOk(f.id) || 'fc_' + i, vistos), nome: texto(f.nome), cor: cor(f.cor, CORES[i % CORES.length]), txt: texto(f.txt), nota: texto(f.nota), oculta: talvez(f.oculta), rel: {} });
+      const ver = ehObj(f.ver) ? f.ver : {};
+      out.push({ id: unico(idOk(f.id) || 'fc_' + i, vistos), nome: texto(f.nome), cor: cor(f.cor, CORES[i % CORES.length]), txt: texto(f.txt), nota: texto(f.nota), oculta: talvez(f.oculta), rel: {},
+        rec: normRecursos(f.rec), pop: numPop(f.pop), apoio: numApoio(f.apoio), ver: { pop: sim(ver.pop), apoio: sim(ver.apoio), hist: sim(ver.hist) }, hist: normHistFac(f.hist) });
       crus.push(ehObj(f.rel) ? f.rel : {});
     });
     // Relação vale para os dois lados; se um lado só tem, vale para os dois; se discordam, vale o da facção que vem antes.
@@ -1005,7 +1142,8 @@
     return normObj(o, null, true) || o;
   }
   function faccaoNova(nome, c) {
-    return { id: novoId('fc'), nome: texto(nome).trim() || 'Nova facção', cor: cor(c, CORES[0]), txt: '', nota: '', oculta: false, rel: {} };
+    return { id: novoId('fc'), nome: texto(nome).trim() || 'Nova facção', cor: cor(c, CORES[0]), txt: '', nota: '', oculta: false, rel: {},
+      rec: [], pop: null, apoio: null, ver: { pop: false, apoio: false, hist: false }, hist: [] };
   }
 
   /* ---------------- ajuste de escala (troca de imagem) ---------------- */
@@ -1110,6 +1248,13 @@
     for (const f of m.faccoes) {
       delete f.nota;
       for (const k of Object.keys(f.rel)) if (escondidas.has(k)) delete f.rel[k];
+      // (lote 6) o painel da facção: só o que o mestre marcou para os jogadores (o histórico, só do que eles veem)
+      const vistos = new Set(f.rec.filter(r => r.ver).map(r => 'r:' + r.id));
+      const pode = c => (c === 'pop' ? f.ver.pop : c === 'apoio' ? f.ver.apoio : vistos.has(c));
+      f.rec = f.rec.filter(r => r.ver);
+      if (!f.ver.pop) f.pop = null;
+      if (!f.ver.apoio) f.apoio = null;
+      f.hist = f.ver.hist ? f.hist.map(e => ({ d: e.d, mot: e.mot, mud: e.mud.filter(x => pode(x[0])) })).filter(e => e.mud.length) : [];
     }
     const objs = [];
     for (const o of m.objs) {
@@ -1151,8 +1296,9 @@
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
+    HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa,
-    LIMITES: { niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
+    LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

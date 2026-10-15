@@ -24,7 +24,10 @@ ok(EVS.every(k => N.EVENTOS[k] && N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.E
 ok(N.CORES.length === 10 && N.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)) && new Set(N.CORES).size === 10, '10 cores de facção, todas diferentes');
 ok(N.RITMOS === undefined && N.CUBOS_HEX === 5 && N.CUBOS_DIA === 30, 'sem ritmos: o grupo anda os cubos por dia dele (30 de começo); um hexágono = 5 cubos');
 ok(j(Object.keys(N.VIAS)) === j(['estrada', 'trilha', 'selvagem', 'rio', 'mar']) && Object.values(N.VIAS).every(v => v.nome && v.mult === undefined) && N.VIAS.mar.nome === 'Mar (navio)', 'vias: só o desenho da rota (não mudam a velocidade)');
-ok(j(N.TERRENOS_PADRAO.map(t => [t.id, t.nome, t.custo])) === j([['pl', 'Planície', 5], ['fl', 'Floresta', 10], ['co', 'Colina', 8], ['mo', 'Montanha', 15], ['pa', 'Pântano', 15], ['de', 'Deserto', 10], ['ne', 'Neve', 15], ['ag', 'Água', 10]]) && N.TERRENOS_PADRAO.every(t => /^#[0-9a-f]{6}$/.test(t.cor)), 'oito tipos de terreno de começo, com custo em cubos por hexágono');
+ok(j(N.TERRENOS_PADRAO.map(t => [t.id, t.nome, t.custo])) === j([['pl', 'Planície', 5], ['fl', 'Floresta', 10], ['co', 'Colina', 8], ['mo', 'Montanha', 15], ['pa', 'Pântano', 15], ['de', 'Deserto', 10], ['ne', 'Neve', 15], ['ag', 'Água', 10],
+  ['la', 'Lavoura', 6], ['ru', 'Ruínas', 8], ['lv', 'Lava', 30], ['cr', 'Cristais', 12], ['se', 'Selva', 15], ['sv', 'Savana', 6], ['tu', 'Tundra', 10], ['tc', 'Terra corrompida', 12]])
+  && N.TERRENOS_PADRAO.every(t => /^#[0-9a-f]{6}$/.test(t.cor)) && j(N.TERRENOS_NOVOS.map(t => t.id)) === j(['la', 'ru', 'lv', 'cr', 'se', 'sv', 'tu', 'tc']),
+  'dezesseis tipos de terreno de começo (os oito de antes e os oito novos do lote 6), com custo em cubos por hexágono');
 ok(j(N.RELACOES) === j({ alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' }), 'relações como no contrato');
 ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 30 && m.nome) && N.CAL_PADRAO.ano0 === 1 && N.CAL_PADRAO.era === '', 'calendário padrão: 12 meses de 30 dias');
 
@@ -34,7 +37,7 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
   ok(/^mp_[a-z0-9]+$/.test(a) && a !== b, 'novoId: prefixo e sem repetir (' + a + ')');
   const m = N.mapaNovo('Terra Média');
   ok(m.v === 1 && /^mp_/.test(m.id) && m.nome === 'Terra Média' && m.oculto === false && m.img === null && m.larg === 2000 && m.alt === 1400, 'mapaNovo: padrões do contrato');
-  ok(j(m.grade) === j({ tam: 0, x: 0, y: 0, orient: 'pe', on: false, alfa: 0.35 }) && !('escala' in m) && m.cal.dia === 0 && m.cal.meses.length === 12 && m.nevoa.on === false && m.nevoa.ops.length === 0 && m.faccoes.length === 0 && m.objs.length === 0, 'mapaNovo: sem grade (sem escala), calendário, névoa e listas vazias');
+  ok(j(m.grade) === j({ tam: 0, x: 0, y: 0, orient: 'pe', on: false, alfa: 0.35, des: true }) && !('escala' in m) && m.cal.dia === 0 && m.cal.meses.length === 12 && m.nevoa.on === false && m.nevoa.ops.length === 0 && m.faccoes.length === 0 && m.objs.length === 0, 'mapaNovo: sem grade (sem escala), calendário, névoa e listas vazias');
   ok(j(m.terrenos) === j(N.TERRENOS_PADRAO) && m.terrenos !== N.TERRENOS_PADRAO && j(m.hexes) === '{}', 'mapaNovo: os terrenos de começo (uma cópia) e nenhum hexágono pintado');
   ok(N.mapaNovo('', { larg: 800, alt: 600 }).nome === 'Mundo conhecido' && N.mapaNovo('x', { larg: 800, alt: 600 }).larg === 800, 'mapaNovo: nome padrão e papel em branco do tamanho pedido');
   const c = N.mapaNovo('Com imagem', { img: { url: 'https://exemplo.com/a.jpg', w: 4000, h: 2800 }, larg: 10, alt: 10 });
@@ -136,7 +139,7 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
   const velho = N.normalizarMapa({ escala: { kmPorUn: 0.5 } });
   ok(velho.grade.tam === 10 && velho.grade.on === false && !('escala' in velho) && N.cubosDe(velho, 200) === 100, 'mapa de antes, com a escala em km: ganha a grade da mesma escala (1 km = 1 cubo), escondida');
   const g2 = N.normalizarMapa({ grade: { tam: '1', x: 'a', y: 3, orient: 'torto', on: 'sim', alfa: 7 } }).grade;
-  ok(j(g2) === j({ tam: 4, x: 0, y: 3, orient: 'pe', on: true, alfa: 1 }), 'grade com lixo: tamanho mínimo 4, orientação de pé, força até 1: ' + j(g2));
+  ok(j(g2) === j({ tam: 4, x: 0, y: 3, orient: 'pe', on: true, alfa: 1, des: true }), 'grade com lixo: tamanho mínimo 4, orientação de pé, força até 1: ' + j(g2));
 
   // terrenos e hexágonos
   const t = N.normalizarMapa({
@@ -477,8 +480,8 @@ function mundo() {
   // catálogos
   ok(Object.keys(N.CARIMBOS).length >= 12 && Object.values(N.CARIMBOS).every(c => c.nome && /^#[0-9a-f]{6}$/.test(c.cor) && /^<path/.test(c.svg) && !/<script|on\w+=|href/i.test(c.svg)),
     'carimbos: pelo menos 12, com nome, cor e desenho (só path, nada executável)');
-  ok(j(Object.keys(N.LINHAS)) === j(['rio', 'estrada', 'trilha']) && Object.keys(N.FONTES).length === 3 && Object.keys(N.TEXTURAS).length === 10 && N.TERRENOS_PADRAO.every(t => N.TEXTURAS[t.tex]),
-    'linhas (rio, estrada, trilha), três letras para os textos, dez texturas — e cada terreno de começo com a sua');
+  ok(j(Object.keys(N.LINHAS)) === j(['rio', 'estrada', 'trilha']) && Object.keys(N.FONTES).length === 3 && Object.keys(N.TEXTURAS).length === 18 && N.TERRENOS_PADRAO.every(t => N.TEXTURAS[t.tex]),
+    'linhas (rio, estrada, trilha), três letras para os textos, dezoito texturas — e cada terreno de começo com a sua');
 
   // objetos novos
   const M0 = N.normalizarMapa({ cal: { dia: 12 }, faccoes: [{ id: 'fa', nome: 'Norte' }, { id: 'fb', nome: 'Sul' }], objs: [
@@ -639,6 +642,66 @@ function mundo() {
   const PH = N.projetar(N.normalizarMapa(Object.assign(N.copia(R), { faccoes: [{ id: 'fa', nome: 'Aldar', oculta: true }] })));
   ok(PH.objs.find(o => o.id === 'brenn').fac === null && PH.objs.find(o => o.id === 'neta').fac === null && PH.objs.find(o => o.id === 'reino').fac === null && !PH.faccoes.length,
     'a facção escondida não vai para quem joga, nem pela região de dentro (que a herda)');
+}
+
+/* ================= lote 6 (5b): a honra dos grupos, o painel das facções e os terrenos novos ================= */
+{
+  // a honra: de −5 a +5, com um estilo; o histórico com a data do mundo e o motivo
+  ok(j(Object.keys(N.HONRA)) === j(['elmo', 'kabuto', 'katana', 'turbante', 'coroa', 'escudo', 'cajado', 'mascara']) && N.HONRA.escudo === 'Escudo com brasão' && N.LIMITES.honra === 5,
+    'oito estilos de honra (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal)');
+  const G = N.normalizarMapa({ objs: [{ id: 'g', k: 'g', x: 0, y: 0 }, { id: 'h', k: 'g', x: 0, y: 0, estilo: 'kabuto', honra: 9, hhist: [{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }, { d: 4, de: 2, para: 2 }, { de: 'x', para: 1 }, 'lixo'] }, { id: 'i', k: 'g', x: 0, y: 0, estilo: 'nada', honra: -9 }] });
+  const gg = id => G.objs.find(o => o.id === id);
+  ok(gg('g').estilo === '' && gg('g').honra === 0 && j(gg('g').hhist) === '[]' && gg('h').estilo === 'kabuto' && gg('h').honra === 5 && j(gg('h').hhist) === j([{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }]) && gg('i').estilo === '' && gg('i').honra === -5,
+    'o grupo: sem estilo de começo (não mostra honra); a honra fica entre −5 e +5; o histórico só com as linhas que mudam algo');
+  const H = N.copia(gg('g'));
+  ok(N.mudarHonra(H, 2, 7, '  Venceram o duelo  ') && H.honra === 2 && j(H.hhist) === j([{ d: 7, de: 0, para: 2, mot: 'Venceram o duelo' }]) && !N.mudarHonra(H, 2, 8, 'nada') && H.hhist.length === 1
+    && N.mudarHonra(H, -99, 9, '') && H.honra === -5 && H.hhist[1].para === -5 && H.hhist[1].mot === '',
+    'mudar a honra: o valor e a linha do histórico (o mesmo valor não muda nada; passa de −5, fica em −5)');
+  const H2 = { honra: 0, hhist: [] };
+  for (let i = 0; i < 130; i++) N.mudarHonra(H2, i % 2 ? 0 : 1, i, 'vez ' + i);
+  ok(H2.hhist.length === N.LIMITES.historico && H2.hhist[0].mot === 'vez 30' && N.normalizarMapa({ objs: [Object.assign({ k: 'g', x: 0, y: 0 }, H2)] }).objs[0].hhist.length === 100, 'o histórico da honra guarda as últimas 100 mudanças');
+  ok(j(N.projetar(G).objs.find(o => o.id === 'h').hhist) === j(gg('h').hhist) && N.projetar(G).objs.find(o => o.id === 'h').honra === 5, 'a honra e o histórico vão para os jogadores (todos veem)');
+
+  // o painel das facções
+  const F = N.normalizarMapa({ faccoes: [{ id: 'fa', nome: 'Aldar', rec: [{ id: 'ouro', nome: 'Ouro', n: '1000', ver: true }, { id: 'sold', nome: 'Soldados', n: 500 }, { nome: 'Comida', n: 'x' }, 'lixo'], pop: 12000.4, apoio: 140, ver: { pop: 1, hist: 'sim' } }, { id: 'fb', nome: 'Vale' }] });
+  const fa = F.faccoes[0], fb = F.faccoes[1];
+  ok(j(fa.rec) === j([{ id: 'ouro', nome: 'Ouro', n: 1000, ver: true }, { id: 'sold', nome: 'Soldados', n: 500, ver: false }, { id: 'rc2', nome: 'Comida', n: 0, ver: false }]) && fa.pop === 12000 && fa.apoio === 100 && j(fa.ver) === j({ pop: true, apoio: false, hist: true }),
+    'a facção: recursos (nome e número; os jogadores não veem de começo), população, apoio de 0 a 100% e o que os jogadores veem: ' + j(fa.rec));
+  ok(j(fb.rec) === '[]' && fb.pop === null && fb.apoio === null && j(fb.ver) === j({ pop: false, apoio: false, hist: false }) && j(fb.hist) === '[]' && j(N.faccaoNova('X').ver) === j(fb.ver),
+    'uma facção sem nada disso: tudo vazio e só com o mestre');
+  const fx = N.copia(fa);
+  ok(N.facMudar(fx, 'r:ouro', 900, 10, 'Pagaram os mercenários') && N.facMudar(fx, 'r:sold', 650, 10, 'Pagaram os mercenários') && N.facMudar(fx, 'r:ouro', 850, 10, 'Pagaram os mercenários')
+    && j(fx.hist) === j([{ d: 10, mot: 'Pagaram os mercenários', mud: [['r:ouro', 'Ouro', 1000, 850], ['r:sold', 'Soldados', 500, 650]] }]),
+    'mudar os números entra sozinho no histórico; no mesmo dia e com o mesmo motivo, numa linha só: ' + j(fx.hist));
+  ok(N.facMudar(fx, 'pop', 11000, 10, 'A peste') && N.facMudar(fx, 'apoio', '55', 11, 'A peste') && !N.facMudar(fx, 'apoio', 55, 11, 'outro') && !N.facMudar(fx, 'r:nada', 1, 11, '') && !N.facMudar(fx, 'r:ouro', 'x', 11, '')
+    && fx.hist.length === 3 && j(fx.hist[1].mud) === j([['pop', '', 12000, 11000]]) && j(fx.hist[2]) === j({ d: 11, mot: 'A peste', mud: [['apoio', '', 100, 55]] }),
+    'outro motivo ou outro dia: outra linha; o mesmo valor, um campo que não existe ou um número torto: nada muda: ' + j(fx.hist));
+  ok(N.facMudar(fx, 'apoio', 100, 11, 'A peste') && fx.hist.length === 2 && fx.apoio === 100, 'voltar ao que era no mesmo dia e motivo: a mudança some do histórico (e a linha vazia também)');
+  const idc = N.facNovoRecurso(fx, '  Magia ', 30, 12, 'O tratado');
+  ok(/^rc_/.test(idc) && fx.rec[3].nome === 'Magia' && fx.rec[3].ver === false && j(fx.hist[2]) === j({ d: 12, mot: 'O tratado', mud: [['r:' + idc, 'Magia', null, 30]] }) && N.facTirarRecurso(fx, 'sold', 12, 'O tratado')
+    && j(fx.hist[2].mud[1]) === j(['r:sold', 'Soldados', 650, null]) && !fx.rec.some(r => r.id === 'sold') && N.facTirarRecurso(fx, idc, 12, 'O tratado') && fx.hist[2].mud.length === 1,
+    'recurso novo e recurso tirado entram no histórico (nasceu, saiu); nascer e sair no mesmo dia e motivo se anulam');
+  // os jogadores: só o que o mestre marcou
+  const fy = N.copia(fx);
+  fy.hist.push({ d: 13, mot: 'Segredo', mud: [['r:sold', 'Soldados', null, 10]] });
+  const P = N.projetar(N.normalizarMapa({ faccoes: [fy, { id: 'fz', nome: 'Oculta', oculta: true, rec: [{ nome: 'Ouro', n: 1, ver: true }] }] }));
+  const pf = P.faccoes[0];
+  ok(P.faccoes.length === 1 && j(pf.rec) === j([{ id: 'ouro', nome: 'Ouro', n: 850, ver: true }]) && pf.pop === 11000 && pf.apoio === null && pf.nota === ''
+    && j(pf.hist) === j([{ d: 10, mot: 'Pagaram os mercenários', mud: [['r:ouro', 'Ouro', 1000, 850]] }, { d: 10, mot: 'A peste', mud: [['pop', '', 12000, 11000]] }]),
+    'para os jogadores: só os recursos marcados, a população marcada, e do histórico só o que eles veem (a linha só do que é escondido some): ' + j(pf.hist));
+  const fh = { rec: [{ id: 'x', nome: 'X', n: 0 }], hist: [] };
+  for (let i = 0; i < 230; i++) N.facMudar(fh, 'r:x', i + 1, i, 'dia ' + i);
+  ok(fh.hist.length === N.LIMITES.historicoFac && fh.hist[0].mot === 'dia 30' && N.normalizarMapa({ faccoes: [Object.assign({ nome: 'F' }, fh)] }).faccoes[0].hist.length === 200, 'o histórico da facção guarda as últimas 200 linhas');
+  const fw = N.copia(fy); fw.ver.hist = false;
+  ok(j(N.projetar(N.normalizarMapa({ faccoes: [fw] })).faccoes[0].hist) === '[]', 'sem marcar o histórico, ele não vai');
+
+  // a grade: o desenho em cada hexágono (ligado de começo); os terrenos novos que faltam num mapa de antes
+  ok(N.normalizarMapa({ grade: { tam: 40 } }).grade.des === true && N.normalizarMapa({ grade: { tam: 40, des: false } }).grade.des === false, 'o desenho em cada hexágono: ligado de começo; o mestre desliga');
+  const antigo = N.normalizarMapa({ terrenos: [{ id: 'pl', nome: 'Planície' }, { id: 'xx', nome: 'lava' }] });
+  ok(j(N.terrenosQueFaltam(antigo).map(t => t.id)) === j(['la', 'ru', 'cr', 'se', 'sv', 'tu', 'tc']) && N.terrenosQueFaltam(N.mapaNovo('x')).length === 0 && N.normalizarMapa({}).terrenos.length === 16,
+    'num mapa de antes, os terrenos novos que faltam (nem o id nem o nome); um mapa novo já tem os dezesseis');
+  const cheio = N.normalizarMapa({ terrenos: Array.from({ length: 36 }, (_, i) => ({ id: 't' + i, nome: 'T' + i })) });
+  ok(N.terrenosQueFaltam(cheio).length === 4, 'cabendo no limite de 40 tipos de terreno');
 }
 
 end();

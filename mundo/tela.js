@@ -532,7 +532,7 @@
   function garantirPintura() {
     if (!pintEl) {
       pintEl = h('canvas', { class: 'pintura', 'aria-hidden': 'true' });
-      mundoEl.insertBefore(pintEl, svg);
+      mundoEl.insertBefore(pintEl, hexCv || svg);           // (por baixo do terreno de cada hexágono)
       pintCtx = pintEl.getContext('2d');
     }
     const k = Math.min(2, 4096 / Math.max(L, A, 1), Math.sqrt(4e6 / Math.max(1, L * A)));
@@ -616,7 +616,16 @@
       em(px, py, () => { x.fillStyle = c0; x.globalAlpha = 0.08; x.beginPath(); x.arc(0, 0, r, 0, 7); x.fill(); });
     }
     x.globalAlpha = 1;
-    const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8 }[tex] || 0, pos = [];
+    // (lote 6) a lavoura: fileiras de ponta a ponta (horizontais, emendam sem costura)
+    if (tex === 'lavoura') {
+      for (const y of [4, 20, 36, 52]) {
+        x.fillStyle = misturar(cor, '#000000', 0.16); x.globalAlpha = 0.4; x.fillRect(0, y, 64, 7);
+        x.globalAlpha = 0.8; x.strokeStyle = esc; x.lineWidth = 1; x.beginPath(); x.moveTo(0, y); x.lineTo(64, y); x.moveTo(0, y + 7); x.lineTo(64, y + 7); x.stroke();
+      }
+      x.globalAlpha = 1;
+    }
+    const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8,
+      ruinas: 4, lava: 5, cristais: 6, selva: 10, savana: 6, tundra: 7, corrompida: 5 }[tex] || 0, pos = [];
     for (let i = 0; i < n; i++) {
       let melhor = null, dm = -1;
       for (let k = 0; k < 8; k++) {
@@ -641,6 +650,15 @@
         case 'neve': x.strokeStyle = misturar('#9fb6c9', cor, 0.2); x.lineWidth = 1; linhas([-2.5, 0, 2.5, 0], [0, -2.5, 0, 2.5]); break;
         case 'ondas': x.strokeStyle = cla; x.lineWidth = 1.4; x.beginPath(); x.moveTo(-9, 0); x.quadraticCurveTo(-4.5, -4, 0, 0); x.quadraticCurveTo(4.5, 4, 9, 0); x.stroke(); break;
         case 'pedras': x.fillStyle = misturar(cor, '#000000', 0.15); x.beginPath(); x.moveTo(-3, 2); x.lineTo(-2, -2); x.lineTo(1.5, -2.5); x.lineTo(3.2, 1); x.lineTo(1, 2.6); x.closePath(); x.fill(); x.stroke(); break;
+        // (lote 6) os terrenos novos
+        case 'ruinas': x.fillStyle = cla; x.beginPath(); x.moveTo(-2.5, 5); x.lineTo(-2.5, -5); x.lineTo(-0.8, -6.5); x.lineTo(0.8, -4.6); x.lineTo(2.5, -5.6); x.lineTo(2.5, 5); x.closePath(); x.fill(); x.stroke(); linhas([-4.5, 5, 4.5, 5]); break;
+        case 'lava': x.lineWidth = 3; x.strokeStyle = '#ff7a1a'; x.globalAlpha = 0.5; linhas([-7, 2, -2, -1], [-2, -1, 1, 2.5], [1, 2.5, 6, -3]); x.lineWidth = 1.1; x.strokeStyle = '#ffd166'; x.globalAlpha = 1; linhas([-7, 2, -2, -1], [-2, -1, 1, 2.5], [1, 2.5, 6, -3]); break;
+        case 'cristais': x.fillStyle = cla; x.beginPath(); x.moveTo(-3.5, 4); x.lineTo(-4.5, -2); x.lineTo(-2.5, -7); x.lineTo(-0.8, -2); x.lineTo(-1.2, 4); x.closePath(); x.fill(); x.stroke();
+          x.beginPath(); x.moveTo(0, 4); x.lineTo(1, -1); x.lineTo(3.5, -4.5); x.lineTo(4, 0); x.lineTo(2.5, 4); x.closePath(); x.fill(); x.stroke(); break;
+        case 'selva': x.fillStyle = misturar(cor, '#000000', 0.25); x.beginPath(); x.arc(-3, 1, 4, 0, 7); x.arc(3, 1, 4, 0, 7); x.fill(); x.fillStyle = misturar(cor, '#000000', 0.12); x.beginPath(); x.arc(0, -2, 4.6, 0, 7); x.fill(); x.stroke(); x.fillStyle = cla; x.beginPath(); x.arc(-1.2, -3.4, 1.5, 0, 7); x.fill(); break;
+        case 'savana': x.strokeStyle = misturar(cor, '#6b4a1b', 0.45); linhas([-3, 1, -1.5, -2.5], [0, 1.5, 0.3, -3.5], [3, 1, 1.8, -2.5]); break;
+        case 'tundra': x.fillStyle = misturar(cor, '#2f4a35', 0.55); x.beginPath(); x.arc(-2, 0, 2.2, 0, 7); x.arc(2, 0, 2.2, 0, 7); x.arc(0, -2, 2.5, 0, 7); x.fill(); x.fillStyle = '#ffffff'; x.globalAlpha = 0.6; x.beginPath(); x.ellipse(5, 5, 4, 1.6, 0, 0, 7); x.fill(); x.globalAlpha = 1; break;
+        case 'corrompida': x.lineWidth = 3; x.strokeStyle = '#b25cff'; x.globalAlpha = 0.45; linhas([-6, -3, -1, 0], [-1, 0, 2, -2], [2, -2, 6, 3]); x.lineWidth = 1; x.strokeStyle = '#241228'; x.globalAlpha = 1; linhas([-6, -3, -1, 0], [-1, 0, 2, -2], [2, -2, 6, 3]); x.fillStyle = '#d7a6ff'; x.beginPath(); x.arc(-3, 4, 0.9, 0, 7); x.fill(); break;
       }
     });
     return cv;
@@ -677,7 +695,7 @@
   function desenharGrade(m) {
     const gr = m.grade || {}, ferr = usandoTerreno(), mostrar = temGrade(m) && (!!gr.on || ferr);
     C.hex.style.display = mostrar ? '' : 'none';
-    if (!mostrar) return;
+    if (!mostrar) { if (hexCv) hexCv.hidden = true; return; }
     const cg = caminhoDaGrade(gr), chaveG = [cg.d, cg.w, cg.h, cg.x, cg.y].join('|');
     if (gradePat.__chave !== chaveG) {
       gradePat.__chave = chaveG;
@@ -689,8 +707,8 @@
     gradeRect.style.opacity = String(ferr ? Math.max(gr.alfa || 0, 0.5) : gr.alfa);
     // a tinta: um path por tipo de terreno, refeito só quando o terreno ou a grade mudam
     const custo = ferr && mestreVe();
-    const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, custo]);
-    if (chaveT === hexChave) return;
+    const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, gr.des, custo, L, A]);
+    if (chaveT === hexChave) { if (hexCv) hexCv.hidden = !hexCv.dataset.ters; return; }
     hexChave = chaveT;
     const por = new Map(), custos = [];
     let nada = '';
@@ -698,11 +716,12 @@
       const v = m.hexes[k], t = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', hx = N().lerChaveHex(k);
       if (!hx) continue;
       if (t === '-') { if (custo) nada += caminho(N().cantosHex(m, hx.q, hx.r), true); }        // "sem terreno", por cima do desenho
-      else if (t) por.set(t, (por.get(t) || '') + caminho(N().cantosHex(m, hx.q, hx.r), true));
+      else if (t) { if (!por.has(t)) por.set(t, []); por.get(t).push(hx); }
       if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
     }
+    // a cor e o desenho de cada hexágono vão no canvas; aqui, por cima, o "sem terreno" e os custos do mestre
+    pintarHexes(m, por);
     const frag = document.createDocumentFragment();
-    for (const t of m.terrenos || []) { const d = por.get(t.id); if (d) frag.append(s('path', { class: 'hex-ter', d, fill: t.cor, 'data-ter': t.id })); }
     if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
     // o custo próprio de cada hexágono, para o mestre, enquanto ele pinta o terreno
     if (custo) for (const [hx, c] of custos) {
@@ -711,6 +730,310 @@
       frag.append(fx);
     }
     hexTer.replaceChildren(frag);
+  }
+
+  /* (lote 6) O terreno pintado hexágono por hexágono, num canvas entre a pintura à mão e as camadas do mapa: a cor de
+     cada hexágono (meio transparente, por cima da imagem) e, com "Desenho em cada hexágono" (aba Terreno), o desenho
+     do terreno — as árvores da floresta, os picos da montanha, as fileiras da lavoura… —, variado de um hexágono para
+     o outro (a semente é o lugar dele: o mesmo hexágono sai sempre igual). Não são carimbos: não contam como objetos.
+     Refeito só quando o terreno, a grade ou o tamanho do mapa mudam. */
+  let hexCv = null, hexCtx = null;
+  function garantirHexCanvas() {
+    if (!hexCv) {
+      hexCv = h('canvas', { class: 'hex-desenho', 'aria-hidden': 'true' });
+      mundoEl.insertBefore(hexCv, svg);
+      hexCtx = hexCv.getContext('2d');
+    }
+    const k = Math.min(2, 4096 / Math.max(L, A, 1), Math.sqrt(6e6 / Math.max(1, L * A)));
+    const w = Math.max(1, Math.round(L * k)), hh = Math.max(1, Math.round(A * k));
+    if (hexCv.width !== w || hexCv.height !== hh) { hexCv.width = w; hexCv.height = hh; }
+    hexCv.style.width = L + 'px';
+    hexCv.style.height = A + 'px';
+    return !!hexCtx;
+  }
+  function limparHexCanvas() {
+    if (!hexCv) return;
+    hexCv.hidden = true;
+    if (hexCtx) { hexCtx.setTransform(1, 0, 0, 1, 0, 0); hexCtx.clearRect(0, 0, hexCv.width, hexCv.height); }
+    hexCv.dataset.ters = '';
+  }
+  // porTer: id do terreno → [{ q, r }]
+  function pintarHexes(m, porTer) {
+    const ters = new Map((m.terrenos || []).map(t => [t.id, t])), lista = [...porTer].filter(([tid]) => ters.has(tid));
+    if (!lista.length || !garantirHexCanvas()) { limparHexCanvas(); return; }
+    const c = hexCtx, k = hexCv.width / Math.max(1, L), des = !m.grade || m.grade.des !== false;
+    hexCv.hidden = false;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalAlpha = 1;
+    c.clearRect(0, 0, hexCv.width, hexCv.height);
+    c.setTransform(k, 0, 0, k, 0, 0);
+    // a cor: um caminho por tipo de terreno
+    for (const [tid, hs] of lista) {
+      const t = ters.get(tid);
+      c.globalAlpha = 0.5; c.fillStyle = t.cor;
+      c.beginPath();
+      for (const x of hs) hexNoCaminho(c, m, x.q, x.r);
+      c.fill();
+    }
+    // o desenho de cada um
+    if (des) {
+      const u = m.grade.tam / 2;
+      for (const [tid, hs] of lista) {
+        const t = ters.get(tid);
+        let semT = 7;
+        for (const ch of String(t.tex || '') + tid) semT = (semT * 31 + ch.charCodeAt(0)) % 2147483647;
+        for (const x of hs) {
+          const ctr = N().centroHex(m, x.q, x.r);
+          desenhoDoHex(c, m, x, ctr.x, ctr.y, u, t.tex || 'liso', t.cor, ((x.q * 73856093) ^ (x.r * 19349663) ^ semT) >>> 0);
+        }
+      }
+    }
+    c.globalAlpha = 1;
+    hexCv.dataset.ters = lista.map(([tid, hs]) => tid + ':' + hs.length).join(',');
+    hexCv.dataset.des = des ? '1' : '0';
+  }
+  function hexNoCaminho(c, m, q, r) {
+    const cs = N().cantosHex(m, q, r);
+    c.moveTo(cs[0][0], cs[0][1]);
+    for (let i = 1; i < cs.length; i++) c.lineTo(cs[i][0], cs[i][1]);
+    c.closePath();
+  }
+  /* A composição do terreno num hexágono (centro cx, cy; u = o raio de dentro dele). Tudo cabe num círculo de 0,8 u
+     (a lavoura, que vai de borda a borda, fica presa ao hexágono). */
+  function desenhoDoHex(c, m, hx, cx, cy, u, tex, cor, sem0) {
+    let sem = sem0 % 2147483647 || 1;
+    const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+    const esc = misturar(cor, '#000000', 0.42), som = misturar(cor, '#000000', 0.2), cla = misturar(cor, '#ffffff', 0.35), lw = Math.max(u * 0.045, 0.5);
+    const P = (dx, dy) => [cx + dx * u, cy + dy * u];
+    const ponto = raio => { const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * raio; return [Math.cos(a) * r, Math.sin(a) * r]; };
+    // n lugares (em unidades de u) espalhados sem amontoar, de cima para baixo (o de baixo fica na frente)
+    const espalhar = (n, raio) => {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        let melhor = null, dm = -1;
+        for (let t = 0; t < 7; t++) { const p = ponto(raio); let d = Infinity; for (const q of out) d = Math.min(d, Math.hypot(p[0] - q[0], p[1] - q[1])); if (d > dm) { dm = d; melhor = p; } }
+        out.push(melhor);
+      }
+      return out.sort((a, b) => a[1] - b[1]);
+    };
+    const tra = (cor0, larg, alfa) => { c.strokeStyle = cor0; c.lineWidth = larg; c.globalAlpha = alfa == null ? 0.92 : alfa; c.stroke(); };
+    const enche = (cor0, alfa) => { c.fillStyle = cor0; c.globalAlpha = alfa == null ? 0.92 : alfa; c.fill(); };
+    const circ = (x, y, r) => { c.beginPath(); c.arc(x, y, Math.max(r, 0.01), 0, Math.PI * 2); };
+    const poli = (pts, fechar) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); if (fechar) c.closePath(); };
+    const tufo = (x, y, s, cor0) => {           // capim: três folhas
+      c.beginPath(); c.moveTo(x - s * 0.7, y); c.lineTo(x - s * 1.05, y - s * 1.15); c.moveTo(x, y); c.lineTo(x + s * 0.1, y - s * 1.6); c.moveTo(x + s * 0.7, y); c.lineTo(x + s * 1.1, y - s * 1.1);
+      tra(cor0, lw);
+    };
+    // uma rachadura que se divide: brilho largo por baixo, o miolo fino por cima
+    const rachadura = (x0, y0, passos, brilho, miolo, largB) => {
+      const ramos = [[x0, y0, rnd() * Math.PI * 2, passos]];
+      while (ramos.length) {
+        let [x, y, a, n] = ramos.pop();
+        const pts = [[x, y]];
+        for (let i = 0; i < n; i++) {
+          a += (rnd() - 0.5) * 1.1; x += Math.cos(a) * u * 0.16; y += Math.sin(a) * u * 0.16;
+          if (Math.hypot(x - cx, y - cy) > u * 0.82) break;
+          pts.push([x, y]);
+          if (rnd() < 0.22 && ramos.length < 3) ramos.push([x, y, a + (rnd() < 0.5 ? 1 : -1) * (0.6 + rnd() * 0.5), Math.max(1, n - i - 2)]);
+        }
+        if (pts.length < 2) continue;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        poli(pts); tra(brilho, lw * largB, 0.45);
+        poli(pts); tra(miolo, lw * 0.9, 0.95);
+      }
+    };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    switch (tex) {
+      case 'mato': {
+        for (const [dx, dy] of espalhar(4 + Math.floor(rnd() * 3), 0.72)) tufo(cx + dx * u, cy + dy * u, u * (0.09 + rnd() * 0.05), esc);
+        if (rnd() < 0.5) { const [dx, dy] = ponto(0.6); circ(cx + dx * u, cy + dy * u, u * 0.035); enche(misturar(cor, '#fff2a8', 0.7)); }
+        break;
+      }
+      case 'arvores': {
+        for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 3), 0.58)) {
+          const [x, y] = P(dx, dy), r = u * (0.19 + rnd() * 0.08);
+          c.beginPath(); c.moveTo(x, y + r * 0.5); c.lineTo(x, y + r * 1.3); tra(esc, lw * 1.2);
+          if (rnd() < 0.35) {                    // um pinheiro
+            poli([[x, y - r * 1.35], [x - r * 0.95, y + r * 0.75], [x + r * 0.95, y + r * 0.75]], true); enche(som); tra(esc, lw);
+            poli([[x, y - r * 1.35], [x - r * 0.35, y - r * 0.2], [x + r * 0.05, y - r * 0.35]], true); enche(cla, 0.55);
+          } else {
+            circ(x, y, r); enche(som); tra(esc, lw);
+            circ(x - r * 0.3, y - r * 0.32, r * 0.38); enche(cla, 0.7);
+          }
+        }
+        break;
+      }
+      case 'colinas': {
+        const n = 2 + (rnd() < 0.3 ? 1 : 0);
+        for (let i = 0; i < n; i++) {
+          const x = cx + ((i - (n - 1) / 2) * 0.5 + (rnd() - 0.5) * 0.15) * u, y = cy + (0.3 - (i % 2) * 0.32 + (rnd() - 0.5) * 0.1) * u;
+          const w = u * (0.5 + rnd() * 0.18), hg = w * (0.5 + rnd() * 0.2);
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - hg * 2, x + w, y); c.closePath(); enche(som, 0.75);
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - hg * 2, x + w, y); tra(esc, lw);
+          c.beginPath(); c.moveTo(x - w * 0.55, y - hg * 0.55); c.quadraticCurveTo(x - w * 0.3, y - hg * 0.9, x - w * 0.05, y - hg * 0.95); tra(cla, lw, 0.8);
+        }
+        break;
+      }
+      case 'montes': {
+        const pico = (x, yb, H, W, neve) => {
+          const sx = x + (rnd() - 0.5) * W * 0.3, sy = yb - H;
+          poli([[x - W, yb], [sx - W * 0.35, sy + H * 0.45], [sx, sy], [sx + W * 0.4, sy + H * 0.5], [x + W, yb]], true); enche(som);
+          poli([[sx, sy], [sx + W * 0.4, sy + H * 0.5], [x + W, yb], [sx + W * 0.08, yb], [sx + W * 0.12, sy + H * 0.55]], true); enche(esc, 0.55);
+          if (neve) { poli([[sx, sy], [sx - W * 0.24, sy + H * 0.3], [sx - W * 0.08, sy + H * 0.24], [sx + W * 0.04, sy + H * 0.32], [sx + W * 0.22, sy + H * 0.26]], true); enche('#f3f5f7', 0.95); }
+          poli([[x - W, yb], [sx - W * 0.35, sy + H * 0.45], [sx, sy], [sx + W * 0.4, sy + H * 0.5], [x + W, yb]]); tra(esc, lw * 1.1);
+        };
+        if (rnd() < 0.55) { const lado = rnd() < 0.5 ? -1 : 1; pico(cx + lado * u * 0.42, cy + u * 0.32, u * (0.5 + rnd() * 0.15), u * 0.36, rnd() < 0.4); }
+        pico(cx + (rnd() - 0.5) * u * 0.2, cy + u * 0.5, u * (0.85 + rnd() * 0.2), u * (0.52 + rnd() * 0.12), rnd() < 0.65);
+        break;
+      }
+      case 'juncos': {
+        for (let i = 0; i < 2; i++) {
+          const [dx, dy] = ponto(0.45), rx = u * (0.22 + rnd() * 0.14);
+          c.beginPath(); c.ellipse(cx + dx * u, cy + dy * u, rx, rx * 0.42, 0, 0, Math.PI * 2); enche(misturar(cor, '#3b6d9c', 0.5), 0.7);
+          c.beginPath(); c.ellipse(cx + dx * u, cy + dy * u, rx * 0.6, rx * 0.2, 0, Math.PI * 1.1, Math.PI * 1.9); tra(cla, lw * 0.8, 0.7);
+        }
+        for (const [dx, dy] of espalhar(3, 0.66)) {
+          const [x, y] = P(dx, dy), s = u * (0.16 + rnd() * 0.06);
+          for (let k = -1.5; k <= 1.5; k += 1) {
+            const bx = x + k * s * 0.28, tx = bx + k * s * 0.22, ty = y - s * (1.3 + rnd() * 0.5);
+            c.beginPath(); c.moveTo(bx, y); c.quadraticCurveTo(bx, y - s * 0.6, tx, ty); tra(esc, lw);
+            if (Math.abs(k) < 1) { c.beginPath(); c.ellipse(tx, ty + s * 0.12, s * 0.08, s * 0.2, 0, 0, Math.PI * 2); enche('#6b4a2b'); }
+          }
+        }
+        break;
+      }
+      case 'areia': {
+        for (let i = 0; i < 2; i++) {
+          const x = cx + (i ? 0.2 : -0.25) * u + (rnd() - 0.5) * 0.2 * u, y = cy + (i ? 0.3 : -0.12) * u, w = u * (0.38 + rnd() * 0.12);
+          c.beginPath(); c.moveTo(x - w, y + w * 0.1); c.quadraticCurveTo(x - w * 0.15, y - w * 0.55, x + w * 0.7, y - w * 0.02); c.quadraticCurveTo(x, y + w * 0.12, x - w, y + w * 0.1); enche(cla, 0.7);
+          c.beginPath(); c.moveTo(x - w, y + w * 0.1); c.quadraticCurveTo(x - w * 0.15, y - w * 0.55, x + w * 0.7, y - w * 0.02); tra(esc, lw);
+        }
+        for (let i = 0; i < 7; i++) { const [dx, dy] = ponto(0.75); circ(cx + dx * u, cy + dy * u, u * 0.022); enche(esc, 0.55); }
+        break;
+      }
+      case 'neve': {
+        for (let i = 0; i < 2; i++) {
+          const [dx, dy] = ponto(0.4), w = u * (0.32 + rnd() * 0.12), x = cx + dx * u, y = cy + dy * u + u * 0.15;
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - w * 0.8, x + w, y); c.closePath(); enche('#ffffff', 0.55);
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - w * 0.8, x + w, y); tra(misturar(cor, '#5b7a96', 0.55), lw * 0.9, 0.8);
+        }
+        for (const [dx, dy] of espalhar(4, 0.72)) {
+          const [x, y] = P(dx, dy), s = u * 0.07;
+          c.beginPath(); for (let a = 0; a < 3; a++) { const an = a * Math.PI / 3; c.moveTo(x - Math.cos(an) * s, y - Math.sin(an) * s); c.lineTo(x + Math.cos(an) * s, y + Math.sin(an) * s); }
+          tra(misturar('#9fb6c9', cor, 0.2), lw * 0.8);
+        }
+        break;
+      }
+      case 'ondas': {
+        for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 2), 0.6)) {
+          const [x, y] = P(dx, dy), w = u * (0.17 + rnd() * 0.06);
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w / 2, y - w * 0.5, x, y); c.quadraticCurveTo(x + w / 2, y + w * 0.5, x + w, y); tra(cla, lw * 1.25);
+        }
+        break;
+      }
+      case 'pedras': {
+        for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 3), 0.66)) {
+          const [x, y] = P(dx, dy), r = u * (0.08 + rnd() * 0.08), n = 6, pts = [];
+          for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rnd() * 0.4, rr = r * (0.75 + rnd() * 0.4); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.75]); }
+          poli(pts, true); enche(som); tra(esc, lw);
+          c.beginPath(); c.moveTo(x - r * 0.5, y - r * 0.35); c.lineTo(x + r * 0.2, y - r * 0.55); tra(cla, lw * 0.9, 0.8);
+        }
+        break;
+      }
+      case 'lavoura': {
+        const ang = [0, Math.PI / 3, -Math.PI / 3][Math.floor(rnd() * 3)] + (rnd() - 0.5) * 0.12, sp = u * (0.24 + rnd() * 0.06);
+        c.save();
+        c.beginPath(); hexNoCaminho(c, m, hx.q, hx.r); c.clip();
+        c.translate(cx, cy); c.rotate(ang);
+        for (let i = -6; i <= 6; i++) {
+          const y = i * sp;
+          if (i % 2 === 0) { c.fillStyle = som; c.globalAlpha = 0.35; c.fillRect(-u * 1.3, y, u * 2.6, sp * 0.5); }
+          c.beginPath(); c.moveTo(-u * 1.3, y); c.lineTo(u * 1.3, y); tra(esc, lw * 0.7, 0.75);
+          for (let x = -u * 1.2 + (i % 2) * sp * 0.3; x < u * 1.2; x += sp * 0.6) { circ(x, y + sp * 0.25, u * 0.022); enche(esc, 0.6); }
+        }
+        c.restore();
+        break;
+      }
+      case 'ruinas': {
+        for (const [dx, dy] of espalhar(2, 0.42)) {
+          const [x, y] = P(dx, dy + 0.25), w = u * 0.16, H = u * (0.34 + rnd() * 0.3);
+          poli([[x - w / 2, y], [x - w / 2, y - H], [x - w / 6, y - H - u * 0.07], [x + w / 6, y - H + u * 0.03], [x + w / 2, y - H - u * 0.02], [x + w / 2, y]], true); enche(cla); tra(esc, lw);
+          c.beginPath(); c.moveTo(x - w * 0.7, y); c.lineTo(x + w * 0.7, y); tra(esc, lw * 1.3);
+        }
+        // um muro caído: blocos em degrau
+        const x0 = cx + (rnd() - 0.6) * u * 0.5, y0 = cy + u * (0.45 + rnd() * 0.1), b = u * 0.11;
+        for (let i = 0; i < 4; i++) { const hh = b * (i === 1 ? 2 : i === 2 ? 1.5 : 1); c.beginPath(); c.rect(x0 + i * b * 1.05, y0 - hh, b, hh); enche(som); tra(esc, lw * 0.8); }
+        for (let i = 0; i < 4; i++) { const [dx, dy] = ponto(0.7); circ(cx + dx * u, cy + dy * u, u * 0.03); enche(esc, 0.7); }
+        break;
+      }
+      case 'lava': {
+        for (let i = 0; i < 2; i++) { const [dx, dy] = ponto(0.5); c.beginPath(); c.ellipse(cx + dx * u, cy + dy * u, u * 0.26, u * 0.14, rnd() * 3, 0, Math.PI * 2); enche(misturar(cor, '#000000', 0.45), 0.5); }
+        for (let i = 0; i < 2 + (rnd() < 0.5 ? 1 : 0); i++) { const [dx, dy] = ponto(0.45); rachadura(cx + dx * u, cy + dy * u, 4, '#ff7a1a', '#ffd166', 3.2); }
+        for (let i = 0; i < 2; i++) { const [dx, dy] = ponto(0.6); circ(cx + dx * u, cy + dy * u, u * 0.055); enche('#ff8a2a', 0.75); tra('#ffd166', lw * 0.7, 0.9); }
+        break;
+      }
+      case 'cristais': {
+        for (const [dx, dy] of espalhar(2, 0.42)) {
+          const bx = cx + dx * u, by = cy + (dy + 0.3) * u, n = 3;
+          for (let i = 0; i < n; i++) {
+            const a = -Math.PI / 2 + (i - 1) * 0.55 + (rnd() - 0.5) * 0.3, L0 = u * (0.28 + rnd() * 0.24) * (i === 1 ? 1.25 : 1), wd = L0 * 0.3;
+            const ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux, ox = bx + (i - 1) * u * 0.07;
+            const b1 = [ox + px * wd / 2, by + py * wd / 2], b2 = [ox - px * wd / 2, by - py * wd / 2];
+            const s1 = [b1[0] + ux * L0 * 0.75, b1[1] + uy * L0 * 0.75], s2 = [b2[0] + ux * L0 * 0.75, b2[1] + uy * L0 * 0.75], tp = [ox + ux * L0, by + uy * L0];
+            poli([b1, s1, tp, s2, b2], true); enche(cla, 0.95); tra(esc, lw);
+            c.beginPath(); c.moveTo(tp[0], tp[1]); c.lineTo(ox + ux * L0 * 0.1, by + uy * L0 * 0.1); tra(misturar(cor, '#ffffff', 0.7), lw * 0.7, 0.85);
+          }
+        }
+        { const [dx, dy] = ponto(0.5), x = cx + dx * u, y = cy + dy * u, s = u * 0.08; c.beginPath(); c.moveTo(x - s, y); c.lineTo(x + s, y); c.moveTo(x, y - s); c.lineTo(x, y + s); tra('#ffffff', lw * 0.8, 0.9); }
+        break;
+      }
+      case 'selva': {
+        const escura = misturar(cor, '#000000', 0.25);
+        for (const [dx, dy] of espalhar(5 + Math.floor(rnd() * 3), 0.6)) {
+          const [x, y] = P(dx, dy), r = u * (0.17 + rnd() * 0.08);
+          circ(x - r * 0.45, y + r * 0.1, r * 0.75); enche(escura);
+          circ(x + r * 0.45, y + r * 0.1, r * 0.75); enche(escura);
+          circ(x, y - r * 0.3, r * 0.85); enche(som); tra(esc, lw * 0.9);
+          circ(x - r * 0.25, y - r * 0.5, r * 0.3); enche(cla, 0.6);
+        }
+        if (rnd() < 0.6) {                        // uma palmeira
+          const [dx, dy] = ponto(0.4), x = cx + dx * u, y = cy + dy * u + u * 0.3, H = u * 0.55, tx = x + u * 0.08, ty = y - H;
+          c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + u * 0.12, y - H * 0.5, tx, ty); tra('#6b4a2b', lw * 1.4);
+          for (let i = 0; i < 5; i++) { const a = -Math.PI + i * (Math.PI / 4) + (rnd() - 0.5) * 0.3; c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(tx + Math.cos(a) * u * 0.2, ty + Math.sin(a) * u * 0.2 - u * 0.08, tx + Math.cos(a) * u * 0.3, ty + Math.sin(a) * u * 0.3 + u * 0.06); tra(misturar(cor, '#1f4d26', 0.4), lw * 1.6); }
+        }
+        break;
+      }
+      case 'savana': {
+        const capim = misturar(cor, '#6b4a1b', 0.45);
+        for (const [dx, dy] of espalhar(4, 0.72)) tufo(cx + dx * u, cy + dy * u, u * (0.08 + rnd() * 0.04), capim);
+        if (rnd() < 0.75) {                       // uma acácia de copa chata
+          const [dx, dy] = ponto(0.3), x = cx + dx * u, y = cy + dy * u + u * 0.25;
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - u * 0.28); c.moveTo(x, y - u * 0.18); c.lineTo(x - u * 0.16, y - u * 0.36); c.moveTo(x, y - u * 0.2); c.lineTo(x + u * 0.18, y - u * 0.38); tra('#5a3d22', lw * 1.2);
+          c.beginPath(); c.ellipse(x, y - u * 0.42, u * 0.36, u * 0.1, 0, 0, Math.PI * 2); enche(misturar(cor, '#3f5f2a', 0.6)); tra(esc, lw * 0.9);
+        } else { const [dx, dy] = ponto(0.4); circ(cx + dx * u, cy + dy * u, u * 0.12); enche(misturar(cor, '#3f5f2a', 0.55)); tra(esc, lw * 0.8); }
+        break;
+      }
+      case 'tundra': {
+        for (let i = 0; i < 2; i++) { const [dx, dy] = ponto(0.55); c.beginPath(); c.ellipse(cx + dx * u, cy + dy * u, u * (0.2 + rnd() * 0.1), u * 0.08, (rnd() - 0.5) * 0.4, 0, Math.PI * 2); enche('#ffffff', 0.65); }
+        for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 2), 0.68)) {
+          const [x, y] = P(dx, dy), r = u * 0.085, verde = misturar(cor, '#2f4a35', 0.6);
+          circ(x - r, y, r); enche(verde); circ(x + r, y, r); enche(verde); circ(x, y - r * 0.8, r * 1.1); enche(verde); tra(esc, lw * 0.7, 0.7);
+        }
+        for (let i = 0; i < 3; i++) { const [dx, dy] = ponto(0.7); tufo(cx + dx * u, cy + dy * u, u * 0.05, esc); }
+        break;
+      }
+      case 'corrompida': {
+        for (let i = 0; i < 2 + (rnd() < 0.5 ? 1 : 0); i++) { const [dx, dy] = ponto(0.45); rachadura(cx + dx * u, cy + dy * u, 4, '#b25cff', '#241228', 3.4); }
+        for (const [dx, dy] of espalhar(2 + Math.floor(rnd() * 2), 0.6)) {
+          const [x, y] = P(dx, dy + 0.2), H = u * (0.3 + rnd() * 0.25), w = u * 0.07, lado = rnd() < 0.5 ? -1 : 1;
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x + lado * w * 0.8, y - H * 0.6, x + lado * w * 1.6, y - H); c.quadraticCurveTo(x + lado * w * 0.2, y - H * 0.5, x + w, y); c.closePath(); enche('#2a1f2e', 0.9);
+        }
+        for (let i = 0; i < 5; i++) { const [dx, dy] = ponto(0.75); circ(cx + dx * u, cy + dy * u, u * 0.028); enche('#d7a6ff', 0.85); }
+        break;
+      }
+      default: break;                            // liso: só a cor
+    }
+    c.globalAlpha = 1;
   }
 
   /* objetos: cada um vira um <g data-id>; a chave diz quando precisa reconstruir */
@@ -893,6 +1216,57 @@
     try { const b = N().bolinhas(ctx.m, o); return b ? [b.feitas, b.total] : null; } catch (e) { return null; }
   }
   const MAX_BOL = 12;
+  /* (lote 6) A honra do grupo: um selo junto do token, no estilo que o mestre escolheu. Quanto maior, mais enfeitado
+     (o aro dourado, os louros, os raios); negativa, mais escuro e rachado. Arte própria, numa caixa 24×24: .hb é o
+     corpo (na cor da honra), .hk é a tinta escura, .hd são os detalhes em traço, .hg as pedras. */
+  const SELOS = {
+    elmo: '<path class="hb" d="M6 21V11.6C6 6.9 8.7 3.6 12 3.6s6 3.3 6 8V21z"/><path class="hk" d="M6.7 11h10.6v1.9H6.7z"/><path class="hd" d="M12 3.6V11M12 12.9V21M8.4 15.6h1.3M8.4 18h1.3M14.3 15.6h1.3M14.3 18h1.3"/>',
+    kabuto: '<path class="hg" d="M8.7 7 6.2 2.4c1.7.1 3.2 1.4 3.8 3.8zM15.3 7l2.5-4.6c-1.7.1-3.2 1.4-3.8 3.8z"/><path class="hb" d="M6.2 13.4c0-4 2.6-7 5.8-7s5.8 3 5.8 7zM3.4 13.4h17.2l-2 5.4H5.4z"/><path class="hd" d="M4.6 16h14.8M12 6.4v7"/>',
+    katana: '<path class="hb" d="M21 3c-1.3 3.9-4.9 8.7-9.9 12.1l-2.2-2.2C13.9 9.6 17.9 5.6 21 3z"/><path class="hg" d="M6.9 14.7a2.4 2.4 0 1 0 4.8 0 2.4 2.4 0 1 0-4.8 0z"/><path class="hk" d="M9.4 16.3 4.4 21.3 2.7 19.6 7.7 14.6z"/><path class="hd" d="M18.6 6.3l-6.7 7.2M6.9 17.4l1.4 1.4M5.6 18.7l1.4 1.4"/>',
+    turbante: '<path class="hb" d="M4.2 15.6c0-5.2 3.5-9.1 7.8-9.1s7.8 3.9 7.8 9.1c-2.4 1.4-5 2-7.8 2s-5.4-.6-7.8-2z"/><path class="hd" d="M5.4 12.3c2.6 1.5 10.6 1.5 13.2 0M6.6 9.5c2.4 1.2 8.4 1.2 10.8 0M11.3 6.7c-.9 2.4-1.1 5.6-.5 9.3"/><path class="hg" d="M12.6 11.3c.6-3 2.4-5.4 5-6.6-.6 2.6-2.4 5-5 6.6zM13.6 12.8a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 1 1 3.2 0z"/>',
+    coroa: '<path class="hb" d="M4 17.4 3 7.9l4.6 3.8L12 4.6l4.4 7.1L21 7.9l-1 9.5zM4 17.4h16v2.9H4z"/><path class="hg" d="M4.1 7.9a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 1 1 2.2 0zM13.1 4.6a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 1 1 2.2 0zM22.1 7.9a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 1 1 2.2 0zM13 18.85a1 1 0 1 1-2 0 1 1 0 1 1 2 0z"/><path class="hd" d="M7 18.85h1.4M15.6 18.85H17"/>',
+    escudo: '<path class="hb" d="M5 3.8h14v7.4c0 5-3.1 8.3-7 9.6-3.9-1.3-7-4.6-7-9.6z"/><path class="hd" d="M12 3.8v16.6M5 10h14"/><path class="hg" d="M13.7 10a1.7 1.7 0 1 1-3.4 0 1.7 1.7 0 1 1 3.4 0z"/>',
+    cajado: '<path class="hb" d="M3.6 20.6 13.5 8.1l1.9 1.5L5.5 22.1z"/><path class="hk" d="M9.3 13.2l1.9 1.5-.9 1.1-1.9-1.5z"/><path class="hd" d="M13.6 9.6c-1.1-2.4-.2-5.3 2.2-6.6M20.2 9.4c-.6 1.8-2.1 3.1-4 3.5"/><path class="hg" d="M20.4 6.2a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 1 1 7.2 0z"/>',
+    mascara: '<path class="hb" d="M12 2.8c4.2 0 7.2 3.2 7.2 8.2 0 5.6-3.3 10.2-7.2 10.2S4.8 16.6 4.8 11c0-5 3-8.2 7.2-8.2z"/><path class="hk" d="M7.4 10.1l3.6.9-3.3 1.6zM16.6 10.1l-3.6.9 3.3 1.6zM9.6 16.3h4.8L12 18z"/><path class="hd" d="M12 3.6v4.4M6.9 14.1l1.7.9M17.1 14.1l-1.7.9"/>',
+  };
+  // a cor do corpo pela honra: do aço (0) ao ouro (+5); negativa, cada vez mais escura
+  const COR_HONRA = { '-5': '#3d3833', '-4': '#4f4943', '-3': '#615a53', '-2': '#7a736b', '-1': '#8f8981', 0: '#b9bbbe', 1: '#c5a26b', 2: '#d3ad58', 3: '#ddb64e', 4: '#e7c04a', 5: '#f0cb4c' };
+  const RACHAS = ['M9 4.5l2.2 3.4-1.6 2.2 2 3.1', 'M16.2 8.6l-1.9 2.1.8 2.5-1.7 2.2', 'M7 13.6l2 1.3-.4 2.6 1.6 1.8'];
+  function seloDeHonra(o) {
+    const v = Math.max(-5, Math.min(5, Math.round(Number(o.honra) || 0))), est = SELOS[o.estilo];
+    if (!est) return null;
+    const g = s('g', { class: 'honra' + (v > 0 ? ' h-pos' : v < 0 ? ' h-neg' : '') + ' h' + (v < 0 ? 'm' + -v : v), transform: 'translate(23 -13)' });
+    g.append(s('title', { texto: 'Honra ' + (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0') + ' · ' + ((N().HONRA || {})[o.estilo] || '') }));
+    // os raios (+5), por trás de tudo
+    if (v >= 5) {
+      let d = '';
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, b = a + 0.13, c0 = a - 0.13; d += 'M' + d3(Math.cos(c0) * 11) + ' ' + d3(Math.sin(c0) * 11) + 'L' + d3(Math.cos(a) * 16.5) + ' ' + d3(Math.sin(a) * 16.5) + 'L' + d3(Math.cos(b) * 11) + ' ' + d3(Math.sin(b) * 11) + 'Z'; }
+      g.append(s('path', { class: 'hon-raios', d }));
+    }
+    // os louros (+3: metade; +4 e +5: inteiros)
+    if (v >= 3) {
+      const ramo = lado => {
+        let d = '';
+        for (let i = 0; i < 4; i++) { const a = Math.PI * (0.62 + i * 0.16), x = lado * Math.cos(a) * -12.6, y = Math.sin(a) * 12.6; d += 'M' + d3(x) + ' ' + d3(y) + 'c' + d3(lado * -1.6) + ' -2.4 ' + d3(lado * -0.4) + ' -4.4 ' + d3(lado * 1.6) + ' -4.6c.4 2 -.2 3.6 ' + d3(lado * -1.6) + ' 4.6z'; }
+        return d;
+      };
+      g.append(s('path', { class: 'hon-louro', d: ramo(1) + (v >= 4 ? ramo(-1) : '') }));
+    }
+    g.append(s('circle', { class: 'hon-fundo', r: 10.5 }));
+    if (v > 0) g.append(s('circle', { class: 'hon-aro', r: 10.5, 'stroke-width': d3(0.9 + v * 0.35) }));
+    const ic = molde(est);                       // markup fixo daqui
+    ic.setAttribute('class', 'hon-ico');
+    ic.setAttribute('transform', 'translate(-8.9 -8.9) scale(0.74)');
+    for (const p of ic.querySelectorAll('.hb')) p.style.fill = COR_HONRA[v];
+    const rachas = { 2: 1, 3: 2, 4: 3, 5: 3 }[-v] || 0;
+    if (rachas) ic.append(s('path', { class: 'hon-racha', d: RACHAS.slice(0, rachas).join('') }));
+    if (v <= -4) ic.append(s('path', { class: 'hon-lasca', d: 'M17.5 3.2l3.4.4-1 3.6z' }));
+    g.append(ic);
+    // o número, num botãozinho embaixo
+    const t = v > 0 ? '+' + v : v < 0 ? '−' + -v : '0';
+    g.append(s('rect', { class: 'hon-num-fundo', x: -7, y: 8.6, width: 14, height: 9.6, rx: 4.8 }), s('text', { class: 'hon-num', x: 0, y: 16.1, 'text-anchor': 'middle', 'font-size': 8.5, texto: t }));
+    return g;
+  }
   function grupo(g0, o, ctx) {
     g0.classList.add('gru');
     const fx = fixo(o.x, o.y), bol = ctx ? bolinhasDe(ctx, o) : null;
@@ -911,6 +1285,8 @@
       s('circle', { class: 'grupo-anel', r: 19.5 }),
       s('circle', { class: 'grupo-base', r: 15, fill: o.cor || '#e6ab4f' }),
       s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
+    const selo = seloDeHonra(o);
+    if (selo) fx.append(selo);
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }

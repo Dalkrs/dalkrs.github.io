@@ -473,6 +473,30 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   muda sozinho. A lista do mapa mostra as regiões em árvore; no mapa, a de dentro tem a borda mais fina, o nome menor e
   fica por cima; o nome da de fora vai para um lugar livre das de dentro. Na projeção, cada região vai com a facção
   que vale para ela.
+- **Os terrenos novos** (lote 6): Lavoura, Ruínas, Lava, Cristais, Selva, Savana, Tundra e Terra corrompida, cada
+  um com a sua textura (no pincel livre e nos hexágonos). Um mapa novo já vem com os dezesseis; num mapa de antes, a
+  aba Terreno oferece "Acrescentar os 8" (`terrenosQueFaltam`: os que o mapa não tem, nem pelo id nem pelo nome,
+  cabendo no limite de tipos) — nada muda sozinho.
+- **O desenho em cada hexágono** (lote 6, `grade.des`, ligado de começo): o terreno pintado hexágono por hexágono vai
+  para um canvas entre o desenho à mão e as camadas do mapa — a cor (meio transparente, como antes) e a composição do
+  terreno (as árvores da floresta, os picos da montanha, as fileiras da lavoura, as rachaduras da lava…), variada de
+  um hexágono para outro: a semente é o lugar do hexágono, então o mesmo sai sempre igual, para o mestre e para quem
+  joga. Não são carimbos (não contam como objetos). Desligado ("Desenho em cada hexágono", aba Terreno), só a cor.
+  Como antes, aparece com a grade (e, para o mestre, com a ferramenta Terreno).
+- **A honra dos grupos** (lote 6, `g.estilo`, `g.honra`, `g.hhist`): de −5 a +5, com um selo junto do token no estilo
+  escolhido (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal; sem
+  estilo, o grupo não mostra honra). Positiva: o corpo vai do bronze ao ouro, com o aro dourado (mais grosso quanto
+  maior), os louros (+3 de um lado; +4 e +5 dos dois) e os raios (+5); negativa: cada vez mais escuro, rachado (de −2
+  em diante) e lascado (−4 e −5). No painel do grupo, − e + e o motivo (opcional): cada mudança vai para o histórico
+  com a data do mundo e o motivo (`mudarHonra`; as últimas 100), que todos veem — o mestre corrige o motivo de uma
+  linha ou a tira (a honra não muda).
+- **O painel das facções** (lote 6, `f.rec`, `f.pop`, `f.apoio`, `f.ver`, `f.hist`): recursos (uma lista livre: nome e
+  número), população e apoio geral (%). Cada mudança nos números entra sozinha no histórico (`facMudar`,
+  `facNovoRecurso`, `facTirarRecurso`): a data do mundo, o motivo escrito no painel e o que mudou (`[campo, nome, de,
+  para]`); no mesmo dia e com o mesmo motivo, as mudanças juntam numa linha só (e a que volta ao que era sai dela).
+  Tudo começa só com o mestre: a caixa "Jogadores veem" de cada recurso, da população, do apoio e do histórico mostra
+  aquilo a eles — na projeção vão só os recursos marcados e, do histórico, só as mudanças do que eles veem (a linha que
+  fica vazia não vai).
 - **Para os jogadores** vão a grade, os tipos de terreno e o terreno dos hexágonos que a névoa não cobre — sem os
   custos próprios (de hexágono e de região), que são do mestre.
 
@@ -801,7 +825,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 acampamento acampamento-racoes auditor; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -876,5 +900,9 @@ pela aba Hoje também; "Passar o dia" e "Ir para a data" começando no primeiro 
 e no painel (para o mestre e, prontas, para quem joga; o custo da montanha mudando no meio da travessia), o ajuste à
 mão sem passar o tempo, os tempos de marcha de um dia, a largura do mapa em cubos (o terreno refeito na grade nova) e
 as regiões de dentro (a sugestão da mais de dentro, a facção e a cor herdadas, a de dentro por cima, os nomes sem se
-encavalar, a lista em árvore); `mundo-mesa` confere também as bolinhas chegando ao jogador pela mesa. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+encavalar, a lista em árvore). `mundo-lote6b` confere os terrenos novos (e a oferta num mapa de antes), o desenho em
+cada hexágono (no canvas: cada um com o seu, o mesmo sempre igual, só a cor quando desligado, o mesmo para quem
+joga), a honra (o estilo, − e +, o motivo, o selo de −5 a +5, o histórico corrigido e tirado, quem joga vendo) e o
+painel da facção (recursos, população, apoio, o histórico automático, o que os jogadores veem). `mundo-mesa` confere
+também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).
