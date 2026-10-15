@@ -74,7 +74,20 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await abrir(G, 'Ogro do pântano', J);
   ok(await G.locator('#f_nome').isDisabled() && await G.locator('.so-consulta').count() === 1, 'só para consulta');
   await F.locator('#lista .olho[data-olho="pc_ogro"]').click(); await w(300);
+  const avisoOgro = await F.locator('.toast').last().innerText({ timeout: 2000 }).catch(() => '');
   ok(await ate(async () => (await nomes(G)) === 'Dain X'), 'olho fechado de novo: a ficha some da tela do jogador');
+  // (lote 6) a tela deixa claro que esconder dos jogadores não esconde do dono
+  ok(/voltou a ficar escondida dos jogadores/.test(avisoOgro), 'ficha sem dono: o aviso diz que voltou a ficar escondida dos jogadores: ' + avisoOgro);
+  ok(await F.locator('#lista .olho[data-olho="pc_dain"]').getAttribute('title') === 'Só você e Dalmo (que a controla) veem esta ficha. Clique para mostrar aos outros jogadores.', 'o olho da ficha do Dalmo, fechado, diz que o dono continua vendo: ' + await F.locator('#lista .olho[data-olho="pc_dain"]').getAttribute('title'));
+  await F.locator('#lista .olho[data-olho="pc_dain"]').click(); await w(300);
+  const avisoA = await F.locator('.toast').last().innerText({ timeout: 2000 }).catch(() => '');
+  ok(await F.locator('#lista .olho[data-olho="pc_dain"]').getAttribute('title') === 'Todos os jogadores veem esta ficha. Clique para esconder dos outros: Dalmo, que a controla, continua vendo.' && /^Os outros jogadores agora veem a ficha de Dain X\.$/.test(avisoA), 'aberto: o olho e o aviso falam dos outros jogadores: ' + avisoA);
+  await F.locator('#lista .olho[data-olho="pc_dain"]').click(); await w(300);
+  const avisoF = await F.locator('.toast').last().innerText({ timeout: 2000 }).catch(() => '');
+  ok(/^A ficha de Dain X ficou escondida dos outros jogadores\. Dalmo, que a controla, continua vendo\.$/.test(avisoF), 'fechado de novo: o aviso diz que o Dalmo continua vendo: ' + avisoF);
+  ok(await ate(async () => (await nomes(G)) === 'Dain X'), 'e o Dalmo continua vendo a ficha dele');
+  await abrir(F, 'Dain X');
+  ok((await F.locator('label.chk:has(#f_vis)').innerText()).replace(/\s+/g, ' ').trim() === 'Os outros jogadores veem esta ficha (o dono sempre vê a dele)', 'a chave na ficha diz "os outros jogadores" e que o dono sempre vê a dele');
   const direto = await J.evaluate(async mesa => { const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave); const { data } = await a.from('personagens').select('id').eq('mesa_id', mesa).eq('apagado', false); return (data || []).map(x => x.id).sort().join(); }, mesaId);
   ok(direto === 'pc_dain', 'pelo banco, o jogador só lê a própria ficha: ' + direto);
 
@@ -127,9 +140,39 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await M.locator('#msg').fill('/me rosna'); await M.locator('#msg').press('Enter');
   ok(await ate(async () => (await feed(J).locator('.acao', { hasText: 'Ogro do pântano rosna' }).count()) === 1), 'escolhendo o Ogro, a ação do mestre sai em nome dele');
 
+  // ---------- (lote 6) o pet: a ficha suplementar do personagem, embaixo dele; quem controla o dono controla o pet ----------
+  F = await fichas(M);
+  await abrir(F, 'Dain X');
+  ok(await F.locator('[data-act="addpet"]').count() === 1, 'a ficha de um personagem tem "+ Pet"');
+  await F.locator('[data-act="addpet"]').click(); await w(600);
+  ok(await F.locator('#f_nome').inputValue() === 'Pet de Dain X' && await F.evaluate(() => !!document.activeElement && document.activeElement.id === 'f_nome'), 'o pet nasce aberto, com o nome "Pet de Dain X" pronto para trocar');
+  await F.locator('#f_nome').fill('Rex'); await w(600);
+  const fp = { petde: await F.locator('.petde').innerText(), tier: await F.locator('#f_tier').count(), pts: await F.locator('[data-pts]').count(), bolsa: await F.locator('#painelBolsa').count(), addpet: await F.locator('[data-act="addpet"]').count() };
+  ok(fp.petde.replace(/\s+/g, ' ').includes('pet de Dain X') && fp.tier === 0 && fp.pts === 5 && fp.bolsa === 0 && fp.addpet === 0, 'a ficha do pet: "pet de Dain X" no alto, atributos à mão (sem Tier), sem bolsa e sem "+ Pet": ' + JSON.stringify(fp));
+  ok(await F.locator('#f_dono').count() === 0 && /quem controla Dain X \(Dalmo\)/.test(await F.locator('.petcontrola').innerText()), 'no lugar de "Jogador que controla", o mestre lê que quem controla o Dain controla o pet');
+  ok(await F.locator('#painelMente .menteoff').count() === 1 && await F.locator('#painelCorpo .menteoff').count() === 1 && await F.locator('#fadiga').count() === 0, 'e ele não liga sozinho o que a ficha de jogador liga (Sanidade, corpo, fadiga): é como a de um NPC');
+  const linhasEl = await F.locator('#lista .pcrow').evaluateAll(els => els.map(e => [e.querySelector('.nm').textContent.trim(), e.classList.contains('embaixo')]));
+  const iD = linhasEl.findIndex(x => x[0] === 'Dain X');
+  ok(iD >= 0 && !!linhasEl[iD + 1] && linhasEl[iD + 1][0] === 'Rex' && linhasEl[iD + 1][1], 'no elenco, o Rex fica logo embaixo do Dain, recuado: ' + JSON.stringify(linhasEl));
+  const rex = () => M.evaluate(() => TC.dados.col('personagens').todas().find(x => x.nome === 'Rex') || null);
+  ok(await ate(async () => { const l = await rex(); return !!l && l.dono_id === jogId && l.ficha.petDe === 'pc_dain' && l.ficha.modoAtr === 'livre' && l.rev > 0; }), 'no banco: o pet é do Dalmo (como o Dain), aponta para o Dain e tem os atributos à mão');
+  ok(await ate(async () => (await nomes(G)) === 'Dain X|Rex|Lia'), 'o jogador vê o Rex embaixo do Dain, sem recarregar');
+  await abrir(G, 'Rex', J);
+  ok(await G.locator('#f_nome').isEnabled() && (await G.locator('.petde').innerText()).replace(/\s+/g, ' ').includes('pet de Dain X') && await G.locator('[data-act="addpet"]').count() === 0, 'e mexe nele (é dele, como o Dain)');
+  // o mestre tira o Dain do Dalmo: o Rex vai junto; devolvendo, volta junto
+  await abrir(F, 'Dain X');
+  await F.locator('#f_dono').selectOption(''); await w(500);
+  const avisoDono = await F.locator('.toast').last().innerText({ timeout: 2000 }).catch(() => '');
+  ok(/O pet dele vai junto/.test(avisoDono), 'o aviso diz que o pet vai junto: ' + avisoDono);
+  ok(await ate(async () => { const l = await rex(); return !!l && l.dono_id === null; }), 'no banco, o Rex ficou sem dono (como o Dain)');
+  ok(await ate(async () => (await nomes(G)) === 'Lia'), 'e o jogador deixa de ver os dois');
+  await F.locator('#f_dono').selectOption({ label: 'Dalmo' }); await w(600);
+  ok(await ate(async () => { const l = await rex(); return !!l && l.dono_id === jogId; }), 'devolvendo o Dain ao Dalmo, o Rex volta para ele no banco');
+  ok(await ate(async () => { const n = await nomes(G); return /(^|\|)Dain X\|Rex(\||$)/.test(n) && n.split('|').length === 3; }), 'e o jogador vê os dois de novo, o Rex logo embaixo do Dain: ' + await nomes(G));
+
   // ---------- recarregar: tudo volta do banco ----------
   await J.reload({ waitUntil: 'load' });
-  ok(await ate(async () => { G = await fichas(J); return G && (await nomes(G)) === 'Dain X|Lia'; }), 'recarregando, o jogador continua com as fichas dele');
+  ok(await ate(async () => { G = await fichas(J); return G && (await nomes(G)) === 'Dain X|Rex|Lia'; }), 'recarregando, o jogador continua com as fichas dele (o Rex embaixo do Dain)');
   await abrir(G, 'Dain X', J);
   ok(await G.locator('.retrato .quadro img').getAttribute('src') === img && await G.locator('#f_lapros').inputValue() === '240' && await G.locator('[data-mval="san"]').inputValue() === '95', 'com a imagem, os Lapros e a Sanidade');
   ok(await ate(async () => (await feed(J).locator('.fala', { hasText: 'olá, mesa' }).locator('img.av').count()) === 1), 'e o chat volta com as imagens');

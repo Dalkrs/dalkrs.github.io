@@ -244,13 +244,61 @@ table.attr tr:last-child td{border-bottom:0}
 .vars code{background:var(--campo-sut);border:1px solid var(--line-2);border-radius:3px;padding:1px 4px;font-family:"IBM Plex Mono",monospace;font-size:11px;cursor:pointer}
 .vars code:hover{background:var(--brass-soft);border-color:var(--brass)}
 
-/* itens */
-table.items{width:100%;border-collapse:collapse;font-size:13.5px}
-table.items th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;padding:0 4px 6px;border-bottom:1px solid var(--line)}
-table.items td{padding:4px;border-bottom:1px solid var(--linha-sut)}
-table.items input[type=number]{width:56px;padding:4px;text-align:right}
-table.items input.inm{padding:4px 6px}
-table.items td.c{text-align:center}
+/* itens: os equipamentos em cartões (lote 6) — a chave, o nome, só os bônus que o item tem; "Editar" abre os números */
+/* o pet (lote 6): no elenco, logo embaixo do dono, recuado e com a pata; no alto da ficha, "pet de …" */
+.pcrow.pet .pata,.petde .pata{color:var(--brass);vertical-align:-1px}
+.pcrow.embaixo{margin-left:18px;position:relative}
+.pcrow.embaixo::before{content:"";position:absolute;left:-9px;top:-4px;height:22px;width:8px;border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-bottom-left-radius:5px}
+.petde{display:inline-flex;align-items:center;gap:5px;margin-left:10px;font-size:12px;color:var(--ink-soft)}
+.linkbtn{border:0;background:transparent;padding:0;color:var(--teal);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.linkbtn:hover{color:var(--ink)}
+.petcontrola{display:block;padding:6px 0}
+.itcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.itcard{border:1px solid var(--line);border-radius:6px;background:var(--campo);padding:8px 10px 9px;display:grid;gap:6px;min-width:0}
+.itcard.aberto{grid-column:1/-1}
+.itcard.guardado{background:var(--zebra)}
+.itcard.guardado .itnome,.itcard.guardado .itbon,.itcard.guardado .itfxv,.itcard.guardado .ittroca{opacity:.55}
+.itcard.rel{border-color:var(--brass);background:linear-gradient(180deg,var(--brass-fundo),var(--campo) 75%);box-shadow:inset 0 0 0 1px var(--brass-soft)}
+.itcard.rel.guardado{background:var(--brass-fundo)}
+.ittopo{display:flex;align-items:center;gap:8px;min-width:0}
+.itnome{flex:1;min-width:70px;font-weight:600;border-color:transparent;background:transparent;padding:4px 6px}
+.itnome:hover{border-color:var(--line-2)}
+.itnome:focus{border-color:var(--line);background:var(--campo)}
+.itbts{display:flex;gap:4px;margin-left:auto;flex:none}
+.itchave{position:relative;display:inline-flex;flex:none;cursor:pointer}
+.itchave input{position:absolute;inset:0;z-index:1;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.itsw{width:30px;height:17px;border-radius:999px;background:var(--line);position:relative;transition:background .15s;pointer-events:none}
+.itsw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--campo);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.itchave input:checked + .itsw{background:var(--teal)}
+.itchave input:checked + .itsw::after{transform:translateX(13px)}
+.itchave input:focus-visible + .itsw{outline:2px solid var(--teal);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.itsw,.itsw::after{transition:none}}
+.itrel{display:inline-flex;align-items:center;gap:4px;flex:none;color:var(--brass-ink);font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.itrel .icorel{color:var(--brass)}
+.ittroca{display:inline-flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;max-width:150px;padding:1px 7px;border:1px solid var(--line-2);border-radius:999px;font-size:11px;color:var(--ink-2);background:var(--campo-sut);white-space:nowrap}
+.ittroca span{overflow:hidden;text-overflow:ellipsis}
+.ittroca svg{flex:none}
+.itbon{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:center;font-family:"IBM Plex Mono",monospace;font-size:12px;padding-left:38px}
+.itb{color:var(--teal);font-weight:600;white-space:nowrap}
+.itb.neg{color:var(--rubric)}
+.itsep{color:var(--ink-fraco)}
+.itfxv{font-size:12.5px;color:var(--ink-2);white-space:pre-wrap;border-top:1px dashed var(--line-2);padding-top:5px}
+.ited{display:grid;gap:10px;border-top:1px dashed var(--line);padding-top:9px}
+.itgrupos{display:flex;flex-wrap:wrap;gap:10px 22px}
+.itgrupo{display:grid;gap:4px;align-content:start}
+.itnums{display:flex;flex-wrap:wrap;gap:6px}
+.itn{display:grid;gap:2px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.06em;color:var(--ink-soft)}
+.itn input{width:60px;padding:4px;text-align:right}
+.itn.der input{border-color:var(--brass-soft);background:var(--brass-fundo)}
+.itn.def input{border-color:var(--teal-borda);background:var(--teal-fundo)}
+.ited textarea{width:100%;min-height:30px;height:30px;resize:none;overflow:hidden;padding:5px 8px;font-size:12.5px;line-height:1.4;color:var(--ink-2);background:var(--campo-sut);border-color:var(--line-2)}
+.itopc{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:end}
+.itopc .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;padding-bottom:8px}
+.itopc .chk input{width:auto;margin:0}
+.ittrocaf{min-width:210px}
+.ittotal{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--line-2);font-family:"IBM Plex Mono",monospace;font-size:12px}
+.ittotal .eyebrow{margin-right:4px}
+.itdobro{margin-top:6px;color:var(--brass-ink)}
 .off{opacity:.42}
 
 /* ---- regras novas: abas do painel de atributos, defesas, opções das barras, itens, temporários e bolsas ---- */
@@ -289,7 +337,7 @@ label.f > span.pisoin{display:flex;align-items:center;gap:6px;margin:0}
 .chipb{display:inline-flex;align-items:center;gap:5px;padding:2px 3px 2px 8px;border:1px solid var(--teal-borda);background:var(--teal-fundo);border-radius:999px;font-size:12px}
 .chipb.rec{border-color:var(--brass-soft);background:var(--brass-fundo)}
 .chipb b{font-weight:600;white-space:nowrap}
-table.items .chipb input[type=number]{width:52px;padding:2px 4px;border-radius:6px}
+.chipb input[type=number]{width:52px;padding:2px 4px;border-radius:6px}
 .chipb .chipx{border:0;background:transparent;color:var(--ink-soft);padding:0 6px;font-size:14px;line-height:1;border-radius:999px}
 .chipb .chipx:hover{color:var(--rubric);background:var(--rubric-fundo)}
 .itmais-s{width:auto;max-width:210px;padding:2px 6px;font-size:12px;color:var(--ink-soft)}
@@ -603,7 +651,6 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .habtexto{grid-column:1/-1;font-size:13px;color:var(--ink-2);white-space:pre-wrap}
 @media (max-width:700px){.colunas{grid-template-columns:1fr}}
 .scrollx{overflow-x:auto}
-.scrollx table.items{min-width:800px}
 .pdlist{display:grid;gap:2px}
 .pdrow{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;
   padding:10px 0;border-bottom:1px solid var(--linha-sut)}
@@ -618,6 +665,27 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .pip{width:18px;height:18px;padding:0;border-radius:50%;border:1.5px solid var(--brass);background:var(--campo)}
 .pip.on{background:var(--brass);box-shadow:inset 0 0 0 2px #fdf9ee}
 .pip:hover{border-color:var(--ink)}
+/* a regra de recuperação de cada barra especial (lote 6) */
+.pdrec{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:-2px}
+.pdrec select{width:auto;max-width:250px}
+.pdrec .sitbar{flex-wrap:nowrap}
+.pdrow > button.danger{justify-self:end}
+.pdrectxt{font-size:12.5px;color:var(--ink-2)}
+/* a fadiga: uma pilha de 5 a 0, como a bateria do celular (verde cheia, amarela, laranja, vermelha) */
+.fadrow .fadnome{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
+.fadrow .fadnome b{font-weight:600;font-size:14px}
+.fadfaixa{font-size:12.5px;font-weight:600;min-width:100px;color:var(--ink-2)}
+.bateria{grid-column:1/-1;display:inline-flex;align-items:center;gap:3px;padding:3px;border:2px solid var(--ink-2);border-radius:7px;width:max-content;position:relative;margin:2px 0 0}
+.bateria .cel{width:30px;height:16px;padding:0;border:0;border-radius:3px;background:var(--campo-sut);cursor:pointer}
+.bateria .cel:hover{outline:1px solid var(--ink-soft)}
+.bateria .ponta{position:absolute;right:-8px;top:50%;width:5px;height:10px;transform:translateY(-50%);background:var(--ink-2);border-radius:0 2px 2px 0}
+.fadrow.n5 .cel.on,.fadrow.n4 .cel.on{background:var(--a-vit)}
+.fadrow.n3 .cel.on{background:var(--a-agi)}
+.fadrow.n2 .cel.on{background:color-mix(in srgb,var(--a-agi) 45%,var(--a-for))}
+.fadrow.n1 .cel.on{background:var(--a-for)}
+.fadrow.n0 .bateria{border-color:var(--a-for)}
+.fadrow.n0 .ponta{background:var(--a-for)}
+.fadrow.n1 .fadfaixa,.fadrow.n0 .fadfaixa{color:var(--a-for)}
 table.attr tr.derived td{background:var(--zebra)}
 @media (max-width:700px){.pdrow{grid-template-columns:1fr auto;row-gap:8px}}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--forte);color:var(--forte-txt);padding:9px 15px;border-radius:var(--r);font-size:13px;z-index:60;box-shadow:var(--sombra)}
@@ -671,10 +739,6 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 .ptsin .step{width:26px;height:26px;padding:0;font-size:16px;line-height:1;border-radius:50%}
 .ptsin .step:disabled{opacity:.3;cursor:default}
 /* ---------- equipamentos: passivas e efeitos ---------- */
-table.items tr.itfx td{padding-top:0;border-bottom:1px solid var(--line-2)}
-table.items tr:has(+ tr.itfx) td{border-bottom:0}
-table.items tr.itfx textarea{width:100%;min-height:30px;height:30px;resize:none;overflow:hidden;padding:5px 8px;font-size:12.5px;line-height:1.4;color:var(--ink-2);background:var(--campo-sut);border-color:var(--line-2)}
-table.items tr.itfx.off textarea{opacity:.55}
 .fxequip{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);display:grid;gap:6px}
 .fxequip .fxlinha{display:grid;grid-template-columns:minmax(120px,.3fr) 1fr;gap:10px;font-size:13px}
 .fxequip .fxlinha span{color:var(--ink-2);white-space:pre-wrap}
@@ -748,6 +812,16 @@ table.items tr.itfx.off textarea{opacity:.55}
 .parte.sel > .pf,.parte:focus-visible > .pf{stroke:var(--teal);stroke-width:2.8}
 .parte .pb{fill:var(--panel);stroke:var(--ink-soft);stroke-width:1.1}
 .parte .pn{font:600 10px "IBM Plex Mono",monospace;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+/* o membro amputado (lote 6): só o contorno tracejado, hachurado de leve — um estado permanente, não um ferimento */
+.boneco .ph{stroke:var(--ink-fraco);stroke-width:1.2}
+.parte.amp > .pf{fill:url(#hachuraAmp);stroke:var(--ink-soft);stroke-dasharray:3.5 2.5}
+.parte.amp.sel > .pf,.parte.amp:focus-visible > .pf{stroke:var(--teal)}
+.ampbox,.ampconf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;margin:8px 0 2px;border:1px dashed var(--line);border-radius:var(--r);background:var(--campo-sut);font-size:13px}
+.ampconf{border-style:solid;border-color:var(--teal-borda);background:var(--teal-fundo)}
+.ampconf > span:first-child{flex:1 1 100%}
+.ampconf .fnota{flex:1;min-width:180px}
+.ampbts{display:flex;gap:6px}
+.amptag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px dashed var(--ink-soft);border-radius:10px;padding:1px 7px}
 .plado{font:9px "IBM Plex Mono",monospace;fill:var(--ink-soft);text-anchor:middle}
 .ferlado{display:grid;gap:8px;min-width:0}
 .ferhd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -901,10 +975,10 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=12"></script>
-<script src="../tc/rules.js?v=7"></script>
-<script src="mesa.js?v=9"></script>
-<script src="extras.js?v=10"></script>
-<script src="quadros.js?v=3"></script>
+<script src="../tc/rules.js?v=8"></script>
+<script src="mesa.js?v=10"></script>
+<script src="extras.js?v=11"></script>
+<script src="quadros.js?v=4"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -928,6 +1002,9 @@ const DERIV = [
    aliases:['FURTIVIDADE']},
   {k:'PER', nome:'Percepção',   desc:'DES + CAN/2',   calc:b=>b.DES+Math.floor(b.CAN/2),
    aliases:['PERCEPCAO','PERCEPÇÃO']},
+  // o Embate: a metade da Vitalidade base (para baixo) + o Bloqueio inteiro (d: as defesas já calculadas)
+  {k:'EMB', nome:'Embate',      desc:'VIT/2 + BLOQ',  calc:(b,d)=>Math.floor(b.VIT/2)+((d&&d.BLQ)||0),
+   aliases:['EMBATE']},
 ];
 const ehDerivado = k => DERIV.some(d=>d.k===k);
 /* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
@@ -1259,13 +1336,13 @@ function calcular(pc){
     ant[a.k] =arred(totalAnt*p);
     tot[a.k] =base[a.k]+eq[a.k];
   });
-  const der={}, derAnt={};                       // sempre a partir dos valores BASE
-  DERIV.forEach(d=>{ der[d.k]=d.calc(base)+eq[d.k]; derAnt[d.k]=d.calc(ant)+eq[d.k]; });
   const def={};                                   // manual da ficha + equipamentos
   DEFESAS.forEach(d=>{ def[d.k]=(+((pc.defesas||{})[d.k])||0)+eq[d.k]; });
+  const der={}, derAnt={};                       // sempre a partir dos valores BASE (o Embate usa também o Bloqueio)
+  DERIV.forEach(d=>{ der[d.k]=d.calc(base,def)+eq[d.k]; derAnt[d.k]=d.calc(ant,def)+eq[d.k]; });
   const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(total), TOTAL:arred(total)};
   DERIV.forEach(d=>{
-    vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base); vars[d.k+'_EQ']=eq[d.k];
+    vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base,def); vars[d.k+'_EQ']=eq[d.k];
     d.aliases.forEach(al=>{vars[al]=der[d.k]});
   });
   DEFESAS.forEach(d=>{
@@ -1368,7 +1445,7 @@ function renderLista(){
           </span>`:''}
         </div>
         <ul class="secitens" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" ${trancado?'data-trancado="1"':''} ${fechado?'hidden':''}>
-          ${membros.map(p=>linhaElenco(p)).join('') || (trancado?'<li class="vazio hint">ninguém aqui</li>':'<li class="vazio hint">arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':'')+'</li>')}
+          ${linhasComPets(membros) || (trancado?'<li class="vazio hint">ninguém aqui</li>':'<li class="vazio hint">arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':'')+'</li>')}
         </ul></li>`;
     });
     if(!comCamp){ html+=dentro; return; }
@@ -1386,6 +1463,12 @@ function renderLista(){
   });
   ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
   ligarElenco();
+}
+/* As linhas de uma seção do elenco: cada pet logo embaixo do dono (quando os dois estão nela); o pet cujo dono não está
+   ali aparece no lugar dele, com o "pet de …" dizendo de quem é. */
+function linhasComPets(membros){
+  const ids=new Set(membros.map(p=>p.id));
+  return membros.filter(p=>!(p.petDe && ids.has(p.petDe))).map(p=>linhaElenco(p)+membros.filter(x=>x.petDe===p.id).map(x=>linhaElenco(x,true)).join('')).join('');
 }
 // a chave com que a tela lembra se uma seção (ou um bloco) está recolhida; as do mundo ficam como sempre foram
 function chaveSec(camp,g){ return (camp? camp+'\u0001' : '')+(g||SEM); }
@@ -1441,16 +1524,18 @@ function pintarAoVivo(){
   // (e os quadros em que a pessoa não está: relacionamentos, bônus temporários, corpo, ascensão, XP, missões)
   try{ FichasExtras.aoVivo(pc); FichasQuadros.aoVivo(pc); }catch(e){ console.error(e); }
 }
-function linhaElenco(p){
+/* a pata do pet (lote 6): no elenco, embaixo do dono, e no alto da ficha */
+const PATA_SVG='<svg class="pata" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6" cy="10" rx="2.2" ry="2.8"/><ellipse cx="10" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="14.4" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="18.4" cy="10" rx="2.2" ry="2.8"/><path d="M12.2 11.2c3.2 0 6.1 3.9 6.1 6.4 0 1.9-1.6 2.6-3.1 2.6-1.3 0-2-.7-3-.7s-1.7.7-3 .7c-1.5 0-3.1-.7-3.1-2.6 0-2.5 2.9-6.4 6.1-6.4z"/></svg>';
+function linhaElenco(p, embaixo){
   // (ficha de campanha encerrada — ou de uma campanha que não aparece aqui — não se arrasta: fica onde está)
   const fixa=FichasMesa.encerrada(p._camp) || FichasMesa.blocoDe(p)==='?';
-  return `<li class="pcrow" data-id="${p.id}">
+  return `<li class="pcrow${p.petDe?' pet':''}${embaixo?' embaixo':''}" data-id="${p.id}">
     ${fixa? '<span class="grab fixo" aria-hidden="true"></span>' : `<span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo${FichasMesa.campanhas().length && FichasMesa.organiza()?' (ou de campanha)':''}">⠿</span>`}
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
       <span class="nm">${esc(p.nome)}</span>
-      <span class="mt">${FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
+      <span class="mt">${p.petDe? PATA_SVG+' pet de '+esc(FichasMesa.nomeDoPetDe(p))+' · ' : FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
         ${FichasMesa.ativo() && FichasMesa.mestre() && !FichasMesa.ativoNaFicha(p) ? '<span class="tag mini-tag inativo" title="Fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado">inativo</span>' : ''}
@@ -1577,7 +1662,19 @@ function soltarArraste(){
     });
   });
   mapa.forEach(p=>novos.push(p));      // quem estiver escondido mantém-se no fim
-  S.personagens=novos; fixarGrupos(); save(); renderLista();
+  // (os pets vão com o dono: na mesma campanha e no mesmo grupo, logo depois dele)
+  const comPets=[], ja=new Set();
+  for(const p of novos){
+    if(ja.has(p.id) || (p.petDe && novos.some(d=>d.id===p.petDe && !d.petDe))) continue;
+    comPets.push(p); ja.add(p.id);
+    for(const x of novos) if(x.petDe===p.id && !ja.has(x.id)){
+      if(FichasMesa.blocoDe(x)!==FichasMesa.blocoDe(p) && FichasMesa.organiza() && !FichasMesa.encerrada(x._camp) && !FichasMesa.encerrada(p._camp)) x._camp=p._camp;
+      if(FichasMesa.blocoDe(x)===FichasMesa.blocoDe(p)) x.grupo=p.grupo;
+      comPets.push(x); ja.add(x.id);
+    }
+  }
+  for(const p of novos) if(!ja.has(p.id)) comPets.push(p);
+  S.personagens=comPets; fixarGrupos(); save(); renderLista();
   if(recusado) toast(recusado==='papel'? 'Só o mestre da mesa passa fichas de uma campanha para outra.' : 'Campanha encerrada: as fichas dela não saem, e nenhuma entra.');
   if(mudou){
     const pc=mudou.pc;
@@ -1719,9 +1816,11 @@ function renderFicha(){
   host.innerHTML=`
   <div class="panel" style="margin-bottom:18px">
     <div class="hd">
-      <span class="eyebrow">Ficha</span>
+      <span class="eyebrow">${pc.petDe?'Ficha de pet':'Ficha'}</span>
       <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
+      ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
       <span style="margin-left:auto;display:flex;gap:6px">
+        ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
         <button class="mini" data-act="dup">Duplicar</button>
         <button class="mini danger" data-act="del">Excluir</button>
       </span>
@@ -1736,7 +1835,7 @@ function renderFicha(){
         <label class="f"><span class="eyebrow">Lado</span><select id="f_lado">
           ${['Aliado','Inimigo','Neutro'].map(l=>`<option ${(pc.lado||'Aliado')===l?'selected':''}>${l}</option>`).join('')}
         </select></label>
-        ${FichasMesa.deJogador(pc)? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
+        ${FichasMesa.deJogador(pc) || pc.petDe? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
         <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
       </div>
       ${FichasQuadros.htmlXp(pc)}
@@ -1781,7 +1880,7 @@ function renderFicha(){
           ${DERIV.map(d=>{const dd=c.der[d.k]-c.derAnt[d.k];return `<tr class="derived">
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.k}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.desc}</span></td>
-            <td class="num vbase">${d.calc(c.base)}</td>
+            <td class="num vbase">${d.calc(c.base, c.def)}</td>
             <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.der[d.k]}</td>
             <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.derAnt[d.k]}</span>
@@ -1797,7 +1896,7 @@ function renderFicha(){
           </tr>`).join('')}
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Os três derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima.</div>
+        <div class="hint" style="margin-top:6px">Os derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos; o Embate soma ainda o Bloqueio inteiro. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima.</div>
         <div class="pctnote">
           ${pc.pctProprio?`<span>Percentuais deste personagem:</span>`:`<span>Percentuais gerais:</span>`}
           ${TIERS_ATR.map(t=>`<span class="mono">${t} ${(pctDe(pc,t)*100).toFixed(0)}%</span>`).join('')}
@@ -1870,9 +1969,11 @@ function renderFicha(){
       <span class="hint" style="margin-left:8px">clique nos círculos para gastar ou devolver · aparecem no token, em bolinhas</span>
       <span style="margin-left:auto;display:flex;gap:6px">
         ${pd.length?'<button class="mini" data-pdall="cheio">Encher todas</button>':''}
+        ${usaFadigaNaFicha(pc)?'':'<button class="mini" data-fadusar="1" title="A pilha de fadiga, de 5 (descansado) a 0 (esgotado): o descanso do Acampamento enche, e ela aparece no token">+ Fadiga</button>'}
         <button class="mini primary" data-pdadd="1">+ Barra especial</button>
       </span></div>
     <div class="bd">
+      ${usaFadigaNaFicha(pc)? htmlFadiga(pc) : ''}
       ${pd.length? `<div class="pdlist">${especiaisDe(pc).map(pw=>`
         <div class="pdrow">
           <input class="inm" data-pdnome="${pw.id}" value="${esc(nomeCruDoEspecial(pc,pw.id))}" placeholder="Nome (ex.: Poder divino, Cargas da varinha)" aria-label="Nome da barra especial">
@@ -1884,9 +1985,10 @@ function renderFicha(){
           <label class="sitbar" style="gap:6px"><span class="eyebrow">Limite</span>
             <input type="number" min="0" data-pdmax="${pw.id}" value="${pw.max}" style="width:64px"></label>
           <button class="mini danger" data-pddel="${pw.id}" title="Tirar esta barra especial" aria-label="Tirar a barra especial ${esc(pw.nome)}">×</button>
+          ${htmlRecEspecial(pw)}
           <div class="pips">${pips(pw)}</div>
         </div>`).join('')}</div>`
-      : '<div class="hint">Nenhuma barra especial. Cada uma tem o próprio contador e o próprio limite (poderes divinos, cargas, usos…) — e aparece no token do personagem, em bolinhas.</div>'}
+      : '<div class="hint">Nenhuma barra especial. Cada uma tem o próprio contador, o próprio limite e a própria regra de recuperação (poderes divinos, cargas, usos…) — e aparece no token do personagem, em bolinhas.</div>'}
     </div>
   </div>
 
@@ -1945,37 +2047,9 @@ function renderFicha(){
 
   ${FichasExtras.painelMente(pc)}
 
-  <div class="panel" style="margin-bottom:18px">
-    <div class="hd"><span class="eyebrow">Equipamentos</span>
-      <span class="hint" style="margin-left:8px">Desmarque para ver o personagem sem o item · a linha de baixo guarda passivas e efeitos</span>
-      <span style="margin-left:auto"><button class="mini" data-act="additem">+ Item</button></span>
-    </div>
-    <div class="bd">
-      ${(pc.itens||[]).length? `
-      <div class="scrollx"><table class="items">
-        <thead><tr><th style="width:34px"></th><th>Item</th>${ATRIBS.map(a=>`<th>${a.k}</th>`).join('')}
-          ${DERIV.map(d=>`<th style="color:var(--brass)" title="campo especial de ${d.nome.toLowerCase()}">${d.k}</th>`).join('')}
-          ${DEFESAS.map(d=>`<th style="color:var(--teal)" title="${d.nome}">${d.rot}</th>`).join('')}<th style="width:34px"></th></tr></thead>
-        <tbody>
-        ${pc.itens.map(it=>`<tr class="${it.equipado===false?'off':''}">
-          <td class="c"><input type="checkbox" style="width:auto" data-itemon="${it.id}" ${it.equipado===false?'':'checked'}></td>
-          <td><input class="inm" data-itemnome="${it.id}" value="${esc(it.nome||'')}" placeholder="Nome do item"></td>
-          ${ATRIBS.map(a=>`<td><input type="number" step="1" data-itembon="${it.id}|${a.k}" value="${(+it.bonus?.[a.k]||0)}"></td>`).join('')}
-          ${DERIV.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--brass-soft);background:var(--brass-fundo)"></td>`).join('')}
-          ${DEFESAS.map(d=>`<td><input type="number" step="1" data-itembon="${it.id}|${d.k}" value="${(+it.bonus?.[d.k]||0)}" style="border-color:var(--teal-borda);background:var(--teal-fundo)"></td>`).join('')}
-          <td class="c"><button class="mini danger" data-itemdel="${it.id}">×</button></td>
-        </tr>${FichasExtras.htmlEfeitoItem(it, pc)}`).join('')}
-        <tr><td></td><td class="mono" style="color:var(--ink-soft);font-size:12px">Total equipado</td>
-        ${ATRIBS.map(a=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[a.k]?(c.eq[a.k]>0?'+':'')+c.eq[a.k]:'—'}</td>`).join('')}
-        ${DERIV.map(d=>`<td class="num" style="text-align:right;color:var(--brass);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}
-        ${DEFESAS.map(d=>`<td class="num" style="text-align:right;color:var(--teal);font-weight:600">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}</td>`).join('')}<td></td></tr>
-        </tbody>
-      </table></div>${FichasExtras.htmlTotaisExtras(pc,c)}`
-      : '<div class="hint">Sem itens. Os totais são iguais aos valores base.</div>'}
-    </div>
-  </div>
+  ${FichasExtras.painelItens(pc,c)}
 
-  ${FichasExtras.painelBolsa(pc,c)}
+  ${pc.petDe? '' : FichasExtras.painelBolsa(pc,c)}
 
   ${FichasQuadros.painelAscensao(pc)}
 
@@ -2027,7 +2101,55 @@ function renderFicha(){
 function especiaisDe(pc){
   if(window.TC && TC.rules && TC.rules.especiais) return TC.rules.especiais(pc, pc.estado);
   return (Array.isArray(pc.poderes)?pc.poderes:[]).filter(x=>x&&x.id).map(x=>{ const max=Math.max(0,Math.round(+x.max||0)), a=Math.max(0,Math.round(+x.atual||0));
-    return {id:String(x.id), nome:String(x.nome||'').trim()||'Barra especial', atual:max>0?Math.min(a,max):a, max}; });
+    return {id:String(x.id), nome:String(x.nome||'').trim()||'Barra especial', atual:max>0?Math.min(a,max):a, max,
+      rec:REC_ESPECIAL_LOCAL.some(r=>r.k===x.rec)?x.rec:'longo', qc:x.qc==null?1:Math.max(0,Math.round(+x.qc||0)), ql:x.ql==null?2:Math.max(0,Math.round(+x.ql||0))}; });
+}
+/* A regra de recuperação de cada barra especial (lote 6): o mestre escolhe — enche no descanso longo, em qualquer
+   descanso, uma quantia por descanso (no curto e no longo) ou só à mão. Quem não mestra vê a regra por extenso. */
+const REC_ESPECIAL_LOCAL=[{k:'longo',nome:'Enche no descanso longo'},{k:'qualquer',nome:'Enche em qualquer descanso'},{k:'quantia',nome:'Recupera uma quantia'},{k:'manual',nome:'Só à mão'}];
+function textoRecLocal(pw){
+  if(window.TC && TC.rules && TC.rules.textoRecEspecial) return TC.rules.textoRecEspecial(pw);
+  return ({longo:'enche no descanso longo',qualquer:'enche em qualquer descanso',quantia:'+'+pw.qc+' no descanso curto · +'+pw.ql+' no longo',manual:'só à mão (o descanso não mexe nela)'})[pw.rec]||'enche no descanso longo';
+}
+function htmlRecEspecial(pw){
+  const lista=(window.TC && TC.rules && TC.rules.REC_ESPECIAL)||REC_ESPECIAL_LOCAL, rec=pw.rec||'longo';
+  if(FichasMesa.ativo() && !FichasMesa.mestre())
+    return `<div class="pdrec" title="Quem escolhe a regra é o mestre"><span class="eyebrow">Recupera</span> <span class="pdrectxt">${esc(textoRecLocal(pw))}</span></div>`;
+  return `<div class="pdrec"><label class="sitbar" style="gap:6px"><span class="eyebrow">Recupera</span>
+      <select data-pdrec="${pw.id}" aria-label="Como ${esc(pw.nome)} se recupera">${lista.map(r=>`<option value="${r.k}" ${rec===r.k?'selected':''}>${esc(r.nome)}</option>`).join('')}</select></label>
+    ${rec==='quantia'? `<label class="sitbar" style="gap:6px"><span class="eyebrow">no curto +</span><input type="number" min="0" step="1" data-pdqc="${pw.id}" value="${pw.qc}" style="width:58px" aria-label="Quanto ${esc(pw.nome)} recupera no descanso curto"></label>
+    <label class="sitbar" style="gap:6px"><span class="eyebrow">no longo +</span><input type="number" min="0" step="1" data-pdql="${pw.id}" value="${pw.ql}" style="width:58px" aria-label="Quanto ${esc(pw.nome)} recupera no descanso longo"></label>` : ''}</div>`;
+}
+/* A fadiga (lote 6): uma pilha de 5 (descansado) a 0 (esgotado), que vai descendo como a bateria do celular. Mora no
+   estado (estado.fad: a ficha, o token e o acampamento mexem nela). Em uso na ficha de um jogador da mesa e na que já
+   tem a fadiga anotada (o "+ Fadiga" liga num NPC). O descanso do Acampamento a enche: o longo, toda; o curto, um. */
+const FADIGA_NOMES=['Esgotado','Exausto','Muito cansado','Cansado','Disposto','Descansado'];
+function usaFadigaNaFicha(pc){
+  if(window.TC && TC.rules && TC.rules.usaFadiga) return TC.rules.usaFadiga(pc.estado, FichasMesa.deJogador(pc));
+  return FichasMesa.deJogador(pc) || !!(pc.estado && pc.estado.fad!=null);
+}
+function fadigaDe(pc){
+  if(window.TC && TC.rules && TC.rules.fadiga) return TC.rules.fadiga(pc.estado);
+  const v=pc.estado && pc.estado.fad, n=+v; return v!=null && v!=='' && isFinite(n)? Math.max(0,Math.min(5,Math.round(n))) : 5;
+}
+function mudarFadigaNaFicha(pc,v){
+  if(window.TC && TC.rules && TC.rules.mudarFadiga){ pc.estado=TC.rules.mudarFadiga(pc.estado||{}, v); return; }
+  pc.estado=Object.assign({},pc.estado||{},{fad:Math.max(0,Math.min(5,Math.round(+v||0)))});
+}
+function htmlFadiga(pc){
+  const f=fadigaDe(pc), nome=FADIGA_NOMES[f];
+  return `<div class="pdrow fadrow n${f}" id="fadiga">
+    <span class="fadnome"><b>Fadiga</b> <span class="hint">o descanso longo enche · o curto devolve um</span></span>
+    <div class="pdctl">
+      <button class="step" data-fadstep="-1" ${f<=0?'disabled':''} aria-label="Fadiga: um a menos na pilha (mais cansado)">−</button>
+      <span class="pdval">${f}<small>/ 5</small></span>
+      <button class="step" data-fadstep="1" ${f>=5?'disabled':''} aria-label="Fadiga: um a mais na pilha (mais descansado)">+</button>
+    </div>
+    <span class="fadfaixa">${nome}</span>
+    ${FichasMesa.deJogador(pc)?'<span></span>':'<button class="mini danger" data-faddel="1" title="Esta ficha deixa de usar a fadiga" aria-label="Tirar a fadiga desta ficha">×</button>'}
+    <div class="bateria" role="group" aria-label="Fadiga: ${f} de 5, ${nome}">${[1,2,3,4,5].map(i=>
+      `<button type="button" class="cel ${i<=f?'on':''}" data-fadcel="${i}" title="${i} de 5 · ${FADIGA_NOMES[i]}" aria-label="Pilha em ${i} de 5 (${FADIGA_NOMES[i]})"></button>`).join('')}<i class="ponta" aria-hidden="true"></i></div>
+  </div>`;
 }
 function nomeCruDoEspecial(pc,id){ const pw=(pc.poderes||[]).find(x=>x.id===id); return pw? String(pw.nome==null?'':pw.nome) : ''; }
 function mudarEspecialNaFicha(pc,id,v){
@@ -2128,13 +2250,14 @@ function ligarFicha(pc){
       if(g && g.trim()){ fixarGrupos(); const l=gruposDe(bloco); if(!l.includes(g.trim())) l.push(g.trim()); pc.grupo=g.trim(); }
       save(); render(); return;
     }
-    const alvo=lerOpcaoDeGrupo(e.target.value, bloco);
-    if(alvo.camp===bloco){ pc.grupo=alvo.g; save(); render(); return; }
+    const alvo=lerOpcaoDeGrupo(e.target.value, bloco), pets=FichasMesa.petsDe(pc);      // (os pets vão junto)
+    if(alvo.camp===bloco){ pc.grupo=alvo.g; pets.forEach(x=>{ if(FichasMesa.blocoDe(x)===bloco) x.grupo=alvo.g; }); save(); render(); return; }
     // escolheu um grupo de outro bloco: a ficha passa para aquela campanha (ou para o mundo) — dá para desfazer
-    const antes={camp:pc._camp||null, grupo:pc.grupo||''};
+    const antes={camp:pc._camp||null, grupo:pc.grupo||'', pets:pets.map(x=>[x, x._camp||null, x.grupo||''])};
     pc._camp=alvo.camp||null; pc.grupo=alvo.g;
+    pets.forEach(x=>{ if(!FichasMesa.encerrada(x._camp)){ x._camp=pc._camp; x.grupo=alvo.g; } });
     FichasMesa.garantirRelacoes(); fixarGrupos(); save(); render();
-    FichasExtras.aviso(pc.nome+' passou para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{ pc._camp=antes.camp; pc.grupo=antes.grupo; fixarGrupos(); save(); render(); }, 9000);
+    FichasExtras.aviso(pc.nome+(pets.length?(pets.length===1?' e o pet dele passaram':' e os pets dele passaram'):' passou')+' para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{ pc._camp=antes.camp; pc.grupo=antes.grupo; antes.pets.forEach(([x,c,g])=>{ x._camp=c; x.grupo=g; }); fixarGrupos(); save(); render(); }, 9000);
     FichasMesa.avisarDeFora([pc]);
   };
   host.querySelector('#f_tags').oninput=e=>{
@@ -2171,13 +2294,34 @@ function ligarFicha(pc){
       // (as barras ficam com o mesmo id: os itens e as poções da cópia apontam para elas. A cópia nasce com as barras no começo.)
       cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; delete cp.estado.fer; delete cp.estado.mis; }   // (e sem os ferimentos e as missões do original)
       S.personagens.push(FichasMesa.nascer(cp)); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
-    if(a==='del'){ if(confirm('Excluir "'+pc.nome+'"? Não tem como desfazer.')){
-        S.personagens=S.personagens.filter(p=>p.id!==pc.id); S.sel=S.personagens[0]?.id||null; FichasMesa.esquecer(pc.id); save(); render(); toast('Personagem excluído'); } }
+    if(a==='del'){
+      // (os pets dele saem junto: um pet sem o dono não tem a quem seguir)
+      const pets=FichasMesa.petsDe(pc);
+      if(confirm('Excluir "'+pc.nome+'"?'+(pets.length? (pets.length===1? ' O pet dele ('+pets[0].nome+') também sai.' : ' Os '+pets.length+' pets dele também saem.') : '')+' Não tem como desfazer.')){
+        const fora=new Set([pc.id].concat(pets.map(x=>x.id)));
+        S.personagens=S.personagens.filter(p=>!fora.has(p.id)); S.sel=S.personagens[0]?.id||null; fora.forEach(id=>FichasMesa.esquecer(id)); save(); render(); toast(pets.length? 'Personagem e pets excluídos' : 'Personagem excluído'); } }
+    /* Pet (lote 6): uma ficha suplementar do personagem — atributos à mão (distribuição livre, do zero), barras e
+       habilidades, sem bolsa. Fica embaixo dele no elenco; quem controla o personagem controla o pet. */
+    if(a==='addpet' && !pc.petDe && FichasMesa.podeEditar(pc)){
+      const pet=personagemPadrao('Pet de '+(String(pc.nome||'').trim()||'personagem'));
+      Object.assign(pet, {petDe:pc.id, grupo:pc.grupo||'', lado:pc.lado||'Aliado', _dono:pc._dono, _vis:pc._vis, _camp:pc._camp});
+      FichasExtras.tornarLivre(pet, true);
+      FichasMesa.nascer(pet);
+      let i=S.personagens.indexOf(pc); while(i+1<S.personagens.length && S.personagens[i+1].petDe===pc.id) i++;
+      S.personagens.splice(i+1,0,pet); S.sel=pet.id; save(); render();
+      const n=document.getElementById('f_nome'); if(n){ n.focus(); n.select(); }
+      const desfaz=!FichasMesa.ativo() || FichasMesa.mestre();      // (só quem exclui fichas desfaz: o jogador pede ao mestre)
+      FichasExtras.aviso('Pet criado para '+(pc.nome||'o personagem')+': quem controla '+(pc.nome||'o personagem')+' controla o pet.', desfaz? 'Desfazer' : null, desfaz? ()=>{
+        S.personagens=S.personagens.filter(p=>p!==pet); if(S.sel===pet.id) S.sel=pc.id; FichasMesa.esquecer(pet.id); save(); render();
+      } : null);
+    }
     if(a==='pct'){ patch(()=>{ pc.pctProprio = pc.pctProprio? null : {...S.cfg.pct}; }); }
     if(a==='pctoff'){ patch(()=>pc.pctProprio=null); }
     if(a==='addres'){ patch(()=>pc.recursos.push({id:uid(),nome:'Novo recurso',fml:''})); }
-    if(a==='additem'){ const b0={}; ATRIBS.forEach(x=>b0[x.k]=0);
-      patch(()=>pc.itens.push({id:uid(),nome:'',equipado:true,bonus:b0})); }
+    if(a==='additem'){ const b0={}, id=uid(); ATRIBS.forEach(x=>b0[x.k]=0);
+      FichasExtras.abrirItem(id);                       // (o cartão novo já vem aberto, com o cursor no nome)
+      pc.itens.push({id,nome:'',equipado:true,bonus:b0}); save(); render();
+      const n=document.querySelector('[data-itemnome="'+CSS.escape(id)+'"]'); if(n) n.focus(); }
   });
 
   /* As barras especiais: a lista (nome, limite) é da ficha; o valor de agora vai para o estado (ver especiaisDe). */
@@ -2206,6 +2350,31 @@ function ligarFicha(pc){
     const a=valorPd(id);
     patch(()=>{ pw.max=Math.max(0,Math.round(+e.target.value||0)); mudarEspecialNaFicha(pc, id, a); });   // (o valor fica dentro do limite novo)
   });
+  // a regra de recuperação de cada barra (o mestre escolhe): 'longo' é o padrão e não fica anotado
+  host.querySelectorAll('[data-pdrec]').forEach(s=>s.onchange=e=>{
+    const pw=acharPd(e.target.dataset.pdrec); if(!pw) return;
+    const v=e.target.value;
+    if(v==='longo') delete pw.rec; else pw.rec=v;
+    if(v==='quantia'){ if(pw.qc==null) pw.qc=1; if(pw.ql==null) pw.ql=2; }      // (a quantia fica escrita, para valer igual em todo lugar)
+    save(); FichasExtras.desenhar(render, v==='quantia'? '[data-pdqc="'+pw.id+'"]' : '[data-pdrec="'+pw.id+'"]');
+  });
+  const quantia=(attr,campo)=>host.querySelectorAll('['+attr+']').forEach(i=>i.onchange=e=>{
+    const pw=acharPd(e.target.getAttribute(attr)); if(!pw) return;
+    pw[campo]=Math.max(0,Math.min(999,Math.round(+e.target.value||0))); e.target.value=pw[campo]; save();
+  });
+  quantia('data-pdqc','qc'); quantia('data-pdql','ql');
+  // a fadiga: a pilha de 5 (descansado) a 0 (esgotado); o valor mora no estado
+  host.querySelectorAll('[data-fadstep]').forEach(b=>b.onclick=()=>patch(()=>mudarFadigaNaFicha(pc, fadigaDe(pc)+(+b.dataset.fadstep))));
+  host.querySelectorAll('[data-fadcel]').forEach(b=>b.onclick=()=>{
+    const n=+b.dataset.fadcel, a=fadigaDe(pc);
+    patch(()=>mudarFadigaNaFicha(pc, a===n? n-1 : n));        // clicar no último aceso apaga um (como nas bolinhas)
+  });
+  host.querySelectorAll('[data-fadusar]').forEach(b=>b.onclick=()=>patch(()=>mudarFadigaNaFicha(pc, 5)));
+  host.querySelectorAll('[data-faddel]').forEach(b=>b.onclick=()=>{
+    const antes=pc.estado? pc.estado.fad : undefined;
+    patch(()=>{ const e=Object.assign({},pc.estado||{}); delete e.fad; pc.estado=e; });
+    FichasExtras.aviso('A fadiga saiu da ficha de '+(pc.nome||'quem joga')+'.', 'Desfazer', ()=>patch(()=>mudarFadigaNaFicha(pc, antes==null? 5 : antes)));
+  });
   host.querySelectorAll('[data-pddel]').forEach(b=>b.onclick=()=>{
     const id=b.dataset.pddel, i=pc.poderes.findIndex(x=>x.id===id); if(i<0) return;
     const pw=pc.poderes[i], tinha=!!(pc.estado && pc.estado.pd && Object.prototype.hasOwnProperty.call(pc.estado.pd,id)), v=tinha? pc.estado.pd[id] : null;
@@ -2231,17 +2400,8 @@ function ligarFicha(pc){
   host.querySelectorAll('[data-resdel]').forEach(b=>b.onclick=()=>patch(()=>{
     pc.recursos=pc.recursos.filter(x=>x.id!==b.dataset.resdel)}));
 
-  host.querySelectorAll('[data-itemon]').forEach(i=>i.onchange=e=>patch(()=>{
-    const it=pc.itens.find(x=>x.id===e.target.dataset.itemon); if(it) it.equipado=e.target.checked;}));
-  host.querySelectorAll('[data-itemnome]').forEach(i=>i.oninput=e=>{
-    const it=pc.itens.find(x=>x.id===e.target.dataset.itemnome); if(it){it.nome=e.target.value; save();}});
-  host.querySelectorAll('[data-itembon]').forEach(i=>i.onchange=e=>{
-    const [id,k]=e.target.dataset.itembon.split('|');
-    patch(()=>{const it=pc.itens.find(x=>x.id===id); if(it){it.bonus=it.bonus||{}; it.bonus[k]=+e.target.value||0;}});
-  });
-  host.querySelectorAll('[data-itemdel]').forEach(b=>b.onclick=()=>patch(()=>{
-    pc.itens=pc.itens.filter(x=>x.id!==b.dataset.itemdel)}));
-
+  // o "pet de …" no alto da ficha do pet abre a ficha do dono
+  host.querySelectorAll('[data-abrirpc]').forEach(b=>b.onclick=()=>{ if(!S.personagens.some(p=>p.id===b.dataset.abrirpc)) return; S.sel=b.dataset.abrirpc; save(); render(); });
   host.querySelectorAll('[data-copy]').forEach(c=>c.onclick=()=>{
     const t=c.dataset.copy;
     navigator.clipboard?.writeText(t).then(()=>toast('Copiado: '+t),()=>toast(t));

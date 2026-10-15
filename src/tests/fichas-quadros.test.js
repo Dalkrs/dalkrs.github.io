@@ -131,6 +131,33 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok(await P.locator('#painelCorpo svg').count() === 0 && await S0(() => !S.personagens[1].estado.fer && !S.personagens[1].usaCorpo) && await S0(() => calcular(S.personagens[1]).tot.DES) === desG, '"Deixar de usar" tira o corpo e os ferimentos');
   await desfazer();
   ok(await P.locator('#painelCorpo svg .parte').count() === 12 && await S0(() => Object.keys(S.personagens[1].estado.fer).length) === 2, 'e também dá para desfazer');
+  // (lote 6) a amputação: um estado permanente do membro, que não é ferimento
+  await P.locator('[data-parte="cabeca"]').click(); await w(250);
+  ok(await P.locator('[data-ampini]').count() === 0, 'na cabeça não há "Amputado…" (só nos membros)');
+  await P.locator('[data-parte="pernaE"]').click(); await w(250);
+  ok((await P.locator('[data-ampini="pernaE"]').innerText()) === 'Amputada…', 'escolhida a perna esquerda: "Amputada…"');
+  await P.locator('[data-ampini="pernaE"]').click(); await w(250);
+  let perg = (await P.locator('.ampconf').innerText()).replace(/\s+/g, ' ');
+  ok(/Marcar a perna esquerda como amputada\?/.test(perg) && /O pé esquerdo vai junto\./.test(perg) && /O ferimento aberto daqui sai da lista \(Perfuração média · sangrando, infeccionado · −3 Destreza\)/.test(perg), 'pergunta antes: diz o que vai junto (o pé) e qual ferimento aberto sai — ' + perg);
+  await P.locator('[data-ampnao]').click(); await w(250);
+  ok(await P.locator('.ampconf').count() === 0 && await S0(() => !S.personagens[1].estado.amp), '"Cancelar" não muda nada');
+  await P.locator('[data-ampini="pernaE"]').click(); await w(250);
+  await P.locator('[data-ampnota]').fill('mordida do lobo');
+  await P.locator('[data-ampsim="pernaE"]').click(); await w(350);
+  let e1 = await S0(() => JSON.parse(JSON.stringify(S.personagens[1].estado)));
+  ok(!!e1.amp && !!e1.amp.pernaE && e1.amp.pernaE.n === 'mordida do lobo' && Object.keys(e1.fer).length === 1 && await S0(() => calcular(S.personagens[1]).tot.DES) === desG, 'marcada: a perna fica amputada (com a anotação), o ferimento do pé sai e a penalidade dele também — ' + JSON.stringify(e1.amp));
+  ok(await P.locator('[data-parte="pernaE"].amp').count() === 1 && await P.locator('[data-parte="peE"].amp').count() === 1 && /1 ferimento aberto · 1 membro amputado/.test(await P.locator('#painelCorpo .hd .hint').innerText()), 'no boneco, a perna e o pé ficam tracejados; o cabeçalho conta o membro amputado');
+  ok(/A perna esquerda de .+ ficou marcada como amputada; o ferimento aberto dali saiu\./.test(await toast()) && R.sinalDeFerido(e1.fer).n === 1, 'o aviso diz o que saiu; o sinal de ferido do token conta só o ferimento aberto (o da cabeça) — ' + await toast());
+  await desfazer();
+  ok(await S0(() => !S.personagens[1].estado.amp && Object.keys(S.personagens[1].estado.fer).length === 2) && await S0(() => calcular(S.personagens[1]).tot.DES) === desG - 3, 'o Desfazer devolve a perna e o ferimento do pé (com a penalidade)');
+  await P.locator('[data-ampini="pernaE"]').click(); await w(250); await P.locator('[data-ampsim="pernaE"]').click(); await w(350);
+  await P.locator('[data-parte="peE"]').click(); await w(250);
+  ok(/amputado junto com perna esquerda/i.test((await P.locator('.ampbox').innerText()).replace(/\s+/g, ' ')) && await P.locator('[data-fernovo]').isDisabled() && await P.locator('[data-ampini]').count() === 0, 'o pé: "amputado junto com perna esquerda", sem "+ Ferimento"');
+  await P.locator('[data-parte="pernaE"]').click(); await w(250);
+  await P.locator('[data-ampdel="pernaE"]').click(); await w(300);
+  ok(await S0(() => !S.personagens[1].estado.amp) && await P.locator('#painelCorpo [data-parte].amp').count() === 0 && /A marca de amputada saiu da perna esquerda\./.test(await toast()), '"Tirar a marca": a perna volta — ' + await toast());
+  await desfazer();
+  ok(await S0(() => !!S.personagens[1].estado.amp && !!S.personagens[1].estado.amp.pernaE), 'e o Desfazer põe a marca de volta');
   await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
   ok(await des() === 12 && await P.locator('#painelCorpo svg').count() === 0, 'cada ficha tem o seu corpo: a da Selene não mudou');
 
@@ -289,8 +316,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   // ---------- tudo continua lá depois de recarregar ----------
   await w(600);
   await P.reload({ waitUntil: 'load' }); await w(1200);
-  const fim = await S0(([g, p]) => { const a = S.personagens[0], b = S.personagens[1]; return { xp: a.estado.xp.v, pr: a.skills.pontos.pr, pcl: a.skills.pontos.pc, fer: Object.keys(b.estado.fer).length, corpo: b.usaCorpo, grupo: S.missoes[g].t, pessoal: a.estado.mis[p].e }; }, [gid, pid]);
-  ok(fim.xp === 4 && fim.pr === 5 && fim.pcl === 5 && fim.fer === 2 && fim.corpo === 1 && fim.grupo === 'Escoltar a caravana' && fim.pessoal === 'feita', 'recarregando a página, XP, pontos, ferimentos e missões continuam lá: ' + j(fim));
+  const fim = await S0(([g, p]) => { const a = S.personagens[0], b = S.personagens[1]; return { xp: a.estado.xp.v, pr: a.skills.pontos.pr, pcl: a.skills.pontos.pc, fer: Object.keys(b.estado.fer).length, amp: Object.keys(b.estado.amp || {}).join(), corpo: b.usaCorpo, grupo: S.missoes[g].t, pessoal: a.estado.mis[p].e }; }, [gid, pid]);
+  ok(fim.xp === 4 && fim.pr === 5 && fim.pcl === 5 && fim.fer === 1 && fim.amp === 'pernaE' && fim.corpo === 1 && fim.grupo === 'Escoltar a caravana' && fim.pessoal === 'feita', 'recarregando a página, XP, pontos, ferimentos (o do pé saiu com a perna amputada), a amputação e missões continuam lá: ' + j(fim));
 
   // ---------- numa tela de toque ----------
   // (no toque, o campo só perde o cursor depois que o dedo já saiu da tela: o caminho é outro, o resultado é o mesmo)

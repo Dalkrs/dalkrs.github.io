@@ -74,9 +74,13 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await P.locator('#f_tier').count() === 1 && /^tier /i.test((await P.locator('#lista .pc .mt').first().innerText()).trim()), 'sem mesa, a ficha continua com o Tier (só as fichas de jogador, numa mesa, deixam de mostrá-lo): ' + await P.locator('#lista .pc .mt').first().innerText());
 
   // ---------- passivas e efeitos nos equipamentos ----------
+  ok(await P.locator('[data-itemfx="it1"]').count() === 0 && await P.locator('[data-itcard="it1"] [data-itemed="it1"]').innerText() === 'Editar', '(lote 6) o equipamento é um cartão: os números e as passivas ficam em "Editar"');
+  await P.locator('[data-itemed="it1"]').click(); await w(300);
   await P.locator('[data-itemfx="it1"]').fill('Serra: sangramento 2 por turno.\n1×/combate: arranca uma parte do inimigo.'); await w(500);
   ok(await S0(() => S.personagens[0].itens[0].efeito.startsWith('Serra: sangramento')), 'o equipamento guarda passivas e efeitos');
   ok(await P.locator('[data-itemfx="it1"]').evaluate(el => el.offsetHeight >= 40), 'o campo cresce para caber o texto');
+  await P.locator('[data-itemed="it1"]').click(); await w(300);
+  ok((await P.locator('[data-itcard="it1"] .itfxv').innerText()).startsWith('Serra: sangramento') && await P.locator('[data-itemfx="it1"]').count() === 0, 'fechado, o cartão mostra as passivas por extenso');
   await P.locator('[data-sub="habs"]').click(); await w(250);
   ok((await P.locator('.fxequip').innerText()).includes('Espadão serra') && (await P.locator('.fxequip').innerText()).includes('sangramento'), 'a aba de Passivas mostra o que vem dos equipamentos em uso');
   await P.locator('[data-itemon="it1"]').uncheck(); await w(300);
@@ -277,11 +281,67 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     ok(await S0(() => { const b = new Uint32Array(4); crypto.getRandomValues(b); return b.some(x => x > 0); }), '(o sorteio do navegador volta a valer)');
   }
 
+  // ---------- (lote 6) a regra de recuperação de cada barra especial ----------
+  await abrirFicha('Dain X');
+  await P.locator('[data-pdadd]').click(); await w(300);
+  const pdId = await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.poderes[p.poderes.length - 1].id; });
+  await P.locator('[data-pdnome="' + pdId + '"]').fill('Fé'); await P.locator('[data-pdmax="' + pdId + '"]').fill('3'); await P.locator('[data-pdmax="' + pdId + '"]').press('Tab'); await w(300);
+  const pdDe = () => S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_dain').poderes.slice(-1)[0])));
+  ok(await P.locator('[data-pdrec="' + pdId + '"]').inputValue() === 'longo' && !('rec' in await pdDe()) && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, 'a barra nova enche no descanso longo (o padrão, que nem fica anotado)');
+  await P.locator('[data-pdrec="' + pdId + '"]').selectOption('quantia'); await w(300);
+  ok(JSON.stringify(await pdDe()).includes('"rec":"quantia","qc":1,"ql":2') && await P.evaluate(id => document.activeElement && document.activeElement.dataset.pdqc === id, pdId), '"Recupera uma quantia": aparecem o curto (+1) e o longo (+2), com o cursor no curto');
+  await P.locator('[data-pdqc="' + pdId + '"]').fill('2'); await P.locator('[data-pdql="' + pdId + '"]').fill('5'); await P.locator('[data-pdql="' + pdId + '"]').press('Tab'); await w(300);
+  ok((await pdDe()).qc === 2 && (await pdDe()).ql === 5, 'as quantias ficam guardadas (+2 no curto, +5 no longo)');
+  await P.locator('[data-pdrec="' + pdId + '"]').selectOption('manual'); await w(300);
+  ok((await pdDe()).rec === 'manual' && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, '"Só à mão"');
+  await P.locator('[data-pdrec="' + pdId + '"]').selectOption('longo'); await w(300);
+  ok(!('rec' in await pdDe()), 'de volta ao padrão, a anotação sai');
+
+  // ---------- (lote 6) a fadiga: a pilha de 5 a 0 ----------
+  ok(await P.locator('#fadiga').count() === 0 && await P.locator('[data-fadusar]').count() === 1, 'sem mesa (a ficha não é de jogador), a fadiga começa desligada, com "+ Fadiga" nas barras especiais');
+  await P.locator('[data-fadusar]').click(); await w(300);
+  const fad = async () => ({ v: await S0(() => S.personagens.find(x => x.id === 'pc_dain').estado.fad), on: await P.locator('#fadiga .cel.on').count(), faixa: await P.locator('#fadiga .fadfaixa').innerText(), cls: await P.locator('#fadiga').getAttribute('class') });
+  let f = await fad();
+  ok(f.v === 5 && f.on === 5 && f.faixa === 'Descansado' && /\bn5\b/.test(f.cls), 'ligada, a pilha começa cheia: 5, "Descansado" — ' + JSON.stringify(f));
+  await P.locator('[data-fadstep="-1"]').click(); await w(200); await P.locator('[data-fadstep="-1"]').click(); await w(250);
+  f = await fad();
+  ok(f.v === 3 && f.on === 3 && f.faixa === 'Cansado' && /\bn3\b/.test(f.cls), 'o − vai descendo a pilha (3, "Cansado", amarela) — ' + JSON.stringify(f));
+  await P.locator('[data-fadcel="1"]').click(); await w(250);
+  ok((await fad()).v === 1 && (await fad()).faixa === 'Exausto', 'clicar numa célula põe a pilha ali (1, "Exausto")');
+  await P.locator('[data-fadcel="1"]').click(); await w(250);
+  ok((await fad()).v === 0 && (await fad()).faixa === 'Esgotado' && await P.locator('[data-fadstep="-1"]').isDisabled(), 'clicar na última acesa apaga (0, "Esgotado"); o − para no zero');
+  await P.locator('[data-faddel]').click(); await w(300);
+  ok(await P.locator('#fadiga').count() === 0 && await S0(() => !('fad' in S.personagens.find(x => x.id === 'pc_dain').estado)), 'o × tira a fadiga da ficha');
+  await P.locator('.toast button').last().click(); await w(300);
+  ok((await fad()).v === 0, 'e o Desfazer a traz de volta como estava (0)');
+
+  // ---------- (lote 6) o pet ----------
+  await P.locator('[data-act="addpet"]').click(); await w(400);
+  ok(await P.locator('#f_nome').inputValue() === 'Pet de Dain X' && await P.evaluate(() => document.activeElement && document.activeElement.id === 'f_nome'), '"+ Pet" cria a ficha do pet, já aberta, com o nome pronto para trocar');
+  await P.locator('#f_nome').fill('Brasa'); await w(300);
+  const pet = await S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.nome === 'Brasa'))));
+  ok(pet.petDe === 'pc_dain' && pet.modoAtr === 'livre' && JSON.stringify(pet.atrLivre) === JSON.stringify({ FOR: 0, DES: 0, VIT: 0, CAN: 0, AGI: 0 }), 'o pet aponta para o Dain e tem os atributos à mão, começando do zero');
+  ok(await P.locator('#painelBolsa').count() === 0 && await P.locator('#f_tier').count() === 0 && await P.locator('[data-act="addpet"]').count() === 0 && (await P.locator('.petde').innerText()).replace(/\s+/g, ' ').includes('pet de Dain X'), 'sem bolsa, sem Tier, sem "+ Pet"; no alto, "pet de Dain X"');
+  const elenco = await P.locator('#lista .pcrow').evaluateAll(els => els.map(e => [e.querySelector('.nm').textContent.trim(), e.classList.contains('embaixo')]));
+  const iDain = elenco.findIndex(x => x[0] === 'Dain X');
+  ok(elenco[iDain + 1] && elenco[iDain + 1][0] === 'Brasa' && elenco[iDain + 1][1], 'no elenco, logo embaixo do Dain, recuado: ' + JSON.stringify(elenco));
+  await P.locator('.petde [data-abrirpc]').click(); await w(300);
+  ok(await P.locator('#f_nome').inputValue() === 'Dain X', 'o "pet de Dain X" abre a ficha do dono');
+  // excluir o dono leva os pets junto (pergunta antes, dizendo isso)
+  await abrirFicha('Goblin batedor');
+  await P.locator('[data-act="addpet"]').click(); await w(300);
+  let pergunta = '';
+  P.once('dialog', d => { pergunta = d.message(); d.accept(); });
+  await abrirFicha('Goblin batedor');
+  await P.locator('[data-act="del"]').click(); await w(400);
+  ok(/O pet dele \(Pet de Goblin batedor\) também sai/.test(pergunta) && await S0(() => !S.personagens.some(x => x.nome === 'Goblin batedor' || x.nome === 'Pet de Goblin batedor')), 'excluir o Goblin pergunta antes, avisa do pet, e os dois saem: ' + pergunta);
+
   // ---------- tudo continua lá depois de recarregar ----------
   await w(500);
   await P.reload({ waitUntil: 'load' }); await w(1200);
   ok(await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.estado.lapros === 380 && p.modoAtr === 'livre' && p.atrLivre.DES === 0 && p.estado.san === 0 && p.estado.conf === 100 && TC.rules.relacoes(p.estado).length === 2 && TC.rules.relacoes(p.estado)[0].rom === 10 && !!p.img && p.itens[0].efeito.length > 10 && p.disputa.alvos.pc_cap.atr === 'DFF' && S.alvos.pc_cap.atr === 'ESQ'; }), 'recarregando a página, tudo o que foi posto continua na ficha');
 
+  ok(await S0(() => { const p = S.personagens.find(x => x.nome === 'Brasa'), d = S.personagens.find(x => x.id === 'pc_dain'); return !!p && p.petDe === 'pc_dain' && d.estado.fad === 0 && d.poderes.some(x => x.nome === 'Fé'); }), 'recarregando: o pet, a fadiga e a barra especial continuam lá');
   ok(await S0(() => S.personagens.find(x => x.id === 'pc_dain').tamPenis) === '18 cm' && await (async () => { await abrirFicha('Dain X'); return (await P.locator('#f_tampenis').inputValue()) === '18 cm' && (await P.locator('#barrinhas .bz').count()) === 2; })(), 'o campo novo e as barrinhas também');
 
   if (t.errs.length) console.log(t.errs.slice(0, 10).join('\n'));

@@ -170,21 +170,45 @@ const FichasQuadros = (() => {
     pernaE:  ['<path class="pf" d="M102 164H72L76 258H96Z"/>', 87, 211],
     peE:     ['<path class="pf" d="M97 262H75L74 279Q74 286 81 286H105Q112 286 109 279Z"/>', 91, 274],
   };
-  const corpoUI = { pc: null, parte: null, aberto: null };       // o que está escolhido nesta tela
-  const uiDe = pc => { if (corpoUI.pc !== pc.id) { corpoUI.pc = pc.id; corpoUI.parte = null; corpoUI.aberto = null; } return corpoUI; };
+  const corpoUI = { pc: null, parte: null, aberto: null, ampConf: null };       // o que está escolhido nesta tela
+  const uiDe = pc => { if (corpoUI.pc !== pc.id) { corpoUI.pc = pc.id; corpoUI.parte = null; corpoUI.aberto = null; corpoUI.ampConf = null; } return corpoUI; };
   const feridasDe = pc => (RR() ? RR().ferimentos(pc.estado && pc.estado.fer).lista : []);
-  const usaCorpo = pc => !!RR() && (FichasMesa.deJogador(pc) || !!pc.usaCorpo || feridasDe(pc).length > 0);
+  // as partes amputadas (lote 6): um estado permanente do membro, que não é ferimento (as contas são de TC.rules)
+  const ampDe = pc => (RR() && RR().amputados ? RR().amputados(pc.estado) : {});
+  const usaCorpo = pc => !!RR() && (FichasMesa.deJogador(pc) || !!pc.usaCorpo || feridasDe(pc).length > 0 || Object.keys(ampDe(pc)).length > 0);
   const nomeParte = k => { const p = RR().PARTES.find(x => x.k === k); return p ? p.nome : k; };
+  const FEM = { cabeca: 1, maoE: 1, maoD: 1, pernaE: 1, pernaD: 1 };
+  const amputadoA = k => (FEM[k] ? 'amputada' : 'amputado');
   const GRAV = ['', 'leve', 'médio', 'grave'];
   function htmlBoneco(pc, lista, ui) {
-    const por = {};
+    const por = {}, amp = ampDe(pc);
     lista.forEach(f => { (por[f.p] || (por[f.p] = [])).push(f); });
-    return `<svg viewBox="0 0 140 300" role="group" aria-label="Corpo de ${esc(pc.nome)}">${RR().PARTES.map(p => {
-      const fs = por[p.k] || [], g = fs.reduce((m, f) => Math.max(m, f.g), 0), [forma, cx, cy] = FORMAS[p.k];
-      const rot = p.nome + ': ' + (fs.length ? plural(fs.length, 'ferimento', 'ferimentos') + ' (o mais grave: ' + GRAV[g] + ')' : 'sem ferimentos');
-      return `<g class="parte ${g ? 'g' + g : ''} ${ui.parte === p.k ? 'sel' : ''}" data-parte="${p.k}" tabindex="0" role="button" aria-pressed="${ui.parte === p.k}" aria-label="${esc(rot)}"><title>${esc(rot)}</title>${forma}${
+    // (o membro amputado fica só no contorno tracejado, hachurado; a parte de baixo que foi junto, também)
+    return `<svg viewBox="0 0 140 300" role="group" aria-label="Corpo de ${esc(pc.nome)}"><defs><pattern id="hachuraAmp" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" class="ph"/></pattern></defs>${RR().PARTES.map(p => {
+      const fs = por[p.k] || [], g = fs.reduce((m, f) => Math.max(m, f.g), 0), [forma, cx, cy] = FORMAS[p.k], a = amp[p.k];
+      const rot = p.nome + ': ' + (a ? amputadoA(p.k) + (a.de ? ' (junto com ' + nomeParte(a.de).toLowerCase() + ')' : '') + (fs.length ? ' · ' : '') : '') + (fs.length ? plural(fs.length, 'ferimento', 'ferimentos') + ' (o mais grave: ' + GRAV[g] + ')' : a ? '' : 'sem ferimentos');
+      return `<g class="parte ${g ? 'g' + g : ''} ${a ? 'amp' : ''} ${ui.parte === p.k ? 'sel' : ''}" data-parte="${p.k}" tabindex="0" role="button" aria-pressed="${ui.parte === p.k}" aria-label="${esc(rot)}"><title>${esc(rot)}</title>${forma}${
         fs.length ? `<circle class="pb" cx="${cx}" cy="${cy}" r="7.5"/><text class="pn" x="${cx}" y="${cy}">${fs.length}</text>` : ''}</g>`;
     }).join('')}<text class="plado" x="17" y="297">dir.</text><text class="plado" x="123" y="297">esq.</text></svg>`;
+  }
+  /* A amputação da parte escolhida: o que ela é (amputada, ou junto com a de cima) e, para quem mexe no corpo, marcar
+     (pergunta antes: diz o que vai junto e quais ferimentos abertos saem) ou tirar a marca (com Desfazer). */
+  function htmlAmputacao(pc, ui, pode, lista) {
+    const R = RR(), k = ui.parte;
+    if (!k || !R.AMPUTAVEIS || R.AMPUTAVEIS.indexOf(k) < 0) return '';
+    const a = ampDe(pc)[k], nome = nomeParte(k);
+    if (a && a.de) return `<div class="ampbox" data-ampde="${esc(k)}"><span class="amptag">${esc(amputadoA(k))}</span> junto com ${esc(nomeParte(a.de).toLowerCase())}</div>`;
+    if (a) return `<div class="ampbox" data-ampsel="${esc(k)}"><span class="amptag">${esc(amputadoA(k))}</span>${a.n ? ` <span class="fernota">— ${esc(a.n)}</span>` : ''}
+      <span class="hint">um estado permanente: não conta como ferimento, e o token não mostra o sinal de ferido por ele</span>
+      ${pode ? `<button type="button" class="mini" data-ampdel="${esc(k)}" title="Tirar a marca de ${amputadoA(k)} (dá para desfazer)">Tirar a marca</button>` : ''}</div>`;
+    if (!pode) return '';
+    if (ui.ampConf !== k) return '';
+    const baixo = R.ABAIXO[k], partes = [k].concat(baixo ? [baixo] : []), saem = lista.filter(f => partes.indexOf(f.p) >= 0);
+    return `<div class="ampconf" role="group" aria-label="Confirmar a amputação">
+      <span>Marcar ${FEM[k] ? 'a' : 'o'} ${esc(nome.toLowerCase())} como ${amputadoA(k)}? É um estado permanente: não conta como ferimento, e o token não mostra o sinal de ferido por ele.${baixo ? ' ' + (FEM[baixo] ? 'A ' : 'O ') + esc(nomeParte(baixo).toLowerCase()) + ' vai junto.' : ''}${saem.length ? ' ' + (saem.length === 1 ? 'O ferimento aberto daqui sai da lista' : 'Os ' + saem.length + ' ferimentos abertos daqui saem da lista') + ' (' + saem.map(f => esc(R.textoDoFerimento(f, true))).join('; ') + ').' : ''} Dá para desfazer.</span>
+      <label class="f fnota"><span class="eyebrow">Anotação (se quiser)</span><input class="inm" data-ampnota="1" maxlength="200" placeholder="Como foi…"></label>
+      <span class="ampbts"><button type="button" class="mini primary" data-ampsim="${esc(k)}">Marcar como ${amputadoA(k)}</button><button type="button" class="mini" data-ampnao="1">Cancelar</button></span>
+    </div>`;
   }
   function htmlFerimento(pc, f, ui, pode) {
     const R = RR(), id = esc(f.id), aberto = ui.aberto === f.id && pode;
@@ -223,9 +247,11 @@ const FichasQuadros = (() => {
     const trava = ferTravado(pc), lista = feridasDe(pc), ui = uiDe(pc), pode = FichasMesa.podeEditar(pc) && (!trava || mestreAqui());
     const visiveis = ui.parte ? lista.filter(f => f.p === ui.parte) : lista;
     const pesam = lista.filter(f => f.k && f.v).length;
+    const amp = ampDe(pc), nAmp = Object.keys(amp).filter(k => !amp[k].de).length, aqui = ui.parte ? amp[ui.parte] : null;
+    const resumo = [lista.length ? plural(lista.length, 'ferimento aberto', 'ferimentos abertos') + (pesam ? ' · ' + plural(pesam, 'com penalidade somando agora', 'com penalidade somando agora') : '') : '', nAmp ? plural(nAmp, 'membro amputado', 'membros amputados') : ''].filter(Boolean).join(' · ');
     return `<div class="panel" id="painelCorpo" style="margin-bottom:18px">
       <div class="hd"><span class="eyebrow">Corpo e ferimentos</span>
-        <span class="hint" style="margin-left:8px">${lista.length ? plural(lista.length, 'ferimento aberto', 'ferimentos abertos') + (pesam ? ' · ' + plural(pesam, 'com penalidade somando agora', 'com penalidade somando agora') : '') : 'clique numa parte do corpo para marcar um ferimento'}</span>
+        <span class="hint" style="margin-left:8px">${resumo || 'clique numa parte do corpo para marcar um ferimento'}</span>
         <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
           ${mestreAqui() ? `<button type="button" class="mini ${trava ? 'on' : ''}" data-fertrava="1" aria-pressed="${trava}" title="${trava ? 'Travado: só você põe, edita e tira ferimentos desta ficha. Clique para destravar.' : 'Travar: só você vai poder pôr, editar e tirar ferimentos desta ficha.'}">${LACRE} ${trava ? 'Travado' : 'Travar'}</button>`
             : trava ? `<span class="tagseg" title="Só o mestre põe, edita e tira ferimentos desta ficha">${LACRE} travado pelo mestre</span>` : ''}
@@ -238,8 +264,10 @@ const FichasQuadros = (() => {
           <div class="ferhd">
             <span class="fertit">${ui.parte ? esc(nomeParte(ui.parte)) : 'Todos os ferimentos'}</span>
             ${ui.parte ? '<button type="button" class="mini" data-fertodos="1">Ver todos</button>' : ''}
-            ${pode ? `<button type="button" class="mini primary" data-fernovo="1" style="margin-left:auto" ${ui.parte ? '' : 'disabled title="Escolha antes uma parte do corpo, no boneco"'}>+ Ferimento</button>` : ''}
+            ${pode && ui.parte && !aqui && RR().AMPUTAVEIS && RR().AMPUTAVEIS.indexOf(ui.parte) >= 0 ? `<button type="button" class="mini" data-ampini="${esc(ui.parte)}" style="margin-left:auto" aria-expanded="${ui.ampConf === ui.parte}" title="Marcar este membro como ${amputadoA(ui.parte)}: um estado permanente, que não é ferimento (pergunta antes)">${FEM[ui.parte] ? 'Amputada…' : 'Amputado…'}</button>` : ''}
+            ${pode ? `<button type="button" class="mini primary" data-fernovo="1" style="margin-left:${pode && ui.parte && !aqui && RR().AMPUTAVEIS && RR().AMPUTAVEIS.indexOf(ui.parte) >= 0 ? '0' : 'auto'}" ${!ui.parte ? 'disabled title="Escolha antes uma parte do corpo, no boneco"' : aqui && aqui.de ? 'disabled title="Esta parte foi amputada junto com a de cima"' : ''}>+ Ferimento</button>` : ''}
           </div>
+          ${htmlAmputacao(pc, ui, pode, lista)}
           ${visiveis.length ? `<div class="ferlist">${visiveis.map(f => htmlFerimento(pc, f, ui, pode)).join('')}</div>`
             : `<div class="hint">${ui.parte ? 'Nenhum ferimento aqui.' + (pode ? ' Use “+ Ferimento” para marcar um.' : '') : 'Sem ferimentos. Clique numa parte do boneco para escolher onde, e então em “+ Ferimento”.'}</div>`}
           ${pesam ? '<div class="hint fernota2">A penalidade de um ferimento conta nos atributos enquanto ele estiver aberto (aparece na coluna “Temp.”). “Curado” tira o ferimento e a penalidade.</div>' : ''}
@@ -267,17 +295,42 @@ const FichasQuadros = (() => {
     });
     U().qa(painel, '[data-corpo]').forEach(b => b.onclick = () => {
       if (b.dataset.corpo === 'usar') { pc.usaCorpo = 1; guardar(); return; }
-      const antes = { usa: pc.usaCorpo, fer: pc.estado && pc.estado.fer };
-      delete pc.usaCorpo; if (pc.estado) delete pc.estado.fer;
+      const antes = { usa: pc.usaCorpo, fer: pc.estado && pc.estado.fer, amp: pc.estado && pc.estado.amp };
+      delete pc.usaCorpo; if (pc.estado) { delete pc.estado.fer; delete pc.estado.amp; }
       guardar(null, true);
-      aviso('O corpo e os ferimentos saíram desta ficha.', 'Desfazer', () => { if (antes.usa) pc.usaCorpo = antes.usa; if (antes.fer) U().estadoDe(pc).fer = antes.fer; if (!antes.usa && !antes.fer) pc.usaCorpo = 1; guardar(null, true); });
+      aviso('O corpo e os ferimentos saíram desta ficha.', 'Desfazer', () => { if (antes.usa) pc.usaCorpo = antes.usa; if (antes.fer) U().estadoDe(pc).fer = antes.fer; if (antes.amp) U().estadoDe(pc).amp = antes.amp; if (!antes.usa && !antes.fer && !antes.amp) pc.usaCorpo = 1; guardar(null, true); });
     });
-    const escolher = k => { ui.parte = ui.parte === k ? null : k; ui.aberto = null; pintar('[data-parte="' + k + '"]'); };
+    // a amputação: perguntar (com o que vai junto e os ferimentos que saem), marcar, tirar a marca — tudo com Desfazer
+    const copiaJ = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+    const repor = antes => { const e = U().estadoDe(pc); if (antes.amp === undefined) delete e.amp; else e.amp = antes.amp; if (antes.fer === undefined) delete e.fer; else e.fer = antes.fer; guardar(null, true); };
+    U().qa(painel, '[data-ampini]').forEach(b => b.onclick = () => { const k = b.dataset.ampini; ui.ampConf = ui.ampConf === k ? null : k; pintar(ui.ampConf ? '[data-ampnota]' : '[data-ampini]'); });
+    U().qa(painel, '[data-ampnao]').forEach(b => b.onclick = () => { ui.ampConf = null; pintar('[data-ampini]'); });
+    U().qa(painel, '[data-ampsim]').forEach(b => b.onclick = () => {
+      const k = b.dataset.ampsim, R = RR(); if (!R.AMPUTAVEIS || R.AMPUTAVEIS.indexOf(k) < 0) return;
+      const e = U().estadoDe(pc), antes = { amp: copiaJ(e.amp), fer: copiaJ(e.fer) };
+      const nota = ((U().q(painel, '[data-ampnota]') || {}).value || '').trim().slice(0, 200);
+      const partes = [k].concat(R.ABAIXO[k] ? [R.ABAIXO[k]] : []);
+      e.amp = Object.assign({}, e.amp && typeof e.amp === 'object' ? e.amp : {}, { [k]: nota ? { c: Date.now(), n: nota } : { c: Date.now() } });
+      let saiu = 0;
+      if (e.fer && typeof e.fer === 'object') for (const id of Object.keys(e.fer)) if (e.fer[id] && partes.indexOf(e.fer[id].p) >= 0) { delete e.fer[id]; saiu++; }
+      ui.ampConf = null; ui.aberto = null;
+      guardar(null, true);
+      aviso((FEM[k] ? 'A ' : 'O ') + nomeParte(k).toLowerCase() + ' de ' + (pc.nome || 'quem joga') + ' ficou marcad' + (FEM[k] ? 'a' : 'o') + ' como ' + amputadoA(k) + (saiu ? (saiu === 1 ? '; o ferimento aberto dali saiu' : '; os ' + saiu + ' ferimentos abertos dali saíram') : '') + '.', 'Desfazer', () => repor(antes));
+    });
+    U().qa(painel, '[data-ampdel]').forEach(b => b.onclick = () => {
+      const k = b.dataset.ampdel, e = U().estadoDe(pc); if (!e.amp || !e.amp[k]) return;
+      const antes = { amp: copiaJ(e.amp), fer: copiaJ(e.fer) };
+      const amp = Object.assign({}, e.amp); delete amp[k];
+      if (Object.keys(amp).length) e.amp = amp; else delete e.amp;
+      guardar(null, true);
+      aviso('A marca de ' + amputadoA(k) + ' saiu d' + (FEM[k] ? 'a ' : 'o ') + nomeParte(k).toLowerCase() + '.', 'Desfazer', () => repor(antes));
+    });
+    const escolher = k => { ui.parte = ui.parte === k ? null : k; ui.aberto = null; ui.ampConf = null; pintar('[data-parte="' + k + '"]'); };
     U().qa(painel, '[data-parte]').forEach(g => {
       g.onclick = () => escolher(g.dataset.parte);
       g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolher(g.dataset.parte); } };
     });
-    U().qa(painel, '[data-fertodos]').forEach(b => b.onclick = () => { ui.parte = null; ui.aberto = null; pintar(); });
+    U().qa(painel, '[data-fertodos]').forEach(b => b.onclick = () => { ui.parte = null; ui.aberto = null; ui.ampConf = null; pintar(); });
     U().qa(painel, '[data-fernovo]').forEach(b => b.onclick = () => {
       if (!ui.parte) return;
       const id = 'f' + uid(); fer()[id] = { p: ui.parte, t: 'corte', g: 1, c: Date.now() }; ui.aberto = id;

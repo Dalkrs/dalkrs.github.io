@@ -53,6 +53,12 @@ for (const modo of ['floor', 'round', 'ceil', 'none']) {
         if (y.BLQ !== 0) ok(false, `(${modo}) personagem ${i}, campo ${k}: o bloqueio de quem não tem bloqueio devia ser 0 (veio ${y.BLQ})`);
         y = Object.assign({}, y); delete y.BLQ;
       }
+      // o Embate (lote 6) também não existe na original: nos secundários ele é VIT/2, para baixo, + BLOQ (0 nas sorteadas)
+      if (x && typeof x === 'object' && !Array.isArray(x) && y && typeof y === 'object' && 'EMB' in y && !('EMB' in x)) {
+        const esperado = k === 'der' ? Math.floor(b.base.VIT / 2) : k === 'derAnt' ? Math.floor(b.ant.VIT / 2) : 0;
+        if (y.EMB !== esperado) ok(false, `(${modo}) personagem ${i}, campo ${k}: o Embate devia ser ${esperado} (veio ${y.EMB})`);
+        y = Object.assign({}, y); delete y.EMB;
+      }
       ok(j(x) === j(y),`(${modo}) personagem ${i}, campo ${k}: original ${j(x).slice(0, 160)} · novo ${j(y).slice(0, 160)}`);
     }
     ok(O.somaPercentuaisUsados(clone(p)) === R.somaPercentuaisUsados(clone(p), cfg), `(${modo}) personagem ${i}: soma dos percentuais`);
@@ -123,7 +129,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const c3 = R.calcular(p3, cfg0);
   ok(c3.recursos[0].val === 130 && c3.recursos[0].max === 130 && c3.recursos[0].eq === 30 && c3.recursos[2].max === 25 && c3.recursos[1].eq === 0, 'itens equipados somam no máximo da barra (HP 100 + 25 + 5; o desequipado não) — ' + j(c3.recursos.map(r => r.max)));
   ok(c3.defEsp.FOGO === 15 && c3.defEsp.GELO === 1 && c3.defEsp.CORTE === 4 && c3.defEsp.LUZ === 0 && c3.eqEsp.FOGO === 5 && c3.baseEsp.FOGO === 10 && Object.keys(c3.defEsp).length === 13, 'defesas específicas: a digitada mais a dos itens equipados — ' + j(c3.defEsp));
-  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 11, 'o bônus de sempre dos itens continua com as onze chaves (as dez de antes e o Bloqueio)');
+  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 12, 'o bônus de sempre dos itens continua com as doze chaves (as dez de antes, o Bloqueio e o Embate)');
   ok(c3.vars.DEF_FOGO === 15 && R.valorDoAtributo(c3, 'FOGO') === 15 && R.ehDefesaEsp('PSI') && !R.ehDefesaEsp('DFF'), 'a defesa específica vira variável (DEF_FOGO) e pode ser rolada');
   // sem fórmula, a barra continua sem valor (o item não inventa um)
   const p4 = base(); p4.recursos.push({ id: 'vazia', nome: 'Vazia', fml: '' }); p4.itens = [{ id: 'i', bonus: {}, rec: { vazia: 10 } }];
@@ -154,8 +160,8 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   {
     const todos = { a: { n: 'Banquete', k: 'ATR', v: 2, t: 1 }, b: { n: 'Força', k: 'FOR', v: 3, t: 2 }, c: { n: 'minúscula', k: 'atr', v: 1, t: 3 }, d: { n: 'desligado', k: 'ATR', v: 50, off: true, t: 4 } };
     const Tt = R.temporarios(todos), c0t = R.calcular(pv, cfg0), c1t = R.calcular(pv, cfg0, { temp: todos });
-    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 11 && R.CHAVES_BONUS[10] === 'BLQ', 'a chave "todos os atributos" existe à parte das onze de sempre (o Bloqueio é a última)');
-    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, DFF: 0, DFM: 0, BLQ: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
+    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 12 && R.CHAVES_BONUS[8] === 'EMB' && R.CHAVES_BONUS[11] === 'BLQ', 'a chave "todos os atributos" existe à parte das doze de sempre (o Embate com os secundários; o Bloqueio é a última)');
+    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, EMB: 0, DFF: 0, DFM: 0, BLQ: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
     ok(R.ATRIBS.every(a => c1t.tot[a.k] === c0t.tot[a.k] + (a.k === 'FOR' ? 6 : 3) && c1t.base[a.k] === c0t.base[a.k]) && c1t.der.ESQ === c0t.der.ESQ && c1t.def.DFF === c0t.def.DFF && c1t.vars.DES_TMP === 3, 'na ficha: cada atributo sobe o seu tanto, a base não muda, derivados e defesas ficam como estavam');
     ok(c1t.recursos[0].max === c0t.recursos[0].max + 30, 'e as barras que dependem de um atributo acompanham (HP = VIT*10 sobe 30)');
     const ft = R.ferimentos({ x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } }), cft = R.calcular(pv, cfg0, { fer: { x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } } });
@@ -352,12 +358,55 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
 // ---------- barras especiais (os antigos poderes divinos), no estado ----------
 {
   const f = { poderes: [{ id: 'a', nome: 'Fé', max: 3, atual: 2 }, { id: 'b', nome: '', max: 0, atual: 7 }, { id: 'c', nome: 'X', max: '4', atual: 9 }, { nome: 'sem id' }, null] };
-  ok(j(R.especiais(f, {})) === j([{ id: 'a', nome: 'Fé', atual: 2, max: 3 }, { id: 'b', nome: 'Barra especial', atual: 7, max: 0 }, { id: 'c', nome: 'X', atual: 4, max: 4 }]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
+  const lg = { rec: 'longo', qc: 1, ql: 2 };
+  ok(j(R.especiais(f, {})) === j([Object.assign({ id: 'a', nome: 'Fé', atual: 2, max: 3 }, lg), Object.assign({ id: 'b', nome: 'Barra especial', atual: 7, max: 0 }, lg), Object.assign({ id: 'c', nome: 'X', atual: 4, max: 4 }, lg)]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
   ok(R.especiais(f, { pd: { a: 0, b: 12 } })[0].atual === 0 && R.especiais(f, { pd: { a: 0, b: 12 } })[1].atual === 12, 'o estado manda quando tem o valor');
   const e1 = R.mudarEspecial({ rec: { hp: 3 } }, 'a', 9, 3), e2 = R.mudarEspecial(e1, 'b', -4, 0);
   ok(e1.pd.a === 3 && e1.rec.hp === 3 && e2.pd.b === 0 && e2.pd.a === 3, 'mudar: preso entre 0 e o limite (sem limite, só não fica negativo); o resto do estado fica');
   ok(e1.pd.b === undefined && e2 !== e1 && e2.pd !== e1.pd, 'mudar devolve um estado novo: o recebido não muda');
   ok(R.especiais(f, { pd: { a: -2 } })[0].atual === 0 && R.especiais({ poderes: [{ id: 'z', max: 0, atual: -5 }] }, {})[0].atual === 0, 'valor negativo (no estado ou na ficha) fica em 0');
+  // (lote 6) a regra de recuperação de cada barra: o padrão é encher no descanso longo (o que valia antes para todas)
+  const rg = R.especiais({ poderes: [{ id: 'q', max: 9, rec: 'quantia', qc: '3', ql: 5.6 }, { id: 'w', max: 2, rec: 'qualquer' }, { id: 'm', max: 2, rec: 'manual' }, { id: 'x', max: 2, rec: 'toString' }, { id: 'n', max: 2, rec: 'quantia', qc: -4, ql: 'a' }] }, {});
+  ok(j(rg.map(b => [b.rec, b.qc, b.ql])) === j([['quantia', 3, 6], ['qualquer', 1, 2], ['manual', 1, 2], ['longo', 1, 2], ['quantia', 0, 0]]), 'rec, qc e ql saem arrumados (regra desconhecida vira "longo"; quantia inteira, de 0 a 999): ' + j(rg.map(b => [b.rec, b.qc, b.ql])));
+  ok(R.REC_ESPECIAL.map(r => r.k).join() === 'longo,qualquer,quantia,manual' && Object.isFrozen(R.REC_ESPECIAL) && Object.isFrozen(R.REC_ESPECIAL[0]), 'as quatro regras, nesta ordem (e ninguém as altera por engano)');
+  ok(j(rg.map(R.textoRecEspecial)) === j(['+3 no descanso curto · +6 no longo', 'enche em qualquer descanso', 'só à mão (o descanso não mexe nela)', 'enche no descanso longo', 'o descanso não devolve nada'])
+    && R.textoRecEspecial({ rec: 'quantia', qc: 0, ql: 4 }) === '+4 no descanso longo' && R.textoRecEspecial({ rec: 'quantia', qc: 2, ql: 0 }) === '+2 no descanso curto' && R.textoRecEspecial({}) === 'enche no descanso longo', 'cada regra por extenso');
+}
+// ---------- a amputação (lote 6): um estado permanente do membro, à parte dos ferimentos ----------
+{
+  const a = R.amputados({ amp: { bracoE: { c: 5, n: 'na batalha do vau' }, pernaD: 1, cabeca: { c: 1 }, peD: { c: 9 }, maoD: 0, toString: { c: 1 } } });
+  ok(j(Object.keys(a).sort()) === j(['bracoE', 'maoE', 'pernaD', 'peD'].sort()), 'só membros contam (a cabeça não; marca vazia não); sem o braço, sem a mão: ' + j(Object.keys(a)));
+  ok(a.bracoE.n === 'na batalha do vau' && a.bracoE.c === 5 && a.bracoE.de === null && a.maoE.de === 'bracoE' && a.maoE.c === 5 && a.pernaD.de === null && a.pernaD.c === 0 && a.peD.de === null && a.peD.c === 9,
+    'a anotação e o quando ficam; a parte de baixo diz de onde veio (o pé marcado sozinho continua dele)');
+  ok(j(R.amputados({})) === '{}' && j(R.amputados(null)) === '{}' && j(R.amputados({ amp: [1] })) === '{}', 'sem nada: nenhum');
+  ok(R.AMPUTAVEIS.length === 8 && Object.isFrozen(R.AMPUTAVEIS) && R.ABAIXO.pernaE === 'peE', 'os oito membros, e o que vai junto com cada um');
+  const s = R.sinalDeFerido({}), c = R.calcular({ id: 'z', nome: 'Z', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, defesas: {}, itens: [], recursos: [] }, cfg0, { fer: {} });
+  ok(s.n === 0 && c.ferimentos.length === 0, 'amputação não é ferimento: o token não ganha o sinal de ferido e as contas não mudam');
+}
+// ---------- grupos de troca dos equipamentos (lote 6): equipar um guarda os outros do mesmo grupo ----------
+{
+  const itens = [{ id: 'e1', nome: 'Espada de gelo I', troca: 'Espada de gelo', equipado: true, bonus: { FOR: 2 } }, { id: 'e2', nome: 'Espada de gelo II', troca: ' espada de GELO ', equipado: false },
+    { id: 'e3', nome: 'Espada de gelo III', troca: 'Espáda de gelo', equipado: true }, { id: 'el', nome: 'Elmo', equipado: true }, { id: 'ar', nome: 'Arco', troca: 'Arma', equipado: true }, null];
+  const r = R.equiparItem(itens, 'e2', true);
+  ok(j(r.guardados) === j(['e1', 'e3']) && r.itens[1].equipado === true && r.itens[0].equipado === false && r.itens[2].equipado === false, 'equipar a II guarda a I e a III (o mesmo grupo, sem diferença de maiúsculas, espaços e acentos)');
+  ok(r.itens[3] === itens[3] && r.itens[4] === itens[4] && r.itens[5] === null && r.itens[3].equipado && r.itens[4].equipado, 'os sem grupo e os de outro grupo não mudam (nem viram cópia)');
+  ok(itens[0].equipado === true && itens[1].equipado === false && r.itens !== itens && r.itens[0] !== itens[0] && r.itens[0].bonus === itens[0].bonus, 'o recebido não muda: os itens que mudam são cópias');
+  const d = R.equiparItem(itens, 'e1', false);
+  ok(j(d.guardados) === j([]) && d.itens[0].equipado === false && d.itens[2].equipado === true, 'desequipar não mexe nos outros');
+  const s = R.equiparItem(itens, 'el', true), x = R.equiparItem(itens, 'nada', true);
+  ok(j(s.guardados) === j([]) && s.itens[3].equipado === true && j(x.guardados) === j([]) && x.itens.length === itens.length && x.itens !== itens, 'item sem grupo: só ele; id que não existe: nada muda');
+  ok(R.grupoDeTroca({ troca: '  Arma principal ' }) === 'Arma principal' && R.grupoDeTroca({}) === '' && R.grupoDeTroca(null) === '' && R.grupoDeTroca({ troca: 'x'.repeat(60) }).length === 40, 'o nome do grupo, arrumado (até 40 letras)');
+  ok(j(R.equiparItem(null, 'a', true)) === j({ itens: [], guardados: [] }), 'sem lista: nada');
+}
+// ---------- a fadiga (lote 6): uma pilha de 5 a 0, no estado ----------
+{
+  ok(R.FAD_MAX === 5 && R.FADIGA.length === 6 && R.FADIGA[5] === 'Descansado' && R.FADIGA[0] === 'Esgotado' && Object.isFrozen(R.FADIGA), 'a pilha vai de 0 (Esgotado) a 5 (Descansado)');
+  ok(R.fadiga({}) === 5 && R.fadiga(null) === 5 && R.fadiga({ fad: 2 }) === 2 && R.fadiga({ fad: 9 }) === 5 && R.fadiga({ fad: -3 }) === 0 && R.fadiga({ fad: '3.6' }) === 4 && R.fadiga({ fad: 'x' }) === 5 && R.fadiga({ fad: 0 }) === 0,
+    'sem nada anotado, cheia; fora da faixa, presa entre 0 e 5 (e o 0 vale: esgotado)');
+  const e0 = { rec: { hp: 3 } }, e1 = R.mudarFadiga(e0, 1), e2 = R.mudarFadiga(e1, 12), e3 = R.mudarFadiga(e1, -1);
+  ok(e1.fad === 1 && e2.fad === 5 && e3.fad === 0 && e1.rec.hp === 3 && e0.fad === undefined && e1 !== e0, 'mudar: devolve um estado novo, com a pilha presa entre 0 e 5 (o resto fica)');
+  ok(R.usaFadiga({}, true) && !R.usaFadiga({}, false) && R.usaFadiga({ fad: 0 }, false) && !R.usaFadiga({ fad: null }, false) && !R.usaFadiga(null, false) && !R.usaFadiga({ fad: 'x' }, false),
+    'em uso: na ficha de um jogador, ou com a fadiga anotada (0 também conta)');
 }
 // ---------- o Bloqueio (lote 5): valor próprio + itens, árvore e bônus; rola como a Esquiva ----------
 {
@@ -370,6 +419,12 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const sem = R.calcular(Object.assign({}, pb, { defesas: { DFF: 2, DFM: 1 }, itens: [] }), cfg0);
   ok(sem.def.BLQ === 0 && sem.vars.BLQ === 0, 'ficha antiga, sem bloqueio: vale 0 (e nada é gravado nela)');
   ok(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def.BLQ === 10, 'o resumo (o que as outras abas leem) traz o bloqueio — ' + j(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def));
+  // o Embate (lote 6): VIT/2 (da base, para baixo) + o Bloqueio inteiro; é um secundário — rola, recebe bônus e vira variável
+  const vit = cb.base.VIT;
+  ok(cb.der.EMB === Math.floor(vit / 2) + 14 && R.ehDerivado('EMB') && R.NOMES.EMB === 'Embate' && R.valorDoAtributo(cb, 'EMB') === cb.der.EMB, 'Embate = VIT ' + vit + '/2, para baixo (' + Math.floor(vit / 2) + '), + o Bloqueio (14) = ' + cb.der.EMB);
+  const ce = R.calcular(Object.assign({}, pb, { itens: pb.itens.concat({ id: 'm', nome: 'Manopla', equipado: true, bonus: { EMB: 2 } }), recursos: [{ id: 'r', nome: 'R', fml: 'EMB + EMBATE + EMB_B' }] }), cfg0, { arvore: { BLQ: 2 }, temp: { t1: { n: 'Poção de pedra', k: 'BLQ', v: 4 } } });
+  ok(ce.der.EMB === cb.der.EMB + 2 && ce.eq.EMB === 2 && ce.recursos[0].val === 2 * ce.der.EMB + cb.der.EMB, 'um item com Embate +2 soma nele, e ele vira variável (EMB, EMBATE, EMB_B) — ' + ce.recursos[0].val);
+  ok(R.calcular(Object.assign({}, pb, { tiers: { FOR: 'E', DES: 'E', AGI: 'E', VIT: 'A', CAN: 'E' }, defesas: {} , itens: [] }), cfg0).der.EMB % 1 === 0, 'sempre um número inteiro');
   ok(R.evalFormula('BLOQUEIO + BLOQ + BLQ_ARV + BLQ_TMP', cb.vars) === 34, 'nas fórmulas, o nome por extenso também vale (BLOQUEIO, BLOQ), e há o pedaço da árvore e o do bônus');
 }
 // carrega também como script de página

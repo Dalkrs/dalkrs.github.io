@@ -56,8 +56,8 @@ const somFalso = () => {
   ok(await ate(() => M.evaluate(() => TC.dados.pendentes === 0)), '(as fichas sobem para a mesa)');
 
   // ---------- a telinha do jogador ----------
-  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 12)), 'o mestre entrega uma ficha: a telinha de dados aparece para o jogador, sem recarregar');
-  const esperado = (() => { const cc = R.calcular(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}); const o = {}; for (const k of ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ']) o[k] = String(Math.round(R.valorDoAtributo(cc, k, 'total'))); o.INI = '1d20 + ' + R.iniciativa(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}).val; return o; })();
+  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 13)), 'o mestre entrega uma ficha: a telinha de dados aparece para o jogador, sem recarregar');
+  const esperado = (() => { const cc = R.calcular(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}); const o = {}; for (const k of ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ']) o[k] = String(Math.round(R.valorDoAtributo(cc, k, 'total'))); o.INI = '1d20 + ' + R.iniciativa(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}).val; return o; })();
   const vistos = await botoes(J);
   ok(JSON.stringify(vistos) === JSON.stringify(esperado), 'os números são os da ficha (as mesmas contas): ' + JSON.stringify(vistos) + ' × ' + JSON.stringify(esperado));
   ok(await J.evaluate(() => !document.getElementById('dadosCorpo').hidden && document.getElementById('dadosFixa').value === '5' && [...document.querySelectorAll('#dadosPc option')].map(o => o.textContent).join() === 'Selene' && document.getElementById('dadosQuem').textContent.includes('Selene')),
@@ -114,7 +114,7 @@ const somFalso = () => {
 
   // ---------- recarregando, a telinha lembra o que a pessoa deixou ----------
   await J.reload({ waitUntil: 'load' });
-  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 12 && document.getElementById('dadosFixa').value === '3'), 30000), 'depois de recarregar, a telinha volta com a fixa que o jogador tinha deixado (3)');
+  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 13 && document.getElementById('dadosFixa').value === '3'), 30000), 'depois de recarregar, a telinha volta com a fixa que o jogador tinha deixado (3)');
 
   // ---------- as Cenas do mestre: a iniciativa do jogador pode ser anotada na ordem de turnos ----------
   await M.locator('#tab-cenas').click();

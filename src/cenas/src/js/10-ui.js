@@ -1372,10 +1372,12 @@ const UI = (() => {
 
   // No painel do token: os ferimentos abertos do personagem (marcados na ficha), para quem recebe a ficha.
   function feridasLista(t) {
-    const fs = Fichas.feridas(t);
-    if (!fs.length) return null;
+    const fs = Fichas.feridas(t), amp = Fichas.amputados(t);
+    if (!fs.length && !amp.length) return null;
     const R = window.TC.rules;
-    return [h('ul', { class: 'ferl', id: 'tk-feridas' }, ...fs.map(f => h('li', { class: 'ferl-i g' + f.g }, h('span', { class: 'ferl-d', 'aria-hidden': 'true' }), h('span', { text: R.textoDoFerimento(f) + (f.n ? ' — ' + f.n : '') })))),
+    return [fs.length ? h('ul', { class: 'ferl', id: 'tk-feridas' }, ...fs.map(f => h('li', { class: 'ferl-i g' + f.g }, h('span', { class: 'ferl-d', 'aria-hidden': 'true' }), h('span', { text: R.textoDoFerimento(f) + (f.n ? ' — ' + f.n : '') })))) : null,
+      // (os membros amputados: um estado permanente, que não é ferimento — o token não ganha o sinal de ferido por eles)
+      amp.length ? h('p', { class: 'note', id: 'tk-amp' }, 'Amputado: ' + amp.map(a => a.nome.toLowerCase() + (a.n ? ' (' + a.n + ')' : '')).join(', ') + '.') : null,
       note('Os ferimentos são marcados e tratados na ficha, no quadro “Corpo” (dois cliques no token abrem a ficha).')];
   }
 
@@ -1390,6 +1392,7 @@ const UI = (() => {
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, condActive(t, canC), canC ? condGrid([t]) : t.conds.length ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
+        mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
         Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
         mine && can('auras', t) ? sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)) : null,
@@ -1410,6 +1413,7 @@ const UI = (() => {
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       menteBox(t),
+      fadigaBox(t),
       numsBox(t, true),
       sec('s-cond', 'Condições', true, condActive(t, true), condGrid([t])),
       sec('s-turn', 'Turnos', true,
@@ -1485,6 +1489,27 @@ const UI = (() => {
         onclick: () => { const cur = Fichas.mente(t); if (cur) mudarMente(t, k, cur[k] + d); } }))));
     return sec('s-mente', 'Sanidade e Conforto', true, linha('san', 'Sanidade'), linha('conf', 'Conforto'),
       note('Da ficha, de 0 a 100. Só você vê: no token aparecem tracejadas, e os jogadores não as recebem (nem o dono). Mudar aqui grava na ficha.'));
+  }
+  /* A fadiga da ficha (a pilha de 5 a 0): o mestre e o dono do personagem mudam aqui, de um em um; grava na ficha.
+     No token, a pilha aparece para todos. */
+  function fadigaBox(t) {
+    const f = Fichas.fadiga(t);
+    if (!f) return null;
+    const passo = d => h('button', { type: 'button', class: 'mini-b', id: 'tk-fad-' + (d > 0 ? 'p' : 'm'), text: d > 0 ? '+1' : '−1', disabled: d > 0 ? f.v >= 5 : f.v <= 0,
+      title: d > 0 ? 'Um a mais na pilha (mais descansado)' : 'Um a menos na pilha (mais cansado)', onclick: () => { const cur = Fichas.fadiga(t); if (cur) mudarFadiga(t, cur.v + d); } });
+    return sec('s-fad', 'Fadiga', true,
+      h('div', { class: 'mente-r' }, h('span', { class: 'mente-n' }, h('span', { id: 'tk-fad', text: f.v + ' de 5 · ' + f.nome })), h('span', { class: 'mente-b' }, passo(-1), passo(1))),
+      note('Da ficha: a pilha vai de 5 (descansado) a 0 (esgotado), e todos a veem no token. O descanso longo do Acampamento enche; o curto devolve um.'));
+  }
+  const fadSerie = new Map();
+  function mudarFadiga(t, v) {
+    const s0 = fadSerie.get(t.id), agora = Date.now();
+    const antes = Fichas.mudarFadiga(t, v);
+    if (antes == null) return;
+    const base = s0 && agora - s0.at < 6000 ? s0.antes : antes;
+    fadSerie.set(t.id, { antes: base, at: agora });
+    const depois = (Fichas.fadiga(t) || {}).v;
+    toast(`Fadiga de ${t.name}: ${base} → ${depois} de 5.`, { key: 'fad:' + t.id, action: 'Desfazer', run: () => { fadSerie.delete(t.id); Fichas.mudarFadiga(t, base); } });
   }
   /* Objetos de cenário: o que é, girar, tamanho, a luz (se tem), esconder, travar. Para o jogador, só o nome. */
   function propPanel(props) {

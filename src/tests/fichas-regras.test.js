@@ -72,6 +72,13 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok((await sel()).estado.rec.sp === 0, 'a barra sem piso continua parando em zero');
 
   // ---------- itens que somam numa barra e numa defesa ----------
+  // (lote 6) o equipamento é um cartão: a chave, o nome e só os bônus que ele tem; os números ficam em "Editar"
+  ok(await P.locator('table.items').count() === 0 && await P.locator('[data-itcard="it1"]').count() === 1 && (await P.locator('[data-itcard="it1"] .itbon').innerText()).replace(/\s+/g, ' ').trim() === 'CAN +2' && await P.locator('[data-itembon]').count() === 0,
+    'o cartão do Manto mostra só o que ele soma ("CAN +2"), sem a tabela de números: ' + await P.locator('[data-itcard="it1"] .itbon').innerText());
+  await P.locator('[data-itemed="it1"]').click(); await w(300);
+  ok(await P.locator('[data-itcard="it1"] [data-itembon]').count() === 12 && await P.locator('[data-itembon="it1|EMB"]').count() === 1 && await P.locator('[data-itemed="it1"]').innerText() === 'Fechar', '"Editar" abre os doze números (atributos, secundários com o Embate, defesas)');
+  await P.locator('[data-itembon="it1|DFF"]').fill('3'); await P.locator('[data-itembon="it1|DFF"]').press('Tab'); await w(350);
+  ok((await sel()).itens[0].bonus.DFF === 3 && /CAN \+2\s*·\s*DEF F \+3/.test(await P.locator('[data-itcard="it1"] .itbon').innerText()) && /DEF F \+3/.test(await P.locator('#itTotal').innerText()), 'mudar um número: o cartão e o "Em uso somam" acompanham');
   await P.locator('[data-itmais="it1"]').selectOption('rec:hp'); await w(300);
   await P.locator('[data-itx="rec"][data-ch="hp"]').fill('25'); await P.locator('[data-itx="rec"][data-ch="hp"]').press('Tab'); await w(350);
   c = await calc();
@@ -84,6 +91,43 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   c = await calc();
   ok(c.rec[0].max === 100 && c.defEsp.GELO === 0, 'desequipado, o item deixa de somar na barra e na defesa');
   await P.locator('[data-itemon="it1"]').check(); await w(300);
+  ok(/HP \+25/.test(await P.locator('[data-itcard="it1"] .itbon').innerText()) && /Def\. Gelo \+5/.test(await P.locator('[data-itcard="it1"] .itbon').innerText()), 'o cartão mostra também a barra e a defesa específica que o item soma');
+
+  // ---------- (lote 6) a relíquia e os grupos de troca ----------
+  await P.locator('[data-itembon="it1|DFF"]').fill('0'); await P.locator('[data-itembon="it1|DFF"]').press('Tab'); await w(300);
+  await P.locator('[data-itemrel="it1"]').check(); await w(300);
+  ok((await sel()).itens[0].reliquia === true && await P.locator('[data-itcard="it1"].rel .itrel').count() === 1, 'relíquia: o cartão fica dourado, com o ícone (e nada nas contas muda)');
+  await P.locator('[data-itemtroca="it1"]').fill('Manto'); await P.locator('[data-itemtroca="it1"]').press('Tab'); await w(300);
+  await P.locator('[data-itemed="it1"]').click(); await w(250);
+  for (const nome of ['Manto da Brasa', 'Manto do Vento']) {
+    await P.locator('#painelItens [data-act="additem"]').click(); await w(300);
+    ok(await P.evaluate(() => document.activeElement && 'itemnome' in document.activeElement.dataset), '"+ Item": o cartão novo vem aberto, com o cursor no nome');
+    await P.keyboard.type(nome); await w(200);
+    const id = await P.evaluate(() => document.activeElement.dataset.itemnome);
+    await P.locator('[data-itemtroca="' + id + '"]').fill(nome === 'Manto da Brasa' ? ' manto ' : 'MANTO'); await P.locator('[data-itemtroca="' + id + '"]').press('Tab'); await w(300);
+    await P.locator('[data-itemed="' + id + '"]').click(); await w(250);
+  }
+  let it = (await sel()).itens;
+  ok(it.length === 3 && it.every(x => x.equipado !== false) && /mais de um item equipado/.test(await P.locator('.itdobro').innerText()), 'três mantos no grupo, todos equipados: um aviso calmo, sem mexer em nada');
+  ok(await P.locator('[data-itcard] .ittroca').count() === 3 && await P.locator('#gruposTroca option').count() >= 1, 'cada cartão mostra o grupo de troca dele; o campo sugere os grupos que já existem');
+  await P.locator('[data-itemon="' + it[1].id + '"]').uncheck(); await w(250);
+  await P.locator('[data-itemon="' + it[1].id + '"]').check(); await w(350);
+  it = (await sel()).itens;
+  ok(it[1].equipado === true && it[0].equipado === false && it[2].equipado === false && /Manto da Brasa equipado; Manto da Geada e Manto do Vento foram guardados \(mesmo grupo de troca: manto\)/.test(await toast()), 'equipar a Brasa guarda a Geada e o Vento (o mesmo grupo, sem diferença de maiúsculas e espaços): ' + await toast());
+  ok(await P.locator('[data-itcard="it1"].guardado').count() === 1 && await P.locator('.itdobro').count() === 0 && (await calc()).tot.CAN === (await S0(() => calcular(S.personagens.find(x => x.id === 'pc_sel')).base.CAN)), 'o cartão guardado fica apagado, o aviso sai e o +2 do Manto da Geada deixa de somar');
+  await P.locator('.toast button').last().click(); await w(350);
+  it = (await sel()).itens;
+  ok(it[0].equipado !== false && it[1].equipado === false && it[2].equipado !== false, 'Desfazer: tudo volta como estava antes de equipar a Brasa (ela guardada, os outros dois equipados)');
+  await P.locator('[data-itemdel="' + it[2].id + '"]').click(); await w(300);
+  ok((await sel()).itens.length === 2 && /saiu da ficha/.test(await toast()), 'tirar um item avisa, com Desfazer');
+  await P.locator('.toast button').last().click(); await w(300);
+  ok((await sel()).itens.length === 3 && (await sel()).itens[2].nome === 'Manto do Vento', 'e o Desfazer o traz de volta, no mesmo lugar');
+  await P.locator('[data-itemdel="' + it[2].id + '"]').click(); await w(200);
+  await P.locator('[data-itemdel="' + it[1].id + '"]').click(); await w(200);
+  await P.locator('[data-itemed="it1"]').click(); await w(250);
+  await P.locator('[data-itemrel="it1"]').uncheck(); await P.locator('[data-itemtroca="it1"]').fill(''); await P.locator('[data-itemtroca="it1"]').press('Tab'); await w(300);
+  await P.locator('[data-itemed="it1"]').click(); await w(250);
+  ok((await sel()).itens.length === 1 && !(await sel()).itens[0].reliquia && !('troca' in (await sel()).itens[0]) && (await sel()).itens[0].equipado !== false, '(de volta: só o Manto da Geada, equipado, sem relíquia nem grupo)');
 
   // ---------- a aba Defesas ----------
   await P.locator('[data-abaatr="def"]').click(); await w(300);

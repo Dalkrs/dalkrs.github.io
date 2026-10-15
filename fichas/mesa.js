@@ -39,8 +39,12 @@ const FichasMesa = (() => {
      de jogador, esteja ele mestrando ou jogando. (Uma casca de antes do mestre auxiliar não diz o cargo: vale o papel.) */
   const jogadorDaMesa = m => !!m && (m.cargo ? m.cargo !== 'mestre' : m.papel === 'jogador');
   const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && jogadorDaMesa(m));
-  // ficha de jogador: controlada por alguém da mesa que não é o mestre
-  const deJogador = pc => ativo && !!pc && ehJogador(pc._dono);
+  /* Pet (lote 6): a ficha suplementar de um personagem (ficha.petDe: o id dele). Quem controla o dono controla o pet;
+     o pet fica na campanha do dono. É como a ficha de um NPC — atributos à mão, barras, habilidades —, sem bolsa e sem
+     o que a ficha de jogador liga sozinha (Sanidade, corpo, fadiga, relacionamentos). */
+  const ehPet = pc => !!(pc && pc.petDe);
+  // ficha de jogador: controlada por alguém da mesa que não é o mestre (o pet de um jogador não conta: é suplementar)
+  const deJogador = pc => ativo && !!pc && !ehPet(pc) && ehJogador(pc._dono);
 
   /* personagem da calculadora ⇄ linha da mesa */
   // A biblioteca de árvores vem da mesa: para quem mestra a aba Árvore, a original; para os outros, o pacote publicado.
@@ -133,6 +137,15 @@ const FichasMesa = (() => {
     const vistos = new Set();
     // (`s` costuma ser uma cópia do estado: o que se decide aqui para a ficha nova fica valendo também na da tela)
     const naTela = s !== S && S && Array.isArray(S.personagens) ? new Map(S.personagens.map(p => [p.id, p])) : null;
+    // os pets vão com o dono: quem controla o dono controla o pet (o mestre muda o dono), e o pet fica na campanha dele
+    const porId = new Map(s.personagens.map(p => [p.id, p]));
+    for (const pet of s.personagens) {
+      const dono = ehPet(pet) ? porId.get(pet.petDe) : null;
+      if (!dono || ehPet(dono)) continue;
+      const t = naTela && naTela.get(pet.id), acertar = (k, v) => { pet[k] = v; if (t) t[k] = v; };
+      if (mestre() && (pet._dono || null) !== (dono._dono || null)) acertar('_dono', dono._dono || null);
+      if (organiza() && (pet._camp || null) !== (dono._camp || null) && !encerrada(dono._camp)) acertar('_camp', dono._camp || null);
+    }
     s.personagens.forEach((pc, i) => {
       vistos.add(pc.id);
       const ant = sombra.pcs.get(pc.id), novo = !ant;
@@ -488,6 +501,12 @@ const FichasMesa = (() => {
   /* O que aparece na ficha só para o mestre, dentro de uma mesa: de quem é a ficha e quem a vê. */
   function htmlDono(pc) {
     if (!ativo || !mestre()) return '';
+    // o pet: quem o controla é quem controla o dono (não há o que escolher aqui); quem o vê e se está ativo, sim
+    if (ehPet(pc)) return `<div class="idmesa">
+      <div class="f"><span class="eyebrow">Jogador que controla</span><span class="hint petcontrola">quem controla ${esc(nomeDoPetDe(pc))}${nomeDoDono(pc) ? ' (' + esc(nomeDoDono(pc)) + ')' : ' (só o mestre)'}</span></div>
+      <label class="chk" title="Desmarcada, a ficha fica escondida dos outros jogadores. Quem a controla sempre vê a dela."><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Os outros jogadores veem esta ficha <span class="hint">(o dono sempre vê a dele)</span></span></label>
+      <label class="chk" title="Só o mestre muda. Na cena, “Puxar o grupo” já traz marcados só os personagens ativos."><input type="checkbox" id="f_ativo" ${ativoNaFicha(pc) ? 'checked' : ''}> <span>Personagem ativo</span></label>
+    </div>`;
     const jog = (st.membros || []).filter(jogadorDaMesa);
     // (quem não participa da campanha da ficha aparece marcado: se receber a ficha, só vê essa ficha da campanha)
     const fora = m => !!pc._camp && campanhas().some(c => c.id === pc._camp) && !(m.campanhas || []).includes(pc._camp);
@@ -497,7 +516,7 @@ const FichasMesa = (() => {
         ${jog.map(m => `<option value="${esc(m.id)}" ${pc._dono === m.id ? 'selected' : ''}>${esc(m.nome)}${m.cargo === 'auxiliar' ? ' (mestre auxiliar)' : ''}${fora(m) ? ' — fora desta campanha' : ''}</option>`).join('')}
         ${pc._dono && !jog.some(m => m.id === pc._dono) ? `<option value="${esc(pc._dono)}" selected>(jogador que saiu da mesa)</option>` : ''}
       </select></label>
-      <label class="chk"><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Todos os jogadores veem esta ficha</span></label>
+      <label class="chk" title="Desmarcada, a ficha fica escondida dos outros jogadores. Quem a controla sempre vê a dele."><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Os outros jogadores veem esta ficha <span class="hint">(o dono sempre vê a dele)</span></span></label>
       <label class="chk" title="Só o mestre muda. Na cena, “Puxar o grupo” já traz marcados só os personagens ativos (os outros — suportes que ficam no acampamento, por exemplo — vêm desmarcados, e dá para marcar na hora)."><input type="checkbox" id="f_ativo" ${ativoNaFicha(pc) ? 'checked' : ''}> <span>Personagem ativo</span></label>
     </div>`;
   }
@@ -517,15 +536,18 @@ const FichasMesa = (() => {
     const d = host.querySelector('#f_dono'), v = host.querySelector('#f_vis');
     if (d) d.onchange = e => {
       pc._dono = e.target.value || null;
+      const pets = petsDe(pc);
+      for (const pet of pets) pet._dono = pc._dono;                  // (quem controla o dono controla os pets dele)
       // ficha entregue a um jogador: os atributos passam a ser distribuídos por ele (os valores de agora ficam como ponto de partida)
       const virou = deJogador(pc) && pc.modoAtr === undefined;
       if (virou) FichasExtras.tornarLivre(pc, false);
       garantirRelacoes();
       save(); render();
-      toast(pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' + (virou ? ' Os atributos ficaram em distribuição livre.' : '') : 'Só o mestre vê esta ficha.');
+      toast((pc._dono ? 'Agora ' + ((st.membros.find(m => m.id === pc._dono) || {}).nome || 'o jogador') + ' vê e controla esta ficha.' + (virou ? ' Os atributos ficaram em distribuição livre.' : '') : 'Só o mestre vê esta ficha.')
+        + (pets.length ? (pets.length === 1 ? ' O pet dele vai junto.' : ' Os ' + pets.length + ' pets dele vão junto.') : ''));
       avisarDeFora([pc]);
     };
-    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); };
+    if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); toast(avisoVis(pc)); };
     const at = host.querySelector('#f_ativo');
     if (at) at.onchange = e => {
       const marcar = on => { const est = Object.assign({}, pc.estado || {}); if (on) delete est.ativo; else est.ativo = false; pc.estado = est; save(); renderLista(); const x = document.querySelector('#f_ativo'); if (x) x.checked = on; };
@@ -541,7 +563,8 @@ const FichasMesa = (() => {
     if (!ativo || !mestre()) return '';
     const aberta = pc._vis === 'mesa';
     const dono = nomeDoDono(pc);
-    const txt = aberta ? 'Todos os jogadores veem esta ficha. Clique para esconder.' : (dono ? 'Só você e ' + dono + ' veem esta ficha. Clique para mostrar a todos.' : 'Só você vê esta ficha. Clique para mostrar aos jogadores.');
+    const txt = aberta ? (dono ? 'Todos os jogadores veem esta ficha. Clique para esconder dos outros: ' + dono + ', que a controla, continua vendo.' : 'Todos os jogadores veem esta ficha. Clique para esconder.')
+      : (dono ? 'Só você e ' + dono + ' (que a controla) veem esta ficha. Clique para mostrar aos outros jogadores.' : 'Só você vê esta ficha. Clique para mostrar aos jogadores.');
     return `<button type="button" class="olho" data-olho="${esc(pc.id)}" aria-pressed="${aberta}" title="${esc(txt)}" aria-label="${esc(pc.nome + ': ' + txt)}">${aberta ? OLHO : OLHO_FECHADO}</button>`;
   }
   function ligarOlhos(ul) {
@@ -552,14 +575,23 @@ const FichasMesa = (() => {
       const g = garantirRelacoes();
       save(); if (g && S.sel === pc.id) render(); else renderLista();
       const v = document.querySelector('#f_vis'); if (v && S.sel === pc.id) v.checked = pc._vis === 'mesa';
-      toast(pc._vis === 'mesa' ? 'Os jogadores agora veem a ficha de ' + pc.nome + '.' : 'A ficha de ' + pc.nome + ' voltou a ficar escondida dos jogadores.');
+      toast(avisoVis(pc));
     });
+  }
+  // o aviso de quando o mestre mostra ou esconde uma ficha: deixa claro que o dono continua vendo a dele
+  function avisoVis(pc) {
+    const dono = nomeDoDono(pc);
+    if (pc._vis === 'mesa') return (dono ? 'Os outros jogadores agora veem a ficha de ' : 'Os jogadores agora veem a ficha de ') + pc.nome + '.';
+    return dono ? 'A ficha de ' + pc.nome + ' ficou escondida dos outros jogadores. ' + dono + ', que a controla, continua vendo.' : 'A ficha de ' + pc.nome + ' voltou a ficar escondida dos jogadores.';
   }
   function nomeDoDono(pc) {
     if (!ativo || !pc._dono) return '';
     const m = (st.membros || []).find(x => x.id === pc._dono);
     return m ? m.nome : '';
   }
+  // o nome do personagem de quem este é o pet (ou um aviso, se ele saiu da mesa ou não chega aqui)
+  const nomeDoPetDe = pc => { const d = ehPet(pc) ? S.personagens.find(p => p.id === pc.petDe) : null; return d ? d.nome || 'Sem nome' : 'um personagem que não está aqui'; };
+  const petsDe = pc => (pc && !ehPet(pc) ? S.personagens.filter(p => p.petDe === pc.id) : []);
 
   /* Trazer para a mesa o que está num arquivo ou neste navegador. Só acrescenta; nada da mesa é apagado. */
   function trazer(d, deOnde) {
@@ -606,5 +638,6 @@ const FichasMesa = (() => {
 
   return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
-    campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza };
+    campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
+    ehPet, petsDe, nomeDoPetDe };
 })();

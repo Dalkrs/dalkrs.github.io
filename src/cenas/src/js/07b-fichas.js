@@ -18,7 +18,7 @@
 const Fichas = (() => {
   let P = null, D = null, on = false, applying = false, papel = null, eu = null;
   const R = () => window.TC.rules;
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
   const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
   const get = id => (P && id ? P.pegar(id) : null);
@@ -119,6 +119,9 @@ const Fichas = (() => {
     const bars = barrasDe(t, r, l);
     if (bars) p.bars = bars;
     if (String((l.ficha && l.ficha.ini) || '').trim() !== '' && clampIni(r.ini) !== t.ini) p.ini = clampIni(r.ini);
+    // a fadiga (a pilha de 5 a 0), quando a ficha usa: vai para o token, e todos a veem (até quem não tem a ficha)
+    const fd = fadigaDe(l);
+    if ((t.fad == null ? null : t.fad) !== fd) p.fad = fd;
     // a imagem da ficha vai para o token (imgChar marca que a imagem dele é a da ficha; uma escolhida à mão fica)
     const url = imagemDe(l);
     if (url) {
@@ -216,7 +219,7 @@ const Fichas = (() => {
   function link(t, charId) {
     if (!charId) {
       // desligado, o token fica com o que tinha: as barras viram barras comuns e a imagem passa a ser dele
-      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, imgChar: false, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
+      Store.tx('Desligar da ficha', () => Store.upd('tokens', t.id, { char: null, imgChar: false, fad: null, bars: t.bars.map(b => { const o = Object.assign({}, b); delete o.ref; return o; }) }));
       return {};
     }
     const l = get(charId), jog = l && l.dono_id && !t.owner ? playerById(l.dono_id) : null;
@@ -272,7 +275,7 @@ const Fichas = (() => {
     const l = t && t.char ? fichaDe(t) : null;
     if (!l) return null;
     const e = l.estado || {};
-    if (e.san == null && e.conf == null && !donoDe(l)) return null;
+    if (e.san == null && e.conf == null && !deJogador(l)) return null;
     return { san: valorMente(e.san, 100), conf: valorMente(e.conf, 50) };
   }
   // O mestre muda a Sanidade ou o Conforto pelo token: grava direto na ficha. Devolve o valor de antes (ou null).
@@ -283,6 +286,23 @@ const Fichas = (() => {
     if (novo === antes[k]) return null;
     P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { [k]: novo }) });
     return antes[k];
+  }
+  /* A fadiga da ficha deste token: { v (de 0 a 5), nome ("Cansado"…) } ou null (a ficha não usa, ou não está aqui).
+     Muda pelo token o mestre e o dono do personagem: grava direto na ficha. Devolve o valor de antes (ou null). */
+  function fadiga(t) {
+    const v = fadigaDe(t && t.char ? fichaDe(t) : null);
+    return v == null ? null : { v, nome: (R().FADIGA || [])[v] || '' };
+  }
+  function mudarFadiga(t, v) {
+    const l = t && t.char ? fichaDe(t) : null, antes = fadigaDe(l);
+    if (!l || antes == null || !P || !(papel === 'mestre' || (!!eu && l.dono_id === eu))) return null;
+    const n = Math.round(Number(v));
+    if (!isFinite(n)) return null;
+    const novo = clamp(n, 0, 5);
+    if (novo === antes) return null;
+    P.gravar(t.char, { estado: R().mudarFadiga(l.estado || {}, novo) });
+    syncAll(t.char);                    // (a mudança feita daqui não volta como "mudança de fora": o token acompanha já)
+    return antes;
   }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
@@ -316,6 +336,13 @@ const Fichas = (() => {
   }
   // O jogador da mesa que é dono desta ficha (ou null: ficha do mestre, de NPC, ou de alguém que saiu da mesa).
   const donoDe = l => (l && l.dono_id ? playerById(l.dono_id) || null : null);
+  /* O pet de um personagem (lote 6: ficha.petDe) é uma ficha suplementar: o jogador que controla o dono controla o pet,
+     mas ele não liga sozinho o que a ficha de jogador liga (Sanidade e Conforto, fadiga) — como a ficha de um NPC. */
+  const ehPet = l => !!(l && l.ficha && l.ficha.petDe);
+  const deJogador = l => !!donoDe(l) && !ehPet(l);
+  /* A fadiga da ficha (de 0 a 5; 5 é descansado), quando ela usa — como na ficha: a de um jogador da mesa, ou a que já
+     tem a fadiga anotada. null se não usa. */
+  const fadigaDe = l => (l && R() && typeof R().usaFadiga === 'function' && R().usaFadiga(l.estado, deJogador(l)) ? R().fadiga(l.estado) : null);
   const donoDoToken = t => donoDe(t && t.char ? get(t.char) : null);
   // …e quem joga com ele agora: o dono, a não ser que seja o mestre auxiliar e esteja mestrando (aí quem mestra rola por ele)
   const donoQueJoga = t => { const p = donoDoToken(t); return p && !p.gm ? p : null; };
@@ -464,7 +491,7 @@ const Fichas = (() => {
      Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
   function podeBolsa(t) {
     const l = t && t.char ? get(t.char) : null;
-    return !!l && l.ficha != null && !!R() && !!R().bolsa && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
+    return !!l && l.ficha != null && !ehPet(l) && !!R() && !!R().bolsa && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);      // (o pet não tem bolsa)
   }
   // → os itens da bolsa (com a quantidade) ou null se este token não dá acesso a uma
   function bolsa(t) {
@@ -489,6 +516,13 @@ const Fichas = (() => {
   const feridasDaLinha = l => (l && l.estado && l.estado.fer && R() && R().ferimentos ? l.estado.fer : null);
   // a lista (do mais antigo para o mais novo); vazia se o token não tem ficha, ou se quem olha não a recebe
   function feridas(t) { const f = feridasDaLinha(t && t.char ? get(t.char) : null); return f ? R().ferimentos(f).lista : []; }
+  // os membros amputados (os marcados; a parte de baixo que foi junto não repete): [{ p, nome, n }]
+  function amputados(t) {
+    const l = t && t.char ? get(t.char) : null;
+    if (!l || !l.estado || !l.estado.amp || !R() || typeof R().amputados !== 'function') return [];
+    const a = R().amputados(l.estado);
+    return R().PARTES.filter(p => a[p.k] && !a[p.k].de).map(p => ({ p: p.k, nome: p.nome, n: a[p.k].n }));
+  }
   // o sinal do token: { n, grave, sangra, inf } ou null. (Guardado por linha: o desenho do mapa pede isto a cada quadro.)
   const sinais = new WeakMap();
   function ferido(t) {
@@ -594,8 +628,8 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+  return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };

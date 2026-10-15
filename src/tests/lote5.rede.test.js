@@ -74,6 +74,21 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.pd && l.estado.pd.pd1 === 3 && l.ficha.poderes[0].atual === 1 && await parado(M); }), 'mexer nas bolinhas do token grava na ficha (no estado: 3), sem regravar a lista da ficha');
     await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'); P.gravar('pc_selene', { estado: Object.assign({}, l.estado, { pd: { pd1: 0 } }) }); });
     ok(await ate(async () => (await barras(C, ids.sel))[2].v === 0), 'e mudar na ficha muda o token (0 de 3)');
+    // (lote 6) a fadiga da ficha vai para o token: a pilha de 5 a 0, que todos veem
+    const fadTok = () => C.evaluate(id => __tc.Store.get('tokens', id).fad, ids.sel);
+    ok(await fadTok() === 5, 'a Selene é de um jogador: o token já leva a pilha de fadiga, cheia (5)');
+    await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'); P.gravar('pc_selene', { estado: Object.assign({}, l.estado, { fad: 2 }) }); });
+    ok(await ate(async () => (await fadTok()) === 2), 'mudando na ficha (2), o token acompanha');
+    ok(await C.evaluate(id => { const sc = __tc.Store.scene(), v = __tc.Proj.projetar(sc, __tc.Store.S.assets || {}, new Set()).v; const t = v.tokens.find(x => x.id === id); return t && t.fad === 2 && t.char === null; }, ids.sel), 'e a pilha vai para os jogadores mesmo quando eles não recebem a ficha (na cena que eles veem)');
+    await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.sel); await w(400);
+    ok(await ate(async () => (await C.locator('#tk-fad').innerText().catch(() => '')) === '2 de 5 · Muito cansado'), 'no painel do token, o mestre vê "2 de 5 · Muito cansado"');
+    const antesP = { dis: await C.locator('#tk-fad-p').isDisabled(), vis: await C.locator('#tk-fad-p').isVisible() };
+    await C.locator('#tk-fad-p').click(); await w(300);
+    const naFicha = await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.fad === 3 && await parado(M); });
+    ok(naFicha && await ate(async () => (await fadTok()) === 3), 'o +1 do painel grava na ficha (3) e o token acompanha — ' + j({ antesP, naFicha, fad: (await linha(M, 'pc_selene')).estado.fad, tok: await fadTok(), toast: await C.locator('.toast').last().innerText().catch(() => '') }));
+    await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'), e = Object.assign({}, l.estado); delete e.fad; P.gravar('pc_selene', { estado: e }); });
+    ok(await ate(async () => (await fadTok()) === 5), '(de volta: cheia)');
+    await C.evaluate(() => __tc.setSel([]));
 
     // ---------- Fichas: relacionamentos de uma vez e o cadeado dos ferimentos ----------
     await M.locator('#tab-fichas').click(); await w(600);

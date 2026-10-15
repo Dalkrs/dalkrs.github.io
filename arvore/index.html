@@ -715,8 +715,8 @@ function normalizarNo(n, b, ids){
   for(const k of Object.keys(n)) if(k.startsWith('_')) delete n[k];
 }
 /* Bônus que um grau dá na ficha do personagem. No editor é um texto ("FOR +2, HP +10"); guardado, um mapa {FOR:2, HP:10}.
-   Siglas de atributo (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM BLQ) somam no atributo; qualquer outro nome é o de um recurso da ficha (HP, SP…). */
-const SIGLAS_BONUS = ['FOR','DES','VIT','CAN','AGI','ESQ','FUR','PER','DFF','DFM','BLQ'];
+   Siglas de atributo (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) somam no atributo; qualquer outro nome é o de um recurso da ficha (HP, SP…). */
+const SIGLAS_BONUS = ['FOR','DES','VIT','CAN','AGI','ESQ','FUR','PER','EMB','DFF','DFM','BLQ'];
 function bonusLimpo(b){
   if(!b || typeof b!=='object' || Array.isArray(b)) return null;
   const o = {};
@@ -1891,7 +1891,7 @@ function gerarPapel(){
 /* campo do bônus que o grau dá na ficha (para o mestre) */
 function campoBonus(g, i){
   return `<input class="campo gbonus" data-g="${i}" value="${esc(bonusTexto(g.bonus))}" placeholder="Bônus na ficha (opcional): FOR +2, HP +10" style="margin-top:4px"
-    title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
+    title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
 }
 function pintarTudo(){
   indexar(); garantirSelecoes();

@@ -13,14 +13,14 @@ const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — es
   const sujo = N.normalizar({ nome: 123, hora: 'meio-dia', fundo: { url: 'javascript:alert(1)' }, cena: '../x', presentes: ['a', 'a', '', 5, 'b c', 'ok_1'], lugares: { a: { x: 500, y: -3 }, 'b c': { x: 1, y: 1 }, c: { x: 'x', y: 1 } },
     provisoes: [{ nome: 'Pão', qtd: '3' }, { nome: 'Carne', qtd: -2 }, 'lixo', { id: 'p', nome: 'A', qtd: 2.6 }, { id: 'p', nome: 'B', qtd: 1 }],
     melhorias: [{ nome: 'Fogão', ef: { conf: '5', san: 'x', rec: 999, prov: -1000 } }], equipamentos: [{ nome: 'Barraca', on: false, qtd: 0 }], bonus: [{ nome: 'Moral', ateDescanso: 1 }],
-    regras: { longo: { rec: 300, prov: -4, conf: 'a', poderes: 0 }, semProv: { rec: -1 } }, diario: [{ texto: 'oi', t: -5 }] });
+    regras: { longo: { rec: 300, prov: -4, conf: 'a', tiraBonus: 0 }, semProv: { rec: -1 } }, diario: [{ texto: 'oi', t: -5 }] });
   eq([sujo.nome, sujo.hora, sujo.fundo, sujo.cena, sujo.presentes], ['123', 'noite', null, null, ['a', 'ok_1']], 'entrada estranha: nome vira texto, hora inválida vira noite, endereço perigoso e ids inválidos saem');
   eq(sujo.lugares, { a: { x: 88, y: 22 } }, 'lugares ficam dentro da área das pessoas; os inválidos saem');
   eq(sujo.provisoes.map(p => [p.nome, p.qtd]), [['Pão', 3], ['Carne', 0], ['A', 3], ['B', 1]], 'provisões: quantidade inteira, nunca negativa');
   ok(new Set(sujo.provisoes.map(p => p.id)).size === 4, 'ids repetidos ou faltando ganham ids únicos');
   eq(sujo.melhorias[0].ef, { conf: 5, san: 0, rec: 100, prov: -99 }, 'efeitos dentro dos limites');
   eq([sujo.equipamentos[0].on, sujo.equipamentos[0].qtd, sujo.bonus[0].ateDescanso], [false, 0, true], 'equipamento fora de uso e bônus "até o descanso" são guardados');
-  eq([sujo.regras.longo, sujo.regras.semProv, sujo.regras.curto], [{ rec: 100, prov: 0, conf: 10, san: 5, poderes: false }, { rec: 0, conf: -10 }, N.REGRAS_PADRAO.curto], 'regras dentro dos limites; o que não veio fica no padrão');
+  eq([sujo.regras.longo, sujo.regras.semProv, sujo.regras.curto], [{ rec: 100, prov: 0, conf: 10, san: 5, tiraBonus: false }, { rec: 0, conf: -10 }, N.REGRAS_PADRAO.curto], 'regras dentro dos limites; o que não veio fica no padrão');
   eq(N.normalizar({ fundo: { url: 'https://x.supabase.co/a.png', w: 1 } }).fundo, { url: 'https://x.supabase.co/a.png' }, 'fundo com endereço https vale');
   eq(N.normalizar({ roda: [{ id: 'a', nome: 'Ana', img: 'data:image/png;base64,AAAA', dono: 'u1' }, { id: 'b', nome: 'Bia', img: 'https://x/y.webp' }, { nome: 'sem id' }] }).roda, [{ id: 'a', nome: 'Ana', img: null, dono: 'u1' }, { id: 'b', nome: 'Bia', img: 'https://x/y.webp', dono: null }], 'a roda guarda só imagens do banco (https)');
 }
@@ -63,6 +63,34 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   eq([p.linhas[0].recursos[0], p.linhas[1].recursos[0]], [{ id: 'hp', nome: 'HP', max: 200, de: 50, para: 100 }, { id: 'hp', nome: 'HP', max: 90, de: 0, para: 23 }], '25% do máximo, arredondando para cima (90 → 23)');
   eq(p.linhas[0].poderes, [], 'o curto não devolve poderes');
   eq([p.linhas[0].san, p.linhas[0].conf], [{ de: 60, para: 60 }, { de: 40, para: 40 }], 'nem mexe em Sanidade e Conforto');
+}
+/* ---- (lote 6) cada barra especial com a sua regra; a fadiga; tirar ou não os bônus ---- */
+{
+  eq([N.REGRAS_PADRAO.longo.tiraBonus, N.REGRAS_PADRAO.curto.tiraBonus, 'poderes' in N.REGRAS_PADRAO.longo], [true, true, false], 'o descanso tira os bônus “até o próximo descanso” (longo e curto) — e a regra geral das barras especiais saiu (cada barra tem a sua)');
+  const pw = [{ id: 'lg', nome: 'Longo', atual: 1, max: 3 }, { id: 'qq', nome: 'Qualquer', atual: 0, max: 2, rec: 'qualquer' }, { id: 'qt', nome: 'Quantia', atual: 1, max: 9, rec: 'quantia', qc: 2, ql: 5 },
+    { id: 'mn', nome: 'Manual', atual: 0, max: 4, rec: 'manual' }, { id: 'inf', nome: 'Sem limite', atual: 3, max: 0, rec: 'quantia', qc: 1, ql: 4 }, { id: 'inf2', nome: 'Sem limite 2', atual: 3, max: 0 },
+    { id: 'qt2', nome: 'Quase cheia', atual: 8, max: 9, rec: 'quantia', qc: 2, ql: 5 }, { id: 'pad', nome: 'Padrão', atual: 0, max: 9, rec: 'quantia' }];
+  const ana = { id: 'a', nome: 'Ana', recursos: [], san: null, conf: null, poderes: pw, fad: 2, tmp: [{ id: 't1', n: 'Poção de força', k: 'FOR', v: 2 }] };
+  const bia = { id: 'b', nome: 'Bia', recursos: [], san: null, conf: null, poderes: [], fad: null, tmp: [] };
+  const L = N.planejar(camp, 'longo', [ana, bia]), C = N.planejar(camp, 'curto', [ana, bia]);
+  eq(L.linhas[0].poderes, [{ id: 'lg', nome: 'Longo', de: 1, para: 3 }, { id: 'qq', nome: 'Qualquer', de: 0, para: 2 }, { id: 'qt', nome: 'Quantia', de: 1, para: 6 }, { id: 'inf', nome: 'Sem limite', de: 3, para: 7 },
+    { id: 'qt2', nome: 'Quase cheia', de: 8, para: 9 }, { id: 'pad', nome: 'Padrão', de: 0, para: 2 }], 'no longo: enche a de "longo" e a de "qualquer", soma a quantia do longo (sem passar do limite); a manual e a sem limite que só enche ficam');
+  eq(C.linhas[0].poderes, [{ id: 'qq', nome: 'Qualquer', de: 0, para: 2 }, { id: 'qt', nome: 'Quantia', de: 1, para: 3 }, { id: 'inf', nome: 'Sem limite', de: 3, para: 4 }, { id: 'qt2', nome: 'Quase cheia', de: 8, para: 9 }, { id: 'pad', nome: 'Padrão', de: 0, para: 1 }],
+    'no curto: só a de "qualquer" enche; a quantia soma a do curto (sem quantia escrita: +1 no curto, +2 no longo)');
+  eq([N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, false), N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, true), N.paraDaEspecial({ atual: '1', max: '4', rec: 'quantia', qc: '2' }, false), N.paraDaEspecial({ atual: 5, max: 3, rec: 'quantia', qc: 1 }, false)], [2, 3, 3, 5],
+    'regra desconhecida é "longo"; números escritos como texto valem; quantia nunca diminui uma barra acima do limite');
+  eq([L.linhas[0].fad, C.linhas[0].fad, L.linhas[1].fad, C.linhas[1].fad], [{ de: 2, para: 5 }, { de: 2, para: 3 }, null, null], 'a fadiga: o longo enche a pilha (5), o curto devolve um; a ficha que não usa fica sem');
+  eq(N.planejar(camp, 'curto', [Object.assign({}, ana, { fad: 5 })]).linhas[0].fad, { de: 5, para: 5 }, 'a pilha cheia não passa de 5');
+  eq(N.planejar(camp, 'longo', [Object.assign({}, ana, { fad: 'x' })]).linhas[0].fad, null, 'fadiga que não é número: a ficha não usa');
+  eq([L.tiraBonus, L.linhas[0].saem, L.linhas[0].ficam, L.linhas[1].saem], [true, [{ id: 't1', n: 'Poção de força', k: 'FOR', v: 2 }], [], []], 'pela regra, o descanso tira os bônus: a prévia diz quais acabam');
+  const F = N.planejar(camp, 'longo', [ana, bia], { tiraBonus: false });
+  eq([F.tiraBonus, F.linhas[0].saem, F.linhas[0].ficam], [false, [], [{ id: 't1', n: 'Poção de força', k: 'FOR', v: 2 }]], 'o mestre desmarca na janela: só neste descanso, os bônus continuam');
+  ok(N.resumoDescanso(F).endsWith(' · os bônus “até o próximo descanso” continuam') && !N.resumoDescanso(L).includes('continuam'), 'o diário anota quando o descanso não tirou os bônus: ' + N.resumoDescanso(F));
+  eq(N.aposDescanso(camp, F, 5).bonus.map(b => b.nome), camp.bonus.map(b => b.nome), 'e os bônus “até o descanso” do acampamento também ficam');
+  const semTirar = N.normalizar(Object.assign(N.copia(camp), { regras: { curto: { tiraBonus: false } } }));
+  const C2 = N.planejar(semTirar, 'curto', [ana]), C3 = N.planejar(semTirar, 'curto', [ana], { tiraBonus: true });
+  eq([C2.tiraBonus, C2.linhas[0].ficam.length, C3.tiraBonus, C3.linhas[0].saem.length, N.planejar(semTirar, 'longo', [ana]).tiraBonus], [false, 1, true, 1, true], 'a regra por tipo de descanso (o curto sem tirar), e a janela muda na hora para aquele descanso');
+  eq(N.planejar(camp, 'longo', [Object.assign({}, ana, { tmp: [null, 'x', { id: 7, n: 'Sem chave', v: '3' }] })]).linhas[0].saem, [{ id: '7', n: 'Sem chave', k: '', v: 3 }], 'bônus esquisitos na lista: só os objetos entram, arrumados');
 }
 {
   const pouco = N.normalizar(Object.assign(N.copia(camp), { provisoes: [{ id: 'pao', nome: 'Pão', qtd: 1 }], melhorias: [] }));

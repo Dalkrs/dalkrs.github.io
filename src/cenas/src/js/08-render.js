@@ -431,6 +431,20 @@ const Render = (() => {
     }
   }
 
+  /* A pilha de fadiga: um corpo escuro com cinco células e a ponta à direita. Cheia (5) e quase cheia (4), verde; 3,
+     amarela; 2, laranja; 1, vermelha; vazia (0), só o contorno, em vermelho. */
+  const FAD_COR = ['#e0533f', '#e0533f', '#e8913a', '#d8c13f', '#55b874', '#55b874'];
+  function drawBateria(c, x, y, w, f, px) {
+    const h = w * 0.52, r = h * 0.24, tip = Math.max(1.5 * px, w * 0.09), borda = f === 0 ? FAD_COR[0] : 'rgba(255,255,255,0.92)';
+    c.save();
+    c.fillStyle = 'rgba(10,12,18,0.86)'; rr(c, x, y, w, h, r); c.fill();
+    c.strokeStyle = borda; c.lineWidth = 1.2 * px; rr(c, x, y, w, h, r); c.stroke();
+    c.fillStyle = borda; c.fillRect(x + w + 0.4 * px, y + h * 0.3, tip, h * 0.4);
+    const pad = Math.max(1.2 * px, h * 0.15), gap = Math.max(0.8 * px, w * 0.035), cw = (w - pad * 2 - gap * 4) / 5, ch = h - pad * 2;
+    c.fillStyle = FAD_COR[f];
+    for (let i = 0; i < f; i++) c.fillRect(x + pad + i * (cw + gap), y + pad, cw, ch);
+    c.restore();
+  }
   function drawTokenTop(c, t, sc, px) {
     const z = App.view.z, s = t.size * sc.cell, sp = s * z;
     if (sp < 16) return;
@@ -554,6 +568,11 @@ const Render = (() => {
         c.fillStyle = '#ffffff'; c.font = `700 ${r * (fer.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
       }
+    }
+    // Fadiga: a pilha da ficha (de 5 a 0, como a bateria do celular), no lado direito do token — todos veem
+    if (typeof t.fad === 'number' && sp >= 22) {
+      const bw = clamp(s * 0.34, 15 * px, 28 * px);
+      drawBateria(c, t.x + s - bw * 0.62, t.y + s * 0.6 - bw * 0.26, bw, clamp(Math.round(t.fad), 0, 5), px);
     }
     // Sobrevida: o escudo no canto do token, com o total — também para quem só vê a proporção das barras (numa mesa,
     // a projeção manda os pontos dela em xn)

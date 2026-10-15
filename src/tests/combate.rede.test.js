@@ -169,8 +169,8 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   const FOR = valor(selene, 'pc_selene', 'FOR');
   { const [x, y] = await noMapa(C, ids.pc_selene); await M.mouse.move(x, y); await w(200); }
   await tecla(C, 'f'); await w(350);
-  ok(await C.locator('#fpop').count() === 1 && await C.locator('#fpop .pop-b').count() === 11 && await C.locator('#fp-fixa').inputValue() === '5' && (await C.locator('#fpop .pop-n').innerText()) === 'Selene' && (await C.locator('#fp-FOR b').innerText()) === String(FOR),
-    'o mestre aperta F sobre o token: abre a janelinha com os dez atributos da ficha (FOR ' + FOR + ') e a fixa dela (5)');
+  ok(await C.locator('#fpop').count() === 1 && await C.locator('#fpop .pop-b').count() === 12 && await C.locator('#fp-fixa').inputValue() === '5' && (await C.locator('#fpop .pop-n').innerText()) === 'Selene' && (await C.locator('#fp-FOR b').innerText()) === String(FOR) && (await C.locator('#fp-EMB b').innerText()) === String(valor(selene, 'pc_selene', 'EMB')),
+    'o mestre aperta F sobre o token: abre a janelinha com os atributos da ficha, o Embate junto (FOR ' + FOR + ') e a fixa dela (5)');
   ok(await C.evaluate(() => __tc.App.sel.length) === 0 && await C.locator('.modal').count() === 0, 'a janelinha não muda a seleção nem trava o mapa');
   let antes = (await linhas(M)).length;
   await C.locator('#fp-FOR').click();
@@ -202,7 +202,7 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   // a jogadora: só no token do personagem dela
   { const [x, y] = await noMapa(B, ids.pc_selene); await J.mouse.move(x, y); await w(200, J); }
   await tecla(B, 'f'); await w(350, J);
-  ok(await B.locator('#fpop .pop-b').count() === 11 && await B.locator('#fp-fixa').inputValue() === '5', 'a jogadora aperta F sobre o token dela: a mesma janelinha, com a ficha dela');
+  ok(await B.locator('#fpop .pop-b').count() === 12 && await B.locator('#fp-fixa').inputValue() === '5', 'a jogadora aperta F sobre o token dela: a mesma janelinha, com a ficha dela');
   antes = (await linhas(M)).length;
   await B.locator('#fp-AGI').click();
   ok(await ate(async () => (await linhas(M)).length === antes + 1), '(a rolagem dela chega ao mestre)');

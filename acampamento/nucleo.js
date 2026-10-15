@@ -16,8 +16,11 @@
                                                 — prov — valem para o acampamento inteiro); fx: o que faz na ficha deles
      equipamentos [{ id, nome, desc, on, qtd, ef, alvo, fx }]
      bonus [{ id, nome, desc, ateDescanso }]    bônus declarados pela mesa (texto); os "até o descanso" saem ao descansar
-     regras { longo, curto, semProv }           longo/curto: { rec %, prov por personagem, conf, san, poderes }
+     regras { longo, curto, semProv }           longo/curto: { rec %, prov por personagem, conf, san, tiraBonus }
+                                                tiraBonus: o descanso tira os bônus "até o próximo descanso" (o padrão;
+                                                na janela do descanso o mestre muda só para aquele descanso)
                                                 semProv: { rec % do que recuperaria, conf } quando faltam rações
+                                                (as barras especiais não estão aqui: cada uma tem a sua regra, na ficha)
      servir { longo, curto }                    a provisão que cada descanso serve primeiro (id, ou null: a ordem da lista)
      emo { [id]: emoção }                       a emoção de cada um, sem mesa (numa mesa ela fica na ficha: estado.emo)
      caravana { veiculos, carga, gente, vai }   ver normCaravana
@@ -41,9 +44,10 @@
   'use strict';
   const MAX_ITENS = 80, MAX_DIARIO = 60, MAX_TXT = 600, MAX_NOME = 80;
   const HORAS = ['entardecer', 'noite', 'amanhecer'];
+  const FAD_MAX = 5;          // a fadiga: uma pilha de 5 (descansado) a 0 (esgotado), como a bateria do celular
   const REGRAS_PADRAO = {
-    longo: { rec: 100, prov: 1, conf: 10, san: 5, poderes: true },
-    curto: { rec: 25, prov: 0, conf: 0, san: 0, poderes: false },
+    longo: { rec: 100, prov: 1, conf: 10, san: 5, tiraBonus: true },
+    curto: { rec: 25, prov: 0, conf: 0, san: 0, tiraBonus: true },
     semProv: { rec: 50, conf: -10 },
   };
   const EF_ZERO = { conf: 0, san: 0, rec: 0, prov: 0 };
@@ -66,7 +70,7 @@
   const normEf = e => { e = ehObj(e) ? e : {}; return { conf: inteiro(e.conf, 0, -100, 100), san: inteiro(e.san, 0, -100, 100), rec: inteiro(e.rec, 0, -100, 100), prov: inteiro(e.prov, 0, -99, 99) }; };
   // o que uma ração muda no descanso de quem a come (sem "rações a mais": isso é da estrutura)
   const normEfRacao = e => { e = ehObj(e) ? e : {}; return { conf: inteiro(e.conf, 0, -100, 100), san: inteiro(e.san, 0, -100, 100), rec: inteiro(e.rec, 0, -100, 100) }; };
-  const normRegra = (r, p) => { r = ehObj(r) ? r : {}; return { rec: inteiro(r.rec, p.rec, 0, 100), prov: inteiro(r.prov, p.prov, 0, 99), conf: inteiro(r.conf, p.conf, -100, 100), san: inteiro(r.san, p.san, -100, 100), poderes: r.poderes === undefined ? p.poderes : !!r.poderes }; };
+  const normRegra = (r, p) => { r = ehObj(r) ? r : {}; return { rec: inteiro(r.rec, p.rec, 0, 100), prov: inteiro(r.prov, p.prov, 0, 99), conf: inteiro(r.conf, p.conf, -100, 100), san: inteiro(r.san, p.san, -100, 100), tiraBonus: r.tiraBonus === undefined ? p.tiraBonus : !!r.tiraBonus }; };
   const listaDe = (v, max) => (Array.isArray(v) ? v.filter(ehObj).slice(0, max) : []);
   const r1d = v => Math.round(v * 10) / 10, r2d = v => Math.round(v * 100) / 100;
 
@@ -304,11 +308,14 @@
   /* A conta de um descanso, sem mudar nada.
        tipo        'longo' | 'curto'
        pessoas     [{ id, nome, grupo?, raca?, recursos: [{ id, nome, max, atual, min?, inicio? }], san, conf (número ou null =
-                      a ficha não usa), poderes: [{ id, nome, atual, max }] (as barras especiais) }] — só quem vai descansar
+                      a ficha não usa), poderes: [{ id, nome, atual, max, rec?, qc?, ql? }] (as barras especiais, cada uma
+                      com a regra dela), fad (a fadiga, de 0 a 5, ou null = a ficha não usa), tmp: [{ id, n, k, v }] (os
+                      bônus "até o próximo descanso" que a ficha tem agora) }] — só quem vai descansar
        opt         { servir: id | null (a provisão servida neste descanso; sem vir, a do descanso), prov: rações por pessoa
                      neste descanso (sem vir, a da regra), porPessoa: { id: rações } (o que o mestre mudou na hora, pessoa
-                     por pessoa) } — sem porPessoa, no descanso longo, vale o que o acampamento anotou por personagem ou
-                     por raça (comer); senão, prov. Cada linha do plano diz quanto a pessoa ia comer (quer).
+                     por pessoa), tiraBonus: bool (só neste descanso; sem vir, o da regra) } — sem porPessoa, no descanso
+                     longo, vale o que o acampamento anotou por personagem ou por raça (comer); senão, prov. Cada linha do
+                     plano diz quanto a pessoa ia comer (quer) e os bônus que acabam (saem).
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.
      Só o descanso longo usa a estrutura (melhorias e equipamentos). As rações saem primeiro da provisão servida e
      depois da lista, de cima para baixo, em rodízio (uma para cada, depois mais uma para cada…); quem come uma ração
@@ -317,6 +324,8 @@
   function planejar(camp, tipo, pessoas, opt) {
     const longo = tipo !== 'curto', regra = Object.assign({}, camp.regras[longo ? 'longo' : 'curto']), ef = longo ? efeitos(camp) : Object.assign({}, EF_ZERO);
     if (opt && opt.prov != null && Number.isFinite(num(opt.prov, NaN))) regra.prov = inteiro(opt.prov, regra.prov, 0, 99);
+    // tirar os bônus "até o próximo descanso": o que o mestre escolheu na janela, só para este descanso; senão, a regra
+    const tira = opt && typeof opt.tiraBonus === 'boolean' ? opt.tiraBonus : regra.tiraBonus !== false;
     const n = pessoas.length, disponivel = racoes(camp);
     // quanto cada um come: o que veio para esta pessoa neste descanso; senão, a dela ou a da raça (no longo); senão, a regra
     const pp = opt && ehObj(opt.porPessoa) ? opt.porPessoa : {};
@@ -364,8 +373,11 @@
       const san = regra.san + eP.san + eR.san;
       if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
       const fx = [].concat(...delas.map(pv => pv.fx.map(f => Object.assign({ de: pv.nome || 'Ração' }, f)))).concat(longo ? fxDe(camp, p) : []);
+      // os bônus "até o próximo descanso" que acabam (os de antes; os que este descanso dá entram depois) — ou que ficam
+      const tmp = (Array.isArray(p.tmp) ? p.tmp : []).filter(ehObj).map(b => ({ id: String(b.id), n: texto(b.n, 60), k: String(b.k || ''), v: num(b.v, 0) }));
       return Object.assign(linhaDoDescanso(p, longo, regra, rec, conf, san), {
-        come: come.map(x => ({ id: x.p.id, nome: x.p.nome, qtd: x.qtd, efeito: temEfeito(x.p) })), quer: quer[i], rec: Math.round(rec * 10) / 10, fx });
+        come: come.map(x => ({ id: x.p.id, nome: x.p.nome, qtd: x.qtd, efeito: temEfeito(x.p) })), quer: quer[i], rec: Math.round(rec * 10) / 10, fx,
+        saem: tira ? tmp : [], ficam: tira ? [] : tmp });
     });
     // as rações com efeito que alguém comeu, e quantos ganharam o efeito de cada uma (para o diário e a mesa ao vivo);
     // as de banquete valem para todos (todos: true)
@@ -376,7 +388,8 @@
       if (k) comidas.push(Object.assign({ id: pv.id, nome: pv.nome, n: k }, deTodos ? { todos: true } : {}));
     }
     return { tipo: longo ? 'longo' : 'curto', n, custo, disponivel, gasto, falta, consumo, rec: Math.round(rec * 10) / 10, conf, san, linhas, efeitos: ef,
-      servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov };
+      servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov,
+      tiraBonus: tira };
   }
   // o que uma pessoa recupera, com a recuperação, o Conforto e a Sanidade que valem para ela
   function linhaDoDescanso(p, longo, regra, rec, conf, san) {
@@ -393,8 +406,24 @@
       return { id: r.id, nome: r.nome, max: r.max, de, para: Math.max(de, para) };
     });
     const barra = (v, d) => (v == null ? null : { de: v, para: limitar(v + d, 0, 100) });
-    const poderes = regra.poderes ? (p.poderes || []).filter(x => x.max > 0 && x.atual < x.max).map(x => ({ id: x.id, nome: x.nome, de: x.atual, para: x.max })) : [];
-    return { id: p.id, nome: p.nome, recursos, san: barra(p.san, san), conf: barra(p.conf, conf), poderes };
+    // as barras especiais, cada uma pela regra dela (só entram as que mudam)
+    const poderes = (p.poderes || []).map(x => ({ id: x.id, nome: x.nome, de: x.atual, para: paraDaEspecial(x, longo) })).filter(x => x.para !== x.de);
+    // a fadiga (a pilha de 5 a 0, cheia = descansado): o descanso longo enche, o curto devolve um
+    const fad = p.fad == null || !Number.isFinite(num(p.fad, NaN)) ? null : inteiro(p.fad, FAD_MAX, 0, FAD_MAX);
+    return { id: p.id, nome: p.nome, recursos, san: barra(p.san, san), conf: barra(p.conf, conf), poderes,
+      fad: fad == null ? null : { de: fad, para: longo ? FAD_MAX : Math.min(FAD_MAX, fad + 1) } };
+  }
+  /* Quanto uma barra especial fica depois do descanso, pela regra dela (rec, como em TC.rules.especiais):
+       longo     enche no descanso longo (o padrão)       qualquer  enche em qualquer descanso
+       quantia   soma qc no curto e ql no longo           manual    o descanso não mexe nela
+     Encher é ir até o limite: a barra sem limite (max 0) não tem o que encher — só a quantia soma nela. */
+  const REC_ESPECIAIS = ['longo', 'qualquer', 'quantia', 'manual'];
+  function paraDaEspecial(x, longo) {
+    const a = Math.max(0, Math.round(num(x.atual, 0))), m = Math.max(0, Math.round(num(x.max, 0)));
+    const rec = REC_ESPECIAIS.includes(x.rec) ? x.rec : 'longo';
+    if (rec === 'manual' || (rec === 'longo' && !longo)) return a;
+    if (rec === 'quantia') { const n = a + inteiro(longo ? x.ql : x.qc, longo ? 2 : 1, 0, 999); return m > 0 ? Math.max(a, Math.min(n, m)) : n; }
+    return m > 0 ? Math.max(a, m) : a;
   }
 
   /* ---- o que vai para a ficha ----
@@ -416,11 +445,11 @@
     return b;
   }
   // O acampamento depois do descanso: as rações gastas saem (provisão zerada continua na lista), os bônus "até o
-  // descanso" acabam e o diário ganha a linha. Não muda o que recebeu.
+  // descanso" acabam (se o descanso tira os bônus) e o diário ganha a linha. Não muda o que recebeu.
   function aposDescanso(camp, plano, quando) {
     const c = copia(camp);
     for (const g of plano.consumo) { const p = c.provisoes.find(x => x.id === g.id); if (p) p.qtd = Math.max(0, p.qtd - g.qtd); }
-    c.bonus = c.bonus.filter(b => !b.ateDescanso);
+    if (plano.tiraBonus !== false) c.bonus = c.bonus.filter(b => !b.ateDescanso);
     c.diario.unshift({ id: novoId('di'), t: quando || Date.now(), texto: resumoDescanso(plano) });
     c.diario = c.diario.slice(0, MAX_DIARIO);
     return normalizarSeguro(c);
@@ -435,6 +464,8 @@
     if (plano.rec) p.push('recuperação de ' + plano.rec + '%');
     if (plano.conf) p.push('Conforto ' + comSinal(plano.conf));
     if (plano.san) p.push('Sanidade ' + comSinal(plano.san));
+    // (o descanso que não tira os bônus fica anotado: é a exceção)
+    if (plano.tiraBonus === false) p.push('os bônus “até o próximo descanso” continuam');
     return p.join(' · ');
   }
   /* Onde cada um fica em volta da fogueira quando ninguém arrastou: um arco na frente do fogo, da esquerda para a
@@ -496,7 +527,8 @@
 
   const AcampNucleo = { HORAS, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
     textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
-    LUGARES, CLIMAS, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador };
+    LUGARES, CLIMAS, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
+    FAD_MAX, paraDaEspecial };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampNucleo;
   if (typeof window !== 'undefined') window.AcampNucleo = AcampNucleo;
 })();

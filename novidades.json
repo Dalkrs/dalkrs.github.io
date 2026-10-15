@@ -2,6 +2,55 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-3",
+      "data": "2026-10-15",
+      "titulo": "Fichas e Acampamento: equipamentos em cartões, grupos de troca, relíquia, pets, fadiga, amputação, Embate e as regras de cada barra especial",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Equipamentos em cartões: cada item mostra a chave de equipado, o nome e só os bônus que ele tem (\"FOR +3 · DEF F +2\"). Os números, as passivas e o resto ficam em “Editar”. Tirar um item avisa e dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Grupos de troca: dê o mesmo grupo a itens que se revezam (as três espadas de gelo, por exemplo). Equipar um guarda os outros do grupo, com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Relíquia: marque um equipamento como relíquia (em “Editar”) e o cartão dele fica dourado, com o ícone."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Pets: “+ Pet” no alto da ficha cria a ficha do animal ou companheiro do personagem — atributos à mão, barras e habilidades, sem bolsa. Ele fica logo embaixo do dono na lista, e quem controla o dono controla o pet. Na cena, o pet ganha token como qualquer ficha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fadiga: uma pilha de 5 (descansado) a 0 (esgotado), que vai descendo como a bateria do celular. Fica nas Barras especiais da ficha e aparece no token, para todos. O descanso longo enche a pilha; o curto devolve um. Nas fichas dos jogadores já vem ligada; num NPC, use “+ Fadiga”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Amputação: no quadro do corpo, escolha um braço, mão, perna ou pé e marque “Amputado…”. É um estado permanente — o membro fica tracejado no boneco, a parte de baixo vai junto — e não conta como ferimento: o token não mostra o sinal de ferido por ele."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Embate: um atributo secundário novo, metade da Vitalidade (para baixo) mais o Bloqueio. Rola pela ficha, pela telinha de dados e pelo F da cena, e recebe bônus de itens e da árvore."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Barras especiais com regra própria: em cada barra, escolha como ela se recupera — enche no descanso longo, enche em qualquer descanso, recupera uma quantia (ex.: +2 no curto e +5 no longo) ou só à mão. A regra geral das barras saiu das Regras do descanso."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tirar os bônus no descanso: nas Regras do descanso, escolha se o descanso longo e o curto tiram os bônus “até o próximo descanso”; na janela do descanso, dá para mudar só para aquele descanso. A prévia mostra os bônus que acabam (ou que continuam)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Quem vê a ficha: a chave agora diz “Os outros jogadores veem esta ficha (o dono sempre vê a dele)”, e o olho da lista e o aviso deixam claro que esconder não esconde do dono."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-2",
       "data": "2026-10-15",
       "titulo": "Correções: os atalhos da cena depois da conversa, a sobrevida no escudo, a comida especial para todos, o nome das estradas e as regiões por baixo",

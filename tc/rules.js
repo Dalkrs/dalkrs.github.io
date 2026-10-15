@@ -80,6 +80,10 @@
      aliases:['FURTIVIDADE']},
     {k:'PER', nome:'Percepção',   desc:'DES + CAN/2',   calc:b=>b.DES+Math.floor(b.CAN/2),
      aliases:['PERCEPCAO','PERCEPÇÃO']},
+    // o Embate (lote 6): a metade da Vitalidade base, para baixo, mais o Bloqueio inteiro (o valor próprio, os itens,
+    // a árvore e os bônus dele) — `d` são as defesas já calculadas
+    {k:'EMB', nome:'Embate',      desc:'VIT/2 + BLOQ',  calc:(b,d)=>Math.floor(b.VIT/2)+((d&&d.BLQ)||0),
+     aliases:['EMBATE']},
   ];
   const ehDerivado = k => DERIV.some(d=>d.k===k);
   /* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
@@ -460,6 +464,23 @@
     if (f.k && f.v) partes.push('−' + Math.abs(f.v) + ' ' + (f.k === CHAVE_TODOS ? 'em todos os atributos' : NOMES_BONUS[f.k] || f.k));
     return partes.join(' · ');
   }
+  /* As partes amputadas (lote 6): um estado permanente do membro, à parte dos ferimentos abertos — estado.amp:
+     { [parte]: { c: quando, n: anotação } }. Só os membros (braços, mãos, pernas, pés). A parte de baixo vai junto:
+     sem o braço, sem a mão; sem a perna, sem o pé. Não é ferimento: não pesa nas contas nem põe o sinal de ferido no
+     token. → { [parte]: { c, n, de } } — de: a parte de cima que levou esta junto (null quando foi esta a marcada) */
+  const AMPUTAVEIS = ['bracoE', 'bracoD', 'maoE', 'maoD', 'pernaE', 'pernaD', 'peE', 'peD'];
+  const ABAIXO = { bracoE: 'maoE', bracoD: 'maoD', pernaE: 'peE', pernaD: 'peD' };
+  Object.freeze(AMPUTAVEIS); Object.freeze(ABAIXO);
+  function amputados(estado) {
+    const amp = ehObjeto(estado && estado.amp) ? estado.amp : {}, out = {};
+    AMPUTAVEIS.forEach(k => {
+      if (!tem(amp, k) || !amp[k]) return;
+      const x = ehObjeto(amp[k]) ? amp[k] : {};
+      out[k] = { c: numFinito(x.c) || 0, n: String(x.n == null ? '' : x.n).slice(0, 200), de: null };
+    });
+    Object.keys(ABAIXO).forEach(k => { const b = ABAIXO[k]; if (out[k] && !out[b]) out[b] = { c: out[k].c, n: '', de: k }; });
+    return out;
+  }
   /* O que o token mostra: quantos ferimentos, o mais grave, e se algum sangra ou está infeccionado. */
   function sinalDeFerido(mapa) {
     const l = ferimentos(mapa).lista;
@@ -581,13 +602,13 @@
       ant[a.k] =livres? base[a.k] : mais(arred(cfg,totalAnt*p),arv[a.k]);
       tot[a.k] =mais(base[a.k]+eq[a.k],tmp[a.k]);
     });
-    const der={}, derAnt={};                       // sempre a partir dos valores BASE
-    DERIV.forEach(d=>{
-      der[d.k]   =mais(mais(d.calc(base)+eq[d.k],arv[d.k]),tmp[d.k]);
-      derAnt[d.k]=mais(mais(d.calc(ant)+eq[d.k],arv[d.k]),tmp[d.k]);
-    });
     const def={};                                   // manual da ficha + equipamentos + árvore (+ temporários)
     DEFESAS.forEach(d=>{ def[d.k]=mais(mais((+((pc.defesas||{})[d.k])||0)+eq[d.k],arv[d.k]),tmp[d.k]); });
+    const der={}, derAnt={};                       // sempre a partir dos valores BASE (o Embate usa também o Bloqueio)
+    DERIV.forEach(d=>{
+      der[d.k]   =mais(mais(d.calc(base,def)+eq[d.k],arv[d.k]),tmp[d.k]);
+      derAnt[d.k]=mais(mais(d.calc(ant,def)+eq[d.k],arv[d.k]),tmp[d.k]);
+    });
     const defEsp={}, baseEsp={};                    // as 13 específicas: digitada + itens + temporários
     DEFESAS_ESP.forEach(d=>{
       const b=numFinito(pc.defEsp&&tem(pc.defEsp,d.k)?pc.defEsp[d.k]:null)||0;
@@ -595,7 +616,7 @@
     });
     const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(cfg,total), TOTAL:arred(cfg,total)};
     DERIV.forEach(d=>{
-      vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base); vars[d.k+'_EQ']=eq[d.k];
+      vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base,def); vars[d.k+'_EQ']=eq[d.k];
       d.aliases.forEach(al=>{vars[al]=der[d.k]});
     });
     DEFESAS.forEach(d=>{
@@ -755,18 +776,47 @@
   }
 
   /* ---------- barras especiais (os antigos "poderes divinos") ----------
-     A lista mora na ficha (ficha.poderes: [{ id, nome, max, atual }]); o valor de agora, no estado (estado.pd: { id: n }):
-     a ficha, o token e o acampamento mexem nele sem um desfazer o do outro (o estado se junta campo a campo). Sem nada
-     anotado no estado, vale o `atual` que a ficha guardava antes.
-     → [{ id, nome, atual, max }] na ordem da ficha — max 0 é "sem limite"; atual fica entre 0 e o máximo */
+     A lista mora na ficha (ficha.poderes: [{ id, nome, max, atual, rec, qc, ql }]); o valor de agora, no estado
+     (estado.pd: { id: n }): a ficha, o token e o acampamento mexem nele sem um desfazer o do outro (o estado se junta
+     campo a campo). Sem nada anotado no estado, vale o `atual` que a ficha guardava antes.
+     Cada barra tem a sua regra de recuperação (lote 6), que o mestre escolhe (rec):
+       longo     enche no descanso longo (o padrão: era o que valia para todas antes)
+       qualquer  enche em qualquer descanso, longo ou curto
+       quantia   recupera uma quantia: qc no descanso curto e ql no longo, sem passar do limite
+       manual    só à mão: o descanso não mexe nela
+     → [{ id, nome, atual, max, rec, qc, ql }] na ordem da ficha — max 0 é "sem limite"; atual fica entre 0 e o máximo */
   const ESPECIAL_PADRAO = 'Barra especial';
+  const REC_ESPECIAL = [
+    {k:'longo',    nome:'Enche no descanso longo'},
+    {k:'qualquer', nome:'Enche em qualquer descanso'},
+    {k:'quantia',  nome:'Recupera uma quantia'},
+    {k:'manual',   nome:'Só à mão'},
+  ];
+  REC_ESPECIAL.forEach(Object.freeze); Object.freeze(REC_ESPECIAL);
+  const QC_PADRAO = 1, QL_PADRAO = 2;          // a quantia que vem escrita quando o mestre escolhe "Recupera uma quantia"
+  const recDoEspecial = k => (REC_ESPECIAL.some(r => r.k === k) ? k : 'longo');
   function especiais(ficha, estado) {
     const pd = ehObjeto(estado && estado.pd) ? estado.pd : {};
     return (Array.isArray(ficha && ficha.poderes) ? ficha.poderes : []).filter(x => ehObjeto(x) && x.id != null && x.id !== '').map(x => {
       const id = String(x.id), max = Math.max(0, Math.round(numFinito(x.max) || 0));
       const g = numFinito(tem(pd, id) ? pd[id] : null), a = Math.max(0, Math.round(g != null ? g : numFinito(x.atual) || 0));
-      return { id, nome: String(x.nome == null ? '' : x.nome).trim().slice(0, 60) || ESPECIAL_PADRAO, atual: max > 0 ? Math.min(a, max) : a, max };
+      return { id, nome: String(x.nome == null ? '' : x.nome).trim().slice(0, 60) || ESPECIAL_PADRAO, atual: max > 0 ? Math.min(a, max) : a, max,
+        rec: recDoEspecial(x.rec), qc: inteiroEntre(x.qc == null ? QC_PADRAO : x.qc, 0, 999), ql: inteiroEntre(x.ql == null ? QL_PADRAO : x.ql, 0, 999) };
     });
+  }
+  /* A regra de uma barra (do jeito que especiais() devolve), por extenso: "enche no descanso longo", "+1 no descanso
+     curto · +2 no longo", "só à mão"… */
+  function textoRecEspecial(b) {
+    const rec = recDoEspecial(b && b.rec);
+    if (rec === 'qualquer') return 'enche em qualquer descanso';
+    if (rec === 'manual') return 'só à mão (o descanso não mexe nela)';
+    if (rec === 'quantia') {
+      const qc = inteiroEntre(b.qc == null ? QC_PADRAO : b.qc, 0, 999), ql = inteiroEntre(b.ql == null ? QL_PADRAO : b.ql, 0, 999), p = [];
+      if (qc) p.push('+' + qc + ' no descanso curto');
+      if (ql) p.push('+' + ql + (qc ? ' no longo' : ' no descanso longo'));
+      return p.length ? p.join(' · ') : 'o descanso não devolve nada';
+    }
+    return 'enche no descanso longo';
   }
   /* → um estado NOVO com a barra especial `id` valendo `v` (presa entre 0 e o máximo, quando ele existe). O recebido não muda. */
   function mudarEspecial(estado, id, v, max) {
@@ -774,6 +824,41 @@
     const pd = Object.assign({}, ehObjeto(estado && estado.pd) ? estado.pd : {});
     por(pd, String(id), m > 0 ? Math.min(n, m) : n);
     return Object.assign({}, estado, { pd });
+  }
+
+  /* ---------- grupos de troca dos equipamentos (lote 6) ----------
+     Um item pode estar num grupo de troca (it.troca: um nome, como "Arma principal" ou "Espada de gelo" — sem diferença
+     de maiúsculas e acentos): dos itens do mesmo grupo, um só fica equipado. Equipar um guarda os outros do grupo; os
+     itens sem grupo não mudam. A relíquia (it.reliquia) é só um destaque: não muda conta nenhuma.
+     → { itens: uma lista nova (os itens que mudam são cópias; o recebido não muda), guardados: [ids que foram guardados] } */
+  const grupoDeTroca = it => String(it == null || it.troca == null ? '' : it.troca).trim().slice(0, 40);
+  function equiparItem(itens, id, on) {
+    const lista = Array.isArray(itens) ? itens : [], alvo = lista.find(x => ehObjeto(x) && x.id === id);
+    if (!alvo) return { itens: lista.slice(), guardados: [] };
+    const g = on ? normNome(grupoDeTroca(alvo)) : '', guardados = [];
+    const out = lista.map(x => {
+      if (!ehObjeto(x)) return x;
+      if (x === alvo) return Object.assign({}, x, { equipado: !!on });
+      if (g && x.equipado !== false && normNome(grupoDeTroca(x)) === g) { guardados.push(x.id); return Object.assign({}, x, { equipado: false }); }
+      return x;
+    });
+    return { itens: out, guardados };
+  }
+
+  /* ---------- a fadiga (lote 6) ----------
+     Uma pilha de 5 a 0, como a bateria do celular: cheia (5) é descansado; vazia (0), esgotado. Mora no estado
+     (estado.fad); sem nada anotado, a pilha está cheia. O mestre e quem controla a ficha mexem nela à mão; o descanso do
+     Acampamento a enche de volta (o longo, toda; o curto, um). Está em uso na ficha de um jogador da mesa e na que já
+     tem a fadiga anotada (um NPC, quando o mestre liga). */
+  const FAD_MAX = 5;
+  const FADIGA = ['Esgotado', 'Exausto', 'Muito cansado', 'Cansado', 'Disposto', 'Descansado'];     // de 0 a 5
+  Object.freeze(FADIGA);
+  const fadiga = estado => { const n = numFinito(estado && estado.fad); return n == null ? FAD_MAX : Math.max(0, Math.min(FAD_MAX, Math.round(n))); };
+  const usaFadiga = (estado, deJogador) => !!deJogador || (ehObjeto(estado) && estado.fad != null && numFinito(estado.fad) != null);
+  /* → um estado NOVO com a fadiga valendo v (presa entre 0 e 5). O recebido não muda. */
+  function mudarFadiga(estado, v) {
+    const n = numFinito(v);
+    return Object.assign({}, estado, { fad: n == null ? FAD_MAX : Math.max(0, Math.min(FAD_MAX, Math.round(n))) });
   }
 
   /* ---------- bolsas: poções, bombas, runas, munições e materiais ---------- */
@@ -1167,11 +1252,12 @@
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
-    ESPECIAL_PADRAO, especiais, mudarEspecial,
+    ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, grupoDeTroca, equiparItem,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
     temporarios, bolsa, lerEfeito, usarItem, previaDoUso, textoDoUso, efeitosDoItem, faixaDoEfeito, nomeDaBarra, COND_GRUPOS, CONDICOES, nomeDaCondicao,
-    PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido,
+    PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido, AMPUTAVEIS, ABAIXO, amputados,
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp

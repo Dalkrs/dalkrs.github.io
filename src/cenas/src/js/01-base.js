@@ -658,6 +658,8 @@ function normalizeScene(sc) {
     const st = cleanSt(t.st); if (st) t.st = st; else delete t.st;
     delete t.fixas;                                               // (a "fixa de cada turno" de antes saiu: era a iniciativa)
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
+    // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
+    if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
     if (t.light.fl) t.light.fl = true; else delete t.light.fl;          // luz que tremula (uma tocha na mão)
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }

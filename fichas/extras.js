@@ -202,13 +202,134 @@ const FichasExtras = (() => {
     });
   }
 
-  /* ======================= equipamentos: passivas e efeitos =======================*/
-  const colunasItens = () => 1 + ATRIBS.length + DERIV.length + DEFESAS.length;
-  function htmlEfeitoItem(it, pc) {
-    return `<tr class="itfx ${it.equipado === false ? 'off' : ''}"><td></td><td colspan="${colunasItens()}">
-      ${pc ? htmlMaisDoItem(it, pc) : ''}
-      <textarea rows="1" data-itemfx="${it.id}" placeholder="Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}">${esc(it.efeito || '')}</textarea>
-    </td><td></td></tr>`;
+  /* ======================= equipamentos em cartões (lote 6) =======================
+     Cada item é um cartão: a chave de equipado, o nome, só os bônus que ele tem ("FOR +3 · DFF +2") e, quando há, as
+     passivas. "Editar" abre os números (atributos, secundários, defesas, barras e defesas específicas), as passivas, a
+     relíquia (só um destaque dourado) e o grupo de troca: dos itens do mesmo grupo, um só fica equipado — equipar um
+     guarda os outros (a conta é de TC.rules.equiparItem). */
+  const itensAbertos = new Set();            // os cartões abertos em edição nesta tela (pelo id do item)
+  const RELIQUIA_SVG = '<svg class="icorel" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18M9.5 3.5 12 9l2.5-5.5M12 9v11.5"/></svg>';
+  const TROCA_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
+  const juntarE = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+  const grupoDe = it => (window.TC && TC.rules && TC.rules.grupoDeTroca ? TC.rules.grupoDeTroca(it) : String((it && it.troca) || '').trim().slice(0, 40));
+  const normG = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  // só o que o item soma: as chaves com valor, o máximo de barras e as defesas específicas — [{ rot, v, title }]
+  function bonusDoItem(it, pc) {
+    const b = it.bonus || {}, out = [];
+    ATRIBS.concat(DERIV, DEFESAS).forEach(x => { const v = +b[x.k] || 0; if (v) out.push({ rot: x.rot || x.k, v, title: x.nome }); });
+    if (RR()) {
+      const rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
+      (pc.recursos || []).forEach(r => { const v = +rec[r.id] || 0; if (v) out.push({ rot: r.nome || 'Barra', v, title: 'No máximo de ' + (r.nome || 'barra') }); });
+      ESP().forEach(d => { const v = +def[d.k] || 0; if (v) out.push({ rot: 'Def. ' + d.nome, v, title: 'Defesa contra ' + d.nome.toLowerCase() }); });
+    }
+    return out;
+  }
+  const chipsBonus = lista => lista.map(b => `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${sinalTxt(b.v)}</span>`).join('<span class="itsep" aria-hidden="true">·</span>');
+  function editorItem(it, pc) {
+    const campo = (x, cls) => `<label class="itn ${cls}"><span>${esc(x.rot || x.k)}</span><input type="number" step="1" data-itembon="${esc(it.id)}|${x.k}" value="${(+(it.bonus || {})[x.k] || 0)}" aria-label="${esc(x.nome)}: quanto ${esc(it.nome || 'este item')} soma"></label>`;
+    return `<div class="ited">
+      <div class="itgrupos">
+        <div class="itgrupo"><span class="eyebrow">Atributos</span><div class="itnums">${ATRIBS.map(a => campo(a, 'atr')).join('')}</div></div>
+        <div class="itgrupo"><span class="eyebrow">Secundários</span><div class="itnums">${DERIV.map(d => campo(d, 'der')).join('')}</div></div>
+        <div class="itgrupo"><span class="eyebrow">Defesas</span><div class="itnums">${DEFESAS.map(d => campo(d, 'def')).join('')}</div></div>
+      </div>
+      ${htmlMaisDoItem(it, pc)}
+      <textarea rows="1" data-itemfx="${esc(it.id)}" placeholder="Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}">${esc(it.efeito || '')}</textarea>
+      <div class="itopc">
+        <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
+        <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
+      </div>
+    </div>`;
+  }
+  function cartaoItem(it, pc) {
+    const aberto = itensAbertos.has(it.id), on = it.equipado !== false, g = grupoDe(it), fx = String(it.efeito || '').trim(), bon = bonusDoItem(it, pc);
+    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''}" data-itcard="${esc(it.id)}">
+      <div class="ittopo">
+        <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
+        <input class="inm itnome" data-itemnome="${esc(it.id)}" value="${esc(it.nome || '')}" placeholder="Nome do item" aria-label="Nome do item">
+        ${it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : ''}
+        ${g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : ''}
+        <span class="itbts"><button type="button" class="mini" data-itemed="${esc(it.id)}" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Editar'}</button><button type="button" class="mini danger" data-itemdel="${esc(it.id)}" title="Tirar este item (dá para desfazer)" aria-label="Tirar o item ${esc(it.nome || 'sem nome')}">×</button></span>
+      </div>
+      <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
+      ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}
+      ${aberto ? editorItem(it, pc) : ''}
+    </div>`;
+  }
+  function painelItens(pc, c) {
+    const itens = pc.itens || [];
+    const grupos = [...new Set(itens.map(grupoDe).filter(Boolean))];
+    // (um grupo com mais de um item equipado: avisa, sem mexer — o próximo "equipar" do grupo acerta)
+    const dobrados = grupos.filter(g => itens.filter(it => it.equipado !== false && normG(grupoDe(it)) === normG(g)).length > 1);
+    const tot = ATRIBS.concat(DERIV, DEFESAS).filter(x => c.eq && c.eq[x.k]).map(x => ({ rot: x.rot || x.k, v: c.eq[x.k], title: x.nome }));
+    return `<div class="panel" style="margin-bottom:18px" id="painelItens">
+      <div class="hd"><span class="eyebrow">Equipamentos</span>
+        <span class="hint" style="margin-left:8px">a chave equipa e guarda · “Editar” abre os números, as passivas, a relíquia e o grupo de troca</span>
+        <span style="margin-left:auto"><button class="mini" data-act="additem">+ Item</button></span>
+      </div>
+      <div class="bd">
+        ${itens.length ? `<div class="itcards">${itens.map(it => cartaoItem(it, pc)).join('')}</div>
+        <div class="ittotal" id="itTotal"><span class="eyebrow">Em uso somam</span>${tot.length ? chipsBonus(tot) : '<span class="hint">nada nos atributos</span>'}</div>${htmlTotaisExtras(pc, c)}
+        ${dobrados.length ? `<div class="hint itdobro">No grupo de troca ${juntarE(dobrados.map(g => '“' + esc(g) + '”'))} há mais de um item equipado: equipar um deles guarda os outros.</div>` : ''}
+        <datalist id="gruposTroca">${grupos.map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist>`
+        : '<div class="hint">Sem itens. Os totais são iguais aos valores base.</div>'}
+      </div>
+    </div>`;
+  }
+  // um item novo já vem com o cartão aberto (quem chama põe o item na ficha e redesenha)
+  const abrirItem = id => { itensAbertos.add(id); };
+  function ligarItens(host, pc) {
+    const painel = q(host, '#painelItens'); if (!painel) return;
+    const item = id => (pc.itens || []).find(x => x.id === id);
+    const sel = (attr, id) => '[' + attr + '="' + CSS.escape(id) + '"]';
+    qa(painel, '[data-itemon]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itemon); if (!it) return;
+      const on = i.checked, antes = (pc.itens || []).map(x => [x.id, x.equipado]);
+      const R = window.TC && TC.rules && TC.rules.equiparItem ? TC.rules : null;
+      let guardados = [];
+      if (R) { const r = R.equiparItem(pc.itens, it.id, on); pc.itens = r.itens; guardados = r.guardados; } else it.equipado = on;
+      save(); desenhar(render, sel('data-itemon', it.id));
+      if (guardados.length) {
+        const nomes = guardados.map(id => (item(id) || {}).nome || 'item sem nome');
+        aviso((it.nome || 'O item') + ' equipado; ' + juntarE(nomes) + (nomes.length === 1 ? ' foi guardado' : ' foram guardados') + ' (mesmo grupo de troca: ' + grupoDe(it) + ').', 'Desfazer', () => {
+          for (const [id, eq] of antes) { const x = item(id); if (x) { if (eq === undefined) delete x.equipado; else x.equipado = eq; } }
+          save(); render();
+        });
+      }
+    });
+    qa(painel, '[data-itemnome]').forEach(i => i.oninput = () => { const it = item(i.dataset.itemnome); if (it) { it.nome = i.value; save(); } });
+    qa(painel, '[data-itembon]').forEach(i => i.onchange = () => {
+      const [id, k] = i.dataset.itembon.split('|'), it = item(id); if (!it) return;
+      it.bonus = it.bonus || {}; it.bonus[k] = +i.value || 0;
+      save(); desenhar(render, sel('data-itembon', i.dataset.itembon));
+    });
+    qa(painel, '[data-itemed]').forEach(b => b.onclick = () => {
+      const id = b.dataset.itemed;
+      if (itensAbertos.has(id)) itensAbertos.delete(id); else itensAbertos.add(id);
+      render(); refocar(sel('data-itemed', id));
+    });
+    qa(painel, '[data-itemrel]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itemrel); if (!it) return;
+      if (i.checked) it.reliquia = true; else delete it.reliquia;
+      save(); desenhar(render, sel('data-itemrel', it.id));
+    });
+    qa(painel, '[data-itemtroca]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itemtroca); if (!it) return;
+      const v = i.value.trim().slice(0, 40);
+      if (v) it.troca = v; else delete it.troca;
+      save(); desenhar(render, sel('data-itemtroca', it.id));
+    });
+    qa(painel, '[data-itemdel]').forEach(b => b.onclick = () => {
+      const i = (pc.itens || []).findIndex(x => x.id === b.dataset.itemdel); if (i < 0) return;
+      const it = pc.itens[i];
+      pc.itens = pc.itens.filter(x => x !== it); itensAbertos.delete(it.id);
+      save(); render();
+      aviso('O item ' + (String(it.nome || '').trim() || 'sem nome') + ' saiu da ficha.', 'Desfazer', () => {
+        if (!Array.isArray(pc.itens)) pc.itens = [];
+        if (!pc.itens.some(x => x.id === it.id)) pc.itens.splice(Math.min(i, pc.itens.length), 0, it);
+        save(); render();
+      });
+    });
   }
   const ajustarAltura = t => { t.style.height = 'auto'; t.style.height = Math.max(30, t.scrollHeight + 2) + 'px'; };
   function ligarEfeitos(host, pc) {
@@ -277,7 +398,7 @@ const FichasExtras = (() => {
           ${DERIV.map(d => `<tr class="derived">
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.k}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.desc}</span></td>
-            <td class="num vbase">${d.calc(c.base)}</td>
+            <td class="num vbase">${d.calc(c.base, c.def)}</td>
             <td class="num vequip">${c.eq[d.k] ? (c.eq[d.k] > 0 ? '+' : '') + c.eq[d.k] : '—'}${htmlTemp(c, d.k)}</td>
             <td class="num vtot">${c.der[d.k]}</td>
           </tr>`).join('')}
@@ -290,7 +411,7 @@ const FichasExtras = (() => {
           </tr>`).join('')}
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Distribuição livre: quem controla a ficha põe os pontos onde quiser. O total vem da tabela de levels (${c.limite} no level ${esc(String(pc.level))}); a ficha avisa se faltar ou passar, mas não trava. Os três derivados usam os atributos <strong>base</strong>; a árvore e os equipamentos somam por cima.</div>
+        <div class="hint" style="margin-top:6px">Distribuição livre: quem controla a ficha põe os pontos onde quiser. O total vem da tabela de levels (${c.limite} no level ${esc(String(pc.level))}); a ficha avisa se faltar ou passar, mas não trava. Os derivados usam os atributos <strong>base</strong> (o Embate soma ainda o Bloqueio inteiro); a árvore e os equipamentos somam por cima.</div>
       </div>
     </div>`;
   }
@@ -722,7 +843,7 @@ const FichasExtras = (() => {
           // contador de rodadas que se desconta na mão (com 0, acabou: não soma mais)
           const modo = b.r != null ? 'rodadas' : b.ate ? 'descanso' : 'nota', acabou = b.r === 0;
           const dur = modo === 'nota' ? `<input class="inm tmpd" data-tmpd="${esc(b.id)}" value="${esc(b.d)}" maxlength="40" placeholder="Dura — ex.: 3 turnos" aria-label="Quanto dura (anotação)">`
-            : modo === 'descanso' ? `<span class="tmpate" title="O próximo descanso do Acampamento (curto ou longo) tira este bônus">o Acampamento tira</span>`
+            : modo === 'descanso' ? `<span class="tmpate" title="O próximo descanso do Acampamento (curto ou longo) tira este bônus — a não ser que o mestre deixe aquele descanso sem tirar">o Acampamento tira</span>`
             : `<span class="tmprod${acabou ? ' fim' : ''}"><button type="button" class="step" data-tmprod="${esc(b.id)}" data-d="-1" ${acabou ? 'disabled' : ''} aria-label="Uma rodada a menos para ${esc(b.n || 'o bônus')}">−</button><b>${acabou ? 'acabou' : b.r + (b.r === 1 ? ' rodada' : ' rodadas')}</b><button type="button" class="step" data-tmprod="${esc(b.id)}" data-d="1" aria-label="Uma rodada a mais para ${esc(b.n || 'o bônus')}">+</button></span>`;
           return `
           <div class="tmprow ${b.off || acabou ? 'off' : ''}" data-tmprow="${esc(b.id)}">
@@ -1059,14 +1180,14 @@ const FichasExtras = (() => {
       if (v) pc.defEsp[k] = v; else delete pc.defEsp[k];
       save(); desenhar(render, '[data-defesp="' + k + '"]');
     });
-    ligarIdentidade(host, pc); ligarBarras(host, pc); ligarMaisDoItem(host, pc); ligarTemporarios(host, pc); ligarBolsa(host, pc);
+    ligarIdentidade(host, pc); ligarBarras(host, pc); ligarItens(host, pc); ligarMaisDoItem(host, pc); ligarTemporarios(host, pc); ligarBolsa(host, pc);
   }
 
   return {
     aviso, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros,
-    htmlEfeitoItem, ligarEfeitos, htmlEfeitosEquipados,
+    painelItens, ligarItens, abrirItem, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,

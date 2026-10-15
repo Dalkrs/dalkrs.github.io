@@ -140,7 +140,8 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   ok(await ate(async () => { const l = await linha(J, 'pc_dain'); return R.temporarios(l.estado.tmp).soma.FOR === 2; }), 'no aparelho do jogador, a ficha do Dain soma a Força +2');
   await A.locator('#btLongo').click(); await w(400);
   await A.locator('#ds-sv').selectOption('pao'); await w(300);
-  ok(/Defesa Física \+1 \(3 rodadas\)/.test(await A.locator('td[data-fx="pc_ogro"]').innerText()) && (await A.locator('td[data-fx="pc_dain"]').innerText()).trim() === '—', 'o longo, servindo o pão: a forja dá Defesa Física +1 por 3 rodadas só ao Ogro');
+  ok(/Defesa Física \+1 \(3 rodadas\)/.test(await A.locator('td[data-fx="pc_ogro"]').innerText()) && (await A.locator('td[data-fx="pc_dain"]').innerText()).replace(/\s+/g, ' ').trim() === 'acaba: FOR +2 (Ensopado)',
+    'o longo, servindo o pão: a forja dá Defesa Física +1 por 3 rodadas só ao Ogro; no Dain, a prévia mostra a Força do ensopado acabando — ' + (await A.locator('td[data-fx="pc_dain"]').innerText()));
   await A.locator('#ds-ok').click(); await w(500);
   ok(await ate(async () => { const d = Object.values((await linha(M, 'pc_dain')).estado.tmp || {}), o = Object.values((await linha(M, 'pc_ogro')).estado.tmp || {}); return d.length === 0 && o.length === 1 && o[0].k === 'DFF' && o[0].r === 3 && !o[0].ate && await semPendencia(M); }),
     'descansando de novo, a Força +2 acaba (era até o próximo descanso) e o Ogro fica com Defesa Física +1 por 3 rodadas');
@@ -161,6 +162,47 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await A.locator('#btDesfazer').click(); await w(500);
   await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'), f = JSON.parse(JSON.stringify(l.ficha)), rec = Object.assign({}, l.estado.rec); f.recursos = f.recursos.filter(r => r.id !== 'furia'); delete rec.furia; P.gravar('pc_ogro', { ficha: f, estado: Object.assign({}, l.estado, { rec }) }); });
   ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.ficha.recursos.length === 2 && l.estado.rec.furia === undefined && !Object.keys(l.estado.tmp || {}).length && await semPendencia(M); }), '(desfeito; o Ogro sem a Fúria de novo)');
+
+  // ---------- (lote 6) a regra de cada barra especial, a fadiga e a chave de tirar os bônus ----------
+  await M.evaluate(() => {
+    const P = TC.dados.col('personagens'), l = P.pegar('pc_dain'), f = JSON.parse(JSON.stringify(l.ficha));
+    Object.assign(f.poderes[0], { rec: 'quantia', qc: 1, ql: 2 });                      // a Cura recupera +1 no curto, +2 no longo
+    P.gravar('pc_dain', { ficha: f, estado: Object.assign({}, l.estado, { fad: 2, tmp: { tz: { n: 'Poção', k: 'FOR', v: 2, d: 'até o próximo descanso', ate: 'descanso', t: 1 } } }) });
+  });
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.fad === 2 && l.ficha.poderes[0].rec === 'quantia' && await semPendencia(M); }), '(o Dain fica com a pilha em 2, uma Poção de Força "até o próximo descanso" e a Cura recuperando por quantia)');
+  await w(500);
+  await A.locator('#btCurto').click(); await w(400);
+  let pv6 = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  ok(await A.locator('#ds-tira').isChecked() && /Fadiga 2 → 3\/5/.test(pv6) && /Cura 0 → 1/.test(pv6) && /acaba: FOR \+2 \(Poção\)/.test(await A.locator('td[data-fx="pc_dain"]').innerText()),
+    'a prévia do curto: a pilha volta um (2 → 3), a Cura soma +1 e a Poção acaba (a chave "Tirar os bônus" vem marcada) — ' + (/Dain X.*$/.exec(pv6) || [''])[0].slice(0, 200));
+  ok((pv6.match(/Cura /g) || []).length === 1, '(a Cura do Ogro, com a regra de sempre — enche no longo —, não aparece no curto)');
+  await A.locator('#ds-tira').uncheck(); await w(300);
+  pv6 = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  ok(/continua: FOR \+2 \(Poção\)/.test(await A.locator('td[data-fx="pc_dain"]').innerText()) && /só neste descanso/.test(pv6), 'desmarcando a chave: a Poção continua, só neste descanso');
+  await A.locator('#ds-ok').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.fad === 3 && (l.estado.pd || {}).pwpc_dain === 1 && !!(l.estado.tmp || {}).tz && await semPendencia(M); }), 'descansado: a pilha em 3, a Cura em 1 e a Poção continua na ficha');
+  ok(await ate(async () => { const d = await doc(M); return /os bônus “até o próximo descanso” continuam/.test(d.dados.diario[0].texto); }), 'o diário anota que este descanso não tirou os bônus');
+  await A.locator('#btDesfazer').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.fad === 2 && (l.estado.pd || {}).pwpc_dain === undefined && await semPendencia(M); }), '(desfeito)');
+  await A.locator('#btLongo').click(); await w(400);
+  pv6 = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  ok(await A.locator('#ds-tira').isChecked() && /Fadiga 2 → 5\/5/.test(pv6) && /Cura 0 → 2/.test(pv6), 'no longo: a pilha enche (2 → 5) e a Cura soma +2');
+  await A.locator('#ds-ok').click(); await w(500);
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'); return l.estado.fad === 5 && (l.estado.pd || {}).pwpc_dain === 2 && !(l.estado.tmp || {}).tz && await semPendencia(M); }), 'descansado: a pilha cheia, a Cura em 2 e a Poção acabou');
+  await A.locator('#btDesfazer').click(); await w(500);
+  // a regra por tipo de descanso: o curto deixa de tirar os bônus (o padrão da janela muda junto)
+  await A.locator('#tab-diario').click(); await w(300);
+  await A.evaluate(() => { const d = document.getElementById('regras'); if (d && !d.open) d.open = true; }); await w(200);
+  ok(await A.locator('#rg-curto-tira').isChecked() && await A.locator('#rg-longo-tira').isChecked() && await A.locator('#rg-curto-poderes').count() === 0 && /cada uma, escolhida na ficha/.test(await A.locator('#rg-especiais').innerText()),
+    'nas Regras do descanso: "Tira os bônus" no longo e no curto (marcados); as barras especiais seguem a regra de cada uma');
+  await A.locator('#rg-curto-tira').uncheck(); await w(400);
+  ok(await ate(async () => (await doc(M)).dados.regras.curto.tiraBonus === false), 'desmarcado o curto, a regra fica guardada');
+  await A.locator('#btCurto').click(); await w(400);
+  ok(!(await A.locator('#ds-tira').isChecked()) && !/só neste descanso/.test(await A.locator('dialog[open]').innerText()), 'e a janela do descanso curto já vem com a chave desmarcada');
+  await A.locator('dialog[open] .dl-f .btn', { hasText: 'Cancelar' }).click(); await w(300);
+  await A.locator('#rg-curto-tira').check(); await w(400);
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_dain'), f = JSON.parse(JSON.stringify(l.ficha)), e = Object.assign({}, l.estado); delete f.poderes[0].rec; delete f.poderes[0].qc; delete f.poderes[0].ql; delete e.fad; delete e.tmp; P.gravar('pc_dain', { ficha: f, estado: e }); });
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'), d = await doc(M); return l.estado.fad === undefined && !l.ficha.poderes[0].rec && d.dados.regras.curto.tiraBonus === true && await semPendencia(M); }), '(tudo de volta como era)');
 
   // ---------- a aura: o jogador escolhe a emoção do personagem dele; todos veem ----------
   await B.locator('#tab-grupo').click(); await w(300, J);

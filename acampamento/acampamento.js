@@ -122,20 +122,26 @@
   }
   function pessoa(id) {
     const l = linha(id), r0 = camp.roda.find(x => x.id === id);
-    if (!l) return r0 ? { id, nome: r0.nome || 'Sem nome', img: imagemOk(r0.img), dono: r0.dono, semFicha: true, recursos: [], san: null, conf: null, poderes: [], grupo: '', raca: '', emo: emoDe(id, null) } : null;
+    if (!l) return r0 ? { id, nome: r0.nome || 'Sem nome', img: imagemOk(r0.img), dono: r0.dono, semFicha: true, recursos: [], san: null, conf: null, poderes: [], fad: null, tmp: [], grupo: '', raca: '', emo: emoDe(id, null) } : null;
     const est = l.estado || {}, ficha = l.ficha || {};
     let recursos = [];
     try {
       const pc = Object.assign({}, ficha, { id: l.id, nome: l.nome });
       recursos = R().resumo(pc, cfgAtual(), { arvore: R().bonusDaArvore(l.skills, bibAtual()) }, est).recursos.filter(x => x.max != null && Number.isFinite(x.max) && x.max > 0);
     } catch (e) { recursos = []; }
-    const usa = est.san != null || est.conf != null || R().temRelacoes(est) || (mestre() && Object.keys(segDe(l.id)).length > 0) || ehJogador(l.dono_id);
+    // (o pet de um personagem — ficha.petDe — é como a ficha de um NPC: não liga sozinho o que a de jogador liga)
+    const deJog = ehJogador(l.dono_id) && !ficha.petDe;
+    const usa = est.san != null || est.conf != null || R().temRelacoes(est) || (mestre() && Object.keys(segDe(l.id)).length > 0) || deJog;
     return {
       id, nome: l.nome || 'Sem nome', img: imagemOk(ficha.img), dono: l.dono_id || null, semFicha: false, recursos,
       san: usa ? dentro(est.san, 100) : null, conf: usa ? dentro(est.conf, 50) : null,
       // as barras especiais (os antigos "poderes divinos"): a lista é da ficha, o valor de agora mora no estado (estado.pd)
       poderes: typeof R().especiais === 'function' ? R().especiais(ficha, est)
-        : (Array.isArray(ficha.poderes) ? ficha.poderes : []).filter(x => x && x.id).map(x => ({ id: x.id, nome: x.nome || 'Barra especial', atual: Math.max(0, +x.atual || 0), max: Math.max(0, +x.max || 0) })),
+        : (Array.isArray(ficha.poderes) ? ficha.poderes : []).filter(x => x && x.id).map(x => ({ id: x.id, nome: x.nome || 'Barra especial', atual: Math.max(0, +x.atual || 0), max: Math.max(0, +x.max || 0), rec: x.rec, qc: x.qc, ql: x.ql })),
+      // a fadiga (a pilha de 5 a 0), quando a ficha usa: a de um jogador da mesa, ou a que já tem a fadiga anotada
+      fad: typeof R().usaFadiga === 'function' && R().usaFadiga(est, deJog) ? R().fadiga(est) : null,
+      // os bônus "até o próximo descanso" que a ficha tem agora (o descanso tira, se o mestre deixar)
+      tmp: est.tmp && typeof est.tmp === 'object' ? Object.keys(est.tmp).filter(k => est.tmp[k] && est.tmp[k].ate === 'descanso').map(k => ({ id: k, n: est.tmp[k].n, k: est.tmp[k].k, v: est.tmp[k].v })) : [],
       grupo: String(ficha.grupo || '').trim(), raca: String(ficha.raca || '').trim().slice(0, 40), emo: emoDe(id, l),
     };
   }
@@ -560,6 +566,7 @@
           ...p.recursos.map((r, k) => medidor(r.nome, r.atual, r.max, k === 0 ? 'var(--hp)' : k === 1 ? 'var(--sp)' : 'var(--outro)')),
           p.san != null ? medidor('Sanidade', p.san, 100, 'var(--san)') : null,
           p.conf != null ? medidor('Conforto', p.conf, 100, 'var(--conf)') : null,
+          p.fad != null ? medidor('Fadiga', p.fad, N.FAD_MAX, 'var(--outro)') : null,
           ...p.poderes.filter(x => x.max > 0).map(x => medidor(x.nome, x.atual, x.max, 'var(--outro)'))) : null,
         aberto && p.semFicha ? h('span', { class: 'med note', text: 'A ficha deste personagem não está à vista para você.' }) : null);
       const acoes = aberto ? h('div', { class: 'cartao' },
@@ -924,10 +931,11 @@
           h('span', { text: 'Rações por personagem' }), regra('longo', 'prov', 'Descanso longo: rações por personagem', 0, 99), regra('curto', 'prov', 'Descanso curto: rações por personagem', 0, 99),
           h('span', { text: 'Conforto' }), regra('longo', 'conf', 'Descanso longo: Conforto', -100, 100), regra('curto', 'conf', 'Descanso curto: Conforto', -100, 100),
           h('span', { text: 'Sanidade' }), regra('longo', 'san', 'Descanso longo: Sanidade', -100, 100), regra('curto', 'san', 'Descanso curto: Sanidade', -100, 100),
-          h('span', { text: 'Enche as barras especiais' }),
-          h('input', { type: 'checkbox', id: 'rg-longo-poderes', checked: rg.longo.poderes, 'aria-label': 'Descanso longo enche as barras especiais (poderes divinos, cargas…)', onchange: e => mudar('regras do descanso', c => { c.regras.longo.poderes = e.target.checked; }) }),
-          h('input', { type: 'checkbox', id: 'rg-curto-poderes', checked: rg.curto.poderes, 'aria-label': 'Descanso curto enche as barras especiais (poderes divinos, cargas…)', onchange: e => mudar('regras do descanso', c => { c.regras.curto.poderes = e.target.checked; }) })),
+          h('span', { text: 'Tira os bônus “até o próximo descanso”' }),
+          h('input', { type: 'checkbox', id: 'rg-longo-tira', checked: rg.longo.tiraBonus, 'aria-label': 'Descanso longo tira os bônus “até o próximo descanso”', onchange: e => mudar('regras do descanso', c => { c.regras.longo.tiraBonus = e.target.checked; }) }),
+          h('input', { type: 'checkbox', id: 'rg-curto-tira', checked: rg.curto.tiraBonus, 'aria-label': 'Descanso curto tira os bônus “até o próximo descanso”', onchange: e => mudar('regras do descanso', c => { c.regras.curto.tiraBonus = e.target.checked; }) })),
         h('p', { class: 'note', id: 'rg-comeco', text: 'A barra que “começa em” um valor próprio (na ficha, em Opções da barra) não recupera por porcentagem: o descanso longo a leva de volta ao começo dela, e o curto não mexe nela. Recuperar 100% enche também a barra que estava abaixo de zero.' }),
+        h('p', { class: 'note', id: 'rg-especiais', text: 'As barras especiais seguem a regra de cada uma, escolhida na ficha (Barras especiais → Recupera): enche no descanso longo, em qualquer descanso, uma quantia ou só à mão. A fadiga enche no descanso longo e volta um no curto. Tirar os bônus dá para mudar também na hora, na janela do descanso.' }),
         h('p', { class: 'note', text: 'Quando faltam rações para o descanso longo:' }),
         h('div', { class: 'regras' },
           h('span', { text: 'A recuperação fica em (% do normal)' }), campoNum('rg-sem-rec', rg.semProv.rec, 'Sem rações: a recuperação fica em % do normal', v => mudar('regras do descanso', c => { c.regras.semProv.rec = v; }), 0, 100), h('span'),
@@ -948,6 +956,8 @@
 
   /* ---- o descanso ---- */
   const seta = (de, para, sufixo) => (para === de ? h('span', { class: 'igual', text: de + (sufixo || '') }) : h('span', {}, de + ' → ', h('b', { text: para + (sufixo || '') })));
+  // a regra de uma barra especial, por extenso (o título dela na prévia do descanso)
+  const regraDaEspecial = (p, id) => { const b = (p.poderes || []).find(x => x.id === id); return b && R() && R().textoRecEspecial ? R().textoRecEspecial(b) : ''; };
   function abrirDescanso(tipo) {
     if (!mestre()) return;
     const todos = presentes().filter(p => !p.semFicha);
@@ -955,12 +965,13 @@
     const marcados = new Set(todos.map(p => p.id)), longo = tipo !== 'curto';
     // o que se serve neste descanso: a provisão do descanso, ou outra escolhida na hora; e quantas cada um come
     // (porPessoa: o que o mestre mudou na hora, pessoa por pessoa — só para este descanso)
-    const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {} };
+    const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {}, tiraBonus: camp.regras[longo ? 'longo' : 'curto'].tiraBonus !== false };
+    const txtTmp = b => (b.k || '?') + ' ' + N.comSinal(Math.round(b.v * 10) / 10) + (b.n ? ' (' + b.n + ')' : '');
     const corpo = h('div', { style: 'display:grid;gap:10px' });
     const confirmar = h('button', { type: 'button', class: 'btn pri', id: 'ds-ok', text: 'Descansar' });
     let plano = null;
     const refazer = foco => {
-      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa });
+      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus });
       const sobra = plano.disponivel - plano.gasto;
       const avisos = [];
       // o que servir (a provisão que sai primeiro, e cujo efeito vale para quem a come) e quantas cada um come
@@ -968,6 +979,11 @@
         h('select', { class: 'in', id: 'ds-sv', 'aria-label': 'O que servir neste descanso', onchange: e => { escolha.servir = e.target.value || null; refazer('ds-sv'); } },
           h('option', { value: '', text: 'a ordem da lista', selected: !escolha.servir }), camp.provisoes.map(pv => h('option', { value: pv.id, text: (pv.nome || 'Sem nome') + ' (' + pv.qtd + ')', selected: escolha.servir === pv.id }))),
         h('span', { class: 'sw', title: 'Rações por personagem neste descanso, para quem não tem uma quantidade própria (por personagem ou por raça, na aba Provisões)' }, h('input', { class: 'in num', id: 'ds-qtd', type: 'number', min: 0, max: 99, step: 1, value: escolha.prov, 'aria-label': 'Rações por personagem neste descanso (o padrão)', onchange: e => { escolha.prov = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-qtd'); } }), 'cada (padrão)')));
+      // tirar ou não os bônus "até o próximo descanso": vem da regra; mudando aqui, vale só para este descanso
+      const daRegra = camp.regras[longo ? 'longo' : 'curto'].tiraBonus !== false;
+      avisos.push(h('label', { class: 'sw tira', id: 'ds-tira-l', title: 'O padrão está nas Regras do descanso (aba Diário). Mudando aqui, vale só para este descanso.' },
+        h('input', { type: 'checkbox', id: 'ds-tira', checked: escolha.tiraBonus, onchange: e => { escolha.tiraBonus = e.target.checked; refazer('ds-tira'); } }),
+        'Tirar os bônus “até o próximo descanso”', escolha.tiraBonus !== daRegra ? h('span', { class: 'note', text: ' — só neste descanso' }) : null));
       if (plano.servida && plano.servida.todos && plano.servida.efeito && plano.comem) avisos.push(h('div', { class: 'aviso', id: 'ds-banquete', text: (plano.servida.nome || 'A provisão servida') + ' é um banquete: o efeito dela vale para todos que descansam.' }));
       else if (plano.servida && plano.prov > 0 && plano.n && plano.comem < plano.n) avisos.push(h('div', { class: 'aviso', id: 'ds-da' }, (plano.servida.nome || 'A provisão servida') + (plano.comem ? ' dá para ' + plano.comem + ' de ' + plano.n + ' (abaixo, quem come); ' + (plano.n - plano.comem === 1 ? 'o outro come' : 'os outros comem') + ' do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.') : ' acabou: todos comem do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.'))));
       if (plano.custo > 0) avisos.push(h('div', { class: 'aviso' + (plano.falta ? ' ruim' : ''), id: 'ds-prov' },
@@ -976,7 +992,7 @@
       else if (longo) avisos.push(h('div', { class: 'aviso', id: 'ds-prov', text: 'Este descanso não gasta provisões.' }));
       const txt = N.textoEfeitos(plano.efeitos);
       if (longo && (txt || N.temParaAlguns(camp))) avisos.push(h('div', { class: 'aviso', text: (txt ? 'A estrutura em uso soma para todos: ' + txt + '.' : '') + (N.temParaAlguns(camp) ? (txt ? ' ' : '') + 'E há estrutura que vale só para alguns (já está na conta de cada um, abaixo).' : '') }));
-      if (naMesa() && plano.linhas.some(l => l.fx.length)) avisos.push(h('div', { class: 'aviso', text: 'O que vai para a ficha: os bônus "até o próximo descanso" de antes acabam, e os novos entram. Os dados são rolados quando o descanso acontece.' }));
+      if (naMesa() && plano.linhas.some(l => l.fx.length)) avisos.push(h('div', { class: 'aviso', text: 'O que vai para a ficha: ' + (plano.tiraBonus ? 'os bônus "até o próximo descanso" de antes acabam, e os novos entram.' : 'os bônus novos entram junto com os de antes (este descanso não tira os bônus).') + ' Os dados são rolados quando o descanso acontece.' }));
       if (!naMesa()) avisos.push(h('div', { class: 'aviso', text: 'Sem mesa aberta, as fichas não são alteradas: os valores abaixo' + (plano.linhas.some(l => l.fx.length) ? ' (e o que vai para a ficha)' : '') + ' são para você aplicar. As provisões e o diário, sim, são atualizados.' }));
       const linhasT = todos.map(p => {
         const ln = plano.linhas.find(x => x.id === p.id), dentroD = !!ln;
@@ -987,13 +1003,18 @@
             value: dentroD ? ln.quer : (Object.prototype.hasOwnProperty.call(escolha.porPessoa, p.id) ? escolha.porPessoa[p.id] : N.quantoCome(camp, tipo, p, escolha.prov)),
             'aria-label': 'Rações que ' + p.nome + ' come neste descanso', title: 'Rações que ' + p.nome + ' come neste descanso',
             onchange: e => { escolha.porPessoa[p.id] = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-c-' + p.id); } })),
-          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '')), ...ln.poderes.map(x => h('span', {}, x.nome + ' ', seta(x.de, x.para)))) : h('span', { class: 'note', text: 'fica de fora' })),
+          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '')),
+            ...ln.poderes.map(x => h('span', { title: 'Barra especial: ' + regraDaEspecial(p, x.id) }, x.nome + ' ', seta(x.de, x.para))),
+            ln.fad && ln.fad.para !== ln.fad.de ? h('span', { class: 'fad', title: 'A fadiga: o descanso longo enche a pilha; o curto devolve um' }, 'Fadiga ', seta(ln.fad.de, ln.fad.para, '/' + N.FAD_MAX)) : null) : h('span', { class: 'note', text: 'fica de fora' })),
           h('td', {}, dentroD && ln.san ? h('div', { class: 'mud' }, seta(ln.san.de, ln.san.para)) : '—'),
           h('td', {}, dentroD && ln.conf ? h('div', { class: 'mud' }, seta(ln.conf.de, ln.conf.para)) : '—'),
           // (as rações sem efeito não aparecem aqui: "come carne seca" em todo mundo seria só barulho)
-          h('td', { 'data-fx': p.id }, dentroD && (ln.come.some(x => x.efeito) || ln.fx.length) ? h('div', { class: 'mud', style: 'font-family:var(--ui)' },
+          h('td', { 'data-fx': p.id }, dentroD && (ln.come.some(x => x.efeito) || ln.fx.length || ln.saem.length || ln.ficam.length) ? h('div', { class: 'mud', style: 'font-family:var(--ui)' },
             ln.come.some(x => x.efeito) ? h('span', {}, 'come ', h('b', { style: 'color:var(--fg)', text: juntarE(ln.come.filter(x => x.efeito).map(x => x.nome || 'ração sem nome')) })) : null,
-            ...ln.fx.map(f => h('span', { title: 'De: ' + f.de }, textoFx(f) + (f.t === 'barra' && R() && (R().lerEfeito(f.val) || {}).dados ? ' (rolado no descanso)' : '')))) : '—'));
+            ...ln.fx.map(f => h('span', { title: 'De: ' + f.de }, textoFx(f) + (f.t === 'barra' && R() && (R().lerEfeito(f.val) || {}).dados ? ' (rolado no descanso)' : ''))),
+            // os bônus "até o próximo descanso" que a ficha tem agora: acabam (riscados) ou continuam
+            ln.saem.length ? h('span', { class: 'saem', 'data-saem': p.id }, 'acaba: ', h('s', { text: ln.saem.map(txtTmp).join(', ') })) : null,
+            ln.ficam.length ? h('span', { class: 'ficam', 'data-ficam': p.id }, 'continua: ' + ln.ficam.map(txtTmp).join(', ')) : null) : '—'));
       });
       corpo.replaceChildren(...avisos, h('table', { class: 'plano' }, h('thead', {}, h('tr', {}, h('th', { text: 'Quem descansa' }), h('th', { text: 'Come', title: 'Rações de cada um neste descanso' }), h('th', { text: 'Barras' }), h('th', { text: 'Sanidade' }), h('th', { text: 'Conforto' }), h('th', { text: 'Come · na ficha' }))), h('tbody', {}, linhasT)));
       confirmar.disabled = !plano.n;
@@ -1047,8 +1068,11 @@
         for (const r of ln.recursos) if (r.para !== r.de) { if (r.inicio != null && r.para === r.inicio) delete rec[r.id]; else rec[r.id] = r.para; }
         if (ln.san) est.san = ln.san.para;
         if (ln.conf) est.conf = ln.conf.para;
-        // os bônus "até o próximo descanso" acabam aqui (os de qualquer origem); depois entra o que este descanso dá
-        if (est.tmp && typeof est.tmp === 'object') { const t2 = {}; for (const k of Object.keys(est.tmp)) if (!(est.tmp[k] && est.tmp[k].ate === 'descanso')) t2[k] = est.tmp[k]; est.tmp = t2; }
+        // os bônus "até o próximo descanso" acabam aqui (os de qualquer origem) — se o descanso tira os bônus (a regra, ou o
+        // que o mestre escolheu na janela); depois entra o que este descanso dá
+        if (plano.tiraBonus !== false && est.tmp && typeof est.tmp === 'object') { const t2 = {}; for (const k of Object.keys(est.tmp)) if (!(est.tmp[k] && est.tmp[k].ate === 'descanso')) t2[k] = est.tmp[k]; est.tmp = t2; }
+        // a fadiga: a pilha volta a encher (o longo, toda; o curto, um)
+        if (ln.fad && ln.fad.para !== ln.fad.de) est.fad = ln.fad.para;
         if (ln.fx.length) {
           // as barras dela como ficam depois do descanso (o efeito da comida parte daí)
           const p = pessoa(ln.id), recursos = (p ? p.recursos : []).map(r => { const x = ln.recursos.find(y => y.id === r.id); return Object.assign({}, r, { atual: x ? x.para : r.atual }); });

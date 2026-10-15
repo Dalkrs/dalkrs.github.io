@@ -298,6 +298,42 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   `vivo_do_jogador`): a regra de leitura do `registro` passa a entregar a essa pessoa só as linhas dela. Fechar e
   abrir avisam o aparelho dela, que lê a conversa de novo (fechada, só as dela; aberta, tudo).
 
+### Fichas e Acampamento (lote 6)
+
+- **Embate** (`EMB`): um derivado — metade da Vitalidade **base**, para baixo, mais o Bloqueio inteiro (o valor próprio,
+  os itens, a árvore e os bônus dele). Por isso `calcular` agora faz as defesas **antes** dos derivados, e o `calc` de
+  cada derivado recebe as defesas (`calc(base, def)`). Rola como os outros (ficha, telinha, F das Cenas) e é a 9.ª das
+  doze chaves de bônus (`CHAVES_BONUS`).
+- **A regra de cada barra especial** (`ficha.poderes[].rec`): `longo` (enche no descanso longo — o padrão, que nem fica
+  anotado), `qualquer` (enche em qualquer descanso), `quantia` (soma `qc` no curto e `ql` no longo, sem passar do
+  limite) ou `manual` (o descanso não mexe). O mestre escolhe na ficha; o jogador vê a regra por extenso
+  (`textoRecEspecial`). A conta do descanso é do acampamento (`AcampNucleo.paraDaEspecial`); a regra geral das barras
+  (`regras.longo.poderes`) saiu.
+- **Tirar os bônus no descanso** (`regras.longo.tiraBonus`, `regras.curto.tiraBonus`, os dois `true` de começo): o
+  padrão de cada tipo de descanso. Na janela do descanso, a chave muda só para aquele descanso (`planejar(…, { tiraBonus })`);
+  cada linha do plano traz `saem` (os bônus "até o próximo descanso" que acabam) ou `ficam`. O descanso que não tira
+  anota no diário, e os bônus "até o descanso" do próprio acampamento também ficam.
+- **Fadiga** (`estado.fad`, de 0 a 5; sem nada anotado, a pilha está cheia): em uso na ficha de um jogador da mesa e na
+  que tem a fadiga anotada (`TC.rules.usaFadiga`). Mexem o mestre e o dono (na ficha e no painel do token). O descanso
+  longo a enche e o curto devolve um. O programa do mestre leva o valor ao token (`token.fad`), que a cena dos
+  jogadores recebe junto — a pilha aparece no token para todos, mesmo para quem não recebe a ficha.
+- **Amputação** (`estado.amp: { parte: { c, n } }`, só os oito membros): um estado permanente, à parte dos ferimentos.
+  A parte de baixo vai junto (`ABAIXO`: sem o braço, sem a mão). Marcar pergunta antes e tira os ferimentos abertos
+  daquela parte e da de baixo (com Desfazer); não pesa nas contas e não põe o sinal de ferido no token
+  (`TC.rules.amputados`). No painel do token, os membros amputados aparecem junto dos ferimentos.
+- **Equipamentos em cartões** (`FichasExtras.painelItens`): a chave de equipado, o nome e só o que o item soma; "Editar"
+  abre os doze números, as barras e defesas específicas, as passivas, a **relíquia** (`item.reliquia`: só o destaque
+  dourado) e o **grupo de troca** (`item.troca`). Dos itens do mesmo grupo (sem diferença de maiúsculas e acentos), um
+  só fica equipado: equipar um guarda os outros (`TC.rules.equiparItem`, com Desfazer). Dois equipados no mesmo grupo
+  (porque o grupo foi dado depois) só ganham um aviso.
+- **Pets** (`ficha.petDe`: o id do dono): uma ficha suplementar, como a de um NPC — atributos à mão (distribuição livre,
+  do zero), barras, habilidades, sem bolsa, sem Tier e sem ligar sozinha o que a de jogador liga (Sanidade, corpo,
+  fadiga, relacionamentos: `deJogador` não conta o pet). No elenco, fica logo embaixo do dono. Quem controla o dono
+  controla o pet: a gravação acerta o `dono_id` (e a campanha) do pet pelos do dono, e mover o dono de grupo ou de
+  campanha leva os pets junto. Excluir o dono exclui os pets (a pergunta diz isso).
+- **Quem vê a ficha**: "Os outros jogadores veem esta ficha (o dono sempre vê a dele)" — o banco já deixava o dono ver a
+  dele com a ficha escondida; agora a chave, o olho da lista e o aviso dizem isso.
+
 ### O mapa-múndi: a grade, o terreno e a viagem
 
 - **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
