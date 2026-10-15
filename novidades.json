@@ -2,6 +2,52 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.15-1",
+      "data": "2026-10-15",
+      "titulo": "Acampamento: áreas, construções desenhadas em três níveis, lugar e clima, linhas de relação e o jogador mexendo no acampamento",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Áreas do acampamento: Fogueira, Oficinas, Convívio e Guarda e Cuidado, em abas acima da cena. Cada personagem fica numa delas (no cartão dele, na aba Grupo) — os suportes podem ficar trabalhando nas oficinas, por exemplo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Construções com desenho: forja, bancada de alquimista, cozinha, canto do bardo, mesa comprida, paliçada, torre de vigia, enfermaria, santuário e outras (em Estrutura → “+ Construir…”). Cada uma aparece desenhada na área dela e melhora em três níveis — simples, boa, excelente: o desenho muda e o que ela faz no descanso cresce."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Lugar e clima: o acampamento pode ficar na floresta, na montanha, no deserto, na neve, na beira-mar ou numa caverna, com chuva, tempestade, neve, neblina ou ventania animadas na cena. E os veículos e animais da caravana aparecem desenhados na fogueira."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Linhas de relação: clique num personagem na cena e veja, em linhas tracejadas, o que cada um sente pelo outro — cada metade é o que um sente (verde gosta, vermelho não gosta, rosa é romance). Os jogadores veem só o que está aberto."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Quanto cada um come: por raça (pelo campo “Raça / classe” da ficha) e por personagem, em Provisões. Na hora do descanso, ainda dá para mudar pessoa por pessoa, só para aquele descanso."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "O momento em volta da fogueira agora mexe também nos corações do romance, na Sanidade e no Conforto de cada um e na emoção (a aura) com que cada um sai — tudo numa tabela, com prévia e Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Sanidade e Conforto no acampamento: no cartão de cada personagem, você muda de 1 em 1 ou digitando (com Desfazer)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "O jogador pode mexer no acampamento: no menu da mesa, em “Permissões…”, marque “mexe no acampamento”. Ele muda provisões, estrutura, caravana, lugares e áreas e o diário; o descanso, as regras, os momentos, a hora, o lugar e o clima continuam com você."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Duas pessoas mexendo no acampamento ao mesmo tempo (o mestre e um jogador, ou o mestre em dois aparelhos): as duas mudanças ficam. E o Desfazer volta só o que aquele passo mudou."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.14-2",
       "data": "2026-10-14",
       "titulo": "Fichas: bloqueio, barras especiais no token, poções com vários efeitos (e em outra pessoa) e bônus só nesta rolagem",

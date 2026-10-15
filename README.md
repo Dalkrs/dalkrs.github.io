@@ -62,7 +62,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 
 - `mesas`, `mesa_membros`, `mesa_convites`: a mesa e quem participa. Em `mesa_membros`, `papel` é `mestre`,
   `auxiliar` ou `jogador`; o auxiliar tem ainda `jogando` (está jogando como jogador) e `abas` (as que ele mestra);
-  `sem_vivo` diz que o mestre fechou a mesa ao vivo para essa pessoa (só muda por `vivo_do_jogador`).
+  `sem_vivo` diz que o mestre fechou a mesa ao vivo para essa pessoa (só muda por `vivo_do_jogador`) e `acamp`, que
+  ela mexe no acampamento (só muda por `acamp_do_jogador`).
 - `campanhas` e `campanha_membros`: as campanhas da mesa (nome, ordem, encerrada) e quem participa de cada uma. De
   que campanha é cada coisa fica na linha dela: `personagens.campanha` e `registro.campanha` (uma, ou nenhuma) e
   `documentos.campanhas` (uma lista: um mapa pode ser de mais de uma). Sem campanha = do mundo. `mesas.campanhas`
@@ -79,7 +80,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
   - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem) e `mundo:indice` (os nomes
     dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado).
-  - Acampamento: `acampamento` — numa mesa com campanhas, um por campanha: `acampamento@<campanha>`.
+  - Acampamento: `acampamento` — numa mesa com campanhas, um por campanha: `acampamento@<campanha>`. É o único
+    documento que um jogador (com a permissão do acampamento) também grava — sem as partes do mestre.
   - Cenas: `cenas:indice` (a ordem das cenas, qual está no ar e qual aparelho do mestre a transmite), `cena:<id>:m`
     e `cena:<id>:v` (mestre), `cena:pub:m` e `cena:pub:v` (a cena que está no ar, sem o que é só do mestre) e
     `cena:pedido:<jogador>` (o que o jogador fez e o mestre ainda vai aplicar). Quem aplica os pedidos e escreve a
@@ -353,7 +355,44 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   programa do mestre a copia para a roda do acampamento (`roda[].emo`), que é como ela chega a quem não vê a ficha.
 - **A caravana** fica no documento do acampamento (`caravana`): os veículos e animais (tipo, quanto levam, estado), a
   carga (quantos, o peso de cada um, em que veículo vai), quem viaja junto sem ficha e onde vai cada personagem
-  (`vai`). Só quem mestra o acampamento mexe; todos veem.
+  (`vai`). Os veículos e animais aparecem desenhados na fogueira (`verCaravana`: dá para esconder); o barco fica no
+  mar quando o acampamento é na beira-mar e, em terra, numa carreta.
+- **Quanto cada um come** (`comer`): por raça (o campo "Raça / classe" da ficha, sem diferença de maiúsculas e
+  acentos) e por personagem, que vale mais que a raça; sem nada anotado, a regra. Vale para o descanso longo
+  (`N.quantoCome`); na hora do descanso, o mestre ainda muda pessoa por pessoa, só para aquele descanso
+  (`planejar(..., { porPessoa })`), e cada linha do plano diz quanto a pessoa ia comer (`quer`).
+- **As áreas e as construções.** O acampamento tem quatro áreas, em abas acima da cena: a Fogueira, as Oficinas, o
+  Convívio e a Guarda e Cuidado. Cada um está numa (`area`: sem nada anotado, a fogueira) — é assim que os suportes
+  ficam trabalhando nas oficinas, por exemplo. As construções são melhorias de um tipo do catálogo (`N.ESTRUTURAS`:
+  a forja, a bancada de alquimista, o canto do bardo, a paliçada, a enfermaria…): cada tipo tem uma categoria
+  (Ofícios, Convívio, Proteção, Cuidado e estudo), a área onde é desenhado e três níveis — simples, boa, excelente —,
+  e o que cada nível faz fica na própria melhoria (`nv: [{ ef, fx }]`; o `ef` e o `fx` dela são sempre os do nível em
+  que está, e por isso o resto do acampamento continua contando como antes). O desenho é de `desenhos.js`
+  (`AcampDesenhos.cena`): o lugar, a área em vista, as construções de pé nela (lado a lado, maiores quando são
+  poucas) e, na fogueira, a caravana. A imagem de fundo do mestre, quando há, é a da fogueira.
+- **O lugar e o clima** (`lugar`, `clima`): floresta, montanha, deserto, neve, beira-mar ou caverna mudam o desenho;
+  chuva, tempestade, neve, neblina e ventania passam por cima da cena (só enfeite: os cliques passam; quem pede menos
+  movimento no aparelho vê tudo parado).
+- **As linhas de relação.** Escolhendo alguém na cena, uma linha tracejada vai até cada um da mesma área com quem há
+  relação; a metade de perto de cada pessoa é o que ela sente pela outra — verde gosta, vermelho não gosta, rosa é
+  romance —, com o número. Quem mestra vê tudo, até o que está escondido; os jogadores, só o que está aberto, nas
+  fichas que veem.
+- **A Sanidade e o Conforto pelo mestre**, no cartão de cada um (aba Grupo): de 1 em 1 ou digitando; ficam na ficha, e
+  o desfazer volta só aquela barra. **O momento** entre dois personagens mexe no Relacionamento de cada um pelo
+  outro, nos corações do romance, na Sanidade e no Conforto de cada um e na emoção (a aura) com que cada um sai — numa
+  tabela com a prévia, e com um passo só de desfazer.
+- **O jogador com o acampamento.** No menu da mesa, em "Permissões…", o mestre deixa um jogador mexer no acampamento
+  (`mesa_membros.acamp`, mudado só por `acamp_do_jogador`). Ele muda as provisões, a estrutura, a caravana, os
+  lugares e as áreas e o diário; o descanso, as regras, os momentos, quem está no acampamento, o nome, a hora, os
+  bônus, o lugar e o clima continuam com quem mestra (`N.SO_MESTRE`). O banco confere: a regra de escrita dos
+  documentos aceita a gravação dele no acampamento da mesa ou de uma campanha de que ele participa
+  (`privado.edita_acamp`), e o gatilho `privado.acamp_guarda` recusa a que mude alguma parte do mestre. A tela dele
+  grava só as partes dele, com as do mestre exatamente como estão no banco (`N.paraJogador`). Criar o acampamento
+  continua sendo de quem mestra.
+- **Dois mexendo ao mesmo tempo.** O acampamento é gravado conferindo a versão (como as cenas): se o mestre e o jogador
+  gravam no mesmo instante, a casca junta as duas mudanças em vez de pôr uma por cima da outra. O desfazer volta só o
+  que aquele passo mudou, por cima do que está lá agora (a junta em três vias da casca): o que outra pessoa mexeu
+  nesse meio-tempo fica.
 
 ### O programa das Cenas do mestre
 
@@ -608,8 +647,15 @@ as cenas e a que está no ar, os mapas, as missões do grupo, a ficha nova e a q
 acampamento, a campanha encerrada, a Árvore, "falar como" e limpar a mesa ao vivo) e `lote5.rede` (com o mestre e
 duas jogadoras: as barras especiais no token, o cadeado dos ferimentos, os relacionamentos de uma vez, o personagem
 ativo, a poção em outra personagem pelo banco — e a recusa quando a bolsa não é de quem pede —, a poção num token sem
-ficha pela cena no ar, os bônus da telinha e a mesa ao vivo fechada e aberta de novo). `vivo.js` confere o site
-publicado.
+ficha pela cena no ar, os bônus da telinha e a mesa ao vivo fechada e aberta de novo) e `acampamento-jogadores.rede`
+(o mestre dá e tira o acampamento de um jogador — e o aviso para esperar quando a mesa ainda não tem acampamento —;
+o que ele muda e o que o banco recusa: cada parte do mestre, outro documento da mesa, dar a permissão a si mesmo; o
+acampamento gravado pela versão de antes do site; a outra jogadora sem a permissão; o mestre e o jogador gravando no
+mesmo instante, e o desfazer que volta só o próprio passo; a Sanidade e o Conforto pelo cartão; o momento com
+corações e emoção; e as linhas de relação de quem joga e de quem mestra). `vivo.js` confere o site publicado.
+
+Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
+mesa de teste) — é como os mutantes rodam os testes longos de rede.
 
 Todo teste que abre o site no navegador também fica de olho em **texto solto** na tela — "null", "undefined", "NaN"
 ou "[object Object]" como o texto inteiro de um pedaço da página, que é o que o navegador escreve quando um valor vazio

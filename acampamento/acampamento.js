@@ -61,6 +61,16 @@
   // quem usa mestra a aba tal? (o mestre auxiliar pode mestrar o Acampamento sem mestrar as Fichas ou a Árvore)
   const mestraAba = aba => { const T = window.TC && window.TC.ponte; return naMesa() && T && typeof T.mestra === 'function' ? T.mestra(aba) : mestre(); };
   const naMesa = () => modo === 'mesa';
+  /* O jogador a quem o mestre deu o acampamento (no menu da mesa, em Permissões) mexe em quase tudo: as provisões, a
+     estrutura, a caravana, os lugares e as áreas, o diário. O descanso, as regras, os momentos, quem está no
+     acampamento, o nome, a hora, os bônus, o lugar e o clima ficam com quem mestra (N.SO_MESTRE; o banco confere).
+     O documento precisa existir: quem cria o acampamento da mesa (ou da campanha) é quem mestra. */
+  const meuMembro = () => (st.membros || []).find(m => m.id === st.eu) || null;
+  const docExiste = () => { const d = D && naMesa() ? D.pegar(DOC) : null; return !!d && !d.apagado; };
+  const ajudante = () => naMesa() && !mestre() && !encerrada && !!(meuMembro() && meuMembro().acamp) && docExiste();
+  const edita = () => mestre() || ajudante();
+  // o painel em vista pode ser mudado por quem está olhando? (no Grupo: quem mestra; nas outras abas: quem edita)
+  let podeAqui = false;
   const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
   // (dono de ficha: qualquer participante menos o mestre — o mestre auxiliar conta, mestrando ou jogando)
   const ehJogador = id => !!id && (st.membros || []).some(m => m.id === id && (m.cargo ? m.cargo !== 'mestre' : m.papel === 'jogador'));
@@ -112,7 +122,7 @@
   }
   function pessoa(id) {
     const l = linha(id), r0 = camp.roda.find(x => x.id === id);
-    if (!l) return r0 ? { id, nome: r0.nome || 'Sem nome', img: imagemOk(r0.img), dono: r0.dono, semFicha: true, recursos: [], san: null, conf: null, poderes: [], grupo: '', emo: emoDe(id, null) } : null;
+    if (!l) return r0 ? { id, nome: r0.nome || 'Sem nome', img: imagemOk(r0.img), dono: r0.dono, semFicha: true, recursos: [], san: null, conf: null, poderes: [], grupo: '', raca: '', emo: emoDe(id, null) } : null;
     const est = l.estado || {}, ficha = l.ficha || {};
     let recursos = [];
     try {
@@ -126,7 +136,7 @@
       // as barras especiais (os antigos "poderes divinos"): a lista é da ficha, o valor de agora mora no estado (estado.pd)
       poderes: typeof R().especiais === 'function' ? R().especiais(ficha, est)
         : (Array.isArray(ficha.poderes) ? ficha.poderes : []).filter(x => x && x.id).map(x => ({ id: x.id, nome: x.nome || 'Barra especial', atual: Math.max(0, +x.atual || 0), max: Math.max(0, +x.max || 0) })),
-      grupo: String(ficha.grupo || '').trim(), emo: emoDe(id, l),
+      grupo: String(ficha.grupo || '').trim(), raca: String(ficha.raca || '').trim().slice(0, 40), emo: emoDe(id, l),
     };
   }
   // quem está no acampamento, na ordem da lista (só os que ainda existem para quem está olhando)
@@ -134,22 +144,32 @@
   const nomeDoDono = id => { const m = (st.membros || []).find(x => x.id === id); return m ? m.nome : ''; };
 
   /* ---------------- gravar, desfazer, o que vem de fora ---------------- */
+  /* Na mesa, o acampamento é gravado conferindo a versão: com o mestre e um jogador (ou o mestre em dois aparelhos)
+     mexendo ao mesmo tempo, a casca junta as duas mudanças em vez de pôr uma por cima da outra. O jogador grava só as
+     partes dele: as do mestre vão exatamente como estão no banco (N.paraJogador). */
   function gravar() {
     jCamp = j(camp);
-    if (naMesa()) { if (mestre()) D.gravar(DOC, { dados: JSON.parse(jCamp), vis: 'mesa' }); marcarSalvo('Salvo na mesa'); }
+    if (naMesa()) {
+      if (mestre()) D.gravar(DOC, { dados: JSON.parse(jCamp), vis: 'mesa' }, undefined, { cas: true });
+      else if (ajudante()) { const cru = D.pegar(DOC); D.gravar(DOC, { dados: N.paraJogador(cru && cru.dados, camp) }, undefined, { cas: true }); }
+      marcarSalvo('Salvo na mesa');
+    }
     else if (guarda.gravar(CHAVE, jCamp)) marcarSalvo('Salvo neste navegador');
     else marcarSalvo('Sem espaço no navegador', true);
   }
   /* Toda mudança no acampamento passa por aqui: fn mexe num rascunho (ou devolve false para desistir). */
   function mudar(rotulo, fn, opt) {
-    if (!mestre()) return false;
+    if (!edita()) return false;
     const rasc = N.copia(camp);
     if (fn(rasc) === false) return false;
     const novo = N.normalizar(rasc), jn = j(novo);
     if (jn === jCamp) return false;
+    // (quem não mestra não muda as partes do mestre: o site não oferece, e o banco recusaria)
+    if (!mestre() && N.mexeNoMestre(camp, novo)) { toast('Só o mestre muda isso no acampamento.'); pintar(); return false; }
     if (!(opt && opt.silencioso)) {
       const topo = pilha[pilha.length - 1];
-      if (!(opt && opt.junta && topo && topo.junta === opt.junta)) pilha.push({ rotulo, json: jCamp, junta: (opt && opt.junta) || null, fichas: (opt && opt.fichas) || null });
+      if (opt && opt.junta && topo && topo.junta === opt.junta) topo.depois = jn;
+      else pilha.push({ rotulo, json: jCamp, depois: jn, junta: (opt && opt.junta) || null, fichas: (opt && opt.fichas) || null });
       if (pilha.length > 60) pilha.shift();
     }
     camp = novo;
@@ -157,6 +177,9 @@
     pintar();
     return true;
   }
+  /* A junta em três vias da casca (a mesma das cenas): desfazer volta só o que aquele passo mudou, por cima do que está
+     aqui agora — o que outra pessoa mexeu nesse meio-tempo fica. Fora da casca, null (o desfazer volta o acampamento). */
+  const juntar3 = () => { try { const d = window.parent !== window && window.parent.TC && window.parent.TC.dados; return d && d.remendo && typeof d.remendo.juntar3 === 'function' ? d.remendo.juntar3 : null; } catch (e) { return null; } };
   /* O que o mestre guarda fora das fichas (documento que só ele recebe): o valor dos relacionamentos escondidos e
      os relacionamentos dos NPCs. As contas são as de TC.rules (as mesmas da aba Fichas). */
   const SEG = 'fichas:segredos';
@@ -172,10 +195,17 @@
     D.gravar(SEG, { dados: { v: s }, vis: 'mestre' });
   }
   function desfazer() {
-    if (!mestre() || !pilha.length) return false;
-    const p = pilha.pop();
-    camp = N.normalizar(JSON.parse(p.json));
-    if (p.fichas && naMesa()) for (const f of p.fichas) { const campos = { estado: f.estado }; if (f.ficha) campos.ficha = f.ficha; P.gravar(f.id, campos); if (f.seg !== undefined) porSeg(f.id, f.seg); }
+    if (!edita() || !pilha.length) return false;
+    const p = pilha.pop(), antes = JSON.parse(p.json), j3 = juntar3();
+    // (o que mudou depois deste passo — por outra pessoa, ou num passo seguinte já desfeito — fica)
+    let volta = j3 && p.depois && p.depois !== jCamp ? N.normalizar(j3(JSON.parse(p.depois), antes, N.copia(camp))) : N.normalizar(antes);
+    if (!mestre()) { const v = N.copia(volta); for (const k of N.SO_MESTRE) v[k] = N.copia(camp[k]); volta = N.normalizar(v); }      // (as partes do mestre ficam como estão)
+    camp = volta;
+    if (p.fichas && naMesa()) for (const f of p.fichas) {
+      // f.so: só estas chaves do estado voltam (a Sanidade, o Conforto); sem f.so, o estado inteiro
+      if (Array.isArray(f.so)) { const l = P.pegar(f.id); if (!l) continue; const est = Object.assign({}, l.estado || {}); for (const k of f.so) { if (f.estado[k] === undefined) delete est[k]; else est[k] = f.estado[k]; } P.gravar(f.id, { estado: est }); continue; }
+      const campos = { estado: f.estado }; if (f.ficha) campos.ficha = f.ficha; P.gravar(f.id, campos); if (f.seg !== undefined) porSeg(f.id, f.seg);
+    }
     gravar();
     if (p.fichas) manterRoda();                        // (a roda acompanha as fichas que voltaram: a emoção, por exemplo)
     pintar();
@@ -191,7 +221,9 @@
     const d = D.pegar(DOC), novo = N.normalizar(d && !d.apagado ? d.dados : null), jn = j(novo);
     if (jn === jCamp) return;
     camp = novo; jCamp = jn;
-    if (mestre()) pilha = [];                          // mudou em outro aparelho: o desfazer recomeça daqui
+    // mudou em outro aparelho (ou outra pessoa mexeu): com a junta em três vias, o desfazer continua valendo — cada passo
+    // volta só o que ele mudou; sem ela (fora da casca), recomeça daqui
+    if (!juntar3()) pilha = [];
     pintar();
   }
   function publicar(titulo, resumo) { try { if (naMesa() && TC.ponte) TC.ponte.publicar('acampamento', { titulo, resumo }); } catch (e) { /* a mesa ao vivo é opcional */ } }
@@ -209,45 +241,88 @@
     }, { silencioso: true });
   }
 
-  /* ---------------- o cenário ---------------- */
-  function sorte(semente) { let a = semente >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  /* ---------------- o cenário ----------------
+     O desenho vem de AcampDesenhos (desenhos.js): o lugar, a área em vista, as construções de pé nela (cada uma no nível
+     dela) e, na fogueira, a caravana. Só é refeito quando alguma dessas coisas muda. */
+  let chaveCenario = '';
   function desenharCenario() {
-    const r = sorte(20261003), p = [];
-    p.push('<defs><linearGradient id="gCeu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ceu1)"/><stop offset=".6" style="stop-color:var(--ceu2)"/><stop offset="1" style="stop-color:var(--ceu3)"/></linearGradient>'
-      + '<radialGradient id="gFogo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb04a" stop-opacity=".85"/><stop offset=".45" stop-color="#ff7a2a" stop-opacity=".28"/><stop offset="1" stop-color="#ff7a2a" stop-opacity="0"/></radialGradient>'
-      + '<radialGradient id="gChao" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#c8763a" stop-opacity=".42"/><stop offset="1" stop-color="#c8763a" stop-opacity="0"/></radialGradient></defs>');
-    // o céu continua para cima da cena: em tela estreita é ele que aparece no alto do palco
-    p.push('<rect x="0" y="-1100" width="1600" height="1101" style="fill:var(--ceu1)"/><rect x="0" y="0" width="1600" height="570" fill="url(#gCeu)"/>');
-    for (let i = 0; i < 70; i++) p.push(`<circle class="estrela" cx="${(r() * 1600).toFixed(0)}" cy="${(r() * 400).toFixed(0)}" r="${(0.7 + r() * 1.4).toFixed(1)}" style="animation-delay:-${(r() * 4).toFixed(1)}s"/>`);
-    for (let i = 0; i < 150; i++) p.push(`<circle class="estrela" cx="${(r() * 1600).toFixed(0)}" cy="${(-r() * 1050).toFixed(0)}" r="${(0.7 + r() * 1.4).toFixed(1)}" style="animation-delay:-${(r() * 4).toFixed(1)}s"/>`);
-    p.push('<circle cx="1240" cy="150" r="96" style="fill:var(--astro)" opacity=".1"/><circle cx="1240" cy="150" r="44" style="fill:var(--astro)"/>');
-    p.push('<path d="M0 470C200 400 400 440 620 420S1000 380 1200 430s300-30 400 10V570H0Z" style="fill:var(--mata)" opacity=".55"/>');
-    // a linha das árvores: pinheiros de tamanhos variados
-    for (let x = -30; x < 1640; x += 30 + r() * 34) {
-      const a = 90 + r() * 120, l = 26 + r() * 22, y = 548 + r() * 14;
-      p.push(`<path d="M${x.toFixed(0)} ${(y - a).toFixed(0)}l${l.toFixed(0)} ${(a * 0.42).toFixed(0)}h-${(l * 0.45).toFixed(0)}l${(l * 0.75).toFixed(0)} ${(a * 0.32).toFixed(0)}h-${(l * 0.5).toFixed(0)}l${(l * 0.8).toFixed(0)} ${(a * 0.26).toFixed(0)}h-${(l * 3.2).toFixed(0)}l${(l * 0.8).toFixed(0)} -${(a * 0.26).toFixed(0)}h-${(l * 0.5).toFixed(0)}l${(l * 0.75).toFixed(0)} -${(a * 0.32).toFixed(0)}h-${(l * 0.45).toFixed(0)}Z" style="fill:var(--mata)"/>`);
+    const AD = window.AcampDesenhos; if (!AD) return;
+    const cs = N.construcoes(camp, areaVista).map(m => ({ tipo: m.tipo, nivel: m.nivel }));
+    const car = areaVista === 'fogueira' && camp.verCaravana ? camp.caravana.veiculos.map(v => ({ tipo: v.tipo })) : [];
+    const chave = j([camp.lugar, areaVista, cs, car]);
+    if (chave === chaveCenario) return;
+    chaveCenario = chave;
+    $('cenario').innerHTML = AD.cena({ lugar: camp.lugar, area: areaVista, construcoes: cs, caravana: car });
+  }
+  /* ---- a área em vista (cada um escolhe a sua; fica neste aparelho) ---- */
+  let areaVista = (() => { const a = guarda.ler('tinycats:acampamento:area'); return N.AREAS.some(x => x[0] === a) ? a : 'fogueira'; })();
+  function verArea(a) {
+    if (!N.AREAS.some(x => x[0] === a) || a === areaVista) return;
+    areaVista = a; guarda.gravar('tinycats:acampamento:area', a);
+    if (sel && N.areaDe(camp, sel) !== a) sel = null;
+    pintarCena(); pintarPainel();
+  }
+  /* ---- o clima: as gotas, os flocos, a névoa e as folhas (montados uma vez para cada clima) ---- */
+  let climaFeito = null;
+  function pintarClima() {
+    const c = camp.clima, el = $('clima');
+    if (c === climaFeito) return;
+    climaFeito = c;
+    el.className = 'clima clima-' + c;
+    let a = 9301;
+    const r = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
+    const n = { chuva: 90, tempestade: 130, neve: 70, neblina: 3, vento: 26 }[c] || 0, out = [];
+    for (let i = 0; i < n; i++) {
+      if (c === 'neblina') out.push(`<i style="--b:${4 + i * 14}%;--t:${38 + i * 14}s;animation-delay:-${(r() * 40).toFixed(1)}s"></i>`);
+      else if (c === 'neve') out.push(`<i style="left:${(r() * 104 - 2).toFixed(1)}%;--d:${(3 + r() * 5).toFixed(1)}px;--t:${(7 + r() * 7).toFixed(1)}s;animation-delay:-${(r() * 14).toFixed(1)}s"></i>`);
+      else if (c === 'vento') out.push(`<i style="--y:${(15 + r() * 75).toFixed(1)}%;--c:${['#b8873e', '#8f9a4a', '#a3542e', '#c9a35a'][i % 4]};--t:${(4 + r() * 4).toFixed(1)}s;animation-delay:-${(r() * 8).toFixed(1)}s"></i>`);
+      else out.push(`<i style="left:${(r() * 120 - 5).toFixed(1)}%;--t:${((c === 'tempestade' ? 0.45 : 0.7) + r() * 0.35).toFixed(2)}s;animation-delay:-${(r() * 2).toFixed(2)}s"></i>`);
     }
-    p.push('<rect x="0" y="545" width="1600" height="1155" style="fill:var(--chao)"/>');           // o chão continua para baixo da cena
-    p.push('<ellipse cx="800" cy="690" rx="640" ry="190" style="fill:var(--chao2)"/><ellipse cx="800" cy="660" rx="520" ry="150" fill="url(#gChao)"/>');
-    // as barracas
-    const barraca = (cx, base, larg, alt, vira) => {
-      const e = cx - larg / 2, d = cx + larg / 2, t = base - alt, porta = larg * 0.16;
-      return `<path d="M${e} ${base}L${cx} ${t}L${d} ${base}Z" fill="#3d352b"/><path d="M${cx} ${t}L${vira ? e : d} ${base}H${cx}Z" fill="#6a5a41"/>`
-        + `<path d="M${cx} ${t + alt * 0.3}L${cx + porta} ${base}H${cx - porta}Z" fill="#15110d"/><path d="M${cx} ${t - 14}V${t + 6}" stroke="#2a221a" stroke-width="5" stroke-linecap="round"/>`;
+    el.innerHTML = out.join('');
+  }
+  /* ---- as linhas de relação (clicando num personagem) ----
+     Do escolhido até cada um da mesma área com quem há relação: a metade de perto de cada um é o que ele sente pelo
+     outro — verde gosta, vermelho não gosta, rosa é romance. Quem mestra vê tudo (até o que está escondido dos
+     jogadores); os jogadores, só o que está aberto, nas fichas que veem. */
+  function relacaoVista(de, para) {
+    const l = linha(de); if (!l || !R()) return null;
+    if (mestre() && comSegredos()) { const e = R().relacaoCom(l.estado, segDe(de), para, !l.dono_id); return e ? { v: e.v, rom: e.rom } : null; }
+    const e = R().relacaoCom(l.estado, null, para);
+    return e && !e.oc ? { v: e.v, rom: e.rom } : null;
+  }
+  let rodaAtual = { gente: [], lugares: [] };
+  function desenharLinhas() {
+    const svgL = $('linhas'), { gente, lugares } = rodaAtual, i = sel ? gente.findIndex(p => p.id === sel) : -1;
+    if (i < 0) { svgL.replaceChildren(); return 0; }
+    const pk = parseFloat($('cena16').style.getPropertyValue('--pk')) || 1;
+    const centro = l => [l.x * 16, l.y * 9 - 11 * pk];
+    const c1 = v => v.toFixed(1);
+    /* Cada linha é uma curva que sobe um pouco (mais, quanto mais longe a pessoa): assim a linha até quem está atrás de
+       outra não passa por cima dela. A curva é partida no meio; cada metade sai de uma das pessoas. */
+    const meia = (p0, p1, p2, rel) => {
+      if (!rel) return '';
+      const cl = rel.rom > 0 ? 'rom' : rel.v > 0 ? 'pos' : rel.v < 0 ? 'neg' : 'zero', d = `M${c1(p0[0])} ${c1(p0[1])}Q${c1(p1[0])} ${c1(p1[1])} ${c1(p2[0])} ${c1(p2[1])}`;
+      // o número fica no meio da metade, um pouco acima da linha
+      const tx = 0.25 * p0[0] + 0.5 * p1[0] + 0.25 * p2[0], ty = 0.25 * p0[1] + 0.5 * p1[1] + 0.25 * p2[1] - 14;
+      const rot = (rel.v > 0 ? '+' : rel.v < 0 ? '−' : '') + Math.abs(rel.v) + (rel.rom ? ' ♥' + rel.rom : '');
+      return `<path class="fundo-l" d="${d}"/><path class="meia ${cl}" d="${d}"/><text x="${c1(tx)}" y="${c1(ty)}" text-anchor="middle">${rot}</text>`;
     };
-    p.push(barraca(300, 610, 320, 190, false), barraca(1310, 600, 280, 165, true));
-    // os troncos de sentar
-    p.push('<rect x="520" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="535" cy="683" r="15" fill="#6b5138"/><circle cx="535" cy="683" r="8" fill="#55402c"/>');
-    p.push('<rect x="910" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="1065" cy="683" r="15" fill="#6b5138"/><circle cx="1065" cy="683" r="8" fill="#55402c"/>');
-    // a fogueira
-    p.push('<circle class="brilho" cx="800" cy="600" r="430" fill="url(#gFogo)"/>');
-    p.push('<g transform="rotate(16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#2a1c13"/></g><g transform="rotate(-16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#36241a"/></g>');
-    p.push('<ellipse cx="800" cy="626" rx="62" ry="12" fill="#c24a1e" opacity=".85"/>');
-    p.push('<path class="chama" d="M800 470C850 540 882 570 860 614C845 640 755 640 740 614C720 570 770 548 800 470Z" fill="#f08a2b"/>');
-    p.push('<path class="chama b" d="M800 520C832 565 850 586 838 614C826 632 774 632 762 614C750 586 782 570 800 520Z" fill="#ffc04d"/>');
-    p.push('<path class="chama c" d="M800 566C815 588 824 600 817 616C810 626 790 626 783 616C776 600 790 590 800 566Z" fill="#fff1b8"/>');
-    for (let i = 0; i < 8; i++) p.push(`<circle class="fagulha" cx="${(778 + r() * 44).toFixed(0)}" cy="${(548 + r() * 20).toFixed(0)}" r="${(1.6 + r() * 1.6).toFixed(1)}" style="--dx:${(-40 + r() * 80).toFixed(0)}px;animation-delay:-${(r() * 3.6).toFixed(1)}s"/>`);
-    $('cenario').innerHTML = p.join('');
+    const a = gente[i], partes = [];
+    let n = 0;
+    gente.forEach((b, k) => {
+      if (k === i) return;
+      const ab = relacaoVista(a.id, b.id), ba = relacaoVista(b.id, a.id);
+      if (!ab && !ba) return;
+      const A = centro(lugares[i]), B = centro(lugares[k]), dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1;
+      let nx = -dy / len, ny = dx / len;
+      if (ny > 0) { nx = -nx; ny = -ny; }                    // (a curva sobe)
+      const curva = Math.min(170, 0.22 * len), C = [(A[0] + B[0]) / 2 + nx * curva, (A[1] + B[1]) / 2 + ny * curva];
+      const Q0 = [(A[0] + C[0]) / 2, (A[1] + C[1]) / 2], Q1 = [(C[0] + B[0]) / 2, (C[1] + B[1]) / 2], M = [(Q0[0] + Q1[0]) / 2, (Q0[1] + Q1[1]) / 2];
+      partes.push(`<g data-de="${a.id}" data-para="${b.id}">` + meia(A, Q0, M, ab) + meia(B, Q1, M, ba) + '</g>');
+      n++;
+    });
+    svgL.innerHTML = partes.join('');
+    return n;
   }
   /* A cena tem sempre a proporção 16:9 e fica presa embaixo: cobre o palco cortando só o céu (em cima) e os lados —
      nunca o chão, onde as pessoas estão. O corte dos lados para na área em que as pessoas podem ficar (N.AREA): em
@@ -276,6 +351,7 @@
     c16.style.setProperty('--vao', (sobe / k).toFixed(1) + 'px');
     pa.classList.toggle('com-faixa', faixa > 1);
     pa.classList.toggle('com-vao', sobe > 0);
+    desenharLinhas();
   }
 
   /* ---------------- pintar ---------------- */
@@ -286,6 +362,7 @@
   }
   function pintarTopo() {
     document.documentElement.classList.toggle('jogador', !mestre());
+    document.documentElement.classList.toggle('so-leitura', !edita());
     const nome = $('nome');
     if (document.activeElement !== nome) nome.value = camp.nome;
     nome.readOnly = !mestre();
@@ -304,24 +381,32 @@
   function barrinha(v, max, cor) { return h('div', { class: 'b' }, h('i', { style: `width:${N.limitar(max > 0 ? v / max * 100 : 0, 0, 100)}%;--c:${cor}` })); }
   function pintarCena() {
     const pa = $('palco');
-    pa.className = 'palco hora-' + camp.hora + (camp.fundo ? ' com-fundo' : '');
+    // (a imagem de fundo do mestre é a da fogueira; as outras áreas são desenhadas)
+    const fundo = camp.fundo && areaVista === 'fogueira' ? camp.fundo : null;
+    pa.className = 'palco hora-' + camp.hora + ' lugar-' + camp.lugar + (fundo ? ' com-fundo' : '');
+    desenharCenario(); pintarClima();
     const c16 = $('cena16');
     let im = c16.querySelector('img.fundo');
-    if (camp.fundo) {
+    if (fundo) {
       if (!im) {
         im = h('img', { class: 'fundo', alt: '' });
         c16.insertBefore(im, $('roda'));
         for (const lado of ['cima', 'baixo']) c16.insertBefore(h('div', { class: 'longe ' + lado, 'aria-hidden': 'true' }, h('img', { alt: '' })), im);
       }
-      if (im.getAttribute('src') !== camp.fundo.url) for (const x of c16.querySelectorAll('img.fundo, .longe img')) x.src = camp.fundo.url;
+      if (im.getAttribute('src') !== fundo.url) for (const x of c16.querySelectorAll('img.fundo, .longe img')) x.src = fundo.url;
     } else if (im) { im.remove(); for (const x of c16.querySelectorAll('.longe')) x.remove(); }
-    const gente = presentes(), n = gente.length;
+    // quem está na área em vista (e as abas das áreas, com quantos há em cada uma)
+    const todos = presentes(), gente = todos.filter(p => N.areaDe(camp, p.id) === areaVista), n = gente.length;
+    $('areas').replaceChildren(...N.AREAS.map(([k, nome]) => { const q = todos.filter(p => N.areaDe(camp, p.id) === k).length, cs = N.construcoes(camp, k).length;
+      return h('button', { type: 'button', id: 'area-tab-' + k, 'aria-pressed': String(areaVista === k), title: nome + ': ' + (q === 1 ? '1 personagem' : q + ' personagens') + (cs ? ' · ' + (cs === 1 ? '1 construção' : cs + ' construções') : ''), onclick: () => verArea(k) },
+        nome, h('span', { class: 'n', text: String(q) })); }));
     const lugares = gente.map((p, i) => camp.lugares[p.id] || N.lugarPadrao(i, n));
     folgaDaRoda = N.folga(lugares);
+    rodaAtual = { gente, lugares };
     $('roda').replaceChildren(...gente.map((p, i) => {
       const lugar = lugares[i], emo = N.emocao(p.emo);
       // a aura da emoção é um brilho na cor dela, atrás do retrato (o nome dela vai na dica e no que o leitor de tela lê)
-      const el = h('button', { type: 'button', class: 'pers' + (sel === p.id ? ' sel' : '') + (emo ? ' com-emo' : ''), 'data-id': p.id, 'data-pode': mestre() ? '' : null, 'data-emo': emo ? emo.k : null,
+      const el = h('button', { type: 'button', class: 'pers' + (sel === p.id ? ' sel' : '') + (emo ? ' com-emo' : ''), 'data-id': p.id, 'data-pode': edita() ? '' : null, 'data-emo': emo ? emo.k : null,
         style: `left:${lugar.x}%;top:${lugar.y}%` + (emo ? `;--emo:${emo.cor}` : ''), title: emo ? p.nome + ' · ' + emo.nome : null,
         'aria-label': p.nome + (emo ? ', ' + emo.nome.toLowerCase() : '') + (p.san != null ? `, Sanidade ${p.san}, Conforto ${p.conf}` : ''), 'aria-pressed': String(sel === p.id) },
         emo ? h('span', { class: 'aura', 'aria-hidden': 'true' }) : null,
@@ -336,13 +421,18 @@
       return el;
     }));
     const vz = $('vazio');
-    vz.hidden = n > 0;
-    if (!n) vz.textContent = mestre() ? (linhas().length ? 'Ninguém em volta da fogueira ainda. Chame os personagens pela aba Grupo.' : (naMesa() ? 'A mesa ainda não tem fichas. Crie os personagens na aba Fichas e chame-os para cá.' : 'Sem fichas neste navegador. Crie os personagens na aba Fichas e chame-os para cá.')) : 'O mestre ainda não chamou ninguém para o acampamento.';
+    vz.hidden = n > 0 || (areaVista !== 'fogueira' && N.construcoes(camp, areaVista).length > 0);
+    if (vz.hidden) vz.textContent = '';
+    else if (areaVista !== 'fogueira') vz.textContent = 'Ninguém aqui e nada construído ainda.' + (edita() ? ' As construções desta área ficam na aba Estrutura; quem vem para cá, no cartão de cada um, na aba Grupo.' : '');
+    else vz.textContent = mestre() ? (linhas().length ? 'Ninguém em volta da fogueira ainda. Chame os personagens pela aba Grupo.' : (naMesa() ? 'A mesa ainda não tem fichas. Crie os personagens na aba Fichas e chame-os para cá.' : 'Sem fichas neste navegador. Crie os personagens na aba Fichas e chame-os para cá.')) : todos.length ? 'Ninguém na fogueira agora: veja as outras áreas, acima.' : 'O mestre ainda não chamou ninguém para o acampamento.';
     const ef = N.efeitos(camp), txt = N.textoEfeitos(ef), alguns = N.temParaAlguns(camp);
     // (sem melhorias em uso não há o que dizer da estrutura: o null sai no filtro — o navegador o escreveria na cena)
+    const comLinhas = sel && gente.some(p => p.id === sel) ? (gente.find(p => p.id === sel) || {}).nome : null;
     $('avisosCena').replaceChildren(...[
       ...camp.bonus.map(b => h('span', { class: 'chip', title: b.desc || null }, h('b', { text: b.nome || 'Bônus' }), b.ateDescanso ? ' até o descanso' : null)),
-      txt || alguns ? h('span', { class: 'chip', title: 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, 'Estrutura: ', h('b', { text: txt || 'só para alguns' }), txt && alguns ? ' · e mais, só para alguns' : null) : null].filter(Boolean));
+      txt || alguns ? h('span', { class: 'chip', title: 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, 'Estrutura: ', h('b', { text: txt || 'só para alguns' }), txt && alguns ? ' · e mais, só para alguns' : null) : null,
+      // (as linhas tracejadas: a legenda, enquanto alguém está escolhido)
+      comLinhas ? h('span', { class: 'chip', id: 'legendaRel', title: 'Cada metade da linha é o que um sente pelo outro' }, 'Relações de ', h('b', { text: comLinhas }), ': verde gosta · vermelho não gosta · rosa, romance') : null].filter(Boolean));
     ajustarPalco();
   }
 
@@ -353,7 +443,7 @@
     arrasto = { id: el.dataset.id, el, x0: ev.clientX, y0: ev.clientY, moveu: false, pid: ev.pointerId, esq: parseFloat(el.style.left), topo: parseFloat(el.style.top) };
   });
   window.addEventListener('pointermove', ev => {
-    if (!arrasto || ev.pointerId !== arrasto.pid || !mestre()) return;
+    if (!arrasto || ev.pointerId !== arrasto.pid || !edita()) return;
     const dx = ev.clientX - arrasto.x0, dy = ev.clientY - arrasto.y0;
     if (!arrasto.moveu && Math.hypot(dx, dy) < 5) return;
     arrasto.moveu = true; arrasto.el.classList.add('arrastando');
@@ -373,7 +463,7 @@
     const el = ev.target.closest('.pers'); if (!el) return;
     if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selecionar(sel === el.dataset.id ? null : el.dataset.id); focarPers(el.dataset.id); return; }
     const d = { ArrowLeft: [-1.5, 0], ArrowRight: [1.5, 0], ArrowUp: [0, -1.5], ArrowDown: [0, 1.5] }[ev.key];
-    if (!d || !mestre()) return;
+    if (!d || !edita()) return;
     ev.preventDefault();
     const id = el.dataset.id, x = N.limitar(parseFloat(el.style.left) + d[0], N.AREA.x0, N.AREA.x1), y = N.limitar(parseFloat(el.style.top) + d[1], N.AREA.y0, N.AREA.y1);
     mudar('mover ' + ((pessoa(id) || {}).nome || 'personagem'), c => { c.lugares[id] = { x, y }; }, { junta: 'mover:' + id });
@@ -388,15 +478,18 @@
     if (!ABAS.some(a => a[0] === aba)) aba = 'grupo';
     $('tabs').replaceChildren(...ABAS.map(([id, nome]) => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + id, 'aria-selected': String(aba === id), text: nome, onclick: () => trocarAba(id) })));
     const pane = $('pane'), rolagem = pane.scrollTop, ativo = document.activeElement && pane.contains(document.activeElement) ? document.activeElement.id : null;
-    pane.replaceChildren(...({ grupo: abaGrupo, provisoes: abaProvisoes, estrutura: abaEstrutura, caravana: abaCaravana, diario: abaDiario }[aba])().flat(Infinity).filter(Boolean));
+    podeAqui = aba === 'grupo' ? mestre() : edita();
+    const esperando = naMesa() && !mestre() && !encerrada && !!(meuMembro() && meuMembro().acamp) && !docExiste();
+    pane.replaceChildren(...[esperando ? h('p', { class: 'aviso', id: 'acamp-espera', text: 'O mestre deixou você mexer no acampamento, mas ele ainda não foi aberto nesta mesa. Quando o mestre abrir o Acampamento uma vez, você poderá mexer aqui.' }) : null,
+      ...({ grupo: abaGrupo, provisoes: abaProvisoes, estrutura: abaEstrutura, caravana: abaCaravana, diario: abaDiario }[aba])()].flat(Infinity).filter(Boolean));
     pane.scrollTop = rolagem;
     const alvo = focoDepois || ativo; focoDepois = null;
     if (alvo) { const el = document.getElementById(alvo); if (el && !el.disabled) el.focus({ preventScroll: true }); }
   }
   // campos: o texto vira mudança quando a pessoa termina (Enter ou ao sair do campo)
-  const campoTexto = (id, valor, rotulo, aoMudar, o) => h('input', Object.assign({ id, class: 'in', type: 'text', value: valor, 'aria-label': rotulo, autocomplete: 'off', maxlength: 80, readOnly: !mestre(), onchange: e => aoMudar(e.target.value) }, o || {}));
-  const campoArea = (id, valor, rotulo, aoMudar, dica) => h('textarea', { id, class: 'in', rows: 2, 'aria-label': rotulo, placeholder: dica || null, maxlength: 600, readOnly: !mestre(), onchange: e => aoMudar(e.target.value) }, valor);
-  const campoNum = (id, valor, rotulo, aoMudar, min, max) => h('input', { id, class: 'in num', type: 'number', value: valor, min, max, step: 1, 'aria-label': rotulo, title: rotulo, disabled: !mestre(), onchange: e => { const v = Math.round(+e.target.value); aoMudar(Number.isFinite(v) ? N.limitar(v, min, max) : 0); } });
+  const campoTexto = (id, valor, rotulo, aoMudar, o) => h('input', Object.assign({ id, class: 'in', type: 'text', value: valor, 'aria-label': rotulo, autocomplete: 'off', maxlength: 80, readOnly: !podeAqui, onchange: e => aoMudar(e.target.value) }, o || {}));
+  const campoArea = (id, valor, rotulo, aoMudar, dica) => h('textarea', { id, class: 'in', rows: 2, 'aria-label': rotulo, placeholder: dica || null, maxlength: 600, readOnly: !podeAqui, onchange: e => aoMudar(e.target.value) }, valor);
+  const campoNum = (id, valor, rotulo, aoMudar, min, max) => h('input', { id, class: 'in num', type: 'number', value: valor, min, max, step: 1, 'aria-label': rotulo, title: rotulo, disabled: !podeAqui, onchange: e => { const v = Math.round(+e.target.value); aoMudar(Number.isFinite(v) ? N.limitar(v, min, max) : 0); } });
   const botaoIcone = (id, d, rotulo, fn, o) => { const b = h('button', Object.assign({ type: 'button', class: 'ib sm', id, title: rotulo, 'aria-label': rotulo, onclick: fn }, o || {})); b.append(svg(d, 14)); return b; };
   const acha = (lista, id) => lista.find(x => x.id === id);
 
@@ -415,11 +508,40 @@
     const antes = l.estado || {}, est = Object.assign({}, antes);
     if ((antes.emo || null) === (e ? e.k : null)) { pintar(); return; }
     if (e) est.emo = e.k; else delete est.emo;
-    if (mestre()) { pilha.push({ rotulo: 'a emoção de ' + p.nome, json: jCamp, junta: null, fichas: [{ id: l.id, estado: antes, ficha: null }] }); if (pilha.length > 60) pilha.shift(); }
+    if (mestre()) { pilha.push({ rotulo: 'a emoção de ' + p.nome, json: jCamp, depois: jCamp, junta: null, fichas: [{ id: l.id, estado: antes, ficha: null, so: ['emo'] }] }); if (pilha.length > 60) pilha.shift(); }
     P.gravar(l.id, { estado: est });
     // (o que este aparelho grava não volta como mudança de fora: o mestre põe a emoção na roda aqui mesmo)
     manterRoda();
     pintar();
+  }
+  /* ---- a Sanidade e o Conforto, pelo mestre (ficam na ficha: estado.san / estado.conf) ----
+     Cliques seguidos na mesma barra viram um passo só de desfazer; o desfazer volta só aquela barra. */
+  const podeMente = p => naMesa() && mestre() && !p.semFicha && !!P.pegar(p.id);
+  function mudarMente(p, k, v) {
+    const l = P.pegar(p.id); if (!l || !Number.isFinite(+v)) { pintar(); return; }
+    const antes = l.estado || {}, atual = dentro(antes[k], k === 'san' ? 100 : 50), novo = N.limitar(Math.round(+v), 0, 100);
+    if (novo === atual && antes[k] != null) { pintar(); return; }
+    const chave = 'mente:' + p.id + ':' + k, topo = pilha[pilha.length - 1], agora = Date.now();
+    if (topo && topo.junta === chave && agora - topo.t < 8000) topo.t = agora;
+    else { pilha.push({ rotulo: (k === 'san' ? 'a Sanidade' : 'o Conforto') + ' de ' + p.nome, json: jCamp, depois: jCamp, junta: chave, t: agora, fichas: [{ id: l.id, estado: antes, ficha: null, so: [k] }] }); if (pilha.length > 60) pilha.shift(); }
+    P.gravar(l.id, { estado: Object.assign({}, antes, { [k]: novo }) });
+    pintar();
+  }
+  function linhaMente(p, k) {
+    const nome = k === 'san' ? 'Sanidade' : 'Conforto', v = p[k] != null ? p[k] : (k === 'san' ? 100 : 50), id = 'mt-' + k + '-' + p.id;
+    return h('div', { class: 'medidor mente' }, h('span', { text: nome }), h('span', { class: 'tr' }, h('i', { style: `width:${N.limitar(v, 0, 100)}%;--c:var(--${k})` })),
+      h('span', { class: 'passo' },
+        botaoIcone(id + '-m', MENOS, nome + ' de ' + p.nome + ': menos 1', () => { focoDepois = id + '-m'; mudarMente(p, k, v - 1); }, { disabled: v <= 0 }),
+        h('input', { class: 'in num', id, type: 'number', min: 0, max: 100, step: 1, value: v, 'aria-label': nome + ' de ' + p.nome + ' (0 a 100)', onchange: e => { focoDepois = id; mudarMente(p, k, e.target.value); } }),
+        botaoIcone(id + '-p', MAIS, nome + ' de ' + p.nome + ': mais 1', () => { focoDepois = id + '-p'; mudarMente(p, k, v + 1); }, { disabled: v >= 100 })));
+  }
+  /* ---- as áreas do acampamento (a fogueira, as oficinas, o convívio, a guarda e o cuidado) ---- */
+  const nomeDaArea = k => (N.AREAS.find(a => a[0] === k) || N.AREAS[0])[1];
+  function moverDeArea(p, area) {
+    const de = N.areaDe(camp, p.id);
+    if (area === de) return;
+    if (mudar(p.nome + ' para ' + nomeDaArea(area), c => { if (area === 'fogueira') delete c.area[p.id]; else c.area[p.id] = area; delete c.lugares[p.id]; }) && area !== areaVista)
+      toast(p.nome + ' foi para ' + (area === 'fogueira' ? 'a fogueira' : area === 'guarda' ? 'a guarda e o cuidado' : area === 'convivio' ? 'o convívio' : 'as oficinas') + '.', 'Ver', () => verArea(area));
   }
   function seletorEmo(p) {
     return h('div', { class: 'emos', role: 'group', 'aria-label': 'Emoção de ' + p.nome },
@@ -443,9 +565,16 @@
       const acoes = aberto ? h('div', { class: 'cartao' },
         podeEmo(p) ? [h('span', { class: 'note', text: 'Emoção — a aura em volta do retrato, que todos veem' }), seletorEmo(p)]
           : emo ? h('span', { class: 'note' }, 'Emoção: ', h('b', { text: emo.nome })) : null,
+        // a Sanidade e o Conforto (moram na ficha): quem mestra muda aqui mesmo, de 1 em 1 ou digitando
+        podeMente(p) ? h('div', { class: 'mente-ed', role: 'group', 'aria-label': 'Sanidade e Conforto de ' + p.nome }, linhaMente(p, 'san'), linhaMente(p, 'conf')) : null,
+        // em que área do acampamento está (os suportes podem ficar nas oficinas, na guarda…)
+        edita() ? h('label', { class: 'sw area-de' }, 'Está em',
+          h('select', { class: 'in', id: 'area-' + p.id, 'aria-label': 'Em que área do acampamento ' + p.nome + ' está', onchange: e => { focoDepois = 'area-' + p.id; moverDeArea(p, e.target.value); } },
+            N.AREAS.map(([k, nome]) => h('option', { value: k, text: nome, selected: N.areaDe(camp, p.id) === k }))))
+          : N.areaDe(camp, p.id) !== 'fogueira' ? h('span', { class: 'note' }, 'Está em: ', h('b', { text: nomeDaArea(N.areaDe(camp, p.id)) })) : null,
         h('div', { class: 'lin' },
         naCasca() && !p.semFicha ? h('button', { type: 'button', class: 'btn sm', text: 'Abrir a ficha', onclick: () => TC.ponte.ir('fichas', { pc: p.id }) }) : null,
-        mestre() && camp.lugares[p.id] ? h('button', { type: 'button', class: 'btn sm', text: 'Voltar ao lugar padrão', onclick: () => mudar('lugar de ' + p.nome, c => { delete c.lugares[p.id]; }) }) : null,
+        edita() && camp.lugares[p.id] ? h('button', { type: 'button', class: 'btn sm', text: 'Voltar ao lugar padrão', onclick: () => mudar('lugar de ' + p.nome, c => { delete c.lugares[p.id]; }) }) : null,
         mestre() ? h('button', { type: 'button', class: 'btn sm per', text: 'Tirar do acampamento', onclick: () => { const nome = p.nome; sel = null; if (mudar('tirar ' + nome + ' do acampamento', c => { c.presentes = c.presentes.filter(x => x !== p.id); delete c.lugares[p.id]; })) { manterRoda(); toast(nome + ' saiu do acampamento.', 'Desfazer', desfazer); } } }) : null)) : null;
       return [cab, acoes];
     });
@@ -461,13 +590,21 @@
       h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'bn-a-' + b.id, checked: b.ateDescanso, disabled: !mestre(), onchange: e => mudar('duração do bônus', c => { acha(c.bonus, b.id).ateDescanso = e.target.checked; }) }), 'Acaba no próximo descanso')));
     return [
       h('h3', { text: 'Em volta da fogueira' }),
-      h('p', { class: 'sub', text: gente.length ? (gente.length === 1 ? '1 personagem' : gente.length + ' personagens') + (mestre() ? ' · arraste cada um na cena para mudar de lugar' : '') : 'Ninguém ainda.' }),
+      h('p', { class: 'sub', text: gente.length ? (gente.length === 1 ? '1 personagem' : gente.length + ' personagens') + (edita() ? ' · arraste cada um na cena para mudar de lugar' : '') : 'Ninguém ainda.' }),
       !naMesa() ? h('p', { class: 'note', text: 'Sem mesa aberta: aqui aparecem as fichas deste navegador, para consulta. O descanso mostra o que cada um recupera, mas só muda as fichas quando há uma mesa.' }) : null,
       h('div', { class: 'gente' }, cartoes),
       chamar,
       h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Bônus do acampamento', mestre() ? h('button', { type: 'button', class: 'btn sm', id: 'bn-novo', text: '+ Bônus', onclick: () => { const it = N.item('bonus'); focoDepois = 'bn-n-' + it.id; mudar('novo bônus', c => { c.bonus.push(it); }); } }) : null),
         bonus.length ? bonus : h('p', { class: 'note', text: mestre() ? 'Nenhum bônus. Use para o que a mesa combinar: "Moral alta", "Bênção do templo"…' : 'Nenhum bônus por enquanto.' })),
       mestre() ? h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'A cena'),
+        // onde o acampamento está (muda o desenho) e o tempo (animado, por cima da cena)
+        h('div', { class: 'servir' },
+          h('span', { text: 'Lugar' }),
+          h('select', { class: 'in', id: 'lugar', 'aria-label': 'Onde o acampamento está', onchange: e => { focoDepois = 'lugar'; mudar('mudar o lugar', c => { c.lugar = e.target.value; }); } },
+            N.LUGARES.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.lugar === k }))), h('span'),
+          h('span', { text: 'Clima' }),
+          h('select', { class: 'in', id: 'clima-sel', 'aria-label': 'O tempo no acampamento', onchange: e => { focoDepois = 'clima-sel'; mudar('mudar o clima', c => { c.clima = e.target.value; }); } },
+            N.CLIMAS.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.clima === k }))), h('span')),
         h('div', { class: 'lin', style: 'display:flex;gap:8px;flex-wrap:wrap' },
           h('button', { type: 'button', class: 'btn sm', id: 'fundoTrocar', text: camp.fundo ? 'Trocar a imagem de fundo' : 'Usar uma imagem de fundo', onclick: () => $('arq').click() }),
           camp.fundo ? h('button', { type: 'button', class: 'btn sm', id: 'fundoTirar', text: 'Voltar à ilustração', onclick: () => { if (mudar('voltar à ilustração', c => { c.fundo = null; })) toast('A ilustração voltou.', 'Desfazer', desfazer); } }) : null,
@@ -506,31 +643,31 @@
   function editorFx(pre, item, set) {
     const linhaFx = f => {
       const muda = (rot, fn) => set(rot, x => { const g = x.fx.find(y => y.id === f.id); if (!g) return false; return fn(g); });
-      const tipo = h('select', { class: 'in', id: `${pre}-fxt-${f.id}`, 'aria-label': 'O que o efeito faz', disabled: !mestre(),
+      const tipo = h('select', { class: 'in', id: `${pre}-fxt-${f.id}`, 'aria-label': 'O que o efeito faz', disabled: !podeAqui,
         onchange: e => { focoDepois = `${pre}-fxt-${f.id}`; const t = e.target.value, b = nomesDeBarras()[0]; muda('efeito na ficha', g => { for (const k of Object.keys(g)) if (k !== 'id') delete g[k]; Object.assign(g, t === 'bonus' ? { t, k: 'FOR', v: 1, dur: 'descanso' } : t === 'barra' ? { t, b, val: '10' } : { t, b, v: 10 }); }); } },
         h('option', { value: 'bonus', text: 'Bônus', selected: f.t === 'bonus' }), h('option', { value: 'barra', text: 'Recupera', selected: f.t === 'barra' }), h('option', { value: 'sob', text: 'Sobrevida', selected: f.t === 'sob' }));
       let campos;
       if (f.t === 'bonus') campos = [
-        h('select', { class: 'in chave', id: `${pre}-fxk-${f.id}`, 'aria-label': 'Onde o bônus soma', disabled: !mestre(), onchange: e => { focoDepois = `${pre}-fxk-${f.id}`; muda('bônus na ficha', g => { g.k = e.target.value; }); } }, opcoesDeChave(f.k)),
-        h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, type: 'number', step: 1, value: f.v, 'aria-label': 'Quanto o bônus soma', disabled: !mestre(), onchange: e => muda('bônus na ficha', g => { g.v = Math.round((+e.target.value || 0) * 10) / 10; }) }),
+        h('select', { class: 'in chave', id: `${pre}-fxk-${f.id}`, 'aria-label': 'Onde o bônus soma', disabled: !podeAqui, onchange: e => { focoDepois = `${pre}-fxk-${f.id}`; muda('bônus na ficha', g => { g.k = e.target.value; }); } }, opcoesDeChave(f.k)),
+        h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, type: 'number', step: 1, value: f.v, 'aria-label': 'Quanto o bônus soma', disabled: !podeAqui, onchange: e => muda('bônus na ficha', g => { g.v = Math.round((+e.target.value || 0) * 10) / 10; }) }),
         // (a duração vai numa linha só dela, embaixo — ver "dur" logo abaixo)
       ];
       else campos = [
-        h('select', { class: 'in chave', id: `${pre}-fxb-${f.id}`, 'aria-label': f.t === 'barra' ? 'A barra que recupera' : 'A barra que ganha a sobrevida', disabled: !mestre(), onchange: e => { focoDepois = `${pre}-fxb-${f.id}`; muda('barra do efeito', g => { g.b = e.target.value; }); } }, nomesDeBarras(f.b).map(b => h('option', { value: b, text: b, selected: b === f.b }))),
-        f.t === 'barra' ? h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, value: f.val, maxlength: 24, placeholder: '10', 'aria-label': 'Quanto a barra recupera', title: 'Um número (20), dados (2d6+3, rolados no descanso) ou, com sinal de menos, o que tira (−5)', disabled: !mestre(),
+        h('select', { class: 'in chave', id: `${pre}-fxb-${f.id}`, 'aria-label': f.t === 'barra' ? 'A barra que recupera' : 'A barra que ganha a sobrevida', disabled: !podeAqui, onchange: e => { focoDepois = `${pre}-fxb-${f.id}`; muda('barra do efeito', g => { g.b = e.target.value; }); } }, nomesDeBarras(f.b).map(b => h('option', { value: b, text: b, selected: b === f.b }))),
+        f.t === 'barra' ? h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, value: f.val, maxlength: 24, placeholder: '10', 'aria-label': 'Quanto a barra recupera', title: 'Um número (20), dados (2d6+3, rolados no descanso) ou, com sinal de menos, o que tira (−5)', disabled: !podeAqui,
           onchange: e => { const v = e.target.value.replace(/\s+/g, '').slice(0, 24), lido = R() ? R().lerEfeito(v) : null; if (!v || (lido && lido.erro)) { toast((lido && lido.erro) || 'Escreva um valor (20) ou dados (2d6+3).'); e.target.value = f.val; return; } muda('o que a barra recupera', g => { g.val = v; }); } })
-          : h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, type: 'number', min: 0, step: 1, value: f.v, 'aria-label': 'Quanta sobrevida', title: 'Pontos por cima da barra: o dano gasta a sobrevida antes. Não soma com a que o personagem já tem: fica a maior.', disabled: !mestre(), onchange: e => muda('sobrevida', g => { g.v = Math.max(0, Math.round((+e.target.value || 0) * 10) / 10); }) })];
-      const tira = mestre() ? botaoIcone(`${pre}-fxx-${f.id}`, X, 'Tirar este efeito', () => set('tirar o efeito na ficha', x => { x.fx = x.fx.filter(y => y.id !== f.id); })) : null;
+          : h('input', { class: 'in val', id: `${pre}-fxv-${f.id}`, type: 'number', min: 0, step: 1, value: f.v, 'aria-label': 'Quanta sobrevida', title: 'Pontos por cima da barra: o dano gasta a sobrevida antes. Não soma com a que o personagem já tem: fica a maior.', disabled: !podeAqui, onchange: e => muda('sobrevida', g => { g.v = Math.max(0, Math.round((+e.target.value || 0) * 10) / 10); }) })];
+      const tira = podeAqui ? botaoIcone(`${pre}-fxx-${f.id}`, X, 'Tirar este efeito', () => set('tirar o efeito na ficha', x => { x.fx = x.fx.filter(y => y.id !== f.id); })) : null;
       // quanto o bônus dura: até o próximo descanso (de qualquer tipo), ou algumas rodadas (o mestre desconta na ficha)
       const dur = f.t === 'bonus' ? h('span', { class: 'dur' },
-        h('select', { class: 'in', id: `${pre}-fxd-${f.id}`, 'aria-label': 'Quanto o bônus dura', disabled: !mestre(), onchange: e => { focoDepois = `${pre}-fxd-${f.id}`; muda('duração do bônus', g => { g.dur = e.target.value; if (g.dur === 'rodadas' && !g.r) g.r = 3; }); } },
+        h('select', { class: 'in', id: `${pre}-fxd-${f.id}`, 'aria-label': 'Quanto o bônus dura', disabled: !podeAqui, onchange: e => { focoDepois = `${pre}-fxd-${f.id}`; muda('duração do bônus', g => { g.dur = e.target.value; if (g.dur === 'rodadas' && !g.r) g.r = 3; }); } },
           h('option', { value: 'descanso', text: 'até o próximo descanso', selected: f.dur !== 'rodadas' }), h('option', { value: 'rodadas', text: 'por rodadas', selected: f.dur === 'rodadas' })),
-        f.dur === 'rodadas' ? h('input', { class: 'in rod', id: `${pre}-fxr-${f.id}`, type: 'number', min: 1, max: 99, step: 1, value: f.r, 'aria-label': 'Quantas rodadas o bônus dura', disabled: !mestre(), onchange: e => muda('rodadas do bônus', g => { g.r = N.limitar(Math.round(+e.target.value) || 1, 1, 99); }) }) : null,
+        f.dur === 'rodadas' ? h('input', { class: 'in rod', id: `${pre}-fxr-${f.id}`, type: 'number', min: 1, max: 99, step: 1, value: f.r, 'aria-label': 'Quantas rodadas o bônus dura', disabled: !podeAqui, onchange: e => muda('rodadas do bônus', g => { g.r = N.limitar(Math.round(+e.target.value) || 1, 1, 99); }) }) : null,
         f.dur === 'rodadas' ? h('span', { class: 'ro', text: f.r === 1 ? 'rodada' : 'rodadas' }) : null) : null;
       return h('div', { class: 'fx', 'data-fx': f.id }, tipo, campos, tira, dur);
     };
     return h('div', { class: 'fxs' }, item.fx.map(linhaFx),
-      mestre() && item.fx.length < 8 ? h('button', { type: 'button', class: 'btn sm', id: `${pre}-fxnovo`, style: 'justify-self:start', text: '+ Efeito na ficha', onclick: () => { const it = N.item('fx'); focoDepois = `${pre}-fxt-${it.id}`; abertos.add(`${pre}-ef`); set('efeito na ficha', x => { x.fx.push(it); }); } }) : null);
+      podeAqui && item.fx.length < 8 ? h('button', { type: 'button', class: 'btn sm', id: `${pre}-fxnovo`, style: 'justify-self:start', text: '+ Efeito na ficha', onclick: () => { const it = N.item('fx'); focoDepois = `${pre}-fxt-${it.id}`; abertos.add(`${pre}-ef`); set('efeito na ficha', x => { x.fx.push(it); }); } }) : null);
   }
 
   function abaProvisoes() {
@@ -542,13 +679,13 @@
       const resumo = resumoEfeito(p, true);
       const nome = campoTexto('pv-n-' + p.id, p.nome, 'Nome da provisão', v => mudar('renomear a provisão', c => { acha(c.provisoes, p.id).nome = v; }), { placeholder: 'Ex.: carne seca' });
       const passo = h('span', { class: 'passo' },
-        mestre() ? botaoIcone('pv-m-' + p.id, MENOS, 'Tirar uma ração de ' + (p.nome || 'provisão'), () => { focoDepois = 'pv-m-' + p.id; mudar('rações de ' + (p.nome || 'provisão'), c => { const x = acha(c.provisoes, p.id); x.qtd = Math.max(0, x.qtd - 1); }, { junta: 'qtd:' + p.id }); }, { disabled: p.qtd <= 0 }) : null,
-        mestre() ? campoNum('pv-q-' + p.id, p.qtd, 'Rações de ' + (p.nome || 'provisão'), v => mudar('rações de ' + (p.nome || 'provisão'), c => { acha(c.provisoes, p.id).qtd = v; }), 0, 9999) : h('b', { text: String(p.qtd) }),
-        mestre() ? botaoIcone('pv-p-' + p.id, MAIS, 'Pôr uma ração em ' + (p.nome || 'provisão'), () => { focoDepois = 'pv-p-' + p.id; mudar('rações de ' + (p.nome || 'provisão'), c => { acha(c.provisoes, p.id).qtd += 1; }, { junta: 'qtd:' + p.id }); }) : null);
+        podeAqui ? botaoIcone('pv-m-' + p.id, MENOS, 'Tirar uma ração de ' + (p.nome || 'provisão'), () => { focoDepois = 'pv-m-' + p.id; mudar('rações de ' + (p.nome || 'provisão'), c => { const x = acha(c.provisoes, p.id); x.qtd = Math.max(0, x.qtd - 1); }, { junta: 'qtd:' + p.id }); }, { disabled: p.qtd <= 0 }) : null,
+        podeAqui ? campoNum('pv-q-' + p.id, p.qtd, 'Rações de ' + (p.nome || 'provisão'), v => mudar('rações de ' + (p.nome || 'provisão'), c => { acha(c.provisoes, p.id).qtd = v; }), 0, 9999) : h('b', { text: String(p.qtd) }),
+        podeAqui ? botaoIcone('pv-p-' + p.id, MAIS, 'Pôr uma ração em ' + (p.nome || 'provisão'), () => { focoDepois = 'pv-p-' + p.id; mudar('rações de ' + (p.nome || 'provisão'), c => { acha(c.provisoes, p.id).qtd += 1; }, { junta: 'qtd:' + p.id }); }) : null);
       // (o mestre vê duas linhas: o nome inteiro em cima — "Ensopado de javali" não cabe ao lado dos botões — e a
       //  ordem e as rações embaixo; quem só consulta vê tudo numa linha)
       return h('div', { class: 'cartao' + (p.qtd ? '' : ' off'), 'data-pv': p.id },
-        mestre() ? [h('div', { class: 'lin' }, nome,
+        podeAqui ? [h('div', { class: 'lin' }, nome,
           botaoIcone('pv-x-' + p.id, X, 'Tirar ' + (p.nome || 'a provisão') + ' da lista', () => { if (mudar('tirar ' + (p.nome || 'a provisão'), c => { c.provisoes = c.provisoes.filter(x => x.id !== p.id); })) toast((p.nome || 'Provisão') + ' saiu da lista.', 'Desfazer', desfazer); })),
         h('div', { class: 'lin pv2' },
           botaoIcone('pv-up-' + p.id, CIMA, 'Gastar antes', () => { focoDepois = 'pv-up-' + p.id; sobe(p.id, -1); }, { disabled: i === 0 }),
@@ -556,7 +693,7 @@
           h('span', { class: 'qtd-rot', text: 'Rações' }), passo)]
         : h('div', { class: 'lin' }, nome, passo),
         // o que esta ração faz em quem a come: no descanso (Conforto, Sanidade, recuperação) e na ficha
-        mestre() ? dobra('pv-' + p.id + '-ef', ['Ao comer: ', h('b', { text: resumo || 'só mata a fome' })],
+        podeAqui ? dobra('pv-' + p.id + '-ef', ['Ao comer: ', h('b', { text: resumo || 'só mata a fome' })],
           h('div', { class: 'efs tres' }, efR('conf', 'Conforto'), efR('san', 'Sanidade'), efR('rec', 'Recup. %')),
           editorFx('pv-' + p.id, p, setP))
           : resumo ? h('p', { class: 'note' }, 'Ao comer: ', h('b', { text: resumo })) : null);
@@ -565,39 +702,68 @@
     const servirLinha = tipo => {
       const rot = tipo === 'longo' ? 'Descanso longo' : 'Descanso curto';
       return [h('span', { text: tipo === 'longo' ? 'Longo' : 'Curto', title: rot }),
-        h('select', { class: 'in', id: 'sv-' + tipo, 'aria-label': rot + ': a provisão que serve primeiro', disabled: !mestre(), onchange: e => { focoDepois = 'sv-' + tipo; mudar('o que o ' + rot.toLowerCase() + ' serve', c => { c.servir[tipo] = e.target.value || null; }); } },
+        h('select', { class: 'in', id: 'sv-' + tipo, 'aria-label': rot + ': a provisão que serve primeiro', disabled: !podeAqui, onchange: e => { focoDepois = 'sv-' + tipo; mudar('o que o ' + rot.toLowerCase() + ' serve', c => { c.servir[tipo] = e.target.value || null; }); } },
           h('option', { value: '', text: 'a ordem da lista', selected: !camp.servir[tipo] }), camp.provisoes.map(pv => h('option', { value: pv.id, text: pv.nome || 'Sem nome', selected: camp.servir[tipo] === pv.id }))),
         h('span', { class: 'sw', title: 'Quantas rações cada personagem come neste descanso' }, campoNum('sv-' + tipo + '-prov', camp.regras[tipo].prov, rot + ': rações por personagem', v => mudar('regras do descanso', c => { c.regras[tipo].prov = v; }), 0, 99), 'cada')];
     };
     return [
       h('h3', { text: 'Provisões' }),
       h('p', { class: 'sub', id: 'provResumo', text: (rac === 1 ? '1 ração guardada' : rac + ' rações guardadas') + (n ? ' · o descanso longo gasta ' + custo + ' (' + porP + ' por personagem' + (ef.prov ? ', ' + N.comSinal(ef.prov) + ' da estrutura' : '') + ')' : '') }),
-      mestre() ? h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'O que cada descanso serve' }),
+      podeAqui ? h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'O que cada descanso serve' }),
         h('div', { class: 'servir' }, servirLinha('longo'), servirLinha('curto')),
         h('p', { class: 'note', text: 'A provisão servida sai primeiro, depois a lista de cima para baixo. Quem come uma ração com efeito ganha o efeito dela. Na hora do descanso dá para servir outra.' }))
         : h('p', { class: 'note', text: 'O descanso longo serve ' + nomeDe(camp.servir.longo) + '; o curto, ' + nomeDe(camp.servir.curto) + '.' }),
+      quantoComem(),
       lista.length ? lista : h('p', { class: 'note', text: 'Nenhuma provisão guardada. Cada unidade vale uma ração.' }),
-      mestre() ? h('button', { type: 'button', class: 'btn', id: 'pv-novo', text: '+ Provisão', onclick: () => { const it = N.item('provisoes'); focoDepois = 'pv-n-' + it.id; mudar('nova provisão', c => { c.provisoes.push(it); }); } }) : null,
+      podeAqui ? h('button', { type: 'button', class: 'btn', id: 'pv-novo', text: '+ Provisão', onclick: () => { const it = N.item('provisoes'); focoDepois = 'pv-n-' + it.id; mudar('nova provisão', c => { c.provisoes.push(it); }); } }) : null,
       lista.length > 1 ? h('p', { class: 'note', text: 'No descanso, as rações saem primeiro da provisão servida e depois de cima para baixo.' }) : null,
     ];
+  }
+  /* Quanto cada um come no descanso longo: por raça (o campo "Raça / classe" da ficha) e por personagem (vale mais que
+     a raça). Campo vazio: segue a regra. Na hora do descanso dá para mudar de novo, pessoa por pessoa. */
+  function quantoComem() {
+    const gente = presentes(), padrao = camp.regras.longo.prov, racas = new Map();
+    for (const p of gente) { const k = N.chaveRaca(p.raca); if (k && !racas.has(k)) racas.set(k, p.raca); }
+    for (const k of Object.keys(camp.comer.racas)) if (!racas.has(k)) racas.set(k, k);
+    if (!gente.length && !racas.size) return null;
+    const anotados = Object.keys(camp.comer.racas).length + Object.keys(camp.comer.pers).filter(id => gente.some(p => p.id === id)).length;
+    const campo = (id, valor, ph, rotulo, set) => h('input', { class: 'in num', id, type: 'number', min: 0, max: 99, step: 1, value: valor == null ? '' : valor, placeholder: String(ph), 'aria-label': rotulo, title: rotulo + ' — vazio: ' + ph, disabled: !podeAqui,
+      onchange: e => { focoDepois = id; const t = String(e.target.value).trim(), v = t === '' ? null : N.limitar(Math.round(+t) || 0, 0, 99); set(v); } });
+    const porRaca = [...racas].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([k, nome]) => h('div', { class: 'come-lin', 'data-raca': k },
+      h('span', { class: 'come-n', text: nome }),
+      campo('come-r-' + slug(k), camp.comer.racas[k], padrao, 'Rações por descanso longo de quem é ' + nome, v => mudar('quanto come ' + nome, c => { if (v == null) delete c.comer.racas[k]; else c.comer.racas[k] = v; })),
+      h('span', { class: 'note', text: 'cada' })));
+    const porPers = gente.map(p => {
+      const efetivo = N.quantoCome(N.normalizar(Object.assign(N.copia(camp), { comer: { racas: camp.comer.racas, pers: {} } })), 'longo', p);
+      return h('div', { class: 'come-lin', 'data-come': p.id },
+        h('span', { class: 'come-n' }, p.nome, p.raca ? h('small', { text: ' · ' + p.raca }) : null),
+        campo('come-p-' + p.id, camp.comer.pers[p.id], efetivo, 'Rações por descanso longo de ' + p.nome, v => mudar('quanto ' + p.nome + ' come', c => { if (v == null) delete c.comer.pers[p.id]; else c.comer.pers[p.id] = v; })),
+        h('span', { class: 'note', text: 'por descanso' }));
+    });
+    return dobra('come', ['Quanto cada um come: ', h('b', { text: anotados ? (anotados === 1 ? '1 regra própria' : anotados + ' regras próprias') : padrao + (padrao === 1 ? ' ração' : ' rações') + ' por personagem' })],
+      porRaca.length ? [h('div', { class: 'come-tit', text: 'Por raça' }), porRaca] : null,
+      porPers.length ? [h('div', { class: 'come-tit', text: 'Por personagem (vale mais que a raça)' }), porPers] : null,
+      h('p', { class: 'note', text: 'Vale para o descanso longo. Vazio: segue a regra (' + padrao + (padrao === 1 ? ' ração' : ' rações') + ' por personagem). Na hora do descanso dá para mudar de novo, só para aquele descanso.' }));
   }
   // os personagens que a estrutura pode alcançar: os desta campanha (e os do mundo), em ordem de nome
   const candidatos = () => linhas().filter(l => !campId || !l.campanha || l.campanha === campId).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
   const slug = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').slice(0, 40);
   function cartaoEstrutura(tipo, m) {
-    const pre = tipo === 'melhorias' ? 'ml' : 'eq', nomeTipo = tipo === 'melhorias' ? 'melhoria' : 'equipamento';
-    const set = (rotulo, fn) => mudar(rotulo, c => fn(acha(c[tipo], m.id)));
+    const cat = m.tipo ? N.estrutura(m.tipo) : null;
+    const pre = tipo === 'melhorias' ? 'ml' : 'eq', nomeTipo = cat ? 'construção' : tipo === 'melhorias' ? 'melhoria' : 'equipamento';
+    // (numa construção, o que se muda nos efeitos é o do nível em que ela está: vai junto para a lista dos níveis)
+    const set = (rotulo, fn) => mudar(rotulo, c => { const x = acha(c[tipo], m.id); if (fn(x) === false) return false; if (x.tipo && Array.isArray(x.nv)) x.nv[x.nivel - 1] = { ef: x.ef, fx: x.fx }; });
     const ef = (k, rotulo, min, max, dica) => h('label', { title: dica || null }, rotulo, campoNum(`${pre}-${k}-${m.id}`, m.ef[k], rotulo + ' de ' + (m.nome || nomeTipo), v => set('efeito de ' + (m.nome || nomeTipo), x => { x.ef[k] = v; }), min, max));
     // para quem vale: todos que descansam, ou só os personagens e grupos escolhidos (as rações valem para o acampamento)
     const cand = candidatos(), grupos = Array.from(new Set(cand.map(l => String((l.ficha && l.ficha.grupo) || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    const marca = (id, rotulo, on, fn) => h('label', {}, h('input', { type: 'checkbox', id, checked: on, disabled: !mestre(), onchange: e => { focoDepois = id; fn(e.target.checked); } }), rotulo);
+    const marca = (id, rotulo, on, fn) => h('label', {}, h('input', { type: 'checkbox', id, checked: on, disabled: !podeAqui, onchange: e => { focoDepois = id; fn(e.target.checked); } }), rotulo);
     const nomeAlvo = () => [...m.alvo.grupos.map(g => 'grupo ' + g), ...m.alvo.pers.map(id => { const l = linha(id); return l ? l.nome : null; }).filter(Boolean)].join(', ');
     const alvo = h('div', { class: 'alvo' },
       h('div', { class: 'lin' }, h('span', { class: 'note', style: 'flex:none', text: 'Vale para' }),
-        mestre() ? h('select', { class: 'in', id: `${pre}-alvo-${m.id}`, 'aria-label': 'Para quem ' + (m.nome || 'est' + (tipo === 'melhorias' ? 'a melhoria' : 'e equipamento')) + ' vale', onchange: e => { focoDepois = `${pre}-alvo-${m.id}`; set('para quem vale ' + (m.nome || nomeTipo), x => { x.alvo.todos = e.target.value === 'todos'; }); } },
+        podeAqui ? h('select', { class: 'in', id: `${pre}-alvo-${m.id}`, 'aria-label': 'Para quem ' + (m.nome || 'est' + (tipo === 'melhorias' ? 'a melhoria' : 'e equipamento')) + ' vale', onchange: e => { focoDepois = `${pre}-alvo-${m.id}`; set('para quem vale ' + (m.nome || nomeTipo), x => { x.alvo.todos = e.target.value === 'todos'; }); } },
           h('option', { value: 'todos', text: 'todos que descansam', selected: m.alvo.todos }), h('option', { value: 'alguns', text: 'só os escolhidos', selected: !m.alvo.todos }))
           : h('span', { text: m.alvo.todos ? 'todos que descansam' : (nomeAlvo() || 'ninguém, por enquanto') })),
-      mestre() && !m.alvo.todos ? h('div', { class: 'marcas' },
+      podeAqui && !m.alvo.todos ? h('div', { class: 'marcas' },
         grupos.length ? [h('span', { class: 'tit', text: 'Grupos' }), grupos.map(g => marca(`${pre}-g-${m.id}-${slug(g)}`, g, m.alvo.grupos.includes(g), on => set('para quem vale ' + (m.nome || nomeTipo), x => { x.alvo.grupos = on ? x.alvo.grupos.concat(g) : x.alvo.grupos.filter(y => y !== g); })))] : null,
         h('span', { class: 'tit', text: 'Personagens' }),
         cand.length ? cand.map(l => marca(`${pre}-p-${m.id}-${l.id}`, l.nome || 'Sem nome', m.alvo.pers.includes(l.id), on => set('para quem vale ' + (m.nome || nomeTipo), x => { x.alvo.pers = on ? x.alvo.pers.concat(l.id) : x.alvo.pers.filter(y => y !== l.id); }))) : h('span', { class: 'note', text: 'Nenhuma ficha ainda.' }),
@@ -605,25 +771,67 @@
     const resumoFx = resumoEfeito(m, false);
     return h('div', { class: 'cartao' + (m.on ? '' : ' off'), 'data-est': m.id },
       h('div', { class: 'lin' },
-        h('input', { type: 'checkbox', id: `${pre}-on-${m.id}`, checked: m.on, disabled: !mestre(), title: 'Em uso', 'aria-label': (m.nome || nomeTipo) + ' em uso', onchange: e => set((e.target.checked ? 'usar ' : 'deixar de usar ') + (m.nome || nomeTipo), x => { x.on = e.target.checked; }) }),
+        h('input', { type: 'checkbox', id: `${pre}-on-${m.id}`, checked: m.on, disabled: !podeAqui, title: 'Em uso', 'aria-label': (m.nome || nomeTipo) + ' em uso', onchange: e => set((e.target.checked ? 'usar ' : 'deixar de usar ') + (m.nome || nomeTipo), x => { x.on = e.target.checked; }) }),
         campoTexto(`${pre}-n-${m.id}`, m.nome, 'Nome', v => set('renomear ' + nomeTipo, x => { x.nome = v; }), { placeholder: tipo === 'melhorias' ? 'Ex.: fogão de pedra' : 'Ex.: sacos de dormir' }),
         tipo === 'equipamentos' ? campoNum(`eq-q-${m.id}`, m.qtd, 'Quantidade', v => set('quantidade de ' + (m.nome || nomeTipo), x => { x.qtd = v; }), 0, 999) : null,
-        mestre() ? botaoIcone(`${pre}-x-${m.id}`, X, 'Tirar ' + (m.nome || nomeTipo), () => { if (mudar('tirar ' + (m.nome || nomeTipo), c => { c[tipo] = c[tipo].filter(x => x.id !== m.id); })) toast((m.nome || 'Item') + ' saiu da lista.', 'Desfazer', desfazer); }) : null),
-      mestre() || m.desc ? campoArea(`${pre}-d-${m.id}`, m.desc, 'Descrição', v => set('descrever ' + nomeTipo, x => { x.desc = v; }), 'O que é, como foi conseguido, o que faz…') : null,
+        podeAqui ? botaoIcone(`${pre}-x-${m.id}`, X, 'Tirar ' + (m.nome || nomeTipo), () => { if (mudar('tirar ' + (m.nome || nomeTipo), c => { c[tipo] = c[tipo].filter(x => x.id !== m.id); })) toast((m.nome || 'Item') + ' saiu da lista.', 'Desfazer', desfazer); }) : null),
+      cat ? cabecaConstrucao(m, cat) : null,
+      podeAqui || m.desc ? campoArea(`${pre}-d-${m.id}`, m.desc, 'Descrição', v => set('descrever ' + nomeTipo, x => { x.desc = v; }), 'O que é, como foi conseguido, o que faz…') : null,
       h('div', { class: 'efs' }, ef('conf', 'Conforto', -100, 100), ef('san', 'Sanidade', -100, 100), ef('rec', 'Recup. %', -100, 100), ef('prov', 'Rações', -99, 99, 'Rações a mais (ou, com sinal de menos, a menos) por descanso longo — vale para o acampamento inteiro')),
       alvo,
-      mestre() ? dobra(`${pre}-${m.id}-ef`, ['Na ficha: ', h('b', { text: resumoFx || 'nada' })], editorFx(`${pre}-${m.id}`, m, set))
+      podeAqui ? dobra(`${pre}-${m.id}-ef`, ['Na ficha: ', h('b', { text: resumoFx || 'nada' })], editorFx(`${pre}-${m.id}`, m, set))
         : resumoFx ? h('p', { class: 'note' }, 'Na ficha: ', h('b', { text: resumoFx })) : null);
+  }
+  /* ---- as construções do catálogo (a forja, o canto do bardo, a enfermaria…) ----
+     Cada uma aparece desenhada na área dela e melhora em três níveis; o que cada nível faz começa no padrão do catálogo
+     e pode ser mudado no cartão (vale para aquele nível). */
+  const nomeCat = k => (N.CATEGORIAS.find(c => c[0] === k) || [k, k])[1];
+  const padroes = {};
+  const padraoDe = k => padroes[k] || (padroes[k] = N.normalizar({ melhorias: [N.item('construcao', k)] }).melhorias[0].nv);
+  const semIds = fx => fx.map(f => { const o = Object.assign({}, f); delete o.id; return o; });
+  function miniatura(tipo, nivel) { const d = h('div', { class: 'miniatura', 'aria-hidden': 'true' }); if (window.AcampDesenhos) d.innerHTML = window.AcampDesenhos.miniatura(tipo, nivel); return d; }
+  function cabecaConstrucao(m, cat) {
+    const nome = m.nome || cat.nome;
+    const niveis = h('div', { class: 'niveis', role: 'group', 'aria-label': 'Nível de ' + nome },
+      N.NIVEIS.map((rot, i) => h('button', { type: 'button', id: `ml-nv-${m.id}-${i + 1}`, 'aria-pressed': String(m.nivel === i + 1), disabled: !podeAqui,
+        title: rot + ': ' + (resumoEfeito(m.nv[i], true) || 'nada no descanso'),
+        onclick: () => { if (m.nivel === i + 1) return; focoDepois = `ml-nv-${m.id}-${i + 1}`; if (mudar((i + 1 > m.nivel ? 'melhorar ' : 'mudar o nível de ') + nome, c => { acha(c.melhorias, m.id).nivel = i + 1; })) toast(nome + ': ' + rot.toLowerCase() + (i + 1 > m.nivel ? '. O desenho e o que ela faz cresceram.' : '.'), 'Desfazer', desfazer); } }, rot)));
+    const pd = padraoDe(cat.k)[m.nivel - 1], noPadrao = j(pd.ef) === j(m.ef) && j(semIds(pd.fx)) === j(semIds(m.fx));
+    return h('div', { class: 'construcao-cab' }, miniatura(m.tipo, m.nivel),
+      h('div', { class: 'lin', style: 'flex-wrap:wrap' }, h('span', { class: 'cat', text: nomeCat(cat.cat) + ' · na área ' + nomeDaArea(cat.area) }), h('span', { class: 'grow' }), niveis),
+      !noPadrao && podeAqui ? h('button', { type: 'button', class: 'btn sm', id: `ml-pd-${m.id}`, style: 'justify-self:start', text: 'Voltar ao padrão deste nível',
+        onclick: () => { if (mudar('voltar ao padrão de ' + nome, c => { const x = acha(c.melhorias, m.id); x.nv[x.nivel - 1] = N.copia(pd); })) toast('O nível ' + N.NIVEIS[m.nivel - 1].toLowerCase() + ' de ' + nome + ' voltou ao padrão.', 'Desfazer', desfazer); } }) : null);
+  }
+  function abrirConstruir() {
+    if (!edita()) return;
+    const feitos = new Set(camp.melhorias.filter(m => m.tipo).map(m => m.tipo));
+    const corpo = N.CATEGORIAS.map(([ck, cnome]) => h('div', { class: 'sec' }, h('div', { class: 'rot', text: cnome }),
+      h('div', { class: 'construir' }, N.ESTRUTURAS.filter(e => e.cat === ck).map(e => {
+        const ja = feitos.has(e.k), r0 = resumoEfeito(padraoDe(e.k)[0], true);
+        return h('button', { type: 'button', class: 'opc', id: 'ct-' + e.k, disabled: ja, title: e.desc, onclick: () => construir(e.k) },
+          miniatura(e.k, 1), h('b', { text: e.nome }), h('small', { text: ja ? 'já construída' : 'na área ' + nomeDaArea(e.area) + (r0 ? ' · simples: ' + r0 : '') }));
+      }))));
+    abrirJanela('Construir no acampamento', [h('p', { class: 'note', text: 'Cada construção começa simples e melhora em três níveis — simples, boa, excelente: o desenho muda e o que ela faz no descanso longo cresce. O que cada nível faz pode ser mudado depois, no cartão dela.' }), ...corpo],
+      [h('button', { type: 'button', class: 'btn', text: 'Fechar', onclick: fecharJanela })]);
+  }
+  function construir(k) {
+    const e = N.estrutura(k), it = N.item('construcao', k); if (!e || !it) return;
+    fecharJanela();
+    focoDepois = 'ml-n-' + it.id;
+    if (mudar('construir ' + e.nome, c => { if (c.melhorias.some(m => m.tipo === k)) return false; c.melhorias.push(it); })) toast(e.nome + ' construída (simples), na área ' + nomeDaArea(e.area) + '.', 'Desfazer', desfazer);
   }
   function abaEstrutura() {
     const txt = N.textoEfeitos(N.efeitos(camp)), alguns = N.temParaAlguns(camp);
-    const secao = (tipo, titulo, botao, vazio) => h('div', { class: 'sec' },
-      h('div', { class: 'rot' }, titulo, mestre() ? h('button', { type: 'button', class: 'btn sm', id: (tipo === 'melhorias' ? 'ml' : 'eq') + '-novo', text: botao, onclick: () => { const it = N.item(tipo); focoDepois = (tipo === 'melhorias' ? 'ml' : 'eq') + '-n-' + it.id; mudar(tipo === 'melhorias' ? 'nova melhoria' : 'novo equipamento', c => { c[tipo].push(it); }); } }) : null),
-      camp[tipo].length ? camp[tipo].map(m => cartaoEstrutura(tipo, m)) : h('p', { class: 'note', text: vazio }));
+    const secao = (tipo, titulo, botao, vazio) => { const lista = camp[tipo].filter(m => !m.tipo); return h('div', { class: 'sec' },
+      h('div', { class: 'rot' }, titulo, podeAqui ? h('button', { type: 'button', class: 'btn sm', id: (tipo === 'melhorias' ? 'ml' : 'eq') + '-novo', text: botao, onclick: () => { const it = N.item(tipo); focoDepois = (tipo === 'melhorias' ? 'ml' : 'eq') + '-n-' + it.id; mudar(tipo === 'melhorias' ? 'nova melhoria' : 'novo equipamento', c => { c[tipo].push(it); }); } }) : null),
+      lista.length ? lista.map(m => cartaoEstrutura(tipo, m)) : h('p', { class: 'note', text: vazio })); };
+    const feitas = camp.melhorias.filter(m => m.tipo);
     return [
       h('h3', { text: 'Estrutura' }),
       h('p', { class: 'sub', id: 'estResumo', text: (txt ? 'No descanso longo, o que está em uso soma para todos: ' + txt + '.' : 'O que está em uso soma seus efeitos ao descanso longo.') + (alguns ? ' Há também o que vale só para alguns.' : '') }),
-      secao('melhorias', 'Melhorias', '+ Melhoria', 'Nenhuma melhoria. Ex.: fogão de pedra, paliçada, poço.'),
+      h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Construções', podeAqui ? h('button', { type: 'button', class: 'btn sm', id: 'ct-novo', text: '+ Construir…', onclick: abrirConstruir }) : null),
+        feitas.length ? feitas.map(m => cartaoEstrutura('melhorias', m)) : h('p', { class: 'note', text: podeAqui ? 'Nenhuma construção. Uma forja, um canto do bardo, uma enfermaria… cada uma aparece desenhada na área dela, e melhora em três níveis.' : 'Nenhuma construção.' })),
+      secao('melhorias', 'Outras melhorias', '+ Melhoria', 'Nenhuma. Para o que não está entre as construções: um poço, um estábulo…'),
       secao('equipamentos', 'Equipamentos', '+ Equipamento', 'Nenhum equipamento. Ex.: barracas, sacos de dormir, panela de ferro.'),
       h('p', { class: 'note', text: 'Efeitos: Conforto e Sanidade em pontos por descanso longo; recuperação em % a mais das barras; rações a mais (ou, com sinal de menos, a menos) por descanso. "Na ficha": um bônus temporário, uma barra que recupera ou sobrevida, para quem a melhoria alcança, no descanso longo.' }),
     ];
@@ -644,42 +852,44 @@
     const veiculos = cv.veiculos.map(v => h('div', { class: 'cartao', 'data-vc': v.id },
       h('div', { class: 'lin' },
         campoTexto('vc-n-' + v.id, v.nome, 'Nome do veículo ou animal', x => setC('renomear ' + (v.nome || 'o veículo'), c => { acha(c.veiculos, v.id).nome = x; }), { placeholder: 'Ex.: carroça grande, Tordilho' }),
-        h('select', { class: 'in', id: 'vc-t-' + v.id, style: 'width:auto;flex:none', 'aria-label': 'Tipo de ' + (v.nome || 'veículo'), disabled: !mestre(), onchange: e => { focoDepois = 'vc-t-' + v.id; setC('tipo de ' + (v.nome || 'veículo'), c => { acha(c.veiculos, v.id).tipo = e.target.value; }); } }, N.TIPOS_VEICULO.map(([k, nome]) => h('option', { value: k, text: nome, selected: v.tipo === k }))),
-        mestre() ? botaoIcone('vc-x-' + v.id, X, 'Tirar ' + (v.nome || 'o veículo'), () => { if (setC('tirar ' + (v.nome || 'o veículo'), c => { c.veiculos = c.veiculos.filter(x => x.id !== v.id); })) toast((v.nome || 'Veículo') + ' saiu da caravana. A carga e a gente dele ficaram sem lugar.', 'Desfazer', desfazer); }) : null),
+        h('select', { class: 'in', id: 'vc-t-' + v.id, style: 'width:auto;flex:none', 'aria-label': 'Tipo de ' + (v.nome || 'veículo'), disabled: !podeAqui, onchange: e => { focoDepois = 'vc-t-' + v.id; setC('tipo de ' + (v.nome || 'veículo'), c => { acha(c.veiculos, v.id).tipo = e.target.value; }); } }, N.TIPOS_VEICULO.map(([k, nome]) => h('option', { value: k, text: nome, selected: v.tipo === k }))),
+        podeAqui ? botaoIcone('vc-x-' + v.id, X, 'Tirar ' + (v.nome || 'o veículo'), () => { if (setC('tirar ' + (v.nome || 'o veículo'), c => { c.veiculos = c.veiculos.filter(x => x.id !== v.id); })) toast((v.nome || 'Veículo') + ' saiu da caravana. A carga e a gente dele ficaram sem lugar.', 'Desfazer', desfazer); }) : null),
       h('div', { class: 'lin' },
-        h('label', { class: 'sw', title: 'Quanto peso leva' }, 'Leva', h('input', { class: 'in num', id: 'vc-c-' + v.id, type: 'number', min: 0, step: 1, value: v.cap, 'aria-label': 'Capacidade de ' + (v.nome || 'veículo') + ' (kg)', disabled: !mestre(), onchange: e => setC('capacidade de ' + (v.nome || 'veículo'), c => { acha(c.veiculos, v.id).cap = Math.max(0, Math.round((+e.target.value || 0) * 10) / 10); }) }), 'kg'),
+        h('label', { class: 'sw', title: 'Quanto peso leva' }, 'Leva', h('input', { class: 'in num', id: 'vc-c-' + v.id, type: 'number', min: 0, step: 1, value: v.cap, 'aria-label': 'Capacidade de ' + (v.nome || 'veículo') + ' (kg)', disabled: !podeAqui, onchange: e => setC('capacidade de ' + (v.nome || 'veículo'), c => { acha(c.veiculos, v.id).cap = Math.max(0, Math.round((+e.target.value || 0) * 10) / 10); }) }), 'kg'),
         campoTexto('vc-e-' + v.id, v.estado, 'Estado de ' + (v.nome || 'veículo'), x => setC('estado de ' + (v.nome || 'veículo'), c => { acha(c.veiculos, v.id).estado = x; }), { placeholder: 'Estado — ex.: roda bamba', maxlength: 120 })),
       barraDePeso(peso.por[v.id] || 0, v.cap, 'vc-peso-' + v.id)));
     const carga = cv.carga.map(k => h('div', { class: 'cartao', 'data-cg': k.id },
       h('div', { class: 'cg' },
         campoTexto('cg-n-' + k.id, k.nome, 'O que é', x => setC('renomear a carga', c => { acha(c.carga, k.id).nome = x; }), { placeholder: 'Ex.: barris de vinho' }),
-        h('input', { class: 'in num', id: 'cg-q-' + k.id, type: 'number', min: 0, step: 1, value: k.qtd, title: 'Quantos', 'aria-label': 'Quantos ' + (k.nome || 'itens'), disabled: !mestre(), onchange: e => setC('quantidade de ' + (k.nome || 'carga'), c => { acha(c.carga, k.id).qtd = N.limitar(Math.round(+e.target.value) || 0, 0, 99999); }) }),
-        h('input', { class: 'in num', id: 'cg-p-' + k.id, type: 'number', min: 0, step: 0.1, value: k.peso, title: 'Peso de cada um (kg)', 'aria-label': 'Peso de cada ' + (k.nome || 'item') + ' (kg)', disabled: !mestre(), onchange: e => setC('peso de ' + (k.nome || 'carga'), c => { acha(c.carga, k.id).peso = Math.max(0, Math.round((+e.target.value || 0) * 100) / 100); }) })),
+        h('input', { class: 'in num', id: 'cg-q-' + k.id, type: 'number', min: 0, step: 1, value: k.qtd, title: 'Quantos', 'aria-label': 'Quantos ' + (k.nome || 'itens'), disabled: !podeAqui, onchange: e => setC('quantidade de ' + (k.nome || 'carga'), c => { acha(c.carga, k.id).qtd = N.limitar(Math.round(+e.target.value) || 0, 0, 99999); }) }),
+        h('input', { class: 'in num', id: 'cg-p-' + k.id, type: 'number', min: 0, step: 0.1, value: k.peso, title: 'Peso de cada um (kg)', 'aria-label': 'Peso de cada ' + (k.nome || 'item') + ' (kg)', disabled: !podeAqui, onchange: e => setC('peso de ' + (k.nome || 'carga'), c => { acha(c.carga, k.id).peso = Math.max(0, Math.round((+e.target.value || 0) * 100) / 100); }) })),
       h('div', { class: 'cg-sub' }, 'vai em',
-        h('select', { class: 'in', id: 'cg-v-' + k.id, 'aria-label': 'Onde vai ' + (k.nome || 'a carga'), disabled: !mestre(), onchange: e => { focoDepois = 'cg-v-' + k.id; setC('onde vai ' + (k.nome || 'a carga'), c => { acha(c.carga, k.id).veiculo = e.target.value || null; }); } }, opcoesVeic(k.veiculo)),
+        h('select', { class: 'in', id: 'cg-v-' + k.id, 'aria-label': 'Onde vai ' + (k.nome || 'a carga'), disabled: !podeAqui, onchange: e => { focoDepois = 'cg-v-' + k.id; setC('onde vai ' + (k.nome || 'a carga'), c => { acha(c.carga, k.id).veiculo = e.target.value || null; }); } }, opcoesVeic(k.veiculo)),
         h('b', { style: 'font-family:var(--mono);color:var(--fg)', text: kg(k.qtd * k.peso) }),
-        mestre() ? botaoIcone('cg-x-' + k.id, X, 'Tirar ' + (k.nome || 'a carga'), () => { if (setC('tirar ' + (k.nome || 'a carga'), c => { c.carga = c.carga.filter(x => x.id !== k.id); })) toast((k.nome || 'Carga') + ' saiu da caravana.', 'Desfazer', desfazer); }) : null)));
+        podeAqui ? botaoIcone('cg-x-' + k.id, X, 'Tirar ' + (k.nome || 'a carga'), () => { if (setC('tirar ' + (k.nome || 'a carga'), c => { c.carga = c.carga.filter(x => x.id !== k.id); })) toast((k.nome || 'Carga') + ' saiu da caravana.', 'Desfazer', desfazer); }) : null)));
     const doAcamp = presentes().map(p => h('div', { class: 'cg-sub', 'data-vai': p.id }, h('span', { style: 'flex:1;color:var(--fg);font-weight:600', text: p.nome }), 'vai em',
-      h('select', { class: 'in', id: 'vai-' + p.id, 'aria-label': 'Onde vai ' + p.nome, disabled: !mestre(), onchange: e => { focoDepois = 'vai-' + p.id; setC('onde vai ' + p.nome, c => { if (e.target.value) c.vai[p.id] = e.target.value; else delete c.vai[p.id]; }); } }, opcoesVeic(cv.vai[p.id] || null))));
+      h('select', { class: 'in', id: 'vai-' + p.id, 'aria-label': 'Onde vai ' + p.nome, disabled: !podeAqui, onchange: e => { focoDepois = 'vai-' + p.id; setC('onde vai ' + p.nome, c => { if (e.target.value) c.vai[p.id] = e.target.value; else delete c.vai[p.id]; }); } }, opcoesVeic(cv.vai[p.id] || null))));
     const gente = cv.gente.map(g => h('div', { class: 'cartao', 'data-gt': g.id },
       h('div', { class: 'lin' },
         campoTexto('gt-n-' + g.id, g.nome, 'Nome', x => setC('renomear quem viaja', c => { acha(c.gente, g.id).nome = x; }), { placeholder: 'Nome' }),
         campoTexto('gt-p-' + g.id, g.papel, 'O que faz', x => setC('o que ' + (g.nome || 'a pessoa') + ' faz', c => { acha(c.gente, g.id).papel = x; }), { placeholder: 'Ex.: cocheiro', maxlength: 40 }),
-        mestre() ? botaoIcone('gt-x-' + g.id, X, 'Tirar ' + (g.nome || 'esta pessoa'), () => { if (setC('tirar ' + (g.nome || 'quem viajava'), c => { c.gente = c.gente.filter(x => x.id !== g.id); })) toast((g.nome || 'A pessoa') + ' saiu da caravana.', 'Desfazer', desfazer); }) : null),
-      h('div', { class: 'cg-sub' }, 'vai em', h('select', { class: 'in', id: 'gt-v-' + g.id, 'aria-label': 'Onde vai ' + (g.nome || 'a pessoa'), disabled: !mestre(), onchange: e => { focoDepois = 'gt-v-' + g.id; setC('onde vai ' + (g.nome || 'a pessoa'), c => { acha(c.gente, g.id).veiculo = e.target.value || null; }); } }, opcoesVeic(g.veiculo)))));
-    const novo = (tipo, id, texto, foco, rotulo) => mestre() ? h('button', { type: 'button', class: 'btn sm', id, text: texto, onclick: () => { const it = N.item(tipo); focoDepois = foco + it.id; setC(rotulo, c => { c[tipo].push(it); }); } }) : null;
+        podeAqui ? botaoIcone('gt-x-' + g.id, X, 'Tirar ' + (g.nome || 'esta pessoa'), () => { if (setC('tirar ' + (g.nome || 'quem viajava'), c => { c.gente = c.gente.filter(x => x.id !== g.id); })) toast((g.nome || 'A pessoa') + ' saiu da caravana.', 'Desfazer', desfazer); }) : null),
+      h('div', { class: 'cg-sub' }, 'vai em', h('select', { class: 'in', id: 'gt-v-' + g.id, 'aria-label': 'Onde vai ' + (g.nome || 'a pessoa'), disabled: !podeAqui, onchange: e => { focoDepois = 'gt-v-' + g.id; setC('onde vai ' + (g.nome || 'a pessoa'), c => { acha(c.gente, g.id).veiculo = e.target.value || null; }); } }, opcoesVeic(g.veiculo)))));
+    const novo = (tipo, id, texto, foco, rotulo) => podeAqui ? h('button', { type: 'button', class: 'btn sm', id, text: texto, onclick: () => { const it = N.item(tipo); focoDepois = foco + it.id; setC(rotulo, c => { c[tipo].push(it); }); } }) : null;
     return [
       h('h3', { text: 'Caravana' }),
       h('p', { class: 'sub', text: cv.veiculos.length || cv.carga.length || cv.gente.length ? (cv.veiculos.length === 1 ? '1 veículo ou animal' : cv.veiculos.length + ' veículos e animais') + ' · ' + kg(peso.total) + ' de carga' + (peso.cap ? ' · leva até ' + kg(peso.cap) : '') : 'Os veículos, os animais, a carga e quem viaja com o grupo.' }),
       cv.carga.length ? barraDePeso(peso.total, peso.cap, 'cv-peso') : null,
+      // os veículos e animais aparecem desenhados na fogueira (dá para esconder)
+      cv.veiculos.length ? h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'cv-ver', checked: camp.verCaravana, disabled: !podeAqui, onchange: e => mudar(e.target.checked ? 'mostrar a caravana na cena' : 'esconder a caravana da cena', c => { c.verCaravana = e.target.checked; }) }), 'Mostrar a caravana na cena (na fogueira)') : null,
       h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Veículos e animais', novo('veiculos', 'vc-novo', '+ Veículo ou animal', 'vc-n-', 'novo veículo ou animal')),
-        veiculos.length ? veiculos : h('p', { class: 'note', text: mestre() ? 'Nenhum ainda. Ex.: carroça, barco, cavalo, mula de carga.' : 'Nenhum veículo ou animal.' })),
+        veiculos.length ? veiculos : h('p', { class: 'note', text: podeAqui ? 'Nenhum ainda. Ex.: carroça, barco, cavalo, mula de carga.' : 'Nenhum veículo ou animal.' })),
       h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Carga', novo('carga', 'cg-novo', '+ Carga', 'cg-n-', 'nova carga')),
-        carga.length ? [h('div', { class: 'cg', style: 'font-size:11px;color:var(--fg-3);padding:0 10px' }, h('span', { text: 'O quê' }), h('span', { text: 'Quantos' }), h('span', { text: 'Peso de cada' })), carga] : h('p', { class: 'note', text: mestre() ? 'Nenhuma carga. Cada linha tem quantos e o peso de cada um; o total aparece contra o que os veículos levam.' : 'Nenhuma carga.' }),
+        carga.length ? [h('div', { class: 'cg', style: 'font-size:11px;color:var(--fg-3);padding:0 10px' }, h('span', { text: 'O quê' }), h('span', { text: 'Quantos' }), h('span', { text: 'Peso de cada' })), carga] : h('p', { class: 'note', text: podeAqui ? 'Nenhuma carga. Cada linha tem quantos e o peso de cada um; o total aparece contra o que os veículos levam.' : 'Nenhuma carga.' }),
         peso.semLugar > 0 && cv.veiculos.length ? h('p', { class: 'note', id: 'cv-semlugar', text: kg(peso.semLugar) + ' de carga sem lugar.' }) : null),
       h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Quem viaja', novo('gente', 'gt-novo', '+ Pessoa', 'gt-n-', 'nova pessoa na caravana')),
         doAcamp.length && cv.veiculos.length ? doAcamp : null,
-        gente.length ? gente : h('p', { class: 'note', text: mestre() ? 'Quem viaja junto sem ficha: cocheiros, guardas, mercadores. Os personagens do acampamento aparecem aqui quando há veículos.' : 'Ninguém além do grupo.' })),
+        gente.length ? gente : h('p', { class: 'note', text: podeAqui ? 'Quem viaja junto sem ficha: cocheiros, guardas, mercadores. Os personagens do acampamento aparecem aqui quando há veículos.' : 'Ninguém além do grupo.' })),
     ];
   }
   const dataCurta = t => { const d = new Date(t), p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
@@ -695,13 +905,13 @@
     };
     return [
       h('div', { class: 'lin', style: 'display:flex;gap:8px;align-items:baseline' }, h('h3', { style: 'flex:1', text: 'Diário' }),
-        mestre() && camp.diario.length ? h('button', { type: 'button', class: 'btn sm', id: 'di-limpar', text: 'Limpar o Diário…', onclick: limparDiario }) : null),
+        podeAqui && camp.diario.length ? h('button', { type: 'button', class: 'btn sm', id: 'di-limpar', text: 'Limpar o Diário…', onclick: limparDiario }) : null),
       h('p', { class: 'sub', text: 'Os descansos e os momentos do acampamento.' }),
-      mestre() ? h('form', { class: 'lin', style: 'display:flex;gap:8px', onsubmit: e => { e.preventDefault(); const c0 = $('di-txt'), v = c0.value.trim(); if (!v) return; focoDepois = 'di-txt'; mudar('anotar no diário', c => { c.diario.unshift({ id: N.novoId('di'), t: Date.now(), texto: v }); }); } },
+      podeAqui ? h('form', { class: 'lin', style: 'display:flex;gap:8px', onsubmit: e => { e.preventDefault(); const c0 = $('di-txt'), v = c0.value.trim(); if (!v) return; focoDepois = 'di-txt'; mudar('anotar no diário', c => { c.diario.unshift({ id: N.novoId('di'), t: Date.now(), texto: v }); }); } },
         h('input', { class: 'in', id: 'di-txt', maxlength: 600, placeholder: 'Anotar algo que aconteceu…', 'aria-label': 'Anotação para o diário', autocomplete: 'off' }), h('button', { type: 'submit', class: 'btn', text: 'Anotar' })) : null,
       h('div', { class: 'diario', id: 'diario' }, camp.diario.length ? camp.diario.map(d => h('div', { class: 'dl' }, h('time', { text: dataCurta(d.t) }),
         h('div', { class: 'lin', style: 'display:flex;gap:8px;align-items:flex-start' }, h('span', { style: 'flex:1;white-space:pre-wrap', text: d.texto }),
-          mestre() ? botaoIcone('di-x-' + d.id, X, 'Apagar esta linha do diário', () => { if (mudar('apagar linha do diário', c => { c.diario = c.diario.filter(x => x.id !== d.id); })) toast('Linha apagada.', 'Desfazer', desfazer); }) : null))) : h('p', { class: 'note', text: 'Nada anotado ainda.' })),
+          podeAqui ? botaoIcone('di-x-' + d.id, X, 'Apagar esta linha do diário', () => { if (mudar('apagar linha do diário', c => { c.diario = c.diario.filter(x => x.id !== d.id); })) toast('Linha apagada.', 'Desfazer', desfazer); }) : null))) : h('p', { class: 'note', text: 'Nada anotado ainda.' })),
       mestre() ? h('details', { class: 'dobra sec', id: 'regras', open: guarda.ler('tinycats:acampamento:regras') === '1', ontoggle: e => guarda.gravar('tinycats:acampamento:regras', e.target.open ? '1' : '0') }, h('summary', { text: 'Regras do descanso' }),
         h('div', { class: 'regras' },
           h('span', { class: 'cab', text: '' }), h('span', { class: 'cab', text: 'Longo' }), h('span', { class: 'cab', text: 'Curto' }),
@@ -739,19 +949,20 @@
     if (!todos.length) { toast('Não há ninguém com ficha em volta da fogueira. Chame os personagens pela aba Grupo.'); return; }
     const marcados = new Set(todos.map(p => p.id)), longo = tipo !== 'curto';
     // o que se serve neste descanso: a provisão do descanso, ou outra escolhida na hora; e quantas cada um come
-    const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov };
+    // (porPessoa: o que o mestre mudou na hora, pessoa por pessoa — só para este descanso)
+    const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {} };
     const corpo = h('div', { style: 'display:grid;gap:10px' });
     const confirmar = h('button', { type: 'button', class: 'btn pri', id: 'ds-ok', text: 'Descansar' });
     let plano = null;
     const refazer = foco => {
-      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov });
+      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa });
       const sobra = plano.disponivel - plano.gasto;
       const avisos = [];
       // o que servir (a provisão que sai primeiro, e cujo efeito vale para quem a come) e quantas cada um come
       avisos.push(h('div', { class: 'servir', id: 'ds-servir' }, h('span', { text: 'Servir' }),
         h('select', { class: 'in', id: 'ds-sv', 'aria-label': 'O que servir neste descanso', onchange: e => { escolha.servir = e.target.value || null; refazer('ds-sv'); } },
           h('option', { value: '', text: 'a ordem da lista', selected: !escolha.servir }), camp.provisoes.map(pv => h('option', { value: pv.id, text: (pv.nome || 'Sem nome') + ' (' + pv.qtd + ')', selected: escolha.servir === pv.id }))),
-        h('span', { class: 'sw' }, h('input', { class: 'in num', id: 'ds-qtd', type: 'number', min: 0, max: 99, step: 1, value: escolha.prov, 'aria-label': 'Rações por personagem neste descanso', onchange: e => { escolha.prov = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-qtd'); } }), 'cada')));
+        h('span', { class: 'sw', title: 'Rações por personagem neste descanso, para quem não tem uma quantidade própria (por personagem ou por raça, na aba Provisões)' }, h('input', { class: 'in num', id: 'ds-qtd', type: 'number', min: 0, max: 99, step: 1, value: escolha.prov, 'aria-label': 'Rações por personagem neste descanso (o padrão)', onchange: e => { escolha.prov = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-qtd'); } }), 'cada (padrão)')));
       if (plano.servida && plano.prov > 0 && plano.n && plano.comem < plano.n) avisos.push(h('div', { class: 'aviso', id: 'ds-da' }, (plano.servida.nome || 'A provisão servida') + (plano.comem ? ' dá para ' + plano.comem + ' de ' + plano.n + ' (abaixo, quem come); ' + (plano.n - plano.comem === 1 ? 'o outro come' : 'os outros comem') + ' do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.') : ' acabou: todos comem do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.'))));
       if (plano.custo > 0) avisos.push(h('div', { class: 'aviso' + (plano.falta ? ' ruim' : ''), id: 'ds-prov' },
         plano.falta ? `Faltam ${plano.falta} ${plano.falta === 1 ? 'ração' : 'rações'}: há ${plano.disponivel}, o descanso pede ${plano.custo}. A recuperação cai para ${camp.regras.semProv.rec}% do normal` + (camp.regras.semProv.conf ? ` e o Conforto leva ${N.comSinal(camp.regras.semProv.conf)}.` : '.')
@@ -765,6 +976,11 @@
         const ln = plano.linhas.find(x => x.id === p.id), dentroD = !!ln;
         return h('tr', { class: dentroD ? '' : 'fora' },
           h('td', {}, h('label', { class: 'sw', style: 'color:var(--fg);font-weight:600' }, h('input', { type: 'checkbox', id: 'ds-' + p.id, checked: dentroD, onchange: e => { if (e.target.checked) marcados.add(p.id); else marcados.delete(p.id); refazer('ds-' + p.id); } }), p.nome)),
+          // quantas rações esta pessoa come (a dela, a da raça ou o padrão; mudando aqui, vale só para este descanso)
+          h('td', {}, h('input', { class: 'in num', id: 'ds-c-' + p.id, type: 'number', min: 0, max: 99, step: 1, disabled: !dentroD,
+            value: dentroD ? ln.quer : (Object.prototype.hasOwnProperty.call(escolha.porPessoa, p.id) ? escolha.porPessoa[p.id] : N.quantoCome(camp, tipo, p, escolha.prov)),
+            'aria-label': 'Rações que ' + p.nome + ' come neste descanso', title: 'Rações que ' + p.nome + ' come neste descanso',
+            onchange: e => { escolha.porPessoa[p.id] = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-c-' + p.id); } })),
           h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '')), ...ln.poderes.map(x => h('span', {}, x.nome + ' ', seta(x.de, x.para)))) : h('span', { class: 'note', text: 'fica de fora' })),
           h('td', {}, dentroD && ln.san ? h('div', { class: 'mud' }, seta(ln.san.de, ln.san.para)) : '—'),
           h('td', {}, dentroD && ln.conf ? h('div', { class: 'mud' }, seta(ln.conf.de, ln.conf.para)) : '—'),
@@ -773,7 +989,7 @@
             ln.come.some(x => x.efeito) ? h('span', {}, 'come ', h('b', { style: 'color:var(--fg)', text: juntarE(ln.come.filter(x => x.efeito).map(x => x.nome || 'ração sem nome')) })) : null,
             ...ln.fx.map(f => h('span', { title: 'De: ' + f.de }, textoFx(f) + (f.t === 'barra' && R() && (R().lerEfeito(f.val) || {}).dados ? ' (rolado no descanso)' : '')))) : '—'));
       });
-      corpo.replaceChildren(...avisos, h('table', { class: 'plano' }, h('thead', {}, h('tr', {}, h('th', { text: 'Quem descansa' }), h('th', { text: 'Barras' }), h('th', { text: 'Sanidade' }), h('th', { text: 'Conforto' }), h('th', { text: 'Come · na ficha' }))), h('tbody', {}, linhasT)));
+      corpo.replaceChildren(...avisos, h('table', { class: 'plano' }, h('thead', {}, h('tr', {}, h('th', { text: 'Quem descansa' }), h('th', { text: 'Come', title: 'Rações de cada um neste descanso' }), h('th', { text: 'Barras' }), h('th', { text: 'Sanidade' }), h('th', { text: 'Conforto' }), h('th', { text: 'Come · na ficha' }))), h('tbody', {}, linhasT)));
       confirmar.disabled = !plano.n;
       if (foco) { const c0 = document.getElementById(foco); if (c0) c0.focus(); }
     };
@@ -841,77 +1057,122 @@
       }
     }
     const rotulo = plano.tipo === 'longo' ? 'o descanso longo' : 'o descanso curto', resumo = N.resumoDescanso(plano);
-    pilha.push({ rotulo, json: jCamp, junta: null, fichas, publicar: true });
+    const passo = { rotulo, json: jCamp, junta: null, fichas, publicar: true };
+    pilha.push(passo);
     if (pilha.length > 60) pilha.shift();
     camp = N.aposDescanso(camp, plano, agora);
     // (o que foi para a ficha de cada um entra no diário, logo abaixo da linha do descanso)
     if (naFicha.length) camp = N.normalizar(Object.assign(N.copia(camp), { diario: [camp.diario[0], { id: N.novoId('di'), t: agora, texto: 'Na ficha — ' + naFicha.join(' · ') }].concat(camp.diario.slice(1)) }));
-    gravar(); pintar();
+    gravar(); passo.depois = jCamp; pintar();
     publicar(camp.nome, resumo + (naFicha.length ? '. Na ficha — ' + naFicha.join(' · ') : ''));
     toast(resumo + '.', 'Desfazer', desfazer, 15000);
   }
 
-  /* ---- um momento entre dois personagens ---- */
+  /* ---- um momento entre dois personagens ----
+     O que cada um passa a sentir pelo outro (o Relacionamento e os corações do romance), a Sanidade e o Conforto de
+     cada um e a emoção (a aura) com que cada um sai da conversa. Tudo com prévia; depois, um passo só de desfazer. */
+  const ROM_MAX = 10;
   function abrirMomento() {
     if (!mestre() || !naMesa()) return;
     // (o momento mexe nos relacionamentos, e parte deles — os escondidos, os dos NPCs — fica guardada com as Fichas)
     if (!comSegredos()) { toast('O momento mexe nos relacionamentos, que são das Fichas. Para registrar um, peça ao mestre a aba Fichas.'); return; }
     const gente = presentes().filter(p => !p.semFicha);
     if (gente.length < 2) { toast('Um momento precisa de dois personagens com ficha em volta da fogueira.'); return; }
-    const estado = { a: sel && gente.some(p => p.id === sel) ? sel : gente[0].id, b: null, da: 5, db: 5, texto: '' };
-    estado.b = (gente.find(p => p.id !== estado.a) || gente[1]).id;
+    const m = { a: sel && gente.some(p => p.id === sel) ? sel : gente[0].id, b: null, da: 5, db: 5, ha: 0, hb: 0, sa: 0, sb: 0, ca: 0, cb: 0, ea: '', eb: '', texto: '' };
+    m.b = (gente.find(p => p.id !== m.a) || gente[1]).id;
     const corpo = h('div', { style: 'display:grid;gap:12px' });
     const ok = h('button', { type: 'button', class: 'btn pri', id: 'mo-ok', text: 'Registrar o momento' });
-    const nome = id => (gente.find(p => p.id === id) || {}).nome || '?';
-    const relAtual = (de, para) => { const l = P.pegar(de), e = l ? R().relacaoCom(l.estado, segDe(de), para, !l.dono_id) : null; return e ? e.v : 0; };
-    const desenhar = () => {
+    const quem = id => gente.find(p => p.id === id) || {};
+    const nome = id => quem(id).nome || '?';
+    const relAtual = (de, para) => { const l = P.pegar(de), e = l ? R().relacaoCom(l.estado, segDe(de), para, !l.dono_id) : null; return e ? { v: e.v, rom: e.rom } : { v: 0, rom: null }; };
+    const num0 = v => (v === 0 ? '0' : N.comSinal(v));
+    const desenhar = foco => {
       // (as duas listas têm todo mundo: escolher num lado quem está no outro troca os dois de lugar)
       const opcoes = atual => gente.map(p => h('option', { value: p.id, selected: p.id === atual ? '' : null, text: p.nome }));
-      const escolher = (lado, v) => { const outro = lado === 'a' ? 'b' : 'a'; if (v === estado[outro]) estado[outro] = estado[lado]; estado[lado] = v; desenhar(); const c0 = document.getElementById('mo-' + lado); if (c0) c0.focus(); };
-      const linhaRel = (de, para, chave, id) => { const v0 = relAtual(de, para), v1 = N.limitar(v0 + estado[chave], -100, 100); return h('div', { class: 'lin', style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' },
-        h('span', { style: 'flex:1;min-width:200px', text: 'O que ' + nome(de) + ' sente por ' + nome(para) }),
-        h('input', { class: 'in num', id, type: 'number', min: -50, max: 50, step: 1, value: estado[chave], 'aria-label': 'Quanto muda o que ' + nome(de) + ' sente por ' + nome(para), onchange: e => { estado[chave] = N.limitar(Math.round(+e.target.value) || 0, -50, 50); desenhar(); const c0 = document.getElementById(id); if (c0) c0.focus(); } }),
-        h('span', { class: 'mud', style: 'font-family:var(--mono);min-width:96px' }, seta(N.comSinal(v0).replace('+0', '0').replace('−0', '0'), v1 === 0 ? '0' : N.comSinal(v1)))); };
+      const escolher = (lado, v) => { const outro = lado === 'a' ? 'b' : 'a'; if (v === m[outro]) m[outro] = m[lado]; m[lado] = v; desenhar('mo-' + lado); };
+      const campo = (chave, min, max, rotulo) => h('input', { class: 'in num', id: 'mo-' + chave, type: 'number', min, max, step: 1, value: m[chave], 'aria-label': rotulo,
+        onchange: e => { m[chave] = N.limitar(Math.round(+e.target.value) || 0, min, max); desenhar('mo-' + chave); } });
+      const celula = (entrada, de, para) => h('td', {}, h('span', { class: 'mo-c' }, entrada, h('span', { class: 'mud', style: 'font-family:var(--mono)' }, seta(de, para))));
+      const ra = relAtual(m.a, m.b), rb = relAtual(m.b, m.a), pa = quem(m.a), pb = quem(m.b);
+      const coracoes = (r, d) => { const de = r.rom == null ? '—' : '♥ ' + r.rom; return d ? [de, '♥ ' + N.limitar((r.rom == null ? 0 : r.rom) + d, -ROM_MAX, ROM_MAX)] : [de, de]; };
+      const sanDe = p => (p.san != null ? p.san : 100), confDe = p => (p.conf != null ? p.conf : 50);
+      const [ha0, ha1] = coracoes(ra, m.ha), [hb0, hb1] = coracoes(rb, m.hb);
+      const emoSel = (chave, p) => h('select', { class: 'in', id: 'mo-' + chave, 'aria-label': 'Com que emoção ' + p.nome + ' sai do momento', onchange: e => { m[chave] = e.target.value; desenhar('mo-' + chave); } },
+        h('option', { value: '', text: 'não muda' + (N.emocao(p.emo) ? ' (' + N.emocao(p.emo).nome.toLowerCase() + ')' : ''), selected: !m[chave] }),
+        h('option', { value: '-', text: 'Nenhuma', selected: m[chave] === '-' }),
+        N.EMOCOES.map(e => h('option', { value: e.k, text: e.nome, selected: m[chave] === e.k })));
       corpo.replaceChildren(
         h('div', { class: 'lin', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
-          h('select', { class: 'in', id: 'mo-a', style: 'flex:1;min-width:150px', 'aria-label': 'Primeiro personagem', onchange: e => escolher('a', e.target.value) }, opcoes(estado.a)), h('span', { text: 'e' }),
-          h('select', { class: 'in', id: 'mo-b', style: 'flex:1;min-width:150px', 'aria-label': 'Segundo personagem', onchange: e => escolher('b', e.target.value) }, opcoes(estado.b))),
-        linhaRel(estado.a, estado.b, 'da', 'mo-da'), linhaRel(estado.b, estado.a, 'db', 'mo-db'),
-        h('textarea', { class: 'in', id: 'mo-txt', rows: 2, maxlength: 400, placeholder: 'O que aconteceu? (vai para o diário e para a mesa ao vivo)', 'aria-label': 'O que aconteceu', oninput: e => { estado.texto = e.target.value; } }, estado.texto),
-        h('p', { class: 'note', text: 'Cada um tem a própria barra de Relacionamento pelo outro (de −100 a +100), na ficha. Se ainda não existe, é criada.' }));
-      ok.disabled = !estado.da && !estado.db && !estado.texto.trim();
+          h('select', { class: 'in', id: 'mo-a', style: 'flex:1;min-width:150px', 'aria-label': 'Primeiro personagem', onchange: e => escolher('a', e.target.value) }, opcoes(m.a)), h('span', { text: 'e' }),
+          h('select', { class: 'in', id: 'mo-b', style: 'flex:1;min-width:150px', 'aria-label': 'Segundo personagem', onchange: e => escolher('b', e.target.value) }, opcoes(m.b))),
+        h('table', { class: 'plano momento' },
+          h('thead', {}, h('tr', {}, h('th', { text: '' }), h('th', { text: nome(m.a) }), h('th', { text: nome(m.b) }))),
+          h('tbody', {},
+            h('tr', {}, h('td', { text: 'Sente pelo outro' }),
+              celula(campo('da', -50, 50, 'Quanto muda o que ' + nome(m.a) + ' sente por ' + nome(m.b)), num0(ra.v), num0(N.limitar(ra.v + m.da, -100, 100))),
+              celula(campo('db', -50, 50, 'Quanto muda o que ' + nome(m.b) + ' sente por ' + nome(m.a)), num0(rb.v), num0(N.limitar(rb.v + m.db, -100, 100)))),
+            h('tr', {}, h('td', { text: 'Corações' }),
+              celula(campo('ha', -5, 5, 'Corações de romance de ' + nome(m.a) + ' por ' + nome(m.b)), ha0, ha1),
+              celula(campo('hb', -5, 5, 'Corações de romance de ' + nome(m.b) + ' por ' + nome(m.a)), hb0, hb1)),
+            h('tr', {}, h('td', { text: 'Sanidade' }),
+              celula(campo('sa', -50, 50, 'Quanto muda a Sanidade de ' + nome(m.a)), sanDe(pa), N.limitar(sanDe(pa) + m.sa, 0, 100)),
+              celula(campo('sb', -50, 50, 'Quanto muda a Sanidade de ' + nome(m.b)), sanDe(pb), N.limitar(sanDe(pb) + m.sb, 0, 100))),
+            h('tr', {}, h('td', { text: 'Conforto' }),
+              celula(campo('ca', -50, 50, 'Quanto muda o Conforto de ' + nome(m.a)), confDe(pa), N.limitar(confDe(pa) + m.ca, 0, 100)),
+              celula(campo('cb', -50, 50, 'Quanto muda o Conforto de ' + nome(m.b)), confDe(pb), N.limitar(confDe(pb) + m.cb, 0, 100))),
+            h('tr', {}, h('td', { text: 'Emoção' }), h('td', {}, emoSel('ea', pa)), h('td', {}, emoSel('eb', pb))))),
+        h('textarea', { class: 'in', id: 'mo-txt', rows: 2, maxlength: 400, placeholder: 'O que aconteceu? (vai para o diário e para a mesa ao vivo)', 'aria-label': 'O que aconteceu', oninput: e => { m.texto = e.target.value; pintarOk(); } }, m.texto),
+        h('p', { class: 'note', text: 'Cada um tem a própria barra de Relacionamento pelo outro (de −100 a +100) e, se quiser, a trilha de corações do romance (de −10 a +10), na ficha. Se ainda não existem, são criadas. A emoção é a aura em volta do retrato.' }));
+      pintarOk();
+      if (foco) { const c0 = document.getElementById(foco); if (c0) c0.focus(); }
     };
-    ok.addEventListener('click', () => { fecharJanela(); registrarMomento(estado, nome(estado.a), nome(estado.b)); });
+    const pintarOk = () => { ok.disabled = !m.da && !m.db && !m.ha && !m.hb && !m.sa && !m.sb && !m.ca && !m.cb && !m.ea && !m.eb && !m.texto.trim(); };
+    ok.addEventListener('click', () => { fecharJanela(); registrarMomento(m, nome(m.a), nome(m.b)); });
     desenhar();
     abrirJanela('Um momento em volta da fogueira', corpo, [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok]);
   }
   function registrarMomento(m, nomeA, nomeB) {
-    const fichas = [];
-    const mexer = (de, para, nomePara, delta) => {
-      if (!delta) return;
+    const fichas = [], partes = [];
+    // tudo o que muda num personagem vai numa gravação só (o estado da ficha, e o que o mestre guarda dele)
+    const aplicar = (de, para, nomeDe, nomePara, dv, dh, ds, dc, emo) => {
       const l = P.pegar(de); if (!l) return;
       // (o valor pode estar na ficha ou guardado com o mestre — escondido do jogador, ou de um NPC: muda onde estiver)
-      const npc = !l.dono_id, seg0 = segDe(de), antes = R().relacaoCom(l.estado, seg0, para, npc);
+      const npc = !l.dono_id, seg0 = segDe(de);
       let r = { estado: l.estado || {}, seg: seg0 };
-      if (!antes) r = R().mexerRelacao(r.estado, r.seg, { t: 'nova', id: N.novoId('rel'), alvo: para, nome: nomePara, comMestre: npc, npc });
-      const e = R().relacaoCom(r.estado, r.seg, para, npc); if (!e) return;
-      const depois = R().mexerRelacao(r.estado, r.seg, { t: 'valor', id: e.id, v: e.v + delta, npc });
-      if (depois.mudou) r = depois;
+      if (dv || dh) {
+        if (!R().relacaoCom(r.estado, r.seg, para, npc)) r = R().mexerRelacao(r.estado, r.seg, { t: 'nova', id: N.novoId('rel'), alvo: para, nome: nomePara, comMestre: npc, npc });
+        let e = R().relacaoCom(r.estado, r.seg, para, npc);
+        if (e && dv) { const d = R().mexerRelacao(r.estado, r.seg, { t: 'valor', id: e.id, v: e.v + dv, npc }); if (d.mudou) r = d; }
+        e = R().relacaoCom(r.estado, r.seg, para, npc);
+        if (e && dh) { const d = R().mexerRelacao(r.estado, r.seg, { t: 'rom', id: e.id, rom: N.limitar((e.rom == null ? 0 : e.rom) + dh, -ROM_MAX, ROM_MAX), npc }); if (d.mudou) r = d; }
+      }
       let est = r.estado;
-      if (est.san == null) est = Object.assign({}, est, { san: dentro(est.san, 100) });      // a ficha passa a usar o painel de Sanidade e Conforto
+      // (a ficha passa a usar o painel de Sanidade e Conforto)
+      if (ds || dc || ((dv || dh) && est.san == null)) est = Object.assign({}, est, { san: N.limitar(dentro(est.san, 100) + ds, 0, 100), conf: N.limitar(dentro(est.conf, 50) + dc, 0, 100) });
+      if (emo === '-' && est.emo) { est = Object.assign({}, est); delete est.emo; }
+      else if (emo && emo !== '-' && N.emoOk(emo) && est.emo !== emo) est = Object.assign({}, est, { emo });
+      if (est === l.estado && r.seg === seg0) return;
       fichas.push({ id: l.id, estado: l.estado || {}, ficha: null, seg: seg0 });
       if (est !== l.estado) P.gravar(de, { estado: est });
       if (r.seg !== seg0) porSeg(de, r.seg);
+      if (dv) partes.push(nomeDe + ' → ' + nomePara + ' ' + N.comSinal(dv));
+      if (dh) partes.push('♥ ' + nomeDe + ' → ' + nomePara + ' ' + N.comSinal(dh));
+      if (ds) partes.push('Sanidade de ' + nomeDe + ' ' + N.comSinal(ds));
+      if (dc) partes.push('Conforto de ' + nomeDe + ' ' + N.comSinal(dc));
+      if (emo === '-') partes.push(nomeDe + ' sem emoção');
+      else if (emo && N.emocao(emo)) partes.push(nomeDe + ': ' + N.emocao(emo).nome.toLowerCase());
     };
-    mexer(m.a, m.b, nomeB, m.da); mexer(m.b, m.a, nomeA, m.db);
-    const partes = [];
-    if (m.da) partes.push(nomeA + ' → ' + nomeB + ' ' + N.comSinal(m.da));
-    if (m.db) partes.push(nomeB + ' → ' + nomeA + ' ' + N.comSinal(m.db));
+    aplicar(m.a, m.b, nomeA, nomeB, m.da, m.ha, m.sa, m.ca, m.ea);
+    aplicar(m.b, m.a, nomeB, nomeA, m.db, m.hb, m.sb, m.cb, m.eb);
     const resumo = (m.texto.trim() ? m.texto.trim() + ' ' : '') + (partes.length ? '(' + partes.join(' · ') + ')' : '');
     const linhaD = 'Momento entre ' + nomeA + ' e ' + nomeB + (resumo ? ': ' + resumo : '');
-    pilha.push({ rotulo: 'o momento entre ' + nomeA + ' e ' + nomeB, json: jCamp, junta: null, fichas, publicar: true });
+    const passo = { rotulo: 'o momento entre ' + nomeA + ' e ' + nomeB, json: jCamp, junta: null, fichas, publicar: true };
+    pilha.push(passo);
+    if (pilha.length > 60) pilha.shift();
     camp = N.normalizar(Object.assign(N.copia(camp), { diario: [{ id: N.novoId('di'), t: Date.now(), texto: linhaD }].concat(camp.diario) }));
-    gravar(); pintar();
+    gravar(); passo.depois = jCamp;
+    manterRoda();                                         // (a aura nova vai para a roda: quem não vê a ficha a vê pela roda)
+    pintar();
     publicar(camp.nome + ' · ' + nomeA + ' e ' + nomeB, resumo || 'Um momento em volta da fogueira.');
     toast('Momento registrado.', 'Desfazer', desfazer, 12000);
   }
@@ -991,7 +1252,7 @@
   document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape' && menu) { fecharMenu(); return; }
     if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || (ev.key || '').toLowerCase() !== 'z' || ev.shiftKey || digitando() || dlg.open) return;
-    if (mestre() && pilha.length) { ev.preventDefault(); desfazer(); }
+    if (edita() && pilha.length) { ev.preventDefault(); desfazer(); }
   });
   window.addEventListener('resize', ajustarPalco);
   if (window.ResizeObserver) new ResizeObserver(ajustarPalco).observe($('palco'));
@@ -1021,7 +1282,15 @@
         P = TCx.dados.col('personagens'); D = TCx.dados.col('documentos');
         await Promise.all([P.pronta, D.pronta]);
       }
-      TCx.ponte.aoMudar(e => { const antes = j(st.membros); st = e; if (pronto && antes !== j(e.membros)) { manterRoda(); pintar(); } });
+      TCx.ponte.aoMudar(e => {
+        const antes = j(st.membros), podia = pronto && ajudante();
+        st = e;
+        if (!pronto || antes === j(e.membros)) return;
+        manterRoda(); pintar();
+        // o mestre deu (ou tirou) o acampamento a quem está olhando: um aviso, e o desfazer recomeça
+        const pode = ajudante();
+        if (!mestre() && pode !== podia) { pilha = []; pintar(); toast(pode ? 'O mestre deixou você mexer no acampamento: provisões, estrutura, caravana, lugares e diário.' : 'O mestre tirou de você a permissão de mexer no acampamento.'); }
+      });
     }
     if (naMesa()) {
       const d = D.pegar(DOC);
@@ -1039,7 +1308,8 @@
     manterRoda();
     pintar();
   }
-  if (DEBUG) window.__acamp = { N, get camp() { return camp; }, get pilha() { return pilha; }, mudar, desfazer, presentes, pessoa, abrirDescanso, descansar, get modo() { return modo; }, get papel() { return papel; }, get pronto() { return pronto; } };
+  if (DEBUG) window.__acamp = { N, get camp() { return camp; }, get pilha() { return pilha; }, mudar, desfazer, presentes, pessoa, abrirDescanso, descansar, get modo() { return modo; }, get papel() { return papel; }, get pronto() { return pronto; },
+    verArea, get areaVista() { return areaVista; }, selecionar, edita, ajudante, get sel() { return sel; } };
   partida().catch(e => {
     console.error(e);
     $('vazio').hidden = false;

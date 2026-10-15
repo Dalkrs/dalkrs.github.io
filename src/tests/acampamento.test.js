@@ -197,6 +197,85 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     ok(await A(() => __acamp.camp.nome === 'Clareira do Vau' && __acamp.camp.presentes.length === 3 && __acamp.camp.melhorias.length === 1 && __acamp.camp.equipamentos[0].qtd === 4 && __acamp.camp.diario.length === 2), 'recarregando, o acampamento continua como estava (com as duas anotações do Diário)');
     await P.setViewportSize({ width: 390, height: 780 }); await w(400);
     ok(await P.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1) && await P.locator('#roda .pers').first().isVisible(), 'no celular a página não rola para o lado e a roda continua à vista');
+
+    // ---------- lote 5: as áreas, as construções, as linhas de relação, o lugar, o clima e quanto cada um come ----------
+    await P.setViewportSize({ width: 1440, height: 900 }); await gaveta(true); await w(350);
+    ok(await P.locator('#areas button').count() === 4 && await P.locator('#area-tab-fogueira[aria-pressed="true"]').count() === 1 && (await P.locator('#area-tab-fogueira .n').innerText()) === '3', 'as quatro áreas acima da cena; na fogueira, os três');
+    await aba('estrutura');
+    await P.locator('#ct-novo').click(); await w(300);
+    ok(await P.locator('dialog .construir .opc').count() === await A(() => __acamp.N.ESTRUTURAS.length) && await P.locator('dialog .construir .opc .miniatura svg').count() > 10, 'a janela de construir mostra o catálogo inteiro, cada uma com o desenho');
+    await P.locator('#ct-forja').click(); await w(300);
+    const forja = await A(() => { const m = __acamp.camp.melhorias.find(x => x.tipo === 'forja'); return m ? { id: m.id, nivel: m.nivel, fx: m.fx.length } : null; });
+    ok(forja && forja.nivel === 1 && forja.fx === 1 && /Forja construída \(simples\)/.test(await toast()), 'a forja é construída, no nível simples: ' + JSON.stringify(forja));
+    await P.locator('#area-tab-oficinas').click(); await w(300);
+    ok(await P.locator('#cenario .construcao[data-tipo="forja"][data-nivel="1"]').count() === 1 && await P.locator('#roda .pers').count() === 0 && await P.locator('#vazio').isHidden(), 'nas Oficinas aparece a forja desenhada (e ninguém por lá ainda)');
+    await P.locator(`#ml-nv-${forja.id}-3`).click(); await w(300);
+    ok(await P.locator('#cenario .construcao[data-tipo="forja"][data-nivel="3"]').count() === 1 && await P.evaluate(id => { const m = __acamp.camp.melhorias.find(x => x.id === id); return m.nivel === 3 && m.fx.length === 2 && m.fx[0].v === 2; }, forja.id), 'no nível excelente o desenho muda e o que ela faz cresce (Defesa Física +2 e Força +1)');
+    await P.keyboard.press('Control+z'); await w(300);
+    ok(await P.locator('#cenario .construcao[data-tipo="forja"][data-nivel="1"]').count() === 1 && await P.evaluate(id => __acamp.camp.melhorias.find(x => x.id === id).nivel === 1, forja.id), 'Ctrl+Z volta ao nível simples');
+    // o que um nível faz pode ser mudado (vale para aquele nível), e volta ao padrão
+    await P.locator(`#ml-conf-${forja.id}`).fill('4'); await P.locator(`#ml-conf-${forja.id}`).press('Enter'); await w(300);
+    ok(await P.evaluate(id => { const m = __acamp.camp.melhorias.find(x => x.id === id); return m.ef.conf === 4 && m.nv[0].ef.conf === 4 && m.nv[2].ef.conf === 0; }, forja.id) && await P.locator(`#ml-pd-${forja.id}`).count() === 1,
+      'mudar o Conforto da forja vale para o nível em que ela está (o simples), e aparece "Voltar ao padrão deste nível"');
+    await P.locator(`#ml-pd-${forja.id}`).click(); await w(300);
+    ok(await P.evaluate(id => __acamp.camp.melhorias.find(x => x.id === id).ef.conf === 0, forja.id) && await P.locator(`#ml-pd-${forja.id}`).count() === 0, '"Voltar ao padrão deste nível": o Conforto volta a 0');
+    await P.locator('#ct-novo').click(); await w(300);
+    ok(await P.locator('#ct-forja').isDisabled() && /já construída/.test(await P.locator('#ct-forja').innerText()), 'na janela de construir, a forja aparece como "já construída" (uma de cada)');
+    await P.keyboard.press('Escape'); await w(200);
+    // o Ogro vai trabalhar nas oficinas (e o lugar em que estava na fogueira fica para trás)
+    await P.locator('#area-tab-fogueira').click(); await aba('grupo');
+    await P.locator('#pc-pc_ogro').click(); await w(250);
+    await A(() => __acamp.mudar('mover o Ogro', c => { c.lugares.pc_ogro = { x: 30, y: 60 }; }));
+    await P.locator('#area-pc_ogro').selectOption('oficinas'); await w(300);
+    ok(await A(() => __acamp.camp.area.pc_ogro === 'oficinas') && (await P.locator('#area-tab-fogueira .n').innerText()) === '2' && (await P.locator('#area-tab-oficinas .n').innerText()) === '1' && await P.locator('#roda .pers').count() === 2 && /Ogro foi para as oficinas/.test(await toast()),
+      'o Ogro vai para as Oficinas: sai da fogueira, e as abas contam de novo');
+    ok(await A(() => !__acamp.camp.lugares.pc_ogro), 'o lugar em que ele estava na fogueira não vai junto (nas Oficinas, ele fica no lugar padrão)');
+    await P.locator('#toasts .toast button', { hasText: 'Ver' }).click(); await w(300);
+    ok(await P.locator('#area-tab-oficinas[aria-pressed="true"]').count() === 1 && (await P.locator('#roda .pers .nm').allInnerTexts()).join() === 'Ogro', '"Ver" leva às Oficinas, onde ele está, ao lado da forja');
+    await P.locator('#area-tab-fogueira').click(); await w(250);
+    // as linhas de relação: o que cada um sente pelo outro, em cada metade
+    await P.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('urgm_calc_atributos_v1')), por = (id, rels) => { const p = s.personagens.find(x => x.id === id); p.estado = Object.assign({}, p.estado, { rels }); };
+      por('pc_dain', { r1: { alvo: 'pc_lia', nome: 'Lia', v: 40, rom: 3, o: 0 }, r2: { alvo: 'pc_ogro', nome: 'Ogro', v: -30, o: 1 } });
+      por('pc_lia', { r3: { alvo: 'pc_dain', nome: 'Dain X', v: -20, o: 0 } });
+      localStorage.setItem('urgm_calc_atributos_v1', JSON.stringify(s));
+    });
+    await P.locator('#roda .pers', { hasText: 'Dain X' }).click(); await w(300);
+    ok(await P.locator('#linhas g[data-de="pc_dain"]').count() === 1 && await P.locator('#linhas g[data-para="pc_lia"] .meia.rom').count() === 1 && await P.locator('#linhas g[data-para="pc_lia"] .meia.neg').count() === 1,
+      'escolhendo o Dain: uma linha até a Lia — a metade dele rosa (romance), a dela vermelha (−20); o Ogro, em outra área, fica sem linha');
+    ok(/\+40 ♥3/.test(await P.locator('#linhas').textContent()) && /−20/.test(await P.locator('#linhas').textContent()) && await P.locator('#legendaRel').isVisible(), 'com os números de cada lado e a legenda das cores');
+    await P.locator('#roda .pers', { hasText: 'Dain X' }).click(); await w(250);
+    ok(await P.locator('#linhas g').count() === 0 && await P.locator('#legendaRel').count() === 0, 'clicando de novo, as linhas somem');
+    // o lugar e o clima
+    await P.locator('#lugar').selectOption('deserto'); await w(250);
+    await P.locator('#clima-sel').selectOption('chuva'); await w(300);
+    ok(await P.locator('#palco.lugar-deserto').count() === 1 && await P.locator('#clima.clima-chuva i').count() > 50 && await A(() => __acamp.camp.lugar === 'deserto' && __acamp.camp.clima === 'chuva'), 'no deserto, com chuva: o desenho e o clima mudam');
+    await P.keyboard.press('Control+z'); await w(300);
+    ok(await P.locator('#clima i').count() === 0 && await A(() => __acamp.camp.clima === 'limpo'), 'Ctrl+Z: o tempo volta a ficar bom');
+    // a caravana na cena
+    await A(() => __acamp.mudar('um veículo', c => { c.caravana.veiculos.push({ id: 'vcx', nome: 'Carroça', tipo: 'carroca', cap: 100 }); }));
+    await w(300);
+    ok(await P.locator('#cenario .veiculo[data-tipo="carroca"]').count() === 1, 'a carroça da caravana aparece na fogueira');
+    await P.locator('#area-tab-oficinas').click(); await w(300);
+    ok(await P.locator('#cenario .veiculo').count() === 0 && await P.locator('#cenario .construcao[data-tipo="forja"]').count() === 1, 'nas Oficinas, a caravana não aparece (ela fica na fogueira)');
+    await P.locator('#area-tab-fogueira').click(); await w(250);
+    await aba('caravana');
+    await P.locator('#cv-ver').uncheck(); await w(300);
+    ok(await P.locator('#cenario .veiculo').count() === 0 && await A(() => __acamp.camp.verCaravana === false), '"Mostrar a caravana na cena" desmarcado: some do desenho');
+    // quanto cada um come: por raça e por personagem, e na hora do descanso
+    await aba('provisoes');
+    await P.locator('#come > summary').click(); await w(200);
+    await P.locator('#come-r-humano').fill('2'); await P.locator('#come-r-humano').press('Enter'); await w(250);
+    await P.locator('#come-p-pc_lia').fill('0'); await P.locator('#come-p-pc_lia').press('Enter'); await w(250);
+    ok(await A(() => __acamp.camp.comer.racas.humano === 2 && __acamp.camp.comer.pers.pc_lia === 0), 'humano come 2; a Lia, nada (vale mais que a raça)');
+    await P.locator('#come-p-pc_lia').fill(''); await P.locator('#come-p-pc_lia').press('Enter'); await w(250);
+    ok(await A(() => !('pc_lia' in __acamp.camp.comer.pers)) && await P.locator('#come-p-pc_lia').getAttribute('placeholder') === '2', 'apagando o número da Lia, ela volta a seguir a regra (a da raça dela: 2)');
+    await P.locator('#come-p-pc_lia').fill('0'); await P.locator('#come-p-pc_lia').press('Enter'); await w(250);
+    await P.locator('#btLongo').click(); await w(300);
+    ok(await P.locator('#ds-c-pc_dain').inputValue() === '2' && await P.locator('#ds-c-pc_lia').inputValue() === '0' && await P.locator('#ds-c-pc_ogro').inputValue() === '2', 'no descanso: o Dain come 2, a Lia 0 e o Ogro (nas oficinas, mas no acampamento) 2 — ' + (await P.locator('#ds-prov').innerText()));
+    await P.locator('#ds-c-pc_dain').fill('1'); await P.locator('#ds-c-pc_dain').press('Enter'); await w(250);
+    ok(await P.locator('#ds-c-pc_dain').inputValue() === '1' && await A(() => __acamp.camp.comer.racas.humano === 2), 'mudando na hora, vale só para este descanso (a regra da raça fica)');
+    await P.keyboard.press('Escape'); await w(200);
   }
 
   // ================= dentro da casca: atalhos entre os sistemas =================

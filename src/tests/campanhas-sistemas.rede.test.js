@@ -262,10 +262,18 @@ const { ok, end } = checker();
     const esperadas = cenasDoBanco.filter(x => !x.camps.length || x.camps.includes(C2)).map(x => x.nome).sort();
     ok(cenasDoBanco.some(x => x.camps.includes(C1)) && esperadas.length >= 1 && JSON.stringify(noMenuTatico) === JSON.stringify(esperadas), '"Mapa tático" oferece as cenas da Geração 2 (e as do mundo), não as da outra campanha: ' + JSON.stringify({ noMenu: noMenuTatico, noBanco: cenasDoBanco.map(x => x.nome + (x.camps.includes(C1) ? ' [1ª]' : x.camps.includes(C2) ? ' [2ª]' : ' [mundo]')) }));
     await TM.mouse.click(5, 5); await ACM.evaluate(() => { const m = document.getElementById('menuCena'); if (m) m.remove(); }); await w(200);
+    // o Dalmo com a permissão do mestre: mexe no acampamento da campanha dele (até ela ser encerrada, logo abaixo)
+    const darAcamp = await TM.evaluate(id => TC.mesas.acampDoJogador(id, true).then(() => null, e => e.message), ids.a);
+    const docC1 = await noBanco(async ([mesa, c1]) => { const r = await window.__sb.from('documentos').upsert({ mesa_id: mesa, id: 'acampamento@' + c1, vis: 'mesa', dados: { nome: 'Acampamento da Geração do Dain' } }, { onConflict: 'mesa_id,id' }); return r.error ? r.error.message : null; }, [mesa, C1]);
+    await TA.locator('#tab-acampamento').click();
+    const acampDe = p => moldura(p, /\/acampamento\//, () => !!window.__acamp && __acamp.pronto && __acamp.modo === 'mesa');
+    ok(!darAcamp && !docC1 && await ate(async () => { const f = await acampDe(TA); return !!f && await f.evaluate(() => __acamp.edita() && __acamp.camp.nome === 'Acampamento da Geração do Dain'); }, 30000),
+      'com a permissão do mestre, o Dalmo mexe no acampamento da campanha dele' + (darAcamp || docC1 ? ' — ' + (darAcamp || docC1) : ''));
 
     /* ===================== campanha encerrada: o núcleo recusa antes de o banco recusar ===================== */
     const encerrar = (camp, sim) => noBanco(async ([mesa, camp, sim]) => { const r = await window.__sb.rpc('campanha_mudar', { p_mesa: mesa, p_id: camp, p_encerrada: sim }); return r.error ? r.error.message : null; }, [mesa, camp, sim]);
     ok(!(await encerrar(C1, true)) && await ate(() => TM.evaluate(c1 => TC.mesas.encerrada(c1), C1), 30000), 'o mestre encerra a primeira campanha (o aparelho dele fica sabendo)');
+    ok(await ate(async () => { const f = await acampDe(TA); return !!f && await f.evaluate(() => !__acamp.edita() && !__acamp.ajudante()); }, 30000), 'encerrada a campanha, o acampamento dela fica só para consulta também para o Dalmo (mesmo com a permissão)');
     await TM.evaluate(() => document.getElementById('toasts').replaceChildren());
     const gravacoes = await TM.evaluate(c1 => {
       const recusas = []; TC.dados.on('recusado', (nome, id, msg) => recusas.push(nome + ':' + id + ':' + msg));

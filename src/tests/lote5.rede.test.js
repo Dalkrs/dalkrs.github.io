@@ -12,7 +12,8 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
   defesas: { DFF: 3, DFM: 6 }, rol: { fixa: 5, fonte: 'total' }, disputa: { atrA: 'FOR', alvoId: '', atrB: 'FOR', fixaB: 0, valorB: 40 }, estaque: { a: '', b: '' }, habilidades: [], itens: [], notas: '' }, extra);
 const selene = ficha('Selene', {
   recursos: [{ id: 'hp', nome: 'HP', fml: '100' }, { id: 'sp', nome: 'SP', fml: '40' }], poderes: [{ id: 'pd1', nome: 'Poder divino', max: 3, atual: 1 }],
-  bolsa: [{ id: 'px', t: 'pocao', nome: 'Elixir do grupo', fx: [{ k: 'barra', rec: 'hp', val: '30' }, { k: 'sob', rec: 'hp', val: '10' }, { k: 'bonus', bk: 'FOR', bv: 2, dur: 'descanso' }, { k: 'cond', c: 'bencao', r: 2 }] }],
+  bolsa: [{ id: 'px', t: 'pocao', nome: 'Elixir do grupo', fx: [{ k: 'barra', rec: 'hp', val: '30' }, { k: 'sob', rec: 'hp', val: '10' }, { k: 'bonus', bk: 'FOR', bv: 2, dur: 'descanso' }, { k: 'cond', c: 'bencao', r: 2 }] },
+    { id: 'pd6', t: 'pocao', nome: 'Tônico', fx: [{ k: 'barra', rec: 'hp', val: '2d6' }] }],
 });
 const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] });
 
@@ -48,7 +49,7 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     const jogId = await J.evaluate(() => TC.conta.usuario.id), biaId = await K.evaluate(() => TC.conta.usuario.id);
     await M.evaluate(([fs, a, b]) => {
       const P = TC.dados.col('personagens'), sk = { arvores: [], pontos: {}, alocados: {} };
-      P.gravar('pc_selene', { nome: 'Selene', ficha: fs[0], skills: sk, estado: { rec: { hp: 50 }, qtd: { px: 3 } }, dono_id: a, vis: 'mesa', ordem: 0 });
+      P.gravar('pc_selene', { nome: 'Selene', ficha: fs[0], skills: sk, estado: { rec: { hp: 50 }, qtd: { px: 3, pd6: 1 } }, dono_id: a, vis: 'mesa', ordem: 0 });
       P.gravar('pc_bia', { nome: 'Bia', ficha: fs[1], skills: sk, estado: {}, dono_id: b, vis: 'mesa', ordem: 1 });
     }, [[selene, bia], jogId, biaId]);
     ok(await ate(() => parado(M)), '(as fichas da Selene, de Dalmo, e da Bia, da Bia, sobem para a mesa)');
@@ -100,6 +101,10 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     ok(await ate(async () => (await F.locator('#painelCorpo [data-fertrava]').count()) === 1 && (await G.locator('#painelCorpo [data-fertrava]').count()) === 0), 'só o mestre tem o cadeado dos ferimentos');
     await F.locator('#painelCorpo [data-fertrava]').click(); await w(400);
     ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.ferTrava === 1 && await parado(M); }) && await F.locator('#painelCorpo [data-fertrava]').getAttribute('aria-pressed') === 'true', 'travado: fica marcado na ficha');
+    await F.locator('.toast button', { hasText: 'Desfazer' }).last().click(); await w(400);
+    ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return !l.estado.ferTrava && await parado(M); }) && await F.locator('#painelCorpo [data-fertrava]').getAttribute('aria-pressed') === 'false', 'o Desfazer destrava');
+    await F.locator('#painelCorpo [data-fertrava]').click(); await w(400);
+    ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.ferTrava === 1 && await parado(M); }), '(travado de novo)');
     ok(await ate(async () => (await G.locator('#painelCorpo .tagseg', { hasText: 'travado pelo mestre' }).count()) === 1 && (await G.locator('#painelCorpo [data-fernovo]').count()) === 0), 'para o jogador: "travado pelo mestre", sem "+ Ferimento"');
     await F.locator('#painelCorpo [data-fertrava]').click(); await w(400);
     ok(await ate(async () => (await G.locator('#painelCorpo [data-fernovo]').count()) === 1), 'destravado, o jogador volta a poder marcar ferimentos');
@@ -143,6 +148,16 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     await J.locator('#dadosBotoes button[data-k="FOR"]').click();
     ok(await ate(async () => (await feed(M, 'Selene · Força').count()) === 1) && /\+5 no atributo \(\d+ → \d+\) · \+2 no resultado/.test(await feed(M, 'Selene · Força').first().innerText()), 'a rolagem chega à mesa dizendo os dois bônus: ' + (await feed(M, 'Selene · Força').first().innerText()).replace(/\n/g, ' | '));
     ok(await J.locator('#dadosMaisA').inputValue() === '' && await J.locator('#dadosMaisR').inputValue() === '', 'e os campos voltam a ficar vazios');
+    // a iniciativa usa só o "+ resultado"
+    await J.locator('#dadosMaisR').fill('3'); await w(200, J);
+    ok(/\+ 3 \(só nesta rolagem\)/.test(await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title')), 'o botão da iniciativa já diz o +3: ' + await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title'));
+    await J.locator('#dadosBotoes button[data-k="INI"]').click();
+    {
+      const ini = async () => { const u = await M.evaluate(() => TC.aoVivo.itens.filter(l => l.tipo === 'rolagem' && l.dados && l.dados.k === 'iniciativa').map(l => l.dados)); return u[u.length - 1] || null; };
+      ok(await ate(async () => { const d = await ini(); if (!d) return false; const m = /^1d20 \((\d+)\)(?: ([+−]) (\d+))? · \+3 no resultado$/.exec(d.resumo || ''); return !!m && d.total === +m[1] + (m[2] === '−' ? -(+m[3]) : +(m[3] || 0)) + 3 && d.sis && d.sis.v === d.total; }),
+        'a iniciativa chega à mesa com o +3 somado no total: ' + j(await ini()));
+    }
+    ok(await J.locator('#dadosMaisR').inputValue() === '', 'e o campo volta a ficar vazio');
 
     // ---------- a poção num token sem ficha, pela jogadora, na cena no ar ----------
     await M.locator('#tab-cenas').click(); await w(500);
@@ -166,6 +181,47 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     ok(await ate(async () => (await linha(M, 'pc_selene')).estado.qtd.px === 2), 'e o elixir sai da bolsa da Selene');
     ok(await ate(async () => (await feed(M, 'Selene · Elixir do grupo em Barril').count()) === 1) && /HP \+30/.test(await feed(M, 'Selene · Elixir do grupo em Barril').first().innerText()), 'a mesa ao vivo mostra o uso, sem a vida do barril: ' + (await feed(M, 'Selene · Elixir do grupo em Barril').first().innerText()).replace(/\n/g, ' | '));
     await J.keyboard.press('Escape');
+
+    // ---------- o mestre também usa a bolsa num token sem ficha (aplica na hora) ----------
+    await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.sel); await w(400);
+    if (!(await C.locator('#tk-bolsa').isVisible())) { await C.locator('#s-bag > summary').click().catch(() => {}); await w(200); }
+    await C.locator('#tk-bolsa').click(); await w(300);
+    await C.locator('#bag-em').selectOption(ids.barril); await w(300);
+    await C.locator('#bag-u-px').click(); await w(300);
+    await C.locator('#bag-ok-px').click(); await w(500);
+    ok(await ate(async () => (await linha(M, 'pc_selene')).estado.qtd.px === 1 && (await feed(M, 'Selene · Elixir do grupo em Barril').count()) === 2), 'o mestre usa o elixir no barril: sai da bolsa e a mesa fica sabendo');
+    {
+      const t2 = (await feed(M, 'Selene · Elixir do grupo em Barril').last().innerText()).replace(/\n/g, ' | ');
+      ok(/HP \+30/.test(t2) && /o bônus não vale num token sem ficha/.test(t2) && !/Força/.test(t2), 'num token sem ficha o bônus fica de fora, e o texto diz: ' + t2);
+    }
+    await M.keyboard.press('Escape');
+
+    // ---------- pedidos forjados (pelo console, como faria quem quisesse burlar): o mestre confere e ignora ----------
+    const oculto = await C.evaluate(() => {
+      const u = __tc, sc = u.Store.scene();
+      const o = u.newToken(sc, sc.cell * 9, sc.cell * 3, { name: 'Espião', hidden: true, bars: [u.cleanBar({ n: 'HP', c: '#d6524b', v: 5, m: 20, k: 'bar', on: true, vis: '' })] });
+      u.Store.tx('Criar', () => u.Store.add('tokens', o));
+      return o.id;
+    });
+    await w(1500);
+    await B.evaluate(([barril, oc]) => {
+      __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'px', alvo: barril, rol: [30, null, null, null] });      // um "dado" onde o efeito é fixo
+      __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'pd6', alvo: barril, rol: [13] });                      // 2d6 não dá 13
+      __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'px', alvo: oc, rol: [null, null, null, null] });       // um token escondido
+      __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'nada', alvo: barril, rol: [] });                        // um item que não existe
+    }, [ids.barril, oculto]);
+    ok(await ate(() => B.evaluate(() => __tc.Nuvem.pendentes() === 0), 40000), '(o mestre recebe e responde os pedidos forjados do Dalmo)');
+    await K.locator('#tab-cenas').click();
+    let KC = null;
+    ok(await ate(async () => { KC = await quadro(K, /\/cenas\//); return KC && await KC.evaluate(b => !!window.__tc && __tc.Nuvem.modo() === 'jogador' && !!__tc.Store.get('tokens', b), ids.barril); }, 40000), 'a Bia vê a cena no ar, com o barril');
+    await KC.evaluate(b => __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'px', alvo: b, rol: [null, null, null, null] }), ids.barril);      // a bolsa da Selene, não a dela
+    ok(await ate(() => KC.evaluate(() => __tc.Nuvem.pendentes() === 0), 40000), '(e o da Bia)');
+    ok(await ate(async () => { const s = await linha(M, 'pc_selene'); return s.estado.qtd.px === 1 && s.estado.qtd.pd6 === 1; }) && await C.evaluate(id => !(__tc.Store.get('tokens', id).conds || []).includes('bencao'), oculto),
+      'nada passou: dado onde o efeito é fixo, 13 em 2d6, token escondido, item que não existe e a Bia usando a bolsa da Selene — a bolsa continua com 1 elixir e 1 tônico: ' + j((await linha(M, 'pc_selene')).estado.qtd));
+    // (e o pedido certo, com o dado dentro da faixa, passa)
+    await B.evaluate(b => __tc.Nuvem.usarItem({ de: 'pc_selene', item: 'pd6', alvo: b, rol: [7] }), ids.barril);
+    ok(await ate(async () => (await linha(M, 'pc_selene')).estado.qtd.pd6 === 0, 40000), 'o pedido certo (7 em 2d6) passa: o tônico sai da bolsa');
+    await K.locator('#tab-fichas').click(); await J.locator('#tab-fichas').click(); await w(300);
 
     // ---------- a mesa ao vivo fechada para a Bia ----------
     await M.locator('#btnConta').click(); await w(300);

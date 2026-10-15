@@ -19,7 +19,17 @@
      servir { longo, curto }                    a provisão que cada descanso serve primeiro (id, ou null: a ordem da lista)
      emo { [id]: emoção }                       a emoção de cada um, sem mesa (numa mesa ela fica na ficha: estado.emo)
      caravana { veiculos, carga, gente, vai }   ver normCaravana
+     lugar ('floresta' | 'montanha' | 'deserto' | 'neve' | 'mar' | 'caverna')   onde o acampamento está (muda o desenho)
+     clima ('limpo' | 'chuva' | 'tempestade' | 'neve' | 'neblina' | 'vento')     o tempo, animado na cena
+     verCaravana (bool)                         os veículos e animais da caravana aparecem na cena
+     area { [id]: 'oficinas' | 'convivio' | 'guarda' }   em que área do acampamento cada um está (sem nada: na fogueira)
+     comer { racas: { [raça]: n }, pers: { [id]: n } }   quantas rações cada um come no descanso longo, por raça (o
+                                                campo "Raça / classe" da ficha) ou por personagem (vale mais que a raça)
      diario [{ id, t (ms), texto }]             os mais novos primeiro; no máximo 60
+
+   CONSTRUÇÕES: uma melhoria pode ser de um tipo do catálogo (ESTRUTURAS: a forja, o canto do bardo…). Aí ela tem um
+   desenho na área dela, três níveis (nivel 1, 2, 3: simples, boa, excelente) e o que cada nível faz (nv: [{ ef, fx }]);
+   ef e fx são sempre os do nível em que ela está.
 
    EFEITO na ficha (fx), um por linha:
      { id, t: 'bonus', k (chave do bônus: FOR, DFF, FOGO…), v, dur: 'descanso' | 'rodadas', r (rodadas) }
@@ -123,6 +133,87 @@
     return { por, semLugar: r2d(semLugar), total: r2d(total), cap: r2d(cv.veiculos.reduce((s, v) => s + v.cap, 0)) };
   }
 
+  /* ---- onde o acampamento está, o tempo e as áreas ---- */
+  const LUGARES = [['floresta', 'Floresta'], ['montanha', 'Montanha'], ['deserto', 'Deserto'], ['neve', 'Neve'], ['mar', 'Beira-mar'], ['caverna', 'Caverna']];
+  const CLIMAS = [['limpo', 'Tempo bom'], ['chuva', 'Chuva'], ['tempestade', 'Tempestade'], ['neve', 'Nevando'], ['neblina', 'Neblina'], ['vento', 'Ventania']];
+  const AREAS = [['fogueira', 'Fogueira'], ['oficinas', 'Oficinas'], ['convivio', 'Convívio'], ['guarda', 'Guarda e Cuidado']];
+  const areaOk = a => (AREAS.some(x => x[0] === a) ? a : 'fogueira');
+
+  /* ---- o catálogo das construções ----
+     Cada tipo tem uma categoria (as da estrutura), a área onde é desenhado e o que faz em cada nível — o padrão, que o
+     mestre pode mudar nível por nível. ef: { conf, san, rec, prov } no descanso longo; fx: o que vai para a ficha. */
+  const CATEGORIAS = [['oficios', 'Ofícios'], ['convivio', 'Convívio'], ['protecao', 'Proteção'], ['cuidado', 'Cuidado e estudo']];
+  const NIVEIS = ['Simples', 'Boa', 'Excelente'];
+  const ef4 = (conf, san, rec, prov) => ({ conf, san, rec, prov });
+  const bon = (k, v) => ({ t: 'bonus', k, v, dur: 'descanso' });
+  const ESTRUTURAS = [
+    { k: 'cozinha', nome: 'Cozinha de campanha', cat: 'oficios', area: 'fogueira', desc: 'Panelas, um fogão de pedra e quem saiba usar: a comida rende e conforta.',
+      nv: [{ ef: ef4(3, 0, 0, 0) }, { ef: ef4(5, 0, 0, 0) }, { ef: ef4(8, 0, 0, -1) }] },
+    { k: 'alquimia', nome: 'Bancada de alquimista', cat: 'oficios', area: 'oficinas', desc: 'Frascos, ervas secando e um alambique: unguentos e chás que ajudam a recuperar.',
+      nv: [{ ef: ef4(0, 0, 5, 0) }, { ef: ef4(0, 0, 10, 0) }, { ef: ef4(0, 0, 15, 0) }] },
+    { k: 'forja', nome: 'Forja', cat: 'oficios', area: 'oficinas', desc: 'Bigorna, fole e carvão: armas afiadas e armaduras ajustadas para o dia seguinte.',
+      nv: [{ fx: [bon('DFF', 1)] }, { fx: [bon('DFF', 2)] }, { fx: [bon('DFF', 2), bon('FOR', 1)] }] },
+    { k: 'oficina', nome: 'Oficina de couro e madeira', cat: 'oficios', area: 'oficinas', desc: 'Remendos, cordas novas e botas consertadas: a viagem fica mais leve.',
+      nv: [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(3, 0, 0, 0), fx: [bon('AGI', 1)] }, { ef: ef4(5, 0, 0, 0), fx: [bon('AGI', 1)] }] },
+    { k: 'bardo', nome: 'Canto do bardo', cat: 'convivio', area: 'convivio', desc: 'Um banco, um alaúde e histórias ao pé do fogo.',
+      nv: [{ ef: ef4(2, 2, 0, 0) }, { ef: ef4(3, 4, 0, 0) }, { ef: ef4(5, 6, 0, 0) }] },
+    { k: 'mesa', nome: 'Mesa comprida', cat: 'convivio', area: 'convivio', desc: 'Refeições juntos, cartas e dados: o grupo vira família.',
+      nv: [{ ef: ef4(3, 0, 0, 0) }, { ef: ef4(5, 1, 0, 0) }, { ef: ef4(8, 2, 0, 0) }] },
+    { k: 'banho', nome: 'Tina de banho', cat: 'convivio', area: 'convivio', desc: 'Água quente e um biombo: o cansaço sai junto com a poeira.',
+      nv: [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(4, 0, 5, 0) }, { ef: ef4(6, 1, 5, 0) }] },
+    { k: 'lanternas', nome: 'Varal de lanternas', cat: 'convivio', area: 'convivio', desc: 'Luzes coloridas no alto: a noite fica menos escura.',
+      nv: [{ ef: ef4(1, 1, 0, 0) }, { ef: ef4(2, 2, 0, 0) }, { ef: ef4(3, 3, 0, 0) }] },
+    { k: 'palicada', nome: 'Paliçada', cat: 'protecao', area: 'guarda', desc: 'Estacas em volta do acampamento: dorme-se melhor atrás de um muro.',
+      nv: [{ ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 5, 0, 0) }, { ef: ef4(1, 8, 0, 0) }] },
+    { k: 'torre', nome: 'Torre de vigia', cat: 'protecao', area: 'guarda', desc: 'Alguém de olho no horizonte enquanto os outros dormem.',
+      nv: [{ ef: ef4(0, 2, 0, 0) }, { ef: ef4(0, 3, 0, 0), fx: [bon('PER', 1)] }, { ef: ef4(0, 5, 0, 0), fx: [bon('PER', 2)] }] },
+    { k: 'alarmes', nome: 'Alarmes e armadilhas', cat: 'protecao', area: 'guarda', desc: 'Sinos em cordas e estacas escondidas: ninguém chega de surpresa.',
+      nv: [{ ef: ef4(0, 2, 0, 0) }, { ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 4, 0, 0), fx: [bon('ESQ', 1)] }] },
+    { k: 'enfermaria', nome: 'Enfermaria', cat: 'cuidado', area: 'guarda', desc: 'Catres limpos, ataduras e um lugar quieto para curar.',
+      nv: [{ ef: ef4(0, 0, 10, 0) }, { ef: ef4(0, 0, 20, 0) }, { ef: ef4(2, 0, 30, 0) }] },
+    { k: 'estudo', nome: 'Mesa de estudo', cat: 'cuidado', area: 'guarda', desc: 'Livros, mapas e velas: tempo para pensar e se preparar.',
+      nv: [{ fx: [bon('CAN', 1)] }, { fx: [bon('CAN', 2)] }, { ef: ef4(0, 2, 0, 0), fx: [bon('CAN', 3)] }] },
+    { k: 'santuario', nome: 'Santuário', cat: 'cuidado', area: 'guarda', desc: 'Um altar pequeno, flores e velas: paz para a cabeça.',
+      nv: [{ ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 6, 0, 0) }, { ef: ef4(1, 10, 0, 0) }] },
+    { k: 'horta', nome: 'Horta de ervas', cat: 'cuidado', area: 'guarda', desc: 'Canteiros de ervas e legumes: menos provisões gastas e chás que ajudam.',
+      nv: [{ ef: ef4(0, 0, 0, -1) }, { ef: ef4(0, 0, 5, -1) }, { ef: ef4(1, 0, 5, -2) }] },
+  ];
+  ESTRUTURAS.forEach(e => { Object.freeze(e.nv); Object.freeze(e); });
+  Object.freeze(ESTRUTURAS);
+  const estrutura = k => ESTRUTURAS.find(e => e.k === k) || null;
+  // o que um nível do catálogo faz, no formato do acampamento (uma cópia nova)
+  const padraoDoNivel = (k, i) => { const e = estrutura(k), x = e && e.nv[i] ? e.nv[i] : {}; return { ef: normEf(x.ef), fx: normFx(copia(x.fx || [])) }; };
+  /* Uma melhoria arrumada. A de um tipo do catálogo leva o tipo, o nível e o que cada nível faz; o ef e o fx dela são
+     sempre os do nível em que está (quem mexe nos efeitos mexe nos do nível; quem troca o nível troca os efeitos). */
+  function normMelhoria(m) {
+    const o = { id: m.id, nome: texto(m.nome, MAX_NOME), desc: texto(m.desc), on: m.on !== false, ef: normEf(m.ef), alvo: normAlvo(m.alvo), fx: normFx(m.fx) };
+    if (!estrutura(m.tipo)) return o;
+    const nivel = inteiro(m.nivel, 1, 1, 3), vem = Array.isArray(m.nv) ? m.nv : null, temEf = m.ef !== undefined || m.fx !== undefined;
+    // (sem a lista dos níveis — uma construção gravada só com ef/fx —, o nível em que ela está fica com o que veio)
+    const nv = [0, 1, 2].map(i => (vem && ehObj(vem[i]) ? { ef: normEf(vem[i].ef), fx: normFx(vem[i].fx) } : !vem && temEf && i === nivel - 1 ? { ef: o.ef, fx: o.fx } : padraoDoNivel(m.tipo, i)));
+    return Object.assign(o, { ef: copia(nv[nivel - 1].ef), fx: copia(nv[nivel - 1].fx), tipo: m.tipo, nivel, nv });
+  }
+
+  /* ---- quanto cada um come ---- */
+  // a chave de uma raça: sem diferença de maiúsculas, acentos e espaços nas pontas ("Anã " e "ana" são a mesma)
+  const chaveRaca = r => String(r == null ? '' : r).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 40);
+  function normComer(x) {
+    const c = ehObj(x) ? x : {}, racas = {}, pers = {};
+    if (ehObj(c.racas)) for (const k of Object.keys(c.racas).slice(0, 60)) { const ch = chaveRaca(k), n = inteiro(c.racas[k], null, 0, 99); if (ch && ch !== '__proto__' && n != null) racas[ch] = n; }
+    if (ehObj(c.pers)) for (const k of Object.keys(c.pers).slice(0, 200)) { const n = inteiro(c.pers[k], null, 0, 99); if (idOk(k) && n != null) pers[k] = n; }
+    return { racas, pers };
+  }
+  /* Quantas rações esta pessoa come neste descanso: no longo, a dela (por personagem) ou a da raça dela, se o mestre
+     anotou; senão, a da regra (ou a que veio para este descanso, `prov`). O curto é igual para todos. */
+  function quantoCome(camp, tipo, p, prov) {
+    const padrao = prov != null && Number.isFinite(num(prov, NaN)) ? inteiro(prov, 0, 0, 99) : camp.regras[tipo === 'curto' ? 'curto' : 'longo'].prov;
+    if (tipo === 'curto' || !p) return padrao;
+    if (Object.prototype.hasOwnProperty.call(camp.comer.pers, p.id)) return camp.comer.pers[p.id];
+    const r = chaveRaca(p.raca);
+    if (r && Object.prototype.hasOwnProperty.call(camp.comer.racas, r)) return camp.comer.racas[r];
+    return padrao;
+  }
+
   /* Nunca lança: com qualquer coisa na entrada sai um acampamento válido, sempre com os campos na mesma ordem. */
   function normalizar(x) {
     const a = ehObj(x) ? x : {};
@@ -138,6 +229,8 @@
     const sv = ehObj(a.servir) ? a.servir : {}, servida = v => { const id = idOk(v); return id && provisoes.some(p => p.id === id) ? id : null; };
     const emo = {};
     if (ehObj(a.emo)) for (const k of Object.keys(a.emo).slice(0, 200)) { const e = emoOk(a.emo[k]); if (idOk(k) && e) emo[k] = e; }
+    const area = {};
+    if (ehObj(a.area)) for (const k of Object.keys(a.area).slice(0, 200)) { const ar = areaOk(a.area[k]); if (idOk(k) && ar !== 'fogueira') area[k] = ar; }
     return {
       v: 1,
       nome: texto(a.nome, MAX_NOME).trim() || 'Acampamento',
@@ -148,13 +241,18 @@
       // (a emoção só entra na roda de quem tem uma: a roda de antes continua igual)
       roda: listaDe(a.roda, 200).map(r => Object.assign({ id: idOk(r.id), nome: texto(r.nome, MAX_NOME), img: typeof r.img === 'string' && /^https:\/\//.test(r.img) ? r.img.slice(0, 500) : null, dono: typeof r.dono === 'string' ? r.dono.slice(0, 64) : null }, emoOk(r.emo) ? { emo: r.emo } : {})).filter(r => r.id),
       provisoes,
-      melhorias: unicos(listaDe(a.melhorias, MAX_ITENS).map(m => ({ id: m.id, nome: texto(m.nome, MAX_NOME), desc: texto(m.desc), on: m.on !== false, ef: normEf(m.ef), alvo: normAlvo(m.alvo), fx: normFx(m.fx) })), 'ml'),
+      melhorias: unicos(listaDe(a.melhorias, MAX_ITENS).map(normMelhoria), 'ml'),
       equipamentos: unicos(listaDe(a.equipamentos, MAX_ITENS).map(m => ({ id: m.id, nome: texto(m.nome, MAX_NOME), desc: texto(m.desc), on: m.on !== false, qtd: inteiro(m.qtd, 1, 0, 999), ef: normEf(m.ef), alvo: normAlvo(m.alvo), fx: normFx(m.fx) })), 'eq'),
       bonus: unicos(listaDe(a.bonus, MAX_ITENS).map(b => ({ id: b.id, nome: texto(b.nome, MAX_NOME), desc: texto(b.desc), ateDescanso: !!b.ateDescanso })), 'bn'),
       regras: { longo: normRegra(reg.longo, REGRAS_PADRAO.longo), curto: normRegra(reg.curto, REGRAS_PADRAO.curto), semProv: { rec: inteiro(sp.rec, REGRAS_PADRAO.semProv.rec, 0, 100), conf: inteiro(sp.conf, REGRAS_PADRAO.semProv.conf, -100, 100) } },
       servir: { longo: servida(sv.longo), curto: servida(sv.curto) },
       emo,
       caravana: normCaravana(a.caravana),
+      lugar: LUGARES.some(l => l[0] === a.lugar) ? a.lugar : 'floresta',
+      clima: CLIMAS.some(l => l[0] === a.clima) ? a.clima : 'limpo',
+      verCaravana: a.verCaravana !== false,
+      area,
+      comer: normComer(a.comer),
       diario: unicos(listaDe(a.diario, MAX_DIARIO).map(d => ({ id: d.id, t: Math.max(0, num(d.t, 0)), texto: texto(d.texto) })), 'di'),
     };
   }
@@ -203,10 +301,12 @@
 
   /* A conta de um descanso, sem mudar nada.
        tipo        'longo' | 'curto'
-       pessoas     [{ id, nome, grupo?, recursos: [{ id, nome, max, atual, min?, inicio? }], san, conf (número ou null = a ficha
-                      não usa), poderes: [{ id, nome, atual, max }] (as barras especiais) }] — só quem vai descansar
+       pessoas     [{ id, nome, grupo?, raca?, recursos: [{ id, nome, max, atual, min?, inicio? }], san, conf (número ou null =
+                      a ficha não usa), poderes: [{ id, nome, atual, max }] (as barras especiais) }] — só quem vai descansar
        opt         { servir: id | null (a provisão servida neste descanso; sem vir, a do descanso), prov: rações por pessoa
-                     neste descanso (sem vir, a da regra) }
+                     neste descanso (sem vir, a da regra), porPessoa: { id: rações } (o que o mestre mudou na hora, pessoa
+                     por pessoa) } — sem porPessoa, no descanso longo, vale o que o acampamento anotou por personagem ou
+                     por raça (comer); senão, prov. Cada linha do plano diz quanto a pessoa ia comer (quer).
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.
      Só o descanso longo usa a estrutura (melhorias e equipamentos). As rações saem primeiro da provisão servida e
      depois da lista, de cima para baixo; quem come a servida (os primeiros, enquanto ela der) ganha o efeito dela.
@@ -215,7 +315,10 @@
     const longo = tipo !== 'curto', regra = Object.assign({}, camp.regras[longo ? 'longo' : 'curto']), ef = longo ? efeitos(camp) : Object.assign({}, EF_ZERO);
     if (opt && opt.prov != null && Number.isFinite(num(opt.prov, NaN))) regra.prov = inteiro(opt.prov, regra.prov, 0, 99);
     const n = pessoas.length, disponivel = racoes(camp);
-    const custo = n ? Math.max(0, regra.prov * n + ef.prov) : 0;
+    // quanto cada um come: o que veio para esta pessoa neste descanso; senão, a dela ou a da raça (no longo); senão, a regra
+    const pp = opt && ehObj(opt.porPessoa) ? opt.porPessoa : {};
+    const quer = pessoas.map(p => (Object.prototype.hasOwnProperty.call(pp, p.id) && Number.isFinite(num(pp[p.id], NaN)) ? inteiro(pp[p.id], 0, 0, 99) : quantoCome(camp, longo ? 'longo' : 'curto', p, regra.prov)));
+    const custo = n ? Math.max(0, quer.reduce((s, q) => s + q, 0) + ef.prov) : 0;
     const gasto = Math.min(custo, disponivel), falta = custo - gasto;
     const idServ = opt && opt.servir !== undefined ? opt.servir : camp.servir[longo ? 'longo' : 'curto'];
     const servida = idServ ? camp.provisoes.find(x => x.id === idServ) || null : null;
@@ -231,12 +334,12 @@
     const porcoes = [];
     for (let i = 0, fi = 0, tirado = 0; i < n; i++) {
       const come = [];
-      for (let quer = regra.prov; quer > 0 && fi < fila.length;) {
+      for (let falta = quer[i]; falta > 0 && fi < fila.length;) {
         const pv = fila[fi], tem = pv.qtd - tirado;
         if (tem <= 0) { fi++; tirado = 0; continue; }
-        const q = Math.min(tem, quer), ja = come.find(x => x.p === pv);
+        const q = Math.min(tem, falta), ja = come.find(x => x.p === pv);
         if (ja) ja.qtd += q; else come.push({ p: pv, qtd: q });
-        quer -= q; tirado += q;
+        falta -= q; tirado += q;
       }
       porcoes.push(come);
     }
@@ -254,7 +357,7 @@
       if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
       const fx = [].concat(...come.map(x => x.p.fx.map(f => Object.assign({ de: x.p.nome || 'Ração' }, f)))).concat(longo ? fxDe(camp, p) : []);
       return Object.assign(linhaDoDescanso(p, longo, regra, rec, conf, san), {
-        come: come.map(x => ({ id: x.p.id, nome: x.p.nome, qtd: x.qtd, efeito: temEfeito(x.p) })), rec: Math.round(rec * 10) / 10, fx });
+        come: come.map(x => ({ id: x.p.id, nome: x.p.nome, qtd: x.qtd, efeito: temEfeito(x.p) })), quer: quer[i], rec: Math.round(rec * 10) / 10, fx });
     });
     // as rações com efeito que alguém comeu, e quantos comeram cada uma (para o diário e a mesa ao vivo)
     const comidas = [];
@@ -350,11 +453,36 @@
     if (tipo === 'veiculos') return { id: novoId('vc'), nome: nome || '', tipo: 'carroca', cap: 0, estado: '', nota: '' };
     if (tipo === 'carga') return { id: novoId('cg'), nome: nome || '', qtd: 1, peso: 0, veiculo: null };
     if (tipo === 'gente') return { id: novoId('gt'), nome: nome || '', papel: '', veiculo: null, nota: '' };
+    // uma construção do catálogo (nome = o tipo): no nível simples, com o que cada nível faz por padrão
+    if (tipo === 'construcao') {
+      const e = estrutura(nome); if (!e) return null;
+      const nv = [0, 1, 2].map(i => padraoDoNivel(e.k, i));
+      return { id: novoId('ml'), nome: e.nome, desc: e.desc, on: true, ef: copia(nv[0].ef), alvo: ALVO_TODOS(), fx: copia(nv[0].fx), tipo: e.k, nivel: 1, nv };
+    }
     return null;
   };
+  // em que área está cada um (sem nada anotado: na fogueira), e as construções em uso desenhadas numa área
+  const areaDe = (camp, id) => camp.area[id] || 'fogueira';
+  const construcoes = (camp, area) => camp.melhorias.filter(m => m.tipo && m.on && estrutura(m.tipo).area === area);
+
+  /* ---- quem mexe no quê ----
+     O mestre mexe em tudo. O jogador a quem o mestre deu o acampamento (no menu da mesa, em Permissões) mexe em quase
+     tudo — provisões, estrutura, caravana, os lugares e as áreas, o diário —; estas partes ficam com o mestre (o banco
+     confere: o gatilho privado.acamp_guarda recusa a gravação de quem não mestra que mude alguma delas). */
+  const SO_MESTRE = ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima'];
+  // a mudança de antes para depois mexe em alguma parte que é só do mestre?
+  const mexeNoMestre = (antes, depois) => SO_MESTRE.some(k => JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
+  /* O que o jogador grava: o documento como está no banco (cru), com as partes dele trocadas pelas do acampamento
+     novo. As partes do mestre vão exatamente como estão lá — mesmo as que esta versão do site arrumaria diferente. */
+  function paraJogador(cru, novo) {
+    const out = ehObj(cru) ? copia(cru) : {};
+    for (const k of Object.keys(novo)) if (!SO_MESTRE.includes(k)) out[k] = copia(novo[k]);
+    return out;
+  }
 
   const AcampNucleo = { HORAS, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
-    textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar };
+    textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
+    LUGARES, CLIMAS, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampNucleo;
   if (typeof window !== 'undefined') window.AcampNucleo = AcampNucleo;
 })();

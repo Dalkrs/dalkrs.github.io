@@ -139,6 +139,43 @@ button { cursor: pointer; }
 .avisos-cena .chip { background: rgba(8, 10, 18, .78); border-color: rgba(255, 255, 255, .16); color: #e8eaf0; pointer-events: auto; max-width: 100%; height: auto; min-height: 26px; padding-top: 3px; padding-bottom: 3px; white-space: normal; border-radius: 13px; }
 .avisos-cena .chip b { color: #ffd27a; }
 
+/* ---- as áreas do acampamento (abas acima da cena) ---- */
+.areas { flex: none; display: flex; justify-content: flex-start; gap: 4px; padding: 6px 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.areas::-webkit-scrollbar { display: none; }
+.areas > :first-child { margin-left: auto; } .areas > :last-child { margin-right: auto; }      /* (no meio quando cabe; rolando, quando não) */
+.areas button { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); color: var(--fg-2); font-weight: 600; font-size: 13px; }
+.areas button[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.areas button .n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: rgba(0, 0, 0, .22); font: 700 11px/18px var(--mono); text-align: center; }
+.areas button[aria-pressed="false"] .n { background: var(--hover); color: var(--fg); }
+/* as construções e o que se mexe nelas */
+.nota { animation: flutua 3.2s ease-in-out infinite; }
+@keyframes flutua { 0%, 100% { transform: translateY(0); opacity: .9; } 50% { transform: translateY(-8px); opacity: .5; } }
+.orbe { animation: piscar 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nota, .orbe { animation: none; } }
+/* as linhas de relação (clicando num personagem): cada metade é o que um sente pelo outro */
+.cena16 > svg.linhas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+.linhas .fundo-l { stroke: rgba(6, 8, 14, .7); stroke-width: 9; stroke-linecap: round; fill: none; }
+.linhas .meia { stroke-width: 5; stroke-linecap: round; stroke-dasharray: 16 11; fill: none; }
+.linhas .meia.pos { stroke: #6fd08a; } .linhas .meia.neg { stroke: #f0786e; } .linhas .meia.rom { stroke: #ff7fb6; } .linhas .meia.zero { stroke: #a6aec0; stroke-width: 3; }
+.linhas text { font: 700 22px var(--ui); fill: #f4f1e6; paint-order: stroke; stroke: rgba(6, 8, 14, .85); stroke-width: 6px; }
+/* o clima: chuva, tempestade, neve, neblina e vento por cima da cena (só enfeite: os cliques passam) */
+.clima { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.clima i { position: absolute; top: -12%; display: block; }
+.clima-chuva i, .clima-tempestade i { width: 2px; height: 46px; background: linear-gradient(to bottom, rgba(190, 210, 255, 0), rgba(190, 210, 255, .55)); transform: rotate(14deg); animation: chover var(--t, .8s) linear infinite; }
+.clima-tempestade i { height: 60px; --t: .55s; }
+@keyframes chover { from { transform: translate(0, 0) rotate(14deg); } to { transform: translate(-28vh, 125vh) rotate(14deg); } }
+.clima-tempestade { background: rgba(10, 14, 30, .25); }
+.clima-tempestade::after { content: ""; position: absolute; inset: 0; background: #eef3ff; opacity: 0; animation: raio 9s linear infinite; }
+@keyframes raio { 0%, 91%, 93.5%, 96%, 100% { opacity: 0; } 92% { opacity: .38; } 95% { opacity: .22; } }
+.clima-neve i { width: var(--d, 6px); height: var(--d, 6px); border-radius: 50%; background: rgba(250, 252, 255, .9); animation: nevar var(--t, 9s) linear infinite; }
+@keyframes nevar { 0% { transform: translate(0, 0); } 50% { transform: translate(28px, 60vh); } 100% { transform: translate(-10px, 125vh); } }
+.clima-neblina { background: linear-gradient(to top, rgba(200, 210, 225, .28), rgba(200, 210, 225, 0) 60%); }
+.clima-neblina i { top: auto; bottom: var(--b, 10%); left: -60%; width: 120%; height: 34%; border-radius: 50%; background: radial-gradient(closest-side, rgba(215, 222, 235, .42), rgba(215, 222, 235, 0)); animation: nevoa var(--t, 46s) linear infinite; }
+@keyframes nevoa { from { transform: translateX(0); } to { transform: translateX(110%); } }
+.clima-vento i { top: var(--y, 50%); left: -6%; width: 12px; height: 7px; border-radius: 60% 0; background: var(--c, #b8873e); animation: ventar var(--t, 5s) linear infinite; }
+@keyframes ventar { 0% { transform: translate(0, 0) rotate(0); } 50% { transform: translate(60vw, -40px) rotate(260deg); } 100% { transform: translate(118vw, 20px) rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) { .clima i { animation: none; opacity: .5; } .clima-tempestade::after { animation: none; } .clima-vento i, .clima-neve i { display: none; } }
+
 /* ---- painel ---- */
 .side { flex: none; width: 372px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .tabs { flex: none; display: flex; gap: 2px; padding: 0 6px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
@@ -180,6 +217,39 @@ textarea.in { height: auto; min-height: 52px; padding: 7px 9px; resize: vertical
 .medidor .tr { height: 7px; border-radius: 4px; background: var(--hover); overflow: hidden; }
 .medidor .tr i { display: block; height: 100%; background: var(--c, var(--hp)); }
 .medidor span:last-child { font-family: var(--mono); text-align: right; color: var(--fg); }
+/* a Sanidade e o Conforto que o mestre muda no cartão (−, o número, +) */
+.mente-ed { display: grid; gap: 6px; }
+.medidor.mente { grid-template-columns: 78px 1fr auto; }
+.medidor.mente .passo .in.num { width: 54px; height: 28px; }
+.area-de { flex-wrap: wrap; }
+.area-de select.in { width: auto; height: 30px; }
+/* quanto cada um come */
+.come-tit { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; margin-top: 4px; }
+.come-lin { display: grid; grid-template-columns: 1fr 62px auto; gap: 8px; align-items: center; font-size: 13px; }
+.come-lin .come-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.come-lin .come-n small { color: var(--fg-3); }
+/* as construções (na aba Estrutura) */
+.niveis { display: inline-flex; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.niveis button { height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font-weight: 600; font-size: 12.5px; }
+.niveis button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.niveis button:disabled { cursor: default; }
+.cat { font-size: 11.5px; color: var(--fg-3); }
+.miniatura { width: 100%; height: 92px; border-radius: 8px; background: #0c1420; overflow: hidden; }
+.construcao-cab { display: grid; gap: 7px; }
+.construcao-cab .grow { flex: 1; }
+.construir { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.construir .opc { display: grid; gap: 4px; align-content: start; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); text-align: left; }
+.construir .opc:hover:not(:disabled) { border-color: var(--lamp); }
+.construir .opc:disabled { opacity: .5; cursor: default; }
+.construir .opc .miniatura { height: 84px; }
+.construir .opc small { color: var(--fg-3); font-size: 12px; line-height: 1.3; }
+.miniatura svg { width: 100%; height: 100%; display: block; }
+.menu .grupo { padding: 6px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.menu button small { display: block; font-weight: 400; color: var(--fg-3); font-size: 12px; }
+/* o momento: uma tabela, uma coluna para cada um */
+.plano.momento td:first-child { color: var(--fg-2); white-space: nowrap; }
+.plano.momento .mo-c { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plano.momento select.in { height: 30px; }
 .bonus-lista { display: flex; flex-wrap: wrap; gap: 6px; }
 .diario { display: grid; gap: 8px; }
 .diario .dl { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
@@ -247,6 +317,7 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
 .toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
 .jogador .so-mestre { display: none !important; }
+.so-leitura .so-edita { display: none !important; }
 .side.fechado { display: none; }
 @media (max-width: 980px) { .side { width: 320px; } }
 @media (max-width: 720px) {
@@ -266,16 +337,19 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
     <div class="seg so-mestre" id="hora" role="group" aria-label="Hora no acampamento"></div>
     <button type="button" class="btn sm" id="btCena" hidden title="Abre o mapa do acampamento na aba Cenas, com tokens, luz e paredes">Mapa tático</button>
     <button type="button" class="btn sm" id="btMundo" hidden title="Vai para o Mapa-múndi">Mapa-múndi</button>
-    <button type="button" class="ib so-mestre" id="btDesfazer" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button type="button" class="ib so-edita" id="btDesfazer" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
     <button type="button" class="ib" id="btPainel" title="Mostrar ou esconder o painel" aria-label="Mostrar ou esconder o painel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
   </header>
   <div class="work">
     <div class="palco-col">
+      <div class="areas" id="areas" role="group" aria-label="Áreas do acampamento"></div>
       <div class="palco hora-noite" id="palco">
         <div class="cena16" id="cena16">
           <svg class="cenario" id="cenario" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <svg class="linhas" id="linhas" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="roda" id="roda"></div>
         </div>
+        <div class="clima" id="clima" aria-hidden="true"></div>
         <div class="avisos-cena" id="avisosCena"></div>
         <div class="vazio" id="vazio" hidden></div>
       </div>
@@ -298,7 +372,8 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 <script src="../tc/ponte.js?v=12"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=7"></script>
-<script src="nucleo.js?v=4"></script>
-<script src="acampamento.js?v=10"></script>
+<script src="nucleo.js?v=5"></script>
+<script src="desenhos.js?v=1"></script>
+<script src="acampamento.js?v=11"></script>
 </body>
 </html>

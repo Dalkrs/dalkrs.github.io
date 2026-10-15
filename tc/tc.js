@@ -122,14 +122,16 @@
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
-    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando, semVivo: cargo !== 'mestre' && !!x.sem_vivo,
+    // acamp: o mestre deixou esta pessoa mexer no acampamento (quase tudo; o descanso, as regras e os momentos, não)
+    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando, semVivo: cargo !== 'mestre' && !!x.sem_vivo, acamp: cargo !== 'mestre' && !!x.acamp,
       abas: cargo === 'auxiliar' && Array.isArray(x.abas) ? ABAS_DE_MESTRE.filter(a => x.abas.includes(a)) : [],
       papel: cargo === 'mestre' || (cargo === 'auxiliar' && !jogando) ? 'mestre' : 'jogador' };
   }
   async function lerMembros(id) {
     const ler = cols => cliente().from('mesa_membros').select(cols).eq('mesa_id', id).order('entrou_em');
-    let { data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas, sem_vivo');
-    // (num banco de antes da mesa ao vivo fechada por pessoa, a coluna não existe: lê sem ela)
+    let { data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas, sem_vivo, acamp');
+    // (num banco de antes do acampamento dos jogadores ou da mesa ao vivo fechada por pessoa, a coluna não existe: lê sem ela)
+    if (error && semEsquemaM(error)) ({ data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas, sem_vivo'));
     if (error && semEsquemaM(error)) ({ data, error } = await ler('usuario_id, papel, nome, cor, visto_em, jogando, abas'));
     if (error) throw error;
     return (data || []).map(membroDe);
@@ -216,6 +218,14 @@
   mesas.vivoDoJogador = async (usuarioId, fechado) => {
     const a = mesas.atual; if (!a) return null;
     const { data, error } = await cliente().rpc('vivo_do_jogador', { p_mesa: a.id, p_usuario: usuarioId, p_fechado: !!fechado });
+    if (error) throw (semEsquemaM(error) ? new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).') : falha(error, 'Não deu para mudar agora. Tente de novo.'));
+    await recarregarMembros();
+    return data ? membroDe(data) : null;
+  };
+  /* O mestre deixa um jogador mexer no acampamento (ou tira): provisões, estrutura, caravana, lugares e diário. */
+  mesas.acampDoJogador = async (usuarioId, pode) => {
+    const a = mesas.atual; if (!a) return null;
+    const { data, error } = await cliente().rpc('acamp_do_jogador', { p_mesa: a.id, p_usuario: usuarioId, p_pode: !!pode });
     if (error) throw (semEsquemaM(error) ? new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).') : falha(error, 'Não deu para mudar agora. Tente de novo.'));
     await recarregarMembros();
     return data ? membroDe(data) : null;

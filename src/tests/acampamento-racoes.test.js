@@ -89,8 +89,9 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(/Defesa Física \+1 \(3 rodadas\)/.test(await col('pc_lia')) && /come Ensopado/.test(await col('pc_lia')), 'Lia come o ensopado e ganha o da forja (só para ela)');
   ok(!/Ensopado/.test(await col('pc_ogro')) && /Defesa Física \+1/.test(await col('pc_ogro')), 'o Ogro não come o ensopado (acabou), mas a forja vale para ele (grupo Vila)');
   const celula = (id, n) => P.locator(`#ds-${id}`).locator('xpath=ancestor::tr').locator('td').nth(n).innerText().then(x => x.replace(/\s+/g, ' '));
-  const confDe = id => celula(id, 3);
-  ok(await celula('pc_dain', 2) === '60 → 65' && await celula('pc_ogro', 2) === '40 → 45', 'Sanidade: só a da regra (+5) — o ensopado e a forja não mexem nela');
+  // (as colunas: quem descansa, come, barras, Sanidade, Conforto, o que vai para a ficha)
+  const confDe = id => celula(id, 4);
+  ok(await celula('pc_dain', 3) === '60 → 65' && await celula('pc_ogro', 3) === '40 → 45', 'Sanidade: só a da regra (+5) — o ensopado e a forja não mexem nela');
   ok(await confDe('pc_dain') === '30 → 45' && await confDe('pc_lia') === '50 → 75' && await confDe('pc_ogro') === '40 → 60', 'Conforto: a regra (+10), o ensopado (+5) para quem comeu, a forja (+10) para quem ela alcança — ' + [await confDe('pc_dain'), await confDe('pc_lia'), await confDe('pc_ogro')].join(' | '));
   await P.locator('#ds-sv').selectOption(''); await w(250);
   ok(!/Ensopado/.test(await col('pc_dain')) && /Gasta 3 de 12 rações \(Carne seca −3\)/i.test(await dlg()), 'servindo "a ordem da lista" na hora: come a carne seca, sem o efeito do ensopado');

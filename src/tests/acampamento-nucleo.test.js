@@ -214,5 +214,86 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   eq(N.cargaDe({ caravana: cv }), { por: { v1: 120, v2: 0 }, semLugar: 5.12, total: 125.12, cap: 500 }, 'o peso em cada veículo, o sem lugar, o total e a capacidade');
   eq(N.normalizar(null).caravana, { veiculos: [], carga: [], gente: [], vai: {} }, 'sem caravana, uma vazia');
 }
+/* ---- lote 5: lugar, clima, áreas, construções do catálogo, quanto cada um come, quem mexe no quê ---- */
+{
+  const v = N.normalizar(null);
+  eq([v.lugar, v.clima, v.verCaravana, v.area, v.comer], ['floresta', 'limpo', true, {}, { racas: {}, pers: {} }], 'sem nada: na floresta, tempo bom, a caravana à vista, todos na fogueira e ninguém com ração própria');
+  const s = N.normalizar({ lugar: 'lua', clima: 'granizo', verCaravana: 0, area: { a: 'oficinas', b: 'fogueira', c: 'telhado', 'x y': 'guarda', d: 'guarda' },
+    comer: { racas: { ' Anã ': '2', 'ELFO': 0, orc: 150, '': 3, fada: 'x' }, pers: { p1: 3, 'a b': 1, p2: -4 } } });
+  eq([s.lugar, s.clima, s.verCaravana, s.area], ['floresta', 'limpo', true, { a: 'oficinas', d: 'guarda' }], 'lugar e clima fora da lista voltam ao padrão; só áreas da lista (a fogueira é o padrão: não se anota)');
+  eq(s.comer, { racas: { ana: 2, elfo: 0, orc: 99 }, pers: { p1: 3, p2: 0 } }, 'as rações por raça (sem acento e sem diferença de maiúsculas) e por personagem, de 0 a 99');
+  eq([N.normalizar({ verCaravana: false }).verCaravana, N.normalizar({ lugar: 'caverna', clima: 'neve' }).lugar, N.normalizar({ clima: 'neve' }).clima], [false, 'caverna', 'neve'], 'esconder a caravana, e os valores da lista ficam');
+  ok(N.LUGARES.length === 6 && N.CLIMAS.length === 6 && N.AREAS.map(a => a[0]).join() === 'fogueira,oficinas,convivio,guarda' && N.CATEGORIAS.length === 4 && N.NIVEIS.join() === 'Simples,Boa,Excelente', 'seis lugares, seis tempos, quatro áreas, quatro categorias, três níveis');
+  ok(N.ESTRUTURAS.length >= 12 && N.ESTRUTURAS.every(e => N.CATEGORIAS.some(c => c[0] === e.cat) && N.AREAS.some(a => a[0] === e.area) && e.nv.length === 3 && e.nome && e.desc) && new Set(N.ESTRUTURAS.map(e => e.k)).size === N.ESTRUTURAS.length && Object.isFrozen(N.ESTRUTURAS),
+    'o catálogo: cada tipo com categoria, área, nome, descrição e três níveis');
+  ok(N.CATEGORIAS.every(c => N.ESTRUTURAS.some(e => e.cat === c[0])) && N.AREAS.every(a => N.ESTRUTURAS.some(e => e.area === a[0])), 'toda categoria tem construções, e toda área tem o que desenhar');
+}
+{
+  // uma construção nova: no nível simples, com o que cada nível faz por padrão
+  const f = N.item('construcao', 'forja');
+  ok(f && f.tipo === 'forja' && f.nivel === 1 && f.nome === 'Forja' && f.nv.length === 3 && f.on && f.alvo.todos && f.fx.length === 1 && f.fx[0].k === 'DFF' && f.fx[0].v === 1, 'a forja nova: nível simples, DFF +1 até o descanso');
+  ok(N.item('construcao', 'nada') === null, 'tipo fora do catálogo: nada');
+  const c = N.normalizar({ melhorias: [Object.assign(N.copia(f), { nivel: 2 }), { id: 'k', tipo: 'bardo', nivel: 3, ef: { conf: 1 } }, { id: 'z', tipo: 'xx', nome: 'Poço', nivel: 2, nv: [1], ef: { conf: 4 } }, { id: 'h', tipo: 'horta', nivel: '9' }] });
+  const [forja, bardo, poco, horta] = c.melhorias;
+  ok(forja.nivel === 2 && forja.fx[0].v === 2 && JSON.stringify(forja.fx) === JSON.stringify(forja.nv[1].fx) && JSON.stringify(forja.ef) === JSON.stringify(forja.nv[1].ef), 'trocar o nível troca os efeitos: no nível bom, DFF +2 (o ef e o fx são sempre os do nível)');
+  ok(bardo.nivel === 3 && bardo.ef.conf === 1 && bardo.nv[2].ef.conf === 1 && bardo.nv[0].ef.san === 2 && bardo.nv[1].ef.san === 4, 'construção gravada sem a lista dos níveis: o nível em que ela está fica com o que veio; os outros, com o padrão');
+  eq([poco.tipo, poco.nivel, poco.nv, poco.ef.conf], [undefined, undefined, undefined, 4], 'tipo fora do catálogo: uma melhoria comum (sem nível, sem desenho)');
+  ok(horta.nivel === 3 && horta.ef.prov === -2, 'nível fora de 1 a 3 fica no limite (a horta excelente economiza 2 rações)');
+  const meu = N.normalizar({ melhorias: [Object.assign(N.copia(f), { nv: [{ ef: { conf: 9 } }, f.nv[1], f.nv[2]] })] }).melhorias[0];
+  ok(meu.ef.conf === 9 && meu.fx.length === 0 && meu.nv[1].fx[0].v === 2, 'o mestre muda o que um nível faz: vale para aquele nível (os outros ficam)');
+  eq(N.efeitos(c), { conf: 1 + 4 + 1, san: 0, rec: 5, prov: -2 }, 'nos efeitos do descanso, cada construção conta o nível em que está (o bardo como veio, a horta excelente pelo padrão)');
+  eq([N.construcoes(c, 'oficinas').map(m => m.id), N.construcoes(c, 'convivio').map(m => m.id), N.construcoes(c, 'guarda').map(m => m.tipo), N.construcoes(c, 'fogueira')], [[forja.id], ['k'], ['horta'], []], 'as construções de cada área (a melhoria comum não é desenhada)');
+  const off = N.normalizar({ melhorias: [Object.assign(N.copia(f), { on: false })] });
+  eq(N.construcoes(off, 'oficinas'), [], 'a desligada não aparece');
+  eq([N.areaDe(N.normalizar({ area: { a: 'convivio' } }), 'a'), N.areaDe(N.normalizar(null), 'a')], ['convivio', 'fogueira'], 'a área de cada um (sem nada: a fogueira)');
+}
+{
+  // quanto cada um come: por personagem > por raça > a regra (só no descanso longo)
+  const c = N.normalizar({ provisoes: [{ id: 'pao', nome: 'Pão', qtd: 20 }], comer: { racas: { anão: 2, fada: 0 }, pers: { z: 3 } } });
+  const anao = { id: 'a', nome: 'Gimli', raca: 'Anão', recursos: [] }, fada = { id: 'f', nome: 'Pip', raca: ' FADA', recursos: [] }, zé = { id: 'z', nome: 'Zé', raca: 'Anão', recursos: [] }, hum = { id: 'h', nome: 'Ana', raca: 'Humana', recursos: [] };
+  eq([anao, fada, zé, hum].map(p => N.quantoCome(c, 'longo', p)), [2, 0, 3, 1], 'anão come 2, fada 0, o Zé (anão) tem a dele: 3; sem nada anotado, a regra (1)');
+  eq([anao, zé].map(p => N.quantoCome(c, 'curto', p)), [0, 0], 'no descanso curto, a regra do curto para todos');
+  eq(N.quantoCome(c, 'longo', hum, 4), 4, 'com outro padrão neste descanso, quem não tem nada anotado segue ele');
+  const p = N.planejar(c, 'longo', [anao, fada, zé, hum]);
+  eq([p.custo, p.gasto, p.linhas.map(l => [l.quer, l.come.reduce((s, x) => s + x.qtd, 0)])], [6, 6, [[2, 2], [0, 0], [3, 3], [1, 1]]], 'o descanso gasta 2 + 0 + 3 + 1 = 6, e cada um come o seu');
+  const q = N.planejar(c, 'longo', [anao, fada, zé, hum], { prov: 2, porPessoa: { f: 1, h: 'x' } });
+  eq([q.custo, q.linhas.map(l => l.quer)], [8, [2, 1, 3, 2]], 'na hora: a fada come 1 (mudado só neste descanso) e quem segue o padrão come o novo (2)');
+  const pouco = N.normalizar(Object.assign(N.copia(c), { provisoes: [{ id: 'pao', nome: 'Pão', qtd: 4 }] }));
+  const r = N.planejar(pouco, 'longo', [anao, zé, hum]);
+  eq([r.custo, r.gasto, r.falta, r.linhas.map(l => l.come.reduce((s, x) => s + x.qtd, 0))], [6, 4, 2, [2, 2, 0]], 'faltando, a fila segue a ordem da roda: os primeiros comem o deles, os últimos ficam sem');
+  eq(N.planejar(N.normalizar({ provisoes: [{ id: 'p', qtd: 9 }] }), 'longo', [hum, hum]).custo, 2, 'sem nada anotado, como antes: a regra por pessoa');
+  eq(N.chaveRaca('  Elfa  da   Floresta '), 'elfa da floresta', 'a chave de uma raça');
+}
+{
+  // quem mexe no quê: o jogador com o acampamento mexe em quase tudo; as partes do mestre vão como estão no banco
+  const antes = N.normalizar({ nome: 'Clareira', hora: 'noite', provisoes: [{ id: 'p', nome: 'Pão', qtd: 2 }] });
+  const soProv = N.normalizar(Object.assign(N.copia(antes), { provisoes: [{ id: 'p', nome: 'Pão', qtd: 3 }], lugares: { a: { x: 30, y: 50 } }, area: { a: 'oficinas' }, diario: [{ id: 'd', t: 1, texto: 'oi' }] }));
+  ok(!N.mexeNoMestre(antes, soProv), 'provisões, lugares, áreas e diário: são do jogador com o acampamento');
+  ok(['nome', 'hora', 'regras', 'presentes', 'bonus', 'lugar', 'clima'].every(k => { const d = N.copia(antes); d[k] = k === 'presentes' ? ['x'] : k === 'regras' ? Object.assign({}, d.regras, { longo: Object.assign({}, d.regras.longo, { rec: 1 }) }) : k === 'bonus' ? [{ id: 'b', nome: 'B', desc: '', ateDescanso: false }] : k === 'lugar' ? 'deserto' : k === 'clima' ? 'chuva' : k === 'hora' ? 'amanhecer' : 'Outro'; return N.mexeNoMestre(antes, N.normalizar(d)); }),
+    'nome, hora, regras, quem está no acampamento, bônus, lugar e clima: só o mestre');
+  const cru = { v: 1, nome: 'Clareira', hora: 'noite', presentes: ['a'], roda: [{ id: 'a', nome: 'Ana', extra: 'de outra versão' }], provisoes: [] };
+  const sai = N.paraJogador(cru, soProv);
+  ok(JSON.stringify(sai.roda) === JSON.stringify(cru.roda) && sai.nome === 'Clareira' && !('lugar' in sai) && sai.provisoes[0].qtd === 3 && sai.area.a === 'oficinas' && JSON.stringify(sai.presentes) === '["a"]', 'o que o jogador grava: as partes do mestre exatamente como estão no banco (até o que esta versão arrumaria diferente); as dele, novas');
+  ok(cru.provisoes.length === 0, 'e o documento de lá não é alterado');
+  // (a lista é a mesma do gatilho do banco, privado.acamp_guarda: as duas andam juntas)
+  eq(N.SO_MESTRE, ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima'], 'as partes que só o mestre muda');
+  ok(N.SO_MESTRE.every(k => { const d = N.copia(antes); d[k] = 'outra coisa'; return N.mexeNoMestre(antes, d); }), 'mexer em qualquer uma delas é mexer no que é do mestre');
+}
+{
+  // os desenhos do acampamento (desenhos.js): cada construção em três níveis, a caravana só na fogueira
+  const D = require('../../acampamento/desenhos.js');
+  const semNivel = s => s.replace(/ data-nivel="\d"/g, '');
+  ok(N.ESTRUTURAS.every(e => D.tipos.includes(e.k)), 'toda construção do catálogo tem desenho');
+  ok(N.ESTRUTURAS.every(e => { const a = semNivel(D.construcao(e.k, 1)), b = semNivel(D.construcao(e.k, 2)), c = semNivel(D.construcao(e.k, 3)); return a && a !== b && b !== c && a !== c; }), 'e o desenho muda em cada nível');
+  ok(/data-nivel="3"/.test(D.construcao('forja', 9)) && /data-nivel="1"/.test(D.construcao('forja', 0)) && D.construcao('nada', 1) === '', 'o nível fica entre 1 e 3; tipo sem desenho: nada');
+  const car = [{ tipo: 'carroca' }, { tipo: 'montaria' }];
+  ok((D.cena({ area: 'fogueira', caravana: car }).match(/class="veiculo"/g) || []).length === 2 && !/class="veiculo"/.test(D.cena({ area: 'oficinas', caravana: car })), 'a caravana aparece na fogueira, não nas outras áreas');
+  ok((D.caravana(Array.from({ length: 9 }, () => ({ tipo: 'animal' })), 'floresta').match(/class="veiculo"/g) || []).length === 6, 'no máximo seis veículos e animais na cena');
+  ok(!/transform/.test(D.caravana([{ tipo: 'barco' }], 'mar')) && /transform/.test(D.caravana([{ tipo: 'barco' }], 'floresta')), 'o barco fica no mar, na beira-mar; longe do mar, vai numa carreta');
+  // muitas construções numa área: todas cabem na cena (encolhem juntas)
+  const guarda = N.ESTRUTURAS.filter(e => e.area === 'guarda').map(e => ({ tipo: e.k, nivel: 3 }));
+  const xs = [...D.cena({ area: 'guarda', construcoes: guarda }).matchAll(/class="construcao" data-tipo="(\w+)" data-nivel="\d" transform="translate\(([-\d.]+) /g)].map(m => +m[2]);
+  ok(xs.length === guarda.length - 1 && xs.every(x => x >= 0 && x <= 1600), 'as ' + guarda.length + ' da Guarda e Cuidado no nível excelente cabem na cena (a paliçada vai ao fundo, na largura toda) — ' + xs.join(', '));
+}
 console.log(bad ? `${n - bad} verificações passaram, ${bad} falharam` : `${n} verificações passaram`);
 process.exit(bad ? 1 : 0);

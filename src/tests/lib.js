@@ -113,7 +113,9 @@ async function espiarBanco(ctx) {
 
 function checker() {
   let n = 0, bad = 0;
-  const ok = (c, msg) => { n++; if (!c) { bad++; console.log('FALHOU: ' + msg); } };
+  // TC_PARAR=1: para na primeira falha (o erro sobe pelo teste, que ainda passa pelos `finally` dele — apagar a mesa de
+  // teste, por exemplo). Serve para os mutantes: um teste longo não precisa ir até o fim para dizer que pegou.
+  const ok = (c, msg) => { n++; if (!c) { bad++; console.log('FALHOU: ' + msg); if (process.env.TC_PARAR) throw new Error('parou na primeira falha (TC_PARAR)'); } };
   const end = () => { console.log(bad ? `${n - bad} verificações passaram, ${bad} falharam` : `${n} verificações passaram`); process.exit(bad ? 1 : 0); };
   return { ok, end };
 }

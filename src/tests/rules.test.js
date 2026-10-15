@@ -333,6 +333,12 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
     'a prévia em outra pessoa: ' + j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semCena: true })));
   ok(j(R.faixaDoEfeito('30')) === j([30, 30]) && j(R.faixaDoEfeito('2d6+3')) === j([5, 15]) && j(R.faixaDoEfeito('-1d4')) === j([-4, -1]) && j(R.faixaDoEfeito('d8-2+1d4')) === j([0, 10]) && R.faixaDoEfeito('abc') === null,
     'de quanto a quanto um efeito pode dar (para conferir o que outro aparelho rolou)');
+  ok(j(R.faixaDoEfeito('2d6-1d4')) === j([-2, 11]) && j(R.faixaDoEfeito('-2d6+1')) === j([-13, -3]), 'dados de menos no meio da conta (2d6−1d4: de −2 a 11) e o sinal da frente valendo para a conta inteira (−(2d6+1): de −13 a −3)');
+  ok(R.efeitosDoItem({ fx: Array.from({ length: 11 }, (_, i) => ({ k: 'barra', rec: 'hp', val: String(i + 1) })) }).length === 8, 'no máximo 8 efeitos, mesmo com mais anotados no item');
+  // sem os valores de quem recebe (o jogador não vê a vida de um NPC): só o que muda
+  ok(j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })) === j(['hp +30', 'SP: Bia não tem essa barra', 'Sobrevida 15 em hp', 'Força +3 (até o próximo descanso)', 'Defesa Física +2 (4 rodadas)', 'Condição: Abençoado (3 rodadas)', 'PODER DIVINO +2']),
+    'a prévia sem os valores de quem recebe: ' + j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })));
+  ok(R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1] === 'SP + 2d6, rolado na hora', 'e o efeito com dados diz que rola na hora: ' + R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1]);
   ok(R.CONDICOES.length === 47 && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.COND_GRUPOS.length === 7 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas)');
 }
 // as condições da ficha (para a poção pôr no token) são as mesmas das Cenas: mesmo id, nome e grupo, na mesma ordem
@@ -350,6 +356,8 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(R.especiais(f, { pd: { a: 0, b: 12 } })[0].atual === 0 && R.especiais(f, { pd: { a: 0, b: 12 } })[1].atual === 12, 'o estado manda quando tem o valor');
   const e1 = R.mudarEspecial({ rec: { hp: 3 } }, 'a', 9, 3), e2 = R.mudarEspecial(e1, 'b', -4, 0);
   ok(e1.pd.a === 3 && e1.rec.hp === 3 && e2.pd.b === 0 && e2.pd.a === 3, 'mudar: preso entre 0 e o limite (sem limite, só não fica negativo); o resto do estado fica');
+  ok(e1.pd.b === undefined && e2 !== e1 && e2.pd !== e1.pd, 'mudar devolve um estado novo: o recebido não muda');
+  ok(R.especiais(f, { pd: { a: -2 } })[0].atual === 0 && R.especiais({ poderes: [{ id: 'z', max: 0, atual: -5 }] }, {})[0].atual === 0, 'valor negativo (no estado ou na ficha) fica em 0');
 }
 // ---------- o Bloqueio (lote 5): valor próprio + itens, árvore e bônus; rola como a Esquiva ----------
 {
