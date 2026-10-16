@@ -410,11 +410,11 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
 
   // ================= zonas de efeito novas e o aviso no começo da vez =================
   await ev(() => { __tc.setSel([]); __tc.UI.openTab('fx'); }); await w(200);
-  ok(await page.locator('#side .ctab').count() === 5 && await page.locator('#fxt-elem.on').count() === 1 && await page.locator('#side .fx-card').count() === 11, 'a aba Efeitos vem em categorias (Todos, Elementos, Magia, Natureza, Sagrado e sombrio); em Elementos, 11');
+  ok(await page.locator('#side .ctab').count() === 5 && await page.locator('#fxt-elem.on').count() === 1 && await page.locator('#side .fx-card').count() === 18, 'a aba Efeitos vem em categorias (Todos, Elementos, Magia, Natureza, Sagrado e sombrio); em Elementos, 18 (7 do lote 7)');
   await page.locator('#fxt-magia').click(); await w(150);
-  ok((await page.locator('#side .fx-card .fx-n').allInnerTexts()).join() === 'Magia arcana,Antimagia,Tinta,Escuridão mágica,Teia,Barreira de força,Círculo arcano,Silêncio', 'em Magia: ' + (await page.locator('#side .fx-card .fx-n').allInnerTexts()).join());
+  ok((await page.locator('#side .fx-card .fx-n').allInnerTexts()).join() === 'Magia arcana,Antimagia,Tinta,Escuridão mágica,Teia,Barreira de força,Círculo arcano,Silêncio,Vórtice,Gravidade pesada,Distorção do tempo,Portal,Runas-armadilha,Formação de selos', 'em Magia (com as do lote 7): ' + (await page.locator('#side .fx-card .fx-n').allInnerTexts()).join());
   await page.locator('#fxt-todos').click(); await w(150);
-  ok(await page.locator('#side .fx-card').count() === 32, 'em Todos, os 32 efeitos');
+  ok(await page.locator('#side .fx-card').count() === 51, 'em Todos, os 51 efeitos (19 do lote 7)');
   await page.locator('#fxc-teia').click(); await w(150);
   ok(await ev(() => __tc.App.tool) === 'fx' && await page.locator('#o-fx optgroup').count() === 4 && await page.locator('#o-fx').inputValue() === 'teia', 'escolher a Teia liga a ferramenta; a lista da barra de cima também vem em grupos');
   await page.keyboard.press('Escape'); await w(100);

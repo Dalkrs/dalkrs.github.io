@@ -289,12 +289,60 @@ function acertarCondicoes(t, antes) {
   if (mudou) { p.conds = conds; p.cinfo = info; }
   return Object.keys(p).length ? p : null;
 }
-/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }; só o que mudou). As inversas
-   vêm da mais nova para a mais antiga: a última que mexeu numa coisa é a que guarda como ela estava no começo. */
-function antesDoToken(inv, id) {
-  const out = {};
-  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ['bars', 'conds']) if (k in op.p) out[k] = op.p[k];
+/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }, ou as chaves pedidas; só o que
+   mudou). As inversas vêm da mais nova para a mais antiga: a última que mexeu numa coisa guarda como ela estava no
+   começo. */
+function antesDoToken(inv, id, chaves) {
+  const out = {}, ks = chaves || ['bars', 'conds'];
+  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ks) if (k in op.p) out[k] = op.p[k];
   return out;
+}
+
+/* ---- (lote 7) o Portal e as Runas-armadilha ----
+   O token que é solto dentro de um dos círculos de um Portal — o centro dele estava fora dos dois e agora está num —
+   vai para o centro do outro círculo, no mesmo passo (o mesmo Desfazer). Quem acerta é o programa do mestre, como nas
+   condições: o pedido de um jogador atravessa num passo logo depois. E o token que entra nas Runas-armadilha
+   escondidas avisa o mestre (nada muda: Store.emit('runas')). */
+const centroTok = (t, sc, x, y) => { const h = t.size * sc.cell / 2; return [(x == null ? t.x : x) + h, (y == null ? t.y : y) + h]; };
+const portaisDe = sc => (sc.effects || []).filter(e => e.fx === 'portal' && !e.token && Number.isFinite(e.x2) && Number.isFinite(e.y2));
+// → { x, y, portal } (para onde o token vai) ou null. antes: { x, y } de antes do passo (só o que mudou)
+function atravessar(t, antes, sc) {
+  if (!t || t.prop || !antes || !('x' in antes || 'y' in antes)) return null;
+  const [ax, ay] = centroTok(t, sc, antes.x, antes.y), [bx, by] = centroTok(t, sc);
+  for (const e of portaisDe(sc)) {
+    const g = FX.geom(e, sc), dentro = (x, y, cx, cy) => Math.hypot(x - cx, y - cy) <= g.R;
+    if (dentro(ax, ay, g.x, g.y) || dentro(ax, ay, g.x2, g.y2)) continue;          // já estava num dos círculos: não atravessa
+    const ent = dentro(bx, by, g.x, g.y), sai = !ent && dentro(bx, by, g.x2, g.y2);
+    if (!ent && !sai) continue;
+    const h = t.size * sc.cell / 2, [cx, cy] = ent ? [g.x2, g.y2] : [g.x, g.y];
+    const [x, y] = snapTok(sc, cx - h, cy - h, t.size, false);
+    return { x, y, portal: e.id };
+  }
+  return null;
+}
+// As runas escondidas em que o centro do token entrou neste passo
+function runasPisadas(t, antes, sc) {
+  if (!t || t.prop || !antes || !('x' in antes || 'y' in antes)) return [];
+  const [ax, ay] = centroTok(t, sc, antes.x, antes.y), [bx, by] = centroTok(t, sc);
+  return (sc.effects || []).filter(e => e.fx === 'runas' && e.gm && (() => { const p = FX.geom(e, sc).path; return areaCtx.isPointInPath(p, bx, by) && !areaCtx.isPointInPath(p, ax, ay); })());
+}
+const mexeuNoLugar = op => op.t === 'upd' && op.c === 'tokens' && !!op.p && ('x' in op.p || 'y' in op.p);
+// A saída de um portal novo: ao lado da entrada, a um raio de folga (do outro lado, se não couber na cena).
+function saidaDoPortal(e, sc) {
+  const R = (e.r || 1) * sc.cell, d = 2 * R + sc.cell, W = sceneW(sc), y = clamp(e.y, R, Math.max(R, sceneH(sc) - R));
+  const x = e.x + d + R <= W ? e.x + d : Math.max(R, e.x - d);
+  return { x2: x, y2: y };
+}
+/* O remendo para trocar o tipo de uma zona (lote 7): o portal ganha a saída (e se solta do token), a muralha os pontos
+   de vida, a zona de condição a condição dela; a condição guardada pela zona de antes (sem dano) sai junto com ela. */
+function trocaDeZona(e, fx, sc) {
+  const p = { fx }, pr = FX.P[fx] || {}, ant = FX.P[e.fx] || {};
+  if (pr.portal) { p.k = 'circ'; p.token = null; if (!(Number.isFinite(e.x2) && Number.isFinite(e.y2))) { const g = FX.geom(e, sc); Object.assign(p, saidaDoPortal({ x: g.x, y: g.y, r: e.r }, sc), { x: g.x, y: g.y }); } }
+  if (pr.pv > 0 && !(e.pvm > 0)) { p.pv = pr.pv; p.pvm = pr.pv; }
+  const soCond = a => !!a && !!a.cond && !areaAmount(a.amt);
+  if (pr.cond) { const q = e.apply && e.apply.cond && e.apply.cond.id; if (!e.apply || (soCond(e.apply) && !(pr.conds || [pr.cond]).includes(q))) p.apply = { bar: '', amt: '', cond: { id: pr.cond, n: 0, d: 0 }, skip: [] }; }
+  else if (ant.cond && soCond(e.apply) && (ant.conds || [ant.cond]).includes(e.apply.cond.id)) p.apply = null;
+  return p;
 }
 const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
 Store.aoFechar(tx => {
@@ -304,6 +352,13 @@ Store.aoFechar(tx => {
     const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
     if (p) Store.upd('tokens', id, p);
   }
+  // (lote 7) o portal e as runas: só os tokens que mudaram de lugar neste passo
+  const sc = Store.scene(), andou = [...new Set(tx.fwd.filter(mexeuNoLugar).map(op => op.id))];
+  for (const id of andou) {
+    const t = Store.get('tokens', id), antes = antesDoToken(tx.inv, id, ['x', 'y']), v = atravessar(t, antes, sc);
+    if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
+    for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+  }
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
@@ -311,6 +366,18 @@ Store.on('commit', e => {
   const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
   if (mud.length) setTimeout(() => Store.tx('Condição', () => {
     for (const [id] of mud) { const p = acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id)); if (p) Store.upd('tokens', id, p); }
+  }), 0);
+  // (lote 7) o token que um jogador soltou num portal atravessa num passo logo depois; o que pisou nas runas avisa
+  const sc = Store.scene(), andou = [...new Set((e.ops || []).filter(mexeuNoLugar).map(op => op.id))];
+  const vao = [];
+  for (const id of andou) {
+    const t = Store.get('tokens', id), antes = antesDoToken(e.inv, id, ['x', 'y']);
+    if (atravessar(t, antes, sc)) vao.push([id, antes]);
+    else for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+  }
+  if (vao.length) setTimeout(() => Store.tx('Atravessar o portal', () => {
+    const agora = Store.scene();
+    for (const [id, antes] of vao) { const v = atravessar(Store.get('tokens', id), antes, agora); if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); } }
   }), 0);
 });
 

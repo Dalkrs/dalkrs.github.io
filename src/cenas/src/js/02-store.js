@@ -126,7 +126,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.inv) { raw(op); emit('live', op); }
     hh.redo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd, undo: true });
     return e;
   }
   function redo() {
@@ -135,7 +135,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.fwd) { raw(op); emit('live', op); }
     hh.undo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv, redo: true });
     return e;
   }
 

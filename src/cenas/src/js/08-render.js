@@ -751,6 +751,8 @@ const Render = (() => {
         ctx.setLineDash([7 * px, 5 * px]);
         ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3.5 * px; ctx.stroke(g.path);
         ctx.strokeStyle = theme.lamp; ctx.lineWidth = 1.8 * px; ctx.stroke(g.path);
+        // (lote 7) o portal selecionado: a linha que liga a entrada à saída
+        if (g.x2 != null) { ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x2, g.y2); ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3 * px; ctx.stroke(); ctx.strokeStyle = theme.lamp; ctx.lineWidth = 1.4 * px; ctx.stroke(); }
       }
     }
     ctx.setLineDash([]);
@@ -889,6 +891,20 @@ const Render = (() => {
       const ly = g.lab ? g.lab.y + g.lab.ny * 11 * px : mid ? g.cy : g.y - g.R + 11 * px;
       if (!gm && !Vision.canSee(lx, ly)) continue;
       label(ctx, e.dur === 1 ? '1 rodada' : e.dur + ' rodadas', lx, ly, px, { size: 10.5 });
+    }
+  }
+
+  /* (lote 7) Os pontos de vida da Muralha de cristais, só para o mestre: uma barrinha com os números, no meio dela. */
+  function drawPvZonas(sc, px) {
+    if (!isGM()) return;
+    for (const e of sc.effects) {
+      const pr = FX.P[e.fx];
+      if (!pr || !(pr.pv > 0) || !fxVisible(e)) continue;
+      const g = FX.geom(e, sc), m = e.pvm > 0 ? e.pvm : pr.pv, v = clamp(Number.isFinite(e.pv) ? e.pv : m, 0, m);
+      const w = 46 * px, hb = 6 * px, x = g.cx - w / 2, y = g.cy + 12 * px;
+      ctx.fillStyle = 'rgba(8,10,16,0.82)'; rr(ctx, x - 2 * px, y - 2 * px, w + 4 * px, hb + 4 * px, 3 * px); ctx.fill();
+      ctx.fillStyle = '#9fdcff'; rr(ctx, x, y, Math.max(0, w * v / m), hb, 2 * px); ctx.fill();
+      label(ctx, `${fmt(v)}/${fmt(m)}`, g.cx, y + hb + 11 * px, px, { size: 10 });
     }
   }
 
@@ -1042,6 +1058,7 @@ const Render = (() => {
     if (gm) { drawWalls(sc, px); drawLights(sc, px); }
     for (const s of doorSpots(sc)) drawOpening(ctx, s, px, gm);
     drawDurations(sc, px);
+    drawPvZonas(sc, px);
     drawTurnRing(sc, px);
     drawTargets(sc, px);
     drawSelection(sc, px);

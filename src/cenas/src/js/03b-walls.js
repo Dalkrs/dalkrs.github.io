@@ -15,7 +15,8 @@
    --------------------------------------------------------------- */
 const Walls = (() => {
   let ver = 0, builds = 0, cache = null;
-  Store.on('live', op => { if (op.c === 'walls') ver++; });
+  // (lote 7) a Fumaça e a Muralha de cristais também barram: mexer numa delas refaz as paredes
+  Store.on('live', (op, inv) => { if (op.c === 'walls' || (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv))) ver++; });
 
   // Tolerâncias, proporcionais ao quadrado (os números valem para o quadrado padrão de 64 px):
   // a abertura conta como "em cima" da parede se estiver alinhada com ela a até 4 px
@@ -91,6 +92,12 @@ const Walls = (() => {
       const pcs = remnants(w, openings, tol, min);
       d.pieces.set(w.id, pcs);
       for (const q of pcs) { d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
+    }
+    // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
+    const zb = FX.barreiras ? FX.barreiras(sc) : null;
+    if (zb) {
+      for (let i = 0; i < zb.vista.length; i++) d.sight.push(zb.vista[i]);
+      for (let i = 0; i < zb.passo.length; i++) d.move.push(zb.passo[i]);
     }
     d.sightAll = d.sight;
     if (d.curtains.length) { d.sightAll = d.sight.slice(); for (const c of d.curtains) d.sightAll.push(c.x1, c.y1, c.x2, c.y2); }

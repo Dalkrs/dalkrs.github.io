@@ -692,6 +692,9 @@ function normalizeScene(sc) {
     if (!(e.rw > 0)) e.rw = side;
     if (!(e.rh > 0)) e.rh = side;
     e.apply = cleanApply(e.apply);
+    // (lote 7) o portal sem uma saída que valha fica só com a entrada; os pontos da muralha, inteiros e no limite
+    if (e.fx === 'portal' && !(Number.isFinite(e.x2) && Number.isFinite(e.y2))) { delete e.x2; delete e.y2; }
+    if (e.pvm != null) { e.pvm = Math.max(1, Math.round(Number(e.pvm)) || 30); e.pv = clamp(Math.round(Number.isFinite(Number(e.pv)) ? Number(e.pv) : e.pvm), 0, e.pvm); }
   }
   // terreno: o tipo tem de ser um dos que existem; senão, o desenho fica sendo um desenho comum
   for (const s of sc.shapes) if (s && s.ter !== undefined) { const c = cleanTer(s.ter); if (c) s.ter = c; else delete s.ter; }

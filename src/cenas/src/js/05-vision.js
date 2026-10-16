@@ -380,7 +380,9 @@ const Vision = (() => {
   }
 
   // Decide, a partir de uma operação do Store, o que precisa ser refeito.
-  function onOp(op) {
+  function onOp(op, inv) {
+    // (lote 7) a Fumaça e a Muralha de cristais barram a visão e a luz, como as paredes
+    if (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv)) { dirty = true; staticStale = true; return; }
     if (op.t === 'scn') {
       // Só o que muda luz, névoa ou o tamanho da cena pede recálculo; turnos, miras e clima, não.
       const p = op.p || {};

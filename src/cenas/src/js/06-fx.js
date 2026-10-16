@@ -44,7 +44,8 @@ const FX = (() => {
     const cs = Math.cos(dir), sn = Math.sin(dir);
     const p = new Path2D();
     let cx = x, cy = y, inR = R, area, sample, hw = 0, hh = 0, hx = null, hy = null, lab = null;
-    if (e.k === 'rect') {
+    const k = e.fx === 'portal' ? 'circ' : e.k;          // (o portal é sempre de círculos)
+    if (k === 'rect') {
       // Retângulo: largura (rw) e altura (rh) em quadrados, centrado em (x, y) e girado por dir. Preso a um
       // token, fica centrado nele; as medidas são as do próprio retângulo (não somam o tamanho do token).
       hw = Math.max(cell * 0.25, (e.rw > 0 ? e.rw : 1) * cell) / 2;
@@ -60,12 +61,12 @@ const FX = (() => {
       for (const m of [[cs * hw, sn * hw], [-cs * hw, -sn * hw], [-sn * hh, cs * hh], [sn * hh, -cs * hh]]) if (!top || m[1] < top[1] - 1e-9) top = m;
       const tl = Math.hypot(top[0], top[1]) || 1;
       lab = { x: x + top[0], y: y + top[1], nx: -top[0] / tl, ny: -top[1] / tl };
-    } else if (e.k === 'quad') {
+    } else if (k === 'quad') {
       const pts = [[-R, -R], [R, -R], [R, R], [-R, R]].map(([a, b]) => [x + cs * a - sn * b, y + sn * a + cs * b]);
       p.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < 4; i++) p.lineTo(pts[i][0], pts[i][1]); p.closePath();
       area = 4 * R * R;
       sample = (u, v) => { const a = (u * 2 - 1) * R, b = (v * 2 - 1) * R; return [x + cs * a - sn * b, y + sn * a + cs * b]; };
-    } else if (e.k === 'cone') {
+    } else if (k === 'cone') {
       const ang = rad(clamp(e.ang || 60, 10, 340));
       p.moveTo(x, y); p.arc(x, y, R, dir - ang / 2, dir + ang / 2); p.closePath();
       area = R * R * ang / 2;
@@ -73,7 +74,7 @@ const FX = (() => {
       inR = R * s2 / (1 + s2);
       cx = x + cs * (R - inR); cy = y + sn * (R - inR);
       sample = (u, v) => { const rr = R * Math.sqrt(u), a = dir + (v - 0.5) * ang; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; };
-    } else if (e.k === 'line') {
+    } else if (k === 'line') {
       const wd = Math.max(cell * 0.25, (e.w || 1) * cell), hw = wd / 2;
       p.moveTo(x + sn * hw, y - cs * hw); p.lineTo(x + cs * R + sn * hw, y + sn * R - cs * hw);
       p.lineTo(x + cs * R - sn * hw, y + sn * R + cs * hw); p.lineTo(x - sn * hw, y + cs * hw); p.closePath();
@@ -85,10 +86,17 @@ const FX = (() => {
       area = Math.PI * R * R;
       sample = (u, v) => { const rr = R * Math.sqrt(u), a = v * TAU; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; };
     }
+    // (lote 7) o Portal: o segundo círculo, a saída, do mesmo tamanho, onde o mestre o deixou (x2, y2)
+    let x2 = null, y2 = null;
+    if (e.fx === 'portal' && Number.isFinite(e.x2) && Number.isFinite(e.y2)) {
+      x2 = e.x2; y2 = e.y2;
+      p.moveTo(x2 + R, y2); p.arc(x2, y2, R, 0, TAU);
+      area *= 2;
+    }
     // hw/hh: meia largura e meia altura; lab: âncora do rótulo de duração (os dois só existem no retângulo)
     return {
       path: p, x, y, cx, cy, R, inR, half, cell, dir, cs, sn, area: area / (cell * cell), sample,
-      hx: hx == null ? x + cs * R : hx, hy: hy == null ? y + sn * R : hy, hw, hh, lab, seed: 1,
+      hx: hx == null ? x + cs * R : hx, hy: hy == null ? y + sn * R : hy, hw, hh, lab, seed: 1, x2, y2,
     };
   }
 
@@ -748,6 +756,457 @@ const FX = (() => {
         runeRing(c, g, -t * 0.12, '#e0506a', (0.45 + 0.15 * Math.sin(t * 1.7)) * pow, 7, 3);
       },
     },
+
+    /* ---------- Lote 7: zonas novas ----------
+       Além do desenho, cada uma diz a regra (regra: o texto do painel). As que são só lembrete (lembra) avisam o mestre
+       quando alguém começa a vez dentro delas; as de condição (cond) já nascem com ela guardada, para a pergunta do
+       começo da vez; bloqueia e barra viram parede de visão e de passagem; pv são os pontos de vida da muralha. */
+    gelado: {
+      n: 'Chão congelado', tint: '#bfe6ff', base: 0.3, edge: '#f0faff', g: 'elem', sug: 'caido', lembra: true,
+      regra: 'o chão escorrega: quem corre pode cair',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 0.8, 2, 10, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.25 + i) * g.cell * 0.4, y, g.cell * (0.9 + hsh(i, 13, g.seed) * 0.7), '#ffffff', (0.14 + 0.06 * Math.sin(t * 0.6 + i)) * pow);
+        }
+        // as rachaduras no gelo (fixas, pela semente)
+        c.strokeStyle = '#ffffff'; c.lineCap = 'round'; c.lineJoin = 'round';
+        const n = cnt(g, 1.4, 3, 18, pow);
+        for (let i = 0; i < n; i++) {
+          let [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), a = hsh(i, 3, g.seed) * TAU;
+          c.globalAlpha = 0.55 * pow; c.lineWidth = Math.max(0.6, g.cell * 0.018);
+          c.beginPath(); c.moveTo(x, y);
+          for (let s = 0; s < 5; s++) { a += (hsh(i * 7 + s, 4, g.seed) - 0.5) * 1.2; const L = g.cell * (0.15 + hsh(i * 7 + s, 5, g.seed) * 0.25); x += Math.cos(a) * L; y += Math.sin(a) * L; c.lineTo(x, y); }
+          c.stroke();
+        }
+        // brilhos que piscam
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 2, 3, 26, pow);
+        for (let i = 0; i < b; i++) {
+          const tw = Math.max(0, Math.sin(t * (1.3 + hsh(i, 7, g.seed)) + hsh(i, 8, g.seed) * TAU));
+          if (tw < 0.2) continue;
+          const [x, y] = g.sample(hsh(i, 9, g.seed), hsh(i, 10, g.seed)), s = g.cell * 0.08 * tw;
+          c.globalAlpha = tw * 0.9 * pow; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+          c.beginPath(); c.moveTo(x - s, y); c.lineTo(x + s, y); c.moveTo(x, y - s); c.lineTo(x, y + s); c.stroke();
+        }
+      },
+    },
+    fumaca: {
+      n: 'Fumaça', tint: '#4d5258', base: 0.62, edge: '#a3aab3', g: 'elem', bloqueia: true,
+      regra: 'tapa a visão de todos: ninguém enxerga através dela',
+      draw(c, g, t, pow) {
+        // rolos de fumaça, em dois tons, girando devagar e subindo
+        const n = cnt(g, 2.6, 6, 44, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const sp = (0.1 + hsh(i, 3, g.seed) * 0.12) * (i % 2 ? 1 : -1);
+          const dx = Math.cos(t * sp + i * 1.9) * g.cell * 0.55, dy = Math.sin(t * sp + i * 1.9) * g.cell * 0.4 - ((t * 0.05 + hsh(i, 4, g.seed)) % 1) * g.cell * 0.2;
+          blob(c, x + dx, y + dy, g.cell * (0.8 + hsh(i, 5, g.seed) * 0.9), i % 3 ? '#8a9098' : '#3c4046', (0.32 + 0.1 * Math.sin(t * 0.4 + i)) * pow);
+        }
+      },
+    },
+    brasas: {
+      n: 'Brasas', tint: '#2a1208', base: 0.5, edge: '#ff8a3a', glow: true, g: 'elem', sug: 'fogo', lembra: true,
+      regra: 'queimam quem pisa',
+      draw(c, g, t, pow) {
+        // carvão em pedaços
+        const m = cnt(g, 2.5, 4, 40, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), r = g.cell * (0.1 + hsh(i, 3, g.seed) * 0.12);
+          c.globalAlpha = 0.8 * pow; c.fillStyle = hsh(i, 4, g.seed) > 0.5 ? '#1a0a05' : '#2e1408';
+          c.beginPath();
+          for (let k = 0; k <= 5; k++) { const a = k / 5 * TAU + hsh(i, 5, g.seed), rr = r * (0.7 + 0.3 * hsh(i * 5 + (k % 5), 6, g.seed)); if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+          c.closePath(); c.fill();
+        }
+        // o brilho das brasas, pulsando
+        c.globalCompositeOperation = 'lighter';
+        const n = cnt(g, 4, 6, 60, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 7, g.seed), hsh(i, 8, g.seed)), p = 0.5 + 0.5 * Math.sin(t * (1.2 + hsh(i, 9, g.seed) * 1.8) + i);
+          blob(c, x, y, g.cell * (0.1 + 0.08 * p), p > 0.6 ? '#ffb347' : '#ff5a1a', (0.35 + 0.5 * p) * pow);
+        }
+        // fagulhas subindo
+        const f = cnt(g, 1.6, 2, 24, pow);
+        for (let i = 0; i < f; i++) {
+          const ph = t * (0.5 + hsh(i, 11, g.seed) * 0.5) + hsh(i, 12, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 7, 13, g.seed), hsh(i + cyc * 7, 14, g.seed));
+          blob(c, x + Math.sin(t * 4 + i) * g.cell * 0.05, y - life * g.cell * 0.6, g.cell * 0.04, '#ffd27a', Math.sin(life * Math.PI) * 0.9 * pow);
+        }
+      },
+    },
+    cristais: {
+      n: 'Muralha de cristais de gelo', tint: '#8fd4ff', base: 0.42, edge: '#effaff', glow: true, g: 'elem', bloqueia: true, barra: true, pv: 30,
+      regra: 'barra a passagem e a visão até quebrar',
+      draw(c, g, t, pow) {
+        // prismas compridos, apertados, com a luz correndo neles
+        const n = cnt(g, 3.2, 5, 70, pow);
+        c.lineJoin = 'round';
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const a = -Math.PI / 2 + (hsh(i, 3, g.seed) - 0.5) * 1.1, L = g.cell * (0.35 + hsh(i, 4, g.seed) * 0.4), w = L * (0.22 + hsh(i, 5, g.seed) * 0.12);
+          const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
+          const pts = [[x - vx * w, y - vy * w], [x + ux * L * 0.75 - vx * w * 0.8, y + uy * L * 0.75 - vy * w * 0.8], [x + ux * L, y + uy * L], [x + ux * L * 0.75 + vx * w * 0.8, y + uy * L * 0.75 + vy * w * 0.8], [x + vx * w, y + vy * w]];
+          c.globalAlpha = 0.75 * pow; c.fillStyle = hsh(i, 6, g.seed) > 0.5 ? '#bfe8ff' : '#7fc4ee';
+          c.beginPath(); pts.forEach((q, k) => (k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.closePath(); c.fill();
+          c.globalAlpha = 0.6 * pow; c.strokeStyle = '#ffffff'; c.lineWidth = Math.max(0.6, g.cell * 0.018); c.stroke();
+          c.globalAlpha = (0.3 + 0.4 * Math.max(0, Math.sin(t * 1.2 + i * 0.7))) * pow;
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x + ux * L, y + uy * L); c.stroke();
+        }
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 1.5, 3, 20, pow);
+        for (let i = 0; i < b; i++) { const tw = Math.max(0, Math.sin(t * (1.1 + hsh(i, 7, g.seed)) + i * 2)), [x, y] = g.sample(hsh(i, 8, g.seed), hsh(i, 9, g.seed)); blob(c, x, y, g.cell * 0.12 * tw, '#ffffff', tw * 0.8 * pow); }
+      },
+    },
+    cinzas: {
+      n: 'Cinzas vulcânicas', tint: '#302a26', base: 0.42, edge: '#a39282', g: 'elem', sug: 'ofuscado', lembra: true,
+      regra: 'o ar arde: difícil de ver e de respirar',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x + Math.sin(t * 0.2 + i) * g.cell * 0.4, y, g.cell * (0.8 + hsh(i, 13, g.seed) * 0.6), i % 2 ? '#1e1a17' : '#5a524a', 0.3 * pow); }
+        // flocos de cinza caindo, levados de leve
+        const n = cnt(g, 7, 10, 100, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.18 + hsh(i, 3, g.seed) * 0.2) + hsh(i, 4, g.seed)) % 1, [x0, y0] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.7 * pow; c.fillStyle = hsh(i, 5, g.seed) > 0.7 ? '#e8e0d8' : '#8a8078';
+          c.beginPath(); c.arc(x0 + Math.sin(t * 0.8 + i) * g.cell * 0.15, y0 + (ph - 0.5) * g.cell * 1.2, Math.max(0.6, g.cell * (0.015 + hsh(i, 6, g.seed) * 0.025)), 0, TAU); c.fill();
+        }
+        // uma brasa ou outra
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 0.6, 1, 8, pow);
+        for (let i = 0; i < b; i++) { const ph = (t * 0.35 + hsh(i, 7, g.seed)) % 1, [x, y] = g.sample(hsh(i, 8, g.seed), hsh(i, 9, g.seed)); blob(c, x, y + (ph - 0.5) * g.cell, g.cell * 0.05, '#ff8a3a', Math.sin(ph * Math.PI) * 0.8 * pow); }
+      },
+    },
+    correnteza: {
+      n: 'Correnteza', tint: '#1c5f92', base: 0.34, edge: '#8fd0ff', g: 'elem', lembra: true,
+      regra: 'empurra para o lado da seta (a bolinha da borda gira a seta)',
+      draw(c, g, t, pow) {
+        // a água correndo na direção do efeito
+        c.strokeStyle = '#cfeaff'; c.lineCap = 'round';
+        const n = cnt(g, 4, 8, 60, pow), span = g.R * 2.2;
+        for (let i = 0; i < n; i++) {
+          const sp = 0.4 + hsh(i, 3, g.seed) * 0.4, ph = (t * sp + hsh(i, 4, g.seed)) % 1;
+          const off = (hsh(i, 1, g.seed) - 0.5) * span, along = (ph - 0.5) * span;
+          const bx = g.cx + g.cs * along - g.sn * off, by = g.cy + g.sn * along + g.cs * off;
+          const len = g.cell * (0.4 + hsh(i, 5, g.seed) * 0.6), wv = Math.sin(t * 3 + i) * g.cell * 0.05;
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.55 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.035);
+          c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + g.cs * len * 0.5 - g.sn * wv, by + g.sn * len * 0.5 + g.cs * wv, bx + g.cs * len, by + g.sn * len); c.stroke();
+        }
+        // a seta, de leve, no meio
+        const L = Math.min(g.inR * 1.2, g.cell * 2.2), ax = g.cx + g.cs * L * 0.5, ay = g.cy + g.sn * L * 0.5, bx = g.cx - g.cs * L * 0.5, by = g.cy - g.sn * L * 0.5, s = L * 0.25;
+        c.globalAlpha = (0.3 + 0.1 * Math.sin(t * 2)) * pow; c.strokeStyle = '#e8f6ff'; c.lineWidth = Math.max(1.2, g.cell * 0.07); c.lineJoin = 'round';
+        c.beginPath(); c.moveTo(bx, by); c.lineTo(ax, ay);
+        c.moveTo(ax - g.cs * s - g.sn * s * 0.7, ay - g.sn * s + g.cs * s * 0.7); c.lineTo(ax, ay); c.lineTo(ax - g.cs * s + g.sn * s * 0.7, ay - g.sn * s - g.cs * s * 0.7); c.stroke();
+      },
+    },
+    aguaEletrica: {
+      n: 'Água eletrificada', tint: '#1c4f8a', base: 0.32, edge: '#cfe0ff', glow: true, g: 'elem', sug: 'eletrizado', lembra: true,
+      regra: 'dá choque em quem está dentro',
+      draw(c, g, t, pow) {
+        // as ondas da água
+        const n = cnt(g, 0.8, 2, 12, pow);
+        c.strokeStyle = '#bfe2ff';
+        for (let i = 0; i < n; i++) {
+          const ph = t * (0.25 + hsh(i, 3, g.seed) * 0.2) + hsh(i, 4, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 13, 1, g.seed), hsh(i + cyc * 13, 2, g.seed));
+          c.globalAlpha = (1 - life) * 0.45 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+          c.beginPath(); c.arc(x, y, life * g.cell, 0, TAU); c.stroke();
+        }
+        // faíscas correndo pela água
+        c.globalCompositeOperation = 'lighter'; c.lineCap = c.lineJoin = 'round';
+        const fr = Math.floor(t * 9), k = cnt(g, 1.2, 2, 14, pow);
+        for (let i = 0; i < k; i++) {
+          if (hsh(i, fr, g.seed) < 0.4) continue;
+          const a = g.sample(hsh(i, fr + 1, g.seed), hsh(i, fr + 2, g.seed)), L = g.cell * (0.4 + hsh(i, fr + 3, g.seed) * 0.5), ang = hsh(i, fr + 4, g.seed) * TAU;
+          c.beginPath(); c.moveTo(a[0], a[1]);
+          for (let s = 1; s <= 4; s++) { const f = s / 4; c.lineTo(a[0] + Math.cos(ang) * L * f + (hsh(i * 5 + s, fr, g.seed) - 0.5) * g.cell * 0.25, a[1] + Math.sin(ang) * L * f + (hsh(i * 5 + s, fr + 7, g.seed) - 0.5) * g.cell * 0.25); }
+          c.globalAlpha = 0.3 * pow; c.strokeStyle = '#7aa2ff'; c.lineWidth = g.cell * 0.09; c.stroke();
+          c.globalAlpha = 0.9 * pow; c.strokeStyle = '#f0f5ff'; c.lineWidth = Math.max(0.8, g.cell * 0.025); c.stroke();
+        }
+      },
+    },
+    vortice: {
+      n: 'Vórtice', tint: '#1e2a48', base: 0.32, edge: '#9ab8ff', glow: true, g: 'magia', lembra: true,
+      regra: 'puxa para o centro',
+      draw(c, g, t, pow) {
+        blob(c, g.cx, g.cy, g.inR * 0.45, '#05070f', 0.6 * pow);
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+        // os braços da espiral, girando
+        for (let k = 0; k < 5; k++) {
+          c.globalAlpha = 0.5 * pow; c.strokeStyle = k % 2 ? '#7fa2ff' : '#c9d8ff'; c.lineWidth = Math.max(0.8, g.cell * 0.04);
+          c.beginPath();
+          for (let s = 0; s <= 24; s++) { const f = s / 24, r = g.inR * (0.12 + 0.88 * f), a = t * 1.1 + k / 5 * TAU + (1 - f) * 3.2; if (s) c.lineTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); else c.moveTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); }
+          c.stroke();
+        }
+        // o que está sendo puxado
+        const n = cnt(g, 3.5, 6, 56, pow);
+        for (let i = 0; i < n; i++) {
+          const life = (t * (0.25 + hsh(i, 3, g.seed) * 0.3) + hsh(i, 4, g.seed)) % 1, d = g.inR * (1 - life * life), a = hsh(i, 1, g.seed) * TAU + life * 4 + t * 0.6;
+          blob(c, g.cx + Math.cos(a) * d, g.cy + Math.sin(a) * d, g.cell * (0.06 + 0.04 * (1 - life)), '#dfe8ff', Math.sin(life * Math.PI) * 0.8 * pow);
+        }
+      },
+    },
+    gravidade: {
+      n: 'Gravidade pesada', tint: '#241a36', base: 0.38, edge: '#b08aff', g: 'magia', sug: 'lento', lembra: true,
+      regra: 'tudo pesa: anda-se a metade, sem pular nem voar',
+      draw(c, g, t, pow) {
+        // anéis que afundam para o meio
+        c.strokeStyle = '#c9a8ff';
+        for (let k = 0; k < 5; k++) {
+          const f = ((k / 5) + t * 0.18) % 1, r = g.inR * (1 - f);
+          c.globalAlpha = (0.15 + f * 0.35) * pow; c.lineWidth = Math.max(1, g.cell * 0.05 * (1 - f * 0.6));
+          c.beginPath(); c.arc(g.cx, g.cy, Math.max(1, r), 0, TAU); c.stroke();
+        }
+        blob(c, g.cx, g.cy, g.inR * 0.5, '#0e0818', 0.35 * pow);
+        // pedrinhas caindo depressa
+        c.fillStyle = '#e2d4ff';
+        const n = cnt(g, 3, 5, 44, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (1.4 + hsh(i, 3, g.seed)) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.6 * pow;
+          c.fillRect(x - g.cell * 0.015, y + (ph - 0.5) * g.cell * 0.8, Math.max(0.8, g.cell * 0.03), g.cell * 0.12);
+        }
+      },
+    },
+    tempo: {
+      n: 'Distorção do tempo', tint: '#1f3340', base: 0.24, edge: '#9ff0e0', glow: true, g: 'magia', cond: 'lento', conds: ['lento', 'acelerado'],
+      regra: 'quem começa a vez dentro fica Lento ou Acelerado (o mestre confirma)',
+      draw(c, g, t, pow) {
+        const a0 = g.fxe && g.fxe.apply && g.fxe.apply.cond, v = a0 && a0.id === 'acelerado' ? 2.4 : -0.35;     // acelerado: os ponteiros correm; lento: andam para trás
+        c.globalCompositeOperation = 'lighter';
+        blob(c, g.cx, g.cy, g.inR * 0.9, '#6fe0d0', (0.1 + 0.05 * Math.sin(t)) * pow);
+        // o mostrador: a volta, as doze marcas e os ponteiros com o rastro
+        const r = g.inR * 0.86;
+        c.strokeStyle = '#c8fff4'; c.lineCap = 'round';
+        c.globalAlpha = 0.55 * pow; c.lineWidth = Math.max(1, g.cell * 0.035);
+        c.beginPath(); c.arc(g.cx, g.cy, r, 0, TAU); c.stroke();
+        for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.globalAlpha = (i % 3 ? 0.35 : 0.7) * pow; c.beginPath(); c.moveTo(g.cx + Math.cos(a) * r * 0.86, g.cy + Math.sin(a) * r * 0.86); c.lineTo(g.cx + Math.cos(a) * r * 0.97, g.cy + Math.sin(a) * r * 0.97); c.stroke(); }
+        const pont = (a, L, w, al) => { c.globalAlpha = al * pow; c.lineWidth = Math.max(1, g.cell * w); c.beginPath(); c.moveTo(g.cx, g.cy); c.lineTo(g.cx + Math.cos(a) * L, g.cy + Math.sin(a) * L); c.stroke(); };
+        for (let k = 3; k >= 0; k--) { const tt = t - k * 0.12; pont(tt * v - Math.PI / 2, r * 0.75, 0.05, k ? 0.12 : 0.8); pont(tt * v / 12 - Math.PI / 2, r * 0.5, 0.07, k ? 0.1 : 0.7); }
+        // grãos de areia flutuando
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const a = hsh(i, 1, g.seed) * TAU + t * v * 0.2 * (0.5 + hsh(i, 3, g.seed)), d = g.inR * (0.2 + hsh(i, 2, g.seed) * 0.75);
+          blob(c, g.cx + Math.cos(a) * d, g.cy + Math.sin(a) * d, g.cell * 0.05, '#e8fff9', (0.4 + 0.4 * Math.sin(t * 2 + i)) * pow);
+        }
+      },
+    },
+    portal: {
+      n: 'Portal', tint: '#2a1648', base: 0.3, edge: '#d7a6ff', glow: true, g: 'magia', portal: true,
+      regra: 'o token solto num círculo sai no outro',
+      draw(c, g, t, pow) {
+        const anel = (x, y, cor, cor2, sent) => {
+          blob(c, x, y, g.R * 0.95, '#0a0414', 0.5 * pow);
+          c.globalCompositeOperation = 'lighter';
+          blob(c, x, y, g.R * 1.05, cor, (0.18 + 0.06 * Math.sin(t * 2)) * pow);
+          c.lineCap = 'round';
+          for (let k = 0; k < 4; k++) {
+            c.globalAlpha = 0.55 * pow; c.strokeStyle = k % 2 ? cor : cor2; c.lineWidth = Math.max(0.8, g.cell * 0.05);
+            c.beginPath();
+            for (let s = 0; s <= 20; s++) { const f = s / 20, r = g.R * (0.15 + 0.8 * f), a = sent * t * 1.6 + k / 4 * TAU + (1 - f) * 2.6; if (s) c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else c.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+            c.stroke();
+          }
+          c.globalAlpha = (0.6 + 0.2 * Math.sin(t * 3)) * pow; c.strokeStyle = cor2; c.lineWidth = Math.max(1, g.cell * 0.06);
+          c.beginPath(); c.arc(x, y, g.R * 0.95, 0, TAU); c.stroke();
+          c.globalCompositeOperation = 'source-over';
+        };
+        anel(g.x, g.y, '#b27aff', '#f0dcff', 1);                    // a entrada, roxa
+        if (g.x2 != null) anel(g.x2, g.y2, '#5fd0ff', '#d6f6ff', -1);   // a saída, azul
+      },
+    },
+    runas: {
+      n: 'Runas-armadilha', tint: '#1a1006', base: 0.14, edge: '#ffb347', glow: true, g: 'magia', oculta: true,
+      regra: 'escondidas dos jogadores até você revelar; quem pisa nelas avisa você',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const p = 0.5 + 0.5 * Math.sin(t * 1.6);
+        blob(c, g.cx, g.cy, g.inR * 0.8, '#ff9a3a', (0.08 + 0.08 * p) * pow);
+        runeRing(c, g, t * 0.08, '#ffc77a', (0.45 + 0.3 * p) * pow, 7, 3);
+        // os glifos riscados no chão, acendendo um de cada vez
+        c.strokeStyle = '#ffd59a'; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = Math.max(0.8, g.cell * 0.035);
+        const n = cnt(g, 1.5, 3, 16, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed) * 0.8, hsh(i, 2, g.seed)), s = g.cell * 0.16, tipo = Math.floor(hsh(i, 4, g.seed) * 4);
+          c.globalAlpha = (0.2 + 0.7 * Math.max(0, Math.sin(t * 1.3 + hsh(i, 3, g.seed) * TAU))) * pow;
+          c.beginPath();
+          if (tipo === 0) { c.moveTo(x, y - s); c.lineTo(x, y + s); c.moveTo(x, y - s * 0.3); c.lineTo(x + s * 0.7, y - s); }
+          else if (tipo === 1) { c.moveTo(x - s * 0.6, y + s); c.lineTo(x, y - s); c.lineTo(x + s * 0.6, y + s); c.moveTo(x - s * 0.3, y + s * 0.2); c.lineTo(x + s * 0.3, y + s * 0.2); }
+          else if (tipo === 2) { c.moveTo(x - s * 0.6, y - s); c.lineTo(x + s * 0.6, y + s); c.moveTo(x + s * 0.6, y - s); c.lineTo(x - s * 0.6, y + s); }
+          else { c.moveTo(x, y - s); c.lineTo(x + s * 0.6, y); c.lineTo(x, y + s); c.lineTo(x - s * 0.6, y); c.closePath(); }
+          c.stroke();
+        }
+      },
+    },
+    selos: {
+      n: 'Formação de selos', tint: '#2a0a0a', base: 0.16, edge: '#ff6a5a', glow: true, g: 'magia', sug: 'agarrado', lembra: true,
+      regra: 'prende ou protege quem está dentro',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        blob(c, g.cx, g.cy, g.inR * 0.9, '#ff4a3a', (0.08 + 0.05 * Math.sin(t * 1.4)) * pow);
+        // o octógono e a estrela por dentro
+        c.strokeStyle = '#ff8a7a'; c.lineCap = 'round'; c.lineJoin = 'round';
+        const r = g.inR * 0.8, rot = t * 0.1;
+        c.globalAlpha = 0.6 * pow; c.lineWidth = Math.max(1, g.cell * 0.035);
+        c.beginPath(); for (let k = 0; k <= 8; k++) { const a = rot + k / 8 * TAU; if (k) c.lineTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); else c.moveTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); } c.stroke();
+        c.globalAlpha = 0.4 * pow;
+        c.beginPath(); for (let k = 0; k <= 8; k++) { const a = rot + (k * 3) / 8 * TAU; if (k) c.lineTo(g.cx + Math.cos(a) * r * 0.95, g.cy + Math.sin(a) * r * 0.95); else c.moveTo(g.cx + Math.cos(a) * r * 0.95, g.cy + Math.sin(a) * r * 0.95); } c.stroke();
+        // os talismãs, girando na volta de fora
+        c.globalCompositeOperation = 'source-over';
+        const rt = g.inR * 0.9, w = g.cell * 0.14, h2 = g.cell * 0.3;
+        for (let k = 0; k < 8; k++) {
+          const a = -rot * 2 + k / 8 * TAU;
+          c.save(); c.translate(g.cx + Math.cos(a) * rt, g.cy + Math.sin(a) * rt); c.rotate(a + Math.PI / 2);
+          c.globalAlpha = 0.85 * pow; c.fillStyle = '#f2dca0'; c.fillRect(-w / 2, -h2 / 2, w, h2);
+          c.strokeStyle = '#b8261a'; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+          c.beginPath(); c.moveTo(0, -h2 * 0.35); c.lineTo(0, h2 * 0.35); c.moveTo(-w * 0.3, -h2 * 0.1); c.lineTo(w * 0.3, -h2 * 0.1); c.moveTo(-w * 0.3, h2 * 0.15); c.lineTo(w * 0.3, h2 * 0.15); c.stroke();
+          c.restore();
+        }
+      },
+    },
+    oleo: {
+      n: 'Óleo derramado', tint: '#15140f', base: 0.55, edge: '#6b6250', g: 'natureza', sug: 'oleo', lembra: true,
+      regra: 'escorrega, e pega fogo com uma faísca',
+      draw(c, g, t, pow) {
+        // poças escuras e lisas
+        const n = cnt(g, 1.2, 3, 16, pow);
+        c.fillStyle = '#0a0906';
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), r = g.cell * (0.35 + hsh(i, 3, g.seed) * 0.4);
+          c.globalAlpha = 0.6 * pow;
+          c.beginPath();
+          for (let k = 0; k <= 12; k++) { const a = k / 12 * TAU, rr = r * (0.8 + 0.25 * hsh(i * 13 + (k % 12), 4, g.seed)); if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.7); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.7); }
+          c.closePath(); c.fill();
+        }
+        // o furta-cor escorrendo devagar por cima
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+        const cores = ['#7a3f9a', '#2f7f8a', '#8a7a2a'], m = cnt(g, 1.5, 3, 20, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 5, g.seed), hsh(i, 6, g.seed)), r = g.cell * (0.2 + hsh(i, 7, g.seed) * 0.3), a0 = t * (0.1 + hsh(i, 8, g.seed) * 0.15) + i;
+          c.globalAlpha = (0.18 + 0.1 * Math.sin(t * 0.7 + i)) * pow; c.strokeStyle = cores[i % 3]; c.lineWidth = Math.max(0.8, g.cell * 0.05);
+          c.beginPath(); c.ellipse(x, y, r, r * 0.55, 0, a0, a0 + 2.2); c.stroke();
+        }
+      },
+    },
+    lama: {
+      n: 'Lama', tint: '#4f3720', base: 0.58, edge: '#8a6a42', g: 'natureza', sug: 'lento', lembra: true,
+      regra: 'só se anda a metade',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x, y, g.cell * (0.6 + hsh(i, 13, g.seed) * 0.6), i % 2 ? '#3a2814' : '#6a4a2a', 0.35 * pow); }
+        // sulcos
+        c.strokeStyle = '#2a1c0e'; c.lineCap = 'round';
+        const s = cnt(g, 1.2, 2, 14, pow);
+        for (let i = 0; i < s; i++) {
+          const [x, y] = g.sample(hsh(i, 21, g.seed), hsh(i, 22, g.seed)), a = hsh(i, 23, g.seed) * TAU, L = g.cell * (0.3 + hsh(i, 24, g.seed) * 0.4);
+          c.globalAlpha = 0.45 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.04);
+          c.beginPath(); c.moveTo(x - Math.cos(a) * L, y - Math.sin(a) * L); c.quadraticCurveTo(x + Math.cos(a + 1.5) * L * 0.2, y + Math.sin(a + 1.5) * L * 0.2, x + Math.cos(a) * L, y + Math.sin(a) * L); c.stroke();
+        }
+        // bolhas que estouram devagar
+        c.strokeStyle = '#a8865a';
+        const b = cnt(g, 1, 2, 14, pow);
+        for (let i = 0; i < b; i++) {
+          const ph = t * (0.2 + hsh(i, 7, g.seed) * 0.2) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 9, 9, g.seed), hsh(i + cyc * 9, 10, g.seed));
+          c.globalAlpha = (life < 0.8 ? 0.6 : (1 - life) / 0.2 * 0.6) * pow; c.lineWidth = Math.max(0.6, g.cell * 0.025);
+          c.beginPath(); c.arc(x, y, g.cell * 0.1 * (0.3 + life * 0.7), Math.PI, TAU); c.stroke();
+        }
+      },
+    },
+    jardim: {
+      n: 'Jardim florescendo', tint: '#2a5226', base: 0.26, edge: '#a8e890', g: 'natureza', sug: 'regen', lembra: true,
+      regra: 'cura quem está dentro',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.2, 3, 16, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x, y, g.cell * (0.6 + hsh(i, 13, g.seed) * 0.5), '#5fa84a', 0.25 * pow); }
+        // as flores abrindo e fechando, cada uma no seu tempo
+        const cores = ['#ff8fc0', '#ffe27a', '#ffffff', '#c9a0ff'], n = cnt(g, 2.4, 4, 36, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const ab = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * (0.5 + hsh(i, 3, g.seed) * 0.5) + hsh(i, 4, g.seed) * TAU));
+          const r = g.cell * (0.08 + hsh(i, 5, g.seed) * 0.07) * ab, rot = hsh(i, 6, g.seed) * TAU + t * 0.1;
+          c.globalAlpha = 0.85 * pow; c.fillStyle = cores[i % 4];
+          for (let k = 0; k < 5; k++) { const a = rot + k / 5 * TAU; c.beginPath(); c.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.9, r * 0.5, a, 0, TAU); c.fill(); }
+          c.fillStyle = '#f2b02a'; c.beginPath(); c.arc(x, y, r * 0.45, 0, TAU); c.fill();
+        }
+        // brilhos verdes subindo
+        c.globalCompositeOperation = 'lighter';
+        const p = cnt(g, 1.5, 2, 20, pow);
+        for (let i = 0; i < p; i++) {
+          const ph = t * (0.2 + hsh(i, 7, g.seed) * 0.2) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 5, 9, g.seed), hsh(i + cyc * 5, 10, g.seed));
+          blob(c, x + Math.sin(t + i) * g.cell * 0.1, y - life * g.cell * 0.5, g.cell * 0.06, '#9fffb0', Math.sin(life * Math.PI) * 0.6 * pow);
+        }
+      },
+    },
+    espiritos: {
+      n: 'Névoa de espíritos', tint: '#16262e', base: 0.32, edge: '#9ff0ff', glow: true, g: 'sagrado', cond: 'medo',
+      regra: 'quem começa a vez dentro fica Amedrontado (o mestre confirma)',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.2 + i) * g.cell * 0.5, y + Math.cos(t * 0.17 + i) * g.cell * 0.3, g.cell * (0.8 + hsh(i, 13, g.seed) * 0.6), '#bfefff', (0.1 + 0.05 * Math.sin(t * 0.5 + i)) * pow);
+        }
+        // os espíritos: rostos pálidos com um rastro, rodando
+        const n = cnt(g, 0.9, 2, 12, pow);
+        for (let i = 0; i < n; i++) {
+          const sp = (0.15 + hsh(i, 3, g.seed) * 0.2) * (i % 2 ? 1 : -1), a = hsh(i, 1, g.seed) * TAU + t * sp, d = g.inR * (0.25 + hsh(i, 2, g.seed) * 0.6);
+          const x = g.cx + Math.cos(a) * d, y = g.cy + Math.sin(a) * d + Math.sin(t * 1.3 + i) * g.cell * 0.08, s = g.cell * (0.16 + hsh(i, 4, g.seed) * 0.08);
+          const fade = 0.45 + 0.35 * Math.sin(t * 0.9 + i * 1.7);
+          c.globalCompositeOperation = 'lighter';
+          for (let k = 1; k <= 4; k++) { const ak = a - sp * k * 0.35; blob(c, g.cx + Math.cos(ak) * d, g.cy + Math.sin(ak) * d, s * (1 - k * 0.15), '#a8f0ff', fade * 0.15 * pow); }
+          blob(c, x, y, s * 1.5, '#dffaff', fade * 0.8 * pow);
+          blob(c, x, y, s * 0.9, '#ffffff', fade * 0.5 * pow);
+          c.globalCompositeOperation = 'source-over';
+          c.globalAlpha = fade * 0.85 * pow; c.fillStyle = '#0a1a22';
+          c.beginPath(); c.arc(x - s * 0.3, y - s * 0.1, s * 0.13, 0, TAU); c.arc(x + s * 0.3, y - s * 0.1, s * 0.13, 0, TAU); c.fill();
+          c.beginPath(); c.ellipse(x, y + s * 0.35, s * 0.14, s * 0.22, 0, 0, TAU); c.fill();
+        }
+      },
+    },
+    santuario: {
+      n: 'Santuário', tint: '#fff0c0', base: 0.12, edge: '#fff8de', glow: true, g: 'sagrado', lembra: true,
+      regra: 'ninguém ataca dentro',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const p = 0.5 + 0.5 * Math.sin(t * 0.8);
+        blob(c, g.cx, g.cy, g.inR * 1.1, '#fff2c8', (0.14 + 0.06 * p) * pow);
+        // a cúpula: a borda clara, por dentro
+        c.strokeStyle = '#fff8e0';
+        for (let k = 0; k < 3; k++) { c.globalAlpha = (0.18 + 0.1 * Math.sin(t * 1.2 + k)) * pow; c.lineWidth = Math.max(1, g.cell * (0.08 - k * 0.02)); c.beginPath(); c.arc(g.cx, g.cy, g.inR * (0.97 - k * 0.05), 0, TAU); c.stroke(); }
+        // a flor de lótus no meio
+        c.fillStyle = '#fffbe8';
+        const r = g.inR * 0.22;
+        for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + t * 0.05; c.globalAlpha = (0.25 + 0.15 * p) * pow; c.beginPath(); c.ellipse(g.cx + Math.cos(a) * r * 0.6, g.cy + Math.sin(a) * r * 0.6, r * 0.6, r * 0.25, a, 0, TAU); c.fill(); }
+        // poeira de luz subindo devagar
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.1 + hsh(i, 3, g.seed) * 0.12) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          blob(c, x, y - ph * g.cell * 0.4, g.cell * 0.06, '#fffaf0', Math.sin(ph * Math.PI) * 0.7 * pow);
+        }
+      },
+    },
+    luaSangue: {
+      n: 'Lua de sangue', tint: '#3a060c', base: 0.34, edge: '#ff4a5a', glow: true, g: 'sagrado', cond: 'furia',
+      regra: 'quem começa a vez dentro entra em Fúria (o mestre confirma)',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        // a luz vermelha da lua, de cima
+        const p = 0.5 + 0.5 * Math.sin(t * 0.7), my = g.cy - g.inR * 0.25;
+        blob(c, g.cx, my, g.inR * 1.2, '#ff2a3a', (0.14 + 0.06 * p) * pow);
+        blob(c, g.cx, my, g.inR * 0.35, '#ff8a8a', (0.35 + 0.1 * p) * pow);
+        c.save(); c.translate(g.cx, my); c.rotate(t * 0.05);
+        c.fillStyle = '#ff6a6a';
+        for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, w = 0.06; c.globalAlpha = (0.06 + 0.04 * Math.sin(t * 1.3 + i)) * pow; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a - w) * g.inR * 1.3, Math.sin(a - w) * g.inR * 1.3); c.lineTo(Math.cos(a + w) * g.inR * 1.3, Math.sin(a + w) * g.inR * 1.3); c.closePath(); c.fill(); }
+        c.restore();
+        // gotas de luz caindo
+        const n = cnt(g, 2.4, 4, 36, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.3 + hsh(i, 3, g.seed) * 0.3) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          blob(c, x, y + (ph - 0.5) * g.cell * 0.6, g.cell * 0.05, '#ff9a9a', Math.sin(ph * Math.PI) * 0.7 * pow);
+        }
+      },
+    },
   };
   /* As categorias da biblioteca (para as abas), e cada efeito antigo na dele */
   const TAGS = [{ id: 'elem', n: 'Elementos' }, { id: 'magia', n: 'Magia' }, { id: 'natureza', n: 'Natureza' }, { id: 'sagrado', n: 'Sagrado e sombrio' }];
@@ -755,14 +1214,17 @@ const FX = (() => {
     ['sombra', 'sagrado'], ['cura', 'sagrado'], ['sagrado', 'sagrado'], ['arcano', 'magia'], ['antimagia', 'magia'], ['tinta', 'magia']]) P[id].g = gr;
   P.fogo.sug = 'fogo'; P.gelo.sug = 'gelo'; P.raio.sug = 'atordoado'; P.agua.sug = 'molhado'; P.veneno.sug = 'veneno'; P.cura.sug = 'regen'; P.sagrado.sug = 'bencao'; P.sombra.sug = 'medo'; P.tinta.sug = 'cego';
   const ORDER = ['fogo', 'gelo', 'raio', 'agua', 'vento', 'terra', 'lava', 'areia', 'tempestade', 'nevasca', 'acida',
+    'gelado', 'fumaca', 'brasas', 'cristais', 'cinzas', 'correnteza', 'aguaEletrica',
     'arcano', 'antimagia', 'tinta', 'escuridao', 'teia', 'barreira', 'circulo', 'silencio',
-    'veneno', 'nevoa', 'toxica', 'espinhos', 'esporos', 'pantano',
-    'cura', 'sagrado', 'aura', 'consagrado', 'sombra', 'chamasNegras', 'maldicao'];
+    'vortice', 'gravidade', 'tempo', 'portal', 'runas', 'selos',
+    'veneno', 'nevoa', 'toxica', 'espinhos', 'esporos', 'pantano', 'oleo', 'lama', 'jardim',
+    'cura', 'sagrado', 'aura', 'consagrado', 'sombra', 'chamasNegras', 'maldicao', 'espiritos', 'santuario', 'luaSangue'];
 
   function draw(ctx, e, g, t, px) {
     const pr = P[e.fx] || P.fogo;
     const pow = clamp(e.pow == null ? 0.8 : e.pow, 0.2, 1);
     g.seed = e.seed || 1;
+    g.fxe = e;                                       // (o efeito inteiro, para o desenho que depende dele: a Distorção do tempo)
     ctx.save();
     ctx.clip(g.path);
     ctx.fillStyle = hexA(pr.tint, pr.base * (0.5 + pow * 0.6) * (0.88 + 0.12 * Math.sin(t * 1.2 + g.seed)));
@@ -774,6 +1236,85 @@ const FX = (() => {
     ctx.globalAlpha = 0.2 + 0.2 * pow; ctx.lineWidth = 5 * px; ctx.stroke(g.path);
     ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 * px; ctx.stroke(g.path);
     ctx.restore();
+  }
+
+  /* ---- (lote 7) o que as zonas fazem na cena ---- */
+  // O contorno de uma área em pontos (o círculo em 28 lados): é o que vira parede de visão e de passagem.
+  function contorno(e, sc) {
+    const g = geom(e, sc), out = [], k = e.fx === 'portal' ? 'circ' : e.k;
+    const gira = (a, b) => [g.x + g.cs * a - g.sn * b, g.y + g.sn * a + g.cs * b];
+    if (k === 'rect') for (const [a, b] of [[-g.hw, -g.hh], [g.hw, -g.hh], [g.hw, g.hh], [-g.hw, g.hh]]) out.push(gira(a, b));
+    else if (k === 'quad') for (const [a, b] of [[-g.R, -g.R], [g.R, -g.R], [g.R, g.R], [-g.R, g.R]]) out.push(gira(a, b));
+    else if (k === 'cone') {
+      const ang = rad(clamp(e.ang || 60, 10, 340));
+      out.push([g.x, g.y]);
+      for (let i = 0; i <= 16; i++) { const a = g.dir - ang / 2 + ang * i / 16; out.push([g.x + Math.cos(a) * g.R, g.y + Math.sin(a) * g.R]); }
+    } else if (k === 'line') {
+      const hw = Math.max(sc.cell * 0.25, (e.w || 1) * sc.cell) / 2;
+      out.push([g.x + g.sn * hw, g.y - g.cs * hw], [g.x + g.cs * g.R + g.sn * hw, g.y + g.sn * g.R - g.cs * hw], [g.x + g.cs * g.R - g.sn * hw, g.y + g.sn * g.R + g.cs * hw], [g.x - g.sn * hw, g.y + g.cs * hw]);
+    } else for (let i = 0; i < 28; i++) { const a = i / 28 * TAU; out.push([g.x + Math.cos(a) * g.R, g.y + Math.sin(a) * g.R]); }
+    return out;
+  }
+  const ehBarreira = e => !!e && !!P[e.fx] && !!(P[e.fx].bloqueia || P[e.fx].barra);
+  /* As zonas que tapam a visão (Fumaça, Muralha de cristais) e as que barram a passagem (a Muralha), como trechos de
+     parede: { vista: [x1, y1, x2, y2, …], passo: […] }. A zona só do mestre não barra nada (os jogadores nem a veem). */
+  function barreiras(sc) {
+    const vista = [], passo = [];
+    for (const e of sc.effects || []) {
+      const pr = P[e.fx];
+      if (!pr || e.gm || !(pr.bloqueia || pr.barra)) continue;
+      const pts = contorno(e, sc);
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if (pr.bloqueia) vista.push(a[0], a[1], b[0], b[1]);
+        if (pr.barra) passo.push(a[0], a[1], b[0], b[1]);
+      }
+    }
+    return { vista, passo };
+  }
+  // Esta operação do Store mexe em alguma barreira? (para as paredes e a visão serem refeitas só quando precisa)
+  function mexeNaBarreira(op, inv) {
+    if (!op) return false;
+    if (op.c === 'effects') {
+      if (op.t === 'add') return ehBarreira(op.v);
+      if (op.t === 'del') return ehBarreira(inv && inv.v);
+      if (op.t === 'upd') return ehBarreira(Store.get('effects', op.id)) || (!!inv && !!inv.p && 'fx' in inv.p && ehBarreira({ fx: inv.p.fx }));
+      return false;
+    }
+    if (op.c === 'tokens' && op.t === 'upd' && op.p && ('x' in op.p || 'y' in op.p || 'size' in op.p)) return (Store.scene().effects || []).some(e => e.token === op.id && ehBarreira(e));
+    return false;
+  }
+  /* As combinações: uma zona que dispara (o fogo) em cima de outra que muda (o óleo). O site sugere; o mestre confirma,
+     e a zona que muda vira o resultado (a que disparou sai). sug: a condição sugerida para quem estava dentro. */
+  const COMBOS = [
+    { gat: ['fogo', 'lava', 'chamasNegras', 'brasas'], base: ['oleo'], res: 'fogo', titulo: 'Fogo no óleo: explosão?', feito: 'O óleo explodiu em fogo', sug: 'fogo' },
+    { gat: ['raio', 'tempestade'], base: ['agua', 'pantano', 'correnteza'], res: 'aguaEletrica', titulo: 'Raio na água: eletrificar?', feito: 'A água ficou eletrificada', sug: 'eletrizado' },
+    { gat: ['gelo', 'nevasca'], base: ['agua', 'correnteza'], res: 'gelado', titulo: 'Gelo na água: congelar o chão?', feito: 'A água congelou', sug: 'gelo' },
+  ];
+  let riscador = null;
+  const pontoEm = (path, x, y) => { if (!riscador) riscador = document.createElement('canvas').getContext('2d'); return riscador.isPointInPath(path, x, y); };
+  // As duas áreas se tocam? (pontos de cada uma, numa grade, caindo dentro da outra)
+  function seTocam(a, b, sc) {
+    const ga = geom(a, sc), gb = geom(b, sc);
+    for (const [g1, g2] of [[ga, gb], [gb, ga]]) {
+      if (pontoEm(g2.path, g1.cx, g1.cy)) return true;
+      for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) { const [x, y] = g1.sample(i / 6, j / 6); if (pontoEm(g2.path, x, y)) return true; }
+    }
+    return false;
+  }
+  // As combinações que envolvem as zonas de `ids` (as que acabaram de mudar): [{ gat, base, regra }]
+  function combinacoes(sc, ids) {
+    const out = [], quer = new Set(ids || []);
+    for (const r of COMBOS) {
+      for (const a of sc.effects || []) {
+        if (!r.gat.includes(a.fx)) continue;
+        for (const b of sc.effects || []) {
+          if (b === a || !r.base.includes(b.fx) || !(quer.has(a.id) || quer.has(b.id))) continue;
+          if (seTocam(a, b, sc)) out.push({ gat: a, base: b, regra: r });
+        }
+      }
+    }
+    return out;
   }
 
   // Miniatura para a biblioteca.
@@ -788,5 +1329,5 @@ const FX = (() => {
     draw(g2, e, g, t, w / 56);
   }
 
-  return { P, ORDER, TAGS, geom, draw, thumb, hsh, blob };
+  return { P, ORDER, TAGS, geom, draw, thumb, hsh, blob, contorno, barreiras, mexeNaBarreira, ehBarreira, COMBOS, combinacoes, seTocam, pontoEm };
 })();

@@ -1029,11 +1029,12 @@ section('10 retângulo', async k => {
   /* ---- todo efeito da biblioteca, recortado no retângulo ----
      (em levas de 15, nos mesmos lugares: a biblioteca cresceu, e o mapa da tela não cabe todos de uma vez) */
   const diff = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
-  const todos = await ev(() => __urgm.FX.ORDER.slice());
+  // (o Portal é sempre de dois círculos, seja qual for a forma: fica de fora daqui — o lote7b confere o desenho dele)
+  const todos = await ev(() => __urgm.FX.ORDER.filter(id => id !== 'portal'));
   const noFill = [], leak = [];
   for (let l0 = 0; l0 < todos.length; l0 += 15) {
     const lib = await ev(l0 => {
-      const u = __urgm, S = u.Store, sc = S.scene(), leva = u.FX.ORDER.slice(l0, l0 + 15);
+      const u = __urgm, S = u.Store, sc = S.scene(), leva = u.FX.ORDER.filter(id => id !== 'portal').slice(l0, l0 + 15);
       S.tx('x', () => {
         for (const ef of sc.effects.slice()) S.del('effects', ef.id);
         for (const t of sc.tokens.slice()) S.del('tokens', t.id);

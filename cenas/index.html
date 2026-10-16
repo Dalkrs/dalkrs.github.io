@@ -660,6 +660,11 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   background: var(--surface); border: 1px solid var(--lamp); border-radius: 11px; box-shadow: var(--shadow); font-size: 13.5px; }
 .zona-i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--raised); }
 .zona-t { flex: 1 1 260px; min-width: 0; }
+/* (lote 7) o lembrete da zona (só Ok) e a combinação de zonas (o resultado em destaque) */
+.zona.lembra { border-color: var(--line-strong); }
+.zona.combo { border-color: var(--danger); }
+/* a regra da zona, no alto do painel do efeito */
+.fx-regra { margin: 0; padding: 7px 10px; border-radius: 8px; background: var(--lamp-soft); color: var(--fg); font-size: 13px; line-height: 1.4; }
 
 /* ---- Janelas: barras padrão e aplicar em área ---- */
 .bd, .area { display: flex; flex-direction: column; gap: 10px; }
@@ -884,6 +889,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
       <div class="turnb" id="turnb" role="status" hidden></div>
       <div class="cine" id="cine" aria-live="polite" hidden></div>
       <div class="dock">
+        <div class="zonas" id="combos" role="status" hidden></div>
         <div class="zonas" id="zonas" role="status" hidden></div>
         <div class="toasts" id="toasts" aria-live="polite"></div>
         <div class="hud" id="hud" hidden></div>
@@ -1601,6 +1607,9 @@ function normalizeScene(sc) {
     if (!(e.rw > 0)) e.rw = side;
     if (!(e.rh > 0)) e.rh = side;
     e.apply = cleanApply(e.apply);
+    // (lote 7) o portal sem uma saída que valha fica só com a entrada; os pontos da muralha, inteiros e no limite
+    if (e.fx === 'portal' && !(Number.isFinite(e.x2) && Number.isFinite(e.y2))) { delete e.x2; delete e.y2; }
+    if (e.pvm != null) { e.pvm = Math.max(1, Math.round(Number(e.pvm)) || 30); e.pv = clamp(Math.round(Number.isFinite(Number(e.pv)) ? Number(e.pv) : e.pvm), 0, e.pvm); }
   }
   // terreno: o tipo tem de ser um dos que existem; senão, o desenho fica sendo um desenho comum
   for (const s of sc.shapes) if (s && s.ter !== undefined) { const c = cleanTer(s.ter); if (c) s.ter = c; else delete s.ter; }
@@ -1755,7 +1764,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.inv) { raw(op); emit('live', op); }
     hh.redo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.inv, inv: e.fwd, undo: true });
     return e;
   }
   function redo() {
@@ -1764,7 +1773,7 @@ const Store = (() => {
     if (!e) return null;
     for (const op of e.fwd) { raw(op); emit('live', op); }
     hh.undo.push(e);
-    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv });
+    emit('commit', { sceneId: S.current, label: e.label, ops: e.fwd, inv: e.inv, redo: true });
     return e;
   }
 
@@ -1951,7 +1960,8 @@ const Geo = (() => {
    --------------------------------------------------------------- */
 const Walls = (() => {
   let ver = 0, builds = 0, cache = null;
-  Store.on('live', op => { if (op.c === 'walls') ver++; });
+  // (lote 7) a Fumaça e a Muralha de cristais também barram: mexer numa delas refaz as paredes
+  Store.on('live', (op, inv) => { if (op.c === 'walls' || (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv))) ver++; });
 
   // Tolerâncias, proporcionais ao quadrado (os números valem para o quadrado padrão de 64 px):
   // a abertura conta como "em cima" da parede se estiver alinhada com ela a até 4 px
@@ -2027,6 +2037,12 @@ const Walls = (() => {
       const pcs = remnants(w, openings, tol, min);
       d.pieces.set(w.id, pcs);
       for (const q of pcs) { d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
+    }
+    // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
+    const zb = FX.barreiras ? FX.barreiras(sc) : null;
+    if (zb) {
+      for (let i = 0; i < zb.vista.length; i++) d.sight.push(zb.vista[i]);
+      for (let i = 0; i < zb.passo.length; i++) d.move.push(zb.passo[i]);
     }
     d.sightAll = d.sight;
     if (d.curtains.length) { d.sightAll = d.sight.slice(); for (const c of d.curtains) d.sightAll.push(c.x1, c.y1, c.x2, c.y2); }
@@ -2654,7 +2670,9 @@ const Vision = (() => {
   }
 
   // Decide, a partir de uma operação do Store, o que precisa ser refeito.
-  function onOp(op) {
+  function onOp(op, inv) {
+    // (lote 7) a Fumaça e a Muralha de cristais barram a visão e a luz, como as paredes
+    if (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv)) { dirty = true; staticStale = true; return; }
     if (op.t === 'scn') {
       // Só o que muda luz, névoa ou o tamanho da cena pede recálculo; turnos, miras e clima, não.
       const p = op.p || {};
@@ -2727,7 +2745,8 @@ const FX = (() => {
     const cs = Math.cos(dir), sn = Math.sin(dir);
     const p = new Path2D();
     let cx = x, cy = y, inR = R, area, sample, hw = 0, hh = 0, hx = null, hy = null, lab = null;
-    if (e.k === 'rect') {
+    const k = e.fx === 'portal' ? 'circ' : e.k;          // (o portal é sempre de círculos)
+    if (k === 'rect') {
       // Retângulo: largura (rw) e altura (rh) em quadrados, centrado em (x, y) e girado por dir. Preso a um
       // token, fica centrado nele; as medidas são as do próprio retângulo (não somam o tamanho do token).
       hw = Math.max(cell * 0.25, (e.rw > 0 ? e.rw : 1) * cell) / 2;
@@ -2743,12 +2762,12 @@ const FX = (() => {
       for (const m of [[cs * hw, sn * hw], [-cs * hw, -sn * hw], [-sn * hh, cs * hh], [sn * hh, -cs * hh]]) if (!top || m[1] < top[1] - 1e-9) top = m;
       const tl = Math.hypot(top[0], top[1]) || 1;
       lab = { x: x + top[0], y: y + top[1], nx: -top[0] / tl, ny: -top[1] / tl };
-    } else if (e.k === 'quad') {
+    } else if (k === 'quad') {
       const pts = [[-R, -R], [R, -R], [R, R], [-R, R]].map(([a, b]) => [x + cs * a - sn * b, y + sn * a + cs * b]);
       p.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < 4; i++) p.lineTo(pts[i][0], pts[i][1]); p.closePath();
       area = 4 * R * R;
       sample = (u, v) => { const a = (u * 2 - 1) * R, b = (v * 2 - 1) * R; return [x + cs * a - sn * b, y + sn * a + cs * b]; };
-    } else if (e.k === 'cone') {
+    } else if (k === 'cone') {
       const ang = rad(clamp(e.ang || 60, 10, 340));
       p.moveTo(x, y); p.arc(x, y, R, dir - ang / 2, dir + ang / 2); p.closePath();
       area = R * R * ang / 2;
@@ -2756,7 +2775,7 @@ const FX = (() => {
       inR = R * s2 / (1 + s2);
       cx = x + cs * (R - inR); cy = y + sn * (R - inR);
       sample = (u, v) => { const rr = R * Math.sqrt(u), a = dir + (v - 0.5) * ang; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; };
-    } else if (e.k === 'line') {
+    } else if (k === 'line') {
       const wd = Math.max(cell * 0.25, (e.w || 1) * cell), hw = wd / 2;
       p.moveTo(x + sn * hw, y - cs * hw); p.lineTo(x + cs * R + sn * hw, y + sn * R - cs * hw);
       p.lineTo(x + cs * R - sn * hw, y + sn * R + cs * hw); p.lineTo(x - sn * hw, y + cs * hw); p.closePath();
@@ -2768,10 +2787,17 @@ const FX = (() => {
       area = Math.PI * R * R;
       sample = (u, v) => { const rr = R * Math.sqrt(u), a = v * TAU; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; };
     }
+    // (lote 7) o Portal: o segundo círculo, a saída, do mesmo tamanho, onde o mestre o deixou (x2, y2)
+    let x2 = null, y2 = null;
+    if (e.fx === 'portal' && Number.isFinite(e.x2) && Number.isFinite(e.y2)) {
+      x2 = e.x2; y2 = e.y2;
+      p.moveTo(x2 + R, y2); p.arc(x2, y2, R, 0, TAU);
+      area *= 2;
+    }
     // hw/hh: meia largura e meia altura; lab: âncora do rótulo de duração (os dois só existem no retângulo)
     return {
       path: p, x, y, cx, cy, R, inR, half, cell, dir, cs, sn, area: area / (cell * cell), sample,
-      hx: hx == null ? x + cs * R : hx, hy: hy == null ? y + sn * R : hy, hw, hh, lab, seed: 1,
+      hx: hx == null ? x + cs * R : hx, hy: hy == null ? y + sn * R : hy, hw, hh, lab, seed: 1, x2, y2,
     };
   }
 
@@ -3431,6 +3457,457 @@ const FX = (() => {
         runeRing(c, g, -t * 0.12, '#e0506a', (0.45 + 0.15 * Math.sin(t * 1.7)) * pow, 7, 3);
       },
     },
+
+    /* ---------- Lote 7: zonas novas ----------
+       Além do desenho, cada uma diz a regra (regra: o texto do painel). As que são só lembrete (lembra) avisam o mestre
+       quando alguém começa a vez dentro delas; as de condição (cond) já nascem com ela guardada, para a pergunta do
+       começo da vez; bloqueia e barra viram parede de visão e de passagem; pv são os pontos de vida da muralha. */
+    gelado: {
+      n: 'Chão congelado', tint: '#bfe6ff', base: 0.3, edge: '#f0faff', g: 'elem', sug: 'caido', lembra: true,
+      regra: 'o chão escorrega: quem corre pode cair',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 0.8, 2, 10, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.25 + i) * g.cell * 0.4, y, g.cell * (0.9 + hsh(i, 13, g.seed) * 0.7), '#ffffff', (0.14 + 0.06 * Math.sin(t * 0.6 + i)) * pow);
+        }
+        // as rachaduras no gelo (fixas, pela semente)
+        c.strokeStyle = '#ffffff'; c.lineCap = 'round'; c.lineJoin = 'round';
+        const n = cnt(g, 1.4, 3, 18, pow);
+        for (let i = 0; i < n; i++) {
+          let [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), a = hsh(i, 3, g.seed) * TAU;
+          c.globalAlpha = 0.55 * pow; c.lineWidth = Math.max(0.6, g.cell * 0.018);
+          c.beginPath(); c.moveTo(x, y);
+          for (let s = 0; s < 5; s++) { a += (hsh(i * 7 + s, 4, g.seed) - 0.5) * 1.2; const L = g.cell * (0.15 + hsh(i * 7 + s, 5, g.seed) * 0.25); x += Math.cos(a) * L; y += Math.sin(a) * L; c.lineTo(x, y); }
+          c.stroke();
+        }
+        // brilhos que piscam
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 2, 3, 26, pow);
+        for (let i = 0; i < b; i++) {
+          const tw = Math.max(0, Math.sin(t * (1.3 + hsh(i, 7, g.seed)) + hsh(i, 8, g.seed) * TAU));
+          if (tw < 0.2) continue;
+          const [x, y] = g.sample(hsh(i, 9, g.seed), hsh(i, 10, g.seed)), s = g.cell * 0.08 * tw;
+          c.globalAlpha = tw * 0.9 * pow; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+          c.beginPath(); c.moveTo(x - s, y); c.lineTo(x + s, y); c.moveTo(x, y - s); c.lineTo(x, y + s); c.stroke();
+        }
+      },
+    },
+    fumaca: {
+      n: 'Fumaça', tint: '#4d5258', base: 0.62, edge: '#a3aab3', g: 'elem', bloqueia: true,
+      regra: 'tapa a visão de todos: ninguém enxerga através dela',
+      draw(c, g, t, pow) {
+        // rolos de fumaça, em dois tons, girando devagar e subindo
+        const n = cnt(g, 2.6, 6, 44, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const sp = (0.1 + hsh(i, 3, g.seed) * 0.12) * (i % 2 ? 1 : -1);
+          const dx = Math.cos(t * sp + i * 1.9) * g.cell * 0.55, dy = Math.sin(t * sp + i * 1.9) * g.cell * 0.4 - ((t * 0.05 + hsh(i, 4, g.seed)) % 1) * g.cell * 0.2;
+          blob(c, x + dx, y + dy, g.cell * (0.8 + hsh(i, 5, g.seed) * 0.9), i % 3 ? '#8a9098' : '#3c4046', (0.32 + 0.1 * Math.sin(t * 0.4 + i)) * pow);
+        }
+      },
+    },
+    brasas: {
+      n: 'Brasas', tint: '#2a1208', base: 0.5, edge: '#ff8a3a', glow: true, g: 'elem', sug: 'fogo', lembra: true,
+      regra: 'queimam quem pisa',
+      draw(c, g, t, pow) {
+        // carvão em pedaços
+        const m = cnt(g, 2.5, 4, 40, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), r = g.cell * (0.1 + hsh(i, 3, g.seed) * 0.12);
+          c.globalAlpha = 0.8 * pow; c.fillStyle = hsh(i, 4, g.seed) > 0.5 ? '#1a0a05' : '#2e1408';
+          c.beginPath();
+          for (let k = 0; k <= 5; k++) { const a = k / 5 * TAU + hsh(i, 5, g.seed), rr = r * (0.7 + 0.3 * hsh(i * 5 + (k % 5), 6, g.seed)); if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+          c.closePath(); c.fill();
+        }
+        // o brilho das brasas, pulsando
+        c.globalCompositeOperation = 'lighter';
+        const n = cnt(g, 4, 6, 60, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 7, g.seed), hsh(i, 8, g.seed)), p = 0.5 + 0.5 * Math.sin(t * (1.2 + hsh(i, 9, g.seed) * 1.8) + i);
+          blob(c, x, y, g.cell * (0.1 + 0.08 * p), p > 0.6 ? '#ffb347' : '#ff5a1a', (0.35 + 0.5 * p) * pow);
+        }
+        // fagulhas subindo
+        const f = cnt(g, 1.6, 2, 24, pow);
+        for (let i = 0; i < f; i++) {
+          const ph = t * (0.5 + hsh(i, 11, g.seed) * 0.5) + hsh(i, 12, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 7, 13, g.seed), hsh(i + cyc * 7, 14, g.seed));
+          blob(c, x + Math.sin(t * 4 + i) * g.cell * 0.05, y - life * g.cell * 0.6, g.cell * 0.04, '#ffd27a', Math.sin(life * Math.PI) * 0.9 * pow);
+        }
+      },
+    },
+    cristais: {
+      n: 'Muralha de cristais de gelo', tint: '#8fd4ff', base: 0.42, edge: '#effaff', glow: true, g: 'elem', bloqueia: true, barra: true, pv: 30,
+      regra: 'barra a passagem e a visão até quebrar',
+      draw(c, g, t, pow) {
+        // prismas compridos, apertados, com a luz correndo neles
+        const n = cnt(g, 3.2, 5, 70, pow);
+        c.lineJoin = 'round';
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const a = -Math.PI / 2 + (hsh(i, 3, g.seed) - 0.5) * 1.1, L = g.cell * (0.35 + hsh(i, 4, g.seed) * 0.4), w = L * (0.22 + hsh(i, 5, g.seed) * 0.12);
+          const ux = Math.cos(a), uy = Math.sin(a), vx = -uy, vy = ux;
+          const pts = [[x - vx * w, y - vy * w], [x + ux * L * 0.75 - vx * w * 0.8, y + uy * L * 0.75 - vy * w * 0.8], [x + ux * L, y + uy * L], [x + ux * L * 0.75 + vx * w * 0.8, y + uy * L * 0.75 + vy * w * 0.8], [x + vx * w, y + vy * w]];
+          c.globalAlpha = 0.75 * pow; c.fillStyle = hsh(i, 6, g.seed) > 0.5 ? '#bfe8ff' : '#7fc4ee';
+          c.beginPath(); pts.forEach((q, k) => (k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.closePath(); c.fill();
+          c.globalAlpha = 0.6 * pow; c.strokeStyle = '#ffffff'; c.lineWidth = Math.max(0.6, g.cell * 0.018); c.stroke();
+          c.globalAlpha = (0.3 + 0.4 * Math.max(0, Math.sin(t * 1.2 + i * 0.7))) * pow;
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x + ux * L, y + uy * L); c.stroke();
+        }
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 1.5, 3, 20, pow);
+        for (let i = 0; i < b; i++) { const tw = Math.max(0, Math.sin(t * (1.1 + hsh(i, 7, g.seed)) + i * 2)), [x, y] = g.sample(hsh(i, 8, g.seed), hsh(i, 9, g.seed)); blob(c, x, y, g.cell * 0.12 * tw, '#ffffff', tw * 0.8 * pow); }
+      },
+    },
+    cinzas: {
+      n: 'Cinzas vulcânicas', tint: '#302a26', base: 0.42, edge: '#a39282', g: 'elem', sug: 'ofuscado', lembra: true,
+      regra: 'o ar arde: difícil de ver e de respirar',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x + Math.sin(t * 0.2 + i) * g.cell * 0.4, y, g.cell * (0.8 + hsh(i, 13, g.seed) * 0.6), i % 2 ? '#1e1a17' : '#5a524a', 0.3 * pow); }
+        // flocos de cinza caindo, levados de leve
+        const n = cnt(g, 7, 10, 100, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.18 + hsh(i, 3, g.seed) * 0.2) + hsh(i, 4, g.seed)) % 1, [x0, y0] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.7 * pow; c.fillStyle = hsh(i, 5, g.seed) > 0.7 ? '#e8e0d8' : '#8a8078';
+          c.beginPath(); c.arc(x0 + Math.sin(t * 0.8 + i) * g.cell * 0.15, y0 + (ph - 0.5) * g.cell * 1.2, Math.max(0.6, g.cell * (0.015 + hsh(i, 6, g.seed) * 0.025)), 0, TAU); c.fill();
+        }
+        // uma brasa ou outra
+        c.globalCompositeOperation = 'lighter';
+        const b = cnt(g, 0.6, 1, 8, pow);
+        for (let i = 0; i < b; i++) { const ph = (t * 0.35 + hsh(i, 7, g.seed)) % 1, [x, y] = g.sample(hsh(i, 8, g.seed), hsh(i, 9, g.seed)); blob(c, x, y + (ph - 0.5) * g.cell, g.cell * 0.05, '#ff8a3a', Math.sin(ph * Math.PI) * 0.8 * pow); }
+      },
+    },
+    correnteza: {
+      n: 'Correnteza', tint: '#1c5f92', base: 0.34, edge: '#8fd0ff', g: 'elem', lembra: true,
+      regra: 'empurra para o lado da seta (a bolinha da borda gira a seta)',
+      draw(c, g, t, pow) {
+        // a água correndo na direção do efeito
+        c.strokeStyle = '#cfeaff'; c.lineCap = 'round';
+        const n = cnt(g, 4, 8, 60, pow), span = g.R * 2.2;
+        for (let i = 0; i < n; i++) {
+          const sp = 0.4 + hsh(i, 3, g.seed) * 0.4, ph = (t * sp + hsh(i, 4, g.seed)) % 1;
+          const off = (hsh(i, 1, g.seed) - 0.5) * span, along = (ph - 0.5) * span;
+          const bx = g.cx + g.cs * along - g.sn * off, by = g.cy + g.sn * along + g.cs * off;
+          const len = g.cell * (0.4 + hsh(i, 5, g.seed) * 0.6), wv = Math.sin(t * 3 + i) * g.cell * 0.05;
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.55 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.035);
+          c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + g.cs * len * 0.5 - g.sn * wv, by + g.sn * len * 0.5 + g.cs * wv, bx + g.cs * len, by + g.sn * len); c.stroke();
+        }
+        // a seta, de leve, no meio
+        const L = Math.min(g.inR * 1.2, g.cell * 2.2), ax = g.cx + g.cs * L * 0.5, ay = g.cy + g.sn * L * 0.5, bx = g.cx - g.cs * L * 0.5, by = g.cy - g.sn * L * 0.5, s = L * 0.25;
+        c.globalAlpha = (0.3 + 0.1 * Math.sin(t * 2)) * pow; c.strokeStyle = '#e8f6ff'; c.lineWidth = Math.max(1.2, g.cell * 0.07); c.lineJoin = 'round';
+        c.beginPath(); c.moveTo(bx, by); c.lineTo(ax, ay);
+        c.moveTo(ax - g.cs * s - g.sn * s * 0.7, ay - g.sn * s + g.cs * s * 0.7); c.lineTo(ax, ay); c.lineTo(ax - g.cs * s + g.sn * s * 0.7, ay - g.sn * s - g.cs * s * 0.7); c.stroke();
+      },
+    },
+    aguaEletrica: {
+      n: 'Água eletrificada', tint: '#1c4f8a', base: 0.32, edge: '#cfe0ff', glow: true, g: 'elem', sug: 'eletrizado', lembra: true,
+      regra: 'dá choque em quem está dentro',
+      draw(c, g, t, pow) {
+        // as ondas da água
+        const n = cnt(g, 0.8, 2, 12, pow);
+        c.strokeStyle = '#bfe2ff';
+        for (let i = 0; i < n; i++) {
+          const ph = t * (0.25 + hsh(i, 3, g.seed) * 0.2) + hsh(i, 4, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 13, 1, g.seed), hsh(i + cyc * 13, 2, g.seed));
+          c.globalAlpha = (1 - life) * 0.45 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.03);
+          c.beginPath(); c.arc(x, y, life * g.cell, 0, TAU); c.stroke();
+        }
+        // faíscas correndo pela água
+        c.globalCompositeOperation = 'lighter'; c.lineCap = c.lineJoin = 'round';
+        const fr = Math.floor(t * 9), k = cnt(g, 1.2, 2, 14, pow);
+        for (let i = 0; i < k; i++) {
+          if (hsh(i, fr, g.seed) < 0.4) continue;
+          const a = g.sample(hsh(i, fr + 1, g.seed), hsh(i, fr + 2, g.seed)), L = g.cell * (0.4 + hsh(i, fr + 3, g.seed) * 0.5), ang = hsh(i, fr + 4, g.seed) * TAU;
+          c.beginPath(); c.moveTo(a[0], a[1]);
+          for (let s = 1; s <= 4; s++) { const f = s / 4; c.lineTo(a[0] + Math.cos(ang) * L * f + (hsh(i * 5 + s, fr, g.seed) - 0.5) * g.cell * 0.25, a[1] + Math.sin(ang) * L * f + (hsh(i * 5 + s, fr + 7, g.seed) - 0.5) * g.cell * 0.25); }
+          c.globalAlpha = 0.3 * pow; c.strokeStyle = '#7aa2ff'; c.lineWidth = g.cell * 0.09; c.stroke();
+          c.globalAlpha = 0.9 * pow; c.strokeStyle = '#f0f5ff'; c.lineWidth = Math.max(0.8, g.cell * 0.025); c.stroke();
+        }
+      },
+    },
+    vortice: {
+      n: 'Vórtice', tint: '#1e2a48', base: 0.32, edge: '#9ab8ff', glow: true, g: 'magia', lembra: true,
+      regra: 'puxa para o centro',
+      draw(c, g, t, pow) {
+        blob(c, g.cx, g.cy, g.inR * 0.45, '#05070f', 0.6 * pow);
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+        // os braços da espiral, girando
+        for (let k = 0; k < 5; k++) {
+          c.globalAlpha = 0.5 * pow; c.strokeStyle = k % 2 ? '#7fa2ff' : '#c9d8ff'; c.lineWidth = Math.max(0.8, g.cell * 0.04);
+          c.beginPath();
+          for (let s = 0; s <= 24; s++) { const f = s / 24, r = g.inR * (0.12 + 0.88 * f), a = t * 1.1 + k / 5 * TAU + (1 - f) * 3.2; if (s) c.lineTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); else c.moveTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); }
+          c.stroke();
+        }
+        // o que está sendo puxado
+        const n = cnt(g, 3.5, 6, 56, pow);
+        for (let i = 0; i < n; i++) {
+          const life = (t * (0.25 + hsh(i, 3, g.seed) * 0.3) + hsh(i, 4, g.seed)) % 1, d = g.inR * (1 - life * life), a = hsh(i, 1, g.seed) * TAU + life * 4 + t * 0.6;
+          blob(c, g.cx + Math.cos(a) * d, g.cy + Math.sin(a) * d, g.cell * (0.06 + 0.04 * (1 - life)), '#dfe8ff', Math.sin(life * Math.PI) * 0.8 * pow);
+        }
+      },
+    },
+    gravidade: {
+      n: 'Gravidade pesada', tint: '#241a36', base: 0.38, edge: '#b08aff', g: 'magia', sug: 'lento', lembra: true,
+      regra: 'tudo pesa: anda-se a metade, sem pular nem voar',
+      draw(c, g, t, pow) {
+        // anéis que afundam para o meio
+        c.strokeStyle = '#c9a8ff';
+        for (let k = 0; k < 5; k++) {
+          const f = ((k / 5) + t * 0.18) % 1, r = g.inR * (1 - f);
+          c.globalAlpha = (0.15 + f * 0.35) * pow; c.lineWidth = Math.max(1, g.cell * 0.05 * (1 - f * 0.6));
+          c.beginPath(); c.arc(g.cx, g.cy, Math.max(1, r), 0, TAU); c.stroke();
+        }
+        blob(c, g.cx, g.cy, g.inR * 0.5, '#0e0818', 0.35 * pow);
+        // pedrinhas caindo depressa
+        c.fillStyle = '#e2d4ff';
+        const n = cnt(g, 3, 5, 44, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (1.4 + hsh(i, 3, g.seed)) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          c.globalAlpha = Math.sin(ph * Math.PI) * 0.6 * pow;
+          c.fillRect(x - g.cell * 0.015, y + (ph - 0.5) * g.cell * 0.8, Math.max(0.8, g.cell * 0.03), g.cell * 0.12);
+        }
+      },
+    },
+    tempo: {
+      n: 'Distorção do tempo', tint: '#1f3340', base: 0.24, edge: '#9ff0e0', glow: true, g: 'magia', cond: 'lento', conds: ['lento', 'acelerado'],
+      regra: 'quem começa a vez dentro fica Lento ou Acelerado (o mestre confirma)',
+      draw(c, g, t, pow) {
+        const a0 = g.fxe && g.fxe.apply && g.fxe.apply.cond, v = a0 && a0.id === 'acelerado' ? 2.4 : -0.35;     // acelerado: os ponteiros correm; lento: andam para trás
+        c.globalCompositeOperation = 'lighter';
+        blob(c, g.cx, g.cy, g.inR * 0.9, '#6fe0d0', (0.1 + 0.05 * Math.sin(t)) * pow);
+        // o mostrador: a volta, as doze marcas e os ponteiros com o rastro
+        const r = g.inR * 0.86;
+        c.strokeStyle = '#c8fff4'; c.lineCap = 'round';
+        c.globalAlpha = 0.55 * pow; c.lineWidth = Math.max(1, g.cell * 0.035);
+        c.beginPath(); c.arc(g.cx, g.cy, r, 0, TAU); c.stroke();
+        for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.globalAlpha = (i % 3 ? 0.35 : 0.7) * pow; c.beginPath(); c.moveTo(g.cx + Math.cos(a) * r * 0.86, g.cy + Math.sin(a) * r * 0.86); c.lineTo(g.cx + Math.cos(a) * r * 0.97, g.cy + Math.sin(a) * r * 0.97); c.stroke(); }
+        const pont = (a, L, w, al) => { c.globalAlpha = al * pow; c.lineWidth = Math.max(1, g.cell * w); c.beginPath(); c.moveTo(g.cx, g.cy); c.lineTo(g.cx + Math.cos(a) * L, g.cy + Math.sin(a) * L); c.stroke(); };
+        for (let k = 3; k >= 0; k--) { const tt = t - k * 0.12; pont(tt * v - Math.PI / 2, r * 0.75, 0.05, k ? 0.12 : 0.8); pont(tt * v / 12 - Math.PI / 2, r * 0.5, 0.07, k ? 0.1 : 0.7); }
+        // grãos de areia flutuando
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const a = hsh(i, 1, g.seed) * TAU + t * v * 0.2 * (0.5 + hsh(i, 3, g.seed)), d = g.inR * (0.2 + hsh(i, 2, g.seed) * 0.75);
+          blob(c, g.cx + Math.cos(a) * d, g.cy + Math.sin(a) * d, g.cell * 0.05, '#e8fff9', (0.4 + 0.4 * Math.sin(t * 2 + i)) * pow);
+        }
+      },
+    },
+    portal: {
+      n: 'Portal', tint: '#2a1648', base: 0.3, edge: '#d7a6ff', glow: true, g: 'magia', portal: true,
+      regra: 'o token solto num círculo sai no outro',
+      draw(c, g, t, pow) {
+        const anel = (x, y, cor, cor2, sent) => {
+          blob(c, x, y, g.R * 0.95, '#0a0414', 0.5 * pow);
+          c.globalCompositeOperation = 'lighter';
+          blob(c, x, y, g.R * 1.05, cor, (0.18 + 0.06 * Math.sin(t * 2)) * pow);
+          c.lineCap = 'round';
+          for (let k = 0; k < 4; k++) {
+            c.globalAlpha = 0.55 * pow; c.strokeStyle = k % 2 ? cor : cor2; c.lineWidth = Math.max(0.8, g.cell * 0.05);
+            c.beginPath();
+            for (let s = 0; s <= 20; s++) { const f = s / 20, r = g.R * (0.15 + 0.8 * f), a = sent * t * 1.6 + k / 4 * TAU + (1 - f) * 2.6; if (s) c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else c.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+            c.stroke();
+          }
+          c.globalAlpha = (0.6 + 0.2 * Math.sin(t * 3)) * pow; c.strokeStyle = cor2; c.lineWidth = Math.max(1, g.cell * 0.06);
+          c.beginPath(); c.arc(x, y, g.R * 0.95, 0, TAU); c.stroke();
+          c.globalCompositeOperation = 'source-over';
+        };
+        anel(g.x, g.y, '#b27aff', '#f0dcff', 1);                    // a entrada, roxa
+        if (g.x2 != null) anel(g.x2, g.y2, '#5fd0ff', '#d6f6ff', -1);   // a saída, azul
+      },
+    },
+    runas: {
+      n: 'Runas-armadilha', tint: '#1a1006', base: 0.14, edge: '#ffb347', glow: true, g: 'magia', oculta: true,
+      regra: 'escondidas dos jogadores até você revelar; quem pisa nelas avisa você',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const p = 0.5 + 0.5 * Math.sin(t * 1.6);
+        blob(c, g.cx, g.cy, g.inR * 0.8, '#ff9a3a', (0.08 + 0.08 * p) * pow);
+        runeRing(c, g, t * 0.08, '#ffc77a', (0.45 + 0.3 * p) * pow, 7, 3);
+        // os glifos riscados no chão, acendendo um de cada vez
+        c.strokeStyle = '#ffd59a'; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = Math.max(0.8, g.cell * 0.035);
+        const n = cnt(g, 1.5, 3, 16, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed) * 0.8, hsh(i, 2, g.seed)), s = g.cell * 0.16, tipo = Math.floor(hsh(i, 4, g.seed) * 4);
+          c.globalAlpha = (0.2 + 0.7 * Math.max(0, Math.sin(t * 1.3 + hsh(i, 3, g.seed) * TAU))) * pow;
+          c.beginPath();
+          if (tipo === 0) { c.moveTo(x, y - s); c.lineTo(x, y + s); c.moveTo(x, y - s * 0.3); c.lineTo(x + s * 0.7, y - s); }
+          else if (tipo === 1) { c.moveTo(x - s * 0.6, y + s); c.lineTo(x, y - s); c.lineTo(x + s * 0.6, y + s); c.moveTo(x - s * 0.3, y + s * 0.2); c.lineTo(x + s * 0.3, y + s * 0.2); }
+          else if (tipo === 2) { c.moveTo(x - s * 0.6, y - s); c.lineTo(x + s * 0.6, y + s); c.moveTo(x + s * 0.6, y - s); c.lineTo(x - s * 0.6, y + s); }
+          else { c.moveTo(x, y - s); c.lineTo(x + s * 0.6, y); c.lineTo(x, y + s); c.lineTo(x - s * 0.6, y); c.closePath(); }
+          c.stroke();
+        }
+      },
+    },
+    selos: {
+      n: 'Formação de selos', tint: '#2a0a0a', base: 0.16, edge: '#ff6a5a', glow: true, g: 'magia', sug: 'agarrado', lembra: true,
+      regra: 'prende ou protege quem está dentro',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        blob(c, g.cx, g.cy, g.inR * 0.9, '#ff4a3a', (0.08 + 0.05 * Math.sin(t * 1.4)) * pow);
+        // o octógono e a estrela por dentro
+        c.strokeStyle = '#ff8a7a'; c.lineCap = 'round'; c.lineJoin = 'round';
+        const r = g.inR * 0.8, rot = t * 0.1;
+        c.globalAlpha = 0.6 * pow; c.lineWidth = Math.max(1, g.cell * 0.035);
+        c.beginPath(); for (let k = 0; k <= 8; k++) { const a = rot + k / 8 * TAU; if (k) c.lineTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); else c.moveTo(g.cx + Math.cos(a) * r, g.cy + Math.sin(a) * r); } c.stroke();
+        c.globalAlpha = 0.4 * pow;
+        c.beginPath(); for (let k = 0; k <= 8; k++) { const a = rot + (k * 3) / 8 * TAU; if (k) c.lineTo(g.cx + Math.cos(a) * r * 0.95, g.cy + Math.sin(a) * r * 0.95); else c.moveTo(g.cx + Math.cos(a) * r * 0.95, g.cy + Math.sin(a) * r * 0.95); } c.stroke();
+        // os talismãs, girando na volta de fora
+        c.globalCompositeOperation = 'source-over';
+        const rt = g.inR * 0.9, w = g.cell * 0.14, h2 = g.cell * 0.3;
+        for (let k = 0; k < 8; k++) {
+          const a = -rot * 2 + k / 8 * TAU;
+          c.save(); c.translate(g.cx + Math.cos(a) * rt, g.cy + Math.sin(a) * rt); c.rotate(a + Math.PI / 2);
+          c.globalAlpha = 0.85 * pow; c.fillStyle = '#f2dca0'; c.fillRect(-w / 2, -h2 / 2, w, h2);
+          c.strokeStyle = '#b8261a'; c.lineWidth = Math.max(0.6, g.cell * 0.02);
+          c.beginPath(); c.moveTo(0, -h2 * 0.35); c.lineTo(0, h2 * 0.35); c.moveTo(-w * 0.3, -h2 * 0.1); c.lineTo(w * 0.3, -h2 * 0.1); c.moveTo(-w * 0.3, h2 * 0.15); c.lineTo(w * 0.3, h2 * 0.15); c.stroke();
+          c.restore();
+        }
+      },
+    },
+    oleo: {
+      n: 'Óleo derramado', tint: '#15140f', base: 0.55, edge: '#6b6250', g: 'natureza', sug: 'oleo', lembra: true,
+      regra: 'escorrega, e pega fogo com uma faísca',
+      draw(c, g, t, pow) {
+        // poças escuras e lisas
+        const n = cnt(g, 1.2, 3, 16, pow);
+        c.fillStyle = '#0a0906';
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed)), r = g.cell * (0.35 + hsh(i, 3, g.seed) * 0.4);
+          c.globalAlpha = 0.6 * pow;
+          c.beginPath();
+          for (let k = 0; k <= 12; k++) { const a = k / 12 * TAU, rr = r * (0.8 + 0.25 * hsh(i * 13 + (k % 12), 4, g.seed)); if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.7); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.7); }
+          c.closePath(); c.fill();
+        }
+        // o furta-cor escorrendo devagar por cima
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+        const cores = ['#7a3f9a', '#2f7f8a', '#8a7a2a'], m = cnt(g, 1.5, 3, 20, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 5, g.seed), hsh(i, 6, g.seed)), r = g.cell * (0.2 + hsh(i, 7, g.seed) * 0.3), a0 = t * (0.1 + hsh(i, 8, g.seed) * 0.15) + i;
+          c.globalAlpha = (0.18 + 0.1 * Math.sin(t * 0.7 + i)) * pow; c.strokeStyle = cores[i % 3]; c.lineWidth = Math.max(0.8, g.cell * 0.05);
+          c.beginPath(); c.ellipse(x, y, r, r * 0.55, 0, a0, a0 + 2.2); c.stroke();
+        }
+      },
+    },
+    lama: {
+      n: 'Lama', tint: '#4f3720', base: 0.58, edge: '#8a6a42', g: 'natureza', sug: 'lento', lembra: true,
+      regra: 'só se anda a metade',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x, y, g.cell * (0.6 + hsh(i, 13, g.seed) * 0.6), i % 2 ? '#3a2814' : '#6a4a2a', 0.35 * pow); }
+        // sulcos
+        c.strokeStyle = '#2a1c0e'; c.lineCap = 'round';
+        const s = cnt(g, 1.2, 2, 14, pow);
+        for (let i = 0; i < s; i++) {
+          const [x, y] = g.sample(hsh(i, 21, g.seed), hsh(i, 22, g.seed)), a = hsh(i, 23, g.seed) * TAU, L = g.cell * (0.3 + hsh(i, 24, g.seed) * 0.4);
+          c.globalAlpha = 0.45 * pow; c.lineWidth = Math.max(0.8, g.cell * 0.04);
+          c.beginPath(); c.moveTo(x - Math.cos(a) * L, y - Math.sin(a) * L); c.quadraticCurveTo(x + Math.cos(a + 1.5) * L * 0.2, y + Math.sin(a + 1.5) * L * 0.2, x + Math.cos(a) * L, y + Math.sin(a) * L); c.stroke();
+        }
+        // bolhas que estouram devagar
+        c.strokeStyle = '#a8865a';
+        const b = cnt(g, 1, 2, 14, pow);
+        for (let i = 0; i < b; i++) {
+          const ph = t * (0.2 + hsh(i, 7, g.seed) * 0.2) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 9, 9, g.seed), hsh(i + cyc * 9, 10, g.seed));
+          c.globalAlpha = (life < 0.8 ? 0.6 : (1 - life) / 0.2 * 0.6) * pow; c.lineWidth = Math.max(0.6, g.cell * 0.025);
+          c.beginPath(); c.arc(x, y, g.cell * 0.1 * (0.3 + life * 0.7), Math.PI, TAU); c.stroke();
+        }
+      },
+    },
+    jardim: {
+      n: 'Jardim florescendo', tint: '#2a5226', base: 0.26, edge: '#a8e890', g: 'natureza', sug: 'regen', lembra: true,
+      regra: 'cura quem está dentro',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.2, 3, 16, pow);
+        for (let i = 0; i < m; i++) { const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed)); blob(c, x, y, g.cell * (0.6 + hsh(i, 13, g.seed) * 0.5), '#5fa84a', 0.25 * pow); }
+        // as flores abrindo e fechando, cada uma no seu tempo
+        const cores = ['#ff8fc0', '#ffe27a', '#ffffff', '#c9a0ff'], n = cnt(g, 2.4, 4, 36, pow);
+        for (let i = 0; i < n; i++) {
+          const [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          const ab = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * (0.5 + hsh(i, 3, g.seed) * 0.5) + hsh(i, 4, g.seed) * TAU));
+          const r = g.cell * (0.08 + hsh(i, 5, g.seed) * 0.07) * ab, rot = hsh(i, 6, g.seed) * TAU + t * 0.1;
+          c.globalAlpha = 0.85 * pow; c.fillStyle = cores[i % 4];
+          for (let k = 0; k < 5; k++) { const a = rot + k / 5 * TAU; c.beginPath(); c.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.9, r * 0.5, a, 0, TAU); c.fill(); }
+          c.fillStyle = '#f2b02a'; c.beginPath(); c.arc(x, y, r * 0.45, 0, TAU); c.fill();
+        }
+        // brilhos verdes subindo
+        c.globalCompositeOperation = 'lighter';
+        const p = cnt(g, 1.5, 2, 20, pow);
+        for (let i = 0; i < p; i++) {
+          const ph = t * (0.2 + hsh(i, 7, g.seed) * 0.2) + hsh(i, 8, g.seed), life = ph % 1, cyc = Math.floor(ph);
+          const [x, y] = g.sample(hsh(i + cyc * 5, 9, g.seed), hsh(i + cyc * 5, 10, g.seed));
+          blob(c, x + Math.sin(t + i) * g.cell * 0.1, y - life * g.cell * 0.5, g.cell * 0.06, '#9fffb0', Math.sin(life * Math.PI) * 0.6 * pow);
+        }
+      },
+    },
+    espiritos: {
+      n: 'Névoa de espíritos', tint: '#16262e', base: 0.32, edge: '#9ff0ff', glow: true, g: 'sagrado', cond: 'medo',
+      regra: 'quem começa a vez dentro fica Amedrontado (o mestre confirma)',
+      draw(c, g, t, pow) {
+        const m = cnt(g, 1.6, 3, 20, pow);
+        for (let i = 0; i < m; i++) {
+          const [x, y] = g.sample(hsh(i, 11, g.seed), hsh(i, 12, g.seed));
+          blob(c, x + Math.sin(t * 0.2 + i) * g.cell * 0.5, y + Math.cos(t * 0.17 + i) * g.cell * 0.3, g.cell * (0.8 + hsh(i, 13, g.seed) * 0.6), '#bfefff', (0.1 + 0.05 * Math.sin(t * 0.5 + i)) * pow);
+        }
+        // os espíritos: rostos pálidos com um rastro, rodando
+        const n = cnt(g, 0.9, 2, 12, pow);
+        for (let i = 0; i < n; i++) {
+          const sp = (0.15 + hsh(i, 3, g.seed) * 0.2) * (i % 2 ? 1 : -1), a = hsh(i, 1, g.seed) * TAU + t * sp, d = g.inR * (0.25 + hsh(i, 2, g.seed) * 0.6);
+          const x = g.cx + Math.cos(a) * d, y = g.cy + Math.sin(a) * d + Math.sin(t * 1.3 + i) * g.cell * 0.08, s = g.cell * (0.16 + hsh(i, 4, g.seed) * 0.08);
+          const fade = 0.45 + 0.35 * Math.sin(t * 0.9 + i * 1.7);
+          c.globalCompositeOperation = 'lighter';
+          for (let k = 1; k <= 4; k++) { const ak = a - sp * k * 0.35; blob(c, g.cx + Math.cos(ak) * d, g.cy + Math.sin(ak) * d, s * (1 - k * 0.15), '#a8f0ff', fade * 0.15 * pow); }
+          blob(c, x, y, s * 1.5, '#dffaff', fade * 0.8 * pow);
+          blob(c, x, y, s * 0.9, '#ffffff', fade * 0.5 * pow);
+          c.globalCompositeOperation = 'source-over';
+          c.globalAlpha = fade * 0.85 * pow; c.fillStyle = '#0a1a22';
+          c.beginPath(); c.arc(x - s * 0.3, y - s * 0.1, s * 0.13, 0, TAU); c.arc(x + s * 0.3, y - s * 0.1, s * 0.13, 0, TAU); c.fill();
+          c.beginPath(); c.ellipse(x, y + s * 0.35, s * 0.14, s * 0.22, 0, 0, TAU); c.fill();
+        }
+      },
+    },
+    santuario: {
+      n: 'Santuário', tint: '#fff0c0', base: 0.12, edge: '#fff8de', glow: true, g: 'sagrado', lembra: true,
+      regra: 'ninguém ataca dentro',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        const p = 0.5 + 0.5 * Math.sin(t * 0.8);
+        blob(c, g.cx, g.cy, g.inR * 1.1, '#fff2c8', (0.14 + 0.06 * p) * pow);
+        // a cúpula: a borda clara, por dentro
+        c.strokeStyle = '#fff8e0';
+        for (let k = 0; k < 3; k++) { c.globalAlpha = (0.18 + 0.1 * Math.sin(t * 1.2 + k)) * pow; c.lineWidth = Math.max(1, g.cell * (0.08 - k * 0.02)); c.beginPath(); c.arc(g.cx, g.cy, g.inR * (0.97 - k * 0.05), 0, TAU); c.stroke(); }
+        // a flor de lótus no meio
+        c.fillStyle = '#fffbe8';
+        const r = g.inR * 0.22;
+        for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + t * 0.05; c.globalAlpha = (0.25 + 0.15 * p) * pow; c.beginPath(); c.ellipse(g.cx + Math.cos(a) * r * 0.6, g.cy + Math.sin(a) * r * 0.6, r * 0.6, r * 0.25, a, 0, TAU); c.fill(); }
+        // poeira de luz subindo devagar
+        const n = cnt(g, 2, 4, 30, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.1 + hsh(i, 3, g.seed) * 0.12) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          blob(c, x, y - ph * g.cell * 0.4, g.cell * 0.06, '#fffaf0', Math.sin(ph * Math.PI) * 0.7 * pow);
+        }
+      },
+    },
+    luaSangue: {
+      n: 'Lua de sangue', tint: '#3a060c', base: 0.34, edge: '#ff4a5a', glow: true, g: 'sagrado', cond: 'furia',
+      regra: 'quem começa a vez dentro entra em Fúria (o mestre confirma)',
+      draw(c, g, t, pow) {
+        c.globalCompositeOperation = 'lighter';
+        // a luz vermelha da lua, de cima
+        const p = 0.5 + 0.5 * Math.sin(t * 0.7), my = g.cy - g.inR * 0.25;
+        blob(c, g.cx, my, g.inR * 1.2, '#ff2a3a', (0.14 + 0.06 * p) * pow);
+        blob(c, g.cx, my, g.inR * 0.35, '#ff8a8a', (0.35 + 0.1 * p) * pow);
+        c.save(); c.translate(g.cx, my); c.rotate(t * 0.05);
+        c.fillStyle = '#ff6a6a';
+        for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, w = 0.06; c.globalAlpha = (0.06 + 0.04 * Math.sin(t * 1.3 + i)) * pow; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a - w) * g.inR * 1.3, Math.sin(a - w) * g.inR * 1.3); c.lineTo(Math.cos(a + w) * g.inR * 1.3, Math.sin(a + w) * g.inR * 1.3); c.closePath(); c.fill(); }
+        c.restore();
+        // gotas de luz caindo
+        const n = cnt(g, 2.4, 4, 36, pow);
+        for (let i = 0; i < n; i++) {
+          const ph = (t * (0.3 + hsh(i, 3, g.seed) * 0.3) + hsh(i, 4, g.seed)) % 1, [x, y] = g.sample(hsh(i, 1, g.seed), hsh(i, 2, g.seed));
+          blob(c, x, y + (ph - 0.5) * g.cell * 0.6, g.cell * 0.05, '#ff9a9a', Math.sin(ph * Math.PI) * 0.7 * pow);
+        }
+      },
+    },
   };
   /* As categorias da biblioteca (para as abas), e cada efeito antigo na dele */
   const TAGS = [{ id: 'elem', n: 'Elementos' }, { id: 'magia', n: 'Magia' }, { id: 'natureza', n: 'Natureza' }, { id: 'sagrado', n: 'Sagrado e sombrio' }];
@@ -3438,14 +3915,17 @@ const FX = (() => {
     ['sombra', 'sagrado'], ['cura', 'sagrado'], ['sagrado', 'sagrado'], ['arcano', 'magia'], ['antimagia', 'magia'], ['tinta', 'magia']]) P[id].g = gr;
   P.fogo.sug = 'fogo'; P.gelo.sug = 'gelo'; P.raio.sug = 'atordoado'; P.agua.sug = 'molhado'; P.veneno.sug = 'veneno'; P.cura.sug = 'regen'; P.sagrado.sug = 'bencao'; P.sombra.sug = 'medo'; P.tinta.sug = 'cego';
   const ORDER = ['fogo', 'gelo', 'raio', 'agua', 'vento', 'terra', 'lava', 'areia', 'tempestade', 'nevasca', 'acida',
+    'gelado', 'fumaca', 'brasas', 'cristais', 'cinzas', 'correnteza', 'aguaEletrica',
     'arcano', 'antimagia', 'tinta', 'escuridao', 'teia', 'barreira', 'circulo', 'silencio',
-    'veneno', 'nevoa', 'toxica', 'espinhos', 'esporos', 'pantano',
-    'cura', 'sagrado', 'aura', 'consagrado', 'sombra', 'chamasNegras', 'maldicao'];
+    'vortice', 'gravidade', 'tempo', 'portal', 'runas', 'selos',
+    'veneno', 'nevoa', 'toxica', 'espinhos', 'esporos', 'pantano', 'oleo', 'lama', 'jardim',
+    'cura', 'sagrado', 'aura', 'consagrado', 'sombra', 'chamasNegras', 'maldicao', 'espiritos', 'santuario', 'luaSangue'];
 
   function draw(ctx, e, g, t, px) {
     const pr = P[e.fx] || P.fogo;
     const pow = clamp(e.pow == null ? 0.8 : e.pow, 0.2, 1);
     g.seed = e.seed || 1;
+    g.fxe = e;                                       // (o efeito inteiro, para o desenho que depende dele: a Distorção do tempo)
     ctx.save();
     ctx.clip(g.path);
     ctx.fillStyle = hexA(pr.tint, pr.base * (0.5 + pow * 0.6) * (0.88 + 0.12 * Math.sin(t * 1.2 + g.seed)));
@@ -3457,6 +3937,85 @@ const FX = (() => {
     ctx.globalAlpha = 0.2 + 0.2 * pow; ctx.lineWidth = 5 * px; ctx.stroke(g.path);
     ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 * px; ctx.stroke(g.path);
     ctx.restore();
+  }
+
+  /* ---- (lote 7) o que as zonas fazem na cena ---- */
+  // O contorno de uma área em pontos (o círculo em 28 lados): é o que vira parede de visão e de passagem.
+  function contorno(e, sc) {
+    const g = geom(e, sc), out = [], k = e.fx === 'portal' ? 'circ' : e.k;
+    const gira = (a, b) => [g.x + g.cs * a - g.sn * b, g.y + g.sn * a + g.cs * b];
+    if (k === 'rect') for (const [a, b] of [[-g.hw, -g.hh], [g.hw, -g.hh], [g.hw, g.hh], [-g.hw, g.hh]]) out.push(gira(a, b));
+    else if (k === 'quad') for (const [a, b] of [[-g.R, -g.R], [g.R, -g.R], [g.R, g.R], [-g.R, g.R]]) out.push(gira(a, b));
+    else if (k === 'cone') {
+      const ang = rad(clamp(e.ang || 60, 10, 340));
+      out.push([g.x, g.y]);
+      for (let i = 0; i <= 16; i++) { const a = g.dir - ang / 2 + ang * i / 16; out.push([g.x + Math.cos(a) * g.R, g.y + Math.sin(a) * g.R]); }
+    } else if (k === 'line') {
+      const hw = Math.max(sc.cell * 0.25, (e.w || 1) * sc.cell) / 2;
+      out.push([g.x + g.sn * hw, g.y - g.cs * hw], [g.x + g.cs * g.R + g.sn * hw, g.y + g.sn * g.R - g.cs * hw], [g.x + g.cs * g.R - g.sn * hw, g.y + g.sn * g.R + g.cs * hw], [g.x - g.sn * hw, g.y + g.cs * hw]);
+    } else for (let i = 0; i < 28; i++) { const a = i / 28 * TAU; out.push([g.x + Math.cos(a) * g.R, g.y + Math.sin(a) * g.R]); }
+    return out;
+  }
+  const ehBarreira = e => !!e && !!P[e.fx] && !!(P[e.fx].bloqueia || P[e.fx].barra);
+  /* As zonas que tapam a visão (Fumaça, Muralha de cristais) e as que barram a passagem (a Muralha), como trechos de
+     parede: { vista: [x1, y1, x2, y2, …], passo: […] }. A zona só do mestre não barra nada (os jogadores nem a veem). */
+  function barreiras(sc) {
+    const vista = [], passo = [];
+    for (const e of sc.effects || []) {
+      const pr = P[e.fx];
+      if (!pr || e.gm || !(pr.bloqueia || pr.barra)) continue;
+      const pts = contorno(e, sc);
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if (pr.bloqueia) vista.push(a[0], a[1], b[0], b[1]);
+        if (pr.barra) passo.push(a[0], a[1], b[0], b[1]);
+      }
+    }
+    return { vista, passo };
+  }
+  // Esta operação do Store mexe em alguma barreira? (para as paredes e a visão serem refeitas só quando precisa)
+  function mexeNaBarreira(op, inv) {
+    if (!op) return false;
+    if (op.c === 'effects') {
+      if (op.t === 'add') return ehBarreira(op.v);
+      if (op.t === 'del') return ehBarreira(inv && inv.v);
+      if (op.t === 'upd') return ehBarreira(Store.get('effects', op.id)) || (!!inv && !!inv.p && 'fx' in inv.p && ehBarreira({ fx: inv.p.fx }));
+      return false;
+    }
+    if (op.c === 'tokens' && op.t === 'upd' && op.p && ('x' in op.p || 'y' in op.p || 'size' in op.p)) return (Store.scene().effects || []).some(e => e.token === op.id && ehBarreira(e));
+    return false;
+  }
+  /* As combinações: uma zona que dispara (o fogo) em cima de outra que muda (o óleo). O site sugere; o mestre confirma,
+     e a zona que muda vira o resultado (a que disparou sai). sug: a condição sugerida para quem estava dentro. */
+  const COMBOS = [
+    { gat: ['fogo', 'lava', 'chamasNegras', 'brasas'], base: ['oleo'], res: 'fogo', titulo: 'Fogo no óleo: explosão?', feito: 'O óleo explodiu em fogo', sug: 'fogo' },
+    { gat: ['raio', 'tempestade'], base: ['agua', 'pantano', 'correnteza'], res: 'aguaEletrica', titulo: 'Raio na água: eletrificar?', feito: 'A água ficou eletrificada', sug: 'eletrizado' },
+    { gat: ['gelo', 'nevasca'], base: ['agua', 'correnteza'], res: 'gelado', titulo: 'Gelo na água: congelar o chão?', feito: 'A água congelou', sug: 'gelo' },
+  ];
+  let riscador = null;
+  const pontoEm = (path, x, y) => { if (!riscador) riscador = document.createElement('canvas').getContext('2d'); return riscador.isPointInPath(path, x, y); };
+  // As duas áreas se tocam? (pontos de cada uma, numa grade, caindo dentro da outra)
+  function seTocam(a, b, sc) {
+    const ga = geom(a, sc), gb = geom(b, sc);
+    for (const [g1, g2] of [[ga, gb], [gb, ga]]) {
+      if (pontoEm(g2.path, g1.cx, g1.cy)) return true;
+      for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) { const [x, y] = g1.sample(i / 6, j / 6); if (pontoEm(g2.path, x, y)) return true; }
+    }
+    return false;
+  }
+  // As combinações que envolvem as zonas de `ids` (as que acabaram de mudar): [{ gat, base, regra }]
+  function combinacoes(sc, ids) {
+    const out = [], quer = new Set(ids || []);
+    for (const r of COMBOS) {
+      for (const a of sc.effects || []) {
+        if (!r.gat.includes(a.fx)) continue;
+        for (const b of sc.effects || []) {
+          if (b === a || !r.base.includes(b.fx) || !(quer.has(a.id) || quer.has(b.id))) continue;
+          if (seTocam(a, b, sc)) out.push({ gat: a, base: b, regra: r });
+        }
+      }
+    }
+    return out;
   }
 
   // Miniatura para a biblioteca.
@@ -3471,7 +4030,7 @@ const FX = (() => {
     draw(g2, e, g, t, w / 56);
   }
 
-  return { P, ORDER, TAGS, geom, draw, thumb, hsh, blob };
+  return { P, ORDER, TAGS, geom, draw, thumb, hsh, blob, contorno, barreiras, mexeNaBarreira, ehBarreira, COMBOS, combinacoes, seTocam, pontoEm };
 })();
 /* ---------------------------------------------------------------
    6b. OBJETOS DE CENÁRIO — tochas, fogueiras, móveis, árvores, armadilhas…
@@ -4293,12 +4852,60 @@ function acertarCondicoes(t, antes) {
   if (mudou) { p.conds = conds; p.cinfo = info; }
   return Object.keys(p).length ? p : null;
 }
-/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }; só o que mudou). As inversas
-   vêm da mais nova para a mais antiga: a última que mexeu numa coisa é a que guarda como ela estava no começo. */
-function antesDoToken(inv, id) {
-  const out = {};
-  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ['bars', 'conds']) if (k in op.p) out[k] = op.p[k];
+/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }, ou as chaves pedidas; só o que
+   mudou). As inversas vêm da mais nova para a mais antiga: a última que mexeu numa coisa guarda como ela estava no
+   começo. */
+function antesDoToken(inv, id, chaves) {
+  const out = {}, ks = chaves || ['bars', 'conds'];
+  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ks) if (k in op.p) out[k] = op.p[k];
   return out;
+}
+
+/* ---- (lote 7) o Portal e as Runas-armadilha ----
+   O token que é solto dentro de um dos círculos de um Portal — o centro dele estava fora dos dois e agora está num —
+   vai para o centro do outro círculo, no mesmo passo (o mesmo Desfazer). Quem acerta é o programa do mestre, como nas
+   condições: o pedido de um jogador atravessa num passo logo depois. E o token que entra nas Runas-armadilha
+   escondidas avisa o mestre (nada muda: Store.emit('runas')). */
+const centroTok = (t, sc, x, y) => { const h = t.size * sc.cell / 2; return [(x == null ? t.x : x) + h, (y == null ? t.y : y) + h]; };
+const portaisDe = sc => (sc.effects || []).filter(e => e.fx === 'portal' && !e.token && Number.isFinite(e.x2) && Number.isFinite(e.y2));
+// → { x, y, portal } (para onde o token vai) ou null. antes: { x, y } de antes do passo (só o que mudou)
+function atravessar(t, antes, sc) {
+  if (!t || t.prop || !antes || !('x' in antes || 'y' in antes)) return null;
+  const [ax, ay] = centroTok(t, sc, antes.x, antes.y), [bx, by] = centroTok(t, sc);
+  for (const e of portaisDe(sc)) {
+    const g = FX.geom(e, sc), dentro = (x, y, cx, cy) => Math.hypot(x - cx, y - cy) <= g.R;
+    if (dentro(ax, ay, g.x, g.y) || dentro(ax, ay, g.x2, g.y2)) continue;          // já estava num dos círculos: não atravessa
+    const ent = dentro(bx, by, g.x, g.y), sai = !ent && dentro(bx, by, g.x2, g.y2);
+    if (!ent && !sai) continue;
+    const h = t.size * sc.cell / 2, [cx, cy] = ent ? [g.x2, g.y2] : [g.x, g.y];
+    const [x, y] = snapTok(sc, cx - h, cy - h, t.size, false);
+    return { x, y, portal: e.id };
+  }
+  return null;
+}
+// As runas escondidas em que o centro do token entrou neste passo
+function runasPisadas(t, antes, sc) {
+  if (!t || t.prop || !antes || !('x' in antes || 'y' in antes)) return [];
+  const [ax, ay] = centroTok(t, sc, antes.x, antes.y), [bx, by] = centroTok(t, sc);
+  return (sc.effects || []).filter(e => e.fx === 'runas' && e.gm && (() => { const p = FX.geom(e, sc).path; return areaCtx.isPointInPath(p, bx, by) && !areaCtx.isPointInPath(p, ax, ay); })());
+}
+const mexeuNoLugar = op => op.t === 'upd' && op.c === 'tokens' && !!op.p && ('x' in op.p || 'y' in op.p);
+// A saída de um portal novo: ao lado da entrada, a um raio de folga (do outro lado, se não couber na cena).
+function saidaDoPortal(e, sc) {
+  const R = (e.r || 1) * sc.cell, d = 2 * R + sc.cell, W = sceneW(sc), y = clamp(e.y, R, Math.max(R, sceneH(sc) - R));
+  const x = e.x + d + R <= W ? e.x + d : Math.max(R, e.x - d);
+  return { x2: x, y2: y };
+}
+/* O remendo para trocar o tipo de uma zona (lote 7): o portal ganha a saída (e se solta do token), a muralha os pontos
+   de vida, a zona de condição a condição dela; a condição guardada pela zona de antes (sem dano) sai junto com ela. */
+function trocaDeZona(e, fx, sc) {
+  const p = { fx }, pr = FX.P[fx] || {}, ant = FX.P[e.fx] || {};
+  if (pr.portal) { p.k = 'circ'; p.token = null; if (!(Number.isFinite(e.x2) && Number.isFinite(e.y2))) { const g = FX.geom(e, sc); Object.assign(p, saidaDoPortal({ x: g.x, y: g.y, r: e.r }, sc), { x: g.x, y: g.y }); } }
+  if (pr.pv > 0 && !(e.pvm > 0)) { p.pv = pr.pv; p.pvm = pr.pv; }
+  const soCond = a => !!a && !!a.cond && !areaAmount(a.amt);
+  if (pr.cond) { const q = e.apply && e.apply.cond && e.apply.cond.id; if (!e.apply || (soCond(e.apply) && !(pr.conds || [pr.cond]).includes(q))) p.apply = { bar: '', amt: '', cond: { id: pr.cond, n: 0, d: 0 }, skip: [] }; }
+  else if (ant.cond && soCond(e.apply) && (ant.conds || [ant.cond]).includes(e.apply.cond.id)) p.apply = null;
+  return p;
 }
 const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
 Store.aoFechar(tx => {
@@ -4308,6 +4915,13 @@ Store.aoFechar(tx => {
     const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
     if (p) Store.upd('tokens', id, p);
   }
+  // (lote 7) o portal e as runas: só os tokens que mudaram de lugar neste passo
+  const sc = Store.scene(), andou = [...new Set(tx.fwd.filter(mexeuNoLugar).map(op => op.id))];
+  for (const id of andou) {
+    const t = Store.get('tokens', id), antes = antesDoToken(tx.inv, id, ['x', 'y']), v = atravessar(t, antes, sc);
+    if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
+    for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+  }
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
@@ -4315,6 +4929,18 @@ Store.on('commit', e => {
   const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
   if (mud.length) setTimeout(() => Store.tx('Condição', () => {
     for (const [id] of mud) { const p = acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id)); if (p) Store.upd('tokens', id, p); }
+  }), 0);
+  // (lote 7) o token que um jogador soltou num portal atravessa num passo logo depois; o que pisou nas runas avisa
+  const sc = Store.scene(), andou = [...new Set((e.ops || []).filter(mexeuNoLugar).map(op => op.id))];
+  const vao = [];
+  for (const id of andou) {
+    const t = Store.get('tokens', id), antes = antesDoToken(e.inv, id, ['x', 'y']);
+    if (atravessar(t, antes, sc)) vao.push([id, antes]);
+    else for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+  }
+  if (vao.length) setTimeout(() => Store.tx('Atravessar o portal', () => {
+    const agora = Store.scene();
+    for (const [id, antes] of vao) { const v = atravessar(Store.get('tokens', id), antes, agora); if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); } }
   }), 0);
 });
 
@@ -6032,12 +6658,18 @@ const Proj = (() => {
     if (!ehObj(v) || !idOk(v.id) || !FX_FORMAS.includes(v.k) || !tem(FX.P, v.fx)) return null;      // só os efeitos da biblioteca
     // preso a um token: só a um dele (ou de todos), como a tela do jogador deixa
     const tk = v.token ? sc.tokens.find(t => t.id === v.token && !t.hidden && (t.owner === quem || t.owner === '*')) : null;
-    const dur = Math.round(num(v.dur, 0, 99, 0));
-    return {
+    const dur = Math.round(num(v.dur, 0, 99, 0)), pr = FX.P[v.fx];
+    const o = {
       id: v.id, fx: v.fx, k: v.k, x: num(v.x, -1e5, 1e5, 0), y: num(v.y, -1e5, 1e5, 0), r: num(v.r, 0.5, 60, 2), w: num(v.w, 0.25, 60, 1), rw: num(v.rw, 0.5, 120, 3), rh: num(v.rh, 0.5, 120, 2),
       ang: num(v.ang, 10, 340, 60), dir: num(v.dir, 0, 360, 0), pow: num(v.pow, 0.1, 1, 0.8), token: tk ? tk.id : null, gm: false, by: quem,
       seed: Math.round(num(v.seed, 1, 99999, 1)), dur, dur0: dur ? Math.round(num(v.dur0, dur, 99, dur)) : 0, at: dur && typeof v.at === 'string' && sc.turn.list.some(e => e.id === v.at) ? v.at : null, apply: null,
     };
+    // (lote 7) o portal do jogador: a saída (e nunca preso a token); a muralha: os pontos de vida; a zona de condição: a
+    // condição dela, para a pergunta do começo da vez (na Distorção do tempo, Lento ou Acelerado)
+    if (pr.portal) { o.k = 'circ'; o.token = null; if (typeof v.x2 === 'number' && typeof v.y2 === 'number') { o.x2 = num(v.x2, -1e5, 1e5, 0); o.y2 = num(v.y2, -1e5, 1e5, 0); } }
+    if (pr.pv > 0) { o.pvm = Math.round(num(v.pvm, 1, 9999, pr.pv)); o.pv = Math.round(num(v.pv, 0, o.pvm, o.pvm)); }
+    if (pr.cond) { const q = v.apply && v.apply.cond && v.apply.cond.id; o.apply = { bar: '', amt: '', cond: { id: (pr.conds || [pr.cond]).includes(q) ? q : pr.cond, n: 0, d: 0 }, skip: [] }; }
+    return o;
   }
   function remendoEfeito(e, p, sc) {
     if (!ehObj(p)) return null;
@@ -8166,6 +8798,8 @@ const Render = (() => {
         ctx.setLineDash([7 * px, 5 * px]);
         ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3.5 * px; ctx.stroke(g.path);
         ctx.strokeStyle = theme.lamp; ctx.lineWidth = 1.8 * px; ctx.stroke(g.path);
+        // (lote 7) o portal selecionado: a linha que liga a entrada à saída
+        if (g.x2 != null) { ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x2, g.y2); ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3 * px; ctx.stroke(); ctx.strokeStyle = theme.lamp; ctx.lineWidth = 1.4 * px; ctx.stroke(); }
       }
     }
     ctx.setLineDash([]);
@@ -8304,6 +8938,20 @@ const Render = (() => {
       const ly = g.lab ? g.lab.y + g.lab.ny * 11 * px : mid ? g.cy : g.y - g.R + 11 * px;
       if (!gm && !Vision.canSee(lx, ly)) continue;
       label(ctx, e.dur === 1 ? '1 rodada' : e.dur + ' rodadas', lx, ly, px, { size: 10.5 });
+    }
+  }
+
+  /* (lote 7) Os pontos de vida da Muralha de cristais, só para o mestre: uma barrinha com os números, no meio dela. */
+  function drawPvZonas(sc, px) {
+    if (!isGM()) return;
+    for (const e of sc.effects) {
+      const pr = FX.P[e.fx];
+      if (!pr || !(pr.pv > 0) || !fxVisible(e)) continue;
+      const g = FX.geom(e, sc), m = e.pvm > 0 ? e.pvm : pr.pv, v = clamp(Number.isFinite(e.pv) ? e.pv : m, 0, m);
+      const w = 46 * px, hb = 6 * px, x = g.cx - w / 2, y = g.cy + 12 * px;
+      ctx.fillStyle = 'rgba(8,10,16,0.82)'; rr(ctx, x - 2 * px, y - 2 * px, w + 4 * px, hb + 4 * px, 3 * px); ctx.fill();
+      ctx.fillStyle = '#9fdcff'; rr(ctx, x, y, Math.max(0, w * v / m), hb, 2 * px); ctx.fill();
+      label(ctx, `${fmt(v)}/${fmt(m)}`, g.cx, y + hb + 11 * px, px, { size: 10 });
     }
   }
 
@@ -8457,6 +9105,7 @@ const Render = (() => {
     if (gm) { drawWalls(sc, px); drawLights(sc, px); }
     for (const s of doorSpots(sc)) drawOpening(ctx, s, px, gm);
     drawDurations(sc, px);
+    drawPvZonas(sc, px);
     drawTurnRing(sc, px);
     drawTargets(sc, px);
     drawSelection(sc, px);
@@ -8693,7 +9342,13 @@ const Tools = (() => {
       if (!o) continue;
       if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: o.size }); }
       else if (s.c === 'shapes') { if ((gm || can('editShape', o)) && !o.lock) items.push({ c: s.c, id: o.id, o0: o.pts ? { pts: o.pts.slice() } : { x: o.x, y: o.y } }); }
-      else if (s.c === 'effects') { if ((gm || can('editFx', o)) && !o.token) items.push({ c: s.c, id: o.id, x: o.x, y: o.y }); }
+      else if (s.c === 'effects') {
+        if (!((gm || can('editFx', o)) && !o.token)) continue;
+        // (lote 7) no portal, arrastar dentro do círculo da saída leva só a saída
+        const ge = o.fx === 'portal' ? FX.geom(o, Store.scene()) : null;
+        if (ge && ge.x2 != null && App.sel.length === 1 && Math.hypot(p.x - ge.x2, p.y - ge.y2) <= ge.R && Math.hypot(p.x - ge.x, p.y - ge.y) > ge.R) items.push({ c: s.c, id: o.id, x: o.x2, y: o.y2, saida: true });
+        else items.push({ c: s.c, id: o.id, x: o.x, y: o.y });
+      }
       else if (s.c === 'lights') { if (gm) items.push({ c: s.c, id: o.id, x: o.x, y: o.y }); }
     }
     if (!items.length) return null;
@@ -8723,6 +9378,7 @@ const Tools = (() => {
     for (const it of g.items) {
       if (it.c === 'tokens') { const [nx, ny] = snapTok(sc, it.x + dx, it.y + dy, it.size, true); Store.upd('tokens', it.id, { x: nx, y: ny }); }
       else if (it.c === 'shapes') Store.upd('shapes', it.id, shapeMoved(it.o0, dx, dy));
+      else if (it.saida) Store.upd(it.c, it.id, { x2: it.x + dx, y2: it.y + dy });
       else Store.upd(it.c, it.id, { x: it.x + dx, y: it.y + dy });
     }
   }
@@ -9436,14 +10092,21 @@ const Tools = (() => {
 
   /* ---- Efeitos de magia ---- */
   function fxFromOpt(x, y, tok) {
-    const o = App.opt, sc = Store.scene();
+    const o = App.opt, sc = Store.scene(), pr = FX.P[o.fx] || {};
     const dur = o.fxDur > 0 ? Math.round(o.fxDur) : 0;        // duração em rodadas; 0 = até alguém remover
-    return {
+    const e = {
       id: uid('fx'), fx: o.fx, k: o.fxShape, x, y, r: o.fxR, w: o.fxW, rw: o.fxRW, rh: o.fxRH, ang: o.fxAng, dir: o.fxShape === 'rect' ? o.fxDir : 0,
       pow: 0.8, token: tok ? tok.id : null, gm: false, by: authorId(),
       seed: 1 + Math.floor(Math.random() * 999), dur, dur0: dur, at: dur && sc.turn.on ? sc.turn.cur : null, apply: null,
     };
+    // (lote 7) o que cada zona nova já traz ao nascer
+    if (pr.portal) { e.k = 'circ'; e.token = null; }                                       // o portal: dois círculos soltos no mapa
+    if (pr.oculta && isGM()) e.gm = true;                                                    // as runas: escondidas até revelar
+    if (pr.cond) e.apply = { bar: '', amt: '', cond: { id: pr.cond, n: 0, d: 0 }, skip: [] };  // a condição, para a pergunta do começo da vez
+    if (pr.pv > 0) { e.pv = pr.pv; e.pvm = pr.pv; }                                          // a muralha: os pontos de vida
+    return e;
   }
+
   // Retângulo: arrasta-se a diagonal, de um canto ao outro (onde o botão desceu é um canto). Os dois cantos
   // encaixam na grade, de meio em meio quadrado; Alt solta. Preso a um token, cresce a partir do centro dele.
   // Com rotação nas opções, a diagonal é lida nos eixos do retângulo girado.
@@ -9463,7 +10126,7 @@ const Tools = (() => {
   function fxOrigin(p, e) {
     const sc = Store.scene();
     let tok = null;
-    if (App.opt.fxAttach) { const hit = hitTest(p, { tokensOnly: true, noProps: true }); if (hit) tok = Store.get('tokens', hit.id); }
+    if (App.opt.fxAttach && !(FX.P[App.opt.fx] || {}).portal) { const hit = hitTest(p, { tokensOnly: true, noProps: true }); if (hit) tok = Store.get('tokens', hit.id); }
     if (tok && !isGM() && !ownsTok(tok)) tok = null;
     const [x, y] = tok ? tokC(tok, sc) : snapPt(sc, p.x, p.y, e.altKey, 0.5);
     return { x, y, tok };
@@ -9499,6 +10162,7 @@ const Tools = (() => {
       if (!g || g.type !== 'fx') return;
       const e = g.e;
       g = null;
+      if ((FX.P[e.fx] || {}).portal) Object.assign(e, saidaDoPortal(e, Store.scene()));
       Store.tx('Soltar efeito', () => Store.add('effects', e));
       setSel([{ c: 'effects', id: e.id }]);
       set('select');
@@ -9754,7 +10418,7 @@ const UI = (() => {
   const el = {
     top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
-    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'),
+    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'), combos: $('#combos'),
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
@@ -10265,6 +10929,9 @@ const UI = (() => {
     if (!Tools.allowed(App.tool)) Tools.set('select');
     if (v !== 'gm' && (App.tab === 'scene' || App.tab === 'players')) App.tab = 'sel';
     hideTurn(); hideCine();
+    // (lote 7) os cartões das zonas e das combinações são do mestre: na prévia "como jogador", ficam escondidos
+    el.combos.hidden = v !== 'gm' || !el.combos.children.length;
+    el.zonas.hidden = v !== 'gm' || !el.zonas.children.length;
     App.floats.length = 0;          // números de dano em trânsito não passam de uma visão para a outra
     Vision.invalidate();
     Store.emit('viewer');
@@ -11011,7 +11678,7 @@ const UI = (() => {
   /* Dano, cura e condição em vários tokens de uma vez: quem está dentro de um efeito, de uma aura ou na seleção. */
   // fx: o efeito de onde a janela foi aberta. Ao aplicar, a configuração fica guardada nele (para o Reaplicar),
   // e na próxima vez a janela já abre com ela.
-  function areaBox(title, toks, skipId, fx) {
+  function areaBox(title, toks, skipId, fx, opt) {
     if (!toks.length) { toast('Não há nenhum token dentro dessa área.'); return; }
     const last = fx && fx.apply ? fx.apply : null;
     const rows = toks.map(t => ({ t, on: last ? !last.skip.includes(t.id) : t.id !== skipId, half: false }));
@@ -11054,7 +11721,7 @@ const UI = (() => {
       if (last.cond) { selCond.value = last.cond.id; cn.disabled = cd.disabled = !selCond.value; cn.value = last.cond.n || ''; cd.value = last.cond.d || ''; }
     }
     // a primeira vez numa zona: a condição que combina com ela fica sugerida, num botão (nada vem escolhido sozinho)
-    const sug = !last && fx && (FX.P[fx.fx] || {}).sug && COND_BY_ID[FX.P[fx.fx].sug] ? COND_BY_ID[FX.P[fx.fx].sug] : null;
+    const sugId = (opt && opt.sug) || (fx && (FX.P[fx.fx] || {}).sug), sug = !last && sugId && COND_BY_ID[sugId] ? COND_BY_ID[sugId] : null;     // (a combinação diz a dela)
     const sugBtn = sug ? btn('Sugestão: ' + sug.n, () => { selCond.value = sug.id; cn.disabled = cd.disabled = false; selCond.focus(); }, { kind: 'small', icon: 'plus', id: 'ar-sug', title: 'A condição que combina com ' + (FX.P[fx.fx] || {}).n + '. Um clique escolhe; dá para trocar ou tirar.' }) : null;
     paint();
     modal({
@@ -11607,6 +12274,32 @@ const UI = (() => {
     else toast(`${name}: nada mudou em quem está dentro da área.`);
   }
   const reapplyTitle = 'Aplica de novo, num clique, em quem está dentro da área agora';
+  /* (lote 7) Os pontos de vida da Muralha de cristais: o campo aceita o dano com sinal ("-8" tira, "+5" devolve) ou o
+     valor novo; em zero, ela quebra. "Quebrar" tira a muralha num clique. Tudo com Desfazer. */
+  const pvMax = e => (e.pvm > 0 ? e.pvm : (FX.P[e.fx] || {}).pv || 30);
+  const pvAgora = e => (Number.isFinite(e.pv) ? e.pv : pvMax(e));
+  function quebrarMuralha(e, porDano) {
+    if (!Store.get('effects', e.id)) return;
+    Store.tx('Quebrar a muralha', () => Store.del('effects', e.id));
+    toast(porDano ? 'Os pontos acabaram: a muralha quebrou.' : 'A muralha quebrou.', { action: 'Desfazer', run: Tools.undo });
+  }
+  function mudarPv(e, txt) {
+    const s = String(txt).trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.'), m = pvMax(e), p0 = pvAgora(e);
+    let pv = /^[+-]\d+(\.\d+)?$/.test(s) ? p0 + Number(s) : /^\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+    if (pv == null) { renderSide(); return; }
+    pv = clamp(Math.round(pv), 0, m);
+    if (pv <= 0) { quebrarMuralha(e, true); return; }
+    if (pv !== p0) Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pv }));
+  }
+  function pvDaMuralha(e) {
+    const m = pvMax(e), pv = pvAgora(e);
+    return sec('s-fx-pv', 'Pontos de vida', true,
+      h('div', { class: 'grid2' },
+        field('Agora', inText('fx-pv', String(pv), v => mudarPv(e, v), { inputmode: 'decimal', 'aria-label': 'Pontos de vida da muralha agora (−8 tira, +5 devolve)', title: 'Digite o dano com sinal (−8) ou o valor novo' })),
+        field('Máximo', inNum('fx-pvm', m, v => { const n = Math.max(1, Math.round(v)); Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pvm: n, pv: Math.min(pv, n) })); }, { min: 1, max: 9999, step: 1, label: 'Pontos de vida máximos da muralha' }))),
+      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, a muralha quebra.'),
+      h('div', { class: 'row' }, btn('Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira a muralha da cena (com Desfazer)' })));
+  }
   function fxPanel(e) {
     const sc = Store.scene(), gm = isGM();
     const U = (p, label) => Store.tx(label || 'Editar efeito', () => Store.upd('effects', e.id, p));
@@ -11619,10 +12312,17 @@ const UI = (() => {
       gm ? h('div', { class: 'row' },
         e.apply ? btn('Reaplicar ' + applyLabel(e.apply), () => fxReapply(e), { icon: 'reset', kind: 'primary re', id: 'fx-reapply', title: reapplyTitle }) : null,
         btn('Aplicar a quem está dentro…', () => fxApply(e), { icon: 'area', id: 'fx-apply', title: 'Dano, cura ou condição em todos os tokens dentro deste efeito' })) : null,
+      // (lote 7) a regra da zona, e o que ela pede: revelar as runas, a condição da Distorção do tempo, os pontos da muralha
+      pr.regra ? h('p', { class: 'fx-regra', id: 'fx-regra', text: pr.regra[0].toUpperCase() + pr.regra.slice(1) + '.' }) : null,
+      pr.oculta && gm ? h('div', { class: 'row' }, e.gm ? btn('Revelar aos jogadores', () => U({ gm: false }, 'Revelar as runas'), { icon: 'eye', kind: 'primary', id: 'fx-revelar' })
+        : btn('Esconder de novo', () => U({ gm: true }, 'Esconder as runas'), { icon: 'eyeOff', id: 'fx-esconder' })) : null,
+      pr.conds && gm ? field('Dentro dela', seg('fx-cond', (e.apply && e.apply.cond && e.apply.cond.id) || pr.cond, pr.conds.map(id => [id, (COND_BY_ID[id] || {}).n || id]),
+        v => U({ apply: Object.assign({ bar: '', amt: '', skip: [] }, e.apply, { cond: Object.assign({ n: 0, d: 0 }, e.apply && e.apply.cond, { id: v }) }) }, 'Condição da zona')), 'stack tight') : null,
+      pr.pv > 0 && gm ? pvDaMuralha(e) : null,
       sec('s-fx', 'Efeito', true,
-        field('Tipo', fxSelect('fx-id', e.fx, v => U({ fx: v }, 'Trocar efeito'))),
-        // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era)
-        field('Forma', seg('fx-k', e.k, FX_SHAPES, v => U(v === 'rect' && !(e.rw > 0 && e.rh > 0) ? { k: v, rw: e.rw > 0 ? e.rw : Math.max(0.5, 2 * e.r || 1), rh: e.rh > 0 ? e.rh : Math.max(0.5, 2 * e.r || 1) } : { k: v }, 'Forma do efeito')), 'stack tight'),
+        field('Tipo', fxSelect('fx-id', e.fx, v => U(trocaDeZona(e, v, sc), 'Trocar efeito'))),
+        // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era; o portal é sempre de círculos)
+        pr.portal ? note('A entrada é o círculo roxo e a saída, o azul: arraste cada um para onde quiser.') : field('Forma', seg('fx-k', e.k, FX_SHAPES, v => U(v === 'rect' && !(e.rw > 0 && e.rh > 0) ? { k: v, rw: e.rw > 0 ? e.rw : Math.max(0.5, 2 * e.r || 1), rh: e.rh > 0 ? e.rh : Math.max(0.5, 2 * e.r || 1) } : { k: v }, 'Forma do efeito')), 'stack tight'),
         h('div', { class: 'grid2' },
           e.k === 'rect' ? field('Largura (q)', inNum('fx-rw', e.rw, v => U({ rw: v }), { min: 0.5, max: 60, step: 0.5 }))
             : field(e.k === 'line' ? 'Comprimento (q)' : e.k === 'cone' ? 'Alcance (q)' : 'Raio (q)', inNum('fx-r', e.r, v => U({ r: v }), { min: 0.5, max: 60, step: 0.5 })),
@@ -11636,7 +12336,7 @@ const UI = (() => {
         field('Rodadas', inCount('fx-dur', e.dur || 0, v => U({ dur: v, dur0: v, at: v && sc.turn.on ? sc.turn.cur : null }, 'Duração do efeito'), { label: 'Rodadas que o efeito ainda dura' })),
         note(e.dur > 0 ? 'Perde uma rodada cada vez que a vez voltar para quem estava jogando quando a duração foi marcada. Em zero, o efeito some sozinho.' : 'Vazio: o efeito fica na cena até alguém remover. Com um número, ele desconta sozinho na ordem de turnos.')),
       sec('s-fx2', 'Onde fica', true,
-        field('Preso a', inSelect('fx-tok', e.token || '', [['', 'Nada (fica no mapa)']].concat(sc.tokens.filter(t => gm || ownsTok(t)).map(t => [t.id, t.name])), v => {
+        pr.portal ? null : field('Preso a', inSelect('fx-tok', e.token || '', [['', 'Nada (fica no mapa)']].concat(sc.tokens.filter(t => gm || ownsTok(t)).map(t => [t.id, t.name])), v => {
           if (v) U({ token: v }, 'Prender efeito');
           else { const g = FX.geom(e, sc); U({ token: null, x: g.x, y: g.y }, 'Soltar efeito do token'); }
         })),
@@ -12390,7 +13090,7 @@ const UI = (() => {
     const cards = [];
     for (const fx of sc.effects) {
       const a = fx.apply;
-      if (!a || areaAmount(a.amt) == null) continue;
+      if (!a || areaAmount(a.amt) == null) { const c = lembreteDaZona(fx, sc, e, toks, box); if (c) cards.push(c); continue; }
       const skip = new Set(a.skip || []);
       const dentro = tokensIn(FX.geom(fx, sc).path, sc).filter(t => !skip.has(t.id) && toks.some(k => k.id === t.id));
       if (!dentro.length) continue;
@@ -12412,6 +13112,83 @@ const UI = (() => {
     box.append(...cards);
     box.hidden = false;
   }
+  /* (lote 7) A zona que é só lembrete (Lama, Vórtice, Santuário…): quem começa a vez dentro dela gera um cartão para o
+     mestre, com a regra — "Dain começa a vez dentro de Lama: só se anda a metade." Ok fecha; nada muda sozinho. */
+  function lembreteDaZona(fx, sc, e, toks, box) {
+    const pr = FX.P[fx.fx];
+    if (!pr || !pr.lembra || !pr.regra) return null;
+    const dentro = tokensIn(FX.geom(fx, sc).path, sc).filter(t => toks.some(k => k.id === t.id));
+    if (!dentro.length) return null;
+    const quem = dentro.length === 1 ? tokName(dentro[0]) : `${dentro.length} de ${turnName(e)}`;
+    const card = h('div', { class: 'zona lembra', id: 'zona-' + fx.id },
+      h('span', { class: 'zona-i', style: { background: pr.edge } }),
+      h('span', { class: 'zona-t' }, h('strong', { text: quem }), ` começa a vez dentro de ${pr.n}: ${pr.regra}.`),
+      btn('Ok', () => { card.remove(); if (!box.children.length) box.hidden = true; }, { kind: 'small', id: 'zona-ok-' + fx.id }));
+    return card;
+  }
+
+  /* ================= (lote 7) Combinações de zonas =================
+     Quando uma zona que dispara encosta numa que muda (fogo no óleo, raio na água, gelo na água), o mestre vê um
+     cartão: "Fogo no óleo: explosão?" — Aplicar ou Pular. Aplicar troca as zonas pelo resultado (um Desfazer) e abre o
+     dano para quem estava dentro. Pular não pergunta mais por aquele par enquanto a página está aberta. O cartão sai
+     sozinho se as zonas deixam de se encostar ou somem. */
+  const combosPulados = new Set();
+  const parDe = (a, b) => a + '|' + b;
+  function combosAtualiza(ids) {
+    const box = el.combos;
+    if (!isGM()) { box.replaceChildren(); box.hidden = true; return; }
+    const sc = Store.scene();
+    for (const card of [...box.children]) {
+      const a = Store.get('effects', card.dataset.gat), b = Store.get('effects', card.dataset.base), r = FX.COMBOS[+card.dataset.r];
+      if (!a || !b || !r || !r.gat.includes(a.fx) || !r.base.includes(b.fx) || !FX.seTocam(a, b, sc)) card.remove();
+    }
+    if (ids && ids.length) {
+      for (const c of FX.combinacoes(sc, ids)) {
+        const k = parDe(c.gat.id, c.base.id);
+        if (combosPulados.has(k) || [...box.children].some(x => x.dataset.par === k)) continue;
+        box.append(cartaoCombo(c, k));
+      }
+    }
+    box.hidden = !box.children.length;
+  }
+  function cartaoCombo(c, k) {
+    const r = c.regra, fecha = () => { card.remove(); el.combos.hidden = !el.combos.children.length; };
+    const card = h('div', { class: 'zona combo', id: 'combo-' + c.base.id, data: { par: k, gat: c.gat.id, base: c.base.id, r: String(FX.COMBOS.indexOf(r)) } },
+      h('span', { class: 'zona-i', style: { background: (FX.P[r.res] || FX.P.fogo).edge } }),
+      h('span', { class: 'zona-t' }, h('strong', { text: r.titulo }), ` ${(FX.P[c.gat.fx] || {}).n} encosta em ${(FX.P[c.base.fx] || {}).n}.`),
+      btn('Aplicar', () => { fecha(); aplicarCombo(c); }, { kind: 'primary small', id: 'combo-ok-' + c.base.id }),
+      btn('Pular', () => { combosPulados.add(k); fecha(); }, { kind: 'small', id: 'combo-no-' + c.base.id }));
+    return card;
+  }
+  function aplicarCombo(c) {
+    const r = c.regra, sc = Store.scene(), a = Store.get('effects', c.gat.id), b = Store.get('effects', c.base.id);
+    if (!a || !b) return;
+    Store.tx(r.feito, () => {
+      Store.upd('effects', b.id, { fx: r.res, apply: null, seed: 1 + Math.floor(Math.random() * 999) });
+      Store.del('effects', a.id);
+    });
+    toast(r.feito + '.', { action: 'Desfazer', run: Tools.undo });
+    const e = Store.get('effects', b.id), dentro = e ? tokensIn(FX.geom(e, sc).path, sc) : [];
+    if (dentro.length) areaBox(r.feito + ': quem está dentro', dentro, e.token, e, { sug: r.sug });
+  }
+  // Cada passo que mexe em zonas (do mestre, de um jogador): confere as combinações. O Desfazer só tira cartões que não
+  // valem mais (não pergunta de novo pelo que acabou de ser desfeito).
+  Store.on('commit', ev => {
+    if (ev.sceneId !== Store.S.current) return;
+    const ids = ev.undo || ev.redo ? [] : [...new Set((ev.ops || []).filter(op => op.c === 'effects' && (op.t === 'add' || op.t === 'upd')).map(op => op.t === 'add' ? op.v.id : op.id))];
+    if (ids.length || el.combos.children.length) combosAtualiza(ids);
+  });
+  Store.on('scene', () => { el.combos.replaceChildren(); el.combos.hidden = true; });
+  // O token que atravessou um portal, e o que pisou nas runas escondidas (só o mestre fica sabendo)
+  Store.on('portal', d => {
+    const t = Store.get('tokens', d.tok);
+    if (t) toast(`${tokName(t)} atravessou o portal.`, { action: 'Desfazer', run: Tools.undo, key: 'portal' });
+  });
+  Store.on('runas', d => {
+    const t = Store.get('tokens', d.tok);
+    if (!t || !isGM()) return;
+    toast(`${tokName(t)} pisou nas Runas-armadilha.`, { action: 'Revelar', run: () => { if (Store.get('effects', d.fx)) Store.tx('Revelar as runas', () => Store.upd('effects', d.fx, { gm: false })); }, key: 'runas-' + d.fx, long: true });
+  });
 
   /* ================= Véu do mestre =================
      A opção fica guardada como preferência de quem está olhando (não entra no desfazer da cena).
@@ -14350,7 +15127,7 @@ async function start(snap) {
   const nasceuEscondida = !naTela();
   if (!nasceuEscondida && window.innerWidth < 900) App.sideOpen = false;
 
-  Store.on('live', (op, inv) => { Vision.onOp(op); barFloats(op, inv); Render.request(); });
+  Store.on('live', (op, inv) => { Vision.onOp(op, inv); barFloats(op, inv); Render.request(); });
   Store.on('commit', e => { Persist.scene(e.sceneId); UI.refresh(); Render.request(); });
   Store.on('sel', () => { Vision.selChanged(); UI.refresh(); Render.request(); });
   Store.on('tool', () => UI.refresh());

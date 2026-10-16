@@ -259,7 +259,7 @@ na cena passa por um botão e vira um passo de desfazer.
   condições, nome à mostra nem visão; fica por baixo dos tokens e fora da ordem de turnos, das áreas de dano, da
   mira, da janelinha F e do K. A luz que tremula (`light.fl`, também nas luzes fixas e na tocha que o token carrega)
   ganha um clarão animado dentro do que ela alcança (`Vision.out.flick`, com o polígono que as paredes cortam).
-- **Zonas de efeito**: 32, em quatro categorias (Elementos, Magia, Natureza, Sagrado e sombrio). Na primeira vez em
+- **Zonas de efeito**: 51 (19 vieram no lote 7), em quatro categorias (Elementos, Magia, Natureza, Sagrado e sombrio). Na primeira vez em
   que o mestre aplica uma zona, a condição que combina com ela já vem escolhida (`FX.P[].sug`). Quando a vez passa
   para alguém que está dentro de uma zona com algo guardado (o "Aplicar a quem está dentro…"), o mestre vê um aviso
   — "Ana começa a vez dentro de Lava: −5 Vida + Queimando" — e escolhe Aplicar ou Pular. Nada acontece sozinho.
@@ -460,6 +460,37 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **Os sons da vez** (`Som`, `10e-som.js`, feitos no navegador com Web Audio, sem arquivo): o gongo na vez de um
   aliado, o tambor na de um inimigo, dois toques claros no "Sua vez!" e um sino grave com tambor na rodada nova.
   Seguem a chave "Som ao rolar" da mesa ao vivo (`tinycats:som`), em cada aparelho: desligada, nada toca.
+- **19 zonas novas** (`FX.P`, cada uma com o desenho dela): Chão congelado, Fumaça, Brasas, Muralha de cristais de
+  gelo, Cinzas vulcânicas, Correnteza e Água eletrificada (Elementos); Vórtice, Gravidade pesada, Distorção do tempo,
+  Portal, Runas-armadilha e Formação de selos (Magia); Óleo derramado, Lama e Jardim florescendo (Natureza); Névoa de
+  espíritos, Santuário e Lua de sangue (Sagrado e sombrio). Cada uma diz a regra no painel (`regra`). O que dá trabalho
+  à mão, o site faz; o resto é lembrete:
+  - **Fumaça e Muralha de cristais tapam a visão de verdade** (`bloqueia`): o contorno da área (`FX.contorno`, o
+    círculo em 28 lados) entra como parede de visão em `Walls.of` (`FX.barreiras`), e a muralha também barra a
+    passagem (`barra`), como as paredes ("Paredes barram o movimento dos jogadores"). A zona só do mestre não barra.
+    Mexer numa delas refaz as paredes e a visão (`FX.mexeNaBarreira`, no Walls e no `Vision.onOp`).
+  - **A muralha tem pontos de vida** (`pv`, `pvm`; 30 ao nascer): no painel, o dano com sinal ("-8") ou o valor novo;
+    em zero, ela quebra. "Quebrar" tira num clique. Tudo com Desfazer. O mestre vê a barrinha com os números no mapa.
+  - **O Portal** é sempre de dois círculos, a entrada (`x`, `y`) e a saída (`x2`, `y2`, ao lado, ao nascer): arrastar
+    dentro de um círculo leva só ele. O token solto num círculo — o centro estava fora dos dois e agora está num —
+    sai no centro do outro, no mesmo passo (`atravessar`, no `Store.aoFechar`); o que um jogador solta atravessa num
+    passo do mestre logo depois. O mestre vê "Fulano atravessou o portal", com Desfazer.
+  - **As Runas-armadilha** nascem escondidas (`oculta`: `gm`); "Revelar aos jogadores" e "Esconder de novo" no painel.
+    O token que entra nas runas escondidas avisa o mestre ("Lia pisou nas Runas-armadilha", com Revelar).
+  - **As zonas de condição** (`cond`: Distorção do tempo, Névoa de espíritos, Lua de sangue) nascem com a condição
+    guardada no `apply`, e o aviso do começo da vez pergunta: Aplicar ou Pular. Na Distorção do tempo, o painel escolhe
+    Lento ou Acelerado (`conds`; os ponteiros andam para trás ou correm).
+  - **As zonas de lembrete** (`lembra`) avisam o mestre no começo da vez de quem está dentro delas: "Ogro começa a vez
+    dentro de Lama: só se anda a metade." — com Ok; nada muda sozinho. Brasas e Jardim avisam até o mestre guardar o
+    dano ou a cura (aí vale o aviso com Aplicar).
+  - Trocar o tipo no painel acerta o que a zona nova traz (`trocaDeZona`); o efeito pedido por um jogador também vem
+    com a saída do portal, os pontos da muralha e a condição (`efeitoLimpo`).
+- **As combinações** (`FX.COMBOS`): fogo (ou lava, chamas negras, brasas) no óleo, raio (ou tempestade) na água (ou
+  pântano, correnteza), gelo (ou nevasca) na água. Quando as duas se encostam (`FX.seTocam`), o mestre vê o cartão —
+  "Fogo no óleo: explosão?" — com Aplicar ou Pular (que não pergunta mais por aquele par). Aplicar troca as zonas (a
+  que muda vira o resultado — Fogo, Água eletrificada, Chão congelado — e a que disparou sai; um Desfazer) e abre o
+  dano para quem está dentro, com a condição da combinação sugerida (Queimando, Eletrizado, Congelado). O Desfazer
+  não pergunta de novo; o fogo que um jogador solta também gera o cartão.
 
 ### A Árvore (lote 6)
 
@@ -1140,7 +1171,11 @@ fora; o aparelho do jogador, que não acerta), o Agigantado e o Encolhido (os li
 que chega de fora) e a faixa de cinema (o mestre, o jogador da vez e os outros, "Rodada N", o lado pela ficha, a
 faixa cancelada, os sons com a chave ligada e desligada, a tela estreita e o movimento reduzido); e
 `cenas-lote7.rede`, numa mesa com o mestre e um jogador: "Sua vez!" no aparelho dele, o Agigantado que ele põe no
-token dele, e o Escudado que sai com o dano do mestre e com o dele. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+token dele, e o Escudado que sai com o dano do mestre e com o dele. `src/cenas/test/lote7b.js` confere as 19 zonas
+novas (a biblioteca, a Fumaça e a Muralha na visão e na passagem, os pontos da muralha, o Portal, as Runas, as zonas de
+condição e de lembrete no começo da vez, as combinações, trocar o tipo, o efeito de um jogador), e `cenas-lote7b.rede`,
+com o mestre e um jogador: o portal que o jogador usa, a fumaça na tela dele, as runas escondidas e o fogo dele no
+óleo do mestre. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre

@@ -650,6 +650,11 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   background: var(--surface); border: 1px solid var(--lamp); border-radius: 11px; box-shadow: var(--shadow); font-size: 13.5px; }
 .zona-i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--raised); }
 .zona-t { flex: 1 1 260px; min-width: 0; }
+/* (lote 7) o lembrete da zona (só Ok) e a combinação de zonas (o resultado em destaque) */
+.zona.lembra { border-color: var(--line-strong); }
+.zona.combo { border-color: var(--danger); }
+/* a regra da zona, no alto do painel do efeito */
+.fx-regra { margin: 0; padding: 7px 10px; border-radius: 8px; background: var(--lamp-soft); color: var(--fg); font-size: 13px; line-height: 1.4; }
 
 /* ---- Janelas: barras padrão e aplicar em área ---- */
 .bd, .area { display: flex; flex-direction: column; gap: 10px; }

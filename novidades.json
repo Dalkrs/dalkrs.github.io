@@ -2,6 +2,45 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-6",
+      "data": "2026-10-16",
+      "titulo": "19 zonas novas e as combinações",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: 19 zonas novas, cada uma com o seu desenho — Chão congelado, Fumaça, Brasas, Muralha de cristais de gelo, Cinzas vulcânicas, Correnteza, Água eletrificada, Vórtice, Gravidade pesada, Distorção do tempo, Portal, Runas-armadilha, Formação de selos, Óleo derramado, Lama, Jardim florescendo, Névoa de espíritos, Santuário e Lua de sangue. O painel de cada uma diz a regra."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a Fumaça e a Muralha de cristais tapam a visão de verdade; a muralha também barra a passagem."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o Portal tem dois círculos — o token solto num sai no outro. Cada círculo se arrasta para onde quiser."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a Muralha de cristais tem pontos de vida (o dano com sinal, “-8”, no painel). Em zero ela quebra, e “Quebrar” tira num clique. Com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as Runas-armadilha nascem escondidas dos jogadores. Quem pisa nelas avisa você, que revela quando quiser."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no começo da vez de quem está dentro, a Névoa de espíritos, a Lua de sangue e a Distorção do tempo (Lento ou Acelerado) perguntam se aplicam a condição; a Lama, o Vórtice, o Santuário e as outras de lembrete avisam a regra."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: combinações — fogo no óleo, raio na água, gelo na água. O site sugere (“Fogo no óleo: explosão?”) e você aplica ou pula; aplicar troca as zonas e abre o dano para quem está dentro."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-5",
       "data": "2026-10-16",
       "titulo": "A faixa de cinema e 20 condições novas",

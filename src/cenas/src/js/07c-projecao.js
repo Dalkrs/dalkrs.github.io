@@ -308,12 +308,18 @@ const Proj = (() => {
     if (!ehObj(v) || !idOk(v.id) || !FX_FORMAS.includes(v.k) || !tem(FX.P, v.fx)) return null;      // só os efeitos da biblioteca
     // preso a um token: só a um dele (ou de todos), como a tela do jogador deixa
     const tk = v.token ? sc.tokens.find(t => t.id === v.token && !t.hidden && (t.owner === quem || t.owner === '*')) : null;
-    const dur = Math.round(num(v.dur, 0, 99, 0));
-    return {
+    const dur = Math.round(num(v.dur, 0, 99, 0)), pr = FX.P[v.fx];
+    const o = {
       id: v.id, fx: v.fx, k: v.k, x: num(v.x, -1e5, 1e5, 0), y: num(v.y, -1e5, 1e5, 0), r: num(v.r, 0.5, 60, 2), w: num(v.w, 0.25, 60, 1), rw: num(v.rw, 0.5, 120, 3), rh: num(v.rh, 0.5, 120, 2),
       ang: num(v.ang, 10, 340, 60), dir: num(v.dir, 0, 360, 0), pow: num(v.pow, 0.1, 1, 0.8), token: tk ? tk.id : null, gm: false, by: quem,
       seed: Math.round(num(v.seed, 1, 99999, 1)), dur, dur0: dur ? Math.round(num(v.dur0, dur, 99, dur)) : 0, at: dur && typeof v.at === 'string' && sc.turn.list.some(e => e.id === v.at) ? v.at : null, apply: null,
     };
+    // (lote 7) o portal do jogador: a saída (e nunca preso a token); a muralha: os pontos de vida; a zona de condição: a
+    // condição dela, para a pergunta do começo da vez (na Distorção do tempo, Lento ou Acelerado)
+    if (pr.portal) { o.k = 'circ'; o.token = null; if (typeof v.x2 === 'number' && typeof v.y2 === 'number') { o.x2 = num(v.x2, -1e5, 1e5, 0); o.y2 = num(v.y2, -1e5, 1e5, 0); } }
+    if (pr.pv > 0) { o.pvm = Math.round(num(v.pvm, 1, 9999, pr.pv)); o.pv = Math.round(num(v.pv, 0, o.pvm, o.pvm)); }
+    if (pr.cond) { const q = v.apply && v.apply.cond && v.apply.cond.id; o.apply = { bar: '', amt: '', cond: { id: (pr.conds || [pr.cond]).includes(q) ? q : pr.cond, n: 0, d: 0 }, skip: [] }; }
+    return o;
   }
   function remendoEfeito(e, p, sc) {
     if (!ehObj(p)) return null;

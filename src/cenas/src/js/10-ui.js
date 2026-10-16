@@ -7,7 +7,7 @@ const UI = (() => {
   const el = {
     top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
-    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'),
+    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'), combos: $('#combos'),
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
@@ -518,6 +518,9 @@ const UI = (() => {
     if (!Tools.allowed(App.tool)) Tools.set('select');
     if (v !== 'gm' && (App.tab === 'scene' || App.tab === 'players')) App.tab = 'sel';
     hideTurn(); hideCine();
+    // (lote 7) os cartões das zonas e das combinações são do mestre: na prévia "como jogador", ficam escondidos
+    el.combos.hidden = v !== 'gm' || !el.combos.children.length;
+    el.zonas.hidden = v !== 'gm' || !el.zonas.children.length;
     App.floats.length = 0;          // números de dano em trânsito não passam de uma visão para a outra
     Vision.invalidate();
     Store.emit('viewer');
@@ -1264,7 +1267,7 @@ const UI = (() => {
   /* Dano, cura e condição em vários tokens de uma vez: quem está dentro de um efeito, de uma aura ou na seleção. */
   // fx: o efeito de onde a janela foi aberta. Ao aplicar, a configuração fica guardada nele (para o Reaplicar),
   // e na próxima vez a janela já abre com ela.
-  function areaBox(title, toks, skipId, fx) {
+  function areaBox(title, toks, skipId, fx, opt) {
     if (!toks.length) { toast('Não há nenhum token dentro dessa área.'); return; }
     const last = fx && fx.apply ? fx.apply : null;
     const rows = toks.map(t => ({ t, on: last ? !last.skip.includes(t.id) : t.id !== skipId, half: false }));
@@ -1307,7 +1310,7 @@ const UI = (() => {
       if (last.cond) { selCond.value = last.cond.id; cn.disabled = cd.disabled = !selCond.value; cn.value = last.cond.n || ''; cd.value = last.cond.d || ''; }
     }
     // a primeira vez numa zona: a condição que combina com ela fica sugerida, num botão (nada vem escolhido sozinho)
-    const sug = !last && fx && (FX.P[fx.fx] || {}).sug && COND_BY_ID[FX.P[fx.fx].sug] ? COND_BY_ID[FX.P[fx.fx].sug] : null;
+    const sugId = (opt && opt.sug) || (fx && (FX.P[fx.fx] || {}).sug), sug = !last && sugId && COND_BY_ID[sugId] ? COND_BY_ID[sugId] : null;     // (a combinação diz a dela)
     const sugBtn = sug ? btn('Sugestão: ' + sug.n, () => { selCond.value = sug.id; cn.disabled = cd.disabled = false; selCond.focus(); }, { kind: 'small', icon: 'plus', id: 'ar-sug', title: 'A condição que combina com ' + (FX.P[fx.fx] || {}).n + '. Um clique escolhe; dá para trocar ou tirar.' }) : null;
     paint();
     modal({
@@ -1860,6 +1863,32 @@ const UI = (() => {
     else toast(`${name}: nada mudou em quem está dentro da área.`);
   }
   const reapplyTitle = 'Aplica de novo, num clique, em quem está dentro da área agora';
+  /* (lote 7) Os pontos de vida da Muralha de cristais: o campo aceita o dano com sinal ("-8" tira, "+5" devolve) ou o
+     valor novo; em zero, ela quebra. "Quebrar" tira a muralha num clique. Tudo com Desfazer. */
+  const pvMax = e => (e.pvm > 0 ? e.pvm : (FX.P[e.fx] || {}).pv || 30);
+  const pvAgora = e => (Number.isFinite(e.pv) ? e.pv : pvMax(e));
+  function quebrarMuralha(e, porDano) {
+    if (!Store.get('effects', e.id)) return;
+    Store.tx('Quebrar a muralha', () => Store.del('effects', e.id));
+    toast(porDano ? 'Os pontos acabaram: a muralha quebrou.' : 'A muralha quebrou.', { action: 'Desfazer', run: Tools.undo });
+  }
+  function mudarPv(e, txt) {
+    const s = String(txt).trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.'), m = pvMax(e), p0 = pvAgora(e);
+    let pv = /^[+-]\d+(\.\d+)?$/.test(s) ? p0 + Number(s) : /^\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+    if (pv == null) { renderSide(); return; }
+    pv = clamp(Math.round(pv), 0, m);
+    if (pv <= 0) { quebrarMuralha(e, true); return; }
+    if (pv !== p0) Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pv }));
+  }
+  function pvDaMuralha(e) {
+    const m = pvMax(e), pv = pvAgora(e);
+    return sec('s-fx-pv', 'Pontos de vida', true,
+      h('div', { class: 'grid2' },
+        field('Agora', inText('fx-pv', String(pv), v => mudarPv(e, v), { inputmode: 'decimal', 'aria-label': 'Pontos de vida da muralha agora (−8 tira, +5 devolve)', title: 'Digite o dano com sinal (−8) ou o valor novo' })),
+        field('Máximo', inNum('fx-pvm', m, v => { const n = Math.max(1, Math.round(v)); Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pvm: n, pv: Math.min(pv, n) })); }, { min: 1, max: 9999, step: 1, label: 'Pontos de vida máximos da muralha' }))),
+      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, a muralha quebra.'),
+      h('div', { class: 'row' }, btn('Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira a muralha da cena (com Desfazer)' })));
+  }
   function fxPanel(e) {
     const sc = Store.scene(), gm = isGM();
     const U = (p, label) => Store.tx(label || 'Editar efeito', () => Store.upd('effects', e.id, p));
@@ -1872,10 +1901,17 @@ const UI = (() => {
       gm ? h('div', { class: 'row' },
         e.apply ? btn('Reaplicar ' + applyLabel(e.apply), () => fxReapply(e), { icon: 'reset', kind: 'primary re', id: 'fx-reapply', title: reapplyTitle }) : null,
         btn('Aplicar a quem está dentro…', () => fxApply(e), { icon: 'area', id: 'fx-apply', title: 'Dano, cura ou condição em todos os tokens dentro deste efeito' })) : null,
+      // (lote 7) a regra da zona, e o que ela pede: revelar as runas, a condição da Distorção do tempo, os pontos da muralha
+      pr.regra ? h('p', { class: 'fx-regra', id: 'fx-regra', text: pr.regra[0].toUpperCase() + pr.regra.slice(1) + '.' }) : null,
+      pr.oculta && gm ? h('div', { class: 'row' }, e.gm ? btn('Revelar aos jogadores', () => U({ gm: false }, 'Revelar as runas'), { icon: 'eye', kind: 'primary', id: 'fx-revelar' })
+        : btn('Esconder de novo', () => U({ gm: true }, 'Esconder as runas'), { icon: 'eyeOff', id: 'fx-esconder' })) : null,
+      pr.conds && gm ? field('Dentro dela', seg('fx-cond', (e.apply && e.apply.cond && e.apply.cond.id) || pr.cond, pr.conds.map(id => [id, (COND_BY_ID[id] || {}).n || id]),
+        v => U({ apply: Object.assign({ bar: '', amt: '', skip: [] }, e.apply, { cond: Object.assign({ n: 0, d: 0 }, e.apply && e.apply.cond, { id: v }) }) }, 'Condição da zona')), 'stack tight') : null,
+      pr.pv > 0 && gm ? pvDaMuralha(e) : null,
       sec('s-fx', 'Efeito', true,
-        field('Tipo', fxSelect('fx-id', e.fx, v => U({ fx: v }, 'Trocar efeito'))),
-        // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era)
-        field('Forma', seg('fx-k', e.k, FX_SHAPES, v => U(v === 'rect' && !(e.rw > 0 && e.rh > 0) ? { k: v, rw: e.rw > 0 ? e.rw : Math.max(0.5, 2 * e.r || 1), rh: e.rh > 0 ? e.rh : Math.max(0.5, 2 * e.r || 1) } : { k: v }, 'Forma do efeito')), 'stack tight'),
+        field('Tipo', fxSelect('fx-id', e.fx, v => U(trocaDeZona(e, v, sc), 'Trocar efeito'))),
+        // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era; o portal é sempre de círculos)
+        pr.portal ? note('A entrada é o círculo roxo e a saída, o azul: arraste cada um para onde quiser.') : field('Forma', seg('fx-k', e.k, FX_SHAPES, v => U(v === 'rect' && !(e.rw > 0 && e.rh > 0) ? { k: v, rw: e.rw > 0 ? e.rw : Math.max(0.5, 2 * e.r || 1), rh: e.rh > 0 ? e.rh : Math.max(0.5, 2 * e.r || 1) } : { k: v }, 'Forma do efeito')), 'stack tight'),
         h('div', { class: 'grid2' },
           e.k === 'rect' ? field('Largura (q)', inNum('fx-rw', e.rw, v => U({ rw: v }), { min: 0.5, max: 60, step: 0.5 }))
             : field(e.k === 'line' ? 'Comprimento (q)' : e.k === 'cone' ? 'Alcance (q)' : 'Raio (q)', inNum('fx-r', e.r, v => U({ r: v }), { min: 0.5, max: 60, step: 0.5 })),
@@ -1889,7 +1925,7 @@ const UI = (() => {
         field('Rodadas', inCount('fx-dur', e.dur || 0, v => U({ dur: v, dur0: v, at: v && sc.turn.on ? sc.turn.cur : null }, 'Duração do efeito'), { label: 'Rodadas que o efeito ainda dura' })),
         note(e.dur > 0 ? 'Perde uma rodada cada vez que a vez voltar para quem estava jogando quando a duração foi marcada. Em zero, o efeito some sozinho.' : 'Vazio: o efeito fica na cena até alguém remover. Com um número, ele desconta sozinho na ordem de turnos.')),
       sec('s-fx2', 'Onde fica', true,
-        field('Preso a', inSelect('fx-tok', e.token || '', [['', 'Nada (fica no mapa)']].concat(sc.tokens.filter(t => gm || ownsTok(t)).map(t => [t.id, t.name])), v => {
+        pr.portal ? null : field('Preso a', inSelect('fx-tok', e.token || '', [['', 'Nada (fica no mapa)']].concat(sc.tokens.filter(t => gm || ownsTok(t)).map(t => [t.id, t.name])), v => {
           if (v) U({ token: v }, 'Prender efeito');
           else { const g = FX.geom(e, sc); U({ token: null, x: g.x, y: g.y }, 'Soltar efeito do token'); }
         })),
@@ -2643,7 +2679,7 @@ const UI = (() => {
     const cards = [];
     for (const fx of sc.effects) {
       const a = fx.apply;
-      if (!a || areaAmount(a.amt) == null) continue;
+      if (!a || areaAmount(a.amt) == null) { const c = lembreteDaZona(fx, sc, e, toks, box); if (c) cards.push(c); continue; }
       const skip = new Set(a.skip || []);
       const dentro = tokensIn(FX.geom(fx, sc).path, sc).filter(t => !skip.has(t.id) && toks.some(k => k.id === t.id));
       if (!dentro.length) continue;
@@ -2665,6 +2701,83 @@ const UI = (() => {
     box.append(...cards);
     box.hidden = false;
   }
+  /* (lote 7) A zona que é só lembrete (Lama, Vórtice, Santuário…): quem começa a vez dentro dela gera um cartão para o
+     mestre, com a regra — "Dain começa a vez dentro de Lama: só se anda a metade." Ok fecha; nada muda sozinho. */
+  function lembreteDaZona(fx, sc, e, toks, box) {
+    const pr = FX.P[fx.fx];
+    if (!pr || !pr.lembra || !pr.regra) return null;
+    const dentro = tokensIn(FX.geom(fx, sc).path, sc).filter(t => toks.some(k => k.id === t.id));
+    if (!dentro.length) return null;
+    const quem = dentro.length === 1 ? tokName(dentro[0]) : `${dentro.length} de ${turnName(e)}`;
+    const card = h('div', { class: 'zona lembra', id: 'zona-' + fx.id },
+      h('span', { class: 'zona-i', style: { background: pr.edge } }),
+      h('span', { class: 'zona-t' }, h('strong', { text: quem }), ` começa a vez dentro de ${pr.n}: ${pr.regra}.`),
+      btn('Ok', () => { card.remove(); if (!box.children.length) box.hidden = true; }, { kind: 'small', id: 'zona-ok-' + fx.id }));
+    return card;
+  }
+
+  /* ================= (lote 7) Combinações de zonas =================
+     Quando uma zona que dispara encosta numa que muda (fogo no óleo, raio na água, gelo na água), o mestre vê um
+     cartão: "Fogo no óleo: explosão?" — Aplicar ou Pular. Aplicar troca as zonas pelo resultado (um Desfazer) e abre o
+     dano para quem estava dentro. Pular não pergunta mais por aquele par enquanto a página está aberta. O cartão sai
+     sozinho se as zonas deixam de se encostar ou somem. */
+  const combosPulados = new Set();
+  const parDe = (a, b) => a + '|' + b;
+  function combosAtualiza(ids) {
+    const box = el.combos;
+    if (!isGM()) { box.replaceChildren(); box.hidden = true; return; }
+    const sc = Store.scene();
+    for (const card of [...box.children]) {
+      const a = Store.get('effects', card.dataset.gat), b = Store.get('effects', card.dataset.base), r = FX.COMBOS[+card.dataset.r];
+      if (!a || !b || !r || !r.gat.includes(a.fx) || !r.base.includes(b.fx) || !FX.seTocam(a, b, sc)) card.remove();
+    }
+    if (ids && ids.length) {
+      for (const c of FX.combinacoes(sc, ids)) {
+        const k = parDe(c.gat.id, c.base.id);
+        if (combosPulados.has(k) || [...box.children].some(x => x.dataset.par === k)) continue;
+        box.append(cartaoCombo(c, k));
+      }
+    }
+    box.hidden = !box.children.length;
+  }
+  function cartaoCombo(c, k) {
+    const r = c.regra, fecha = () => { card.remove(); el.combos.hidden = !el.combos.children.length; };
+    const card = h('div', { class: 'zona combo', id: 'combo-' + c.base.id, data: { par: k, gat: c.gat.id, base: c.base.id, r: String(FX.COMBOS.indexOf(r)) } },
+      h('span', { class: 'zona-i', style: { background: (FX.P[r.res] || FX.P.fogo).edge } }),
+      h('span', { class: 'zona-t' }, h('strong', { text: r.titulo }), ` ${(FX.P[c.gat.fx] || {}).n} encosta em ${(FX.P[c.base.fx] || {}).n}.`),
+      btn('Aplicar', () => { fecha(); aplicarCombo(c); }, { kind: 'primary small', id: 'combo-ok-' + c.base.id }),
+      btn('Pular', () => { combosPulados.add(k); fecha(); }, { kind: 'small', id: 'combo-no-' + c.base.id }));
+    return card;
+  }
+  function aplicarCombo(c) {
+    const r = c.regra, sc = Store.scene(), a = Store.get('effects', c.gat.id), b = Store.get('effects', c.base.id);
+    if (!a || !b) return;
+    Store.tx(r.feito, () => {
+      Store.upd('effects', b.id, { fx: r.res, apply: null, seed: 1 + Math.floor(Math.random() * 999) });
+      Store.del('effects', a.id);
+    });
+    toast(r.feito + '.', { action: 'Desfazer', run: Tools.undo });
+    const e = Store.get('effects', b.id), dentro = e ? tokensIn(FX.geom(e, sc).path, sc) : [];
+    if (dentro.length) areaBox(r.feito + ': quem está dentro', dentro, e.token, e, { sug: r.sug });
+  }
+  // Cada passo que mexe em zonas (do mestre, de um jogador): confere as combinações. O Desfazer só tira cartões que não
+  // valem mais (não pergunta de novo pelo que acabou de ser desfeito).
+  Store.on('commit', ev => {
+    if (ev.sceneId !== Store.S.current) return;
+    const ids = ev.undo || ev.redo ? [] : [...new Set((ev.ops || []).filter(op => op.c === 'effects' && (op.t === 'add' || op.t === 'upd')).map(op => op.t === 'add' ? op.v.id : op.id))];
+    if (ids.length || el.combos.children.length) combosAtualiza(ids);
+  });
+  Store.on('scene', () => { el.combos.replaceChildren(); el.combos.hidden = true; });
+  // O token que atravessou um portal, e o que pisou nas runas escondidas (só o mestre fica sabendo)
+  Store.on('portal', d => {
+    const t = Store.get('tokens', d.tok);
+    if (t) toast(`${tokName(t)} atravessou o portal.`, { action: 'Desfazer', run: Tools.undo, key: 'portal' });
+  });
+  Store.on('runas', d => {
+    const t = Store.get('tokens', d.tok);
+    if (!t || !isGM()) return;
+    toast(`${tokName(t)} pisou nas Runas-armadilha.`, { action: 'Revelar', run: () => { if (Store.get('effects', d.fx)) Store.tx('Revelar as runas', () => Store.upd('effects', d.fx, { gm: false })); }, key: 'runas-' + d.fx, long: true });
+  });
 
   /* ================= Véu do mestre =================
      A opção fica guardada como preferência de quem está olhando (não entra no desfazer da cena).

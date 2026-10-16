@@ -171,7 +171,7 @@ async function start(snap) {
   const nasceuEscondida = !naTela();
   if (!nasceuEscondida && window.innerWidth < 900) App.sideOpen = false;
 
-  Store.on('live', (op, inv) => { Vision.onOp(op); barFloats(op, inv); Render.request(); });
+  Store.on('live', (op, inv) => { Vision.onOp(op, inv); barFloats(op, inv); Render.request(); });
   Store.on('commit', e => { Persist.scene(e.sceneId); UI.refresh(); Render.request(); });
   Store.on('sel', () => { Vision.selChanged(); UI.refresh(); Render.request(); });
   Store.on('tool', () => UI.refresh());

@@ -222,7 +222,13 @@ const Tools = (() => {
       if (!o) continue;
       if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: o.size }); }
       else if (s.c === 'shapes') { if ((gm || can('editShape', o)) && !o.lock) items.push({ c: s.c, id: o.id, o0: o.pts ? { pts: o.pts.slice() } : { x: o.x, y: o.y } }); }
-      else if (s.c === 'effects') { if ((gm || can('editFx', o)) && !o.token) items.push({ c: s.c, id: o.id, x: o.x, y: o.y }); }
+      else if (s.c === 'effects') {
+        if (!((gm || can('editFx', o)) && !o.token)) continue;
+        // (lote 7) no portal, arrastar dentro do círculo da saída leva só a saída
+        const ge = o.fx === 'portal' ? FX.geom(o, Store.scene()) : null;
+        if (ge && ge.x2 != null && App.sel.length === 1 && Math.hypot(p.x - ge.x2, p.y - ge.y2) <= ge.R && Math.hypot(p.x - ge.x, p.y - ge.y) > ge.R) items.push({ c: s.c, id: o.id, x: o.x2, y: o.y2, saida: true });
+        else items.push({ c: s.c, id: o.id, x: o.x, y: o.y });
+      }
       else if (s.c === 'lights') { if (gm) items.push({ c: s.c, id: o.id, x: o.x, y: o.y }); }
     }
     if (!items.length) return null;
@@ -252,6 +258,7 @@ const Tools = (() => {
     for (const it of g.items) {
       if (it.c === 'tokens') { const [nx, ny] = snapTok(sc, it.x + dx, it.y + dy, it.size, true); Store.upd('tokens', it.id, { x: nx, y: ny }); }
       else if (it.c === 'shapes') Store.upd('shapes', it.id, shapeMoved(it.o0, dx, dy));
+      else if (it.saida) Store.upd(it.c, it.id, { x2: it.x + dx, y2: it.y + dy });
       else Store.upd(it.c, it.id, { x: it.x + dx, y: it.y + dy });
     }
   }
@@ -965,14 +972,21 @@ const Tools = (() => {
 
   /* ---- Efeitos de magia ---- */
   function fxFromOpt(x, y, tok) {
-    const o = App.opt, sc = Store.scene();
+    const o = App.opt, sc = Store.scene(), pr = FX.P[o.fx] || {};
     const dur = o.fxDur > 0 ? Math.round(o.fxDur) : 0;        // duração em rodadas; 0 = até alguém remover
-    return {
+    const e = {
       id: uid('fx'), fx: o.fx, k: o.fxShape, x, y, r: o.fxR, w: o.fxW, rw: o.fxRW, rh: o.fxRH, ang: o.fxAng, dir: o.fxShape === 'rect' ? o.fxDir : 0,
       pow: 0.8, token: tok ? tok.id : null, gm: false, by: authorId(),
       seed: 1 + Math.floor(Math.random() * 999), dur, dur0: dur, at: dur && sc.turn.on ? sc.turn.cur : null, apply: null,
     };
+    // (lote 7) o que cada zona nova já traz ao nascer
+    if (pr.portal) { e.k = 'circ'; e.token = null; }                                       // o portal: dois círculos soltos no mapa
+    if (pr.oculta && isGM()) e.gm = true;                                                    // as runas: escondidas até revelar
+    if (pr.cond) e.apply = { bar: '', amt: '', cond: { id: pr.cond, n: 0, d: 0 }, skip: [] };  // a condição, para a pergunta do começo da vez
+    if (pr.pv > 0) { e.pv = pr.pv; e.pvm = pr.pv; }                                          // a muralha: os pontos de vida
+    return e;
   }
+
   // Retângulo: arrasta-se a diagonal, de um canto ao outro (onde o botão desceu é um canto). Os dois cantos
   // encaixam na grade, de meio em meio quadrado; Alt solta. Preso a um token, cresce a partir do centro dele.
   // Com rotação nas opções, a diagonal é lida nos eixos do retângulo girado.
@@ -992,7 +1006,7 @@ const Tools = (() => {
   function fxOrigin(p, e) {
     const sc = Store.scene();
     let tok = null;
-    if (App.opt.fxAttach) { const hit = hitTest(p, { tokensOnly: true, noProps: true }); if (hit) tok = Store.get('tokens', hit.id); }
+    if (App.opt.fxAttach && !(FX.P[App.opt.fx] || {}).portal) { const hit = hitTest(p, { tokensOnly: true, noProps: true }); if (hit) tok = Store.get('tokens', hit.id); }
     if (tok && !isGM() && !ownsTok(tok)) tok = null;
     const [x, y] = tok ? tokC(tok, sc) : snapPt(sc, p.x, p.y, e.altKey, 0.5);
     return { x, y, tok };
@@ -1028,6 +1042,7 @@ const Tools = (() => {
       if (!g || g.type !== 'fx') return;
       const e = g.e;
       g = null;
+      if ((FX.P[e.fx] || {}).portal) Object.assign(e, saidaDoPortal(e, Store.scene()));
       Store.tx('Soltar efeito', () => Store.add('effects', e));
       setSel([{ c: 'effects', id: e.id }]);
       set('select');
