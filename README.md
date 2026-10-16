@@ -10,6 +10,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | **Acampamento** | A cena da fogueira: quem está no acampamento (com a aura da emoção de cada um), as provisões (rações com efeito), melhorias e equipamentos (para todos ou só para alguns), a caravana, os descansos e os momentos. |
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
+| **Meditação** | O lugar onde os personagens meditam (oito ambientes desenhados ou uma imagem do mestre, a hora e o clima) e quem está meditando; a prática de cada personagem (objeto, mantra, representação, panteão, a imagem meditando); os pilares de símbolos, onde o jogador, com a tentativa que o mestre libera, descobre as receitas que o mestre escreveu; e as barras de treinamento, que só o mestre vê. |
 | **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos — e, numa mesa, o auditor dos dados (o que saiu de cada dado, de todo mundo, contra o esperado). |
 
 ## Conta, mesa e dados
@@ -51,7 +52,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `index.html` | A casca: barra com a marca, as abas, a conta, a mesa e a mesa ao vivo. Cada sistema roda na própria página, dentro de uma moldura. |
 | `versao.json` | A versão publicada (a mesma de `VERSAO`, na casca). A casca aberta a consulta de tempos em tempos: se for outra, mostra o botão "Versão nova" na barra — nada recarrega sozinho. Os dois mudam juntos a cada publicação. |
 | `novidades.json` | O que muda em cada versão, a mais nova primeiro: título, data e os itens (`novo`, `melhorou` ou `consertado`; `mestre: true` marca o que é só do mestre). Aparece na janela do botão "Versão nova" (o que a versão nova traz) e no item "Novidades" do menu da conta (e no link "Novidades do site", na janela de entrar). Uma bolinha no canto do botão da conta fica acesa, em cada aparelho, até a pessoa abrir a lista; nada abre sozinho. **Toda publicação ganha uma entrada aqui**, com a mesma versão de `VERSAO` (o `site.test.js` confere). |
-| `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
+| `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `meditacao/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
 | `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade — ou, com `TC_LOCAL`, o banco local de ensaio. |
@@ -95,8 +96,14 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
     `fichas:tabelas` (mestre), `fichas:missoes` (da mesa: as missões do grupo) e `fichas:segredos` (mestre: ver
     "O que o mestre guarda só para ele"). Com campanhas, os grupos e as missões do grupo são de cada uma:
     `fichas:grupos@<campanha>` e `fichas:missoes@<campanha>`.
-  - Todos os documentos são escritos pelo mestre (sem dono). A única exceção, e a única coisa que o banco deixa
-    um jogador criar, é o `cena:pedido:` dele mesmo.
+  - Jornal: `jornal:rascunho` (mestre), `jornal:pub` (o publicado), `jornal:cartas:<jogador>` e
+    `jornal:resp:<jogador>` (ver "O Jornal (lote 6)").
+  - Meditação: `medit:cena` e `medit:quem` (o lugar e quem medita), `medit:simbolos` (da mesa), `medit:receitas` e
+    `medit:treino` (mestre), `medit:pratica:<personagem>` e `medit:achados:<personagem>` (ver "A Meditação (lote 6)").
+  - Os documentos são escritos pelo mestre (sem dono). O que o banco deixa um jogador criar: o `cena:pedido:` dele
+    mesmo, as cartas dele ao Jornal (`jornal:cartas:<ele>`) e a prática de um personagem dele na Meditação
+    (`medit:pratica:<personagem>`). `jornal:resp:<jogador>` e `medit:achados:<personagem>` têm o jogador como dono
+    (para ele ler), mas quem escreve é quem mestra — e, no segundo, as funções da Meditação.
 - Storage, pasta `mesas/<mesa>/`: as imagens (mapas, retratos, fundos).
 
 ### Duas pessoas mexendo na mesma ficha
@@ -467,6 +474,51 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   pessoa escreve não sai do lugar nem perde o que ainda não foi gravado quando chega uma carta, e o clique no campo
   seguinte cai nele.
 
+### A Meditação (lote 6)
+
+- **A cena.** A aba Meditação (`meditacao/`, depois da Árvore) mostra, para todos, o lugar onde os personagens meditam
+  e quem está meditando agora. Quem mestra a Meditação (o mestre, ou o auxiliar com a aba liberada) escolhe o ambiente
+  — oito desenhados (templo na montanha, montanha, floresta, cachoeira, caverna, jardim, deserto e céu estrelado:
+  `meditacao/desenhos.js`) ou uma imagem própria —, a hora (manhã, tarde, pôr do sol, noite e madrugada: as cores da
+  cena mudam) e o clima (os do Jornal, caindo por cima da cena). Com a imagem própria, o ambiente escolhido continua
+  valendo para as receitas. O lugar fica em `medit:cena` (a mesa lê); quem está meditando, em `medit:quem` (a mesa lê;
+  só a função `meditacao_entrar` escreve — assim, o mestre mudar o lugar no mesmo instante em que alguém entra não
+  apaga a entrada). Uma cena por mesa (não por campanha).
+- **A prática** de cada personagem: objeto, mantra, representação, o panteão (é o campo da ficha, `ficha.panteao`:
+  mudar aqui muda nas Fichas — e muda quem pode mudar a ficha) e a imagem meditando, que aparece na cena para quem vê
+  a prática (o dono e quem mestra; os outros veem o retrato da ficha). Fica em `medit:pratica:<personagem>`, com o dono
+  do personagem como dono: só ele e quem mestra veem. O banco deixa o jogador criar só a de um personagem dele.
+- **Entrar e sair.** O jogador entra e sai pela aba dele ("Meditar"); quem mestra chama ("Chamar para meditar…",
+  vários de uma vez) e tira. Ao entrar, o registro do personagem guarda o lugar, a hora e o clima (e se foi chamado
+  pelo mestre).
+- **As receitas e os símbolos.** Quem mestra escreve as receitas (`medit:receitas`, só ele vê): um nome, a sequência
+  de 2 a 5 símbolos (a ordem importa), o efeito (o que o jogador passa a ver quando acerta), onde vale (em qualquer
+  ambiente ou só em um) e para quem (todos ou alguns personagens). A lista avisa quando uma receita não pode ser achada:
+  menos de 2 símbolos, um símbolo escondido dos jogadores (ou que não existe mais), a mesma sequência de outra que vem
+  antes e também vale. Os símbolos (`medit:simbolos`, a mesa lê) são os prontos, em quatro grupos (elementos, astros,
+  animais e espíritos, runas e glifos) — que o mestre pode esconder dos jogadores —, e os dele (nome e desenho, ou uma
+  imagem).
+- **A tentativa.** O jogador combina os símbolos nos pilares quando está meditando e o mestre liberou uma tentativa
+  ("Liberar tentativa", no cartão do personagem; até 5 à frente, e dá para tirar). "Meditar sobre os pilares" vai ao
+  banco (`meditacao_tentar`), que confere a combinação nas receitas — o jogador não as lê — e gasta a tentativa: errou,
+  "Nada aconteceu."; acertou, "Você descobriu: <receita>", com o efeito, e a receita entra na lista dele (o mestre vê
+  a tentativa no cartão e no registro). A receita nova vira um aviso na mesa ao vivo, em segredo, do jogador para o
+  mestre da mesa (só os dois veem), na conversa da campanha do personagem. O que a meditação guardou de cada
+  personagem — as tentativas liberadas e feitas, as receitas descobertas e o registro — fica em
+  `medit:achados:<personagem>`: só o dono e quem mestra leem; quem escreve são as funções (`meditacao_entrar`,
+  `meditacao_liberar`, `meditacao_tentar`) e, para corrigir, quem mestra. O jogador não muda as tentativas nem o que
+  descobriu (o banco recusa).
+- **O treinamento.** Barras que quem mestra cria para cada personagem (o nome e quantos pontos a enchem), enche à mão
+  (+ e −) e só ele vê (`medit:treino`). Cheia, a barra mostra "Completa" e quando encheu: a recompensa é com o mestre,
+  na história.
+- **O personagem que muda de dono** leva junto a prática e o que descobriu: os dois documentos passam a ser do novo
+  dono (no banco, o gatilho `personagens_medit_dono`, que vale mesmo quando quem entrega a ficha não mestra a
+  Meditação).
+- Cada mudança é um passo de desfazer (o botão e Ctrl+Z); entrar, sair, chamar e liberar também se desfazem (a
+  tentativa já usada não volta). O painel se redesenha por cima, como o do Jornal: o campo em que se escreve não sai do
+  lugar. Fora de uma mesa, tudo fica no navegador, com um personagem de teste, e a página faz o que o banco faria. A
+  lógica (sem tela) é `meditacao/nucleo.js`. SQL: `supabase/migrations/0017_meditacao.sql`.
+
 ### O mapa-múndi: a grade, o terreno e a viagem
 
 - **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
@@ -671,7 +723,7 @@ auxiliar (`jogando`) e as abas dele (`abas`). Três perguntas decidem tudo, e s�
   na mesa ao vivo, envia imagens para a pasta da mesa e mexe nas fichas que os jogadores veem.
 - `privado.mestra(mesa, aba)` — o mestre, ou o auxiliar mestrando com a aba liberada. Cada documento é de uma aba,
   pelo nome (`cena:`/`cenas:` → Cenas, `mundo:` → Mapa-múndi, `acampamento` → Acampamento, `fichas:` → Fichas,
-  `arvore:` → Árvore, `rol:` → Rolador, `jornal:` → Jornal): só quem mestra a aba recebe e grava os documentos de
+  `arvore:` → Árvore, `rol:` → Rolador, `jornal:` → Jornal, `medit:` → Meditação): só quem mestra a aba recebe e grava os documentos de
   mestre dela. As fichas
   escondidas (e trocar dono, visibilidade ou apagar uma ficha) são da aba Fichas.
 
@@ -855,6 +907,9 @@ faltava subir.
 - **Poção usada com o mestre fora do site**: a ficha muda na hora; a barra do token é acertada quando o mestre abre
   a mesa (é o programa dele que acerta os tokens pela ficha).
 - **As paredes valem para o jogador na tela dele**: o banco não confere por onde um token passou.
+- **A Meditação tem uma cena só para a mesa** (não uma por campanha): quem está meditando aparece para toda a mesa.
+  O aviso da receita descoberta vai para o mestre da mesa (o auxiliar que mestra a Meditação vê a descoberta na aba,
+  sem o aviso). O jogador vê só os símbolos — as receitas, nem chegam ao aparelho dele.
 - **Imagens que foram trocadas** (um retrato, o fundo de uma cena) continuam no Storage até a mesa ser apagada.
   Apagar a mesa apaga a pasta dela; a função `faxina` (em `supabase/functions/`) apaga as pastas de mesas que não
   existem mais — o que sobrou de antes disso, ou de um apagar que parou no meio.
@@ -863,7 +918,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -901,7 +956,13 @@ volta —, e no banco quem escreve e quem lê a linha "para" alguém) e `jornal.
 aba Jornal primeiro, as cartas antes da primeira edição — e o mestre vendo-as chegar enquanto escreve —, "Pôr no
 jornal" e "Não publicar", publicar com a data do mapa, o Jornal abrindo sozinho para quem está nas Fichas, a bolinha e
 o "Ler" para quem está escrevendo, o site em segundo plano e o site fechado, desfazer a publicação e, no banco, quem
-lê e quem escreve cada documento do Jornal). `vivo.js` confere o site publicado.
+lê e quem escreve cada documento do Jornal) e `meditacao.rede` (com o mestre e dois jogadores: o lugar e as receitas
+do mestre, a prática do jogador — o panteão indo para a ficha, a imagem meditando enviada à mesa —, entrar na
+meditação e o que cada um vê, as tentativas liberadas, o erro, a receita que é de outro personagem, a descoberta com o
+aviso só para o jogador e o mestre, tirar e desfazer, o treinamento que só o mestre vê, o personagem que muda de
+dono levando a prática e as receitas; e, no banco, quem lê e quem escreve cada documento da Meditação, as três funções,
+o mestre auxiliar com e sem a aba e os documentos acompanhando o dono — `SO=banco` roda só essa parte). `vivo.js`
+confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -949,5 +1010,10 @@ painel da facção (recursos, população, apoio, o histórico automático, o qu
 também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
 lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
 itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma
-mudança de fora no meio da digitação, desfazer, publicar, os três modos, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+mudança de fora no meio da digitação, desfazer, publicar, os três modos, recarregar e a tela estreita).
+`meditacao-nucleo` confere a lógica da Meditação sem navegador (a cena, quem medita, os símbolos, as receitas e a que
+casa com a tentativa, as repetidas, o treinamento, a prática, o que a meditação guarda e o entrar, liberar e tentar
+feitos sem o banco) e `meditacao`, a página sozinha pela interface (o lugar, a imagem própria, chamar e liberar, a
+prática, as receitas e os avisos, os símbolos, os pilares — errar, a receita de outro ambiente, acertar —, o
+treinamento, desfazer, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

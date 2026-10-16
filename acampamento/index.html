@@ -60,6 +60,7 @@ button { cursor: pointer; }
 .btn:hover:not(:disabled) { background: var(--hover); }
 .btn:disabled { opacity: .5; cursor: default; }
 .btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover:not(:disabled) { background: var(--lamp); filter: brightness(1.08); }
 .btn.per { color: var(--danger); }
 .btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
 .ib { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg-2); flex: none; }
@@ -373,7 +374,7 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o acampamento.</p></noscript>
-<script src="../tc/ponte.js?v=12"></script>
+<script src="../tc/ponte.js?v=13"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=10"></script>
 <script src="nucleo.js?v=7"></script>

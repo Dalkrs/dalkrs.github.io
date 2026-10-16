@@ -2,6 +2,49 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-1",
+      "data": "2026-10-16",
+      "titulo": "Meditação: a nova aba, com a prática, os pilares e as receitas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Meditação, a nova aba (depois da Árvore): o lugar onde os personagens meditam — com o ambiente, a hora e o clima que o mestre escolhe — e quem está meditando agora."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A prática do seu personagem: objeto, mantra, representação, panteão (o mesmo da ficha) e uma imagem dele meditando, que aparece na cena. Só você e o mestre veem. Entre e saia da meditação pelo botão “Meditar”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Os pilares: quando o mestre liberar uma tentativa, combine de 2 a 5 símbolos, na ordem. Acertou uma receita? Você descobre o efeito dela, e ela fica na sua lista (só você e o mestre veem). Errou: “Nada aconteceu.”"
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Na Meditação, você monta a cena (oito ambientes desenhados ou uma imagem sua, a hora e o clima), chama e tira quem medita e libera as tentativas — tudo com Desfazer (e Ctrl+Z)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Receitas e símbolos: escreva as receitas (a sequência de símbolos, o efeito, onde vale e para quem) — a lista avisa quando uma não pode ser achada —, esconda os símbolos prontos que a mesa não usa e crie os seus. Quando um jogador descobre uma receita, você recebe um aviso na mesa ao vivo, só para você."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Treinamento: barras para cada personagem, que você enche à mão e só você vê."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mestre auxiliar: a aba Meditação entra nas Permissões. Quem já é auxiliar continua com as abas que tinha — para ele mestrar a Meditação, marque a aba em “Permissões…”."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Jornal, Acampamento e Mapa-múndi: com o mouse por cima, os botões principais escureciam e o texto sumia; agora continuam legíveis."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.15-10",
       "data": "2026-10-15",
       "titulo": "Jornal da mesa, a nova primeira aba, com as cartas dos leitores",

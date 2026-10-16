@@ -118,7 +118,7 @@
      o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
-  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal'];
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao'];
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
@@ -1081,10 +1081,13 @@
   }
   /* Os documentos da mesa são escritos pelo mestre e não têm dono. Os documentos com dono que valem: o pedido do
      próprio dono para a cena que está no ar e as cartas dele ao Jornal (é o que o banco deixa um jogador criar), e as
-     respostas às cartas dele (escritas por quem mestra o Jornal, com ele como dono, para só ele e o mestre verem).
+     respostas às cartas dele (escritas por quem mestra o Jornal, com ele como dono, para só ele e o mestre verem). E,
+     da Meditação, a prática de um personagem e o que a meditação guardou dele: têm como dono o dono do personagem (o
+     banco só deixa o jogador criar a prática de um personagem dele, e o resto é escrito pelas funções da meditação).
      Qualquer outro documento com dono não é entregue a nenhum sistema. */
   const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
-    || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id;
+    || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id
+    || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:')));
   function dadosZerar() {
     for (const k in cols) {
       const c = cols[k];
@@ -1493,6 +1496,31 @@
     await dados.esvaziar(4000);
     const { data, error } = await cliente().rpc('usar_item_em', { p_mesa: a.id, p_de: String(de), p_item: String(item), p_alvo: String(alvo), p_mudas: mudas || {}, p_volta: !!volta });
     if (error) throw (semEsquemaM(error) ? new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).') : falha(error, 'Não deu para usar o item agora. Tente de novo.'));
+    return data || null;
+  };
+  /* A Meditação (ver supabase/migrations/0017_meditacao.sql): entrar e sair da meditação, liberar uma tentativa nos
+     pilares e tentar uma combinação. Quem confere é o banco (as receitas, o jogador não lê) e é ele que grava quem está
+     meditando e o que a meditação guardou do personagem; depois, esses documentos são lidos de novo daqui, para a tela
+     não ficar esperando o aviso em tempo real. Os erros que o banco escreve para estas funções já vêm em português. */
+  const MEDIT = { entrar: 'meditacao_entrar', liberar: 'meditacao_liberar', tentar: 'meditacao_tentar' };
+  dados.meditacao = async (op, args) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    const funcao = MEDIT[op], pc = args && typeof args.pc === 'string' ? args.pc : '';
+    if (!funcao || !pc) throw new Error('Pedido desconhecido.');
+    const p = { p_mesa: a.id, p_pc: pc };
+    if (op === 'entrar') p.p_entrar = !!args.entrar;
+    else if (op === 'liberar') p.p_mais = Math.max(-5, Math.min(5, Math.trunc(Number(args.mais)) || 1));
+    else p.p_seq = Array.isArray(args.seq) ? args.seq.slice(0, 6).map(String) : [];
+    const { data, error } = await cliente().rpc(funcao, p);
+    if (error) {
+      if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem a Meditação: falta aplicar a atualização do banco (o SQL desta versão).');
+      if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
+      throw falha(error, 'Não deu certo agora. Tente de novo.');
+    }
+    // (antes de responder: assim o sistema já tem quem medita e o registro novos quando a resposta chega — sem piscar)
+    const reler = [buscarLinha('documentos', 'medit:achados:' + pc)];
+    if (op === 'entrar') reler.push(buscarLinha('documentos', 'medit:quem'));
+    await Promise.race([Promise.all(reler), new Promise(ok => setTimeout(ok, 3000))]);
     return data || null;
   };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */

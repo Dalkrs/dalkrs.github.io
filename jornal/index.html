@@ -58,6 +58,7 @@ button { cursor: pointer; }
 .btn:hover:not(:disabled) { background: var(--hover); }
 .btn:disabled { opacity: .5; cursor: default; }
 .btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover:not(:disabled) { background: var(--lamp); filter: brightness(1.08); }
 .btn.per { color: var(--danger); }
 .btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
 .ib { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg-2); flex: none; }
@@ -192,7 +193,7 @@ dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
-<script src="../tc/ponte.js?v=12"></script>
+<script src="../tc/ponte.js?v=13"></script>
 <script src="../mundo/nucleo.js?v=7"></script>
 <script src="nucleo.js?v=1"></script>
 <script src="jornal.js?v=1"></script>

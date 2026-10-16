@@ -409,12 +409,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=10"></script>
-<script src="tc/tc.js?v=23"></script>
+<script src="tc/tc.js?v=24"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.15-10';
+  const VERSAO = '2026.10.16-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -422,6 +422,7 @@ dialog::backdrop { background: var(--scrim); }
     fichas: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9.5" r="2.3"/><path d="M8.5 16.500c.7-1.700 2-2.500 3.500-2.500s2.800.8 3.500 2.500"/>',
     arvore: '<circle cx="12" cy="5" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M12 7v4"/><path d="M12 11c-4 0-6 2-6 5"/><path d="M12 11c4 0 6 2 6 5"/>',
     jornal: '<path d="M4 5h13v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v9a2 2 0 0 1-2 2h-3"/><path d="M7 9h7M7 12.5h7M7 16h4"/>',
+    meditacao: '<circle cx="12" cy="5" r="2"/><path d="M12 7.5v5"/><path d="M12 9.6c-1.6 1.6-3.6 2.6-6 3M12 9.6c1.6 1.6 3.6 2.6 6 3"/><path d="M4.5 18c2.4-1.9 4.9-2.8 7.5-2.8s5.1.9 7.5 2.8"/><path d="M8 20.5h8"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   const ABAS = [
@@ -431,9 +432,10 @@ dialog::backdrop { background: var(--scrim); }
     { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
     { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true },
+    { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true },                // (lote 6) a meditação dos personagens
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
   ];
-  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento' };
+  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
   const stage = $('stage'), tabs = $('tabs'), wait = $('wait'), pop = $('pop');
@@ -622,6 +624,11 @@ dialog::backdrop { background: var(--scrim); }
       // as Fichas: um item da bolsa usado em outro personagem, cuja ficha quem usa não grava (ver TC.dados.usarItemEm)
       if (m.mesa && m.mesa !== mesas.atual.id) { responder({ t: 'item.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
       TC.dados.usarItemEm(m.de, m.item, m.alvo, m.mudas, m.volta).then(r => responder({ t: 'item.ok', n: m.n, r }), e => responder({ t: 'item.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'medit') {
+      // a Meditação: entrar e sair, liberar uma tentativa, tentar os pilares (ver TC.dados.meditacao)
+      if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'medit.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
+      if (typeof TC.dados.meditacao !== 'function') { responder({ t: 'medit.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
+      TC.dados.meditacao(m.op, m.args || {}).then(r => responder({ t: 'medit.ok', n: m.n, r }), e => responder({ t: 'medit.erro', n: m.n, erro: e.message }));
     }
   }
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura
@@ -1226,9 +1233,12 @@ dialog::backdrop { background: var(--scrim); }
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
         h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
         d.veredito ? h('div', { class: 'vd ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null);
-      // (lote 6) a linha endereçada: o mestre a mandou só para um jogador — os dois a veem, e ela não vai para a mesa
+      // (lote 6) a linha endereçada: o mestre a mandou só para um jogador (ou, da Meditação, o jogador para o mestre) —
+      // os dois a veem, e ela não vai para a mesa
       const para = l.para ? mesas.atual.membros.find(m => m.usuario_id === l.para) : null;
-      if (l.secreta && l.para) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: l.para === conta.usuario.id ? 'Só você e o mestre veem' : 'Só você e ' + (para ? para.nome : 'o jogador') + ' veem' })));
+      const deQuemMestra = (() => { const m = mesas.atual.membros.find(x => x.usuario_id === l.autor_id); return !!m && (m.cargo === 'mestre' || m.cargo === 'auxiliar'); })();
+      const comQuem = l.para === conta.usuario.id ? (deQuemMestra ? 'o mestre' : l.autor_nome) : para ? (para.cargo === 'mestre' ? 'o mestre' : para.nome) : 'o jogador';
+      if (l.secreta && l.para) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você e ' + comQuem + ' veem' })));
       else if (l.secreta) el.append(h('div', { class: 'sg' }, icone(CAD_SVG), h('span', { text: 'Só você vê' }), h('button', { type: 'button', class: 'btn sm', style: 'margin-left:auto', text: 'Mostrar à mesa', onclick: async () => { try { await aoVivo.revelar(l.id); } catch (e) { toast(e.message); } } })));
     } else if (l.tipo === 'acao') {
       el = h('li', { class: 'it acao', 'data-id': l.id, title: d.como ? l.autor_nome + ', como ' + d.como : null }, retrato(d), h('span', { text: '✦ ' + (d.como || l.autor_nome) + ' ' + (d.texto || '') }));

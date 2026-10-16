@@ -18,6 +18,7 @@
      TC.ponte.registro.aoChegar(fn) — chegou à mesa ao vivo uma linha com recado para os sistemas (dados.sis): fn(linha)
      TC.ponte.registro.pedir(d)  — promessa: o mestre pede aos jogadores que rolem a defesa → { id } (a linha do pedido)
      TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
+     TC.ponte.meditacao(op, args) — promessa: a Meditação pede ao banco (op 'entrar' | 'liberar' | 'tentar')
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -80,6 +81,16 @@
       const n = ++seq;
       const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
       enviar({ t: 'item.usar', n, mesa: ponte.estado.mesa.id, de: o.de, item: o.item, alvo: o.alvo, mudas: o.mudas || {}, volta: !!o.volta });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
+    /* A Meditação: entrar e sair da meditação, liberar uma tentativa nos pilares, tentar uma combinação. Passa pelo
+       banco, que é quem confere (as receitas, o jogador não lê). args = { pc, entrar } | { pc, mais } | { pc, seq }. */
+    meditacao(op, args) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('A meditação só passa pela mesa dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'medit', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
       setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
       return p;
     },
@@ -202,6 +213,11 @@
     if ((m.t === 'item.ok' || m.t === 'item.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
+      return;
+    }
+    if ((m.t === 'medit.ok' || m.t === 'medit.erro') && esperas[m.n]) {
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (m.t === 'medit.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {

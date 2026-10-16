@@ -128,7 +128,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
   let apagada = false;
   try {
     // ---------- a aba: a primeira; o mestre abre o editor ----------
-    ok(await abas(M) === 'jornal,cenas,mundo,acampamento,fichas,arvore,rolador' && await abaAtiva(M) === 'jornal', 'a aba Jornal é a primeira (o mestre está nela): ' + await abas(M));
+    ok(await abas(M) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao,rolador' && await abaAtiva(M) === 'jornal', 'a aba Jornal é a primeira (o mestre está nela): ' + await abas(M));
     let JM = null;
     ok(await ate(async () => { JM = await quadro(M, /\/jornal\//); return JM && await jornalPronto(JM) && await JM.evaluate(() => __jornal.mestre); }, 40000), '(na mesa, o mestre abre o Jornal como quem mestra)');
     ok(await JM.locator('#ed').isVisible() && await JM.locator('#btPublicar').isVisible() && /ainda não publicado/.test(await JM.locator('#salvo').innerText()) && /a mesa ainda não tem mapa/.test(await JM.locator('[data-k="j:mapa"]').innerText()),
@@ -141,7 +141,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     await Lp.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1200, Lp);
     await loginTela(Lp, c.jog2, c.senha); await entrarMesaTela(Lp, codigo, 'Lia');
     const lia = await Lp.evaluate(() => TC.conta.usuario.id);
-    ok(await abas(Dp) === 'jornal,cenas,mundo,acampamento,fichas,arvore' && await abaAtiva(Dp) === 'fichas' && !(await bolinha(Dp)), 'para os jogadores, o Jornal também é a primeira aba (sem bolinha: nada saiu ainda)');
+    ok(await abas(Dp) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao' && await abaAtiva(Dp) === 'fichas' && !(await bolinha(Dp)), 'para os jogadores, o Jornal também é a primeira aba (sem bolinha: nada saiu ainda)');
     // o mestre: a ficha da Selene, do Dalmo, e um mapa com calendário (é dele que vem a data do jornal)
     await M.evaluate(([d, f]) => {
       TC.dados.col('personagens').gravar('pc_selene', { nome: 'Selene', ficha: f, skills: {}, estado: {}, dono_id: d, vis: 'mesa', ordem: 0 });
