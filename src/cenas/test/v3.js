@@ -861,7 +861,10 @@ section('1 2 4 turnos', async k => {
   /* ---- faixa "Vez de…" com o número do turno ---- */
   await ev(() => { const u = __urgm; u.Act.turnPatch(x => { const i = x.list.findIndex(e => e.k === 2); x.cur = x.list[(i + x.list.length - 1) % x.list.length].id; x.back = 0; }); }); await w(200);
   await page.locator('#turnNext').click(); await w(250);
-  ok(await ev(() => document.querySelector('#turnb .turnb-t').textContent) === 'Vez de Capitão · 2º turno', 'faixa: "Vez de Capitão · 2º turno" — ' + await ev(() => document.querySelector('#turnb .turnb-t').textContent));
+  // (lote 7: o mestre vê a faixa de cinema; se a rodada virou, ela vem depois da faixa "Rodada N")
+  await page.waitForFunction(() => document.getElementById('cineN'), null, { timeout: 3000 }).catch(() => {});
+  const faixaN = () => ev(() => (document.getElementById('cineN') || {}).textContent || '');
+  ok(await faixaN() === 'Vez de Capitão · 2º turno', 'faixa: "Vez de Capitão · 2º turno" — ' + await faixaN());
   ok(await ev(() => document.querySelector('.turn.cur .turn-k') !== null), 'a linha da vez é a do 2º turno');
 
   /* ---- item 4: entrada avulsa ---- */

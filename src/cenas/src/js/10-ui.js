@@ -7,7 +7,7 @@ const UI = (() => {
   const el = {
     top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
-    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'), zonas: $('#zonas'),
+    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'),
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
@@ -517,7 +517,7 @@ const UI = (() => {
     App.sel = [];
     if (!Tools.allowed(App.tool)) Tools.set('select');
     if (v !== 'gm' && (App.tab === 'scene' || App.tab === 'players')) App.tab = 'sel';
-    hideTurn();
+    hideTurn(); hideCine();
     App.floats.length = 0;          // números de dano em trânsito não passam de uma visão para a outra
     Vision.invalidate();
     Store.emit('viewer');
@@ -1061,15 +1061,17 @@ const UI = (() => {
     const info = t.cinfo || {}, pre = idp || 'cd';
     const list = t.conds.map(id => COND_BY_ID[id]).filter(Boolean);
     if (!list.length) return null;
-    if (!edit && !list.some(c => info[c.id] && (info[c.id].n || info[c.id].d))) return h('div', { class: 'chips' }, list.map(c => condChip(c, true, null)));
+    if (!edit && !list.some(c => condNum(t, c.id) || (info[c.id] && info[c.id].d))) return h('div', { class: 'chips' }, list.map(c => condChip(c, true, null)));
     const done = () => { if (after) after(); };
     return h('div', { class: 'cact' + (edit ? '' : ' ro') },
       h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), edit ? h('span') : null),
       list.map(c => {
-        const ci = info[c.id] || {}, n = ci.n || 0;
+        const ci = info[c.id] || {}, n = condNum(t, c.id);
         return h('div', { class: 'cact-r' },
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { class: 'cact-t', text: c.n })),
-          edit ? h('span', { class: 'stp' },
+          // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
+          c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
+          : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1', 'aria-label': `Somar 1 em ${c.n}`, onclick: () => { condStepToast(t, c, 1); done(); } }, icon('plus', 13)))
@@ -1095,7 +1097,7 @@ const UI = (() => {
       h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), h('span')),
       ativas.map(c => {
         const com = ts.filter(t => t.conds.includes(c.id)), de = (t, k) => ((t.cinfo || {})[c.id] || {})[k] || 0;
-        const ns = com.map(t => de(t, 'n')), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]);
+        const ns = com.map(t => condNum(t, c.id)), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]), escudo = c.id === 'escudado';
         const qual = com.length === ts.length ? 'em todos' : com.length + ' de ' + ts.length;
         // (valores diferentes: de quanto a quanto; o de cada um fica na dica)
         const faixa = a => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? (lo ? String(lo) : '–') : (lo || '–') + ' a ' + hi; };
@@ -1104,10 +1106,10 @@ const UI = (() => {
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
             h('span', { class: 'cm-tt' }, h('span', { class: 'cact-t', text: c.n }), h('span', { class: 'cm-q', text: qual }))),
           h('span', { class: 'stp' },
-            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !ns.some(n => n > 0), title: 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: escudo || !ns.some(n => n > 0), title: escudo ? 'Os pontos do escudo são a sobrevida de cada token' : 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
               onclick: () => lote(c, { delta: -1 }, n => `${c.n}: −1 em ${quantos(n)}.`) }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, title: 'O contador de cada um: ' + cada(ns), text: faixa(ns) }),
-            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, disabled: escudo, title: escudo ? 'Os pontos do escudo são a sobrevida de cada token' : 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
               onclick: () => lote(c, { delta: 1 }, n => `${c.n}: +1 em ${quantos(n)}.`) }, icon('plus', 13))),
           inCount(`${pre}-${c.id}-d`, igual(ds) ? ds[0] : 0, v => lote(c, { d: v }, n => `${c.n}: ${v ? v + (v === 1 ? ' rodada' : ' rodadas') : 'sem prazo'} em ${quantos(n)}.`),
             { label: `Rodadas de ${c.n} em todos`, title: (igual(ds) ? '' : 'Agora: ' + cada(ds) + '. ') + 'As mesmas rodadas para todos os que têm a condição. Vazio: sem prazo.' }),
@@ -2475,17 +2477,18 @@ const UI = (() => {
     }
     // Condições ativas: as que têm contador ganham + e − aqui mesmo; as outras abrem a janela de condições.
     const info = t.cinfo || {};
-    const conds = t.conds.map(id => COND_BY_ID[id]).filter(Boolean).sort((p, q) => ((info[q.id] && info[q.id].n) ? 1 : 0) - ((info[p.id] && info[p.id].n) ? 1 : 0));
+    const conds = t.conds.map(id => COND_BY_ID[id]).filter(Boolean).sort((p, q) => (condNum(t, q.id) ? 1 : 0) - (condNum(t, p.id) ? 1 : 0));
     for (const c of conds.slice(0, 6)) {
-      const ci = info[c.id] || {}, n = ci.n || 0, dur = ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '';
+      const ci = info[c.id] || {}, n = condNum(t, c.id), dur = ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '';
       const badge = h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12));
-      if (canCond && n) {
+      // (lote 7) o Escudado mostra os pontos (a sobrevida), sem o − e o +: eles mudam na barra
+      if (canCond && n && c.id !== 'escudado') {
         kids.push(h('span', { class: 'hud-c', title: c.n + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
           badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, title: `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
-        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${dur}: abrir condições`, 'aria-label': `${c.n}${dur}`, onclick: () => condPicker([t]) }, badge));
+        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
         kids.push(h('span', { class: 'hud-c ro', title: c.n + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
@@ -2523,9 +2526,13 @@ const UI = (() => {
     const prev = turnKey;
     turnKey = key;
     if (prev === key) return;
-    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { hideTurn(); return; }
-    if (!isGM() && !can('turns')) { hideTurn(); return; }
+    const nada = () => { hideTurn(); hideCine(); };
+    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { nada(); return; }
+    if (!isGM() && !can('turns')) { nada(); return; }
+    // (a rodada virou — ou o combate acabou de começar: antes não havia vez nenhuma)
+    const r0 = /:(\d+)$/.exec(prev), rodadaNova = !r0 || (tn.round || 1) > Number(r0[1]);
     if (!isGM() && vezDoMestre(tn)) {                      // (o jogador, na vez de uma linha invisível)
+      hideCine();
       el.turnb.replaceChildren(h('span', { class: 'turnb-t' }, 'O turno está com o ', h('strong', { text: 'mestre' })),
         h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)));
       el.turnb.hidden = false;
@@ -2535,11 +2542,15 @@ const UI = (() => {
     }
     const e = tn.list.find(x => x.id === tn.cur);
     const t = e && e.token ? Store.get('tokens', e.token) : null;
-    if (!e || (t && !tokShown(t, sc))) { hideTurn(); return; }     // o jogador não fica sabendo de quem ele não vê
+    if (!e || (t && !tokShown(t, sc))) { nada(); return; }     // o jogador não fica sabendo de quem ele não vê
     const membros = isBand(e) ? turnToks(e).filter(k => tokShown(k, sc)) : [];
-    if (isBand(e) && e.toks.length && !membros.length) { hideTurn(); return; }
+    if (isBand(e) && e.toks.length && !membros.length) { nada(); return; }
     const info = t ? t.cinfo || {} : {};
     const conds = t ? t.conds.map(id => COND_BY_ID[id]).filter(Boolean) : [];
+    // a faixa de cinema: o mestre, sempre; o jogador, na vez de um token dele. Os outros jogadores: a faixa pequena.
+    const meu = !isGM() && (t ? ownsTok(t) : membros.some(ownsTok));
+    if (isGM() || meu) { hideTurn(); cinema(sc, e, t, membros, conds, meu, rodadaNova); return; }
+    hideCine();
     el.turnb.replaceChildren();
     addKids(el.turnb, [
       t ? tokenAvatar(t, 26) : membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(k => tokenAvatar(k, 22))) : null,
@@ -2548,13 +2559,68 @@ const UI = (() => {
       conds.map(c => {
         const ci = info[c.id] || {};
         return h('span', { class: 'turnb-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
-          h('span', { text: c.n + (ci.n ? ' ' + ci.n : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
+          h('span', { text: c.n + (condNum(t, c.id) ? ' ' + condNum(t, c.id) : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
       }),
       h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)),
     ]);
     el.turnb.hidden = false;
     clearTimeout(turnTimer);
     turnTimer = setTimeout(hideTurn, conds.length ? 7000 : 4000);
+  }
+
+  /* ================= (lote 7) A faixa de cinema =================
+     Quando a vez muda, uma faixa larga atravessa o meio da cena por uns dois segundos: o retrato grande, "Vez de Dain",
+     a rodada e as condições de quem vai jogar. O mestre vê sempre; o jogador vê a dele, "Sua vez!", quando a vez é de um
+     token seu. Na primeira vez de uma rodada nova (e quando o combate começa) vem antes uma faixa curta: "Rodada 4". Não
+     pega clique nenhum e sai sozinha; se a vez muda de novo no meio, a faixa troca na hora. O som — o gongo na vez de
+     um aliado, o tambor na de um inimigo — segue a chave de som da mesa ao vivo, em cada aparelho. */
+  // (um relógio só: o da faixa da rodada, que chama a da vez, ou o que tira a faixa; esconder cancela o que faltava)
+  let cineTimer = 0;
+  const CINE_MS = 2400, CINE_COND_MS = 3200, RODADA_MS = 1500;
+  function hideCine() { clearTimeout(cineTimer); cineTimer = 0; el.cine.hidden = true; el.cine.replaceChildren(); el.cine.className = 'cine'; }
+  // de que lado está o token: a ficha diz (Aliado, Inimigo, Neutro); sem ficha e sem dono, é do mestre — conta como inimigo
+  function tokInimigo(t) {
+    if (!t) return false;
+    const l = t.char ? Fichas.get(t.char) : null, lado = l && l.ficha ? String(l.ficha.lado || '') : '';
+    if (lado) return lado === 'Inimigo';
+    return !t.owner && !t.char;
+  }
+  function mostrarCine(cls, ms, kids) {
+    el.cine.className = 'cine ' + cls;
+    el.cine.style.setProperty('--cine-ms', ms + 'ms');
+    el.cine.replaceChildren(h('div', { class: 'cine-f' }, ...kids));
+    el.cine.hidden = false;
+  }
+  function cinema(sc, e, t, membros, conds, meu, rodadaNova) {
+    hideCine();
+    const rodada = sc.turn.round || 1;
+    // num grupo, é inimigo se todos os tokens dele são; a linha sem token nenhum fica com o gongo
+    const lado = meu ? 'sua' : (t ? tokInimigo(t) : membros.length && membros.every(tokInimigo)) ? 'inimigo' : 'aliado';
+    const nome = turnLabel(e, t ? tokName(t) : e.name);
+    const vez = () => {
+      const info = t ? t.cinfo || {} : {};
+      const chips = conds.slice(0, 6).map(c => {
+        const ci = info[c.id] || {}, n = condNum(t, c.id);
+        return h('span', { class: 'cine-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+          h('span', { text: c.n + (n ? ' ' + Math.round(n) : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
+      });
+      if (conds.length > 6) chips.push(h('span', { class: 'cine-c', text: '+' + (conds.length - 6) }));
+      const ms = conds.length ? CINE_COND_MS : CINE_MS;
+      mostrarCine(lado, ms, [
+        h('span', { class: 'cine-av' }, t ? tokenAvatar(t, 76) : membros.length ? membros.slice(0, 3).map(k => tokenAvatar(k, 60)) : h('span', { class: 'cine-av-v' }, icon('users', 30))),
+        h('span', { class: 'cine-tx' },
+          h('span', { class: 'cine-k', id: 'cineK', text: meu ? `Rodada ${rodada} · ${nome}` : `Rodada ${rodada}` }),
+          h('span', { class: 'cine-n', id: 'cineN' }, meu ? 'Sua vez!' : [h('small', { text: 'Vez de ' }), nome]),
+          isGM() && e.inv ? h('span', { class: 'cine-inv', text: 'invisível para os jogadores' }) : null,
+          chips.length ? h('span', { class: 'cine-s' }, chips) : null),
+      ]);
+      Som.tocar(lado);
+      cineTimer = setTimeout(hideCine, ms);
+    };
+    if (!rodadaNova) { vez(); return; }
+    mostrarCine('rodada', RODADA_MS, [h('span', { class: 'cine-r', id: 'cineR' }, h('small', { text: 'Rodada' }), h('b', { text: String(rodada) }))]);
+    Som.tocar('rodada');
+    cineTimer = setTimeout(vez, RODADA_MS);
   }
 
   /* ================= Começo da vez dentro de uma zona =================

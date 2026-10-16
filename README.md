@@ -228,7 +228,7 @@ na cena passa por um botão e vira um passo de desfazer.
 - **O teclado volta para a cena no clique.** O clique no mapa não muda o foco sozinho (o `preventDefault` do
   `pointerdown`); por isso a cena puxa o foco ali (`tomarFoco`): quem acabou de escrever na conversa da mesa ao vivo
   usa os atalhos logo depois de clicar no mapa.
-- **Condições por categoria.** São 47, cada uma com uma categoria (`CONDS[].g`: Dano, Controle, Combate, Mente,
+- **Condições por categoria.** São 67 (20 vieram no lote 7), cada uma com uma categoria (`CONDS[].g`: Dano, Controle, Combate, Mente,
   Corpo, Ritmo, Bênçãos); a escolha mostra uma aba de cada vez (ou Todas), com uma busca pelo nome que ignora
   acentos. A aba que tem condição ativa ganha um ponto.
 - **C — disputa** (só o mestre): dois lados, cada um com um token da cena ou um valor avulso; lado com ficha escolhe
@@ -429,6 +429,37 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   abertos. A névoa dinâmica vem ligada (as paredes bloqueiam a visão).
 - **Os itens complementares na janelinha E**: o "com Espada de gelo" numa linha embaixo do nome, e "sem efeito ·
   precisa de …" quando está equipado sem o requisito.
+
+### As Cenas (lote 7)
+
+- **20 condições novas** (`CONDS` e `TC.rules.CONDICOES`, que o `rules` confere juntas): Petrificado, Adormecido,
+  Eletrizado, Corroído, Enregelado, Possuído, Enraizado, Sufocando, Ofuscado, Vulnerável, Escudado, Refletindo,
+  Etéreo, Enlouquecido, Determinado, Qi bloqueado, Desvio de Qi, Agigantado, Encolhido e Ventania — cada uma com
+  ícone e cor próprios. São lembretes, como as outras (o contador e as rodadas de sempre; a Ventania usa o contador
+  para os acúmulos), com três exceções:
+  - **Escudado**: o número dele é a sobrevida do token (a soma de todas as barras; `condNum`). Na janela e na
+    barrinha do token ele não tem − e +: os pontos mudam na barra. Sai quando a sobrevida vai de mais de zero a zero
+    (pelo dano, ou zerada na mão); posto num token sem sobrevida, fica até ela chegar e acabar. Na tela do jogador, o
+    token do mestre cuja barra vai só em proporção manda os pontos em `xn`, e o número sai deles.
+  - **Agigantado** dobra o tamanho do token e **Encolhido** o deixa na metade (de ¼ a 8 quadrados: `TAM_MIN`,
+    `TAM_MAX`), ajustado para continuar dentro da cena. O tamanho de antes fica em `t.tam0` e volta quando a condição
+    sai (também quando acaba pelas rodadas). Os dois juntos não ficam: o que já estava sai, e vale o que entrou.
+  - Quem acerta é o programa do mestre (ou o de quem usa sem mesa), nunca o do jogador (`acertaAqui`): no fim do passo
+    que mudou o token, dentro dele (`Store.aoFechar`, com o mesmo Desfazer); para o que chegou de fora (o pedido de um
+    jogador, a ficha), num passo logo depois. O "antes" de cada token é o do começo do passo (`antesDoToken`, pela
+    última inversa que mexeu em cada coisa).
+- **A faixa de cinema** (`#cine`): quando a vez muda, uma faixa larga atravessa o meio da cena por uns dois segundos
+  (três, se há condições) — o retrato grande, "Vez de Dain", a rodada e as condições de quem vai jogar. O mestre vê
+  sempre (na linha invisível, com a marca); o jogador vê a dele, "Sua vez!", quando a vez é de um token seu (numa
+  faixa de grupo, se algum token dela é dele); os outros jogadores continuam com a faixa pequena do alto (`#turnb`).
+  Na primeira vez de uma rodada nova, e quando o combate começa, vem antes a faixa "Rodada N" (1,5 s). Ela não pega
+  clique (`pointer-events: none`), sai sozinha e troca na hora se a vez muda de novo (a que estava para vir é
+  cancelada). A cor diz o lado: âmbar para os aliados, vermelho para os inimigos (a ficha diz `lado`; o token sem
+  ficha e sem dono é do mestre e conta como inimigo; um grupo, se todos os tokens dele são), verde-água para o "Sua
+  vez!". Com movimento reduzido, ela só aparece e some.
+- **Os sons da vez** (`Som`, `10e-som.js`, feitos no navegador com Web Audio, sem arquivo): o gongo na vez de um
+  aliado, o tambor na de um inimigo, dois toques claros no "Sua vez!" e um sino grave com tambor na rodada nova.
+  Seguem a chave "Som ao rolar" da mesa ao vivo (`tinycats:som`), em cada aparelho: desligada, nada toca.
 
 ### A Árvore (lote 6)
 
@@ -1103,7 +1134,13 @@ a rolagem geral sem mesa, as pastas (a janela, o menu, guardar neste navegador),
 e 60 sorteios conferidos — aldeia e vila, os quatro terrenos, com e sem rio e paliçada: a mesma semente dá o mesmo
 vilarejo; casas dentro da área, sem grudar, fora da rua, da praça e do rio; uma porta em cada, no lado certo; móveis
 dentro, sem um em cima do outro e sem tapar a porta) e o item
-complementar na janelinha E. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+complementar na janelinha E; `src/cenas/test/lote7.js`, as 20 condições novas (a janela, os ícones, a Ventania), o
+Escudado (o número no painel, na barrinha e no mapa; sair quando a sobrevida acaba, no mesmo Desfazer; o que chega de
+fora; o aparelho do jogador, que não acerta), o Agigantado e o Encolhido (os limites, a borda da cena, as rodadas, o
+que chega de fora) e a faixa de cinema (o mestre, o jogador da vez e os outros, "Rodada N", o lado pela ficha, a
+faixa cancelada, os sons com a chave ligada e desligada, a tela estreita e o movimento reduzido); e
+`cenas-lote7.rede`, numa mesa com o mestre e um jogador: "Sua vez!" no aparelho dele, o Agigantado que ele põe no
+token dele, e o Escudado que sai com o dano do mestre e com o dele. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre

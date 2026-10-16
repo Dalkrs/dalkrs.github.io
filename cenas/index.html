@@ -606,6 +606,54 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .turnb-t { white-space: nowrap; }
 .turnb-c { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
 .turnb-x { width: 24px; height: 24px; }
+/* (lote 7) A faixa de cinema: a vez de quem joga, no meio da cena, por uns dois segundos — para o mestre e para o
+   jogador da vez ("Sua vez!"). É escura nos dois temas, não pega clique nenhum e sai sozinha. A cor da borda diz o
+   lado: âmbar para os aliados, vermelho para os inimigos, verde-água para o "Sua vez!", cinza para a rodada nova. */
+.cine { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); z-index: 4; display: flex; justify-content: center; pointer-events: none; --cine-c: var(--lamp); --cine-ms: 2400ms; }
+.cine * { pointer-events: none; }
+.cine.inimigo { --cine-c: #e0574c; }
+.cine.sua { --cine-c: #45c2ac; }
+.cine.rodada { --cine-c: #b9c0cf; }
+.cine-f {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px 20px; padding: 16px 24px; color: #f3f1ea;
+  background: linear-gradient(90deg, rgba(7, 9, 15, 0), rgba(7, 9, 15, .9) 16%, rgba(7, 9, 15, .94) 50%, rgba(7, 9, 15, .9) 84%, rgba(7, 9, 15, 0));
+  border-style: solid; border-width: 2px 0; border-image: linear-gradient(90deg, transparent, var(--cine-c) 18%, var(--cine-c) 82%, transparent) 1;
+  animation: cineEntra var(--cine-ms) cubic-bezier(.2, .7, .2, 1) both;
+}
+.cine-av { display: inline-flex; flex: none; align-items: center; }
+.cine-av .av { box-shadow: 0 0 0 3px var(--cine-c), 0 10px 26px rgba(0, 0, 0, .55); }
+.cine-av .av + .av { margin-left: -16px; }
+.cine-av-v { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--cine-c); color: var(--cine-c); }
+.cine-tx { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; animation: cineTexto var(--cine-ms) cubic-bezier(.2, .7, .2, 1) both; }
+.cine-k { color: var(--cine-c); font: 700 12px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.cine-n { max-width: min(560px, 62vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 clamp(26px, 4.4vw, 46px)/1.05 var(--display); letter-spacing: .01em; text-shadow: 0 2px 14px rgba(0, 0, 0, .6); }
+.cine-n small { font-size: .55em; font-weight: 500; color: #cfd3dc; }
+.cine-inv { padding: 1px 8px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; color: #cfd3dc; font-size: 12px; }
+.cine-s { display: flex; flex-wrap: wrap; gap: 5px; max-width: min(560px, 62vw); }
+.cine-c { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; background: rgba(255, 255, 255, .07); color: #e6e8ee; font-size: 12.5px; white-space: nowrap; }
+.cine-r { display: flex; align-items: baseline; gap: 12px; font-family: var(--display); }
+.cine-r small { color: var(--cine-c); font: 700 13px var(--mono); letter-spacing: .2em; text-transform: uppercase; }
+.cine-r b { font-size: clamp(34px, 5.6vw, 58px); font-weight: 600; line-height: 1; }
+@keyframes cineEntra {
+  0% { opacity: 0; transform: scaleY(.15); }
+  12% { opacity: 1; transform: none; }
+  84% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scaleY(.7); }
+}
+@keyframes cineTexto {
+  0%, 6% { opacity: 0; transform: translateX(-22px); }
+  20% { opacity: 1; transform: none; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes cineSo { 0% { opacity: 0; } 12% { opacity: 1; } 84% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cine-f { animation-name: cineSo; }
+  .cine-tx { animation: none; }
+}
+@media (max-width: 640px) {
+  .cine-f { gap: 10px 14px; padding: 12px 14px; }
+  .cine-av .av { width: 52px !important; height: 52px !important; font-size: 20px !important; }
+}
 /* o aviso de zona no começo da vez (só o mestre): um por zona, até ele aplicar ou pular */
 .zonas { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .zona { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: min(620px, calc(100% - 24px)); padding: 7px 8px 7px 10px;
@@ -834,6 +882,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
       <canvas id="cv" aria-label="Mapa da cena"></canvas>
       <div class="opts" id="opts" hidden></div>
       <div class="turnb" id="turnb" role="status" hidden></div>
+      <div class="cine" id="cine" aria-live="polite" hidden></div>
       <div class="dock">
         <div class="zonas" id="zonas" role="status" hidden></div>
         <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -1164,6 +1213,27 @@ const ICONS = {
   c_acelerado: 'M4 6l7 6-7 6M12.500 6l7 6-7 6',
   c_voando: { d: 'M2 9.500c4-1.300 7.200.8 10 3.800 2.800-3 6-5.100 10-3.800-3 1-5 3-6 5.800-1.300 2.400-6.700 2.400-8 0-1-2.800-3-4.800-6-5.800z', fill: true },
   c_oculto: 'M12 2.800c-4.100 0-7 4.400-7 9.400v8.800h14v-8.800c0-5-2.900-9.400-7-9.400zM8.300 13.200C9.300 10.800 10.600 9.800 12 9.800s2.700 1 3.700 3.400c-1 2.400-2.300 3.400-3.700 3.400s-2.700-1-3.700-3.400zM10.600 13.200v.2M13.400 13.200v.2',
+  // (lote 7) as condições novas
+  c_petrificado: 'M5 19.500l-1.500-6 3-6.500 5-2.500 5.500 2 3 5.500-1.500 7.500zM9 9l2.500 3.500-1 3M15 8.500l-1.500 3.500 2.500 2.500',
+  c_adormecido: 'M4 9h5l-5 6h5M12 5h4l-4 5h4M16.500 13.500h4l-4 5h4',
+  c_eletrizado: 'M13 2.500L7 12.500h5l-2 9 7-11h-5zM3.500 7l2 1M20.500 16l-2-1M4 17.500l2-1.500M20 6.500l-2 1.500',
+  c_corroido: 'M12 3.500c3.200 4.200 5.500 7 5.500 10a5.500 5.500 0 0 1-11 0c0-3 2.300-5.800 5.500-10zM10 13.500h.01M13.500 16h.01M13 11h.01M10.500 17h.01',
+  c_enregelado: 'M7 3.500v6M4.400 5l5.200 3M9.600 5L4.400 8M17 8.500v6M14.400 10l5.200 3M19.600 10l-5.200 3M9.500 14.500v6M6.900 16l5.200 3M12.100 16l-5.200 3',
+  c_possuido: 'M6 20.500V11a6 6 0 0 1 12 0v9.500l-2-1.500-2 1.500-2-1.500-2 1.500-2-1.500zM9.500 11h.01M14.500 11h.01M10 14.500c1.300.8 2.700.8 4 0',
+  c_enraizado: 'M12 3v9M12 12c-2 2-5 2.500-7 6M12 12c2 2 5 2.500 7 6M12 12v8.500M8.500 16.500L7 21M15.500 16.500L17 21',
+  c_sufocando: 'M5.500 16.500a2.500 2.500 0 1 0 5 0a2.500 2.500 0 1 0-5 0M13 12.500a2 2 0 1 0 4 0a2 2 0 1 0-4 0M9 7a1.500 1.500 0 1 0 3 0a1.500 1.500 0 1 0-3 0M16 5.500a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
+  c_ofuscado: 'M2.500 14s3.500-5.500 9.500-5.500 9.500 5.500 9.500 5.500-3.500 5.500-9.500 5.500S2.500 14 2.500 14zM12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 2.500v3M5 4.500l1.700 2.300M19 4.500l-1.700 2.300',
+  c_vulneravel: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 3l-1.500 6 3 3-2 5.500',
+  c_escudado: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM8.500 11.500h7M12 8v7',
+  c_refletindo: 'M5 3.500v17M19.500 5.500L7.500 12l12 6.500M16 4.500h3.500V8',
+  c_etereo: 'M12 7.500m-2.500 0a2.500 2.500 0 1 0 5 0a2.500 2.500 0 1 0-5 0M6.500 20.500c0-3.500 2.500-6 5.500-6s5.500 2.500 5.500 6M3 9h2M19 9h2M4 14.500h1.500M18.500 14.500H20',
+  c_enlouquecido: 'M12 12a1 1 0 1 1 1 1 2.500 2.500 0 0 1-2.500-2.500A4 4 0 0 1 14.500 6.500 5.500 5.500 0 0 1 20 12a7 7 0 0 1-7 7A8.500 8.500 0 0 1 4.500 10.500',
+  c_determinado: 'M6 21V3.500M6 4.500c4-2 7 2 12 0v8c-5 2-8-2-12 0',
+  c_qibloq: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M9 11h6v5H9zM10 11V9.500a2 2 0 0 1 4 0V11',
+  c_qidesvio: 'M4 12a8 8 0 0 1 13.500-5.800M20 12a8 8 0 0 1-13.500 5.800M17.500 2.500v4h-4M6.500 21.500v-4h4M11 9l-1.500 3.500h5L13 15.500',
+  c_agigantado: 'M4 4l5.500 5.500M4 4v4.500M4 4h4.500M20 20l-5.500-5.500M20 20v-4.500M20 20h-4.500M20 4l-5.500 5.500M20 4h-4.500M20 4v4.500M4 20l5.500-5.500M4 20h4.500M4 20v-4.500',
+  c_encolhido: 'M9.500 9.500L4 4M9.500 9.500H5.500M9.500 9.500V5.500M14.500 14.500L20 20M14.500 14.500h4M14.500 14.500v4M14.500 9.500L20 4M14.500 9.500h4M14.500 9.500V5.500M9.500 14.500L4 20M9.500 14.500H5.500M9.500 14.500v4',
+  c_ventania: 'M3 8h11a2.500 2.500 0 1 0-2.500-2.500M3 12h15.500a2.500 2.500 0 1 1-2.500 2.500M3 16h8a2 2 0 1 1-2 2',
   // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
   st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
   st_can: 'M4 5.500C6 4.500 9 4.500 12 6c3-1.500 6-1.500 8-.5V19c-2-1-5-1-8 .5-3-1.500-6-1.500-8-.5zM12 6v13.500',
@@ -1309,6 +1379,9 @@ const COND_TAGS = [
   { id: 'ritmo', n: 'Ritmo', t: 'Ritmo e movimento' },
   { id: 'bencao', n: 'Bênçãos', t: 'Bênçãos e cura' },
 ];
+// (lote 7) As 20 condições novas ficam no fim da categoria de cada uma (a aba "Todas" mostra a lista nesta ordem).
+// São lembretes, como as outras; o Escudado mostra a sobrevida do token e sai quando ela acaba, e o Agigantado e o
+// Encolhido dobram e diminuem o token (acertarCondicoes, em 07-app).
 const CONDS = [
   { id: 'veneno', n: 'Envenenado', c: '#4ea84a', i: 'c_veneno', g: 'dano' },
   { id: 'sangue', n: 'Sangrando', c: '#c93a3a', i: 'c_sangue', g: 'dano' },
@@ -1318,18 +1391,27 @@ const CONDS = [
   { id: 'resfriado', n: 'Resfriado', c: '#6aa3c4', i: 'c_resfriado', g: 'dano' },
   { id: 'molhado', n: 'Molhado', c: '#3b8fd1', i: 'c_molhado', g: 'dano' },
   { id: 'oleo', n: 'Óleo', c: '#6b5b2a', i: 'c_oleo', g: 'dano' },
+  { id: 'eletrizado', n: 'Eletrizado', c: '#d9b51f', i: 'c_eletrizado', g: 'dano' },
+  { id: 'corroido', n: 'Corroído', c: '#93ad2c', i: 'c_corroido', g: 'dano' },
+  { id: 'enregelado', n: 'Enregelado', c: '#7fbfdf', i: 'c_enregelado', g: 'dano' },
+  { id: 'ventania', n: 'Ventania', c: '#5fa9bf', i: 'c_ventania', g: 'dano' },
   { id: 'atordoado', n: 'Atordoado', c: '#d9a821', i: 'c_atordoado', g: 'controle' },
   { id: 'paralisia', n: 'Paralisado', c: '#9a9f2e', i: 'c_paralisia', g: 'controle' },
   { id: 'emaranhado', n: 'Emaranhado', c: '#5a8f3c', i: 'c_emaranhado', g: 'controle' },
   { id: 'agarrado', n: 'Agarrado', c: '#a0673a', i: 'c_agarrado', g: 'controle' },
   { id: 'caido', n: 'Caído', c: '#8a6a4c', i: 'c_caido', g: 'controle' },
   { id: 'inconsciente', n: 'Inconsciente', c: '#4b5568', i: 'c_inconsciente', g: 'controle' },
+  { id: 'petrificado', n: 'Petrificado', c: '#8d8f94', i: 'c_petrificado', g: 'controle' },
+  { id: 'adormecido', n: 'Adormecido', c: '#6b7fc4', i: 'c_adormecido', g: 'controle' },
+  { id: 'enraizado', n: 'Enraizado', c: '#7a6a3a', i: 'c_enraizado', g: 'controle' },
   { id: 'furia', n: 'Fúria', c: '#c8242c', i: 'c_furia', g: 'combate' },
   { id: 'grito', n: 'Grito de Batalha', c: '#d9572b', i: 'c_grito', g: 'combate' },
   { id: 'provocado', n: 'Provocado', c: '#d4782a', i: 'c_provocado', g: 'combate' },
   { id: 'defendendo', n: 'Defendendo', c: '#4f7fa8', i: 'c_defendendo', g: 'combate' },
   { id: 'desarmado', n: 'Desarmado', c: '#7d838f', i: 'c_desarmado', g: 'combate' },
   { id: 'foco', n: 'Concentrando', c: '#2f9d93', i: 'c_foco', g: 'combate' },
+  { id: 'vulneravel', n: 'Vulnerável', c: '#d0583c', i: 'c_vulneravel', g: 'combate' },
+  { id: 'determinado', n: 'Determinado', c: '#d98f24', i: 'c_determinado', g: 'combate' },
   { id: 'medo', n: 'Amedrontado', c: '#b0559f', i: 'c_medo', g: 'mente' },
   { id: 'paranoico', n: 'Paranoico', c: '#a13d63', i: 'c_paranoico', g: 'mente' },
   { id: 'confuso', n: 'Confuso', c: '#b77ad0', i: 'c_confuso', g: 'mente' },
@@ -1339,6 +1421,11 @@ const CONDS = [
   { id: 'marcado', n: 'Marcado', c: '#d94545', i: 'c_marcado', g: 'mente' },
   { id: 'transformado', n: 'Transformado', c: '#3fa58c', i: 'c_transformado', g: 'mente' },
   { id: 'artefato', n: 'Artefato Ativado', c: '#9a5fd6', i: 'c_artefato', g: 'mente' },
+  { id: 'possuido', n: 'Possuído', c: '#7a3b8f', i: 'c_possuido', g: 'mente' },
+  { id: 'refletindo', n: 'Refletindo', c: '#56aec2', i: 'c_refletindo', g: 'mente' },
+  { id: 'enlouquecido', n: 'Enlouquecido', c: '#c4488c', i: 'c_enlouquecido', g: 'mente' },
+  { id: 'qibloq', n: 'Qi bloqueado', c: '#5b6b80', i: 'c_qibloq', g: 'mente' },
+  { id: 'qidesvio', n: 'Desvio de Qi', c: '#d4643a', i: 'c_qidesvio', g: 'mente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
   { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
   { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
@@ -1347,16 +1434,22 @@ const CONDS = [
   { id: 'faminto', n: 'Faminto', c: '#b8893a', i: 'c_faminto', g: 'corpo' },
   { id: 'bebado', n: 'Bêbado', c: '#c0902a', i: 'c_bebado', g: 'corpo' },
   { id: 'morto', n: 'Morto', c: '#1c1c22', i: 'c_morto', g: 'corpo' },
+  { id: 'sufocando', n: 'Sufocando', c: '#4f7fb0', i: 'c_sufocando', g: 'corpo' },
+  { id: 'ofuscado', n: 'Ofuscado', c: '#cfa83c', i: 'c_ofuscado', g: 'corpo' },
+  { id: 'agigantado', n: 'Agigantado', c: '#b8743c', i: 'c_agigantado', g: 'corpo' },
+  { id: 'encolhido', n: 'Encolhido', c: '#5f9ab4', i: 'c_encolhido', g: 'corpo' },
   { id: 'lento', n: 'Lento', c: '#6f8f6a', i: 'c_lento', g: 'ritmo' },
   { id: 'acelerado', n: 'Acelerado', c: '#2ea6c9', i: 'c_acelerado', g: 'ritmo' },
   { id: 'voando', n: 'Voando', c: '#6aa8d8', i: 'c_voando', g: 'ritmo' },
   { id: 'oculto', n: 'Oculto', c: '#4b4f63', i: 'c_oculto', g: 'ritmo' },
   { id: 'invisivel', n: 'Invisível', c: '#6f8aa6', i: 'c_invisivel', g: 'ritmo' },
+  { id: 'etereo', n: 'Etéreo', c: '#8a9cc4', i: 'c_etereo', g: 'ritmo' },
   { id: 'escudo', n: 'Protegido', c: '#3f7fc0', i: 'c_escudo', g: 'bencao' },
   { id: 'bencao', n: 'Abençoado', c: '#c9a227', i: 'c_bencao', g: 'bencao' },
   { id: 'inspirado', n: 'Inspirado', c: '#e6a700', i: 'c_inspirado', g: 'bencao' },
   { id: 'regen', n: 'Regeneração', c: '#58b368', i: 'c_regen', g: 'bencao' },
   { id: 'tratado', n: 'Tratado', c: '#d06a5a', i: 'c_tratado', g: 'bencao' },
+  { id: 'escudado', n: 'Escudado', c: '#3f97d6', i: 'c_escudado', g: 'bencao' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 
@@ -1634,8 +1727,12 @@ const Store = (() => {
     return !!inv;
   }
 
+  /* (lote 7) Quem acerta alguma coisa no fim de cada passo, dentro dele (o mesmo Desfazer): o Escudado sem sobrevida
+     sai, e o Agigantado e o Encolhido mudam o tamanho do token. Cada um recebe o passo ({ fwd, inv }). */
+  const finais = [];
   function commit() {
     if (!tx) return;
+    if (tx.fwd.length && finais.length && !tx.fim) { tx.fim = true; for (const f of finais) { try { f(tx); } catch (e) { console.error(e); } } }
     const t = tx; tx = null;
     if (!t.fwd.length) return;
     const hh = H();
@@ -1708,6 +1805,7 @@ const Store = (() => {
     },
     // Agrupa várias operações num único passo de desfazer.
     tx(label, fn) { const own = !tx; begin(label); try { fn(); } finally { if (own) commit(); } },
+    aoFechar(fn) { if (typeof fn === 'function') finais.push(fn); },
 
     /* Operações fora do desfazer: cenas, jogadores e preferências. */
     setCurrent(id) { if (tx) commit(); if (S.scenes[id]) { S.current = id; emit('scene', id); } },
@@ -4153,6 +4251,72 @@ function barAfter(b, delta) {
 }
 const areaDelta = (amt, half) => (half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt);
 function areaNext(b, amt, half) { return barAfter(b, areaDelta(amt, half)).v; }
+
+/* ---- (lote 7) as condições que mexem em alguma coisa ----
+   As condições são lembretes (o contador e as rodadas de sempre), com duas exceções:
+   · o Escudado: os pontos dele são a sobrevida do token (o número da condição mostra quanto ainda resta), e ele sai
+     quando a sobrevida acaba (de mais de zero para zero);
+   · o Agigantado dobra o token e o Encolhido o deixa na metade (de ½ a 8 quadrados); os dois juntos não — fica o que
+     acabou de entrar. O tamanho de antes fica em t.tam0, e volta quando a condição sai.
+   Quem acerta é o programa do mestre (ou o de quem usa sem mesa): no fim do passo que mudou o token, dentro dele (o
+   mesmo Desfazer); e, para o que chegou de fora (um jogador, a ficha), num passo logo depois. */
+// (na tela do jogador, a barra de um token do mestre que vai só em proporção traz os pontos da sobrevida em xn)
+const sobrevidaTotal = t => Math.round(((t && t.bars) || []).reduce((s, b) => s + (Number(b && b.xn) > 0 ? Number(b.xn) : barX(b)), 0) * 10) / 10;
+// o número de uma condição no token: o contador — no Escudado, a sobrevida que ainda resta
+function condNum(t, id) { return id === 'escudado' ? sobrevidaTotal(t) : ((((t && t.cinfo) || {})[id] || {}).n || 0); }
+const TAM_MIN = 0.25, TAM_MAX = 8;
+// → o remendo do token, ou null. antes: { bars, conds } como estavam antes da mudança (o que não mudou, não vem)
+function acertarCondicoes(t, antes) {
+  if (!t || t.prop || !Array.isArray(t.conds)) return null;
+  const p = {}, a = antes || {};
+  let conds = t.conds.slice(), mudou = false;
+  const info = Object.assign({}, t.cinfo || {});
+  if (conds.includes('escudado') && Array.isArray(a.bars)) {
+    const era = a.bars.reduce((s, b) => s + barX(b), 0);
+    if (era > 0 && sobrevidaTotal(t) <= 0) { conds = conds.filter(c => c !== 'escudado'); delete info.escudado; mudou = true; }
+  }
+  const tinha = id => (Array.isArray(a.conds) ? a.conds.includes(id) : conds.includes(id));
+  if (conds.includes('agigantado') && conds.includes('encolhido')) {
+    const sai = tinha('agigantado') ? 'agigantado' : 'encolhido';
+    conds = conds.filter(c => c !== sai); delete info[sai]; mudou = true;
+  }
+  if (Array.isArray(a.conds) && ['agigantado', 'encolhido'].some(id => tinha(id) !== conds.includes(id))) {
+    const fator = conds.includes('agigantado') ? 2 : conds.includes('encolhido') ? 0.5 : 1, base = t.tam0 > 0 ? t.tam0 : t.size;
+    const tam = fator === 1 ? base : clamp(base * fator, TAM_MIN, TAM_MAX);
+    if (fator !== 1 && !(t.tam0 > 0)) p.tam0 = t.size;
+    if (fator === 1 && t.tam0 > 0) p.tam0 = null;
+    if (tam !== t.size) {
+      const [x, y] = snapTok(Store.scene(), t.x, t.y, tam, false);
+      Object.assign(p, { size: tam, x, y });
+    }
+  }
+  if (mudou) { p.conds = conds; p.cinfo = info; }
+  return Object.keys(p).length ? p : null;
+}
+/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }; só o que mudou). As inversas
+   vêm da mais nova para a mais antiga: a última que mexeu numa coisa é a que guarda como ela estava no começo. */
+function antesDoToken(inv, id) {
+  const out = {};
+  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ['bars', 'conds']) if (k in op.p) out[k] = op.p[k];
+  return out;
+}
+const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
+Store.aoFechar(tx => {
+  if (!acertaAqui()) return;
+  const ids = [...new Set(tx.fwd.filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
+  for (const id of ids) {
+    const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
+    if (p) Store.upd('tokens', id, p);
+  }
+});
+Store.on('commit', e => {
+  if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
+  const ids = [...new Set((e.ops || []).filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
+  const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
+  if (mud.length) setTimeout(() => Store.tx('Condição', () => {
+    for (const [id] of mud) { const p = acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id)); if (p) Store.upd('tokens', id, p); }
+  }), 0);
+});
 
 /* ---- Seleção ---- */
 const selHas = (c, id) => App.sel.some(s => s.c === c && s.id === id);
@@ -7710,7 +7874,7 @@ const Render = (() => {
 
     // Condições, numa fileira na base do token; as que têm contador vêm primeiro
     const info = t.cinfo || {};
-    const conds = t.conds.filter(id => COND_BY_ID[id]).sort((p, q) => ((info[q] && info[q].n) ? 1 : 0) - ((info[p] && info[p].n) ? 1 : 0));
+    const conds = t.conds.filter(id => COND_BY_ID[id]).sort((p, q) => (condNum(t, q) ? 1 : 0) - (condNum(t, p) ? 1 : 0));
     if (conds.length) {
       const d = clamp(s * 0.3, 13 * px, 26 * px), step = d * 1.06;
       const max = Math.max(1, Math.floor((s + d * 0.5) / step));
@@ -7726,12 +7890,13 @@ const Render = (() => {
           c.beginPath(); c.arc(x, y, d / 2 + 1.6 * px, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(ci.d / (ci.d0 || ci.d), 0.08, 1));
           c.strokeStyle = '#ffffff'; c.lineWidth = 1.6 * px; c.lineCap = 'round'; c.stroke();
         }
-        if (ci.n > 0) {                       // contador: número no canto do marcador
+        const nn = condNum(t, id);            // (lote 7: no Escudado, a sobrevida que resta)
+        if (nn > 0) {                         // contador: número no canto do marcador
           const r = d * 0.32, nx = x + d * 0.36, ny = y - d * 0.36;
           c.beginPath(); c.arc(nx, ny, r, 0, TAU); c.fillStyle = '#10131b'; c.fill();
           c.strokeStyle = '#ffffff'; c.lineWidth = 1 * px; c.stroke();
-          c.fillStyle = '#ffffff'; c.font = `700 ${r * (ci.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.fillText(ci.n > 99 ? '99+' : String(ci.n), nx, ny + r * 0.08);
+          c.fillStyle = '#ffffff'; c.font = `700 ${r * (nn > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText(nn > 99 ? '99+' : String(Math.round(nn)), nx, ny + r * 0.08);
         }
         x += step;
       }
@@ -9589,7 +9754,7 @@ const UI = (() => {
   const el = {
     top: $('#top'), banner: $('#banner'), rail: $('#rail'), opts: $('#opts'), hud: $('#hud'), hint: $('#hint'), hintBox: $('#hintBox'),
     status: $('#status'), side: $('#side'), layer: $('#layer'), toasts: $('#toasts'), stage: $('#stage'),
-    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), veil: $('#veilchip'), zonas: $('#zonas'),
+    fileImg: $('#fileImg'), fileJson: $('#fileJson'), drop: $('#drop'), toastsTop: $('#toastsTop'), turnb: $('#turnb'), cine: $('#cine'), veil: $('#veilchip'), zonas: $('#zonas'),
   };
   const secOpen = {};
   const barOpen = {};               // opções abertas de uma barra: "idDoToken:índice"
@@ -10099,7 +10264,7 @@ const UI = (() => {
     App.sel = [];
     if (!Tools.allowed(App.tool)) Tools.set('select');
     if (v !== 'gm' && (App.tab === 'scene' || App.tab === 'players')) App.tab = 'sel';
-    hideTurn();
+    hideTurn(); hideCine();
     App.floats.length = 0;          // números de dano em trânsito não passam de uma visão para a outra
     Vision.invalidate();
     Store.emit('viewer');
@@ -10643,15 +10808,17 @@ const UI = (() => {
     const info = t.cinfo || {}, pre = idp || 'cd';
     const list = t.conds.map(id => COND_BY_ID[id]).filter(Boolean);
     if (!list.length) return null;
-    if (!edit && !list.some(c => info[c.id] && (info[c.id].n || info[c.id].d))) return h('div', { class: 'chips' }, list.map(c => condChip(c, true, null)));
+    if (!edit && !list.some(c => condNum(t, c.id) || (info[c.id] && info[c.id].d))) return h('div', { class: 'chips' }, list.map(c => condChip(c, true, null)));
     const done = () => { if (after) after(); };
     return h('div', { class: 'cact' + (edit ? '' : ' ro') },
       h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), edit ? h('span') : null),
       list.map(c => {
-        const ci = info[c.id] || {}, n = ci.n || 0;
+        const ci = info[c.id] || {}, n = condNum(t, c.id);
         return h('div', { class: 'cact-r' },
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { class: 'cact-t', text: c.n })),
-          edit ? h('span', { class: 'stp' },
+          // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
+          c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
+          : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1', 'aria-label': `Somar 1 em ${c.n}`, onclick: () => { condStepToast(t, c, 1); done(); } }, icon('plus', 13)))
@@ -10677,7 +10844,7 @@ const UI = (() => {
       h('div', { class: 'cact-h' }, h('span', { text: 'Ativas' }), h('span', { text: 'Contador' }), h('span', { text: 'Rodadas' }), h('span')),
       ativas.map(c => {
         const com = ts.filter(t => t.conds.includes(c.id)), de = (t, k) => ((t.cinfo || {})[c.id] || {})[k] || 0;
-        const ns = com.map(t => de(t, 'n')), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]);
+        const ns = com.map(t => condNum(t, c.id)), ds = com.map(t => de(t, 'd')), igual = a => a.every(x => x === a[0]), escudo = c.id === 'escudado';
         const qual = com.length === ts.length ? 'em todos' : com.length + ' de ' + ts.length;
         // (valores diferentes: de quanto a quanto; o de cada um fica na dica)
         const faixa = a => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? (lo ? String(lo) : '–') : (lo || '–') + ' a ' + hi; };
@@ -10686,10 +10853,10 @@ const UI = (() => {
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
             h('span', { class: 'cm-tt' }, h('span', { class: 'cact-t', text: c.n }), h('span', { class: 'cm-q', text: qual }))),
           h('span', { class: 'stp' },
-            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !ns.some(n => n > 0), title: 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: escudo || !ns.some(n => n > 0), title: escudo ? 'Os pontos do escudo são a sobrevida de cada token' : 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
               onclick: () => lote(c, { delta: -1 }, n => `${c.n}: −1 em ${quantos(n)}.`) }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, title: 'O contador de cada um: ' + cada(ns), text: faixa(ns) }),
-            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, disabled: escudo, title: escudo ? 'Os pontos do escudo são a sobrevida de cada token' : 'Somar 1 em cada um', 'aria-label': `Somar 1 em ${c.n} em todos`,
               onclick: () => lote(c, { delta: 1 }, n => `${c.n}: +1 em ${quantos(n)}.`) }, icon('plus', 13))),
           inCount(`${pre}-${c.id}-d`, igual(ds) ? ds[0] : 0, v => lote(c, { d: v }, n => `${c.n}: ${v ? v + (v === 1 ? ' rodada' : ' rodadas') : 'sem prazo'} em ${quantos(n)}.`),
             { label: `Rodadas de ${c.n} em todos`, title: (igual(ds) ? '' : 'Agora: ' + cada(ds) + '. ') + 'As mesmas rodadas para todos os que têm a condição. Vazio: sem prazo.' }),
@@ -12057,17 +12224,18 @@ const UI = (() => {
     }
     // Condições ativas: as que têm contador ganham + e − aqui mesmo; as outras abrem a janela de condições.
     const info = t.cinfo || {};
-    const conds = t.conds.map(id => COND_BY_ID[id]).filter(Boolean).sort((p, q) => ((info[q.id] && info[q.id].n) ? 1 : 0) - ((info[p.id] && info[p.id].n) ? 1 : 0));
+    const conds = t.conds.map(id => COND_BY_ID[id]).filter(Boolean).sort((p, q) => (condNum(t, q.id) ? 1 : 0) - (condNum(t, p.id) ? 1 : 0));
     for (const c of conds.slice(0, 6)) {
-      const ci = info[c.id] || {}, n = ci.n || 0, dur = ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '';
+      const ci = info[c.id] || {}, n = condNum(t, c.id), dur = ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '';
       const badge = h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12));
-      if (canCond && n) {
+      // (lote 7) o Escudado mostra os pontos (a sobrevida), sem o − e o +: eles mudam na barra
+      if (canCond && n && c.id !== 'escudado') {
         kids.push(h('span', { class: 'hud-c', title: c.n + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
           badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, title: `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
-        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${dur}: abrir condições`, 'aria-label': `${c.n}${dur}`, onclick: () => condPicker([t]) }, badge));
+        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
         kids.push(h('span', { class: 'hud-c ro', title: c.n + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
@@ -12105,9 +12273,13 @@ const UI = (() => {
     const prev = turnKey;
     turnKey = key;
     if (prev === key) return;
-    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { hideTurn(); return; }
-    if (!isGM() && !can('turns')) { hideTurn(); return; }
+    const nada = () => { hideTurn(); hideCine(); };
+    if (prev === null || prev.split('|')[0] !== sc.id || !tn.on || !(tn.cur || tn.mestre)) { nada(); return; }
+    if (!isGM() && !can('turns')) { nada(); return; }
+    // (a rodada virou — ou o combate acabou de começar: antes não havia vez nenhuma)
+    const r0 = /:(\d+)$/.exec(prev), rodadaNova = !r0 || (tn.round || 1) > Number(r0[1]);
     if (!isGM() && vezDoMestre(tn)) {                      // (o jogador, na vez de uma linha invisível)
+      hideCine();
       el.turnb.replaceChildren(h('span', { class: 'turnb-t' }, 'O turno está com o ', h('strong', { text: 'mestre' })),
         h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)));
       el.turnb.hidden = false;
@@ -12117,11 +12289,15 @@ const UI = (() => {
     }
     const e = tn.list.find(x => x.id === tn.cur);
     const t = e && e.token ? Store.get('tokens', e.token) : null;
-    if (!e || (t && !tokShown(t, sc))) { hideTurn(); return; }     // o jogador não fica sabendo de quem ele não vê
+    if (!e || (t && !tokShown(t, sc))) { nada(); return; }     // o jogador não fica sabendo de quem ele não vê
     const membros = isBand(e) ? turnToks(e).filter(k => tokShown(k, sc)) : [];
-    if (isBand(e) && e.toks.length && !membros.length) { hideTurn(); return; }
+    if (isBand(e) && e.toks.length && !membros.length) { nada(); return; }
     const info = t ? t.cinfo || {} : {};
     const conds = t ? t.conds.map(id => COND_BY_ID[id]).filter(Boolean) : [];
+    // a faixa de cinema: o mestre, sempre; o jogador, na vez de um token dele. Os outros jogadores: a faixa pequena.
+    const meu = !isGM() && (t ? ownsTok(t) : membros.some(ownsTok));
+    if (isGM() || meu) { hideTurn(); cinema(sc, e, t, membros, conds, meu, rodadaNova); return; }
+    hideCine();
     el.turnb.replaceChildren();
     addKids(el.turnb, [
       t ? tokenAvatar(t, 26) : membros.length ? h('span', { class: 'band-av' }, membros.slice(0, 3).map(k => tokenAvatar(k, 22))) : null,
@@ -12130,13 +12306,68 @@ const UI = (() => {
       conds.map(c => {
         const ci = info[c.id] || {};
         return h('span', { class: 'turnb-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
-          h('span', { text: c.n + (ci.n ? ' ' + ci.n : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
+          h('span', { text: c.n + (condNum(t, c.id) ? ' ' + condNum(t, c.id) : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
       }),
       h('button', { type: 'button', class: 'ib turnb-x', title: 'Fechar', 'aria-label': 'Fechar o aviso de vez', onclick: hideTurn }, icon('x', 14)),
     ]);
     el.turnb.hidden = false;
     clearTimeout(turnTimer);
     turnTimer = setTimeout(hideTurn, conds.length ? 7000 : 4000);
+  }
+
+  /* ================= (lote 7) A faixa de cinema =================
+     Quando a vez muda, uma faixa larga atravessa o meio da cena por uns dois segundos: o retrato grande, "Vez de Dain",
+     a rodada e as condições de quem vai jogar. O mestre vê sempre; o jogador vê a dele, "Sua vez!", quando a vez é de um
+     token seu. Na primeira vez de uma rodada nova (e quando o combate começa) vem antes uma faixa curta: "Rodada 4". Não
+     pega clique nenhum e sai sozinha; se a vez muda de novo no meio, a faixa troca na hora. O som — o gongo na vez de
+     um aliado, o tambor na de um inimigo — segue a chave de som da mesa ao vivo, em cada aparelho. */
+  // (um relógio só: o da faixa da rodada, que chama a da vez, ou o que tira a faixa; esconder cancela o que faltava)
+  let cineTimer = 0;
+  const CINE_MS = 2400, CINE_COND_MS = 3200, RODADA_MS = 1500;
+  function hideCine() { clearTimeout(cineTimer); cineTimer = 0; el.cine.hidden = true; el.cine.replaceChildren(); el.cine.className = 'cine'; }
+  // de que lado está o token: a ficha diz (Aliado, Inimigo, Neutro); sem ficha e sem dono, é do mestre — conta como inimigo
+  function tokInimigo(t) {
+    if (!t) return false;
+    const l = t.char ? Fichas.get(t.char) : null, lado = l && l.ficha ? String(l.ficha.lado || '') : '';
+    if (lado) return lado === 'Inimigo';
+    return !t.owner && !t.char;
+  }
+  function mostrarCine(cls, ms, kids) {
+    el.cine.className = 'cine ' + cls;
+    el.cine.style.setProperty('--cine-ms', ms + 'ms');
+    el.cine.replaceChildren(h('div', { class: 'cine-f' }, ...kids));
+    el.cine.hidden = false;
+  }
+  function cinema(sc, e, t, membros, conds, meu, rodadaNova) {
+    hideCine();
+    const rodada = sc.turn.round || 1;
+    // num grupo, é inimigo se todos os tokens dele são; a linha sem token nenhum fica com o gongo
+    const lado = meu ? 'sua' : (t ? tokInimigo(t) : membros.length && membros.every(tokInimigo)) ? 'inimigo' : 'aliado';
+    const nome = turnLabel(e, t ? tokName(t) : e.name);
+    const vez = () => {
+      const info = t ? t.cinfo || {} : {};
+      const chips = conds.slice(0, 6).map(c => {
+        const ci = info[c.id] || {}, n = condNum(t, c.id);
+        return h('span', { class: 'cine-c' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+          h('span', { text: c.n + (n ? ' ' + Math.round(n) : '') + (ci.d ? ` · ${ci.d} ${ci.d === 1 ? 'rodada' : 'rodadas'}` : '') }));
+      });
+      if (conds.length > 6) chips.push(h('span', { class: 'cine-c', text: '+' + (conds.length - 6) }));
+      const ms = conds.length ? CINE_COND_MS : CINE_MS;
+      mostrarCine(lado, ms, [
+        h('span', { class: 'cine-av' }, t ? tokenAvatar(t, 76) : membros.length ? membros.slice(0, 3).map(k => tokenAvatar(k, 60)) : h('span', { class: 'cine-av-v' }, icon('users', 30))),
+        h('span', { class: 'cine-tx' },
+          h('span', { class: 'cine-k', id: 'cineK', text: meu ? `Rodada ${rodada} · ${nome}` : `Rodada ${rodada}` }),
+          h('span', { class: 'cine-n', id: 'cineN' }, meu ? 'Sua vez!' : [h('small', { text: 'Vez de ' }), nome]),
+          isGM() && e.inv ? h('span', { class: 'cine-inv', text: 'invisível para os jogadores' }) : null,
+          chips.length ? h('span', { class: 'cine-s' }, chips) : null),
+      ]);
+      Som.tocar(lado);
+      cineTimer = setTimeout(hideCine, ms);
+    };
+    if (!rodadaNova) { vez(); return; }
+    mostrarCine('rodada', RODADA_MS, [h('span', { class: 'cine-r', id: 'cineR' }, h('small', { text: 'Rodada' }), h('b', { text: String(rodada) }))]);
+    Som.tocar('rodada');
+    cineTimer = setTimeout(vez, RODADA_MS);
   }
 
   /* ================= Começo da vez dentro de uma zona =================
@@ -13887,6 +14118,66 @@ const Vila = (() => {
   return { TAMANHOS, TIPOS, gerar, pintar, criar, abrir };
 })();
 /* ---------------------------------------------------------------
+   10e. SOM — os sons da vez (lote 7), feitos no próprio navegador, sem arquivo nenhum
+   O gongo na vez de um aliado (os personagens dos jogadores e os NPCs do lado deles), o tambor na de um inimigo, dois
+   toques claros no "Sua vez!" do jogador e o sino grave com tambor da rodada nova. Seguem a chave de som da mesa ao
+   vivo ("Som ao rolar", tinycats:som, em cada aparelho): desligada, nada toca.
+   --------------------------------------------------------------- */
+const Som = (() => {
+  let ac = null, ultimo = null, vezes = 0;
+  const ligado = () => { try { return localStorage.getItem('tinycats:som') === '1'; } catch (e) { return false; } };
+  function contexto() {
+    if (ac) return ac;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { ac = new AC(); } catch (e) { ac = null; }
+    return ac;
+  }
+  // um parcial: um oscilador com ataque curto e queda exponencial
+  function tom(a, t0, freq, tipo, vol, dur, ataque) {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = tipo; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + (ataque || 0.012));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  // o gongo: parciais que não são múltiplos uns dos outros, cada um caindo no seu tempo
+  function gongo(a, t0, base, vol) {
+    for (const [m, v, d] of [[1, 1, 2.6], [2.03, 0.5, 2.1], [2.74, 0.34, 1.7], [3.9, 0.2, 1.2], [5.4, 0.1, 0.9]]) tom(a, t0, base * m, 'sine', vol * v, d, 0.015);
+  }
+  // a batida do tambor: um tom que cai depressa (150 → 55 Hz) e um sopro curto de ruído abafado
+  function tambor(a, t0, vol) {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(55, t0 + 0.25);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+    o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + 0.5);
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * 0.12), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), gn = a.createGain();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = 900; gn.gain.value = vol * 0.5;
+    s.connect(f); f.connect(gn); gn.connect(a.destination); s.start(t0);
+  }
+  // qual: 'aliado' | 'inimigo' | 'sua' | 'rodada' → tocou?
+  function tocar(qual) {
+    if (!ligado()) return false;
+    const a = contexto();
+    if (!a) return false;
+    try { if (a.state === 'suspended') a.resume(); } catch (e) { /* o navegador ainda não deixou tocar */ }
+    try {
+      const t0 = a.currentTime + 0.02;
+      if (qual === 'inimigo') { tambor(a, t0, 0.6); tambor(a, t0 + 0.22, 0.45); }
+      else if (qual === 'sua') { gongo(a, t0, 262, 0.28); gongo(a, t0 + 0.16, 392, 0.18); }
+      else if (qual === 'rodada') { gongo(a, t0, 98, 0.36); tambor(a, t0, 0.32); }
+      else gongo(a, t0, 196, 0.3);
+    } catch (e) { return false; }
+    ultimo = qual; vezes++;
+    return true;
+  }
+  return { tocar, ligado, get ultimo() { return ultimo; }, get vezes() { return vezes; } };
+})();
+/* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização
    --------------------------------------------------------------- */
 
@@ -14151,7 +14442,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

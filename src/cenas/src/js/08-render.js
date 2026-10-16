@@ -459,7 +459,7 @@ const Render = (() => {
 
     // Condições, numa fileira na base do token; as que têm contador vêm primeiro
     const info = t.cinfo || {};
-    const conds = t.conds.filter(id => COND_BY_ID[id]).sort((p, q) => ((info[q] && info[q].n) ? 1 : 0) - ((info[p] && info[p].n) ? 1 : 0));
+    const conds = t.conds.filter(id => COND_BY_ID[id]).sort((p, q) => (condNum(t, q) ? 1 : 0) - (condNum(t, p) ? 1 : 0));
     if (conds.length) {
       const d = clamp(s * 0.3, 13 * px, 26 * px), step = d * 1.06;
       const max = Math.max(1, Math.floor((s + d * 0.5) / step));
@@ -475,12 +475,13 @@ const Render = (() => {
           c.beginPath(); c.arc(x, y, d / 2 + 1.6 * px, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(ci.d / (ci.d0 || ci.d), 0.08, 1));
           c.strokeStyle = '#ffffff'; c.lineWidth = 1.6 * px; c.lineCap = 'round'; c.stroke();
         }
-        if (ci.n > 0) {                       // contador: número no canto do marcador
+        const nn = condNum(t, id);            // (lote 7: no Escudado, a sobrevida que resta)
+        if (nn > 0) {                         // contador: número no canto do marcador
           const r = d * 0.32, nx = x + d * 0.36, ny = y - d * 0.36;
           c.beginPath(); c.arc(nx, ny, r, 0, TAU); c.fillStyle = '#10131b'; c.fill();
           c.strokeStyle = '#ffffff'; c.lineWidth = 1 * px; c.stroke();
-          c.fillStyle = '#ffffff'; c.font = `700 ${r * (ci.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.fillText(ci.n > 99 ? '99+' : String(ci.n), nx, ny + r * 0.08);
+          c.fillStyle = '#ffffff'; c.font = `700 ${r * (nn > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText(nn > 99 ? '99+' : String(Math.round(nn)), nx, ny + r * 0.08);
         }
         x += step;
       }

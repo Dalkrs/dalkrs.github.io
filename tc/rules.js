@@ -137,22 +137,30 @@
     {id:'bencao', n:'Bênçãos e cura'}
   ];
   const CONDICOES = [
+    // (lote 7: as 20 novas no fim da categoria de cada uma, na mesma ordem das Cenas)
     {id:'veneno', n:'Envenenado', g:'dano'}, {id:'sangue', n:'Sangrando', g:'dano'}, {id:'hemorragia', n:'Hemorragia', g:'dano'},
     {id:'fogo', n:'Queimando', g:'dano'}, {id:'gelo', n:'Congelado', g:'dano'}, {id:'resfriado', n:'Resfriado', g:'dano'},
-    {id:'molhado', n:'Molhado', g:'dano'}, {id:'oleo', n:'Óleo', g:'dano'}, {id:'atordoado', n:'Atordoado', g:'controle'},
-    {id:'paralisia', n:'Paralisado', g:'controle'}, {id:'emaranhado', n:'Emaranhado', g:'controle'}, {id:'agarrado', n:'Agarrado', g:'controle'},
-    {id:'caido', n:'Caído', g:'controle'}, {id:'inconsciente', n:'Inconsciente', g:'controle'}, {id:'furia', n:'Fúria', g:'combate'},
-    {id:'grito', n:'Grito de Batalha', g:'combate'}, {id:'provocado', n:'Provocado', g:'combate'}, {id:'defendendo', n:'Defendendo', g:'combate'},
-    {id:'desarmado', n:'Desarmado', g:'combate'}, {id:'foco', n:'Concentrando', g:'combate'}, {id:'medo', n:'Amedrontado', g:'mente'},
+    {id:'molhado', n:'Molhado', g:'dano'}, {id:'oleo', n:'Óleo', g:'dano'}, {id:'eletrizado', n:'Eletrizado', g:'dano'},
+    {id:'corroido', n:'Corroído', g:'dano'}, {id:'enregelado', n:'Enregelado', g:'dano'}, {id:'ventania', n:'Ventania', g:'dano'},
+    {id:'atordoado', n:'Atordoado', g:'controle'}, {id:'paralisia', n:'Paralisado', g:'controle'}, {id:'emaranhado', n:'Emaranhado', g:'controle'},
+    {id:'agarrado', n:'Agarrado', g:'controle'}, {id:'caido', n:'Caído', g:'controle'}, {id:'inconsciente', n:'Inconsciente', g:'controle'},
+    {id:'petrificado', n:'Petrificado', g:'controle'}, {id:'adormecido', n:'Adormecido', g:'controle'}, {id:'enraizado', n:'Enraizado', g:'controle'},
+    {id:'furia', n:'Fúria', g:'combate'}, {id:'grito', n:'Grito de Batalha', g:'combate'}, {id:'provocado', n:'Provocado', g:'combate'},
+    {id:'defendendo', n:'Defendendo', g:'combate'}, {id:'desarmado', n:'Desarmado', g:'combate'}, {id:'foco', n:'Concentrando', g:'combate'},
+    {id:'vulneravel', n:'Vulnerável', g:'combate'}, {id:'determinado', n:'Determinado', g:'combate'}, {id:'medo', n:'Amedrontado', g:'mente'},
     {id:'paranoico', n:'Paranoico', g:'mente'}, {id:'confuso', n:'Confuso', g:'mente'}, {id:'enfeiticado', n:'Enfeitiçado', g:'mente'},
     {id:'silencio', n:'Silenciado', g:'mente'}, {id:'maldicao', n:'Amaldiçoado', g:'mente'}, {id:'marcado', n:'Marcado', g:'mente'},
-    {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'},
-    {id:'surdo', n:'Surdo', g:'corpo'}, {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'},
-    {id:'doente', n:'Doente', g:'corpo'}, {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'},
-    {id:'morto', n:'Morto', g:'corpo'}, {id:'lento', n:'Lento', g:'ritmo'}, {id:'acelerado', n:'Acelerado', g:'ritmo'},
+    {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'possuido', n:'Possuído', g:'mente'},
+    {id:'refletindo', n:'Refletindo', g:'mente'}, {id:'enlouquecido', n:'Enlouquecido', g:'mente'}, {id:'qibloq', n:'Qi bloqueado', g:'mente'},
+    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
+    {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'}, {id:'doente', n:'Doente', g:'corpo'},
+    {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'}, {id:'morto', n:'Morto', g:'corpo'},
+    {id:'sufocando', n:'Sufocando', g:'corpo'}, {id:'ofuscado', n:'Ofuscado', g:'corpo'}, {id:'agigantado', n:'Agigantado', g:'corpo'},
+    {id:'encolhido', n:'Encolhido', g:'corpo'}, {id:'lento', n:'Lento', g:'ritmo'}, {id:'acelerado', n:'Acelerado', g:'ritmo'},
     {id:'voando', n:'Voando', g:'ritmo'}, {id:'oculto', n:'Oculto', g:'ritmo'}, {id:'invisivel', n:'Invisível', g:'ritmo'},
-    {id:'escudo', n:'Protegido', g:'bencao'}, {id:'bencao', n:'Abençoado', g:'bencao'}, {id:'inspirado', n:'Inspirado', g:'bencao'},
-    {id:'regen', n:'Regeneração', g:'bencao'}, {id:'tratado', n:'Tratado', g:'bencao'}
+    {id:'etereo', n:'Etéreo', g:'ritmo'}, {id:'escudo', n:'Protegido', g:'bencao'}, {id:'bencao', n:'Abençoado', g:'bencao'},
+    {id:'inspirado', n:'Inspirado', g:'bencao'}, {id:'regen', n:'Regeneração', g:'bencao'}, {id:'tratado', n:'Tratado', g:'bencao'},
+    {id:'escudado', n:'Escudado', g:'bencao'}
   ];
 
   /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */

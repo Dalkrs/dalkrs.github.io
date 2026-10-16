@@ -98,8 +98,12 @@ const Store = (() => {
     return !!inv;
   }
 
+  /* (lote 7) Quem acerta alguma coisa no fim de cada passo, dentro dele (o mesmo Desfazer): o Escudado sem sobrevida
+     sai, e o Agigantado e o Encolhido mudam o tamanho do token. Cada um recebe o passo ({ fwd, inv }). */
+  const finais = [];
   function commit() {
     if (!tx) return;
+    if (tx.fwd.length && finais.length && !tx.fim) { tx.fim = true; for (const f of finais) { try { f(tx); } catch (e) { console.error(e); } } }
     const t = tx; tx = null;
     if (!t.fwd.length) return;
     const hh = H();
@@ -172,6 +176,7 @@ const Store = (() => {
     },
     // Agrupa várias operações num único passo de desfazer.
     tx(label, fn) { const own = !tx; begin(label); try { fn(); } finally { if (own) commit(); } },
+    aoFechar(fn) { if (typeof fn === 'function') finais.push(fn); },
 
     /* Operações fora do desfazer: cenas, jogadores e preferências. */
     setCurrent(id) { if (tx) commit(); if (S.scenes[id]) { S.current = id; emit('scene', id); } },

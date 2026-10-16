@@ -131,7 +131,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   // a vez da faixa: o aviso mostra o grupo; a duração das condições dos tokens dela desconta quando a faixa termina a vez
   await ev(g => { const u = __tc; u.Store.tx('cond', () => u.Store.upd('tokens', g, { conds: ['veneno'], cinfo: { veneno: { n: 0, d: 2, d0: 2 } } })); u.Act.turnPatch(x => { x.on = true; x.round = 1; x.back = 0; x.cur = x.list[0].id; }, 'Iniciar'); }, ids['Goblin 1']); await w(150);
   await ev(() => __tc.Act.turnStep(1)); await w(250);
-  ok(await page.locator('#turnb').isVisible() && /Vez de Goblin/.test(await page.locator('#turnb').innerText()) && await page.locator('#turnb .band-av .av').count() === 3, 'na vez da faixa, o aviso diz "Vez de Goblin", com os rostos do grupo');
+  ok(await page.locator('#cine').isVisible() && /Vez de Goblin/.test(await page.locator('#cine').innerText()) && await page.locator('#cine .cine-av .av').count() === 3, 'na vez da faixa, o aviso (a faixa de cinema do mestre, lote 7) diz "Vez de Goblin", com os rostos do grupo');
   ok((await T('Goblin 1')).cinfo.veneno.d === 2, '(o veneno do Goblin 1 ainda não descontou: a faixa está jogando)');
   await ev(() => __tc.Act.turnStep(1)); await w(100);
   ok((await T('Goblin 1')).cinfo.veneno.d === 1, 'a faixa terminou a vez (passou para a Ana): o veneno do Goblin 1 desconta uma rodada');
@@ -254,9 +254,9 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await ev(() => { const u = __tc, k = u.Store.scene().tokens.find(x => x.name === 'Ana'); u.setSel([{ c: 'tokens', id: k.id }]); u.UI.openTab('sel'); }); await w(200);
   const chipsNomes = () => page.locator('#cg-list .chip').allInnerTexts();
   ok(await page.locator('#s-cond .ctab').count() === 8 && await page.locator('#cg-tab-dano.on').count() === 1, 'as condições do token vêm em abas: Todas e as sete categorias; abre em "Dano"');
-  ok((await chipsNomes()).join() === 'Envenenado,Sangrando,Hemorragia,Queimando,Congelado,Resfriado,Molhado,Óleo', 'em Dano, as de dano e elementos (com o Resfriado novo): ' + (await chipsNomes()).join());
+  ok((await chipsNomes()).join() === 'Envenenado,Sangrando,Hemorragia,Queimando,Congelado,Resfriado,Molhado,Óleo,Eletrizado,Corroído,Enregelado,Ventania', 'em Dano, as de dano e elementos (com o Resfriado e, do lote 7, Eletrizado, Corroído, Enregelado e Ventania): ' + (await chipsNomes()).join());
   await page.locator('#cg-tab-combate').click(); await w(120);
-  ok((await chipsNomes()).join() === 'Fúria,Grito de Batalha,Provocado,Defendendo,Desarmado,Concentrando', 'em Combate: ' + (await chipsNomes()).join());
+  ok((await chipsNomes()).join() === 'Fúria,Grito de Batalha,Provocado,Defendendo,Desarmado,Concentrando,Vulnerável,Determinado', 'em Combate (com Vulnerável e Determinado, do lote 7): ' + (await chipsNomes()).join());
   await page.locator('#cg-list .chip', { hasText: 'Grito de Batalha' }).click(); await w(200);
   ok((await T('Ana')).conds.includes('grito') && await page.locator('#cg-tab-combate.tem').count() === 1 && await page.locator('#cg-tab-combate.on').count() === 1, 'um toque põe o Grito de Batalha; a aba Combate fica marcada com um ponto (e continua aberta)');
   await page.locator('#cg-busca').fill('resf'); await w(120);
@@ -266,7 +266,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#cg-busca').fill('xyz'); await w(120);
   ok(/Nenhuma condição com esse nome/.test(await page.locator('#cg-list').innerText()), 'sem resultado, a mesa diz');
   await page.locator('#cg-tab-todas').click(); await w(120);
-  ok(await page.locator('#cg-list .chip').count() === 47 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 47 (e limpa a busca)');
+  ok(await page.locator('#cg-list .chip').count() === 67 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 67 (47 + 20 do lote 7), e limpa a busca');
   await page.locator('#cg-tab-mente').click(); await w(120);
   for (const nm of ['Artefato Ativado', 'Enfeitiçado', 'Marcado']) { await page.locator('#cg-list .chip', { hasText: nm }).click(); await w(150); }
   { const ana = await T('Ana'); ok(['artefato', 'enfeiticado', 'marcado'].every(id => ana.conds.includes(id)), '(mais três na Ana)'); }
@@ -280,7 +280,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.keyboard.press('Escape'); await w(100);
   // a janela de dano em área separa as condições por categoria
   await ev(() => { const u = __tc; u.UI.areaBox('Teste', u.Store.scene().tokens.slice(0, 2), null); }); await w(200);
-  ok(await page.locator('#ar-cond optgroup').count() === 7 && await page.locator('#ar-cond option').count() === 48, 'na janela de dano em área, a lista de condições vem em grupos (7 categorias, 47 + "Nenhuma")');
+  ok(await page.locator('#ar-cond optgroup').count() === 7 && await page.locator('#ar-cond option').count() === 68, 'na janela de dano em área, a lista de condições vem em grupos (7 categorias, 67 + "Nenhuma")');
   await page.keyboard.press('Escape'); await w(100);
 
   // ================= Força e defesas ao lado do nome =================

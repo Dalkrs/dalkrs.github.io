@@ -2,6 +2,42 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-5",
+      "data": "2026-10-16",
+      "titulo": "A faixa de cinema e 20 condições novas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a faixa de cinema — quando a vez muda, uma faixa larga atravessa a cena por uns dois segundos com o retrato, “Vez de Dain”, a rodada e as condições de quem vai jogar. Âmbar para os aliados, vermelha para os inimigos (a ficha diz o lado). Não pega clique e sai sozinha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: na vez do seu personagem, a faixa “Sua vez!” no meio da tela. Na vez dos outros, continua a faixa pequena do alto."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: na rodada nova (e quando o combate começa), a faixa “Rodada 4” vem antes da vez."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: os sons da vez — o gongo para os aliados, o tambor para os inimigos e dois toques no “Sua vez!”. Seguem a chave “Som ao rolar” da mesa ao vivo, em cada aparelho."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: 20 condições novas — Petrificado, Adormecido, Eletrizado, Corroído, Enregelado, Possuído, Enraizado, Sufocando, Ofuscado, Vulnerável, Escudado, Refletindo, Etéreo, Enlouquecido, Determinado, Qi bloqueado, Desvio de Qi, Agigantado, Encolhido e Ventania (que usa o contador para os acúmulos)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o Escudado mostra a sobrevida que ainda resta e sai sozinho quando ela acaba, no mesmo Desfazer do dano."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o Agigantado dobra o token e o Encolhido o deixa na metade (de ¼ a 8 quadrados). Quando a condição sai, o tamanho de antes volta."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-4",
       "data": "2026-10-16",
       "titulo": "Equipamentos por tipo e itens com níveis",

@@ -229,7 +229,7 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   ok(await page.locator('#tl-' + ogro1 + ' .turn-inv').count() === 1 && (await page.locator('#tv-' + ogro1 + '.on').count()) === 1, 'a linha ganha a marca "invisível" e o olho fica aceso');
   await foto('04-linha-invisivel');
   await tecla('n');
-  ok((await turno()).cur === 'Ogro' && /invisível para os jogadores/.test(await page.locator('#turnb').innerText().catch(() => '')), 'na vez do Ogro, o aviso do mestre lembra que a linha é invisível');
+  ok((await turno()).cur === 'Ogro' && /invisível para os jogadores/.test(await page.locator('#cine').innerText().catch(() => '')), 'na vez do Ogro, o aviso do mestre (a faixa de cinema, lote 7) lembra que a linha é invisível');
   // a prévia "como jogador"
   await comoJogador(); await w(350);
   ok(await linhas() === 'Ana | Lobo', 'como jogador: as linhas do Ogro não aparecem, e nenhuma está na vez: ' + await linhas());

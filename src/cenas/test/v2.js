@@ -162,22 +162,24 @@ const { open } = require('./lib');
   await page.locator('#tab-turn').click(); await w();
   let sc = await SC();
   ok(sc.turn.on && sc.turn.round === 2 && (await T('Capitão')).cinfo.escudo.d === 3, 'exemplo: combate na rodada 2, proteção do Capitão dura 3');
-  ok(await ev(() => document.getElementById('turnb').hidden), 'a faixa de vez não aparece sozinha ao abrir');
+  ok(await ev(() => document.getElementById('turnb').hidden && document.getElementById('cine').hidden), 'a faixa de vez não aparece sozinha ao abrir');
   await page.locator('#turnNext').click(); await w(200);
-  let banner = await ev(() => ({ hidden: document.getElementById('turnb').hidden, text: document.getElementById('turnb').textContent }));
+  // (lote 7) o mestre vê a faixa de cinema; se a rodada virou, ela vem depois da faixa "Rodada N"
+  const faixa = async () => { await page.waitForFunction(() => document.getElementById('cineN'), null, { timeout: 3000 }).catch(() => {}); return ev(() => ({ hidden: document.getElementById('cine').hidden, text: document.getElementById('cine').textContent })); };
+  let banner = await faixa();
   ok(!banner.hidden && /Vez de Capitão/.test(banner.text) && /Protegido · 3 rodadas/.test(banner.text), 'faixa: "Vez de Capitão" com a condição e a duração — ' + banner.text);
   ok((await T('Capitão')).cinfo.escudo.d === 3, 'a duração só desconta quando o token termina a vez');
   await page.locator('#turnNext').click(); await w(200);
   ok((await T('Capitão')).cinfo.escudo.d === 2, 'Capitão terminou a vez: 3 → 2');
-  ok(/Vez de Astie/.test(await ev(() => document.getElementById('turnb').textContent)), 'faixa acompanha a vez');
+  ok(/Vez de Astie/.test((await faixa()).text), 'faixa acompanha a vez');
   await page.locator('#turnPrev').click(); await w(200);
   await page.locator('#turnNext').click(); await w(200);
   ok((await T('Capitão')).cinfo.escudo.d === 2, 'voltar e avançar não desconta duas vezes');
-  await page.locator('.turnb-x').click(); await w();
-  ok(await ev(() => document.getElementById('turnb').hidden), 'a faixa fecha no x');
+  // (a faixa de cinema não tem o x: sai sozinha, em uns dois segundos, e não pega clique)
+  ok(await page.waitForFunction(() => document.getElementById('cine').hidden, null, { timeout: 4500 }).then(() => true, () => false), 'a faixa sai sozinha');
   // Bandido: vez dele com o contador à vista
   await page.locator('#turnNext').click(); await w(200);
-  banner = await ev(() => document.getElementById('turnb').textContent);
+  banner = (await faixa()).text;
   ok(/Vez de Bandido/.test(banner) && /Queimando 2/.test(banner) && /Sangrando 1/.test(banner), 'faixa lembra os contadores de quem vai jogar — ' + banner);
   ok((await T('Bandido')).cinfo.fogo.n === 2, 'o contador não muda sozinho na troca de vez');
   // duas rodadas inteiras à frente: a proteção do Capitão acaba
@@ -196,7 +198,7 @@ const { open } = require('./lib');
   await w(200);
   await viewer('jg_dalmo');
   await ev(() => { __urgm.Act.turnStep(1); }); await w(200);
-  ok(await ev(() => document.getElementById('turnb').hidden), 'jogador: a faixa não anuncia a vez de um token oculto');
+  ok(await ev(() => document.getElementById('turnb').hidden && document.getElementById('cine').hidden), 'jogador: a faixa não anuncia a vez de um token oculto');
   await viewer('gm');
   await ev(() => { const u = __urgm; u.Act.turnPatch(x => { x.list = x.list.filter(e => e.name !== 'Arqueira'); x.cur = x.list[0].id; x.back = 0; }); }); await w(200);
   await clearToasts();

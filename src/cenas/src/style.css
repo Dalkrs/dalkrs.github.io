@@ -596,6 +596,54 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .turnb-t { white-space: nowrap; }
 .turnb-c { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
 .turnb-x { width: 24px; height: 24px; }
+/* (lote 7) A faixa de cinema: a vez de quem joga, no meio da cena, por uns dois segundos — para o mestre e para o
+   jogador da vez ("Sua vez!"). É escura nos dois temas, não pega clique nenhum e sai sozinha. A cor da borda diz o
+   lado: âmbar para os aliados, vermelho para os inimigos, verde-água para o "Sua vez!", cinza para a rodada nova. */
+.cine { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); z-index: 4; display: flex; justify-content: center; pointer-events: none; --cine-c: var(--lamp); --cine-ms: 2400ms; }
+.cine * { pointer-events: none; }
+.cine.inimigo { --cine-c: #e0574c; }
+.cine.sua { --cine-c: #45c2ac; }
+.cine.rodada { --cine-c: #b9c0cf; }
+.cine-f {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px 20px; padding: 16px 24px; color: #f3f1ea;
+  background: linear-gradient(90deg, rgba(7, 9, 15, 0), rgba(7, 9, 15, .9) 16%, rgba(7, 9, 15, .94) 50%, rgba(7, 9, 15, .9) 84%, rgba(7, 9, 15, 0));
+  border-style: solid; border-width: 2px 0; border-image: linear-gradient(90deg, transparent, var(--cine-c) 18%, var(--cine-c) 82%, transparent) 1;
+  animation: cineEntra var(--cine-ms) cubic-bezier(.2, .7, .2, 1) both;
+}
+.cine-av { display: inline-flex; flex: none; align-items: center; }
+.cine-av .av { box-shadow: 0 0 0 3px var(--cine-c), 0 10px 26px rgba(0, 0, 0, .55); }
+.cine-av .av + .av { margin-left: -16px; }
+.cine-av-v { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--cine-c); color: var(--cine-c); }
+.cine-tx { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; animation: cineTexto var(--cine-ms) cubic-bezier(.2, .7, .2, 1) both; }
+.cine-k { color: var(--cine-c); font: 700 12px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.cine-n { max-width: min(560px, 62vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 clamp(26px, 4.4vw, 46px)/1.05 var(--display); letter-spacing: .01em; text-shadow: 0 2px 14px rgba(0, 0, 0, .6); }
+.cine-n small { font-size: .55em; font-weight: 500; color: #cfd3dc; }
+.cine-inv { padding: 1px 8px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; color: #cfd3dc; font-size: 12px; }
+.cine-s { display: flex; flex-wrap: wrap; gap: 5px; max-width: min(560px, 62vw); }
+.cine-c { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; background: rgba(255, 255, 255, .07); color: #e6e8ee; font-size: 12.5px; white-space: nowrap; }
+.cine-r { display: flex; align-items: baseline; gap: 12px; font-family: var(--display); }
+.cine-r small { color: var(--cine-c); font: 700 13px var(--mono); letter-spacing: .2em; text-transform: uppercase; }
+.cine-r b { font-size: clamp(34px, 5.6vw, 58px); font-weight: 600; line-height: 1; }
+@keyframes cineEntra {
+  0% { opacity: 0; transform: scaleY(.15); }
+  12% { opacity: 1; transform: none; }
+  84% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scaleY(.7); }
+}
+@keyframes cineTexto {
+  0%, 6% { opacity: 0; transform: translateX(-22px); }
+  20% { opacity: 1; transform: none; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes cineSo { 0% { opacity: 0; } 12% { opacity: 1; } 84% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cine-f { animation-name: cineSo; }
+  .cine-tx { animation: none; }
+}
+@media (max-width: 640px) {
+  .cine-f { gap: 10px 14px; padding: 12px 14px; }
+  .cine-av .av { width: 52px !important; height: 52px !important; font-size: 20px !important; }
+}
 /* o aviso de zona no começo da vez (só o mestre): um por zona, até ele aplicar ou pular */
 .zonas { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .zona { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: min(620px, calc(100% - 24px)); padding: 7px 8px 7px 10px;

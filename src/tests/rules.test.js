@@ -345,7 +345,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })) === j(['hp +30', 'SP: Bia não tem essa barra', 'Sobrevida 15 em hp', 'Força +3 (até o próximo descanso)', 'Defesa Física +2 (4 rodadas)', 'Condição: Abençoado (3 rodadas)', 'PODER DIVINO +2']),
     'a prévia sem os valores de quem recebe: ' + j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })));
   ok(R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1] === 'SP + 2d6, rolado na hora', 'e o efeito com dados diz que rola na hora: ' + R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1]);
-  ok(R.CONDICOES.length === 47 && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.COND_GRUPOS.length === 7 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas)');
+  ok(R.CONDICOES.length === 67 && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.CONDICOES.some(c => c.id === 'ventania' && c.n === 'Ventania' && c.g === 'dano') && R.COND_GRUPOS.length === 7 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas)');
 }
 // as condições da ficha (para a poção pôr no token) são as mesmas das Cenas: mesmo id, nome e grupo, na mesma ordem
 {
@@ -353,7 +353,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const bloco = (ini) => { const i = fonte.indexOf(ini), k = fonte.indexOf('];', i); return fonte.slice(i, k); };
   const cenas = [...bloco('const CONDS = [').matchAll(/\{ id: '(\w+)', n: '([^']+)', c: '[^']+', i: '[^']+', g: '(\w+)' \}/g)].map(m => ({ id: m[1], n: m[2], g: m[3] }));
   const grupos = [...bloco('const COND_TAGS = [').matchAll(/\{ id: '(\w+)', n: '[^']+', t: '([^']+)' \}/g)].map(m => ({ id: m[1], n: m[2] }));
-  ok(cenas.length === 47 && j(cenas) === j(R.CONDICOES) && j(grupos) === j(R.COND_GRUPOS), 'as condições de TC.rules batem com as das Cenas (' + cenas.length + ')');
+  ok(cenas.length === 67 && j(cenas) === j(R.CONDICOES) && j(grupos) === j(R.COND_GRUPOS), 'as condições de TC.rules batem com as das Cenas (' + cenas.length + ')');
 }
 // ---------- barras especiais (os antigos poderes divinos), no estado ----------
 {

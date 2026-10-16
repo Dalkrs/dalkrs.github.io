@@ -27,8 +27,10 @@ const { open } = require('./lib');
     await page.screenshot({ path: `v2/n-${theme}-cond.png` });
     await page.keyboard.press('Escape');
     await ev(() => { __urgm.Act.turnStep(1); }); await w();
+    // (lote 7: o mestre vê a faixa de cinema; se a rodada virou, ela vem depois da faixa "Rodada N")
+    await page.waitForFunction(() => document.getElementById('cineN'), null, { timeout: 3000 }).catch(() => {});
     f = await fits();
-    const tb = await ev(() => { const b = document.getElementById('turnb').getBoundingClientRect(); return !document.getElementById('turnb').hidden && b.left >= 0 && b.right <= innerWidth; });
+    const tb = await ev(() => { const c = document.getElementById('cine'), k = c.querySelector('.cine-f'), b = k ? k.getBoundingClientRect() : null; return !c.hidden && !!b && b.left >= 0 && b.right <= innerWidth + 0.5 && k.scrollWidth <= k.clientWidth + 1; });
     ok(f.page && tb, `${theme}: faixa de vez cabe em 400 px`);
     await page.screenshot({ path: `v2/n-${theme}-mapa.png` });
     await ev(() => { __urgm.UI.openTab('sel'); }); await w();

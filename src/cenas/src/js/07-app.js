@@ -248,6 +248,72 @@ function barAfter(b, delta) {
 const areaDelta = (amt, half) => (half ? Math.sign(amt) * Math.floor(Math.abs(amt) / 2) : amt);
 function areaNext(b, amt, half) { return barAfter(b, areaDelta(amt, half)).v; }
 
+/* ---- (lote 7) as condições que mexem em alguma coisa ----
+   As condições são lembretes (o contador e as rodadas de sempre), com duas exceções:
+   · o Escudado: os pontos dele são a sobrevida do token (o número da condição mostra quanto ainda resta), e ele sai
+     quando a sobrevida acaba (de mais de zero para zero);
+   · o Agigantado dobra o token e o Encolhido o deixa na metade (de ½ a 8 quadrados); os dois juntos não — fica o que
+     acabou de entrar. O tamanho de antes fica em t.tam0, e volta quando a condição sai.
+   Quem acerta é o programa do mestre (ou o de quem usa sem mesa): no fim do passo que mudou o token, dentro dele (o
+   mesmo Desfazer); e, para o que chegou de fora (um jogador, a ficha), num passo logo depois. */
+// (na tela do jogador, a barra de um token do mestre que vai só em proporção traz os pontos da sobrevida em xn)
+const sobrevidaTotal = t => Math.round(((t && t.bars) || []).reduce((s, b) => s + (Number(b && b.xn) > 0 ? Number(b.xn) : barX(b)), 0) * 10) / 10;
+// o número de uma condição no token: o contador — no Escudado, a sobrevida que ainda resta
+function condNum(t, id) { return id === 'escudado' ? sobrevidaTotal(t) : ((((t && t.cinfo) || {})[id] || {}).n || 0); }
+const TAM_MIN = 0.25, TAM_MAX = 8;
+// → o remendo do token, ou null. antes: { bars, conds } como estavam antes da mudança (o que não mudou, não vem)
+function acertarCondicoes(t, antes) {
+  if (!t || t.prop || !Array.isArray(t.conds)) return null;
+  const p = {}, a = antes || {};
+  let conds = t.conds.slice(), mudou = false;
+  const info = Object.assign({}, t.cinfo || {});
+  if (conds.includes('escudado') && Array.isArray(a.bars)) {
+    const era = a.bars.reduce((s, b) => s + barX(b), 0);
+    if (era > 0 && sobrevidaTotal(t) <= 0) { conds = conds.filter(c => c !== 'escudado'); delete info.escudado; mudou = true; }
+  }
+  const tinha = id => (Array.isArray(a.conds) ? a.conds.includes(id) : conds.includes(id));
+  if (conds.includes('agigantado') && conds.includes('encolhido')) {
+    const sai = tinha('agigantado') ? 'agigantado' : 'encolhido';
+    conds = conds.filter(c => c !== sai); delete info[sai]; mudou = true;
+  }
+  if (Array.isArray(a.conds) && ['agigantado', 'encolhido'].some(id => tinha(id) !== conds.includes(id))) {
+    const fator = conds.includes('agigantado') ? 2 : conds.includes('encolhido') ? 0.5 : 1, base = t.tam0 > 0 ? t.tam0 : t.size;
+    const tam = fator === 1 ? base : clamp(base * fator, TAM_MIN, TAM_MAX);
+    if (fator !== 1 && !(t.tam0 > 0)) p.tam0 = t.size;
+    if (fator === 1 && t.tam0 > 0) p.tam0 = null;
+    if (tam !== t.size) {
+      const [x, y] = snapTok(Store.scene(), t.x, t.y, tam, false);
+      Object.assign(p, { size: tam, x, y });
+    }
+  }
+  if (mudou) { p.conds = conds; p.cinfo = info; }
+  return Object.keys(p).length ? p : null;
+}
+/* o que estava antes, num token, pelas operações inversas de um passo ({ bars, conds }; só o que mudou). As inversas
+   vêm da mais nova para a mais antiga: a última que mexeu numa coisa é a que guarda como ela estava no começo. */
+function antesDoToken(inv, id) {
+  const out = {};
+  for (const op of inv || []) if (op && op.t === 'upd' && op.c === 'tokens' && op.id === id && op.p) for (const k of ['bars', 'conds']) if (k in op.p) out[k] = op.p[k];
+  return out;
+}
+const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
+Store.aoFechar(tx => {
+  if (!acertaAqui()) return;
+  const ids = [...new Set(tx.fwd.filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
+  for (const id of ids) {
+    const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
+    if (p) Store.upd('tokens', id, p);
+  }
+});
+Store.on('commit', e => {
+  if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
+  const ids = [...new Set((e.ops || []).filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
+  const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
+  if (mud.length) setTimeout(() => Store.tx('Condição', () => {
+    for (const [id] of mud) { const p = acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id)); if (p) Store.upd('tokens', id, p); }
+  }), 0);
+});
+
 /* ---- Seleção ---- */
 const selHas = (c, id) => App.sel.some(s => s.c === c && s.id === id);
 function setSel(list) { App.sel = list; Store.emit('sel'); }
