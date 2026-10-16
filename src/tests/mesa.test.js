@@ -86,7 +86,7 @@ const { ok, end } = checker();
   await J.keyboard.press('Escape');
   // o Rolador é ferramenta do mestre: numa mesa, o jogador não tem a aba (nem chega nela pelo endereço)
   ok(await J.locator('#tab-rolador').isHidden() && await M.locator('#tab-rolador').isVisible(), 'na mesa, só o mestre vê a aba Rolador');
-  ok(await J.locator('.tab:visible').count() === 7, 'o jogador fica com as outras sete abas');
+  ok(await J.locator('.tab:visible').count() === 8, 'o jogador fica com as outras oito abas');
   await J.evaluate(() => { location.hash = '#/rolador'; }); await w(500, J);
   ok(await J.locator('#tab-rolador').getAttribute('aria-selected') !== 'true' && !J.frame({ url: /\/rolador\// }), 'e o endereço #/rolador não abre o Rolador para ele');
 

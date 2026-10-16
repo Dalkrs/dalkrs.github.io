@@ -2,6 +2,49 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-2",
+      "data": "2026-10-16",
+      "titulo": "Clã: a nova aba, com o salão, a hierarquia e o respeito",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã, a nova aba (depois da Meditação): o salão do clã de vocês, com as bandeiras do brasão, e as abas Hierarquia, Construções, Recursos, Respeito e relações e Histórico."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A hierarquia é uma árvore de cargos: o líder no alto e, em cada cargo, uma ou mais pessoas — cada uma com o seu respeito dentro do clã, de −5 a +5."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Se o seu personagem é o líder do clã, você cria, renomeia, move (arrastando o cartão) e preenche os cargos abaixo do seu. Passar a liderança é com o mestre."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Os clãs de NPC (rivais, aliados) aparecem quando o mestre os mostra, só com as partes que ele escolher."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "No painel do Clã, você cria o clã dos jogadores e os de NPC, monta o brasão (forma, divisão, cores e símbolo, ou uma imagem) e escolhe, parte por parte, o que os jogadores veem de cada clã de NPC — o resto nem chega até eles."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Construções com o custo do próximo nível: “Subir de nível” desconta os recursos do clã (e fica desativado, dizendo o que falta, quando não dá). Recursos, respeito no mundo, relações com facções e outros clãs e o respeito de cada membro, tudo com o motivo indo para o histórico."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Os nomes dos níveis (de −5 a +5) já vêm prontos nas três escalas, e você pode renomeá-los para a mesa toda. Tudo no Clã tem Desfazer (e Ctrl+Z)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mestre auxiliar: a aba Clã entra nas Permissões. Quem já era auxiliar precisa ganhar a aba lá para mestrar o Clã."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-1",
       "data": "2026-10-16",
       "titulo": "Meditação: a nova aba, com a prática, os pilares e as receitas",

@@ -118,7 +118,7 @@
      o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
-  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao'];
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla'];
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
@@ -1521,6 +1521,24 @@
     const reler = [buscarLinha('documentos', 'medit:achados:' + pc)];
     if (op === 'entrar') reler.push(buscarLinha('documentos', 'medit:quem'));
     await Promise.race([Promise.all(reler), new Promise(ok => setTimeout(ok, 3000))]);
+    return data || null;
+  };
+  /* O Clã (ver supabase/migrations/0018_cla.sql): o líder do clã dos jogadores (o dono do personagem no cargo de líder)
+     cria, renomeia, move e preenche os outros cargos. Vai ao banco só o que mudou, cargo por cargo
+     (args.mudar = { <id>: cargo | null }); quem confere que ele é o líder, e que a árvore continua inteira, é o banco.
+     Depois, o que a mesa vê do clã (cla:pub:<id>, montado pelo banco) é lido de novo daqui, antes de responder. */
+  dados.cla = async (op, args) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    const cla = args && typeof args.cla === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(args.cla) ? args.cla : '';
+    const mudar = args && args.mudar && typeof args.mudar === 'object' && !Array.isArray(args.mudar) ? args.mudar : null;
+    if (op !== 'cargos' || !cla || !mudar) throw new Error('Pedido desconhecido.');
+    const { data, error } = await cliente().rpc('cla_cargos', { p_mesa: a.id, p_cla: cla, p_mudar: mudar, p_txt: String(args.txt || '').slice(0, 200) });
+    if (error) {
+      if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem o Clã: falta aplicar a atualização do banco (o SQL desta versão).');
+      if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
+      throw falha(error, 'Não deu certo agora. Tente de novo.');
+    }
+    await Promise.race([buscarLinha('documentos', 'cla:pub:' + cla), new Promise(ok => setTimeout(ok, 3000))]);
     return data || null;
   };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */

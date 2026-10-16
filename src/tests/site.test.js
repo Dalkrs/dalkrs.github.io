@@ -14,11 +14,11 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.title() === 'Cenas · Tiny Cats', 'visitante novo abre em Cenas: ' + await page.title());
     ok((await page.locator('.brand').innerText()).trim() === 'Tiny Cats', 'marca Tiny Cats na barra');
-    ok(await page.locator('.tab').count() === 8, 'oito abas');
+    ok(await page.locator('.tab').count() === 9, 'nove abas');
     const nomes = await page.locator('.tab').allInnerTexts();
-    ok(nomes.join('|') === 'Jornal|Cenas|Mapa-múndi|Acampamento|Fichas|Árvore|Meditação|Rolador', 'nomes das abas: ' + nomes.join('|'));
-    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, arvore: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, rolador: /Rolador · Tiny Cats/ };
-    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'meditacao', 'rolador']) {
+    ok(nomes.join('|') === 'Jornal|Cenas|Mapa-múndi|Acampamento|Fichas|Árvore|Meditação|Clã|Rolador', 'nomes das abas: ' + nomes.join('|'));
+    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, arvore: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/ };
+    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'meditacao', 'cla', 'rolador']) {
       await page.locator('#tab-' + id).click(); await w(page, 1300);
       ok(page.url().endsWith('#/' + id), `aba ${id}: endereço com #/${id}`);
       ok(await page.locator('#tab-' + id).getAttribute('aria-selected') === 'true', `aba ${id} marcada`);
@@ -33,7 +33,7 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
       ok(!/urgm|lirian/i.test(texto), `aba ${id}: sem o nome antigo no que aparece`);
       ok(texto.length > 80, `aba ${id}: a página desenhou conteúdo`);
     }
-    ok(await page.locator('iframe').count() === 8, 'as oito molduras continuam vivas depois de visitadas');
+    ok(await page.locator('iframe').count() === 9, 'as nove molduras continuam vivas depois de visitadas');
     // estado preservado ao trocar de aba: escreve no Rolador, sai e volta
     const fr = page.frame({ url: /\/rolador\// });
     await fr.locator('#fTitle').fill('Teste de permanência');

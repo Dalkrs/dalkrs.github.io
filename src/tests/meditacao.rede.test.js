@@ -206,7 +206,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     await Lp.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1200, Lp);
     await loginTela(Lp, c.jog2, c.senha); await entrarMesaTela(Lp, codigo, 'Lia');
     const lia = await Lp.evaluate(() => TC.conta.usuario.id);
-    ok(await abas(M) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao,rolador' && await abas(Dp) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao',
+    ok(await abas(M) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao,cla,rolador' && await abas(Dp) === 'jornal,cenas,mundo,acampamento,fichas,arvore,meditacao,cla',
       'a aba Meditação, depois da Árvore: para o mestre e para os jogadores — ' + await abas(Dp));
     await M.evaluate(([d, l, fs, fb, fm]) => {
       const P = TC.dados.col('personagens');

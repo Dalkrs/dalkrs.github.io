@@ -11,6 +11,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | **Fichas** | As fichas dos personagens: atributos, as 13 defesas específicas, barras (que podem começar pela metade e ficar negativas), equipamento (que soma em atributo, barra ou defesa), bônus temporários, bolsas (poções, bombas, runas, munições, materiais), rolagens, Lapros, a barra de XP junto do nível, Sanidade, Conforto, Relacionamentos (com a trilha de romance, e com o que o mestre esconde), o quadro de Ascensão (os pontos das árvores), o corpo com os ferimentos e as Missões. |
 | **Árvore** | A árvore de habilidades de cada personagem. |
 | **Meditação** | O lugar onde os personagens meditam (oito ambientes desenhados ou uma imagem do mestre, a hora e o clima) e quem está meditando; a prática de cada personagem (objeto, mantra, representação, panteão, a imagem meditando); os pilares de símbolos, onde o jogador, com a tentativa que o mestre libera, descobre as receitas que o mestre escreveu; e as barras de treinamento, que só o mestre vê. |
+| **Clã** | Os clãs da mesa — o dos jogadores e os de NPC (rivais, aliados) — num salão com as bandeiras do brasão: a árvore de cargos (o líder no alto; cada cargo com uma ou mais pessoas, cada uma com o seu respeito dentro do clã), as construções (subir de nível desconta os recursos), os recursos, o respeito no mundo, as relações com as facções e com os outros clãs, e o histórico. O líder do clã dos jogadores mexe nos cargos; de um clã de NPC, os jogadores veem só o que o mestre marca. |
 | **Rolador** | A mesa de dados do mestre: fixa, dados, tabelas, duelos, históricos — e, numa mesa, o auditor dos dados (o que saiu de cada dado, de todo mundo, contra o esperado). |
 
 ## Conta, mesa e dados
@@ -52,7 +53,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `index.html` | A casca: barra com a marca, as abas, a conta, a mesa e a mesa ao vivo. Cada sistema roda na própria página, dentro de uma moldura. |
 | `versao.json` | A versão publicada (a mesma de `VERSAO`, na casca). A casca aberta a consulta de tempos em tempos: se for outra, mostra o botão "Versão nova" na barra — nada recarrega sozinho. Os dois mudam juntos a cada publicação. |
 | `novidades.json` | O que muda em cada versão, a mais nova primeiro: título, data e os itens (`novo`, `melhorou` ou `consertado`; `mestre: true` marca o que é só do mestre). Aparece na janela do botão "Versão nova" (o que a versão nova traz) e no item "Novidades" do menu da conta (e no link "Novidades do site", na janela de entrar). Uma bolinha no canto do botão da conta fica acesa, em cada aparelho, até a pessoa abrir a lista; nada abre sozinho. **Toda publicação ganha uma entrada aqui**, com a mesma versão de `VERSAO` (o `site.test.js` confere). |
-| `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `meditacao/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
+| `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `meditacao/`, `cla/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
 | `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade — ou, com `TC_LOCAL`, o banco local de ensaio. |
@@ -100,6 +101,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
     `jornal:resp:<jogador>` (ver "O Jornal (lote 6)").
   - Meditação: `medit:cena` e `medit:quem` (o lugar e quem medita), `medit:simbolos` (da mesa), `medit:receitas` e
     `medit:treino` (mestre), `medit:pratica:<personagem>` e `medit:achados:<personagem>` (ver "A Meditação (lote 6)").
+  - Clã: `cla:c:<clã>` (mestre: o clã inteiro), `cla:pub:<clã>` (o que a mesa vê dele, montado pelo banco) e
+    `cla:nomes` (da mesa: os nomes dos níveis) — ver "O Clã (lote 6)".
   - Os documentos são escritos pelo mestre (sem dono). O que o banco deixa um jogador criar: o `cena:pedido:` dele
     mesmo, as cartas dele ao Jornal (`jornal:cartas:<ele>`) e a prática de um personagem dele na Meditação
     (`medit:pratica:<personagem>`). `jornal:resp:<jogador>` e `medit:achados:<personagem>` têm o jogador como dono
@@ -519,6 +522,53 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   lugar. Fora de uma mesa, tudo fica no navegador, com um personagem de teste, e a página faz o que o banco faria. A
   lógica (sem tela) é `meditacao/nucleo.js`. SQL: `supabase/migrations/0017_meditacao.sql`.
 
+### O Clã (lote 6)
+
+- **Os clãs da mesa.** A aba Clã (`cla/`, depois da Meditação) guarda os clãs da mesa toda (valem em todas as
+  campanhas): o clã dos jogadores — eles veem tudo dele — e os de NPC (rivais, aliados), que nascem escondidos. Quem
+  mestra o Clã (o mestre, ou o auxiliar com a aba liberada) tem o painel (a vista "Mestre": a lista dos clãs, à
+  esquerda, e o clã escolhido) e vê o salão como os jogadores o veem ("O salão"). O clã inteiro fica em `cla:c:<clã>`
+  (só quem mestra lê e escreve; o banco recusa deixá-lo para a mesa ler ou dar-lhe um dono).
+- **O que os jogadores recebem** (`cla:pub:<clã>`) é o próprio banco que monta, a cada mudança no clã (o gatilho
+  `documentos_cla_projetar` e `privado.cla_pub`; ninguém escreve nele direto): o nome, o lema, o brasão, a facção e,
+  do clã dos jogadores, todas as partes; de um clã de NPC, só as que o mestre marcou ("O que os jogadores veem…":
+  cargos, construções, recursos, respeito no mundo, relações, histórico) — o resto nem chega aos aparelhos deles. O
+  respeito de cada membro de um clã de NPC fica sempre com o mestre. As relações com um clã que os jogadores não veem
+  ficam de fora (as outras levam o nome e a cor desse clã), e o histórico só fala das partes que vão — quando um clã
+  aparece, some ou muda de nome, os clãs que falam dele são montados de novo. A página sozinha faz a mesma conta
+  (`projetar`, em `cla/nucleo.js`), e o teste do banco confere que as duas batem.
+- **O salão.** O nome e o lema sobre o desenho do salão, com as duas bandeiras do brasão, o respeito no mundo e a
+  facção; as abas Hierarquia, Construções, Recursos, Respeito e relações, Histórico (a parte que o mestre não mostrou
+  aparece trancada).
+- **A hierarquia** é uma árvore de cargos: o líder no alto (uma pessoa só), os cargos logo abaixo lado a lado e os de
+  baixo em coluna. Cada cargo tem uma ou mais pessoas — um personagem da mesa (com o nome de agora) ou só um nome — e
+  cada pessoa, o seu respeito dentro do clã (de −5 a +5: todos do clã veem, só o mestre muda). Criar, renomear, mover
+  (arrastando o cartão — no quarto da esquerda de outro, vai antes dele; no da direita, depois; no meio, para debaixo
+  dele — ou pela janela "Mover…"), preencher e apagar (as pessoas saem; os cargos de baixo sobem para o lugar dele).
+  **O líder do clã dos jogadores** — o dono do personagem que ocupa o cargo de líder — faz tudo isso nos outros
+  cargos, pela função `cla_cargos` do banco, que manda só o que mudou, cargo por cargo, e confere que ele é o líder,
+  que o cargo de líder e o respeito de cada um ficam como estavam e que a árvore continua inteira (nem ciclo, nem cargo
+  pendurado no nada, ninguém repetido). Passar a liderança é só com o mestre ("Passar a liderança…": alguém do clã,
+  outro personagem da mesa ou um nome; o líder de antes vai para um cargo, ou sai do clã). O personagem que muda de
+  dono leva a liderança junto (o novo dono passa a ser o líder).
+- **Construções**: nome, ícone, nível, o efeito escrito e o próximo nível (o custo, em recursos do clã, e o efeito
+  novo, se houver). "Subir de nível" desconta o custo, sobe o nível, põe o efeito novo para valer e deixa o próximo
+  nível em branco para o mestre escrever; sem recurso bastante, o botão fica desativado e diz o que falta.
+- **Recursos**: uma lista livre (nome e quantidade, de 0 para cima), com − e + (com Shift, de 10 em 10) ou a
+  quantidade escrita. **Respeito no mundo**: de −5 a +5, cada nível com um nome. **Relações** com as facções do
+  Mapa-múndi e com os outros clãs, também de −5 a +5. **Respeito dos membros**: a lista de todos, com − e +. Cada
+  mudança vai para o histórico, com o motivo escrito no campo da parte (o campo esvazia quando o motivo é usado);
+  mudanças seguidas na mesma coisa, dentro de um minuto e para o mesmo lado, viram uma linha só (voltando ao que era, a
+  linha some). Os nomes dos níveis das três escalas são da mesa toda (`cla:nomes`: "Renomear os níveis").
+- **O brasão**: a forma (escudo, redondo, losango, estandarte, flâmula), a divisão (liso, partido, cortado,
+  esquartelado, faixa), duas cores e um símbolo (os da Meditação e mais alguns) — ou uma imagem. Aparece nas bandeiras
+  do salão, na lista dos clãs e nas relações.
+- **A facção** do clã é uma referência opcional a uma facção do Mapa-múndi (a lista vem dos mapas da mesa).
+- As mudanças no clã ficam no histórico, sem aviso na mesa ao vivo. Cada mudança é um passo de desfazer (o botão e
+  Ctrl+Z); o líder desfaz pela função do banco, se ninguém mexeu nesses cargos depois. O painel se redesenha por cima,
+  como o da Meditação. Fora de uma mesa, tudo fica no navegador. A lógica (sem tela) é `cla/nucleo.js`. SQL:
+  `supabase/migrations/0018_cla.sql`.
+
 ### O mapa-múndi: a grade, o terreno e a viagem
 
 - **A distância é em cubos**, e quem dá a escala é a grade de hexágonos (aba Terreno): `grade.tam` é a distância
@@ -723,7 +773,7 @@ auxiliar (`jogando`) e as abas dele (`abas`). Três perguntas decidem tudo, e s�
   na mesa ao vivo, envia imagens para a pasta da mesa e mexe nas fichas que os jogadores veem.
 - `privado.mestra(mesa, aba)` — o mestre, ou o auxiliar mestrando com a aba liberada. Cada documento é de uma aba,
   pelo nome (`cena:`/`cenas:` → Cenas, `mundo:` → Mapa-múndi, `acampamento` → Acampamento, `fichas:` → Fichas,
-  `arvore:` → Árvore, `rol:` → Rolador, `jornal:` → Jornal, `medit:` → Meditação): só quem mestra a aba recebe e grava os documentos de
+  `arvore:` → Árvore, `rol:` → Rolador, `jornal:` → Jornal, `medit:` → Meditação, `cla:` → Clã): só quem mestra a aba recebe e grava os documentos de
   mestre dela. As fichas
   escondidas (e trocar dono, visibilidade ou apagar uma ficha) são da aba Fichas.
 
@@ -910,6 +960,10 @@ faltava subir.
 - **A Meditação tem uma cena só para a mesa** (não uma por campanha): quem está meditando aparece para toda a mesa.
   O aviso da receita descoberta vai para o mestre da mesa (o auxiliar que mestra a Meditação vê a descoberta na aba,
   sem o aviso). O jogador vê só os símbolos — as receitas, nem chegam ao aparelho dele.
+- **Os clãs são da mesa toda** (não de uma campanha). O líder que mexe nos cargos é o do clã dos jogadores (num clã
+  de NPC, o líder é só um nome no alto da hierarquia). As facções que um clã cita vêm dos mapas do Mapa-múndi: uma
+  facção escondida no mapa, se o mestre a puser numa relação à mostra, aparece para os jogadores (a lista do mestre
+  avisa "escondida no mapa").
 - **Imagens que foram trocadas** (um retrato, o fundo de uma cena) continuam no Storage até a mesa ser apagada.
   Apagar a mesa apaga a pasta dela; a função `faxina` (em `supabase/functions/`) apaga as pastas de mesas que não
   existem mais — o que sobrou de antes disso, ou de um apagar que parou no meio.
@@ -918,7 +972,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -961,8 +1015,12 @@ do mestre, a prática do jogador — o panteão indo para a ficha, a imagem medi
 meditação e o que cada um vê, as tentativas liberadas, o erro, a receita que é de outro personagem, a descoberta com o
 aviso só para o jogador e o mestre, tirar e desfazer, o treinamento que só o mestre vê, o personagem que muda de
 dono levando a prática e as receitas; e, no banco, quem lê e quem escreve cada documento da Meditação, as três funções,
-o mestre auxiliar com e sem a aba e os documentos acompanhando o dono — `SO=banco` roda só essa parte). `vivo.js`
-confere o site publicado.
+o mestre auxiliar com e sem a aba e os documentos acompanhando o dono — `SO=banco` roda só essa parte) e `cla.rede`
+(com o mestre e dois jogadores: os clãs criados pelo mestre, o jogador que lidera mexendo nos cargos pelo banco — e
+desfazendo —, o salão de quem não lidera, um clã de NPC mostrado e escondido, o respeito no mundo, passar a liderança,
+os nomes dos níveis; e, no banco, quem lê e quem escreve cada documento do Clã, o que o banco monta para os jogadores
+— conferido contra a conta da página —, a função do líder e o mestre auxiliar com e sem a aba — `SO=banco` roda só
+essa parte). `vivo.js` confere o site publicado.
 
 Com `TC_PARAR=1`, um teste para na primeira verificação que falha (passando ainda pelos `finally` dele, que apagam a
 mesa de teste) — é como os mutantes rodam os testes longos de rede.
@@ -1015,5 +1073,10 @@ mudança de fora no meio da digitação, desfazer, publicar, os três modos, rec
 casa com a tentativa, as repetidas, o treinamento, a prática, o que a meditação guarda e o entrar, liberar e tentar
 feitos sem o banco) e `meditacao`, a página sozinha pela interface (o lugar, a imagem própria, chamar e liberar, a
 prática, as receitas e os avisos, os símbolos, os pilares — errar, a receita de outro ambiente, acertar —, o
-treinamento, desfazer, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
+treinamento, desfazer, recarregar e a tela estreita). `cla-nucleo` confere a lógica do Clã sem navegador (os nomes dos
+níveis, o brasão, a árvore de cargos e o que o líder manda ao banco, as construções e o subir de nível, os recursos,
+o respeito, as relações, o histórico com as mudanças seguidas juntas e a projeção) e `cla`, a página sozinha pela
+interface (os clãs, os cargos — arrastando e pela janela —, passar a liderança, os recursos, as construções, o
+respeito e os nomes dos níveis, as relações, o brasão, o que os jogadores veem de um clã de NPC, o salão, apagar e
+desfazer, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
 de rodadas ao acaso).

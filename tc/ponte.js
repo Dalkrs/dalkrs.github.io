@@ -19,6 +19,7 @@
      TC.ponte.registro.pedir(d)  — promessa: o mestre pede aos jogadores que rolem a defesa → { id } (a linha do pedido)
      TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
      TC.ponte.meditacao(op, args) — promessa: a Meditação pede ao banco (op 'entrar' | 'liberar' | 'tentar')
+     TC.ponte.cla(op, args)       — promessa: o líder de um clã pede ao banco (op 'cargos': { cla, mudar, txt })
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -91,6 +92,16 @@
       const n = ++seq;
       const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
       enviar({ t: 'medit', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
+    /* O Clã: o líder do clã dos jogadores mexe nos cargos (o banco confere que ele é o líder). args = { cla, mudar, txt }:
+       mudar = { <id do cargo>: cargo | null }, só o que mudou; txt = o que vai para o histórico do clã. */
+    cla(op, args) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('Os cargos do clã só passam pela mesa dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'cla', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
       setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
       return p;
     },
@@ -215,9 +226,9 @@
       if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
       return;
     }
-    if ((m.t === 'medit.ok' || m.t === 'medit.erro') && esperas[m.n]) {
+    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
-      if (m.t === 'medit.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
+      if (m.t === 'medit.ok' || m.t === 'cla.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {
