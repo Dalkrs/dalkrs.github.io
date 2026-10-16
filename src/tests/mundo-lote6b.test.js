@@ -2,7 +2,7 @@
 //   · os terrenos novos (lavoura, ruínas, lava, cristais, selva, savana, tundra, terra corrompida): um mapa novo já
 //     vem com eles; num mapa de antes, a aba Terreno oferece acrescentá-los;
 //   · o desenho em cada hexágono pintado (no canvas, por baixo das camadas do mapa): cada hexágono com o seu, variado
-//     de um para o outro; desligado, só a cor; some com a grade;
+//     de um para o outro; desligado, só a tinta; (lote 7) não some quando a grade se esconde;
 //   · a honra do grupo: o estilo, − e +, o motivo, o selo no mapa (aro, louros e raios quando alta; rachado e escuro
 //     quando negativa), o histórico (corrigir o motivo, tirar a linha) — e quem joga vendo tudo isso;
 //   · o painel da facção: recursos (nome e número), população, apoio, o histórico automático com a data do mundo e o
@@ -97,8 +97,10 @@ const selo = (a, id) => A(a, id => {
       mm.hexes['4,10'] = 'fl'; mm.hexes['6,10'] = 'fl'; mm.hexes['8,10'] = 'fl';
     }), ters);
     await espera(250);
-    // sem a grade à mostra (nem a ferramenta Terreno), o terreno pintado não aparece
-    ok(await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return !c || c.hidden; }), 'com a grade escondida, o terreno de cada hexágono não aparece (como antes)');
+    // (lote 7) sem a grade à mostra (nem a ferramenta Terreno), o terreno pintado aparece do mesmo jeito: as linhas e a
+    // tinta são coisas separadas
+    ok(await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'), g = document.querySelector('#mundo svg .c-hex'); return !!c && !c.hidden && getComputedStyle(g).display === 'none'; }),
+      '(lote 7) com a grade escondida, a tinta de cada hexágono aparece (só as linhas da grade ficam escondidas)');
     await campo(L, 'ter:on').check(); await espera(300);
     const info = await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'), s = document.querySelector('#mundo svg.camadas'); return c && { ters: c.dataset.ters, des: c.dataset.des, antes: !!(c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING), svg: document.querySelectorAll('#mundo svg .hex-ter').length }; });
     ok(info && info.des === '1' && info.ters.split(',').length === 16 && /(^|,)fl:4(,|$)/.test(info.ters) && info.antes && info.svg === 0,
@@ -124,21 +126,21 @@ const selo = (a, id) => A(a, id => {
     await foto('lote6b-hexagono-perto');
     await A(L, () => __mundo.Tela.caber()); await espera(700);
     await foto('lote6b-hexagonos');
-    // a grade escondida esconde o terreno dos hexágonos; mostrada de novo, ele volta (o mesmo desenho)
+    // (lote 7) esconder a grade não mexe no terreno dos hexágonos (o mesmo desenho, com e sem as linhas)
     await campo(L, 'ter:on').uncheck(); await espera(300);
-    ok(await A(L, () => document.querySelector('#mundo canvas.hex-desenho').hidden), 'escondendo a grade, o terreno dos hexágonos some junto');
+    ok(await A(L, () => !document.querySelector('#mundo canvas.hex-desenho').hidden) && (await pixels(L, 6, 10)).hs === fl[1].hs, '(lote 7) escondendo a grade, o terreno dos hexágonos continua igual');
     await campo(L, 'ter:on').check(); await espera(300);
-    ok(await A(L, () => !document.querySelector('#mundo canvas.hex-desenho').hidden) && (await pixels(L, 6, 10)).hs === fl[1].hs, 'mostrando de novo, ele volta igual');
+    ok(await A(L, () => !document.querySelector('#mundo canvas.hex-desenho').hidden) && (await pixels(L, 6, 10)).hs === fl[1].hs, 'mostrando de novo, nada muda');
     // uma pincelada à mão: o canvas dela fica por baixo do terreno dos hexágonos
     await A(L, () => __mundo.App.mudar('pincelada', mm => { mm.pintura.ops.push({ t: 'fl', r: 30, pts: [[100, 900], [400, 950]] }); })); await espera(300);
     ok(await A(L, () => { const p = document.querySelector('#mundo canvas.pintura'), c = document.querySelector('#mundo canvas.hex-desenho'); return !!p && !p.hidden && !!(p.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING); }),
       'a pintura à mão fica por baixo do terreno pintado por hexágono (como antes)');
     await desfazer(L);
-    // desligado: só a cor (os três de floresta ficam iguais)
+    // desligado: só a tinta (a textura do terreno, sem o desenho de cada hexágono)
     await campo(L, 'ter:des').uncheck(); await espera(300);
     const lisos = [await pixels(L, 4, 10), await pixels(L, 6, 10), await pixels(L, 8, 10)];
-    ok((await mapa(L)).grade.des === false && await rotulo(L) === 'tirar o desenho dos hexágonos' && new Set(lisos.map(p => p.hs)).size === 1 && lisos[0].cheios === lisos[0].total,
-      '"Desenho em cada hexágono" desligado: só a cor (os três de floresta iguais)');
+    ok((await mapa(L)).grade.des === false && await rotulo(L) === 'tirar o desenho dos hexágonos' && lisos.every((p, i) => p.cheios === p.total && p.hs !== fl[i].hs),
+      '"Desenho em cada hexágono" desligado: só a tinta (cheia, sem o desenho de cada um)');
     await desfazer(L);
     ok((await mapa(L)).grade.des === true && (await pixels(L, 6, 10)).hs === fl[1].hs, 'Desfazer volta o desenho');
     // quem joga vê o mesmo desenho

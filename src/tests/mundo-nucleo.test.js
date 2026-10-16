@@ -67,6 +67,16 @@ ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 
   const c2 = { dia: 0, ano0: 1023, era: 'D.R.', meses: [{ nome: 'Curto', dias: 10 }, { nome: 'Florada', dias: 20 }] };
   ok(N.diasNoAno(c2) === 30 && N.textoData(c2, 21) === '12 de Florada, ano 1023 D.R.', 'meses de tamanhos diferentes, ano inicial e era: ' + N.textoData(c2, 21));
   ok(N.textoData({ ano0: 5, era: '', meses: [{ nome: 'Um', dias: 3 }] }, 7) === '2 de Um, ano 7', 'sem era, sem espaço sobrando');
+  // (lote 7) os dias da semana: o mestre diz que dia é hoje, e o resto segue
+  const cs = Object.assign({}, cal, { sem0: N.sem0Para(41, 2) });
+  ok(cs.sem0 === 3 && N.diaDaSemana(cs, 41) === 'Quarta-Feira' && N.diaDaSemana(cs, 42) === 'Quinta-Feira' && N.diaDaSemana(cs, 40) === 'Terça-Feira' && N.diaDaSemana(cs, 41 + 7) === 'Quarta-Feira',
+    'hoje (dia 41) é Quarta-Feira: amanhã, Quinta; ontem, Terça; daqui a 7 dias, Quarta de novo');
+  ok(N.diaDaSemana(cs, 46) === 'Segunda-Feira' && N.semanaDe(cs, 45) === 6 && N.SEMANA.length === 7 && N.SEMANA[6] === 'Domingo', 'depois de Domingo, Segunda-Feira');
+  ok(N.textoDataSemana(cs, 41) === 'Quarta-Feira, 12 de Degelo, ano 1' && N.textoDataSemana(cal, 41) === '12 de Degelo, ano 1' && N.diaDaSemana(cal, 41) === '' && N.semanaDe(cal, 41) === -1,
+    'com a semana, "Quarta-Feira, 12 de Degelo, ano 1"; sem ela (o mapa de antes), só a data');
+  ok(N.sem0Para(0, 0) === 0 && N.sem0Para(5, 0) === 2 && N.sem0Para(3, -1) === null && N.sem0Para(3, 7) === null && N.sem0Para(3, 1.5) === null, 'o sem0 para cada escolha (fora de 0 a 6: sem a semana)');
+  ok(N.normalizarMapa({ cal: { sem0: 4 } }).cal.sem0 === 4 && N.normalizarMapa({ cal: { sem0: 9 } }).cal.sem0 === null && N.normalizarMapa({}).cal.sem0 === null && N.normalizarMapa({ cal: { sem0: '2' } }).cal.sem0 === null,
+    'o mapa guarda o sem0 de 0 a 6 (o resto vira sem a semana)');
   ok(N.dataDe(cal, -5).diaMes === 1 && N.dataDe(cal, 'lixo').ano === 1 && N.dataDe(null, 0).nomeMes === 'Alvorada', 'dia negativo ou lixo vira o dia 0; calendário ausente usa o padrão');
 }
 

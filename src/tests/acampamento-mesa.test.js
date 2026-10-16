@@ -281,6 +281,43 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await A.locator('.toast button', { hasText: 'Desfazer' }).first().click(); await w(600);
   ok(await ate(async () => { const sg = await segredos(M), so = sg && sg.v && sg.v.rel && sg.v.rel.pc_ogro ? Object.values(sg.v.rel.pc_ogro) : []; return so.length === 1 && so[0].v === 6 && await semPendencia(M); }), 'e o Desfazer devolve o +6');
 
+  // ---------- (lote 7) mexer em todos: a Fadiga, o Conforto e a Sanidade de quem está no acampamento ----------
+  {
+    const est = async id => (await linha(M, id)).estado || {};
+    const san = e => (e.san == null ? 100 : e.san), conf = e => (e.conf == null ? 50 : e.conf), fad = e => R.fadiga(e);
+    const d0 = await est('pc_dain'), l0 = await est('pc_lia'), o0 = await est('pc_ogro');
+    ok(await A.locator('#btTodos').isVisible(), 'na mesa, há o botão "Mexer em todos…"');
+    await A.locator('#btTodos').click(); await w(400);
+    const dl = A.locator('dialog[open]');
+    ok(/Mexer em todos/.test(await dl.innerText()) && await A.locator('#mt-on-pc_dain').isChecked() && await A.locator('#mt-on-pc_lia').isChecked() && !(await A.locator('#mt-on-pc_ogro').isChecked()) && await A.locator('#mt-ok').isDisabled(),
+      'a janela: vêm marcados os personagens dos jogadores (o Dain e a Lia; o Ogro, do mestre, não), e "Aplicar" espera alguma mudança');
+    await A.locator('#mt-conf').fill('-10'); await A.locator('#mt-conf').press('Tab'); await w(150);
+    await A.locator('#mt-san').fill('-5'); await A.locator('#mt-san').press('Tab'); await w(150);
+    await A.locator('#mt-fad-m').click(); await w(150);
+    await A.locator('#mt-motivo').fill('Tempestade na estrada');
+    const txt = (await dl.innerText()).replace(/\s+/g, ' ');
+    const f = n => (R.FADIGA || [])[n];
+    ok(txt.includes(conf(d0) + ' → ' + Math.max(0, conf(d0) - 10)) && txt.includes(san(d0) + ' → ' + Math.max(0, san(d0) - 5)) && txt.includes(f(fad(d0)) + ' → ' + f(Math.max(0, fad(d0) - 1))),
+      'a lista mostra o antes e o depois de cada um (Conforto, Sanidade e Fadiga do Dain): ' + txt.slice(0, 160));
+    await A.locator('#mt-ok').click(); await w(500);
+    ok(await ate(async () => { const d = await est('pc_dain'), l = await est('pc_lia'), o = await est('pc_ogro');
+      return conf(d) === Math.max(0, conf(d0) - 10) && san(d) === Math.max(0, san(d0) - 5) && fad(d) === Math.max(0, fad(d0) - 1) && conf(l) === Math.max(0, conf(l0) - 10) && san(l) === Math.max(0, san(l0) - 5)
+        && JSON.stringify(o) === JSON.stringify(o0) && await semPendencia(M); }), 'aplicado: o Dain e a Lia mudam nas fichas; o Ogro (desmarcado) fica como estava');
+    ok(await ate(async () => (await J.locator('#feed .rol', { hasText: 'Fadiga −1, Conforto −10, Sanidade −5 para Dain X e Lia — Tempestade na estrada' }).count()) === 1), 'o motivo vai para a mesa ao vivo (o jogador vê)');
+    await A.locator('.toast button', { hasText: 'Desfazer' }).first().click(); await w(600);
+    ok(await ate(async () => { const d = await est('pc_dain'), l = await est('pc_lia'); return conf(d) === conf(d0) && san(d) === san(d0) && fad(d) === fad(d0) && conf(l) === conf(l0) && san(l) === san(l0) && await semPendencia(M); }),
+      'o Desfazer do aviso devolve as duas fichas');
+    // agora só o Ogro e o Dain, para mais
+    await A.locator('#btTodos').click(); await w(400);
+    await A.locator('#mt-on-pc_lia').uncheck(); await w(150); await A.locator('#mt-on-pc_ogro').check(); await w(150);
+    await A.locator('#mt-conf-p').click(); await A.locator('#mt-conf-p').click(); await w(150);
+    await A.locator('#mt-ok').click(); await w(500);
+    ok(await ate(async () => { const d = await est('pc_dain'), l = await est('pc_lia'), o = await est('pc_ogro'); return conf(d) === Math.min(100, conf(d0) + 2) && conf(o) === Math.min(100, conf(o0) + 2) && conf(l) === conf(l0) && await semPendencia(M); }),
+      'desmarcando a Lia e marcando o Ogro: "+2" de Conforto vai só para o Dain e o Ogro');
+    await A.locator('#btDesfazer').click(); await w(600);
+    ok(await ate(async () => conf(await est('pc_dain')) === conf(d0) && conf(await est('pc_ogro')) === conf(o0)), 'e o Desfazer de cima também volta');
+  }
+
   // ---------- a imagem de fundo vai para o banco ----------
   await A.evaluate(async () => {
     const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360;

@@ -152,6 +152,24 @@ select.in { padding: 0 6px; width: auto; }
 .quem .st.lib { color: #8fd6ab; }
 .quem[aria-pressed="true"] .ret { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp); }
 div.quem { cursor: default; }
+/* (lote 7) com a imagem meditando: o personagem inteiro, de pé no chão da cena (o pé na linha do top), com a aura que
+   acompanha o contorno (a mesma imagem, desfocada e clara, por trás) e uma sombra macia no chão */
+.gente { container-type: size; }
+.quem.fig { display: block; transform: translate(-50%, -100%); }
+.quem.fig .corpo { position: relative; display: block; }
+.quem.fig .fig-img { position: relative; display: block; height: calc(var(--alt, 46) * 1cqh); width: auto; max-width: calc(var(--larg, 60) * 1cqw); object-fit: contain; object-position: 50% 100%; filter: var(--fig-tinta, none); }
+/* a luz da hora na figura, de leve: o pôr do sol esquenta; a noite e a madrugada apagam um pouco */
+.hora-por { --fig-tinta: sepia(.14) saturate(1.06) brightness(.97); }
+.hora-noite { --fig-tinta: brightness(.86) saturate(.9); }
+.hora-madrugada { --fig-tinta: brightness(.9) saturate(.92) hue-rotate(-6deg); }
+.quem.fig .brilho { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: blur(10px) brightness(1.9) saturate(.35); opacity: .5; animation: respiraFig 6s ease-in-out infinite; pointer-events: none; }
+.quem.fig .chao { position: absolute; left: 50%; bottom: -4%; width: 62%; height: 13%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse at center, rgba(6, 8, 16, .6), rgba(6, 8, 16, 0) 70%); pointer-events: none; }
+.quem.fig .nm { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 55%); }
+.quem.fig .st { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 190%); }
+.quem.fig[aria-pressed="true"] .chao { background: radial-gradient(ellipse at center, rgba(241, 216, 168, .55), rgba(241, 216, 168, 0) 70%); }
+.quem.fig[aria-pressed="true"] .nm { box-shadow: 0 0 0 2px var(--lamp); }
+@keyframes respiraFig { 0%, 100% { opacity: .38; transform: scale(1); } 50% { opacity: .72; transform: scale(1.012); } }
+@media (prefers-reduced-motion: reduce) { .quem.fig .brilho { animation: none; } }
 .chips { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
 .chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(13, 16, 23, .74); border: 1px solid rgba(255, 255, 255, .12); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: #eef0f5; }
 .chip svg { flex: none; }
@@ -180,6 +198,8 @@ div.quem { cursor: default; }
 .linha-ult { font-size: 12.5px; color: var(--fg-3); }
 .retrato-p { width: 52px; height: 52px; border-radius: 50%; border: 2px solid #f1d8a8; background: #2b2438 center / cover no-repeat; flex: none; display: grid; place-items: center; font: 600 22px/1 var(--display); color: #e8dcc4; overflow: hidden; }
 .retrato-p img { width: 100%; height: 100%; object-fit: cover; }
+.retrato-p.fig { border-radius: 10px; }
+.retrato-p.fig img { object-fit: contain; }
 .pilares { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pilar { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: var(--fg); }
 .pilar .pedra { width: 100%; aspect-ratio: 1; border-radius: 12px; display: grid; place-items: center; background: rgba(255, 255, 255, .03); border: 2px dashed var(--line-strong); color: var(--ouro); }
@@ -276,6 +296,6 @@ dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
 <script src="../jornal/nucleo.js?v=1"></script>
 <script src="nucleo.js?v=1"></script>
 <script src="desenhos.js?v=1"></script>
-<script src="meditacao.js?v=1"></script>
+<script src="meditacao.js?v=2"></script>
 </body>
 </html>

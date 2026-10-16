@@ -693,11 +693,15 @@
     return { d, w: dt ? 3 * s0 : W, h: dt ? W : 3 * s0, x: dt ? gr.x - s0 : gr.x, y: dt ? gr.y : gr.y - s0 };
   }
   const usandoTerreno = () => podeEditar() && ferramenta() === 'h';
+  // (lote 7) a força da tinta do terreno — a mesma para o desenho à mão e para os hexágonos pintados (aba Terreno)
+  const forcaDaTinta = m => { const a = Number(m && m.pintura ? m.pintura.alfa : 1); return Number.isFinite(a) ? limitar(a, 0.1, 1) : 1; };
   function desenharGrade(m) {
-    const gr = m.grade || {}, ferr = usandoTerreno(), mostrar = temGrade(m) && (!!gr.on || ferr);
-    C.hex.style.display = mostrar ? '' : 'none';
-    if (!mostrar) { if (hexCv) hexCv.hidden = true; return; }
-    if (hexCv) hexCv.hidden = !hexDados;
+    // (lote 7) As linhas da grade e a tinta dos hexágonos pintados são coisas separadas: esconder a grade ("Mostrar a
+    // grade" desligado) tira só as linhas — a tinta continua no mapa, para todos.
+    const gr = m.grade || {}, ferr = usandoTerreno(), tem = temGrade(m), linhas = tem && (!!gr.on || ferr);
+    C.hex.style.display = linhas ? '' : 'none';
+    if (!tem) { if (hexCv) hexCv.hidden = true; return; }
+    if (hexCv) { hexCv.hidden = !hexDados; hexCv.style.opacity = String(forcaDaTinta(m)); }
     const cg = caminhoDaGrade(gr), chaveG = [cg.d, cg.w, cg.h, cg.x, cg.y].join('|');
     if (gradePat.__chave !== chaveG) {
       gradePat.__chave = chaveG;
@@ -735,11 +739,12 @@
     hexTer.replaceChildren(frag);
   }
 
-  /* (lote 6) O terreno pintado hexágono por hexágono, num canvas entre a pintura à mão e as camadas do mapa: a cor de
-     cada hexágono (meio transparente, por cima da imagem) e, com "Desenho em cada hexágono" (aba Terreno), o desenho
-     do terreno — as árvores da floresta, os picos da montanha, as fileiras da lavoura… —, variado de um hexágono para
-     o outro (a semente é o lugar dele: o mesmo hexágono sai sempre igual). Não são carimbos: não contam como objetos.
-     Refeito só quando o terreno, a grade ou o tamanho do mapa mudam. */
+  /* (lote 6) O terreno pintado hexágono por hexágono, num canvas entre a pintura à mão e as camadas do mapa.
+     (lote 7) A tinta é a mesma do Pincel livre — a cor e a textura do terreno, cobrindo a imagem (com a força da tinta
+     da aba Terreno) —, com as bordas macias entre um terreno e outro; de perto, com "Desenho em cada hexágono", cada
+     um ganha o desenho do terreno — as árvores da floresta, os picos da montanha, as fileiras da lavoura… —, variado
+     de um hexágono para o outro (a semente é o lugar dele: o mesmo hexágono sai sempre igual). Não são carimbos: não
+     contam como objetos. Refeito só quando o terreno, a grade ou o tamanho do mapa mudam. */
   let hexCv = null, hexCtx = null, hexDados = null, hexFeito = null, hexVersao = 0;
   // O desenho dos hexágonos é feito na resolução da tela (como o resto do mapa fica nítido em qualquer zoom): o
   // canvas cobre só a parte à vista do terreno pintado, com uma margem, e é refeito quando o zoom para ou quando a
@@ -753,6 +758,27 @@
       hexCtx = hexCv.getContext('2d');
     }
     return !!hexCtx;
+  }
+  // (lote 7) a máscara de um tipo de terreno (refeita a cada pintura, do tamanho do canvas dos hexágonos) e a textura
+  // dele nela; o desfoque da borda só onde o navegador sabe desfocar no canvas (sem ele, a borda fica reta)
+  const FILTRO_OK = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
+  let mascaraCv = null;
+  const texturasHex = new Map();
+  function mascaraHex(w, hh) {
+    if (!mascaraCv) mascaraCv = document.createElement('canvas');
+    if (mascaraCv.width !== w || mascaraCv.height !== hh) { mascaraCv.width = w; mascaraCv.height = hh; }
+    return mascaraCv;
+  }
+  function texturaHex(ctx, t, k) {
+    const unid = limitar(Math.max(L, A) / 26, 16, 800), px = Math.round(limitar(unid * k, 24, 192));
+    const chave = [t.cor, t.tex, px, unid].join('|');
+    let pat = texturasHex.get(chave);
+    if (pat) return pat;
+    pat = ctx.createPattern(ladrilho(t.cor, t.tex || 'liso', px), 'repeat');
+    try { pat.setTransform(new DOMMatrix([unid / px, 0, 0, unid / px, 0, 0])); } catch (e) { /* sem setTransform: o ladrilho fica do tamanho dos pixels */ }
+    if (texturasHex.size > 80) texturasHex.clear();
+    texturasHex.set(chave, pat);
+    return pat;
   }
   function limparHexCanvas() {
     hexDados = null; hexFeito = null;
@@ -807,14 +833,42 @@
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;
     c.clearRect(0, 0, w, hh);
-    c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
-    // a cor: um caminho por tipo de terreno
+    // (lote 7) a tinta: para cada tipo de terreno, os hexágonos dele numa máscara bem maior e desfocada, cheia com a
+    // textura do terreno — a do Pincel livre: onde dois terrenos se encontram, um se mistura com o outro (a borda macia),
+    // sem fresta. Depois, a volta de toda a área pintada recorta a tinta (com a borda macia dela, mais curta): por fora,
+    // a tinta não avança sobre os hexágonos sem pintura.
+    const mc = mascaraHex(w, hh), mx = mc.getContext('2d');
+    const macio = FILTRO_OK ? limitar(d.m.grade.tam * k * 0.3, 0, 14) : 0, comBorda = macio >= 0.75;
+    const limpar = () => { mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = 'source-over'; mx.filter = 'none'; mx.globalAlpha = 1; mx.clearRect(0, 0, w, hh); mx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); };
+    const encher = (lista, alarga, desfoque) => {
+      if (desfoque >= 0.5) mx.filter = 'blur(' + desfoque.toFixed(2) + 'px)';
+      mx.fillStyle = '#fff'; mx.strokeStyle = '#fff'; mx.lineJoin = 'round'; mx.lineWidth = (alarga * 2) / k;
+      mx.beginPath();
+      let algum = false;
+      for (const p of lista) if (perto(p)) { hexNoCaminho(mx, d.m, p.q, p.r); algum = true; }
+      if (algum) { mx.fill(); if (alarga > 0) mx.stroke(); }
+      mx.filter = 'none';
+      return algum;
+    };
+    let algumTer = false;
     for (const { t, hs } of d.lista) {
-      c.globalAlpha = 0.5; c.fillStyle = t.cor;
-      c.beginPath();
-      for (const p of hs) if (perto(p)) hexNoCaminho(c, d.m, p.q, p.r);
-      c.fill();
+      limpar();
+      if (!encher(hs, comBorda ? macio * 1.6 : 0, comBorda ? macio : 0)) continue;
+      algumTer = true;
+      mx.globalCompositeOperation = 'source-in';
+      mx.fillStyle = texturaHex(mx, t, k);
+      mx.fillRect(x0 - R, y0 - R, x1 - x0 + 2 * R, y1 - y0 + 2 * R);
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
+      c.drawImage(mc, 0, 0);
     }
+    if (algumTer && comBorda) {
+      limpar();
+      encher(d.lista.flatMap(x => x.hs), 0, macio * 0.55);
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'destination-in';
+      c.drawImage(mc, 0, 0);
+      c.globalCompositeOperation = 'source-over';
+    }
+    c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a cor)
     if (d.des && d.m.grade.tam * z >= 12) {
       for (const { t, semT, hs } of d.lista) for (const p of hs) {

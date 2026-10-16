@@ -2,10 +2,10 @@
 // Selene) e a Lia (dona da Brisa) em aparelhos separados:
 //   · a aba Meditação (depois da Árvore), para todos; o mestre monta o lugar e as receitas; os jogadores veem o lugar,
 //     sem as receitas e sem os ambientes;
-//   · o Dalmo escreve a prática da Selene (o panteão vai para a ficha; a imagem meditando é enviada à mesa) e entra na
-//     meditação: o mestre vê a Selene na cena com essa imagem; a Lia a vê também, mas sem a prática;
+//   · o Dalmo escreve a prática da Selene (o panteão e — lote 7 — a imagem meditando vão para a ficha) e entra na
+//     meditação: o mestre vê a Selene na cena, grande, com essa imagem; a Lia também, mas sem a prática;
 //   · o mestre libera as tentativas; o Dalmo erra, tenta a receita que é só da Brisa e acerta a outra: descobre a
-//     receita, e o aviso vai à mesa ao vivo só para ele e o mestre;
+//     receita, e o aviso vai à mesa ao vivo só para ele e o mestre; o mestre limpa o registro da Selene e desfaz;
 //   · o mestre tira a Selene da meditação e desfaz; a Lia entra com a Brisa; o treinamento, só o mestre vê;
 //   · a Selene passa para a Lia: a prática e o que ela descobriu vão junto (e o Dalmo deixa de vê-los);
 //   · o banco (SQL 0017): quem lê e quem escreve cada documento da Meditação, as funções (entrar, liberar, tentar), o
@@ -251,19 +251,20 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     ok(await ate(() => M.evaluate(() => { const l = TC.dados.col('personagens').pegar('pc_selene'); return !!l && l.ficha.panteao === 'Os Deuses da Lua'; })), 'o panteão é o da ficha: a ficha da Selene muda');
     {
       const [fc] = await Promise.all([MD.page().waitForEvent('filechooser'), MD.locator('[data-k="p:img"]').click()]); await fc.setFiles(PNG);
-      ok(await ate(async () => { const p = await docF(MD, 'medit:pratica:pc_selene'); return !!p && /^https:\/\//.test(p.img || ''); }), 'a imagem meditando é enviada à mesa (a prática guarda o endereço)');
+      ok(await ate(() => M.evaluate(() => { const l = TC.dados.col('personagens').pegar('pc_selene'); return !!l && /^https:\/\/.+\.(webp|png)$/.test(l.ficha.imgMed || ''); })) && !(await docF(MD, 'medit:pratica:pc_selene')).img,
+        'a imagem meditando é enviada à mesa e fica na ficha da Selene (em WebP ou PNG, com a transparência), não na prática');
     }
 
     // ---------- o Dalmo medita: o mestre e a Lia veem ----------
     await botao(MD, '[data-k="meditar"]');
     ok(await ate(async () => JSON.stringify((await docF(MD, 'medit:quem') || {}).quem) === '["pc_selene"]' && await MD.locator('[data-k="sair"]').isVisible()), 'o Dalmo põe a Selene para meditar ("Sair da meditação")');
-    ok(await ate(async () => (await MM.locator('[data-quem="pc_selene"]').count()) === 1 && (await MM.locator('.quem[data-pc="pc_selene"] .ret img').count()) === 1), 'o mestre vê a Selene meditando: o cartão e a cena (com a imagem meditando)');
+    ok(await ate(async () => (await MM.locator('[data-quem="pc_selene"]').count()) === 1 && (await MM.locator('.quem.fig[data-pc="pc_selene"] .fig-img').count()) === 1), 'o mestre vê a Selene meditando: o cartão e a cena (a figura grande, com a imagem meditando)');
     await Lp.locator('#tab-meditacao').click();
     let ML = null;
     ok(await ate(async () => { ML = await quadro(Lp, /\/meditacao\//); return ML && await pronta(ML, false); }, 40000), '(a Lia abre a Meditação)');
     ok(await ate(async () => (await ML.locator('div.quem[data-pc="pc_selene"]').count()) === 1), 'a Lia vê a Selene meditando');
-    ok(await ML.locator('div.quem[data-pc="pc_selene"] .ret img').count() === 0 && await docF(ML, 'medit:pratica:pc_selene') === null && await docF(ML, 'medit:achados:pc_selene') === null && /A prática de Brisa/.test(await ML.locator('#painel').innerText()),
-      'mas sem a imagem meditando nem a prática (nem chegam a ela); o painel dela é o da Brisa');
+    ok(await ate(async () => (await ML.locator('div.quem.fig[data-pc="pc_selene"] .fig-img').count()) === 1) && await docF(ML, 'medit:pratica:pc_selene') === null && await docF(ML, 'medit:achados:pc_selene') === null && /A prática de Brisa/.test(await ML.locator('#painel').innerText()),
+      '(lote 7) com a imagem meditando, que agora é de todos — mas sem a prática (nem chega a ela); o painel dela é o da Brisa');
 
     // ---------- as tentativas ----------
     const poe = async (grupo, s) => { await botao(MD, `[data-k="grupos"] [data-grupo="${grupo}"]`); await botao(MD, `[data-simb="${s}"]`); };
@@ -287,6 +288,17 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
       && await M.evaluate(() => [...document.querySelectorAll('#feed .it .or')].some(x => x.textContent === 'Meditação'))), 'na do mestre também — "Só você e Dalmo veem" (com a marca "Meditação")');
     await w(1500, Lp);
     ok(!/Receita descoberta/.test(await feed(Lp)), 'a Lia não recebe o aviso');
+    {
+      // (lote 7) o mestre limpa o registro da Selene: as receitas e as tentativas ficam
+      const antes = await docDe(M, 'medit:achados:pc_selene');
+      ok(await MD.locator('.reg').count() >= 4 && await MD.locator('[data-k="reg:limpar"]').count() === 0, 'o Dalmo vê o registro da Selene, mas sem "Limpar o registro" (é de quem mestra)');
+      if (await MM.evaluate(() => __medit.sel) !== 'pc_selene') await MM.locator('[data-k="m:pc"]').selectOption('pc_selene');
+      await botao(MM, '[data-k="reg:limpar"]'); await botao(MM, '#dlg [data-k="dl:sim"]');
+      ok(antes.reg.length >= 4 && await ate(async () => { const a = await docF(MD, 'medit:achados:pc_selene'); return !!a && a.reg.length === 0 && a.achadas.length === antes.achadas.length && a.lib === antes.lib && a.feitas === antes.feitas; })
+        && await ate(async () => /Nenhuma meditação ainda/.test(await MD.locator('#painel').innerText())), 'o mestre limpa o registro da Selene: o do Dalmo esvazia junto; as receitas e as tentativas ficam');
+      await botao(MM, '#btDesfazer');
+      ok(await ate(async () => (await docF(MD, 'medit:achados:pc_selene')).reg.length === antes.reg.length), 'e desfaz: o registro volta');
+    }
     await foto(Dp, 'meditacao-rede-dalmo'); await foto(M, 'meditacao-rede-mestre');
 
     // ---------- tirar e desfazer; a Brisa; o treinamento ----------

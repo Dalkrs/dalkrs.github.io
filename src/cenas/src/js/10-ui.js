@@ -1702,6 +1702,68 @@ const UI = (() => {
           btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
     ];
   }
+  /* (lote 7) Mexer em todos: a Fadiga, o Conforto e a Sanidade das fichas dos tokens selecionados. Vêm marcados os
+     personagens dos jogadores; a lista mostra o antes e o depois; o motivo vai para a mesa ao vivo. O Desfazer do
+     aviso volta só o que mudou em cada ficha. */
+  function menteTodosBox(toks) {
+    const rows = [], vistos = new Set();
+    for (const t of toks) {
+      if (!t.char || vistos.has(t.char) || !(Fichas.mente(t) || Fichas.fadiga(t))) continue;
+      vistos.add(t.char);
+      rows.push({ t, on: Fichas.deJogadorT(t) });
+    }
+    if (!rows.length) { toast('Nenhum destes tokens tem ficha que use Sanidade, Conforto ou Fadiga.'); return; }
+    const d = { fad: 0, conf: 0, san: 0 };
+    const FAD = (window.TC && window.TC.rules && window.TC.rules.FADIGA) || [];
+    const campo = (k, rot, lim) => h('input', { id: 'mm-' + k, class: 'in num', type: 'number', min: -lim, max: lim, step: 1, value: 0, 'aria-label': rot + ' (para menos, com sinal de menos)',
+      oninput: e => { d[k] = clamp(Math.trunc(Number(e.target.value) || 0), -lim, lim); paint(); } });
+    const motivo = h('input', { id: 'mm-motivo', class: 'in', type: 'text', maxlength: 200, placeholder: 'Por quê? (vai para a mesa ao vivo)', 'aria-label': 'O motivo' });
+    const list = h('ul', { class: 'area-list', id: 'mm-list' }), count = h('span', { class: 'area-count' });
+    const seta = (de, para) => (de === para ? String(de) : de + ' → ' + para);
+    const paint = () => {
+      count.textContent = `${rows.filter(r => r.on).length} de ${rows.length} marcados`;
+      list.replaceChildren(...rows.map((r, k) => {
+        const p = Fichas.previaMente(r.t, d), partes = [];
+        if (p && p.antes.fad != null) partes.push('Fadiga ' + seta(FAD[p.antes.fad] || p.antes.fad, FAD[p.depois.fad] || p.depois.fad));
+        if (p && p.antes.conf != null) partes.push('Conforto ' + seta(p.antes.conf, p.depois.conf));
+        if (p && p.antes.san != null) partes.push('Sanidade ' + seta(p.antes.san, p.depois.san));
+        return h('li', { class: 'area-row' + (r.on ? '' : ' off') },
+          h('label', { class: 'area-who' },
+            h('input', { type: 'checkbox', class: 'ck', id: `mm-on-${k}`, checked: r.on, 'aria-label': 'Incluir ' + r.t.name, onchange: e => { r.on = e.target.checked; paint(); document.getElementById(`mm-on-${k}`).focus(); } }),
+            tokenAvatar(r.t, 26), h('span', { class: 'area-n', text: r.t.name + (r.t.hidden ? ' (oculto)' : '') })),
+          h('span', { class: 'area-res', text: !r.on ? 'fica de fora' : partes.join(' · ') }));
+      }));
+    };
+    const all = on => { rows.forEach(r => { r.on = on; }); paint(); };
+    paint();
+    modal({
+      title: 'Fadiga, Conforto e Sanidade', wide: true,
+      body: h('div', { class: 'area' },
+        h('div', { class: 'area-top' }, field('Fadiga', campo('fad', 'Fadiga', 5), 'stack'), field('Conforto', campo('conf', 'Conforto', 100), 'stack'), field('Sanidade', campo('san', 'Sanidade', 100), 'stack')),
+        note('Para menos, com sinal de menos. A Fadiga é em passos da pilha (−1: um passo mais cansado); o Conforto e a Sanidade vão de 0 a 100. O que a ficha de alguém não usa fica como está.'),
+        field('Motivo', motivo, 'stack'),
+        h('div', { class: 'area-bar' }, count, h('span', { class: 'spacer' }), btn('Todos', () => all(true), { kind: 'small' }), btn('Nenhum', () => all(false), { kind: 'small' })),
+        list),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Aplicar', kind: 'primary', run: () => {
+          if (!(d.fad || d.conf || d.san)) { toast('Diga quanto mudar: a Fadiga, o Conforto ou a Sanidade.'); document.getElementById('mm-conf').focus(); return false; }
+          const picked = rows.filter(r => r.on).map(r => Store.get('tokens', r.t.id)).filter(Boolean);
+          if (!picked.length) { toast('Marque pelo menos um token.'); return false; }
+          const feitos = Fichas.mexerEmTodos(picked, d);
+          if (!feitos.length) { toast('Nada mudou: os valores já estavam no limite.'); return; }
+          const oQue = [d.fad ? 'Fadiga ' + sinal(d.fad) : '', d.conf ? 'Conforto ' + sinal(d.conf) : '', d.san ? 'Sanidade ' + sinal(d.san) : ''].filter(Boolean).join(', ');
+          const nomes = feitos.map(f => f.nome), mot = motivo.value.trim();
+          const resumo = oQue + ' para ' + (nomes.length < 2 ? nomes.join('') : nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1]) + (mot ? ' — ' + mot : '') + '.';
+          try { window.TC.ponte.publicar('cena', { kind: 'aviso', titulo: 'Cena: ' + Store.scene().name, resumo }); } catch (e) { /* sem a casca, não há mesa ao vivo */ }
+          toast('Feito: ' + resumo, { action: 'Desfazer', run: () => {
+            Fichas.voltarMente(feitos);
+            try { window.TC.ponte.publicar('cena', { kind: 'aviso', titulo: 'Cena: ' + Store.scene().name, resumo: 'Desfeito: ' + oQue + '.' }); } catch (e) { /* idem */ }
+          } });
+        },
+      }],
+    });
+  }
+  const sinal = n => (n > 0 ? '+' + n : '−' + Math.abs(n));
   // Cura total com aviso e Desfazer.
   function healToast(toks, quem) {
     const n = Act.fullHeal(toks);
@@ -1740,7 +1802,8 @@ const UI = (() => {
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null,
-          btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' })) : null) : null,
+          btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }),
+          toks.some(t => t.char && (Fichas.mente(t) || Fichas.fadiga(t))) ? btn('Fadiga, Conforto e Sanidade…', () => menteTodosBox(toks), { icon: 'heart', kind: 'small', id: 'mt-mente', title: 'Para menos ou para mais, nas fichas dos tokens selecionados, de uma vez (com o antes e o depois de cada um)' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,

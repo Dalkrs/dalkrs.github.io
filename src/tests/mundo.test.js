@@ -235,10 +235,11 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await L.F.locator('#toasts .toast', { hasText: 'Grupo apagado' }).locator('button').click(); await espera(200);
     ok(!!(await obj(L, id.g)), '"Desfazer" do aviso traz o grupo de volta');
 
-    // a data: passar o dia não move nada
+    // a data: (lote 7) o ▶ é o "Próximo dia" — leva junto o grupo que tem rota
+    const gx0 = (await obj(L, id.g)).x;
     await L.F.click('#diaMais'); await espera(200);
     ok(await A(L, () => __mundo.App.mapa.cal.dia) === 1 && /^2 de Alvorada, ano 1$/.test(await L.F.locator('#dataTxt .dt-longa').innerText()), 'avançar o dia muda a data na barra');
-    ok(perto((await obj(L, id.g)).x, 700) && await rotulo(L) === 'passar o dia', 'passar o dia não move o grupo (e é um passo de desfazer)');
+    ok(await rotulo(L) === 'passar o dia' && ((await obj(L, id.g)).rota ? !perto((await obj(L, id.g)).x, gx0) : perto((await obj(L, id.g)).x, gx0)), '(lote 7) o "Próximo dia" leva junto o grupo com rota (um passo de desfazer)');
   });
 
   await passo('local: imagem no IndexedDB e recarregar', async () => {
@@ -647,20 +648,20 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(await A(M, () => __mundo.App.mapa.cal.dia) === 1 && await rotulo(M) === 'passar o dia', 'mestre: "Passar o dia" na aba Hoje');
     ok(await ate(() => A(J, () => __mundo.App.mapa.cal.dia === 1 && document.querySelector('#dataTxt .dt-longa').textContent === '2 de Alvorada, ano 1')), 'a data muda para o jogador: ' + await J.F.locator('#dataTxt .dt-longa').innerText());
     ok(await ate(async () => (await raioJ()) === '90'), 'o evento que cresce aparece maior para o jogador (80 → 90): ' + await raioJ());
-    ok(perto((await obj(M, id.herois)).x, 150) && perto((await obj(J, id.herois)).x, 150), 'passar o dia não move o grupo');
+    ok(await ate(async () => perto((await obj(M, id.herois)).x, 290) && perto((await obj(J, id.herois)).x, 290)), '(lote 7) o "Próximo dia" leva o grupo com rota o dia inteiro (30 cubos), para o mestre e para o jogador');
   });
 
   await passo('mesa: andar 1 dia', async () => {
     await botao(M, `gr-andar-dia:${id.herois}`);
     o = await obj(M, id.herois);
-    ok(perto(o.x, 290) && perto(o.y, 454.66, 0.02) && perto(o.prog, 30, 0.01), 'Andar 1 dia: o grupo anda 30 cubos pela rota — 6 hexágonos de 5, de centro em centro: ' + j({ x: o.x, y: o.y, prog: o.prog }));
+    ok(perto(o.x, 440) && perto(o.y, 454.66, 0.02) && perto(o.prog, 60, 0.01), 'Andar 1 dia: o grupo anda mais 30 cubos pela rota — 6 hexágonos de 5, de centro em centro: ' + j({ x: o.x, y: o.y, prog: o.prog }));
     ok(await A(M, () => __mundo.App.mapa.cal.dia) === 2 && await rotulo(M) === 'andar 1 dia', 'e o dia passa (no mesmo passo de desfazer)');
-    ok(/^Andou 6 hexágonos \(30 cubos\); faltam 18 hexágonos \(90 cubos\)\. Passou o dia: hoje é 3 de Alvorada, ano 1\./.test(await textoDoAviso(M)), 'o aviso diz quanto andou, quanto falta e a data nova: ' + await textoDoAviso(M));
-    ok(await ate(() => A(J, x => { const g = __mundo.App.mapa.objs.find(y => y.id === x); return Math.abs(g.x - 290) < 1.5 && __mundo.App.mapa.cal.dia === 2; }, id.herois)), 'o jogador vê o grupo no lugar novo e a data nova');
+    ok(/(^| \| )Andou 6 hexágonos \(30 cubos\); faltam 12 hexágonos \(60 cubos\)\. Passou o dia: hoje é 3 de Alvorada, ano 1\./.test(await textoDoAviso(M)), 'o aviso diz quanto andou, quanto falta e a data nova: ' + await textoDoAviso(M));
+    ok(await ate(() => A(J, x => { const g = __mundo.App.mapa.objs.find(y => y.id === x); return Math.abs(g.x - 440) < 1.5 && __mundo.App.mapa.cal.dia === 2; }, id.herois)), 'o jogador vê o grupo no lugar novo e a data nova');
     // o desenho vem no quadro seguinte ao dado: espera por ele
     const tr = () => A(J, x => document.querySelector(`#mundo svg [data-id="${x}"] .fixo`).getAttribute('transform'), id.herois);
     const lugar = async () => (/translate\(([-\d.]+) ([-\d.]+)\)/.exec((await tr()) || '') || []).slice(1).map(Number);
-    ok(await ate(async () => { const n = await lugar(); return perto(n[0], 290) && perto(n[1], 454.66, 0.02); }, 3000), 'e o grupo é desenhado lá: ' + await tr());
+    ok(await ate(async () => { const n = await lugar(); return perto(n[0], 440) && perto(n[1], 454.66, 0.02); }, 3000), 'e o grupo é desenhado lá: ' + await tr());
   });
 
   await passo('mesa: sortear encontro', async () => {

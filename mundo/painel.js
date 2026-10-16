@@ -253,12 +253,16 @@
     if (!mesmo(v, n)) { v.replaceWith(n); return; }
     if (v.nodeType !== 1) { if (v.nodeValue !== n.nodeValue) v.nodeValue = n.nodeValue; return; }
     if (v.namespaceURI === NS) { if (!v.isEqualNode(n)) v.replaceWith(n); return; }      // ícone: troca inteiro
+    // (lote 7) o campo com o foco guarda o que está escrito só enquanto isso ainda não foi gravado; já gravado, ele
+    // mostra o valor do mapa — senão, ao sair dele, o texto velho seria gravado de novo por cima de um desfazer (ou de
+    // uma mudança que chegou de outro aparelho)
+    const segura = v === foco && textual(v) && (v._modelo === undefined || v.value !== v._modelo);
     for (const a of [...v.attributes]) if (!n.hasAttribute(a.name)) v.removeAttribute(a.name);
     for (const a of n.attributes) if (v.getAttribute(a.name) !== a.value) v.setAttribute(a.name, a.value);
     for (const p of PROPS) if (v[p] !== n[p]) v[p] = n[p];
     if (v.tagName !== 'TEXTAREA') morphFilhos(v, n, foco);                              // textarea: o texto é o value
     if (v.tagName === 'INPUT' || v.tagName === 'TEXTAREA' || v.tagName === 'SELECT') {
-      if (!(v === foco && textual(v)) && v.value !== n.value) v.value = n.value;
+      if (!segura && v.value !== n.value) v.value = n.value;
       if (v.tagName === 'INPUT' && v.checked !== n.checked) v.checked = n.checked;
     }
   }
@@ -535,7 +539,9 @@
     const dt = $('dataTxt'), cal = dt && dt.closest('.cal');
     if (cal) cal.hidden = !v;
     if (dt && v) {
-      const d = N().dataDe(v.cal, v.cal.dia), longa = N().textoData(v.cal, v.cal.dia), curta = d.diaMes + '/' + (d.mes + 1) + '/' + d.ano;
+      // (lote 7) com o dia da semana (quando o mapa conta a semana) e, ao lado, o tempo de marcha de agora
+      const d = N().dataDe(v.cal, v.cal.dia), longa = N().textoDataSemana(v.cal, v.cal.dia), sem = N().diaDaSemana(v.cal, v.cal.dia);
+      const curta = (sem ? sem.slice(0, 3) + ' ' : '') + d.diaMes + '/' + (d.mes + 1) + '/' + d.ano;
       if (dt.dataset.t !== longa + '|' + curta) {
         dt.dataset.t = longa + '|' + curta;
         dt.replaceChildren(h('span', { class: 'dt-longa', text: longa }), h('span', { class: 'dt-curta', text: curta }));
@@ -543,8 +549,18 @@
       dt.title = ed ? longa + '. Clique para ir a outra data.' : longa;
       if (ed) { dt.setAttribute('role', 'button'); dt.tabIndex = 0; dt.setAttribute('aria-label', 'Data do mundo: ' + longa + '. Ir para outra data'); }
       else { dt.removeAttribute('role'); dt.removeAttribute('tabindex'); dt.removeAttribute('aria-label'); }
+      const tt = $('tempoTxt');
+      if (tt) {
+        // (na tela estreita, a forma curta: "· 4/10")
+        const longo = '· ' + tempoTxt(v), curto = '· ' + (Math.min(tpdDe(v) - 1, Math.max(0, v.cal.tempo || 0)) + 1) + '/' + tpdDe(v);
+        tt.hidden = false;
+        if (tt.dataset.t !== longo) { tt.dataset.t = longo; tt.replaceChildren(h('span', { class: 't-longo', text: longo }), h('span', { class: 't-curto', text: curto })); }
+        tt.title = 'O tempo de marcha de agora: o dia tem ' + tpdDe(v) + ' tempos.';
+      }
       $('diaMenos').disabled = !ed || v.cal.dia <= 0;
       $('diaMais').disabled = !ed;
+      const tm = $('tempoMais');
+      if (tm) tm.disabled = !ed;
     }
     // salvo (o que foi escrito num campo e ainda não terminou de editar não está salvo: Enter ou sair do campo grava)
     const s = App.salvo || {}, sv = $('salvo'), sujo = campoSujo();
@@ -604,7 +620,8 @@
     }
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('diaMenos', () => passarDias(-1));
-    on('diaMais', () => passarDias(1));
+    on('diaMais', () => passarTempoMundo('dia'));
+    on('tempoMais', () => passarTempoMundo('tempo'));
     on('btDesfazer', desfazerPeloBotao);
     on('irCenas', () => { antesDeSair(); TC.ponte.ir('cenas'); });
     on('irAcamp', () => { antesDeSair(); TC.ponte.ir('acampamento'); });
@@ -1475,19 +1492,24 @@
   }
   // quantos tempos "Andar 1 dia" anda: os que faltam para acabar o dia
   const temposAteOFim = m => tpdDe(m) - ((m.cal && m.cal.tempo) || 0);
-  // Todos os grupos que têm rota andam (um tempo, ou até o fim do dia), e o tempo passa uma vez só.
-  function andarTodos(qual) {
-    if (!App.podeEditar()) return;
+  /* (lote 7) O tempo do mundo, para todos: "+1 tempo" (qual = 'tempo') e "Próximo dia" (qual = 'dia', os tempos que
+     faltam para acabar o dia — e o relógio vai para o 1º tempo de amanhã). Os grupos com rota andam junto, cada um no
+     seu passo; sem nenhum grupo andando, só o relógio passa. Um passo de desfazer só. */
+  function passarTempoMundo(qual) {
+    if (!App.podeEditar() || !App.mapa) return;
     const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, feitos = [];
     for (const g of m0.objs) if (g.k === 'g' && g.rota) { const r = N().andarTempos(m0, g.id, n); if (r.ok) feitos.push([g.id, r]); }
-    if (!feitos.length) { App.toast('Nenhum grupo andou: sem rota, fora dela ou já no fim.'); return; }
     let t = null;
-    const ok = App.mudar(qual === 'dia' ? 'andar 1 dia com todos' : 'andar 1 tempo com todos', mm => {
+    const ok = App.mudar(qual === 'dia' ? 'passar o dia' : 'passar 1 tempo', mm => {
       for (const [id, r] of feitos) { const g = achar(mm, id); if (g) { g.x = r.x; g.y = r.y; g.prog = r.prog; } }
       t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
     });
-    if (ok !== false) avisoDesfazer((feitos.length === 1 ? 'Um grupo andou' : feitos.length + ' grupos andaram') + '. ' + depoisDaMarcha(App.mapa, t, n));
+    if (ok === false) return;
+    const m = App.mapa, andou = feitos.length ? ' ' + (feitos.length === 1 ? nomeDe(achar(m, feitos[0][0]) || {}, m) + ' andou.' : feitos.length + ' grupos andaram.') : '';
+    avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N().textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou);
   }
+  // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
+  function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
   // O grupo anda pela rota (um tempo, ou até o fim do dia) e o tempo passa — um passo de desfazer só, para as duas coisas.
   function andar(id, qual) {
     if (!App.podeEditar()) return;
@@ -1734,14 +1756,15 @@
   /* ---------------- aba Hoje ---------------- */
   function abaHoje(v) {
     const N_ = N(), ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, dia = v.cal.dia, out = [];
-    out.push(h('h3', { text: N_.textoData(v.cal, dia) }));
+    out.push(h('h3', { text: N_.textoDataSemana(v.cal, dia) }), h('p', { class: 'sub', 'data-k': 'hoje:tempo-txt', text: tempoTxt(v).replace(/^./, c => c.toUpperCase()) + '.' }));
     if (ed) {
       out.push(h('div', { class: 'row' },
-        botao('Passar o dia', () => passarDias(1), { c: 'pri', k: 'hoje:+1' }),
+        botao('+1 tempo', () => passarTempoMundo('tempo'), { c: 'pri', k: 'hoje:tempo', title: 'Os grupos com rota andam um tempo de marcha, e o relógio avança' }),
+        botao('Próximo dia', () => passarTempoMundo('dia'), { k: 'hoje:+1', title: 'Os grupos com rota andam o que falta do dia (cada um no seu passo), e o relógio vai para o 1º tempo de amanhã' }),
         botao('+7 dias', () => passarDias(7), { k: 'hoje:+7' }),
         botao('−1 dia', () => passarDias(-1), { k: 'hoje:-1', off: dia <= 0 }),
         botao('Ir para a data…', irParaData, { k: 'hoje:ir' })));
-      out.push(nota('Passar o dia não move os grupos nem muda nada sozinho.'));
+      out.push(nota('"+1 tempo" e "Próximo dia" levam junto todos os grupos que têm rota, cada um no seu passo. "+7 dias", "−1 dia" e "Ir para a data" só mudam o calendário: os grupos ficam onde estão.'));
     }
     // eventos
     const ativos = N_.eventosDoDia(v, dia);
@@ -1770,12 +1793,9 @@
           botao('Andar 1 dia', () => andar(g.id, 'dia'), { c: 'sm', k: 'gr-andar-dia:' + g.id, off: !g.rota, title: g.rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Este grupo não tem rota' }),
           botao('Sortear encontro', () => sortearGrupo(g.id), { c: 'sm', k: 'gr-sortear:' + g.id })) : null));
     }
-    // (cada "Andar" passa o tempo: com mais de um grupo viajando, todos andam juntos no mesmo tempo)
+    // (cada "Andar" passa o tempo do mundo; "+1 tempo" e "Próximo dia", lá em cima, levam todos os grupos juntos)
     const viajando = grupos.filter(g => g.rota).length;
-    if (ed && viajando > 1) gs.push(linha(
-      botao('Andar 1 tempo com todos', () => andarTodos('tempo'), { c: 'pri sm', k: 'gr-andar-todos', title: 'Os ' + viajando + ' grupos com rota andam um tempo de marcha, e o tempo passa uma vez só' }),
-      botao('Andar 1 dia com todos', () => andarTodos('dia'), { c: 'sm', k: 'gr-andar-todos-dia', title: 'Os ' + viajando + ' grupos com rota andam até o fim do dia, e o dia passa uma vez só' })));
-    if (ed && viajando) gs.push(nota(tempoDeHojeTxt(v) + (viajando > 1 ? ' Cada "Andar" passa o tempo; com mais de um grupo viajando, "com todos" leva todos no mesmo tempo.' : '')));
+    if (ed && viajando) gs.push(nota(tempoDeHojeTxt(v) + (viajando > 1 ? ' O "Andar" de um grupo passa o tempo só com ele andando; "+1 tempo" e "Próximo dia" levam todos juntos.' : '')));
     out.push(secao(grupos.length === 1 ? 'Onde está o grupo' : 'Grupos', gs));
     return out;
   }
@@ -1913,6 +1933,10 @@
           mm.cal.ano0 = ano - Math.floor(mm.cal.dia / N().diasNoAno(mm.cal));
         });
       }, { area: true, linhas: 6, dica: 'O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' }),
+      // (lote 7) os dias da semana: o mestre diz que dia da semana é hoje, e o resto segue
+      campoEscolha('mapa:semana', 'Dia da semana de hoje', String(N_.semanaDe(cal, cal.dia)), [['-1', 'Sem dia da semana']].concat(N_.SEMANA.map((nome, i) => [String(i), nome])),
+        v => App.mudar(Number(v) < 0 ? 'tirar o dia da semana' : 'escolher o dia da semana', mm => { const s0 = N().sem0Para(mm.cal.dia, Number(v)); if (s0 === mm.cal.sem0) return false; mm.cal.sem0 = s0; }),
+        { dica: 'Escolha que dia da semana é hoje: os outros dias seguem sozinhos (de Segunda-Feira a Domingo). Aparece junto da data, para todos.' }),
       // (lote 6) a marcha dos grupos é contada em tempos: quantos tempos de marcha tem um dia
       campoNumero('mapa:tpd', 'Tempos de marcha por dia', cal.tpd || N_.TEMPOS_DIA || 10, n => App.mudar('mudar os tempos de marcha do dia', mm => { if (mm.cal.tpd === n) return false; mm.cal.tpd = n; mm.cal.tempo = Math.min(mm.cal.tempo || 0, n - 1); }),
         { min: 1, max: (N_.LIMITES && N_.LIMITES.tempos) || 100, erro: 'Use de 1 a 100 tempos.', dica: 'Os grupos andam os cubos deles a cada tempo; a cada tantos tempos de marcha, passa um dia.' })));
@@ -1981,7 +2005,7 @@
           botao('↑', () => mover(0, -passo), { c: 'sm', k: 'ter:cima', title: 'Grade para cima' }), botao('↓', () => mover(0, passo), { c: 'sm', k: 'ter:baixo', title: 'Grade para baixo' }),
           h('small', { class: 'ajuda', text: 'cada toque: ' + fmt(passo, 1) + ' unidades' }))));
       gs.push(caixa('ter:on', 'Mostrar a grade', gr.on, v => App.mudar(v ? 'mostrar a grade' : 'esconder a grade', mm => { mm.grade.on = !!v; }),
-        { dica: 'Os jogadores também a veem. Escondida, ela continua medindo as viagens e a régua.' }));
+        { dica: 'Os jogadores também a veem. Escondida, ela continua medindo as viagens e a régua, e o terreno pintado continua no mapa.' }));
       const forcas = [['0.15', 'Bem clara'], ['0.35', 'Clara'], ['0.6', 'Forte'], ['0.9', 'Bem forte']];
       const perto = forcas.reduce((a, b) => (Math.abs(Number(b[0]) - gr.alfa) < Math.abs(Number(a[0]) - gr.alfa) ? b : a))[0];
       gs.push(campoEscolha('ter:alfa', 'Linhas da grade', perto, forcas, v => App.mudar('mudar as linhas da grade', mm => { mm.grade.alfa = Number(v); }), { off: !gr.on }));
@@ -2016,16 +2040,20 @@
       nota(nOps ? plural(nOps, 'pincelada', 'pinceladas') + '.' + (tem ? ' Cada hexágono fica com o terreno que o desenho tem no centro dele (o que se pinta por hexágono vale mais).' : ' Com a grade de hexágonos, cada hexágono ganha o terreno do desenho.')
         : 'Pinte o terreno à mão livre, com a textura de cada tipo: dá para desenhar o mapa do zero ou por cima da imagem.'),
       linha(botao('Pincel livre (H)', () => ferramentaTerreno('livre'), { c: 'pri', k: 'ter:livre', title: 'Arraste no mapa para pintar (ou apagar, com a borracha)' }),
-        nOps ? botao('Apagar o desenho…', apagarDesenho, { c: 'sm per', k: 'ter:apagar-desenho' }) : null),
-      nOps ? campoEscolha('ter:forca', 'Força do desenho', forca, fortes, v => App.mudar('mudar a força do desenho', mm => { mm.pintura.alfa = Number(v); }), { dica: 'Mais clara deixa a imagem do mapa aparecer por baixo.' }) : null));
+        nOps ? botao('Apagar o desenho…', apagarDesenho, { c: 'sm per', k: 'ter:apagar-desenho' }) : null)));
     // pintar por hexágono
     const pintados = Object.keys(m.hexes || {}).length, nada = uso.get('-') || 0;
     out.push(secao('Pintar por hexágono',
       nota(pintados ? plHex(pintados) + ' com terreno ou custo próprio.' + [...uso].map(([id, n]) => { const t = m.terrenos.find(x => x.id === id); return t ? ' ' + t.nome + ': ' + n + '.' : ''; }).join('') + (nada ? ' Sem terreno (por cima do desenho): ' + nada + '.' : '') : 'Nenhum hexágono pintado ainda.'),
       linha(botao('Por hexágono (H)', () => ferramentaTerreno('hex'), { c: 'sm', k: 'ter:pincel', off: !tem, title: tem ? 'Arraste sobre os hexágonos para pintar (ou corrigir o desenho)' : 'Defina a grade primeiro' })),
       tem ? caixa('ter:des', 'Desenho em cada hexágono', gr.des !== false, v => App.mudar(v ? 'pôr o desenho nos hexágonos' : 'tirar o desenho dos hexágonos', mm => { if ((mm.grade.des !== false) === !!v) return false; mm.grade.des = !!v; }),
-        { dica: 'Cada hexágono pintado ganha o desenho do terreno (árvores, montes, fileiras…), diferente de um para o outro. Desligado: só a cor. Aparece com a grade.' }) : null,
+        { dica: 'De perto (com zoom), cada hexágono pintado ganha o desenho do terreno (árvores, montes, fileiras…), diferente de um para o outro. Desligado: só a tinta.' }) : null,
       nota('Uma região também pode ter um custo por hexágono (Seleção → a região). O custo próprio de um hexágono vale mais que o da região, que vale mais que o do terreno.')));
+    // (lote 7) a tinta do terreno: a mesma força para o desenho à mão e para os hexágonos pintados
+    const comTinta = [...uso].some(([id]) => id !== '-' && m.terrenos.some(t => t.id === id));
+    if (nOps || comTinta) out.push(secao('Tinta do terreno',
+      campoEscolha('ter:forca', 'Força da tinta', forca, fortes, v => App.mudar('mudar a força da tinta', mm => { mm.pintura.alfa = Number(v); }),
+        { dica: 'Vale para o desenho à mão e para os hexágonos pintados. Mais clara deixa a imagem do mapa aparecer por baixo.' })));
     return out;
   }
   // (lote 6) num mapa de antes, os terrenos novos (com o desenho deles) que ele ainda não tem: um clique acrescenta

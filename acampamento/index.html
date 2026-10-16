@@ -251,6 +251,14 @@ textarea.in { height: auto; min-height: 52px; padding: 7px 9px; resize: vertical
 .plano.momento td:first-child { color: var(--fg-2); white-space: nowrap; }
 .plano.momento .mo-c { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .plano.momento select.in { height: 30px; }
+/* (lote 7) mexer em todos: os três passos em cima, a lista com o antes e o depois embaixo */
+.mt-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.mt-campo { display: grid; gap: 4px; }
+.mt-campo .mt-rot { font-weight: 600; font-size: 13.5px; }
+.mt-campo .passo { display: inline-flex; align-items: center; gap: 6px; }
+.mt-campo .note { margin: 0; }
+.mt-lista tr.fora td { opacity: .55; }
+.mt-lista .chk { display: inline-flex; align-items: center; gap: 8px; }
 .bonus-lista { display: flex; flex-wrap: wrap; gap: 6px; }
 .diario { display: grid; gap: 8px; }
 .diario .dl { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
@@ -362,6 +370,7 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
         <button type="button" class="btn" id="btCurto" title="Uma pausa: recupera uma parte das barras, sem gastar provisões">Descanso curto</button>
         <button type="button" class="btn pri" id="btLongo" title="A noite no acampamento: recupera as barras, gasta provisões e mexe em Conforto e Sanidade">Descanso longo</button>
         <button type="button" class="btn" id="btMomento" title="Um momento entre dois personagens em volta da fogueira: mexe no Relacionamento de cada um pelo outro">Momento…</button>
+        <button type="button" class="btn" id="btTodos" title="A Fadiga, o Conforto e a Sanidade de quem está no acampamento, de uma vez (com o antes e o depois de cada um)">Mexer em todos…</button>
       </div>
     </div>
     <aside class="side" id="side">
@@ -376,9 +385,9 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o acampamento.</p></noscript>
 <script src="../tc/ponte.js?v=14"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=10"></script>
+<script src="../tc/rules.js?v=11"></script>
 <script src="nucleo.js?v=7"></script>
 <script src="desenhos.js?v=1"></script>
-<script src="acampamento.js?v=13"></script>
+<script src="acampamento.js?v=14"></script>
 </body>
 </html>

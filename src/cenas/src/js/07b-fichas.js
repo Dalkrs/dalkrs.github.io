@@ -304,6 +304,46 @@ const Fichas = (() => {
     syncAll(t.char);                    // (a mudança feita daqui não volta como "mudança de fora": o token acompanha já)
     return antes;
   }
+  /* (lote 7) Mexer em todos (os tokens selecionados): a Fadiga, o Conforto e a Sanidade das fichas ligadas, de uma vez
+     (uma ficha conta uma vez só, mesmo com dois tokens dela). Só o mestre. As contas são as de TC.rules.mexerNaMente
+     (as mesmas do Acampamento). → [{ id (da ficha), nome, estado (o de antes), so (as chaves que mudaram), antes,
+     depois }] — para o aviso e para voltarMente (o desfazer). */
+  const usoDaMente = t => ({ mente: !!mente(t), fadiga: !!fadiga(t) });
+  const deJogadorT = t => { const l = t && t.char ? fichaDe(t) : null; return !!l && deJogador(l); };
+  function previaMente(t, d) {
+    const l = t && t.char ? fichaDe(t) : null;
+    return l ? R().mexerNaMente(l.estado || {}, d, usoDaMente(t)) : null;
+  }
+  function mexerEmTodos(toks, d) {
+    if (!P || papel !== 'mestre') return [];
+    const feitos = [], vistos = new Set();
+    for (const t of toks || []) {
+      const l = t && t.char ? fichaDe(t) : null;
+      if (!l || vistos.has(l.id)) continue;
+      vistos.add(l.id);
+      const r = R().mexerNaMente(l.estado || {}, d, usoDaMente(t));
+      if (!r.so.length) continue;
+      feitos.push({ id: l.id, nome: l.nome || t.name, estado: l.estado || {}, so: r.so, antes: r.antes, depois: r.depois });
+      P.gravar(l.id, { estado: r.estado });
+    }
+    for (const f of feitos) syncAll(f.id);
+    return feitos;
+  }
+  // o desfazer do "mexer em todos": volta só as chaves que ele mudou em cada ficha (o resto, como está agora)
+  function voltarMente(feitos) {
+    if (!P || papel !== 'mestre') return 0;
+    let n = 0;
+    for (const f of feitos || []) {
+      const l = get(f.id);
+      if (!l) continue;
+      const est = Object.assign({}, l.estado || {});
+      for (const k of f.so) { if (f.estado[k] === undefined) delete est[k]; else est[k] = f.estado[k]; }
+      P.gravar(f.id, { estado: est });
+      syncAll(f.id);
+      n++;
+    }
+    return n;
+  }
   /* ---- os equipamentos da ficha deste token (lote 6: a janelinha E) ----
      Quem mexe: o mestre, em qualquer token ligado; o jogador, no token do personagem dele (a ficha é dele). */
   function podeEquipar(t) {
@@ -686,7 +726,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };

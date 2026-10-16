@@ -2,6 +2,50 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-3",
+      "data": "2026-10-16",
+      "titulo": "Meditação com a imagem grande, pintura do mapa de verdade e o tempo para todos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Meditação: a imagem meditando aparece grande na cena — o personagem inteiro, sem moldura, com a aura em volta do contorno — e agora todos da mesa a veem. Um PNG com fundo transparente fica só com o personagem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Meditação: “Limpar o registro” de um personagem. As receitas descobertas e as tentativas ficam, e dá para desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a pintura por hexágono pinta o mapa de verdade — a tinta do Pincel livre, com a textura do terreno, cobrindo a imagem, e as bordas macias entre um terreno e outro."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: esconder a grade tira só as linhas (o terreno pintado continua no mapa), e a “Força da tinta” vale para o desenho à mão e para os hexágonos."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o dia da semana junto da data (o mestre escolhe que dia é hoje) e o tempo de marcha de agora, como “4º tempo de 10”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “+1 tempo” leva todos os grupos com rota, cada um no seu passo; o ▶ (Próximo dia) leva todos o que falta do dia e vai para o 1º tempo de amanhã. O ◀ só volta a data."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mexer em todos: a Fadiga, o Conforto e a Sanidade de vários personagens de uma vez, com o antes e o depois de cada um — no Acampamento e nos tokens selecionados das Cenas. O motivo vai para a mesa ao vivo, e tudo tem Desfazer."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Mapa-múndi: um campo do painel que ainda estava selecionado mostra o valor que voltou com o Desfazer (ou que chegou de outro aparelho), e sair dele não grava de novo o valor antigo."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-2",
       "data": "2026-10-16",
       "titulo": "Clã: a nova aba, com o salão, a hierarquia e o respeito",

@@ -487,10 +487,17 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   valendo para as receitas. O lugar fica em `medit:cena` (a mesa lê); quem está meditando, em `medit:quem` (a mesa lê;
   só a função `meditacao_entrar` escreve — assim, o mestre mudar o lugar no mesmo instante em que alguém entra não
   apaga a entrada). Uma cena por mesa (não por campanha).
-- **A prática** de cada personagem: objeto, mantra, representação, o panteão (é o campo da ficha, `ficha.panteao`:
-  mudar aqui muda nas Fichas — e muda quem pode mudar a ficha) e a imagem meditando, que aparece na cena para quem vê
-  a prática (o dono e quem mestra; os outros veem o retrato da ficha). Fica em `medit:pratica:<personagem>`, com o dono
-  do personagem como dono: só ele e quem mestra veem. O banco deixa o jogador criar só a de um personagem dele.
+- **A prática** de cada personagem: objeto, mantra, representação e o panteão (é o campo da ficha, `ficha.panteao`:
+  mudar aqui muda nas Fichas — e muda quem pode mudar a ficha). Fica em `medit:pratica:<personagem>`, com o dono do
+  personagem como dono: só ele e quem mestra veem. O banco deixa o jogador criar só a de um personagem dele.
+- **A imagem meditando (lote 7)** mora na ficha (`ficha.imgMed`, como o panteão: muda quem pode mudar a ficha), e
+  por isso todos que veem o personagem a veem: na cena, o personagem inteiro, sem moldura, de pé no chão da cena, com
+  a aura em volta do contorno (a mesma imagem, desfocada e clara, por trás) e a luz da hora, de leve — até metade da
+  altura da cena sozinho, menor com mais gente. A imagem é guardada com a transparência (WebP, ou PNG no navegador que
+  não faz WebP; até 1.400 pixels) e sem as margens vazias em volta. A imagem de antes (`medit:pratica`, `img`), que só
+  o dono e o mestre viam, continua no retrato redondo para eles, com um aviso, até ser trocada.
+- **Limpar o registro (lote 7).** Quem mestra limpa o registro de um personagem ("Limpar o registro", com a pergunta
+  e Desfazer): só as linhas do registro saem — as receitas descobertas e as tentativas ficam.
 - **Entrar e sair.** O jogador entra e sai pela aba dele ("Meditar"); quem mestra chama ("Chamar para meditar…",
   vários de uma vez) e tira. Ao entrar, o registro do personagem guarda o lugar, a hora e o clima (e se foi chamado
   pelo mestre).
@@ -588,9 +595,17 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   (`cal.tempo`; a cada `tpd` tempos, passa um dia); "Andar 1 dia" anda os tempos que faltam até o fim do dia. É um passo
   de desfazer só (o grupo e o tempo). O calendário continua contando dias: o tempo de marcha de hoje aparece junto dos
   grupos. O que sobra rumo ao próximo hexágono fica guardado no andado (`prog`, em cubos): uma montanha de 20 cubos,
-  andando 10 por tempo, leva dois tempos. Com mais de um grupo viajando, "com todos" leva todos no mesmo tempo.
-  "Passar o dia" (e ir para uma data) começa o dia no primeiro tempo de marcha. O grupo de antes (só com os cubos por
-  dia) anda um décimo disso por tempo; `cubos` (por dia) continua no grupo, para o site de antes.
+  andando 10 por tempo, leva dois tempos. O grupo de antes (só com os cubos por dia) anda um décimo disso por tempo;
+  `cubos` (por dia) continua no grupo, para o site de antes.
+- **O tempo para todos (lote 7).** Junto da data, na barra de cima, o tempo de marcha de agora ("4º tempo de 10"; na
+  tela estreita, "4/10"). "+1 tempo" (na barra e na aba Hoje) leva todos os grupos com rota um tempo, cada um no seu
+  passo, e o relógio avança; o ▶ ("Próximo dia") leva todos o que falta do dia e o relógio vai para o 1º tempo de
+  amanhã (`passarTempoMundo`). Sem nenhum grupo andando, só o relógio passa. O ◀, "+7 dias" e "Ir para a data" só mudam
+  o calendário (os grupos ficam onde estão). Tudo é um passo de desfazer só. O "Andar" de um grupo continua levando só
+  ele (e passando o tempo).
+- **Os dias da semana (lote 7, `cal.sem0`).** No calendário do mapa, o mestre escolhe que dia da semana é hoje, e os
+  outros seguem (de Segunda-Feira a Domingo, `SEMANA`): `sem0` é o dia da semana do dia 0 do mundo (null = o mapa não
+  conta a semana). Aparece junto da data, na barra de cima e na aba Hoje, para todos (`textoDataSemana`).
 - **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
   tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
   no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
@@ -613,15 +628,21 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   um com a sua textura (no pincel livre e nos hexágonos). Um mapa novo já vem com os dezesseis; num mapa de antes, a
   aba Terreno oferece "Acrescentar os 8" (`terrenosQueFaltam`: os que o mapa não tem, nem pelo id nem pelo nome,
   cabendo no limite de tipos) — nada muda sozinho.
-- **O desenho em cada hexágono** (lote 6, `grade.des`, ligado de começo): o terreno pintado hexágono por hexágono vai
-  para um canvas entre o desenho à mão e as camadas do mapa — a cor (meio transparente, como antes) e a composição do
-  terreno (as árvores da floresta, os picos da montanha, as fileiras da lavoura, as rachaduras da lava…), variada de
-  um hexágono para outro: a semente é o lugar do hexágono, então o mesmo sai sempre igual, para o mestre e para quem
-  joga. Não são carimbos (não contam como objetos). Desligado ("Desenho em cada hexágono", aba Terreno), só a cor.
-  Como antes, aparece com a grade (e, para o mestre, com a ferramenta Terreno). O canvas é desenhado na resolução da
-  tela (`pintarHexVista`): só a parte à vista do terreno pintado, com uma margem de um quarto da tela para cada lado,
-  refeita quando o zoom para ou quando a vista sai do que já foi desenhado — nítido em qualquer zoom (com um teto de
-  pixels; a tela muito densa conta como 2). De longe, com os hexágonos miúdos na tela (menos de 12 px), fica só a cor.
+- **O terreno pintado por hexágono** vai para um canvas entre o desenho à mão e as camadas do mapa. (Lote 7) A tinta é
+  a mesma do Pincel livre: a cor e a textura do terreno (`ladrilho`, presa às coordenadas do mapa), cobrindo a imagem
+  com a "Força da tinta" (`pintura.alfa`, aba Terreno, a mesma para o desenho à mão e para os hexágonos). Cada tipo de
+  terreno vai numa máscara um pouco maior e desfocada (as bordas macias, que se misturam com o vizinho sem fresta); a
+  volta de toda a área pintada recorta a tinta com uma borda macia mais curta (por fora, ela não avança sobre os
+  hexágonos sem pintura). O desfoque vem do `filter` do canvas; o navegador que não o tem fica com a borda reta. As
+  linhas da grade e a tinta são coisas separadas: escondida a grade, só as linhas somem.
+- **O desenho em cada hexágono** (lote 6, `grade.des`, ligado de começo): por cima da tinta, a composição do terreno
+  (as árvores da floresta, os picos da montanha, as fileiras da lavoura, as rachaduras da lava…), variada de um
+  hexágono para outro: a semente é o lugar do hexágono, então o mesmo sai sempre igual, para o mestre e para quem
+  joga. Não são carimbos (não contam como objetos). Desligado ("Desenho em cada hexágono", aba Terreno), só a tinta.
+  O canvas é desenhado na resolução da tela (`pintarHexVista`): só a parte à vista do terreno pintado, com uma margem
+  de um quarto da tela para cada lado, refeita quando o zoom para ou quando a vista sai do que já foi desenhado —
+  nítido em qualquer zoom (com um teto de pixels; a tela muito densa conta como 2). De longe, com os hexágonos miúdos
+  na tela (menos de 12 px), fica só a tinta.
 - **A honra dos grupos** (lote 6, `g.estilo`, `g.honra`, `g.hhist`): de −5 a +5, com um selo junto do token no estilo
   escolhido (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal; sem
   estilo, o grupo não mostra honra). Positiva: o corpo vai do bronze ao ouro, com o aro dourado (mais grosso quanto
@@ -689,6 +710,12 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   fichas: a prévia mostra o que aplicar.
 - **Só para alguns.** Uma melhoria ou um equipamento vale para todos ou só para os personagens e os grupos (das
   fichas) escolhidos.
+- **Mexer em todos (lote 7).** "Mexer em todos…" (no Acampamento, quem está no acampamento; nas Cenas, os tokens
+  selecionados, em "Fadiga, Conforto e Sanidade…") muda de uma vez a Fadiga (em passos da pilha), o Conforto e a
+  Sanidade (de 0 a 100) de várias fichas, para menos ou para mais. Vêm marcados os personagens dos jogadores (dá para
+  desmarcar e marcar os outros); a lista mostra o antes e o depois de cada um; o que a ficha não usa fica como está e
+  os valores param nos limites; o motivo vai para a mesa ao vivo. As contas são de `TC.rules.mexerNaMente`. Um passo de
+  desfazer, que volta só as chaves que mudaram em cada ficha (o resto, como está agora).
 - **A aura.** A emoção de cada personagem fica na ficha (`estado.emo`): quem muda é o dono e quem mestra as Fichas. O
   programa do mestre a copia para a roda do acampamento (`roda[].emo`), que é como ela chega a quem não vê a ficha.
 - **A caravana** fica no documento do acampamento (`caravana`): os veículos e animais (tipo, quanto levam, estado), a
@@ -972,7 +999,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1064,7 +1091,10 @@ as regiões de dentro (a sugestão da mais de dentro, a facção e a cor herdada
 encavalar, a lista em árvore). `mundo-lote6b` confere os terrenos novos (e a oferta num mapa de antes), o desenho em
 cada hexágono (no canvas: cada um com o seu, o mesmo sempre igual, só a cor quando desligado, o mesmo para quem
 joga), a honra (o estilo, − e +, o motivo, o selo de −5 a +5, o histórico corrigido e tirado, quem joga vendo) e o
-painel da facção (recursos, população, apoio, o histórico automático, o que os jogadores veem). `mundo-mesa` confere
+painel da facção (recursos, população, apoio, o histórico automático, o que os jogadores veem). `mundo-lote7` confere
+a pintura por hexágono de verdade (a tinta cobrindo, com textura, sem fresta entre dois terrenos e com a borda macia
+por fora), a força da tinta, a grade separada da tinta, os dias da semana e o tempo para todos (+1 tempo, Próximo dia,
+o ◀ só na data, Desfazer, quem joga e a tela estreita). `mundo-mesa` confere
 também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
 lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
 itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma

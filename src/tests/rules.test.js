@@ -560,6 +560,25 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(j(R.bonusDaArvore(Object.assign({}, sk, so('L')), bib)) === j({ FOR: 4 }) && j(R.bonusDaArvore(sk, bib)) === j({ FOR: 1 }) && j(R.bonusDaArvore(sk, pacote)) === j({ FOR: 1 }),
     'os bônus: com o caminho aberto, contam; fechado, os nódulos ficam guardados e não contam — nem na biblioteca do mestre');
 }
+// (lote 7) "Mexer em todos": a Fadiga em passos da pilha, o Conforto e a Sanidade de 0 a 100, só no que a ficha usa
+{
+  const U = { mente: true, fadiga: true };
+  let r = R.mexerNaMente({ san: 80, conf: 5, fad: 4, rec: { hp: 3 } }, { conf: -10, san: -5, fad: -1 }, U);
+  ok(j(r.estado) === j({ san: 75, conf: 0, fad: 3, rec: { hp: 3 } }) && j(r.so) === j(['conf', 'san', 'fad']) && j(r.antes) === j({ conf: 5, san: 80, fad: 4 }) && j(r.depois) === j({ conf: 0, san: 75, fad: 3 }),
+    'mexer em todos: tira de cada um (o Conforto para no 0) e guarda o antes e o depois: ' + j(r));
+  r = R.mexerNaMente({}, { conf: 10, san: 3, fad: 1 }, U);
+  ok(j(r.estado) === j({ conf: 60 }) && j(r.so) === j(['conf']), 'sem nada anotado: Conforto 50 e Sanidade 100 de começo; a Sanidade e a Fadiga já no máximo não mudam: ' + j(r));
+  const e0 = { conf: 0, san: 100 };
+  r = R.mexerNaMente(e0, { conf: -5, san: 5 }, U);
+  ok(r.estado === e0 && r.so.length === 0, 'nada muda (já nos limites): o mesmo objeto, sem chaves');
+  r = R.mexerNaMente({ san: 90 }, { san: -5, conf: -5, fad: -2 }, { mente: false, fadiga: true });
+  ok(j(r.estado) === j({ san: 90, fad: 3 }) && j(r.so) === j(['fad']) && r.antes.san === null, 'a ficha que não usa Sanidade e Conforto: só a Fadiga muda');
+  r = R.mexerNaMente({ conf: 40 }, { conf: -5, fad: -1 }, { mente: true, fadiga: false });
+  ok(j(r.estado) === j({ conf: 35 }) && r.antes.fad === null, 'a ficha que não usa a Fadiga: ela não é anotada');
+  r = R.mexerNaMente({ conf: 40 }, { conf: 2.9, san: '-4' }, U);
+  ok(r.depois.conf === 42 && r.depois.san === 96, 'os passos são inteiros (2,9 vira 2) e aceitam texto com número');
+  ok(R.mexerNaMente(null, null, null).so.length === 0, 'sem nada, nada muda');
+}
 // carrega também como script de página
 const pg = vm.createContext({}); pg.window = pg; pg.globalThis = pg;
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../tc/rules.js'), 'utf8'), pg);

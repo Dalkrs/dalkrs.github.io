@@ -112,7 +112,7 @@
   /* ---------------- os documentos ---------------- */
   const CENA = 'medit:cena', QUEM = 'medit:quem', SIMB = 'medit:simbolos', REC = 'medit:receitas', TREINO = 'medit:treino', PRE_P = 'medit:pratica:', PRE_A = 'medit:achados:';
   const VIS = { [CENA]: 'mesa', [QUEM]: 'mesa', [SIMB]: 'mesa', [REC]: 'mestre', [TREINO]: 'mestre' };
-  const L_DOCS = 'tinycats:meditacao:local', PC_TESTE = 'pc_teste', L_PANTEAO = 'teste:panteao';
+  const L_DOCS = 'tinycats:meditacao:local', PC_TESTE = 'pc_teste', L_PANTEAO = 'teste:panteao', L_FIGURA = 'teste:imgMed';
   let st = null, D = null, P = null, naMesa = false, mestre = true, eu = null, pronto = false;
   let vista = guarda.ler('tinycats:meditacao:vista') === 'receitas' ? 'receitas' : 'cena';
   let sel = null, recSel = null, grupoVisto = 'el', seqAtual = [], resultado = null, ocupado = false, pilarEd = 0;
@@ -177,7 +177,7 @@
 
   /* ---------------- quem é quem ---------------- */
   function personagens() {
-    if (!naMesa) return [{ id: PC_TESTE, nome: 'Personagem de teste', dono: 'local', campanha: null, img: null, ficha: { panteao: typeof local[L_PANTEAO] === 'string' ? local[L_PANTEAO] : '' } }];
+    if (!naMesa) return [{ id: PC_TESTE, nome: 'Personagem de teste', dono: 'local', campanha: null, img: null, ficha: { panteao: typeof local[L_PANTEAO] === 'string' ? local[L_PANTEAO] : '', imgMed: local[L_FIGURA] || null } }];
     return P.todas().filter(l => !l.apagado && typeof l.id === 'string' && String(l.nome || '').trim())
       .map(l => { const f = ehObj(l.ficha) ? l.ficha : {}; return { id: l.id, nome: String(l.nome).trim(), dono: l.dono_id || null, campanha: l.campanha || null, img: imagemOk(f.img) ? f.img : null, ficha: f }; })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -194,6 +194,12 @@
   const panteaoDe = p => (p && p.ficha && typeof p.ficha.panteao === 'string' ? p.ficha.panteao : '');
   // o panteão é o da ficha: muda quem pode mudar a ficha (o dono, ou quem mestra as Fichas)
   const podePanteao = p => !naMesa || meu(p) || !!(window.TC && TC.ponte && TC.ponte.mestra && TC.ponte.mestra('fichas'));
+  /* (lote 7) A imagem meditando mora na ficha (ficha.imgMed): todos que veem o personagem a veem na cena, grande e
+     recortada (um PNG com fundo transparente fica só com o personagem). Muda quem pode mudar a ficha, como o panteão.
+     A de antes (medit:pratica, img) — que só o dono e o mestre viam — continua valendo para eles, no retrato redondo,
+     até ser trocada. */
+  const figuraDe = p => { const v = p && p.ficha ? p.ficha.imgMed : null; return imagemOk(v) ? v : null; };
+  const podeFigura = podePanteao;
   function porCampanha(itens) {
     const T = window.TC && TC.ponte;
     return naMesa && T && typeof T.porCampanha === 'function' ? T.porCampanha(itens, p => p.campanha) : [{ id: '', nome: '', itens }];
@@ -282,6 +288,13 @@
     }
     el.innerHTML = out.join('');                                         // (só números feitos aqui)
   }
+  // A figura de quem medita com a imagem meditando: a altura (em % da altura da cena) e a largura máxima (em % da
+  // largura), pelo número de quem medita — sozinho, até metade da cena; com mais gente, menor.
+  function tamanhoDaFigura(n) {
+    if (n > 6) return { alt: 30, larg: 18 };
+    const t = [[50, 70], [46, 46], [42, 34], [38, 27], [34, 22], [32, 19]][Math.max(0, n - 1)];
+    return { alt: t[0], larg: t[1] };
+  }
   function pintarCena() {
     const c = N.normCena(doc(CENA));
     $('palco').className = 'palco hora-' + c.hora;
@@ -294,13 +307,18 @@
     }
     pintarClima(c.clima);
     // quem está meditando (um personagem que esta pessoa não vê — escondido, ou apagado — não aparece)
-    const pcs = quemMedita().map(pcDe).filter(Boolean), lug = DES.lugares(pcs.length);
+    const pcs = quemMedita().map(pcDe).filter(Boolean), lug = DES.lugares(pcs.length), tam = tamanhoDaFigura(pcs.length);
     morphEm($('gente'), pcs.length ? pcs.map((p, i) => {
-      const ve = veAPratica(p), pr = ve ? pratica(p.id) : null, img = (pr && pr.img) || p.img, ach = ve && p.dono ? achados(p.id) : null;
+      const ve = veAPratica(p), pr = ve ? pratica(p.id) : null, fig = figuraDe(p), img = (pr && pr.img) || p.img, ach = ve && p.dono ? achados(p.id) : null;
       const status = ach ? (ach.lib > ach.feitas ? h('span', { class: 'st lib', text: 'tentativa liberada' }) : mestre ? h('span', { class: 'st', text: 'sem tentativa' }) : null) : null;
-      return h(ve ? 'button' : 'div', { type: ve ? 'button' : null, class: 'quem', 'data-k': 'q:' + p.id, 'data-pc': p.id, 'aria-pressed': ve ? String(sel === p.id) : null, style: `left:${lug[i].x}%;top:${lug[i].y}%`,
+      const L = lug[i], base = L.fila === 1 ? 92 : lug.some(x => x.fila === 1) ? 80 : 86;
+      // com a imagem meditando, o personagem inteiro, de pé no chão da cena (o pé dele na linha `base`), com a aura em
+      // volta do contorno; sem ela, o retrato redondo de sempre
+      return h(ve ? 'button' : 'div', { type: ve ? 'button' : null, class: fig ? 'quem fig' : 'quem', 'data-k': 'q:' + p.id + (fig ? ':fig' : ''), 'data-pc': p.id, 'aria-pressed': ve ? String(sel === p.id) : null,
+        style: fig ? `left:${L.x}%;top:${base}%;--alt:${tam.alt};--larg:${tam.larg}` : `left:${L.x}%;top:${L.y}%`,
         title: ve ? 'Ver ' + p.nome : null, onclick: ve ? () => { if (sel !== p.id) { sel = p.id; seqAtual = []; resultado = null; } pintar(); } : null },
-        h('span', { class: 'ret' }, h('span', { class: 'aura' }), img ? h('img', { src: img, alt: '' }) : iniciais(p.nome)),
+        fig ? h('span', { class: 'corpo' }, h('span', { class: 'chao' }), h('img', { class: 'brilho', src: fig, alt: '', 'aria-hidden': 'true' }), h('img', { class: 'fig-img', src: fig, alt: '' }))
+          : h('span', { class: 'ret' }, h('span', { class: 'aura' }), img ? h('img', { src: img, alt: '' }) : iniciais(p.nome)),
         h('span', { class: 'nm', text: p.nome }), status);
     }) : [h('div', { class: 'vazio-cena', 'data-k': 'vazio', text: mestre ? 'Ninguém meditando. Chame os personagens pelo painel — ou cada jogador entra pela aba dele.' : 'Ninguém meditando agora.' })]);
     morphEm($('chips'), [
@@ -368,12 +386,14 @@
     return h('section', { class: 'sec' }, h('div', { class: 'cab' }, h('h2', { text: titulo }), extra || null), ...conteudo);
   }
   function retratoP(p) {
+    const fig = figuraDe(p);
+    if (fig) return h('span', { class: 'retrato-p fig' }, h('img', { src: fig, alt: '' }));
     const pr = veAPratica(p) ? pratica(p.id) : null, img = (pr && pr.img) || p.img;
     return h('span', { class: 'retrato-p' }, img ? h('img', { src: img, alt: '' }) : iniciais(p.nome));
   }
   // A prática de um personagem: quem joga escreve a do personagem dele; quem mestra também pode mudar.
   function secaoPratica(p) {
-    const pr = pratica(p.id), dono = naMesa ? p.dono : null;
+    const pr = pratica(p.id), dono = naMesa ? p.dono : null, fig = figuraDe(p);
     const gravar = (campo, rot) => v => mudarDoc(PRE_P + p.id, rot, N.normPratica, x => { x[campo] = v; }, dono);
     const quemVe = !naMesa ? 'Fica neste navegador' : mestre && !meu(p) ? (p.dono ? 'O dono e quem mestra veem' : 'Só quem mestra vê') : 'Só você e o mestre veem';
     return secao('A prática de ' + p.nome, h('small', { text: quemVe }),
@@ -384,9 +404,30 @@
         h('div', { style: 'flex:1 1 180px;min-width:0' }, campoTexto('p:panteao', 'Panteão', panteaoDe(p), v => mudarPanteao(p, v), { max: 60, ph: 'A quem o personagem reza', off: !podePanteao(p),
           dica: podePanteao(p) ? 'O mesmo campo da ficha: mudar aqui muda lá.' : 'O mesmo da ficha: quem muda é o dono, ou quem mestra as Fichas.' })),
         h('div', { class: 'row', style: 'gap:6px' }, retratoP(p),
-          h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:img', onclick: () => escolherImagem({ para: 'pratica', pc: p.id }) }, pr.img ? 'Trocar a imagem' : 'Imagem meditando…'),
-          pr.img ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:sem-img', onclick: () => mudarDoc(PRE_P + p.id, 'tirar a imagem meditando', N.normPratica, x => { x.img = null; }, dono) }, 'Tirar') : null)),
-      h('small', { class: 'ajuda', text: 'A imagem meditando aparece na cena para quem vê a prática; os outros veem o retrato da ficha.' }));
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:img', disabled: !podeFigura(p), title: podeFigura(p) ? null : 'Quem põe a imagem meditando é o dono, ou quem mestra as Fichas',
+            onclick: () => escolherImagem({ para: 'figura', pc: p.id }) }, fig || pr.img ? 'Trocar a imagem' : 'Imagem meditando…'),
+          fig ? (podeFigura(p) ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:sem-img', onclick: () => { if (mudarFigura(p, null, 'tirar a imagem meditando')) avisoDesfazer('A imagem meditando saiu.'); } }, 'Tirar') : null)
+            : pr.img ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:sem-img', onclick: () => mudarDoc(PRE_P + p.id, 'tirar a imagem meditando', N.normPratica, x => { x.img = null; }, dono) }, 'Tirar') : null)),
+      h('small', { class: 'ajuda', 'data-k': 'p:img-ajuda', text: !fig && pr.img ? 'Esta é a imagem de antes: só você e o mestre a veem. Troque a imagem para que ela apareça grande na cena, para todos.'
+        : 'A imagem meditando aparece grande na cena, para todos da mesa. Um PNG com fundo transparente deixa só o personagem.' }));
+  }
+  /* Pôr, trocar ou tirar (url null) a imagem meditando: ela fica na ficha (ficha.imgMed), como o panteão. Um passo de
+     desfazer, que volta só a imagem. → true quando mudou. */
+  function mudarFigura(p, url, rotulo) {
+    const antes = figuraDe(p), novo = url && imagemOk(url) ? url : null;
+    if (novo === antes || !podeFigura(p)) return false;
+    const gravar = valor => {
+      if (!naMesa) { if (valor) local[L_FIGURA] = valor; else delete local[L_FIGURA]; salvarLocal(); return; }
+      const l = P.pegar(p.id);
+      if (!l) throw new Error('Esse personagem não está mais na mesa.');
+      const f = Object.assign({}, ehObj(l.ficha) ? l.ficha : {});
+      if (valor) f.imgMed = valor; else delete f.imgMed;
+      P.gravar(p.id, { ficha: f });
+    };
+    gravar(novo);
+    empilhar(rotulo, () => gravar(antes));
+    marcarSalvo(); pintar();
+    return true;
   }
   function mudarPanteao(p, v) {
     const novo = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 60), antes = panteaoDe(p);
@@ -445,9 +486,22 @@
     if (mudarDoc(PRE_A + p.id, 'tirar "' + a.nome + '" da lista de ' + p.nome, N.normAchados, x => { const n = x.achadas.length; x.achadas = x.achadas.filter(y => y.id !== a.id); return x.achadas.length !== n; }, naMesa ? p.dono : null))
       avisoDesfazer('"' + a.nome + '" saiu da lista de ' + p.nome + '.');
   }
+  // (lote 7) Quem mestra limpa o registro de um personagem: só as linhas do registro saem — as receitas descobertas e as
+  // tentativas liberadas e feitas ficam como estão. Com confirmação e Desfazer.
+  async function limparRegistro(p) {
+    const n = achados(p.id).reg.length;
+    if (!n || !mestre) return;
+    const ok = await confirmar('Limpar o registro de ' + p.nome + '?', (n === 1 ? 'A linha do registro sai' : 'As ' + n + ' linhas do registro saem') +
+      '. As receitas descobertas e as tentativas liberadas não mudam. Dá para desfazer logo em seguida.', 'Limpar o registro');
+    if (!ok) return;
+    if (mudarDoc(PRE_A + p.id, 'limpar o registro de ' + p.nome, N.normAchados, x => { if (!x.reg.length) return false; x.reg = []; }, naMesa ? p.dono : null))
+      avisoDesfazer('O registro de ' + p.nome + ' foi limpo.');
+  }
   function secaoRegistro(p) {
     const ach = achados(p.id), simbDoc = doc(SIMB);
-    return secao('Registro', h('small', { text: 'As meditações e as tentativas' }), ach.reg.length ? ach.reg.slice(0, 40).map((r, i) => h('div', { class: 'reg', 'data-reg': String(i) },
+    const cab = mestre && ach.reg.length ? h('span', { class: 'row', style: 'gap:8px' }, h('small', { text: 'As meditações e as tentativas' }),
+      h('button', { type: 'button', class: 'btn sm', 'data-k': 'reg:limpar', onclick: () => limparRegistro(p) }, 'Limpar o registro')) : h('small', { text: 'As meditações e as tentativas' });
+    return secao('Registro', cab, ach.reg.length ? ach.reg.slice(0, 40).map((r, i) => h('div', { class: 'reg', 'data-reg': String(i) },
       h('time', { text: quando(r.em) }),
       r.tipo === 'entrou'
         ? h('span', null, 'Meditou · ', [r.amb ? N.AMB_NOME[r.amb] : '', r.hora ? N.HORA_NOME[r.hora].toLowerCase() : '', r.clima ? climaNome(r.clima).toLowerCase() : ''].filter(Boolean).join(', '), r.por === 'mestre' ? ' (chamado pelo mestre)' : '')
@@ -693,6 +747,53 @@
   }
 
   /* ---------------- imagens ---------------- */
+  /* (lote 7) A imagem meditando, com a transparência: sem fundo por baixo, sem as margens vazias em volta do personagem
+     (o que é transparente nas bordas sai), em WebP (ou PNG, no navegador que não faz WebP). */
+  async function reduzirFigura(arq, lado) {
+    let fonte, w, hh, fechar = () => {};
+    try { const b = await createImageBitmap(arq); fonte = b; w = b.width; hh = b.height; fechar = () => { try { b.close(); } catch (e) { /* já fechada */ } }; }
+    catch (e) {
+      const u = URL.createObjectURL(arq);
+      fechar = () => URL.revokeObjectURL(u);
+      fonte = await new Promise((ok, falha) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => falha(new Error('Não deu para ler esta imagem.')); im.src = u; });
+      w = fonte.naturalWidth; hh = fonte.naturalHeight;
+    }
+    try {
+      if (!w || !hh) throw new Error('Não deu para ler esta imagem.');
+      const k = Math.min(1, lado / Math.max(w, hh)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(hh * k));
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(fonte, 0, 0, cv.width, cv.height);
+      const caixa = caixaVisivel(cx.getImageData(0, 0, cv.width, cv.height));
+      let saida = cv;
+      if (caixa && (caixa.w < cv.width || caixa.h < cv.height)) {
+        saida = document.createElement('canvas'); saida.width = caixa.w; saida.height = caixa.h;
+        saida.getContext('2d').drawImage(cv, caixa.x, caixa.y, caixa.w, caixa.h, 0, 0, caixa.w, caixa.h);
+      }
+      let blob = await new Promise(r => saida.toBlob(r, 'image/webp', 0.92));
+      if (!blob || blob.type !== 'image/webp') blob = await new Promise(r => saida.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('Não deu para preparar esta imagem.');
+      return blob;
+    } finally { fechar(); }
+  }
+  // A caixa do que aparece (alfa acima de quase nada), com 2 pixels de folga; null = nada aparece.
+  function caixaVisivel(img) {
+    const { width: w, height: hh, data } = img;
+    let x0 = w, y0 = hh, x1 = -1, y1 = -1;
+    for (let y = 0; y < hh; y++) {
+      const linha = y * w * 4;
+      for (let x = 0; x < w; x++) if (data[linha + x * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+    }
+    if (x1 < 0) return null;
+    x0 = Math.max(0, x0 - 2); y0 = Math.max(0, y0 - 2); x1 = Math.min(w - 1, x1 + 2); y1 = Math.min(hh - 1, y1 + 2);
+    return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  }
+  async function prepararFigura(arq) {
+    if (!/^image\/(png|jpeg|webp)$/.test(arq.type || '')) throw new Error('Escolha uma imagem PNG, JPG ou WebP.');
+    const blob = await reduzirFigura(arq, naMesa ? 1400 : 700);
+    if (naMesa) return TC.arquivos.subir(blob);
+    return new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => falha(r.error || new Error('Não deu para ler esta imagem.')); r.readAsDataURL(blob); });
+  }
   async function reduzir(arq, lado, tipo) {
     let fonte, w, hh, fechar = () => {};
     try { const b = await createImageBitmap(arq); fonte = b; w = b.width; hh = b.height; fechar = () => { try { b.close(); } catch (e) { /* já fechada */ } }; }
@@ -726,10 +827,16 @@
     if (!arq || !alvo) return;
     $('salvo').textContent = naMesa ? 'Enviando a imagem…' : 'Preparando a imagem…';
     try {
-      const url = await prepararImagem(arq, alvo.para === 'fundo' ? (naMesa ? 2400 : 1600) : naMesa ? 900 : 600);
+      if (alvo.para === 'figura') {
+        const url = await prepararFigura(arq);
+        $('salvo').textContent = '';
+        const p = pcDe(alvo.pc);
+        if (p && mudarFigura(p, url, figuraDe(p) ? 'trocar a imagem meditando' : 'pôr a imagem meditando')) avisoDesfazer('A imagem meditando de ' + p.nome + ' aparece na cena para todos.');
+        return;
+      }
+      const url = await prepararImagem(arq, naMesa ? 2400 : 1600);
       $('salvo').textContent = '';
       if (alvo.para === 'fundo') { if (mudarDoc(CENA, 'usar uma imagem sua na cena', N.normCena, x => { x.img = url; })) avisoDesfazer('A cena usa a sua imagem. O ambiente escolhido continua valendo para as receitas.'); }
-      else if (alvo.para === 'pratica') { const p = pcDe(alvo.pc); if (p) mudarDoc(PRE_P + p.id, 'trocar a imagem meditando', N.normPratica, x => { x.img = url; }, naMesa ? p.dono : null); }
     } catch (e) { $('salvo').textContent = ''; toast((e && e.message) || 'Não deu para usar esta imagem.'); }
   }
   $('arquivo').addEventListener('change', function () { usarImagem(this.files && this.files[0]); });

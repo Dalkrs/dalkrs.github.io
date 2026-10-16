@@ -90,6 +90,35 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     ok(await ate(async () => (await fadTok()) === 5), '(de volta: cheia)');
     await C.evaluate(() => __tc.setSel([]));
 
+    // ---------- (lote 7) nos tokens selecionados: a Fadiga, o Conforto e a Sanidade de uma vez ----------
+    {
+      const bia = await C.evaluate(() => { const u = __tc, sc = u.Store.scene(), b = u.newToken(sc, sc.cell * 9, sc.cell * 3, { name: 'x' }); u.Store.tx('Criar', () => u.Store.add('tokens', b)); u.Fichas.link(u.Store.get('tokens', b.id), 'pc_bia'); return b.id; });
+      // (as duas fichas prontas na cena — ligadas, de jogadores — antes de abrir a janela: com a máquina ocupada, a ligação
+      // da Bia pode levar um instante)
+      const prontas = await ate(() => C.evaluate(l => l.every(id => { const u = __tc, t = u.Store.get('tokens', id); return !!t && !!t.char && !!(u.Fichas.mente(t) || u.Fichas.fadiga(t)) && u.Fichas.deJogadorT(t); }), [ids.sel, bia]));
+      await C.evaluate(l => __tc.setSel(l.map(id => ({ c: 'tokens', id }))), [ids.sel, bia, ids.barril]); await w(400);
+      ok(prontas && await C.locator('#mt-mente').isVisible(), 'com tokens de fichas selecionados, o mestre tem "Fadiga, Conforto e Sanidade…"');
+      await C.locator('#mt-mente').click(); await w(400);
+      const md = C.locator('.modal');
+      ok(await C.locator('#mm-list .area-row').count() === 2 && await C.locator('#mm-on-0').isChecked() && await C.locator('#mm-on-1').isChecked(),
+        'a janela lista as duas fichas (o barril, sem ficha, fica de fora), as duas de jogadores, marcadas: ' + (await C.locator('#mm-list').innerText().catch(() => '?')).replace(/\s+/g, ' '));
+      await C.locator('#mm-conf').fill('-10'); await C.locator('#mm-san').fill('-5'); await C.locator('#mm-fad').fill('-1'); await w(200);
+      await C.locator('#mm-motivo').fill('A explosão no porão');
+      const prev = (await C.locator('#mm-list').innerText()).replace(/\s+/g, ' ');
+      ok(/Fadiga Descansado → Disposto · Conforto 50 → 40 · Sanidade 100 → 95/.test(prev), 'a lista mostra o antes e o depois de cada um: ' + prev);
+      await md.locator('button', { hasText: 'Aplicar' }).click(); await w(500);
+      const est = id => linha(M, id).then(l => l.estado || {});
+      ok(await ate(async () => { const s = await est('pc_selene'), b = await est('pc_bia'); return s.conf === 40 && s.san === 95 && s.fad === 4 && b.conf === 40 && b.san === 95 && b.fad === 4 && await parado(M); }),
+        'aplicado nas duas fichas (Conforto 40, Sanidade 95, Fadiga 4)');
+      ok(await ate(async () => (await fadTok()) === 4), 'o token acompanha a fadiga nova');
+      ok(await ate(async () => (await feed(J, 'Fadiga −1, Conforto −10, Sanidade −5 para Selene e Bia — A explosão no porão').count()) === 1), 'o motivo vai para a mesa ao vivo (o jogador vê)');
+      const avisos = await C.locator('.toast').allInnerTexts();
+      await C.locator('.toast', { hasText: 'Feito:' }).locator('button', { hasText: 'Desfazer' }).click(); await w(600);
+      ok(await ate(async () => { const s = await est('pc_selene'), b = await est('pc_bia'); return s.conf === undefined && s.san === undefined && s.fad === undefined && b.conf === undefined && b.san === undefined && await parado(M); }),
+        'o Desfazer do aviso volta as duas fichas como estavam (sem os valores anotados): ' + j([await est('pc_selene'), await est('pc_bia'), avisos]));
+      await C.evaluate(id => { const u = __tc; u.setSel([]); u.Store.tx('Apagar', () => u.Store.del('tokens', id)); }, bia); await w(300);
+    }
+
     // ---------- Fichas: relacionamentos de uma vez e o cadeado dos ferimentos ----------
     await M.locator('#tab-fichas').click(); await w(600);
     const F = await quadro(M, /\/fichas\//);

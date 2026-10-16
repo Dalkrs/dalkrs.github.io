@@ -383,6 +383,7 @@
     $('btCena').hidden = !(naCasca() && mestre());
     $('btMundo').hidden = !naCasca();
     $('btMomento').hidden = !naMesa();
+    $('btTodos').hidden = !naMesa();
   }
   function barrinha(v, max, cor) { return h('div', { class: 'b' }, h('i', { style: `width:${N.limitar(max > 0 ? v / max * 100 : 0, 0, 100)}%;--c:${cor}` })); }
   function pintarCena() {
@@ -1161,6 +1162,75 @@
     desenhar();
     abrirJanela('Um momento em volta da fogueira', corpo, [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok]);
   }
+  /* ---- (lote 7) Mexer em todos: a Fadiga, o Conforto e a Sanidade de quem está no acampamento, de uma vez ----
+     Para menos ou para mais; vêm marcados os personagens dos jogadores (dá para desmarcar e marcar os outros); a lista
+     mostra o antes e o depois de cada um; o motivo vai para a mesa ao vivo. Um passo de desfazer, que volta só o que
+     mudou em cada ficha. As contas são as de TC.rules.mexerNaMente (as mesmas das Cenas). */
+  const usoDaMente = p => ({ mente: p.san != null, fadiga: p.fad != null });
+  function abrirMexerEmTodos() {
+    if (!mestre() || !naMesa()) return;
+    const gente = presentes().filter(p => !p.semFicha && P.pegar(p.id) && (p.san != null || p.fad != null));
+    if (!gente.length) { toast('Não há ninguém no acampamento com ficha que use Sanidade, Conforto ou Fadiga.'); return; }
+    const d = { fad: 0, conf: 0, san: 0 }, marcados = new Set(gente.filter(p => ehJogador(p.dono)).map(p => p.id));
+    let motivo = '';
+    const corpo = h('div', { style: 'display:grid;gap:12px' });
+    const ok = h('button', { type: 'button', class: 'btn pri', id: 'mt-ok', text: 'Aplicar' });
+    const nomeFad = n => (R().FADIGA || [])[n] || String(n);
+    const desenhar = foco => {
+      const passo = (k, rotulo, lim, dica) => h('div', { class: 'mt-campo' },
+        h('span', { class: 'mt-rot', text: rotulo }),
+        h('span', { class: 'passo' },
+          botaoIcone('mt-' + k + '-m', MENOS, rotulo + ': menos 1', () => { d[k] = N.limitar(d[k] - 1, -lim, lim); desenhar('mt-' + k + '-m'); }, { disabled: d[k] <= -lim }),
+          h('input', { class: 'in num', id: 'mt-' + k, type: 'number', min: -lim, max: lim, step: 1, value: d[k], 'aria-label': rotulo + ' (para menos, com sinal de menos)',
+            onchange: e => { d[k] = N.limitar(Math.round(+e.target.value) || 0, -lim, lim); desenhar('mt-' + k); } }),
+          botaoIcone('mt-' + k + '-p', MAIS, rotulo + ': mais 1', () => { d[k] = N.limitar(d[k] + 1, -lim, lim); desenhar('mt-' + k + '-p'); }, { disabled: d[k] >= lim })),
+        h('small', { class: 'note', text: dica }));
+      const linhaDe = p => {
+        const l = P.pegar(p.id), r = R().mexerNaMente((l && l.estado) || {}, d, usoDaMente(p)), on = marcados.has(p.id);
+        const cel = (k, txt) => h('td', {}, !on ? h('span', { class: 'igual', text: '—' }) : txt);
+        return h('tr', { class: on ? '' : 'fora' },
+          h('td', {}, h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'mt-on-' + p.id, checked: on, 'aria-label': 'Incluir ' + p.nome,
+            onchange: e => { if (e.target.checked) marcados.add(p.id); else marcados.delete(p.id); desenhar('mt-on-' + p.id); } }), h('span', { text: p.nome }))),
+          cel('fad', r.antes.fad == null ? h('span', { class: 'igual', text: 'não usa' }) : seta(nomeFad(r.antes.fad), nomeFad(r.depois.fad))),
+          cel('conf', r.antes.conf == null ? h('span', { class: 'igual', text: 'não usa' }) : seta(r.antes.conf, r.depois.conf)),
+          cel('san', r.antes.san == null ? h('span', { class: 'igual', text: 'não usa' }) : seta(r.antes.san, r.depois.san)));
+      };
+      corpo.replaceChildren(
+        h('div', { class: 'mt-campos' },
+          passo('fad', 'Fadiga', N.FAD_MAX || 5, 'Em passos da pilha: −1 deixa um passo mais cansado.'),
+          passo('conf', 'Conforto', 100, 'De 0 a 100.'),
+          passo('san', 'Sanidade', 100, 'De 0 a 100.')),
+        h('table', { class: 'plano mt-lista' },
+          h('thead', {}, h('tr', {}, h('th', { text: 'Quem' }), h('th', { text: 'Fadiga' }), h('th', { text: 'Conforto' }), h('th', { text: 'Sanidade' }))),
+          h('tbody', {}, gente.map(linhaDe))),
+        h('input', { class: 'in', id: 'mt-motivo', type: 'text', maxlength: 200, value: motivo, placeholder: 'Por quê? (vai para a mesa ao vivo)', 'aria-label': 'O motivo', oninput: e => { motivo = e.target.value; } }),
+        h('p', { class: 'note', text: 'Vêm marcados os personagens dos jogadores. O que a ficha de alguém não usa fica como está; os valores param nos limites.' }));
+      ok.disabled = !(d.fad || d.conf || d.san) || !marcados.size;
+      if (foco) { const c0 = document.getElementById(foco); if (c0) c0.focus(); }
+    };
+    ok.addEventListener('click', () => { const lista = gente.filter(p => marcados.has(p.id)); fecharJanela(); aplicarEmTodos(lista, d, motivo.trim()); });
+    desenhar();
+    abrirJanela('Mexer em todos', corpo, [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok]);
+  }
+  function aplicarEmTodos(lista, d, motivo) {
+    const fichas = [], nomes = [];
+    for (const p of lista) {
+      const l = P.pegar(p.id); if (!l) continue;
+      const r = R().mexerNaMente(l.estado || {}, d, usoDaMente(p));
+      if (!r.so.length) continue;
+      fichas.push({ id: l.id, estado: l.estado || {}, ficha: null, so: r.so });
+      P.gravar(l.id, { estado: r.estado });
+      nomes.push(p.nome);
+    }
+    if (!fichas.length) { toast('Nada mudou: os valores já estavam no limite (ou as fichas não usam).'); return; }
+    const oQue = [d.fad ? 'Fadiga ' + N.comSinal(d.fad) : '', d.conf ? 'Conforto ' + N.comSinal(d.conf) : '', d.san ? 'Sanidade ' + N.comSinal(d.san) : ''].filter(Boolean).join(', ');
+    const resumo = oQue + ' para ' + juntarE(nomes) + (motivo ? ' — ' + motivo : '') + '.';
+    pilha.push({ rotulo: 'mexer em todos (' + oQue + ')', json: jCamp, depois: jCamp, junta: null, fichas, publicar: true });
+    if (pilha.length > 60) pilha.shift();
+    pintar();
+    publicar(camp.nome, resumo);
+    toast('Feito: ' + resumo, 'Desfazer', desfazer, 12000);
+  }
   function registrarMomento(m, nomeA, nomeB) {
     const fichas = [], partes = [];
     // tudo o que muda num personagem vai numa gravação só (o estado da ficha, e o que o mestre guarda dele)
@@ -1276,6 +1346,7 @@
   $('btCurto').addEventListener('click', () => abrirDescanso('curto'));
   $('btLongo').addEventListener('click', () => abrirDescanso('longo'));
   $('btMomento').addEventListener('click', abrirMomento);
+  $('btTodos').addEventListener('click', abrirMexerEmTodos);
   $('btCena').addEventListener('click', abrirCena);
   $('btMundo').addEventListener('click', () => TC.ponte.ir('mundo'));
   $('arq').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; trocarFundo(f); });

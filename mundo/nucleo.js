@@ -121,8 +121,11 @@
      maior, rachado e escuro quando negativa. Sem estilo, o grupo não mostra honra. */
   const HONRA = { elmo: 'Elmo medieval', kabuto: 'Kabuto', katana: 'Katana', turbante: 'Turbante', coroa: 'Coroa',
     escudo: 'Escudo com brasão', cajado: 'Cajado de mago', mascara: 'Máscara tribal' };
+  /* (lote 7) Os dias da semana: o mestre diz que dia da semana é hoje, e o resto segue. sem0 = o dia da semana do dia 0
+     do mundo (0 = Segunda-Feira … 6 = Domingo); null = o mapa ainda não conta a semana. */
+  const SEMANA = ['Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira', 'Sábado', 'Domingo'];
   const CAL_PADRAO = {
-    dia: 0, ano0: 1, era: '', tpd: TEMPOS_DIA, tempo: 0,
+    dia: 0, ano0: 1, era: '', tpd: TEMPOS_DIA, tempo: 0, sem0: null,
     meses: ['Alvorada', 'Degelo', 'Semeadura', 'Florada', 'Verdor', 'Solar', 'Colheita', 'Âmbar', 'Brumas', 'Geada', 'Vigília', 'Noite Longa']
       .map(nome => ({ nome, dias: 30 })),
   };
@@ -332,6 +335,17 @@
     const d = dataDe(cal, dia), era = ehObj(cal) ? texto(cal.era, '').trim() : '';
     return d.diaMes + ' de ' + d.nomeMes + ', ano ' + d.ano + (era ? ' ' + era : '');
   }
+  // (lote 7) o dia da semana de um dia do mundo (índice 0 a 6, ou -1 sem a semana) e o nome dele ('' sem a semana)
+  function semanaDe(cal, dia) {
+    const s0 = ehObj(cal) && Number.isInteger(cal.sem0) && cal.sem0 >= 0 && cal.sem0 <= 6 ? cal.sem0 : -1;
+    if (s0 < 0) return -1;
+    return (((s0 + Math.floor(num(dia, 0))) % 7) + 7) % 7;
+  }
+  const diaDaSemana = (cal, dia) => { const i = semanaDe(cal, dia); return i < 0 ? '' : SEMANA[i]; };
+  // "Segunda-Feira, 12 de Degelo, ano 3" (sem a semana: só a data)
+  const textoDataSemana = (cal, dia) => { const s = diaDaSemana(cal, dia); return (s ? s + ', ' : '') + textoData(cal, dia); };
+  // o sem0 que faz o dia `dia` cair no dia da semana `i` (0 a 6); i fora disso: null (o mapa deixa de contar a semana)
+  const sem0Para = (dia, i) => (Number.isInteger(i) && i >= 0 && i <= 6 ? (((i - Math.floor(num(dia, 0))) % 7) + 7) % 7 : null);
 
   /* ---------------- eventos ---------------- */
   // Raio no dia: cresce (ou encolhe) desde o começo; antes de começar, o raio de partida. Nunca negativo.
@@ -934,7 +948,8 @@
       .map((m, i) => ({ nome: texto(m.nome).trim() || 'Mês ' + (i + 1), dias: diasDoMes(m) }));
     if (!meses.length) meses = copia(CAL_PADRAO.meses);
     const tpd = inteiro(c.tpd, TEMPOS_DIA, 1, MAX_TEMPOS);
-    return { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1) };
+    const sem0 = Number.isInteger(c.sem0) && c.sem0 >= 0 && c.sem0 <= 6 ? c.sem0 : null;
+    return { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1), sem0 };
   }
   function normImg(v, larg, alt) {
     if (!ehObj(v) || typeof v.url !== 'string' || v.url.length > 2048 || !/^(https?:\/\/|idb:)/i.test(v.url)) return null;
@@ -1290,7 +1305,7 @@
   const MundoNucleo = {
     ICONES, EVENTOS, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,
     novoId, mapaNovo, objNovo, faccaoNova, normalizarMapa,
-    diasNoAno, dataDe, textoData,
+    diasNoAno, dataDe, textoData, SEMANA, semanaDe, diaDaSemana, textoDataSemana, sem0Para,
     dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,

@@ -230,11 +230,13 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
     id.g2 = await sel(L);
     await escolher(L, `o:${id.g2}:rota`, id.rota);
     await aba(L, 'hoje');
-    ok(await campo(L, 'gr-andar-todos').isVisible() && await campo(L, 'gr-andar-todos-dia').isVisible() && /"com todos" leva todos no mesmo tempo/.test(await L.F.locator('#pane').innerText()), 'com dois grupos viajando, a aba Hoje oferece "Andar 1 tempo com todos" e "Andar 1 dia com todos"');
+    // (lote 7) o "Próximo dia" leva todos os grupos com rota (os "Andar com todos" saíram)
+    ok(await campo(L, 'gr-andar-todos').count() === 0 && await campo(L, 'hoje:+1').isVisible() && /"\+1 tempo" e "Próximo dia" levam todos juntos/.test(await L.F.locator('#pane').innerText()),
+      'com dois grupos viajando, a aba Hoje lembra que "+1 tempo" e "Próximo dia" levam todos juntos');
     const d1 = (await mapa(L)).cal.dia;
-    await botao(L, 'gr-andar-todos-dia');
+    await botao(L, 'hoje:+1');
     const a1 = await obj(L, id.g), a2 = await obj(L, id.g2);
-    ok(a1.prog === 20 && a2.prog === 30 && (await mapa(L)).cal.dia === d1 + 1 && await rotulo(L) === 'andar 1 dia com todos' && /2 grupos andaram\. Passou o dia/.test(await textoDoAviso(L)),
+    ok(a1.prog === 20 && a2.prog === 30 && (await mapa(L)).cal.dia === d1 + 1 && await rotulo(L) === 'passar o dia' && /2 grupos andaram\./.test(await textoDoAviso(L)),
       'os dois andam (20 e 30 cubos, cada um o seu) e o dia passa uma vez só: ' + j([a1.prog, a2.prog]));
     await aba(L, 'selecao');
     await foto('terreno-viagem');

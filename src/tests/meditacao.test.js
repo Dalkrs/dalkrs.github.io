@@ -2,13 +2,15 @@
 //   · a cena: o lugar de começo (o templo ao pôr do sol), a hora, o ambiente (a lista e as miniaturas), o clima, a
 //     imagem própria (e "Voltar ao desenho"); desfazer (o botão e Ctrl+Z);
 //   · quem medita: chamar (a janela), liberar a tentativa (mais uma; o Desfazer do aviso), tirar da meditação;
-//   · a prática: objeto, mantra, representação, panteão e a imagem meditando (que aparece na cena);
+//   · a prática: objeto, mantra, representação, panteão e a imagem meditando (lote 7: na ficha, para todos; na cena, o
+//     personagem inteiro, com a transparência e sem as margens vazias; a imagem de antes, da prática, no retrato redondo);
 //   · as receitas: criar (o cursor no nome), os pilares (escolher o pilar e o símbolo, tirar um), o efeito, onde vale;
 //     os avisos (menos de 2 símbolos, a mesma sequência de outra, um símbolo escondido); apagar (com a pergunta) e o
 //     Desfazer do aviso;
 //   · os símbolos: esconder e mostrar um pronto; criar um (com desenho; com imagem), renomear, apagar;
 //   · os pilares: errar ("Nada aconteceu", a tentativa usada), a receita de outro ambiente, acertar ("Você
 //     descobriu", com o efeito), acertar de novo ("Você já conhecia"); o registro; tirar uma receita da lista;
+//   · limpar o registro (lote 7): a pergunta, o que sai e o que fica, o Desfazer;
 //   · o treinamento: o rascunho da barra nova não some, criar, somar até completar, tirar e desfazer;
 //   · recarregar a página (tudo continua) e a tela estreita.
 // (Numa mesa — o mestre, os jogadores e o banco —: src/tests/meditacao.rede.test.js.) TC_SCRATCH=<pasta> guarda capturas.
@@ -129,9 +131,41 @@ const PNG = { name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('iVBO
     await escrever('p:panteao', '  Os   Deuses da Lua ');
     ok(await A(() => JSON.parse(localStorage.getItem('tinycats:meditacao:local'))['teste:panteao']) === 'Os Deuses da Lua' && await rotulo() === 'mudar o panteão',
       'o panteão (sem mesa, guardado aqui; numa mesa, é o da ficha)');
-    await comArquivo('[data-k="p:img"]');
-    ok(/^data:image\/jpeg/.test((await doc('medit:pratica:' + PC)).img || '') && await P.locator(`.quem[data-pc="${PC}"] .ret img`).count() === 1 && await P.locator(`[data-quem="${PC}"] .retrato-p img`).count() === 1
-      && await campo('p:sem-img').isVisible(), 'a imagem meditando: na cena e no cartão');
+    // (lote 7) a imagem de antes — guardada na prática, só o dono e o mestre a viam —: continua no retrato redondo
+    await A(img => { const d = JSON.parse(localStorage.getItem('tinycats:meditacao:local')); d['medit:pratica:pc_teste'].img = img; localStorage.setItem('tinycats:meditacao:local', JSON.stringify(d)); },
+      'data:image/png;base64,' + PNG.buffer.toString('base64'));
+    await P.reload({ waitUntil: 'load' });
+    await P.waitForFunction(() => window.__medit && __medit.pronto, null, { timeout: 15000 }); await espera(300);
+    ok(await P.locator(`.quem[data-pc="${PC}"] .ret img`).count() === 1 && await P.locator('.quem.fig').count() === 0 && /imagem de antes: só você e o mestre a veem/.test(await campo('p:img-ajuda').innerText())
+      && await campo('p:img').innerText() === 'Trocar a imagem', 'a imagem de antes (da prática): o retrato redondo na cena, e o aviso de que só o dono e o mestre a veem');
+    // a imagem nova: um PNG com fundo transparente e margens vazias em volta (um quadrado de 10×10 num quadro de 40×30)
+    const fig = await A(() => { const c = document.createElement('canvas'); c.width = 40; c.height = 30; const x = c.getContext('2d'); x.fillStyle = '#c33'; x.fillRect(15, 10, 10, 10); return c.toDataURL('image/png').split(',')[1]; });
+    const comFigura = async () => {
+      const antes = await A(() => __medit.pilha.length);
+      const [fc] = await Promise.all([P.waitForEvent('filechooser'), P.click('[data-k="p:img"]')]); await fc.setFiles({ name: 'figura.png', mimeType: 'image/png', buffer: Buffer.from(fig, 'base64') });
+      await P.waitForFunction(n => __medit.pilha.length > n, antes, { timeout: 8000 }).catch(() => {}); await espera(300);
+    };
+    await comFigura();
+    const guardada = () => A(() => JSON.parse(localStorage.getItem('tinycats:meditacao:local'))['teste:imgMed'] || null);
+    const g = await guardada();
+    const medida = await A(src => new Promise(ok => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0);
+      const px = x.getImageData(0, 0, im.width, im.height).data, i = ((im.height >> 1) * im.width + (im.width >> 1)) * 4;
+      ok({ w: im.width, h: im.height, canto: px[3], meio: px[i + 3] }); }; im.onerror = () => ok(null); im.src = src; }), g);
+    ok(/^data:image\/(webp|png)/.test(g || '') && !!medida && medida.w === 14 && medida.h === 14 && medida.canto === 0 && medida.meio === 255 && await rotulo() === 'pôr a imagem meditando',
+      'a imagem meditando nova guarda a transparência (WebP ou PNG, sem o fundo escuro) e perde as margens vazias: ' + JSON.stringify(medida));
+    ok(await P.locator(`.quem.fig[data-pc="${PC}"] .fig-img`).count() === 1 && await P.locator(`.quem.fig[data-pc="${PC}"] .brilho`).count() === 1 && await P.locator(`.quem[data-pc="${PC}"] .ret`).count() === 0
+      && await P.locator(`[data-quem="${PC}"] .retrato-p.fig img`).count() === 1 && /aparece grande na cena, para todos da mesa/.test(await campo('p:img-ajuda').innerText()) && /aparece na cena para todos/.test(await avisos()),
+      'na cena, o personagem inteiro (com a aura em volta do contorno), no lugar do retrato redondo; no cartão, a miniatura; o aviso diz que todos veem');
+    const caixa = await A(pc => { const f = document.querySelector('.quem.fig[data-pc="' + pc + '"] .fig-img').getBoundingClientRect(), p = document.getElementById('palco').getBoundingClientRect(); return { alt: f.height / p.height, base: (f.bottom - p.top) / p.height }; }, PC);
+    ok(caixa.alt > 0.45 && caixa.alt < 0.55 && caixa.base > 0.8 && caixa.base < 0.92, 'sozinho na cena, a figura tem cerca de metade da altura da cena, com o pé no chão da frente: ' + JSON.stringify(caixa));
+    await foto('medit-2b-figura');
+    await P.keyboard.press('Control+z'); await espera(300);
+    ok(await guardada() === null && await P.locator('.quem.fig').count() === 0 && await P.locator(`.quem[data-pc="${PC}"] .ret img`).count() === 1, 'desfazer: volta a imagem de antes, no retrato redondo');
+    await comFigura();
+    await botao('[data-k="p:sem-img"]');
+    ok(await guardada() === null && await P.locator('.quem.fig').count() === 0 && await rotulo() === 'tirar a imagem meditando' && /A imagem meditando saiu\./.test(await avisos()), '"Tirar" tira a imagem meditando');
+    await desfazerDoAviso();
+    ok(/^data:image\/(webp|png)/.test(await guardada() || '') && await P.locator(`.quem.fig[data-pc="${PC}"]`).count() === 1, 'o Desfazer do aviso a traz de volta');
   });
 
   await passo('as receitas', async () => {
@@ -273,6 +307,23 @@ const PNG = { name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('iVBO
     ok(!(await doc('medit:treino')).pcs[PC] && /A barra Controle do chi saiu\./.test(await avisos()), 'tirar a barra');
     await desfazerDoAviso();
     ok((await doc('medit:treino')).pcs[PC][0].n === 2, 'o Desfazer do aviso a traz de volta');
+  });
+
+  await passo('limpar o registro (lote 7)', async () => {
+    const antes = await doc('medit:achados:' + PC), n = antes.reg.length;
+    ok(n >= 4 && await P.locator('.reg').count() >= 4 && await campo('reg:limpar').isVisible(), 'o registro tem as meditações e as tentativas, e quem mestra vê "Limpar o registro" (' + n + ' linhas)');
+    await botao('[data-k="reg:limpar"]');
+    ok(await P.locator('#dlg[open]').isVisible() && /Limpar o registro de Personagem de teste\?/.test(await P.locator('#dlg').innerText()) && new RegExp('As ' + n + ' linhas do registro saem').test(await P.locator('#dlg').innerText()),
+      'a pergunta antes, dizendo quantas linhas saem');
+    await botao('#dlg [data-k="dl:nao"]');
+    ok((await doc('medit:achados:' + PC)).reg.length === n, '"Cancelar" não mexe em nada');
+    await botao('[data-k="reg:limpar"]'); await botao('#dlg [data-k="dl:sim"]');
+    const depois = await doc('medit:achados:' + PC);
+    ok(depois.reg.length === 0 && depois.achadas.length === antes.achadas.length && depois.lib === antes.lib && depois.feitas === antes.feitas && /Nenhuma meditação ainda/.test(await P.locator('#painel').innerText())
+      && await campo('reg:limpar').count() === 0 && await rotulo() === 'limpar o registro de Personagem de teste' && /O registro de Personagem de teste foi limpo\./.test(await avisos()),
+      'limpo: o registro esvazia; as receitas descobertas e as tentativas (liberadas e feitas) ficam como estavam');
+    await desfazerDoAviso();
+    ok((await doc('medit:achados:' + PC)).reg.length === n && await P.locator('.reg').count() === Math.min(n, 40), 'o Desfazer do aviso traz o registro de volta');
   });
 
   await passo('depois de recarregar', async () => {

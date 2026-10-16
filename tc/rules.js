@@ -1133,6 +1133,24 @@
     const n = numFinito(v);
     return Object.assign({}, estado, { fad: n == null ? FAD_MAX : Math.max(0, Math.min(FAD_MAX, Math.round(n))) });
   }
+  /* (lote 7) "Mexer em todos" (o Acampamento e as Cenas): soma (ou tira, com sinal de menos) d.fad passos na Fadiga
+     (a pilha de 0 a 5), d.conf no Conforto e d.san na Sanidade (de 0 a 100) do estado de uma ficha. usa: o que a ficha
+     usa ({ mente, fadiga }) — o que ela não usa não muda. Os valores ficam nos limites (Conforto 0 continua 0).
+     → { estado (o mesmo objeto, se nada mudou), so (as chaves que mudaram), antes, depois ({ conf, san, fad }) } */
+  function mexerNaMente(estado, d, usa) {
+    const est = ehObjeto(estado) ? estado : {}, dd = ehObjeto(d) ? d : {}, u = ehObjeto(usa) ? usa : {};
+    const val = (v, padrao) => { const n = numFinito(v); return n == null ? padrao : Math.max(0, Math.min(100, Math.round(n))); };
+    const passo = k => { const n = numFinito(dd[k]); return n == null ? 0 : Math.trunc(n); };
+    const antes = { conf: u.mente ? val(est.conf, 50) : null, san: u.mente ? val(est.san, 100) : null, fad: u.fadiga ? fadiga(est) : null };
+    const depois = Object.assign({}, antes), so = [];
+    if (u.mente && passo('conf')) { depois.conf = Math.max(0, Math.min(100, antes.conf + passo('conf'))); if (depois.conf !== antes.conf) so.push('conf'); }
+    if (u.mente && passo('san')) { depois.san = Math.max(0, Math.min(100, antes.san + passo('san'))); if (depois.san !== antes.san) so.push('san'); }
+    if (u.fadiga && passo('fad')) { depois.fad = Math.max(0, Math.min(FAD_MAX, antes.fad + passo('fad'))); if (depois.fad !== antes.fad) so.push('fad'); }
+    if (!so.length) return { estado, so, antes, depois };
+    const novo = Object.assign({}, est);
+    for (const k of so) novo[k] = depois[k];
+    return { estado: novo, so, antes, depois };
+  }
 
   /* ---------- bolsas: poções, bombas, runas, munições e materiais ---------- */
   const TIPOS_BOLSA = BOLSAS.map(b => b.t);
@@ -1526,7 +1544,7 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
-    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, grupoDeTroca, equiparItem, reqDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
