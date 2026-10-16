@@ -202,15 +202,22 @@ const Luta = (() => {
     const a = document.activeElement, fid = a && a.id && epop.el.contains(a) ? a.id : null;
     epop.nome.textContent = tokName(t);
     const lista = Fichas.itens(t);
-    epop.lista.replaceChildren(...(lista.length ? lista.map(it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
+    // (lote 7) por tipo, como na ficha: um título a cada seção (só quando há mais de uma) e o nível dos itens com níveis
+    const variasSecoes = new Set(lista.map(it => it.tipo)).size > 1;
+    const botaoDe = it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
       title: (it.on ? 'Equipado: clique para guardar' : 'Guardado: clique para equipar') + (it.troca ? ' (grupo de troca: ' + it.troca + ')' : ''), onclick: () => trocarItem(it) },
       h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
       h('span', { class: 'eq-t' },
-        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
+        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.nv ? h('span', { class: 'eq-nv', title: 'Nível de agora: ' + it.nv + ' de ' + it.nvs, text: 'Nv ' + it.nv }) : null, it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
         h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }),
         // o complementar, numa linha só dele: "com Espada do Gelo de Selene" (ou "sem efeito", equipado sem o que ele precisa)
-        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null)))
-      : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
+        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null));
+    const linhas = [];
+    lista.forEach((it, i) => {
+      if (variasSecoes && (i === 0 || lista[i - 1].tipo !== it.tipo)) linhas.push(h('div', { class: 'eq-sec', role: 'presentation', text: it.sec }));
+      linhas.push(botaoDe(it));
+    });
+    epop.lista.replaceChildren(...(lista.length ? linhas : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
     if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
   }
   function trocarItem(it) {

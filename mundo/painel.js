@@ -1505,7 +1505,7 @@
       t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
     });
     if (ok === false) return;
-    const m = App.mapa, andou = feitos.length ? ' ' + (feitos.length === 1 ? nomeDe(achar(m, feitos[0][0]) || {}, m) + ' andou.' : feitos.length + ' grupos andaram.') : '';
+    const m = App.mapa, andou = feitos.length ? ' ' + (feitos.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, feitos[0][0]) || {}, m) + '.' : feitos.length + ' grupos andaram.') : '';
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N().textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou);
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)

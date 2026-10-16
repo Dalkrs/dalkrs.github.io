@@ -464,6 +464,110 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(eqs(sem) === '' && marcas(sem) === 'k' && eqs(comOrbe) === 'f' && marcas(comOrbe) === 'k', '(o cristal saiu com a varinha; o orbe, do mesmo grupo de troca, foi equipado)');
   ok(eqs(R.equiparItem(comOrbe, 'w', true).itens) === 'w,f' && marcas(R.equiparItem(comOrbe, 'w', true).itens) === '', 'a varinha de volta não traz o cristal: o orbe ocupa o grupo dele (e a marca sai)');
 }
+// ---------- os tipos de equipamento (lote 7): a lista pronta, os da mesa, as seções e o palpite pelo nome ----------
+{
+  ok(R.TIPOS_ITEM.map(t => t.id).join() === 'arma,armadura,escudo,acessorio,vestimenta,ferramenta,outro' && Object.isFrozen(R.TIPOS_ITEM) && Object.isFrozen(R.TIPOS_ITEM[0]) && R.TIPOS_ITEM[3].sec === 'Acessórios',
+    'a lista pronta: Arma, Armadura, Escudo, Acessório, Vestimenta, Ferramenta e Outro (com o nome da seção no plural)');
+  const cfg = { tiposItem: [{ id: 'tp_tal', nome: '  Talismã ' }, { id: 'tp_x', nome: 'armas' }, { id: 'tp_y', nome: 'TALISMÃ' }, { id: 'ruim', nome: 'Sem prefixo' }, { id: 'tp_tal', nome: 'Repetido' }, { id: 'tp_v', nome: '' }, null, { id: 'tp_rel', nome: 'Relíquia do clã' }] };
+  const criados = R.tiposCriados(cfg);
+  ok(criados.map(t => t.id + '=' + t.nome).join() === 'tp_tal=Talismã,tp_rel=Relíquia do clã' && criados[0].criado === true && criados[0].sec === 'Talismã',
+    'os da mesa, arrumados: id "tp_…", nome sem espaços nas pontas, sem repetir nome (nem o de um pronto, nem no plural) nem id: ' + criados.map(t => t.nome).join());
+  const muitos = { tiposItem: Array.from({ length: 40 }, (_, i) => ({ id: 'tp_' + i, nome: 'Tipo ' + i })) };
+  ok(R.tiposCriados(muitos).length === R.TIPOS_MAX && R.TIPOS_MAX === 30 && R.tiposCriados({}).length === 0 && R.tiposCriados(null).length === 0 && R.tiposCriados({ tiposItem: 'x' }).length === 0, 'no máximo 30; sem lista, nenhum');
+  ok(R.tiposDeItem(cfg).map(t => t.id).join() === 'arma,armadura,escudo,acessorio,vestimenta,ferramenta,tp_tal,tp_rel,outro' && R.tiposDeItem(null).length === 7, 'a ordem das seções: os prontos, os da mesa e o Outro por último');
+  ok(R.tipoDoItem({ tipo: 'escudo' }).nome === 'Escudo' && R.tipoDoItem({ tipo: 'tp_tal' }) === null && R.tipoDoItem({ tipo: 'tp_tal' }, R.tiposDeItem(cfg)).nome === 'Talismã' && R.tipoDoItem({}) === null && R.tipoDoItem(null) === null && R.tipoDoItem({ tipo: 'nada' }) === null,
+    'o tipo do item: o da lista; sem tipo, ou um que saiu da lista, nenhum');
+  const it = (id, tipo, equipado) => ({ id, nome: id, tipo, equipado });
+  const lista = [it('a1', 'arma', false), it('t1', 'tp_tal', true), it('s1', undefined, true), it('a2', 'arma', true), null, it('x1', 'tp_sumiu', false), it('o1', 'outro', true), it('a3', 'arma', true), it('v1', 'vestimenta', false)];
+  const sec = R.secoesDeItens(lista, cfg), txt = sec.map(s => (s.tipo ? s.tipo.id : '?') + ':' + s.itens.map(x => x.id).join('/')).join(' ');
+  ok(txt === 'arma:a2/a3/a1 vestimenta:v1 tp_tal:t1 outro:o1 ?:s1/x1', 'as seções na ordem dos tipos, só as que têm item; em cada uma, os equipados primeiro (na ordem da ficha), depois os guardados; sem tipo (ou com tipo que sumiu), no fim: ' + txt);
+  ok(R.secoesDeItens(null, cfg).length === 0 && R.secoesDeItens([], null).length === 0, 'sem itens: nenhuma seção');
+  const palp = ['Katana de gelo Nv2', 'Escudo de carvalho', 'Couraça de couro', 'Anel do fogo', 'Manto da noite', 'Kit de ferreiro', 'Martelo de ferreiro', 'Bainha de jade', 'Luvas de seda', 'Elmo alado', 'CAJADO DO VENTO', 'Espada e escudo', 'Kit de flechas', 'Coisa estranha', '', null]
+    .map(n => R.tipoPeloNome(n) || '-').join();
+  ok(palp === 'arma,escudo,armadura,acessorio,vestimenta,ferramenta,arma,acessorio,vestimenta,armadura,arma,arma,ferramenta,-,-,-', 'o palpite pelo nome: a primeira palavra que diz alguma coisa decide (sem diferença de maiúsculas e acentos); sem palpite, nada: ' + palp);
+}
+// ---------- itens com níveis (lote 7): a lista de níveis, o nível de agora e o espelho no próprio item ----------
+{
+  const kat = { id: 'k', nome: 'Katana de gelo', equipado: true, tipo: 'arma', bonus: { FOR: 4, DFF: 1 }, efeito: 'Corte gélido', nv: 2,
+    niveis: [{ bonus: { FOR: 2 } }, { bonus: { FOR: 4, DFF: 1 }, efeito: 'Corte gélido' }, { bonus: { FOR: 6, DFF: 2 }, rec: { hp: 10 }, def: { GELO: 2 }, efeito: 'Corte gélido +1 dado' }] };
+  ok(R.NIVEIS_MAX === 10 && R.temNiveis(kat) && !R.temNiveis({ niveis: [{}] }) && !R.temNiveis({ niveis: [{}, null] }) && !R.temNiveis({}) && !R.temNiveis(null) && !R.temNiveis({ niveis: 'x' }), 'tem níveis: dois ou mais (um só, ou um só de verdade, é um item comum)');
+  ok(R.nivelDoItem(kat) === 2 && R.nivelDoItem(Object.assign({}, kat, { nv: 9 })) === 3 && R.nivelDoItem(Object.assign({}, kat, { nv: 0 })) === 1 && R.nivelDoItem(Object.assign({}, kat, { nv: 'x' })) === 1 && R.nivelDoItem({}) === 1 && R.nivelDoItem(null) === 1,
+    'o nível de agora, preso entre 1 e o último (o item comum está no 1)');
+  const n3 = R.itemNoNivel(kat, 3);
+  ok(n3 !== kat && n3.nv === 3 && JSON.stringify(n3.bonus) === '{"FOR":6,"DFF":2}' && n3.rec.hp === 10 && n3.def.GELO === 2 && n3.efeito === 'Corte gélido +1 dado' && n3.nome === 'Katana de gelo' && n3.tipo === 'arma',
+    'no nível 3: o espelho (os números, as barras, as defesas e a passiva daquele nível) vai para o próprio item');
+  ok(kat.nv === 2 && kat.bonus.FOR === 4 && kat.rec === undefined, 'o recebido não muda');
+  const n1 = R.itemNoNivel(n3, 1);
+  ok(n1.nv === 1 && JSON.stringify(n1.bonus) === '{"FOR":2}' && !('rec' in n1) && !('def' in n1) && !('efeito' in n1), 'de volta ao 1: sem barras, defesas nem passiva naquele nível, o item também fica sem');
+  ok(R.itemNoNivel(kat, 99).nv === 3 && R.itemNoNivel(kat, -1).nv === 1 && R.itemNoNivel({ id: 'c', bonus: { FOR: 1 } }, 2).nv === undefined, 'o nível pedido fica preso entre 1 e o último; um item comum não muda');
+  ok(R.niveisDoItem(kat).length === 3 && R.niveisDoItem(kat)[0].efeito === '' && JSON.stringify(R.niveisDoItem({ bonus: { FOR: 1 }, efeito: 'x' })) === JSON.stringify([{ bonus: { FOR: 1 }, rec: {}, def: {}, efeito: 'x' }]) && R.niveisDoItem(null).length === 0,
+    'os níveis, arrumados (o item comum tem um só: o dele)');
+  // o espelho que confere volta o mesmo item; o que não confere (mexeram só no item) é refeito pela lista
+  const comZeros = Object.assign({}, kat, { bonus: { FOR: 4, DFF: 1, ESQ: 0, BLQ: 0 } });
+  ok(R.espelharItem(kat) === kat && R.espelharItem(comZeros) === comZeros && R.espelharItem({ id: 'c' }).id === 'c', 'confere (um zero e a falta da chave contam igual): volta o mesmo item — abrir a ficha não a regrava');
+  const torto = Object.assign({}, kat, { bonus: { FOR: 99 } }), certo = R.espelharItem(torto);
+  ok(certo !== torto && certo.bonus.FOR === 4 && certo.bonus.DFF === 1 && torto.bonus.FOR === 99, 'não confere: refeito a partir do nível de agora (numa cópia)');
+  ok(R.espelharItem(Object.assign({}, kat, { nv: 7 })).nv === 3 && R.espelharItem(Object.assign({}, kat, { efeito: 'outra' })).efeito === 'Corte gélido', 'o nível fora da faixa e a passiva trocada também se acertam');
+  // um nível a mais e um a menos
+  const comum = { id: 'c', nome: 'Arco', equipado: true, bonus: { DES: 2 }, rec: { sp: 3 }, efeito: 'Tiro certeiro' };
+  const dois = R.itemComNivelNovo(comum);
+  ok(R.temNiveis(dois) && dois.nv === 1 && dois.niveis.length === 2 && JSON.stringify(dois.niveis[1]) === JSON.stringify({ bonus: { DES: 2 }, rec: { sp: 3 }, def: {}, efeito: 'Tiro certeiro' }) && dois.niveis[1] !== dois.niveis[0] && dois.bonus.DES === 2 && dois.rec.sp === 3 && comum.niveis === undefined,
+    'o item comum vira um item de dois níveis, os dois com os números dele (e fica no 1)');
+  const quatro = R.itemComNivelNovo(kat);
+  ok(quatro.niveis.length === 4 && quatro.nv === 2 && quatro.niveis[3].bonus.FOR === 6 && quatro.niveis[3].efeito === 'Corte gélido +1 dado' && quatro.bonus.FOR === 4, 'o nível novo começa igual ao último; o de agora não muda');
+  let dez = kat; for (let i = 0; i < 12; i++) dez = R.itemComNivelNovo(dez);
+  ok(dez.niveis.length === 10 && R.itemComNivelNovo(dez) === dez, 'no máximo 10 níveis (com 10, nada muda)');
+  ok(R.itemSemNivel(kat, 3).niveis.length === 2 && R.itemSemNivel(kat, 3).nv === 2 && R.itemSemNivel(kat, 1).nv === 1 && R.itemSemNivel(kat, 1).bonus.FOR === 4 && R.itemSemNivel(kat, 2).nv === 1 && R.itemSemNivel(kat, 2).bonus.FOR === 2,
+    'sem um nível: quem estava acima desce; sem o de agora, fica o de baixo — o espelho acompanha');
+  const volta = R.itemSemNivel(R.itemSemNivel(kat, 1), 2);
+  ok(!R.temNiveis(volta) && !('niveis' in volta) && !('nv' in volta) && volta.bonus.FOR === 4 && volta.efeito === 'Corte gélido' && volta.nome === 'Katana de gelo', 'sobrando um nível, volta a ser um item comum, com os números e a passiva daquele nível');
+  ok(R.itemSemNivel(kat, 9) === kat && R.itemSemNivel(comum, 1) === comum, 'um nível que não existe, ou um item comum: nada muda');
+  ok(R.textoDoNivel(kat, 2, 3) === 'Katana de gelo: Nv 2 → Nv 3' && R.textoDoNivel({}, 1, 2) === 'Item sem nome: Nv 1 → Nv 2', 'o texto da mudança de nível');
+  // as contas usam o espelho: o nível de agora é o que soma
+  const pc = { id: 'p', nome: 'P', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, defesas: {}, recursos: [{ id: 'hp', nome: 'HP', fml: '10' }] };
+  const conta = k => { const c = R.calcular(Object.assign({}, pc, { itens: [k] }), cfg0); return [c.eq.FOR, c.eq.DFF, c.recursos[0].val, c.defEsp.GELO].join(); };
+  ok(conta(kat) === '4,1,10,0' && conta(n3) === '6,2,20,2' && conta(n1) === '2,0,10,0', 'as contas seguem o nível de agora: ' + [conta(kat), conta(n3), conta(n1)].join(' | '));
+}
+// ---------- "Só funciona com…" com vários itens e com o nível mínimo (lote 7) ----------
+{
+  const it = (id, nome, o) => Object.assign({ id, nome, equipado: false, bonus: {} }, o);
+  const katana = it('k', 'Katana de gelo', { equipado: true, uso: 2, nv: 1, niveis: [{ bonus: { FOR: 2 } }, { bonus: { FOR: 4 } }, { bonus: { FOR: 6 } }], bonus: { FOR: 2 } });
+  const sabre = it('s', 'Sabre', { uso: 5 }), longa = it('l', 'Espada longa', { troca: 'Lâmina' });
+  const bainha = it('b', 'Bainha de jade', { req: ['i:k', 'i:s', 'g:lamina', 'i:k', 'x:nada', 7], equipado: true, bonus: { DES: 1 } });
+  const lista = [katana, sabre, longa, bainha];
+  ok(JSON.stringify(R.reqsDoItem(bainha)) === JSON.stringify([{ t: 'i', id: 'k' }, { t: 'i', id: 's' }, { t: 'g', g: 'lamina' }]) && j(R.reqDoItem(bainha)) === j({ t: 'i', id: 'k' }),
+    'a lista do que o item aceita, arrumada e sem repetir (o primeiro continua sendo o "requisito" de antes)');
+  ok(j(R.reqsDoItem({ req: 'i:k@2' })) === j([{ t: 'i', id: 'k', nv: 2 }]) && j(R.reqsDoItem({ req: 'i:k@1' })) === j([{ t: 'i', id: 'k' }]) && j(R.reqsDoItem({ req: 'i:k@40' })) === j([{ t: 'i', id: 'k', nv: 10 }])
+    && j(R.reqsDoItem({ req: 'i:a@b' })) === j([{ t: 'i', id: 'a@b' }]) && R.reqsDoItem({ req: [] }).length === 0 && R.reqsDoItem(null).length === 0 && R.reqsDoItem({ req: Array(30).fill(0).map((_, i) => 'i:x' + i) }).length === 20,
+    '"i:<id>@<n>": do nível n para cima (o 1 é qualquer nível; até o 10); no máximo 20 na lista');
+  ok(R.itemAtivo(bainha, lista) && R.nomeDoReq(bainha, lista) === 'Katana de gelo, Sabre ou lamina', 'vale com qualquer um deles (a katana está equipada): "' + R.nomeDoReq(bainha, lista) + '"');
+  const semKatana = lista.map(x => (x === katana ? Object.assign({}, x, { equipado: false }) : x));
+  ok(!R.itemAtivo(bainha, semKatana), 'sem nenhum deles equipado, não vale');
+  const comLonga = semKatana.map(x => (x === longa ? Object.assign({}, x, { equipado: true }) : x));
+  ok(R.itemAtivo(bainha, comLonga), 'qualquer item do grupo também serve (a espada longa, do grupo "Lâmina")');
+  ok(R.itemAtivo(it('z', 'Z', { req: ['i:sumiu', 'g:ninguém'], equipado: true }), lista) && !R.itemAtivo(it('z', 'Z', { req: ['i:sumiu', 'i:s'], equipado: true }), lista) && R.nomeDoReq(it('z', 'Z', { req: ['i:sumiu', 'i:s'] }), lista) === 'Sabre',
+    'o que saiu da ficha não conta: com todos fora, não prende; com um que ficou, é ele que vale (e o nome mostra só ele)');
+  // o nível mínimo
+  const pedeNv2 = it('p', 'Bainha real', { req: 'i:k@2', equipado: true, bonus: { DFF: 2 } });
+  const l2 = [katana, pedeNv2];
+  ok(!R.itemAtivo(pedeNv2, l2) && R.nomeDoReq(pedeNv2, l2) === 'Katana de gelo (Nv 2 ou mais)', 'com a katana no Nv 1, a bainha que pede "Nv 2 ou mais" não vale: "' + R.nomeDoReq(pedeNv2, l2) + '"');
+  const k2 = R.itemNoNivel(katana, 2), l3 = [k2, pedeNv2];
+  ok(R.itemAtivo(pedeNv2, l3) && R.itemAtivo(pedeNv2, [R.itemNoNivel(katana, 3), pedeNv2]), 'no Nv 2 (e no 3), vale');
+  const pcB = { id: 'p', nome: 'P', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, defesas: {}, recursos: [] };
+  const soma = l => { const c = R.calcular(Object.assign({}, pcB, { itens: l }), cfg0); return [c.eq.FOR, c.eq.DFF].join(); };
+  ok(soma(l2) === '2,0' && soma(l3) === '4,2', 'nas contas também: ' + soma(l2) + ' → ' + soma(l3));
+  // equipar o complementar traz, dos que servem, o usado por último — e no nível pedido
+  const eqs = l => l.filter(x => x && x.equipado !== false).map(x => x.id).join(',');
+  const tudoGuardado = [Object.assign({}, katana, { equipado: false }), Object.assign({}, sabre), Object.assign({}, longa), Object.assign({}, bainha, { equipado: false })];
+  const r = R.equiparItem(tudoGuardado, 'b', true);
+  ok(eqs(r.itens) === 's,b' && j(r.equipados) === j(['s']) && R.textoDoEquipar(r.itens, r, 'b', true) === 'Equipou Bainha de jade; junto: Sabre.', 'equipar a bainha traz, dos que servem, o usado por último (o sabre, uso 5): ' + R.textoDoEquipar(r.itens, r, 'b', true));
+  const r2 = R.equiparItem([Object.assign({}, katana, { equipado: false }), Object.assign({}, pedeNv2, { equipado: false })], 'p', true);
+  ok(eqs(r2.itens) === 'p' && j(r2.equipados) === j([]), 'nenhum no nível pedido (a katana no Nv 1): a bainha entra sozinha, sem efeito, e nada vem junto');
+  const r3 = R.equiparItem([Object.assign({}, k2, { equipado: false }), Object.assign({}, pedeNv2, { equipado: false })], 'p', true);
+  ok(eqs(r3.itens) === 'k,p', 'com a katana no Nv 2, ela vem junto');
+  const r4 = R.equiparItem(lista, 'k', false);
+  ok(eqs(r4.itens) === '' && r4.itens.find(x => x.id === 'b').volta === true, 'guardar a katana (o único equipado que servia) guarda a bainha, marcada para voltar');
+}
 // ---------- a fadiga (lote 6): uma pilha de 5 a 0, no estado ----------
 {
   ok(R.FAD_MAX === 5 && R.FADIGA.length === 6 && R.FADIGA[5] === 'Descansado' && R.FADIGA[0] === 'Esgotado' && Object.isFrozen(R.FADIGA), 'a pilha vai de 0 (Esgotado) a 5 (Descansado)');

@@ -347,6 +347,29 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   não guarda a bainha (o grupo continua atendido). `equiparItem` devolve `{ itens, guardados, trocados, equipados,
   trocas }`, e `textoDoEquipar` escreve o aviso ("Guardou Espada do Gelo I; guardou junto: Bainha de Selene e Luva da
   Geada."), o mesmo nas Fichas e na janelinha E das Cenas. Um requisito que saiu da ficha não prende o item.
+- **Os tipos de equipamento (lote 7).** `item.tipo` guarda o id do tipo: os prontos (`TC.rules.TIPOS_ITEM`: Arma,
+  Armadura, Escudo, Acessório, Vestimenta, Ferramenta e Outro) e os que quem mestra cria (`S.cfg.tiposItem:
+  [{ id: 'tp_…', nome }]`, na configuração da mesa — o documento `fichas:cfg`; `tiposCriados` arruma: sem repetir nome,
+  até 30). A lista vira seções (`secoesDeItens`: na ordem dos tipos, os da mesa antes do Outro, "Sem tipo" no fim; em
+  cada uma, os equipados primeiro), que se recolhem (`S.itFechadas`, neste aparelho). Em cima, os filtros (tipo,
+  equipados ou guardados, relíquias e a busca pelo nome, sem acento): só na tela (`filtros`, sem gravar), aplicados no
+  próprio DOM — a busca não perde o cursor. Na ficha só para consulta, os filtros, a busca e as seções continuam
+  (`limitar()` em fichas/mesa.js). "Separar por tipo…" sugere o tipo de cada item sem tipo pelo nome (`tipoPeloNome`:
+  a primeira palavra que diz alguma coisa decide; sem palpite, "Outro") e só aplica no "Aplicar" (com Desfazer). O "+
+  Item" com o filtro de um tipo ligado já vem daquele tipo. A alça do cartão arrasta (soltar noutra seção troca o tipo;
+  um guardado não passa à frente dos equipados) e, com o foco nela, as setas sobem e descem — com Desfazer.
+- **Itens com níveis (lote 7).** `item.niveis: [{ bonus, rec, def, efeito }, …]` (de 2 a 10) e `item.nv` (o de agora).
+  Os números e a passiva do nível de agora ficam também no próprio item — o espelho (`itemNoNivel`): as contas, as
+  Cenas e a versão de antes do site leem dali; a fonte é a lista. `espelharItem` (no `migrar()`) refaz o espelho que
+  não confere e devolve o mesmo objeto quando confere (abrir a ficha não a regrava). No "Editar", uma aba por nível
+  (`nivelAberto`): os campos levam `data-nv` e gravam no nível (`editarNivel`); "+ nível" (`itemComNivelNovo`: o novo
+  começa igual ao último), "Usar o Nv…", "Copiar do Nv…" e "Tirar o Nv…" (`itemSemNivel`; sobrando um nível, o item
+  volta a ser comum). O ◂ Nv ▸ do cartão (o dono e quem mestra — quem edita a ficha) troca o de agora, com Desfazer, e
+  manda para a mesa ao vivo "Katana de gelo: Nv 1 → Nv 2" (`textoDoNivel`, pelo `logar` da ficha).
+- **"Só funciona com…" com vários (lote 7).** `item.req` pode ser uma lista: o item vale com QUALQUER um deles
+  (`reqsDoItem`; um só continua sendo um texto, como antes). `'i:<id>@<n>'` pede aquele item do nível n para cima
+  ("Katana de gelo (Nv 2 ou mais)"). O que saiu da ficha não conta (com todos fora, não prende). Equipar o complementar
+  traz, dos que servem e no nível pedido, o usado por último. No cartão, o "com…" fica numa linha só dele.
 - **Pets** (`ficha.petDe`: o id do dono): uma ficha suplementar, como a de um NPC — atributos à mão (distribuição livre,
   do zero), barras, habilidades, sem bolsa, sem Tier e sem ligar sozinha o que a de jogador liga (Sanidade, corpo,
   fadiga, relacionamentos: `deJogador` não conta o pet). No elenco, fica logo embaixo do dono. Quem controla o dono
@@ -365,7 +388,9 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   item soma. Um clique equipa ou guarda; do mesmo grupo de troca, um só fica equipado (`TC.rules.equiparItem`). Grava
   na ficha (`Fichas.equipar`, com Desfazer, que devolve só a chave de equipado de cada item) e acompanha mudanças de
   fora enquanto está aberta. O mestre usa em qualquer token ligado; o jogador, no token do personagem dele. Abrir a do
-  F fecha a do E, e vice-versa.
+  F fecha a do E, e vice-versa. (Lote 7) Os itens vêm na ordem das seções da ficha (`Fichas.itens` usa `secoesDeItens`
+  com a configuração da mesa), com o título de cada tipo quando há mais de um, e o item com níveis mostra o de agora
+  ("Nv 2").
 - **Postura** (`token.post`): uma marca liga/desliga — a etiqueta âmbar "Postura" junto do nome, que todos veem. A
   chave fica na seção Condições do painel do token; o jogador muda a do token dele (a projeção aceita só `true` ou
   `false`, com a mesma permissão das condições).

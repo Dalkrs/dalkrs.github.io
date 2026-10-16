@@ -350,21 +350,27 @@ const Fichas = (() => {
     const l = t && t.char ? get(t.char) : null;
     return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
   }
-  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da
-  //   ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado e com o requisito)
+  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }], tipo, sec, nv, nvs }]: só o que cada item soma
+  //   (como os cartões da ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado
+  //   e com o requisito). (lote 7) Na ordem das seções da ficha (por tipo; em cada uma, os equipados primeiro): tipo é o
+  //   id do tipo ('' sem tipo), sec o nome da seção; nv, o nível de agora de um item com níveis (de nvs) — 0 nos comuns.
   function itens(t) {
     const l = t && t.char ? get(t.char) : null, R0 = R();
     if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
     const rotDe = k => { const d = (R0.DEFESAS || []).find(x => x.k === k); return (d && d.rot) || k; };
     const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [];
-    return l.ficha.itens.filter(it => it && it.id != null).map(it => {
+    const comId = l.ficha.itens.filter(it => it && it.id != null);
+    const secs = R0.secoesDeItens ? R0.secoesDeItens(comId, cfg()) : [{ tipo: null, itens: comId }];
+    return secs.flatMap(s => s.itens.map(it => [it, s.tipo])).map(([it, tp]) => {
       const bon = [], b = it.bonus || {}, rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
       for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
       for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
       for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
       const lista = l.ficha.itens;
+      const niv = !!R0.temNiveis && R0.temNiveis(it);
       return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia,
-        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon };
+        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon,
+        tipo: tp ? tp.id : '', sec: tp ? tp.sec : 'Sem tipo', nv: niv ? R0.nivelDoItem(it) : 0, nvs: niv ? R0.niveisDoItem(it).length : 0 };
     });
   }
   /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica

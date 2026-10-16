@@ -2,6 +2,51 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-4",
+      "data": "2026-10-16",
+      "titulo": "Equipamentos por tipo e itens com níveis",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: os equipamentos ficam em seções por tipo (Armas, Armaduras, Escudos, Acessórios, Vestimentas, Ferramentas e Outros), com quantos itens há e quantos estão equipados. Os equipados vêm primeiro, e dá para recolher uma seção."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: filtros em cima da lista de equipamentos — por tipo, equipados ou guardados, relíquias e uma busca pelo nome."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: arraste o cartão de um item pela alça para mudar a ordem; solto em outra seção, ele troca de tipo. Com o teclado, as setas na alça. Tudo com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: “Separar por tipo…” sugere o tipo de cada item pelo nome. Você confere e troca o que quiser antes de aplicar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: os tipos de equipamento da mesa — crie, renomeie e tire tipos em “Tipos…” (ou no “+ Novo tipo…” do item). Eles valem para todas as fichas."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Itens com níveis: no “Editar”, “+ nível” cria o Nv 2, o Nv 3…, cada um com os números e as passivas dele. O ◂ Nv ▸ do cartão troca o nível de agora, as contas acompanham e a mesa ao vivo fica sabendo."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "“Só funciona com…” aceita vários itens (vale com qualquer um deles) e, num item com níveis, um nível mínimo, como “Katana de gelo (Nv 2 ou mais)”. No cartão, ele fica numa linha só dele."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: a janelinha de equipamentos (tecla E) separa os itens por tipo e mostra o nível de agora."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Mapa-múndi: com um grupo só andando, o aviso agora diz “1 grupo andou: Os Heróis.”"
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-3",
       "data": "2026-10-16",
       "titulo": "Meditação com a imagem grande, pintura do mapa de verdade e o tempo para todos",

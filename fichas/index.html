@@ -297,13 +297,68 @@ table.attr tr:last-child td{border-bottom:0}
 .itopc .chk input{width:auto;margin:0}
 .ittrocaf{min-width:210px}
 .itreqf{min-width:230px}
-.itreqf select{width:100%}
+.itreqf > select{width:100%}
 .itreq{max-width:220px}
+/* (lote 7) o "Só funciona com…" numa linha só dele (com vários itens, o nome do cartão não fica espremido) */
+.itreqlinha{display:flex;padding-left:38px;min-width:0}
+.itreqlinha .itreq{max-width:100%}
+.itcard.comalca .itbon,.itcard.comalca .itreqlinha{padding-left:64px}
 .itreq.falta{border-color:var(--rubric);color:var(--rubric)}
 .itcard.semfx .itbon,.itcard.semfx .itfxv{opacity:.55}
 .ittotal{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--line-2);font-family:"IBM Plex Mono",monospace;font-size:12px}
 .ittotal .eyebrow{margin-right:4px}
 .itdobro{margin-top:6px;color:var(--brass-ink)}
+/* (lote 7) os equipamentos por tipo: os filtros, as seções, a alça de arrastar e os níveis */
+.itacoes{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.itfiltros{display:flex;flex-wrap:wrap;gap:5px 6px;align-items:center;margin-bottom:12px}
+.itf{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border:1px solid var(--line-2);border-radius:999px;background:var(--campo-sut);color:var(--ink-2);font-size:12px;line-height:1.5}
+.itf:hover{border-color:var(--line);color:var(--ink)}
+.itf.on{background:var(--teal-fundo);border-color:var(--teal-borda);color:var(--ink);font-weight:600}
+.itf .mk{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-soft);font-weight:500}
+.itfsep{width:1px;height:18px;background:var(--line-2);margin:0 2px}
+.itbusca{flex:1 1 150px;max-width:230px;padding:4px 9px;font-size:12.5px}
+.itsec + .itsec{margin-top:12px}
+.itsech{display:flex;align-items:baseline;gap:8px;width:100%;padding:4px 4px 6px;margin:0 0 8px;border:0;border-bottom:1px solid var(--line-2);border-radius:0;background:transparent;color:var(--ink);text-align:left;font-weight:400}
+.itsech:hover{background:var(--hover)}
+.itseta{width:12px;flex:none;color:var(--ink-soft);font-size:11px}
+.itsecn{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.itsecq{font-size:12px;color:var(--ink-soft)}
+.itsec.fechada:not(.filtrando) .itcards{display:none}
+.itsec.fechada:not(.filtrando) .itsech{margin-bottom:0}
+.itsec.filtrando .itseta{visibility:hidden}
+.itsec.alvo .itsech{background:var(--teal-fundo)}
+.itarr{flex:none;display:inline-flex;align-items:center;justify-content:center;width:18px;height:24px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--ink-fraco);cursor:grab;touch-action:none}
+.itarr:hover{color:var(--ink-2);background:var(--hover)}
+.itarr:active{cursor:grabbing}
+.itcard.arrastando{opacity:.45;outline:2px dashed var(--teal-borda);outline-offset:2px}
+.itlinha{position:fixed;z-index:60;background:var(--teal);border-radius:2px;pointer-events:none}
+.itnv{display:inline-flex;align-items:center;flex:none;border:1px solid var(--brass-soft);border-radius:999px;background:var(--brass-fundo);padding:0 1px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+.itnv b{padding:0 3px;color:var(--brass-ink);font-weight:600;white-space:nowrap}
+.itnvb{border:0;background:transparent;padding:1px 6px;color:var(--brass-ink);font-size:11px;line-height:1.4;border-radius:999px}
+.itnvb:hover:not(:disabled){background:var(--hover)}
+.itnvb:disabled{opacity:.3;cursor:default}
+.itcab{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end}
+.ittipof{min-width:170px}
+.itnvbloco{display:grid;gap:6px}
+.itniveis{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.itnvaba{display:inline-flex;align-items:baseline;gap:4px;padding:3px 10px;border:1px solid var(--line-2);border-radius:6px;background:var(--campo-sut);font-size:12px;color:var(--ink-2)}
+.itnvaba.on{border-color:var(--brass);background:var(--brass-fundo);color:var(--ink);font-weight:600}
+.itagora{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);font-weight:600}
+.itnvacoes{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.itreqs{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 5px}
+.itreqc.fora{border-color:var(--line-2);background:var(--campo-sut)}
+.itreqnv{padding:1px 4px;font-size:11.5px;border-radius:6px;max-width:140px}
+.itjanela .sheet .bd{display:grid;gap:4px}
+.itsepls{display:grid;gap:6px;max-height:min(60vh,520px);overflow:auto;padding:2px}
+.itsepl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.itsepn{flex:1 1 200px;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.itsepl select{flex:0 1 190px}
+.ittiposl{display:grid;gap:6px;margin-bottom:10px}
+.ittipol{display:flex;align-items:center;gap:8px}
+.ittipol input{flex:1;min-width:0}
+.ittipon{display:flex;gap:8px;align-items:center}
+.ittipon input{flex:1;min-width:0}
+.itjerro{color:var(--rubric)}
 .off{opacity:.42}
 
 /* ---- regras novas: abas do painel de atributos, defesas, opções das barras, itens, temporários e bolsas ---- */
@@ -984,9 +1039,9 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=14"></script>
-<script src="../tc/rules.js?v=11"></script>
-<script src="mesa.js?v=10"></script>
-<script src="extras.js?v=12"></script>
+<script src="../tc/rules.js?v=12"></script>
+<script src="mesa.js?v=11"></script>
+<script src="extras.js?v=13"></script>
 <script src="quadros.js?v=4"></script>
 <script>
 /* =======================================================================
@@ -2327,9 +2382,10 @@ function ligarFicha(pc){
     if(a==='pct'){ patch(()=>{ pc.pctProprio = pc.pctProprio? null : {...S.cfg.pct}; }); }
     if(a==='pctoff'){ patch(()=>pc.pctProprio=null); }
     if(a==='addres'){ patch(()=>pc.recursos.push({id:uid(),nome:'Novo recurso',fml:''})); }
-    if(a==='additem'){ const b0={}, id=uid(); ATRIBS.forEach(x=>b0[x.k]=0);
-      FichasExtras.abrirItem(id);                       // (o cartão novo já vem aberto, com o cursor no nome)
-      pc.itens.push({id,nome:'',equipado:true,bonus:b0}); save(); render();
+    if(a==='additem'){
+      // (o cartão novo já vem aberto, com o cursor no nome; com o filtro de um tipo ligado, já vem daquele tipo)
+      const it=FichasExtras.itemNovo(pc), id=it.id;
+      pc.itens.push(it); save(); render();
       const n=document.querySelector('[data-itemnome="'+CSS.escape(id)+'"]'); if(n) n.focus(); }
   });
 
@@ -3815,6 +3871,8 @@ function migrar(){
     pc.habilidades=pc.habilidades||[];
     pc.habilidades.forEach(h=>{ if(!h.tipo) h.tipo = (h.ativa===false)?'Inativo':'Ativo'; delete h.ativa; });
     pc.itens=pc.itens||[]; pc.recursos=pc.recursos||[]; pc.tiers=pc.tiers||{FOR:'A',DES:'B',AGI:'C',VIT:'D',CAN:'E'};
+    // (lote 7) um item com níveis: o espelho do nível de agora confere com a lista (o que confere fica o mesmo objeto)
+    if(window.TC && TC.rules && TC.rules.espelharItem) pc.itens=pc.itens.map(it=>TC.rules.espelharItem(it));
     pc.itens.forEach(it=>{ it.bonus=it.bonus||{};
       DERIV.forEach(d=>{ if(it.bonus[d.k]==null) it.bonus[d.k]=0; });
       ['DFF','DFM'].forEach(k=>{ if(it.bonus[k]==null) it.bonus[k]=0; }); });   // (o Bloqueio ausente num item vale 0: a ficha não é regravada só por abrir)

@@ -717,6 +717,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .eq-b { color: var(--fg-2); font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .eq-c:not(.on) .eq-b { color: var(--fg-3); }
 .eq-nota { margin: 0; color: var(--fg-3); font-size: 11.5px; line-height: 1.35; }
+/* (lote 7) as seções por tipo e o nível do item */
+.eq-sec { margin: 6px 2px 0; padding-bottom: 2px; border-bottom: 1px solid var(--line); color: var(--fg-3); font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.eq-sec:first-child { margin-top: 0; }
+.eq-nv { flex: none; padding: 0 6px; border: 1px solid var(--lamp); border-radius: 999px; color: var(--lamp-ink); font: 600 10.5px var(--mono); line-height: 15px; }
 
 /* a fixa de cada turno, no painel do token */
 .fixas { display: flex; flex-wrap: wrap; gap: 6px 10px; }
@@ -820,7 +824,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=14"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=11"></script>
+<script src="../tc/rules.js?v=12"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -5167,21 +5171,27 @@ const Fichas = (() => {
     const l = t && t.char ? get(t.char) : null;
     return !!l && l.ficha != null && !!R() && typeof R().equiparItem === 'function' && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
   }
-  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }] }]: só o que cada item soma (como os cartões da
-  //   ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado e com o requisito)
+  // → [{ id, nome, on, troca, reliquia, req, ativo, bon: [{ rot, v }], tipo, sec, nv, nvs }]: só o que cada item soma
+  //   (como os cartões da ficha); req: o nome do que ele precisa ("Só funciona com…"), ativo: se está valendo (equipado
+  //   e com o requisito). (lote 7) Na ordem das seções da ficha (por tipo; em cada uma, os equipados primeiro): tipo é o
+  //   id do tipo ('' sem tipo), sec o nome da seção; nv, o nível de agora de um item com níveis (de nvs) — 0 nos comuns.
   function itens(t) {
     const l = t && t.char ? get(t.char) : null, R0 = R();
     if (!l || !l.ficha || !Array.isArray(l.ficha.itens) || !R0) return [];
     const rotDe = k => { const d = (R0.DEFESAS || []).find(x => x.k === k); return (d && d.rot) || k; };
     const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [];
-    return l.ficha.itens.filter(it => it && it.id != null).map(it => {
+    const comId = l.ficha.itens.filter(it => it && it.id != null);
+    const secs = R0.secoesDeItens ? R0.secoesDeItens(comId, cfg()) : [{ tipo: null, itens: comId }];
+    return secs.flatMap(s => s.itens.map(it => [it, s.tipo])).map(([it, tp]) => {
       const bon = [], b = it.bonus || {}, rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
       for (const k of R0.CHAVES_BONUS || []) { const v = +b[k] || 0; if (v) bon.push({ rot: rotDe(k), v }); }
       for (const r of recs) { const v = +rec[r.id] || 0; if (v) bon.push({ rot: String(r.nome || 'Barra'), v }); }
       for (const d of R0.DEFESAS_ESP || []) { const v = +def[d.k] || 0; if (v) bon.push({ rot: 'Def. ' + d.nome, v }); }
       const lista = l.ficha.itens;
+      const niv = !!R0.temNiveis && R0.temNiveis(it);
       return { id: String(it.id), nome: String(it.nome || '').trim() || 'Item sem nome', on: it.equipado !== false, troca: R0.grupoDeTroca ? R0.grupoDeTroca(it) : '', reliquia: !!it.reliquia,
-        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon };
+        req: R0.nomeDoReq ? R0.nomeDoReq(it, lista) : '', ativo: R0.itemAtivo ? R0.itemAtivo(it, lista) : it.equipado !== false, bon,
+        tipo: tp ? tp.id : '', sec: tp ? tp.sec : 'Sem tipo', nv: niv ? R0.nivelDoItem(it) : 0, nvs: niv ? R0.niveisDoItem(it).length : 0 };
     });
   }
   /* Equipar (onOff = true) ou guardar um item da ficha deste token — dos itens do mesmo grupo de troca, um só fica
@@ -12644,15 +12654,22 @@ const Luta = (() => {
     const a = document.activeElement, fid = a && a.id && epop.el.contains(a) ? a.id : null;
     epop.nome.textContent = tokName(t);
     const lista = Fichas.itens(t);
-    epop.lista.replaceChildren(...(lista.length ? lista.map(it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
+    // (lote 7) por tipo, como na ficha: um título a cada seção (só quando há mais de uma) e o nível dos itens com níveis
+    const variasSecoes = new Set(lista.map(it => it.tipo)).size > 1;
+    const botaoDe = it => h('button', { type: 'button', class: 'eq-c' + (it.on ? ' on' : '') + (it.reliquia ? ' rel' : ''), id: 'eq-' + it.id, 'aria-pressed': String(it.on),
       title: (it.on ? 'Equipado: clique para guardar' : 'Guardado: clique para equipar') + (it.troca ? ' (grupo de troca: ' + it.troca + ')' : ''), onclick: () => trocarItem(it) },
       h('span', { class: 'eq-sw', 'aria-hidden': 'true' }),
       h('span', { class: 'eq-t' },
-        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
+        h('span', { class: 'eq-n' }, h('b', { text: it.nome }), it.nv ? h('span', { class: 'eq-nv', title: 'Nível de agora: ' + it.nv + ' de ' + it.nvs, text: 'Nv ' + it.nv }) : null, it.reliquia ? svgEl(GEMA_I) : null, it.troca ? h('span', { class: 'eq-g' }, svgEl(TROCA_I), h('span', { text: it.troca })) : null),
         h('span', { class: 'eq-b', text: it.bon.length ? it.bon.map(b => b.rot + ' ' + (b.v > 0 ? '+' : '−') + Math.abs(b.v)).join(' · ') : 'sem bônus' }),
         // o complementar, numa linha só dele: "com Espada do Gelo de Selene" (ou "sem efeito", equipado sem o que ele precisa)
-        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null)))
-      : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
+        it.req ? h('span', { class: 'eq-req' + (it.on && !it.ativo ? ' falta' : ''), title: (it.on && !it.ativo ? 'Sem efeito: só vale com ' : 'Só funciona com ') + it.req }, svgEl(LIGA_I), h('span', { text: (it.on && !it.ativo ? 'sem efeito · precisa de ' : 'com ') + it.req })) : null));
+    const linhas = [];
+    lista.forEach((it, i) => {
+      if (variasSecoes && (i === 0 || lista[i - 1].tipo !== it.tipo)) linhas.push(h('div', { class: 'eq-sec', role: 'presentation', text: it.sec }));
+      linhas.push(botaoDe(it));
+    });
+    epop.lista.replaceChildren(...(lista.length ? linhas : [h('p', { class: 'muted', text: 'A ficha deste personagem não tem equipamentos.' })]));
     if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
   }
   function trocarItem(it) {

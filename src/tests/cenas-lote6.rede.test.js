@@ -342,6 +342,20 @@ const goblin = ficha('Goblin batedor', { lado: 'Inimigo', itens: [{ id: 'i_cla',
     // equipada sem a espada (a ficha mexida por fora): "sem efeito", e a janelinha acompanha
     await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'); P.gravar('pc_selene', { ficha: Object.assign({}, l.ficha, { itens: l.ficha.itens.map(x => (x.id === 'i_eg1' ? Object.assign({}, x, { equipado: false }) : x)) }) }); });
     ok(await ate(async () => JSON.stringify(await reqE()) === JSON.stringify(['sem efeito · precisa de Espada de gelo [falta]']), 15000), 'equipada sem a espada, a Bainha fica "sem efeito": ' + JSON.stringify(await reqE()));
+    // (lote 7) por tipo, como na ficha, e com o nível de agora do item com níveis
+    await M.evaluate(() => {
+      const P = TC.dados.col('personagens'), l = P.pegar('pc_selene'), R = TC.rules, tipos = { i_eg1: 'arma', i_esp: 'arma', i_mac: 'arma', i_bai: 'acessorio' };
+      const itens = l.ficha.itens.map(x => {
+        const y = Object.assign({}, x); if (tipos[x.id]) y.tipo = tipos[x.id];
+        return x.id === 'i_eg1' ? R.itemNoNivel(Object.assign(y, { niveis: [{ bonus: { FOR: 3 } }, { bonus: { FOR: 5 } }] }), 2) : y;
+      });
+      P.gravar('pc_selene', { ficha: Object.assign({}, l.ficha, { itens }) });
+    });
+    const secoesE = () => C.evaluate(() => { let s = ''; const out = {}; for (const el of document.querySelectorAll('#eq-lista > *')) { if (el.classList.contains('eq-sec')) s = el.textContent; else if (el.id) out[el.id.slice(3)] = s; } return out; });
+    ok(await ate(async () => { const m = await secoesE(); return m.i_eg1 === 'Armas' && m.i_esp === 'Armas' && m.i_mac === 'Armas' && m.i_bai === 'Acessórios' && m.i_ane === 'Sem tipo'; }, 15000),
+      '(lote 7) na janelinha E, os itens por tipo, como na ficha: ' + JSON.stringify(await secoesE()));
+    ok(JSON.stringify((await C.locator('#epop .eq-sec').allInnerTexts()).map(x => x.toUpperCase())) === JSON.stringify(['ARMAS', 'ACESSÓRIOS', 'SEM TIPO']), '(os títulos das seções, na ordem dos tipos)');
+    ok(await C.locator('#eq-i_eg1 .eq-nv').innerText() === 'Nv 2' && (await C.locator('#eq-i_eg1 .eq-b').innerText()).includes('FOR +5'), 'e o item com níveis mostra o de agora (Nv 2), com os números dele');
     await M.keyboard.press('Escape'); await w(200);
     }
 

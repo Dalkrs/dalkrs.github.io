@@ -1008,6 +1008,137 @@
     return Object.assign({}, estado, { pd });
   }
 
+  /* ---------- os tipos de equipamento (lote 7) ----------
+     A lista pronta e os tipos que quem mestra cria (cfg.tiposItem: [{ id: "tp_…", nome }], na configuração da mesa).
+     O item guarda o id (it.tipo); sem tipo — ou com um tipo que saiu da lista —, ele fica em "Sem tipo". */
+  const TIPOS_ITEM = Object.freeze([
+    { id: 'arma', nome: 'Arma', sec: 'Armas' }, { id: 'armadura', nome: 'Armadura', sec: 'Armaduras' }, { id: 'escudo', nome: 'Escudo', sec: 'Escudos' },
+    { id: 'acessorio', nome: 'Acessório', sec: 'Acessórios' }, { id: 'vestimenta', nome: 'Vestimenta', sec: 'Vestimentas' },
+    { id: 'ferramenta', nome: 'Ferramenta', sec: 'Ferramentas' }, { id: 'outro', nome: 'Outro', sec: 'Outros' }
+  ].map(t => Object.freeze(t)));
+  const TIPOS_MAX = 30;
+  // os tipos criados pela mesa, arrumados: id "tp_…", nome de 1 a 30 letras, sem repetir nome (nem o de um pronto)
+  function tiposCriados(cfg) {
+    const l = ehObjeto(cfg) && Array.isArray(cfg.tiposItem) ? cfg.tiposItem : [], out = [];
+    const nomes = new Set(TIPOS_ITEM.flatMap(t => [normNome(t.nome), normNome(t.sec)]));
+    for (const t of l) {
+      if (!ehObjeto(t) || typeof t.id !== 'string' || !/^tp_[a-z0-9_-]{1,40}$/i.test(t.id) || out.some(x => x.id === t.id)) continue;
+      const nome = String(t.nome == null ? '' : t.nome).replace(/\s+/g, ' ').trim().slice(0, 30);
+      if (!nome || nomes.has(normNome(nome))) continue;
+      nomes.add(normNome(nome));
+      out.push({ id: t.id, nome, sec: nome, criado: true });
+      if (out.length >= TIPOS_MAX) break;
+    }
+    return out;
+  }
+  // a ordem das seções: os prontos (menos o Outro), os criados pela mesa e, por último, o Outro
+  function tiposDeItem(cfg) { return TIPOS_ITEM.slice(0, -1).concat(tiposCriados(cfg), [TIPOS_ITEM[TIPOS_ITEM.length - 1]]); }
+  function tipoDoItem(it, tipos) {
+    const id = ehObjeto(it) && typeof it.tipo === 'string' ? it.tipo : '';
+    return id ? (tipos || TIPOS_ITEM).find(t => t.id === id) || null : null;
+  }
+  /* As seções da lista de equipamentos: [{ tipo (null: "Sem tipo"), itens }], na ordem dos tipos, só as que têm item.
+     Dentro de cada uma, os equipados primeiro e depois os guardados — cada grupo na ordem da ficha. */
+  function secoesDeItens(itens, cfg) {
+    const tipos = tiposDeItem(cfg), por = new Map();
+    for (const it of (Array.isArray(itens) ? itens : []).filter(ehObjeto)) {
+      const t = tipoDoItem(it, tipos), k = t ? t.id : '';
+      if (!por.has(k)) por.set(k, []);
+      por.get(k).push(it);
+    }
+    const ordem = l => l.filter(x => x.equipado !== false).concat(l.filter(x => x.equipado === false));
+    return tipos.filter(t => por.has(t.id)).map(t => ({ tipo: t, itens: ordem(por.get(t.id)) }))
+      .concat(por.has('') ? [{ tipo: null, itens: ordem(por.get('')) }] : []);
+  }
+  /* Um palpite do tipo pelo nome ("Katana de gelo Nv2" → "arma"), para "Separar por tipo…": a primeira palavra do nome
+     que diz alguma coisa decide ("Martelo de ferreiro" é arma; "Kit de ferreiro", ferramenta). null: sem palpite. */
+  const PALPITES = [
+    ['escudo', 'escudo escudos broquel paves egide rodela'],
+    ['armadura', 'armadura armaduras couraca cota malha peitoral elmo capacete manopla manoplas grevas greva bracadeira bracadeiras ombreira ombreiras brigantina gibao loriga perneira perneiras gorjal placas'],
+    ['arma', 'espada espadas katana sabre adaga adagas punhal faca facas machado machadinha lanca arco besta cajado bastao maca martelo clava mangual foice alabarda tridente chicote rapieira cimitarra florete glaive kunai shuriken shurikens nunchaku tonfa wakizashi nodachi odachi naginata pistola mosquete funda zarabatana dardo dardos azagaia chakram garra garras varinha lamina gladio montante claymore arma armas flecha flechas virote virotes estilete kama kusarigama yari tessen'],
+    ['acessorio', 'anel aneis amuleto colar pingente brinco brincos bracelete pulseira broche tiara coroa diadema talisma medalhao cinto cinturao gema joia orbe relicario insignia emblema sinete rosario tornozeleira monoculo oculos bainha aljava'],
+    ['vestimenta', 'manto capa tunica robe roupa roupas veste vestes vestido quimono kimono hakama chapeu botas bota sapato sapatos sandalia sandalias luva luvas calca calcas camisa cachecol faixa mascara veu capuz casaco jaqueta colete avental sobretudo gorro turbante lenco haori uniforme traje'],
+    ['ferramenta', 'corda kit ferramenta ferramentas lanterna lampiao tocha picareta gazua gazuas mochila cantil mapa bussola instrumento flauta alaude tambor lira harpa violino panela barraca pederneira isqueiro agulha frasco pergaminho grimorio livro tomo diario pena tinteiro serrote anzol rede armadilha algema algemas espelho apito sino chave cadeado pinca bisturi lupa balanca ampulheta luneta']
+  ].map(([id, ps]) => [id, new Set(ps.split(' '))]);
+  function tipoPeloNome(nome) {
+    for (const w of normNome(nome).split(/[^a-z0-9]+/)) {
+      if (!w) continue;
+      for (const [id, ps] of PALPITES) if (ps.has(w)) return id;
+    }
+    return null;
+  }
+
+  /* ---------- itens com níveis (lote 7) ----------
+     Um item pode ter níveis (it.niveis: [{ bonus, rec, def, efeito }, …], de 2 a 10) e o nível de agora (it.nv, de 1
+     em diante). Os números e as passivas do nível de agora ficam também no próprio item (it.bonus, it.rec, it.def,
+     it.efeito): o espelho — as contas, as Cenas e quem ainda tem a versão de antes do site leem dali. A fonte é a
+     lista. Com menos de dois níveis, o item é um item comum. */
+  const NIVEIS_MAX = 10;
+  const temNiveis = it => ehObjeto(it) && Array.isArray(it.niveis) && it.niveis.filter(ehObjeto).length >= 2;
+  function nivelDoItem(it) {
+    if (!temNiveis(it)) return 1;
+    const n = Math.min(NIVEIS_MAX, it.niveis.filter(ehObjeto).length), v = Math.round(numFinito(it.nv) || 1);
+    return Math.max(1, Math.min(n, v));
+  }
+  const soNumeros = o => { const out = {}; if (ehObjeto(o)) for (const k of Object.keys(o)) { const v = numFinito(o[k]); if (v != null) out[k] = v; } return out; };
+  // um nível arrumado: as três listas de números e a passiva
+  const normNivel = n => ({ bonus: soNumeros(n && n.bonus), rec: soNumeros(n && n.rec), def: soNumeros(n && n.def), efeito: String(n && n.efeito != null ? n.efeito : '') });
+  // os níveis do item, arrumados (um item comum tem um nível só: o dele)
+  function niveisDoItem(it) {
+    if (!ehObjeto(it)) return [];
+    return temNiveis(it) ? it.niveis.filter(ehObjeto).slice(0, NIVEIS_MAX).map(normNivel) : [normNivel(it)];
+  }
+  // o item no nível nv (preso entre 1 e o último): uma cópia, com o espelho daquele nível no próprio item
+  function itemNoNivel(it, nv) {
+    if (!temNiveis(it)) return it;
+    const lista = it.niveis.filter(ehObjeto).slice(0, NIVEIS_MAX), n = Math.max(1, Math.min(lista.length, Math.round(numFinito(nv) || 1)));
+    const l = normNivel(lista[n - 1]), out = Object.assign({}, it, { niveis: lista, nv: n, bonus: l.bonus });
+    for (const k of ['rec', 'def']) { if (Object.keys(l[k]).length) out[k] = l[k]; else delete out[k]; }
+    if (l.efeito) out.efeito = l.efeito; else delete out.efeito;
+    return out;
+  }
+  // os mesmos números? (um zero e a falta da chave contam igual)
+  function mesmosNumeros(a, b) {
+    const x = soNumeros(a), y = soNumeros(b);
+    return Object.keys(Object.assign({}, x, y)).every(k => (x[k] || 0) === (y[k] || 0));
+  }
+  /* O espelho do item confere com o nível de agora? Se não (alguém mexeu só no item, com a versão de antes), refaz
+     a partir da lista — numa cópia. O item que já confere volta o mesmo (abrir a ficha não a regrava). */
+  function espelharItem(it) {
+    if (!temNiveis(it)) return it;
+    const nv = nivelDoItem(it), l = normNivel(it.niveis.filter(ehObjeto)[nv - 1]);
+    const ok = numFinito(it.nv) === nv && mesmosNumeros(it.bonus, l.bonus) && mesmosNumeros(it.rec, l.rec) && mesmosNumeros(it.def, l.def)
+      && String(it.efeito == null ? '' : it.efeito) === l.efeito && it.niveis.length <= NIVEIS_MAX && it.niveis.every(ehObjeto);
+    return ok ? it : itemNoNivel(it, nv);
+  }
+  /* Um nível a mais, igual ao último (o item comum vira um item de dois níveis, os dois com os números dele; ele fica
+     no nível 1). Com 10 níveis, nada muda (volta o mesmo item). */
+  function itemComNivelNovo(it) {
+    if (!ehObjeto(it)) return it;
+    const ls = niveisDoItem(it);
+    if (ls.length >= NIVEIS_MAX) return it;
+    const novo = JSON.parse(JSON.stringify(ls[ls.length - 1]));
+    return itemNoNivel(Object.assign({}, it, { niveis: ls.concat([novo]) }), temNiveis(it) ? nivelDoItem(it) : 1);
+  }
+  /* Sem o nível k: quem estava acima desce um; se era o de agora, fica o de baixo (ou o 1). Sobrando um nível só, o item
+     volta a ser comum, com os números daquele nível. */
+  function itemSemNivel(it, k) {
+    if (!temNiveis(it)) return it;
+    const ls = niveisDoItem(it), i = Math.round(numFinito(k) || 0) - 1;
+    if (i < 0 || i >= ls.length) return it;
+    const nv = nivelDoItem(it), resto = ls.filter((_, j) => j !== i);
+    const para = nv - 1 > i ? nv - 1 : nv - 1 === i ? Math.max(1, nv - 1) : nv;
+    if (resto.length >= 2) return itemNoNivel(Object.assign({}, it, { niveis: resto }), para);
+    // sobrou um nível: o item comum, com os números e a passiva dele
+    const l = resto[0], out = Object.assign({}, it, { bonus: l.bonus });
+    delete out.niveis; delete out.nv;
+    for (const c of ['rec', 'def']) { if (Object.keys(l[c]).length) out[c] = l[c]; else delete out[c]; }
+    if (l.efeito) out.efeito = l.efeito; else delete out.efeito;
+    return out;
+  }
+  // "Katana de gelo: Nv 2 → Nv 3" (para o aviso e a mesa ao vivo)
+  const textoDoNivel = (it, de, para) => (String((it && it.nome) || '').trim() || 'Item sem nome') + ': Nv ' + de + ' → Nv ' + para;
+
   /* ---------- grupos de troca dos equipamentos (lote 6) ----------
      Um item pode estar num grupo de troca (it.troca: um nome, como "Arma principal" ou "Espada de gelo" — sem diferença
      de maiúsculas e acentos): dos itens do mesmo grupo, um só fica equipado. Equipar um guarda os outros do grupo; os
@@ -1018,32 +1149,68 @@
      Um item pode depender de outro (it.req): "i:<id>" (aquele item) ou "g:<grupo>" (qualquer item daquele grupo de
      troca — a bainha serve para qualquer nível da espada). Ele só vale (soma nas contas) com o que ele precisa
      equipado e valendo também. Um requisito que não está mais na ficha (o item apagado, o grupo vazio) não prende
-     ninguém; A precisa de B que precisa de A: basta os dois estarem equipados. */
-  function reqDoItem(it) {
-    const r = ehObjeto(it) && typeof it.req === 'string' ? it.req : '';
-    if (r.startsWith('i:') && r.length > 2) return { t: 'i', id: r.slice(2) };
+     ninguém; A precisa de B que precisa de A: basta os dois estarem equipados.
+     (lote 7) it.req pode ser também uma lista: o item vale com QUALQUER um deles. E "i:<id>@<n>" pede aquele item do
+     nível n para cima (um item com níveis: "só com a Katana de gelo Nv 2 ou mais"). */
+  function lerReq(r) {
+    if (typeof r !== 'string') return null;
+    if (r.startsWith('i:') && r.length > 2) {
+      const m = /^i:(.+?)(?:@(\d{1,2}))?$/.exec(r), nv = m && m[2] ? Math.min(NIVEIS_MAX, +m[2]) : 0;
+      return !m ? null : nv >= 2 ? { t: 'i', id: m[1], nv } : { t: 'i', id: m[1] };
+    }
     if (r.startsWith('g:') && normNome(r.slice(2))) return { t: 'g', g: r.slice(2).trim().slice(0, 40) };
     return null;
   }
+  // tudo o que o item aceita, arrumado e sem repetir: [{ t: 'i', id, nv? } | { t: 'g', g }]
+  function reqsDoItem(it) {
+    if (!ehObjeto(it)) return [];
+    const bruto = Array.isArray(it.req) ? it.req : typeof it.req === 'string' ? [it.req] : [], out = [], vistos = new Set();
+    for (const r of bruto.slice(0, 20)) {
+      const q = lerReq(r);
+      if (!q) continue;
+      const chave = q.t === 'i' ? 'i:' + q.id : 'g:' + normNome(q.g);
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      out.push(q);
+    }
+    return out;
+  }
+  // o primeiro (como era quando o item aceitava um só) — ou null
+  function reqDoItem(it) { const l = reqsDoItem(it); return l.length ? l[0] : null; }
+  // os itens da ficha que um requisito indica (o item; os do grupo, menos o próprio item) — [] se não está mais lá
+  function alvosDoReq(q, it, lista) {
+    if (q.t === 'i') { const a = lista.find(x => ehObjeto(x) && String(x.id) === q.id); return a ? [a] : []; }
+    const g = normNome(q.g);
+    return lista.filter(x => ehObjeto(x) && x !== it && normNome(grupoDeTroca(x)) === g);
+  }
+  const nivelServe = (q, x) => !q.nv || nivelDoItem(x) >= q.nv;
   function reqAtendido(it, itens, visto) {
-    const rq = reqDoItem(it);
-    if (!rq) return true;
+    const rs = reqsDoItem(it);
+    if (!rs.length) return true;
     const lista = Array.isArray(itens) ? itens : [], v = visto || new Set();
     if (v.has(it)) return true;
     v.add(it);
-    if (rq.t === 'i') { const alvo = lista.find(x => ehObjeto(x) && String(x.id) === rq.id); return !alvo || (alvo.equipado !== false && reqAtendido(alvo, lista, v)); }
-    const g = normNome(rq.g), doGrupo = lista.filter(x => ehObjeto(x) && x !== it && normNome(grupoDeTroca(x)) === g);
-    return !doGrupo.length || doGrupo.some(x => x.equipado !== false && reqAtendido(x, lista, new Set(v)));
+    let algum = false;
+    for (const q of rs) {
+      const alvos = alvosDoReq(q, it, lista);
+      if (!alvos.length) continue;                       // (o que saiu da ficha não conta, nem prende)
+      algum = true;
+      if (alvos.some(x => x.equipado !== false && nivelServe(q, x) && reqAtendido(x, lista, new Set(v)))) return true;
+    }
+    return !algum;
   }
   // o item soma nas contas? (equipado, e com o que ele precisa)
   function itemAtivo(it, itens) { return ehObjeto(it) && it.equipado !== false && reqAtendido(it, itens); }
-  // o nome do que o item precisa, para a tela: "Espada do Gelo de Selene" ou "Espada de gelo" (o grupo) — ou ''
+  /* o nome do que o item precisa, para a tela: "Espada do Gelo de Selene", "Espada de gelo" (o grupo),
+     "Katana de gelo (Nv 2 ou mais)" ou, com vários, "Katana de gelo, Sabre ou Espada longa" — ou '' */
   function nomeDoReq(it, itens) {
-    const rq = reqDoItem(it);
-    if (!rq) return '';
-    if (rq.t === 'g') return rq.g;
-    const alvo = (Array.isArray(itens) ? itens : []).find(x => ehObjeto(x) && String(x.id) === rq.id);
-    return alvo ? String(alvo.nome || '').trim() || 'item sem nome' : '';
+    const lista = Array.isArray(itens) ? itens : [], partes = [];
+    for (const q of reqsDoItem(it)) {
+      if (q.t === 'g') { partes.push(q.g); continue; }
+      const alvo = lista.find(x => ehObjeto(x) && String(x.id) === q.id);
+      if (alvo) partes.push((String(alvo.nome || '').trim() || 'item sem nome') + (q.nv ? ' (Nv ' + q.nv + ' ou mais)' : ''));
+    }
+    return partes.length < 2 ? partes.join('') : partes.slice(0, -1).join(', ') + ' ou ' + partes[partes.length - 1];
   }
   /* Equipar (on) ou guardar um item. Acerta tudo de uma vez, numa lista nova (os itens recebidos não mudam):
        · dos itens do mesmo grupo de troca, um só fica equipado: equipar um guarda os outros;
@@ -1062,13 +1229,16 @@
     const antes = new Map(itensDe().map(x => [x, x.equipado !== false]));
     let uso = itensDe().reduce((m, x) => Math.max(m, Number.isFinite(+x.uso) ? +x.uso : 0), 0);
     const trocados = [], trocas = [];
-    const doGrupo = (g, menos) => itensDe().filter(x => x !== menos && normNome(grupoDeTroca(x)) === normNome(g));
-    const ultimoDoGrupo = (g, menos) => doGrupo(g, menos).reduce((m, x) => (!m || (+x.uso || 0) > (+m.uso || 0) ? x : m), null);
+    // (lote 7) dos itens que servem ao requisito de x (de qualquer um da lista, no nível pedido), o usado por último
+    const melhorPara = x => {
+      let m = null;
+      for (const q of reqsDoItem(x)) for (const a of alvosDoReq(q, x, itensDe())) if (nivelServe(q, a) && (!m || (+a.uso || 0) > (+m.uso || 0))) m = a;
+      return m;
+    };
     const ligar = (x, visto) => {
       if (!x || visto.has(x)) return;
       visto.add(x);
-      const rq = reqDoItem(x);
-      if (rq && !reqAtendido(x, out)) ligar(rq.t === 'i' ? por(rq.id) : ultimoDoGrupo(rq.g, x), visto);
+      if (reqsDoItem(x).length && !reqAtendido(x, out)) ligar(melhorPara(x), visto);
       x.equipado = true; x.uso = ++uso; delete x.volta;
       const g = normNome(grupoDeTroca(x));
       if (g) for (const y of itensDe()) if (y !== x && y.equipado !== false && normNome(grupoDeTroca(y)) === g) { y.equipado = false; delete y.volta; trocados.push(y.id); trocas.push({ por: x.id, saiu: y.id }); }
@@ -1544,7 +1714,9 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
-    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
+    TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
+    NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,

@@ -208,17 +208,41 @@ const FichasExtras = (() => {
      relíquia (só um destaque dourado) e o grupo de troca: dos itens do mesmo grupo, um só fica equipado — equipar um
      guarda os outros (a conta é de TC.rules.equiparItem). E o "Só funciona com…" (it.req): um item complementar (a
      bainha da espada) só vale com o item ou um item do grupo de troca escolhido; equipá-lo traz o requisito junto, e
-     guardar o requisito guarda os que dependem dele — que voltam quando o requisito voltar. */
+     guardar o requisito guarda os que dependem dele — que voltam quando o requisito voltar.
+     (lote 7) Os cartões ficam em seções por tipo (it.tipo: Armas, Armaduras…, e os tipos que quem mestra cria, em
+     S.cfg.tiposItem), com os equipados primeiro; as seções se recolhem (o aparelho lembra, em S.itFechadas). Em cima,
+     os filtros (tipo, equipados ou guardados, relíquias e a busca pelo nome — só nesta tela, sem gravar nada). A alça
+     do cartão arrasta (soltar noutra seção troca o tipo) e, com o teclado, as setas sobem e descem. Um item pode ter
+     níveis (Katana de gelo Nv 1, 2, 3): o ◂ Nv ▸ do cartão troca o de agora — o dono e quem mestra; a mesa ao vivo
+     fica sabendo — e o "Editar" tem uma aba por nível, cada uma com os números e a passiva dela (as contas são de
+     TC.rules: itemNoNivel, itemComNivelNovo, itemSemNivel). O "Só funciona com…" aceita vários (vale com qualquer
+     um) e, num item com níveis, um nível mínimo. */
   const itensAbertos = new Set();            // os cartões abertos em edição nesta tela (pelo id do item)
+  const nivelAberto = new Map();             // id do item → o nível aberto no "Editar" (sem nada: o de agora)
+  const filtros = new Map();                 // id da ficha → { t: '' | id do tipo | '-' (sem tipo), e: '' | 'on' | 'off', r, q }
   const RELIQUIA_SVG = '<svg class="icorel" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11l3.5 5.5-9 11.5L3 9z"/><path d="M3 9h18M9.5 3.5 12 9l2.5-5.5M12 9v11.5"/></svg>';
   const TROCA_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>';
   const LIGA_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>';
+  const ALCA_SVG = '<svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3" r="1.4"/><circle cx="8.5" cy="3" r="1.4"/><circle cx="3.5" cy="8" r="1.4"/><circle cx="8.5" cy="8" r="1.4"/><circle cx="3.5" cy="13" r="1.4"/><circle cx="8.5" cy="13" r="1.4"/></svg>';
   const juntarE = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
   const RQ = () => (window.TC && TC.rules && TC.rules.reqDoItem ? TC.rules : null);
+  const R7 = () => (window.TC && TC.rules && TC.rules.secoesDeItens ? TC.rules : null);
   // o item vale (soma nas contas)? — equipado e com o que ele precisa
   const ativoNa = (it, pc) => (RQ() ? RQ().itemAtivo(it, pc.itens || []) : it.equipado !== false);
   const grupoDe = it => (window.TC && TC.rules && TC.rules.grupoDeTroca ? TC.rules.grupoDeTroca(it) : String((it && it.troca) || '').trim().slice(0, 40));
   const normG = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const nomeIt = it => String((it && it.nome) || '').trim();
+  // quem cria e arruma os tipos: quem mestra (fora de uma mesa, quem usa a página)
+  const quemMestra = () => !FichasMesa.ativo() || FichasMesa.mestre();
+  const tiposDaMesa = () => (R7() ? R7().tiposDeItem(S.cfg) : []);
+  const chaveTipo = (it, tipos) => { const t = R7() ? R7().tipoDoItem(it, tipos || tiposDaMesa()) : null; return t ? t.id : ''; };
+  const nomeDoTipo = (k, tipos) => { const t = (tipos || tiposDaMesa()).find(x => x.id === k); return t ? t.nome : ''; };
+  // os filtros desta ficha (só nesta tela)
+  const filtroDe = pc => filtros.get(pc.id) || { t: '', e: '', r: false, q: '' };
+  const filtrando = f => !!(f.t || f.e || f.r || String(f.q || '').trim());
+  const passa = (it, f, tipos) => (!f.t || (f.t === '-' ? !chaveTipo(it, tipos) : chaveTipo(it, tipos) === f.t))
+    && (!f.e || (f.e === 'on') === (it.equipado !== false)) && (!f.r || !!it.reliquia) && (!String(f.q || '').trim() || normG(it.nome).includes(normG(f.q)));
+  const fechadas = () => new Set(Array.isArray(S.itFechadas) ? S.itFechadas : []);
   // só o que o item soma: as chaves com valor, o máximo de barras e as defesas específicas — [{ rot, v, title }]
   function bonusDoItem(it, pc) {
     const b = it.bonus || {}, out = [];
@@ -231,16 +255,30 @@ const FichasExtras = (() => {
     return out;
   }
   const chipsBonus = lista => lista.map(b => `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${sinalTxt(b.v)}</span>`).join('<span class="itsep" aria-hidden="true">·</span>');
+  // o nível aberto no "Editar" de um item com níveis (0: item comum)
+  function nivelEditado(it) {
+    const R = R7();
+    if (!R || !R.temNiveis(it)) return 0;
+    return Math.max(1, Math.min(R.niveisDoItem(it).length, nivelAberto.get(it.id) || R.nivelDoItem(it)));
+  }
   function editorItem(it, pc) {
-    const campo = (x, cls) => `<label class="itn ${cls}"><span>${esc(x.rot || x.k)}</span><input type="number" step="1" data-itembon="${esc(it.id)}|${x.k}" value="${(+(it.bonus || {})[x.k] || 0)}" aria-label="${esc(x.nome)}: quanto ${esc(it.nome || 'este item')} soma"></label>`;
+    const R = R7(), k = nivelEditado(it), lv = k ? R.niveisDoItem(it) : null, alvo = k ? lv[k - 1] : it, nvAttr = k ? ` data-nv="${k}"` : '';
+    const campo = (x, cls) => `<label class="itn ${cls}"><span>${esc(x.rot || x.k)}</span><input type="number" step="1" data-itembon="${esc(it.id)}|${x.k}"${nvAttr} value="${(+(alvo.bonus || {})[x.k] || 0)}" aria-label="${esc(x.nome)}: quanto ${esc(it.nome || 'este item')} soma${k ? ' no Nv ' + k : ''}"></label>`;
+    const tipos = tiposDaMesa(), tAtual = chaveTipo(it, tipos);
+    const selTipo = R ? `<label class="f ittipof"><span class="eyebrow">Tipo</span><select data-ittipo="${esc(it.id)}" aria-label="Tipo de ${esc(it.nome || 'item sem nome')}">
+        <option value="" ${tAtual ? '' : 'selected'}>Sem tipo</option>
+        ${tipos.map(t => `<option value="${esc(t.id)}" ${t.id === tAtual ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}
+        ${quemMestra() ? '<option value="+">+ Novo tipo…</option>' : ''}
+      </select></label>` : '';
     return `<div class="ited">
+      ${R ? `<div class="itcab">${selTipo}${htmlNiveis(it, k, lv)}</div>` : ''}
       <div class="itgrupos">
         <div class="itgrupo"><span class="eyebrow">Atributos</span><div class="itnums">${ATRIBS.map(a => campo(a, 'atr')).join('')}</div></div>
         <div class="itgrupo"><span class="eyebrow">Secundários</span><div class="itnums">${DERIV.map(d => campo(d, 'der')).join('')}</div></div>
         <div class="itgrupo"><span class="eyebrow">Defesas</span><div class="itnums">${DEFESAS.map(d => campo(d, 'def')).join('')}</div></div>
       </div>
-      ${htmlMaisDoItem(it, pc)}
-      <textarea rows="1" data-itemfx="${esc(it.id)}" placeholder="Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}">${esc(it.efeito || '')}</textarea>
+      ${htmlMaisDoItem(it, pc, alvo, k)}
+      <textarea rows="1" data-itemfx="${esc(it.id)}"${nvAttr} placeholder="${k ? 'Passivas e efeitos do Nv ' + k + ' — ex.: +1 dado de gelo contra quem está molhado' : 'Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz'}" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}${k ? ' no Nv ' + k : ''}">${esc(alvo.efeito || '')}</textarea>
       <div class="itopc">
         <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
         <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
@@ -248,46 +286,129 @@ const FichasExtras = (() => {
       </div>
     </div>`;
   }
-  /* "Só funciona com…": nada, um grupo de troca (qualquer item dele serve) ou outro item da ficha */
-  function opcoesReq(it, pc) {
-    const outros = (pc.itens || []).filter(x => x && x.id !== it.id), atual = typeof it.req === 'string' ? it.req : '';
-    const grupos = [...new Set(outros.map(grupoDe).filter(Boolean))];
-    const ops = [['', 'Funciona sozinho']].concat(grupos.map(g => ['g:' + g, 'Grupo de troca: ' + g]), outros.map(x => ['i:' + x.id, 'Item: ' + (String(x.nome || '').trim() || 'sem nome')]));
-    // (o requisito de antes que não está mais na lista continua escolhido, dizendo isso)
-    if (atual && !ops.some(o => normG(o[0]) === normG(atual))) ops.push([atual, (atual.startsWith('g:') ? 'Grupo de troca: ' + atual.slice(2) : 'Item que saiu da ficha') + ' (não está mais aqui)']);
-    const escolhido = ops.find(o => normG(o[0]) === normG(atual)) || ops[0];
-    return `<label class="f itreqf"><span class="eyebrow">Só funciona com…</span><select data-itemreq="${esc(it.id)}" title="Um item complementar (a bainha da espada) só vale com o item (ou um item do grupo de troca) escolhido. Equipá-lo equipa o que ele precisa; guardar o que ele precisa guarda ele junto, e ele volta quando aquilo voltar.">${ops.map(o => `<option value="${esc(o[0])}" ${o === escolhido ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select></label>`;
+  // as abas dos níveis no "Editar" (ou o "+ nível" de um item comum)
+  function htmlNiveis(it, k, lv) {
+    const R = R7(), nome = esc(it.nome || 'item sem nome');
+    if (!k) return `<div class="itnvacoes"><button type="button" class="mini" data-itnvnovo="${esc(it.id)}" title="Para um item que melhora (Katana Nv 1, 2, 3…): cada nível com os números e a passiva dele. O Nv 2 começa igual ao 1.">+ nível</button><span class="hint">para um item que sobe de nível</span></div>`;
+    const atual = R.nivelDoItem(it);
+    return `<div class="itnvbloco">
+      <div class="itniveis" role="group" aria-label="Níveis de ${nome}">
+        ${lv.map((_, i) => `<button type="button" class="itnvaba ${i + 1 === k ? 'on' : ''}" data-itnvaba="${esc(it.id)}" data-nv="${i + 1}" aria-pressed="${i + 1 === k}">Nv ${i + 1}${i + 1 === atual ? '<span class="itagora">agora</span>' : ''}</button>`).join('')}
+        ${lv.length < R.NIVEIS_MAX ? `<button type="button" class="mini" data-itnvnovo="${esc(it.id)}" title="Um nível a mais, que começa igual ao último">+ nível</button>` : ''}
+      </div>
+      <div class="itnvacoes">
+        <span class="hint">${k === atual ? 'Nv ' + k + ' é o de agora: é ele que soma na ficha.' : 'Nv ' + k + ' não está em uso.'}</span>
+        ${k !== atual ? `<button type="button" class="mini" data-itnvusar="${esc(it.id)}" data-nv="${k}">Usar o Nv ${k}</button>` : ''}
+        ${k > 1 ? `<button type="button" class="mini" data-itnvcopia="${esc(it.id)}" data-nv="${k}" title="Os números e a passiva do Nv ${k - 1} no lugar dos do Nv ${k}">Copiar do Nv ${k - 1}</button>` : ''}
+        <button type="button" class="mini danger" data-itnvtira="${esc(it.id)}" data-nv="${k}" title="Tira o Nv ${k} (dá para desfazer). Sobrando um nível só, o item volta a ser comum.">Tirar o Nv ${k}</button>
+      </div>
+    </div>`;
   }
-  function cartaoItem(it, pc) {
+  /* "Só funciona com…": nada, ou um ou mais grupos de troca (qualquer item dele serve) e outros itens da ficha — vale
+     com qualquer um deles. Um item com níveis pode pedir um nível mínimo. */
+  const reqsBrutos = it => (Array.isArray(it.req) ? it.req.filter(x => typeof x === 'string') : typeof it.req === 'string' && it.req ? [it.req] : []);
+  // a lista de volta no item: nenhum (sai), um (texto, como antes) ou vários (lista)
+  function porReqs(it, l) { delete it.volta; if (!l.length) delete it.req; else it.req = l.length === 1 ? l[0] : l.slice(); }
+  function opcoesReq(it, pc) {
+    const R = RQ(), itens = (pc.itens || []).filter(Boolean), outros = itens.filter(x => x.id !== it.id), brutos = reqsBrutos(it);
+    const ler = r => (R && R.reqsDoItem ? R.reqsDoItem({ req: r })[0] || null : null);
+    const usados = new Set();
+    const chips = brutos.map((r, i) => {
+      const qq = ler(r);
+      let nome = 'Requisito estranho', fora = true, alvo = null;
+      if (qq && qq.t === 'g') { nome = 'Grupo de troca: ' + qq.g; fora = !outros.some(x => normG(grupoDe(x)) === normG(qq.g)); usados.add('g:' + normG(qq.g)); }
+      else if (qq) { alvo = itens.find(x => String(x.id) === qq.id) || null; nome = alvo ? 'Item: ' + (nomeIt(alvo) || 'sem nome') : 'Item que saiu da ficha'; fora = !alvo; usados.add('i:' + qq.id); }
+      const R2 = R7(), comNv = !!alvo && !!R2 && R2.temNiveis(alvo), n = comNv ? Math.max(R2.niveisDoItem(alvo).length, (qq && qq.nv) || 0) : 0;
+      const nvSel = comNv ? `<select class="itreqnv" data-itreqnv="${esc(it.id)}" data-i="${i}" aria-label="Nível de ${esc(nomeIt(alvo) || 'item')} para valer">
+          <option value="" ${qq.nv ? '' : 'selected'}>qualquer nível</option>
+          ${Array.from({ length: n - 1 }, (_, j) => j + 2).map(v => `<option value="${v}" ${qq.nv === v ? 'selected' : ''}>Nv ${v} ou mais</option>`).join('')}</select>` : '';
+      return `<span class="chipb itreqc ${fora ? 'fora' : ''}"><b>${esc(nome)}${fora ? ' (não está mais aqui)' : ''}</b>${nvSel}<button type="button" class="chipx" data-itreqdel="${esc(it.id)}" data-i="${i}" title="Tirar do “Só funciona com…”" aria-label="Tirar ${esc(nome)} do “Só funciona com…”">×</button></span>`;
+    });
+    const grupos = [...new Set(outros.map(grupoDe).filter(Boolean))];
+    const ops = grupos.filter(g => !usados.has('g:' + normG(g))).map(g => ['g:' + g, 'Grupo de troca: ' + g])
+      .concat(outros.filter(x => !usados.has('i:' + x.id)).map(x => ['i:' + x.id, 'Item: ' + (nomeIt(x) || 'sem nome')]));
+    const add = `<select data-itemreq="${esc(it.id)}" title="Um item complementar (a bainha da espada) só vale com o que for escolhido aqui — com qualquer um, quando são vários. Equipá-lo equipa o que ele precisa; guardar o que ele precisa guarda ele junto, e ele volta quando aquilo voltar.">
+        <option value="" selected>${brutos.length ? '+ mais um…' : 'Funciona sozinho'}</option>
+        ${ops.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('')}</select>`;
+    return `<div class="f itreqf"><span class="eyebrow">Só funciona com…</span>
+      ${brutos.length ? `<div class="itreqs">${chips.join('')}</div>` : ''}
+      ${!brutos.length || ops.length ? add : ''}
+      ${brutos.length > 1 ? '<span class="hint">Vale com qualquer um deles.</span>' : ''}</div>`;
+  }
+  // o ◂ Nv 2 ▸ do cartão
+  function htmlNivelCartao(it) {
+    const R = R7(), nv = R.nivelDoItem(it), n = R.niveisDoItem(it).length, nome = esc(nomeIt(it) || 'o item');
+    return `<span class="itnv" title="Nível de agora: ${nv} de ${n}">
+      <button type="button" class="itnvb" data-itnv="${esc(it.id)}" data-d="-1" ${nv <= 1 ? 'disabled' : ''} aria-label="${nv <= 1 ? 'Já está no Nv 1' : 'Descer ' + nome + ' para o Nv ' + (nv - 1)}">◂</button>
+      <b>Nv ${nv}</b>
+      <button type="button" class="itnvb" data-itnv="${esc(it.id)}" data-d="1" ${nv >= n ? 'disabled' : ''} aria-label="${nv >= n ? 'Já está no último nível' : 'Subir ' + nome + ' para o Nv ' + (nv + 1)}">▸</button></span>`;
+  }
+  function cartaoItem(it, pc, escondido) {
     const aberto = itensAbertos.has(it.id), on = it.equipado !== false, g = grupoDe(it), fx = String(it.efeito || '').trim(), bon = bonusDoItem(it, pc);
     const req = RQ() ? RQ().nomeDoReq(it, pc.itens || []) : '', semEfeito = on && req && !ativoNa(it, pc);
-    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''}" data-itcard="${esc(it.id)}">
+    const pode = FichasMesa.podeEditar(pc), niv = !!R7() && R7().temNiveis(it);
+    const alca = pode && !!R7();
+    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''} ${alca ? 'comalca' : ''}" data-itcard="${esc(it.id)}"${escondido ? ' hidden' : ''}>
       <div class="ittopo">
+        ${alca ? `<button type="button" class="itarr" data-itarr="${esc(it.id)}" title="Arraste para mudar a ordem — ou para outra seção, que troca o tipo. Com o teclado: as setas para cima e para baixo." aria-label="Mudar ${esc(nomeIt(it) || 'o item sem nome')} de lugar">${ALCA_SVG}</button>` : ''}
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
         <input class="inm itnome" data-itemnome="${esc(it.id)}" value="${esc(it.nome || '')}" placeholder="Nome do item" aria-label="Nome do item">
+        ${niv ? htmlNivelCartao(it) : ''}
         ${it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : ''}
         ${g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : ''}
-        ${req ? `<span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span>` : ''}
         <span class="itbts"><button type="button" class="mini" data-itemed="${esc(it.id)}" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Editar'}</button><button type="button" class="mini danger" data-itemdel="${esc(it.id)}" title="Tirar este item (dá para desfazer)" aria-label="Tirar o item ${esc(it.nome || 'sem nome')}">×</button></span>
       </div>
+      ${req ? `<div class="itreqlinha"><span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span></div>` : ''}
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
       ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}
       ${aberto ? editorItem(it, pc) : ''}
     </div>`;
   }
+  const qtdItens = n => (n === 1 ? '1 item' : n + ' itens');
+  const qtdEquip = n => (n === 0 ? 'nenhum equipado' : n === 1 ? '1 equipado' : n + ' equipados');
   function painelItens(pc, c) {
-    const itens = pc.itens || [];
+    const itens = (pc.itens || []).filter(Boolean), R = R7(), pode = FichasMesa.podeEditar(pc);
     const grupos = [...new Set(itens.map(grupoDe).filter(Boolean))];
     // (um grupo com mais de um item equipado: avisa, sem mexer — o próximo "equipar" do grupo acerta)
     const dobrados = grupos.filter(g => itens.filter(it => it.equipado !== false && normG(grupoDe(it)) === normG(g)).length > 1);
     const tot = ATRIBS.concat(DERIV, DEFESAS).filter(x => c.eq && c.eq[x.k]).map(x => ({ rot: x.rot || x.k, v: c.eq[x.k], title: x.nome }));
+    const tipos = tiposDaMesa(), f = filtroDe(pc), filt = filtrando(f), fech = fechadas();
+    const secs = R ? R.secoesDeItens(itens, S.cfg) : [{ tipo: null, itens }];
+    const semTipo = R ? itens.filter(it => !chaveTipo(it, tipos)) : [];
+    const n = (l, p) => l.filter(p).length;
+    const fil = (k, rot, qtd, on, titulo) => `<button type="button" class="itf ${on ? 'on' : ''}" data-itfil="${k}" aria-pressed="${on}"${titulo ? ` title="${titulo}"` : ''}>${rot}<span class="mk">${qtd}</span></button>`;
+    const htmlFiltros = !R || itens.length < 2 ? '' : `<div class="itfiltros" role="toolbar" aria-label="Filtrar os equipamentos">
+        ${fil('t:', 'Todos', itens.length, !f.t)}
+        ${secs.map(s => fil('t:' + (s.tipo ? s.tipo.id : '-'), esc(s.tipo ? s.tipo.sec : 'Sem tipo'), s.itens.length, f.t === (s.tipo ? s.tipo.id : '-'))).join('')}
+        <span class="itfsep" aria-hidden="true"></span>
+        ${fil('e:on', 'Equipados', n(itens, x => x.equipado !== false), f.e === 'on')}
+        ${fil('e:off', 'Guardados', n(itens, x => x.equipado === false), f.e === 'off')}
+        ${itens.some(x => x.reliquia) ? fil('r:1', 'Relíquias', n(itens, x => !!x.reliquia), !!f.r) : ''}
+        <input type="search" class="inm itbusca" data-itbusca value="${esc(f.q || '')}" placeholder="Buscar item…" aria-label="Buscar item pelo nome" autocomplete="off">
+        <button type="button" class="mini" data-itfil="limpar"${filt ? '' : ' hidden'}>Limpar filtros</button>
+      </div>`;
+    const htmlSecao = s => {
+      const k = s.tipo ? s.tipo.id : '-', vis = s.itens.filter(it => passa(it, f, tipos)).length, fechada = fech.has(k);
+      const rot = `<span class="itseta" aria-hidden="true">${fechada ? '▸' : '▾'}</span><span class="itsecn">${esc(s.tipo ? s.tipo.sec : 'Sem tipo')}</span><span class="itsecq">${qtdItens(s.itens.length)}, ${qtdEquip(n(s.itens, x => x.equipado !== false))}</span>`;
+      return `<section class="itsec${fechada ? ' fechada' : ''}${filt ? ' filtrando' : ''}" data-itsec="${esc(k)}"${vis ? '' : ' hidden'}>
+        <button type="button" class="itsech" data-itsecbt="${esc(k)}" aria-expanded="${!fechada}" title="${fechada ? 'Mostrar' : 'Recolher'} esta seção">${rot}</button>
+        <div class="itcards">${s.itens.map(it => cartaoItem(it, pc, !passa(it, f, tipos))).join('')}</div>
+      </section>`;
+    };
+    const algumVisivel = itens.some(it => passa(it, f, tipos));
     return `<div class="panel" style="margin-bottom:18px" id="painelItens">
       <div class="hd"><span class="eyebrow">Equipamentos</span>
-        <span class="hint" style="margin-left:8px">a chave equipa e guarda · “Editar” abre os números, as passivas, a relíquia e o grupo de troca</span>
-        <span style="margin-left:auto"><button class="mini" data-act="additem">+ Item</button></span>
+        <span class="hint" style="margin-left:8px">a chave equipa e guarda · “Editar” abre os números, as passivas, os níveis, a relíquia e o grupo de troca</span>
+        <span class="itacoes">
+          ${R && pode && semTipo.length ? `<button class="mini" data-itseparar title="Sugere o tipo de cada item sem tipo, pelo nome — você confere antes">Separar por tipo…</button>` : ''}
+          ${R && quemMestra() ? `<button class="mini" data-ittipos title="Os tipos de equipamento da mesa: os prontos e os que você criar">Tipos…</button>` : ''}
+          <button class="mini" data-act="additem">+ Item</button>
+        </span>
       </div>
       <div class="bd">
-        ${itens.length ? `<div class="itcards">${itens.map(it => cartaoItem(it, pc)).join('')}</div>
+        ${itens.length ? `${htmlFiltros}
+        ${R ? secs.map(htmlSecao).join('') : `<div class="itcards">${itens.map(it => cartaoItem(it, pc)).join('')}</div>`}
+        <div class="hint" id="itNada"${filt && !algumVisivel ? '' : ' hidden'}>Nenhum item com esse filtro.</div>
         <div class="ittotal" id="itTotal"><span class="eyebrow">Em uso somam</span>${tot.length ? chipsBonus(tot) : '<span class="hint">nada nos atributos</span>'}</div>${htmlTotaisExtras(pc, c)}
         ${dobrados.length ? `<div class="hint itdobro">No grupo de troca ${juntarE(dobrados.map(g => '“' + esc(g) + '”'))} há mais de um item equipado: equipar um deles guarda os outros.</div>` : ''}
         <datalist id="gruposTroca">${grupos.map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist>`
@@ -297,9 +418,319 @@ const FichasExtras = (() => {
   }
   // um item novo já vem com o cartão aberto (quem chama põe o item na ficha e redesenha)
   const abrirItem = id => { itensAbertos.add(id); };
+  /* (lote 7) O item novo do "+ Item": com o filtro de um tipo ligado, já vem daquele tipo; os outros filtros (que o
+     esconderiam) saem. */
+  function itemNovo(pc) {
+    const f = filtroDe(pc), b0 = {};
+    ATRIBS.forEach(x => { b0[x.k] = 0; });
+    const it = { id: uid(), nome: '', equipado: true, bonus: b0 };
+    if (f.t && f.t !== '-' && tiposDaMesa().some(t => t.id === f.t)) it.tipo = f.t;
+    if (filtrando(f)) filtros.set(pc.id, { t: it.tipo ? f.t : '', e: '', r: false, q: '' });
+    itensAbertos.add(it.id);
+    return it;
+  }
+
+  /* ---- os filtros: na própria tela, sem redesenhar a ficha (a busca não perde o cursor) ---- */
+  function aplicarFiltro(painel, pc) {
+    const f = filtroDe(pc), tipos = tiposDaMesa(), filt = filtrando(f), itens = (pc.itens || []).filter(Boolean);
+    qa(painel, '[data-itfil]').forEach(b => {
+      const [k, v] = b.dataset.itfil.split(':');
+      if (k === 'limpar') { b.hidden = !filt; return; }
+      const on = k === 't' ? f.t === v : k === 'e' ? f.e === v : k === 'r' ? !!f.r : false;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+    });
+    let vis = 0;
+    qa(painel, '[data-itcard]').forEach(cd => { const it = itens.find(x => x.id === cd.dataset.itcard), ok = !!it && passa(it, f, tipos); cd.hidden = !ok; if (ok) vis++; });
+    qa(painel, '[data-itsec]').forEach(s => { s.hidden = !s.querySelector('[data-itcard]:not([hidden])'); s.classList.toggle('filtrando', filt); });
+    const nada = q(painel, '#itNada'); if (nada) nada.hidden = !(filt && !vis);
+  }
+  function mudarFiltro(painel, pc, mud) {
+    const f = Object.assign({}, filtroDe(pc), mud);
+    if (filtrando(f)) filtros.set(pc.id, f); else filtros.delete(pc.id);
+    aplicarFiltro(painel, pc);
+  }
+
+  /* ---- os níveis ---- */
+  const copia = x => JSON.parse(JSON.stringify(x));
+  const indiceDe = (pc, id) => (pc.itens || []).findIndex(x => x && x.id === id);
+  // troca o item da ficha por outro (o mesmo id) e devolve uma função que volta o de antes
+  function trocarItem(pc, id, novo) {
+    const i = indiceDe(pc, id); if (i < 0) return null;
+    const antes = copia(pc.itens[i]);
+    pc.itens[i] = novo;
+    return () => { const j = indiceDe(pc, id); if (j >= 0) pc.itens[j] = antes; else pc.itens.push(antes); };
+  }
+  // mexe num nível (fn recebe uma cópia dele) e refaz o espelho; o item da ficha vira outro objeto (o mesmo id)
+  function editarNivel(pc, it, nv, fn) {
+    const R = R7(), i = (pc.itens || []).indexOf(it);
+    if (!R || i < 0 || !R.temNiveis(it)) return null;
+    const niveis = it.niveis.filter(o => o && typeof o === 'object').map(o => Object.assign({}, o)), l = niveis[nv - 1];
+    if (!l) return null;
+    fn(l);
+    return (pc.itens[i] = R.itemNoNivel(Object.assign({}, it, { niveis }), R.nivelDoItem(it)));
+  }
+  // o ◂ ▸ e o "Usar o Nv k": troca o nível de agora, avisa a mesa ao vivo e deixa desfazer
+  function mudarNivel(pc, id, para, foco) {
+    const R = R7(), i = indiceDe(pc, id); if (!R || i < 0) return;
+    const it = pc.itens[i], de = R.nivelDoItem(it), novo = R.itemNoNivel(it, para), ate = R.nivelDoItem(novo);
+    if (ate === de) return;
+    pc.itens[i] = novo;
+    save(); desenhar(render, foco);
+    const quem = String(pc.nome || '').trim() || 'Personagem', texto = R.textoDoNivel(novo, de, ate);
+    logar({ tipo: 'uso', quem, pc: pc.id, det: texto, total: null });
+    aviso(texto + '.', 'Desfazer', () => {
+      const j = indiceDe(pc, id); if (j < 0) return;
+      const agora = R.nivelDoItem(pc.itens[j]);
+      if (agora === de) return;
+      pc.itens[j] = R.itemNoNivel(pc.itens[j], de);
+      save(); render();
+      logar({ tipo: 'uso', quem, pc: pc.id, det: R.textoDoNivel(pc.itens[j], agora, de) + ' (desfeito)', total: null });
+    });
+  }
+
+  /* ---- arrastar o cartão (e as setas do teclado na alça) ---- */
+  let arrasto = null;
+  // move o item para antes/depois de outro (alvo.ref) — ou para o fim da seção alvo.k —, trocando o tipo se a seção é outra
+  function moverItem(pc, id, alvo, foco) {
+    const lista = (pc.itens || []).slice(), i = lista.findIndex(x => x && x.id === id); if (i < 0) return;
+    const it = lista[i], tipos = tiposDaMesa(), deK = chaveTipo(it, tipos) || '-', paraK = alvo.k || '-';
+    const antesOrdem = (pc.itens || []).map(x => x && x.id), antesTipo = it.tipo;
+    lista.splice(i, 1);
+    let pos = lista.length;
+    if (alvo.ref) { const j = lista.findIndex(x => x && x.id === alvo.ref); if (j >= 0) pos = alvo.antes ? j : j + 1; }
+    else { let ult = -1; lista.forEach((x, j) => { if (x && (chaveTipo(x, tipos) || '-') === paraK) ult = j; }); if (ult >= 0) pos = ult + 1; }
+    const novo = paraK !== deK ? Object.assign({}, it) : it;
+    if (paraK !== deK) { if (paraK === '-') delete novo.tipo; else novo.tipo = paraK; }
+    lista.splice(pos, 0, novo);
+    if (paraK === deK && lista.map(x => x && x.id).join('\u0001') === antesOrdem.join('\u0001')) return;
+    pc.itens = lista;
+    save(); render(); refocar(foco || '[data-itarr="' + CSS.escape(id) + '"]');
+    const nome = nomeIt(it) || 'O item sem nome';
+    aviso(paraK !== deK ? (paraK === '-' ? nome + ' ficou sem tipo.' : nome + ' agora é ' + nomeDoTipo(paraK, tipos) + '.') : nome + ' mudou de lugar.', 'Desfazer', () => {
+      const por = new Map((pc.itens || []).map(x => [x && x.id, x]));
+      const volta = antesOrdem.map(k => por.get(k)).filter(Boolean).concat((pc.itens || []).filter(x => x && !antesOrdem.includes(x.id)));
+      const k = volta.findIndex(x => x && x.id === id);
+      if (k >= 0) { const y = Object.assign({}, volta[k]); if (antesTipo === undefined) delete y.tipo; else y.tipo = antesTipo; volta[k] = y; }
+      pc.itens = volta;
+      save(); render();
+    });
+  }
+  // as setas na alça: sobe ou desce um lugar, entre os do mesmo jeito (equipados ou guardados) da mesma seção
+  function moverComTeclado(pc, id, sobe) {
+    const R = R7(); if (!R) return;
+    const secs = R.secoesDeItens(pc.itens || [], S.cfg), s = secs.find(x => x.itens.some(y => y.id === id)); if (!s) return;
+    const it = s.itens.find(y => y.id === id), mesmos = s.itens.filter(y => (y.equipado !== false) === (it.equipado !== false)), i = mesmos.indexOf(it);
+    const viz = mesmos[sobe ? i - 1 : i + 1]; if (!viz) return;
+    moverItem(pc, id, { k: s.tipo ? s.tipo.id : '-', ref: viz.id, antes: sobe });
+  }
+  function fimDoArrasto() {
+    const a = arrasto; arrasto = null;
+    if (!a) return null;
+    window.removeEventListener('pointermove', a.mover); window.removeEventListener('pointerup', a.soltar);
+    window.removeEventListener('pointercancel', a.cancelar); window.removeEventListener('keydown', a.esc, true);
+    clearInterval(a.rolar);
+    a.linha.remove(); a.card.classList.remove('arrastando');
+    qa(a.painel, '.itsec.alvo').forEach(s => s.classList.remove('alvo'));
+    return a;
+  }
+  function comecarArrasto(ev, painel, pc, id) {
+    if (ev.button !== 0 || !FichasMesa.podeEditar(pc) || arrasto) return;
+    const card = q(painel, '[data-itcard="' + CSS.escape(id) + '"]'), it = (pc.itens || []).find(x => x && x.id === id);
+    if (!card || !it) return;
+    ev.preventDefault();
+    const linha = document.createElement('div'); linha.className = 'itlinha'; linha.hidden = true; document.body.append(linha);
+    const a = arrasto = { id, pc, painel, card, linha, on: it.equipado !== false, alvo: null, x0: ev.clientX, y0: ev.clientY, mexeu: false, vy: 0 };
+    card.classList.add('arrastando');
+    a.rolar = setInterval(() => { if (a.vy) window.scrollBy(0, a.vy); }, 30);
+    a.mover = e => {
+      if (!a.mexeu && Math.hypot(e.clientX - a.x0, e.clientY - a.y0) < 5) return;
+      a.mexeu = true;
+      a.vy = e.clientY < 48 ? -14 : e.clientY > innerHeight - 48 ? 14 : 0;
+      qa(painel, '.itsec.alvo').forEach(s => s.classList.remove('alvo'));
+      const el = document.elementFromPoint(e.clientX, e.clientY), sec = el && el.closest('[data-itsec]');
+      if (!sec || !painel.contains(sec)) { a.alvo = null; linha.hidden = true; return; }
+      const itemDe = c => (pc.itens || []).find(x => x && x.id === c.dataset.itcard);
+      const mesmos = qa(sec, '[data-itcard]:not([hidden])').filter(c => c !== card && itemDe(c) && (itemDe(c).equipado !== false) === a.on);
+      const sob = el.closest('[data-itcard]');
+      let ref = null, antes = true;
+      if (sob && mesmos.includes(sob)) {
+        const r = sob.getBoundingClientRect(), largo = r.width < sec.getBoundingClientRect().width * 0.8;
+        ref = sob; antes = largo ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
+      } else if (mesmos.length) { if (a.on) { ref = mesmos[mesmos.length - 1]; antes = false; } else { ref = mesmos[0]; antes = true; } }
+      a.alvo = { k: sec.dataset.itsec, ref: ref ? ref.dataset.itcard : null, antes };
+      if (!ref) { sec.classList.add('alvo'); linha.hidden = true; return; }
+      const r = ref.getBoundingClientRect(), largo = r.width < sec.getBoundingClientRect().width * 0.8;
+      Object.assign(linha.style, largo
+        ? { left: (antes ? r.left - 6 : r.right + 3) + 'px', top: r.top + 'px', width: '3px', height: r.height + 'px' }
+        : { left: r.left + 'px', top: (antes ? r.top - 6 : r.bottom + 3) + 'px', width: r.width + 'px', height: '3px' });
+      linha.hidden = false;
+    };
+    a.soltar = () => { const b = fimDoArrasto(); if (b && b.mexeu && b.alvo) moverItem(b.pc, b.id, b.alvo); };
+    a.cancelar = () => { fimDoArrasto(); };
+    a.esc = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fimDoArrasto(); } };
+    window.addEventListener('pointermove', a.mover); window.addEventListener('pointerup', a.soltar);
+    window.addEventListener('pointercancel', a.cancelar); window.addEventListener('keydown', a.esc, true);
+  }
+
+  /* ---- as janelas: um tipo novo, os tipos da mesa e "Separar por tipo…" ---- */
+  function janela(titulo, corpo, largura) {
+    const volta = document.activeElement, m = document.createElement('div');
+    m.className = 'modal itjanela';
+    m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" style="max-width:${largura || 520}px">
+      <div class="hd"><span class="eyebrow">${esc(titulo)}</span><button type="button" class="mini" data-jx style="margin-left:auto">Cancelar</button></div>
+      <div class="bd">${corpo}</div></div>`;
+    const fechar = () => { m.remove(); document.removeEventListener('keydown', tecla, true); if (volta && volta.isConnected) volta.focus({ preventScroll: true }); };
+    const tecla = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); } };
+    m.addEventListener('click', e => { if (e.target === m) fechar(); });
+    document.addEventListener('keydown', tecla, true);
+    document.body.append(m);
+    qa(m, '[data-jx], [data-jcancela]').forEach(b => b.onclick = fechar);
+    return { m, fechar };
+  }
+  const tipoNovoId = () => 'tp_' + uid().replace(/[^a-z0-9]/gi, '').slice(0, 12);
+  // o nome de um tipo novo (ou renomeado) serve? — devolve o nome arrumado, ou um aviso
+  function nomeDeTipo(nome, menos) {
+    const n = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 30), R = R7();
+    if (!n) return { erro: 'Escreva o nome do tipo.' };
+    const usados = R.TIPOS_ITEM.flatMap(t => [t.nome, t.sec]).concat(R.tiposCriados(S.cfg).filter(t => t.id !== menos).map(t => t.nome));
+    if (usados.some(x => normG(x) === normG(n))) return { erro: 'Já existe um tipo com esse nome.' };
+    return { nome: n };
+  }
+  // "+ Novo tipo…" (no "Editar" de um item: o item já fica com ele)
+  function novoTipo(pc, id) {
+    const { m, fechar } = janela('Novo tipo de equipamento', `
+      <label class="f"><span class="eyebrow">Nome</span><input class="inm" data-jnome maxlength="30" placeholder="ex.: Talismã" autocomplete="off"></label>
+      <p class="hint" style="margin:8px 0 0">Vale para todas as fichas${FichasMesa.ativo() ? ' da mesa' : ''}. Vira uma seção na lista de equipamentos.</p>
+      <p class="hint itjerro" data-jerro hidden></p>
+      <div class="modalacts"><span style="margin-left:auto;display:flex;gap:8px"><button type="button" data-jcancela>Cancelar</button><button type="button" class="primary" data-jok>Criar</button></span></div>`, 420);
+    const inp = q(m, '[data-jnome]'), erro = q(m, '[data-jerro]');
+    const criar = () => {
+      const r = nomeDeTipo(inp.value);
+      if (r.erro) { erro.textContent = r.erro; erro.hidden = false; inp.focus(); return; }
+      const t = { id: tipoNovoId(), nome: r.nome };
+      S.cfg.tiposItem = (Array.isArray(S.cfg.tiposItem) ? S.cfg.tiposItem : []).concat([t]);
+      const it = id ? (pc.itens || []).find(x => x && x.id === id) : null, antesTipo = it ? it.tipo : undefined;
+      if (it) it.tipo = t.id;
+      fechar();
+      save(); render(); if (it) refocar('[data-ittipo="' + CSS.escape(id) + '"]');
+      aviso('Tipo “' + r.nome + '” criado' + (it ? ' — ' + (nomeIt(it) || 'o item') + ' já é dele' : '') + '.', 'Desfazer', () => {
+        S.cfg.tiposItem = (S.cfg.tiposItem || []).filter(x => x.id !== t.id);
+        if (!S.cfg.tiposItem.length) delete S.cfg.tiposItem;
+        const x = it ? (pc.itens || []).find(y => y && y.id === id) : null;
+        if (x && x.tipo === t.id) { if (antesTipo === undefined) delete x.tipo; else x.tipo = antesTipo; }
+        save(); render();
+      });
+    };
+    q(m, '[data-jok]').onclick = criar;
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); criar(); } };
+    inp.focus();
+  }
+  // "Tipos…": os prontos (só para ver) e os da mesa — renomear, tirar, criar
+  function janelaTipos(pc) {
+    const R = R7();
+    const quantos = id => (S.personagens || []).reduce((s, p) => s + (p.itens || []).filter(it => it && it.tipo === id).length, 0);
+    const corpo = () => {
+      const meus = R.tiposCriados(S.cfg);
+      return `<p class="hint" style="margin:0 0 10px">Prontos: ${R.TIPOS_ITEM.map(t => esc(t.nome)).join(', ')}.</p>
+        <div class="ittiposl">${meus.length ? meus.map(t => `<div class="ittipol" data-jtipo="${esc(t.id)}">
+            <input class="inm" data-jren="${esc(t.id)}" value="${esc(t.nome)}" maxlength="30" aria-label="Nome do tipo ${esc(t.nome)}">
+            <span class="hint">${quantos(t.id) === 1 ? '1 item' : quantos(t.id) + ' itens'}</span>
+            <button type="button" class="mini danger" data-jtira="${esc(t.id)}">Tirar</button></div>`).join('')
+          : '<p class="hint" style="margin:0">Nenhum tipo criado ainda.</p>'}</div>
+        <div class="ittipon"><input class="inm" data-jnovo maxlength="30" placeholder="Novo tipo (ex.: Talismã)" aria-label="Nome do tipo novo" autocomplete="off"><button type="button" class="mini" data-jcria>Criar</button></div>
+        <p class="hint itjerro" data-jerro hidden></p>
+        <div class="modalacts"><span style="margin-left:auto"><button type="button" data-jcancela>Fechar</button></span></div>`;
+    };
+    const { m, fechar } = janela('Tipos de equipamento', corpo(), 520);
+    const refazer = foco => {
+      q(m, '.bd').innerHTML = corpo(); ligar();
+      save(); render();
+      const n = foco && q(m, foco); if (n) n.focus();
+    };
+    const erroEm = t => { const e = q(m, '[data-jerro]'); e.textContent = t; e.hidden = !t; };
+    const ligar = () => {
+      qa(m, '[data-jcancela]').forEach(b => b.onclick = fechar);
+      qa(m, '[data-jren]').forEach(i => {
+        const valer = () => {
+          const t = (S.cfg.tiposItem || []).find(x => x.id === i.dataset.jren); if (!t) return;
+          const r = nomeDeTipo(i.value, t.id);
+          if (r.erro) { erroEm(r.erro); i.value = t.nome; return; }
+          if (r.nome === t.nome) return;
+          const antes = t.nome; t.nome = r.nome; erroEm('');
+          refazer('[data-jren="' + CSS.escape(t.id) + '"]');
+          aviso('Tipo “' + antes + '” agora é “' + r.nome + '”.', 'Desfazer', () => { const x = (S.cfg.tiposItem || []).find(y => y.id === t.id); if (x) x.nome = antes; save(); render(); });
+        };
+        i.onchange = valer;
+        i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); valer(); } };
+      });
+      qa(m, '[data-jtira]').forEach(b => b.onclick = () => {
+        const id = b.dataset.jtira, t = (S.cfg.tiposItem || []).find(x => x.id === id); if (!t) return;
+        const n = quantos(id);
+        if (n && b.dataset.certeza !== '1') { b.dataset.certeza = '1'; b.textContent = 'Tirar mesmo?'; erroEm(n === 1 ? '1 item deste tipo vai para “Sem tipo”.' : n + ' itens deste tipo vão para “Sem tipo”.'); return; }
+        const lista = S.cfg.tiposItem.slice(), pos = lista.indexOf(t);
+        S.cfg.tiposItem = lista.filter(x => x !== t);
+        if (!S.cfg.tiposItem.length) delete S.cfg.tiposItem;
+        erroEm('');
+        refazer('[data-jnovo]');
+        aviso('Tipo “' + t.nome + '” tirado' + (n ? ' (os itens dele ficaram em “Sem tipo”)' : '') + '.', 'Desfazer', () => {
+          const l = Array.isArray(S.cfg.tiposItem) ? S.cfg.tiposItem.slice() : [];
+          if (!l.some(x => x.id === t.id)) l.splice(Math.min(pos, l.length), 0, t);
+          S.cfg.tiposItem = l; save(); render();
+        });
+      });
+      const novo = q(m, '[data-jnovo]');
+      const criar = () => {
+        const r = nomeDeTipo(novo.value);
+        if (r.erro) { erroEm(r.erro); novo.focus(); return; }
+        S.cfg.tiposItem = (Array.isArray(S.cfg.tiposItem) ? S.cfg.tiposItem : []).concat([{ id: tipoNovoId(), nome: r.nome }]);
+        erroEm('');
+        refazer('[data-jnovo]');
+      };
+      q(m, '[data-jcria]').onclick = criar;
+      novo.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); criar(); } };
+    };
+    ligar();
+    q(m, '[data-jnovo]').focus();
+  }
+  // "Separar por tipo…": o palpite de cada item sem tipo, pelo nome; nada muda até "Aplicar"
+  function separarPorTipo(pc) {
+    const R = R7(), tipos = tiposDaMesa(), lista = (pc.itens || []).filter(it => it && !chaveTipo(it, tipos));
+    if (!lista.length) return;
+    const palpite = it => R.tipoPeloNome(it.nome);
+    const linha = (it, i) => {
+      const p = palpite(it), v = p || 'outro';
+      return `<div class="itsepl"><span class="itsepn">${esc(nomeIt(it) || 'Item sem nome')}</span>
+        <select data-jsep="${i}" aria-label="Tipo de ${esc(nomeIt(it) || 'item sem nome')}">
+          <option value="">Sem tipo</option>
+          ${tipos.map(t => `<option value="${esc(t.id)}" ${t.id === v ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}
+        </select>${p ? '' : '<span class="hint">sem palpite</span>'}</div>`;
+    };
+    const { m, fechar } = janela('Separar por tipo', `
+      <p style="margin:0 0 10px;font-size:14px">O tipo de cada item, pelo nome. Confira e troque o que não estiver certo — nada muda até você aplicar.</p>
+      <div class="itsepls">${lista.map(linha).join('')}</div>
+      <div class="modalacts"><span style="margin-left:auto;display:flex;gap:8px"><button type="button" data-jcancela>Cancelar</button><button type="button" class="primary" data-jok>Aplicar</button></span></div>`, 560);
+    const ok = q(m, '[data-jok]');
+    const contar = () => { const n = qa(m, '[data-jsep]').filter(s => s.value).length; ok.textContent = n ? (n === 1 ? 'Aplicar a 1 item' : 'Aplicar a ' + n + ' itens') : 'Aplicar'; ok.disabled = !n; };
+    qa(m, '[data-jsep]').forEach(s => s.onchange = contar);
+    contar();
+    ok.onclick = () => {
+      const mud = qa(m, '[data-jsep]').map(s => [lista[+s.dataset.jsep], s.value]).filter(([, v]) => v);
+      if (!mud.length) return;
+      const antes = mud.map(([it]) => [it.id, it.tipo]);
+      for (const [it, v] of mud) { const x = (pc.itens || []).find(y => y && y.id === it.id); if (x) x.tipo = v; }
+      fechar();
+      save(); render();
+      aviso(mud.length === 1 ? '1 item separado por tipo.' : mud.length + ' itens separados por tipo.', 'Desfazer', () => {
+        for (const [id, t] of antes) { const x = (pc.itens || []).find(y => y && y.id === id); if (x) { if (t === undefined) delete x.tipo; else x.tipo = t; } }
+        save(); render();
+      });
+    };
+    const s0 = q(m, '[data-jsep]'); if (s0) s0.focus();
+  }
+
   function ligarItens(host, pc) {
     const painel = q(host, '#painelItens'); if (!painel) return;
-    const item = id => (pc.itens || []).find(x => x.id === id);
+    const item = id => (pc.itens || []).find(x => x && x.id === id);
     const sel = (attr, id) => '[' + attr + '="' + CSS.escape(id) + '"]';
     qa(painel, '[data-itemon]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.itemon); if (!it) return;
@@ -320,12 +751,14 @@ const FichasExtras = (() => {
     qa(painel, '[data-itemnome]').forEach(i => i.oninput = () => { const it = item(i.dataset.itemnome); if (it) { it.nome = i.value; save(); } });
     qa(painel, '[data-itembon]').forEach(i => i.onchange = () => {
       const [id, k] = i.dataset.itembon.split('|'), it = item(id); if (!it) return;
-      it.bonus = it.bonus || {}; it.bonus[k] = +i.value || 0;
+      const v = +i.value || 0, nv = +i.dataset.nv || 0;
+      if (nv && R7() && R7().temNiveis(it)) editarNivel(pc, it, nv, l => { l.bonus = Object.assign({}, l.bonus); l.bonus[k] = v; });
+      else { it.bonus = it.bonus || {}; it.bonus[k] = v; }
       save(); desenhar(render, sel('data-itembon', i.dataset.itembon));
     });
     qa(painel, '[data-itemed]').forEach(b => b.onclick = () => {
       const id = b.dataset.itemed;
-      if (itensAbertos.has(id)) itensAbertos.delete(id); else itensAbertos.add(id);
+      if (itensAbertos.has(id)) { itensAbertos.delete(id); nivelAberto.delete(id); } else itensAbertos.add(id);
       render(); refocar(sel('data-itemed', id));
     });
     qa(painel, '[data-itemrel]').forEach(i => i.onchange = () => {
@@ -333,11 +766,25 @@ const FichasExtras = (() => {
       if (i.checked) it.reliquia = true; else delete it.reliquia;
       save(); desenhar(render, sel('data-itemrel', it.id));
     });
+    // "Só funciona com…": pôr mais um, tirar um, o nível mínimo
     qa(painel, '[data-itemreq]').forEach(i => i.onchange = () => {
-      const it = item(i.dataset.itemreq); if (!it) return;
-      if (i.value) it.req = i.value; else delete it.req;
-      delete it.volta;
+      const it = item(i.dataset.itemreq); if (!it || !i.value) return;
+      porReqs(it, reqsBrutos(it).concat([i.value]));
       save(); desenhar(render, sel('data-itemreq', it.id));
+    });
+    qa(painel, '[data-itreqdel]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itreqdel); if (!it) return;
+      const l = reqsBrutos(it); l.splice(+b.dataset.i, 1);
+      porReqs(it, l);
+      save(); render(); refocar(sel('data-itemreq', it.id));
+    });
+    qa(painel, '[data-itreqnv]').forEach(s => s.onchange = () => {
+      const it = item(s.dataset.itreqnv); if (!it) return;
+      const l = reqsBrutos(it), i = +s.dataset.i, base = String(l[i] || '').replace(/@\d+$/, '');
+      if (!base.startsWith('i:')) return;
+      l[i] = base + (s.value ? '@' + s.value : '');
+      porReqs(it, l);
+      save(); desenhar(render, '[data-itreqnv="' + CSS.escape(it.id) + '"][data-i="' + i + '"]');
     });
     qa(painel, '[data-itemtroca]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.itemtroca); if (!it) return;
@@ -346,9 +793,9 @@ const FichasExtras = (() => {
       save(); desenhar(render, sel('data-itemtroca', it.id));
     });
     qa(painel, '[data-itemdel]').forEach(b => b.onclick = () => {
-      const i = (pc.itens || []).findIndex(x => x.id === b.dataset.itemdel); if (i < 0) return;
+      const i = (pc.itens || []).findIndex(x => x && x.id === b.dataset.itemdel); if (i < 0) return;
       const it = pc.itens[i];
-      pc.itens = pc.itens.filter(x => x !== it); itensAbertos.delete(it.id);
+      pc.itens = pc.itens.filter(x => x !== it); itensAbertos.delete(it.id); nivelAberto.delete(it.id);
       save(); render();
       aviso('O item ' + (String(it.nome || '').trim() || 'sem nome') + ' saiu da ficha.', 'Desfazer', () => {
         if (!Array.isArray(pc.itens)) pc.itens = [];
@@ -356,12 +803,98 @@ const FichasExtras = (() => {
         save(); render();
       });
     });
+    // (lote 7) o tipo
+    qa(painel, '[data-ittipo]').forEach(s => s.onchange = () => {
+      const it = item(s.dataset.ittipo); if (!it) return;
+      if (s.value === '+') { s.value = chaveTipo(it); novoTipo(pc, it.id); return; }
+      const antes = it.tipo, tipos = tiposDaMesa();
+      if (s.value) it.tipo = s.value; else delete it.tipo;
+      if (it.tipo === antes) return;
+      save(); desenhar(render, sel('data-ittipo', it.id));
+      const nome = nomeIt(it) || 'O item sem nome';
+      aviso(s.value ? nome + ' agora é ' + nomeDoTipo(s.value, tipos) + '.' : nome + ' ficou sem tipo.', 'Desfazer', () => {
+        const x = item(it.id); if (!x) return;
+        if (antes === undefined) delete x.tipo; else x.tipo = antes;
+        save(); render();
+      });
+    });
+    const sep = q(painel, '[data-itseparar]'); if (sep) sep.onclick = () => separarPorTipo(pc);
+    const tps = q(painel, '[data-ittipos]'); if (tps) tps.onclick = () => janelaTipos(pc);
+    // (lote 7) os filtros e as seções
+    qa(painel, '[data-itfil]').forEach(b => b.onclick = () => {
+      const [k, v] = b.dataset.itfil.split(':'), f = filtroDe(pc);
+      if (k === 'limpar') { filtros.delete(pc.id); const bq = q(painel, '[data-itbusca]'); if (bq) bq.value = ''; aplicarFiltro(painel, pc); refocar('[data-itfil="t:"]'); return; }
+      mudarFiltro(painel, pc, k === 't' ? { t: v } : k === 'e' ? { e: f.e === v ? '' : v } : { r: !f.r });
+    });
+    const busca = q(painel, '[data-itbusca]');
+    if (busca) {
+      busca.oninput = () => mudarFiltro(painel, pc, { q: busca.value });
+      busca.onkeydown = e => { if (e.key === 'Escape' && busca.value) { e.preventDefault(); e.stopPropagation(); busca.value = ''; mudarFiltro(painel, pc, { q: '' }); } };
+    }
+    qa(painel, '[data-itsecbt]').forEach(b => b.onclick = () => {
+      const k = b.dataset.itsecbt, set = fechadas(), sec = b.closest('[data-itsec]'), fechar = !set.has(k);
+      if (fechar) set.add(k); else set.delete(k);
+      S.itFechadas = [...set]; if (!S.itFechadas.length) delete S.itFechadas;
+      save();
+      if (sec) { sec.classList.toggle('fechada', fechar); b.setAttribute('aria-expanded', String(!fechar)); b.title = (fechar ? 'Mostrar' : 'Recolher') + ' esta seção'; const s = q(sec, '.itseta'); if (s) s.textContent = fechar ? '▸' : '▾'; }
+    });
+    // (lote 7) arrastar, e as setas do teclado na alça
+    qa(painel, '[data-itarr]').forEach(b => {
+      b.onpointerdown = e => comecarArrasto(e, painel, pc, b.dataset.itarr);
+      b.onkeydown = e => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        moverComTeclado(pc, b.dataset.itarr, e.key === 'ArrowUp');
+      };
+    });
+    // (lote 7) os níveis
+    qa(painel, '[data-itnv]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itnv), R = R7(); if (!it || !R) return;
+      const para = R.nivelDoItem(it) + (+b.dataset.d), n = R.niveisDoItem(it).length, d = +b.dataset.d;
+      // (no último nível o botão fica apagado: o cursor vai para o outro)
+      const foco = '[data-itnv="' + CSS.escape(it.id) + '"][data-d="' + ((d > 0 && para >= n) || (d < 0 && para <= 1) ? -d : d) + '"]';
+      mudarNivel(pc, it.id, para, foco);
+    });
+    qa(painel, '[data-itnvusar]').forEach(b => b.onclick = () => mudarNivel(pc, b.dataset.itnvusar, +b.dataset.nv, '[data-itnvaba="' + CSS.escape(b.dataset.itnvusar) + '"][data-nv="' + b.dataset.nv + '"]'));
+    qa(painel, '[data-itnvaba]').forEach(b => b.onclick = () => {
+      nivelAberto.set(b.dataset.itnvaba, +b.dataset.nv);
+      render(); refocar('[data-itnvaba="' + CSS.escape(b.dataset.itnvaba) + '"][data-nv="' + b.dataset.nv + '"]');
+    });
+    qa(painel, '[data-itnvnovo]').forEach(b => b.onclick = () => {
+      const id = b.dataset.itnvnovo, it = item(id), R = R7(); if (!it || !R) return;
+      const novo = R.itemComNivelNovo(it); if (novo === it) return;
+      const voltar = trocarItem(pc, id, novo), n = R.niveisDoItem(novo).length;
+      nivelAberto.set(id, n); itensAbertos.add(id);
+      save(); render(); refocar('[data-itnvaba="' + CSS.escape(id) + '"][data-nv="' + n + '"]');
+      aviso('Nv ' + n + ' criado, igual ao Nv ' + (n - 1) + '. Mude os números dele.', 'Desfazer', () => { if (voltar) voltar(); nivelAberto.delete(id); save(); render(); });
+    });
+    qa(painel, '[data-itnvcopia]').forEach(b => b.onclick = () => {
+      const id = b.dataset.itnvcopia, it = item(id), R = R7(), k = +b.dataset.nv; if (!it || !R || k < 2) return;
+      const de = R.niveisDoItem(it)[k - 2]; if (!de) return;
+      const voltar = trocarItem(pc, id, it);
+      editarNivel(pc, it, k, l => { const c = copia(de); l.bonus = c.bonus; l.rec = c.rec; l.def = c.def; l.efeito = c.efeito; });
+      save(); render(); refocar('[data-itnvaba="' + CSS.escape(id) + '"][data-nv="' + k + '"]');
+      aviso('O Nv ' + k + ' agora tem os números e a passiva do Nv ' + (k - 1) + '.', 'Desfazer', () => { if (voltar) voltar(); save(); render(); });
+    });
+    qa(painel, '[data-itnvtira]').forEach(b => b.onclick = () => {
+      const id = b.dataset.itnvtira, it = item(id), R = R7(), k = +b.dataset.nv; if (!it || !R) return;
+      const novo = R.itemSemNivel(it, k); if (novo === it) return;
+      const voltar = trocarItem(pc, id, novo), resto = R.temNiveis(novo) ? R.niveisDoItem(novo).length : 0;
+      if (resto) nivelAberto.set(id, Math.min(k, resto)); else nivelAberto.delete(id);
+      save(); render();
+      refocar(resto ? '[data-itnvaba="' + CSS.escape(id) + '"][data-nv="' + Math.min(k, resto) + '"]' : '[data-itnvnovo="' + CSS.escape(id) + '"]');
+      aviso('Nv ' + k + ' tirado' + (resto ? '' : ': o item voltou a ser comum') + '.', 'Desfazer', () => { if (voltar) voltar(); nivelAberto.set(id, k); save(); render(); });
+    });
   }
   const ajustarAltura = t => { t.style.height = 'auto'; t.style.height = Math.max(30, t.scrollHeight + 2) + 'px'; };
   function ligarEfeitos(host, pc) {
     qa(host, '[data-itemfx]').forEach(t => {
       ajustarAltura(t);
-      t.oninput = () => { const it = (pc.itens || []).find(x => x.id === t.dataset.itemfx); if (it) { it.efeito = t.value; save(); } ajustarAltura(t); };
+      t.oninput = () => {
+        const it = (pc.itens || []).find(x => x && x.id === t.dataset.itemfx), nv = +t.dataset.nv || 0;
+        if (it) { if (nv && R7() && R7().temNiveis(it)) editarNivel(pc, it, nv, l => { l.efeito = t.value; }); else it.efeito = t.value; save(); }
+        ajustarAltura(t);
+      };
     });
   }
   // na aba "Passivas e Habilidades": o que os itens equipados dão, só para leitura (edita-se no próprio item)
@@ -809,17 +1342,18 @@ const FichasExtras = (() => {
   }
 
   /* ---- equipamentos que somam numa barra ou numa defesa específica ---- */
-  const chipItem = (tipo, it, chave, rotulo, v) => `<span class="chipb ${tipo}"><b>${esc(rotulo)}</b>
-    <input type="number" step="1" data-itx="${tipo}" data-it="${esc(it.id)}" data-ch="${esc(chave)}" value="${+v || 0}" aria-label="${esc(rotulo)}: quanto ${esc(it.nome || 'este item')} soma">
-    <button type="button" class="chipx" data-itxdel="${tipo}" data-it="${esc(it.id)}" data-ch="${esc(chave)}" title="Tirar ${esc(rotulo)} deste item" aria-label="Tirar ${esc(rotulo)} de ${esc(it.nome || 'este item')}">×</button></span>`;
-  function htmlMaisDoItem(it, pc) {
+  // (lote 7) num item com níveis, os números de um nível (k; a fonte deles é `alvo`): os campos levam data-nv
+  const chipItem = (tipo, it, chave, rotulo, v, k) => `<span class="chipb ${tipo}"><b>${esc(rotulo)}</b>
+    <input type="number" step="1" data-itx="${tipo}" data-it="${esc(it.id)}" data-ch="${esc(chave)}"${k ? ` data-nv="${k}"` : ''} value="${+v || 0}" aria-label="${esc(rotulo)}: quanto ${esc(it.nome || 'este item')} soma${k ? ' no Nv ' + k : ''}">
+    <button type="button" class="chipx" data-itxdel="${tipo}" data-it="${esc(it.id)}" data-ch="${esc(chave)}"${k ? ` data-nv="${k}"` : ''} title="Tirar ${esc(rotulo)} deste item" aria-label="Tirar ${esc(rotulo)} de ${esc(it.nome || 'este item')}">×</button></span>`;
+  function htmlMaisDoItem(it, pc, alvo, k) {
     if (!RR()) return '';
-    const rs = pc.recursos || [], rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
-    const chips = rs.filter(r => rec[r.id] != null).map(r => chipItem('rec', it, r.id, r.nome || 'Barra', rec[r.id]))
-      .concat(ESP().filter(d => def[d.k] != null).map(d => chipItem('def', it, d.k, 'Def. ' + d.nome, def[d.k])));
+    const fonte = alvo || it, rs = pc.recursos || [], rec = fonte.rec && typeof fonte.rec === 'object' ? fonte.rec : {}, def = fonte.def && typeof fonte.def === 'object' ? fonte.def : {};
+    const chips = rs.filter(r => rec[r.id] != null).map(r => chipItem('rec', it, r.id, r.nome || 'Barra', rec[r.id], k))
+      .concat(ESP().filter(d => def[d.k] != null).map(d => chipItem('def', it, d.k, 'Def. ' + d.nome, def[d.k], k)));
     const livresR = rs.filter(r => rec[r.id] == null), livresD = ESP().filter(d => def[d.k] == null);
     return `<div class="itmais">${chips.join('')}
-      <select class="itmais-s" data-itmais="${esc(it.id)}" aria-label="${esc(it.nome || 'Este item')} também soma em…" title="O item pode aumentar o máximo de uma barra (HP, SP…) ou uma defesa específica">
+      <select class="itmais-s" data-itmais="${esc(it.id)}"${k ? ` data-nv="${k}"` : ''} aria-label="${esc(it.nome || 'Este item')} também soma em…" title="O item pode aumentar o máximo de uma barra (HP, SP…) ou uma defesa específica">
         <option value="">+ barra ou defesa…</option>
         ${livresR.length ? `<optgroup label="No máximo da barra">${livresR.map(r => `<option value="rec:${esc(r.id)}">${esc(r.nome || 'Barra')}</option>`).join('')}</optgroup>` : ''}
         ${livresD.length ? `<optgroup label="Na defesa contra">${livresD.map(d => `<option value="def:${d.k}">${d.nome}</option>`).join('')}</optgroup>` : ''}
@@ -834,22 +1368,26 @@ const FichasExtras = (() => {
   function ligarMaisDoItem(host, pc) {
     const item = id => (pc.itens || []).find(x => x.id === id);
     const mapa = (it, tipo) => (it[tipo] && typeof it[tipo] === 'object' ? it[tipo] : (it[tipo] = {}));
+    // (lote 7) num item com níveis, mexe no nível do campo (data-nv); o espelho acompanha (editarNivel)
+    const noNivel = (it, el, fn) => { const nv = +el.dataset.nv || 0; if (nv && R7() && R7().temNiveis(it)) editarNivel(pc, it, nv, l => fn(l)); else fn(it); };
+    const mapaN = (o, tipo) => (o[tipo] = Object.assign({}, o[tipo] && typeof o[tipo] === 'object' ? o[tipo] : {}));
     qa(host, '[data-itmais]').forEach(s => s.onchange = () => {
       const it = item(s.dataset.itmais), v = s.value, i = v.indexOf(':'); if (!it || i < 0) return;
       const tipo = v.slice(0, i), ch = v.slice(i + 1);
-      mapa(it, tipo)[ch] = 0;
+      noNivel(it, s, o => { if (o === it) mapa(it, tipo)[ch] = 0; else mapaN(o, tipo)[ch] = 0; });
       save(); render();
       refocar('[data-itx="' + tipo + '"][data-it="' + CSS.escape(it.id) + '"][data-ch="' + CSS.escape(ch) + '"]');
       const n = document.activeElement; if (n && n.select) n.select();
     });
     qa(host, '[data-itx]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.it); if (!it) return;
-      mapa(it, i.dataset.itx)[i.dataset.ch] = Math.round(+i.value) || 0;
+      const v = Math.round(+i.value) || 0;
+      noNivel(it, i, o => { if (o === it) mapa(it, i.dataset.itx)[i.dataset.ch] = v; else mapaN(o, i.dataset.itx)[i.dataset.ch] = v; });
       save(); desenhar(render, '[data-itx="' + i.dataset.itx + '"][data-it="' + CSS.escape(i.dataset.it) + '"][data-ch="' + CSS.escape(i.dataset.ch) + '"]');
     });
     qa(host, '[data-itxdel]').forEach(b => b.onclick = () => {
       const it = item(b.dataset.it); if (!it) return;
-      delete mapa(it, b.dataset.itxdel)[b.dataset.ch];
+      noNivel(it, b, o => { if (o === it) delete mapa(it, b.dataset.itxdel)[b.dataset.ch]; else delete mapaN(o, b.dataset.itxdel)[b.dataset.ch]; });
       save(); render();
     });
   }
@@ -1213,7 +1751,7 @@ const FichasExtras = (() => {
     aviso, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros,
-    painelItens, ligarItens, abrirItem, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
+    painelItens, ligarItens, abrirItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,

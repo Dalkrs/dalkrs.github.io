@@ -181,6 +181,12 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     m = await mapa(L);
     ok(m.cal.dia === dia0 - 1 && (await obj(L, 'g')).prog === 20 && (await obj(L, 'g2')).prog === 10, 'o ◀ só volta a data: os grupos ficam onde estão');
     await desfazer(L);
+    // (lote 7, parte 2) com um grupo só andando, o aviso diz qual: "1 grupo andou: Os Heróis."
+    await A(L, () => __mundo.App.mudar('uma rota só', mm => { mm.objs.find(o => o.id === 'g2').rota = null; })); await espera(200);
+    await semAvisos(L); await L.F.click('#tempoMais'); await espera(250);
+    ok(/^Passou 1 tempo: agora é o 4º tempo de 10\. 1 grupo andou: Os Heróis\.(Desfazer)?$/.test((await textoDoAviso(L)).trim()), 'com um grupo só andando, o aviso diz qual: ' + await textoDoAviso(L));
+    await desfazer(L); await desfazer(L);
+    ok((await mapa(L)).cal.tempo === 2 && (await obj(L, 'g2')).rota === 'rt2', '(de volta: o 3º tempo, e a Caravana com a rota)');
     // sem nenhum grupo com rota, só o relógio passa
     await A(L, () => __mundo.App.mudar('sem rotas', mm => { mm.objs.forEach(o => { if (o.k === 'g') o.rota = null; }); })); await espera(200);
     await semAvisos(L); await L.F.click('#tempoMais'); await espera(250);
