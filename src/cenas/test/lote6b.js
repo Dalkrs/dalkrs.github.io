@@ -1,7 +1,7 @@
 // Bateria do lote 6 (parte 3b, as Cenas), no navegador, sem o site:
 //   · Shift+F: a rolagem geral (quem rola, o atributo, a fixa de cada linha, "Rolar tudo", quem tirou mais);
-//   · as pastas da lista de cenas (a janela "Organizar em pastas", o menu, abrir e fechar, guardar neste navegador);
-//   · o gerador de vilarejo (a janela, a prévia, "Gerar outro", a cena que sai, e as regras do plano em muitos sorteios);
+//   · as pastas da lista de cenas (a janela "Organizar as cenas", o menu, abrir e fechar, guardar neste navegador);
+//   · o gerador de vilarejo (a janela "Gerar um lugar", a prévia, "Gerar outro", a cena que sai, e as regras do plano em muitos sorteios);
 //   · na janelinha E, o item complementar ("com Espada…", ou "sem efeito").
 // (O pedido da rolagem geral aos jogadores, numa mesa de verdade, está no src/tests/cenas-lote6.rede.test.js.)
 const path = require('path');
@@ -94,17 +94,17 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
     return o;
   });
   const menu = async () => { await page.locator('#sceneBtn').click(); await w(200); const s = (await page.locator('.menu').innerText()).replace(/\n/g, ' | '); await page.keyboard.press('Escape'); await w(80); return s; };
-  ok(/^CENAS \| .*Taverna \| Floresta \| Castelo \| Ponte/.test(await menu()) && /Organizar em pastas…/.test(await menu()), 'sem pastas, a lista é como sempre; o menu tem "Organizar em pastas…"');
+  ok(/^CENAS \| .*Taverna \| Floresta \| Castelo \| Ponte/.test(await menu()) && /Organizar as cenas…/.test(await menu()), 'sem pastas, a lista é como sempre; o menu tem "Organizar as cenas…"');
   await page.locator('#sceneBtn').click(); await w(200);
-  await page.locator('.menu-i', { hasText: 'Organizar em pastas' }).click(); await w(250);
-  ok(await page.locator('.modal-t').innerText() === 'Organizar em pastas' && await page.locator('.org-p').count() === 1 && /Sem pasta/.test(await page.locator('.org-p').first().innerText()), 'a janela começa só com "Sem pasta"');
+  await page.locator('.menu-i', { hasText: 'Organizar as cenas' }).click(); await w(250);
+  ok(await page.locator('.modal-t').innerText() === 'Organizar as cenas' && await page.locator('.org-p').count() === 1 && /Sem pasta/.test(await page.locator('.org-p').first().innerText()), 'a janela começa só com "Sem pasta"');
   await page.locator('#org-nova').click(); await w(200);
   await page.locator('#dlg-in').fill('  Lugares   do mundo  '); await page.locator('.modal .btn.primary').click(); await w(300);
   const pa1 = await ev(() => __tc.Store.S.pastas.lista[0] && __tc.Store.S.pastas.lista[0].id);
   ok(!!pa1 && await ev(() => __tc.Store.S.pastas.lista[0].nome) === 'Lugares do mundo' && await page.locator('#org-p-' + pa1).count() === 1 && /Pasta "Lugares do mundo" criada/.test(await toasts()), 'Nova pasta: pergunta o nome e volta à janela, com a pasta nova (o nome arrumado)');
   await page.locator('#org-c-' + cenas.Floresta).dragTo(page.locator('#org-p-' + pa1)); await w(300);
   ok(await ev(([id, pa]) => __tc.Store.S.pastas.de[id] === pa, [cenas.Floresta, pa1]) && /"Floresta" foi para a pasta Lugares do mundo/.test(await toasts()), 'arrastar a Floresta para a pasta põe a cena nela');
-  await page.locator('#org-s-' + cenas.Castelo).selectOption(pa1); await w(300);
+  await page.locator('#org-s-' + cenas.Castelo).selectOption('p:' + pa1); await w(300);
   ok(await ev(([id, pa]) => __tc.Store.S.pastas.de[id] === pa, [cenas.Castelo, pa1]) && await page.locator('#org-p-' + pa1 + ' .org-c').count() === 2, 'ou escolher a pasta na lista ao lado da cena (o Castelo)');
   await foto('02-organizar-em-pastas');
   await page.locator('.modal .btn.primary', { hasText: 'Pronto' }).click(); await w(200);
@@ -124,10 +124,10 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   await foto('03-menu-com-pastas');
   await page.keyboard.press('Escape'); await w(80);
   // renomear e apagar a pasta (com Desfazer)
-  await page.locator('#sceneBtn').click(); await w(200); await page.locator('.menu-i', { hasText: 'Organizar em pastas' }).click(); await w(250);
+  await page.locator('#sceneBtn').click(); await w(200); await page.locator('.menu-i', { hasText: 'Organizar as cenas' }).click(); await w(250);
   await page.locator('#org-ren-' + pa1).click(); await w(200);
   await page.locator('#dlg-in').fill('Mundo'); await page.locator('.modal .btn.primary').click(); await w(300);
-  ok(await ev(() => __tc.Store.S.pastas.lista[0].nome) === 'Mundo' && await page.locator('.modal-t').innerText() === 'Organizar em pastas', 'renomear a pasta (e a janela volta)');
+  ok(await ev(() => __tc.Store.S.pastas.lista[0].nome) === 'Mundo' && await page.locator('.modal-t').innerText() === 'Organizar as cenas', 'renomear a pasta (e a janela volta)');
   await clearToasts();
   await page.locator('#org-del-' + pa1).click(); await w(300);
   ok(await ev(() => __tc.Store.S.pastas.lista.length) === 0 && await ev(() => Object.keys(__tc.Store.S.pastas.de).length) === 0 && /Pasta "Mundo" apagada; as 2 cenas dela voltaram para "Sem pasta"/.test(await toasts()), 'apagar a pasta: as cenas voltam para "Sem pasta" (as cenas não são apagadas)');
@@ -148,27 +148,27 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   await page.reload({ waitUntil: 'load' }); await w(1200);
   ok(await ev(([id, pa]) => __tc.Store.S.pastas.lista.length === 1 && __tc.Store.S.pastas.lista[0].nome === 'Mundo' && __tc.Store.S.pastas.de[id] === pa, [cenas.Floresta, pa1]), 'recarregando a página, as pastas continuam (guardadas neste navegador, com as cenas)');
 
-  // ================= o gerador de vilarejo =================
+  // ================= o gerador de vilarejo (na janela "Gerar um lugar", lote 7) =================
   await page.locator('#sceneBtn').click(); await w(200);
-  await page.locator('.menu-i', { hasText: 'Gerar um vilarejo' }).click(); await w(500);
-  ok(await page.locator('.modal-t').innerText() === 'Gerar um vilarejo' && await page.locator('#vila-prev').count() === 1, 'a janela do vilarejo abre, com a prévia');
-  const nome0 = await page.locator('#vila-nome').inputValue(), res0 = await page.locator('#vila-resumo').innerText();
-  ok(/^Aldeia de /.test(nome0) && /^5 casas · \d+ móveis · 28 × 20 quadrados · rio com ponte\.$/.test(res0) && await page.locator('#vila-casas-n').innerText() === '5', 'começa numa aldeia de 5 casas, com rio: ' + nome0 + ' · ' + res0);
+  await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(500);
+  ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1, 'a janela do gerador abre, com a prévia');
+  const nome0 = await page.locator('#ger-nome').inputValue(), res0 = await page.locator('#ger-resumo').innerText();
+  ok(nome0 === 'Aldeia' && /^5 casas · \d+ móveis · 28 × 20 quadrados · rio com ponte\.$/.test(res0) && await page.locator('#vila-casas-n').innerText() === '5', 'começa numa aldeia de 5 casas, com rio (e o nome é só "Aldeia": nada inventado): ' + nome0 + ' · ' + res0);
   const desenhou = () => ev(() => {
-    const c = document.getElementById('vila-prev'), k = document.createElement('canvas'); k.width = c.width; k.height = c.height;
+    const c = document.getElementById('ger-prev'), k = document.createElement('canvas'); k.width = c.width; k.height = c.height;
     const g = k.getContext('2d', { willReadFrequently: true }); g.drawImage(c, 0, 0);
     const d = g.getImageData(0, 0, k.width, k.height).data; let s = 0; for (let i = 0; i < d.length; i += 400) s += d[i] + d[i + 1] + d[i + 2]; return c.width + 'x' + c.height + ':' + s;
   });
   const prev0 = await desenhou();
-  await page.locator('#vila-outro').click(); await w(300);
+  await page.locator('#ger-outro').click(); await w(300);
   ok(await desenhou() !== prev0, '"Gerar outro" sorteia outro vilarejo (a prévia muda)');
-  await page.locator('#vila-nome').fill('Vila do Teste'); await w(50);
+  await page.locator('#ger-nome').fill('Vila do Teste'); await w(50);
   await page.locator('#vila-tam button', { hasText: 'Vila' }).click(); await w(300);
-  ok(await page.locator('#vila-casas-n').innerText() === '10' && /40 × 28 quadrados/.test(await page.locator('#vila-resumo').innerText()) && await page.locator('#vila-nome').inputValue() === 'Vila do Teste', 'a vila: 10 casas, 40 × 28 quadrados; o nome que você escreveu fica');
+  ok(await page.locator('#vila-casas-n').innerText() === '10' && /40 × 28 quadrados/.test(await page.locator('#ger-resumo').innerText()) && await page.locator('#ger-nome').inputValue() === 'Vila do Teste', 'a vila: 10 casas, 40 × 28 quadrados; o nome que você escreveu fica');
   await page.locator('#vila-casas-plus').click(); await w(250);
   await page.locator('#vila-muro').check({ force: true }); await w(250);
   await page.locator('#vila-ter button', { hasText: 'Neve' }).click(); await w(250);
-  const res1 = await page.locator('#vila-resumo').innerText(), nc = +(/^(\d+) casas?/.exec(res1) || [])[1];
+  const res1 = await page.locator('#ger-resumo').innerText(), nc = +(/^(\d+) casas?/.exec(res1) || [])[1];
   ok(await page.locator('#vila-casas-n').innerText() === '11' && nc >= 1 && nc <= 11 && (nc === 11 || res1.includes(`(couberam ${nc} das 11)`)) && /paliçada com [34] portões/.test(res1), 'mais uma casa (11), com paliçada, na neve; se não couberem todas, o resumo diz: ' + res1);
   await foto('04-gerar-vilarejo');
   const antes = await ev(() => __tc.Store.S.order.length);
@@ -176,12 +176,12 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   const vila = await ev(() => {
     const sc = __tc.Store.scene();
     return { nome: sc.name, cols: sc.cols, rows: sc.rows, fog: sc.fog.dynamic, bg: !!sc.bg.asset, paredes: sc.walls.filter(x => x.k === 'wall').length, portas: sc.walls.filter(x => x.k === 'door' && !x.open).length, portoes: sc.walls.filter(x => x.k === 'door' && x.open).length,
-      textos: sc.shapes.filter(s => s.k === 'text').map(s => s.txt), moveis: sc.tokens.filter(k => k.prop).length, poco: sc.tokens.filter(k => k.prop === 'poco').length, lamp: sc.tokens.filter(k => k.prop === 'lampiao').length, n: __tc.Store.S.order.length };
+      janelas: sc.walls.filter(x => x.k === 'window').length, textos: sc.shapes.filter(s => s.k === 'text').map(s => s.txt), moveis: sc.tokens.filter(k => k.prop).length, poco: sc.tokens.filter(k => k.prop === 'poco').length, lamp: sc.tokens.filter(k => k.prop === 'lampiao').length, n: __tc.Store.S.order.length };
   });
   ok(vila.n === antes + 1 && vila.nome === 'Vila do Teste' && vila.cols === 40 && vila.rows === 28 && vila.fog === true && vila.bg, 'sai uma cena nova, com o nome escolhido, do tamanho da vila, com o fundo pintado e as paredes barrando a visão: ' + j(vila).slice(0, 200));
-  ok(vila.portas === vila.textos.length && vila.textos.length === nc && vila.textos.every(x => /^(Casa|Taverna|Capela|Templo|Santuário|Ferraria|Armazém) /.test(x)) && vila.paredes >= vila.textos.length * 4, 'cada casa: as paredes, uma porta (fechada) e o nome em cima — ' + vila.textos.length + ' casas, ' + vila.paredes + ' paredes');
-  ok((vila.portoes === 3 || vila.portoes === 4) && vila.poco === 1 && vila.lamp === 4 && vila.moveis > vila.textos.length, 'a paliçada com os portões abertos, o poço e os quatro lampiões da praça, e os móveis: ' + j({ portoes: vila.portoes, moveis: vila.moveis }));
-  ok(/"Vila do Teste" criada: \d+ casas, com paredes, portas, móveis e nomes\. Tudo é editável\./.test(await toasts()), 'o aviso diz o que saiu');
+  ok(vila.portas === nc && vila.textos.length === 0 && vila.janelas >= nc && vila.paredes >= nc * 4, 'cada casa: as paredes, uma porta (fechada) e as janelas — e nada escrito (os nomes ficam com o mestre): ' + j({ portas: vila.portas, janelas: vila.janelas, paredes: vila.paredes, textos: vila.textos.length }));
+  ok((vila.portoes === 3 || vila.portoes === 4) && vila.poco === 1 && vila.lamp === 4 && vila.moveis > nc, 'a paliçada com os portões abertos, o poço e os quatro lampiões da praça, e os móveis: ' + j({ portoes: vila.portoes, moveis: vila.moveis }));
+  ok(/"Vila do Teste" criada: \d+ casas, com paredes, portas, janelas e móveis\. Tudo é editável\./.test(await toasts()), 'o aviso diz o que saiu');
   await foto('05-vilarejo-na-cena');
   // as regras do plano, em muitos sorteios
   const regras = await ev(() => {

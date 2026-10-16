@@ -717,6 +717,8 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
+    if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
   }
   for (const l of sc.lights) { if (l.fl) l.fl = true; else delete l.fl; }
   return sc;

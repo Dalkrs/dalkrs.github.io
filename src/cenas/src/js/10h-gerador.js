@@ -1,0 +1,254 @@
+/* ---------------------------------------------------------------
+   10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
+   Uma janela com uma aba por lugar (o Vilarejo; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
+   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia e o clima da cena. A prévia
+   mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
+   sorteia só o resto. A semente fica à mostra (a mesma semente, com as mesmas escolhas, dá o mesmo lugar) e o lugar
+   pode ser guardado como modelo, para gerar outros parecidos (os modelos são do mestre: na mesa, vão no índice das
+   cenas). Nada muda nas cenas que já existem até "Criar a cena".
+   --------------------------------------------------------------- */
+const Gerador = (() => {
+  const LUGARES = [Vila.LUGAR];
+  const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
+  const lugar = id => LUGARES.find(l => l.id === id) || null;
+  const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
+  const guardarModelos = lista => { Store.S.prefs.modelos = Proj.normModelos(lista); Persist.meta(); };
+  let aberta = null;                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
+
+  /* Desenha um cadeado pequeno em (x, y) (o canto de cima, à esquerda, da marca). */
+  function cadeado(g, x, y, s) {
+    g.save(); g.translate(x, y);
+    g.fillStyle = 'rgba(20,16,10,0.85)'; g.beginPath(); g.arc(s * 0.5, s * 0.55, s * 0.72, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#f3d28a'; g.lineWidth = Math.max(1.5, s * 0.14); g.beginPath(); g.arc(s * 0.5, s * 0.42, s * 0.22, Math.PI, 0); g.stroke();
+    g.fillStyle = '#e6ab4f'; g.fillRect(s * 0.18, s * 0.42, s * 0.64, s * 0.5);
+    g.fillStyle = '#3a2a12'; g.fillRect(s * 0.46, s * 0.55, s * 0.08, s * 0.2);
+    g.restore();
+  }
+  // o desenho de uma parte (em quadrados) na prévia: o contorno, o círculo ou a linha grossa
+  function caminho(g, f, cell) {
+    g.beginPath();
+    if (f.k === 'circ') g.arc(f.x * cell, f.y * cell, f.r * cell, 0, Math.PI * 2);
+    else f.pts.forEach(([x, y], i) => (i ? g.lineTo(x * cell, y * cell) : g.moveTo(x * cell, y * cell)));
+    if (f.k === 'poli') g.closePath();
+  }
+  // onde vai o cadeado da parte: no canto da casa, no meio da praça, no meio do rio
+  function ancora(f) {
+    if (f.k === 'circ') return [f.x, f.y];
+    if (f.k === 'poli') return [Math.min(...f.pts.map(p => p[0])), Math.min(...f.pts.map(p => p[1]))];
+    const p = f.pts[Math.floor(f.pts.length / 2)];
+    return [p[0], p[1]];
+  }
+
+  /* Abre a janela. lugarId: a aba que abre ('vila'); pre: escolhas que já vêm feitas ({ op, estilo, hora, clima }). */
+  function abrir(lugarId, pre) {
+    if (!isGM()) return;
+    const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
+    let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
+    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '' };
+    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genLugar = L.id; };
+    // o estado de cada aba (as escolhas, a semente, o que está travado e o plano na tela): trocar de aba não perde nada
+    const estados = {};
+    const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
+    if (pre && typeof pre === 'object') {
+      if (pre.op) L.aplicarOpcoes(estadoDe(L).op, pre.op);
+      if (pre.estilo) comum.estilo = Estilos.valido(pre.estilo);
+      if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
+      if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
+    }
+    let nomeMexido = false, foco = -1, sobre = null, modeloNovo = false;
+    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
+    const fundo = document.createElement('canvas');
+    let cell = 10;
+    const ctl = h('div', { class: 'ger-op' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
+    const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
+      title: 'A mesma semente, com as mesmas escolhas, dá o mesmo lugar',
+      onchange: () => { const v = Math.round(Number(inSemente.value)); if (v >= 1 && v <= 2147483647) { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = v; refazer(); } else inSemente.value = estadoDe(L).seed; },
+      onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); inSemente.dispatchEvent(new Event('change')); } } });
+    const btOutro = btn('Gerar outro', () => { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'ger-outro', title: 'Sorteia de novo, com as mesmas escolhas; o que está travado fica igual' });
+    const btSoltar = btn('Soltar tudo', () => soltarTudo(), { icon: 'unlock', id: 'ger-soltar', title: 'Solta todas as partes travadas (o lugar na tela não muda)' });
+    const md = h('div', { class: 'ger-md', id: 'ger-md' }), nota = note(L.nota);
+
+    /* ---- a prévia e as partes ---- */
+    const partes = () => (estadoDe(L).plano ? L.partes(estadoDe(L).plano) : []);
+    function desenhar() {
+      const E = estadoDe(L), p = E.plano;
+      if (!p) return;
+      if (cv.width !== fundo.width || cv.height !== fundo.height) { cv.width = fundo.width; cv.height = fundo.height; }
+      const g = cv.getContext('2d');
+      g.clearRect(0, 0, cv.width, cv.height); g.drawImage(fundo, 0, 0);
+      // a hora do dia escolhida tinge a prévia (como na cena)
+      const tom = TONES.find(t => t.id === comum.hora);
+      if (tom && tom.tint) { g.fillStyle = tom.tint; g.fillRect(0, 0, cv.width, cv.height); if (tom.id === 'breu') { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, cv.width, cv.height); } }
+      const marcar = (parte, modo) => {
+        const fs = L.formaDaParte(p, parte);
+        g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+        for (const f of fs) {
+          caminho(g, f, cell);
+          if (f.k === 'linha') {
+            g.strokeStyle = modo === 'trava' ? 'rgba(230,171,79,0.35)' : 'rgba(255,255,255,0.22)'; g.lineWidth = (f.hw * 2 + 0.4) * cell; g.stroke();
+          } else { g.fillStyle = modo === 'trava' ? 'rgba(230,171,79,0.22)' : 'rgba(255,255,255,0.16)'; g.fill(); }
+          if (f.k !== 'linha') { g.strokeStyle = modo === 'trava' ? '#e6ab4f' : '#ffffff'; g.lineWidth = Math.max(2, cell * 0.2); g.setLineDash(modo === 'trava' ? [] : [Math.max(3, cell * 0.4), Math.max(3, cell * 0.3)]); g.stroke(); g.setLineDash([]); }
+        }
+        g.restore();
+        if (modo === 'trava' && fs.length) { const [ax, ay] = ancora(fs[0]), s = Math.max(10, cell * 0.9); cadeado(g, ax * cell + 2, ay * cell + 2, s); }
+      };
+      for (const parte of partes()) if (L.travada(p, parte)) marcar(parte, 'trava');
+      const alvo = sobre || (foco >= 0 ? partes()[foco] : null);
+      if (alvo) marcar(alvo, 'sobre');
+    }
+    function mostrarDica() {
+      const E = estadoDe(L), p = E.plano, alvo = sobre || (foco >= 0 ? partes()[foco] : null);
+      dica.textContent = alvo && p ? `Clique para ${L.travada(p, alvo) ? 'soltar' : 'travar'} ${L.nomeDaParte(p, alvo)}.` : 'Clique numa parte da prévia (uma casa, o rio, as ruas e a praça) para travar: ela fica igual quando você gera outro.';
+      cv.classList.toggle('parte', !!sobre);
+    }
+    function mostrarResumo() {
+      const E = estadoDe(L), p = E.plano, n = L.quantasTravadas(p);
+      resumo.textContent = L.resumo(p) + (n ? ` ${n === 1 ? 'Uma parte travada' : n + ' partes travadas'}.` : '') + (p.soltas ? ` ${p.soltas === 1 ? 'Uma casa travada não coube e saiu' : p.soltas + ' casas travadas não couberam e saíram'}.` : '');
+      btSoltar.disabled = !n;
+    }
+    function refazer() {
+      const E = estadoDe(L);
+      E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base });
+      E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
+      try { const r = L.previa(fundo, E.plano, 460, 330); cell = r.cell; } catch (e) { console.error(e); }
+      sobre = null; foco = -1;
+      desenhar(); mostrarDica(); mostrarResumo();
+      inSemente.value = E.seed;
+      if (!nomeMexido) inNome.value = L.nomePadrao(E.plano);
+    }
+    function alternar(parte) {
+      const E = estadoDe(L);
+      if (!E.plano || !parte) return;
+      E.trava = L.alternar(E.plano, parte, E.trava);
+      desenhar(); mostrarDica(); mostrarResumo();
+    }
+    function soltarTudo() {
+      const E = estadoDe(L);
+      if (!E.plano) return;
+      for (const parte of partes()) if (L.travada(E.plano, parte)) E.trava = L.alternar(E.plano, parte, E.trava);
+      E.trava = null;
+      desenhar(); mostrarDica(); mostrarResumo();
+    }
+    // o ponto do mouse em quadrados do plano (a prévia fica centrada na caixa dela, sem esticar)
+    const parteNoPonto = e => {
+      const E = estadoDe(L), r = cv.getBoundingClientRect();
+      if (!E.plano || !r.width || !cv.width) return null;
+      const k = Math.min(r.width / cv.width, r.height / cv.height), ox = (r.width - cv.width * k) / 2, oy = (r.height - cv.height * k) / 2;
+      return L.parteEm(E.plano, (e.clientX - r.left - ox) / k / cell, (e.clientY - r.top - oy) / k / cell);
+    };
+    cv.addEventListener('pointermove', e => { const pt = parteNoPonto(e); if (pt !== sobre) { sobre = pt; foco = -1; desenhar(); mostrarDica(); } });
+    cv.addEventListener('pointerleave', () => { if (sobre) { sobre = null; desenhar(); mostrarDica(); } });
+    cv.addEventListener('click', e => alternar(parteNoPonto(e)));
+    cv.addEventListener('keydown', e => {
+      const ps = partes();
+      if (!ps.length) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { foco = (foco + 1) % ps.length; sobre = null; }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { foco = (foco - 1 + ps.length) % ps.length; sobre = null; }
+      else if ((e.key === 'Enter' || e.key === ' ') && foco >= 0) { e.preventDefault(); e.stopPropagation(); alternar(ps[foco]); return; }
+      else return;
+      e.preventDefault(); desenhar(); mostrarDica();
+    });
+    cv.addEventListener('blur', () => { if (foco >= 0) { foco = -1; desenhar(); mostrarDica(); } });
+
+    /* ---- os modelos ---- */
+    function pintarModelos(focoId) {
+      const lista = modelos();
+      if (modeloNovo) {
+        const inM = h('input', { id: 'ger-modelo-nome', class: 'in', type: 'text', maxlength: 40, autocomplete: 'off', 'data-enter': 'proprio', 'data-esc': 'proprio', placeholder: 'Nome do modelo', 'aria-label': 'Nome do modelo',
+          onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); guardarModelo(inM.value); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); modeloNovo = false; pintarModelos('ger-guardar'); } } });
+        md.replaceChildren(inM, btn('Guardar', () => guardarModelo(inM.value), { kind: 'small', id: 'ger-modelo-ok' }), btn('Cancelar', () => { modeloNovo = false; pintarModelos('ger-guardar'); }, { kind: 'small', id: 'ger-modelo-nao' }));
+        inM.value = inNome.value.trim().slice(0, 40);
+        setTimeout(() => { inM.focus(); inM.select(); }, 0);
+        return;
+      }
+      const sel = h('select', { id: 'ger-modelo', class: 'in', 'aria-label': 'Abrir um modelo guardado', disabled: !lista.length, value: '',
+        onchange: e => { const v = e.target.value; e.target.blur(); if (v) abrirModelo(v); } },
+        h('option', { value: '', text: lista.length ? 'Abrir um modelo…' : 'Nenhum modelo guardado' }),
+        ...lista.map(m => h('option', { value: m.id, text: m.nome + (lugar(m.lugar) && LUGARES.length > 1 ? ' · ' + lugar(m.lugar).n : '') })));
+      md.replaceChildren(...[sel,
+        btn('Guardar como modelo', () => { if (modelos().length >= 30) { UI.toast('Já são 30 modelos: apague um para guardar outro.'); return; } modeloNovo = true; pintarModelos(); }, { icon: 'plus', kind: 'small', id: 'ger-guardar', title: 'Guarda as escolhas, a semente e as partes travadas, para gerar outros parecidos' }),
+        lista.length ? iconBtn('trash', 'Apagar um modelo…', () => apagarModeloMenu(), { size: 15, id: 'ger-apagar' }) : null].filter(Boolean));
+      if (focoId) { const n = document.getElementById(focoId); if (n) n.focus(); }
+    }
+    function guardarModelo(nome) {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!nome) { UI.toast('Dê um nome ao modelo.'); return; }
+      const E = estadoDe(L), lista = modelos();
+      const m = { id: uid('md'), nome, lugar: L.id, o: Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima }), seed: E.seed, trava: L.travaDe(E.plano) };
+      guardarModelos(lista.concat([m]));
+      modeloNovo = false; pintarModelos('ger-guardar');
+      UI.toast(`Modelo "${nome}" guardado: as escolhas, a semente ${E.seed} e as partes travadas.`, { action: 'Desfazer', run: () => { guardarModelos(modelos().filter(x => x.id !== m.id)); if (md.isConnected) pintarModelos(); } });
+    }
+    function abrirModelo(id) {
+      const m = modelos().find(x => x.id === id), l = m && lugar(m.lugar);
+      if (!m || !l) { UI.toast('Esse modelo é de um lugar que esta janela não gera.'); pintarModelos(); return; }
+      const antes = { L, comum: Object.assign({}, comum), E: JSON.parse(JSON.stringify(Object.assign({}, estadoDe(l), { plano: null }))) };
+      L = l;
+      const E = estadoDe(L);
+      L.aplicarOpcoes(E.op, m.o);
+      comum.estilo = Estilos.valido(m.o.estilo);
+      if (TONES.some(t => t.id === m.o.hora)) comum.hora = m.o.hora;
+      if (WEATHERS.some(w => w[0] === m.o.clima)) comum.clima = m.o.clima;
+      E.seed = m.seed; E.trava = m.trava; E.base = null;
+      lembrarComum(); pintar(); refazer();
+      UI.toast(`Modelo "${m.nome}" aberto: a semente ${m.seed} e as partes travadas dele. "Gerar outro" sorteia outros parecidos.`, { action: 'Desfazer', run: () => {
+        if (!cv.isConnected) return;
+        L = antes.L; Object.assign(comum, antes.comum); estados[l.id] = Object.assign(antes.E, { plano: null }); lembrarComum(); pintar(); refazer();
+      } });
+    }
+    function apagarModeloMenu() {
+      const b = document.getElementById('ger-apagar'), r = b ? b.getBoundingClientRect() : { left: 0, bottom: 0 };
+      const items = [{ head: 'Apagar qual modelo?' }].concat(modelos().map(m => ({ label: m.nome, icon: 'trash', danger: true, run: () => {
+        const lista = modelos();
+        guardarModelos(lista.filter(x => x.id !== m.id)); pintarModelos();
+        UI.toast(`Modelo "${m.nome}" apagado.`, { action: 'Desfazer', run: () => { guardarModelos(lista); if (md.isConnected) pintarModelos(); } });
+      } })));
+      UI.menuEm(r.left, r.bottom + 4, items);
+    }
+
+    /* ---- as escolhas ---- */
+    function pintar() {
+      const a = document.activeElement, fid = a && a.id && ctl.contains(a) ? a.id : null;
+      const E = estadoDe(L);
+      abas.replaceChildren(...(LUGARES.length > 1 ? [seg('ger-lugar', L.id, LUGARES.map(l => [l.id, l.n]), v => { L = lugar(v) || L; lembrarComum(); nomeMexido = false; pintar(); refazer(); })] : []));
+      ctl.replaceChildren(
+        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }),
+        h('div', { class: 'ger-cm' },
+          field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
+          field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
+          field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack')));
+      nota.textContent = L.nota;
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+    }
+    pintar(); refazer(); pintarModelos();
+    aberta = { get lugar() { return L.id; }, get estado() { return estadoDe(L); }, comum, cell: () => cell };
+    const body = h('div', { class: 'ger' },
+      abas,
+      h('div', { class: 'ger-g' },
+        ctl,
+        h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btOutro, btSoltar), dica, resumo)),
+      h('div', { class: 'ger-b' },
+        h('div', { class: 'ger-sem' }, field('Semente', inSemente, 'stack')),
+        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md)),
+      field('Nome da cena', inNome, 'stack'),
+      nota);
+    UI.modal({
+      title: 'Gerar um lugar', xl: true, body,
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
+          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
+          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
+          const E = estadoDe(L), p = E.plano, l = L;
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima }).then(sc => {
+            UI.closeModal();
+            UI.switchScene(sc.id);
+            UI.toast(l.feito(sc, p), { long: true });
+          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
+          return false;
+        },
+      }],
+    });
+  }
+  return { LUGARES, abrir, vivo: () => (aberta && document.getElementById('ger-prev') ? aberta : null) };
+})();

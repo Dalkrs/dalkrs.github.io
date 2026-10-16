@@ -417,16 +417,18 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   jogador (o recado vai junto, e o cartão dele mostra "(pelo mestre)"). A janela confere cada resposta como a do
   ataque (de quem é, se cabe no atributo), diz quem tirou mais e não muda nada na cena. Fechar encerra o pedido
   (`aplicado` com todos rolados; senão, `cancelado`).
-- **Pastas na lista de cenas** (`S.pastas = { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }`, só do mestre:
-  numa mesa, no índice das cenas; sem mesa, neste navegador): a janela "Organizar em pastas…" (arrastar a cena, ou
-  escolher a pasta ao lado dela; criar, renomear e apagar pastas — as cenas voltam para "Sem pasta"), com Desfazer.
+- **Pastas na lista de cenas** (`S.pastas = { lista: [{ id, nome }], de: { idDaCena: idDaPasta }, mae }`, só do mestre:
+  numa mesa, no índice das cenas; sem mesa, neste navegador): a janela "Organizar as cenas…" (era "Organizar em
+  pastas…"; arrastar a cena, ou escolher onde ela fica na lista ao lado dela; criar, renomear e apagar pastas — as
+  cenas voltam para "Sem pasta"), com Desfazer. (As famílias de cenas, no lote 7, moram aqui também: `mae`.)
   Na lista do botão de cenas, cada pasta abre e fecha (lembrado neste aparelho). A cena que um marcador do Mapa-múndi
   abre ganha o ícone do mundo (`Nuvem.noMundo`, lido dos mapas da mesa).
-- **Gerar um vilarejo…** (`Vila`, `10d-vila.js`): tamanho (aldeia ou vila), terreno, rio, paliçada e quantas casas,
-  com a prévia e "Gerar outro". O plano é uma conta pura (`Vila.gerar`, pela semente); a cena nova sai com o fundo
-  pintado (na mesa, vira arquivo no Storage) e, por cima, tudo editável: as paredes de cada casa com uma porta, os
-  móveis (objetos de cenário), o nome em cima (um texto), o poço e os lampiões da praça, a paliçada com os portões
-  abertos. A névoa dinâmica vem ligada (as paredes bloqueiam a visão).
+- **O vilarejo** (`Vila`, `10d-vila.js`; desde o lote 7, na janela "Gerar um lugar…"): tamanho (aldeia ou vila),
+  terreno, rio, paliçada e quantas casas, com a prévia e "Gerar outro". O plano é uma conta pura (`Vila.gerar`, pela
+  semente); a cena nova sai com o fundo pintado (na mesa, vira arquivo no Storage) e, por cima, tudo editável: as
+  paredes de cada casa com a porta e as janelas, os móveis (objetos de cenário), o poço e as luzes da praça, a paliçada
+  com os portões abertos. A névoa dinâmica vem ligada (as paredes bloqueiam a visão). Nada sai escrito (até o lote 6,
+  cada casa ganhava um nome; o mestre preferiu dar os nomes ele mesmo).
 - **Os itens complementares na janelinha E**: o "com Espada de gelo" numa linha embaixo do nome, e "sem efeito ·
   precisa de …" quando está equipado sem o requisito.
 
@@ -491,6 +493,46 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   que muda vira o resultado — Fogo, Água eletrificada, Chão congelado — e a que disparou sai; um Desfazer) e abre o
   dano para quem está dentro, com a condição da combinação sugerida (Queimando, Eletrizado, Congelado). O Desfazer
   não pergunta de novo; o fogo que um jogador solta também gera o cartão.
+- **As famílias de cenas** (`S.pastas.mae = { idDaFilha: idDaMãe }`, no índice das cenas, só do mestre): uma cena
+  fica dentro de outra — a cidade, o bairro, a casa. Na janela "Organizar as cenas…", arrastar uma cena para cima de
+  outra a põe dentro dela; arrastar para o título de uma pasta (ou um canto vazio dela) a deixa solta ali; a lista
+  "Onde fica", ao lado de cada cena, faz o mesmo (as pastas e, embaixo, as cenas — menos ela mesma e as de dentro dela).
+  Sem voltas e até seis níveis (`Proj.normPastas` corta o resto; a janela avisa). A família inteira fica na pasta da mãe
+  de todas. No menu de cenas, as filhas vêm logo abaixo da mãe, um pouco para dentro; a mãe tem, à direita, o botão que
+  abre e fecha a família (com quantas cenas há dentro; lembrado neste aparelho em `tinycats:cenas:familias-fechadas`),
+  e ele fica marcado quando a cena aberta está lá dentro. Duplicar uma cena deixa a cópia na mesma mãe (sem copiar as
+  filhas); apagar uma cena passa as filhas para a mãe dela (ou as deixa soltas, na pasta dela) — a janela de apagar diz.
+  Numa mesa com campanhas, a cena cuja mãe é de outra campanha aparece sem mãe.
+- **As passagens**: um objeto de cenário pode levar a outra cena (`t.cena`, só do mestre: a projeção tira). Os
+  marcadores **Entrada** e **Saída** (`Props.P.entrada`/`saida`, em Perigos e marcos) nascem ocultos dos jogadores. No
+  painel do objeto, "Leva para outra cena" escolhe a cena (com Desfazer), "Ir para lá" vai, e "Uma cena nova, dentro
+  desta…" cria a cena (na família desta, na mesma campanha) já com a Saída de volta. Dois cliques no objeto abrem o
+  menu da passagem: "Ir para esta cena" (o aviso tem Voltar), "Ir e mostrar aos jogadores" (numa mesa), ou escolher
+  outra. Ir para outra cena não muda o que os jogadores veem; se a cena ligada foi apagada, o menu diz.
+- **Objetos novos** (para os estilos do gerador, e soltos): a lanterna de papel (uma luz), a almofada, o tapete (2 × 2),
+  o jarro de barro, a bigorna, as flores e a pedra rúnica.
+- **A janela "Gerar um lugar…"** (`Gerador`, `10h-gerador.js`; o menu de cenas trocou "Gerar um vilarejo…" por ela):
+  uma aba por lugar (por enquanto só o Vilarejo; a Cidade e os outros vêm depois), as escolhas do lugar à esquerda e,
+  embaixo delas, o que vale para todos — o **estilo**, a **hora do dia** e o **clima** —; a prévia à direita.
+  - **Os estilos** (`Estilos`, `10c2-estilos.js`): Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o
+    desenho (as cores da rua, o chão da praça — pedras, cascalho rastelado, terra com anel de pedras, mosaico, grama
+    com flores, lajes de seis lados —, o piso das casas — tábuas, tatame, ladrilho, madeira clara, lajes —, as paredes
+    pintadas — madeira, papel, troncos, adobe, madeira viva, pedra —, as árvores — cerejeira e bambu, pinheiros,
+    palmeiras, árvores com luzinhas, pedras no lugar das árvores — e os enfeites: o torii na frente do santuário, o toldo
+    listrado na porta), os prédios (a casa longa nórdica com a fogueira no meio, as casas redondas élficas e os salões
+    anões de cantos cortados) e os móveis de cada tipo (`Estilos.TIPOS`). As luzes da praça também: lampião, lanterna de
+    papel ou braseiro. O nome da cena acompanha ("Aldeia nórdica", "Vila anã").
+  - **A hora e o clima** vão para a cena (`sc.tone`, `sc.light`, `sc.weather`); a hora tinge a prévia. À noite (e no
+    breu), cada casa ganha uma luz por dentro ("Luz da casa"), que escapa pelas janelas e pela porta aberta.
+  - **Travar**: um clique numa parte da prévia — uma casa, o rio, as ruas e a praça — trava a parte (o cadeado; com o
+    teclado, as setas escolhem a parte e Enter trava). "Gerar outro" sorteia de novo, e o travado fica igual (a casa,
+    com a porta, as janelas e os móveis; as ruas, com a praça; o rio). As ruas sorteadas desviam das casas travadas; a
+    casa travada que não couber sai (o resumo diz). Trocar o estilo mantém a casa travada no lugar, com a mesma porta, e
+    troca a forma, as janelas e os móveis (com outro sorteio, para não mexer no resto). "Soltar tudo" solta sem sortear.
+  - **A semente** fica à mostra: o mesmo número, com as mesmas escolhas e o mesmo travado, dá o mesmo lugar.
+  - **Os modelos** (`S.prefs.modelos`, no índice das cenas, só do mestre; `Proj.normModelos`, até 30): "Guardar como
+    modelo" guarda as escolhas, o estilo, a hora, o clima, a semente e o que está travado; abrir um modelo devolve o
+    lugar (com Desfazer), e "Gerar outro" sorteia outros parecidos. A lixeira apaga um modelo (com Desfazer).
 
 ### A Árvore (lote 6)
 
@@ -1175,7 +1217,14 @@ token dele, e o Escudado que sai com o dano do mestre e com o dele. `src/cenas/t
 novas (a biblioteca, a Fumaça e a Muralha na visão e na passagem, os pontos da muralha, o Portal, as Runas, as zonas de
 condição e de lembrete no começo da vez, as combinações, trocar o tipo, o efeito de um jogador), e `cenas-lote7b.rede`,
 com o mestre e um jogador: o portal que o jogador usa, a fumaça na tela dele, as runas escondidas e o fogo dele no
-óleo do mestre. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+óleo do mestre. `src/cenas/test/lote7c.js` confere as famílias de cenas (arrastar, a lista "Onde fica", sem voltas e
+até seis níveis, o menu que abre e fecha, a pasta da família, duplicar, apagar, recarregar), as passagens (os
+marcadores, o painel, os dois cliques, "Uma cena nova, dentro desta…", a cena apagada, a prévia como jogador), a janela
+"Gerar um lugar" (o estilo, a hora, travar com o mouse e com o teclado, "Gerar outro", "Soltar tudo", a semente, os
+modelos e a cena que sai) e as regras do plano em 72 sorteios nos seis estilos e em 36 com partes travadas (com
+`SO=familias`, `passagens`, `gerador` ou `regras`, roda só uma parte); `cenas-lote7c.rede`, numa mesa: a família e o
+modelo no índice (a jogadora não recebe; outro aparelho do mestre encontra), a vila oriental de noite com chuva na
+tela da jogadora e a passagem que não diz aonde leva. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre

@@ -225,6 +225,7 @@ const Nuvem = (() => {
     const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
+    S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -378,7 +379,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null }, pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -467,6 +468,7 @@ const Nuvem = (() => {
     for (const id of S.order) if (!ordem.includes(id)) ordem.push(id);
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
+    S.prefs.modelos = n.prefs.modelos;
     S.pastas = n.pastas;
     Store.meta();
   }

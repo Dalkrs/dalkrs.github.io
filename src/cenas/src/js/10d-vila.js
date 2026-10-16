@@ -1,11 +1,14 @@
 /* ---------------------------------------------------------------
-   10d. VILA — o gerador de vilarejo (lote 6)
-   O mestre escolhe o tamanho (aldeia ou vila), o terreno, se tem rio e muralha e quantas casas; a janela mostra a
-   prévia e "Gerar outro" sorteia de novo. Sai uma cena nova: o fundo pintado (o chão, as ruas, a praça, o rio e a
-   ponte, o piso das casas, a paliçada e as árvores) e, por cima, tudo editável — as paredes de cada casa (que
-   bloqueiam a visão), uma porta, alguns móveis (objetos de cenário) e o nome em cima; o poço e os lampiões da
-   praça; a paliçada, com os portões abertos. O plano (gerar) é uma conta pura, sorteada por uma semente: a mesma
-   escolha com a mesma semente dá o mesmo vilarejo. Nada muda nas cenas que já existem.
+   10d. VILA — o gerador de vilarejo (lote 6; lote 7: estilos, travar, janelas e a noite)
+   O mestre escolhe o tamanho (aldeia ou vila), o terreno, o estilo, se tem rio e muralha e quantas casas; a janela do
+   gerador (10h) mostra a prévia e "Gerar outro" sorteia de novo — menos o que ele travou (as ruas e a praça, o rio,
+   cada casa). Sai uma cena nova: o fundo pintado (o chão, as ruas, a praça, o rio e a ponte, o piso e as paredes das
+   casas, a paliçada, as árvores e os enfeites do estilo) e, por cima, tudo editável — as paredes de cada casa (que
+   bloqueiam a visão), a porta, as janelas, os móveis (objetos de cenário), o poço e as luzes da praça e a paliçada com
+   os portões abertos. À noite, cada casa ganha uma luz por dentro, que escapa pelas janelas. Nada sai escrito: os
+   nomes ficam com o mestre.
+   O plano (gerar) é uma conta pura, sorteada por uma semente: a mesma escolha, com a mesma semente e as mesmas partes
+   travadas, dá o mesmo vilarejo. Nada muda nas cenas que já existem.
    --------------------------------------------------------------- */
 const Vila = (() => {
   const TAMANHOS = {
@@ -13,19 +16,10 @@ const Vila = (() => {
     vila: { n: 'Vila', W: 40, H: 28, rua: 3, praca: 3.5, casas: [6, 16], padrao: 10, lamp: 4 },
   };
   const TERRENOS_V = [['campo', 'Campo'], ['floresta', 'Floresta'], ['areia', 'Deserto'], ['neve', 'Neve']];
-  // o que cada tipo de casa pode ter: os tamanhos (largura × altura, em quadrados), o piso e os móveis (na ordem em
-  // que entram: os primeiros são os que mais importam)
-  const TIPOS = {
-    taverna: { n: 'Taverna', tam: [[6, 5], [5, 6], [7, 5]], piso: 'madeira', moveis: ['mesa', 'barril', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], max: 6 },
-    capela: { n: 'Capela', tam: [[5, 6], [6, 5]], piso: 'pedra', moveis: ['altar', 'estatua', 'vela', 'vela'], max: 4 },
-    ferraria: { n: 'Ferraria', tam: [[5, 4], [4, 5]], piso: 'pedra', moveis: ['braseiro', 'caixote', 'barril'], max: 3 },
-    armazem: { n: 'Armazém', tam: [[5, 4], [6, 4], [4, 5]], piso: 'madeira', moveis: ['estante', 'caixote', 'barril', 'caixote', 'barril'], max: 4 },
-    casa: { n: 'Casa', tam: [[4, 3], [3, 4], [4, 4], [5, 4], [4, 5]], piso: 'madeira', moveis: ['cama', 'mesa', 'barril', 'bau', 'cadeira'], max: 3 },
-  };
-  const PESSOAS = ['Brunilda', 'Osvaldo', 'Teodora', 'Anselmo', 'Mirela', 'Gaspar', 'Lúcia', 'Benedito', 'Ilsa', 'Tomé', 'Aurora', 'Vicente', 'Rosalva', 'Joaquim', 'Hilda', 'Aldo', 'Marta', 'Rufino', 'Elvira', 'Bento', 'Cecília', 'Dário', 'Inês', 'Leandro', 'Odete', 'Severino'];
-  const TAVERNAS = ['Taverna do Javali Dourado', 'Taverna do Corvo Bêbado', 'Taverna do Caneco Cheio', 'Taverna do Gato Preto', 'Taverna do Lobo Manco', 'Taverna do Barril Furado', 'Taverna da Lua Torta', 'Taverna do Bode Risonho'];
-  const CAPELAS = ['Capela da Aurora', 'Capela de Santa Inês', 'Templo do Sol Velho', 'Capela da Colheita', 'Santuário da Geada'];
-  const LUGARES = ['Pedravale', 'Fontebranca', 'Monte Sereno', 'Pinheiral', 'Trigal', 'Lagoa Funda', 'Brejo Alto', 'Rio Manso', 'Valverde', 'Penedo', 'Carvalhal', 'Ventania', 'Areia Rubra', 'Bruma Fria'];
+  // o nome de cada tipo de prédio, para as dicas da janela ("Clique para travar a taverna")
+  const NOME_TIPO = { taverna: 'a taverna', capela: 'a capela', ferraria: 'a ferraria', armazem: 'o armazém', casa: 'a casa' };
+  const NOME_TIPO_EST = { oriental: { taverna: 'a casa de chá', capela: 'o santuário' }, nordico: { taverna: 'o salão', capela: 'o templo', casa: 'a casa longa' }, desertico: { capela: 'o templo' }, elfico: { capela: 'o bosque sagrado' }, anao: { taverna: 'o salão', capela: 'o salão dos ancestrais', ferraria: 'a forja' } };
+  const nomeDoTipo = (tipo, est) => (NOME_TIPO_EST[est] || {})[tipo] || NOME_TIPO[tipo] || 'a casa';
 
   /* ================= o plano (conta pura) ================= */
   const distSeg = (px, py, ax, ay, bx, by) => {
@@ -33,52 +27,112 @@ const Vila = (() => {
     return Math.hypot(px - ax - t * dx, py - ay - t * dy);
   };
   const distLinha = (pts, x, y) => { let d = Infinity; for (let i = 1; i < pts.length; i++) d = Math.min(d, distSeg(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])); return d; };
+  const amostrar = (f, de, ate, eixoX) => { const out = []; for (let t = de; t <= ate + 1e-9; t += 0.5) out.push(eixoX ? [t, f(t)] : [f(t), t]); return out; };
+  const num = v => typeof v === 'number' && Number.isFinite(v);
+
+  /* As partes travadas que chegam de fora (um modelo guardado, a janela): só valem se fazem sentido neste tamanho.
+     ruas e rio: os números que desenham a rua e o rio; casas: cópias das casas (com porta, janelas e móveis). */
+  function limparTrava(t, W, H, TP) {
+    if (!t || typeof t !== 'object') return { ruas: null, rio: null, casas: [] };
+    const ruas = t.ruas && ['y0', 'A', 'L', 'F'].every(k => num(t.ruas[k])) && t.ruas.L > 0 ? Object.assign({}, t.ruas) : null;
+    const rio = t.rio && ['xr0', 'C', 'N', 'Hh', 'rw'].every(k => num(t.rio[k])) && t.rio.N > 0 && t.rio.rw > 0 && t.rio.rw < 4 ? Object.assign({}, t.rio) : null;
+    const casas = [];
+    for (const k of Array.isArray(t.casas) ? t.casas.slice(0, 20) : []) {
+      if (!k || !TP[k.tipo] || ![k.x, k.y, k.w, k.h].every(v => Number.isInteger(v)) || k.w < 3 || k.h < 3 || k.w > 12 || k.h > 12 || k.x < 0 || k.y < 0 || k.x + k.w > W || k.y + k.h > H) continue;
+      const pt = k.porta;
+      const lado = l => typeof l === 'string' && l.length === 1 && 'nsol'.includes(l);
+      if (!pt || !lado(pt.lado) || ![pt.x1, pt.y1, pt.x2, pt.y2].every(Number.isInteger)) continue;
+      const ladoOk = { n: pt.y1 === k.y && pt.y2 === k.y && pt.x2 - pt.x1 === 1 && pt.x1 > k.x && pt.x2 < k.x + k.w, s: pt.y1 === k.y + k.h && pt.y2 === k.y + k.h && pt.x2 - pt.x1 === 1 && pt.x1 > k.x && pt.x2 < k.x + k.w,
+        o: pt.x1 === k.x && pt.x2 === k.x && pt.y2 - pt.y1 === 1 && pt.y1 > k.y && pt.y2 < k.y + k.h, l: pt.x1 === k.x + k.w && pt.x2 === k.x + k.w && pt.y2 - pt.y1 === 1 && pt.y1 > k.y && pt.y2 < k.y + k.h }[pt.lado];
+      if (!ladoOk) continue;
+      const janelas = (Array.isArray(k.janelas) ? k.janelas.slice(0, 3) : []).filter(j => j && lado(j.lado) && j.lado !== pt.lado && [j.x1, j.y1, j.x2, j.y2].every(Number.isInteger)).map(j => ({ lado: j.lado, x1: j.x1, y1: j.y1, x2: j.x2, y2: j.y2 }));
+      const moveis = (Array.isArray(k.moveis) ? k.moveis.slice(0, 10) : []).filter(m => m && Props.P[m.id] && [m.x, m.y, m.s].every(Number.isInteger) && m.s >= 1 && m.x >= k.x && m.y >= k.y && m.x + m.s <= k.x + k.w && m.y + m.s <= k.y + k.h).map(m => ({ id: m.id, x: m.x, y: m.y, s: m.s }));
+      casas.push({ tipo: k.tipo, forma: k.forma === 'oct' ? 'oct' : 'ret', x: k.x, y: k.y, w: k.w, h: k.h, porta: { lado: pt.lado, x1: pt.x1, y1: pt.y1, x2: pt.x2, y2: pt.y2 }, janelas, moveis, estilo: typeof k.estilo === 'string' ? k.estilo : null });
+    }
+    return { ruas, rio, casas };
+  }
+
   function gerar(o) {
+    o = o || {};
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'aldeia', T = TAMANHOS[tam];
-    const terreno = TERRENOS_V.some(x => x[0] === o.terreno) ? o.terreno : 'campo';
+    const terreno = TERRENOS_V.some(x => x[0] === o.terreno) ? o.terreno : 'campo', estilo = Estilos.valido(o.estilo), TP = Estilos.tipos(estilo), E = Estilos.de(estilo);
     const W = T.W, H = T.H, seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
     const r = (a, b) => a + rnd() * (b - a), ri = (a, b) => Math.floor(r(a, b + 1)), pick = a => a[Math.floor(rnd() * a.length) % a.length];
-    const rio = !!o.rio, muralha = !!o.muralha;
+    const comRio = !!o.rio, muralha = !!o.muralha;
     const want = clamp(Math.round(Number(o.casas) || T.padrao), T.casas[0], T.casas[1]);
+    const trava = limparTrava(o.trava, W, H, TP), base = o.base && typeof o.base === 'object' ? o.base : {};
+    const hw = T.rua / 2;
+
+    // as ruas: a principal atravessa de um lado ao outro; na vila, uma segunda cruza de cima a baixo
+    const sortearRuas = () => {
+      const P = { y0: H / 2 + r(-1.2, 1.2), A: r(0.4, 1.1), L: r(W * 0.7, W * 1.3), F: r(0, Math.PI * 2), px: W / 2 + r(-2, 2) };
+      if (tam === 'vila') Object.assign(P, { x0: W / 2 + r(-2, 2), B: r(0.3, 0.9), M: r(H * 0.8, H * 1.4), G: r(0, Math.PI * 2) });
+      return P;
+    };
+    const completar = P => {
+      P = Object.assign({}, P);
+      if (!num(P.px)) P.px = W / 2;
+      if (tam === 'vila' && !(num(P.x0) && num(P.B) && num(P.M) && P.M > 0 && num(P.G))) Object.assign(P, { x0: W / 2, B: 0.5, M: H, G: 0 });
+      if (tam !== 'vila') { delete P.x0; delete P.B; delete P.M; delete P.G; }
+      return P;
+    };
+    const geoRuas = P => {
+      const ruaY = x => P.y0 + P.A * Math.sin(2 * Math.PI * x / P.L + P.F);
+      const ruaX = tam === 'vila' ? (y => P.x0 + P.B * Math.sin(2 * Math.PI * y / P.M + P.G)) : null;
+      let px = ruaX ? ruaX(P.y0) : P.px;
+      if (ruaX) for (let k = 0; k < 6; k++) px = ruaX(ruaY(px));
+      const ruas = [{ pts: amostrar(ruaY, -1, W + 1, true), hw }];
+      if (ruaX) ruas.push({ pts: amostrar(ruaX, -1, H + 1, false), hw: hw * 0.85 });
+      return { ruaY, ruaX, ruas, praca: { x: px, y: ruaY(px), r: T.praca } };
+    };
+    // o rio: de cima a baixo, longe da praça
+    const sortearRio = praca => {
+      const rw = tam === 'vila' ? 1.6 : 1.3, lados = [W * 0.17, W * 0.83].filter(x => Math.abs(x - praca.x) >= praca.r + rw + 3);
+      return { xr0: (lados.length ? pick(lados) : W * 0.83) + r(-1, 1), C: r(0.6, 1.6), N: r(H * 0.7, H * 1.3), Hh: r(0, Math.PI * 2), rw };
+    };
+    const geoRio = R => { const rioX = y => R.xr0 + R.C * Math.sin(2 * Math.PI * y / R.N + R.Hh); return { rioX, pts: amostrar(rioX, -1, H + 1, false), hw: R.rw }; };
+    // uma casa travada bate na rua, na praça ou no rio?
+    const bateNaRua = (k, G) => { for (let j = k.y; j < k.y + k.h; j++) for (let i = k.x; i < k.x + k.w; i++) { const cx = i + 0.5, cy = j + 0.5; if (G.ruas.some(ru => distLinha(ru.pts, cx, cy) <= ru.hw + 0.25) || Math.hypot(cx - G.praca.x, cy - G.praca.y) <= G.praca.r + 0.3) return true; } return false; };
+    // (a casa não encosta no rio: nem a volta dela pode ser água)
+    const bateNoRio = (k, R) => { for (let j = k.y - 1; j <= k.y + k.h; j++) for (let i = k.x - 1; i <= k.x + k.w; i++) if (distLinha(R.pts, i + 0.5, j + 0.5) <= R.hw + 0.6) return true; return false; };
+    const pracaLongeDoRio = (G, R) => Math.abs(G.praca.x - R.rioX(G.praca.y)) >= G.praca.r + R.hw + 2;
+
+    // 1) as ruas: as travadas; senão, sorteadas sem passar por cima das casas travadas (nem da praça em cima do rio travado)
+    let ruaP = trava.ruas ? completar(trava.ruas) : null, G = null;
+    const rioTravado = comRio && trava.rio ? geoRio(trava.rio) : null;
+    const servem = Gx => !trava.casas.some(k => bateNaRua(k, Gx)) && (!rioTravado || pracaLongeDoRio(Gx, rioTravado));
+    if (ruaP) G = geoRuas(ruaP);
+    else {
+      for (let tent = 0; tent < 60 && !G; tent++) { const P = sortearRuas(), Gx = geoRuas(P); if (servem(Gx)) { ruaP = P; G = Gx; } }
+      // nenhuma serviu: as ruas que estavam na tela (as casas travadas cabiam nelas); sem elas, um sorteio a mais
+      if (!G && base.ruaP && ['y0', 'A', 'L', 'F'].every(k => num(base.ruaP[k])) && base.ruaP.L > 0) { ruaP = completar(base.ruaP); G = geoRuas(ruaP); }
+      if (!G) { ruaP = sortearRuas(); G = geoRuas(ruaP); }
+    }
+    const { ruaY, ruaX, ruas, praca } = G;
     const occ = new Uint8Array(W * H);                     // 0 livre · 1 rua ou praça · 2 rio · 3 casa · 4 árvore ou enfeite
     const at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? occ[j * W + i] : 9);
     const pos = (i, j, v) => { if (i >= 0 && j >= 0 && i < W && j < H) occ[j * W + i] = v; };
-
-    // as ruas: a principal atravessa de um lado ao outro; na vila, uma segunda cruza de cima a baixo
-    const hw = T.rua / 2;
-    const y0 = H / 2 + r(-1.2, 1.2), A = r(0.4, 1.1), L = r(W * 0.7, W * 1.3), F = r(0, Math.PI * 2);
-    const ruaY = x => y0 + A * Math.sin(2 * Math.PI * x / L + F);
-    const amostrar = (f, de, ate, eixoX) => { const out = []; for (let t = de; t <= ate + 1e-9; t += 0.5) out.push(eixoX ? [t, f(t)] : [f(t), t]); return out; };
-    const ruas = [{ pts: amostrar(ruaY, -1, W + 1, true), hw }];
-    let ruaX = null;
-    if (tam === 'vila') {
-      const x0 = W / 2 + r(-2, 2), B = r(0.3, 0.9), M = r(H * 0.8, H * 1.4), G = r(0, Math.PI * 2);
-      ruaX = y => x0 + B * Math.sin(2 * Math.PI * y / M + G);
-      ruas.push({ pts: amostrar(ruaX, -1, H + 1, false), hw: hw * 0.85 });
-    }
-    // a praça: no cruzamento (vila) ou no meio da rua (aldeia)
-    let px = ruaX ? ruaX(y0) : W / 2 + r(-2, 2);
-    if (ruaX) for (let k = 0; k < 6; k++) px = ruaX(ruaY(px));
-    const praca = { x: px, y: ruaY(px), r: T.praca };
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       const cx = i + 0.5, cy = j + 0.5;
       if (ruas.some(ru => distLinha(ru.pts, cx, cy) <= ru.hw + 0.25) || Math.hypot(cx - praca.x, cy - praca.y) <= praca.r + 0.3) pos(i, j, 1);
     }
-    // o rio: de cima a baixo, longe da praça (atravessa a rua principal por uma ponte)
-    let rioP = null, ponte = null;
-    if (rio) {
-      const rw = tam === 'vila' ? 1.6 : 1.3, C = r(0.6, 1.6), N = r(H * 0.7, H * 1.3), Hh = r(0, Math.PI * 2);
-      const lados = [W * 0.17, W * 0.83].filter(x => Math.abs(x - praca.x) >= praca.r + rw + 3);
-      const xr0 = (lados.length ? pick(lados) : W * 0.83) + r(-1, 1);
-      const rioX = y => xr0 + C * Math.sin(2 * Math.PI * y / N + Hh);
-      rioP = { pts: amostrar(rioX, -1, H + 1, false), hw: rw };
-      let xb = xr0;
-      for (let k = 0; k < 6; k++) xb = rioX(ruaY(xb));
+    // 2) o rio (atravessa a rua principal por uma ponte): o travado, ou um sorteado que não passe pelas casas travadas
+    let rioP = null, rioG = null, ponte = null;
+    if (comRio) {
+      if (rioTravado) { rioP = Object.assign({}, trava.rio); rioG = rioTravado; }
+      else {
+        for (let tent = 0; tent < 60 && !rioG; tent++) { const R = sortearRio(praca), Rg = geoRio(R); if (!trava.casas.some(k => bateNoRio(k, Rg))) { rioP = R; rioG = Rg; } }
+        if (!rioG && base.rioP && ['xr0', 'C', 'N', 'Hh', 'rw'].every(k => num(base.rioP[k]))) { rioP = Object.assign({}, base.rioP); rioG = geoRio(rioP); }
+        if (!rioG) { rioP = sortearRio(praca); rioG = geoRio(rioP); }
+      }
+      let xb = rioP.xr0;
+      for (let k = 0; k < 6; k++) xb = rioG.rioX(ruaY(xb));
       const yb = ruaY(xb), inc = Math.atan2(ruaY(xb + 0.5) - ruaY(xb - 0.5), 1);
-      ponte = { x: xb, y: yb, comp: 2 * rw + 1.6, larg: 2 * hw + 0.5, ang: inc };
-      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (at(i, j) !== 1 && distLinha(rioP.pts, i + 0.5, j + 0.5) <= rw + 0.6) pos(i, j, 2);
+      ponte = { x: xb, y: yb, comp: 2 * rioP.rw + 1.6, larg: 2 * hw + 0.5, ang: inc };
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (at(i, j) !== 1 && distLinha(rioG.pts, i + 0.5, j + 0.5) <= rioP.rw + 0.6) pos(i, j, 2);
     }
-    // a muralha (paliçada): um retângulo a dois quadrados da borda, com portões onde as ruas saem e a água passa por baixo
+    const rioGeo = rioG ? { pts: rioG.pts, hw: rioP.rw } : null;
+    // 3) a muralha (paliçada): um retângulo a dois quadrados da borda, com portões onde as ruas saem e a água passa por baixo
     let muro = null;
     if (muralha) {
       const x1 = 2, y1 = 2, x2 = W - 2, y2 = H - 2;
@@ -90,8 +144,7 @@ const Vila = (() => {
       };
       vao('o', ruaY(x1), hw, true); vao('l', ruaY(x2), hw, true);
       if (ruaX) { vao('n', ruaX(y1), hw * 0.85, true); vao('s', ruaX(y2), hw * 0.85, true); }
-      if (rioP) { const rx = y => rioP.pts.reduce((m, p) => (Math.abs(p[1] - y) < Math.abs(m[1] - y) ? p : m))[0]; vao('n', rx(y1), rioP.hw, false); vao('s', rx(y2), rioP.hw, false); }
-      // os trechos de cada lado: o lado inteiro menos os vãos
+      if (rioGeo) { const rx = y => rioGeo.pts.reduce((m, p) => (Math.abs(p[1] - y) < Math.abs(m[1] - y) ? p : m))[0]; vao('n', rx(y1), rioGeo.hw, false); vao('s', rx(y2), rioGeo.hw, false); }
       const trechos = (de, ate, vs) => {
         const out = []; let a = de;
         for (const [va, vb] of vs.slice().sort((p, q) => p[0] - q[0])) { if (va > a) out.push([a, Math.min(va, ate)]); a = Math.max(a, vb); }
@@ -102,7 +155,7 @@ const Vila = (() => {
     }
     const reg = muralha ? { x0: 3, y0: 3, x1: W - 3, y1: H - 3 } : { x0: 1, y0: 1, x1: W - 1, y1: H - 1 };
 
-    // as casas: primeiro as que dão para a rua; se faltar lugar, as de trás (com a porta virada para a rua)
+    // 4) as casas: primeiro as travadas; depois as que dão para a rua; se faltar lugar, as de trás (com a porta virada para a rua)
     const cabe = (x, y, w, h) => {
       if (x < reg.x0 || y < reg.y0 || x + w > reg.x1 || y + h > reg.y1) return false;
       for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) {
@@ -111,12 +164,25 @@ const Vila = (() => {
       }
       return true;
     };
+    const ocupar = k => { for (let j = k.y; j < k.y + k.h; j++) for (let i = k.x; i < k.x + k.w; i++) pos(i, j, 3); };
+    const casas = [];
+    let soltas = 0;
+    // (as casas travadas em outro estilo são mobiliadas com outro sorteio: assim o resto do lugar não muda por causa delas)
+    const rndT = mulberry((seed ^ 0x9e3779b9) >>> 0 || 3);
+    for (const k of trava.casas) {
+      if (casas.length >= want || !cabe(k.x, k.y, k.w, k.h)) { soltas++; continue; }
+      let casa = Object.assign({}, k, { porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), trava: true });
+      // travada em outro estilo: fica no mesmo lugar, com a mesma porta, mas a forma, as janelas e os móveis passam a ser deste
+      if (casa.estilo !== estilo) { casa.forma = Estilos.formaDe(TP[casa.tipo], casa.w, casa.h); casa.janelas = janelasDe(casa, TP[casa.tipo], rndT); casa.moveis = mobiliar(casa, TP[casa.tipo], rndT); }
+      delete casa.estilo;
+      ocupar(casa); casas.push(casa);
+    }
     const tipos = [];
     if (want >= 4) tipos.push('taverna');
     if (tam === 'vila' && want >= 7) tipos.push('capela', 'armazem');
     if (want >= 6) tipos.push('ferraria');
     while (tipos.length < want) tipos.push('casa');
-    const casas = [];
+    for (const k of casas) { const i = tipos.indexOf(k.tipo); tipos.splice(i >= 0 ? i : tipos.lastIndexOf('casa') >= 0 ? tipos.lastIndexOf('casa') : tipos.length - 1, 1); }
     const porta = (x, y, w, h, lado) => {
       const len = lado === 'n' || lado === 's' ? w : h, d = clamp(Math.floor(len / 2) + ri(-1, 1) * (len >= 5 ? 1 : 0), 1, Math.max(1, len - 2));
       if (lado === 'n') return { lado, x1: x + d, y1: y, x2: x + d + 1, y2: y };
@@ -125,9 +191,9 @@ const Vila = (() => {
       return { lado, x1: x + w, y1: y + d, x2: x + w, y2: y + d + 1 };
     };
     const tentarNaRua = tipo => {
-      const def = TIPOS[tipo];
+      const def = TP[tipo];
       for (let k = 0; k < 300; k++) {
-        let [w, h] = pick(def.tam);
+        const [w, h] = pick(def.tam);
         const naVertical = ruaX && rnd() < 0.4;
         let x, y, lado;
         if (!naVertical) {
@@ -149,66 +215,34 @@ const Vila = (() => {
       return null;
     };
     const tentarAtras = tipo => {
-      const def = TIPOS[tipo];
+      const def = TP[tipo];
       for (let k = 0; k < 300; k++) {
         const [w, h] = pick(def.tam), x = ri(reg.x0, reg.x1 - w), y = ri(reg.y0, reg.y1 - h);
         if (!cabe(x, y, w, h)) continue;
-        // a porta vira para a rua mais perto
         const cx = x + w / 2, cy = y + h / 2, dy = cy - ruaY(cx), dx = ruaX ? cx - ruaX(cy) : Infinity;
         const lado = Math.abs(dx) < Math.abs(dy) ? (dx < 0 ? 'l' : 'o') : (dy < 0 ? 's' : 'n');
         return { x, y, w, h, porta: porta(x, y, w, h, lado) };
       }
       return null;
     };
-    const usados = new Set();
-    const nomeDe = tipo => {
-      const pessoa = () => { let n = pick(PESSOAS); for (let k = 0; k < 8 && usados.has(n); k++) n = pick(PESSOAS); usados.add(n); return n; };
-      if (tipo === 'taverna') return pick(TAVERNAS);
-      if (tipo === 'capela') return pick(CAPELAS);
-      if (tipo === 'ferraria') return 'Ferraria de ' + pessoa();
-      if (tipo === 'armazem') return 'Armazém de ' + pessoa();
-      return 'Casa de ' + pessoa();
-    };
     for (const tipo of tipos) {
       const lugar = tentarNaRua(tipo) || tentarAtras(tipo);
       if (!lugar) continue;
-      for (let j = lugar.y; j < lugar.y + lugar.h; j++) for (let i = lugar.x; i < lugar.x + lugar.w; i++) pos(i, j, 3);
-      casas.push(Object.assign({ tipo, nome: nomeDe(tipo), moveis: [] }, lugar));
+      const def = TP[tipo], casa = Object.assign({ tipo, forma: Estilos.formaDe(def, lugar.w, lugar.h) }, lugar);
+      casa.janelas = janelasDe(casa, def, rnd);
+      casa.moveis = mobiliar(casa, def, rnd);
+      ocupar(casa); casas.push(casa);
     }
-    // os móveis de cada casa: longe da porta (a passagem fica livre), sem um em cima do outro
-    for (const c of casas) {
-      const def = TIPOS[c.tipo], dentro = new Uint8Array(c.w * c.h);
-      const livre = (i, j) => i >= 0 && j >= 0 && i < c.w && j < c.h && !dentro[j * c.w + i];
-      // a passagem: a casa do lado de dentro da porta e a seguinte
-      const p = c.porta, pi = p.lado === 'l' ? c.w - 1 : p.lado === 'o' ? 0 : p.x1 - c.x, pj = p.lado === 's' ? c.h - 1 : p.lado === 'n' ? 0 : p.y1 - c.y;
-      const di = p.lado === 'l' ? -1 : p.lado === 'o' ? 1 : 0, dj = p.lado === 's' ? -1 : p.lado === 'n' ? 1 : 0;
-      for (let k = 0; k < 2; k++) { const i = pi + di * k, j = pj + dj * k; if (i >= 0 && j >= 0 && i < c.w && j < c.h) dentro[j * c.w + i] = 2; }
-      for (const id of def.moveis) {
-        if (c.moveis.length >= def.max) break;
-        const s = Props.P[id] ? Props.P[id].size || 1 : 1, lugares = [];
-        for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
-          let ok = true;
-          for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
-          if (ok) lugares.push([i, j]);
-        }
-        if (!lugares.length) continue;
-        // perto das paredes fica mais natural (cama e estante encostadas); o meio, para a mesa
-        lugares.sort((u, v) => (id === 'mesa' ? 0 : Math.min(u[0], u[1], c.w - s - u[0], c.h - s - u[1]) - Math.min(v[0], v[1], c.w - s - v[0], c.h - s - v[1])) || 0);
-        const n = id === 'mesa' ? lugares.length : Math.max(1, Math.ceil(lugares.length / 3));
-        const [i, j] = lugares[Math.floor(rnd() * n) % lugares.length];
-        for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) dentro[(j + b) * c.w + i + a] = 1;
-        c.moveis.push({ id, x: c.x + i, y: c.y + j, s });
-      }
-    }
-    // a praça: o poço no meio e os lampiões em volta
+    // 5) a praça: o poço no meio e as luzes em volta (o lampião, a lanterna de papel ou o braseiro, conforme o estilo)
     const poco = { x: Math.round(praca.x - 0.5), y: Math.round(praca.y - 0.5) };
     const lampioes = [];
     for (let k = 0; k < T.lamp; k++) {
       const a = (k / T.lamp) * Math.PI * 2 + Math.PI / 4, lx = Math.round(praca.x + Math.cos(a) * (praca.r - 0.6) - 0.5), ly = Math.round(praca.y + Math.sin(a) * (praca.r - 0.6) - 0.5);
       if ((lx !== poco.x || ly !== poco.y) && !lampioes.some(q => q.x === lx && q.y === ly)) lampioes.push({ x: lx, y: ly });
     }
-    // as árvores (pintadas no fundo) e alguns enfeites que dá para mover (pedras, arbustos, tocos)
-    const densidade = { campo: 0.05, floresta: 0.2, areia: 0.025, neve: 0.06 }[terreno];
+    // 6) as árvores (pintadas no fundo) e alguns enfeites que dá para mover
+    const densidade = { campo: 0.05, floresta: 0.2, areia: 0.025, neve: 0.06 }[terreno] * E.dens;
+    const especie = E.arvore[terreno];
     const arvores = [], enfeites = [];
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       if (at(i, j) !== 0) continue;
@@ -219,7 +253,7 @@ const Vila = (() => {
       const pr = densidade * (fora ? 2.2 : borda < 3 ? 1.5 : terreno === 'floresta' ? 0.35 : 0.6);
       if (rnd() < pr) { arvores.push({ x: i + 0.5 + r(-0.25, 0.25), y: j + 0.5 + r(-0.25, 0.25), r: r(0.55, terreno === 'floresta' ? 1.25 : 1.05) }); pos(i, j, 4); }
     }
-    const tiposEnfeite = terreno === 'areia' ? ['pedra', 'pedra', 'caixote'] : terreno === 'neve' ? ['pedra', 'toco', 'tronco'] : ['arbusto', 'pedra', 'toco', 'arbusto'];
+    const tiposEnfeite = E.enfeites[terreno];
     for (let k = 0, tent = 0; k < (tam === 'vila' ? 6 : 4) && tent < 200; tent++) {
       const i = ri(reg.x0, reg.x1 - 1), j = ri(reg.y0, reg.y1 - 1), id = pick(tiposEnfeite), s = Props.P[id] ? Props.P[id].size || 1 : 1;
       let ok = true;
@@ -228,8 +262,104 @@ const Vila = (() => {
       for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4);
       enfeites.push({ id, x: i, y: j, s }); k++;
     }
-    const nome = (tam === 'vila' ? 'Vila de ' : 'Aldeia de ') + pick(LUGARES);
-    return { v: 1, seed, tamanho: tam, terreno, rio, muralha, W, H, nome, pedidas: want, ruas, praca, rio: rioP, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+    return { v: 2, seed, tamanho: tam, terreno, estilo, especie, poste: E.poste, rio: rioGeo, muralha, W, H, pedidas: want, ruaP, rioP, travaRuas: !!trava.ruas, travaRio: !!(comRio && trava.rio), soltas,
+      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+  }
+  /* As janelas de uma casa: nos lados sem a porta, longe dos cantos, cada uma num lado. */
+  function janelasDe(c, def, rnd) {
+    const out = [], livres = ['n', 's', 'o', 'l'].filter(l => l !== c.porta.lado);
+    for (let i = 0; i < (def.janelas || 0) && livres.length; i++) {
+      const lado = livres.splice(Math.floor(rnd() * livres.length) % livres.length, 1)[0], len = lado === 'n' || lado === 's' ? c.w : c.h;
+      if (len < 3) continue;
+      const d = 1 + (Math.floor(rnd() * (len - 2)) % (len - 2));
+      if (lado === 'n') out.push({ lado, x1: c.x + d, y1: c.y, x2: c.x + d + 1, y2: c.y });
+      else if (lado === 's') out.push({ lado, x1: c.x + d, y1: c.y + c.h, x2: c.x + d + 1, y2: c.y + c.h });
+      else if (lado === 'o') out.push({ lado, x1: c.x, y1: c.y + d, x2: c.x, y2: c.y + d + 1 });
+      else out.push({ lado, x1: c.x + c.w, y1: c.y + d, x2: c.x + c.w, y2: c.y + d + 1 });
+    }
+    return out;
+  }
+  /* Os móveis de uma casa: longe da porta (a passagem fica livre), sem um em cima do outro e fora dos cantos cortados
+     da casa redonda. O do meio (a fogueira da casa longa) vai primeiro; depois, encostados nas paredes (a mesa, no meio). */
+  function mobiliar(c, def, rnd) {
+    const out = [], dentro = new Uint8Array(c.w * c.h);
+    const livre = (i, j) => i >= 0 && j >= 0 && i < c.w && j < c.h && !dentro[j * c.w + i];
+    if (c.forma === 'oct') for (const [i, j] of [[0, 0], [c.w - 1, 0], [0, c.h - 1], [c.w - 1, c.h - 1]]) dentro[j * c.w + i] = 3;
+    const p = c.porta, pi = p.lado === 'l' ? c.w - 1 : p.lado === 'o' ? 0 : p.x1 - c.x, pj = p.lado === 's' ? c.h - 1 : p.lado === 'n' ? 0 : p.y1 - c.y;
+    const di = p.lado === 'l' ? -1 : p.lado === 'o' ? 1 : 0, dj = p.lado === 's' ? -1 : p.lado === 'n' ? 1 : 0;
+    for (let k = 0; k < 2; k++) { const i = pi + di * k, j = pj + dj * k; if (i >= 0 && j >= 0 && i < c.w && j < c.h) dentro[j * c.w + i] = 2; }
+    const por = (id, i, j, s) => { for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) dentro[(j + b) * c.w + i + a] = 1; out.push({ id, x: c.x + i, y: c.y + j, s }); };
+    const lista = def.moveis.slice();
+    // o do meio: no meio da casa ou, se a passagem da porta está lá, no lugar livre mais perto do meio
+    if (def.centro && Props.P[def.centro]) {
+      const s = Props.P[def.centro].size || 1, ci = (c.w - s) / 2, cj = (c.h - s) / 2, lugares = [];
+      for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
+        let ok = true;
+        for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
+        if (ok) lugares.push([i, j, Math.hypot(i - ci, j - cj)]);
+      }
+      lugares.sort((u, v) => u[2] - v[2] || u[1] - v[1] || u[0] - v[0]);
+      if (lugares.length) { por(def.centro, lugares[0][0], lugares[0][1], s); const k = lista.indexOf(def.centro); if (k >= 0) lista.splice(k, 1); }
+    }
+    for (const id of lista) {
+      if (out.length >= def.max) break;
+      if (!Props.P[id]) continue;
+      const s = Props.P[id].size || 1, lugares = [];
+      for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
+        let ok = true;
+        for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
+        if (ok) lugares.push([i, j]);
+      }
+      if (!lugares.length) continue;
+      // perto das paredes fica mais natural (cama e estante encostadas); o meio, para a mesa e o tapete
+      const meio = id === 'mesa' || id === 'tapete';
+      lugares.sort((u, v) => (meio ? 0 : Math.min(u[0], u[1], c.w - s - u[0], c.h - s - u[1]) - Math.min(v[0], v[1], c.w - s - v[0], c.h - s - v[1])) || 0);
+      const n = meio ? lugares.length : Math.max(1, Math.ceil(lugares.length / 3));
+      const [i, j] = lugares[Math.floor(rnd() * n) % lugares.length];
+      por(id, i, j, s);
+    }
+    return out;
+  }
+
+  /* ================= as partes que travam (a janela do gerador) ================= */
+  // a parte que está no ponto (x, y), em quadrados: 'c<n>' (uma casa), 'rio' ou 'ruas' (as ruas e a praça)
+  function parteEm(p, x, y) {
+    for (let i = 0; i < p.casas.length; i++) { const k = p.casas[i]; if (x >= k.x - 0.15 && x <= k.x + k.w + 0.15 && y >= k.y - 0.15 && y <= k.y + k.h + 0.15) return 'c' + i; }
+    if (p.rio && distLinha(p.rio.pts, x, y) <= p.rio.hw + 0.5) return 'rio';
+    if (Math.hypot(x - p.praca.x, y - p.praca.y) <= p.praca.r + 0.4 || p.ruas.some(ru => distLinha(ru.pts, x, y) <= ru.hw + 0.35)) return 'ruas';
+    return null;
+  }
+  const nomeDaParte = (p, parte) => (parte === 'rio' ? 'o rio' : parte === 'ruas' ? 'as ruas e a praça' : /^c\d+$/.test(parte) && p.casas[+parte.slice(1)] ? nomeDoTipo(p.casas[+parte.slice(1)].tipo, p.estilo) : 'esta parte');
+  // o desenho da parte, para a prévia marcar (em quadrados)
+  function formaDaParte(p, parte) {
+    if (parte === 'rio') return p.rio ? [{ k: 'linha', pts: p.rio.pts, hw: p.rio.hw }] : [];
+    if (parte === 'ruas') return [{ k: 'circ', x: p.praca.x, y: p.praca.y, r: p.praca.r }].concat(p.ruas.map(ru => ({ k: 'linha', pts: ru.pts, hw: ru.hw })));
+    const k = /^c\d+$/.test(parte) ? p.casas[+parte.slice(1)] : null;
+    return k ? [{ k: 'poli', pts: Estilos.contorno(k) }] : [];
+  }
+  const travada = (p, parte) => (parte === 'rio' ? !!p.travaRio : parte === 'ruas' ? !!p.travaRuas : /^c\d+$/.test(parte) && p.casas[+parte.slice(1)] ? !!p.casas[+parte.slice(1)].trava : false);
+  /* Trava ou solta a parte: muda a trava (o que vai para o próximo sorteio) e a marca no plano que está na tela (nada
+     é sorteado de novo). Devolve a trava nova. */
+  function alternar(p, parte, trava) {
+    const t = { ruas: trava && trava.ruas || null, rio: trava && trava.rio || null, casas: (trava && trava.casas || []).slice() };
+    if (parte === 'ruas') { p.travaRuas = !p.travaRuas; t.ruas = p.travaRuas ? Object.assign({}, p.ruaP) : null; }
+    else if (parte === 'rio') { if (!p.rio) return t; p.travaRio = !p.travaRio; t.rio = p.travaRio ? Object.assign({}, p.rioP) : null; }
+    else if (/^c\d+$/.test(parte) && p.casas[+parte.slice(1)]) {
+      const k = p.casas[+parte.slice(1)], mesma = q => q.x === k.x && q.y === k.y && q.w === k.w && q.h === k.h;
+      k.trava = !k.trava;
+      t.casas = t.casas.filter(q => !mesma(q));
+      if (k.trava) t.casas.push({ tipo: k.tipo, forma: k.forma, x: k.x, y: k.y, w: k.w, h: k.h, porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), estilo: p.estilo });
+    }
+    return t;
+  }
+  // quantas partes estão travadas no plano
+  const quantasTravadas = p => (p.travaRuas ? 1 : 0) + (p.travaRio ? 1 : 0) + p.casas.filter(k => k.trava).length;
+  // o que vai para o próximo sorteio quando o mestre não travou nada: as ruas e o rio de agora, para as casas travadas caberem
+  const baseDe = p => ({ ruaP: p.ruaP, rioP: p.rioP });
+  // a trava do plano que está na tela (para guardar como modelo)
+  function travaDe(p) {
+    return { ruas: p.travaRuas ? Object.assign({}, p.ruaP) : null, rio: p.travaRio ? Object.assign({}, p.rioP) : null,
+      casas: p.casas.filter(k => k.trava).map(k => ({ tipo: k.tipo, forma: k.forma, x: k.x, y: k.y, w: k.w, h: k.h, porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), estilo: p.estilo })) };
   }
 
   /* ================= o fundo pintado ================= */
@@ -240,7 +370,7 @@ const Vila = (() => {
     neve: { base: '#dfe6ec', manchas: ['#cfd8e0', '#e9eef2', '#c4ced8', '#f2f5f8', '#bcc7d2'], fios: ['#f4f7fa', '#b9c4ce'], rua: ['#8e8273', '#a99d8d', '#bdb3a6'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#e8f0f2', agua: ['#5d8aa6', '#7aa3bc', '#a9c8da'], margem: '#9aa6b0' },
   };
   function pintar(p, cell) {
-    const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo;
+    const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x5bd1e995) >>> 0 || 7), c = cell;
     const TAU2 = Math.PI * 2;
@@ -253,7 +383,6 @@ const Vila = (() => {
     }
     g.lineCap = 'round';
     if (p.terreno === 'areia') {
-      // ondas de vento na areia
       g.globalAlpha = 0.25; g.lineWidth = Math.max(1, c * 0.03);
       for (let i = 0, n = Math.round(p.W * p.H * 0.35); i < n; i++) {
         const x = rnd() * W, y = rnd() * H, l = c * (0.4 + rnd() * 0.9);
@@ -283,78 +412,50 @@ const Vila = (() => {
       }
       g.globalAlpha = 1;
     }
-    // as ruas e a praça
+    // as ruas (com as cores do estilo) e a praça
+    const corRua = Estilos.corDaRua(est, pal);
     g.lineJoin = 'round'; g.lineCap = 'butt';
     for (const ru of p.ruas) {
-      linha(ru.pts); g.strokeStyle = pal.rua[0]; g.lineWidth = (ru.hw * 2 + 0.35) * c; g.stroke();
-      linha(ru.pts); g.strokeStyle = pal.rua[1]; g.lineWidth = ru.hw * 2 * c; g.stroke();
-      g.globalAlpha = 0.45; linha(ru.pts); g.strokeStyle = pal.rua[2]; g.lineWidth = ru.hw * 0.9 * c; g.stroke(); g.globalAlpha = 1;
-      // marcas de roda
+      linha(ru.pts); g.strokeStyle = corRua[0]; g.lineWidth = (ru.hw * 2 + 0.35) * c; g.stroke();
+      linha(ru.pts); g.strokeStyle = corRua[1]; g.lineWidth = ru.hw * 2 * c; g.stroke();
+      g.globalAlpha = 0.45; linha(ru.pts); g.strokeStyle = corRua[2]; g.lineWidth = ru.hw * 0.9 * c; g.stroke(); g.globalAlpha = 1;
       g.globalAlpha = 0.18; g.strokeStyle = '#2a2116'; g.lineWidth = Math.max(1, c * 0.04);
       for (const off of [-0.35, 0.35]) { g.save(); g.translate(0, off * ru.hw * c); linha(ru.pts); g.stroke(); g.restore(); }
       g.globalAlpha = 1;
     }
-    {
-      const pr = p.praca, x = pr.x * c, y = pr.y * c, R = pr.r * c;
-      g.fillStyle = '#6f685c'; g.beginPath(); g.arc(x, y, R + c * 0.15, 0, TAU2); g.fill();
-      g.save(); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.clip();
-      for (let j = Math.floor(pr.y - pr.r - 1); j <= pr.y + pr.r + 1; j++) for (let i = Math.floor(pr.x - pr.r - 1); i <= pr.x + pr.r + 1; i++) {
-        for (const [ox, oy] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) {
-          const s = 104 + Math.floor(rnd() * 34);
-          g.fillStyle = `rgb(${s + 6},${s + 2},${s - 8})`;
-          g.fillRect((i + ox) * c + 1.5, (j + oy) * c + 1.5, c / 2 - 3, c / 2 - 3);
-        }
-      }
-      g.restore();
-      g.strokeStyle = 'rgba(30,26,20,.55)'; g.lineWidth = Math.max(1.5, c * 0.06); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.stroke();
-    }
-    // a ponte
+    Estilos.praca(g, p.praca, c, rnd, est);
     if (p.ponte) {
       const b = p.ponte;
       g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
-      const L = b.comp * c, Wd = b.larg * c;
-      g.fillStyle = '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
+      const L = b.comp * c, Wd = b.larg * c, pedra = est === 'anao' || est === 'desertico';
+      g.fillStyle = pedra ? '#4b4f57' : '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
       for (let x = -L / 2; x < L / 2; x += c * 0.33) {
         const s = rnd();
-        g.fillStyle = s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
+        g.fillStyle = pedra ? (s < 0.5 ? '#7d828c' : '#6b7079') : s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
         g.fillRect(x + 1, -Wd / 2, c * 0.33 - 2, Wd);
       }
-      g.fillStyle = '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
+      g.fillStyle = est === 'oriental' ? '#a8302a' : pedra ? '#3d4148' : '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
       g.restore();
     }
-    // o piso de cada casa
+    // as casas: a sombra, o piso (na forma da casa), a sombra das paredes de dentro, as paredes pintadas e o enfeite do estilo
     for (const k of p.casas) {
-      const x = k.x * c, y = k.y * c, w = k.w * c, hh = k.h * c, pedra = TIPOS[k.tipo].piso === 'pedra';
-      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x - c * 0.08, y - c * 0.08, w + c * 0.22, hh + c * 0.22);
-      if (pedra) {
-        g.fillStyle = '#5a564e'; g.fillRect(x, y, w, hh);
-        for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
-          const s = 92 + Math.floor(rnd() * 30);
-          g.fillStyle = `rgb(${s + 6},${s + 3},${s - 4})`;
-          g.fillRect(x + i * c / 2 + 1.5, y + j * c / 2 + 1.5, c / 2 - 3, c / 2 - 3);
-        }
-      } else {
-        g.fillStyle = '#5e4128'; g.fillRect(x, y, w, hh);
-        for (let j = 0; j < k.h * 3; j++) {
-          let xx = x - rnd() * c;
-          while (xx < x + w) {
-            const l = c * (0.9 + rnd() * 1.4), s = rnd();
-            g.fillStyle = s < 0.33 ? '#8d6740' : s < 0.66 ? '#83603b' : '#97704a';
-            const a = Math.max(x, xx), b = Math.min(x + w, xx + l);
-            if (b > a) g.fillRect(a + 1, y + j * c / 3 + 1, b - a - 2, c / 3 - 2);
-            xx += l;
-          }
-        }
-      }
-      // a sombra das paredes do lado de dentro
-      const gr = g.createLinearGradient(0, y, 0, y + c * 0.35); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = gr; g.fillRect(x, y, w, c * 0.35);
+      const def = TP[k.tipo] || TP.casa, cont = Estilos.contorno(k);
+      const caminho = () => { g.beginPath(); cont.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+      g.save(); g.translate(c * 0.1, c * 0.12); g.fillStyle = 'rgba(0,0,0,.32)'; caminho(); g.fill(); g.restore();
+      g.save(); caminho(); g.clip();
+      Estilos.piso(g, k, c, rnd, def.piso);
+      const gr = g.createLinearGradient(0, k.y * c, 0, k.y * c + c * 0.35); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(k.x * c, k.y * c, k.w * c, c * 0.35);
+      g.restore();
+      Estilos.paredesPintadas(g, k, c, rnd, est);
+      Estilos.enfeiteDaCasa(g, k, c, rnd, est, def);
     }
-    // a paliçada: troncos lado a lado (os portões e a água ficam de fora)
+    // a paliçada: troncos lado a lado (os portões e a água ficam de fora); nos anões e no deserto, pedra
     if (p.muro) {
-      const m = p.muro, tronco = (x, y) => {
-        g.fillStyle = '#3b2814'; g.beginPath(); g.arc(x, y, c * 0.24, 0, TAU2); g.fill();
-        g.fillStyle = rnd() < 0.5 ? '#7a5532' : '#6b4a2b'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU2); g.fill();
+      const m = p.muro, pedra = est === 'anao' || est === 'desertico';
+      const tronco = (x, y) => {
+        g.fillStyle = pedra ? '#3d4148' : '#3b2814'; g.beginPath(); g.arc(x, y, c * 0.24, 0, TAU2); g.fill();
+        g.fillStyle = pedra ? (rnd() < 0.5 ? '#7d828c' : '#6b7079') : rnd() < 0.5 ? '#7a5532' : '#6b4a2b'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU2); g.fill();
         g.fillStyle = 'rgba(255,230,180,.18)'; g.beginPath(); g.arc(x - c * 0.05, y - c * 0.05, c * 0.07, 0, TAU2); g.fill();
       };
       const passo = 0.42;
@@ -363,38 +464,7 @@ const Vila = (() => {
       for (const [a, b] of m.lados.o) for (let t = a + 0.21; t < b; t += passo) tronco(m.x1 * c, t * c);
       for (const [a, b] of m.lados.l) for (let t = a + 0.21; t < b; t += passo) tronco(m.x2 * c, t * c);
     }
-    // as árvores
-    for (const a of p.arvores) {
-      const x = a.x * c, y = a.y * c, R = a.r * c;
-      g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * 0.16, y + R * 0.2, R, 0, TAU2); g.fill();
-      if (p.terreno === 'neve') {
-        // pinheiro visto de cima: uma estrela escura com neve na ponta dos galhos
-        for (let camada = 0; camada < 3; camada++) {
-          const rr = R * (1 - camada * 0.28);
-          g.globalAlpha = 0.95; g.fillStyle = pal.copa[camada];
-          g.beginPath();
-          for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
-          g.fill();
-        }
-        g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb';
-        for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); }
-      } else if (p.terreno === 'areia') {
-        // palmeira: folhas compridas a partir do meio
-        g.globalAlpha = 0.95; g.strokeStyle = pal.copa[1]; g.lineCap = 'round';
-        for (let i = 0; i < 7; i++) {
-          const an = (i / 7) * TAU2 + rnd() * 0.4;
-          g.lineWidth = R * 0.32; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(an + 0.3) * R * 0.6, y + Math.sin(an + 0.3) * R * 0.6, x + Math.cos(an) * R, y + Math.sin(an) * R); g.stroke();
-        }
-        g.fillStyle = '#6b4a2b'; g.beginPath(); g.arc(x, y, R * 0.16, 0, TAU2); g.fill();
-      } else {
-        for (let i = 0; i < 9; i++) {
-          const an = rnd() * TAU2, d = rnd() * R * 0.55;
-          g.globalAlpha = 0.92; g.fillStyle = pal.copa[i % 3];
-          g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
-        }
-        g.globalAlpha = 0.5; g.fillStyle = pal.luz; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
-      }
-    }
+    for (const a of p.arvores) Estilos.arvore(g, a, c, rnd, p.especie || 'folhosa', pal, p.terreno === 'neve');
     g.globalAlpha = 1;
     // um escurecido de leve nas bordas
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
@@ -404,32 +474,27 @@ const Vila = (() => {
   }
 
   /* ================= a cena ================= */
-  // Monta a cena do plano: o fundo, as paredes e a porta de cada casa, os móveis, o nome em cima, a praça e a muralha.
-  async function criar(p, nome) {
-    const sc = newScene(String(nome || p.nome).trim().slice(0, 60) || p.nome);
+  const nomePadrao = p => (p.tamanho === 'vila' ? 'Vila' : 'Aldeia') + (Estilos.ADJ[p.estilo] ? ' ' + Estilos.ADJ[p.estilo] : '');
+  /* Monta a cena do plano: o fundo, as paredes, a porta e as janelas de cada casa, os móveis, a praça e a muralha. ex:
+     { hora, clima } — a hora do dia e o clima da cena; à noite (e no breu), uma luz por dentro de cada casa. */
+  async function criar(p, nome, ex) {
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
     sc.cols = p.W; sc.rows = p.H;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;      // as paredes das casas escondem o que está lá dentro
-    sc.light = 'claro'; sc.tone = 'dia';
+    const tom = TONES.find(t => t.id === (ex && ex.hora)) || TONES[0];
+    sc.tone = tom.id; sc.light = tom.light;
+    sc.weather = { k: WEATHERS.some(w => w[0] === (ex && ex.clima)) ? ex.clima : '', pow: 0.6 };
     sc.bgColor = (PAL[p.terreno] || PAL.campo).base;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     const parede = (x1, y1, x2, y2, k, extra) => sc.walls.push(Object.assign({ id: uid('wl'), k: k || 'wall', x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }, extra || null));
-    const medir = document.createElement('canvas').getContext('2d');
-    const FS = 20;
-    medir.font = `600 ${FS}px ${FONT_UI}`;
+    const noite = tom.id === 'noite' || tom.id === 'breu';
     for (const k of p.casas) {
-      const x1 = k.x, y1 = k.y, x2 = k.x + k.w, y2 = k.y + k.h, pt = k.porta;
-      // cada lado é uma parede; o da porta vira parede · porta · parede
-      const lado = (lid, ax, ay, bx, by) => {
-        if (pt.lado !== lid) { parede(ax, ay, bx, by); return; }
-        if (ax === bx) { if (pt.y1 > ay) parede(ax, ay, ax, pt.y1); parede(ax, pt.y1, ax, pt.y2, 'door'); if (pt.y2 < by) parede(ax, pt.y2, ax, by); }
-        else { if (pt.x1 > ax) parede(ax, ay, pt.x1, ay); parede(pt.x1, ay, pt.x2, ay, 'door'); if (pt.x2 < bx) parede(pt.x2, ay, bx, ay); }
-      };
-      lado('n', x1, y1, x2, y1); lado('s', x1, y2, x2, y2); lado('o', x1, y1, x1, y2); lado('l', x2, y1, x2, y2);
-      for (const mv of k.moveis) if (Props.P[mv.id]) sc.tokens.push(Props.novo(sc, mv.id, mv.x * c, mv.y * c, mv.s, false));
-      // o nome vai em cima da casa (embaixo, quando a porta é em cima: a porta não cobre o nome)
-      const tw = medir.measureText(k.nome).width, emCima = pt.lado !== 'n';
-      sc.shapes.push({ id: uid('sh'), k: 'text', x: Math.max(4, (x1 + k.w / 2) * c - tw / 2), y: emCima ? y1 * c - FS * 1.5 : y2 * c + FS * 0.35, txt: k.nome, fs: FS, s: '#f3ead2', sw: 0, f: null, a: 1, top: false, gm: false, lock: false, by: null });
+      for (const s of Estilos.paredesDaCasa(k)) parede(s.x1, s.y1, s.x2, s.y2, s.k);
+      // o tapete vai primeiro (fica por baixo dos outros móveis)
+      const ms = k.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
+      for (const mv of ms) if (Props.P[mv.id]) sc.tokens.push(Props.novo(sc, mv.id, mv.x * c, mv.y * c, mv.s, false));
+      if (noite) sc.lights.push({ id: uid('lz'), name: 'Luz da casa', x: (k.x + k.w / 2) * c, y: (k.y + k.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(k.w, k.h) * 0.9)), c: '#ffc77a', on: true, fl: true });
     }
     if (p.muro) {
       const m = p.muro;
@@ -440,85 +505,77 @@ const Vila = (() => {
       for (const g of m.portoes) parede(g.x1, g.y1, g.x2, g.y2, 'door', { open: true });
     }
     if (Props.P.poco) sc.tokens.push(Props.novo(sc, 'poco', p.poco.x * c, p.poco.y * c, 1, false));
-    if (Props.P.lampiao) for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, 'lampiao', l.x * c, l.y * c, 1, false));
+    const poste = Props.P[p.poste] ? p.poste : 'lampiao';
+    for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, poste, l.x * c, l.y * c, 1, false));
     for (const e of p.enfeites) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
     normalizeScene(sc);
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
     return sc;
   }
 
-  /* ================= a janela ================= */
-  const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
-  function previa(cv, p) {
-    const cell = Math.max(6, Math.floor(Math.min(420 / p.W, 300 / p.H)));
+  /* ================= a prévia ================= */
+  // O resumo do plano, embaixo da prévia.
+  function resumo(p) {
+    const n = p.casas.length, moveis = p.casas.reduce((s, k) => s + k.moveis.length, 0);
+    return `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < p.pedidas ? ` (couberam ${n} das ${p.pedidas})` : '') + ` · ${moveis} móveis · ${p.W} × ${p.H} quadrados` + (p.rio ? ' · rio com ponte' : '') + (p.muro ? ' · paliçada com ' + p.muro.portoes.length + ' portões' : '') + '.';
+  }
+  // A prévia: o fundo pintado e, por cima, as paredes, as portas (azul), as janelas (ciano) e os móveis (pontinhos).
+  function previa(cv, p, maxW, maxH) {
+    const cell = Math.max(6, Math.floor(Math.min((maxW || 420) / p.W, (maxH || 300) / p.H)));
     const fundo = pintar(p, cell);
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
-    // as paredes e as portas, como no mapa; os móveis, como pontinhos
     g.lineCap = 'round';
-    const seg = (x1, y1, x2, y2, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(x1 * cell, y1 * cell); g.lineTo(x2 * cell, y2 * cell); g.stroke(); };
+    const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(s.x1 * cell, s.y1 * cell); g.lineTo(s.x2 * cell, s.y2 * cell); g.stroke(); };
     for (const k of p.casas) {
-      for (const [a, b, cc, d] of [[k.x, k.y, k.x + k.w, k.y], [k.x, k.y + k.h, k.x + k.w, k.y + k.h], [k.x, k.y, k.x, k.y + k.h], [k.x + k.w, k.y, k.x + k.w, k.y + k.h]]) seg(a, b, cc, d, '#1b1612', Math.max(2, cell * 0.22));
-      const pt = k.porta;
-      seg(pt.x1, pt.y1, pt.x2, pt.y2, '#7fd1ff', Math.max(2, cell * 0.24));
+      for (const s of Estilos.paredesDaCasa(k)) seg(s, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * (s.k === 'wall' ? 0.22 : 0.24)));
       g.fillStyle = '#f3ead2';
       for (const mv of k.moveis) { g.beginPath(); g.arc((mv.x + mv.s / 2) * cell, (mv.y + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
     }
-    if (p.muro) for (const gt of p.muro.portoes) seg(gt.x1, gt.y1, gt.x2, gt.y2, '#7fd1ff', Math.max(2, cell * 0.2));
+    if (p.muro) for (const gt of p.muro.portoes) seg(gt, '#7fd1ff', Math.max(2, cell * 0.2));
+    return { cell };
   }
-  function abrir() {
-    if (!isGM()) return;
-    const K = UI.kit, { field, seg, toggle, btn, note, stepper } = K;
-    const st = { tamanho: TAMANHOS[App.opt.vilaTam] ? App.opt.vilaTam : 'aldeia', terreno: TERRENOS_V.some(x => x[0] === App.opt.vilaTer) ? App.opt.vilaTer : 'campo',
-      rio: App.opt.vilaRio != null ? !!App.opt.vilaRio : true, muralha: !!App.opt.vilaMuro, casas: 0, seed: novaSemente() };
+
+  /* ================= o lugar, para a janela do gerador ================= */
+  // As escolhas do vilarejo (lembradas entre uma janela e outra) e os controles delas.
+  function padrao() {
+    const o = App.opt;
+    const st = { tamanho: TAMANHOS[o.vilaTam] ? o.vilaTam : 'aldeia', terreno: TERRENOS_V.some(x => x[0] === o.vilaTer) ? o.vilaTer : 'campo', rio: o.vilaRio != null ? !!o.vilaRio : true, muralha: !!o.vilaMuro, casas: 0 };
     st.casas = TAMANHOS[st.tamanho].padrao;
-    let plano = null, nomeMexido = false;
-    const cv = h('canvas', { class: 'vila-prev', id: 'vila-prev', width: 420, height: 300, 'aria-label': 'Prévia do vilarejo' });
-    const inNome = h('input', { id: 'vila-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
-    const controles = h('div', { class: 'vila-c' }), resumo = h('p', { class: 'note', id: 'vila-resumo', role: 'status' });
-    const salvarOpcoes = () => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; };
-    const refazer = () => {
-      plano = gerar(st);
-      try { previa(cv, plano); } catch (e) { console.error(e); }
-      if (!nomeMexido) inNome.value = plano.nome;
-      const n = plano.casas.length, moveis = plano.casas.reduce((s, k) => s + k.moveis.length, 0);
-      resumo.textContent = `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < plano.pedidas ? ` (couberam ${n} das ${plano.pedidas})` : '') + ` · ${moveis} móveis · ${plano.W} × ${plano.H} quadrados` + (plano.rio ? ' · rio com ponte' : '') + (plano.muro ? ' · paliçada com ' + plano.muro.portoes.length + ' portões' : '') + '.';
-    };
-    const paint = () => {
-      const T = TAMANHOS[st.tamanho];
-      controles.replaceChildren(
-        h('div', { class: 'vila-l' },
-          field('Tamanho', seg('vila-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, k === 'aldeia' ? 'Uma rua, ' + TAMANHOS.aldeia.W + ' × ' + TAMANHOS.aldeia.H + ' quadrados' : 'Duas ruas que se cruzam na praça, ' + TAMANHOS.vila.W + ' × ' + TAMANHOS.vila.H + ' quadrados']),
-            v => { st.tamanho = v; st.casas = TAMANHOS[v].padrao; salvarOpcoes(); paint(); refazer(); }), 'stack'),
-          field('Terreno', seg('vila-ter', st.terreno, TERRENOS_V.map(([k, n]) => [k, n]), v => { st.terreno = v; salvarOpcoes(); paint(); refazer(); }), 'stack')),
-        h('div', { class: 'vila-l' },
-          field('Casas', stepper('vila-casas', st.casas, T.casas[0], T.casas[1], v => { st.casas = v; paint(); refazer(); }, 'Quantas casas'), 'stack'),
-          toggle('vila-rio', st.rio, v => { st.rio = v; salvarOpcoes(); refazer(); }, 'Com rio (e uma ponte)'),
-          toggle('vila-muro', st.muralha, v => { st.muralha = v; salvarOpcoes(); refazer(); }, 'Com paliçada (portões abertos)')));
-    };
-    paint(); refazer();
-    UI.modal({
-      title: 'Gerar um vilarejo', wide: true,
-      body: h('div', { class: 'vila' }, controles,
-        h('div', { class: 'vila-p' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'vila-outro', title: 'Sorteia outro vilarejo com as mesmas escolhas' }), resumo)),
-        field('Nome da cena', inNome, 'stack'),
-        note('Sai uma cena nova, com as paredes de cada casa, uma porta, alguns móveis e o nome em cima. A névoa dinâmica vem ligada: as paredes bloqueiam a visão, e os jogadores enxergam a partir dos tokens deles. Tudo continua editável; as cenas que já existem não mudam.')),
-      actions: [{ label: 'Cancelar' }, {
-        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
-          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
-          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
-          const p = plano;
-          criar(p, inNome.value).then(sc => {
-            UI.closeModal();
-            UI.switchScene(sc.id);
-            const n = p.casas.length;
-            UI.toast(`"${sc.name}" criada: ${n} ${n === 1 ? 'casa' : 'casas'}, com paredes, portas, móveis e nomes. Tudo é editável.`, { long: true });
-          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
-          return false;
-        },
-      }],
-    });
+    return st;
   }
-  return { TAMANHOS, TIPOS, gerar, pintar, criar, abrir };
+  const lembrar = st => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; };
+  // os controles: mudou(true) sorteia o plano de novo (mesma semente); soltar() avisa que as partes travadas saíram
+  function controles(st, K, mudou) {
+    const { field, seg, toggle, stepper } = K, T = TAMANHOS[st.tamanho];
+    return h('div', { class: 'ger-c' },
+      h('div', { class: 'ger-l' },
+        field('Tamanho', seg('vila-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, k === 'aldeia' ? 'Uma rua, ' + TAMANHOS.aldeia.W + ' × ' + TAMANHOS.aldeia.H + ' quadrados' : 'Duas ruas que se cruzam na praça, ' + TAMANHOS.vila.W + ' × ' + TAMANHOS.vila.H + ' quadrados']),
+          v => { st.tamanho = v; st.casas = TAMANHOS[v].padrao; lembrar(st); mudou(true, { soltar: true }); }), 'stack'),
+        field('Terreno', seg('vila-ter', st.terreno, TERRENOS_V.map(([k, n]) => [k, n]), v => { st.terreno = v; lembrar(st); mudou(true); }), 'stack')),
+      h('div', { class: 'ger-l' },
+        field('Casas', stepper('vila-casas', st.casas, T.casas[0], T.casas[1], v => { st.casas = v; mudou(true); }, 'Quantas casas'), 'stack'),
+        toggle('vila-rio', st.rio, v => { st.rio = v; lembrar(st); mudou(true); }, 'Com rio (e uma ponte)'),
+        toggle('vila-muro', st.muralha, v => { st.muralha = v; lembrar(st); mudou(true); }, 'Com paliçada (portões abertos)')));
+  }
+  // as escolhas que vão num modelo, e de volta (o que não fizer sentido fica como está)
+  const opcoesDe = st => ({ tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, casas: st.casas });
+  function aplicarOpcoes(st, o) {
+    if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
+    if (TERRENOS_V.some(x => x[0] === o.terreno)) st.terreno = o.terreno;
+    if (typeof o.rio === 'boolean') st.rio = o.rio;
+    if (typeof o.muralha === 'boolean') st.muralha = o.muralha;
+    const T = TAMANHOS[st.tamanho];
+    st.casas = clamp(Math.round(Number(o.casas) || T.padrao), T.casas[0], T.casas[1]);
+    lembrar(st);
+  }
+  // as partes que travam, na ordem do teclado (as setas da prévia): as ruas e a praça, o rio e cada casa
+  const partes = p => ['ruas'].concat(p.rio ? ['rio'] : [], p.casas.map((k, i) => 'c' + i));
+  const LUGAR = { id: 'vila', n: 'Vilarejo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+    nota: 'Sai uma cena nova, com as paredes de cada casa, a porta, as janelas e alguns móveis — nada escrito: os nomes ficam com você. A névoa dinâmica vem ligada: as paredes bloqueiam a visão, e os jogadores enxergam a partir dos tokens deles. À noite, cada casa tem uma luz por dentro, que escapa pelas janelas. Tudo continua editável; as cenas que já existem não mudam.',
+    feito: (sc, p) => `"${sc.name}" criada: ${p.casas.length} ${p.casas.length === 1 ? 'casa' : 'casas'}, com paredes, portas, janelas e móveis. Tudo é editável.` };
+  // (o atalho de antes: abre a janela do gerador no vilarejo)
+  const abrir = () => Gerador.abrir('vila');
+  return { TAMANHOS, TERRENOS_V, PAL, gerar, pintar, criar, previa, resumo, parteEm, formaDaParte, alternar, travada, travaDe, limparTrava, nomePadrao, janelasDe, mobiliar, LUGAR, abrir };
 })();

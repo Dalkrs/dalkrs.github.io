@@ -334,7 +334,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await w(250);
   await page.keyboard.press('j'); await w(200);
   ok(await ev(() => __tc.App.tool) === 'obj' && await page.locator('#tool-obj.on').count() === 1 && (await page.locator('#tool-obj').getAttribute('title')) === 'Objetos de cenário (J)', 'a tecla J abre a ferramenta Objetos de cenário (também no trilho)');
-  ok(await page.locator('#o-oc .seg-b').count() === 4 && await page.locator('.o-obj').count() === 5 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as quatro categorias e, em Luzes, as cinco luzes (a fogueira escolhida)');
+  ok(await page.locator('#o-oc .seg-b').count() === 4 && await page.locator('.o-obj').count() === 6 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as quatro categorias e, em Luzes, as seis luzes (a fogueira escolhida; a lanterna de papel veio no lote 7)');
   await page.locator('#o-obj-tocha').click(); await w(120);
   { const p = await tela(3.5 * C, 2.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   let objs = await ev(() => __tc.Store.scene().tokens.filter(k => k.prop).map(k => JSON.parse(JSON.stringify(k))));
@@ -344,7 +344,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#o-obj-fogueira').click(); await w(80);
   { const p = await tela(10.5 * C, 4.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   await page.locator('#o-oc .seg-b', { hasText: 'Móveis' }).click(); await w(120);
-  ok(await page.locator('.o-obj').count() === 7 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, sete móveis (o baú já escolhido)');
+  ok(await page.locator('.o-obj').count() === 11 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, onze móveis (o baú já escolhido; almofada, tapete, jarro e bigorna vieram no lote 7)');
   await page.locator('#o-obj-mesa').click(); await w(80);
   { const p = await tela(4 * C, 6 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   for (const [cat, id, x, y] of [['Natureza', 'arvore', 12, 1], ['Natureza', 'pedra', 9.5, 7.5], ['Perigos', 'armadilha', 5.5, 4.5], ['Perigos', 'estatua', 12.5, 7.5]]) {

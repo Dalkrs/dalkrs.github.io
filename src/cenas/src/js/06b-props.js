@@ -80,6 +80,21 @@ const Props = (() => {
     }
   }
 
+  // (lote 7) o marcador de passagem: um selo redondo com uma porta e a seta, para dentro (entrada) ou para fora (saída)
+  function marcaPassagem(c, R, entra) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#34404f', '#1f2833', '#151b23']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.09; c.strokeStyle = '#e6ab4f'; c.stroke();
+    const x0 = -R * 0.46, x1 = R * 0.04, y0 = -R * 0.42, y1 = R * 0.46, rr = (x1 - x0) / 2;
+    c.beginPath(); c.moveTo(x0, y1); c.lineTo(x0, y0 + rr); c.arc((x0 + x1) / 2, y0 + rr, rr, Math.PI, 0); c.lineTo(x1, y1); c.closePath();
+    c.fillStyle = grad(c, x0, 0, x1, 0, [MAD.luz, MAD.med]); c.fill(); linha(c, R * 0.05);
+    c.fillStyle = '#f3d28a'; c.beginPath(); c.arc(x1 - R * 0.1, (y0 + y1) / 2 + R * 0.1, R * 0.05, 0, TAU); c.fill();
+    const ya = R * 0.1, [de, ate] = entra ? [R * 0.62, R * 0.16] : [R * 0.14, R * 0.6], dir = Math.sign(ate - de);
+    c.strokeStyle = '#f6e7c4'; c.fillStyle = '#f6e7c4'; c.lineWidth = R * 0.1; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(de, ya); c.lineTo(ate - dir * R * 0.08, ya); c.stroke();
+    c.beginPath(); c.moveTo(ate + dir * R * 0.06, ya); c.lineTo(ate - dir * R * 0.14, ya - R * 0.15); c.lineTo(ate - dir * R * 0.14, ya + R * 0.15); c.closePath(); c.fill();
+  }
+
   /* ---- O catálogo ---- */
   const G = [
     { id: 'luz', n: 'Luzes' },
@@ -170,6 +185,24 @@ const Props = (() => {
       },
     },
 
+    // (lote 7) a lanterna de papel dos lugares orientais: luz quente e suave, vermelha, laranja ou branca
+    lanterna: {
+      n: 'Lanterna de papel', g: 'luz', size: 1, luz: { bright: 3, dim: 7, c: '#ffb878' },
+      draw(c, R, t, s) {
+        sombra(c, R, 0.5, 0.5);
+        const f = 0.88 + 0.12 * Math.sin(t * 3 + s);
+        c.save(); c.globalCompositeOperation = 'lighter';
+        c.fillStyle = radial(c, 0, 0, R * 0.95, [`rgba(255,170,110,${0.32 * f})`, 'rgba(255,120,60,0.08)', 'rgba(255,100,40,0)']); c.beginPath(); c.arc(0, 0, R * 0.95, 0, TAU); c.fill();
+        c.restore();
+        const cor = ['#c8352a', '#d9662f', '#f0e6cf'][s % 3];
+        c.fillStyle = radial(c, -R * 0.12, -R * 0.15, R * 0.6, ['#ffe3b0', cor, cor === '#f0e6cf' ? '#c9b48e' : '#7a1a14']); c.beginPath(); c.arc(0, 0, R * 0.46, 0, TAU); c.fill(); linha(c, R * 0.04);
+        // as varetas do papel (vistas de cima, em roda) e a tampa preta
+        c.strokeStyle = 'rgba(60,20,10,0.45)'; c.lineWidth = R * 0.025;
+        for (const k of [0.18, 0.3, 0.4]) { c.beginPath(); c.arc(0, 0, R * k, 0, TAU); c.stroke(); }
+        c.fillStyle = '#1d1a18'; c.beginPath(); c.arc(0, 0, R * 0.13, 0, TAU); c.fill();
+        c.fillStyle = '#e8c56a'; c.beginPath(); c.arc(0, 0, R * 0.04, 0, TAU); c.fill();
+      },
+    },
     /* ---------- Móveis e baús ---------- */
     bau: {
       n: 'Baú', g: 'movel', size: 1,
@@ -282,6 +315,59 @@ const Props = (() => {
       },
     },
 
+    // (lote 7) os móveis dos estilos: a almofada, o tapete, o jarro de barro e a bigorna
+    almofada: {
+      n: 'Almofada', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.62, 0.62, 0.06, 0.08);
+        const cores = [['#8e2f3c', '#c2505f'], ['#2f5f6e', '#4f8fa0'], ['#6b4a8e', '#9572b8'], ['#a0742a', '#d0a24a']][s % 4];
+        c.save(); c.rotate(0.12);
+        caixa(c, -R * 0.55, -R * 0.55, R * 1.1, R * 1.1, R * 0.28); c.fillStyle = radial(c, -R * 0.15, -R * 0.2, R * 1.0, [cores[1], cores[0]]); c.fill(); linha(c, R * 0.05);
+        c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = R * 0.03;
+        c.beginPath(); c.moveTo(-R * 0.42, -R * 0.42); c.lineTo(R * 0.42, R * 0.42); c.moveTo(R * 0.42, -R * 0.42); c.lineTo(-R * 0.42, R * 0.42); c.stroke();
+        c.fillStyle = '#e9d39a'; c.beginPath(); c.arc(0, 0, R * 0.07, 0, TAU); c.fill();
+        for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { c.beginPath(); c.arc(x * R * 0.6, y * R * 0.6, R * 0.06, 0, TAU); c.fill(); }
+        c.restore();
+      },
+    },
+    tapete: {
+      n: 'Tapete', g: 'movel', size: 2,
+      draw(c, R, t, s) {
+        const w = R * 1.9, hh = R * 1.25, pal = [['#7a2430', '#c8963e', '#2a3c5c'], ['#244a5c', '#d9b25a', '#6b2f2a'], ['#5b3a1f', '#e0c27a', '#2f4f3a']][s % 3];
+        c.save(); c.globalAlpha = 0.96;
+        caixa(c, -w / 2, -hh / 2, w, hh, R * 0.04); c.fillStyle = pal[0]; c.fill();
+        c.strokeStyle = pal[1]; c.lineWidth = R * 0.06; c.strokeRect(-w / 2 + R * 0.12, -hh / 2 + R * 0.12, w - R * 0.24, hh - R * 0.24);
+        c.lineWidth = R * 0.025; c.strokeRect(-w / 2 + R * 0.22, -hh / 2 + R * 0.22, w - R * 0.44, hh - R * 0.44);
+        // o medalhão do meio e as franjas nas pontas
+        c.fillStyle = pal[2]; c.beginPath(); c.moveTo(0, -hh * 0.3); c.lineTo(w * 0.22, 0); c.lineTo(0, hh * 0.3); c.lineTo(-w * 0.22, 0); c.closePath(); c.fill();
+        c.strokeStyle = pal[1]; c.lineWidth = R * 0.03; c.stroke();
+        c.fillStyle = pal[1]; c.beginPath(); c.arc(0, 0, R * 0.07, 0, TAU); c.fill();
+        c.strokeStyle = '#e8dcc0'; c.lineWidth = R * 0.02;
+        for (let y = -hh / 2 + R * 0.06; y < hh / 2; y += R * 0.09) for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * w / 2, y); c.lineTo(sx * (w / 2 + R * 0.07), y); c.stroke(); }
+        c.restore();
+      },
+    },
+    jarro: {
+      n: 'Jarro de barro', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.56, 0.56, 0.07, 0.09);
+        c.fillStyle = radial(c, -R * 0.15, -R * 0.18, R * 0.75, ['#d98f5a', '#b5643a', '#7a3c1f']); c.beginPath(); c.arc(0, 0, R * 0.5, 0, TAU); c.fill(); linha(c, R * 0.05);
+        c.strokeStyle = 'rgba(250,230,200,0.35)'; c.lineWidth = R * 0.04; c.beginPath(); c.arc(0, 0, R * 0.38, 0, TAU); c.stroke();
+        c.fillStyle = '#5a2a12'; c.beginPath(); c.arc(0, 0, R * 0.2, 0, TAU); c.fill(); linha(c, R * 0.04, 'rgba(40,18,6,0.9)');
+        c.fillStyle = 'rgba(20,8,2,0.8)'; c.beginPath(); c.arc(0, 0, R * 0.13, 0, TAU); c.fill();
+      },
+    },
+    bigorna: {
+      n: 'Bigorna', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.7, 0.62, 0.06, 0.08);
+        c.fillStyle = radial(c, 0, 0, R * 0.6, [MAD.luz, MAD.cla, MAD.med]); c.beginPath(); c.arc(0, 0, R * 0.55, 0, TAU); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(60,35,12,0.45)'; c.lineWidth = R * 0.025; for (const k of [0.2, 0.35, 0.46]) { c.beginPath(); c.arc(0, 0, R * k, 0, TAU); c.stroke(); }
+        c.beginPath(); c.moveTo(-R * 0.5, -R * 0.2); c.lineTo(R * 0.3, -R * 0.2); c.quadraticCurveTo(R * 0.85, -R * 0.12, R * 0.92, 0); c.quadraticCurveTo(R * 0.85, R * 0.12, R * 0.3, R * 0.2); c.lineTo(-R * 0.5, R * 0.2); c.closePath();
+        c.fillStyle = grad(c, 0, -R * 0.2, 0, R * 0.2, [FER.luz, FER.cla, FER.med]); c.fill(); linha(c, R * 0.05);
+        c.fillStyle = 'rgba(255,255,255,0.18)'; caixa(c, -R * 0.42, -R * 0.12, R * 0.6, R * 0.08, R * 0.03); c.fill();
+      },
+    },
     /* ---------- Natureza ---------- */
     arvore: {
       n: 'Árvore', g: 'natureza', size: 2,
@@ -371,6 +457,20 @@ const Props = (() => {
       },
     },
 
+    flores: {
+      n: 'Flores', g: 'natureza', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.78, 0.7, 0.05, 0.08);
+        folhas(c, 0, 0, R * 0.8, s, ['#2c4a25', '#3c6331', '#4f7c3c'], 8);
+        const cores = [['#f2c94c', '#f6e7a1'], ['#e85d75', '#f7b2bf'], ['#9b7bd8', '#d1c2f2'], ['#f2f2f2', '#ffffff'], ['#ef8a3c', '#f9c79a']];
+        for (let i = 0; i < 9; i++) {
+          const a = hsh(s, i, 7) * TAU, d = R * (0.1 + hsh(s, i, 8) * 0.55), [c1, c2] = cores[(s + i) % cores.length];
+          const x = Math.cos(a) * d, y = Math.sin(a) * d, r = R * (0.08 + hsh(s, i, 9) * 0.05);
+          c.fillStyle = c1; for (let k = 0; k < 5; k++) { const b = k / 5 * TAU; c.beginPath(); c.arc(x + Math.cos(b) * r, y + Math.sin(b) * r, r * 0.7, 0, TAU); c.fill(); }
+          c.fillStyle = c2; c.beginPath(); c.arc(x, y, r * 0.5, 0, TAU); c.fill();
+        }
+      },
+    },
     /* ---------- Perigos e marcos ---------- */
     armadilha: {
       n: 'Armadilha de urso', g: 'perigo', size: 1,
@@ -490,6 +590,23 @@ const Props = (() => {
         for (const x of [-0.65, 0.65]) { c.fillStyle = '#f1e2c2'; c.beginPath(); c.arc(x * R, -R * 0.25, R * 0.09, 0, TAU); c.fill(); linha(c, R * 0.02, 'rgba(90,70,40,0.8)'); }
       },
     },
+    runa: {
+      n: 'Pedra rúnica', g: 'perigo', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.6, 0.74, 0.08, 0.1);
+        c.beginPath(); c.moveTo(-R * 0.4, R * 0.7); c.lineTo(-R * 0.5, -R * 0.3); c.quadraticCurveTo(-R * 0.35, -R * 0.82, 0, -R * 0.82); c.quadraticCurveTo(R * 0.4, -R * 0.8, R * 0.48, -R * 0.25); c.lineTo(R * 0.42, R * 0.7); c.closePath();
+        c.fillStyle = grad(c, -R * 0.5, 0, R * 0.5, 0, [PED.luz, PED.cla, PED.med, PED.esc]); c.fill(); linha(c, R * 0.05);
+        const br = 0.55 + 0.25 * Math.sin(t * 1.5 + s);
+        c.strokeStyle = `rgba(120,200,255,${br})`; c.lineWidth = R * 0.05; c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-R * 0.12, -R * 0.55); c.lineTo(-R * 0.12, R * 0.05); c.moveTo(-R * 0.12, -R * 0.4); c.lineTo(R * 0.12, -R * 0.55); c.moveTo(-R * 0.12, -R * 0.25); c.lineTo(R * 0.12, -R * 0.4);
+        c.moveTo(-R * 0.18, R * 0.2); c.lineTo(R * 0.18, R * 0.5); c.moveTo(R * 0.18, R * 0.2); c.lineTo(-R * 0.18, R * 0.5);
+        c.stroke();
+      },
+    },
+    // (lote 7) os marcadores de passagem: levam a outra cena (dois cliques, só para o mestre); nascem ocultos dos jogadores
+    entrada: { n: 'Entrada', g: 'perigo', size: 1, passagem: 'entra', draw(c, R) { marcaPassagem(c, R, true); } },
+    saida: { n: 'Saída', g: 'perigo', size: 1, passagem: 'sai', draw(c, R) { marcaPassagem(c, R, false); } },
   };
   const ORDER = Object.keys(P);
 
@@ -519,7 +636,8 @@ const Props = (() => {
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {
     const def = P[id];
-    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden });
+    // (o marcador de passagem é do mestre: nasce sempre oculto dos jogadores)
+    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem });
     t.vis = { on: false, range: 0, dark: 0 };
     t.color = '#3a3226';
     if (def.luz) t.light = { on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c, fl: true };

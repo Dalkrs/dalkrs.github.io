@@ -2,6 +2,47 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-7",
+      "data": "2026-10-16",
+      "titulo": "Famílias de cenas, passagens e o gerador de lugares com estilos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: famílias de cenas — uma cena pode ficar dentro de outra (a cidade, o bairro, a casa). Na janela “Organizar as cenas…”, arraste uma cena para cima de outra, ou escolha onde ela fica na lista ao lado. No menu de cenas, as de dentro vêm logo abaixo, e cada família abre e fecha pelo botão da direita."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: passagens — os marcadores Entrada e Saída (só você vê) levam a outra cena: dois cliques abrem o menu “Ir para esta cena”. No painel do objeto, “Leva para outra cena” escolhe a cena, e “Uma cena nova, dentro desta…” já cria a cena com a saída de volta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um vilarejo…” virou “Gerar um lugar…”, com seis estilos — Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o desenho (ruas, praça, pisos, paredes, árvores, enfeites), os prédios (a casa longa nórdica, as casas redondas élficas) e os móveis."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no gerador, a hora do dia e o clima vão para a cena. À noite, cada casa tem uma luz por dentro, que escapa pelas janelas novas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no gerador, clique numa parte da prévia (uma casa, o rio, as ruas e a praça) para travar: “Gerar outro” sorteia só o resto. A semente fica à mostra, e o lugar pode ser guardado como modelo, para gerar outros parecidos."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: o vilarejo gerado não sai mais com nomes escritos nas casas — os nomes ficam com você."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: objetos novos — lanterna de papel, almofada, tapete, jarro de barro, bigorna, flores e pedra rúnica."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-6",
       "data": "2026-10-16",
       "titulo": "19 zonas novas e as combinações",

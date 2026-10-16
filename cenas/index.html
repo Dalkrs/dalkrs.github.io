@@ -482,6 +482,7 @@ button { cursor: pointer; }
   position: fixed; z-index: 50; min-width: 210px; max-width: min(320px, calc(100% - 16px)); max-height: calc(100% - 16px); overflow-y: auto;
   padding: 5px; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow);
 }
+.menu.sobre { z-index: 70; }
 .menu-h { padding: 5px 9px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-3); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .menu-i { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 9px; background: none; border: 0; border-radius: 6px; text-align: left; font-size: 13px; }
 .menu-i:hover:not(:disabled), .menu-i:focus-visible { background: var(--hover); }
@@ -809,14 +810,28 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .atq-man { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); font-size: 12.5px; }
 .atq-man .in.num { width: 70px; }
 /* a rolagem geral (Shift+F): os mesmos pedaços da janela do ataque, com o resultado em destaque */
-/* o gerador de vilarejo (lote 6): as escolhas em cima, a prévia embaixo */
-.vila { display: flex; flex-direction: column; gap: 12px; }
-.vila-c { display: flex; flex-direction: column; gap: 10px; }
-.vila-l { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; }
-.vila-p { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.vila-p .row { align-items: center; }
-.vila-prev { display: block; max-width: 100%; height: auto; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); }
-#vila-resumo { margin: 0; }
+/* (lote 7) o gerador de lugares: as abas, as escolhas à esquerda e a prévia à direita (uma embaixo da outra, no
+   celular); a semente, os modelos e o nome embaixo. A prévia tem altura fixa pela proporção: nada pula. */
+.modal.xl { width: min(900px, 100%); }
+.ger { display: flex; flex-direction: column; gap: 12px; }
+.ger-ab:empty { display: none; }
+.ger-g { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 14px 18px; align-items: start; }
+@media (max-width: 760px) { .ger-g { grid-template-columns: minmax(0, 1fr); } }
+.ger-op, .ger-c, .ger-cm { display: flex; flex-direction: column; gap: 10px; }
+.ger-cm { padding-top: 10px; border-top: 1px solid var(--line); }
+.ger-l { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; }
+.ger-pv { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ger-pv .row { align-items: center; }
+.ger-cv { display: block; width: 100%; height: auto; aspect-ratio: 46 / 33; object-fit: contain; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--raised); touch-action: manipulation; }
+.ger-cv.parte { cursor: pointer; }
+.ger-cv:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.ger-dica { margin: 0; min-height: 2.7em; }
+#ger-resumo { margin: 0; min-height: 2.7em; }
+.ger-b { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; }
+.ger-sem .in.num { width: 140px; }
+.ger-mds { display: flex; flex-direction: column; gap: 4px; flex: 1 1 280px; min-width: 0; }
+.ger-md { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
+.ger-md select.in, .ger-md input.in { flex: 1 1 170px; width: auto; min-width: 0; }
 /* as pastas da lista de cenas (lote 6): no menu, a pasta abre e fecha; as cenas dela vêm um pouco para dentro */
 .menu-pasta .menu-l { font-weight: 600; }
 .menu-i.dentro { padding-left: 22px; }
@@ -838,6 +853,17 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .org-ar { flex: none; padding: 0 6px; border-radius: 999px; background: var(--lamp); color: var(--on-lamp); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .org-c select.in { flex: none; width: 150px; height: 28px; padding-top: 0; padding-bottom: 0; font-size: 12.5px; }
 .org-vazia { margin: 4px 0 0; color: var(--fg-3); font-size: 12.5px; }
+/* (lote 7) as famílias de cenas: as filhas um pouco para dentro; a mãe abre e fecha a família pelo botão da direita */
+.menu-fam { display: flex; align-items: center; gap: 2px; }
+.menu-fam > .menu-i { flex: 1 1 auto; min-width: 0; }
+.menu-i.filha { padding-left: calc(9px + var(--nv, 1) * 14px); }
+.menu-i.dentro.filha { padding-left: calc(22px + var(--nv, 1) * 14px); }
+.menu-tg { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--fg-3); }
+.menu-tg:hover, .menu-tg:focus-visible { background: var(--hover); color: var(--fg); }
+.menu-tg.aqui .menu-k { color: var(--lamp-ink); font-weight: 700; }
+.org-c.filha { margin-left: calc(var(--nv, 1) * 18px); }
+.org-c.alvo { border-color: var(--lamp); background: var(--lamp-soft); box-shadow: inset 0 0 0 1px var(--lamp); }
+.org-c .org-q { margin-right: 0; }
 .ger .atq-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .ger .atq-top select { width: 100%; }
 .ger-atr { align-items: center; }
@@ -1632,6 +1658,8 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
+    if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
   }
   for (const l of sc.lights) { if (l.fl) l.fl = true; else delete l.fl; }
   return sc;
@@ -1649,7 +1677,7 @@ function normalizeScene(sc) {
    é ali que entra o envio para o Supabase.
    --------------------------------------------------------------- */
 const Store = (() => {
-  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {}, pastas: { lista: [], de: {} } };
+  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {}, pastas: { lista: [], de: {}, mae: {} } };
   const hist = new Map();           // id da cena → { undo: [], redo: [] }
   const subs = {};
   let tx = null;
@@ -4114,6 +4142,21 @@ const Props = (() => {
     }
   }
 
+  // (lote 7) o marcador de passagem: um selo redondo com uma porta e a seta, para dentro (entrada) ou para fora (saída)
+  function marcaPassagem(c, R, entra) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#34404f', '#1f2833', '#151b23']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.09; c.strokeStyle = '#e6ab4f'; c.stroke();
+    const x0 = -R * 0.46, x1 = R * 0.04, y0 = -R * 0.42, y1 = R * 0.46, rr = (x1 - x0) / 2;
+    c.beginPath(); c.moveTo(x0, y1); c.lineTo(x0, y0 + rr); c.arc((x0 + x1) / 2, y0 + rr, rr, Math.PI, 0); c.lineTo(x1, y1); c.closePath();
+    c.fillStyle = grad(c, x0, 0, x1, 0, [MAD.luz, MAD.med]); c.fill(); linha(c, R * 0.05);
+    c.fillStyle = '#f3d28a'; c.beginPath(); c.arc(x1 - R * 0.1, (y0 + y1) / 2 + R * 0.1, R * 0.05, 0, TAU); c.fill();
+    const ya = R * 0.1, [de, ate] = entra ? [R * 0.62, R * 0.16] : [R * 0.14, R * 0.6], dir = Math.sign(ate - de);
+    c.strokeStyle = '#f6e7c4'; c.fillStyle = '#f6e7c4'; c.lineWidth = R * 0.1; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(de, ya); c.lineTo(ate - dir * R * 0.08, ya); c.stroke();
+    c.beginPath(); c.moveTo(ate + dir * R * 0.06, ya); c.lineTo(ate - dir * R * 0.14, ya - R * 0.15); c.lineTo(ate - dir * R * 0.14, ya + R * 0.15); c.closePath(); c.fill();
+  }
+
   /* ---- O catálogo ---- */
   const G = [
     { id: 'luz', n: 'Luzes' },
@@ -4204,6 +4247,24 @@ const Props = (() => {
       },
     },
 
+    // (lote 7) a lanterna de papel dos lugares orientais: luz quente e suave, vermelha, laranja ou branca
+    lanterna: {
+      n: 'Lanterna de papel', g: 'luz', size: 1, luz: { bright: 3, dim: 7, c: '#ffb878' },
+      draw(c, R, t, s) {
+        sombra(c, R, 0.5, 0.5);
+        const f = 0.88 + 0.12 * Math.sin(t * 3 + s);
+        c.save(); c.globalCompositeOperation = 'lighter';
+        c.fillStyle = radial(c, 0, 0, R * 0.95, [`rgba(255,170,110,${0.32 * f})`, 'rgba(255,120,60,0.08)', 'rgba(255,100,40,0)']); c.beginPath(); c.arc(0, 0, R * 0.95, 0, TAU); c.fill();
+        c.restore();
+        const cor = ['#c8352a', '#d9662f', '#f0e6cf'][s % 3];
+        c.fillStyle = radial(c, -R * 0.12, -R * 0.15, R * 0.6, ['#ffe3b0', cor, cor === '#f0e6cf' ? '#c9b48e' : '#7a1a14']); c.beginPath(); c.arc(0, 0, R * 0.46, 0, TAU); c.fill(); linha(c, R * 0.04);
+        // as varetas do papel (vistas de cima, em roda) e a tampa preta
+        c.strokeStyle = 'rgba(60,20,10,0.45)'; c.lineWidth = R * 0.025;
+        for (const k of [0.18, 0.3, 0.4]) { c.beginPath(); c.arc(0, 0, R * k, 0, TAU); c.stroke(); }
+        c.fillStyle = '#1d1a18'; c.beginPath(); c.arc(0, 0, R * 0.13, 0, TAU); c.fill();
+        c.fillStyle = '#e8c56a'; c.beginPath(); c.arc(0, 0, R * 0.04, 0, TAU); c.fill();
+      },
+    },
     /* ---------- Móveis e baús ---------- */
     bau: {
       n: 'Baú', g: 'movel', size: 1,
@@ -4316,6 +4377,59 @@ const Props = (() => {
       },
     },
 
+    // (lote 7) os móveis dos estilos: a almofada, o tapete, o jarro de barro e a bigorna
+    almofada: {
+      n: 'Almofada', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.62, 0.62, 0.06, 0.08);
+        const cores = [['#8e2f3c', '#c2505f'], ['#2f5f6e', '#4f8fa0'], ['#6b4a8e', '#9572b8'], ['#a0742a', '#d0a24a']][s % 4];
+        c.save(); c.rotate(0.12);
+        caixa(c, -R * 0.55, -R * 0.55, R * 1.1, R * 1.1, R * 0.28); c.fillStyle = radial(c, -R * 0.15, -R * 0.2, R * 1.0, [cores[1], cores[0]]); c.fill(); linha(c, R * 0.05);
+        c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = R * 0.03;
+        c.beginPath(); c.moveTo(-R * 0.42, -R * 0.42); c.lineTo(R * 0.42, R * 0.42); c.moveTo(R * 0.42, -R * 0.42); c.lineTo(-R * 0.42, R * 0.42); c.stroke();
+        c.fillStyle = '#e9d39a'; c.beginPath(); c.arc(0, 0, R * 0.07, 0, TAU); c.fill();
+        for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { c.beginPath(); c.arc(x * R * 0.6, y * R * 0.6, R * 0.06, 0, TAU); c.fill(); }
+        c.restore();
+      },
+    },
+    tapete: {
+      n: 'Tapete', g: 'movel', size: 2,
+      draw(c, R, t, s) {
+        const w = R * 1.9, hh = R * 1.25, pal = [['#7a2430', '#c8963e', '#2a3c5c'], ['#244a5c', '#d9b25a', '#6b2f2a'], ['#5b3a1f', '#e0c27a', '#2f4f3a']][s % 3];
+        c.save(); c.globalAlpha = 0.96;
+        caixa(c, -w / 2, -hh / 2, w, hh, R * 0.04); c.fillStyle = pal[0]; c.fill();
+        c.strokeStyle = pal[1]; c.lineWidth = R * 0.06; c.strokeRect(-w / 2 + R * 0.12, -hh / 2 + R * 0.12, w - R * 0.24, hh - R * 0.24);
+        c.lineWidth = R * 0.025; c.strokeRect(-w / 2 + R * 0.22, -hh / 2 + R * 0.22, w - R * 0.44, hh - R * 0.44);
+        // o medalhão do meio e as franjas nas pontas
+        c.fillStyle = pal[2]; c.beginPath(); c.moveTo(0, -hh * 0.3); c.lineTo(w * 0.22, 0); c.lineTo(0, hh * 0.3); c.lineTo(-w * 0.22, 0); c.closePath(); c.fill();
+        c.strokeStyle = pal[1]; c.lineWidth = R * 0.03; c.stroke();
+        c.fillStyle = pal[1]; c.beginPath(); c.arc(0, 0, R * 0.07, 0, TAU); c.fill();
+        c.strokeStyle = '#e8dcc0'; c.lineWidth = R * 0.02;
+        for (let y = -hh / 2 + R * 0.06; y < hh / 2; y += R * 0.09) for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * w / 2, y); c.lineTo(sx * (w / 2 + R * 0.07), y); c.stroke(); }
+        c.restore();
+      },
+    },
+    jarro: {
+      n: 'Jarro de barro', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.56, 0.56, 0.07, 0.09);
+        c.fillStyle = radial(c, -R * 0.15, -R * 0.18, R * 0.75, ['#d98f5a', '#b5643a', '#7a3c1f']); c.beginPath(); c.arc(0, 0, R * 0.5, 0, TAU); c.fill(); linha(c, R * 0.05);
+        c.strokeStyle = 'rgba(250,230,200,0.35)'; c.lineWidth = R * 0.04; c.beginPath(); c.arc(0, 0, R * 0.38, 0, TAU); c.stroke();
+        c.fillStyle = '#5a2a12'; c.beginPath(); c.arc(0, 0, R * 0.2, 0, TAU); c.fill(); linha(c, R * 0.04, 'rgba(40,18,6,0.9)');
+        c.fillStyle = 'rgba(20,8,2,0.8)'; c.beginPath(); c.arc(0, 0, R * 0.13, 0, TAU); c.fill();
+      },
+    },
+    bigorna: {
+      n: 'Bigorna', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.7, 0.62, 0.06, 0.08);
+        c.fillStyle = radial(c, 0, 0, R * 0.6, [MAD.luz, MAD.cla, MAD.med]); c.beginPath(); c.arc(0, 0, R * 0.55, 0, TAU); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(60,35,12,0.45)'; c.lineWidth = R * 0.025; for (const k of [0.2, 0.35, 0.46]) { c.beginPath(); c.arc(0, 0, R * k, 0, TAU); c.stroke(); }
+        c.beginPath(); c.moveTo(-R * 0.5, -R * 0.2); c.lineTo(R * 0.3, -R * 0.2); c.quadraticCurveTo(R * 0.85, -R * 0.12, R * 0.92, 0); c.quadraticCurveTo(R * 0.85, R * 0.12, R * 0.3, R * 0.2); c.lineTo(-R * 0.5, R * 0.2); c.closePath();
+        c.fillStyle = grad(c, 0, -R * 0.2, 0, R * 0.2, [FER.luz, FER.cla, FER.med]); c.fill(); linha(c, R * 0.05);
+        c.fillStyle = 'rgba(255,255,255,0.18)'; caixa(c, -R * 0.42, -R * 0.12, R * 0.6, R * 0.08, R * 0.03); c.fill();
+      },
+    },
     /* ---------- Natureza ---------- */
     arvore: {
       n: 'Árvore', g: 'natureza', size: 2,
@@ -4405,6 +4519,20 @@ const Props = (() => {
       },
     },
 
+    flores: {
+      n: 'Flores', g: 'natureza', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.78, 0.7, 0.05, 0.08);
+        folhas(c, 0, 0, R * 0.8, s, ['#2c4a25', '#3c6331', '#4f7c3c'], 8);
+        const cores = [['#f2c94c', '#f6e7a1'], ['#e85d75', '#f7b2bf'], ['#9b7bd8', '#d1c2f2'], ['#f2f2f2', '#ffffff'], ['#ef8a3c', '#f9c79a']];
+        for (let i = 0; i < 9; i++) {
+          const a = hsh(s, i, 7) * TAU, d = R * (0.1 + hsh(s, i, 8) * 0.55), [c1, c2] = cores[(s + i) % cores.length];
+          const x = Math.cos(a) * d, y = Math.sin(a) * d, r = R * (0.08 + hsh(s, i, 9) * 0.05);
+          c.fillStyle = c1; for (let k = 0; k < 5; k++) { const b = k / 5 * TAU; c.beginPath(); c.arc(x + Math.cos(b) * r, y + Math.sin(b) * r, r * 0.7, 0, TAU); c.fill(); }
+          c.fillStyle = c2; c.beginPath(); c.arc(x, y, r * 0.5, 0, TAU); c.fill();
+        }
+      },
+    },
     /* ---------- Perigos e marcos ---------- */
     armadilha: {
       n: 'Armadilha de urso', g: 'perigo', size: 1,
@@ -4524,6 +4652,23 @@ const Props = (() => {
         for (const x of [-0.65, 0.65]) { c.fillStyle = '#f1e2c2'; c.beginPath(); c.arc(x * R, -R * 0.25, R * 0.09, 0, TAU); c.fill(); linha(c, R * 0.02, 'rgba(90,70,40,0.8)'); }
       },
     },
+    runa: {
+      n: 'Pedra rúnica', g: 'perigo', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.6, 0.74, 0.08, 0.1);
+        c.beginPath(); c.moveTo(-R * 0.4, R * 0.7); c.lineTo(-R * 0.5, -R * 0.3); c.quadraticCurveTo(-R * 0.35, -R * 0.82, 0, -R * 0.82); c.quadraticCurveTo(R * 0.4, -R * 0.8, R * 0.48, -R * 0.25); c.lineTo(R * 0.42, R * 0.7); c.closePath();
+        c.fillStyle = grad(c, -R * 0.5, 0, R * 0.5, 0, [PED.luz, PED.cla, PED.med, PED.esc]); c.fill(); linha(c, R * 0.05);
+        const br = 0.55 + 0.25 * Math.sin(t * 1.5 + s);
+        c.strokeStyle = `rgba(120,200,255,${br})`; c.lineWidth = R * 0.05; c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-R * 0.12, -R * 0.55); c.lineTo(-R * 0.12, R * 0.05); c.moveTo(-R * 0.12, -R * 0.4); c.lineTo(R * 0.12, -R * 0.55); c.moveTo(-R * 0.12, -R * 0.25); c.lineTo(R * 0.12, -R * 0.4);
+        c.moveTo(-R * 0.18, R * 0.2); c.lineTo(R * 0.18, R * 0.5); c.moveTo(R * 0.18, R * 0.2); c.lineTo(-R * 0.18, R * 0.5);
+        c.stroke();
+      },
+    },
+    // (lote 7) os marcadores de passagem: levam a outra cena (dois cliques, só para o mestre); nascem ocultos dos jogadores
+    entrada: { n: 'Entrada', g: 'perigo', size: 1, passagem: 'entra', draw(c, R) { marcaPassagem(c, R, true); } },
+    saida: { n: 'Saída', g: 'perigo', size: 1, passagem: 'sai', draw(c, R) { marcaPassagem(c, R, false); } },
   };
   const ORDER = Object.keys(P);
 
@@ -4553,7 +4698,8 @@ const Props = (() => {
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {
     const def = P[id];
-    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden });
+    // (o marcador de passagem é do mestre: nasce sempre oculto dos jogadores)
+    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem });
     t.vis = { on: false, range: 0, dark: 0 };
     t.color = '#3a3226';
     if (def.luz) t.light = { on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c, fl: true };
@@ -6456,6 +6602,7 @@ const Proj = (() => {
   function tokenPublico(t, jogadores) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
+    delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
     const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
     if (!deJogador) {
       o.owner = null;
@@ -6828,8 +6975,11 @@ const Proj = (() => {
 
   /* ---- o índice das cenas da mesa ---- */
   /* As pastas da lista de cenas (lote 6), só do mestre: { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }. Cena
-     sem pasta (ou numa pasta que não existe mais) fica fora de todas. */
-  const MAX_PASTAS = 40;
+     sem pasta (ou numa pasta que não existe mais) fica fora de todas.
+     (lote 7) As famílias de cenas: mae: { idDaFilha: idDaMãe } (cidade → bairro → casa). Sem voltas — uma cena não
+     fica dentro dela mesma nem de uma cena que está dentro dela (a que fecharia a volta sai) — e com até MAX_NIVEIS
+     níveis (a mãe de todas é o primeiro). A família fica na pasta da mãe de todas. */
+  const MAX_PASTAS = 40, MAX_NIVEIS = 6;
   function normPastas(p) {
     p = ehObj(p) ? p : {};
     const lista = [], vistos = new Set();
@@ -6841,7 +6991,35 @@ const Proj = (() => {
     }
     const de = {};
     if (ehObj(p.de)) for (const k of Object.keys(p.de)) if (idCena(k) && vistos.has(p.de[k])) de[k] = p.de[k];
-    return { lista, de };
+    const mae = {};
+    if (ehObj(p.mae)) for (const k of Object.keys(p.mae)) {
+      const m = p.mae[k];
+      if (!idCena(k) || !idCena(m) || k === m) continue;
+      let x = m, volta = false;
+      for (let n = 0; x && n < 64; n++) { if (x === k) { volta = true; break; } x = mae[x]; }
+      if (!volta) mae[k] = m;
+    }
+    for (const k of Object.keys(mae)) { let x = k, n = 0; while (mae[x] && n < 64) { x = mae[x]; n++; } if (n >= MAX_NIVEIS) delete mae[k]; }
+    return { lista, de, mae };
+  }
+  /* (lote 7) Os modelos do gerador de lugares, só do mestre (no índice): [{ id, nome, lugar, o, seed, trava }]. Aqui
+     só a forma e o tamanho; o gerador confere o resto quando usa o modelo. */
+  const MAX_MODELOS = 30;
+  function normModelos(lista) {
+    const out = [], vistos = new Set();
+    for (const x of Array.isArray(lista) ? lista : []) {
+      if (out.length >= MAX_MODELOS || !ehObj(x) || typeof x.id !== 'string' || !/^md_[A-Za-z0-9]{1,24}$/.test(x.id) || vistos.has(x.id)) continue;
+      const nome = String(x.nome == null ? '' : x.nome).replace(/\s+/g, ' ').trim().slice(0, 40);
+      const lugar = typeof x.lugar === 'string' && /^[a-z]{1,16}$/.test(x.lugar) ? x.lugar : null;
+      if (!nome || !lugar || !ehObj(x.o)) continue;
+      let o, trava;
+      try { o = JSON.parse(JSON.stringify(x.o)); trava = ehObj(x.trava) ? JSON.parse(JSON.stringify(x.trava)) : null; } catch (e) { continue; }
+      if (JSON.stringify(o).length > 4000 || (trava && JSON.stringify(trava).length > 20000)) continue;
+      const seed = Math.round(Number(x.seed));
+      vistos.add(x.id);
+      out.push({ id: x.id, nome, lugar, o, seed: seed >= 1 && seed <= 2147483647 ? seed : 1, trava });
+    }
+    return out;
   }
   function normIndice(d) {
     d = ehObj(d) ? d : {};
@@ -6850,7 +7028,7 @@ const Proj = (() => {
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
-      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null },
+      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) },
       pastas: normPastas(d.pastas),
     };
   }
@@ -6879,7 +7057,7 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();
 /* ---------------------------------------------------------------
    7d. NUVEM — as cenas de uma mesa, guardadas no banco e vistas ao vivo
@@ -7108,6 +7286,7 @@ const Nuvem = (() => {
     const semACena = () => !!idx.noAr && !S.scenes[idx.noAr];
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
+    S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -7261,7 +7440,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null }, pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -7350,6 +7529,7 @@ const Nuvem = (() => {
     for (const id of S.order) if (!ordem.includes(id)) ordem.push(id);
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
+    S.prefs.modelos = n.prefs.modelos;
     S.pastas = n.pastas;
     Store.meta();
   }
@@ -9552,9 +9732,14 @@ const Tools = (() => {
       cursor();
       Render.request();
     },
-    dbl(p) {
+    dbl(p, e) {
       const hit = hitTest(p, { locked: true });
       if (!hit) return;
+      // (lote 7) objeto que leva a outra cena (a entrada de uma casa, a saída): dois cliques abrem o menu da passagem
+      if (hit.c === 'tokens' && isGM()) {
+        const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
+        if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+      }
       // Texto solto: dois cliques editam. Texto travado: dois cliques selecionam, como qualquer desenho travado
       // (é o caminho para destravar ou apagar; editar continua no painel e no botão direito).
       if (hit.c === 'shapes') { const s = Store.get('shapes', hit.id); if (s.k === 'text' && !s.lock && (isGM() || can('editShape', s))) { UI.editText(s); return; } }
@@ -10512,10 +10697,20 @@ const UI = (() => {
       // (a pasta da lista de cenas: um clique abre ou fecha — quem chama desenha a lista de novo)
       if (it.pasta) return h('button', { type: 'button', class: 'menu-i menu-pasta', role: 'menuitem', id: 'mp-' + it.pasta, 'aria-expanded': String(!!it.aberta), title: it.aberta ? 'Fechar a pasta' : 'Abrir a pasta', onclick: () => it.run() },
         h('span', { class: 'menu-ck' }, icon(it.aberta ? 'down' : 'right', 14)), icon('folder', 15), h('span', { class: 'menu-l', text: it.label }), h('span', { class: 'menu-k', text: String(it.n) }));
+      // (lote 7) a cena de uma família: as filhas vêm um pouco para dentro; a mãe tem, à direita, o botão que abre e
+      // fecha a família (com quantas cenas há dentro dela) — o clique no nome continua abrindo a cena
+      if (it.fam) return h('div', { class: 'menu-fam' },
+        h('button', { type: 'button', class: 'menu-i' + (it.dentro ? ' dentro' : '') + (it.nivel ? ' filha' : ''), role: 'menuitem', id: 'mc-' + it.fam, style: it.nivel ? { '--nv': it.nivel } : null, onclick: () => { closeMenus(); it.run(); } },
+          h('span', { class: 'menu-ck' }, it.check ? icon('check', 15) : null), h('span', { class: 'menu-l', text: it.label }),
+          it.mark ? h('span', { class: 'menu-m', title: it.markTitle || '' }, icon(it.mark, 13)) : null, it.key ? h('span', { class: 'menu-k', text: it.key }) : null),
+        it.filhas ? h('button', { type: 'button', class: 'menu-tg' + (it.aqui ? ' aqui' : ''), id: 'mf-' + it.fam, 'aria-expanded': String(!!it.aberta),
+          title: (it.aberta ? 'Esconder' : 'Mostrar') + ` as cenas que estão dentro de "${it.label}"` + (it.aqui ? ' (a cena aberta está aqui dentro)' : ''), onclick: () => it.tg() },
+        h('span', { class: 'menu-k', text: String(it.filhas) }), icon(it.aberta ? 'down' : 'right', 13)) : null);
       return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
         it.check != null ? h('span', { class: 'menu-ck' }, it.check ? icon('check', 15) : null) : it.icon ? icon(it.icon, 16) : h('span', { class: 'menu-ck' }),
         h('span', { class: 'menu-l', text: it.label }), it.mark ? h('span', { class: 'menu-m', title: it.markTitle || '' }, icon(it.mark, 13)) : null, it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
     }));
+    if (modalEl) menuEl.classList.add('sobre');             // (um menu aberto de dentro de uma janela fica por cima dela)
     el.layer.append(menuEl);
     const r = menuEl.getBoundingClientRect();
     const left = clamp(o && o.right ? x - r.width : x, 8, Math.max(8, window.innerWidth - r.width - 8));
@@ -10552,7 +10747,7 @@ const UI = (() => {
   }
   function modal(o) {
     closeModal(); closeMenus();
-    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
+    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : '') + (o.xl ? ' xl' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
       h('h2', { class: 'modal-t', text: o.title }),
       o.text ? h('p', { class: 'modal-p', text: o.text }) : null,
       o.body || null,
@@ -10567,8 +10762,9 @@ const UI = (() => {
   document.addEventListener('keydown', e => {
     if (menuEl && e.key === 'Escape') { closeMenus(); e.stopPropagation(); return; }
     if (!modalEl) return;
-    if (e.key === 'Escape') { const c = modalCfg; closeModal(); if (c && c.onCancel) c.onCancel(); e.stopPropagation(); }
-    else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+    if (e.key === 'Escape') { if (e.target.dataset && e.target.dataset.esc) return; const c = modalCfg; closeModal(); if (c && c.onCancel) c.onCancel(); e.stopPropagation(); }
+    // (o campo com data-enter="proprio" cuida do Enter dele: a semente do gerador, o nome de um modelo)
+    else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && !(e.target.dataset && e.target.dataset.enter)) {
       const p = modalEl.querySelector('.btn.primary');
       if (!p) return;
       e.preventDefault();
@@ -10869,9 +11065,11 @@ const UI = (() => {
   function duplicateScene() {
     const src = Store.scene(), sc = clone(src);
     sc.id = uid('cena'); sc.name = src.name + ' (cópia)'; sc.explored = {}; delete sc.sample;
-    const pa = pastaDaCena(src.id);
-    if (pa) pastasP().de[sc.id] = pa;                  // (a cópia fica na mesma pasta)
+    // (a cópia fica no mesmo lugar: dentro da mesma cena-mãe ou, sem mãe, na mesma pasta; as filhas não são copiadas)
+    const m = maeDaCena(src.id), pa = pastaDaCena(src.id);
+    if (m || pa) { const p = clone(pastasP()); if (m) p.mae[sc.id] = m; else p.de[sc.id] = pa; Store.S.pastas = Proj.normPastas(p); }
     Store.addScene(sc); Persist.scene(sc.id);
+    if (m || pa) Persist.meta();
     switchScene(sc.id);
     toast('Cena duplicada.');
   }
@@ -10880,12 +11078,19 @@ const UI = (() => {
     promptBox('Renomear cena', 'Nome da cena', sc.name).then(name => { if (name && name.trim()) Store.tx('Renomear cena', () => Store.scn({ name: name.trim() })); });
   }
   function deleteScene() {
-    const sc = Store.scene();
-    confirmBox('Apagar esta cena?', `"${sc.name}" e tudo o que está nela serão apagados. Isso não pode ser desfeito.` + (Nuvem.noAr() === sc.id ? ' Os jogadores estão vendo esta cena: ela sai do ar.' : ''), 'Apagar cena', true).then(ok => {
+    const sc = Store.scene(), filhas = filhasDe(sc.id), m = maeDaCena(sc.id);
+    // (lote 7) as cenas que estão dentro dela não são apagadas: passam para a mãe dela (ou ficam soltas, na pasta dela)
+    const sobre = !filhas.length ? '' : ' ' + (filhas.length === 1 ? 'A cena que está dentro dela não é apagada' : `As ${filhas.length} cenas que estão dentro dela não são apagadas`) +
+      (m ? `: ${filhas.length === 1 ? 'passa' : 'passam'} para dentro de "${Store.S.scenes[m].name}".` : `: ${filhas.length === 1 ? 'fica' : 'ficam'} no lugar dela.`);
+    confirmBox('Apagar esta cena?', `"${sc.name}" e tudo o que está nela serão apagados. Isso não pode ser desfeito.` + sobre + (Nuvem.noAr() === sc.id ? ' Os jogadores estão vendo esta cena: ela sai do ar.' : ''), 'Apagar cena', true).then(ok => {
       if (!ok) return;
-      const id = sc.id;
+      const id = sc.id, p = clone(pastasP()), pa = p.de[id];
       Store.removeScene(id); Persist.removeScene(id);
-      if (pastasP().de[id]) { delete pastasP().de[id]; Persist.meta(); }
+      if (pa || filhas.length || p.mae[id]) {
+        for (const f of filhas) { if (m) p.mae[f] = m; else { delete p.mae[f]; if (pa) p.de[f] = pa; } }
+        delete p.mae[id]; delete p.de[id];
+        Store.S.pastas = Proj.normPastas(p); Persist.meta();
+      }
       irParaUmaDaVista();
     });
   }
@@ -10982,50 +11187,88 @@ const UI = (() => {
   }
   function sceneMenu() {
     const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas(), mundo = Nuvem.noMundo(), pastas = pastasP().lista;
-    const linha = id => {
-      const s = Store.S.scenes[id], nm = mundo[id];
-      return { label: s.name, check: id === Store.S.current, key: id === ar ? 'no ar' : null, mark: nm ? 'globe' : null, markTitle: nm ? 'No Mapa-múndi: ' + nm.join(', ') : '', run: () => switchScene(id) };
-    };
     const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
-    const soltas = visiveis.filter(id => !pastaDaCena(id));
-    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); for (const id of soltas) items.push(linha(id)); } }
+    const F = familiasVistas(visiveis), atual = Store.S.current;
+    const linha = (id, nivel, dentro) => {
+      const s = Store.S.scenes[id], nm = mundo[id];
+      const it = { label: s.name, check: id === atual, key: id === ar ? 'no ar' : null, mark: nm ? 'globe' : null, markTitle: nm ? 'No Mapa-múndi: ' + nm.join(', ') : '', run: () => switchScene(id), dentro };
+      // (lote 7) a cena de uma família: a filha vem para dentro; a mãe abre e fecha as que estão dentro dela
+      const nf = F.filhas(id).length;
+      if (nivel || nf) {
+        const aberta = !famFechadas.has(id);
+        Object.assign(it, { fam: id, nivel, filhas: nf ? F.dentro(id).length : 0, aberta, aqui: !aberta && F.dentro(id).includes(atual),
+          tg: () => { if (aberta) famFechadas.add(id); else famFechadas.delete(id); guardarFamFechadas(); reabrirMenuCenas('mf-' + id); } });
+      }
+      return it;
+    };
+    // a família de cada cena da lista: ela e, se estiver aberta, as que estão dentro dela (cada uma com a família dela)
+    const familia = (id, nivel, dentro) => { items.push(linha(id, nivel, dentro)); if (!famFechadas.has(id)) for (const f of F.filhas(id)) familia(f, nivel + 1, dentro); };
+    const soltas = F.raizes.filter(id => !pastaDaCena(id));
+    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); for (const id of soltas) familia(id, 0, false); } }
     else {
       // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
       const c = Nuvem.campanha(), dela = soltas.filter(id => Nuvem.campanhasDaCena(id).includes(c)), doMundo = soltas.filter(id => !Nuvem.campanhasDaCena(id).length);
-      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); for (const id of dela) items.push(linha(id)); }
-      if (doMundo.length) { items.push({ head: 'Do mundo' }); for (const id of doMundo) items.push(linha(id)); }
+      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); for (const id of dela) familia(id, 0, false); }
+      if (doMundo.length) { items.push({ head: 'Do mundo' }); for (const id of doMundo) familia(id, 0, false); }
     }
-    // as pastas (lote 6): cada uma abre e fecha; fechada, fica só o nome e quantas cenas tem
+    // as pastas (lote 6): cada uma abre e fecha; fechada, fica só o nome e quantas cenas tem (contando as famílias)
     for (const pa of pastas) {
-      const dela = visiveis.filter(id => pastaDaCena(id) === pa.id);
+      const dela = F.raizes.filter(id => pastaDaCena(id) === pa.id);
       if (!dela.length) continue;
-      const aberta = !fechadas.has(pa.id);
-      items.push({ pasta: pa.id, label: pa.nome, n: dela.length, aberta, run: () => { if (aberta) fechadas.add(pa.id); else fechadas.delete(pa.id); guardarFechadas(); reabrirMenuCenas(pa.id); } });
-      if (aberta) for (const id of dela) items.push(Object.assign(linha(id), { dentro: true }));
+      const aberta = !fechadas.has(pa.id), n = dela.reduce((s, id) => s + 1 + F.dentro(id).length, 0);
+      items.push({ pasta: pa.id, label: pa.nome, n, aberta, run: () => { if (aberta) fechadas.add(pa.id); else fechadas.delete(pa.id); guardarFechadas(); reabrirMenuCenas('mp-' + pa.id); } });
+      if (aberta) for (const id of dela) familia(id, 0, true);
     }
-    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um vilarejo…', icon: 'house', run: () => Vila.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
-      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar em pastas…', icon: 'folder', run: () => organizarCenas() },
+    items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
+      { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
       Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
   }
-  function reabrirMenuCenas(pastaId) {
+  // abre o menu das cenas de novo (depois de abrir ou fechar uma pasta ou uma família), com o foco no mesmo botão
+  function reabrirMenuCenas(focoId) {
     const b = document.getElementById('sceneBtn');
     if (!b) return;
     anchorMenu(b, sceneMenu());
-    const f = document.getElementById('mp-' + pastaId);
+    const f = document.getElementById(focoId);
     if (f) f.focus();
   }
 
   /* ---- As pastas da lista de cenas (lote 6) ----
-     O mestre cria pastas ("Lugares do mundo", "Combates"…) e põe as cenas nelas, na janela "Organizar em pastas…"
-     (arrastando, ou escolhendo a pasta de cada cena). Na lista do botão de cenas, cada pasta abre e fecha (lembrado
+     O mestre cria pastas ("Lugares do mundo", "Combates"…) e põe as cenas nelas, na janela "Organizar as cenas…"
+     (arrastando, ou escolhendo onde cada cena fica). Na lista do botão de cenas, cada pasta abre e fecha (lembrado
      neste aparelho), e a cena que um marcador do Mapa-múndi abre ganha o ícone do mundo. As pastas são do mestre (na
-     mesa, vão no índice das cenas); mudar de pasta não mexe na cena. Cada mudança tem Desfazer. */
-  const pastasP = () => Store.S.pastas || (Store.S.pastas = { lista: [], de: {} });
+     mesa, vão no índice das cenas); mudar de pasta não mexe na cena. Cada mudança tem Desfazer.
+     (lote 7) As famílias: uma cena pode ficar dentro de outra (cidade → bairro → casa). A família inteira fica na pasta
+     da mãe de todas; na lista, as filhas vêm logo abaixo da mãe, um pouco para dentro, e cada mãe abre e fecha. */
+  const pastasP = () => { const p = Store.S.pastas || (Store.S.pastas = { lista: [], de: {}, mae: {} }); if (!p.mae) p.mae = {}; return p; };
   const pastaDaCena = id => { const p = pastasP(), pid = p.de[id]; return pid && p.lista.some(x => x.id === pid) ? pid : null; };
   const FECHADAS = 'tinycats:cenas:pastas-fechadas';
   const fechadas = (() => { try { return new Set(JSON.parse(localStorage.getItem(FECHADAS) || '[]')); } catch (e) { return new Set(); } })();
   const guardarFechadas = () => { try { localStorage.setItem(FECHADAS, JSON.stringify([...fechadas])); } catch (e) { /* sem armazenamento: vale só agora */ } };
+  // a mãe da cena (só se a mãe ainda existe); a mãe de todas; em que nível ela está (a mãe de todas é o 0)
+  const maeDaCena = id => { const m = pastasP().mae[id]; return m && m !== id && Store.S.scenes[m] ? m : null; };
+  const raizDaCena = id => { let x = id; for (let n = 0; n < 16 && maeDaCena(x); n++) x = maeDaCena(x); return x; };
+  const nivelDaCena = id => { let x = id, n = 0; while (n < 16 && maeDaCena(x)) { x = maeDaCena(x); n++; } return n; };
+  const filhasDe = id => Store.S.order.filter(k => Store.S.scenes[k] && maeDaCena(k) === id);
+  function descendentesDe(id) {
+    const out = [];
+    for (const fila = [id]; fila.length;) for (const f of filhasDe(fila.shift())) if (f !== id && !out.includes(f)) { out.push(f); fila.push(f); }
+    return out;
+  }
+  // quantos níveis há abaixo da cena (0: nenhuma cena dentro dela)
+  const alturaDe = (id, n = 0) => (n > 16 ? 0 : filhasDe(id).reduce((a, f) => Math.max(a, 1 + alturaDe(f, n + 1)), 0));
+  /* As famílias como a lista as mostra: só com as cenas que aparecem nela (numa mesa com campanhas, a cena cuja mãe é
+     de outra campanha aparece como se não tivesse mãe). raizes: as que não estão dentro de nenhuma da lista. */
+  function familiasVistas(visiveis) {
+    const vis = new Set(visiveis), cache = new Map();
+    const maeVis = id => { const m = maeDaCena(id); return m && vis.has(m) ? m : null; };
+    const filhas = id => { if (!cache.has(id)) cache.set(id, visiveis.filter(k => k !== id && maeVis(k) === id)); return cache.get(id); };
+    const dentro = id => { const out = []; for (const fila = [id]; fila.length;) for (const f of filhas(fila.shift())) if (!out.includes(f)) { out.push(f); fila.push(f); } return out; };
+    return { raizes: visiveis.filter(id => !maeVis(id)), maeVis, filhas, dentro };
+  }
+  const FAM_FECHADAS = 'tinycats:cenas:familias-fechadas';
+  const famFechadas = (() => { try { return new Set(JSON.parse(localStorage.getItem(FAM_FECHADAS) || '[]')); } catch (e) { return new Set(); } })();
+  const guardarFamFechadas = () => { try { localStorage.setItem(FAM_FECHADAS, JSON.stringify([...famFechadas])); } catch (e) { /* sem armazenamento: vale só agora */ } };
   // muda as pastas num passo só: fn recebe uma cópia para alterar; o aviso diz o que mudou, com Desfazer
   function mudarPastas(fn, texto) {
     const antes = clone(pastasP()), novo = clone(antes);
@@ -11038,17 +11281,45 @@ const UI = (() => {
     return true;
   }
   const nomeDaPasta = id => { const pa = pastasP().lista.find(x => x.id === id); return pa ? pa.nome : 'Sem pasta'; };
-  function moverCena(id, pastaId) {
-    const sc = Store.S.scenes[id];
-    if (!sc || (pastaDaCena(id) || '') === (pastaId || '')) return;
-    mudarPastas(p => { if (pastaId) p.de[id] = pastaId; else delete p.de[id]; }, pastaId ? `"${sc.name}" foi para a pasta ${nomeDaPasta(pastaId)}.` : `"${sc.name}" saiu da pasta.`);
+  const nomeDaCena = id => (Store.S.scenes[id] || {}).name || 'a cena';
+  /* Põe a cena num lugar: 'p:<pasta>' (ou 'p:' sem pasta) a deixa solta, sem mãe, naquela pasta; 'm:<cena>' a põe
+     dentro daquela cena. As cenas que estão dentro dela vão junto. Uma cena não entra nela mesma nem numa das que
+     estão dentro dela. */
+  function colocarCena(id, destino) {
+    const sc = Store.S.scenes[id], d = String(destino || '');
+    if (!sc) return false;
+    const n = descendentesDe(id).length, mae0 = maeDaCena(id);
+    if (d.startsWith('m:')) {
+      const m = d.slice(2);
+      if (!Store.S.scenes[m] || m === id || mae0 === m || descendentesDe(id).includes(m)) return false;
+      if (nivelDaCena(m) + 1 + alturaDe(id) >= Proj.MAX_NIVEIS) { toast(`Uma família vai até ${Proj.MAX_NIVEIS} níveis: "${sc.name}" não cabe dentro de "${nomeDaCena(m)}".`); return false; }
+      return mudarPastas(p => { p.mae[id] = m; delete p.de[id]; },
+        `"${sc.name}"` + (n ? (n === 1 ? ' (e a cena que está dentro dela)' : ` (e as ${n} cenas que estão dentro dela)`) : '') + ` agora ${n ? 'ficam' : 'fica'} dentro de "${nomeDaCena(m)}".`);
+    }
+    const pa = d.startsWith('p:') ? d.slice(2) : '';
+    if (pa && !pastasP().lista.some(x => x.id === pa)) return false;
+    if (!mae0 && (pastaDaCena(id) || '') === pa) return false;
+    const vai = n ? (n === 1 ? ` e a cena que está dentro dela ${pa ? 'foram para a pasta ' + nomeDaPasta(pa) : 'ficaram sem pasta'}` : ` e as ${n} cenas que estão dentro dela ${pa ? 'foram para a pasta ' + nomeDaPasta(pa) : 'ficaram sem pasta'}`) : '';
+    const texto = mae0 ? `"${sc.name}" saiu de dentro de "${nomeDaCena(mae0)}"` + (n ? `,${vai}` : pa ? ` e foi para a pasta ${nomeDaPasta(pa)}` : ' e ficou sem pasta') + '.'
+      : n ? `"${sc.name}"${vai}.` : pa ? `"${sc.name}" foi para a pasta ${nomeDaPasta(pa)}.` : `"${sc.name}" saiu da pasta.`;
+    return mudarPastas(p => { delete p.mae[id]; if (pa) p.de[id] = pa; else delete p.de[id]; }, texto);
+  }
+  const moverCena = (id, pastaId) => colocarCena(id, 'p:' + (pastaId || ''));
+  // (lote 7) o gerador de lugares põe a cena nova dentro da de fora (o bairro na cidade, o interior na casa)
+  function porNaFamilia(filha, mae) {
+    if (!Store.S.scenes[filha] || !Store.S.scenes[mae] || filha === mae) return false;
+    const p = clone(pastasP());
+    p.mae[filha] = mae; delete p.de[filha];
+    Store.S.pastas = Proj.normPastas(p);
+    Persist.meta(); Store.meta();
+    return Store.S.pastas.mae[filha] === mae;
   }
   function novaPasta(depois) {
     if (pastasP().lista.length >= 40) { toast('Já são 40 pastas: apague uma para criar outra.'); return; }
     promptBox('Nova pasta', 'Nome da pasta', '', { ok: 'Criar' }).then(nome => {
       nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (nome) { const id = uid('pa'); mudarPastas(p => { p.lista.push({ id, nome }); if (depois) depois(p, id); }, `Pasta "${nome}" criada.`); }
-      organizarCenas();                                      // (de volta à janela das pastas)
+      organizarCenas();                                      // (de volta à janela das cenas)
     });
   }
   function renomearPasta(pa) {
@@ -11063,46 +11334,69 @@ const UI = (() => {
     mudarPastas(p => { p.lista = p.lista.filter(x => x.id !== pa.id); for (const id of Object.keys(p.de)) if (p.de[id] === pa.id) delete p.de[id]; },
       n ? `Pasta "${pa.nome}" apagada; ${n === 1 ? 'a cena dela voltou' : `as ${n} cenas dela voltaram`} para "Sem pasta".` : `Pasta "${pa.nome}" apagada.`);
   }
-  // A janela "Organizar em pastas": uma seção por pasta (e "Sem pasta"), com as cenas que estão nela.
+  /* A janela "Organizar as cenas": uma seção por pasta (e "Sem pasta"), com as cenas que estão nela — cada família com
+     as filhas logo abaixo da mãe, um pouco para dentro. Arrastar uma cena para cima de outra a põe dentro dela;
+     arrastar para o título de uma pasta (ou para um canto vazio dela) a deixa solta nessa pasta. A lista "Onde fica",
+     ao lado de cada cena, faz o mesmo sem arrastar. */
   function organizarCenas() {
     const body = h('div', { class: 'org' });
     let arrastando = null;
+    const limparAlvos = () => body.querySelectorAll('.alvo').forEach(x => x.classList.remove('alvo'));
     const paint = () => {
       const p = pastasP(), ar = Nuvem.noAr(), mundo = Nuvem.noMundo(), comCamp = Nuvem.comCampanhas();
       const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
-      const opcoes = [['', 'Sem pasta']].concat(p.lista.map(x => [x.id, x.nome]));
+      const F = familiasVistas(visiveis);
       const a = document.activeElement, fid = a && a.id && body.contains(a) ? a.id : null;
-      const linha = id => {
-        const sc = Store.S.scenes[id], nm = mundo[id];
-        return h('li', { class: 'org-c' + (id === Store.S.current ? ' atual' : ''), draggable: 'true', id: 'org-c-' + id,
-          ondragstart: e => { arrastando = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (err) { /* (alguns navegadores) */ } },
-          ondragend: () => { arrastando = null; body.querySelectorAll('.org-p.alvo').forEach(x => x.classList.remove('alvo')); } },
-          h('span', { class: 'org-g', 'aria-hidden': 'true', title: 'Arraste para outra pasta' }, '⠿'),
+      // todas as cenas da lista na ordem da árvore (para a lista "Onde fica")
+      const arvore = [];
+      const desce = (k, n) => { arvore.push([k, n]); for (const f of F.filhas(k)) desce(f, n + 1); };
+      F.raizes.forEach(k => desce(k, 0));
+      const podeDentro = (de, alvo) => !!de && de !== alvo && !descendentesDe(de).includes(alvo);
+      const ondeFica = id => {
+        const sc = Store.S.scenes[id], m = F.maeVis(id), fora = new Set([id, ...descendentesDe(id)]);
+        return h('select', { id: 'org-s-' + id, class: 'in', value: m ? 'm:' + m : 'p:' + (pastaDaCena(id) || ''), title: 'Onde esta cena fica: numa pasta, ou dentro de outra cena', 'aria-label': 'Onde fica ' + sc.name,
+          onchange: e => { const v = e.target.value; e.target.blur(); colocarCena(id, v); } },
+          h('optgroup', { label: 'Numa pasta' }, h('option', { value: 'p:', text: 'Sem pasta' }), ...p.lista.map(x => h('option', { value: 'p:' + x.id, text: x.nome }))),
+          arvore.some(([k]) => !fora.has(k)) ? h('optgroup', { label: 'Dentro da cena' }, ...arvore.filter(([k]) => !fora.has(k)).map(([k, n]) => h('option', { value: 'm:' + k, text: '\u00a0\u00a0\u00a0'.repeat(n) + Store.S.scenes[k].name }))) : null);
+      };
+      const linha = (id, nivel) => {
+        const sc = Store.S.scenes[id], nm = mundo[id], nd = F.dentro(id).length;
+        return h('li', { class: 'org-c' + (id === Store.S.current ? ' atual' : '') + (nivel ? ' filha' : ''), style: nivel ? { '--nv': nivel } : null, draggable: 'true', id: 'org-c-' + id,
+          ondragstart: e => { e.stopPropagation(); arrastando = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (err) { /* (alguns navegadores) */ } },
+          ondragend: () => { arrastando = null; limparAlvos(); },
+          // em cima de outra cena: entra nela (na própria cena, ou numa que está dentro dela, não dá para soltar)
+          ondragover: e => { if (!arrastando) return; e.stopPropagation(); if (!podeDentro(arrastando, id)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!e.currentTarget.classList.contains('alvo')) { limparAlvos(); e.currentTarget.classList.add('alvo'); } },
+          ondragleave: e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('alvo'); },
+          ondrop: e => { if (!arrastando) return; e.preventDefault(); e.stopPropagation(); const de = arrastando; arrastando = null; limparAlvos(); if (podeDentro(de, id)) colocarCena(de, 'm:' + id); } },
+          h('span', { class: 'org-g', 'aria-hidden': 'true', title: 'Arraste para cima de outra cena (fica dentro dela) ou para outra pasta' }, '⠿'),
           icon(nm ? 'globe' : 'map', 15),
           h('span', { class: 'org-n', text: sc.name, title: nm ? 'No Mapa-múndi: ' + nm.join(', ') : sc.name }),
+          nd ? h('span', { class: 'org-q', text: String(nd), title: nd === 1 ? 'Uma cena dentro desta' : nd + ' cenas dentro desta' }) : null,
           id === ar ? h('span', { class: 'org-ar', text: 'no ar' }) : null,
-          inSelect('org-s-' + id, pastaDaCena(id) || '', opcoes, v => moverCena(id, v), { title: 'A pasta desta cena', 'aria-label': 'Pasta de ' + sc.name }));
+          ondeFica(id));
       };
-      const secao = (pa, ids) => {
-        const alvo = pa ? pa.id : '';
+      const secao = (pa, raizes) => {
+        const alvo = pa ? pa.id : '', itens = [];
+        const fam = (k, n) => { itens.push(linha(k, n)); for (const f of F.filhas(k)) fam(f, n + 1); };
+        raizes.forEach(k => fam(k, 0));
         return h('section', { class: 'org-p', id: 'org-p-' + (pa ? pa.id : 'solta'),
-          ondragover: e => { if (!arrastando) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('alvo'); },
+          ondragover: e => { if (!arrastando) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!e.currentTarget.classList.contains('alvo')) { limparAlvos(); e.currentTarget.classList.add('alvo'); } },
           ondragleave: e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('alvo'); },
-          ondrop: e => { e.preventDefault(); e.currentTarget.classList.remove('alvo'); const id = arrastando; arrastando = null; if (id) moverCena(id, alvo); } },
-          h('div', { class: 'org-h' }, icon('folder', 15), h('strong', { text: pa ? pa.nome : 'Sem pasta' }), h('span', { class: 'org-q', text: String(ids.length) }),
+          ondrop: e => { e.preventDefault(); limparAlvos(); const id = arrastando; arrastando = null; if (id) colocarCena(id, 'p:' + alvo); } },
+          h('div', { class: 'org-h' }, icon('folder', 15), h('strong', { text: pa ? pa.nome : 'Sem pasta' }), h('span', { class: 'org-q', text: String(itens.length) }),
             pa ? iconBtn('edit', 'Renomear a pasta', () => renomearPasta(pa), { size: 14, id: 'org-ren-' + pa.id }) : null,
             pa ? iconBtn('trash', 'Apagar a pasta (as cenas dela voltam para "Sem pasta")', () => apagarPasta(pa), { size: 14, id: 'org-del-' + pa.id }) : null),
-          ids.length ? h('ul', { class: 'org-l' }, ids.map(linha)) : h('p', { class: 'org-vazia', text: pa ? 'Arraste uma cena para cá.' : 'Todas as cenas estão em pastas.' }));
+          itens.length ? h('ul', { class: 'org-l' }, itens) : h('p', { class: 'org-vazia', text: pa ? 'Arraste uma cena para cá.' : 'Todas as cenas estão em pastas.' }));
       };
       body.replaceChildren(
-        secao(null, visiveis.filter(id => !pastaDaCena(id))),
-        ...p.lista.map(pa => secao(pa, visiveis.filter(id => pastaDaCena(id) === pa.id))),
+        secao(null, F.raizes.filter(id => !pastaDaCena(id))),
+        ...p.lista.map(pa => secao(pa, F.raizes.filter(id => pastaDaCena(id) === pa.id))),
         h('div', { class: 'row' }, btn('Nova pasta', () => novaPasta(), { icon: 'plus', id: 'org-nova' })),
-        note('Arraste uma cena para outra pasta, ou escolha a pasta na lista ao lado dela. Apagar uma pasta não apaga as cenas. O ícone do mundo marca as cenas que um marcador do Mapa-múndi abre.'));
+        note('Arraste uma cena para outra pasta, ou para cima de outra cena (ela fica dentro, como o bairro dentro da cidade); a lista ao lado de cada cena faz o mesmo. A família fica na pasta da cena de fora. Apagar uma pasta não apaga as cenas. O ícone do mundo marca as cenas que um marcador do Mapa-múndi abre.'));
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     };
     paint();
-    modal({ title: 'Organizar em pastas', wide: true, body, focusPrimary: true, actions: [{ label: 'Pronto', kind: 'primary' }] });
+    modal({ title: 'Organizar as cenas', wide: true, body, focusPrimary: true, actions: [{ label: 'Pronto', kind: 'primary' }] });
     modalLive = paint;
   }
 
@@ -12093,6 +12387,16 @@ const UI = (() => {
     if (!gm) return [head];
     const girar = d => all(x => ({ rot: (((x.rot || 0) + d) % 360 + 360) % 360 }), 'Girar objeto');
     const luz = !many && t.light && def.luz ? t.light : null;
+    // (lote 7) aonde o objeto leva: a lista das cenas (na ordem das famílias) e o botão de ir
+    const alvo = !many && t.cena && Store.S.scenes[t.cena] ? t.cena : null;
+    const cenaSel = many ? null : (() => {
+      const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && id !== Store.S.current && (!comCamp || Nuvem.naVista(id))), F = familiasVistas(vis), arv = [];
+      const desce = (k, n) => { arv.push([k, n]); for (const f of F.filhas(k)) desce(f, n + 1); };
+      F.raizes.forEach(k => desce(k, 0));
+      if (t.cena && !alvo) arv.unshift([t.cena, -1]);
+      return h('select', { id: 'pr-cena', class: 'in', value: t.cena || '', 'aria-label': 'A cena aonde este objeto leva', onchange: e => { const v = e.target.value; e.target.blur(); ligarObjeto(t, v || null); } },
+        h('option', { value: '', text: 'Nenhuma' }), ...arv.map(([k, n]) => h('option', { value: k, text: n < 0 ? '(a cena ligada foi apagada)' : '   '.repeat(n) + Store.S.scenes[k].name })));
+    })();
     return [head,
       sec('s-prop', 'Objeto', true,
         !many ? field('Nome', inText('pr-name', t.name, v => all({ name: v.trim() || t.name }, 'Renomear objeto'))) : null,
@@ -12108,6 +12412,12 @@ const UI = (() => {
           field('Luz forte (q)', inNum('pr-lb', luz.bright, v => all({ light: Object.assign({}, luz, { bright: Math.min(v, luz.dim) }) }), { min: 0, max: 60, step: 0.5 })),
           field('Até (q)', inNum('pr-ld', luz.dim, v => all({ light: Object.assign({}, luz, { dim: v, bright: Math.min(luz.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),
         Store.scene().light === 'claro' ? note('A cena está clara: a luz só aparece em penumbra ou no escuro (aba Cena).') : null) : null,
+      !many ? sec('s-propcena', 'Leva para outra cena', !!t.cena || !!def.passagem,
+        field('Cena', cenaSel),
+        h('div', { class: 'row' },
+          btn('Ir para lá', () => passagemIr(alvo, false), { icon: 'map', id: 'pr-ir', disabled: !alvo || !Nuvem.naVista(alvo) }),
+          !alvo ? btn('Uma cena nova, dentro desta…', () => novaCenaLigada(t), { icon: 'plus', id: 'pr-nova' }) : null),
+        note(alvo ? `Dois cliques no objeto levam você (só você) até "${Store.S.scenes[alvo].name}". O que os jogadores veem só muda com "Mostrar aos jogadores".` : 'Com uma cena escolhida, dois cliques no objeto levam você até ela. "Uma cena nova" cria a cena dentro desta (na lista de cenas), já com a saída de volta.')) : null,
       sec('s-gm', 'Só do mestre', true,
         toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
         toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
@@ -12117,6 +12427,56 @@ const UI = (() => {
           btn('Trás', () => Act.toFront('tokens', props.map(x => x.id), false), { icon: 'back' }),
           btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' }))),
     ];
+  }
+  /* (lote 7) As passagens: um objeto pode levar a outra cena (a entrada de uma casa leva à cena de dentro; a saída, de
+     volta). Só o mestre usa: dois cliques no objeto abrem o menu da passagem. Ir para outra cena não muda o que os
+     jogadores veem (isso é com "Mostrar aos jogadores"). Ligar e desligar têm Desfazer (Ctrl+Z). */
+  function ligarObjeto(t, cena) {
+    if (!Store.get('tokens', t.id)) return;
+    Store.tx(cena ? 'Ligar a uma cena' : 'Desligar da cena', () => Store.upd('tokens', t.id, { cena: cena || null }));
+  }
+  function passagemIr(id, mostrar) {
+    if (!id || !Store.S.scenes[id]) return;
+    if (!Nuvem.naVista(id)) { toast('Essa cena é de outra campanha. Para abri-la, escolha a campanha dela no menu da mesa.'); return; }
+    const de = Store.S.current, nome = Store.S.scenes[id].name;
+    switchScene(id);
+    if (mostrar) showToPlayers(id);
+    else toast(`Você está em "${nome}".` + (Nuvem.mestre() ? ' Os jogadores continuam vendo a cena que está no ar.' : ''), { action: 'Voltar', run: () => { if (Store.S.scenes[de] && Nuvem.naVista(de)) switchScene(de); } });
+  }
+  function passagem(t, x, y) {
+    if (!isGM() || !t) return;
+    const alvo = t.cena && Store.S.scenes[t.cena] ? t.cena : null, items = [];
+    if (alvo) {
+      const fora = !Nuvem.naVista(alvo);
+      items.push({ head: 'Leva para ' + Store.S.scenes[alvo].name });
+      items.push({ label: 'Ir para esta cena', icon: 'map', disabled: fora, run: () => passagemIr(alvo, false) });
+      if (Nuvem.mestre()) items.push({ label: 'Ir e mostrar aos jogadores', icon: 'eye', disabled: fora, run: () => passagemIr(alvo, true) });
+      items.push('-', { label: 'Levar a outra cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') });
+    } else {
+      items.push({ head: t.cena ? 'A cena ligada foi apagada' : 'Ainda não leva a nenhuma cena' });
+      items.push({ label: 'Escolher a cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') }, { label: 'Uma cena nova, dentro desta…', icon: 'plus', run: () => novaCenaLigada(t) });
+    }
+    if (x == null || y == null) { const r = el.stage.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+    menu(x, y, items);
+  }
+  // a cena nova fica na mesma campanha da cena de fora (numa mesa com campanhas)
+  function herdarCampanha(filha, mae) { if (Nuvem.comCampanhas() && Nuvem.podeOrganizar()) Nuvem.definirCampanhas(filha, Nuvem.campanhasDaCena(mae)); }
+  function novaCenaLigada(t) {
+    const fora = Store.scene();
+    if (!Store.get('tokens', t.id)) return;
+    promptBox('Uma cena nova, dentro desta', 'Nome da cena nova', `${fora.name} · dentro`.slice(0, 60), { ok: 'Criar' }).then(nome => {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (!nome || Store.S.current !== fora.id || !Store.get('tokens', t.id)) return;
+      const sc = newScene(nome);
+      const s = Props.novo(sc, 'saida', Math.floor(sc.cols / 2) * sc.cell, Math.floor(sc.rows / 2) * sc.cell, 1, true);
+      s.cena = fora.id; sc.tokens.push(s);                  // a saída de volta, no meio da cena nova
+      normalizeScene(sc);
+      Store.addScene(sc); Persist.scene(sc.id);
+      porNaFamilia(sc.id, fora.id);
+      herdarCampanha(sc.id, fora.id);
+      ligarObjeto(t, sc.id);
+      toast(`Cena "${sc.name}" criada dentro de "${fora.name}", com a saída de volta. Dois cliques no objeto levam até ela.`, { long: true, action: 'Ir para lá', run: () => passagemIr(sc.id, false) });
+    });
   }
   /* (lote 7) Mexer em todos: a Fadiga, o Conforto e a Sanidade das fichas dos tokens selecionados. Vêm marcados os
      personagens dos jogadores; a lista mostra o antes e o depois; o motivo vai para a mesa ao vivo. O Desfazer do
@@ -13254,6 +13614,8 @@ const UI = (() => {
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
+    passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
@@ -14371,13 +14733,383 @@ const Luta = (() => {
     equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral };
 })();
 /* ---------------------------------------------------------------
-   10d. VILA — o gerador de vilarejo (lote 6)
-   O mestre escolhe o tamanho (aldeia ou vila), o terreno, se tem rio e muralha e quantas casas; a janela mostra a
-   prévia e "Gerar outro" sorteia de novo. Sai uma cena nova: o fundo pintado (o chão, as ruas, a praça, o rio e a
-   ponte, o piso das casas, a paliçada e as árvores) e, por cima, tudo editável — as paredes de cada casa (que
-   bloqueiam a visão), uma porta, alguns móveis (objetos de cenário) e o nome em cima; o poço e os lampiões da
-   praça; a paliçada, com os portões abertos. O plano (gerar) é uma conta pura, sorteada por uma semente: a mesma
-   escolha com a mesma semente dá o mesmo vilarejo. Nada muda nas cenas que já existem.
+   10c2. ESTILOS — o jeito de cada lugar gerado (lote 7)
+   Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o desenho (as ruas, a praça, o piso e as paredes
+   das casas, as árvores e os enfeites pintados no fundo), os prédios (tamanhos e formas: a casa longa nórdica, a casa
+   redonda élfica, o salão de pedra anão) e os móveis de cada tipo de prédio. Nada sai escrito: os nomes ficam com o
+   mestre. Aqui só há tabelas e desenho; quem sorteia é o gerador (Vila, Cidade).
+   --------------------------------------------------------------- */
+const Estilos = (() => {
+  const LISTA = [['comum', 'Comum'], ['oriental', 'Oriental'], ['nordico', 'Nórdico'], ['desertico', 'Desértico'], ['elfico', 'Élfico'], ['anao', 'Anão']];
+  // para o nome da cena ("Aldeia nórdica", "Vila anã"): os lugares são todos femininos
+  const ADJ = { comum: '', oriental: 'oriental', nordico: 'nórdica', desertico: 'desértica', elfico: 'élfica', anao: 'anã' };
+  const valido = e => (LISTA.some(x => x[0] === e) ? e : 'comum');
+
+  /* ---- os prédios de cada estilo ----
+     tam: as medidas possíveis (largura × altura, em quadrados); piso: o desenho do chão de dentro; forma: 'ret'
+     (retângulo) ou 'oct' (cantos cortados: redonda, vista de cima); moveis: na ordem em que entram (os primeiros são
+     os que mais importam); max: quantos móveis no máximo; janelas: quantas; centro: o móvel que vai no meio (a fogueira
+     da casa longa). */
+  const T = (tam, piso, moveis, max, janelas, extra) => Object.assign({ tam, piso, forma: 'ret', moveis, max, janelas }, extra || null);
+  const TIPOS = {
+    comum: {
+      taverna: T([[6, 5], [5, 6], [7, 5]], 'madeira', ['mesa', 'barril', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], 6, 2),
+      capela: T([[5, 6], [6, 5]], 'pedra', ['altar', 'estatua', 'vela', 'vela'], 4, 2),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'caixote', 'barril'], 4, 1),
+      armazem: T([[5, 4], [6, 4], [4, 5]], 'madeira', ['estante', 'caixote', 'barril', 'caixote', 'barril'], 4, 1),
+      casa: T([[4, 3], [3, 4], [4, 4], [5, 4], [4, 5]], 'madeira', ['cama', 'mesa', 'barril', 'bau', 'cadeira'], 3, 1),
+    },
+    oriental: {
+      taverna: T([[6, 5], [7, 5], [6, 6]], 'tatami', ['mesa', 'almofada', 'almofada', 'mesa', 'almofada', 'lanterna'], 6, 2),
+      capela: T([[5, 5], [6, 5]], 'madeira', ['altar', 'lanterna', 'lanterna', 'estatua'], 4, 2, { torii: true }),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'caixote'], 3, 1),
+      armazem: T([[5, 4], [6, 4]], 'madeira', ['caixote', 'jarro', 'barril', 'caixote'], 4, 1),
+      casa: T([[4, 4], [5, 4], [4, 5]], 'tatami', ['cama', 'mesa', 'almofada', 'bau', 'lanterna'], 3, 1),
+    },
+    nordico: {
+      taverna: T([[9, 5], [8, 5], [10, 5]], 'madeira', ['fogueira', 'mesa', 'mesa', 'barril', 'barril', 'cadeira'], 6, 2, { centro: 'fogueira' }),
+      capela: T([[6, 5], [5, 6]], 'pedra', ['altar', 'braseiro', 'estatua'], 3, 1),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'barril'], 3, 1),
+      armazem: T([[6, 4], [7, 4]], 'madeira', ['barril', 'caixote', 'barril', 'caixote'], 4, 0),
+      casa: T([[7, 4], [8, 4], [6, 4], [4, 7]], 'madeira', ['fogueira', 'cama', 'mesa', 'bau', 'barril'], 4, 1, { centro: 'fogueira' }),
+    },
+    desertico: {
+      taverna: T([[6, 6], [7, 5]], 'ladrilho', ['tapete', 'almofada', 'almofada', 'mesa', 'jarro', 'lampiao'], 6, 2),
+      capela: T([[6, 6], [5, 5]], 'ladrilho', ['altar', 'tapete', 'vela', 'vela'], 4, 2),
+      ferraria: T([[5, 4], [5, 5]], 'pedra', ['braseiro', 'bigorna', 'jarro'], 3, 1),
+      armazem: T([[5, 5], [6, 4]], 'pedra', ['jarro', 'jarro', 'caixote', 'barril', 'jarro'], 5, 1),
+      casa: T([[4, 4], [5, 4], [4, 5], [5, 5]], 'ladrilho', ['tapete', 'cama', 'jarro', 'almofada', 'bau'], 4, 1),
+    },
+    elfico: {
+      taverna: T([[7, 7], [6, 6]], 'clara', ['mesa', 'cadeira', 'cadeira', 'mesa', 'flores', 'lanterna'], 6, 2, { forma: 'oct' }),
+      capela: T([[6, 6], [7, 7]], 'pedra', ['altar', 'flores', 'flores', 'estatua'], 4, 2, { forma: 'oct' }),
+      ferraria: T([[5, 5]], 'pedra', ['braseiro', 'bigorna'], 2, 1, { forma: 'oct' }),
+      armazem: T([[5, 5], [6, 5]], 'clara', ['estante', 'caixote', 'jarro'], 3, 1),
+      casa: T([[5, 5], [6, 6], [5, 4]], 'clara', ['cama', 'mesa', 'flores', 'bau'], 3, 1, { forma: 'oct' }),
+    },
+    anao: {
+      taverna: T([[7, 6], [8, 6]], 'lajes', ['mesa', 'barril', 'mesa', 'barril', 'braseiro', 'cadeira'], 6, 1, { forma: 'oct' }),
+      capela: T([[6, 6]], 'lajes', ['altar', 'estatua', 'estatua', 'braseiro'], 4, 0, { forma: 'oct' }),
+      ferraria: T([[6, 5], [7, 5]], 'lajes', ['braseiro', 'bigorna', 'bigorna', 'caixote', 'barril'], 5, 1),
+      armazem: T([[6, 4], [5, 5]], 'lajes', ['caixote', 'caixote', 'barril', 'estante'], 4, 0),
+      casa: T([[5, 4], [4, 5], [5, 5]], 'lajes', ['cama', 'mesa', 'bau', 'braseiro'], 3, 1),
+    },
+  };
+  const tipos = est => TIPOS[valido(est)];
+  // a forma de uma casa: a casa redonda (cantos cortados) só a partir de 5 × 5; menor que isso fica retângulo
+  const formaDe = (def, w, h) => (def.forma === 'oct' && w >= 5 && h >= 5 ? 'oct' : 'ret');
+
+  /* ---- o resto do lugar em cada estilo ----
+     rua: as cores da rua (ou null: as do terreno); praca: o desenho do chão da praça; parede: como as paredes das casas
+     são pintadas; poste: o objeto que ilumina a praça e a rua; enfeites: os objetos que dá para mover, espalhados;
+     arvore: que árvore cresce (por terreno); dens: quantas árvores (1 = o normal). */
+  const ESTILO = {
+    comum: { rua: null, praca: 'pedras', parede: { cor: '#3a2a1b', luz: '#6b4e31', larg: 0.18, tipo: 'madeira' }, poste: 'lampiao',
+      enfeites: { campo: ['arbusto', 'pedra', 'toco', 'arbusto'], floresta: ['arbusto', 'pedra', 'toco', 'arbusto'], areia: ['pedra', 'pedra', 'caixote'], neve: ['pedra', 'toco', 'tronco'] },
+      arvore: { campo: 'folhosa', floresta: 'folhosa', areia: 'palmeira', neve: 'pinheiro' }, dens: 1 },
+    oriental: { rua: ['#6e6a62', '#8a857b', '#a29d92'], praca: 'cascalho', parede: { cor: '#2a1d16', luz: '#efe4cb', larg: 0.13, tipo: 'papel' }, poste: 'lanterna',
+      enfeites: { campo: ['pedra', 'arbusto', 'flores'], floresta: ['pedra', 'arbusto', 'flores'], areia: ['pedra', 'jarro'], neve: ['pedra', 'toco'] },
+      arvore: { campo: 'oriental', floresta: 'oriental', areia: 'palmeira', neve: 'pinheiro' }, dens: 1 },
+    nordico: { rua: ['#4a3d2c', '#5e4d38', '#76634a'], praca: 'terra', parede: { cor: '#3b2716', luz: '#7a5634', larg: 0.26, tipo: 'troncos' }, poste: 'braseiro',
+      enfeites: { campo: ['runa', 'toco', 'tronco', 'pedra'], floresta: ['runa', 'toco', 'tronco', 'pedra'], areia: ['runa', 'pedra'], neve: ['runa', 'toco', 'tronco', 'pedra'] },
+      arvore: { campo: 'pinheiro', floresta: 'pinheiro', areia: 'pinheiro', neve: 'pinheiro' }, dens: 1.1 },
+    desertico: { rua: ['#b8996a', '#c9ab7c', '#d9bf93'], praca: 'mosaico', parede: { cor: '#9c7448', luz: '#d8b98a', larg: 0.3, tipo: 'adobe' }, poste: 'lampiao',
+      enfeites: { campo: ['jarro', 'pedra', 'caixote'], floresta: ['jarro', 'pedra', 'arbusto'], areia: ['jarro', 'pedra', 'caixote'], neve: ['jarro', 'pedra'] },
+      arvore: { campo: 'palmeira', floresta: 'folhosa', areia: 'palmeira', neve: 'pinheiro' }, dens: 0.8 },
+    elfico: { rua: ['#4d5a45', '#66755a', '#7d8c6e'], praca: 'grama', parede: { cor: '#4a3c22', luz: '#7f9a52', larg: 0.2, tipo: 'viva' }, poste: 'lanterna',
+      enfeites: { campo: ['flores', 'cogumelos', 'flores', 'estatua'], floresta: ['flores', 'cogumelos', 'flores'], areia: ['flores', 'pedra'], neve: ['pedra', 'cogumelos'] },
+      arvore: { campo: 'elfica', floresta: 'elfica', areia: 'palmeira', neve: 'pinheiro' }, dens: 1.25 },
+    anao: { rua: ['#55565a', '#6b6c70', '#85868a'], praca: 'lajes', parede: { cor: '#3d4148', luz: '#7d828c', larg: 0.3, tipo: 'pedra' }, poste: 'braseiro',
+      enfeites: { campo: ['pedra', 'caixote', 'barril', 'pedra'], floresta: ['pedra', 'caixote', 'toco'], areia: ['pedra', 'caixote'], neve: ['pedra', 'caixote', 'barril'] },
+      arvore: { campo: 'rocha', floresta: 'pinheiro', areia: 'rocha', neve: 'rocha' }, dens: 0.55 },
+  };
+  const de = est => ESTILO[valido(est)];
+
+  /* ---- a forma de uma casa ----
+     lados: as paredes da casa, em quadrados. Os quatro lados retos (n, s, o, l), sempre do menor para o maior, e, na
+     casa de cantos cortados, as quatro diagonais (lado null). A porta e as janelas ficam nos lados retos. */
+  function lados(k) {
+    const { x, y, w, h } = k, o = k.forma === 'oct' ? 1 : 0;
+    const L = [
+      { lado: 'n', x1: x + o, y1: y, x2: x + w - o, y2: y },
+      { lado: 's', x1: x + o, y1: y + h, x2: x + w - o, y2: y + h },
+      { lado: 'o', x1: x, y1: y + o, x2: x, y2: y + h - o },
+      { lado: 'l', x1: x + w, y1: y + o, x2: x + w, y2: y + h - o },
+    ];
+    if (o) L.push({ lado: null, x1: x, y1: y + 1, x2: x + 1, y2: y }, { lado: null, x1: x + w - 1, y1: y, x2: x + w, y2: y + 1 },
+      { lado: null, x1: x + w, y1: y + h - 1, x2: x + w - 1, y2: y + h }, { lado: null, x1: x + 1, y1: y + h, x2: x, y2: y + h - 1 });
+    return L;
+  }
+  // o contorno da casa (para recortar o piso): os cantos, em quadrados
+  function contorno(k) {
+    const { x, y, w, h } = k;
+    if (k.forma !== 'oct') return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    return [[x + 1, y], [x + w - 1, y], [x + w, y + 1], [x + w, y + h - 1], [x + w - 1, y + h], [x + 1, y + h], [x, y + h - 1], [x, y + 1]];
+  }
+  /* Os pedaços de um lado reto: parede, porta e janelas, na ordem. aberturas: [{ k: 'door' | 'window', a, b }] com a e
+     b ao longo do lado (x nos lados n e s; y nos lados o e l). */
+  function pedacos(L, aberturas) {
+    const horiz = L.lado === 'n' || L.lado === 's', a0 = horiz ? L.x1 : L.y1, b0 = horiz ? L.x2 : L.y2, out = [];
+    let a = a0;
+    for (const ab of aberturas.slice().sort((p, q) => p.a - q.a)) {
+      if (ab.a > a) out.push({ k: 'wall', a, b: ab.a });
+      out.push({ k: ab.k, a: ab.a, b: ab.b });
+      a = Math.max(a, ab.b);
+    }
+    if (a < b0) out.push({ k: 'wall', a, b: b0 });
+    return out.map(p => (horiz ? { k: p.k, x1: p.a, y1: L.y1, x2: p.b, y2: L.y1 } : { k: p.k, x1: L.x1, y1: p.a, x2: L.x1, y2: p.b }));
+  }
+  // todas as paredes de uma casa, já com a porta e as janelas: [{ k: 'wall' | 'door' | 'window', x1, y1, x2, y2 }]
+  function paredesDaCasa(k) {
+    const out = [];
+    for (const L of lados(k)) {
+      if (!L.lado) { out.push({ k: 'wall', x1: L.x1, y1: L.y1, x2: L.x2, y2: L.y2 }); continue; }
+      const horiz = L.lado === 'n' || L.lado === 's', ab = [];
+      const abre = (o, kk) => { if (o && o.lado === L.lado) ab.push({ k: kk, a: horiz ? Math.min(o.x1, o.x2) : Math.min(o.y1, o.y2), b: horiz ? Math.max(o.x1, o.x2) : Math.max(o.y1, o.y2) }); };
+      abre(k.porta, 'door');
+      for (const j of k.janelas || []) abre(j, 'window');
+      out.push(...pedacos(L, ab));
+    }
+    return out;
+  }
+
+  /* ================= o desenho ================= */
+  const TAU2 = Math.PI * 2;
+  // as cores da rua: as do estilo, ou as do terreno
+  const corDaRua = (est, pal) => de(est).rua || pal.rua;
+
+  // o piso de dentro de uma casa (o recorte na forma dela é feito por quem chama)
+  function piso(g, k, c, rnd, tipo) {
+    const x = k.x * c, y = k.y * c, w = k.w * c, hh = k.h * c;
+    if (tipo === 'pedra' || tipo === 'lajes') {
+      const grande = tipo === 'lajes', n = grande ? 1 : 2;
+      g.fillStyle = grande ? '#4b4d52' : '#5a564e'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h * n; j++) for (let i = 0; i < k.w * n; i++) {
+        const s = (grande ? 88 : 92) + Math.floor(rnd() * 30), q = c / n;
+        g.fillStyle = grande ? `rgb(${s},${s + 2},${s + 6})` : `rgb(${s + 6},${s + 3},${s - 4})`;
+        g.fillRect(x + i * q + (grande ? 2 : 1.5), y + j * q + (grande ? 2 : 1.5), q - (grande ? 4 : 3), q - (grande ? 4 : 3));
+        if (grande && rnd() < 0.25) { g.strokeStyle = 'rgba(30,30,34,0.5)'; g.lineWidth = Math.max(1, c * 0.02); g.beginPath(); g.moveTo(x + i * q + q * 0.2, y + j * q + q * 0.3); g.lineTo(x + i * q + q * 0.6, y + j * q + q * 0.7); g.stroke(); }
+      }
+    } else if (tipo === 'tatami') {
+      g.fillStyle = '#3d3424'; g.fillRect(x, y, w, hh);
+      // esteiras de 2 × 1, deitadas e em pé, alternando
+      for (let j = 0; j < k.h; j++) for (let i = 0; i < k.w; i += 2) {
+        const deitada = (i / 2 + j) % 2 === 0, mx = x + i * c, my = y + j * c, mw = Math.min(2, k.w - i) * c;
+        g.fillStyle = (i + j) % 3 ? '#b9a66e' : '#c2b079'; g.fillRect(mx + 1.5, my + 1.5, mw - 3, c - 3);
+        g.strokeStyle = 'rgba(90,75,40,0.35)'; g.lineWidth = Math.max(1, c * 0.015);
+        for (let t = 0.2; t < 1; t += 0.2) { g.beginPath(); if (deitada) { g.moveTo(mx + 3, my + c * t); g.lineTo(mx + mw - 3, my + c * t); } else { g.moveTo(mx + mw * t, my + 3); g.lineTo(mx + mw * t, my + c - 3); } g.stroke(); }
+      }
+    } else if (tipo === 'ladrilho') {
+      g.fillStyle = '#6e3a22'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
+        const q = c / 2, enfeite = (i + j) % 4 === 0 && (i * 3 + j) % 3 === 0;
+        const s = Math.floor(rnd() * 22);
+        g.fillStyle = enfeite ? `rgb(${52 + s},${130 + s},${128 + s})` : `rgb(${170 + s},${92 + s},${58 + s})`;
+        g.fillRect(x + i * q + 1.2, y + j * q + 1.2, q - 2.4, q - 2.4);
+      }
+    } else {
+      // madeira (escura) ou clara (élfica): tábuas de largura variada
+      const clara = tipo === 'clara', cores = clara ? ['#d8c29c', '#cfb68e', '#e0cca6'] : ['#8d6740', '#83603b', '#97704a'];
+      g.fillStyle = clara ? '#a8916a' : '#5e4128'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h * 3; j++) {
+        let xx = x - rnd() * c;
+        while (xx < x + w) {
+          const l = c * (0.9 + rnd() * 1.4), s = rnd();
+          g.fillStyle = s < 0.33 ? cores[0] : s < 0.66 ? cores[1] : cores[2];
+          const a = Math.max(x, xx), b = Math.min(x + w, xx + l);
+          if (b > a) g.fillRect(a + 1, y + j * c / 3 + 1, b - a - 2, c / 3 - 2);
+          xx += l;
+        }
+      }
+      if (clara) {           // os veios em curva da madeira élfica
+        g.strokeStyle = 'rgba(120,150,80,0.25)'; g.lineWidth = Math.max(1, c * 0.025);
+        for (let i = 0; i < k.w * k.h * 0.4; i++) { const px = x + rnd() * w, py = y + rnd() * hh; g.beginPath(); g.arc(px, py, c * (0.2 + rnd() * 0.3), rnd() * 3, rnd() * 3 + 2); g.stroke(); }
+      }
+    }
+  }
+  /* As paredes pintadas de uma casa: o traço grosso do estilo, com o vão da porta; a janela é um traço claro no meio
+     da parede. As paredes de verdade (que barram a visão) são da cena; estas são só o desenho. */
+  function paredesPintadas(g, k, c, rnd, est) {
+    const P = de(est).parede, L = paredesDaCasa(k), lw = Math.max(2, P.larg * c);
+    g.save(); g.lineCap = 'square'; g.lineJoin = 'miter';
+    const traco = (s, cor, larg) => { g.strokeStyle = cor; g.lineWidth = larg; g.beginPath(); g.moveTo(s.x1 * c, s.y1 * c); g.lineTo(s.x2 * c, s.y2 * c); g.stroke(); };
+    // a sombra que a parede faz no chão de fora
+    g.globalAlpha = 0.35; for (const s of L) if (s.k !== 'door') { g.save(); g.translate(c * 0.07, c * 0.09); traco(s, '#000', lw); g.restore(); }
+    g.globalAlpha = 1;
+    for (const s of L) {
+      if (s.k === 'door') continue;
+      if (s.k === 'window') {
+        traco(s, P.cor, lw);
+        g.lineCap = 'butt'; traco(s, '#a9d4e6', Math.max(1.5, lw * 0.42)); g.lineCap = 'square';
+        continue;
+      }
+      traco(s, P.cor, lw);
+      if (P.tipo === 'papel') traco(s, P.luz, Math.max(1, lw * 0.35));
+      else if (P.tipo === 'troncos' || P.tipo === 'pedra' || P.tipo === 'adobe') {
+        // os troncos, as pedras ou o reboco: marquinhas ao longo da parede
+        const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1), n = Math.max(1, Math.round(len * (P.tipo === 'troncos' ? 3 : 2.2)));
+        g.strokeStyle = P.luz; g.lineWidth = Math.max(1, c * 0.025); g.globalAlpha = P.tipo === 'adobe' ? 0.35 : 0.55;
+        for (let i = 1; i < n; i++) {
+          const t = i / n, px = (s.x1 + (s.x2 - s.x1) * t) * c, py = (s.y1 + (s.y2 - s.y1) * t) * c, nx = -(s.y2 - s.y1) / len, ny = (s.x2 - s.x1) / len;
+          g.beginPath(); g.moveTo(px - nx * lw * 0.45, py - ny * lw * 0.45); g.lineTo(px + nx * lw * 0.45, py + ny * lw * 0.45); g.stroke();
+        }
+        g.globalAlpha = 1;
+      } else if (P.tipo === 'viva') {
+        g.globalAlpha = 0.7; traco(s, P.luz, Math.max(1, lw * 0.3)); g.globalAlpha = 1;
+        // folhinhas presas na madeira viva
+        g.fillStyle = '#6f9a48';
+        const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+        for (let i = 0; i < len * 1.5; i++) { const t = rnd(), px = (s.x1 + (s.x2 - s.x1) * t) * c, py = (s.y1 + (s.y2 - s.y1) * t) * c; g.beginPath(); g.ellipse(px, py, c * 0.07, c * 0.04, rnd() * 3, 0, TAU2); g.fill(); }
+      } else traco(s, P.luz, Math.max(1, lw * 0.25));
+    }
+    // a soleira da porta
+    const pt = k.porta;
+    if (pt) { g.globalAlpha = 0.85; traco(pt, '#2a1a0c', Math.max(1.5, lw * 0.5)); g.globalAlpha = 1; }
+    g.restore();
+  }
+  /* As árvores pintadas no fundo, de cada tipo: folhosa, pinheiro, palmeira, oriental (cerejeira ou bambu), élfica (com
+     luzinhas) e rocha (os anões: pedras grandes no lugar das árvores). */
+  function arvore(g, a, c, rnd, especie, pal, neve) {
+    const x = a.x * c, y = a.y * c, R = a.r * c;
+    if (especie === 'oriental') especie = rnd() < 0.45 ? 'bambu' : 'cerejeira';
+    g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * 0.16, y + R * 0.2, especie === 'bambu' ? R * 0.8 : R, 0, TAU2); g.fill();
+    if (especie === 'pinheiro') {
+      const cores = ['#2f4a3c', '#3a5a49', '#456a56'];
+      for (let camada = 0; camada < 3; camada++) {
+        const rr = R * (1 - camada * 0.28);
+        g.globalAlpha = 0.95; g.fillStyle = cores[camada];
+        g.beginPath();
+        for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+        g.fill();
+      }
+      if (neve) { g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb'; for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); } }
+    } else if (especie === 'palmeira') {
+      g.globalAlpha = 0.95; g.strokeStyle = '#6f8c45'; g.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const an = (i / 7) * TAU2 + rnd() * 0.4;
+        g.lineWidth = R * 0.32; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(an + 0.3) * R * 0.6, y + Math.sin(an + 0.3) * R * 0.6, x + Math.cos(an) * R, y + Math.sin(an) * R); g.stroke();
+      }
+      g.fillStyle = '#6b4a2b'; g.beginPath(); g.arc(x, y, R * 0.16, 0, TAU2); g.fill();
+    } else if (especie === 'bambu') {
+      // uma moita de bambu: hastes vistas de cima (anéis verdes) e folhas finas
+      for (let i = 0; i < 9; i++) {
+        const an = rnd() * TAU2, d = rnd() * R * 0.6, px = x + Math.cos(an) * d, py = y + Math.sin(an) * d;
+        g.globalAlpha = 0.9; g.strokeStyle = '#7ea24a'; g.lineWidth = R * 0.07; g.beginPath(); g.arc(px, py, R * 0.09, 0, TAU2); g.stroke();
+        g.strokeStyle = '#5b7d31'; g.lineWidth = R * 0.05;
+        for (let f = 0; f < 3; f++) { const b = rnd() * TAU2; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(b) * R * 0.45, py + Math.sin(b) * R * 0.45); g.stroke(); }
+      }
+    } else if (especie === 'cerejeira') {
+      const cores = ['#d77a9a', '#e79ab2', '#f2bfd0'];
+      for (let i = 0; i < 9; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.55; g.globalAlpha = 0.92; g.fillStyle = cores[i % 3]; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.4 + rnd() * 0.25), 0, TAU2); g.fill(); }
+      g.globalAlpha = 0.8; g.fillStyle = '#fff3f7'; for (let i = 0; i < 8; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.8; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.06, 0, TAU2); g.fill(); }
+    } else if (especie === 'rocha') {
+      g.globalAlpha = 1;
+      const pts = [];
+      for (let i = 0; i < 9; i++) { const an = (i / 9) * TAU2, d = R * (0.6 + rnd() * 0.35); pts.push([x + Math.cos(an) * d, y + Math.sin(an) * d * 0.85]); }
+      g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath();
+      const gr = g.createRadialGradient(x - R * 0.3, y - R * 0.35, R * 0.1, x, y, R * 1.1); gr.addColorStop(0, '#a3a7ae'); gr.addColorStop(0.6, '#757a83'); gr.addColorStop(1, '#4e535b');
+      g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(25,25,30,0.7)'; g.lineWidth = Math.max(1, R * 0.08); g.stroke();
+      g.strokeStyle = 'rgba(40,40,46,0.45)'; g.lineWidth = Math.max(1, R * 0.05); g.beginPath(); g.moveTo(x - R * 0.2, y - R * 0.3); g.lineTo(x + R * 0.1, y + R * 0.2); g.stroke();
+    } else {
+      // folhosa (e a élfica, maior, com luzinhas)
+      const elfica = especie === 'elfica', cores = elfica ? ['#2f5a3a', '#3d7048', '#4f8a57'] : (pal && pal.copa) || ['#2c4629', '#355432', '#3f6239'];
+      for (let i = 0; i < (elfica ? 12 : 9); i++) {
+        const an = rnd() * TAU2, d = rnd() * R * 0.55;
+        g.globalAlpha = 0.92; g.fillStyle = cores[i % 3];
+        g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
+      }
+      g.globalAlpha = 0.5; g.fillStyle = elfica ? '#8fc47a' : (pal && pal.luz) || '#56794a'; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
+      if (elfica) { g.globalAlpha = 0.95; for (let i = 0; i < 7; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.75; g.fillStyle = i % 2 ? '#e9fbff' : '#b9f0d8'; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, Math.max(1, R * 0.05), 0, TAU2); g.fill(); } }
+    }
+    g.globalAlpha = 1;
+  }
+  // o chão da praça (um círculo de raio R, já recortado por quem chama)
+  function praca(g, pr, c, rnd, est) {
+    const tipo = de(est).praca, x = pr.x * c, y = pr.y * c, R = pr.r * c;
+    const bordas = { pedras: '#6f685c', cascalho: '#8b8577', terra: '#5b4a35', mosaico: '#8a5a36', grama: '#3f5a36', lajes: '#55575c' };
+    g.fillStyle = bordas[tipo] || '#6f685c'; g.beginPath(); g.arc(x, y, R + c * 0.15, 0, TAU2); g.fill();
+    g.save(); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.clip();
+    const cada = f => { for (let j = Math.floor(pr.y - pr.r - 1); j <= pr.y + pr.r + 1; j++) for (let i = Math.floor(pr.x - pr.r - 1); i <= pr.x + pr.r + 1; i++) f(i, j); };
+    if (tipo === 'cascalho') {
+      g.fillStyle = '#c9c1ad'; g.fillRect(x - R, y - R, 2 * R, 2 * R);
+      g.strokeStyle = 'rgba(120,110,90,0.55)'; g.lineWidth = Math.max(1, c * 0.03);
+      for (let rr = c * 0.35; rr < R; rr += c * 0.28) { g.beginPath(); g.arc(x, y, rr, 0, TAU2); g.stroke(); }
+      // as pedras de pisar
+      for (let i = 0; i < 6; i++) { const an = (i / 6) * TAU2 + 0.3, d = R * 0.62; g.fillStyle = '#7d786c'; g.beginPath(); g.ellipse(x + Math.cos(an) * d, y + Math.sin(an) * d, c * 0.32, c * 0.24, an, 0, TAU2); g.fill(); }
+    } else if (tipo === 'terra') {
+      g.fillStyle = '#6a563d'; g.fillRect(x - R, y - R, 2 * R, 2 * R);
+      for (let i = 0; i < pr.r * pr.r * 8; i++) { g.globalAlpha = 0.25; g.fillStyle = rnd() < 0.5 ? '#7d684b' : '#55432e'; g.beginPath(); g.arc(x + (rnd() - 0.5) * 2 * R, y + (rnd() - 0.5) * 2 * R, c * (0.1 + rnd() * 0.25), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1;
+      // um anel de pedras grandes em volta
+      for (let i = 0; i < 14; i++) { const an = (i / 14) * TAU2; g.fillStyle = '#6f7178'; g.beginPath(); g.arc(x + Math.cos(an) * (R - c * 0.3), y + Math.sin(an) * (R - c * 0.3), c * 0.2, 0, TAU2); g.fill(); }
+    } else if (tipo === 'mosaico') {
+      cada((i, j) => { for (const [ox, oy] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) { const s = Math.floor(rnd() * 20), d = Math.hypot(i + ox + 0.25 - pr.x, j + oy + 0.25 - pr.y); g.fillStyle = Math.floor(d * 2) % 3 === 0 ? `rgb(${50 + s},${128 + s},${126 + s})` : `rgb(${190 + s},${150 + s},${100 + s})`; g.fillRect((i + ox) * c + 1.2, (j + oy) * c + 1.2, c / 2 - 2.4, c / 2 - 2.4); } });
+      // a estrela do meio
+      g.fillStyle = '#2f7f86'; g.beginPath();
+      for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2, d = i % 2 ? R * 0.22 : R * 0.45; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+      g.fill();
+    } else if (tipo === 'grama') {
+      g.fillStyle = '#4f7040'; g.fillRect(x - R, y - R, 2 * R, 2 * R);
+      g.strokeStyle = '#6b8c50'; g.lineWidth = Math.max(1, c * 0.025);
+      for (let i = 0; i < pr.r * pr.r * 30; i++) { const px = x + (rnd() - 0.5) * 2 * R, py = y + (rnd() - 0.5) * 2 * R; g.beginPath(); g.moveTo(px, py); g.lineTo(px + (rnd() - 0.5) * c * 0.1, py - c * 0.12); g.stroke(); }
+      // o anel de pedra e as flores em roda
+      g.strokeStyle = '#9aa08f'; g.lineWidth = c * 0.22; g.beginPath(); g.arc(x, y, R * 0.55, 0, TAU2); g.stroke();
+      for (let i = 0; i < 26; i++) { const an = rnd() * TAU2, d = R * (0.7 + rnd() * 0.25); g.fillStyle = ['#f2c94c', '#e85d75', '#ffffff', '#9b7bd8'][i % 4]; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, c * 0.07, 0, TAU2); g.fill(); }
+    } else if (tipo === 'lajes') {
+      // lajes de seis lados, como num salão anão
+      g.fillStyle = '#3c3e43'; g.fillRect(x - R, y - R, 2 * R, 2 * R);
+      const r = c * 0.42, hx = r * Math.sqrt(3);
+      for (let j = -2; j * r * 1.5 < 2 * R + r * 3; j++) for (let i = -2; i * hx < 2 * R + hx * 2; i++) {
+        const cx = x - R + i * hx + (j % 2 ? hx / 2 : 0), cy = y - R + j * r * 1.5, s = 92 + Math.floor(rnd() * 28);
+        g.fillStyle = `rgb(${s},${s + 2},${s + 6})`; g.beginPath();
+        for (let k = 0; k < 6; k++) { const an = Math.PI / 6 + k * Math.PI / 3, px = cx + Math.cos(an) * (r - 1.5), py = cy + Math.sin(an) * (r - 1.5); if (k) g.lineTo(px, py); else g.moveTo(px, py); }
+        g.closePath(); g.fill();
+      }
+    } else {
+      cada((i, j) => { for (const [ox, oy] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) { const s = 104 + Math.floor(rnd() * 34); g.fillStyle = `rgb(${s + 6},${s + 2},${s - 8})`; g.fillRect((i + ox) * c + 1.5, (j + oy) * c + 1.5, c / 2 - 3, c / 2 - 3); } });
+    }
+    g.restore();
+    g.strokeStyle = 'rgba(30,26,20,.55)'; g.lineWidth = Math.max(1.5, c * 0.06); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.stroke();
+  }
+  /* Os enfeites pintados de cada estilo, em volta de uma casa: o portal torii na frente do santuário oriental, o toldo
+     listrado na porta da casa desértica. (Os outros estilos não têm.) */
+  function enfeiteDaCasa(g, k, c, rnd, est, def) {
+    const pt = k.porta;
+    if (!pt) return;
+    const cx = (pt.x1 + pt.x2) / 2, cy = (pt.y1 + pt.y2) / 2, dx = pt.lado === 'o' ? -1 : pt.lado === 'l' ? 1 : 0, dy = pt.lado === 'n' ? -1 : pt.lado === 's' ? 1 : 0;
+    if (valido(est) === 'oriental' && def && def.torii) {
+      // o torii: duas colunas vermelhas e as duas vigas, um pouco à frente da porta
+      const tx = (cx + dx * 1.6) * c, ty = (cy + dy * 1.6) * c, larg = 1.6 * c, horiz = dy !== 0;
+      g.save(); g.translate(tx, ty); if (!horiz) g.rotate(Math.PI / 2);
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-larg / 2 - c * 0.2 + c * 0.08, -c * 0.12 + c * 0.1, larg + c * 0.4, c * 0.26);
+      g.fillStyle = '#b8342a'; g.fillRect(-larg / 2 - c * 0.25, -c * 0.12, larg + c * 0.5, c * 0.22);
+      g.fillStyle = '#1d1715'; g.fillRect(-larg / 2 - c * 0.35, -c * 0.2, larg + c * 0.7, c * 0.1);
+      g.fillStyle = '#8f2620'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * larg / 2, 0, c * 0.14, 0, TAU2); g.fill(); }
+      g.restore();
+    } else if (valido(est) === 'desertico') {
+      // o toldo listrado sobre a porta, para o lado de fora
+      const cores = [['#c8452f', '#f1e2c2'], ['#2f6f8c', '#f1e2c2'], ['#d9a23a', '#7a2f2a']][Math.floor(rnd() * 3)];
+      const horiz = dy !== 0, L = 2.2 * c, P = 0.9 * c;
+      const x0 = horiz ? cx * c - L / 2 : (dx > 0 ? cx * c : cx * c - P), y0 = horiz ? (dy > 0 ? cy * c : cy * c - P) : cy * c - L / 2, w = horiz ? L : P, hh = horiz ? P : L;
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x0 + c * 0.08, y0 + c * 0.1, w, hh);
+      const n = 7;
+      for (let i = 0; i < n; i++) { g.fillStyle = cores[i % 2]; if (horiz) g.fillRect(x0 + (i * w) / n, y0, w / n + 0.5, hh); else g.fillRect(x0, y0 + (i * hh) / n, w, hh / n + 0.5); }
+      g.strokeStyle = 'rgba(60,30,20,0.6)'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(x0, y0, w, hh);
+    }
+  }
+  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa };
+})();
+/* ---------------------------------------------------------------
+   10d. VILA — o gerador de vilarejo (lote 6; lote 7: estilos, travar, janelas e a noite)
+   O mestre escolhe o tamanho (aldeia ou vila), o terreno, o estilo, se tem rio e muralha e quantas casas; a janela do
+   gerador (10h) mostra a prévia e "Gerar outro" sorteia de novo — menos o que ele travou (as ruas e a praça, o rio,
+   cada casa). Sai uma cena nova: o fundo pintado (o chão, as ruas, a praça, o rio e a ponte, o piso e as paredes das
+   casas, a paliçada, as árvores e os enfeites do estilo) e, por cima, tudo editável — as paredes de cada casa (que
+   bloqueiam a visão), a porta, as janelas, os móveis (objetos de cenário), o poço e as luzes da praça e a paliçada com
+   os portões abertos. À noite, cada casa ganha uma luz por dentro, que escapa pelas janelas. Nada sai escrito: os
+   nomes ficam com o mestre.
+   O plano (gerar) é uma conta pura, sorteada por uma semente: a mesma escolha, com a mesma semente e as mesmas partes
+   travadas, dá o mesmo vilarejo. Nada muda nas cenas que já existem.
    --------------------------------------------------------------- */
 const Vila = (() => {
   const TAMANHOS = {
@@ -14385,19 +15117,10 @@ const Vila = (() => {
     vila: { n: 'Vila', W: 40, H: 28, rua: 3, praca: 3.5, casas: [6, 16], padrao: 10, lamp: 4 },
   };
   const TERRENOS_V = [['campo', 'Campo'], ['floresta', 'Floresta'], ['areia', 'Deserto'], ['neve', 'Neve']];
-  // o que cada tipo de casa pode ter: os tamanhos (largura × altura, em quadrados), o piso e os móveis (na ordem em
-  // que entram: os primeiros são os que mais importam)
-  const TIPOS = {
-    taverna: { n: 'Taverna', tam: [[6, 5], [5, 6], [7, 5]], piso: 'madeira', moveis: ['mesa', 'barril', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], max: 6 },
-    capela: { n: 'Capela', tam: [[5, 6], [6, 5]], piso: 'pedra', moveis: ['altar', 'estatua', 'vela', 'vela'], max: 4 },
-    ferraria: { n: 'Ferraria', tam: [[5, 4], [4, 5]], piso: 'pedra', moveis: ['braseiro', 'caixote', 'barril'], max: 3 },
-    armazem: { n: 'Armazém', tam: [[5, 4], [6, 4], [4, 5]], piso: 'madeira', moveis: ['estante', 'caixote', 'barril', 'caixote', 'barril'], max: 4 },
-    casa: { n: 'Casa', tam: [[4, 3], [3, 4], [4, 4], [5, 4], [4, 5]], piso: 'madeira', moveis: ['cama', 'mesa', 'barril', 'bau', 'cadeira'], max: 3 },
-  };
-  const PESSOAS = ['Brunilda', 'Osvaldo', 'Teodora', 'Anselmo', 'Mirela', 'Gaspar', 'Lúcia', 'Benedito', 'Ilsa', 'Tomé', 'Aurora', 'Vicente', 'Rosalva', 'Joaquim', 'Hilda', 'Aldo', 'Marta', 'Rufino', 'Elvira', 'Bento', 'Cecília', 'Dário', 'Inês', 'Leandro', 'Odete', 'Severino'];
-  const TAVERNAS = ['Taverna do Javali Dourado', 'Taverna do Corvo Bêbado', 'Taverna do Caneco Cheio', 'Taverna do Gato Preto', 'Taverna do Lobo Manco', 'Taverna do Barril Furado', 'Taverna da Lua Torta', 'Taverna do Bode Risonho'];
-  const CAPELAS = ['Capela da Aurora', 'Capela de Santa Inês', 'Templo do Sol Velho', 'Capela da Colheita', 'Santuário da Geada'];
-  const LUGARES = ['Pedravale', 'Fontebranca', 'Monte Sereno', 'Pinheiral', 'Trigal', 'Lagoa Funda', 'Brejo Alto', 'Rio Manso', 'Valverde', 'Penedo', 'Carvalhal', 'Ventania', 'Areia Rubra', 'Bruma Fria'];
+  // o nome de cada tipo de prédio, para as dicas da janela ("Clique para travar a taverna")
+  const NOME_TIPO = { taverna: 'a taverna', capela: 'a capela', ferraria: 'a ferraria', armazem: 'o armazém', casa: 'a casa' };
+  const NOME_TIPO_EST = { oriental: { taverna: 'a casa de chá', capela: 'o santuário' }, nordico: { taverna: 'o salão', capela: 'o templo', casa: 'a casa longa' }, desertico: { capela: 'o templo' }, elfico: { capela: 'o bosque sagrado' }, anao: { taverna: 'o salão', capela: 'o salão dos ancestrais', ferraria: 'a forja' } };
+  const nomeDoTipo = (tipo, est) => (NOME_TIPO_EST[est] || {})[tipo] || NOME_TIPO[tipo] || 'a casa';
 
   /* ================= o plano (conta pura) ================= */
   const distSeg = (px, py, ax, ay, bx, by) => {
@@ -14405,52 +15128,112 @@ const Vila = (() => {
     return Math.hypot(px - ax - t * dx, py - ay - t * dy);
   };
   const distLinha = (pts, x, y) => { let d = Infinity; for (let i = 1; i < pts.length; i++) d = Math.min(d, distSeg(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])); return d; };
+  const amostrar = (f, de, ate, eixoX) => { const out = []; for (let t = de; t <= ate + 1e-9; t += 0.5) out.push(eixoX ? [t, f(t)] : [f(t), t]); return out; };
+  const num = v => typeof v === 'number' && Number.isFinite(v);
+
+  /* As partes travadas que chegam de fora (um modelo guardado, a janela): só valem se fazem sentido neste tamanho.
+     ruas e rio: os números que desenham a rua e o rio; casas: cópias das casas (com porta, janelas e móveis). */
+  function limparTrava(t, W, H, TP) {
+    if (!t || typeof t !== 'object') return { ruas: null, rio: null, casas: [] };
+    const ruas = t.ruas && ['y0', 'A', 'L', 'F'].every(k => num(t.ruas[k])) && t.ruas.L > 0 ? Object.assign({}, t.ruas) : null;
+    const rio = t.rio && ['xr0', 'C', 'N', 'Hh', 'rw'].every(k => num(t.rio[k])) && t.rio.N > 0 && t.rio.rw > 0 && t.rio.rw < 4 ? Object.assign({}, t.rio) : null;
+    const casas = [];
+    for (const k of Array.isArray(t.casas) ? t.casas.slice(0, 20) : []) {
+      if (!k || !TP[k.tipo] || ![k.x, k.y, k.w, k.h].every(v => Number.isInteger(v)) || k.w < 3 || k.h < 3 || k.w > 12 || k.h > 12 || k.x < 0 || k.y < 0 || k.x + k.w > W || k.y + k.h > H) continue;
+      const pt = k.porta;
+      const lado = l => typeof l === 'string' && l.length === 1 && 'nsol'.includes(l);
+      if (!pt || !lado(pt.lado) || ![pt.x1, pt.y1, pt.x2, pt.y2].every(Number.isInteger)) continue;
+      const ladoOk = { n: pt.y1 === k.y && pt.y2 === k.y && pt.x2 - pt.x1 === 1 && pt.x1 > k.x && pt.x2 < k.x + k.w, s: pt.y1 === k.y + k.h && pt.y2 === k.y + k.h && pt.x2 - pt.x1 === 1 && pt.x1 > k.x && pt.x2 < k.x + k.w,
+        o: pt.x1 === k.x && pt.x2 === k.x && pt.y2 - pt.y1 === 1 && pt.y1 > k.y && pt.y2 < k.y + k.h, l: pt.x1 === k.x + k.w && pt.x2 === k.x + k.w && pt.y2 - pt.y1 === 1 && pt.y1 > k.y && pt.y2 < k.y + k.h }[pt.lado];
+      if (!ladoOk) continue;
+      const janelas = (Array.isArray(k.janelas) ? k.janelas.slice(0, 3) : []).filter(j => j && lado(j.lado) && j.lado !== pt.lado && [j.x1, j.y1, j.x2, j.y2].every(Number.isInteger)).map(j => ({ lado: j.lado, x1: j.x1, y1: j.y1, x2: j.x2, y2: j.y2 }));
+      const moveis = (Array.isArray(k.moveis) ? k.moveis.slice(0, 10) : []).filter(m => m && Props.P[m.id] && [m.x, m.y, m.s].every(Number.isInteger) && m.s >= 1 && m.x >= k.x && m.y >= k.y && m.x + m.s <= k.x + k.w && m.y + m.s <= k.y + k.h).map(m => ({ id: m.id, x: m.x, y: m.y, s: m.s }));
+      casas.push({ tipo: k.tipo, forma: k.forma === 'oct' ? 'oct' : 'ret', x: k.x, y: k.y, w: k.w, h: k.h, porta: { lado: pt.lado, x1: pt.x1, y1: pt.y1, x2: pt.x2, y2: pt.y2 }, janelas, moveis, estilo: typeof k.estilo === 'string' ? k.estilo : null });
+    }
+    return { ruas, rio, casas };
+  }
+
   function gerar(o) {
+    o = o || {};
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'aldeia', T = TAMANHOS[tam];
-    const terreno = TERRENOS_V.some(x => x[0] === o.terreno) ? o.terreno : 'campo';
+    const terreno = TERRENOS_V.some(x => x[0] === o.terreno) ? o.terreno : 'campo', estilo = Estilos.valido(o.estilo), TP = Estilos.tipos(estilo), E = Estilos.de(estilo);
     const W = T.W, H = T.H, seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
     const r = (a, b) => a + rnd() * (b - a), ri = (a, b) => Math.floor(r(a, b + 1)), pick = a => a[Math.floor(rnd() * a.length) % a.length];
-    const rio = !!o.rio, muralha = !!o.muralha;
+    const comRio = !!o.rio, muralha = !!o.muralha;
     const want = clamp(Math.round(Number(o.casas) || T.padrao), T.casas[0], T.casas[1]);
+    const trava = limparTrava(o.trava, W, H, TP), base = o.base && typeof o.base === 'object' ? o.base : {};
+    const hw = T.rua / 2;
+
+    // as ruas: a principal atravessa de um lado ao outro; na vila, uma segunda cruza de cima a baixo
+    const sortearRuas = () => {
+      const P = { y0: H / 2 + r(-1.2, 1.2), A: r(0.4, 1.1), L: r(W * 0.7, W * 1.3), F: r(0, Math.PI * 2), px: W / 2 + r(-2, 2) };
+      if (tam === 'vila') Object.assign(P, { x0: W / 2 + r(-2, 2), B: r(0.3, 0.9), M: r(H * 0.8, H * 1.4), G: r(0, Math.PI * 2) });
+      return P;
+    };
+    const completar = P => {
+      P = Object.assign({}, P);
+      if (!num(P.px)) P.px = W / 2;
+      if (tam === 'vila' && !(num(P.x0) && num(P.B) && num(P.M) && P.M > 0 && num(P.G))) Object.assign(P, { x0: W / 2, B: 0.5, M: H, G: 0 });
+      if (tam !== 'vila') { delete P.x0; delete P.B; delete P.M; delete P.G; }
+      return P;
+    };
+    const geoRuas = P => {
+      const ruaY = x => P.y0 + P.A * Math.sin(2 * Math.PI * x / P.L + P.F);
+      const ruaX = tam === 'vila' ? (y => P.x0 + P.B * Math.sin(2 * Math.PI * y / P.M + P.G)) : null;
+      let px = ruaX ? ruaX(P.y0) : P.px;
+      if (ruaX) for (let k = 0; k < 6; k++) px = ruaX(ruaY(px));
+      const ruas = [{ pts: amostrar(ruaY, -1, W + 1, true), hw }];
+      if (ruaX) ruas.push({ pts: amostrar(ruaX, -1, H + 1, false), hw: hw * 0.85 });
+      return { ruaY, ruaX, ruas, praca: { x: px, y: ruaY(px), r: T.praca } };
+    };
+    // o rio: de cima a baixo, longe da praça
+    const sortearRio = praca => {
+      const rw = tam === 'vila' ? 1.6 : 1.3, lados = [W * 0.17, W * 0.83].filter(x => Math.abs(x - praca.x) >= praca.r + rw + 3);
+      return { xr0: (lados.length ? pick(lados) : W * 0.83) + r(-1, 1), C: r(0.6, 1.6), N: r(H * 0.7, H * 1.3), Hh: r(0, Math.PI * 2), rw };
+    };
+    const geoRio = R => { const rioX = y => R.xr0 + R.C * Math.sin(2 * Math.PI * y / R.N + R.Hh); return { rioX, pts: amostrar(rioX, -1, H + 1, false), hw: R.rw }; };
+    // uma casa travada bate na rua, na praça ou no rio?
+    const bateNaRua = (k, G) => { for (let j = k.y; j < k.y + k.h; j++) for (let i = k.x; i < k.x + k.w; i++) { const cx = i + 0.5, cy = j + 0.5; if (G.ruas.some(ru => distLinha(ru.pts, cx, cy) <= ru.hw + 0.25) || Math.hypot(cx - G.praca.x, cy - G.praca.y) <= G.praca.r + 0.3) return true; } return false; };
+    // (a casa não encosta no rio: nem a volta dela pode ser água)
+    const bateNoRio = (k, R) => { for (let j = k.y - 1; j <= k.y + k.h; j++) for (let i = k.x - 1; i <= k.x + k.w; i++) if (distLinha(R.pts, i + 0.5, j + 0.5) <= R.hw + 0.6) return true; return false; };
+    const pracaLongeDoRio = (G, R) => Math.abs(G.praca.x - R.rioX(G.praca.y)) >= G.praca.r + R.hw + 2;
+
+    // 1) as ruas: as travadas; senão, sorteadas sem passar por cima das casas travadas (nem da praça em cima do rio travado)
+    let ruaP = trava.ruas ? completar(trava.ruas) : null, G = null;
+    const rioTravado = comRio && trava.rio ? geoRio(trava.rio) : null;
+    const servem = Gx => !trava.casas.some(k => bateNaRua(k, Gx)) && (!rioTravado || pracaLongeDoRio(Gx, rioTravado));
+    if (ruaP) G = geoRuas(ruaP);
+    else {
+      for (let tent = 0; tent < 60 && !G; tent++) { const P = sortearRuas(), Gx = geoRuas(P); if (servem(Gx)) { ruaP = P; G = Gx; } }
+      // nenhuma serviu: as ruas que estavam na tela (as casas travadas cabiam nelas); sem elas, um sorteio a mais
+      if (!G && base.ruaP && ['y0', 'A', 'L', 'F'].every(k => num(base.ruaP[k])) && base.ruaP.L > 0) { ruaP = completar(base.ruaP); G = geoRuas(ruaP); }
+      if (!G) { ruaP = sortearRuas(); G = geoRuas(ruaP); }
+    }
+    const { ruaY, ruaX, ruas, praca } = G;
     const occ = new Uint8Array(W * H);                     // 0 livre · 1 rua ou praça · 2 rio · 3 casa · 4 árvore ou enfeite
     const at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? occ[j * W + i] : 9);
     const pos = (i, j, v) => { if (i >= 0 && j >= 0 && i < W && j < H) occ[j * W + i] = v; };
-
-    // as ruas: a principal atravessa de um lado ao outro; na vila, uma segunda cruza de cima a baixo
-    const hw = T.rua / 2;
-    const y0 = H / 2 + r(-1.2, 1.2), A = r(0.4, 1.1), L = r(W * 0.7, W * 1.3), F = r(0, Math.PI * 2);
-    const ruaY = x => y0 + A * Math.sin(2 * Math.PI * x / L + F);
-    const amostrar = (f, de, ate, eixoX) => { const out = []; for (let t = de; t <= ate + 1e-9; t += 0.5) out.push(eixoX ? [t, f(t)] : [f(t), t]); return out; };
-    const ruas = [{ pts: amostrar(ruaY, -1, W + 1, true), hw }];
-    let ruaX = null;
-    if (tam === 'vila') {
-      const x0 = W / 2 + r(-2, 2), B = r(0.3, 0.9), M = r(H * 0.8, H * 1.4), G = r(0, Math.PI * 2);
-      ruaX = y => x0 + B * Math.sin(2 * Math.PI * y / M + G);
-      ruas.push({ pts: amostrar(ruaX, -1, H + 1, false), hw: hw * 0.85 });
-    }
-    // a praça: no cruzamento (vila) ou no meio da rua (aldeia)
-    let px = ruaX ? ruaX(y0) : W / 2 + r(-2, 2);
-    if (ruaX) for (let k = 0; k < 6; k++) px = ruaX(ruaY(px));
-    const praca = { x: px, y: ruaY(px), r: T.praca };
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       const cx = i + 0.5, cy = j + 0.5;
       if (ruas.some(ru => distLinha(ru.pts, cx, cy) <= ru.hw + 0.25) || Math.hypot(cx - praca.x, cy - praca.y) <= praca.r + 0.3) pos(i, j, 1);
     }
-    // o rio: de cima a baixo, longe da praça (atravessa a rua principal por uma ponte)
-    let rioP = null, ponte = null;
-    if (rio) {
-      const rw = tam === 'vila' ? 1.6 : 1.3, C = r(0.6, 1.6), N = r(H * 0.7, H * 1.3), Hh = r(0, Math.PI * 2);
-      const lados = [W * 0.17, W * 0.83].filter(x => Math.abs(x - praca.x) >= praca.r + rw + 3);
-      const xr0 = (lados.length ? pick(lados) : W * 0.83) + r(-1, 1);
-      const rioX = y => xr0 + C * Math.sin(2 * Math.PI * y / N + Hh);
-      rioP = { pts: amostrar(rioX, -1, H + 1, false), hw: rw };
-      let xb = xr0;
-      for (let k = 0; k < 6; k++) xb = rioX(ruaY(xb));
+    // 2) o rio (atravessa a rua principal por uma ponte): o travado, ou um sorteado que não passe pelas casas travadas
+    let rioP = null, rioG = null, ponte = null;
+    if (comRio) {
+      if (rioTravado) { rioP = Object.assign({}, trava.rio); rioG = rioTravado; }
+      else {
+        for (let tent = 0; tent < 60 && !rioG; tent++) { const R = sortearRio(praca), Rg = geoRio(R); if (!trava.casas.some(k => bateNoRio(k, Rg))) { rioP = R; rioG = Rg; } }
+        if (!rioG && base.rioP && ['xr0', 'C', 'N', 'Hh', 'rw'].every(k => num(base.rioP[k]))) { rioP = Object.assign({}, base.rioP); rioG = geoRio(rioP); }
+        if (!rioG) { rioP = sortearRio(praca); rioG = geoRio(rioP); }
+      }
+      let xb = rioP.xr0;
+      for (let k = 0; k < 6; k++) xb = rioG.rioX(ruaY(xb));
       const yb = ruaY(xb), inc = Math.atan2(ruaY(xb + 0.5) - ruaY(xb - 0.5), 1);
-      ponte = { x: xb, y: yb, comp: 2 * rw + 1.6, larg: 2 * hw + 0.5, ang: inc };
-      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (at(i, j) !== 1 && distLinha(rioP.pts, i + 0.5, j + 0.5) <= rw + 0.6) pos(i, j, 2);
+      ponte = { x: xb, y: yb, comp: 2 * rioP.rw + 1.6, larg: 2 * hw + 0.5, ang: inc };
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (at(i, j) !== 1 && distLinha(rioG.pts, i + 0.5, j + 0.5) <= rioP.rw + 0.6) pos(i, j, 2);
     }
-    // a muralha (paliçada): um retângulo a dois quadrados da borda, com portões onde as ruas saem e a água passa por baixo
+    const rioGeo = rioG ? { pts: rioG.pts, hw: rioP.rw } : null;
+    // 3) a muralha (paliçada): um retângulo a dois quadrados da borda, com portões onde as ruas saem e a água passa por baixo
     let muro = null;
     if (muralha) {
       const x1 = 2, y1 = 2, x2 = W - 2, y2 = H - 2;
@@ -14462,8 +15245,7 @@ const Vila = (() => {
       };
       vao('o', ruaY(x1), hw, true); vao('l', ruaY(x2), hw, true);
       if (ruaX) { vao('n', ruaX(y1), hw * 0.85, true); vao('s', ruaX(y2), hw * 0.85, true); }
-      if (rioP) { const rx = y => rioP.pts.reduce((m, p) => (Math.abs(p[1] - y) < Math.abs(m[1] - y) ? p : m))[0]; vao('n', rx(y1), rioP.hw, false); vao('s', rx(y2), rioP.hw, false); }
-      // os trechos de cada lado: o lado inteiro menos os vãos
+      if (rioGeo) { const rx = y => rioGeo.pts.reduce((m, p) => (Math.abs(p[1] - y) < Math.abs(m[1] - y) ? p : m))[0]; vao('n', rx(y1), rioGeo.hw, false); vao('s', rx(y2), rioGeo.hw, false); }
       const trechos = (de, ate, vs) => {
         const out = []; let a = de;
         for (const [va, vb] of vs.slice().sort((p, q) => p[0] - q[0])) { if (va > a) out.push([a, Math.min(va, ate)]); a = Math.max(a, vb); }
@@ -14474,7 +15256,7 @@ const Vila = (() => {
     }
     const reg = muralha ? { x0: 3, y0: 3, x1: W - 3, y1: H - 3 } : { x0: 1, y0: 1, x1: W - 1, y1: H - 1 };
 
-    // as casas: primeiro as que dão para a rua; se faltar lugar, as de trás (com a porta virada para a rua)
+    // 4) as casas: primeiro as travadas; depois as que dão para a rua; se faltar lugar, as de trás (com a porta virada para a rua)
     const cabe = (x, y, w, h) => {
       if (x < reg.x0 || y < reg.y0 || x + w > reg.x1 || y + h > reg.y1) return false;
       for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) {
@@ -14483,12 +15265,25 @@ const Vila = (() => {
       }
       return true;
     };
+    const ocupar = k => { for (let j = k.y; j < k.y + k.h; j++) for (let i = k.x; i < k.x + k.w; i++) pos(i, j, 3); };
+    const casas = [];
+    let soltas = 0;
+    // (as casas travadas em outro estilo são mobiliadas com outro sorteio: assim o resto do lugar não muda por causa delas)
+    const rndT = mulberry((seed ^ 0x9e3779b9) >>> 0 || 3);
+    for (const k of trava.casas) {
+      if (casas.length >= want || !cabe(k.x, k.y, k.w, k.h)) { soltas++; continue; }
+      let casa = Object.assign({}, k, { porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), trava: true });
+      // travada em outro estilo: fica no mesmo lugar, com a mesma porta, mas a forma, as janelas e os móveis passam a ser deste
+      if (casa.estilo !== estilo) { casa.forma = Estilos.formaDe(TP[casa.tipo], casa.w, casa.h); casa.janelas = janelasDe(casa, TP[casa.tipo], rndT); casa.moveis = mobiliar(casa, TP[casa.tipo], rndT); }
+      delete casa.estilo;
+      ocupar(casa); casas.push(casa);
+    }
     const tipos = [];
     if (want >= 4) tipos.push('taverna');
     if (tam === 'vila' && want >= 7) tipos.push('capela', 'armazem');
     if (want >= 6) tipos.push('ferraria');
     while (tipos.length < want) tipos.push('casa');
-    const casas = [];
+    for (const k of casas) { const i = tipos.indexOf(k.tipo); tipos.splice(i >= 0 ? i : tipos.lastIndexOf('casa') >= 0 ? tipos.lastIndexOf('casa') : tipos.length - 1, 1); }
     const porta = (x, y, w, h, lado) => {
       const len = lado === 'n' || lado === 's' ? w : h, d = clamp(Math.floor(len / 2) + ri(-1, 1) * (len >= 5 ? 1 : 0), 1, Math.max(1, len - 2));
       if (lado === 'n') return { lado, x1: x + d, y1: y, x2: x + d + 1, y2: y };
@@ -14497,9 +15292,9 @@ const Vila = (() => {
       return { lado, x1: x + w, y1: y + d, x2: x + w, y2: y + d + 1 };
     };
     const tentarNaRua = tipo => {
-      const def = TIPOS[tipo];
+      const def = TP[tipo];
       for (let k = 0; k < 300; k++) {
-        let [w, h] = pick(def.tam);
+        const [w, h] = pick(def.tam);
         const naVertical = ruaX && rnd() < 0.4;
         let x, y, lado;
         if (!naVertical) {
@@ -14521,66 +15316,34 @@ const Vila = (() => {
       return null;
     };
     const tentarAtras = tipo => {
-      const def = TIPOS[tipo];
+      const def = TP[tipo];
       for (let k = 0; k < 300; k++) {
         const [w, h] = pick(def.tam), x = ri(reg.x0, reg.x1 - w), y = ri(reg.y0, reg.y1 - h);
         if (!cabe(x, y, w, h)) continue;
-        // a porta vira para a rua mais perto
         const cx = x + w / 2, cy = y + h / 2, dy = cy - ruaY(cx), dx = ruaX ? cx - ruaX(cy) : Infinity;
         const lado = Math.abs(dx) < Math.abs(dy) ? (dx < 0 ? 'l' : 'o') : (dy < 0 ? 's' : 'n');
         return { x, y, w, h, porta: porta(x, y, w, h, lado) };
       }
       return null;
     };
-    const usados = new Set();
-    const nomeDe = tipo => {
-      const pessoa = () => { let n = pick(PESSOAS); for (let k = 0; k < 8 && usados.has(n); k++) n = pick(PESSOAS); usados.add(n); return n; };
-      if (tipo === 'taverna') return pick(TAVERNAS);
-      if (tipo === 'capela') return pick(CAPELAS);
-      if (tipo === 'ferraria') return 'Ferraria de ' + pessoa();
-      if (tipo === 'armazem') return 'Armazém de ' + pessoa();
-      return 'Casa de ' + pessoa();
-    };
     for (const tipo of tipos) {
       const lugar = tentarNaRua(tipo) || tentarAtras(tipo);
       if (!lugar) continue;
-      for (let j = lugar.y; j < lugar.y + lugar.h; j++) for (let i = lugar.x; i < lugar.x + lugar.w; i++) pos(i, j, 3);
-      casas.push(Object.assign({ tipo, nome: nomeDe(tipo), moveis: [] }, lugar));
+      const def = TP[tipo], casa = Object.assign({ tipo, forma: Estilos.formaDe(def, lugar.w, lugar.h) }, lugar);
+      casa.janelas = janelasDe(casa, def, rnd);
+      casa.moveis = mobiliar(casa, def, rnd);
+      ocupar(casa); casas.push(casa);
     }
-    // os móveis de cada casa: longe da porta (a passagem fica livre), sem um em cima do outro
-    for (const c of casas) {
-      const def = TIPOS[c.tipo], dentro = new Uint8Array(c.w * c.h);
-      const livre = (i, j) => i >= 0 && j >= 0 && i < c.w && j < c.h && !dentro[j * c.w + i];
-      // a passagem: a casa do lado de dentro da porta e a seguinte
-      const p = c.porta, pi = p.lado === 'l' ? c.w - 1 : p.lado === 'o' ? 0 : p.x1 - c.x, pj = p.lado === 's' ? c.h - 1 : p.lado === 'n' ? 0 : p.y1 - c.y;
-      const di = p.lado === 'l' ? -1 : p.lado === 'o' ? 1 : 0, dj = p.lado === 's' ? -1 : p.lado === 'n' ? 1 : 0;
-      for (let k = 0; k < 2; k++) { const i = pi + di * k, j = pj + dj * k; if (i >= 0 && j >= 0 && i < c.w && j < c.h) dentro[j * c.w + i] = 2; }
-      for (const id of def.moveis) {
-        if (c.moveis.length >= def.max) break;
-        const s = Props.P[id] ? Props.P[id].size || 1 : 1, lugares = [];
-        for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
-          let ok = true;
-          for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
-          if (ok) lugares.push([i, j]);
-        }
-        if (!lugares.length) continue;
-        // perto das paredes fica mais natural (cama e estante encostadas); o meio, para a mesa
-        lugares.sort((u, v) => (id === 'mesa' ? 0 : Math.min(u[0], u[1], c.w - s - u[0], c.h - s - u[1]) - Math.min(v[0], v[1], c.w - s - v[0], c.h - s - v[1])) || 0);
-        const n = id === 'mesa' ? lugares.length : Math.max(1, Math.ceil(lugares.length / 3));
-        const [i, j] = lugares[Math.floor(rnd() * n) % lugares.length];
-        for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) dentro[(j + b) * c.w + i + a] = 1;
-        c.moveis.push({ id, x: c.x + i, y: c.y + j, s });
-      }
-    }
-    // a praça: o poço no meio e os lampiões em volta
+    // 5) a praça: o poço no meio e as luzes em volta (o lampião, a lanterna de papel ou o braseiro, conforme o estilo)
     const poco = { x: Math.round(praca.x - 0.5), y: Math.round(praca.y - 0.5) };
     const lampioes = [];
     for (let k = 0; k < T.lamp; k++) {
       const a = (k / T.lamp) * Math.PI * 2 + Math.PI / 4, lx = Math.round(praca.x + Math.cos(a) * (praca.r - 0.6) - 0.5), ly = Math.round(praca.y + Math.sin(a) * (praca.r - 0.6) - 0.5);
       if ((lx !== poco.x || ly !== poco.y) && !lampioes.some(q => q.x === lx && q.y === ly)) lampioes.push({ x: lx, y: ly });
     }
-    // as árvores (pintadas no fundo) e alguns enfeites que dá para mover (pedras, arbustos, tocos)
-    const densidade = { campo: 0.05, floresta: 0.2, areia: 0.025, neve: 0.06 }[terreno];
+    // 6) as árvores (pintadas no fundo) e alguns enfeites que dá para mover
+    const densidade = { campo: 0.05, floresta: 0.2, areia: 0.025, neve: 0.06 }[terreno] * E.dens;
+    const especie = E.arvore[terreno];
     const arvores = [], enfeites = [];
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       if (at(i, j) !== 0) continue;
@@ -14591,7 +15354,7 @@ const Vila = (() => {
       const pr = densidade * (fora ? 2.2 : borda < 3 ? 1.5 : terreno === 'floresta' ? 0.35 : 0.6);
       if (rnd() < pr) { arvores.push({ x: i + 0.5 + r(-0.25, 0.25), y: j + 0.5 + r(-0.25, 0.25), r: r(0.55, terreno === 'floresta' ? 1.25 : 1.05) }); pos(i, j, 4); }
     }
-    const tiposEnfeite = terreno === 'areia' ? ['pedra', 'pedra', 'caixote'] : terreno === 'neve' ? ['pedra', 'toco', 'tronco'] : ['arbusto', 'pedra', 'toco', 'arbusto'];
+    const tiposEnfeite = E.enfeites[terreno];
     for (let k = 0, tent = 0; k < (tam === 'vila' ? 6 : 4) && tent < 200; tent++) {
       const i = ri(reg.x0, reg.x1 - 1), j = ri(reg.y0, reg.y1 - 1), id = pick(tiposEnfeite), s = Props.P[id] ? Props.P[id].size || 1 : 1;
       let ok = true;
@@ -14600,8 +15363,104 @@ const Vila = (() => {
       for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4);
       enfeites.push({ id, x: i, y: j, s }); k++;
     }
-    const nome = (tam === 'vila' ? 'Vila de ' : 'Aldeia de ') + pick(LUGARES);
-    return { v: 1, seed, tamanho: tam, terreno, rio, muralha, W, H, nome, pedidas: want, ruas, praca, rio: rioP, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+    return { v: 2, seed, tamanho: tam, terreno, estilo, especie, poste: E.poste, rio: rioGeo, muralha, W, H, pedidas: want, ruaP, rioP, travaRuas: !!trava.ruas, travaRio: !!(comRio && trava.rio), soltas,
+      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+  }
+  /* As janelas de uma casa: nos lados sem a porta, longe dos cantos, cada uma num lado. */
+  function janelasDe(c, def, rnd) {
+    const out = [], livres = ['n', 's', 'o', 'l'].filter(l => l !== c.porta.lado);
+    for (let i = 0; i < (def.janelas || 0) && livres.length; i++) {
+      const lado = livres.splice(Math.floor(rnd() * livres.length) % livres.length, 1)[0], len = lado === 'n' || lado === 's' ? c.w : c.h;
+      if (len < 3) continue;
+      const d = 1 + (Math.floor(rnd() * (len - 2)) % (len - 2));
+      if (lado === 'n') out.push({ lado, x1: c.x + d, y1: c.y, x2: c.x + d + 1, y2: c.y });
+      else if (lado === 's') out.push({ lado, x1: c.x + d, y1: c.y + c.h, x2: c.x + d + 1, y2: c.y + c.h });
+      else if (lado === 'o') out.push({ lado, x1: c.x, y1: c.y + d, x2: c.x, y2: c.y + d + 1 });
+      else out.push({ lado, x1: c.x + c.w, y1: c.y + d, x2: c.x + c.w, y2: c.y + d + 1 });
+    }
+    return out;
+  }
+  /* Os móveis de uma casa: longe da porta (a passagem fica livre), sem um em cima do outro e fora dos cantos cortados
+     da casa redonda. O do meio (a fogueira da casa longa) vai primeiro; depois, encostados nas paredes (a mesa, no meio). */
+  function mobiliar(c, def, rnd) {
+    const out = [], dentro = new Uint8Array(c.w * c.h);
+    const livre = (i, j) => i >= 0 && j >= 0 && i < c.w && j < c.h && !dentro[j * c.w + i];
+    if (c.forma === 'oct') for (const [i, j] of [[0, 0], [c.w - 1, 0], [0, c.h - 1], [c.w - 1, c.h - 1]]) dentro[j * c.w + i] = 3;
+    const p = c.porta, pi = p.lado === 'l' ? c.w - 1 : p.lado === 'o' ? 0 : p.x1 - c.x, pj = p.lado === 's' ? c.h - 1 : p.lado === 'n' ? 0 : p.y1 - c.y;
+    const di = p.lado === 'l' ? -1 : p.lado === 'o' ? 1 : 0, dj = p.lado === 's' ? -1 : p.lado === 'n' ? 1 : 0;
+    for (let k = 0; k < 2; k++) { const i = pi + di * k, j = pj + dj * k; if (i >= 0 && j >= 0 && i < c.w && j < c.h) dentro[j * c.w + i] = 2; }
+    const por = (id, i, j, s) => { for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) dentro[(j + b) * c.w + i + a] = 1; out.push({ id, x: c.x + i, y: c.y + j, s }); };
+    const lista = def.moveis.slice();
+    // o do meio: no meio da casa ou, se a passagem da porta está lá, no lugar livre mais perto do meio
+    if (def.centro && Props.P[def.centro]) {
+      const s = Props.P[def.centro].size || 1, ci = (c.w - s) / 2, cj = (c.h - s) / 2, lugares = [];
+      for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
+        let ok = true;
+        for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
+        if (ok) lugares.push([i, j, Math.hypot(i - ci, j - cj)]);
+      }
+      lugares.sort((u, v) => u[2] - v[2] || u[1] - v[1] || u[0] - v[0]);
+      if (lugares.length) { por(def.centro, lugares[0][0], lugares[0][1], s); const k = lista.indexOf(def.centro); if (k >= 0) lista.splice(k, 1); }
+    }
+    for (const id of lista) {
+      if (out.length >= def.max) break;
+      if (!Props.P[id]) continue;
+      const s = Props.P[id].size || 1, lugares = [];
+      for (let j = 0; j + s <= c.h; j++) for (let i = 0; i + s <= c.w; i++) {
+        let ok = true;
+        for (let b = 0; b < s && ok; b++) for (let a = 0; a < s && ok; a++) if (!livre(i + a, j + b)) ok = false;
+        if (ok) lugares.push([i, j]);
+      }
+      if (!lugares.length) continue;
+      // perto das paredes fica mais natural (cama e estante encostadas); o meio, para a mesa e o tapete
+      const meio = id === 'mesa' || id === 'tapete';
+      lugares.sort((u, v) => (meio ? 0 : Math.min(u[0], u[1], c.w - s - u[0], c.h - s - u[1]) - Math.min(v[0], v[1], c.w - s - v[0], c.h - s - v[1])) || 0);
+      const n = meio ? lugares.length : Math.max(1, Math.ceil(lugares.length / 3));
+      const [i, j] = lugares[Math.floor(rnd() * n) % lugares.length];
+      por(id, i, j, s);
+    }
+    return out;
+  }
+
+  /* ================= as partes que travam (a janela do gerador) ================= */
+  // a parte que está no ponto (x, y), em quadrados: 'c<n>' (uma casa), 'rio' ou 'ruas' (as ruas e a praça)
+  function parteEm(p, x, y) {
+    for (let i = 0; i < p.casas.length; i++) { const k = p.casas[i]; if (x >= k.x - 0.15 && x <= k.x + k.w + 0.15 && y >= k.y - 0.15 && y <= k.y + k.h + 0.15) return 'c' + i; }
+    if (p.rio && distLinha(p.rio.pts, x, y) <= p.rio.hw + 0.5) return 'rio';
+    if (Math.hypot(x - p.praca.x, y - p.praca.y) <= p.praca.r + 0.4 || p.ruas.some(ru => distLinha(ru.pts, x, y) <= ru.hw + 0.35)) return 'ruas';
+    return null;
+  }
+  const nomeDaParte = (p, parte) => (parte === 'rio' ? 'o rio' : parte === 'ruas' ? 'as ruas e a praça' : /^c\d+$/.test(parte) && p.casas[+parte.slice(1)] ? nomeDoTipo(p.casas[+parte.slice(1)].tipo, p.estilo) : 'esta parte');
+  // o desenho da parte, para a prévia marcar (em quadrados)
+  function formaDaParte(p, parte) {
+    if (parte === 'rio') return p.rio ? [{ k: 'linha', pts: p.rio.pts, hw: p.rio.hw }] : [];
+    if (parte === 'ruas') return [{ k: 'circ', x: p.praca.x, y: p.praca.y, r: p.praca.r }].concat(p.ruas.map(ru => ({ k: 'linha', pts: ru.pts, hw: ru.hw })));
+    const k = /^c\d+$/.test(parte) ? p.casas[+parte.slice(1)] : null;
+    return k ? [{ k: 'poli', pts: Estilos.contorno(k) }] : [];
+  }
+  const travada = (p, parte) => (parte === 'rio' ? !!p.travaRio : parte === 'ruas' ? !!p.travaRuas : /^c\d+$/.test(parte) && p.casas[+parte.slice(1)] ? !!p.casas[+parte.slice(1)].trava : false);
+  /* Trava ou solta a parte: muda a trava (o que vai para o próximo sorteio) e a marca no plano que está na tela (nada
+     é sorteado de novo). Devolve a trava nova. */
+  function alternar(p, parte, trava) {
+    const t = { ruas: trava && trava.ruas || null, rio: trava && trava.rio || null, casas: (trava && trava.casas || []).slice() };
+    if (parte === 'ruas') { p.travaRuas = !p.travaRuas; t.ruas = p.travaRuas ? Object.assign({}, p.ruaP) : null; }
+    else if (parte === 'rio') { if (!p.rio) return t; p.travaRio = !p.travaRio; t.rio = p.travaRio ? Object.assign({}, p.rioP) : null; }
+    else if (/^c\d+$/.test(parte) && p.casas[+parte.slice(1)]) {
+      const k = p.casas[+parte.slice(1)], mesma = q => q.x === k.x && q.y === k.y && q.w === k.w && q.h === k.h;
+      k.trava = !k.trava;
+      t.casas = t.casas.filter(q => !mesma(q));
+      if (k.trava) t.casas.push({ tipo: k.tipo, forma: k.forma, x: k.x, y: k.y, w: k.w, h: k.h, porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), estilo: p.estilo });
+    }
+    return t;
+  }
+  // quantas partes estão travadas no plano
+  const quantasTravadas = p => (p.travaRuas ? 1 : 0) + (p.travaRio ? 1 : 0) + p.casas.filter(k => k.trava).length;
+  // o que vai para o próximo sorteio quando o mestre não travou nada: as ruas e o rio de agora, para as casas travadas caberem
+  const baseDe = p => ({ ruaP: p.ruaP, rioP: p.rioP });
+  // a trava do plano que está na tela (para guardar como modelo)
+  function travaDe(p) {
+    return { ruas: p.travaRuas ? Object.assign({}, p.ruaP) : null, rio: p.travaRio ? Object.assign({}, p.rioP) : null,
+      casas: p.casas.filter(k => k.trava).map(k => ({ tipo: k.tipo, forma: k.forma, x: k.x, y: k.y, w: k.w, h: k.h, porta: Object.assign({}, k.porta), janelas: k.janelas.map(j => Object.assign({}, j)), moveis: k.moveis.map(m => Object.assign({}, m)), estilo: p.estilo })) };
   }
 
   /* ================= o fundo pintado ================= */
@@ -14612,7 +15471,7 @@ const Vila = (() => {
     neve: { base: '#dfe6ec', manchas: ['#cfd8e0', '#e9eef2', '#c4ced8', '#f2f5f8', '#bcc7d2'], fios: ['#f4f7fa', '#b9c4ce'], rua: ['#8e8273', '#a99d8d', '#bdb3a6'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#e8f0f2', agua: ['#5d8aa6', '#7aa3bc', '#a9c8da'], margem: '#9aa6b0' },
   };
   function pintar(p, cell) {
-    const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo;
+    const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x5bd1e995) >>> 0 || 7), c = cell;
     const TAU2 = Math.PI * 2;
@@ -14625,7 +15484,6 @@ const Vila = (() => {
     }
     g.lineCap = 'round';
     if (p.terreno === 'areia') {
-      // ondas de vento na areia
       g.globalAlpha = 0.25; g.lineWidth = Math.max(1, c * 0.03);
       for (let i = 0, n = Math.round(p.W * p.H * 0.35); i < n; i++) {
         const x = rnd() * W, y = rnd() * H, l = c * (0.4 + rnd() * 0.9);
@@ -14655,78 +15513,50 @@ const Vila = (() => {
       }
       g.globalAlpha = 1;
     }
-    // as ruas e a praça
+    // as ruas (com as cores do estilo) e a praça
+    const corRua = Estilos.corDaRua(est, pal);
     g.lineJoin = 'round'; g.lineCap = 'butt';
     for (const ru of p.ruas) {
-      linha(ru.pts); g.strokeStyle = pal.rua[0]; g.lineWidth = (ru.hw * 2 + 0.35) * c; g.stroke();
-      linha(ru.pts); g.strokeStyle = pal.rua[1]; g.lineWidth = ru.hw * 2 * c; g.stroke();
-      g.globalAlpha = 0.45; linha(ru.pts); g.strokeStyle = pal.rua[2]; g.lineWidth = ru.hw * 0.9 * c; g.stroke(); g.globalAlpha = 1;
-      // marcas de roda
+      linha(ru.pts); g.strokeStyle = corRua[0]; g.lineWidth = (ru.hw * 2 + 0.35) * c; g.stroke();
+      linha(ru.pts); g.strokeStyle = corRua[1]; g.lineWidth = ru.hw * 2 * c; g.stroke();
+      g.globalAlpha = 0.45; linha(ru.pts); g.strokeStyle = corRua[2]; g.lineWidth = ru.hw * 0.9 * c; g.stroke(); g.globalAlpha = 1;
       g.globalAlpha = 0.18; g.strokeStyle = '#2a2116'; g.lineWidth = Math.max(1, c * 0.04);
       for (const off of [-0.35, 0.35]) { g.save(); g.translate(0, off * ru.hw * c); linha(ru.pts); g.stroke(); g.restore(); }
       g.globalAlpha = 1;
     }
-    {
-      const pr = p.praca, x = pr.x * c, y = pr.y * c, R = pr.r * c;
-      g.fillStyle = '#6f685c'; g.beginPath(); g.arc(x, y, R + c * 0.15, 0, TAU2); g.fill();
-      g.save(); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.clip();
-      for (let j = Math.floor(pr.y - pr.r - 1); j <= pr.y + pr.r + 1; j++) for (let i = Math.floor(pr.x - pr.r - 1); i <= pr.x + pr.r + 1; i++) {
-        for (const [ox, oy] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) {
-          const s = 104 + Math.floor(rnd() * 34);
-          g.fillStyle = `rgb(${s + 6},${s + 2},${s - 8})`;
-          g.fillRect((i + ox) * c + 1.5, (j + oy) * c + 1.5, c / 2 - 3, c / 2 - 3);
-        }
-      }
-      g.restore();
-      g.strokeStyle = 'rgba(30,26,20,.55)'; g.lineWidth = Math.max(1.5, c * 0.06); g.beginPath(); g.arc(x, y, R, 0, TAU2); g.stroke();
-    }
-    // a ponte
+    Estilos.praca(g, p.praca, c, rnd, est);
     if (p.ponte) {
       const b = p.ponte;
       g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
-      const L = b.comp * c, Wd = b.larg * c;
-      g.fillStyle = '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
+      const L = b.comp * c, Wd = b.larg * c, pedra = est === 'anao' || est === 'desertico';
+      g.fillStyle = pedra ? '#4b4f57' : '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
       for (let x = -L / 2; x < L / 2; x += c * 0.33) {
         const s = rnd();
-        g.fillStyle = s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
+        g.fillStyle = pedra ? (s < 0.5 ? '#7d828c' : '#6b7079') : s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
         g.fillRect(x + 1, -Wd / 2, c * 0.33 - 2, Wd);
       }
-      g.fillStyle = '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
+      g.fillStyle = est === 'oriental' ? '#a8302a' : pedra ? '#3d4148' : '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
       g.restore();
     }
-    // o piso de cada casa
+    // as casas: a sombra, o piso (na forma da casa), a sombra das paredes de dentro, as paredes pintadas e o enfeite do estilo
     for (const k of p.casas) {
-      const x = k.x * c, y = k.y * c, w = k.w * c, hh = k.h * c, pedra = TIPOS[k.tipo].piso === 'pedra';
-      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x - c * 0.08, y - c * 0.08, w + c * 0.22, hh + c * 0.22);
-      if (pedra) {
-        g.fillStyle = '#5a564e'; g.fillRect(x, y, w, hh);
-        for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
-          const s = 92 + Math.floor(rnd() * 30);
-          g.fillStyle = `rgb(${s + 6},${s + 3},${s - 4})`;
-          g.fillRect(x + i * c / 2 + 1.5, y + j * c / 2 + 1.5, c / 2 - 3, c / 2 - 3);
-        }
-      } else {
-        g.fillStyle = '#5e4128'; g.fillRect(x, y, w, hh);
-        for (let j = 0; j < k.h * 3; j++) {
-          let xx = x - rnd() * c;
-          while (xx < x + w) {
-            const l = c * (0.9 + rnd() * 1.4), s = rnd();
-            g.fillStyle = s < 0.33 ? '#8d6740' : s < 0.66 ? '#83603b' : '#97704a';
-            const a = Math.max(x, xx), b = Math.min(x + w, xx + l);
-            if (b > a) g.fillRect(a + 1, y + j * c / 3 + 1, b - a - 2, c / 3 - 2);
-            xx += l;
-          }
-        }
-      }
-      // a sombra das paredes do lado de dentro
-      const gr = g.createLinearGradient(0, y, 0, y + c * 0.35); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = gr; g.fillRect(x, y, w, c * 0.35);
+      const def = TP[k.tipo] || TP.casa, cont = Estilos.contorno(k);
+      const caminho = () => { g.beginPath(); cont.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+      g.save(); g.translate(c * 0.1, c * 0.12); g.fillStyle = 'rgba(0,0,0,.32)'; caminho(); g.fill(); g.restore();
+      g.save(); caminho(); g.clip();
+      Estilos.piso(g, k, c, rnd, def.piso);
+      const gr = g.createLinearGradient(0, k.y * c, 0, k.y * c + c * 0.35); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(k.x * c, k.y * c, k.w * c, c * 0.35);
+      g.restore();
+      Estilos.paredesPintadas(g, k, c, rnd, est);
+      Estilos.enfeiteDaCasa(g, k, c, rnd, est, def);
     }
-    // a paliçada: troncos lado a lado (os portões e a água ficam de fora)
+    // a paliçada: troncos lado a lado (os portões e a água ficam de fora); nos anões e no deserto, pedra
     if (p.muro) {
-      const m = p.muro, tronco = (x, y) => {
-        g.fillStyle = '#3b2814'; g.beginPath(); g.arc(x, y, c * 0.24, 0, TAU2); g.fill();
-        g.fillStyle = rnd() < 0.5 ? '#7a5532' : '#6b4a2b'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU2); g.fill();
+      const m = p.muro, pedra = est === 'anao' || est === 'desertico';
+      const tronco = (x, y) => {
+        g.fillStyle = pedra ? '#3d4148' : '#3b2814'; g.beginPath(); g.arc(x, y, c * 0.24, 0, TAU2); g.fill();
+        g.fillStyle = pedra ? (rnd() < 0.5 ? '#7d828c' : '#6b7079') : rnd() < 0.5 ? '#7a5532' : '#6b4a2b'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU2); g.fill();
         g.fillStyle = 'rgba(255,230,180,.18)'; g.beginPath(); g.arc(x - c * 0.05, y - c * 0.05, c * 0.07, 0, TAU2); g.fill();
       };
       const passo = 0.42;
@@ -14735,38 +15565,7 @@ const Vila = (() => {
       for (const [a, b] of m.lados.o) for (let t = a + 0.21; t < b; t += passo) tronco(m.x1 * c, t * c);
       for (const [a, b] of m.lados.l) for (let t = a + 0.21; t < b; t += passo) tronco(m.x2 * c, t * c);
     }
-    // as árvores
-    for (const a of p.arvores) {
-      const x = a.x * c, y = a.y * c, R = a.r * c;
-      g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * 0.16, y + R * 0.2, R, 0, TAU2); g.fill();
-      if (p.terreno === 'neve') {
-        // pinheiro visto de cima: uma estrela escura com neve na ponta dos galhos
-        for (let camada = 0; camada < 3; camada++) {
-          const rr = R * (1 - camada * 0.28);
-          g.globalAlpha = 0.95; g.fillStyle = pal.copa[camada];
-          g.beginPath();
-          for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
-          g.fill();
-        }
-        g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb';
-        for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); }
-      } else if (p.terreno === 'areia') {
-        // palmeira: folhas compridas a partir do meio
-        g.globalAlpha = 0.95; g.strokeStyle = pal.copa[1]; g.lineCap = 'round';
-        for (let i = 0; i < 7; i++) {
-          const an = (i / 7) * TAU2 + rnd() * 0.4;
-          g.lineWidth = R * 0.32; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(an + 0.3) * R * 0.6, y + Math.sin(an + 0.3) * R * 0.6, x + Math.cos(an) * R, y + Math.sin(an) * R); g.stroke();
-        }
-        g.fillStyle = '#6b4a2b'; g.beginPath(); g.arc(x, y, R * 0.16, 0, TAU2); g.fill();
-      } else {
-        for (let i = 0; i < 9; i++) {
-          const an = rnd() * TAU2, d = rnd() * R * 0.55;
-          g.globalAlpha = 0.92; g.fillStyle = pal.copa[i % 3];
-          g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
-        }
-        g.globalAlpha = 0.5; g.fillStyle = pal.luz; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
-      }
-    }
+    for (const a of p.arvores) Estilos.arvore(g, a, c, rnd, p.especie || 'folhosa', pal, p.terreno === 'neve');
     g.globalAlpha = 1;
     // um escurecido de leve nas bordas
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
@@ -14776,32 +15575,27 @@ const Vila = (() => {
   }
 
   /* ================= a cena ================= */
-  // Monta a cena do plano: o fundo, as paredes e a porta de cada casa, os móveis, o nome em cima, a praça e a muralha.
-  async function criar(p, nome) {
-    const sc = newScene(String(nome || p.nome).trim().slice(0, 60) || p.nome);
+  const nomePadrao = p => (p.tamanho === 'vila' ? 'Vila' : 'Aldeia') + (Estilos.ADJ[p.estilo] ? ' ' + Estilos.ADJ[p.estilo] : '');
+  /* Monta a cena do plano: o fundo, as paredes, a porta e as janelas de cada casa, os móveis, a praça e a muralha. ex:
+     { hora, clima } — a hora do dia e o clima da cena; à noite (e no breu), uma luz por dentro de cada casa. */
+  async function criar(p, nome, ex) {
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
     sc.cols = p.W; sc.rows = p.H;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;      // as paredes das casas escondem o que está lá dentro
-    sc.light = 'claro'; sc.tone = 'dia';
+    const tom = TONES.find(t => t.id === (ex && ex.hora)) || TONES[0];
+    sc.tone = tom.id; sc.light = tom.light;
+    sc.weather = { k: WEATHERS.some(w => w[0] === (ex && ex.clima)) ? ex.clima : '', pow: 0.6 };
     sc.bgColor = (PAL[p.terreno] || PAL.campo).base;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     const parede = (x1, y1, x2, y2, k, extra) => sc.walls.push(Object.assign({ id: uid('wl'), k: k || 'wall', x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }, extra || null));
-    const medir = document.createElement('canvas').getContext('2d');
-    const FS = 20;
-    medir.font = `600 ${FS}px ${FONT_UI}`;
+    const noite = tom.id === 'noite' || tom.id === 'breu';
     for (const k of p.casas) {
-      const x1 = k.x, y1 = k.y, x2 = k.x + k.w, y2 = k.y + k.h, pt = k.porta;
-      // cada lado é uma parede; o da porta vira parede · porta · parede
-      const lado = (lid, ax, ay, bx, by) => {
-        if (pt.lado !== lid) { parede(ax, ay, bx, by); return; }
-        if (ax === bx) { if (pt.y1 > ay) parede(ax, ay, ax, pt.y1); parede(ax, pt.y1, ax, pt.y2, 'door'); if (pt.y2 < by) parede(ax, pt.y2, ax, by); }
-        else { if (pt.x1 > ax) parede(ax, ay, pt.x1, ay); parede(pt.x1, ay, pt.x2, ay, 'door'); if (pt.x2 < bx) parede(pt.x2, ay, bx, ay); }
-      };
-      lado('n', x1, y1, x2, y1); lado('s', x1, y2, x2, y2); lado('o', x1, y1, x1, y2); lado('l', x2, y1, x2, y2);
-      for (const mv of k.moveis) if (Props.P[mv.id]) sc.tokens.push(Props.novo(sc, mv.id, mv.x * c, mv.y * c, mv.s, false));
-      // o nome vai em cima da casa (embaixo, quando a porta é em cima: a porta não cobre o nome)
-      const tw = medir.measureText(k.nome).width, emCima = pt.lado !== 'n';
-      sc.shapes.push({ id: uid('sh'), k: 'text', x: Math.max(4, (x1 + k.w / 2) * c - tw / 2), y: emCima ? y1 * c - FS * 1.5 : y2 * c + FS * 0.35, txt: k.nome, fs: FS, s: '#f3ead2', sw: 0, f: null, a: 1, top: false, gm: false, lock: false, by: null });
+      for (const s of Estilos.paredesDaCasa(k)) parede(s.x1, s.y1, s.x2, s.y2, s.k);
+      // o tapete vai primeiro (fica por baixo dos outros móveis)
+      const ms = k.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
+      for (const mv of ms) if (Props.P[mv.id]) sc.tokens.push(Props.novo(sc, mv.id, mv.x * c, mv.y * c, mv.s, false));
+      if (noite) sc.lights.push({ id: uid('lz'), name: 'Luz da casa', x: (k.x + k.w / 2) * c, y: (k.y + k.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(k.w, k.h) * 0.9)), c: '#ffc77a', on: true, fl: true });
     }
     if (p.muro) {
       const m = p.muro;
@@ -14812,87 +15606,79 @@ const Vila = (() => {
       for (const g of m.portoes) parede(g.x1, g.y1, g.x2, g.y2, 'door', { open: true });
     }
     if (Props.P.poco) sc.tokens.push(Props.novo(sc, 'poco', p.poco.x * c, p.poco.y * c, 1, false));
-    if (Props.P.lampiao) for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, 'lampiao', l.x * c, l.y * c, 1, false));
+    const poste = Props.P[p.poste] ? p.poste : 'lampiao';
+    for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, poste, l.x * c, l.y * c, 1, false));
     for (const e of p.enfeites) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
     normalizeScene(sc);
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
     return sc;
   }
 
-  /* ================= a janela ================= */
-  const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
-  function previa(cv, p) {
-    const cell = Math.max(6, Math.floor(Math.min(420 / p.W, 300 / p.H)));
+  /* ================= a prévia ================= */
+  // O resumo do plano, embaixo da prévia.
+  function resumo(p) {
+    const n = p.casas.length, moveis = p.casas.reduce((s, k) => s + k.moveis.length, 0);
+    return `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < p.pedidas ? ` (couberam ${n} das ${p.pedidas})` : '') + ` · ${moveis} móveis · ${p.W} × ${p.H} quadrados` + (p.rio ? ' · rio com ponte' : '') + (p.muro ? ' · paliçada com ' + p.muro.portoes.length + ' portões' : '') + '.';
+  }
+  // A prévia: o fundo pintado e, por cima, as paredes, as portas (azul), as janelas (ciano) e os móveis (pontinhos).
+  function previa(cv, p, maxW, maxH) {
+    const cell = Math.max(6, Math.floor(Math.min((maxW || 420) / p.W, (maxH || 300) / p.H)));
     const fundo = pintar(p, cell);
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
-    // as paredes e as portas, como no mapa; os móveis, como pontinhos
     g.lineCap = 'round';
-    const seg = (x1, y1, x2, y2, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(x1 * cell, y1 * cell); g.lineTo(x2 * cell, y2 * cell); g.stroke(); };
+    const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(s.x1 * cell, s.y1 * cell); g.lineTo(s.x2 * cell, s.y2 * cell); g.stroke(); };
     for (const k of p.casas) {
-      for (const [a, b, cc, d] of [[k.x, k.y, k.x + k.w, k.y], [k.x, k.y + k.h, k.x + k.w, k.y + k.h], [k.x, k.y, k.x, k.y + k.h], [k.x + k.w, k.y, k.x + k.w, k.y + k.h]]) seg(a, b, cc, d, '#1b1612', Math.max(2, cell * 0.22));
-      const pt = k.porta;
-      seg(pt.x1, pt.y1, pt.x2, pt.y2, '#7fd1ff', Math.max(2, cell * 0.24));
+      for (const s of Estilos.paredesDaCasa(k)) seg(s, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * (s.k === 'wall' ? 0.22 : 0.24)));
       g.fillStyle = '#f3ead2';
       for (const mv of k.moveis) { g.beginPath(); g.arc((mv.x + mv.s / 2) * cell, (mv.y + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
     }
-    if (p.muro) for (const gt of p.muro.portoes) seg(gt.x1, gt.y1, gt.x2, gt.y2, '#7fd1ff', Math.max(2, cell * 0.2));
+    if (p.muro) for (const gt of p.muro.portoes) seg(gt, '#7fd1ff', Math.max(2, cell * 0.2));
+    return { cell };
   }
-  function abrir() {
-    if (!isGM()) return;
-    const K = UI.kit, { field, seg, toggle, btn, note, stepper } = K;
-    const st = { tamanho: TAMANHOS[App.opt.vilaTam] ? App.opt.vilaTam : 'aldeia', terreno: TERRENOS_V.some(x => x[0] === App.opt.vilaTer) ? App.opt.vilaTer : 'campo',
-      rio: App.opt.vilaRio != null ? !!App.opt.vilaRio : true, muralha: !!App.opt.vilaMuro, casas: 0, seed: novaSemente() };
+
+  /* ================= o lugar, para a janela do gerador ================= */
+  // As escolhas do vilarejo (lembradas entre uma janela e outra) e os controles delas.
+  function padrao() {
+    const o = App.opt;
+    const st = { tamanho: TAMANHOS[o.vilaTam] ? o.vilaTam : 'aldeia', terreno: TERRENOS_V.some(x => x[0] === o.vilaTer) ? o.vilaTer : 'campo', rio: o.vilaRio != null ? !!o.vilaRio : true, muralha: !!o.vilaMuro, casas: 0 };
     st.casas = TAMANHOS[st.tamanho].padrao;
-    let plano = null, nomeMexido = false;
-    const cv = h('canvas', { class: 'vila-prev', id: 'vila-prev', width: 420, height: 300, 'aria-label': 'Prévia do vilarejo' });
-    const inNome = h('input', { id: 'vila-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
-    const controles = h('div', { class: 'vila-c' }), resumo = h('p', { class: 'note', id: 'vila-resumo', role: 'status' });
-    const salvarOpcoes = () => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; };
-    const refazer = () => {
-      plano = gerar(st);
-      try { previa(cv, plano); } catch (e) { console.error(e); }
-      if (!nomeMexido) inNome.value = plano.nome;
-      const n = plano.casas.length, moveis = plano.casas.reduce((s, k) => s + k.moveis.length, 0);
-      resumo.textContent = `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < plano.pedidas ? ` (couberam ${n} das ${plano.pedidas})` : '') + ` · ${moveis} móveis · ${plano.W} × ${plano.H} quadrados` + (plano.rio ? ' · rio com ponte' : '') + (plano.muro ? ' · paliçada com ' + plano.muro.portoes.length + ' portões' : '') + '.';
-    };
-    const paint = () => {
-      const T = TAMANHOS[st.tamanho];
-      controles.replaceChildren(
-        h('div', { class: 'vila-l' },
-          field('Tamanho', seg('vila-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, k === 'aldeia' ? 'Uma rua, ' + TAMANHOS.aldeia.W + ' × ' + TAMANHOS.aldeia.H + ' quadrados' : 'Duas ruas que se cruzam na praça, ' + TAMANHOS.vila.W + ' × ' + TAMANHOS.vila.H + ' quadrados']),
-            v => { st.tamanho = v; st.casas = TAMANHOS[v].padrao; salvarOpcoes(); paint(); refazer(); }), 'stack'),
-          field('Terreno', seg('vila-ter', st.terreno, TERRENOS_V.map(([k, n]) => [k, n]), v => { st.terreno = v; salvarOpcoes(); paint(); refazer(); }), 'stack')),
-        h('div', { class: 'vila-l' },
-          field('Casas', stepper('vila-casas', st.casas, T.casas[0], T.casas[1], v => { st.casas = v; paint(); refazer(); }, 'Quantas casas'), 'stack'),
-          toggle('vila-rio', st.rio, v => { st.rio = v; salvarOpcoes(); refazer(); }, 'Com rio (e uma ponte)'),
-          toggle('vila-muro', st.muralha, v => { st.muralha = v; salvarOpcoes(); refazer(); }, 'Com paliçada (portões abertos)')));
-    };
-    paint(); refazer();
-    UI.modal({
-      title: 'Gerar um vilarejo', wide: true,
-      body: h('div', { class: 'vila' }, controles,
-        h('div', { class: 'vila-p' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'vila-outro', title: 'Sorteia outro vilarejo com as mesmas escolhas' }), resumo)),
-        field('Nome da cena', inNome, 'stack'),
-        note('Sai uma cena nova, com as paredes de cada casa, uma porta, alguns móveis e o nome em cima. A névoa dinâmica vem ligada: as paredes bloqueiam a visão, e os jogadores enxergam a partir dos tokens deles. Tudo continua editável; as cenas que já existem não mudam.')),
-      actions: [{ label: 'Cancelar' }, {
-        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
-          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
-          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
-          const p = plano;
-          criar(p, inNome.value).then(sc => {
-            UI.closeModal();
-            UI.switchScene(sc.id);
-            const n = p.casas.length;
-            UI.toast(`"${sc.name}" criada: ${n} ${n === 1 ? 'casa' : 'casas'}, com paredes, portas, móveis e nomes. Tudo é editável.`, { long: true });
-          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
-          return false;
-        },
-      }],
-    });
+    return st;
   }
-  return { TAMANHOS, TIPOS, gerar, pintar, criar, abrir };
+  const lembrar = st => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; };
+  // os controles: mudou(true) sorteia o plano de novo (mesma semente); soltar() avisa que as partes travadas saíram
+  function controles(st, K, mudou) {
+    const { field, seg, toggle, stepper } = K, T = TAMANHOS[st.tamanho];
+    return h('div', { class: 'ger-c' },
+      h('div', { class: 'ger-l' },
+        field('Tamanho', seg('vila-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, k === 'aldeia' ? 'Uma rua, ' + TAMANHOS.aldeia.W + ' × ' + TAMANHOS.aldeia.H + ' quadrados' : 'Duas ruas que se cruzam na praça, ' + TAMANHOS.vila.W + ' × ' + TAMANHOS.vila.H + ' quadrados']),
+          v => { st.tamanho = v; st.casas = TAMANHOS[v].padrao; lembrar(st); mudou(true, { soltar: true }); }), 'stack'),
+        field('Terreno', seg('vila-ter', st.terreno, TERRENOS_V.map(([k, n]) => [k, n]), v => { st.terreno = v; lembrar(st); mudou(true); }), 'stack')),
+      h('div', { class: 'ger-l' },
+        field('Casas', stepper('vila-casas', st.casas, T.casas[0], T.casas[1], v => { st.casas = v; mudou(true); }, 'Quantas casas'), 'stack'),
+        toggle('vila-rio', st.rio, v => { st.rio = v; lembrar(st); mudou(true); }, 'Com rio (e uma ponte)'),
+        toggle('vila-muro', st.muralha, v => { st.muralha = v; lembrar(st); mudou(true); }, 'Com paliçada (portões abertos)')));
+  }
+  // as escolhas que vão num modelo, e de volta (o que não fizer sentido fica como está)
+  const opcoesDe = st => ({ tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, casas: st.casas });
+  function aplicarOpcoes(st, o) {
+    if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
+    if (TERRENOS_V.some(x => x[0] === o.terreno)) st.terreno = o.terreno;
+    if (typeof o.rio === 'boolean') st.rio = o.rio;
+    if (typeof o.muralha === 'boolean') st.muralha = o.muralha;
+    const T = TAMANHOS[st.tamanho];
+    st.casas = clamp(Math.round(Number(o.casas) || T.padrao), T.casas[0], T.casas[1]);
+    lembrar(st);
+  }
+  // as partes que travam, na ordem do teclado (as setas da prévia): as ruas e a praça, o rio e cada casa
+  const partes = p => ['ruas'].concat(p.rio ? ['rio'] : [], p.casas.map((k, i) => 'c' + i));
+  const LUGAR = { id: 'vila', n: 'Vilarejo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+    nota: 'Sai uma cena nova, com as paredes de cada casa, a porta, as janelas e alguns móveis — nada escrito: os nomes ficam com você. A névoa dinâmica vem ligada: as paredes bloqueiam a visão, e os jogadores enxergam a partir dos tokens deles. À noite, cada casa tem uma luz por dentro, que escapa pelas janelas. Tudo continua editável; as cenas que já existem não mudam.',
+    feito: (sc, p) => `"${sc.name}" criada: ${p.casas.length} ${p.casas.length === 1 ? 'casa' : 'casas'}, com paredes, portas, janelas e móveis. Tudo é editável.` };
+  // (o atalho de antes: abre a janela do gerador no vilarejo)
+  const abrir = () => Gerador.abrir('vila');
+  return { TAMANHOS, TERRENOS_V, PAL, gerar, pintar, criar, previa, resumo, parteEm, formaDaParte, alternar, travada, travaDe, limparTrava, nomePadrao, janelasDe, mobiliar, LUGAR, abrir };
 })();
 /* ---------------------------------------------------------------
    10e. SOM — os sons da vez (lote 7), feitos no próprio navegador, sem arquivo nenhum
@@ -14953,6 +15739,260 @@ const Som = (() => {
     return true;
   }
   return { tocar, ligado, get ultimo() { return ultimo; }, get vezes() { return vezes; } };
+})();
+/* ---------------------------------------------------------------
+   10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
+   Uma janela com uma aba por lugar (o Vilarejo; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
+   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia e o clima da cena. A prévia
+   mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
+   sorteia só o resto. A semente fica à mostra (a mesma semente, com as mesmas escolhas, dá o mesmo lugar) e o lugar
+   pode ser guardado como modelo, para gerar outros parecidos (os modelos são do mestre: na mesa, vão no índice das
+   cenas). Nada muda nas cenas que já existem até "Criar a cena".
+   --------------------------------------------------------------- */
+const Gerador = (() => {
+  const LUGARES = [Vila.LUGAR];
+  const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
+  const lugar = id => LUGARES.find(l => l.id === id) || null;
+  const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
+  const guardarModelos = lista => { Store.S.prefs.modelos = Proj.normModelos(lista); Persist.meta(); };
+  let aberta = null;                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
+
+  /* Desenha um cadeado pequeno em (x, y) (o canto de cima, à esquerda, da marca). */
+  function cadeado(g, x, y, s) {
+    g.save(); g.translate(x, y);
+    g.fillStyle = 'rgba(20,16,10,0.85)'; g.beginPath(); g.arc(s * 0.5, s * 0.55, s * 0.72, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#f3d28a'; g.lineWidth = Math.max(1.5, s * 0.14); g.beginPath(); g.arc(s * 0.5, s * 0.42, s * 0.22, Math.PI, 0); g.stroke();
+    g.fillStyle = '#e6ab4f'; g.fillRect(s * 0.18, s * 0.42, s * 0.64, s * 0.5);
+    g.fillStyle = '#3a2a12'; g.fillRect(s * 0.46, s * 0.55, s * 0.08, s * 0.2);
+    g.restore();
+  }
+  // o desenho de uma parte (em quadrados) na prévia: o contorno, o círculo ou a linha grossa
+  function caminho(g, f, cell) {
+    g.beginPath();
+    if (f.k === 'circ') g.arc(f.x * cell, f.y * cell, f.r * cell, 0, Math.PI * 2);
+    else f.pts.forEach(([x, y], i) => (i ? g.lineTo(x * cell, y * cell) : g.moveTo(x * cell, y * cell)));
+    if (f.k === 'poli') g.closePath();
+  }
+  // onde vai o cadeado da parte: no canto da casa, no meio da praça, no meio do rio
+  function ancora(f) {
+    if (f.k === 'circ') return [f.x, f.y];
+    if (f.k === 'poli') return [Math.min(...f.pts.map(p => p[0])), Math.min(...f.pts.map(p => p[1]))];
+    const p = f.pts[Math.floor(f.pts.length / 2)];
+    return [p[0], p[1]];
+  }
+
+  /* Abre a janela. lugarId: a aba que abre ('vila'); pre: escolhas que já vêm feitas ({ op, estilo, hora, clima }). */
+  function abrir(lugarId, pre) {
+    if (!isGM()) return;
+    const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
+    let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
+    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '' };
+    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genLugar = L.id; };
+    // o estado de cada aba (as escolhas, a semente, o que está travado e o plano na tela): trocar de aba não perde nada
+    const estados = {};
+    const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
+    if (pre && typeof pre === 'object') {
+      if (pre.op) L.aplicarOpcoes(estadoDe(L).op, pre.op);
+      if (pre.estilo) comum.estilo = Estilos.valido(pre.estilo);
+      if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
+      if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
+    }
+    let nomeMexido = false, foco = -1, sobre = null, modeloNovo = false;
+    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
+    const fundo = document.createElement('canvas');
+    let cell = 10;
+    const ctl = h('div', { class: 'ger-op' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
+    const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
+      title: 'A mesma semente, com as mesmas escolhas, dá o mesmo lugar',
+      onchange: () => { const v = Math.round(Number(inSemente.value)); if (v >= 1 && v <= 2147483647) { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = v; refazer(); } else inSemente.value = estadoDe(L).seed; },
+      onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); inSemente.dispatchEvent(new Event('change')); } } });
+    const btOutro = btn('Gerar outro', () => { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'ger-outro', title: 'Sorteia de novo, com as mesmas escolhas; o que está travado fica igual' });
+    const btSoltar = btn('Soltar tudo', () => soltarTudo(), { icon: 'unlock', id: 'ger-soltar', title: 'Solta todas as partes travadas (o lugar na tela não muda)' });
+    const md = h('div', { class: 'ger-md', id: 'ger-md' }), nota = note(L.nota);
+
+    /* ---- a prévia e as partes ---- */
+    const partes = () => (estadoDe(L).plano ? L.partes(estadoDe(L).plano) : []);
+    function desenhar() {
+      const E = estadoDe(L), p = E.plano;
+      if (!p) return;
+      if (cv.width !== fundo.width || cv.height !== fundo.height) { cv.width = fundo.width; cv.height = fundo.height; }
+      const g = cv.getContext('2d');
+      g.clearRect(0, 0, cv.width, cv.height); g.drawImage(fundo, 0, 0);
+      // a hora do dia escolhida tinge a prévia (como na cena)
+      const tom = TONES.find(t => t.id === comum.hora);
+      if (tom && tom.tint) { g.fillStyle = tom.tint; g.fillRect(0, 0, cv.width, cv.height); if (tom.id === 'breu') { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, cv.width, cv.height); } }
+      const marcar = (parte, modo) => {
+        const fs = L.formaDaParte(p, parte);
+        g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+        for (const f of fs) {
+          caminho(g, f, cell);
+          if (f.k === 'linha') {
+            g.strokeStyle = modo === 'trava' ? 'rgba(230,171,79,0.35)' : 'rgba(255,255,255,0.22)'; g.lineWidth = (f.hw * 2 + 0.4) * cell; g.stroke();
+          } else { g.fillStyle = modo === 'trava' ? 'rgba(230,171,79,0.22)' : 'rgba(255,255,255,0.16)'; g.fill(); }
+          if (f.k !== 'linha') { g.strokeStyle = modo === 'trava' ? '#e6ab4f' : '#ffffff'; g.lineWidth = Math.max(2, cell * 0.2); g.setLineDash(modo === 'trava' ? [] : [Math.max(3, cell * 0.4), Math.max(3, cell * 0.3)]); g.stroke(); g.setLineDash([]); }
+        }
+        g.restore();
+        if (modo === 'trava' && fs.length) { const [ax, ay] = ancora(fs[0]), s = Math.max(10, cell * 0.9); cadeado(g, ax * cell + 2, ay * cell + 2, s); }
+      };
+      for (const parte of partes()) if (L.travada(p, parte)) marcar(parte, 'trava');
+      const alvo = sobre || (foco >= 0 ? partes()[foco] : null);
+      if (alvo) marcar(alvo, 'sobre');
+    }
+    function mostrarDica() {
+      const E = estadoDe(L), p = E.plano, alvo = sobre || (foco >= 0 ? partes()[foco] : null);
+      dica.textContent = alvo && p ? `Clique para ${L.travada(p, alvo) ? 'soltar' : 'travar'} ${L.nomeDaParte(p, alvo)}.` : 'Clique numa parte da prévia (uma casa, o rio, as ruas e a praça) para travar: ela fica igual quando você gera outro.';
+      cv.classList.toggle('parte', !!sobre);
+    }
+    function mostrarResumo() {
+      const E = estadoDe(L), p = E.plano, n = L.quantasTravadas(p);
+      resumo.textContent = L.resumo(p) + (n ? ` ${n === 1 ? 'Uma parte travada' : n + ' partes travadas'}.` : '') + (p.soltas ? ` ${p.soltas === 1 ? 'Uma casa travada não coube e saiu' : p.soltas + ' casas travadas não couberam e saíram'}.` : '');
+      btSoltar.disabled = !n;
+    }
+    function refazer() {
+      const E = estadoDe(L);
+      E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base });
+      E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
+      try { const r = L.previa(fundo, E.plano, 460, 330); cell = r.cell; } catch (e) { console.error(e); }
+      sobre = null; foco = -1;
+      desenhar(); mostrarDica(); mostrarResumo();
+      inSemente.value = E.seed;
+      if (!nomeMexido) inNome.value = L.nomePadrao(E.plano);
+    }
+    function alternar(parte) {
+      const E = estadoDe(L);
+      if (!E.plano || !parte) return;
+      E.trava = L.alternar(E.plano, parte, E.trava);
+      desenhar(); mostrarDica(); mostrarResumo();
+    }
+    function soltarTudo() {
+      const E = estadoDe(L);
+      if (!E.plano) return;
+      for (const parte of partes()) if (L.travada(E.plano, parte)) E.trava = L.alternar(E.plano, parte, E.trava);
+      E.trava = null;
+      desenhar(); mostrarDica(); mostrarResumo();
+    }
+    // o ponto do mouse em quadrados do plano (a prévia fica centrada na caixa dela, sem esticar)
+    const parteNoPonto = e => {
+      const E = estadoDe(L), r = cv.getBoundingClientRect();
+      if (!E.plano || !r.width || !cv.width) return null;
+      const k = Math.min(r.width / cv.width, r.height / cv.height), ox = (r.width - cv.width * k) / 2, oy = (r.height - cv.height * k) / 2;
+      return L.parteEm(E.plano, (e.clientX - r.left - ox) / k / cell, (e.clientY - r.top - oy) / k / cell);
+    };
+    cv.addEventListener('pointermove', e => { const pt = parteNoPonto(e); if (pt !== sobre) { sobre = pt; foco = -1; desenhar(); mostrarDica(); } });
+    cv.addEventListener('pointerleave', () => { if (sobre) { sobre = null; desenhar(); mostrarDica(); } });
+    cv.addEventListener('click', e => alternar(parteNoPonto(e)));
+    cv.addEventListener('keydown', e => {
+      const ps = partes();
+      if (!ps.length) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { foco = (foco + 1) % ps.length; sobre = null; }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { foco = (foco - 1 + ps.length) % ps.length; sobre = null; }
+      else if ((e.key === 'Enter' || e.key === ' ') && foco >= 0) { e.preventDefault(); e.stopPropagation(); alternar(ps[foco]); return; }
+      else return;
+      e.preventDefault(); desenhar(); mostrarDica();
+    });
+    cv.addEventListener('blur', () => { if (foco >= 0) { foco = -1; desenhar(); mostrarDica(); } });
+
+    /* ---- os modelos ---- */
+    function pintarModelos(focoId) {
+      const lista = modelos();
+      if (modeloNovo) {
+        const inM = h('input', { id: 'ger-modelo-nome', class: 'in', type: 'text', maxlength: 40, autocomplete: 'off', 'data-enter': 'proprio', 'data-esc': 'proprio', placeholder: 'Nome do modelo', 'aria-label': 'Nome do modelo',
+          onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); guardarModelo(inM.value); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); modeloNovo = false; pintarModelos('ger-guardar'); } } });
+        md.replaceChildren(inM, btn('Guardar', () => guardarModelo(inM.value), { kind: 'small', id: 'ger-modelo-ok' }), btn('Cancelar', () => { modeloNovo = false; pintarModelos('ger-guardar'); }, { kind: 'small', id: 'ger-modelo-nao' }));
+        inM.value = inNome.value.trim().slice(0, 40);
+        setTimeout(() => { inM.focus(); inM.select(); }, 0);
+        return;
+      }
+      const sel = h('select', { id: 'ger-modelo', class: 'in', 'aria-label': 'Abrir um modelo guardado', disabled: !lista.length, value: '',
+        onchange: e => { const v = e.target.value; e.target.blur(); if (v) abrirModelo(v); } },
+        h('option', { value: '', text: lista.length ? 'Abrir um modelo…' : 'Nenhum modelo guardado' }),
+        ...lista.map(m => h('option', { value: m.id, text: m.nome + (lugar(m.lugar) && LUGARES.length > 1 ? ' · ' + lugar(m.lugar).n : '') })));
+      md.replaceChildren(...[sel,
+        btn('Guardar como modelo', () => { if (modelos().length >= 30) { UI.toast('Já são 30 modelos: apague um para guardar outro.'); return; } modeloNovo = true; pintarModelos(); }, { icon: 'plus', kind: 'small', id: 'ger-guardar', title: 'Guarda as escolhas, a semente e as partes travadas, para gerar outros parecidos' }),
+        lista.length ? iconBtn('trash', 'Apagar um modelo…', () => apagarModeloMenu(), { size: 15, id: 'ger-apagar' }) : null].filter(Boolean));
+      if (focoId) { const n = document.getElementById(focoId); if (n) n.focus(); }
+    }
+    function guardarModelo(nome) {
+      nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!nome) { UI.toast('Dê um nome ao modelo.'); return; }
+      const E = estadoDe(L), lista = modelos();
+      const m = { id: uid('md'), nome, lugar: L.id, o: Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima }), seed: E.seed, trava: L.travaDe(E.plano) };
+      guardarModelos(lista.concat([m]));
+      modeloNovo = false; pintarModelos('ger-guardar');
+      UI.toast(`Modelo "${nome}" guardado: as escolhas, a semente ${E.seed} e as partes travadas.`, { action: 'Desfazer', run: () => { guardarModelos(modelos().filter(x => x.id !== m.id)); if (md.isConnected) pintarModelos(); } });
+    }
+    function abrirModelo(id) {
+      const m = modelos().find(x => x.id === id), l = m && lugar(m.lugar);
+      if (!m || !l) { UI.toast('Esse modelo é de um lugar que esta janela não gera.'); pintarModelos(); return; }
+      const antes = { L, comum: Object.assign({}, comum), E: JSON.parse(JSON.stringify(Object.assign({}, estadoDe(l), { plano: null }))) };
+      L = l;
+      const E = estadoDe(L);
+      L.aplicarOpcoes(E.op, m.o);
+      comum.estilo = Estilos.valido(m.o.estilo);
+      if (TONES.some(t => t.id === m.o.hora)) comum.hora = m.o.hora;
+      if (WEATHERS.some(w => w[0] === m.o.clima)) comum.clima = m.o.clima;
+      E.seed = m.seed; E.trava = m.trava; E.base = null;
+      lembrarComum(); pintar(); refazer();
+      UI.toast(`Modelo "${m.nome}" aberto: a semente ${m.seed} e as partes travadas dele. "Gerar outro" sorteia outros parecidos.`, { action: 'Desfazer', run: () => {
+        if (!cv.isConnected) return;
+        L = antes.L; Object.assign(comum, antes.comum); estados[l.id] = Object.assign(antes.E, { plano: null }); lembrarComum(); pintar(); refazer();
+      } });
+    }
+    function apagarModeloMenu() {
+      const b = document.getElementById('ger-apagar'), r = b ? b.getBoundingClientRect() : { left: 0, bottom: 0 };
+      const items = [{ head: 'Apagar qual modelo?' }].concat(modelos().map(m => ({ label: m.nome, icon: 'trash', danger: true, run: () => {
+        const lista = modelos();
+        guardarModelos(lista.filter(x => x.id !== m.id)); pintarModelos();
+        UI.toast(`Modelo "${m.nome}" apagado.`, { action: 'Desfazer', run: () => { guardarModelos(lista); if (md.isConnected) pintarModelos(); } });
+      } })));
+      UI.menuEm(r.left, r.bottom + 4, items);
+    }
+
+    /* ---- as escolhas ---- */
+    function pintar() {
+      const a = document.activeElement, fid = a && a.id && ctl.contains(a) ? a.id : null;
+      const E = estadoDe(L);
+      abas.replaceChildren(...(LUGARES.length > 1 ? [seg('ger-lugar', L.id, LUGARES.map(l => [l.id, l.n]), v => { L = lugar(v) || L; lembrarComum(); nomeMexido = false; pintar(); refazer(); })] : []));
+      ctl.replaceChildren(
+        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }),
+        h('div', { class: 'ger-cm' },
+          field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
+          field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
+          field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack')));
+      nota.textContent = L.nota;
+      if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
+    }
+    pintar(); refazer(); pintarModelos();
+    aberta = { get lugar() { return L.id; }, get estado() { return estadoDe(L); }, comum, cell: () => cell };
+    const body = h('div', { class: 'ger' },
+      abas,
+      h('div', { class: 'ger-g' },
+        ctl,
+        h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btOutro, btSoltar), dica, resumo)),
+      h('div', { class: 'ger-b' },
+        h('div', { class: 'ger-sem' }, field('Semente', inSemente, 'stack')),
+        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md)),
+      field('Nome da cena', inNome, 'stack'),
+      nota);
+    UI.modal({
+      title: 'Gerar um lugar', xl: true, body,
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
+          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
+          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
+          const E = estadoDe(L), p = E.plano, l = L;
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima }).then(sc => {
+            UI.closeModal();
+            UI.switchScene(sc.id);
+            UI.toast(l.feito(sc, p), { long: true });
+          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
+          return false;
+        },
+      }],
+    });
+  }
+  return { LUGARES, abrir, vivo: () => (aberta && document.getElementById('ger-prev') ? aberta : null) };
 })();
 /* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização
@@ -15219,7 +16259,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

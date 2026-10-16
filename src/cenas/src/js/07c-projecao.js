@@ -106,6 +106,7 @@ const Proj = (() => {
   function tokenPublico(t, jogadores) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
+    delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
     const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
     if (!deJogador) {
       o.owner = null;
@@ -478,8 +479,11 @@ const Proj = (() => {
 
   /* ---- o índice das cenas da mesa ---- */
   /* As pastas da lista de cenas (lote 6), só do mestre: { lista: [{ id, nome }], de: { idDaCena: idDaPasta } }. Cena
-     sem pasta (ou numa pasta que não existe mais) fica fora de todas. */
-  const MAX_PASTAS = 40;
+     sem pasta (ou numa pasta que não existe mais) fica fora de todas.
+     (lote 7) As famílias de cenas: mae: { idDaFilha: idDaMãe } (cidade → bairro → casa). Sem voltas — uma cena não
+     fica dentro dela mesma nem de uma cena que está dentro dela (a que fecharia a volta sai) — e com até MAX_NIVEIS
+     níveis (a mãe de todas é o primeiro). A família fica na pasta da mãe de todas. */
+  const MAX_PASTAS = 40, MAX_NIVEIS = 6;
   function normPastas(p) {
     p = ehObj(p) ? p : {};
     const lista = [], vistos = new Set();
@@ -491,7 +495,35 @@ const Proj = (() => {
     }
     const de = {};
     if (ehObj(p.de)) for (const k of Object.keys(p.de)) if (idCena(k) && vistos.has(p.de[k])) de[k] = p.de[k];
-    return { lista, de };
+    const mae = {};
+    if (ehObj(p.mae)) for (const k of Object.keys(p.mae)) {
+      const m = p.mae[k];
+      if (!idCena(k) || !idCena(m) || k === m) continue;
+      let x = m, volta = false;
+      for (let n = 0; x && n < 64; n++) { if (x === k) { volta = true; break; } x = mae[x]; }
+      if (!volta) mae[k] = m;
+    }
+    for (const k of Object.keys(mae)) { let x = k, n = 0; while (mae[x] && n < 64) { x = mae[x]; n++; } if (n >= MAX_NIVEIS) delete mae[k]; }
+    return { lista, de, mae };
+  }
+  /* (lote 7) Os modelos do gerador de lugares, só do mestre (no índice): [{ id, nome, lugar, o, seed, trava }]. Aqui
+     só a forma e o tamanho; o gerador confere o resto quando usa o modelo. */
+  const MAX_MODELOS = 30;
+  function normModelos(lista) {
+    const out = [], vistos = new Set();
+    for (const x of Array.isArray(lista) ? lista : []) {
+      if (out.length >= MAX_MODELOS || !ehObj(x) || typeof x.id !== 'string' || !/^md_[A-Za-z0-9]{1,24}$/.test(x.id) || vistos.has(x.id)) continue;
+      const nome = String(x.nome == null ? '' : x.nome).replace(/\s+/g, ' ').trim().slice(0, 40);
+      const lugar = typeof x.lugar === 'string' && /^[a-z]{1,16}$/.test(x.lugar) ? x.lugar : null;
+      if (!nome || !lugar || !ehObj(x.o)) continue;
+      let o, trava;
+      try { o = JSON.parse(JSON.stringify(x.o)); trava = ehObj(x.trava) ? JSON.parse(JSON.stringify(x.trava)) : null; } catch (e) { continue; }
+      if (JSON.stringify(o).length > 4000 || (trava && JSON.stringify(trava).length > 20000)) continue;
+      const seed = Math.round(Number(x.seed));
+      vistos.add(x.id);
+      out.push({ id: x.id, nome, lugar, o, seed: seed >= 1 && seed <= 2147483647 ? seed : 1, trava });
+    }
+    return out;
   }
   function normIndice(d) {
     d = ehObj(d) ? d : {};
@@ -500,7 +532,7 @@ const Proj = (() => {
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
-      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null },
+      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) },
       pastas: normPastas(d.pastas),
     };
   }
@@ -529,5 +561,5 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();

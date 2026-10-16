@@ -368,13 +368,13 @@ const goblin = ficha('Goblin batedor', { lado: 'Inimigo', itens: [{ id: 'i_cla',
     await C.locator('#sceneBtn').click(); await w(300);
     const itemCena = C.locator('.menu .menu-i', { hasText: cena.nome });
     ok(await itemCena.locator('.menu-m').count() === 1 && (await itemCena.locator('.menu-m').getAttribute('title')) === 'No Mapa-múndi: Vila do Rio', 'na lista de cenas, a cena que um marcador do Mapa-múndi abre ganha o ícone do mundo (com o nome do marcador)');
-    await C.locator('.menu-i', { hasText: 'Organizar em pastas…' }).click(); await w(400);
-    ok(await C.locator('#org-p-solta #org-c-' + cena.id).count() === 1 && await C.locator('#org-c-' + cena.id + ' .org-n').getAttribute('title') === 'No Mapa-múndi: Vila do Rio', '"Organizar em pastas…": a cena, ainda sem pasta (o ícone do mundo também aqui)');
+    await C.locator('.menu-i', { hasText: 'Organizar as cenas…' }).click(); await w(400);
+    ok(await C.locator('#org-p-solta #org-c-' + cena.id).count() === 1 && await C.locator('#org-c-' + cena.id + ' .org-n').getAttribute('title') === 'No Mapa-múndi: Vila do Rio', '"Organizar as cenas…": a cena, ainda sem pasta (o ícone do mundo também aqui)');
     await C.locator('#org-nova').click(); await w(300);
     await C.locator('#dlg-in').fill('  Combates  '); await C.locator('.modal .btn.primary').click(); await w(450);
     const pastaId = await C.evaluate(() => (__tc.Store.S.pastas.lista[0] || {}).id || null);
     ok(!!pastaId && await C.locator('#org-p-' + pastaId).count() === 1 && /Pasta "Combates" criada/.test(await aviso(C)), 'Nova pasta: "Combates" (e a janela volta)');
-    await C.locator('#org-s-' + cena.id).selectOption(pastaId); await w(350);
+    await C.locator('#org-s-' + cena.id).selectOption('p:' + pastaId); await w(350);
     ok(await C.locator('#org-p-' + pastaId + ' #org-c-' + cena.id).count() === 1 && new RegExp('"' + cena.nome + '" foi para a pasta Combates').test(await aviso(C)), 'escolhendo a pasta ao lado da cena, ela vai para "Combates"');
     ok(await ate(async () => await M.evaluate(([pid, cid]) => { const l = TC.dados.col('documentos').pegar('cenas:indice'), p = l && l.dados && l.dados.pastas; return !!p && p.lista.length === 1 && p.lista[0].nome === 'Combates' && p.de[cid] === pid; }, [pastaId, cena.id]) && await parado(M), 20000),
       'as pastas vão para a mesa, no índice das cenas');
@@ -402,16 +402,16 @@ const goblin = ficha('Goblin batedor', { lado: 'Inimigo', itens: [{ id: 'i_cla',
 
     // ---------- o vilarejo, numa mesa: o fundo pintado vai para o Storage, e a jogadora recebe as casas ----------
     await C.locator('#sceneBtn').click(); await w(300);
-    await C.locator('.menu-i', { hasText: 'Gerar um vilarejo…' }).click(); await w(600);
-    ok(await C.locator('#vila-prev').count() === 1 && /casas/.test(await C.locator('#vila-resumo').innerText()), '"Gerar um vilarejo…": a janela, com a prévia');
-    await C.locator('#vila-nome').fill('Pedravale de teste');
+    await C.locator('.menu-i', { hasText: 'Gerar um lugar…' }).click(); await w(600);
+    ok(await C.locator('#ger-prev').count() === 1 && /casas/.test(await C.locator('#ger-resumo').innerText()), '"Gerar um lugar…": a janela, com a prévia');
+    await C.locator('#ger-nome').fill('Pedravale de teste');
     const nCenas = await C.evaluate(() => __tc.Store.S.order.length);
     await C.locator('.modal .btn.primary', { hasText: 'Criar a cena' }).click();
-    ok(await ate(async () => await C.evaluate(n => __tc.Store.S.order.length === n + 1 && __tc.Store.scene().name === 'Pedravale de teste' && !document.querySelector('#vila-prev'), nCenas), 40000), 'Criar a cena: a cena nova abre');
-    const vila = await C.evaluate(() => { const u = __tc, sc = u.Store.scene(); return { id: sc.id, paredes: sc.walls.length, portas: sc.walls.filter(w => w.k === 'door').length, nomes: sc.shapes.filter(s => s.k === 'text').map(s => s.txt), moveis: sc.tokens.filter(t => t.prop).length, nev: sc.fog.dynamic, fundo: (u.Store.S.assets[sc.bg.asset] || {}).url || '' }; });
+    ok(await ate(async () => await C.evaluate(n => __tc.Store.S.order.length === n + 1 && __tc.Store.scene().name === 'Pedravale de teste' && !document.querySelector('#ger-prev'), nCenas), 40000), 'Criar a cena: a cena nova abre');
+    const vila = await C.evaluate(() => { const u = __tc, sc = u.Store.scene(); return { id: sc.id, paredes: sc.walls.length, portas: sc.walls.filter(w => w.k === 'door').length, janelas: sc.walls.filter(w => w.k === 'window').length, nomes: sc.shapes.filter(s => s.k === 'text').map(s => s.txt), moveis: sc.tokens.filter(t => t.prop).length, nev: sc.fog.dynamic, fundo: (u.Store.S.assets[sc.bg.asset] || {}).url || '' }; });
     const pastaMesa = await M.evaluate(() => TC_CONFIG.url + '/storage/v1/object/public/mesas/' + TC.mesas.atual.id + '/');
-    ok(vila.paredes > 8 && vila.portas >= vila.nomes.length && vila.nomes.length >= 3 && vila.moveis > 3 && vila.nev && vila.fundo.startsWith(pastaMesa),
-      'com as paredes, as portas, os móveis e o nome de cada casa — e o fundo pintado vira um arquivo na pasta da mesa: ' + JSON.stringify(Object.assign({}, vila, { fundo: vila.fundo.slice(-24) })));
+    ok(vila.paredes > 8 && vila.portas >= 3 && vila.janelas >= 3 && vila.nomes.length === 0 && vila.moveis > 3 && vila.nev && vila.fundo.startsWith(pastaMesa),
+      'com as paredes, as portas, as janelas e os móveis de cada casa (nada escrito: os nomes ficam com o mestre) — e o fundo pintado vira um arquivo na pasta da mesa: ' + JSON.stringify(Object.assign({}, vila, { fundo: vila.fundo.slice(-24) })));
     ok(await ate(async () => { const d = await M.evaluate(id => { const l = TC.dados.col('documentos').pegar('cena:' + id + ':m'); return l && l.dados ? { walls: (l.dados.walls || []).length, url: ((l.dados.imgs || {})[(l.dados.bg || {}).asset] || {}).url || '' } : null; }, vila.id); return !!d && d.walls === vila.paredes && d.url === vila.fundo && await parado(M); }, 30000),
       'e é guardada na mesa como as outras (o mapa, com as paredes e o endereço do fundo)');
     const naRede = await M.evaluate(async u => { const r = await fetch(u); const b = await r.blob(); return [r.status, b.type, b.size > 2000]; }, vila.fundo);
@@ -423,7 +423,7 @@ const goblin = ficha('Goblin batedor', { lado: 'Inimigo', itens: [{ id: 'i_cla',
     ok(await ate(async () => { B = await quadro(J, /\/cenas\//); return B && await B.evaluate(id => !!window.__tc && __tc.Store.S.current === id, vila.id); }, 40000), 'a jogadora passa a ver o vilarejo');
     const vj = await B.evaluate(() => { const u = __tc, sc = u.Store.scene(); return { paredes: sc.walls.length, nomes: sc.shapes.filter(s => s.k === 'text').map(s => s.txt).sort(), moveis: sc.tokens.filter(t => t.prop).length, nev: sc.fog.dynamic, fundo: !!sc.bg.asset && /^https:/.test((u.Store.S.assets[sc.bg.asset] || {}).url || '') }; });
     ok(vj.paredes === vila.paredes && JSON.stringify(vj.nomes) === JSON.stringify(vila.nomes.slice().sort()) && vj.moveis === vila.moveis && vj.nev && vj.fundo,
-      'com as mesmas paredes (que escondem o lado de dentro das casas), os móveis, os nomes das casas e o fundo: ' + JSON.stringify(vj));
+      'com as mesmas paredes (que escondem o lado de dentro das casas), os móveis, nada escrito e o fundo: ' + JSON.stringify(vj));
     ok(await ate(async () => await B.evaluate(() => { const a = __tc.Store.S.assets[__tc.Store.scene().bg.asset]; return !!a && !!__tc.Assets.img(a.id) && __tc.Render.stats.frames > 0 && !(__tc.Render.stats.fail > 0); }), 20000), 'o fundo do vilarejo desenha na tela da jogadora');
     await foto(J, 'l6-vilarejo-jogadora');
     }

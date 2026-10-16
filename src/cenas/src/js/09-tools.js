@@ -432,9 +432,14 @@ const Tools = (() => {
       cursor();
       Render.request();
     },
-    dbl(p) {
+    dbl(p, e) {
       const hit = hitTest(p, { locked: true });
       if (!hit) return;
+      // (lote 7) objeto que leva a outra cena (a entrada de uma casa, a saída): dois cliques abrem o menu da passagem
+      if (hit.c === 'tokens' && isGM()) {
+        const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
+        if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+      }
       // Texto solto: dois cliques editam. Texto travado: dois cliques selecionam, como qualquer desenho travado
       // (é o caminho para destravar ou apagar; editar continua no painel e no botão direito).
       if (hit.c === 'shapes') { const s = Store.get('shapes', hit.id); if (s.k === 'text' && !s.lock && (isGM() || can('editShape', s))) { UI.editText(s); return; } }

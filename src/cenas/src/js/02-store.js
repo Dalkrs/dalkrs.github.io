@@ -11,7 +11,7 @@
    é ali que entra o envio para o Supabase.
    --------------------------------------------------------------- */
 const Store = (() => {
-  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {}, pastas: { lista: [], de: {} } };
+  const S = { scenes: {}, order: [], current: null, players: [], assets: {}, prefs: {}, pastas: { lista: [], de: {}, mae: {} } };
   const hist = new Map();           // id da cena → { undo: [], redo: [] }
   const subs = {};
   let tx = null;

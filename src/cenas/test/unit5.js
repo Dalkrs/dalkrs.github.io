@@ -9,6 +9,7 @@ const sandbox = {
   Path2D: function () {}, performance: { now: () => 0 },
   Render: { request() {} }, UI: { toast() {} }, Tools: { undo() {} }, Nuvem: { ping() {} },
   FX: { P: { fogo: { n: 'Fogo' }, gelo: { n: 'Gelo' }, sombra: { n: 'Sombra' }, cura: { n: 'Cura' } } },
+  Props: { P: { entrada: { n: 'Entrada', passagem: 'entra' } } },
   crypto: { getRandomValues(buf) { buf[0] = Math.floor(Math.random() * 4294967296); return buf; } },
 };
 vm.createContext(sandbox);
@@ -430,10 +431,10 @@ const ASSETS = {
 
 /* ============ o índice e as cenas que vêm de fora ============ */
 {
-  eq(Proj.normIndice(null), { v: 1, ordem: [], atual: null, noAr: null, tx: null, prefs: { barDefaults: null }, pastas: { lista: [], de: {} } }, 'índice vazio');
+  eq(Proj.normIndice(null), { v: 1, ordem: [], atual: null, noAr: null, tx: null, prefs: { barDefaults: null, modelos: [] }, pastas: { lista: [], de: {}, mae: {} } }, 'índice vazio');
   eq(Proj.normIndice({ ordem: ['cena_a', 'cena_a', 'com espaço', 7, 'cena_b'], atual: 'cena_b', noAr: '../x', prefs: { barDefaults: [{ n: 'PV', v: 3, m: 5, lixo: 1 }], anim: false } }),
-    { v: 1, ordem: ['cena_a', 'cena_b'], atual: 'cena_b', noAr: null, tx: null, prefs: { barDefaults: [{ n: 'PV', c: '#d6524b', v: 3, m: 5, k: 'bar', on: true, vis: '' }] }, pastas: { lista: [], de: {} } }, 'índice sujo: ids estranhos e repetidos saem; as barras padrão são limpas');
-  eq(Proj.normIndice({ ordem: ['pub', 'pedido', 'cena_a'], atual: 'pub', noAr: 'pedido' }), { v: 1, ordem: ['cena_a'], atual: null, noAr: null, tx: null, prefs: { barDefaults: null }, pastas: { lista: [], de: {} } }, 'nenhuma cena se chama "pub" nem "pedido"');
+    { v: 1, ordem: ['cena_a', 'cena_b'], atual: 'cena_b', noAr: null, tx: null, prefs: { barDefaults: [{ n: 'PV', c: '#d6524b', v: 3, m: 5, k: 'bar', on: true, vis: '' }], modelos: [] }, pastas: { lista: [], de: {}, mae: {} } }, 'índice sujo: ids estranhos e repetidos saem; as barras padrão são limpas');
+  eq(Proj.normIndice({ ordem: ['pub', 'pedido', 'cena_a'], atual: 'pub', noAr: 'pedido' }), { v: 1, ordem: ['cena_a'], atual: null, noAr: null, tx: null, prefs: { barDefaults: null, modelos: [] }, pastas: { lista: [], de: {}, mae: {} } }, 'nenhuma cena se chama "pub" nem "pedido"');
   eq([Proj.normIndice({ noAr: 'cena_a', tx: 'ap1k2j3h4g' }).tx, Proj.normIndice({ noAr: 'cena_a', tx: 'com espaço' }).tx, Proj.normIndice({ noAr: 'cena_a', tx: { toString: 1 } }).tx], ['ap1k2j3h4g', null, null], 'o índice guarda qual aparelho do mestre transmite a cena que está no ar (só se for um código de verdade)');
   // o resumo que serve de versão do mapa: o mesmo conteúdo dá sempre o mesmo, conteúdo diferente dá outro
   ok(typeof Proj.resumo('abc') === 'string' && Proj.resumo('abc') === Proj.resumo('abc') && Proj.resumo('abc') !== Proj.resumo('abd') && Proj.resumo('') !== Proj.resumo(' ') && new Set(Array.from({ length: 2000 }, (_, i) => Proj.resumo('mapa ' + i))).size === 2000, 'o resumo do mapa: igual para o mesmo texto, diferente para textos diferentes');
@@ -549,16 +550,51 @@ const ASSETS = {
   eq(p.lista.map(x => x.id + ':' + x.nome.length), ['pa_1:16', 'pa_4:40'], 'as pastas: id "pa_…" sem repetir, nome arrumado (até 40 letras), sem nome não vale');
   eq(p.lista[0].nome, 'Lugares do mundo', '(o nome sem os espaços a mais)');
   eq(p.de, { cena_a: 'pa_1', cena_c: 'pa_4' }, 'cada cena numa pasta que existe (id de cena válido); o resto sai');
-  eq(Proj.normPastas(null), { lista: [], de: {} }, 'sem nada: nenhuma pasta');
+  eq(Proj.normPastas(null), { lista: [], de: {}, mae: {} }, 'sem nada: nenhuma pasta');
   const muitas = Proj.normPastas({ lista: Array.from({ length: 60 }, (_, i) => ({ id: 'pa_' + i, nome: 'P' + i })) });
   ok(muitas.lista.length === 40, 'no máximo 40 pastas');
   const ix = Proj.normIndice({ ordem: ['cena_a'], pastas: { lista: [{ id: 'pa_1', nome: 'Combates' }], de: { cena_a: 'pa_1' } } });
-  eq(ix.pastas, { lista: [{ id: 'pa_1', nome: 'Combates' }], de: { cena_a: 'pa_1' } }, 'o índice das cenas guarda as pastas');
-  eq(Proj.normIndice({}).pastas, { lista: [], de: {} }, 'índice de antes das pastas: nenhuma');
+  eq(ix.pastas, { lista: [{ id: 'pa_1', nome: 'Combates' }], de: { cena_a: 'pa_1' }, mae: {} }, 'o índice das cenas guarda as pastas');
+  eq(Proj.normIndice({}).pastas, { lista: [], de: {}, mae: {} }, 'índice de antes das pastas: nenhuma');
   // as pastas não vão para os jogadores: não moram na cena (a projeção não as conhece)
   const sc = newScene('com pasta');
   const { m, v } = Proj.projetar(sc, {}, new Set());
   ok(!('pastas' in m) && !('pastas' in v), 'a projeção da cena não leva pasta nenhuma');
+}
+
+/* ============ (lote 7) as famílias de cenas e os modelos do gerador, no índice ============ */
+{
+  // cidade → bairro → casa; a volta (a cidade dentro da casa) sai; ela mesma, ids ruins e mães ruins saem
+  const f = Proj.normPastas({ mae: { cena_bairro: 'cena_cidade', cena_casa: 'cena_bairro', cena_cidade: 'cena_casa', cena_x: 'cena_x', 'id ruim!': 'cena_cidade', cena_y: 'pub', cena_z: 7 } });
+  eq(f.mae, { cena_bairro: 'cena_cidade', cena_casa: 'cena_bairro' }, 'as famílias: a filha aponta para a mãe; a que fecharia a volta, a que aponta para ela mesma e as de id ruim saem');
+  // duas cenas uma dentro da outra: fica a primeira
+  eq(Proj.normPastas({ mae: { cena_a: 'cena_b', cena_b: 'cena_a' } }).mae, { cena_a: 'cena_b' }, 'duas cenas uma dentro da outra: fica só a primeira');
+  // até seis níveis: a sétima geração fica sem mãe
+  const cadeia = {};
+  for (let i = 1; i <= 8; i++) cadeia['cena_' + i] = 'cena_' + (i - 1);
+  const nv = Proj.normPastas({ mae: cadeia }).mae;
+  eq(Object.keys(nv).sort(), ['cena_1', 'cena_2', 'cena_3', 'cena_4', 'cena_5', 'cena_7', 'cena_8'], 'até ' + Proj.MAX_NIVEIS + ' níveis: a cena que seria o sétimo nível fica sem mãe (e as de dentro dela começam outra família)');
+  eq(Proj.normIndice({ pastas: { mae: { cena_b: 'cena_a' } } }).pastas.mae, { cena_b: 'cena_a' }, 'o índice das cenas guarda as famílias');
+  // os modelos do gerador: id "md_…", nome, lugar, escolhas e trava de tamanho limitado; no máximo 30
+  const ms = Proj.normModelos([
+    { id: 'md_1', nome: '  Vila   do rio ', lugar: 'vila', o: { tamanho: 'vila', estilo: 'oriental' }, seed: 42.4, trava: { ruas: { y0: 1 } } },
+    { id: 'md_1', nome: 'repetido', lugar: 'vila', o: {} }, { id: 'xx', nome: 'id ruim', lugar: 'vila', o: {} }, { id: 'md_3', nome: '', lugar: 'vila', o: {} },
+    { id: 'md_4', nome: 'lugar ruim', lugar: 'Vila!', o: {} }, { id: 'md_5', nome: 'sem escolhas', lugar: 'vila' }, { id: 'md_6', nome: 'grande', lugar: 'vila', o: { x: 'a'.repeat(5000) } },
+    { id: 'md_7', nome: 'semente ruim', lugar: 'cidade', o: {}, seed: -3 }, null, 'x']);
+  eq(ms.map(m => [m.id, m.nome, m.lugar, m.seed]), [['md_1', 'Vila do rio', 'vila', 42], ['md_7', 'semente ruim', 'cidade', 1]], 'os modelos: id sem repetir, nome arrumado, lugar, escolhas que cabem; a semente inteira (a ruim vira 1)');
+  eq(ms[0].trava, { ruas: { y0: 1 } }, '(a trava vai junto, copiada)');
+  ok(Proj.normModelos(Array.from({ length: 40 }, (_, i) => ({ id: 'md_' + i, nome: 'M' + i, lugar: 'vila', o: {} }))).length === 30, 'no máximo 30 modelos');
+  eq(Proj.normIndice({ prefs: { modelos: [{ id: 'md_a', nome: 'A', lugar: 'vila', o: { casas: 5 }, seed: 9 }] } }).prefs.modelos, [{ id: 'md_a', nome: 'A', lugar: 'vila', o: { casas: 5 }, seed: 9, trava: null }], 'o índice das cenas guarda os modelos');
+  // aonde o objeto leva (a passagem) não vai para os jogadores
+  const sc = newScene('com passagem'), tk = newToken(sc, 0, 0, { name: 'Entrada' });
+  tk.cena = 'cena_dentro'; tk.prop = 'entrada'; sc.tokens.push(tk);
+  const { v } = Proj.projetar(sc, {}, new Set());
+  ok(v.tokens.length === 1 && !('cena' in v.tokens[0]), 'aonde a passagem leva é só do mestre (a projeção tira)');
+  normalizeScene(sc);
+  ok(sc.tokens[0].cena === 'cena_dentro', 'a cena guarda aonde o objeto leva');
+  const t2 = newToken(sc, 0, 0, { name: 'Token' }); t2.cena = 'cena_x'; sc.tokens.push(t2); const t3 = newToken(sc, 0, 0, { name: 'Ruim' }); t3.prop = 'entrada'; t3.cena = '../x'; sc.tokens.push(t3);
+  normalizeScene(sc);
+  ok(!('cena' in sc.tokens[1]) && !('cena' in sc.tokens[2]), 'só objetos de cenário levam a outra cena, e só com um id de cena que valha');
 }
 
 console.log(fails ? `${n - fails} verificações passaram, ${fails} falharam` : `${n} verificações passaram`);
