@@ -88,6 +88,8 @@
   const um = v => Math.round(v * 10) / 10;
   const limitar = (v, a, b) => Math.min(b, Math.max(a, v));
   const toqueGrosso = () => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } };
+  // (lote 7, parte 5a) "Animar os eventos" (o painel guarda, neste navegador): ligado de começo
+  const animarEventos = () => { try { const v = JSON.parse(localStorage.getItem('tinycats:mundo:painel') || 'null'); return !(v && v.animar === false); } catch (e) { return true; } };
   const semMovimento = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const num = (v, casas) => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: casas });
   const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t);
@@ -484,6 +486,8 @@
     // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
     svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length + C.zon.getElementsByClassName('zona-pulsa').length > 24);
     svg.classList.toggle('sem-marcha', C.fre.getElementsByClassName('frente-anda').length > 12);
+    // (lote 7, parte 5a) os desenhos animados dos eventos: com "Animar os eventos" desligado neste aparelho, ou muitos, param
+    svg.classList.toggle('sem-anima', !animarEventos() || C.eve.getElementsByClassName('eve-anim').length > 120);
     // Para quem vê a névoa fechada (jogador, "ver como jogador"), marcadores e selos vão por cima dela: só chega aqui o
     // que está à mostra (a projeção tira o que ela cobre), e perto da borda de uma clareira eles ficariam cortados.
     // O mestre vê a névoa translúcida por cima deles: sabe o que está coberto.
@@ -1253,6 +1257,100 @@
     g0.append(s('path', { class: 'rot-hit', d }));
     if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
+  /* (lote 7, parte 5a) O desenho de cada evento novo dentro da área dele (em unidades do mapa: acompanha o zoom), com a
+     animação leve (devagar; em pausa enquanto se mexe no mapa; parada com "Animar os eventos" desligado neste aparelho,
+     com muitas na tela, num evento fora da data e para quem pediu menos movimento). Os sorteios saem do id do evento: o
+     desenho não pula ao repintar. */
+  function sorteadorDe(txt) { let h = 2166136261; for (const ch of String(txt || 'e')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; }; }
+  function arteEvento(g0, o, cor, r) {
+    const T = o.tipo, cx = o.x, cy = o.y, rnd = sorteadorDe(o.id + T), P = (a, d) => [cx + Math.cos(a) * d, cy + Math.sin(a) * d];
+    const dentro = f => { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r * (f || 0.8); return P(a, d); };
+    const atraso = i => `animation-delay:${(i * 0.55 + rnd() * 0.4).toFixed(2)}s`;
+    const add = el => { el.classList.add('eve-arte'); g0.append(el); return el; };
+    const linhaS = (pts, at) => s('polyline', Object.assign({ points: pts.map(p => um(p[0]) + ',' + um(p[1])).join(' '), fill: 'none', 'vector-effect': 'non-scaling-stroke', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, at));
+    const estrela = (x, y, t, at) => s('path', Object.assign({ d: `M${um(x)} ${um(y - t)}L${um(x + t * 0.25)} ${um(y - t * 0.25)}L${um(x + t)} ${um(y)}L${um(x + t * 0.25)} ${um(y + t * 0.25)}L${um(x)} ${um(y + t)}L${um(x - t * 0.25)} ${um(y + t * 0.25)}L${um(x - t)} ${um(y)}L${um(x - t * 0.25)} ${um(y - t * 0.25)}Z` }, at));
+    const grad = (id, c, a) => s('defs', null, s('radialGradient', { id }, s('stop', { offset: '0%', 'stop-color': c, 'stop-opacity': a }), s('stop', { offset: '100%', 'stop-color': c, 'stop-opacity': 0 })));
+    switch (T) {
+      case 'meteoros':
+        for (let i = 0; i < 6; i++) { const [x, y] = dentro(0.75), L = r * 0.4; add(linhaS([[x - L * 0.5, y - L * 0.5], [x + L * 0.5, y + L * 0.5]], { class: 'eve-anim eve-risca', stroke: '#ffd59a', 'stroke-width': 2.5, pathLength: 100, style: atraso(i) })); }
+        for (let i = 0; i < 3; i++) { const [x, y] = dentro(0.6); add(s('circle', { cx: um(x), cy: um(y), r: um(r * 0.04), fill: '#3a2a1e', 'fill-opacity': 0.45 })); }
+        break;
+      case 'tribulacao':
+        for (let i = 0; i < 3; i++) { const [x, y] = dentro(0.6), L = r * 0.32; add(linhaS([[x, y - L], [x - L * 0.25, y - L * 0.1], [x + L * 0.15, y], [x - L * 0.1, y + L]], { class: 'eve-anim eve-raio', stroke: '#fff3a0', 'stroke-width': 3, style: `animation-delay:${(i * 1.3).toFixed(1)}s` })); }
+        break;
+      case 'eclipse': {
+        const id = idSvg('eg-', o.id);
+        add(grad(id, '#0b0a14', 0.75));
+        add(s('circle', { cx: um(cx), cy: um(cy), r: um(r), fill: `url(#${id})` }));
+        add(s('circle', { class: 'eve-anim eve-respira', cx: um(cx), cy: um(cy), r: um(r * 0.32), fill: '#0b0a14', stroke: '#f6e7a0', 'stroke-width': 3, 'vector-effect': 'non-scaling-stroke' }));
+        break;
+      }
+      case 'luaSangue': {
+        const id = idSvg('ls-', o.id), R = r * 0.34;
+        add(grad(id, '#b3261e', 0.45));
+        add(s('circle', { cx: um(cx), cy: um(cy), r: um(r), fill: `url(#${id})` }));
+        add(s('path', { class: 'eve-anim eve-respira', d: `M${um(cx + R * 0.3)} ${um(cy - R)}A${um(R)} ${um(R)} 0 1 0 ${um(cx + R * 0.95)} ${um(cy + R * 0.55)}A${um(R * 0.8)} ${um(R * 0.8)} 0 0 1 ${um(cx + R * 0.3)} ${um(cy - R)}Z`, fill: '#c0392b', 'fill-opacity': 0.55 }));
+        break;
+      }
+      case 'inverno':
+        for (let i = 0; i < 14; i++) { const [x, y] = dentro(0.75); add(s('circle', { class: 'eve-anim eve-neva', cx: um(x), cy: um(y - r * 0.2), r: um(r * 0.025), fill: '#ffffff', style: atraso(i) })); }
+        break;
+      case 'seca':
+        for (let i = 0; i < 6; i++) { const [x, y] = dentro(0.7), pts = [[x, y]]; let a = rnd() * Math.PI * 2; for (let k = 0; k < 3; k++) { a += (rnd() - 0.5) * 1.4; const p = pts[pts.length - 1]; pts.push([p[0] + Math.cos(a) * r * 0.12, p[1] + Math.sin(a) * r * 0.12]); } add(linhaS(pts, { stroke: '#6b4e24', 'stroke-opacity': 0.55, 'stroke-width': 2 })); }
+        break;
+      case 'terremoto':
+        for (let i = 0; i < 3; i++) { let a = rnd() * Math.PI * 2; const pts = [[cx, cy]]; for (let k = 1; k <= 4; k++) { a += (rnd() - 0.5) * 0.9; pts.push(P(a, r * 0.2 * k)); } add(linhaS(pts, { stroke: '#3a2a1a', 'stroke-opacity': 0.6, 'stroke-width': 3 })); }
+        break;
+      case 'erupcao':
+        for (let i = 0; i < 5; i++) { const [x, y] = dentro(0.25); add(s('circle', { class: 'eve-anim eve-sobe', cx: um(x), cy: um(y), r: um(r * 0.09), fill: '#5c534c', style: atraso(i) })); }
+        break;
+      case 'assombracao':
+        for (let i = 0; i < 4; i++) { const [x, y] = dentro(0.6); add(s('ellipse', { class: 'eve-anim eve-flutua', cx: um(x), cy: um(y), rx: um(r * 0.12), ry: um(r * 0.2), fill: '#e3ecff', style: atraso(i) })); }
+        break;
+      case 'reino':
+        add(s('circle', { class: 'eve-anim eve-gira', cx: um(cx), cy: um(cy), r: um(r * 0.55), fill: 'none', stroke: cor, 'stroke-width': 2.5, 'stroke-dasharray': '10 8', 'vector-effect': 'non-scaling-stroke' }));
+        for (let i = 0; i < 5; i++) { const [x, y] = dentro(0.7); add(estrela(x, y, r * 0.07, { class: 'eve-anim eve-brilha', fill: '#f3ecff', style: atraso(i) })); }
+        break;
+      case 'seita': {
+        const gg = add(s('g', { class: 'eve-anim eve-gira' }));
+        gg.append(s('circle', { cx: um(cx), cy: um(cy), r: um(r * 0.6), fill: 'none', stroke: cor, 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke' }));
+        for (let i = 0; i < 8; i++) { const [x, y] = P((i / 8) * Math.PI * 2, r * 0.6); gg.append(linhaS([[x - r * 0.04, y - r * 0.05], [x + r * 0.04, y + r * 0.05]], { stroke: cor, 'stroke-width': 2.5 })); }
+        break;
+      }
+      case 'bandidos':
+        add(s('circle', { class: 'eve-anim eve-gira', cx: um(cx), cy: um(cy), r: um(r * 0.82), fill: 'none', stroke: '#2a1a10', 'stroke-opacity': 0.55, 'stroke-width': 3, 'stroke-dasharray': '4 12', 'vector-effect': 'non-scaling-stroke' }));
+        break;
+      case 'cerco':
+        for (let i = 0; i < 10; i++) { const [x, y] = P((i / 10) * Math.PI * 2, r * 0.76), t = r * 0.07; add(s('path', { d: `M${um(x - t)} ${um(y + t * 0.7)}L${um(x)} ${um(y - t)}L${um(x + t)} ${um(y + t * 0.7)}Z`, fill: '#e8dcc0', stroke: '#3a2a1a', 'stroke-width': 1.2, 'vector-effect': 'non-scaling-stroke' })); }
+        add(s('circle', { cx: um(cx), cy: um(cy), r: um(r * 0.5), fill: 'none', stroke: cor, 'stroke-width': 2, 'stroke-dasharray': '3 6', 'vector-effect': 'non-scaling-stroke' }));
+        break;
+      case 'ponte': {
+        const t = r * 0.35;
+        add(linhaS([[cx - t, cy - t], [cx + t, cy + t]], { stroke: '#7a1f17', 'stroke-width': 5, 'stroke-opacity': 0.75 }));
+        add(linhaS([[cx + t, cy - t], [cx - t, cy + t]], { stroke: '#7a1f17', 'stroke-width': 5, 'stroke-opacity': 0.75 }));
+        break;
+      }
+      case 'caravana': case 'peregrinacao': case 'migracao': {
+        const a = rnd() * Math.PI;
+        add(linhaS([P(a + Math.PI, r * 0.8), P(a, r * 0.8)], { class: 'eve-anim eve-flui', stroke: T === 'migracao' ? '#5a2a10' : '#5a4220', 'stroke-opacity': 0.6, 'stroke-width': 3 }));
+        break;
+      }
+      case 'dragao': {
+        const w = r * 0.5, x = cx - w / 2, y = cy;
+        add(s('path', { class: 'eve-anim eve-plana', d: `M${um(x)} ${um(y)}C${um(x + w * 0.3)} ${um(y - w * 0.5)} ${um(x + w * 0.5)} ${um(y - w * 0.2)} ${um(x + w * 0.5)} ${um(y)}C${um(x + w * 0.5)} ${um(y - w * 0.2)} ${um(x + w * 0.7)} ${um(y - w * 0.5)} ${um(x + w)} ${um(y)}C${um(x + w * 0.7)} ${um(y - w * 0.15)} ${um(x + w * 0.3)} ${um(y - w * 0.15)} ${um(x)} ${um(y)}Z`, fill: '#120a08' }));
+        break;
+      }
+      case 'torneio': case 'coroacao': case 'leilao': case 'colheita':
+        for (let i = 0; i < 5; i++) { const [x, y] = dentro(0.7); add(estrela(x, y, r * 0.06, { class: 'eve-anim eve-brilha', fill: T === 'colheita' ? '#f2e6a0' : '#fff2c0', style: atraso(i) })); }
+        break;
+      case 'cacada':
+        add(s('circle', { class: 'eve-anim eve-respira', cx: um(cx), cy: um(cy), r: um(r * 0.45), fill: 'none', stroke: '#5a2a10', 'stroke-width': 2.5, 'stroke-opacity': 0.7, 'vector-effect': 'non-scaling-stroke' }));
+        break;
+      case 'golpe':
+        for (let i = 0; i < 3; i++) { const [x, y] = dentro(0.5), L = r * 0.25; add(linhaS([[x - L * 0.5, y + L * 0.5], [x + L * 0.5, y - L * 0.5]], { stroke: '#7a1f17', 'stroke-width': 3, 'stroke-opacity': 0.6 })); }
+        break;
+    }
+  }
   function evento(g0, o, ctx) {
     const def = defEvento(o.tipo), cor = def.cor || '#f0786e';
     const ativo = eventoAtivo(o, ctx.dia), r = raioNoDia(o, ctx.dia);
@@ -1261,6 +1359,7 @@
     if (r > 0) {
       const forca = limitar(Math.round(o.forca) || 1, 1, 3);
       g0.append(s('circle', { class: 'eve-area', cx: um(o.x), cy: um(o.y), r: um(r), fill: cor, stroke: cor, style: `fill-opacity:${[0.1, 0.16, 0.24][forca - 1]}` }));
+      arteEvento(g0, o, cor, r);
       if (ativo) for (const b of ['', ' b']) g0.append(s('circle', { class: 'eve-pulso' + b, cx: um(o.x), cy: um(o.y), r: um(r), stroke: cor, 'pointer-events': 'none' }));
     }
     // O selo (tamanho fixo na tela) vai na camada dos ícones, com os marcadores: para quem vê a névoa fechada ela fica
@@ -1738,8 +1837,12 @@
     const hx = N().hexDe(M, p.x, p.y);
     if (!hx) return '';
     const i = N().hexInfo(M, hx.q, hx.r);
-    const de = i.de === 'hex' ? ' (custo próprio)' : i.de === 'regiao' ? ' (da região ' + ((i.regiao.nome || '').trim() || 'sem nome') + ')' : i.de === 'base' ? ' (sem terreno)' : '';
-    return 'Aqui: ' + (i.terreno ? i.terreno.nome + (i.desenho ? ' (do desenho)' : '') : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.';
+    let de = i.de === 'hex' ? ' (custo próprio)' : i.de === 'regiao' ? ' (da região ' + ((i.regiao.nome || '').trim() || 'sem nome') + ')' : i.de === 'base' ? ' (sem terreno)' : '';
+    // (lote 7, parte 5a) os eventos de hoje que pesam ali: os cubos a mais e o que fecha a passagem
+    if (i.extra) de = de ? de.slice(0, -1) + '; +' + num(i.extra, 1) + ' dos eventos)' : ' (+' + num(i.extra, 1) + ' dos eventos)';
+    const fecha = i.fechado ? M.objs.find(o => o.id === i.fechado) : null;
+    return 'Aqui: ' + (i.terreno ? i.terreno.nome + (i.desenho ? ' (do desenho)' : '') : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.'
+      + (fecha ? ' Fechado: "' + N().nomeEvento(fecha) + '".' : '');
   }
 
   /* ---- trilho, opções e dica ---- */
@@ -2033,7 +2136,7 @@
     const q = preso(p);
     if (k === 'm') return criar('m', Object.assign({ x: q.x, y: q.y, ic: opt('ic'), rumor: !!opt('rumor') }, extra));
     if (k === 'g') return criar('g', Object.assign({ x: q.x, y: q.y }, extra));
-    if (k === 'e') return criar('e', Object.assign({ x: q.x, y: q.y, tipo: opt('tipo'), r: RAIO_EVENTO, ini: (App.mapa.cal && App.mapa.cal.dia) || 0 }, extra));
+    if (k === 'e') return criar('e', Object.assign({ x: q.x, y: q.y, tipo: opt('tipo'), r: RAIO_EVENTO, ini: (App.mapa.cal && App.mapa.cal.dia) || 0, peso: N().pesoPadrao(opt('tipo')) }, extra));
     return null;
   }
   function limitarDelta(objs, dx, dy) {

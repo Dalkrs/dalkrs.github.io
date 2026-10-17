@@ -1030,8 +1030,9 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   4b-3) com o terreno do hexágono onde o grupo está (pelo desenho do terreno, para
   valer também nos que o mestre criou: `ENC_DA_TEX` — a lavoura já na plantação, a savana no capim alto; um terreno sem
   desenho vira campo), o caminho da rota (estrada ou trilha; na planície com estrada, o encontro na estrada; numa rota
-  de mar, o navio; de rio, o barco), a hora do tempo de agora, o clima dos eventos de hoje que cobrem o lugar
-  (tempestade e inundação: chuva; incêndio: cinzas e brasas; magia: vaga-lumes) e o estilo da região. Nos marcadores
+  de mar, o navio; de rio, o barco), a hora do tempo de agora, o que os eventos de hoje que cobrem o lugar levam para
+  a cena (o clima, a hora, as zonas e o chão seco: "Os eventos na viagem e nas cenas", mais abaixo) e o estilo da
+  região. Nos marcadores
   de cidade, vila, porto (lote 7, parte 4b-2b), ponte, floresta e montanha e nos das ruínas (lote 7, parte 4b-3:
   ruína, templo, torre e castelo — o forte —, caverna — o círculo de pedras com a boca — e mina; o de masmorra, na aba
   Masmorra: 4b-3c), sem atalho,
@@ -1045,6 +1046,33 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **O estilo das cenas, por região (`r.estilo`).** "Estilo das cenas" na região (`ESTILOS_CENA`: Comum, Oriental,
   Nórdico, Desértico, Élfico, Anão): as cenas geradas lá dentro saem nele; vale a região mais de dentro que tiver um
   (uma sem estilo usa o da de fora). É só do mestre: a projeção tira.
+- **Os eventos na viagem e nas cenas (lote 7, parte 5a).** Os 24 tipos novos de evento (`EVENTOS`, de 12 para 36): na
+  estrada, Caravana mercante, Peregrinação, Bandidos na estrada, Ponte caída e Migração de monstros; no céu e na terra,
+  Eclipse, Chuva de meteoros, Lua de sangue, Tribulação celestial, Seca, Terremoto, Erupção e Inverno rigoroso; na
+  política, Torneio das seitas, Coroação ou casamento real, Golpe, Cerco e Leilão de tesouros; no mistério, Assombração,
+  Reino secreto aberto, Dragão avistado, Seita ou culto e Caçada a um procurado; e a Colheita farta. Um evento pode
+  pesar na viagem (`e.peso: { custo, enc, fecha }`; no painel do evento, "Na viagem"), nos hexágonos com o centro dentro
+  dele, enquanto acontece: os cubos a mais para entrar (somam por cima de tudo, até do custo próprio — `hexInfo` dá
+  `custo`, `custoBase`, `extra`, `eventos` e `fechado`), os pontos a mais (ou a menos) na chance do "Sortear encontro"
+  de um grupo dentro dele (o cartão mostra a conta: "Com os eventos: 10% da região, "Bandidos na estrada" +30% = 40%.")
+  e se ele fecha a passagem: ninguém entra nos hexágonos dele, e o grupo para no de antes (`marchar` devolve `parou`) —
+  o tempo passa, ele fica parado até o mestre abrir a passagem ou o evento acabar. O evento novo nasce com o peso de
+  começo do tipo (`PESO_EVENTO`: a tempestade, +5 cubos; a inundação e a erupção, +10; os bandidos e a migração, +30% de
+  encontro; a ponte caída, o terremoto e o cerco fecham a passagem; a colheita farta, −10%…); trocar o tipo leva o do
+  tipo novo, e "Voltar ao de começo do tipo" desfaz o que o mestre mudou. Os eventos de antes, sem `peso`, não pesam
+  até o mestre ligar "Pesa na viagem". O "+1 tempo" e o ▶ avisam quem parou ("— parado: "Ponte caída" fecha a
+  passagem.") e quem entrou num evento que pesa ("— agora dentro de "Tempestade" (+5 cubos por hexágono).": os três
+  primeiros; o resto, na aba Hoje), e a aba Hoje lista "Os eventos na viagem": quem está dentro de um evento que pesa e
+  quem está parado antes de uma passagem fechada. Na ferramenta Terreno, a dica do hexágono soma os cubos dos eventos e
+  diz o que fecha a passagem. O peso é só do mestre: a projeção tira. Para a cena gerada dentro de um evento
+  (`CENA_EVENTO`, com ou sem o peso ligado; `cenaNoPonto`): o clima (tempestade, inundação e tribulação: chuva;
+  incêndio, erupção e meteoros: cinzas e brasas; inverno: neve; assombração: neblina; magia e reino secreto:
+  vaga-lumes), a hora (o eclipse escurece tudo, o breu; a lua de sangue faz noite, se for de dia), as zonas que cobrem
+  a cena toda (a Lua de sangue e a Névoa de espíritos, leves e à mostra para todos) e o chão seco da seca (no
+  Encontro, o campo, a floresta, a selva e o pântano com o capim seco da savana; o resto do sorteio é o mesmo). Na
+  janela "Gerar um lugar", o clima e a hora já vêm escolhidos, e a chave "Com os eventos do Mapa-múndi (os nomes): o
+  chão seco e a zona … cobrindo a cena" tira o resto, se o mestre quiser (na masmorra, lá embaixo, os eventos não
+  chegam).
 - **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
   tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
   no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
@@ -1121,6 +1149,13 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   (`--mapa`), clara, com um contorno escuro grosso — nos dois temas, para ler sobre qualquer imagem. O nome de uma
   linha leva um toque da cor dela. Os textos livres continuam com a letra escolhida; as siglas dos grupos e a régua,
   com a letra do site.
+- **O desenho dos eventos** (lote 7, parte 5a, `arteEvento`): cada tipo novo tem a sua arte dentro da área, sorteada
+  pelo id do evento (sempre a mesma): os meteoros riscando o céu, os raios da tribulação, a neve caindo, a fumaça da
+  erupção, os espíritos da assombração, a lua de sangue e o eclipse respirando, o caminho da caravana correndo, o dragão
+  passando, as rachaduras da seca e do terremoto, o X da ponte caída, as tendas do cerco… Os que se mexem têm uma
+  animação leve, que só o navegador faz (nada é gravado). Fica parado enquanto o mapa se mexe, com mais de 120 peças
+  animadas na tela, no evento fora da data, para quem pede menos movimento no aparelho e quando o mestre desliga
+  "Animar os eventos (neste aparelho)" na aba Hoje (lembrado só neste navegador).
 - **A ordem das camadas** (de baixo para cima): hexágonos, regiões, linhas, carimbos, zonas de guerra, os nomes das
   regiões (`c-nreg`), textos, frentes, rotas, eventos, marcadores, névoa, grupos. A área da região fica por baixo das
   estradas, dos rios e dos carimbos; o nome dela, por cima.
@@ -1438,7 +1473,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1547,10 +1582,13 @@ travar o traçado clicando na prévia, "Gerar outro" e "Soltar tudo", os marcado
 dia, a palafita de noite com neblina, o rio de lava sem o relevo), o navio (a amurada de mureta, a escotilha e o porão
 com as cabines), a mureta (a visão passa, a passagem não) e o relevo leve desenhado, o que o Mapa-múndi manda para a
 janela e as regras dos planos em 144 sorteios (marcadores onde se pisa e longe um do outro, paredes de visão só junto
-do que é grande, a trava, a Surpresa variando; com `SO=encontro`, `cena`, `navio`, `mureta`, `mapa` ou `regras`);
+do que é grande, a trava, a Surpresa variando) e os eventos do Mapa-múndi na cena (a chave com os nomes e o que levam,
+o chão seco no mesmo traçado, a zona cobrindo a cena, a chave desligada, cada aba com o que vale nela; com
+`SO=encontro`, `cena`, `navio`, `mureta`, `mapa`, `regras` ou `eventos`);
 `mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
-clima, o estilo, o nome e o atalho), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
-no mapa gerando o encontro (de noite, com chuva, nórdico), a janela já aberta que não é atropelada, a vila do
+clima, o estilo, o nome e o atalho; e o que os eventos levam: o clima, o breu do eclipse, as zonas e o chão seco), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
+no mapa gerando o encontro (de noite, com chuva, nórdico; com a seca e a assombração, o chão seco e a Névoa de
+espíritos), a janela já aberta que não é atropelada, a vila do
 marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `src/cenas/test/lote7g.js` confere a aba Porto (os dois lugares, os tamanhos, os terrenos, as três chaves e o terreno, que não mexem no traçado — nem os barcos — e não soltam a trava, travar clicando no navio, a trava que só vale no mesmo lugar e no mesmo tamanho, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), a cena do porto (as paredes — os prédios, o farol, que tapa a visão, e a amurada dos navios —, as Entradas ocultas dos prédios e das escotilhas, os lampiões, o relevo do mar, dos molhes, do convés — debaixo dos castelos — e da galeria do farol, a luz do farol, a passagem pela prancha), o porão do navio (pelos dois cliques na escotilha), a vila de pescadores (o barco na cabeça em T ou ao lado do píer comprido, a praia, o mercado do peixe, a ponta de pedras), as regras dos planos em 120 sorteios (os prédios separados e de frente para o mar, a frente da porta livre, a taverna, os navios nos lugares deles com a prancha na abertura — desenhada e por onde se passa —, os barcos fora dos lugares dos navios, a estrada que sai, nada de árvore no mar; e poucas árvores entre as casas, com a mata cheia para dentro da terra), o desenho do mar (fundo e escuro longe da beira) e a Cidade com mar (sem o mar, os planos de antes, conferidos pelo resumo; com ele, a muralha aberta, sem portão para o mar, os navios, o bairro do porto, a rua do porto, o rio, o recorte do porto até a borda do mapa do lado do mar e a cena; com `SO=aba`, `cena`, `porao`, `vila`, `regras`, `desenho` ou `cidade`); `cenas-lote7g.rede`, numa mesa: o porto grande vai para a jogadora sem as Entradas (com a amurada do navio), e o navio por dentro. `src/cenas/test/lote7h.js` confere as masmorras: as regras dos planos em 144 sorteios (os quatro tipos, os três tamanhos, com e sem os segredos e a escada de descida: o mesmo sorteio dá o mesmo nível; as escadas no chão e ligadas uma à outra; todo o chão alcançável; as portas entre casas abertas; os objetos no chão, sem um em cima do outro; as runas escondidas e só com os segredos; o que cada tipo tem), a janela "Gerar o nível" (pela Entrada posta à mão), a cena (no breu, as paredes, as portas trancadas e secretas, as runas escondidas, a Saída e a Entrada do nível 2; quem joga não vê as Entradas nem as runas), o nível 2 (dentro do nível 1), o desenho dos quatro tipos e a aba Masmorra do "Gerar um lugar…" (sem a hora e o clima, o nível escolhido, "Embaixo de" na ordem das famílias, a cena solta com a Saída sem destino, a cena dentro da de cima com a Saída de volta, o nome e o id pedidos pelo Mapa-múndi; com `SO=regras`, `janela`, `cena`, `descer`, `desenho` ou `aba`); `cenas-lote7h.rede`, numa mesa: a jogadora recebe a masmorra com a porta secreta como parede comum, sem as runas nem as Entradas, e a porta vira porta quando o mestre revela. `src/cenas/test/lote7i.js` confere a aba Ruínas (os cinco lugares, os tamanhos, os terrenos e as duas chaves, que não mexem no traçado, travar clicando nas ruínas, a trava que só vale no mesmo lugar e no mesmo tamanho e vai embora ao trocar o lugar, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), as regras dos planos em 150 sorteios (o mesmo sorteio dá o mesmo lugar; as chaves e o terreno não mexem no traçado; a entrada da masmorra só com a chave, na escada ou na boca, no chão, alcançável andando de uma borda e sabendo o nível de baixo; as paredes que não se cruzam; o que cada lugar tem; a hera só com o mato, e nunca no telhado), a cena do templo (as paredes em ruína e as de visão das colunas, o relevo, a Entrada oculta da cripta), a cripta embaixo (pelos dois cliques na Entrada) e o desenho dos cinco lugares (com `SO=aba`, `regras`, `cena` ou `desenho`); `cenas-lote7i.rede`, numa mesa: o forte em ruínas vai para a jogadora com as paredes e o relevo, sem a Entrada da masmorra, e o mestre desce ao nível 1. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
@@ -1567,7 +1605,12 @@ joga), a honra (o estilo, − e +, o motivo, o selo de −5 a +5, o histórico c
 painel da facção (recursos, população, apoio, o histórico automático, o que os jogadores veem). `mundo-lote7` confere
 a pintura por hexágono de verdade (a tinta cobrindo, com textura, sem fresta entre dois terrenos e com a borda macia
 por fora), a força da tinta, a grade separada da tinta, os dias da semana e o tempo para todos (+1 tempo, Próximo dia,
-o ◀ só na data, Desfazer, quem joga e a tela estreita). `mundo-mesa` confere
+o ◀ só na data, Desfazer, quem joga e a tela estreita). `mundo-lote7b` confere os eventos novos (lote 7, parte 5a):
+a ferramenta com os 36 tipos, o peso de começo, o painel "Na viagem" (os cubos com vírgula, a chance, fechar, voltar
+ao de começo, desligar, trocar o tipo), a viagem com o "+1 tempo" (os hexágonos mais caros, a dica do Terreno, o aviso
+de quem entra, o grupo parado antes da ponte caída sem sair do lugar, a lista da aba Hoje, abrir a passagem,
+Desfazer), o cartão do encontro com a conta dos eventos, o desenho de cada tipo novo (animado ou parado) com a chave
+"Animar os eventos" e o que quem joga recebe (os eventos sem o peso e sem a lista). `mundo-mesa` confere
 também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
 lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
 itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma

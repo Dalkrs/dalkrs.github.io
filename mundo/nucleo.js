@@ -42,6 +42,56 @@
     incendio: { nome: 'Incêndio', cor: '#f08a3a', svg: '<path d="M12 3c4 4 6.5 7 6.5 11a6.5 6.5 0 0 1-13 0c0-3 1.7-5.2 3.2-6.5.1 2 1.1 3.3 2.3 3.5 0-3.5.2-5.6 1-8z"/>' },
     inundacao: { nome: 'Inundação', cor: '#5fa8d8', svg: '<path d="M2 8c2.5-2 4.5-2 6.5 0s4.5 2 6.5 0 4.5-2 6.5 0M2 13c2.5-2 4.5-2 6.5 0s4.5 2 6.5 0 4.5-2 6.5 0M2 18c2.5-2 4.5-2 6.5 0s4.5 2 6.5 0 4.5-2 6.5 0"/>' },
     descoberta: { nome: 'Descoberta', cor: '#6fbf8f', svg: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l6 6M10.5 7.5v6M7.5 10.5h6"/>' },
+    // (lote 7, parte 5a) os eventos novos: a estrada, o céu e a terra, a política, o mistério e a fartura
+    caravana: { nome: 'Caravana mercante', cor: '#d9a441', svg: '<path d="M2 15V8h11v7M13 11h4l3 3v1M2 15h18M4 8c0-2 2-3 4.5-3S13 6 13 8"/><circle cx="6" cy="17.5" r="2"/><circle cx="16" cy="17.5" r="2"/>' },
+    peregrinacao: { nome: 'Peregrinação', cor: '#e6d38a', svg: '<circle cx="10" cy="4.5" r="1.8"/><path d="M10 7l-1 6 2 3 1 5M9 13l-3 7M10 8l3 3M16 3v18M16 3l2 2"/>' },
+    bandidos: { nome: 'Bandidos na estrada', cor: '#a8643c', svg: '<path d="M3 10c3-2 15-2 18 0-1 4-4 5-9 5s-8-1-9-5zM7.5 11.5h2.5M14 11.5h2.5M6 15l-1 5M18 15l1 5"/>' },
+    ponte: { nome: 'Ponte caída', cor: '#8f8170', svg: '<path d="M2 9h8M14 9h8M4 9v11M20 9v11M10 9l1 3M14 9l-1 3M6.5 20a5 5 0 0 1 3.5-4.5M17.5 20a5 5 0 0 0-3.5-4.5"/>' },
+    migracao: { nome: 'Migração de monstros', cor: '#c97a3a', svg: '<path d="M3 17l5-5-5-5M10 17l5-5-5-5M17 17l4-5-4-5"/>' },
+    eclipse: { nome: 'Eclipse', cor: '#7b74b8', svg: '<circle cx="12" cy="12" r="5"/><path d="M14.5 8.2a5 5 0 1 0 0 7.6 4 4 0 0 1 0-7.6zM12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>' },
+    meteoros: { nome: 'Chuva de meteoros', cor: '#f0a35a', svg: '<circle cx="17" cy="17" r="3"/><path d="M15 15 5 5M19.5 13.5 12 6M13.5 19.5 6 12"/>' },
+    luaSangue: { nome: 'Lua de sangue', cor: '#c0392b', svg: '<path d="M15 3a9 9 0 1 0 6 13.5A7.5 7.5 0 0 1 15 3zM8.5 9v.01M10.5 14v.01M7 16v.01"/>' },
+    tribulacao: { nome: 'Tribulação celestial', cor: '#e8d870', svg: '<path d="M13 2 6 13h5l-2 9 8-12h-5zM3 5l2 2M21 5l-2 2M2 11h2M20 11h2"/>' },
+    seca: { nome: 'Seca', cor: '#d6b46a', svg: '<circle cx="12" cy="8" r="3.5"/><path d="M12 2v1.5M5.5 8H4M20 8h-1.5M7.4 3.4l1 1M16.6 3.4l-1 1M3 17h18M7 17l2 2-1 2M13 17l-1 2 2 2M18 17l1 2"/>' },
+    terremoto: { nome: 'Terremoto', cor: '#9a7b5f', svg: '<path d="M2 20h20M12 3l-2 5 3 3-3 4 2 5M5 9l2 2M19 9l-2 2M4 14h2M18 14h2"/>' },
+    erupcao: { nome: 'Erupção', cor: '#d2522e', svg: '<path d="M3 20l6-9h6l6 9zM9 11c1 1 5 1 6 0M12 8c-2-1-1.5-3 .5-3.5C12.5 3 14 2 15.5 3.5"/>' },
+    inverno: { nome: 'Inverno rigoroso', cor: '#a9cbe8', svg: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9.5 3.5 12 6l2.5-2.5M9.5 20.5 12 18l2.5 2.5"/>' },
+    torneio: { nome: 'Torneio das seitas', cor: '#e5b84f', svg: '<path d="M5 3l9.5 9.5M19 3 9.5 12.5M7 15l-3 3 2 2 3-3M17 15l3 3-2 2-3-3M8.5 12.5l3 3M15.5 12.5l-3 3"/>' },
+    coroacao: { nome: 'Coroação ou casamento real', cor: '#f2d16b', svg: '<path d="M3 18h18M4 18 3 7l5 4 4-6 4 6 5-4-1 11M12 14.5v.01"/>' },
+    golpe: { nome: 'Golpe', cor: '#b0413e', svg: '<path d="M14 3l7 7-9 9-4 1 1-4zM5 19l-2 2M8.5 15.5l-3 3M11 9l4 4"/>' },
+    cerco: { nome: 'Cerco', cor: '#c05a46', svg: '<path d="M9 21V10h6v11M9 10V7h1.5v1.5h1.5V7h1.5v1.5H15V7M3 21h18M3.5 14l2-1.5M20.5 14l-2-1.5M5 8l1.5 1M19 8l-1.5 1"/>' },
+    leilao: { nome: 'Leilão de tesouros', cor: '#e0b450', svg: '<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-5 5M18.5 11.5l-5 5M10 13l-7 7M3 21h8"/>' },
+    assombracao: { nome: 'Assombração', cor: '#9fb3d6', svg: '<path d="M6 21V10a6 6 0 0 1 12 0v11l-2-2-2 2-2-2-2 2-2-2zM10 10v.01M14 10v.01"/>' },
+    reino: { nome: 'Reino secreto aberto', cor: '#9b7fe0', svg: '<path d="M5 21V10a7 7 0 0 1 14 0v11M3 21h18M12 9l1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-.5z"/>' },
+    dragao: { nome: 'Dragão avistado', cor: '#d0603a', svg: '<path d="M3 15c3-1 5-4 6-9 1 3 3 4 5 4-1 2 0 4 2 5 2-2 4-2 5-1-3 1-5 3-7 6-2-2-5-3-11-5zM9 6l1 4"/>' },
+    seita: { nome: 'Seita ou culto', cor: '#7f5aa8', svg: '<path d="M12 3 2 20h20zM8 14c2-2.5 6-2.5 8 0-2 2.5-6 2.5-8 0zM12 14v.01"/>' },
+    cacada: { nome: 'Caçada a um procurado', cor: '#c9963a', svg: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5M12 12v.01"/>' },
+    colheita: { nome: 'Colheita farta', cor: '#a8c060', svg: '<path d="M12 21V8M12 8c-2-1-3-3-3-5 2 1 3 3 3 5zM12 8c2-1 3-3 3-5-2 1-3 3-3 5zM12 13c-2-1-3-3-3-5 2 1 3 3 3 5zM12 13c2-1 3-3 3-5-2 1-3 3-3 5zM12 18c-2-1-3-3-3-5 2 1 3 3 3 5zM12 18c2-1 3-3 3-5-2 1-3 3-3 5z"/>' },
+  };
+  /* (lote 7, parte 5a) O que cada tipo de evento pesa na viagem, de começo (o mestre muda em cada evento): custo = os
+     cubos a mais para entrar num hexágono dentro dele; enc = os pontos a mais (ou a menos) na chance do "Sortear
+     encontro" de um grupo dentro dele; fecha = ninguém entra nos hexágonos dele (o grupo para antes). */
+  const PESO_EVENTO = {
+    guerra: { custo: 5, enc: 20, fecha: false }, conflito: { custo: 0, enc: 10, fecha: false }, praga: { custo: 0, enc: 0, fecha: false },
+    fome: { custo: 0, enc: 0, fecha: false }, festival: { custo: 0, enc: 0, fecha: false }, tempestade: { custo: 5, enc: 0, fecha: false },
+    magia: { custo: 0, enc: 10, fecha: false }, monstro: { custo: 0, enc: 20, fecha: false }, revolta: { custo: 0, enc: 10, fecha: false },
+    incendio: { custo: 5, enc: 0, fecha: false }, inundacao: { custo: 10, enc: 0, fecha: false }, descoberta: { custo: 0, enc: 0, fecha: false },
+    caravana: { custo: 0, enc: 0, fecha: false }, peregrinacao: { custo: 0, enc: 0, fecha: false }, bandidos: { custo: 0, enc: 30, fecha: false },
+    ponte: { custo: 0, enc: 0, fecha: true }, migracao: { custo: 0, enc: 30, fecha: false }, eclipse: { custo: 0, enc: 10, fecha: false },
+    meteoros: { custo: 0, enc: 0, fecha: false }, luaSangue: { custo: 0, enc: 20, fecha: false }, tribulacao: { custo: 5, enc: 0, fecha: false },
+    seca: { custo: 0, enc: 0, fecha: false }, terremoto: { custo: 5, enc: 0, fecha: true }, erupcao: { custo: 10, enc: 0, fecha: false },
+    inverno: { custo: 5, enc: 0, fecha: false }, torneio: { custo: 0, enc: 0, fecha: false }, coroacao: { custo: 0, enc: 0, fecha: false },
+    golpe: { custo: 0, enc: 15, fecha: false }, cerco: { custo: 0, enc: 20, fecha: true }, leilao: { custo: 0, enc: 0, fecha: false },
+    assombracao: { custo: 0, enc: 15, fecha: false }, reino: { custo: 0, enc: 10, fecha: false }, dragao: { custo: 0, enc: 25, fecha: false },
+    seita: { custo: 0, enc: 10, fecha: false }, cacada: { custo: 0, enc: 5, fecha: false }, colheita: { custo: 0, enc: -10, fecha: false },
+  };
+  /* (lote 7, parte 5a) O que cada tipo de evento leva para a cena gerada dentro dele (o "Gerar a cena aqui" e o "Gerar
+     este lugar…" do Mapa-múndi): o clima, a hora, a zona de efeito que cobre a cena (fx) e o chão seco. */
+  const CENA_EVENTO = {
+    tempestade: { clima: 'chuva' }, inundacao: { clima: 'chuva' }, incendio: { clima: 'cinzas' }, magia: { clima: 'vagalumes' },
+    inverno: { clima: 'neve' }, erupcao: { clima: 'cinzas' }, meteoros: { clima: 'cinzas' }, tribulacao: { clima: 'chuva' },
+    assombracao: { clima: 'neblina', fx: 'espiritos' }, reino: { clima: 'vagalumes' }, eclipse: { hora: 'breu' },
+    luaSangue: { hora: 'noite', fx: 'luaSangue' }, seca: { seco: true },
   };
   // Cores de facção: médias, para a região (preenchida a 20%) e a frente lerem bem no tema escuro e no claro.
   const CORES = ['#c0503a', '#3f7fbf', '#3f9a5c', '#c9922e', '#8a5cc0', '#c0457f', '#2f9a9a', '#8a9a3a', '#a0623a', '#5a6fd0'];
@@ -367,6 +417,47 @@
     if (dia == null) dia = ehObj(mapa) && ehObj(mapa.cal) ? mapa.cal.dia : 0;
     return objs.filter(o => ehObj(o) && o.k === 'e' && eventoAtivo(o, dia));
   }
+  const diaDe = (mapa, dia) => (dia != null ? num(dia, 0) : ehObj(mapa) && ehObj(mapa.cal) ? num(mapa.cal.dia, 0) : 0);
+  const nomeEvento = e => (ehObj(e) ? texto(e.nome).trim() || (EVENTOS[e.tipo] || EVENTOS.guerra).nome : 'Evento');
+  /* (lote 7, parte 5a) Os eventos de hoje que pesam na viagem (com o peso ligado e algum efeito), guardados por mapa e
+     dia (toda mudança no mapa faz outro objeto; o dia pode mudar dentro de um rascunho, por isso ele entra na conta). */
+  const pesadosDe = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function eventosPesados(mapa, dia) {
+    const d = diaDe(mapa, dia);
+    if (pesadosDe && ehObj(mapa)) { const c = pesadosDe.get(mapa); if (c && c.d === d) return c.l; }
+    const l = eventosDoDia(mapa, d).filter(e => ehObj(e.peso) && (num(e.peso.custo, 0) || num(e.peso.enc, 0) || e.peso.fecha));
+    if (pesadosDe && ehObj(mapa)) pesadosDe.set(mapa, { d, l });
+    return l;
+  }
+  /* O que os eventos de hoje pesam num ponto (o raio do dia): os cubos a mais, os pontos de encontro a mais (ou a
+     menos), o primeiro que fecha a passagem (ou null) e todos os que pesam ali. */
+  function pesoNoPonto(mapa, x, y, dia) {
+    const d = diaDe(mapa, dia), out = { custo: 0, enc: 0, fecha: null, eventos: [] };
+    for (const e of eventosPesados(mapa, d)) {
+      if (Math.hypot(num(x, 0) - e.x, num(y, 0) - e.y) > raioNoDia(e, d)) continue;
+      out.custo += num(e.peso.custo, 0); out.enc += num(e.peso.enc, 0);
+      if (e.peso.fecha && !out.fecha) out.fecha = e;
+      out.eventos.push(e);
+    }
+    out.custo = Math.round(out.custo * 10) / 10;
+    return out;
+  }
+  /* (lote 7, parte 5a) O que os eventos de hoje levam para a cena gerada num ponto (CENA_EVENTO): o clima do primeiro
+     que dá clima, a hora (o breu do eclipse vence a noite da lua de sangue), as zonas de efeito (sem repetir) e o chão
+     seco. Vale com ou sem o peso ligado. */
+  function cenaNoPonto(mapa, x, y, dia) {
+    const d = diaDe(mapa, dia), out = { clima: '', hora: '', fx: [], seco: false, eventos: [] };
+    for (const e of eventosDoDia(mapa, d)) {
+      const c = CENA_EVENTO[e.tipo];
+      if (!c || Math.hypot(num(x, 0) - e.x, num(y, 0) - e.y) > raioNoDia(e, d)) continue;
+      if (c.clima && !out.clima) out.clima = c.clima;
+      if (c.hora && (!out.hora || c.hora === 'breu')) out.hora = c.hora;
+      if (c.fx && !out.fx.includes(c.fx)) out.fx.push(c.fx);
+      if (c.seco) out.seco = true;
+      out.eventos.push(e);
+    }
+    return out;
+  }
 
   /* ---------------- zonas de guerra ---------------- */
   // A fase da zona que vale no dia (a última que já começou), ou -1: antes de qualquer fase vale a forma de partida.
@@ -492,7 +583,7 @@
   /* Tudo sobre um hexágono: o terreno, o custo e de onde ele vem ('hex', 'regiao', 'terreno' ou 'base'). O terreno é
      o que o mestre deu ao hexágono ('-' = nenhum, mesmo com o desenho por baixo), senão o do desenho à mão (desenho:
      true). */
-  function hexInfo(m, q, r) {
+  function hexInfoBase(m, q, r) {
     const k = q + ',' + r, v = ehObj(m) && ehObj(m.hexes) ? m.hexes[k] : undefined;
     const ex = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', proprio = Array.isArray(v) && v[1] != null ? num(v[1], null) : null;
     const t = ex === '-' ? null : terrenoDe(m, ex || terrenoPintado(m).get(k) || ''), desenho = !ex && !!t;
@@ -501,6 +592,16 @@
     if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg, desenho };
     if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null, desenho };
     return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null, desenho };
+  }
+  /* (lote 7, parte 5a) Os eventos de hoje que cobrem o centro do hexágono somam o peso deles por cima de tudo (até do
+     custo próprio): custo (o total), custoBase (sem os eventos), eventos (os ids), extra (os cubos dos eventos) e
+     fechado (o id do evento que fecha a passagem ali, ou null). */
+  function hexInfo(m, q, r) {
+    const i = hexInfoBase(m, q, r);
+    if (!eventosPesados(m).length) return i;
+    const c = centroHex(m, q, r), p = pesoNoPonto(m, c.x, c.y);
+    if (!p.eventos.length) return i;
+    return Object.assign(i, { custo: Math.round((i.custo + p.custo) * 10) / 10, custoBase: i.custo, extra: p.custo, eventos: p.eventos.map(e => e.id), fechado: p.fecha ? p.fecha.id : null });
   }
   const custoHex = (m, q, r) => hexInfo(m, q, r).custo;
   // Medir de um ponto a outro: hexágonos em linha reta, os cubos disso e quanto custa pelo terreno de cada um.
@@ -588,14 +689,25 @@
       const c = centroHex(mapa, v.cam[ult].q, v.cam[ult].r);
       return Object.assign(base, { x: arred(c.x), y: arred(c.y), prog: arred(v.total), chegou: true, msg: 'Chegou ao fim da rota' });
     }
-    const n = noAndado(mapa, v, Math.min(v.total, antes + Math.max(0, num(cubos, 0)))), j = n.j, anda = j - i;
+    // (lote 7, parte 5a) um evento que fecha a passagem: o grupo não entra no primeiro hexágono fechado do caminho — para
+    // no de antes, sem guardar andado rumo a ele
+    let lim = ult, fechou = null;
+    if (eventosPesados(mapa).length) for (let k = i + 1; k <= ult; k++) { const f = hexInfo(mapa, v.cam[k].q, v.cam[k].r).fechado; if (f) { lim = k - 1; fechou = objDe(mapa, f, 'e'); break; } }
+    if (fechou && lim <= i) {
+      const n0 = noAndado(mapa, v, v.acum[i]);
+      return { ok: true, cubos: 0, hexes: 0, x: n0.x, y: n0.y, prog: n0.prog, chegou: false, parou: { id: fechou.id, nome: nomeEvento(fechou) }, msg: 'Parou: "' + nomeEvento(fechou) + '" fecha a passagem' };
+    }
+    const n = noAndado(mapa, v, Math.min(v.acum[lim], antes + Math.max(0, num(cubos, 0)))), j = n.j, anda = j - i;
+    const parou = fechou && j >= lim ? { id: fechou.id, nome: nomeEvento(fechou) } : null;
     let msg;
-    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(n.prog - antes) + ' cubos)' + (n.chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(v.total - n.prog) + ' cubos)');
+    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(n.prog - antes) + ' cubos)' + (parou ? ' e parou: "' + parou.nome + '" fecha a passagem' : n.chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(v.total - n.prog) + ' cubos)');
     else {
       const prox = hexInfo(mapa, v.cam[j + 1].q, v.cam[j + 1].r);
       msg = 'Ainda no caminho do próximo hexágono' + (prox.terreno ? ' (' + (prox.terreno.nome || 'terreno') + ')' : '') + ': ' + n1(n.prog - v.acum[j]) + ' de ' + n1(v.acum[j + 1] - v.acum[j]) + ' cubos';
     }
-    return { ok: true, cubos: arred(n.prog - antes), hexes: anda, x: n.x, y: n.y, prog: n.prog, chegou: n.chegou, msg };
+    const out = { ok: true, cubos: arred(n.prog - antes), hexes: anda, x: n.x, y: n.y, prog: n.prog, chegou: n.chegou, msg };
+    if (parou) out.parou = parou;
+    return out;
   }
   // n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes)
   function andarTempos(mapa, grupoId, n) {
@@ -668,9 +780,10 @@
     c.getRandomValues(b);
     return b[0] / 4294967296;
   }
-  function sortearEncontro(regiao, rng = sorteio) {
+  // extra: (lote 7, parte 5a) os pontos que os eventos de hoje somam (ou tiram) da chance da região, onde o grupo está
+  function sortearEncontro(regiao, rng = sorteio, extra = 0) {
     const enc = ehObj(regiao) && ehObj(regiao.enc) ? regiao.enc : {};
-    const chance = inteiro(enc.chance, 0, 0, 100);
+    const chance = limitar(inteiro(enc.chance, 0, 0, 100) + Math.round(num(extra, 0)), 0, 100);
     const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt, '') }));
     const total = itens.reduce((s, it) => s + it.p, 0);
     const d100 = limitar(1 + Math.floor(num(rng(), 0) * 100), 1, 100);
@@ -681,7 +794,7 @@
       for (const it of itens) { if (s < it.p) { item = it.txt; peso = it.p; break; } s -= it.p; }
       if (item === null) { const it = itens[itens.length - 1]; item = it.txt; peso = it.p; }
     }
-    return { houve, d100, chance, item, peso, total };
+    return { houve, d100, chance, base: inteiro(enc.chance, 0, 0, 100), extra: Math.round(num(extra, 0)), item, peso, total };
   }
 
   /* ---------------- névoa ---------------- */
@@ -785,6 +898,16 @@
   const sigla = v => { const s = Array.from(texto(v, '', 40).trim().toUpperCase()).slice(0, 3).join(''); return s || 'GR'; };
   // um custo em cubos (de 0,1 a 9999, com uma casa); vazio ou inválido = nenhum (null)
   const custoOuNada = v => { if (v == null || v === '') return null; const n = num(v, NaN); return Number.isFinite(n) && n > 0 ? Math.round(limitar(n, 0.1, MAX_CUSTO) * 10) / 10 : null; };
+  /* (lote 7, parte 5a) o que um evento pesa na viagem: { custo (cubos a mais por hexágono, 0 a 999, uma casa), enc
+     (pontos a mais ou a menos na chance de encontro, −100 a 100), fecha }; sem o campo (os eventos de antes da 5a, ou o
+     mestre desligou), null: o evento não pesa. */
+  function normPeso(v) {
+    if (!ehObj(v)) return null;
+    const c = num(v.custo, 0), e = num(v.enc, 0);
+    return { custo: Number.isFinite(c) ? Math.round(limitar(c, 0, 999) * 10) / 10 : 0, enc: Number.isFinite(e) ? Math.round(limitar(e, -100, 100)) : 0, fecha: sim(v.fecha) };
+  }
+  // o peso de começo de um tipo de evento (uma cópia)
+  const pesoPadrao = tipo => Object.assign({}, PESO_EVENTO[tipo] || PESO_EVENTO.guerra);
   // os cubos por dia de um grupo (um grupo de antes tinha o ritmo, em km por dia)
   const cubosDoDia = o => { const n = num(o.cubos, NaN); return Number.isFinite(n) && n > 0 ? Math.round(limitar(n, 1, MAX_CUSTO) * 10) / 10 : (tem(RITMO_ANTIGO, o.ritmo) ? RITMO_ANTIGO[o.ritmo] : CUBOS_DIA); };
   /* A grade. Um mapa de antes (sem grade, com a escala em km) ganha a grade que dá a mesma escala, com 1 km = 1 cubo,
@@ -910,8 +1033,12 @@
         const ini = o.ini == null || o.ini === '' ? (dia == null ? null : dia) : inteiro(o.ini, dia == null ? 0 : dia, 0, 1e9);
         let fim = o.fim == null || o.fim === '' ? null : inteiro(o.fim, null, 0, 1e9);
         if (fim != null && ini != null && fim < ini) fim = ini;
-        return Object.assign(b, { tipo: escolha(EVENTOS, o.tipo, 'guerra'), r: arred(limitar(num(o.r, 80), 1, MAX_COORD)), ini, fim,
+        const ev = Object.assign(b, { tipo: escolha(EVENTOS, o.tipo, 'guerra'), r: arred(limitar(num(o.r, 80), 1, MAX_COORD)), ini, fim,
           cresce: arred(limitar(num(o.cresce, 0), -MAX_COORD, MAX_COORD)), forca: inteiro(o.forca, 1, 1, 3) });
+        // (lote 7, parte 5a) o que ele pesa na viagem (só quando tem: os eventos de antes não pesam até o mestre ligar)
+        const peso = normPeso(o.peso);
+        if (peso) ev.peso = peso;
+        return ev;
       }
       case 't': {
         const pts = pontos(o.pts, leve ? 0 : 2);
@@ -1302,8 +1429,8 @@
       else if (o.k === 'g') { if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol; }
       else if (o.k === 'e') {
         if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue;
-        // o evento como ele está hoje: o fim planejado e o quanto ainda vai crescer são do mestre
-        o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
+        // o evento como ele está hoje: o fim planejado, o quanto ainda vai crescer e o peso na viagem são do mestre
+        o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null; delete o.peso;
       }
       else if (o.k === 'r') { delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
@@ -1326,7 +1453,7 @@
   }
 
   const MundoNucleo = {
-    ICONES, EVENTOS, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,
+    ICONES, EVENTOS, PESO_EVENTO, CENA_EVENTO, pesoPadrao, normPeso, pesoNoPonto, cenaNoPonto, nomeEvento, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,
     novoId, mapaNovo, objNovo, faccaoNova, normalizarMapa,
     diasNoAno, dataDe, textoData, SEMANA, semanaDe, diaDaSemana, textoDataSemana, sem0Para,
     dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,

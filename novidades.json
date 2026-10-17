@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-7",
+      "data": "2026-10-17",
+      "titulo": "Os eventos pesam na viagem",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: 24 eventos novos, cada um com o seu desenho e uma animação leve — Caravana mercante, Peregrinação, Bandidos na estrada, Ponte caída, Migração de monstros, Eclipse, Chuva de meteoros, Lua de sangue, Tribulação celestial, Seca, Terremoto, Erupção, Inverno rigoroso, Torneio das seitas, Coroação ou casamento real, Golpe, Cerco, Leilão de tesouros, Assombração, Reino secreto aberto, Dragão avistado, Seita ou culto, Caçada a um procurado e Colheita farta. Quem preferir tudo parado desliga “Animar os eventos (neste aparelho)” na aba Hoje."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: os eventos pesam na viagem. No painel do evento, “Na viagem”: os cubos a mais para entrar em cada hexágono dele, a chance de encontro a mais (ou a menos) e se ele fecha a passagem — aí o grupo para no hexágono de antes, com o aviso. Cada evento novo já vem com o peso do tipo (a tempestade, +5 cubos; os bandidos, +30% de encontro; a ponte caída fecha a passagem), e você muda à vontade; os eventos que já estavam no mapa só pesam se você ligar."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o “+1 tempo” e o “Próximo dia” avisam quem parou numa passagem fechada e quem entrou num evento que pesa; a aba Hoje lista “Os eventos na viagem”; o cartão do “Sortear encontro” mostra a conta com os eventos; e a dica da ferramenta Terreno soma os cubos dos eventos no hexágono."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas geradas pelo Mapa-múndi: cada evento leva o seu clima e a sua hora para a cena (o inverno, neve; a erupção e os meteoros, cinzas; a assombração, neblina e a Névoa de espíritos; o eclipse, o breu; a lua de sangue, a noite e a zona Lua de sangue; a seca, o chão seco no encontro). Na janela “Gerar um lugar”, uma chave tira o que veio dos eventos."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-6",
       "data": "2026-10-17",
       "titulo": "A masmorra direto no gerador",

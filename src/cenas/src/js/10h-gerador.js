@@ -40,6 +40,19 @@ const Gerador = (() => {
     return [p[0], p[1]];
   }
 
+  /* (lote 7, parte 5a) A chave dos eventos do Mapa-múndi: os nomes deles e o que levam para a cena. */
+  function textoEventos(ev) {
+    const leva = [];
+    if (ev.seco) leva.push('o chão seco');
+    for (const k of ev.fx) leva.push('a zona ' + FX.P[k].n + ' cobrindo a cena');
+    return 'Com os eventos do Mapa-múndi' + (ev.nomes.length ? ' (' + ev.nomes.join(', ') + ')' : '') + ': ' + leva.join(' e ');
+  }
+  // as zonas dos eventos cobrindo a cena toda (leves: o véu e o contorno), à mostra para todos; um passo de criar
+  function cobrirComZonas(sc, fxs) {
+    const c = sc.cell, W = sc.cols, H = sc.rows;
+    for (const k of fxs) sc.effects.push({ id: uid('fx'), fx: k, k: 'circ', x: W * c / 2, y: H * c / 2, r: Math.ceil(Math.hypot(W, H) / 2) + 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.6, token: null, gm: false, leve: true, by: null, seed: 1 + Math.floor(Math.random() * 997), dur: 0, dur0: 0, at: null, apply: null });
+    normalizeScene(sc); Persist.scene(sc.id);
+  }
   /* Abre a janela. lugarId: a aba que abre ('vila'); pre: escolhas que já vêm feitas ({ op, estilo, hora, clima, relevo }) e,
      quando quem pede é o Mapa-múndi, o nome da cena (nome) e o id que ela vai ter (id: o marcador do mapa já leva a ele). */
   function abrir(lugarId, pre) {
@@ -58,6 +71,16 @@ const Gerador = (() => {
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
       if (typeof pre.relevo === 'boolean') comum.relevo = pre.relevo;
     }
+    /* (lote 7, parte 5a) o que os eventos do Mapa-múndi levam para a cena (o clima e a hora já vêm nas escolhas de baixo):
+       o chão seco (a seca) e as zonas que cobrem a cena (a Lua de sangue, a Névoa de espíritos). Uma chave tira. */
+    const evPedido = pre && typeof pre === 'object' && (pre.seco === true || (Array.isArray(pre.fx) && pre.fx.some(k => FX.P[k])))
+      ? { seco: pre.seco === true, fx: (Array.isArray(pre.fx) ? pre.fx : []).filter(k => FX.P[k]).slice(0, 4), nomes: (Array.isArray(pre.eventos) ? pre.eventos : []).filter(x => typeof x === 'string').slice(0, 6) } : null;
+    comum.comEventos = !!evPedido;
+    // o que vale em cada aba: o chão seco só onde o gerador sabe secar (L.aceitaSeco: o Encontro); lá embaixo
+    // (L.semHora: a masmorra), nada
+    const evDaAba = l => !evPedido || l.semHora ? null : { seco: evPedido.seco && !!l.aceitaSeco, fx: evPedido.fx, nomes: evPedido.nomes };
+    const temEv = l => { const e = evDaAba(l); return !!e && (e.seco || e.fx.length > 0); };
+    const usaEv = l => comum.comEventos && temEv(l);
     let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
     const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
     const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
@@ -114,7 +137,7 @@ const Gerador = (() => {
     }
     function refazer() {
       const E = estadoDe(L);
-      E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base });
+      E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco });
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
       try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
@@ -224,7 +247,8 @@ const Gerador = (() => {
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
-          K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)')));
+          K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
+          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
@@ -248,6 +272,7 @@ const Gerador = (() => {
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
           l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
+            if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             UI.closeModal();
             UI.switchScene(sc.id);
             UI.toast(l.feito(sc, p), { long: true });

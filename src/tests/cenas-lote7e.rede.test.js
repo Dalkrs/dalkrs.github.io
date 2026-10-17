@@ -3,6 +3,7 @@
 //   · "Gerar a cena aqui" no grupo: a aba Cenas abre a janela "Gerar um lugar" na aba Encontro, já com o terreno do
 //     hexágono (floresta), o caminho da rota (estrada), a hora do tempo de agora (o calendário diz quando escurece), o
 //     clima do evento que cobre o grupo (tempestade → chuva) e o estilo da região (Nórdico); nada muda até criar;
+//     (lote 7, parte 5a) a seca e a assombração no mesmo lugar: a chave dos eventos, o chão seco e a Névoa de espíritos;
 //   · "Gerar este lugar…" no marcador de uma vila: a janela abre na aba Vila, com o nome do marcador e o terreno do
 //     hexágono (neve); o marcador fica ligado à cena que vai nascer (Desfazer volta); cancelar não cria nada e o botão
 //     continua "Gerar este lugar…"; criar faz a cena com o id do atalho, e o marcador passa a abrir a cena;
@@ -57,7 +58,10 @@ const j = JSON.stringify;
         const reg = Object.assign(N.objNovo('r', { pts: [[a.x - 120, a.y - 120], [a.x + 120, a.y - 120], [a.x + 120, a.y + 120], [a.x - 120, a.y + 120]] }), { nome: 'Terras do Norte' });
         const ev = N.objNovo('e', { x: a.x, y: a.y, tipo: 'tempestade', r: 90, ini: m.cal.dia, nome: 'Tempestade' });
         const vila = N.objNovo('m', { x: v.x, y: v.y, ic: 'vila', nome: 'Vila do Gelo' });
-        m.objs.push(rt, g, reg, ev, vila);
+        // (lote 7, parte 5a) a seca e a assombração no mesmo lugar: o chão seco e a Névoa de espíritos na cena
+        const seca = N.objNovo('e', { x: a.x, y: a.y, tipo: 'seca', r: 90, ini: m.cal.dia });
+        const ass = N.objNovo('e', { x: a.x, y: a.y, tipo: 'assombracao', r: 90, ini: m.cal.dia });
+        m.objs.push(rt, g, reg, ev, seca, ass, vila);
         Object.assign(out, { g: g.id, reg: reg.id, vila: vila.id });
         m.cal.tempo = 3;                                   // o 4º tempo do dia: de fábrica, ainda é dia
       });
@@ -88,12 +92,17 @@ const j = JSON.stringify;
     ok(g1.lugar === 'encontro' && g1.op.terreno === 'floresta' && g1.op.caminho === 'estrada' && g1.op.situacao === 'surpresa', 'na aba Encontro, com o terreno do hexágono (floresta), a estrada da rota e a situação sorteada: ' + j(g1.op));
     ok(g1.estilo === 'nordico' && g1.hora === 'noite' && g1.clima === 'chuva', 'o estilo da região (Nórdico), a hora do tempo de agora (noite) e o clima da tempestade (chuva): ' + j([g1.estilo, g1.hora, g1.clima]));
     ok(g1.cenas === cenasAntes, 'nada muda nas cenas até o mestre criar');
+    const ev1 = await C.evaluate(() => { const el = document.getElementById('ger-eventos'), sw = el && el.closest('.sw'); return { txt: sw ? sw.innerText.replace(/\s+/g, ' ').trim() : '', seco: !!__tc.Gerador.vivo().estado.plano.seco }; });
+    ok(ev1.txt === 'Com os eventos do Mapa-múndi (Tempestade, Seca, Assombração): o chão seco e a zona Névoa de espíritos cobrindo a cena' && ev1.seco,
+      'os eventos do mapa chegam à janela: a chave com os nomes, o chão seco e a zona — ' + j(ev1));
     await foto(M, 'l7e-gerar-aqui');
     await C.locator('.modal .btn.primary', { hasText: 'Criar a cena' }).click();
     ok(await ate(async () => await C.evaluate(n => Object.keys(__tc.Store.S.scenes).length === n + 1 && !document.querySelector('.modal'), cenasAntes), 40000), 'o mestre cria a cena');
     const enc = await C.evaluate(() => { const s = __tc.Store.scene(); return { nome: s.name, tom: s.tone, clima: s.weather && s.weather.k, cols: s.cols, marcas: s.tokens.filter(x => x.prop === 'chegada' || x.prop === 'emboscada').map(x => x.prop + (x.hidden ? ':oculto' : '')).sort() }; });
     ok(enc.tom === 'noite' && enc.clima === 'chuva' && enc.cols === 32 && /floresta/i.test(enc.nome), 'a cena sai de noite, com chuva, do tamanho médio, e com o nome do lugar: ' + j(enc));
     ok(j(enc.marcas) === j(['chegada:oculto', 'emboscada:oculto']), 'com a chegada e a emboscada marcadas, só para o mestre: ' + j(enc.marcas));
+    const zonas = await C.evaluate(() => __tc.Store.scene().effects.filter(e => e.fx === 'espiritos').map(e => ({ leve: !!e.leve, gm: !!e.gm })));
+    ok(j(zonas) === j([{ leve: true, gm: false }]), 'e com a Névoa de espíritos da assombração cobrindo a cena (leve, à mostra): ' + j(zonas));
     ok(await ate(async () => await parado(M) && await C.evaluate(() => __tc.Persist.status() === 'ok'), 30000), '(a cena foi salva)');
 
     // ---------- com uma janela aberta nas Cenas, o pedido do mapa não a atropela ----------

@@ -471,9 +471,10 @@
     sortearEm(r, g);
   }
   function sortearEm(reg, g) {
-    const m = App.mapa;
+    const m = App.mapa, pe = g ? N().pesoNoPonto(m, g.x, g.y) : null;          // (lote 7, parte 5a) os eventos onde o grupo está
     encontro = { grupo: g ? g.id : null, grupoNome: g ? nomeDe(g, m) : '', regiao: reg.id, regiaoNome: nomeDe(reg, m),
-      r: N().sortearEncontro(reg), mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1 };
+      r: N().sortearEncontro(reg, undefined, pe ? pe.enc : 0), causas: pe ? pe.eventos.filter(e => e.peso.enc).map(e => [N().nomeEvento(e), e.peso.enc]) : [],
+      mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1 };
     agendar();
   }
   function textoEncontro(e, grupoNome) {
@@ -508,6 +509,8 @@
       corpo = r.item || 'Houve encontro, mas a tabela da região está sem resultados escritos.';
       det = 'd100: ' + r.d100 + ' (chance ' + r.chance + '%)' + (r.total ? ' · peso ' + r.peso + ' de ' + r.total : '');
     }
+    // (lote 7, parte 5a) os eventos que mudaram a chance
+    const causas = e.causas && e.causas.length ? 'Com os eventos: ' + r.base + '% da região, ' + e.causas.map(([nm, v]) => '"' + nm + '" ' + (v > 0 ? '+' : '−') + Math.abs(v) + '%').join(', ') + ' = ' + r.chance + '%.' : null;
     const pub = App.naMesa ? nomesPublicos(e) : null;
     const semNome = !pub ? null : !pub.regiao ? 'A região está escondida dos jogadores: o nome dela não vai para a mesa.'
       : pub.grupoEscondido ? 'O grupo está escondido dos jogadores: o nome dele não vai para a mesa.' : null;
@@ -516,6 +519,7 @@
       h('small', { text: (e.grupoNome ? e.grupoNome + ' · ' : '') + e.regiaoNome }),
       h('p', { class: 'publico', text: corpo }),
       det ? h('small', { text: det }) : null,
+      causas ? h('small', { text: causas }) : null,
       semNome ? h('small', { text: semNome }) : null,
       App.naMesa ? linha(
         botao(e.mesa ? 'Foi para a mesa' : 'Mandar para a mesa', () => enviarEncontro(false), { c: 'sm pri', k: 'enc:mesa', off: e.mesa }),
@@ -1163,7 +1167,7 @@
     if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m));
     if (o.k === 'r') out.push(secRegiao(o, m, grava));
-    if (o.k === 'e') out.push(secEvento(o, m, grava));
+    if (o.k === 'e') out.push(...secEvento(o, m, grava));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
     out.push(campoTexto('o:' + id + ':txt', 'O que os jogadores sabem', o.txt, grava('mudar o que os jogadores sabem', (x, v) => { x.txt = v; }), { area: true, linhas: 3, ph: 'O que se conta por aí…' }));
@@ -1247,21 +1251,24 @@
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };
   function terrenoNoPonto(m, x, y) { const hx = N().hexDe(m, x, y); return hx ? N().hexInfo(m, hx.q, hx.r).terreno : null; }
-  function climaNoPonto(m, x, y) {
-    for (const e of N().eventosDoDia(m)) {
-      if (Math.hypot(e.x - x, e.y - y) > N().raioNoDia(e, m.cal.dia)) continue;
-      if (e.tipo === 'tempestade' || e.tipo === 'inundacao') return 'chuva';
-      if (e.tipo === 'incendio') return 'cinzas';
-      if (e.tipo === 'magia') return 'vagalumes';
-    }
-    return '';
-  }
+  /* (lote 7, parte 5a) o que os eventos de hoje levam para a cena: o clima (a tempestade e a inundação, chuva; o incêndio,
+     a erupção e os meteoros, cinzas; o inverno, neve; a assombração, neblina; a magia e o reino secreto, vaga-lumes), a
+     hora (o eclipse escurece; a lua de sangue faz noite, se for de dia), as zonas que cobrem a cena (a Lua de sangue, a
+     Névoa de espíritos) e o chão seco (a seca) — N().cenaNoPonto */
+  function horaComEventos(h0, c) { return c.hora === 'breu' ? 'breu' : c.hora === 'noite' && (h0 === 'dia' || h0 === 'entardecer') ? 'noite' : h0; }
   // o estilo da região mais de dentro que tiver um (subindo pelas de fora dela)
   function estiloNoPonto(m, x, y) {
     for (const r of N().regioesEm(m, x, y)) { let o = r, n = 0; while (o && n < 12) { if (o.estilo) return o.estilo; o = o.pai ? achar(m, o.pai) : null; n++; } }
     return '';
   }
-  const comum = (m, x, y) => { const e = estiloNoPonto(m, x, y), out = { hora: N().horaDoTempo(m.cal), clima: climaNoPonto(m, x, y) }; if (e) out.estilo = e; return out; };
+  const comum = (m, x, y) => {
+    const e = estiloNoPonto(m, x, y), c = N().cenaNoPonto(m, x, y), out = { hora: horaComEventos(N().horaDoTempo(m.cal), c), clima: c.clima };
+    if (e) out.estilo = e;
+    if (c.fx.length) out.fx = c.fx;
+    if (c.seco) out.seco = true;
+    if (c.eventos.length) out.eventos = c.eventos.map(x => N().nomeEvento(x)).slice(0, 6);
+    return out;
+  };
   // "Gerar a cena aqui": um encontro onde o grupo está
   function gerarAqui(g) {
     const m = App.mapa;
@@ -1559,6 +1566,20 @@
   }
   // quantos tempos "Andar 1 dia" anda: os que faltam para acabar o dia
   const temposAteOFim = m => tpdDe(m) - ((m.cal && m.cal.tempo) || 0);
+  /* (lote 7, parte 5a) Os grupos e os eventos que pesam na viagem deles: [grupo, texto] — parado antes de uma passagem
+     fechada (o próximo tempo de marcha não sairia do lugar) e dentro de eventos que pesam. */
+  function naViagem(m) {
+    const N_ = N(), out = [];
+    for (const g of m.objs) {
+      if (g.k !== 'g') continue;
+      const partes = [];
+      if (g.rota) { const r = N_.andarTempos(m, g.id, 1); if (r.ok && r.parou && !r.cubos) partes.push('parado: "' + r.parou.nome + '" fecha a passagem'); }
+      const dentro = N_.pesoNoPonto(m, g.x, g.y).eventos;
+      if (dentro.length) partes.push('dentro de ' + dentro.map(e => '"' + N_.nomeEvento(e) + '" (' + textoPeso(e.peso) + ')').join(', '));
+      if (partes.length) out.push([g, partes.join(' · ')]);
+    }
+    return out;
+  }
   /* (lote 7) O tempo do mundo, para todos: "+1 tempo" (qual = 'tempo') e "Próximo dia" (qual = 'dia', os tempos que
      faltam para acabar o dia — e o relógio vai para o 1º tempo de amanhã). Os grupos com rota andam junto, cada um no
      seu passo; sem nenhum grupo andando, só o relógio passa. Um passo de desfazer só. */
@@ -1572,8 +1593,18 @@
       t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
     });
     if (ok === false) return;
-    const m = App.mapa, andou = feitos.length ? ' ' + (feitos.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, feitos[0][0]) || {}, m) + '.' : feitos.length + ' grupos andaram.') : '';
-    avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N().textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou);
+    // (lote 7, parte 5a) quem andou de verdade (o parado antes de uma passagem fechada não conta) e os avisos da viagem:
+    // quem parou e quem entrou num evento que pesa
+    const m = App.mapa, andaram = feitos.filter(([, r]) => !(r.parou && !r.cubos)), avisos = [];
+    for (const [gid, r] of feitos) {
+      const g = achar(m0, gid), nome = nomeDe(g || {}, m0);
+      if (r.parou) { avisos.push(nome + ' — parado: "' + r.parou.nome + '" fecha a passagem.'); continue; }
+      const antes = new Set(N().pesoNoPonto(m0, g.x, g.y).eventos.map(e => e.id));
+      for (const e of N().pesoNoPonto(m, r.x, r.y).eventos) if (!antes.has(e.id)) avisos.push(nome + ' — agora dentro de "' + N().nomeEvento(e) + '" (' + textoPeso(e.peso) + ').');
+    }
+    const andou = andaram.length ? ' ' + (andaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, andaram[0][0]) || {}, m) + '.' : andaram.length + ' grupos andaram.') : '';
+    const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
+    avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N().textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
@@ -1665,7 +1696,8 @@
     const paraUn = n => (ke ? N_.unidadesDeCubos(m, n) : n), deUn = n => (ke ? cubos(m, n) : n);
     const out = [];
     out.push(h('div', { class: 'row' },
-      campoEscolha('o:' + id + ':tipo', 'Tipo', o.tipo, Object.keys(E).map(k => [k, E[k].nome]), grava('mudar o tipo do evento', (x, v) => { x.tipo = v; })),
+      // (lote 7, parte 5a) trocar o tipo leva o peso de começo do tipo novo (se o evento pesa na viagem)
+      campoEscolha('o:' + id + ':tipo', 'Tipo', o.tipo, Object.keys(E).map(k => [k, E[k].nome]), grava('mudar o tipo do evento', (x, v) => { x.tipo = v; if (x.peso) x.peso = N_.pesoPadrao(v); })),
       campoEscolha('o:' + id + ':forca', 'Força', String(o.forca), FORCAS, grava('mudar a força', (x, v) => { x.forca = parseInt(v, 10) || 1; }))));
     out.push(h('div', { class: 'field' }, h('span', { text: 'Começa em' }),
       h('div', { class: 'data-linha' }, h('b', { text: dataTxt(m, ini) }),
@@ -1689,7 +1721,31 @@
     out.push(h('p', { class: 'status' }, h('span', { class: 'tag' + (st === 'acontecendo hoje' ? ' alianca' : ''), text: st }),
       st === 'acontecendo hoje' ? ' raio hoje: ' + (ke ? fmt(cubos(m, r), 1) + ' cubos' : fmt(r, 0) + ' unidades') : '',
       o.fim != null ? ' · termina em ' + dataTxt(m, o.fim) : ''));
-    return secao('Evento', out);
+    return [secao('Evento', out), secPeso(o, m, grava)];
+  }
+  /* (lote 7, parte 5a) O que o evento pesa na viagem: os cubos a mais por hexágono dentro dele, a chance de encontro a
+     mais (ou a menos) e se ele fecha a passagem. Os eventos novos já nascem com os números do tipo; os de antes, desligados. */
+  function textoPeso(p) {
+    const partes = [];
+    if (p.custo) partes.push('+' + fmt(p.custo, 1) + ' cubos por hexágono');
+    if (p.enc) partes.push((p.enc > 0 ? '+' : '−') + Math.abs(p.enc) + '% de encontro');
+    if (p.fecha) partes.push('fecha a passagem');
+    return partes.join(', ') || 'nada';
+  }
+  function secPeso(o, m, grava) {
+    const N_ = N(), id = o.id, p = o.peso || null, pd = N_.pesoPadrao(o.tipo), out = [];
+    out.push(caixa('o:' + id + ':pesa', 'Pesa na viagem', !!p, grava(p ? 'o evento não pesa na viagem' : 'o evento pesa na viagem', (x, v) => { if (v) x.peso = N_.pesoPadrao(x.tipo); else delete x.peso; }),
+      { dica: p ? null : 'Ligado, vale o de começo do tipo: ' + textoPeso(pd) + '.' }));
+    if (p) {
+      out.push(h('div', { class: 'row' },
+        campoNumero('o:' + id + ':pcusto', 'Cubos a mais por hexágono', p.custo, grava('mudar o custo do evento', (x, n) => { x.peso = Object.assign({}, x.peso || {}, { custo: n }); }), { decimal: true, min: 0, max: 999, vazio: 0 }),
+        campoNumero('o:' + id + ':penc', 'Encontro (± %)', p.enc, grava('mudar a chance de encontro do evento', (x, n) => { x.peso = Object.assign({}, x.peso || {}, { enc: n }); }), { min: -100, max: 100, vazio: 0 })));
+      out.push(caixa('o:' + id + ':pfecha', 'Fecha a passagem (o grupo para antes)', !!p.fecha, grava(p.fecha ? 'abrir a passagem' : 'fechar a passagem', (x, v) => { x.peso = Object.assign({}, x.peso || {}, { fecha: !!v }); })));
+      const igual = p.custo === pd.custo && p.enc === pd.enc && !!p.fecha === !!pd.fecha;
+      if (!igual) out.push(linha(botao('Voltar ao de começo do tipo', () => mudarObj(id, 'voltar o peso ao do tipo', x => { x.peso = N_.pesoPadrao(x.tipo); }), { c: 'sm', k: 'o:' + id + ':ppadrao', title: 'O de começo: ' + textoPeso(pd) })));
+      out.push(nota('Vale para os hexágonos com o centro dentro do evento, enquanto ele acontece: os grupos gastam mais para entrar, o "Sortear encontro" de quem está dentro muda e, fechado, ninguém entra (o grupo para no hexágono de antes, com o aviso). Para mudar o custo só de alguns hexágonos, use o pincel "Custo próprio…" da ferramenta Terreno.'));
+    }
+    return secao('Na viagem', out);
   }
   // Mudar o começo leva o fim junto (a duração fica a mesma).
   function moverInicio(x, d) {
@@ -1841,7 +1897,12 @@
     const ativos = N_.eventosDoDia(v, dia);
     out.push(secao('Eventos de hoje', ativos.length
       ? h('div', { class: 'lista' }, ativos.map(e => itemLista(e, v, mestre, (N_.EVENTOS[e.tipo] || N_.EVENTOS.guerra).nome + ' · força ' + e.forca + (ed && e.fim != null ? ' · até ' + dataTxt(v, e.fim) : ''))))
-      : nota('Nenhum evento acontecendo hoje.')));
+      : nota('Nenhum evento acontecendo hoje.'),
+      // (lote 7, parte 5a) os desenhos dos eventos se mexem devagar; quem preferir, desliga (só neste aparelho)
+      caixa('hoje:animar', 'Animar os eventos (neste aparelho)', ler().animar !== false, v => { lembrar({ animar: !!v }); const T = Tela(); if (T) T.redesenhar(); })));
+    // (lote 7, parte 5a) os eventos na viagem dos grupos: quem está dentro de um evento que pesa e quem está parado
+    // antes de uma passagem fechada (só o mestre: o peso é dele)
+    if (ed) { const nv = naViagem(v); if (nv.length) out.push(secao('Os eventos na viagem', h('div', { class: 'lista' }, nv.map(([g, txt]) => h('button', { type: 'button', class: 'li clic', 'data-k': 'nv:' + g.id, onclick: () => irPara(g.id) }, icone(g, v), h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: txt }))))))); }
     const guerras = v.objs.filter(o => o.k === 'z' && N_.zonaAtiva(o, dia));
     if (guerras.length) out.push(secao('Guerras de hoje', h('div', { class: 'lista' }, guerras.map(z => itemLista(z, v, mestre, 'Desde ' + dataTxt(v, z.ini == null ? dia : z.ini) + (ed && z.fim != null ? ' · até ' + dataTxt(v, z.fim) : ''))))));
     if (ed) {

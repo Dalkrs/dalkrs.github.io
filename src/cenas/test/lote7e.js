@@ -333,6 +333,49 @@ const SHOTS = process.env.FOTOS;
     ok(!(await ev(() => !!document.querySelector('.modal'))), '(Esc fecha sem criar)');
   }
 
+  // ================= (lote 7, parte 5a) os eventos do Mapa-múndi na cena =================
+  if (parte('eventos')) {
+    const chave = async id => { await page.locator('.sw', { has: page.locator('#' + id) }).click(); await w(450); };
+    const vivo = () => ev(() => { const v = __tc.Gerador.vivo(), el = document.getElementById('ger-eventos'), sw = el && el.closest('.sw'); return { tem: !!el, txt: sw ? sw.innerText.replace(/\s+/g, ' ').trim() : '', seco: !!v.estado.plano.seco, pal: v.estado.plano.pal, resumo: document.getElementById('ger-resumo').innerText, tracado: JSON.stringify(v.estado.plano.tracado) }; });
+    await ev(() => __tc.Gerador.abrir('encontro', { op: { terreno: 'campo', situacao: 'morro', caminho: 'nenhum' }, hora: 'noite', clima: '', fx: ['luaSangue', 'naoExiste'], seco: true, eventos: ['Lua de sangue', 'Seca'] })); await w(700);
+    await semente(11);
+    const t0 = await vivo();
+    ok(t0.tem && /^Com os eventos do Mapa-múndi \(Lua de sangue, Seca\): o chão seco e a zona Lua de sangue cobrindo a cena$/.test(t0.txt), 'a chave dos eventos do Mapa-múndi (ligada), com os nomes e o que levam: ' + t0.txt);
+    ok(t0.seco && t0.pal === 'savana' && /o chão seco/.test(t0.resumo), 'a seca: o campo com o capim seco, e o resumo diz: ' + j([t0.pal, t0.resumo]));
+    await chave('ger-eventos');
+    const t1 = await vivo();
+    ok(!t1.seco && t1.pal === 'campo' && !/o chão seco/.test(t1.resumo) && t1.tracado === t0.tracado, 'sem a chave: o chão verde de volta, e o mesmo lugar (o traçado igual)');
+    await chave('ger-eventos');
+    await criar();
+    const s = await ev(() => { const sc = __tc.Store.scene(); return { tom: sc.tone, zonas: sc.effects.filter(e => e.fx === 'luaSangue').map(e => ({ leve: !!e.leve, gm: !!e.gm, cobre: e.r >= Math.hypot(sc.cols, sc.rows) / 2 && Math.abs(e.x - sc.cols * sc.cell / 2) < 1 && Math.abs(e.y - sc.rows * sc.cell / 2) < 1 })), outras: sc.effects.filter(e => e.fx !== 'luaSangue').length }; });
+    ok(s.tom === 'noite' && s.zonas.length === 1 && s.zonas[0].leve && !s.zonas[0].gm && s.zonas[0].cobre && s.outras === 0, 'a cena: de noite, com a zona Lua de sangue cobrindo tudo (leve, à mostra); o efeito que não existe ficou de fora: ' + j(s));
+    // sem a chave na hora de criar: nada de zona
+    await ev(() => __tc.Gerador.abrir('encontro', { op: { terreno: 'campo' }, fx: ['espiritos'], eventos: ['Assombração'] })); await w(700);
+    ok((await vivo()).txt === 'Com os eventos do Mapa-múndi (Assombração): a zona Névoa de espíritos cobrindo a cena', '(a assombração: a Névoa de espíritos)');
+    await chave('ger-eventos');
+    await criar();
+    ok(await ev(() => __tc.Store.scene().effects.length === 0), 'com a chave desligada, a cena sai sem a zona');
+    // sem eventos no pedido, nem a chave
+    await ev(() => __tc.Gerador.abrir('encontro', { op: { terreno: 'campo' } })); await w(600);
+    ok(!(await vivo()).tem, 'sem eventos no pedido, sem a chave');
+    await page.keyboard.press('Escape'); await w(300);
+    // cada aba com o que vale nela: o chão seco só no Encontro; na masmorra (lá embaixo), nada
+    await ev(() => __tc.Gerador.abrir('vila', { seco: true, eventos: ['Seca'] })); await w(700);
+    ok(!(await vivo()).tem, 'na vila, a seca sozinha não tem chave (a vila não seca o chão)');
+    await page.keyboard.press('Escape'); await w(300);
+    await ev(() => __tc.Gerador.abrir('vila', { fx: ['luaSangue'], seco: true, eventos: ['Lua de sangue', 'Seca'] })); await w(700);
+    const v1 = await vivo();
+    await page.locator('#ger-lugar button', { hasText: 'Masmorra' }).click(); await w(700);
+    const v2 = await vivo();
+    await page.locator('#ger-lugar button', { hasText: 'Encontro' }).click(); await w(700);
+    const v3 = await vivo();
+    ok(v1.txt === 'Com os eventos do Mapa-múndi (Lua de sangue, Seca): a zona Lua de sangue cobrindo a cena' && !v2.tem && /o chão seco e a zona Lua de sangue/.test(v3.txt) && (v3.seco || !['campo', 'floresta', 'selva', 'pantano'].includes(v3.pal)),
+      'a chave muda com a aba: na vila só a zona, na masmorra nenhuma, no encontro o chão seco também — ' + j([v1.txt, v2.tem, v3.txt, v3.pal, v3.seco]));
+    await page.locator('#ger-lugar button', { hasText: 'Masmorra' }).click(); await w(700);
+    await criar();
+    ok(await ev(() => __tc.Store.scene().effects.filter(e => e.fx === 'luaSangue').length === 0), 'a masmorra sai sem a zona dos eventos');
+  }
+
   // ================= as regras dos planos =================
   if (parte('regras')) {
     const r = await ev(() => {

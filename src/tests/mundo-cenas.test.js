@@ -105,6 +105,24 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok((await gerarAqui('planicie')).hora === 'noite', 'com a noite a partir do 7º tempo, o 7º já é noite');
   await F.evaluate(() => __mundo.App.mudar('clarear', m => { m.cal.tempo = 0; }));
   ok((await gerarAqui('planicie')).hora === 'dia', 'e o 1º tempo é dia');
+  // (lote 7, parte 5a) o que os eventos novos levam para a cena: o eclipse escurece (vence a noite da lua de sangue), o
+  // inverno neva, a lua de sangue cobre a cena com a zona dela, a seca deixa o chão seco; os nomes vão junto
+  const comEventos = async tipos => {
+    await F.evaluate(([tipos, id]) => __mundo.App.mudar('eventos novos', m => {
+      const N = __mundo.N, g = m.objs.find(o => o.id === id);
+      m.objs = m.objs.filter(o => !(o.k === 'e' && /^ev5_/.test(o.nome)));
+      for (const tp of tipos) m.objs.push(N.objNovo('e', { x: g.x, y: g.y, tipo: tp, r: 30, ini: m.cal.dia, nome: 'ev5_' + tp }));
+    }), [tipos, ids.planicie]);
+    return gerarAqui('planicie');
+  };
+  const e1 = await comEventos(['luaSangue', 'seca', 'eclipse', 'inverno']);
+  ok(e1.hora === 'breu' && e1.clima === 'neve' && j(e1.fx) === j(['luaSangue']) && e1.seco === true && j(e1.eventos) === j(['ev5_luaSangue', 'ev5_seca', 'ev5_eclipse', 'ev5_inverno']), 'os eventos no pedido da cena: o breu do eclipse, a neve do inverno, a zona da lua de sangue, o chão seco e os nomes: ' + j([e1.hora, e1.clima, e1.fx, e1.seco, e1.eventos]));
+  const e2 = await comEventos(['luaSangue']);
+  ok(e2.hora === 'noite' && e2.clima === '' && !('seco' in e2), 'a lua de sangue, de dia, faz noite: ' + j([e2.hora, e2.clima]));
+  const e3 = await comEventos(['assombracao']);
+  ok(e3.clima === 'neblina' && j(e3.fx) === j(['espiritos']) && e3.hora === 'dia', 'a assombração: neblina e a Névoa de espíritos: ' + j([e3.clima, e3.fx]));
+  const e4 = await comEventos([]);
+  ok(!('fx' in e4) && !('seco' in e4) && !('eventos' in e4) && e4.hora === 'dia', 'sem os eventos novos, o pedido de antes: ' + j(e4));
   // (lote 7, parte 4b-3) no terreno Ruínas: a aba Ruínas
   const gr = await gerarAqui('ruinas');
   ok(gr.lugar === 'ruinas' && j(gr.op) === j({ terreno: 'campo' }) && gr.hora === 'dia', 'no terreno Ruínas, o grupo gera as ruínas (a aba Ruínas), e não um encontro: ' + j(gr));

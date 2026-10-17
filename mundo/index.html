@@ -118,6 +118,33 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .frente-anda { animation: anda 1.6s linear infinite; }
 @keyframes anda { to { stroke-dashoffset: -24; } }
 @media (prefers-reduced-motion: reduce) { .eve-pulso, .frente-anda { animation: none; } .eve-pulso { opacity: .3; } }
+/* (lote 7, parte 5a) o desenho dos eventos novos: devagar e leve (os meteoros riscando, os raios piscando, a neve caindo,
+   a fumaça subindo, os vultos flutuando, o anel girando, a sombra do dragão passando, o brilho da festa) */
+.eve-arte { pointer-events: none; }
+.eve-anim { transform-box: fill-box; transform-origin: center; }
+.eve-risca { stroke-dasharray: 16 84; animation: eve-risca 2.8s linear infinite; }
+@keyframes eve-risca { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+.eve-raio { opacity: 0; animation: eve-raio 4.2s steps(1) infinite; }
+@keyframes eve-raio { 0%, 84%, 100% { opacity: 0; } 85% { opacity: 1; } 88% { opacity: .15; } 90% { opacity: .9; } 93% { opacity: 0; } }
+.eve-respira { animation: eve-respira 6s ease-in-out infinite; }
+@keyframes eve-respira { 0%, 100% { opacity: .55; } 50% { opacity: .95; } }
+.eve-neva { animation: eve-neva 5s linear infinite; }
+@keyframes eve-neva { 0% { transform: translateY(-120%); opacity: 0; } 15% { opacity: .9; } 100% { transform: translateY(380%); opacity: 0; } }
+.eve-sobe { animation: eve-sobe 5.5s ease-out infinite; }
+@keyframes eve-sobe { 0% { transform: translate(0, 0) scale(.6); opacity: 0; } 20% { opacity: .55; } 100% { transform: translate(30%, -260%) scale(1.5); opacity: 0; } }
+.eve-flutua { animation: eve-flutua 7s ease-in-out infinite; }
+@keyframes eve-flutua { 0%, 100% { transform: translate(0, 0); opacity: .2; } 50% { transform: translate(25%, -40%); opacity: .45; } }
+.eve-gira { animation: eve-gira 40s linear infinite; }
+@keyframes eve-gira { to { transform: rotate(360deg); } }
+.eve-flui { stroke-dasharray: 6 10; animation: eve-flui 1.6s linear infinite; }
+@keyframes eve-flui { to { stroke-dashoffset: -16; } }
+.eve-brilha { animation: eve-brilha 3.6s ease-in-out infinite; }
+@keyframes eve-brilha { 0%, 100% { opacity: .15; transform: scale(.7); } 50% { opacity: .9; transform: scale(1.1); } }
+.eve-plana { opacity: 0; animation: eve-plana 11s ease-in-out infinite; }
+@keyframes eve-plana { 0% { transform: translate(-90%, 20%); opacity: 0; } 20%, 80% { opacity: .35; } 100% { transform: translate(90%, -20%); opacity: 0; } }
+.eve.inativo .eve-anim { animation: none; }
+.eve.inativo .eve-raio, .eve.inativo .eve-plana { opacity: .4; }
+@media (prefers-reduced-motion: reduce) { .eve-anim { animation: none !important; } .eve-raio, .eve-plana { opacity: .45; } }
 .selo { stroke: rgba(10,12,18,.85); stroke-width: 1.5; }
 .glifo { fill: none; stroke: #14171f; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .rumor .selo { fill: #2b3243; stroke: #f3ead2; stroke-dasharray: 3 3; }
@@ -332,6 +359,9 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .camadas.quieto .eve-pulso, .camadas.quieto .frente-anda { animation-play-state: paused; }
 .camadas.sem-pulso .eve-pulso { animation: none; opacity: .3; }
 .camadas.sem-marcha .fre-a.frente-anda, .camadas.sem-marcha .fre-b.frente-anda { animation: none; }
+.camadas.quieto .eve-anim { animation-play-state: paused; }
+.camadas.sem-anima .eve-anim { animation: none; }
+.camadas.sem-anima .eve-raio, .camadas.sem-anima .eve-plana { opacity: .45; }
 
 /* ================= painel (painel.js): barra de cima, abas, formulários, menus, janelas ================= */
 /* ---- barra de cima ---- */
@@ -603,9 +633,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
 <script src="../tc/ponte.js?v=14"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="nucleo.js?v=8"></script>
-<script src="tela.js?v=10"></script>
-<script src="painel.js?v=14"></script>
+<script src="nucleo.js?v=9"></script>
+<script src="tela.js?v=11"></script>
+<script src="painel.js?v=15"></script>
 <script src="mundo.js?v=6"></script>
 </body>
 </html>

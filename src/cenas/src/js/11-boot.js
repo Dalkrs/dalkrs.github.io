@@ -232,7 +232,10 @@ async function start(snap) {
     if (ger && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
       if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o lugar de novo no Mapa-múndi.'); return; }
       Gerador.abrir(typeof ger.lugar === 'string' ? ger.lugar : 'encontro', { op: ger.op && typeof ger.op === 'object' ? ger.op : null, estilo: ger.estilo, hora: ger.hora, clima: ger.clima,
-        nome: typeof ger.nome === 'string' ? ger.nome : null, id: typeof alvo.cena === 'string' ? alvo.cena : null });
+        nome: typeof ger.nome === 'string' ? ger.nome : null, id: typeof alvo.cena === 'string' ? alvo.cena : null,
+        // (lote 7, parte 5a) o que os eventos do mapa levam para a cena: as zonas que a cobrem, o chão seco e os nomes deles
+        fx: Array.isArray(ger.fx) ? ger.fx.filter(k => typeof k === 'string' && FX.P[k]).slice(0, 4) : null, seco: ger.seco === true,
+        eventos: Array.isArray(ger.eventos) ? ger.eventos.filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, 6) : null });
       return;
     }
     const pedido = alvo.criar && typeof alvo.criar.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(alvo.criar.id) ? alvo.criar : null;

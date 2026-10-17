@@ -21,6 +21,10 @@ ok(Object.keys(N.ICONES).length >= 16, 'pelo menos 16 ícones');
 ok(Object.values(N.ICONES).every(i => !/fill="(?!none)/.test(i.svg) && !/<script|on\w+=/i.test(i.svg)), 'glifos só de traço e sem nada executável');
 const EVS = ['guerra', 'conflito', 'praga', 'fome', 'festival', 'tempestade', 'magia', 'monstro', 'revolta', 'incendio', 'inundacao', 'descoberta'];
 ok(EVS.every(k => N.EVENTOS[k] && N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.EVENTOS[k].cor) && N.EVENTOS[k].svg), 'os 12 tipos de evento existem');
+// (lote 7, parte 5a) os 24 novos, cada um com o nome, a cor, o desenho e o peso de começo
+const EVS5 = ['caravana', 'peregrinacao', 'bandidos', 'ponte', 'migracao', 'eclipse', 'meteoros', 'luaSangue', 'tribulacao', 'seca', 'terremoto', 'erupcao', 'inverno', 'torneio', 'coroacao', 'golpe', 'cerco', 'leilao', 'assombracao', 'reino', 'dragao', 'seita', 'cacada', 'colheita'];
+ok(j(Object.keys(N.EVENTOS)) === j(EVS.concat(EVS5)) && EVS5.every(k => N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.EVENTOS[k].cor) && /<(path|circle)/.test(N.EVENTOS[k].svg)), 'os 24 eventos novos, depois dos 12 de antes, com o nome, a cor e o desenho');
+ok(Object.keys(N.EVENTOS).every(k => N.PESO_EVENTO[k] && typeof N.PESO_EVENTO[k].fecha === 'boolean') && j(Object.keys(N.EVENTOS).filter(k => N.PESO_EVENTO[k].fecha)) === j(['ponte', 'terremoto', 'cerco']), 'todo tipo tem o peso de começo; fecham a passagem a ponte caída, o terremoto e o cerco');
 ok(N.CORES.length === 10 && N.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)) && new Set(N.CORES).size === 10, '10 cores de facção, todas diferentes');
 ok(N.RITMOS === undefined && N.CUBOS_HEX === 5 && N.CUBOS_DIA === 30, 'sem ritmos: o grupo anda os cubos por dia dele (30 de começo); um hexágono = 5 cubos');
 ok(j(Object.keys(N.VIAS)) === j(['estrada', 'trilha', 'selvagem', 'rio', 'mar']) && Object.values(N.VIAS).every(v => v.nome && v.mult === undefined) && N.VIAS.mar.nome === 'Mar (navio)', 'vias: só o desenho da rota (não mudam a velocidade)');
@@ -736,6 +740,48 @@ function mundo() {
   ok(rg('nordico').estilo === 'nordico' && !('estilo' in rg('xyz')) && !('estilo' in rg(undefined)) && !('estilo' in rg('__proto__')), 'a região guarda o estilo das cenas só quando é um dos seis');
   const pub = N.projetar(N.normalizarMapa({ objs: [{ id: 'rg1', k: 'r', pts: [[0, 0], [100, 0], [100, 100]], estilo: 'elfico', nome: 'Bosque' }] }));
   ok(pub.objs.length === 1 && !('estilo' in pub.objs[0]) && pub.objs[0].nome === 'Bosque', 'quem joga recebe a região sem o estilo das cenas (é do mestre)');
+}
+
+/* ================= lote 7, parte 5a: os eventos pesam na viagem ================= */
+{
+  // a fileira de hexágonos y = 0 (grade de 20, em pé): uma rota reta para a direita, o grupo a 5 cubos por tempo
+  const base = (extra, dia) => N.normalizarMapa({ grade: { tam: 20, x: 0, y: 0, orient: 'pe', on: true }, cal: { dia: dia || 5 }, objs: [
+    { id: 'rt', k: 't', pts: [[0, 0], [200, 0]] }, { id: 'g1', k: 'g', x: 0, y: 0, rota: 'rt', pt: 5, nome: 'Os Heróis' }].concat(extra) });
+  // o peso: normalizado, e só quando tem (os eventos de antes não pesam)
+  const ev1 = N.normalizarMapa({ objs: [{ id: 'e', k: 'e', x: 0, y: 0, tipo: 'tempestade', peso: { custo: '7,5'.replace(',', '.'), enc: 300, fecha: 'sim' } }, { id: 'e0', k: 'e', x: 0, y: 0, tipo: 'guerra' }] }).objs;
+  ok(j(ev1[0].peso) === j({ custo: 7.5, enc: 100, fecha: true }) && !('peso' in ev1[1]), 'o peso guardado do jeito certo (a chance até 100%); o evento de antes, sem peso: ' + j(ev1[0].peso));
+  ok(j(N.pesoPadrao('tempestade')) === j({ custo: 5, enc: 0, fecha: false }) && N.pesoPadrao('xyz').enc === 20 && N.pesoPadrao('tempestade') !== N.PESO_EVENTO.tempestade, 'o peso de começo do tipo (uma cópia)');
+  // o custo: a tempestade (+5) cobre os hexágonos 1 a 3; o de antes (guerra sem peso) não conta
+  const m = base([{ id: 'tp', k: 'e', tipo: 'tempestade', x: 40, y: 0, r: 25, ini: 0, peso: N.pesoPadrao('tempestade') }, { id: 'gu', k: 'e', tipo: 'guerra', x: 40, y: 0, r: 25, ini: 0 }]);
+  const v = N.viagem(m, m.objs[1]), h2 = N.hexInfo(m, v.cam[2].q, v.cam[2].r), h5 = N.hexInfo(m, v.cam[5].q, v.cam[5].r);
+  ok(j(v.acum.slice(0, 6)) === j([0, 10, 20, 30, 35, 40]) && h2.custo === 10 && h2.custoBase === 5 && h2.extra === 5 && j(h2.eventos) === j(['tp']) && h2.fechado === null && !('eventos' in h5), 'a tempestade soma 5 cubos nos hexágonos dentro dela (o hexInfo diz de onde vem): ' + j(v.acum));
+  // fora da data, nada pesa
+  const mFora = base([{ id: 'tp', k: 'e', tipo: 'tempestade', x: 40, y: 0, r: 25, ini: 9, peso: N.pesoPadrao('tempestade') }]);
+  ok(N.viagem(mFora, mFora.objs[1]).acum[3] === 15, 'o evento que ainda não começou não pesa');
+  // a passagem fechada: a ponte caída cobre o hexágono 6 — o grupo para no 5, com o aviso, e não guarda andado rumo ao 6
+  const mp = base([{ id: 'pc', k: 'e', tipo: 'ponte', x: 120, y: 0, r: 12, ini: 0, peso: N.pesoPadrao('ponte'), nome: '' }]);
+  const anda = (mm, n) => { const r = N.andarTempos(mm, 'g1', n), c = JSON.parse(j(mm)), g = c.objs.find(o => o.id === 'g1'); if (r.ok) { g.x = r.x; g.y = r.y; g.prog = r.prog; } return [N.normalizarMapa(c), r]; };
+  let [m2, r1] = anda(mp, 4);
+  ok(r1.ok && r1.hexes === 4 && !r1.parou, '(anda 4 hexágonos livres)');
+  let r2; [m2, r2] = anda(m2, 3);
+  ok(r2.ok && r2.hexes === 1 && r2.parou && r2.parou.id === 'pc' && r2.parou.nome === 'Ponte caída' && /e parou: "Ponte caída" fecha a passagem/.test(r2.msg) && r2.prog === 25, 'anda até o hexágono antes da ponte e para, com o aviso (sem andado rumo a ela): ' + r2.msg);
+  let r3; [m2, r3] = anda(m2, 5);
+  ok(r3.ok && r3.hexes === 0 && r3.cubos === 0 && r3.parou && r3.msg === 'Parou: "Ponte caída" fecha a passagem' && r3.prog === 25, 'parado: o próximo tempo não sai do lugar');
+  const semFecha = base([{ id: 'pc', k: 'e', tipo: 'ponte', x: 120, y: 0, r: 12, ini: 0, peso: { custo: 0, enc: 0, fecha: false } }]);
+  ok(!anda(semFecha, 8)[1].parou, 'com a passagem aberta, segue');
+  // o encontro: os eventos somam (ou tiram) da chance da região, até 0 e 100
+  const reg = { enc: { chance: 10, itens: [{ p: 1, txt: 'Lobos' }] } };
+  const s1 = N.sortearEncontro(reg, seq(0.35, 0), 30), s2 = N.sortearEncontro(reg, seq(0.35, 0), -40), s3 = N.sortearEncontro(reg, seq(0.99, 0), 200);
+  ok(s1.houve && s1.chance === 40 && s1.base === 10 && s1.extra === 30 && s2.chance === 0 && !s2.houve && s3.chance === 100 && s3.houve, 'a chance com os eventos: 10% + 30% = 40%; nunca abaixo de 0 nem acima de 100');
+  const pe = N.pesoNoPonto(base([{ id: 'b1', k: 'e', tipo: 'bandidos', x: 0, y: 0, r: 30, ini: 0, peso: N.pesoPadrao('bandidos') }, { id: 'c1', k: 'e', tipo: 'colheita', x: 0, y: 0, r: 30, ini: 0, peso: N.pesoPadrao('colheita') }, { id: 'f1', k: 'e', tipo: 'festival', x: 0, y: 0, r: 30, ini: 0, peso: N.pesoPadrao('festival') }]), 0, 0);
+  ok(pe.enc === 20 && pe.custo === 0 && j(pe.eventos.map(e => e.id)) === j(['b1', 'c1']), 'no ponto: os bandidos (+30) e a colheita farta (−10); o festival não pesa (nada a somar): ' + j([pe.enc, pe.eventos.map(e => e.id)]));
+  // o que vai para a cena: o clima, a hora, as zonas e o chão seco (com ou sem o peso ligado)
+  const mc = base([{ id: 'i1', k: 'e', tipo: 'inverno', x: 0, y: 0, r: 30, ini: 0 }, { id: 'l1', k: 'e', tipo: 'luaSangue', x: 0, y: 0, r: 30, ini: 0 }, { id: 'ec', k: 'e', tipo: 'eclipse', x: 0, y: 0, r: 30, ini: 0 }, { id: 'sc', k: 'e', tipo: 'seca', x: 0, y: 0, r: 30, ini: 0 }, { id: 'as', k: 'e', tipo: 'assombracao', x: 0, y: 0, r: 30, ini: 0 }]);
+  const cn = N.cenaNoPonto(mc, 0, 0), longe = N.cenaNoPonto(mc, 500, 500);
+  ok(cn.clima === 'neve' && cn.hora === 'breu' && j(cn.fx) === j(['luaSangue', 'espiritos']) && cn.seco === true && cn.eventos.length === 5 && longe.clima === '' && !longe.eventos.length, 'na cena: a neve do inverno, o breu do eclipse (vence a noite da lua de sangue), as zonas e o chão seco: ' + j([cn.clima, cn.hora, cn.fx, cn.seco]));
+  // quem joga não recebe o peso
+  const pub = N.projetar(mp);
+  ok(pub.objs.filter(o => o.k === 'e').length === 1 && pub.objs.filter(o => o.k === 'e').every(o => !('peso' in o)), 'quem joga recebe o evento sem o peso (é do mestre)');
 }
 
 end();

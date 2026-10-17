@@ -1140,6 +1140,7 @@ const Encontro = (() => {
     const s = Math.round(Number(t.s));
     return Number.isFinite(s) && s >= 1 && s <= 2147483647 ? { sit: t.sit, s } : null;
   }
+  const SECO = { campo: 'savana', floresta: 'savana', selva: 'savana', pantano: 'savana' };
   function gerar(o) {
     o = o || {};
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', W = TAMANHOS[tam].W, H = TAMANHOS[tam].H;
@@ -1148,7 +1149,9 @@ const Encontro = (() => {
     const trava = limparTrava(o.trava, { terreno, tamanho: tam, caminho, sitPedida });
     const sit = trava ? trava.sit : sitPedida !== 'surpresa' ? sitPedida : T.sit[sub(seed, 9) % T.sit.length][0];
     const sT = trava ? trava.s : (sub(seed, 1) % 2147483000) + 1;
-    const pal = terreno === 'deserto' && sit === 'canion' ? 'canion' : terreno === 'campo' && sit === 'capim' ? 'savana' : terreno === 'agua' && sit === 'barco' ? (estilo === 'desertico' ? 'savana' : 'campo') : T.pal;
+    const pal0 = terreno === 'deserto' && sit === 'canion' ? 'canion' : terreno === 'campo' && sit === 'capim' ? 'savana' : terreno === 'agua' && sit === 'barco' ? (estilo === 'desertico' ? 'savana' : 'campo') : T.pal;
+    // (lote 7, parte 5a) a seca do Mapa-múndi: o chão verde vira o capim seco (o resto do sorteio é o mesmo)
+    const pal = o.seco && SECO[pal0] ? SECO[pal0] : pal0;
     const K = contexto(W, H, terreno, sit, estilo, caminho, sT, pal);
     SIT[terreno + '.' + sit](K);
     const rV = mulberry((sub(seed, 2) % 2147483000) + 1);
@@ -1159,7 +1162,7 @@ const Encontro = (() => {
     const P = K.P;
     if (!P.tracado.length) P.tracado.push({ k: 'circ', x: P.foco[0], y: P.foco[1], r: 3 });
     delete P.dens; delete P.esp;
-    return Object.assign(P, { v: 1, lugar: 'encontro', seed, sT, tamanho: tam, sitPedida, travaTracado: !!trava, comMarcas: o.marcas !== false, occ: Array.from(K.occ) });
+    return Object.assign(P, { v: 1, lugar: 'encontro', seed, sT, tamanho: tam, sitPedida, travaTracado: !!trava, comMarcas: o.marcas !== false, seco: pal !== pal0, occ: Array.from(K.occ) });
   }
 
   /* ================= o fundo pintado ================= */
@@ -1330,6 +1333,7 @@ const Encontro = (() => {
     const T = TER[p.terreno] || TERRENOS[0], sitN = (T.sit.find(s => s[0] === p.sit) || [0, ''])[1];
     const partes = [T.n + ' · ' + sitN + (p.sitPedida === 'surpresa' ? ' (sorteada)' : ''), p.W + ' × ' + p.H + ' quadrados'];
     if (p.caminhos.length) partes.push(p.caminhos.some(c => c.tipo === 'estrada') ? 'estrada' : 'trilha');
+    if (p.seco) partes.push('o chão seco');
     if (p.predios.length) partes.push(p.predios.length === 1 ? '1 construção' : p.predios.length + ' construções');
     if (p.navios.length) partes.push(p.navios.length === 1 ? 'um navio' : p.navios.length + ' navios');
     if (p.visao.length) partes.push(p.visao.length + ' paredes de visão');
@@ -1411,6 +1415,7 @@ const Encontro = (() => {
   const baseDe = () => null;
   const LUGAR = { id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
+    aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',
     nota: 'Sai uma cena de batalha nova, com o relevo, as zonas de efeito e as luzes onde a natureza pede, e paredes de visão só no que é grande (as pedras grandes, os troncos grossos, os paredões e as construções). Os marcadores de chegada e de emboscada nascem ocultos (só você vê; dá para apagar). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
     feito: (sc, p) => `"${sc.name}" criada: ${resumo(p).replace(/\.$/, '')}. Tudo é editável.` };
