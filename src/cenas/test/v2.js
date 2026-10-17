@@ -345,7 +345,7 @@ const { open } = require('./lib');
   await page.locator('#tab-sel').click(); await w();
   const nWalls0 = (await SC()).walls.length;
   await key('w');
-  ok(await page.locator('#o-wk .seg-b').count() === 5 && await page.locator('#o-wm .seg-b').count() === 2, 'opções: 5 tipos de parede e 2 modos');
+  ok(await page.locator('#o-wk .seg-b').count() === 6 && await page.locator('#o-wm .seg-b').count() === 2, 'opções: 6 tipos de parede (com a mureta, do lote 7) e 2 modos');
   await segClick('o-wk', 'Janela');
   await click(3, 16); await click(6, 16); await key('Enter');
   await segClick('o-wk', 'Cortina');
