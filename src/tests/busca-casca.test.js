@@ -119,6 +119,7 @@ const medit = j({ 'medit:receitas': { v: 1, lista: [{ id: 'rc_vento', nome: 'Ven
     await F.locator('[data-itfil="e:off"]').click(); await espera(200);
     await F.evaluate(() => { S.itFechadas = ['-']; render(); }); await espera(200);
     ok(await F.locator('[data-itcard="i1"]').isHidden(), '(o item está escondido: o filtro e a seção recolhida)');
+    await F.evaluate(() => window.scrollTo(0, 0)); await espera(150);         // (a ficha volta para o alto: o item fica bem abaixo)
     await escolher('escudo de carv', 'Escudo de carvalho');
     const card = F.locator('[data-itcard="i1"]');
     ok(await ate(async () => await card.isVisible()) && !(await F.evaluate(() => (S.itFechadas || []).includes('-'))) && (await F.locator('[data-itfil="e:off"]').getAttribute('aria-pressed')) === 'false',
