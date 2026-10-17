@@ -2437,14 +2437,14 @@
       const sub = regs ? plural(regs, 'região', 'regiões') : 'nenhuma região';
       if (ed) {
         const aberta = facAberta === f.id;
-        lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'aria-expanded': String(aberta),
+        lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'data-fac': f.id, 'aria-expanded': String(aberta),
           onclick: () => { facAberta = aberta ? null : f.id; pintar(); } },
           h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
           f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null));
         if (aberta) lista.append(editorFaccao(f, v));
       } else {
         const rels = Object.keys(f.rel || {}).map(k => [facDe(v, k), f.rel[k]]).filter(([g, r]) => g && r !== 'neutra');
-        lista.append(h('div', { class: 'fac-pub' },
+        lista.append(h('div', { class: 'fac-pub', 'data-fac': f.id },
           h('div', { class: 'li' }, h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,
@@ -2789,5 +2789,32 @@
     pintar();
   }
 
-  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto };
+  /* (lote 7, parte 6) A busca rápida do site pediu uma coisa do mapa aberto: seleciona e centraliza (na tela larga, o
+     painel mostra a Seleção); uma facção abre na aba Facções. Devolvem se acharam. */
+  function marcarUmInstante(el) { if (!el) return; el.scrollIntoView({ block: 'nearest' }); el.classList.add('achado'); setTimeout(() => el.classList.remove('achado'), 2400); }
+  function mostrar(id) {
+    if (!achar(App.vista(), id)) {
+      toast(App.comoJogador && achar(App.mapa, id) ? 'Isto está escondido dos jogadores. Para vê-lo, desligue “Ver como jogador”.' : 'Isto não está mais neste mapa.');
+      return false;
+    }
+    if (!estreito()) { aba = 'selecao'; lembrar({ aba }); if ($('side') && $('side').classList.contains('fechado')) definirPainel(true); }
+    irPara(id);
+    pintar();
+    return true;
+  }
+  function mostrarFaccao(id) {
+    if (!facDe(App.vista(), id)) {
+      toast(App.comoJogador && facDe(App.mapa, id) ? 'Esta facção está escondida dos jogadores. Para vê-la, desligue “Ver como jogador”.' : 'Esta facção não está mais neste mapa.');
+      return false;
+    }
+    mapaVisto = App.mapa ? App.mapa.id : null;          // (a pintura não fecha a facção por achar que o mapa mudou)
+    aba = 'faccoes'; lembrar({ aba });
+    facAberta = App.podeEditar() ? id : null;
+    if ($('side') && $('side').classList.contains('fechado')) definirPainel(true);
+    pintar();
+    marcarUmInstante(document.querySelector('[data-fac="' + CSS.escape(id) + '"]'));
+    return true;
+  }
+
+  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao };
 })();

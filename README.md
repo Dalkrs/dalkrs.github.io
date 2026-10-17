@@ -1434,6 +1434,40 @@ da mesa e, aí, nem pergunta por campanhas. E um aparelho com o site de antes da
 servindo à mesa: o que ele grava sem dizer a campanha é do mundo — menos a fala e a rolagem de um jogador que
 participa de uma campanha só, que o banco põe nela (`privado.registro_antes`), para não aparecer às outras.
 
+### A busca rápida (lote 7, parte 6)
+
+A lupa na barra de cima (ou **Ctrl+K** — **⌘K** no Mac —, na casca ou de dentro de qualquer sistema) abre uma janela
+de busca. A pessoa digita parte do nome, sem se preocupar com acento ou maiúscula, e a lista mostra, em grupos, o que
+tem esse nome: **fichas e NPCs**, **cenas**, o que tem nome no **Mapa-múndi** (marcadores, regiões, grupos, eventos,
+zonas, rotas, linhas, textos e as facções), as **receitas** da Meditação, os **itens** das fichas (os equipamentos e o
+que está na bolsa) e as **matérias** do Jornal. Todas as palavras digitadas precisam aparecer (no nome ou na linha de
+baixo, que diz de quem é ou onde fica); o nome que começa com a primeira palavra vem antes, e o grupo do que mais se
+parece vem primeiro. ↑↓ escolhem, Enter abre, Esc fecha; o mouse também serve. Até 40 resultados. A janela fica presa
+no alto da tela: enquanto a lista muda, o campo não sai do lugar.
+
+Escolher **vai direto**: a casca abre a aba e entrega ao sistema um alvo (`TC.ponte.aoIr`). O que foi pedido aparece
+na tela, marcado por um instante — nada se edita sozinho.
+- Fichas: `{ pc }` abre a ficha; `{ pc, item }` também tira os filtros dos equipamentos daquela ficha e abre a seção do
+  item; `{ pc, bolsa }` abre, na bolsa, a aba do tipo dele.
+- Cenas: `{ cena }` (o mesmo que o Mapa-múndi e o Acampamento já usavam).
+- Mapa-múndi: `{ mapa }` abre o mapa; `{ mapa, obj }` seleciona e centraliza (na tela larga, o painel mostra a
+  Seleção); `{ mapa, fac }` abre a aba Facções com ela aberta.
+- Meditação: `{ receita }` (quem mestra) abre "Receitas e símbolos" com ela no editor; `{ achado, pc }` (quem joga)
+  mostra, na prática do personagem, a receita que ele descobriu.
+- Jornal: `{ materia }` mostra a matéria no jornal publicado; `{ materia, rascunho: true }` (quem mestra), no editor.
+
+**Só o que a pessoa pode abrir.** Numa mesa, a busca lê o que este aparelho já recebeu do banco — e o banco só entrega a
+cada um o que ele pode ver —, e ainda deixa de fora o que só quem mestra abre: quem não mestra as Cenas não acha cena
+nenhuma; quem não mestra o Mapa-múndi acha só o que os jogadores veem dos mapas mostrados (`mundo:pub:`); quem não
+mestra a Meditação acha só as receitas que os personagens dele descobriram; o rascunho do Jornal é só de quem mestra o
+Jornal. O mestre auxiliar acha como mestre o que ele mestra. Numa mesa com campanhas, a cena ou o mapa de outra
+campanha aparece com o nome dela (e, no empate, depois do que está em vista); escolher explica que é preciso trocar de
+campanha no menu da mesa — nada troca sozinho. A ficha de outra campanha diz de qual é e abre normalmente, como na aba
+Fichas. Sem mesa, a busca lê o que cada sistema guardou neste navegador (cada um é o próprio mestre).
+
+A conta — o índice e a busca — fica em `tc/busca.js`, sem navegador: `indexar(fonte)`, `fonteLocal(ler)` e
+`buscar(indice, consulta, max)`.
+
 ### Redesenhar sem atrapalhar quem está usando
 
 A ficha é redesenhada inteira quando algo muda — por quem a está usando, ou por outra pessoa da mesa. Três cuidados
@@ -1536,7 +1570,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas busca mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1702,4 +1736,10 @@ o respeito, as relações, o histórico com as mudanças seguidas juntas e a pro
 interface (os clãs, os cargos — arrastando e pela janela —, passar a liderança, os recursos, as construções, o
 respeito e os nomes dos níveis, as relações, o brasão, o que os jogadores veem de um clã de NPC, o salão, apagar e
 desfazer, recarregar e a tela estreita). `juntar` confere a conta que junta duas gravações do mesmo documento (com centenas
-de rodadas ao acaso).
+de rodadas ao acaso). `busca` confere a busca rápida sem navegador (o que entra para quem mestra, para o auxiliar com
+uma aba só e para quem joga; as campanhas; o que vem do navegador sem mesa; a ordem dos resultados) e `busca-casca`,
+pela casca sem mesa (a lupa, o Ctrl+K na casca e de dentro de um sistema, Esc, a busca de antes de volta, ↑↓ e Enter,
+cada alvo — a ficha, o item nos equipamentos e na bolsa, o marcador, a facção, as matérias publicada e do rascunho, a
+receita, a cena —, a janela presa em cima e a tela estreita); `busca.rede`, numa mesa, o que o jogador acha e o que não
+acha (o NPC, o marcador e a facção escondidos, a receita que ele não descobriu, o rascunho, as cenas) e para onde cada
+escolha leva, para ele e para o mestre.

@@ -1190,6 +1190,17 @@
     try { await lerPapel(); carregar(); }
     catch (e) { falhou(e); return; }
     iniciarModulos();
+    if (window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(irAlvo);
+  }
+  /* (lote 7, parte 6) Outro lugar do site (a busca rápida) pediu um mapa, uma coisa dele ({ mapa, obj }) ou uma facção
+     ({ mapa, fac }): abre o mapa e mostra. */
+  function irAlvo(a) {
+    if (!a || typeof a.mapa !== 'string' || !App.pronto) return;
+    if ((!App.mapa || App.mapa.id !== a.mapa) && !trocarMapa(a.mapa)) return;
+    const P = window.MundoPainel;
+    if (!P) return;
+    if (typeof a.obj === 'string' && P.mostrar) P.mostrar(a.obj);
+    else if (typeof a.fac === 'string' && P.mostrarFaccao) P.mostrarFaccao(a.fac);
   }
 
   /* ---------------- atalhos e saída ---------------- */

@@ -931,6 +931,30 @@
     montarPalco();
     pronto = true;
     pintar();
+    if (TCx && TCx.ponte && TCx.ponte.aoIr) TCx.ponte.aoIr(irAlvo);
+  }
+  /* (lote 7, parte 6) A busca rápida do site pediu uma receita: quem mestra abre "Receitas e símbolos" com ela no
+     editor; quem joga vê, na prática do personagem, a receita que ele descobriu. Ela fica marcada por um instante. */
+  function irAlvo(a) {
+    if (!a || !pronto) return;
+    let alvo = null;
+    if (typeof a.receita === 'string' && mestre) {
+      const r = N.normReceitas(doc(REC)).lista.find(x => x.id === a.receita);
+      if (!r) { toast('Esta receita não existe mais.'); return; }
+      recSel = r.id; pilarEd = Math.min(r.seq.length, N.MAX.pilares - 1);
+      if (vista !== 'receitas') trocarVista('receitas'); else pintar();
+      alvo = '[data-rc="' + CSS.escape(r.id) + '"]';
+    } else if (typeof a.achado === 'string') {
+      const pcs = mestre ? personagens() : meus();
+      if (typeof a.pc === 'string' && pcs.some(p => p.id === a.pc) && sel !== a.pc) { sel = a.pc; seqAtual = []; resultado = null; }
+      if (mestre && vista !== 'cena') trocarVista('cena'); else pintar();
+      alvo = '[data-achada="' + CSS.escape(a.achado) + '"]';
+    } else return;
+    const el = document.querySelector(alvo);
+    if (!el) { toast('Esta receita não está mais na lista.'); return; }
+    el.scrollIntoView({ block: 'nearest' });
+    el.classList.add('achado');
+    setTimeout(() => el.classList.remove('achado'), 2400);
   }
   if (DEBUG) window.__medit = { N, get naMesa() { return naMesa; }, get mestre() { return mestre; }, get pronto() { return pronto; }, get pilha() { return pilha.map(p => p.rotulo); }, get sel() { return sel; }, get seq() { return seqAtual.slice(); },
     doc: id => copia(doc(id)), pintar, desfazer: () => desfazer() };

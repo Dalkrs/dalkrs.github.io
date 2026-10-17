@@ -250,6 +250,8 @@ div.quem { cursor: default; }
 .rec-ed { flex: 1 1 400px; max-width: 600px; min-width: 0; padding: 18px; background: var(--surface); border-left: 1px solid var(--line); display: grid; gap: 14px; align-content: start; }
 .rec-simb { flex: 1 1 100%; padding: 18px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .receita.sel { border: 2px solid var(--lamp); padding: 10px 11px; }
+/* (lote 7, parte 6) a receita que a busca rápida pediu: marcada por um instante */
+.receita.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .receita button.abrir { all: unset; cursor: pointer; display: grid; gap: 6px; }
 .aviso-dup { font-size: 12.5px; color: var(--danger); }
 fieldset.grupo { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px 12px; margin: 0; display: grid; gap: 8px; }
@@ -292,10 +294,10 @@ dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
 <input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp" hidden>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
-<script src="../tc/ponte.js?v=14"></script>
+<script src="../tc/ponte.js?v=15"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
 <script src="nucleo.js?v=1"></script>
 <script src="desenhos.js?v=1"></script>
-<script src="meditacao.js?v=3"></script>
+<script src="meditacao.js?v=4"></script>
 </body>
 </html>

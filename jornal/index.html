@@ -93,6 +93,8 @@ select.in { padding: 0 6px; }
 .chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--lamp); }
 .cartao { display: grid; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .cartao.manchete { border-color: var(--lamp); }
+/* (lote 7, parte 6) a matéria que a busca rápida pediu: marcada por um instante */
+.cartao.achado, .folha [data-mat].achado { outline: 2px solid var(--lamp); outline-offset: 3px; }
 .cartao .cab { display: flex; align-items: center; gap: 6px; }
 .cartao .cab b { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-3); }
 .cartao.manchete .cab b { color: var(--lamp-ink); }
@@ -193,9 +195,9 @@ dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
-<script src="../tc/ponte.js?v=14"></script>
+<script src="../tc/ponte.js?v=15"></script>
 <script src="../mundo/nucleo.js?v=7"></script>
 <script src="nucleo.js?v=1"></script>
-<script src="jornal.js?v=1"></script>
+<script src="jornal.js?v=2"></script>
 </body>
 </html>

@@ -449,6 +449,8 @@ label.f > span.pisoin{display:flex;align-items:center;gap:6px;margin:0}
 .bolconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--brass);background:var(--brass-fundo);border-radius:var(--r);font-size:13px}
 .bolconf span{flex:1 1 240px}
 .bolrow textarea{min-height:30px;resize:vertical}
+/* (lote 7, parte 6) o item que a busca rápida pediu: marcado por um instante */
+.itcard.achado,.bolrow.achado{outline:2px solid var(--brass);outline-offset:2px}
 
 /* config / modal */
 .modal{position:fixed;inset:0;background:rgba(4,6,10,.62);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:40}
@@ -1038,10 +1040,10 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=14"></script>
+<script src="../tc/ponte.js?v=15"></script>
 <script src="../tc/rules.js?v=12"></script>
 <script src="mesa.js?v=11"></script>
-<script src="extras.js?v=13"></script>
+<script src="extras.js?v=14"></script>
 <script src="quadros.js?v=4"></script>
 <script>
 /* =======================================================================
@@ -3912,7 +3914,15 @@ document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.t
   render();
   FichasMesa.depoisDeAbrir();
   // outro sistema do site pediu para abrir uma ficha ("Abrir a ficha", no Acampamento)
-  try{ if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{ if(a && a.pc && S.personagens.some(p=>p.id===a.pc)){ S.sel=a.pc; S.aba='fichas'; save(); render(); window.scrollTo({top:0}); } }); }catch(e){}
+  // (lote 7, parte 6) a busca rápida do site também pede um item: { pc, item } nos equipamentos, { pc, bolsa } na bolsa
+  try{ if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{
+    if(!a || !a.pc) return;
+    const pc=S.personagens.find(p=>p.id===a.pc);
+    if(!pc){ toast('Esta ficha não está mais aqui (ou não chegou a este aparelho).'); return; }
+    S.sel=a.pc; S.aba='fichas'; save(); render();
+    if(a.item||a.bolsa){ if(!FichasExtras.mostrarItem(pc,a)){ window.scrollTo({top:0}); toast('Este item não está mais na ficha de '+(pc.nome||'quem o tinha')+'.'); } }
+    else window.scrollTo({top:0});
+  }); }catch(e){}
 })();
 </script>
 </body>

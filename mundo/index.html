@@ -432,6 +432,8 @@ button.li { width: 100%; text-align: left; color: inherit; font: inherit; }
 .gr .row { padding-left: 4px; }
 .fac-pub { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
+/* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
+.li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .fac-pub .publico { font-size: 13.5px; }
 .fac-ed { display: grid; gap: 10px; padding: 10px 2px 12px 10px; margin: -2px 0 4px; border-left: 2px solid var(--lamp); }
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -660,12 +662,12 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
-<script src="../tc/ponte.js?v=14"></script>
+<script src="../tc/ponte.js?v=15"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=12"></script>
 <script src="nucleo.js?v=11"></script>
 <script src="tela.js?v=13"></script>
-<script src="painel.js?v=17"></script>
-<script src="mundo.js?v=6"></script>
+<script src="painel.js?v=18"></script>
+<script src="mundo.js?v=7"></script>
 </body>
 </html>

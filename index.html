@@ -314,6 +314,26 @@ dialog::backdrop { background: var(--scrim); }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
 .toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
 
+/* ---- a busca rápida (lote 7, parte 6): a janela fica presa em cima, e só a lista cresce para baixo ---- */
+dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) auto auto; }
+.dl.busca { gap: 8px; padding: 12px 12px 10px; }
+.bu-campo { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 5px 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--raised); color: var(--fg-3); }
+.bu-campo:focus-within { border-color: var(--lamp); }
+.dl .bu-campo input { flex: 1; height: 42px; padding: 0; border: 0; background: none; font-size: 16px; outline: none; }
+.dl .bu-campo input::-webkit-search-cancel-button { display: none; }
+.bu-lista { display: grid; align-content: start; gap: 1px; max-height: min(58vh, 460px); overflow: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px; }
+.bu-g { padding: 9px 8px 2px; font-size: 12.5px; font-weight: 700; color: var(--fg-3); }
+.bu-r { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; border-radius: 8px; cursor: pointer; color: var(--fg-3); }
+.bu-r[aria-selected="true"] { background: var(--lamp-soft); color: var(--lamp-ink); }
+.bu-r > span:first-child { flex: none; display: inline-grid; }
+.bu-t { display: grid; min-width: 0; }
+.bu-t b { font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bu-t small { font-size: 12.5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bu-tag { flex: none; max-width: 42%; margin-left: auto; padding: 1px 8px; border-radius: 9px; border: 1px solid var(--line-strong); font-size: 11.5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bu-vazio { margin: 0; padding: 14px 8px; color: var(--fg-3); }
+.dl .bu-dica { font-size: 12px; color: var(--fg-3); }
+@media (hover: none) { .dl .bu-dica { display: none; } }
+
 @media (max-width: 900px) {
   .vivo { position: absolute; top: 0; right: 0; bottom: 0; z-index: 20; width: min(340px, 100%); box-shadow: var(--shadow); }
 }
@@ -339,6 +359,9 @@ dialog::backdrop { background: var(--scrim); }
   </a>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
   <div class="bar-r">
+    <button type="button" class="ib" id="btnBusca" hidden title="Buscar (Ctrl+K)" aria-label="Buscar fichas, cenas, lugares do mapa, receitas, itens e matérias" aria-keyshortcuts="Control+K Meta+K">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 20 20"/></svg>
+    </button>
     <button type="button" class="versao" id="versaoNova" hidden title="Há uma versão nova do site. Clique para recarregar quando puder." aria-label="Há uma versão nova do site: recarregar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
       <span>Versão nova</span>
@@ -410,11 +433,12 @@ dialog::backdrop { background: var(--scrim); }
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=12"></script>
 <script src="tc/tc.js?v=25"></script>
+<script src="tc/busca.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.17-9';
+  const VERSAO = '2026.10.17-10';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -593,6 +617,7 @@ dialog::backdrop { background: var(--scrim); }
     if (!m || typeof m !== 'object') return;
     if (m.t === 'ola') { responder(estadoPonte(abaDaMoldura(fonte))); entregarAlvo(fonte, responder); }
     else if (m.t === 'ir') { if (typeof m.aba === 'string' && pode(m.aba)) irPara(m.aba, m.alvo); }
+    else if (m.t === 'busca') abrirBusca();                // (lote 7, parte 6) Ctrl+K de dentro de um sistema
     else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast((m.origem === 'arvore' ? 'O aviso para o jogador não foi: ' : 'A rolagem não chegou à mesa: ') + e.message));
     else if (m.t === 'dados.abrir') {
       try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas() }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
@@ -650,6 +675,121 @@ dialog::backdrop { background: var(--scrim); }
   }
   function entregarAlvo(fonte, responder) {
     for (const aba in alvos) if (frames[aba] && frames[aba].contentWindow === fonte) { const alvo = alvos[aba]; delete alvos[aba]; responder({ t: 'alvo', alvo }); }
+  }
+
+  /* ---- a busca rápida (lote 7, parte 6) ----
+     A lupa da barra (ou Ctrl+K / ⌘K, aqui ou de dentro de um sistema) abre a janela: a pessoa digita parte do nome e
+     escolhe — com o mouse, ou com ↑↓ e Enter — e o site vai direto: abre a aba e mostra a coisa (a ficha, a cena, o
+     lugar do mapa, a receita, o item, a matéria). Acha só o que a pessoa pode abrir (ver tc/busca.js). Nada muda
+     sozinho: a busca só leva até lá. */
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+  const campoDeTexto = el => !!el && (el.isContentEditable || el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color)$/i.test(el.type || '')));
+  // (num campo de texto do Mac, o Ctrl+K é o do próprio Mac — apagar até o fim da linha —: lá vale só o ⌘K)
+  const atalhoDaBusca = ev => !ev.altKey && !ev.shiftKey && (ev.ctrlKey || ev.metaKey) && ((ev.key || '').toLowerCase() === 'k' || ev.code === 'KeyK') && !(MAC && ev.ctrlKey && !ev.metaKey && campoDeTexto(ev.target));
+  const ICO_BUSCA = { ficha: ICO.fichas, cena: ICO.cenas, mundo: ICO.mundo, receita: ICO.meditacao, jornal: ICO.jornal,
+    item: '<path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>' };
+  const icoBusca = tipo => icone('<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICO_BUSCA[tipo] || ICO.mundo) + '</svg>');
+  const btnBusca = $('btnBusca');
+  btnBusca.title = 'Buscar (' + (MAC ? '⌘K' : 'Ctrl+K') + ')';
+  btnBusca.hidden = false;
+  btnBusca.addEventListener('click', () => abrirBusca());
+  document.addEventListener('keydown', ev => { if (atalhoDaBusca(ev)) { ev.preventDefault(); abrirBusca(); } });
+  let busca = null, ultimaBusca = '';           // a janela aberta: { form, campo, lista, fonte, indice, res, sel }
+  // o que a busca lê: os dados da mesa aberta, ou (sem mesa) o que os sistemas guardaram neste navegador
+  function fonteDaBusca() {
+    const a = mesas.atual;
+    if (!a) return Promise.resolve(TC.busca.fonteLocal(ler));
+    const P = TC.dados.col('personagens'), D = TC.dados.col('documentos');
+    return Promise.all([P.pronta, D.pronta]).then(() => {
+      const docs = new Map(), nomes = {};
+      for (const l of D.todas()) if (l && !l.apagado && typeof l.id === 'string') docs.set(l.id, l);
+      for (const x of a.membros || []) nomes[x.usuario_id] = x.nome;
+      return { personagens: P.todas(), docIds: [...docs.keys()], nomes, eu: conta.usuario ? conta.usuario.id : null,
+        doc: id => { const l = docs.get(id); return l && l.dados && typeof l.dados === 'object' ? l.dados : null; },
+        campsDoc: id => { const l = docs.get(id); return l && Array.isArray(l.campanhas) ? l.campanhas : []; },
+        mestra: { cenas: mesas.mestra('cenas'), mundo: mesas.mestra('mundo'), meditacao: mesas.mestra('meditacao'), jornal: mesas.mestra('jornal') },
+        vista: a.campanha || null, campanhas: (a.campanhas || []).map(c => ({ id: c.id, nome: c.nome })) };
+    });
+  }
+  function abrirBusca() {
+    if (busca && busca.form.isConnected) { busca.campo.focus(); busca.campo.select(); return; }
+    if (dlg.open || !TC.busca) return;           // outra janela aberta (entrar, mesas, uma confirmação…): ela vem antes
+    const campo = h('input', { type: 'search', id: 'buscaQ', placeholder: 'Buscar pelo nome…', 'aria-label': 'Buscar pelo nome', autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'go',
+      role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'buscaLista', 'aria-autocomplete': 'list' });
+    const lista = h('div', { class: 'bu-lista', id: 'buscaLista', role: 'listbox', 'aria-label': 'O que foi achado' });
+    const form = h('form', { class: 'dl busca', id: 'f-busca', role: 'search', autocomplete: 'off' },
+      h('div', { class: 'bu-campo' }, icone('<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 20 20"/></svg>'),
+        campo, h('button', { type: 'button', class: 'ib', title: 'Fechar (Esc)', 'aria-label': 'Fechar a busca', onclick: () => fecharJanela() }, icone(X_SVG))),
+      lista,
+      h('p', { class: 'bu-dica', text: '↑ ↓ escolhem · Enter abre · Esc fecha' }));
+    const b = busca = { form, campo, lista, fonte: null, indice: null, res: [], sel: 0 };
+    form.addEventListener('submit', ev => { ev.preventDefault(); escolherNaBusca(b.sel); });
+    campo.addEventListener('input', () => { ultimaBusca = campo.value; b.sel = 0; pintarBusca(); });
+    campo.addEventListener('keydown', ev => {
+      // (num campo de busca, o Esc do navegador só apaga o que foi digitado: aqui ele fecha a janela, como diz a dica)
+      if (ev.key === 'Escape') { ev.preventDefault(); fecharJanela(); return; }
+      const passo = ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowUp' ? -1 : ev.key === 'PageDown' ? 8 : ev.key === 'PageUp' ? -8 : 0;
+      if (passo && b.res.length) { ev.preventDefault(); marcarNaBusca(b.sel + passo, true); }
+    });
+    campo.value = ultimaBusca;
+    abrirJanela(form);
+    campo.focus(); campo.select();
+    pintarBusca();
+    fonteDaBusca().then(f => { if (busca !== b || !form.isConnected) return; b.fonte = f; b.indice = TC.busca.indexar(f); pintarBusca(); },
+      e => { if (busca === b && form.isConnected) lista.replaceChildren(h('p', { class: 'bu-vazio', text: 'Não deu para ler os dados da mesa agora: ' + ((e && e.message) || 'tente de novo.') })); });
+  }
+  // o que a busca acha, dito do jeito de quem busca (quem joga não acha as cenas, nem o mapa inteiro)
+  function dicaDaBusca(f) {
+    const m = (f && f.mestra) || {};
+    const partes = ['as fichas e os NPCs', m.cenas ? 'as cenas' : null, m.mundo ? 'o que tem nome no Mapa-múndi' : 'o que os jogadores veem no Mapa-múndi',
+      m.meditacao ? 'as receitas da Meditação' : 'as receitas que seus personagens descobriram', 'os itens das fichas', 'as matérias do Jornal'].filter(Boolean);
+    return 'Digite parte do nome. Acha ' + partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] + '.';
+  }
+  function pintarBusca() {
+    const b = busca;
+    if (!b || !b.form.isConnected) return;
+    const q = b.campo.value.trim();
+    b.lista.replaceChildren();
+    b.res = [];
+    b.campo.removeAttribute('aria-activedescendant');
+    if (!b.indice) { b.lista.append(h('p', { class: 'bu-vazio', text: 'Carregando…' })); return; }
+    if (!q) { b.lista.append(h('p', { class: 'bu-vazio', text: dicaDaBusca(b.fonte) })); return; }
+    const achados = TC.busca.buscar(b.indice, q, 40);
+    if (!achados.length) { b.lista.append(h('p', { class: 'bu-vazio', text: 'Nada com “' + q + '”.' })); return; }
+    // em grupos: primeiro o grupo do que mais se parece com o que foi digitado (a lista já vem nessa ordem)
+    const grupos = new Map();
+    for (const it of achados) { if (!grupos.has(it.tipo)) grupos.set(it.tipo, []); grupos.get(it.tipo).push(it); }
+    for (const [, itens] of grupos) {
+      b.lista.append(h('div', { class: 'bu-g', role: 'presentation', text: itens[0].grupo }));
+      for (const it of itens) {
+        const i = b.res.length;
+        b.res.push(it);
+        b.lista.append(h('div', { class: 'bu-r', id: 'bu-' + i, role: 'option', 'aria-selected': 'false', 'data-tipo': it.tipo,
+          title: it.outra ? 'É da campanha “' + it.outra + '”: para abrir, troque de campanha no menu da mesa.' : null,
+          onclick: () => escolherNaBusca(i), onpointermove: () => { if (b.sel !== i) marcarNaBusca(i, false); } },
+          icoBusca(it.tipo), h('span', { class: 'bu-t' }, h('b', { text: it.nome }), h('small', { text: it.sub })),
+          it.outra ? h('span', { class: 'bu-tag', text: it.outra }) : null));
+      }
+    }
+    marcarNaBusca(Math.min(b.sel, b.res.length - 1), true);
+  }
+  function marcarNaBusca(i, rolar) {
+    const b = busca;
+    if (!b || !b.res.length) return;
+    b.sel = Math.max(0, Math.min(b.res.length - 1, i));
+    for (const el of b.lista.querySelectorAll('.bu-r')) el.setAttribute('aria-selected', String(el.id === 'bu-' + b.sel));
+    b.campo.setAttribute('aria-activedescendant', 'bu-' + b.sel);
+    const el = $('bu-' + b.sel);
+    if (rolar && el) el.scrollIntoView({ block: 'nearest' });
+  }
+  function escolherNaBusca(i) {
+    const b = busca, it = b && b.res[i];
+    if (!it) return;
+    if (it.outra) { toast((it.tipo === 'cena' ? 'Esta cena é' : 'Isto é de um mapa') + ' da campanha “' + it.outra + '”. Para abrir, troque de campanha no menu da mesa.'); return; }
+    if (!pode(it.aba)) { toast('Você não tem acesso à aba ' + nomeDaAba(it.aba) + '.'); return; }
+    fecharJanela();
+    busca = null;
+    irPara(it.aba, it.alvo);
   }
   // Toda mudança nos dados da mesa vai para os sistemas abertos (menos para quem acabou de fazê-la).
   TC.dados.on('muda', (col, linha, origem, de) => {
@@ -801,7 +941,7 @@ dialog::backdrop { background: var(--scrim); }
      fecha ou troca de conteúdo, voltam para a página, sem sumir. */
   const caixaDeAvisos = $('toasts');
   const avisosNaPagina = () => { if (caixaDeAvisos.parentNode !== document.body) document.body.append(caixaDeAvisos); };
-  function abrirJanela(conteudo) { avisosNaPagina(); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
+  function abrirJanela(conteudo) { avisosNaPagina(); dlg.classList.toggle('busca', conteudo.classList.contains('busca')); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
   function fecharJanela() { avisosNaPagina(); if (dlg.open) dlg.close(); dlg.replaceChildren(); }
   dlg.addEventListener('click', ev => { if (ev.target === dlg) fecharJanela(); });
   // o aviso de "fechou" chega atrasado: se outra janela já abriu no lugar (entrar → mesas), não é para esvaziá-la

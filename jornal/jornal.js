@@ -168,9 +168,9 @@
           h('span', { class: 'data', text: data || 'Notícias do mundo' }),
           climaTxt ? h('span', { class: 'clima' }, clima ? icone(clima.svg, 18) : null, h('span', { text: climaTxt })) : null)));
     const [man, ...resto] = jx.materias;
-    if (man) art.append(h('section', { class: 'manchete' + (man.dest ? ' dest' : '') },
+    if (man) art.append(h('section', { class: 'manchete' + (man.dest ? ' dest' : ''), 'data-mat': man.id },
       man.tit ? h('h2', { text: man.tit }) : null, h('div', { class: 'texto' + (man.txt.length >= 600 ? ' colunas' : '') }, paragrafos(man.txt)), man.ass ? h('p', { class: 'ass', text: man.ass }) : null));
-    if (resto.length) art.append(h('section', { class: 'materias' }, resto.map(m => h('section', { class: 'materia' + (m.dest ? ' dest' : '') },
+    if (resto.length) art.append(h('section', { class: 'materias' }, resto.map(m => h('section', { class: 'materia' + (m.dest ? ' dest' : ''), 'data-mat': m.id },
       m.tit ? h('h3', { text: m.tit }) : null, paragrafos(m.txt), m.ass ? h('p', { class: 'ass', text: m.ass }) : null))));
     const notas = jx.notas.filter(n => n.txt.trim());
     if (notas.length) art.append(h('h2', { class: 'secao', text: 'Boatos e anúncios' }), h('div', { class: 'notas' }, notas.map(n => h('div', { class: 'nota' }, paragrafos(n.txt)))));
@@ -559,6 +559,20 @@
     }
     pronto = true;
     pintar();
+    if (TCx && TCx.ponte && TCx.ponte.aoIr) TCx.ponte.aoIr(irAlvo);
+  }
+  /* (lote 7, parte 6) A busca rápida do site pediu uma matéria: a do rascunho abre no editor (quem mestra); a publicada,
+     na folha que os jogadores leem. Ela aparece na tela, marcada por um instante. */
+  function irAlvo(a) {
+    if (!a || typeof a.materia !== 'string' || !pronto) return;
+    const ras_ = a.rascunho === true && mestre;
+    if (mestre) { const m = ras_ ? 'escrever' : 'noar'; if (modo !== m) { modo = m; guarda.gravar('tinycats:jornal:modo', modo); } }
+    pintar();
+    const el = (ras_ ? $('ed') : $('leitura')).querySelector('[data-mat="' + CSS.escape(a.materia) + '"]');
+    if (!el) { toast(ras_ ? 'Esta matéria não está mais no rascunho.' : 'Esta matéria não está mais no jornal publicado.'); return; }
+    el.scrollIntoView({ block: 'nearest' });
+    el.classList.add('achado');
+    setTimeout(() => el.classList.remove('achado'), 2400);
   }
   if (DEBUG) window.__jornal = { N, get ras() { return ras; }, get pub() { return pub; }, get pilha() { return pilha; }, get mestre() { return mestre; }, get naMesa() { return naMesa; }, get pronto() { return pronto; },
     mudar, desfazer, publicar, salvarJa, caixa };

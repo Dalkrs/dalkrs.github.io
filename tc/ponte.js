@@ -13,6 +13,7 @@
      TC.dados.col(nome)          — personagens e documentos da mesa aberta (só dentro da casca, com mesa)
      TC.ponte.ir(aba, alvo)      — abre outro sistema do site (ex.: ir('cenas', { cena: id })); só dentro da casca
      TC.ponte.aoIr(fn)           — este sistema foi aberto por outro, com um alvo: fn(alvo)
+                                   (Ctrl+K / ⌘K aqui dentro abre a busca rápida da casca, que leva a um alvo assim)
      TC.ponte.aoFechar(fn)       — a página vai fechar (ou a mesa, trocar): fn() entrega agora o que o sistema ainda segurava
      TC.ponte.registro.ler()     — promessa: todas as rolagens da mesa (só o mestre; é o que o auditor dos dados lê)
      TC.ponte.registro.aoChegar(fn) — chegou à mesa ao vivo uma linha com recado para os sistemas (dados.sis): fn(linha)
@@ -270,6 +271,18 @@
     }
   }
   window.addEventListener('message', ev => { if (ev.origin === location.origin && ev.source === window.parent && ev.data && ev.data.tinycats) receber(ev.data.tinycats); });
+  /* (lote 7, parte 6) Ctrl+K (⌘K no Mac) abre a busca rápida da casca, de dentro de qualquer sistema. Num campo de
+     texto do Mac, o Ctrl+K continua sendo o do próprio Mac (apagar até o fim da linha): lá vale só o ⌘K. */
+  if (naCasca) {
+    const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+    const campoDeTexto = el => !!el && (el.isContentEditable || el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color)$/i.test(el.type || '')));
+    document.addEventListener('keydown', ev => {
+      if (ev.altKey || ev.shiftKey || !(ev.ctrlKey || ev.metaKey) || !((ev.key || '').toLowerCase() === 'k' || ev.code === 'KeyK')) return;
+      if (MAC && ev.ctrlKey && !ev.metaKey && campoDeTexto(ev.target)) return;
+      ev.preventDefault();
+      enviar({ t: 'busca' });
+    });
+  }
   if (canal) canal.onmessage = ev => { if (!naCasca) receber(ev.data); };
   TC.ponte = ponte; TC.dados = dados; TC.arquivos = arquivos;
   enviar({ t: 'ola' });

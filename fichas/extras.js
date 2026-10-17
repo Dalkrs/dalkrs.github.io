@@ -418,6 +418,36 @@ const FichasExtras = (() => {
   }
   // um item novo já vem com o cartão aberto (quem chama põe o item na ficha e redesenha)
   const abrirItem = id => { itensAbertos.add(id); };
+  /* (lote 7, parte 6) A busca rápida do site pediu um item desta ficha ({ item } nos equipamentos, { bolsa } na bolsa):
+     os filtros dela saem, a seção do item abre (na bolsa, a aba do tipo dele) e o cartão aparece no meio da tela,
+     marcado por um instante. Nada se edita sozinho. Devolve se achou o item. */
+  function mostrarItem(pc, o) {
+    if (!pc || !o) return false;
+    let sel = null;
+    if (typeof o.item === 'string') {
+      const itens = (pc.itens || []).filter(Boolean), it = itens.find(x => String(x.id) === o.item);
+      if (!it) return false;
+      filtros.delete(pc.id);
+      const R = R7();
+      if (R) {
+        const sec = R.secoesDeItens(itens, S.cfg).find(s => s.itens.includes(it)), k = sec ? (sec.tipo ? sec.tipo.id : '-') : null, f = fechadas();
+        if (k && f.has(k)) { f.delete(k); S.itFechadas = [...f]; }
+      }
+      sel = '[data-itcard="' + CSS.escape(String(it.id)) + '"]';
+    } else if (typeof o.bolsa === 'string') {
+      const R = RR(), it = R ? R.bolsa(pc, pc.estado).find(x => String(x.id) === o.bolsa) : null;
+      if (!it) return false;
+      S.abaBolsa = it.t;
+      sel = '[data-bolrow="' + CSS.escape(String(it.id)) + '"]';
+    } else return false;
+    render();
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    el.scrollIntoView({ block: 'center' });
+    el.classList.add('achado');
+    setTimeout(() => el.classList.remove('achado'), 2400);
+    return true;
+  }
   /* (lote 7) O item novo do "+ Item": com o filtro de um tipo ligado, já vem daquele tipo; os outros filtros (que o
      esconderiam) saem. */
   function itemNovo(pc) {
@@ -1751,7 +1781,7 @@ const FichasExtras = (() => {
     aviso, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros,
-    painelItens, ligarItens, abrirItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
+    painelItens, ligarItens, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,
