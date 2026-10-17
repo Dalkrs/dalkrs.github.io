@@ -727,7 +727,10 @@ function normalizeScene(sc) {
     const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b: o navio — o casco vai até 32 quadrados, e a forma 'navio' tem a proa do lado p)
-    else if (gera && palavra(gera.t)) t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 32), h: clamp(Math.round(Number(gera.h)) || 4, 2, 32), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' || gera.f === 'navio' ? gera.f : 'ret' };
+    else if (gera && palavra(gera.t)) {
+      t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 32), h: clamp(Math.round(Number(gera.h)) || 4, 2, 32), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' || gera.f === 'navio' ? gera.f : 'ret' };
+      if (gera.c === true) t.gera.c = true;              // (lote 7, parte 4b) a moradia do chefe da tribo
+    }
     else delete t.gera;
   }
   // (lote 7) o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (para recortar os bairros)

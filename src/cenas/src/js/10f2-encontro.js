@@ -1163,6 +1163,9 @@ const Encontro = (() => {
   }
 
   /* ================= o fundo pintado ================= */
+  /* (lote 7, parte 4b) os pintores que os outros lugares feitos com este motor registram (a tribo, o porto): o nome do
+     objeto pintado → (g, o, c, rnd, p). "moradia" pinta as construções com desenho próprio (a tenda, a iurte, o iglu…) */
+  const PINTORES = {};
   function pintaObjeto(g, o, c, rnd, p) {
     const P = Paisagem;
     switch (o.k) {
@@ -1201,6 +1204,7 @@ const Encontro = (() => {
       case 'espumaRoda': { const pts = elipse(o.x, o.y, o.r, o.r * 0.75, 14); pts.push(pts[0]); P.espuma(g, pts, c, rnd); break; }
       case 'buracoGelo': { g.save(); g.fillStyle = '#e8f4fa'; g.beginPath(); g.ellipse(o.x * c, o.y * c, c * 0.75, c * 0.6, 0, 0, TAU); g.fill(); g.fillStyle = '#1f4a66'; g.beginPath(); g.ellipse(o.x * c, o.y * c, c * 0.5, c * 0.4, 0, 0, TAU); g.fill(); g.restore(); break; }
       case 'plataformaPedra': P.penhasco(g, o.pts, c, rnd, ['#b8b3a8', '#8d887e', '#5d5a52'], 3); break;
+      default: if (PINTORES[o.k]) PINTORES[o.k](g, o, c, rnd, p);
     }
   }
   function pintar(p, c) {
@@ -1226,6 +1230,7 @@ const Encontro = (() => {
     const TP = Estilos.tipos(est);
     p.predios.forEach((k, i) => {
       const def = TP[k.tipo] || TP.casa, cont = Estilos.contorno(k), caminho2 = () => { g.beginPath(); cont.forEach(([x, y], n) => (n ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+      if (k.desenho && PINTORES.moradia) { PINTORES.moradia(g, k, c, rnd, est, p); return; }
       if (!k.aberto) { Estilos.telhado(g, k, c, rnd, est, (sub(p.seed, 30 + i) % 997)); return; }
       g.save(); g.translate(c * 0.1, c * 0.12); g.fillStyle = 'rgba(0,0,0,.32)'; caminho2(); g.fill(); g.restore();
       g.save(); caminho2(); g.clip(); Estilos.piso(g, k, c, rnd, def.piso); g.restore();
@@ -1268,7 +1273,7 @@ const Encontro = (() => {
       } else {
         for (const s of Estilos.paredesDaCasa(Object.assign({}, k, { porta: null, janelas: [] }))) parede(s.x1, s.y1, s.x2, s.y2);
         const pt = k.porta, mx = (pt.x1 + pt.x2) / 2, my = (pt.y1 + pt.y2) / 2, dx = pt.lado === 'o' ? -1 : pt.lado === 'l' ? 1 : 0, dy = pt.lado === 'n' ? -1 : pt.lado === 's' ? 1 : 0;
-        sc.tokens.push(entrada(sc, mx + dx * 0.55 - 0.5, my + dy * 0.55 - 0.5, { t: k.interior || k.tipo, w: k.w, h: k.h, p: pt.lado, e: p.estilo, s: (sub(p.seed, 60 + i) % 2147483000) + 1, f: k.forma === 'oct' ? 'oct' : 'ret' }, c));
+        sc.tokens.push(entrada(sc, mx + dx * 0.55 - 0.5, my + dy * 0.55 - 0.5, Object.assign({ t: k.interior || k.tipo, w: k.w, h: k.h, p: pt.lado, e: p.estilo, s: (sub(p.seed, 60 + i) % 2147483000) + 1, f: k.forma === 'oct' ? 'oct' : 'ret' }, k.chefe ? { c: true } : null), c));
       }
     });
     for (const n of p.navios) {
@@ -1277,6 +1282,9 @@ const Encontro = (() => {
       sc.tokens.push(entrada(sc, n.entrada.x, n.entrada.y, n.entrada.gera, c));
     }
     for (const v of p.visao) parede(v[0], v[1], v[2], v[3]);
+    // (lote 7, parte 4b) as paredes de outro tipo que o lugar pede: o portão da paliçada (abre e fecha), a cerca do
+    // cercado (mureta: deixa ver, não deixa passar)
+    for (const w of p.paredes || []) parede(w.x1, w.y1, w.x2, w.y2, w.k);
     for (const o of p.objetos) if (Props.P[o.id]) { const t = Props.novo(sc, o.id, o.x * c, o.y * c, o.s || 1, false); if (o.rot) t.rot = o.rot; sc.tokens.push(t); }
     // os marcadores ocultos: por onde o grupo chega e a boa emboscada
     if (p.marcas && p.marcas.chegada && Props.P.chegada) sc.tokens.push(Props.novo(sc, 'chegada', p.marcas.chegada[0] * c, p.marcas.chegada[1] * c, 1, true));
@@ -1296,9 +1304,10 @@ const Encontro = (() => {
     if (FX.P[z.fx] && FX.P[z.fx].cond) e.apply = { bar: '', amt: '', cond: { id: FX.P[z.fx].cond, n: 0, d: 0 }, skip: [] };
     return e;
   }
-  async function criar(p, nome, ex) {
+  // a cena de um plano deste motor (o encontro, a tribo, o porto); nomeDe: o nome quando o mestre deixa o campo vazio
+  async function criarPlano(p, nome, ex, nomeDe) {
     ex = ex || {};
-    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomeDe(p));
     if (typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;
     sc.cols = p.W; sc.rows = p.H;
     sc.fog.dynamic = true; sc.fog.explored = true;
@@ -1312,6 +1321,7 @@ const Encontro = (() => {
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
     return sc;
   }
+  const criar = (p, nome, ex) => criarPlano(p, nome, ex, nomePadrao);
 
   /* ================= a prévia ================= */
   function resumo(p) {
@@ -1335,8 +1345,10 @@ const Encontro = (() => {
     const seg = (x1, y1, x2, y2, cor, w, tr) => { g.strokeStyle = cor; g.lineWidth = w; g.setLineDash(tr || []); g.beginPath(); g.moveTo(x1 * cell, y1 * cell); g.lineTo(x2 * cell, y2 * cell); g.stroke(); g.setLineDash([]); };
     // as paredes de visão (tracejadas, claras), as construções e a amurada (ciano: deixa ver)
     for (const v of p.visao) seg(v[0], v[1], v[2], v[3], 'rgba(255,236,200,0.75)', Math.max(1.5, cell * 0.1), [Math.max(2, cell * 0.25), Math.max(2, cell * 0.18)]);
-    for (const k of p.predios) for (const s of Estilos.paredesDaCasa(k.aberto ? k : Object.assign({}, k, { porta: null, janelas: [] }))) seg(s.x1, s.y1, s.x2, s.y2, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * 0.2));
+    // (as moradias com desenho próprio — a tenda, a iurte, o iglu — já se mostram no fundo: as paredes delas não aparecem)
+    for (const k of p.predios) if (!k.desenho) for (const s of Estilos.paredesDaCasa(k.aberto ? k : Object.assign({}, k, { porta: null, janelas: [] }))) seg(s.x1, s.y1, s.x2, s.y2, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * 0.2));
     for (const n of p.navios) for (const s of Navio.paredes(n)) seg(s.x1, s.y1, s.x2, s.y2, '#9fe9ff', Math.max(1.5, cell * 0.12));
+    for (const w of p.paredes || []) seg(w.x1, w.y1, w.x2, w.y2, w.k === 'door' ? '#7fd1ff' : w.k === 'mureta' ? '#9fe9ff' : 'rgba(255,236,200,0.75)', Math.max(1.5, cell * (w.k === 'door' ? 0.2 : 0.12)), w.k === 'wall' ? [Math.max(2, cell * 0.25), Math.max(2, cell * 0.18)] : null);
     // os marcadores: a bandeira verde (chegada) e o xis vermelho (emboscada)
     const m = p.marcas || {};
     if (m.chegada) { const [x, y] = m.chegada; g.fillStyle = '#3fbf6a'; g.strokeStyle = '#0e2a18'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc((x + 0.5) * cell, (y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo((x + 0.38) * cell, (y + 0.22) * cell); g.lineTo((x + 0.75) * cell, (y + 0.36) * cell); g.lineTo((x + 0.38) * cell, (y + 0.5) * cell); g.closePath(); g.fill(); g.fillRect((x + 0.33) * cell, (y + 0.2) * cell, Math.max(1, cell * 0.07), cell * 0.6); }
@@ -1400,5 +1412,9 @@ const Encontro = (() => {
     dica: 'Clique no traçado da prévia (o caminho, a água, os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',
     nota: 'Sai uma cena de batalha nova, com o relevo, as zonas de efeito e as luzes onde a natureza pede, e paredes de visão só no que é grande (as pedras grandes, os troncos grossos, os paredões e as construções). Os marcadores de chegada e de emboscada nascem ocultos (só você vê; dá para apagar). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
     feito: (sc, p) => `"${sc.name}" criada: ${resumo(p).replace(/\.$/, '')}. Tudo é editável.` };
-  return { TAMANHOS, TERRENOS, TER, CAMINHOS, SIT, camValido, gerar, pintar, montar, criar, previa, resumo, parteEm, travaDe, limparTrava, nomePadrao, curva, blob, faixa, cruzamento, LUGAR };
+  /* (lote 7, parte 4b) o motor, para os outros lugares de fora (a tribo, o porto): o contexto com a grade de ocupação e
+     as peças (contexto), a vegetação e os enfeites do terreno, o desenho, a montagem da cena, a prévia, a cena e o
+     registro de pintores */
+  const motor = { contexto, vegetacao, enfeites, marcadores, lugarDePe, pintar, montar, previa, criarPlano, resolucao, sub, portaNoLado, foraDaPorta, CH, LEVE, blob, elipse, faixa, ladosDaFaixa, curva, perto, lerp, distLinha, dentroPoli, PINTORES };
+  return { TAMANHOS, TERRENOS, TER, CAMINHOS, SIT, camValido, gerar, pintar, montar, criar, previa, resumo, parteEm, travaDe, limparTrava, nomePadrao, curva, blob, faixa, cruzamento, LUGAR, motor };
 })();

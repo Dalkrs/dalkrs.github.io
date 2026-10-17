@@ -344,7 +344,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#o-obj-fogueira').click(); await w(80);
   { const p = await tela(10.5 * C, 4.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   await page.locator('#o-oc .seg-b', { hasText: 'Móveis' }).click(); await w(120);
-  ok(await page.locator('.o-obj').count() === 13 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, treze móveis (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7)');
+  ok(await page.locator('.o-obj').count() === 15 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, quinze móveis (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7; a pele e as armas, das moradias da tribo, na parte 4b)');
   await page.locator('#o-obj-mesa').click(); await w(80);
   { const p = await tela(4 * C, 6 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   for (const [cat, id, x, y] of [['Natureza', 'arvore', 12, 1], ['Natureza', 'pedra', 9.5, 7.5], ['Perigos', 'armadilha', 5.5, 4.5], ['Perigos', 'estatua', 12.5, 7.5]]) {

@@ -94,9 +94,12 @@ const Estilos = (() => {
   /* ---- a forma de uma casa ----
      lados: as paredes da casa, em quadrados. Os quatro lados retos (n, s, o, l), sempre do menor para o maior, e, na
      casa de cantos cortados, as quatro diagonais (lado null). A porta e as janelas ficam nos lados retos. */
+  /* o tamanho do canto cortado: 1 (as casas de fora), 2 (a planta de dentro, no dobro) ou mais (lote 7, parte 4b: as
+     moradias redondas da tribo cortam perto de um oitavo regular); nunca a ponto de sumir com o lado reto */
+  const corteDe = k => clamp(Math.round(Number(k.corte)) || 1, 1, Math.max(1, Math.floor(Math.min(k.w, k.h) / 2) - 1));
   function lados(k) {
     if (k.forma === 'navio') return ladosDoCasco(k);
-    const { x, y, w, h } = k, o = k.forma === 'oct' ? (k.corte === 2 ? 2 : 1) : 0;     // (a planta de dentro, no dobro, corta 2)
+    const { x, y, w, h } = k, o = k.forma === 'oct' ? corteDe(k) : 0;     // (a planta de dentro, no dobro, corta 2)
     const L = [
       { lado: 'n', x1: x + o, y1: y, x2: x + w - o, y2: y },
       { lado: 's', x1: x + o, y1: y + h, x2: x + w - o, y2: y + h },
@@ -129,7 +132,7 @@ const Estilos = (() => {
     const { x, y, w, h } = k;
     if (k.forma === 'navio') return cascoNaCaixa(k).pts;
     if (k.forma !== 'oct') return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
-    const o = k.corte === 2 ? 2 : 1;
+    const o = corteDe(k);
     return [[x + o, y], [x + w - o, y], [x + w, y + o], [x + w, y + h - o], [x + w - o, y + h], [x + o, y + h], [x, y + h - o], [x, y + o]];
   }
   /* Os pedaços de um lado reto: parede, porta e janelas, na ordem. aberturas: [{ k: 'door' | 'window', a, b }] com a e
@@ -176,6 +179,26 @@ const Estilos = (() => {
         g.fillRect(x + i * q + (grande ? 2 : 1.5), y + j * q + (grande ? 2 : 1.5), q - (grande ? 4 : 3), q - (grande ? 4 : 3));
         if (grande && rnd() < 0.25) { g.strokeStyle = 'rgba(30,30,34,0.5)'; g.lineWidth = Math.max(1, c * 0.02); g.beginPath(); g.moveTo(x + i * q + q * 0.2, y + j * q + q * 0.3); g.lineTo(x + i * q + q * 0.6, y + j * q + q * 0.7); g.stroke(); }
       }
+    } else if (tipo === 'terra' || tipo === 'neve') {
+      // (lote 7, parte 4b) a terra batida com a palha (as tendas, as iurtes) ou a neve socada (o iglu)
+      const neve = tipo === 'neve';
+      g.fillStyle = neve ? '#dfe8ee' : '#6b5638'; g.fillRect(x, y, w, hh);
+      for (let i = 0, n = Math.round(k.w * k.h * 5); i < n; i++) {
+        const px = x + rnd() * w, py = y + rnd() * hh, r = c * (0.08 + rnd() * 0.22);
+        g.globalAlpha = 0.25 + rnd() * 0.25; g.fillStyle = neve ? (rnd() < 0.5 ? '#f4f8fb' : '#c9d6df') : (rnd() < 0.5 ? '#7a6444' : '#5a482e');
+        g.beginPath(); g.ellipse(px, py, r, r * 0.7, rnd() * 3, 0, TAU2); g.fill();
+      }
+      if (!neve) { g.strokeStyle = '#c9a85a'; g.lineWidth = Math.max(1, c * 0.025); for (let i = 0, n = Math.round(k.w * k.h * 2.5); i < n; i++) { const px = x + rnd() * w, py = y + rnd() * hh, a = rnd() * 3, l = c * (0.12 + rnd() * 0.16); g.globalAlpha = 0.35 + rnd() * 0.3; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); g.stroke(); } }
+      g.globalAlpha = 1;
+    } else if (tipo === 'esteira') {
+      // a esteira de junco trançada (as cabanas e as palafitas)
+      g.fillStyle = '#7a6238'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
+        const q = c / 2, deitada = (i + j) % 2 === 0, s2 = Math.floor(rnd() * 18);
+        g.fillStyle = `rgb(${176 + s2},${148 + s2},${92 + s2})`; g.fillRect(x + i * q + 1, y + j * q + 1, q - 2, q - 2);
+        g.strokeStyle = 'rgba(110,86,46,0.45)'; g.lineWidth = Math.max(1, c * 0.015);
+        for (let t = 0.25; t < 1; t += 0.25) { g.beginPath(); if (deitada) { g.moveTo(x + i * q + 1, y + j * q + q * t); g.lineTo(x + (i + 1) * q - 1, y + j * q + q * t); } else { g.moveTo(x + i * q + q * t, y + j * q + 1); g.lineTo(x + i * q + q * t, y + (j + 1) * q - 1); } g.stroke(); }
+      }
     } else if (tipo === 'tatami') {
       g.fillStyle = '#3d3424'; g.fillRect(x, y, w, hh);
       // esteiras de 2 × 1, deitadas e em pé, alternando
@@ -215,8 +238,8 @@ const Estilos = (() => {
   }
   /* As paredes pintadas de uma casa: o traço grosso do estilo, com o vão da porta; a janela é um traço claro no meio
      da parede. As paredes de verdade (que barram a visão) são da cena; estas são só o desenho. */
-  function paredesPintadas(g, k, c, rnd, est) {
-    const P = de(est).parede, L = paredesDaCasa(k), lw = Math.max(2, P.larg * c);
+  function paredesPintadas(g, k, c, rnd, est, material) {
+    const P = material || de(est).parede, L = paredesDaCasa(k), lw = Math.max(2, P.larg * c);
     g.save(); g.lineCap = 'square'; g.lineJoin = 'miter';
     const traco = (s, cor, larg) => { g.strokeStyle = cor; g.lineWidth = larg; g.beginPath(); g.moveTo(s.x1 * c, s.y1 * c); g.lineTo(s.x2 * c, s.y2 * c); g.stroke(); };
     // a sombra que a parede faz no chão de fora
@@ -231,9 +254,9 @@ const Estilos = (() => {
       }
       traco(s, P.cor, lw);
       if (P.tipo === 'papel') traco(s, P.luz, Math.max(1, lw * 0.35));
-      else if (P.tipo === 'troncos' || P.tipo === 'pedra' || P.tipo === 'adobe') {
-        // os troncos, as pedras ou o reboco: marquinhas ao longo da parede
-        const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1), n = Math.max(1, Math.round(len * (P.tipo === 'troncos' ? 3 : 2.2)));
+      else if (P.tipo === 'troncos' || P.tipo === 'pedra' || P.tipo === 'adobe' || P.tipo === 'couro' || P.tipo === 'feltro' || P.tipo === 'gelo') {
+        // os troncos, as pedras, o reboco, as costuras do couro, a treliça do feltro ou os blocos de gelo: marquinhas ao longo da parede
+        const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1), n = Math.max(1, Math.round(len * ({ troncos: 3, couro: 4, feltro: 3.5, gelo: 1.6 }[P.tipo] || 2.2)));
         g.strokeStyle = P.luz; g.lineWidth = Math.max(1, c * 0.025); g.globalAlpha = P.tipo === 'adobe' ? 0.35 : 0.55;
         for (let i = 1; i < n; i++) {
           const t = i / n, px = (s.x1 + (s.x2 - s.x1) * t) * c, py = (s.y1 + (s.y2 - s.y1) * t) * c, nx = -(s.y2 - s.y1) / len, ny = (s.x2 - s.x1) / len;

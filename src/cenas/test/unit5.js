@@ -607,14 +607,18 @@ const ASSETS = {
   mk({ t: 'casa', w: 4, h: 4 }, false);
   mk('x');
   mk({ t: 'navio', w: 19, h: 6, p: 'o', e: 'nordico', s: 5, f: 'navio' });            // (lote 7, parte 4b) a escotilha do navio
+  mk({ t: 'tenda', w: 5, h: 5, p: 'n', e: 'comum', s: 7, f: 'oct', c: true });          // (parte 4b-2) a tenda do chefe
+  mk({ t: 'iurte', w: 4, h: 4, p: 'l', e: 'comum', s: 8, f: 'oct', c: 'sim' });         // (o "chefe" torto sai)
   normalizeScene(sc);
   eq(sc.tokens.map(t => t.gera || null), [
     { t: 'taverna', w: 6, h: 5, p: 'o', e: 'oriental', s: 123, f: 'oct' },
     { t: 'casa', w: 32, h: 4, p: 's', e: 'comum', s: 1, f: 'ret' },
     { t: 'loja', w: 2, h: 3, p: 'n', e: 'anao', s: 9, f: 'ret' },
     { b: 'centro' }, null, null, null,
-    { t: 'navio', w: 19, h: 6, p: 'o', e: 'nordico', s: 5, f: 'navio' }],
-  'o marcador de um prédio guarda o tipo, as medidas (de 2 a 32: o convés de um navio grande), o lado da porta, o estilo, a semente e a forma (a do navio também; o que vem torto vira o padrão); o de um bairro, só o bairro; só objetos de cenário, e nada além disso');
+    { t: 'navio', w: 19, h: 6, p: 'o', e: 'nordico', s: 5, f: 'navio' },
+    { t: 'tenda', w: 5, h: 5, p: 'n', e: 'comum', s: 7, f: 'oct', c: true },
+    { t: 'iurte', w: 4, h: 4, p: 'l', e: 'comum', s: 8, f: 'oct' }],
+  'o marcador de um prédio guarda o tipo, as medidas (de 2 a 32: o convés de um navio grande), o lado da porta, o estilo, a semente e a forma (a do navio também; o que vem torto vira o padrão) e se é a moradia do chefe da tribo; o de um bairro, só o bairro; só objetos de cenário, e nada além disso');
   // o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (o resto sai)
   const g1 = newScene('Mapa'); g1.gerado = { lugar: 'cidade', o: { modo: 'bairros', tamanho: 'media' }, seed: 77.6, trava: { ruas: 5, predios: [] }, lixo: 1 };
   normalizeScene(g1);

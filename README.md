@@ -513,7 +513,7 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   o jarro de barro, a bigorna, as flores e a pedra rúnica; e, para os interiores, o banco e o balcão (vários em fila
   viram um banco comprido ou o balcão da taverna; giram com o objeto) e a coluna de pedra.
 - **A janela "Gerar um lugar…"** (`Gerador`, `10h-gerador.js`; o menu de cenas trocou "Gerar um vilarejo…" por ela):
-  uma aba por lugar (o Vilarejo, a Cidade e o Encontro; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
+  uma aba por lugar (o Vilarejo, a Cidade, a Tribo e o Encontro; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
   que vale para todos — o **estilo**, a **hora do dia**, o **clima** e a chave **"Com relevo e formas"** —; a prévia à
   direita. A janela abre na última aba usada (`App.opt.genLugar`).
   - **Os estilos** (`Estilos`, `10c2-estilos.js`): Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o
@@ -641,6 +641,48 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   cena })`) e as Cenas abrem a janela "Gerar um lugar" já preenchida (`Gerador.abrir(lugar, { op, estilo, hora, clima,
   nome, id })`); nada muda até o mestre criar, e o que veio do mapa não vira escolha guardada da janela. Com uma
   janela já aberta nas Cenas, só um aviso. O `id` (o do atalho do marcador) vale se ainda não existir cena com ele.
+- **A Tribo** (`Tribo`, `10f4-tribo.js`, feita com o motor dos encontros, `Encontro.motor`; lote 7, parte 4b-2): a
+  aldeia da tribo. As **moradias** são uma escolha própria (Tendas, Cabanas, Iurtes, Palafitas ou Iglus; não dependem
+  do terreno); o **tamanho** (Pequena 36 × 30, até 6 moradias; Média 44 × 36, até 9; Grande 52 × 42, até 13 — das
+  maiores, a cabana e a iurte, às vezes cabem menos); o **terreno** (Campo, Floresta, Selva, Deserto, Neve, Pântano); e
+  três chaves: a **paliçada** (as estacas em volta, com o portão — uma porta, que abre e fecha —, as torres de vigia de
+  4 m dos dois lados do portão e, na média e na grande, mais duas lá atrás, e o fosso com estacas por fora, com a
+  ponte de troncos amarrados diante do portão); os **lugares sagrados** (o círculo de pedras com a fogueira dos
+  ancestrais, fora da paliçada quando cabe — senão lá atrás, dentro —, o mastro com crânios junto do portão e os totens
+  menores); e o **dia a dia** (o cercado, com a cerca baixa — mureta: deixa ver, não deixa passar —, a porteira aberta
+  do lado da praça e os bichos pintados no fundo, que não são tokens — cabras, ovelhas, porcos, bois; renas na neve —;
+  os secadores de peles e de carne, o forno de barro, o tear e a lenha; o riacho num dos lados curtos, com as canoas na
+  beira). Sempre: a praça no meio, com a fogueira (e os troncos de sentar em volta) e o totem; a moradia do chefe,
+  maior, do outro lado da praça, de frente para o portão (com o crânio de chifres); as outras em volta (nas grandes, em
+  duas fileiras desencontradas), cada uma com a trilha batida da porta até a praça (que contorna a moradia do caminho);
+  e as tochas do portão. As **palafitas** ficam sobre um lago, do lado oposto ao do portão: o píer sai da praça até a
+  passarela comprida, paralela à beira, e as moradias ficam dos dois lados dela (do lado de cá só quando o lago é fundo
+  o bastante), cada uma com o seu deque (1 m acima da água) e a porta para a passarela; a do chefe bem na frente do
+  píer; as canoas junto dos deques; a paliçada e o fosso acabam na beira do lago. O plano (`Tribo.gerar`) é uma conta
+  pura: o traçado (a água, a praça, a paliçada, as torres, as moradias, a trilha, o círculo de pedras e o cercado) tem
+  o sorteio dele — um clique na prévia trava (`trava: { tamanho, moradias, terreno, palicada, sagrados, vida, s }`), e
+  "Gerar outro" troca só os detalhes (as árvores, os enfeites, os secadores, o forno, o tear, a lenha, as canoas e os
+  bichos); trocar uma escolha solta. A cena: o fundo pintado (cada moradia com o desenho dela, vista de cima — a tenda de
+  couro com as costuras, a faixa pintada e as varas; a iurte de feltro com as cordas e a coroa; o iglu de blocos de neve
+  com o túnel; a cabana de palha de duas águas; a palafita de palha de quatro águas —, a paliçada de troncos apontados,
+  o fosso, as torres, o cercado), as paredes (a paliçada é de visão; as moradias, fechadas; o portão, uma porta; a
+  cerca, mureta), o relevo leve (as torres, o fosso, a água, os deques, as passarelas e a ponte) e os objetos (as
+  fogueiras e as tochas, com a luz delas; os totens). Cada moradia tem a sua Entrada oculta na porta, que sabe que
+  moradia é (`gera.t`) e se é a do chefe (`gera.c`). O nome da cena: "Aldeia das tendas", "Aldeia dos iglus"… Os
+  desenhos da tribo ficam registrados no motor (`Encontro.motor.PINTORES`; a moradia com desenho próprio, `k.desenho`,
+  é pintada por `PINTORES.moradia`), e o motor monta também as paredes de outro tipo que o lugar pede (`p.paredes`: o
+  portão, a cerca); na prévia, as paredes das moradias com desenho não aparecem (o desenho já mostra).
+- **As moradias por dentro** (`Tribo.planta`, pelo `Interior`): dois cliques na Entrada, "Gerar o interior…" — o tipo
+  é só o da moradia (as moradias não entram na lista dos prédios da cidade); a planta tem o dobro das medidas e uma
+  sala só (redonda — o octógono, com o canto cortado de quase um oitavo — na tenda, na iurte e no iglu), com a fogueira
+  bem no meio (no iglu, o braseiro), as peles para dormir em volta, os baús e os jarros; na do chefe, mais peles, a pele
+  grande diante do assento, o assento no fundo (de frente para a porta), as armas e um totem. O chão de terra com palha
+  (a tenda e a iurte), de neve socada (o iglu) ou de esteira (a cabana e a palafita, que têm uma janela); as paredes de
+  couro, de feltro, de gelo ou de troncos (`Estilos.paredesPintadas(…, material)`). No iglu, o estrado de neve no fundo
+  (a área de meio metro e a forma clara por cima). À noite, a fogueira é que ilumina (nenhuma "Luz da sala"). O aviso
+  diz "uma sala".
+- **Objetos novos** (parte 4b-2): a pele (onde se dorme nas moradias: parda, branca ou malhada), as armas no suporte
+  (as lanças e o escudo redondo) — em Móveis e baús — e o totem, em Perigos e marcos.
 
 ### A Árvore (lote 6)
 
@@ -1365,7 +1407,7 @@ do que é grande, a trava, a Surpresa variando; com `SO=encontro`, `cena`, `navi
 `mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
 clima, o estilo, o nome e o atalho), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
 no mapa gerando o encontro (de noite, com chuva, nórdico), a janela já aberta que não é atropelada, a vila do
-marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre

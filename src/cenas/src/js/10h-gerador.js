@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
-   Uma janela com uma aba por lugar (o Vilarejo, a Cidade e o Encontro; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
+   Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo e o Encontro; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
    (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
@@ -9,7 +9,7 @@
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Encontro.LUGAR];
+  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);

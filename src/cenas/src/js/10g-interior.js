@@ -22,10 +22,17 @@ const Interior = (() => {
     senhor: { n: 'Casa do senhor', salas: ['nobre', 'biblioteca', 'quarto', 'cozinha', 'quarto'], min: 4, grande: 0.42 },
     quartel: { n: 'Quartel', salas: ['refeitorio', 'dormitorio', 'arsenal'], min: 3 },
     // (lote 7, parte 4b) o navio: a planta vem do Navio (do tamanho do convés, com o porão e as cabines)
-    navio: { n: 'Navio', salas: ['capitao', 'cabine', 'porao', 'alojamento', 'paiol'], min: 1, so: true },
+    navio: { n: 'Navio', salas: ['capitao', 'cabine', 'porao', 'alojamento', 'paiol'], min: 1, so: true, planta: o => Navio.planta(Object.assign({}, o, { tipo: 'navio' })) },
+    // (lote 7, parte 4b) as moradias da tribo: a planta vem da Tribo (uma sala só, redonda nas tendas, nas iurtes e nos
+    // iglus, com a fogueira no meio, as peles e os baús); fogo: a fogueira já ilumina (nenhuma luz da sala à noite)
+    tenda: { n: 'Tenda', salas: ['tenda'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
+    iurte: { n: 'Iurte', salas: ['iurte'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
+    iglu: { n: 'Iglu', salas: ['iglu'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
+    cabana: { n: 'Cabana', salas: ['cabana'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
+    palafita: { n: 'Palafita', salas: ['cabana'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
   };
   const DO_VILAREJO = { capela: 'templo' };
-  const TIPOS_I = Object.keys(PLANTAS).filter(k => !PLANTAS[k].so);      // (o navio só aparece no marcador de um navio)
+  const TIPOS_I = Object.keys(PLANTAS).filter(k => !PLANTAS[k].so);      // (o navio e as moradias da tribo só aparecem no marcador deles)
   // os móveis de cada sala, na ordem em que entram (o tapete que vem primeiro fica por baixo da mesa); com "#", uma
   // arrumação: o estrado do altar, a colunata, os bancos e a pia de água benta da nave; o balcão no fundo da taverna e
   // da loja; o palquinho do bardo; a mesa alta no estrado do salão nobre e as colunas; a tina da forja; o alçapão do
@@ -63,7 +70,8 @@ const Interior = (() => {
   // o: { tipo, w, h, p (o lado da porta), estilo, f (forma), seed }
   function gerar(o) {
     o = o || {};
-    if (o.tipo === 'navio' || o.f === 'navio') return Navio.planta(Object.assign({}, o, { tipo: 'navio' }));
+    if (o.f === 'navio') return PLANTAS.navio.planta(o);
+    if (PLANTAS[o.tipo] && PLANTAS[o.tipo].planta) return PLANTAS[o.tipo].planta(o);
     const tipo = tipoValido(o.tipo), PL = PLANTAS[tipo], estilo = Estilos.valido(o.estilo);
     const W = clamp(Math.round(Number(o.w) || 4) * 2, 6, 24), H = clamp(Math.round(Number(o.h) || 4) * 2, 6, 24);
     const seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
@@ -349,10 +357,10 @@ const Interior = (() => {
   /* ================= o desenho ================= */
   const M = 2;                                             // a margem em volta da planta, na cena (em quadrados)
   // a casa vista como o gerador de vilarejo vê (para o piso e as paredes de fora)
-  const casaDe = p => ({ x: M, y: M, w: p.W, h: p.H, forma: p.forma, corte: 2, proa: p.proa, porta: desloca(p.porta), janelas: p.janelas.map(desloca) });
+  const casaDe = p => ({ x: M, y: M, w: p.W, h: p.H, forma: p.forma, corte: p.corte || 2, proa: p.proa, porta: desloca(p.porta), janelas: p.janelas.map(desloca) });
   const desloca = s => (s ? Object.assign({}, s, { x1: s.x1 + M, y1: s.y1 + M, x2: s.x2 + M, y2: s.y2 + M }) : null);
   function pintar(p, c) {
-    const W = (p.W + 2 * M) * c, H = (p.H + 2 * M) * c, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est), piso = (TP[PISO_DE[p.tipo]] || TP.casa).piso;
+    const W = (p.W + 2 * M) * c, H = (p.H + 2 * M) * c, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est), piso = p.piso || (TP[PISO_DE[p.tipo]] || TP.casa).piso;
     const cv = document.createElement('canvas'); cv.width = Math.round(W); cv.height = Math.round(H);
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x27d4eb2f) >>> 0 || 5);
     // lá fora: escuro
@@ -379,7 +387,7 @@ const Interior = (() => {
         g.stroke();
       }
     }
-    Estilos.paredesPintadas(g, k, c, rnd, est);
+    Estilos.paredesPintadas(g, k, c, rnd, est, p.parede || null);
     return cv;
   }
   // os feixes de luz das janelas, como formas, na cor da hora (no breu, nenhum)
@@ -409,7 +417,7 @@ const Interior = (() => {
      (com as portas fechadas), os móveis, e a Saída junto da porta de entrada. A hora e o clima vêm da cena de fora; à
      noite, uma luz em cada sala. */
   async function criar(p, nome, fora, op) {
-    const sc = newScene(String(nome || '').trim().slice(0, 60) || PLANTAS[p.tipo].n + ' — por dentro');
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || (p.nome || PLANTAS[p.tipo].n) + ' — por dentro');
     sc.cols = p.W + 2 * M; sc.rows = p.H + 2 * M;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;
@@ -417,7 +425,7 @@ const Interior = (() => {
     sc.bgColor = '#16130f'; sc.bg.stretch = true;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     const parede = (x1, y1, x2, y2, k) => sc.walls.push({ id: uid('wl'), k: k || 'wall', x1: (x1 + M) * c, y1: (y1 + M) * c, x2: (x2 + M) * c, y2: (y2 + M) * c, open: false, locked: false });
-    for (const s of Estilos.paredesDaCasa({ x: 0, y: 0, w: p.W, h: p.H, forma: p.forma, corte: 2, proa: p.proa, porta: p.porta, janelas: p.janelas })) parede(s.x1, s.y1, s.x2, s.y2, s.k);
+    for (const s of Estilos.paredesDaCasa({ x: 0, y: 0, w: p.W, h: p.H, forma: p.forma, corte: p.corte || 2, proa: p.proa, porta: p.porta, janelas: p.janelas })) parede(s.x1, s.y1, s.x2, s.y2, s.k);
     for (const pw of p.paredes) {
       const pd = pw.porta, horiz = pw.y1 === pw.y2;
       if (horiz) { if (pd.x1 > pw.x1) parede(pw.x1, pw.y1, pd.x1, pw.y1); parede(pd.x1, pw.y1, pd.x2, pw.y1, 'door'); if (pw.x2 > pd.x2) parede(pd.x2, pw.y1, pw.x2, pw.y1); }
@@ -427,7 +435,7 @@ const Interior = (() => {
     for (const q of p.salas) {
       const ms = q.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
       for (const mv of ms) if (Props.P[mv.id]) { const tk = Props.novo(sc, mv.id, (mv.x + M) * c, (mv.y + M) * c, mv.s, false); if (mv.rot) tk.rot = mv.rot; sc.tokens.push(tk); }
-      if (noite) sc.lights.push({ id: uid('lz'), name: 'Luz da sala', x: (q.x + M + q.w / 2) * c, y: (q.y + M + q.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(q.w, q.h) * 0.8)), c: '#ffc77a', on: true, fl: true });
+      if (noite && !(PLANTAS[p.tipo] && PLANTAS[p.tipo].fogo)) sc.lights.push({ id: uid('lz'), name: 'Luz da sala', x: (q.x + M + q.w / 2) * c, y: (q.y + M + q.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(q.w, q.h) * 0.8)), c: '#ffc77a', on: true, fl: true });
     }
     // o relevo (o estrado, o palco, a água, o alçapão), as formas de enfeite (travadas) e os feixes de luz das janelas
     if (!op || op.relevo !== false) {
@@ -452,11 +460,11 @@ const Interior = (() => {
     if (!isGM() || !t || !fora) return;
     // o prédio da cidade (o marcador sabe o tipo, as medidas, a porta, o estilo e a semente) ou uma Entrada posta à mão
     const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t ? t.gera : null;
-    const st = g0 ? { tipo: g0.t === 'navio' ? 'navio' : tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
+    const st = g0 ? { tipo: PLANTAS[g0.t] && PLANTAS[g0.t].so ? g0.t : tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
       : { tipo: 'casa', estilo: Estilos.valido(App.opt.genEstilo), seed: novaSemente(), tam: TAMANHOS_I[App.opt.intTam] ? App.opt.intTam : 'medio' };
     st.relevo = App.opt.genRelevo !== false;              // (a mesma chave da janela "Gerar um lugar")
     const medidas = () => {
-      if (g0) return { w: g0.w, h: g0.h, p: g0.p, f: g0.f };
+      if (g0) return { w: g0.w, h: g0.h, p: g0.p, f: g0.f, c: !!g0.c };
       const T = TAMANHOS_I[st.tam];
       return { w: T.w, h: T.h, p: 's', f: st.estilo === 'elfico' && T.w >= 5 && T.h >= 5 ? 'oct' : 'ret' };
     };
@@ -468,10 +476,10 @@ const Interior = (() => {
       plano = gerar(Object.assign(medidas(), { tipo: st.tipo, estilo: st.estilo, seed: st.seed }));
       try { previa(cv, plano, 460, 330, { tom: fora.tone, relevo: st.relevo }); } catch (e) { console.error(e); }
       resumoEl.textContent = resumo(plano);
-      if (!nomeMexido) inNome.value = PLANTAS[plano.tipo].n + ' — por dentro';
+      if (!nomeMexido) inNome.value = (plano.nome || PLANTAS[plano.tipo].n) + ' — por dentro';
     };
     const pintarC = () => ctl.replaceChildren(...[
-      field('Que prédio', seg('int-tipo', st.tipo, (st.tipo === 'navio' ? ['navio'] : TIPOS_I).map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
+      field('Que prédio', seg('int-tipo', st.tipo, (PLANTAS[st.tipo] && PLANTAS[st.tipo].so ? [st.tipo] : TIPOS_I).map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
       g0 ? null : field('Tamanho', seg('int-tam', st.tam, Object.keys(TAMANHOS_I).map(k => [k, TAMANHOS_I[k].n, null, `${TAMANHOS_I[k].w * 2} × ${TAMANHOS_I[k].h * 2} quadrados`]), v => { st.tam = v; App.opt.intTam = v; pintarC(); refazer(); }), 'stack'),
       field('Estilo', seg('int-est', st.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { st.estilo = v; pintarC(); refazer(); }), 'stack'),
       K.toggle('int-relevo', st.relevo, v => { st.relevo = v; App.opt.genRelevo = v; pintarC(); refazer(); }, 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)')].filter(Boolean));
@@ -481,7 +489,8 @@ const Interior = (() => {
       body: h('div', { class: 'ger' },
         h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'int-outro', title: 'Sorteia outra planta para o mesmo prédio' })), resumoEl)),
         field('Nome da cena', inNome, 'stack'),
-        note(st.tipo === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Sai uma cena nova, dentro desta, com a Saída na escada da escotilha levando de volta ao convés; o marcador fica ligado a ela. Nada sai escrito.'
+        note(PLANTAS[st.tipo] && PLANTAS[st.tipo].fogo ? 'Por dentro, no dobro do tamanho da moradia: a fogueira no meio, as peles para dormir em volta, os baús e os jarros (na do chefe, mais peles, o assento e as armas). Sai uma cena nova, dentro desta, com a Saída junto da porta levando de volta; o marcador fica ligado a ela. Nada sai escrito.'
+          : st.tipo === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Sai uma cena nova, dentro desta, com a Saída na escada da escotilha levando de volta ao convés; o marcador fica ligado a ela. Nada sai escrito.'
           : (g0 ? 'A planta tem o dobro das medidas do prédio, dividida em salas' : 'A planta é dividida em salas') + ', com as portas de dentro fechadas, janelas e os móveis de cada sala. Sai uma cena nova, dentro desta (na lista de cenas), com a Saída junto da porta de entrada levando de volta; o marcador fica ligado a ela. A hora do dia é a desta cena. Nada sai escrito.')),
       actions: [{ label: 'Cancelar' }, {
         label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
@@ -492,7 +501,7 @@ const Interior = (() => {
             UI.closeModal();
             if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
             UI.switchScene(sc.id);
-            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": ${p.salas.length} salas. A Saída, junto da porta, leva de volta.`, { long: true });
+            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": ${p.salas.length === 1 ? 'uma sala' : p.salas.length + ' salas'}. A Saída, junto da porta, leva de volta.`, { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },

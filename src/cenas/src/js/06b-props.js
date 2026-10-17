@@ -416,6 +416,47 @@ const Props = (() => {
         if (s % 3 === 0) { const x = R * (hsh(s, 1, 2) - 0.5) * 1.2; c.fillStyle = '#d9d2c2'; c.beginPath(); c.arc(x, -R * 0.2, R * 0.14, 0, TAU); c.fill(); linha(c, R * 0.025, 'rgba(60,50,40,0.7)'); c.fillStyle = '#6b3a12'; c.beginPath(); c.arc(x, -R * 0.2, R * 0.08, 0, TAU); c.fill(); }
       },
     },
+    // (lote 7, parte 4b) a pele estendida no chão (onde se dorme nas tendas da tribo): a parda, a branca e a malhada
+    pele: {
+      n: 'Pele', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        const k = s % 3, cor = [['#6e4a2c', '#9a6c44', '#b88a5a'], ['#c9c2b4', '#e2ddd2', '#f4f1ea'], ['#7d756a', '#a39a8c', '#c2b9aa']][k];
+        const contorno = () => {
+          c.beginPath(); c.moveTo(0, -R * 0.86);
+          const pts = [[R * 0.22, -R * 0.62], [R * 0.72, -R * 0.78], [R * 0.5, -R * 0.36], [R * 0.6, R * 0.1], [R * 0.86, R * 0.62], [R * 0.36, R * 0.5], [R * 0.12, R * 0.86], [-R * 0.12, R * 0.86], [-R * 0.36, R * 0.5], [-R * 0.86, R * 0.62], [-R * 0.6, R * 0.1], [-R * 0.5, -R * 0.36], [-R * 0.72, -R * 0.78], [-R * 0.22, -R * 0.62]];
+          for (const [x, y] of pts) c.lineTo(x * (0.94 + 0.06 * hsh(s, x * 10, 3)), y);
+          c.closePath();
+        };
+        c.save(); c.translate(R * 0.06, R * 0.08); contorno(); c.fillStyle = 'rgba(0,0,0,0.28)'; c.fill(); c.restore();
+        contorno(); c.fillStyle = radial(c, 0, 0, R * 0.9, [cor[2], cor[1], cor[0]]); c.fill(); linha(c, R * 0.04, 'rgba(40,26,14,0.8)');
+        // o pelo (risquinhos) e, na malhada, as manchas
+        c.strokeStyle = k === 1 ? 'rgba(150,140,125,0.55)' : 'rgba(40,26,14,0.4)'; c.lineWidth = Math.max(0.6, R * 0.025);
+        for (let i = 0; i < 22; i++) { const a = hsh(s, i, 7) * TAU, d = hsh(s, i, 8) * R * 0.55, x = Math.cos(a) * d * 0.8, y = Math.sin(a) * d; c.beginPath(); c.moveTo(x, y); c.lineTo(x + R * 0.07, y + R * 0.12); c.stroke(); }
+        if (k === 2) { c.fillStyle = 'rgba(50,44,38,0.55)'; for (let i = 0; i < 6; i++) { c.beginPath(); c.ellipse((hsh(s, i, 9) - 0.5) * R * 0.8, (hsh(s, i, 10) - 0.5) * R * 1.1, R * 0.1, R * 0.07, hsh(s, i, 11) * 3, 0, TAU); c.fill(); } }
+      },
+    },
+    // (lote 7, parte 4b) as armas no suporte (na tenda do chefe da tribo): as lanças encostadas, a trave e o escudo redondo
+    armas: {
+      n: 'Armas', g: 'movel', size: 1,
+      draw(c, R) {
+        sombra(c, R, 0.86, 0.62, 0.08, 0.12);
+        // as lanças encostadas no suporte (o cabo e a ponta de ferro)
+        for (const [x, a] of [[-0.46, -0.16], [-0.1, 0.05], [0.26, 0.2]]) {
+          c.save(); c.translate(x * R, R * 0.7); c.rotate(a);
+          c.lineCap = 'round'; c.strokeStyle = MAD.esc; c.lineWidth = R * 0.11; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -R * 1.18); c.stroke();
+          c.strokeStyle = MAD.cla; c.lineWidth = R * 0.06; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -R * 1.18); c.stroke();
+          c.beginPath(); c.moveTo(0, -R * 1.52); c.lineTo(R * 0.1, -R * 1.2); c.lineTo(-R * 0.1, -R * 1.2); c.closePath(); c.fillStyle = grad(c, -R * 0.1, 0, R * 0.1, 0, [FER.luz, FER.med]); c.fill(); linha(c, R * 0.03);
+          c.restore();
+        }
+        // a trave do suporte, com os dois pés
+        caixa(c, -R * 0.86, -R * 0.1, R * 1.72, R * 0.2, R * 0.06); c.fillStyle = grad(c, 0, -R * 0.1, 0, R * 0.1, [MAD.luz, MAD.esc]); c.fill(); linha(c, R * 0.035);
+        for (const x of [-0.8, 0.8]) { c.fillStyle = MAD.esc; c.beginPath(); c.arc(x * R, 0, R * 0.12, 0, TAU); c.fill(); linha(c, R * 0.03); }
+        // o escudo redondo, encostado no pé (a madeira, a faixa pintada e o umbo de ferro)
+        c.fillStyle = radial(c, R * 0.5, R * 0.45, R * 0.4, [MAD.luz, MAD.med, MAD.esc]); c.beginPath(); c.arc(R * 0.52, R * 0.5, R * 0.36, 0, TAU); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = '#a8321e'; c.lineWidth = R * 0.07; c.beginPath(); c.arc(R * 0.52, R * 0.5, R * 0.25, 0, TAU); c.stroke();
+        c.fillStyle = FER.cla; c.beginPath(); c.arc(R * 0.52, R * 0.5, R * 0.1, 0, TAU); c.fill(); linha(c, R * 0.025);
+      },
+    },
     /* ---------- Natureza ---------- */
     arvore: {
       n: 'Árvore', g: 'natureza', size: 2,
@@ -663,6 +704,26 @@ const Props = (() => {
         c.moveTo(-R * 0.12, -R * 0.55); c.lineTo(-R * 0.12, R * 0.05); c.moveTo(-R * 0.12, -R * 0.4); c.lineTo(R * 0.12, -R * 0.55); c.moveTo(-R * 0.12, -R * 0.25); c.lineTo(R * 0.12, -R * 0.4);
         c.moveTo(-R * 0.18, R * 0.2); c.lineTo(R * 0.18, R * 0.5); c.moveTo(R * 0.18, R * 0.2); c.lineTo(-R * 0.18, R * 0.5);
         c.stroke();
+      },
+    },
+    // (lote 7, parte 4b) o totem da tribo, visto de cima: o poste entalhado com os anéis pintados e a ave de asas abertas
+    totem: {
+      n: 'Totem', g: 'perigo', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.86, 0.5, 0.1, 0.14);
+        const V = '#a8321e', P2 = '#1e1a16', T = '#2f9a8c', C = '#e6d4a8';
+        // as asas (de um lado ao outro), com as penas em degraus
+        c.beginPath(); c.moveTo(-R * 0.92, -R * 0.08);
+        for (let i = 0; i <= 6; i++) { const x = -R * 0.92 + i * R * 0.3; c.lineTo(x, -R * 0.24 - (i % 2) * R * 0.08); }
+        c.lineTo(R * 0.92, -R * 0.08); c.lineTo(R * 0.7, R * 0.18); c.lineTo(-R * 0.7, R * 0.18); c.closePath();
+        c.fillStyle = grad(c, 0, -R * 0.3, 0, R * 0.2, [V, '#7a2214']); c.fill(); linha(c, R * 0.045);
+        c.strokeStyle = P2; c.lineWidth = R * 0.04;
+        for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * R * 0.3, -R * 0.12); c.lineTo(sx * R * 0.8, -R * 0.05); c.stroke(); c.fillStyle = T; c.beginPath(); c.arc(sx * R * 0.58, R * 0.04, R * 0.07, 0, TAU); c.fill(); }
+        // o poste, com os anéis
+        c.fillStyle = radial(c, -R * 0.08, -R * 0.1, R * 0.5, [C, '#b89a62', '#6b4a2b']); c.beginPath(); c.arc(0, 0, R * 0.36, 0, TAU); c.fill(); linha(c, R * 0.045);
+        for (const [rr, cor] of [[0.28, P2], [0.2, V], [0.12, T]]) { c.strokeStyle = cor; c.lineWidth = R * 0.05; c.beginPath(); c.arc(0, 0, R * rr, 0, TAU); c.stroke(); }
+        // o bico da ave, virado para a frente
+        c.beginPath(); c.moveTo(-R * 0.12, R * 0.26); c.quadraticCurveTo(0, R * 0.7, R * 0.12, R * 0.26); c.closePath(); c.fillStyle = '#e8b04a'; c.fill(); linha(c, R * 0.035);
       },
     },
     // (lote 7) os marcadores de passagem: levam a outra cena (dois cliques, só para o mestre); nascem ocultos dos jogadores

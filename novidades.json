@@ -2,6 +2,43 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-2",
+      "data": "2026-10-17",
+      "titulo": "A aldeia da tribo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Tribo — a aldeia. Escolha as moradias (tendas, cabanas, iurtes, palafitas ou iglus), o tamanho (até 13 moradias), o terreno e o que entra: a paliçada com o portão, as torres de vigia e o fosso com estacas; os lugares sagrados (o círculo de pedras com a fogueira dos ancestrais, o mastro com crânios e os totens); o dia a dia (o cercado com os bichos, os secadores de peles e de carne, o forno de barro, o tear, o riacho e as canoas). A praça com a fogueira e o totem e a moradia do chefe, maior, entram sempre. Um clique na prévia trava o traçado: “Gerar outro” troca só os detalhes."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: nas palafitas, a aldeia fica na beira de um lago — o píer sai da praça até a passarela comprida, e as moradias ficam sobre as estacas, dos dois lados dela, cada uma com o seu deque."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a aldeia sai pronta para jogar — o portão abre e fecha, as torres de vigia têm 4 m, o fosso é fundo, a cerca do cercado deixa ver mas não deixa passar, e as fogueiras e as tochas iluminam à noite. Cada moradia tem um marcador de Entrada na porta, só seu: dois cliques geram o interior."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as moradias por dentro — uma sala redonda (na tenda, na iurte e no iglu) com a fogueira bem no meio, as peles para dormir, os baús e os jarros; na do chefe, o assento, as armas e o totem. O iglu tem o estrado de neve; a cabana e a palafita, uma janela."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: três objetos novos na ferramenta de objetos — a pele e as armas (em Móveis e baús) e o totem (em Perigos e marcos)."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: o aviso de quando se cria o interior de um prédio de uma sala só dizia “1 salas”; agora diz “uma sala”."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-1",
       "data": "2026-10-17",
       "titulo": "Os encontros, o navio e o Mapa-múndi gerando cenas",
