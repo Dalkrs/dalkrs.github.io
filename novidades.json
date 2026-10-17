@@ -2,6 +2,35 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-11",
+      "data": "2026-10-17",
+      "titulo": "Os defeitos do lote 8",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Cenas: o HP, o SP ou a Energia do painel do token não descontam mais pela metade enquanto você digita (um “-15” virava “-1” quando a cena mudava no meio). Só o Enter, ou sair do campo, confirma; o que foi digitado continua no campo."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: o campo “Atual” das barras também vale só com Enter ou ao sair dele, e aceita -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida). Esc desfaz o que foi digitado."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Turnos: “Encerrar” zera a iniciativa de todos, para o próximo combate começar do zero (as rolagens da mesa ao vivo que ainda não foram anotadas também). Dá para desfazer pelo aviso.",
+          "mestre": true
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Turnos: dá para ter várias faixas de grupo. Na faixa nova, quem já está em outra vem desmarcado, com o nome dela — antes a primeira faixa sumia.",
+          "mestre": true
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Mapa-múndi: de perto, os hexágonos pintados mostram só o desenho de cada um; a textura grande, de longe, não fica mais por cima deles."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-10",
       "data": "2026-10-17",
       "titulo": "A busca rápida",

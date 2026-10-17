@@ -64,8 +64,22 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(b0.length === 2 && b0[0][0] === 'HP' && b0[1][0] === 'SP' && b0.every(x => x[2] === 100) && /^(\d+)\/\1$/.test(b0[0][1]), 'embaixo da imagem aparecem as barrinhas dos recursos, cheias: ' + JSON.stringify(b0));
   const hpMax = +b0[0][1].split('/')[1];
   await P.locator('[data-resatual="hppc_dain"]').fill(String(Math.round(hpMax / 4))); await w(300);
+  ok((await barrinhas())[0][1] === hpMax + '/' + hpMax, '(lote 8) enquanto se digita o HP atual, nada muda (só com Enter ou ao sair do campo)');
+  await P.locator('[data-resatual="hppc_dain"]').press('Escape'); await w(200);
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(hpMax) && (await barrinhas())[0][1] === hpMax + '/' + hpMax, '(lote 8) Esc desfaz o que foi digitado');
+  await P.locator('[data-resatual="hppc_dain"]').fill('-8'); await P.locator('[data-resatual="hppc_dain"]').press('Enter'); await w(300);
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(hpMax - 8) && (await barrinhas())[0][1] === (hpMax - 8) + '/' + hpMax, '(lote 8) -8 tira 8 do HP atual');
+  await P.locator('[data-resatual="hppc_dain"]').fill('+5'); await P.locator('#f_nome').click(); await w(300);
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(hpMax - 3), '(lote 8) +5 põe 5 (ao sair do campo também vale)');
+  await P.locator('[data-resatual="hppc_dain"]').fill('+50'); await P.locator('[data-resatual="hppc_dain"]').press('Enter'); await w(300);
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(hpMax), '(lote 8) a cura não passa do máximo');
+  await P.locator('[data-ressob="hppc_dain"]').fill('5'); await w(250);
+  await P.locator('[data-resatual="hppc_dain"]').fill('-8'); await P.locator('[data-resatual="hppc_dain"]').press('Enter'); await w(300);
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(hpMax - 3) && await P.locator('[data-ressob="hppc_dain"]').inputValue() === '0', '(lote 8) o -8 gasta primeiro a sobrevida (5), depois o HP (3), como na cena');
+  await P.locator('[data-resatual="hppc_dain"]').fill(String(Math.round(hpMax / 4))); await P.locator('[data-resatual="hppc_dain"]').press('Enter'); await w(300);
   const b1 = await barrinhas();
-  ok(b1[0][1] === Math.round(hpMax / 4) + '/' + hpMax && b1[0][2] >= 24 && b1[0][2] <= 26 && await P.evaluate(() => document.activeElement && document.activeElement.dataset.resatual === 'hppc_dain'), 'mudar o HP atual encolhe a barrinha na hora, sem tirar o foco do campo: ' + JSON.stringify(b1[0]));
+  ok(await P.locator('[data-resatual="hppc_dain"]').inputValue() === String(Math.round(hpMax / 4)), '(lote 8) um número sem sinal é o valor novo');
+  ok(b1[0][1] === Math.round(hpMax / 4) + '/' + hpMax && b1[0][2] >= 24 && b1[0][2] <= 26, 'confirmado o HP atual (Enter), a barrinha encolhe: ' + JSON.stringify(b1[0]));
   await P.locator('[data-rescheio="hppc_dain"]').count() ? await P.locator('#f_nome').click() : null; await w(200);
 
   // ---------- o campo novo da ficha ----------

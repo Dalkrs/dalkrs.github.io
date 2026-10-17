@@ -206,10 +206,15 @@ na cena passa por um botão e vira um passo de desfazer.
   depois; empate, o outro vai antes (`turnSort`). Um token fica numa faixa só e, nela, não tem linha própria. Na vez
   da faixa, o anel aparece em todos os tokens dela, e a duração das condições deles desconta quando a faixa termina
   a vez. Para os jogadores, a faixa vai só com os tokens que eles veem (e não vai, se todos estão ocultos). Dá para
-  mudar nome, bônus e quem está nela, ou separar em linhas.
+  mudar nome, bônus e quem está nela, ou separar em linhas. (Lote 8) Na janela da faixa nova, quem já está em outra
+  faixa vem desmarcado, com o nome dela ("está na faixa Goblin: marque para trazer"): antes vinha marcado e, com a
+  seleção de antes ainda de pé, a primeira faixa ficava vazia e sumia. Marcado, ele sai da outra.
 - **Esperando para reagir** (`reac` na entrada): a marca de quem segurou a vez para agir fora de ordem. O botão fica
   na linha de quem está jogando (e na de quem está esperando, para dizer que reagiu); a marca sai sozinha quando a
   vez dele volta.
+- **Encerrar** (lote 8, `encerrarCombate`) zera a iniciativa de todos — a da ordem, a rolagem guardada, a reação e as
+  rolagens da mesa ao vivo que ainda não foram anotadas (`App.iniRolls`) —, para o combate seguinte começar do zero.
+  É um passo de desfazer só, e o aviso traz o Desfazer.
 - **K — ataque com defesa** no token sob o cursor (ou nos selecionados; sob o cursor um dos selecionados, vale a
   seleção inteira). Só o mestre.
 - **Força e defesas ao lado do nome.** Com o mouse sobre um token (ou com até quatro escolhidos), uma etiqueta ao
@@ -1165,7 +1170,10 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   O canvas é desenhado na resolução da tela (`pintarHexVista`): só a parte à vista do terreno pintado, com uma margem
   de um quarto da tela para cada lado, refeita quando o zoom para ou quando a vista sai do que já foi desenhado —
   nítido em qualquer zoom (com um teto de pixels; a tela muito densa conta como 2). De longe, com os hexágonos miúdos
-  na tela (menos de 12 px), fica só a tinta.
+  na tela (menos de 12 px), fica só a tinta, com a textura. (Lote 8) De perto, com o desenho em cada hexágono, a
+  tinta fica lisa (`texturaHex(…, liso)`: só a cor e as manchas do `ladrilho`) — os desenhos da textura, de outro
+  tamanho, ficavam por cima dos de cada hexágono. Com o desenho em cada hexágono desligado, a textura fica em qualquer
+  zoom (`hexCv.dataset.liso` diz qual foi desenhada).
 - **A honra dos grupos** (lote 6, `g.estilo`, `g.honra`, `g.hhist`): de −5 a +5, com um selo junto do token no estilo
   escolhido (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal; sem
   estilo, o grupo não mostra honra). Positiva: o corpo vai do bronze ao ouro, com o aro dourado (mais grosso quanto
@@ -1481,6 +1489,17 @@ para isso não atrapalhar (em `fichas/mesa.js` e `fichas/extras.js`):
   sai dele — isto é, no meio do clique em outra coisa. O que mudou é guardado na hora, e o desenho espera o clique
   terminar (ou, saindo pelo Tab, o cursor chegar ao campo seguinte; ou, se o clique abriu uma lista, a escolha).
 - **Uma mudança que chega de fora no meio de um clique** espera o botão do mouse subir.
+
+Os valores das barras que mudam no meio do jogo (lote 8) só valem com Enter ou saindo do campo:
+
+- **Nas Cenas**, o painel do lado é redesenhado a cada mudança da cena (alguém mexeu num token, a vez passou). Ao
+  trocar o campo em que se está digitando, o navegador dispara o `change` (e o `blur`) com o valor pela metade — o
+  "-1" de um "-15" virava dano. Enquanto o painel troca (`trocandoPainel`, em `10-ui.js`), esses eventos são barrados
+  na captura; o que foi digitado vai para o campo novo, com o cursor e a seleção. Só o Enter ou sair do campo
+  confirmam.
+- **Na ficha**, o campo "Atual" das barras (`confirmarAtual`) vale com Enter ou ao sair, e aceita "-8" e "+5" (para
+  tirar e pôr; o dano gasta primeiro a sobrevida), além do valor novo. Esc desfaz o que foi digitado. Fica entre o
+  mínimo da barra e o máximo, com um aviso quando a barra não desce mais.
 
 A Árvore segue a mesma ideia (`arvore/mesa.js`): o que chega da mesa só espera por quem está digitando de verdade
 (ou com uma janela aberta). Com o cursor parado num campo — a busca, o total de pontos —, entra na hora, o cursor

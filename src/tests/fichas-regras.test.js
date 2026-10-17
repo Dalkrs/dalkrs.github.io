@@ -62,14 +62,14 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('[data-resopc="hp"] summary').click(); await w(150);
   await P.locator('[data-respiso="hp"]').fill('10'); await P.locator('[data-respiso="hp"]').press('Enter'); await w(350);
   ok((await calc()).rec[0].min === -10 && /até −10/.test(await P.locator('.rescard').first().locator('.de').innerText()), 'a barra de HP pode ficar negativa até −10');
-  await P.locator('[data-resatual="hp"]').fill('-6'); await w(250);
+  await P.locator('[data-resatual="hp"]').fill('-106'); await P.locator('[data-resatual="hp"]').press('Enter'); await w(250);     // (lote 8: -106 tira 106 de 100)
   const bn = (await barrinhas())[0];
   ok(bn[1] === '−6/100' && bn[2] === 60 && bn[3] === true, 'HP em −6: a barrinha mostra a parte negativa (60% do piso), riscada — ' + j(bn));
   await P.locator('#f_nome').click(); await w(250);
   ok(await P.locator('.rescard .atual.neg').count() === 1, 'e o campo do valor fica em destaque');
   await P.locator('[data-resatual="hp"]').fill('-45'); await P.locator('#f_nome').click(); await w(350);
   ok((await sel()).estado.rec.hp === -10 && /não desce de −10/.test(await toast()), 'abaixo do piso, o valor fica no piso ao sair do campo, com aviso: ' + await toast());
-  await P.locator('[data-resatual="sp"]').fill('-3'); await P.locator('#f_nome').click(); await w(350);
+  await P.locator('[data-resatual="sp"]').fill('-999'); await P.locator('#f_nome').click(); await w(350);
   ok((await sel()).estado.rec.sp === 0, 'a barra sem piso continua parando em zero');
 
   // ---------- itens que somam numa barra e numa defesa ----------

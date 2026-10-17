@@ -775,12 +775,14 @@
     if (mascaraCv.width !== w || mascaraCv.height !== hh) { mascaraCv.width = w; mascaraCv.height = hh; }
     return mascaraCv;
   }
-  function texturaHex(ctx, t, k) {
+  // (lote 8) liso: só a cor e as manchas, sem os desenhos da textura — de perto, quando cada hexágono já tem o seu desenho
+  // (os da textura, de outro tamanho, embolavam com eles)
+  function texturaHex(ctx, t, k, liso) {
     const unid = limitar(Math.max(L, A) / 26, 16, 800), px = Math.round(limitar(unid * k, 24, 192));
-    const chave = [t.cor, t.tex, px, unid].join('|');
+    const tex = liso ? 'liso' : t.tex || 'liso', chave = [t.cor, tex, px, unid].join('|');
     let pat = texturasHex.get(chave);
     if (pat) return pat;
-    pat = ctx.createPattern(ladrilho(t.cor, t.tex || 'liso', px), 'repeat');
+    pat = ctx.createPattern(ladrilho(t.cor, tex, px), 'repeat');
     try { pat.setTransform(new DOMMatrix([unid / px, 0, 0, unid / px, 0, 0])); } catch (e) { /* sem setTransform: o ladrilho fica do tamanho dos pixels */ }
     if (texturasHex.size > 80) texturasHex.clear();
     texturasHex.set(chave, pat);
@@ -857,12 +859,13 @@
       return algum;
     };
     let algumTer = false;
+    const comDesenhos = d.des && d.m.grade.tam * z >= 12;          // (de perto, cada hexágono ganha o seu desenho)
     for (const { t, hs } of d.lista) {
       limpar();
       if (!encher(hs, comBorda ? macio * 1.6 : 0, comBorda ? macio : 0)) continue;
       algumTer = true;
       mx.globalCompositeOperation = 'source-in';
-      mx.fillStyle = texturaHex(mx, t, k);
+      mx.fillStyle = texturaHex(mx, t, k, comDesenhos);
       mx.fillRect(x0 - R, y0 - R, x1 - x0 + 2 * R, y1 - y0 + 2 * R);
       c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
       c.drawImage(mc, 0, 0);
@@ -875,8 +878,8 @@
       c.globalCompositeOperation = 'source-over';
     }
     c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
-    // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a cor)
-    if (d.des && d.m.grade.tam * z >= 12) {
+    // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a textura)
+    if (comDesenhos) {
       for (const { t, semT, hs } of d.lista) for (const p of hs) {
         if (perto(p)) desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
       }
@@ -884,6 +887,7 @@
     c.globalAlpha = 1;
     hexFeito = { n: d.n, z, dpr, x0, y0, x1, y1 };
     hexCv.dataset.x0 = String(x0); hexCv.dataset.y0 = String(y0); hexCv.dataset.k = String(k);
+    hexCv.dataset.liso = comDesenhos ? '1' : '0';                     // (lote 8) de perto, a tinta sem os desenhos da textura
   }
   function hexNoCaminho(c, m, q, r) {
     const cs = N().cantosHex(m, q, r);

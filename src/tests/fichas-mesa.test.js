@@ -24,7 +24,7 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   let F = await fichas(M);
   ok(await nomes(F) === 'Dain X|Capitão', 'sem mesa, as fichas são as deste navegador: ' + await nomes(F));
   ok(await F.locator('#f_dono').count() === 0, 'sem mesa não há "jogador que controla"');
-  await F.locator('[data-resatual="hppc_dain"]').fill('300'); await w(700);
+  await F.locator('[data-resatual="hppc_dain"]').fill('300'); await F.locator('[data-resatual="hppc_dain"]').press('Enter'); await w(700);
   ok(await F.evaluate(() => JSON.parse(localStorage.getItem('urgm_calc_atributos_v1')).personagens[0].estado.rec.hppc_dain) === 300, 'o valor atual de um recurso é guardado (sem mesa, no navegador)');
 
   // ---------- o mestre cria a mesa: ela começa vazia e oferece trazer as fichas ----------

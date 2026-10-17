@@ -2073,7 +2073,7 @@ function renderFicha(){
             </div>
             ${r.err||r.val==null?'':`<div class="atual${atualDoRecurso(pc,r)<0?' neg':''}">
               <span class="eyebrow">Atual</span>
-              <input class="inm" type="number" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" ${r.min<0?`min="${r.min}"`:''} aria-label="Valor atual de ${esc(r.nome)}">
+              <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida). Esc desfaz o que foi digitado.">
               <span class="de">de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
               ${temAtual(pc,r)?(r.inicio!=null && r.inicio!==arred(r.val)
                 ? `<button class="mini" data-rescheio="${r.id}" title="Voltar ao valor em que a barra começa">Voltar a ${fmt(r.inicio).replace('-','−')}</button>`
@@ -2288,17 +2288,42 @@ function ligarFicha(pc){
     b.onclick=()=>encher(id);
     box.querySelector('.de').after(b);
   };
-  host.querySelectorAll('[data-resatual]').forEach(i=>i.oninput=e=>patchLeve(()=>{
-    const est=pc.estado||(pc.estado={}); const rec=est.rec||(est.rec={});
-    const v=e.target.value.trim(); if(v===''||!isFinite(+v)) delete rec[i.dataset.resatual]; else rec[i.dataset.resatual]=+v;
-    pintarBarrinhas(host, pc); mostrarEncher(i);
-  }));
-  // (ao sair do campo: um valor abaixo do que a barra aguenta fica no piso dela)
-  host.querySelectorAll('[data-resatual]').forEach(i=>i.onchange=()=>{
-    const r=(calcular(pc).recursos||[]).find(x=>x.id===i.dataset.resatual), rec=pc.estado&&pc.estado.rec, v=rec? rec[i.dataset.resatual] : null;
-    if(!r||v==null||!isFinite(v)) return;
-    const piso=r.min<0? r.min : 0;
-    if(v<piso){ rec[r.id]=piso; i.value=piso; save(); pintarBarrinhas(host, pc); mostrarEncher(i); toast(r.nome+' não desce de '+fmt(piso).replace('-','−')+'.'); }
+  /* (lote 8) O valor atual só vale com Enter ou ao sair do campo (enquanto se digita, nada muda). Um número é o valor
+     novo; -8 e +5 tiram e põem — o dano gasta primeiro a sobrevida, como na cena —; vazio volta ao começo da barra. A
+     barra fica entre o piso dela e o máximo. Esc desfaz o que foi digitado. */
+  const confirmarAtual=i=>{
+    const id=i.dataset.resatual, r=(calcular(pc).recursos||[]).find(x=>x.id===id);
+    if(!r||r.err||r.val==null) return;
+    const txt=String(i.value).trim().replace(/\s+/g,'').replace(',','.'), antes=atualDoRecurso(pc,r);
+    const est=pc.estado||(pc.estado={}), rec=est.rec||(est.rec={}), max=arred(r.val), piso=r.min<0? r.min : 0;
+    let novo=null, aviso='';
+    if(txt===''){ delete rec[id]; }
+    else if(/^[+-]\d+(\.\d+)?$/.test(txt)){
+      let d=Number(txt);
+      if(d<0){ const sob=FichasExtras.sobrevidaDe(pc,r); if(sob>0){ const usa=Math.min(sob,-d), sb=est.sob||(est.sob={}); if(sob-usa>0) sb[id]=Math.round((sob-usa)*10)/10; else delete sb[id]; d+=usa; } }
+      novo=antes+d;
+    }
+    else if(isFinite(+txt)) novo=+txt;
+    else { i.value=String(antes); toast('Digite um número, como 30, -8 ou +5.'); return; }
+    if(novo!=null){
+      if(novo<piso){ novo=piso; aviso=r.nome+' não desce de '+fmt(piso).replace('-','−')+'.'; }
+      if(novo>max) novo=max;
+      rec[id]=Math.round(novo*10)/10;
+    }
+    save(); pintarBarrinhas(host, pc); mostrarEncher(i);
+    i.value=String(atualDoRecurso(pc,r)); i.dataset.antes=i.value;
+    const sobEl=host.querySelector('[data-ressob="'+CSS.escape(id)+'"]');
+    if(sobEl){ const v=FichasExtras.sobrevidaDe(pc,r); sobEl.value=String(v); const lb=sobEl.closest('.sobre'); if(lb) lb.classList.toggle('tem', v>0); }
+    if(aviso) toast(aviso);
+  };
+  host.querySelectorAll('[data-resatual]').forEach(i=>{
+    i.dataset.antes=i.value;
+    i.onfocus=()=>{ i.dataset.antes=i.value; };
+    i.onkeydown=e=>{
+      if(e.key==='Enter'){ e.preventDefault(); i.blur(); }
+      else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); i.value=i.dataset.antes||''; i.blur(); }
+    };
+    i.onchange=()=>confirmarAtual(i);
   });
   host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>encher(b.dataset.rescheio));
   const rfx=host.querySelector('#rolFixa');

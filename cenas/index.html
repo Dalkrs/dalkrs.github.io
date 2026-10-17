@@ -11841,11 +11841,21 @@ const UI = (() => {
     renderSide();
     if (focusId) { const n = document.getElementById(focusId); if (n) { n.focus({ preventScroll: true }); if (n.select) n.select(); } }
   }
+  /* (lote 8) Redesenhar o painel troca o campo em que a pessoa está digitando, e o navegador dispara o "change" (e o
+     "blur") do campo que sai, com o que estava pela metade: o "-1" de um "-15" seria aplicado antes do Enter. Durante a
+     troca esses eventos não valem; o que já foi digitado (e ainda não confirmado) passa para o campo novo, com o cursor
+     no mesmo lugar. Só o Enter, ou sair do campo, confirma. */
+  let trocandoPainel = false;
+  for (const tipo of ['change', 'blur', 'focusout']) document.addEventListener(tipo, e => { if (trocandoPainel) e.stopImmediatePropagation(); }, true);
+  const campoDeTexto = n => !!n && (n.tagName === 'TEXTAREA' || (n.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color|file)$/i.test(n.type || '')));
+  document.addEventListener('input', e => { if (campoDeTexto(e.target)) e.target.__digitado = true; }, true);
+  document.addEventListener('change', e => { if (!trocandoPainel && e.target) e.target.__digitado = false; }, true);
   function renderSide() {
     el.side.hidden = !App.sideOpen;
-    if (!App.sideOpen) { el.side.replaceChildren(); return; }
+    if (!App.sideOpen) { trocandoPainel = true; try { el.side.replaceChildren(); } finally { trocandoPainel = false; } return; }
     const a = document.activeElement;
     const fid = a && a.id && el.side.contains(a) ? a.id : null;
+    const pendente = fid && campoDeTexto(a) && a.__digitado ? a.value : null;     // digitado e ainda não confirmado
     let ss = null, se = null;
     try { if (fid && a.type !== 'number' && a.setSelectionRange) { ss = a.selectionStart; se = a.selectionEnd; } } catch (e) { ss = null; }
     const old = el.side.querySelector('.tab-body'), scroll = old ? old.scrollTop : 0, oldTab = old ? old.dataset.tab : null;
@@ -11860,13 +11870,17 @@ const UI = (() => {
       default: body = tabSel();
     }
     const bodyEl = h('div', { class: 'tab-body', data: { tab: App.tab } }, body);
-    el.side.replaceChildren(
+    trocandoPainel = true;
+    try { el.side.replaceChildren(
       h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([id, n]) => h('button', { type: 'button', class: 'tab' + (id === App.tab ? ' on' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === App.tab), onclick: () => { App.tab = id; renderSide(); } }, n))),
-      bodyEl);
+      bodyEl); } finally { trocandoPainel = false; }
     if (oldTab === App.tab) bodyEl.scrollTop = scroll;
     if (fid) {
       const n = document.getElementById(fid);
-      if (n) { n.focus({ preventScroll: true }); try { if (ss != null) n.setSelectionRange(ss, se); } catch (e) { /* campo sem cursor de texto */ } }
+      if (n) {
+        if (pendente != null && campoDeTexto(n)) { n.value = pendente; n.__digitado = true; }
+        n.focus({ preventScroll: true }); try { if (ss != null) n.setSelectionRange(ss, se); } catch (e) { /* campo sem cursor de texto */ }
+      }
     }
     startThumbs();
   }
@@ -13032,13 +13046,17 @@ const UI = (() => {
     const name = h('input', { id: 'dlg-in', class: 'in', type: 'text', 'data-focus': '', autocomplete: 'off', maxlength: 40, value: novo ? comum || 'Grupo' : e.name });
     const ini = h('input', { id: 'bd-ini', class: 'in num', type: 'number', min: -99, max: 99, step: 1, value: novo ? Math.max(...atuais.map(k => clampIni(k.ini))) : clampIni(e.bonus), title: 'A iniciativa da faixa: 1d20 + este valor, rolada uma vez no combate' });
     const marcas = [];
+    /* (lote 8) Quem já está em outra faixa vem desmarcado (com o nome dela): marcar traz para esta. Antes vinha marcado, e
+       uma seleção que ainda tinha os tokens da primeira faixa esvaziava a primeira — que sumia. */
     const linha = (k, on) => {
       const cb = h('input', { type: 'checkbox', checked: on, id: 'bd-' + k.id });
       marcas.push([k.id, cb]);
-      const onde = novo || !on ? (bandOf(sc.turn, k.id) ? 'sai de outra faixa' : sc.turn.list.some(x => x.token === k.id) ? 'sai da linha dele' : '') : '';
+      const outra = bandOf(sc.turn, k.id), dela = !novo && outra && outra.id === e.id;
+      const onde = dela ? '' : outra ? (on ? `sai da faixa "${outra.name}"` : `está na faixa "${outra.name}": marque para trazer`)
+        : (novo || !on) && sc.turn.list.some(x => x.token === k.id) ? 'sai da linha dele' : '';
       return h('label', { class: 'band-m' }, cb, tokenAvatar(k, 22), h('span', { class: 'band-mn', text: tokName(k) }), onde ? h('span', { class: 'band-mx', text: onde }) : null);
     };
-    const lista = h('div', { class: 'band-list', id: 'bd-list' }, atuais.map(k => linha(k, true)), fora.length ? h('div', { class: 'band-sub', text: 'Selecionados que não estão nela' }) : null, fora.map(k => linha(k, false)));
+    const lista = h('div', { class: 'band-list', id: 'bd-list' }, atuais.map(k => linha(k, !novo || !bandOf(sc.turn, k.id))), fora.length ? h('div', { class: 'band-sub', text: 'Selecionados que não estão nela' }) : null, fora.map(k => linha(k, false)));
     const quem = () => marcas.filter(([, cb]) => cb.checked).map(([id]) => id);
     modal({
       title: novo ? 'Faixa de iniciativa do grupo' : 'Faixa: ' + e.name,
@@ -13058,6 +13076,14 @@ const UI = (() => {
         },
       ],
     });
+  }
+  /* (lote 8) Encerrar o combate zera a iniciativa de todos — as da ordem (com a rolagem e a marca de reação) e as
+     rolagens da mesa ao vivo que ainda não foram anotadas —: o próximo combate começa do zero. Um passo de desfazer. */
+  function encerrarCombate() {
+    const tinha = Store.scene().turn.list.some(e => e.init != null) || App.iniRolls.size > 0;
+    Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
+    App.iniRolls.clear();
+    toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
   }
   function tabTurn() {
     const sc = Store.scene(), tn = sc.turn, gm = isGM();
@@ -13142,7 +13168,8 @@ const UI = (() => {
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
-        btn(tn.on ? 'Encerrar' : 'Iniciar', () => Act.turnPatch(x => { x.on = !x.on; if (x.on) { x.round = 1; x.cur = x.list[0].id; x.back = 0; } }, tn.on ? 'Encerrar combate' : 'Iniciar combate'), { icon: tn.on ? 'stop' : 'play' }),
+        btn(tn.on ? 'Encerrar' : 'Iniciar', () => (tn.on ? encerrarCombate() : Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate')),
+          { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
