@@ -153,8 +153,10 @@ const SHOTS = process.env.FOTOS;
   })); }), [cx, cy]);
   const dif = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
   // (um pouco abaixo dos centros: a linha que liga os dois, com o portal selecionado, passa bem no meio)
-  const fundo = await pixel(12.2, 6.2), saida = await pixel(19.5, 4.1), entrada = await pixel(14.5, 4.1);
-  ok(dif(saida, fundo) > 30 && dif(entrada, fundo) > 30, 'o portal desenha os dois círculos: a entrada e a saída — ' + j([entrada, saida, fundo]));
+  // (o desenho anima: confere em até quatro quadros)
+  let fundo, saida, entrada, viu = false;
+  for (let q = 0; q < 4 && !viu; q++) { fundo = await pixel(12.2, 6.2); saida = await pixel(19.5, 4.1); entrada = await pixel(14.5, 4.1); viu = dif(saida, fundo) > 30 && dif(entrada, fundo) > 30; if (!viu) await w(120); }
+  ok(viu, 'o portal desenha os dois círculos: a entrada e a saída — ' + j([entrada, saida, fundo]));
   await foto('03-portal');
   const pos = async nome => { const k = await T(nome); return [k.x / 64, k.y / 64]; };
   await clearToasts();

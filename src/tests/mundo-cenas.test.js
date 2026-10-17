@@ -4,7 +4,8 @@
 //     já diz (a lavoura, a savana) ou a Surpresa;
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
 //     inundação: chuva; incêndio: cinzas; magia: vaga-lumes) e o estilo da região mais de dentro que tiver um;
-//   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto), o terreno da vila e o nome; o atalho para a
+//   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
+//     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
 //     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão.
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
@@ -40,10 +41,11 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     if (!App.mapa) App.criarMapa('Teste das cenas');
     App.mudar('montar', m => {
       m.grade.tam = 40; m.cal.dia = 10;
-      // colunas: 0-1 floresta, 2-3 lavoura, 4-5 savana, 6-7 planície, 8-9 neve, 10-11 água, 12-13 deserto, 14-15 um terreno sem desenho
+      // colunas: 0-1 floresta, 2-3 lavoura, 4-5 savana, 6-7 planície, 8-9 neve, 10-11 água, 12-13 deserto, 14-15 um terreno sem desenho,
+      // 16-17 ruínas
       m.terrenos.push({ id: 'zz', nome: 'Terra estranha', cor: '#777777', custo: 5 });
-      const COL = ['fl', 'fl', 'la', 'la', 'sv', 'sv', 'pl', 'pl', 'ne', 'ne', 'ag', 'ag', 'de', 'de', 'zz', 'zz'];
-      for (let q = 0; q < 16; q++) for (let r = -8; r < 20; r++) m.hexes[q + ',' + r] = COL[q];
+      const COL = ['fl', 'fl', 'la', 'la', 'sv', 'sv', 'pl', 'pl', 'ne', 'ne', 'ag', 'ag', 'de', 'de', 'zz', 'zz', 'ru', 'ru'];
+      for (let q = 0; q < 18; q++) for (let r = -8; r < 20; r++) m.hexes[q + ',' + r] = COL[q];
       const c = (q, r) => N.centroHex(m, q, r);
       const grupo = (nome, q, via) => {
         const a = c(q, 4), b = c(q, 9);
@@ -53,9 +55,12 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
       };
       grupo('floresta-estrada', 0, 'estrada'); grupo('lavoura', 2, null); grupo('savana-trilha', 4, 'trilha'); grupo('planicie-estrada', 6, 'estrada');
       grupo('planicie', 7, null); grupo('neve-selvagem', 8, 'selvagem'); grupo('mar', 10, 'mar'); grupo('rio', 11, 'rio'); grupo('estranha', 14, null);
+      grupo('ruinas', 16, null);
       // os marcadores (a fileira 14)
       const mk = (nome, q, ic) => { const p = c(q, 14), o = N.objNovo('m', { x: p.x, y: p.y, ic, nome }); m.objs.push(o); out['m:' + ic + ':' + q] = o.id; };
       mk('Areia Alta', 12, 'cidade'); mk('Vila do Campo', 6, 'vila'); mk('Vila Fria', 9, 'vila'); mk('Ponte Velha', 7, 'ponte'); mk('Pico Azul', 8, 'montanha'); mk('Forte', 3, 'castelo'); mk('', 5, 'vila'); mk('Porto Azul', 13, 'porto');
+      // (lote 7, parte 4b-3) as ruínas
+      mk('Templo Velho', 1, 'templo'); mk('Torre Negra', 9, 'torre'); mk('Ruína', 2, 'ruina'); mk('Covil', 4, 'caverna'); mk('Mina Funda', 13, 'mina'); mk('Masmorra', 10, 'masmorra'); mk('Tesouro', 3, 'tesouro');
       { const o = N.objNovo('m', { x: 120, y: 165, ic: 'floresta', nome: 'Mata Escura' }); m.objs.push(o); out['m:floresta:1'] = o.id; }       // (dentro do Condado)
       // os eventos de hoje: cada um sobre um grupo
       const ev = (tipo, nome, extra) => { const g = m.objs.find(o => o.id === out[nome]); m.objs.push(Object.assign(N.objNovo('e', { x: g.x, y: g.y, tipo, r: 30, ini: m.cal.dia }), extra || {})); };
@@ -100,6 +105,9 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok((await gerarAqui('planicie')).hora === 'noite', 'com a noite a partir do 7º tempo, o 7º já é noite');
   await F.evaluate(() => __mundo.App.mudar('clarear', m => { m.cal.tempo = 0; }));
   ok((await gerarAqui('planicie')).hora === 'dia', 'e o 1º tempo é dia');
+  // (lote 7, parte 4b-3) no terreno Ruínas: a aba Ruínas
+  const gr = await gerarAqui('ruinas');
+  ok(gr.lugar === 'ruinas' && j(gr.op) === j({ terreno: 'campo' }) && gr.hora === 'dia', 'no terreno Ruínas, o grupo gera as ruínas (a aba Ruínas), e não um encontro: ' + j(gr));
   ok(await F.evaluate(() => { const m = __mundo.App.mapa; return m.objs.filter(o => o.k === 'g' && o.liga).length === 0; }) && (await pedidos()).length === 0, 'gerar no grupo não muda nada no mapa');
 
   // ---------- os marcadores ----------
@@ -126,7 +134,12 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(po && po.gerar.lugar === 'porto' && j(po.gerar.op) === j({ terreno: 'areia' }) && po.gerar.nome === 'Porto Azul' && po.liga && po.liga.t === 'cena', 'o porto (lote 7, parte 4b-2b): a aba Porto, no terreno do hexágono (o deserto), com o nome do marcador: ' + j(po && po.gerar));
   const sem = await lugar('m:vila:5');
   ok(sem && !('nome' in sem.gerar) && sem.liga && sem.liga.nome === '', 'um marcador sem nome não manda nome (a janela usa o dela)');
-  ok(await lugar('m:castelo:3') === null, 'um ícone que não é lugar gerável (o castelo) não tem o botão');
+  // (lote 7, parte 4b-3) os marcadores das ruínas: a aba Ruínas, já no lugar do ícone e no terreno do hexágono
+  const ru = {};
+  for (const k of ['m:castelo:3', 'm:templo:1', 'm:torre:9', 'm:ruina:2', 'm:caverna:4', 'm:mina:13', 'm:masmorra:10']) { const l = await lugar(k); ru[k] = l && l.gerar.lugar === 'ruinas' ? j(l.gerar.op) : null; }
+  ok(ru['m:castelo:3'] === j({ tipo: 'forte', terreno: 'campo' }) && ru['m:templo:1'] === j({ tipo: 'templo', terreno: 'floresta' }) && ru['m:torre:9'] === j({ tipo: 'torre', terreno: 'neve' }) && ru['m:ruina:2'] === j({ terreno: 'campo' }), 'o castelo (o forte em ruínas), o templo (o templo caído, na floresta), a torre (na neve) e a ruína: ' + j(ru));
+  ok(ru['m:caverna:4'] === j({ tipo: 'circulo', terreno: 'areia' }) && ru['m:mina:13'] === j({ tipo: 'mina', terreno: 'areia' }) && ru['m:masmorra:10'] === j({ tipo: 'forte', terreno: 'campo' }), 'a caverna (o círculo de pedras com a boca), a mina (a boca da mina) e a masmorra (o forte): ' + j(ru));
+  ok(await lugar('m:tesouro:3') === null, 'um ícone que não é lugar gerável (o tesouro) não tem o botão');
   // ligado a uma cena que ainda não existe: o botão de seguir oferece gerar de novo, com o mesmo id
   await selecionar(ids['m:vila:6']);
   const seguir = pane(`[data-k="o:${ids['m:vila:6']}:seguir"]`);

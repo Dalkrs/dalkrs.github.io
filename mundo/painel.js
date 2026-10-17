@@ -1239,7 +1239,10 @@
      O terreno vem do hexágono (pelo desenho dele, para valer também nos terrenos que o mestre criou), o caminho da rota
      do grupo, a hora do tempo de agora (o calendário diz quando escurece), o clima dos eventos que cobrem o lugar e o
      estilo da região. Nada muda nas cenas até o mestre criar. */
-  const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' } };
+  const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' },
+    // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone
+    ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'ruinas', op: { tipo: 'forte' } },
+    masmorra: { lugar: 'ruinas', op: { tipo: 'forte' } }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } } };
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };
@@ -1265,6 +1268,8 @@
     if (!m || !naCasca() || !App.podeEditar()) return false;
     const ter = terrenoNoPonto(m, g.x, g.y), rt = g.rota ? achar(m, g.rota) : null, via = rt ? rt.via : '';
     let op;
+    // (lote 7, parte 4b-3) no terreno Ruínas, fora do mar e do rio: a aba Ruínas
+    if (ter && ter.tex === 'ruinas' && via !== 'mar' && via !== 'rio') return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'ruinas', op: { terreno: 'campo' } }, comum(m, g.x, g.y)) });
     if (via === 'mar') op = { terreno: 'agua', situacao: 'navio' };
     else if (via === 'rio') op = { terreno: 'agua', situacao: 'barco' };
     else {

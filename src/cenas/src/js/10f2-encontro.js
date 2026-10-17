@@ -1281,6 +1281,8 @@ const Encontro = (() => {
       for (const o of n.objetos) if (Props.P[o.id]) { const t = Props.novo(sc, o.id, o.x * c, o.y * c, o.s || 1, false); if (o.rot) t.rot = o.rot; sc.tokens.push(t); }
       sc.tokens.push(entrada(sc, n.entrada.x, n.entrada.y, n.entrada.gera, c));
     }
+    // (lote 7, parte 4b-3) as Entradas que o lugar pede sozinhas (a da masmorra, nas ruínas: gera o nível 1)
+    for (const e of p.entradas || []) sc.tokens.push(entrada(sc, e.x, e.y, e.gera, c));
     for (const v of p.visao) parede(v[0], v[1], v[2], v[3]);
     // (lote 7, parte 4b) as paredes de outro tipo que o lugar pede: o portão da paliçada (abre e fecha), a cerca do
     // cercado (mureta: deixa ver, não deixa passar)

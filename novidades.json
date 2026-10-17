@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-5",
+      "data": "2026-10-17",
+      "titulo": "As ruínas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Ruínas, com cinco lugares: o templo caído (o estilóbato com a escadaria, as colunas de pé, quebradas e caídas, a cela em pedaços, o altar quebrado, a estátua tombada), a torre tombada (a base redonda de pé e o corpo da torre deitado no chão, em pedaços, até as ameias), o forte em ruínas (a muralha com as brechas e o adarve, as torres dos cantos, o portão arrombado, o pátio com o poço, o alojamento sem teto, a torre de menagem), o círculo de pedras (os menires com a pedra do altar e o paredão com a boca da caverna) e a boca da mina (a entrada escorada, os trilhos, o vagonete, o monte de escória, o barracão)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: cada lugar das ruínas tem a entrada da masmorra — um marcador de Entrada, só seu: dois cliques nele geram o nível 1 lá embaixo, já com o tipo certo (a cripta embaixo do templo, a masmorra de pedra embaixo da torre e do forte, a caverna atrás da boca, a mina atrás da entrada escorada). A chave do mato põe a hera nas pedras. Ligar ou desligar as chaves, ou trocar o terreno, não mexe no resto do lugar; um clique na prévia trava o traçado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: os marcadores de ruína, templo, torre, castelo, masmorra, caverna e mina também têm “Gerar este lugar…” (abrem a aba Ruínas já no lugar do ícone), e “Gerar a cena aqui”, com o grupo no terreno Ruínas, abre a aba Ruínas."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-4",
       "data": "2026-10-17",
       "titulo": "As masmorras, nível por nível",

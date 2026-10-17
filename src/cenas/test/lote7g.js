@@ -53,7 +53,7 @@ const ANTES = { 'media/42/true/true/completa': '4556ec73', 'pequena/7/false/true
   if (parte('aba')) {
     await abrirGerador();
     const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Porto']), 'as abas: Vilarejo, Cidade, Tribo, Encontro e Porto: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Ruínas', 'Porto']), 'as abas: Vilarejo, Cidade, Tribo, Encontro, Ruínas e Porto: ' + j(abas));
     await page.locator('#ger-lugar button', { hasText: 'Porto' }).click(); await w(700);
     await semente(5);                       // (a janela abre com uma semente sorteada: aqui, uma fixa)
     const g0 = await G();
