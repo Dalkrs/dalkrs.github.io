@@ -94,6 +94,7 @@ const medit = j({ 'medit:receitas': { v: 1, lista: [{ id: 'rc_vento', nome: 'Ven
     ok(await marcada() === 'Dáin Escudo', 'o primeiro vem marcado');
     const y1 = (await P.locator('#buscaQ').boundingBox()).y;
     ok(Math.abs(y1 - y0) < 1, 'a janela fica presa em cima: o campo não sai do lugar quando a lista cresce (' + y0 + ' → ' + y1 + ')');
+    await foto('busca-1300');
     await P.keyboard.press('ArrowDown'); await espera(100);
     const seg = await marcada();
     await P.keyboard.press('ArrowUp'); await espera(100);
@@ -108,7 +109,6 @@ const medit = j({ 'medit:receitas': { v: 1, lista: [{ id: 'rc_vento', nome: 'Ven
     ok(/Nada com “COVIL”/.test(await P.locator('#buscaLista').innerText()) || (await nomes()).includes('Covil das Sombras'), '(sem mesa, cada um é o próprio mestre)');
     await P.fill('#buscaQ', 'xyzzy'); await espera(150);
     ok(/Nada com “xyzzy”\./.test(await P.locator('#buscaLista').innerText()) && (await opcoes().count()) === 0, 'sem resultado: "Nada com…"');
-    await foto('busca-1300');
   });
 
   await passo('a ficha e os itens', async () => {
