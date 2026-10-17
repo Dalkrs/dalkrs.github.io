@@ -172,7 +172,7 @@ const SHOTS = process.env.FOTOS;
   if (parte('gerador')) {
     await page.locator('#sceneBtn').click(); await w(200);
     await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
-    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade é a outra aba)');
+    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade', 'Encontro']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade e o Encontro são as outras abas)');
     ok(/nada escrito: os nomes ficam com você/.test(await page.locator('.modal').innerText()), 'a nota diz que nada sai escrito');
     const G = () => ev(() => JSON.parse(JSON.stringify(__tc.Gerador.vivo().estado)));
     const assinatura = () => ev(() => {
