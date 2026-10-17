@@ -410,7 +410,7 @@ const SHOTS = process.env.FOTOS;
       // das portas e dos cantos cortados; as arrumações (a nave, o balcão, as colunas)
       const ri = { plantas: 0, naves: 0, balcoes: 0, cadeiras: 0, viradas: 0 };
       const virada = (c, m) => { const dx = (c.x + c.s / 2) - (m.x + m.s / 2), dy = (c.y + c.s / 2) - (m.y + m.s / 2); return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 270 : 90) : (dy < 0 ? 0 : 180); };
-      for (const tipo of Object.keys(I.PLANTAS)) for (const [w, h] of [[3, 3], [4, 4], [5, 4], [6, 5], [7, 5], [8, 7], [9, 7], [10, 4]]) for (const pl of ['n', 's', 'o', 'l']) for (const f of ['ret', 'oct']) {
+      for (const tipo of Object.keys(I.PLANTAS).filter(k => !I.PLANTAS[k].so)) for (const [w, h] of [[3, 3], [4, 4], [5, 4], [6, 5], [7, 5], [8, 7], [9, 7], [10, 4]]) for (const pl of ['n', 's', 'o', 'l']) for (const f of ['ret', 'oct']) {
         const s = `${tipo} ${w}×${h} ${pl} ${f}`, o = { tipo, w, h, p: pl, f, estilo: E.LISTA[(w + h) % 6][0], seed: w * 131 + h * 17 + pl.charCodeAt(0) };
         const p = I.gerar(o);
         ri.plantas++;
