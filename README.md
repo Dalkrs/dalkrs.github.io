@@ -866,6 +866,31 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   em área e as zonas não os aplicam (`COND_JANELA`, `cleanApply`), e a lista de condições das poções da ficha não os
   oferece (os dois estão em `TC.rules.CONDICOES`, que continua igual à das Cenas).
 
+### O Clã e o Mapa-múndi (lote 8)
+
+- **As três escalas do clã vão de −10 a +10** (o respeito no mundo, as relações e o respeito dos membros:
+  `ClaNucleo.NIVEL_MAX`, `NIVEIS`). Os valores que já existiam ficam como estavam (+3 continua +3). Os nomes de −5 a
+  +5 são os mesmos, no meio; os níveis novos, de fora, ganharam nomes próprios (renomeáveis, como os outros). O
+  documento `cla:nomes` passa a guardar 21 nomes por escala (`v: 2`); os de antes (`v: 1`, 11 nomes) vão para o meio, nos
+  mesmos níveis (`normNomes`). Na escala do painel, o número aparece no 0, no ±5, no ±10 e no nível de agora; os outros,
+  na dica.
+- **A honra dos grupos do Mapa-múndi vai de −10 a +10** (`MAX_HONRA`). O selo continua igual até ±5 e ganha, acima, a
+  segunda volta de raios (+6), as asas (+7), as pedras no aro (+8), o halo (+9) e a estrela (+10), com o ouro clareando
+  até quase branco; abaixo, mais rachaduras, as correntes (−7), a brasa (−8) e outra lasca (−9), escurecendo até quase
+  preto.
+- **O recurso novo na construção**: no custo do próximo nível, "+ recurso novo no custo" (ou "+ Recurso novo…" na lista
+  de um item) pede o nome de um recurso que o clã ainda não tem. Ao salvar, ele entra na lista do clã com 0, já no
+  custo, no mesmo passo de desfazer. Um nome igual ao de um recurso que já existe (sem acento e sem maiúscula) usa esse.
+- **A bandeira do clã nas facções do Mapa-múndi**: o clã ligado a uma facção (na aba Clã, "a facção do clã") dá a ela a
+  bandeira — o brasão dele, desenhado pelo núcleo do Clã (`ClaNucleo.brasaoSvg`; o Mapa-múndi carrega `meditacao/nucleo.js`
+  e `cla/nucleo.js`), ou a imagem dele, quando é do banco. Ela aparece na aba Facções (no lugar da bolinha de cor, e no
+  editor, com de onde vem), no meio das regiões da facção, junto dos grupos dela (o grupo ganhou a facção, `g.fac`) e
+  nas zonas e frentes de guerra, dos dois lados. A página do mapa lê os clãs (`cla:c:`, de quem mestra o Clã; senão
+  `cla:pub:`, o que a mesa vê) e acompanha quando um muda (`brasoesDosClas`, `App.brasaoDe`). A projeção leva a bandeira
+  em cada facção (`f.br`, conferida por `normBr`): os jogadores a veem mesmo com o clã escondido deles, e a facção
+  escondida não a leva. O mapa não guarda a bandeira: ela vem do clã a cada vez (quem mestra publica a projeção de novo
+  quando o clã muda; o auxiliar sem a aba Clã mantém a que a projeção já tinha).
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1812,4 +1837,9 @@ da vez e o que vai para os jogadores). `fichas.test.js` e `fichas-regras` confer
 desenhos de longe, lisa de perto, e de volta sem o desenho de cada hexágono); `lote8-nucleo`, as contas da ferida
 (nas regras e no descanso do Acampamento) e o Limite de dano fora das contas; `cenas-lote8.rede`, numa mesa, a ferida
 de um token ligado indo e voltando da ficha e o Clone de um token ligado (as cópias fora da sincronização; o dano no
-real e o que vem da ficha).
+real e o que vem da ficha). Na parte 3, `cla-nucleo` confere as escalas de −10 a +10 (os valores de antes ficam, os
+nomes de antes vão para o meio); `cla.test`, a escala de 21 no painel, os nomes, as relações e o recurso novo na
+construção (com 0, no custo, num passo de desfazer, e o nome igual que usa o de antes); `mundo-nucleo`, a honra até
+±10, a facção do grupo e a bandeira conferida na projeção; `mundo-lote8` com `SO=honra`, o selo de −10 a +10, e com
+`SO=bandeiras`, as bandeiras nas regiões, nos grupos, nas zonas e frentes de guerra e na aba Facções;
+`mundo-lote8.rede`, numa mesa, a bandeira do clã escondido chegando ao jogador e acompanhando o brasão e o clã.

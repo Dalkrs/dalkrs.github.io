@@ -165,6 +165,14 @@ svg text.bol-conta { font-family: var(--ui); font-weight: 700; fill: #fff3d6; st
 .honra .hon-fundo { fill: rgba(20, 23, 31, .86); stroke: #fff; stroke-width: 1.2; }
 .honra .hon-aro { fill: none; stroke: #f0cb4c; }
 .honra .hon-raios { fill: #f6d77a; opacity: .85; }
+/* (lote 8) a honra de ±6 a ±10: a segunda volta de raios, as asas, as pedras, o halo e a estrela; a brasa e as correntes */
+.honra .hon-raios2 { fill: #fff0b8; opacity: .8; }
+.honra .hon-asa { fill: #fff6dc; stroke: #9a7a2a; stroke-width: .7; stroke-linejoin: round; }
+.honra .hon-pedra { fill: #6fc3e8; stroke: #123142; stroke-width: .6; }
+.honra .hon-halo { fill: none; stroke: #fff3c4; stroke-width: 1.2; opacity: .75; }
+.honra .hon-estrela { fill: #fffbe8; stroke: #b48a1f; stroke-width: .7; stroke-linejoin: round; }
+.honra .hon-brasa { fill: none; stroke: #6a1a12; stroke-width: 2.4; opacity: .85; }
+.honra .hon-corrente { fill: none; stroke: #2b2724; stroke-width: 1.5; stroke-linecap: round; opacity: .9; }
 .honra .hon-louro { fill: #8db255; stroke: #34501e; stroke-width: .6; }
 .honra .hon-ico .hb { stroke: #1d1a16; stroke-width: 1.1; stroke-linejoin: round; }
 .honra .hon-ico .hk { fill: #1d1a16; stroke: none; }
@@ -435,6 +443,11 @@ button.li { width: 100%; text-align: left; color: inherit; font: inherit; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .fac-pub .publico { font-size: 13.5px; }
+/* (lote 8) a bandeira do clã ligado à facção (na aba Facções; no mapa, .bandeira) */
+.fac-band { display: inline-block; flex: none; line-height: 0; }
+.fac-band svg, .fac-band img { width: 100%; height: 100%; object-fit: contain; }
+.fac-band-campo .row { align-items: center; gap: 10px; }
+#mundo .bandeira { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .55)); }
 .fac-ed { display: grid; gap: 10px; padding: 10px 2px 12px 10px; margin: -2px 0 4px; border-left: 2px solid var(--lamp); }
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }
@@ -665,9 +678,11 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <script src="../tc/ponte.js?v=15"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=14"></script>
-<script src="nucleo.js?v=11"></script>
-<script src="tela.js?v=14"></script>
-<script src="painel.js?v=18"></script>
-<script src="mundo.js?v=7"></script>
+<script src="../meditacao/nucleo.js?v=1"></script>
+<script src="../cla/nucleo.js?v=2"></script>
+<script src="nucleo.js?v=12"></script>
+<script src="tela.js?v=15"></script>
+<script src="painel.js?v=19"></script>
+<script src="mundo.js?v=8"></script>
 </body>
 </html>

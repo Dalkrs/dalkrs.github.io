@@ -169,7 +169,7 @@
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
   // (lote 7, parte 4b) os estilos das cenas geradas (os da aba Cenas): a região diz qual vale para o que é gerado nela
   const ESTILOS_CENA = { comum: 'Comum', oriental: 'Oriental', nordico: 'Nórdico', desertico: 'Desértico', elfico: 'Élfico', anao: 'Anão' };
-  /* (lote 6) A honra de um grupo, de −5 a +5, com um ícone junto dele no mapa (o estilo) — mais enfeitado quanto
+  /* (lote 6) A honra de um grupo, de −10 a +10 (até o lote 8, de −5 a +5), com um ícone junto dele no mapa (o estilo) — mais enfeitado quanto
      maior, rachado e escuro quando negativa. Sem estilo, o grupo não mostra honra. */
   const HONRA = { elmo: 'Elmo medieval', kabuto: 'Kabuto', katana: 'Katana', turbante: 'Turbante', coroa: 'Coroa',
     escudo: 'Escudo com brasão', cajado: 'Cajado de mago', mascara: 'Máscara tribal' };
@@ -235,12 +235,12 @@
   // o desenho à mão: quantas pinceladas e quantos pontos ao todo (o documento do mapa tem limite de tamanho)
   const MAX_PINC = 4000, MAX_PONTOS_PINT = 60000, MAX_FASES = 60;
   const MAX_NIVEL = 10;                           // regiões dentro de regiões: até quantos níveis (Reino → Condado → …)
-  // (lote 6) a honra (de −5 a +5) e o histórico dela; o painel das facções: recursos, números, histórico
-  const MAX_HONRA = 5, MAX_HIST = 100, MAX_MOTIVO = 200, MAX_REC = 40, MAX_FHIST = 200, MAX_MUD = 40, MAX_NUM = 1e12;
+  // (lote 6) a honra (lote 8: de −10 a +10) e o histórico dela; o painel das facções: recursos, números, histórico
+  const MAX_HONRA = 10, MAX_HIST = 100, MAX_MOTIVO = 200, MAX_REC = 40, MAX_FHIST = 200, MAX_MUD = 40, MAX_NUM = 1e12;
   const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
-    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0, estilo: '', honra: 0, hhist: [] },
+    g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0, estilo: '', honra: 0, hhist: [], fac: null },   // (lote 8: fac — a facção do grupo)
     r: { pts: [], fac: null, cor: '', custo: null, enc: { chance: 0, itens: [] }, pai: null },
     e: { x: 0, y: 0, tipo: 'guerra', r: 80, ini: null, fim: null, cresce: 0, forca: 1 },   // ini null = "hoje" ao entrar no mapa
     t: { pts: [], via: 'trilha' },
@@ -1373,7 +1373,7 @@
         // (cubos: os por dia, para quem ainda tem o site de antes; quem vale é o pt, os cubos de um tempo de marcha)
         const t = inteiro(tpd, TEMPOS_DIA, 1, MAX_TEMPOS), pt = passoNorm(o, t);
         const g = Object.assign(b, { cor: cor(o.cor, '#e6ab4f'), sigla: sigla(o.sigla), pt, cubos: Math.round(limitar(pt * t, 0.1, MAX_CUSTO * MAX_TEMPOS) * 10) / 10, rota: idRef(o.rota), prog: arred(Math.max(0, num(o.prog, 0))),
-          estilo: escolha(HONRA, o.estilo, ''), honra: inteiro(o.honra, 0, -MAX_HONRA, MAX_HONRA), hhist: normHonras(o.hhist) });
+          estilo: escolha(HONRA, o.estilo, ''), honra: inteiro(o.honra, 0, -MAX_HONRA, MAX_HONRA), hhist: normHonras(o.hhist), fac: idRef(o.fac) });
         const bol = bolNorm(o.bol);
         if (bol) g.bol = bol;
         if (tem(TIPOS_GRUPO, o.tipo)) g.tipo = o.tipo;           // (lote 7, parte 5b) caravana, patrulha, exército
@@ -1594,13 +1594,27 @@
     const ids = new Set(ts.map(t => t.id)), nomes = new Set(ts.map(t => String(t.nome || '').trim().toLowerCase()));
     return TERRENOS_NOVOS.filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
   }
+  /* (lote 8) A bandeira do clã ligado à facção, como a projeção a leva aos jogadores (f.br): a forma, a divisão, as duas
+     cores, o símbolo e a imagem (só a do banco, https). Quem desenha (ClaNucleo.brasaoSvg) confere tudo de novo. */
+  const palavraBr = v => (typeof v === 'string' && /^[a-z]{2,16}$/.test(v) ? v : null);
+  function normBr(b) {
+    if (!ehObj(b)) return null;
+    const cs = Array.isArray(b.cores) ? b.cores.map(x => cor(x, null)) : [];
+    if (!cs[0] || !cs[1]) return null;
+    return { forma: palavraBr(b.forma) || 'escudo', div: palavraBr(b.div) || 'partido', cores: [cs[0], cs[1]],
+      simb: typeof b.simb === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(b.simb) ? b.simb : null,
+      img: typeof b.img === 'string' && b.img.length <= 600 && /^https:\/\/[^\s"'<>]+$/i.test(b.img) ? b.img : null };
+  }
   function normFaccoes(v) {
     const out = [], vistos = new Set(), crus = [];
     (Array.isArray(v) ? v : []).forEach((f, i) => {
       if (!ehObj(f) || out.length >= MAX_FAC) return;
       const ver = ehObj(f.ver) ? f.ver : {};
-      out.push({ id: unico(idOk(f.id) || 'fc_' + i, vistos), nome: texto(f.nome), cor: cor(f.cor, CORES[i % CORES.length]), txt: texto(f.txt), nota: texto(f.nota), oculta: talvez(f.oculta), rel: {},
-        rec: normRecursos(f.rec), pop: numPop(f.pop), apoio: numApoio(f.apoio), ver: { pop: sim(ver.pop), apoio: sim(ver.apoio), hist: sim(ver.hist) }, hist: normHistFac(f.hist) });
+      const fac = { id: unico(idOk(f.id) || 'fc_' + i, vistos), nome: texto(f.nome), cor: cor(f.cor, CORES[i % CORES.length]), txt: texto(f.txt), nota: texto(f.nota), oculta: talvez(f.oculta), rel: {},
+        rec: normRecursos(f.rec), pop: numPop(f.pop), apoio: numApoio(f.apoio), ver: { pop: sim(ver.pop), apoio: sim(ver.apoio), hist: sim(ver.hist) }, hist: normHistFac(f.hist) };
+      const br = normBr(f.br);
+      if (br) fac.br = br;
+      out.push(fac);
       crus.push(ehObj(f.rel) ? f.rel : {});
     });
     // Relação vale para os dois lados; se um lado só tem, vale para os dois; se discordam, vale o da facção que vem antes.
@@ -1648,6 +1662,7 @@
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
       if (o.k === 'f' || o.k === 'z') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
       if (o.k === 'g') {
+        if (!facs.has(o.fac)) o.fac = null;                   // (lote 8) a facção do grupo tem de existir
         if (!rotas.has(o.rota)) o.rota = null;
         if (!o.rota) { o.prog = 0; delete o.bol; delete o.sentido; delete o.espera; }
       }
@@ -1817,6 +1832,8 @@
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
         delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
+        if (escondidas.has(o.fac)) o.fac = null;                 // (lote 8) a facção escondida não vai
+
         if (chGru.has(o.id)) o.ch = chGru.get(o.id);
       }
       else if (o.k === 'e') {
@@ -1860,6 +1877,7 @@
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
+    normBr,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;

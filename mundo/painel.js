@@ -1358,9 +1358,10 @@
       b.total > n ? h('small', { class: 'note', text: '(mostrando ' + n + ' de ' + b.total + ')' }) : null);
   }
   /* ---------------- a honra do grupo (lote 6) ----------------
-     O estilo (sem estilo, o grupo não mostra honra), − e + (de −5 a +5) e o motivo, que vai para o histórico junto da
+     O estilo (sem estilo, o grupo não mostra honra), − e + (lote 8: de −10 a +10) e o motivo, que vai para o histórico junto da
      data do mundo. Todos veem a honra e o histórico. O motivo escrito fica guardado aqui até a próxima mudança. */
   const honraTxt = v => (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0');
+  const maxHonra = () => (N().LIMITES && N().LIMITES.honra) || 10;
   function campoMotivo(k, ref, dica) {
     return h('label', { class: 'field motivo' }, h('span', { text: 'Motivo (opcional)' }),
       h('input', { class: 'in', type: 'text', 'data-k': k, value: ref.txt, maxlength: (N().LIMITES && N().LIMITES.motivo) || 200, placeholder: dica, autocomplete: 'off',
@@ -1374,7 +1375,7 @@
       e => mudarObj(id, e ? 'mudar o estilo da honra' : 'tirar a honra do mapa', x => { if ((x.estilo || '') === e) return false; x.estilo = e; }),
       { dica: 'O ícone junto do grupo, no mapa: mais enfeitado quanto maior a honra; rachado e escuro quando negativa.' }));
     if (!o.estilo) {
-      out.push(nota('Escolha um estilo para o grupo mostrar a honra no mapa (de −5 a +5).'));
+      out.push(nota('Escolha um estilo para o grupo mostrar a honra no mapa (de −' + max + ' a +' + max + ').'));
       return secao('Honra', out);
     }
     out.push(h('div', { class: 'row honra-linha' },
@@ -1395,7 +1396,7 @@
       de = g.honra || 0;
       return N().mudarHonra(g, para, mm.cal.dia, mot) ? undefined : false;
     });
-    if (ok !== false) { motivoHonra.txt = ''; avisoDesfazer('Honra ' + honraTxt(de) + ' → ' + honraTxt(Math.max(-5, Math.min(5, para))) + (mot ? ' (' + mot + ')' : '') + '.'); }
+    if (ok !== false) { motivoHonra.txt = ''; avisoDesfazer('Honra ' + honraTxt(de) + ' → ' + honraTxt(Math.max(-maxHonra(), Math.min(maxHonra(), para))) + (mot ? ' (' + mot + ')' : '') + '.'); }
   }
   // O histórico da honra, do mais novo para o mais antigo. O mestre corrige o motivo de uma linha ou a tira.
   let honraTudo = null;
@@ -1552,6 +1553,10 @@
       if (mundo) out.push(caixa('o:' + id + ':ver', 'Os jogadores veem', !o.oculto, grava(o.oculto ? 'mostrar aos jogadores' : 'esconder dos jogadores', (x, v) => { x.oculto = !v; }),
         { dica: o.oculto ? 'Por enquanto, só você vê no mapa.' : 'Aparece no mapa dos jogadores (a rota e as paradas, não).' }));
     }
+    // (lote 8) a facção do grupo: a bandeira do clã dela vai junto do token
+    if (m.faccoes.length) out.push(campoEscolha('o:' + id + ':gfac', 'Facção', o.fac || '', [['', 'Sem facção']].concat(m.faccoes.map(x => [x.id, nomeFac(x) + (x.oculta ? ' (escondida)' : '')])),
+      grava('mudar a facção do grupo', (x, v) => { if ((x.fac || '') === v) return false; x.fac = v || null; }),
+      { dica: 'Com um clã ligado à facção (na aba Clã), a bandeira dele aparece junto do grupo.' }));
     out.push(h('div', { class: 'row' },
       h('label', { class: 'field cor-campo' }, h('span', { text: 'Cor' }), campoCor('o:' + id + ':cor', 'Cor do grupo', o.cor, grava('mudar a cor', (x, v) => { x.cor = v; }))),
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
@@ -2423,6 +2428,19 @@
     if (facAberta === id) facAberta = null;
     avisoDesfazer('Facção apagada.');
   }
+  /* (lote 8) A bandeira do clã ligado a uma facção, pequena (na aba Facções): o brasão desenhado pelo núcleo do Clã ou a
+     imagem dele (do banco). null: sem bandeira. */
+  let seqBandeiraPainel = 0;
+  function bandeiraFac(fid, w) {
+    const br = App.brasaoDe ? App.brasaoDe(fid) : null;
+    if (!br) return null;
+    const el = h('span', { class: 'fac-band', 'data-k': 'fac-band:' + fid, title: 'Bandeira do clã ligado a esta facção', style: { width: w + 'px', height: Math.round(w * 1.2) + 'px' } });
+    if (br.img && /^https:\/\//.test(br.img)) { el.append(h('img', { src: br.img, alt: '' })); return el; }
+    const C = window.ClaNucleo;
+    if (!C || typeof C.brasaoSvg !== 'function') return null;
+    try { el.innerHTML = C.brasaoSvg(br, 'pb' + (++seqBandeiraPainel)); } catch (e) { return null; }     // o desenho do núcleo do Clã: só números e cores conferidos
+    return el;
+  }
   function abaFaccoes(v) {
     const ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, out = [h('h3', { text: 'Facções' })];
     if (ed) out.push(linha(botao('Nova facção', novaFaccao, { c: 'pri', k: 'fac:nova' })));
@@ -2439,13 +2457,13 @@
         const aberta = facAberta === f.id;
         lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'data-fac': f.id, 'aria-expanded': String(aberta),
           onclick: () => { facAberta = aberta ? null : f.id; pintar(); } },
-          h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+          bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
           f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null));
         if (aberta) lista.append(editorFaccao(f, v));
       } else {
         const rels = Object.keys(f.rel || {}).map(k => [facDe(v, k), f.rel[k]]).filter(([g, r]) => g && r !== 'neutra');
         lista.append(h('div', { class: 'fac-pub', 'data-fac': f.id },
-          h('div', { class: 'li' }, h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+          h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,
           rels.length ? h('div', { class: 'tags' }, rels.map(([g, r]) => h('span', { class: 'tag ' + r, text: N().RELACOES[r] + ' com ' + nomeFac(g) }))) : null,
@@ -2467,6 +2485,10 @@
             'aria-label': NOMES_CORES[i] || 'Cor ' + (i + 1), title: NOMES_CORES[i] || 'Cor ' + (i + 1), onclick: () => grava('mudar a cor da facção', x => { x.cor = c; })() })),
           campoCor('f:' + id + ':cor', 'Outra cor', f.cor, grava('mudar a cor da facção', (x, v) => { x.cor = v; })))),
       campoTexto('f:' + id + ':txt', 'O que os jogadores sabem', f.txt, grava('mudar o texto da facção', (x, v) => { x.txt = v; }), { area: true, linhas: 3 }),
+      // (lote 8) a bandeira: a do clã ligado a esta facção (na aba Clã); muda junto com o brasão dele
+      h('div', { class: 'field fac-band-campo' }, h('span', { text: 'Bandeira' }),
+        bandeiraFac(id, 34) ? h('div', { class: 'row' }, bandeiraFac(id, 34), nota('A do clã ligado a esta facção: aparece no meio das regiões dela, junto dos grupos e nas zonas e frentes de guerra. Muda quando o brasão do clã muda (na aba Clã).'))
+          : nota('Sem bandeira. Na aba Clã, escolha esta facção no clã: o brasão dele vira a bandeira dela no mapa.')),
       segredo('Só o mestre vê', campoTexto('f:' + id + ':nota', null, f.nota, grava('mudar a nota da facção', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Planos, segredos…' })),
       caixa('f:' + id + ':oculta', 'Esconder dos jogadores', f.oculta, grava('esconder a facção', (x, v) => { x.oculta = !!v; }), { dica: 'Some da lista deles; as regiões ficam sem cor de facção para eles.' }),
       secNumerosFac(f, m),

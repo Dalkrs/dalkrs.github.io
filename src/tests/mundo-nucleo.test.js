@@ -660,21 +660,21 @@ function mundo() {
 
 /* ================= lote 6 (5b): a honra dos grupos, o painel das facções e os terrenos novos ================= */
 {
-  // a honra: de −5 a +5, com um estilo; o histórico com a data do mundo e o motivo
-  ok(j(Object.keys(N.HONRA)) === j(['elmo', 'kabuto', 'katana', 'turbante', 'coroa', 'escudo', 'cajado', 'mascara']) && N.HONRA.escudo === 'Escudo com brasão' && N.LIMITES.honra === 5,
+  // a honra: de −10 a +10 (lote 8; era de −5 a +5), com um estilo; o histórico com a data do mundo e o motivo
+  ok(j(Object.keys(N.HONRA)) === j(['elmo', 'kabuto', 'katana', 'turbante', 'coroa', 'escudo', 'cajado', 'mascara']) && N.HONRA.escudo === 'Escudo com brasão' && N.LIMITES.honra === 10,
     'oito estilos de honra (elmo medieval, kabuto, katana, turbante, coroa, escudo com brasão, cajado de mago, máscara tribal)');
-  const G = N.normalizarMapa({ objs: [{ id: 'g', k: 'g', x: 0, y: 0 }, { id: 'h', k: 'g', x: 0, y: 0, estilo: 'kabuto', honra: 9, hhist: [{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }, { d: 4, de: 2, para: 2 }, { de: 'x', para: 1 }, 'lixo'] }, { id: 'i', k: 'g', x: 0, y: 0, estilo: 'nada', honra: -9 }] });
+  const G = N.normalizarMapa({ objs: [{ id: 'g', k: 'g', x: 0, y: 0 }, { id: 'h', k: 'g', x: 0, y: 0, estilo: 'kabuto', honra: 19, hhist: [{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }, { d: 4, de: 2, para: 2 }, { de: 'x', para: 1 }, 'lixo'] }, { id: 'i', k: 'g', x: 0, y: 0, estilo: 'nada', honra: -19 }] });
   const gg = id => G.objs.find(o => o.id === id);
-  ok(gg('g').estilo === '' && gg('g').honra === 0 && j(gg('g').hhist) === '[]' && gg('h').estilo === 'kabuto' && gg('h').honra === 5 && j(gg('h').hhist) === j([{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }]) && gg('i').estilo === '' && gg('i').honra === -5,
-    'o grupo: sem estilo de começo (não mostra honra); a honra fica entre −5 e +5; o histórico só com as linhas que mudam algo');
+  ok(gg('g').estilo === '' && gg('g').honra === 0 && j(gg('g').hhist) === '[]' && gg('h').estilo === 'kabuto' && gg('h').honra === 10 && j(gg('h').hhist) === j([{ d: 3, de: 0, para: 2, mot: 'Salvaram a vila' }]) && gg('i').estilo === '' && gg('i').honra === -10,
+    'o grupo: sem estilo de começo (não mostra honra); a honra fica entre −10 e +10; o histórico só com as linhas que mudam algo');
   const H = N.copia(gg('g'));
   ok(N.mudarHonra(H, 2, 7, '  Venceram o duelo  ') && H.honra === 2 && j(H.hhist) === j([{ d: 7, de: 0, para: 2, mot: 'Venceram o duelo' }]) && !N.mudarHonra(H, 2, 8, 'nada') && H.hhist.length === 1
-    && N.mudarHonra(H, -99, 9, '') && H.honra === -5 && H.hhist[1].para === -5 && H.hhist[1].mot === '',
-    'mudar a honra: o valor e a linha do histórico (o mesmo valor não muda nada; passa de −5, fica em −5)');
+    && N.mudarHonra(H, -99, 9, '') && H.honra === -10 && H.hhist[1].para === -10 && H.hhist[1].mot === '',
+    'mudar a honra: o valor e a linha do histórico (o mesmo valor não muda nada; passa de −10, fica em −10)');
   const H2 = { honra: 0, hhist: [] };
   for (let i = 0; i < 130; i++) N.mudarHonra(H2, i % 2 ? 0 : 1, i, 'vez ' + i);
   ok(H2.hhist.length === N.LIMITES.historico && H2.hhist[0].mot === 'vez 30' && N.normalizarMapa({ objs: [Object.assign({ k: 'g', x: 0, y: 0 }, H2)] }).objs[0].hhist.length === 100, 'o histórico da honra guarda as últimas 100 mudanças');
-  ok(j(N.projetar(G).objs.find(o => o.id === 'h').hhist) === j(gg('h').hhist) && N.projetar(G).objs.find(o => o.id === 'h').honra === 5, 'a honra e o histórico vão para os jogadores (todos veem)');
+  ok(j(N.projetar(G).objs.find(o => o.id === 'h').hhist) === j(gg('h').hhist) && N.projetar(G).objs.find(o => o.id === 'h').honra === 10, 'a honra e o histórico vão para os jogadores (todos veem)');
 
   // o painel das facções
   const F = N.normalizarMapa({ faccoes: [{ id: 'fa', nome: 'Aldar', rec: [{ id: 'ouro', nome: 'Ouro', n: '1000', ver: true }, { id: 'sold', nome: 'Soldados', n: 500 }, { nome: 'Comida', n: 'x' }, 'lixo'], pop: 12000.4, apoio: 140, ver: { pop: 1, hist: 'sim' } }, { id: 'fb', nome: 'Vale' }] });
@@ -913,6 +913,19 @@ function mundo() {
     'quem joga: o clima de hoje pronto (o do mundo, o das regiões com ajuste, o de onde cada grupo está), sem a tabela, os ajustes e os números das zonas');
   const pn = N.normalizarMapa(pj);
   ok(N.climaDoDia(pn, 40).k === 'chuva' && N.climaNoPonto(pn, 30, 30).k === prd.ch && N.climaNoPonto(pn, 300, 100).k === 'neve', '(e o mapa de quem joga lê o clima de hoje pronto)');
+}
+
+/* ================= lote 8 (parte 3): a facção do grupo e a bandeira do clã na facção ================= */
+{
+  const M8 = N.normalizarMapa({ faccoes: [{ id: 'fa', nome: 'Aldar', br: { forma: 'escudo', div: 'partido', cores: ['#24305E', '#d9a441'], simb: 'lua', img: 'https://x.supabase.co/b.png' } }, { id: 'fb', nome: 'Vale', br: { cores: ['#111111'] } }, { id: 'fc', nome: 'Segredo', oculta: true }],
+    objs: [{ k: 'g', id: 'g1', x: 1, y: 1, fac: 'fa' }, { k: 'g', id: 'g2', x: 1, y: 1, fac: 'nada' }, { k: 'g', id: 'g3', x: 1, y: 1, fac: 'fc' }, { k: 'g', id: 'g4', x: 1, y: 1 }] });
+  const gf = id => M8.objs.find(o => o.id === id).fac;
+  ok(gf('g1') === 'fa' && gf('g2') === null && gf('g3') === 'fc' && gf('g4') === null, 'o grupo tem uma facção (a que não existe vira nenhuma)');
+  ok(j(M8.faccoes[0].br) === j({ forma: 'escudo', div: 'partido', cores: ['#24305e', '#d9a441'], simb: 'lua', img: 'https://x.supabase.co/b.png' }) && !('br' in M8.faccoes[1]) && !('br' in M8.faccoes[2]),
+    'a bandeira na facção (a que a projeção leva): forma, divisão, as duas cores, o símbolo e a imagem do banco; incompleta, não vale');
+  ok(j(N.normBr({ forma: '<x>', div: 'partido', cores: ['#000000', '#ffffff'], simb: 'a b', img: 'javascript:alert(1)' })) === j({ forma: 'escudo', div: 'partido', cores: ['#000000', '#ffffff'], simb: null, img: null }), 'o que não presta na bandeira volta ao comum (ou sai)');
+  const P8 = N.projetar(M8);
+  ok(P8.objs.find(o => o.id === 'g1').fac === 'fa' && P8.objs.find(o => o.id === 'g3').fac === null && P8.faccoes.length === 2 && P8.faccoes[0].br.cores[0] === '#24305e', 'na projeção: o grupo de facção escondida vai sem ela; a bandeira vai com a facção');
 }
 
 end();

@@ -211,6 +211,36 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     ok(/os recursos gastos nela não voltam/.test(await P.locator('#dlg[open]').innerText()), 'apagar uma construção pergunta antes');
     await clicar('#dlg [data-k="dl:sim"]');
     ok((await cla()).construcoes.length === 1, 'a Biblioteca saiu');
+    // (lote 8) um recurso que o clã ainda não tem, direto no custo: entra na lista com 0, no mesmo passo
+    const nRec = (await cla()).recursos.lista.length;
+    await limparAvisos();
+    await clicar('[data-k="cons:nova"]');
+    await P.fill('#dlg [data-k="dl:nome"]', 'Torre de Mitril');
+    await clicar('#dlg [data-k="dl:custo-novo"]');
+    ok(await P.locator('#dlg [data-k="dl:custo-novo:0"]').count() === 1 && await P.evaluate(() => document.activeElement && document.activeElement.dataset.k === 'dl:custo-novo:0'), '"+ recurso novo no custo": um campo para o nome, já com o cursor');
+    await P.fill('#dlg [data-k="dl:custo-novo:0"]', '  Mitril ');
+    await P.fill('#dlg [data-k="dl:custo-qtd:0"]', '30');
+    // o mesmo nome de um que já existe (sem acento e maiúscula) usa o que existe
+    await clicar('#dlg [data-k="dl:custo-novo"]'); await P.fill('#dlg [data-k="dl:custo-novo:1"]', 'ferro'); await P.fill('#dlg [data-k="dl:custo-qtd:1"]', '5');
+    await clicar('#dlg [data-k="dl:sim"]');
+    c = await cla();
+    const torre = c.construcoes.find(x => x.nome === 'Torre de Mitril'), mit = c.recursos.lista.find(r => r.nome === 'Mitril');
+    ok(torre && mit && mit.qtd === 0 && c.recursos.lista.length === nRec + 1 && torre.prox.custo.map(x => x.rec + ':' + x.qtd).join() === mit.id + ':30,' + fe + ':5',
+      'salvo: o Mitril entra na lista do clã com 0 e já está no custo; "ferro" usou o Ferro que existia: ' + JSON.stringify(torre && torre.prox.custo));
+    ok(/Recurso novo na lista do clã \(com 0\): Mitril/.test(await avisos()), 'o aviso diz o recurso novo: ' + await avisos());
+    await desfazerDoAviso();
+    c = await cla();
+    ok(!c.construcoes.some(x => x.nome === 'Torre de Mitril') && !c.recursos.lista.some(r => r.nome === 'Mitril'), 'um Desfazer tira os dois (a construção e o recurso novo)');
+    // o "+ Recurso novo…" na lista de um custo também
+    await clicar(`[data-k="cons:ed:${f.id}"]`);
+    await P.selectOption('#dlg [data-k="dl:custo-rec:0"]', '__novo__'); await espera(150);
+    ok(await P.locator('#dlg [data-k="dl:custo-novo:0"]').count() === 1, '"+ Recurso novo…" na lista troca a linha por um campo de nome');
+    await clicar('#dlg [data-k="dl:sim"]');
+    ok(await P.locator('#dlg[open]').count() === 1 && /Dê um nome ao recurso novo do custo/.test(await avisos()), 'sem nome, a janela não fecha (e diz por quê)');
+    await P.fill('#dlg [data-k="dl:custo-novo:0"]', 'Aço negro'); await clicar('#dlg [data-k="dl:sim"]');
+    c = await cla();
+    ok(c.recursos.lista.some(r => r.nome === 'Aço negro' && r.qtd === 0) && c.construcoes[0].prox.custo[0].nome === 'Aço negro', 'ao editar uma construção também');
+    await desfazerDoAviso();
   });
 
   await passo('o respeito no mundo e os nomes dos níveis', async () => {
@@ -219,14 +249,23 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     let c = await cla();
     ok(c.respeito.v === 2 && c.respeito.hist.length === 1 && c.respeito.hist[0].de === 0 && c.respeito.hist[0].para === 2 && c.respeito.hist[0].mot === 'a escolta da caravana'
       && await k('resp:txt').innerText() === '+2 · Respeitado', 'de 0 a +2 numa linha só (com o motivo): "+2 · Respeitado"');
+    ok(await P.locator('[data-k="esc-m"] [data-n]').count() === 21 && await P.locator('[data-k="esc-m"] [data-n="10"]').innerText() === '+10' && await P.locator('[data-k="esc-m"] [data-n="7"]').innerText() === '',
+      '(lote 8) a escala vai de −10 a +10 (o número no 0, no ±5, no ±10 e no de agora)');
+    await clicar('[data-k="esc-m"] [data-n="5"]');
+    ok(!(await k('resp:mais').isDisabled()), '(lote 8) no +5, o + continua');
+    await clicar('[data-k="resp:mais"]');
+    ok((await cla()).respeito.v === 6 && await k('resp:txt').innerText() === '+6 · Mítico', '(lote 8) +6 · Mítico, um dos níveis novos');
+    await clicar('[data-k="esc-m"] [data-n="10"]');
+    ok(await k('resp:mais').isDisabled() && await k('resp:txt').innerText() === '+10 · Divino', '(lote 8) +10 · Divino, e o + para no limite');
     await clicar('[data-k="esc-m"] [data-n="-3"]');
     ok((await cla()).respeito.v === -3 && (await cla()).respeito.hist.length === 2 && await k('resp:txt').innerText() === '−3 · Temido', 'clicar na escala (outra linha: sem motivo novo, mas depois de um com motivo… e longe no valor)');
     await clicar('[data-k="corrigir:0"]'); await dlg({ 'dl:mot': 'o massacre na ponte' });
     c = await cla();
     ok(c.respeito.hist[0].mot === 'o massacre na ponte' && c.hist.find(e => e.tipo === 'resp' && e.para === -3).mot === 'o massacre na ponte', 'corrigir o motivo (nas duas listas)');
     await clicar('[data-k="niveis"]');
-    await P.fill('#dlg [data-k="nv:mundo:2"]', 'Pavor do Vale'); await clicar('#dlg [data-k="dl:sim"]');
-    ok(await k('resp:txt').innerText() === '−3 · Pavor do Vale' && (await A(() => __cla.doc('cla:nomes'))).mundo[2] === 'Pavor do Vale', 'renomear um nível: vale na hora (para a mesa toda)');
+    ok(await P.locator('#dlg [data-k^="nv:mundo:"]').count() === 21, '(lote 8) a janela dos nomes tem os 21 níveis de cada escala, de −10 a +10');
+    await P.fill('#dlg [data-k="nv:mundo:7"]', 'Pavor do Vale'); await clicar('#dlg [data-k="dl:sim"]');
+    ok(await k('resp:txt').innerText() === '−3 · Pavor do Vale' && (await A(() => __cla.doc('cla:nomes'))).mundo[7] === 'Pavor do Vale' && (await A(() => __cla.doc('cla:nomes'))).v === 2, 'renomear um nível: vale na hora (para a mesa toda)');
     await clicar('[data-k="niveis"]'); await clicar('#dlg [data-k="nv:comeco"]'); await clicar('#dlg [data-k="dl:sim"]');
     ok(await k('resp:txt').innerText() === '−3 · Temido', 'voltar aos nomes de começo');
   });
@@ -234,6 +273,7 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
   await passo('as relações e o respeito dos membros', async () => {
     await clicar('[data-k="rel:nova"]');
     ok(/Casa Varonil \(os jogadores não o veem\)/.test(await P.locator('#dlg [data-k="dl:alvo"]').innerText()), 'a relação nova: os outros clãs (o escondido, marcado)');
+    ok(await P.locator('#dlg [data-k="dl:valor"] option').count() === 21 && /\+10 · Um só povo/.test(await P.locator('#dlg [data-k="dl:valor"]').innerText()), '(lote 8) a relação nova começa em qualquer nível de −10 a +10');
     await P.selectOption('#dlg [data-k="dl:valor"]', '-2'); await clicar('#dlg [data-k="dl:sim"]');
     let c = await cla();
     const r = c.relacoes[0];

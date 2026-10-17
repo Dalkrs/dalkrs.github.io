@@ -312,7 +312,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     ok(/Só quem ocupa o cargo de líder/.test(await CD.evaluate(id => TC.ponte.cla('cargos', { cla: id, mudar: { zz: { nome: 'X', pai: 'lider', ordem: 9, gente: [] } }, txt: 'x' }).then(() => 'foi', e => e.message), lam)),
       'pedindo ao banco mesmo assim: "Só quem ocupa o cargo de líder…"');
     // ---------- os nomes dos níveis (da mesa toda) e o nome de agora de cada personagem ----------
-    await botao(CM, '[data-k="niveis"]'); await CM.locator('#dlg [data-k="nv:mundo:7"]').fill('Prestigiado'); await botao(CM, '#dlg [data-k="dl:sim"]');
+    await botao(CM, '[data-k="niveis"]'); await CM.locator('#dlg [data-k="nv:mundo:12"]').fill('Prestigiado'); await botao(CM, '#dlg [data-k="dl:sim"]');
     ok(await ate(async () => /Respeito no mundo: \+2 · Prestigiado/.test(await texto(CL, '#chips'))), 'o mestre renomeia um nível: os jogadores veem o nome novo');
     await M.evaluate(() => TC.dados.col('personagens').gravar('pc_brisa', { nome: 'Brisa do Vale' }));
     ok(await ate(async () => /Brisa do Vale/.test(await texto(CL, '[data-cargo="lider"]'))), 'o personagem renomeado aparece no cargo com o nome de agora');

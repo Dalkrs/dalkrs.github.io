@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-13",
+      "data": "2026-10-17",
+      "titulo": "Clã e mapa de −10 a +10, recurso novo e a bandeira do clã",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: o respeito no mundo, as relações e o respeito dos membros vão de −10 a +10. O que já estava marcado continua igual; os níveis novos ganharam nomes, que dá para trocar como os outros."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a honra dos grupos também vai de −10 a +10, com o selo ganhando enfeites novos até a estrela do +10 (e as correntes e a brasa do lado de baixo)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Clã: ao registrar uma construção, dá para pôr no custo um recurso que o clã ainda não tem. Ele entra na lista do clã com 0, já no custo.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a bandeira do clã ligado a uma facção aparece na aba Facções, no meio das regiões dela, junto dos grupos dela e nas zonas e frentes de guerra (dos dois lados). Os jogadores veem a bandeira das facções que eles veem. O grupo ganhou o campo Facção."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-12",
       "data": "2026-10-17",
       "titulo": "Limite de dano, Ferida permanente e Clone",

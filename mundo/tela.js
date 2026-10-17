@@ -1134,14 +1134,16 @@
   }
 
   /* objetos: cada um vira um <g data-id>; a chave diz quando precisa reconstruir */
+  // (lote 8) a bandeira de uma facção entra na chave: o clã que muda o brasão (ou deixa a facção) redesenha o que a mostra
+  const chaveBr = (ctx, id) => { if (!id) return ''; const br = brasaoDaFac(ctx, id); return br ? '|' + JSON.stringify(br) + nomeFac(ctx, id) : ''; };
   function chaveDe(o, ctx) {
     let extra = ctx.mestre ? 'M' : 'J';
-    if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)); }
-    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o));
-    else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : ''); }
+    if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid); }
+    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac);
+    else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
-    else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia); }
+    else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     return JSON.stringify(o) + extra;
   }
   let avisouErro = false;
@@ -1216,6 +1218,35 @@
     el.setAttribute('transform', `translate(${-tam / 2} ${-tam / 2}) scale(${tam / 24})`);
     return el;
   }
+  /* (lote 8) A bandeira do clã ligado a uma facção: o brasão (desenhado pelo núcleo do Clã, ou a imagem dele, quando é
+     do banco), com largura w, centrado em (x, y), num grupo de tamanho fixo na tela. null: a facção não tem bandeira. */
+  let seqBandeira = 0;
+  function brasaoDaFac(ctx, id) {
+    if (!id) return null;
+    const f = ctx && ctx.fac ? ctx.fac.get(id) : null;
+    return (f && f.br) || (App && typeof App.brasaoDe === 'function' ? App.brasaoDe(id) : null);
+  }
+  function bandeira(br, x, y, w, dica) {
+    if (!br) return null;
+    const hgt = w * 1.2, g = s('g', { class: 'bandeira', transform: 'translate(' + d3(x - w / 2) + ' ' + d3(y - hgt / 2) + ')' });
+    if (dica) g.append(s('title', { texto: dica }));
+    if (br.img && /^https:\/\//.test(br.img)) {
+      g.append(s('image', { href: br.img, width: d3(w), height: d3(hgt), preserveAspectRatio: 'xMidYMid meet' }));
+      return g;
+    }
+    const C = window.ClaNucleo;
+    if (!C || typeof C.brasaoSvg !== 'function') return null;
+    let markup = '';
+    try { markup = C.brasaoSvg(br, 'mb' + (++seqBandeira)); } catch (e) { return null; }
+    const tmp = s('g');
+    tmp.innerHTML = markup;                                   // o desenho do núcleo do Clã: só números e cores conferidos lá
+    const el = tmp.firstElementChild;
+    if (!el) return null;
+    el.setAttribute('width', d3(w)); el.setAttribute('height', d3(hgt));
+    g.append(el);
+    return g;
+  }
+  const nomeFac = (ctx, id) => { const f = id && ctx && ctx.fac ? ctx.fac.get(id) : null; return f ? f.nome || 'Facção' : ''; };
   function regiao(g0, o, ctx) {
     if (!Array.isArray(o.pts) || o.pts.length < 3) return;
     g0.classList.add('regiao');
@@ -1224,6 +1255,9 @@
     // o nome vai na camada de cima (nreg): a área fica por baixo das estradas e dos carimbos, mas o nome não some sob eles
     if (o.nome) {
       const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
+      // (lote 8) a bandeira do clã da facção, em cima do nome (a da região de dentro só quando a facção é outra)
+      const bf = !o.pai || (o.fac && o.fac === fid) ? bandeira(brasaoDaFac(ctx, fid), 0, -16, 15, 'Bandeira de ' + nomeFac(ctx, fid)) : null;
+      if (bf) fx.append(bf);
       fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg' + (o.pai ? ' rotulo-subreg' : '')));
       g1.append(fx);
       g0.__ico = g1; g0.__cam2 = 'nreg';
@@ -1242,7 +1276,9 @@
       s('path', { class: 'fre-a' + anda, d, stroke: corFac(ctx, o.a) }),
       s('path', { class: 'fre-b' + anda, d, stroke: corFac(ctx, o.b) }),
       s('path', { class: 'fre-hit', d }));
-    if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
+    // (lote 8) as bandeiras dos dois lados, no meio da linha (em cima do nome)
+    const ba = bandeira(brasaoDaFac(ctx, o.a), -11, -28, 13, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), 11, -28, 13, nomeFac(ctx, o.b));
+    if (o.nome || ba || bb) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
   // até onde os grupos desta rota já andaram (em unidades ao longo dela): o ponto da rota mais perto do mais adiantado
   function andadoDe(m, rt) {
@@ -1422,14 +1458,27 @@
     cajado: '<path class="hb" d="M3.6 20.6 13.5 8.1l1.9 1.5L5.5 22.1z"/><path class="hk" d="M9.3 13.2l1.9 1.5-.9 1.1-1.9-1.5z"/><path class="hd" d="M13.6 9.6c-1.1-2.4-.2-5.3 2.2-6.6M20.2 9.4c-.6 1.8-2.1 3.1-4 3.5"/><path class="hg" d="M20.4 6.2a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 1 1 7.2 0z"/>',
     mascara: '<path class="hb" d="M12 2.8c4.2 0 7.2 3.2 7.2 8.2 0 5.6-3.3 10.2-7.2 10.2S4.8 16.6 4.8 11c0-5 3-8.2 7.2-8.2z"/><path class="hk" d="M7.4 10.1l3.6.9-3.3 1.6zM16.6 10.1l-3.6.9 3.3 1.6zM9.6 16.3h4.8L12 18z"/><path class="hd" d="M12 3.6v4.4M6.9 14.1l1.7.9M17.1 14.1l-1.7.9"/>',
   };
-  // a cor do corpo pela honra: do aço (0) ao ouro (+5); negativa, cada vez mais escura
-  const COR_HONRA = { '-5': '#3d3833', '-4': '#4f4943', '-3': '#615a53', '-2': '#7a736b', '-1': '#8f8981', 0: '#b9bbbe', 1: '#c5a26b', 2: '#d3ad58', 3: '#ddb64e', 4: '#e7c04a', 5: '#f0cb4c' };
-  const RACHAS = ['M9 4.5l2.2 3.4-1.6 2.2 2 3.1', 'M16.2 8.6l-1.9 2.1.8 2.5-1.7 2.2', 'M7 13.6l2 1.3-.4 2.6 1.6 1.8'];
+  /* a cor do corpo pela honra: do aço (0) ao ouro (+5) e daí ao ouro claro, quase branco (+10); negativa, cada vez mais
+     escura (lote 8: até −10, quase preta) */
+  const COR_HONRA = { '-10': '#141210', '-9': '#1b1815', '-8': '#221f1b', '-7': '#2a2622', '-6': '#332f2a', '-5': '#3d3833', '-4': '#4f4943', '-3': '#615a53', '-2': '#7a736b', '-1': '#8f8981', 0: '#b9bbbe',
+    1: '#c5a26b', 2: '#d3ad58', 3: '#ddb64e', 4: '#e7c04a', 5: '#f0cb4c', 6: '#f3d362', 7: '#f6db7c', 8: '#f9e399', 9: '#fbecb9', 10: '#fff5d8' };
+  const RACHAS = ['M9 4.5l2.2 3.4-1.6 2.2 2 3.1', 'M16.2 8.6l-1.9 2.1.8 2.5-1.7 2.2', 'M7 13.6l2 1.3-.4 2.6 1.6 1.8', 'M13.2 16.8l1.2-1.9 2.4.2 1.1-2', 'M5.6 6.8l1.6 1.4-.2 2.2'];
+  const HONRA_MAX = 10;
   function seloDeHonra(o) {
-    const v = Math.max(-5, Math.min(5, Math.round(Number(o.honra) || 0))), est = SELOS[o.estilo];
+    const v = Math.max(-HONRA_MAX, Math.min(HONRA_MAX, Math.round(Number(o.honra) || 0))), est = SELOS[o.estilo];
     if (!est) return null;
     const g = s('g', { class: 'honra' + (v > 0 ? ' h-pos' : v < 0 ? ' h-neg' : '') + ' h' + (v < 0 ? 'm' + -v : v), transform: 'translate(23 -13)' });
     g.append(s('title', { texto: 'Honra ' + (v > 0 ? '+' + v : v < 0 ? '−' + -v : '0') + ' · ' + ((N().HONRA || {})[o.estilo] || '') }));
+    // (lote 8) +9: o halo, um anel claro bem por fora
+    if (v >= 9) g.append(s('circle', { class: 'hon-halo', r: 19.5 }));
+    // (lote 8) +6: uma segunda volta de raios, curtos, entre os de +5
+    if (v >= 6) {
+      let d = '';
+      for (let i = 0; i < 12; i++) { const a = ((i + 0.5) / 12) * Math.PI * 2, b = a + 0.1, c0 = a - 0.1; d += 'M' + d3(Math.cos(c0) * 11) + ' ' + d3(Math.sin(c0) * 11) + 'L' + d3(Math.cos(a) * 14.5) + ' ' + d3(Math.sin(a) * 14.5) + 'L' + d3(Math.cos(b) * 11) + ' ' + d3(Math.sin(b) * 11) + 'Z'; }
+      g.append(s('path', { class: 'hon-raios2', d }));
+    }
+    // (lote 8) +7: as asas, dos dois lados
+    if (v >= 7) g.append(s('path', { class: 'hon-asa', d: 'M-10 -2c-4-1-8 0-11 3 3 0 5 1 6 2-2 0-4 1-5 3 3-1 6-1 8 0M10 -2c4-1 8 0 11 3-3 0-5 1-6 2 2 0 4 1 5 3-3-1-6-1-8 0' }));
     // os raios (+5), por trás de tudo
     if (v >= 5) {
       let d = '';
@@ -1446,18 +1495,26 @@
       g.append(s('path', { class: 'hon-louro', d: ramo(1) + (v >= 4 ? ramo(-1) : '') }));
     }
     g.append(s('circle', { class: 'hon-fundo', r: 10.5 }));
-    if (v > 0) g.append(s('circle', { class: 'hon-aro', r: 10.5, 'stroke-width': d3(0.9 + v * 0.35) }));
+    if (v > 0) g.append(s('circle', { class: 'hon-aro', r: 10.5, 'stroke-width': d3(0.9 + Math.min(v, 5) * 0.35 + Math.max(0, v - 5) * 0.12) }));
+    // (lote 8) +8: as pedras no aro (quatro); +10: a estrela no alto
+    if (v >= 8) for (const [x, y] of [[0, -10.5], [10.5, 0], [0, 10.5], [-10.5, 0]]) if (!(v >= 10 && y < 0)) g.append(s('circle', { class: 'hon-pedra', cx: x, cy: y, r: 1.6 }));
+    if (v >= 10) g.append(s('path', { class: 'hon-estrela', d: 'M0 -15.6l1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.4-2.6 1.4.5-3-2.2-2.1 3-.4z' }));
+    // (lote 8) −8: a brasa em volta, escura e avermelhada; −7: as correntes, atravessando
+    if (v <= -8) g.append(s('circle', { class: 'hon-brasa', r: 12.2 }));
     const ic = molde(est);                       // markup fixo daqui
     ic.setAttribute('class', 'hon-ico');
     ic.setAttribute('transform', 'translate(-8.9 -8.9) scale(0.74)');
     for (const p of ic.querySelectorAll('.hb')) p.style.fill = COR_HONRA[v];
-    const rachas = { 2: 1, 3: 2, 4: 3, 5: 3 }[-v] || 0;
+    const rachas = { 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 4, 8: 5, 9: 5, 10: 5 }[-v] || 0;
     if (rachas) ic.append(s('path', { class: 'hon-racha', d: RACHAS.slice(0, rachas).join('') }));
     if (v <= -4) ic.append(s('path', { class: 'hon-lasca', d: 'M17.5 3.2l3.4.4-1 3.6z' }));
+    if (v <= -9) ic.append(s('path', { class: 'hon-lasca', d: 'M3.4 18.6l3.2 2.6-3.6.6z' }));          // (lote 8) −9: outra lasca
     g.append(ic);
+    if (v <= -7) g.append(s('path', { class: 'hon-corrente', d: 'M-12.5 -7.5l25 15M-12.5 7.5l25 -15M-9 -5.4a1.8 1.2 31 1 0 3.1 1.9M5.9 3.5a1.8 1.2 31 1 0 3.1 1.9M-9 5.4a1.8 1.2 -31 1 1 3.1 -1.9M5.9 -3.5a1.8 1.2 -31 1 1 3.1 -1.9' }));
     // o número, num botãozinho embaixo
-    const t = v > 0 ? '+' + v : v < 0 ? '−' + -v : '0';
-    g.append(s('rect', { class: 'hon-num-fundo', x: -7, y: 8.6, width: 14, height: 9.6, rx: 4.8 }), s('text', { class: 'hon-num', x: 0, y: 16.1, 'text-anchor': 'middle', 'font-size': 8.5, texto: t }));
+    // (lote 8: com dois algarismos, o botãozinho fica mais largo e a letra um pouco menor — o "+10" não embola)
+    const t = v > 0 ? '+' + v : v < 0 ? '−' + -v : '0', largo = Math.abs(v) >= 10;
+    g.append(s('rect', { class: 'hon-num-fundo', x: largo ? -9.6 : -7, y: 8.6, width: largo ? 19.2 : 14, height: 9.6, rx: 4.8 }), s('text', { class: 'hon-num', x: 0, y: 16.1, 'text-anchor': 'middle', 'font-size': largo ? 7.8 : 8.5, texto: t }));
     return g;
   }
   function grupo(g0, o, ctx) {
@@ -1483,6 +1540,9 @@
     else fx.append(s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
     const selo = seloDeHonra(o);
     if (selo) fx.append(selo);
+    // (lote 8) a bandeira do clã da facção do grupo, do lado esquerdo do token
+    const bg = bandeira(brasaoDaFac(ctx, o.fac), -27, -12, 12, nomeFac(ctx, o.fac));
+    if (bg) fx.append(bg);
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }
@@ -1507,7 +1567,9 @@
       s('path', { class: 'zona' + (ativa ? ' zona-pulsa' : ''), d, fill: `url(#${pid})` }),
       s('path', { class: 'zona-borda', d, stroke: ca }),
       s('path', { class: 'zona-borda b', d, stroke: cb }));
-    if (o.nome) { const c = pontoDoNome(pts), fx = fixo(c[0], c[1]); fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg')); g0.append(fx); }
+    // (lote 8) as bandeiras dos dois lados, em cima do nome
+    const ba = bandeira(brasaoDaFac(ctx, o.a), -11, -16, 14, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), 11, -16, 14, nomeFac(ctx, o.b));
+    if (o.nome || ba || bb) { const c = pontoDoNome(pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg')); g0.append(fx); }
   }
   /* (lote 7, parte 5c) A zona de perigo: a área na cor do tipo, com listras finas e a borda tracejada; enquanto acontece,
      pulsa devagar (como a de guerra). */

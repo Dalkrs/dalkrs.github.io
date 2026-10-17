@@ -9,9 +9,11 @@ const j = JSON.stringify;
 const T0 = '2026-10-16T10:00:00.000Z', mais = s => new Date(Date.parse(T0) + s * 1000).toISOString();
 
 /* ---------------- catálogos ---------------- */
-ok(j(Object.keys(C.ESCALAS)) === j(['mundo', 'rel', 'membro']) && Object.values(C.ESCALAS).every(l => l.length === 11)
-  && C.ESCALAS.mundo[7] === 'Respeitado' && C.ESCALAS.rel[0] === 'Inimigo mortal' && C.ESCALAS.rel[10] === 'Irmão de armas' && C.ESCALAS.membro[8] === 'Estimado',
-  'as três escalas, de −5 a +5, com os nomes do esboço');
+ok(j(Object.keys(C.ESCALAS)) === j(['mundo', 'rel', 'membro']) && Object.values(C.ESCALAS).every(l => l.length === 21) && C.NIVEL_MAX === 10 && j(C.NIVEIS.slice(0, 2)) === j([-10, -9]) && C.NIVEIS.length === 21
+  && C.ESCALAS.mundo[12] === 'Respeitado' && C.ESCALAS.rel[5] === 'Inimigo mortal' && C.ESCALAS.rel[15] === 'Irmão de armas' && C.ESCALAS.membro[13] === 'Estimado',
+  '(lote 8) as três escalas, de −10 a +10, com os nomes do esboço de −5 a +5 no meio');
+ok(C.ESCALAS.mundo[0] === 'Inimigo do mundo' && C.ESCALAS.mundo[20] === 'Divino' && C.ESCALAS.rel[0] === 'Extermínio' && C.ESCALAS.rel[20] === 'Um só povo' && C.ESCALAS.membro[0] === 'Inimigo jurado' && C.ESCALAS.membro[20] === 'Alma do clã'
+  && Object.values(C.ESCALAS).every(l => new Set(l).size === l.length), '(lote 8) os níveis novos (de −10 a −6 e de +6 a +10) têm nomes próprios, sem repetir na escala');
 ok(j(C.PARTES.map(p => p[0])) === j(['cargos', 'construcoes', 'recursos', 'respeito', 'relacoes', 'hist']) && C.PARTE_NOME.hist === 'Histórico', 'as seis partes que o mestre mostra (ou não) de um clã de NPC');
 ok(C.FORMAS.length === 5 && C.DIVISOES.length === 5 && C.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)), 'cinco formas, cinco divisões e a paleta de cores');
 {
@@ -24,12 +26,15 @@ ok(C.FORMAS.length === 5 && C.DIVISOES.length === 5 && C.CORES.every(c => /^#[0-
 /* ---------------- os nomes dos níveis ---------------- */
 {
   const d = C.normNomes(null);
-  ok(j(d.mundo) === j(C.ESCALAS.mundo) && j(d.rel) === j(C.ESCALAS.rel) && d.v === 1, 'sem documento: os nomes de começo');
+  ok(j(d.mundo) === j(C.ESCALAS.mundo) && j(d.rel) === j(C.ESCALAS.rel) && d.v === 2, 'sem documento: os nomes de começo (v: 2, de −10 a +10)');
   const x = C.normNomes({ mundo: ['  Pária  ', '', 7, null, 'x'.repeat(50)], rel: 'torto' });
-  ok(x.mundo[0] === 'Pária' && x.mundo[1] === 'Odiado' && x.mundo[2] === '7' && x.mundo[3] === 'Malvisto' && x.mundo[4].length === C.MAX.nomeNivel && j(x.rel) === j(C.ESCALAS.rel),
-    'os nomes do mestre (o que está vazio volta ao de começo)');
+  ok(x.mundo[5] === 'Pária' && x.mundo[6] === 'Odiado' && x.mundo[7] === '7' && x.mundo[8] === 'Malvisto' && x.mundo[9].length === C.MAX.nomeNivel && x.mundo[0] === 'Inimigo do mundo' && j(x.rel) === j(C.ESCALAS.rel),
+    'os nomes do mestre de antes (de −5 a +5) vão para o meio, nos mesmos níveis; o que está vazio volta ao de começo');
+  const y = C.normNomes({ v: 2, mundo: ['Fim do mundo'], membro: Array.from({ length: 21 }, (_, i) => 'n' + (i - 10)) });
+  ok(y.mundo[0] === 'Fim do mundo' && y.mundo[1] === 'Abominado' && y.membro[0] === 'n-10' && y.membro[20] === 'n10' && j(C.normNomes(y)) === j(y), 'os nomes de agora (v: 2): de −10 a +10, sem mudar de lugar');
   ok(C.nivelTxt(null, 'mundo', 2) === '+2 · Respeitado' && C.nivelTxt(null, 'rel', -3) === '−3 · Rival' && C.nivelTxt(null, 'membro', 0) === '0 · Membro'
-    && C.nivelTxt(null, 'mundo', 9) === '+5 · Lendário' && C.nomeNivel({ rel: ['A', 'B'] }, 'rel', -4) === 'B', 'o texto de um nível: o sinal e o nome');
+    && C.nivelTxt(null, 'mundo', 9) === '+9 · Imortal' && C.nivelTxt(null, 'mundo', 15) === '+10 · Divino' && C.nivelTxt(null, 'rel', -7) === '−7 · Vingança jurada'
+    && C.nomeNivel({ rel: ['A', 'B'] }, 'rel', -4) === 'B', 'o texto de um nível: o sinal e o nome (até ±10)');
 }
 
 /* ---------------- o brasão ---------------- */
@@ -117,7 +122,7 @@ const CARGOS = {
   ok(j(C.diffCargos(antes, C.normCargos(CARGOS))) === j({}), 'nada mudou: nada a mandar');
   const sai = C.aplicarDiff(antes, { k1: Object.assign({}, antes.k1, { gente: [] }) }), volta = C.aplicarDiff(sai, { k1: antes.k1 }, { p2: 2 });
   ok(sai.k1.gente.length === 0 && volta.k1.gente[0].resp === 2 && C.aplicarDiff(sai, { k1: antes.k1 }).k1.gente[0].resp === 0, 'quem sai e volta (o líder desfazendo) volta com o respeito guardado pelo banco');
-  ok(j(C.normCla({ respGuardado: { p2: 2, 'x y': 1, p3: 9, p4: 'a' } }).respGuardado) === j({ p2: 2, p3: 5 }) && j(C.normCla(null).respGuardado) === j({}), 'o respeito guardado continua no clã (o mestre gravando não o apaga)');
+  ok(j(C.normCla({ respGuardado: { p2: 2, 'x y': 1, p3: 19, p4: 'a' } }).respGuardado) === j({ p2: 2, p3: 10 }) && j(C.normCla(null).respGuardado) === j({}), 'o respeito guardado continua no clã (o mestre gravando não o apaga)');
   ok(!('respGuardado' in C.projetar(Object.assign({ id: 'x', jogadores: true, respGuardado: { p2: 2 } }, {}), [])), 'e não vai para os jogadores');
 }
 
@@ -130,9 +135,9 @@ const CARGOS = {
   const r = C.normRecursos({ lista: [{ id: 'r1', nome: 'Ouro', qtd: 240.7 }, { nome: '', qtd: -5 }, { id: 'r1', nome: 'Dup', qtd: 1 }], hist: [{ em: T0, mud: [{ rec: 'r1', n: 'Ouro', d: 120 }, { rec: 'r1', n: 'x', d: 0 }], mot: ' a escolta ' }, { mud: [] }] });
   ok(r.lista.length === 3 && r.lista[0].qtd === 240 && r.lista[1].nome === 'Recurso' && r.lista[1].qtd === 0 && r.lista[2].id !== 'r1' && r.hist.length === 1 && j(r.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ouro', d: 120 }], mot: 'a escolta' }),
     'os recursos: nome e quantidade (inteira, de 0 para cima) e o que mudou');
-  ok(j(C.normRespeito({ v: 9, hist: [{ em: T0, de: 1, para: 2, mot: 'x' }] })) === j({ v: 5, hist: [{ em: T0, tipo: 'resp', de: 1, para: 2, mot: 'x' }] }) && C.normRespeito(null).v === 0, 'o respeito no mundo, de −5 a +5');
-  const rl = C.normRelacoes([{ id: 'y1', tipo: 'faccao', alvo: 'fc_vale', nome: 'Liga do Vale', cor: '#5A8FD0', v: 3 }, { tipo: 'cla', alvo: 'var', v: -9 }, { tipo: 'cla', alvo: 'var', v: 1 }, { tipo: 'outro', alvo: 'z' }, { tipo: 'cla', alvo: 'a b' }]);
-  ok(rl.length === 2 && rl[0].cor === '#5a8fd0' && rl[1].v === -5 && rl[1].nome === '' && /^rl_/.test(rl[1].id), 'as relações: com uma facção ou com um clã (uma por alvo), de −5 a +5');
+  ok(j(C.normRespeito({ v: 19, hist: [{ em: T0, de: 1, para: 2, mot: 'x' }] })) === j({ v: 10, hist: [{ em: T0, tipo: 'resp', de: 1, para: 2, mot: 'x' }] }) && C.normRespeito(null).v === 0 && C.normRespeito({ v: -9 }).v === -9, 'o respeito no mundo, de −10 a +10');
+  const rl = C.normRelacoes([{ id: 'y1', tipo: 'faccao', alvo: 'fc_vale', nome: 'Liga do Vale', cor: '#5A8FD0', v: 3 }, { tipo: 'cla', alvo: 'var', v: -19 }, { tipo: 'cla', alvo: 'var', v: 1 }, { tipo: 'outro', alvo: 'z' }, { tipo: 'cla', alvo: 'a b' }]);
+  ok(rl.length === 2 && rl[0].cor === '#5a8fd0' && rl[1].v === -10 && rl[1].nome === '' && /^rl_/.test(rl[1].id), 'as relações: com uma facção ou com um clã (uma por alvo), de −10 a +10');
   ok(j(C.normFaccao({ id: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0' })) === j({ id: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0' }) && C.normFaccao({ nome: 'sem id' }) === null && C.normFaccao(null) === null,
     'a facção do Mapa-múndi: uma referência (ou nenhuma)');
   const h = C.normHist([{ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ouro', d: 5 }] }, { tipo: 'rec', mud: [] }, { tipo: 'cons', nome: 'Forja', nivel: 3, mud: [{ rec: 'r1', n: 'Ferro', d: -45 }] },
@@ -195,7 +200,7 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
   ok(C.definirRecurso(c, 'r1', 100, 'contagem', mais(300)).recursos.hist[0].mud[0].d === 77 && C.definirRecurso(c, 'r1', 23) === null, 'escrever a quantidade: o histórico leva a diferença');
   let r = C.mudarRespeito(c, 3, 'a escolta', T0);
   r = C.mudarRespeito(r, 4, '', mais(10));
-  ok(r.respeito.v === 4 && r.respeito.hist.length === 1 && j(r.respeito.hist[0]) === j({ em: mais(10), tipo: 'resp', de: 2, para: 4, mot: 'a escolta' }) && C.mudarRespeito(c, 2) === null && C.mudarRespeito(c, 99, '', T0).respeito.v === 5,
+  ok(r.respeito.v === 4 && r.respeito.hist.length === 1 && j(r.respeito.hist[0]) === j({ em: mais(10), tipo: 'resp', de: 2, para: 4, mot: 'a escolta' }) && C.mudarRespeito(c, 2) === null && C.mudarRespeito(c, 99, '', T0).respeito.v === 10,
     'o respeito no mundo: de 2 para 4 numa linha só');
   ok(C.mudarRespeito(C.mudarRespeito(c, 3, '', T0), 2, '', mais(5)).respeito.hist.length === 0, 'subiu e voltou: a linha some');
   const vira = C.mudarRespeito(C.mudarRespeito(c, 4, 'a escolta', T0), -3, '', mais(5));

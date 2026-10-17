@@ -169,8 +169,8 @@ const selo = (a, id) => A(a, id => {
     ok(/h-pos/.test(s.cls) && s.num === '+1' && await campo(L, 'o:honra').innerText() === '+1', 'o selo e o painel dizem +1');
     for (let i = 0; i < 4; i++) await botao(L, 'o:honra-mais');
     s = await selo(L, 'g');
-    ok((await obj(L, 'g')).honra === 5 && s.raios && s.louros === 8 && /\bh5\b/.test(s.cls) && s.corpo === 'rgb(240, 203, 76)' && await campo(L, 'o:honra-mais').isDisabled(),
-      '+5: dourado, com louros dos dois lados e raios (e o + para no limite): ' + j(s));
+    ok((await obj(L, 'g')).honra === 5 && s.raios && s.louros === 8 && /\bh5\b/.test(s.cls) && s.corpo === 'rgb(240, 203, 76)' && !(await campo(L, 'o:honra-mais').isDisabled()),
+      '+5: dourado, com louros dos dois lados e raios (lote 8: o + continua, até +10): ' + j(s));
     await foto('lote6b-honra-5');
     await botao(L, 'o:honra-menos'); await botao(L, 'o:honra-menos');
     s = await selo(L, 'g');
@@ -180,7 +180,7 @@ const selo = (a, id) => A(a, id => {
     ok((await obj(L, 'g')).honra === -3 && /h-neg/.test(s.cls) && /\bhm3\b/.test(s.cls) && s.rachas === 2 && s.num === '−3' && s.corpo === 'rgb(97, 90, 83)', '−3: escuro e rachado: ' + j(s));
     await botao(L, 'o:honra-menos'); await botao(L, 'o:honra-menos');
     s = await selo(L, 'g');
-    ok(s.rachas === 3 && await campo(L, 'o:honra-menos').isDisabled() && await A(L, () => !!document.querySelector('#mundo svg [data-id="g"] .honra .hon-lasca')), '−5: mais rachado, lascado (e o − para no limite)');
+    ok(s.rachas === 3 && !(await campo(L, 'o:honra-menos').isDisabled()) && await A(L, () => !!document.querySelector('#mundo svg [data-id="g"] .honra .hon-lasca')), '−5: mais rachado, lascado (lote 8: o − continua, até −10)');
     await foto('lote6b-honra-menos5');
     // o histórico: o mais novo em cima; corrigir o motivo; tirar a linha
     g = await obj(L, 'g');

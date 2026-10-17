@@ -3,7 +3,7 @@
      cla:c:<id>    o clã inteiro (só quem mestra o Clã lê e escreve)
      cla:pub:<id>  o que a mesa vê dele — montado pelo banco a cada mudança no clã; aqui, projetar() faz a mesma conta
                    (para a página aberta sozinha e para os testes conferirem que as duas contas batem)
-     cla:nomes     os nomes dos níveis das três escalas (de −5 a +5)
+     cla:nomes     os nomes dos níveis das três escalas (de −10 a +10; até o lote 8, de −5 a +5)
    Um clã: o nome, o lema, o brasão, a facção do Mapa-múndi (uma referência, opcional), se é o clã dos jogadores, o que os
    jogadores veem dele (no de NPC, parte por parte), a árvore de cargos (o líder no alto; cada cargo com uma ou mais
    pessoas, cada uma com o seu respeito dentro do clã), as construções, os recursos, o respeito no mundo, as relações com
@@ -12,12 +12,21 @@
   'use strict';
 
   /* ---------------- catálogos ---------------- */
-  // os nomes de começo dos níveis, de −5 a +5 (o mestre renomeia: valem para a mesa toda)
+  /* os nomes de começo dos níveis, de −10 a +10 (o mestre renomeia: valem para a mesa toda). (Lote 8) As escalas iam de
+     −5 a +5: os nomes de lá continuam no meio (os mesmos), e os níveis novos, de fora, ganharam nomes próprios. */
+  const NIVEL_MAX = 10;
   const ESCALAS = {
-    mundo: ['Execrado', 'Odiado', 'Temido', 'Malvisto', 'Desconfiado', 'Desconhecido', 'Notado', 'Respeitado', 'Admirado', 'Honrado', 'Lendário'],
-    rel: ['Inimigo mortal', 'Hostil', 'Rival', 'Tenso', 'Frio', 'Neutro', 'Cordial', 'Amigável', 'Parceiro', 'Aliado', 'Irmão de armas'],
-    membro: ['Traidor', 'Desonrado', 'Suspeito', 'Malvisto', 'Questionado', 'Membro', 'Confiável', 'Respeitado', 'Estimado', 'Honrado', 'Venerado'],
+    mundo: ['Inimigo do mundo', 'Abominado', 'Caçado', 'Proscrito', 'Amaldiçoado',
+      'Execrado', 'Odiado', 'Temido', 'Malvisto', 'Desconfiado', 'Desconhecido', 'Notado', 'Respeitado', 'Admirado', 'Honrado', 'Lendário',
+      'Mítico', 'Glorioso', 'Venerado', 'Imortal', 'Divino'],
+    rel: ['Extermínio', 'Guerra sem trégua', 'Guerra declarada', 'Vingança jurada', 'Rancor antigo',
+      'Inimigo mortal', 'Hostil', 'Rival', 'Tenso', 'Frio', 'Neutro', 'Cordial', 'Amigável', 'Parceiro', 'Aliado', 'Irmão de armas',
+      'Pacto de sangue', 'Juramento eterno', 'Família', 'Coração do clã', 'Um só povo'],
+    membro: ['Inimigo jurado', 'Execrado', 'Condenado', 'Renegado', 'Pária',
+      'Traidor', 'Desonrado', 'Suspeito', 'Malvisto', 'Questionado', 'Membro', 'Confiável', 'Respeitado', 'Estimado', 'Honrado', 'Venerado',
+      'Lenda viva', 'Pilar do clã', 'Herói do clã', 'Ancestral vivo', 'Alma do clã'],
   };
+  const NIVEIS = Array.from({ length: 2 * NIVEL_MAX + 1 }, (_, i) => i - NIVEL_MAX);        // −10 … +10
   const ESCALA_NOME = { mundo: 'Respeito no mundo', rel: 'Relações', membro: 'Respeito dos membros' };
   // as partes de um clã que o mestre mostra (ou não) aos jogadores, num clã de NPC
   const PARTES = [['cargos', 'Cargos e quem ocupa'], ['construcoes', 'Construções'], ['recursos', 'Recursos'], ['respeito', 'Respeito no mundo'], ['relacoes', 'Relações'], ['hist', 'Histórico']];
@@ -88,7 +97,7 @@
   const corOk = v => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : null);
   const instante = v => (typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v)) ? v : null);
   const inteiro = (v, def, min, max) => { const n = Number(v); return v !== null && v !== '' && typeof v !== 'boolean' && Number.isFinite(n) ? Math.max(min, Math.min(max, Math.trunc(n))) : def; };
-  const nivel = v => inteiro(v, 0, -5, 5);
+  const nivel = v => inteiro(v, 0, -NIVEL_MAX, NIVEL_MAX);
   let seq = 0;
   function novoId(pre) { seq = (seq + 1) % 1296; return pre + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + seq.toString(36); }
   function unico(id, vistos, pre) { let r = id || novoId(pre); while (vistos.has(r)) r = novoId(pre); vistos.add(r); return r; }
@@ -106,16 +115,18 @@
   const FORMA = new Map(FORMAS.map(f => [f.id, f])), DIVISAO = Object.fromEntries(DIVISOES), ICONE = new Map(ICONES.map(i => [i.id, i]));
 
   /* ---------------- os nomes dos níveis ---------------- */
+  /* (lote 8) v: 2 são as listas de −10 a +10 (21 nomes); as de antes (v: 1, de −5 a +5, 11 nomes) vão para o meio: os
+     nomes que o mestre deu continuam nos mesmos níveis. */
   function normNomes(d) {
     d = ehObj(d) ? d : {};
-    const out = { v: 1 };
+    const out = { v: 2 }, antigo = d.v !== 2, desloca = antigo ? NIVEL_MAX - 5 : 0;
     for (const esc of Object.keys(ESCALAS)) {
       const l = Array.isArray(d[esc]) ? d[esc] : [];
-      out[esc] = ESCALAS[esc].map((def, i) => linha(l[i], MAX.nomeNivel) || def);
+      out[esc] = ESCALAS[esc].map((def, i) => linha(l[i - desloca], MAX.nomeNivel) || def);
     }
     return out;
   }
-  const nomeNivel = (nomes, esc, v) => normNomes(nomes)[esc][nivel(v) + 5];
+  const nomeNivel = (nomes, esc, v) => normNomes(nomes)[esc][nivel(v) + NIVEL_MAX];
   const nivelTxt = (nomes, esc, v) => sinal(nivel(v)) + ' · ' + nomeNivel(nomes, esc, v);
 
   /* ---------------- o brasão ---------------- */
@@ -563,7 +574,7 @@
   }
 
   const ClaNucleo = {
-    ESCALAS, ESCALA_NOME, PARTES, PARTE_NOME, FORMAS, DIVISOES, CORES, ICONES, MAX, SIMBOLOS, JANELA,
+    ESCALAS, ESCALA_NOME, NIVEL_MAX, NIVEIS, PARTES, PARTE_NOME, FORMAS, DIVISOES, CORES, ICONES, MAX, SIMBOLOS, JANELA,
     novoId, sinal, normNomes, nomeNivel, nivelTxt, normBrasao, brasaoNovo, brasaoSvg,
     normCargos, filhos, descendentes, arvore, membros, lider, totalCargos, novoCargo, renomearCargo, moverCargo, apagarCargo,
     porPessoa, tirarPessoa, passarLideranca, diffCargos, aplicarDiff,

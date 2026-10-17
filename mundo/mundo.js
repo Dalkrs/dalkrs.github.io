@@ -86,8 +86,18 @@
     vista() {
       if (!App.mapa) return null;
       if (App.papel !== 'mestre' || !comoJog) return App.mapa;
-      if (cacheVista.de !== App.mapa) cacheVista = { de: App.mapa, v: N.projetar(App.mapa) };
+      if (cacheVista.de !== App.mapa || cacheVista.br !== brasoesVer) cacheVista = { de: App.mapa, br: brasoesVer, v: comBrasoes(N.projetar(App.mapa), App.mapa.id) };
       return cacheVista.v;
+    },
+    /* (lote 8) A bandeira do clã ligado a uma facção (o brasão), para desenhar: a dos clãs que este aparelho lê e, senão,
+       a que veio com o mapa (a projeção leva a dos clãs escondidos). null: sem bandeira. */
+    brasoes: new Map(),
+    brasaoDe(fid) {
+      if (!fid) return null;
+      const v = App.brasoes.get(fid);
+      if (v) return v;
+      const m = App.vista(), f = m && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === fid) : null;
+      return (f && f.br) || null;
     },
     podeEditar() { return App.papel === 'mestre' && !comoJog && !!App.mapa; },
 
@@ -557,6 +567,41 @@
   }
   // Escondido no que está gravado na mesa (outro aparelho pode ter escondido agora há pouco): esconder vence.
   function escondidoNaMesa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return !!d && resumo(d, id).oculto; }
+  /* (lote 8) As bandeiras dos clãs ligados às facções: facção → brasão. Os clãs inteiros (cla:c:, de quem mestra o Clã)
+     valem primeiro; depois, o que a mesa vê de cada um (cla:pub:). A imagem só vai quando é do banco (https). */
+  let brasoesVer = 0, viuClas = false;
+  function brasoesDosClas() {
+    const out = new Map();
+    if (modo !== 'mesa' || !D) return out;
+    const docs = D.todas().filter(l => typeof l.id === 'string' && (l.id.startsWith('cla:c:') || l.id.startsWith('cla:pub:')));
+    if (docs.some(l => l.id.startsWith('cla:c:'))) viuClas = true;              // (este aparelho lê os clãs inteiros)
+    for (const pre of ['cla:c:', 'cla:pub:']) {
+      const lista = docs.filter(l => l.id.startsWith(pre)).map(l => dadosDoc(l)).filter(d => d && !d.oculto && d.faccao && typeof d.faccao.id === 'string' && d.brasao);
+      lista.sort((a, b) => (b.jogadores ? 1 : 0) - (a.jogadores ? 1 : 0) || (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+      for (const d of lista) {
+        if (out.has(d.faccao.id)) continue;
+        const C = window.ClaNucleo, b = C && C.normBrasao ? C.normBrasao(d.brasao) : d.brasao, br = N.normBr ? N.normBr(Object.assign({}, b, { img: b && typeof b.img === 'string' && /^https:/.test(b.img) ? b.img : null })) : null;
+        if (br) out.set(d.faccao.id, br);
+      }
+    }
+    return out;
+  }
+  function lerBrasoes() {
+    const novo = brasoesDosClas();
+    if (j([...novo]) === j([...App.brasoes])) return false;
+    App.brasoes = novo; brasoesVer++;
+    return true;
+  }
+  /* a projeção leva a bandeira de cada facção (os jogadores a veem mesmo com o clã escondido deles); a facção cujo clã
+     este aparelho não lê (o auxiliar sem a aba Clã) fica com a que a projeção já tinha — quem lê os clãs (o mestre da
+     mesa, ou quem já recebeu um clã inteiro) sabe quando o clã saiu da facção: aí a bandeira sai */
+  function comBrasoes(p, id) {
+    if (!p || !Array.isArray(p.faccoes)) return p;
+    const antes = id && D ? dadosDoc(D.pegar(PRE_PUB + id)) : null, velhas = new Map(((antes && antes.faccoes) || []).filter(f => f && f.br).map(f => [f.id, f.br]));
+    const leOsClas = organiza || viuClas;
+    for (const f of p.faccoes) { const b = App.brasoes.get(f.id) || (leOsClas ? null : velhas.get(f.id)); if (b) f.br = b; else delete f.br; }
+    return p;
+  }
   // A projeção de um mapa: só quando mudou desde a última vez; mapa escondido não tem projeção nenhuma.
   // A projeção leva as campanhas do mapa: é por elas que o banco decide a quem entregar.
   function sincronizarPub(id) {
@@ -564,7 +609,7 @@
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
     if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
-    const p = N.projetar(m), cs = campsDoMapa(id);
+    const p = comBrasoes(N.projetar(m), id), cs = campsDoMapa(id);
     /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
        que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
     const todos = todosOsMapas();
@@ -1127,6 +1172,7 @@
       setTimeout(limparImagensSoltas, 5000);
       return;
     }
+    lerBrasoes();                                         // (lote 8) as bandeiras dos clãs, antes da primeira projeção
     if (App.papel === 'mestre') {
       for (const l of docsMapas()) {
         const id = l.id.slice(PRE_MAPA.length), pub = docPub(id);
@@ -1155,6 +1201,14 @@
       marcarSalvo('ok', '');
     }
     D.aoMudar(l => {
+      // (lote 8) um clã mudou (o brasão, a facção dele): as bandeiras do mapa acompanham — e quem mestra publica de novo
+      if (l && typeof l.id === 'string' && l.id.startsWith('cla:')) {
+        if (lerBrasoes()) {
+          if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
+          App.emit('muda', { origem: 'fora' });
+        }
+        return;
+      }
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUB)) {           // outro aparelho do mestre publicou
         const id = l.id.slice(PRE_PUB.length), d = dadosDoc(l);
