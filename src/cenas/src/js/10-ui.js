@@ -1863,7 +1863,12 @@ const UI = (() => {
       // (lote 7) o marcador de um bairro (no mapa de bairros) gera o bairro; a entrada de um prédio gera o interior
       const aqui = Store.scene(), def = Props.P[t.prop];
       if (t.gera && t.gera.b) { if (aqui && aqui.gerado) items.push({ label: 'Gerar este bairro…', icon: 'map', run: () => Cidade.abrirBairro(t) }); }
-      else if (def && def.passagem === 'entra') items.push({ label: 'Gerar o interior…', icon: 'house', run: () => Interior.abrir(t) });
+      // (parte 4b-3) a escada que desce gera o nível de baixo
+      else if (t.gera && t.gera.t === 'masmorra') items.push({ label: 'Gerar o nível ' + t.gera.n + '…', icon: 'down', run: () => Masmorra.abrir(t) });
+      else if (def && def.passagem === 'entra') {
+        items.push({ label: 'Gerar o interior…', icon: 'house', run: () => Interior.abrir(t) });
+        if (!t.gera) items.push({ label: 'Gerar uma masmorra embaixo…', icon: 'down', run: () => Masmorra.abrir(t) });
+      }
       items.push({ label: 'Escolher a cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') }, { label: 'Uma cena nova, dentro desta…', icon: 'plus', run: () => novaCenaLigada(t) });
     }
     if (x == null || y == null) { const r = el.stage.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }

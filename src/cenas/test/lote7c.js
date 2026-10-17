@@ -138,7 +138,7 @@ const SHOTS = process.env.FOTOS;
     ok(!(await ev(id => __tc.Store.get('tokens', id).cena, ent.id)), 'Ctrl+Z desfaz a ligação');
     await page.mouse.dblclick(px, py); await w(300);
     lista = (await page.locator('.menu').innerText()).replace(/\n/g, ' | ');
-    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Escolher a cena… \| Uma cena nova, dentro desta…/i.test(lista), 'sem cena, o menu oferece gerar o interior (parte 4a-2), escolher uma cena ou criar uma nova dentro desta: ' + lista);
+    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Gerar uma masmorra embaixo… \| Escolher a cena… \| Uma cena nova, dentro desta…/i.test(lista), 'sem cena, o menu oferece gerar o interior (parte 4a-2), uma masmorra embaixo (parte 4b-3), escolher uma cena ou criar uma nova dentro desta: ' + lista);
     await clearToasts();
     await page.locator('.menu-i', { hasText: 'Uma cena nova, dentro desta' }).click(); await w(300);
     ok(await page.locator('#dlg-in').inputValue() === 'Taverna · dentro', 'a janela sugere o nome "Taverna · dentro"');

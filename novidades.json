@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-4",
+      "data": "2026-10-17",
+      "titulo": "As masmorras, nível por nível",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as masmorras. Dois cliques numa Entrada que você pôs na cena oferecem “Gerar uma masmorra embaixo…”. A janela “Gerar o nível” tem quatro tipos — a masmorra de pedra (salas e corredores retos, as portas, as celas com as grades, a sala do trono ou o salão das colunas, a guarda, o arsenal, a biblioteca, o altar e o tesouro), a caverna (os túneis tortos, o lago, os cogumelos que brilham, as estalagmites e o abismo com a ponte de pedra), a cripta (os nichos dos mortos, os sarcófagos, o ossário, a capela e o jazigo do senhor) e a mina abandonada (os trilhos, os vagonetes, as escoras, as galerias com os veios, os desabamentos e o poço de descida) —, três tamanhos e a prévia."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: cada nível sai numa cena nova, dentro da de cima, no breu — só o fogo das tochas, dos braseiros e das velas e o brilho dos cogumelos iluminam —, com a Saída na escada de subida levando de volta. Na escada de descida fica outra Entrada: dois cliques nela geram o nível de baixo quando você quiser, e o tipo pode mudar (a caverna embaixo da masmorra, a cripta embaixo do templo)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: com a chave dos segredos, cada nível ganha a porta secreta (para quem joga, uma parede comum — você revela no painel da parede, e ela vira porta para todos) e as runas-armadilha escondidas (você revela no painel do efeito). As colunas e as estalagmites grandes tapam a visão."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-3",
       "data": "2026-10-17",
       "titulo": "O porto e a cidade com mar",

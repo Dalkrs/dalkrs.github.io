@@ -619,6 +619,17 @@ const ASSETS = {
     { t: 'tenda', w: 5, h: 5, p: 'n', e: 'comum', s: 7, f: 'oct', c: true },
     { t: 'iurte', w: 4, h: 4, p: 'l', e: 'comum', s: 8, f: 'oct' }],
   'o marcador de um prédio guarda o tipo, as medidas (de 2 a 32: o convés de um navio grande), o lado da porta, o estilo, a semente e a forma (a do navio também; o que vem torto vira o padrão) e se é a moradia do chefe da tribo; o de um bairro, só o bairro; só objetos de cenário, e nada além disso');
+  // (parte 4b-3) a escada que desce: o tipo do nível de baixo, o número, o tamanho, o estilo e a semente (o torto vira o padrão)
+  const sm = newScene('Masmorra'), mkM = gera => { const t = newToken(sm, 0, 0, { name: 'E' }); t.prop = 'entrada'; t.gera = gera; sm.tokens.push(t); };
+  mkM({ t: 'masmorra', m: 'cripta', n: 3, tam: 'grande', e: 'anao', s: 77, w: 9, extra: 1 });
+  mkM({ t: 'masmorra', m: 'pantano', n: 250.6, tam: 'enorme', e: 'Torto!', s: 'x' });
+  mkM({ t: 'masmorra', n: -4 });
+  normalizeScene(sm);
+  eq(sm.tokens.map(t => t.gera), [
+    { t: 'masmorra', m: 'cripta', n: 3, tam: 'grande', e: 'anao', s: 77 },
+    { t: 'masmorra', m: 'pedra', n: 99, tam: 'medio', e: 'comum', s: 1 },
+    { t: 'masmorra', m: 'pedra', n: 1, tam: 'medio', e: 'comum', s: 1 }],
+  'a escada que desce guarda o tipo do nível de baixo, o número (de 1 a 99), o tamanho, o estilo e a semente — e nada além disso');
   // o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (o resto sai)
   const g1 = newScene('Mapa'); g1.gerado = { lugar: 'cidade', o: { modo: 'bairros', tamanho: 'media' }, seed: 77.6, trava: { ruas: 5, predios: [] }, lixo: 1 };
   normalizeScene(g1);
