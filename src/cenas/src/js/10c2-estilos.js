@@ -95,22 +95,23 @@ const Estilos = (() => {
      lados: as paredes da casa, em quadrados. Os quatro lados retos (n, s, o, l), sempre do menor para o maior, e, na
      casa de cantos cortados, as quatro diagonais (lado null). A porta e as janelas ficam nos lados retos. */
   function lados(k) {
-    const { x, y, w, h } = k, o = k.forma === 'oct' ? 1 : 0;
+    const { x, y, w, h } = k, o = k.forma === 'oct' ? (k.corte === 2 ? 2 : 1) : 0;     // (a planta de dentro, no dobro, corta 2)
     const L = [
       { lado: 'n', x1: x + o, y1: y, x2: x + w - o, y2: y },
       { lado: 's', x1: x + o, y1: y + h, x2: x + w - o, y2: y + h },
       { lado: 'o', x1: x, y1: y + o, x2: x, y2: y + h - o },
       { lado: 'l', x1: x + w, y1: y + o, x2: x + w, y2: y + h - o },
     ];
-    if (o) L.push({ lado: null, x1: x, y1: y + 1, x2: x + 1, y2: y }, { lado: null, x1: x + w - 1, y1: y, x2: x + w, y2: y + 1 },
-      { lado: null, x1: x + w, y1: y + h - 1, x2: x + w - 1, y2: y + h }, { lado: null, x1: x + 1, y1: y + h, x2: x, y2: y + h - 1 });
+    if (o) L.push({ lado: null, x1: x, y1: y + o, x2: x + o, y2: y }, { lado: null, x1: x + w - o, y1: y, x2: x + w, y2: y + o },
+      { lado: null, x1: x + w, y1: y + h - o, x2: x + w - o, y2: y + h }, { lado: null, x1: x + o, y1: y + h, x2: x, y2: y + h - o });
     return L;
   }
   // o contorno da casa (para recortar o piso): os cantos, em quadrados
   function contorno(k) {
     const { x, y, w, h } = k;
     if (k.forma !== 'oct') return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
-    return [[x + 1, y], [x + w - 1, y], [x + w, y + 1], [x + w, y + h - 1], [x + w - 1, y + h], [x + 1, y + h], [x, y + h - 1], [x, y + 1]];
+    const o = k.corte === 2 ? 2 : 1;
+    return [[x + o, y], [x + w - o, y], [x + w, y + o], [x + w, y + h - o], [x + w - o, y + h], [x + o, y + h], [x, y + h - o], [x, y + o]];
   }
   /* Os pedaços de um lado reto: parede, porta e janelas, na ordem. aberturas: [{ k: 'door' | 'window', a, b }] com a e
      b ao longo do lado (x nos lados n e s; y nos lados o e l). */
@@ -363,5 +364,244 @@ const Estilos = (() => {
       g.strokeStyle = 'rgba(60,30,20,0.6)'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(x0, y0, w, hh);
     }
   }
-  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa };
+  /* ================= os telhados (a cidade vista de cima) ================= */
+  // o tom de uma cor (#rrggbb) mais claro (f > 0) ou mais escuro (f < 0)
+  function tom(hex, f) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
+    const m = v => Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f));
+    return `rgb(${m(r)},${m(gg)},${m(b)})`;
+  }
+  const TELHAS = {
+    comum: [['#9c4a32', '#b05a3c', '#8a3f2b', '#a3533a'], ['#56606e', '#646f7e'], ['#a88a52', '#b8995e']],
+    oriental: [['#3a4555', '#46536a', '#2f3846']],
+    nordico: [['#5f7a3c', '#6b8744', '#566f36']],
+    desertico: [['#d6b98c', '#dcc196', '#cfae7e']],
+    elfico: [['#5d8a55', '#6f9e62', '#86b27a']],
+    anao: [['#4a4f58', '#555b65', '#42474f']],
+  };
+  /* O telhado de um prédio (k: x, y, w, h, forma; em quadrados), visto de cima, com a sombra no chão. A luz vem do alto,
+     à esquerda: a água de cima (ou da esquerda) fica mais clara. h2: um número sorteado para o prédio (a cor, a chaminé). */
+  function telhado(g, k, c, rnd, est, h2) {
+    est = valido(est);
+    const x = k.x * c, y = k.y * c, w = k.w * c, hh = k.h * c, oct = k.forma === 'oct';
+    const cont = contorno(k).map(([px, py]) => [px * c, py * c]);
+    const caminho = (pts, d) => { g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px + (d || 0), py + (d || 0)) : g.moveTo(px + (d || 0), py + (d || 0)))); g.closePath(); };
+    // a sombra no chão (o prédio tem altura)
+    g.save(); g.fillStyle = 'rgba(0,0,0,0.38)'; caminho(cont.map(([px, py]) => [px + c * 0.28, py + c * 0.34])); g.fill(); g.restore();
+    const grupos = TELHAS[est], grupo = grupos[est === 'comum' ? (h2 % 10 < 7 ? 0 : h2 % 10 < 9 ? 1 : 2) : 0], base = grupo[h2 % grupo.length];
+    const deitada = k.w >= k.h;                                  // a cumeeira vai no sentido mais comprido
+    g.save(); caminho(cont); g.clip();
+    if (est === 'desertico') {
+      // terraço: o chão de barro, a mureta em volta, um alçapão e, às vezes, um tapete e jarros
+      g.fillStyle = base; g.fillRect(x, y, w, hh);
+      for (let i = 0; i < k.w * k.h * 2; i++) { g.globalAlpha = 0.12; g.fillStyle = rnd() < 0.5 ? '#fff4dc' : '#9c7a4c'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.1 + rnd() * 0.3), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1;
+      g.strokeStyle = tom(base, -0.25); g.lineWidth = c * 0.32; caminho(cont); g.stroke();
+      if (k.tipo === 'templo' || k.tipo === 'senhor') {
+        const R = Math.min(w, hh) * 0.32, cx = x + w / 2, cy = y + hh / 2, gr = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+        gr.addColorStop(0, '#fbfbf6'); gr.addColorStop(0.7, '#d9dfe6'); gr.addColorStop(1, '#9aa8b6');
+        g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R, 0, TAU2); g.fill();
+        g.fillStyle = '#3f78a8'; g.beginPath(); g.arc(cx, cy, R * 0.18, 0, TAU2); g.fill();
+      } else {
+        g.fillStyle = 'rgba(60,40,20,0.75)'; g.fillRect(x + w * 0.2, y + hh * 0.25, c * 0.6, c * 0.6);
+        if (h2 % 3 === 0) { g.fillStyle = ['#8e2f3c', '#2f5f6e', '#a0742a'][h2 % 3]; g.fillRect(x + w * 0.5, y + hh * 0.45, Math.min(w * 0.35, c * 1.6), Math.min(hh * 0.3, c)); }
+        g.fillStyle = '#b5643a'; for (let i = 0; i < 2; i++) { g.beginPath(); g.arc(x + w - c * (0.6 + i * 0.6), y + c * 0.6, c * 0.22, 0, TAU2); g.fill(); }
+      }
+    } else if (est === 'elfico') {
+      // escamas de folha, em fileiras que se sobrepõem, e um brilho prateado
+      g.fillStyle = tom(base, -0.2); g.fillRect(x, y, w, hh);
+      const passo = c * 0.42;
+      for (let yy = y - passo, linha = 0; yy < y + hh + passo; yy += passo * 0.62, linha++) for (let xx = x - passo + (linha % 2) * passo / 2; xx < x + w + passo; xx += passo) {
+        g.fillStyle = grupo[(Math.floor(xx / passo) + linha + h2) % grupo.length]; g.beginPath(); g.arc(xx, yy, passo * 0.62, 0, Math.PI); g.fill();
+        g.strokeStyle = 'rgba(220,240,225,0.25)'; g.lineWidth = Math.max(1, c * 0.02); g.beginPath(); g.arc(xx, yy, passo * 0.62, 0.2, Math.PI - 0.2); g.stroke();
+      }
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.ellipse(x + w * 0.35, y + hh * 0.3, w * 0.3, hh * 0.22, -0.4, 0, TAU2); g.fill();
+    } else if (est === 'anao' && oct) {
+      // salão de pedra de cantos cortados: as águas em roda, a partir do meio, e a cumeeira de bronze
+      const cx = x + w / 2, cy = y + hh / 2;
+      for (let i = 0; i < cont.length; i++) {
+        const a = cont[i], b = cont[(i + 1) % cont.length], luz = 0.18 - 0.34 * ((i + 6) % cont.length) / cont.length;
+        g.fillStyle = tom(base, luz); g.beginPath(); g.moveTo(cx, cy); g.lineTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.closePath(); g.fill();
+      }
+      g.strokeStyle = '#9a7a44'; g.lineWidth = Math.max(1.5, c * 0.12);
+      for (const [px, py] of cont) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(px, py); g.stroke(); }
+      g.fillStyle = '#b58f4f'; g.beginPath(); g.arc(cx, cy, c * 0.4, 0, TAU2); g.fill();
+    } else {
+      // de duas águas (comum, nórdico, anão) ou de quatro (oriental): a cumeeira no meio, uma água clara e a outra escura
+      const meio = deitada ? y + hh / 2 : x + w / 2;
+      const quatro = est === 'oriental', recuo = quatro ? Math.min(w, hh) * 0.5 : 0;
+      // as águas compridas
+      g.fillStyle = tom(base, 0.12);
+      if (deitada) g.fillRect(x, y, w, hh / 2); else g.fillRect(x, y, w / 2, hh);
+      g.fillStyle = tom(base, -0.18);
+      if (deitada) g.fillRect(x, meio, w, hh / 2); else g.fillRect(meio, y, w / 2, hh);
+      if (quatro) {
+        // as pontas (as águas curtas), em triângulo
+        g.fillStyle = tom(base, 0.02);
+        g.beginPath();
+        if (deitada) { g.moveTo(x, y); g.lineTo(x + recuo, meio); g.lineTo(x, y + hh); g.moveTo(x + w, y); g.lineTo(x + w - recuo, meio); g.lineTo(x + w, y + hh); }
+        else { g.moveTo(x, y); g.lineTo(meio, y + recuo); g.lineTo(x + w, y); g.moveTo(x, y + hh); g.lineTo(meio, y + hh - recuo); g.lineTo(x + w, y + hh); }
+        g.fill();
+      }
+      // as telhas: fileiras paralelas à cumeeira (o sapê do nórdico vira tufos de grama)
+      if (est === 'nordico') {
+        for (let i = 0; i < k.w * k.h * 3; i++) { g.globalAlpha = 0.35; g.fillStyle = rnd() < 0.5 ? '#7d9a4c' : '#4a5f2d'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.12 + rnd() * 0.2), 0, TAU2); g.fill(); }
+        g.globalAlpha = 1;
+      } else {
+        g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = Math.max(1, c * 0.025);
+        const passo = c * (est === 'anao' ? 0.34 : 0.26);
+        if (deitada) for (let yy = y + passo; yy < y + hh; yy += passo) { g.beginPath(); g.moveTo(x, yy); g.lineTo(x + w, yy); g.stroke(); }
+        else for (let xx = x + passo; xx < x + w; xx += passo) { g.beginPath(); g.moveTo(xx, y); g.lineTo(xx, y + hh); g.stroke(); }
+        if (est === 'comum' || est === 'oriental') {
+          // as juntas das telhas, desencontradas
+          g.strokeStyle = 'rgba(0,0,0,0.13)';
+          if (deitada) for (let yy = y, l = 0; yy < y + hh; yy += passo, l++) for (let xx = x + (l % 2) * passo / 2; xx < x + w; xx += passo) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx, yy + passo); g.stroke(); }
+          else for (let xx = x, l = 0; xx < x + w; xx += passo, l++) for (let yy = y + (l % 2) * passo / 2; yy < y + hh; yy += passo) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx + passo, yy); g.stroke(); }
+        }
+      }
+      // a cumeeira
+      g.strokeStyle = est === 'anao' ? '#9a7a44' : est === 'nordico' ? '#3b2a1a' : tom(base, -0.45); g.lineWidth = Math.max(1.5, c * (est === 'anao' ? 0.14 : 0.1));
+      g.beginPath();
+      if (deitada) { g.moveTo(x + recuo, meio); g.lineTo(x + w - recuo, meio); } else { g.moveTo(meio, y + recuo); g.lineTo(meio, y + hh - recuo); }
+      g.stroke();
+      if (quatro) {
+        // as quinas, das pontas da cumeeira até os cantos
+        g.beginPath();
+        if (deitada) { g.moveTo(x, y); g.lineTo(x + recuo, meio); g.lineTo(x, y + hh); g.moveTo(x + w, y); g.lineTo(x + w - recuo, meio); g.lineTo(x + w, y + hh); }
+        else { g.moveTo(x, y); g.lineTo(meio, y + recuo); g.lineTo(x + w, y); g.moveTo(x, y + hh); g.lineTo(meio, y + hh - recuo); g.lineTo(x + w, y + hh); }
+        g.lineWidth = Math.max(1, c * 0.06); g.stroke();
+      }
+      if (est === 'nordico') {
+        // as tábuas cruzadas nas pontas da cumeeira
+        g.strokeStyle = '#4a3220'; g.lineWidth = Math.max(1.5, c * 0.09);
+        const xis = (px, py) => { g.beginPath(); g.moveTo(px - c * 0.3, py - c * 0.3); g.lineTo(px + c * 0.3, py + c * 0.3); g.moveTo(px + c * 0.3, py - c * 0.3); g.lineTo(px - c * 0.3, py + c * 0.3); g.stroke(); };
+        if (deitada) { xis(x + c * 0.3, meio); xis(x + w - c * 0.3, meio); } else { xis(meio, y + c * 0.3); xis(meio, y + hh - c * 0.3); }
+      }
+      // a chaminé (não no templo nem no oriental)
+      if (!quatro && k.tipo !== 'templo' && h2 % 4 !== 3) {
+        const cx = deitada ? x + w * (0.25 + (h2 % 5) * 0.12) : meio + (h2 % 2 ? c * 0.3 : -c * 0.8), cy = deitada ? meio + (h2 % 2 ? c * 0.25 : -c * 0.85) : y + hh * (0.25 + (h2 % 5) * 0.12);
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(cx + c * 0.12, cy + c * 0.14, c * 0.55, c * 0.55);
+        g.fillStyle = est === 'anao' ? '#6b6f78' : '#6e4a36'; g.fillRect(cx, cy, c * 0.55, c * 0.55);
+        g.fillStyle = '#2a2018'; g.fillRect(cx + c * 0.12, cy + c * 0.12, c * 0.31, c * 0.31);
+      }
+    }
+    g.restore();
+    // o beiral: o contorno escuro (o oriental, com as pontas viradas para cima)
+    g.strokeStyle = 'rgba(20,14,10,0.8)'; g.lineWidth = Math.max(1.5, c * 0.07); caminho(cont); g.stroke();
+    if (est === 'oriental' && !oct) {
+      g.strokeStyle = '#20262f'; g.lineWidth = Math.max(1.5, c * 0.08);
+      for (const [px, py, sx, sy] of [[x, y, -1, -1], [x + w, y, 1, -1], [x + w, y + hh, 1, 1], [x, y + hh, -1, 1]]) { g.beginPath(); g.moveTo(px - sx * c * 0.3, py); g.quadraticCurveTo(px + sx * c * 0.1, py + sy * c * 0.05, px + sx * c * 0.22, py + sy * c * 0.28); g.stroke(); }
+      if (k.tipo === 'templo') {
+        // o pagode: mais dois telhados, um dentro do outro
+        for (const f of [0.66, 0.36]) {
+          const kw = Math.max(1, k.w * f), kh = Math.max(1, k.h * f), k2 = { x: k.x + (k.w - kw) / 2, y: k.y + (k.h - kh) / 2, w: kw, h: kh, forma: 'ret', tipo: 'pagode' };
+          telhado(g, k2, c, rnd, est, h2 + 1);
+        }
+      }
+    }
+  }
+
+  // um quintal (em quadrados): a horta (os canteiros com as fileiras), o terreiro (a lenha empilhada e o feno) ou o jardim
+  function quintal(g, q, c, rnd) {
+    const x = q.x * c, y = q.y * c, w = q.w * c, hh = q.h * c;
+    g.save();
+    if (q.k === 'horta') {
+      g.fillStyle = '#6b4a2b'; g.fillRect(x + c * 0.1, y + c * 0.1, w - c * 0.2, hh - c * 0.2);
+      const deitada = q.w >= q.h, n = Math.max(2, Math.round((deitada ? q.h : q.w) * 2.2));
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n;
+        g.strokeStyle = '#4e3520'; g.lineWidth = Math.max(1, c * 0.12); g.beginPath();
+        if (deitada) { g.moveTo(x + c * 0.2, y + hh * t); g.lineTo(x + w - c * 0.2, y + hh * t); } else { g.moveTo(x + w * t, y + c * 0.2); g.lineTo(x + w * t, y + hh - c * 0.2); }
+        g.stroke();
+        g.fillStyle = ['#5f9a3a', '#7ab04a', '#4f8a32'][k % 3];
+        for (let u = 0.3; u < (deitada ? q.w : q.h) - 0.2; u += 0.35) { const px = deitada ? x + u * c : x + w * t, py = deitada ? y + hh * t : y + u * c; g.beginPath(); g.arc(px + (rnd() - 0.5) * c * 0.06, py, c * (0.09 + rnd() * 0.05), 0, TAU2); g.fill(); }
+      }
+      g.strokeStyle = 'rgba(160,125,80,0.8)'; g.lineWidth = Math.max(1, c * 0.05); g.strokeRect(x + c * 0.1, y + c * 0.1, w - c * 0.2, hh - c * 0.2);
+    } else if (q.k === 'terreiro') {
+      g.fillStyle = 'rgba(138,115,80,0.75)'; g.fillRect(x + c * 0.1, y + c * 0.1, w - c * 0.2, hh - c * 0.2);
+      // a lenha empilhada (os tocos vistos de ponta) e o fardo de feno
+      const lx = x + c * 0.35, ly = y + c * 0.35;
+      for (let a = 0; a < 3; a++) for (let b = 0; b < 2; b++) { g.fillStyle = '#7a5532'; g.beginPath(); g.arc(lx + a * c * 0.24, ly + b * c * 0.22, c * 0.11, 0, TAU2); g.fill(); g.fillStyle = '#c9a26b'; g.beginPath(); g.arc(lx + a * c * 0.24, ly + b * c * 0.22, c * 0.06, 0, TAU2); g.fill(); }
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x + w - c * 1.05, y + hh - c * 0.8, c * 0.8, c * 0.55);
+      g.fillStyle = '#d9b44f'; g.fillRect(x + w - c * 1.15, y + hh - c * 0.9, c * 0.8, c * 0.55);
+      g.strokeStyle = '#a3802f'; g.lineWidth = Math.max(1, c * 0.04);
+      for (const t of [0.3, 0.7]) { g.beginPath(); g.moveTo(x + w - c * 1.15 + c * 0.8 * t, y + hh - c * 0.9); g.lineTo(x + w - c * 1.15 + c * 0.8 * t, y + hh - c * 0.35); g.stroke(); }
+    } else {
+      g.fillStyle = '#5f8f4a'; g.fillRect(x + c * 0.1, y + c * 0.1, w - c * 0.2, hh - c * 0.2);
+      for (let i = 0; i < q.w * q.h * 5; i++) { g.fillStyle = ['#f2c94c', '#e85d75', '#ffffff', '#9b7bd8', '#ff9a5a'][i % 5]; g.beginPath(); g.arc(x + c * 0.2 + rnd() * (w - c * 0.4), y + c * 0.2 + rnd() * (hh - c * 0.4), c * 0.07, 0, TAU2); g.fill(); }
+      g.fillStyle = '#3f6d34'; g.beginPath(); g.arc(x + w / 2, y + hh / 2, c * 0.4, 0, TAU2); g.fill();
+    }
+    g.restore();
+  }
+
+  /* ================= o relevo e as formas (lote 7) =================
+     O relevo: áreas de terreno com altura (os tipos do Terreno da cena: morro, montanha, plataforma, fosso, água,
+     mata), em quadrados do plano — { t, alt, k: 'rect' | 'ell' | 'poly' | 'free', x, y, w, h | pts: [[x, y]…], sw }.
+     A altura (alt) vai em metros (a unidade da cena); negativa é fundura. As formas: desenhos de enfeite, travados
+     (arte de fundo: o clique passa direto), em quadrados — { k: 'free' | 'poly' | 'ell' | 'rect', pts | x, y, w, h, s,
+     f, sw, a }. Quem gera (Vila, Cidade, Interior) faz as listas; aqui elas viram desenhos da cena e a prévia. */
+  const ptsNaCena = (pts, c, dx, dy) => { const o = []; for (const [x, y] of pts) o.push(Math.round((x + dx) * c * 10) / 10, Math.round((y + dy) * c * 10) / 10); return o; };
+  function terrenoNaCena(r, c, dx, dy) {
+    const geo = r.k === 'rect' || r.k === 'ell' ? { k: r.k, x: (r.x + dx) * c, y: (r.y + dy) * c, w: r.w * c, h: r.h * c } : { k: r.k, pts: ptsNaCena(r.pts, c, dx, dy), sw: r.k === 'free' ? Math.max(4, (r.sw || 1) * c) : 0 };
+    return Combate.newTerrain(geo, r.t, r.alt);
+  }
+  function formaNaCena(f, c, dx, dy) {
+    const s = { id: uid('sh'), k: f.k, s: f.s || '#000000', sw: Math.round((f.sw || 0) * c * 10) / 10, f: f.f || null, a: f.a == null ? 1 : f.a, top: false, gm: false, lock: true, by: null };
+    if (f.k === 'rect' || f.k === 'ell') Object.assign(s, { x: (f.x + dx) * c, y: (f.y + dy) * c, w: f.w * c, h: f.h * c });
+    else s.pts = ptsNaCena(f.pts, c, dx, dy);
+    return s;
+  }
+  // um retângulo girado (cx, cy: o meio; L: o comprimento, no ângulo ang; Wd: a largura), em quadrados
+  const retangulo = (cx, cy, L, Wd, ang) => { const ux = Math.cos(ang), uy = Math.sin(ang), vx = -uy, vy = ux; return [[cx - ux * L / 2 - vx * Wd / 2, cy - uy * L / 2 - vy * Wd / 2], [cx + ux * L / 2 - vx * Wd / 2, cy + uy * L / 2 - vy * Wd / 2], [cx + ux * L / 2 + vx * Wd / 2, cy + uy * L / 2 + vy * Wd / 2], [cx - ux * L / 2 + vx * Wd / 2, cy - uy * L / 2 + vy * Wd / 2]]; };
+  // a caixa (em quadrados) de uma área ou forma, para saber se ela cai num recorte
+  function caixaDe(r) {
+    if (r.k === 'rect' || r.k === 'ell') return [r.x, r.y, r.x + r.w, r.y + r.h];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of r.pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const m = (r.sw || 0) / 2;
+    return [x0 - m, y0 - m, x1 + m, y1 + m];
+  }
+  // desloca (dx, dy) e escala (k) uma área ou forma do plano
+  function moverRelevo(r, dx, dy, k) {
+    k = k || 1;
+    const o = Object.assign({}, r);
+    if (r.k === 'rect' || r.k === 'ell') Object.assign(o, { x: (r.x + dx) * k, y: (r.y + dy) * k, w: r.w * k, h: r.h * k });
+    else o.pts = r.pts.map(([x, y]) => [(x + dx) * k, (y + dy) * k]);
+    if (r.sw) o.sw = r.sw * k;
+    return o;
+  }
+  // as cores das bandeirinhas de cada estilo
+  const BANDEIRAS = { comum: ['#c8452f', '#e9c24a', '#2f6f8c', '#5b8c3a', '#f1e2c2'], oriental: ['#b3262b', '#f4efe3', '#d9a23a'], nordico: ['#a8302a', '#f1e2c2', '#2f5a8c'],
+    desertico: ['#e0902a', '#2a8c8c', '#a8302a', '#f1e2c2'], elfico: ['#5b8c3a', '#c8d6c0', '#9572b8', '#e9c24a'], anao: ['#d9a23a', '#8e2f3c', '#6b7380'] };
+  /* As bandeirinhas: um cordão de a até b (caindo um pouco no meio) e os triângulos pendurados nele, de quadrado em
+     quadrado e pouco; as cores do estilo, alternadas. Devolve as formas (o cordão primeiro), todas com o mesmo grupo
+     (g): num recorte, o cordão entra inteiro ou não entra. */
+  function bandeirinhas(a, b, est, grupo) {
+    const cores = BANDEIRAS[valido(est)], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (L < 2) return [];
+    const queda = Math.min(0.6, L * 0.06), meio = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + queda];
+    const ponto = t => { const u = 1 - t; return [u * u * a[0] + 2 * u * t * meio[0] + t * t * b[0], u * u * a[1] + 2 * u * t * meio[1] + t * t * b[1]]; };
+    const out = [{ k: 'free', pts: [a, ponto(0.25), ponto(0.5), ponto(0.75), b], s: '#3b2a1a', sw: 0.04, a: 0.9, g: grupo || 'b' }];
+    const n = Math.max(2, Math.floor(L / 0.55));
+    for (let i = 1; i < n; i++) {
+      const t = i / n, p = ponto(t), q = ponto(Math.min(1, t + 0.01)), d = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, ux = (q[0] - p[0]) / d, uy = (q[1] - p[1]) / d;
+      out.push({ k: 'poly', pts: [[p[0] - ux * 0.17, p[1] - uy * 0.17], [p[0] + ux * 0.17, p[1] + uy * 0.17], [p[0], p[1] + 0.34]], f: cores[i % cores.length], s: 'rgba(40,24,10,0.6)', sw: 0.015, a: 0.95, g: grupo || 'b' });
+    }
+    return out;
+  }
+  /* O relevo e as formas na prévia (pc pixels por quadrado), com o desenho de verdade do Terreno (o mesmo da cena:
+     a cor, o desenho de cada tipo e a sombra de quem é alto, translúcido por cima do fundo). */
+  function relevoNaPrevia(g, relevo, formas, pc, unidade) {
+    if (typeof Render === 'undefined' || !Render.drawTer || !Render.drawShape) return;
+    const k = pc / 64, sc = { cell: 64, grid: { unit: unidade || 1.5 } };
+    if (relevo && relevo.length) {
+      const cv = document.createElement('canvas'); cv.width = g.canvas.width; cv.height = g.canvas.height;
+      const t = cv.getContext('2d'); t.setTransform(k, 0, 0, k, 0, 0);
+      for (const r of relevo) { try { Render.drawTer(t, terrenoNaCena(r, 64, 0, 0), sc, 1 / k); } catch (e) { /* (um tipo que a página não conhece) */ } }
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.62; g.drawImage(cv, 0, 0); g.restore();
+    }
+    if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, 0, 0); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
+  }
+  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
+    quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia };
 })();

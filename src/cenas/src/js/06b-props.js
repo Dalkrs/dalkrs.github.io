@@ -368,6 +368,33 @@ const Props = (() => {
         c.fillStyle = 'rgba(255,255,255,0.18)'; caixa(c, -R * 0.42, -R * 0.12, R * 0.6, R * 0.08, R * 0.03); c.fill();
       },
     },
+    // (lote 7) o banco (vários em fila viram um banco comprido) e o balcão (a frente, mais escura, fica para baixo;
+    // vários em fila viram o balcão da taverna ou da loja)
+    banco: {
+      n: 'Banco', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        c.save(); c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-R * 0.98, -R * 0.3, R * 1.96, R * 0.8); c.restore();
+        // os pés (aparecem um pouco além do assento) e as duas tábuas do assento
+        for (const x of [-0.62, 0.62]) { caixa(c, x * R - R * 0.09, -R * 0.48, R * 0.18, R * 0.96, R * 0.04); c.fillStyle = MAD.esc; c.fill(); }
+        tabua(c, -R, -R * 0.38, R * 2, R * 0.37, s);
+        tabua(c, -R, R * 0.01, R * 2, R * 0.37, s + 1);
+        c.strokeStyle = CONTORNO; c.lineWidth = R * 0.045; c.beginPath(); c.moveTo(-R, -R * 0.38); c.lineTo(R, -R * 0.38); c.moveTo(-R, R * 0.38); c.lineTo(R, R * 0.38); c.stroke();
+      },
+    },
+    balcao: {
+      n: 'Balcão', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-R, -R * 0.62, R * 2, R * 1.56); c.restore();
+        // o tampo de tábuas (de comprido) e a frente, mais escura (o lado de quem pede)
+        c.fillStyle = MAD.esc; c.fillRect(-R, -R * 0.78, R * 2, R * 1.56);
+        for (let i = 0; i < 4; i++) tabua(c, -R, -R * 0.75 + i * R * 0.29, R * 2, R * 0.27, s + i, { esc: MAD.esc, med: '#8a5a2e', cla: '#b07a44', luz: MAD.luz });
+        c.fillStyle = grad(c, 0, R * 0.42, 0, R * 0.78, ['#5e3a1c', '#2e1a0b']); c.fillRect(-R, R * 0.42, R * 2, R * 0.36);
+        c.fillStyle = 'rgba(255,225,170,0.18)'; c.fillRect(-R, -R * 0.78, R * 2, R * 0.05);
+        c.strokeStyle = CONTORNO; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(-R, -R * 0.78); c.lineTo(R, -R * 0.78); c.moveTo(-R, R * 0.78); c.lineTo(R, R * 0.78); c.stroke();
+        // às vezes, uma caneca em cima
+        if (s % 3 === 0) { const x = R * (hsh(s, 1, 2) - 0.5) * 1.2; c.fillStyle = '#d9d2c2'; c.beginPath(); c.arc(x, -R * 0.2, R * 0.14, 0, TAU); c.fill(); linha(c, R * 0.025, 'rgba(60,50,40,0.7)'); c.fillStyle = '#6b3a12'; c.beginPath(); c.arc(x, -R * 0.2, R * 0.08, 0, TAU); c.fill(); }
+      },
+    },
     /* ---------- Natureza ---------- */
     arvore: {
       n: 'Árvore', g: 'natureza', size: 2,
@@ -538,6 +565,19 @@ const Props = (() => {
         c.restore();
         c.strokeStyle = PED.med; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(R * 0.12, -R * 0.2); c.lineTo(R * 0.27, -R * 0.08); c.stroke();
         c.fillStyle = pedra(0, -R * 0.4); c.beginPath(); c.arc(0, -R * 0.38, R * 0.14, 0, TAU); c.fill(); linha(c, R * 0.03);
+      },
+    },
+    // (lote 7) a coluna de pedra, vista de cima: a base quadrada, o fuste redondo com as caneluras
+    coluna: {
+      n: 'Coluna', g: 'perigo', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.86, 0.86, 0.14, 0.16);
+        caixa(c, -R * 0.8, -R * 0.8, R * 1.6, R * 1.6, R * 0.08); c.fillStyle = grad(c, -R, -R, R, R, [PED.cla, PED.med, PED.esc]); c.fill(); linha(c, R * 0.05);
+        caixa(c, -R * 0.66, -R * 0.66, R * 1.32, R * 1.32, R * 0.06); c.fillStyle = grad(c, -R, -R, R, R, [PED.luz, PED.cla, PED.med]); c.fill(); linha(c, R * 0.03, 'rgba(40,40,46,0.5)');
+        c.fillStyle = radial(c, -R * 0.18, -R * 0.2, R * 0.75, [PED.luz, PED.cla, PED.med]); c.beginPath(); c.arc(0, 0, R * 0.52, 0, TAU); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(40,40,46,0.35)'; c.lineWidth = R * 0.025;
+        for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.beginPath(); c.moveTo(Math.cos(a) * R * 0.3, Math.sin(a) * R * 0.3); c.lineTo(Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5); c.stroke(); }
+        c.beginPath(); c.arc(0, 0, R * 0.28, 0, TAU); c.stroke();
       },
     },
     placa: {

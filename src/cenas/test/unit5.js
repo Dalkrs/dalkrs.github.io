@@ -596,6 +596,38 @@ const ASSETS = {
   normalizeScene(sc);
   ok(!('cena' in sc.tokens[1]) && !('cena' in sc.tokens[2]), 'só objetos de cenário levam a outra cena, e só com um id de cena que valha');
 }
+/* ============ (lote 7, parte 4a-2) o que o marcador sabe para gerar a cena de dentro, e o mapa de bairros ============ */
+{
+  const sc = newScene('Cidade'), mk = (gera, prop) => { const t = newToken(sc, 0, 0, { name: 'M' }); if (prop !== false) t.prop = 'entrada'; t.gera = gera; sc.tokens.push(t); return t; };
+  mk({ t: 'taverna', w: 6, h: 5, p: 'o', e: 'oriental', s: 123, f: 'oct', extra: 'x' });
+  mk({ t: 'casa', w: 99, h: 0.4, p: 'x', e: 'Comum!', s: 'abc', f: 'redonda' });
+  mk({ t: 'loja', w: 1, h: 3, p: 'n', e: 'anao', s: 9, f: 'ret' });
+  mk({ b: 'centro', t: 'casa' });
+  mk({ b: 'Centro!' });
+  mk({ t: 'casa', w: 4, h: 4 }, false);
+  mk('x');
+  normalizeScene(sc);
+  eq(sc.tokens.map(t => t.gera || null), [
+    { t: 'taverna', w: 6, h: 5, p: 'o', e: 'oriental', s: 123, f: 'oct' },
+    { t: 'casa', w: 16, h: 4, p: 's', e: 'comum', s: 1, f: 'ret' },
+    { t: 'loja', w: 2, h: 3, p: 'n', e: 'anao', s: 9, f: 'ret' },
+    { b: 'centro' }, null, null, null],
+  'o marcador de um prédio guarda o tipo, as medidas (de 2 a 16), o lado da porta, o estilo, a semente e a forma (o que vem torto vira o padrão); o de um bairro, só o bairro; só objetos de cenário, e nada além disso');
+  // o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (o resto sai)
+  const g1 = newScene('Mapa'); g1.gerado = { lugar: 'cidade', o: { modo: 'bairros', tamanho: 'media' }, seed: 77.6, trava: { ruas: 5, predios: [] }, lixo: 1 };
+  normalizeScene(g1);
+  eq(g1.gerado, { lugar: 'cidade', o: { modo: 'bairros', tamanho: 'media' }, seed: 78, trava: { ruas: 5, predios: [] } }, 'o mapa de bairros guarda as escolhas, a semente (inteira) e a trava da cidade');
+  const g2 = newScene('x'); g2.gerado = { lugar: 'cidade', o: {}, seed: 'a', trava: 'x' }; normalizeScene(g2);
+  eq(g2.gerado, { lugar: 'cidade', o: {}, seed: 1, trava: null }, 'semente torta vira 1; trava que não é objeto sai');
+  const ruins = [{ lugar: 'vila', o: {} }, { lugar: 'cidade' }, { lugar: 'cidade', o: 'x' }, { lugar: 'cidade', o: { x: 'a'.repeat(30000) } }, 'x'];
+  ok(ruins.every(gd => { const s2 = newScene('r'); s2.gerado = gd; normalizeScene(s2); return !('gerado' in s2); }), 'o que não é de uma cidade (ou é grande demais) sai');
+  // nada disso vai para os jogadores
+  const pub = newScene('Pública'); pub.gerado = { lugar: 'cidade', o: { modo: 'bairros' }, seed: 3, trava: null };
+  const vis = newToken(pub, 0, 0, { name: 'Entrada à mostra' }); vis.prop = 'entrada'; vis.gera = { b: 'mercado' }; pub.tokens.push(vis);
+  normalizeScene(pub);
+  const pr = Proj.projetar(pub, {}, new Set());
+  ok(!('gerado' in pr.m) && !('gerado' in pr.v) && pr.v.tokens.length === 1 && !('gera' in pr.v.tokens[0]), 'com que semente a cidade foi feita e o que o marcador sabe não vão para os jogadores (nem com o marcador à mostra)');
+}
 
 console.log(fails ? `${n - fails} verificações passaram, ${fails} falharam` : `${n} verificações passaram`);
 process.exit(fails ? 1 : 0);

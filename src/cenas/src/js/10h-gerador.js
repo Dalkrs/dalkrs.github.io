@@ -1,14 +1,15 @@
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
-   Uma janela com uma aba por lugar (o Vilarejo; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
-   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia e o clima da cena. A prévia
+   Uma janela com uma aba por lugar (o Vilarejo e a Cidade; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
+   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
+   (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
    sorteia só o resto. A semente fica à mostra (a mesma semente, com as mesmas escolhas, dá o mesmo lugar) e o lugar
    pode ser guardado como modelo, para gerar outros parecidos (os modelos são do mestre: na mesa, vão no índice das
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR];
+  const LUGARES = [Vila.LUGAR, Cidade.LUGAR];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -44,8 +45,8 @@ const Gerador = (() => {
     if (!isGM()) return;
     const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
     let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
-    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '' };
-    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genLugar = L.id; };
+    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '', relevo: App.opt.genRelevo !== false };
+    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genRelevo = comum.relevo; App.opt.genLugar = L.id; };
     // o estado de cada aba (as escolhas, a semente, o que está travado e o plano na tela): trocar de aba não perde nada
     const estados = {};
     const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
@@ -54,6 +55,7 @@ const Gerador = (() => {
       if (pre.estilo) comum.estilo = Estilos.valido(pre.estilo);
       if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
+      if (typeof pre.relevo === 'boolean') comum.relevo = pre.relevo;
     }
     let nomeMexido = false, foco = -1, sobre = null, modeloNovo = false;
     const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
@@ -99,7 +101,7 @@ const Gerador = (() => {
     }
     function mostrarDica() {
       const E = estadoDe(L), p = E.plano, alvo = sobre || (foco >= 0 ? partes()[foco] : null);
-      dica.textContent = alvo && p ? `Clique para ${L.travada(p, alvo) ? 'soltar' : 'travar'} ${L.nomeDaParte(p, alvo)}.` : 'Clique numa parte da prévia (uma casa, o rio, as ruas e a praça) para travar: ela fica igual quando você gera outro.';
+      dica.textContent = alvo && p ? `Clique para ${L.travada(p, alvo) ? 'soltar' : 'travar'} ${L.nomeDaParte(p, alvo)}.` : L.dica || 'Clique numa parte da prévia (uma casa, o rio, as ruas e a praça) para travar: ela fica igual quando você gera outro.';
       cv.classList.toggle('parte', !!sobre);
     }
     function mostrarResumo() {
@@ -111,7 +113,7 @@ const Gerador = (() => {
       const E = estadoDe(L);
       E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base });
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
-      try { const r = L.previa(fundo, E.plano, 460, 330); cell = r.cell; } catch (e) { console.error(e); }
+      try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
@@ -175,7 +177,7 @@ const Gerador = (() => {
       nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (!nome) { UI.toast('Dê um nome ao modelo.'); return; }
       const E = estadoDe(L), lista = modelos();
-      const m = { id: uid('md'), nome, lugar: L.id, o: Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima }), seed: E.seed, trava: L.travaDe(E.plano) };
+      const m = { id: uid('md'), nome, lugar: L.id, o: Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima, relevo: comum.relevo }), seed: E.seed, trava: L.travaDe(E.plano) };
       guardarModelos(lista.concat([m]));
       modeloNovo = false; pintarModelos('ger-guardar');
       UI.toast(`Modelo "${nome}" guardado: as escolhas, a semente ${E.seed} e as partes travadas.`, { action: 'Desfazer', run: () => { guardarModelos(modelos().filter(x => x.id !== m.id)); if (md.isConnected) pintarModelos(); } });
@@ -190,6 +192,7 @@ const Gerador = (() => {
       comum.estilo = Estilos.valido(m.o.estilo);
       if (TONES.some(t => t.id === m.o.hora)) comum.hora = m.o.hora;
       if (WEATHERS.some(w => w[0] === m.o.clima)) comum.clima = m.o.clima;
+      if (typeof m.o.relevo === 'boolean') comum.relevo = m.o.relevo;
       E.seed = m.seed; E.trava = m.trava; E.base = null;
       lembrarComum(); pintar(); refazer();
       UI.toast(`Modelo "${m.nome}" aberto: a semente ${m.seed} e as partes travadas dele. "Gerar outro" sorteia outros parecidos.`, { action: 'Desfazer', run: () => {
@@ -217,7 +220,8 @@ const Gerador = (() => {
         h('div', { class: 'ger-cm' },
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
-          field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack')));
+          field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
+          K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, 'Com relevo e formas (água, plataformas, torres, bandeirinhas)')));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
@@ -240,7 +244,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
             UI.closeModal();
             UI.switchScene(sc.id);
             UI.toast(l.feito(sc, p), { long: true });

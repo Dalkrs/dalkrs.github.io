@@ -2,6 +2,43 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.16-8",
+      "data": "2026-10-16",
+      "titulo": "A cidade, os bairros, os interiores e o relevo nas cenas geradas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Cidade, em duas maneiras. Na cena completa, a cidade inteira na escala de batalha: a muralha com torres e portões, a praça com a fonte, o rio e as pontes, o templo com o cemitério, a casa do senhor no jardim murado, o quartel com o pátio de treino, o mercado com as barracas e o palco, os quintais, e as casas de cada bairro. Dá para travar um prédio ou o traçado (as ruas, a praça e os prédios grandes) e gerar outro."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o mapa de bairros — a cidade vista de longe, com o tom de cada bairro e um marcador em cada um. Dois cliques num marcador: “Gerar este bairro…” recorta o bairro da cidade numa cena nova, dentro do mapa, com a saída de volta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os interiores — cada prédio da cidade tem um marcador de Entrada (só você vê) na porta. Dois cliques: “Gerar o interior…” faz a planta por dentro, com as salas do tipo (a taverna com o salão, o balcão, a cozinha e os quartos; o templo com a nave, os bancos e o altar; a casa do senhor com o salão nobre e a mesa alta…), as portas, as janelas e os móveis arrumados. Também funciona numa Entrada que você pôs à mão."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as cenas geradas agora vêm com relevo e formas — o adarve da muralha a 6 m e as torres a 9 m (quem sobe mostra a altura), o fosso, o rio e o laguinho como água, as pontes e os píeres de madeira, o palco do mercado, a torre de vigia, o estrado do altar, a luz que entra pelas janelas e as bandeirinhas na praça (estas, travadas como arte de fundo). Na janela do gerador, a chave “Com relevo e formas” deixa o lugar plano, se você preferir."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: o vilarejo também ganhou o relevo (o rio como água, a ponte elevada, o píer e às vezes um morro), as hortas atrás das casas e as bandeirinhas na praça."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: objetos novos — o banco, o balcão e a coluna de pedra."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-7",
       "data": "2026-10-16",
       "titulo": "Famílias de cenas, passagens e o gerador de lugares com estilos",

@@ -262,8 +262,57 @@ const Vila = (() => {
       for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4);
       enfeites.push({ id, x: i, y: j, s }); k++;
     }
+    // 6b) (lote 7) outro sorteio, que não mexe no resto: os quintais atrás das casas (a horta ou o terreiro), o píer no
+    //     rio (do lado da praça, longe da ponte) e um morro num canto livre
+    const rq = mulberry((seed ^ 0x51ed270b) >>> 0 || 7), quintais = [];
+    for (const k of casas) {
+      if (rq() < 0.35) continue;
+      const atras = { n: 's', s: 'n', o: 'l', l: 'o' }[k.porta.lado], horiz = atras === 'n' || atras === 's';
+      const w2 = horiz ? Math.max(2, k.w - 1) : 2, h2 = horiz ? 2 : Math.max(2, k.h - 1);
+      const x = horiz ? k.x + Math.floor((k.w - w2) / 2) : atras === 'o' ? k.x - w2 - 1 : k.x + k.w + 1, y = horiz ? (atras === 'n' ? k.y - h2 - 1 : k.y + k.h + 1) : k.y + Math.floor((k.h - h2) / 2);
+      let ok = x >= 1 && y >= 1 && x + w2 <= W - 1 && y + h2 <= H - 1;
+      for (let j = y - 1; j < y + h2 + 1 && ok; j++) for (let i = x - 1; i < x + w2 + 1 && ok; i++) { const v = at(i, j); const dentro = i >= x && i < x + w2 && j >= y && j < y + h2; if (dentro ? v !== 0 && v !== 4 : v === 1 || v === 2) ok = false; }
+      if (!ok) continue;
+      quintais.push({ x, y, w: w2, h: h2, k: rq() < 0.6 ? 'horta' : 'terreiro' });
+      for (let j = y; j < y + h2; j++) for (let i = x; i < x + w2; i++) pos(i, j, 5);
+    }
+    // (as árvores e os enfeites que caíram num quintal saem)
+    for (let n = arvores.length - 1; n >= 0; n--) if (quintais.some(q => arvores[n].x > q.x - 0.2 && arvores[n].x < q.x + q.w + 0.2 && arvores[n].y > q.y - 0.2 && arvores[n].y < q.y + q.h + 0.2)) arvores.splice(n, 1);
+    for (let n = enfeites.length - 1; n >= 0; n--) { const e = enfeites[n]; if (quintais.some(q => e.x < q.x + q.w && e.x + e.s > q.x && e.y < q.y + q.h && e.y + e.s > q.y)) enfeites.splice(n, 1); }
+    let pier = null;
+    if (rioGeo) {
+      const cands = rioGeo.pts.filter(([x, y]) => x > 1 && y > 1 && x < W - 1 && y < H - 1 && (!ponte || Math.hypot(x - ponte.x, y - ponte.y) > 4)).sort((u, v) => Math.hypot(u[0] - praca.x, u[1] - praca.y) - Math.hypot(v[0] - praca.x, v[1] - praca.y));
+      for (const [x, y] of cands.slice(0, 12)) {
+        const lado = praca.x < x ? -1 : 1, px = lado < 0 ? x - rioGeo.hw - 1 : x + rioGeo.hw - 0.4, py = y - 0.4;
+        let ok = true;
+        for (let j = Math.floor(py); j <= Math.floor(py + 0.8) && ok; j++) for (let i = Math.floor(px); i <= Math.floor(px + 1.4) && ok; i++) { const v = at(i, j); if (v === 3 || v === 1) ok = false; }
+        if (ok) { pier = { x: px, y: py, w: 1.4, h: 0.8 }; break; }
+      }
+    }
+    // o morro: num dos cantos, se ali só há chão e árvore (nada de rua, rio ou casa)
+    let morro = null;
+    for (const [cx, cy] of [[0, 0], [W, 0], [0, H], [W, H]].sort(() => rq() - 0.5)) {
+      const mw = Math.min(8, Math.floor(W * 0.28)), mh = Math.min(6, Math.floor(H * 0.3)), x0 = cx ? W - mw : 0, y0 = cy ? H - mh : 0;
+      let ok = true;
+      for (let j = y0; j < y0 + mh && ok; j++) for (let i = x0; i < x0 + mw && ok; i++) { const v = at(i, j); if (v !== 0 && v !== 4) ok = false; }
+      if (!ok) continue;
+      const mx = x0 + mw / 2 + (cx ? 0.6 : -0.6), my = y0 + mh / 2 + (cy ? 0.5 : -0.5), pts = [];
+      for (let k = 0; k < 14; k++) { const an = k / 14 * Math.PI * 2, rr = 0.82 + rq() * 0.22; pts.push([mx + Math.cos(an) * mw / 2 * rr, my + Math.sin(an) * mh / 2 * rr]); }
+      morro = { pts, alt: 3 + Math.floor(rq() * 3) };
+      break;
+    }
+    // 7) (lote 7) o relevo e as formas: o rio vira água (com fundura), a ponte fica 1,5 m acima dela, o píer e o morro;
+    //    as bandeirinhas cruzam a praça, de uma luz à do outro lado
+    const relevo = [], formas = [];
+    if (morro) relevo.push({ t: 'morro', alt: morro.alt, k: 'poly', pts: morro.pts });
+    if (rioGeo) relevo.push({ t: 'agua', alt: -1.5, k: 'free', pts: rioGeo.pts.filter((_, i) => i % 2 === 0), sw: rioGeo.hw * 2 });
+    // (a ponte de madeira vira plataforma; a de pedra, do anão e do desértico, fica só no desenho)
+    if (ponte && estilo !== 'anao' && estilo !== 'desertico') relevo.push({ t: 'plataforma', alt: 1.5, k: 'poly', pts: Estilos.retangulo(ponte.x, ponte.y, ponte.comp, ponte.larg, ponte.ang) });
+    if (pier) relevo.push({ t: 'plataforma', alt: 0.5, k: 'rect', x: pier.x, y: pier.y, w: pier.w, h: pier.h });
+    const metade = Math.floor(lampioes.length / 2);
+    for (let i = 0; i < metade; i++) { const a = lampioes[i], b = lampioes[i + metade]; formas.push(...Estilos.bandeirinhas([a.x + 0.5, a.y + 0.5], [b.x + 0.5, b.y + 0.5], estilo, 'praca' + i)); }
     return { v: 2, seed, tamanho: tam, terreno, estilo, especie, poste: E.poste, rio: rioGeo, muralha, W, H, pedidas: want, ruaP, rioP, travaRuas: !!trava.ruas, travaRio: !!(comRio && trava.rio), soltas,
-      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites };
+      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites, quintais, pier, relevo, formas };
   }
   /* As janelas de uma casa: nos lados sem a porta, longe dos cantos, cada uma num lado. */
   function janelasDe(c, def, rnd) {
@@ -397,6 +446,8 @@ const Vila = (() => {
     }
     g.globalAlpha = 1;
     const linha = pts => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
+    // (lote 7) os quintais atrás das casas (num sorteio à parte: o resto do desenho fica igual)
+    { const rq2 = mulberry((p.seed ^ 0x3c6ef372) >>> 0 || 3); for (const q of p.quintais || []) Estilos.quintal(g, q, c, rq2); }
     // o rio (por baixo das ruas: a ponte passa por cima)
     if (p.rio) {
       const pts = p.rio.pts, hw = p.rio.hw;
@@ -424,6 +475,14 @@ const Vila = (() => {
       g.globalAlpha = 1;
     }
     Estilos.praca(g, p.praca, c, rnd, est);
+    // (lote 7) o píer de madeira na beira do rio
+    if (p.pier) {
+      const q = p.pier;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(q.x * c + c * 0.08, q.y * c + c * 0.1, q.w * c, q.h * c);
+      g.fillStyle = '#5b3f22'; g.fillRect(q.x * c, q.y * c, q.w * c, q.h * c);
+      g.fillStyle = '#8a6238'; for (let s2 = 0; s2 < 4; s2++) g.fillRect(q.x * c + s2 * 0.35 * c + 1, (q.y + 0.06) * c, 0.3 * c - 2, (q.h - 0.12) * c);
+      g.fillStyle = '#2e1f10'; for (const [px, py] of [[q.x, q.y], [q.x + q.w, q.y], [q.x, q.y + q.h], [q.x + q.w, q.y + q.h]]) { g.beginPath(); g.arc(px * c, py * c, c * 0.09, 0, Math.PI * 2); g.fill(); }
+    }
     if (p.ponte) {
       const b = p.ponte;
       g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
@@ -508,6 +567,11 @@ const Vila = (() => {
     const poste = Props.P[p.poste] ? p.poste : 'lampiao';
     for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, poste, l.x * c, l.y * c, 1, false));
     for (const e of p.enfeites) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
+    // (lote 7) o relevo (com a altura) e as formas de enfeite (travadas: arte de fundo)
+    if (!ex || ex.relevo !== false) {
+      for (const r of p.relevo || []) sc.shapes.push(Estilos.terrenoNaCena(r, c, 0, 0));
+      for (const f of p.formas || []) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
+    }
     normalizeScene(sc);
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
     return sc;
@@ -520,12 +584,13 @@ const Vila = (() => {
     return `${n} ${n === 1 ? 'casa' : 'casas'}` + (n < p.pedidas ? ` (couberam ${n} das ${p.pedidas})` : '') + ` · ${moveis} móveis · ${p.W} × ${p.H} quadrados` + (p.rio ? ' · rio com ponte' : '') + (p.muro ? ' · paliçada com ' + p.muro.portoes.length + ' portões' : '') + '.';
   }
   // A prévia: o fundo pintado e, por cima, as paredes, as portas (azul), as janelas (ciano) e os móveis (pontinhos).
-  function previa(cv, p, maxW, maxH) {
+  function previa(cv, p, maxW, maxH, op) {
     const cell = Math.max(6, Math.floor(Math.min((maxW || 420) / p.W, (maxH || 300) / p.H)));
     const fundo = pintar(p, cell);
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
+    if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, p.relevo, p.formas, cell, 1.5);
     g.lineCap = 'round';
     const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(s.x1 * cell, s.y1 * cell); g.lineTo(s.x2 * cell, s.y2 * cell); g.stroke(); };
     for (const k of p.casas) {

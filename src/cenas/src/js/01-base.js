@@ -719,7 +719,17 @@ function normalizeScene(sc) {
     else { delete t.prop; delete t.rot; }
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
+    // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,
+    // forma) ou o bairro do mapa de bairros
+    const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);
+    if (gera && palavra(gera.b)) t.gera = { b: gera.b };
+    else if (gera && palavra(gera.t)) t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 16), h: clamp(Math.round(Number(gera.h)) || 4, 2, 16), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' ? 'oct' : 'ret' };
+    else delete t.gera;
   }
+  // (lote 7) o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (para recortar os bairros)
+  const gd = sc.gerado;
+  if (gd && typeof gd === 'object' && gd.lugar === 'cidade' && gd.o && typeof gd.o === 'object' && JSON.stringify(gd).length < 24000) sc.gerado = { lugar: 'cidade', o: gd.o, seed: (Math.round(Number(gd.seed)) >>> 0) || 1, trava: gd.trava && typeof gd.trava === 'object' ? gd.trava : null };
+  else delete sc.gerado;
   for (const l of sc.lights) { if (l.fl) l.fl = true; else delete l.fl; }
   return sc;
 }

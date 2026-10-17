@@ -1858,6 +1858,10 @@ const UI = (() => {
       items.push('-', { label: 'Levar a outra cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') });
     } else {
       items.push({ head: t.cena ? 'A cena ligada foi apagada' : 'Ainda não leva a nenhuma cena' });
+      // (lote 7) o marcador de um bairro (no mapa de bairros) gera o bairro; a entrada de um prédio gera o interior
+      const aqui = Store.scene(), def = Props.P[t.prop];
+      if (t.gera && t.gera.b) { if (aqui && aqui.gerado) items.push({ label: 'Gerar este bairro…', icon: 'map', run: () => Cidade.abrirBairro(t) }); }
+      else if (def && def.passagem === 'entra') items.push({ label: 'Gerar o interior…', icon: 'house', run: () => Interior.abrir(t) });
       items.push({ label: 'Escolher a cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') }, { label: 'Uma cena nova, dentro desta…', icon: 'plus', run: () => novaCenaLigada(t) });
     }
     if (x == null || y == null) { const r = el.stage.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }

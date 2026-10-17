@@ -142,7 +142,7 @@ const Proj = (() => {
     const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
-    for (const k in sc) if (k !== 'explored' && !VIVO.includes(k)) m[k] = sc[k];
+    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
     m.walls = sc.walls.map(paredePublica);
     m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);

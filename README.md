@@ -510,10 +510,12 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   menu da passagem: "Ir para esta cena" (o aviso tem Voltar), "Ir e mostrar aos jogadores" (numa mesa), ou escolher
   outra. Ir para outra cena não muda o que os jogadores veem; se a cena ligada foi apagada, o menu diz.
 - **Objetos novos** (para os estilos do gerador, e soltos): a lanterna de papel (uma luz), a almofada, o tapete (2 × 2),
-  o jarro de barro, a bigorna, as flores e a pedra rúnica.
+  o jarro de barro, a bigorna, as flores e a pedra rúnica; e, para os interiores, o banco e o balcão (vários em fila
+  viram um banco comprido ou o balcão da taverna; giram com o objeto) e a coluna de pedra.
 - **A janela "Gerar um lugar…"** (`Gerador`, `10h-gerador.js`; o menu de cenas trocou "Gerar um vilarejo…" por ela):
-  uma aba por lugar (por enquanto só o Vilarejo; a Cidade e os outros vêm depois), as escolhas do lugar à esquerda e,
-  embaixo delas, o que vale para todos — o **estilo**, a **hora do dia** e o **clima** —; a prévia à direita.
+  uma aba por lugar (o Vilarejo e a Cidade; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
+  que vale para todos — o **estilo**, a **hora do dia**, o **clima** e a chave **"Com relevo e formas"** —; a prévia à
+  direita. A janela abre na última aba usada (`App.opt.genLugar`).
   - **Os estilos** (`Estilos`, `10c2-estilos.js`): Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o
     desenho (as cores da rua, o chão da praça — pedras, cascalho rastelado, terra com anel de pedras, mosaico, grama
     com flores, lajes de seis lados —, o piso das casas — tábuas, tatame, ladrilho, madeira clara, lajes —, as paredes
@@ -531,8 +533,63 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
     troca a forma, as janelas e os móveis (com outro sorteio, para não mexer no resto). "Soltar tudo" solta sem sortear.
   - **A semente** fica à mostra: o mesmo número, com as mesmas escolhas e o mesmo travado, dá o mesmo lugar.
   - **Os modelos** (`S.prefs.modelos`, no índice das cenas, só do mestre; `Proj.normModelos`, até 30): "Guardar como
-    modelo" guarda as escolhas, o estilo, a hora, o clima, a semente e o que está travado; abrir um modelo devolve o
-    lugar (com Desfazer), e "Gerar outro" sorteia outros parecidos. A lixeira apaga um modelo (com Desfazer).
+    modelo" guarda as escolhas, o estilo, a hora, o clima, o relevo, a semente e o que está travado; abrir um modelo
+    devolve o lugar (na aba dele, com Desfazer), e "Gerar outro" sorteia outros parecidos. A lixeira apaga um modelo.
+  - **O relevo e as formas** (`Estilos.terrenoNaCena`, `formaNaCena`; a chave "Com relevo e formas", ligada, lembrada em
+    `App.opt.genRelevo`): o lugar sai com áreas de Terreno com altura (as do menu Terreno: quem fica em cima mostra
+    "▲6 m"; passar o mouse diz "Plataforma · altura 6 m") e com formas de enfeite **travadas** (arte de fundo: um clique
+    passa direto; dois cliques selecionam, para destravar ou apagar). A prévia mostra os dois com o desenho de verdade
+    do Terreno (`Estilos.relevoNaPrevia`, que usa o `Render.drawTer`). Desligada, o lugar sai plano. No vilarejo: o rio
+    vira Água com 1,5 m de fundura, a ponte de madeira fica 1,5 m acima dela, o píer na beira do rio e, num canto
+    livre, um morro (de 3 a 5 m); as bandeirinhas cruzam a praça, de uma luz à do outro lado. E, num sorteio à parte
+    (o resto do lugar fica igual), os quintais atrás das casas: a horta e o terreiro com a lenha e o feno.
+- **A Cidade** (`Cidade`, `10f-cidade.js`), em duas maneiras — a **cena completa** e o **mapa de bairros** — com o
+  tamanho (Pequena 64 × 46, Média 80 × 56, Grande 96 × 68 quadrados), o terreno, quantos prédios (o resumo diz quantos
+  couberam), o rio e a muralha. O plano (`Cidade.gerar`) é uma conta pura, com sorteios separados: o **traçado** (a
+  muralha em octógono, com as torres e três ou quatro portões; a praça com a fonte; as ruas principais, dos portões à
+  praça; o anel por dentro da muralha; o rio e as pontes; o templo de frente para a praça, com o cemitério ao lado; a
+  casa do senhor no pátio murado, com o jardim e o laguinho; o quartel no pátio de treino, com os bonecos, os alvos e
+  a torre de vigia; o largo do mercado com as barracas e o palco; e as ruas de bairro, uma grade torta que para onde
+  bate num prédio grande e continua do outro lado), os **prédios comuns** (de frente para a rua, encostados nela, as
+  ruas principais e a praça primeiro; o lote e o tipo de cada bairro — o centro, o bairro nobre, o mercado, o bairro
+  pobre, o quartel e a beira-rio —; a frente da porta fica sempre livre) e os **quintais e as árvores** (a horta, o
+  terreiro e o jardim nos fundos dos lotes). Travar: um clique num prédio trava o prédio; nas ruas, na praça, no rio ou
+  num prédio grande, trava o traçado (as ruas, a praça, os pátios e os grandes ficam iguais e os prédios comuns são
+  sorteados de novo; o prédio travado fica, e o traçado desvia dele). Trocar o tamanho solta a trava.
+  - **A cena completa**: a cidade inteira na escala de batalha, com a visão pelas paredes. Cada prédio é fechado (as
+    paredes do contorno; entra-se pelo marcador) e tem, na porta, um marcador de **Entrada** (oculto, só do mestre) que
+    sabe o tipo, as medidas, o lado da porta, o estilo e uma semente (`t.gera`); dois cliques nele: "Gerar o
+    interior…". Os pátios e a muralha têm os portões abertos. As lanternas (o poste do estilo) nas ruas principais e
+    quatro na praça; à noite, um lampião na porta da taverna, do templo, da casa do senhor e do quartel, e tochas dos
+    dois lados de cada portão (objetos com luz: nada de marcas de luz espalhadas pelo mapa). Na porta das lojas, dos
+    armazéns e das ferrarias, caixotes, barris e sacos pintados. O relevo: o adarve da muralha a 6 m e as torres a 9 m;
+    o fosso por fora (com água no comum e no oriental, seco no anão e no nórdico), com a ponte de cada portão; o rio com
+    2 m de fundura, as pontes de madeira 2 m acima da água (as de pedra, do comum, do anão e do desértico, só no
+    desenho), os píeres; a fonte, o palco do mercado (1,5 m), a torre de vigia (6 m) e o laguinho. As formas: as
+    bandeirinhas cruzando a praça e o largo, os alvos de tiro. Nada sai escrito.
+  - **O mapa de bairros**: a mesma cidade vista de longe (cada quadrado vale dois: 3 m), com o tom de cada bairro, a
+    linha entre um e outro, o relevo na escala do mapa e um marcador de Entrada (oculto) em cada bairro (`gera: { b }`).
+    O mapa guarda com que escolhas, semente e traçado a cidade foi feita (`sc.gerado`, só do mestre: a projeção tira).
+    Dois cliques num marcador: "Gerar este bairro…" — a prévia do pedaço da cidade e o nome; "Criar a cena" refaz a
+    cidade com os dados do mapa, recorta o bairro (`Cidade.recorte`: a caixa das casas dele, com três quadrados de
+    folga; o que toca nela entra, e o desenho e as paredes param na borda; as bandeirinhas entram inteiras ou não
+    entram), e a cena nasce dentro do mapa (na lista de cenas), na mesma campanha, com a Saída de volta perto da fonte;
+    o marcador do mapa fica ligado a ela.
+- **Os interiores** (`Interior`, `10g-interior.js`): dois cliques na Entrada de um prédio da cidade, "Gerar o
+  interior…": o tipo do prédio e o estilo já vêm escolhidos (dá para trocar); numa Entrada posta à mão, escolhe-se
+  também o tamanho (Pequeno, Médio, Grande). A planta tem o dobro das medidas do prédio, dividida em salas (`PLANTAS`:
+  a sala, o quarto e a cozinha da casa; o salão, a cozinha e os quartos da taverna; a forja; o armazém e o
+  escritório; a nave e a sacristia do templo; o salão nobre, a biblioteca, os quartos e a cozinha do senhor; o
+  refeitório, o dormitório e o arsenal do quartel). Nos tipos com sala grande, a sala da porta fica com a faixa da
+  frente, inteira. Cada divisão tem uma porta (todas as salas ficam ligadas), janelas nas paredes de fora (uma por
+  sala) e os móveis de cada sala, no estilo, arrumados: a cadeira virada para a mesa, o baú e a vela junto da cama, a
+  cama e a estante de costas para a parede, as estátuas dos lados do altar, o altar no fundo, na linha da porta, a
+  colunata e os bancos da nave (com o corredor do meio livre), o balcão no fundo da taverna e da loja (de frente para
+  quem entra), as colunas do salão nobre; nada na frente das portas. O relevo de dentro: o estrado do altar e a pia
+  de água benta do templo, o palquinho do bardo na taverna, o estrado com a mesa alta do senhor, a tina da forja, o
+  alçapão do porão no armazém; e a luz que entra pelas janelas em feixes (de dia, quentes; ao entardecer, laranja; de
+  noite, o luar; no breu, nada). A cena sai dentro da cena de fora, com a hora dela (à noite, uma luz em cada sala),
+  a Saída junto da porta de entrada levando de volta, e o marcador ligado a ela.
 
 ### A Árvore (lote 6)
 
@@ -1224,7 +1281,14 @@ marcadores, o painel, os dois cliques, "Uma cena nova, dentro desta…", a cena 
 modelos e a cena que sai) e as regras do plano em 72 sorteios nos seis estilos e em 36 com partes travadas (com
 `SO=familias`, `passagens`, `gerador` ou `regras`, roda só uma parte); `cenas-lote7c.rede`, numa mesa: a família e o
 modelo no índice (a jogadora não recebe; outro aparelho do mestre encontra), a vila oriental de noite com chuva na
-tela da jogadora e a passagem que não diz aonde leva. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+tela da jogadora e a passagem que não diz aonde leva. `src/cenas/test/lote7d.js` confere a aba Cidade (as escolhas,
+travar um prédio e o traçado, "Gerar outro", o tamanho que solta a trava, o modelo, a cena completa de noite com as
+paredes, os marcadores, as lanternas e as tochas, o relevo e as formas, e a chave que deixa tudo plano), o mapa de
+bairros (os marcadores, os dados da cidade, "Gerar este bairro…" e a cena do bairro, sem nada passando da borda), o
+interior (pelo marcador e por uma Entrada posta à mão, de dia e de noite) e as regras dos planos — a cidade em 30
+sorteios e em 18 com partes travadas, o interior em 512 plantas (com `SO=cidade`, `bairros`, `interior` ou `regras`);
+`cenas-lote7d.rede`, numa mesa: o mapa de bairros na tela da jogadora sem os dados da cidade nem os marcadores, outro
+aparelho do mestre gerando o bairro com os mesmos prédios, e o interior de um templo na tela da jogadora. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre
