@@ -41,6 +41,8 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     if (!App.mapa) App.criarMapa('Teste das cenas');
     App.mudar('montar', m => {
       m.grade.tam = 40; m.cal.dia = 10;
+      // (lote 7, parte 5c) o clima do dia: sol o ano inteiro (a cena sem clima), para os casos de antes valerem
+      m.clima = { tab: m.cal.meses.map(() => ({ sol: 100 })) };
       // colunas: 0-1 floresta, 2-3 lavoura, 4-5 savana, 6-7 planície, 8-9 neve, 10-11 água, 12-13 deserto, 14-15 um terreno sem desenho,
       // 16-17 ruínas
       m.terrenos.push({ id: 'zz', nome: 'Terra estranha', cor: '#777777', custo: 5 });
@@ -123,6 +125,18 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(e3.clima === 'neblina' && j(e3.fx) === j(['espiritos']) && e3.hora === 'dia', 'a assombração: neblina e a Névoa de espíritos: ' + j([e3.clima, e3.fx]));
   const e4 = await comEventos([]);
   ok(!('fx' in e4) && !('seco' in e4) && !('eventos' in e4) && e4.hora === 'dia', 'sem os eventos novos, o pedido de antes: ' + j(e4));
+  // (lote 7, parte 5c) sem evento, o clima do dia: a neve neva; a névoa vira neblina; o calor não tem clima de cena; o
+  // evento vence o clima do dia; a região com ajuste manda no clima dela
+  const comClima = async (k, extra) => { await F.evaluate(([k, extra]) => __mundo.App.mudar('o clima do dia', m => { m.clima = { tab: m.cal.meses.map(() => ({ [k]: 100 })) }; if (extra) extra(m); }), [k, null]); return gerarAqui('planicie'); };
+  const c1 = await comClima('neve'), c2 = await comClima('nevoa'), c3 = await comClima('calor');
+  ok(c1.clima === 'neve' && c2.clima === 'neblina' && c3.clima === '', 'sem evento, o clima do dia: neve, neblina, nada (o calor): ' + j([c1.clima, c2.clima, c3.clima]));
+  const c4 = await comEventos(['tempestade']);
+  ok(c4.clima === 'chuva', 'o evento vence o clima do dia (a tempestade, com o calor do dia): ' + c4.clima);
+  await comEventos([]);
+  await F.evaluate(id => __mundo.App.mudar('a região fria', m => { const g = m.objs.find(o => o.id === id); m.objs.push(Object.assign(__mundo.N.objNovo('r', { pts: [[g.x - 50, g.y - 50], [g.x + 50, g.y - 50], [g.x + 50, g.y + 50], [g.x - 50, g.y + 50]] }), { id: 'rfria', clima: { calor: 'nunca', neve: 'muito' } })); }), ids.planicie);
+  const c5 = await gerarAqui('planicie');
+  ok(c5.clima === 'neve', 'na região com ajuste (nunca calor, muito mais neve): neve: ' + c5.clima);
+  await F.evaluate(() => __mundo.App.mudar('sem a região fria', m => { m.objs = m.objs.filter(o => o.id !== 'rfria'); m.clima = { tab: m.cal.meses.map(() => ({ sol: 100 })) }; }));
   // (lote 7, parte 4b-3) no terreno Ruínas: a aba Ruínas
   const gr = await gerarAqui('ruinas');
   ok(gr.lugar === 'ruinas' && j(gr.op) === j({ terreno: 'campo' }) && gr.hora === 'dia', 'no terreno Ruínas, o grupo gera as ruínas (a aba Ruínas), e não um encontro: ' + j(gr));

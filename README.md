@@ -905,7 +905,9 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   cena mudam) e o clima (os do Jornal, caindo por cima da cena). Com a imagem própria, o ambiente escolhido continua
   valendo para as receitas. O lugar fica em `medit:cena` (a mesa lê); quem está meditando, em `medit:quem` (a mesa lê;
   só a função `meditacao_entrar` escreve — assim, o mestre mudar o lugar no mesmo instante em que alguém entra não
-  apaga a entrada). Uma cena por mesa (não por campanha).
+  apaga a entrada). Uma cena por mesa (não por campanha). (Lote 7, parte 5c) Com um mapa do Mapa-múndi mostrado aos
+  jogadores, quem mestra vê ali o clima de hoje de lá ("Hoje no Mapa-múndi: Chuva", o de onde o grupo está) e "Usar no
+  fundo da cena" põe esse clima na cena (é o clima da cena, como se escolhido na lista: o banco o guarda igual).
 - **A prática** de cada personagem: objeto, mantra, representação e o panteão (é o campo da ficha, `ficha.panteao`:
   mudar aqui muda nas Fichas — e muda quem pode mudar a ficha). Fica em `medit:pratica:<personagem>`, com o dono do
   personagem como dono: só ele e quem mestra veem. O banco deixa o jogador criar só a de um personagem dele.
@@ -1100,6 +1102,33 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   de desfazer só. A aba Hoje mostra os do mundo em "Pelo mapa" (escondido, onde está, parado, voltando, fora da rota,
   junto de quem). Para os jogadores: o grupo do mundo mostrado vai com o tipo, sem o jeito de andar, as paradas e a
   espera; o evento, sem a rota.
+- **O clima do dia (lote 7, parte 5c).** Os climas são os do Jornal e da Meditação (`CLIMAS`: Ensolarado, Nublado,
+  Chuva, Tempestade, Neve, Névoa, Ventania, Calor e Frio — o mesmo nome e o mesmo desenho). A tabela do mundo (`clima.tab`,
+  aba Mapa, "A tabela do clima") dá a chance de cada um em cada mês do calendário; sem ela, vale a de começo, pela
+  estação do mês (`CLIMA_ESTACOES`: o primeiro e o último mês do ano são de inverno, depois primavera, verão e outono —
+  `estacaoDoMes`). As chances valem na proporção (somando 100% ou não); um mês sem nenhuma não passa. Uma região ajusta
+  clima por clima (`r.clima`, no painel dela, "Ajustar o clima da região…": nunca ×0, menos ×½, mais ×2 + 5 e muito
+  mais ×4 + 15 — os dois últimos valem até no mês em que o mundo não tem aquele clima: o deserto tem calor no inverno).
+  O sorteio do dia (`climaSorteado`) é um número só para o mapa inteiro, do id do mapa e do dia (`sorteioDoDia`: sai
+  igual em todo aparelho e não muda ao repintar), que cada região lê com as chances dela — um dia de tempestade tende a
+  ser de tempestade em todo lugar, e no deserto vira calor. O mestre troca o de hoje à mão (no mundo, na aba Hoje:
+  `clima.mao = { d, k }`; numa região, no painel dela: `r.chj`), só para aquele dia. Num ponto vale a região mais de
+  dentro com ajuste (a de dentro sem ajuste usa a de fora: `regiaoDoClima`), senão o mundo (`climaNoPonto`). Aparece
+  junto da data, para todos (clicar abre a aba Hoje, com "O clima de hoje": sorteado ou escolhido, trocar o de hoje, as
+  regiões com clima próprio e o atalho para a tabela), no painel da região e nas cenas geradas (sem clima de evento, o
+  do dia: chuva e tempestade, chuva; neve, neve; névoa, neblina; os outros, nenhum). Quem joga recebe o de hoje pronto
+  (`clima.hoje`, e `ch` nas regiões com ajuste e nos grupos), sem a tabela e sem os ajustes. Com o mapa mostrado aos
+  jogadores, o Acampamento e a Meditação leem o de hoje (o de onde o grupo comum está; senão, o do mundo — ver lá).
+- **As zonas de perigo (lote 7, parte 5c).** Na ferramenta Frente, "Zona de perigo" e o tipo (`ZONAS`: Tempestade,
+  Praga, Frio extremo, Terra amaldiçoada e Território de monstro): uma área desenhada como a de guerra (`k: 'z'` com
+  `tipo`; com começo, fim e fases), na cor do tipo, com listras finas e o nome dele. O que um dia dentro dela mexe na
+  ficha (`ef: { fad, conf, san }`: a Fadiga em passos da pilha, o Conforto e a Sanidade) vem do tipo (o frio: Fadiga −1,
+  Conforto −10) e o mestre muda no painel ("Voltar aos números do tipo" desfaz). No "Próximo dia" (ou num "+1 tempo" que
+  vira o dia), o grupo comum que terminou o dia dentro de uma (`zonasNoPonto`, no dia que acabou; várias somam:
+  `efeitoDasZonas`) traz a proposta: a janela com a equipe (os personagens dos jogadores da campanha), o antes e o depois
+  de cada um (`TC.rules.mexerNaMente`, as mesmas contas do Acampamento e das Cenas), todos marcados — desmarca quem não
+  estava junto; "Aplicar" muda as fichas e vai para a mesa ao vivo, com Desfazer (as fichas voltam); "Agora não" deixa
+  tudo como está. Sem mesa, só o aviso do que o dia faria. Quem joga vê a zona, sem os números.
 - **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
   tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
   no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
@@ -1194,6 +1223,13 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 
 ### O acampamento
 
+- **O clima do Mapa-múndi (lote 7, parte 5c).** Com um mapa mostrado aos jogadores, o mestre vê em "A cena" o clima de
+  hoje de lá ("Hoje no Mapa-múndi: Chuva" — o de onde o grupo comum está; senão, o do mundo: `climaDoMundo`, lendo
+  `mundo:indice` e a projeção `mundo:pub:<id>`) e "Usar na cena" põe no desenho o clima daqui que mais se parece
+  (`CLIMA_MUNDO`). No descanso longo, a noite nesse clima vem como proposta, marcada: "A noite de chuva no Mapa-múndi:
+  Conforto −5" (`CLIMA_MUNDO[k].conf`: chuva, ventania e calor −5; tempestade, neve e frio −10; os outros, nada) soma no
+  Conforto de quem descansa (`planejar(…, { clima })`), aparece na prévia e no resumo ("noite de chuva"); desmarcada, a
+  noite não conta. O descanso curto não é a noite.
 - **As rações.** Cada descanso serve uma provisão (o mestre escolhe em Provisões, e pode trocar na hora do
   descanso, junto com quantas rações cada um come). A fila das rações é a servida primeiro e depois a lista, de cima
   para baixo; as porções saem dela em rodízio, na ordem da roda — uma ração para cada um, depois mais uma para cada…
@@ -1500,7 +1536,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1613,7 +1649,8 @@ do que é grande, a trava, a Surpresa variando) e os eventos do Mapa-múndi na c
 o chão seco no mesmo traçado, a zona cobrindo a cena, a chave desligada, cada aba com o que vale nela; com
 `SO=encontro`, `cena`, `navio`, `mureta`, `mapa`, `regras` ou `eventos`);
 `mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
-clima, o estilo, o nome e o atalho; e o que os eventos levam: o clima, o breu do eclipse, as zonas e o chão seco), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
+clima, o estilo, o nome e o atalho; e o que os eventos levam: o clima, o breu do eclipse, as zonas e o chão seco; e o
+clima do dia, sem evento, e o da região com ajuste), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
 no mapa gerando o encontro (de noite, com chuva, nórdico; com a seca e a assombração, o chão seco e a Névoa de
 espíritos), a janela já aberta que não é atropelada, a vila do
 marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `src/cenas/test/lote7g.js` confere a aba Porto (os dois lugares, os tamanhos, os terrenos, as três chaves e o terreno, que não mexem no traçado — nem os barcos — e não soltam a trava, travar clicando no navio, a trava que só vale no mesmo lugar e no mesmo tamanho, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), a cena do porto (as paredes — os prédios, o farol, que tapa a visão, e a amurada dos navios —, as Entradas ocultas dos prédios e das escotilhas, os lampiões, o relevo do mar, dos molhes, do convés — debaixo dos castelos — e da galeria do farol, a luz do farol, a passagem pela prancha), o porão do navio (pelos dois cliques na escotilha), a vila de pescadores (o barco na cabeça em T ou ao lado do píer comprido, a praia, o mercado do peixe, a ponta de pedras), as regras dos planos em 120 sorteios (os prédios separados e de frente para o mar, a frente da porta livre, a taverna, os navios nos lugares deles com a prancha na abertura — desenhada e por onde se passa —, os barcos fora dos lugares dos navios, a estrada que sai, nada de árvore no mar; e poucas árvores entre as casas, com a mata cheia para dentro da terra), o desenho do mar (fundo e escuro longe da beira) e a Cidade com mar (sem o mar, os planos de antes, conferidos pelo resumo; com ele, a muralha aberta, sem portão para o mar, os navios, o bairro do porto, a rua do porto, o rio, o recorte do porto até a borda do mapa do lado do mar e a cena; com `SO=aba`, `cena`, `porao`, `vila`, `regras`, `desenho` ou `cidade`); `cenas-lote7g.rede`, numa mesa: o porto grande vai para a jogadora sem as Entradas (com a amurada do navio), e o navio por dentro. `src/cenas/test/lote7h.js` confere as masmorras: as regras dos planos em 144 sorteios (os quatro tipos, os três tamanhos, com e sem os segredos e a escada de descida: o mesmo sorteio dá o mesmo nível; as escadas no chão e ligadas uma à outra; todo o chão alcançável; as portas entre casas abertas; os objetos no chão, sem um em cima do outro; as runas escondidas e só com os segredos; o que cada tipo tem), a janela "Gerar o nível" (pela Entrada posta à mão), a cena (no breu, as paredes, as portas trancadas e secretas, as runas escondidas, a Saída e a Entrada do nível 2; quem joga não vê as Entradas nem as runas), o nível 2 (dentro do nível 1), o desenho dos quatro tipos e a aba Masmorra do "Gerar um lugar…" (sem a hora e o clima, o nível escolhido, "Embaixo de" na ordem das famílias, a cena solta com a Saída sem destino, a cena dentro da de cima com a Saída de volta, o nome e o id pedidos pelo Mapa-múndi; com `SO=regras`, `janela`, `cena`, `descer`, `desenho` ou `aba`); `cenas-lote7h.rede`, numa mesa: a jogadora recebe a masmorra com a porta secreta como parede comum, sem as runas nem as Entradas, e a porta vira porta quando o mestre revela. `src/cenas/test/lote7i.js` confere a aba Ruínas (os cinco lugares, os tamanhos, os terrenos e as duas chaves, que não mexem no traçado, travar clicando nas ruínas, a trava que só vale no mesmo lugar e no mesmo tamanho e vai embora ao trocar o lugar, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), as regras dos planos em 150 sorteios (o mesmo sorteio dá o mesmo lugar; as chaves e o terreno não mexem no traçado; a entrada da masmorra só com a chave, na escada ou na boca, no chão, alcançável andando de uma borda e sabendo o nível de baixo; as paredes que não se cruzam; o que cada lugar tem; a hera só com o mato, e nunca no telhado), a cena do templo (as paredes em ruína e as de visão das colunas, o relevo, a Entrada oculta da cripta), a cripta embaixo (pelos dois cliques na Entrada) e o desenho dos cinco lugares (com `SO=aba`, `regras`, `cena` ou `desenho`); `cenas-lote7i.rede`, numa mesa: o forte em ruínas vai para a jogadora com as paredes e o relevo, sem a Entrada da masmorra, e o mestre desce ao nível 1. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
@@ -1643,7 +1680,14 @@ o "Traçar entre dois marcadores" (a prévia, nada mudando antes de usar, a rota
 ida e volta com o "Próximo dia" (o aviso do encontro no tempo certo, a volta, Desfazer), as paradas (o clique pedido, a
 bandeirinha, o tempo e o nome, parar e seguir, tirar), "Desenhar a rota" de uma patrulha, o evento que anda, a aba Hoje
 ("Pelo mapa") e quem joga (sem os escondidos e as rotas escondidas; a caravana mostrada sem a rota, o jeito de andar e
-as paradas). `mundo-mesa` confere
+as paradas). `mundo-lote7d` confere o clima do dia e as zonas de perigo (lote 7, parte 5c): o clima junto da data e
+a aba Hoje (sorteado, trocar o de hoje só por um dia, Desfazer), a tabela do clima (mudar a chance, a soma, um mês sem
+nenhuma, outro mês, voltar à de começo), o ajuste da região (nunca chuva, muito mais calor), a zona de perigo pela
+ferramenta Frente (o tipo, o desenho, os números, voltar aos do tipo), o "Próximo dia" com o grupo no frio (sem mesa, o
+aviso) e quem joga (o clima pronto, a zona sem os números); `mundo-lote7d.rede`, numa mesa: a proposta da zona de frio no
+"Próximo dia" (o personagem do jogador marcado, com o antes e o depois; "Aplicar" mexendo na ficha; o Desfazer) e o
+clima do mapa mostrado no Acampamento ("Usar na cena", a noite de chuva no descanso longo) e na Meditação ("Usar no
+fundo da cena"). `mundo-mesa` confere
 também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
 lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
 itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma

@@ -13,7 +13,7 @@
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
   const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
     terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2,
-    tipoGrupo: '' };                                // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
+    tipoGrupo: '', zonaTipo: 'tempestade' };                                // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
   // a largura de cada desenho de linha, em pixels da tela, para Fina, Média, Larga e Bem larga (no rio: a da foz)
   const LARGURAS = { rio: [6, 12, 20, 32], estrada: [2, 3.5, 5, 8], trilha: [1.5, 2.5, 4, 6] };
   const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt' };
@@ -1489,6 +1489,8 @@
   function zona(g0, o, ctx) {
     const pts = formaDe(o, ctx.dia);
     if (!Array.isArray(pts) || pts.length < 3) return;
+    const Zp = o.tipo && o.tipo !== 'guerra' ? dicionario('ZONAS')[o.tipo] : null;
+    if (Zp) { zonaDePerigo(g0, o, ctx, pts, Zp); return; }
     const ativa = zonaAtiva(o, ctx.dia), ca = corFac(ctx, o.a), cb0 = corFac(ctx, o.b), cb = cb0 === ca ? misturar(ca, '#000000', 0.4) : cb0;
     g0.classList.add('zon');
     if (!ativa) g0.classList.add('inativa');
@@ -1502,6 +1504,24 @@
       s('path', { class: 'zona-borda', d, stroke: ca }),
       s('path', { class: 'zona-borda b', d, stroke: cb }));
     if (o.nome) { const c = pontoDoNome(pts), fx = fixo(c[0], c[1]); fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg')); g0.append(fx); }
+  }
+  /* (lote 7, parte 5c) A zona de perigo: a área na cor do tipo, com listras finas e a borda tracejada; enquanto acontece,
+     pulsa devagar (como a de guerra). */
+  function zonaDePerigo(g0, o, ctx, pts, Zp) {
+    const ativa = zonaAtiva(o, ctx.dia), cor = Zp.cor || '#9aa3b5';
+    g0.classList.add('zon', 'zon-perigo', 'zp-' + o.tipo);
+    if (!ativa) g0.classList.add('inativa');
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    const W = um(limitar(Math.hypot(x1 - x0, y1 - y0) / 30, 3, 400)), pid = idSvg('zp-', o.id), d = caminho(pts, true);
+    g0.append(
+      s('defs', null, s('pattern', { id: pid, patternUnits: 'userSpaceOnUse', width: W, height: W, patternTransform: 'rotate(-35)' },
+        s('rect', { width: W, height: W, fill: cor, 'fill-opacity': 0.18 }), s('rect', { width: um(W * 0.22), height: W, fill: cor, 'fill-opacity': 0.55 }))),
+      s('path', { class: 'zona zona-perigo' + (ativa ? ' zona-pulsa' : ''), d, fill: `url(#${pid})` }),
+      s('path', { class: 'zona-borda zona-borda-perigo', d, stroke: cor }));
+    const c = pontoDoNome(pts), fx = fixo(c[0], c[1]);
+    fx.append(rotulo(String(o.nome || Zp.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg'));
+    g0.append(fx);
   }
   /* Linha do mapa (geografia): suave, passando por todos os pontos. O rio engrossa da nascente até a foz; a estrada é
      tracejada e a trilha, pontilhada, as duas com um fundo claro por baixo. O nome vai ao longo da linha, sempre da
@@ -1941,8 +1961,12 @@
     } else if (f === 'f') {
       const lista = [['', 'Sem facção']].concat(facs.map(x => [x[0], x[1] || 'Facção sem nome']));
       const val = id => (id && facs.some(x => x[0] === id) ? id : '');
-      optsEl.append(
-        ...chips('freModo', opt('freModo') === 'zona' ? 'zona' : 'linha', [['linha', 'Linha de frente', 'Uma linha de combate entre duas facções'], ['zona', 'Zona de guerra', 'A área em guerra entre duas facções (pode mudar com o tempo)']]),
+      // (lote 7, parte 5c) a zona de perigo: o tipo, no lugar dos lados
+      const modo = opt('freModo') === 'zona' ? 'zona' : opt('freModo') === 'perigo' && dicionario('ZONAS').frio ? 'perigo' : 'linha', Z = dicionario('ZONAS');
+      optsEl.append(...chips('freModo', modo, [['linha', 'Linha de frente', 'Uma linha de combate entre duas facções'], ['zona', 'Zona de guerra', 'A área em guerra entre duas facções (pode mudar com o tempo)']]
+        .concat(Z.frio ? [['perigo', 'Zona de perigo', 'Uma área que cansa, desconforta ou assusta quem passa o dia dentro: tempestade, praga, frio extremo, terra amaldiçoada, território de monstro']] : [])));
+      if (modo === 'perigo') optsEl.append(seletor('Tipo', Z[opt('zonaTipo')] && opt('zonaTipo') !== 'guerra' ? opt('zonaTipo') : 'tempestade', Object.keys(Z).filter(k => k !== 'guerra').map(k => [k, Z[k].nome]), v => { porOpt('zonaTipo', v); atualizarDica(); }));
+      else optsEl.append(
         seletor('Lado A', val(opt('a')), lista, v => porOpt('a', v || null)),
         seletor('Lado B', val(opt('b')), lista, v => porOpt('b', v || null)));
     } else if (f === 'p') {
@@ -2097,8 +2121,9 @@
         if (n < 3) return `${Cl} para pôr mais pontos (uma região tem pelo menos 3).` + fim;
         return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
       case 't': case 'f': {
-        if (f === 'f' && opt('freModo') === 'zona') {
-          if (!n) return `${Cl} para pôr o primeiro ponto da zona de guerra (as cores vêm dos lados A e B).`;
+        if (f === 'f' && (opt('freModo') === 'zona' || opt('freModo') === 'perigo')) {
+          const Zp = opt('freModo') === 'perigo' ? dicionario('ZONAS')[opt('zonaTipo')] : null;
+          if (!n) return Zp ? `${Cl} para pôr o primeiro ponto da zona de perigo (${Zp.nome.toLocaleLowerCase('pt-BR')}).` : `${Cl} para pôr o primeiro ponto da zona de guerra (as cores vêm dos lados A e B).`;
           if (n < 3) return `${Cl} para pôr mais pontos (uma zona tem pelo menos 3).` + fim;
           return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
         }
@@ -2262,7 +2287,7 @@
   function tipoDoRasc() {
     const f = ferramenta();
     if (f === 'r' || f === 't') return f;
-    if (f === 'f') return opt('freModo') === 'zona' ? 'z' : 'f';
+    if (f === 'f') return opt('freModo') === 'zona' || opt('freModo') === 'perigo' ? 'z' : 'f';
     if (f === 'p' && modoDesenho() === 'linha') return 'l';
     return null;
   }
@@ -2310,6 +2335,12 @@
     }
     if (k === 'f' || k === 'z') { campos.a = opt('a') || null; campos.b = opt('b') || null; }
     if (k === 'z') campos.ini = (App.mapa.cal && App.mapa.cal.dia) || 0;
+    // (lote 7, parte 5c) a zona de perigo: o tipo (sem lados); os números de começo do tipo valem até o mestre mudar
+    if (k === 'z' && opt('freModo') === 'perigo') {
+      const Z = dicionario('ZONAS'), tp = Z[opt('zonaTipo')] && opt('zonaTipo') !== 'guerra' ? opt('zonaTipo') : 'tempestade';
+      campos.tipo = tp; campos.a = null; campos.b = null;
+      rot = 'nova zona de perigo';
+    }
     if (k === 'l') {
       campos.estilo = opt('estilo');
       const ls = LARGURAS[campos.estilo] || LARGURAS.rio;

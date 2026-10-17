@@ -142,6 +142,13 @@
   /* ---- onde o acampamento está, o tempo e as áreas ---- */
   const LUGARES = [['floresta', 'Floresta'], ['montanha', 'Montanha'], ['deserto', 'Deserto'], ['neve', 'Neve'], ['mar', 'Beira-mar'], ['caverna', 'Caverna']];
   const CLIMAS = [['limpo', 'Tempo bom'], ['chuva', 'Chuva'], ['tempestade', 'Tempestade'], ['neve', 'Nevando'], ['neblina', 'Neblina'], ['vento', 'Ventania']];
+  /* (lote 7, parte 5c) O clima do dia do Mapa-múndi (os mesmos de lá — e do Jornal): o nome, o que uma noite nele mexe no
+     Conforto (a proposta do descanso longo) e o desenho daqui que mais se parece. */
+  const CLIMA_MUNDO = {
+    sol: { nome: 'Ensolarado', conf: 0, acamp: 'limpo' }, nublado: { nome: 'Nublado', conf: 0, acamp: 'limpo' }, chuva: { nome: 'Chuva', conf: -5, acamp: 'chuva' },
+    tempestade: { nome: 'Tempestade', conf: -10, acamp: 'tempestade' }, neve: { nome: 'Neve', conf: -10, acamp: 'neve' }, nevoa: { nome: 'Névoa', conf: 0, acamp: 'neblina' },
+    vento: { nome: 'Ventania', conf: -5, acamp: 'vento' }, calor: { nome: 'Calor', conf: -5, acamp: 'limpo' }, frio: { nome: 'Frio', conf: -10, acamp: 'limpo' },
+  };
   const AREAS = [['fogueira', 'Fogueira'], ['oficinas', 'Oficinas'], ['convivio', 'Convívio'], ['guarda', 'Guarda e Cuidado']];
   const areaOk = a => (AREAS.some(x => x[0] === a) ? a : 'fogueira');
 
@@ -364,6 +371,9 @@
     let rec = Math.max(0, regra.rec + ef.rec), conf = regra.conf + ef.conf;
     const san = regra.san + ef.san;
     if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
+    // (lote 7, parte 5c) o clima da noite (o do Mapa-múndi, quando o mestre deixa): soma no Conforto do descanso longo
+    const clima = longo && opt && ehObj(opt.clima) && CLIMA_MUNDO[opt.clima.k] ? { k: opt.clima.k, nome: CLIMA_MUNDO[opt.clima.k].nome, conf: inteiro(opt.clima.conf, CLIMA_MUNDO[opt.clima.k].conf, -100, 100) } : null;
+    if (clima) conf += clima.conf;
     const linhas = pessoas.map((p, i) => {
       // o que vale para esta pessoa: a estrutura que a alcança, as rações que ela come e as de banquete (cada tipo uma vez)
       const come = porcoes[i], eP = longo ? efeitosDe(camp, p) : { conf: 0, san: 0, rec: 0 };
@@ -372,6 +382,7 @@
       let rec = Math.max(0, regra.rec + eP.rec + eR.rec), conf = regra.conf + eP.conf + eR.conf;
       const san = regra.san + eP.san + eR.san;
       if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
+      if (clima) conf += clima.conf;
       const fx = [].concat(...delas.map(pv => pv.fx.map(f => Object.assign({ de: pv.nome || 'Ração' }, f)))).concat(longo ? fxDe(camp, p) : []);
       // os bônus "até o próximo descanso" que acabam (os de antes; os que este descanso dá entram depois) — ou que ficam
       const tmp = (Array.isArray(p.tmp) ? p.tmp : []).filter(ehObj).map(b => ({ id: String(b.id), n: texto(b.n, 60), k: String(b.k || ''), v: num(b.v, 0) }));
@@ -389,7 +400,7 @@
     }
     return { tipo: longo ? 'longo' : 'curto', n, custo, disponivel, gasto, falta, consumo, rec: Math.round(rec * 10) / 10, conf, san, linhas, efeitos: ef,
       servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov,
-      tiraBonus: tira };
+      tiraBonus: tira, clima };
   }
   // o que uma pessoa recupera, com a recuperação, o Conforto e a Sanidade que valem para ela
   function linhaDoDescanso(p, longo, regra, rec, conf, san) {
@@ -463,6 +474,7 @@
     if (plano.falta) p.push('faltaram ' + plano.falta + (plano.falta === 1 ? ' ração' : ' rações'));
     if (plano.rec) p.push('recuperação de ' + plano.rec + '%');
     if (plano.conf) p.push('Conforto ' + comSinal(plano.conf));
+    if (plano.clima) p.push('noite de ' + plano.clima.nome.toLocaleLowerCase('pt-BR'));      // (lote 7, parte 5c)
     if (plano.san) p.push('Sanidade ' + comSinal(plano.san));
     // (o descanso que não tira os bônus fica anotado: é a exceção)
     if (plano.tiraBonus === false) p.push('os bônus “até o próximo descanso” continuam');
@@ -527,7 +539,7 @@
 
   const AcampNucleo = { HORAS, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
     textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
-    LUGARES, CLIMAS, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
+    LUGARES, CLIMAS, CLIMA_MUNDO, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
     FAD_MAX, paraDaEspecial };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampNucleo;
   if (typeof window !== 'undefined') window.AcampNucleo = AcampNucleo;

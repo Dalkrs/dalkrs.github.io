@@ -181,6 +181,42 @@
     patrulha: { nome: 'Patrulha', sigla: 'PAT', cor: '#5a8fc0', pt: 4, svg: '<path d="M17 2v20M15 5l2-3 2 3M3 7h9v5c0 4-2.5 6.5-4.5 8C5.5 18.5 3 16 3 12z"/>' },
     exercito: { nome: 'Exército', sigla: 'EXE', cor: '#c0503a', pt: 2, svg: '<path d="M5 22V2M5 3h13l-3.5 4.5L18 12H5M9 16l3 3M12 16l-3 3"/>' },
   };
+  /* (lote 7, parte 5c) O clima do dia: os mesmos do Jornal e da Meditação (o mesmo desenho). conf: o que uma noite nele
+     mexe no Conforto de quem acampa (a proposta do Acampamento); cena: o clima da cena gerada (os das Cenas); acamp: o
+     clima do desenho do Acampamento. */
+  const CLIMAS = {
+    sol: { nome: 'Ensolarado', conf: 0, cena: '', acamp: 'limpo', svg: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>' },
+    nublado: { nome: 'Nublado', conf: 0, cena: '', acamp: 'limpo', svg: '<path d="M7 18.5a4.2 4.2 0 0 1-.4-8.4A5.6 5.6 0 0 1 17.4 9a4.3 4.3 0 0 1 .3 8.6z"/>' },
+    chuva: { nome: 'Chuva', conf: -5, cena: 'chuva', acamp: 'chuva', svg: '<path d="M7 14.5a4 4 0 0 1-.4-8A5.4 5.4 0 0 1 17 5.6a4.1 4.1 0 0 1 .3 8.2"/><path d="M8.5 17l-1 2.6M12.5 17l-1 2.6M16.5 17l-1 2.6"/>' },
+    tempestade: { nome: 'Tempestade', conf: -10, cena: 'chuva', acamp: 'tempestade', svg: '<path d="M7 14a4 4 0 0 1-.4-8A5.4 5.4 0 0 1 17 5.1a4.1 4.1 0 0 1 .3 8.2"/><path d="M12.5 12.5 10 17h3.4l-2.2 4.4"/>' },
+    neve: { nome: 'Neve', conf: -10, cena: 'neve', acamp: 'neve', svg: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.6 4.6 12 7l2.4-2.4M9.6 19.4 12 17l2.4 2.4"/>' },
+    nevoa: { nome: 'Névoa', conf: 0, cena: 'neblina', acamp: 'neblina', svg: '<path d="M4 8.5h16M3 12.5h13M7 16.5h14M5 20h9"/>' },
+    vento: { nome: 'Ventania', conf: -5, cena: '', acamp: 'vento', svg: '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7"/>' },
+    calor: { nome: 'Calor', conf: -5, cena: '', acamp: 'limpo', svg: '<path d="M12 3c1.6 2 1.6 3.6 0 5.6s-1.6 3.6 0 5.6M7 5.5c1.2 1.6 1.2 2.9 0 4.5s-1.2 2.9 0 4.5M17 5.5c1.2 1.6 1.2 2.9 0 4.5s-1.2 2.9 0 4.5M5 20h14"/>' },
+    frio: { nome: 'Frio', conf: -10, cena: '', acamp: 'limpo', svg: '<path d="M12 3v10.5M9.5 5.5H12M9.5 8.5H12M9.5 11.5H12"/><circle cx="12" cy="17" r="3.6"/><path d="M12 13.5v3.5"/>' },
+  };
+  /* A chance de cada clima (%) nas estações de um mundo temperado: a tabela de começo de cada mês vem da estação dele
+     (pela posição do mês no ano: o primeiro e o último são de inverno). O mestre muda mês a mês. */
+  const CLIMA_ESTACOES = {
+    inverno: { sol: 20, nublado: 20, chuva: 10, tempestade: 5, neve: 25, nevoa: 10, vento: 0, calor: 0, frio: 10 },
+    primavera: { sol: 30, nublado: 25, chuva: 25, tempestade: 5, neve: 0, nevoa: 10, vento: 5, calor: 0, frio: 0 },
+    verao: { sol: 45, nublado: 15, chuva: 10, tempestade: 10, neve: 0, nevoa: 0, vento: 0, calor: 20, frio: 0 },
+    outono: { sol: 25, nublado: 25, chuva: 20, tempestade: 5, neve: 0, nevoa: 15, vento: 5, calor: 0, frio: 5 },
+  };
+  // o ajuste de uma região, clima por clima: quanto ela muda a chance do mundo (×) — "mais" e "muito mais" também somam
+  // um pouco (+), para valerem até no mês em que o mundo não tem aquele clima (o deserto tem calor no inverno)
+  const AJUSTES_CLIMA = { nunca: { nome: 'Nunca', x: 0, mais: 0 }, menos: { nome: 'Menos', x: 0.5, mais: 0 }, mais: { nome: 'Mais', x: 2, mais: 5 }, muito: { nome: 'Muito mais', x: 4, mais: 15 } };
+  /* (lote 7, parte 5c) As zonas de perigo (como a de guerra: uma área desenhada, com começo e fim): o que passar o dia
+     dentro mexe na Fadiga (em passos da pilha), no Conforto e na Sanidade de quem está nela — a proposta do "Próximo
+     dia". O mestre muda os números de cada zona. */
+  const ZONAS = {
+    guerra: { nome: 'Zona de guerra' },
+    tempestade: { nome: 'Tempestade', cor: '#5f87c9', ef: { fad: -1, conf: -10, san: 0 } },
+    praga: { nome: 'Praga', cor: '#8fa83f', ef: { fad: -1, conf: -5, san: -2 } },
+    frio: { nome: 'Frio extremo', cor: '#9cc7e8', ef: { fad: -1, conf: -10, san: 0 } },
+    maldita: { nome: 'Terra amaldiçoada', cor: '#7a4f9a', ef: { fad: 0, conf: -5, san: -5 } },
+    monstro: { nome: 'Território de monstro', cor: '#b5652f', ef: { fad: -1, conf: -5, san: -2 } },
+  };
   // o que quem anda faz no fim da rota
   const MODOS_ROTA = { ida: 'Para no fim (só ida)', volta: 'Volta pelo mesmo caminho (ida e volta)', circuito: 'Recomeça do começo (circuito)' };
   const MAX_PARADAS = 30;
@@ -468,6 +504,66 @@
       out.eventos.push(e);
     }
     return out;
+  }
+
+  /* ---------------- (lote 7, parte 5c) o clima do dia ----------------
+     A tabela do mundo dá a chance de cada clima em cada mês (a de começo vem da estação do mês); uma região pode ajustar
+     clima por clima (nunca, menos, mais, muito mais). O sorteio do dia é um número só para o mapa inteiro (do id do mapa
+     e do dia: sai igual em todo aparelho e não muda ao repintar), e cada região o lê com as chances dela — um dia de
+     tempestade tende a ser de tempestade em todo lugar, e no deserto vira calor. O mestre troca o de hoje à mão. */
+  function estacaoDoMes(i, n) { const f = (i + 0.5) / Math.max(1, n); return f < 1 / 6 || f >= 11 / 12 ? 'inverno' : f < 5 / 12 ? 'primavera' : f < 2 / 3 ? 'verao' : 'outono'; }
+  const tabelaPadraoDoMes = (i, n) => Object.assign({}, CLIMA_ESTACOES[estacaoDoMes(i, n)]);
+  // a chance de cada clima num mês (a da tabela do mapa, ou a de começo), com o ajuste da região
+  function chancesDoClima(mapa, mes, regiao) {
+    const n = mesesDe(ehObj(mapa) ? mapa.cal : null).length, tab = ehObj(mapa) && ehObj(mapa.clima) && Array.isArray(mapa.clima.tab) ? mapa.clima.tab : null;
+    const base = tab && ehObj(tab[mes]) ? tab[mes] : tabelaPadraoDoMes(mes, n), out = {};
+    for (const k of Object.keys(CLIMAS)) { const aj = ehObj(regiao) && ehObj(regiao.clima) ? AJUSTES_CLIMA[regiao.clima[k]] : null; out[k] = Math.max(0, num(base[k], 0)) * (aj ? aj.x : 1) + (aj ? aj.mais : 0); }
+    return out;
+  }
+  // o número do dia, de 0 a 1 (o mesmo para o mapa inteiro)
+  function sorteioDoDia(mapa, dia) {
+    let h = 2166136261;
+    for (const ch of String((ehObj(mapa) && mapa.id) || 'mapa') + ':' + Math.floor(num(dia, 0))) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  function climaSorteado(mapa, dia, regiao) {
+    const d = diaDe(mapa, dia), mes = dataDe(ehObj(mapa) ? mapa.cal : null, d).mes, ch = chancesDoClima(mapa, mes, regiao), ks = Object.keys(CLIMAS);
+    const soma = ks.reduce((t, k) => t + ch[k], 0);
+    if (!(soma > 0)) return 'sol';
+    let r = sorteioDoDia(mapa, d) * soma, ult = 'sol';
+    for (const k of ks) { if (!(ch[k] > 0)) continue; ult = k; if (r < ch[k]) return k; r -= ch[k]; }
+    return ult;
+  }
+  /* O clima de um dia (no mundo, ou numa região): o que o mestre escolheu à mão para aquele dia, senão o sorteado.
+     Na projeção (quem joga), o clima de hoje já vem pronto (clima.hoje, e ch nas regiões e nos grupos). */
+  function climaDoDia(mapa, dia, regiao) {
+    const d = diaDe(mapa, dia), mao = regiao ? (ehObj(regiao) ? regiao.chj : null) : ehObj(mapa) && ehObj(mapa.clima) ? mapa.clima.mao : null;
+    if (ehObj(mao) && mao.d === d && tem(CLIMAS, mao.k)) return { k: mao.k, mao: true };
+    if (regiao && tem(CLIMAS, regiao.ch) && !regiao.clima) return { k: regiao.ch, mao: false };
+    if (!regiao && ehObj(mapa) && ehObj(mapa.clima) && tem(CLIMAS, mapa.clima.hoje) && !Array.isArray(mapa.clima.tab)) return { k: mapa.clima.hoje, mao: false };
+    return { k: climaSorteado(mapa, d, regiao), mao: false };
+  }
+  // a região que manda no clima de um ponto: a mais de dentro com ajuste (ou com o clima de hoje escolhido à mão)
+  function regiaoDoClima(mapa, x, y, dia) {
+    const d = diaDe(mapa, dia), manda = r => !!(r.clima || (r.chj && r.chj.d === d) || tem(CLIMAS, r.ch));
+    // (a de dentro sem ajuste usa a de fora: sobe pelos pais)
+    for (const r0 of regioesEm(mapa, x, y)) {
+      let r = r0, n = 0;
+      while (r && n <= MAX_NIVEL) { if (manda(r)) return r; r = r.pai ? objDe(mapa, r.pai, 'r') : null; n++; }
+    }
+    return null;
+  }
+  function climaNoPonto(mapa, x, y, dia) { const reg = regiaoDoClima(mapa, x, y, dia); return Object.assign(climaDoDia(mapa, dia, reg), { regiao: reg }); }
+  /* (lote 7, parte 5c) As zonas de perigo acontecendo num ponto (a forma do dia), e o que elas mexem juntas. */
+  function zonasNoPonto(mapa, x, y, dia) {
+    const d = diaDe(mapa, dia);
+    return (ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : []).filter(z => z.k === 'z' && z.tipo && z.tipo !== 'guerra' && zonaAtiva(z, d) && dentroPoligono([num(x, 0), num(y, 0)], formaNoDia(z, d)));
+  }
+  function efeitoDasZonas(zs) {
+    const ef = { fad: 0, conf: 0, san: 0 };
+    for (const z of zs || []) { const e = ehObj(z.ef) ? z.ef : (ZONAS[z.tipo] || {}).ef || {}; ef.fad += num(e.fad, 0); ef.conf += num(e.conf, 0); ef.san += num(e.san, 0); }
+    return ef;
   }
 
   /* ---------------- zonas de guerra ---------------- */
@@ -1224,6 +1320,35 @@
       return out;
     }).filter(Boolean);
   }
+  /* (lote 7, parte 5c) o clima: a tabela (um mês por linha, só quando o mestre mudou; sem ela, a de começo), o de hoje
+     escolhido à mão ({ d, k }) e, na projeção, o de hoje pronto (hoje). O ajuste de uma região: clima → nunca, menos,
+     mais ou muito. */
+  const normDiaK = v => (ehObj(v) && tem(CLIMAS, v.k) && Number.isFinite(num(v.d, NaN)) ? { d: inteiro(v.d, 0, 0, 1e9), k: v.k } : null);
+  function normPesosClima(v) {
+    if (!ehObj(v)) return null;
+    const out = {};
+    let soma = 0;
+    for (const k of Object.keys(CLIMAS)) { out[k] = inteiro(v[k], 0, 0, 100); soma += out[k]; }
+    return soma > 0 ? out : null;
+  }
+  function normClima(v, nMeses) {
+    const c = ehObj(v) ? v : {}, out = {};
+    if (Array.isArray(c.tab) && c.tab.length) out.tab = Array.from({ length: nMeses }, (_, i) => normPesosClima(c.tab[i]) || tabelaPadraoDoMes(i, nMeses));
+    const mao = normDiaK(c.mao);
+    if (mao) out.mao = mao;
+    if (tem(CLIMAS, c.hoje)) out.hoje = c.hoje;
+    return out;
+  }
+  function normAjusteClima(v) {
+    if (!ehObj(v)) return null;
+    const out = {};
+    for (const k of Object.keys(CLIMAS)) if (tem(AJUSTES_CLIMA, v[k])) out[k] = v[k];
+    return Object.keys(out).length ? out : null;
+  }
+  function normEfZona(v, tipo) {
+    const p = (ZONAS[tipo] || {}).ef || { fad: 0, conf: 0, san: 0 }, e = ehObj(v) ? v : p;
+    return { fad: inteiro(e.fad, p.fad, -5, 5), conf: inteiro(e.conf, p.conf, -100, 100), san: inteiro(e.san, p.san, -100, 100) };
+  }
   function normAndar(o, out, comParadas) {
     if (o.modo === 'volta' || o.modo === 'circuito') out.modo = o.modo;
     if (out.modo === 'volta' && num(o.sentido, 1) < 0) out.sentido = -1;
@@ -1252,6 +1377,7 @@
         const bol = bolNorm(o.bol);
         if (bol) g.bol = bol;
         if (tem(TIPOS_GRUPO, o.tipo)) g.tipo = o.tipo;           // (lote 7, parte 5b) caravana, patrulha, exército
+        if (tem(CLIMAS, o.ch)) g.ch = o.ch;                       // (lote 7, parte 5c) na projeção: o clima de hoje onde ele está
         return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
@@ -1260,6 +1386,11 @@
         const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).slice(0, 200).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt) }));
         const r = Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens }, pai: idRef(o.pai) });
         if (tem(ESTILOS_CENA, o.estilo)) r.estilo = o.estilo;          // (lote 7, parte 4b) o estilo das cenas geradas aqui
+        // (lote 7, parte 5c) o clima: o ajuste da região, o de hoje escolhido à mão e (na projeção) o de hoje pronto
+        const aj = normAjusteClima(o.clima), chj = normDiaK(o.chj);
+        if (aj) r.clima = aj;
+        if (chj) r.chj = chj;
+        if (tem(CLIMAS, o.ch)) r.ch = o.ch;
         return r;
       }
       case 'e': {
@@ -1299,7 +1430,11 @@
         const ini = o.ini == null || o.ini === '' ? (dia == null ? null : dia) : inteiro(o.ini, dia == null ? 0 : dia, 0, 1e9);
         let fim = o.fim == null || o.fim === '' ? null : inteiro(o.fim, null, 0, 1e9);
         if (fim != null && ini != null && fim < ini) fim = ini;
-        return Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ini, fim, fases: normFases(o.fases) });
+        const z = Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ini, fim, fases: normFases(o.fases) });
+        // (lote 7, parte 5c) a zona de perigo: o tipo e o que ela mexe (a zona de guerra continua sem tipo)
+        // (sem os números, valem os de começo do tipo: efeitoDasZonas)
+        if (tem(ZONAS, o.tipo) && o.tipo !== 'guerra') { z.tipo = o.tipo; if (ehObj(o.ef)) z.ef = normEfZona(o.ef, o.tipo); }
+        return z;
       }
       case 'l': {
         const pts = pontos(o.pts, leve ? 0 : 2);
@@ -1492,6 +1627,9 @@
       cal, nevoa: { on: sim(nev.on), ops: normOps(nev.ops) },
       faccoes: normFaccoes(m.faccoes), objs: [],
     };
+    // (lote 7, parte 5c) o clima (só quando há algo: o mapa de antes fica igual)
+    const clima = normClima(m.clima, mesesDe(cal).length);
+    if (Object.keys(clima).length) mapa.clima = clima;
     mapa.terrenos = normTerrenos(m.terrenos);
     mapa.hexes = normHexes(m.hexes, mapa.terrenos);
     mapa.pintura = normPintura(m.pintura, mapa.terrenos);
@@ -1649,10 +1787,14 @@
     // (lote 6) as bolinhas dos grupos e a facção que cada região herda são contadas aqui, no mapa inteiro: os custos e
     // as regiões de cima podem não ir para os jogadores
     const bols = new Map(), facEf = new Map();
+    // (lote 7, parte 5c) o clima de hoje: no mundo, nas regiões com ajuste (ou com o de hoje escolhido à mão) e onde cada
+    // grupo está — pronto, porque a tabela e os ajustes são do mestre
+    const chMundo = climaDoDia(m, dia, null).k, chReg = new Map(), chGru = new Map();
     for (const o of m.objs) {
-      if (o.k === 'g') { const b = bolinhas(m, o); if (b) bols.set(o.id, [b.feitas, b.total]); }
-      else if (o.k === 'r') facEf.set(o.id, facDaRegiao(m, o));
+      if (o.k === 'g') { const b = bolinhas(m, o); if (b) bols.set(o.id, [b.feitas, b.total]); chGru.set(o.id, climaNoPonto(m, o.x, o.y, dia).k); }
+      else if (o.k === 'r') { facEf.set(o.id, facDaRegiao(m, o)); if (o.clima || (o.chj && o.chj.d === dia)) chReg.set(o.id, climaDoDia(m, dia, o).k); }
     }
+    m.clima = { hoje: chMundo };
     const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
     m.faccoes = m.faccoes.filter(f => !f.oculta);
     for (const f of m.faccoes) {
@@ -1675,6 +1817,7 @@
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
         delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
+        if (chGru.has(o.id)) o.ch = chGru.get(o.id);
       }
       else if (o.k === 'e') {
         if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue;
@@ -1682,7 +1825,7 @@
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null; delete o.peso;
         delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido;     // (lote 7, parte 5b) a rota é do mestre
       }
-      else if (o.k === 'r') { delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.clima; delete o.chj; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' && o.esc) continue;                  // (lote 7, parte 5b) a rota escondida é do mestre
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
@@ -1690,6 +1833,7 @@
         // a zona como ela está hoje: as fases que vêm (e o fim planejado) são do mestre
         if (!zonaAtiva(o, dia)) continue;
         o.pts = formaNoDia(o, dia); o.fases = []; o.fim = null;
+        delete o.ef;                                             // (lote 7, parte 5c) o que a zona de perigo mexe é do mestre
         if (escondidas.has(o.a)) o.a = null;
         if (escondidas.has(o.b)) o.b = null;
         if (todoCoberto(o.pts)) continue;
@@ -1713,6 +1857,7 @@
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
     TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
+    CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },

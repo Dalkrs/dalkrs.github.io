@@ -347,5 +347,19 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   const xs = [...D.cena({ area: 'guarda', construcoes: guarda }).matchAll(/class="construcao" data-tipo="(\w+)" data-nivel="\d" transform="translate\(([-\d.]+) /g)].map(m => +m[2]);
   ok(xs.length === guarda.length - 1 && xs.every(x => x >= 0 && x <= 1600), 'as ' + guarda.length + ' da Guarda e Cuidado no nível excelente cabem na cena (a paliçada vai ao fundo, na largura toda) — ' + xs.join(', '));
 }
+
+/* ---- (lote 7, parte 5c) a noite no clima do Mapa-múndi ---- */
+{
+  const M = require('../../mundo/nucleo.js');
+  ok(Object.keys(M.CLIMAS).every(k => N.CLIMA_MUNDO[k] && N.CLIMA_MUNDO[k].nome === M.CLIMAS[k].nome && N.CLIMA_MUNDO[k].conf === M.CLIMAS[k].conf && N.CLIMA_MUNDO[k].acamp === M.CLIMAS[k].acamp) && Object.keys(N.CLIMA_MUNDO).length === Object.keys(M.CLIMAS).length
+    && Object.values(N.CLIMA_MUNDO).every(c => N.CLIMAS.some(x => x[0] === c.acamp)), 'os climas do Mapa-múndi, iguais aos de lá (o nome, o Conforto da noite e o desenho daqui)');
+  const camp = N.normalizar({ provisoes: [{ id: 'p1', nome: 'Pão', qtd: 10 }] });
+  const ana = { id: 'a', nome: 'Ana', recursos: [], san: 80, conf: 40, poderes: [], fad: null, tmp: [] };
+  const sem = N.planejar(camp, 'longo', [ana]), com = N.planejar(camp, 'longo', [ana], { clima: { k: 'chuva', conf: -5 } }), curto = N.planejar(camp, 'curto', [ana], { clima: { k: 'chuva', conf: -5 } });
+  eq([com.conf, com.linhas[0].conf.para, com.clima], [sem.conf - 5, sem.linhas[0].conf.para - 5, { k: 'chuva', nome: 'Chuva', conf: -5 }], 'a noite de chuva: −5 no Conforto do descanso longo');
+  ok(/noite de chuva/.test(N.resumoDescanso(com)) && !/noite de/.test(N.resumoDescanso(sem)), 'o resumo do descanso diz a noite de chuva');
+  eq([curto.clima, curto.conf], [null, N.planejar(camp, 'curto', [ana]).conf], 'o descanso curto não é a noite: o clima não conta');
+  eq(N.planejar(camp, 'longo', [ana], { clima: { k: 'xyz', conf: -50 } }).clima, null, 'clima que não existe: nada');
+}
 console.log(bad ? `${n - bad} verificações passaram, ${bad} falharam` : `${n} verificações passaram`);
 process.exit(bad ? 1 : 0);

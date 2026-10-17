@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-9",
+      "data": "2026-10-17",
+      "titulo": "O clima do dia e as zonas de perigo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o clima de hoje aparece junto da data, para todos (Ensolarado, Nublado, Chuva, Tempestade, Neve, Névoa, Ventania, Calor e Frio — os mesmos do Jornal e da Meditação). Cada dia ele é sorteado pela tabela do mês; as regiões podem ter o clima delas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a tabela do clima (aba Mapa) com a chance de cada clima em cada mês — a de começo segue as estações —, o ajuste de cada região (nunca, menos, mais, muito mais: o deserto sem chuva e com calor) e, na aba Hoje, trocar o clima de hoje à mão. As cenas geradas pelo mapa já saem com o clima do dia."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: as zonas de perigo (ferramenta Frente → Zona de perigo): tempestade, praga, frio extremo, terra amaldiçoada e território de monstro. Quando um grupo termina o dia dentro de uma, o “Próximo dia” propõe mexer na Fadiga, no Conforto e na Sanidade da equipe, com a prévia de cada um — você escolhe quem, aplica e pode desfazer. Os números de cada zona são seus."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Acampamento e Meditação: com um mapa mostrado aos jogadores, o clima de hoje do Mapa-múndi aparece na cena (com “Usar na cena” e “Usar no fundo da cena”), e o descanso longo propõe a noite naquele clima (a chuva, Conforto −5), marcada — desmarque se não quiser."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-8",
       "data": "2026-10-17",
       "titulo": "Caravanas, patrulhas e exércitos",

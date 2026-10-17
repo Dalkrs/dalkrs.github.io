@@ -124,6 +124,17 @@
 
   function lerLocal() { try { const d = JSON.parse(guarda.ler(L_DOCS) || 'null'); local = ehObj(d) ? d : {}; } catch (e) { local = {}; } }
   function salvarLocal() { if (!guarda.gravar(L_DOCS, j(local))) toast('Não deu para guardar neste navegador (a imagem pode ser grande demais para ele).'); }
+  /* (lote 7, parte 5c) O clima de hoje no Mapa-múndi (o do mapa mostrado aos jogadores, onde o grupo está; senão, o do
+     mundo): um dos climas daqui (os do Jornal), ou null fora de uma mesa ou sem mapa mostrado. */
+  function climaDoMundo() {
+    if (!naMesa || !D) return null;
+    const dados = id => { const l = D.pegar(id); return l && !l.apagado && ehObj(l.dados) ? l.dados : null; };
+    const idx = dados('mundo:indice'), mostrado = idx && typeof idx.mostrado === 'string' ? idx.mostrado : null, m = mostrado ? dados('mundo:pub:' + mostrado) : null;
+    if (!m) return null;
+    const g = (Array.isArray(m.objs) ? m.objs : []).find(o => ehObj(o) && o.k === 'g' && !o.tipo && N.CLIMAS.includes(o.ch));
+    const k = g ? g.ch : ehObj(m.clima) ? m.clima.hoje : null;
+    return N.CLIMAS.includes(k) ? k : null;
+  }
   function doc(id) {
     if (!naMesa) return local[id] == null ? null : local[id];
     const l = D && D.pegar(id);
@@ -364,6 +375,10 @@
           h('button', { type: 'button', 'data-hora': id, 'aria-pressed': String(c.hora === id), onclick: () => mudarDoc(CENA, 'mudar a hora', N.normCena, x => { if (x.hora === id) return false; x.hora = id; }) }, nome))));
         out.push(h('label', { class: 'rot' }, 'Clima', h('select', { class: 'in', 'data-k': 'c:clima', value: c.clima, onchange: function () { const v = this.value; mudarDoc(CENA, 'mudar o clima', N.normCena, x => { x.clima = v; }); } },
           h('option', { value: '', text: 'Céu limpo' }), N.CLIMAS.map(id => h('option', { value: id, text: climaNome(id) })))));
+        // (lote 7, parte 5c) o clima de hoje no Mapa-múndi: aparece aqui, e o mestre o usa no fundo da cena se quiser
+        const cm = climaDoMundo();
+        if (cm) out.push(h('p', { class: 'note', 'data-k': 'c:clima-mundo' }, 'Hoje no Mapa-múndi: ' + climaNome(cm) + '. ',
+          cm !== c.clima ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:clima-usar', onclick: () => mudarDoc(CENA, 'usar o clima do Mapa-múndi', N.normCena, x => { if (x.clima === cm) return false; x.clima = cm; }) }, 'Usar no fundo da cena') : null));
         if (c.img) out.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:sem-img', onclick: () => mudarDoc(CENA, 'tirar a imagem do mestre', N.normCena, x => { x.img = null; }) }, 'Voltar ao desenho'));
       }
     } else {
@@ -910,7 +925,7 @@
       TCx.ponte.aoMudar(e => { const antes = j((st && st.membros) || []); st = e; if (pronto && antes !== j(e.membros || [])) pintar(); });
     }
     if (naMesa) {
-      D.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith('medit:')) pintar(); });
+      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('medit:') || l.id === 'mundo:indice' || l.id.startsWith('mundo:pub:'))) pintar(); });
       P.aoMudar(() => pintar());
     } else $('salvo').textContent = 'Neste navegador';
     montarPalco();

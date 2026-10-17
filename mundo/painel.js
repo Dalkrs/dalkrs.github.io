@@ -149,7 +149,11 @@
       case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return p ? 'Parte de ' + nomeDe(p, m) : f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
       case 't': return 'Rota sem nome';
       case 'f': return 'Frente sem nome';
-      case 'z': { const a = facDe(m, o.a), b = facDe(m, o.b); return a && b ? 'Guerra: ' + nomeFac(a) + ' × ' + nomeFac(b) : 'Zona de guerra'; }
+      case 'z': {
+        const Z = (N().ZONAS || {})[o.tipo];                                 // (lote 7, parte 5c) a zona de perigo
+        if (Z && o.tipo !== 'guerra') return Z.nome;
+        const a = facDe(m, o.a), b = facDe(m, o.b); return a && b ? 'Guerra: ' + nomeFac(a) + ' × ' + nomeFac(b) : 'Zona de guerra';
+      }
       case 'l': return ((N().LINHAS || {})[o.estilo] || { nome: 'Linha' }).nome + ' sem nome';
       case 'c': return ((N().CARIMBOS || {})[o.ic] || { nome: 'Carimbo' }).nome;
       case 'x': return 'Texto';
@@ -179,7 +183,10 @@
       case 'e': return (N_.EVENTOS[o.tipo] || N_.EVENTOS.guerra).nome + ' · ' + (mestre ? statusEvento(o, m.cal.dia) : 'força ' + o.forca);
       case 't': return 'Rota · ' + (N_.VIAS[o.via] || N_.VIAS.trilha).nome;
       case 'f': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Frente' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : ''); }
-      case 'z': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Zona de guerra' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : '') + (mestre ? ' · ' + statusZona(o, m.cal.dia) : ''); }
+      case 'z': {
+        if (zonaDePerigo(o)) return 'Zona de perigo · ' + N_.ZONAS[o.tipo].nome + (mestre ? ' · ' + statusZona(o, m.cal.dia) : '');
+        const a = facDe(m, o.a), b = facDe(m, o.b); return 'Zona de guerra' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : '') + (mestre ? ' · ' + statusZona(o, m.cal.dia) : '');
+      }
       case 'l': return ((N_.LINHAS || {})[o.estilo] || { nome: 'Linha' }).nome;
       case 'c': return 'Carimbo';
       case 'x': return 'Texto' + ((N_.FONTES || {})[o.fonte] ? ' · ' + N_.FONTES[o.fonte].nome.toLocaleLowerCase('pt-BR') : '');
@@ -209,6 +216,7 @@
       case 't': return h('span', { class: 'ico linha' }, glifo(ROTA_SVG, 18));
       case 'f': return h('span', { class: 'ico linha' }, glifo(FRENTE_SVG, 18));
       case 'z': {
+        if (zonaDePerigo(o)) { const c = N().ZONAS[o.tipo].cor; return h('span', { class: 'ico reg', style: { background: 'repeating-linear-gradient(135deg, ' + c + ' 0 3px, rgba(0,0,0,.35) 3px 6px)' } }); }
         const a = facDe(m, o.a), b = facDe(m, o.b), ca = a ? a.cor : '#9aa3b5', cb = b ? b.cor : '#5f6675';
         return h('span', { class: 'ico reg', style: { background: 'repeating-linear-gradient(45deg, ' + ca + ' 0 4px, ' + cb + ' 4px 8px)' } });
       }
@@ -565,6 +573,17 @@
         if (tt.dataset.t !== longo) { tt.dataset.t = longo; tt.replaceChildren(h('span', { class: 't-longo', text: longo }), h('span', { class: 't-curto', text: curto })); }
         tt.title = 'O tempo de marcha de agora: o dia tem ' + tpdDe(v) + ' tempos.';
       }
+      // (lote 7, parte 5c) o clima de hoje no mundo, para todos (clicar abre a aba Hoje)
+      const ct = $('climaTxt');
+      if (ct) {
+        const c = N().climaDoDia ? N().climaDoDia(v, v.cal.dia, null) : null, def = c ? climaDef(c.k) : null;
+        ct.hidden = !def;
+        if (def) {
+          if (ct.dataset.t !== c.k) { ct.dataset.t = c.k; ct.replaceChildren(glifo(def.svg, 14), h('span', { class: 'c-nome', text: def.nome })); }
+          ct.title = 'O clima de hoje no mundo: ' + def.nome + (c.mao ? ' (escolhido por você)' : '') + '. Na aba Hoje, ' + (ed ? 'você troca o de hoje e muda a tabela.' : 'o das regiões.');
+          ct.setAttribute('aria-label', 'Clima de hoje: ' + def.nome + '. Abrir a aba Hoje');
+        }
+      }
       $('diaMenos').disabled = !ed || v.cal.dia <= 0;
       $('diaMais').disabled = !ed;
       const tm = $('tempoMais');
@@ -630,6 +649,7 @@
     on('diaMenos', () => passarDias(-1));
     on('diaMais', () => passarTempoMundo('dia'));
     on('tempoMais', () => passarTempoMundo('tempo'));
+    on('climaTxt', () => abrirAba('hoje'));                // (lote 7, parte 5c) o clima de hoje: a aba Hoje
     on('btDesfazer', desfazerPeloBotao);
     on('irCenas', () => { antesDeSair(); TC.ponte.ir('cenas'); });
     on('irAcamp', () => { antesDeSair(); TC.ponte.ir('acampamento'); });
@@ -1135,6 +1155,7 @@
         historicoHonra(o, v, false)));
     }
     if (o.k === 'r') {
+      if (o.ch && climaDef(o.ch)) out.push(linhaDoClima({ k: o.ch }, 'ler:clima', 'o clima de hoje aqui'));     // (lote 7, parte 5c)
       const f = facDaReg(v, o), p = paiDe(v, o), dentro = v.objs.filter(x => x.k === 'r' && x.pai === o.id);
       if (p) out.push(nota('Parte de ' + nomeDe(p, v) + '.'));
       if (f) out.push(h('p', { class: 'note' }, h('i', { class: 'bola', style: { background: f.cor } }), ' Território de ' + nomeFac(f)));
@@ -1172,7 +1193,7 @@
     if (o.k === 'c') out.push(secCarimbo(o, grava));
     if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m));
-    if (o.k === 'r') out.push(secRegiao(o, m, grava));
+    if (o.k === 'r') out.push(secRegiao(o, m, grava), secClimaRegiao(o, m));
     if (o.k === 'e') out.push(...secEvento(o, m, grava));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
@@ -1270,6 +1291,8 @@
   }
   const comum = (m, x, y) => {
     const e = estiloNoPonto(m, x, y), c = N().cenaNoPonto(m, x, y), out = { hora: horaComEventos(N().horaDoTempo(m.cal), c), clima: c.clima };
+    // (lote 7, parte 5c) sem clima de evento, o clima do dia (o da região, ou o do mundo)
+    if (!out.clima && N().climaNoPonto) { const cl = N().CLIMAS[N().climaNoPonto(m, x, y).k]; if (cl && cl.cena) out.clima = cl.cena; }
     if (e) out.estilo = e;
     if (c.fx.length) out.fx = c.fx;
     if (c.seco) out.seco = true;
@@ -1672,6 +1695,16 @@
     const andou = gruposQueAndaram.length ? ' ' + (gruposQueAndaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, gruposQueAndaram[0]) || {}, m) + '.' : gruposQueAndaram.length + ' grupos andaram.') : '';
     const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
+    // (lote 7, parte 5c) quem terminou o dia dentro de uma zona de perigo: a proposta de mexer na ficha (pelo dia que acabou)
+    if (t.dias > 0 && N_.zonasNoPonto) {
+      const props = [];
+      for (const g of mm.objs) {
+        if (g.k !== 'g' || grupoDoMundo(g)) continue;
+        const zs = N_.zonasNoPonto(mm, g.x, g.y, dia0);
+        if (zs.length) props.push({ g: g.id, nome: nomeDe(g, mm), zonas: zs.map(z => '"' + nomeDe(z, mm) + '"'), ef: N_.efeitoDasZonas(zs) });
+      }
+      if (props.length) proporZonas(props);
+    }
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
@@ -1833,6 +1866,8 @@
      Os grupos do mundo (a caravana, a patrulha, o exército) e os eventos que andam: a rota (desenhada ou traçada de um
      marcador a outro), o que fazem no fim dela (param, voltam ou recomeçam) e as paradas. */
   const grupoDoMundo = o => !!(o && o.k === 'g' && o.tipo && (N().TIPOS_GRUPO || {})[o.tipo]);
+  // (lote 7, parte 5c) a zona de perigo (a de guerra não tem tipo)
+  const zonaDePerigo = o => !!(o && o.k === 'z' && o.tipo && o.tipo !== 'guerra' && (N().ZONAS || {})[o.tipo]);
   let tracado = null;                             // { id, de, para, r }: o "Traçar entre dois marcadores" aberto
   function previaRota(pts) {
     const antes = !!App.previaRota;
@@ -2003,6 +2038,155 @@
     } else out.push(nota('Uma migração, uma peregrinação, uma caravana mercante… podem andar por uma rota com o tempo do mapa.'));
     return secao('Anda pelo mapa', out);
   }
+  /* ---------------- (lote 7, parte 5c) o clima do dia e as zonas de perigo ---------------- */
+  const climaDef = k => (N().CLIMAS || {})[k] || null;
+  const sinal = n => (n > 0 ? '+' : '−') + fmt(Math.abs(n), 0);
+  function textoEfZona(ef) {
+    const p = [];
+    if (ef.fad) p.push('Fadiga ' + sinal(ef.fad) + (Math.abs(ef.fad) === 1 ? ' passo' : ' passos'));
+    if (ef.conf) p.push('Conforto ' + sinal(ef.conf));
+    if (ef.san) p.push('Sanidade ' + sinal(ef.san));
+    return p.join(', ');
+  }
+  const mesTxt = (m, dia) => N().dataDe(m.cal, dia).nomeMes;
+  // o clima de hoje de uma região: o dela (com ajuste, ou escolhido à mão), senão o da de fora, senão o do mundo
+  function climaDaRegiao(m, r, dia) {
+    let p = r, n = 0;
+    const manda = x => !!(x.clima || (x.chj && x.chj.d === dia) || climaDef(x.ch));
+    while (p && n <= 12) { if (manda(p)) return Object.assign(N().climaDoDia(m, dia, p), { de: p }); p = p.pai ? achar(m, p.pai) : null; n++; }
+    return Object.assign(N().climaDoDia(m, dia, null), { de: null });
+  }
+  function linhaDoClima(c, k, txt) {
+    const def = climaDef(c.k);
+    return def ? h('div', { class: 'clima-linha', 'data-k': k }, glifo(def.svg, 20), h('b', { text: def.nome }), txt ? h('small', { text: txt }) : null) : null;
+  }
+  function secClimaHoje(v, ed) {
+    const N_ = N();
+    if (!N_.climaDoDia) return null;
+    const dia = v.cal.dia, c = N_.climaDoDia(v, dia, null), out = [];
+    out.push(linhaDoClima(c, 'hoje:clima', c.mao ? 'escolhido por você' : ed ? 'sorteado pela tabela de ' + mesTxt(v, dia) : ''));
+    const regs = v.objs.filter(r => r.k === 'r' && (r.clima || (r.chj && r.chj.d === dia) || climaDef(r.ch)));
+    if (regs.length) out.push(nota('Nas regiões: ' + regs.map(r => nomeDe(r, v) + ', ' + climaDef(N_.climaDoDia(v, dia, r).k).nome.toLocaleLowerCase('pt-BR')).join('; ') + '.'));
+    if (ed) {
+      const Cs = N_.CLIMAS, sorteado = N_.climaSorteado(v, dia, null);
+      out.push(campoEscolha('hoje:clima-mao', 'Trocar o de hoje', c.mao ? c.k : '', [['', 'O sorteado (' + Cs[sorteado].nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
+        k => App.mudar(k ? 'trocar o clima de hoje' : 'voltar ao clima sorteado', m => {
+          const cl = m.clima || (m.clima = {});
+          if (k) { if (cl.mao && cl.mao.d === m.cal.dia && cl.mao.k === k) return false; cl.mao = { d: m.cal.dia, k }; } else { if (!cl.mao) return false; delete cl.mao; }
+        })));
+      out.push(linha(botao('A tabela do clima…', () => { focarDepois = 'clima:mes'; abrirAba('mapa'); }, { c: 'sm', k: 'hoje:tabela' })));
+      out.push(nota('A cada dia, o clima sai da tabela do mês (as regiões ajustam). Vale nas cenas geradas daqui e, com o mapa mostrado aos jogadores, no Acampamento (a proposta do Conforto da noite) e na Meditação (o enfeite do fundo).'));
+    }
+    return secao('O clima de hoje', out);
+  }
+  // a região: o clima de hoje dela, trocar o de hoje e o ajuste (clima por clima)
+  let ajusteAberto = null;
+  function secClimaRegiao(o, m) {
+    const N_ = N();
+    if (!N_.climaDoDia) return null;
+    const Cs = N_.CLIMAS, A = N_.AJUSTES_CLIMA, id = o.id, dia = m.cal.dia, c = climaDaRegiao(m, o, dia), out = [];
+    const aj = o.clima || {}, nAj = Object.keys(aj).length;
+    out.push(linhaDoClima(c, 'o:' + id + ':clima-hoje', c.mao ? 'escolhido por você' : c.de === o ? 'com o ajuste desta região' : c.de ? 'o de ' + nomeDe(c.de, m) : 'o do mundo'));
+    const proprio = o.clima ? N_.climaSorteado(m, dia, o) : null;
+    out.push(campoEscolha('o:' + id + ':chj', 'Trocar o de hoje aqui', o.chj && o.chj.d === dia ? o.chj.k : '', [['', proprio ? 'O sorteado (' + Cs[proprio].nome + ')' : 'O de fora (' + climaDef(climaDaRegiao(m, Object.assign({}, o, { chj: null, clima: null }), dia).k).nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
+      k => mudarObj(id, k ? 'trocar o clima de hoje na região' : 'voltar ao clima sorteado na região', (x, mm) => {
+        if (k) { if (x.chj && x.chj.d === mm.cal.dia && x.chj.k === k) return false; x.chj = { d: mm.cal.dia, k }; } else { if (!x.chj) return false; delete x.chj; }
+      })));
+    const resumoAj = nAj ? Object.keys(aj).map(k => A[aj[k]].nome.toLocaleLowerCase('pt-BR') + ' ' + Cs[k].nome.toLocaleLowerCase('pt-BR')).join(', ') : 'como o do mundo';
+    out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':aj-resumo', text: 'O clima desta região: ' + resumoAj + '.' }));
+    out.push(linha(botao(ajusteAberto === id ? 'Fechar o ajuste' : 'Ajustar o clima da região…', () => { ajusteAberto = ajusteAberto === id ? null : id; agendar(); }, { c: 'sm', k: 'o:' + id + ':ajustar', expandido: String(ajusteAberto === id) })));
+    if (ajusteAberto === id) {
+      out.push(h('div', { class: 'tabela-clima' }, Object.keys(Cs).map(k => h('label', { class: 'tc-linha' }, glifo(Cs[k].svg, 16), h('span', { text: Cs[k].nome }),
+        campoEscolha('o:' + id + ':aj:' + k, null, aj[k] || '', [['', 'Como o mundo']].concat(Object.keys(A).map(a => [a, A[a].nome])), v => mudarObj(id, 'ajustar o clima da região', x => {
+          const a2 = Object.assign({}, x.clima || {});
+          if ((a2[k] || '') === v) return false;
+          if (v) a2[k] = v; else delete a2[k];
+          if (Object.keys(a2).length) x.clima = a2; else delete x.clima;
+        }), { rotulo: Cs[k].nome + ' nesta região' })))));
+      if (nAj) out.push(linha(botao('Como o do mundo', () => mudarObj(id, 'tirar o ajuste do clima da região', x => { if (!x.clima) return false; delete x.clima; }), { c: 'sm', k: 'o:' + id + ':aj-tirar' })));
+      out.push(nota('"Nunca" tira o clima daqui; "Menos" corta a chance pela metade; "Mais" dobra e "Muito mais" multiplica por quatro (os dois dão um pouco de chance mesmo no mês em que o mundo não tem aquele clima). O dia é o mesmo do mundo: um dia de tempestade no mundo tende a ser de tempestade aqui — se a região não tiver tempestade, vira outro clima.'));
+    }
+    return secao('Clima', out);
+  }
+  // a tabela do clima (aba Mapa): a chance de cada clima, mês a mês
+  let mesClima = null;
+  function secTabelaClima(m) {
+    const N_ = N();
+    if (!N_.tabelaPadraoDoMes) return null;
+    const Cs = N_.CLIMAS, meses = m.cal.meses, hojeMes = N_.dataDe(m.cal, m.cal.dia).mes, nM = meses.length;
+    const i = mesClima != null && mesClima < nM ? mesClima : hojeMes;
+    const tab = m.clima && Array.isArray(m.clima.tab) ? m.clima.tab : null, pesos = tab && tab[i] ? tab[i] : N_.tabelaPadraoDoMes(i, nM), padrao = N_.tabelaPadraoDoMes(i, nM);
+    const soma = Object.keys(Cs).reduce((t, k) => t + (pesos[k] || 0), 0), out = [];
+    out.push(campoEscolha('clima:mes', 'Mês', String(i), meses.map((x, k) => [String(k), x.nome + (k === hojeMes ? ' (hoje)' : '')]), v => { mesClima = Number(v); agendar(); return true; }));
+    out.push(h('div', { class: 'tabela-clima' }, Object.keys(Cs).map(k => h('label', { class: 'tc-linha' }, glifo(Cs[k].svg, 16), h('span', { text: Cs[k].nome }),
+      campoNumero('clima:' + i + ':' + k, null, pesos[k] || 0, n => mudarTabelaClima(i, k, n), { min: 0, max: 100, erro: 'Use de 0 a 100 (%).' }), h('small', { text: '%' })))));
+    out.push(nota(soma === 100 ? 'Somam 100%.' : 'Somam ' + fmt(soma, 0) + '%: as chances valem na proporção (é como se fossem ' + Object.keys(Cs).filter(k => pesos[k] > 0).map(k => Cs[k].nome.toLocaleLowerCase('pt-BR') + ' ' + fmt(pesos[k] * 100 / soma, 0) + '%').join(', ') + ').'));
+    const igual = Object.keys(Cs).every(k => (pesos[k] || 0) === (padrao[k] || 0));
+    out.push(linha(
+      igual ? null : botao('Voltar à de começo neste mês', () => mudarTabelaClima(i, null), { c: 'sm', k: 'clima:padrao' }),
+      tab ? botao('Voltar à de começo em todos os meses', () => App.mudar('voltar à tabela do clima de começo', mm => { if (!mm.clima || !mm.clima.tab) return false; delete mm.clima.tab; if (!Object.keys(mm.clima).length) delete mm.clima; }), { c: 'sm', k: 'clima:padrao-todos' }) : null));
+    out.push(nota('A cada dia, o clima de hoje é sorteado com as chances do mês (a de começo vem da estação: inverno, primavera, verão, outono). As regiões ajustam no painel de cada uma; o de hoje você troca na aba Hoje.'));
+    return secao('A tabela do clima', out);
+  }
+  function mudarTabelaClima(i, k, n) {
+    return App.mudar(k ? 'mudar a tabela do clima' : 'voltar o mês à tabela de começo', mm => {
+      const nM = mm.cal.meses.length, cl = mm.clima || (mm.clima = {});
+      if (!Array.isArray(cl.tab)) cl.tab = Array.from({ length: nM }, (_, j) => N().tabelaPadraoDoMes(j, nM));
+      const atual = Object.assign({}, cl.tab[i] || N().tabelaPadraoDoMes(i, nM));
+      if (k) { if ((atual[k] || 0) === n) return false; atual[k] = n; } else Object.assign(atual, N().tabelaPadraoDoMes(i, nM));
+      if (!Object.values(atual).some(x => x > 0)) { App.toast('Pelo menos um clima precisa ter chance neste mês. Nada mudou.'); return false; }
+      cl.tab[i] = atual;
+    });
+  }
+  /* A proposta das zonas de perigo: o grupo que terminou o dia dentro de uma (no "Próximo dia", ou num "+1 tempo" que
+     virou o dia) — a Fadiga, o Conforto e a Sanidade da equipe (os personagens dos jogadores da campanha), com a prévia
+     de cada um; você escolhe quem e aplica, ou deixa para lá. Um Desfazer volta as fichas. Sem mesa, só o aviso. */
+  async function equipeDaMesa() {
+    const TC_ = window.TC;
+    if (!App.naMesa || !TC_ || !TC_.dados || !TC_.dados.disponivel() || !TC_.rules || !TC_.rules.mexerNaMente) return null;
+    const P = TC_.dados.col('personagens');
+    await P.pronta;
+    const st = (TC_.ponte && TC_.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null;
+    const ehJog = id => !!id && (st.membros || []).some(x => x.id === id && (x.cargo ? x.cargo !== 'mestre' : x.papel === 'jogador'));
+    const lista = P.todas().filter(l => l && !l.apagado && ehJog(l.dono_id) && !(l.ficha && l.ficha.petDe) && (!camp || l.campanha === camp))
+      .map(l => ({ id: l.id, nome: l.nome || 'Sem nome', uso: { mente: true, fadiga: !!TC_.rules.usaFadiga(l.estado || {}, true) } }));
+    return { P, R: TC_.rules, lista };
+  }
+  async function proporZonas(props) {
+    for (const p of props) { if (await propostaDaZona(p) === 'fim') break; }
+  }
+  async function propostaDaZona(p) {
+    const efTxt = textoEfZona(p.ef);
+    if (!efTxt) return;
+    const onde = p.zonas.join(' e ');
+    const eq = await equipeDaMesa();
+    if (!eq || !eq.lista.length) { App.toast('Um dia em ' + onde + ' (' + p.nome + '): ' + efTxt + '.' + (eq ? ' Não há personagem de jogador na campanha.' : ' Sem mesa, as fichas não mudam: aplique à mão, se quiser.')); return; }
+    const nomeFad = n => (eq.R.FADIGA || [])[n] || String(n);
+    const linhas = eq.lista.map(x => {
+      const l = eq.P.pegar(x.id), r = eq.R.mexerNaMente((l && l.estado) || {}, p.ef, x.uso), partes = [];
+      if (r.so.includes('fad')) partes.push('Fadiga ' + nomeFad(r.antes.fad) + ' → ' + nomeFad(r.depois.fad));
+      if (r.so.includes('conf')) partes.push('Conforto ' + r.antes.conf + ' → ' + r.depois.conf);
+      if (r.so.includes('san')) partes.push('Sanidade ' + r.antes.san + ' → ' + r.depois.san);
+      return [x.id, x.nome + ': ' + (partes.join(' · ') || 'nada muda (já no limite)')];
+    });
+    const v = await janela({ titulo: 'Um dia em ' + onde + ' — ' + p.nome, texto: 'Por um dia ali: ' + efTxt + '. Aplicar na equipe? Desmarque quem não estava junto.', ok: 'Aplicar', cancelar: 'Agora não',
+      campos: [{ id: 'quem', rotulo: 'Quem recebe', tipo: 'caixas', opcoes: linhas, valor: linhas.map(x => x[0]) }] });
+    if (!v) return;
+    const quem = Array.isArray(v.quem) ? v.quem : [], antes = [], nomes = [];
+    for (const x of eq.lista) {
+      if (!quem.includes(x.id)) continue;
+      const l = eq.P.pegar(x.id); if (!l) continue;
+      const r = eq.R.mexerNaMente(l.estado || {}, p.ef, x.uso);
+      if (!r.so.length) continue;
+      antes.push({ id: l.id, estado: l.estado || {} });
+      eq.P.gravar(l.id, { estado: r.estado });
+      nomes.push(x.nome);
+    }
+    if (!nomes.length) { App.toast('Nada mudou: os valores já estavam no limite.'); return; }
+    const resumo = efTxt + ' para ' + nomes.join(', ') + ' — um dia em ' + onde + '.';
+    if (App.publicarNaMesa) App.publicarNaMesa('Um dia em ' + onde, resumo, false);
+    App.toast('Feito: ' + resumo, 'Desfazer', () => { for (const a of antes) eq.P.gravar(a.id, { estado: a.estado }); App.toast('As fichas voltaram ao que eram.'); });
+  }
   function secRota(o, m, grava) {
     const N_ = N(), id = o.id, un = N_.compPolilinha(o.pts), out = [];
     out.push(campoEscolha('o:' + id + ':via', 'Desenho', o.via, Object.keys(N_.VIAS).map(k => [k, N_.VIAS[k].nome]), grava('mudar o desenho da rota', (x, v) => { x.via = v; }),
@@ -2031,15 +2215,26 @@
      forma da zona a partir de cada dia (a de hoje é a que se arrasta no mapa). */
   function secZona(o, m, grava) {
     const N_ = N(), id = o.id, dia = m.cal.dia, ini = o.ini == null ? dia : o.ini, ops = [['', 'Nenhuma']].concat(m.faccoes.map(f => [f.id, nomeFac(f)])), out = [];
-    if (!m.faccoes.length) out.push(h('div', { class: 'row' }, nota('Crie facções para dar os lados (e as cores) da guerra.'), botao('Criar facção', () => { abrirAba('faccoes'); novaFaccao(); }, { c: 'sm', k: 'o:criar-fac' })));
-    out.push(h('div', { class: 'row' },
-      campoEscolha('o:' + id + ':a', 'Lado A', o.a || '', ops, grava('mudar o lado A', (x, v) => { x.a = v || null; })),
-      campoEscolha('o:' + id + ':b', 'Lado B', o.b || '', ops, grava('mudar o lado B', (x, v) => { x.b = v || null; }))));
+    const perigo = zonaDePerigo(o);
+    if (perigo) {
+      // (lote 7, parte 5c) a zona de perigo: o tipo e o que um dia dentro dela mexe na ficha (os de começo do tipo, ou os seus)
+      const Z = N_.ZONAS, pad = Z[o.tipo].ef, ef = o.ef || pad;
+      const numero = (k, rot, lim) => campoNumero('o:' + id + ':z' + k, rot, ef[k], grava('mudar o que a zona mexe', (x, n) => { const e = Object.assign({}, x.ef || Z[x.tipo].ef); if (e[k] === n) return false; e[k] = n; x.ef = e; }), { min: -lim, max: lim });
+      out.push(campoEscolha('o:' + id + ':ztipo', 'Tipo', o.tipo, Object.keys(Z).filter(k => k !== 'guerra').map(k => [k, Z[k].nome]), grava('mudar o tipo da zona', (x, v) => { if (x.tipo === v) return false; x.tipo = v; delete x.ef; })));
+      out.push(h('div', { class: 'row' }, numero('fad', 'Fadiga (passos)', 5), numero('conf', 'Conforto', 100), numero('san', 'Sanidade', 100)));
+      if (o.ef && (o.ef.fad !== pad.fad || o.ef.conf !== pad.conf || o.ef.san !== pad.san)) out.push(linha(botao('Voltar aos números do tipo', () => mudarObj(id, 'voltar a zona aos números do tipo', x => { delete x.ef; }), { c: 'sm', k: 'o:' + id + ':zpadrao', title: 'Os de começo: ' + textoEfZona(pad) })));
+      out.push(nota('Por dia: o grupo que termina o dia dentro dela recebe, no "Próximo dia", a proposta de mexer na Fadiga, no Conforto e na Sanidade da equipe — com a prévia de cada um, e você escolhe quem. Para menos, use o sinal de menos.'));
+    } else {
+      if (!m.faccoes.length) out.push(h('div', { class: 'row' }, nota('Crie facções para dar os lados (e as cores) da guerra.'), botao('Criar facção', () => { abrirAba('faccoes'); novaFaccao(); }, { c: 'sm', k: 'o:criar-fac' })));
+      out.push(h('div', { class: 'row' },
+        campoEscolha('o:' + id + ':a', 'Lado A', o.a || '', ops, grava('mudar o lado A', (x, v) => { x.a = v || null; })),
+        campoEscolha('o:' + id + ':b', 'Lado B', o.b || '', ops, grava('mudar o lado B', (x, v) => { x.b = v || null; }))));
+    }
     out.push(h('div', { class: 'field' }, h('span', { text: 'Começa em' }),
       h('div', { class: 'data-linha' }, h('b', { text: dataTxt(m, ini) }),
         botao('Hoje', () => mudarObj(id, 'mudar o começo', x => { moverInicio(x, dia); }), { c: 'sm', k: 'o:ini-hoje', off: ini === dia }),
         botao('Escolher…', async () => {
-          const idMapa = m.id, d = await escolherData('Quando a guerra começa?', ini, { ok: 'Escolher' });
+          const idMapa = m.id, d = await escolherData(perigo ? 'Quando a zona começa?' : 'Quando a guerra começa?', ini, { ok: 'Escolher' });
           if (d != null && mesmoMapa(idMapa)) mudarObj(id, 'mudar o começo', x => { moverInicio(x, d); });
         }, { c: 'sm', k: 'o:ini-escolher' }))));
     const semFim = o.fim == null;
@@ -2067,7 +2262,7 @@
     }, { c: 'sm', k: 'o:' + id + ':fase', off: temHoje || dia < ini || fases.length >= ((N_.LIMITES && N_.LIMITES.fases) || 60) })));
     fs.push(nota(temHoje ? 'Uma fase começa hoje: arraste os pontos da zona no mapa para mudar a forma dela.'
       : 'A zona pode crescer, encolher ou mudar de lugar com o tempo: cada fase guarda a forma dela a partir de um dia. Crie uma hoje e arraste os pontos.'));
-    return [secao('Zona de guerra', out), secao('Fases', fs)];
+    return [secao(perigo ? 'Zona de perigo' : 'Zona de guerra', out), secao('Fases', fs)];
   }
   function secLinha(o, m, grava) {
     const N_ = N(), L0 = N_.LINHAS || {}, id = o.id, def = L0[o.estilo] || { nome: 'Linha', cor: '#4f86c0' }, out = [];
@@ -2141,6 +2336,8 @@
         botao('Ir para a data…', irParaData, { k: 'hoje:ir' })));
       out.push(nota('"+1 tempo" e "Próximo dia" levam junto todos os grupos que têm rota, cada um no seu passo. "+7 dias", "−1 dia" e "Ir para a data" só mudam o calendário: os grupos ficam onde estão.'));
     }
+    // (lote 7, parte 5c) o clima de hoje
+    out.push(secClimaHoje(v, ed));
     // eventos
     const ativos = N_.eventosDoDia(v, dia);
     out.push(secao('Eventos de hoje', ativos.length
@@ -2337,6 +2534,8 @@
           { min: 1, max, vazio: null, ph: String(q.padraoEnt), dica: 'As cenas geradas do mapa saem com a luz do entardecer a partir deste tempo do dia.' }),
         campoNumero('mapa:noi', 'Noite a partir do tempo', cal.noi == null ? null : cal.noi, n => App.mudar('mudar quando anoitece', mm => { if ((mm.cal.noi == null ? null : mm.cal.noi) === n) return false; if (n == null) delete mm.cal.noi; else mm.cal.noi = n; }),
           { min: 1, max, vazio: null, ph: String(q.padraoNoi), dica: 'E de noite a partir deste. Um tempo maior que o último do dia quer dizer "nunca".' }))]; })()));
+    // (lote 7, parte 5c) a tabela do clima
+    out.push(secTabelaClima(m));
     // névoa
     out.push(secao('Névoa',
       caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, ligarNevoa,

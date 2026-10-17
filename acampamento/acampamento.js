@@ -613,6 +613,9 @@
           h('span', { text: 'Clima' }),
           h('select', { class: 'in', id: 'clima-sel', 'aria-label': 'O tempo no acampamento', onchange: e => { focoDepois = 'clima-sel'; mudar('mudar o clima', c => { c.clima = e.target.value; }); } },
             N.CLIMAS.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.clima === k }))), h('span')),
+        // (lote 7, parte 5c) o clima de hoje no Mapa-múndi: aparece aqui, e o mestre usa na cena se quiser
+        ...(cm => (cm ? [h('div', { class: 'lin clima-mundo', id: 'clima-mundo' }, h('span', { class: 'note', text: 'Hoje no Mapa-múndi: ' + cm.nome + (cm.conf ? ' — a noite mexe no Conforto (' + N.comSinal(cm.conf) + '), proposto no descanso longo.' : '.') }),
+          camp.clima !== cm.acamp ? h('button', { type: 'button', class: 'btn sm', id: 'clima-usar', text: 'Usar na cena', onclick: () => { focoDepois = 'clima-sel'; mudar('usar o clima do Mapa-múndi', c => { c.clima = cm.acamp; }); } }) : null)] : []))(climaDoMundo()),
         h('div', { class: 'lin', style: 'display:flex;gap:8px;flex-wrap:wrap' },
           h('button', { type: 'button', class: 'btn sm', id: 'fundoTrocar', text: camp.fundo ? 'Trocar a imagem de fundo' : 'Usar uma imagem de fundo', onclick: () => $('arq').click() }),
           camp.fundo ? h('button', { type: 'button', class: 'btn sm', id: 'fundoTirar', text: 'Voltar à ilustração', onclick: () => { if (mudar('voltar à ilustração', c => { c.fundo = null; })) toast('A ilustração voltou.', 'Desfazer', desfazer); } }) : null,
@@ -967,12 +970,15 @@
     // o que se serve neste descanso: a provisão do descanso, ou outra escolhida na hora; e quantas cada um come
     // (porPessoa: o que o mestre mudou na hora, pessoa por pessoa — só para este descanso)
     const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {}, tiraBonus: camp.regras[longo ? 'longo' : 'curto'].tiraBonus !== false };
+    // (lote 7, parte 5c) a noite no clima de hoje do Mapa-múndi: vem marcada (o mestre desmarca)
+    const climaM = longo ? climaDoMundo() : null;
+    escolha.clima = !!(climaM && climaM.conf);
     const txtTmp = b => (b.k || '?') + ' ' + N.comSinal(Math.round(b.v * 10) / 10) + (b.n ? ' (' + b.n + ')' : '');
     const corpo = h('div', { style: 'display:grid;gap:10px' });
     const confirmar = h('button', { type: 'button', class: 'btn pri', id: 'ds-ok', text: 'Descansar' });
     let plano = null;
     const refazer = foco => {
-      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus });
+      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus, clima: escolha.clima && climaM ? { k: climaM.k, conf: climaM.conf } : null });
       const sobra = plano.disponivel - plano.gasto;
       const avisos = [];
       // o que servir (a provisão que sai primeiro, e cujo efeito vale para quem a come) e quantas cada um come
@@ -985,6 +991,9 @@
       avisos.push(h('label', { class: 'sw tira', id: 'ds-tira-l', title: 'O padrão está nas Regras do descanso (aba Diário). Mudando aqui, vale só para este descanso.' },
         h('input', { type: 'checkbox', id: 'ds-tira', checked: escolha.tiraBonus, onchange: e => { escolha.tiraBonus = e.target.checked; refazer('ds-tira'); } }),
         'Tirar os bônus “até o próximo descanso”', escolha.tiraBonus !== daRegra ? h('span', { class: 'note', text: ' — só neste descanso' }) : null));
+      if (climaM && climaM.conf) avisos.push(h('label', { class: 'sw tira', id: 'ds-clima-l', title: 'O clima de hoje no Mapa-múndi (o do mapa mostrado aos jogadores, onde o grupo está)' },
+        h('input', { type: 'checkbox', id: 'ds-clima', checked: escolha.clima, onchange: e => { escolha.clima = e.target.checked; refazer('ds-clima'); } }),
+        'A noite de ' + climaM.nome.toLocaleLowerCase('pt-BR') + ' no Mapa-múndi: Conforto ' + N.comSinal(climaM.conf)));
       if (plano.servida && plano.servida.todos && plano.servida.efeito && plano.comem) avisos.push(h('div', { class: 'aviso', id: 'ds-banquete', text: (plano.servida.nome || 'A provisão servida') + ' é um banquete: o efeito dela vale para todos que descansam.' }));
       else if (plano.servida && plano.prov > 0 && plano.n && plano.comem < plano.n) avisos.push(h('div', { class: 'aviso', id: 'ds-da' }, (plano.servida.nome || 'A provisão servida') + (plano.comem ? ' dá para ' + plano.comem + ' de ' + plano.n + ' (abaixo, quem come); ' + (plano.n - plano.comem === 1 ? 'o outro come' : 'os outros comem') + ' do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.') : ' acabou: todos comem do resto da lista' + (plano.servida.efeito ? ', sem o efeito.' : '.'))));
       if (plano.custo > 0) avisos.push(h('div', { class: 'aviso' + (plano.falta ? ' ruim' : ''), id: 'ds-prov' },
@@ -1167,6 +1176,17 @@
      mostra o antes e o depois de cada um; o motivo vai para a mesa ao vivo. Um passo de desfazer, que volta só o que
      mudou em cada ficha. As contas são as de TC.rules.mexerNaMente (as mesmas das Cenas). */
   const usoDaMente = p => ({ mente: p.san != null, fadiga: p.fad != null });
+  /* (lote 7, parte 5c) O clima de hoje no Mapa-múndi: o do mapa mostrado aos jogadores, onde o grupo está (senão, o do
+     mundo). null fora de uma mesa ou sem mapa mostrado. */
+  function climaDoMundo() {
+    if (!naMesa() || !D) return null;
+    const dados = id => { const l = D.pegar(id); return l && !l.apagado && l.dados && typeof l.dados === 'object' ? l.dados : null; };
+    const idx = dados('mundo:indice'), mostrado = idx && typeof idx.mostrado === 'string' ? idx.mostrado : null, m = mostrado ? dados('mundo:pub:' + mostrado) : null;
+    if (!m) return null;
+    const g = (Array.isArray(m.objs) ? m.objs : []).find(o => o && o.k === 'g' && !o.tipo && N.CLIMA_MUNDO[o.ch]);
+    const k = g ? g.ch : m.clima && m.clima.hoje;
+    return N.CLIMA_MUNDO[k] ? Object.assign({ k }, N.CLIMA_MUNDO[k]) : null;
+  }
   function abrirMexerEmTodos() {
     if (!mestre() || !naMesa()) return;
     const gente = presentes().filter(p => !p.semFicha && P.pegar(p.id) && (p.san != null || p.fad != null));
@@ -1398,7 +1418,7 @@
       camp = N.normalizar(d && !d.apagado ? d.dados : null);
       jCamp = j(camp);
       marcarSalvo(encerrada ? 'Campanha encerrada: só consulta' : st.temCampanhas && !campId ? 'Você ainda não está numa campanha' : 'Salvo na mesa');
-      D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') pintar(); });
+      D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:')) pintar(); });
       P.aoMudar(() => { if (arrasto) return; manterRoda(); if (!digitando() && !dlg.open) pintar(); else pintarCena(); });
     } else {
       camp = N.normalizar(lerLocal());

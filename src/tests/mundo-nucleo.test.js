@@ -857,4 +857,62 @@ function mundo() {
     'quem joga: sem a rota escondida, sem o grupo escondido, sem o jeito de andar nem as paradas; o evento sem a rota');
 }
 
+/* ================= lote 7, parte 5c: o clima do dia e as zonas de perigo ================= */
+{
+  const J = require(path.join(__dirname, '..', '..', 'jornal', 'nucleo.js'));
+  ok(j(Object.keys(N.CLIMAS)) === j(Object.keys(J.CLIMAS)) && Object.keys(N.CLIMAS).every(k => N.CLIMAS[k].nome === J.CLIMAS[k].nome && N.CLIMAS[k].svg === J.CLIMAS[k].svg && typeof N.CLIMAS[k].conf === 'number'),
+    'os climas do mapa são os do Jornal (e da Meditação), com o mesmo nome e o mesmo desenho');
+  ok(j([...Array(12).keys()].map(i => N.estacaoDoMes(i, 12))) === j(['inverno', 'inverno', 'primavera', 'primavera', 'primavera', 'verao', 'verao', 'verao', 'outono', 'outono', 'outono', 'inverno'])
+    && Object.values(N.CLIMA_ESTACOES).every(t => Object.values(t).reduce((a, b) => a + b, 0) === 100), 'as estações dos 12 meses; cada tabela de começo soma 100%');
+  // a normalização
+  const c1 = N.normalizarMapa({ id: 'mpc', cal: { meses: [{ nome: 'A' }, { nome: 'B' }, { nome: 'C' }, { nome: 'D' }] }, clima: { tab: [{ chuva: 150, sol: '40' }, null, { neve: 0 }], mao: { d: '3', k: 'neve' }, hoje: 'xyz' } }).clima;
+  ok(c1.tab.length === 4 && c1.tab[0].chuva === 100 && c1.tab[0].sol === 40 && c1.tab[0].neve === 0 && j(c1.tab[1]) === j(N.tabelaPadraoDoMes(1, 4)) && j(c1.tab[2]) === j(N.tabelaPadraoDoMes(2, 4)) && j(c1.mao) === j({ d: 3, k: 'neve' }) && !('hoje' in c1),
+    'a tabela: um mês por linha (o que falta, o de começo; até 100%); o de hoje à mão: ' + j(c1));
+  ok(!('clima' in N.normalizarMapa({ objs: [] })), 'o mapa de antes, sem clima, fica igual');
+  // o sorteio: o mesmo dia dá o mesmo clima; os dias variam
+  const base = (extra, objs) => N.normalizarMapa(Object.assign({ id: 'mpc', larg: 400, alt: 300, grade: { tam: 20, x: 0, y: 0, orient: 'pe', on: true }, cal: { dia: 40 }, objs: objs || [] }, extra || {}));
+  const m1 = base();
+  const dias = [...Array(90).keys()].map(d => N.climaSorteado(m1, d));
+  ok(dias.every((k, d) => N.climaSorteado(m1, d) === k) && new Set(dias).size >= 4 && dias.every(k => N.CLIMAS[k]), 'o sorteio do dia sai sempre igual, e os dias variam: ' + [...new Set(dias)].join(', '));
+  // as chances do mês valem: com 100% de chuva, sempre chuva; e a região ajusta lendo o mesmo número do dia
+  const tab12 = [...Array(12)].map(() => ({ sol: 50, neve: 50 }));
+  const m2 = base({ clima: { tab: tab12 } }, [
+    { id: 'rd', k: 'r', pts: [[0, 0], [200, 0], [200, 300], [0, 300]], clima: { neve: 'nunca' } },
+    { id: 'rg', k: 'r', pts: [[200, 0], [400, 0], [400, 300], [200, 300]], clima: { sol: 'nunca' } },
+    { id: 'ri', k: 'r', pts: [[10, 10], [60, 10], [60, 60], [10, 60]], pai: 'rd' }]);
+  const rd = m2.objs[0], rg = m2.objs[1];
+  const mundo = [...Array(200).keys()].map(d => N.climaSorteado(m2, d)), deserto = [...Array(200).keys()].map(d => N.climaSorteado(m2, d, rd)), gelo = [...Array(200).keys()].map(d => N.climaSorteado(m2, d, rg));
+  ok(new Set(mundo).size === 2 && deserto.every(k => k === 'sol') && gelo.every(k => k === 'neve'), 'as chances do mês e o ajuste da região (nunca neve; nunca sol)');
+  ok(mundo.every((k, d) => k === 'sol' ? deserto[d] === 'sol' : gelo[d] === 'neve'), '(o número do dia é o mesmo: a região só muda as chances)');
+  const meio = [...Array(400).keys()].map(d => N.climaSorteado(base({ clima: { tab: [...Array(12)].map(() => ({ sol: 75, chuva: 25 })) } }), d));
+  const sol = meio.filter(k => k === 'sol').length;
+  ok(sol > 250 && sol < 350, 'a chance: 75% de sol sai em cerca de três de cada quatro dias: ' + sol + ' de 400');
+  // o de hoje à mão (só naquele dia), e o clima num ponto
+  const m3 = base({ clima: { tab: tab12, mao: { d: 40, k: 'tempestade' } } }, m2.objs);
+  ok(j(N.climaDoDia(m3, 40)) === j({ k: 'tempestade', mao: true }) && !N.climaDoDia(m3, 41).mao, 'o de hoje escolhido à mão vale só hoje');
+  const p1 = N.climaNoPonto(m3, 30, 30), p2 = N.climaNoPonto(m3, 300, 100);
+  ok(p1.regiao && p1.regiao.id === 'rd' && p1.k === 'sol' && p2.regiao.id === 'rg' && p2.k === 'neve', 'num ponto: a região mais de dentro com ajuste (a de dentro sem ajuste usa a de fora)');
+  const m4 = base({ clima: { tab: tab12 } }, [Object.assign({}, m2.objs[0], { chj: { d: 40, k: 'vento' } })]);
+  ok(N.climaNoPonto(m4, 30, 30).k === 'vento' && N.climaNoPonto(m4, 30, 30).mao, 'a região com o de hoje escolhido à mão');
+  // as zonas de perigo
+  const zs = N.normalizarMapa({ cal: { dia: 5 }, objs: [
+    { id: 'z1', k: 'z', tipo: 'frio', pts: [[0, 0], [100, 0], [100, 100], [0, 100]], ini: 0 },
+    { id: 'z2', k: 'z', tipo: 'maldita', pts: [[50, 50], [150, 50], [150, 150], [50, 150]], ini: 0, ef: { fad: -9, conf: 20, san: '-7' } },
+    { id: 'z3', k: 'z', tipo: 'praga', pts: [[0, 0], [100, 0], [100, 100], [0, 100]], ini: 9 },
+    { id: 'z4', k: 'z', pts: [[0, 0], [100, 0], [100, 100], [0, 100]], ini: 0 },
+    { id: 'z5', k: 'z', tipo: 'xyz', pts: [[0, 0], [100, 0], [100, 100], [0, 100]], ini: 0 }] });
+  const [z1, z2, , z4, z5] = zs.objs;
+  ok(z1.tipo === 'frio' && !('ef' in z1) && j(N.efeitoDasZonas([z1])) === j(N.ZONAS.frio.ef) && j(z2.ef) === j({ fad: -5, conf: 20, san: -7 }) && !('tipo' in z4) && !('ef' in z4) && !('tipo' in z5),
+    'a zona de perigo: o tipo e os números (sem eles, os de começo do tipo; os do mestre, nos limites); a de guerra, sem tipo');
+  const aqui = N.zonasNoPonto(zs, 75, 75), ef = N.efeitoDasZonas(aqui);
+  ok(j(aqui.map(z => z.id)) === j(['z1', 'z2']) && j(ef) === j({ fad: -6, conf: 10, san: -7 }) && !N.zonasNoPonto(zs, 120, 20).length, 'num ponto: as zonas acontecendo hoje (a que começa no dia 9 e a de guerra não contam), e o que mexem juntas: ' + j(ef));
+  // quem joga: o clima de hoje pronto, sem a tabela, os ajustes e os números das zonas
+  const pj = N.projetar(base({ clima: { tab: tab12, mao: { d: 40, k: 'chuva' } } }, m2.objs.concat([{ id: 'g', k: 'g', x: 300, y: 100 }, { id: 'zz', k: 'z', tipo: 'frio', pts: [[0, 0], [100, 0], [100, 100], [0, 100]], ini: 0 }])));
+  const prd = pj.objs.find(o => o.id === 'rd'), pri = pj.objs.find(o => o.id === 'ri'), pg = pj.objs.find(o => o.id === 'g'), pz = pj.objs.find(o => o.id === 'zz');
+  ok(j(pj.clima) === j({ hoje: 'chuva' }) && prd.ch === N.climaDoDia(m2, 40, rd).k && !('clima' in prd) && !('ch' in pri) && pg.ch === 'neve' && pz.tipo === 'frio' && !('ef' in pz),
+    'quem joga: o clima de hoje pronto (o do mundo, o das regiões com ajuste, o de onde cada grupo está), sem a tabela, os ajustes e os números das zonas');
+  const pn = N.normalizarMapa(pj);
+  ok(N.climaDoDia(pn, 40).k === 'chuva' && N.climaNoPonto(pn, 30, 30).k === prd.ch && N.climaNoPonto(pn, 300, 100).k === 'neve', '(e o mapa de quem joga lê o clima de hoje pronto)');
+}
+
 end();
