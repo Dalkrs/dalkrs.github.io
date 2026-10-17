@@ -522,11 +522,12 @@ const Render = (() => {
         const m = Math.round(b.m), d = m >= 1 ? Math.min(bh, (w - (m - 1) * gap) / m) : 0;
         if (b.k === 'pts' && mode === 'num' && m >= 1 && m <= 12 && d >= 2 * px) {
           const x0 = cx - (m * d + (m - 1) * gap) / 2;
+          const podres = Math.round(barPod(b));               // (lote 8) os da ponta, apodrecidos
           for (let k = 0; k < m; k++) {
-            const full = k < Math.round(b.v);
+            const full = k < Math.round(b.v), podre = k >= m - podres;
             c.beginPath(); c.arc(x0 + k * (d + gap) + d / 2, y + bh / 2, d / 2, 0, TAU);
-            c.fillStyle = full ? b.c : 'rgba(10,12,18,0.82)'; c.fill();
-            c.strokeStyle = full ? 'rgba(0,0,0,0.7)' : hexA(b.c, 0.95); c.lineWidth = 1 * px; c.stroke();
+            c.fillStyle = podre ? PODRE_COR : full ? b.c : 'rgba(10,12,18,0.82)'; c.fill();
+            c.strokeStyle = podre ? 'rgba(40,30,15,0.9)' : full ? 'rgba(0,0,0,0.7)' : hexA(b.c, 0.95); c.lineWidth = 1 * px; c.stroke();
           }
         } else {
           c.fillStyle = 'rgba(10,12,18,0.82)'; rr(c, x, y, w, bh, bh * 0.3); c.fill();
@@ -541,6 +542,19 @@ const Render = (() => {
             c.strokeStyle = NEG_COR; c.lineWidth = Math.max(1 * px, bh * 0.2); c.lineCap = 'butt';
             c.beginPath();
             for (let sx = x - bh; sx < x + wn + bh; sx += passo) { c.moveTo(sx, y + bh); c.lineTo(sx + bh, y); }
+            c.stroke();
+            c.restore();
+          }
+          // (lote 8) a ferida permanente: a ponta da barra, apodrecida (a cura não passa dali)
+          const pz = barPod(b);
+          if (pz > 0) {
+            const wp = Math.max(bh * 0.6, w * clamp(pz / b.m, 0, 1)), xp = x + w - wp, passo = Math.max(3 * px, bh * 0.62);
+            c.save();
+            rr(c, x, y, w, bh, bh * 0.3); c.clip();
+            c.fillStyle = PODRE_COR; c.fillRect(xp, y, wp, bh);
+            c.strokeStyle = 'rgba(40,30,15,0.85)'; c.lineWidth = Math.max(1 * px, bh * 0.18); c.lineCap = 'butt';
+            c.beginPath();
+            for (let sx = xp - bh; sx < xp + wp + bh; sx += passo) { c.moveTo(sx, y); c.lineTo(sx + bh, y + bh); }
             c.stroke();
             c.restore();
           }
@@ -594,6 +608,11 @@ const Render = (() => {
         c.fillStyle = '#ffffff'; c.font = `700 ${r * (fer.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
       }
+    }
+    // (lote 8) o real de um Clone: a coroa no alto do token, no meio — só o mestre vê
+    if (isGM() && sp >= 20 && realDeClone(t, sc)) {
+      const d = clamp(s * 0.3, 14 * px, 26 * px);
+      badge(c, cx, t.y + d * 0.42, d, '#d9a821', 'real', px);
     }
     // Fadiga: a pilha da ficha (de 5 a 0, como a bateria do celular), no lado direito do token — todos veem
     if (typeof t.fad === 'number' && sp >= 22) {
@@ -784,8 +803,10 @@ const Render = (() => {
     if (!isGM() && !can('turns')) return;
     const e = tn.list.find(x => x.id === tn.cur);
     if (!e || (e.inv && !isGM())) return;          // (a vez de uma linha invisível não aparece para os jogadores)
-    // (na vez da faixa de um grupo, o anel vai em cada token dela)
-    for (const t of turnToks(e)) {
+    // (na vez da faixa de um grupo, o anel vai em cada token dela; lote 8: na vez do real de um Clone, também nas cópias)
+    const naVez = [];
+    for (const t of turnToks(e)) for (const k of grupoDoClone(t, sc)) if (!naVez.includes(k)) naVez.push(k);
+    for (const t of naVez) {
       if (!tokShown(t, sc)) continue;
       const [cx, cy, half] = tokC(t, sc);
       ctx.save();

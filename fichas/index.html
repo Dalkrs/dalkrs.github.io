@@ -568,6 +568,7 @@ table.roll .tot small{font-size:11px;font-weight:400;color:var(--ink-soft);displ
 .atrbt.disputar span{font-size:12.5px;font-family:inherit;font-weight:500}
 .atrbt.disputar:hover{background:var(--brass-fundo);border-style:solid}
 table.attr tr.defesa td{background:var(--zebra)}
+table.attr tr.especial td{background:var(--zebra);border-top:1px dashed var(--line)}
 input.defbase{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
 
 /* ---------- disputa de rolagens ---------- */
@@ -764,6 +765,11 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
   .idcard{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* (lote 8) a ferida permanente: a ponta da barra, apodrecida */
+.barrinhas .bzt{position:relative}
+.barrinhas .bzt b.podre{position:absolute;top:0;right:0;bottom:0;background:repeating-linear-gradient(135deg,#6b7a35 0 2px,#3b3020 2px 4px);border-left:1px solid #2a2216}
+.podre-tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:#5d6a2c;background:rgba(107,122,53,.14);border:1px solid rgba(107,122,53,.45);border-radius:999px;padding:1px 8px}
+.podre-tag::before{content:"";width:9px;height:9px;border-radius:2px;background:repeating-linear-gradient(135deg,#6b7a35 0 2px,#3b3020 2px 4px)}
 /* ---------- as barrinhas dos recursos, embaixo da imagem ---------- */
 .barrinhas{width:104px;display:grid;gap:6px;margin-top:2px}
 .barrinhas .bz{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 4px;align-items:baseline;font-size:10.5px;line-height:1.2}
@@ -1041,9 +1047,9 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=15"></script>
-<script src="../tc/rules.js?v=12"></script>
+<script src="../tc/rules.js?v=14"></script>
 <script src="mesa.js?v=11"></script>
-<script src="extras.js?v=14"></script>
+<script src="extras.js?v=15"></script>
 <script src="quadros.js?v=4"></script>
 <script>
 /* =======================================================================
@@ -1546,8 +1552,20 @@ function iniciativaDe(pc){
 }
 function iniTexto(pc){ const r=iniciativaDe(pc); return r.err? 'fórmula com erro' : (String(pc.ini||'').trim()===''? 'sem bônus' : '= '+(r.val>=0?'+':'−')+Math.abs(r.val)); }
 /* valor atual de um recurso: o que foi anotado; sem anotação, está no começo da barra (cheia, se ela não tem "começa em") */
+// (lote 8) o Limite de dano: só um número de consulta, que quem edita a ficha escreve (null: sem)
+function limiteDeDano(pc){ const v=pc&&pc.limDano; return v!=null && isFinite(+v) && +v>=0 ? Math.round(+v*10)/10 : null; }
 function temAtual(pc,r){ const rec=pc.estado&&pc.estado.rec; return !!rec && isFinite(rec[r.id]) && rec[r.id]!==null; }
-function atualDoRecurso(pc,r){ return temAtual(pc,r)? +pc.estado.rec[r.id] : (r.inicio!=null? r.inicio : arred(r.val)); }
+/* (lote 8) A ferida permanente (marcada pelo mestre na cena, na condição do token): a ponta da barra apodrece. A cura —
+   até a total — não passa do teto (o máximo menos o podre), até o mestre tirar a ferida. */
+function podreDoRecurso(pc,r){
+  const pd=pc.estado&&pc.estado.podre, v=pd&&typeof pd==='object'? +pd[r.id] : 0, max=arred(r.val);
+  return v>0 && isFinite(v) && max>0 ? Math.round(Math.min(v,max)*10)/10 : 0;
+}
+function tetoDoRecurso(pc,r){ const piso=r.min<0? r.min : 0; return Math.max(piso, arred(r.val)-podreDoRecurso(pc,r)); }
+function atualDoRecurso(pc,r){
+  const v=temAtual(pc,r)? +pc.estado.rec[r.id] : (r.inicio!=null? r.inicio : arred(r.val));
+  return podreDoRecurso(pc,r)>0 ? Math.min(v, tetoDoRecurso(pc,r)) : v;
+}
 /* As barrinhas embaixo da imagem do personagem: cada recurso (HP, SP…) com o valor atual, só para ver de relance.
    Mexer continua sendo no quadro dos recursos; as cores são as das barras dos tokens, na mesma ordem. */
 const CORES_BARRINHA=['#d6524b','#4a9be0','#e2b23e','#6fbf73','#b07ad9','#e58a4e','#4fc3c0','#d96aa0'];
@@ -1556,11 +1574,12 @@ function htmlBarrinhas(pc, c){
   if(!rs.length) return '';
   return `<div class="barrinhas" id="barrinhas" role="group" aria-label="Recursos do personagem">${rs.map((r,i)=>{
     // abaixo de zero (na barra que pode ficar negativa), a barrinha mostra a parte negativa, riscada
-    const max=arred(r.val), at=atualDoRecurso(pc,r), neg=at<0 && r.min<0;
+    const max=arred(r.val), at=atualDoRecurso(pc,r), neg=at<0 && r.min<0, pod=podreDoRecurso(pc,r);
     const pct=neg? Math.min(100,at/r.min*100) : Math.max(0,Math.min(100,at/max*100));
-    return `<div class="bz${neg?' neg':''}" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at).replace('-','−')} de ${fmt(max)}${neg?' (pode ir até '+fmt(r.min).replace('-','−')+')':''}">
+    // (lote 8) a ferida permanente: a ponta da barra, apodrecida
+    return `<div class="bz${neg?' neg':''}${pod?' pod':''}" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at).replace('-','−')} de ${fmt(max)}${neg?' (pode ir até '+fmt(r.min).replace('-','−')+')':''}${pod?' — '+fmt(pod)+' apodrecidos (ferida permanente)':''}">
       <span class="bzn">${esc(r.nome)}</span><span class="bzv">${fmt(at).replace('-','−')}/${fmt(max)}</span>
-      <span class="bzt"><i style="width:${pct.toFixed(1)}%;${neg?'':'background:'+CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i></span></div>`;
+      <span class="bzt"><i style="width:${pct.toFixed(1)}%;${neg?'':'background:'+CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i>${pod?`<b class="podre" style="width:${Math.min(100,pod/max*100).toFixed(1)}%"></b>`:''}</span></div>`;
   }).join('')}</div>`;
 }
 // (depois de mexer num valor atual sem redesenhar a ficha inteira)
@@ -1960,9 +1979,17 @@ function renderFicha(){
             <td class="num vtot">${c.def[d.k]}</td>
             <td class="num"><span class="hint">—</span></td>
           </tr>`).join('')}
+          <tr class="especial" title="Um número de consulta, que você escreve: não entra em conta nenhuma da ficha.">
+            <td><span class="aname">Limite de dano</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">LIM</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
+            <td><input type="text" inputmode="decimal" autocomplete="off" class="defbase" id="f_limdano" data-limdano="1" value="${limiteDeDano(pc)==null?'':limiteDeDano(pc)}" placeholder="—" aria-label="Limite de dano"></td>
+            <td class="num vequip">—</td>
+            <td class="num vtot" id="f_limdano_tot">${limiteDeDano(pc)==null?'—':fmt(limiteDeDano(pc))}</td>
+            <td class="num"><span class="hint">—</span></td>
+          </tr>
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Os derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos; o Embate soma ainda o Bloqueio inteiro. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima.</div>
+        <div class="hint" style="margin-top:6px">Os derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos; o Embate soma ainda o Bloqueio inteiro. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima. O limite de dano é só um número de consulta: você escreve, e ele não entra em conta nenhuma.</div>
         <div class="pctnote">
           ${pc.pctProprio?`<span>Percentuais deste personagem:</span>`:`<span>Percentuais gerais:</span>`}
           ${TIERS_ATR.map(t=>`<span class="mono">${t} ${(pctDe(pc,t)*100).toFixed(0)}%</span>`).join('')}
@@ -2075,6 +2102,7 @@ function renderFicha(){
               <span class="eyebrow">Atual</span>
               <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida). Esc desfaz o que foi digitado.">
               <span class="de">de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
+              ${podreDoRecurso(pc,r)?`<span class="podre-tag" data-respodre="${r.id}" title="Ferida permanente: a ponta da barra apodreceu. A cura, até a total, não passa de ${fmt(tetoDoRecurso(pc,r))} até o mestre tirar a ferida.">${fmt(podreDoRecurso(pc,r))} apodrecidos</span>${!FichasMesa.ativo()||FichasMesa.mestre()?`<button class="mini" data-restirapodre="${r.id}" title="Tira a ferida permanente desta barra (a cura volta a ir até o máximo)">Tirar a ferida</button>`:''}`:''}
               ${temAtual(pc,r)?(r.inicio!=null && r.inicio!==arred(r.val)
                 ? `<button class="mini" data-rescheio="${r.id}" title="Voltar ao valor em que a barra começa">Voltar a ${fmt(r.inicio).replace('-','−')}</button>`
                 : `<button class="mini" data-rescheio="${r.id}" title="Voltar ao máximo">Encher</button>`):''}
@@ -2295,7 +2323,7 @@ function ligarFicha(pc){
     const id=i.dataset.resatual, r=(calcular(pc).recursos||[]).find(x=>x.id===id);
     if(!r||r.err||r.val==null) return;
     const txt=String(i.value).trim().replace(/\s+/g,'').replace(',','.'), antes=atualDoRecurso(pc,r);
-    const est=pc.estado||(pc.estado={}), rec=est.rec||(est.rec={}), max=arred(r.val), piso=r.min<0? r.min : 0;
+    const est=pc.estado||(pc.estado={}), rec=est.rec||(est.rec={}), max=tetoDoRecurso(pc,r), piso=r.min<0? r.min : 0, pod=podreDoRecurso(pc,r);
     let novo=null, aviso='';
     if(txt===''){ delete rec[id]; }
     else if(/^[+-]\d+(\.\d+)?$/.test(txt)){
@@ -2307,7 +2335,7 @@ function ligarFicha(pc){
     else { i.value=String(antes); toast('Digite um número, como 30, -8 ou +5.'); return; }
     if(novo!=null){
       if(novo<piso){ novo=piso; aviso=r.nome+' não desce de '+fmt(piso).replace('-','−')+'.'; }
-      if(novo>max) novo=max;
+      if(novo>max){ novo=max; if(pod) aviso=r.nome+' não passa de '+fmt(max)+': '+fmt(pod)+' estão apodrecidos (ferida permanente).'; }
       rec[id]=Math.round(novo*10)/10;
     }
     save(); pintarBarrinhas(host, pc); mostrarEncher(i);
@@ -2326,6 +2354,13 @@ function ligarFicha(pc){
     i.onchange=()=>confirmarAtual(i);
   });
   host.querySelectorAll('[data-rescheio]').forEach(b=>b.onclick=()=>encher(b.dataset.rescheio));
+  // (lote 8) o mestre tira a ferida permanente de uma barra; o aviso traz o Desfazer
+  host.querySelectorAll('[data-restirapodre]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.restirapodre, r=(calcular(pc).recursos||[]).find(x=>x.id===id), antes=r? podreDoRecurso(pc,r) : 0;
+    if(!antes) return;
+    patch(()=>{ const pd=Object.assign({}, pc.estado&&pc.estado.podre||{}); delete pd[id]; if(Object.keys(pd).length) pc.estado.podre=pd; else delete pc.estado.podre; });
+    FichasExtras.aviso('A ferida permanente saiu de '+(r.nome||'barra')+': a cura volta a ir até o máximo.', 'Desfazer', ()=>patch(()=>{ pc.estado=pc.estado||{}; pc.estado.podre=Object.assign({}, pc.estado.podre||{}, {[id]:antes}); }));
+  });
   const rfx=host.querySelector('#rolFixa');
   if(rfx) rfx.oninput=e=>patchLeve(()=>{pc.rol.fixa=Math.max(0,+e.target.value||0)});
   const rfo=host.querySelector('#rolFonte');
@@ -2377,6 +2412,12 @@ function ligarFicha(pc){
   host.querySelectorAll('[data-tier]').forEach(s=>s.onchange=e=>patch(()=>pc.tiers[e.target.dataset.tier]=e.target.value));
   host.querySelectorAll('[data-defesa]').forEach(i=>i.onchange=e=>patch(()=>{
     pc.defesas[e.target.dataset.defesa]=+e.target.value||0; }));
+  /* (lote 8) o Limite de dano: um número de consulta (vazio: sem limite); não entra em conta nenhuma */
+  host.querySelectorAll('[data-limdano]').forEach(i=>i.onchange=()=>{
+    const txt=String(i.value).trim().replace(',','.'), v=txt===''? null : Number(txt);
+    if(txt!=='' && !(isFinite(v) && v>=0)){ i.value=limiteDeDano(pc)==null?'':String(limiteDeDano(pc)); toast('O limite de dano é um número, como 30 (vazio: sem limite).'); return; }
+    patch(()=>{ if(v==null) delete pc.limDano; else pc.limDano=Math.round(v*10)/10; });
+  });
   host.querySelectorAll('[data-pct]').forEach(i=>i.onchange=e=>patch(()=>{pc.pctProprio[e.target.dataset.pct]=+e.target.value||0}));
 
   host.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{

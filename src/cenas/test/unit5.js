@@ -198,7 +198,7 @@ const ASSETS = {
   // as condições novas: existem para o programa (nome, cor e desenho), e um jogador pode pedi-las como as outras
   const NOVAS = ['inconsciente', 'oleo', 'molhado', 'emaranhado', 'fraco', 'exausto', 'paranoico', 'inspirado', 'hemorragia', 'regen', 'tratado'];
   const lista = JSON.parse(vm.runInContext('JSON.stringify(CONDS.map(c => [c.id, c.n, c.c, !!ICONS[c.i]]))', sandbox));
-  ok(lista.length === 67 && new Set(lista.map(c => c[0])).size === 67 && new Set(lista.map(c => c[1])).size === 67 && lista.every(c => /^#[0-9a-f]{6}$/.test(c[2]) && c[3]), 'as 67 condições (20 do lote 7) têm id e nome únicos, cor e desenho');
+  ok(lista.length === 69 && new Set(lista.map(c => c[0])).size === 69 && new Set(lista.map(c => c[1])).size === 69 && lista.every(c => /^#[0-9a-f]{6}$/.test(c[2]) && c[3]), 'as 69 condições (20 do lote 7, 2 do lote 8) têm id e nome únicos, cor e desenho');
   // (lote 5) as vinte novas, cada uma numa categoria; toda condição tem categoria, e toda categoria tem condição
   const LOTE5 = ['grito', 'artefato', 'resfriado', 'furia', 'provocado', 'defendendo', 'desarmado', 'agarrado', 'confuso', 'enfeiticado', 'transformado', 'marcado', 'doente', 'faminto', 'bebado', 'surdo', 'lento', 'acelerado', 'voando', 'oculto'];
   eq(LOTE5.map(id => (lista.find(c => c[0] === id) || [])[1]), ['Grito de Batalha', 'Artefato Ativado', 'Resfriado', 'Fúria', 'Provocado', 'Defendendo', 'Desarmado', 'Agarrado', 'Confuso', 'Enfeitiçado', 'Transformado', 'Marcado', 'Doente', 'Faminto', 'Bêbado', 'Surdo', 'Lento', 'Acelerado', 'Voando', 'Oculto'], 'as vinte condições novas do lote 5 estão na lista, com os nomes pedidos');

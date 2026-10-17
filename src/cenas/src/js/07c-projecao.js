@@ -100,13 +100,19 @@ const Proj = (() => {
       : { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
     const x = barX(b);
     if (x > 0) { o.x = Math.max(0.1, Math.round(1000 * x / b.m) / 10); o.xn = x; }
+    if (barPod(b) > 0) o.pod = Math.max(0.1, Math.round(1000 * barPod(b) / b.m) / 10);      // (lote 8) a ponta podre, em proporção
     return o;
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
-  function tokenPublico(t, jogadores) {
+  function tokenPublico(t, jogadores, grupos) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
+    /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
+       não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
+    delete o.clone;
+    const g = grupos && grupos.get(t.clone || t.id);
+    if (g) o.cg = g; else delete o.cg;
     const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
     if (!deJogador) {
       o.owner = null;
@@ -139,7 +145,9 @@ const Proj = (() => {
   }
   function projetar(sc, assets, jogadores) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
-    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores));
+    const grupos = new Map();                                         // (lote 8) id do real → a marca do grupo do Clone
+    for (const t of sc.tokens) if (t.clone && !grupos.has(t.clone)) grupos.set(t.clone, 'cg' + resumo(sc.id + ':' + t.clone));
+    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
     for (const k in sc) if (k !== 'explored' && k !== 'gerado' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
@@ -180,7 +188,8 @@ const Proj = (() => {
       const nv = nu(n.v), av = ehObj(a) ? nu(a.v) : NaN;
       if (isFinite(nv)) {
         const alvo = isFinite(av) ? b.v + (nv - av) : nv;
-        const v = clamp(r1(alvo), -barLo(b), Math.min(999999, Math.max(b.m, b.v, nv)));      // (a barra que pode ficar negativa desce até o piso dela)
+        const teto = barPod(b) > 0 ? barTeto(b) : Math.min(999999, Math.max(b.m, b.v, nv));         // (lote 8: nem acima do teto da ferida permanente)
+        const v = clamp(r1(alvo), -barLo(b), teto);      // (a barra que pode ficar negativa desce até o piso dela)
         if (v !== b.v && (isFinite(av) ? nv !== av : true)) o.v = v;
       }
       const nx = Math.max(0, nu(n.x) || 0), ax = ehObj(a) ? Math.max(0, nu(a.x) || 0) : NaN;
@@ -194,9 +203,10 @@ const Proj = (() => {
     return mudou ? out : null;
   }
   function fundirConds(atual, base, novo) {
-    const limpa = lista => Array.from(new Set((Array.isArray(lista) ? lista : []).filter(c => tem(COND_BY_ID, c))));
+    // (lote 8) a Ferida permanente e o Clone são do mestre: o pedido de um jogador não as põe nem as tira
+    const limpa = lista => Array.from(new Set((Array.isArray(lista) ? lista : []).filter(c => tem(COND_BY_ID, c) && !COND_JANELA.has(c))));
     const n = limpa(novo);
-    if (!Array.isArray(base)) return n;
+    if (!Array.isArray(base)) return n.concat((atual || []).filter(c => COND_JANELA.has(c)));
     const b = limpa(base), tirar = new Set(b.filter(c => !n.includes(c)));
     const out = atual.filter(c => !tirar.has(c));
     for (const c of n) if (!b.includes(c) && !out.includes(c)) out.push(c);
@@ -215,9 +225,10 @@ const Proj = (() => {
   }
   function fundirCinfo(atual, base, novo) {
     const n = cinfoLimpo(novo);
-    if (!ehObj(base)) return n;
+    if (!ehObj(base)) { for (const id of COND_JANELA) { if (atual && atual[id]) n[id] = atual[id]; else delete n[id]; } return n; }
     const b = cinfoLimpo(base), out = Object.assign({}, atual);
     for (const c of CONDS) {
+      if (COND_JANELA.has(c.id)) continue;                             // (lote 8: a Ferida e o Clone são do mestre)
       if (igual(b[c.id], n[c.id])) continue;                           // o jogador não mexeu nesta
       if (n[c.id]) out[c.id] = n[c.id]; else delete out[c.id];
     }

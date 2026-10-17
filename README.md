@@ -829,6 +829,43 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
     mina (a boca da mina) têm "Gerar este lugar…" (o de masmorra abre a aba Masmorra: 4b-3c); e "Gerar a cena aqui",
     com o grupo no terreno Ruínas, abre a aba Ruínas (e não um encontro).
 
+### Fichas e Cenas (lote 8)
+
+- **O Limite de dano** (`pc.limDano`, na ficha): um número de consulta, na tabela de atributos, depois das defesas
+  ("Limite de dano · manual"). Vazio é sem limite. Não entra em conta nenhuma (`TC.rules` não o lê) e só aparece na
+  ficha.
+- **A Ferida permanente** (a condição `ferida`): a ponta de uma barra apodrece. Só o mestre põe e tira, num token de
+  cada vez, pela janela da condição (qual barra, quanto apodrece, com a prévia "HP 30 → 20 de 30; a cura não passa de
+  20"). O quanto fica na barra do token (`b.pod`); num token ligado, também na ficha (`estado.podre: { id da barra:
+  quanto }`, chave por chave no "JSON Merge Patch"), e vai de um para o outro como a sobrevida. O teto da cura é o
+  máximo menos o podre (`barTeto`; nunca abaixo do piso): o valor acima dele desce ao apodrecer, e nada passa dali —
+  o valor digitado e o "+" (`barSet`, `barAfter`), a cura total (`barFull`), o dano em área, o pedido de um jogador
+  (`fundirBarras`), as poções e o "Atual" da ficha (`TC.rules.estadoRecursos`/`aplicarDelta`, `atualDoRecurso`), o
+  descanso e as comidas do Acampamento (`linhaDoDescanso`, `aplicarFx`). O dano continua valendo. A condição e as
+  barras podres andam juntas (`acertarCondicoes`): tirar a condição tira o podre de todas as barras; a barra que
+  apodrece pela ficha traz a condição; a última que deixa de estar podre a leva. A ponta podre aparece riscada em
+  verde-oliva no token, no painel, nas barrinhas da ficha ("20 apodrecidos", com "Tirar a ferida" para quem mestra) e
+  no plano do descanso. Para os jogadores, vai em proporção quando só a proporção da barra vai. O auxiliar sem a aba
+  Fichas não põe a ferida num token ligado (a ficha não chega a ele).
+- **O Clone** (a condição `clone`): pela janela da condição (só o mestre, num token de cada vez), de 1 a 10 cópias
+  (3 de começo) num raio de 1 a 10 quadrados (2), em lugares livres, dentro do mapa e sem parede entre o real e o
+  lugar (`vagasDoClone`, ao acaso: primeiro os que não encostam no real nem nas outras cópias; se não der, os que
+  sobram). As cópias são tokens iguais ao real — nome, imagem, tamanho, barras, condições
+  (com a Clone), dono e a ficha, só para mostrar — com `clone: <id do real>`; ficam fora da sincronização com a ficha
+  (nos dois sentidos). O real é o token de sempre (a ficha, a vez na ordem). Escolher o real ("Este é o real", no
+  painel e no botão direito; ou o clique no mapa, com a faixa de cima, logo depois de criar com "Eu escolho no mapa")
+  é trocar de lugar com a cópia (os tokens não deslizam, então os jogadores não notam); "Sortear" escolhe ao acaso
+  (pode ser ele mesmo). Só o mestre vê a coroa no real. No fim de cada passo (`regrasDoClone`, no programa do mestre;
+  e num passo logo depois, para o que chegou de fora — o dano que veio da ficha): a cópia cujo real sumiu ou ficou
+  sem a condição (tirada, ou acabaram as rodadas dela) some, e a cópia sem a condição também; o real que levou dano
+  (a barra da vida — HP, Vida ou PV, senão a primeira — desceu, no valor ou na sobrevida) leva todas as cópias; a
+  cópia que levou dano some sozinha; senão, o que mudou no real vai para as cópias. Tudo no mesmo passo de desfazer,
+  com um aviso. Na projeção, as cópias vão sem `clone`, e os do grupo vão com a mesma marca (`cg`, um resumo que não
+  diz qual é o real): na vez do real, o anel aparece em todos, e o clique na linha da ordem mostra o grupo todo.
+- O pedido de um jogador não põe nem tira a Ferida permanente e o Clone (nem o contador e as rodadas deles); o dano
+  em área e as zonas não os aplicam (`COND_JANELA`, `cleanApply`), e a lista de condições das poções da ficha não os
+  oferece (os dois estão em `TC.rules.CONDICOES`, que continua igual à das Cenas).
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1589,7 +1626,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas busca mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1762,3 +1799,17 @@ cada alvo — a ficha, o item nos equipamentos e na bolsa, o marcador, a facçã
 receita, a cena —, a janela presa em cima e a tela estreita); `busca.rede`, numa mesa, o que o jogador acha e o que não
 acha (o NPC, o marcador e a facção escondidos, a receita que ele não descobriu, o rascunho, as cenas) e para onde cada
 escolha leva, para ele e para o mestre.
+
+Lote 8: `src/cenas/test/lote8.js` confere, com `SO=defeitos`, o painel do token que não aplica o valor pela metade
+quando é redesenhado no meio da digitação (e só o Enter, ou sair do campo, confirma), o "Encerrar" que zera a
+iniciativa de todos (com Desfazer) e a faixa nova que não leva quem já está em outra; com `SO=ferida`, a Ferida
+permanente (a janela e a prévia, a ponta podre, a cura que para no teto por todo caminho, o dano que continua, o pedido
+de um jogador, a proporção para os jogadores, mudar, tirar e desfazer); com `SO=clone`, o Clone (a janela, as cópias
+iguais e os lugares, a coroa, o dano numa cópia e no real, o que muda no real indo para as cópias, "Este é o real",
+sortear, escolher no mapa e o Esc, a condição que acaba — tirada, pelas rodadas, o real apagado —, o grupo para o anel
+da vez e o que vai para os jogadores). `fichas.test.js` e `fichas-regras` conferem o "Atual" da ficha com Enter, Esc,
+−8 e +5; `fichas-lote8`, o Limite de dano e a ficha com a barra podre; `mundo-lote8`, a textura dos hexágonos (com os
+desenhos de longe, lisa de perto, e de volta sem o desenho de cada hexágono); `lote8-nucleo`, as contas da ferida
+(nas regras e no descanso do Acampamento) e o Limite de dano fora das contas; `cenas-lote8.rede`, numa mesa, a ferida
+de um token ligado indo e voltando da ficha e o Clone de um token ligado (as cópias fora da sincronização; o dano no
+real e o que vem da ficha).

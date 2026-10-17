@@ -347,6 +347,9 @@ button { cursor: pointer; }
 .meter-f { display: block; height: 100%; }
 /* barra abaixo de zero: a parte negativa, riscada */
 .meter-f.neg { background: repeating-linear-gradient(135deg, #ff5d73 0 3px, rgba(255, 93, 115, .25) 3px 6px); }
+/* (lote 8) a ferida permanente: a ponta podre da barra */
+.meter { position: relative; }
+.meter-p { position: absolute; top: 0; right: 0; bottom: 0; background: repeating-linear-gradient(135deg, #6b7a35 0 3px, #3b3020 3px 6px); }
 .bar-v.neg, .hud-in.neg, .hud-m.neg, .hud-v.neg, .bar-m.neg { color: #ff8a9a; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -530,6 +533,8 @@ kbd { padding: 1px 6px; background: var(--raised); border: 1px solid var(--line-
 .bar-x .in.num { width: 58px; flex: none; text-align: right; font-family: var(--mono); }
 .bar-x-l { font-weight: 600; color: var(--fg); }
 .bar-x-n { color: var(--fg-3); }
+.bar-x.bar-pod { border-left-color: #6b7a35; }
+.bar-pod-t { color: #a7b56a; }
 
 .pips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; vertical-align: middle; }
 .pip { display: block; flex: none; width: 16px; height: 16px; padding: 0; border: 2px solid var(--c); border-radius: 50%; background: transparent; }
@@ -550,6 +555,14 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cm-tt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .cm-q { color: var(--fg-3); font-size: 11px; white-space: nowrap; }
 .cmulti .stp-v { min-width: 28px; padding: 0 2px; white-space: nowrap; }
+/* (lote 8) a Ferida permanente na linha da condição (o que apodreceu e o "Mudar…"), e as janelas da Ferida e do Clone */
+.cact-pod { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 12px; color: #a7b56a; }
+.lnk { padding: 0; border: 0; background: none; color: var(--lamp); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.lnk:hover { color: var(--fg); }
+.fer-box, .cl-box { display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 82vw); }
+.fer-previa { min-height: 2.6em; color: var(--fg); }
+.cl-quem { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cl-op { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
 .stp { display: inline-flex; align-items: center; gap: 1px; padding: 1px; background: var(--raised); border: 1px solid var(--line); border-radius: 7px; }
 .field > .stp { justify-self: start; }
 .loose { display: flex; flex-direction: column; gap: 10px; }
@@ -907,7 +920,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=15"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=12"></script>
+<script src="../tc/rules.js?v=14"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -1270,6 +1283,10 @@ const ICONS = {
   c_agigantado: 'M4 4l5.500 5.500M4 4v4.500M4 4h4.500M20 20l-5.500-5.500M20 20v-4.500M20 20h-4.500M20 4l-5.500 5.500M20 4h-4.500M20 4v4.500M4 20l5.500-5.500M4 20h4.500M4 20v-4.500',
   c_encolhido: 'M9.500 9.500L4 4M9.500 9.500H5.500M9.500 9.500V5.500M14.500 14.500L20 20M14.500 14.500h4M14.500 14.500v4M14.500 9.500L20 4M14.500 9.500h4M14.500 9.500V5.500M9.500 14.500L4 20M9.500 14.500H5.500M9.500 14.500v4',
   c_ventania: 'M3 8h11a2.500 2.500 0 1 0-2.500-2.500M3 12h15.500a2.500 2.500 0 1 1-2.500 2.500M3 16h8a2 2 0 1 1-2 2',
+  // (lote 8) a ferida permanente (um coração rachado) e o clone (duas figuras, uma atrás da outra)
+  c_ferida: 'M12 20s-7.500-4.500-7.500-10.200A4.200 4.200 0 0 1 12 7.300a4.200 4.200 0 0 1 7.500 2.500C19.500 15.500 12 20 12 20zM12 7.300l-1.600 3.200 2.800 1.800-1.700 3.400',
+  c_clone: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.500 19.500c0-3.200 2.400-5.500 5.500-5.500s5.500 2.300 5.500 5.500M15 5.300a3 3 0 0 1 0 5.400M17 14.300c2.100.7 3.500 2.600 3.500 5.200',
+  real: 'M4 17.500L3 7.500l5 4 4-6.500 4 6.500 5-4-1 10zM4.500 20.500h15',     // (lote 8) a coroa do real de um Clone (só o mestre vê)
   // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
   st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
   st_can: 'M4 5.500C6 4.500 9 4.500 12 6c3-1.500 6-1.500 8-.5V19c-2-1-5-1-8 .5-3-1.500-6-1.500-8-.5zM12 6v13.500',
@@ -1339,12 +1356,19 @@ const cleanBarRef = (b, o) => {
   if (o && Number(o.xn) > 0) b.xn = Math.round(Number(o.xn) * 10) / 10;
   if (barLo(o) > 0) b.lo = barLo(o);
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
+  // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
+  if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
   return b;
 };
 const barX = b => Math.max(0, Number(b && b.x) || 0);
 const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
-// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um.
-const barFull = b => (b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m);
+/* (lote 8) A ferida permanente: o que apodreceu na ponta da barra (0 a m) e o teto da cura (o máximo menos isso,
+   nunca abaixo do piso). Sem ferida, o teto é o máximo. */
+const barPod = b => { const v = Number(b && b.pod) || 0; return v > 0 && b.m > 0 ? Math.round(Math.min(v, b.m) * 10) / 10 : 0; };
+const barTeto = b => Math.max(-barLo(b), b.m - barPod(b));
+const PODRE_COR = '#6b7a35';                // a cor da ponta apodrecida, no mapa e nos painéis
+// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um (e nunca acima do teto).
+const barFull = b => Math.min(b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m, barTeto(b));
 const NEG_COR = '#ff5d73';                  // a cor da parte negativa de uma barra (riscada), no mapa e nos painéis
 const fmtV = v => fmt(v).replace('-', '−');   // valor de barra, com o sinal de menos de verdade
 // Quanto do piso uma barra negativa já gastou (0 a 1); 0 quando ela não está abaixo de zero.
@@ -1462,6 +1486,7 @@ const CONDS = [
   { id: 'enlouquecido', n: 'Enlouquecido', c: '#c4488c', i: 'c_enlouquecido', g: 'mente' },
   { id: 'qibloq', n: 'Qi bloqueado', c: '#5b6b80', i: 'c_qibloq', g: 'mente' },
   { id: 'qidesvio', n: 'Desvio de Qi', c: '#d4643a', i: 'c_qidesvio', g: 'mente' },
+  { id: 'clone', n: 'Clone', c: '#7f8fd6', i: 'c_clone', g: 'mente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
   { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
   { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
@@ -1474,6 +1499,7 @@ const CONDS = [
   { id: 'ofuscado', n: 'Ofuscado', c: '#cfa83c', i: 'c_ofuscado', g: 'corpo' },
   { id: 'agigantado', n: 'Agigantado', c: '#b8743c', i: 'c_agigantado', g: 'corpo' },
   { id: 'encolhido', n: 'Encolhido', c: '#5f9ab4', i: 'c_encolhido', g: 'corpo' },
+  { id: 'ferida', n: 'Ferida permanente', c: '#7a8a3a', i: 'c_ferida', g: 'corpo' },
   { id: 'lento', n: 'Lento', c: '#6f8f6a', i: 'c_lento', g: 'ritmo' },
   { id: 'acelerado', n: 'Acelerado', c: '#2ea6c9', i: 'c_acelerado', g: 'ritmo' },
   { id: 'voando', n: 'Voando', c: '#6aa8d8', i: 'c_voando', g: 'ritmo' },
@@ -1488,6 +1514,10 @@ const CONDS = [
   { id: 'escudado', n: 'Escudado', c: '#3f97d6', i: 'c_escudado', g: 'bencao' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
+/* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:
+   quantas cópias e em que raio). Só o mestre as põe e tira, num token de cada vez — as zonas e o dano em área não
+   as aplicam, e o pedido de um jogador não mexe nelas. */
+const COND_JANELA = new Set(['ferida', 'clone']);
 
 // (fl: a luz tremula, como chama; a mágica, não)
 const LIGHT_PRESETS = [
@@ -1556,7 +1586,8 @@ function areaAmount(text) {
 function cleanApply(o) {
   if (!o || typeof o !== 'object') return null;
   const int = v => Math.max(0, Math.round(Number(v) || 0));
-  const cond = o.cond && o.cond.id ? { id: String(o.cond.id), n: int(o.cond.n), d: int(o.cond.d) } : null;
+  // (lote 8: a Ferida permanente e o Clone pedem a janela deles — o dano em área e as zonas não os aplicam)
+  const cond = o.cond && o.cond.id && !COND_JANELA.has(String(o.cond.id)) ? { id: String(o.cond.id), n: int(o.cond.n), d: int(o.cond.d) } : null;
   let amt = String(o.amt == null ? '' : o.amt).trim();
   if (!areaAmount(amt)) amt = '';                 // zero, ou algo que não é número: não há valor a reaplicar
   if (!amt && !cond) return null;
@@ -1658,6 +1689,8 @@ function normalizeScene(sc) {
     const st = cleanSt(t.st); if (st) t.st = st; else delete t.st;
     delete t.fixas;                                               // (a "fixa de cada turno" de antes saiu: era a iniciativa)
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
+    // (lote 8) a cópia de um Clone: o id do real (só o mestre sabe; os jogadores veem todos iguais)
+    if (!(typeof t.clone === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.clone) && t.clone !== t.id)) delete t.clone;
     // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
     if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
     if (t.post === true) t.post = true; else delete t.post;               // (lote 6) em postura: a etiqueta junto do nome
@@ -4876,6 +4909,7 @@ const App = {
   clip: [], pings: [], floats: [],
   hoverTok: null,                   // o token sob o cursor (para mostrar os números dele)
   iniRolls: new Map(),              // iniciativas roladas pela mesa ao vivo que o mestre ainda pode anotar: id da ficha → { v, d, b, nome, at }
+  escolhaReal: null,                // (lote 8) escolhendo no mapa o real de um Clone: o id do real de agora
   anim: true,
   showVision: false,                // mestre: escurecer no mapa o que os jogadores não veem (o "véu")
   opt: {
@@ -5105,7 +5139,7 @@ function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) dele
 function barAfter(b, delta) {
   let x = barX(b), d = delta;
   if (d < 0 && x > 0) { const usa = Math.min(x, -d); x = Math.round((x - usa) * 10) / 10; d += usa; }
-  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, -barLo(b), Math.max(b.m, b.v)) };
+  const p = { v: clamp(Math.round((b.v + d) * 10) / 10, -barLo(b), barPod(b) > 0 ? barTeto(b) : Math.max(b.m, b.v)) };     // (lote 8: a ferida permanente)
   if (x !== barX(b)) p.x = x;
   return p;
 }
@@ -5150,6 +5184,13 @@ function acertarCondicoes(t, antes) {
       Object.assign(p, { size: tam, x, y });
     }
   }
+  /* (lote 8) a Ferida permanente e as barras podres andam juntas: a condição tirada leva o podre de todas as barras; a
+     barra que apodreceu (pela ficha, por exemplo) traz a condição; e a última barra que deixou de estar podre a leva. */
+  const podres = bs => (bs || []).some(b => barPod(b) > 0);
+  if (Array.isArray(a.conds) && a.conds.includes('ferida') && !conds.includes('ferida') && podres(t.bars)) {
+    p.bars = t.bars.map(b => { if (!barPod(b)) return b; const o = Object.assign({}, b); delete o.pod; return o; });
+  } else if (podres(t.bars) && !conds.includes('ferida')) { conds = conds.concat('ferida'); mudou = true; }
+  else if (conds.includes('ferida') && !podres(t.bars) && Array.isArray(a.bars) && podres(a.bars)) { conds = conds.filter(c => c !== 'ferida'); delete info.ferida; mudou = true; }
   if (mudou) { p.conds = conds; p.cinfo = info; }
   return Object.keys(p).length ? p : null;
 }
@@ -5208,6 +5249,130 @@ function trocaDeZona(e, fx, sc) {
   else if (ant.cond && soCond(e.apply) && (ant.conds || [ant.cond]).includes(e.apply.cond.id)) p.apply = null;
   return p;
 }
+/* ---- (lote 8) o Clone: apoio ----
+   n lugares livres para as cópias, a até R quadrados do real (em qualquer direção), dentro do mapa, sem encostar em
+   ninguém e sem parede entre o real e o lugar. Ao acaso. → [[x, y]] (o canto de cima à esquerda, em unidades da cena) */
+const MAX_CLONES = 10;
+function vagasDoClone(sc, t, n, R) {
+  const c = sc.cell, s = Math.max(1, Math.ceil(t.size)), occ = new Set();
+  for (const o of sc.tokens) {
+    const so = Math.max(1, Math.ceil(o.size)), c0 = Math.floor((o.x + 1) / c), r0 = Math.floor((o.y + 1) / c);
+    for (let i = 0; i < so; i++) for (let j = 0; j < so; j++) occ.add((c0 + i) + ',' + (r0 + j));
+  }
+  const c0 = Math.round(t.x / c), r0 = Math.round(t.y / c), [ax, ay] = centroTok(t, sc), cand = [];
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    const cx = c0 + dx, cy = r0 + dy;
+    if ((!dx && !dy) || cx < 0 || cy < 0 || cx + s > sc.cols || cy + s > sc.rows) continue;
+    if (Walls.blocksMove(sc, ax, ay, (cx + s / 2) * c, (cy + s / 2) * c)) continue;
+    cand.push([cx, cy]);
+  }
+  for (let i = cand.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [cand[i], cand[k]] = [cand[k], cand[i]]; }
+  // primeiro, os lugares que não encostam no real nem nas outras cópias (espalhadas, cada uma se vê); se não der, os que sobram
+  const out = [], grupo = new Set();
+  for (let i = 0; i < s; i++) for (let j = 0; j < s; j++) grupo.add((c0 + i) + ',' + (r0 + j));
+  const encosta = (cx, cy) => { for (let i = -1; i <= s; i++) for (let j = -1; j <= s; j++) if (grupo.has((cx + i) + ',' + (cy + j))) return true; return false; };
+  for (const espalhar of [true, false]) for (const [cx, cy] of cand) {
+    if (out.length >= n) break;
+    let livre = true;
+    for (let i = 0; i < s && livre; i++) for (let j = 0; j < s; j++) if (occ.has((cx + i) + ',' + (cy + j))) { livre = false; break; }
+    if (!livre || (espalhar && encosta(cx, cy))) continue;
+    for (let i = 0; i < s; i++) for (let j = 0; j < s; j++) { occ.add((cx + i) + ',' + (cy + j)); grupo.add((cx + i) + ',' + (cy + j)); }
+    out.push([cx * c, cy * c]);
+  }
+  return out;
+}
+// (dentro de um passo) o real e outro do grupo trocam de lugar
+function trocarComOReal(realId, outroId) {
+  const a = Store.get('tokens', realId), b = Store.get('tokens', outroId);
+  if (!a || !b || a === b) return;
+  const ax = a.x, ay = a.y;
+  Store.upd('tokens', a.id, { x: b.x, y: b.y });
+  Store.upd('tokens', b.id, { x: ax, y: ay });
+}
+// (dentro de um passo) tira tokens da cena, com o que é deles: os efeitos presos neles, a mira e as linhas da ordem
+function tirarTokens(sc, ids) {
+  const fora = new Set(ids.filter(id => Store.get('tokens', id)));
+  if (!fora.size) return;
+  for (const e of sc.effects.filter(e => fora.has(e.token))) Store.del('effects', e.id);
+  if (sc.targets.some(x => fora.has(x.t))) Store.scn({ targets: sc.targets.filter(x => !fora.has(x.t)) });
+  if ([...fora].some(id => inTurn(sc.turn, id))) {
+    const tn = clone(sc.turn), before = tn.list.slice();
+    turnDrop(tn, [...fora]); turnKeepCur(tn, before);
+    Store.scn({ turn: tn });
+  }
+  for (const id of fora) Store.del('tokens', id);
+  if (App.sel.some(x => x.c === 'tokens' && fora.has(x.id))) { App.sel = App.sel.filter(x => !(x.c === 'tokens' && fora.has(x.id))); Store.emit('sel'); }
+}
+// A barra da vida: a primeira em uso que se chama HP, Vida ou PV; sem nenhuma assim, a primeira em uso.
+const VIDA_NOMES = /^(hp|vida|pv|pontos de vida)$/i;
+function barraDaVida(bars) {
+  const em = (bars || []).filter(b => b && b.on !== false && b.m > 0);
+  return em.find(b => VIDA_NOMES.test(String(b.n || '').trim())) || em[0] || null;
+}
+// levou dano: a barra da vida desceu (o valor ou a sobrevida) entre antes e agora
+function levouDano(antes, agora) {
+  const a = barraDaVida(antes);
+  if (!a) return false;
+  const d = (agora || []).find(b => b && b.n === a.n && b.on !== false);
+  return !!d && (d.v < a.v || barX(d) < barX(a));
+}
+/* O grupo de um Clone em que o token está (o real e as cópias), ou só ele. O mestre sabe pelo clone das cópias; o
+   jogador, pela marca do grupo que a projeção manda em todos (cg), que não diz qual é o real. */
+function grupoDoClone(t, sc) {
+  if (!t || !sc) return t ? [t] : [];
+  const rid = t.clone || t.id, g = sc.tokens.filter(x => x.id === rid || x.clone === rid);
+  if (g.length > 1) return g;                    // (o mestre — e o "ver como jogador" dele — sabe pelo clone das cópias)
+  return t.cg ? sc.tokens.filter(x => x.cg === t.cg) : [t];
+}
+// o real de um Clone (o token com cópias), para o mestre
+const realDeClone = (t, sc) => !!t && !t.clone && sc.tokens.some(x => x.clone === t.id);
+// o que muda no real e vai para as cópias (o lugar não: cada uma fica onde está)
+const ESPELHO_CLONE = ['name', 'img', 'imgChar', 'size', 'tam0', 'shape', 'color', 'bars', 'conds', 'cinfo', 'hidden', 'owner', 'showName', 'barVis', 'fad', 'post', 'auras', 'light', 'char', 'ini'];
+/* As regras do Clone, no fim de um passo (ops e inv: o que mudou e como estava antes). Devolve o que fazer, para quem
+   chama aplicar dentro de um passo:
+     · a cópia cujo real sumiu, ou cujo real não tem mais a condição (ela acabou ou foi tirada), some — e a cópia sem a
+       condição também;
+     · o real levou dano: todas as cópias somem;
+     · uma cópia levou dano: só ela some;
+     · senão, o que mudou no real vai para as cópias.
+   → [{ k: 'fim' | 'real' | 'copia', real, nome, ids }] e [{ k: 'espelho', id, p }] */
+function regrasDoClone(ops, inv) {
+  const sc = Store.scene(), out = [];
+  const copias = sc ? sc.tokens.filter(t => typeof t.clone === 'string') : [];
+  if (!copias.length) return out;
+  const grupos = new Map();
+  for (const c of copias) { if (!grupos.has(c.clone)) grupos.set(c.clone, []); grupos.get(c.clone).push(c); }
+  const mexidos = new Set((ops || []).filter(op => op.t === 'upd' && op.c === 'tokens' && op.p).map(op => op.id));
+  const danoEm = t => mexidos.has(t.id) && (a => 'bars' in a && levouDano(a.bars, t.bars))(antesDoToken(inv, t.id, ['bars']));
+  for (const [rid, cs] of grupos) {
+    const real = Store.get('tokens', rid), nome = real ? tokName(real) : cs[0].name;
+    if (!real || !real.conds.includes('clone')) { out.push({ k: 'fim', real: rid, nome, ids: cs.map(c => c.id), semReal: !real }); continue; }
+    if (danoEm(real)) { out.push({ k: 'real', real: rid, nome, ids: cs.map(c => c.id) }); continue; }
+    const sem = cs.filter(c => !c.conds.includes('clone')).map(c => c.id), dano = cs.filter(c => !sem.includes(c.id) && danoEm(c)).map(c => c.id);
+    if (sem.length) out.push({ k: 'fim', real: rid, nome, ids: sem, parte: true });
+    if (dano.length) out.push({ k: 'copia', real: rid, nome, ids: dano });
+    if (mexidos.has(rid)) {
+      const ks = new Set();
+      for (const op of ops) if (op.t === 'upd' && op.c === 'tokens' && op.id === rid && op.p) for (const k in op.p) if (ESPELHO_CLONE.includes(k)) ks.add(k);
+      if (ks.size) for (const c of cs) {
+        if (sem.includes(c.id) || dano.includes(c.id)) continue;
+        const p = {};
+        for (const k of ks) if (JSON.stringify(c[k]) !== JSON.stringify(real[k])) p[k] = real[k] === undefined ? null : clone(real[k]);
+        if (Object.keys(p).length) out.push({ k: 'espelho', id: c.id, p });
+      }
+    }
+  }
+  return out;
+}
+// aplica as regras (dentro de um passo) e avisa quem some
+function aplicarRegrasDoClone(regras) {
+  const sc = Store.scene();
+  for (const r of regras) {
+    if (r.k === 'espelho') { if (Store.get('tokens', r.id)) Store.upd('tokens', r.id, r.p); continue; }
+    tirarTokens(sc, r.ids);
+    Store.emit('clone', { k: r.k, nome: r.nome, n: r.ids.length, parte: !!r.parte, semReal: !!r.semReal });
+  }
+}
 const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
 Store.aoFechar(tx => {
   if (!acertaAqui()) return;
@@ -5223,6 +5388,8 @@ Store.aoFechar(tx => {
     if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
     for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
   }
+  // (lote 8) o Clone: depois de tudo do passo (o dano, a condição que saiu, o que mudou no real)
+  aplicarRegrasDoClone(regrasDoClone(tx.fwd, tx.inv));
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
@@ -5243,6 +5410,8 @@ Store.on('commit', e => {
     const agora = Store.scene();
     for (const [id, antes] of vao) { const v = atravessar(Store.get('tokens', id), antes, agora); if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); } }
   }), 0);
+  // (lote 8) o Clone, para o que chegou de fora (a ficha deu dano no real, um jogador mexeu): num passo logo depois
+  if (regrasDoClone(e.ops, e.inv).length) { const ops = e.ops, inv = e.inv; setTimeout(() => Store.tx('Clone', () => aplicarRegrasDoClone(regrasDoClone(ops, inv))), 0); }
 });
 
 /* ---- Seleção ---- */
@@ -5350,7 +5519,7 @@ const Act = {
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
     if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
-    else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v }; }
+    else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v: barPod(b) > 0 ? Math.min(v, barTeto(b)) : v }; }     // (lote 8: nem acima do teto da ferida)
     if (p.v === b.v && p.x === undefined) return false;
     Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
@@ -5471,6 +5640,74 @@ const Act = {
     }
     Act.condSet(t, id, { n }, 'Contador de condição');
     return 'ok';
+  },
+
+  /* (lote 8) A ferida permanente numa barra: quanto da ponta apodrece (0 tira). O valor acima do teto desce para ele, e
+     a condição acompanha (entra com a primeira barra podre, sai com a última). Um passo de desfazer. Num token ligado,
+     o podre vai para a ficha (estado.podre), como a sobrevida. */
+  podSet(t, i, amount, label) {
+    const b = t && t.bars[i];
+    if (!b || !(b.m > 0)) return false;
+    const pod = clamp(Math.round((Number(amount) || 0) * 10) / 10, 0, b.m);
+    if (pod === barPod(b)) return false;
+    const nb = Object.assign({}, b);
+    if (pod > 0) nb.pod = pod; else delete nb.pod;
+    if (pod > 0 && nb.v > barTeto(nb)) nb.v = barTeto(nb);
+    const bars = t.bars.map((x, j) => (j === i ? nb : x)), alguma = bars.some(x => barPod(x) > 0), p = { bars };
+    if (alguma && !t.conds.includes('ferida')) p.conds = t.conds.concat('ferida');
+    if (!alguma && t.conds.includes('ferida')) { const info = Object.assign({}, t.cinfo); delete info.ferida; p.conds = t.conds.filter(c => c !== 'ferida'); p.cinfo = info; }
+    Store.tx(label || (pod > 0 ? 'Ferida permanente' : 'Tirar a ferida permanente'), () => Store.upd('tokens', t.id, p));
+    return true;
+  },
+
+  /* (lote 8) O Clone. As cópias são tokens iguais ao real — nome, imagem, tamanho, barras, condições (com a Clone), dono
+     e ficha (só para mostrar: ficam fora da sincronização com ela) —, com clone: <id do real>. O real é o token de sempre
+     (a ficha, a vez na ordem). Escolher o real é trocar de lugar com a cópia escolhida: os tokens não deslizam, então os
+     jogadores não notam. Devolve { n } (quantas cópias couberam) e { real } (o id de quem ficou sendo o real). */
+  cloneCriar(t, quantas, raio, sortear) {
+    const sc = Store.scene(), n = clamp(Math.round(Number(quantas)) || 3, 1, MAX_CLONES), R = clamp(Math.round(Number(raio)) || 2, 1, 10);
+    if (!t || t.prop || t.clone) return { n: 0 };
+    const lugares = vagasDoClone(sc, t, n, R);
+    if (!lugares.length) return { n: 0 };
+    const ids = [];
+    Store.tx('Clone', () => {
+      if (!t.conds.includes('clone')) Store.upd('tokens', t.id, { conds: t.conds.concat('clone') });
+      const base = Store.get('tokens', t.id);
+      for (const [x, y] of lugares) {
+        const o = clone(base);
+        o.id = uid('tk'); o.x = x; o.y = y; o.clone = t.id; o.notes = '';
+        o.auras = (o.auras || []).map(a => Object.assign({}, a, { id: uid('au') }));
+        Store.add('tokens', o);
+        ids.push(o.id);
+      }
+      if (sortear) trocarComOReal(t.id, [t.id].concat(ids)[Math.floor(Math.random() * (ids.length + 1))]);
+    });
+    return { n: ids.length, real: t.id };
+  },
+  // Este é o real: o real troca de lugar com a cópia t (um passo de desfazer). → o id do real, ou null
+  cloneReal(t) {
+    const real = t && t.clone ? Store.get('tokens', t.clone) : null;
+    if (!real) return null;
+    Store.tx('Escolher o real', () => trocarComOReal(real.id, t.id));
+    return real.id;
+  },
+  // Sorteia quem é o real entre ele e as cópias (pode ser ele mesmo, que fica onde está). → o id do real, ou null
+  cloneSortear(realId) {
+    const sc = Store.scene(), cs = sc.tokens.filter(x => x.clone === realId);
+    if (!Store.get('tokens', realId) || !cs.length) return null;
+    const alvo = [realId].concat(cs.map(x => x.id))[Math.floor(Math.random() * (cs.length + 1))];
+    if (alvo !== realId) Store.tx('Sortear o real', () => trocarComOReal(realId, alvo));
+    return realId;
+  },
+  // Desfazer os clones: as cópias somem e a condição sai do real (um passo de desfazer). → quantas cópias sumiram
+  cloneDesfazer(realId) {
+    const sc = Store.scene(), real = Store.get('tokens', realId), cs = sc.tokens.filter(x => x.clone === realId);
+    if (!real && !cs.length) return 0;
+    Store.tx('Desfazer os clones', () => {
+      if (real && real.conds.includes('clone')) { const info = Object.assign({}, real.cinfo); delete info.clone; Store.upd('tokens', real.id, { conds: real.conds.filter(c => c !== 'clone'), cinfo: info }); }
+      tirarTokens(sc, cs.map(x => x.id));
+    });
+    return cs.length;
   },
 
   // Dano, cura e condição em vários tokens de uma vez. rows: [{ t, half }]; text: "12" ou "-12" tira, "+8" devolve.
@@ -5991,6 +6228,9 @@ const Fichas = (() => {
       const lo = pisoDe(rec), st = comecoDe(rec);
       if (barLo(b) !== lo) { if (lo > 0) b.lo = lo; else delete b.lo; mudou = true; }
       if ((b.st == null ? null : b.st) !== st) { if (st == null) delete b.st; else b.st = st; mudou = true; }
+      // (lote 8) a ferida permanente: o que apodreceu na ponta da barra (estado.podre)
+      const pz = Math.max(0, Number(rec.podre) || 0);
+      if (barPod(b) !== pz) { if (pz > 0) b.pod = Math.round(Math.min(pz, b.m) * 10) / 10; else delete b.pod; mudou = true; }
     }
     for (const b of bars) if (b.ref && !lista.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -6005,7 +6245,7 @@ const Fichas = (() => {
       if (out.length >= MAX_BARS) continue;
       const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha,
-        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec) })));
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec), pod: Math.max(0, Number(rec.podre) || 0) })));
     }
     return out.length ? out : null;
   }
@@ -6062,7 +6302,8 @@ const Fichas = (() => {
     let n = 0;
     const cenas = [Store.scene()], ar = Nuvem.noAr();
     if (ar && ar !== Store.S.current && Store.S.scenes[ar]) cenas.push(Store.S.scenes[ar]);
-    for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
+    // (lote 8: as cópias de um Clone ficam fora — elas seguem o real, não a ficha)
+    for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && !t.clone && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
     return n;
   }
   /* Quem mestra as Cenas recebe todas as fichas da mesa? O mestre, sim. O mestre auxiliar, só com a aba Fichas: sem
@@ -6098,10 +6339,11 @@ const Fichas = (() => {
   }
   // token → ficha: o valor atual (e a sobrevida) das barras ligadas. Serve para um token de qualquer cena da mesa.
   function paraFicha(t) {
-    if (!on || !t || !t.char) return false;
+    if (!on || !t || !t.char || t.clone) return false;               // (lote 8: a cópia de um Clone não mexe na ficha)
     const l = get(t.char);
     if (!l) { paraFichaAsCegas(t); return false; }          // (a ficha não está aqui: se é das escondidas, as barras vão às cegas)
     const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
+    const podre = Object.assign({}, (l.estado && l.estado.podre && typeof l.estado.podre === 'object' ? l.estado.podre : {}));      // (lote 8: a ferida permanente)
     const pdAgora = {}; for (const x of especiaisDe(l)) pdAgora[x.id] = x.atual;
     let mudou = false, pd = null;
     for (const b of t.bars) {
@@ -6114,9 +6356,11 @@ const Fichas = (() => {
       if (isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
       const x = barX(b);
       if ((Number(sob[b.ref]) || 0) !== x) { if (x > 0) sob[b.ref] = x; else delete sob[b.ref]; mudou = true; }
+      const pz = barPod(b);
+      if ((Number(podre[b.ref]) || 0) !== pz) { if (pz > 0) podre[b.ref] = pz; else delete podre[b.ref]; mudou = true; }
     }
     if (!mudou) return false;
-    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob }, pd ? { pd } : {}) });
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob, podre }, pd ? { pd } : {}) });
     return true;
   }
   function onLive(op) {
@@ -6751,13 +6995,19 @@ const Proj = (() => {
       : { n: b.n, c: b.c, k: b.k, on: true, vis: b.vis, v: Math.round(1000 * clamp(b.v / b.m, 0, 1)) / 10, m: 100 };
     const x = barX(b);
     if (x > 0) { o.x = Math.max(0.1, Math.round(1000 * x / b.m) / 10); o.xn = x; }
+    if (barPod(b) > 0) o.pod = Math.max(0.1, Math.round(1000 * barPod(b) / b.m) / 10);      // (lote 8) a ponta podre, em proporção
     return o;
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
-  function tokenPublico(t, jogadores) {
+  function tokenPublico(t, jogadores, grupos) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
+    /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
+       não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
+    delete o.clone;
+    const g = grupos && grupos.get(t.clone || t.id);
+    if (g) o.cg = g; else delete o.cg;
     const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
     if (!deJogador) {
       o.owner = null;
@@ -6790,7 +7040,9 @@ const Proj = (() => {
   }
   function projetar(sc, assets, jogadores) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
-    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores));
+    const grupos = new Map();                                         // (lote 8) id do real → a marca do grupo do Clone
+    for (const t of sc.tokens) if (t.clone && !grupos.has(t.clone)) grupos.set(t.clone, 'cg' + resumo(sc.id + ':' + t.clone));
+    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
     for (const k in sc) if (k !== 'explored' && k !== 'gerado' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
@@ -6831,7 +7083,8 @@ const Proj = (() => {
       const nv = nu(n.v), av = ehObj(a) ? nu(a.v) : NaN;
       if (isFinite(nv)) {
         const alvo = isFinite(av) ? b.v + (nv - av) : nv;
-        const v = clamp(r1(alvo), -barLo(b), Math.min(999999, Math.max(b.m, b.v, nv)));      // (a barra que pode ficar negativa desce até o piso dela)
+        const teto = barPod(b) > 0 ? barTeto(b) : Math.min(999999, Math.max(b.m, b.v, nv));         // (lote 8: nem acima do teto da ferida permanente)
+        const v = clamp(r1(alvo), -barLo(b), teto);      // (a barra que pode ficar negativa desce até o piso dela)
         if (v !== b.v && (isFinite(av) ? nv !== av : true)) o.v = v;
       }
       const nx = Math.max(0, nu(n.x) || 0), ax = ehObj(a) ? Math.max(0, nu(a.x) || 0) : NaN;
@@ -6845,9 +7098,10 @@ const Proj = (() => {
     return mudou ? out : null;
   }
   function fundirConds(atual, base, novo) {
-    const limpa = lista => Array.from(new Set((Array.isArray(lista) ? lista : []).filter(c => tem(COND_BY_ID, c))));
+    // (lote 8) a Ferida permanente e o Clone são do mestre: o pedido de um jogador não as põe nem as tira
+    const limpa = lista => Array.from(new Set((Array.isArray(lista) ? lista : []).filter(c => tem(COND_BY_ID, c) && !COND_JANELA.has(c))));
     const n = limpa(novo);
-    if (!Array.isArray(base)) return n;
+    if (!Array.isArray(base)) return n.concat((atual || []).filter(c => COND_JANELA.has(c)));
     const b = limpa(base), tirar = new Set(b.filter(c => !n.includes(c)));
     const out = atual.filter(c => !tirar.has(c));
     for (const c of n) if (!b.includes(c) && !out.includes(c)) out.push(c);
@@ -6866,9 +7120,10 @@ const Proj = (() => {
   }
   function fundirCinfo(atual, base, novo) {
     const n = cinfoLimpo(novo);
-    if (!ehObj(base)) return n;
+    if (!ehObj(base)) { for (const id of COND_JANELA) { if (atual && atual[id]) n[id] = atual[id]; else delete n[id]; } return n; }
     const b = cinfoLimpo(base), out = Object.assign({}, atual);
     for (const c of CONDS) {
+      if (COND_JANELA.has(c.id)) continue;                             // (lote 8: a Ferida e o Clone são do mestre)
       if (igual(b[c.id], n[c.id])) continue;                           // o jogador não mexeu nesta
       if (n[c.id]) out[c.id] = n[c.id]; else delete out[c.id];
     }
@@ -8904,11 +9159,12 @@ const Render = (() => {
         const m = Math.round(b.m), d = m >= 1 ? Math.min(bh, (w - (m - 1) * gap) / m) : 0;
         if (b.k === 'pts' && mode === 'num' && m >= 1 && m <= 12 && d >= 2 * px) {
           const x0 = cx - (m * d + (m - 1) * gap) / 2;
+          const podres = Math.round(barPod(b));               // (lote 8) os da ponta, apodrecidos
           for (let k = 0; k < m; k++) {
-            const full = k < Math.round(b.v);
+            const full = k < Math.round(b.v), podre = k >= m - podres;
             c.beginPath(); c.arc(x0 + k * (d + gap) + d / 2, y + bh / 2, d / 2, 0, TAU);
-            c.fillStyle = full ? b.c : 'rgba(10,12,18,0.82)'; c.fill();
-            c.strokeStyle = full ? 'rgba(0,0,0,0.7)' : hexA(b.c, 0.95); c.lineWidth = 1 * px; c.stroke();
+            c.fillStyle = podre ? PODRE_COR : full ? b.c : 'rgba(10,12,18,0.82)'; c.fill();
+            c.strokeStyle = podre ? 'rgba(40,30,15,0.9)' : full ? 'rgba(0,0,0,0.7)' : hexA(b.c, 0.95); c.lineWidth = 1 * px; c.stroke();
           }
         } else {
           c.fillStyle = 'rgba(10,12,18,0.82)'; rr(c, x, y, w, bh, bh * 0.3); c.fill();
@@ -8923,6 +9179,19 @@ const Render = (() => {
             c.strokeStyle = NEG_COR; c.lineWidth = Math.max(1 * px, bh * 0.2); c.lineCap = 'butt';
             c.beginPath();
             for (let sx = x - bh; sx < x + wn + bh; sx += passo) { c.moveTo(sx, y + bh); c.lineTo(sx + bh, y); }
+            c.stroke();
+            c.restore();
+          }
+          // (lote 8) a ferida permanente: a ponta da barra, apodrecida (a cura não passa dali)
+          const pz = barPod(b);
+          if (pz > 0) {
+            const wp = Math.max(bh * 0.6, w * clamp(pz / b.m, 0, 1)), xp = x + w - wp, passo = Math.max(3 * px, bh * 0.62);
+            c.save();
+            rr(c, x, y, w, bh, bh * 0.3); c.clip();
+            c.fillStyle = PODRE_COR; c.fillRect(xp, y, wp, bh);
+            c.strokeStyle = 'rgba(40,30,15,0.85)'; c.lineWidth = Math.max(1 * px, bh * 0.18); c.lineCap = 'butt';
+            c.beginPath();
+            for (let sx = xp - bh; sx < xp + wp + bh; sx += passo) { c.moveTo(sx, y); c.lineTo(sx + bh, y + bh); }
             c.stroke();
             c.restore();
           }
@@ -8976,6 +9245,11 @@ const Render = (() => {
         c.fillStyle = '#ffffff'; c.font = `700 ${r * (fer.n > 9 ? 1.05 : 1.4)}px ${FONT_UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText(fer.n > 99 ? '99+' : String(fer.n), nx, ny + r * 0.08);
       }
+    }
+    // (lote 8) o real de um Clone: a coroa no alto do token, no meio — só o mestre vê
+    if (isGM() && sp >= 20 && realDeClone(t, sc)) {
+      const d = clamp(s * 0.3, 14 * px, 26 * px);
+      badge(c, cx, t.y + d * 0.42, d, '#d9a821', 'real', px);
     }
     // Fadiga: a pilha da ficha (de 5 a 0, como a bateria do celular), no lado direito do token — todos veem
     if (typeof t.fad === 'number' && sp >= 22) {
@@ -9166,8 +9440,10 @@ const Render = (() => {
     if (!isGM() && !can('turns')) return;
     const e = tn.list.find(x => x.id === tn.cur);
     if (!e || (e.inv && !isGM())) return;          // (a vez de uma linha invisível não aparece para os jogadores)
-    // (na vez da faixa de um grupo, o anel vai em cada token dela)
-    for (const t of turnToks(e)) {
+    // (na vez da faixa de um grupo, o anel vai em cada token dela; lote 8: na vez do real de um Clone, também nas cópias)
+    const naVez = [];
+    for (const t of turnToks(e)) for (const k of grupoDoClone(t, sc)) if (!naVez.includes(k)) naVez.push(k);
+    for (const t of naVez) {
       if (!tokShown(t, sc)) continue;
       const [cx, cy, half] = tokC(t, sc);
       ctx.save();
@@ -10625,6 +10901,8 @@ const Tools = (() => {
     }
     if (e.button === 2) { rdown = { sx: e.clientX, sy: e.clientY, vx: App.view.x, vy: App.view.y, moved: false }; return; }
     if (e.button !== 0) return;
+    // (lote 8) escolhendo o real de um Clone: o clique escolhe (não seleciona nem arrasta)
+    if (UI.escolhendoReal()) { const ht = hitTest(p, { tokensOnly: true, noProps: true }); UI.escolherReal(ht && ht.id); return; }
     const t = T[App.tool];
     if (t.down) t.down(p, e);
   });
@@ -10712,6 +10990,7 @@ const Tools = (() => {
       return;
     }
     if (k === 'Escape') {
+      if (UI.escolhendoReal()) { UI.fimEscolhaReal(); UI.toast('O real fica onde está (a coroa).'); return; }      // (lote 8)
       if (g) { resetState(); Render.request(); }
       else if (App.sel.length) setSel([]);
       else if (App.tool !== 'select') set('select');
@@ -11680,7 +11959,17 @@ const UI = (() => {
   }
 
   function renderBanner() {
-    if (isGM()) { el.banner.hidden = true; return; }
+    if (isGM()) {
+      // (lote 8) escolhendo o real de um Clone no mapa
+      const real = App.escolhaReal ? Store.get('tokens', App.escolhaReal) : null;
+      if (App.escolhaReal && !real) App.escolhaReal = null;
+      el.banner.hidden = !real;
+      if (real) el.banner.replaceChildren(h('span', { class: 'dot', style: { background: '#d9a821' } }),
+        h('span', { class: 'banner-t', id: 'bannerText', text: `Clique no clone que vai ser o real de ${tokName(real)}.` }),
+        btn('Sortear', () => { const rid = App.escolhaReal; fimEscolhaReal(); sortearReal(rid); }, { kind: 'small', id: 'clEscSortear' }),
+        btn('Fica onde está', () => { fimEscolhaReal(); toast('O real fica onde está (a coroa).'); }, { kind: 'primary small', id: 'clEscFica' }));
+      return;
+    }
     if (Nuvem.jogador()) {
       // O jogador de verdade, na mesa: a faixa só aparece quando há algo a dizer.
       // (quem joga em mais de uma campanha: a cena no ar pode ser de outra campanha dele — não da que ele tem em vista)
@@ -11910,8 +12199,8 @@ const UI = (() => {
     const p = playerById(t.owner);
     return p ? 'De ' + p.name : 'Dono desconhecido';
   }
-  function condChip(c, on, onClick) {
-    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: c.n, onclick: onClick },
+  function condChip(c, on, onClick, dica) {
+    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: dica || c.n, onclick: onClick },
       h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { text: c.n }));
   }
   /* As condições para escolher, separadas por categoria: abas (Todas, Dano, Controle…) e uma busca pelo nome, que
@@ -11935,7 +12224,14 @@ const UI = (() => {
         title: g.t + (g.id !== 'todas' && tem(g.id) ? ' (há condição ativa aqui)' : ''), 'aria-pressed': String(!q && condTag === g.id),
         onclick: () => { condTag = g.id; condBusca = ''; busca.value = ''; paint(); },
       }, g.n)));
-      chips.replaceChildren(...(lista.length ? lista.map(c => condChip(c, ts.length > 0 && ts.every(t => t.conds.includes(c.id)), () => { Act.condToggle(live(), c.id); paint(); if (after) after(); }))
+      chips.replaceChildren(...(lista.length ? lista.map(c => {
+        const on = ts.length > 0 && ts.every(t => t.conds.includes(c.id));
+        if (COND_JANELA.has(c.id)) {                 // (lote 8) a Ferida permanente e o Clone: a janela deles, num token só
+          const nao = condJanelaNao(c.id, ts, on);
+          return condChip(c, on, nao ? null : () => { condJanela(c.id, ts[0], on, () => { paint(); if (after) after(); }); }, nao ? c.n + ': ' + nao : c.n + (on ? ' (tirar)' : '…'));
+        }
+        return condChip(c, on, () => { Act.condToggle(live(), c.id); paint(); if (after) after(); });
+      })
         : [h('p', { class: 'muted', text: 'Nenhuma condição com esse nome.' })]));
     };
     paint();
@@ -11948,6 +12244,128 @@ const UI = (() => {
     const r = Act.condStep(t, c.id, d);
     if (r === 'removed') toast(`${c.n} saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo });
     return r;
+  }
+  /* (lote 8) A Ferida permanente e o Clone: só o mestre, num token de cada vez. → por que não dá (texto), ou '' */
+  function condJanelaNao(id, ts, on) {
+    if (!isGM()) return 'só o mestre põe e tira';
+    if (ts.length !== 1) return 'um token de cada vez (escolha só um)';
+    const t = ts[0];
+    if (on) return '';
+    if (id === 'clone' && t.clone) return 'este já é uma cópia';
+    if (id === 'clone' && t.prop) return 'só tokens';
+    if (id === 'ferida' && !t.bars.some(b => b.on && b.m > 0)) return 'o token não tem barra para apodrecer';
+    if (id === 'ferida' && Fichas.escondida(t)) return 'a ferida de um token ligado fica na ficha, que não chega a você (precisa da aba Fichas)';
+    return '';
+  }
+  // pôr (abre a janela) ou tirar (a condição sai: a ferida leva o podre das barras; o Clone, as cópias)
+  function condJanela(id, t, on, depois) {
+    if (!t) return;
+    if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else cloneBox(t, depois); return; }
+    if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
+    else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
+    if (depois) depois();
+  }
+  // "20 HP · 5 SP": o que apodreceu em cada barra
+  const podresTexto = t => t.bars.filter(b => b.on && barPod(b) > 0).map(b => fmt(barPod(b)) + ' ' + b.n).join(' · ');
+  function cloneTexto(t) {
+    if (!isGM()) return '–';
+    const sc = Store.scene();
+    if (t.clone) return 'cópia';
+    const n = sc.tokens.filter(x => x.clone === t.id).length;
+    return n ? `o real · ${n} ${n === 1 ? 'cópia' : 'cópias'}` : 'sem cópias';
+  }
+  /* A janela da Ferida permanente: qual barra e quanto apodrece, com a prévia ("HP 100 → 80; a cura não passa de 80").
+     Num token que já tem a ferida, muda o quanto (0 tira daquela barra). */
+  function feridaBox(t, i0, depois) {
+    const barras = t.bars.map((b, i) => [b, i]).filter(([b]) => b.on && b.m > 0);
+    if (!barras.length) { toast('Este token não tem barra para apodrecer.'); return; }
+    const vida = barraDaVida(t.bars);
+    let i = i0 != null ? i0 : (barras.find(([b]) => barPod(b) > 0) || [null, vida ? t.bars.indexOf(vida) : barras[0][1]])[1];
+    const qtd = h('input', { id: 'fer-qtd', class: 'in num', type: 'number', min: 0, step: 1, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto apodrece' });
+    const previa = h('p', { class: 'note fer-previa', id: 'fer-previa' });
+    const pinta = () => {
+      const b = t.bars[i], q = clamp(Math.round((parseFloat(String(qtd.value).replace(',', '.')) || 0) * 10) / 10, 0, b.m);
+      const teto = Math.max(-barLo(b), b.m - q), v2 = Math.min(b.v, teto);
+      previa.textContent = q > 0 ? `${b.n}: ${fmtV(b.v)} → ${fmtV(v2)} de ${fmt(b.m)}. ${fmt(q)} apodrecidos: a cura, até a total, não passa de ${fmtV(teto)} até a ferida sair.`
+        : barPod(b) > 0 ? `Zero tira a ferida de ${b.n}: a cura volta a ir até ${fmt(b.m)}.` : 'Digite quanto da ponta da barra apodrece.';
+    };
+    const sel = inSelect('fer-bar', String(i), barras.map(([b, k]) => [String(k), `${b.n} (${fmtV(b.v)} de ${fmt(b.m)}${barPod(b) ? `, ${fmt(barPod(b))} podres` : ''})`]), v => { i = Number(v); qtd.value = barPod(t.bars[i]) || ''; pinta(); });
+    qtd.value = barPod(t.bars[i]) || '';
+    qtd.addEventListener('input', pinta);
+    pinta();
+    modal({
+      title: 'Ferida permanente em ' + tokName(t),
+      body: h('div', { class: 'fer-box' },
+        note('A ponta da barra apodrece: o valor acima dela desce, e nenhuma cura (nem a total, nem o descanso) passa dali até você tirar a ferida. Num token ligado, a ficha mostra a barra podre.'),
+        h('div', { class: 'grid2' }, field('Barra', sel), field('Quanto apodrece', qtd)), previa),
+      actions: [{ label: 'Cancelar' }, { label: 'Apodrecer', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const b = tt.bars[i]; if (!b) return;
+        const q = clamp(Math.round((parseFloat(String(qtd.value).replace(',', '.')) || 0) * 10) / 10, 0, b.m);
+        if (!q && !barPod(b)) { toast('Digite quanto apodrece (mais que zero).'); return false; }
+        if (Act.podSet(tt, i, q)) toast(q ? `${tokName(tt)}: ${fmt(q)} de ${b.n} apodreceram (ferida permanente).` : `A ferida saiu de ${b.n} de ${tokName(tt)}.`, { action: 'Desfazer', run: Tools.undo });
+        if (depois) depois();
+      } }],
+    });
+  }
+  /* A janela do Clone: quantas cópias, em que raio e quem é o real (sortear agora, ou o mestre escolhe no mapa). */
+  function cloneBox(t, depois) {
+    const nIn = h('input', { id: 'cl-n', class: 'in num', type: 'number', min: 1, max: MAX_CLONES, step: 1, value: 3, 'data-focus': '', 'aria-label': 'Quantas cópias' });
+    const rIn = h('input', { id: 'cl-r', class: 'in num', type: 'number', min: 1, max: 10, step: 1, value: 2, 'aria-label': 'Raio em quadrados' });
+    const op = (v, txt, dica, on) => h('label', { class: 'cl-op', title: dica }, h('input', { type: 'radio', name: 'cl-quem', value: v, id: 'cl-quem-' + v, checked: on }), h('span', { text: txt }));
+    const quem = h('div', { class: 'cl-quem', role: 'radiogroup', 'aria-label': 'Quem é o real' },
+      op('sortear', 'Sortear agora', 'O site sorteia quem é o real entre ele e as cópias (você vê a coroa)', true),
+      op('eu', 'Eu escolho no mapa', 'Depois de criar, clique no clone que vai ser o real', false));
+    modal({
+      title: 'Clone de ' + tokName(t),
+      body: h('div', { class: 'cl-box' },
+        note(`As cópias são iguais a ${tokName(t)}: nome, imagem, barras e condições. Os jogadores veem todos iguais; só você vê qual é o real (a coroa).`),
+        h('div', { class: 'grid2' }, field('Quantas cópias (1 a ' + MAX_CLONES + ')', nIn), field('Raio, em quadrados (1 a 10)', rIn)),
+        field('Quem é o real', quem),
+        note('Dano numa cópia: só ela some. Dano no real: todas somem. Quando a condição Clone acaba (ou sai do real), as cópias somem juntas.')),
+      actions: [{ label: 'Cancelar' }, { label: 'Criar os clones', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const n = clamp(Math.round(parseFloat(nIn.value)) || 3, 1, MAX_CLONES), r = clamp(Math.round(parseFloat(rIn.value)) || 2, 1, 10);
+        const sortear = !document.getElementById('cl-quem-eu').checked;
+        const res = Act.cloneCriar(tt, n, r, sortear);
+        if (!res.n) { toast(`Não há lugar livre a até ${r} ${r === 1 ? 'quadrado' : 'quadrados'} de ${tokName(tt)} para as cópias.`); return false; }
+        const falta = n - res.n ? ` (Só couberam ${res.n} no raio.)` : '';
+        setSel([{ c: 'tokens', id: tt.id }]);
+        if (sortear) toast(`${res.n} ${res.n === 1 ? 'cópia' : 'cópias'} de ${tokName(tt)}. Sorteado: o real é o da coroa (só você vê).${falta}`, { action: 'Desfazer', run: Tools.undo, long: !!falta });
+        else { escolhaReal(tt.id); if (falta) toast(falta.trim()); }
+        if (depois) depois();
+      } }],
+    });
+  }
+  // (lote 8) escolher o real no mapa: a faixa de cima pede o clique; Esc (ou "Fica onde está") encerra sem mudar nada
+  function escolhaReal(id) { App.escolhaReal = id; renderBanner(); }
+  function fimEscolhaReal() { if (!App.escolhaReal) return; App.escolhaReal = null; renderBanner(); }
+  function escolherReal(id) {
+    const rid = App.escolhaReal; if (!rid) return;
+    const t = id ? Store.get('tokens', id) : null;
+    if (!t || !(t.id === rid || t.clone === rid)) { toast('Clique num dos clones (ou Esc: o real fica onde está).', { key: 'escolha-real' }); return; }
+    fimEscolhaReal();
+    if (t.clone) { Act.cloneReal(t); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é o da coroa (só você vê).', { action: 'Desfazer', run: Tools.undo }); }
+    else { setSel([{ c: 'tokens', id: rid }]); toast('O real fica onde está (a coroa).'); }
+  }
+  function sortearReal(rid) {
+    const r = Act.cloneSortear(rid);
+    if (!r) return;
+    setSel([{ c: 'tokens', id: r }]);
+    toast('Sorteado: o real é o da coroa (só você vê).', { action: 'Desfazer', run: Tools.undo });
+  }
+  // no painel do token (mestre): o grupo do Clone, com Este é o real, Sortear e Desfazer os clones
+  function cloneSec(t) {
+    const sc = Store.scene(), rid = t.clone || (realDeClone(t, sc) ? t.id : null);
+    if (!rid) return null;
+    const real = Store.get('tokens', rid), n = sc.tokens.filter(x => x.clone === rid).length;
+    return sec('s-clone', 'Clone', true,
+      note(t.clone ? `Cópia de ${real ? tokName(real) : 'um token que saiu da cena'} (só você sabe).` : `Este é o real (a coroa: só você vê). ${n} ${n === 1 ? 'cópia' : 'cópias'}.`),
+      h('div', { class: 'row' },
+        t.clone ? btn('Este é o real', () => { Act.cloneReal(t); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); }, { icon: 'real', id: 'tk-cl-real', title: 'O real troca de lugar com esta cópia (os jogadores não notam)' }) : null,
+        btn('Sortear o real', () => sortearReal(rid), { icon: 'die', id: 'tk-cl-sortear', title: 'O site sorteia quem é o real entre ele e as cópias' }),
+        btn('Desfazer os clones', () => { const k = Act.cloneDesfazer(rid); toast(`Os clones sumiram${k ? ` (${k})` : ''} e a condição saiu de ${real ? tokName(real) : 'quem era o real'}.`, { action: 'Desfazer', run: Tools.undo }); }, { icon: 'trash', id: 'tk-cl-fim' })),
+      note('Dano numa cópia: só ela some. Dano no real: todas somem.'));
   }
   function condActive(t, edit, after, idp) {
     const info = t.cinfo || {}, pre = idp || 'cd';
@@ -11963,6 +12381,10 @@ const UI = (() => {
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { class: 'cact-t', text: c.n })),
           // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
           c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
+          // (lote 8) a Ferida permanente: o que apodreceu em cada barra (o mestre muda na janela); o Clone: as cópias
+          : c.id === 'ferida' ? h('span', { class: 'stp-v ro cact-pod', id: `${pre}-${c.id}-n`, title: 'O que apodreceu na ponta de cada barra: a cura não passa dali até a ferida sair' },
+            h('span', { text: podresTexto(t) || 'nenhuma barra' }), edit && isGM() ? h('button', { type: 'button', class: 'lnk', id: `${pre}-${c.id}-mudar`, text: 'Mudar…', onclick: () => feridaBox(t, null, done) }) : null)
+          : c.id === 'clone' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: isGM() ? 'Só você sabe quem é o real (a coroa)' : 'Os clones são iguais', text: cloneTexto(t) })
           : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
@@ -12077,6 +12499,11 @@ const UI = (() => {
         // depois de digitado, quem mantém o campo aberto é a própria sobrevida: quando ela acabar, o campo fecha
         inNum(`tk-b${i}-x`, barX(b), v => { delete barXOpen[key]; if (!Act.barExtra(t, i, v)) renderSide(); }, { min: 0, step: 1, label: 'Sobrevida de ' + b.n, title: 'Pontos por cima da barra: o dano gasta a sobrevida antes de chegar em ' + b.n }),
         h('span', { class: 'bar-x-n', text: 'leva o dano antes' })));
+      // (lote 8) a ferida permanente: a ponta podre e o teto da cura
+      if (barPod(b) > 0 && b.on) rows.push(h('div', { class: 'bar-x bar-pod' + (full ? ' full' : ''), id: `tk-b${i}-pod` },
+        h('span', { class: 'bar-x-l', text: 'Ferida' }),
+        h('span', { class: 'bar-pod-t', text: `${fmt(barPod(b))} apodrecidos: a cura não passa de ${fmtV(barTeto(b))}` }),
+        full && isGM() ? h('button', { type: 'button', class: 'lnk', id: `tk-b${i}-podm`, text: 'Mudar…', onclick: () => feridaBox(t, i) }) : null));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
@@ -12100,7 +12527,8 @@ const UI = (() => {
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
         : h('span', { class: 'meter' }, barNeg(b) > 0 ? h('span', { class: 'meter-f neg', style: { width: clamp(barNeg(b) * 100, 4, 100) + '%' } })
-          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
+          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } }),
+          barPod(b) > 0 ? h('span', { class: 'meter-p', title: 'Ferida permanente: a ponta apodrecida', style: { width: clamp(barPod(b) / b.m * 100, 3, 100) + '%' } }) : null),       // (lote 8)
       mode === 'num' ? h('span', { class: 'bar-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
@@ -12165,7 +12593,7 @@ const UI = (() => {
     const selBar = h('select', { id: 'ar-bar', class: 'in' }, names.map(n => h('option', { value: n, text: n })));
     const amt = h('input', { id: 'ar-amt', class: 'in bar-v', type: 'text', inputmode: 'decimal', placeholder: '12', autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto tirar ou devolver' });
     const selCond = h('select', { id: 'ar-cond', class: 'in' }, h('option', { value: '', text: 'Nenhuma' }),
-      COND_TAGS.map(g => h('optgroup', { label: g.t }, CONDS.filter(c => c.g === g.id).map(c => h('option', { value: c.id, text: c.n })))));
+      COND_TAGS.map(g => h('optgroup', { label: g.t }, CONDS.filter(c => c.g === g.id && !COND_JANELA.has(c.id)).map(c => h('option', { value: c.id, text: c.n })))));
     const mk = (id, label) => h('input', { id, type: 'number', class: 'in num', min: 0, max: 99, step: 1, placeholder: '–', 'aria-label': label, disabled: true });
     const cn = mk('ar-cn', 'Somar ao contador'), cd = mk('ar-cd', 'Duração em rodadas');
     const int = el => clamp(Math.round(parseFloat(el.value) || 0), 0, 99);
@@ -12465,6 +12893,7 @@ const UI = (() => {
       fadigaBox(t),
       numsBox(t, true),
       sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
+      cloneSec(t),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -13102,7 +13531,7 @@ const UI = (() => {
       const rolled = gm && e.roll && e.init != null ? rollText(e.roll.d, e.roll.b) : '';      // o detalhe da rolagem é só do mestre
       // um clique na linha mostra no mapa: o token, ou os da faixa (os que quem olha enxerga)
       const mostrar = () => {
-        const vis = (band ? membros : t ? [t] : []).filter(x => tokShown(x, sc));
+        const vis = (band ? membros : t ? grupoDoClone(t, sc) : []).filter(x => tokShown(x, sc));      // (lote 8: o real de um Clone vem com as cópias)
         if (!vis.length) return;
         setSel(vis.map(x => ({ c: 'tokens', id: x.id })));
         const cs = vis.map(x => tokC(x, sc));
@@ -13403,6 +13832,9 @@ const UI = (() => {
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
       if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
+      // (lote 8) o Clone: escolher ou sortear o real
+      if (gm && toks.length === 1 && o.clone && Store.get('tokens', o.clone)) items.push({ label: 'Este é o real', icon: 'real', run: () => { const rid = o.clone; Act.cloneReal(o); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); } });
+      if (gm && toks.length === 1 && (o.clone || realDeClone(o, Store.scene()))) items.push({ label: 'Sortear o real', icon: 'die', run: () => sortearReal(o.clone || o.id) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
       if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
@@ -13752,6 +14184,17 @@ const UI = (() => {
     const t = Store.get('tokens', d.tok);
     if (t) toast(`${tokName(t)} atravessou o portal.`, { action: 'Desfazer', run: Tools.undo, key: 'portal' });
   });
+  // (lote 8) o Clone: quem sumiu, e por quê
+  Store.on('clone', d => {
+    if (!isGM()) return;
+    const q = (n, um, uns) => (n === 1 ? um : n + ' ' + uns);
+    const txt = d.k === 'real' ? `${d.nome} (o real) levou dano: ${d.n === 1 ? 'o clone sumiu' : `os ${d.n} clones sumiram`}.`
+      : d.k === 'copia' ? `${q(d.n, 'Um clone', 'clones')} de ${d.nome} ${d.n === 1 ? 'levou dano e sumiu' : 'levaram dano e sumiram'}.`
+      : d.semReal ? `O real saiu da cena: ${d.n === 1 ? 'a cópia' : `as ${d.n} cópias`} de ${d.nome} ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
+      : d.parte ? `${q(d.n, 'Uma cópia', 'cópias')} de ${d.nome} sem a condição Clone ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
+      : `A condição Clone de ${d.nome} acabou: ${d.n === 1 ? 'a cópia sumiu' : `as ${d.n} cópias sumiram`}.`;
+    toast(txt, { action: 'Desfazer', run: Tools.undo, key: 'clone' });
+  });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);
     if (!t || !isGM()) return;
@@ -13822,6 +14265,8 @@ const UI = (() => {
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
+    feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
     passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
@@ -25432,7 +25877,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

@@ -152,11 +152,11 @@
     {id:'silencio', n:'Silenciado', g:'mente'}, {id:'maldicao', n:'Amaldiçoado', g:'mente'}, {id:'marcado', n:'Marcado', g:'mente'},
     {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'possuido', n:'Possuído', g:'mente'},
     {id:'refletindo', n:'Refletindo', g:'mente'}, {id:'enlouquecido', n:'Enlouquecido', g:'mente'}, {id:'qibloq', n:'Qi bloqueado', g:'mente'},
-    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
+    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'clone', n:'Clone', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
     {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'}, {id:'doente', n:'Doente', g:'corpo'},
     {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'}, {id:'morto', n:'Morto', g:'corpo'},
     {id:'sufocando', n:'Sufocando', g:'corpo'}, {id:'ofuscado', n:'Ofuscado', g:'corpo'}, {id:'agigantado', n:'Agigantado', g:'corpo'},
-    {id:'encolhido', n:'Encolhido', g:'corpo'}, {id:'lento', n:'Lento', g:'ritmo'}, {id:'acelerado', n:'Acelerado', g:'ritmo'},
+    {id:'encolhido', n:'Encolhido', g:'corpo'}, {id:'ferida', n:'Ferida permanente', g:'corpo'}, {id:'lento', n:'Lento', g:'ritmo'}, {id:'acelerado', n:'Acelerado', g:'ritmo'},
     {id:'voando', n:'Voando', g:'ritmo'}, {id:'oculto', n:'Oculto', g:'ritmo'}, {id:'invisivel', n:'Invisível', g:'ritmo'},
     {id:'etereo', n:'Etéreo', g:'ritmo'}, {id:'escudo', n:'Protegido', g:'bencao'}, {id:'bencao', n:'Abençoado', g:'bencao'},
     {id:'inspirado', n:'Inspirado', g:'bencao'}, {id:'regen', n:'Regeneração', g:'bencao'}, {id:'tratado', n:'Tratado', g:'bencao'},
@@ -935,11 +935,19 @@
     if (g == null) { const i = numFinito(inicio); return i == null ? max : limitar(i, max, min); }   // nada anotado: no começo da barra
     return limitar(g, max, min);
   }
-  /* → [{id, nome, max, min, inicio, atual, sobre}] na ordem da ficha. max vem de calc (null se o recurso
+  /* (lote 8) A ferida permanente: a ponta da barra apodrece (estado.podre: { id: quanto }). A cura — até a total —
+     não passa do teto (o máximo menos o podre), até o mestre tirar a ferida. O podre fica entre 0 e o máximo.
+     → quanto apodreceu (0 se nada) */
+  function podreDe(estado, id, max) {
+    const pd = estado && estado.podre, v = numFinito(pd && typeof pd === 'object' && tem(pd, id) ? pd[id] : null), m = numFinito(max);
+    if (v == null || !(v > 0) || m == null || !(m > 0)) return 0;
+    return Math.round(Math.min(v, m) * 10) / 10;
+  }
+  /* → [{id, nome, max, min, inicio, atual, sobre, podre}] na ordem da ficha. max vem de calc (null se o recurso
      não tem fórmula ou ela deu erro); min é até onde a barra desce (0, ou negativo); inicio é onde ela
      começa (null = cheia). atual é o guardado em estado.rec — no começo da barra quando não há nada
-     guardado — e só é preso em min..max quando existe max. sobre é a sobrevida guardada em estado.sob
-     (0 quando não há). */
+     guardado — e só é preso em min..max quando existe max (com a ferida permanente, em min..teto: o máximo menos
+     o podre). sobre é a sobrevida guardada em estado.sob (0 quando não há); podre, o que a ferida apodreceu. */
   function estadoRecursos(pc, calc, estado) {
     const rec = (estado && estado.rec) || {};
     const sob = (estado && estado.sob) || {};
@@ -948,7 +956,8 @@
     return ((pc && pc.recursos) || []).map((r, i) => {
       const c = calcs[i] && calcs[i].id === r.id ? calcs[i] : calcs.find(x => x.id === r.id);
       const max = c ? numFinito(c.max) : null, min = c ? Math.min(0, numFinito(c.min) || 0) : 0, inicio = c ? numFinito(c.inicio) : null;
-      return { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, max, min, inicio), sobre: sobreDe(r.id) };
+      const podre = podreDe(estado, r.id, max), teto = max == null ? null : Math.max(min, max - podre);
+      return { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, teto, min, inicio), sobre: sobreDe(r.id), podre };
     });
   }
   /* → um estado NOVO com o recurso somado de delta (dano negativo, cura positiva),
@@ -956,7 +965,7 @@
      começo da barra (inicio; cheia se não vier). O estado recebido não é alterado. */
   function aplicarDelta(estado, id, max, delta, min, inicio) {
     const rec = (estado && estado.rec) || {};
-    const m = numFinito(max);
+    const m0 = numFinito(max), m = m0 == null ? null : Math.max(numFinito(min) || 0, m0 - podreDe(estado, id, m0));    // (a ferida permanente: o teto)
     const atual = atualDe(tem(rec, id) ? rec[id] : null, m, min, inicio);
     let novo = (atual == null ? 0 : atual) + (numFinito(delta) || 0);
     if (m != null) novo = limitar(novo, m, min);
@@ -1720,7 +1729,7 @@
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
-    bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, resumo,
+    bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,

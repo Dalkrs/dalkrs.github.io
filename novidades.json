@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-12",
+      "data": "2026-10-17",
+      "titulo": "Limite de dano, Ferida permanente e Clone",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o Limite de dano, um número de consulta junto dos atributos secundários (depois das defesas). Vazio é sem limite; ele não entra em conta nenhuma."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a condição Ferida permanente. Você escolhe a barra e quanto apodrece: a ponta da barra fica podre e nenhuma cura passa dali (nem a total, nem as poções, nem o descanso do Acampamento) até você tirar a ferida. A ficha ligada mostra a barra podre.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a condição Clone. Você escolhe quantas cópias (1 a 10) e em que raio elas aparecem; o real é sorteado ou você clica nele. Os jogadores veem todos iguais. Dano numa cópia: só ela some. Dano no real: todas somem. Quando a condição acaba, as cópias somem juntas.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: só você vê qual é o real (a coroa). Dá para trocar a qualquer hora (“Este é o real” ou “Sortear o real”, no painel e no botão direito), e na vez do real o anel aparece em todos.",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-11",
       "data": "2026-10-17",
       "titulo": "Os defeitos do lote 8",

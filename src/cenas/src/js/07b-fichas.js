@@ -79,6 +79,9 @@ const Fichas = (() => {
       const lo = pisoDe(rec), st = comecoDe(rec);
       if (barLo(b) !== lo) { if (lo > 0) b.lo = lo; else delete b.lo; mudou = true; }
       if ((b.st == null ? null : b.st) !== st) { if (st == null) delete b.st; else b.st = st; mudou = true; }
+      // (lote 8) a ferida permanente: o que apodreceu na ponta da barra (estado.podre)
+      const pz = Math.max(0, Number(rec.podre) || 0);
+      if (barPod(b) !== pz) { if (pz > 0) b.pod = Math.round(Math.min(pz, b.m) * 10) / 10; else delete b.pod; mudou = true; }
     }
     for (const b of bars) if (b.ref && !lista.some(x => x.id === b.ref)) { delete b.ref; mudou = true; }   // recurso saiu da ficha: vira barra comum
     return mudou ? bars : null;
@@ -93,7 +96,7 @@ const Fichas = (() => {
       if (out.length >= MAX_BARS) continue;
       const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha,
-        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec) })));
+        { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec), pod: Math.max(0, Number(rec.podre) || 0) })));
     }
     return out.length ? out : null;
   }
@@ -150,7 +153,8 @@ const Fichas = (() => {
     let n = 0;
     const cenas = [Store.scene()], ar = Nuvem.noAr();
     if (ar && ar !== Store.S.current && Store.S.scenes[ar]) cenas.push(Store.S.scenes[ar]);
-    for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
+    // (lote 8: as cópias de um Clone ficam fora — elas seguem o real, não a ficha)
+    for (const sc of cenas) for (const t of sc.tokens.slice()) if (t.char && !t.clone && (!charId || t.char === charId) && syncToken(t, sc.id)) n++;
     return n;
   }
   /* Quem mestra as Cenas recebe todas as fichas da mesa? O mestre, sim. O mestre auxiliar, só com a aba Fichas: sem
@@ -186,10 +190,11 @@ const Fichas = (() => {
   }
   // token → ficha: o valor atual (e a sobrevida) das barras ligadas. Serve para um token de qualquer cena da mesa.
   function paraFicha(t) {
-    if (!on || !t || !t.char) return false;
+    if (!on || !t || !t.char || t.clone) return false;               // (lote 8: a cópia de um Clone não mexe na ficha)
     const l = get(t.char);
     if (!l) { paraFichaAsCegas(t); return false; }          // (a ficha não está aqui: se é das escondidas, as barras vão às cegas)
     const rec = Object.assign({}, (l.estado && l.estado.rec) || {}), sob = Object.assign({}, (l.estado && l.estado.sob) || {});
+    const podre = Object.assign({}, (l.estado && l.estado.podre && typeof l.estado.podre === 'object' ? l.estado.podre : {}));      // (lote 8: a ferida permanente)
     const pdAgora = {}; for (const x of especiaisDe(l)) pdAgora[x.id] = x.atual;
     let mudou = false, pd = null;
     for (const b of t.bars) {
@@ -202,9 +207,11 @@ const Fichas = (() => {
       if (isFinite(b.v) && rec[b.ref] !== b.v) { rec[b.ref] = b.v; mudou = true; }
       const x = barX(b);
       if ((Number(sob[b.ref]) || 0) !== x) { if (x > 0) sob[b.ref] = x; else delete sob[b.ref]; mudou = true; }
+      const pz = barPod(b);
+      if ((Number(podre[b.ref]) || 0) !== pz) { if (pz > 0) podre[b.ref] = pz; else delete podre[b.ref]; mudou = true; }
     }
     if (!mudou) return false;
-    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob }, pd ? { pd } : {}) });
+    P.gravar(t.char, { estado: Object.assign({}, l.estado || {}, { rec, sob, podre }, pd ? { pd } : {}) });
     return true;
   }
   function onLive(op) {

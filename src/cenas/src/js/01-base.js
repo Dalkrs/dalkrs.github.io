@@ -325,6 +325,10 @@ const ICONS = {
   c_agigantado: 'M4 4l5.500 5.500M4 4v4.500M4 4h4.500M20 20l-5.500-5.500M20 20v-4.500M20 20h-4.500M20 4l-5.500 5.500M20 4h-4.500M20 4v4.500M4 20l5.500-5.500M4 20h4.500M4 20v-4.500',
   c_encolhido: 'M9.500 9.500L4 4M9.500 9.500H5.500M9.500 9.500V5.500M14.500 14.500L20 20M14.500 14.500h4M14.500 14.500v4M14.500 9.500L20 4M14.500 9.500h4M14.500 9.500V5.500M9.500 14.500L4 20M9.500 14.500H5.500M9.500 14.500v4',
   c_ventania: 'M3 8h11a2.500 2.500 0 1 0-2.500-2.500M3 12h15.500a2.500 2.500 0 1 1-2.500 2.500M3 16h8a2 2 0 1 1-2 2',
+  // (lote 8) a ferida permanente (um coração rachado) e o clone (duas figuras, uma atrás da outra)
+  c_ferida: 'M12 20s-7.500-4.500-7.500-10.200A4.200 4.200 0 0 1 12 7.300a4.200 4.200 0 0 1 7.500 2.500C19.500 15.500 12 20 12 20zM12 7.300l-1.600 3.200 2.800 1.800-1.700 3.400',
+  c_clone: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.500 19.500c0-3.200 2.400-5.500 5.500-5.500s5.500 2.300 5.500 5.500M15 5.300a3 3 0 0 1 0 5.400M17 14.300c2.100.7 3.500 2.600 3.500 5.200',
+  real: 'M4 17.500L3 7.500l5 4 4-6.500 4 6.500 5-4-1 10zM4.500 20.500h15',     // (lote 8) a coroa do real de um Clone (só o mestre vê)
   // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
   st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
   st_can: 'M4 5.500C6 4.500 9 4.500 12 6c3-1.500 6-1.500 8-.5V19c-2-1-5-1-8 .5-3-1.500-6-1.500-8-.5zM12 6v13.500',
@@ -394,12 +398,19 @@ const cleanBarRef = (b, o) => {
   if (o && Number(o.xn) > 0) b.xn = Math.round(Number(o.xn) * 10) / 10;
   if (barLo(o) > 0) b.lo = barLo(o);
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
+  // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
+  if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
   return b;
 };
 const barX = b => Math.max(0, Number(b && b.x) || 0);
 const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
-// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um.
-const barFull = b => (b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m);
+/* (lote 8) A ferida permanente: o que apodreceu na ponta da barra (0 a m) e o teto da cura (o máximo menos isso,
+   nunca abaixo do piso). Sem ferida, o teto é o máximo. */
+const barPod = b => { const v = Number(b && b.pod) || 0; return v > 0 && b.m > 0 ? Math.round(Math.min(v, b.m) * 10) / 10 : 0; };
+const barTeto = b => Math.max(-barLo(b), b.m - barPod(b));
+const PODRE_COR = '#6b7a35';                // a cor da ponta apodrecida, no mapa e nos painéis
+// Para onde a "cura total" leva a barra: o começo dela, ou o máximo quando ela não tem um (e nunca acima do teto).
+const barFull = b => Math.min(b && b.st != null && isFinite(Number(b.st)) ? Number(b.st) : b.m, barTeto(b));
 const NEG_COR = '#ff5d73';                  // a cor da parte negativa de uma barra (riscada), no mapa e nos painéis
 const fmtV = v => fmt(v).replace('-', '−');   // valor de barra, com o sinal de menos de verdade
 // Quanto do piso uma barra negativa já gastou (0 a 1); 0 quando ela não está abaixo de zero.
@@ -517,6 +528,7 @@ const CONDS = [
   { id: 'enlouquecido', n: 'Enlouquecido', c: '#c4488c', i: 'c_enlouquecido', g: 'mente' },
   { id: 'qibloq', n: 'Qi bloqueado', c: '#5b6b80', i: 'c_qibloq', g: 'mente' },
   { id: 'qidesvio', n: 'Desvio de Qi', c: '#d4643a', i: 'c_qidesvio', g: 'mente' },
+  { id: 'clone', n: 'Clone', c: '#7f8fd6', i: 'c_clone', g: 'mente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
   { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
   { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
@@ -529,6 +541,7 @@ const CONDS = [
   { id: 'ofuscado', n: 'Ofuscado', c: '#cfa83c', i: 'c_ofuscado', g: 'corpo' },
   { id: 'agigantado', n: 'Agigantado', c: '#b8743c', i: 'c_agigantado', g: 'corpo' },
   { id: 'encolhido', n: 'Encolhido', c: '#5f9ab4', i: 'c_encolhido', g: 'corpo' },
+  { id: 'ferida', n: 'Ferida permanente', c: '#7a8a3a', i: 'c_ferida', g: 'corpo' },
   { id: 'lento', n: 'Lento', c: '#6f8f6a', i: 'c_lento', g: 'ritmo' },
   { id: 'acelerado', n: 'Acelerado', c: '#2ea6c9', i: 'c_acelerado', g: 'ritmo' },
   { id: 'voando', n: 'Voando', c: '#6aa8d8', i: 'c_voando', g: 'ritmo' },
@@ -543,6 +556,10 @@ const CONDS = [
   { id: 'escudado', n: 'Escudado', c: '#3f97d6', i: 'c_escudado', g: 'bencao' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
+/* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:
+   quantas cópias e em que raio). Só o mestre as põe e tira, num token de cada vez — as zonas e o dano em área não
+   as aplicam, e o pedido de um jogador não mexe nelas. */
+const COND_JANELA = new Set(['ferida', 'clone']);
 
 // (fl: a luz tremula, como chama; a mágica, não)
 const LIGHT_PRESETS = [
@@ -611,7 +628,8 @@ function areaAmount(text) {
 function cleanApply(o) {
   if (!o || typeof o !== 'object') return null;
   const int = v => Math.max(0, Math.round(Number(v) || 0));
-  const cond = o.cond && o.cond.id ? { id: String(o.cond.id), n: int(o.cond.n), d: int(o.cond.d) } : null;
+  // (lote 8: a Ferida permanente e o Clone pedem a janela deles — o dano em área e as zonas não os aplicam)
+  const cond = o.cond && o.cond.id && !COND_JANELA.has(String(o.cond.id)) ? { id: String(o.cond.id), n: int(o.cond.n), d: int(o.cond.d) } : null;
   let amt = String(o.amt == null ? '' : o.amt).trim();
   if (!areaAmount(amt)) amt = '';                 // zero, ou algo que não é número: não há valor a reaplicar
   if (!amt && !cond) return null;
@@ -713,6 +731,8 @@ function normalizeScene(sc) {
     const st = cleanSt(t.st); if (st) t.st = st; else delete t.st;
     delete t.fixas;                                               // (a "fixa de cada turno" de antes saiu: era a iniciativa)
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
+    // (lote 8) a cópia de um Clone: o id do real (só o mestre sabe; os jogadores veem todos iguais)
+    if (!(typeof t.clone === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.clone) && t.clone !== t.id)) delete t.clone;
     // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
     if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
     if (t.post === true) t.post = true; else delete t.post;               // (lote 6) em postura: a etiqueta junto do nome

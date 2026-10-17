@@ -1013,7 +1013,7 @@
             value: dentroD ? ln.quer : (Object.prototype.hasOwnProperty.call(escolha.porPessoa, p.id) ? escolha.porPessoa[p.id] : N.quantoCome(camp, tipo, p, escolha.prov)),
             'aria-label': 'Rações que ' + p.nome + ' come neste descanso', title: 'Rações que ' + p.nome + ' come neste descanso',
             onchange: e => { escolha.porPessoa[p.id] = N.limitar(Math.round(+e.target.value) || 0, 0, 99); refazer('ds-c-' + p.id); } })),
-          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '')),
+          h('td', {}, dentroD ? h('div', { class: 'mud' }, ...ln.recursos.map(r => h('span', r.inicio != null ? { title: longo ? 'Esta barra começa em ' + r.inicio + ': o descanso longo a leva de volta para lá' : 'Esta barra tem um começo próprio: o descanso curto não mexe nela' } : {}, r.nome + ' ', seta(r.de, r.para, '/' + r.max), r.inicio != null && longo && r.para !== r.de ? ' (volta ao começo)' : '', r.podre ? h('span', { class: 'podre-nota', title: 'Ferida permanente: a cura não passa de ' + (r.max - r.podre) + ' até o mestre tirar a ferida' }, ' (' + r.podre + ' apodrecidos)') : '')),
             ...ln.poderes.map(x => h('span', { title: 'Barra especial: ' + regraDaEspecial(p, x.id) }, x.nome + ' ', seta(x.de, x.para))),
             ln.fad && ln.fad.para !== ln.fad.de ? h('span', { class: 'fad', title: 'A fadiga: o descanso longo enche a pilha; o curto devolve um' }, 'Fadiga ', seta(ln.fad.de, ln.fad.para, '/' + N.FAD_MAX)) : null) : h('span', { class: 'note', text: 'fica de fora' })),
           h('td', {}, dentroD && ln.san ? h('div', { class: 'mud' }, seta(ln.san.de, ln.san.para)) : '—'),
@@ -1062,7 +1062,8 @@
       const rec = Object.assign({}, est.rec && typeof est.rec === 'object' ? est.rec : {});
       // (de onde parte: o que um efeito anterior deste mesmo descanso deixou, ou o valor da barra depois do descanso)
       const min = Number.isFinite(r.min) && r.min < 0 ? r.min : 0, de = Object.prototype.hasOwnProperty.call(rec, r.id) && Number.isFinite(+rec[r.id]) ? +rec[r.id] : (r.atual != null ? r.atual : r.max);
-      const para = N.limitar(Math.round((de + delta) * 10) / 10, min, r.max);
+      const teto = Number.isFinite(r.podre) && r.podre > 0 ? Math.max(min, r.max - r.podre) : r.max;     // (lote 8: a ferida permanente)
+      const para = N.limitar(Math.round((de + delta) * 10) / 10, min, teto);
       rec[r.id] = para; est.rec = rec;
       feito.push(r.nome + ' ' + (delta < 0 ? '−' : '+') + Math.abs(delta) + (lido.dados ? ' (' + lido.dados + ')' : ''));
     }

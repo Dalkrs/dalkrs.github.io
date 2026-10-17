@@ -916,7 +916,17 @@ const UI = (() => {
   }
 
   function renderBanner() {
-    if (isGM()) { el.banner.hidden = true; return; }
+    if (isGM()) {
+      // (lote 8) escolhendo o real de um Clone no mapa
+      const real = App.escolhaReal ? Store.get('tokens', App.escolhaReal) : null;
+      if (App.escolhaReal && !real) App.escolhaReal = null;
+      el.banner.hidden = !real;
+      if (real) el.banner.replaceChildren(h('span', { class: 'dot', style: { background: '#d9a821' } }),
+        h('span', { class: 'banner-t', id: 'bannerText', text: `Clique no clone que vai ser o real de ${tokName(real)}.` }),
+        btn('Sortear', () => { const rid = App.escolhaReal; fimEscolhaReal(); sortearReal(rid); }, { kind: 'small', id: 'clEscSortear' }),
+        btn('Fica onde está', () => { fimEscolhaReal(); toast('O real fica onde está (a coroa).'); }, { kind: 'primary small', id: 'clEscFica' }));
+      return;
+    }
     if (Nuvem.jogador()) {
       // O jogador de verdade, na mesa: a faixa só aparece quando há algo a dizer.
       // (quem joga em mais de uma campanha: a cena no ar pode ser de outra campanha dele — não da que ele tem em vista)
@@ -1146,8 +1156,8 @@ const UI = (() => {
     const p = playerById(t.owner);
     return p ? 'De ' + p.name : 'Dono desconhecido';
   }
-  function condChip(c, on, onClick) {
-    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: c.n, onclick: onClick },
+  function condChip(c, on, onClick, dica) {
+    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: dica || c.n, onclick: onClick },
       h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { text: c.n }));
   }
   /* As condições para escolher, separadas por categoria: abas (Todas, Dano, Controle…) e uma busca pelo nome, que
@@ -1171,7 +1181,14 @@ const UI = (() => {
         title: g.t + (g.id !== 'todas' && tem(g.id) ? ' (há condição ativa aqui)' : ''), 'aria-pressed': String(!q && condTag === g.id),
         onclick: () => { condTag = g.id; condBusca = ''; busca.value = ''; paint(); },
       }, g.n)));
-      chips.replaceChildren(...(lista.length ? lista.map(c => condChip(c, ts.length > 0 && ts.every(t => t.conds.includes(c.id)), () => { Act.condToggle(live(), c.id); paint(); if (after) after(); }))
+      chips.replaceChildren(...(lista.length ? lista.map(c => {
+        const on = ts.length > 0 && ts.every(t => t.conds.includes(c.id));
+        if (COND_JANELA.has(c.id)) {                 // (lote 8) a Ferida permanente e o Clone: a janela deles, num token só
+          const nao = condJanelaNao(c.id, ts, on);
+          return condChip(c, on, nao ? null : () => { condJanela(c.id, ts[0], on, () => { paint(); if (after) after(); }); }, nao ? c.n + ': ' + nao : c.n + (on ? ' (tirar)' : '…'));
+        }
+        return condChip(c, on, () => { Act.condToggle(live(), c.id); paint(); if (after) after(); });
+      })
         : [h('p', { class: 'muted', text: 'Nenhuma condição com esse nome.' })]));
     };
     paint();
@@ -1184,6 +1201,128 @@ const UI = (() => {
     const r = Act.condStep(t, c.id, d);
     if (r === 'removed') toast(`${c.n} saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo });
     return r;
+  }
+  /* (lote 8) A Ferida permanente e o Clone: só o mestre, num token de cada vez. → por que não dá (texto), ou '' */
+  function condJanelaNao(id, ts, on) {
+    if (!isGM()) return 'só o mestre põe e tira';
+    if (ts.length !== 1) return 'um token de cada vez (escolha só um)';
+    const t = ts[0];
+    if (on) return '';
+    if (id === 'clone' && t.clone) return 'este já é uma cópia';
+    if (id === 'clone' && t.prop) return 'só tokens';
+    if (id === 'ferida' && !t.bars.some(b => b.on && b.m > 0)) return 'o token não tem barra para apodrecer';
+    if (id === 'ferida' && Fichas.escondida(t)) return 'a ferida de um token ligado fica na ficha, que não chega a você (precisa da aba Fichas)';
+    return '';
+  }
+  // pôr (abre a janela) ou tirar (a condição sai: a ferida leva o podre das barras; o Clone, as cópias)
+  function condJanela(id, t, on, depois) {
+    if (!t) return;
+    if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else cloneBox(t, depois); return; }
+    if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
+    else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
+    if (depois) depois();
+  }
+  // "20 HP · 5 SP": o que apodreceu em cada barra
+  const podresTexto = t => t.bars.filter(b => b.on && barPod(b) > 0).map(b => fmt(barPod(b)) + ' ' + b.n).join(' · ');
+  function cloneTexto(t) {
+    if (!isGM()) return '–';
+    const sc = Store.scene();
+    if (t.clone) return 'cópia';
+    const n = sc.tokens.filter(x => x.clone === t.id).length;
+    return n ? `o real · ${n} ${n === 1 ? 'cópia' : 'cópias'}` : 'sem cópias';
+  }
+  /* A janela da Ferida permanente: qual barra e quanto apodrece, com a prévia ("HP 100 → 80; a cura não passa de 80").
+     Num token que já tem a ferida, muda o quanto (0 tira daquela barra). */
+  function feridaBox(t, i0, depois) {
+    const barras = t.bars.map((b, i) => [b, i]).filter(([b]) => b.on && b.m > 0);
+    if (!barras.length) { toast('Este token não tem barra para apodrecer.'); return; }
+    const vida = barraDaVida(t.bars);
+    let i = i0 != null ? i0 : (barras.find(([b]) => barPod(b) > 0) || [null, vida ? t.bars.indexOf(vida) : barras[0][1]])[1];
+    const qtd = h('input', { id: 'fer-qtd', class: 'in num', type: 'number', min: 0, step: 1, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto apodrece' });
+    const previa = h('p', { class: 'note fer-previa', id: 'fer-previa' });
+    const pinta = () => {
+      const b = t.bars[i], q = clamp(Math.round((parseFloat(String(qtd.value).replace(',', '.')) || 0) * 10) / 10, 0, b.m);
+      const teto = Math.max(-barLo(b), b.m - q), v2 = Math.min(b.v, teto);
+      previa.textContent = q > 0 ? `${b.n}: ${fmtV(b.v)} → ${fmtV(v2)} de ${fmt(b.m)}. ${fmt(q)} apodrecidos: a cura, até a total, não passa de ${fmtV(teto)} até a ferida sair.`
+        : barPod(b) > 0 ? `Zero tira a ferida de ${b.n}: a cura volta a ir até ${fmt(b.m)}.` : 'Digite quanto da ponta da barra apodrece.';
+    };
+    const sel = inSelect('fer-bar', String(i), barras.map(([b, k]) => [String(k), `${b.n} (${fmtV(b.v)} de ${fmt(b.m)}${barPod(b) ? `, ${fmt(barPod(b))} podres` : ''})`]), v => { i = Number(v); qtd.value = barPod(t.bars[i]) || ''; pinta(); });
+    qtd.value = barPod(t.bars[i]) || '';
+    qtd.addEventListener('input', pinta);
+    pinta();
+    modal({
+      title: 'Ferida permanente em ' + tokName(t),
+      body: h('div', { class: 'fer-box' },
+        note('A ponta da barra apodrece: o valor acima dela desce, e nenhuma cura (nem a total, nem o descanso) passa dali até você tirar a ferida. Num token ligado, a ficha mostra a barra podre.'),
+        h('div', { class: 'grid2' }, field('Barra', sel), field('Quanto apodrece', qtd)), previa),
+      actions: [{ label: 'Cancelar' }, { label: 'Apodrecer', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const b = tt.bars[i]; if (!b) return;
+        const q = clamp(Math.round((parseFloat(String(qtd.value).replace(',', '.')) || 0) * 10) / 10, 0, b.m);
+        if (!q && !barPod(b)) { toast('Digite quanto apodrece (mais que zero).'); return false; }
+        if (Act.podSet(tt, i, q)) toast(q ? `${tokName(tt)}: ${fmt(q)} de ${b.n} apodreceram (ferida permanente).` : `A ferida saiu de ${b.n} de ${tokName(tt)}.`, { action: 'Desfazer', run: Tools.undo });
+        if (depois) depois();
+      } }],
+    });
+  }
+  /* A janela do Clone: quantas cópias, em que raio e quem é o real (sortear agora, ou o mestre escolhe no mapa). */
+  function cloneBox(t, depois) {
+    const nIn = h('input', { id: 'cl-n', class: 'in num', type: 'number', min: 1, max: MAX_CLONES, step: 1, value: 3, 'data-focus': '', 'aria-label': 'Quantas cópias' });
+    const rIn = h('input', { id: 'cl-r', class: 'in num', type: 'number', min: 1, max: 10, step: 1, value: 2, 'aria-label': 'Raio em quadrados' });
+    const op = (v, txt, dica, on) => h('label', { class: 'cl-op', title: dica }, h('input', { type: 'radio', name: 'cl-quem', value: v, id: 'cl-quem-' + v, checked: on }), h('span', { text: txt }));
+    const quem = h('div', { class: 'cl-quem', role: 'radiogroup', 'aria-label': 'Quem é o real' },
+      op('sortear', 'Sortear agora', 'O site sorteia quem é o real entre ele e as cópias (você vê a coroa)', true),
+      op('eu', 'Eu escolho no mapa', 'Depois de criar, clique no clone que vai ser o real', false));
+    modal({
+      title: 'Clone de ' + tokName(t),
+      body: h('div', { class: 'cl-box' },
+        note(`As cópias são iguais a ${tokName(t)}: nome, imagem, barras e condições. Os jogadores veem todos iguais; só você vê qual é o real (a coroa).`),
+        h('div', { class: 'grid2' }, field('Quantas cópias (1 a ' + MAX_CLONES + ')', nIn), field('Raio, em quadrados (1 a 10)', rIn)),
+        field('Quem é o real', quem),
+        note('Dano numa cópia: só ela some. Dano no real: todas somem. Quando a condição Clone acaba (ou sai do real), as cópias somem juntas.')),
+      actions: [{ label: 'Cancelar' }, { label: 'Criar os clones', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const n = clamp(Math.round(parseFloat(nIn.value)) || 3, 1, MAX_CLONES), r = clamp(Math.round(parseFloat(rIn.value)) || 2, 1, 10);
+        const sortear = !document.getElementById('cl-quem-eu').checked;
+        const res = Act.cloneCriar(tt, n, r, sortear);
+        if (!res.n) { toast(`Não há lugar livre a até ${r} ${r === 1 ? 'quadrado' : 'quadrados'} de ${tokName(tt)} para as cópias.`); return false; }
+        const falta = n - res.n ? ` (Só couberam ${res.n} no raio.)` : '';
+        setSel([{ c: 'tokens', id: tt.id }]);
+        if (sortear) toast(`${res.n} ${res.n === 1 ? 'cópia' : 'cópias'} de ${tokName(tt)}. Sorteado: o real é o da coroa (só você vê).${falta}`, { action: 'Desfazer', run: Tools.undo, long: !!falta });
+        else { escolhaReal(tt.id); if (falta) toast(falta.trim()); }
+        if (depois) depois();
+      } }],
+    });
+  }
+  // (lote 8) escolher o real no mapa: a faixa de cima pede o clique; Esc (ou "Fica onde está") encerra sem mudar nada
+  function escolhaReal(id) { App.escolhaReal = id; renderBanner(); }
+  function fimEscolhaReal() { if (!App.escolhaReal) return; App.escolhaReal = null; renderBanner(); }
+  function escolherReal(id) {
+    const rid = App.escolhaReal; if (!rid) return;
+    const t = id ? Store.get('tokens', id) : null;
+    if (!t || !(t.id === rid || t.clone === rid)) { toast('Clique num dos clones (ou Esc: o real fica onde está).', { key: 'escolha-real' }); return; }
+    fimEscolhaReal();
+    if (t.clone) { Act.cloneReal(t); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é o da coroa (só você vê).', { action: 'Desfazer', run: Tools.undo }); }
+    else { setSel([{ c: 'tokens', id: rid }]); toast('O real fica onde está (a coroa).'); }
+  }
+  function sortearReal(rid) {
+    const r = Act.cloneSortear(rid);
+    if (!r) return;
+    setSel([{ c: 'tokens', id: r }]);
+    toast('Sorteado: o real é o da coroa (só você vê).', { action: 'Desfazer', run: Tools.undo });
+  }
+  // no painel do token (mestre): o grupo do Clone, com Este é o real, Sortear e Desfazer os clones
+  function cloneSec(t) {
+    const sc = Store.scene(), rid = t.clone || (realDeClone(t, sc) ? t.id : null);
+    if (!rid) return null;
+    const real = Store.get('tokens', rid), n = sc.tokens.filter(x => x.clone === rid).length;
+    return sec('s-clone', 'Clone', true,
+      note(t.clone ? `Cópia de ${real ? tokName(real) : 'um token que saiu da cena'} (só você sabe).` : `Este é o real (a coroa: só você vê). ${n} ${n === 1 ? 'cópia' : 'cópias'}.`),
+      h('div', { class: 'row' },
+        t.clone ? btn('Este é o real', () => { Act.cloneReal(t); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); }, { icon: 'real', id: 'tk-cl-real', title: 'O real troca de lugar com esta cópia (os jogadores não notam)' }) : null,
+        btn('Sortear o real', () => sortearReal(rid), { icon: 'die', id: 'tk-cl-sortear', title: 'O site sorteia quem é o real entre ele e as cópias' }),
+        btn('Desfazer os clones', () => { const k = Act.cloneDesfazer(rid); toast(`Os clones sumiram${k ? ` (${k})` : ''} e a condição saiu de ${real ? tokName(real) : 'quem era o real'}.`, { action: 'Desfazer', run: Tools.undo }); }, { icon: 'trash', id: 'tk-cl-fim' })),
+      note('Dano numa cópia: só ela some. Dano no real: todas somem.'));
   }
   function condActive(t, edit, after, idp) {
     const info = t.cinfo || {}, pre = idp || 'cd';
@@ -1199,6 +1338,10 @@ const UI = (() => {
           h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { class: 'cact-t', text: c.n })),
           // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
           c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
+          // (lote 8) a Ferida permanente: o que apodreceu em cada barra (o mestre muda na janela); o Clone: as cópias
+          : c.id === 'ferida' ? h('span', { class: 'stp-v ro cact-pod', id: `${pre}-${c.id}-n`, title: 'O que apodreceu na ponta de cada barra: a cura não passa dali até a ferida sair' },
+            h('span', { text: podresTexto(t) || 'nenhuma barra' }), edit && isGM() ? h('button', { type: 'button', class: 'lnk', id: `${pre}-${c.id}-mudar`, text: 'Mudar…', onclick: () => feridaBox(t, null, done) }) : null)
+          : c.id === 'clone' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: isGM() ? 'Só você sabe quem é o real (a coroa)' : 'Os clones são iguais', text: cloneTexto(t) })
           : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
@@ -1313,6 +1456,11 @@ const UI = (() => {
         // depois de digitado, quem mantém o campo aberto é a própria sobrevida: quando ela acabar, o campo fecha
         inNum(`tk-b${i}-x`, barX(b), v => { delete barXOpen[key]; if (!Act.barExtra(t, i, v)) renderSide(); }, { min: 0, step: 1, label: 'Sobrevida de ' + b.n, title: 'Pontos por cima da barra: o dano gasta a sobrevida antes de chegar em ' + b.n }),
         h('span', { class: 'bar-x-n', text: 'leva o dano antes' })));
+      // (lote 8) a ferida permanente: a ponta podre e o teto da cura
+      if (barPod(b) > 0 && b.on) rows.push(h('div', { class: 'bar-x bar-pod' + (full ? ' full' : ''), id: `tk-b${i}-pod` },
+        h('span', { class: 'bar-x-l', text: 'Ferida' }),
+        h('span', { class: 'bar-pod-t', text: `${fmt(barPod(b))} apodrecidos: a cura não passa de ${fmtV(barTeto(b))}` }),
+        full && isGM() ? h('button', { type: 'button', class: 'lnk', id: `tk-b${i}-podm`, text: 'Mudar…', onclick: () => feridaBox(t, i) }) : null));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
@@ -1336,7 +1484,8 @@ const UI = (() => {
       h('span', { class: 'bar-n ro', text: b.n }),
       b.k === 'pts' && mode === 'num' && Math.round(b.m) <= 20 ? pips(t, b, i, false)
         : h('span', { class: 'meter' }, barNeg(b) > 0 ? h('span', { class: 'meter-f neg', style: { width: clamp(barNeg(b) * 100, 4, 100) + '%' } })
-          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } })),
+          : h('span', { class: 'meter-f', style: { width: clamp(b.v / b.m * 100, 0, 100) + '%', background: b.c } }),
+          barPod(b) > 0 ? h('span', { class: 'meter-p', title: 'Ferida permanente: a ponta apodrecida', style: { width: clamp(barPod(b) / b.m * 100, 3, 100) + '%' } }) : null),       // (lote 8)
       mode === 'num' ? h('span', { class: 'bar-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` + (barX(b) > 0 ? ` +${fmt(barX(b))}` : '') }) : null)));
   }
 
@@ -1401,7 +1550,7 @@ const UI = (() => {
     const selBar = h('select', { id: 'ar-bar', class: 'in' }, names.map(n => h('option', { value: n, text: n })));
     const amt = h('input', { id: 'ar-amt', class: 'in bar-v', type: 'text', inputmode: 'decimal', placeholder: '12', autocomplete: 'off', 'data-focus': '', 'aria-label': 'Quanto tirar ou devolver' });
     const selCond = h('select', { id: 'ar-cond', class: 'in' }, h('option', { value: '', text: 'Nenhuma' }),
-      COND_TAGS.map(g => h('optgroup', { label: g.t }, CONDS.filter(c => c.g === g.id).map(c => h('option', { value: c.id, text: c.n })))));
+      COND_TAGS.map(g => h('optgroup', { label: g.t }, CONDS.filter(c => c.g === g.id && !COND_JANELA.has(c.id)).map(c => h('option', { value: c.id, text: c.n })))));
     const mk = (id, label) => h('input', { id, type: 'number', class: 'in num', min: 0, max: 99, step: 1, placeholder: '–', 'aria-label': label, disabled: true });
     const cn = mk('ar-cn', 'Somar ao contador'), cd = mk('ar-cd', 'Duração em rodadas');
     const int = el => clamp(Math.round(parseFloat(el.value) || 0), 0, 99);
@@ -1701,6 +1850,7 @@ const UI = (() => {
       fadigaBox(t),
       numsBox(t, true),
       sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
+      cloneSec(t),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -2338,7 +2488,7 @@ const UI = (() => {
       const rolled = gm && e.roll && e.init != null ? rollText(e.roll.d, e.roll.b) : '';      // o detalhe da rolagem é só do mestre
       // um clique na linha mostra no mapa: o token, ou os da faixa (os que quem olha enxerga)
       const mostrar = () => {
-        const vis = (band ? membros : t ? [t] : []).filter(x => tokShown(x, sc));
+        const vis = (band ? membros : t ? grupoDoClone(t, sc) : []).filter(x => tokShown(x, sc));      // (lote 8: o real de um Clone vem com as cópias)
         if (!vis.length) return;
         setSel(vis.map(x => ({ c: 'tokens', id: x.id })));
         const cs = vis.map(x => tokC(x, sc));
@@ -2639,6 +2789,9 @@ const UI = (() => {
       if (condToks.length) items.push({ label: 'Condições…', icon: 'shield', run: () => condPicker(condToks) });
       if (toks.length === 1 && Fichas.podeBolsa(o) && (Fichas.bolsa(o) || []).length) items.push({ label: 'Bolsa…', icon: 'bag', run: () => bagBox(o) });
       if (gm) items.push({ label: 'Cura total', icon: 'heart', run: () => healToast(toks) });
+      // (lote 8) o Clone: escolher ou sortear o real
+      if (gm && toks.length === 1 && o.clone && Store.get('tokens', o.clone)) items.push({ label: 'Este é o real', icon: 'real', run: () => { const rid = o.clone; Act.cloneReal(o); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); } });
+      if (gm && toks.length === 1 && (o.clone || realDeClone(o, Store.scene()))) items.push({ label: 'Sortear o real', icon: 'die', run: () => sortearReal(o.clone || o.id) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
       if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
       if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
@@ -2988,6 +3141,17 @@ const UI = (() => {
     const t = Store.get('tokens', d.tok);
     if (t) toast(`${tokName(t)} atravessou o portal.`, { action: 'Desfazer', run: Tools.undo, key: 'portal' });
   });
+  // (lote 8) o Clone: quem sumiu, e por quê
+  Store.on('clone', d => {
+    if (!isGM()) return;
+    const q = (n, um, uns) => (n === 1 ? um : n + ' ' + uns);
+    const txt = d.k === 'real' ? `${d.nome} (o real) levou dano: ${d.n === 1 ? 'o clone sumiu' : `os ${d.n} clones sumiram`}.`
+      : d.k === 'copia' ? `${q(d.n, 'Um clone', 'clones')} de ${d.nome} ${d.n === 1 ? 'levou dano e sumiu' : 'levaram dano e sumiram'}.`
+      : d.semReal ? `O real saiu da cena: ${d.n === 1 ? 'a cópia' : `as ${d.n} cópias`} de ${d.nome} ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
+      : d.parte ? `${q(d.n, 'Uma cópia', 'cópias')} de ${d.nome} sem a condição Clone ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
+      : `A condição Clone de ${d.nome} acabou: ${d.n === 1 ? 'a cópia sumiu' : `as ${d.n} cópias sumiram`}.`;
+    toast(txt, { action: 'Desfazer', run: Tools.undo, key: 'clone' });
+  });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);
     if (!t || !isGM()) return;
@@ -3058,6 +3222,8 @@ const UI = (() => {
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
+    feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
     passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },

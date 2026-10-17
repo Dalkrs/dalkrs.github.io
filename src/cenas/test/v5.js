@@ -266,7 +266,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#cg-busca').fill('xyz'); await w(120);
   ok(/Nenhuma condição com esse nome/.test(await page.locator('#cg-list').innerText()), 'sem resultado, a mesa diz');
   await page.locator('#cg-tab-todas').click(); await w(120);
-  ok(await page.locator('#cg-list .chip').count() === 67 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 67 (47 + 20 do lote 7), e limpa a busca');
+  ok(await page.locator('#cg-list .chip').count() === 69 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 69 (47 + 20 do lote 7 + 2 do lote 8), e limpa a busca');
   await page.locator('#cg-tab-mente').click(); await w(120);
   for (const nm of ['Artefato Ativado', 'Enfeitiçado', 'Marcado']) { await page.locator('#cg-list .chip', { hasText: nm }).click(); await w(150); }
   { const ana = await T('Ana'); ok(['artefato', 'enfeiticado', 'marcado'].every(id => ana.conds.includes(id)), '(mais três na Ana)'); }

@@ -163,6 +163,21 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'), f = JSON.parse(JSON.stringify(l.ficha)), rec = Object.assign({}, l.estado.rec); f.recursos = f.recursos.filter(r => r.id !== 'furia'); delete rec.furia; P.gravar('pc_ogro', { ficha: f, estado: Object.assign({}, l.estado, { rec }) }); });
   ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.ficha.recursos.length === 2 && l.estado.rec.furia === undefined && !Object.keys(l.estado.tmp || {}).length && await semPendencia(M); }), '(desfeito; o Ogro sem a Fúria de novo)');
 
+  // ---------- (lote 8) a ferida permanente: o descanso e a comida param no teto (o máximo menos o que apodreceu) ----------
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'); P.gravar('pc_ogro', { estado: Object.assign({}, l.estado, { rec: Object.assign({}, l.estado.rec, { hppc_ogro: 10 }), podre: { hppc_ogro: 30 } }) }); });
+  await A.evaluate(() => __acamp.mudar('cura', c => { c.provisoes[0].fx = [{ id: 'f6', t: 'barra', b: 'HP', val: '50' }]; c.servir.longo = 'ens'; }));
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return l.estado.podre && l.estado.podre.hppc_ogro === 30 && l.estado.rec.hppc_ogro === 10 && await semPendencia(M); }), '(o Ogro com 10 de HP e 30 apodrecidos; o ensopado passa a dar +50 de HP)');
+  await w(400);
+  await A.locator('#btLongo').click(); await w(400);
+  const pv8 = (await A.locator('dialog[open]').innerText()).replace(/\s+/g, ' ');
+  const hp8 = /HP 10 → (\d+)\/(\d+) \(30 apodrecidos\)/.exec(pv8);
+  ok(hp8 && +hp8[1] === +hp8[2] - 30, 'a prévia do descanso longo leva o HP do Ogro só até o teto, e diz quanto apodreceu: ' + (hp8 ? hp8[0] : pv8.slice(0, 300)));
+  await A.locator('#ds-ok').click(); await w(500);
+  ok(hp8 && await ate(async () => (await linha(M, 'pc_ogro')).estado.rec.hppc_ogro === +hp8[1] && await semPendencia(M)), 'depois do descanso, nem o ensopado (+50 de HP) passa do teto');
+  await A.locator('#btDesfazer').click(); await w(500);
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_ogro'), e = Object.assign({}, l.estado); delete e.podre; P.gravar('pc_ogro', { estado: e }); });
+  ok(await ate(async () => { const l = await linha(M, 'pc_ogro'); return !(l.estado.podre && l.estado.podre.hppc_ogro) && await semPendencia(M); }), '(desfeito; o Ogro sem a ferida)');
+
   // ---------- (lote 6) a regra de cada barra especial, a fadiga e a chave de tirar os bônus ----------
   await M.evaluate(() => {
     const P = TC.dados.col('personagens'), l = P.pegar('pc_dain'), f = JSON.parse(JSON.stringify(l.ficha));

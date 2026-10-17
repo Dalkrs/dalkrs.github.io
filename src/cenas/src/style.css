@@ -337,6 +337,9 @@ button { cursor: pointer; }
 .meter-f { display: block; height: 100%; }
 /* barra abaixo de zero: a parte negativa, riscada */
 .meter-f.neg { background: repeating-linear-gradient(135deg, #ff5d73 0 3px, rgba(255, 93, 115, .25) 3px 6px); }
+/* (lote 8) a ferida permanente: a ponta podre da barra */
+.meter { position: relative; }
+.meter-p { position: absolute; top: 0; right: 0; bottom: 0; background: repeating-linear-gradient(135deg, #6b7a35 0 3px, #3b3020 3px 6px); }
 .bar-v.neg, .hud-in.neg, .hud-m.neg, .hud-v.neg, .bar-m.neg { color: #ff8a9a; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -520,6 +523,8 @@ kbd { padding: 1px 6px; background: var(--raised); border: 1px solid var(--line-
 .bar-x .in.num { width: 58px; flex: none; text-align: right; font-family: var(--mono); }
 .bar-x-l { font-weight: 600; color: var(--fg); }
 .bar-x-n { color: var(--fg-3); }
+.bar-x.bar-pod { border-left-color: #6b7a35; }
+.bar-pod-t { color: #a7b56a; }
 
 .pips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; vertical-align: middle; }
 .pip { display: block; flex: none; width: 16px; height: 16px; padding: 0; border: 2px solid var(--c); border-radius: 50%; background: transparent; }
@@ -540,6 +545,14 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cm-tt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .cm-q { color: var(--fg-3); font-size: 11px; white-space: nowrap; }
 .cmulti .stp-v { min-width: 28px; padding: 0 2px; white-space: nowrap; }
+/* (lote 8) a Ferida permanente na linha da condição (o que apodreceu e o "Mudar…"), e as janelas da Ferida e do Clone */
+.cact-pod { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 12px; color: #a7b56a; }
+.lnk { padding: 0; border: 0; background: none; color: var(--lamp); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.lnk:hover { color: var(--fg); }
+.fer-box, .cl-box { display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 82vw); }
+.fer-previa { min-height: 2.6em; color: var(--fg); }
+.cl-quem { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cl-op { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
 .stp { display: inline-flex; align-items: center; gap: 1px; padding: 1px; background: var(--raised); border: 1px solid var(--line); border-radius: 7px; }
 .field > .stp { justify-self: start; }
 .loose { display: flex; flex-direction: column; gap: 10px; }

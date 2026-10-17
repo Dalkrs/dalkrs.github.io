@@ -407,14 +407,16 @@
     const recursos = (p.recursos || []).filter(r => r.max != null && Number.isFinite(r.max) && r.max > 0).map(r => {
       // min: até onde a barra desce (0, ou negativo na que pode ficar negativa); inicio: onde ela começa (null = cheia)
       const min = Number.isFinite(r.min) && r.min < 0 ? r.min : 0;
-      const inicio = r.inicio != null && Number.isFinite(r.inicio) ? limitar(r.inicio, min, r.max) : null;
-      const de = limitar(num(r.atual, inicio == null ? r.max : inicio), min, r.max);
+      // (lote 8) a ferida permanente: a cura não passa do teto (o máximo menos o que apodreceu)
+      const podre = Number.isFinite(r.podre) && r.podre > 0 ? r.podre : 0, teto = Math.max(min, r.max - podre), pd = podre ? { podre } : {};
+      const inicio = r.inicio != null && Number.isFinite(r.inicio) ? limitar(r.inicio, min, teto) : null;
+      const de = limitar(num(r.atual, inicio == null ? teto : inicio), min, teto);
       /* A barra que tem um começo próprio (a que nasce em 4 de 20, por exemplo) não "recupera": o descanso longo a
          leva de volta ao começo, de onde ela estiver, e o curto não mexe nela. */
-      if (inicio != null) return { id: r.id, nome: r.nome, max: r.max, de, para: longo ? inicio : de, inicio };
+      if (inicio != null) return Object.assign({ id: r.id, nome: r.nome, max: r.max, de, para: longo ? inicio : de, inicio }, pd);
       // recuperar 100% (ou mais) é encher a barra, mesmo a que estava abaixo de zero
-      const para = rec >= 100 ? r.max : limitar(Math.round((de + Math.ceil(r.max * rec / 100 - 1e-9)) * 10) / 10, min, r.max);
-      return { id: r.id, nome: r.nome, max: r.max, de, para: Math.max(de, para) };
+      const para = rec >= 100 ? teto : limitar(Math.round((de + Math.ceil(r.max * rec / 100 - 1e-9)) * 10) / 10, min, teto);
+      return Object.assign({ id: r.id, nome: r.nome, max: r.max, de, para: Math.max(de, para) }, pd);
     });
     const barra = (v, d) => (v == null ? null : { de: v, para: limitar(v + d, 0, 100) });
     // as barras especiais, cada uma pela regra dela (só entram as que mudam)

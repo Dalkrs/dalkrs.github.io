@@ -1157,6 +1157,8 @@ const Tools = (() => {
     }
     if (e.button === 2) { rdown = { sx: e.clientX, sy: e.clientY, vx: App.view.x, vy: App.view.y, moved: false }; return; }
     if (e.button !== 0) return;
+    // (lote 8) escolhendo o real de um Clone: o clique escolhe (não seleciona nem arrasta)
+    if (UI.escolhendoReal()) { const ht = hitTest(p, { tokensOnly: true, noProps: true }); UI.escolherReal(ht && ht.id); return; }
     const t = T[App.tool];
     if (t.down) t.down(p, e);
   });
@@ -1244,6 +1246,7 @@ const Tools = (() => {
       return;
     }
     if (k === 'Escape') {
+      if (UI.escolhendoReal()) { UI.fimEscolhaReal(); UI.toast('O real fica onde está (a coroa).'); return; }      // (lote 8)
       if (g) { resetState(); Render.request(); }
       else if (App.sel.length) setSel([]);
       else if (App.tool !== 'select') set('select');

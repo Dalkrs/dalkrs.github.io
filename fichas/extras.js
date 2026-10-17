@@ -1538,7 +1538,7 @@ const FichasExtras = (() => {
   }
   function opcoesDeCondicao(sel) {
     const R = RR(); if (!R || !R.CONDICOES) return '';
-    return `<option value="">escolha a condição</option>` + R.COND_GRUPOS.map(g => `<optgroup label="${esc(g.n)}">${R.CONDICOES.filter(x => x.g === g.id).map(x => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
+    return `<option value="">escolha a condição</option>` + R.COND_GRUPOS.map(g => `<optgroup label="${esc(g.n)}">${R.CONDICOES.filter(x => x.g === g.id && (x.id !== 'ferida' && x.id !== 'clone' || sel === x.id)).map(x => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
   }
   function linhaFx(pc, c, it, e, i) {
     const k = esc(it.id) + '|' + i, del = `<button type="button" class="mini danger" data-fxdel="${k}" title="Tirar este efeito" aria-label="Tirar o efeito ${i + 1} de ${esc(it.nome || 'poção')}">×</button>`;
