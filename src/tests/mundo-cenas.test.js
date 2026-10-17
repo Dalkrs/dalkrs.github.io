@@ -4,7 +4,7 @@
 //     já diz (a lavoura, a savana) ou a Surpresa;
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
 //     inundação: chuva; incêndio: cinzas; magia: vaga-lumes) e o estilo da região mais de dentro que tiver um;
-//   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha), o terreno da vila e o nome; o atalho para a
+//   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto), o terreno da vila e o nome; o atalho para a
 //     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão.
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
@@ -55,7 +55,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
       grupo('planicie', 7, null); grupo('neve-selvagem', 8, 'selvagem'); grupo('mar', 10, 'mar'); grupo('rio', 11, 'rio'); grupo('estranha', 14, null);
       // os marcadores (a fileira 14)
       const mk = (nome, q, ic) => { const p = c(q, 14), o = N.objNovo('m', { x: p.x, y: p.y, ic, nome }); m.objs.push(o); out['m:' + ic + ':' + q] = o.id; };
-      mk('Areia Alta', 12, 'cidade'); mk('Vila do Campo', 6, 'vila'); mk('Vila Fria', 9, 'vila'); mk('Ponte Velha', 7, 'ponte'); mk('Pico Azul', 8, 'montanha'); mk('Forte', 3, 'castelo'); mk('', 5, 'vila');
+      mk('Areia Alta', 12, 'cidade'); mk('Vila do Campo', 6, 'vila'); mk('Vila Fria', 9, 'vila'); mk('Ponte Velha', 7, 'ponte'); mk('Pico Azul', 8, 'montanha'); mk('Forte', 3, 'castelo'); mk('', 5, 'vila'); mk('Porto Azul', 13, 'porto');
       { const o = N.objNovo('m', { x: 120, y: 165, ic: 'floresta', nome: 'Mata Escura' }); m.objs.push(o); out['m:floresta:1'] = o.id; }       // (dentro do Condado)
       // os eventos de hoje: cada um sobre um grupo
       const ev = (tipo, nome, extra) => { const g = m.objs.find(o => o.id === out[nome]); m.objs.push(Object.assign(N.objNovo('e', { x: g.x, y: g.y, tipo, r: 30, ini: m.cal.dia }), extra || {})); };
@@ -122,6 +122,8 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   const pt = await lugar('m:ponte:7'), fl = await lugar('m:floresta:1'), mo = await lugar('m:montanha:8');
   ok(pt && pt.gerar.lugar === 'encontro' && pt.gerar.op.terreno === 'estrada' && pt.gerar.op.situacao === 'ponte', 'a ponte: o encontro da ponte sobre o rio: ' + j(pt && pt.gerar.op));
   ok(fl && j(fl.gerar.op) === j({ terreno: 'floresta', caminho: 'nenhum' }) && fl.gerar.estilo === 'oriental' && mo && mo.gerar.op.terreno === 'montanha', 'a floresta (no Reino: oriental) e a montanha: ' + j([fl && fl.gerar, mo && mo.gerar.op]));
+  const po = await lugar('m:porto:13');
+  ok(po && po.gerar.lugar === 'porto' && j(po.gerar.op) === j({ terreno: 'areia' }) && po.gerar.nome === 'Porto Azul' && po.liga && po.liga.t === 'cena', 'o porto (lote 7, parte 4b-2b): a aba Porto, no terreno do hexágono (o deserto), com o nome do marcador: ' + j(po && po.gerar));
   const sem = await lugar('m:vila:5');
   ok(sem && !('nome' in sem.gerar) && sem.liga && sem.liga.nome === '', 'um marcador sem nome não manda nome (a janela usa o dela)');
   ok(await lugar('m:castelo:3') === null, 'um ícone que não é lugar gerável (o castelo) não tem o botão');

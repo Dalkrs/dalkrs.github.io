@@ -513,7 +513,7 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   o jarro de barro, a bigorna, as flores e a pedra rúnica; e, para os interiores, o banco e o balcão (vários em fila
   viram um banco comprido ou o balcão da taverna; giram com o objeto) e a coluna de pedra.
 - **A janela "Gerar um lugar…"** (`Gerador`, `10h-gerador.js`; o menu de cenas trocou "Gerar um vilarejo…" por ela):
-  uma aba por lugar (o Vilarejo, a Cidade, a Tribo e o Encontro; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
+  uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro e o Porto; as Ruínas vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
   que vale para todos — o **estilo**, a **hora do dia**, o **clima** e a chave **"Com relevo e formas"** —; a prévia à
   direita. A janela abre na última aba usada (`App.opt.genLugar`).
   - **Os estilos** (`Estilos`, `10c2-estilos.js`): Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o
@@ -683,6 +683,56 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   diz "uma sala".
 - **Objetos novos** (parte 4b-2): a pele (onde se dorme nas moradias: parda, branca ou malhada), as armas no suporte
   (as lanças e o escudo redondo) — em Móveis e baús — e o totem, em Perigos e marcos.
+- **O Porto** (`Porto`, `10f5-porto.js`, feito com o motor dos encontros; lote 7, parte 4b-2): o lugar à beira-mar,
+  em duas maneiras — a **vila de pescadores** e o **porto grande** —, com o **tamanho** (Pequeno, Médio, Grande: na vila,
+  40 × 32, 46 × 36 e 52 × 40 quadrados, até 6, 9 e 12 prédios; no porto, 54 × 42, 62 × 48 e 70 × 54, até 9, 13 e 18
+  prédios e 1, 2 e 3 navios), o **terreno** (Campo, Floresta, Deserto, Neve) e três chaves: os **navios** (o barco de
+  pesca, na vila), o **farol** e o **mercado** (na vila, o mercado do peixe; no porto, o movimento do cais). O mar fica
+  num dos lados (sorteado), com o raso mais claro junto da beira e as fileiras de ondas (`Paisagem.lago(…, 'mar')`).
+  - **A vila de pescadores**: a beira ondulada, a praia (de seixos, na neve) e a espuma; os píeres de tábuas — o do
+    meio na enseada, onde a beira recua: com a beira deitada, ele tem a cabeça em T e o barco de pesca atracado nela,
+    do lado do mar; com a beira em pé, é comprido, com o barco atracado ao lado, de proa para o mar; os outros, a nove
+    quadrados ou mais dele —; a ponta de pedras num dos lados, com o farol; a trilha da beira e as casas de frente para
+    o mar (com um recuo aqui e ali), e, nas maiores, outras fileiras atrás de outras trilhas; a taverna, o armazém do
+    peixe, a capela e a loja; as barracas do peixe junto do píer do meio, as redes estendidas e os secadores na areia;
+    os barcos pequenos amarrados nos píeres, soltos na água e puxados para a areia.
+  - **O porto grande**: o cais de pedra (seis quadrados de lajes, com o capeamento e os cabeços), os molhes de pedra e
+    os navios grandes — com a beira deitada, ao longo do cais, um atrás do outro, com um molhe entre eles; em pé, um
+    molhe para cada navio, com o navio ao lado, de proa para o mar, e mais um molhe, menor, para os barcos —; o
+    quebra-mar de pedras que sai num dos lados e se curva para dentro, com o farol na ponta; a fileira dos armazéns, das
+    tavernas e da loja de frente para o cais, e as outras fileiras atrás das ruas, com o templo e o quartel da guarda;
+    os lampiões do cais; um guindaste junto de cada lugar de navio, a carga empilhada (caixotes sob a rede, sacos,
+    barris), os barris e os caixotes.
+  - **Os navios** são lugares (o mesmo navio do Encontro): o convés com a amurada de mureta, a prancha da abertura do
+    meio até o cais, o molhe ou o píer (passa-se por ela; ao lado, a amurada barra), o convés por cima da água (uma
+    área sem altura, debaixo dos castelos) e a escotilha com a Entrada oculta — dois cliques geram o porão e as
+    cabines. Os barcos pequenos são desenho.
+  - **O farol**: a torre redonda caiada com a faixa, a galeria e a lanterna acesa, que tapa a visão, tem a luz (até
+    14 quadrados) e a galeria a 10 m (no relevo). Sem a chave, a ponta de pedras e o quebra-mar ficam, sem a torre.
+  - O plano (`Porto.gerar`) é uma conta pura: o **traçado** (o mar, a beira, as ruas e as travessas — uma delas sai
+    pela borda de terra —, os píeres, os molhes, os lugares dos navios, a ponta do farol e os prédios) tem o sorteio
+    dele e **não depende das chaves**: ligar ou desligar os navios, o farol ou o mercado só põe ou tira essas coisas, e
+    trocar o terreno também não mexe no traçado; os barcos pequenos, o mercado e as árvores têm cada um o seu sorteio
+    (os barcos não usam os lugares dos navios, com ou sem navio). Um clique na prévia trava o traçado (`trava: { tipo,
+    tamanho, s }`) e "Gerar outro" troca só os barcos, o mercado e as árvores; trocar o lugar ou o tamanho solta. Os
+    prédios são fechados, com a Entrada na porta (o tipo: a casa, a taverna, o armazém, a loja, o templo, o quartel). O
+    nome da cena: "Vila de pescadores" ou "Porto". No Mapa-múndi, o marcador de porto também tem "Gerar este lugar…".
+  - Os desenhos do porto ficam na `Paisagem` (o cais, o molhe, o quebra-mar, o farol, a prancha, o guindaste, a carga,
+    as redes, o secador de peixe, a barraca do peixe, o gelo), registrados no motor (`Encontro.motor.PINTORES`), e a
+    Cidade com mar usa os mesmos.
+- **A Cidade com mar** (a chave "Com mar", desligada de começo; `o.mar`): um lado do mapa vira mar (sorteado à parte,
+  da semente do traçado: sem o mar, a cidade sai exatamente como antes). A muralha desce até a beira e fica aberta
+  para a água (o lado do octógono que dá para o mar não tem muro, nem o adarve; o fosso vai de uma ponta à outra); não
+  há portão para o mar; a praça fica no meio da terra. Por dentro da muralha corre o **cais de pedra**, de quatro
+  quadrados (sem muralha, a beira inteira), que vale como rua: os prédios do **bairro do porto** (o novo bairro, na
+  faixa junto da água: armazéns, tavernas, lojas e casas) ficam de frente para ele, e a frente do cais enche primeiro.
+  A **rua do porto** desce da praça até o cais; as ruas de bairro param antes dele; o anel não passa pelo lado da água.
+  Os **molhes** e os **navios atracados** (com a beira deitada, ao longo do cais; em pé, ao lado dos molhes), longe da
+  boca do rio; o rio deságua no mar (com a ponte do cais sobre a boca) ou, com o mar de um lado, corre longe dele. Fora
+  da muralha, a praia. Os barcos pequenos, um guindaste junto de cada navio e a carga do cais são desenho (outro
+  sorteio). Na cena: a amurada de cada navio (mureta), a carga do convés e a Entrada da escotilha; no relevo, o mar
+  (2 m), os molhes, o convés e a prancha. No mapa de bairros, o porto tem o seu marcador, e o recorte dele leva a água
+  inteira, até a borda (os navios entram sem corte).
 
 ### A Árvore (lote 6)
 
@@ -891,8 +941,9 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   desenho vira campo), o caminho da rota (estrada ou trilha; na planície com estrada, o encontro na estrada; numa rota
   de mar, o navio; de rio, o barco), a hora do tempo de agora, o clima dos eventos de hoje que cobrem o lugar
   (tempestade e inundação: chuva; incêndio: cinzas e brasas; magia: vaga-lumes) e o estilo da região. Nos marcadores
-  de cidade, vila, ponte, floresta e montanha (sem atalho), "Gerar este lugar…" (`LUGAR_DO_ICONE`): a aba do lugar
-  (a vila e a cidade com o terreno do hexágono: floresta, areia, neve ou campo), o nome do marcador; o marcador fica
+  de cidade, vila, porto (lote 7, parte 4b-2b), ponte, floresta e montanha (sem atalho), "Gerar este lugar…"
+  (`LUGAR_DO_ICONE`): a aba do lugar (a vila, a cidade e o porto com o terreno do hexágono: floresta, areia, neve ou
+  campo), o nome do marcador; o marcador fica
   ligado à cena que vai nascer (`liga: { t: 'cena', id: 'cena_mundo_…' }`, um passo de desfazer) e, se o mestre fechar
   sem criar, o botão do atalho continua "Gerar este lugar…" (com o mesmo id). Criada, o atalho abre a cena.
 - **Quando escurece (`cal.ent`, `cal.noi`).** No calendário do mapa, "Entardecer a partir do tempo" e "Noite a
@@ -1407,7 +1458,7 @@ do que é grande, a trava, a Surpresa variando; com `SO=encontro`, `cena`, `navi
 `mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
 clima, o estilo, o nome e o atalho), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
 no mapa gerando o encontro (de noite, com chuva, nórdico), a janela já aberta que não é atropelada, a vila do
-marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `src/cenas/test/lote7g.js` confere a aba Porto (os dois lugares, os tamanhos, os terrenos, as três chaves e o terreno, que não mexem no traçado — nem os barcos — e não soltam a trava, travar clicando no navio, a trava que só vale no mesmo lugar e no mesmo tamanho, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), a cena do porto (as paredes — os prédios, o farol, que tapa a visão, e a amurada dos navios —, as Entradas ocultas dos prédios e das escotilhas, os lampiões, o relevo do mar, dos molhes, do convés — debaixo dos castelos — e da galeria do farol, a luz do farol, a passagem pela prancha), o porão do navio (pelos dois cliques na escotilha), a vila de pescadores (o barco na cabeça em T ou ao lado do píer comprido, a praia, o mercado do peixe, a ponta de pedras), as regras dos planos em 120 sorteios (os prédios separados e de frente para o mar, a frente da porta livre, a taverna, os navios nos lugares deles com a prancha na abertura — desenhada e por onde se passa —, os barcos fora dos lugares dos navios, a estrada que sai, nada de árvore no mar; e poucas árvores entre as casas, com a mata cheia para dentro da terra), o desenho do mar (fundo e escuro longe da beira) e a Cidade com mar (sem o mar, os planos de antes, conferidos pelo resumo; com ele, a muralha aberta, sem portão para o mar, os navios, o bairro do porto, a rua do porto, o rio, o recorte do porto até a borda do mapa do lado do mar e a cena; com `SO=aba`, `cena`, `porao`, `vila`, `regras`, `desenho` ou `cidade`); `cenas-lote7g.rede`, numa mesa: o porto grande vai para a jogadora sem as Entradas (com a amurada do navio), e o navio por dentro. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre

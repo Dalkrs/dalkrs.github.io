@@ -2,6 +2,38 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-3",
+      "data": "2026-10-17",
+      "titulo": "O porto e a cidade com mar",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Porto, com dois lugares à beira-mar. A vila de pescadores: a praia, os píeres de tábuas, as casas dos pescadores de frente para o mar, a taverna, o armazém do peixe, a capela, os barcos amarrados e puxados para a areia, o mercado do peixe na areia (as barracas, as redes, os secadores) e o farol na ponta de pedras. O porto grande: o cais de pedra com os cabeços, os molhes, os armazéns e as tavernas de frente para o cais, o templo e o quartel da guarda nas ruas de trás, os lampiões, os guindastes e a carga, e o quebra-mar com o farol na ponta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os navios grandes atracados no porto (e o barco de pesca da vila) são lugares — o convés com a amurada, que deixa ver mas não deixa passar, a prancha até o cais e a escotilha: dois cliques nela geram o porão e as cabines. Os barcos pequenos são desenho."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: na aba Porto, ligar ou desligar os navios, o farol ou o mercado, e trocar o terreno, não mexe no resto do lugar — só põe ou tira aquilo. Um clique na prévia trava o traçado: “Gerar outro” troca só os barcos, o mercado e as árvores."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a Cidade ganhou a chave “Com mar”. Um lado vira mar: a muralha desce até a beira e fica aberta para a água, o cais de pedra corre por dentro dela com o bairro do porto de frente para ele, os molhes e os navios atracados (cada um é um lugar), a rua do porto desce da praça até o cais e o rio deságua no mar. No mapa de bairros, o porto tem o seu marcador. Sem a chave, a cidade sai como sempre."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o marcador de porto também tem “Gerar este lugar…” — abre a aba Porto já com o terreno e o nome do marcador."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-2",
       "data": "2026-10-17",
       "titulo": "A aldeia da tribo",

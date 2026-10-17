@@ -1239,7 +1239,7 @@
      O terreno vem do hexágono (pelo desenho dele, para valer também nos terrenos que o mestre criou), o caminho da rota
      do grupo, a hora do tempo de agora (o calendário diz quando escurece), o clima dos eventos que cobrem o lugar e o
      estilo da região. Nada muda nas cenas até o mestre criar. */
-  const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } } };
+  const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' } };
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };

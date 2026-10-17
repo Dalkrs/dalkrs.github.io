@@ -6,6 +6,9 @@
    rio, o lago, o gelo, a lava, o lodo), os caminhos, os penhascos e as pedras grandes, as árvores de cada lugar e os
    objetos pintados (a carroça tombada, as tendas, a ossada, o moinho, a plantação, as pontes…). Aqui só há desenho, em
    quadrados (c pixels por quadrado); quem sorteia é o gerador.
+   (lote 7, parte 4b) O mar (do raso junto da beira ao fundo, com as fileiras de ondas) e o que fica nele e na beira,
+   para o Porto e para a Cidade com mar: o cais e os molhes de pedra (com os cabeços), o quebra-mar, o farol, a prancha
+   dos navios, o guindaste, a carga do cais, as redes, o secador de peixe, a barraca do peixe e os blocos de gelo.
    --------------------------------------------------------------- */
 const Paisagem = (() => {
   const TAU = Math.PI * 2;
@@ -159,11 +162,24 @@ const Paisagem = (() => {
     }
     g.restore();
   }
-  // o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho'
+  // o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho' | 'mar'
   function lago(g, pts, c, rnd, pal, tipo) {
     const P = PAL[pal] || PAL.campo, [x0, y0, x1, y1] = caixa(pts), area = (x1 - x0) * (y1 - y0);
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
-    if (tipo === 'gelo') {
+    if (tipo === 'mar') {
+      // o mar: o fundo azul-escuro, o raso mais claro em faixas por dentro do contorno (os lados que passam das bordas
+      // do mapa não aparecem: só a beira fica clara), as fileiras de ondas e as cristas de espuma
+      const M = PAL.mar;
+      suave(g, pts, c); g.fillStyle = M.agua[0]; g.fill();
+      g.clip();
+      for (const [lw, a, cor] of [[9, 0.22, M.agua[1]], [5.5, 0.3, M.agua[1]], [3, 0.36, M.agua[2]], [1.4, 0.42, '#8fd0dc']]) { g.globalAlpha = a; suave(g, pts, c); g.strokeStyle = cor; g.lineWidth = lw * c; g.stroke(); }
+      g.lineWidth = Math.max(1, c * 0.035);
+      for (let j = y0, l = 0; j < y1; j += 0.62, l++) for (let i = x0 + (l % 2) * 0.55; i < x1; i += 1.1) {
+        const x = (i + rnd() * 0.4) * c, y = (j + rnd() * 0.3) * c, L = c * (0.35 + rnd() * 0.5);
+        g.globalAlpha = 0.14 + rnd() * 0.12; g.strokeStyle = rnd() < 0.72 ? M.fios[0] : '#cfe6f2';
+        g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + L / 2, y - c * 0.14, x + L, y); g.stroke();
+      }
+    } else if (tipo === 'gelo') {
       suave(g, pts, c); g.strokeStyle = '#c9d6df'; g.lineWidth = c * 0.9; g.stroke();
       const gr = g.createLinearGradient(x0 * c, y0 * c, x1 * c, y1 * c); gr.addColorStop(0, '#e8f6fc'); gr.addColorStop(0.5, '#bfe0f0'); gr.addColorStop(1, '#9cc8e0');
       suave(g, pts, c); g.fillStyle = gr; g.fill();
@@ -943,6 +959,179 @@ const Paisagem = (() => {
     for (let i = 0; i < 3; i++) { const x = -c * 0.7 + i * c * 0.7; g.fillStyle = ['#8a5a32', '#a0703e', '#6e4626'][i]; g.beginPath(); g.moveTo(x - c * 0.25, -c * 0.38); g.lineTo(x + c * 0.25, -c * 0.38); g.lineTo(x + c * 0.3, c * 0.2); g.quadraticCurveTo(x, c * 0.42, x - c * 0.3, c * 0.2); g.closePath(); g.fill(); g.strokeStyle = 'rgba(40,25,10,0.6)'; g.lineWidth = Math.max(1, c * 0.025); g.stroke(); }
     g.restore();
   }
+  /* ================= (lote 7, parte 4b) o porto: a beira de pedra, os navios e o que fica no cais ================= */
+  const LAJES = ['#a8a399', '#9a958b', '#b4afa4', '#8f8a80', '#a29c90'];
+  // as lajes de pedra numa caixa (x, y, w, h, em pixels), em fileiras desencontradas; deitadas: as fileiras correm na
+  // horizontal
+  function lajes(g, x, y, w, h, c, rnd, deitadas) {
+    const q = c * 0.5;
+    g.fillStyle = '#5d5a52'; g.fillRect(x, y, w, h);
+    if (deitadas) for (let yy = y, l = 0; yy < y + h; yy += q, l++) for (let xx = x - (l % 2) * q * 0.6; xx < x + w;) { const L = q * (1.4 + rnd() * 1.2); g.fillStyle = LAJES[Math.floor(rnd() * LAJES.length) % LAJES.length]; g.fillRect(xx + 1, yy + 1, L - 2, q - 2); xx += L; }
+    else for (let xx = x, l = 0; xx < x + w; xx += q, l++) for (let yy = y - (l % 2) * q * 0.6; yy < y + h;) { const L = q * (1.4 + rnd() * 1.2); g.fillStyle = LAJES[Math.floor(rnd() * LAJES.length) % LAJES.length]; g.fillRect(xx + 1, yy + 1, q - 2, L - 2); yy += L; }
+    // as manchas do tempo (a umidade, o musgo)
+    for (let i = 0, n = Math.round((w * h) / (c * c) * 0.25); i < n; i++) { g.globalAlpha = 0.1 + rnd() * 0.1; g.fillStyle = rnd() < 0.6 ? '#3e3b35' : '#5f6a46'; g.beginPath(); g.ellipse(x + rnd() * w, y + rnd() * h, c * (0.3 + rnd() * 0.6), c * (0.2 + rnd() * 0.3), rnd() * 3, 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  // um cabeço de amarrar (x, y, em pixels), às vezes com a corda
+  function cabeco(g, x, y, c, rnd) {
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + c * 0.05, y + c * 0.07, c * 0.2, 0, TAU); g.fill();
+    g.fillStyle = '#2e2c28'; g.beginPath(); g.arc(x, y, c * 0.18, 0, TAU); g.fill();
+    g.fillStyle = '#5c5850'; g.beginPath(); g.arc(x - c * 0.04, y - c * 0.04, c * 0.1, 0, TAU); g.fill();
+    if (rnd() < 0.35) { g.strokeStyle = '#c9a86a'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.arc(x, y, c * 0.24, 0.3, 4.4); g.stroke(); }
+  }
+  /* O cais de pedra (o: pts, o contorno; a, b: a beira, junto da água; ux, uy: o sentido do mar): as lajes, a sombra na
+     água, a faixa do capeamento com a linha clara de cima e os cabeços junto da beira. */
+  function cais(g, o, c, rnd) {
+    const [x0, y0, x1, y1] = caixa(o.pts);
+    g.save(); poli(g, o.pts, c, true); g.clip(); lajes(g, x0 * c, y0 * c, (x1 - x0) * c, (y1 - y0) * c, c, rnd, !o.ux); g.restore();
+    const a = o.a, b = o.b, nx = o.ux, ny = o.uy;
+    g.save(); g.lineCap = 'butt';
+    const linha = (d, cor, lw, al) => { g.globalAlpha = al == null ? 1 : al; g.strokeStyle = cor; g.lineWidth = lw; g.beginPath(); g.moveTo((a[0] + nx * d) * c, (a[1] + ny * d) * c); g.lineTo((b[0] + nx * d) * c, (b[1] + ny * d) * c); g.stroke(); };
+    linha(0.22, '#06141e', c * 0.45, 0.35);
+    linha(-0.22, '#6f6a60', c * 0.44);
+    linha(-0.42, '#cfcabe', Math.max(1, c * 0.06), 0.8);
+    linha(-0.02, '#3e3b35', Math.max(1, c * 0.08));
+    g.globalAlpha = 1;
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]), tx = (b[0] - a[0]) / L, ty = (b[1] - a[1]) / L;
+    for (let t = 2 + rnd() * 2; t < L; t += 4 + rnd() * 1.5) cabeco(g, (a[0] + tx * t - nx * 0.55) * c, (a[1] + ty * t - ny * 0.55) * c, c, rnd);
+    g.restore();
+  }
+  // o molhe de pedra (x, y, w, h, em quadrados): a sombra na água, as lajes, a beira e os cabeços dos dois lados
+  function molhe(g, o, c, rnd) {
+    const x = o.x * c, y = o.y * c, w = o.w * c, h = o.h * c, deitado = o.w >= o.h;
+    g.save();
+    g.globalAlpha = 0.38; g.fillStyle = '#05121c'; g.fillRect(x + c * 0.22, y + c * 0.3, w, h); g.globalAlpha = 1;
+    g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); lajes(g, x, y, w, h, c, rnd, deitado); g.restore();
+    g.strokeStyle = '#6f6a60'; g.lineWidth = c * 0.3; g.strokeRect(x + c * 0.15, y + c * 0.15, w - c * 0.3, h - c * 0.3);
+    g.strokeStyle = '#3e3b35'; g.lineWidth = Math.max(1, c * 0.07); g.strokeRect(x, y, w, h);
+    const L = deitado ? o.w : o.h, Wd = deitado ? o.h : o.w;
+    for (let t = 1.6; t < L - 0.6; t += 3.5) for (const s of [0.42, Wd - 0.42]) cabeco(g, deitado ? x + t * c : x + s * c, deitado ? y + s * c : y + t * c, c, rnd);
+    g.restore();
+  }
+  // o quebra-mar (pts: a linha; larg): as pedras grandes jogadas dos dois lados, a espuma em volta e as lajes por cima
+  function quebraMar(g, o, c, rnd) {
+    const t = o.pts, L = o.larg || 2.6, Lt = compr(t);
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.globalAlpha = 0.4; g.save(); g.translate(c * 0.22, c * 0.32); poli(g, t, c); g.strokeStyle = '#05121c'; g.lineWidth = L * c * 1.2; g.stroke(); g.restore();
+    g.globalAlpha = 0.5; poli(g, t, c); g.strokeStyle = '#eef8fc'; g.lineWidth = L * c * 1.25; g.stroke(); g.globalAlpha = 1;
+    poli(g, t, c); g.strokeStyle = '#5d5a52'; g.lineWidth = L * c; g.stroke();
+    for (let i = 0, n = Math.round(Lt * 5); i < n; i++) {
+      const p = aoLongo(t, rnd()), lado = (rnd() < 0.5 ? -1 : 1) * (0.25 + rnd() * 0.25) * L, nx = Math.cos(p.ang + Math.PI / 2), ny = Math.sin(p.ang + Math.PI / 2);
+      pedra(g, p.x + nx * lado, p.y + ny * lado, 0.32 + rnd() * 0.3, c, rnd, ['#b8b3a8', '#8d887e', '#55524b']);
+    }
+    poli(g, t, c); g.strokeStyle = '#7d786f'; g.lineWidth = L * c * 0.5; g.stroke();
+    poli(g, t, c); g.strokeStyle = '#9a958b'; g.lineWidth = L * c * 0.4; g.stroke();
+    g.strokeStyle = 'rgba(55,52,46,0.55)'; g.lineWidth = Math.max(1, c * 0.03); g.lineCap = 'butt';
+    for (let i = 0, n = Math.round(Lt / 0.55); i < n; i++) { const p = aoLongo(t, i / n), nx = Math.cos(p.ang + Math.PI / 2), ny = Math.sin(p.ang + Math.PI / 2); g.beginPath(); g.moveTo((p.x - nx * L * 0.2) * c, (p.y - ny * L * 0.2) * c); g.lineTo((p.x + nx * L * 0.2) * c, (p.y + ny * L * 0.2) * c); g.stroke(); }
+    g.restore();
+  }
+  // o farol visto de cima (x, y; r): a torre redonda caiada com a faixa, a galeria com o parapeito e a lanterna acesa
+  function farol(g, o, c) {
+    const x = o.x * c, y = o.y * c, R = o.r * c;
+    g.save();
+    g.globalAlpha = 0.42; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x + R * 1.1, y + R * 1.3, R * 1.05, R * 0.85, 0.65, 0, TAU); g.fill(); g.globalAlpha = 1;
+    const gb = g.createRadialGradient(x, y, R * 0.3, x, y, R * 3.2); gb.addColorStop(0, 'rgba(255,236,170,0.35)'); gb.addColorStop(1, 'rgba(255,236,170,0)');
+    g.fillStyle = gb; g.beginPath(); g.arc(x, y, R * 3.2, 0, TAU); g.fill();
+    const gr = g.createRadialGradient(x - R * 0.35, y - R * 0.35, R * 0.1, x, y, R); gr.addColorStop(0, '#f6f2ea'); gr.addColorStop(0.7, '#ddd6c8'); gr.addColorStop(1, '#a8a194');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill(); g.strokeStyle = '#5e594e'; g.lineWidth = Math.max(1.5, c * 0.07); g.stroke();
+    g.strokeStyle = '#a8321e'; g.lineWidth = R * 0.17; g.beginPath(); g.arc(x, y, R * 0.8, 0, TAU); g.stroke();
+    g.fillStyle = '#4a463e'; g.beginPath(); g.arc(x, y, R * 0.66, 0, TAU); g.fill();
+    g.strokeStyle = '#2a2824'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.arc(x, y, R * 0.62, 0, TAU); g.stroke();
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * TAU; g.beginPath(); g.moveTo(x + Math.cos(a) * R * 0.56, y + Math.sin(a) * R * 0.56); g.lineTo(x + Math.cos(a) * R * 0.66, y + Math.sin(a) * R * 0.66); g.stroke(); }
+    const gl = g.createRadialGradient(x, y, 0, x, y, R * 0.46); gl.addColorStop(0, '#fffbe8'); gl.addColorStop(0.55, '#ffe08a'); gl.addColorStop(1, '#c9a24a');
+    g.fillStyle = gl; g.beginPath(); g.arc(x, y, R * 0.44, 0, TAU); g.fill();
+    g.strokeStyle = '#3a3a3a'; g.lineWidth = Math.max(1, c * 0.035); for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * R * 0.44, y + Math.sin(a) * R * 0.44); g.stroke(); }
+    g.beginPath(); g.arc(x, y, R * 0.44, 0, TAU); g.stroke();
+    g.fillStyle = '#5f8a7a'; g.beginPath(); g.arc(x, y, R * 0.2, 0, TAU); g.fill(); g.fillStyle = '#3d5c50'; g.beginPath(); g.arc(x, y, R * 0.08, 0, TAU); g.fill();
+    g.restore();
+  }
+  // a prancha (x1, y1 → x2, y2: do navio até a terra): as tábuas atravessadas e as cordas dos lados
+  function prancha(g, o, c) {
+    const L = Math.hypot(o.x2 - o.x1, o.y2 - o.y1) * c, a = Math.atan2(o.y2 - o.y1, o.x2 - o.x1);
+    g.save(); g.translate(o.x1 * c, o.y1 * c); g.rotate(a);
+    g.globalAlpha = 0.35; g.fillStyle = '#000'; g.fillRect(c * 0.12, -c * 0.3 + c * 0.16, L, c * 0.62); g.globalAlpha = 1;
+    g.fillStyle = MAD.borda; g.fillRect(0, -c * 0.33, L, c * 0.66);
+    for (let t = 0, i = 0; t < L; t += c * 0.24, i++) { g.fillStyle = i % 2 ? MAD.cla : MAD.med; g.fillRect(t + 1, -c * 0.29, Math.min(c * 0.2, L - t - 1), c * 0.58); }
+    g.strokeStyle = '#c9a86a'; g.lineWidth = Math.max(1, c * 0.04);
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, s * c * 0.34); g.lineTo(L, s * c * 0.34); g.stroke(); }
+    g.restore();
+  }
+  // o guindaste de madeira (x, y; ang: para onde o braço aponta): a base de vigas, o mastro, o braço, a corda e o fardo
+  function guindaste(g, o, c) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0); g.lineCap = 'round';
+    g.globalAlpha = 0.35; g.fillStyle = '#000'; g.fillRect(-c * 0.5 + c * 0.22, -c * 0.5 + c * 0.3, c, c); g.save(); g.translate(c * 0.4, c * 0.5); g.fillRect(0, -c * 0.08, c * 2.3, c * 0.16); g.restore(); g.globalAlpha = 1;
+    g.fillStyle = MAD.borda; g.fillRect(-c * 0.55, -c * 0.55, c * 1.1, c * 1.1);
+    g.fillStyle = MAD.med; g.fillRect(-c * 0.45, -c * 0.45, c * 0.9, c * 0.9);
+    g.strokeStyle = MAD.esc; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); g.moveTo(-c * 0.45, -c * 0.45); g.lineTo(c * 0.45, c * 0.45); g.moveTo(c * 0.45, -c * 0.45); g.lineTo(-c * 0.45, c * 0.45); g.stroke();
+    g.strokeStyle = MAD.borda; g.lineWidth = c * 0.22; g.beginPath(); g.moveTo(-c * 0.3, 0); g.lineTo(c * 2.3, 0); g.stroke();
+    g.strokeStyle = MAD.cla; g.lineWidth = c * 0.12; g.beginPath(); g.moveTo(-c * 0.3, 0); g.lineTo(c * 2.3, 0); g.stroke();
+    g.fillStyle = MAD.esc; g.beginPath(); g.arc(0, 0, c * 0.26, 0, TAU); g.fill(); g.fillStyle = '#8a6238'; g.beginPath(); g.arc(0, 0, c * 0.14, 0, TAU); g.fill();
+    g.fillStyle = '#3a3a3a'; g.beginPath(); g.arc(c * 2.2, 0, c * 0.1, 0, TAU); g.fill();
+    g.strokeStyle = '#c9a86a'; g.lineWidth = Math.max(1, c * 0.03); g.beginPath(); g.moveTo(c * 2.2, 0); g.lineTo(c * 2.2, c * 0.32); g.stroke();
+    g.fillStyle = '#b08a5a'; g.fillRect(c * 1.92, c * 0.32, c * 0.56, c * 0.42); g.strokeStyle = MAD.borda; g.lineWidth = Math.max(1, c * 0.04); g.strokeRect(c * 1.92, c * 0.32, c * 0.56, c * 0.42);
+    g.strokeStyle = 'rgba(220,200,150,0.75)'; g.beginPath(); g.moveTo(c * 1.92, c * 0.32); g.lineTo(c * 2.48, c * 0.74); g.moveTo(c * 2.48, c * 0.32); g.lineTo(c * 1.92, c * 0.74); g.stroke();
+    g.restore();
+  }
+  // a carga do cais (x, y; ang; v): os caixotes sob a rede (0), os sacos empilhados (1) ou os barris em pé (2)
+  function carga(g, o, c, rnd) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0);
+    g.globalAlpha = 0.35; g.fillStyle = '#000'; g.fillRect(-c * 0.8 + c * 0.16, -c * 0.6 + c * 0.22, c * 1.6, c * 1.2); g.globalAlpha = 1;
+    if (o.v === 1) {
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 3; i++) {
+        const bx = (-0.52 + i * 0.52) * c, by = (-0.28 + j * 0.56) * c;
+        g.fillStyle = rnd() < 0.5 ? '#d8c79e' : '#c9b48a'; g.beginPath(); g.ellipse(bx, by, c * 0.3, c * 0.24, rnd() * 0.6 - 0.3, 0, TAU); g.fill(); g.strokeStyle = '#9c8a60'; g.lineWidth = Math.max(1, c * 0.03); g.stroke();
+        g.strokeStyle = '#7a6a48'; g.beginPath(); g.moveTo(bx - c * 0.06, by - c * 0.18); g.lineTo(bx + c * 0.06, by - c * 0.18); g.stroke();
+      }
+    } else if (o.v === 2) {
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 3; i++) { const bx = (-0.52 + i * 0.52) * c, by = (-0.27 + j * 0.54) * c; g.fillStyle = '#8a5a2e'; g.beginPath(); g.arc(bx, by, c * 0.25, 0, TAU); g.fill(); g.strokeStyle = '#3d434c'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.arc(bx, by, c * 0.19, 0, TAU); g.stroke(); g.fillStyle = '#6b4424'; g.beginPath(); g.arc(bx, by, c * 0.1, 0, TAU); g.fill(); }
+    } else {
+      for (const [a, b] of [[-0.8, -0.6], [0, -0.6], [-0.8, 0], [0, 0]]) { g.fillStyle = rnd() < 0.5 ? '#9a7048' : '#8a6238'; g.fillRect(a * c + 1, b * c + 1, c * 0.8 - 2, c * 0.6 - 2); g.strokeStyle = MAD.borda; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(a * c + 1, b * c + 1, c * 0.8 - 2, c * 0.6 - 2); g.beginPath(); g.moveTo(a * c + 1, b * c + 1); g.lineTo(a * c + c * 0.8 - 1, b * c + c * 0.6 - 1); g.stroke(); }
+      g.strokeStyle = 'rgba(225,205,155,0.7)'; g.lineWidth = Math.max(0.8, c * 0.022);
+      for (let t = -0.8; t <= 0.81; t += 0.2) { g.beginPath(); g.moveTo(t * c, -0.6 * c); g.lineTo(t * c, 0.6 * c); g.stroke(); }
+      for (let t = -0.6; t <= 0.61; t += 0.2) { g.beginPath(); g.moveTo(-0.8 * c, t * c); g.lineTo(0.8 * c, t * c); g.stroke(); }
+    }
+    g.restore();
+  }
+  // a rede de pesca estendida na areia (x, y; ang), presa nas varas: a malha e as boias de cortiça
+  function redes(g, o, c) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0);
+    const w = c * 2, h = c * 1.1;
+    g.globalAlpha = 0.22; g.fillStyle = '#000'; g.fillRect(-w / 2 + c * 0.1, -h / 2 + c * 0.14, w, h); g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(80,62,36,0.85)'; g.lineWidth = Math.max(0.8, c * 0.022);
+    for (let t = -w / 2; t <= w / 2; t += c * 0.16) { g.beginPath(); g.moveTo(t, -h / 2); g.lineTo(Math.min(w / 2, t + c * 0.3), h / 2); g.stroke(); g.beginPath(); g.moveTo(Math.min(w / 2, t + c * 0.3), -h / 2); g.lineTo(t, h / 2); g.stroke(); }
+    g.fillStyle = '#d8a050'; for (let t = -w / 2 + c * 0.1; t < w / 2; t += c * 0.32) { g.beginPath(); g.arc(t, -h / 2, c * 0.06, 0, TAU); g.fill(); }
+    g.fillStyle = MAD.esc; for (const [a, b] of [[-w / 2, -h / 2], [w / 2, -h / 2], [-w / 2, h / 2], [w / 2, h / 2]]) { g.beginPath(); g.arc(a, b, c * 0.09, 0, TAU); g.fill(); }
+    g.restore();
+  }
+  // o secador de peixe (x, y; ang): a vara com os peixes pendurados
+  function peixes(g, o, c) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0); g.lineCap = 'round';
+    g.globalAlpha = 0.28; g.fillStyle = '#000'; g.fillRect(-c * 0.8 + c * 0.1, -c * 0.15 + c * 0.14, c * 1.6, c * 0.6); g.globalAlpha = 1;
+    g.strokeStyle = MAD.esc; g.lineWidth = Math.max(1.5, c * 0.07); g.beginPath(); g.moveTo(-c * 0.8, 0); g.lineTo(c * 0.8, 0); g.stroke();
+    for (let i = 0; i < 7; i++) { const t = -0.62 + i * 0.2; g.fillStyle = i % 2 ? '#b8bcc0' : '#9aa0a6'; g.beginPath(); g.ellipse(t * c, c * 0.2, c * 0.06, c * 0.18, 0, 0, TAU); g.fill(); g.fillStyle = '#5a6066'; g.beginPath(); g.moveTo(t * c - c * 0.05, c * 0.4); g.lineTo(t * c + c * 0.05, c * 0.4); g.lineTo(t * c, c * 0.32); g.closePath(); g.fill(); }
+    g.fillStyle = MAD.med; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * c * 0.8, 0, c * 0.09, 0, TAU); g.fill(); }
+    g.restore();
+  }
+  // a barraca do peixe (x, y; ang; cor): o toldo listrado (de uma de três cores), o balcão e os peixes
+  function barracaPeixe(g, o, c) {
+    const cores = [['#c8462e', '#f2e6d0'], ['#2f6a8a', '#f2e6d0'], ['#4f7a3a', '#f2e6d0']][o.cor || 0];
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0);
+    const w = c * 1.6, h = c * 1.1;
+    g.globalAlpha = 0.32; g.fillStyle = '#000'; g.fillRect(-w / 2 + c * 0.12, -h / 2 + c * 0.16, w, h); g.globalAlpha = 1;
+    g.fillStyle = MAD.med; g.fillRect(-w / 2, h * 0.12, w, h * 0.38);
+    for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#b8bcc0' : '#d8a080'; g.beginPath(); g.ellipse(-w / 2 + (i + 0.6) * w / 5.4, h * 0.32, c * 0.14, c * 0.05, 0, 0, TAU); g.fill(); }
+    for (let i = 0; i < 6; i++) { g.fillStyle = cores[i % 2]; g.fillRect(-w / 2 + i * w / 6, -h / 2, w / 6 + 0.5, h * 0.62); }
+    g.strokeStyle = 'rgba(40,24,10,0.6)'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(-w / 2, -h / 2, w, h * 0.62);
+    g.restore();
+  }
+  // um bloco de gelo boiando (pts: o contorno)
+  function gelo(g, o, c) {
+    g.save();
+    g.globalAlpha = 0.35; g.save(); g.translate(c * 0.1, c * 0.14); poli(g, o.pts, c, true); g.fillStyle = '#05121c'; g.fill(); g.restore(); g.globalAlpha = 1;
+    poli(g, o.pts, c, true); g.fillStyle = '#e8f3f8'; g.fill(); g.strokeStyle = '#9fc3d8'; g.lineWidth = Math.max(1, c * 0.05); g.stroke();
+    g.globalAlpha = 0.6; poli(g, encolher(o.pts, 0.6), c, true); g.fillStyle = '#ffffff'; g.fill();
+    g.restore();
+  }
   // escurece de leve as bordas (o mesmo dos outros geradores)
   function vinheta(g, W, H, c, forte) {
     const w = W * c, h = H * c, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
@@ -951,5 +1140,6 @@ const Paisagem = (() => {
   }
   return { PAL, FIOS, PEDRA, pedraDe, poli, suave, caixa, centro, encolher, aoLongo, compr, chao, mancha, rio, lago, praia, espuma, cachoeira, caminho, penhasco, pedra, arvore, cristais,
     tabuas, carroca, tenda, fogueiraApagada, ossada, pasDoMoinho, plantacao, cerca, feno, espantalho, ponte, passarela, pedrasDePassar, fenda, basalto, raiz, troncoGigante, troncoColossal,
-    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD };
+    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD,
+    cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo };
 })();
