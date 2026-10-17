@@ -1240,9 +1240,9 @@
      do grupo, a hora do tempo de agora (o calendário diz quando escurece), o clima dos eventos que cobrem o lugar e o
      estilo da região. Nada muda nas cenas até o mestre criar. */
   const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' },
-    // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone
+    // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone (a masmorra: a aba Masmorra, 4b-3c)
     ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'ruinas', op: { tipo: 'forte' } },
-    masmorra: { lugar: 'ruinas', op: { tipo: 'forte' } }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } } };
+    masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } } };
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };

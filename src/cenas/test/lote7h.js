@@ -11,7 +11,11 @@
 //   · a cena: no breu, as paredes, as portas (trancadas e secretas), as runas escondidas, a Saída na escada de subida e
 //     a Entrada na de descida (que gera o nível 2, dentro do nível 1); quem joga não vê as Entradas nem as runas, e a
 //     porta secreta é parede para ele;
-//   · o desenho dos quatro tipos (a rocha escura, o chão mais claro).
+//   · o desenho dos quatro tipos (a rocha escura, o chão mais claro);
+//   · (4b-3c) a aba Masmorra do "Gerar um lugar…", sem precisar de uma Entrada: entre as Ruínas e o Porto, sem a hora e
+//     o clima; o nível escolhido (o nome acompanha); "Embaixo de" com as cenas na ordem das famílias; com "Nenhuma", a
+//     cena solta com a Saída sem destino; com a cena de cima, dentro dela, com a Saída de volta; o id pedido pelo
+//     Mapa-múndi e o nome do marcador.
 const path = require('path');
 const { open } = require('./lib');
 let fails = 0, n = 0;
@@ -229,6 +233,70 @@ const SHOTS = process.env.FOTOS;
     ok(s2.nome === 'Cripta — nível 2' && s2.mae === nivel1.id && s2.saida === nivel1.id && s2.desce && s2.desce.n === 3 && s2.desce.m === 'cripta', 'o nível 2 (a cripta) sai dentro do nível 1, com a Saída de volta para ele e a Entrada do nível 3: ' + j(s2));
     await ev(() => { __tc.Render.fit(); __tc.Render.request(); }); await clearToasts(); await w(400);
     await foto('03-cena-cripta');
+  }
+
+  // ================= (4b-3c) a aba Masmorra do "Gerar um lugar…" =================
+  if (parte('aba')) {
+    // duas cenas, uma dentro da outra (a lista "Embaixo de" mostra a de dentro recuada)
+    const prep = await ev(() => {
+      const u = __tc, a = u.newScene('Superfície'), b = u.newScene('Porão velho');
+      u.normalizeScene(a); u.normalizeScene(b); u.Store.addScene(a); u.Store.addScene(b); u.UI.porNaFamilia(b.id, a.id);
+      u.App.opt.masTipo = 'pedra'; u.App.opt.masTam = 'medio'; u.App.opt.masSeg = true; u.App.opt.masDesce = true;
+      return { a: a.id, b: b.id };
+    });
+    await page.locator('#sceneBtn').click(); await w(200);
+    await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
+    const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Ruínas', 'Masmorra', 'Porto']), 'a aba Masmorra, entre as Ruínas e o Porto: ' + j(abas));
+    ok(await ev(() => !!document.getElementById('ger-hora') && !!document.getElementById('ger-clima')), '(nas outras abas, a hora e o clima)');
+    await page.locator('#ger-lugar button', { hasText: 'Masmorra' }).click(); await w(700);
+    const a0 = await ev(() => ({ lugar: __tc.Gerador.vivo().lugar, plano: __tc.Gerador.vivo().estado.plano.lugar, hora: !!document.getElementById('ger-hora'), clima: !!document.getElementById('ger-clima'), est: !!document.getElementById('ger-est'),
+      txt: document.querySelector('.ger-op').innerText.replace(/\n+/g, ' | '), resumo: document.getElementById('ger-resumo').innerText, nome: document.getElementById('ger-nome').value,
+      sob: [...document.querySelectorAll('#mas-sob option')].map(o => [o.value, o.textContent]), dica: document.getElementById('ger-dica').innerText }));
+    ok(a0.lugar === 'masmorra' && a0.plano === 'masmorra' && !a0.hora && !a0.clima && a0.est, 'a aba Masmorra: sem a hora e o clima (lá embaixo é breu), com o estilo: ' + j([a0.lugar, a0.hora, a0.clima]));
+    ok(/Tipo \| Masmorra de pedra \| Caverna \| Cripta \| Mina abandonada \| Tamanho \| Pequeno \| Médio \| Grande \| Nível \| Embaixo de \| .*Com segredos .* \| Com a escada para o nível de baixo/.test(a0.txt) && /Com relevo \(os estrados, os sarcófagos, a água, o abismo\)/.test(a0.txt), 'as escolhas: o tipo, o tamanho, o nível, "Embaixo de", os segredos e a escada — ' + a0.txt.slice(0, 300));
+    ok(/^Masmorra de pedra · nível 1 · 46 × 34 quadrados/.test(a0.resumo) && a0.nome === 'Masmorra — nível 1' && /não tem partes para travar/.test(a0.dica), 'o nível 1, o nome e a dica (sem partes para travar): ' + a0.resumo);
+    const iA = a0.sob.findIndex(o => o[0] === prep.a), iB = a0.sob.findIndex(o => o[0] === prep.b);
+    ok(a0.sob[0][0] === '' && /Nenhuma/.test(a0.sob[0][1]) && iA > 0 && iB === iA + 1 && /^\u00a0+Porão velho$/.test(a0.sob[iB][1]) && a0.sob[iA][1] === 'Superfície', '"Embaixo de": "Nenhuma" e as cenas na ordem das famílias (a de dentro recuada): ' + j(a0.sob.slice(0, 6)));
+    // o nível 3, a cripta: o nome acompanha
+    { const f = page.locator('#mas-nivel'); await f.fill('3'); await f.press('Tab'); await w(450); }
+    await exato('mas-tipo', 'Cripta');
+    const a1 = await ev(() => ({ resumo: document.getElementById('ger-resumo').innerText, nome: document.getElementById('ger-nome').value, n: __tc.Gerador.vivo().estado.plano.nivel }));
+    ok(a1.n === 3 && /^Cripta · nível 3 · 46 × 34 quadrados/.test(a1.resumo) && a1.nome === 'Cripta — nível 3', 'o nível 3 e a cripta: "Cripta — nível 3": ' + a1.resumo);
+    // as chaves: sem os segredos, nem porta secreta nem runa; sem a escada de descida, nada do nível de baixo
+    await chave('mas-seg');
+    const r3 = await page.locator('#ger-resumo').innerText();
+    await chave('mas-seg');
+    await chave('mas-desce');
+    const r4 = await page.locator('#ger-resumo').innerText();
+    await chave('mas-desce');
+    ok(!/secreta|runa/.test(r3) && !/a escada para o nível 4/.test(r4) && /a escada para o nível 4/.test(await page.locator('#ger-resumo').innerText()), 'as chaves: sem os segredos, nem porta secreta nem runa; sem a escada, nada do nível 4 — ' + j([r3, r4]));
+    // com "Nenhuma": a cena solta, a Saída sem destino
+    await criar();
+    const c1 = await ev(() => { const u = __tc, sc = u.Store.scene(); return { id: sc.id, nome: sc.name, tom: sc.tone, mae: u.Store.S.pastas.mae[sc.id] || null, saida: sc.tokens.filter(x => x.prop === 'saida').map(x => ({ cena: x.cena || null, oculto: !!x.hidden })), desce: (sc.tokens.find(x => x.prop === 'entrada') || {}).gera, toast: [...document.querySelectorAll('.toast')].map(x => x.innerText).join(' ¶ ') }; });
+    ok(c1.nome === 'Cripta — nível 3' && c1.tom === 'breu' && c1.mae === null, 'com "Nenhuma": "Cripta — nível 3", no breu, solta (fora de qualquer família): ' + j([c1.nome, c1.tom, c1.mae]));
+    ok(c1.saida.length === 1 && c1.saida[0].cena === null && c1.saida[0].oculto && c1.desce && c1.desce.m === 'cripta' && c1.desce.n === 4, 'a Saída (oculta) sem destino e a Entrada da escada de descida no nível 4: ' + j([c1.saida, c1.desce]));
+    ok(/"Cripta — nível 3" criada: uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum/.test(c1.toast), 'o aviso diz que a Saída ainda não leva a lugar nenhum: ' + c1.toast);
+    await clearToasts();
+    ok(await ev(() => __tc.App.opt.masTipo === 'cripta' && __tc.App.opt.genLugar === 'masmorra'), 'as escolhas ficam guardadas (o tipo, a aba)');
+    // de novo, já na aba Masmorra: embaixo da Superfície (dentro dela, a Saída de volta)
+    await page.locator('#sceneBtn').click(); await w(200);
+    await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
+    ok(await ev(() => __tc.Gerador.vivo().lugar === 'masmorra' && __tc.Gerador.vivo().estado.op.nivel === 1 && __tc.Gerador.vivo().estado.op.sob === ''), 'abre de novo na aba Masmorra, no nível 1 e sem cena de cima');
+    await page.locator('#mas-sob').selectOption(prep.a); await w(450);
+    ok(await ev(id => __tc.Gerador.vivo().estado.op.sob === id && document.getElementById('mas-sob').value === id, prep.a), 'escolher a cena de cima');
+    await foto('04-aba-masmorra');
+    await criar();
+    const c2 = await ev(() => { const u = __tc, sc = u.Store.scene(); return { nome: sc.name, mae: u.Store.S.pastas.mae[sc.id] || null, saida: (sc.tokens.find(x => x.prop === 'saida') || {}).cena || null, toast: [...document.querySelectorAll('.toast')].map(x => x.innerText).join(' ¶ ') }; });
+    ok(c2.nome === 'Cripta — nível 1' && c2.mae === prep.a && c2.saida === prep.a && /criada, dentro de "Superfície": a Saída, na escada de subida, leva de volta/.test(c2.toast), 'embaixo da Superfície: dentro dela (na família), com a Saída de volta: ' + j([c2.nome, c2.mae === prep.a, c2.saida === prep.a, c2.toast]));
+    await clearToasts();
+    // o que o Mapa-múndi manda: o nome do marcador e o id da cena (o marcador já leva a ela)
+    await ev(() => __tc.Gerador.abrir('masmorra', { nome: 'Covil do Lich', id: 'cena_mundo_tst4b3c' })); await w(700);
+    ok(await ev(() => __tc.Gerador.vivo().lugar === 'masmorra' && document.getElementById('ger-nome').value === 'Covil do Lich'), 'aberta pelo Mapa-múndi: a aba Masmorra com o nome do marcador');
+    await criar();
+    const c3 = await ev(() => { const sc = __tc.Store.scene(); return { id: sc.id, nome: sc.name }; });
+    ok(c3.id === 'cena_mundo_tst4b3c' && c3.nome === 'Covil do Lich', 'a cena com o id que o marcador espera: ' + j(c3));
+    await clearToasts();
   }
 
   // ================= o desenho =================

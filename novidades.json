@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-6",
+      "data": "2026-10-17",
+      "titulo": "A masmorra direto no gerador",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Masmorra — o nível da masmorra direto, sem precisar pôr uma Entrada antes. Escolha o tipo (pedra, caverna, cripta, mina), o tamanho, o nível (o nome acompanha: “Cripta — nível 3”), os segredos, a escada de descida e “Embaixo de”: com uma cena escolhida, o nível nasce dentro dela, com a Saída levando de volta; com “Nenhuma”, sai como uma cena solta, e a Saída fica sem destino até você escolher a cena no painel dela."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o marcador de masmorra agora abre a aba Masmorra (o nível 1, com o nome do marcador); o castelo continua abrindo o forte em ruínas."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-5",
       "data": "2026-10-17",
       "titulo": "As ruínas",

@@ -3032,7 +3032,7 @@ const UI = (() => {
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
-    passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu,
+    passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

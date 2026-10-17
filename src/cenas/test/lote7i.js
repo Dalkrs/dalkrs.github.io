@@ -45,7 +45,7 @@ const SHOTS = process.env.FOTOS;
   if (parte('aba')) {
     await abrirGerador();
     const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Ruínas', 'Porto']), 'as abas: as Ruínas entre o Encontro e o Porto: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Ruínas', 'Masmorra', 'Porto']), 'as abas: as Ruínas entre o Encontro e a Masmorra: ' + j(abas));
     await page.locator('#ger-lugar button', { hasText: 'Ruínas' }).click(); await w(700);
     await semente(3);
     const g0 = await G();

@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
-   Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, as Ruínas e o Porto), as escolhas de cada um e, embaixo, o que vale
+   Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
    (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
@@ -9,7 +9,7 @@
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR, Ruinas.LUGAR, Porto.LUGAR];
+  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR, Ruinas.LUGAR, Masmorra.LUGAR, Porto.LUGAR];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -82,8 +82,8 @@ const Gerador = (() => {
       if (cv.width !== fundo.width || cv.height !== fundo.height) { cv.width = fundo.width; cv.height = fundo.height; }
       const g = cv.getContext('2d');
       g.clearRect(0, 0, cv.width, cv.height); g.drawImage(fundo, 0, 0);
-      // a hora do dia escolhida tinge a prévia (como na cena)
-      const tom = TONES.find(t => t.id === comum.hora);
+      // a hora do dia escolhida tinge a prévia (como na cena) — menos no lugar sem hora (a masmorra, lá embaixo)
+      const tom = L.semHora ? null : TONES.find(t => t.id === comum.hora);
       if (tom && tom.tint) { g.fillStyle = tom.tint; g.fillRect(0, 0, cv.width, cv.height); if (tom.id === 'breu') { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, cv.width, cv.height); } }
       const marcar = (parte, modo) => {
         const fs = L.formaDaParte(p, parte);
@@ -222,8 +222,8 @@ const Gerador = (() => {
         L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }),
         h('div', { class: 'ger-cm' },
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
-          field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
-          field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
+          L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
+          L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)')));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
@@ -247,7 +247,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
             UI.closeModal();
             UI.switchScene(sc.id);
             UI.toast(l.feito(sc, p), { long: true });

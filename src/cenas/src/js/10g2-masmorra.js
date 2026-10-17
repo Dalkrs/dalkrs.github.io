@@ -14,6 +14,8 @@
      poço de descida.
    Com os segredos, as portas secretas (para quem joga, parede; o mestre revela) e as runas-armadilha (escondidas até o
    mestre revelar). Escuro como deve ser: só as tochas, os braseiros, as velas e os cogumelos iluminam. Nada sai escrito.
+   (lote 7, parte 4b-3c) A janela "Gerar um lugar…" tem a aba Masmorra: o mesmo nível, sem precisar de uma Entrada — o
+   nível escolhido e a cena de cima ("Embaixo de"; sem ela, a cena sai solta, com a Saída ainda sem destino).
    --------------------------------------------------------------- */
 const Masmorra = (() => {
   const TIPOS = [['pedra', 'Masmorra de pedra'], ['caverna', 'Caverna'], ['cripta', 'Cripta'], ['mina', 'Mina abandonada']];
@@ -1604,6 +1606,7 @@ const Masmorra = (() => {
   async function criar(p, nome, fora, op) {
     op = op || {};
     const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
+    if (typeof op.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(op.id) && !Store.S.scenes[op.id]) sc.id = op.id;
     sc.cols = p.W; sc.rows = p.H;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;
@@ -1624,7 +1627,7 @@ const Masmorra = (() => {
     // as runas-armadilha: escondidas dos jogadores até o mestre revelar
     for (const z of p.zonas) sc.effects.push({ id: uid('fx'), fx: z.fx, k: 'circ', x: z.x * c, y: z.y * c, r: z.r || 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, gm: z.gm !== false, by: null, seed: 1 + (Math.floor(Math.abs(z.x * 7.3 + z.y * 13.1) * 97) % 997), dur: 0, dur0: 0, at: null, apply: null });
     // a Saída (a escada de subida leva de volta) e a Entrada da escada de descida (o nível de baixo, quando o mestre quiser)
-    if (fora && p.sobe) { const s = Props.novo(sc, 'saida', p.sobe.mi * c, p.sobe.mj * c, 1, true); s.cena = fora.id; sc.tokens.push(s); }
+    if (p.sobe) { const s = Props.novo(sc, 'saida', p.sobe.mi * c, p.sobe.mj * c, 1, true); if (fora) s.cena = fora.id; sc.tokens.push(s); }
     if (p.desce) {
       const t = Props.novo(sc, 'entrada', p.desce.mi * c, p.desce.mj * c, 1, true);
       t.size = 0.75; t.x += c * 0.125; t.y += c * 0.125;
@@ -1701,5 +1704,63 @@ const Masmorra = (() => {
     });
   }
   const vivo = () => (aberta && document.getElementById('mas-prev') ? aberta : null);
-  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE };
+
+  /* ================= a aba Masmorra do "Gerar um lugar…" (lote 7, parte 4b-3c) =================
+     O mesmo nível da janela da Entrada, sem precisar de uma Entrada: o tipo, o tamanho, o nível (o nome acompanha), a
+     cena de cima ("Embaixo de": o nível nasce dentro dela, com a Saída levando de volta; com "Nenhuma", a cena sai
+     solta e a Saída fica sem destino até o mestre escolher) e os segredos e a escada de descida. A masmorra não tem
+     partes para travar; a hora e o clima não valem lá embaixo (sai no breu). */
+  // a cena de cima escolhida, se ainda existe e o mestre a vê na lista ('' = nenhuma)
+  const cenaDeCima = id => (typeof id === 'string' && id && Store.S.scenes[id] && (!Nuvem.comCampanhas() || Nuvem.naVista(id)) ? id : '');
+  function padraoL() {
+    const o = App.opt;
+    return { tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '' };
+  }
+  const lembrarL = st => { App.opt.masTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; };
+  // as cenas na ordem das famílias (as de dentro recuadas), como na lista "Leva para outra cena"
+  function cenasEmFamilia() {
+    const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id))), F = UI.familiasVistas(vis), arv = [];
+    const desce = (k, n) => { if (arv.length > 2000 || n > 16) return; arv.push([k, n]); for (const f of F.filhas(k)) desce(f, n + 1); };
+    F.raizes.forEach(k => desce(k, 0));
+    return arv;
+  }
+  function controlesL(st, K, mudou) {
+    const { field, seg, inNum, toggle } = K;
+    const muda = (campo, v) => { st[campo] = v; lembrarL(st); mudou(true); };
+    const sel = h('select', { id: 'mas-sob', class: 'in', 'aria-label': 'A cena de cima: o nível nasce dentro dela', onchange: e => { st.sob = cenaDeCima(e.target.value); e.target.blur(); mudou(false); } },
+      h('option', { value: '', text: 'Nenhuma (uma cena solta)' }), ...cenasEmFamilia().map(([k, n]) => h('option', { value: k, text: '\u00a0\u00a0\u00a0'.repeat(n) + Store.S.scenes[k].name })));
+    sel.value = cenaDeCima(st.sob);
+    return h('div', { class: 'ger-c' },
+      field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      h('div', { class: 'ger-l' },
+        field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
+        field('Nível', inNum('mas-nivel', st.nivel, v => muda('nivel', clamp(Math.round(v) || 1, 1, 99)), { min: 1, max: 99, step: 1, label: 'O nível: 1 é o primeiro embaixo da superfície', title: 'O nível: 1 é o primeiro embaixo da superfície' }), 'stack')),
+      field('Embaixo de', sel, 'stack'),
+      toggle('mas-seg', st.segredos, v => muda('segredos', v), 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
+      toggle('mas-desce', st.descida, v => muda('descida', v), 'Com a escada para o nível de baixo'));
+  }
+  const opcoesDeL = st => ({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida });
+  function aplicarOpcoesL(st, o) {
+    if (TIPOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
+    if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
+    if (o.nivel != null && Number.isFinite(Number(o.nivel))) st.nivel = clamp(Math.round(Number(o.nivel)) || 1, 1, 99);
+    for (const k of ['segredos', 'descida']) if (typeof o[k] === 'boolean') st[k] = o[k];
+    if (typeof o.sob === 'string') st.sob = cenaDeCima(o.sob);
+    lembrarL(st);
+  }
+  function feitoL(sc, p) {
+    const mae = UI.maeDaCena(sc.id), m = mae && Store.S.scenes[mae];
+    return `"${sc.name}" criada` + (m ? `, dentro de "${m.name}": a Saída, na escada de subida, leva de volta` : ': uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum (escolha a cena no painel dela)') + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.');
+  }
+  const LUGAR = { id: 'masmorra', n: 'Masmorra', padrao: padraoL, controles: controlesL, opcoesDe: opcoesDeL, aplicarOpcoes: aplicarOpcoesL,
+    gerar: (st, comum) => gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida }),
+    previa, resumo, partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
+    quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
+    criar: (p, nome, ex) => { ex = ex || {}; const sob = cenaDeCima(ex.op && ex.op.sob); return criar(p, nome, sob ? Store.S.scenes[sob] : null, { relevo: ex.relevo !== false, id: ex.id }); },
+    semHora: true,
+    relevoTxt: 'Com relevo (os estrados, os sarcófagos, a água, o abismo)',
+    dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
+    nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
+    feito: feitoL };
+  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
 })();

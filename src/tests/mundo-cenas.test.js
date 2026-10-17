@@ -135,10 +135,12 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   const sem = await lugar('m:vila:5');
   ok(sem && !('nome' in sem.gerar) && sem.liga && sem.liga.nome === '', 'um marcador sem nome não manda nome (a janela usa o dela)');
   // (lote 7, parte 4b-3) os marcadores das ruínas: a aba Ruínas, já no lugar do ícone e no terreno do hexágono
-  const ru = {};
-  for (const k of ['m:castelo:3', 'm:templo:1', 'm:torre:9', 'm:ruina:2', 'm:caverna:4', 'm:mina:13', 'm:masmorra:10']) { const l = await lugar(k); ru[k] = l && l.gerar.lugar === 'ruinas' ? j(l.gerar.op) : null; }
+  const ru = {}, gerou = {};
+  for (const k of ['m:castelo:3', 'm:templo:1', 'm:torre:9', 'm:ruina:2', 'm:caverna:4', 'm:mina:13', 'm:masmorra:10']) { const l = await lugar(k); gerou[k] = l && l.gerar; ru[k] = l && l.gerar.lugar === 'ruinas' ? j(l.gerar.op) : null; }
   ok(ru['m:castelo:3'] === j({ tipo: 'forte', terreno: 'campo' }) && ru['m:templo:1'] === j({ tipo: 'templo', terreno: 'floresta' }) && ru['m:torre:9'] === j({ tipo: 'torre', terreno: 'neve' }) && ru['m:ruina:2'] === j({ terreno: 'campo' }), 'o castelo (o forte em ruínas), o templo (o templo caído, na floresta), a torre (na neve) e a ruína: ' + j(ru));
-  ok(ru['m:caverna:4'] === j({ tipo: 'circulo', terreno: 'areia' }) && ru['m:mina:13'] === j({ tipo: 'mina', terreno: 'areia' }) && ru['m:masmorra:10'] === j({ tipo: 'forte', terreno: 'campo' }), 'a caverna (o círculo de pedras com a boca), a mina (a boca da mina) e a masmorra (o forte): ' + j(ru));
+  ok(ru['m:caverna:4'] === j({ tipo: 'circulo', terreno: 'areia' }) && ru['m:mina:13'] === j({ tipo: 'mina', terreno: 'areia' }) && ru['m:masmorra:10'] === null, 'a caverna (o círculo de pedras com a boca) e a mina (a boca da mina): ' + j(ru));
+  // (4b-3c) a masmorra: a aba Masmorra (o nível 1), com o nome do marcador
+  ok(gerou['m:masmorra:10'] && gerou['m:masmorra:10'].lugar === 'masmorra' && gerou['m:masmorra:10'].nome === 'Masmorra', 'o marcador Masmorra abre a aba Masmorra, com o nome do marcador: ' + j(gerou['m:masmorra:10']));
   ok(await lugar('m:tesouro:3') === null, 'um ícone que não é lugar gerável (o tesouro) não tem o botão');
   // ligado a uma cena que ainda não existe: o botão de seguir oferece gerar de novo, com o mesmo id
   await selecionar(ids['m:vila:6']);
