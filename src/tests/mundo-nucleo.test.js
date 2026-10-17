@@ -784,4 +784,77 @@ function mundo() {
   ok(pub.objs.filter(o => o.k === 'e').length === 1 && pub.objs.filter(o => o.k === 'e').every(o => !('peso' in o)), 'quem joga recebe o evento sem o peso (é do mestre)');
 }
 
+/* ================= lote 7, parte 5b: os grupos do mundo, as paradas, os eventos que andam e o traçado ================= */
+{
+  const base = (objs, extra) => N.normalizarMapa(Object.assign({ larg: 400, alt: 300, grade: { tam: 20, x: 0, y: 0, orient: 'pe', on: true }, cal: { dia: 5 }, objs }, extra || {}));
+  const aplica = (m, id, r) => { const c = JSON.parse(j(m)), o = c.objs.find(x => x.id === id); Object.assign(o, { x: r.x, y: r.y, prog: r.prog, espera: r.espera || 0 }); if ('sentido' in r) o.sentido = r.sentido; return N.normalizarMapa(c); };
+  // a normalização
+  const [t1, g1, g2, e1, e2] = N.normalizarMapa({ objs: [
+    { id: 'rt', k: 't', pts: [[0, 0], [100, 0]], esc: 'sim' },
+    { id: 'g1', k: 'g', x: 0, y: 0, rota: 'rt', tipo: 'caravana', modo: 'volta', sentido: -1, espera: 3, paradas: [{ x: 40, y: 0, n: 2, u: 'd', nome: ' Mercado ' }, { x: 'a', y: 0 }, { x: 60, y: 0, n: 0 }] },
+    { id: 'g2', k: 'g', x: 0, y: 0, tipo: 'dragao', modo: 'xyz', sentido: -1 },
+    { id: 'e1', k: 'e', x: 0, y: 0, tipo: 'migracao', rota: 'rt', pt: '3', modo: 'circuito', sentido: -1 },
+    { id: 'e2', k: 'e', x: 0, y: 0, tipo: 'migracao', rota: 'nao-existe', pt: 3 },
+  ] }).objs;
+  ok(t1.esc === true && g1.tipo === 'caravana' && g1.modo === 'volta' && g1.sentido === -1 && g1.espera === 3 && j(g1.paradas) === j([{ x: 40, y: 0, n: 2, u: 'd', nome: 'Mercado' }, { x: 60, y: 0, n: 1, u: 't' }]),
+    'o grupo do mundo: o tipo, ida e volta (voltando), a espera e as paradas (a sem lugar sai; no mínimo 1 tempo): ' + j(g1.paradas));
+  ok(!('tipo' in g2) && !('modo' in g2) && !('sentido' in g2) && !('paradas' in g2) && !('espera' in g2), 'o tipo e o modo que não existem: o grupo comum, só ida');
+  ok(e1.rota === 'rt' && e1.pt === 3 && e1.modo === 'circuito' && !('sentido' in e1) && e1.prog === 0 && !('rota' in e2) && !('pt' in e2), 'o evento que anda (a rota que não existe some)');
+  ok(j(N.camposDoTipo('patrulha')) === j({ tipo: 'patrulha', sigla: 'PAT', cor: '#5a8fc0', pt: 4, oculto: true }) && j(N.camposDoTipo('')) === '{}', 'o grupo novo do tipo: escondido, com a sigla, a cor e o passo');
+  // ida e volta: a rota de 5 hexágonos (x = 0 a 80), a caravana a 10 cubos por tempo (2 hexágonos)
+  const mv = base([{ id: 'rt', k: 't', pts: [[0, 0], [80, 0]] }, { id: 'c', k: 'g', x: 0, y: 0, rota: 'rt', pt: 10, modo: 'volta', tipo: 'caravana' }]);
+  const a1 = N.andarTempos(mv, 'c', 3);
+  ok(a1.ok && a1.x === 40 && a1.prog === 10 && a1.sentido === -1 && a1.hexes === 6 && a1.voltas === 1 && a1.msg === 'Andou 6 hexágonos (30 cubos) e virou no fim da rota' && j(a1.pass) === j(['0,0', '1,0', '2,0', '3,0', '4,0', '3,0', '2,0']),
+    'ida e volta: no fim, vira e segue no outro sentido com o que sobrou: ' + j([a1.x, a1.prog, a1.sentido, a1.msg, a1.pass]));
+  const mv2 = aplica(mv, 'c', a1), a2 = N.andarTempos(mv2, 'c', 3);
+  ok(a2.x === 80 && a2.sentido === 1 && a2.prog === 20 && a2.voltas === 1, 'volta ao começo, vira de novo e vai até o fim: ' + j([a2.x, a2.sentido, a2.prog]));
+  const a3 = N.andarTempos(aplica(mv2, 'c', a2), 'c', 1);
+  ok(a3.x === 40 && a3.sentido === -1, 'parado no fim, o próximo tempo já vira: ' + j([a3.x, a3.sentido]));
+  ok(j(N.viagem(mv2, mv2.objs[1]).cam.map(h => h.q)) === j([4, 3, 2, 1, 0]), 'na volta, o caminho é a rota ao contrário');
+  // circuito: o triângulo (0,0) → (80,0) → (40,69.28), fechado de volta ao começo (12 hexágonos)
+  const mc = base([{ id: 'rt', k: 't', pts: [[0, 0], [80, 0], [40, 69.28]] }, { id: 'c', k: 'g', x: 0, y: 0, rota: 'rt', pt: 5, modo: 'circuito' }]);
+  const vc = N.viagem(mc, mc.objs[1]), c1 = N.andarTempos(mc, 'c', 14);
+  ok(vc.cam.length === 13 && vc.total === 60 && c1.x === 40 && c1.y === 0 && c1.prog === 10 && c1.voltas === 1 && c1.msg === 'Andou 14 hexágonos (70 cubos) e recomeçou a rota', 'em circuito: a rota fechada, e no fim recomeça: ' + j([vc.cam.length, c1.x, c1.prog, c1.msg]));
+  ok(N.andarTempos(base([{ id: 'rt', k: 't', pts: [[0, 0], [80, 0]] }, { id: 'c', k: 'g', x: 0, y: 0, rota: 'rt', pt: 5 }]), 'c', 14).chegou, '(só ida: para no fim)');
+  // as paradas: a patrulha a 10 cubos por tempo; a parada "Forte" no hexágono 3, de 2 tempos
+  const mp = base([{ id: 'rt', k: 't', pts: [[0, 0], [200, 0]] }, { id: 'p', k: 'g', x: 0, y: 0, rota: 'rt', pt: 10, tipo: 'patrulha', paradas: [{ x: 60, y: 0, n: 2, u: 't', nome: 'Forte' }] }]);
+  const p1 = N.andarTempos(mp, 'p', 2);
+  ok(p1.x === 60 && p1.espera === 2 && p1.parada && p1.parada.nome === 'Forte' && p1.msg === 'Andou 3 hexágonos (15 cubos) e parou em "Forte": faltam 2 tempos', 'ao entrar na parada, fica (o resto do tempo se perde) e a espera começa: ' + j([p1.x, p1.espera, p1.msg]));
+  const mp2 = aplica(mp, 'p', p1), p2 = N.andarTempos(mp2, 'p', 1);
+  ok(p2.ok && p2.x === 60 && p2.espera === 1 && p2.hexes === 0 && p2.msg === 'Parado em "Forte": falta 1 tempo', 'na espera, o tempo passa e o grupo fica: ' + j([p2.espera, p2.msg]));
+  const p3 = N.andarTempos(aplica(mp2, 'p', p2), 'p', 3);
+  ok(p3.x === 140 && p3.espera === 0 && p3.esperou === 1 && p3.hexes === 4 && p3.msg === 'Andou 4 hexágonos (20 cubos), depois de 1 tempo parado em "Forte"', 'acabada a espera, segue (sem parar de novo na mesma): ' + j([p3.x, p3.msg]));
+  const pd = N.andarTempos(base([{ id: 'rt', k: 't', pts: [[0, 0], [200, 0]] }, { id: 'p', k: 'g', x: 0, y: 0, rota: 'rt', pt: 10, paradas: [{ x: 20, y: 0, n: 1, u: 'd' }] }]), 'p', 4);
+  ok(pd.x === 20 && pd.espera === 7 && /parou em "a parada 1": faltam 7 tempos/.test(pd.msg), 'a parada de 1 dia (10 tempos), sem nome: ' + pd.msg);
+  const vel = base([{ id: 'rt', k: 't', pts: [[0, 0], [200, 0]] }, { id: 'v', k: 'm', x: 20, y: 0, ic: 'vila', nome: 'Vila do Rio' }, { id: 'p', k: 'g', x: 0, y: 0, rota: 'rt', pt: 10, paradas: [{ x: 20, y: 0, n: 3 }] }]);
+  ok(/parou em "Vila do Rio"/.test(N.andarTempos(vel, 'p', 1).msg), 'a parada sem nome leva o nome do marcador do hexágono dela');
+  // o evento que anda
+  const mev = base([{ id: 'rt', k: 't', pts: [[0, 0], [200, 0]] }, { id: 'e', k: 'e', x: 0, y: 0, tipo: 'migracao', ini: 0, r: 30, rota: 'rt', pt: 5 }]);
+  const re = N.andarTempos(mev, 'e', 2);
+  ok(re.ok && re.x === 40 && re.hexes === 2, 'o evento anda pela rota como um grupo: ' + j([re.x, re.hexes]));
+  // os encontros no caminho
+  const me = base([{ id: 'g', k: 'g', x: 100, y: 0, nome: 'Os Heróis' }, { id: 'p', k: 'g', x: 140, y: 0, tipo: 'patrulha' }, { id: 'c', k: 'g', x: 300, y: 0, tipo: 'caravana' }, { id: 'g2', k: 'g', x: 120, y: 0 }]);
+  ok(j(N.encontrosNoCaminho(me)) === j([['p', 'g2']]), 'a até 1 hexágono: a patrulha encontra o grupo do lado (não o de 2 hexágonos, nem os do mundo entre si): ' + j(N.encontrosNoCaminho(me)));
+  ok(j(N.encontrosNoCaminho(me, { p: ['9,0', '8,0', '7,0', '6,0'], g2: ['7,0'] })) === j([['p', 'g'], ['p', 'g2']]), 'pelo caminho: quem passou perto também conta');
+  // traçar: o mapa todo custa 10 (uma região); a estrada contorna por cima, e o caminho vai por ela
+  const reg = { id: 'rg', k: 'r', pts: [[-50, -100], [450, -100], [450, 350], [-50, 350]], custo: 10 };
+  // (a fileira r = 4, de x = 40 a 240; a estrada sobe para a fileira r = 2 e desce no fim)
+  const est = { id: 'es', k: 'l', estilo: 'estrada', pts: [[40, 69.28], [60, 34.64], [220, 34.64], [240, 69.28]] };
+  const mt = base([reg, est]);
+  const tr = N.tracarRota(mt, { x: 40, y: 69.28 }, { x: 240, y: 69.28 });
+  ok(tr.ok && tr.hexes === 12 && tr.naVia === 12 && tr.via === 'estrada' && tr.custo === 120 && tr.msg === '12 hexágonos (120 cubos), 12 hexágonos por estrada ou trilha', 'traçar: pela estrada (mais barata), contornando: ' + j([tr.hexes, tr.naVia, tr.custo, tr.msg]));
+  ok(j(N.caminhoHex(mt, tr.pts)) === j(tr.cam) && tr.pts.length === 4, 'os cantos do traçado refazem o mesmo caminho: ' + j(tr.pts));
+  const semEst = N.tracarRota(base([reg]), { x: 40, y: 69.28 }, { x: 240, y: 69.28 });
+  ok(semEst.ok && semEst.hexes === 10 && semEst.via === 'trilha' && semEst.pts.length === 2, 'sem estrada: em linha reta: ' + j(semEst.pts));
+  const fechado = N.tracarRota(base([reg, { id: 'pc', k: 'e', x: 240, y: 69.28, tipo: 'ponte', r: 12, ini: 0, peso: N.pesoPadrao('ponte') }]), { x: 40, y: 69.28 }, { x: 240, y: 69.28 });
+  ok(!fechado.ok && fechado.msg === 'Não há caminho: um evento fecha a passagem', 'onde um evento fecha a passagem, não passa');
+  ok(!N.tracarRota(N.normalizarMapa({}), { x: 0, y: 0 }, { x: 200, y: 0 }).ok && !N.tracarRota(mt, { x: 0, y: 0 }, { x: 3, y: 2 }).ok, 'sem grade, ou no mesmo hexágono: não traça');
+  // quem joga
+  const pj = N.projetar(base([{ id: 'rt', k: 't', pts: [[0, 0], [80, 0]], esc: true }, { id: 'c', k: 'g', x: 0, y: 0, rota: 'rt', tipo: 'caravana', modo: 'volta', sentido: -1, paradas: [{ x: 40, y: 0, n: 1 }], espera: 2 },
+    { id: 'h', k: 'g', x: 0, y: 0, tipo: 'patrulha', oculto: true }, { id: 'e', k: 'e', x: 0, y: 0, tipo: 'migracao', ini: 0, rota: 'rt', pt: 3, modo: 'volta' }]));
+  const pc = pj.objs.find(o => o.id === 'c'), pe = pj.objs.find(o => o.id === 'e');
+  ok(!pj.objs.some(o => o.id === 'rt' || o.id === 'h') && pc.tipo === 'caravana' && pc.rota === null && !('modo' in pc) && !('paradas' in pc) && !('espera' in pc) && !('sentido' in pc) && pe && !('rota' in pe) && !('pt' in pe) && !('modo' in pe),
+    'quem joga: sem a rota escondida, sem o grupo escondido, sem o jeito de andar nem as paradas; o evento sem a rota');
+}
+
 end();

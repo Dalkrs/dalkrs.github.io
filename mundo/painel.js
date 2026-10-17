@@ -144,7 +144,7 @@
     const I = N().ICONES, E = N().EVENTOS;
     switch (o && o.k) {
       case 'm': return (I[o.ic] || I.cidade).nome;
-      case 'g': return 'Grupo ' + (o.sigla || '');
+      case 'g': { const TG = N().TIPOS_GRUPO || {}; return TG[o.tipo] ? TG[o.tipo].nome : 'Grupo ' + (o.sigla || ''); }
       case 'e': return (E[o.tipo] || E.guerra).nome;
       case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return p ? 'Parte de ' + nomeDe(p, m) : f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
       case 't': return 'Rota sem nome';
@@ -174,7 +174,7 @@
     const N_ = N();
     switch (o.k) {
       case 'm': return (o.rumor ? 'Boato · ' : '') + (N_.ICONES[o.ic] || N_.ICONES.cidade).nome + (mestre && o.rumor && o.falso ? ' (falso)' : '');
-      case 'g': { const r = achar(m, o.rota); return 'Grupo' + (r ? ' · viajando' : ''); }
+      case 'g': { const r = achar(m, o.rota), TG = N_.TIPOS_GRUPO || {}; return (TG[o.tipo] ? TG[o.tipo].nome : 'Grupo') + (r ? ' · viajando' : ''); }
       case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return (p ? 'Dentro de ' + nomeDe(p, m) : 'Região') + (f ? ' · ' + nomeFac(f) + (p && !o.fac ? ' (de ' + nomeDe(p, m) + ')' : '') : ''); }
       case 'e': return (N_.EVENTOS[o.tipo] || N_.EVENTOS.guerra).nome + ' · ' + (mestre ? statusEvento(o, m.cal.dia) : 'força ' + o.forca);
       case 't': return 'Rota · ' + (N_.VIAS[o.via] || N_.VIAS.trilha).nome;
@@ -199,7 +199,11 @@
         const ic = I[o.ic] || I.cidade;
         return h('span', { class: 'ico' + (o.rumor ? ' rumor' : ''), style: o.rumor ? null : { background: o.cor || ic.cor } }, glifo(ic.svg, 15));
       }
-      case 'g': return h('span', { class: 'ico sigla', style: { background: o.cor, color: tintaSobre(o.cor) }, text: o.sigla || 'GR' });
+      case 'g': {
+        const TG = (N().TIPOS_GRUPO || {})[o.tipo];                // (lote 7, parte 5b) o desenho do tipo
+        if (TG) return h('span', { class: 'ico', style: { background: o.cor, color: tintaSobre(o.cor) } }, glifo(TG.svg, 15));
+        return h('span', { class: 'ico sigla', style: { background: o.cor, color: tintaSobre(o.cor) }, text: o.sigla || 'GR' });
+      }
       case 'e': { const e = E[o.tipo] || E.guerra; return h('span', { class: 'ico', style: { background: e.cor } }, glifo(e.svg, 15)); }
       case 'r': { const c = corDaReg(m, o); return h('span', { class: 'ico reg' + (c ? '' : ' semcor') + (o.pai ? ' sub' : ''), style: c ? { background: c } : null }); }
       case 't': return h('span', { class: 'ico linha' }, glifo(ROTA_SVG, 18));
@@ -1045,6 +1049,8 @@
   /* ---------------- aba Seleção ---------------- */
   function abaSelecao(v) {
     const ids = (App.sel || []).filter(id => achar(v, id));
+    // (lote 7, parte 5b) o "Traçar entre dois marcadores" aberto é do que estava escolhido: escolheu outro, ele fecha
+    if (tracado && !(ids.length === 1 && ids[0] === tracado.id)) { tracado = null; previaRota(null); }
     if (!ids.length) return listaDoMapa(v);
     if (ids.length > 1) return varios(v, ids);
     const o = achar(v, ids[0]);
@@ -1175,7 +1181,8 @@
       campoTexto('o:' + id + ':nota', null, o.nota, grava('mudar a nota do mestre', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Segredos, ganchos, o que ainda não foi revelado…' }),
       o.k === 'm' && o.rumor ? caixa('o:' + id + ':falso', 'O boato é falso', o.falso, grava('marcar o boato', (x, v) => { x.falso = !!v; }), { dica: 'Os jogadores nunca veem isto.' }) : null));
     if (o.k === 'r') out.push(secEncontros(o, grava));
-    out.push(caixa('o:' + id + ':oculto', 'Esconder dos jogadores', o.oculto, grava('esconder dos jogadores', (x, v) => { x.oculto = !!v; }),
+    // (o grupo do mundo tem o "Os jogadores veem" lá em cima, no painel dele)
+    if (!(o.k === 'g' && grupoDoMundo(o))) out.push(caixa('o:' + id + ':oculto', 'Esconder dos jogadores', o.oculto, grava('esconder dos jogadores', (x, v) => { x.oculto = !!v; }),
       { dica: 'Some do mapa dos jogadores até você mostrar.' }));
     out.push(h('div', { class: 'row acoes' },
       botao('Centralizar', () => irPara(id), { k: 'o:centrar' }),
@@ -1514,13 +1521,27 @@
   }
   function secGrupo(o, m, grava) {
     const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [], pt = passoDoGrupo(m, o), tpd = tpdDe(m);
+    // (lote 7, parte 5b) o tipo: o grupo de sempre, ou um do mundo (a caravana, a patrulha, o exército), que anda sozinho
+    const TG = N_.TIPOS_GRUPO || {}, mundo = grupoDoMundo(o);
+    if (Object.keys(TG).length) {
+      out.push(campoEscolha('o:' + id + ':tipo', 'Tipo', o.tipo || '', [['', 'Grupo (os jogadores, ou quem você quiser)']].concat(Object.keys(TG).map(k => [k, TG[k].nome])),
+        grava('mudar o tipo do grupo', (x, v) => { if ((x.tipo || '') === v) return false; if (v) x.tipo = v; else { delete x.tipo; delete x.modo; delete x.sentido; delete x.paradas; delete x.espera; } })));
+      if (mundo) out.push(caixa('o:' + id + ':ver', 'Os jogadores veem', !o.oculto, grava(o.oculto ? 'mostrar aos jogadores' : 'esconder dos jogadores', (x, v) => { x.oculto = !v; }),
+        { dica: o.oculto ? 'Por enquanto, só você vê no mapa.' : 'Aparece no mapa dos jogadores (a rota e as paradas, não).' }));
+    }
     out.push(h('div', { class: 'row' },
       h('label', { class: 'field cor-campo' }, h('span', { text: 'Cor' }), campoCor('o:' + id + ':cor', 'Cor do grupo', o.cor, grava('mudar a cor', (x, v) => { x.cor = v; }))),
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
       campoNumero('o:' + id + ':pt', 'Anda por tempo (cubos)', pt, grava('mudar quanto o grupo anda', (x, n) => { x.pt = n; }),
         { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.', dica: 'Por dia (' + tpd + ' tempos): ' + fmt(pt * tpd, 1) + ' cubos.' })));
     out.push(campoEscolha('o:' + id + ':rota', 'Rota', o.rota || '', [['', rotas.length ? 'Sem rota' : 'Sem rota (desenhe uma com a ferramenta Rota)']].concat(rotas.map(t => [t.id, nomeDe(t, m) + ' · ' + (N_.VIAS[t.via] || N_.VIAS.trilha).nome])),
-      grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; })));
+      grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; delete x.sentido; delete x.espera; })));
+    // (lote 7, parte 5b) os dois jeitos de fazer a rota: desenhar (clicando os pontos) ou traçar de um marcador a outro
+    out.push(linha(
+      mundo ? botao('Desenhar a rota', () => desenharRotaPara(o), { c: 'sm', k: 'o:' + id + ':desenhar', title: 'Clique os pontos no mapa: a rota nasce escondida, já é ' + (o.tipo === 'exercito' ? 'deste exército' : 'desta ' + TG[o.tipo].nome.toLocaleLowerCase('pt-BR')) + ' e ' + (o.tipo === 'exercito' ? 'ele vai' : 'ela vai') + ' para o começo dela' }) : null,
+      botao('Traçar entre dois marcadores…', () => abrirTracado(id), { c: 'sm', k: 'o:' + id + ':tracar', expandido: String(!!(tracado && tracado.id === id)), title: 'O site acha o caminho mais barato de um marcador a outro, pelas estradas e trilhas desenhadas' })));
+    if (tracado && tracado.id === id) out.push(formTracado(o, m));
+    if (mundo && rota) out.push(campoEscolha('o:' + id + ':modo', 'Ao chegar ao fim da rota', o.modo || 'ida', Object.keys(N_.MODOS_ROTA).map(k => [k, N_.MODOS_ROTA[k]]), v => mudarModo(id, v)));
     if (rota) {
       const vg = temGrade(m) ? N_.viagem(m, o) : null;
       if (vg) {
@@ -1531,6 +1552,9 @@
             h('i', { style: { width: pct.toFixed(1) + '%' } })),
           h('small', { text: fmt(andado, 0) + ' de ' + fmt(total, 0) + ' cubos · ' + (onde.longe ? 'fora da rota' : 'hexágono ' + onde.i + ' de ' + ult)
             + (falta > 0 ? ' · faltam cerca de ' + duracaoTxt(m, falta / Math.max(0.1, pt)) : ' · chegou') })));
+        // (lote 7, parte 5b) parado numa parada, voltando
+        const estado = estadoDaMarcha(m, o);
+        if (estado) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':estado', text: estado }));
         // a travessia de um hexágono que leva mais de um tempo: as bolinhas, e o ajuste à mão (sem passar o tempo)
         const b = N_.bolinhas ? N_.bolinhas(m, o) : null;
         if (b) out.push(fileiraDeBolinhas(o, b, true));
@@ -1546,9 +1570,10 @@
       botao('Sortear encontro', () => sortearGrupo(id), { k: 'o:sortear', title: 'Usa a tabela de encontros da região onde o grupo está' })));
     // (lote 7, parte 4b) um encontro onde o grupo está, na aba Cenas
     if (naCasca()) out.push(linha(botao('Gerar a cena aqui', () => gerarAqui(o), { c: 'sm', k: 'o:gerar-cena', title: 'Abre a janela "Gerar um lugar" das Cenas na aba Encontro, já com o terreno, o caminho, a hora, o clima e o estilo daqui' })));
-    if (rota && (o.prog > 0 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5)) {
-      out.push(linha(botao('Pôr no começo da rota', () => mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; }), { c: 'sm', k: 'o:comeco' })));
+    if (rota && (o.prog > 0 || o.sentido === -1 || o.espera > 0 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5)) {
+      out.push(linha(botao('Pôr no começo da rota', () => porNoComeco(id), { c: 'sm', k: 'o:comeco' })));
     }
+    if (mundo && rota) out.push(secParadas(o, m));
     out.push(nota(tempoDeHojeTxt(m) + ' A cada ' + tpd + ' tempos de marcha, passa um dia. Cada hexágono gasta os cubos do terreno dele (Floresta, Montanha… na aba Terreno); o que sobra rumo ao próximo fica para o tempo seguinte.'));
     if (naCasca()) out.push(linha(botaoAcampar()));
     if (encontro && encontro.grupo === id) out.push(cartaoEncontro());
@@ -1585,26 +1610,68 @@
      seu passo; sem nenhum grupo andando, só o relógio passa. Um passo de desfazer só. */
   function passarTempoMundo(qual) {
     if (!App.podeEditar() || !App.mapa) return;
-    const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, feitos = [];
-    for (const g of m0.objs) if (g.k === 'g' && g.rota) { const r = N().andarTempos(m0, g.id, n); if (r.ok) feitos.push([g.id, r]); }
+    const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, N_ = N(), dia0 = m0.cal.dia, t0 = (m0.cal && m0.cal.tempo) || 0, tpd = tpdDe(m0);
+    /* (lote 7, parte 5b) tempo a tempo, numa cópia: quem anda (os grupos com rota e os eventos que andam, acontecendo hoje)
+       anda um tempo — os eventos primeiro, porque mudam o caminho dos grupos —, e depois de cada tempo, os encontros no
+       caminho (a caravana, a patrulha ou o exército a até 1 hexágono de um grupo comum, que antes não estavam assim) */
+    const mm = JSON.parse(JSON.stringify(m0));
+    const andam = mm.objs.filter(o => o.rota && (o.k === 'g' || (o.k === 'e' && N_.eventoAtivo(o, dia0)))).sort((a, b) => (a.k === 'e' ? 0 : 1) - (b.k === 'e' ? 0 : 1));
+    const feitos = new Map(), encontros = [];
+    const perto = new Set((N_.encontrosNoCaminho ? N_.encontrosNoCaminho(mm) : []).map(([a, b]) => a + '|' + b));
+    for (let k = 0; k < n; k++) {
+      const pass = {};
+      for (const o of andam) {
+        const r = N_.andarTempos(mm, o.id, 1);
+        if (!r.ok) continue;
+        o.x = r.x; o.y = r.y; o.prog = r.prog;
+        if ('sentido' in r) { if (r.sentido === -1) o.sentido = -1; else delete o.sentido; }
+        if (r.espera > 0) o.espera = r.espera; else delete o.espera;
+        if (r.pass) pass[o.id] = r.pass;
+        const f = feitos.get(o.id) || { cubos: 0, hexes: 0, parou: null, parada: null };
+        f.cubos += r.cubos || 0; f.hexes += r.hexes || 0;
+        if (r.parou && !r.cubos) f.parou = r.parou; else if (r.hexes) f.parou = r.parou || null;
+        if (r.parada) f.parada = r.parada;
+        feitos.set(o.id, f);
+      }
+      if (!N_.encontrosNoCaminho) continue;
+      const agora = new Set();
+      for (const [a, b] of N_.encontrosNoCaminho(mm, pass)) {
+        const key = a + '|' + b;
+        agora.add(key);
+        if (!perto.has(key)) encontros.push([a, b, (t0 + k) % tpd + 1]);
+      }
+      perto.clear();
+      for (const key of agora) perto.add(key);
+    }
     let t = null;
-    const ok = App.mudar(qual === 'dia' ? 'passar o dia' : 'passar 1 tempo', mm => {
-      for (const [id, r] of feitos) { const g = achar(mm, id); if (g) { g.x = r.x; g.y = r.y; g.prog = r.prog; } }
-      t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
+    const ok = App.mudar(qual === 'dia' ? 'passar o dia' : 'passar 1 tempo', d => {
+      for (const id of feitos.keys()) {
+        const o = achar(d, id), r = achar(mm, id);
+        if (!o || !r) continue;
+        o.x = r.x; o.y = r.y; o.prog = r.prog;
+        if (r.sentido === -1) o.sentido = -1; else delete o.sentido;
+        if (r.espera > 0) o.espera = r.espera; else delete o.espera;
+      }
+      t = N_.passarTempos(d.cal, n); d.cal.dia = t.dia; d.cal.tempo = t.tempo;
     });
     if (ok === false) return;
     // (lote 7, parte 5a) quem andou de verdade (o parado antes de uma passagem fechada não conta) e os avisos da viagem:
-    // quem parou e quem entrou num evento que pesa
-    const m = App.mapa, andaram = feitos.filter(([, r]) => !(r.parou && !r.cubos)), avisos = [];
-    for (const [gid, r] of feitos) {
-      const g = achar(m0, gid), nome = nomeDe(g || {}, m0);
-      if (r.parou) { avisos.push(nome + ' — parado: "' + r.parou.nome + '" fecha a passagem.'); continue; }
-      const antes = new Set(N().pesoNoPonto(m0, g.x, g.y).eventos.map(e => e.id));
-      for (const e of N().pesoNoPonto(m, r.x, r.y).eventos) if (!antes.has(e.id)) avisos.push(nome + ' — agora dentro de "' + N().nomeEvento(e) + '" (' + textoPeso(e.peso) + ').');
+    // quem parou e quem entrou num evento que pesa; (5b) os encontros no caminho vêm primeiro
+    const m = App.mapa, avisos = [];
+    for (const [a, b, tm] of encontros) avisos.push(nomeDe(achar(m, a) || {}, m) + ' encontrou ' + nomeDe(achar(m, b) || {}, m) + (n > 1 ? ' (no ' + tm + 'º tempo)' : '') + '.');
+    const gruposQueAndaram = [];
+    for (const [gid, f] of feitos) {
+      const g0 = achar(m0, gid), g = achar(m, gid);
+      if (!g0 || !g || g0.k !== 'g') continue;
+      if (f.hexes > 0 || f.cubos > 0) gruposQueAndaram.push(gid);
+      const nome = nomeDe(g0, m0);
+      if (f.parou) { avisos.push(nome + ' — parado: "' + f.parou.nome + '" fecha a passagem.'); continue; }
+      const antes = new Set(N_.pesoNoPonto(m0, g0.x, g0.y).eventos.map(e => e.id));
+      for (const e of N_.pesoNoPonto(m, g.x, g.y).eventos) if (!antes.has(e.id)) avisos.push(nome + ' — agora dentro de "' + N_.nomeEvento(e) + '" (' + textoPeso(e.peso) + ').');
     }
-    const andou = andaram.length ? ' ' + (andaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, andaram[0][0]) || {}, m) + '.' : andaram.length + ' grupos andaram.') : '';
+    const andou = gruposQueAndaram.length ? ' ' + (gruposQueAndaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, gruposQueAndaram[0]) || {}, m) + '.' : gruposQueAndaram.length + ' grupos andaram.') : '';
     const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
-    avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N().textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
+    avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
@@ -1614,7 +1681,14 @@
     const m0 = App.mapa, n = qual === 'dia' ? temposAteOFim(m0) : 1, r = N().andarTempos(m0, id, n);
     if (!r.ok) { App.toast((r.msg || 'O grupo não andou') + '.'); return; }
     let t = null;
-    const ok = App.mudar(qual === 'dia' ? 'andar 1 dia' : 'andar 1 tempo', mm => { const g = achar(mm, id); if (!g) return false; g.x = r.x; g.y = r.y; g.prog = r.prog; t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo; });
+    const ok = App.mudar(qual === 'dia' ? 'andar 1 dia' : 'andar 1 tempo', mm => {
+      const g = achar(mm, id);
+      if (!g) return false;
+      g.x = r.x; g.y = r.y; g.prog = r.prog;
+      if (r.sentido === -1) g.sentido = -1; else delete g.sentido;           // (lote 7, parte 5b) voltando; parado numa parada
+      if (r.espera > 0) g.espera = r.espera; else delete g.espera;
+      t = N().passarTempos(mm.cal, n); mm.cal.dia = t.dia; mm.cal.tempo = t.tempo;
+    });
     if (ok !== false) avisoDesfazer(r.msg + '. ' + depoisDaMarcha(App.mapa, t, n));
   }
   // O ajuste à mão da marcha (− tempo, + tempo, as bolinhas): o grupo muda de lugar na rota, e o tempo do mundo fica.
@@ -1721,7 +1795,7 @@
     out.push(h('p', { class: 'status' }, h('span', { class: 'tag' + (st === 'acontecendo hoje' ? ' alianca' : ''), text: st }),
       st === 'acontecendo hoje' ? ' raio hoje: ' + (ke ? fmt(cubos(m, r), 1) + ' cubos' : fmt(r, 0) + ' unidades') : '',
       o.fim != null ? ' · termina em ' + dataTxt(m, o.fim) : ''));
-    return [secao('Evento', out), secPeso(o, m, grava)];
+    return [secao('Evento', out), secPeso(o, m, grava), secAndaEvento(o, m)];
   }
   /* (lote 7, parte 5a) O que o evento pesa na viagem: os cubos a mais por hexágono dentro dele, a chance de encontro a
      mais (ou a menos) e se ele fecha a passagem. Os eventos novos já nascem com os números do tipo; os de antes, desligados. */
@@ -1754,6 +1828,180 @@
     const dur = x.fim == null ? null : x.fim - ini;
     x.ini = d;
     if (dur != null) x.fim = d + dur;
+  }
+  /* ---------------- (lote 7, parte 5b) quem anda sozinho pelo mapa ----------------
+     Os grupos do mundo (a caravana, a patrulha, o exército) e os eventos que andam: a rota (desenhada ou traçada de um
+     marcador a outro), o que fazem no fim dela (param, voltam ou recomeçam) e as paradas. */
+  const grupoDoMundo = o => !!(o && o.k === 'g' && o.tipo && (N().TIPOS_GRUPO || {})[o.tipo]);
+  let tracado = null;                             // { id, de, para, r }: o "Traçar entre dois marcadores" aberto
+  function previaRota(pts) {
+    const antes = !!App.previaRota;
+    App.previaRota = pts ? { pts } : null;
+    if (antes || pts) { const T = Tela(); if (T) T.redesenhar(); }
+  }
+  // "Desenhar a rota": a ferramenta Rota; a rota desenhada vai para ele (a tela cuida, no fim do desenho)
+  function desenharRotaPara(o) {
+    if (!App.podeEditar()) return;
+    tracado = null; previaRota(null);
+    App.rotaPara = { id: o.id, nome: nomeDe(o, App.mapa), k: o.k };
+    App.usarFerramenta('t');
+    if (estreito()) definirPainel(false);
+  }
+  function abrirTracado(id) {
+    tracado = tracado && tracado.id === id ? null : { id, de: '', para: '', r: null };
+    previaRota(null);
+    agendar();
+  }
+  // quanto leva o caminho traçado, no passo de quem vai andar
+  function quantoLeva(m, o, r) {
+    const pt = o.k === 'e' ? (o.pt || 2) : passoDoGrupo(m, o);
+    return 'cerca de ' + duracaoTxt(m, r.custo / Math.max(0.1, pt));
+  }
+  function formTracado(o, m) {
+    const marcs = m.objs.filter(x => x.k === 'm').map(x => [x.id, nomeDe(x, m)]);
+    if (marcs.length < 2) return nota('Ponha pelo menos dois marcadores no mapa (de onde sai e para onde vai) para traçar o caminho entre eles.');
+    if (!temGrade(m)) return nota('Defina a grade de hexágonos do mapa (aba Terreno) para traçar o caminho.');
+    const t = tracado, ops = [['', 'Escolha…']].concat(marcs);
+    const mudar = (campo, v) => { if (t[campo] === v) return false; t[campo] = v; t.r = null; previaRota(null); agendar(); };
+    return h('div', { class: 'sub-form', 'data-k': 'tracar:' + o.id },
+      h('div', { class: 'row' },
+        campoEscolha('tr:de', 'De', t.de, ops, v => mudar('de', v)),
+        campoEscolha('tr:para', 'Para', t.para, ops, v => mudar('para', v))),
+      t.r ? (t.r.ok ? nota('O caminho: ' + t.r.msg + ', ' + quantoLeva(m, o, t.r) + '. Ele aparece no mapa, fino e verde.') : nota(t.r.msg + '.', 'erro')) : null,
+      linha(
+        botao('Ver o caminho', () => verTracado(o.id), { c: 'sm', k: 'tr:ver', off: !t.de || !t.para || t.de === t.para }),
+        t.r && t.r.ok ? botao('Usar esta rota', () => usarTracado(o.id), { c: 'sm pri', k: 'tr:usar' }) : null,
+        botao('Cancelar', () => { tracado = null; previaRota(null); agendar(); }, { c: 'sm', k: 'tr:cancelar' })),
+      nota('Nada muda até "Usar esta rota". O caminho vai pelos hexágonos mais baratos, preferindo as estradas e as trilhas desenhadas, e não entra onde um evento fecha a passagem.'));
+  }
+  function verTracado(id) {
+    const t = tracado, m = App.mapa;
+    if (!t || t.id !== id || !m) return;
+    const de = achar(m, t.de), para = achar(m, t.para);
+    if (!de || !para) return;
+    t.r = N().tracarRota(m, de, para);
+    previaRota(t.r.ok ? t.r.pts : null);
+    agendar();
+  }
+  function usarTracado(id) {
+    const t = tracado, m = App.mapa, r = t && t.r, o = achar(m, id);
+    if (!r || !r.ok || !o || !App.podeEditar()) return;
+    const de = achar(m, t.de), para = achar(m, t.para), nome = 'De ' + nomeDe(de, m) + ' a ' + nomeDe(para, m), esconde = o.k === 'e' || grupoDoMundo(o);
+    const ok = App.mudar('traçar a rota de "' + nomeDe(o, m) + '"', mm => {
+      const x = achar(mm, id);
+      if (!x) return false;
+      const rt = N().objNovo('t', Object.assign({ pts: r.pts.map(p => p.slice()), via: r.via, nome }, esconde ? { esc: true, oculto: true } : {}));
+      if (!rt) return false;
+      mm.objs.push(rt);
+      x.rota = rt.id; x.prog = 0; x.x = rt.pts[0][0]; x.y = rt.pts[0][1]; delete x.sentido; delete x.espera;
+      if (x.k === 'e' && !x.pt) x.pt = 2;
+    });
+    tracado = null; previaRota(null);
+    if (ok !== false) avisoDesfazer('A rota "' + nome + '" (' + r.msg + ') é de ' + nomeDe(o, m) + (esconde ? '. Ela fica escondida no mapa: aparece fina quando ' + (o.k === 'e' ? 'o evento' : 'o grupo') + ' está selecionado.' : '.'));
+  }
+  // o que faz no fim da rota: muda o modo e acha o andado do hexágono de agora no caminho novo (sem sair do lugar)
+  function mudarModo(id, v) {
+    mudarObj(id, 'mudar o que faz no fim da rota', (x, mm) => {
+      if ((x.modo || 'ida') === v) return false;
+      if (v === 'ida') delete x.modo; else x.modo = v;
+      delete x.sentido;
+      const vg = N().viagem(mm, x);
+      if (vg) { const on = N().ondeNoCaminho(mm, Object.assign({}, x, { prog: 0 }), vg); x.prog = on.longe ? 0 : vg.acum[on.i]; }
+    });
+  }
+  function porNoComeco(id) {
+    mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; delete x.sentido; delete x.espera; });
+  }
+  // a linha do estado de quem anda: parado numa parada (e quanto falta), voltando
+  function estadoDaMarcha(m, o) {
+    const partes = [];
+    if (o.espera > 0) {
+      const hx = N().hexDe(m, o.x, o.y), ps = o.paradas || [];
+      let nome = 'a parada';
+      ps.forEach((p, i) => { const ph = N().hexDe(m, p.x, p.y); if (hx && ph && ph.q === hx.q && ph.r === hx.r && nome === 'a parada') nome = N().nomeDaParada(m, p, i); });
+      partes.push('Parado em "' + nome + '": ' + (o.espera === 1 ? 'falta 1 tempo' : 'faltam ' + fmt(o.espera, 0) + ' tempos') + (o.espera > tpdDe(m) ? ' (' + diasTxt(o.espera / tpdDe(m)) + ')' : '') + '.');
+    }
+    if (o.modo === 'volta' && o.sentido === -1) partes.push('Voltando pelo mesmo caminho.');
+    // arrastado para longe da rota, não anda (o "+1 tempo" passa sem ele)
+    const vg = o.rota && temGrade(m) ? N().viagem(m, o) : null;
+    if (vg && N().ondeNoCaminho(m, o, vg).longe > 1) partes.push('Fora da rota: não anda até voltar para ela ("Pôr no começo da rota").');
+    return partes.join(' ');
+  }
+  // os pontos da rota de alguém, no caminho inteiro (no circuito, fechada)
+  function ptsDoCaminho(o, rt) { return o.modo === 'circuito' ? rt.pts.concat([rt.pts[0]]) : rt.pts; }
+  function secParadas(o, m) {
+    const id = o.id, N_ = N(), ps = Array.isArray(o.paradas) ? o.paradas : [], out = [];
+    const naParada = (i, rot, fn) => mudarObj(id, rot, x => { const q = (x.paradas || [])[i]; if (!q) return false; return fn(q, x); });
+    ps.forEach((p, i) => {
+      out.push(h('div', { class: 'parada-li', 'data-k': 'o:' + id + ':par' + i },
+        campoTexto('o:' + id + ':par' + i + ':nome', 'Parada ' + (i + 1), p.nome || '', v => naParada(i, 'mudar o nome da parada', q => { const t = v.trim(); if ((q.nome || '') === t) return false; if (t) q.nome = t; else delete q.nome; }),
+          { max: 80, ph: N_.nomeDaParada(m, Object.assign({}, p, { nome: '' }), i) }),
+        h('div', { class: 'row' },
+          campoNumero('o:' + id + ':par' + i + ':n', 'Fica', p.n, n => naParada(i, 'mudar quanto tempo fica na parada', q => { if (q.n === n) return false; q.n = n; }), { min: 1, max: 9999 }),
+          campoEscolha('o:' + id + ':par' + i + ':u', null, p.u, [['t', 'tempos de marcha'], ['d', 'dias']], v => naParada(i, 'mudar quanto tempo fica na parada', q => { if (q.u === v) return false; q.u = v; }), { rotulo: 'Em tempos de marcha ou em dias' }),
+          botao('Centralizar', () => { const T = Tela(); if (T && T.centrar) T.centrar({ x: p.x, y: p.y }); }, { c: 'sm', k: 'o:' + id + ':par' + i + ':ir' }),
+          botao('Tirar', () => tirarParada(id, i), { c: 'sm', k: 'o:' + id + ':par' + i + ':tirar' }))));
+    });
+    out.push(linha(botao(ps.length ? 'Marcar outra parada no mapa' : 'Marcar uma parada no mapa', () => marcarParada(id), { c: 'sm', k: 'o:' + id + ':parada', off: ps.length >= N_.MAX_PARADAS })));
+    out.push(nota(ps.length ? 'Ao entrar no hexágono de uma parada, fica ali o tempo marcado e depois segue. As paradas aparecem como bandeirinhas na rota, com ' + (o.tipo === 'exercito' ? 'o exército' : 'ela') + ' selecionad' + (o.tipo === 'exercito' ? 'o' : 'a') + '.' : 'Sem paradas, anda direto pela rota.'));
+    return secao('Paradas', out);
+  }
+  function tirarParada(id, i) {
+    mudarObj(id, 'tirar a parada', (x, mm) => {
+      const ps = x.paradas || [], q = ps[i];
+      if (!q) return false;
+      // parado nesta parada: segue no próximo tempo
+      const hx = N().hexDe(mm, x.x, x.y), ph = N().hexDe(mm, q.x, q.y);
+      if (x.espera && hx && ph && hx.q === ph.q && hx.r === ph.r) delete x.espera;
+      ps.splice(i, 1);
+      if (!ps.length) delete x.paradas;
+    });
+  }
+  async function marcarParada(id) {
+    const T = Tela();
+    if (!T || !T.escolherPonto || !App.podeEditar()) return;
+    const idMapa = App.mapa.id;
+    if (estreito()) definirPainel(false);
+    const p = await T.escolherPonto('Clique na rota, onde fica a parada.');
+    if (!p || !mesmoMapa(idMapa)) return;
+    const m = App.mapa, o = achar(m, id), rt = o && achar(m, o.rota);
+    if (!o || !rt) return;
+    const N_ = N(), h0 = N_.hexDe(m, p.x, p.y);
+    let melhor = null, d0 = Infinity;
+    for (const hx of N_.caminhoHex(m, ptsDoCaminho(o, rt))) { const d = N_.distHex(hx, h0); if (d < d0) { d0 = d; melhor = hx; } }
+    if (!melhor || d0 > 1) { App.toast('Clique em cima da rota (ou no hexágono do lado dela). Nada mudou.'); return; }
+    if ((o.paradas || []).some(q => { const ph = N_.hexDe(m, q.x, q.y); return ph && ph.q === melhor.q && ph.r === melhor.r; })) { App.toast('Já há uma parada nesse hexágono. Nada mudou.'); return; }
+    const c = N_.centroHex(m, melhor.q, melhor.r);
+    mudarObj(id, 'marcar uma parada', x => {
+      const ps = Array.isArray(x.paradas) ? x.paradas : (x.paradas = []);
+      if (ps.length >= N_.MAX_PARADAS) return false;
+      ps.push({ x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100, n: 1, u: 'd' });
+    });
+    App.selecionar([id]);
+    if (estreito()) definirPainel(true);
+    abrirAba('selecao');
+  }
+  // o evento que anda: a rota (escolher, desenhar ou traçar), quanto anda por tempo e o que faz no fim dela
+  function secAndaEvento(o, m) {
+    const id = o.id, N_ = N(), rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [];
+    out.push(campoEscolha('o:' + id + ':erota', 'Rota', o.rota || '', [['', rotas.length ? 'Não anda (fica onde está)' : 'Não anda (sem rotas no mapa)']].concat(rotas.map(t => [t.id, nomeDe(t, m)])),
+      v => mudarObj(id, v ? 'pôr o evento numa rota' : 'tirar o evento da rota', x => {
+        if ((x.rota || '') === v) return false;
+        if (v) { x.rota = v; x.prog = 0; if (!x.pt) x.pt = 2; delete x.sentido; } else { delete x.rota; delete x.prog; delete x.pt; delete x.modo; delete x.sentido; }
+      })));
+    out.push(linha(
+      botao('Desenhar a rota', () => desenharRotaPara(o), { c: 'sm', k: 'o:' + id + ':edesenhar', title: 'Clique os pontos no mapa: a rota nasce escondida, já é deste evento e ele vai para o começo dela' }),
+      botao('Traçar entre dois marcadores…', () => abrirTracado(id), { c: 'sm', k: 'o:' + id + ':etracar', expandido: String(!!(tracado && tracado.id === id)) })));
+    if (tracado && tracado.id === id) out.push(formTracado(o, m));
+    if (rota) {
+      out.push(h('div', { class: 'row' },
+        campoNumero('o:' + id + ':ept', 'Anda por tempo (cubos)', o.pt || 2, n => mudarObj(id, 'mudar quanto o evento anda', x => { if (x.pt === n) return false; x.pt = n; }),
+          { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.' }),
+        campoEscolha('o:' + id + ':emodo', 'Ao chegar ao fim', o.modo || 'ida', Object.keys(N_.MODOS_ROTA).map(k => [k, N_.MODOS_ROTA[k]]), v => mudarModo(id, v))));
+      if (o.prog > 0 || o.sentido === -1 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5) out.push(linha(botao('Pôr no começo da rota', () => porNoComeco(id), { c: 'sm', k: 'o:' + id + ':ecomeco' })));
+      out.push(nota('Enquanto acontece, o evento anda pela rota com o tempo do mapa ("+1 tempo" e "Próximo dia"), e a área vai junto.'));
+    } else out.push(nota('Uma migração, uma peregrinação, uma caravana mercante… podem andar por uma rota com o tempo do mapa.'));
+    return secao('Anda pelo mapa', out);
   }
   function secRota(o, m, grava) {
     const N_ = N(), id = o.id, un = N_.compPolilinha(o.pts), out = [];
@@ -1909,8 +2157,8 @@
       const breve = v.objs.filter(e => e.k === 'e' && e.ini != null && e.ini > dia && e.ini - dia <= 30).sort((a, b) => a.ini - b.ini);
       if (breve.length) out.push(secao('Nos próximos 30 dias', h('div', { class: 'lista' }, breve.map(e => itemLista(e, v, true, statusEvento(e, dia) + ' · ' + dataTxt(v, e.ini))))));
     }
-    // grupos
-    const grupos = v.objs.filter(o => o.k === 'g');
+    // grupos (lote 7, parte 5b: os do mundo — a caravana, a patrulha, o exército — ficam em "Pelo mapa", mais abaixo)
+    const grupos = v.objs.filter(o => o.k === 'g' && !grupoDoMundo(o)), doMundo = v.objs.filter(o => grupoDoMundo(o));
     const gs = [];
     if (encontro && ed && (encontro.grupo ? !!achar(v, encontro.grupo) : true)) gs.push(cartaoEncontro());
     if (!grupos.length) gs.push(nota(ed ? 'Nenhum grupo no mapa. Use a ferramenta Grupo (G) para pôr os personagens.' : 'Nenhum grupo à vista.'));
@@ -1929,6 +2177,17 @@
     const viajando = grupos.filter(g => g.rota).length;
     if (ed && viajando) gs.push(nota(tempoDeHojeTxt(v) + (viajando > 1 ? ' O "Andar" de um grupo passa o tempo só com ele andando; "+1 tempo" e "Próximo dia" levam todos juntos.' : '')));
     out.push(secao(grupos.length === 1 ? 'Onde está o grupo' : 'Grupos', gs));
+    // (lote 7, parte 5b) quem anda sozinho pelo mapa: onde está, parado numa parada, voltando; e quem está junto de um grupo
+    if (doMundo.length) {
+      const juntos = ed && N_.encontrosNoCaminho ? N_.encontrosNoCaminho(v) : [];
+      out.push(secao('Pelo mapa', h('div', { class: 'lista' }, doMundo.map(g => {
+        const com = juntos.filter(([a]) => a === g.id).map(([, b]) => nomeDe(achar(v, b) || {}, v));
+        const est = ed ? estadoDaMarcha(v, g) : '', rota = achar(v, g.rota);
+        const txt = [ed && g.oculto ? 'escondid' + (g.tipo === 'exercito' ? 'o' : 'a') + ' dos jogadores' : '', ondeEsta(v, g), est.replace(/\.$/, ''), ed && !rota ? 'sem rota' : '', com.length ? 'junto de ' + com.join(', ') : ''].filter(Boolean).join(' · ');
+        return h('button', { type: 'button', class: 'li clic' + (g.oculto ? ' oculto' : ''), 'data-k': 'pm:' + g.id, onclick: () => irPara(g.id) }, icone(g, v),
+          h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: txt })));
+      })), ed ? nota('Andam sozinhos com o tempo do mapa ("+1 tempo" e "Próximo dia"). Quando um passa a até 1 hexágono de um grupo, o aviso diz quem encontrou quem.') : null));
+    }
     return out;
   }
 

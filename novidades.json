@@ -2,6 +2,33 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-8",
+      "data": "2026-10-17",
+      "titulo": "Caravanas, patrulhas e exércitos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a ferramenta Grupo ganhou o tipo — Caravana, Patrulha ou Exército. Eles andam sozinhos pela rota deles com o tempo do mapa (“+1 tempo” e “Próximo dia”), nascem escondidos dos jogadores (“Os jogadores veem” mostra) e no mapa levam o desenho do tipo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a rota de dois jeitos — “Desenhar a rota” (clicando os pontos) ou “Traçar entre dois marcadores”: o site acha o caminho mais barato, pelas estradas e trilhas desenhadas, e mostra a prévia antes de usar. A rota fica escondida no mapa e aparece fina quando a caravana está selecionada. “Ao chegar ao fim”: para, volta pelo mesmo caminho ou recomeça (circuito)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: as paradas — marque no mapa onde a caravana para e por quanto tempo (em tempos ou dias); ela fica ali e depois segue. Quando uma caravana, patrulha ou exército passa perto de um grupo, o aviso diz quem encontrou quem (“Patrulha de Vel encontrou Os Heróis”), e os dois seguem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: um evento também pode andar por uma rota (uma migração de monstros, uma peregrinação…), com a área indo junto; e a aba Hoje mostra, em “Pelo mapa”, onde está cada um, quem está parado e quem está voltando."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-7",
       "data": "2026-10-17",
       "titulo": "Os eventos pesam na viagem",

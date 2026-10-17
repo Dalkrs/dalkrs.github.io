@@ -173,6 +173,17 @@
      maior, rachado e escuro quando negativa. Sem estilo, o grupo não mostra honra. */
   const HONRA = { elmo: 'Elmo medieval', kabuto: 'Kabuto', katana: 'Katana', turbante: 'Turbante', coroa: 'Coroa',
     escudo: 'Escudo com brasão', cajado: 'Cajado de mago', mascara: 'Máscara tribal' };
+  /* (lote 7, parte 5b) Os grupos do mundo: as caravanas, as patrulhas e os exércitos, que andam sozinhos pelas rotas
+     deles com o tempo do mapa (o grupo comum, sem tipo, é o de sempre: os jogadores, ou quem o mestre quiser). Nascem
+     escondidos dos jogadores. pt: os cubos de um tempo de marcha de começo. */
+  const TIPOS_GRUPO = {
+    caravana: { nome: 'Caravana', sigla: 'CAR', cor: '#c9963a', pt: 2, svg: '<path d="M2 15V8h11v7M13 11h4l3 3v1M2 15h18M4 8c0-2 2-3 4.5-3S13 6 13 8"/><circle cx="6" cy="17.5" r="2"/><circle cx="16" cy="17.5" r="2"/>' },
+    patrulha: { nome: 'Patrulha', sigla: 'PAT', cor: '#5a8fc0', pt: 4, svg: '<path d="M17 2v20M15 5l2-3 2 3M3 7h9v5c0 4-2.5 6.5-4.5 8C5.5 18.5 3 16 3 12z"/>' },
+    exercito: { nome: 'Exército', sigla: 'EXE', cor: '#c0503a', pt: 2, svg: '<path d="M5 22V2M5 3h13l-3.5 4.5L18 12H5M9 16l3 3M12 16l-3 3"/>' },
+  };
+  // o que quem anda faz no fim da rota
+  const MODOS_ROTA = { ida: 'Para no fim (só ida)', volta: 'Volta pelo mesmo caminho (ida e volta)', circuito: 'Recomeça do começo (circuito)' };
+  const MAX_PARADAS = 30;
   /* (lote 7) Os dias da semana: o mestre diz que dia da semana é hoje, e o resto segue. sem0 = o dia da semana do dia 0
      do mundo (0 = Segunda-Feira … 6 = Domingo); null = o mapa ainda não conta a semana. */
   const SEMANA = ['Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira', 'Sábado', 'Domingo'];
@@ -622,11 +633,19 @@
     for (let i = 1; i < cam.length; i++) acum.push(acum[i - 1] + custoHex(m, cam[i].q, cam[i].r));
     return acum;
   }
-  // A rota de um grupo em hexágonos: o caminho, o custo acumulado e o total (null sem rota ou sem grade).
+  // A rota de quem anda (um grupo, ou um evento que anda: lote 7, parte 5b) em hexágonos: o caminho, o custo acumulado e
+  // o total (null sem rota ou sem grade). O caminho é o do sentido de agora: indo e voltando, na volta é a rota ao
+  // contrário; em circuito, a rota fechada (do último ponto de volta ao primeiro).
+  function ptsDaRota(rota, o) {
+    const pts = rota.pts;
+    if (ehObj(o) && o.modo === 'circuito') { const a = pts[0], b = pts[pts.length - 1]; return a[0] === b[0] && a[1] === b[1] ? pts : pts.concat([a]); }
+    if (ehObj(o) && o.modo === 'volta' && o.sentido === -1) return pts.slice().reverse();
+    return pts;
+  }
   function viagem(mapa, g) {
     const rota = g && g.rota ? objDe(mapa, g.rota, 't') : null;
     if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2 || !temGrade(mapa)) return null;
-    const cam = caminhoHex(mapa, rota.pts), acum = custosDoCaminho(mapa, cam);
+    const cam = caminhoHex(mapa, ptsDaRota(rota, g)), acum = custosDoCaminho(mapa, cam);
     return { rota, cam, acum, total: acum[acum.length - 1] };
   }
   /* Em que hexágono do caminho o grupo está: o dele, se o caminho passa por ali (passando mais de uma vez, o que bate
@@ -656,17 +675,24 @@
     const tot = t0 + Math.max(0, Math.floor(num(n, 0))), dias = Math.floor(tot / tpd);
     return { dia: dia0 + dias, tempo: tot % tpd, dias };
   }
+  /* (lote 7, parte 5b) Quem anda pelo mapa: os grupos e os eventos com rota. O estado de quem anda: onde está, o andado
+     no sentido de agora (prog), o sentido (na volta, −1) e a espera numa parada (em tempos de marcha). */
+  const objQueAnda = (mapa, id) => { const o = objDe(mapa, id); return o && (o.k === 'g' || o.k === 'e') ? o : null; };
+  const estadoDe = o => ({ x: o.x, y: o.y, prog: num(o.prog, 0), sentido: o.sentido === -1 ? -1 : 1, espera: inteiro(o.espera, 0, 0, 1e9) });
+  // os tempos de uma parada (marcada em tempos ou em dias)
+  const temposDaParada = (p, tpd) => inteiro(p && p.n, 1, 0, 1e6) * (p && p.u === 'd' ? tpd : 1);
   /* Onde o grupo está na rota, conferido com o lugar dele: o hexágono do caminho (i), o andado de verdade (antes) e o
-     resto. Fora da rota (mais de um hexágono longe), não anda. */
-  function naRota(mapa, grupoId) {
-    const g = objDe(mapa, grupoId, 'g');
-    if (!g) return { erro: 'Grupo não encontrado' };
+     resto. Fora da rota (mais de um hexágono longe), não anda. (est: um estado no lugar do que está no mapa.) */
+  function naRota(mapa, grupoId, est) {
+    const g0 = objQueAnda(mapa, grupoId);
+    if (!g0) return { erro: 'Grupo não encontrado' };
+    const g = est ? Object.assign({}, g0, est) : g0;
     const rota = g.rota ? objDe(mapa, g.rota, 't') : null;
     if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2) return { g, erro: 'Sem rota' };
     if (!temGrade(mapa)) return { g, erro: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' };
     const v = viagem(mapa, g), onde = ondeNoCaminho(mapa, g, v);
     // longe da rota não anda (seria um salto pelo mapa); no hexágono vizinho dela, segue do mais perto
-    if (onde.longe > 1) return { g, v, erro: 'O grupo está fora da rota (a ' + plHex(onde.longe) + ' dela). Arraste-o para a rota ou use "Pôr no começo da rota"' };
+    if (onde.longe > 1) return { g, v, erro: (g.k === 'e' ? 'O evento' : 'O grupo') + ' está fora da rota (a ' + plHex(onde.longe) + ' dela). Arraste-o para a rota ou use "Pôr no começo da rota"' };
     const i = onde.i, ult = v.cam.length - 1;
     // o que já tinha andado rumo ao próximo hexágono (num tempo que não deu para entrar nele) continua valendo
     const sobra = onde.longe || i >= ult ? 0 : limitar(num(g.prog, 0) - v.acum[i], 0, Math.max(0, v.acum[i + 1] - v.acum[i] - 1e-6));
@@ -680,42 +706,227 @@
     const c = centroHex(mapa, v.cam[j].q, v.cam[j].r);
     return { j, x: arred(c.x), y: arred(c.y), prog: arred(p), chegou: j === ult };
   }
-  function marchar(mapa, grupoId, cubos) {
-    const r = naRota(mapa, grupoId), g = r.g;
-    const base = { ok: false, cubos: 0, hexes: 0, x: g ? g.x : null, y: g ? g.y : null, prog: g ? num(g.prog, 0) : 0, chegou: false };
-    if (r.erro) return Object.assign(base, { msg: r.erro });
-    const { v, i, ult, antes } = r;
-    if (i >= ult) {
-      const c = centroHex(mapa, v.cam[ult].q, v.cam[ult].r);
-      return Object.assign(base, { x: arred(c.x), y: arred(c.y), prog: arred(v.total), chegou: true, msg: 'Chegou ao fim da rota' });
+  // (lote 7, parte 5b) a parada marcada num hexágono do caminho (a primeira, se houver duas no mesmo), com o número dela
+  function paradaNoHex(mapa, g, h) {
+    const ps = Array.isArray(g.paradas) ? g.paradas : [];
+    for (let k = 0; k < ps.length; k++) { const p = ps[k], ph = hexDe(mapa, p.x, p.y); if (ph && ph.q === h.q && ph.r === h.r) return { p, k }; }
+    return null;
+  }
+  // o nome de uma parada: o que o mestre deu, senão o do marcador do hexágono dela, senão "a parada 2"
+  function nomeDaParada(mapa, p, k) {
+    const nome = texto(p && p.nome).trim();
+    if (nome) return nome;
+    const h = hexDe(mapa, p.x, p.y), m = h && Array.isArray(mapa.objs) ? mapa.objs.find(o => o.k === 'm' && texto(o.nome).trim() && (ph => ph && ph.q === h.q && ph.r === h.r)(hexDe(mapa, o.x, o.y))) : null;
+    return m ? texto(m.nome).trim() : 'a parada ' + (k + 1);
+  }
+  const MAX_PERNAS = 8;                           // quantas vezes uma marcha pode virar (ou recomeçar) no fim da rota
+  /* Andar `cubos` pela rota. (lote 7, parte 5b) No fim do caminho: só ida, para; indo e voltando, vira e segue no outro
+     sentido com o que sobrou; em circuito, recomeça. Ao entrar no hexágono de uma parada, fica ali (o resto se perde) e
+     a espera começa (espera: os tempos da parada). pass: os hexágonos por onde passou ("q,r"), para os encontros. */
+  function marchar(mapa, grupoId, cubos, est0) {
+    const o = objQueAnda(mapa, grupoId), est = est0 || (o ? estadoDe(o) : null), modo = o ? o.modo || 'ida' : 'ida';
+    const base = { ok: false, cubos: 0, hexes: 0, x: est ? est.x : null, y: est ? est.y : null, prog: est ? est.prog : 0, chegou: false };
+    const r0 = naRota(mapa, grupoId, est0);
+    if (r0.erro) return Object.assign(base, { msg: r0.erro });
+    const tpd = tpdDe(mapa.cal), h0 = hexDe(mapa, est.x, est.y), pass = h0 ? [chaveHex(h0)] : [];
+    const cur = { x: est.x, y: est.y, prog: est.prog, sentido: est.sentido, espera: est.espera };
+    let resto = Math.max(0, num(cubos, 0)), gasto = 0, hexes = 0, voltas = 0, parou = null, parada = null, chegou = false, ultimo = null, msgFim = null;
+    for (let perna = 0; perna < MAX_PERNAS; perna++) {
+      const r = perna ? naRota(mapa, grupoId, cur) : r0;
+      if (r.erro) break;
+      const { v, i, ult, antes } = r;
+      if (i >= ult) {
+        const anda = resto > 1e-9 && ult > 0;
+        if (anda && modo === 'volta') { cur.sentido = -cur.sentido; cur.prog = 0; voltas++; continue; }
+        if (anda && modo === 'circuito') { cur.prog = 0; voltas++; continue; }
+        const c = centroHex(mapa, v.cam[ult].q, v.cam[ult].r);
+        Object.assign(cur, { x: arred(c.x), y: arred(c.y), prog: arred(v.total) });
+        chegou = modo === 'ida';
+        if (!perna) msgFim = 'Chegou ao fim da rota';
+        break;
+      }
+      // (lote 7, parte 5a) um evento que fecha a passagem: o grupo não entra no primeiro hexágono fechado do caminho —
+      // para no de antes, sem guardar andado rumo a ele
+      let lim = ult, fechou = null;
+      if (eventosPesados(mapa).length) for (let k = i + 1; k <= ult; k++) { const f = hexInfo(mapa, v.cam[k].q, v.cam[k].r).fechado; if (f) { lim = k - 1; fechou = objDe(mapa, f, 'e'); break; } }
+      // (lote 7, parte 5b) a primeira parada do caminho, até onde dá para ir
+      let kPar = -1, par = null;
+      if (Array.isArray(o.paradas) && o.paradas.length) for (let k = i + 1; k <= lim; k++) { const pp = paradaNoHex(mapa, o, v.cam[k]); if (pp) { kPar = k; par = pp; break; } }
+      if (fechou && lim <= i) {
+        const n0 = noAndado(mapa, v, v.acum[i]);
+        Object.assign(cur, { x: n0.x, y: n0.y, prog: n0.prog });
+        parou = { id: fechou.id, nome: nomeEvento(fechou) };
+        break;
+      }
+      const n = noAndado(mapa, v, Math.min(v.acum[kPar >= 0 ? kPar : lim], antes + resto)), j = n.j, anda = j - i;
+      for (let k = i + 1; k <= j; k++) pass.push(chaveHex(v.cam[k]));
+      gasto += n.prog - antes; resto -= n.prog - antes; hexes += anda;
+      Object.assign(cur, { x: n.x, y: n.y, prog: n.prog });
+      ultimo = { v, j, ult, n };
+      if (kPar >= 0 && j >= kPar) { parada = { k: par.k, nome: nomeDaParada(mapa, par.p, par.k), t: temposDaParada(par.p, tpd) }; cur.espera = parada.t; break; }
+      if (fechou && j >= lim) { parou = { id: fechou.id, nome: nomeEvento(fechou) }; break; }
+      if (j >= ult && modo !== 'ida' && resto > 1e-9) continue;          // vira (ou recomeça) na próxima perna
+      chegou = j >= ult && modo === 'ida';
+      break;
     }
-    // (lote 7, parte 5a) um evento que fecha a passagem: o grupo não entra no primeiro hexágono fechado do caminho — para
-    // no de antes, sem guardar andado rumo a ele
-    let lim = ult, fechou = null;
-    if (eventosPesados(mapa).length) for (let k = i + 1; k <= ult; k++) { const f = hexInfo(mapa, v.cam[k].q, v.cam[k].r).fechado; if (f) { lim = k - 1; fechou = objDe(mapa, f, 'e'); break; } }
-    if (fechou && lim <= i) {
-      const n0 = noAndado(mapa, v, v.acum[i]);
-      return { ok: true, cubos: 0, hexes: 0, x: n0.x, y: n0.y, prog: n0.prog, chegou: false, parou: { id: fechou.id, nome: nomeEvento(fechou) }, msg: 'Parou: "' + nomeEvento(fechou) + '" fecha a passagem' };
-    }
-    const n = noAndado(mapa, v, Math.min(v.acum[lim], antes + Math.max(0, num(cubos, 0)))), j = n.j, anda = j - i;
-    const parou = fechou && j >= lim ? { id: fechou.id, nome: nomeEvento(fechou) } : null;
+    if (msgFim && !voltas) return Object.assign(base, { x: cur.x, y: cur.y, prog: cur.prog, chegou: true, msg: msgFim });
+    // a mensagem: a de antes, quando só andou (ou parou na passagem fechada); as voltas e as paradas, acrescentadas
     let msg;
-    if (anda > 0) msg = 'Andou ' + plHex(anda) + ' (' + n1(n.prog - antes) + ' cubos)' + (parou ? ' e parou: "' + parou.nome + '" fecha a passagem' : n.chegou ? ' e chegou ao fim da rota' : '; faltam ' + plHex(ult - j) + ' (' + n1(v.total - n.prog) + ' cubos)');
-    else {
-      const prox = hexInfo(mapa, v.cam[j + 1].q, v.cam[j + 1].r);
+    if (hexes > 0) {
+      msg = 'Andou ' + plHex(hexes) + ' (' + n1(gasto) + ' cubos)';
+      if (voltas) msg += modo === 'volta' ? ' e virou no fim da rota' : ' e recomeçou a rota';
+      if (parada) msg += ' e parou em "' + parada.nome + '" por ' + (parada.t === 1 ? '1 tempo' : parada.t + ' tempos');
+      else if (parou) msg += ' e parou: "' + parou.nome + '" fecha a passagem';
+      else if (chegou) msg += ' e chegou ao fim da rota';
+      else if (ultimo && modo === 'ida') msg += '; faltam ' + plHex(ultimo.ult - ultimo.j) + ' (' + n1(ultimo.v.total - ultimo.n.prog) + ' cubos)';
+    } else if (parou) msg = 'Parou: "' + parou.nome + '" fecha a passagem';
+    else if (ultimo && ultimo.j < ultimo.ult) {
+      const { v, j, n } = ultimo, prox = hexInfo(mapa, v.cam[j + 1].q, v.cam[j + 1].r);
       msg = 'Ainda no caminho do próximo hexágono' + (prox.terreno ? ' (' + (prox.terreno.nome || 'terreno') + ')' : '') + ': ' + n1(n.prog - v.acum[j]) + ' de ' + n1(v.acum[j + 1] - v.acum[j]) + ' cubos';
-    }
-    const out = { ok: true, cubos: arred(n.prog - antes), hexes: anda, x: n.x, y: n.y, prog: n.prog, chegou: n.chegou, msg };
+    } else msg = voltas ? (modo === 'volta' ? 'Virou no fim da rota' : 'Recomeçou a rota') : 'Não saiu do lugar';
+    const out = { ok: true, cubos: arred(gasto), hexes, x: cur.x, y: cur.y, prog: cur.prog, chegou, msg, pass };
     if (parou) out.parou = parou;
+    if (parada) out.parada = parada;
+    if (modo === 'volta') out.sentido = cur.sentido;
+    if (cur.espera) out.espera = cur.espera;
+    if (voltas) out.voltas = voltas;
     return out;
   }
-  // n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes)
+  /* n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes). (lote 7, parte 5b) Com paradas (ou parado
+     numa), tempo a tempo: a espera desconta um tempo por vez e, acabada, o grupo segue no tempo seguinte. */
   function andarTempos(mapa, grupoId, n) {
-    const g = objDe(mapa, grupoId, 'g');
-    return marchar(mapa, grupoId, g ? passoDe(g, tpdDe(mapa && mapa.cal)) * Math.max(0, Math.floor(num(n, 1))) : 0);
+    const g = objQueAnda(mapa, grupoId), N_ = Math.max(0, Math.floor(num(n, 1)));
+    if (!g) return marchar(mapa, grupoId, 0);
+    const pt = passoDe(g, tpdDe(mapa && mapa.cal));
+    if (!(Array.isArray(g.paradas) && g.paradas.length) && !(g.espera > 0)) return marchar(mapa, grupoId, pt * N_);
+    let est = estadoDe(g), r = null, cubos = 0, hexes = 0, esperou = 0, parada = null, parou = null, voltas = 0, chegou = false, msg = '';
+    const pass = [];
+    for (let k = 0; k < N_; k++) {
+      if (est.espera > 0) { est.espera--; esperou++; continue; }
+      r = marchar(mapa, grupoId, pt, est);
+      if (!r.ok) { if (!cubos && !esperou && !hexes) return r; chegou = !!r.chegou; break; }
+      cubos += r.cubos; hexes += r.hexes; voltas += r.voltas || 0; pass.push(...(pass.length ? r.pass.slice(1) : r.pass));
+      est = { x: r.x, y: r.y, prog: r.prog, sentido: r.sentido || est.sentido, espera: r.espera || 0 };
+      if (r.parada) parada = r.parada;
+      if (r.parou) parou = r.parou;
+      chegou = !!r.chegou;
+      if (chegou) break;
+    }
+    // a mensagem: quanto andou, a parada (onde está parado agora, ou por onde passou), as voltas e o fim
+    const nomeEm = (x, y) => { const h = hexDe(mapa, x, y), pp = h ? paradaNoHex(mapa, g, h) : null; return pp ? nomeDaParada(mapa, pp.p, pp.k) : 'a parada'; };
+    const tempos = n => (n === 1 ? '1 tempo' : n + ' tempos'), falta = (est.espera === 1 ? 'falta ' : 'faltam ') + tempos(est.espera);
+    if (hexes > 0) {
+      msg = 'Andou ' + plHex(hexes) + ' (' + n1(cubos) + ' cubos)';
+      if (esperou && g.espera > 0) msg += ', depois de ' + tempos(esperou) + ' parado em "' + nomeEm(g.x, g.y) + '"';
+      if (voltas) msg += g.modo === 'volta' ? ', virou no fim da rota' : ', recomeçou a rota';
+      if (est.espera > 0) msg += ' e parou em "' + nomeEm(est.x, est.y) + '": ' + falta;
+      else if (parada) msg += ', com a parada em "' + parada.nome + '"';
+      if (!(est.espera > 0)) msg += parou ? ' e parou: "' + parou.nome + '" fecha a passagem' : chegou ? ' e chegou ao fim da rota' : '';
+    } else if (est.espera > 0) msg = 'Parado em "' + nomeEm(est.x, est.y) + '": ' + falta;
+    else if (esperou) msg = 'Parado em "' + nomeEm(est.x, est.y) + '": segue no próximo tempo';
+    else msg = r ? r.msg : 'Não saiu do lugar';
+    const out = { ok: true, cubos: arred(cubos), hexes, x: est.x, y: est.y, prog: est.prog, chegou, msg, pass: pass.length ? pass : (h => (h ? [chaveHex(h)] : []))(hexDe(mapa, est.x, est.y)), espera: est.espera };
+    if (g.modo === 'volta') out.sentido = est.sentido;
+    if (parada) out.parada = parada;
+    if (parou) out.parou = parou;
+    if (voltas) out.voltas = voltas;
+    if (esperou) out.esperou = esperou;
+    return out;
   }
   // um dia inteiro de marcha (todos os tempos do dia)
   function andarUmDia(mapa, grupoId) { return andarTempos(mapa, grupoId, tpdDe(ehObj(mapa) ? mapa.cal : null)); }
+  /* (lote 7, parte 5b) Os campos de um grupo novo do tipo (caravana, patrulha, exército): a sigla, a cor, o passo de
+     começo e escondido dos jogadores. O grupo comum (tipo '') não muda nada. */
+  function camposDoTipo(tipo) {
+    const t = TIPOS_GRUPO[tipo];
+    return t ? { tipo, sigla: t.sigla, cor: t.cor, pt: t.pt, oculto: true } : {};
+  }
+  /* (lote 7, parte 5b) Traçar uma rota de um ponto a outro (de um marcador a outro) pelos hexágonos: o caminho mais
+     barato pelo custo de entrar em cada hexágono (o terreno, a região, os eventos de hoje), mais barato ainda nas estradas
+     (×0,4) e nas trilhas (×0,7) desenhadas no mapa, sem entrar onde um evento fecha a passagem, dentro do mapa.
+     → { ok, pts: os cantos do caminho (os centros dos hexágonos onde ele muda de direção), hexes, custo (em cubos, sem
+     o desconto das estradas), via: 'estrada' | 'trilha' (a que mais aparece no caminho; sem nenhuma, trilha), msg } */
+  const VIZ = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  const MAX_NOS = 200000;
+  function tracarRota(mapa, de, para) {
+    if (!temGrade(mapa)) return { ok: false, msg: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' };
+    const a = xy(de), b = xy(para), ha = hexDe(mapa, a.x, a.y), hb = hexDe(mapa, b.x, b.y);
+    if (ha.q === hb.q && ha.r === hb.r) return { ok: false, msg: 'Os dois pontos ficam no mesmo hexágono' };
+    const tam = num(mapa.grade.tam, 1), L = num(mapa.larg, 0), A = num(mapa.alt, 0);
+    const noMapa = h => { const c = centroHex(mapa, h.q, h.r); return c.x >= -tam && c.y >= -tam && c.x <= L + tam && c.y <= A + tam; };
+    const fator = new Map(), tipoVia = new Map();
+    for (const o of mapa.objs) {
+      if (o.k !== 'l' || (o.estilo !== 'estrada' && o.estilo !== 'trilha')) continue;
+      const f = o.estilo === 'estrada' ? 0.4 : 0.7;
+      for (const h of caminhoHex(mapa, o.pts)) { const k = chaveHex(h); if (!fator.has(k) || fator.get(k) > f) { fator.set(k, f); tipoVia.set(k, o.estilo); } }
+    }
+    const custoDe = new Map();
+    const passo = h => {
+      const k = chaveHex(h);
+      if (custoDe.has(k)) return custoDe.get(k);
+      const i = hexInfo(mapa, h.q, h.r), c = i.fechado ? Infinity : Math.max(0.01, num(i.custo, CUBOS_HEX)) * (fator.get(k) || 1);
+      custoDe.set(k, c);
+      return c;
+    };
+    // a menor parte de um passo, para a estimativa nunca passar do custo de verdade
+    let menor = Infinity;
+    for (const t of mapa.terrenos || []) menor = Math.min(menor, num(t.custo, CUBOS_HEX));
+    menor = Math.max(0.01, Math.min(menor, CUBOS_HEX, ...mapa.objs.filter(o => o.k === 'r' && o.custo != null).map(o => o.custo)) * (fator.size ? 0.4 : 1));
+    for (const [k] of fator) { const h = lerChaveHex(k); menor = Math.min(menor, Math.max(0.01, hexInfoBase(mapa, h.q, h.r).custo) * fator.get(k)); }
+    // A*, com uma fila de prioridade (heap)
+    const heap = [], push = (f, k) => { heap.push([f, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const kA = chaveHex(ha), kB = chaveHex(hb), g = new Map([[kA, 0]]), veio = new Map(), feito = new Set();
+    push(distHex(ha, hb) * menor, kA);
+    let nos = 0, achou = false;
+    while (heap.length) {
+      const [, k] = pop();
+      if (feito.has(k)) continue;
+      if (k === kB) { achou = true; break; }
+      feito.add(k);
+      if (++nos > MAX_NOS) break;
+      const h = lerChaveHex(k), gk = g.get(k);
+      for (const [dq, dr] of VIZ) {
+        const n = { q: h.q + dq, r: h.r + dr }, kn = chaveHex(n);
+        if (feito.has(kn) || (kn !== kB && !noMapa(n))) continue;
+        const c = passo(n);
+        if (!Number.isFinite(c)) continue;
+        const ng = gk + c;
+        if (ng < (g.has(kn) ? g.get(kn) : Infinity)) { g.set(kn, ng); veio.set(kn, k); push(ng + distHex(n, hb) * menor, kn); }
+      }
+    }
+    if (!achou) return { ok: false, msg: nos > MAX_NOS ? 'O mapa é grande demais para traçar este caminho' : 'Não há caminho: um evento fecha a passagem' };
+    const cam = [hb];
+    for (let k = kB; veio.has(k);) { k = veio.get(k); cam.push(lerChaveHex(k)); }
+    cam.reverse();
+    // os cantos: onde o caminho muda de direção (a linha reta da grade entre dois cantos passa pelos mesmos hexágonos)
+    const pts = [], c0 = centroHex(mapa, cam[0].q, cam[0].r);
+    pts.push([arred(c0.x), arred(c0.y)]);
+    for (let i = 1; i < cam.length - 1; i++) {
+      const d1 = [cam[i].q - cam[i - 1].q, cam[i].r - cam[i - 1].r], d2 = [cam[i + 1].q - cam[i].q, cam[i + 1].r - cam[i].r];
+      if (d1[0] !== d2[0] || d1[1] !== d2[1]) { const c = centroHex(mapa, cam[i].q, cam[i].r); pts.push([arred(c.x), arred(c.y)]); }
+    }
+    const cn = centroHex(mapa, hb.q, hb.r);
+    pts.push([arred(cn.x), arred(cn.y)]);
+    let custo = 0, est = 0, tri = 0;
+    for (let i = 1; i < cam.length; i++) { const k = chaveHex(cam[i]); custo += custoHex(mapa, cam[i].q, cam[i].r); if (tipoVia.get(k) === 'estrada') est++; else if (tipoVia.get(k) === 'trilha') tri++; }
+    const hexes = cam.length - 1;
+    return { ok: true, pts, cam, hexes, custo: arred(custo), via: est >= tri && est ? 'estrada' : 'trilha', naVia: est + tri, msg: plHex(hexes) + ' (' + n1(custo) + ' cubos)' + (est + tri ? ', ' + plHex(est + tri) + ' por estrada ou trilha' : '') };
+  }
+  /* (lote 7, parte 5b) Os encontros no caminho: um grupo do mundo (caravana, patrulha, exército) e um grupo comum que
+     passaram a até 1 hexágono um do outro. pass: id → os hexágonos por onde cada um passou ("q,r"; quem não está ali, o
+     lugar dele). → [[id do grupo do mundo, id do grupo comum]] */
+  function encontrosNoCaminho(mapa, pass) {
+    if (!temGrade(mapa)) return [];
+    const grupos = mapa.objs.filter(o => o.k === 'g'), out = [];
+    const hexesDe = g => (pass && Array.isArray(pass[g.id]) ? pass[g.id] : (h => (h ? [chaveHex(h)] : []))(hexDe(mapa, g.x, g.y))).map(lerChaveHex).filter(Boolean);
+    const comuns = grupos.filter(g => !g.tipo).map(g => [g, hexesDe(g)]);
+    for (const w of grupos.filter(g => g.tipo)) {
+      const hw = hexesDe(w);
+      for (const [c, hc] of comuns) if (hw.some(a => hc.some(b => distHex(a, b) <= 1))) out.push([w.id, c.id]);
+    }
+    return out;
+  }
   /* Mexer no andado à mão, sem passar o tempo do mundo: delta em tempos de marcha (+1 anda um, −1 volta um), ou
      marcar a bolinha k do hexágono de agora (k tempos andados rumo a ele; a última leva o grupo para dentro dele). */
   function ajustarMarcha(mapa, grupoId, o) {
@@ -1001,6 +1212,28 @@
   // o passo do grupo (cubos por tempo de marcha): o dele, ou o de antes (cubos por dia) dividido pelos tempos do dia
   const passoNorm = (o, tpd) => { const n = num(o.pt, NaN); return Math.round(limitar(Number.isFinite(n) && n > 0 ? n : cubosDoDia(o) / tpd, 0.1, MAX_CUSTO) * 100) / 100; };
   // as bolinhas de um grupo, como vão para os jogadores: [feitas, total]
+  /* (lote 7, parte 5b) o jeito de andar (só quando não é o de sempre, para o mapa ficar curto): o que faz no fim da rota,
+     o sentido (na volta), as paradas (o ponto, quanto tempo — em tempos ou dias — e o nome, opcional) e a espera */
+  function normParadas(v) {
+    return (Array.isArray(v) ? v : []).filter(ehObj).slice(0, MAX_PARADAS).map(p => {
+      const x = coord(p.x), y = coord(p.y);
+      if (x == null || y == null) return null;
+      const out = { x, y, n: inteiro(p.n, 1, 1, 9999), u: p.u === 'd' ? 'd' : 't' };
+      const nome = texto(p.nome, '', 80).trim();
+      if (nome) out.nome = nome;
+      return out;
+    }).filter(Boolean);
+  }
+  function normAndar(o, out, comParadas) {
+    if (o.modo === 'volta' || o.modo === 'circuito') out.modo = o.modo;
+    if (out.modo === 'volta' && num(o.sentido, 1) < 0) out.sentido = -1;
+    if (!comParadas) return out;
+    const ps = normParadas(o.paradas);
+    if (ps.length) out.paradas = ps;
+    const esp = inteiro(o.espera, 0, 0, 1e6);
+    if (esp > 0) out.espera = esp;
+    return out;
+  }
   const bolNorm = v => { if (!Array.isArray(v)) return null; const f = inteiro(v[0], -1, 0, 100000), t = inteiro(v[1], 0, 0, 100000); return t >= 2 && f >= 0 && f < t ? [f, t] : null; };
   function normObj(o, dia, leve, tpd) {
     if (!ehObj(o) || !tem(PREFIXO, o.k)) return null;
@@ -1018,7 +1251,8 @@
           estilo: escolha(HONRA, o.estilo, ''), honra: inteiro(o.honra, 0, -MAX_HONRA, MAX_HONRA), hhist: normHonras(o.hhist) });
         const bol = bolNorm(o.bol);
         if (bol) g.bol = bol;
-        return g;
+        if (tem(TIPOS_GRUPO, o.tipo)) g.tipo = o.tipo;           // (lote 7, parte 5b) caravana, patrulha, exército
+        return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
         if (!pts) return null;
@@ -1038,12 +1272,21 @@
         // (lote 7, parte 5a) o que ele pesa na viagem (só quando tem: os eventos de antes não pesam até o mestre ligar)
         const peso = normPeso(o.peso);
         if (peso) ev.peso = peso;
+        // (lote 7, parte 5b) o evento que anda: o centro dele vai pela rota, com o tempo do mapa, enquanto acontece
+        const rota = idRef(o.rota);
+        if (rota) {
+          const pt = num(o.pt, NaN);
+          Object.assign(ev, { rota, prog: arred(Math.max(0, num(o.prog, 0))), pt: Number.isFinite(pt) && pt > 0 ? Math.round(limitar(pt, 0.1, MAX_CUSTO) * 10) / 10 : 2 });
+          normAndar(o, ev, false);
+        }
         return ev;
       }
       case 't': {
         const pts = pontos(o.pts, leve ? 0 : 2);
         if (!pts) return null;
-        return Object.assign(b, { pts, via: escolha(VIAS, o.via, 'trilha') });
+        const t = Object.assign(b, { pts, via: escolha(VIAS, o.via, 'trilha') });
+        if (sim(o.esc)) t.esc = true;           // (lote 7, parte 5b) escondida no mapa: só aparece, fina, ao selecionar
+        return t;
       }
       case 'f': {
         const pts = pontos(o.pts, leve ? 0 : 2);
@@ -1268,8 +1511,10 @@
       if (o.k === 'f' || o.k === 'z') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
       if (o.k === 'g') {
         if (!rotas.has(o.rota)) o.rota = null;
-        if (!o.rota) { o.prog = 0; delete o.bol; }
+        if (!o.rota) { o.prog = 0; delete o.bol; delete o.sentido; delete o.espera; }
       }
+      // (lote 7, parte 5b) o evento que andava por uma rota que não existe mais fica parado onde está
+      if (o.k === 'e' && o.rota && !rotas.has(o.rota)) { delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido; }
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -1426,13 +1671,19 @@
       if (o.oculto) continue;
       delete o.nota;
       if (o.k === 'm') { delete o.falso; if (coberto(o.x, o.y)) continue; }
-      else if (o.k === 'g') { if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol; }
+      else if (o.k === 'g') {
+        if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
+        // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
+        delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
+      }
       else if (o.k === 'e') {
         if (!eventoAtivo(o, dia) || coberto(o.x, o.y)) continue;
         // o evento como ele está hoje: o fim planejado, o quanto ainda vai crescer e o peso na viagem são do mestre
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null; delete o.peso;
+        delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido;     // (lote 7, parte 5b) a rota é do mestre
       }
       else if (o.k === 'r') { delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 't' && o.esc) continue;                  // (lote 7, parte 5b) a rota escondida é do mestre
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'z') {
@@ -1461,6 +1712,7 @@
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
+    TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },

@@ -1073,6 +1073,33 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   janela "Gerar um lugar", o clima e a hora já vêm escolhidos, e a chave "Com os eventos do Mapa-múndi (os nomes): o
   chão seco e a zona … cobrindo a cena" tira o resto, se o mestre quiser (na masmorra, lá embaixo, os eventos não
   chegam).
+- **Os grupos do mundo e o que anda sozinho (lote 7, parte 5b).** Um grupo pode ser de um tipo (`g.tipo`,
+  `TIPOS_GRUPO`): Caravana, Patrulha ou Exército — o grupo de sempre (os jogadores, ou quem o mestre quiser) não tem
+  tipo. Na ferramenta Grupo, "Tipo"; o do mundo nasce escondido dos jogadores, com a sigla, a cor e o passo de começo do
+  tipo (`camposDoTipo`), e no mapa leva o desenho do tipo no lugar da sigla. No painel dele, "Os jogadores veem" (no
+  lugar do "Esconder dos jogadores"). A rota, de dois jeitos: "Desenhar a rota" (a ferramenta Rota; a rota desenhada é
+  dele, e ele vai para o começo dela — `App.rotaPara`) ou "Traçar entre dois marcadores…" (De e Para; "Ver o caminho"
+  mostra a prévia fina no mapa, com os hexágonos, os cubos e quanto leva; nada muda até "Usar esta rota").
+  `tracarRota` acha o caminho mais barato pelos hexágonos (o custo de entrar em cada um, com os eventos de hoje), mais
+  barato ainda nas estradas (×0,4) e trilhas (×0,7) desenhadas, sem entrar onde um evento fecha a passagem, dentro do
+  mapa; a rota guarda só os cantos (onde o caminho muda de direção), que refazem o mesmo caminho. A rota que nasce assim
+  (de um grupo do mundo ou de um evento) é escondida (`t.esc` e `oculto`): não aparece no mapa — só fina, com uma seta no
+  sentido de agora, quando quem anda nela está selecionado — e não vai para os jogadores. "Ao chegar ao fim" (`modo`):
+  para (só ida), volta pelo mesmo caminho (ida e volta: `sentido` −1 na volta, e o caminho é a rota ao contrário) ou
+  recomeça (circuito: a rota fechada, do último ponto ao primeiro); o que sobra do tempo segue depois de virar.
+  As paradas (`paradas: [{ x, y, n, u, nome }]`, até 30): "Marcar uma parada no mapa" pede um clique na rota
+  (`MundoTela.escolherPonto`; Esc cancela) e põe a parada no hexágono dela mais perto (de começo, 1 dia; o mestre muda
+  para tempos ou dias e dá um nome — sem nome, vale o do marcador do hexágono). Ao entrar no hexágono de uma parada, o
+  grupo fica ali (o resto do tempo se perde) e a espera começa (`espera`, em tempos); acabada, segue no tempo seguinte.
+  Com a caravana selecionada, as paradas aparecem como bandeirinhas na rota; o painel diz "Parado em "Feira de Vel":
+  falta 1 tempo." e "Voltando pelo mesmo caminho.". Um evento também anda ("Anda pelo mapa": a rota, os cubos por tempo
+  e o fim), enquanto acontece, e a área vai junto. O "+1 tempo" e o "Próximo dia" passam o tempo tempo a tempo, numa
+  cópia do mapa: os eventos que andam primeiro (mudam o caminho dos grupos), depois os grupos; depois de cada tempo, um
+  grupo do mundo que passou a até 1 hexágono de um grupo comum (pelos hexágonos por onde cada um passou:
+  `encontrosNoCaminho`) dá o aviso "Caravana de Sal encontrou Os Heróis (no 5º tempo)." — os dois seguem. Tudo num passo
+  de desfazer só. A aba Hoje mostra os do mundo em "Pelo mapa" (escondido, onde está, parado, voltando, fora da rota,
+  junto de quem). Para os jogadores: o grupo do mundo mostrado vai com o tipo, sem o jeito de andar, as paradas e a
+  espera; o evento, sem a rota.
 - **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
   tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
   no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
@@ -1473,7 +1500,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas mundo-nucleo acampamento-nucleo site fichas fichas-regras fichas-quadros arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
@@ -1610,7 +1637,13 @@ a ferramenta com os 36 tipos, o peso de começo, o painel "Na viagem" (os cubos 
 ao de começo, desligar, trocar o tipo), a viagem com o "+1 tempo" (os hexágonos mais caros, a dica do Terreno, o aviso
 de quem entra, o grupo parado antes da ponte caída sem sair do lugar, a lista da aba Hoje, abrir a passagem,
 Desfazer), o cartão do encontro com a conta dos eventos, o desenho de cada tipo novo (animado ou parado) com a chave
-"Animar os eventos" e o que quem joga recebe (os eventos sem o peso e sem a lista). `mundo-mesa` confere
+"Animar os eventos" e o que quem joga recebe (os eventos sem o peso e sem a lista). `mundo-lote7c` confere os grupos do
+mundo (lote 7, parte 5b): a ferramenta Grupo com o tipo (a caravana escondida, com o desenho dela), "Os jogadores veem",
+o "Traçar entre dois marcadores" (a prévia, nada mudando antes de usar, a rota escondida no mapa e fina na seleção),
+ida e volta com o "Próximo dia" (o aviso do encontro no tempo certo, a volta, Desfazer), as paradas (o clique pedido, a
+bandeirinha, o tempo e o nome, parar e seguir, tirar), "Desenhar a rota" de uma patrulha, o evento que anda, a aba Hoje
+("Pelo mapa") e quem joga (sem os escondidos e as rotas escondidas; a caravana mostrada sem a rota, o jeito de andar e
+as paradas). `mundo-mesa` confere
 também, pela mesa, as bolinhas, a honra e o recorte do painel da facção chegando ao jogador. `jornal-nucleo` confere a
 lógica do Jornal sem navegador (o rascunho e o publicado, as cartas e o que houve com cada uma, a marcação de negrito e
 itálico) e `jornal`, a página sozinha pela interface (o editor e a folha ao lado, o teclado e o mouse de verdade, uma

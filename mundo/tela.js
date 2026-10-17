@@ -12,7 +12,8 @@
   const Z_MAX = 8;
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
   const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
-    terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2 };
+    terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2,
+    tipoGrupo: '' };                                // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
   // a largura de cada desenho de linha, em pixels da tela, para Fina, Média, Larga e Bem larga (no rio: a da foz)
   const LARGURAS = { rio: [6, 12, 20, 32], estrada: [2, 3.5, 5, 8], trilha: [1.5, 2.5, 4, 6] };
   const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt' };
@@ -271,6 +272,7 @@
   let rasc = null;                               // região/rota/frente sendo desenhada: { k, pts }
   let regua = null;                              // { a, b, manter }
   let medindo = null;                            // { ok, ant } enquanto medir() espera
+  let pegando = null;                            // (lote 7, parte 5b) { ok, dica } enquanto escolherPonto() espera um clique
   let cursor = null;                             // onde o ponteiro está, em unidades do mapa
   let ultimoClique = null, tLongo = 0, ultimoMenu = 0, tMovendo = 0;
 
@@ -1250,6 +1252,7 @@
   function rota(g0, o, ctx) {
     if (!Array.isArray(o.pts) || o.pts.length < 2) return;
     g0.classList.add('rota');
+    if (o.esc) { g0.classList.add('rota-esc'); return; }   // (lote 7, parte 5b) escondida: aparece fina ao selecionar
     const d = caminho(o.pts), via = /^[a-z]+$/.test(o.via || '') ? ' via-' + o.via : '';
     g0.append(s('path', { class: 'rot-fundo', d }), s('path', { class: 'rot' + via, d }));
     const andou = andadoDe(ctx.m, o);
@@ -1469,8 +1472,11 @@
       s('title', { texto: o.nome || 'Grupo' }),
       s('circle', { class: 'alvo', r: 22, fill: 'transparent' }),
       s('circle', { class: 'grupo-anel', r: 19.5 }),
-      s('circle', { class: 'grupo-base', r: 15, fill: o.cor || '#e6ab4f' }),
-      s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
+      s('circle', { class: 'grupo-base', r: 15, fill: o.cor || '#e6ab4f' }));
+    // (lote 7, parte 5b) a caravana, a patrulha e o exército: o desenho do tipo no lugar da sigla
+    const TG = o.tipo ? dicionario('TIPOS_GRUPO')[o.tipo] : null;
+    if (TG) { g0.classList.add('gru-mundo', 'gru-' + o.tipo); const gl = glifo(TG, 19); gl.classList.add('gru-glifo'); if (clara(o.cor || '#e6ab4f')) gl.classList.add('escura'); fx.append(gl); }
+    else fx.append(s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
     const selo = seloDeHonra(o);
     if (selo) fx.append(selo);
     if (o.nome) fx.append(rotulo(o.nome, 35));
@@ -1625,6 +1631,10 @@
         if (rh > 0 && ids.length === 1) C.sel.append(s('circle', { class: 'sel-anel', cx: um(o.x), cy: um(o.y), r: um(rh) }));
       }
     }
+    // (lote 7, parte 5b) quem anda por uma rota (o grupo do mundo, o evento que anda): a rota fina no sentido de agora e as
+    // bandeirinhas das paradas; a prévia do traçado pedido no painel
+    if (ids.length === 1 && unico && unico.rota && (unico.k === 'g' || unico.k === 'e') && podeEditar()) desenharRotaDe(unico);
+    if (App.previaRota && Array.isArray(App.previaRota.pts) && App.previaRota.pts.length > 1) C.sel.append(s('path', { class: 'sel-rota previa', d: caminho(App.previaRota.pts) }));
     if (ids.length !== 1 || !editar || !unico) return;
     const o = unico;
     // a alça do raio nunca fica em cima do selo (raio 0 ainda dá para puxar)
@@ -1637,6 +1647,23 @@
       if (Math.hypot(b[0] - a[0], b[1] - a[1]) * V.z > 34) C.sel.append(alca('meio', i, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2));
     }
     pts.forEach((p, i) => C.sel.append(alca('v', i, p[0], p[1])));
+  }
+  function desenharRotaDe(o) {
+    const rt = indice.get(o.rota);
+    if (!rt || !Array.isArray(rt.pts) || rt.pts.length < 2) return;
+    let pts = rt.pts;
+    if (o.modo === 'circuito') pts = pts.concat([pts[0]]);
+    else if (o.modo === 'volta' && o.sentido === -1) pts = pts.slice().reverse();
+    C.sel.append(s('path', { class: 'sel-rota', d: caminho(pts) }));
+    // a seta do sentido, no fim do caminho de agora
+    const a = pts[pts.length - 2], b = pts[pts.length - 1], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI, fs = fixo(b[0], b[1]);
+    fs.append(s('path', { class: 'sel-rota-seta', d: 'M-9 -6L0 0L-9 6', transform: 'rotate(' + d3(ang) + ')' }));
+    C.sel.append(fs);
+    (Array.isArray(o.paradas) ? o.paradas : []).forEach((p, i) => {
+      const fx = fixo(p.x, p.y);
+      fx.append(s('g', { class: 'parada', 'data-parada': String(i) }, s('title', { texto: 'Parada ' + (i + 1) }), s('path', { class: 'parada-mastro', d: 'M0 0V-20' }), s('path', { class: 'parada-flamula', d: 'M0 -20L11 -16L0 -12Z' }), s('circle', { class: 'parada-pe', r: 2.6 })));
+      C.sel.append(fx);
+    });
   }
   // O contorno de um carimbo ou de um texto escolhido: a caixa dele (o texto gira junto).
   function anelDoEnfeite(o) {
@@ -1901,6 +1928,10 @@
       optsEl.append(
         chip({ 'aria-haspopup': 'menu', title: 'Escolher o ícone do novo marcador', onclick: ev => abrirIcones(ev.currentTarget) }, miniSelo(def, def.cor || '#e6ab4f'), def.nome),
         chip({ 'aria-pressed': String(!!opt('rumor')), title: 'Os jogadores veem o marcador como boato', onclick: () => { porOpt('rumor', !opt('rumor')); reabrir(); } }, 'É boato'));
+    } else if (f === 'g') {
+      // (lote 7, parte 5b) o tipo: o grupo de sempre, ou um grupo do mundo (nasce escondido dos jogadores)
+      const TG = dicionario('TIPOS_GRUPO');
+      optsEl.append(seletor('Tipo', TG[opt('tipoGrupo')] ? opt('tipoGrupo') : '', [['', 'Grupo']].concat(Object.keys(TG).map(k => [k, TG[k].nome])), v => { porOpt('tipoGrupo', v); atualizarDica(); }));
     } else if (f === 'e') {
       const E = dicionario('EVENTOS');
       optsEl.append(seletor('Evento', opt('tipo'), Object.keys(E).map(k => [k, E[k].nome]), v => porOpt('tipo', v)));
@@ -2049,12 +2080,17 @@
     }
     if (App.papel === 'mestre' && App.comoJogador) return 'Vendo como jogador: assim os jogadores veem o mapa. Nada aqui muda o mapa.';
     if (!podeEditar()) return tq ? 'Toque num lugar para ler sobre ele. Arraste para andar; pince para aproximar.' : 'Clique num lugar para ler sobre ele. Arraste para andar pelo mapa; a roda do mouse aproxima.';
+    // (lote 7, parte 5b) um clique pedido pelo painel (a parada na rota)
+    if (pegando) return pegando.dica + (tq ? '' : ' Esc cancela.');
     const f = ferramenta(), n = rasc ? rasc.pts.length : 0;
     // no celular a dica é curta e sem teclas: os chips de cima fazem o papel do Enter, do Backspace e do Esc
     const fim = tq ? '' : ' Backspace tira o último ponto; Esc cancela.';
     switch (f) {
       case 'm': return `${Cl} no mapa para pôr o marcador.` + (tq ? '' : ' Esc volta para Selecionar.');
-      case 'g': return `${Cl} no mapa para pôr o grupo.` + (tq ? '' : ' Esc volta para Selecionar.');
+      case 'g': {
+        const TG = dicionario('TIPOS_GRUPO')[opt('tipoGrupo')];
+        return (TG ? `${Cl} no mapa para pôr a ${TG.nome.toLocaleLowerCase('pt-BR')} (nasce escondida dos jogadores).` : `${Cl} no mapa para pôr o grupo.`) + (tq ? '' : ' Esc volta para Selecionar.');
+      }
       case 'e': return `${Cl} para pôr o evento, ou arraste para escolher o tamanho da área.` + (tq ? '' : ' Esc volta para Selecionar.');
       case 'r':
         if (!n) return `${Cl} para pôr o primeiro ponto da região.`;
@@ -2066,6 +2102,8 @@
           if (n < 3) return `${Cl} para pôr mais pontos (uma zona tem pelo menos 3).` + fim;
           return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
         }
+        // (lote 7, parte 5b) a rota de uma caravana (ou de um evento que anda): ela vai para o começo da rota
+        if (f === 't' && App.rotaPara && !n) return `A rota de "${App.rotaPara.nome}": ${Cl.toLocaleLowerCase('pt-BR')} onde ela começa (${App.rotaPara.k === 'e' ? 'o evento vai' : 'o grupo vai'} para lá) e nos pontos do caminho.` + (tq ? '' : ' Duplo clique ou Enter termina; Esc cancela.');
         if (!n) return `${Cl} para pôr o começo ${f === 't' ? 'da rota' : 'da frente de batalha'}.`;
         return tq ? 'Toque para mais pontos; toque de novo no último para terminar.' : 'Clique para mais pontos. Duplo clique ou Enter termina.' + fim;
       }
@@ -2135,7 +2173,10 @@
     if (!dentroDoMapa(p, 2)) return null;
     const q = preso(p);
     if (k === 'm') return criar('m', Object.assign({ x: q.x, y: q.y, ic: opt('ic'), rumor: !!opt('rumor') }, extra));
-    if (k === 'g') return criar('g', Object.assign({ x: q.x, y: q.y }, extra));
+    if (k === 'g') {
+      const tg = opt('tipoGrupo'), campos = N().camposDoTipo ? N().camposDoTipo(tg) : {};
+      return criar('g', Object.assign({ x: q.x, y: q.y }, campos, extra), { caravana: 'nova caravana', patrulha: 'nova patrulha', exercito: 'novo exército' }[campos.tipo]);
+    }
     if (k === 'e') return criar('e', Object.assign({ x: q.x, y: q.y, tipo: opt('tipo'), r: RAIO_EVENTO, ini: (App.mapa.cal && App.mapa.cal.dia) || 0, peso: N().pesoPadrao(opt('tipo')) }, extra));
     return null;
   }
@@ -2247,6 +2288,26 @@
     const campos = { pts: pts.map(q => q.slice()) };
     let rot = null;
     if (k === 't') campos.via = opt('via');
+    // (lote 7, parte 5b) "Desenhar a rota" no painel de um grupo do mundo (ou de um evento que anda): a rota nasce escondida
+    // no mapa (e dos jogadores) e já é dele, que vai para o começo dela — um passo de desfazer só
+    if (k === 't' && App.rotaPara) {
+      const alvo = App.rotaPara;
+      App.rotaPara = null;
+      let id = null;
+      App.mudar('desenhar a rota de "' + alvo.nome + '"', d => {
+        const o = (d.objs || []).find(x => x.id === alvo.id);
+        if (!o) return false;
+        const rt = N().objNovo('t', Object.assign({ esc: true, oculto: true, nome: 'Rota de ' + alvo.nome }, campos));
+        if (!rt) return false;
+        d.objs.push(rt);
+        o.rota = rt.id; o.prog = 0; o.x = rt.pts[0][0]; o.y = rt.pts[0][1]; delete o.sentido; delete o.espera;
+        id = o.id;
+      });
+      if (App.ferramenta !== 'sel') App.usarFerramenta('sel');
+      if (id) { App.selecionar([id]); if (painelVisivel()) abrirAba('selecao'); }
+      desenharRascunho(); desenharOpts(); atualizarDica();
+      return;
+    }
     if (k === 'f' || k === 'z') { campos.a = opt('a') || null; campos.b = opt('b') || null; }
     if (k === 'z') campos.ini = (App.mapa.cal && App.mapa.cal.dia) || 0;
     if (k === 'l') {
@@ -2467,6 +2528,8 @@
   }
   function terminarGesto(gg, p, e) {
     const editar = podeEditar();
+    // (lote 7, parte 5b) o clique que o painel pediu (escolherPonto): vai para quem pediu, e nada mais acontece
+    if (pegando && (gg.tipo === 'fundo' || gg.tipo === 'objeto')) { const pg = pegando; pegando = null; palco.classList.remove('pegando'); atualizarDica(); pg.ok(p); return; }
     switch (gg.tipo) {
       case 'fundo':
         if (!gg.shift && (App.sel || []).length) App.selecionar([]);
@@ -2680,7 +2743,8 @@
     if (k === 'Escape') {
       if (g) { cancelarGesto(); e.preventDefault(); return; }
       if (medindo) { cancelarMedida(); e.preventDefault(); return; }
-      if (rasc) { cancelarRascunho(); e.preventDefault(); return; }
+      if (pegando) { cancelarPonto(); e.preventDefault(); return; }
+      if (rasc) { cancelarRascunho(); e.preventDefault(); if (App.rotaPara) { App.rotaPara = null; App.usarFerramenta('sel'); } return; }
       if (regua) { regua = null; desenharRascunho(); atualizarDica(); e.preventDefault(); return; }
       // numa ferramenta de criar, Esc volta para Selecionar (como a dica promete); em Selecionar, limpa a seleção
       if (editar && App.ferramenta !== 'sel') { App.usarFerramenta('sel'); e.preventDefault(); return; }
@@ -2752,6 +2816,27 @@
     medindo = null; regua = null;
     m.ok(null);
     if (App.ferramenta !== m.ant) App.usarFerramenta(m.ant); else agendar();
+  }
+  /* (lote 7, parte 5b) Esperar um clique no mapa (a parada na rota): a dica diz o que fazer; Esc, outra ferramenta ou
+     outro pedido cancelam (null). Arrastar continua andando pelo mapa. */
+  function escolherPonto(dica) {
+    if (pegando) cancelarPonto();
+    if (!App || !M || !palco) return Promise.resolve(null);
+    return new Promise(ok => {
+      rasc = null;
+      pegando = { ok, dica: String(dica || 'Clique no mapa.') };
+      if (App.ferramenta !== 'sel') App.usarFerramenta('sel');
+      palco.classList.add('pegando');
+      atualizarDica();
+    });
+  }
+  function cancelarPonto() {
+    if (!pegando) return;
+    const pg = pegando;
+    pegando = null;
+    if (palco) palco.classList.remove('pegando');
+    atualizarDica();
+    pg.ok(null);
   }
   function medir() {
     if (medindo) { const m = medindo; medindo = null; m.ok(null); }
@@ -2856,6 +2941,8 @@
       if (rasc && rasc.k !== tipoDoRasc()) rasc = null;
       if (f !== 'd' && regua && !regua.manter) regua = null;
       if (medindo && App.ferramenta !== 'd') { const m = medindo; medindo = null; m.ok(null); }
+      if (pegando && App.ferramenta !== 'sel') cancelarPonto();
+      if (App.rotaPara && App.ferramenta !== 't') App.rotaPara = null;
       if (g) cancelarGesto();
       fecharMenus();
       agendar();
@@ -2870,6 +2957,8 @@
     caber,
     paraMundo,
     medir,
+    escolherPonto,
+    cancelarPonto,
     ferramentas: FERRAMENTAS.map(f => ({ id: f.id, nome: f.nome, tecla: f.tecla })),
     get zoom() { return V.z; },
     set zoom(z) { if (palco) zoomNoMeio(z / V.z); },
