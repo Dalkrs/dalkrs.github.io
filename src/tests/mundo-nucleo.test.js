@@ -714,4 +714,28 @@ function mundo() {
   ok(N.terrenosQueFaltam(cheio).length === 4, 'cabendo no limite de 40 tipos de terreno');
 }
 
+/* ================= lote 7, parte 4b: o que vai do mapa para as cenas ================= */
+{
+  // quando escurece: o entardecer no 8º tempo e a noite no 9º, num dia de 10 (o mestre muda)
+  const cal10 = N.normalizarMapa({}).cal;
+  const q = N.quandoEscurece(cal10);
+  ok(q.ent === 8 && q.noi === 9 && q.padraoEnt === 8 && q.padraoNoi === 9, 'de fábrica, num dia de 10 tempos: entardecer no 8º, noite no 9º: ' + j(q));
+  const hora = (cal, t) => N.horaDoTempo(Object.assign({}, cal, { tempo: t }));
+  ok(j([0, 6, 7, 8, 9].map(t => hora(cal10, t))) === j(['dia', 'dia', 'entardecer', 'noite', 'noite']), 'a hora de cada tempo: dia até o 7º, entardecer no 8º, noite no 9º e no 10º');
+  const q4 = N.quandoEscurece({ tpd: 4 }), q3 = N.quandoEscurece({ tpd: 3 });
+  ok(q4.ent === 2 && q4.noi === 3 && q3.ent === 4 && q3.noi === 4 && j([0, 1, 2].map(t => hora({ tpd: 3 }, t))) === j(['dia', 'dia', 'dia']), 'num dia de 4 tempos, entardecer no 2º e noite no 3º; com menos de 4, de fábrica não escurece');
+  const meu = N.normalizarMapa({ cal: { tpd: 10, tempo: 2, ent: 3, noi: 4 } }).cal;
+  ok(meu.ent === 3 && meu.noi === 4 && N.horaDoTempo(meu) === 'entardecer' && hora(meu, 3) === 'noite' && hora(meu, 1) === 'dia', 'o mestre diz quando escurece (entardecer no 3º, noite no 4º) e a hora segue');
+  const sem = N.normalizarMapa({ cal: { ent: '', noi: 'x' } }).cal, sem2 = N.normalizarMapa({ cal: { ent: 'x', noi: '' } }).cal, fora = N.normalizarMapa({ cal: { ent: 0, noi: 500 } }).cal;
+  ok(!('ent' in sem) && !('noi' in sem) && !('ent' in sem2) && !('noi' in sem2) && fora.ent === 1 && fora.noi === N.LIMITES.tempos + 1, 'vazio ou inválido volta ao de fábrica (não fica guardado); fora da faixa, fica no limite (um tempo depois do último quer dizer "nunca")');
+  ok(N.horaDoTempo(null) === 'dia' && N.horaDoTempo(undefined) === 'dia', 'sem calendário, é dia');
+  ok(j(N.normalizarMapa({ cal: { tpd: 10 } }).cal).indexOf('"ent"') < 0, 'um mapa sem a escolha não ganha campos novos');
+  // o estilo das cenas, por região
+  ok(j(Object.keys(N.ESTILOS_CENA)) === j(['comum', 'oriental', 'nordico', 'desertico', 'elfico', 'anao']) && N.ESTILOS_CENA.nordico === 'Nórdico', 'os seis estilos das cenas, com os nomes da janela das Cenas');
+  const rg = (estilo, extra) => N.normalizarMapa({ objs: [Object.assign({ id: 'rg1', k: 'r', pts: [[0, 0], [100, 0], [100, 100]], estilo }, extra || {})] }).objs[0];
+  ok(rg('nordico').estilo === 'nordico' && !('estilo' in rg('xyz')) && !('estilo' in rg(undefined)) && !('estilo' in rg('__proto__')), 'a região guarda o estilo das cenas só quando é um dos seis');
+  const pub = N.projetar(N.normalizarMapa({ objs: [{ id: 'rg1', k: 'r', pts: [[0, 0], [100, 0], [100, 100]], estilo: 'elfico', nome: 'Bosque' }] }));
+  ok(pub.objs.length === 1 && !('estilo' in pub.objs[0]) && pub.objs[0].nome === 'Bosque', 'quem joga recebe a região sem o estilo das cenas (é do mestre)');
+}
+
 end();

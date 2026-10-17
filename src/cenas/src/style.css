@@ -492,6 +492,10 @@ button { cursor: pointer; }
 .modal-t { margin: 0; font: 600 23px/1.15 var(--display); text-wrap: balance; }
 .modal-p { margin: 0; color: var(--fg-2); font-size: 13.5px; overflow-wrap: anywhere; }
 .modal-a { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+/* (lote 7, parte 4b) numa janela comprida (o gerador), os botões ficam sempre à vista, presos embaixo: o resto rola por
+   trás deles, com um esmaecido em cima */
+.modal > .modal-a { position: sticky; bottom: -16px; z-index: 2; margin: 0 -20px -16px; padding: 4px 20px 16px; background: var(--surface); }
+.modal > .modal-a::before { content: ''; position: absolute; left: 0; right: 0; top: -12px; height: 12px; background: linear-gradient(to bottom, transparent, var(--surface)); pointer-events: none; }
 /* lista para marcar (as cenas do navegador que vão para a mesa) */
 .picks { display: flex; flex-direction: column; gap: 4px; max-height: min(46vh, 340px); overflow-y: auto; padding: 2px; }
 .pick { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); cursor: pointer; }

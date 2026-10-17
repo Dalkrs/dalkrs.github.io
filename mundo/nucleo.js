@@ -117,6 +117,8 @@
   // As letras dos textos livres (a tela diz qual fonte é cada uma)
   const FONTES = { mapa: { nome: 'De mapa antigo' }, classica: { nome: 'Clássica, inclinada' }, simples: { nome: 'Simples' } };
   const RELACOES = { alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' };
+  // (lote 7, parte 4b) os estilos das cenas geradas (os da aba Cenas): a região diz qual vale para o que é gerado nela
+  const ESTILOS_CENA = { comum: 'Comum', oriental: 'Oriental', nordico: 'Nórdico', desertico: 'Desértico', elfico: 'Élfico', anao: 'Anão' };
   /* (lote 6) A honra de um grupo, de −5 a +5, com um ícone junto dele no mapa (o estilo) — mais enfeitado quanto
      maior, rachado e escuro quando negativa. Sem estilo, o grupo não mostra honra. */
   const HONRA = { elmo: 'Elmo medieval', kabuto: 'Kabuto', katana: 'Katana', turbante: 'Turbante', coroa: 'Coroa',
@@ -899,7 +901,9 @@
         if (!pts) return null;
         const enc = ehObj(o.enc) ? o.enc : {};
         const itens = (Array.isArray(enc.itens) ? enc.itens : []).filter(ehObj).slice(0, 200).map(it => ({ p: inteiro(it.p, 1, 1, 1e6), txt: texto(it.txt) }));
-        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens }, pai: idRef(o.pai) });
+        const r = Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), custo: custoOuNada(o.custo), enc: { chance: inteiro(enc.chance, 0, 0, 100), itens }, pai: idRef(o.pai) });
+        if (tem(ESTILOS_CENA, o.estilo)) r.estilo = o.estilo;          // (lote 7, parte 4b) o estilo das cenas geradas aqui
+        return r;
       }
       case 'e': {
         if (!lugar()) return null;
@@ -949,7 +953,26 @@
     if (!meses.length) meses = copia(CAL_PADRAO.meses);
     const tpd = inteiro(c.tpd, TEMPOS_DIA, 1, MAX_TEMPOS);
     const sem0 = Number.isInteger(c.sem0) && c.sem0 >= 0 && c.sem0 <= 6 ? c.sem0 : null;
-    return { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1), sem0 };
+    const out = { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1), sem0 };
+    // (lote 7, parte 4b) quando escurece: o tempo em que começa o entardecer e o da noite (sem eles, os de fábrica)
+    if (c.ent != null && c.ent !== '') out.ent = inteiro(c.ent, null, 1, MAX_TEMPOS + 1);
+    if (c.noi != null && c.noi !== '') out.noi = inteiro(c.noi, null, 1, MAX_TEMPOS + 1);
+    if (out.ent == null) delete out.ent;
+    if (out.noi == null) delete out.noi;
+    return out;
+  }
+  /* (lote 7, parte 4b) A hora de um tempo do dia, para as cenas: o entardecer começa no 8º tempo de 10 e a noite no
+     9º (o mestre muda, no calendário do mapa). Um dia com menos de 4 tempos não tem entardecer nem noite de fábrica. */
+  const entDe = tpd => (tpd >= 4 ? tpd - 2 : tpd + 1);
+  const noiDe = tpd => (tpd >= 4 ? tpd - 1 : tpd + 1);
+  function quandoEscurece(cal) {
+    const tpd = tpdDe(cal), ent = ehObj(cal) && Number.isInteger(cal.ent) ? cal.ent : entDe(tpd), noi = ehObj(cal) && Number.isInteger(cal.noi) ? cal.noi : noiDe(tpd);
+    return { ent, noi, padraoEnt: entDe(tpd), padraoNoi: noiDe(tpd) };
+  }
+  // 'dia', 'entardecer' ou 'noite', pelo tempo de agora (1º, 2º… do dia)
+  function horaDoTempo(cal) {
+    const tpd = tpdDe(cal), t = inteiro(ehObj(cal) ? cal.tempo : 0, 0, 0, tpd - 1) + 1, q = quandoEscurece(cal);
+    return t >= q.noi ? 'noite' : t >= q.ent ? 'entardecer' : 'dia';
   }
   function normImg(v, larg, alt) {
     if (!ehObj(v) || typeof v.url !== 'string' || v.url.length > 2048 || !/^(https?:\/\/|idb:)/i.test(v.url)) return null;
@@ -1282,7 +1305,7 @@
         // o evento como ele está hoje: o fim planejado e o quanto ainda vai crescer são do mestre
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null;
       }
-      else if (o.k === 'r') { delete o.enc; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'z') {
@@ -1312,7 +1335,7 @@
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
-    nevoaCobre, projetar, copia, escalarMapa,
+    nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;

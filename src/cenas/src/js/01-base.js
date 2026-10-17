@@ -569,7 +569,7 @@ const PERMS = [
 ];
 
 const WALL_KINDS = [
-  ['wall', 'Parede'], ['door', 'Porta'], ['secret', 'Porta secreta'], ['window', 'Janela'], ['veil', 'Cortina'],
+  ['wall', 'Parede'], ['door', 'Porta'], ['secret', 'Porta secreta'], ['window', 'Janela'], ['veil', 'Cortina'], ['mureta', 'Mureta'],
 ];
 // Abertura: tudo o que não é parede comum (porta, porta secreta, janela, cortina). Toda abertura abre e fecha.
 const isOpening = w => w.k === 'door' || w.k === 'window' || w.k === 'veil';
@@ -581,9 +581,12 @@ const OPENING_NAMES = { door: ['porta', 'portas'], window: ['janela', 'janelas']
      porta, secreta   barra            barra               nada
      janela           livre            barra               nada
      cortina          barra (*)        livre               nada
+     mureta           livre            barra               (não abre)
    (*) menos a de quem está encostado nela. Isso depende de quem olha, então fica em Walls.sightFor;
-       aqui a cortina fechada conta como "barra a visão". */
-const wallBlocksSight = w => !wallOpen(w) && w.k !== 'window';
+       aqui a cortina fechada conta como "barra a visão".
+   (lote 7, parte 4b) A mureta (a amurada do navio, o parapeito, a mureta de pedra) é uma parede baixa: deixa ver, não
+   deixa passar, e não abre (por isso não tem o ícone das aberturas). */
+const wallBlocksSight = w => !wallOpen(w) && w.k !== 'window' && w.k !== 'mureta';
 const wallBlocksMove = w => !wallOpen(w) && w.k !== 'veil';
 
 const TONES = [
@@ -683,7 +686,7 @@ function normalizeScene(sc) {
   if (!Array.isArray(sc.targets)) sc.targets = [];
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
-    if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil'].includes(w.k)) w.k = 'wall';
+    if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
     w.open = !!w.open; w.locked = !!w.locked; w.secret = w.k === 'door' && !!w.secret;     // janela e cortina também abrem e trancam
   }
   for (const e of sc.effects) {
@@ -723,7 +726,8 @@ function normalizeScene(sc) {
     // forma) ou o bairro do mapa de bairros
     const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
-    else if (gera && palavra(gera.t)) t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 16), h: clamp(Math.round(Number(gera.h)) || 4, 2, 16), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' ? 'oct' : 'ret' };
+    // (parte 4b: o navio — o casco vai até 32 quadrados, e a forma 'navio' tem a proa do lado p)
+    else if (gera && palavra(gera.t)) t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 32), h: clamp(Math.round(Number(gera.h)) || 4, 2, 32), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' || gera.f === 'navio' ? gera.f : 'ret' };
     else delete t.gera;
   }
   // (lote 7) o mapa de bairros guarda com que escolhas, semente e trava a cidade foi feita (para recortar os bairros)

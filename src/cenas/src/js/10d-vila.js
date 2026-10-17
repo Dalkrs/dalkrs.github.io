@@ -538,6 +538,7 @@ const Vila = (() => {
      { hora, clima } — a hora do dia e o clima da cena; à noite (e no breu), uma luz por dentro de cada casa. */
   async function criar(p, nome, ex) {
     const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
+    if (ex && typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;   // (o id que o Mapa-múndi já ligou ao marcador)
     sc.cols = p.W; sc.rows = p.H;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;      // as paredes das casas escondem o que está lá dentro

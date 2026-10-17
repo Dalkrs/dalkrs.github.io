@@ -91,7 +91,8 @@ const Walls = (() => {
       }
       const pcs = remnants(w, openings, tol, min);
       d.pieces.set(w.id, pcs);
-      for (const q of pcs) { d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
+      const baixa = w.k === 'mureta';                            // (a mureta barra a passagem, mas não a visão)
+      for (const q of pcs) { if (!baixa) d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
     }
     // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
     const zb = FX.barreiras ? FX.barreiras(sc) : null;

@@ -223,8 +223,18 @@ async function start(snap) {
   Store.on('commit', e => { if (e.ops.some(op => op.t === 'scn' && op.p && 'name' in op.p)) listar(); });
   listar();
   // Outro sistema pediu uma cena: { cena: id } abre a que existe; { criar: { id, nome } } cria (uma vez) e abre.
+  // (lote 7, parte 4b) { gerar: { lugar, op, estilo, hora, clima, nome }, cena? } — o Mapa-múndi pede um lugar gerado: a
+  // janela "Gerar um lugar" abre já preenchida (com o id da cena, se o marcador do mapa já leva a ela); se a cena já
+  // existe, só abre a cena.
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
     if (!alvo || !isGM()) return;
+    const ger = alvo.gerar && typeof alvo.gerar === 'object' ? alvo.gerar : null;
+    if (ger && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
+      if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o lugar de novo no Mapa-múndi.'); return; }
+      Gerador.abrir(typeof ger.lugar === 'string' ? ger.lugar : 'encontro', { op: ger.op && typeof ger.op === 'object' ? ger.op : null, estilo: ger.estilo, hora: ger.hora, clima: ger.clima,
+        nome: typeof ger.nome === 'string' ? ger.nome : null, id: typeof alvo.cena === 'string' ? alvo.cena : null });
+      return;
+    }
     const pedido = alvo.criar && typeof alvo.criar.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(alvo.criar.id) ? alvo.criar : null;
     const id = pedido ? pedido.id : alvo.cena;
     if (pedido && !Store.S.scenes[id]) {
@@ -263,7 +273,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Interior, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Interior, Encontro, Navio, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

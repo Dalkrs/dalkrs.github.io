@@ -846,6 +846,7 @@ const Cidade = (() => {
     ex = ex || {};
     const bairros = p.modo === 'bairros';
     const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
+    if (ex && typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;   // (o id que o Mapa-múndi já ligou ao marcador)
     const tom = TONES.find(t => t.id === ex.hora) || TONES[0];
     sc.tone = tom.id; sc.light = tom.light;
     sc.weather = { k: WEATHERS.some(w => w[0] === ex.clima) ? ex.clima : '', pow: 0.6 };

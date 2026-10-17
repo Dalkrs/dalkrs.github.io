@@ -969,14 +969,16 @@ const UI = (() => {
     ['secret', 'Secreta', null, 'Porta secreta: para os jogadores é uma parede, até você revelar'],
     ['window', 'Janela', null, 'Janela: deixa ver e deixa a luz passar; fechada, não deixa atravessar'],
     ['veil', 'Cortina', null, 'Cortina: fechada, barra a visão e a luz (menos de quem está encostado nela), mas deixa atravessar'],
+    ['mureta', 'Mureta', null, 'Mureta: uma parede baixa (a amurada do navio, um parapeito): deixa ver e a luz passa, mas não deixa atravessar; não abre'],
   ];
-  const WALL_NAMES = { wall: 'Parede', door: 'Porta', secret: 'Porta secreta', window: 'Janela', veil: 'Cortina' };
+  const WALL_NAMES = { wall: 'Parede', door: 'Porta', secret: 'Porta secreta', window: 'Janela', veil: 'Cortina', mureta: 'Mureta' };
   const WALL_NOTES = {
     wall: 'Barra a visão, a luz e a passagem dos jogadores.',
     door: 'Fechada, barra visão, luz e passagem. Clique no ícone dela no mapa para abrir e fechar.',
     secret: 'Para os jogadores é uma parede comum: sem ícone e sem como abrir. Quando acharem a porta, revele, e ela vira uma porta normal.',
     window: 'Deixa ver e deixa a luz passar. Fechada, barra a passagem; aberta, deixa atravessar. Clique no ícone dela no mapa para abrir e fechar.',
     veil: 'Fechada, barra a visão e a luz, menos para quem está encostado nela; atravessar, pode sempre. Aberta, não barra nada. Clique no ícone dela no mapa para abrir e fechar.',
+    mureta: 'Uma parede baixa: deixa ver e deixa a luz passar, mas não deixa atravessar. Não abre (para passar, apague um trecho ou ponha uma porta em cima).',
   };
   const wallKindOf = w => (w.k === 'door' && w.secret ? 'secret' : w.k);
 
@@ -2099,6 +2101,8 @@ const UI = (() => {
           e.k === 'line' ? field('Largura (q)', inNum('fx-w', e.w, v => U({ w: v }), { min: 0.5, max: 20, step: 0.5 })) : null,
           e.k !== 'circ' ? field(e.k === 'rect' ? 'Rotação (°)' : 'Direção (°)', inNum('fx-d', Math.round(e.dir || 0), v => U({ dir: ((v % 360) + 360) % 360 }), { min: -360, max: 720, step: 15 })) : null),
         field('Intensidade', inRange('fx-p', e.pow, 0.2, 1, 0.05, v => Store.upd('effects', e.id, { pow: v }), 'Intensidade do efeito')),
+        // (lote 7, parte 4b) leve: um véu fraco e o contorno tracejado (as zonas dos lugares gerados, por cima do desenho do fundo)
+        gm ? toggle('fx-leve', !!e.leve, v => U({ leve: v }, v ? 'Efeito leve' : 'Efeito cheio'), 'Leve: só um véu e o contorno tracejado (o desenho do fundo já mostra)') : null,
         note(e.k === 'rect' ? 'No mapa, a bolinha no meio do lado gira o retângulo e muda a largura; o quadradinho do canto muda largura e altura.' : 'Arraste a bolinha na borda do efeito para mudar o tamanho e a direção.')),
       sec('s-fx3', 'Duração', true,
         field('Rodadas', inCount('fx-dur', e.dur || 0, v => U({ dur: v, dur0: v, at: v && sc.turn.on ? sc.turn.cur : null }, 'Duração do efeito'), { label: 'Rodadas que o efeito ainda dura' })),

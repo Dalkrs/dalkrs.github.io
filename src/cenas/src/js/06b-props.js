@@ -95,6 +95,27 @@ const Props = (() => {
     c.beginPath(); c.moveTo(ate + dir * R * 0.06, ya); c.lineTo(ate - dir * R * 0.14, ya - R * 0.15); c.lineTo(ate - dir * R * 0.14, ya + R * 0.15); c.closePath(); c.fill();
   }
 
+  /* (lote 7, parte 4b) Os marcadores do encontro, só do mestre: a chegada (a bandeira verde) e a emboscada (as duas
+     adagas cruzadas no vermelho). Nascem ocultos dos jogadores. */
+  function marcaEncontro(c, R, chegada) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, chegada ? ['#4fae6a', '#2f7f48', '#1d5532'] : ['#d0574a', '#a8352c', '#6e1e18']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#f6e7c4'; c.stroke();
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    if (chegada) {
+      c.strokeStyle = '#f6e7c4'; c.lineWidth = R * 0.09; c.beginPath(); c.moveTo(-R * 0.28, R * 0.48); c.lineTo(-R * 0.28, -R * 0.5); c.stroke();
+      c.fillStyle = '#f6e7c4'; c.beginPath(); c.moveTo(-R * 0.24, -R * 0.5); c.quadraticCurveTo(R * 0.1, -R * 0.62, R * 0.46, -R * 0.4); c.quadraticCurveTo(R * 0.12, -R * 0.24, -R * 0.24, -R * 0.08); c.closePath(); c.fill();
+    } else {
+      for (const s of [-1, 1]) {
+        c.save(); c.rotate(s * Math.PI / 4);
+        c.fillStyle = '#e8edf2'; c.beginPath(); c.moveTo(0, -R * 0.56); c.lineTo(R * 0.08, -R * 0.08); c.lineTo(-R * 0.08, -R * 0.08); c.closePath(); c.fill();
+        c.fillStyle = '#c9a24a'; c.fillRect(-R * 0.17, -R * 0.08, R * 0.34, R * 0.07);
+        c.fillStyle = '#5a3a22'; c.fillRect(-R * 0.045, -R * 0.01, R * 0.09, R * 0.36);
+        c.restore();
+      }
+    }
+  }
+
   /* ---- O catálogo ---- */
   const G = [
     { id: 'luz', n: 'Luzes' },
@@ -647,6 +668,9 @@ const Props = (() => {
     // (lote 7) os marcadores de passagem: levam a outra cena (dois cliques, só para o mestre); nascem ocultos dos jogadores
     entrada: { n: 'Entrada', g: 'perigo', size: 1, passagem: 'entra', draw(c, R) { marcaPassagem(c, R, true); } },
     saida: { n: 'Saída', g: 'perigo', size: 1, passagem: 'sai', draw(c, R) { marcaPassagem(c, R, false); } },
+    // (lote 7, parte 4b) os marcadores do encontro gerado: só do mestre (nascem ocultos)
+    chegada: { n: 'Chegada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, true); } },
+    emboscada: { n: 'Emboscada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, false); } },
   };
   const ORDER = Object.keys(P);
 
@@ -677,7 +701,7 @@ const Props = (() => {
   function novo(sc, id, x, y, size, hidden) {
     const def = P[id];
     // (o marcador de passagem é do mestre: nasce sempre oculto dos jogadores)
-    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem });
+    const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem || !!def.marca });
     t.vis = { on: false, range: 0, dark: 0 };
     t.color = '#3a3226';
     if (def.luz) t.light = { on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c, fl: true };

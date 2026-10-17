@@ -1192,7 +1192,9 @@
         { dica: 'Os jogadores veem com um "?": pode ser verdade ou não.' }),
       campoEscolha('o:' + id + ':liga', 'Atalho', valorLiga(o.liga), opcoesLiga(o), grava('mudar o atalho', (x, v) => { x.liga = ligaDe(v); }),
         { dica: 'Para onde este marcador leva: dois cliques nele (ou o botão "Abrir") abrem a cena, o outro mapa ou o acampamento.' }),
-      o.liga ? linha(botaoLiga(o)) : null);
+      o.liga ? linha(botaoLiga(o)) : null,
+      // (lote 7, parte 4b) sem atalho, o lugar que o ícone é (cidade, vila, ponte, floresta, montanha) pode ser gerado
+      !o.liga && naCasca() && LUGAR_DO_ICONE[o.ic] ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null);
   }
   /* ---- atalhos: do Mapa-múndi para as Cenas, para outro mapa e para o Acampamento ---- */
   const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
@@ -1220,16 +1222,74 @@
     return { t, id, nome: nome || '' };
   }
   const textoLiga = l => (l.t === 'acampamento' ? 'Ir para o acampamento' : l.t === 'cena' ? 'Abrir a cena' + (l.nome ? ' "' + l.nome + '"' : '') : 'Abrir o mapa' + (l.nome ? ' "' + l.nome + '"' : ''));
+  // (lote 7, parte 4b) o marcador ligado a uma cena que ainda não existe (o mestre fechou o gerador sem criar): gera de novo
+  const aGerar = o => !!(o && o.liga && o.liga.t === 'cena' && LUGAR_DO_ICONE[o.ic] && App.podeEditar() && !cenasConhecidas().some(c => c.id === o.liga.id));
   function seguirLiga(o) {
     const l = o && o.liga;
     if (!l) return false;
     if (l.t === 'mapa') { antesDeSair(); return App.trocarMapa(l.id); }
     if (!naCasca()) { App.toast('Este atalho funciona dentro do site Tiny Cats (pela aba Mapa-múndi).'); return false; }
     if (l.t === 'acampamento') return TC.ponte.ir('acampamento');
+    if (aGerar(o)) return gerarLugar(o);
     return TC.ponte.ir('cenas', { cena: l.id });
   }
-  const botaoLiga = o => botao(textoLiga(o.liga), () => seguirLiga(o), { c: 'pri', k: 'o:' + o.id + ':seguir', title: 'Também abre com dois cliques no marcador' });
+  const botaoLiga = o => botao(aGerar(o) ? 'Gerar este lugar…' : textoLiga(o.liga), () => seguirLiga(o), { c: 'pri', k: 'o:' + o.id + ':seguir', title: aGerar(o) ? 'A cena deste marcador ainda não foi criada: abre a janela "Gerar um lugar" das Cenas, já preenchida' : 'Também abre com dois cliques no marcador' });
   const botaoAcampar = () => (naCasca() ? botao('Ir para o acampamento', () => TC.ponte.ir('acampamento'), { k: 'o:acampar', title: 'Abre a aba Acampamento: a fogueira, as provisões e o descanso do grupo' }) : null);
+  /* ---- (lote 7, parte 4b) do Mapa-múndi para a cena: a janela "Gerar um lugar" das Cenas, já preenchida ----
+     O terreno vem do hexágono (pelo desenho dele, para valer também nos terrenos que o mestre criou), o caminho da rota
+     do grupo, a hora do tempo de agora (o calendário diz quando escurece), o clima dos eventos que cobrem o lugar e o
+     estilo da região. Nada muda nas cenas até o mestre criar. */
+  const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } } };
+  const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
+    lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
+  const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };
+  function terrenoNoPonto(m, x, y) { const hx = N().hexDe(m, x, y); return hx ? N().hexInfo(m, hx.q, hx.r).terreno : null; }
+  function climaNoPonto(m, x, y) {
+    for (const e of N().eventosDoDia(m)) {
+      if (Math.hypot(e.x - x, e.y - y) > N().raioNoDia(e, m.cal.dia)) continue;
+      if (e.tipo === 'tempestade' || e.tipo === 'inundacao') return 'chuva';
+      if (e.tipo === 'incendio') return 'cinzas';
+      if (e.tipo === 'magia') return 'vagalumes';
+    }
+    return '';
+  }
+  // o estilo da região mais de dentro que tiver um (subindo pelas de fora dela)
+  function estiloNoPonto(m, x, y) {
+    for (const r of N().regioesEm(m, x, y)) { let o = r, n = 0; while (o && n < 12) { if (o.estilo) return o.estilo; o = o.pai ? achar(m, o.pai) : null; n++; } }
+    return '';
+  }
+  const comum = (m, x, y) => { const e = estiloNoPonto(m, x, y), out = { hora: N().horaDoTempo(m.cal), clima: climaNoPonto(m, x, y) }; if (e) out.estilo = e; return out; };
+  // "Gerar a cena aqui": um encontro onde o grupo está
+  function gerarAqui(g) {
+    const m = App.mapa;
+    if (!m || !naCasca() || !App.podeEditar()) return false;
+    const ter = terrenoNoPonto(m, g.x, g.y), rt = g.rota ? achar(m, g.rota) : null, via = rt ? rt.via : '';
+    let op;
+    if (via === 'mar') op = { terreno: 'agua', situacao: 'navio' };
+    else if (via === 'rio') op = { terreno: 'agua', situacao: 'barco' };
+    else {
+      const e = ENC_DA_TEX[(ter && ter.tex) || ''] || null, cam = via === 'estrada' ? 'estrada' : via === 'trilha' ? 'trilha' : 'nenhum';
+      let terreno = e ? e[0] : (cam !== 'nenhum' ? 'estrada' : 'campo');
+      if (terreno === 'campo' && cam !== 'nenhum' && !(e && e[1])) terreno = 'estrada';
+      op = { terreno, situacao: e && e[1] && terreno === e[0] ? e[1] : 'surpresa', caminho: terreno === 'estrada' && cam === 'nenhum' ? 'trilha' : cam };
+    }
+    return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'encontro', op }, comum(m, g.x, g.y)) });
+  }
+  // "Gerar este lugar…": o lugar do ícone do marcador; o marcador fica ligado à cena que vai nascer (um passo de desfazer)
+  function gerarLugar(o) {
+    const m = App.mapa, def = LUGAR_DO_ICONE[o.ic];
+    if (!m || !def || !naCasca() || !App.podeEditar()) return false;
+    let id = o.liga && o.liga.t === 'cena' ? o.liga.id : null;
+    if (!id) {
+      id = 'cena_mundo_' + Math.random().toString(36).slice(2, 10);
+      if (mudarObj(o.id, 'ligar o marcador à cena gerada', x => { x.liga = { t: 'cena', id, nome: (x.nome || '').trim() }; }) === false) return false;
+    }
+    const op = Object.assign({}, def.op || null);
+    if (def.lugar === 'encontro') op.caminho = 'nenhum';
+    else { const ter = terrenoNoPonto(m, o.x, o.y); op.terreno = VILA_DA_TEX[(ter && ter.tex) || ''] || 'campo'; }
+    const nome = (o.nome || '').trim();
+    return TC.ponte.ir('cenas', { cena: id, gerar: Object.assign({ lugar: def.lugar, op }, nome ? { nome } : null, comum(m, o.x, o.y)) });
+  }
   function setasNaGrade(ev) {
     const bs = [...this.querySelectorAll('button')], i = bs.indexOf(document.activeElement), col = 6;
     if (i < 0) return;
@@ -1472,6 +1532,8 @@
       botao('Andar 1 tempo', () => andar(id, 'tempo'), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'O grupo anda pela rota os cubos de um tempo de marcha, de hexágono em hexágono' : 'Escolha uma rota primeiro' }),
       botao('Andar 1 dia', () => andar(id, 'dia'), { k: 'o:andar-dia', off: !rota, title: rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Escolha uma rota primeiro' }),
       botao('Sortear encontro', () => sortearGrupo(id), { k: 'o:sortear', title: 'Usa a tabela de encontros da região onde o grupo está' })));
+    // (lote 7, parte 4b) um encontro onde o grupo está, na aba Cenas
+    if (naCasca()) out.push(linha(botao('Gerar a cena aqui', () => gerarAqui(o), { c: 'sm', k: 'o:gerar-cena', title: 'Abre a janela "Gerar um lugar" das Cenas na aba Encontro, já com o terreno, o caminho, a hora, o clima e o estilo daqui' })));
     if (rota && (o.prog > 0 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5)) {
       out.push(linha(botao('Pôr no começo da rota', () => mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; }), { c: 'sm', k: 'o:comeco' })));
     }
@@ -1558,6 +1620,10 @@
         h('span', { class: 'note', text: o.cor ? 'Cor própria' : f || fh ? 'Sem cor própria: a da facção' : 'Sem cor: aparece tracejada' }),
         o.cor ? botao('Tirar a cor', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null));
     }
+    // (lote 7, parte 4b) o estilo das cenas geradas aqui dentro (sem um: o da região de fora)
+    out.push(campoEscolha('o:' + id + ':estilo', 'Estilo das cenas', o.estilo || '', [['', p ? 'O de ' + nomeDe(p, m) : 'Nenhum (o da janela)']].concat(Object.entries(N().ESTILOS_CENA || {})),
+      grava('mudar o estilo das cenas', (x, v) => { if ((x.estilo || '') === v) return false; if (v) x.estilo = v; else delete x.estilo; }),
+      { dica: 'O estilo (Comum, Oriental, Nórdico…) com que a aba Cenas gera os lugares e os encontros daqui. Só o mestre vê.' }));
     // o custo de viajar por aqui: vale para cada hexágono com o centro dentro dela (menos o que tem custo próprio)
     out.push(campoNumero('o:' + id + ':custo', 'Custo de cada hexágono aqui (cubos)', o.custo, grava('mudar o custo da região', (x, n) => { x.custo = n; }),
       { decimal: true, min: 0.1, max: 9999, vazio: null, ph: 'o do terreno', dica: 'Vazio: cada hexágono custa o do terreno dele' + (p ? ' (o custo de ' + nomeDe(p, m) + ' não vale aqui dentro)' : '') + '. Só o mestre vê.' }));
@@ -1939,7 +2005,13 @@
         { dica: 'Escolha que dia da semana é hoje: os outros dias seguem sozinhos (de Segunda-Feira a Domingo). Aparece junto da data, para todos.' }),
       // (lote 6) a marcha dos grupos é contada em tempos: quantos tempos de marcha tem um dia
       campoNumero('mapa:tpd', 'Tempos de marcha por dia', cal.tpd || N_.TEMPOS_DIA || 10, n => App.mudar('mudar os tempos de marcha do dia', mm => { if (mm.cal.tpd === n) return false; mm.cal.tpd = n; mm.cal.tempo = Math.min(mm.cal.tempo || 0, n - 1); }),
-        { min: 1, max: (N_.LIMITES && N_.LIMITES.tempos) || 100, erro: 'Use de 1 a 100 tempos.', dica: 'Os grupos andam os cubos deles a cada tempo; a cada tantos tempos de marcha, passa um dia.' })));
+        { min: 1, max: (N_.LIMITES && N_.LIMITES.tempos) || 100, erro: 'Use de 1 a 100 tempos.', dica: 'Os grupos andam os cubos deles a cada tempo; a cada tantos tempos de marcha, passa um dia.' }),
+      // (lote 7, parte 4b) quando escurece: a hora das cenas geradas daqui (vazio: o de fábrica)
+      ...(() => { const q = N_.quandoEscurece ? N_.quandoEscurece(cal) : null; if (!q) return []; const max = ((N_.LIMITES && N_.LIMITES.tempos) || 100) + 1; return [h('div', { class: 'row' },
+        campoNumero('mapa:ent', 'Entardecer a partir do tempo', cal.ent == null ? null : cal.ent, n => App.mudar('mudar quando entardece', mm => { if ((mm.cal.ent == null ? null : mm.cal.ent) === n) return false; if (n == null) delete mm.cal.ent; else mm.cal.ent = n; }),
+          { min: 1, max, vazio: null, ph: String(q.padraoEnt), dica: 'As cenas geradas do mapa saem com a luz do entardecer a partir deste tempo do dia.' }),
+        campoNumero('mapa:noi', 'Noite a partir do tempo', cal.noi == null ? null : cal.noi, n => App.mudar('mudar quando anoitece', mm => { if ((mm.cal.noi == null ? null : mm.cal.noi) === n) return false; if (n == null) delete mm.cal.noi; else mm.cal.noi = n; }),
+          { min: 1, max, vazio: null, ph: String(q.padraoNoi), dica: 'E de noite a partir deste. Um tempo maior que o último do dia quer dizer "nunca".' }))]; })()));
     // névoa
     out.push(secao('Névoa',
       caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, ligarNevoa,

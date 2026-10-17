@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
-   Uma janela com uma aba por lugar (o Vilarejo e a Cidade; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
+   Uma janela com uma aba por lugar (o Vilarejo, a Cidade e o Encontro; os outros vêm depois), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
    (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
@@ -9,7 +9,7 @@
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR, Cidade.LUGAR];
+  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Encontro.LUGAR];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -40,7 +40,8 @@ const Gerador = (() => {
     return [p[0], p[1]];
   }
 
-  /* Abre a janela. lugarId: a aba que abre ('vila'); pre: escolhas que já vêm feitas ({ op, estilo, hora, clima }). */
+  /* Abre a janela. lugarId: a aba que abre ('vila'); pre: escolhas que já vêm feitas ({ op, estilo, hora, clima, relevo }) e,
+     quando quem pede é o Mapa-múndi, o nome da cena (nome) e o id que ela vai ter (id: o marcador do mapa já leva a ele). */
   function abrir(lugarId, pre) {
     if (!isGM()) return;
     const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
@@ -57,12 +58,14 @@ const Gerador = (() => {
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
       if (typeof pre.relevo === 'boolean') comum.relevo = pre.relevo;
     }
-    let nomeMexido = false, foco = -1, sobre = null, modeloNovo = false;
+    let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
+    const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
     const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
     const fundo = document.createElement('canvas');
     let cell = 10;
     const ctl = h('div', { class: 'ger-op' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
     const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    if (nomeMexido) inNome.value = pre.nome.trim().slice(0, 60);
     const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
       title: 'A mesma semente, com as mesmas escolhas, dá o mesmo lugar',
       onchange: () => { const v = Math.round(Number(inSemente.value)); if (v >= 1 && v <= 2147483647) { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = v; refazer(); } else inSemente.value = estadoDe(L).seed; },
@@ -221,7 +224,7 @@ const Gerador = (() => {
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
-          K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, 'Com relevo e formas (água, plataformas, torres, bandeirinhas)')));
+          K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)')));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
@@ -244,7 +247,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
             UI.closeModal();
             UI.switchScene(sc.id);
             UI.toast(l.feito(sc, p), { long: true });

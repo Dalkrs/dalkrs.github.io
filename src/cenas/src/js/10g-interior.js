@@ -21,9 +21,11 @@ const Interior = (() => {
     templo: { n: 'Templo', salas: ['nave', 'sacristia'], min: 2, grande: 0.72 },
     senhor: { n: 'Casa do senhor', salas: ['nobre', 'biblioteca', 'quarto', 'cozinha', 'quarto'], min: 4, grande: 0.42 },
     quartel: { n: 'Quartel', salas: ['refeitorio', 'dormitorio', 'arsenal'], min: 3 },
+    // (lote 7, parte 4b) o navio: a planta vem do Navio (do tamanho do convés, com o porão e as cabines)
+    navio: { n: 'Navio', salas: ['capitao', 'cabine', 'porao', 'alojamento', 'paiol'], min: 1, so: true },
   };
   const DO_VILAREJO = { capela: 'templo' };
-  const TIPOS_I = Object.keys(PLANTAS);
+  const TIPOS_I = Object.keys(PLANTAS).filter(k => !PLANTAS[k].so);      // (o navio só aparece no marcador de um navio)
   // os móveis de cada sala, na ordem em que entram (o tapete que vem primeiro fica por baixo da mesa); com "#", uma
   // arrumação: o estrado do altar, a colunata, os bancos e a pia de água benta da nave; o balcão no fundo da taverna e
   // da loja; o palquinho do bardo; a mesa alta no estrado do salão nobre e as colunas; a tina da forja; o alçapão do
@@ -52,7 +54,7 @@ const Interior = (() => {
   const TROCA = { oriental: { cadeira: 'almofada', vela: 'lanterna' }, desertico: { cadeira: 'almofada' }, anao: { vela: 'braseiro' } };
   const EXTRA = { nordico: { sala: 'fogueira', salao: 'fogueira', nobre: 'fogueira' }, elfico: { sala: 'flores', quarto: 'flores', salao: 'flores', nobre: 'flores' }, desertico: { sala: 'jarro', quarto: 'tapete' }, oriental: { sala: 'lanterna', salao: 'lanterna', nobre: 'lanterna' } };
   // o piso de cada tipo (pelo tipo do vilarejo que mais se parece)
-  const PISO_DE = { casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria' };
+  const PISO_DE = { casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria', navio: 'armazem' };
   const tipoValido = t => (PLANTAS[t] ? t : PLANTAS[DO_VILAREJO[t]] ? DO_VILAREJO[t] : 'casa');
   // o tamanho, para uma Entrada posta à mão (em quadrados de fora; a planta tem o dobro)
   const TAMANHOS_I = { pequeno: { n: 'Pequeno', w: 4, h: 4 }, medio: { n: 'Médio', w: 6, h: 5 }, grande: { n: 'Grande', w: 8, h: 7 } };
@@ -61,6 +63,7 @@ const Interior = (() => {
   // o: { tipo, w, h, p (o lado da porta), estilo, f (forma), seed }
   function gerar(o) {
     o = o || {};
+    if (o.tipo === 'navio' || o.f === 'navio') return Navio.planta(Object.assign({}, o, { tipo: 'navio' }));
     const tipo = tipoValido(o.tipo), PL = PLANTAS[tipo], estilo = Estilos.valido(o.estilo);
     const W = clamp(Math.round(Number(o.w) || 4) * 2, 6, 24), H = clamp(Math.round(Number(o.h) || 4) * 2, 6, 24);
     const seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
@@ -346,8 +349,8 @@ const Interior = (() => {
   /* ================= o desenho ================= */
   const M = 2;                                             // a margem em volta da planta, na cena (em quadrados)
   // a casa vista como o gerador de vilarejo vê (para o piso e as paredes de fora)
-  const casaDe = p => ({ x: M, y: M, w: p.W, h: p.H, forma: p.forma, corte: 2, porta: desloca(p.porta), janelas: p.janelas.map(desloca) });
-  const desloca = s => Object.assign({}, s, { x1: s.x1 + M, y1: s.y1 + M, x2: s.x2 + M, y2: s.y2 + M });
+  const casaDe = p => ({ x: M, y: M, w: p.W, h: p.H, forma: p.forma, corte: 2, proa: p.proa, porta: desloca(p.porta), janelas: p.janelas.map(desloca) });
+  const desloca = s => (s ? Object.assign({}, s, { x1: s.x1 + M, y1: s.y1 + M, x2: s.x2 + M, y2: s.y2 + M }) : null);
   function pintar(p, c) {
     const W = (p.W + 2 * M) * c, H = (p.H + 2 * M) * c, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est), piso = (TP[PISO_DE[p.tipo]] || TP.casa).piso;
     const cv = document.createElement('canvas'); cv.width = Math.round(W); cv.height = Math.round(H);
@@ -390,7 +393,7 @@ const Interior = (() => {
     g.drawImage(fundo, 0, 0);
     const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo((s.x1 + M) * cell, (s.y1 + M) * cell); g.lineTo((s.x2 + M) * cell, (s.y2 + M) * cell); g.stroke(); };
     g.lineCap = 'round';
-    seg(p.porta, '#7fd1ff', Math.max(2, cell * 0.24));
+    if (p.porta) seg(p.porta, '#7fd1ff', Math.max(2, cell * 0.24));
     for (const pw of p.paredes) seg(pw.porta, '#7fd1ff', Math.max(2, cell * 0.2));
     for (const j of p.janelas) seg(j, '#bff3ff', Math.max(2, cell * 0.2));
     // o relevo, as formas e a luz das janelas (como na cena)
@@ -414,7 +417,7 @@ const Interior = (() => {
     sc.bgColor = '#16130f'; sc.bg.stretch = true;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     const parede = (x1, y1, x2, y2, k) => sc.walls.push({ id: uid('wl'), k: k || 'wall', x1: (x1 + M) * c, y1: (y1 + M) * c, x2: (x2 + M) * c, y2: (y2 + M) * c, open: false, locked: false });
-    for (const s of Estilos.paredesDaCasa({ x: 0, y: 0, w: p.W, h: p.H, forma: p.forma, corte: 2, porta: p.porta, janelas: p.janelas })) parede(s.x1, s.y1, s.x2, s.y2, s.k);
+    for (const s of Estilos.paredesDaCasa({ x: 0, y: 0, w: p.W, h: p.H, forma: p.forma, corte: 2, proa: p.proa, porta: p.porta, janelas: p.janelas })) parede(s.x1, s.y1, s.x2, s.y2, s.k);
     for (const pw of p.paredes) {
       const pd = pw.porta, horiz = pw.y1 === pw.y2;
       if (horiz) { if (pd.x1 > pw.x1) parede(pw.x1, pw.y1, pd.x1, pw.y1); parede(pd.x1, pw.y1, pd.x2, pw.y1, 'door'); if (pw.x2 > pd.x2) parede(pd.x2, pw.y1, pw.x2, pw.y1); }
@@ -449,7 +452,7 @@ const Interior = (() => {
     if (!isGM() || !t || !fora) return;
     // o prédio da cidade (o marcador sabe o tipo, as medidas, a porta, o estilo e a semente) ou uma Entrada posta à mão
     const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t ? t.gera : null;
-    const st = g0 ? { tipo: tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
+    const st = g0 ? { tipo: g0.t === 'navio' ? 'navio' : tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
       : { tipo: 'casa', estilo: Estilos.valido(App.opt.genEstilo), seed: novaSemente(), tam: TAMANHOS_I[App.opt.intTam] ? App.opt.intTam : 'medio' };
     st.relevo = App.opt.genRelevo !== false;              // (a mesma chave da janela "Gerar um lugar")
     const medidas = () => {
@@ -468,7 +471,7 @@ const Interior = (() => {
       if (!nomeMexido) inNome.value = PLANTAS[plano.tipo].n + ' — por dentro';
     };
     const pintarC = () => ctl.replaceChildren(...[
-      field('Que prédio', seg('int-tipo', st.tipo, TIPOS_I.map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
+      field('Que prédio', seg('int-tipo', st.tipo, (st.tipo === 'navio' ? ['navio'] : TIPOS_I).map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
       g0 ? null : field('Tamanho', seg('int-tam', st.tam, Object.keys(TAMANHOS_I).map(k => [k, TAMANHOS_I[k].n, null, `${TAMANHOS_I[k].w * 2} × ${TAMANHOS_I[k].h * 2} quadrados`]), v => { st.tam = v; App.opt.intTam = v; pintarC(); refazer(); }), 'stack'),
       field('Estilo', seg('int-est', st.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { st.estilo = v; pintarC(); refazer(); }), 'stack'),
       K.toggle('int-relevo', st.relevo, v => { st.relevo = v; App.opt.genRelevo = v; pintarC(); refazer(); }, 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)')].filter(Boolean));
@@ -478,7 +481,8 @@ const Interior = (() => {
       body: h('div', { class: 'ger' },
         h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'int-outro', title: 'Sorteia outra planta para o mesmo prédio' })), resumoEl)),
         field('Nome da cena', inNome, 'stack'),
-        note((g0 ? 'A planta tem o dobro das medidas do prédio, dividida em salas' : 'A planta é dividida em salas') + ', com as portas de dentro fechadas, janelas e os móveis de cada sala. Sai uma cena nova, dentro desta (na lista de cenas), com a Saída junto da porta de entrada levando de volta; o marcador fica ligado a ela. A hora do dia é a desta cena. Nada sai escrito.')),
+        note(st.tipo === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Sai uma cena nova, dentro desta, com a Saída na escada da escotilha levando de volta ao convés; o marcador fica ligado a ela. Nada sai escrito.'
+          : (g0 ? 'A planta tem o dobro das medidas do prédio, dividida em salas' : 'A planta é dividida em salas') + ', com as portas de dentro fechadas, janelas e os móveis de cada sala. Sai uma cena nova, dentro desta (na lista de cenas), com a Saída junto da porta de entrada levando de volta; o marcador fica ligado a ela. A hora do dia é a desta cena. Nada sai escrito.')),
       actions: [{ label: 'Cancelar' }, {
         label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');

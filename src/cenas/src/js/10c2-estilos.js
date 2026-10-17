@@ -95,6 +95,7 @@ const Estilos = (() => {
      lados: as paredes da casa, em quadrados. Os quatro lados retos (n, s, o, l), sempre do menor para o maior, e, na
      casa de cantos cortados, as quatro diagonais (lado null). A porta e as janelas ficam nos lados retos. */
   function lados(k) {
+    if (k.forma === 'navio') return ladosDoCasco(k);
     const { x, y, w, h } = k, o = k.forma === 'oct' ? (k.corte === 2 ? 2 : 1) : 0;     // (a planta de dentro, no dobro, corta 2)
     const L = [
       { lado: 'n', x1: x + o, y1: y, x2: x + w - o, y2: y },
@@ -106,9 +107,27 @@ const Estilos = (() => {
       { lado: null, x1: x + w, y1: y + h - o, x2: x + w - o, y2: y + h }, { lado: null, x1: x + o, y1: y + h, x2: x, y2: y + h - o });
     return L;
   }
+  /* (lote 7, parte 4b) O casco de um navio visto de cima, na caixa (x, y, w, h): a popa reta (com os cantos
+     cortados) e a proa em ponta, do lado k.proa ('l', o padrão, ou 'o'). Os lados retos são os de cima, o de baixo e o
+     da popa; as quinas e a ponta da proa ficam sem lado (sem porta nem janela). */
+  const proaDe = k => Math.max(2, Math.min(Math.round(k.h * 0.9), Math.floor(k.w / 2)));
+  function cascoNaCaixa(k) {
+    const { x, y, w, h } = k, p = proaDe(k), esp = k.proa === 'o';
+    const X = v => (esp ? 2 * x + w - v : v);                     // (a proa do lado de lá: o espelho)
+    return { p, X, pts: [[x + 1, y], [x + w - p, y], [x + w, y + h / 2], [x + w - p, y + h], [x + 1, y + h], [x, y + h - 1], [x, y + 1]].map(([px, py]) => [X(px), py]) };
+  }
+  function ladosDoCasco(k) {
+    const { x, y, w, h } = k, { p, X } = cascoNaCaixa(k), esp = k.proa === 'o';
+    const seg = (lado, x1, y1, x2, y2) => { const a = X(x1), b = X(x2); return lado && a > b ? { lado, x1: b, y1, x2: a, y2 } : { lado, x1: a, y1, x2: b, y2 }; };
+    return [
+      seg('n', x + 1, y, x + w - p, y), seg('s', x + 1, y + h, x + w - p, y + h), seg(esp ? 'l' : 'o', x, y + 1, x, y + h - 1),
+      seg(null, x, y + 1, x + 1, y), seg(null, x + w - p, y, x + w, y + h / 2), seg(null, x + w, y + h / 2, x + w - p, y + h), seg(null, x + 1, y + h, x, y + h - 1),
+    ];
+  }
   // o contorno da casa (para recortar o piso): os cantos, em quadrados
   function contorno(k) {
     const { x, y, w, h } = k;
+    if (k.forma === 'navio') return cascoNaCaixa(k).pts;
     if (k.forma !== 'oct') return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
     const o = k.corte === 2 ? 2 : 1;
     return [[x + o, y], [x + w - o, y], [x + w, y + o], [x + w, y + h - o], [x + w - o, y + h], [x + o, y + h], [x, y + h - o], [x, y + o]];
@@ -597,11 +616,11 @@ const Estilos = (() => {
     if (relevo && relevo.length) {
       const cv = document.createElement('canvas'); cv.width = g.canvas.width; cv.height = g.canvas.height;
       const t = cv.getContext('2d'); t.setTransform(k, 0, 0, k, 0, 0);
-      for (const r of relevo) { try { Render.drawTer(t, terrenoNaCena(r, 64, 0, 0), sc, 1 / k); } catch (e) { /* (um tipo que a página não conhece) */ } }
+      for (const r of relevo) { try { const sh = terrenoNaCena(r, 64, 0, 0); if (r.a != null) sh.a = r.a; Render.drawTer(t, sh, sc, 1 / k); } catch (e) { /* (um tipo que a página não conhece) */ } }
       g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.62; g.drawImage(cv, 0, 0); g.restore();
     }
     if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, 0, 0); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
   }
-  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
+  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, proaDe, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
     quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia };
 })();

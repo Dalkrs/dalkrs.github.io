@@ -646,11 +646,11 @@ const Tools = (() => {
   };
 
   /* ---- Paredes, portas, janelas e cortinas ---- */
-  const WALL_COLORS = { wall: '#f0c26a', door: '#7fd1ff', secret: '#e39bff', window: '#8fe9ff', veil: '#b79bff' };
-  const WALL_LABELS = { wall: 'Parede', door: 'Porta', secret: 'Porta secreta', window: 'Janela', veil: 'Cortina' };
+  const WALL_COLORS = { wall: '#f0c26a', door: '#7fd1ff', secret: '#e39bff', window: '#8fe9ff', veil: '#b79bff', mureta: '#a8e08a' };
+  const WALL_LABELS = { wall: 'Parede', door: 'Porta', secret: 'Porta secreta', window: 'Janela', veil: 'Cortina', mureta: 'Mureta' };
   function wallProps(kind) {
     if (kind === 'door' || kind === 'secret') return { k: 'door', secret: kind === 'secret' };
-    return { k: kind === 'window' || kind === 'veil' ? kind : 'wall', secret: false };
+    return { k: kind === 'window' || kind === 'veil' || kind === 'mureta' ? kind : 'wall', secret: false };
   }
   function newWall(x1, y1, x2, y2, kind) {
     return Object.assign({ id: uid('wl'), x1, y1, x2, y2, open: false, locked: false }, wallProps(kind));

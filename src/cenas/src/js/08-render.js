@@ -205,9 +205,22 @@ const Render = (() => {
     const d = TERRENO_POR_ID[s.ter.t], h = Number(s.ter.h) || 0, pat = terPattern(c, d);
     const borda = tone(d.c, -0.5), pincel = s.k === 'free', w = pincel ? Math.max(4, s.sw || 0) : 0;
     // quanto mais alto, mais longe a sombra cai (até um limite); medido em quadrados da cena
-    const niveis = clamp(Math.abs(h) / (sc.grid.unit || 1), 0, 6), desloc = h > 0 ? (2 + niveis * 1.6) * Math.max(px, sc.cell / 90) : 0;
+    const niveis = clamp(Math.abs(h) / (sc.grid.unit || 1), 0, 6);
+    /* (lote 7, parte 4b) A área "leve" (opacidade guardada abaixo de 0,5: a do relevo dos lugares gerados, por cima de
+       um fundo que já desenha o morro, a água, o penhasco): translúcida, sem a sombra, com o contorno tracejado. As
+       outras (0,55, a de sempre) ficam como eram. */
+    const leve = s.a != null && s.a < 0.5, desloc = h > 0 && !leve ? (2 + niveis * 1.6) * Math.max(px, sc.cell / 90) : 0;
     c.save();
     c.lineJoin = c.lineCap = 'round';
+    if (leve) {
+      c.globalAlpha = clamp(s.a / 0.55, 0.12, 1);
+      terPath(c, s);
+      if (pincel) { c.lineWidth = w; c.strokeStyle = d.c; c.stroke(); if (pat) { c.strokeStyle = pat; c.stroke(); } }
+      else { c.fillStyle = d.c; c.fill(); if (pat) { c.fillStyle = pat; c.fill(); } }
+      if (!pincel) { c.globalAlpha = clamp(s.a / 0.55 * 2.6, 0.3, 1); c.setLineDash([7 * px, 5 * px]); c.lineWidth = 2 * px; c.strokeStyle = borda; c.stroke(); c.setLineDash([]); }
+      c.restore();
+      return;
+    }
     if (desloc) {                                           // a sombra de quem é alto
       c.save(); c.translate(desloc, desloc); terPath(c, s);
       if (pincel) { c.lineWidth = w; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke(); } else { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fill(); }
@@ -689,14 +702,14 @@ const Render = (() => {
       // parede: âmbar; porta: azul (tracejada se aberta); secreta: lilás; janela: ciano pontilhado; cortina: roxo tracejado curto.
       // Janela e cortina abertas ficam com o mesmo traço, mais espaçado.
       const open = wallOpen(w);
-      ctx.setLineDash(door ? (open ? [6 * px, 6 * px] : []) : w.k === 'window' ? [2 * px, (open ? 11 : 5) * px] : w.k === 'veil' ? (open ? [9 * px, 11 * px] : [9 * px, 4 * px, 2 * px, 4 * px]) : []);
+      ctx.setLineDash(door ? (open ? [6 * px, 6 * px] : []) : w.k === 'window' ? [2 * px, (open ? 11 : 5) * px] : w.k === 'veil' ? (open ? [9 * px, 11 * px] : [9 * px, 4 * px, 2 * px, 4 * px]) : w.k === 'mureta' ? [12 * px, 3 * px, 2 * px, 3 * px] : []);
       // Parede comum: só os trechos que sobraram dela (onde há uma abertura por cima, o traço é o da abertura).
       const pcs = pieces.get(w.id);
       ctx.beginPath();
       if (pcs) for (const q of pcs) { ctx.moveTo(q[0], q[1]); ctx.lineTo(q[2], q[3]); }
       else { ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); }
       ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 5.5 * px; ctx.stroke();
-      ctx.strokeStyle = sel ? '#ffffff' : door ? (w.secret ? '#e39bff' : w.locked ? '#ff8c7e' : '#7fd1ff') : w.k === 'window' ? '#8fe9ff' : w.k === 'veil' ? '#b79bff' : '#f0c26a';
+      ctx.strokeStyle = sel ? '#ffffff' : door ? (w.secret ? '#e39bff' : w.locked ? '#ff8c7e' : '#7fd1ff') : w.k === 'window' ? '#8fe9ff' : w.k === 'veil' ? '#b79bff' : w.k === 'mureta' ? '#a8e08a' : '#f0c26a';
       ctx.lineWidth = 2.6 * px; ctx.stroke();
       if (active || sel) {
         ctx.setLineDash([]);

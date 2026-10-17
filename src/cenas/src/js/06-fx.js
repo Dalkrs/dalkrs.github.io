@@ -1223,18 +1223,24 @@ const FX = (() => {
   function draw(ctx, e, g, t, px) {
     const pr = P[e.fx] || P.fogo;
     const pow = clamp(e.pow == null ? 0.8 : e.pow, 0.2, 1);
+    /* (lote 7, parte 4b) A zona "leve" (a dos lugares gerados, por cima de um fundo que já desenha a lava, a lama, o
+       gelo): só um véu fraco da cor dela, o movimento mais discreto e o contorno tracejado. */
+    const leve = !!e.leve;
     g.seed = e.seed || 1;
     g.fxe = e;                                       // (o efeito inteiro, para o desenho que depende dele: a Distorção do tempo)
     ctx.save();
     ctx.clip(g.path);
-    ctx.fillStyle = hexA(pr.tint, pr.base * (0.5 + pow * 0.6) * (0.88 + 0.12 * Math.sin(t * 1.2 + g.seed)));
+    ctx.fillStyle = hexA(pr.tint, pr.base * (0.5 + pow * 0.6) * (leve ? 0.3 : 1) * (0.88 + 0.12 * Math.sin(t * 1.2 + g.seed)));
     ctx.fill(g.path);
-    pr.draw(ctx, g, t, pow);
+    pr.draw(ctx, g, t, leve ? Math.max(0.2, pow * 0.5) : pow);
     ctx.restore();
     ctx.save();
     ctx.strokeStyle = pr.edge; ctx.lineJoin = 'round';
-    ctx.globalAlpha = 0.2 + 0.2 * pow; ctx.lineWidth = 5 * px; ctx.stroke(g.path);
-    ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 * px; ctx.stroke(g.path);
+    if (leve) { ctx.globalAlpha = 0.55; ctx.lineWidth = 1.5 * px; ctx.setLineDash([7 * px, 5 * px]); ctx.stroke(g.path); }
+    else {
+      ctx.globalAlpha = 0.2 + 0.2 * pow; ctx.lineWidth = 5 * px; ctx.stroke(g.path);
+      ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 * px; ctx.stroke(g.path);
+    }
     ctx.restore();
   }
 

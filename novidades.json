@@ -2,6 +2,53 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-1",
+      "data": "2026-10-17",
+      "titulo": "Os encontros, o navio e o Mapa-múndi gerando cenas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Encontro — a cena de batalha no caminho. Doze terrenos (Estrada, Floresta, Deserto, Montanha, Pântano, Neve, Campo, Selva, Terra corrompida, Lava, Cristais e Água), cada um com quatro situações (a carroça tombada, a ponte sobre o rio, o oásis, o cânion, o desfiladeiro, a cabana na palafita, o lago congelado, o moinho, a cachoeira, a fenda que brilha, o rio de lava, o geodo gigante, o naufrágio…) ou a Surpresa, que sorteia uma. Escolha o caminho (sem, trilha ou estrada) e o tamanho. Um clique no traçado da prévia trava a água, o caminho e os penhascos: “Gerar outro” troca só as árvores, as pedras e os objetos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o encontro já sai pronto para jogar — o relevo por cima do desenho (a água, os morros, os penhascos, os abismos, bem leve, sem tapar a arte), as zonas de efeito onde a natureza pede (a lama, o gelo, a lava, a correnteza, a névoa, os esporos…), as luzes da lava e dos cristais, e paredes de visão só no que é grande (as pedras grandes, os troncos grossos, os paredões e as construções; árvores e mato não tapam). E dois marcadores que só você vê (dá para apagar): por onde o grupo chega e o melhor lugar para uma emboscada."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o navio é um lugar — o convés com a amurada, os mastros, o castelo de popa e a escotilha, cada estilo com o seu barco (o drácar nórdico com os escudos, o junco oriental, o barco-cisne élfico…). Dois cliques na escotilha: “Gerar o interior…” faz o porão e as cabines (a cabine do capitão, os beliches, a carga), numa cena dentro do convés. Na abordagem, dois navios lado a lado, com a prancha entre eles."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: um tipo novo de parede, a Mureta (a amurada do navio, um parapeito): deixa ver e a luz passa, mas não deixa atravessar. Não abre e não tem ícone para clicar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Gerar a cena aqui”, no grupo — abre a janela das Cenas na aba Encontro, já com o terreno do hexágono, o caminho da rota (no mar, o navio; no rio, o barco), a hora do tempo de agora, o clima dos eventos que cobrem o lugar (tempestade e inundação: chuva; incêndio: cinzas; magia: vaga-lumes) e o estilo da região. Nada muda até você criar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Gerar este lugar…”, nos marcadores de cidade, vila, ponte, floresta e montanha — a janela abre no lugar certo, com o nome do marcador; ao criar, o marcador fica ligado à cena (dois cliques nele levam até ela). Se você fechar sem criar, nada é feito, e o botão continua oferecendo gerar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no calendário do mapa, “Entardecer a partir do tempo” e “Noite a partir do tempo” (vazio: o entardecer no 8º tempo e a noite no 9º, num dia de 10). E nas regiões, “Estilo das cenas” (Comum, Oriental, Nórdico…): as cenas geradas lá dentro saem nesse estilo; uma região sem estilo usa o da região de fora. Quem joga não vê."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: nas janelas compridas (como a do gerador), os botões “Cancelar” e “Criar a cena” ficam sempre à vista, presos embaixo, mesmo numa tela baixa."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.16-8",
       "data": "2026-10-16",
       "titulo": "A cidade, os bairros, os interiores e o relevo nas cenas geradas",

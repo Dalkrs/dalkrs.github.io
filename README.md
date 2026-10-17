@@ -513,7 +513,7 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   o jarro de barro, a bigorna, as flores e a pedra rúnica; e, para os interiores, o banco e o balcão (vários em fila
   viram um banco comprido ou o balcão da taverna; giram com o objeto) e a coluna de pedra.
 - **A janela "Gerar um lugar…"** (`Gerador`, `10h-gerador.js`; o menu de cenas trocou "Gerar um vilarejo…" por ela):
-  uma aba por lugar (o Vilarejo e a Cidade; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
+  uma aba por lugar (o Vilarejo, a Cidade e o Encontro; os outros vêm depois), as escolhas do lugar à esquerda e, embaixo delas, o
   que vale para todos — o **estilo**, a **hora do dia**, o **clima** e a chave **"Com relevo e formas"** —; a prévia à
   direita. A janela abre na última aba usada (`App.opt.genLugar`).
   - **Os estilos** (`Estilos`, `10c2-estilos.js`): Comum, Oriental, Nórdico, Desértico, Élfico e Anão. O estilo muda o
@@ -590,6 +590,57 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   alçapão do porão no armazém; e a luz que entra pelas janelas em feixes (de dia, quentes; ao entardecer, laranja; de
   noite, o luar; no breu, nada). A cena sai dentro da cena de fora, com a hora dela (à noite, uma luz em cada sala),
   a Saída junto da porta de entrada levando de volta, e o marcador ligado a ela.
+- **O Encontro** (`Encontro`, `10f2-encontro.js`, com os desenhos em `Paisagem`, `10f1-paisagem.js`; lote 7, parte 4b):
+  a cena de batalha no caminho. Doze **terrenos** (Estrada, Floresta, Deserto, Montanha, Pântano, Neve, Campo, Selva,
+  Terra corrompida, Lava, Cristais e Água), cada um com quatro **situações** (`TERRENOS[].sit`: a curva na mata, a
+  carroça tombada, a ponte sobre o rio e a encruzilhada; a clareira, o riacho, a árvore gigante caída e o acampamento
+  abandonado; as dunas, o oásis, a ossada gigante e o cânion; o desfiladeiro, a ponte de corda, a trilha na encosta e o
+  platô; as ilhas na água rasa, a passarela de tábuas, a cabana na palafita e as raízes na névoa; o lago congelado, os
+  pinheiros, a cabana do caçador e a fenda no gelo; a plantação, o moinho e o celeiro, o capim alto e o morro de
+  pedras; a mata fechada, o rio com a cachoeira, a árvore colossal e as flores gigantes; as árvores mortas, os
+  cristais negros, as poças de lodo e a fenda que brilha; o rio de lava, a ponte de pedra, o campo de basalto e a
+  boca do vulcão; a gruta, o campo de cristais, o geodo gigante e o lago espelhado; um navio, a abordagem, o barco no
+  rio e o naufrágio) ou a **Surpresa**, que sorteia uma (o resumo diz "(sorteada)"). O **caminho** (sem, trilha ou
+  estrada; a estrada nunca fica sem, e na água não há: `camValido`) e o **tamanho** (Pequeno 24 × 18, Médio 32 × 24,
+  Grande 40 × 30). O plano (`Encontro.gerar`) é uma conta pura: uma grade de ocupação (livre, caminho, água,
+  obstáculo, árvore, área da situação, relevo baixo, abismo, convés, pedra de atravessar) guia cada passo — a situação,
+  a vegetação do terreno, os enfeites (objetos que dá para mover) e os marcadores —, com sorteios separados
+  (`sub(seed, k)`, bem embaralhado). **Travar**: um clique no traçado da prévia (o caminho, a água, os penhascos, a peça
+  do meio) trava o traçado (`trava: { terreno, tamanho, caminho, sit, s }`); "Gerar outro" troca só as árvores, as
+  pedras e os objetos; trocar o terreno, a situação, o caminho ou o tamanho solta. A cena: o fundo pintado (o chão, a
+  água com a margem e a espuma, os penhascos com a face e os blocos, os abismos com a névoa, as dunas, as árvores de
+  cada terreno), as **paredes de visão só no que é grande** (as pedras grandes, os troncos grossos, os paredões, os
+  cristais grandes e as construções; moitas, árvores e mato não tapam), as construções (a cabana, o celeiro, o
+  santuário: abertas, com a porta, as janelas e os móveis, ou fechadas, com uma Entrada na porta para gerar o
+  interior), as **zonas de efeito** soltas no mapa (a lama, o gelo, a lava, as brasas, a correnteza, a névoa, os
+  esporos, a maldição, o lodo tóxico, os espinhos, a areia movediça), as luzes (a lava, os cristais, a fenda que brilha;
+  à noite, a casa) e o **relevo leve** (abaixo). E dois **marcadores ocultos** (`Props`: `chegada`, a bandeira verde, e
+  `emboscada`, o xis vermelho; só do mestre, mesmo postos à mão, e dá para apagar): a chegada no começo do caminho, na
+  borda (ou onde o grupo já está: no convés, na ponta da passarela da palafita), e a emboscada atrás de uma cobertura, a
+  meia distância e longe da borda (a chave "Marcar a chegada e a emboscada" desliga). O nome da cena é o do lugar
+  ("Encontro na floresta", "Abordagem").
+- **O navio** (`Navio`, `10f3-navio.js`): o convés visto de cima — o casco com a popa reta e a proa em ponta (para um
+  lado ou para o outro), o castelo de popa (2 m, com as escadas), o castelo de proa (1 m), os mastros com as velas
+  enroladas, a escotilha e as aberturas da amurada no meio; cada estilo tem o seu barco (a nau comum, o junco oriental
+  com os olhos na proa, o drácar nórdico com os escudos, os remos e a cabeça de dragão, o dhow desértico, o barco-cisne
+  élfico e o couraçado anão). A **amurada** é de mureta (abaixo). Na escotilha, uma
+  Entrada (oculta) que sabe o tamanho do convés (`gera: { t: 'navio', w, h, p, f: 'navio' }`); dois cliques nela,
+  "Gerar o interior…": o tipo é só "Navio" (`Navio.planta`, no formato das plantas das casas) — do tamanho do
+  convés, com o casco em ponta, da popa para a proa: a cabine do capitão (com as janelas da popa), as duas cabines
+  pequenas, o porão de carga (com a escada da escotilha, onde fica a Saída), o alojamento e o paiol da proa; uma porta
+  em cada divisão, as vigias e a carga e os móveis de cada sala. Na abordagem, dois navios lado a lado, com a prancha
+  entre as aberturas e as cordas dos ganchos.
+- **A mureta** (um tipo novo de parede, `k: 'mureta'`): uma parede baixa — a amurada do navio, um parapeito — que deixa
+  ver e deixa a luz passar, mas barra a passagem (`wallBlocksSight` não, `wallBlocksMove` sim); não abre e não tem o
+  ícone das aberturas (nada para clicar, nem para quem joga). No painel e na ferramenta de paredes, "Mureta"; o traço
+  é verde-claro, de traço e ponto. Vai para quem joga como é (a visão dele também passa).
+- **O relevo leve** (lote 7, parte 4b): uma área de Terreno com a opacidade guardada abaixo de 0,5 (`s.a`) é desenhada
+  translúcida, sem a sombra e com o contorno tracejado (`Render.drawTer`) — é a do relevo dos lugares gerados, por cima
+  de um fundo que já desenha o morro, a água e o penhasco. As outras ficam como eram.
+- **Do Mapa-múndi para a cena** (lote 7, parte 4b): o Mapa-múndi pede pela ponte (`TC.ponte.ir('cenas', { gerar,
+  cena })`) e as Cenas abrem a janela "Gerar um lugar" já preenchida (`Gerador.abrir(lugar, { op, estilo, hora, clima,
+  nome, id })`); nada muda até o mestre criar, e o que veio do mapa não vira escolha guardada da janela. Com uma
+  janela já aberta nas Cenas, só um aviso. O `id` (o do atalho do marcador) vale se ainda não existir cena com ele.
 
 ### A Árvore (lote 6)
 
@@ -792,6 +843,22 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **Os dias da semana (lote 7, `cal.sem0`).** No calendário do mapa, o mestre escolhe que dia da semana é hoje, e os
   outros seguem (de Segunda-Feira a Domingo, `SEMANA`): `sem0` é o dia da semana do dia 0 do mundo (null = o mapa não
   conta a semana). Aparece junto da data, na barra de cima e na aba Hoje, para todos (`textoDataSemana`).
+- **Gerar a cena (lote 7, parte 4b; só dentro do site, só o mestre).** No grupo, "Gerar a cena aqui": a janela "Gerar
+  um lugar" das Cenas abre na aba Encontro com o terreno do hexágono onde o grupo está (pelo desenho do terreno, para
+  valer também nos que o mestre criou: `ENC_DA_TEX` — a lavoura já na plantação, a savana no capim alto; um terreno sem
+  desenho vira campo), o caminho da rota (estrada ou trilha; na planície com estrada, o encontro na estrada; numa rota
+  de mar, o navio; de rio, o barco), a hora do tempo de agora, o clima dos eventos de hoje que cobrem o lugar
+  (tempestade e inundação: chuva; incêndio: cinzas e brasas; magia: vaga-lumes) e o estilo da região. Nos marcadores
+  de cidade, vila, ponte, floresta e montanha (sem atalho), "Gerar este lugar…" (`LUGAR_DO_ICONE`): a aba do lugar
+  (a vila e a cidade com o terreno do hexágono: floresta, areia, neve ou campo), o nome do marcador; o marcador fica
+  ligado à cena que vai nascer (`liga: { t: 'cena', id: 'cena_mundo_…' }`, um passo de desfazer) e, se o mestre fechar
+  sem criar, o botão do atalho continua "Gerar este lugar…" (com o mesmo id). Criada, o atalho abre a cena.
+- **Quando escurece (`cal.ent`, `cal.noi`).** No calendário do mapa, "Entardecer a partir do tempo" e "Noite a
+  partir do tempo" (vazio: os de fábrica, `quandoEscurece` — num dia de 10 tempos, o entardecer no 8º e a noite no
+  9º; com menos de 4 tempos, não escurece). `horaDoTempo(cal)` dá a hora (dia, entardecer ou noite) das cenas geradas.
+- **O estilo das cenas, por região (`r.estilo`).** "Estilo das cenas" na região (`ESTILOS_CENA`: Comum, Oriental,
+  Nórdico, Desértico, Élfico, Anão): as cenas geradas lá dentro saem nele; vale a região mais de dentro que tiver um
+  (uma sem estilo usa o da de fora). É só do mestre: a projeção tira.
 - **As bolinhas da travessia** (`MundoNucleo.bolinhas`): quando o próximo hexágono custa mais do que o grupo anda num
   tempo, uma fileira de bolinhas junto do grupo, no mapa — uma por tempo que a travessia pede, cheias as já andadas — e
   no painel do grupo. Quem joga recebe as bolinhas prontas na projeção (`bol: [feitas, total]`), porque os custos são
@@ -1288,7 +1355,17 @@ bairros (os marcadores, os dados da cidade, "Gerar este bairro…" e a cena do b
 interior (pelo marcador e por uma Entrada posta à mão, de dia e de noite) e as regras dos planos — a cidade em 30
 sorteios e em 18 com partes travadas, o interior em 512 plantas (com `SO=cidade`, `bairros`, `interior` ou `regras`);
 `cenas-lote7d.rede`, numa mesa: o mapa de bairros na tela da jogadora sem os dados da cidade nem os marcadores, outro
-aparelho do mestre gerando o bairro com os mesmos prédios, e o interior de um templo na tela da jogadora. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
+aparelho do mestre gerando o bairro com os mesmos prédios, e o interior de um templo na tela da jogadora.
+`src/cenas/test/lote7e.js` confere a aba Encontro (os doze terrenos e as situações, a Surpresa, o caminho, os tamanhos,
+travar o traçado clicando na prévia, "Gerar outro" e "Soltar tudo", os marcadores), as cenas que saem (a carroça de
+dia, a palafita de noite com neblina, o rio de lava sem o relevo), o navio (a amurada de mureta, a escotilha e o porão
+com as cabines), a mureta (a visão passa, a passagem não) e o relevo leve desenhado, o que o Mapa-múndi manda para a
+janela e as regras dos planos em 144 sorteios (marcadores onde se pisa e longe um do outro, paredes de visão só junto
+do que é grande, a trava, a Surpresa variando; com `SO=encontro`, `cena`, `navio`, `mureta`, `mapa` ou `regras`);
+`mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
+clima, o estilo, o nome e o atalho), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
+no mapa gerando o encontro (de noite, com chuva, nórdico), a janela já aberta que não é atropelada, a vila do
+marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
 cópia do ramo, o modo jogador de cada personagem (e a tranca de dentro aberta antes da de fora, que não aparece
 solta), o pacote sem o caminho, o custo de uso no editor e as contas escritas; `rules` confere, numa árvore com
 trancas umas dentro das outras e caminhos que se juntam ("e" e "ou"), que o jogador (pacote + ramos) e o mestre
