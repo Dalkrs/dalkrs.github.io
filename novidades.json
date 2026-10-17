@@ -2,6 +2,25 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-14",
+      "data": "2026-10-17",
+      "titulo": "As camadas do Mapa-múndi",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o botão Camadas, no canto de baixo do mapa (ou a tecla C), mostra e esconde cada camada — cidades e grupos, estradas e rios, rotas, eventos, zonas de perigo, regiões, guerra, textos e carimbos, terreno e grade. Vale só no seu aparelho: os outros continuam vendo tudo o que viam."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: os atalhos Viagem, Política, Guerra e Tudo trocam as camadas de uma vez (com Desfazer)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o cadeado trava uma camada — ela continua à vista, mas não se escolhe nem se mexe pelo mapa (o clique passa para o que está embaixo, como a região debaixo das cidades)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-13",
       "data": "2026-10-17",
       "titulo": "Clã e mapa de −10 a +10, recurso novo e a bandeira do clã",

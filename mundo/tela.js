@@ -284,6 +284,30 @@
     return podeEditar() && VALIDAS.has(f) ? f : 'sel';
   }
   const selecao = () => (Array.isArray(App.sel) ? App.sel : []).filter(id => indice.has(id));
+  /* (lote 8, parte 4) As camadas deste aparelho (camadas.js): o que está numa camada escondida não se desenha; o que
+     está numa travada aparece, mas o clique passa por ele (não se escolhe nem se mexe pelo mapa). Criar numa camada
+     escondida ou travada só avisa, com o botão que resolve. */
+  const Cam = () => window.MundoCamadas || null;
+  const camVisivel = id => { const c = Cam(); return !c || c.visivel(id); };
+  const camLivre = id => { const c = Cam(); return !c || c.livre(id); };
+  function camadaDaFerramenta(f) {
+    switch (f) {
+      case 'm': case 'g': return 'lugares';
+      case 'r': return 'regioes';
+      case 'e': return 'eventos';
+      case 't': return 'rotas';
+      case 'f': return opt('freModo') === 'perigo' ? 'perigos' : 'guerra';
+      case 'h': return 'terreno';
+      case 'p': return modoDesenho() === 'linha' ? 'linhas' : 'enfeites';
+    }
+    return null;
+  }
+  // true: a camada não está livre (o aviso já foi mostrado)
+  function camadaParada(cam) {
+    if (!cam || camLivre(cam)) return false;
+    Cam().avisar(cam);
+    return true;
+  }
   const objEditavel = id => (App.mapa && Array.isArray(App.mapa.objs) ? App.mapa.objs.find(o => o.id === id) : null) || null;
 
   /* ---- a vista: deslocamento e zoom ---- */
@@ -558,6 +582,8 @@
   }
   function desenharPintura(m, forcar) {
     const p = m && m.pintura, tem = !!(p && Array.isArray(p.ops) && p.ops.length);
+    // (lote 8) a camada Terreno escondida neste aparelho: o desenho fica guardado, só não aparece
+    if (tem && !camVisivel('terreno')) { if (pintEl) pintEl.hidden = true; return; }
     if (!tem) {
       // (sem desenho: limpa também o que uma prévia deixou, para o próximo traço começar do zero)
       if (pintEl) { pintEl.hidden = true; if (pintCtx) { pintCtx.setTransform(1, 0, 0, 1, 0, 0); pintCtx.clearRect(0, 0, pintEl.width, pintEl.height); } }
@@ -704,10 +730,12 @@
   function desenharGrade(m) {
     // (lote 7) As linhas da grade e a tinta dos hexágonos pintados são coisas separadas: esconder a grade ("Mostrar a
     // grade" desligado) tira só as linhas — a tinta continua no mapa, para todos.
-    const gr = m.grade || {}, ferr = usandoTerreno(), tem = temGrade(m), linhas = tem && (!!gr.on || ferr);
+    // (lote 8) a camada Grade escondida neste aparelho tira as linhas (menos enquanto a ferramenta Terreno está em uso, como
+    // com "Mostrar a grade" desligado); a camada Terreno escondida tira a tinta dos hexágonos
+    const gr = m.grade || {}, ferr = usandoTerreno(), tem = temGrade(m), linhas = tem && (!!gr.on || ferr) && (ferr || camVisivel('grade')), ter = camVisivel('terreno');
     C.hex.style.display = linhas ? '' : 'none';
     if (!tem) { if (hexCv) hexCv.hidden = true; return; }
-    if (hexCv) { hexCv.hidden = !hexDados; hexCv.style.opacity = String(forcaDaTinta(m)); }
+    if (hexCv) { hexCv.hidden = !hexDados || !ter; hexCv.style.opacity = String(forcaDaTinta(m)); }
     const cg = caminhoDaGrade(gr), chaveG = [cg.d, cg.w, cg.h, cg.x, cg.y].join('|');
     if (gradePat.__chave !== chaveG) {
       gradePat.__chave = chaveG;
@@ -733,7 +761,7 @@
     }
     // a cor e o desenho de cada hexágono vão no canvas; aqui, por cima, o "sem terreno" e os custos do mestre
     prepararHexes(m, por);
-    if (hexDados) { hexCv.hidden = false; pintarHexVista(); }
+    if (hexDados && ter) { hexCv.hidden = false; pintarHexVista(); }
     const frag = document.createDocumentFragment();
     if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
     // o custo próprio de cada hexágono, para o mestre, enquanto ele pinta o terreno
@@ -1148,10 +1176,12 @@
   }
   let avisouErro = false;
   function desenharObjetos(m, ctx) {
-    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], nreg: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] };
+    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], nreg: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] }, Cm = Cam();
     for (const o of m.objs || []) {
       const cam = CAMADA[o.k];
       if (!cam || !o.id) continue;
+      const camada = Cm ? Cm.deObj(o) : null;
+      if (camada && !Cm.visivel(camada)) continue;              // (lote 8) camada escondida neste aparelho: nem se desenha
       let r = recs.get(o.id), chave;
       try {
         chave = chaveDe(o, ctx);
@@ -1166,6 +1196,9 @@
         continue;
       }
       vistos.add(o.id);
+      // (lote 8) camada travada: à vista, mas o clique passa (o CSS tira o ponteiro de tudo o que está dentro)
+      const trav = !!(camada && Cm.travada(camada));
+      if (r.trav !== trav) { r.trav = trav; r.el.classList.toggle('trava', trav); if (r.el2) r.el2.classList.toggle('trava', trav); }
       por[cam].push(r.el);
       if (r.el2) por[r.cam2].push(r.el2);
     }
@@ -1895,6 +1928,7 @@
   }
   // O texto: o painel pergunta o que escrever; ele aparece no ponto, no tamanho escolhido (em pixels da tela).
   function novoTexto(q) {
+    if (camadaParada('enfeites')) return;                     // (lote 8) camada escondida ou travada
     const P = window.MundoPainel;
     const campos = { x: q.x, y: q.y, fonte: opt('fonte'), tam: um(limitar(Number(opt('txtTam')) || 28, 6, 400) / V.z) };
     if (P && typeof P.novoTexto === 'function') P.novoTexto(campos);
@@ -2246,6 +2280,7 @@
   function painelVisivel() { const sd = document.getElementById('side'); return !!(sd && sd.offsetParent !== null && !sd.classList.contains('fechado')); }
   function criar(k, campos, rotulo) {
     if (!podeEditar()) return null;
+    if (Cam() && camadaParada(Cam().deObj(Object.assign({}, campos, { k })))) return null;     // (lote 8) camada escondida ou travada
     let id = null;
     App.mudar(rotulo || NOVO[k], d => {
       const o = N().objNovo(k, Object.assign({ oculto: !!opt('oculto') }, campos));   // "Criar escondido" nas opções
@@ -2477,6 +2512,8 @@
       comecar(e, 'fundo');
       return;
     }
+    // (lote 8) a ferramenta cria numa camada escondida ou travada neste aparelho: o clique só avisa (arrastar ainda anda pelo mapa)
+    { const cam = editar ? camadaDaFerramenta(f) : null; if (cam && !camLivre(cam)) { comecar(e, 'parado', { cam }); return; } }
     if (f === 'm' || f === 'g') { comecar(e, 'por'); return; }
     if (f === 'r' || f === 't' || f === 'f') { comecar(e, 'ponto'); return; }
     if (f === 'e') { comecar(e, 'evento', { r: 0 }); return; }
@@ -2555,7 +2592,7 @@
   // Passou do limite de um clique: decide o que o arrasto vira.
   function comecouArrastar() {
     const editar = podeEditar();
-    if (g.tipo === 'fundo' || g.tipo === 'por' || g.tipo === 'ponto' || g.tipo === 'texto') { g.tipo = 'pan'; palco.classList.add('pan'); return; }
+    if (g.tipo === 'fundo' || g.tipo === 'por' || g.tipo === 'ponto' || g.tipo === 'texto' || g.tipo === 'parado') { g.tipo = 'pan'; palco.classList.add('pan'); return; }
     if (g.tipo === 'objeto') {
       if (!editar || (g.area && !g.jaSel)) { g.tipo = 'pan'; palco.classList.add('pan'); return; }
       let ids = selecao();
@@ -2664,6 +2701,9 @@
       }
       case 'por':
         criarEm(ferramenta(), p);
+        break;
+      case 'parado':
+        camadaParada(gg.cam);
         break;
       case 'evento':
         if (gg.moveu && gg.r * V.z >= 6) criarEm('e', gg.p0, { r: um(gg.r) });
@@ -2839,6 +2879,7 @@
     }
     if (k === 'Escape') {
       if (g) { cancelarGesto(); e.preventDefault(); return; }
+      if (Cam() && Cam().aberto()) { Cam().fechar(true); e.preventDefault(); return; }       // (lote 8) a janelinha das camadas
       if (medindo) { cancelarMedida(); e.preventDefault(); return; }
       if (pegando) { cancelarPonto(); e.preventDefault(); return; }
       if (rasc) { cancelarRascunho(); e.preventDefault(); if (App.rotaPara) { App.rotaPara = null; App.usarFerramenta('sel'); } return; }
@@ -2876,6 +2917,7 @@
     if (k === '+' || k === '=') { zoomNoMeio(1.25); return; }
     if (k === '-' || k === '_') { zoomNoMeio(1 / 1.25); return; }
     if (k === '0') { caber(); return; }
+    if (lk === 'c' && !e.repeat && Cam()) { e.preventDefault(); Cam().alternar(true); return; }    // (lote 8) as camadas (para todos)
     if (editar && POR_TECLA[lk] && !e.repeat) { e.preventDefault(); App.usarFerramenta(POR_TECLA[lk]); }
   }
   function aoSoltarTecla(e) {
@@ -3016,6 +3058,9 @@
     bt('zMenos', () => zoomNoMeio(1 / 1.25));
     bt('zMais', () => zoomNoMeio(1.25));
     bt('zCabe', () => caber());
+    // (lote 8) as camadas: o botão na caixa do zoom e a janelinha; mudou alguma, redesenha
+    if (Cam()) Cam().iniciar(App, palco);
+    App.on('camadas', agendar);
 
     // o palco muda de tamanho (painel abre e fecha, celular gira): mantém o mesmo ponto no meio
     if (window.ResizeObserver) new ResizeObserver(() => {
@@ -3043,6 +3088,8 @@
       if (g) cancelarGesto();
       fecharMenus();
       agendar();
+      // (lote 8) a ferramenta cria numa camada escondida ou travada neste aparelho: avisa já (o clique também avisará)
+      if (podeEditar()) camadaParada(camadaDaFerramenta(f));
     });
     redesenhar();
   }

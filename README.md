@@ -891,6 +891,32 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   escondida não a leva. O mapa não guarda a bandeira: ela vem do clã a cada vez (quem mestra publica a projeção de novo
   quando o clã muda; o auxiliar sem a aba Clã mantém a que a projeção já tinha).
 
+### As camadas do Mapa-múndi (lote 8)
+
+- **O botão Camadas**, na caixa do zoom (canto de baixo, à direita; a tecla C abre e fecha), abre a janelinha das
+  camadas (`mundo/camadas.js`, `window.MundoCamadas`): Cidades e grupos (os marcadores e os grupos), Estradas e rios,
+  Rotas, Eventos (a área e o selo), Zonas de perigo, Regiões (a área e o nome), Guerra (as zonas de guerra e as
+  frentes), Textos e carimbos, Terreno (a tinta à mão e a dos hexágonos) e Grade (as linhas). Cada linha diz quanto há
+  da camada no mapa aberto e tem o olho (mostrar ou esconder) e o cadeado (travar).
+- **Só neste aparelho** (`localStorage` `tinycats:mundo:camadas`, para todos os mapas; vale para quem mestra e para
+  quem joga, e acompanha outra aba do mesmo navegador). Esconder só limpa a própria tela: o mapa e o que os outros veem
+  não mudam — "Esconder dos jogadores" continua sendo o jeito de esconder deles. O botão ganha um ponto quando há
+  camada escondida ou travada, e a dica dele diz quantas.
+- **Escondida**: o que é dela nem se desenha (`desenharObjetos` pula; a tinta e as linhas da grade somem), sai da
+  seleção e não se escolhe (`App.selecionar`/`podarSel` só aceitam o que está livre). **Travada**: aparece, mas o
+  clique passa por ela (`.obj.trava`, sem ponteiro em nada do que está dentro): clicar na cidade travada pega a região
+  embaixo. A Grade não trava (não se clica nela); com a ferramenta Terreno em uso, as linhas aparecem mesmo com a
+  camada escondida, como com "Mostrar a grade" desligado.
+- **Os atalhos**: Viagem (sem Regiões e Guerra), Política (sem Rotas, Eventos, Zonas de perigo e Grade), Guerra (sem
+  Rotas, Eventos, Zonas de perigo e Textos e carimbos) e Tudo. Mudam só o que aparece (as travas ficam como estão); o
+  aviso diz o que ficou escondido e traz o Desfazer (um aviso de atalho por vez). O atalho que bate com o que está à
+  vista fica marcado.
+- **Nada muda sozinho**: escolher uma ferramenta que cria numa camada escondida ou travada — ou clicar com ela, ou usar
+  o menu do mapa — só avisa ("A camada Eventos está escondida neste aparelho"), com o botão que resolve ("Mostrar a
+  camada" ou "Destravar"); arrastar com ela continua andando pelo mapa. Na lista "O que há no mapa", o que está numa
+  camada escondida ou travada tem a etiqueta, e o clique (ou a busca rápida) avisa e, no botão, mostra a camada e vai
+  até ele.
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1842,4 +1868,8 @@ nomes de antes vão para o meio); `cla.test`, a escala de 21 no painel, os nomes
 construção (com 0, no custo, num passo de desfazer, e o nome igual que usa o de antes); `mundo-nucleo`, a honra até
 ±10, a facção do grupo e a bandeira conferida na projeção; `mundo-lote8` com `SO=honra`, o selo de −10 a +10, e com
 `SO=bandeiras`, as bandeiras nas regiões, nos grupos, nas zonas e frentes de guerra e na aba Facções;
-`mundo-lote8.rede`, numa mesa, a bandeira do clã escondido chegando ao jogador e acompanhando o brasão e o clã.
+`mundo-lote8.rede`, numa mesa, a bandeira do clã escondido chegando ao jogador e acompanhando o brasão e o clã. Na parte 4,
+`mundo-camadas` confere as camadas pela tela: a janelinha (as dez, quanto há de cada uma, C e Esc), esconder (o que
+some, guardado ao recarregar, o ponto no botão), travar (o clique que passa para a região embaixo), a lista do painel
+e a seleção, criar numa camada escondida ou travada (a ferramenta, o clique, o arrasto, o menu do mapa), os atalhos
+com o Desfazer, o terreno e a grade, quem joga e a tela do celular.

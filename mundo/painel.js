@@ -445,6 +445,9 @@
   function irPara(id) {
     const v = App.vista(), o = achar(v, id);
     if (!o) return;
+    // (lote 8) numa camada escondida (ou travada) neste aparelho: o aviso oferece mostrar (ou destravar) e então vai
+    const Cm = window.MundoCamadas;
+    if (Cm && !Cm.objLivre(o)) { Cm.avisar(Cm.deObj(o), () => irPara(id)); return; }
     App.selecionar([id]);
     const T = Tela();
     if (T && typeof T.centrar === 'function') { try { T.centrar(o); } catch (e) { console.error(e); } }
@@ -1077,10 +1080,13 @@
     return App.podeEditar() ? formulario(o, App.mapa) : leitura(o, v);
   }
   function itemLista(o, v, mestre, extra, nivel) {
-    return h('button', { type: 'button', class: 'li clic' + (mestre && o.oculto ? ' oculto' : '') + (nivel ? ' dentro' : ''), 'data-k': 'li:' + o.id, onclick: () => irPara(o.id),
+    // (lote 8) o que está numa camada escondida (ou travada) neste aparelho: a etiqueta diz, e o clique avisa
+    const Cm = window.MundoCamadas, cam = Cm ? Cm.deObj(o) : null, camTag = cam && !Cm.visivel(cam) ? 'camada escondida' : cam && Cm.travada(cam) ? 'camada travada' : '';
+    return h('button', { type: 'button', class: 'li clic' + (mestre && o.oculto ? ' oculto' : '') + (nivel ? ' dentro' : '') + (camTag ? ' fora-cam' : ''), 'data-k': 'li:' + o.id, onclick: () => irPara(o.id),
       style: nivel ? { paddingLeft: (8 + Math.min(nivel, 6) * 16) + 'px' } : null },
       icone(o, v), h('span', { class: 'tx' }, h('b', { text: nomeDe(o, v) }), h('small', { text: extra || descricao(o, v, mestre) })),
-      mestre && o.oculto ? h('span', { class: 'tag', text: 'escondido' }) : null);
+      mestre && o.oculto ? h('span', { class: 'tag', text: 'escondido' }) : null,
+      camTag ? h('span', { class: 'tag cam', title: 'A camada ' + Cm.nomeDe(cam) + (camTag === 'camada escondida' ? ' está escondida' : ' está travada') + ' neste aparelho (botão Camadas, no canto do mapa).', text: camTag }) : null);
   }
   function listaDoMapa(v) {
     const ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, out = [h('h3', { text: 'O que há no mapa' })];
@@ -2311,6 +2317,7 @@
   // O texto novo (ferramenta Desenho → Texto, ou o menu do mapa): pergunta o que escrever e põe no ponto.
   async function novoTexto(campos) {
     if (!App.podeEditar() || !App.mapa) return;
+    { const Cm = window.MundoCamadas; if (Cm && !Cm.livre('enfeites')) { Cm.avisar('enfeites'); return; } }     // (lote 8)
     const idMapa = App.mapa.id;
     const r = await janela({ titulo: 'Novo texto', ok: 'Pôr no mapa', texto: 'O que vai escrito no mapa (o nome de um mar, de uma cordilheira, um aviso…).',
       campos: [{ id: 't', rotulo: 'Texto', tipo: 'text', valor: '', ph: 'Ex.: Mar das Brumas', max: 400 }],
@@ -2805,7 +2812,7 @@
     window.addEventListener('pagehide', antesDeSair);
     if (window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(antesDeSair);     // dentro do site: a casca avisa antes de fechar
     document.addEventListener('visibilitychange', () => { if (document.hidden) antesDeSair(); });
-    for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista']) App.on(ev, agendar);
+    for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista', 'camadas']) App.on(ev, agendar);
     App.on('mapas', () => { if (menu) abrirMenu(); });
     window.addEventListener('resize', () => fecharMenu());
     pintar();

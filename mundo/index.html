@@ -88,9 +88,36 @@ button { cursor: pointer; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--fg-2); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .chip[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
 .chip input[type="range"] { width: 110px; }
-.dica { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 190px); padding: 7px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-size: 13px; pointer-events: none; }
+.dica { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 232px); padding: 7px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-size: 13px; pointer-events: none; }
 .zoom { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); }
 .zoom b { min-width: 46px; text-align: center; font: 600 12px var(--mono); color: var(--fg-2); }
+/* (lote 8) as camadas: o botão na caixa do zoom (com um ponto quando há camada escondida ou travada) e a janelinha */
+.zoom .sep { width: 1px; align-self: stretch; margin: 5px 2px; background: var(--line); }
+.zoom .cam-bt { position: relative; }
+.zoom .cam-bt.mexido { color: var(--lamp-ink); }
+.zoom .cam-bt[aria-expanded="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.cam-ponto { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--surface); }
+.cam-pop { position: absolute; right: 10px; bottom: 54px; z-index: 6; width: 292px; max-width: calc(100% - 20px); max-height: calc(100% - 66px); overflow: auto; overscroll-behavior: contain; padding: 10px 10px 9px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); cursor: default; touch-action: pan-y; }
+.cam-topo { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 2px; }
+.cam-topo b { font: 600 17px/1.1 var(--display); color: var(--fg); }
+.cam-topo span { flex: 1; font-size: 12px; color: var(--fg-3); }
+.cam-atalhos { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
+.cam-atalhos .chip { height: 28px; box-shadow: none; cursor: pointer; }
+.cam-atalhos .chip:hover:not([aria-pressed="true"]) { background: var(--hover); color: var(--fg); }
+.cam-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.cam-li { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: 2px; min-height: 34px; border-radius: 8px; }
+.cam-li:hover { background: var(--hover); }
+.cam-nome { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 7px 2px; font-weight: 600; color: var(--fg); cursor: pointer; user-select: none; }
+.cam-nome > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cam-nome small { flex: none; margin-left: auto; font: 500 12px var(--mono); color: var(--fg-3); }
+.cam-li.esc .cam-nome { color: var(--fg-3); font-weight: 500; }
+.cam-li .cam-olho[aria-pressed="false"] { color: var(--fg-3); }
+.cam-li .cam-trava[aria-pressed="false"] { color: var(--fg-3); opacity: .75; }
+.cam-li .cam-trava[aria-pressed="true"] { color: var(--lamp-ink); background: var(--lamp-soft); border-color: var(--lamp); }
+.cam-pe { display: flex; justify-content: flex-end; margin: 6px 0 0; }
+.cam-nota { margin: 8px 2px 0; font-size: 12px; line-height: 1.35; color: var(--fg-3); }
+/* o que está numa camada travada aparece, mas o clique passa por ele */
+#mundo svg .obj.trava, #mundo svg .obj.trava * { pointer-events: none !important; }
 .vazio { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; pointer-events: none; }
 .vazio > div { max-width: 420px; padding: 22px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); pointer-events: auto; }
 .vazio h2 { margin: 0 0 6px; font: 600 22px/1.15 var(--display); }
@@ -384,6 +411,7 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 /* celular: a dica ocupa a largura toda, logo acima do zoom */
 @media (max-width: 520px) {
   .dica { right: 10px; max-width: none; bottom: 58px; padding: 6px 10px; font-size: 12.5px; }
+  .cam-pop { left: 10px; right: 10px; width: auto; max-width: none; }
 }
 
 /* traço do pincel de névoa enquanto pinta (a névoa de verdade muda ao soltar) */
@@ -427,6 +455,8 @@ button.li { width: 100%; text-align: left; color: inherit; font: inherit; }
 .li.oculto .tx b { opacity: .7; }
 .li.aberta { border-color: var(--lamp); }
 .li .tag { flex: none; }
+.li .tag.cam { border-style: dashed; color: var(--fg-3); font-weight: 500; }           /* (lote 8) a camada escondida ou travada neste aparelho */
+.li.fora-cam .tx b { color: var(--fg-2); }
 .li .tx small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .li .tx small.linha2 { color: var(--fg-2); }
 .ico { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #14171f; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
@@ -681,8 +711,9 @@ dialog.mundo-dl::backdrop { background: rgba(5, 7, 12, .6); }
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=12"></script>
-<script src="tela.js?v=15"></script>
-<script src="painel.js?v=19"></script>
-<script src="mundo.js?v=8"></script>
+<script src="camadas.js?v=1"></script>
+<script src="tela.js?v=16"></script>
+<script src="painel.js?v=20"></script>
+<script src="mundo.js?v=9"></script>
 </body>
 </html>

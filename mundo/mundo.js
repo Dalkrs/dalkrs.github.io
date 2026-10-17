@@ -130,7 +130,7 @@
     passoRefazer() { return pilhaRefazer.length ? pilhaRefazer[pilhaRefazer.length - 1].n : 0; },
 
     selecionar(ids, somar = false) {
-      const v = App.vista(), existe = new Set(v ? v.objs.map(o => o.id) : []);
+      const existe = escolhiveis();
       const lista = (Array.isArray(ids) ? ids : ids == null ? [] : [ids]).filter(id => existe.has(id));
       let nova;
       if (somar) {
@@ -190,6 +190,8 @@
     },
   });
   window.Mundo = App;
+  // (lote 8) uma camada escondida ou travada neste aparelho tira da seleção o que está nela
+  App.on('camadas', () => podarSel());
   if (DEBUG) window.__mundo = { App, N, get Tela() { return window.MundoTela; }, get Painel() { return window.MundoPainel; }, salvarJa, idb: () => idb };
 
   /* ---------------- o mapa aberto ---------------- */
@@ -236,9 +238,14 @@
     App.emit('mapas', App.mapas);
     App.emit('muda', { origem: 'troca' });
   }
+  // o que dá para escolher: o que está na vista, menos o que está numa camada escondida ou travada neste aparelho (lote 8)
+  function escolhiveis() {
+    const v = App.vista(), Cm = window.MundoCamadas;
+    return new Set(v ? v.objs.filter(o => !Cm || Cm.objLivre(o)).map(o => o.id) : []);
+  }
   function podarSel() {
     if (!App.sel.length) return;
-    const v = App.vista(), existe = new Set(v ? v.objs.map(o => o.id) : []);
+    const existe = escolhiveis();
     const nova = App.sel.filter(id => existe.has(id));
     if (nova.length !== App.sel.length) { App.sel = nova; App.emit('sel', nova); }
   }
