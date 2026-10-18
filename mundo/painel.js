@@ -12,6 +12,7 @@
     { id: 'selecao', nome: 'Seleção' },
     { id: 'hoje', nome: 'Hoje' },
     { id: 'faccoes', nome: 'Facções' },
+    { id: 'guerra', nome: 'Guerra', mestre: true },               // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
     { id: 'terreno', nome: 'Terreno', mestre: true },
     { id: 'mapa', nome: 'Mapa', mestre: true },
   ];
@@ -39,6 +40,7 @@
   let App = null;
   const N = () => (App && App.N) || window.MundoNucleo;
   const Tela = () => window.MundoTela || null;
+  const GP = () => window.MundoGuerraPainel || null;           // (lote 8, parte 6) a guerra no painel
   const $ = id => document.getElementById(id);
   const estreito = () => !!(window.matchMedia && matchMedia(ESTREITO).matches);
   const celular = () => !!(window.matchMedia && matchMedia(CELULAR).matches);
@@ -1065,7 +1067,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 
@@ -1155,6 +1157,8 @@
       if (p) out.push(nota('Viagem: ' + p));
       const b = Array.isArray(o.bol) ? { feitas: o.bol[0], total: o.bol[1], terreno: '' } : null;
       if (b) out.push(fileiraDeBolinhas(o, b, false));
+      // (lote 8, parte 6) o exército: os nomes (o comandante, as unidades e o tipo), sem os números
+      if (o.tipo === 'exercito' && GP()) { const ex = GP().leituraExercito(o, v); if (ex) out.push(ex); }
       // (lote 6) a honra, com o histórico (todos veem)
       if (o.estilo) out.push(h('div', { class: 'sec' }, h('b', { text: 'Honra' }),
         h('p', { class: 'honra-pub' }, h('b', { class: 'honra-valor' + (o.honra > 0 ? ' pos' : o.honra < 0 ? ' neg' : ''), text: honraTxt(o.honra || 0) }), ' ', h('span', { class: 'note', text: (N_.HONRA || {})[o.estilo] || '' })),
@@ -1194,15 +1198,18 @@
     if (o.k === 'x') out.push(campoTexto('o:' + id + ':nome', 'Texto', o.nome, grava('mudar o texto', (x, v) => { if (!v.trim()) return false; x.nome = v.replace(/\s+$/, ''); }), { area: true, linhas: 2, max: 400, ph: 'O que está escrito no mapa' }));
     else out.push(campoTexto('o:' + id + ':nome', 'Nome', o.nome, grava('mudar o nome', (x, v) => { x.nome = v.trim(); }), { max: 120, ph: nomeDe(Object.assign({}, o, { nome: '' }), m) }));
     if (o.k === 'm') out.push(secMarcador(o, grava));
+    if (o.k === 'm' && GP()) out.push(GP().secFortificacao(o, m));         // (lote 8, parte 6) a fortificação
     if (o.k === 'z') out.push(...secZona(o, m, grava));
     if (o.k === 'l') out.push(secLinha(o, m, grava));
     if (o.k === 'c') out.push(secCarimbo(o, grava));
     if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m));
+    if (o.k === 'g' && o.tipo === 'exercito' && GP()) out.push(...GP().secExercito(o, m));   // (lote 8, parte 6) as unidades
     if (o.k === 'r') out.push(secRegiao(o, m, grava), secClimaRegiao(o, m));
     if (o.k === 'e') out.push(...secEvento(o, m, grava));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
+    if (o.k === 'f' && GP()) out.push(GP().secFasesFrente(o, m));          // (lote 8, parte 6) a frente que anda
     out.push(campoTexto('o:' + id + ':txt', 'O que os jogadores sabem', o.txt, grava('mudar o que os jogadores sabem', (x, v) => { x.txt = v; }), { area: true, linhas: 3, ph: 'O que se conta por aí…' }));
     out.push(segredo('Só o mestre vê',
       campoTexto('o:' + id + ':nota', null, o.nota, grava('mudar a nota do mestre', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Segredos, ganchos, o que ainda não foi revelado…' }),
@@ -1650,8 +1657,10 @@
        caminho (a caravana, a patrulha ou o exército a até 1 hexágono de um grupo comum, que antes não estavam assim) */
     const mm = JSON.parse(JSON.stringify(m0));
     const andam = mm.objs.filter(o => o.rota && (o.k === 'g' || (o.k === 'e' && N_.eventoAtivo(o, dia0)))).sort((a, b) => (a.k === 'e' ? 0 : 1) - (b.k === 'e' ? 0 : 1));
-    const feitos = new Map(), encontros = [];
+    const feitos = new Map(), encontros = [], G_ = window.MundoGuerra, confrontos = [];
     const perto = new Set((N_.encontrosNoCaminho ? N_.encontrosNoCaminho(mm) : []).map(([a, b]) => a + '|' + b));
+    // (lote 8, parte 6) os exércitos que já estavam perto um do outro não contam como encontro novo
+    const pertoEx = new Set((G_ ? G_.confrontos(mm) : []).map(([a, b]) => a + '|' + b));
     for (let k = 0; k < n; k++) {
       const pass = {};
       for (const o of andam) {
@@ -1666,6 +1675,12 @@
         if (r.parou && !r.cubos) f.parou = r.parou; else if (r.hexes) f.parou = r.parou || null;
         if (r.parada) f.parada = r.parada;
         feitos.set(o.id, f);
+      }
+      if (G_) {
+        const agoraEx = new Set();
+        for (const [a, b] of G_.confrontos(mm, pass)) { const key = a + '|' + b; agoraEx.add(key); if (!pertoEx.has(key) && !confrontos.some(c => c[0] === a && c[1] === b)) confrontos.push([a, b]); }
+        pertoEx.clear();
+        for (const key of agoraEx) pertoEx.add(key);
       }
       if (!N_.encontrosNoCaminho) continue;
       const agora = new Set();
@@ -1707,6 +1722,8 @@
     const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
     // (lote 7, parte 5c) quem terminou o dia dentro de uma zona de perigo: a proposta de mexer na ficha (pelo dia que acabou)
+    // as propostas, uma depois da outra (uma janela fecharia a outra): as zonas de perigo e (lote 8, parte 6) os mantimentos
+    const fila = [];
     if (t.dias > 0 && N_.zonasNoPonto) {
       const props = [];
       for (const g of mm.objs) {
@@ -1714,8 +1731,14 @@
         const zs = N_.zonasNoPonto(mm, g.x, g.y, dia0);
         if (zs.length) props.push({ g: g.id, nome: nomeDe(g, mm), zonas: zs.map(z => '"' + nomeDe(z, mm) + '"'), ef: N_.efeitoDasZonas(zs) });
       }
-      if (props.length) proporZonas(props);
+      if (props.length) fila.push(() => proporZonas(props));
     }
+    // (lote 8, parte 6) os exércitos que se encontraram: o aviso oferece abrir a batalha
+    if (GP()) {
+      if (confrontos.length) GP().ofertarBatalhas(confrontos, m.cal.dia);
+      if (t.dias > 0) fila.push(() => GP().proporMantimentos(t.dias));
+    }
+    if (fila.length) (async () => { for (const f of fila) { try { await f(); } catch (e) { console.error(e); } } })();
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
@@ -2845,5 +2868,8 @@
     return true;
   }
 
-  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao };
+  /* (lote 8, parte 6) as ferramentas do painel, para a guerra (mundo/guerra-painel.js) */
+  const kit = { app: () => App, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
+    irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; } };
+  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
 })();

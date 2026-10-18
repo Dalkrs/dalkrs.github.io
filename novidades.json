@@ -2,6 +2,46 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-1",
+      "data": "2026-10-18",
+      "titulo": "A Guerra no Mapa-múndi",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a aba Guerra, com os exércitos, os tipos de tropa (a tabela é sua: o nome, quem luta de longe e quem leva vantagem contra quem), os hexágonos destruídos ou corrompidos e o histórico das batalhas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o grupo do tipo Exército ganhou unidades — tropas, HP, ATQ, DEF, magos, máquinas de cerco e equipamentos —, o comandante (com o bônus dele e, se quiser, a ficha), a moral e os mantimentos. O marcador pode ter uma fortificação: a DEF de quem defende ali, que as máquinas de cerco danificam."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a batalha resumida (um d100 de cada lado) e a detalhada (um d20 em cada momento: Abertura, Choque, Virada e Desfecho). No momento-chave — disputa apertada, ou saiu 1 ou 20 — você pode mudar um bônus (tática, terreno, reforço, magia), rolar de novo, escrever o que aconteceu ou parar a batalha (recuo, rendição ou trégua)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: depois da batalha, a prévia de tudo o que muda — tropas e HP, moral, mantimentos, a fortificação, a frente que anda para o lado de quem perdeu (a partir de hoje) e o hexágono, que pode ficar destruído ou corrompido. Nada muda até “Aplicar”, e dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no “Próximo dia”, quando dois exércitos se encontram no caminho, o aviso oferece abrir a batalha; e vem a proposta de descontar os mantimentos de cada exército (sem eles, a moral cai e a fome tira ATQ)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: os jogadores veem as frentes como estão hoje, os hexágonos destruídos ou corrompidos e, dos exércitos à mostra, o comandante e as unidades — sem os números."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: as abas do painel ficaram um pouco mais juntas, para todas caberem (também no celular)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-15",
       "data": "2026-10-17",
       "titulo": "O traçado dos geradores",

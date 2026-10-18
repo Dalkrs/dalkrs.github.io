@@ -962,6 +962,62 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   a tentativa que serviu); a trava das ruas de sempre não vale nas ruas novas (escolher os portões traça de novo). Na
   Cidade, na Tribo e no Encontro, a trava do traçado continua sendo a semente dele, e as escolhas valem por cima.
 
+### A Guerra no Mapa-múndi (lote 8)
+
+- **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
+  `mundo/guerra.js`, `window.MundoGuerra`, que roda também no Node): a batalha (nova, ou voltar à que ficou aberta), os
+  exércitos que se encontraram, os exércitos (tropas, moral e para quantos dias dão os mantimentos; "sem mantimentos"
+  quando acabaram), os tipos de tropa, os hexágonos destruídos ou corrompidos e o histórico das batalhas. As seis abas
+  cabem no painel (com a letra um pouco menor na tela estreita; no painel de 280 px, o número da seleção vira um ponto).
+- **Os tipos de tropa** são a tabela do mestre (vazia no começo; até 40, em `guerra.tipos`): o nome, "à distância"
+  (entra na Abertura, com os magos) e a vantagem contra cada outro tipo (de −20 a +20, no d20). Apagar um tipo deixa as
+  unidades dele sem tipo.
+- **O exército** é um grupo do tipo Exército (`exe` no grupo). A seção Exército: o comandante (o nome e o bônus no
+  d20; a ficha ligada, opcional, dá o nome e o retrato), a moral (0 a 10; 5 é firme), os mantimentos e o consumo por dia
+  (um por cem soldados, ou o que o mestre escolher) e as unidades (até 40): nome, tipo, tropas, HP e HP máximo, ATQ,
+  DEF, magos, máquinas de cerco, equipamentos (até 12, cada um com ATQ e DEF) e "escondida dos jogadores"; duplicar e
+  apagar (com Desfazer).
+- **A fortificação** é do marcador (`estr`): o nome, a DEF (0 a 20: o bônus de quem defende ali, pelo HP que sobra), o
+  HP (danificada, em ruínas) e Consertar. As máquinas de cerco de quem ataca tiram da DEF e danificam.
+- **A batalha** (uma janela, aberta pelo exército, pela aba ou pelo aviso do encontro): os dois lados (a força de cada
+  unidade é tropas × de 50% a 100%, pelo HP), quem defende uma fortificação a até um hexágono (escolhido sozinho), a
+  tabela lado a lado e os bônus de cada um, na escala do d20 — números (+4 a cada vez que dobra o outro, até 10), ATQ
+  contra DEF (até ±6), os tipos (a vantagem pesada pela força de cada tipo), a moral (− 5), o comandante, os magos
+  (√magos, até 6), à distância (+3 se só um lado tem; com os dois, os números da força de longe, até 6), a fortificação
+  e a fome (−1 por dia sem mantimentos, até −3). Os bônus do mestre (tática, terreno, reforço, magia ou outro) valem
+  para um lado, na batalha toda ou só num momento.
+  - **A resumida (d100)**: um d100 de cada lado mais 5 × os bônus; a margem diz o tamanho (menos de 8, empate; até 24,
+    apertada; até 49, vitória; até 79, clara; 80 ou mais, esmagadora).
+  - **A detalhada (d20)**: um d20 de cada lado em cada momento — Abertura (magos e à distância), Choque (números, ATQ ×
+    DEF, tipos, fortificação e fome), Virada (moral e comandante) e Desfecho (números, moral e fome) —, e o placar soma
+    as margens (menos de 4, empate; até 11, apertada; até 23, vitória; até 35, clara; 36 ou mais, esmagadora).
+    Momento-chave: margem de 2 ou menos, ou saiu 1 ou 20; antes de seguir, o mestre pode mudar um bônus (no próprio
+    momento: o dado fica e o resultado muda na hora), rolar de novo, escrever ou parar.
+  - **Parar**: o recuo (quem recua perde por pouco), a rendição (perde feio) e a trégua (ninguém vence). Mudar um bônus
+    depois de rolar refaz a conta com os mesmos dados.
+  - A janela não pula para o topo a cada dado. Fechada com dados rolados, a batalha fica guardada na página ("Voltar à
+    batalha aberta"); fechada sem nada feito, some.
+- **O depois** (a prévia; nada muda até "Aplicar", que é um passo de desfazer): as tropas e o HP de cada unidade (quem
+  perde, mais: de 12% a 50%, pelo tamanho; quem vence, de 4% a 8%; a unidade que chega a zero tropas ou zero HP sai), a
+  moral (quem vence sobe, quem perde cai), um dia de mantimentos, a fortificação (o cerco de quem ataca sempre bate;
+  vencendo, bate mais), a frente (a dos dois lados, a mais perto; anda de 1 a 4 hexágonos — dá para mudar — para o lado
+  de quem perdeu, só perto da batalha, numa fase nova a partir de hoje: os dias de antes ficam com a linha de antes) e
+  o hexágono (fica como está, destruído ou corrompido). A batalha aplicada vai para o histórico (até 60, ficam as mais
+  novas): os momentos, os dados e as notas; dá para ler e escrever mais depois.
+- **Os hexágonos destruídos e corrompidos** (`guerra.hexes`) aparecem no mapa, na camada Guerra — também para os
+  jogadores (fora da névoa). Marca-se no depois de uma batalha ou pelo botão direito num hexágono; a aba lista, vai até
+  lá e tira a marca (com Desfazer).
+- **A frente que anda**: as fases da frente (`fases`, como na zona de guerra — a partir de tal dia, tal linha). A seção
+  "Fases da frente" lista as fases, tira uma e cria a de hoje, para arrastar os pontos à mão.
+- **No tempo do mundo** ("Próximo dia", "+1 tempo"): dois exércitos de facções diferentes (ou sem facção) que passam a
+  até um hexágono um do outro no caminho dão o aviso "Exércitos frente a frente", com "Abrir a batalha" (e a aba lista
+  o encontro). A cada dia que passa vem a proposta dos mantimentos: quanto cada exército come, para quantos dias
+  sobra e quem ficou sem (a moral cai 1 por dia sem comer, e a fome tira ATQ nas batalhas); dá para desmarcar quem não
+  come, e "Agora não" não muda nada.
+- **Quem joga** não vê a aba Guerra nem os números: do exército, só o nome do comandante e as unidades que não estão
+  escondidas (o nome e o tipo); dos tipos, só os nomes; nada do histórico, das fortificações, das vantagens nem das
+  fases que vêm (a frente aparece como está hoje). O mapa de antes (sem guerra) continua igual.
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1714,6 +1770,9 @@ faltava subir.
   de NPC, o líder é só um nome no alto da hierarquia). As facções que um clã cita vêm dos mapas do Mapa-múndi: uma
   facção escondida no mapa, se o mestre a puser numa relação à mostra, aparece para os jogadores (a lista do mestre
   avisa "escondida no mapa").
+- **A batalha aberta fica na página** (lote 8, parte 6): com dados rolados e ainda sem aplicar, ela some se a página
+  for recarregada (o que foi aplicado está no histórico). Os exércitos que se encontraram no caminho também ficam só
+  na página (o aviso e a lista da aba Guerra).
 - **Imagens que foram trocadas** (um retrato, o fundo de uma cena) continuam no Storage até a mesa ser apagada.
   Apagar a mesa apaga a pasta dela; a função `faxina` (em `supabase/functions/`) apaga as pastas de mesas que não
   existem mais — o que sobrou de antes disso, ou de um apagar que parou no meio.
@@ -1927,4 +1986,13 @@ frente para o primeiro, as palafitas sem portão para o lago), as formas, o riac
 moradias cabem), as pontes das trilhas e o relevo; com `SO=encontro`, o rio da situação pela rosa (com a travessia), a
 largura e as curvas, o rio novo, o lago longe da estrada, as pontes, os caminhos da rosa, o relevo e as 48 situações com
 tudo ligado; com `SO=janela` e `SO=vilajanela`, a seção Traçado das quatro abas (a rosa, a forma, o rio, a praça, as
-pontes, o relevo, o resumo, o modelo, voltar ao automático, travar o rio e a cena).
+pontes, o relevo, o resumo, o modelo, voltar ao automático, travar o rio e a cena). Na parte 6, `guerra-nucleo` confere
+as contas da Guerra sem navegador (o mapa de antes igual; o que fica guardado — os tipos, as unidades, o exército, a
+fortificação, as fases da frente, o histórico e os hexágonos, com os limites —; a escala nova levando as fases; a
+projeção sem números nem segredos; os lados e cada bônus de cada momento; os bônus do mestre; a resumida e a detalhada
+com os dados dados, o momento-chave e os tamanhos; parar; o depois e o aplicar; a frente que anda; os mantimentos do
+dia e os exércitos que se encontram) e `mundo-guerra`, pela tela: a aba (as seis abas cabendo, também a 800 px e no
+celular), os tipos de tropa, as unidades, a fortificação, a resumida (o bônus do mestre, rolar de novo, a trégua,
+recomeçar), a detalhada (o momento-chave, o bônus no próprio momento, rolar de novo, escrever, a janela que não pula
+para o topo, fechar e voltar), o depois e o aplicar (com o Desfazer), o histórico, os hexágonos (e o botão direito), as
+fases da frente, o encontro no caminho com o aviso e a proposta dos mantimentos, o que quem joga vê e o celular.

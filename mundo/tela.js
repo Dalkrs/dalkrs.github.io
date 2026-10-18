@@ -181,11 +181,12 @@
     const t = trecho(pts, comprimento(pts) / 2);
     return t[t.length - 1];
   }
-  // a forma de hoje (a zona de guerra muda com as fases; o resto tem uma forma só)
-  function formaDe(o, dia) { try { return o.k === 'z' ? N().formaNoDia(o, dia == null ? diaDaVista() : dia) : o.pts; } catch (e) { return o.pts; } }
-  // os pontos que o mestre ajusta agora: os da fase de hoje (zona) ou os do objeto
+  // a forma de hoje (a zona de guerra e a frente — lote 8, parte 6 — mudam com as fases; o resto tem uma forma só)
+  const comFases = o => (o.k === 'z' || o.k === 'f') && Array.isArray(o.fases);
+  function formaDe(o, dia) { try { return comFases(o) ? N().formaNoDia(o, dia == null ? diaDaVista() : dia) : o.pts; } catch (e) { return o.pts; } }
+  // os pontos que o mestre ajusta agora: os da fase de hoje (zona, frente) ou os do objeto
   function ptsEditaveis(o) {
-    if (o.k !== 'z' || !Array.isArray(o.fases)) return o.pts;
+    if (!comFases(o)) return o.pts;
     let i = -1;
     try { i = N().faseNoDia(o, diaDaVista()); } catch (e) { /* núcleo antigo: sem fases */ }
     return i >= 0 ? o.fases[i].pts : o.pts;
@@ -203,7 +204,7 @@
     for (const o of objs) {
       if (Array.isArray(o.pts)) {
         for (const q of o.pts) p(q[0], q[1]);
-        if (o.k === 'z' && Array.isArray(o.fases)) for (const f of o.fases) for (const q of f.pts || []) p(q[0], q[1]);
+        if (comFases(o)) for (const f of o.fases) for (const q of f.pts || []) p(q[0], q[1]);
       } else if (Number.isFinite(o.x)) p(o.x, o.y);
     }
     return x0 <= x1 ? { x0, y0, x1, y1 } : null;
@@ -212,7 +213,7 @@
     if (Number.isFinite(o.x) && Number.isFinite(o.y)) { o.x = um(o.x + dx); o.y = um(o.y + dy); }
     const mover = pts => pts.map(q => [um(q[0] + dx), um(q[1] + dy)]);
     if (Array.isArray(o.pts)) o.pts = mover(o.pts);
-    if (o.k === 'z' && Array.isArray(o.fases)) o.fases = o.fases.map(f => ({ dia: f.dia, pts: mover(f.pts || []) }));   // todas as fases andam juntas
+    if (comFases(o)) o.fases = o.fases.map(f => ({ dia: f.dia, pts: mover(f.pts || []) }));   // todas as fases andam juntas
   }
 
   /* ---- o que está no núcleo, lido na hora (pode faltar algo num núcleo antigo: a tela não quebra por isso) ---- */
@@ -508,6 +509,7 @@
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
     ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe() };
     desenharObjetos(m, ctxAtual);
+    desenharHexGuerra(m);
     // As animações (pulso dos eventos, marcha das frentes) repintam o SVG a cada quadro, fora da placa de vídeo.
     // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
     svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length + C.zon.getElementsByClassName('zona-pulsa').length > 24);
@@ -1161,6 +1163,35 @@
     c.globalAlpha = 1;
   }
 
+  /* (lote 8, parte 6) Os hexágonos destruídos (cinza de cinzas, com rachaduras) e corrompidos (roxo escuro, com veios
+     que brilham), na camada Guerra. Os riscos saem da chave do hexágono: o desenho não pula ao repintar. */
+  let hexgChave = '';
+  function desenharHexGuerra(m) {
+    const hs = m.guerra && m.guerra.hexes ? m.guerra.hexes : {}, ks = Object.keys(hs), vis = camVisivel('guerra');
+    const chave = vis && temGrade(m) ? JSON.stringify(m.grade) + JSON.stringify(hs) : '';
+    if (chave === hexgChave) return;
+    hexgChave = chave;
+    C.hexg.replaceChildren();
+    if (!chave || !ks.length) return;
+    const tam = m.grade.tam;
+    for (const k of ks) {
+      let h0, cs;
+      try { h0 = N().lerChaveHex(k); cs = h0 ? N().cantosHex(m, h0.q, h0.r) : null; } catch (e) { cs = null; }
+      if (!cs || cs.length < 6) continue;
+      const est = hs[k], c = N().centroHex(m, h0.q, h0.r), rnd = sorteadorDe(k + est), gk = s('g', { class: 'hexg hexg-' + est, 'data-hex': k });
+      gk.append(s('polygon', { class: 'hexg-fundo', points: cs.map(q => um(q.x != null ? q.x : q[0]) + ',' + um(q.y != null ? q.y : q[1])).join(' ') }));
+      // as rachaduras (ou os veios): do meio para fora, quebrando um pouco
+      for (let i = 0; i < 5; i++) {
+        const a0 = rnd() * Math.PI * 2, pts = [[c.x, c.y]];
+        let x = c.x, y = c.y, a = a0;
+        for (let j = 0; j < 3; j++) { a += (rnd() - 0.5) * 1.1; const d = tam * (0.12 + rnd() * 0.1); x += Math.cos(a) * d; y += Math.sin(a) * d; pts.push([x, y]); }
+        gk.append(s('path', { class: 'hexg-risco', d: 'M' + pts.map(q => um(q[0]) + ' ' + um(q[1])).join(' L'), 'stroke-width': um(tam * (est === 'c' ? 0.035 : 0.028)) }));
+      }
+      if (est === 'c') for (let i = 0; i < 4; i++) { const a = rnd() * Math.PI * 2, d = rnd() * tam * 0.3; gk.append(s('circle', { class: 'hexg-brilho', cx: um(c.x + Math.cos(a) * d), cy: um(c.y + Math.sin(a) * d), r: um(tam * (0.025 + rnd() * 0.03)) })); }
+      C.hexg.append(gk);
+    }
+  }
+
   /* objetos: cada um vira um <g data-id>; a chave diz quando precisa reconstruir */
   // (lote 8) a bandeira de uma facção entra na chave: o clã que muda o brasão (ou deixa a facção) redesenha o que a mostra
   const chaveBr = (ctx, id) => { if (!id) return ''; const br = brasaoDaFac(ctx, id); return br ? '|' + JSON.stringify(br) + nomeFac(ctx, id) : ''; };
@@ -1168,7 +1199,7 @@
     let extra = ctx.mestre ? 'M' : 'J';
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid); }
     else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac);
-    else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
+    else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
     else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
@@ -1302,16 +1333,17 @@
   // a facção que vale para a região: a dela, ou a da região de fora (núcleo antigo: a dela)
   function facEfetiva(m, o) { try { return N().facDaRegiao ? N().facDaRegiao(m, o) : o.fac; } catch (e) { return o.fac; } }
   function frente(g0, o, ctx) {
-    if (!Array.isArray(o.pts) || o.pts.length < 2) return;
+    const pts = formaDe(o, ctx.dia);                         // (lote 8, parte 6) a linha de hoje (as fases)
+    if (!Array.isArray(pts) || pts.length < 2) return;
     g0.classList.add('fre');
-    const d = caminho(o.pts), anda = o.ativa !== false ? ' frente-anda' : '';
+    const d = caminho(pts), anda = o.ativa !== false ? ' frente-anda' : '';
     g0.append(
       s('path', { class: 'fre-a' + anda, d, stroke: corFac(ctx, o.a) }),
       s('path', { class: 'fre-b' + anda, d, stroke: corFac(ctx, o.b) }),
       s('path', { class: 'fre-hit', d }));
     // (lote 8) as bandeiras dos dois lados, no meio da linha (em cima do nome)
     const ba = bandeira(brasaoDaFac(ctx, o.a), -11, -28, 13, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), 11, -28, 13, nomeFac(ctx, o.b));
-    if (o.nome || ba || bb) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
+    if (o.nome || ba || bb) { const c = meioDe(pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
   // até onde os grupos desta rota já andaram (em unidades ao longo dela): o ponto da rota mais perto do mais adiantado
   function andadoDe(m, rt) {
@@ -2840,6 +2872,9 @@
         item('Novo evento aqui', () => criarEm('e', p)),
         item('Novo texto aqui', () => novoTexto(preso(p))),
       ];
+      // (lote 8, parte 6) o hexágono daqui: destruído ou corrompido (a camada Guerra)
+      const GP = window.MundoGuerraPainel, hx = GP && GP.menuHex ? GP.menuHex([p.x != null ? p.x : p[0], p.y != null ? p.y : p[1]]) : [];
+      if (hx.length) itens.push(h('hr'), ...hx.map(([t, fn]) => item(t, fn)));
     }
     mostrarMenu(h('div', { class: 'menu', role: 'menu', 'aria-label': 'Opções do mapa' }, ...itens), x, y);
   }
@@ -3010,7 +3045,7 @@
     gradePat = s('pattern', { id: GRADE, patternUnits: 'userSpaceOnUse', width: 1, height: 1 }, gradePath);
     svg.append(s('defs', null, mascara, gradePat));
     // (a região fica por baixo de tudo — das estradas, dos rios e dos carimbos —; o nome dela, por cima deles: nreg)
-    for (const n of ['hex', 'reg', 'lin', 'car', 'zon', 'nreg', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    for (const n of ['hex', 'reg', 'lin', 'car', 'hexg', 'zon', 'nreg', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
     hexTer = s('g', { class: 'hex-tinta' });
     gradeRect = s('rect', { class: 'grade', x: 0, y: 0, fill: `url(#${GRADE})` });
     C.hex.append(hexTer, gradeRect);

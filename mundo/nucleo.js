@@ -1292,11 +1292,12 @@
     return { alfa: Math.round(limitar(num(p.alfa, 1), 0.1, 1) * 100) / 100, ops };
   }
   // As fases de uma zona de guerra: [{ dia, pts }], na ordem dos dias, um dia só uma vez (vale a que vem depois).
-  function normFases(v) {
+  // (lote 8, parte 6: a frente também tem fases — é uma linha, com dois pontos ou mais)
+  function normFases(v, min) {
     const por = new Map();
     for (const f of Array.isArray(v) ? v : []) {
       if (!ehObj(f)) continue;
-      const dia = inteiro(f.dia, null, 0, 1e9), pts = pontos(f.pts, 3);
+      const dia = inteiro(f.dia, null, 0, 1e9), pts = pontos(f.pts, min || 3);
       if (dia != null && pts) por.set(dia, pts);
     }
     return [...por.keys()].sort((a, b) => a - b).slice(0, MAX_FASES).map(dia => ({ dia, pts: por.get(dia) }));
@@ -1365,9 +1366,13 @@
     const b = { id: idOk(o.id), k: o.k, nome: texto(o.nome), txt: texto(o.txt), nota: texto(o.nota), oculto: talvez(o.oculto) };
     const lugar = () => { const x = coord(o.x), y = coord(o.y); if (x == null || y == null) return false; b.x = x; b.y = y; return true; };
     switch (o.k) {
-      case 'm':
+      case 'm': {
         if (!lugar()) return null;
-        return Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
+        const mc = Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
+        const estr = normEstr(o.estr);                            // (lote 8, parte 6) a fortificação: a DEF de quem defende ali
+        if (estr) mc.estr = estr;
+        return mc;
+      }
       case 'g':
         if (!lugar()) return null;
         // (cubos: os por dia, para quem ainda tem o site de antes; quem vale é o pt, os cubos de um tempo de marcha)
@@ -1378,6 +1383,8 @@
         if (bol) g.bol = bol;
         if (tem(TIPOS_GRUPO, o.tipo)) g.tipo = o.tipo;           // (lote 7, parte 5b) caravana, patrulha, exército
         if (tem(CLIMAS, o.ch)) g.ch = o.ch;                       // (lote 7, parte 5c) na projeção: o clima de hoje onde ele está
+        // (lote 8, parte 6) o exército: as unidades, o comandante, a moral e os mantimentos
+        if (g.tipo === 'exercito') { const exe = normExe(o.exe); if (exe) g.exe = exe; }
         return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
@@ -1422,7 +1429,11 @@
       case 'f': {
         const pts = pontos(o.pts, leve ? 0 : 2);
         if (!pts) return null;
-        return Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ativa: o.ativa === undefined ? true : sim(o.ativa) });
+        const fr = Object.assign(b, { pts, a: idRef(o.a), b: idRef(o.b), ativa: o.ativa === undefined ? true : sim(o.ativa) });
+        // (lote 8, parte 6) a frente que anda: as fases (a partir de tal dia, tal linha), como a zona de guerra
+        const fs = normFases(o.fases, 2);
+        if (fs.length) fr.fases = fs;
+        return fr;
       }
       case 'z': {
         const pts = pontos(o.pts, leve ? 0 : 3);
@@ -1483,6 +1494,105 @@
     if (!ehObj(v) || typeof v.url !== 'string' || v.url.length > 2048 || !/^(https?:\/\/|idb:)/i.test(v.url)) return null;
     return { url: v.url, w: inteiro(v.w, inteiro(larg, 2000, 1, 100000), 1, 100000), h: inteiro(v.h, inteiro(alt, 1400, 1, 100000), 1, 100000) };
   }
+  /* ---------------- (lote 8, parte 6) a guerra ----------------
+     O exército (o grupo do tipo Exército): as unidades (o tipo, as tropas, o HP, o ATQ e a DEF, os magos, as máquinas
+     de cerco e os equipamentos), o comandante (o bônus que o mestre escreve, e a ficha dele, se quiser), a moral (0 a 10;
+     5 é firme) e os mantimentos (o estoque, o consumo por dia — sem número, pelo tamanho da tropa — e os dias sem eles).
+     A fortificação dos marcadores (a DEF de quem defende ali e o HP: pode ser danificada). Os tipos de tropa (o mestre
+     cria, com as vantagens de um contra o outro, na escala do d20), o histórico das batalhas e os hexágonos destruídos
+     ou corrompidos. Os números são do mestre: na projeção, os jogadores recebem só os nomes. */
+  const MAX_UNID = 40, MAX_EQUIP = 12, MAX_TIPOS_G = 40, MAX_BATS = 60, MAX_MOM = 12, MAX_NOTAS = 20, MAX_TROPAS = 1e7, MAX_ATR = 99, MAX_BONUS = 20;
+  const HEX_GUERRA = { d: 'Destruído', c: 'Corrompido' };
+  const MOMENTOS = { ab: 'Abertura', ch: 'Choque', vi: 'Virada', de: 'Desfecho' };
+  const FINS = { dados: 'Nos dados', recuo: 'Recuo', rendicao: 'Rendição', tregua: 'Trégua' };
+  const atr = v => inteiro(v, 0, -MAX_ATR, MAX_ATR);
+  function normEquip(v) {
+    return (Array.isArray(v) ? v : []).filter(ehObj).slice(0, MAX_EQUIP).map(e => ({ nome: texto(e.nome, '', 80).trim() || 'Equipamento', atq: atr(e.atq), def: atr(e.def) }));
+  }
+  function normUnid(u, i, vistos) {
+    const hpMax = inteiro(u.hpMax, 100, 1, MAX_TROPAS), out = { id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo),
+      tropas: inteiro(u.tropas, 100, 0, MAX_TROPAS), hp: inteiro(u.hp, hpMax, 0, hpMax), hpMax, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS), cerco: inteiro(u.cerco, 0, 0, 1e4), equip: normEquip(u.equip) };
+    if (sim(u.oc)) out.oc = true;                                // escondida dos jogadores (até o nome)
+    return out;
+  }
+  function normExe(v) {
+    if (!ehObj(v)) return null;
+    const cmd = ehObj(v.cmd) ? v.cmd : {}, vistos = new Set();
+    const unid = (Array.isArray(v.unid) ? v.unid : []).filter(ehObj).slice(0, MAX_UNID);
+    // (na projeção: só os nomes, sem os números)
+    if (v.pub) return { pub: true, cmd: { nome: texto(cmd.nome, '', 80).trim() }, unid: unid.map((u, i) => ({ id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo) })) };
+    const cons = v.cons == null || v.cons === '' ? null : inteiro(v.cons, null, 1, MAX_TROPAS);
+    return { cmd: { nome: texto(cmd.nome, '', 80).trim(), b: inteiro(cmd.b, 0, -MAX_BONUS, MAX_BONUS), ficha: idRef(cmd.ficha) }, moral: inteiro(v.moral, 5, 0, 10),
+      mant: inteiro(v.mant, 0, 0, 1e9), cons, fome: inteiro(v.fome, 0, 0, 1e4), unid: unid.map((u, i) => normUnid(u, i, vistos)) };
+  }
+  function normEstr(v) {
+    if (!ehObj(v)) return null;
+    const hpMax = inteiro(v.hpMax, 100, 1, 1e6);
+    return { nome: texto(v.nome, '', 80).trim(), def: inteiro(v.def, 3, 0, MAX_BONUS), hp: inteiro(v.hp, hpMax, 0, hpMax), hpMax };
+  }
+  function normTiposGuerra(v) {
+    const out = [], vistos = new Set();
+    for (const t of Array.isArray(v) ? v : []) {
+      if (!ehObj(t) || out.length >= MAX_TIPOS_G) continue;
+      const id = idOk(t.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      const vant = {};
+      if (ehObj(t.vant)) for (const k of Object.keys(t.vant)) { const n = inteiro(t.vant[k], 0, -MAX_BONUS, MAX_BONUS); if (idOk(k) && n) vant[k] = n; }
+      out.push({ id, nome: texto(t.nome, '', 60).trim() || 'Tipo', dist: sim(t.dist), vant });
+    }
+    // (a vantagem contra um tipo que não existe sai)
+    for (const t of out) for (const k of Object.keys(t.vant)) if (!vistos.has(k) || k === t.id) delete t.vant[k];
+    return out;
+  }
+  // um lado da batalha, como ficou no histórico (o nome, o grupo e a facção)
+  const normLadoBat = l => (ehObj(l) ? { nome: texto(l.nome, '', 120).trim() || 'Lado', g: idRef(l.g), fac: idRef(l.fac) } : { nome: 'Lado', g: null, fac: null });
+  function normBatalhas(v) {
+    const out = [], vistos = new Set();
+    for (const b of Array.isArray(v) ? v.slice(-MAX_BATS) : []) {         // (as mais novas ficam, como no aplicar)
+      if (!ehObj(b)) continue;
+      const fim = ehObj(b.fim) ? b.fim : {};
+      const bat = { id: unico(idOk(b.id) || 'bt_' + out.length, vistos), d: inteiro(b.d, 0, 0, 1e9), nome: texto(b.nome, '', 160).trim(), a: normLadoBat(b.a), b: normLadoBat(b.b),
+        modo: b.modo === 'd20' ? 'd20' : 'd100',
+        mom: (Array.isArray(b.mom) ? b.mom : []).filter(ehObj).slice(0, MAX_MOM).map(m => {
+          const x = { k: escolha(MOMENTOS, m.k, 'ch'), da: inteiro(m.da, 1, 1, 100), db: inteiro(m.db, 1, 1, 100), ta: inteiro(m.ta, 0, -999, 999), tb: inteiro(m.tb, 0, -999, 999) };
+          if (sim(m.chave)) x.chave = true;
+          const nota = texto(m.nota, '', 400).trim();
+          if (nota) x.nota = nota;
+          return x;
+        }),
+        fim: { vence: fim.vence === 'a' || fim.vence === 'b' ? fim.vence : null, tam: inteiro(fim.tam, 0, 0, 4), como: escolha(FINS, fim.como, 'dados') },
+        notas: (Array.isArray(b.notas) ? b.notas : []).map(t => texto(t, '', 600).trim()).filter(Boolean).slice(0, MAX_NOTAS) };
+      const h = typeof b.hex === 'string' ? lerChaveHex(b.hex) : null;
+      if (h) bat.hex = chaveHex(h);
+      out.push(bat);
+    }
+    return out;
+  }
+  function normHexGuerra(v) {
+    const out = {};
+    if (!ehObj(v)) return out;
+    let n = 0;
+    for (const k of Object.keys(v)) {
+      if (n >= MAX_HEX) break;
+      const h = lerChaveHex(k);
+      if (!h || !tem(HEX_GUERRA, v[k])) continue;
+      out[chaveHex(h)] = v[k];
+      n++;
+    }
+    return out;
+  }
+  // a guerra do mapa (só quando tem algo: o mapa de antes fica igual)
+  function normGuerra(v) {
+    if (!ehObj(v)) return null;
+    const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
+    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length ? g : null;
+  }
+  // as tropas do exército, o consumo de mantimentos por dia (o escolhido, ou um por cem soldados) e quantos dias duram
+  const tropasDe = exe => (exe && Array.isArray(exe.unid) ? exe.unid.reduce((s, u) => s + (u.tropas || 0), 0) : 0);
+  const consumoDe = exe => (!exe ? 0 : exe.cons != null ? exe.cons : Math.ceil(tropasDe(exe) / 100));
+  const diasDeMantimento = exe => { const c = consumoDe(exe); return c > 0 ? Math.floor((exe.mant || 0) / c) : Infinity; };
+
   /* ---------------- a honra dos grupos (lote 6) ----------------
      Cada mudança fica no histórico do grupo: a data do mundo (d), de quanto para quanto e o motivo — todos veem. */
   function normHonras(v) {
@@ -1647,6 +1757,8 @@
     mapa.terrenos = normTerrenos(m.terrenos);
     mapa.hexes = normHexes(m.hexes, mapa.terrenos);
     mapa.pintura = normPintura(m.pintura, mapa.terrenos);
+    const guerra = normGuerra(m.guerra);                         // (lote 8, parte 6) os tipos de tropa, as batalhas, os hexágonos
+    if (guerra) mapa.guerra = guerra;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -1656,7 +1768,7 @@
       mapa.objs.push(n);
     });
     // referências para o que não existe viram null
-    const facs = new Set(mapa.faccoes.map(f => f.id)), rotas = new Map();
+    const facs = new Set(mapa.faccoes.map(f => f.id)), rotas = new Map(), tiposG = new Set(mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : []);
     for (const o of mapa.objs) if (o.k === 't') rotas.set(o.id, o);
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
@@ -1668,6 +1780,8 @@
       }
       // (lote 7, parte 5b) o evento que andava por uma rota que não existe mais fica parado onde está
       if (o.k === 'e' && o.rota && !rotas.has(o.rota)) { delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido; }
+      // (lote 8, parte 6) a unidade de um tipo que não existe mais fica sem tipo
+      if (o.k === 'g' && o.exe) for (const u of o.exe.unid) if (u.tipo && !tiposG.has(u.tipo)) u.tipo = null;
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -1721,7 +1835,7 @@
       if ('x' in o) { o.x = arred(o.x * sx); o.y = arred(o.y * sy); }
       if (o.pts) o.pts = o.pts.map(P);
       if (o.k === 'e') { o.r = arred(o.r * s); o.cresce = arred(o.cresce * s); }
-      if (o.k === 'z') o.fases = o.fases.map(f => ({ dia: f.dia, pts: f.pts.map(P) }));
+      if ((o.k === 'z' || o.k === 'f') && Array.isArray(o.fases)) o.fases = o.fases.map(f => ({ dia: f.dia, pts: f.pts.map(P) }));   // (a frente também tem fases: lote 8, parte 6)
       if (o.k === 'l') o.larg = arred(o.larg * s);
       if (o.k === 'c' || o.k === 'x') o.tam = arred(o.tam * s);
     }
@@ -1799,6 +1913,13 @@
       if (!coberto(c.x, c.y)) hexes[k] = t;
     }
     m.hexes = hexes;
+    // (lote 8, parte 6) a guerra: os jogadores recebem os nomes dos tipos de tropa e os hexágonos destruídos ou
+    // corrompidos (fora da névoa); as vantagens e o histórico das batalhas são do mestre
+    if (m.guerra) {
+      const hg = {};
+      for (const k of Object.keys(m.guerra.hexes)) { const h = lerChaveHex(k), c = h && temGrade(m) ? centroHex(m, h.q, h.r) : null; if (c && !coberto(c.x, c.y)) hg[k] = m.guerra.hexes[k]; }
+      m.guerra = { tipos: m.guerra.tipos.map(t => ({ id: t.id, nome: t.nome })), bats: [], hexes: hg };
+    }
     // (lote 6) as bolinhas dos grupos e a facção que cada região herda são contadas aqui, no mapa inteiro: os custos e
     // as regiões de cima podem não ir para os jogadores
     const bols = new Map(), facEf = new Map();
@@ -1827,12 +1948,14 @@
     for (const o of m.objs) {
       if (o.oculto) continue;
       delete o.nota;
-      if (o.k === 'm') { delete o.falso; if (coberto(o.x, o.y)) continue; }
+      if (o.k === 'm') { delete o.falso; delete o.estr; if (coberto(o.x, o.y)) continue; }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
         delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
         if (escondidas.has(o.fac)) o.fac = null;                 // (lote 8) a facção escondida não vai
+        // (lote 8, parte 6) o exército: os nomes (o comandante, as unidades que não estão escondidas e o tipo delas), sem os números
+        if (o.exe) o.exe = { pub: true, cmd: { nome: o.exe.cmd.nome }, unid: o.exe.unid.filter(u => !u.oc).map(u => ({ id: u.id, nome: u.nome, tipo: u.tipo })) };
 
         if (chGru.has(o.id)) o.ch = chGru.get(o.id);
       }
@@ -1845,7 +1968,11 @@
       else if (o.k === 'r') { delete o.clima; delete o.chj; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' && o.esc) continue;                  // (lote 7, parte 5b) a rota escondida é do mestre
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
-      else if (o.k === 'f') { if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'f') {
+        // (lote 8, parte 6) a frente como ela está hoje: as fases que vêm são do mestre
+        if (o.fases) { o.pts = formaNoDia(o, dia); delete o.fases; }
+        if (escondidas.has(o.a)) o.a = null; if (escondidas.has(o.b)) o.b = null; if (todoCoberto(o.pts)) continue;
+      }
       else if (o.k === 'z') {
         // a zona como ela está hoje: as fases que vêm (e o fim planejado) são do mestre
         if (!zonaAtiva(o, dia)) continue;
@@ -1878,7 +2005,8 @@
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
-    LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES },
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
+    LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;
