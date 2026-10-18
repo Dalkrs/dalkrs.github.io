@@ -80,7 +80,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     ok(await L.F.locator('#tab-guerra').isVisible() && (await guerra(L)) === null, 'a aba Guerra está lá, e o mapa ainda não tem guerra nenhuma');
     await A(L, () => __mundo.App.selecionar(['cast'])); await aba(L, 'guerra');
     const abas = await A(L, () => { const t = document.querySelector('.tabs'); return { sw: t.scrollWidth, cw: t.clientWidth, badge: !document.querySelector('#tab-selecao .n').hidden, nomes: [...t.querySelectorAll('.tab')].filter(b => !b.hidden).map(b => b.textContent.replace(/\d+$/, '')) }; });
-    ok(abas.sw <= abas.cw && abas.badge && j(abas.nomes) === j(['Seleção', 'Hoje', 'Reinos', 'Guerra', 'Terreno', 'Mapa']), 'as seis abas cabem no painel, mesmo com o número da seleção: ' + j(abas));
+    ok(abas.sw <= abas.cw && abas.badge && j(abas.nomes) === j(['Seleção', 'Hoje', 'Reinos', 'Corte', 'Guerra', 'Terreno', 'Mapa']), 'as sete abas (lote 11: com a Corte) cabem no painel, mesmo com o número da seleção: ' + j(abas));
   });
 
   await passo('a aba Guerra, vazia', async () => {
@@ -426,7 +426,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     await A(L, () => __mundo.App.selecionar(['cast'])); await espera(150);
     await L.P.setViewportSize({ width: 800, height: 800 }); await espera(400);
     const a800 = await A(L, () => { const t = document.querySelector('.tabs'); return { sw: t.scrollWidth, cw: t.clientWidth, badge: !document.querySelector('#tab-selecao .n').hidden }; });
-    ok(a800.sw <= a800.cw && a800.badge, 'na tela de 800 px (o painel de 280), as seis abas também cabem: ' + j(a800));
+    ok(a800.sw <= a800.cw && a800.badge, 'na tela de 800 px (o painel de 280), as sete abas também cabem: ' + j(a800));
     await A(L, () => __mundo.App.selecionar([])); await espera(150);
     await L.P.setViewportSize({ width: 390, height: 800 }); await espera(400);
     if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
@@ -435,7 +435,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     ok(pane.sw <= pane.cw + 1 && !pane.rola, 'no celular, a aba Guerra cabe: ' + j(pane));
     await A(L, () => __mundo.App.selecionar(['cast'])); await espera(200);
     const abas = await A(L, () => { const t = document.querySelector('.tabs'); return { sw: t.scrollWidth, cw: t.clientWidth, badge: !document.querySelector('#tab-selecao .n').hidden }; });
-    ok(abas.sw <= abas.cw && abas.badge, 'e as seis abas cabem no painel do celular, mesmo com o número da seleção: ' + j(abas));
+    ok(abas.sw <= abas.cw && abas.badge, 'e as sete abas cabem no painel do celular, mesmo com o número da seleção: ' + j(abas));
     await A(L, () => __mundo.App.selecionar([])); await espera(150);
     await semAvisos(L); await foto('l8p6-celular-aba');
     await botao(L, 'gu:nova');

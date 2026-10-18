@@ -2100,6 +2100,86 @@
       livro: { prov: inteiro(l.prov, 0, 0, 1e6), sub: inteiro(l.sub, 0, 0, 1e6), hex: inteiro(l.hex, 0, 0, 1e9), exe: inteiro(l.exe, 0, 0, 1e6), grade: sim(l.grade) } };
   }
 
+  /* ---------------- (lote 11, parte 1) a corte: os personagens do mundo e as casas ----------------
+     corte = { pessoas: [{ id, nome, gen ('h' homem, 'm' mulher, 'o' outro; '' sem dizer), casa, fac, cargo (um dos cargos
+     da corte da facção dele), nasc e morte (a data do mundo: { a (o ano), m (o mês, de 0; opcional), d (o dia do mês;
+     opcional, só com o mês) }; sem a morte, vivo), pais (até dois), conj (os cônjuges, até quatro; vale para os dois
+     lados), onde ({ t: 'm' (um marcador) | 'g' (um grupo), id }: onde ele está; sem, só na lista), ficha (uma ficha das
+     Fichas, opcional), txt (o que os jogadores sabem), nota (do mestre), ver (os jogadores conhecem) }], casas: [{ id,
+     nome, br (o brasão, como a bandeira), lema, chefe (um personagem da casa) }], cargos: { facção: [{ id, nome }] } (os
+     cargos da corte de cada facção; sem a lista guardada, os de começo) }. Só quando há algo (o mapa de antes fica igual).
+     Ninguém é antepassado de si mesmo (o pai que fecharia um círculo sai). */
+  const GENEROS = { h: 'Homem', m: 'Mulher', o: 'Outro' };
+  const CARGOS_INICIAIS = [{ id: 'conselheiro', nome: 'Conselheiro' }, { id: 'marechal', nome: 'Marechal' }, { id: 'tesoureiro', nome: 'Tesoureiro' },
+    { id: 'espiao', nome: 'Espião-mestre' }, { id: 'sacerdote', nome: 'Sacerdote' }, { id: 'embaixador', nome: 'Embaixador' }];
+  const MAX_PESSOAS_CORTE = 400, MAX_CASAS = 80, MAX_CARGOS = 16, MAX_CONJ = 4, MAX_TXT_CORTE = 600;
+  // a data de um personagem: o ano e, se souber, o mês e o dia (o dia só com o mês)
+  function normDataP(v, cal) {
+    if (!ehObj(v)) return null;
+    const a = inteiro(v.a, NaN, -1e6, 1e6);
+    if (!Number.isFinite(a)) return null;
+    // (o mês que não existe no calendário sai, e o dia com ele; o dia que passa do mês fica no último)
+    const out = { a }, meses = mesesDe(cal), mi = Number.isInteger(v.m) && v.m >= 0 && v.m < meses.length ? v.m : -1;
+    if (mi >= 0) { out.m = mi; const d = inteiro(v.d, 0, 0, diasDoMes(meses[mi])); if (d >= 1) out.d = d; }
+    return out;
+  }
+  function normCorte(v, cal) {
+    if (!ehObj(v)) return null;
+    const casas = [], vc = new Set(), pessoas = [], vp = new Set(), cargos = {};
+    for (const c of Array.isArray(v.casas) ? v.casas : []) {
+      if (!ehObj(c) || casas.length >= MAX_CASAS) continue;
+      const id = idOk(c.id);
+      if (!id || vc.has(id)) continue;
+      vc.add(id);
+      casas.push({ id, nome: texto(c.nome, '', 60).trim() || 'Casa', br: normBr(c.br), lema: texto(c.lema, '', 120).trim(), chefe: idRef(c.chefe) });
+    }
+    const lista = (l, max) => [...new Set((Array.isArray(l) ? l : []).map(idOk).filter(Boolean))].slice(0, max);
+    for (const p of Array.isArray(v.pessoas) ? v.pessoas : []) {
+      if (!ehObj(p) || pessoas.length >= MAX_PESSOAS_CORTE) continue;
+      const id = idOk(p.id);
+      if (!id || vp.has(id)) continue;
+      vp.add(id);
+      const on = ehObj(p.onde) && (p.onde.t === 'm' || p.onde.t === 'g') && idOk(p.onde.id) ? { t: p.onde.t, id: p.onde.id } : null;
+      pessoas.push({ id, nome: texto(p.nome, '', 80).trim() || 'Sem nome', gen: tem(GENEROS, p.gen) ? p.gen : '', casa: idRef(p.casa), fac: idRef(p.fac), cargo: idRef(p.cargo),
+        nasc: normDataP(p.nasc, cal), morte: normDataP(p.morte, cal), pais: lista(p.pais, 2), conj: lista(p.conj, MAX_CONJ), onde: on, ficha: idRef(p.ficha),
+        txt: texto(p.txt, '', MAX_TXT_CORTE).trim(), nota: texto(p.nota, '', MAX_TXT_CORTE).trim(), ver: sim(p.ver) });
+    }
+    if (ehObj(v.cargos)) for (const k of Object.keys(v.cargos).slice(0, 200)) {
+      if (!idOk(k) || !Array.isArray(v.cargos[k])) continue;
+      const l = [], vk = new Set();
+      for (const c of v.cargos[k]) {
+        if (!ehObj(c) || l.length >= MAX_CARGOS) continue;
+        const id = idOk(c.id);
+        if (!id || vk.has(id)) continue;
+        vk.add(id);
+        l.push({ id, nome: texto(c.nome, '', 40).trim() || 'Cargo' });
+      }
+      cargos[k] = l;
+    }
+    return pessoas.length || casas.length || Object.keys(cargos).length ? { pessoas, casas, cargos } : null;
+  }
+  // a corte com o mapa todo: só a facção, a casa, o cargo (da facção dele), o lugar (um marcador ou um grupo) e as pessoas que existem
+  function conferirCorte(c, facs, objs) {
+    const casas = new Set(c.casas.map(x => x.id)), ps = new Map(c.pessoas.map(p => [p.id, p])), lugares = new Map(objs.filter(o => o.k === 'm' || o.k === 'g').map(o => [o.id, o.k]));
+    for (const k of Object.keys(c.cargos)) if (!facs.has(k)) delete c.cargos[k];
+    const cargosDa = f => c.cargos[f] || CARGOS_INICIAIS;
+    for (const p of c.pessoas) {
+      if (p.fac && !facs.has(p.fac)) p.fac = null;
+      if (p.casa && !casas.has(p.casa)) p.casa = null;
+      if (p.cargo && (!p.fac || !cargosDa(p.fac).some(x => x.id === p.cargo))) p.cargo = null;
+      if (p.onde && lugares.get(p.onde.id) !== p.onde.t) p.onde = null;
+      p.pais = p.pais.filter(id => id !== p.id && ps.has(id));
+      p.conj = p.conj.filter(id => id !== p.id && ps.has(id));
+    }
+    // os cônjuges valem para os dois lados (até quatro: o que não cabe do outro lado sai dos dois)
+    for (const p of c.pessoas) for (const id of p.conj) { const q = ps.get(id); if (!q.conj.includes(p.id) && q.conj.length < MAX_CONJ) q.conj.push(p.id); }
+    for (const p of c.pessoas) p.conj = p.conj.filter(id => ps.get(id).conj.includes(p.id));
+    // ninguém é antepassado de si mesmo: o pai que fecharia um círculo sai
+    const sobe = (de, alvo) => { const vistos = new Set(), fila = [de]; while (fila.length) { const x = fila.shift(); if (x === alvo) return true; if (vistos.has(x)) continue; vistos.add(x); const q = ps.get(x); if (q) fila.push(...q.pais); } return false; };
+    for (const p of c.pessoas) p.pais = p.pais.filter(id => !sobe(id, p.id));
+    for (const x of c.casas) { const q = x.chefe ? ps.get(x.chefe) : null; if (!q || q.casa !== x.id) x.chefe = null; }
+  }
+
   function normGuerra(v) {
     if (!ehObj(v)) return null;
     const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
@@ -2283,6 +2363,8 @@
     if (eco) mapa.eco = eco;
     const ecoJ = normEcoJ(m.ecoJ);                               // (parte 6) na projeção: a economia da facção dos jogadores
     if (ecoJ) mapa.ecoJ = ecoJ;
+    const corte = normCorte(m.corte, cal);                       // (lote 11) a corte: os personagens do mundo e as casas
+    if (corte) mapa.corte = corte;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -2316,6 +2398,7 @@
         if (!o.ass.niv && !o.ass.pop && !o.ass.cons && !o.ass.cla && !o.ass.guildas) delete o.ass;
       }
     }
+    if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2550,6 +2633,18 @@
     for (const o of objs) if (o.k === 'g' && o.rota && !rotas.has(o.rota)) { o.rota = null; o.prog = 0; delete o.bol; }
     m.objs = objs;
     if (ecoJ) m.ecoJ = ecoJ;                                    // (lote 10, parte 6) a economia da facção dos jogadores
+    /* (lote 11, parte 1) a corte: só os personagens que os jogadores conhecem — sem a nota nem a ficha; os laços, só entre
+       conhecidos; o lugar, só se eles o veem; a facção escondida não vai. A casa vai se algum membro é conhecido (o chefe,
+       só se conhecido); os cargos, só os das facções que vão. */
+    if (m.corte) {
+      const con = new Set(m.corte.pessoas.filter(p => p.ver).map(p => p.id)), noMapa = new Set(objs.map(o => o.id));
+      const pessoas = m.corte.pessoas.filter(p => p.ver).map(p => Object.assign({}, p, { fac: escondidas.has(p.fac) ? null : p.fac, cargo: escondidas.has(p.fac) ? null : p.cargo,
+        pais: p.pais.filter(id => con.has(id)), conj: p.conj.filter(id => con.has(id)), onde: p.onde && noMapa.has(p.onde.id) ? p.onde : null, ficha: null, nota: '' }));
+      const casasVistas = new Set(pessoas.map(p => p.casa).filter(Boolean)), facsVistas = new Set(pessoas.map(p => p.fac).filter(Boolean)), cargos = {};
+      for (const k of Object.keys(m.corte.cargos)) if (facsVistas.has(k)) cargos[k] = m.corte.cargos[k];
+      if (pessoas.length) m.corte = { pessoas, casas: m.corte.casas.filter(c => casasVistas.has(c.id)).map(c => Object.assign({}, c, { chefe: con.has(c.chefe) ? c.chefe : null })), cargos };
+      else delete m.corte;
+    }
     return normalizarMapa(m);
   }
   // (lote 10, parte 6) as contas da economia (mundo/reino.js), para a projeção: no navegador, as que a página carregou
@@ -2575,9 +2670,11 @@
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
+    GENEROS, CARGOS_INICIAIS, normCorte,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
-      estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA },
+      estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
+      personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

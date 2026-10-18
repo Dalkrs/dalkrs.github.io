@@ -1292,6 +1292,24 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   e também no Livro do reino e na prévia da semana, no lugar da bolinha. Com um clã ligado à facção, vale a do clã
   (`App.brasaoDe`: a do clã que a página lê, a que a projeção trouxe do clã e, por fim, a própria); a própria fica
   guardada e volta quando o clã sai. "Tirar a bandeira" (com Desfazer) tira a própria.
+- **A corte** (lote 11, parte 1a; `mundo/corte.js` e `mundo/corte-painel.js`). Uma aba nova, **Corte** (depois de Reinos),
+  com os personagens do mundo — os nobres, os governantes, a corte de cada facção — por casa (os sem casa no fim; os
+  mortos recolhidos em "Mortos", que continua aberto quando aberto) e um filtro de facção. Para quem mestra, "+
+  Personagem", "+ Casa" e "Cargos da corte…". O **cartão do personagem** (uma janela; nada muda até "Criar" ou
+  "Salvar"): o nome, o gênero (homem, mulher ou outro), a casa, a facção e o cargo na corte dela, o nascimento e a morte
+  pela data do mundo (o ano basta — pode ser negativo —; o mês e o dia, se souber; a idade sai sozinha, hoje ou na
+  morte), os pais (até dois; nunca um descendente: ninguém é antepassado de si mesmo), os cônjuges (até quatro; valem
+  para os dois lados, e tirar tira dos dois), onde está (uma cidade ou outro marcador, ou um grupo; sem lugar, só na
+  lista), a ficha das Fichas (numa mesa; o nome fica o do personagem e "Abrir a ficha" leva a ela), "Os jogadores
+  conhecem", o que eles sabem e a nota do mestre; "Tirar da corte…" pergunta antes. A **casa**: o nome, o lema, o
+  chefe (um dos membros) e o brasão, feito com o mesmo editor da bandeira (o do Clã); "Tirar a casa…" deixa os membros
+  sem casa. Os **cargos da corte** são por facção (os de começo: Conselheiro, Marechal, Tesoureiro, Espião-mestre,
+  Sacerdote e Embaixador; renomear, criar, tirar — quem tinha fica sem cargo — e "Voltar aos de começo"). Na cidade e
+  no grupo, **"Quem está aqui"** (os vivos; clicar abre o cartão). Tudo fica no mapa (`corte`, conferido por `normCorte`
+  e pelas referências do mapa todo), com Desfazer. **Quem joga** vê, na aba Corte e em "Quem está aqui", só os que o
+  mestre marcou como conhecidos (a projeção leva só eles, sem a nota nem a ficha; os laços só entre conhecidos; o lugar
+  só se eles o veem; a casa com algum conhecido, o chefe só se conhecido), com os laços em texto ("filha de…", "esposa
+  de…", "mãe de…"). As abas do painel ficaram um pouco mais juntas, para as sete caberem.
 
 ### A Árvore (lote 6)
 
@@ -2375,7 +2393,20 @@ caixa travada do estoque na facção, o Livro de quem joga ("De onde vem", que c
 clãs chegam), a cidade aberta e a fechada, e o resumo na prévia da semana (a prévia que acompanha as recusas, aplicar,
 desfazer, refazer, a página Jornal com ele, desmarcada não manda); `mundo-lote8.rede`, numa mesa, a projeção com a
 economia e a cidade aberta, a sede do clã quando só o clã muda, o jogador vendo o Livro e a cidade, e o resumo no
-rascunho do Jornal da mesa (que o jogador não recebe). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+rascunho do Jornal da mesa (que o jogador não recebe). No Lote 11, parte 1a (a corte), `lote11-nucleo` confere os
+personagens e as casas normalizados (os campos, o gênero, as datas pelo calendário — o mês que não existe sai, o dia
+que passa do mês fica no último —, os limites, os cargos de cada facção), as referências (a facção, a casa, o cargo da
+facção ou os de começo, o lugar de um tipo que bata, os pais e os cônjuges que existem, os cônjuges dos dois lados e
+até quatro, ninguém antepassado de si mesmo, o chefe da casa), a projeção (só os conhecidos, sem a nota nem a ficha, os
+laços entre conhecidos, o lugar escondido fora, a facção escondida fora, a casa com conhecidos, os cargos das facções
+que vão) e as contas (os cargos, a idade antes e depois do aniversário e na morte, a data em texto, os pais, os filhos,
+os descendentes, quem está aqui, os membros, os laços pelo gênero); `mundo-lote11` com `SO=corte`, a aba (as sete abas
+cabem, também com o número da seleção), a casa nova, o personagem novo (o cartão, os cargos da facção, os erros das
+datas), a lista (a idade, o cargo, o lugar, "conhecido"), o filho morto em "Mortos" (que continua aberto), os cônjuges
+dos dois lados (tirar dos dois), os pais sem os descendentes, a casa (o chefe, o brasão, Cancelar), os cargos
+(renomear, tirar, criar, voltar aos de começo), o filtro, quem está aqui, quem joga, tirar o personagem e a casa e o
+cartão no celular; `mundo-lote8.rede`, numa mesa, a projeção só com os conhecidos (sem as notas) e a aba Corte do
+jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

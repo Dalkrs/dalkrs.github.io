@@ -295,10 +295,10 @@ svg.sem-pulso .zona-pulsa { animation: none; }
 /* ---- painel ---- */
 .side { flex: none; width: 330px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .tabs { flex: none; display: flex; gap: 0; padding: 0 4px; border-bottom: 1px solid var(--line); }
-.tab { position: relative; height: 40px; padding: 0 4px; border: 0; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.tab { position: relative; height: 40px; padding: 0 3px; border: 0; background: none; color: var(--fg-2); font-weight: 600; font-size: 12.5px; white-space: nowrap; }   /* (lote 11: sete abas, com a Corte) */
 .tab:hover { color: var(--fg); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
-.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 4px; right: 4px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 3px; right: 3px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
 .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .pane h3 { margin: 0; font: 600 19px/1.2 var(--display); }
 .pane .sub { color: var(--fg-3); font-size: 12.5px; margin-top: -8px; }
@@ -680,6 +680,48 @@ dialog.mundo-dl fieldset.gd-semana, dialog.mundo-dl fieldset.gd-serv-caixa { bor
 .sem-jornal-txt { display: grid; gap: 4px; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--fg-2); }
 .sem-jornal-txt b { color: var(--fg); }
 .sem-jornal-txt p { margin: 0; }
+/* (lote 11, parte 1) a corte: a aba (por casa), quem está aqui, o cartão do personagem, a casa e os cargos */
+.corte-lista { display: grid; gap: 10px; }
+.corte-casa { display: grid; gap: 4px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.corte-casa-cab { display: flex; align-items: center; gap: 8px; padding: 2px 2px 4px; }
+.corte-casa-cab .tx { flex: 1 1 auto; min-width: 0; display: grid; }
+.corte-casa-cab b { font-size: 14px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corte-casa-cab small { font-size: 12px; color: var(--fg-3); }
+.corte-sem-br { flex: none; width: 18px; height: 22px; border-radius: 4px; border: 1px dashed var(--line-strong); }
+.corte-p .tx { display: grid; min-width: 0; }
+.corte-p small { font-size: 12px; color: var(--fg-3); }
+.li.corte-p .tx small { white-space: normal; overflow: visible; }
+.corte-p.morto b, .corte-pub.morto b { color: var(--fg-3); }
+.corte-mortos > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--fg-2); padding: 4px 2px; }
+.corte-pub { display: grid; gap: 2px; padding: 6px 8px; border-radius: 8px; background: var(--surface); }
+.corte-pub b { font-size: 13.5px; color: var(--fg); }
+.corte-pub small { font-size: 12px; color: var(--fg-3); }
+.corte-pub .corte-lacos { color: var(--fg-2); }
+.corte-pub .publico { font-size: 13px; color: var(--fg-2); }
+.corte-aqui { display: grid; gap: 4px; }
+dialog.mundo-dl.ps-dl { width: min(640px, calc(100% - 24px)); }
+dialog.mundo-dl.cs-dl { width: min(520px, calc(100% - 24px)); }
+dialog.mundo-dl.ps-dl .lin label, dialog.mundo-dl.ps-dl .lin label:first-child, dialog.mundo-dl.ps-dl .lin label:last-child,
+dialog.mundo-dl.cs-dl .lin label, dialog.mundo-dl.cs-dl .lin label:first-child, dialog.mundo-dl.cs-dl .lin label:last-child { flex: 1 1 0; }
+.ps-datas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.ps-rot { display: block; font-size: 13px; font-weight: 600; color: var(--fg-2); margin-bottom: 4px; }
+.ps-data { display: flex; gap: 6px; }
+dialog.mundo-dl .ps-data input.ano { flex: none; width: 82px; }
+dialog.mundo-dl .ps-data input.dia { flex: none; width: 58px; }
+dialog.mundo-dl .ps-data select { flex: 1 1 auto; width: auto; }
+.mundo-dl .ps-datas label.op { padding: 4px 9px; margin-bottom: 4px; }
+.ps-pais .lin { gap: 8px; }
+.ps-conj-caixa, .ps-conjs, .cg-lista { display: grid; gap: 6px; justify-items: start; }
+.ps-conjs, .cg-lista { justify-items: stretch; width: 100%; }
+.ps-conj, .cg-linha { display: flex; gap: 6px; align-items: center; }
+.mundo-dl .pe .esp { flex: 1 1 auto; }
+.cs-br-caixa { display: flex; align-items: center; gap: 12px; }
+.cs-br { min-width: 48px; min-height: 56px; display: grid; place-items: center; }
+@media (max-width: 560px) {
+  .ps-datas { grid-template-columns: 1fr; }
+  dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
+  dialog.mundo-dl.ps-dl .lin label { flex: 1 1 100%; }
+}
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -1009,9 +1051,10 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
   .tab .n { margin-left: 3px; }
 }
 /* (lote 8, parte 6) as seis abas (com a Guerra) cabem, mesmo com o número da seleção: no painel de 280 px (tela até
-   900 px), letra menor e o número vira um ponto; no celular (o painel de 300 px por cima do mapa), letra um pouco menor */
-@media (max-width: 900px) and (min-width: 681px) { .tab { padding: 0 2.5px; font-size: 12px; } .tab .n { min-width: 8px; width: 8px; height: 8px; padding: 0; margin-left: 2px; font-size: 0; vertical-align: 5px; } .tab[aria-selected="true"]::after { left: 2px; right: 2px; } }
-@media (max-width: 680px) { .tab { padding: 0 3px; font-size: 12.5px; } .tab[aria-selected="true"]::after { left: 3px; right: 3px; } }
+   900 px), letra menor e o número vira um ponto; no celular (o painel de 300 px por cima do mapa), letra um pouco menor.
+   (lote 11) Agora são sete (com a Corte): a letra e os vãos encolhem um pouco mais. */
+@media (max-width: 900px) and (min-width: 681px) { .tab { padding: 0 2px; font-size: 11px; } .tab .n { min-width: 8px; width: 8px; height: 8px; padding: 0; margin-left: 2px; font-size: 0; vertical-align: 5px; } .tab[aria-selected="true"]::after { left: 2px; right: 2px; } }
+@media (max-width: 680px) { .tab { padding: 0 2.5px; font-size: 11.5px; } .tab[aria-selected="true"]::after { left: 2.5px; right: 2.5px; } }
 @media (max-width: 600px) {
   .salvo:not(.ruim) { display: none; }
   .salvo.ruim { max-width: 90px; }
@@ -1076,15 +1119,17 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=26"></script>
+<script src="nucleo.js?v=27"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=8"></script>
+<script src="corte.js?v=1"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=31"></script>
+<script src="painel.js?v=32"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=9"></script>
+<script src="reino-painel.js?v=10"></script>
+<script src="corte-painel.js?v=1"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

@@ -10,6 +10,8 @@
 //   · (lote 10, parte 6) o que os jogadores veem: a projeção leva a economia da facção deles e o que tem dentro da cidade
 //     aberta (sem a guilda secreta, sem o estoque das outras facções); o jogador vê a linha deles no Livro do reino e a
 //     cidade por dentro; fechar a semana põe o resumo no rascunho do Jornal da mesa (o jogador não o recebe).
+//   · (lote 11, parte 1a) a corte: a projeção leva só os personagens conhecidos (sem as notas); o jogador os vê na aba
+//     Corte.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -175,6 +177,21 @@ function png(w, h, cor) {
     await M.locator('#tab-jornal').click();
     let JRW = null;
     ok(await ate(async () => { JRW = await quadro(M, /\/jornal\//); return JRW && await JRW.evaluate(() => !!window.__jornal && __jornal.pronto && __jornal.ras.materias.some(x => /^Aldar: a semana até /.test(x.tit))); }), 'na página Jornal, o mestre vê o resumo no rascunho (para revisar e publicar)');
+
+    // ---------- (lote 11, parte 1a) a corte: o jogador recebe só os personagens conhecidos ----------
+    await W.evaluate(() => {
+      __mundo.App.mudar('a corte', m => {
+        m.corte = { casas: [{ id: 'kv', nome: 'Casa do Vale', lema: 'Firmes' }], cargos: {},
+          pessoas: [{ id: 'pa', nome: 'Ana do Vale', gen: 'm', casa: 'kv', fac: 'fa', cargo: 'marechal', nasc: { a: -30 }, onde: { t: 'm', id: 'cv' }, ver: true, txt: 'A marechal.', nota: 'Trama contra o rei.' },
+            { id: 'pb', nome: 'Bento Oculto', casa: 'kv', fac: 'fa', pais: ['pa'], ver: false, nota: 'Herdeiro secreto.' }] };
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.corte && p.corte.pessoas.length === 1 && p.corte.pessoas[0].id === 'pa' && p.corte.pessoas[0].nota === '' && p.corte.casas.length === 1); }),
+      'a projeção leva só a personagem conhecida (sem a nota) e a casa dela');
+    ok(!/Herdeiro secreto|Bento Oculto|Trama contra o rei/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe o desconhecido nem as notas');
+    await JW.click('#tab-corte'); await w(300, J);
+    const corteJ = () => JW.evaluate(() => document.getElementById('pane').innerText.replace(/\s+/g, ' '));
+    ok(await ate(async () => /Casa do Vale/.test(await corteJ()) && /Ana do Vale/.test(await corteJ()) && /Marechal de Aldar/.test(await corteJ()) && !/Bento/.test(await corteJ())), 'o jogador vê, na aba Corte, a Ana (com o cargo) e não o Bento: ' + (await corteJ()).slice(0, 160));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

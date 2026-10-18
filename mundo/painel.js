@@ -13,6 +13,7 @@
     { id: 'selecao', nome: 'Seleção' },
     { id: 'hoje', nome: 'Hoje' },
     { id: 'faccoes', nome: 'Reinos' },                             // (lote 10: era "Facções"; o id fica)
+    { id: 'corte', nome: 'Corte' },                               // (lote 11) os personagens do mundo e as casas
     { id: 'guerra', nome: 'Guerra', mestre: true },               // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
     { id: 'terreno', nome: 'Terreno', mestre: true },
     { id: 'mapa', nome: 'Mapa', mestre: true },
@@ -43,6 +44,7 @@
   const Tela = () => window.MundoTela || null;
   const GP = () => window.MundoGuerraPainel || null;           // (lote 8, parte 6) a guerra no painel
   const RP = () => window.MundoReinoPainel || null;            // (lote 10) os reinos no painel: a província, o Livro do reino
+  const CP = () => window.MundoCortePainel || null;            // (lote 11) a corte no painel: a aba Corte, quem está aqui
   const $ = id => document.getElementById(id);
   const estreito = () => !!(window.matchMedia && matchMedia(ESTREITO).matches);
   const celular = () => !!(window.matchMedia && matchMedia(CELULAR).matches);
@@ -1071,7 +1073,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 
@@ -1192,6 +1194,7 @@
     if (o.k === 'l' && temGrade(v)) out.push(nota('Cerca de ' + fmt(cubos(v, N_.compPolilinha(o.pts)), 0) + ' cubos de ponta a ponta.'));
     // (lote 10, parte 6) a cidade que o mestre abriu: o nível, a população, as construções prontas e as guildas
     if (o.k === 'm' && o.dentro && RP() && RP().leituraDentro) { const d = RP().leituraDentro(o); if (d) out.push(d); }
+    if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, v); if (q) out.push(q); }    // (lote 11) quem está aqui (os conhecidos)
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
     out.push(linha(o.k === 'm' && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
@@ -1219,6 +1222,7 @@
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
     if (o.k === 'f' && GP()) out.push(GP().secFasesFrente(o, m));          // (lote 8, parte 6) a frente que anda
+    if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, m); if (q) out.push(q); }    // (lote 11) quem está aqui
     out.push(campoTexto('o:' + id + ':txt', 'O que os jogadores sabem', o.txt, grava('mudar o que os jogadores sabem', (x, v) => { x.txt = v; }), { area: true, linhas: 3, ph: 'O que se conta por aí…' }));
     out.push(segredo('Só o mestre vê',
       campoTexto('o:' + id + ':nota', null, o.nota, grava('mudar a nota do mestre', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Segredos, ganchos, o que ainda não foi revelado…' }),

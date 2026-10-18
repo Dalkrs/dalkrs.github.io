@@ -1353,13 +1353,14 @@
     if (ok !== false) K.avisoDesfazer('A bandeira de ' + K.nomeFac(f) + (nova ? ' está pronta.' : ' mudou.'));
   }
   let seqBand = 0;
-  function dialogoBandeira(f, doCla) {
+  // (lote 11) o mesmo editor serve ao brasão de uma casa: o = { titulo, criar } (os textos da janela)
+  function dialogoBandeira(f, doCla, o) {
     const { h, glifo, nomeFac } = kit(), C = window.ClaNucleo, A = app(), NS = 'http://www.w3.org/2000/svg';
     const naMesa = !!(A.naMesa && window.TC && window.TC.arquivos && typeof window.TC.arquivos.subir === 'function');
     return new Promise(resolve => {
       const b = JSON.parse(JSON.stringify(f.band || bandeiraNova(f))), nova = !f.band;
       let alvo = 0, enviando = false, feito = false;
-      const titulo = h('h2', { text: 'A bandeira de ' + nomeFac(f) });
+      const titulo = h('h2', { text: (o && o.titulo) || 'A bandeira de ' + nomeFac(f) });
       titulo.id = 'dl-band-' + Date.now().toString(36);
       const previa = h('div', { class: 'band-previa', 'data-k': 'band:previa', 'aria-hidden': 'true' });
       // cada escolha muda a cópia e a prévia (nada muda no mapa até "Criar a bandeira" ou "Salvar")
@@ -1391,7 +1392,7 @@
         finally { enviando = false; if (!feito) atualizar(); }
       });
       const err = h('p', { class: 'err', role: 'alert' });
-      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'band:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'band:ok', text: nova ? 'Criar a bandeira' : 'Salvar' });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'band:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'band:ok', text: nova ? (o && o.criar) || 'Criar a bandeira' : 'Salvar' });
       function atualizar() {
         const marcar = (el, sim) => el.setAttribute('aria-pressed', String(!!sim));
         bFormas.forEach((el, i) => marcar(el, C.FORMAS[i].id === b.forma));
@@ -1509,5 +1510,6 @@
   }
 
   window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, ligar, janelaObra, janelaTipo, icones, janelaEstrato, janelaDivisao, janelaPessoas, janelaGuilda, janelaGuildaCat,
-    janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira, secLivroJog, leituraDentro };
+    janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira, secLivroJog, leituraDentro,
+    dialogoBandeira, fichasDaMesa, nomeDaFicha, abrirFicha };       // (lote 11) para a corte (mundo/corte-painel.js)
 })();

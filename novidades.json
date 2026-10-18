@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-18",
+      "data": "2026-10-18",
+      "titulo": "A corte",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a aba nova “Corte”, com os personagens do mundo por casa e um filtro de facção. No cartão de cada um: o gênero, a casa, a facção e o cargo na corte, o nascimento e a morte pela data do mundo (a idade sai sozinha), os pais e os cônjuges, onde está, a ficha das Fichas, “Os jogadores conhecem”, o que eles sabem e a nota do mestre."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: as casas (o nome, o lema, o chefe e o brasão, feito com o editor do Clã) e os cargos da corte de cada facção (os de começo, para renomear, criar e tirar). Na cidade e no grupo, “Quem está aqui”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a aba “Corte” mostra os personagens que vocês conhecem, com a casa, o cargo, os laços de família e o que se sabe deles; ao clicar numa cidade ou num grupo, aparece “Quem está aqui”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: as abas do painel ficaram um pouco mais juntas, para caber a aba nova."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-17",
       "data": "2026-10-18",
       "titulo": "O que os jogadores veem",
