@@ -13,6 +13,8 @@
 //     soldados, na proporção; a das sem tipo), a prévia (o estoque, a produção, a manutenção, o que fica — nunca abaixo
 //     de zero —, o que falta, as construções que param, as consequências, as obras) e aplicar (com o que o mestre
 //     recusou; as regras desligadas; uma semana de cada vez).
+//   · a bandeira própria da facção (sem clã): normalizada (o que não serve volta ao de começo ou sai), ao lado da do clã,
+//     e na projeção (a da facção escondida não vai).
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 let n = 0, bad = 0;
@@ -396,6 +398,26 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   ok(R.semanasPendentes(N.normalizarMapa(r10)) === 0, 'ligar de novo depois de semanas desligada: nenhuma pendente');
   // sem a semana pendente, nada
   ok(R.semanaPrevia(comDia(9)) === null && R.aplicarSemana(JSON.parse(j(comDia(9))), null, [], '') === null, 'sem semana pendente: sem prévia, e aplicar não faz nada');
+}
+
+/* ---- a bandeira própria da facção (sem clã) ---- */
+{
+  const BAND = { forma: 'estandarte', div: 'cortado', cores: ['#8a2a2a', '#d9a441'], simb: 'lua', img: null };
+  const m = N.normalizarMapa({ nome: 'M', larg: 2000, alt: 1400, faccoes: [
+    { id: 'fa', nome: 'Aldar', cor: '#3f7fbf', band: BAND }, { id: 'fb', nome: 'Culto', oculta: true, band: BAND },
+    { id: 'fc', nome: 'Ermo', band: { forma: 'escudo', cores: ['#ffffff'] } }, { id: 'fd', nome: 'Ilhas', band: 'azul' },
+    { id: 'fe', nome: 'Porto', band: { forma: 'Escudo Grande', div: 'x', cores: ['#123456', '#ABCDEF'], simb: '<b>', img: 'javascript:alert(1)' } },
+    { id: 'ff', nome: 'Torre', band: { forma: 'redondo', div: 'liso', cores: ['#123456', '#abcdef'], simb: 'torre', img: 'https://exemplo.invalid/torre.png' } }] });
+  const f = id => m.faccoes.find(x => x.id === id);
+  eq(f('fa').band, BAND, 'a bandeira própria fica na facção');
+  ok(!('band' in f('fc')) && !('band' in f('fd')), 'sem as duas cores (ou sem ser um objeto), a bandeira sai');
+  eq(f('fe').band, { forma: 'escudo', div: 'partido', cores: ['#123456', '#abcdef'], simb: null, img: null }, 'o que não serve volta ao de começo (a forma, a divisão) ou sai (o símbolo, a imagem que não é https)');
+  eq(f('ff').band.img, 'https://exemplo.invalid/torre.png', 'a imagem https fica');
+  const comBr = N.normalizarMapa({ nome: 'M', larg: 2000, alt: 1400, faccoes: [{ id: 'fa', nome: 'Aldar', br: Object.assign({}, BAND, { simb: 'coroa' }), band: BAND }] }).faccoes[0];
+  ok(comBr.br.simb === 'coroa' && comBr.band.simb === 'lua', 'a do clã (br) e a própria (band) ficam lado a lado: quem desenha escolhe a do clã');
+  const p = N.projetar(m);
+  eq(p.faccoes.find(x => x.id === 'fa').band, BAND, 'a projeção leva a bandeira própria (os jogadores veem)');
+  ok(!p.faccoes.some(x => x.id === 'fb'), 'a facção escondida não vai (nem a bandeira dela)');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

@@ -2075,6 +2075,8 @@
         rec: normRecursos(f.rec), pop: numPop(f.pop), apoio: numApoio(f.apoio), ver: { pop: sim(ver.pop), apoio: sim(ver.apoio), hist: sim(ver.hist) }, hist: normHistFac(f.hist) };
       const br = normBr(f.br);
       if (br) fac.br = br;
+      const band = normBr(f.band);                               // a bandeira própria da facção (sem clã; a do clã vale antes)
+      if (band) fac.band = band;
       if (sim(f.jog) && !out.some(x => x.jog)) fac.jog = true;    // (lote 10) a facção dos jogadores (uma só): as terras deles (vai na projeção)
       out.push(fac);
       crus.push(ehObj(f.rel) ? f.rel : {});

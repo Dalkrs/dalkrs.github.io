@@ -90,14 +90,15 @@
       return cacheVista.v;
     },
     /* (lote 8) A bandeira do clã ligado a uma facção (o brasão), para desenhar: a dos clãs que este aparelho lê e, senão,
-       a que veio com o mapa (a projeção leva a dos clãs escondidos). null: sem bandeira. */
+       a que veio com o mapa (a projeção leva a dos clãs escondidos); sem clã, a bandeira própria da facção (f.band).
+       null: sem bandeira. */
     brasoes: new Map(),
     brasaoDe(fid) {
       if (!fid) return null;
       const v = App.brasoes.get(fid);
       if (v) return v;
       const m = App.vista(), f = m && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === fid) : null;
-      return (f && f.br) || null;
+      return (f && f.br) || (f && f.band) || null;
     },
     /* (lote 9) As missões do grupo das Fichas, para a missão ligada no mapa: o título, a situação e se ainda está escondida
        dos jogadores (com o mestre). Só na mesa (fora dela não há Fichas da mesa: null). */

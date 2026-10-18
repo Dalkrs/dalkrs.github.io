@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-12",
+      "data": "2026-10-18",
+      "titulo": "A bandeira da facção",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: uma facção pode ter bandeira sem precisar de um clã. No editor da facção (aba Reinos), “Criar a bandeira…” abre o mesmo editor do brasão do Clã — a forma, a divisão, as duas cores e o símbolo (numa mesa, também uma imagem) —, com a prévia ao lado. Nada muda até “Criar a bandeira”, e dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a bandeira da facção aparece no meio das regiões dela, junto dos grupos, nas zonas e frentes de guerra e na aba Reinos — os jogadores também a veem."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o Livro do reino e a prévia da semana mostram a bandeira de cada facção no lugar da bolinha de cor. Quando a facção tem um clã ligado, vale a bandeira do clã; a própria fica guardada e volta quando ele sair."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-11",
       "data": "2026-10-18",
       "titulo": "A ajuda da batalha",

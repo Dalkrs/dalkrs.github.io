@@ -3,10 +3,22 @@
 //     junto do grupo e na zona de guerra; a projeção a leva, e o jogador a vê no mapa mostrado — sem receber o clã;
 //   · o brasão que muda no Clã muda a bandeira (no mapa do mestre, na projeção e no do jogador);
 //   · o clã que deixa a facção leva a bandeira embora.
+//   · (lote 10) a bandeira própria de uma facção sem clã: feita na janela, vai na projeção e o jogador a vê; com um clã
+//     ligado, vale a do clã (a própria volta quando ele sai); a imagem (só numa mesa) vai para o banco e o jogador a vê.
+const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const j = JSON.stringify;
+const CRC = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+function crc32(buf) { let c = -1; for (const b of buf) c = CRC[(c ^ b) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+function png(w, h, cor) {
+  const pedaco = (tipo, dados) => { const tam = Buffer.alloc(4), td = Buffer.concat([Buffer.from(tipo, 'latin1'), dados]), c = Buffer.alloc(4); tam.writeUInt32BE(dados.length); c.writeUInt32BE(crc32(td)); return Buffer.concat([tam, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const linha = 1 + w * 3, cru = Buffer.alloc(linha * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const [r, g, b] = cor(x, y), i = y * linha + 1 + x * 3; cru[i] = r; cru[i + 1] = g; cru[i + 2] = b; }
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pedaco('IHDR', ihdr), pedaco('IDAT', zlib.deflateSync(cru)), pedaco('IEND', Buffer.alloc(0))]);
+}
 
 (async () => {
   const t = await start({ net: true });
@@ -71,6 +83,42 @@ const j = JSON.stringify;
     await M.evaluate(d => TC.dados.col('documentos').gravar('cla:c:lam', { dados: Object.assign(d, { faccao: null }) }, null, { cas: true }), clan(BR));
     ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !p.faccoes.find(x => x.id === 'fa').br; }), 'sem clã ligado de novo: a projeção vai sem bandeira');
     ok(await ate(async () => (await contar(JW, 'reg')) === 0 && (await contar(W, 'reg')) === 0), 'e a bandeira some dos dois mapas');
+
+    // ---------- (lote 10) a bandeira própria do Vale, sem clã ----------
+    await W.evaluate(() => { const { App, N } = __mundo; App.mudar('o Vale', m => { m.objs.push(Object.assign(N.objNovo('r', { pts: [[1400, 300], [1800, 300], [1800, 700], [1400, 700]] }), { id: 'regv', nome: 'Vale Verde', fac: 'fb' })); }); });
+    await W.click('#tab-faccoes'); await w(300);
+    await W.click('#pane [data-k="fac:fb"]'); await w(300);
+    await W.click('#pane [data-k="f:fb:band"]');
+    await W.waitForSelector('dialog.band-dl[open]');
+    const D = s => 'dialog.band-dl[open] ' + s;
+    ok(await W.evaluate(() => { const d = document.querySelector('dialog.band-dl[open]'); return !d.querySelector('[data-k="band:img"]').hidden && d.querySelector('[data-k="band:img"]').textContent === 'Usar uma imagem…' && d.querySelector('[data-k="band:img-nota"]').textContent === 'Ou use uma imagem (PNG, JPG ou WebP): ela fica no lugar do desenho.'; }),
+      'numa mesa, a janela da bandeira oferece "Usar uma imagem…"');
+    await W.click(D('[data-simb="torre"]')); await W.click(D('[data-k="band:ok"]')); await w(400);
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), f = p && p.faccoes.find(x => x.id === 'fb'); return !!(f && f.band && f.band.simb === 'torre' && !f.band.img && !f.br); }), 'a bandeira própria do Vale vai na projeção');
+    ok(await ate(async () => (await contar(JW, 'regv')) === 1 && await JW.evaluate(() => /#8a2a2a/i.test((document.querySelector('#mundo svg [data-id="regv"] .bandeira svg') || {}).innerHTML || ''))), 'o jogador vê a bandeira do Vale (na cor dele)');
+    // com um clã ligado ao Vale, vale a do clã; ele sai, a própria volta
+    const clanV = d => Object.assign(clan(Object.assign({}, BR, { cores: ['#5b3f8a', '#e8eaf0'] })), { nome: 'Guarda do Vale', faccao: d });
+    await M.evaluate(d => TC.dados.col('documentos').gravar('cla:c:gva', { dados: d, vis: 'mestre' }), clanV({ id: 'fb', nome: 'Vale', cor: '#8a2a2a' }));
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), f = p && p.faccoes.find(x => x.id === 'fb'); return !!(f && f.br && f.br.cores[0] === '#5b3f8a' && f.band && f.band.simb === 'torre'); }), 'com um clã ligado ao Vale: a projeção leva as duas (a do clã e a própria)');
+    ok(await ate(async () => await JW.evaluate(() => /#5b3f8a/i.test((document.querySelector('#mundo svg [data-id="regv"] .bandeira svg') || {}).innerHTML || ''))), 'e o jogador vê a do clã');
+    await JW.click('#tab-faccoes'); await w(300, J);
+    const listaJ = () => JW.evaluate(() => (document.querySelector('#pane [data-k="fac-band:fb"]') || {}).innerHTML || '');
+    ok(await ate(async () => /#5b3f8a/i.test(await listaJ())), 'na aba Reinos do jogador, também a do clã');
+    await M.evaluate(d => TC.dados.col('documentos').gravar('cla:c:gva', { dados: d }, null, { cas: true }), clanV(null));
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), f = p && p.faccoes.find(x => x.id === 'fb'); return !!(f && !f.br && f.band); }) && await ate(async () => await JW.evaluate(() => /#8a2a2a/i.test((document.querySelector('#mundo svg [data-id="regv"] .bandeira svg') || {}).innerHTML || ''))),
+      'o clã sai: o jogador volta a ver a bandeira própria do Vale');
+    ok(await ate(async () => /#8a2a2a/i.test(await listaJ())), '(também na aba Reinos dele)');
+    // a imagem: vai para o banco e o jogador a vê
+    await W.click('#pane [data-k="f:fb:band"]');
+    await W.waitForSelector('dialog.band-dl[open]');
+    await W.locator(D('[data-k="band:arquivo"]')).setInputFiles({ name: 'vale.png', mimeType: 'image/png', buffer: png(900, 1080, (x, y) => [40 + (x >> 3), 120, 60 + (y >> 4)]) });
+    ok(await ate(async () => await W.evaluate(() => { const d = document.querySelector('dialog.band-dl[open]'); return !!d && !!d.querySelector('[data-k="band:previa"] img') && !d.querySelector('[data-k="band:ok"]').disabled; })), 'a imagem escolhida sobe para a mesa e aparece na prévia');
+    await W.click(D('[data-k="band:ok"]')); await w(400);
+    let url = null;
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), f = p && p.faccoes.find(x => x.id === 'fb'); url = f && f.band && f.band.img; return /^https:\/\//.test(url || ''); }), 'a projeção leva o endereço da imagem (https): ' + url);
+    ok(await ate(async () => await JW.evaluate(u => { const i = document.querySelector('#mundo svg [data-id="regv"] .bandeira image'); return !!i && i.getAttribute('href') === u; }, url)), 'e o jogador vê a imagem no lugar do desenho');
+    const tam = await M.evaluate(async u => { const r = await fetch(u); const b = await r.blob(); const bm = await createImageBitmap(b); return [r.status, b.type, bm.width, bm.height]; }, url);
+    ok(tam[0] === 200 && tam[1] === 'image/png' && tam[2] === 400 && tam[3] === 480, 'a imagem guardada é um PNG reduzido (480 px no lado maior): ' + j(tam));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

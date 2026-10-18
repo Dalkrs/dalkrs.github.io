@@ -1210,6 +1210,17 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   tipo começam em 1 de comida e 1 de moeda; um tipo sem número não paga. **As regras da falta** (`eco.regras`):
   "Regras da falta…" muda quanto o apoio cai (de começo, 10), quanto a moral cai sem moeda (1) ou sem outro recurso
   (1), e se as obras e as construções param.
+- **A bandeira própria da facção** (sem clã): no editor da facção (aba Reinos), "Criar a bandeira…" abre o mesmo editor
+  do brasão do Clã (`janelaBandeira`) — a forma, a divisão, as duas cores (a paleta do Clã, a cor da facção e "Outra"), o
+  símbolo e, numa mesa, uma imagem (reduzida a 480 px, em PNG, e enviada ao banco; fora de uma mesa, só o desenho). A
+  janela mexe numa cópia (a prévia mostra; no celular, ela fica presa em cima enquanto rola): "Criar a bandeira" (ou
+  "Salvar") vale num passo de Desfazer, com o aviso; "Cancelar" e Esc não mudam nada. A de começo é um estandarte
+  partido na cor da facção e no dourado (numa cor clara, no azul-escuro). Ela fica na facção (`f.band`, conferida por
+  `normBr`, como a do clã), vai na projeção (os jogadores a veem; a da facção escondida não vai) e aparece onde a do clã
+  aparece — no meio das regiões, junto dos grupos, nas zonas e frentes de guerra, na lista e no editor da aba Reinos —
+  e também no Livro do reino e na prévia da semana, no lugar da bolinha. Com um clã ligado à facção, vale a do clã
+  (`App.brasaoDe`: a do clã que a página lê, a que a projeção trouxe do clã e, por fim, a própria); a própria fica
+  guardada e volta quando o clã sai. "Tirar a bandeira" (com Desfazer) tira a própria.
 
 ### A Árvore (lote 6)
 
@@ -2254,7 +2265,13 @@ a semana (vira de domingo para segunda; as pendentes), a manutenção (por tipo,
 consequências, as obras) e aplicar (com o que o mestre recusou, as regras desligadas, uma semana de cada vez);
 `mundo-lote10` com `SO=semana`, a caixa da semana, a tabela da manutenção (sem negativo), as regras, a prévia que abre
 sozinha no "+7 dias" (a tabela, as consequências, recusar as obras paradas), aplicar, desfazer, fechar pelo botão e
-duas pendentes. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+duas pendentes. A bandeira própria da facção: `lote10-nucleo` confere a bandeira normalizada (o que não serve volta ao
+de começo ou sai), ao lado da do clã, e na projeção (a da facção escondida não vai); `mundo-lote10` com `SO=bandeira`,
+criar (a janela com a de começo, as escolhas e a prévia; nada muda antes de criar; no celular, cabe), no mapa, na lista,
+no editor e no Livro, editar e cancelar (ou Esc), salvar e desfazer, a imagem e "Voltar ao desenho", a do clã valendo
+antes (a própria guardada), quem joga vê, na prévia da semana, tirar e desfazer; `mundo-lote8.rede`, numa mesa, a
+bandeira própria chegando ao jogador (no mapa e na aba Reinos), a do clã valendo antes (e a própria voltando quando ele
+sai) e a imagem enviada à mesa (um PNG de 480 px no lado maior) que o jogador vê. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

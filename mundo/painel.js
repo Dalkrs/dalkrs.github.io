@@ -2680,13 +2680,14 @@
     if (facAberta === id) facAberta = null;
     avisoDesfazer('Facção apagada.');
   }
-  /* (lote 8) A bandeira do clã ligado a uma facção, pequena (na aba Facções): o brasão desenhado pelo núcleo do Clã ou a
-     imagem dele (do banco). null: sem bandeira. */
+  /* (lote 8) A bandeira de uma facção, pequena (na aba Reinos): a do clã ligado a ela ou, sem clã, a própria — o brasão
+     desenhado pelo núcleo do Clã ou a imagem (do banco). null: sem bandeira. */
   let seqBandeiraPainel = 0;
   function bandeiraFac(fid, w) {
     const br = App.brasaoDe ? App.brasaoDe(fid) : null;
     if (!br) return null;
-    const el = h('span', { class: 'fac-band', 'data-k': 'fac-band:' + fid, title: 'Bandeira do clã ligado a esta facção', style: { width: w + 'px', height: Math.round(w * 1.2) + 'px' } });
+    const f0 = App.mapa ? facDe(App.vista() || App.mapa, fid) : null;
+    const el = h('span', { class: 'fac-band', 'data-k': 'fac-band:' + fid, title: 'Bandeira' + (f0 ? ' de ' + nomeFac(f0) : ''), style: { width: w + 'px', height: Math.round(w * 1.2) + 'px' } });
     if (br.img && /^https:\/\//.test(br.img)) { el.append(h('img', { src: br.img, alt: '' })); return el; }
     const C = window.ClaNucleo;
     if (!C || typeof C.brasaoSvg !== 'function') return null;
@@ -2730,8 +2731,19 @@
     if (ed && RP()) out.push(RP().secEconomia(v), RP().secLivro(v));
     // (lote 9) o tamanho das bandeiras no mapa, só neste aparelho (para quem enxerga melhor maiores)
     out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
-      v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras dos clãs nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
+      v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras das facções (as próprias ou as dos clãs ligados a elas) nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
     return out;
+  }
+  function campoBandeira(f) {
+    const id = f.id, doCla = App.brasoes instanceof Map ? App.brasoes.get(id) : null, bt = (t, k, fn, c) => botao(t, fn, { c: 'sm' + (c ? ' ' + c : ''), k: 'f:' + id + ':' + k });
+    const editar = () => { if (RP() && RP().janelaBandeira) RP().janelaBandeira(id); };
+    const tirar = () => { if (App.mudar('tirar a bandeira da facção', mm => { const x = facDe(mm, id); if (!x || !x.band) return false; delete x.band; }) !== false) avisoDesfazer('A bandeira de ' + nomeFac(f) + ' saiu.'); };
+    if (doCla) return [h('div', { class: 'row' }, bandeiraFac(id, 34), nota('A do clã ligado a esta facção: aparece no meio das regiões dela, junto dos grupos e nas zonas e frentes de guerra. Muda quando o brasão do clã muda (na aba Clã).' +
+      (f.band ? ' A bandeira própria da facção fica guardada: volta a valer se o clã deixar de ser dela.' : ''))), f.band ? linha(bt('Editar a bandeira própria…', 'band', editar)) : null];
+    if (f.band) return [h('div', { class: 'row' }, bandeiraFac(id, 34), nota('A bandeira desta facção: aparece no meio das regiões dela, junto dos grupos e nas zonas e frentes de guerra (os jogadores também a veem).')),
+      linha(bt('Editar a bandeira…', 'band', editar), bt('Tirar a bandeira', 'band-tirar', tirar, 'per'))];
+    return [nota('Sem bandeira. Crie uma aqui (forma, cores e símbolo, como o brasão de um clã) — ou, na aba Clã, ligue um clã a esta facção: o brasão dele vira a bandeira dela.'),
+      linha(bt('Criar a bandeira…', 'band', editar))];
   }
   function editorFaccao(f, m) {
     const id = f.id, N_ = N(), outras = m.faccoes.filter(g => g.id !== id);
@@ -2745,10 +2757,8 @@
             'aria-label': NOMES_CORES[i] || 'Cor ' + (i + 1), title: NOMES_CORES[i] || 'Cor ' + (i + 1), onclick: () => grava('mudar a cor da facção', x => { x.cor = c; })() })),
           campoCor('f:' + id + ':cor', 'Outra cor', f.cor, grava('mudar a cor da facção', (x, v) => { x.cor = v; })))),
       campoTexto('f:' + id + ':txt', 'O que os jogadores sabem', f.txt, grava('mudar o texto da facção', (x, v) => { x.txt = v; }), { area: true, linhas: 3 }),
-      // (lote 8) a bandeira: a do clã ligado a esta facção (na aba Clã); muda junto com o brasão dele
-      h('div', { class: 'field fac-band-campo' }, h('span', { text: 'Bandeira' }),
-        bandeiraFac(id, 34) ? h('div', { class: 'row' }, bandeiraFac(id, 34), nota('A do clã ligado a esta facção: aparece no meio das regiões dela, junto dos grupos e nas zonas e frentes de guerra. Muda quando o brasão do clã muda (na aba Clã).'))
-          : nota('Sem bandeira. Na aba Clã, escolha esta facção no clã: o brasão dele vira a bandeira dela no mapa.')),
+      // (lote 8) a bandeira: a do clã ligado a esta facção (na aba Clã), que vale antes; sem clã, a própria (f.band)
+      h('div', { class: 'field fac-band-campo', 'data-k': 'f:' + id + ':band-campo' }, h('span', { text: 'Bandeira' }), ...campoBandeira(f)),
       segredo('Só o mestre vê', campoTexto('f:' + id + ':nota', null, f.nota, grava('mudar a nota da facção', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Planos, segredos…' })),
       caixa('f:' + id + ':oculta', 'Esconder dos jogadores', f.oculta, grava('esconder a facção', (x, v) => { x.oculta = !!v; }), { dica: 'Some da lista deles; as regiões ficam sem cor de facção para eles.' }),
       // (lote 10) a facção dos jogadores: as terras deles (uma só)
@@ -3125,6 +3135,6 @@
   /* (lote 8, parte 6) as ferramentas do painel, para a guerra (mundo/guerra-painel.js) */
   const kit = { app: () => App, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
     irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; },
-    campoCor, lerNum, fmtCampo, mesmoMapa };                       // (lote 10) a economia (mundo/reino-painel.js)
+    campoCor, lerNum, fmtCampo, mesmoMapa, bandeiraFac };          // (lote 10) a economia e a bandeira (mundo/reino-painel.js)
   window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
 })();

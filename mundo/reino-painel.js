@@ -15,6 +15,8 @@
    facção, o estoque, a produção, a manutenção, o que fica e o que falta; as consequências, cada uma com a caixa para
    recusar; as obras), que abre sozinha quando o calendário passa de domingo para segunda; aplicar (com Desfazer) e a
    próxima pendente.
+   A bandeira própria de uma facção (sem clã): a janela com o editor do brasão do Clã (a forma, a divisão, as cores, o
+   símbolo; numa mesa, uma imagem); a bandeira no Livro do reino e na prévia da semana (a do clã ligado vale antes).
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
 (() => {
   'use strict';
@@ -757,7 +759,7 @@
             h('td', { class: 'num', text: pf.falta[r.id] ? n2(pf.falta[r.id]) : '' })))));
         const exe = pf.exe.map(x => nomeG(x.id) + ' (' + txtTab(m, x.manut, false) + ')');
         const par = pf.paradas.map(x => { const o = achar(m, x.o), t = R().tipoDe(m, x.t); return (t ? t.nome : 'A construção') + (o ? ' (' + nomeDe(o, m) + ')' : '') + ' não produz nem gasta: falta ' + nomeR(x.r) + '.'; });
-        return h('div', { class: 'sem-fac', 'data-k': 'sem:fac:' + pf.id }, h('div', { class: 'sem-cab' }, h('i', { style: { background: f ? f.cor : null } }), h('b', { text: f ? nomeFac(f) : pf.id })),
+        return h('div', { class: 'sem-fac', 'data-k': 'sem:fac:' + pf.id }, h('div', { class: 'sem-cab' }, kit().bandeiraFac(pf.id, 14) || h('i', { style: { background: f ? f.cor : null } }), h('b', { text: f ? nomeFac(f) : pf.id })),
           ids.length ? h('div', { class: 'eco-tab-caixa' }, tab) : null,
           exe.length ? h('small', { class: 'sem-exe', text: 'Manutenção dos exércitos: ' + exe.join(' · ') + '.' }) : null,
           par.map(t => h('small', { class: 'sem-par', text: t })));
@@ -810,16 +812,150 @@
     });
   }
 
+  /* ---------------- a bandeira própria da facção (sem clã) ---------------- */
+  // a luminância de uma cor (#rrggbb), de 0 (preto) a 1 (branco)
+  function luz(c) {
+    const m0 = /^#([0-9a-f]{6})$/i.exec(c || '');
+    if (!m0) return 0;
+    const n = parseInt(m0[1], 16), lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  }
+  // a bandeira de começo: um estandarte partido na cor da facção e no dourado (ou, numa cor clara, no azul-escuro)
+  function bandeiraNova(f) {
+    const c1 = /^#[0-9a-f]{6}$/i.test(f.cor || '') ? f.cor.toLowerCase() : '#3f7fbf';
+    return { forma: 'estandarte', div: 'partido', cores: [c1, luz(c1) < 0.4 ? '#d9a441' : '#24305e'], simb: null, img: null };
+  }
+  // uma imagem pequena para a bandeira: PNG (pode ter fundo transparente), com até `lado` px no lado maior
+  async function imagemPequena(arq, lado) {
+    if (!arq || !/^image\/(png|jpeg|webp)$/.test(arq.type || '')) throw new Error('Escolha uma imagem PNG, JPG ou WebP.');
+    let fonte = null, w = 0, hh = 0, u = '';
+    try {
+      try { fonte = await createImageBitmap(arq); w = fonte.width; hh = fonte.height; }
+      catch (e) {
+        u = URL.createObjectURL(arq);
+        fonte = await new Promise((ok, falha) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => falha(new Error('Não deu para ler esta imagem.')); im.src = u; });
+        w = fonte.naturalWidth; hh = fonte.naturalHeight;
+      }
+      if (!w || !hh) throw new Error('Não deu para ler esta imagem.');
+      const k = Math.min(1, lado / Math.max(w, hh)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(hh * k));
+      cv.getContext('2d').drawImage(fonte, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('Não deu para preparar esta imagem.');
+      return blob;
+    } finally {
+      if (fonte && typeof fonte.close === 'function') { try { fonte.close(); } catch (e) { /* já fechada */ } }
+      if (u) URL.revokeObjectURL(u);
+    }
+  }
+  /* A janela da bandeira de uma facção: o mesmo editor do brasão do Clã (a forma, a divisão, as duas cores, o símbolo — ou,
+     numa mesa, uma imagem). Mexe numa cópia (a prévia mostra); "Criar a bandeira" (ou "Salvar") vale num passo de
+     Desfazer. Com um clã ligado à facção, vale a bandeira do clã: a própria fica guardada. */
+  async function janelaBandeira(fid) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (!A.podeEditar() || !window.ClaNucleo || !m) return;
+    const f = K.facDe(m, fid);
+    if (!f) return;
+    const v = await dialogoBandeira(f, A.brasoes instanceof Map && A.brasoes.has(fid));
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const nova = !f.band;
+    const ok = A.mudar(nova ? 'criar a bandeira da facção' : 'mudar a bandeira da facção', mm => {
+      const x = K.facDe(mm, fid);
+      if (!x || (x.band && JSON.stringify(x.band) === JSON.stringify(v))) return false;
+      x.band = v;
+    });
+    if (ok !== false) K.avisoDesfazer('A bandeira de ' + K.nomeFac(f) + (nova ? ' está pronta.' : ' mudou.'));
+  }
+  let seqBand = 0;
+  function dialogoBandeira(f, doCla) {
+    const { h, glifo, nomeFac } = kit(), C = window.ClaNucleo, A = app(), NS = 'http://www.w3.org/2000/svg';
+    const naMesa = !!(A.naMesa && window.TC && window.TC.arquivos && typeof window.TC.arquivos.subir === 'function');
+    return new Promise(resolve => {
+      const b = JSON.parse(JSON.stringify(f.band || bandeiraNova(f))), nova = !f.band;
+      let alvo = 0, enviando = false, feito = false;
+      const titulo = h('h2', { text: 'A bandeira de ' + nomeFac(f) });
+      titulo.id = 'dl-band-' + Date.now().toString(36);
+      const previa = h('div', { class: 'band-previa', 'data-k': 'band:previa', 'aria-hidden': 'true' });
+      // cada escolha muda a cópia e a prévia (nada muda no mapa até "Criar a bandeira" ou "Salvar")
+      const esc = (attrs, conteudo, fn) => { const el = h('button', Object.assign({ type: 'button', class: 'band-esc' }, attrs), conteudo); el.addEventListener('click', () => { fn(); atualizar(); }); return el; };
+      const svgForma = d => { const s0 = document.createElementNS(NS, 'svg'), p = document.createElementNS(NS, 'path'); s0.setAttribute('width', '24'); s0.setAttribute('height', '28'); s0.setAttribute('viewBox', '0 0 100 120'); s0.setAttribute('aria-hidden', 'true'); p.setAttribute('d', d); p.setAttribute('fill', 'currentColor'); s0.append(p); return s0; };
+      const bFormas = C.FORMAS.map(fm => esc({ 'data-forma': fm.id, title: fm.nome, 'aria-label': fm.nome }, svgForma(fm.d), () => { b.forma = fm.id; }));
+      const bDivs = C.DIVISOES.map(([d, nm]) => esc({ 'data-div': d }, nm, () => { b.div = d; }));
+      const amostras = [0, 1].map(() => h('span', { class: 'band-am' }));
+      const bAlvos = [0, 1].map(i => esc({ 'data-alvo': String(i) }, [amostras[i], 'Cor ' + (i + 1)], () => { alvo = i; }));
+      const paleta = (C.CORES.includes(f.cor) ? [] : [f.cor]).concat(C.CORES);
+      const bCores = paleta.map(c => { const rot = c === f.cor ? 'A cor da facção' : 'Cor ' + c; return esc({ class: 'band-esc cor', 'data-cor': c, title: rot, 'aria-label': rot }, h('span', { style: { background: c } }), () => { b.cores[alvo] = c; }); });
+      const outra = h('input', { type: 'color', 'data-k': 'band:outra', 'aria-label': 'Outra cor' });
+      outra.addEventListener('change', () => { b.cores[alvo] = String(outra.value).toLowerCase(); atualizar(); });
+      const bSimbs = [esc({ class: 'band-esc nenhum', 'data-simb': '' }, 'Nenhum', () => { b.simb = null; })]
+        .concat([...C.SIMBOLOS.values()].map(s0 => esc({ 'data-simb': s0.id, title: s0.nome, 'aria-label': s0.nome }, glifo('<path d="' + s0.d + '"/>', 22), () => { b.simb = s0.id; })));
+      // a imagem (numa mesa): vai para o banco e volta o endereço; "Voltar ao desenho" tira
+      const arquivo = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', 'data-k': 'band:arquivo', 'aria-label': 'A imagem da bandeira' });
+      arquivo.hidden = true;
+      const bImg = h('button', { type: 'button', class: 'btn sm', 'data-k': 'band:img' }), bSemImg = h('button', { type: 'button', class: 'btn sm', 'data-k': 'band:sem-img', text: 'Voltar ao desenho' });
+      const notaImg = h('small', { class: 'band-nota', 'data-k': 'band:img-nota' });
+      bImg.addEventListener('click', () => { arquivo.value = ''; arquivo.click(); });
+      bSemImg.addEventListener('click', () => { b.img = null; atualizar(); });
+      arquivo.addEventListener('change', async () => {
+        const arq = arquivo.files && arquivo.files[0];
+        if (!arq || enviando) return;
+        enviando = true; err.textContent = ''; atualizar();
+        try { const url = await window.TC.arquivos.subir(await imagemPequena(arq, 480)); if (!feito) b.img = url; }
+        catch (e) { err.textContent = (e && e.message) || 'Não deu para usar esta imagem.'; }
+        finally { enviando = false; if (!feito) atualizar(); }
+      });
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'band:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'band:ok', text: nova ? 'Criar a bandeira' : 'Salvar' });
+      function atualizar() {
+        const marcar = (el, sim) => el.setAttribute('aria-pressed', String(!!sim));
+        bFormas.forEach((el, i) => marcar(el, C.FORMAS[i].id === b.forma));
+        bDivs.forEach((el, i) => marcar(el, C.DIVISOES[i][0] === b.div));
+        bAlvos.forEach((el, i) => marcar(el, i === alvo));
+        amostras.forEach((sw, i) => { sw.style.background = b.cores[i]; });
+        bCores.forEach((el, i) => marcar(el, paleta[i] === b.cores[alvo]));
+        outra.value = b.cores[alvo];
+        bSimbs.forEach((el, i) => marcar(el, i ? el.dataset.simb === b.simb : !b.simb));
+        if (b.img) previa.replaceChildren(h('img', { src: b.img, alt: '' }));
+        else previa.innerHTML = C.brasaoSvg(b, 'bd' + (++seqBand));          // o desenho do núcleo do Clã: só números e cores conferidos
+        bImg.textContent = b.img ? 'Trocar a imagem…' : 'Usar uma imagem…';
+        bImg.hidden = !naMesa; bImg.disabled = enviando; bSemImg.hidden = !b.img; bSemImg.disabled = enviando; bOk.disabled = enviando;
+        notaImg.textContent = enviando ? 'Enviando a imagem…' : b.img ? 'Com a imagem, a forma, as cores e o símbolo ficam guardados para quando voltar ao desenho.'
+          : naMesa ? 'Ou use uma imagem (PNG, JPG ou WebP): ela fica no lugar do desenho.' : 'Uma imagem no lugar do desenho só dá para usar numa mesa.';
+      }
+      const campo = (rot, ...filhos) => h('div', { class: 'band-campo' }, h('span', { class: 'band-rot', text: rot }), ...filhos);
+      const grupo = (rot, filhos, cls) => h('div', { class: cls || 'band-escolhas', role: 'group', 'aria-label': rot }, filhos);
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        doCla ? h('p', { class: 'band-cla', 'data-k': 'band:cla', text: 'Esta facção tem um clã ligado: no mapa vale a bandeira dele (o brasão, na aba Clã). Esta fica guardada e volta a valer se o clã deixar a facção.' }) : null,
+        h('div', { class: 'band-ed' }, previa,
+          h('div', { class: 'band-campos' },
+            campo('Forma', grupo('Forma', bFormas)), campo('Divisão', grupo('Divisão', bDivs)),
+            campo('Cores (escolha qual e depois a cor)', grupo('Qual cor', bAlvos), grupo('A cor', [bCores, h('label', { class: 'band-esc band-outra' }, 'Outra', outra)])),
+            campo('Símbolo', grupo('Símbolo', bSimbs, 'band-simbolos')),
+            h('div', { class: 'row band-img' }, bImg, bSemImg, arquivo), notaImg)),
+        err, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl band-dl', 'aria-labelledby': titulo.id }, form);
+      const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); if (!enviando) fim(JSON.parse(JSON.stringify(b))); });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      atualizar();
+      document.body.append(dl);
+      dl.showModal();
+      (bFormas.find(el => el.getAttribute('aria-pressed') === 'true') || bOk).focus();
+    });
+  }
+
   /* ---------------- o Livro do reino (na aba Reinos) ---------------- */
   function secLivro(v) {
-    const { h, nota, secao, fmt, plural, nomeFac, facDe } = kit();
+    const { h, nota, secao, fmt, plural, nomeFac, facDe, bandeiraFac } = kit();
     if (!R() || !v) return null;
     const L = R().livroDoReino(v), out = [];
     // (parte 2) com a economia: o que cada facção produz por semana e o estoque (os recursos do mundo nela)
     const eco = ligada(v) ? v.eco : null, prod = eco ? R().producaoPorFaccao(v, id => (app().infoDoCla ? app().infoDoCla(id) : null)) : null;
     const txtRec = t => eco.rec.filter(r => t[r.id]).map(r => r.nome + ' ' + (t[r.id] > 0 ? '' : '−') + fmt(Math.abs(t[r.id]), 2)).join(' · ');
     const linha = (l, nome, cor, f) => h('div', { class: 'livro-li', 'data-k': 'livro:' + (l.fac || '-') },
-      h('i', { class: cor ? '' : 'sem', style: cor ? { background: cor } : null }), h('b', { text: nome }),
+      (f && bandeiraFac(f.id, 14)) || h('i', { class: cor ? '' : 'sem', style: cor ? { background: cor } : null }), h('b', { text: nome }),
       h('small', { text: [plural(l.prov, 'província', 'províncias'), plural(l.sub, 'sub-região', 'sub-regiões'), L.grade ? plural(l.hex, 'hexágono', 'hexágonos') : null,
         l.exe ? plural(l.exe, 'exército', 'exércitos') + ' (' + fmt(l.tropas, 0) + ' tropas)' : null].filter(Boolean).join(' · ') }),
       eco ? h('small', { class: 'livro-prod', text: 'Produz por semana: ' + (txtRec(l.fac ? prod.por[l.fac] || {} : prod.sem) || 'nada') }) : null,
@@ -833,5 +969,5 @@
   }
 
   window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, janelaPopulacao, ligar, janelaObra, janelaTipo, icones,
-    janelaSemana, janelaManutencao, janelaRegras, iniciar };
+    janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira };
 })();

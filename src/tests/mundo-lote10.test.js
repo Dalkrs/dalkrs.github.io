@@ -24,6 +24,10 @@
 //     negativo) e as regras da falta; o calendário passa de domingo para segunda ("+7 dias") e a prévia abre sozinha (o
 //     estoque, a produção, a manutenção, o que fica e o que falta; as consequências — recusar as obras paradas muda as
 //     obras —); aplicar, desfazer, "1 semana para fechar" e fechar pelo botão; duas pendentes, uma de cada vez.
+//   · (SO=bandeira) a bandeira própria da facção (sem clã): criar (a janela com a de começo, as escolhas e a prévia; nada
+//     muda antes de criar; no celular, cabe), no mapa, na lista, no editor e no Livro; editar e cancelar (ou Esc); salvar
+//     e desfazer; a imagem (o mapa a mostra; "Voltar ao desenho"); com um clã ligado, vale a do clã (a própria fica
+//     guardada); quem joga vê; na prévia da semana; tirar e desfazer.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -515,6 +519,127 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     ok(await A(L, () => !!document.querySelector('dialog.sem-dl[open]') && !/Depois desta/.test(document.querySelector('dialog.sem-dl[open] [data-k="sem:quando"]').textContent)), 'aplicada a primeira, a prévia da segunda aparece');
     await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(300);
     ok(await A(L, () => window.MundoReino.semanasPendentes(__mundo.App.mapa)) === 1 && /^1 semana para fechar/.test(await caixa()), '"Agora não": a segunda fica para fechar');
+    await aba(L, 'selecao');
+  });
+
+  // ---------- a bandeira própria da facção (sem clã) ----------
+  if (parte('bandeira')) await passo('a bandeira da facção', async () => {
+    const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    await L.P.route('https://exemplo.invalid/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await A(L, () => { __mundo.App.brasoes = new Map(); __mundo.App.comoJogador = false; __mundo.App.emit('muda', { origem: 'fora' }); }); await espera(250);
+    await aba(L, 'faccoes');
+    const contar = id => A(L, id => document.querySelectorAll(`#mundo svg [data-id="${id}"] .bandeira`).length, id);
+    const desenho = id => A(L, id => { const b = document.querySelector(`#mundo svg [data-id="${id}"] .bandeira`); return b ? b.innerHTML : ''; }, id);
+    const bandFb = () => A(L, () => __mundo.App.mapa.faccoes.find(f => f.id === 'fb').band || null);
+    ok(await contar('s1') === 0 && await L.F.locator('#pane [data-k="fac:fb"] .fac-band').count() === 0, 'sem bandeira: nada no mapa nem na lista');
+    await L.F.click('#pane [data-k="fac:fb"]'); await espera(250);
+    ok(/Bandeira Sem bandeira\. Crie uma aqui \(forma, cores e símbolo, como o brasão de um clã\)/.test(await textoPane(L)) && await campo(L, 'f:fb:band').count() === 1 && await campo(L, 'f:fb:band-tirar').count() === 0,
+      'no editor do Vale: "Sem bandeira" e "Criar a bandeira…"');
+    // a janela: a bandeira de começo
+    const D = sel => 'dialog.band-dl[open] ' + sel;
+    const estado = () => A(L, () => {
+      const d = document.querySelector('dialog.band-dl[open]');
+      if (!d) return null;
+      const p = s => [...d.querySelectorAll(s + '[aria-pressed="true"]')].map(e => e.getAttribute(s.slice(1, -1)));
+      return { esc: [p('[data-forma]'), p('[data-div]'), p('[data-alvo]'), p('[data-cor]'), p('[data-simb]')], previa: d.querySelector('[data-k="band:previa"]').innerHTML, ok: d.querySelector('[data-k="band:ok"]').textContent,
+        nota: d.querySelector('[data-k="band:img-nota"]').textContent, img: !d.querySelector('[data-k="band:img"]').hidden, semImg: !d.querySelector('[data-k="band:sem-img"]').hidden, cla: !!d.querySelector('[data-k="band:cla"]'), titulo: d.querySelector('h2').textContent };
+    });
+    await botao(L, 'f:fb:band');
+    await L.F.waitForSelector('dialog.band-dl[open]');
+    let e = await estado();
+    ok(e.titulo === 'A bandeira de Vale' && j(e.esc) === j([['estandarte'], ['partido'], ['0'], ['#8a2a2a'], ['']]) && /#8a2a2a/i.test(e.previa) && /#d9a441/i.test(e.previa) && e.ok === 'Criar a bandeira' && !e.cla,
+      'a janela abre com a de começo: um estandarte partido na cor do Vale e no dourado, sem símbolo: ' + j(e.esc));
+    ok(!e.img && !e.semImg && e.nota === 'Uma imagem no lugar do desenho só dá para usar numa mesa.', 'sem mesa: nada de imagem (e o aviso): ' + e.nota);
+    // escolher: a forma, a divisão, a segunda cor, o símbolo; a primeira cor em "Outra"
+    for (const s of ['[data-forma="escudo"]', '[data-div="cortado"]', '[data-alvo="1"]', '[data-cor="#2f6b45"]', '[data-simb="lua"]']) await L.F.click(D(s));
+    await espera(120);
+    e = await estado();
+    ok(j(e.esc) === j([['escudo'], ['cortado'], ['1'], ['#2f6b45'], ['lua']]) && /#2f6b45/i.test(e.previa) && !/#d9a441/i.test(e.previa), 'a forma, a divisão, a segunda cor e o símbolo: a prévia muda: ' + j(e.esc));
+    await L.F.click(D('[data-alvo="0"]')); await L.F.locator(D('[data-k="band:outra"]')).fill('#123456'); await espera(120);
+    e = await estado();
+    ok(j(e.esc[3]) === '[]' && /#123456/i.test(e.previa), 'a primeira cor em "Outra": nenhuma da paleta marcada, a prévia com ela');
+    ok(await contar('s1') === 0 && !(await bandFb()), 'nada muda no mapa antes de criar');
+    // no celular, a janela cabe na largura
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(300);
+    const cabe = await A(L, () => { const d = document.querySelector('dialog.band-dl[open]'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && d.scrollWidth <= d.clientWidth + 1; });
+    ok(cabe, 'no celular (400 px): a janela cabe na largura, sem rolar para o lado');
+    await semAvisos(L); await foto('l10-bandeira-celular');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await foto('l10-bandeira-janela');
+    await L.F.click(D('[data-k="band:ok"]')); await espera(450);
+    ok(j(await bandFb()) === j({ forma: 'escudo', div: 'cortado', cores: ['#123456', '#2f6b45'], simb: 'lua', img: null }) && /A bandeira de Vale está pronta\./.test(await avisos(L)) && !(await estado()),
+      'criar a bandeira: fica na facção, a janela fecha e o aviso (com Desfazer): ' + j(await bandFb()));
+    ok(await contar('s1') === 1 && /#2f6b45/i.test(await desenho('s1')) && await contar('p1') === 0, 'no mapa: a bandeira no meio da sub-região do Vale (e não na província de Aldar)');
+    ok(await L.F.locator('#pane [data-k="fac:fb"] .fac-band').count() === 1 && await L.F.locator('#pane .fac-band-campo .fac-band').count() === 1 && await L.F.locator('#pane [data-k="livro:fb"] .fac-band').count() === 1,
+      'na aba Reinos: a bandeira na lista, no editor e no Livro do reino (no lugar da bolinha)');
+    ok(/A bandeira desta facção: aparece no meio das regiões dela/.test(await textoPane(L)) && await A(L, () => document.querySelector('#pane [data-k="f:fb:band"]').textContent) === 'Editar a bandeira…' && await campo(L, 'f:fb:band-tirar').count() === 1,
+      'o editor: "Editar a bandeira…" e "Tirar a bandeira"');
+    await semAvisos(L); await foto('l10-bandeira-reinos');
+    await A(L, () => document.querySelector('#pane [data-k="livro:fb"]').scrollIntoView({ block: 'center' })); await espera(150);
+    await foto('l10-bandeira-livro');
+    // editar e cancelar (ou Esc): nada muda
+    await botao(L, 'f:fb:band');
+    await L.F.waitForSelector('dialog.band-dl[open]');
+    e = await estado();
+    ok(e.ok === 'Salvar' && j(e.esc) === j([['escudo'], ['cortado'], ['0'], [], ['lua']]), 'editar: a janela abre com a bandeira de agora ("Salvar"): ' + j(e.esc));
+    await L.F.click(D('[data-simb="estrela"]')); await L.F.click(D('[data-simb=""]')); await espera(80);
+    ok(j((await estado()).esc[4]) === j(['']), '"Nenhum" tira o símbolo (na prévia)');
+    await L.F.click(D('[data-k="band:nao"]')); await espera(250);
+    ok(!(await estado()) && (await bandFb()).simb === 'lua', 'Cancelar: a janela fecha e nada muda');
+    await botao(L, 'f:fb:band'); await L.F.waitForSelector('dialog.band-dl[open]');
+    await L.F.click(D('[data-simb="estrela"]')); await L.P.keyboard.press('Escape'); await espera(250);
+    ok(!(await estado()) && (await bandFb()).simb === 'lua', 'Esc: o mesmo');
+    // salvar uma mudança: um passo de Desfazer
+    await botao(L, 'f:fb:band'); await L.F.waitForSelector('dialog.band-dl[open]');
+    await L.F.click(D('[data-simb="estrela"]')); await semAvisos(L); await L.F.click(D('[data-k="band:ok"]')); await espera(400);
+    ok((await bandFb()).simb === 'estrela' && /A bandeira de Vale mudou\./.test(await avisos(L)), 'salvar: a estrela no lugar da lua (e o aviso)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await bandFb()).simb === 'lua', 'Desfazer (no aviso): a lua volta');
+    // uma imagem (o que viria de uma mesa): o mapa a mostra; "Voltar ao desenho"
+    await A(L, () => __mundo.App.mudar('a imagem', m => { m.faccoes.find(f => f.id === 'fb').band.img = 'https://exemplo.invalid/vale.png'; })); await espera(350);
+    ok(await A(L, () => { const i = document.querySelector('#mundo svg [data-id="s1"] .bandeira image'); return !!i && i.getAttribute('href') === 'https://exemplo.invalid/vale.png'; }), 'com uma imagem: o mapa mostra a imagem no lugar do desenho');
+    await botao(L, 'f:fb:band'); await L.F.waitForSelector('dialog.band-dl[open]');
+    e = await estado();
+    ok(e.semImg && !e.img && /<img/.test(e.previa) && /^Com a imagem, a forma, as cores e o símbolo ficam guardados/.test(e.nota), 'a janela: a imagem na prévia e "Voltar ao desenho" (trocar a imagem, só numa mesa)');
+    await L.F.click(D('[data-k="band:sem-img"]')); await espera(120);
+    e = await estado();
+    ok(!e.semImg && /#2f6b45/i.test(e.previa), '"Voltar ao desenho": a prévia volta ao desenho guardado');
+    await L.F.click(D('[data-k="band:ok"]')); await espera(400);
+    ok((await bandFb()).img === null && /#2f6b45/i.test(await desenho('s1')), 'salvar: sem a imagem, o mapa volta ao desenho');
+    // com um clã ligado ao Vale, vale a bandeira do clã; a própria fica guardada
+    const BR = { forma: 'redondo', div: 'liso', cores: ['#5b3f8a', '#e8eaf0'], simb: 'coroa', img: null };
+    await A(L, br => { __mundo.App.brasoes = new Map([['fb', br]]); __mundo.App.emit('muda', { origem: 'fora' }); }, BR); await espera(400);
+    ok(/#5b3f8a/i.test(await desenho('s1')) && !/#2f6b45/i.test(await desenho('s1')), 'com um clã ligado ao Vale: no mapa, vale a bandeira do clã');
+    ok(/A do clã ligado a esta facção: .+ A bandeira própria da facção fica guardada: volta a valer se o clã deixar de ser dela\./.test(await textoPane(L))
+      && await A(L, () => document.querySelector('#pane [data-k="f:fb:band"]').textContent) === 'Editar a bandeira própria…' && await campo(L, 'f:fb:band-tirar').count() === 0, 'o editor diz de onde vem e que a própria fica guardada ("Editar a bandeira própria…")');
+    await botao(L, 'f:fb:band'); await L.F.waitForSelector('dialog.band-dl[open]');
+    ok((await estado()).cla, 'a janela também avisa do clã');
+    await L.F.click(D('[data-k="band:nao"]')); await espera(200);
+    await A(L, () => { __mundo.App.brasoes = new Map(); __mundo.App.emit('muda', { origem: 'fora' }); }); await espera(400);
+    ok(/#2f6b45/i.test(await desenho('s1')), 'o clã sai: a bandeira própria volta a valer');
+    // quem joga vê
+    await comoJogador(L, true);
+    const pub = await A(L, () => (__mundo.App.vista().faccoes.find(f => f.id === 'fb') || {}).band || null);
+    ok(pub && pub.cores[1] === '#2f6b45' && await contar('s1') === 1 && await L.F.locator('#pane .fac-band[data-k="fac-band:fb"]').count() >= 1, 'quem joga vê a bandeira do Vale (no mapa e na aba Reinos): ' + j(pub));
+    await comoJogador(L, false);
+    await aba(L, 'faccoes');
+    // na prévia da semana
+    await A(L, () => {
+      const { App } = __mundo, R = window.MundoReino;
+      App.mudar('a economia', m => { if (!m.eco || !m.eco.on) R.ligarEconomia(m); const r = m.faccoes.find(f => f.id === 'fb').rec.find(x => x.id === 'lapros'); if (r) r.n = 5; });
+      App.mudar('+7', m => { m.cal.dia += 7; });
+    });
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    ok(await L.F.locator('dialog.sem-dl[open] [data-k="sem:fac:fb"] .sem-cab .fac-band').count() === 1, 'na prévia da semana: a bandeira no lugar da bolinha');
+    await semAvisos(L); await espera(400); await foto('l10-bandeira-semana');
+    await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250);
+    // tirar a bandeira (e desfazer)
+    await L.F.click('#pane [data-k="fac:fb"]'); await espera(250);
+    if (await campo(L, 'f:fb:band-tirar').count() === 0) { await L.F.click('#pane [data-k="fac:fb"]'); await espera(250); }
+    await botao(L, 'f:fb:band-tirar'); await espera(250);
+    ok(!(await bandFb()) && await contar('s1') === 0 && /A bandeira de Vale saiu\./.test(await avisos(L)) && /Sem bandeira\./.test(await textoPane(L)), 'tirar a bandeira: sai da facção e do mapa (e o aviso)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await bandFb()) && await contar('s1') === 1, 'Desfazer: volta');
     await aba(L, 'selecao');
   });
 

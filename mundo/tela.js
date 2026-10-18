@@ -1283,8 +1283,9 @@
     el.setAttribute('transform', `translate(${-tam / 2} ${-tam / 2}) scale(${tam / 24})`);
     return el;
   }
-  /* (lote 8) A bandeira do clã ligado a uma facção: o brasão (desenhado pelo núcleo do Clã, ou a imagem dele, quando é
-     do banco), com largura w, centrado em (x, y), num grupo de tamanho fixo na tela. null: a facção não tem bandeira. */
+  /* (lote 8) A bandeira do clã ligado a uma facção — ou, sem clã, a bandeira própria dela (lote 10) —: o brasão
+     (desenhado pelo núcleo do Clã, ou a imagem, quando é do banco), com largura w, centrado em (x, y), num grupo de
+     tamanho fixo na tela. null: a facção não tem bandeira. */
   let seqBandeira = 0;
   function brasaoDaFac(ctx, id) {
     if (!id) return null;
