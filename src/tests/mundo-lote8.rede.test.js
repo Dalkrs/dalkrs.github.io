@@ -7,6 +7,9 @@
 //     para ler).
 //   · (lote 10) a bandeira própria de uma facção sem clã: feita na janela, vai na projeção e o jogador a vê; com um clã
 //     ligado, vale a do clã (a própria volta quando ele sai); a imagem (só numa mesa) vai para o banco e o jogador a vê.
+//   · (lote 10, parte 6) o que os jogadores veem: a projeção leva a economia da facção deles e o que tem dentro da cidade
+//     aberta (sem a guilda secreta, sem o estoque das outras facções); o jogador vê a linha deles no Livro do reino e a
+//     cidade por dentro; fechar a semana põe o resumo no rascunho do Jornal da mesa (o jogador não o recebe).
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -135,6 +138,43 @@ function png(w, h, cor) {
     const caixaFac = () => CW.evaluate(() => { const e = document.querySelector('[data-k="rec:fac"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
     ok(await ate(async () => /^Estoque de Aldar \(Mapa-múndi\) .*Lapros 25.* Só para ler: é o estoque da facção ligada ao clã/.test(await caixaFac())), 'no Clã ligado a Aldar: o estoque da facção, só para ler: ' + await caixaFac());
     ok(await CW.evaluate(() => document.querySelector('[data-k="sec:rec"] h2').textContent === 'Cofre do clã' && document.querySelector('[data-k="sec:cons"] h2').textContent === 'Construções do clã'), 'e o cofre e as construções com o nome do clã');
+
+    // ---------- (lote 10, parte 6) o que os jogadores veem: a economia da facção deles, a cidade aberta e o resumo no Jornal ----------
+    await M.locator('#tab-mundo').click(); await w(500);
+    await W.evaluate(() => {
+      const { App, N } = __mundo;
+      App.mudar('o que os jogadores veem', m => {
+        m.faccoes.find(f => f.id === 'fa').jog = true;
+        Object.assign(m.faccoes.find(f => f.id === 'fb').rec.find(r => r.id === 'lapros'), { n: 9, ver: true });
+        m.objs.push(Object.assign(N.objNovo('m', { x: 550, y: 500, ic: 'vila' }), { id: 'cv', nome: 'Vila Alta', ass: { niv: 'vila', pop: 0, estr: { camponeses: 25 },
+          guildas: [{ id: 'gv', nome: 'Caçadores', ic: 'arco', txt: 'Na mata.', serv: [{ id: 'sv1', tipo: 'contrato', nome: 'Caçar o lobo', preco: '10 Lapros' }] }, { id: 'gs', nome: 'Sombra', secreta: true }],
+          cla: { id: 'lam', prod: { forja: { lapros: 4 } } } } }));
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), c0 = p && p.objs.find(o => o.id === 'cv'); return !!(p && p.ecoJ && p.ecoJ.fac === 'fa' && p.ecoJ.est.lapros === 25 && c0 && c0.dentro && c0.dentro.pop === 25 && c0.dentro.guildas.length === 1 && !('ass' in c0) && !p.faccoes.find(f => f.id === 'fb').rec.some(r => r.id === 'lapros')); }),
+      'a projeção leva a economia da facção dos jogadores e o que tem dentro da cidade deles (sem a guilda secreta; sem o estoque do Vale)');
+    ok(!('lapros' in (await doc(M, 'mundo:pub:' + mapa)).ecoJ.prod.cla), '(a sede do clã na Vila Alta: o clã ainda não tem a Forja, nada a produzir)');
+    // só o clã muda (a Forja fica pronta no Clã; o brasão é o mesmo): quem mestra publica de novo, com a produção da sede
+    await M.evaluate(d => TC.dados.col('documentos').gravar('cla:c:lam', { dados: Object.assign(d, { construcoes: [{ id: 'forja', nome: 'Forja', ico: 'forja', nivel: 1 }] }) }, null, { cas: true }), clan(BR));
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.ecoJ && p.ecoJ.prod.cla.lapros === 4); }), 'a Forja do clã fica pronta: a projeção acompanha (a sede produz para Aldar)');
+    await JW.click('#tab-faccoes'); await w(300, J);
+    const livJ = () => JW.evaluate(() => Array.from(document.querySelectorAll('#pane .livro-li')).map(e => e.innerText.replace(/\s+/g, ' ')).join(' / '));
+    ok(await ate(async () => /^Aldar .+ Produz por semana: .+ Estoque: Lapros 25/.test(await livJ())), 'o jogador vê, no Livro do reino, só a linha de Aldar com a produção e o estoque: ' + await livJ());
+    await JW.click('#tab-selecao'); await w(200, J);
+    await JW.evaluate(() => __mundo.App.selecionar(['cv'])); await w(400, J);
+    const dentroJ = await JW.evaluate(() => document.getElementById('pane').innerText.replace(/\s+/g, ' '));
+    ok(/Vila · 25 pessoas/.test(dentroJ) && /Caçadores Na mata\. Contrato Caçar o lobo · 10 Lapros/.test(dentroJ) && !/Sombra/.test(dentroJ), 'e, na Vila Alta, o que tem dentro (a guilda secreta, não): ' + dentroJ.slice(0, 200));
+    // a semana fecha: o resumo vai para o rascunho do Jornal da mesa (o jogador não o recebe)
+    await W.evaluate(() => { __mundo.App.mudar('+7', m => { m.cal.dia += 7; }); });
+    await W.waitForSelector('dialog.sem-dl[open]', { timeout: 6000 });
+    ok(await W.locator('dialog.sem-dl[open] [data-k="sem:jornal"]').isChecked(), 'na prévia da semana, "Mandar o resumo da semana para o rascunho do Jornal" já marcada');
+    await W.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await w(500);
+    let ras = null;
+    ok(await ate(async () => { ras = await doc(M, 'jornal:rascunho'); return !!(ras && ras.materias && ras.materias.some(x => /^Aldar: a semana até /.test(x.tit) && /^\*\*O saldo:\*\* /.test(x.txt))); }), 'fechar a semana: o resumo vai para o rascunho do Jornal da mesa');
+    ok(!(await doc(J, 'jornal:rascunho')), 'o jogador não recebe o rascunho');
+    await M.locator('#tab-jornal').click();
+    let JRW = null;
+    ok(await ate(async () => { JRW = await quadro(M, /\/jornal\//); return JRW && await JRW.evaluate(() => !!window.__jornal && __jornal.pronto && __jornal.ras.materias.some(x => /^Aldar: a semana até /.test(x.tit))); }), 'na página Jornal, o mestre vê o resumo no rascunho (para revisar e publicar)');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

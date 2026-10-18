@@ -942,6 +942,126 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     await aba(L, 'selecao');
   });
 
+  // ---------- (parte 6) o que os jogadores veem ----------
+  if (parte('jogadores')) await passo('o que os jogadores veem', async () => {
+    const cons0 = await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      try { localStorage.removeItem('tinycats:jornal:rascunho'); } catch (e) { /* tudo bem */ }
+      App.mudar('a economia e o que os jogadores vão ver', m => {
+        if (!m.eco || !m.eco.on) R.ligarEconomia(m);
+        if (!m.eco.cons.length) m.eco.cons = R.catalogoPronto(m, m.eco);
+        m.eco.sem = R.semanaN(m, m.cal.dia);                    // (nenhuma semana para fechar: a deste teste vem depois)
+        for (const f of m.faccoes) delete f.jog;
+        const fa = m.faccoes.find(f => f.id === 'fa'), fb = m.faccoes.find(f => f.id === 'fb');
+        fa.jog = true;
+        Object.assign(fa.rec.find(r => r.id === 'lapros'), { n: 10, ver: false });
+        Object.assign(fb.rec.find(r => r.id === 'lapros'), { n: 77, ver: true });
+        m.objs = m.objs.filter(o => o.id !== 'jv1' && o.id !== 'jv2');
+        m.objs.push(Object.assign(N.objNovo('m', { x: 700, y: 380, ic: 'vila' }), { id: 'jv1', nome: 'Vila do Rio', ass: { niv: 'vila', pop: 0, estr: { camponeses: 30, mercadores: 4 }, cons: [{ id: 'jk1', t: m.eco.cons[0].id, n: 1 }],
+          guildas: [{ id: 'jg1', nome: 'Caçadores do Rio', ic: 'arco', txt: 'Caçam nas margens.', pct: 50, serv: [{ id: 'js1', tipo: 'contrato', nome: 'Caçar o javali', preco: '15 Lapros', desc: 'Perto do moinho.' }] },
+            { id: 'jg2', nome: 'Mãos Leves', ic: 'mascara', secreta: true, pct: 0 }] } }),
+          Object.assign(N.objNovo('m', { x: 1300, y: 400, ic: 'vila' }), { id: 'jv2', nome: 'Posto do Ermo', ass: { niv: 'aldeia', pop: 0, estr: { camponeses: 12 }, cla: { id: 'kj', prod: { cf: { lapros: 3 } } } } }));
+      });
+      return App.mapa.eco.cons[0].nome;
+    });
+    await espera(300);
+    if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250); }
+    // o mestre: a caixa de cada cidade
+    await aba(L, 'selecao'); await selecionar(L, 'jv1');
+    ok(await campo(L, 'o:jv1:ver-dentro').count() === 1 && await campo(L, 'o:jv1:ver-dentro').isChecked() && /Os jogadores veem o que tem dentro Ao clicar na cidade, eles veem o nível, a população \(o total\), as construções prontas e as guildas que não são secretas\. As cidades da facção dos jogadores começam marcadas\./.test(await textoPane(L)),
+      'na cidade de Aldar (a dos jogadores): "Os jogadores veem o que tem dentro", já marcada, e o que eles veem');
+    await selecionar(L, 'jv2');
+    ok(await campo(L, 'o:jv2:ver-dentro').count() === 1 && !(await campo(L, 'o:jv2:ver-dentro').isChecked()), 'na cidade sem dono: desmarcada');
+    await campo(L, 'o:jv2:ver-dentro').check(); await espera(300);
+    ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'jv2').ass.ver) === true && await campo(L, 'o:jv2:ver-dentro').isChecked(), 'marcar: fica guardado na cidade');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(await A(L, () => !('ver' in __mundo.App.mapa.objs.find(o => o.id === 'jv2').ass)) && !(await campo(L, 'o:jv2:ver-dentro').isChecked()), 'desfazer: desmarcada de novo (nada guardado)');
+    // o mestre: o estoque na facção (a caixa não vale mais para os recursos do mundo)
+    await aba(L, 'faccoes');
+    if (await campo(L, 'f:fa:estoque').count() === 0) { await L.F.click('#pane [data-k="fac:fa"]'); await espera(250); }
+    const caixaRec = fid => A(L, fid => { const e = document.querySelector('#pane [data-k="f:' + fid + ':r:lapros:ver"]'); return e ? [e.checked, e.disabled] : null; }, fid);
+    const notaEst = fid => A(L, fid => (document.querySelector('#pane [data-k="f:' + fid + ':estoque-ver"]') || {}).textContent || '', fid);
+    ok(j(await caixaRec('fa')) === j([true, true]) && await notaEst('fa') === 'Os jogadores veem todo o estoque e a produção desta facção (a deles), com de onde vem, no Livro do reino deles.',
+      'no estoque da facção dos jogadores: a caixa marcada e travada, com a nota');
+    await L.F.click('#pane [data-k="fac:fb"]'); await espera(250);
+    ok(j(await caixaRec('fb')) === j([false, true]) && await notaEst('fb') === 'Os jogadores não veem o estoque nem a produção desta facção: da economia, só os da facção deles.',
+      'no estoque de outra facção: desmarcada e travada (mesmo marcada antes), com a nota');
+    await botao(L, 'fac:fechar');
+    // quem joga: a linha deles no Livro do reino
+    await comoJogador(L, true);
+    await aba(L, 'faccoes');
+    const eJ = await A(L, () => __mundo.App.vista().ecoJ);
+    const liv = await A(L, () => Array.from(document.querySelectorAll('#pane .livro-li')).map(e => e.getAttribute('data-k') + '|' + e.innerText.replace(/\s+/g, ' ')));
+    const pl = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+    ok(liv.length === 1 && liv[0].startsWith('livro:fa|Aldar ' + [pl(eJ.livro.prov, 'província', 'províncias'), pl(eJ.livro.sub, 'sub-região', 'sub-regiões'), pl(eJ.livro.hex, 'hexágono', 'hexágonos')].join(' · ')) && / Produz por semana: .+ Estoque: Lapros 10( ·|$)/.test(liv[0]),
+      'quem joga: no Livro do reino, só a linha da facção deles, com o que produz e o estoque (o de Lapros, mesmo desmarcado): ' + liv.join(' / '));
+    const numF = fid => A(L, fid => (document.querySelector('#pane [data-fac="' + fid + '"] .fac-num') || {}).textContent || '', fid);
+    ok(!/Lapros/.test(await numF('fb')) && !/Lapros/.test(await numF('fa')), 'o estoque do Vale não aparece (mesmo com a caixa marcada antes); o deles fica no Livro: ' + j([await numF('fa'), await numF('fb')]));
+    await L.F.click('#pane [data-k="livro:j:de-onde"] > summary'); await espera(200);
+    const de = await A(L, () => { const d = document.querySelector('#pane [data-k="livro:j:de-onde"]'); return { aberto: d.open, txt: d.innerText.replace(/\s+/g, ' ') }; });
+    ok(de.aberto && /^De onde vem Produção por semana, por fonte /.test(de.txt) && /Suprimentos \+[\d.,]+ [^]*população \+[\d.,]+/.test(de.txt) && /Manutenção dos exércitos, por semana: Lapros [\d.,]+ · Suprimentos [\d.,]+ \(sai do estoque quando a semana fecha\)\./.test(de.txt) && /Por província Reino de Aldar /.test(de.txt),
+      '"De onde vem": cada recurso com as fontes, a manutenção dos exércitos e por província: ' + de.txt.slice(0, 260));
+    ok(await A(L, () => !document.querySelector('#pane [data-k="livro:j:p:p2"]')), '(a sede do clã no Ermo: sem os clãs, não é de Aldar)');
+    // o clã dos jogadores (de Aldar) chega: a produção da sede no Ermo passa a ser de Aldar (e o que estava aberto continua aberto)
+    await A(L, () => { __mundo.App.clas = new Map([['kj', { id: 'kj', nome: 'Garras', fac: 'fa', cons: [{ id: 'cf', nome: 'Forja', ico: 'forja', nivel: 1, efeito: '' }], jog: true }]]); __mundo.App.emit('muda', { origem: 'fora' }); }); await espera(350);
+    const de2 = await A(L, () => { const d = document.querySelector('#pane [data-k="livro:j:de-onde"]'); return { aberto: d.open, txt: d.innerText.replace(/\s+/g, ' ') }; });
+    const ermo = await A(L, () => (document.querySelector('#pane [data-k="livro:j:p:p2"]') || {}).innerText || '');
+    ok(de2.aberto && /Lapros \+[\d.,]+ [^]*sede do clã \+[\d.,]+/.test(de2.txt) && ermo.replace(/\s+/g, ' ') === 'Ermo Lapros +3', 'com o clã de Aldar: a sede do clã (no Ermo, sem dono) produz para eles — na província do Ermo; aberto, continua aberto: ' + ermo);
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane .livro-li'); if (e) e.scrollIntoView({ block: 'start' }); }); await foto('l10-jog-livro');
+    // quem joga: dentro da cidade
+    await aba(L, 'selecao'); await selecionar(L, 'jv1');
+    const dt = await textoPane(L);
+    ok(new RegExp('O QUE TEM DENTRO Vila · 34 pessoas Construções ' + cons0 + ' · nível 1 Guildas Caçadores do Rio Caçam nas margens\\. Contrato Caçar o javali · 15 Lapros Perto do moinho\\.').test(dt) && !/Mãos Leves/.test(dt),
+      'quem joga, na cidade deles: o nível, a população, as construções prontas e a guilda que não é secreta (com o serviço e o preço): ' + dt.slice(0, 260));
+    await semAvisos(L); await foto('l10-jog-cidade');
+    await selecionar(L, 'jv2');
+    ok(!/O que tem dentro/i.test(await textoPane(L)) && await A(L, () => !document.querySelector('#pane [data-k^="ler:dt:"]')), 'na cidade que o mestre não abriu: nada de dentro');
+    await A(L, () => { __mundo.App.clas = new Map(); __mundo.App.emit('muda', { origem: 'fora' }); });
+    await comoJogador(L, false);
+    // a semana: o resumo para o rascunho do Jornal (que, sem rascunho, começa do jornal publicado, como na página Jornal)
+    await A(L, () => { try { localStorage.removeItem('tinycats:jornal:rascunho'); localStorage.setItem('tinycats:jornal:pub', JSON.stringify({ v: 1, nome: 'O Arauto', materias: [{ id: 'mt_feira', tit: 'A feira de Alvorada', txt: 'Chegou gente de longe.' }], data: '1 de Alvorada', em: '2026-01-01T00:00:00.000Z', n: 1 })); } catch (e) { /* tudo bem */ } });
+    await aba(L, 'faccoes');
+    await A(L, () => { const { App } = __mundo; if (!window.MundoReino.semanasPendentes(App.mapa)) App.mudar('+7', m => { m.cal.dia += 7; }); }); await espera(400);
+    if (!(await A(L, () => !!document.querySelector('dialog.sem-dl[open]')))) await botao(L, 'eco:semana');
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const caixaJ = () => A(L, () => { const e = document.querySelector('dialog.sem-dl[open] [data-k="sem:jornal-caixa"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(await L.F.locator('dialog.sem-dl[open] [data-k="sem:jornal"]').isChecked() && /^Mandar o resumo da semana para o rascunho do Jornal Só o que é da facção dos jogadores: o saldo, as obras prontas nas cidades que eles veem por dentro e o que a falta trouxe\. Você revisa no Jornal antes de publicar\. Ver o resumo$/.test(await caixaJ()),
+      'na prévia da semana: "Mandar o resumo da semana para o rascunho do Jornal", marcada, com o que vai: ' + await caixaJ());
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:jornal:ver"] > summary'); await espera(150);
+    const prevJ = await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:jornal:txt"]').innerText.replace(/\s+/g, ' '));
+    ok(/^Aldar: a semana até .+ O saldo: Lapros /.test(prevJ), '"Ver o resumo": o título e o texto que vão: ' + prevJ.slice(0, 200));
+    // a prévia acompanha o que o mestre recusa
+    ok(/Sem moeda, a moral de Hoste caiu 1/.test(prevJ), '(sem Lapros: a moral da Hoste cai, no resumo)');
+    await L.F.locator('dialog.sem-dl[open] [data-k="sem:c:moral:ga"]').uncheck(); await espera(120);
+    ok(!/Hoste/.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:jornal:txt"]').innerText)), 'recusar a moral da Hoste: o resumo deixa de dizer');
+    await L.F.locator('dialog.sem-dl[open] [data-k="sem:c:moral:ga"]').check(); await espera(120);
+    await semAvisos(L); await foto('l10-jog-semana');
+    const ras = () => A(L, () => { try { return JSON.parse(localStorage.getItem('tinycats:jornal:rascunho') || 'null'); } catch (e) { return null; } });
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
+    const r1 = await ras(), mat = r1 && r1.materias ? r1.materias[r1.materias.length - 1] : null;
+    ok(!!mat && /^Aldar: a semana até /.test(mat.tit) && mat.txt.startsWith('**O saldo:** Lapros ') && /O resumo foi para o rascunho do Jornal\./.test(await avisos(L)) && r1.materias.length === 2 && r1.materias[0].tit === 'A feira de Alvorada',
+      'aplicar: o resumo entra no rascunho do Jornal (uma matéria, depois das do jornal publicado), com o aviso: ' + (mat ? mat.tit + ' | ' + mat.txt.slice(0, 80) : j(r1)));
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(400);
+    ok(!(await ras()).materias.some(x => x.id === mat.id) && await A(L, () => window.MundoReino.semanasPendentes(__mundo.App.mapa)) === 1, 'Desfazer: a semana volta a estar para fechar e o resumo sai do rascunho');
+    await A(L, () => __mundo.App.refazer()); await espera(400);
+    ok((await ras()).materias.some(x => x.id === mat.id), 'Refazer: o resumo volta para o rascunho');
+    // a página Jornal (neste navegador) mostra o resumo no rascunho
+    const PJ = await dl.page.context().newPage();
+    await PJ.goto(t.base + 'jornal/?debug', { waitUntil: 'load' });
+    await PJ.waitForFunction(() => window.__jornal && window.__jornal.pronto, null, { timeout: 10000 });
+    ok(await PJ.evaluate(tit => window.__jornal.ras.materias.some(x => x.tit === tit), mat.tit), 'na página Jornal, o resumo está no rascunho (para revisar e publicar)');
+    await PJ.close();
+    // desmarcada: nada vai
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    await botao(L, 'eco:semana'); await L.F.waitForSelector('dialog.sem-dl[open]');
+    await L.F.locator('dialog.sem-dl[open] [data-k="sem:jornal"]').uncheck();
+    const n0 = (await ras()).materias.length;
+    await semAvisos(L); await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
+    ok((await ras()).materias.length === n0 && /Semana fechada/.test(await avisos(L)) && !/Jornal/.test(await avisos(L)), 'desmarcada: a semana fecha sem mandar nada ao Jornal');
+    if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250); }
+    await aba(L, 'selecao');
+  });
+
   const erros = t.errs.filter(e => !/favicon/i.test(e));
   if (erros.length) console.log(erros.slice(0, 8).join('\n'));
   ok(erros.length === 0, 'sem erros no console');

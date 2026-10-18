@@ -1190,6 +1190,8 @@
       out.push(nota((a || b ? 'Guerra entre ' + (a ? nomeFac(a) : 'lado desconhecido') + ' e ' + (b ? nomeFac(b) : 'lado desconhecido') : 'Guerra de lados desconhecidos') + ' · desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini)));
     }
     if (o.k === 'l' && temGrade(v)) out.push(nota('Cerca de ' + fmt(cubos(v, N_.compPolilinha(o.pts)), 0) + ' cubos de ponta a ponta.'));
+    // (lote 10, parte 6) a cidade que o mestre abriu: o nível, a população, as construções prontas e as guildas
+    if (o.k === 'm' && o.dentro && RP() && RP().leituraDentro) { const d = RP().leituraDentro(o); if (d) out.push(d); }
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
     out.push(linha(o.k === 'm' && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
@@ -1557,6 +1559,9 @@
     const verCaixa = (k, marcado, rot, fn, comTexto) => h('label', { class: 'chk ver', title: 'Os jogadores veem ' + rot },
       h('input', { type: 'checkbox', 'data-k': k, checked: !!marcado, 'aria-label': 'Os jogadores veem ' + rot, _gravar: v => mudar((v ? 'mostrar ' : 'esconder ') + rot + ' aos jogadores', x => fn(x, !!v)), onchange: mudaEscolha }),
       comTexto ? h('span', { text: 'Jogadores veem' }) : null);
+    // (lote 10, parte 6) com a economia ligada, o estoque não segue a caixa: a facção dos jogadores mostra tudo; as outras, nada
+    const verFixo = (k, rot) => h('label', { class: 'chk ver fixo', title: f.jog ? 'Os jogadores veem todo o estoque da facção deles' : 'Os jogadores não veem a economia das outras facções' },
+      h('input', { type: 'checkbox', 'data-k': k, checked: !!f.jog, disabled: true, 'aria-label': (f.jog ? 'Os jogadores veem ' : 'Os jogadores não veem ') + rot }));
     out.push(campoMotivo('f:' + id + ':motivo', motivoFac, 'Ex.: a batalha de Brenn'),
       h('small', { class: 'ajuda', text: 'Cada número que você mudar entra no histórico com a data de hoje e este motivo.' }));
     // os recursos
@@ -1578,7 +1583,8 @@
         const n0 = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
         n0.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
         return h('div', { class: 'rec-linha rec-mundo', 'data-rec': r.id }, h('span', { class: 'rot', title: 'Um recurso do mundo (o nome e a lista ficam na economia, na aba Reinos)', text: r.nome }), n0,
-          verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }), h('span'));
+          eco ? verFixo('f:' + id + ':r:' + r.id + ':ver', r.nome || 'o recurso')
+            : verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }), h('span'));
       }
       const nome = campoTexto('f:' + id + ':r:' + r.id + ':nome', null, r.nome, v => mudar('renomear o recurso', x => { const y = x.rec.find(z => z.id === r.id); if (!y || !v.trim() || y.nome === v.trim()) return false; y.nome = v.trim(); }), { max: 60, rotulo: 'Nome do recurso' });
       const n = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
@@ -1597,6 +1603,9 @@
       out.push(h('div', { class: 'sec-sub' },
         h('div', { class: 'rec-linha rec-cab', 'aria-hidden': 'true' }, h('span', { text: 'Estoque (recursos do mundo)' }), h('span', { text: 'Quanto' }), h('span', { class: 'ver-cab', text: 'Jogadores veem' }), h('span')),
         mundo.length ? h('div', { class: 'rec-lista', 'data-k': 'f:' + id + ':estoque' }, mundo.map(linhaDe)) : nota('Nenhum recurso do mundo nesta facção ainda.'),
+        // (parte 6) quem vê o estoque
+        h('p', { class: 'note', 'data-k': 'f:' + id + ':estoque-ver', text: f.jog ? 'Os jogadores veem todo o estoque e a produção desta facção (a deles), com de onde vem, no Livro do reino deles.'
+          : 'Os jogadores não veem o estoque nem a produção desta facção: da economia, só os da facção deles.' }),
         h('small', { class: 'note rec-outros-rot', 'data-k': 'f:' + id + ':outros-rot', text: 'Outros números desta facção' }),
         proprios.length ? h('div', { class: 'rec-lista', 'data-k': 'f:' + id + ':outros' }, proprios.map(linhaDe)) : nota('Nenhum: soldados, favores, segredos… o que só esta facção conta.'),
         linha(botao('+ Outro número', () => novoRecurso(id), { c: 'sm', k: 'f:' + id + ':rec-novo', off: f.rec.length >= lim })),
@@ -1676,7 +1685,9 @@
   }
   // o que os jogadores veem da facção: os números marcados e o histórico (se marcado)
   function numerosPublicos(f, v) {
-    const partes = f.rec.map(r => (r.nome || 'Recurso') + ': ' + numTxt(r.n));
+    // (lote 10, parte 6) o estoque da facção dos jogadores (os recursos do mundo) fica no Livro do reino deles
+    const doMundo = v && v.ecoJ && v.ecoJ.fac === f.id ? new Set(v.ecoJ.rec.map(r => r.id)) : null;
+    const partes = f.rec.filter(r => !doMundo || !doMundo.has(r.id)).map(r => (r.nome || 'Recurso') + ': ' + numTxt(r.n));
     if (f.pop != null) partes.push('População: ' + numTxt(f.pop));
     if (f.apoio != null) partes.push('Apoio: ' + numTxt(f.apoio) + '%');
     const out = [];
@@ -2770,6 +2781,8 @@
     out.push(lista);
     // (lote 10) a economia do mundo (ligar, os recursos, as tabelas, os níveis) e o Livro do reino (o do mestre)
     if (ed && RP()) out.push(RP().secEconomia(v), RP().secLivro(v));
+    // (parte 6) quem joga: a linha da facção deles no Livro do reino, com a produção, o estoque e de onde vem
+    else if (!ed && v.ecoJ && RP() && RP().secLivroJog) out.push(RP().secLivroJog(v));
     // (lote 9) o tamanho das bandeiras no mapa, só neste aparelho (para quem enxerga melhor maiores)
     out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
       v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras das facções (as próprias ou as dos clãs ligados a elas) nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));

@@ -1559,6 +1559,8 @@
         if (estr) mc.estr = estr;
         const ass = normAss(o.ass);                               // (lote 10) o assentamento: o nível e a população
         if (ass) mc.ass = ass;
+        const dt = normDentro(o.dentro);                          // (parte 6) na projeção: o que os jogadores veem dentro
+        if (dt) mc.dentro = dt;
         return mc;
       }
       case 'g':
@@ -1820,8 +1822,11 @@
      de domingo para segunda); eco.manut = { tipo de tropa: { recurso: n } } e eco.manut0 (as unidades sem tipo) = o que
      cada 10 soldados custam por semana; eco.regras = { fome (o apoio que cai por semana de fome), moral (a moral que cada
      exército perde sem moeda), obras (sem moeda, as obras param), outro (sem outro recurso, as construções que gastam
-     dele param), moralOutro (e os exércitos que o usam na manutenção perdem de moral) }. */
-  const PAPEIS_REC = { moeda: 'Moeda', comida: 'Comida', madeira: 'Madeira', pedra: 'Pedra', metal: 'Metal', magia: 'Magia' };
+     dele param), moralOutro (e os exércitos que o usam na manutenção perdem de moral) }.
+     (parte 6) O que os jogadores veem: ass.ver = a caixa "os jogadores veem o que tem dentro" (true ou false; sem ela, as
+     cidades da facção dos jogadores começam marcadas e as outras, desmarcadas). Na projeção (só para os jogadores), o
+     marcador aberto leva dentro (ver normDentro) e o mapa leva ecoJ, a economia da facção deles (ver normEcoJ). */
+  const PAPEIS_REC ={ moeda: 'Moeda', comida: 'Comida', madeira: 'Madeira', pedra: 'Pedra', metal: 'Metal', magia: 'Magia' };
   const MAX_REC_MUNDO = 24, MAX_NIV = 12, MAX_PROD = 1e6, MAX_POP_ASS = 1e9;
   const MAX_CONS = 40, MAX_NIV_CONS = 5, MAX_CONS_ASS = 16, MAX_SEM_OBRA = 104, MAX_DEF_CONS = 20, MAX_ESP_CONS = 6, MAX_EF_CONS = 200;
   const numProd = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, -MAX_PROD, MAX_PROD) * 100) / 100 + 0 : null; };
@@ -2011,6 +2016,7 @@
     }
     const gs = normGuildas(v.guildas, false, MAX_GUILDAS);             // (parte 5b) as guildas da cidade
     if (gs.length) out.guildas = gs;
+    if (v.ver === true || v.ver === false) out.ver = v.ver;           // (parte 6) os jogadores veem o que tem dentro
     return niv || pop || out.cons || out.cla || out.guildas ? out : null;
   }
   /* (parte 3) As construções de um assentamento com o mapa todo: só os tipos do catálogo (o nível até o último deles; a
@@ -2029,7 +2035,7 @@
       } else if (a.pop > 0 && eids.length) {
         a.estr = { [eids.includes('camponeses') ? 'camponeses' : eids[0]]: Math.min(a.pop, MAX_PESSOAS) };
         a.pop = Math.min(a.pop, MAX_PESSOAS);
-        for (const k of ['cons', 'cla', 'guildas']) if (k in a) { const x = a[k]; delete a[k]; a[k] = x; }
+        for (const k of ['cons', 'cla', 'guildas', 'ver']) if (k in a) { const x = a[k]; delete a[k]; a[k] = x; }
       }
     }
     if (a.cons) {
@@ -2047,6 +2053,51 @@
     }
     if (a.cla) for (const k of Object.keys(a.cla.prod)) { const t = normTabProd(a.cla.prod[k], recIds); if (Object.keys(t).length) a.cla.prod[k] = t; else delete a.cla.prod[k]; }
     if (a.guildas && eco) { const eids = new Set(eco.estr.map(s => s.id)); for (const g of a.guildas) conferirGuilda(g, recIds, eids); }
+  }
+  /* (parte 6) O que os jogadores veem dentro de uma cidade que o mestre abriu para eles (só na projeção): dentro = { nivel
+     (o nome do nível), pop (o total, sem os estratos), cons: [{ nome, ic, n }] (as construções prontas, com o nível; sem
+     as obras nem os números), guildas: [{ id, nome, ic, txt, serv }] (as que não são secretas: a descrição e os serviços
+     com o preço; sem o líder, os membros, a influência nem a relação) }. Sem nada disso, nada. */
+  const icOk = v => (typeof v === 'string' && /^[a-z0-9_-]{1,20}$/.test(v) ? v : 'salao');
+  function normDentro(v) {
+    if (!ehObj(v)) return null;
+    const cons = [], guildas = [], vistos = new Set();
+    for (const c of Array.isArray(v.cons) ? v.cons : []) {
+      if (!ehObj(c) || cons.length >= MAX_CONS_ASS) continue;
+      const nome = texto(c.nome, '', 40).trim();
+      if (nome) cons.push({ nome, ic: icOk(c.ic), n: inteiro(c.n, 1, 1, MAX_NIV_CONS) });
+    }
+    for (const g of Array.isArray(v.guildas) ? v.guildas : []) {
+      if (!ehObj(g) || guildas.length >= MAX_GUILDAS) continue;
+      guildas.push({ id: unico(idOk(g.id) || 'gd', vistos), nome: texto(g.nome, '', 60).trim() || 'Guilda', ic: icOk(g.ic), txt: texto(g.txt, '', MAX_TXT_GUILDA).trim(), serv: normServicos(g.serv) });
+    }
+    const out = { nivel: texto(v.nivel, '', 40).trim(), pop: inteiro(v.pop, 0, 0, MAX_POP_ASS), cons, guildas };
+    return out.nivel || out.pop || cons.length || guildas.length ? out : null;
+  }
+  /* (parte 6) A economia da facção dos jogadores, como eles a veem (só na projeção): ecoJ = { fac (a facção deles), rec:
+     [{ id, nome, cor }] (os recursos do mundo), est (o estoque), prod: { terreno, pop, cons (com o gasto delas), guilda,
+     cla (a sede do clã), mestre, total } (por semana), manut (a manutenção dos exércitos, por semana), prov: [{ id (a
+     província; null: as terras que eles não veem e o que fica fora das províncias), nome, prod }], livro: { prov, sub,
+     hex, exe, grade } (a linha deles no Livro do reino) }. */
+  const FONTES_J = ['terreno', 'pop', 'cons', 'guilda', 'cla', 'mestre', 'total'];
+  function normEcoJ(v) {
+    if (!ehObj(v) || !idOk(v.fac)) return null;
+    const rec = [], vistos = new Set();
+    for (const r of Array.isArray(v.rec) ? v.rec : []) {
+      if (!ehObj(r) || rec.length >= MAX_REC_MUNDO) continue;
+      const id = idOk(r.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      rec.push({ id, nome: texto(r.nome, '', 40).trim() || 'Recurso', cor: cor(r.cor, '#9aa3b5') });
+    }
+    const ids = new Set(rec.map(r => r.id)), est = {};
+    const fontes = p => { const o = {}; for (const k of FONTES_J) o[k] = normTabProd(ehObj(p) ? p[k] : null, ids); return o; };
+    if (ehObj(v.est)) for (const k of Object.keys(v.est).slice(0, MAX_REC_MUNDO * 2)) { if (!ids.has(k)) continue; const n = Math.round(limitar(num(v.est[k], 0), -1e12, 1e12) * 100) / 100 + 0; if (n) est[k] = n; }
+    const prov = [];
+    for (const x of Array.isArray(v.prov) ? v.prov : []) if (ehObj(x) && prov.length < 200) prov.push({ id: idRef(x.id), nome: texto(x.nome, '', 120).trim(), prod: fontes(x.prod) });
+    const l = ehObj(v.livro) ? v.livro : {};
+    return { fac: v.fac, rec, est, prod: fontes(v.prod), manut: normTabPos(v.manut, ids), prov,
+      livro: { prov: inteiro(l.prov, 0, 0, 1e6), sub: inteiro(l.sub, 0, 0, 1e6), hex: inteiro(l.hex, 0, 0, 1e9), exe: inteiro(l.exe, 0, 0, 1e6), grade: sim(l.grade) } };
   }
 
   function normGuerra(v) {
@@ -2230,6 +2281,8 @@
     if (guerra) mapa.guerra = guerra;
     const eco = normEco(m.eco, mapa.terrenos, mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : [], cal);   // (lote 10) a economia do mundo (só quando há: o mapa de antes fica igual)
     if (eco) mapa.eco = eco;
+    const ecoJ = normEcoJ(m.ecoJ);                               // (parte 6) na projeção: a economia da facção dos jogadores
+    if (ecoJ) mapa.ecoJ = ecoJ;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -2241,6 +2294,7 @@
     // referências para o que não existe viram null
     const facs = new Set(mapa.faccoes.map(f => f.id)), rotas = new Map(), tiposG = new Set(mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : []);
     const recIds = new Set(mapa.eco ? mapa.eco.rec.map(r => r.id) : []), nivIds = new Set(mapa.eco ? mapa.eco.niv.map(n => n.id) : []);
+    if (mapa.ecoJ && !mapa.faccoes.some(f => f.jog && f.id === mapa.ecoJ.fac)) delete mapa.ecoJ;     // (parte 6) é a da facção dos jogadores
     for (const o of mapa.objs) if (o.k === 't') rotas.set(o.id, o);
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
@@ -2378,12 +2432,21 @@
      que vêm), os custos que o mestre deu a um hexágono ou a uma região, e o que a névoa cobre (menos os grupos: são
      os próprios jogadores) — inclusive o terreno dos hexágonos cobertos. O desenho à mão vai inteiro: é a arte do
      mapa, como a imagem (a névoa cobre os dois na tela). */
-  function projetar(mapa) {
+  function projetar(mapa, opts) {
     const m = normalizarMapa(mapa);                          // já é uma cópia
     const dia = m.cal.dia, nevoa = m.nevoa.on, ops = m.nevoa.ops;
     const coberto = (x, y) => nevoa && cobertoPor(ops, x, y);
     const todoCoberto = pts => nevoa && pts.every(p => cobertoPor(ops, p[0], p[1]));
     delete m.oculto;
+    delete m.ecoJ;
+    /* (lote 10, parte 6) o que os jogadores veem da economia, contado antes de tudo (no mapa inteiro, com o terreno de
+       cada hexágono): a facção deles por inteiro (o estoque e a produção, com de onde vem) e o que tem dentro das cidades
+       que o mestre abriu para eles. opts.clas: os clãs, para a produção das sedes (como em MundoReino.producaoPorFaccao). */
+    const vai = o => !o.oculto && (o.k === 'r' ? !todoCoberto(o.pts) : o.k === 'g' || !coberto(o.x, o.y));
+    const Rn = m.eco && m.eco.on ? reino() : null, dentro = new Map();
+    const ecoJ = Rn ? Rn.economiaDosJogadores(m, opts && opts.clas, vai) : null;
+    if (Rn) for (const o of m.objs) if (o.k === 'm' && o.ass && vai(o) && Rn.verDentro(m, o)) { const d = Rn.dentroParaJogadores(m, o); if (d) dentro.set(o.id, d); }
+    const W = m.eco && m.eco.on ? new Set(m.eco.rec.map(r => r.id)) : null;     // os recursos do mundo
     const hexes = {};
     for (const k of Object.keys(m.hexes)) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : v[0], h = lerChaveHex(k);
@@ -2424,9 +2487,12 @@
       delete f.nota;
       for (const k of Object.keys(f.rel)) if (escondidas.has(k)) delete f.rel[k];
       // (lote 6) o painel da facção: só o que o mestre marcou para os jogadores (o histórico, só do que eles veem)
-      const vistos = new Set(f.rec.filter(r => r.ver).map(r => 'r:' + r.id));
+      // (lote 10, parte 6) com a economia ligada, os recursos do mundo não seguem a caixa: o estoque da facção dos
+      // jogadores vai inteiro; o das outras facções, nunca (os outros números de cada uma seguem a caixa)
+      const ve = r => (W && W.has(r.id) ? !!f.jog : r.ver);
+      const vistos = new Set(f.rec.filter(ve).map(r => 'r:' + r.id));
       const pode = c => (c === 'pop' ? f.ver.pop : c === 'apoio' ? f.ver.apoio : vistos.has(c));
-      f.rec = f.rec.filter(r => r.ver);
+      f.rec = f.rec.filter(ve);
       if (!f.ver.pop) f.pop = null;
       if (!f.ver.apoio) f.apoio = null;
       f.hist = f.ver.hist ? f.hist.map(e => ({ d: e.d, mot: e.mot, mud: e.mud.filter(x => pode(x[0])) })).filter(e => e.mud.length) : [];
@@ -2438,7 +2504,11 @@
       // (lote 9) a missão: só a que o mestre mostrou; a de texto vai com a situação pronta (a ligada, quem publica troca
       // pelo nome e pela situação das Fichas — e tira a que ainda está escondida lá)
       if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
-      if (o.k === 'm') { delete o.falso; delete o.estr; delete o.desc; delete o.ass; if (coberto(o.x, o.y)) continue; }
+      if (o.k === 'm') {
+        delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro;
+        if (coberto(o.x, o.y)) continue;
+        if (dentro.has(o.id)) o.dentro = dentro.get(o.id);       // (lote 10, parte 6) a cidade aberta: o que tem dentro
+      }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
@@ -2479,8 +2549,11 @@
     const rotas = new Set(objs.filter(o => o.k === 't').map(o => o.id));
     for (const o of objs) if (o.k === 'g' && o.rota && !rotas.has(o.rota)) { o.rota = null; o.prog = 0; delete o.bol; }
     m.objs = objs;
+    if (ecoJ) m.ecoJ = ecoJ;                                    // (lote 10, parte 6) a economia da facção dos jogadores
     return normalizarMapa(m);
   }
+  // (lote 10, parte 6) as contas da economia (mundo/reino.js), para a projeção: no navegador, as que a página carregou
+  const reino = () => (typeof window !== 'undefined' && window.MundoReino) || (typeof require === 'function' ? require('./reino.js') : null);
 
   const MundoNucleo = {
     ICONES, EVENTOS, PESO_EVENTO, CENA_EVENTO, pesoPadrao, normPeso, pesoNoPonto, cenaNoPonto, nomeEvento, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,

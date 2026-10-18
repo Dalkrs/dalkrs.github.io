@@ -86,7 +86,7 @@
     vista() {
       if (!App.mapa) return null;
       if (App.papel !== 'mestre' || !comoJog) return App.mapa;
-      if (cacheVista.de !== App.mapa || cacheVista.br !== brasoesVer || cacheVista.mis !== misVer) cacheVista = { de: App.mapa, br: brasoesVer, mis: misVer, v: comMissoes(comBrasoes(N.projetar(App.mapa), App.mapa.id)) };
+      if (cacheVista.de !== App.mapa || cacheVista.br !== brasoesVer || cacheVista.mis !== misVer || cacheVista.cl !== App.clas) cacheVista = { de: App.mapa, br: brasoesVer, mis: misVer, cl: App.clas, v: comMissoes(comBrasoes(N.projetar(App.mapa, projOpts()), App.mapa.id)) };
       return cacheVista.v;
     },
     /* (lote 8) A bandeira do clã ligado a uma facção (o brasão), para desenhar: a dos clãs que este aparelho lê e, senão,
@@ -641,6 +641,27 @@
     App.clas = novo;
     return true;
   }
+  // (lote 10, parte 6) para a projeção: os clãs, para a produção das sedes na economia da facção dos jogadores
+  const projOpts = () => ({ clas: id => App.infoDoCla(id) });
+  /* (lote 10, parte 6) O rascunho do Jornal (a página Jornal), para o resumo da semana: fn mexe numa cópia (normalizada
+     pelo núcleo do Jornal; false desiste). Sem o documento do rascunho, ele começa do jornal publicado, como na página
+     Jornal. Na mesa, o documento jornal:rascunho; sem mesa, o deste navegador. Só quem mestra. → true se gravou */
+  const J_RAS = 'jornal:rascunho', J_PUB = 'jornal:pub', J_RAS_L = 'tinycats:jornal:rascunho', J_PUB_L = 'tinycats:jornal:pub';
+  function mudarRascunhoJornal(fn) {
+    const JN = window.JornalNucleo;
+    if (!JN || App.papel !== 'mestre' || typeof fn !== 'function' || (modo === 'mesa' && !D)) return false;
+    const lerL = k => { try { return JSON.parse(guarda.ler(k) || 'null'); } catch (e) { return null; } };
+    const r0 = modo === 'mesa' ? dadosDoc(D.pegar(J_RAS)) : lerL(J_RAS_L), p0 = JN.normPub(modo === 'mesa' ? dadosDoc(D.pegar(J_PUB)) : lerL(J_PUB_L));
+    const antes = JN.normJornal(r0 || (JN.vazioPub(p0) ? null : p0)), rasc = JSON.parse(j(antes));
+    if (fn(rasc) === false) return false;
+    const novo = JN.normJornal(rasc);
+    if (j(novo) === j(antes)) return false;
+    if (modo === 'mesa') gravarDocMesa(J_RAS, { dados: novo, vis: 'mestre' });
+    else if (!guarda.gravar(J_RAS_L, j(novo))) return false;
+    return true;
+  }
+  App.mudarRascunhoJornal = mudarRascunhoJornal;
+  App.temJornal = () => !!window.JornalNucleo && App.papel === 'mestre' && (modo !== 'mesa' || !!D);
   function lerBrasoes() {
     const novo = brasoesDosClas();
     if (j([...novo]) === j([...App.brasoes])) return false;
@@ -709,7 +730,7 @@
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
     if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
-    const p = comMissoes(comBrasoes(N.projetar(m), id)), cs = campsDoMapa(id);
+    const p = comMissoes(comBrasoes(N.projetar(m, projOpts()), id)), cs = campsDoMapa(id);
     /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
        que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
     const todos = todosOsMapas();
@@ -1307,11 +1328,13 @@
     D.aoMudar(l => {
       // (lote 8) um clã mudou (o brasão, a facção dele): as bandeiras do mapa acompanham — e quem mestra publica de novo
       if (l && typeof l.id === 'string' && l.id.startsWith('cla:')) {
-        const clas = lerClas();                           // (lote 10, parte 3) a sede do clã: as construções dele
-        if (lerBrasoes()) {
+        // (lote 10, parte 3) a sede do clã: as construções dele — e (parte 6) a produção da sede, na economia que os
+        // jogadores recebem: quem mestra publica de novo também quando só os clãs mudaram
+        const clas = lerClas(), br = lerBrasoes();
+        if (br || clas) {
           if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
           App.emit('muda', { origem: 'fora' });
-        } else if (clas) App.emit('muda', { origem: 'fora' });
+        }
         return;
       }
       // (lote 9) as missões do grupo mudaram nas Fichas (o nome, a situação, revelada): as missões ligadas acompanham

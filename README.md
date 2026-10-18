@@ -1244,8 +1244,8 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   Ladrões, secretos e sem dar nada à facção, Mercadores, Magos, Artesãos, Aventureiros e Bardos, com a produção pelo
   papel dos recursos, o estrato de começo e os preços na moeda do mapa) —, "+ Guilda no catálogo", "Editar…" e tirar
   (as guildas das cidades continuam). A economia ligada agora já vem com eles; o mapa de antes fica com o catálogo
-  vazio e o botão "Pôr as 8 prontas". As guildas (`ass.guildas`) não vão na projeção (a parte 6 decide o que os
-  jogadores veem).
+  vazio e o botão "Pôr as 8 prontas". As guildas (`ass.guildas`) não vão na projeção (na parte 6, as que não são
+  secretas vão prontas, em "dentro").
 - **O pente fino** (o que estava duplicado e confundia; as escolhas do mestre): na facção, com a economia ligada, os
   números ficam em duas listas — "Estoque (recursos do mundo)" em cima e "Outros números desta facção" embaixo, com
   "+ Outro número" (que não aceita o nome de um recurso do mundo) e o aviso de que um recurso de todas as facções se
@@ -1260,6 +1260,27 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   Reinos avisa e oferece marcá-la (com confirmação e Desfazer). A **relação da guilda** com o grupo vai de −10 a +10. Ao
   escolher o **nível do assentamento**, aparece a sugestão do ícone que combina (Aldeia e Vila: o de Vila; Cidade e
   Metrópole: o de Cidade) — "Usar o ícone" ou "Agora não"; nada muda sozinho.
+- **O que os jogadores veem** (parte 6; com a economia ligada). A **facção dos jogadores** vai inteira: na aba Reinos
+  deles, o Livro do reino só com a linha deles (as províncias, as sub-regiões, os hexágonos e os exércitos que eles veem;
+  o que produz por semana e o estoque — todos os recursos do mundo, sem olhar a caixa "Jogadores veem") e "De onde vem"
+  (cada recurso com as fontes: terreno, população, construções com o gasto delas, guildas, sede do clã e outras; a
+  manutenção dos exércitos; a produção por província — a que eles não veem, e o que fica fora das províncias, vai
+  junto em "Outras terras", sem nome). Tudo vai pronto na projeção (`ecoJ`, de `economiaDosJogadores`, conferido por
+  `normEcoJ`; a conta é a mesma do Livro do mestre, com as sedes dos clãs pelos clãs que a página lê — quem mestra
+  publica de novo quando só os clãs mudam). Das **outras facções**, a economia não vai: os recursos do mundo delas não
+  chegam (nem com a caixa marcada); os outros números de cada uma, a população e o apoio seguem a caixa. No editor da
+  facção, a caixa dos recursos do mundo fica travada (marcada na dos jogadores, desmarcada nas outras), com a nota.
+  **Cada cidade** ganha a caixa "Os jogadores veem o que tem dentro" (`ass.ver`; sem ela, as da facção dos jogadores
+  começam marcadas e as outras, desmarcadas — `verDentro`): a cidade aberta (e que eles veem no mapa) leva `dentro`
+  (`dentroParaJogadores`: o nome do nível, a população total, as construções prontas com o nível — sem as obras nem os
+  números — e as guildas que não são secretas, com a descrição e os serviços com o preço; sem o líder, os membros, a
+  influência e a relação), que quem joga vê ao clicar nela ("O que tem dentro"). Ao **fechar a semana**, a prévia traz
+  "Mandar o resumo da semana para o rascunho do Jornal" (marcada; "Ver o resumo" mostra o texto e acompanha o que o
+  mestre recusa): `resumoDaSemana` escreve, só da facção dos jogadores, o saldo (quanto cada recurso mudou e com quanto
+  fica), as obras prontas nas cidades que eles veem por dentro e o que a falta trouxe (o que foi recusado não entra; o
+  exército e a construção que eles não veem ficam sem o nome). Vira uma matéria no rascunho do Jornal (`jornal:rascunho`
+  na mesa; fora dela, o deste navegador; sem rascunho, ele começa do jornal publicado, como na página Jornal); o mestre
+  revisa e publica lá. O Desfazer da semana tira a matéria, e o Refazer põe de novo.
 - **A bandeira própria da facção** (sem clã): no editor da facção (aba Reinos), "Criar a bandeira…" abre o mesmo editor
   do brasão do Clã (`janelaBandeira`) — a forma, a divisão, as duas cores (a paleta do Clã, a cor da facção e "Outra"), o
   símbolo e, numa mesa, uma imagem (reduzida a 480 px, em PNG, e enviada ao banco; fora de uma mesa, só o desenho). A
@@ -2343,7 +2364,18 @@ criar (a janela com a de começo, as escolhas e a prévia; nada muda antes de cr
 no editor e no Livro, editar e cancelar (ou Esc), salvar e desfazer, a imagem e "Voltar ao desenho", a do clã valendo
 antes (a própria guardada), quem joga vê, na prévia da semana, tirar e desfazer; `mundo-lote8.rede`, numa mesa, a
 bandeira própria chegando ao jogador (no mapa e na aba Reinos), a do clã valendo antes (e a própria voltando quando ele
-sai) e a imagem enviada à mesa (um PNG de 480 px no lado maior) que o jogador vê. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+sai) e a imagem enviada à mesa (um PNG de 480 px no lado maior) que o jogador vê. Na parte 6 (o que os jogadores veem),
+`lote10-nucleo` confere a caixa de cada cidade (guardada só quando o mestre mexe; o padrão pela facção dos jogadores), o
+que vai de dentro (o nível, a população, as construções prontas, as guildas que não são secretas), a economia da facção
+deles (o estoque, as fontes somando a produção do Livro, por província, a escondida e a coberta pela névoa sem nome, a
+manutenção, a linha do Livro só com o que eles veem, sem os clãs), o estoque das outras facções que não vai, a
+economia desligada, o que chega da mesa normalizado e o resumo da semana (o saldo, as obras prontas, o que a falta
+trouxe, o que o mestre recusou); `mundo-lote10` com `SO=jogadores`, a caixa na cidade (o padrão, marcar, desfazer), a
+caixa travada do estoque na facção, o Livro de quem joga ("De onde vem", que continua aberto; a sede do clã quando os
+clãs chegam), a cidade aberta e a fechada, e o resumo na prévia da semana (a prévia que acompanha as recusas, aplicar,
+desfazer, refazer, a página Jornal com ele, desmarcada não manda); `mundo-lote8.rede`, numa mesa, a projeção com a
+economia e a cidade aberta, a sede do clã quando só o clã muda, o jogador vendo o Livro e a cidade, e o resumo no
+rascunho do Jornal da mesa (que o jogador não recebe). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

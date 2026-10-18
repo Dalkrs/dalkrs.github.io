@@ -23,6 +23,13 @@
 //     (a soma dos assentamentos; na projeção, com a economia ligada).
 //   · a bandeira própria da facção (sem clã): normalizada (o que não serve volta ao de começo ou sai), ao lado da do clã,
 //     e na projeção (a da facção escondida não vai).
+//   · (parte 6) o que os jogadores veem: a caixa de cada cidade (normalizada; sem ela, as da facção dos jogadores
+//     começam marcadas), o que vai de dentro (o nível, a população, as construções prontas, as guildas que não são
+//     secretas — sem o líder nem os números), a economia da facção deles (o estoque, a produção por fonte e por província,
+//     igual à conta de sempre; a província escondida sem nome; a manutenção; a linha do Livro só com o que eles veem), o
+//     estoque das outras facções que não vai (os outros números seguem a caixa), a economia desligada (como antes), o que
+//     chega da mesa normalizado (dentro e ecoJ) e o resumo da semana para o Jornal (o saldo, as obras prontas, o que a falta
+//     trouxe; o que eles não veem sem o nome; o que o mestre recusou fora).
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 let n = 0, bad = 0;
@@ -137,7 +144,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   eq([ob('m1').ass, 'ass' in ob('m2'), ob('m3').ass, ob('r1').prod], [{ niv: 'vila', pop: 1201, estr: { camponeses: 1201 } }, false, { niv: null, pop: 30, estr: { camponeses: 30 } }, { la: 3, sal: -1.23 }],
     'o assentamento: o nível que não existe sai (sem população, o assentamento todo); a população sem estratos vira Camponeses; a produção do mestre só dos recursos do mundo');
   const pe = N.projetar(e0);
-  ok(!('eco' in pe) && !pe.objs.some(o => 'ass' in o || 'prod' in o), 'na projeção: sem a economia, sem os assentamentos e sem a produção do mestre (por enquanto, tudo do mestre)');
+  ok(!('eco' in pe) && !pe.objs.some(o => 'ass' in o || 'prod' in o), 'na projeção: sem a economia, sem os assentamentos e sem a produção do mestre (o que os jogadores veem vai pronto: parte 6)');
   ok(!('eco' in N.normalizarMapa({ nome: 'M' })), 'sem economia, o campo nem fica (o mapa de antes fica igual)');
   const se = N.normalizarMapa({ nome: 'M', objs: [{ id: 'm', k: 'm', x: 1, y: 1, ass: { niv: 'vila', pop: 10 } }, { id: 'r', k: 'r', pts: quad(0, 0, 9, 9), prod: { la: 1 } }] });
   eq([se.objs[0].ass, 'prod' in se.objs[1]], [{ niv: null, pop: 10 }, false], 'sem a economia: o nível e a produção do mestre não ficam (não há níveis nem recursos); a população fica');
@@ -538,7 +545,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const apn = N.normalizarMapa(ap), gs = apn.objs.find(o => o.id === 'c1').ass.guildas;
   eq([gs[0].est, gs[1].est], [{ la: 13 }, { su: 2 }], 'aplicar: o estoque de cada guilda fica no que sobrou');
   const pj = N.projetar(g0);
-  ok(!pj.objs.some(o => 'ass' in o) && !('eco' in pj), 'na projeção, nada das guildas (por enquanto, tudo do mestre: a parte 6 decide o que os jogadores veem)');
+  ok(!pj.objs.some(o => 'ass' in o) && !('eco' in pj), 'na projeção, nada das guildas do mestre (as que os jogadores veem vão prontas: parte 6)');
 }
 
 /* ---- (pente fino) juntar pelo nome e a população da facção ---- */
@@ -594,6 +601,137 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const p = N.projetar(m);
   eq(p.faccoes.find(x => x.id === 'fa').band, BAND, 'a projeção leva a bandeira própria (os jogadores veem)');
   ok(!p.faccoes.some(x => x.id === 'fb'), 'a facção escondida não vai (nem a bandeira dela)');
+}
+
+/* ---- (parte 6) o que os jogadores veem ---- */
+{
+  const REC = [{ id: 'lapros', nome: 'Lapros', papel: 'moeda', cor: '#e6ab4f' }, { id: 'su', nome: 'Suprimentos', papel: 'comida', cor: '#9fbf4a' }, { id: 'ma', nome: 'Madeira', papel: 'madeira', cor: '#a8743c' }];
+  const CONS = [{ id: 'moinho', nome: 'Moinho', ic: 'fazenda', niveis: [{ sem: 1, prod: { su: 3 }, gasto: { lapros: 1 } }, { sem: 1, prod: { su: 5 }, gasto: { lapros: 1 } }] },
+    { id: 'torre', nome: 'Torre', ic: 'torre', niveis: [{ sem: 2, def: 2 }] }, { id: 'forno', nome: 'Forno', ic: 'forja', niveis: [{ sem: 1, prod: { lapros: 1 }, gasto: { ma: 20 } }] }];
+  const GUILDAS = [
+    { id: 'g1', nome: 'Caçadores', ic: 'arco', txt: 'Caçam na floresta.', estr: 'cam', membros: 5, lider: { nome: 'Bran', ficha: 'pc1' }, infl: 3, rel: 2, prod: { su: 4 }, pct: 50, est: { su: 1 },
+      serv: [{ id: 's1', tipo: 'contrato', nome: 'Caçar o lobo', preco: '20 Lapros', desc: 'Um lobo grande.' }, { id: 's2', tipo: 'item', nome: 'Pele', preco: '5 Lapros' }] },
+    { id: 'g2', nome: 'Ladrões', ic: 'mascara', secreta: true, prod: { lapros: 2 }, pct: 0, serv: [{ id: 's3', tipo: 'info', nome: 'Segredo', preco: '50 Lapros' }] }];
+  const base = { nome: 'M', larg: 2000, alt: 1400, cal: { dia: 3, sem0: 0 }, grade: { on: true, tam: 50 },
+    eco: { on: true, rec: REC, ter: { fl: { ma: 2 } }, estr: [{ id: 'cam', nome: 'Camponeses', prod: { su: 0.5 } }], niv: [{ id: 'vila', nome: 'Vila', esp: 4 }, { id: 'cidade', nome: 'Cidade', esp: 6 }],
+      cons: CONS, manut0: { lapros: 1, su: 3 }, regras: { fome: 10, moral: 1, obras: true, outro: true, moralOutro: 1 } },
+    faccoes: [
+      { id: 'fa', nome: 'Aldar', jog: true, apoio: 60, ver: { hist: true },
+        rec: [{ id: 'lapros', nome: 'Lapros', n: 3, ver: false }, { id: 'su', nome: 'Suprimentos', n: 5, ver: true }, { id: 'rh', nome: 'Honra', n: 3, ver: true }, { id: 'rs', nome: 'Segredo', n: 7, ver: false }],
+        hist: [{ d: 1, mot: 'tesouro', mud: [['r:lapros', 'Lapros', 0, 3], ['r:rs', 'Segredo', 0, 7], ['r:rh', 'Honra', 0, 3]] }] },
+      { id: 'fb', nome: 'Vale', ver: { hist: true }, rec: [{ id: 'lapros', nome: 'Lapros', n: 99, ver: true }, { id: 'rf', nome: 'Favores', n: 4, ver: true }],
+        hist: [{ d: 1, mot: 'tributo', mud: [['r:lapros', 'Lapros', 0, 99], ['r:rf', 'Favores', 0, 4]] }] }],
+    objs: [
+      { id: 'r1', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 900, 900) },
+      { id: 's1', k: 'r', nome: 'Ducado', pai: 'r1', pts: quad(50, 50, 400, 400) },
+      { id: 'r3', k: 'r', nome: 'Terra escondida', fac: 'fa', oculto: true, pts: quad(0, 1000, 900, 1300), prod: { lapros: 2 } },
+      { id: 'r2', k: 'r', nome: 'Vale', fac: 'fb', pts: quad(1000, 0, 1900, 900) },
+      { id: 'a1', k: 'm', nome: 'Alta', x: 200, y: 200, ass: { niv: 'vila', estr: { cam: 40 }, cons: [{ id: 'c1', t: 'moinho', n: 2 }, { id: 'c2', t: 'torre', n: 0, obra: { n: 1, sem: 1, fac: 'fa' } }], guildas: GUILDAS } },
+      { id: 'a2', k: 'm', nome: 'Baixa', x: 600, y: 600, ass: { niv: 'cidade', estr: { cam: 10 }, cons: [{ id: 'c3', t: 'forno', n: 1 }], ver: false } },
+      { id: 'a3', k: 'm', nome: 'Porto', x: 1200, y: 200, ass: { niv: 'vila', estr: { cam: 20 } } },
+      { id: 'a4', k: 'm', nome: 'Mina', x: 1500, y: 200, ass: { niv: 'vila', estr: { cam: 5 }, ver: true } },
+      { id: 'a5', k: 'm', nome: 'Esconderijo', x: 700, y: 300, oculto: true, ass: { niv: 'vila', ver: true } },
+      { id: 'a6', k: 'm', nome: 'Forte', x: 1700, y: 600, ass: { niv: 'vila', cla: { id: 'k1', prod: { forja: { lapros: 4 } } } } },
+      { id: 'g1', k: 'g', nome: 'Hoste', x: 300, y: 500, tipo: 'exercito', fac: 'fa', exe: { cmd: { nome: 'Rei' }, moral: 5, unid: [{ id: 'u1', nome: 'Lanceiros', tropas: 100 }] } },
+      { id: 'g2', k: 'g', nome: 'Reserva', x: 350, y: 500, tipo: 'exercito', fac: 'fa', oculto: true, exe: { cmd: { nome: 'Duque' }, moral: 5, unid: [{ id: 'u2', nome: 'Arqueiros', tropas: 50 }] } },
+      { id: 'g3', k: 'g', nome: 'Guarda do Vale', x: 1300, y: 500, tipo: 'exercito', fac: 'fb', exe: { cmd: { nome: 'Conde' }, moral: 5, unid: [{ id: 'u3', nome: 'Milícia', tropas: 80 }] } }] };
+  let m = N.normalizarMapa(base);
+  // a floresta: produz Madeira (o terreno) — uns hexágonos do Reino fora do Ducado e uns do Ducado
+  const hR = R.hexesProprios(m, m.objs.find(o => o.id === 'r1')), hS = R.hexesProprios(m, m.objs.find(o => o.id === 's1'));
+  for (const k of hR.slice(0, 5).concat(hS.slice(0, 3))) m.hexes[k] = 'fl';
+  m = N.normalizarMapa(m);
+  const A = id => m.objs.find(o => o.id === id);
+  const clas = id => (id === 'k1' ? { fac: 'fa', cons: new Set(['forja']) } : null);
+
+  // a caixa de cada cidade
+  eq(['a1', 'a2', 'a3', 'a4', 'a5'].map(id => A(id).ass.ver === undefined ? '-' : A(id).ass.ver), ['-', false, '-', true, true], 'a caixa "os jogadores veem o que tem dentro": guardada só quando o mestre mexeu (true ou false)');
+  ok(Object.keys(A('a2').ass).join() === 'niv,pop,estr,cons,ver', 'ela fica no fim do assentamento: ' + Object.keys(A('a2').ass).join());
+  ok(!('ver' in N.normalizarMapa({ nome: 'M', objs: [{ id: 'x', k: 'm', x: 1, y: 1, ass: { niv: null, pop: 3, ver: 'sim' } }] }).objs[0].ass), 'só true ou false: outra coisa sai');
+  const migr = N.normalizarMapa({ nome: 'M', eco: base.eco, objs: [{ id: 'x', k: 'm', x: 1, y: 1, ass: { niv: 'vila', pop: 12, ver: false, guildas: [{ id: 'gq', nome: 'Q' }] } }] }).objs[0].ass;
+  ok(Object.keys(migr).join() === 'niv,pop,estr,guildas,ver' && migr.ver === false, 'a população de antes vira Camponeses e a caixa continua no fim: ' + Object.keys(migr).join());
+  eq(['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map(id => R.verDentro(m, A(id))), [true, false, false, true, true, false], 'sem a caixa: as cidades da facção dos jogadores marcadas, as outras não; com ela, vale a do mestre');
+  ok(R.verDentro(m, A('r1')) === false && R.verDentro(m, A('g1')) === false, 'só assentamento tem o que ver dentro');
+
+  // o que vai de dentro
+  eq(R.dentroParaJogadores(m, A('a1')), { nivel: 'Vila', pop: 40, cons: [{ nome: 'Moinho', ic: 'fazenda', n: 2 }],
+    guildas: [{ id: 'g1', nome: 'Caçadores', ic: 'arco', txt: 'Caçam na floresta.', serv: [{ id: 's1', tipo: 'contrato', nome: 'Caçar o lobo', preco: '20 Lapros', desc: 'Um lobo grande.' }, { id: 's2', tipo: 'item', nome: 'Pele', preco: '5 Lapros', desc: '' }] }] },
+    'de dentro: o nome do nível, a população (o total), as construções prontas (sem a obra) e as guildas que não são secretas, com os serviços (sem o líder, os membros, a influência, a relação nem os números)');
+  ok(R.dentroParaJogadores(m, A('r1')) === null && R.dentroParaJogadores(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { on: false }) })), A('a1')) === null, 'sem assentamento, ou com a economia desligada: nada');
+
+  // a projeção: o que tem dentro só das cidades abertas (e que eles veem)
+  const p = N.projetar(m, { clas }), P = id => p.objs.find(o => o.id === id);
+  eq(['a1', 'a2', 'a3', 'a4', 'a6'].map(id => !!P(id).dentro), [true, false, false, true, false], 'na projeção, o que tem dentro só das cidades abertas (a dos jogadores, e a outra que o mestre marcou)');
+  ok(!P('a5') && !p.objs.some(o => 'ass' in o), 'a cidade escondida não vai, e o assentamento do mestre nunca vai');
+  eq(P('a4').dentro, { nivel: 'Vila', pop: 5, cons: [], guildas: [] }, 'a cidade de outra facção aberta pelo mestre: o nível e a população');
+  ok(j(N.normalizarMapa(p)) === j(p), 'o que chega aos jogadores passa igual pela normalização deles');
+  const pNevoa = N.projetar(Object.assign(JSON.parse(j(m)), { nevoa: { on: true, ops: [{ t: '+', x: 1500, y: 200, r: 100 }] } }), { clas });
+  ok(!pNevoa.objs.find(o => o.id === 'a1') && !!pNevoa.objs.find(o => o.id === 'a4' && o.dentro) && pNevoa.ecoJ.livro.prov === 0 && pNevoa.ecoJ.prov.every(x => x.id !== 'r1') && j(pNevoa.ecoJ.prod.total) === j(p.ecoJ.prod.total),
+    'com a névoa: a cidade coberta não vai (nem o que tem dentro), a descoberta vai; a província coberta não conta no Livro e fica sem nome (a produção é a mesma)');
+
+  // a economia da facção dos jogadores
+  const e = p.ecoJ, porFac = R.producaoPorFaccao(m, clas).por.fa;
+  ok(!!e && e.fac === 'fa' && j(e.rec.map(r => r.id)) === j(['lapros', 'su', 'ma']), 'a projeção leva a economia da facção dos jogadores (com os recursos do mundo, os nomes e as cores)');
+  eq(e.est, { lapros: 3, su: 5 }, 'o estoque inteiro (mesmo o que o mestre não marcou para eles ver)');
+  eq(e.prod.total, porFac, 'a produção por semana: a mesma conta do Livro do reino do mestre (com a sede do clã)');
+  const somaF = {};
+  for (const k of ['terreno', 'pop', 'cons', 'guilda', 'cla', 'mestre']) R.somar(somaF, e.prod[k]);
+  eq(somaF, e.prod.total, 'as fontes somam a produção');
+  eq([e.prod.terreno, e.prod.pop, e.prod.cons, e.prod.guilda, e.prod.cla, e.prod.mestre], [{ ma: 16 }, { su: 25 }, { ma: -20, su: 5 }, { su: 2 }, { lapros: 4 }, { lapros: 2 }],
+    'de onde vem: o terreno, a população, as construções (com o gasto delas: o Lapros do Forno paga o do Moinho), a parte das guildas, a sede do clã (em terra do Vale, mas o clã é de Aldar) e a do mestre (na terra escondida)');
+  eq(e.prov.map(x => [x.id, x.nome, x.prod.total]), [['r1', 'Reino', { ma: -4, su: 32 }], ['r2', 'Vale', { lapros: 4 }], [null, '', { lapros: 2 }]],
+    'por província: o Reino (com o Ducado), o Vale (a sede do clã) e, sem nome, a terra que eles não veem');
+  eq(e.manut, { lapros: 15, su: 45 }, 'a manutenção: a de todos os exércitos dela (é o estoque que paga)');
+  eq(e.livro, { prov: 1, sub: 1, hex: hR.length + hS.length, exe: 1, grade: true }, 'a linha do Livro: só o que eles veem (a província escondida e o exército escondido não contam)');
+  ok(R.economiaDosJogadores(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: JSON.parse(j(m.faccoes)).map(f => Object.assign(f, { oculta: f.id === 'fa' })) })), clas) === null
+    && R.economiaDosJogadores(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: JSON.parse(j(m.faccoes)).map(f => { delete f.jog; return f; }) })), clas) === null,
+    'sem a facção dos jogadores (ou com ela escondida): nada');
+  const pSemClas = N.projetar(m);
+  ok(!('lapros' in pSemClas.ecoJ.prod.cla) && j(pSemClas.ecoJ.prod.total) === j(R.producaoPorFaccao(m).por.fa), 'sem os clãs (outro aparelho): a sede fica com a dona do lugar, como no Livro do mestre');
+
+  // as facções na projeção: o estoque da dos jogadores vai inteiro; o das outras, nunca; os outros números, pela caixa
+  const fa = p.faccoes.find(f => f.id === 'fa'), fb = p.faccoes.find(f => f.id === 'fb');
+  eq(fa.rec.map(r => r.id), ['lapros', 'su', 'rh'], 'a facção dos jogadores: o estoque inteiro e os outros números marcados (o Segredo, não)');
+  eq(fb.rec.map(r => r.id), ['rf'], 'a outra facção: o estoque não vai (nem com a caixa marcada); os outros números marcados, sim');
+  eq([fa.hist[0].mud.map(x => x[0]), fb.hist[0].mud.map(x => x[0])], [['r:lapros', 'r:rh'], ['r:rf']], 'o histórico acompanha: só o que eles veem');
+  const pOff = N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { on: false }) })));
+  ok(!('ecoJ' in pOff) && !pOff.objs.some(o => 'dentro' in o), 'com a economia desligada: nada da economia vai');
+  eq([pOff.faccoes[0].rec.map(r => r.id), pOff.faccoes[1].rec.map(r => r.id)], [['su', 'rh'], ['lapros', 'rf']], 'e os números seguem a caixa, como antes');
+
+  // o que chega da mesa, normalizado
+  const lixo = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A', jog: true }], objs: [{ id: 'x', k: 'm', x: 1, y: 1, dentro: { nivel: ' Vila ', pop: -5, cons: [{ nome: '' }, { nome: 'Moinho', ic: 'MAU!', n: 99 }],
+    guildas: [{ id: 'g', nome: '', serv: [{ nome: 'a', tipo: 'zz' }, { tipo: 'item' }], lider: { nome: 'X' }, rel: 3 }, { id: 'g', nome: 'B' }] } }],
+    ecoJ: { fac: 'fa', rec: [{ id: 'x', nome: 'X' }, { id: 'x', nome: 'Y' }, 'lixo', { id: '' }], est: { x: 12.345, y: 3 }, prod: { total: { x: 'a', y: 2, z: 1 }, outra: { x: 1 } }, manut: { x: -3 }, prov: [{ id: '!!', nome: 5 }], livro: { prov: -2, exe: 'muitos', grade: 'sim' } } });
+  eq(lixo.objs[0].dentro, { nivel: 'Vila', pop: 0, cons: [{ nome: 'Moinho', ic: 'salao', n: 5 }], guildas: [{ id: 'g', nome: 'Guilda', ic: 'salao', txt: '', serv: [{ id: 'sv', tipo: 'contrato', nome: 'a', preco: '', desc: '' }] }, { id: 'g_2', nome: 'B', ic: 'salao', txt: '', serv: [] }] },
+    'o que tem dentro, normalizado: os limites, o ícone que não serve, o serviço sem nome sai, o que não é dos jogadores (o líder, a relação) não fica');
+  ok(!('dentro' in N.normalizarMapa({ nome: 'M', objs: [{ id: 'x', k: 'm', x: 1, y: 1, dentro: { nivel: ' ', pop: 0, cons: [{ nome: ' ' }], guildas: [] } }] }).objs[0]), 'sem nada para ver dentro, nada fica');
+  eq([lixo.ecoJ.rec, lixo.ecoJ.est, lixo.ecoJ.prod.total, lixo.ecoJ.manut, lixo.ecoJ.prov, lixo.ecoJ.livro], [[{ id: 'x', nome: 'X', cor: '#9aa3b5' }], { x: 12.35 }, {}, {}, [{ id: null, nome: '5', prod: { terreno: {}, pop: {}, cons: {}, guilda: {}, cla: {}, mestre: {}, total: {} } }], { prov: 0, sub: 0, hex: 0, exe: 0, grade: true }],
+    'a economia dos jogadores, normalizada: só os recursos dela, os números conferidos, nada negativo na manutenção');
+  ok(!('ecoJ' in N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa' }, { id: 'fb', jog: true }], ecoJ: { fac: 'fa' } })) && !('ecoJ' in N.normalizarMapa({ nome: 'M', ecoJ: { fac: 'fa' } })), 'a economia que não é da facção dos jogadores (ou sem a facção) sai');
+  ok(!N.projetar(Object.assign(JSON.parse(j(m)), { ecoJ: lixo.ecoJ, objs: JSON.parse(j(m.objs)).map(o => (o.id === 'a3' ? Object.assign(o, { dentro: { nivel: 'Falsa', pop: 1 } }) : o)) }), { clas }).objs.find(o => o.id === 'a3').dentro,
+    'a projeção refaz tudo: o "dentro" que estivesse no mapa do mestre não vai');
+
+  // o resumo da semana para o Jornal: a semana 0 (de segunda a domingo) fecha
+  const sm = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { cal: Object.assign(JSON.parse(j(m.cal)), { dia: 7 }), eco: Object.assign(JSON.parse(j(m.eco)), { sem: 0 }) }));
+  const prev = R.semanaPrevia(sm, clas), ve = o => !['g2', 'a2'].includes(o.id);
+  ok(!!prev && prev.cons.some(c => c.id === 'fome:fa') && prev.cons.some(c => c.id === 'obras:fa') && prev.cons.some(c => c.id === 'moral:g2'), '(a semana: falta comida e moeda a Aldar)');
+  const rs = R.resumoDaSemana(sm, prev, [], ve), pf = prev.fac.find(x => x.id === 'fa');
+  ok(rs.tit === 'Aldar: a semana até ' + N.textoData(sm.cal, prev.ate), 'o título: a facção dos jogadores e a semana: ' + rs.tit);
+  const lin = rs.txt.split('\n\n');
+  const saldoEsp = ['lapros', 'su', 'ma'].map(id => [id, (pf.fica[id] || 0) - (pf.est[id] || 0), pf.fica[id] || 0]).filter(x => Math.round(x[1] * 100));
+  ok(lin[0] === '**O saldo:** ' + saldoEsp.map(([id, d, f]) => ({ lapros: 'Lapros', su: 'Suprimentos', ma: 'Madeira' })[id] + ' ' + (d > 0 ? '+' : '−') + Math.abs(Math.round(d * 100) / 100).toLocaleString('pt-BR') + ' (fica ' + f.toLocaleString('pt-BR') + ')').join(' · ') + '.',
+    'o saldo: quanto cada recurso mudou e com quanto fica: ' + lin[0]);
+  ok(lin.length === 2 && /^\*\*O que a falta trouxe:\*\* Faltou Lapros \([\d,.]+\) e Suprimentos \([\d,.]+\)\. Com fome, o apoio caiu 10 \(de 60% para 50%\)\. Sem Lapros, 1 obra parou esta semana\. Sem moeda, a moral de Hoste caiu 1 \(de 5 para 4\)\. Sem moeda, a moral de um exército caiu 1 \(de 5 para 4\)\. Uma construção não produziu nem gastou: faltou Madeira\.$/.test(lin[1]),
+    'o que a falta trouxe (da facção deles): o exército e a construção que eles não veem ficam sem o nome; nenhuma obra pronta: ' + lin[1]);
+  const rs2 = R.resumoDaSemana(sm, prev, ['fome:fa', 'obras:fa', 'moral:g1'], ve), lin2 = rs2.txt.split('\n\n');
+  ok(lin2[1] === '**Obras prontas:** Torre (nível 1), em Alta.' && !/fome|obra parou|Hoste/.test(lin2[2]) && /a moral de um exército caiu/.test(lin2[2]),
+    'o que o mestre recusou não entra; com as obras andando, a Torre fica pronta (numa cidade que eles veem por dentro): ' + j(lin2.slice(1)));
+  ok(R.resumoDaSemana(sm, prev, ['fome:fa', 'obras:fa'], o => o.id !== 'a1').txt.indexOf('Obras prontas') < 0, 'a obra pronta numa cidade que eles não veem por dentro não entra');
+  const semObra = N.normalizarMapa(JSON.parse(j(sm))); semObra.objs.find(o => o.id === 'a1').ass.cons = [{ id: 'c1', t: 'moinho', n: 2 }];
+  const pSO = R.semanaPrevia(N.normalizarMapa(semObra), clas);
+  ok(pSO.cons.some(c => c.id === 'obras:fa') && !/obra/.test(R.resumoDaSemana(N.normalizarMapa(semObra), pSO, [], ve).txt), 'sem obra andando, "as obras param" não entra no resumo');
+  ok(R.resumoDaSemana(N.normalizarMapa(Object.assign(JSON.parse(j(sm)), { faccoes: JSON.parse(j(sm.faccoes)).map(f => { delete f.jog; return f; }) })), prev, [], ve) === null && R.resumoDaSemana(sm, null, [], ve) === null
+    && R.resumoDaSemana(N.normalizarMapa(Object.assign(JSON.parse(j(sm)), { faccoes: JSON.parse(j(sm.faccoes)).map(f => Object.assign(f, { oculta: f.id === 'fa' })) })), prev, [], ve) === null,
+    'sem a facção dos jogadores (ou com ela escondida, ou sem a prévia): nada');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

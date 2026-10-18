@@ -655,6 +655,31 @@ dialog.mundo-dl fieldset.gd-semana, dialog.mundo-dl fieldset.gd-serv-caixa { bor
 .num-calc { font-family: var(--mono); font-size: 13px; color: var(--fg); text-align: right; padding-right: 8px; }
 .sug-ic { align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--lamp); background: var(--lamp-soft); }
 .sug-ic small { flex: 1 1 180px; color: var(--lamp-ink); font-size: 12.5px; }
+/* (lote 10, parte 6) o que os jogadores veem: a economia da facção deles, dentro da cidade e o resumo para o Jornal */
+.chk.ver.fixo { cursor: default; }
+.chk.ver.fixo input { opacity: .55; }
+.eco-jog { display: grid; gap: 8px; }
+.eco-jog > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--fg-2); }
+.eco-jog > summary:hover { color: var(--fg); }
+.eco-jog .prod-li i.sem { background: transparent; border-style: dashed; }
+.dt-cab { margin: 0; font-size: 13.5px; color: var(--fg); }
+.dt-cons ul, .dt-serv { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.dt-cons li { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--fg); }
+.dt-cons li svg, .dt-gd-cab svg { flex: none; color: var(--fg-2); }
+.dt-gds { display: grid; gap: 6px; }
+.dt-gd { display: grid; gap: 5px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.dt-gd-cab { display: flex; align-items: center; gap: 7px; }
+.dt-gd-cab b { font-size: 13.5px; color: var(--fg); }
+.dt-gd .publico { font-size: 13px; color: var(--fg-2); }
+.dt-serv li { font-size: 12.5px; color: var(--fg-2); }
+.dt-serv li b { color: var(--fg); font-weight: 600; }
+.dt-serv li small { display: block; color: var(--fg-3); font-size: 12px; }
+.sem-jornal { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); }
+.mundo-dl .sem-jornal label.op { font-weight: 600; }
+.sem-jornal-ver > summary { cursor: pointer; font-size: 12.5px; color: var(--fg-2); }
+.sem-jornal-txt { display: grid; gap: 4px; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--fg-2); }
+.sem-jornal-txt b { color: var(--fg); }
+.sem-jornal-txt p { margin: 0; }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -1050,15 +1075,16 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
-<script src="nucleo.js?v=25"></script>
+<script src="../jornal/nucleo.js?v=1"></script>
+<script src="nucleo.js?v=26"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=7"></script>
+<script src="reino.js?v=8"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=30"></script>
+<script src="painel.js?v=31"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=8"></script>
-<script src="mundo.js?v=13"></script>
+<script src="reino-painel.js?v=9"></script>
+<script src="mundo.js?v=14"></script>
 </body>
 </html>

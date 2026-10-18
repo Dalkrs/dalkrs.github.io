@@ -31,6 +31,11 @@
    começo), a guilda nova a partir de um modelo, a parte do que ela produz que vai para a facção dona da cidade (na
    produção da região, como "guildas") e a que fica no estoque dela; na semana, o estoque da guilda recebe a parte dela
    e paga o gasto (o que falta só aparece: o estoque fica em zero).
+   (parte 6) O que os jogadores veem: a caixa de cada assentamento ("os jogadores veem o que tem dentro"; sem ela, as
+   cidades da facção dos jogadores começam marcadas), o que eles veem dentro (o nível, a população, as construções
+   prontas e as guildas que não são secretas), a economia da facção deles (o estoque e a produção por fonte e por
+   província, a manutenção e a linha do Livro do reino; as outras facções, nada) e o resumo da semana para o rascunho do
+   Jornal (o saldo, as obras prontas e o que a falta trouxe).
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -674,13 +679,130 @@
     return prev;
   }
 
+  /* ---------------- (parte 6) o que os jogadores veem ---------------- */
+  // a facção dos jogadores (a marcada; null sem ela)
+  const facJog = m => (ehObj(m) && Array.isArray(m.faccoes) ? m.faccoes.find(f => ehObj(f) && f.jog) || null : null);
+  /* A caixa "os jogadores veem o que tem dentro" de um assentamento: a que o mestre marcou ou desmarcou; sem ela, as
+     cidades da facção dos jogadores começam marcadas (e as outras, desmarcadas). */
+  function verDentro(m, o) {
+    if (!ehObj(o) || o.k !== 'm' || !ehObj(o.ass)) return false;
+    if (o.ass.ver === true || o.ass.ver === false) return o.ass.ver;
+    const N = NN(), fj = facJog(m), r = fj ? N.regiaoEm(m, o.x, o.y) : null;
+    return !!r && N.facDaRegiao(m, r) === fj.id;
+  }
+  /* O que os jogadores veem dentro de um assentamento aberto para eles (vai na projeção): o nome do nível, a população (o
+     total), as construções prontas (o nome, o ícone e o nível; sem as obras nem os números) e as guildas que não são
+     secretas (o nome, o ícone, a descrição e os serviços com o preço; sem o líder, os membros, a influência nem a
+     relação). → null sem nada para ver (ou sem a economia ligada) */
+  function dentroParaJogadores(m, o) {
+    if (!ecoDe(m) || !ehObj(o) || !ehObj(o.ass)) return null;
+    const a = o.ass, nv = nivelDe(m, a.niv), cons = [], guildas = [];
+    for (const c of Array.isArray(a.cons) ? a.cons : []) {
+      const t = ehObj(c) && c.n >= 1 ? tipoDe(m, c.t) : null;
+      if (t) cons.push({ nome: t.nome, ic: t.ic, n: Math.min(c.n, t.niveis.length) });
+    }
+    for (const g of Array.isArray(a.guildas) ? a.guildas : []) {
+      if (!ehObj(g) || g.secreta) continue;
+      guildas.push({ id: g.id, nome: g.nome, ic: g.ic, txt: g.txt || '', serv: (Array.isArray(g.serv) ? g.serv : []).map(s => ({ id: s.id, tipo: s.tipo, nome: s.nome, preco: s.preco || '', desc: s.desc || '' })) });
+    }
+    const out = { nivel: nv ? nv.nome : '', pop: Number(a.pop) || 0, cons, guildas };
+    return out.nivel || out.pop || cons.length || guildas.length ? out : null;
+  }
+  /* A economia da facção dos jogadores como eles a veem (vai na projeção): o estoque (os recursos do mundo), a produção
+     por semana por fonte (o terreno, a população, as construções — com o gasto delas —, as guildas, a sede do clã e a do
+     mestre) e por província (as regiões dela juntas pela província onde ficam; a província que eles não veem, e o que fica
+     fora das províncias, vai junto, sem nome: id null), a manutenção dos exércitos (todos os dela: é o estoque que paga) e
+     a linha deles no Livro do reino (as províncias, as sub-regiões, os hexágonos e os exércitos que eles veem). clas:
+     como em producaoPorFaccao; visivel(o): o objeto vai para os jogadores. → null sem a economia ligada ou sem a facção dos
+     jogadores (ou com ela escondida) */
+  function economiaDosJogadores(m, clas, visivel) {
+    const N = NN(), e = ecoDe(m), f = e ? facJog(m) : null;
+    if (!f || f.oculta) return null;
+    const vis = typeof visivel === 'function' ? visivel : () => true;
+    const nova = () => ({ terreno: {}, pop: {}, cons: {}, guilda: {}, cla: {}, mestre: {}, total: {} });
+    const prod = nova(), porProv = new Map(), livro = { prov: 0, sub: 0, hex: 0, exe: 0, grade: !!N.temGrade(m) };
+    const juntar = (r, k, t) => {
+      if (!ehObj(t) || !Object.keys(t).length) return;
+      const p = r ? provinciaDe(m, r) : null, vista = !!p && vis(p), chave = vista ? p.id : '';
+      if (!porProv.has(chave)) porProv.set(chave, { id: vista ? p.id : null, nome: vista ? String(p.nome || '').trim() : '', prod: nova() });
+      for (const alvo of [prod, porProv.get(chave).prod]) { somar(alvo[k], t); somar(alvo.total, t); }
+    };
+    for (const r of regioes(m)) {
+      if (N.facDaRegiao(m, r) !== f.id) continue;
+      const q = producaoPropria(m, r);
+      juntar(r, 'terreno', q.terreno); juntar(r, 'pop', q.pop); juntar(r, 'cons', somar(somar({}, q.cons), q.gasto)); juntar(r, 'guilda', q.guilda); juntar(r, 'mestre', q.mestre);
+      if (!vis(r)) continue;
+      if (r.pai) livro.sub++; else livro.prov++;
+      if (livro.grade) livro.hex += hexesProprios(m, r).length;
+    }
+    // a sede do clã: para a facção ligada ao clã (sem ela, para a dona do lugar), como em producaoPorFaccao
+    for (const a of assentamentosDe(m)) {
+      const c = a.o.ass.cla;
+      if (!c) continue;
+      const info = infoDoCla(clas, c.id), dono = a.r ? N.facDaRegiao(m, a.r) : null;
+      const fid = info && info.fac && (m.faccoes || []).some(x => x.id === info.fac) ? info.fac : dono;
+      if (fid === f.id) juntar(a.r, 'cla', producaoDoCla(m, a.o, info ? info.cons : null));
+    }
+    const manut = {}, est = {};
+    for (const g of exercitosDe(m, f.id)) { somar(manut, manutencaoDe(m, g)); if (vis(g)) livro.exe++; }
+    for (const w of e.rec) { const r = (f.rec || []).find(x => x.id === w.id); if (r && Number(r.n)) est[w.id] = arred2(Number(r.n)); }
+    const prov = [...porProv.values()].sort((a, b) => (a.id ? 0 : 1) - (b.id ? 0 : 1));
+    return { fac: f.id, rec: e.rec.map(r => ({ id: r.id, nome: r.nome, cor: r.cor })), est, prod, manut, prov, livro };
+  }
+  /* O resumo da semana para o rascunho do Jornal (o mestre revisa e publica), só da facção dos jogadores: o saldo (quanto
+     cada recurso mudou e com quanto fica), as obras que ficaram prontas nas cidades que eles veem por dentro e o que a
+     falta trouxe (o que o mestre não recusou; o exército e a construção que eles não veem ficam sem o nome). prev: a
+     prévia da semana (semanaPrevia); recusadas: os ids das consequências recusadas; ve(o): o objeto vai para os
+     jogadores (a cidade, aberta por dentro). → { tit, txt } (com **negrito** do Jornal) ou null sem a facção dos
+     jogadores */
+  function resumoDaSemana(m, prev, recusadas, ve) {
+    const N = NN(), e = ecoDe(m), f = e && ehObj(prev) ? facJog(m) : null;
+    if (!f || f.oculta) return null;
+    const vis = typeof ve === 'function' ? ve : () => true, no = new Set(recusadas || []);
+    const fmtN = v => Number(arred2(v)).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    const sinal = v => (v > 0 ? '+' : '−') + fmtN(Math.abs(v));
+    const rec = id => e.rec.find(r => r.id === id) || { id, nome: id };
+    const nomeO = (o, outro) => String((o && o.nome) || '').trim() || outro;
+    const pf = (prev.fac || []).find(x => x.id === f.id) || { est: {}, fica: {}, falta: {}, paradas: [] };
+    const saldo = e.rec.map(r => { const para = pf.fica[r.id] || 0, d = arred2(para - (pf.est[r.id] || 0)); return d ? r.nome + ' ' + sinal(d) + ' (fica ' + fmtN(para) + ')' : null; }).filter(Boolean);
+    const prontas = [];
+    for (const w of prev.obras || []) {
+      if (!(w.pronta || (w.parada && no.has('obras:' + w.fac) && w.sem0 <= 1))) continue;
+      const o = achaObj(m, w.o), t = tipoDe(m, w.t);
+      if (o && t && vis(o)) prontas.push(t.nome + ' (nível ' + w.n + '), em ' + nomeO(o, 'uma cidade'));
+    }
+    const falta = [], fr = Object.keys(pf.falta || {});
+    if (fr.length) falta.push('Faltou ' + fr.map(id => rec(id).nome + ' (' + fmtN(pf.falta[id]) + ')').join(' e ') + '.');
+    for (const c of prev.cons || []) {
+      if (c.fac !== f.id || no.has(c.id)) continue;
+      if (c.tipo === 'fome') falta.push('Com fome, o apoio caiu ' + c.d + ' (de ' + c.de + '% para ' + c.para + '%).');
+      else if (c.tipo === 'obras') {
+        // (só quando havia obra andando)
+        const ms = fr.filter(id => rec(id).papel === 'moeda').map(id => rec(id).nome), k = (prev.obras || []).filter(w => w.parada && w.fac === f.id).length;
+        if (k) falta.push('Sem ' + (ms.join(' e ') || 'moeda') + ', ' + (k === 1 ? '1 obra parou' : k + ' obras pararam') + ' esta semana.');
+      } else {
+        const g = achaObj(m, c.g);
+        falta.push('Sem ' + (c.tipo === 'moral' ? 'moeda' : rec(c.r).nome) + ', a moral ' + (g && vis(g) ? 'de ' + nomeO(g, 'um exército') : 'de um exército') + ' caiu ' + c.d + ' (de ' + c.de + ' para ' + c.para + ').');
+      }
+    }
+    for (const x of pf.paradas || []) {
+      const o = achaObj(m, x.o), t = tipoDe(m, x.t);
+      falta.push((o && t && vis(o) ? t.nome + ' (' + nomeO(o, 'uma cidade') + ')' : 'Uma construção') + ' não produziu nem gastou: faltou ' + rec(x.r).nome + '.');
+    }
+    const partes = ['**O saldo:** ' + (saldo.length ? saldo.join(' · ') : 'nada mudou nos estoques') + '.'];
+    if (prontas.length) partes.push('**Obras prontas:** ' + prontas.join(' · ') + '.');
+    if (falta.length) partes.push('**O que a falta trouxe:** ' + falta.join(' '));
+    return { tit: (String(f.nome || '').trim() || 'A facção dos jogadores') + ': a semana até ' + N.textoData(m.cal, prev.ate), txt: partes.join('\n\n') };
+  }
+
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
     RECURSOS_INICIAIS, TERRENO_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
     producaoDaPopulacao, distribuir, nivelDaDivisao, juntarAoMundo, populacaoDaFaccao, GUILDAS_INICIAIS, guildasProntas, guildaDoModelo, guildasDe, partesDaGuilda,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
     CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
     cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,
-    semanaN, semanasPendentes, diasDaSemana, manutencaoDe, semanaPrevia, aplicarSemana };
+    semanaN, semanasPendentes, diasDaSemana, manutencaoDe, semanaPrevia, aplicarSemana,
+    verDentro, dentroParaJogadores, economiaDosJogadores, resumoDaSemana };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;
   if (typeof window !== 'undefined') window.MundoReino = MundoReino;
 })();

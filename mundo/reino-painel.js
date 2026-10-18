@@ -25,6 +25,10 @@
    pôr os 8 prontos, criar, editar, tirar); na prévia da semana, o que cada guilda recebe, gasta e guarda.
    A bandeira própria de uma facção (sem clã): a janela com o editor do brasão do Clã (a forma, a divisão, as cores, o
    símbolo; numa mesa, uma imagem); a bandeira no Livro do reino e na prévia da semana (a do clã ligado vale antes).
+   (parte 6) O que os jogadores veem: no assentamento, a caixa "Os jogadores veem o que tem dentro"; para quem joga, a
+   linha da facção deles no Livro do reino (com a produção, o estoque e "De onde vem": por fonte, a manutenção e por
+   província) e, na cidade aberta, o nível, a população, as construções prontas e as guildas que não são secretas; na
+   prévia da semana, o resumo para o rascunho do Jornal (com a prévia do texto; vai junto com o Desfazer da semana).
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
 (() => {
   'use strict';
@@ -190,6 +194,10 @@
         kit().botao('Agora não', () => { sugIcone = null; kit().pintar(); }, { c: 'sm', k: 'o:' + o.id + ':ic-nao' })));
     }
     if (a) {
+      // (parte 6) os jogadores veem o que tem dentro (o nível, a população, as construções prontas e as guildas que não são secretas)
+      out.push(kit().caixa('o:' + o.id + ':ver-dentro', 'Os jogadores veem o que tem dentro', R().verDentro(m, o),
+        v => mudarObj(o.id, v ? 'mostrar aos jogadores o que tem dentro' : 'esconder dos jogadores o que tem dentro', x => { if (!x.ass || x.ass.ver === !!v) return false; x.ass.ver = !!v; }),
+        { dica: 'Ao clicar na cidade, eles veem o nível, a população (o total), as construções prontas e as guildas que não são secretas. As cidades da facção dos jogadores começam marcadas.' + (o.oculto ? ' Agora a cidade está escondida: eles não a veem no mapa.' : '') }));
       out.push(...blocoPopulacao(o, m));                                // (parte 5) as pessoas de cada estrato
       const r = N().regiaoEm(m, o.x, o.y), prov = r ? R().provinciaDe(m, r) : null;
       out.push(nota(r ? 'Fica em ' + nomeDe(r, m) + (prov && prov !== r ? ' (província ' + nomeDe(prov, m) + ')' : '') + '.' : 'Fora das províncias: não produz para ninguém.'));
@@ -1161,19 +1169,37 @@
     if (semanaAberta || !A.podeEditar() || !ligada(m)) return;
     const clas = id => (A.infoDoCla ? A.infoDoCla(id) : null), prev = R().semanaPrevia(m, clas);
     if (!prev) { A.toast('Nenhuma semana para fechar agora.'); return; }
+    // (parte 6) o resumo para o rascunho do Jornal (só com a facção dos jogadores): o que eles veem — a cidade no mapa e
+    // aberta por dentro, o exército no mapa — sai pela projeção
+    let jornal = null;
+    if (A.temJornal && A.temJornal() && R().resumoDaSemana(m, prev, [], null)) {
+      const noMapa = new Set(N().projetar(m, { clas }).objs.map(o => o.id));
+      jornal = { ve: o => noMapa.has(o.id) && (o.k !== 'm' || R().verDentro(m, o)) };
+    }
     semanaAberta = true;
     let res = null;
-    try { res = await dialogoSemana(m, prev); } finally { semanaAberta = false; }
+    try { res = await dialogoSemana(m, prev, jornal); } finally { semanaAberta = false; }
     if (!res || !kit().mesmoMapa(m.id)) return;
     const ate = N().textoData(m.cal, prev.ate);
     let feito = null;
     const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate); if (!feito) return false; });
     if (ok === false || !feito) return;
     const no = new Set(res.recusadas), prontas = feito.obras.filter(w => w.pronta || (w.parada && no.has('obras:' + w.fac) && w.sem0 <= 1)).length;
-    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : ''));
+    // (parte 6) o resumo entra no rascunho do Jornal (o mestre revisa lá e publica); o Desfazer da semana tira, o Refazer põe de novo
+    let jtxt = '';
+    const r = jornal && res.jornal ? R().resumoDaSemana(m, feito, res.recusadas, jornal.ve) : null;
+    if (r) {
+      const mat = { id: 'mt_sem' + feito.n + '_' + Date.now().toString(36), tit: r.tit, txt: r.txt, ass: '', dest: false }, MAXM = (window.JornalNucleo.MAX || {}).materias || 30;
+      let cheio = false;
+      const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => x.id === mat.id)) return false; if (jx.materias.length >= MAXM) { cheio = true; return false; } jx.materias.push(Object.assign({}, mat)); });
+      const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => x.id !== mat.id); if (jx.materias.length === n0) return false; });
+      if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); jtxt = ' O resumo foi para o rascunho do Jornal.'; }
+      else jtxt = ' O resumo não foi para o Jornal' + (cheio ? ': o rascunho já tem ' + MAXM + ' matérias.' : '.');
+    }
+    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : '') + jtxt);
     if (R().semanasPendentes(A.mapa) > 0) setTimeout(() => janelaSemana(), 400);
   }
-  function dialogoSemana(m, prev) {
+  function dialogoSemana(m, prev, jornal) {
     const { h, nomeFac, facDe, fmt, nomeDe, achar } = kit();
     return new Promise(resolve => {
       const recs = m.eco.rec, cxs = [], papel = id => (recs.find(r => r.id === id) || {}).papel || '';
@@ -1215,8 +1241,15 @@
             (t ? t.nome : 'Obra') + (w.n > 1 ? ' (nível ' + w.n + ')' : '') + (o ? ' em ' + nomeDe(o, m) : '') + ': ' + (parada ? 'parada (falta moeda)' : sem1 === 0 ? 'fica pronta' : sem1 === 1 ? 'falta 1 semana' : 'faltam ' + sem1 + ' semanas'));
         }));
       }
-      const cons = prev.cons.map(c => { const cb = h('input', { type: 'checkbox', 'data-k': 'sem:c:' + c.id, checked: true, onchange: pintarObras }); cxs.push([c.id, cb]); return h('label', { class: 'op sem-cons' }, cb, h('span', { text: txtCons(c) })); });
-      pintarObras();
+      // (parte 6) o resumo para o rascunho do Jornal: só o que é da facção dos jogadores; a prévia acompanha as recusas
+      const cxJ = jornal ? h('input', { type: 'checkbox', 'data-k': 'sem:jornal', checked: true }) : null, txtJ = jornal ? h('div', { class: 'sem-jornal-txt', 'data-k': 'sem:jornal:txt' }) : null;
+      function pintarJornal() {
+        if (!txtJ) return;
+        const r = R().resumoDaSemana(m, prev, recusadas(), jornal.ve);
+        txtJ.replaceChildren(...(r ? [h('b', { text: r.tit })].concat(r.txt.split('\n\n').map(p => h('p', { text: p.replace(/\*\*/g, '') }))) : []));
+      }
+      const cons = prev.cons.map(c => { const cb = h('input', { type: 'checkbox', 'data-k': 'sem:c:' + c.id, checked: true, onchange: () => { pintarObras(); pintarJornal(); } }); cxs.push([c.id, cb]); return h('label', { class: 'op sem-cons' }, cb, h('span', { text: txtCons(c) })); });
+      pintarObras(); pintarJornal();
       const bNao = h('button', { type: 'button', class: 'btn', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'sem:aplicar', text: 'Aplicar a semana' });
       const form = h('form', { class: 'dl', novalidate: true }, titulo, sub,
         blocos.length ? blocos : h('p', { class: 'note', text: 'Nada muda nos estoques nesta semana.' }),
@@ -1236,11 +1269,15 @@
               h('span', { text: partes.concat(['o estoque fica ' + (t(w.fica) || 'vazio')]).join(' · ') + (faltou ? ' · ' : '.') }),
               faltou ? h('span', { class: 'gd-falta', text: 'falta ' + t(w.falta) + ' (o estoque fica em zero).' }) : null);
           }))) : null,
+        jornal ? h('div', { class: 'sem-jornal', 'data-k': 'sem:jornal-caixa' },
+          h('label', { class: 'op' }, cxJ, h('span', { text: 'Mandar o resumo da semana para o rascunho do Jornal' })),
+          h('small', { class: 'note', text: 'Só o que é da facção dos jogadores: o saldo, as obras prontas nas cidades que eles veem por dentro e o que a falta trouxe. Você revisa no Jornal antes de publicar.' }),
+          h('details', { class: 'sem-jornal-ver', 'data-k': 'sem:jornal:ver' }, h('summary', { text: 'Ver o resumo' }), txtJ)) : null,
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl eco-dl sem-dl', 'aria-labelledby': titulo.id }, form);
       let feito = false;
       const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
-      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ recusadas: recusadas() }); });
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ recusadas: recusadas(), jornal: !!(cxJ && cxJ.checked) }); });
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));
       dl.addEventListener('keydown', ev => ev.stopPropagation());
@@ -1417,6 +1454,60 @@
     return secao('Livro do reino', out);
   }
 
+  /* ---------------- (parte 6) o que os jogadores veem ---------------- */
+  /* Para quem joga, na aba Reinos: a linha da facção deles no Livro do reino (as províncias, as sub-regiões, os
+     hexágonos e os exércitos que eles veem; o que produz por semana e o estoque) e, ao abrir "De onde vem", cada recurso
+     com as fontes, a manutenção dos exércitos e a produção por província. Vem pronto na projeção (v.ecoJ). */
+  const FONTES_J = [['terreno', 'terreno'], ['pop', 'população'], ['cons', 'construções'], ['guilda', 'guildas'], ['cla', 'sede do clã'], ['mestre', 'outras fontes']];
+  const abertosJ = new Set();                // o que quem joga deixou aberto (só nesta página: o painel se refaz a cada mudança)
+  function secLivroJog(v) {
+    const e = v && v.ecoJ, K = kit();
+    if (!e) return null;
+    const { h, nota, secao, plural, nomeFac, facDe, bandeiraFac, fmt } = K, f = facDe(v, e.fac);
+    if (!f) return null;
+    // "Lapros 12 · Suprimentos −3" (com sinal: "+12")
+    const txt = (t, sinal) => e.rec.filter(r => t && t[r.id]).map(r => r.nome + ' ' + (sinal ? sinalN(t[r.id]) : (t[r.id] > 0 ? '' : '−') + fmt(Math.abs(t[r.id]), 2))).join(' · ');
+    const l = e.livro;
+    const linhaL = h('div', { class: 'livro-li', 'data-k': 'livro:' + f.id },
+      bandeiraFac(f.id, 14) || h('i', { style: { background: f.cor } }), h('b', { text: nomeFac(f) }),
+      h('small', { text: [plural(l.prov, 'província', 'províncias'), plural(l.sub, 'sub-região', 'sub-regiões'), l.grade ? plural(l.hex, 'hexágono', 'hexágonos') : null,
+        l.exe ? plural(l.exe, 'exército', 'exércitos') : null].filter(Boolean).join(' · ') }),
+      h('small', { class: 'livro-prod', text: 'Produz por semana: ' + (txt(e.prod.total) || 'nada') }),
+      h('small', { class: 'livro-est', text: 'Estoque: ' + (txt(e.est) || 'nada') }));
+    const porRec = e.rec.filter(r => e.prod.total[r.id]).map(r => h('div', { class: 'prod-li', 'data-rec': r.id },
+      h('i', { style: { background: r.cor } }), h('b', { text: r.nome + ' ' + sinalN(e.prod.total[r.id]) }),
+      h('small', { text: FONTES_J.filter(([k]) => e.prod[k][r.id]).map(([k, t0]) => t0 + ' ' + sinalN(e.prod[k][r.id])).join(' · ') })));
+    const manut = txt(e.manut);
+    const provs = e.prov.map(p => h('div', { class: 'prod-li', 'data-k': 'livro:j:p:' + (p.id || '-') },
+      h('i', { class: 'sem' }), h('b', { text: p.id ? p.nome || 'Província sem nome' : 'Outras terras' }), h('small', { text: txt(p.prod.total, true) || 'nada' })));
+    const det = h('details', { class: 'eco-jog', 'data-k': 'livro:j:de-onde', open: abertosJ.has('de-onde') || null },
+      h('summary', { text: 'De onde vem', onclick: function (ev) { ev.preventDefault(); const d = this.parentNode, abrir = !d.open; if (abrir) abertosJ.add('de-onde'); else abertosJ.delete('de-onde'); d.open = abrir; } }),
+      h('div', { class: 'prov-prod', 'data-k': 'livro:j:fontes' }, h('small', { class: 'note', text: 'Produção por semana, por fonte' }), porRec.length ? porRec : nota('Nada por enquanto.')),
+      manut ? h('p', { class: 'note', 'data-k': 'livro:j:manut', text: 'Manutenção dos exércitos, por semana: ' + manut + ' (sai do estoque quando a semana fecha).' }) : null,
+      provs.length ? h('div', { class: 'prov-prod', 'data-k': 'livro:j:provs' }, h('small', { class: 'note', text: 'Por província' }), provs) : null);
+    return secao('Livro do reino', linhaL, det, nota('Só a facção de vocês. O estoque muda quando a semana fecha.'));
+  }
+  /* Para quem joga, na cidade que o mestre abriu (a leitura do marcador): o nível, a população (o total), as construções
+     prontas e as guildas que não são secretas, com a descrição e os serviços (com o preço). Vem pronto na projeção
+     (o.dentro). */
+  function leituraDentro(o) {
+    const d = o && o.dentro;
+    if (!d) return null;
+    const { h, secao } = kit(), out = [], TS = N().TIPOS_SERV || {};
+    const cab = [d.nivel, d.pop ? pl(d.pop, 'pessoa', 'pessoas') : ''].filter(Boolean).join(' · ');
+    if (cab) out.push(h('p', { class: 'dt-cab', 'data-k': 'ler:dt:cab', text: cab }));
+    if (d.cons.length) out.push(h('div', { class: 'dt-cons', 'data-k': 'ler:dt:cons' }, h('small', { class: 'note', text: 'Construções' }),
+      h('ul', null, d.cons.map((c, i) => h('li', { 'data-k': 'ler:dt:c:' + i }, glifoIc(c.ic, 16), h('span', { text: c.nome + ' · nível ' + c.n }))))));
+    if (d.guildas.length) out.push(h('div', { class: 'dt-gds', 'data-k': 'ler:dt:gds' }, h('small', { class: 'note', text: 'Guildas' }),
+      d.guildas.map(g => h('div', { class: 'dt-gd', 'data-k': 'ler:dt:g:' + g.id },
+        h('div', { class: 'dt-gd-cab' }, glifoIc(g.ic, 18), h('b', { text: g.nome })),
+        g.txt ? h('p', { class: 'publico', text: g.txt }) : null,
+        g.serv.length ? h('ul', { class: 'dt-serv' }, g.serv.map(s => h('li', { 'data-k': 'ler:dt:s:' + g.id + ':' + s.id },
+          h('span', { class: 'tag', text: TS[s.tipo] || 'Serviço' }), ' ', h('b', { text: s.nome }), s.preco ? h('span', { class: 'preco', text: ' · ' + s.preco }) : null,
+          s.desc ? h('small', { text: s.desc }) : null))) : null))));
+    return out.length ? secao('O que tem dentro', out) : null;
+  }
+
   window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, ligar, janelaObra, janelaTipo, icones, janelaEstrato, janelaDivisao, janelaPessoas, janelaGuilda, janelaGuildaCat,
-    janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira };
+    janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira, secLivroJog, leituraDentro };
 })();

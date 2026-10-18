@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-17",
+      "data": "2026-10-18",
+      "titulo": "O que os jogadores veem",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: com a economia do mundo ligada, a aba Reinos mostra o Livro do reino da facção de vocês: o que ela produz por semana, o estoque e “De onde vem” (cada fonte, a manutenção dos exércitos e cada província)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: ao clicar numa cidade que o mestre abriu para vocês, aparece “O que tem dentro”: o nível, a população, as construções prontas e as guildas (com os serviços e o preço)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: cada cidade tem a caixa “Os jogadores veem o que tem dentro” (as da facção dos jogadores começam marcadas). Da economia, os jogadores veem só a facção deles, inteira: o estoque das outras facções não vai mais para eles (no editor da facção, a caixa do estoque fica travada, com a nota); os outros números seguem a caixa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: ao fechar a semana, “Mandar o resumo da semana para o rascunho do Jornal” (já marcada; “Ver o resumo” mostra o texto antes): o saldo da facção dos jogadores, as obras prontas nas cidades que eles veem e o que a falta trouxe. Você revisa e publica no Jornal; o Desfazer da semana tira o resumo de lá."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-16",
       "data": "2026-10-18",
       "titulo": "O pente fino",
