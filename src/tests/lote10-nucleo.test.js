@@ -16,6 +16,9 @@
 //   · (parte 5) a população por estrato: os estratos normalizados (os de começo no mapa de antes), a divisão por nível, as
 //     pessoas de cada estrato (a de antes vira Camponeses), a produção pela população, o "Distribuir…" (pelos maiores
 //     restos) e os lembretes na prévia.
+//   · (parte 5b) as guildas: o catálogo e as da cidade normalizados, o catálogo pronto (pelo papel, pelos estratos, a moeda
+//     do mapa), a guilda a partir de um modelo, a parte da facção e a da guilda, a produção (como "guildas") e a semana (o
+//     estoque da guilda recebe a parte dela e paga o gasto).
 //   · a bandeira própria da facção (sem clã): normalizada (o que não serve volta ao de começo ou sai), ao lado da do clã,
 //     e na projeção (a da facção escondida não vai).
 const N = require('../../mundo/nucleo.js');
@@ -173,9 +176,9 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   od('v1').ass = { niv: 'vila', pop: 0, estr: { camponeses: 50, mercadores: 5 } }; od('v2').ass = { niv: 'cidade', pop: 0, estr: { camponeses: 20, mercadores: 10, guarda: 10, nobreza: 2 } }; od('v3').ass = { niv: 'aldeia', pop: 0, estr: { camponeses: 10 } };
   const mp = N.normalizarMapa(mc);
   const o = id => mp.objs.find(x => x.id === id);
-  eq(R.producaoPropria(mp, o('s2')), { terreno: { madeira: 8, suprimentos: 2 }, pop: {}, cons: {}, gasto: {}, mestre: {}, total: { madeira: 8, suprimentos: 2 } }, 'a Prefeitura: só o terreno (4 florestas)');
-  eq(R.producaoPropria(mp, o('s1')), { terreno: { pedra: 4, orith: 2 }, pop: { suprimentos: 30, lapros: 5 }, cons: {}, gasto: {}, mestre: {}, total: { pedra: 4, orith: 2, suprimentos: 30, lapros: 5 } }, 'o Ducado: 2 montanhas e a vila (50 camponeses: 30 Suprimentos; 5 mercadores: 5 Lapros)');
-  eq(R.producaoPropria(mp, o('p1')), { terreno: { suprimentos: 10 }, pop: { suprimentos: 8, lapros: 8 }, cons: {}, gasto: {}, mestre: { lapros: 7 }, total: { suprimentos: 18, lapros: 15 } }, 'o Reino, a parte própria: 5 planícies, a cidade (a guarda e a nobreza consomem) e os 7 Lapros do mestre');
+  eq(R.producaoPropria(mp, o('s2')), { terreno: { madeira: 8, suprimentos: 2 }, pop: {}, cons: {}, gasto: {}, guilda: {}, mestre: {}, total: { madeira: 8, suprimentos: 2 } }, 'a Prefeitura: só o terreno (4 florestas)');
+  eq(R.producaoPropria(mp, o('s1')), { terreno: { pedra: 4, orith: 2 }, pop: { suprimentos: 30, lapros: 5 }, cons: {}, gasto: {}, guilda: {}, mestre: {}, total: { pedra: 4, orith: 2, suprimentos: 30, lapros: 5 } }, 'o Ducado: 2 montanhas e a vila (50 camponeses: 30 Suprimentos; 5 mercadores: 5 Lapros)');
+  eq(R.producaoPropria(mp, o('p1')), { terreno: { suprimentos: 10 }, pop: { suprimentos: 8, lapros: 8 }, cons: {}, gasto: {}, guilda: {}, mestre: { lapros: 7 }, total: { suprimentos: 18, lapros: 15 } }, 'o Reino, a parte própria: 5 planícies, a cidade (a guarda e a nobreza consomem) e os 7 Lapros do mestre');
   eq(R.producaoDaRegiao(mp, o('p1')).total, { suprimentos: 50, lapros: 20, pedra: 4, orith: 2, madeira: 8 }, 'a província soma a dela e a das sub-regiões');
   eq(R.producaoPorFaccao(mp), { por: { fa: { suprimentos: 20, lapros: 15, madeira: 8 }, fb: { pedra: 4, orith: 2, suprimentos: 30, lapros: 5 } }, sem: {} }, 'por facção: Aldar com o Reino e a Prefeitura; o Vale com o Ducado (de outro dono); a aldeia fora das províncias não produz para ninguém');
   eq(R.assentamentosDaRegiao(mp, o('p1')).map(a => [a.o.id, a.r.id, a.nivel.nome]), [['v1', 's1', 'Vila'], ['v2', 'p1', 'Cidade']], 'os assentamentos de dentro da província (com a região e o nível de cada um)');
@@ -464,6 +467,76 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const ml = N.normalizarMapa({ nome: 'M' }), r0 = JSON.parse(j(ml)); R.ligarEconomia(r0);
   const ligado = N.normalizarMapa(r0).eco;
   ok(ligado.estr.length === 9 && ligado.niv.every(n => Object.keys(n.dist).length >= 8), 'ligar a economia: os 9 estratos e a divisão de cada nível');
+}
+
+/* ---- (parte 5b) as guildas ---- */
+{
+  const REC = [{ id: 'la', nome: 'Lapros', papel: 'moeda' }, { id: 'su', nome: 'Suprimentos', papel: 'comida' }, { id: 'ru', nome: 'Runas', papel: 'magia' }];
+  const ESTR = [{ id: 'mer', nome: 'Mercadores', prod: { la: 1 } }, { id: 'cam', nome: 'Camponeses', prod: { su: 0.6 } }];
+  // a normalização: o catálogo (os modelos) e as guildas da cidade
+  const g0 = N.normalizarMapa({ nome: 'M', larg: 2000, alt: 1400, faccoes: [{ id: 'fa', nome: 'Aldar' }],
+    eco: { on: true, rec: REC, estr: ESTR, niv: [{ id: 'vila', nome: 'Vila', esp: 4 }],
+      guildas: [{ id: 'm1', nome: '  Mercadores ', ic: 'balanca', estr: 'mer', prod: { la: 6, xx: 3 }, gasto: { su: 1, la: -2 }, pct: 140, membros: 9, lider: { nome: 'x' }, est: { la: 5 },
+        serv: [{ tipo: 'item', nome: ' Seda ', preco: ' 12 Lapros ', desc: 'fina' }, { tipo: 'outro', nome: 'Rota' }, { nome: '   ' }], secreta: 'sim' }, { id: 'm1', nome: '', ic: 'Não Vale', estr: 'fantasma' }, 'lixo'] },
+    objs: [
+      { id: 'r', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 900, 900) },
+      { id: 'c1', k: 'm', x: 100, y: 100, ass: { niv: 'vila', pop: 0, estr: { mer: 10, cam: 30 }, guildas: [
+        { id: 'g1', nome: 'Guilda dos Mercadores', ic: 'balanca', estr: 'mer', membros: '8', lider: { nome: '  Ilsa ', ficha: 'pc_ilsa' }, infl: 30, rel: -9, prod: { la: 6 }, gasto: { su: 1 }, pct: 50, est: { la: 10, su: 0, zz: 4 },
+          serv: [{ id: 's', tipo: 'contrato', nome: 'Escolta', preco: '40 Lapros' }, { id: 's', tipo: 'info', nome: 'Preços' }], secreta: false },
+        { id: 'g2', nome: 'Ladrões', estr: 'fantasma', membros: -4, prod: { su: 2 }, pct: 0, secreta: 1 }] } },
+      { id: 'c2', k: 'm', x: 1500, y: 100, ass: { niv: null, pop: 0, guildas: [{ nome: 'Sozinha' }] } }] });
+  const cat = g0.eco.guildas;
+  eq(cat.map(t => Object.keys(t)), [['id', 'nome', 'ic', 'txt', 'estr', 'prod', 'gasto', 'pct', 'serv', 'secreta'], ['id', 'nome', 'ic', 'txt', 'estr', 'prod', 'gasto', 'pct', 'serv', 'secreta']], 'o catálogo de guildas: os modelos, sem membros, líder, influência, relação nem estoque');
+  eq([cat[0].nome, cat[0].prod, cat[0].gasto, cat[0].pct, cat[0].secreta, cat[1].id, cat[1].nome, cat[1].ic, cat[1].estr], ['Mercadores', { la: 6 }, { su: 1 }, 100, true, 'm1_2', 'Guilda', 'salao', null],
+    'o modelo: o nome aparado (vazio: "Guilda"), só os recursos do mundo, o gasto acima de zero, a parte da facção até 100; o id repetido ganha outro, o ícone que não vale e o estrato que não existe saem');
+  eq(cat[0].serv, [{ id: 'sv', tipo: 'item', nome: 'Seda', preco: '12 Lapros', desc: 'fina' }, { id: 'sv_2', tipo: 'contrato', nome: 'Rota', preco: '', desc: '' }], 'os serviços: o tipo que não existe vira contrato, sem nome sai');
+  const c1 = g0.objs.find(o => o.id === 'c1').ass, [g1, g2] = c1.guildas;
+  eq(Object.keys(g1), ['id', 'nome', 'ic', 'txt', 'estr', 'membros', 'lider', 'infl', 'rel', 'prod', 'gasto', 'pct', 'est', 'serv', 'secreta'], 'a guilda da cidade: as chaves na ordem de sempre');
+  eq([g1.membros, g1.lider, g1.infl, g1.rel, g1.est, g1.serv.map(s => s.id)], [8, { nome: 'Ilsa', ficha: 'pc_ilsa' }, 10, -5, { la: 10 }, ['s', 's_2']],
+    'os membros inteiros, o líder (o nome aparado e a ficha), a influência até +10, a relação até −5, o estoque só dos recursos do mundo e acima de zero');
+  eq([g2.estr, g2.membros, g2.secreta, g2.pct], [null, 0, true, 0], 'o estrato que não existe sai; os membros não ficam negativos');
+  ok(j(g0.objs.find(o => o.id === 'c2').ass) === j({ niv: null, pop: 0, guildas: [{ id: 'gd', nome: 'Sozinha', ic: 'salao', txt: '', estr: null, membros: 0, lider: { nome: '', ficha: null }, infl: 0, rel: 0, prod: {}, gasto: {}, pct: 50, est: {}, serv: [], secreta: false }] }),
+    'o marcador que só tem uma guilda continua assentamento (a guilda com o de começo)');
+  ok(j(N.normalizarMapa(JSON.parse(j(g0)))) === j(g0), 'normalizar de novo não muda nada');
+  const semCat = N.normalizarMapa({ nome: 'M', eco: { on: true, rec: REC } }).eco;
+  ok(Array.isArray(semCat.guildas) && semCat.guildas.length === 0, 'o mapa de antes, sem o catálogo de guildas: vazio (o mestre põe as prontas)');
+  const ant = N.normalizarMapa({ nome: 'M', eco: { on: true, rec: REC, estr: ESTR }, objs: [{ id: 'a', k: 'm', x: 1, y: 1, ass: { niv: null, pop: 7, cla: { id: 'k', prod: {} }, guildas: [{ nome: 'G' }] } }] });
+  eq(Object.keys(ant.objs[0].ass), ['niv', 'pop', 'estr', 'cla', 'guildas'], 'a população de antes que vira estrato: as guildas ficam por último');
+  // o catálogo pronto e a guilda a partir de um modelo
+  const ei = R.ecoInicial(N.normalizarMapa({ nome: 'M' }));
+  const pr = ei.guildas;
+  eq(pr.map(t => t.id), ['cacadores', 'assassinos', 'ladroes', 'mercadores', 'magos', 'artesaos', 'aventureiros', 'bardos'], 'o catálogo de começo: as 8 guildas');
+  const mer = pr.find(t => t.id === 'mercadores'), ass = pr.find(t => t.id === 'assassinos');
+  ok(j(mer.prod) === j({ lapros: 6 }) && j(mer.gasto) === j({ suprimentos: 1 }) && mer.estr === 'mercadores' && mer.serv[0].preco === '40 Lapros' && ass.secreta === true && ass.pct === 0,
+    'pelo papel dos recursos e pelos estratos de começo; os preços na moeda do mapa; os assassinos, secretos, não dão nada à facção');
+  const ren = JSON.parse(j(ei)); ren.rec[0].nome = 'Coroas'; ren.estr = ren.estr.filter(s => s.id !== 'mercadores');
+  const pr2 = R.guildasProntas(null, ren), mer2 = pr2.find(t => t.id === 'mercadores');
+  ok(mer2.serv[0].preco === '40 Coroas' && mer2.estr === null, 'com a moeda renomeada, os preços nela; sem o estrato, a guilda fica sem');
+  const gm = R.guildaDoModelo(mer, 'gx');
+  eq([gm.id, gm.nome, gm.membros, gm.lider, gm.infl, gm.rel, gm.est, gm.prod, gm.serv.length], ['gx', 'Guilda dos Mercadores', 0, { nome: '', ficha: null }, 0, 0, {}, { lapros: 6 }, 3], 'a guilda nova a partir de um modelo: o que é de cada cidade começa vazio');
+  gm.prod.lapros = 99; ok(mer.prod.lapros === 6, '(é uma cópia: o modelo não muda)');
+  eq(R.guildaDoModelo(null, 'gy').nome, 'Guilda', 'em branco: "Guilda"');
+  // a parte da facção e a da guilda
+  eq(R.partesDaGuilda({ prod: { la: 6, su: 1 }, pct: 50 }), { fac: { la: 3, su: 0.5 }, guilda: { la: 3, su: 0.5 } }, 'metade para a facção, metade para o estoque');
+  eq(R.partesDaGuilda({ prod: { la: 3 }, pct: 0 }), { fac: {}, guilda: { la: 3 } }, '0%: tudo para o estoque da guilda');
+  eq(R.partesDaGuilda({ prod: { la: 3 }, pct: 100 }), { fac: { la: 3 }, guilda: {} }, '100%: tudo para a facção');
+  // a produção da região e da facção
+  const p = R.producaoPropria(g0, g0.objs.find(o => o.id === 'r'));
+  eq([p.guilda, p.total], [{ la: 3 }, { la: 13, su: 18 }], 'a região: a parte da facção das guildas (metade dos 6 Lapros; os ladrões dão 0%) entra na produção, como "guildas"');
+  eq(R.producaoPorFaccao(g0).por.fa, { la: 13, su: 18 }, 'e na da facção dona da cidade');
+  // a semana: a parte da guilda entra no estoque dela; o gasto sai dele
+  const ms = N.normalizarMapa(Object.assign(JSON.parse(j(g0)), { cal: Object.assign({}, g0.cal, { sem0: 0, dia: 7 }), eco: Object.assign(JSON.parse(j(g0.eco)), { sem: 0 }) }));
+  const pv = R.semanaPrevia(ms);
+  eq(pv.guildas.map(w => [w.o, w.g, w.fac, w.est, w.paraFac, w.paraGuilda, w.gasto, w.fica, w.falta]), [
+    ['c1', 'g1', 'fa', { la: 10 }, { la: 3 }, { la: 3 }, { su: 1 }, { la: 13 }, { su: 1 }],
+    ['c1', 'g2', 'fa', {}, {}, { su: 2 }, {}, { su: 2 }, {}],
+    ['c2', 'gd', null, {}, {}, {}, {}, {}, {}]].filter(x => x[0] !== 'c2'),
+    'a prévia: cada guilda recebe a parte dela, paga o gasto (o que falta só aparece: o estoque fica em zero); a guilda sem nada não aparece');
+  const ap = JSON.parse(j(ms)); R.aplicarSemana(ap, null, [], 'Semana');
+  const apn = N.normalizarMapa(ap), gs = apn.objs.find(o => o.id === 'c1').ass.guildas;
+  eq([gs[0].est, gs[1].est], [{ la: 13 }, { su: 2 }], 'aplicar: o estoque de cada guilda fica no que sobrou');
+  const pj = N.projetar(g0);
+  ok(!pj.objs.some(o => 'ass' in o) && !('eco' in pj), 'na projeção, nada das guildas (por enquanto, tudo do mestre: a parte 6 decide o que os jogadores veem)');
 }
 
 /* ---- a bandeira própria da facção (sem clã) ---- */

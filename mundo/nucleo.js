@@ -1803,6 +1803,12 @@
      começo —; em cada nível, dist = { estrato: % } (a divisão que o "Distribuir…" sugere; sem ela, a de começo); no
      assentamento, ass.estr = { estrato: pessoas } e ass.pop = a soma (a população de antes, sem estratos, vira
      Camponeses).
+     (parte 5b) As guildas da cidade (não são clãs): ass.guildas = [{ id, nome, ic, txt (a descrição), estr (o estrato de
+     onde vêm os membros), membros, lider: { nome, ficha (uma ficha das Fichas, opcional) }, infl (a influência, −10 a
+     +10, só para ler), rel (a relação com o grupo, −5 a +5), prod e gasto (por semana), pct (quantos % do que ela produz
+     vão para a facção dona da cidade; o resto fica no estoque dela), est (o estoque da guilda; o gasto sai dele), serv:
+     [{ id, tipo (contrato, item, info), nome, preco (texto), desc }], secreta }]; eco.guildas = o catálogo (os modelos:
+     sem membros, líder, influência, relação nem estoque).
      (parte 3) eco.cons = o catálogo de construções: [{ id, nome, ic (o ícone), esp (os espaços que ocupa), exige: { niv
      (o nível mínimo do assentamento), ter: [terrenos: um deles na região], cons (outra construção pronta antes) },
      niveis: [{ custo, sem (as semanas de obra), prod, gasto (por semana), def (a defesa que soma na fortificação), ef (o
@@ -1888,6 +1894,44 @@
     for (const k of Object.keys(base)) if (estrIds.has(k)) out[k] = base[k];
     return out;
   }
+  // (parte 5b) as guildas (ver acima): os serviços e uma guilda (cat: o modelo do catálogo, sem o que é de cada cidade)
+  const TIPOS_SERV = { contrato: 'Contrato', item: 'Item', info: 'Informação' };
+  const MAX_GUILDAS = 12, MAX_GUILDAS_CAT = 24, MAX_SERV = 20, MAX_TXT_GUILDA = 400;
+  function normServicos(v) {
+    const out = [], vistos = new Set();
+    for (const s of Array.isArray(v) ? v : []) {
+      if (!ehObj(s) || out.length >= MAX_SERV) continue;
+      const nome = texto(s.nome, '', 60).trim();
+      if (!nome) continue;
+      out.push({ id: unico(idOk(s.id) || 'sv', vistos), tipo: tem(TIPOS_SERV, s.tipo) ? s.tipo : 'contrato', nome, preco: texto(s.preco, '', 40).trim(), desc: texto(s.desc, '', 200).trim() });
+    }
+    return out;
+  }
+  function normGuilda(g, cat, vistos) {
+    if (!ehObj(g)) return null;
+    const x = { id: unico(idOk(g.id) || 'gd', vistos), nome: texto(g.nome, '', 60).trim() || 'Guilda', ic: typeof g.ic === 'string' && /^[a-z0-9_-]{1,20}$/.test(g.ic) ? g.ic : 'salao',
+      txt: texto(g.txt, '', MAX_TXT_GUILDA).trim(), estr: idRef(g.estr) };
+    if (!cat) {
+      const l = ehObj(g.lider) ? g.lider : {};
+      Object.assign(x, { membros: inteiro(g.membros, 0, 0, MAX_PESSOAS), lider: { nome: texto(l.nome, '', 60).trim(), ficha: idRef(l.ficha) }, infl: inteiro(g.infl, 0, -10, 10), rel: inteiro(g.rel, 0, -5, 5) });
+    }
+    Object.assign(x, { prod: normTabProd(g.prod), gasto: normTabPos(g.gasto), pct: inteiro(g.pct, 50, 0, 100) });
+    if (!cat) x.est = normTabPos(g.est);
+    x.serv = normServicos(g.serv);
+    x.secreta = sim(g.secreta);
+    return x;
+  }
+  function normGuildas(v, cat, max) {
+    const out = [], vistos = new Set();
+    for (const g of Array.isArray(v) ? v : []) { if (out.length >= max) break; const x = normGuilda(g, cat, vistos); if (x) out.push(x); }
+    return out;
+  }
+  // as referências de uma guilda com a economia: o estrato que existe, só os recursos do mundo
+  function conferirGuilda(g, recIds, estrIds) {
+    if (g.estr && !estrIds.has(g.estr)) g.estr = null;
+    g.prod = normTabProd(g.prod, recIds); g.gasto = normTabPos(g.gasto, recIds);
+    if (g.est) g.est = normTabPos(g.est, recIds);
+  }
   function normEco(v, terrenos, tiposG, cal) {
     if (!ehObj(v)) return null;
     const rec = [], vistos = new Set();
@@ -1919,7 +1963,8 @@
       vn.add(id);
       niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40), dist: ehObj(n.dist) ? normTabPos(n.dist, ve) : distDeComeco(id, ve) });
     }
-    const eco = { on: sim(v.on), rec, ter, estr, niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
+    const eco = { on: sim(v.on), rec, ter, estr, niv, cons: normCatalogo(v.cons, ids, terIds, vn), guildas: normGuildas(v.guildas, true, MAX_GUILDAS_CAT) };
+    for (const g of eco.guildas) conferirGuilda(g, ids, ve);           // (parte 5b) o catálogo de guildas
     // (parte 4) a semana: sem o número guardado, a de hoje (nenhuma pendente); sem os dias da semana no mapa, nenhuma
     const semHoje = ehObj(cal) && Number.isInteger(cal.sem0) ? Math.floor((cal.sem0 + Math.floor(num(cal.dia, 0))) / 7) : null;
     // (a guardada fica mesmo à frente de hoje: o calendário que volta e depois anda não reabre as semanas já fechadas)
@@ -1964,7 +2009,9 @@
       if (ehObj(v.cla.prod)) for (const k of Object.keys(v.cla.prod).slice(0, 60)) { const t = idOk(k) ? normTabProd(v.cla.prod[k]) : {}; if (Object.keys(t).length) prod[k] = t; }
       out.cla = { id: v.cla.id, prod };
     }
-    return niv || pop || out.cons || out.cla ? out : null;
+    const gs = normGuildas(v.guildas, false, MAX_GUILDAS);             // (parte 5b) as guildas da cidade
+    if (gs.length) out.guildas = gs;
+    return niv || pop || out.cons || out.cla || out.guildas ? out : null;
   }
   /* (parte 3) As construções de um assentamento com o mapa todo: só os tipos do catálogo (o nível até o último deles; a
      obra só com o nível seguinte, que exista), quem pagou só uma facção que existe, o pago só dos recursos do mundo; a
@@ -1982,7 +2029,7 @@
       } else if (a.pop > 0 && eids.length) {
         a.estr = { [eids.includes('camponeses') ? 'camponeses' : eids[0]]: Math.min(a.pop, MAX_PESSOAS) };
         a.pop = Math.min(a.pop, MAX_PESSOAS);
-        for (const k of ['cons', 'cla']) if (k in a) { const x = a[k]; delete a[k]; a[k] = x; }
+        for (const k of ['cons', 'cla', 'guildas']) if (k in a) { const x = a[k]; delete a[k]; a[k] = x; }
       }
     }
     if (a.cons) {
@@ -1999,6 +2046,7 @@
       if (!a.cons.length) delete a.cons;
     }
     if (a.cla) for (const k of Object.keys(a.cla.prod)) { const t = normTabProd(a.cla.prod[k], recIds); if (Object.keys(t).length) a.cla.prod[k] = t; else delete a.cla.prod[k]; }
+    if (a.guildas && eco) { const eids = new Set(eco.estr.map(s => s.id)); for (const g of a.guildas) conferirGuilda(g, recIds, eids); }
   }
 
   function normGuerra(v) {
@@ -2211,7 +2259,7 @@
       if (o.k === 'm' && o.ass) {
         if (o.ass.niv && !nivIds.has(o.ass.niv)) o.ass.niv = null;
         conferirAss(o.ass, mapa.eco, facs);                     // (parte 3) as construções e a sede do clã
-        if (!o.ass.niv && !o.ass.pop && !o.ass.cons && !o.ass.cla) delete o.ass;
+        if (!o.ass.niv && !o.ass.pop && !o.ass.cons && !o.ass.cla && !o.ass.guildas) delete o.ass;
       }
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
@@ -2446,10 +2494,10 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
-    PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco,
+    PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
-      estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA },
+      estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

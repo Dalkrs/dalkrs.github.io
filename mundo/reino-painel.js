@@ -19,6 +19,10 @@
    "População…", com o "Distribuir…" que sugere a divisão de um total pelas porcentagens do nível, sem mudar nada até
    salvar); na Economia do mundo, os estratos (o que cada pessoa produz ou consome por semana e o lembrete) e a divisão
    por nível; na prévia da semana, os lembretes dos estratos.
+   (parte 5b) As guildas da cidade (não são clãs): no assentamento, a lista (os membros e o estrato, o líder, a influência,
+   a relação com o grupo, a produção e o gasto por semana, a parte da facção, o estoque e os serviços) e a janela da
+   guilda (criar a partir de um modelo, editar, tirar); na Economia do mundo, o catálogo de guildas (os modelos: mostrar,
+   pôr os 8 prontos, criar, editar, tirar); na prévia da semana, o que cada guilda recebe, gasta e guarda.
    A bandeira própria de uma facção (sem clã): a janela com o editor do brasão do Clã (a forma, a divisão, as cores, o
    símbolo; numa mesa, uma imagem); a bandeira no Livro do reino e na prévia da semana (a do clã ligado vale antes).
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
@@ -41,6 +45,14 @@
     { id: 'runa', nome: 'Runa', d: 'M7 21 6 9l6-6 6 6-1 12zM12 8v9M12 11l3-2M12 14l-3-2' },
     { id: 'taverna', nome: 'Taverna', d: 'M5 8h10v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM15 11h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2M7 4.5c1-.8 2 .3 3-.5s2 .3 3 0' },
     { id: 'palicada', nome: 'Paliçada', d: 'M4 21V8l2-3 2 3v13M10 21V8l2-3 2 3v13M16 21V8l2-3 2 3v13M3 13h18' },
+    // (parte 5b) os das guildas
+    { id: 'arco', nome: 'Arco', d: 'M6 3c7 3 10 6 10 9s-3 6-10 9M6 3v18M3 12h17M17 9l3 3-3 3' },
+    { id: 'adaga', nome: 'Adaga', d: 'M12 2l2 4v8h-4V6zM7 14h10M12 14v6M10.5 21h3' },
+    { id: 'mascara', nome: 'Máscara', d: 'M3 9c3-2 6-2 9 0 3-2 6-2 9 0-1 5-4 7-6 5-1-1-2-2-3-2s-2 1-3 2c-2 2-5 0-6-5zM7.5 11.5h1.5M15 11.5h1.5' },
+    { id: 'balanca', nome: 'Balança', d: 'M12 4v16M8 20h8M5 7h14M5 7l-3 6h6zM19 7l-3 6h6z' },
+    { id: 'cajado', nome: 'Cajado', d: 'M6 21 15 8M13.5 4.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0M20 9l1 1M17.5 11v1.5' },
+    { id: 'mapa', nome: 'Mapa', d: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14' },
+    { id: 'alaude', nome: 'Alaúde', d: 'M8.5 13.5a4 4 0 1 0 6 5 4 4 0 1 0-6-5zM12 13l6-9M16 3l3 3M11 16.5h.01' },
   ];
   function icones() {
     const C = window.ClaNucleo, base = C && Array.isArray(C.ICONES) ? C.ICONES : [];
@@ -67,6 +79,7 @@
   }
   let catAberto = false;                     // o catálogo de construções aberto na aba Reinos (só nesta página)
   let estrAberto = false;                    // (parte 5) a lista dos estratos aberta na aba Reinos (só nesta página)
+  let gdAberto = false;                      // (parte 5b) o catálogo de guildas aberto na aba Reinos (só nesta página)
 
   /* ---------------- a seção Província (ou Sub-região) ---------------- */
   function secProvincia(o, m) {
@@ -108,7 +121,7 @@
   function blocoProducao(o, m) {
     const { h, nota, botao, linha, fmt, irPara, nomeDe } = kit();
     const eco = m.eco, p = R().producaoDaRegiao(m, o), out = [], comSubs = R().subregioesDe(m, o).length > 0;
-    const FONTES = [['terreno', 'terreno'], ['pop', 'população'], ['cons', 'construções'], ['gasto', 'manutenção'], ['mestre', 'do mestre']];
+    const FONTES = [['terreno', 'terreno'], ['pop', 'população'], ['cons', 'construções'], ['gasto', 'manutenção'], ['guilda', 'guildas'], ['mestre', 'do mestre']];
     const linhas = eco.rec.filter(r => p.total[r.id]).map(r => h('div', { class: 'prod-li', 'data-rec': r.id },
       h('i', { style: { background: r.cor } }), h('b', { text: r.nome + ' ' + sinalN(p.total[r.id]) }),
       h('small', { text: FONTES.filter(([k]) => p[k][r.id]).map(([k, t]) => t + ' ' + sinalN(p[k][r.id])).join(' · ') })));
@@ -168,6 +181,7 @@
       const pp = R().producaoDaPopulacao(m, o), txt = txtTab(m, pp, true);
       out.push(nota(txt ? 'Pela população, por semana: ' + txt + '.' : a.pop ? 'A população não produz nada (os estratos dela não têm produção: veja os estratos na Economia do mundo, na aba Reinos).' : 'Sem população ainda: use "População…".'));
       out.push(...blocoConstrucoes(o, m), ...blocoSede(o, m));        // (parte 3)
+      out.push(...blocoGuildas(o, m));                                  // (parte 5b)
     } else out.push(nota('Uma cidade, uma vila, um castelo: escolha o nível para ele virar assentamento (com a população e as construções).'));
     return secao('Assentamento', out);
   }
@@ -233,6 +247,13 @@
     out.push(linha(eco.cons.length ? botao(catAberto ? 'Esconder o catálogo' : 'Mostrar o catálogo', () => { catAberto = !catAberto; kit().pintar(); }, { c: 'sm', k: 'eco:cons-ver', expandido: catAberto })
       : botao('Pôr o catálogo pronto', porCatalogoPronto, { c: 'sm', k: 'eco:cons-pronto' }),
       botao('+ Construção', () => janelaTipo(null), { c: 'sm', k: 'eco:cons-novo', off: eco.cons.length >= ((N().LIMITES && N().LIMITES.construcoes) || 40) })));
+    // (parte 5b) o catálogo de guildas (os modelos; cada cidade tem as suas)
+    out.push(h('small', { class: 'note eco-rot', text: 'Guildas do catálogo (' + eco.guildas.length + ')' }));
+    if (!eco.guildas.length) out.push(nota('Nenhuma guilda no catálogo: crie as suas ou ponha as 8 prontas (caçadores, assassinos, ladrões, mercadores, magos, artesãos, aventureiros e bardos). O catálogo só dá os modelos: cada cidade tem as suas guildas.'));
+    else if (gdAberto) out.push(h('div', { class: 'eco-cons' }, eco.guildas.map(t => linhaGuildaCat(m, t))));
+    out.push(linha(eco.guildas.length ? botao(gdAberto ? 'Esconder o catálogo de guildas' : 'Mostrar o catálogo de guildas', () => { gdAberto = !gdAberto; kit().pintar(); }, { c: 'sm', k: 'eco:gd-ver', expandido: gdAberto })
+      : botao('Pôr as 8 prontas', porGuildasProntas, { c: 'sm', k: 'eco:gd-pronto' }),
+      botao('+ Guilda no catálogo', () => janelaGuildaCat(null), { c: 'sm', k: 'eco:gd-novo', off: eco.guildas.length >= ((N().LIMITES && N().LIMITES.guildasCatalogo) || 24) })));
     out.push(linha(botao('Desligar a economia', desligar, { c: 'sm per', k: 'eco:desligar' })));
     return secao('Economia do mundo', out);
   }
@@ -376,6 +397,238 @@
       for (const n of e.niv) { const d = v[n.id] || {}; if (JSON.stringify(n.dist || {}) !== JSON.stringify(d)) { n.dist = d; mudou = true; } }
       if (!mudou) return false;
     }) !== false) K.avisoDesfazer('Divisão por nível salva.');
+  }
+
+  /* ---------------- (parte 5b) as guildas da cidade ---------------- */
+  const sinalI = n => (n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0');
+  const naCasca = () => !!(window.TC && window.TC.ponte && window.TC.ponte.naCasca);
+  // as fichas da mesa (para o líder): [{ id, nome }] — null fora de uma mesa
+  function fichasDaMesa() {
+    const A = app(), TC = window.TC;
+    if (!A.naMesa || !TC || !TC.dados || !TC.dados.disponivel || !TC.dados.disponivel()) return null;
+    const P = TC.dados.col('personagens');
+    if (!P || typeof P.todas !== 'function') return null;
+    if (!P.__reinoEspera) { P.__reinoEspera = true; Promise.resolve(P.pronta).then(() => kit().pintar(), () => {}); }
+    const st = (TC.ponte && TC.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null;
+    return P.todas().filter(l => l && !l.apagado && !(l.ficha && l.ficha.petDe) && (!camp || !l.campanha || l.campanha === camp)).map(l => ({ id: l.id, nome: l.nome || '' }));
+  }
+  const nomeDaFicha = id => { const fs = id ? fichasDaMesa() : null, f = fs && fs.find(x => x.id === id); return f ? f.nome || 'Sem nome' : ''; };
+  function abrirFicha(id) { if (id && naCasca()) window.TC.ponte.ir('fichas', { pc: id }); }
+  const maxGuildas = () => (N().LIMITES && N().LIMITES.guildas) || 12;
+  function blocoGuildas(o, m) {
+    const { h, nota, botao, linha } = kit(), gs = o.ass.guildas || [], out = [];
+    out.push(h('small', { class: 'note eco-rot', 'data-k': 'o:' + o.id + ':guildas', text: 'Guildas' + (gs.length ? ' (' + gs.length + ')' : '') }));
+    if (!gs.length) out.push(nota('Nenhuma guilda. As guildas da cidade (os caçadores, os ladrões, os magos…) não são clãs: cada cidade tem as suas.'));
+    else out.push(h('div', { class: 'cons-lista' }, gs.map(g => linhaGuilda(o, m, g))));
+    out.push(linha(botao('+ Guilda…', () => janelaGuilda(o.id, null), { c: 'sm', k: 'o:' + o.id + ':guilda-nova', off: gs.length >= maxGuildas() })));
+    return out;
+  }
+  function linhaGuilda(o, m, g) {
+    const { h, botao, glifo, X_SVG } = kit(), estr = m.eco.estr.find(s => s.id === g.estr), aqui = estr && o.ass.estr ? o.ass.estr[estr.id] || 0 : 0;
+    const prod = txtTab(m, g.prod, false), gasto = txtTab(m, g.gasto, false), est = txtTab(m, g.est, false), lider = g.lider.nome || nomeDaFicha(g.lider.ficha);
+    return h('div', { class: 'cons-li guilda', 'data-k': 'gd:' + g.id },
+      h('span', { class: 'ico' }, glifoIc(g.ic, 20)),
+      h('div', { class: 'tx' },
+        h('b', null, g.nome, g.secreta ? h('span', { class: 'tag secreta', text: 'secreta' }) : null),
+        h('small', { text: pl(g.membros, 'membro', 'membros') + (estr ? ' (' + estr.nome + ')' : '') + ' · ' + (lider ? 'líder: ' + lider : 'sem líder') }),
+        estr && g.membros > aqui ? h('small', { class: 'gd-aviso', text: 'Mais membros que ' + estr.nome + ' nesta cidade (' + aqui + ').' }) : null,
+        h('small', { text: 'Influência ' + sinalI(g.infl) + ' · relação com o grupo ' + sinalI(g.rel) }),
+        h('small', { text: 'Por semana: ' + [prod ? 'produz ' + prod + ' (' + g.pct + '% para a facção)' : 'não produz', gasto ? 'gasta ' + gasto : ''].filter(Boolean).join(' · ') }),
+        h('small', { text: 'Estoque da guilda: ' + (est || 'nada') }),
+        g.serv.length ? h('small', { class: 'cons-ef', text: (g.serv.length === 1 ? 'Serviço: ' : 'Serviços: ') + g.serv.map(s => s.nome).join(', ') }) : null,
+        h('div', { class: 'row cons-acoes' }, botao('Editar…', () => janelaGuilda(o.id, g.id), { c: 'sm', k: 'gd:' + g.id + ':editar' }),
+          g.lider.ficha && naCasca() ? botao('Abrir a ficha', () => abrirFicha(g.lider.ficha), { c: 'sm', k: 'gd:' + g.id + ':ficha' }) : null)),
+      h('button', { type: 'button', class: 'ib', 'data-k': 'gd:' + g.id + ':x', title: 'Tirar ' + g.nome, 'aria-label': 'Tirar a guilda ' + g.nome, onclick: () => tirarGuilda(o.id, g.id) }, glifo(X_SVG, 14)));
+  }
+  async function tirarGuilda(oId, gId) {
+    const K = kit(), m = app().mapa, o = K.achar(m, oId), g = o && o.ass && (o.ass.guildas || []).find(x => x.id === gId);
+    if (!g) return;
+    const est = txtTab(m, g.est, false);
+    const ok = await K.confirmar({ titulo: 'Tirar ' + g.nome + ' de ' + K.nomeDe(o, m) + '?', ok: 'Tirar a guilda', perigo: true,
+      texto: (est ? 'O estoque dela (' + est + ') sai junto. ' : '') + 'Dá para desfazer.' });
+    if (!ok || !K.mesmoMapa(m.id)) return;
+    if (K.mudarObj(oId, 'tirar a guilda ' + g.nome, x => { const l = x.ass && x.ass.guildas; if (!l) return false; const n = l.length; x.ass.guildas = l.filter(y => y.id !== gId); if (x.ass.guildas.length === n) return false; if (!x.ass.guildas.length) delete x.ass.guildas; }) !== false) K.avisoDesfazer(g.nome + ' saiu de ' + K.nomeDe(o, m) + '.');
+  }
+  // criar (gId null) ou editar a guilda de uma cidade
+  async function janelaGuilda(oId, gId) {
+    const K = kit(), m = app().mapa, o = m && K.achar(m, oId);
+    if (!o || !o.ass || !ligada(m)) return;
+    const g = gId ? (o.ass.guildas || []).find(x => x.id === gId) : null;
+    if (gId && !g) return;
+    const v = await dialogoGuilda({ m, o, g, cat: false });
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const ok = K.mudarObj(oId, g ? 'mudar a guilda ' + g.nome : 'pôr a guilda ' + v.nome, x => {
+      if (!x.ass) return false;
+      const l = x.ass.guildas || [];
+      if (g) { const k = l.findIndex(y => y.id === g.id); if (k < 0 || JSON.stringify(l[k]) === JSON.stringify(Object.assign({ id: g.id }, v))) return false; l[k] = Object.assign({ id: g.id }, v); return; }
+      if (l.length >= maxGuildas()) return false;
+      x.ass.guildas = l.concat([Object.assign({ id: N().novoId('gd') }, v)]);
+    });
+    if (ok !== false) K.avisoDesfazer(g ? v.nome + ': salva.' : v.nome + ' agora é de ' + K.nomeDe(o, m) + '.');
+  }
+  // criar (id null) ou editar um modelo do catálogo de guildas
+  async function janelaGuildaCat(id) {
+    const K = kit(), m = app().mapa;
+    if (!ligada(m)) return;
+    const t = id ? m.eco.guildas.find(x => x.id === id) : null;
+    if (id && !t) return;
+    const v = await dialogoGuilda({ m, o: null, g: t, cat: true });
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const ok = mudarEco(t ? 'mudar a guilda do catálogo ' + t.nome : 'criar a guilda do catálogo ' + v.nome, e => {
+      if (t) { const k = e.guildas.findIndex(y => y.id === t.id); if (k < 0 || JSON.stringify(e.guildas[k]) === JSON.stringify(Object.assign({ id: t.id }, v))) return false; e.guildas[k] = Object.assign({ id: t.id }, v); return; }
+      if (e.guildas.length >= ((N().LIMITES && N().LIMITES.guildasCatalogo) || 24)) return false;
+      e.guildas.push(Object.assign({ id: N().novoId('gc') }, v));
+    });
+    if (ok !== false) { if (!t) gdAberto = true; K.avisoDesfazer(t ? v.nome + ': salva no catálogo.' : v.nome + ': entrou no catálogo.'); }
+  }
+  /* A janela de uma guilda: o nome, o ícone, se é secreta, o estrato dos membros e (na cidade) quantos, o líder (o nome e,
+     numa mesa, uma ficha), a influência e a relação com o grupo; a descrição; por semana, o que produz e o que gasta, e
+     quantos % vão para a facção (o resto fica no estoque da guilda — na cidade, o estoque também); os serviços. Na guilda
+     nova de uma cidade, o modelo do catálogo enche os campos. → a guilda sem o id, ou null (cancelou). */
+  let seqServ = 0;
+  function dialogoGuilda({ m, o, g, cat }) {
+    const { h, lerNum, fmtCampo, nomeDe, glifo, X_SVG } = kit(), recs = m.eco.rec, estrs = m.eco.estr, TIPOS = N().TIPOS_SERV || { contrato: 'Contrato', item: 'Item', info: 'Informação' };
+    return new Promise(resolve => {
+      const vazio = cat ? { nome: '', ic: 'salao', txt: '', estr: null, prod: {}, gasto: {}, pct: 50, serv: [], secreta: false } : R().guildaDoModelo(null, null);
+      const base = g ? JSON.parse(JSON.stringify(g)) : vazio;
+      const inp = (k, o2) => h('input', Object.assign({ type: 'text', 'data-k': k, autocomplete: 'off' }, o2 || {}));
+      const opcoes = (k, lista) => h('select', { 'data-k': k }, lista.map(([v, t]) => h('option', { value: String(v), text: t })));
+      const selModelo = !cat && !g && m.eco.guildas.length ? opcoes('gd:modelo', [['', 'Em branco']].concat(m.eco.guildas.map(t => [t.id, t.nome]))) : null;
+      const nome = inp('gd:nome', { maxlength: 60, placeholder: 'Ex.: Guilda dos Caçadores' });
+      const ic = opcoes('gd:ic', icones().map(i => [i.id, i.nome])), icVer = h('span', { class: 'ct-ic', 'aria-hidden': 'true' });
+      const pintarIc = () => icVer.replaceChildren(glifoIc(ic.value, 24));
+      ic.addEventListener('change', pintarIc);
+      const secreta = h('input', { type: 'checkbox', 'data-k': 'gd:secreta' });
+      const selEstr = opcoes('gd:estr', [['', 'Nenhum']].concat(estrs.map(s => [s.id, s.nome])));
+      const membros = cat ? null : inp('gd:membros', { inputmode: 'numeric', placeholder: '0' });
+      const notaMembros = h('small', { class: 'note', 'data-k': 'gd:membros-nota' });
+      const quantos = id => (o && o.ass.estr && id ? o.ass.estr[id] || 0 : 0);
+      const pintarMembros = () => {
+        const s = estrs.find(x => x.id === selEstr.value);
+        notaMembros.textContent = cat ? 'Os membros saem deste estrato (em cada cidade, no máximo as pessoas dele lá).' : s ? 'No máximo ' + quantos(s.id) + ' (as pessoas de ' + s.nome + ' em ' + nomeDe(o, m) + ').' : 'Escolha de qual estrato vêm os membros.';
+      };
+      selEstr.addEventListener('change', pintarMembros);
+      const fichas = cat ? null : fichasDaMesa();
+      const liderNome = cat ? null : inp('gd:lider', { maxlength: 60, placeholder: 'Ex.: Mestra Ilsa' });
+      const selFicha = fichas ? opcoes('gd:ficha', [['', 'Nenhuma']].concat(fichas.map(f => [f.id, f.nome || 'Sem nome']))) : null;
+      const escala = (k, a) => opcoes(k, Array.from({ length: 2 * a + 1 }, (_, i) => a - i).map(n => [n, sinalI(n)]));
+      const infl = cat ? null : escala('gd:infl', 10), rel = cat ? null : escala('gd:rel', 5);
+      const txt = h('textarea', { 'data-k': 'gd:txt', maxlength: 400, rows: 2, placeholder: 'Quem são, onde se reúnem, o que querem…' });
+      const LINHAS = [['prod', 'Produz'], ['gasto', 'Gasta']].concat(cat ? [] : [['est', 'Estoque']]), ent = {};
+      const tabela = h('div', { class: 'eco-tab-caixa' }, h('table', { class: 'eco-tab gd-tab' },
+        h('thead', null, h('tr', null, h('th', { scope: 'col', text: '' }), recs.map(r => h('th', { scope: 'col' }, h('i', { style: { background: r.cor } }), h('span', { text: r.nome }))))),
+        h('tbody', null, LINHAS.map(([k, rot]) => h('tr', { 'data-lin': k }, h('th', { scope: 'row', text: rot }),
+          recs.map(r => h('td', null, ent[k + ':' + r.id] = inp('gd:' + k + ':' + r.id, { inputmode: 'decimal', class: 'in', placeholder: '0', 'aria-label': rot + ', ' + r.nome }))))))));
+      const pct = inp('gd:pct', { inputmode: 'numeric', placeholder: '50' });
+      const servs = h('div', { class: 'gd-servs', 'data-k': 'gd:servs' }), bServ = h('button', { type: 'button', class: 'btn sm', 'data-k': 'gd:serv-novo', text: '+ Serviço' });
+      const maxS = (N().LIMITES && N().LIMITES.servicos) || 20;
+      function linhaServ(s) {
+        const n = ++seqServ, tipo = opcoes('gd:s' + n + ':tipo', Object.entries(TIPOS)), nm = inp('gd:s' + n + ':nome', { maxlength: 60, placeholder: 'Nome', 'aria-label': 'Nome do serviço' });
+        const preco = inp('gd:s' + n + ':preco', { maxlength: 40, placeholder: 'Preço', 'aria-label': 'Preço do serviço' }), desc = inp('gd:s' + n + ':desc', { maxlength: 200, placeholder: 'Descrição (opcional)', 'aria-label': 'Descrição do serviço' });
+        tipo.setAttribute('aria-label', 'Tipo do serviço'); tipo.value = s.tipo || 'contrato'; nm.value = s.nome || ''; preco.value = s.preco || ''; desc.value = s.desc || '';
+        const li = h('div', { class: 'gd-serv', 'data-serv': String(n) }, tipo, nm, preco, desc);
+        li.append(h('button', { type: 'button', class: 'ib', 'data-k': 'gd:s' + n + ':x', title: 'Tirar o serviço', 'aria-label': 'Tirar o serviço', onclick: () => { li.remove(); pintarServ(); } }, glifo(X_SVG, 14)));
+        li._ler = () => ({ tipo: tipo.value, nome: nm.value.trim(), preco: preco.value.trim(), desc: desc.value.trim() });
+        return li;
+      }
+      const pintarServ = () => { bServ.disabled = servs.children.length >= maxS; };
+      bServ.addEventListener('click', () => { if (servs.children.length >= maxS) return; const li = linhaServ({}); servs.append(li); pintarServ(); li.querySelector('input').focus(); });
+      // enche os campos com uma guilda (a de agora, a em branco ou a de um modelo)
+      function preencher(b) {
+        nome.value = b.nome || ''; ic.value = icones().some(i => i.id === b.ic) ? b.ic : 'salao'; pintarIc();
+        secreta.checked = !!b.secreta; selEstr.value = b.estr && estrs.some(s => s.id === b.estr) ? b.estr : '';
+        if (membros) membros.value = b.membros ? String(b.membros) : '';
+        if (liderNome) liderNome.value = (b.lider && b.lider.nome) || '';
+        if (selFicha) { const f = b.lider && b.lider.ficha; if (f && !fichas.some(x => x.id === f)) selFicha.append(h('option', { value: f, text: 'A ficha saiu da mesa' })); selFicha.value = f || ''; }
+        if (infl) infl.value = String(b.infl || 0);
+        if (rel) rel.value = String(b.rel || 0);
+        txt.value = b.txt || '';
+        for (const [k] of LINHAS) for (const r of recs) { const v = (b[k] || {})[r.id]; ent[k + ':' + r.id].value = v ? fmtCampo(v) : ''; }
+        pct.value = String(b.pct == null ? 50 : b.pct);
+        servs.replaceChildren(...(b.serv || []).map(linhaServ)); pintarServ();
+        pintarMembros();
+      }
+      if (selModelo) selModelo.addEventListener('change', () => { const t = m.eco.guildas.find(x => x.id === selModelo.value); preencher(t ? R().guildaDoModelo(t, null) : vazio); });
+      preencher(base);
+      const titulo = h('h2', { text: cat ? (g ? 'Guilda do catálogo: ' + g.nome : 'Uma guilda nova no catálogo') : g ? 'Guilda: ' + g.nome : 'Uma guilda nova em ' + nomeDe(o, m) });
+      titulo.id = 'dl-gd-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'gd:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'gd:ok', text: g ? 'Salvar' : cat ? 'Criar' : 'Pôr a guilda' });
+      const campo = (rot, el, cls) => h('label', cls ? { class: cls } : null, rot, el);
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        selModelo ? h('div', { class: 'lin gd-modelo' }, campo('Começar de um modelo do catálogo', selModelo)) : null,
+        h('div', { class: 'lin ct-cab' }, campo('Nome', nome), campo('Ícone', ic), icVer),
+        h('label', { class: 'op gd-secreta' }, secreta, h('span', { text: 'Secreta (os jogadores não sabem que ela existe)' })),
+        h('div', { class: 'lin gd-membros' }, cat ? null : campo('Membros', membros), campo('De qual estrato', selEstr)), notaMembros,
+        cat ? null : h('div', { class: 'lin gd-lider' }, campo('Líder', liderNome), selFicha ? campo('Ficha do líder (opcional)', selFicha) : null),
+        cat ? null : (selFicha ? null : h('small', { class: 'note', text: 'Numa mesa, dá para ligar o líder a uma ficha das Fichas.' })),
+        cat ? null : h('div', { class: 'lin gd-escalas' }, campo('Influência (só para ler)', infl), campo('Relação com o grupo', rel)),
+        campo('Descrição', txt, 'gd-txt'),
+        h('fieldset', { class: 'gd-semana' }, h('legend', { text: 'Por semana' + (cat ? '' : ' (e o estoque da guilda)') }), tabela,
+          h('div', { class: 'lin gd-pct' }, campo('Vai para a facção (%)', pct), h('small', { class: 'note', text: 'Do que a guilda produz, esta parte vai para a facção dona da cidade; o resto fica no estoque da guilda. O que ela gasta sai do estoque dela.' }))),
+        h('fieldset', { class: 'gd-serv-caixa' }, h('legend', { text: 'Serviços (contratos, itens, informações)' }), servs, h('div', { class: 'row' }, bServ)),
+        err, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl eco-dl gd-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
+      const inteiro = (t, a, b, msg) => { const s0 = String(t).trim(); const n = s0 === '' ? 0 : lerNum(s0); if (!Number.isInteger(n) || n < a || n > b) throw new Error(msg); return n; };
+      form.addEventListener('input', () => { err.textContent = ''; });       // o aviso de erro some quando se mexe de novo
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        try {
+          const n0 = nome.value.trim();
+          if (!n0) throw new Error('Escreva o nome da guilda.');
+          const estr = selEstr.value || null, out = { nome: n0, ic: ic.value, txt: txt.value.trim(), estr };
+          if (!cat) {
+            const max = quantos(estr), mb = inteiro(membros.value, 0, 1e6, 'Os membros: um número inteiro.');
+            if (mb && !estr) throw new Error('Escolha de qual estrato vêm os membros.');
+            if (mb > max) throw new Error('Os membros: no máximo ' + max + ' (as pessoas de ' + estrs.find(s => s.id === estr).nome + ' nesta cidade).');
+            Object.assign(out, { membros: mb, lider: { nome: liderNome.value.trim(), ficha: selFicha && selFicha.value ? selFicha.value : (!selFicha && base.lider ? base.lider.ficha || null : null) }, infl: Number(infl.value) || 0, rel: Number(rel.value) || 0 });
+          }
+          for (const [k, rot] of LINHAS) {
+            const t = {};
+            for (const r of recs) {
+              const s0 = ent[k + ':' + r.id].value.trim();
+              if (!s0) continue;
+              const x = lerNum(s0);
+              if (!Number.isFinite(x) || x < 0 || x > 1e6) throw new Error(rot + ', ' + r.nome + ': use 0 ou mais (com vírgula, se quiser).');
+              if (x) t[r.id] = Math.round(x * 100) / 100;
+            }
+            if (k === 'est') out.est = t; else out[k] = t;
+          }
+          out.pct = inteiro(pct.value === '' ? '50' : pct.value, 0, 100, 'A parte da facção: um número inteiro de 0 a 100.');
+          const ord = {};                                      // a ordem das chaves é a da guilda normalizada
+          for (const k of ['nome', 'ic', 'txt', 'estr', 'membros', 'lider', 'infl', 'rel', 'prod', 'gasto', 'pct', 'est']) if (k in out) ord[k] = out[k];
+          ord.serv = [...servs.children].map(li => li._ler()).filter(s => s.nome).map((s, i) => Object.assign({ id: 'sv' + (i + 1) }, s));
+          ord.secreta = secreta.checked;
+          fim(ord);
+        } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
+      });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (selModelo || nome).focus();
+    });
+  }
+  // o catálogo de guildas, na Economia do mundo
+  function linhaGuildaCat(m, t) {
+    const { h, botao, glifo, X_SVG } = kit(), estr = m.eco.estr.find(s => s.id === t.estr), prod = txtTab(m, t.prod, false), gasto = txtTab(m, t.gasto, false);
+    return h('div', { class: 'cons-li guilda', 'data-k': 'eco:g:' + t.id },
+      h('span', { class: 'ico' }, glifoIc(t.ic, 20)),
+      h('div', { class: 'tx' }, h('b', null, t.nome, t.secreta ? h('span', { class: 'tag secreta', text: 'secreta' }) : null),
+        h('small', { text: [estr ? 'membros: ' + estr.nome : 'sem estrato', prod ? 'produz ' + prod + ' (' + t.pct + '% para a facção)' : 'não produz', gasto ? 'gasta ' + gasto : ''].filter(Boolean).join(' · ') }),
+        t.serv.length ? h('small', { class: 'cons-ef', text: pl(t.serv.length, 'serviço', 'serviços') + ': ' + t.serv.map(s => s.nome).join(', ') }) : null,
+        h('div', { class: 'row cons-acoes' }, botao('Editar…', () => janelaGuildaCat(t.id), { c: 'sm', k: 'eco:g:' + t.id + ':editar' }))),
+      h('button', { type: 'button', class: 'ib', 'data-k': 'eco:g:' + t.id + ':x', title: 'Tirar ' + t.nome + ' do catálogo', 'aria-label': 'Tirar ' + t.nome + ' do catálogo', onclick: () => tirarGuildaCat(t.id) }, glifo(X_SVG, 14)));
+  }
+  function tirarGuildaCat(id) {
+    const t = app().mapa.eco.guildas.find(x => x.id === id);
+    if (t && mudarEco('tirar a guilda do catálogo', e => { const n = e.guildas.length; e.guildas = e.guildas.filter(x => x.id !== id); if (e.guildas.length === n) return false; }) !== false) kit().avisoDesfazer(t.nome + ' saiu do catálogo (as guildas das cidades continuam).');
+  }
+  function porGuildasProntas() {
+    if (mudarEco('pôr as guildas prontas', (e, mm) => { if (e.guildas.length) return false; e.guildas = R().guildasProntas(mm, e); }) !== false) { gdAberto = true; kit().avisoDesfazer('As 8 guildas prontas entraram no catálogo.'); }
   }
 
   /* ---------------- (parte 5) a população do assentamento ---------------- */
@@ -959,6 +1212,14 @@
             return h('li', { 'data-k': 'sem:lemb:' + l.o }, h('b', { text: (o ? nomeDe(o, m) : 'Assentamento') + (l.fac ? ' (' + nomeF(l.fac) + ')' : '') + ': ' }),
               h('span', { text: l.itens.map(x => nomeE(x.estr) + ' (' + kit().fmt(x.n, 0) + '): ' + x.txt).join(' · ') }));
           }))) : null,
+        (prev.guildas || []).length ? h('div', { class: 'sem-gd-caixa' }, h('small', { class: 'note', text: 'As guildas (o estoque de cada uma)' }),
+          h('ul', { class: 'sem-gd', 'data-k': 'sem:guildas' }, prev.guildas.map(w => {
+            const o = achar(m, w.o), g = o && o.ass && (o.ass.guildas || []).find(x => x.id === w.g), t = x => txtTab(m, x, false), faltou = Object.keys(w.falta).length > 0;
+            const partes = [t(w.paraGuilda) ? 'recebe ' + t(w.paraGuilda) : '', t(w.paraFac) ? t(w.paraFac) + ' para ' + (w.fac ? nomeF(w.fac) : 'ninguém') : '', t(w.gasto) ? 'gasta ' + t(w.gasto) : ''].filter(Boolean);
+            return h('li', { 'data-k': 'sem:gd:' + w.g, class: faltou ? 'falta' : null }, h('b', { text: (g ? g.nome : 'Guilda') + (o ? ' (' + nomeDe(o, m) + ')' : '') + ': ' }),
+              h('span', { text: partes.concat(['o estoque fica ' + (t(w.fica) || 'vazio')]).join(' · ') + (faltou ? ' · ' : '.') }),
+              faltou ? h('span', { class: 'gd-falta', text: 'falta ' + t(w.falta) + ' (o estoque fica em zero).' }) : null);
+          }))) : null,
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl eco-dl sem-dl', 'aria-labelledby': titulo.id }, form);
       let feito = false;
@@ -1140,6 +1401,6 @@
     return secao('Livro do reino', out);
   }
 
-  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, ligar, janelaObra, janelaTipo, icones, janelaEstrato, janelaDivisao, janelaPessoas,
+  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, ligar, janelaObra, janelaTipo, icones, janelaEstrato, janelaDivisao, janelaPessoas, janelaGuilda, janelaGuildaCat,
     janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira };
 })();

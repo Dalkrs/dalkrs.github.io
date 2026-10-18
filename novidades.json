@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-15",
+      "data": "2026-10-18",
+      "titulo": "As guildas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: cada cidade pode ter as suas guildas (não são clãs). No assentamento, “+ Guilda…” começa de um modelo do catálogo ou em branco: membros (de um estrato, sem passar das pessoas dele na cidade), líder (o nome e, numa mesa, uma ficha), influência (−10 a +10), relação com o grupo (−5 a +5), descrição, se é secreta e os serviços (contratos, itens e informações, com o preço)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: do que a guilda produz por semana, você escolhe quantos % vão para a facção dona da cidade; o resto fica no estoque da guilda, de onde também sai o que ela gasta. A prévia da semana mostra o que cada guilda recebe, gasta e guarda (e, em vermelho, o que falta)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na Economia do mundo, o catálogo de guildas traz 8 modelos prontos — Caçadores, Assassinos, Ladrões, Mercadores, Magos, Artesãos, Aventureiros e Bardos — para editar, tirar ou criar outros."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-14",
       "data": "2026-10-18",
       "titulo": "A população por estrato",

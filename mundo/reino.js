@@ -27,6 +27,10 @@
    (parte 5) A população por estrato: o que cada assentamento produz pelas pessoas de cada estrato, a divisão sugerida
    de um total pelas porcentagens do nível ("Distribuir…", pelos maiores restos) e, na prévia, os lembretes dos
    estratos (os aventureiros trazem rumores…), sem mudar nenhum número.
+   (parte 5b) As guildas de cada cidade: o catálogo de começo (8 modelos, pelo papel dos recursos e pelos estratos de
+   começo), a guilda nova a partir de um modelo, a parte do que ela produz que vai para a facção dona da cidade (na
+   produção da região, como "guildas") e a que fica no estoque dela; na semana, o estoque da guilda recebe a parte dela
+   e paga o gasto (o que falta só aparece: o estoque fica em zero).
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -181,6 +185,7 @@
     const N = NN(), estr = N.estratosDeComeco(rec), eids = new Set(estr.map(s => s.id));
     const e = { on: true, rec, ter, estr, niv: copia(NIVEIS_INICIAIS).map(n => Object.assign(n, { dist: N.distDeComeco(n.id, eids) })) };
     e.cons = catalogoPronto(m, e);                                   // (parte 3) o catálogo de construções de começo
+    e.guildas = guildasProntas(m, e);                                // (parte 5b) o catálogo de guildas de começo
     return e;
   }
   const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -240,13 +245,15 @@
     let c = cacheProd ? cacheProd.get(m) : null;
     if (cacheProd && !c) { c = new Map(); cacheProd.set(m, c); }
     if (c && c.has(r.id)) return c.get(r.id);
-    const out = { terreno: {}, pop: {}, cons: {}, gasto: {}, mestre: {}, total: {} };
+    const out = { terreno: {}, pop: {}, cons: {}, gasto: {}, guilda: {}, mestre: {}, total: {} };
     for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); }
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.estr) somar(out.pop, producaoDaPopulacao(m, a.o));
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.cons) { const e = efeitoDasConstrucoes(m, a.o); somar(out.cons, e.prod); somar(out.gasto, e.gasto); }
+    // (parte 5b) a parte das guildas que vai para a facção dona da cidade
+    for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.guildas) for (const g of a.o.ass.guildas) somar(out.guilda, partesDaGuilda(g).fac);
     somar(out.mestre, r.prod);
     somar(somar(somar(out.total, out.terreno), out.pop), out.mestre);
-    somar(somar(out.total, out.cons), out.gasto);
+    somar(somar(somar(out.total, out.cons), out.gasto), out.guilda);
     if (c) c.set(r.id, out);
     return out;
   }
@@ -254,8 +261,8 @@
   function producaoDaRegiao(m, r) {
     const p = producaoPropria(m, r);
     if (!p) return null;
-    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), cons: somar({}, p.cons), gasto: somar({}, p.gasto), mestre: somar({}, p.mestre), total: somar({}, p.total) };
-    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'cons', 'gasto', 'mestre', 'total']) somar(out[k], q[k]); }
+    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), cons: somar({}, p.cons), gasto: somar({}, p.gasto), guilda: somar({}, p.guilda), mestre: somar({}, p.mestre), total: somar({}, p.total) };
+    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'cons', 'gasto', 'guilda', 'mestre', 'total']) somar(out[k], q[k]); }
     return out;
   }
   /* A produção de cada facção por semana (a parte própria das regiões dela; (parte 3) e as sedes dos clãs): { por: {
@@ -304,6 +311,56 @@
     if (!e) return null;
     const temDist = n => n && ehObj(n.dist) && e.estr.some(s => n.dist[s.id] > 0);
     return temDist(nivelDe(m, nivId)) ? nivelDe(m, nivId) : e.niv.find(temDist) || null;
+  }
+
+  /* ---------------- (parte 5b) as guildas ---------------- */
+  // o catálogo de começo: a produção e o gasto por semana pelo papel do recurso; os membros, de um estrato de começo; os
+  // preços dos serviços na moeda do mapa ({m}); pct = quantos % do que produz vão para a facção dona da cidade
+  const GUILDAS_INICIAIS = [
+    { id: 'cacadores', nome: 'Guilda dos Caçadores', ic: 'arco', estr: 'camponeses', prod: { comida: 3 }, gasto: {}, pct: 50, txt: 'Caçam nas matas e vendem carne, peles e couro.',
+      serv: [['contrato', 'Caçar uma fera', '30 {m}'], ['item', 'Peles e couro', '5 {m}'], ['info', 'As trilhas da região', '3 {m}']] },
+    { id: 'assassinos', nome: 'Guilda dos Assassinos', ic: 'adaga', estr: 'aventureiros', prod: { moeda: 4 }, gasto: {}, pct: 0, secreta: true, txt: 'Ninguém admite que ela existe.',
+      serv: [['contrato', 'Um alvo', '200 {m}'], ['info', 'Quem quer quem morto', '20 {m}']] },
+    { id: 'ladroes', nome: 'Guilda dos Ladrões', ic: 'mascara', estr: 'camponeses', prod: { moeda: 3 }, gasto: {}, pct: 0, secreta: true, txt: 'Bolsos leves, portas abertas e mercadoria sem dono.',
+      serv: [['contrato', 'Um roubo', '50 {m}'], ['item', 'Mercadoria roubada', 'a combinar'], ['info', 'As rondas da guarda', '10 {m}']] },
+    { id: 'mercadores', nome: 'Guilda dos Mercadores', ic: 'balanca', estr: 'mercadores', prod: { moeda: 6 }, gasto: { comida: 1 }, pct: 50, txt: 'Controlam as rotas, os preços e as caravanas.',
+      serv: [['contrato', 'Escoltar uma caravana', '40 {m}'], ['item', 'Bens raros', 'a combinar'], ['info', 'Os preços em outras cidades', '5 {m}']] },
+    { id: 'magos', nome: 'Círculo dos Magos', ic: 'cajado', estr: 'clero', prod: { magia: 2 }, gasto: { moeda: 2 }, pct: 30, txt: 'Estudam as runas e vendem o que sabem.',
+      serv: [['item', 'Pergaminhos', '25 {m}'], ['contrato', 'Identificar um item', '15 {m}'], ['info', 'Saber arcano', '10 {m}']] },
+    { id: 'artesaos', nome: 'Guilda dos Artesãos', ic: 'oficina', estr: 'artesaos', prod: { madeira: 1, pedra: 1 }, gasto: { moeda: 1 }, pct: 50, txt: 'Ferreiros, carpinteiros e pedreiros da cidade.',
+      serv: [['item', 'Ferramentas e armas', '10 {m}'], ['contrato', 'Uma encomenda especial', '30 {m}']] },
+    { id: 'aventureiros', nome: 'Guilda dos Aventureiros', ic: 'mapa', estr: 'aventureiros', prod: { moeda: 2 }, gasto: { comida: 1 }, pct: 30, txt: 'O quadro de missões e quem as aceita.',
+      serv: [['contrato', 'As missões do quadro', 'varia'], ['info', 'Rumores', '2 {m}']] },
+    { id: 'bardos', nome: 'Guilda dos Bardos', ic: 'alaude', estr: 'camponeses', prod: { moeda: 1 }, gasto: {}, pct: 50, txt: 'Canções, notícias e fofocas.',
+      serv: [['contrato', 'Uma apresentação', '5 {m}'], ['info', 'As fofocas da cidade', '2 {m}']] },
+  ];
+  // o catálogo de guildas de começo para esta economia (os recursos pelo papel, o estrato que existe, a moeda do mapa)
+  function guildasProntas(m, eco) {
+    const e = eco || (ehObj(m) && ehObj(m.eco) ? m.eco : null);
+    if (!e) return [];
+    const porPapel = {};
+    for (const r of e.rec || []) if (r.papel && !porPapel[r.papel]) porPapel[r.papel] = r.id;
+    const moeda = (e.rec || []).find(r => r.papel === 'moeda'), mNome = moeda ? moeda.nome : 'moedas', estrIds = new Set((e.estr || []).map(s => s.id));
+    const tab = t => { const o = {}; for (const p of Object.keys(t || {})) if (porPapel[p]) o[porPapel[p]] = t[p]; return o; };
+    return GUILDAS_INICIAIS.map(g => ({ id: g.id, nome: g.nome, ic: g.ic, txt: g.txt, estr: estrIds.has(g.estr) ? g.estr : null, prod: tab(g.prod), gasto: tab(g.gasto), pct: g.pct,
+      serv: g.serv.map(([tipo, nome, preco], i) => ({ id: 'sv' + (i + 1), tipo, nome, preco: preco.replace('{m}', mNome), desc: '' })), secreta: !!g.secreta }));
+  }
+  // uma guilda nova numa cidade a partir de um modelo do catálogo (sem ele, em branco): o que é de cada cidade começa vazio
+  function guildaDoModelo(t, id) {
+    const b = ehObj(t) ? t : { nome: 'Guilda', ic: 'salao', txt: '', estr: null, prod: {}, gasto: {}, pct: 50, serv: [], secreta: false };
+    return { id, nome: b.nome, ic: b.ic, txt: b.txt, estr: b.estr || null, membros: 0, lider: { nome: '', ficha: null }, infl: 0, rel: 0,
+      prod: copia(b.prod || {}), gasto: copia(b.gasto || {}), pct: b.pct == null ? 50 : b.pct, est: {}, serv: copia(b.serv || []), secreta: !!b.secreta };
+  }
+  // as guildas do mapa: [{ o (o assentamento), r (a região dele), g (a guilda) }]
+  function guildasDe(m) {
+    const out = [];
+    for (const a of assentamentosDe(m)) for (const g of Array.isArray(a.o.ass.guildas) ? a.o.ass.guildas : []) out.push({ o: a.o, r: a.r, g });
+    return out;
+  }
+  // o que uma guilda produz por semana: a parte da facção dona da cidade (pct %) e a que fica no estoque dela
+  function partesDaGuilda(g) {
+    const k = Math.max(0, Math.min(100, Number(g && g.pct) || 0)) / 100;
+    return { fac: somar({}, g && g.prod, k), guilda: somar({}, g && g.prod, 1 - k) };
   }
 
   // os assentamentos de dentro de uma região (os dela e os das sub-regiões): [{ o, r, nivel }]
@@ -493,7 +550,7 @@
     if (!e || !pend) return null;
     const n = e.sem, dias = diasDaSemana(m, n), rg = e.regras || {}, papel = new Map(e.rec.map(r => [r.id, r.papel || '']));
     const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
-    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [] };
+    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [] };
     const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
     const semMoeda = new Set();
     for (const f of m.faccoes || []) {
@@ -541,6 +598,13 @@
       const itens = (e.estr || []).filter(s => s.lembra && a.o.ass.estr && a.o.ass.estr[s.id] > 0).map(s => ({ estr: s.id, n: a.o.ass.estr[s.id], txt: s.lembra }));
       if (itens.length) out.lembretes.push({ o: a.o.id, fac: dono(a.o), itens });
     }
+    // (parte 5b) as guildas: a parte da facção já está na produção dela; a parte da guilda entra no estoque dela e o
+    // gasto sai dele (o que falta só aparece: o estoque fica em zero)
+    for (const { o, g } of guildasDe(m)) {
+      const p = partesDaGuilda(g), est = somar({}, g.est), fica = {}, falta = {};
+      for (const w of e.rec) { const v = arred2((est[w.id] || 0) + (p.guilda[w.id] || 0) - ((g.gasto || {})[w.id] || 0)); if (v > 0) fica[w.id] = v; if (v < 0) falta[w.id] = arred2(-v); }
+      if ([est, g.prod || {}, g.gasto || {}].some(x => Object.keys(x).length)) out.guildas.push({ o: o.id, g: g.id, fac: dono(o), est, paraFac: p.fac, paraGuilda: p.guilda, gasto: somar({}, g.gasto), fica, falta });
+    }
     // as obras: andam uma semana (sem moeda, a da facção que responde por ela para — quem pagou, senão a dona do lugar)
     for (const a of assentamentosDe(m)) for (const c of a.o.ass.cons || []) {
       if (!c.obra) continue;
@@ -562,6 +626,11 @@
       recursosNaFaccao(m, f);
       for (const w of e.rec) N.facMudar(f, 'r:' + w.id, pf.fica[w.id] || 0, dia, mot || '');
     }
+    // (parte 5b) o estoque de cada guilda fica no que sobrou
+    for (const w of prev.guildas || []) {
+      const o = achaObj(m, w.o), g = o && ehObj(o.ass) && Array.isArray(o.ass.guildas) ? o.ass.guildas.find(x => x.id === w.g) : null;
+      if (g) g.est = somar({}, w.fica);
+    }
     const moral = new Map();
     for (const c of prev.cons) {
       if (no.has(c.id)) continue;
@@ -582,7 +651,7 @@
 
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
     RECURSOS_INICIAIS, TERRENO_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
-    producaoDaPopulacao, distribuir, nivelDaDivisao,
+    producaoDaPopulacao, distribuir, nivelDaDivisao, GUILDAS_INICIAIS, guildasProntas, guildaDoModelo, guildasDe, partesDaGuilda,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
     CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
     cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,

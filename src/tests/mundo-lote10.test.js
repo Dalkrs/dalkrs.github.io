@@ -27,6 +27,10 @@
 //   · (parte 5, SO=populacao) os estratos na Economia do mundo (mostrar, editar, criar, tirar — o com gente pergunta —,
 //     a divisão por nível); a população da vila (a janela: Distribuir, que só enche os campos; Cancelar; o erro; no
 //     celular; salvar, a barra, a lista e o que produzem; desfazer); os lembretes dos estratos na prévia da semana.
+//   · (parte 5b, SO=guildas) o catálogo de guildas (mostrar, editar um modelo: sem o que é de cada cidade); a guilda nova
+//     na cidade a partir de um modelo (os campos cheios, o limite de membros, o líder, a influência, a relação, um
+//     serviço novo, no celular), o cartão, a produção na província ("guildas"), editar (a parte da facção, o estoque,
+//     tirar um serviço), Cancelar, tirar e desfazer, o aviso de membros demais e a semana (o estoque da guilda).
 //   · (SO=bandeira) a bandeira própria da facção (sem clã): criar (a janela com a de começo, as escolhas e a prévia; nada
 //     muda antes de criar; no celular, cabe), no mapa, na lista, no editor e no Livro; editar e cancelar (ou Esc); salvar
 //     e desfazer; a imagem (o mapa a mostra; "Voltar ao desenho"); com um clã ligado, vale a do clã (a própria fica
@@ -631,6 +635,105 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     ok(/^Vila do Norte \(Aldar\): Aventureiros \(\d+\): rumores e boatos · Clero e sábios \(\d+\): apoio · Guarda \(\d+\): defesa · Nobreza \(\d+\): apoio$/.test(lemb), 'na prévia da semana: os lembretes dos estratos da vila (nada muda sozinho): ' + lemb);
     await semAvisos(L); await espera(300); await foto('l10-lembretes');
     await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250);
+    await aba(L, 'selecao');
+  });
+
+  // ---------- (parte 5b) as guildas ----------
+  if (parte('guildas')) await passo('as guildas', async () => {
+    await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      App.mudar('a economia e uma cidade', m => {
+        if (!m.eco || !m.eco.on) R.ligarEconomia(m);
+        if (!m.eco.guildas.length) m.eco.guildas = R.guildasProntas(m, m.eco);
+        m.objs.push(Object.assign(N.objNovo('m', { x: 520, y: 700, ic: 'castelo' }), { id: 'cg', nome: 'Cidade Grande', ass: { niv: 'cidade', pop: 0 } }));
+      });
+      App.mudar('o povo', m => { m.objs.find(o => o.id === 'cg').ass.estr = R.distribuir(m, 'cidade', 100); });
+    });
+    await aba(L, 'faccoes');
+    // o catálogo de guildas
+    ok(/Guildas do catálogo \(8\)/.test(await textoPane(L)) && await campo(L, 'eco:gd-ver').count() === 1 && await campo(L, 'eco:g:mercadores').count() === 0, 'na Economia do mundo: "Guildas do catálogo (8)", fechado');
+    await botao(L, 'eco:gd-ver');
+    const cardCat = id => A(L, id => { const e = document.querySelector(`#pane [data-k="eco:g:${id}"]`); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, id);
+    ok(await A(L, () => document.querySelectorAll('#pane [data-k^="eco:g:"].cons-li').length) === 8 && /^Guilda dos Assassinos secreta membros: Aventureiros · produz Lapros 4 \(0% para a facção\) 2 serviços: Um alvo, Quem quer quem morto Editar…$/.test(await cardCat('assassinos')),
+      '"Mostrar o catálogo de guildas": as 8 (a dos assassinos, secreta, não dá nada à facção): ' + await cardCat('assassinos'));
+    await botao(L, 'eco:g:bardos:editar');
+    await L.F.waitForSelector('dialog.gd-dl[open]');
+    ok(await A(L, () => !document.querySelector('dialog.gd-dl[open] [data-k="gd:membros"]') && !document.querySelector('dialog.gd-dl[open] [data-k="gd:lider"]') && !document.querySelector('dialog.gd-dl[open] [data-k="gd:est:lapros"]')),
+      'o modelo do catálogo: sem membros, líder nem estoque (isso é de cada cidade)');
+    await L.F.fill('dialog.gd-dl[open] [data-k="gd:pct"]', '60'); await L.F.click('dialog.gd-dl[open] [data-k="gd:ok"]'); await espera(350);
+    ok(await A(L, () => __mundo.App.mapa.eco.guildas.find(t => t.id === 'bardos').pct) === 60 && /Guilda dos Bardos: salva no catálogo\./.test(await avisos(L)), 'editar os Bardos do catálogo: 60% para a facção');
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane [data-k="eco:g:cacadores"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await foto('l10-guildas-catalogo');
+    // a guilda nova na cidade, a partir de um modelo
+    await aba(L, 'selecao'); await selecionar(L, 'cg');
+    ok(/Guildas Nenhuma guilda\. As guildas da cidade/.test(await textoPane(L)) && await campo(L, 'o:cg:guilda-nova').count() === 1, 'na cidade: "Nenhuma guilda" e "+ Guilda…"');
+    await botao(L, 'o:cg:guilda-nova');
+    await L.F.waitForSelector('dialog.gd-dl[open]');
+    const G = s => 'dialog.gd-dl[open] ' + s, val = k => A(L, k => { const e = document.querySelector(`dialog.gd-dl[open] [data-k="${k}"]`); return e ? (e.type === 'checkbox' ? e.checked : e.value) : null; }, k);
+    ok(await A(L, () => document.querySelector('dialog.gd-dl[open] h2').textContent) === 'Uma guilda nova em Cidade Grande' && await val('gd:nome') === 'Guilda' && await val('gd:modelo') === '', 'a janela da guilda nova: em branco, com a escolha do modelo');
+    await L.F.locator(G('[data-k="gd:modelo"]')).selectOption('mercadores'); await espera(120);
+    const servsN = () => A(L, () => document.querySelectorAll('dialog.gd-dl[open] .gd-serv').length);
+    ok(await val('gd:nome') === 'Guilda dos Mercadores' && await val('gd:estr') === 'mercadores' && await val('gd:prod:lapros') === '6' && await val('gd:gasto:suprimentos') === '1' && await val('gd:pct') === '50' && await servsN() === 3,
+      'o modelo dos Mercadores enche os campos (o estrato, o que produz e gasta, a parte da facção, os 3 serviços)');
+    const maxMer = await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'cg').ass.estr.mercadores);
+    ok(new RegExp('^No máximo ' + maxMer + ' \\(as pessoas de Mercadores em Cidade Grande\\)\\.$').test(await A(L, () => document.querySelector('dialog.gd-dl[open] [data-k="gd:membros-nota"]').textContent)), 'a nota dos membros: no máximo os mercadores da cidade (' + maxMer + ')');
+    await L.F.fill(G('[data-k="gd:membros"]'), String(maxMer + 1)); await L.F.click(G('[data-k="gd:ok"]')); await espera(200);
+    ok(new RegExp('Os membros: no máximo ' + maxMer + ' \\(as pessoas de Mercadores nesta cidade\\)\\.').test(await A(L, () => document.querySelector('dialog.gd-dl[open] .err').textContent)), 'mais membros que os mercadores da cidade: não passa');
+    await L.F.fill(G('[data-k="gd:membros"]'), String(maxMer)); await L.F.fill(G('[data-k="gd:lider"]'), 'Mestra Ilsa');
+    await L.F.locator(G('[data-k="gd:infl"]')).selectOption('3'); await L.F.locator(G('[data-k="gd:rel"]')).selectOption('-1');
+    await L.F.click(G('[data-k="gd:serv-novo"]')); await espera(100);
+    const ult = await A(L, () => { const l = document.querySelectorAll('dialog.gd-dl[open] .gd-serv'); return l[l.length - 1].dataset.serv; });
+    await L.F.locator(G(`[data-k="gd:s${ult}:tipo"]`)).selectOption('item'); await L.F.fill(G(`[data-k="gd:s${ult}:nome"]`), 'Seda de Kel'); await L.F.fill(G(`[data-k="gd:s${ult}:preco"]`), '12 Lapros');
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(300);
+    ok(await A(L, () => { const d = document.querySelector('dialog.gd-dl[open]'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && d.scrollWidth <= d.clientWidth + 1; }), 'no celular (400 px): a janela da guilda cabe na largura');
+    await semAvisos(L); await foto('l10-guilda-celular');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await foto('l10-guilda-janela');
+    await L.F.click(G('[data-k="gd:ok"]')); await espera(400);
+    const g = await A(L, () => (__mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas || [])[0] || null);
+    ok(!!g && g.nome === 'Guilda dos Mercadores' && g.ic === 'balanca' && g.estr === 'mercadores' && g.membros === maxMer && j(g.lider) === j({ nome: 'Mestra Ilsa', ficha: null }) && g.infl === 3 && g.rel === -1
+      && j(g.prod) === j({ lapros: 6 }) && j(g.gasto) === j({ suprimentos: 1 }) && g.pct === 50 && j(g.est) === '{}' && g.serv.length === 4 && j(g.serv[3]) === j({ id: 'sv4', tipo: 'item', nome: 'Seda de Kel', preco: '12 Lapros', desc: '' }) && g.secreta === false
+      && /Guilda dos Mercadores agora é de Cidade Grande\./.test(await avisos(L)), '"Pôr a guilda": a guilda na cidade, com o que veio do modelo e o que foi escrito (e o aviso): ' + j(g));
+    const card = () => A(L, id => { const e = document.querySelector(`#pane [data-k="gd:${id}"]`); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, g.id);
+    ok(new RegExp('^Guilda dos Mercadores ' + maxMer + ' membros \\(Mercadores\\) · líder: Mestra Ilsa Influência \\+3 · relação com o grupo −1 Por semana: produz Lapros 6 \\(50% para a facção\\) · gasta Suprimentos 1 Estoque da guilda: nada Serviços: Escoltar uma caravana, Bens raros, Os preços em outras cidades, Seda de Kel Editar…$').test(await card()),
+      'o cartão da guilda: os membros, o líder, a influência, a relação, a semana, o estoque e os serviços: ' + await card());
+    // a produção da província: a parte da facção, como "guildas"
+    await selecionar(L, 'p1');
+    ok(await A(L, () => Array.from(document.querySelectorAll('#pane [data-k="o:p1:prod"] .prod-li')).some(e => /^Lapros \+[\d,]+ .*guildas \+3/.test(e.innerText.replace(/\s+/g, ' ')))), 'na província: a parte da facção (3 Lapros) entra na produção, como "guildas"');
+    // editar: a parte da facção e o estoque; tirar um serviço
+    await selecionar(L, 'cg');
+    await botao(L, 'gd:' + g.id + ':editar');
+    await L.F.waitForSelector('dialog.gd-dl[open]');
+    ok(await A(L, () => !document.querySelector('dialog.gd-dl[open] [data-k="gd:modelo"]')) && await val('gd:lider') === 'Mestra Ilsa' && await val('gd:infl') === '3', 'editar: a janela com o que a guilda tem (sem a escolha do modelo)');
+    await L.F.fill(G('[data-k="gd:pct"]'), '20'); await L.F.fill(G('[data-k="gd:est:lapros"]'), '10');
+    const prim = await A(L, () => document.querySelector('dialog.gd-dl[open] .gd-serv').dataset.serv);
+    await L.F.click(G(`[data-k="gd:s${prim}:x"]`)); await espera(80);
+    await L.F.click(G('[data-k="gd:ok"]')); await espera(400);
+    const g2 = await A(L, id => __mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas.find(x => x.id === id), g.id);
+    ok(g2.pct === 20 && j(g2.est) === j({ lapros: 10 }) && g2.serv.length === 3 && g2.serv[0].nome === 'Bens raros' && /Guilda dos Mercadores: salva\./.test(await avisos(L)), 'salvar: 20% para a facção, 10 Lapros no estoque, sem o primeiro serviço');
+    // Cancelar não muda; tirar (pergunta, com o estoque) e desfazer
+    await botao(L, 'gd:' + g.id + ':editar'); await L.F.waitForSelector('dialog.gd-dl[open]');
+    await L.F.fill(G('[data-k="gd:nome"]'), 'Outro nome'); await L.F.click(G('[data-k="gd:nao"]')); await espera(200);
+    ok(await A(L, id => __mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas[0].nome, g.id) === 'Guilda dos Mercadores', 'Cancelar: nada muda');
+    await botao(L, 'gd:' + g.id + ':x');
+    ok(/Tirar Guilda dos Mercadores de Cidade Grande\? O estoque dela \(Lapros 10\) sai junto\. Dá para desfazer\./.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText.replace(/\s+/g, ' '))), 'tirar: a janela pergunta (e diz o estoque)');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(300);
+    ok(await A(L, () => !__mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas) && /Guilda dos Mercadores saiu de Cidade Grande\./.test(await avisos(L)), 'a guilda sai da cidade (com Desfazer)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok(await A(L, () => (__mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas || []).length) === 1, 'Desfazer (no aviso): volta');
+    // mais membros que o estrato (a população diminuiu): o aviso no cartão
+    await A(L, () => __mundo.App.mudar('menos mercadores', m => { m.objs.find(o => o.id === 'cg').ass.estr.mercadores = 2; })); await espera(300);
+    ok(/Mais membros que Mercadores nesta cidade \(2\)\./.test(await card()), 'a população diminuiu: o cartão avisa (sem mudar os membros sozinho)');
+    await semAvisos(L); await A(L, id => { const e = document.querySelector(`#pane [data-k="gd:${id}"]`); if (e) e.scrollIntoView({ block: 'center' }); }, g.id); await foto('l10-guildas');
+    // a semana: o estoque da guilda recebe a parte dela e paga o gasto
+    await A(L, () => __mundo.App.mudar('+7', m => { m.cal.dia += 7; }));
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const lg = await A(L, id => { const e = document.querySelector(`dialog.sem-dl[open] [data-k="sem:gd:${id}"]`); return e ? { t: e.innerText.replace(/\s+/g, ' ').trim(), falta: e.classList.contains('falta') } : null; }, g.id);
+    ok(!!lg && lg.t === 'Guilda dos Mercadores (Cidade Grande): recebe Lapros 4,8 · Lapros 1,2 para Aldar · gasta Suprimentos 1 · o estoque fica Lapros 14,8 · falta Suprimentos 1 (o estoque fica em zero).' && lg.falta,
+      'na prévia da semana: o que a guilda recebe, o que vai para a facção, o gasto, o estoque que fica e o que falta: ' + (lg && lg.t));
+    await semAvisos(L); await espera(300); await foto('l10-guildas-semana');
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
+    ok(await A(L, id => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas.find(x => x.id === id).est), g.id) === j({ lapros: 14.8 }), 'aplicar: o estoque da guilda fica em 14,8 Lapros (sem Suprimentos)');
+    if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250); }
     await aba(L, 'selecao');
   });
 

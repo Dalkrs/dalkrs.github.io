@@ -1227,6 +1227,25 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   precisa somar 100) começa com uma por nível (a Aldeia com mais camponeses, a Cidade com mais artesãos e
   mercadores). Os efeitos dos estratos são **só lembretes**: a prévia da semana lista, por assentamento, os estratos
   com lembrete ("Vila do Norte (Aldar): Aventureiros (3): rumores · Guarda (6): defesa…"), sem mudar nenhum número.
+- **As guildas** (parte 5b; não são clãs: cada cidade tem as suas, sem filiais): no assentamento, a seção ganha
+  "Guildas" — cada uma num cartão (o ícone, o nome, "secreta", os membros e de qual estrato, o líder, a influência de −10
+  a +10, só para ler, a relação com o grupo de −5 a +5, o que produz e gasta por semana, quantos % vão para a facção, o
+  estoque e os serviços), com "Editar…", "Abrir a ficha" (o líder ligado a uma ficha, dentro do site) e tirar (pergunta,
+  dizendo o estoque; com Desfazer). "+ Guilda…" abre a janela com a escolha de um modelo do catálogo, que enche os
+  campos (`guildaDoModelo`: o que é de cada cidade começa vazio). Os membros vêm de um estrato e não passam das pessoas
+  dele na cidade (a janela não deixa salvar); se a população diminuir depois, o cartão avisa, sem mudar nada sozinho.
+  O líder: o nome e, numa mesa, uma ficha das Fichas (opcional). Os serviços: uma lista (o tipo — contrato, item ou
+  informação —, o nome, o preço em texto e a descrição; "+ Serviço", tirar). **O que a guilda produz** vai, na
+  porcentagem escolhida, para a facção dona da cidade (`partesDaGuilda`; na produção da região como "guildas", no
+  Livro e na prévia da semana) e o resto fica no estoque da guilda; **o que ela gasta sai do estoque dela** — na
+  prévia da semana, "As guildas" diz o que cada uma recebe, o que vai para a facção, o gasto, o estoque que fica e, em
+  vermelho, o que falta (o estoque fica em zero); "Aplicar" guarda o estoque. O **catálogo de guildas** (`eco.guildas`,
+  na Economia do mundo, fechado de começo) tem os modelos — os 8 prontos (`guildasProntas`: Caçadores, Assassinos e
+  Ladrões, secretos e sem dar nada à facção, Mercadores, Magos, Artesãos, Aventureiros e Bardos, com a produção pelo
+  papel dos recursos, o estrato de começo e os preços na moeda do mapa) —, "+ Guilda no catálogo", "Editar…" e tirar
+  (as guildas das cidades continuam). A economia ligada agora já vem com eles; o mapa de antes fica com o catálogo
+  vazio e o botão "Pôr as 8 prontas". As guildas (`ass.guildas`) não vão na projeção (a parte 6 decide o que os
+  jogadores veem).
 - **A bandeira própria da facção** (sem clã): no editor da facção (aba Reinos), "Criar a bandeira…" abre o mesmo editor
   do brasão do Clã (`janelaBandeira`) — a forma, a divisão, as duas cores (a paleta do Clã, a cor da facção e "Outra"), o
   símbolo e, numa mesa, uma imagem (reduzida a 480 px, em PNG, e enviada ao banco; fora de uma mesa, só o desenho). A
@@ -2289,7 +2308,16 @@ consome tira), o "Distribuir" (os maiores restos, o empate, o nível sem divisã
 na prévia (aplicar não mexe na população); `mundo-lote10` com `SO=populacao`, os estratos na Economia do mundo
 (mostrar, editar, criar, tirar — o com gente pergunta —, a divisão por nível), a janela da população (Distribuir, que só
 enche os campos; Cancelar; o erro; no celular; salvar, a barra, a lista e o que produzem; desfazer) e os lembretes na
-prévia da semana; a parte da economia passou a pôr 100 pessoas numa vila pelo Distribuir. A bandeira própria da facção:
+prévia da semana; a parte da economia passou a pôr 100 pessoas numa vila pelo Distribuir. Na parte 5b, `lote10-nucleo`
+confere o catálogo e as guildas da cidade normalizados (os modelos sem o que é de cada cidade; o nome, o ícone, o
+estrato que não existe, os recursos do mundo, os limites da influência e da relação, os serviços; o marcador que só tem
+guilda continua assentamento; normalizar de novo não muda nada), o catálogo pronto (pelo papel, pelos estratos, a moeda
+renomeada), a guilda a partir de um modelo (uma cópia), a parte da facção e a da guilda, a produção (como "guildas", na
+região e na facção) e a semana (o estoque recebe a parte da guilda e paga o gasto; o que falta só aparece); `mundo-lote10`
+com `SO=guildas`, o catálogo (mostrar, editar um modelo), a guilda nova a partir de um modelo (o limite de membros, o
+líder, a influência, a relação, um serviço novo, no celular), o cartão, a produção na província, editar (a parte da
+facção, o estoque, tirar um serviço), Cancelar, tirar e desfazer, o aviso de membros demais e a semana. A bandeira
+própria da facção:
 `lote10-nucleo` confere a bandeira normalizada (o que não serve volta ao
 de começo ou sai), ao lado da do clã, e na projeção (a da facção escondida não vai); `mundo-lote10` com `SO=bandeira`,
 criar (a janela com a de começo, as escolhas e a prévia; nada muda antes de criar; no celular, cabe), no mapa, na lista,
