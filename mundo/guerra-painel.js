@@ -488,6 +488,62 @@
   }
   const lados = m => [G().lado(m, kit().achar(m, bat.a)), G().lado(m, kit().achar(m, bat.b))];
 
+  /* ---- a ajuda da batalha: o "?" de cada parte e o painel ao lado (o conteúdo vem de guerra-ajuda.js) ----
+     ajuda = null (fechada) ou { sec } — a parte pedida. O painel acompanha a batalha (os números de agora). */
+  let ajuda = null;
+  const Q_SVG = '<circle cx="12" cy="12" r="9.2"/><path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9"/><path d="M12 17.2h.01"/>';
+  const AJ = () => window.MundoGuerraAjuda || null;
+  function q(sec, rotulo) {
+    if (!AJ()) return null;
+    const t = rotulo || 'O que é isto?';
+    return el('button', { type: 'button', class: 'aj-q', 'data-k': 'gb:ajuda:' + sec, title: t, 'aria-label': t, onclick: ev => { ev.preventDefault(); abrirAjuda(sec); } }, kit().glifo(Q_SVG, 16));
+  }
+  // o título de uma parte da janela, com o "?" dela
+  const tit = (texto, sec, rotulo) => el('div', { class: 'gb-sec-tit' }, el('b', { text: texto }), q(sec, rotulo));
+  // a lista dos bônus ("Números +2 · Moral +1"), cada um com o "?" dele
+  const qBonus = k => q(k === 'heroica' ? 'b:heroica' : 'b:' + k, 'O que é ' + ((G().NOMES && G().NOMES[k]) || (k === 'heroica' ? 'a ação heroica' : 'este bônus')) + '?');
+  const listaBonusEl = bs => (bs.length ? bs.flatMap((b, i) => [i ? ' · ' : null, b.nome + ' ' + sinal(b.v), qBonus(b.k)]).filter(x => x != null) : ['nenhum']);
+  function dadosAjuda(m) {
+    const [A_, B_] = lados(m), ctx = contexto(m), mk = bat.estr ? kit().achar(m, bat.estr.m) : null, ft = mk ? fortDe(m, mk) : null;
+    const hs = q0 => heroisDoLado(m, q0).map(x => ({ nome: x.nome, v: x.v }));
+    return { h: kit().h, fmt: kit().fmt, plural: kit().plural, sinal, textoMoral, nomeA: A_.nome, nomeB: B_.nome, A: A_, B: B_, ctx, modo: bat.modo, res: bat.res, moms: bat.moms, fim: bat.fim,
+      fort: ft ? Object.assign({ lado: bat.estr.lado, nome: (mk.estr && mk.estr.nome) || kit().nomeDe(mk, m) }, ft) : null, herois: { a: hs('a'), b: hs('b') }, mestre: bat.mestre };
+  }
+  function abrirAjuda(sec) {
+    if (!dl || !bat || !AJ()) return;
+    ajuda = { sec: sec || 'geral' };
+    pintarAjuda(true);
+  }
+  function fecharAjuda() {
+    ajuda = null;
+    if (!dl) return;
+    dl.classList.remove('com-ajuda');
+    const as = dl.querySelector('.gb-ajuda');
+    if (as) { as.hidden = true; as.replaceChildren(); }
+    const c = dl.querySelector('.gb-corpo');
+    if (c) c.focus({ preventScroll: true });
+  }
+  function pintarAjuda(levar) {
+    const as = dl && dl.querySelector('.gb-ajuda'), m = app().mapa;
+    if (!as || !ajuda || !bat || !m) return;
+    const velho = as.querySelector('.aj-corpo'), rolagem = velho && !levar ? velho.scrollTop : 0;
+    const corpo = el('div', { class: 'aj-corpo', 'data-k': 'gb:ajuda-corpo', tabindex: '-1' }, AJ().montar(dadosAjuda(m)));
+    for (const b of corpo.querySelectorAll('[data-aj]')) b.addEventListener('click', () => levarA(corpo, b.getAttribute('data-aj')));
+    as.replaceChildren(el('div', { class: 'aj-topo' }, el('b', { text: 'Como funciona a batalha' }),
+      el('button', { type: 'button', class: 'ib', 'data-k': 'gb:ajuda-x', title: 'Fechar a ajuda (Esc)', 'aria-label': 'Fechar a ajuda', onclick: fecharAjuda }, kit().glifo(kit().X_SVG, 14))), corpo);
+    as.hidden = false;
+    dl.classList.add('com-ajuda');
+    if (levar) levarA(corpo, ajuda.sec); else corpo.scrollTop = rolagem;
+  }
+  // leva o painel até uma parte do guia (e a marca por um instante)
+  function levarA(corpo, sec) {
+    const alvo = sec === 'geral' ? null : corpo.querySelector('[data-sec="' + AJ().ondeMora(sec) + '"]');
+    if (!alvo) { corpo.scrollTop = 0; corpo.focus({ preventScroll: true }); return; }
+    corpo.scrollTop = Math.max(0, alvo.offsetTop - corpo.offsetTop - 8);
+    alvo.classList.remove('aj-alvo'); void alvo.offsetWidth; alvo.classList.add('aj-alvo');
+    corpo.focus({ preventScroll: true });
+  }
+
   // a janela: criada uma vez por batalha; Esc ou fechar com dados rolados pergunta antes
   function mostrarJanela() {
     if (!dl) {
@@ -496,8 +552,13 @@
       dl = document.createElement('dialog');
       dl.className = 'mundo-dl gb';
       dl.setAttribute('aria-label', 'Batalha');
-      dl.append(corpo);
-      dl.addEventListener('cancel', ev => { ev.preventDefault(); fecharJanela(); });
+      corpo.tabIndex = -1;
+      const as = document.createElement('aside');                // a ajuda (o "?"), ao lado
+      as.className = 'gb-ajuda';
+      as.hidden = true;
+      as.setAttribute('aria-label', 'Como funciona a batalha');
+      dl.append(corpo, as);
+      dl.addEventListener('cancel', ev => { ev.preventDefault(); if (ajuda) fecharAjuda(); else fecharJanela(); });
       dl.addEventListener('keydown', ev => ev.stopPropagation());
       document.body.append(dl);
     }
@@ -511,7 +572,7 @@
       app().toast('A batalha ficou aberta: volte a ela pela aba Guerra ("Voltar à batalha aberta").');
     } else if (bat && !temRolagem() && !bat.mestre.length && !bat.notas.length) bat = null;   // (sem nada feito, não fica nada guardado)
     try { dl.close(); } catch (e) { /* já fechada */ }
-    dl.remove(); dl = null;
+    dl.remove(); dl = null; ajuda = null;
     kit().pintar();
   }
   function pintarBatalha() {
@@ -528,6 +589,7 @@
     corpo.scrollTop = rolagem;                                  // (a janela não pula para o topo a cada dado)
     if (foco) { const el = corpo.querySelector('[data-k="' + foco + '"]'); if (el) el.focus({ preventScroll: true }); }
     if (bat.mostrar) { const el = corpo.querySelector('[data-k="' + bat.mostrar + '"]'); bat.mostrar = null; if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); }
+    if (ajuda) pintarAjuda(false);                             // a ajuda acompanha os números de agora
   }
   const el = (tag, attrs, ...kids) => kit().h(tag, attrs, ...kids);
   function bt(texto, fn, o = {}) { return el('button', { type: 'button', class: 'btn' + (o.c ? ' ' + o.c : ''), 'data-k': o.k, title: o.title, disabled: o.off, onclick: fn }, texto); }
@@ -535,7 +597,7 @@
   function telaBatalha(m) {
     const [A_, B_] = lados(m), ctx = contexto(m), out = [];
     const nomeA = A_.nome, nomeB = B_.nome, rolou = temRolagem();
-    out.push(el('div', { class: 'gb-topo' }, el('h2', { text: 'Batalha' }), el('span', { class: 'note', text: kit().dataTxt(m, m.cal.dia) + (bat.hex ? ' · hexágono ' + bat.hex : '') }),
+    out.push(el('div', { class: 'gb-topo' }, el('h2', { text: 'Batalha' }), q('geral', 'Como funciona a batalha'), el('span', { class: 'note', text: kit().dataTxt(m, m.cal.dia) + (bat.hex ? ' · hexágono ' + bat.hex : '') }),
       bt('Fechar', () => fecharJanela(), { c: 'sm', k: 'gb:fechar' })));
     // os lados (trocar depois de rolar recomeça)
     const exs = exercitos(m).filter(comUnidades), op = (sel, outro) => exs.filter(g => g.id !== outro).map(g => el('option', { value: g.id, selected: g.id === sel ? true : null, text: kit().nomeDe(g, m) }));
@@ -548,7 +610,7 @@
     const fts = fortificacoesPerto(m, bat);
     if (fts.length) {
       const nomeL = q => (q === 'a' ? nomeA : nomeB);
-      out.push(el('label', { class: 'field' }, el('span', { text: 'Fortificação' }),
+      out.push(el('label', { class: 'field' }, el('span', { class: 'gb-rot-q' }, 'Fortificação', q('b:estrutura', 'Como a fortificação ajuda')),
         el('select', { class: 'in', 'data-k': 'gb:estr', disabled: rolou || null, onchange: ev => { const v = ev.target.value; bat.estr = v ? { m: v.split('|')[0], lado: v.split('|')[1] } : null; pintarBatalha(); } },
           [el('option', { value: '', text: 'Ninguém defende uma fortificação', selected: !bat.estr ? true : null })].concat(fts.map(f => { const mk = kit().achar(m, f.m); return el('option', { value: f.m + '|' + f.lado, selected: bat.estr && bat.estr.m === f.m && bat.estr.lado === f.lado ? true : null, text: nomeL(f.lado) + ' defende ' + ((mk.estr && mk.estr.nome) || kit().nomeDe(mk, m)) }); })))));
     }
@@ -561,15 +623,15 @@
     out.push(secMestre(m, nomeA, nomeB));
     // a rolagem
     if (!bat.modo) {
-      out.push(el('div', { class: 'gb-sec' }, el('b', { text: 'Rolar' }),
-        el('div', { class: 'row' },
-          bt('Resumida (d100)', () => { bat.modo = 'd100'; rolarResumida(); }, { c: 'pri', k: 'gb:d100', title: 'Um d100 de cada lado, mais 5 vezes os bônus' }),
-          bt('Detalhada (d20, em momentos)', () => { bat.modo = 'd20'; rolarMomento(); }, { k: 'gb:d20', title: 'Um d20 de cada lado em cada momento: Abertura, Choque, Virada e Desfecho' })),
+      out.push(el('div', { class: 'gb-sec' }, tit('Rolar', 'modos', 'Resumida ou detalhada: como cada uma funciona'),
+        el('div', { class: 'row gb-modos' },
+          el('span', { class: 'gb-com-q' }, bt('Resumida (d100)', () => { bat.modo = 'd100'; rolarResumida(); }, { c: 'pri', k: 'gb:d100', title: 'Um d100 de cada lado, mais 5 vezes os bônus' }), q('resumida', 'Como funciona a resumida')),
+          el('span', { class: 'gb-com-q' }, bt('Detalhada (d20, em momentos)', () => { bat.modo = 'd20'; rolarMomento(); }, { k: 'gb:d20', title: 'Um d20 de cada lado em cada momento: Abertura, Choque, Virada e Desfecho' }), q('detalhada', 'Como funciona a detalhada'))),
         bonusTotais(A_, B_, ctx)));
     } else if (bat.modo === 'd100') out.push(...telaResumida(nomeA, nomeB, A_, B_, ctx));
     else out.push(...telaDetalhada(nomeA, nomeB));
     // o fim
-    if (bat.fim) out.push(el('div', { class: 'gb-fim', 'data-k': 'gb:fim' }, el('b', { text: G().textoFim(bat.fim, nomeA, nomeB) }),
+    if (bat.fim) out.push(el('div', { class: 'gb-fim', 'data-k': 'gb:fim' }, el('div', { class: 'gb-fim-tit' }, el('b', { text: G().textoFim(bat.fim, nomeA, nomeB) }), q('resultado', 'O que o resultado quer dizer')),
       el('div', { class: 'row' }, bt('Ver o depois…', () => { bat.tela = 'depois'; if (bat.frente && bat.frente.n == null) bat.frente.n = bat.fim.vence ? G().AVANCO[bat.fim.tam] : 0; pintarBatalha(); }, { c: 'pri', k: 'gb:depois' }),
         bt('Recomeçar', recomecar, { k: 'gb:recomecar' }))));
     else if (rolou) out.push(el('div', { class: 'row gb-pe' }, bt('Recomeçar', recomecar, { c: 'sm', k: 'gb:recomecar' })));
@@ -583,7 +645,7 @@
     const { fmt, plural } = kit(), ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b), ea = ga.exe, eb = gb.exe;
     const lin = (rot, va, vb) => el('div', null, el('span', { text: rot }), el('b', { text: va }), el('b', { text: vb }));
     const mant = e => { if (!e || e.pub) return '—'; const d = N().diasDeMantimento(e); return e.fome ? 'sem há ' + plural(e.fome, 'dia', 'dias') : d === Infinity ? '—' : plural(d, 'dia', 'dias'); };
-    return el('div', { class: 'gb-sec' }, el('b', { text: 'Os dois lados' }),
+    return el('div', { class: 'gb-sec' }, tit('Os dois lados', 'bonus', 'Como os bônus são contados'),
       el('div', { class: 'gb-tab' },
         el('div', { class: 'gb-cab' }, el('span'), el('b', { text: A_.nome }), el('b', { text: B_.nome })),
         lin('Tropas', fmt(A_.tropas, 0), fmt(B_.tropas, 0)),
@@ -629,7 +691,7 @@
           onchange: ev => { const v = ev.target.value; if (!v) return; bat.herois[q] = (bat.herois[q] || []).concat([{ ficha: v }]); recalcular(); } },
           [el('option', { value: '', text: '+ Herói nesta batalha…' })].concat(livres.map(l => el('option', { value: l.id, text: l.nome || 'Sem nome' })))) : null));
     }
-    return el('div', { class: 'gb-sec', 'data-k': 'gb:herois' }, el('b', { text: 'Heróis' }), el('div', { class: 'gb-herois' }, col),
+    return el('div', { class: 'gb-sec', 'data-k': 'gb:herois' }, tit('Heróis', 'herois', 'Como os heróis entram na batalha'), el('div', { class: 'gb-herois' }, col),
       el('p', { class: 'note', text: 'Os heróis somam na Virada (e na resumida), até ' + sinal(G().MAX_HEROIS_BONUS) + ' por lado. Nos momentos-chave da detalhada, um herói pode tentar uma ação heroica.' + (rolou ? ' Mudar os heróis muda o resultado (os dados ficam).' : '') }));
   }
   // (lote 9) a ação heroica num momento-chave: o herói rola um atributo da ficha contra a dificuldade
@@ -677,8 +739,8 @@
   function bonusTotais(A_, B_, ctx) {
     const ba = G().bonus(A_, B_, ctx, 'a', 'd100'), bb = G().bonus(B_, A_, ctx, 'b', 'd100');
     return el('div', { class: 'gb-bonus' },
-      el('p', null, el('b', { text: A_.nome + ': ' + sinal(G().total(ba)) }), ' ', el('small', { text: listaBonus(ba) })),
-      el('p', null, el('b', { text: B_.nome + ': ' + sinal(G().total(bb)) }), ' ', el('small', { text: listaBonus(bb) })),
+      el('p', null, el('b', { text: A_.nome + ': ' + sinal(G().total(ba)) }), ' ', el('small', null, ...listaBonusEl(ba))),
+      el('p', null, el('b', { text: B_.nome + ': ' + sinal(G().total(bb)) }), ' ', el('small', null, ...listaBonusEl(bb))),
       el('p', { class: 'note', text: 'Os bônus na escala do d20. Na resumida, cada ponto vale 5 no d100; na detalhada, cada momento soma só os dele.' }));
   }
   // os bônus do mestre: tática, terreno, reforço, magia (e outro), de um lado, na batalha toda ou num momento
@@ -687,7 +749,7 @@
     const chips = bat.mestre.map((b, i) => el('span', { class: 'chip gb-chip', 'data-k': 'gb:mestre:' + i },
       (b.lado === 'a' ? nomeA : nomeB) + ': ' + G().BONUS_MESTRE[b.tipo] + ' ' + sinal(b.v) + (b.mom ? ' (' + MOM_NOME[b.mom] + ')' : '') + (b.txt ? ' — ' + b.txt : ''),
       el('button', { type: 'button', class: 'ib', 'aria-label': 'Tirar o bônus', title: 'Tirar o bônus', 'data-k': 'gb:mestre-x:' + i, onclick: () => { bat.mestre.splice(i, 1); recalcular(); } }, kit().glifo(kit().X_SVG, 12))));
-    return el('div', { class: 'gb-sec' }, el('b', { text: 'Bônus do mestre' }),
+    return el('div', { class: 'gb-sec' }, tit('Bônus do mestre', 'b:mestre', 'O que são os bônus do mestre'),
       chips.length ? el('div', { class: 'gb-chips' }, chips) : el('p', { class: 'note', text: 'Uma tática, o terreno, um reforço que chegou, uma magia: um bônus (ou um menos) para um dos lados.' }),
       bat.formAberto ? formBonus(nomeA, nomeB, f, 'gb:f-', null, () => { bat.formAberto = false; pintarBatalha(); })
         : el('div', { class: 'row' }, bt('Pôr um bônus…', () => {
@@ -737,11 +799,11 @@
   function telaResumida(nomeA, nomeB) {
     const r = bat.res, out = [];
     if (!r) return out;
-    const linhaLado = (nome, d, bs, t) => el('p', null, el('b', { text: nome + ': ' + t }), ' ', el('small', { text: 'd100 ' + d + ' + 5 × ' + sinal(G().total(bs)) + ' (' + listaBonus(bs) + ')' }));
-    out.push(el('div', { class: 'gb-sec gb-res', 'data-k': 'gb:res' }, el('b', { text: 'Resumida (d100)' }),
+    const linhaLado = (nome, d, bs, t) => el('p', null, el('b', { text: nome + ': ' + t }), ' ', el('small', null, 'd100 ' + d + ' + 5 × ' + sinal(G().total(bs)) + ' (', ...listaBonusEl(bs), ')'));
+    out.push(el('div', { class: 'gb-sec gb-res', 'data-k': 'gb:res' }, tit('Resumida (d100)', 'resumida', 'Como funciona a resumida'),
       linhaLado(nomeA, r.da, r.ba, r.ta), linhaLado(nomeB, r.db, r.bb, r.tb),
       el('p', { class: 'gb-margem', text: 'Margem ' + Math.abs(r.m) + ': ' + (r.vence ? G().TAMANHOS[r.tam].toLocaleLowerCase('pt-BR') + ' de ' + (r.vence === 'a' ? nomeA : nomeB) : 'empate') + '.' }),
-      el('div', { class: 'row' }, bt('Rolar de novo', rolarResumida, { c: 'sm', k: 'gb:d100-de-novo' }), botaoParar('gb:res-parar'))));
+      el('div', { class: 'row' }, bt('Rolar de novo', rolarResumida, { c: 'sm', k: 'gb:d100-de-novo' }), botaoParar('gb:res-parar'), q('parar', 'O que é recuo, rendição e trégua'))));
     return out;
   }
   // a detalhada: os momentos rolados e o próximo
@@ -759,9 +821,10 @@
     const cards = bat.moms.map((x, i) => {
       const ganhou = x.m > 0 ? nomeA : x.m < 0 ? nomeB : null, porque = x.chave ? (x.da === 20 || x.db === 20 ? 'saiu 20' : x.da === 1 || x.db === 1 ? 'saiu 1' : 'disputa apertada') : '';
       return el('div', { class: 'gb-mom' + (x.chave ? ' chave' : ''), 'data-k': 'gb:mom:' + i },
-        el('div', { class: 'gb-mom-tit' }, el('b', { text: MOM_NOME[x.k] }), el('small', { text: MOM_DICA[x.k] }), x.chave ? el('span', { class: 'tag tensao', text: 'momento-chave · ' + porque }) : null),
-        el('p', null, el('b', { text: nomeA + ' ' + x.ta }), el('small', { text: ' (d20 ' + x.da + ', ' + listaBonus(x.ba) + ')' })),
-        el('p', null, el('b', { text: nomeB + ' ' + x.tb }), el('small', { text: ' (d20 ' + x.db + ', ' + listaBonus(x.bb) + ')' })),
+        el('div', { class: 'gb-mom-tit' }, el('b', { text: MOM_NOME[x.k] }), q('m:' + x.k, 'O que é ' + ARTIGO[x.k] + ' ' + MOM_NOME[x.k]), el('small', { text: MOM_DICA[x.k] }),
+          x.chave ? el('span', { class: 'gb-com-q' }, el('span', { class: 'tag tensao', text: 'momento-chave · ' + porque }), q('chave', 'O que é um momento-chave')) : null),
+        el('p', null, el('b', { text: nomeA + ' ' + x.ta }), el('small', null, ' (d20 ' + x.da + ', ', ...listaBonusEl(x.ba), ')')),
+        el('p', null, el('b', { text: nomeB + ' ' + x.tb }), el('small', null, ' (d20 ' + x.db + ', ', ...listaBonusEl(x.bb), ')')),
         el('p', { class: 'gb-margem', text: ganhou ? ganhou + ' leva o momento, por ' + Math.abs(x.m) + '.' : 'Empatado.' }),
         x.nota ? el('p', { class: 'gb-nota', text: '“' + x.nota + '”' }) : null,
         // (lote 9) as ações heroicas deste momento
@@ -771,7 +834,7 @@
         i === ult && bat.formH && bat.formH.i === i ? formHeroica(app().mapa, x, i) : null,
         i === ult && bat.formM && bat.formM.i === i ? formBonus(nomeA, nomeB, bat.formM, 'gb:fm-', x.k, () => { bat.formM = null; pintarBatalha(); }) : null);
     });
-    out.push(el('div', { class: 'gb-sec' }, el('b', { text: 'Detalhada (d20) · placar ' + sinal(placar) + ' (para ' + (placar > 0 ? nomeA : placar < 0 ? nomeB : 'ninguém') + ')' }), cards,
+    out.push(el('div', { class: 'gb-sec' }, tit('Detalhada (d20) · placar ' + sinal(placar) + ' (para ' + (placar > 0 ? nomeA : placar < 0 ? nomeB : 'ninguém') + ')', 'detalhada', 'Como funciona a detalhada'), cards,
       !bat.fim && bat.moms.length < G().MOMENTOS.length ? el('div', { class: 'row' },
         (prox => bt((bat.moms.length && bat.moms[ult].chave ? 'Seguir para ' : 'Rolar ') + ARTIGO[prox] + ' ' + MOM_NOME[prox], () => rolarMomento(false), { c: 'pri', k: 'gb:proximo' }))(G().MOMENTOS[bat.moms.length])) : null,
       bat.moms.length && bat.moms[ult].chave && !bat.fim ? el('p', { class: 'note', text: 'Momento-chave: antes de seguir, você pode mudar um bônus, rolar de novo, escrever o que aconteceu ou parar a batalha.' }) : null));
@@ -792,13 +855,14 @@
         bat.formM = null; bat.mostrar = bat.formH ? 'gb:fh-form' : null;
         pintarBatalha();
       }, { c: 'sm', k: 'gb:mom-heroica:' + i, title: 'Um herói rola um atributo da ficha contra a dificuldade (passou, +5; pelo dobro, +10; falhou, −2)' }) : null,
+      x.chave && (heroisDoLado(app().mapa, 'a').length || heroisDoLado(app().mapa, 'b').length) ? q('b:heroica', 'O que é a ação heroica') : null,
       bt('Escrever', async () => {
         const v = await escreverNota('O que aconteceu ' + EM[x.k] + ' ' + MOM_NOME[x.k] + '?', x.nota || '');
         if (v == null) return;
         if (bat.moms[i]) { if (v) bat.moms[i].nota = v; else delete bat.moms[i].nota; }
         pintarBatalha();
       }, { c: 'sm', k: 'gb:mom-nota:' + i }),
-      botaoParar('gb:mom-parar:' + i));
+      botaoParar('gb:mom-parar:' + i), q('parar', 'O que é recuo, rendição e trégua'));
   }
   // parar a batalha: o recuo ou a rendição de um lado, ou a trégua
   function botaoParar(k) {
@@ -840,7 +904,7 @@
   function configDepois() { return { a: { g: bat.a }, b: { g: bat.b }, fim: bat.fim, estr: bat.estr, hex: bat.hex, frente: bat.frente && bat.frente.f ? { f: bat.frente.f, n: bat.frente.n || 0 } : null, hexEst: bat.hexEst }; }
   function telaDepois(m) {
     const { fmt } = kit(), prev = G().depois(m, configDepois()), ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b), nA = kit().nomeDe(ga, m), nB = kit().nomeDe(gb, m), out = [];
-    out.push(el('div', { class: 'gb-topo' }, el('h2', { text: 'Depois da batalha' }), el('span', { class: 'note', text: G().textoFim(bat.fim, nA, nB) }), bt('Fechar', () => fecharJanela(), { c: 'sm', k: 'gb:fechar' })));
+    out.push(el('div', { class: 'gb-topo' }, el('h2', { text: 'Depois da batalha' }), q('depois', 'Como as perdas e o resto são contados'), el('span', { class: 'note', text: G().textoFim(bat.fim, nA, nB) }), bt('Fechar', () => fecharJanela(), { c: 'sm', k: 'gb:fechar' })));
     out.push(el('p', { class: 'note', text: 'Confira o que muda. Nada muda no mapa até "Aplicar" — e depois dá para desfazer.' }));
     for (const q of ['a', 'b']) {
       const L = prev.lados[q];

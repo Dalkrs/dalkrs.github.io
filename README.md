@@ -998,6 +998,13 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
     depois de rolar refaz a conta com os mesmos dados.
   - A janela não pula para o topo a cada dado. Fechada com dados rolados, a batalha fica guardada na página ("Voltar à
     batalha aberta"); fechada sem nada feito, some.
+  - **A ajuda da batalha** (`mundo/guerra-ajuda.js`): o "?" no alto da janela abre o guia ao lado da batalha (no
+    celular, por cima dela), sem cobrir os números; um "?" pequeno ao lado de cada parte — Rolar, a resumida e a
+    detalhada, cada momento, o momento-chave, os dois lados, cada bônus nas listas, os bônus do mestre, a fortificação,
+    os heróis, a ação heroica, parar, o resultado e o depois — abre o guia já naquela parte (marcada por um instante).
+    O guia explica em palavras simples a resumida e a detalhada, os quatro momentos (o que pesa em cada um), cada bônus,
+    o resultado, o depois e os heróis, sempre com os números da batalha aberta ("Nesta batalha: …", acompanhando cada
+    dado e cada bônus mudado); a fórmula de cada coisa fica em "Ver a conta". Esc ou o × fecham só a ajuda.
 - **O depois** (a prévia; nada muda até "Aplicar", que é um passo de desfazer): as tropas e o HP de cada unidade (quem
   perde, mais: de 12% a 50%, pelo tamanho; quem vence, de 4% a 8%; a unidade que chega a zero tropas ou zero HP sai), a
   moral (quem vence sobe, quem perde cai), um dia de mantimentos, a fortificação (o cerco de quem ataca sempre bate;
@@ -2185,7 +2192,11 @@ dia e os exércitos que se encontram) e `mundo-guerra`, pela tela: a aba (as sei
 celular), os tipos de tropa, as unidades, a fortificação, a resumida (o bônus do mestre, rolar de novo, a trégua,
 recomeçar), a detalhada (o momento-chave, o bônus no próprio momento, rolar de novo, escrever, a janela que não pula
 para o topo, fechar e voltar), o depois e o aplicar (com o Desfazer), o histórico, os hexágonos (e o botão direito), as
-fases da frente, o encontro no caminho com o aviso e a proposta dos mantimentos, o que quem joga vê e o celular.
+fases da frente, o encontro no caminho com o aviso e a proposta dos mantimentos, o que quem joga vê e o celular. A
+ajuda da batalha (`mundo-guerra`, o passo "a ajuda da batalha"): o "?" do alto (o guia ao lado, a batalha aberta), o do
+Choque (levado até ele, à vista, com os bônus e os dados desta batalha), o de Números (a força de cada lado e por que deu
++2; "Ver a conta" fechado e aberto), o Esc e o × (fecham só a ajuda), o do resultado, o do depois (as perdas, a moral e a
+frente desta batalha) e, no celular, a ajuda por cima da batalha.
 
 Lote 9: na parte 1, `fichas-lote9` confere o Limite de dano na ficha da distribuição livre (a linha depois das defesas,
 escrever, o que não é número, decimal com vírgula, vazio, fora das contas) e a poção que não oferece o Duplicado;

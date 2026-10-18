@@ -851,6 +851,39 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 .gb-radios { display: flex; flex-wrap: wrap; gap: 6px; }
 .gb-radios label.op { padding: 7px 11px; }
 .gb-pergunta { position: sticky; bottom: 0; display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); }
+/* a ajuda da batalha: o "?" de cada parte e o painel ao lado (no celular, por cima da batalha) */
+.aj-q { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; margin: 0 0 0 2px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--fg-3); cursor: pointer; vertical-align: middle; }
+.aj-q:hover, .aj-q:focus-visible { color: var(--lamp-ink); background: var(--lamp-soft); }
+.gb-sec-tit { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.gb-sec-tit > b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.gb-com-q, .gb-rot-q { display: inline-flex; align-items: center; gap: 2px; }
+.gb-fim-tit { display: flex; align-items: center; gap: 4px; }
+.gb-fim-tit > b { font: 600 19px/1.2 var(--display); color: var(--lamp-ink); }
+.gb-corpo:focus { outline: none; }
+dialog.mundo-dl.gb.com-ajuda { width: min(1180px, calc(100% - 24px)); }
+dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); }
+.gb-ajuda { display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: calc(100vh - 48px); border-left: 1px solid var(--line); background: var(--surface); }
+.gb-ajuda[hidden] { display: none; }
+.aj-topo { display: flex; align-items: center; gap: 8px; padding: 14px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.aj-topo b { flex: 1; font: 600 18px/1.2 var(--display); color: var(--fg); }
+.aj-corpo { overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px 20px; display: grid; gap: 14px; align-content: start; font-size: 13.5px; line-height: 1.5; color: var(--fg-2); }
+.aj-corpo:focus { outline: none; }
+.aj-corpo p { margin: 0; }
+.aj-intro { display: grid; gap: 8px; }
+.aj-indice { display: flex; flex-wrap: wrap; gap: 6px; }
+.aj-sec { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.aj-sec h3 { margin: 0; font: 600 17px/1.25 var(--display); color: var(--fg); }
+.aj-sub { display: grid; gap: 6px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.aj-sub h4 { margin: 0; font-size: 14px; color: var(--fg); }
+.aj-ex { padding: 6px 9px; border-radius: 8px; background: var(--lamp-soft); color: var(--fg); }
+.aj-ex b { color: var(--lamp-ink); }
+.aj-conta summary { cursor: pointer; width: max-content; font-size: 12.5px; font-weight: 600; color: var(--fg-3); }
+.aj-conta p { margin-top: 4px; font-family: var(--mono); font-size: 12px; line-height: 1.45; color: var(--fg-2); }
+.aj-corpo ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.aj-alvo { animation: aj-marca 1.8s ease-out; }
+@keyframes aj-marca { 0%, 45% { box-shadow: 0 0 0 2px var(--lamp); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .aj-alvo { animation: none; box-shadow: 0 0 0 2px var(--lamp); } }
+@media (max-width: 900px) { dialog.mundo-dl.gb.com-ajuda[open] { display: block; } .gb-ajuda { position: absolute; inset: 0; z-index: 3; max-height: none; border-left: 0; } }
 @media (max-width: 560px) { .gb-lados, .gb-herois { grid-template-columns: 1fr; } .gb-x { display: none; } .gb-tab > div { grid-template-columns: 1.2fr 1fr 1fr; padding: 4px 6px; }
   .gb-form { grid-template-columns: 1fr 74px; } .gb-form > .gb-f-lado, .gb-form > .gb-f-mom, .gb-form > .gb-f-txt { grid-column: 1 / -1; }
   .gb-form.gb-form-h { grid-template-columns: 1fr 96px; } .gb-form-h > .gb-f-campo:first-of-type { grid-column: 1 / -1; } }
@@ -944,12 +977,13 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=21"></script>
-<script src="guerra.js?v=2"></script>
+<script src="guerra.js?v=3"></script>
 <script src="reino.js?v=4"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=21"></script>
 <script src="painel.js?v=27"></script>
-<script src="guerra-painel.js?v=3"></script>
+<script src="guerra-painel.js?v=4"></script>
+<script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=4"></script>
 <script src="mundo.js?v=12"></script>
 </body>

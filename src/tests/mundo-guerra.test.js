@@ -260,6 +260,49 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     hexBat = (await bat(L)).hex;
   });
 
+  await passo('a ajuda da batalha', async () => {
+    const painel = () => A(L, () => { const a = document.querySelector('dialog.gb .gb-ajuda'); return a && !a.hidden ? a.innerText.replace(/\s+/g, ' ') : null; });
+    const parte = sec => A(L, s0 => { const e = document.querySelector('dialog.gb .gb-ajuda [data-sec="' + s0 + '"]'); return e ? { txt: e.innerText.replace(/\s+/g, ' '), alvo: e.classList.contains('aj-alvo'), visto: (() => { const c = e.closest('.aj-corpo'), r = e.getBoundingClientRect(), rc = c.getBoundingClientRect(); return r.top >= rc.top - 2 && r.top < rc.bottom; })() } : null; }, sec);
+    ok(await painel() === null && await gb(L, 'gb:ajuda:geral').count() === 1, 'a janela da batalha tem o "?" no alto (a ajuda começa fechada)');
+    await naBatalha(L, 'gb:ajuda:geral');
+    const p0 = await painel();
+    ok(!!p0 && /^Como funciona a batalha Cada lado soma as suas vantagens/.test(p0) && await A(L, () => document.querySelector('dialog.gb').classList.contains('com-ajuda') && document.querySelector('dialog.gb').open),
+      'o "?" do alto abre o guia ao lado da batalha (a batalha continua aberta): ' + (p0 || '').slice(0, 90));
+    // o "?" do Choque: o guia já naquela parte, com os números desta batalha
+    await naBatalha(L, 'gb:ajuda:m:ch');
+    const ch = await parte('m:ch');
+    ok(!!ch && ch.alvo && ch.visto && /^Choque Choque: as linhas se chocam\. Pesam os números/.test(ch.txt) && /Nesta batalha: Hoste de Aldar ([+−]\d+|0) \(/.test(ch.txt)
+      && /Saiu: Hoste de Aldar tirou 10 no d20, ([+−]\d+|0) de bônus = 10; Legião do Vale tirou 10, \+8 = 18 — Legião do Vale leva no Choque por 8\./.test(ch.txt),
+      'o "?" do Choque leva até ele (à vista, marcado), com os bônus e os dados desta batalha: ' + ch.txt.slice(0, 320));
+    // o "?" de um bônus: os números (1.200 contra 900)
+    await L.F.locator('dialog.gb [data-k="gb:ajuda:b:numeros"]').first().click(); await espera(250);
+    const nu = await parte('b:numeros');
+    ok(!!nu && nu.alvo && nu.visto && /Nesta batalha: Hoste de Aldar tem força 1\.200 contra 900 — 1,33 vez — e ganha \+2\./.test(nu.txt), 'o "?" de Números: a força de cada lado e por que deu +2: ' + nu.txt.slice(0, 220));
+    ok(await A(L, () => !document.querySelector('dialog.gb .gb-ajuda [data-sec="b:numeros"] details').open), '"Ver a conta" começa fechado');
+    await L.F.click('dialog.gb .gb-ajuda [data-sec="b:numeros"] details summary'); await espera(150);
+    ok(/Bônus = 4 × log₂\(força maior ÷ força menor\), arredondado, até 10\./.test((await parte('b:numeros')).txt), '"Ver a conta" mostra a fórmula');
+    await L.F.locator('dialog.gb [data-k="gb:ajuda:b:estrutura"]').first().click(); await espera(250);
+    const es = await parte('b:estrutura');
+    ok(!!es && es.alvo && /Nesta batalha: Legião do Vale defende Muralhas: DEF 4 → \+4\./.test(es.txt), 'o "?" da Fortificação: quem defende, a DEF e por que deu +4: ' + (es ? es.txt.slice(0, 200) : ''));
+    await L.F.locator('dialog.gb [data-k="gb:ajuda:b:numeros"]').first().click(); await espera(250);
+    await semAvisos(L); await foto('ajuda-batalha');
+    // o Esc fecha só a ajuda; o "?" do resultado; o ×
+    await L.P.keyboard.press('Escape'); await espera(250);
+    ok(await painel() === null && await janelaAberta(L) && !(await A(L, () => document.querySelector('dialog.gb').classList.contains('com-ajuda'))), 'Esc fecha a ajuda, e a batalha fica aberta');
+    await naBatalha(L, 'gb:ajuda:resultado');
+    ok(/Nesta batalha: Vitória clara de Hoste de Aldar\./.test((await parte('resultado')).txt), 'o "?" do resultado: o que deu nesta batalha');
+    await naBatalha(L, 'gb:ajuda-x');
+    ok(await painel() === null, 'o × fecha a ajuda');
+    // no depois: o "?" das perdas
+    await naBatalha(L, 'gb:depois');
+    await naBatalha(L, 'gb:ajuda:depois');
+    ok(/Nesta batalha: Hoste de Aldar perde 6% e Legião do Vale 35% das tropas \(e do HP de cada unidade\)\. A moral de Hoste de Aldar vai de 7 para 8; a de Legião do Vale, de 5 para 2\. A frente pode andar 3 hexágonos para o lado de Legião do Vale\./.test((await parte('depois')).txt),
+      'no depois, o "?" explica as perdas, a moral e a frente desta batalha: ' + (await parte('depois')).txt.slice(0, 200));
+    await L.P.keyboard.press('Escape'); await espera(200);
+    await naBatalha(L, 'gb:voltar');
+    ok(await janelaAberta(L) && await painel() === null, '(de volta à batalha, com a ajuda fechada)');
+  });
+
   await passo('o depois e o aplicar', async () => {
     const antes = await A(L, () => JSON.stringify(__mundo.App.mapa));
     await naBatalha(L, 'gb:depois');
@@ -400,6 +443,13 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     const cx = await A(L, () => { const d = document.querySelector('dialog.gb').getBoundingClientRect(), c = document.querySelector('dialog.gb .gb-corpo'), f = document.querySelector('dialog.gb [data-k="gb:f-form"]').getBoundingClientRect(); return { l: d.left, r: d.right, w: innerWidth, sw: c.scrollWidth, cw: c.clientWidth, fr: f.right }; });
     ok(cx.l >= 0 && cx.r <= cx.w && cx.sw <= cx.cw + 1 && cx.fr <= cx.r, 'a janela da batalha cabe na tela, sem rolar de lado (o formulário do bônus também): ' + j(cx));
     await foto('l8p6-celular-batalha');
+    // a ajuda no celular: por cima da batalha, cabendo na tela; o × volta
+    await naBatalha(L, 'gb:ajuda:geral');
+    const aj = await A(L, () => { const d = document.querySelector('dialog.gb').getBoundingClientRect(), a = document.querySelector('dialog.gb .gb-ajuda'), r = a.getBoundingClientRect(), c = a.querySelector('.aj-corpo'); return { vis: !a.hidden, l: r.left - d.left, r: d.right - r.right, sw: c.scrollWidth, cw: c.clientWidth, w: r.width, dw: d.width }; });
+    ok(aj.vis && Math.abs(aj.l) <= 1 && Math.abs(aj.r) <= 1 && aj.sw <= aj.cw + 1, 'no celular, a ajuda abre por cima da batalha, do tamanho da janela, sem rolar de lado: ' + j(aj));
+    await semAvisos(L); await foto('ajuda-celular');
+    await naBatalha(L, 'gb:ajuda-x');
+    ok(await A(L, () => document.querySelector('dialog.gb .gb-ajuda').hidden), 'e o × volta para a batalha');
     await naBatalha(L, 'gb:fechar');
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });

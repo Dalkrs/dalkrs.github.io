@@ -334,6 +334,7 @@
     rolar, lado, numeros, bonus, total, resumida, momento, fimDetalhada, parar, textoFim, tamanhoD100, tamanhoD20,
     perdas, moralDepois, frenteAnda, depois, aplicar, mantimentosDoDia, confrontos,
     MAX_HEROIS_BONUS, bonusSugerido, resultadoHeroico, feridaDoHeroi, FERIDA_PERDEDOR, FERIDA_VENCEDOR,
+    MORAL_PERDEDOR, MORAL_VENCEDOR, DANO_ESTRUTURA,                // (a ajuda da batalha mostra as tabelas)
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoGuerra;
   if (typeof window !== 'undefined') window.MundoGuerra = MundoGuerra;

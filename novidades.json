@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-11",
+      "data": "2026-10-18",
+      "titulo": "A ajuda da batalha",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na janela da batalha, o “?” no alto abre um guia ao lado (sem cobrir os números): a resumida e a detalhada, o que é a Abertura, o Choque, a Virada e o Desfecho, como cada bônus é contado, o resultado, o depois e os heróis — sempre com os números da batalha aberta, e a fórmula em “Ver a conta”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: um “?” pequeno ao lado de cada parte da batalha (cada momento, cada bônus, o momento-chave, o resultado, o depois…) abre o guia já naquela parte. Esc ou o × fecham só a ajuda."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-10",
       "data": "2026-10-18",
       "titulo": "Fechar a semana",
