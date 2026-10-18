@@ -14,7 +14,7 @@
   const NOME_HEX = { d: 'Destruído', c: 'Corrompido' };
   const MORAIS = ['em fuga', 'à beira da fuga', 'abalada', 'nervosa', 'cansada', 'firme', 'confiante', 'animada', 'feroz', 'heroica', 'inabalável'];
   const MOM_NOME = { ab: 'Abertura', ch: 'Choque', vi: 'Virada', de: 'Desfecho' };
-  const MOM_DICA = { ab: 'arqueiros e magos', ch: 'o choque das tropas', vi: 'a moral e o comandante', de: 'quem aguenta até o fim' };
+  const MOM_DICA = { ab: 'arqueiros e magos', ch: 'o choque das tropas', vi: 'a moral, o comandante e os heróis', de: 'quem aguenta até o fim' };
   const ARTIGO = { ab: 'a', ch: 'o', vi: 'a', de: 'o' }, EM = { ab: 'na', ch: 'no', vi: 'na', de: 'no' };
   const FIM_NOME = { recuo: 'Recuo', rendicao: 'Rendição', tregua: 'Trégua' };
   const novoId = p => p + '_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
@@ -182,9 +182,75 @@
     out.push(nota('Moral ' + e.moral + ': ' + textoMoral(e.moral) + '. ' + (cons > 0 ? 'Comem ' + fmt(cons, 0) + ' por dia' + (e.cons == null ? ' (um por cem soldados)' : '') + ': dá para ' + plural(dias, 'dia', 'dias') + '.' : 'Sem consumo.')
       + (e.fome ? ' Sem mantimentos há ' + plural(e.fome, 'dia', 'dias') + ': a moral cai 1 por dia, e a fome tira ATQ nas batalhas.' : ' No "Próximo dia", vem a proposta de descontar; quando acabam, a moral cai e a fome tira ATQ.'),
       e.fome ? 'aviso' : null));
-    return [secao('Exército', out), secUnidades(o, m),
+    return [secao('Exército', out), secHeroisDoExercito(o, m), secUnidades(o, m),
       linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o) }))];
   }
+  /* ---- (lote 9) os heróis ----
+     As fichas da mesa (os do grupo, os NPCs) que lutam junto: as do exército (exe.herois) e as que o mestre põe só numa
+     batalha. O bônus de cada um: o que o mestre escreveu, senão o sugerido pela ficha (a média de +1 a cada 5 níveis e de
+     +1 a cada 13 pontos do maior atributo). Na batalha, somam na Virada (e na resumida), até +10 por lado; nos
+     momentos-chave, a ação heroica; no depois, os ferimentos no HP da ficha. */
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const docDados = id => { const TC = window.TC, D = TC && TC.dados && TC.dados.col('documentos'), l = D && D.pegar(id); return l && !l.apagado && l.dados ? l.dados : null; };
+  // as contas da ficha (como nas Cenas): os atributos, o HP, a fixa e o nível
+  function contasDaFicha(l) {
+    const R = window.TC && window.TC.rules;
+    if (!R || !l || l.ficha == null) return null;
+    try {
+      const cfgD = docDados('fichas:cfg'), cfg = (cfgD && cfgD.v) || R.cfgPadrao();
+      const bibD = docDados('arvore:biblioteca') || docDados('arvore:pacote'), bib = bibD && Array.isArray(bibD.arvores) ? bibD : null;
+      const pc = Object.assign({}, l.ficha || {}, { id: l.id, nome: l.nome }), extra = { arvore: R.bonusDaArvore(l.skills, bib), temp: l.estado && l.estado.tmp, fer: l.estado && l.estado.fer };
+      const res = R.resumo(pc, cfg, extra, l.estado || {}), calc = R.calcular(pc, cfg, Object.assign({}, extra));
+      const maior = Math.max(0, ...R.ATRIBS.map(a => Number(res.attrs[a.k]) || 0));
+      const hp = res.recursos.find(r => /^(hp|vida|pv)$/i.test(String(r.nome || '').trim()) && r.max != null) || res.recursos.find(r => r.max != null) || null;
+      const valor = k => Math.max(0, Math.round(R.valorDoAtributo(calc, k, res.fonte) || 0));
+      return { nivel: Math.max(1, Math.round(Number(pc.level) || 1)), maior: Math.round(maior), hp, fixa: res.fixa || 0, valor, nomes: R.NOMES || {} };
+    } catch (e) { return null; }
+  }
+  // um herói: { ficha, nome, sug, b (o do mestre), v (o que vale), contas } — null se a ficha não está aqui
+  function heroiDe(ps, h) {
+    const l = ps ? ps.find(x => x.id === h.ficha) : null;
+    if (!l) return null;
+    const c = contasDaFicha(l), sug = c ? G().bonusSugerido(c.nivel, c.maior) : 0, b = h.b == null ? null : h.b;
+    return { ficha: l.id, nome: l.nome || 'Sem nome', sug, b, v: b == null ? sug : b, contas: c, linha: l };
+  }
+  function secHeroisDoExercito(o, m) {
+    const { h, nota, campoNumero, campoEscolha, mudarObj, secao, botao } = kit(), id = o.id, e = o.exe, ps = personagens(), hs = e.herois || [], out = [];
+    if (!ps) return hs.length ? secao('Heróis', nota(hs.length === 1 ? '1 herói (a ficha aparece dentro do site, na mesa).' : hs.length + ' heróis (as fichas aparecem dentro do site, na mesa).')) : null;
+    for (const x of hs) {
+      const hr = heroiDe(ps, x), num = campoNumero('o:' + id + ':heroi-b:' + x.ficha, null, x.b == null ? '' : x.b, n => mudarObj(id, 'mudar o bônus do herói', y => {
+        const z = (y.exe.herois || []).find(q => q.ficha === x.ficha); if (!z) return false; if (n == null) delete z.b; else z.b = n;
+      }), { min: -20, max: 20, vazio: null, ph: hr ? sinal(hr.sug) : '0' });
+      num.setAttribute('aria-label', 'Bônus de ' + (hr ? hr.nome : 'herói') + ' (vazio: o sugerido pela ficha)');
+      out.push(h('div', { class: 'row gu-heroi', 'data-k': 'o:' + id + ':heroi:' + x.ficha },
+        h('b', { class: 'gu-heroi-nome', text: hr ? hr.nome : 'A ficha saiu da mesa' }), num,
+        botao('Tirar', () => mudarObj(id, 'tirar o herói', y => { const l = y.exe.herois || [], k = l.findIndex(q => q.ficha === x.ficha); if (k < 0) return false; l.splice(k, 1); if (!l.length) delete y.exe.herois; }), { c: 'sm', k: 'o:' + id + ':heroi-x:' + x.ficha }),
+        h('small', { class: 'note', text: hr && hr.contas ? 'sugerido ' + sinal(hr.sug) + ' (nível ' + hr.contas.nivel + ', maior atributo ' + hr.contas.maior + ')' + (x.b != null ? ' · vale o seu, ' + sinal(x.b) : '') : '' })));
+    }
+    const livres = ps.filter(l => !hs.some(x => x.ficha === l.id));
+    if (livres.length && hs.length < ((N().LIMITES && N().LIMITES.herois) || 12)) {
+      const sel = campoEscolha('o:' + id + ':heroi-novo', null, '', [['', '+ Herói (uma ficha da mesa)…']].concat(livres.map(l => [l.id, l.nome || 'Sem nome'])),
+        v => (v ? mudarObj(id, 'pôr um herói', y => { y.exe.herois = (y.exe.herois || []).concat([{ ficha: v }]); }) : false), { rotulo: 'Pôr um herói no exército' });
+      out.push(sel);
+    }
+    out.push(nota('Os heróis lutam junto: somam na Virada (e na resumida), até +10 por lado. O bônus vem da ficha (nível e maior atributo); escreva outro se quiser. Nos momentos-chave, podem fazer uma ação heroica; no fim, podem sair feridos.'));
+    return secao('Heróis', out);
+  }
+  // os heróis de um lado na batalha: os do exército e os só desta batalha (cada ficha uma vez só, no primeiro lado)
+  function heroisDoLado(m, q) {
+    const ps = personagens(), g = kit().achar(m, bat[q]), out = [];
+    if (!ps) return out;
+    const vistos = new Set(q === 'b' ? heroisDoLado(m, 'a').map(x => x.ficha) : []);          // quem já luta do lado A não luta do B
+    for (const [x, de] of (((g && g.exe && !g.exe.pub && g.exe.herois) || []).map(x => [x, 'exe'])).concat((bat.herois[q] || []).map(x => [x, 'bat']))) {
+      if (vistos.has(x.ficha)) continue;
+      const hr = heroiDe(ps, x);
+      if (!hr) continue;
+      vistos.add(x.ficha);
+      out.push(Object.assign(hr, { de, lado: q }));
+    }
+    return out;
+  }
+  const somaHerois = hs => Math.max(-G().MAX_HEROIS_BONUS, Math.min(G().MAX_HEROIS_BONUS, hs.reduce((t, x) => t + x.v, 0)));
   // a ficha do comandante (na mesa): o nome e o retrato
   function personagens() {
     const TC = window.TC;
@@ -355,7 +421,8 @@
     mostrarJanela();
   }
   function novaBatalha(m, a, b) {
-    const x = { a, b, estr: null, hex: null, mestre: [], modo: null, res: null, moms: [], fim: null, notas: [], tela: 'montar', frente: null, hexEst: null, form: null, formAberto: false, formM: null };
+    const x = { a, b, estr: null, hex: null, mestre: [], modo: null, res: null, moms: [], fim: null, notas: [], tela: 'montar', frente: null, hexEst: null, form: null, formAberto: false, formM: null,
+      herois: { a: [], b: [] }, acoes: [], formH: null, ferir: true };          // (lote 9) os heróis só desta batalha, as ações heroicas e os ferimentos
     lugarDaBatalha(m, x);
     return x;
   }
@@ -404,7 +471,9 @@
   function contexto(m) {
     let estr = null;
     if (bat.estr) { const mk = kit().achar(m, bat.estr.m); if (mk && mk.estr) estr = { lado: bat.estr.lado, def: mk.estr.def, hp: mk.estr.hp, hpMax: mk.estr.hpMax }; }
-    return { estr, mestre: bat.mestre };
+    // (lote 9) os heróis (o bônus de cada um) e as ações heroicas
+    const hv = q => heroisDoLado(m, q).map(x => ({ nome: x.nome, v: x.v }));
+    return { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
   }
   const lados = m => [G().lado(m, kit().achar(m, bat.a)), G().lado(m, kit().achar(m, bat.b))];
 
@@ -475,6 +544,8 @@
     if (rolou && !bat.fim) out.push(el('p', { class: 'note', text: 'Para trocar os lados ou a fortificação, recomece a batalha.' }));
     // a comparação
     out.push(comparacao(m, A_, B_));
+    // (lote 9) os heróis
+    { const sh = secHeroisBatalha(m, nomeA, nomeB); if (sh) out.push(sh); }
     // os bônus do mestre
     out.push(secMestre(m, nomeA, nomeB));
     // a rolagem
@@ -495,7 +566,7 @@
     out.push(secNotas());
     return out;
   }
-  function recomecar() { const m = app().mapa; Object.assign(bat, novaBatalha(m, bat.a, bat.b)); pintarBatalha(); }
+  function recomecar() { const m = app().mapa, hs = bat.herois; Object.assign(bat, novaBatalha(m, bat.a, bat.b), { herois: hs }); pintarBatalha(); }
   // a tabela dos dois lados
   function comparacao(m, A_, B_) {
     const { fmt, plural } = kit(), ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b), ea = ga.exe, eb = gb.exe;
@@ -512,7 +583,84 @@
         lin('Máquinas de cerco', fmt(A_.cerco, 0), fmt(B_.cerco, 0)),
         lin('Moral', A_.moral + ' · ' + textoMoral(A_.moral), B_.moral + ' · ' + textoMoral(B_.moral)),
         lin('Comandante', (A_.cmdNome || '—') + ' (' + sinal(A_.cmd) + ')', (B_.cmdNome || '—') + ' (' + sinal(B_.cmd) + ')'),
+        ...(() => { const ha = heroisDoLado(m, 'a'), hb = heroisDoLado(m, 'b'); return ha.length || hb.length ? [lin('Heróis', ha.length + ' (' + sinal(somaHerois(ha)) + ')', hb.length + ' (' + sinal(somaHerois(hb)) + ')')] : []; })(),
         lin('Mantimentos', mant(ea), mant(eb))));
+  }
+  // (lote 9) os heróis na batalha: os de cada lado (do exército e só desta batalha), o bônus de cada um e o teto
+  function secHeroisBatalha(m, nomeA, nomeB) {
+    const ps = personagens();
+    if (!ps) return null;
+    const rolou = temRolagem(), usados = new Set(heroisDoLado(m, 'a').concat(heroisDoLado(m, 'b')).map(x => x.ficha)), col = [];
+    for (const q of ['a', 'b']) {
+      const hs = heroisDoLado(m, q), soma = hs.reduce((t, x) => t + x.v, 0), teto = somaHerois(hs);
+      const itens = hs.map(x => x.de === 'exe'
+        ? el('span', { class: 'chip gb-chip sem-x', 'data-k': 'gb:heroi:' + q + ':' + x.ficha, title: 'O bônus muda no exército (no painel)' },
+          el('b', { text: x.nome + ' ' + sinal(x.v) }), el('small', { text: (x.b == null ? 'pela ficha' : 'escrito por você') + ' · do exército' }))
+        : el('span', { class: 'chip gb-chip', 'data-k': 'gb:heroi:' + q + ':' + x.ficha },
+          el('b', { text: x.nome }),
+          el('input', { class: 'num', type: 'number', min: -20, max: 20, step: 1, value: x.b == null ? '' : String(x.b), placeholder: sinal(x.sug), 'data-k': 'gb:heroi-b:' + q + ':' + x.ficha,
+            'aria-label': 'Bônus de ' + x.nome + ' nesta batalha (vazio: o sugerido pela ficha, ' + sinal(x.sug) + ')', title: 'Vazio: o sugerido pela ficha (' + sinal(x.sug) + ')',
+            onchange: ev => {
+              const t = String(ev.target.value).trim(), n = t === '' ? null : Math.round(Number(t)), z = (bat.herois[q] || []).find(y => y.ficha === x.ficha);
+              if (!z) return;
+              if (n != null && !(Number.isFinite(n) && n >= -20 && n <= 20)) { app().toast('Use um número de −20 a 20 (vazio: o sugerido pela ficha).'); ev.target.value = z.b == null ? '' : String(z.b); return; }
+              if (n == null) delete z.b; else z.b = n;
+              recalcular();
+            } }),
+          el('small', { text: 'só nesta batalha' }),
+          el('button', { type: 'button', class: 'ib', 'aria-label': 'Tirar ' + x.nome + ' desta batalha', title: 'Tirar desta batalha', 'data-k': 'gb:heroi-x:' + q + ':' + x.ficha,
+            onclick: () => { bat.herois[q] = bat.herois[q].filter(y => y.ficha !== x.ficha); recalcular(); } }, kit().glifo(kit().X_SVG, 12))));
+      const livres = ps.filter(l => !usados.has(l.id));
+      col.push(el('div', { class: 'gb-herois-lado' }, el('b', { text: q === 'a' ? nomeA : nomeB }),
+        itens.length ? el('div', { class: 'gb-chips' }, itens) : el('p', { class: 'note', text: 'Nenhum herói.' }),
+        hs.length ? el('p', { class: 'note', 'data-k': 'gb:herois-soma:' + q, text: 'Somam ' + sinal(teto) + (soma !== teto ? ' (passaram de ' + sinal(soma) + ': o teto é ' + sinal(G().MAX_HEROIS_BONUS) + ')' : '') + ' na Virada' + (bat.modo === 'd100' ? ' e na resumida' : '') + '.' }) : null,
+        livres.length ? el('select', { class: 'in', 'data-k': 'gb:heroi-novo:' + q, 'aria-label': 'Pôr um herói em ' + (q === 'a' ? nomeA : nomeB) + ' nesta batalha',
+          onchange: ev => { const v = ev.target.value; if (!v) return; bat.herois[q] = (bat.herois[q] || []).concat([{ ficha: v }]); recalcular(); } },
+          [el('option', { value: '', text: '+ Herói nesta batalha…' })].concat(livres.map(l => el('option', { value: l.id, text: l.nome || 'Sem nome' })))) : null));
+    }
+    return el('div', { class: 'gb-sec', 'data-k': 'gb:herois' }, el('b', { text: 'Heróis' }), el('div', { class: 'gb-herois' }, col),
+      el('p', { class: 'note', text: 'Os heróis somam na Virada (e na resumida), até ' + sinal(G().MAX_HEROIS_BONUS) + ' por lado. Nos momentos-chave da detalhada, um herói pode tentar uma ação heroica.' + (rolou ? ' Mudar os heróis muda o resultado (os dados ficam).' : '') }));
+  }
+  // (lote 9) a ação heroica num momento-chave: o herói rola um atributo da ficha contra a dificuldade
+  function formHeroica(m, x, i) {
+    const f = bat.formH, hs = heroisDoLado(m, 'a').concat(heroisDoLado(m, 'b')), nome = q => kit().nomeDe(kit().achar(m, bat[q]), m);
+    if (!hs.length) return el('p', { class: 'note', text: 'Nenhum herói na batalha: ponha um na seção Heróis.' });
+    if (!f.ficha || !hs.some(h0 => h0.ficha === f.ficha)) f.ficha = hs[0].ficha;
+    const hr = hs.find(h0 => h0.ficha === f.ficha), c = hr.contas;
+    const rot = (t, c) => el('label', { class: 'gb-f-campo' }, el('small', { text: t }), c);
+    const sel = (k, t, val, ops, set) => rot(t, el('select', { class: 'in', 'data-k': 'gb:fh-' + k, onchange: ev => { set(ev.target.value); pintarBatalha(); } }, ops.map(([v, tx]) => el('option', { value: v, text: tx, selected: String(v) === String(val) ? true : null }))));
+    const rolar = () => {
+      const dif = Math.round(Number(f.dif) || 0);
+      if (!(dif >= 1)) { app().toast('Escolha a dificuldade (1 ou mais).'); return; }
+      const valor = c ? c.valor(f.attr) : 0;
+      if (!(valor >= 1)) { app().toast((c && c.nomes[f.attr]) || f.attr + ': não há o que rolar.'); return; }
+      const D = window.TC && window.TC.dice, r = D && typeof D.rollFixaMais === 'function' ? D.rollFixaMais(valor, c.fixa, null) : { ok: true, total: valor, dieValue: 0, fixa: 0 };
+      if (!r.ok) { app().toast(r.error || 'Não deu para rolar.'); return; }
+      const v = G().resultadoHeroico(r.total, dif);
+      bat.acoes.push({ mom: x.k, i, lado: hr.lado, ficha: hr.ficha, nome: hr.nome, attr: f.attr, valor, d: r.dieValue, fixa: r.fixa, total: r.total, dif, v });
+      bat.formH = null;
+      recalcular();
+    };
+    return el('div', { class: 'gb-form gb-form-mom gb-form-h', 'data-k': 'gb:fh-form' },
+      el('p', { class: 'note gb-f-tit', text: 'Ação heroica ' + EM[x.k] + ' ' + MOM_NOME[x.k] + ': o herói rola um atributo da ficha contra a dificuldade — passou, +5; passou pelo dobro, +10; falhou, −2.' }),
+      sel('heroi', 'Quem', f.ficha, hs.map(h0 => [h0.ficha, h0.nome + ' (' + nome(h0.lado) + ')']), v => { f.ficha = v; }),
+      sel('attr', 'Atributo', f.attr, ROLAVEIS.map(k => [k, ((c && c.nomes[k]) || k) + (c ? ' ' + c.valor(k) : '')]), v => { f.attr = v; }),
+      rot('Dificuldade', el('input', { class: 'in', type: 'number', min: 1, max: 999, step: 1, value: String(f.dif), 'data-k': 'gb:fh-dif', oninput: ev => { f.dif = Math.round(Number(ev.target.value) || 0); },
+        onkeydown: ev => { if (ev.key === 'Enter') { ev.preventDefault(); rolar(); } } })),
+      el('div', { class: 'gb-f-bts' }, bt('Cancelar', () => { bat.formH = null; pintarBatalha(); }, { c: 'sm', k: 'gb:fh-cancelar' }), bt('Rolar', rolar, { c: 'sm pri', k: 'gb:fh-rolar' })));
+  }
+  const textoAcao = a => 'Ação heroica de ' + a.nome + ': ' + a.attr + ' ' + a.valor + ' (' + (a.d != null ? 'd' + Math.max(0, a.valor - (a.fixa || 0)) + ' ' + a.d + ' + ' + (a.fixa || 0) + ' = ' : '') + a.total + ') contra ' + a.dif + ' — ' + (a.v >= 10 ? 'passou pelo dobro' : a.v > 0 ? 'passou' : 'falhou') + ': ' + sinal(a.v);
+  // (lote 9) os ferimentos dos heróis no depois: o HP de cada um (antes e depois), pelo tamanho do resultado
+  function feridasDosHerois(m) {
+    const out = [];
+    for (const q of ['a', 'b']) for (const hr of heroisDoLado(m, q)) {
+      const hp = hr.contas && hr.contas.hp;
+      if (!hp || !(hp.max > 0)) { out.push({ hr, q, sem: true }); continue; }
+      const pct = G().feridaDoHeroi(bat.fim, q), dano = Math.round(hp.max * pct / 100);
+      const R = window.TC.rules, novo = R.aplicarDelta(hr.linha.estado || {}, hp.id, hp.max, -dano, hp.min, hp.inicio), depois = novo && novo.rec ? novo.rec[hp.id] : hp.atual;
+      out.push({ hr, q, pct, dano, hp, antes: hp.atual, depois, estado: novo });
+    }
+    return out;
   }
   const listaBonus = bs => (bs.length ? bs.map(b => b.nome + ' ' + sinal(b.v)).join(' · ') : 'nenhum');
   function bonusTotais(A_, B_, ctx) {
@@ -588,10 +736,10 @@
   // a detalhada: os momentos rolados e o próximo
   function rolarMomento(refazer) {
     const m = app().mapa, [A_, B_] = lados(m), ctx = contexto(m);
-    if (refazer) { const ult = bat.moms.pop(); if (!ult) return; bat.moms.push(G().momento(ult.k, A_, B_, ctx, rng)); }
+    if (refazer) { const ult = bat.moms.pop(); if (!ult) return; bat.acoes = bat.acoes.filter(a0 => a0.mom !== ult.k); ctx.acoes = bat.acoes; bat.moms.push(G().momento(ult.k, A_, B_, ctx, rng)); }
     else { const k = G().MOMENTOS[bat.moms.length]; if (!k) return; bat.moms.push(G().momento(k, A_, B_, ctx, rng)); }
     bat.fim = bat.moms.length === G().MOMENTOS.length ? G().fimDetalhada(bat.moms) : null;
-    bat.formM = null;
+    bat.formM = null; bat.formH = null;
     bat.mostrar = bat.fim ? 'gb:fim' : 'gb:proximo';
     pintarBatalha();
   }
@@ -605,7 +753,11 @@
         el('p', null, el('b', { text: nomeB + ' ' + x.tb }), el('small', { text: ' (d20 ' + x.db + ', ' + listaBonus(x.bb) + ')' })),
         el('p', { class: 'gb-margem', text: ganhou ? ganhou + ' leva o momento, por ' + Math.abs(x.m) + '.' : 'Empatado.' }),
         x.nota ? el('p', { class: 'gb-nota', text: '“' + x.nota + '”' }) : null,
+        // (lote 9) as ações heroicas deste momento
+        ...bat.acoes.map((a0, j) => [a0, j]).filter(([a0]) => a0.mom === x.k).map(([a0, j]) => el('p', { class: 'gb-acao' + (a0.v > 0 ? ' boa' : ' ruim'), 'data-k': 'gb:acao:' + j }, textoAcao(a0) + ' ',
+          i === ult && !bat.fim ? el('button', { type: 'button', class: 'ib', 'aria-label': 'Tirar a ação heroica', title: 'Tirar a ação heroica', 'data-k': 'gb:acao-x:' + j, onclick: () => { bat.acoes.splice(j, 1); recalcular(); } }, kit().glifo(kit().X_SVG, 12)) : null)),
         i === ult && !(bat.fim && bat.fim.como !== 'dados') ? acoesDoMomento(x, i) : null,
+        i === ult && bat.formH && bat.formH.i === i ? formHeroica(app().mapa, x, i) : null,
         i === ult && bat.formM && bat.formM.i === i ? formBonus(nomeA, nomeB, bat.formM, 'gb:fm-', x.k, () => { bat.formM = null; pintarBatalha(); }) : null);
     });
     out.push(el('div', { class: 'gb-sec' }, el('b', { text: 'Detalhada (d20) · placar ' + sinal(placar) + ' (para ' + (placar > 0 ? nomeA : placar < 0 ? nomeB : 'ninguém') + ')' }), cards,
@@ -623,6 +775,12 @@
         const c = bat.formM && dl && dl.querySelector('[data-k="gb:fm-v"]'); if (c) { c.focus({ preventScroll: true }); c.select(); }
       }, { c: 'sm', k: 'gb:mom-bonus:' + i, title: 'Põe um bônus neste momento (o dado fica: o resultado muda na hora)' }),
       bt('Rolar de novo', () => rolarMomento(true), { c: 'sm', k: 'gb:mom-de-novo:' + i }),
+      // (lote 9) a ação heroica: só nos momentos-chave, com heróis na batalha
+      x.chave && (heroisDoLado(app().mapa, 'a').length || heroisDoLado(app().mapa, 'b').length) ? bt('Ação heroica…', () => {
+        bat.formH = bat.formH && bat.formH.i === i ? null : { i, ficha: '', attr: 'FOR', dif: 30 };
+        bat.formM = null; bat.mostrar = bat.formH ? 'gb:fh-form' : null;
+        pintarBatalha();
+      }, { c: 'sm', k: 'gb:mom-heroica:' + i, title: 'Um herói rola um atributo da ficha contra a dificuldade (passou, +5; pelo dobro, +10; falhou, −2)' }) : null,
       bt('Escrever', async () => {
         const v = await escreverNota('O que aconteceu ' + EM[x.k] + ' ' + MOM_NOME[x.k] + '?', x.nota || '');
         if (v == null) return;
@@ -702,6 +860,15 @@
       out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:hex' }, el('b', { text: 'O hexágono da batalha (' + bat.hex + ')' }),
         el('div', { class: 'gb-radios' }, radio('', 'Fica como está'), radio('d', 'Destruído'), radio('c', 'Corrompido'))));
     }
+    // (lote 9) os heróis: o HP da ficha de cada um (a batalha fere)
+    const fer = feridasDosHerois(m);
+    if (fer.length) out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:herois' }, el('b', { text: 'Os heróis' }),
+      el('label', { class: 'op' }, el('input', { type: 'checkbox', 'data-k': 'gb:ferir', checked: bat.ferir !== false ? true : null, onchange: ev => { bat.ferir = !!ev.target.checked; pintarBatalha(); } }), el('span', { text: 'Ferir os heróis (no HP da ficha)' })),
+      el('div', { class: 'gb-tab gb-tab3' + (bat.ferir === false ? ' apagada' : '') },
+        el('div', { class: 'gb-cab' }, el('span', { text: 'Herói' }), el('b', { text: 'HP' }), el('b', { text: 'Ferida' })),
+        fer.map(f => f.sem ? el('div', null, el('span', { text: f.hr.nome }), el('b', { text: '—' }), el('b', { text: 'sem HP na ficha' }))
+          : el('div', { 'data-k': 'gb:dep:heroi:' + f.hr.ficha }, el('span', { text: f.hr.nome + ' (' + (f.q === 'a' ? nA : nB) + ')' }), el('b', { text: f.antes + ' → ' + f.depois }), el('b', { text: '−' + f.dano + ' (' + f.pct + '%)' })))),
+      el('p', { class: 'note', text: 'Quem perde: de 10% a 40% do HP máximo, pelo tamanho da derrota; quem vence, até 10%; empate ou trégua, 5%. Vai para a ficha de cada um ao aplicar (e o Desfazer volta).' })));
     out.push(el('div', { class: 'row gb-pe' }, bt('Voltar', () => { bat.tela = 'montar'; pintarBatalha(); }, { k: 'gb:voltar' }), bt('Aplicar', aplicarBatalha, { c: 'pri', k: 'gb:aplicar' })));
     return out;
   }
@@ -711,14 +878,29 @@
     const prev = G().depois(m, configDepois()), nA = kit().nomeDe(ga, m), nB = kit().nomeDe(gb, m);
     const mom = bat.modo === 'd100' && bat.res ? [{ k: 'ch', da: bat.res.da, db: bat.res.db, ta: bat.res.ta, tb: bat.res.tb }]
       : bat.moms.map(x => Object.assign({ k: x.k, da: x.da, db: x.db, ta: x.ta, tb: x.tb }, x.chave ? { chave: true } : {}, x.nota ? { nota: x.nota } : {}));
+    // (lote 9) as ações heroicas vão para o histórico, como notas
+    const notas = bat.notas.slice().concat(bat.acoes.map(a0 => textoAcao(a0) + ' (' + MOM_NOME[a0.mom] + ').')).slice(0, (N().LIMITES && N().LIMITES.notasBatalha) || 20);
     const reg = { id: novoId('bt'), d: m.cal.dia, nome: nA + ' × ' + nB, a: { nome: nA, g: ga.id, fac: ga.fac || null }, b: { nome: nB, g: gb.id, fac: gb.fac || null },
-      modo: bat.modo === 'd20' ? 'd20' : 'd100', mom, fim: { vence: bat.fim.vence, tam: bat.fim.tam, como: bat.fim.como }, notas: bat.notas.slice(), hex: bat.hex || undefined };
+      modo: bat.modo === 'd20' ? 'd20' : 'd100', mom, fim: { vence: bat.fim.vence, tam: bat.fim.tam, como: bat.fim.como }, notas, hex: bat.hex || undefined };
     const texto = G().textoFim(bat.fim, nA, nB);
+    const feridas = bat.ferir !== false ? feridasDosHerois(m).filter(f => !f.sem && f.dano > 0) : [];
     if (A.mudar('a batalha ' + nA + ' × ' + nB, d => { G().aplicar(d, prev, reg); }) === false) { A.toast('Nada mudou.'); return; }
+    // (lote 9) os ferimentos dos heróis, no HP da ficha de cada um. O Desfazer e o Refazer deste passo (o do aviso, os de
+    // cima) levam junto: devolvem (ou tiram de novo) o que a batalha tirou, a partir do HP de agora — o que mudou na
+    // ficha depois (uma cura, um dano numa cena) fica.
+    const P = feridas.length && window.TC && window.TC.dados ? window.TC.dados.col('personagens') : null, feitas = [];
+    if (P) for (const f of feridas) { const l = P.pegar(f.hr.ficha); if (!l) continue; P.gravar(l.id, { estado: f.estado }); feitas.push({ id: l.id, hp: f.hp, tirou: Math.max(0, (f.antes || 0) - (f.depois || 0)) }); }
+    if (feitas.length && typeof A.foraDoPasso === 'function') {
+      const mexer = s => () => {
+        const R = window.TC && window.TC.rules;
+        if (R) for (const x of feitas) { const l = P.pegar(x.id); if (l) P.gravar(x.id, { estado: R.aplicarDelta(l.estado || {}, x.hp.id, x.hp.max, s * x.tirou, x.hp.min, x.hp.inicio) }); }
+      };
+      A.foraDoPasso({ desfazer: mexer(1), refazer: mexer(-1) });
+    }
     bat.tela = 'aplicada';
     bat = null;
     fecharJanela(true);
-    kit().avisoDesfazer('Batalha aplicada: ' + texto + '. Fica no histórico (aba Guerra).');
+    kit().avisoDesfazer('Batalha aplicada: ' + texto + '.' + (feitas.length ? ' ' + (feitas.length === 1 ? 'Um herói ferido' : feitas.length + ' heróis feridos') + ' (na ficha).' : '') + ' Fica no histórico (aba Guerra).');
   }
 
   window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha,

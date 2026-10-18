@@ -8,7 +8,10 @@
 //     sem o descanso; a volta pela mesma rota (só ida: o sentido fica, o caminho ao contrário, chega ao começo);
 //   · (parte 4) o clima que muda a cada N tempos: os trechos do dia, o 1º é o sorteio do dia, os seguintes andam aos
 //     poucos (só para um vizinho), a chance do mês, o escolhido à mão (vale até a próxima mudança; o seguinte continua a
-//     partir dele), o clima de agora, uma vez por dia (como antes), a região e a projeção com o clima de agora.
+//     partir dele), o clima de agora, uma vez por dia (como antes), a região e a projeção com o clima de agora;
+//   · (parte 5) os heróis na Guerra: os do exército (uma vez cada ficha, o bônus do mestre), fora da projeção; o bônus
+//     sugerido pela ficha; a ação heroica (+10, +5, −2); os ferimentos pelo tamanho; na batalha, a soma na Virada e na
+//     resumida (o teto de +10 por lado) e a ação heroica só no momento e no lado dela (fora do teto).
 const N = require('../../mundo/nucleo.js');
 let n = 0, bad = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
@@ -179,6 +182,39 @@ const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — es
   ok(N.climaNoPonto(mr, 50, 50).k === 'nevoa' && N.climaNoPonto(mr, 50, 50).mao, 'a região com o de agora escolhido à mão (no trecho de agora)');
   const pj = N.projetar(mr);
   ok(pj.clima.hoje === N.climaDoDia(mr, 40).k && pj.objs.find(o => o.id === 'g').ch === 'nevoa' && pj.objs.find(o => o.id === 'rg').ch === 'nevoa', 'quem joga recebe o clima de agora (o do mundo, o da região e o de onde o grupo está)');
+}
+
+/* ---- (parte 5) os heróis na Guerra ---- */
+{
+  const j = JSON.stringify;
+  const G = require('../../mundo/guerra.js');
+  // o exército guarda os heróis: uma vez cada ficha, com o bônus do mestre só quando escrito
+  const ex = N.normalizarMapa({ objs: [{ k: 'g', id: 'ga', x: 1, y: 1, tipo: 'exercito', exe: { unid: [{ id: 'u', tropas: 10 }], herois: [{ ficha: 'pc1' }, { ficha: 'pc2', b: '7' }, { ficha: 'pc1', b: 3 }, { ficha: 'mal feita!' }, { b: 2 }, { ficha: 'pc3', b: 99 }, { ficha: 'pc4', b: '' }] } }] }).objs[0];
+  eq(ex.exe.herois, [{ ficha: 'pc1' }, { ficha: 'pc2', b: 7 }, { ficha: 'pc3', b: 20 }, { ficha: 'pc4' }], 'os heróis do exército: uma vez cada ficha; o bônus do mestre (até ±20) só quando escrito');
+  ok(!('herois' in N.normalizarMapa({ objs: [{ k: 'g', id: 'g', x: 1, y: 1, tipo: 'exercito', exe: { unid: [] } }] }).objs[0].exe), 'sem heróis, a lista não fica');
+  const pj = N.projetar(N.normalizarMapa({ objs: [{ k: 'g', id: 'ga', x: 1, y: 1, tipo: 'exercito', exe: { unid: [{ id: 'u', tropas: 10 }], herois: [{ ficha: 'pc1', b: 3 }] } }] }));
+  ok(!('herois' in pj.objs[0].exe), 'para os jogadores, os heróis do exército não vão (nem os números)');
+  // o bônus sugerido: a média de +1 a cada 5 níveis (até +10) e +1 a cada 13 pontos do maior atributo (até +10)
+  eq([G.bonusSugerido(50, 130), G.bonusSugerido(19, 60), G.bonusSugerido(1, 10), G.bonusSugerido(60, 300), G.bonusSugerido(10, 0)], [10, 4, 0, 10, 1], 'o bônus sugerido pela ficha (nível 50 e atributo 130: +10; nível 19 e 60: +4)');
+  // a ação heroica: passou +5, passou pelo dobro +10, falhou −2
+  eq([G.resultadoHeroico(40, 20), G.resultadoHeroico(39, 20), G.resultadoHeroico(20, 20), G.resultadoHeroico(19, 20), G.resultadoHeroico(5, 0)], [10, 5, 5, -2, 10], 'a ação heroica: o dobro +10, passou +5, falhou −2 (a dificuldade é pelo menos 1)');
+  // os ferimentos: quem perde 10% a 40%, quem vence até 10%, empate e trégua 5%
+  const fim = (vence, tam, como) => ({ vence, tam, como: como || 'dados' });
+  eq([1, 2, 3, 4].map(t => [G.feridaDoHeroi(fim('a', t), 'b'), G.feridaDoHeroi(fim('a', t), 'a')]), [[10, 10], [20, 7], [30, 5], [40, 3]], 'os ferimentos pelo tamanho: quem perde 10% a 40%, quem vence até 10%');
+  eq([G.feridaDoHeroi(fim(null, 0), 'a'), G.feridaDoHeroi(fim(null, 0, 'tregua'), 'b'), G.feridaDoHeroi(G.parar('rendicao', 'b'), 'b'), G.feridaDoHeroi(G.parar('recuo', 'a'), 'a')], [5, 5, 30, 10], 'empate e trégua 5%; quem se rende 30%; quem recua 10%');
+  // na batalha: os heróis somam na Virada e na resumida (até +10 por lado), não nos outros momentos
+  const A = G.lado({ guerra: { tipos: [] } }, { id: 'ga', exe: { cmd: { nome: '', b: 0 }, moral: 5, mant: 0, fome: 0, unid: [{ id: 'u', tropas: 100, hp: 100, hpMax: 100, atq: 0, def: 0, equip: [] }] } });
+  const B = G.lado({ guerra: { tipos: [] } }, { id: 'gb', exe: { cmd: { nome: '', b: 0 }, moral: 5, mant: 0, fome: 0, unid: [{ id: 'v', tropas: 100, hp: 100, hpMax: 100, atq: 0, def: 0, equip: [] }] } });
+  const ctx = { herois: { a: [{ nome: 'Ana', v: 6 }, { nome: 'Dain', v: 7 }], b: [{ nome: 'Sombra', v: 3 }] }, acoes: [{ mom: 'vi', lado: 'a', nome: 'Ana', v: 10 }, { mom: 'ch', lado: 'b', nome: 'Sombra', v: -2 }] };
+  const bv = G.bonus(A, B, ctx, 'a', 'vi'), bvb = G.bonus(B, A, ctx, 'b', 'vi'), bch = G.bonus(A, B, ctx, 'a', 'ch'), bd = G.bonus(A, B, ctx, 'a', 'd100');
+  ok(j(bv.filter(b => b.k === 'herois')) === j([{ k: 'herois', nome: 'Heróis', v: 10 }]) && j(bvb.filter(b => b.k === 'herois')) === j([{ k: 'herois', nome: 'Heróis', v: 3 }]), 'na Virada: os heróis do lado (6 + 7 = 13 → o teto, +10; o outro lado, +3)');
+  ok(!bch.some(b => b.k === 'herois') && bd.some(b => b.k === 'herois' && b.v === 10), 'no Choque, não; na resumida, sim');
+  ok(j(bv.filter(b => b.k === 'heroica')) === j([{ k: 'heroica', nome: 'Ação heroica de Ana', v: 10 }]) && !bch.some(b => b.k === 'heroica') && G.bonus(B, A, ctx, 'b', 'ch').some(b => b.k === 'heroica' && b.v === -2), 'a ação heroica vale só no momento dela e para o lado dela (fora do teto)');
+  ok(G.total(bv) === 20, 'na Virada do lado A: os heróis (+10, o teto) e a ação heroica (+10, fora do teto): ' + G.total(bv));
+  const m1 = G.momento('vi', A, B, ctx, null, [10, 10]), m0 = G.momento('vi', A, B, {}, null, [10, 10]);
+  ok(m1.m - m0.m === 17, 'no momento (com os mesmos dados): +20 de um lado e +3 do outro = 17 a mais na margem: ' + (m1.m - m0.m));
+  const r1 = G.resumida(A, B, { herois: ctx.herois }, null, [50, 50]);
+  ok(r1.ta - r1.tb === 5 * (10 - 3), 'na resumida: 5 × (10 − 3) de diferença pelos heróis: ' + (r1.ta - r1.tb));
 }
 
 console.log(bad ? `${n - bad}/${n} — ${bad} falharam` : `${n} verificações passaram`);

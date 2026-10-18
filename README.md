@@ -989,7 +989,7 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   - **A resumida (d100)**: um d100 de cada lado mais 5 × os bônus; a margem diz o tamanho (menos de 8, empate; até 24,
     apertada; até 49, vitória; até 79, clara; 80 ou mais, esmagadora).
   - **A detalhada (d20)**: um d20 de cada lado em cada momento — Abertura (magos e à distância), Choque (números, ATQ ×
-    DEF, tipos, fortificação e fome), Virada (moral e comandante) e Desfecho (números, moral e fome) —, e o placar soma
+    DEF, tipos, fortificação e fome), Virada (moral e comandante; e os heróis, no lote 9) e Desfecho (números, moral e fome) —, e o placar soma
     as margens (menos de 4, empate; até 11, apertada; até 23, vitória; até 35, clara; 36 ou mais, esmagadora).
     Momento-chave: margem de 2 ou menos, ou saiu 1 ou 20; antes de seguir, o mestre pode mudar um bônus (no próprio
     momento: o dado fica e o resultado muda na hora), rolar de novo, escrever ou parar.
@@ -1083,6 +1083,21 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   Acampamento e a Meditação recebem o de agora). Trocar à mão ("Trocar o de agora", no mundo e na região) vale para o
   trecho de agora, até a próxima mudança (`mao`/`chj` com o trecho `t`); o trecho seguinte continua a partir dele. A aba
   Hoje mostra os climas do dia até agora ("Hoje: Sol (do 1º ao 4º) → Nublado (desde o 5º, agora)") e a próxima mudança.
+- **Os heróis na Guerra** (parte 5): as fichas da mesa (as do grupo, os NPCs; não as dos pets) lutam junto — as do
+  exército (seção Heróis do exército: `exe.herois`, lista de `{ ficha, b }`, até 12; `b`, o bônus que o mestre
+  escreveu, só quando escrito) e as que o mestre põe só numa batalha (na janela, seção Heróis: ficam na batalha, não no
+  exército; cada ficha uma vez só). O bônus de cada um: o escrito, senão o sugerido pela ficha (`bonusSugerido`, em
+  `mundo/guerra.js`: a média de +1 a cada 5 níveis e de +1 a cada 13 pontos do maior atributo, cada um até +10; as
+  contas da ficha como nas Cenas, `TC.rules.resumo`). Somam na Virada da detalhada e na resumida, até +10 por lado
+  (`MAX_HEROIS_BONUS`; a comparação ganha a linha "Heróis"). Nos momentos-chave da detalhada, "Ação heroica…": um
+  herói da batalha rola um atributo da ficha (`TC.dice.rollFixaMais`, com a fixa da ficha) contra a dificuldade que o
+  mestre escreve — passou, +5; passou pelo dobro, +10; falhou, −2 (`resultadoHeroico`; fora do teto), no próprio
+  momento (o dado do momento fica; dá para tirar a ação enquanto ele é o último). No depois, "Os heróis": quanto cada um
+  perde do HP máximo — quem perde, de 10% a 40%, pelo tamanho; quem vence, de 3% a 10%; empate ou trégua, 5%
+  (`feridaDoHeroi`) —, com "Ferir os heróis (no HP da ficha)" (marcado de começo). "Aplicar" grava o HP de cada ficha
+  (o `estado` dela, com `TC.rules.aplicarDelta`) e as ações vão para as notas da batalha no histórico; o aviso
+  "Desfazer" volta o mapa e o HP das fichas. Fora de uma mesa (sem Fichas), a seção só conta quantos heróis o exército
+  tem. Os jogadores não veem os heróis (a projeção do exército não os leva).
 
 ### A Árvore (lote 6)
 
@@ -2092,4 +2107,11 @@ jogadores e a volta pela mesma rota (o botão, andando de volta, o aviso ao cheg
 que muda a cada N tempos (os trechos, o 1º igual ao sorteio do dia, os passos só para os vizinhos, a chance do mês, o
 escolhido à mão até a próxima mudança, o clima de agora, uma vez por dia como antes, a região e a projeção);
 `mundo-lote9` com `SO=clima`, "O clima muda" no calendário, os climas do dia na aba Hoje, o clima de agora junto da data
-e o trocado à mão.
+e o trocado à mão. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
+guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
+banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta
+batalha, o bônus à mão, o teto, a linha da comparação), a ação heroica (com o dado trocado: o dobro e a falha, tirar a
+ação), a Virada com os heróis, os ferimentos (a prévia, aplicar no HP das fichas, o Desfazer e o Refazer — o do aviso e o
+de cima — a partir do HP de agora) e a batalha sem ferir; `mundo-herois.rede`, numa mesa, a ficha feita nas Fichas como
+herói do exército (o bônus pelas contas dela), a batalha e o ferimento que sobe para a mesa (e o Desfazer e o Refazer).

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-6",
+      "data": "2026-10-18",
+      "titulo": "Heróis na Guerra",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra (Mapa-múndi): ponha heróis — as fichas da mesa, do grupo ou NPCs — num exército (Seleção → o exército → Heróis) ou só numa batalha. Cada herói soma um bônus na Virada (e na resumida), sugerido pela ficha (nível e maior atributo, até +10); escreva outro se quiser. Juntos, os heróis de um lado somam no máximo +10."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra: nos momentos-chave da batalha detalhada, “Ação heroica…”: o herói rola um atributo da ficha contra a dificuldade que você escolhe — passou, +5; passou pelo dobro, +10; falhou, −2. Dá para tirar a ação antes de seguir."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra: no fim da batalha, os heróis podem sair feridos — quem perde, de 10% a 40% do HP máximo, pelo tamanho da derrota; quem vence, até 10%; empate ou trégua, 5%. Antes de aplicar, você vê quanto cada um perde (e pode desmarcar); ao aplicar, vai para o HP da ficha, e o Desfazer volta."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-5",
       "data": "2026-10-18",
       "titulo": "O clima muda ao longo do dia",

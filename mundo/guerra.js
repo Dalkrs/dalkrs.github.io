@@ -25,13 +25,36 @@
   const DO_MOMENTO = {
     ab: ['magia', 'distancia'],
     ch: ['numeros', 'qualidade', 'tipos', 'estrutura', 'fome'],
-    vi: ['moral', 'comandante'],
+    vi: ['moral', 'comandante', 'herois'],
     de: ['numeros', 'moral', 'fome'],
-    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'magia', 'distancia', 'estrutura', 'fome'],
+    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'estrutura', 'fome'],
   };
-  const NOMES = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', magia: 'Magos',
+  const NOMES = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', herois: 'Heróis', magia: 'Magos',
     distancia: 'À distância', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre' };
   const BONUS_MESTRE = { tatica: 'Tática', terreno: 'Terreno', reforco: 'Reforço', magia: 'Magia', outro: 'Outro' };
+
+  /* (lote 9) Os heróis: personagens com ficha (os do grupo, NPCs) que lutam junto. O bônus sugerido é a média de dois:
+     +1 a cada 5 níveis (até +10, no nível 50) e +1 a cada 13 pontos do maior atributo (até +10); o mestre pode escrever
+     outro. Somam na Virada (e na resumida), até +10 por lado. A ação heroica, num momento-chave: o herói rola um
+     atributo da ficha contra a dificuldade que o mestre escolhe — passou, +5; passou pelo dobro, +10; falhou, −2 (fora
+     do teto). Os ferimentos (no HP da ficha), pelo tamanho do resultado: quem perde, de 10% a 40% do HP máximo; quem
+     vence, até 10%; empate ou trégua, 5%. */
+  const MAX_HEROIS_BONUS = 10;
+  function bonusSugerido(nivel, maiorAtr) {
+    const a = Math.min(10, Math.max(0, Math.floor((Number(nivel) || 0) / 5))), b = Math.min(10, Math.max(0, Math.floor((Number(maiorAtr) || 0) / 13)));
+    return Math.round((a + b) / 2);
+  }
+  function resultadoHeroico(total, dif) {
+    const d = Math.max(1, Math.round(Number(dif) || 0)), t = Number(total) || 0;
+    return t >= 2 * d ? 10 : t >= d ? 5 : -2;
+  }
+  const FERIDA_PERDEDOR = [5, 10, 20, 30, 40], FERIDA_VENCEDOR = [5, 10, 7, 5, 3];
+  // quanto (em % do HP máximo) a batalha fere um herói do lado `quem`
+  function feridaDoHeroi(fim, quem) {
+    if (!fim || fim.como === 'tregua' || !fim.vence) return 5;
+    const tam = limitar(Math.round(Number(fim.tam) || 0), 0, 4);
+    return quem === fim.vence ? FERIDA_VENCEDOR[tam] : FERIDA_PERDEDOR[tam];
+  }
 
   // um dado de n lados (rng: de 0 a 1)
   const rolar = (n, rng) => 1 + Math.floor(limitar((rng || Math.random)(), 0, 0.999999) * n);
@@ -86,9 +109,16 @@
         return Math.max(0, Math.round(e.def * (e.hpMax ? limitar(e.hp / e.hpMax, 0, 1) : 1)) - Y.cerco);
       },
       fome: () => -Math.min(3, X.fome),
+      // (lote 9) os heróis do lado (o bônus de cada um: o da ficha, ou o que o mestre escreveu), até +10 por lado
+      herois: () => limitar(Math.round(soma((ctx && ctx.herois && ctx.herois[quem]) || [], h => Number(h.v) || 0)), -MAX_HEROIS_BONUS, MAX_HEROIS_BONUS),
     };
     const out = [];
     for (const k of DO_MOMENTO[mom] || []) { const v = c[k](); if (v) out.push({ k, nome: NOMES[k], v }); }
+    // (lote 9) as ações heroicas do momento (fora do teto dos heróis)
+    for (const h of (ctx && ctx.acoes) || []) {
+      if (h.lado !== quem || !h.v || h.mom !== mom) continue;
+      out.push({ k: 'heroica', nome: 'Ação heroica' + (h.nome ? ' de ' + h.nome : ''), v: h.v });
+    }
     for (const b of (ctx && ctx.mestre) || []) {
       if (b.lado !== quem || !b.v) continue;
       if (b.mom && mom !== 'd100' && b.mom !== mom) continue;
@@ -303,6 +333,7 @@
     TAMANHOS, MOMENTOS: ORDEM_MOMENTOS, DO_MOMENTO, NOMES, BONUS_MESTRE, AVANCO, PERDA_PERDEDOR, PERDA_VENCEDOR,
     rolar, lado, numeros, bonus, total, resumida, momento, fimDetalhada, parar, textoFim, tamanhoD100, tamanhoD20,
     perdas, moralDepois, frenteAnda, depois, aplicar, mantimentosDoDia, confrontos,
+    MAX_HEROIS_BONUS, bonusSugerido, resultadoHeroico, feridaDoHeroi, FERIDA_PERDEDOR, FERIDA_VENCEDOR,
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoGuerra;
   if (typeof window !== 'undefined') window.MundoGuerra = MundoGuerra;

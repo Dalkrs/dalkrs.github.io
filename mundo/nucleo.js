@@ -1708,8 +1708,27 @@
     // (na projeção: só os nomes, sem os números)
     if (v.pub) return { pub: true, cmd: { nome: texto(cmd.nome, '', 80).trim() }, unid: unid.map((u, i) => ({ id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo) })) };
     const cons = v.cons == null || v.cons === '' ? null : inteiro(v.cons, null, 1, MAX_TROPAS);
-    return { cmd: { nome: texto(cmd.nome, '', 80).trim(), b: inteiro(cmd.b, 0, -MAX_BONUS, MAX_BONUS), ficha: idRef(cmd.ficha) }, moral: inteiro(v.moral, 5, 0, 10),
+    const out = { cmd: { nome: texto(cmd.nome, '', 80).trim(), b: inteiro(cmd.b, 0, -MAX_BONUS, MAX_BONUS), ficha: idRef(cmd.ficha) }, moral: inteiro(v.moral, 5, 0, 10),
       mant: inteiro(v.mant, 0, 0, 1e9), cons, fome: inteiro(v.fome, 0, 0, 1e4), unid: unid.map((u, i) => normUnid(u, i, vistos)) };
+    // (lote 9) os heróis do exército: as fichas que lutam junto (o bônus do mestre, quando ele escreveu um)
+    const hs = normHerois(v.herois);
+    if (hs.length) out.herois = hs;
+    return out;
+  }
+  // (lote 9) os heróis: { ficha, b? } — uma vez cada ficha; o b (o bônus do mestre) só quando escrito
+  const MAX_HEROIS = 12;
+  function normHerois(v) {
+    const out = [], vistos = new Set();
+    for (const h of Array.isArray(v) ? v : []) {
+      if (!ehObj(h) || out.length >= MAX_HEROIS) continue;
+      const f = idRef(h.ficha);
+      if (!f || vistos.has(f)) continue;
+      vistos.add(f);
+      const x = { ficha: f };
+      if (h.b != null && h.b !== '' && Number.isFinite(num(h.b, NaN))) x.b = inteiro(h.b, 0, -MAX_BONUS, MAX_BONUS);
+      out.push(x);
+    }
+    return out;
   }
   function normEstr(v) {
     if (!ehObj(v)) return null;
@@ -2199,7 +2218,8 @@
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
-    LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
+    normHerois,
+    LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

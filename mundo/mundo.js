@@ -117,17 +117,19 @@
     desfazer() {
       if (!App.podeEditar() || !pilhaDesfazer.length) return false;
       const p = pilhaDesfazer.pop();
-      pilhaRefazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n });
+      pilhaRefazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n, fora: p.fora });
       trocarConteudo(JSON.parse(p.json), p.json, { origem: 'desfazer', rotulo: p.rotulo });
       agendarGravacao();
+      foraDoMapa(p.fora, 'desfazer');
       return true;
     },
     refazer() {
       if (!App.podeEditar() || !pilhaRefazer.length) return false;
       const p = pilhaRefazer.pop();
-      pilhaDesfazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n });
+      pilhaDesfazer.push({ rotulo: p.rotulo, json: jAtual, n: p.n, fora: p.fora });
       trocarConteudo(JSON.parse(p.json), p.json, { origem: 'refazer', rotulo: p.rotulo });
       agendarGravacao();
+      foraDoMapa(p.fora, 'refazer');
       return true;
     },
     podeDesfazer() { return App.podeEditar() && pilhaDesfazer.length > 0; },
@@ -137,6 +139,9 @@
     // o passo que o próximo desfazer (ou refazer) vai mexer: 0 = nenhum. Quem oferece "Desfazer" num aviso guarda
     // este número logo depois da mudança e só desfaz se ele ainda estiver no topo (senão desfaria outra coisa).
     passoAtual() { return pilhaDesfazer.length ? pilhaDesfazer[pilhaDesfazer.length - 1].n : 0; },
+    // (lote 9) o que o passo de agora mudou fora do mapa (o HP das fichas, numa batalha): { desfazer, refazer } — o
+    // Desfazer e o Refazer desse passo (os de cima, o do aviso, Ctrl+Z) levam junto
+    foraDoPasso(fora) { const p = pilhaDesfazer[pilhaDesfazer.length - 1]; if (!p || !fora) return false; p.fora = fora; return true; },
     passoRefazer() { return pilhaRefazer.length ? pilhaRefazer[pilhaRefazer.length - 1].n : 0; },
 
     selecionar(ids, somar = false) {
@@ -205,6 +210,7 @@
   if (DEBUG) window.__mundo = { App, N, get Tela() { return window.MundoTela; }, get Painel() { return window.MundoPainel; }, salvarJa, idb: () => idb };
 
   /* ---------------- o mapa aberto ---------------- */
+  function foraDoMapa(fora, qual) { if (fora && typeof fora[qual] === 'function') { try { fora[qual](); } catch (e) { console.error(e); } } }
   function mudarMapa(rotulo, fn) {
     if (!App.mapa || typeof fn !== 'function') return false;
     let rasc = N.copia(App.mapa), r;
