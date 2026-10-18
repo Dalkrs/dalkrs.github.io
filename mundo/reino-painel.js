@@ -15,6 +15,10 @@
    facção, o estoque, a produção, a manutenção, o que fica e o que falta; as consequências, cada uma com a caixa para
    recusar; as obras), que abre sozinha quando o calendário passa de domingo para segunda; aplicar (com Desfazer) e a
    próxima pendente.
+   (parte 5) A população por estrato: no assentamento, quantas pessoas de cada estrato (a barra, a lista e a janela
+   "População…", com o "Distribuir…" que sugere a divisão de um total pelas porcentagens do nível, sem mudar nada até
+   salvar); na Economia do mundo, os estratos (o que cada pessoa produz ou consome por semana e o lembrete) e a divisão
+   por nível; na prévia da semana, os lembretes dos estratos.
    A bandeira própria de uma facção (sem clã): a janela com o editor do brasão do Clã (a forma, a divisão, as cores, o
    símbolo; numa mesa, uma imagem); a bandeira no Livro do reino e na prévia da semana (a do clã ligado vale antes).
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
@@ -62,6 +66,7 @@
     return out.join(' · ');
   }
   let catAberto = false;                     // o catálogo de construções aberto na aba Reinos (só nesta página)
+  let estrAberto = false;                    // (parte 5) a lista dos estratos aberta na aba Reinos (só nesta página)
 
   /* ---------------- a seção Província (ou Sub-região) ---------------- */
   function secProvincia(o, m) {
@@ -115,7 +120,7 @@
       out.push(h('div', { class: 'prov-ass', 'data-k': 'o:' + o.id + ':ass' }, h('small', { class: 'note', text: 'Assentamentos (' + ass.length + ')' }),
         ass.map(a => h('button', { type: 'button', class: 'li clic', 'data-k': 'ass:' + a.o.id, title: 'Ir para ' + nomeDe(a.o, m), onclick: () => irPara(a.o.id) },
           h('span', { class: 'tx' }, h('b', { text: nomeDe(a.o, m) }),
-            h('small', { text: (a.nivel ? a.nivel.nome : 'sem nível') + ' · ' + fmt(a.o.ass.pop, 0) + ' pessoas' + (a.o.ass.cons ? ' · ' + pl(a.o.ass.cons.length, 'construção', 'construções') : '') + (a.r && a.r.id !== o.id ? ' · em ' + nomeDe(a.r, m) : '') }))))));
+            h('small', { text: (a.nivel ? a.nivel.nome : 'sem nível') + ' · ' + pl(a.o.ass.pop || 0, 'pessoa', 'pessoas') + (a.o.ass.cons ? ' · ' + pl(a.o.ass.cons.length, 'construção', 'construções') : '') + (a.r && a.r.id !== o.id ? ' · em ' + nomeDe(a.r, m) : '') }))))));
     }
     return out;
   }
@@ -157,16 +162,11 @@
         b.niv = v; x.ass = b;
       })));
     if (a) {
-      const pop = campoNumero('o:' + o.id + ':pop', 'População', a.pop, n => mudarObj(o.id, 'mudar a população', x => {
-        const b = x.ass || { niv: null, pop: 0 };
-        if (b.pop === n) return false;
-        b.pop = n; x.ass = b;
-      }), { min: 0, max: 1e9, dica: 'Fixa: só muda quando você mudar.' });
-      out.push(pop);
+      out.push(...blocoPopulacao(o, m));                                // (parte 5) as pessoas de cada estrato
       const r = N().regiaoEm(m, o.x, o.y), prov = r ? R().provinciaDe(m, r) : null;
       out.push(nota(r ? 'Fica em ' + nomeDe(r, m) + (prov && prov !== r ? ' (província ' + nomeDe(prov, m) + ')' : '') + '.' : 'Fora das províncias: não produz para ninguém.'));
-      const pp = R().somar({}, eco.pop, a.pop / 1000), txt = eco.rec.filter(x => pp[x.id]).map(x => x.nome + ' ' + sinalN(pp[x.id])).join(' · ');
-      out.push(nota(txt ? 'Pela população, por semana: ' + txt + '.' : 'A população não produz nada (veja "Produção da população…", na aba Reinos).'));
+      const pp = R().producaoDaPopulacao(m, o), txt = txtTab(m, pp, true);
+      out.push(nota(txt ? 'Pela população, por semana: ' + txt + '.' : a.pop ? 'A população não produz nada (os estratos dela não têm produção: veja os estratos na Economia do mundo, na aba Reinos).' : 'Sem população ainda: use "População…".'));
       out.push(...blocoConstrucoes(o, m), ...blocoSede(o, m));        // (parte 3)
     } else out.push(nota('Uma cidade, uma vila, um castelo: escolha o nível para ele virar assentamento (com a população e as construções).'));
     return secao('Assentamento', out);
@@ -204,7 +204,6 @@
     })));
     out.push(linha(botao('+ Recurso', novoRecurso, { c: 'sm', k: 'eco:rec-novo', off: eco.rec.length >= 24 }),
       botao('Produção do terreno…', janelaTerreno, { c: 'sm', k: 'eco:ter' }),
-      botao('Produção da população…', janelaPopulacao, { c: 'sm', k: 'eco:pop' }),
       botao('Manutenção dos exércitos…', janelaManutencao, { c: 'sm', k: 'eco:manut' }),
       botao('Regras da falta…', janelaRegras, { c: 'sm', k: 'eco:regras' })));
     out.push(nota('O papel diz o que o recurso é para as regras (a moeda, a comida…). O estoque de cada facção fica nos números dela (abra a facção, acima).'));
@@ -218,6 +217,15 @@
         h('button', { type: 'button', class: 'ib', 'data-k': 'eco:n:' + n.id + ':x', title: 'Tirar o nível ' + n.nome, 'aria-label': 'Tirar o nível ' + n.nome, onclick: () => tirarNivel(n.id) }, glifo(X_SVG, 14)));
     })));
     out.push(linha(botao('+ Nível', novoNivel, { c: 'sm', k: 'eco:niv-novo', off: eco.niv.length >= 12 })));
+    // (parte 5) os estratos da população
+    const maxE = (N().LIMITES && N().LIMITES.estratos) || 16;
+    out.push(h('small', { class: 'note eco-rot', text: 'Estratos da população (' + eco.estr.length + ')' }));
+    if (!eco.estr.length) out.push(nota('Nenhum estrato: sem eles, a população não produz. Crie os seus ou ponha os 9 de começo.'));
+    else if (estrAberto) out.push(h('div', { class: 'eco-estrs' }, eco.estr.map(s => linhaEstrato(m, s))));
+    out.push(linha(eco.estr.length ? botao(estrAberto ? 'Esconder os estratos' : 'Mostrar os estratos', () => { estrAberto = !estrAberto; kit().pintar(); }, { c: 'sm', k: 'eco:estr-ver', expandido: estrAberto })
+      : botao('Pôr os 9 de começo', porEstratosProntos, { c: 'sm', k: 'eco:estr-pronto' }),
+      botao('+ Estrato', () => janelaEstrato(null), { c: 'sm', k: 'eco:estr-novo', off: eco.estr.length >= maxE }),
+      botao('Divisão por nível…', janelaDivisao, { c: 'sm', k: 'eco:dist', off: !eco.estr.length || !eco.niv.length })));
     // (parte 3) o catálogo de construções
     out.push(h('small', { class: 'note eco-rot', text: 'Construções do catálogo (' + eco.cons.length + ')' }));
     if (!eco.cons.length) out.push(nota('Nenhuma construção no catálogo: crie as suas ou ponha as 15 prontas (produção, defesa e cívico).'));
@@ -282,7 +290,7 @@
       campos: [{ id: 'nome', rotulo: 'Nome', tipo: 'text', valor: '', ph: 'Ex.: Capital', max: 40, linha: 'a' }, { id: 'esp', rotulo: 'Espaços de construção', tipo: 'number', valor: '8', min: 0, max: 40, linha: 'a' }],
       ler: x => { const n = Math.round(Number(x.esp)); if (!x.nome.trim()) throw new Error('Escreva o nome do nível.'); if (!(n >= 0 && n <= 40)) throw new Error('Os espaços: de 0 a 40.'); return { nome: x.nome.trim(), esp: n }; } });
     if (!v || !K.mesmoMapa(m.id)) return;
-    if (mudarEco('criar o nível', e => { if (e.niv.length >= 12) return false; e.niv.push({ id: N().novoId('nv'), nome: v.nome, esp: v.esp }); }) !== false) K.avisoDesfazer('Nível novo: ' + v.nome + '.');
+    if (mudarEco('criar o nível', e => { if (e.niv.length >= 12) return false; const ult = e.niv[e.niv.length - 1]; e.niv.push({ id: N().novoId('nv'), nome: v.nome, esp: v.esp, dist: ult ? JSON.parse(JSON.stringify(ult.dist || {})) : {} }); }) !== false) K.avisoDesfazer('Nível novo: ' + v.nome + '.');
   }
   async function tirarNivel(id) {
     const K = kit(), m = app().mapa, n = m.eco && m.eco.niv.find(x => x.id === id);
@@ -295,16 +303,174 @@
     }
     if (mudarEco('tirar o nível', e => { const c = e.niv.length; e.niv = e.niv.filter(x => x.id !== id); if (e.niv.length === c) return false; }) !== false) K.avisoDesfazer('O nível ' + n.nome + ' saiu.');
   }
-  // a produção da população: quanto cada mil pessoas de um assentamento produzem por semana
-  async function janelaPopulacao() {
+  /* ---------------- (parte 5) os estratos da população, na Economia do mundo ---------------- */
+  function linhaEstrato(m, s) {
+    const { h, botao, glifo, X_SVG, campoCor } = kit(), pr = txtTab(m, s.prod, true);
+    return h('div', { class: 'cons-li estr', 'data-k': 'eco:e:' + s.id },
+      campoCor('eco:e:' + s.id + ':cor', 'Cor de ' + s.nome, s.cor, v => mudarEco('mudar a cor do estrato', e => { const x = e.estr.find(y => y.id === s.id); if (!x || x.cor === v) return false; x.cor = v; })),
+      h('div', { class: 'tx' }, h('b', { text: s.nome }),
+        h('small', { text: (pr ? pr + ' por pessoa' : 'não produz nem consome') + ' (por semana)' }),
+        s.lembra ? h('small', { class: 'cons-ef', text: 'Lembrete na prévia da semana: ' + s.lembra }) : null,
+        h('div', { class: 'row cons-acoes' }, botao('Editar…', () => janelaEstrato(s.id), { c: 'sm', k: 'eco:e:' + s.id + ':editar' }))),
+      h('button', { type: 'button', class: 'ib', 'data-k': 'eco:e:' + s.id + ':x', title: 'Tirar ' + s.nome, 'aria-label': 'Tirar o estrato ' + s.nome, onclick: () => tirarEstrato(s.id) }, glifo(X_SVG, 14)));
+  }
+  // criar (id null) ou editar um estrato: o nome, o lembrete e o que cada pessoa produz (ou consome) por semana
+  async function janelaEstrato(id) {
     const K = kit(), m = app().mapa;
     if (!ligada(m)) return;
-    const recs = m.eco.rec;
-    const v = await K.janela({ titulo: 'Produção da população', ok: 'Salvar', texto: 'Quanto cada mil pessoas de um assentamento produzem por semana (um número negativo gasta). Vazio ou zero: nada.',
-      campos: recs.map((r, i) => ({ id: r.id, rotulo: r.nome, tipo: 'decimal', valor: m.eco.pop[r.id] ? K.fmtCampo(m.eco.pop[r.id]) : '', ph: '0', linha: 'l' + Math.floor(i / 3) })),
-      ler: vals => lerTabela(vals, recs) });
+    const s = id ? m.eco.estr.find(x => x.id === id) : null, recs = m.eco.rec;
+    if (id && !s) return;
+    const v = await K.janela({ titulo: s ? 'Estrato: ' + s.nome : 'Um estrato novo', ok: s ? 'Salvar' : 'Criar',
+      texto: 'O que cada pessoa deste estrato produz por semana (um número negativo consome; com vírgula: 0,5). O lembrete aparece na prévia da semana, sem mudar nenhum número.',
+      campos: [{ id: 'nome', rotulo: 'Nome', tipo: 'text', valor: s ? s.nome : '', ph: 'Ex.: Pescadores', max: 40, linha: 'a' }, { id: 'lembra', rotulo: 'Lembrete (opcional)', tipo: 'text', valor: s ? s.lembra : '', ph: 'Ex.: rumores', max: 80, linha: 'a' }]
+        .concat(recs.map((r, i) => ({ id: 'r:' + r.id, rotulo: r.nome, tipo: 'decimal', valor: s && s.prod[r.id] ? K.fmtCampo(s.prod[r.id]) : '', ph: '0', linha: 'l' + Math.floor(i / 3) }))),
+      ler: x => {
+        if (!x.nome.trim()) throw new Error('Escreva o nome do estrato.');
+        const vals = {};
+        for (const r of recs) vals[r.id] = x['r:' + r.id];
+        return { nome: x.nome.trim(), lembra: x.lembra.trim(), prod: lerTabela(vals, recs) };
+      } });
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const ok = mudarEco(s ? 'mudar o estrato ' + s.nome : 'criar o estrato ' + v.nome, e => {
+      if (s) {
+        const x = e.estr.find(y => y.id === s.id);
+        if (!x || (x.nome === v.nome && x.lembra === v.lembra && JSON.stringify(x.prod) === JSON.stringify(v.prod))) return false;
+        Object.assign(x, v);
+        return;
+      }
+      if (e.estr.length >= ((N().LIMITES && N().LIMITES.estratos) || 16)) return false;
+      const usadas = new Set(e.estr.map(x => x.cor)), cor = CORES_REC.find(c => !usadas.has(c)) || CORES_REC[e.estr.length % CORES_REC.length];
+      e.estr.push({ id: N().novoId('es'), nome: v.nome, cor, prod: v.prod, lembra: v.lembra });
+    });
+    if (ok !== false) { if (!s) estrAberto = true; K.avisoDesfazer(s ? v.nome + ': salvo.' : v.nome + ': um estrato novo (nos assentamentos, ponha as pessoas dele em "População…").'); }
+  }
+  async function tirarEstrato(id) {
+    const K = kit(), m = app().mapa, s = m.eco && m.eco.estr.find(x => x.id === id);
+    if (!s) return;
+    const ass = (m.objs || []).filter(o => o.k === 'm' && o.ass && o.ass.estr && o.ass.estr[id] > 0), gente = ass.reduce((t, o) => t + o.ass.estr[id], 0);
+    if (gente) {
+      const ok = await K.confirmar({ titulo: 'Tirar o estrato ' + s.nome + '?', ok: 'Tirar o estrato', perigo: true,
+        texto: (gente === 1 ? 'A pessoa dele' : 'As ' + kit().fmt(gente, 0) + ' pessoas dele') + (ass.length === 1 ? ' (em ' + kit().nomeDe(ass[0], m) + ')' : ' (em ' + ass.length + ' assentamentos)') + ' saem junto: a população diminui. Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+    }
+    if (mudarEco('tirar o estrato ' + s.nome, e => { const n = e.estr.length; e.estr = e.estr.filter(x => x.id !== id); if (e.estr.length === n) return false; }) !== false) K.avisoDesfazer('O estrato ' + s.nome + ' saiu.');
+  }
+  function porEstratosProntos() {
+    if (mudarEco('pôr os estratos de começo', e => {
+      if (e.estr.length) return false;
+      e.estr = N().estratosDeComeco(e.rec);
+      const ids = new Set(e.estr.map(s => s.id));
+      for (const n of e.niv) if (!Object.keys(n.dist || {}).length) n.dist = N().distDeComeco(n.id, ids);
+    }) !== false) { estrAberto = true; kit().avisoDesfazer('Os 9 estratos de começo entraram.'); }
+  }
+  // a divisão por nível: quantos % de cada estrato o "Distribuir…" sugere em cada nível
+  async function janelaDivisao() {
+    const K = kit(), m = app().mapa;
+    if (!ligada(m) || !m.eco.estr.length || !m.eco.niv.length) return;
+    const v = await janelaTabela({ titulo: 'Divisão por nível', ok: 'Salvar', positivo: true,
+      texto: 'Quantos % de cada estrato o "Distribuir…" sugere, em cada nível de assentamento. Não precisa somar 100: vale a proporção. Vazio ou zero: nenhum.',
+      linhas: m.eco.niv, colunas: m.eco.estr, valores: Object.fromEntries(m.eco.niv.map(n => [n.id, n.dist])) });
     if (v == null || !K.mesmoMapa(m.id)) return;
-    if (mudarEco('mudar a produção da população', e => { if (JSON.stringify(e.pop) === JSON.stringify(v)) return false; e.pop = v; }) !== false) K.avisoDesfazer('Produção da população salva.');
+    if (mudarEco('mudar a divisão por nível', e => {
+      let mudou = false;
+      for (const n of e.niv) { const d = v[n.id] || {}; if (JSON.stringify(n.dist || {}) !== JSON.stringify(d)) { n.dist = d; mudou = true; } }
+      if (!mudou) return false;
+    }) !== false) K.avisoDesfazer('Divisão por nível salva.');
+  }
+
+  /* ---------------- (parte 5) a população do assentamento ---------------- */
+  function blocoPopulacao(o, m) {
+    const { h, botao, fmt } = kit(), a = o.ass, est = a.estr || {}, total = a.pop || 0;
+    const com = m.eco.estr.filter(s => est[s.id] > 0), sem = total - com.reduce((t, s) => t + est[s.id], 0);
+    return [h('div', { class: 'row pop-cab', 'data-k': 'o:' + o.id + ':pop-cab' }, h('b', { text: 'População: ' + pl(total, 'pessoa', 'pessoas') }), botao('População…', () => janelaPessoas(o.id), { c: 'sm', k: 'o:' + o.id + ':pop' })),
+      total ? h('div', { class: 'pop-barra', 'data-k': 'o:' + o.id + ':pop-barra', 'aria-hidden': 'true' }, com.map(s => h('span', { 'data-estr': s.id, title: s.nome + ': ' + fmt(est[s.id], 0), style: { width: (100 * est[s.id] / total).toFixed(2) + '%', background: s.cor } }))) : null,
+      com.length || sem > 0 ? h('small', { class: 'pop-lista', 'data-k': 'o:' + o.id + ':pop-lista', text: com.map(s => s.nome + ' ' + fmt(est[s.id], 0)).concat(sem > 0 ? ['sem estrato ' + fmt(sem, 0)] : []).join(' · ') }) : null];
+  }
+  async function janelaPessoas(oId) {
+    const A = app(), K = kit(), m = A.mapa, o = m && K.achar(m, oId);
+    if (!o || !o.ass || !ligada(m)) return;
+    if (!m.eco.estr.length) { A.toast('Não há estratos no mundo: crie um (ou ponha os de começo) na Economia do mundo, na aba Reinos.'); return; }
+    const v = await dialogoPessoas(m, o);
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const total = Object.keys(v).reduce((t, k) => t + v[k], 0);
+    const ok = K.mudarObj(oId, 'mudar a população', x => {
+      if (!x.ass) return false;
+      const ant = x.ass.estr || {};
+      if (m.eco.estr.every(s => (ant[s.id] || 0) === (v[s.id] || 0)) && (x.ass.pop || 0) === total) return false;
+      if (total) x.ass.estr = v; else delete x.ass.estr;
+      x.ass.pop = total;
+    });
+    if (ok !== false) K.avisoDesfazer('A população de ' + K.nomeDe(o, m) + ': ' + pl(total, 'pessoa', 'pessoas') + '.');
+  }
+  /* A janela da população: as pessoas de cada estrato (com o que produzem por semana, na hora) e o "Distribuir", que
+     enche os campos com a divisão sugerida de um total (nada muda até salvar). → { estrato: pessoas } ou null */
+  function dialogoPessoas(m, o) {
+    const { h, lerNum, nomeDe } = kit(), MAX = (N().LIMITES && N().LIMITES.pessoas) || 1e6;
+    return new Promise(resolve => {
+      const est = o.ass.estr || {}, nv = R().nivelDaDivisao(m, o.ass.niv);
+      const titulo = h('h2', { text: 'A população de ' + nomeDe(o, m) });
+      titulo.id = 'dl-pop-' + Date.now().toString(36);
+      const linhas = m.eco.estr.map(s => {
+        const inp = h('input', { type: 'text', inputmode: 'numeric', class: 'in', 'data-k': 'pop:' + s.id, value: est[s.id] ? String(est[s.id]) : '', placeholder: '0', autocomplete: 'off', 'aria-label': 'Pessoas: ' + s.nome });
+        const prod = h('td', { class: 'pop-prod', 'data-k': 'pop:' + s.id + ':prod' });
+        inp.addEventListener('input', () => atualizar());
+        return { s, inp, prod, tr: h('tr', { 'data-estr': s.id }, h('th', { scope: 'row' }, h('i', { style: { background: s.cor } }), h('span', { text: s.nome })), h('td', null, inp), prod) };
+      });
+      const total = h('input', { type: 'text', inputmode: 'numeric', class: 'in', 'data-k': 'pop:total', value: o.ass.pop ? String(o.ass.pop) : '', placeholder: 'Ex.: 100', autocomplete: 'off', 'aria-label': 'Quantas pessoas distribuir' });
+      const bDist = h('button', { type: 'button', class: 'btn sm', 'data-k': 'pop:distribuir', text: 'Distribuir' });
+      const resumo = h('p', { class: 'pop-resumo', 'data-k': 'pop:resumo', 'aria-live': 'polite' }), err = h('p', { class: 'err', role: 'alert' });
+      const lerTodos = () => {
+        const out = {};
+        for (const { s, inp } of linhas) {
+          const t = inp.value.trim();
+          if (!t) continue;
+          const n = lerNum(t);
+          if (!Number.isInteger(n) || n < 0 || n > MAX) throw new Error(s.nome + ': um número inteiro de 0 a ' + kit().fmt(MAX, 0) + '.');
+          if (n) out[s.id] = n;
+        }
+        return out;
+      };
+      function atualizar() {
+        let v = null;
+        try { v = lerTodos(); err.textContent = ''; } catch (e) { err.textContent = e.message; }
+        const soma = {};
+        for (const { s, prod } of linhas) {
+          const n = v ? v[s.id] || 0 : 0;
+          prod.textContent = n ? txtTab(m, R().somar({}, s.prod, n), true) || '—' : '';
+          if (n) R().somar(soma, s.prod, n);
+        }
+        const tot = v ? Object.keys(v).reduce((t, k) => t + v[k], 0) : 0;
+        resumo.textContent = v ? 'Total: ' + pl(tot, 'pessoa', 'pessoas') + '. Por semana, pela população: ' + (txtTab(m, soma, true) || 'nada') + '.' : '';
+      }
+      bDist.addEventListener('click', () => {
+        const t = lerNum(total.value.trim());
+        if (!Number.isInteger(t) || t < 1 || t > MAX) { err.textContent = 'Para distribuir: um número inteiro de pessoas (de 1 a ' + kit().fmt(MAX, 0) + ').'; total.focus(); return; }
+        const d = R().distribuir(m, o.ass.niv, t);
+        for (const { s, inp } of linhas) inp.value = d[s.id] ? String(d[s.id]) : '';
+        atualizar();
+      });
+      total.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); bDist.click(); } });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'pop:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'pop:ok', text: 'Salvar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        nv ? h('div', { class: 'pop-dist' }, h('label', null, 'Distribuir', total), bDist,
+          h('small', { class: 'note', 'data-k': 'pop:como', text: 'Pela divisão de ' + nv.nome + ': os números entram na tabela e nada muda até salvar.' }))
+          : h('p', { class: 'note', 'data-k': 'pop:como', text: 'Sem uma divisão por nível para sugerir (na Economia do mundo, "Divisão por nível…"): escreva as pessoas de cada estrato.' }),
+        h('div', { class: 'eco-tab-caixa' }, h('table', { class: 'eco-tab pop-tab' },
+          h('thead', null, h('tr', null, h('th', { scope: 'col', text: 'Estrato' }), h('th', { scope: 'col', text: 'Pessoas' }), h('th', { scope: 'col', text: 'Por semana' }))),
+          h('tbody', null, linhas.map(l => l.tr)))),
+        resumo, err, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl eco-dl pop-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); try { fim(lerTodos()); } catch (e) { err.textContent = (e && e.message) || 'Confira os números.'; } });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      atualizar();
+      document.body.append(dl);
+      dl.showModal();
+      (nv ? total : linhas[0].inp).focus();
+    });
   }
   // a produção do terreno: uma tabela (um terreno por linha, um recurso por coluna), por hexágono e por semana
   async function janelaTerreno() {
@@ -787,6 +953,12 @@
         blocos.length ? blocos : h('p', { class: 'note', text: 'Nada muda nos estoques nesta semana.' }),
         cons.length ? h('fieldset', { class: 'sem-conss' }, h('legend', { text: 'O que a falta traz (desmarque o que não vale)' }), cons) : null,
         prev.obras.length ? h('div', { class: 'sem-obras-caixa' }, h('small', { class: 'note', text: 'As obras' }), listaObras) : null,
+        (prev.lembretes || []).length ? h('div', { class: 'sem-lemb-caixa' }, h('small', { class: 'note', text: 'Lembretes dos estratos (nada muda sozinho)' }),
+          h('ul', { class: 'sem-lemb', 'data-k': 'sem:lembretes' }, prev.lembretes.map(l => {
+            const o = achar(m, l.o), nomeE = id => (m.eco.estr.find(s => s.id === id) || { nome: id }).nome;
+            return h('li', { 'data-k': 'sem:lemb:' + l.o }, h('b', { text: (o ? nomeDe(o, m) : 'Assentamento') + (l.fac ? ' (' + nomeF(l.fac) + ')' : '') + ': ' }),
+              h('span', { text: l.itens.map(x => nomeE(x.estr) + ' (' + kit().fmt(x.n, 0) + '): ' + x.txt).join(' · ') }));
+          }))) : null,
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl eco-dl sem-dl', 'aria-labelledby': titulo.id }, form);
       let feito = false;
@@ -968,6 +1140,6 @@
     return secao('Livro do reino', out);
   }
 
-  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, janelaPopulacao, ligar, janelaObra, janelaTipo, icones,
+  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, ligar, janelaObra, janelaTipo, icones, janelaEstrato, janelaDivisao, janelaPessoas,
     janelaSemana, janelaManutencao, janelaRegras, iniciar, janelaBandeira };
 })();

@@ -1793,11 +1793,16 @@
   }
   // a guerra do mapa (só quando tem algo: o mapa de antes fica igual)
   /* ---------------- (lote 10) a economia do mundo ----------------
-     eco = { on, rec: [{ id, nome, cor, papel }], ter: { terreno: { recurso: n } }, pop: { recurso: n }, niv: [{ id, nome, esp }] }:
+     eco = { on, rec: [{ id, nome, cor, papel }], ter: { terreno: { recurso: n } }, niv: [{ id, nome, esp, dist }] }:
      os recursos do mundo (o papel diz o que ele é para as regras: a moeda, a comida…), a produção por semana de cada
-     hexágono pelo terreno, a de cada mil pessoas de um assentamento e os níveis dos assentamentos (com os espaços de
-     construção). Desligada (on: false), tudo fica guardado. Na região, prod = o valor do mestre por semana; no
-     marcador, ass = { niv, pop } (o assentamento: o nível e a população, que o mestre muda).
+     hexágono pelo terreno e os níveis dos assentamentos (com os espaços de construção). Desligada (on: false), tudo fica
+     guardado. Na região, prod = o valor do mestre por semana; no marcador, ass = { niv, pop } (o assentamento: o nível e
+     a população, que o mestre muda).
+     (parte 5) A população por pessoa: eco.estr = os estratos [{ id, nome, cor, prod (por pessoa, por semana; negativo
+     consome), lembra (o lembrete que a prévia da semana mostra: "rumores", "apoio"…) }] — sem a lista guardada, os de
+     começo —; em cada nível, dist = { estrato: % } (a divisão que o "Distribuir…" sugere; sem ela, a de começo); no
+     assentamento, ass.estr = { estrato: pessoas } e ass.pop = a soma (a população de antes, sem estratos, vira
+     Camponeses).
      (parte 3) eco.cons = o catálogo de construções: [{ id, nome, ic (o ícone), esp (os espaços que ocupa), exige: { niv
      (o nível mínimo do assentamento), ter: [terrenos: um deles na região], cons (outra construção pronta antes) },
      niveis: [{ custo, sem (as semanas de obra), prod, gasto (por semana), def (a defesa que soma na fortificação), ef (o
@@ -1852,6 +1857,37 @@
     return out;
   }
   const REGRAS_FALTA = { fome: 10, moral: 1, obras: true, outro: true, moralOutro: 1 };
+  // (parte 5) os estratos de começo (por pessoa, por semana; a produção pelo papel do recurso) e a divisão de começo por nível
+  const MAX_ESTR = 16, MAX_PESSOAS = 1e6, MAX_LEMBRA = 80;
+  const ESTRATOS_INICIAIS = [
+    { id: 'camponeses', nome: 'Camponeses', cor: '#9fbf4a', prod: { comida: 0.6 }, lembra: '' },
+    { id: 'artesaos', nome: 'Artesãos', cor: '#a8743c', prod: { madeira: 0.2, pedra: 0.2 }, lembra: '' },
+    { id: 'mercadores', nome: 'Mercadores', cor: '#e6ab4f', prod: { moeda: 1 }, lembra: '' },
+    { id: 'aventureiros', nome: 'Aventureiros', cor: '#e58a6b', prod: { moeda: 0.3 }, lembra: 'rumores' },
+    { id: 'clero', nome: 'Clero e sábios', cor: '#b39cf0', prod: { magia: 0.2 }, lembra: 'apoio' },
+    { id: 'guarda', nome: 'Guarda', cor: '#7fb7e0', prod: { comida: -0.4 }, lembra: 'defesa' },
+    { id: 'nobreza', nome: 'Nobreza', cor: '#f2c14e', prod: { moeda: -1 }, lembra: 'apoio' },
+    { id: 'idosos', nome: 'Idosos', cor: '#9aa3b5', prod: { comida: -0.3 }, lembra: '' },
+    { id: 'criancas', nome: 'Crianças', cor: '#6fbf8f', prod: { comida: -0.3 }, lembra: '' },
+  ];
+  const DIST_INICIAL = {
+    aldeia: { camponeses: 55, artesaos: 6, mercadores: 2, aventureiros: 2, clero: 2, guarda: 3, idosos: 10, criancas: 20 },
+    vila: { camponeses: 42, artesaos: 10, mercadores: 5, aventureiros: 3, clero: 3, guarda: 5, nobreza: 1, idosos: 11, criancas: 20 },
+    cidade: { camponeses: 28, artesaos: 15, mercadores: 9, aventureiros: 5, clero: 4, guarda: 7, nobreza: 2, idosos: 12, criancas: 18 },
+    metropole: { camponeses: 20, artesaos: 17, mercadores: 12, aventureiros: 6, clero: 5, guarda: 8, nobreza: 3, idosos: 12, criancas: 17 },
+  };
+  // os estratos de começo para estes recursos (a produção vai para o recurso de cada papel; o papel que não há, sai)
+  function estratosDeComeco(rec) {
+    const porPapel = {};
+    for (const r of Array.isArray(rec) ? rec : []) if (r && r.papel && !porPapel[r.papel]) porPapel[r.papel] = r.id;
+    return ESTRATOS_INICIAIS.map(s => { const prod = {}; for (const p of Object.keys(s.prod)) if (porPapel[p]) prod[porPapel[p]] = s.prod[p]; return { id: s.id, nome: s.nome, cor: s.cor, prod, lembra: s.lembra }; });
+  }
+  // a divisão de começo de um nível (a dos níveis de começo pelo id; outro nível, a da Vila), só dos estratos que existem
+  function distDeComeco(nivId, estrIds) {
+    const base = DIST_INICIAL[nivId] || DIST_INICIAL.vila, out = {};
+    for (const k of Object.keys(base)) if (estrIds.has(k)) out[k] = base[k];
+    return out;
+  }
   function normEco(v, terrenos, tiposG, cal) {
     if (!ehObj(v)) return null;
     const rec = [], vistos = new Set();
@@ -1866,15 +1902,24 @@
     }
     const ids = new Set(rec.map(r => r.id)), terIds = new Set((terrenos || []).map(t => t.id)), ter = {};
     if (ehObj(v.ter)) for (const k of Object.keys(v.ter)) if (terIds.has(k)) { const t = normTabProd(v.ter[k], ids); if (Object.keys(t).length) ter[k] = t; }
+    // (parte 5) os estratos (sem a lista guardada, os de começo)
+    const estr = [], ve = new Set();
+    for (const s of Array.isArray(v.estr) ? v.estr : estratosDeComeco(rec)) {
+      if (!ehObj(s) || estr.length >= MAX_ESTR) continue;
+      const id = idOk(s.id);
+      if (!id || ve.has(id)) continue;
+      ve.add(id);
+      estr.push({ id, nome: texto(s.nome, '', 40).trim() || 'Estrato', cor: cor(s.cor, '#9aa3b5'), prod: normTabProd(s.prod, ids), lembra: texto(s.lembra, '', MAX_LEMBRA).trim() });
+    }
     const niv = [], vn = new Set();
     for (const n of Array.isArray(v.niv) ? v.niv : []) {
       if (!ehObj(n) || niv.length >= MAX_NIV) continue;
       const id = idOk(n.id);
       if (!id || vn.has(id)) continue;
       vn.add(id);
-      niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40) });
+      niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40), dist: ehObj(n.dist) ? normTabPos(n.dist, ve) : distDeComeco(id, ve) });
     }
-    const eco = { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
+    const eco = { on: sim(v.on), rec, ter, estr, niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
     // (parte 4) a semana: sem o número guardado, a de hoje (nenhuma pendente); sem os dias da semana no mapa, nenhuma
     const semHoje = ehObj(cal) && Number.isInteger(cal.sem0) ? Math.floor((cal.sem0 + Math.floor(num(cal.dia, 0))) / 7) : null;
     // (a guardada fica mesmo à frente de hoje: o calendário que volta e depois anda não reabre as semanas já fechadas)
@@ -1896,7 +1941,15 @@
      sede do clã. Sem nada disso, nada. (As referências ao catálogo e às facções se conferem depois, com o mapa todo.) */
   function normAss(v) {
     if (!ehObj(v)) return null;
-    const niv = idRef(v.niv), pop = inteiro(v.pop, 0, 0, MAX_POP_ASS), out = { niv, pop }, cons = [], vistos = new Set();
+    const niv = idRef(v.niv), out = { niv, pop: inteiro(v.pop, 0, 0, MAX_POP_ASS) }, cons = [], vistos = new Set();
+    // (parte 5) as pessoas de cada estrato (a soma é a população)
+    if (ehObj(v.estr)) {
+      const estr = {};
+      for (const k of Object.keys(v.estr).slice(0, MAX_ESTR * 2)) { const n = idOk(k) ? inteiro(v.estr[k], 0, 0, MAX_PESSOAS) : 0; if (n) estr[k] = n; }
+      out.pop = Object.keys(estr).reduce((s, k) => s + estr[k], 0);
+      if (out.pop) out.estr = estr;
+    }
+    const pop = out.pop;
     for (const c of Array.isArray(v.cons) ? v.cons : []) {
       if (!ehObj(c) || cons.length >= MAX_CONS_ASS || !idRef(c.t)) continue;
       const o = ehObj(c.obra) ? c.obra : null;
@@ -1918,6 +1971,20 @@
      produção do clã só dos recursos do mundo. */
   function conferirAss(a, eco, facs) {
     const tipos = new Map(eco ? eco.cons.map(c => [c.id, c]) : []), recIds = new Set(eco ? eco.rec.map(r => r.id) : []);
+    // (parte 5) as pessoas só dos estratos que existem (a soma é a população); a população sem estratos vira Camponeses
+    // (ou o primeiro estrato, sem eles); o assentamento fica com as chaves na ordem de sempre
+    if (eco) {
+      const eids = eco.estr.map(s => s.id);
+      if (a.estr) {
+        for (const k of Object.keys(a.estr)) if (!eids.includes(k)) delete a.estr[k];
+        a.pop = Object.keys(a.estr).reduce((s, k) => s + a.estr[k], 0);
+        if (!a.pop) delete a.estr;
+      } else if (a.pop > 0 && eids.length) {
+        a.estr = { [eids.includes('camponeses') ? 'camponeses' : eids[0]]: Math.min(a.pop, MAX_PESSOAS) };
+        a.pop = Math.min(a.pop, MAX_PESSOAS);
+        for (const k of ['cons', 'cla']) if (k in a) { const x = a[k]; delete a[k]; a[k] = x; }
+      }
+    }
     if (a.cons) {
       a.cons = a.cons.filter(c => {
         const t = tipos.get(c.t);
@@ -2379,9 +2446,10 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
-    PAPEIS_REC, normEco, normAss, REGRAS_FALTA,
+    PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
-      construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS },
+      construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
+      estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

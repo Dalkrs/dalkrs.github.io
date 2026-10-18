@@ -6,8 +6,9 @@
    sub-regiões de dentro (que ficam com a sub-região). O Livro do reino conta, por facção, as províncias, as sub-regiões,
    os hexágonos e os exércitos (com as tropas).
    (parte 2) A economia do mundo (mapa.eco, normalizada no núcleo): os recursos (os de começo: Lapros, Suprimentos,
-   Madeira, Pedra, Orith e Runas), a produção por semana de cada hexágono pelo terreno, a de cada mil pessoas dos
-   assentamentos e o valor que o mestre escreve na região. A parte própria de uma região soma os hexágonos próprios, os
+   Madeira, Pedra, Orith e Runas), a produção por semana de cada hexágono pelo terreno, a da população dos
+   assentamentos ((parte 5) por pessoa, pelos estratos: cada estrato produz ou consome por pessoa) e o valor que o
+   mestre escreve na região. A parte própria de uma região soma os hexágonos próprios, os
    assentamentos dela (o de dentro de uma sub-região fica com a sub-região) e o valor do mestre; a província soma a dela
    e a das sub-regiões; cada facção, a parte própria das regiões dela. O estoque de cada facção é o número do recurso
    do mundo nela (f.rec, com o mesmo id).
@@ -23,6 +24,9 @@
    moeda, as obras param e a moral dos exércitos cai; sem outro recurso, as construções que gastam dele param (e os
    exércitos que o usam na manutenção perdem moral). As obras andam uma semana. aplicarSemana faz tudo isso no
    rascunho, menos as consequências que o mestre recusou; as semanas pendentes vão uma de cada vez.
+   (parte 5) A população por estrato: o que cada assentamento produz pelas pessoas de cada estrato, a divisão sugerida
+   de um total pelas porcentagens do nível ("Distribuir…", pelos maiores restos) e, na prévia, os lembretes dos
+   estratos (os aventureiros trazem rumores…), sem mudar nenhum número.
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -154,7 +158,6 @@
     de: { moeda: 0.5 }, ne: {}, ag: { comida: 1 }, la: { comida: 3 }, ru: { pedra: 1, magia: 0.5 }, lv: { metal: 1, magia: 0.5 }, cr: { magia: 2 },
     se: { madeira: 2, comida: 1 }, sv: { comida: 1.5 }, tu: { comida: 0.5 }, tc: { magia: 1 },
   };
-  const POP_INICIAL = { moeda: 5 };                                 // por mil pessoas, por semana
   const NIVEIS_INICIAIS = [{ id: 'aldeia', nome: 'Aldeia', esp: 2 }, { id: 'vila', nome: 'Vila', esp: 4 }, { id: 'cidade', nome: 'Cidade', esp: 6 }, { id: 'metropole', nome: 'Metrópole', esp: 8 }];
   const copia = x => JSON.parse(JSON.stringify(x));
   const ecoDe = m => (ehObj(m) && ehObj(m.eco) && m.eco.on ? m.eco : null);
@@ -174,9 +177,9 @@
       if (base) for (const p of Object.keys(base)) if (porPapel[p] && base[p]) linha[porPapel[p]] = base[p];
       if (Object.keys(linha).length) ter[t.id] = linha;
     }
-    const pop = {};
-    for (const p of Object.keys(POP_INICIAL)) if (porPapel[p]) pop[porPapel[p]] = POP_INICIAL[p];
-    const e = { on: true, rec, ter, pop, niv: copia(NIVEIS_INICIAIS) };
+    // (parte 5) os estratos de começo e a divisão de começo de cada nível
+    const N = NN(), estr = N.estratosDeComeco(rec), eids = new Set(estr.map(s => s.id));
+    const e = { on: true, rec, ter, estr, niv: copia(NIVEIS_INICIAIS).map(n => Object.assign(n, { dist: N.distDeComeco(n.id, eids) })) };
     e.cons = catalogoPronto(m, e);                                   // (parte 3) o catálogo de construções de começo
     return e;
   }
@@ -239,7 +242,7 @@
     if (c && c.has(r.id)) return c.get(r.id);
     const out = { terreno: {}, pop: {}, cons: {}, gasto: {}, mestre: {}, total: {} };
     for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); }
-    for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.pop > 0) somar(out.pop, eco.pop, a.o.ass.pop / 1000);
+    for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.estr) somar(out.pop, producaoDaPopulacao(m, a.o));
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.cons) { const e = efeitoDasConstrucoes(m, a.o); somar(out.cons, e.prod); somar(out.gasto, e.gasto); }
     somar(out.mestre, r.prod);
     somar(somar(somar(out.total, out.terreno), out.pop), out.mestre);
@@ -273,6 +276,36 @@
     return { por, sem };
   }
   const infoDoCla = (clas, id) => (!clas || !id ? null : typeof clas === 'function' ? clas(id) || null : typeof clas.get === 'function' ? clas.get(id) || null : null);
+  /* ---------------- (parte 5) a população por estrato ---------------- */
+  // o que a população de um assentamento produz por semana: as pessoas de cada estrato vezes o que cada uma produz
+  function producaoDaPopulacao(m, o) {
+    const e = ecoDe(m), out = {};
+    if (!e || !ehObj(o) || !ehObj(o.ass) || !ehObj(o.ass.estr)) return out;
+    for (const s of e.estr) { const n = Number(o.ass.estr[s.id]) || 0; if (n > 0) somar(out, s.prod, n); }
+    return out;
+  }
+  /* A divisão sugerida de um total de pessoas pelos estratos: as porcentagens do nível (sem o nível, as do primeiro
+     nível que tem divisão; não precisam somar 100: vale a proporção), arredondada pelos maiores restos (o empate fica
+     com o estrato que vem antes). → { estrato: pessoas } sem os zeros ({} sem divisão ou sem gente) */
+  function distribuir(m, nivId, total) {
+    const e = ehObj(m) && ehObj(m.eco) ? m.eco : null, t = Math.floor(Number(total) || 0), nv = e && t > 0 ? nivelDaDivisao(m, nivId) : null;
+    if (!nv) return {};
+    const ids = e.estr.map(s => s.id).filter(id => nv.dist[id] > 0), soma = ids.reduce((s, id) => s + nv.dist[id], 0);
+    const exato = ids.map(id => t * nv.dist[id] / soma), base = exato.map(x => Math.floor(x + 1e-9));
+    const resto = t - base.reduce((s, x) => s + x, 0), ordem = ids.map((_, i) => i).sort((a, b) => (exato[b] - base[b]) - (exato[a] - base[a]) || a - b);
+    for (let k = 0; k < resto; k++) base[ordem[k % ordem.length]]++;
+    const out = {};
+    ids.forEach((id, i) => { if (base[i]) out[id] = base[i]; });
+    return out;
+  }
+  // o nível cuja divisão o "Distribuir…" usa para um assentamento (o dele, senão o primeiro com divisão) — ou null
+  function nivelDaDivisao(m, nivId) {
+    const e = ehObj(m) && ehObj(m.eco) ? m.eco : null;
+    if (!e) return null;
+    const temDist = n => n && ehObj(n.dist) && e.estr.some(s => n.dist[s.id] > 0);
+    return temDist(nivelDe(m, nivId)) ? nivelDe(m, nivId) : e.niv.find(temDist) || null;
+  }
+
   // os assentamentos de dentro de uma região (os dela e os das sub-regiões): [{ o, r, nivel }]
   function assentamentosDaRegiao(m, r) {
     if (!ehObj(r)) return [];
@@ -460,7 +493,7 @@
     if (!e || !pend) return null;
     const n = e.sem, dias = diasDaSemana(m, n), rg = e.regras || {}, papel = new Map(e.rec.map(r => [r.id, r.papel || '']));
     const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
-    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [] };
+    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [] };
     const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
     const semMoeda = new Set();
     for (const f of m.faccoes || []) {
@@ -503,6 +536,11 @@
         if (r && rg.moralOutro > 0) out.cons.push({ id: 'outro:' + g.id, tipo: 'outro', fac: f.id, g: g.id, r, d: rg.moralOutro, de: moral, para: Math.max(0, moral - rg.moralOutro) });
       }
     }
+    // (parte 5) os lembretes dos estratos (os aventureiros trazem rumores…): por assentamento, só para o mestre ver
+    for (const a of assentamentosDe(m)) {
+      const itens = (e.estr || []).filter(s => s.lembra && a.o.ass.estr && a.o.ass.estr[s.id] > 0).map(s => ({ estr: s.id, n: a.o.ass.estr[s.id], txt: s.lembra }));
+      if (itens.length) out.lembretes.push({ o: a.o.id, fac: dono(a.o), itens });
+    }
     // as obras: andam uma semana (sem moeda, a da facção que responde por ela para — quem pagou, senão a dona do lugar)
     for (const a of assentamentosDe(m)) for (const c of a.o.ass.cons || []) {
       if (!c.obra) continue;
@@ -543,7 +581,8 @@
   }
 
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
-    RECURSOS_INICIAIS, TERRENO_INICIAL, POP_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
+    RECURSOS_INICIAIS, TERRENO_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
+    producaoDaPopulacao, distribuir, nivelDaDivisao,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
     CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
     cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,

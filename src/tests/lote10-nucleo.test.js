@@ -13,6 +13,9 @@
 //     soldados, na proporção; a das sem tipo), a prévia (o estoque, a produção, a manutenção, o que fica — nunca abaixo
 //     de zero —, o que falta, as construções que param, as consequências, as obras) e aplicar (com o que o mestre
 //     recusou; as regras desligadas; uma semana de cada vez).
+//   · (parte 5) a população por estrato: os estratos normalizados (os de começo no mapa de antes), a divisão por nível, as
+//     pessoas de cada estrato (a de antes vira Camponeses), a produção pela população, o "Distribuir…" (pelos maiores
+//     restos) e os lembretes na prévia.
 //   · a bandeira própria da facção (sem clã): normalizada (o que não serve volta ao de começo ou sai), ao lado da do clã,
 //     e na projeção (a da facção escondida não vai).
 const N = require('../../mundo/nucleo.js');
@@ -122,11 +125,12 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
       { id: 'r1', k: 'r', pts: quad(0, 0, 100, 100), prod: { la: 3, sal: -1.234, xx: 5 } }] });
   eq(e0.eco.rec, [{ id: 'la', nome: 'Lapros', cor: '#e6ab4f', papel: 'moeda' }, { id: 'sal', nome: 'Recurso', cor: '#9aa3b5' }], 'os recursos do mundo: um id cada, o nome aparado (vazio: "Recurso"), o papel só dos que existem');
   eq([e0.eco.on, e0.eco.ter], [true, { pl: { la: 2, sal: 0.5 } }], 'ligada; a tabela do terreno: só os terrenos e os recursos que existem, sem os zeros');
-  eq(e0.eco.pop, { la: 5 }, 'a tabela da população: sem os zeros');
-  eq(e0.eco.niv, [{ id: 'vila', nome: 'Vila', esp: 4 }, { id: 'cid', nome: 'Nível', esp: 40 }], 'os níveis: um id cada, os espaços de 0 a 40');
+  ok(!('pop' in e0.eco), '(parte 5) a tabela de antes (por mil pessoas) sai: a população produz pelos estratos');
+  eq(e0.eco.niv.map(n => [n.id, n.nome, n.esp]), [['vila', 'Vila', 4], ['cid', 'Nível', 40]], 'os níveis: um id cada, os espaços de 0 a 40');
+  ok(j(e0.eco.niv[0].dist) === j(N.DIST_INICIAL.vila) && j(e0.eco.niv[1].dist) === j(N.DIST_INICIAL.vila), '(parte 5) sem a divisão guardada, a de começo (a Vila pelo id; outro nível, a da Vila)');
   const ob = id => e0.objs.find(o => o.id === id);
-  eq([ob('m1').ass, 'ass' in ob('m2'), ob('m3').ass, ob('r1').prod], [{ niv: 'vila', pop: 1201 }, false, { niv: null, pop: 30 }, { la: 3, sal: -1.23 }],
-    'o assentamento: o nível que não existe sai (sem população, o assentamento todo); a produção do mestre só dos recursos do mundo');
+  eq([ob('m1').ass, 'ass' in ob('m2'), ob('m3').ass, ob('r1').prod], [{ niv: 'vila', pop: 1201, estr: { camponeses: 1201 } }, false, { niv: null, pop: 30, estr: { camponeses: 30 } }, { la: 3, sal: -1.23 }],
+    'o assentamento: o nível que não existe sai (sem população, o assentamento todo); a população sem estratos vira Camponeses; a produção do mestre só dos recursos do mundo');
   const pe = N.projetar(e0);
   ok(!('eco' in pe) && !pe.objs.some(o => 'ass' in o || 'prod' in o), 'na projeção: sem a economia, sem os assentamentos e sem a produção do mestre (por enquanto, tudo do mestre)');
   ok(!('eco' in N.normalizarMapa({ nome: 'M' })), 'sem economia, o campo nem fica (o mapa de antes fica igual)');
@@ -145,8 +149,10 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const mi = N.normalizarMapa(base), ei = R.ecoInicial(mi);
   eq(ei.rec.map(r => [r.id, r.nome, r.papel]), [['lapros', 'Lapros', 'moeda'], ['suprimentos', 'Suprimentos', 'comida'], ['madeira', 'Madeira', 'madeira'], ['pedra', 'Pedra', 'pedra'], ['orith', 'Orith', 'metal'], ['runas', 'Runas', 'magia']],
     'os recursos de começo: Lapros, Suprimentos, Madeira, Pedra, Orith e Runas (com o papel de cada um)');
-  ok(ei.ter.pl.suprimentos === 2 && ei.ter.fl.madeira === 2 && ei.ter.mo.orith === 1 && !('ne' in ei.ter) && j(ei.pop) === j({ lapros: 5 }) && ei.niv.map(n => n.nome).join() === 'Aldeia,Vila,Cidade,Metrópole',
-    'a tabela de começo (pelo papel: planície dá suprimentos, floresta madeira, montanha orith…), a população (5 Lapros por mil) e os níveis');
+  ok(ei.ter.pl.suprimentos === 2 && ei.ter.fl.madeira === 2 && ei.ter.mo.orith === 1 && !('ne' in ei.ter) && ei.niv.map(n => n.nome).join() === 'Aldeia,Vila,Cidade,Metrópole',
+    'a tabela de começo (pelo papel: planície dá suprimentos, floresta madeira, montanha orith…) e os níveis');
+  ok(ei.estr.length === 9 && j(ei.estr[0]) === j({ id: 'camponeses', nome: 'Camponeses', cor: '#9fbf4a', prod: { suprimentos: 0.6 }, lembra: '' }) && j(ei.niv[0].dist) === j(N.DIST_INICIAL.aldeia) && j(ei.niv[3].dist) === j(N.DIST_INICIAL.metropole),
+    '(parte 5) os 9 estratos de começo (por pessoa, pelo papel do recurso) e a divisão de começo de cada nível');
   const ml = JSON.parse(j(mi)), rel = R.ligarEconomia(ml), m = N.normalizarMapa(ml);
   const fa = m.faccoes[0], fb = m.faccoes[1];
   eq([rel.ligados, rel.semana, N.semanaDe(m.cal, m.cal.dia)], [[{ fac: 'fa', nome: 'lápros' }], true, 0], 'ligar: o recurso de mesmo nome da facção passa a ser o do mundo; o mapa passa a contar a semana (hoje: segunda-feira)');
@@ -164,14 +170,14 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   R.hexesDaRegiao(m, s1).slice(0, 2).forEach(k => { hexes[k] = 'mo'; });   // montanha: 2 pedra e 1 orith
   const mc = Object.assign(JSON.parse(j(m)), { hexes }), od = id => mc.objs.find(x => x.id === id);
   od('p1').prod = { lapros: 7 };                                       // o valor do mestre (com a economia ligada)
-  od('v1').ass = { niv: 'vila', pop: 2000 }; od('v2').ass = { niv: 'cidade', pop: 5000 }; od('v3').ass = { niv: 'aldeia', pop: 900 };
+  od('v1').ass = { niv: 'vila', pop: 0, estr: { camponeses: 50, mercadores: 5 } }; od('v2').ass = { niv: 'cidade', pop: 0, estr: { camponeses: 20, mercadores: 10, guarda: 10, nobreza: 2 } }; od('v3').ass = { niv: 'aldeia', pop: 0, estr: { camponeses: 10 } };
   const mp = N.normalizarMapa(mc);
   const o = id => mp.objs.find(x => x.id === id);
   eq(R.producaoPropria(mp, o('s2')), { terreno: { madeira: 8, suprimentos: 2 }, pop: {}, cons: {}, gasto: {}, mestre: {}, total: { madeira: 8, suprimentos: 2 } }, 'a Prefeitura: só o terreno (4 florestas)');
-  eq(R.producaoPropria(mp, o('s1')), { terreno: { pedra: 4, orith: 2 }, pop: { lapros: 10 }, cons: {}, gasto: {}, mestre: {}, total: { pedra: 4, orith: 2, lapros: 10 } }, 'o Ducado: 2 montanhas e a vila de 2.000 pessoas (5 Lapros por mil)');
-  eq(R.producaoPropria(mp, o('p1')), { terreno: { suprimentos: 10 }, pop: { lapros: 25 }, cons: {}, gasto: {}, mestre: { lapros: 7 }, total: { suprimentos: 10, lapros: 32 } }, 'o Reino, a parte própria: 5 planícies, a cidade de 5.000 e os 7 Lapros do mestre');
-  eq(R.producaoDaRegiao(mp, o('p1')).total, { suprimentos: 12, lapros: 42, pedra: 4, orith: 2, madeira: 8 }, 'a província soma a dela e a das sub-regiões');
-  eq(R.producaoPorFaccao(mp), { por: { fa: { suprimentos: 12, lapros: 32, madeira: 8 }, fb: { pedra: 4, orith: 2, lapros: 10 } }, sem: {} }, 'por facção: Aldar com o Reino e a Prefeitura; o Vale com o Ducado (de outro dono); a aldeia fora das províncias não produz para ninguém');
+  eq(R.producaoPropria(mp, o('s1')), { terreno: { pedra: 4, orith: 2 }, pop: { suprimentos: 30, lapros: 5 }, cons: {}, gasto: {}, mestre: {}, total: { pedra: 4, orith: 2, suprimentos: 30, lapros: 5 } }, 'o Ducado: 2 montanhas e a vila (50 camponeses: 30 Suprimentos; 5 mercadores: 5 Lapros)');
+  eq(R.producaoPropria(mp, o('p1')), { terreno: { suprimentos: 10 }, pop: { suprimentos: 8, lapros: 8 }, cons: {}, gasto: {}, mestre: { lapros: 7 }, total: { suprimentos: 18, lapros: 15 } }, 'o Reino, a parte própria: 5 planícies, a cidade (a guarda e a nobreza consomem) e os 7 Lapros do mestre');
+  eq(R.producaoDaRegiao(mp, o('p1')).total, { suprimentos: 50, lapros: 20, pedra: 4, orith: 2, madeira: 8 }, 'a província soma a dela e a das sub-regiões');
+  eq(R.producaoPorFaccao(mp), { por: { fa: { suprimentos: 20, lapros: 15, madeira: 8 }, fb: { pedra: 4, orith: 2, suprimentos: 30, lapros: 5 } }, sem: {} }, 'por facção: Aldar com o Reino e a Prefeitura; o Vale com o Ducado (de outro dono); a aldeia fora das províncias não produz para ninguém');
   eq(R.assentamentosDaRegiao(mp, o('p1')).map(a => [a.o.id, a.r.id, a.nivel.nome]), [['v1', 's1', 'Vila'], ['v2', 'p1', 'Cidade']], 'os assentamentos de dentro da província (com a região e o nível de cada um)');
   const off = N.normalizarMapa(Object.assign(JSON.parse(j(mp)), { eco: Object.assign({}, mp.eco, { on: false }) }));
   ok(R.producaoPropria(off, off.objs.find(x => x.id === 'p1')) === null && j(R.producaoPorFaccao(off)) === j({ por: {}, sem: {} }) && off.eco.rec.length === 6,
@@ -179,7 +185,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   // ligar de novo: a guardada (o nome que o mestre deu fica, nas facções também) volta a produzir
   const lo = JSON.parse(j(off)); lo.eco.rec[0].nome = 'Ouro';
   const rel3 = R.ligarEconomia(lo), mo = N.normalizarMapa(lo);
-  ok(mo.eco.on === true && mo.eco.rec.length === 6 && mo.eco.rec[0].nome === 'Ouro' && mo.faccoes[0].rec[0].nome === 'Ouro' && rel3.semana === false && R.producaoPropria(mo, mo.objs.find(x => x.id === 'p1')).total.lapros === 32,
+  ok(mo.eco.on === true && mo.eco.rec.length === 6 && mo.eco.rec[0].nome === 'Ouro' && mo.faccoes[0].rec[0].nome === 'Ouro' && rel3.semana === false && R.producaoPropria(mo, mo.objs.find(x => x.id === 'p1')).total.lapros === 15,
     'ligar de novo: a economia guardada volta (com o nome que o mestre deu) e produz');
   // o que dá zero sai da conta (o valor do mestre que gasta tudo o que o terreno dá)
   const mz0 = JSON.parse(j(mp)); mz0.objs.find(x => x.id === 's2').prod = { madeira: -8 };
@@ -398,6 +404,66 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   ok(R.semanasPendentes(N.normalizarMapa(r10)) === 0, 'ligar de novo depois de semanas desligada: nenhuma pendente');
   // sem a semana pendente, nada
   ok(R.semanaPrevia(comDia(9)) === null && R.aplicarSemana(JSON.parse(j(comDia(9))), null, [], '') === null, 'sem semana pendente: sem prévia, e aplicar não faz nada');
+}
+
+/* ---- (parte 5) a população por estrato ---- */
+{
+  const REC = [{ id: 'la', nome: 'Lapros', papel: 'moeda' }, { id: 'su', nome: 'Suprimentos', papel: 'comida' }, { id: 'ru', nome: 'Runas', papel: 'magia' }];
+  // os estratos normalizados
+  const e1 = N.normalizarMapa({ nome: 'M', eco: { on: true, rec: REC, niv: [{ id: 'vila', nome: 'Vila', esp: 4, dist: { cam: 60, mer: '40', xx: 5, out: -3 } }, { id: 'nv1', nome: 'Forte', esp: 2 }],
+    estr: [{ id: 'cam', nome: '  Camponeses ', cor: '#9FBF4A', prod: { su: 0.6, xx: 1, la: 0 }, lembra: '  ' }, { id: 'cam', nome: 'repetido' }, { id: 'mer', nome: '', prod: { la: '1,5' }, lembra: 'x'.repeat(120) }, { nome: 'sem id' }] } }).eco;
+  eq(e1.estr.map(s => [s.id, s.nome, s.cor, s.prod, s.lembra.length]), [['cam', 'Camponeses', '#9fbf4a', { su: 0.6 }, 0], ['mer', 'Estrato', '#9aa3b5', {}, 80]],
+    'os estratos: um id cada, o nome aparado (vazio: "Estrato"), a produção só dos recursos do mundo (sem os zeros), o lembrete até 80 letras');
+  eq([e1.niv[0].dist, e1.niv[1].dist], [{ cam: 60, mer: 40 }, {}], 'a divisão do nível: só dos estratos que existem e acima de zero; o nível sem divisão fica com a de começo (só dos estratos que existem: aqui, nenhum)');
+  const e2 = N.normalizarMapa({ nome: 'M', eco: { on: true, rec: REC, estr: [], niv: [{ id: 'vila', nome: 'Vila', esp: 4, dist: {} }] } }).eco;
+  ok(e2.estr.length === 0 && j(e2.niv[0].dist) === '{}', 'sem nenhum estrato (o mestre tirou todos) e a divisão vazia: ficam assim (não voltam os de começo)');
+  const e3 = N.normalizarMapa({ nome: 'M', eco: { on: true, rec: REC } }).eco;
+  ok(e3.estr.length === 9 && j(e3.estr.find(s => s.id === 'mercadores').prod) === j({ la: 1 }) && j(e3.estr.find(s => s.id === 'artesaos').prod) === '{}' && e3.estr.find(s => s.id === 'aventureiros').lembra === 'rumores',
+    'o mapa de antes (sem a lista): os 9 de começo; a produção vai para o recurso de cada papel (sem madeira nem pedra, os artesãos não produzem)');
+  // as pessoas de cada estrato no assentamento
+  const base = { nome: 'M', larg: 2000, alt: 1400, faccoes: [{ id: 'fa', nome: 'Aldar' }],
+    eco: { on: true, rec: REC, niv: [{ id: 'vila', nome: 'Vila', esp: 4 }, { id: 'cidade', nome: 'Cidade', esp: 6 }],
+      estr: [{ id: 'cam', nome: 'Camponeses', prod: { su: 0.6 } }, { id: 'mer', nome: 'Mercadores', prod: { la: 1 }, lembra: 'comércio' }, { id: 'gua', nome: 'Guarda', prod: { su: -0.4 }, lembra: 'defesa' }, { id: 'cle', nome: 'Clero', prod: { ru: 0.25 } }] },
+    objs: [
+      { id: 'r', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 900, 900) },
+      { id: 'a1', k: 'm', x: 100, y: 100, ass: { niv: 'vila', pop: 999, estr: { cam: 50.4, mer: '7', gua: -3, xx: 9, fan: 4 }, cons: [{ id: 'k', t: 'nada', n: 1 }] } },
+      { id: 'a2', k: 'm', x: 200, y: 100, ass: { niv: 'cidade', pop: 40, cla: { id: 'c1', prod: {} } } },
+      { id: 'a3', k: 'm', x: 300, y: 100, ass: { niv: 'vila', pop: 0, estr: { fan: 9 } } }] };
+  const mb = N.normalizarMapa(base), o = id => mb.objs.find(x => x.id === id);
+  eq(o('a1').ass, { niv: 'vila', pop: 57, estr: { cam: 50, mer: 7 } }, 'as pessoas de cada estrato: inteiras, só as dos estratos que existem (a população é a soma)');
+  eq(o('a2').ass, { niv: 'cidade', pop: 40, estr: { cam: 40 }, cla: { id: 'c1', prod: {} } }, 'a população de antes (sem estratos) vira Camponeses, com as chaves na ordem de sempre');
+  eq(o('a3').ass, { niv: 'vila', pop: 0 }, 'só de estratos que não existem: a população fica zero');
+  const semCam = JSON.parse(j(base)); semCam.eco.estr = semCam.eco.estr.filter(s => s.id !== 'cam');
+  eq(N.normalizarMapa(semCam).objs.find(x => x.id === 'a2').ass.estr, { mer: 40 }, 'sem os Camponeses, a população de antes vai para o primeiro estrato');
+  const depois = JSON.parse(j(base)); depois.eco.estr = [{ id: 'mer', nome: 'Mercadores' }, { id: 'camponeses', nome: 'Camponeses' }];
+  eq(N.normalizarMapa(depois).objs.find(x => x.id === 'a2').ass.estr, { camponeses: 40 }, 'com os Camponeses (mesmo não sendo o primeiro), a população de antes vai para eles');
+  const nenhum = JSON.parse(j(base)); nenhum.eco.estr = [];
+  eq(N.normalizarMapa(nenhum).objs.find(x => x.id === 'a2').ass, { niv: 'cidade', pop: 40, cla: { id: 'c1', prod: {} } }, 'sem nenhum estrato no mundo, a população fica como estava (sem estrato)');
+  ok(j(N.normalizarMapa(JSON.parse(j(mb)))) === j(mb), 'normalizar de novo não muda nada (a população e a ordem das chaves)');
+  // a produção pela população
+  eq(R.producaoDaPopulacao(mb, o('a1')), { su: 30, la: 7 }, 'o que a população produz por semana: 50 camponeses (30 Suprimentos) e 7 mercadores (7 Lapros)');
+  const mg = JSON.parse(j(mb)); mg.objs.find(x => x.id === 'a1').ass.estr = { cam: 10, gua: 20, cle: 3 };
+  const mgn = N.normalizarMapa(mg);
+  eq(R.producaoDaPopulacao(mgn, mgn.objs.find(x => x.id === 'a1')), { su: -2, ru: 0.75 }, 'quem consome tira: 10 camponeses (+6) e 20 guardas (−8) dão −2 Suprimentos; 3 do clero, 0,75 Runa');
+  eq(R.producaoPropria(mb, o('r')).pop, { su: 54, la: 7 }, 'a região soma a população dos assentamentos dela (a1 e a2)');
+  // o "Distribuir…": as porcentagens do nível, pelos maiores restos
+  const md = N.normalizarMapa(Object.assign(JSON.parse(j(base)), { eco: Object.assign(JSON.parse(j(base.eco)), { niv: [{ id: 'vila', nome: 'Vila', esp: 4, dist: { cam: 50, mer: 30, gua: 20 } }, { id: 'cidade', nome: 'Cidade', esp: 6, dist: { cam: 1, mer: 1, gua: 1 } }, { id: 'vazio', nome: 'Vazio', esp: 1, dist: {} }] }) }));
+  eq(R.distribuir(md, 'vila', 100), { cam: 50, mer: 30, gua: 20 }, 'distribuir 100 na Vila: 50, 30 e 20');
+  eq(R.distribuir(md, 'vila', 7), { cam: 4, mer: 2, gua: 1 }, 'distribuir 7: 3,5 / 2,1 / 1,4 → os maiores restos levam o que sobra (a soma é 7)');
+  eq(R.distribuir(md, 'cidade', 10), { cam: 4, mer: 3, gua: 3 }, 'partes iguais (não precisa somar 100): o empate fica com quem vem antes');
+  eq([R.distribuir(md, 'vazio', 12), R.nivelDaDivisao(md, 'vazio').id, R.distribuir(md, null, 10)], [{ cam: 6, mer: 4, gua: 2 }, 'vila', { cam: 5, mer: 3, gua: 2 }], 'o nível sem divisão (ou sem nível) usa a do primeiro nível que tem (12: 6 / 3,6 / 2,4 → 6, 4, 2)');
+  eq([R.distribuir(md, 'vila', 0), R.distribuir(md, 'vila', -5)], [{}, {}], 'nada para distribuir: nada');
+  for (const t of [1, 2, 3, 13, 99, 101, 1000]) { const d = R.distribuir(md, 'vila', t); ok(Object.values(d).reduce((a, b) => a + b, 0) === t, 'distribuir ' + t + ': a soma é ' + t + ' (' + j(d) + ')'); }
+  // os lembretes na prévia (sem mudar nenhum número)
+  const ms = N.normalizarMapa(Object.assign(JSON.parse(j(mb)), { cal: Object.assign({}, mb.cal, { sem0: 0, dia: 7 }), eco: Object.assign(JSON.parse(j(mb.eco)), { sem: 0 }) }));
+  const pv = R.semanaPrevia(ms);
+  eq(pv.lembretes, [{ o: 'a1', fac: 'fa', itens: [{ estr: 'mer', n: 7, txt: 'comércio' }] }], 'a prévia lembra o que os estratos com lembrete fazem (por assentamento, com a facção dona)');
+  const ap = JSON.parse(j(ms)); R.aplicarSemana(ap, null, [], 'Semana');
+  ok(j(N.normalizarMapa(ap).objs.find(x => x.id === 'a1').ass) === j(ms.objs.find(x => x.id === 'a1').ass), 'aplicar a semana não mexe na população (o lembrete é só lembrete)');
+  // a economia de começo já vem com os estratos e a divisão
+  const ml = N.normalizarMapa({ nome: 'M' }), r0 = JSON.parse(j(ml)); R.ligarEconomia(r0);
+  const ligado = N.normalizarMapa(r0).eco;
+  ok(ligado.estr.length === 9 && ligado.niv.every(n => Object.keys(n.dist).length >= 8), 'ligar a economia: os 9 estratos e a divisão de cada nível');
 }
 
 /* ---- a bandeira própria da facção (sem clã) ---- */

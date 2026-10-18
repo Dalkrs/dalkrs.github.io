@@ -609,6 +609,22 @@ dialog.mundo-dl.eco-dl { width: min(880px, calc(100% - 24px)); }
 .sem-obras { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; color: var(--fg-2); }
 .sem-obras li.pronta { color: var(--ok); }
 .sem-obras li.parada { color: var(--danger); }
+/* (lote 10, parte 5) a população por estrato: no assentamento, na janela, os estratos e os lembretes da prévia */
+.pop-cab { align-items: center; justify-content: space-between; }
+.pop-cab b { font-size: 13px; color: var(--fg); }
+.pop-barra { display: flex; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid var(--line-strong); background: var(--surface); }
+.pop-barra span { display: block; height: 100%; min-width: 2px; }
+.pop-lista { font-size: 12px; color: var(--fg-2); }
+dialog.mundo-dl.pop-dl { width: min(560px, calc(100% - 24px)); }
+.pop-dist { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.mundo-dl .pop-dist label { flex: 0 0 120px; }
+.mundo-dl .pop-dist .note { flex: 1 1 220px; font-size: 12.5px; }
+.pop-tab td.pop-prod { color: var(--fg-2); font-size: 12px; white-space: normal; }
+.mundo-dl .pop-resumo { font-size: 13px; color: var(--fg); }
+.eco-estrs { display: grid; gap: 6px; }
+.cons-li.estr input.cor { width: 30px; height: 30px; padding: 2px; }
+.sem-lemb { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; color: var(--fg-2); }
+.sem-lemb b { color: var(--fg); font-weight: 600; }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -1004,15 +1020,15 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=22"></script>
+<script src="nucleo.js?v=23"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=4"></script>
+<script src="reino.js?v=5"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
 <script src="painel.js?v=29"></script>
 <script src="guerra-painel.js?v=4"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=5"></script>
+<script src="reino-painel.js?v=6"></script>
 <script src="mundo.js?v=13"></script>
 </body>
 </html>

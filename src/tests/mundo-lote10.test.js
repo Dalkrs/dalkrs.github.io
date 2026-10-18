@@ -24,6 +24,9 @@
 //     negativo) e as regras da falta; o calendário passa de domingo para segunda ("+7 dias") e a prévia abre sozinha (o
 //     estoque, a produção, a manutenção, o que fica e o que falta; as consequências — recusar as obras paradas muda as
 //     obras —); aplicar, desfazer, "1 semana para fechar" e fechar pelo botão; duas pendentes, uma de cada vez.
+//   · (parte 5, SO=populacao) os estratos na Economia do mundo (mostrar, editar, criar, tirar — o com gente pergunta —,
+//     a divisão por nível); a população da vila (a janela: Distribuir, que só enche os campos; Cancelar; o erro; no
+//     celular; salvar, a barra, a lista e o que produzem; desfazer); os lembretes dos estratos na prévia da semana.
 //   · (SO=bandeira) a bandeira própria da facção (sem clã): criar (a janela com a de começo, as escolhas e a prévia; nada
 //     muda antes de criar; no celular, cabe), no mapa, na lista, no editor e no Livro; editar e cancelar (ou Esc); salvar
 //     e desfazer; a imagem (o mapa a mostra; "Voltar ao desenho"); com um clã ligado, vale a do clã (a própria fica
@@ -54,6 +57,7 @@ async function camadas(a, abrir) {
 const naCam = (a, k) => a.F.locator(`#camPop [data-k="${k}"]`);
 const comoJogador = async (a, sim) => { await A(a, s => { __mundo.App.comoJogador = s; __mundo.App.emit('muda', { origem: 'fora' }); }, sim); await espera(400); };
 const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.keys(b || {}))); return [...ks].every(k => (a || {})[k] === (b || {})[k]); };
 
 (async () => {
   const t = await start();
@@ -234,14 +238,12 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     await L.F.fill('dialog.eco-dl[open] [data-k="tab:fl:madeira"]', '3'); await L.F.fill('dialog.eco-dl[open] [data-k="tab:fl:runas"]', '0,5');
     await L.F.click('dialog.eco-dl[open] button[type="submit"]'); await espera(400);
     ok(await A(L, () => JSON.stringify(__mundo.App.mapa.eco.ter.fl)) === j({ suprimentos: 0.5, madeira: 3, runas: 0.5 }), 'salvar: a floresta dá 3 de madeira e 0,5 de runas: ' + await A(L, () => JSON.stringify(__mundo.App.mapa.eco.ter.fl)));
-    await botao(L, 'eco:pop');
-    await L.F.fill('dialog.mundo-dl[open] #dl-lapros', '10,5'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
-    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.eco.pop)) === j({ lapros: 10.5 }), 'a produção da população: 10,5 Lapros por mil pessoas (com vírgula)');
     // os níveis
     await botao(L, 'eco:niv-novo');
     await L.F.fill('dialog.mundo-dl[open] #dl-nome', 'Capital'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
     const niv = await A(L, () => __mundo.App.mapa.eco.niv.map(n => n.nome + ':' + n.esp));
     ok(niv.join() === 'Aldeia:2,Vila:4,Cidade:6,Metrópole:8,Capital:8', 'um nível novo (Capital, 8 espaços), no fim: ' + niv.join());
+    ok(await A(L, () => { const n = __mundo.App.mapa.eco.niv; return JSON.stringify(n[4].dist) === JSON.stringify(n[3].dist) && Object.keys(n[4].dist).length > 0; }), '(parte 5) o nível novo começa com a divisão por estrato do último (a Metrópole)');
     const cap = await A(L, () => __mundo.App.mapa.eco.niv[4].id);
     await botao(L, 'eco:n:' + cap + ':x');
     ok(await A(L, () => __mundo.App.mapa.eco.niv.length) === 4, 'tirar o nível (nenhum assentamento usa: sem perguntar)');
@@ -249,33 +251,37 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     await aba(L, 'selecao'); await selecionar(L, 'vl');
     ok(/Assentamento/i.test(await textoPane(L)) && await campo(L, 'o:vl:niv').count() === 1, 'no marcador: a seção Assentamento');
     await campo(L, 'o:vl:niv').selectOption('vila'); await espera(300);
-    await campo(L, 'o:vl:pop').fill('2000'); await campo(L, 'o:vl:pop').press('Enter'); await espera(300);
+    await botao(L, 'o:vl:pop');
+    await L.F.waitForSelector('dialog.pop-dl[open]');
+    await L.F.fill('dialog.pop-dl[open] [data-k="pop:total"]', '100'); await L.F.click('dialog.pop-dl[open] [data-k="pop:distribuir"]'); await L.F.click('dialog.pop-dl[open] [data-k="pop:ok"]'); await espera(400);
+    const VILA100 = { camponeses: 42, artesaos: 10, mercadores: 5, aventureiros: 3, clero: 3, guarda: 5, nobreza: 1, idosos: 11, criancas: 20 };
     const pane = await textoPane(L);
-    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'vl').ass)) === j({ niv: 'vila', pop: 2000 }) && /Fica em Prefeitura do Sul \(província Reino de Aldar\)\./.test(pane) && /Pela população, por semana: Lapros \+21\./.test(pane),
-      'a vila: o nível, a população, onde fica e o que produz pela população (10,5 por mil)');
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'vl').ass)) === j({ niv: 'vila', pop: 100, estr: VILA100 }) && /Fica em Prefeitura do Sul \(província Reino de Aldar\)\./.test(pane)
+      && /Pela população, por semana: Lapros \+4,9 · Suprimentos \+13,9 · Madeira \+2 · Pedra \+2 · Runas \+0,6\./.test(pane),
+      'a vila: o nível, 100 pessoas distribuídas pela divisão da Vila, onde fica e o que produz pela população (por pessoa, por estrato)');
     await campo(L, 'o:vl:niv').selectOption(''); await espera(300);
     ok(await A(L, () => !('ass' in __mundo.App.mapa.objs.find(o => o.id === 'vl'))) && !(await campo(L, 'o:vl:pop').count()), '"Não é assentamento": o marcador deixa de ser (e some a população)');
     await A(L, () => __mundo.App.desfazer()); await espera(300);
-    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'vl').ass)) === j({ niv: 'vila', pop: 2000 }), 'desfazer: a vila de volta, com as 2.000 pessoas');
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'vl').ass)) === j({ niv: 'vila', pop: 100, estr: VILA100 }), 'desfazer: a vila de volta, com as 100 pessoas');
     // a província
     await selecionar(L, 'p1');
     const esperado = await A(L, () => { const m = __mundo.App.mapa; return window.MundoReino.producaoDaRegiao(m, m.objs.find(o => o.id === 'p1')); });
     const prod = await A(L, () => Array.from(document.querySelectorAll('#pane [data-k="o:p1:prod"] .prod-li')).map(e => e.innerText.replace(/\s+/g, ' ')));
-    ok(prod.some(x => x === 'Madeira +' + String(esperado.total.madeira).replace('.', ',') + ' terreno +' + String(esperado.terreno.madeira).replace('.', ',')) && prod.some(x => /^Lapros \+21 população \+21$/.test(x)),
+    ok(prod.some(x => x === 'Madeira +' + String(esperado.total.madeira).replace('.', ',') + ' terreno +' + String(esperado.terreno.madeira).replace('.', ',') + ' · população +2') && prod.some(x => /^Lapros \+4,9 população \+4,9$/.test(x)),
       'a produção da província por semana e de onde vem (o terreno, a população): ' + j(prod));
     const notaProd = await A(L, () => { const e = document.querySelector('#pane [data-k="o:p1:prod"] .note'); return e ? e.textContent : ''; });
     ok(prod.length === Object.values(esperado.total).filter(Boolean).length && notaProd === 'Produção por semana (com as sub-regiões)', 'uma linha por recurso que a província produz (o que não produz não aparece), com as sub-regiões: ' + j([prod.length, notaProd]));
     await botao(L, 'o:p1:prod-mestre');
-    await L.F.fill('dialog.mundo-dl[open] #dl-lapros', '7'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
+    await L.F.fill('dialog.mundo-dl[open] #dl-lapros', '3'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
     const prod2 = await A(L, () => Array.from(document.querySelectorAll('#pane [data-k="o:p1:prod"] .prod-li')).map(e => e.innerText.replace(/\s+/g, ' ')));
-    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'p1').prod)) === j({ lapros: 7 }) && prod2.some(x => x === 'Lapros +28 população +21 · do mestre +7'), 'a produção do mestre (7 Lapros): entra na conta: ' + j(prod2));
-    ok(/Assentamentos \(1\) Vila Alta Vila · 2\.000 pessoas · em Prefeitura do Sul/.test(await textoPane(L)), 'os assentamentos de dentro da província');
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'p1').prod)) === j({ lapros: 3 }) && prod2.some(x => x === 'Lapros +7,9 população +4,9 · do mestre +3'), 'a produção do mestre (3 Lapros): entra na conta: ' + j(prod2));
+    ok(/Assentamentos \(1\) Vila Alta Vila · 100 pessoas · em Prefeitura do Sul/.test(await textoPane(L)), 'os assentamentos de dentro da província');
     await A(L, () => { const e = document.querySelector('#pane [data-k="o:p1:prod"]'); if (e) e.scrollIntoView({ block: 'center' }); });
     await semAvisos(L); await foto('l10-producao');
     // o Livro e a facção
     await aba(L, 'faccoes');
     const lv = await A(L, () => { const e = document.querySelector('#pane [data-k="livro:fa"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
-    ok(/Produz por semana: Lapros 28 · .*Madeira/.test(lv) && /Estoque: Lapros 40/.test(lv), 'o Livro: o que Aldar produz por semana e o estoque: ' + lv);
+    ok(/Produz por semana: Lapros 7,9 · .*Madeira/.test(lv) && /Estoque: Lapros 40/.test(lv), 'o Livro: o que Aldar produz por semana e o estoque: ' + lv);
     await botao(L, 'fac:fa');
     ok(await campo(L, 'f:fa:r:lapros:n').count() === 1 && !(await campo(L, 'f:fa:r:lapros:nome').count()) && !(await campo(L, 'f:fa:r:lapros:x').count()), 'na facção: o estoque de Lapros (do mundo: sem renomear nem tirar aqui)');
     ok(await A(L, () => { const p = document.getElementById('pane').getBoundingClientRect(), ls = [...document.querySelectorAll('#pane .rec-linha[data-rec]')];
@@ -297,7 +303,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     ok((await fillDe(L, 's2')).fill === await A(L, () => __mundo.App.mapa.eco.rec.find(r => r.id === 'lapros').cor), 'a Prefeitura (a que mais produz Lapros: a vila) com a cor inteira do recurso');
     const leg = await A(L, () => document.getElementById('modoLeg').innerText.replace(/\s+/g, ' '));
     const topo = await A(L, () => { const m = __mundo.App.vista(), R = window.MundoReino; return Math.max(...m.objs.filter(o => o.k === 'r').map(o => R.producaoPropria(m, o).total.lapros || 0)); });
-    ok(/^Modo do mapa: Economia Político Recurso/.test(leg) && await L.F.locator('#modoLeg [data-k="modo-rec"]').count() === 1 && topo === 21 && leg.includes(' 21 por semana'), 'a legenda: o recurso escolhido e a escala (até a maior parte própria, 21): ' + leg);
+    ok(/^Modo do mapa: Economia Político Recurso/.test(leg) && await L.F.locator('#modoLeg [data-k="modo-rec"]').count() === 1 && topo === 4.9 && leg.includes(' 4,9 por semana'), 'a legenda: o recurso escolhido e a escala (até a maior parte própria, 4,9): ' + leg);
     await L.F.locator('#modoLeg [data-k="modo-rec"]').selectOption('madeira'); await espera(500);
     const cm = await A(L, () => { const m = __mundo.App.vista(), C = window.MundoCamadas; return (C.modoDaRegiao(m, m.objs.find(o => o.id === 's2'), true) || {}).rec; });
     ok(cm === 'madeira' && /^Modo do mapa: Economia/.test(await A(L, () => document.getElementById('modoLeg').innerText)), 'trocar o recurso na legenda: a Madeira');
@@ -467,7 +473,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
         if (!m.eco.cons.length) m.eco.cons = R.catalogoPronto(m, m.eco);
         const fa = m.faccoes.find(f => f.id === 'fa');
         fa.apoio = 70;
-        for (const [id, n] of [['lapros', 30], ['suprimentos', 20]]) fa.rec.find(r => r.id === id).n = n;
+        for (const [id, n] of [['lapros', 30], ['suprimentos', 0]]) fa.rec.find(r => r.id === id).n = n;
         m.objs.push(Object.assign(N.objNovo('m', { x: 850, y: 700, ic: 'vila' }), { id: 'vs', nome: 'Vila do Sul', ass: { niv: 'vila', pop: 0, cons: [{ id: 'kt', t: 'templo', n: 0, obra: { n: 1, sem: 2, fac: 'fa', pago: {} } }] } }));
       });
     });
@@ -522,6 +528,109 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     ok(await A(L, () => !!document.querySelector('dialog.sem-dl[open]') && !/Depois desta/.test(document.querySelector('dialog.sem-dl[open] [data-k="sem:quando"]').textContent)), 'aplicada a primeira, a prévia da segunda aparece');
     await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(300);
     ok(await A(L, () => window.MundoReino.semanasPendentes(__mundo.App.mapa)) === 1 && /^1 semana para fechar/.test(await caixa()), '"Agora não": a segunda fica para fechar');
+    await aba(L, 'selecao');
+  });
+
+  // ---------- (parte 5) a população por estrato ----------
+  if (parte('populacao')) await passo('a população por estrato', async () => {
+    await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      App.mudar('a economia e uma vila', m => {
+        if (!m.eco || !m.eco.on) R.ligarEconomia(m);
+        m.objs.push(Object.assign(N.objNovo('m', { x: 300, y: 700, ic: 'vila' }), { id: 'vn', nome: 'Vila do Norte', ass: { niv: 'vila', pop: 0 } }));
+      });
+    });
+    await aba(L, 'faccoes');
+    // os estratos, na Economia do mundo
+    ok(/Estratos da população \(9\)/.test(await textoPane(L)) && await campo(L, 'eco:estr-ver').count() === 1 && await campo(L, 'eco:e:camponeses').count() === 0, 'na Economia do mundo: "Estratos da população (9)", fechados');
+    await botao(L, 'eco:estr-ver');
+    const cartao = id => A(L, id => { const e = document.querySelector(`#pane [data-k="eco:e:${id}"]`); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, id);
+    ok(await A(L, () => document.querySelectorAll('#pane .cons-li.estr').length) === 9 && /^Camponeses Suprimentos \+0,6 por pessoa \(por semana\) Editar…$/.test(await cartao('camponeses'))
+      && /^Aventureiros Lapros \+0,3 por pessoa \(por semana\) Lembrete na prévia da semana: rumores Editar…$/.test(await cartao('aventureiros')) && /^Guarda Suprimentos −0,4 por pessoa/.test(await cartao('guarda')),
+      '"Mostrar os estratos": os 9, com o que cada pessoa produz (ou consome) e o lembrete: ' + await cartao('aventureiros'));
+    // editar um estrato
+    await botao(L, 'eco:e:aventureiros:editar');
+    await L.F.fill('dialog.mundo-dl[open] #dl-lembra', 'rumores e boatos'); await L.F.fill('dialog.mundo-dl[open] [id="dl-r:lapros"]', '0,5');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.eco.estr.find(s => s.id === 'aventureiros'))) === j({ id: 'aventureiros', nome: 'Aventureiros', cor: '#e58a6b', prod: { lapros: 0.5 }, lembra: 'rumores e boatos' }) && /Aventureiros: salvo\./.test(await avisos(L)),
+      'editar os Aventureiros: Lapros 0,5 por pessoa e o lembrete "rumores e boatos" (com o aviso)');
+    // criar e tirar um estrato
+    await botao(L, 'eco:estr-novo');
+    await L.F.fill('dialog.mundo-dl[open] #dl-nome', 'Pescadores'); await L.F.fill('dialog.mundo-dl[open] [id="dl-r:suprimentos"]', '0,8');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    const pesc = await A(L, () => __mundo.App.mapa.eco.estr.find(s => s.nome === 'Pescadores') || null);
+    ok(!!pesc && j(pesc.prod) === j({ suprimentos: 0.8 }) && /^#[0-9a-f]{6}$/.test(pesc.cor) && await campo(L, 'eco:e:' + pesc.id).count() === 1, 'um estrato novo (Pescadores, 0,8 de Suprimentos por pessoa), com uma cor');
+    await botao(L, 'eco:e:' + pesc.id + ':x');
+    ok(!(await A(L, id => __mundo.App.mapa.eco.estr.some(s => s.id === id), pesc.id)) && /O estrato Pescadores saiu\./.test(await avisos(L)), 'tirar os Pescadores (ninguém neles: sem perguntar), com Desfazer');
+    // a divisão por nível
+    await botao(L, 'eco:dist');
+    await L.F.waitForSelector('dialog.eco-dl[open]');
+    ok(await A(L, () => document.querySelectorAll('dialog.eco-dl[open] tbody tr').length) === 4 && await A(L, () => document.querySelector('dialog.eco-dl[open] [data-k="tab:vila:camponeses"]').value) === '42',
+      'a divisão por nível: uma linha por nível (os Camponeses da Vila: 42%)');
+    await L.F.fill('dialog.eco-dl[open] [data-k="tab:vila:camponeses"]', '50'); await L.F.click('dialog.eco-dl[open] button[type="submit"]'); await espera(350);
+    ok(await A(L, () => __mundo.App.mapa.eco.niv.find(n => n.id === 'vila').dist.camponeses) === 50, 'salvar: os Camponeses da Vila com 50');
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane [data-k="eco:e:camponeses"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await foto('l10-estratos');
+    // a população da vila
+    await aba(L, 'selecao'); await selecionar(L, 'vn');
+    ok(/População: 0 pessoas/.test(await textoPane(L)) && /Sem população ainda: use "População…"\./.test(await textoPane(L)), 'a vila sem gente: "População: 0 pessoas" e o convite');
+    await botao(L, 'o:vn:pop');
+    await L.F.waitForSelector('dialog.pop-dl[open]');
+    const D = s => 'dialog.pop-dl[open] ' + s;
+    const vals = () => A(L, () => Object.fromEntries([...document.querySelectorAll('dialog.pop-dl[open] input[data-k^="pop:"]:not([data-k="pop:total"])')].map(e => [e.dataset.k.slice(4), e.value]).filter(([, v]) => v)));
+    ok(/^Pela divisão de Vila:/.test(await A(L, () => document.querySelector('dialog.pop-dl[open] [data-k="pop:como"]').textContent)) && await A(L, () => document.querySelectorAll('dialog.pop-dl[open] tbody tr').length) === 9,
+      'a janela da população: "Distribuir", pela divisão da Vila, e uma linha por estrato');
+    await L.F.fill(D('[data-k="pop:total"]'), '120'); await L.F.press(D('[data-k="pop:total"]'), 'Enter'); await espera(150);
+    const d120 = await vals(), soma = Object.values(d120).reduce((t, v) => t + Number(v), 0), esperado = await A(L, () => window.MundoReino.distribuir(__mundo.App.mapa, 'vila', 120));
+    ok(soma === 120 && j(Object.fromEntries(Object.entries(d120).map(([k, v]) => [k, Number(v)]))) === j(esperado) && /^Total: 120 pessoas\. Por semana, pela população: /.test(await A(L, () => document.querySelector('dialog.pop-dl[open] [data-k="pop:resumo"]').textContent)),
+      'Distribuir 120 (Enter): os campos ficam com a divisão sugerida (a soma é 120) e o resumo diz o total e o que produzem: ' + j(d120));
+    ok(await A(L, () => !__mundo.App.mapa.objs.find(o => o.id === 'vn').ass.estr), 'nada muda no mapa antes de salvar');
+    await L.F.click(D('[data-k="pop:nao"]')); await espera(250);
+    ok(await A(L, () => !document.querySelector('dialog.pop-dl[open]') && __mundo.App.mapa.objs.find(o => o.id === 'vn').ass.pop === 0), 'Cancelar: a vila continua sem gente');
+    // de novo: distribuir, mudar à mão, um erro, salvar
+    await botao(L, 'o:vn:pop'); await L.F.waitForSelector('dialog.pop-dl[open]');
+    await L.F.fill(D('[data-k="pop:total"]'), '120'); await L.F.click(D('[data-k="pop:distribuir"]')); await espera(120);
+    await L.F.fill(D('[data-k="pop:mercadores"]'), 'muitos'); await espera(120);
+    ok(/Mercadores: um número inteiro de 0 a 1\.000\.000\./.test(await A(L, () => document.querySelector('dialog.pop-dl[open] .err').textContent)), 'um número que não serve: o erro aparece na hora');
+    await L.F.click(D('[data-k="pop:ok"]')); await espera(200);
+    ok(await A(L, () => !!document.querySelector('dialog.pop-dl[open]')), 'e não salva');
+    await L.F.fill(D('[data-k="pop:mercadores"]'), '12'); await espera(100);
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(300);
+    ok(await A(L, () => { const d = document.querySelector('dialog.pop-dl[open]'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && d.scrollWidth <= d.clientWidth + 1; }), 'no celular (400 px): a janela cabe na largura');
+    await semAvisos(L); await foto('l10-populacao-celular');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await foto('l10-populacao');
+    const final = Object.assign({}, Object.fromEntries(Object.entries(esperado)), { mercadores: 12 });
+    await L.F.click(D('[data-k="pop:ok"]')); await espera(400);
+    const ass = await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vn').ass);
+    const tot = Object.values(final).reduce((t, v) => t + v, 0);
+    ok(m10eq(ass.estr, final) && ass.pop === tot && new RegExp('A população de Vila do Norte: ' + tot + ' pessoas\\.').test(await avisos(L)), 'salvar: as pessoas de cada estrato e a soma (' + tot + '), com o aviso: ' + j(ass));
+    const pane = await textoPane(L);
+    ok(new RegExp('População: ' + tot + ' pessoas').test(pane) && await A(L, () => document.querySelectorAll('#pane [data-k="o:vn:pop-barra"] span').length) === Object.keys(final).length && /Camponeses \d+ · Artesãos \d+ · Mercadores 12/.test(pane) && /Pela população, por semana: Lapros \+/.test(pane),
+      'na seção: o total, a barra (um pedaço por estrato), a lista e o que produzem');
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane [data-k="o:vn:pop-cab"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await foto('l10-assentamento');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vn').ass.pop === 0), 'desfazer: sem gente de novo');
+    await A(L, () => __mundo.App.refazer()); await espera(300);
+    // tirar um estrato com gente: pergunta antes
+    await aba(L, 'faccoes');
+    if (!(await campo(L, 'eco:e:guarda').count())) await botao(L, 'eco:estr-ver');
+    const guardas = await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vn').ass.estr.guarda || 0);
+    await botao(L, 'eco:e:guarda:x');
+    const pergunta = await A(L, () => { const d = document.querySelector('dialog.mundo-dl[open]'); return d ? d.innerText.replace(/\s+/g, ' ') : ''; });
+    const gs = await A(L, () => __mundo.App.mapa.objs.filter(o => o.k === 'm' && o.ass && o.ass.estr && o.ass.estr.guarda > 0).map(o => [o.nome, o.ass.estr.guarda]));
+    const totG = gs.reduce((t, x) => t + x[1], 0), onde = gs.length === 1 ? '\\(em ' + gs[0][0] + '\\)' : '\\(em ' + gs.length + ' assentamentos\\)';
+    ok(guardas > 0 && new RegExp('Tirar o estrato Guarda\\? As ' + totG + ' pessoas dele ' + onde + ' saem junto: a população diminui\\.').test(pergunta), 'tirar a Guarda (com gente): a janela pergunta, com quantos e onde: ' + pergunta.slice(0, 160));
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(await A(L, n => { const a = __mundo.App.mapa.objs.find(o => o.id === 'vn').ass; return !('guarda' in a.estr) && !__mundo.App.mapa.eco.estr.some(s => s.id === 'guarda'); }, guardas), 'a Guarda sai do mundo e da vila (a população diminui)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(await A(L, n => __mundo.App.mapa.objs.find(o => o.id === 'vn').ass.estr.guarda === n, guardas), 'desfazer: a Guarda volta, com as pessoas');
+    // os lembretes na prévia da semana
+    await A(L, () => __mundo.App.mudar('+7', m => { m.cal.dia += 7; }));
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const lemb = await A(L, () => { const e = document.querySelector('dialog.sem-dl[open] [data-k="sem:lemb:vn"]'); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; });
+    ok(/^Vila do Norte \(Aldar\): Aventureiros \(\d+\): rumores e boatos · Clero e sábios \(\d+\): apoio · Guarda \(\d+\): defesa · Nobreza \(\d+\): apoio$/.test(lemb), 'na prévia da semana: os lembretes dos estratos da vila (nada muda sozinho): ' + lemb);
+    await semAvisos(L); await espera(300); await foto('l10-lembretes');
+    await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250);
     await aba(L, 'selecao');
   });
 

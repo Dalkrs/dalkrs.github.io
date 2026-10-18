@@ -2,6 +2,33 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-14",
+      "data": "2026-10-18",
+      "titulo": "A população por estrato",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a população agora produz por pessoa (o mundo é pequeno) e se divide em estratos — Camponeses, Artesãos, Mercadores, Aventureiros, Clero e sábios, Guarda, Nobreza, Idosos e Crianças —, cada um produzindo ou consumindo por semana. Na Economia do mundo (aba Reinos), dá para renomear, mudar os números, criar e tirar estratos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no assentamento, “População…” mostra quantas pessoas de cada estrato há e o que elas produzem. “Distribuir” sugere a divisão de um total pelas porcentagens do nível (a Aldeia com mais camponeses, a Cidade com mais artesãos e mercadores) e só preenche os campos: nada muda até salvar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: os efeitos dos estratos (os aventureiros trazem rumores, a guarda defende, o clero e a nobreza dão apoio) aparecem como lembretes na prévia da semana, sem mudar nenhum número sozinhos."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: a população que já estava escrita nos assentamentos virou Camponeses, e a tabela antiga “por mil pessoas” saiu."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-13",
       "data": "2026-10-18",
       "titulo": "Os recursos no editor da facção",

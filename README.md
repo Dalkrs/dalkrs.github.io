@@ -1136,15 +1136,15 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
 - **A economia do mundo** (parte 2; `mapa.eco`, normalizada em `normEco`; só quando há: o mapa de antes fica igual):
   "Ligar a economia…" (na aba Reinos) cria os recursos de começo — Lapros (moeda), Suprimentos (comida), Madeira,
   Pedra, Orith (metal) e Runas (magia) —, a tabela de começo do terreno (pelo papel: planície dá suprimentos, floresta
-  madeira, montanha pedra e orith…), a da população (5 Lapros por mil pessoas) e os níveis dos assentamentos (Aldeia,
+  madeira, montanha pedra e orith…), os estratos da população (parte 5, abaixo) e os níveis dos assentamentos (Aldeia,
   Vila, Cidade e Metrópole, com 2, 4, 6 e 8 espaços de construção). A janela antes diz o que muda: o recurso que uma
   facção já tinha com o mesmo nome passa a ser o do mundo (o número e o histórico acompanham: `recursosNaFaccao`), e o
   mapa que ainda não contava os dias da semana passa a contar (hoje vira segunda-feira; a semana fecha de domingo
   para segunda). Desligar guarda tudo (`eco.on`). Na seção **Economia do mundo**: os recursos (a cor, o nome — as
   facções acompanham —, o papel — o que ele é para as regras — e tirar: a facção fica com o estoque, como um recurso só
   dela), "+ Recurso" (cada facção ganha o estoque dele), "Produção do terreno…" (uma tabela: um terreno por linha, um
-  recurso por coluna, por hexágono e por semana; vírgula vale; negativo gasta), "Produção da população…" (por mil
-  pessoas) e os níveis (o nome, os espaços, "+ Nível", tirar — os assentamentos dele ficam sem nível).
+  recurso por coluna, por hexágono e por semana; vírgula vale; negativo gasta) e os níveis (o nome, os espaços,
+  "+ Nível" — com a divisão por estrato do último —, tirar — os assentamentos dele ficam sem nível).
 - **A produção** (parte 2; `producaoPropria`, `producaoDaRegiao`, `producaoPorFaccao`): a parte própria de uma região
   soma os hexágonos próprios (pelo terreno), os assentamentos dela (os marcadores com assentamento cuja região de mais
   dentro é ela) e o valor do mestre (`r.prod`, "Produção do mestre…", por semana; negativo gasta); a província soma a
@@ -1153,13 +1153,14 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   assentamentos de dentro. O Livro do reino ganha o que cada facção produz por semana e o estoque (o número de cada
   recurso do mundo nela, em `f.rec`, com o mesmo id; na facção, esses números ficam sem renomear nem tirar).
 - **O assentamento** (parte 2; `m.ass = { niv, pop }`): no marcador, a seção Assentamento (com a economia ligada) — o
-  nível ("Não é assentamento", ou um dos níveis, com os espaços) e a população (fixa: só muda quando o mestre muda),
-  onde ele fica (a região e a província) e o que produz pela população. Fora das províncias, não produz para ninguém.
+  nível ("Não é assentamento", ou um dos níveis, com os espaços) e a população (fixa: só muda quando o mestre muda;
+  parte 5: por estrato), onde ele fica (a região e a província) e o que produz pela população. Fora das províncias, não
+  produz para ninguém.
 - **O modo Economia** (parte 2; só o mestre, com a economia ligada): cada região pela produção de um recurso (a parte
   dela), do tom de base à cor do recurso; sem produção dele, só a borda. A legenda tem a escolha do recurso
   (guardada neste aparelho, com o modo) e a escala.
 - **Para os jogadores**, a economia, a produção do mestre e os assentamentos não vão na projeção (por enquanto: a
-  parte 5 mostra o que for deles).
+  parte 6 mostra o que for deles).
 - **O catálogo de construções** (parte 3; `eco.cons`, normalizado em `normCatalogo`): ligar a economia traz o pronto
   (`catalogoPronto`, pelo papel dos recursos e pelos terrenos e níveis que o mapa tem) — produção (Fazenda, Serraria,
   Pedreira e Mina de Orith em colina ou montanha, Mercado a partir da Vila, Santuário rúnico, que gasta Lapros), defesa
@@ -1210,6 +1211,22 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   tipo começam em 1 de comida e 1 de moeda; um tipo sem número não paga. **As regras da falta** (`eco.regras`):
   "Regras da falta…" muda quanto o apoio cai (de começo, 10), quanto a moral cai sem moeda (1) ou sem outro recurso
   (1), e se as obras e as construções param.
+- **A população por estrato** (parte 5; o mundo é pequeno — as maiores cidades têm uns 90 a 120 moradores —, então a
+  população produz por pessoa, com vírgula): os **estratos** (`eco.estr`: o nome, a cor, o que cada pessoa produz ou
+  consome por semana e o lembrete) ficam na Economia do mundo ("Estratos da população", fechados de começo: "Mostrar
+  os estratos", "Editar…", "+ Estrato", tirar — o estrato com gente pergunta antes, dizendo quantos e onde). Os 9 de
+  começo (pelo papel do recurso): Camponeses (Suprimentos +0,6), Artesãos (Madeira +0,2 e Pedra +0,2), Mercadores
+  (Lapros +1), Aventureiros (Lapros +0,3 · rumores), Clero e sábios (Runas +0,2 · apoio), Guarda (Suprimentos −0,4 ·
+  defesa), Nobreza (Lapros −1 · apoio), Idosos e Crianças (Suprimentos −0,3); o mapa de antes, sem a lista, fica com
+  eles (`estratosDeComeco`). No assentamento, a população é **quantas pessoas de cada estrato** (`ass.estr`; `ass.pop`
+  é a soma; a população de antes, sem estratos, vira Camponeses): a seção mostra o total, uma barra com a cor de cada
+  estrato, a lista e o que produzem; "População…" abre a janela com uma linha por estrato (as pessoas e o que produzem
+  por semana, na hora) e o **"Distribuir"**, que enche os campos com a divisão sugerida de um total pelas
+  porcentagens do nível (`distribuir`, pelos maiores restos; nada muda até salvar, num passo de Desfazer). A **divisão
+  por nível** (`niv.dist`, "Divisão por nível…": uma tabela, um nível por linha, um estrato por coluna, em %; não
+  precisa somar 100) começa com uma por nível (a Aldeia com mais camponeses, a Cidade com mais artesãos e
+  mercadores). Os efeitos dos estratos são **só lembretes**: a prévia da semana lista, por assentamento, os estratos
+  com lembrete ("Vila do Norte (Aldar): Aventureiros (3): rumores · Guarda (6): defesa…"), sem mudar nenhum número.
 - **A bandeira própria da facção** (sem clã): no editor da facção (aba Reinos), "Criar a bandeira…" abre o mesmo editor
   do brasão do Clã (`janelaBandeira`) — a forma, a divisão, as duas cores (a paleta do Clã, a cor da facção e "Outra"), o
   símbolo e, numa mesa, uma imagem (reduzida a 480 px, em PNG, e enviada ao banco; fora de uma mesa, só o desenho). A
@@ -2265,7 +2282,15 @@ a semana (vira de domingo para segunda; as pendentes), a manutenção (por tipo,
 consequências, as obras) e aplicar (com o que o mestre recusou, as regras desligadas, uma semana de cada vez);
 `mundo-lote10` com `SO=semana`, a caixa da semana, a tabela da manutenção (sem negativo), as regras, a prévia que abre
 sozinha no "+7 dias" (a tabela, as consequências, recusar as obras paradas), aplicar, desfazer, fechar pelo botão e
-duas pendentes. A bandeira própria da facção: `lote10-nucleo` confere a bandeira normalizada (o que não serve volta ao
+duas pendentes. Na parte 5, `lote10-nucleo` confere os estratos normalizados (os de começo no mapa de antes, a lista
+vazia que fica vazia), a divisão por nível, as pessoas de cada estrato (só dos que existem; a de antes vira Camponeses,
+ou o primeiro estrato; sem nenhum, fica como estava; normalizar de novo não muda nada), a produção pela população (quem
+consome tira), o "Distribuir" (os maiores restos, o empate, o nível sem divisão; a soma sempre é o total) e os lembretes
+na prévia (aplicar não mexe na população); `mundo-lote10` com `SO=populacao`, os estratos na Economia do mundo
+(mostrar, editar, criar, tirar — o com gente pergunta —, a divisão por nível), a janela da população (Distribuir, que só
+enche os campos; Cancelar; o erro; no celular; salvar, a barra, a lista e o que produzem; desfazer) e os lembretes na
+prévia da semana; a parte da economia passou a pôr 100 pessoas numa vila pelo Distribuir. A bandeira própria da facção:
+`lote10-nucleo` confere a bandeira normalizada (o que não serve volta ao
 de começo ou sai), ao lado da do clã, e na projeção (a da facção escondida não vai); `mundo-lote10` com `SO=bandeira`,
 criar (a janela com a de começo, as escolhas e a prévia; nada muda antes de criar; no celular, cabe), no mapa, na lista,
 no editor e no Livro, editar e cancelar (ou Esc), salvar e desfazer, a imagem e "Voltar ao desenho", a do clã valendo
