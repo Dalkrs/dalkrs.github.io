@@ -1073,6 +1073,16 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **Voltar pela mesma rota** (parte 3): o grupo de só ida que chega ao fim ganha o botão "Voltar pela mesma rota" no
   painel, e o aviso da chegada oferece o mesmo: ele vira (`sentido: -1`, o caminho ao contrário) e anda até o começo;
   lá, o botão o manda de novo para a frente.
+- **O clima muda ao longo do dia** (parte 4): a cada N tempos (no calendário da aba Mapa, "O clima muda": a cada 2
+  tempos de começo, ou a cada 1, 3, 4, 5, ou uma vez por dia — `clima.cada`, guardado só quando não é 2). O dia fica em
+  trechos de N tempos: o primeiro é o sorteio do dia (como antes); cada trecho seguinte anda aos poucos a partir do
+  anterior — fica, ou vai para um vizinho (sol ↔ nublado ↔ chuva ↔ tempestade, nublado ↔ névoa, vento, frio, frio ↔
+  neve, sol ↔ calor), pela chance da tabela do mês e do ajuste da região (o que não tem chance, não vem). O número de
+  cada trecho vem do mapa, do dia e do trecho (`sorteioDoTrecho`): sai igual em todo aparelho. `climaDoDia` passa a dar
+  o clima do trecho de agora (hoje) — a barra de cima, a aba Hoje, as regiões, as cenas geradas e a projeção (o
+  Acampamento e a Meditação recebem o de agora). Trocar à mão ("Trocar o de agora", no mundo e na região) vale para o
+  trecho de agora, até a próxima mudança (`mao`/`chj` com o trecho `t`); o trecho seguinte continua a partir dele. A aba
+  Hoje mostra os climas do dia até agora ("Hoje: Sol (do 1º ao 4º) → Nublado (desde o 5º, agora)") e a próxima mudança.
 
 ### A Árvore (lote 6)
 
@@ -2078,4 +2088,8 @@ para, o do mundo que vai dormir no ponto de descanso — o marcador ou o dele �
 parada no descanso, o ponto que não segura fora do descanso, a projeção) e a volta pela mesma rota; `mundo-lote9` com
 `SO=descanso`, o descanso pela interface (marcar, "descansando agora", o "zZ", o "+1 tempo"), o "Ponto de descanso" do
 marcador (a caravana segue até ele e dorme lá), o ponto da própria caravana, as paradas e o fim da rota no grupo dos
-jogadores e a volta pela mesma rota (o botão, andando de volta, o aviso ao chegar).
+jogadores e a volta pela mesma rota (o botão, andando de volta, o aviso ao chegar). Na parte 4, `lote9-nucleo` confere o clima
+que muda a cada N tempos (os trechos, o 1º igual ao sorteio do dia, os passos só para os vizinhos, a chance do mês, o
+escolhido à mão até a próxima mudança, o clima de agora, uma vez por dia como antes, a região e a projeção);
+`mundo-lote9` com `SO=clima`, "O clima muda" no calendário, os climas do dia na aba Hoje, o clima de agora junto da data
+e o trocado à mão.

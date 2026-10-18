@@ -5,7 +5,10 @@
 //   · (parte 3) o descanso do grupo (a janela de tempos, virando a noite também): o grupo dos jogadores só para; o do
 //     mundo vai dormir no ponto de descanso (o marcador marcado, ou o do próprio grupo) se ainda chega até a metade do
 //     descanso, senão acampa onde está; a parada no descanso; fora do descanso, o ponto não segura ninguém; a projeção
-//     sem o descanso; a volta pela mesma rota (só ida: o sentido fica, o caminho ao contrário, chega ao começo).
+//     sem o descanso; a volta pela mesma rota (só ida: o sentido fica, o caminho ao contrário, chega ao começo);
+//   · (parte 4) o clima que muda a cada N tempos: os trechos do dia, o 1º é o sorteio do dia, os seguintes andam aos
+//     poucos (só para um vizinho), a chance do mês, o escolhido à mão (vale até a próxima mudança; o seguinte continua a
+//     partir dele), o clima de agora, uma vez por dia (como antes), a região e a projeção com o clima de agora.
 const N = require('../../mundo/nucleo.js');
 let n = 0, bad = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
@@ -133,6 +136,49 @@ const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — es
   ok(!('sentido' in N.normalizarMapa({ objs: [RC, { id: 'g', k: 'g', x: 0, y: 0, rota: 'rt', modo: 'circuito', sentido: -1 }] }).objs[1]), '(no circuito, não há volta)');
   const vd = N.andarTempos(base([RC, { id: 'g', k: 'g', x: 80, y: 0, rota: 'rt', pt: 10, prog: 0, sentido: -1, desc: { de: 6, ate: 10 } }], { tempo: 0 }), 'g', 2);
   ok(vd.x === 0 && vd.sentido === -1, 'voltando, com descanso (tempo a tempo), o sentido também fica: ' + j([vd.x, vd.sentido]));
+}
+
+/* ---- (parte 4) o clima muda a cada N tempos, aos poucos ---- */
+{
+  const j = JSON.stringify;
+  const base = (clima, cal, objs) => N.normalizarMapa({ id: 'mclima', larg: 400, alt: 300, grade: { tam: 20, x: 0, y: 0, orient: 'pe', on: true }, cal: Object.assign({ dia: 40, tpd: 10, tempo: 0 }, cal || {}), clima, objs: objs || [] });
+  // a normalização e os trechos
+  eq([N.cadaDe(base()), N.cadaDe(base({ cada: 0 })), N.cadaDe(base({ cada: 3 })), N.cadaDe(base({ cada: 'x' }))], [2, 0, 3, 2], 'de quantos em quantos tempos: 2 de começo; 0 = uma vez por dia');
+  ok(!('clima' in base({ cada: 2 })) && j(base({ cada: 0 }).clima) === j({ cada: 0 }) && j(base({ cada: 3 }).clima) === j({ cada: 3 }), 'o mapa guarda só quando não é o de começo (2)');
+  const m2 = base();
+  eq([0, 1, 2, 3, 9].map(t => N.trechoDoTempo(m2, t)), [0, 0, 1, 1, 4], 'a cada 2 tempos: o 1º e o 2º são o 1º trecho, o 3º e o 4º o 2º…');
+  eq([N.trechosDoDia(m2), N.trechosDoDia(base({ cada: 3 })), N.trechosDoDia(base({ cada: 0 })), N.comecoDoTrecho(m2, 2), N.comecoDoTrecho(base({ cada: 3 }), 3)], [5, 4, 1, 5, 10], 'os trechos do dia e o tempo em que cada um começa');
+  // o 1º trecho é o sorteio do dia; os seguintes andam aos poucos (só para um vizinho, ou ficam)
+  ok([...Array(60).keys()].every(d => N.climaDoTrecho(m2, d, 0).k === N.climaSorteado(m2, d)), 'o 1º trecho do dia é o sorteio do dia (como antes)');
+  let passos = 0, mudou = 0, ruim = [];
+  for (let d = 0; d < 200; d++) for (let t = 1; t < 5; t++) {
+    const a = N.climaDoTrecho(m2, d, t - 1).k, b = N.climaDoTrecho(m2, d, t).k;
+    passos++; if (a !== b) { mudou++; if (!N.VIZINHOS_CLIMA[a].includes(b)) ruim.push(a + '→' + b); }
+  }
+  ok(!ruim.length && mudou > passos * 0.1 && mudou < passos * 0.75, 'de um trecho para o outro, o clima fica ou vai para um vizinho (nunca do sol para a neve): mudou ' + mudou + ' de ' + passos + ruim.slice(0, 3).join(' '));
+  ok(N.climaDoTrecho(m2, 7, 3).k === N.climaDoTrecho(base(), 7, 3).k, 'o mesmo mapa, o mesmo dia e o mesmo trecho dão o mesmo clima (em todo aparelho)');
+  // a chance do mês vale: o que não tem chance não vem
+  const tabSol = [...Array(12)].map(() => ({ sol: 100 })), tabSN = [...Array(12)].map(() => ({ sol: 50, neve: 50 }));
+  ok([...Array(50).keys()].every(d => [0, 1, 2, 3, 4].every(t => N.climaDoTrecho(base({ tab: tabSol }), d, t).k === 'sol')), 'com 100% de sol no mês, sempre sol (os vizinhos não têm chance)');
+  ok([...Array(80).keys()].every(d => { const k0 = N.climaDoTrecho(base({ tab: tabSN }), d, 0).k; return [1, 2, 3, 4].every(t => N.climaDoTrecho(base({ tab: tabSN }), d, t).k === k0); }), 'sol e neve, sem os do meio: o dia fica no que começou (do sol não se pula para a neve)');
+  // o escolhido à mão vale até a próxima mudança, e o trecho seguinte continua a partir dele
+  const mm = base({ mao: { d: 40, t: 2, k: 'tempestade' } });
+  ok(j(N.climaDoTrecho(mm, 40, 2)) === j({ k: 'tempestade', mao: true }) && N.climaDoTrecho(mm, 40, 1).k === N.climaDoTrecho(m2, 40, 1).k && !N.climaDoTrecho(mm, 40, 3).mao, 'à mão no 3º trecho: vale nele (o de antes não muda)');
+  ok(['tempestade', 'chuva', 'vento'].includes(N.climaDoTrecho(mm, 40, 3).k) && [...Array(40).keys()].every(d => { const m = base({ mao: { d, t: 1, k: 'neve' } }); return ['neve', 'frio', 'nublado'].includes(N.climaDoTrecho(m, d, 2).k); }), 'o trecho seguinte continua a partir dele (fica, ou vai para um vizinho)');
+  ok(N.climaDoTrecho(base({ mao: { d: 40, k: 'neve' } }), 40, 0).mao && !N.climaDoTrecho(base({ mao: { d: 40, k: 'neve' } }), 40, 1).mao, 'o escolhido à mão de antes (sem o trecho) vale no 1º trecho');
+  eq(base({ mao: { d: 40, t: '2', k: 'chuva' } }).clima.mao, { d: 40, k: 'chuva', t: 2 }, 'à mão, o trecho fica guardado (o 1º trecho, sem ele)');
+  // o clima de agora: o do trecho do tempo de agora (hoje); outro dia, o do começo
+  const mt = base(null, { tempo: 5 });
+  ok(N.climaDoDia(mt, 40).k === N.climaDoTrecho(mt, 40, 2).k && N.climaDoDia(mt, 41).k === N.climaDoTrecho(mt, 41, 0).k && N.climaDoDia(mt, 40, null, 4).k === N.climaDoTrecho(mt, 40, 4).k, 'o clima de hoje é o do trecho de agora (no 6º tempo, o 3º trecho); outro dia, o do começo; ou o trecho pedido');
+  const m0 = base({ cada: 0 }, { tempo: 7 });
+  ok(N.climaDoDia(m0, 40).k === N.climaSorteado(m0, 40) && N.trechoAgora(m0) === 0, 'uma vez por dia: o clima do dia todo é o sorteio do dia (como antes)');
+  eq(N.climasDoDia(mt, 40, null, 2).map(x => [x.t, x.de]), [[0, 1], [1, 3], [2, 5]], 'os climas do dia até agora, trecho a trecho (com o tempo em que cada um começa)');
+  // a região: o de agora à mão (com o trecho) e a projeção com o clima de agora
+  const reg = { id: 'rg', k: 'r', pts: [[0, 0], [200, 0], [200, 300], [0, 300]], chj: { d: 40, t: 2, k: 'nevoa' } };
+  const mr = base(null, { tempo: 4 }, [reg, { id: 'g', k: 'g', x: 100, y: 100 }]);
+  ok(N.climaNoPonto(mr, 50, 50).k === 'nevoa' && N.climaNoPonto(mr, 50, 50).mao, 'a região com o de agora escolhido à mão (no trecho de agora)');
+  const pj = N.projetar(mr);
+  ok(pj.clima.hoje === N.climaDoDia(mr, 40).k && pj.objs.find(o => o.id === 'g').ch === 'nevoa' && pj.objs.find(o => o.id === 'rg').ch === 'nevoa', 'quem joga recebe o clima de agora (o do mundo, o da região e o de onde o grupo está)');
 }
 
 console.log(bad ? `${n - bad}/${n} — ${bad} falharam` : `${n} verificações passaram`);

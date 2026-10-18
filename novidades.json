@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-5",
+      "data": "2026-10-18",
+      "titulo": "O clima muda ao longo do dia",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o clima agora muda ao longo do dia, aos poucos — do sol ao nublado, do nublado à chuva… —, a cada 2 tempos. O clima de agora aparece junto da data."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no calendário (aba Mapa), escolha de quantos em quantos tempos o clima muda (ou uma vez por dia). A aba Hoje mostra os climas do dia até agora e quando muda de novo. Trocar o clima à mão vale até a próxima mudança; depois ele segue aos poucos a partir do escolhido."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-4",
       "data": "2026-10-18",
       "titulo": "Hora de descansar, pontos de descanso e a volta pela mesma rota",

@@ -10,7 +10,10 @@
 //   · (parte 3, SO=descanso) o grupo dos jogadores com "Ao chegar ao fim da rota" e paradas; o descanso (marcar, o
 //     painel, "descansando agora", o "zZ", não anda no "+1 tempo", não vai para os jogadores); o marcador "Ponto de
 //     descanso" (a lua; a caravana segue até ele e dorme lá; não vai para os jogadores); o ponto de descanso da própria
-//     caravana (na rota, no painel, tirar); a volta pela mesma rota (o botão no fim, anda de volta, o aviso ao chegar).
+//     caravana (na rota, no painel, tirar); a volta pela mesma rota (o botão no fim, anda de volta, o aviso ao chegar);
+//   · (parte 4, SO=clima) o clima que muda a cada N tempos: "O clima muda" no calendário (2 de começo; 3; uma vez por
+//     dia), a aba Hoje com os climas do dia até agora e a próxima mudança, o clima de agora junto da data, e o trocado à
+//     mão (vale até a próxima mudança; depois segue aos poucos a partir dele).
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -325,6 +328,54 @@ async function janela(a, f) {
     ok(/Caravana — chegou ao fim da rota/.test(await avisos(L)), '"+1 tempo": o aviso de quem chegou ao fim também: ' + await avisos(L));
     await aba(L, 'selecao'); await selecionar(L, 'gp');
     await foto('l9-voltar');
+  });
+
+  if (parte('clima')) await passo('o clima muda a cada N tempos', async () => {
+    const chip = () => A(L, () => (document.querySelector('#climaTxt .c-nome') || {}).textContent || '');
+    const agora = () => A(L, () => { const { App, N } = __mundo; return N.climaDoDia(App.mapa, App.mapa.cal.dia); });
+    await A(L, () => __mundo.App.mudar('o começo do dia', m => { m.cal.tempo = 0; m.cal.tpd = 10; }));
+    // o calendário: de quantos em quantos tempos (2 de começo)
+    await aba(L, 'mapa');
+    ok(await campo(L, 'mapa:clima-cada').count() === 1 && await campo(L, 'mapa:clima-cada').inputValue() === '2', 'no calendário (aba Mapa): "O clima muda", a cada 2 tempos de começo');
+    await escolher(L, 'mapa:clima-cada', '3');
+    ok((await A(L, () => __mundo.App.mapa.clima.cada)) === 3 && await A(L, () => __mundo.App.rotuloDesfazer()) === 'mudar quando o clima muda', 'a cada 3 tempos: fica no mapa (um passo de desfazer)');
+    await escolher(L, 'mapa:clima-cada', '2');
+    ok(await A(L, () => !__mundo.App.mapa.clima || !('cada' in __mundo.App.mapa.clima)), 'de volta a 2: o de começo (o mapa não guarda)');
+    // a aba Hoje: o clima ao longo do dia
+    await aba(L, 'hoje');
+    let tr = await A(L, () => (document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '');
+    ok(/^Hoje: \S+.* \(desde o 1º, agora\)\. Muda aos poucos a cada 2 tempos: a próxima mudança no 3º tempo\.$/.test(tr), 'a aba Hoje: o clima de agora e quando muda de novo: ' + tr);
+    // no 5º tempo: os trechos de hoje até agora
+    await A(L, () => __mundo.App.mudar('o 5º tempo', m => { m.cal.tempo = 4; }));
+    await L.F.waitForFunction(() => /no 7º tempo/.test((document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || ''), null, { timeout: 5000 }).catch(() => {});   // (o painel se pinta de novo)
+    tr = await A(L, () => (document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '');
+    const esperado = await A(L, () => { const { App, N } = __mundo; const seq = N.climasDoDia(App.mapa, App.mapa.cal.dia, null, 2); let i = seq.length - 1; while (i > 0 && seq[i - 1].k === seq[i].k) i--; return { nomes: seq.map(x => N.CLIMAS[x.k].nome), desde: seq[i].de }; });
+    ok(tr.includes('desde o ' + esperado.desde + 'º, agora') && /a próxima mudança no 7º tempo/.test(tr) && esperado.nomes.every(n => tr.includes(n)), 'no 5º tempo: os climas de hoje até agora (os iguais seguidos juntos) e a próxima mudança no 7º: ' + tr);
+    ok(await chip(L) === await A(L, () => { const { App, N } = __mundo; return N.CLIMAS[N.climaDoDia(App.mapa, App.mapa.cal.dia).k].nome; }), 'junto da data, o clima de agora');
+    // com o mês todo de sol, os trechos iguais seguidos ficam juntos
+    await A(L, () => __mundo.App.mudar('só sol', m => { m.clima = Object.assign({}, m.clima, { tab: [...Array(12)].map(() => ({ sol: 100 })) }); }));
+    const sol = await A(L, () => __mundo.N.CLIMAS.sol.nome);
+    await L.F.waitForFunction(sol => ((document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '').startsWith('Hoje: ' + sol + ' '), sol, { timeout: 5000 }).catch(() => {});
+    tr = await A(L, () => (document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '');
+    ok(tr.startsWith('Hoje: ' + sol + ' (desde o 1º, agora). '), 'com o mês todo de sol, os trechos iguais seguidos ficam juntos: ' + tr);
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // à mão: vale até a próxima mudança
+    const k0 = (await agora()).k, outro = k0 === 'tempestade' ? 'neve' : 'tempestade';
+    ok(/Trocar o de agora/.test(await L.F.locator('#pane').innerText()), 'o campo "Trocar o de agora"');
+    await escolher(L, 'hoje:clima-mao', outro);
+    const dia = await A(L, () => __mundo.App.mapa.cal.dia);
+    ok(j((await A(L, () => __mundo.App.mapa.clima.mao))) === j({ d: dia, k: outro, t: 2 }) && await chip(L) === await A(L, k => __mundo.N.CLIMAS[k].nome, outro), 'trocado à mão no 5º tempo (o 3º trecho): fica guardado com o trecho, e junto da data');
+    await botao(L, 'hoje:tempo');
+    ok((await agora()).k === outro && (await agora()).mao, 'no 6º tempo (o mesmo trecho): continua o escolhido');
+    await botao(L, 'hoje:tempo');
+    const dep = await agora(), viz = await A(L, k => [k].concat(__mundo.N.VIZINHOS_CLIMA[k]), outro);
+    ok(!dep.mao && viz.includes(dep.k), 'no 7º tempo (a próxima mudança): segue aos poucos a partir do escolhido (ele mesmo, ou um vizinho): ' + dep.k);
+    await foto('l9-clima');
+    // uma vez por dia: como antes
+    await aba(L, 'mapa'); await escolher(L, 'mapa:clima-cada', '0');
+    await aba(L, 'hoje');
+    ok(await L.F.locator('#pane [data-k="hoje:trechos"]').count() === 0 && /Trocar o de hoje/.test(await L.F.locator('#pane').innerText()) && (await agora()).k === await A(L, () => __mundo.N.climaSorteado(__mundo.App.mapa, __mundo.App.mapa.cal.dia)), 'uma vez por dia: sem os trechos, "Trocar o de hoje", e o clima do dia todo é o sorteado');
+    await aba(L, 'mapa'); await escolher(L, 'mapa:clima-cada', '2');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

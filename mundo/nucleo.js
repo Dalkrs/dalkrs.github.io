@@ -535,14 +535,70 @@
     for (const k of ks) { if (!(ch[k] > 0)) continue; ult = k; if (r < ch[k]) return k; r -= ch[k]; }
     return ult;
   }
-  /* O clima de um dia (no mundo, ou numa região): o que o mestre escolheu à mão para aquele dia, senão o sorteado.
-     Na projeção (quem joga), o clima de hoje já vem pronto (clima.hoje, e ch nas regiões e nos grupos). */
-  function climaDoDia(mapa, dia, regiao) {
-    const d = diaDe(mapa, dia), mao = regiao ? (ehObj(regiao) ? regiao.chj : null) : ehObj(mapa) && ehObj(mapa.clima) ? mapa.clima.mao : null;
-    if (ehObj(mao) && mao.d === d && tem(CLIMAS, mao.k)) return { k: mao.k, mao: true };
+  /* (lote 9) O clima muda ao longo do dia: a cada N tempos (o mestre escolhe no calendário do mapa: clima.cada; sem
+     escolher, a cada 2; 0 = uma vez por dia). O dia fica em trechos de N tempos: o primeiro é o sorteio do dia (como
+     antes); cada trecho seguinte anda aos poucos a partir do anterior — fica no mesmo, ou vai para um vizinho (do sol ao
+     nublado, do nublado à chuva, da chuva à tempestade…), pesado pela tabela do mês (e pelo ajuste da região). O número
+     de cada trecho vem do mapa, do dia e do trecho: sai igual em todo aparelho. O escolhido à mão vale para o trecho em
+     que foi escolhido (até a próxima mudança); o trecho seguinte continua a partir dele. */
+  const CADA_CLIMA = 2;
+  const VIZINHOS_CLIMA = {
+    sol: ['nublado', 'calor', 'vento'], nublado: ['sol', 'chuva', 'nevoa', 'vento', 'frio'], chuva: ['nublado', 'tempestade', 'nevoa'],
+    tempestade: ['chuva', 'vento'], neve: ['frio', 'nublado'], nevoa: ['nublado', 'chuva', 'sol'], vento: ['sol', 'nublado', 'tempestade'],
+    calor: ['sol'], frio: ['nublado', 'neve', 'sol'],
+  };
+  // de quantos em quantos tempos o clima muda (0: uma vez por dia)
+  const cadaDe = mapa => { const c = ehObj(mapa) && ehObj(mapa.clima) ? mapa.clima.cada : undefined; return c == null || c === '' ? CADA_CLIMA : inteiro(c, CADA_CLIMA, 0, MAX_TEMPOS); };
+  // o trecho do dia de um tempo (0 = o 1º tempo; com o clima a cada 2 tempos, o 1º e o 2º são o trecho 0)
+  function trechoDoTempo(mapa, tempo) { const n = cadaDe(mapa), t = Math.max(0, Math.floor(num(tempo, 0))); return n > 0 ? Math.floor(t / n) : 0; }
+  const trechoAgora = mapa => trechoDoTempo(mapa, ehObj(mapa) && ehObj(mapa.cal) ? mapa.cal.tempo : 0);
+  // quantos trechos tem o dia, e o tempo (1º, 2º…) em que um trecho começa
+  function trechosDoDia(mapa) { const n = cadaDe(mapa); return n > 0 ? Math.ceil(tpdDe(ehObj(mapa) ? mapa.cal : null) / n) : 1; }
+  const comecoDoTrecho = (mapa, tr) => (cadaDe(mapa) > 0 ? Math.max(0, Math.floor(num(tr, 0))) * cadaDe(mapa) : 0) + 1;
+  // o número de um trecho, de 0 a 1 (o mesmo para o mapa inteiro)
+  function sorteioDoTrecho(mapa, dia, tr) {
+    let h = 2166136261;
+    for (const ch of String((ehObj(mapa) && mapa.id) || 'mapa') + ':' + Math.floor(num(dia, 0)) + ':t' + Math.floor(num(tr, 0))) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  // um passo do clima: fica (o mais provável) ou vai para um vizinho, pela chance do mês (o que não tem chance, não vem)
+  function passoDoClima(k, ch, r) {
+    const cand = [k].concat(VIZINHOS_CLIMA[k] || []), peso = c => (c === k ? 2 * Math.max(0, num(ch[c], 0)) + 20 : Math.max(0, num(ch[c], 0)));
+    const soma = cand.reduce((t, c) => t + peso(c), 0);
+    let x = limitar(num(r, 0), 0, 0.999999) * soma;
+    for (const c of cand) { const p = peso(c); if (x < p) return c; x -= p; }
+    return k;
+  }
+  // o clima de um trecho sem o escolhido à mão para ele: o sorteio do dia (o primeiro) ou o passo a partir do anterior
+  function climaSorteadoDoTrecho(mapa, dia, tr, regiao) {
+    const d = diaDe(mapa, dia), t = Math.max(0, Math.floor(num(tr, 0)));
+    if (t === 0) return climaSorteado(mapa, d, regiao);
+    const antes = climaDoTrecho(mapa, d, t - 1, regiao).k, mes = dataDe(ehObj(mapa) ? mapa.cal : null, d).mes;
+    return passoDoClima(antes, chancesDoClima(mapa, mes, regiao), sorteioDoTrecho(mapa, d, t));
+  }
+  // o escolhido à mão (o do mundo: clima.mao; o da região: chj) — { d, k } e, depois do 1º trecho, t
+  const maoDe = (mapa, regiao) => (regiao ? (ehObj(regiao) ? regiao.chj : null) : ehObj(mapa) && ehObj(mapa.clima) ? mapa.clima.mao : null);
+  function climaDoTrecho(mapa, dia, tr, regiao) {
+    const d = diaDe(mapa, dia), t = Math.max(0, Math.floor(num(tr, 0))), mao = maoDe(mapa, regiao);
+    if (ehObj(mao) && mao.d === d && (mao.t || 0) === t && tem(CLIMAS, mao.k)) return { k: mao.k, mao: true };
+    // (na projeção — quem joga —, o clima de agora vem pronto: ch nas regiões e nos grupos, hoje no mundo)
     if (regiao && tem(CLIMAS, regiao.ch) && !regiao.clima) return { k: regiao.ch, mao: false };
     if (!regiao && ehObj(mapa) && ehObj(mapa.clima) && tem(CLIMAS, mapa.clima.hoje) && !Array.isArray(mapa.clima.tab)) return { k: mapa.clima.hoje, mao: false };
-    return { k: climaSorteado(mapa, d, regiao), mao: false };
+    return { k: climaSorteadoDoTrecho(mapa, d, t, regiao), mao: false };
+  }
+  /* O clima de um dia (no mundo, ou numa região) — (lote 9) no trecho de agora, se o dia é hoje (no começo do dia, se é
+     outro dia), ou no trecho pedido (tr). O que o mestre escolheu à mão, senão o sorteado (e os passos do dia). Na
+     projeção (quem joga), o clima de agora já vem pronto (clima.hoje, e ch nas regiões e nos grupos). */
+  function climaDoDia(mapa, dia, regiao, tr) {
+    const d = diaDe(mapa, dia), hoje = ehObj(mapa) && ehObj(mapa.cal) ? num(mapa.cal.dia, 0) : 0;
+    return climaDoTrecho(mapa, d, tr != null ? tr : d === hoje ? trechoAgora(mapa) : 0, regiao);
+  }
+  // (lote 9) os climas do dia, trecho a trecho (até o de agora, ou o dia inteiro): [{ t, de (o 1º tempo), k, mao }]
+  function climasDoDia(mapa, dia, regiao, ate) {
+    const d = diaDe(mapa, dia), n = ate != null ? Math.min(trechosDoDia(mapa) - 1, Math.max(0, Math.floor(num(ate, 0)))) : trechosDoDia(mapa) - 1, out = [];
+    for (let t = 0; t <= n; t++) out.push(Object.assign({ t, de: comecoDoTrecho(mapa, t) }, climaDoTrecho(mapa, d, t, regiao)));
+    return out;
   }
   // a região que manda no clima de um ponto: a mais de dentro com ajuste (ou com o clima de hoje escolhido à mão)
   function regiaoDoClima(mapa, x, y, dia) {
@@ -1415,7 +1471,13 @@
   /* (lote 7, parte 5c) o clima: a tabela (um mês por linha, só quando o mestre mudou; sem ela, a de começo), o de hoje
      escolhido à mão ({ d, k }) e, na projeção, o de hoje pronto (hoje). O ajuste de uma região: clima → nunca, menos,
      mais ou muito. */
-  const normDiaK = v => (ehObj(v) && tem(CLIMAS, v.k) && Number.isFinite(num(v.d, NaN)) ? { d: inteiro(v.d, 0, 0, 1e9), k: v.k } : null);
+  // (lote 9: e o trecho do dia — t, só depois do 1º —, para o clima que muda a cada N tempos)
+  const normDiaK = v => {
+    if (!(ehObj(v) && tem(CLIMAS, v.k) && Number.isFinite(num(v.d, NaN)))) return null;
+    const out = { d: inteiro(v.d, 0, 0, 1e9), k: v.k }, t = inteiro(v.t, 0, 0, MAX_TEMPOS);
+    if (t > 0) out.t = t;
+    return out;
+  };
   function normPesosClima(v) {
     if (!ehObj(v)) return null;
     const out = {};
@@ -1429,6 +1491,8 @@
     const mao = normDiaK(c.mao);
     if (mao) out.mao = mao;
     if (tem(CLIMAS, c.hoje)) out.hoje = c.hoje;
+    // (lote 9) de quantos em quantos tempos o clima muda (sem ele, a cada 2; 0 = uma vez por dia)
+    if (c.cada != null && c.cada !== '') { const n = inteiro(c.cada, CADA_CLIMA, 0, MAX_TEMPOS); if (n !== CADA_CLIMA) out.cada = n; }
     return out;
   }
   function normAjusteClima(v) {
@@ -2132,6 +2196,7 @@
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
     MIS_E, situacaoDaMissao,
+    CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },

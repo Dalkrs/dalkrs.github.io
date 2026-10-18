@@ -586,7 +586,8 @@
         ct.hidden = !def;
         if (def) {
           if (ct.dataset.t !== c.k) { ct.dataset.t = c.k; ct.replaceChildren(glifo(def.svg, 14), h('span', { class: 'c-nome', text: def.nome })); }
-          ct.title = 'O clima de hoje no mundo: ' + def.nome + (c.mao ? ' (escolhido por você)' : '') + '. Na aba Hoje, ' + (ed ? 'você troca o de hoje e muda a tabela.' : 'o das regiões.');
+          const cada = N().cadaDe ? N().cadaDe(v) : 0;          // (lote 9) o clima muda ao longo do dia
+          ct.title = (cada > 0 ? 'O clima de agora no mundo: ' : 'O clima de hoje no mundo: ') + def.nome + (c.mao ? ' (escolhido por você)' : '') + (cada > 0 ? ' — muda aos poucos a cada ' + (cada === 1 ? 'tempo' : cada + ' tempos') : '') + '. Na aba Hoje, ' + (ed ? 'você troca o de agora e muda a tabela.' : 'o das regiões.');
           ct.setAttribute('aria-label', 'Clima de hoje: ' + def.nome + '. Abrir a aba Hoje');
         }
       }
@@ -2282,22 +2283,41 @@
     const def = climaDef(c.k);
     return def ? h('div', { class: 'clima-linha', 'data-k': k }, glifo(def.svg, 20), h('b', { text: def.nome }), txt ? h('small', { text: txt }) : null) : null;
   }
+  // (lote 9) "Hoje: Ensolarado (do 1º ao 4º) → Nublado (desde o 5º)" — os trechos iguais seguidos viram um só
+  function textoDosTrechos(v, seq) {
+    const C = N().CLIMAS, partes = [];
+    for (let i = 0; i < seq.length; i++) {
+      const a = seq[i];
+      let j2 = i;
+      while (j2 + 1 < seq.length && seq[j2 + 1].k === a.k) j2++;
+      const ult = j2 === seq.length - 1, ate = ult ? null : seq[j2 + 1].de - 1;
+      partes.push(C[a.k].nome + (ult ? ' (desde o ' + a.de + 'º, agora)' : ate === a.de ? ' (no ' + a.de + 'º)' : ' (do ' + a.de + 'º ao ' + ate + 'º)'));
+      i = j2;
+    }
+    return 'Hoje: ' + partes.join(' → ') + '.';
+  }
   function secClimaHoje(v, ed) {
     const N_ = N();
     if (!N_.climaDoDia) return null;
     const dia = v.cal.dia, c = N_.climaDoDia(v, dia, null), out = [];
+    const cada = N_.cadaDe ? N_.cadaDe(v) : 0, tr = N_.trechoAgora ? N_.trechoAgora(v) : 0;
     out.push(linhaDoClima(c, 'hoje:clima', c.mao ? 'escolhido por você' : ed ? 'sorteado pela tabela de ' + mesTxt(v, dia) : ''));
+    // (lote 9) o clima ao longo do dia: o que já passou e quando muda de novo (o mestre; quem joga vê o de agora)
+    if (ed && cada > 0 && N_.climasDoDia) {
+      const prox = tr + 1 < N_.trechosDoDia(v) ? N_.comecoDoTrecho(v, tr + 1) : null;
+      out.push(h('p', { class: 'note', 'data-k': 'hoje:trechos', text: textoDosTrechos(v, N_.climasDoDia(v, dia, null, tr)) + ' Muda aos poucos a cada ' + (cada === 1 ? 'tempo' : cada + ' tempos') + (prox ? ': a próxima mudança no ' + prox + 'º tempo.' : ': a próxima, amanhã.') }));
+    }
     const regs = v.objs.filter(r => r.k === 'r' && (r.clima || (r.chj && r.chj.d === dia) || climaDef(r.ch)));
     if (regs.length) out.push(nota('Nas regiões: ' + regs.map(r => nomeDe(r, v) + ', ' + climaDef(N_.climaDoDia(v, dia, r).k).nome.toLocaleLowerCase('pt-BR')).join('; ') + '.'));
     if (ed) {
-      const Cs = N_.CLIMAS, sorteado = N_.climaSorteado(v, dia, null);
-      out.push(campoEscolha('hoje:clima-mao', 'Trocar o de hoje', c.mao ? c.k : '', [['', 'O sorteado (' + Cs[sorteado].nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
+      const Cs = N_.CLIMAS, sorteado = N_.climaSorteadoDoTrecho ? N_.climaSorteadoDoTrecho(v, dia, tr, null) : N_.climaSorteado(v, dia, null);
+      out.push(campoEscolha('hoje:clima-mao', cada > 0 ? 'Trocar o de agora' : 'Trocar o de hoje', c.mao ? c.k : '', [['', 'O sorteado (' + Cs[sorteado].nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
         k => App.mudar(k ? 'trocar o clima de hoje' : 'voltar ao clima sorteado', m => {
-          const cl = m.clima || (m.clima = {});
-          if (k) { if (cl.mao && cl.mao.d === m.cal.dia && cl.mao.k === k) return false; cl.mao = { d: m.cal.dia, k }; } else { if (!cl.mao) return false; delete cl.mao; }
-        })));
+          const cl = m.clima || (m.clima = {}), t = N().trechoAgora ? N().trechoAgora(m) : 0;
+          if (k) { if (cl.mao && cl.mao.d === m.cal.dia && (cl.mao.t || 0) === t && cl.mao.k === k) return false; cl.mao = t > 0 ? { d: m.cal.dia, t, k } : { d: m.cal.dia, k }; } else { if (!cl.mao) return false; delete cl.mao; }
+        }), { dica: cada > 0 ? 'Vale até a próxima mudança; depois o clima segue aos poucos a partir dele.' : 'Vale até o fim do dia.' }));
       out.push(linha(botao('A tabela do clima…', () => { focarDepois = 'clima:mes'; abrirAba('mapa'); }, { c: 'sm', k: 'hoje:tabela' })));
-      out.push(nota('A cada dia, o clima sai da tabela do mês (as regiões ajustam). Vale nas cenas geradas daqui e, com o mapa mostrado aos jogadores, no Acampamento (a proposta do Conforto da noite) e na Meditação (o enfeite do fundo).'));
+      out.push(nota('O clima sai da tabela do mês (as regiões ajustam)' + (cada > 0 ? ' e muda aos poucos ao longo do dia (de quantos em quantos tempos: no calendário, na aba Mapa)' : '') + '. Vale nas cenas geradas daqui e, com o mapa mostrado aos jogadores, no Acampamento (a proposta do Conforto da noite) e na Meditação (o enfeite do fundo).'));
     }
     return secao('O clima de hoje', out);
   }
@@ -2309,11 +2329,13 @@
     const Cs = N_.CLIMAS, A = N_.AJUSTES_CLIMA, id = o.id, dia = m.cal.dia, c = climaDaRegiao(m, o, dia), out = [];
     const aj = o.clima || {}, nAj = Object.keys(aj).length;
     out.push(linhaDoClima(c, 'o:' + id + ':clima-hoje', c.mao ? 'escolhido por você' : c.de === o ? 'com o ajuste desta região' : c.de ? 'o de ' + nomeDe(c.de, m) : 'o do mundo'));
-    const proprio = o.clima ? N_.climaSorteado(m, dia, o) : null;
-    out.push(campoEscolha('o:' + id + ':chj', 'Trocar o de hoje aqui', o.chj && o.chj.d === dia ? o.chj.k : '', [['', proprio ? 'O sorteado (' + Cs[proprio].nome + ')' : 'O de fora (' + climaDef(climaDaRegiao(m, Object.assign({}, o, { chj: null, clima: null }), dia).k).nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
+    const tr = N_.trechoAgora ? N_.trechoAgora(m) : 0, cada = N_.cadaDe ? N_.cadaDe(m) : 0;          // (lote 9) o trecho do dia
+    const proprio = o.clima ? (N_.climaSorteadoDoTrecho ? N_.climaSorteadoDoTrecho(m, dia, tr, o) : N_.climaSorteado(m, dia, o)) : null;
+    out.push(campoEscolha('o:' + id + ':chj', cada > 0 ? 'Trocar o de agora aqui' : 'Trocar o de hoje aqui', o.chj && o.chj.d === dia && (o.chj.t || 0) === tr ? o.chj.k : '', [['', proprio ? 'O sorteado (' + Cs[proprio].nome + ')' : 'O de fora (' + climaDef(climaDaRegiao(m, Object.assign({}, o, { chj: null, clima: null }), dia).k).nome + ')']].concat(Object.keys(Cs).map(k => [k, Cs[k].nome])),
       k => mudarObj(id, k ? 'trocar o clima de hoje na região' : 'voltar ao clima sorteado na região', (x, mm) => {
-        if (k) { if (x.chj && x.chj.d === mm.cal.dia && x.chj.k === k) return false; x.chj = { d: mm.cal.dia, k }; } else { if (!x.chj) return false; delete x.chj; }
-      })));
+        const t = N().trechoAgora ? N().trechoAgora(mm) : 0;
+        if (k) { if (x.chj && x.chj.d === mm.cal.dia && (x.chj.t || 0) === t && x.chj.k === k) return false; x.chj = t > 0 ? { d: mm.cal.dia, t, k } : { d: mm.cal.dia, k }; } else { if (!x.chj) return false; delete x.chj; }
+      }), { dica: cada > 0 ? 'Vale até a próxima mudança; depois o clima daqui segue aos poucos a partir dele.' : 'Vale até o fim do dia.' }));
     const resumoAj = nAj ? Object.keys(aj).map(k => A[aj[k]].nome.toLocaleLowerCase('pt-BR') + ' ' + Cs[k].nome.toLocaleLowerCase('pt-BR')).join(', ') : 'como o do mundo';
     out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':aj-resumo', text: 'O clima desta região: ' + resumoAj + '.' }));
     out.push(linha(botao(ajusteAberto === id ? 'Fechar o ajuste' : 'Ajustar o clima da região…', () => { ajusteAberto = ajusteAberto === id ? null : id; agendar(); }, { c: 'sm', k: 'o:' + id + ':ajustar', expandido: String(ajusteAberto === id) })));
@@ -2772,6 +2794,17 @@
       // (lote 6) a marcha dos grupos é contada em tempos: quantos tempos de marcha tem um dia
       campoNumero('mapa:tpd', 'Tempos de marcha por dia', cal.tpd || N_.TEMPOS_DIA || 10, n => App.mudar('mudar os tempos de marcha do dia', mm => { if (mm.cal.tpd === n) return false; mm.cal.tpd = n; mm.cal.tempo = Math.min(mm.cal.tempo || 0, n - 1); }),
         { min: 1, max: (N_.LIMITES && N_.LIMITES.tempos) || 100, erro: 'Use de 1 a 100 tempos.', dica: 'Os grupos andam os cubos deles a cada tempo; a cada tantos tempos de marcha, passa um dia.' }),
+      // (lote 9) de quantos em quantos tempos o clima muda (aos poucos, ao longo do dia)
+      ...(() => {
+        if (!N_.cadaDe) return [];
+        const cada = N_.cadaDe(m), ops = [['0', 'Uma vez por dia'], ['1', 'A cada tempo'], ['2', 'A cada 2 tempos'], ['3', 'A cada 3 tempos'], ['4', 'A cada 4 tempos'], ['5', 'A cada 5 tempos']];
+        if (!ops.some(x => x[0] === String(cada))) ops.push([String(cada), 'A cada ' + cada + ' tempos']);
+        return [campoEscolha('mapa:clima-cada', 'O clima muda', String(cada), ops, v => App.mudar('mudar quando o clima muda', mm => {
+          const n = Number(v); if (N().cadaDe(mm) === n) return false;
+          const cl = mm.clima || (mm.clima = {});
+          if (n === N().CADA_CLIMA) delete cl.cada; else cl.cada = n;
+        }), { dica: 'Ao longo do dia o clima muda aos poucos (do sol ao nublado, do nublado à chuva…), pela tabela do mês. O que você trocar à mão vale até a próxima mudança.' })];
+      })(),
       // (lote 7, parte 4b) quando escurece: a hora das cenas geradas daqui (vazio: o de fábrica)
       ...(() => { const q = N_.quandoEscurece ? N_.quandoEscurece(cal) : null; if (!q) return []; const max = ((N_.LIMITES && N_.LIMITES.tempos) || 100) + 1; return [h('div', { class: 'row' },
         campoNumero('mapa:ent', 'Entardecer a partir do tempo', cal.ent == null ? null : cal.ent, n => App.mudar('mudar quando entardece', mm => { if ((mm.cal.ent == null ? null : mm.cal.ent) === n) return false; if (n == null) delete mm.cal.ent; else mm.cal.ent = n; }),
