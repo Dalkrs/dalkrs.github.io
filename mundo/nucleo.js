@@ -735,7 +735,8 @@
   function ptsDaRota(rota, o) {
     const pts = rota.pts;
     if (ehObj(o) && o.modo === 'circuito') { const a = pts[0], b = pts[pts.length - 1]; return a[0] === b[0] && a[1] === b[1] ? pts : pts.concat([a]); }
-    if (ehObj(o) && o.modo === 'volta' && o.sentido === -1) return pts.slice().reverse();
+    // (na volta: indo e voltando, ou — lote 9 — "Voltar pela mesma rota" de quem só ia)
+    if (ehObj(o) && o.modo !== 'circuito' && o.sentido === -1) return pts.slice().reverse();
     return pts;
   }
   function viagem(mapa, g) {
@@ -819,14 +820,15 @@
   /* Andar `cubos` pela rota. (lote 7, parte 5b) No fim do caminho: só ida, para; indo e voltando, vira e segue no outro
      sentido com o que sobrou; em circuito, recomeça. Ao entrar no hexágono de uma parada, fica ali (o resto se perde) e
      a espera começa (espera: os tempos da parada). pass: os hexágonos por onde passou ("q,r"), para os encontros. */
-  function marchar(mapa, grupoId, cubos, est0) {
+  function marchar(mapa, grupoId, cubos, est0, opc) {
     const o = objQueAnda(mapa, grupoId), est = est0 || (o ? estadoDe(o) : null), modo = o ? o.modo || 'ida' : 'ida';
     const base = { ok: false, cubos: 0, hexes: 0, x: est ? est.x : null, y: est ? est.y : null, prog: est ? est.prog : 0, chegou: false };
     const r0 = naRota(mapa, grupoId, est0);
     if (r0.erro) return Object.assign(base, { msg: r0.erro });
     const tpd = tpdDe(mapa.cal), h0 = hexDe(mapa, est.x, est.y), pass = h0 ? [chaveHex(h0)] : [];
     const cur = { x: est.x, y: est.y, prog: est.prog, sentido: est.sentido, espera: est.espera };
-    let resto = Math.max(0, num(cubos, 0)), gasto = 0, hexes = 0, voltas = 0, parou = null, parada = null, chegou = false, ultimo = null, msgFim = null;
+    let resto = Math.max(0, num(cubos, 0)), gasto = 0, hexes = 0, voltas = 0, parou = null, parada = null, chegou = false, ultimo = null, msgFim = null, noDescanso = false;
+    const paraEm = opc && opc.paraEm instanceof Set && opc.paraEm.size ? opc.paraEm : null;     // (lote 9) os pontos de descanso
     for (let perna = 0; perna < MAX_PERNAS; perna++) {
       const r = perna ? naRota(mapa, grupoId, cur) : r0;
       if (r.erro) break;
@@ -848,24 +850,29 @@
       // (lote 7, parte 5b) a primeira parada do caminho, até onde dá para ir
       let kPar = -1, par = null;
       if (Array.isArray(o.paradas) && o.paradas.length) for (let k = i + 1; k <= lim; k++) { const pp = paradaNoHex(mapa, o, v.cam[k]); if (pp) { kPar = k; par = pp; break; } }
+      // (lote 9) indo dormir: o primeiro ponto de descanso do caminho
+      let kDes = -1;
+      if (paraEm) for (let k = i + 1; k <= lim; k++) if (paraEm.has(chaveHex(v.cam[k]))) { kDes = k; break; }
       if (fechou && lim <= i) {
         const n0 = noAndado(mapa, v, v.acum[i]);
         Object.assign(cur, { x: n0.x, y: n0.y, prog: n0.prog });
         parou = { id: fechou.id, nome: nomeEvento(fechou) };
         break;
       }
-      const n = noAndado(mapa, v, Math.min(v.acum[kPar >= 0 ? kPar : lim], antes + resto)), j = n.j, anda = j - i;
+      const kAlvo = Math.min(kPar >= 0 ? kPar : lim, kDes >= 0 ? kDes : lim);
+      const n = noAndado(mapa, v, Math.min(v.acum[kAlvo], antes + resto)), j = n.j, anda = j - i;
       for (let k = i + 1; k <= j; k++) pass.push(chaveHex(v.cam[k]));
       gasto += n.prog - antes; resto -= n.prog - antes; hexes += anda;
       Object.assign(cur, { x: n.x, y: n.y, prog: n.prog });
       ultimo = { v, j, ult, n };
       if (kPar >= 0 && j >= kPar) { parada = { k: par.k, nome: nomeDaParada(mapa, par.p, par.k), t: temposDaParada(par.p, tpd) }; cur.espera = parada.t; break; }
+      if (kDes >= 0 && j >= kDes) { noDescanso = true; break; }
       if (fechou && j >= lim) { parou = { id: fechou.id, nome: nomeEvento(fechou) }; break; }
       if (j >= ult && modo !== 'ida' && resto > 1e-9) continue;          // vira (ou recomeça) na próxima perna
       chegou = j >= ult && modo === 'ida';
       break;
     }
-    if (msgFim && !voltas) return Object.assign(base, { x: cur.x, y: cur.y, prog: cur.prog, chegou: true, msg: msgFim });
+    if (msgFim && !voltas) return Object.assign(base, { x: cur.x, y: cur.y, prog: cur.prog, chegou: true, msg: msgFim }, cur.sentido === -1 ? { sentido: -1 } : {});
     // a mensagem: a de antes, quando só andou (ou parou na passagem fechada); as voltas e as paradas, acrescentadas
     let msg;
     if (hexes > 0) {
@@ -883,24 +890,99 @@
     const out = { ok: true, cubos: arred(gasto), hexes, x: cur.x, y: cur.y, prog: cur.prog, chegou, msg, pass };
     if (parou) out.parou = parou;
     if (parada) out.parada = parada;
-    if (modo === 'volta') out.sentido = cur.sentido;
+    if (noDescanso) out.descanso = true;
+    if (modo === 'volta' || cur.sentido === -1) out.sentido = cur.sentido;
     if (cur.espera) out.espera = cur.espera;
     if (voltas) out.voltas = voltas;
     return out;
   }
   /* n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes). (lote 7, parte 5b) Com paradas (ou parado
      numa), tempo a tempo: a espera desconta um tempo por vez e, acabada, o grupo segue no tempo seguinte. */
+  /* (lote 9) O descanso do grupo: a janela de tempos do dia em que ele não anda (g.desc = { de, ate }, do 1º ao último
+     tempo; pode virar a noite: de 9 a 2). → a janela no dia de agora ({ de, ate, n: quantos tempos }) ou null */
+  function janelaDeDescanso(g, tpd) {
+    const d = ehObj(g) && ehObj(g.desc) ? g.desc : null, t = Math.max(1, Math.floor(num(tpd, TEMPOS_DIA)));
+    if (!d) return null;
+    const de = limitar(inteiro(d.de, 1, 1, MAX_TEMPOS), 1, t), ate = limitar(inteiro(d.ate, de, 1, MAX_TEMPOS), 1, t);
+    return { de, ate, n: de <= ate ? ate - de + 1 : t - de + 1 + ate };
+  }
+  // o tempo t (1º, 2º… do dia) está no descanso? → quantos tempos do descanso já passaram antes dele (0…), ou -1
+  function noDescanso(j, t, tpd) {
+    if (!j) return -1;
+    if (j.de <= j.ate) return t >= j.de && t <= j.ate ? t - j.de : -1;
+    return t >= j.de ? t - j.de : t <= j.ate ? tpd - j.de + t : -1;
+  }
+  // descansando agora (o próximo tempo de marcha cai no descanso)?
+  function descansandoAgora(mapa, g) {
+    const tpd = tpdDe(ehObj(mapa) ? mapa.cal : null), t = inteiro(ehObj(mapa) && ehObj(mapa.cal) ? mapa.cal.tempo : 0, 0, 0, tpd - 1) + 1;
+    return noDescanso(janelaDeDescanso(g, tpd), t, tpd) >= 0;
+  }
+  /* os pontos de descanso: os marcadores marcados (valem para todos os grupos do mundo) e os do próprio grupo (g.pdesc)
+     → as chaves dos hexágonos */
+  function pontosDeDescanso(mapa, g) {
+    const out = new Set();
+    if (!temGrade(mapa)) return out;
+    for (const o of mapa.objs || []) if (o.k === 'm' && o.desc) { const h = hexDe(mapa, o.x, o.y); if (h) out.add(chaveHex(h)); }
+    for (const p of (ehObj(g) && Array.isArray(g.pdesc) ? g.pdesc : [])) { const h = hexDe(mapa, p.x, p.y); if (h) out.add(chaveHex(h)); }
+    return out;
+  }
+  // o nome de um ponto de descanso (o do marcador do hexágono, se houver)
+  function nomeDoDescanso(mapa, x, y) {
+    const h = hexDe(mapa, x, y), m = h ? (mapa.objs || []).find(o => o.k === 'm' && (ph => ph && ph.q === h.q && ph.r === h.r)(hexDe(mapa, o.x, o.y)) && (o.desc || texto(o.nome).trim())) : null;
+    return m && texto(m.nome).trim() ? texto(m.nome).trim() : 'o ponto de descanso';
+  }
+  /* dá para chegar a um ponto de descanso andando no máximo `tempos` tempos (parando ao entrar nele)? → o nome dele, ou null */
+  function chegaAoDescanso(mapa, grupoId, est, tempos, pt, paraEm) {
+    let e = Object.assign({}, est);
+    for (let k = 0; k < tempos; k++) {
+      const r = marchar(mapa, grupoId, pt, e, { paraEm });
+      if (!r.ok) return null;
+      if (r.descanso) return nomeDoDescanso(mapa, r.x, r.y);
+      if (r.chegou || r.parada || r.parou || !(r.hexes > 0 || r.cubos > 0)) return null;
+      e = { x: r.x, y: r.y, prog: r.prog, sentido: r.sentido || e.sentido, espera: 0 };
+    }
+    return null;
+  }
+  /* n tempos de marcha pela rota (os cubos de um tempo do grupo, n vezes). (lote 7, parte 5b) Com paradas (ou parado
+     numa), tempo a tempo: a espera desconta um tempo por vez e, acabada, o grupo segue no tempo seguinte.
+     (lote 9) O descanso: nos tempos da janela do grupo ele não anda (a espera de uma parada também passa). O grupo do
+     mundo (caravana, patrulha, exército) dorme num ponto de descanso: em cada tempo da janela, se ainda dá para chegar a
+     um andando até a metade do descanso (para dormir pelo menos a outra metade), segue até lá; senão, acampa onde está
+     (a conta é a mesma tempo a tempo e de uma vez: quem acampou não sai, porque parado não chega mais perto). O
+     grupo dos jogadores só para. Os tempos são contados a partir do tempo de agora do mapa (cal.tempo). */
   function andarTempos(mapa, grupoId, n) {
     const g = objQueAnda(mapa, grupoId), N_ = Math.max(0, Math.floor(num(n, 1)));
     if (!g) return marchar(mapa, grupoId, 0);
-    const pt = passoDe(g, tpdDe(mapa && mapa.cal));
-    if (!(Array.isArray(g.paradas) && g.paradas.length) && !(g.espera > 0)) return marchar(mapa, grupoId, pt * N_);
+    const tpd = tpdDe(mapa && mapa.cal), pt = passoDe(g, tpd), jan = g.k === 'g' ? janelaDeDescanso(g, tpd) : null;
+    if (!(Array.isArray(g.paradas) && g.paradas.length) && !(g.espera > 0) && !jan) return marchar(mapa, grupoId, pt * N_);
+    const t0 = inteiro(mapa && ehObj(mapa.cal) ? mapa.cal.tempo : 0, 0, 0, tpd - 1);
+    const paraEm = jan && g.tipo ? pontosDeDescanso(mapa, g) : null;
     let est = estadoDe(g), r = null, cubos = 0, hexes = 0, esperou = 0, parada = null, parou = null, voltas = 0, chegou = false, msg = '';
+    let descansou = 0, foiDormir = null, rumo = null;
     const pass = [];
     for (let k = 0; k < N_; k++) {
+      const t = (t0 + k) % tpd + 1, pos = noDescanso(jan, t, tpd);
+      if (pos >= 0) {
+        // indo dormir: o grupo do mundo segue até o ponto de descanso, se ainda chega com metade do descanso pela frente
+        const aqui = hexDe(mapa, est.x, est.y), noPonto = !!(paraEm && aqui && paraEm.has(chaveHex(aqui)));
+        const resta = Math.floor(jan.n / 2) - pos;
+        const alvo = paraEm && paraEm.size && !noPonto && !(est.espera > 0) && resta > 0 ? chegaAoDescanso(mapa, grupoId, est, resta, pt, paraEm) : null;
+        if (alvo) {
+          r = marchar(mapa, grupoId, pt, est, { paraEm });
+          if (r.ok) {
+            cubos += r.cubos; hexes += r.hexes; pass.push(...(pass.length ? r.pass.slice(1) : r.pass));
+            est = { x: r.x, y: r.y, prog: r.prog, sentido: r.sentido || est.sentido, espera: 0 };
+            if (r.descanso) foiDormir = nomeDoDescanso(mapa, est.x, est.y); else rumo = alvo;
+            continue;
+          }
+        }
+        if (est.espera > 0) est.espera--;
+        descansou++;
+        continue;
+      }
       if (est.espera > 0) { est.espera--; esperou++; continue; }
       r = marchar(mapa, grupoId, pt, est);
-      if (!r.ok) { if (!cubos && !esperou && !hexes) return r; chegou = !!r.chegou; break; }
+      if (!r.ok) { if (!cubos && !esperou && !hexes && !descansou) return r; chegou = !!r.chegou; break; }
       cubos += r.cubos; hexes += r.hexes; voltas += r.voltas || 0; pass.push(...(pass.length ? r.pass.slice(1) : r.pass));
       est = { x: r.x, y: r.y, prog: r.prog, sentido: r.sentido || est.sentido, espera: r.espera || 0 };
       if (r.parada) parada = r.parada;
@@ -911,22 +993,31 @@
     // a mensagem: quanto andou, a parada (onde está parado agora, ou por onde passou), as voltas e o fim
     const nomeEm = (x, y) => { const h = hexDe(mapa, x, y), pp = h ? paradaNoHex(mapa, g, h) : null; return pp ? nomeDaParada(mapa, pp.p, pp.k) : 'a parada'; };
     const tempos = n => (n === 1 ? '1 tempo' : n + ' tempos'), falta = (est.espera === 1 ? 'falta ' : 'faltam ') + tempos(est.espera);
+    // (lote 9) o descanso: descansando agora (o próximo tempo cai na janela), e onde dorme
+    const tFim = (t0 + N_) % tpd + 1, dorme = noDescanso(jan, tFim, tpd) >= 0;
+    const hFim = paraEm ? hexDe(mapa, est.x, est.y) : null, noPontoFim = !!(hFim && paraEm.has(chaveHex(hFim)));
+    const ondeDorme = foiDormir ? ' em "' + foiDormir + '"' : noPontoFim ? ' em "' + nomeDoDescanso(mapa, est.x, est.y) + '"' : '';
     if (hexes > 0) {
       msg = 'Andou ' + plHex(hexes) + ' (' + n1(cubos) + ' cubos)';
       if (esperou && g.espera > 0) msg += ', depois de ' + tempos(esperou) + ' parado em "' + nomeEm(g.x, g.y) + '"';
       if (voltas) msg += g.modo === 'volta' ? ', virou no fim da rota' : ', recomeçou a rota';
-      if (est.espera > 0) msg += ' e parou em "' + nomeEm(est.x, est.y) + '": ' + falta;
+      if (est.espera > 0 && !dorme) msg += ' e parou em "' + nomeEm(est.x, est.y) + '": ' + falta;
       else if (parada) msg += ', com a parada em "' + parada.nome + '"';
       if (!(est.espera > 0)) msg += parou ? ' e parou: "' + parou.nome + '" fecha a passagem' : chegou ? ' e chegou ao fim da rota' : '';
-    } else if (est.espera > 0) msg = 'Parado em "' + nomeEm(est.x, est.y) + '": ' + falta;
+      if (descansou || foiDormir) msg += foiDormir ? ' e foi dormir' + ondeDorme : dorme ? ' e parou para descansar' : ' (e descansou ' + tempos(descansou) + ')';
+      else if (rumo) msg += ', a caminho de "' + rumo + '" para dormir';
+    } else if (descansou) msg = dorme ? 'Descansando' + ondeDorme + ' (do ' + jan.de + 'º ao ' + jan.ate + 'º tempo)' : 'Descansou ' + tempos(descansou);
+    else if (est.espera > 0) msg = 'Parado em "' + nomeEm(est.x, est.y) + '": ' + falta;
     else if (esperou) msg = 'Parado em "' + nomeEm(est.x, est.y) + '": segue no próximo tempo';
     else msg = r ? r.msg : 'Não saiu do lugar';
     const out = { ok: true, cubos: arred(cubos), hexes, x: est.x, y: est.y, prog: est.prog, chegou, msg, pass: pass.length ? pass : (h => (h ? [chaveHex(h)] : []))(hexDe(mapa, est.x, est.y)), espera: est.espera };
-    if (g.modo === 'volta') out.sentido = est.sentido;
+    if (g.modo === 'volta' || est.sentido === -1) out.sentido = est.sentido;
     if (parada) out.parada = parada;
     if (parou) out.parou = parou;
     if (voltas) out.voltas = voltas;
     if (esperou) out.esperou = esperou;
+    if (descansou) out.descansou = descansou;
+    if (foiDormir) out.dormiu = foiDormir;
     return out;
   }
   // um dia inteiro de marcha (todos os tempos do dia)
@@ -1376,12 +1467,17 @@
   }
   function normAndar(o, out, comParadas) {
     if (o.modo === 'volta' || o.modo === 'circuito') out.modo = o.modo;
-    if (out.modo === 'volta' && num(o.sentido, 1) < 0) out.sentido = -1;
+    // (na volta: indo e voltando, ou — lote 9 — "Voltar pela mesma rota" de quem só ia; o circuito não volta)
+    if (out.modo !== 'circuito' && num(o.sentido, 1) < 0) out.sentido = -1;
     if (!comParadas) return out;
     const ps = normParadas(o.paradas);
     if (ps.length) out.paradas = ps;
     const esp = inteiro(o.espera, 0, 0, 1e6);
     if (esp > 0) out.espera = esp;
+    // (lote 9) o descanso (a janela de tempos do dia em que não anda) e os pontos de descanso do grupo, na rota dele
+    if (ehObj(o.desc)) { const de = inteiro(o.desc.de, null, 1, MAX_TEMPOS), ate = inteiro(o.desc.ate, null, 1, MAX_TEMPOS); if (de != null && ate != null) out.desc = { de, ate }; }
+    const pd = (Array.isArray(o.pdesc) ? o.pdesc : []).filter(ehObj).slice(0, MAX_PARADAS).map(p => { const x = coord(p.x), y = coord(p.y); return x == null || y == null ? null : { x, y }; }).filter(Boolean);
+    if (pd.length) out.pdesc = pd;
     return out;
   }
   const bolNorm = v => { if (!Array.isArray(v)) return null; const f = inteiro(v[0], -1, 0, 100000), t = inteiro(v[1], 0, 0, 100000); return t >= 2 && f >= 0 && f < t ? [f, t] : null; };
@@ -1394,6 +1490,7 @@
       case 'm': {
         if (!lugar()) return null;
         const mc = Object.assign(b, { ic: escolha(ICONES, o.ic, 'cidade'), cor: cor(o.cor, ''), rumor: sim(o.rumor), falso: sim(o.falso), liga: normLiga(o.liga) });
+        if (sim(o.desc)) mc.desc = true;                          // (lote 9) ponto de descanso (os grupos do mundo dormem aqui)
         const estr = normEstr(o.estr);                            // (lote 8, parte 6) a fortificação: a DEF de quem defende ali
         if (estr) mc.estr = estr;
         return mc;
@@ -1976,11 +2073,12 @@
       // (lote 9) a missão: só a que o mestre mostrou; a de texto vai com a situação pronta (a ligada, quem publica troca
       // pelo nome e pela situação das Fichas — e tira a que ainda está escondida lá)
       if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
-      if (o.k === 'm') { delete o.falso; delete o.estr; if (coberto(o.x, o.y)) continue; }
+      if (o.k === 'm') { delete o.falso; delete o.estr; delete o.desc; if (coberto(o.x, o.y)) continue; }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
         delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
+        delete o.desc; delete o.pdesc;                           // (lote 9) o descanso e os pontos de descanso também
         if (escondidas.has(o.fac)) o.fac = null;                 // (lote 8) a facção escondida não vai
         // (lote 8, parte 6) o exército: os nomes (o comandante, as unidades que não estão escondidas e o tipo delas), sem os números
         if (o.exe) o.exe = { pub: true, cmd: { nome: o.exe.cmd.nome }, unid: o.exe.unid.filter(u => !u.oc).map(u => ({ id: u.id, nome: u.nome, tipo: u.tipo })) };
@@ -2034,6 +2132,7 @@
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
     MIS_E, situacaoDaMissao,
+    janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
   };

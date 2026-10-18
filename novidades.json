@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-4",
+      "data": "2026-10-18",
+      "titulo": "Hora de descansar, pontos de descanso e a volta pela mesma rota",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: cada grupo pode ter uma hora de descanso (Seleção → o grupo → Descanso), como “do 6º ao 10º tempo” — pode virar a noite. Nesses tempos ele não anda; no mapa, aparece um “zZ” junto do token (só para você)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: pontos de descanso. Marque um marcador como “Ponto de descanso” (vale para todas as caravanas, patrulhas e exércitos) ou marque pontos na rota de um grupo do mundo. Na hora de descansar, ele segue até um ponto se ainda der para dormir pelo menos metade do descanso; senão, acampa onde está."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o grupo dos jogadores agora também tem paradas e “Ao chegar ao fim da rota”. E quem chega ao fim de uma rota de só ida ganha a opção “Voltar pela mesma rota” — no aviso da chegada e no painel."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-3",
       "data": "2026-10-18",
       "titulo": "Bandeiras maiores e missões no mapa",

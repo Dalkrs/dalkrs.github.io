@@ -6,7 +6,11 @@
 //     do evento), nasce só do mestre (tracejada; não vai para os jogadores), mostrar aos jogadores (vai, com o nome),
 //     concluir (✓) e reabrir, trocar, tirar (com desfazer), a missão ligada a uma missão das Fichas (o nome e a situação
 //     vêm de lá; a escondida nas Fichas não vai; concluída lá, vira ✓; a que saiu das Fichas avisa), a lista "Missões no
-//     mapa" (aba Hoje), o que quem joga lê e duplicar sem levar a missão.
+//     mapa" (aba Hoje), o que quem joga lê e duplicar sem levar a missão;
+//   · (parte 3, SO=descanso) o grupo dos jogadores com "Ao chegar ao fim da rota" e paradas; o descanso (marcar, o
+//     painel, "descansando agora", o "zZ", não anda no "+1 tempo", não vai para os jogadores); o marcador "Ponto de
+//     descanso" (a lua; a caravana segue até ele e dorme lá; não vai para os jogadores); o ponto de descanso da própria
+//     caravana (na rota, no painel, tirar); a volta pela mesma rota (o botão no fim, anda de volta, o aviso ao chegar).
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -231,6 +235,96 @@ async function janela(a, f) {
     ok(/A missão ligada não está mais nas Fichas/.test(await L.F.locator('#pane').innerText()) && /perdida/.test((await marca(L, 'pt')).cls), 'a missão que saiu das Fichas: o painel avisa, e a marca fica apagada');
     await A(L, () => window.MundoTela.centrar({ x: 800, y: 1000 })); await espera(500);
     await foto('l9-missao-fichas');
+  });
+
+  if (parte('descanso')) await passo('o descanso, os pontos de descanso, as paradas e a volta pela mesma rota', async () => {
+    // a estrada, o grupo dos jogadores, a caravana e a estalagem (no 4º hexágono da estrada)
+    await A(L, () => {
+      const { App, N } = __mundo;
+      App.mudar('montar o descanso', m => {
+        m.grade.tam = 40; m.cal.tpd = 10; m.cal.tempo = 0;
+        m.objs.push(Object.assign(N.objNovo('t', { pts: [[100, 1300], [1300, 1300]] }), { id: 'rd', nome: 'Estrada do Sul' }));
+      });
+      App.mudar('os grupos', m => {
+        const v = N.viagem(m, { rota: 'rd' }), c = k => N.centroHex(m, v.cam[k].q, v.cam[k].r);
+        m.objs.push(Object.assign(N.objNovo('g', { x: c(2).x, y: c(2).y, sigla: 'PT' }), { id: 'gp', nome: 'Os Heróis', rota: 'rd', pt: 10, prog: v.acum[2] }),
+          Object.assign(N.objNovo('g', { x: c(0).x, y: c(0).y, sigla: 'CAR' }), { id: 'gc', nome: 'Caravana', tipo: 'caravana', rota: 'rd', pt: 10, oculto: false }),
+          Object.assign(N.objNovo('m', { x: c(4).x, y: c(4).y, ic: 'vila' }), { id: 'inn', nome: 'Estalagem' }));
+      });
+    });
+    await zoom(L, 0.8);
+    await A(L, () => window.MundoTela.centrar({ x: 500, y: 1300 })); await espera(400);
+    const hexDe = id => A(L, id => { const { App, N } = __mundo, o = App.mapa.objs.find(x => x.id === id); const h = N.hexDe(App.mapa, o.x, o.y); return h.q + ',' + h.r; }, id);
+    const hexK = k => A(L, k => { const { App, N } = __mundo, v = N.viagem(App.mapa, { rota: 'rd' }); return v.cam[k].q + ',' + v.cam[k].r; }, k);
+    const relogio = t => A(L, t => __mundo.App.mudar('o relógio', m => { m.cal.tempo = t; }), t);
+    // o grupo dos jogadores: "Ao chegar ao fim da rota" e as paradas (antes só os do mundo)
+    await aba(L, 'selecao'); await selecionar(L, 'gp');
+    ok(await campo(L, 'o:gp:modo').count() === 1 && await campo(L, 'o:gp:parada').count() === 1, 'o grupo dos jogadores tem "Ao chegar ao fim da rota" e as paradas');
+    ok(/Sem hora de descanso/.test(await L.F.locator('#pane').innerText()) && await campo(L, 'o:gp:desc').count() === 1, 'a seção Descanso: sem hora de descanso, e "Marcar o descanso…"');
+    // marcar o descanso: do 6º ao 10º (o começo que a janela propõe)
+    await botao(L, 'o:gp:desc');
+    await janela(L, async d => { ok(await d.locator('#dl-de').inputValue() === '6' && await d.locator('#dl-ate').inputValue() === '10', 'a janela propõe do 6º ao 10º tempo (num dia de 10)'); });
+    ok(j((await obj(L, 'gp')).desc) === j({ de: 6, ate: 10 }) && /Descansa do 6º ao 10º tempo/.test(await campo(L, 'o:gp:desc-txt').innerText()), 'o descanso fica no grupo, e o painel diz');
+    // no 6º tempo: descansando — não anda no "+1 tempo"; o "zZ" no token (só o mestre)
+    await relogio(5); await selecionar(L, 'gp');
+    ok(/descansando agora/.test(await campo(L, 'o:gp:desc-txt').innerText()) && await A(L, () => !!document.querySelector('#mundo svg [data-id="gp"] .dorme')), 'no 6º tempo: "descansando agora", e o "zZ" junto do token');
+    await foto('l9-descanso');
+    const antes = await hexDe('gp');
+    await aba(L, 'hoje'); await botao(L, 'hoje:tempo');
+    ok((await hexDe('gp')) === antes && (await hexDe('gc')) !== (await hexK(0)), '"+1 tempo": o grupo descansando fica (a caravana, sem descanso, anda)');
+    ok(await A(L, () => { __mundo.App.comoJogador = true; const v = __mundo.App.vista(); __mundo.App.comoJogador = false; const g = v.objs.find(o => o.id === 'gp'); return !!g && !('desc' in g); }), 'para os jogadores, o descanso não vai');
+    // "Próximo dia" do 1º tempo: anda do 1º ao 5º (10 hexágonos) e descansa do 6º ao 10º
+    await A(L, () => __mundo.App.mudar('no começo do dia', m => { const { N } = __mundo, g = m.objs.find(o => o.id === 'gp'), v = N.viagem(m, g), c = N.centroHex(m, v.cam[2].q, v.cam[2].r); g.x = c.x; g.y = c.y; g.prog = v.acum[2]; m.cal.tempo = 0; }));
+    await botao(L, 'hoje:+1');
+    ok((await hexDe('gp')) === (await hexK(12)), '"Próximo dia" do 1º tempo: anda do 1º ao 5º (10 hexágonos) e descansa do 6º ao 10º');
+    // a estalagem como ponto de descanso: a caravana vai dormir lá (do 6º: chega no fim do 7º)
+    await aba(L, 'selecao'); await selecionar(L, 'inn');
+    await campo(L, 'o:inn:desc').check(); await espera(300);
+    ok((await obj(L, 'inn')).desc === true && await A(L, () => !!document.querySelector('#mundo svg [data-id="inn"] .pdesc-selo')), 'o marcador "Ponto de descanso": a lua no ícone');
+    await A(L, () => __mundo.App.mudar('a caravana no começo', m => { const { N } = __mundo, g = m.objs.find(o => o.id === 'gc'), v = N.viagem(m, g), c = N.centroHex(m, v.cam[0].q, v.cam[0].r); g.x = c.x; g.y = c.y; g.prog = 0; g.desc = { de: 6, ate: 10 }; m.cal.tempo = 5; }));
+    await aba(L, 'hoje'); await botao(L, 'hoje:tempo');
+    ok((await hexDe('gc')) === (await hexK(2)), 'no 6º, a caravana segue rumo à estalagem (2 hexágonos)');
+    await botao(L, 'hoje:tempo');
+    ok((await hexDe('gc')) === (await hexK(4)) && (await hexDe('gc')) === (await hexDe('inn')), 'no 7º, chega à estalagem e para nela');
+    await botao(L, 'hoje:tempo');
+    ok((await hexDe('gc')) === (await hexDe('inn')), 'no 8º, dorme lá (não anda)');
+    ok(await A(L, () => { __mundo.App.comoJogador = true; const v = __mundo.App.vista(); __mundo.App.comoJogador = false; const m = v.objs.find(o => o.id === 'inn'); return !!m && !('desc' in m); }), 'para os jogadores, o "Ponto de descanso" do marcador não vai');
+    // o ponto de descanso da própria caravana, na rota
+    await A(L, () => __mundo.App.mudar('o ponto da caravana', m => { const { N } = __mundo, v = N.viagem(m, { rota: 'rd' }), c = N.centroHex(m, v.cam[8].q, v.cam[8].r); m.objs.find(o => o.id === 'gc').pdesc = [{ x: c.x, y: c.y }]; }));
+    await aba(L, 'selecao'); await selecionar(L, 'gc');
+    ok(await A(L, () => !!document.querySelector('#mundo svg [data-pdesc="0"]')) && /Ponto de descanso 1/.test(await L.F.locator('#pane').innerText()) && await campo(L, 'o:gc:pdesc').count() === 1,
+      'a caravana escolhida: o ponto de descanso dela aparece na rota (a lua) e no painel, com "Marcar outro ponto de descanso na rota"');
+    await botao(L, 'o:gc:pd0:tirar');
+    ok(!(await obj(L, 'gc')).pdesc, '"Tirar" tira o ponto');
+    // tirar o descanso
+    await selecionar(L, 'gp');
+    await botao(L, 'o:gp:desc-tirar');
+    ok(!(await obj(L, 'gp')).desc && /não tem mais hora de descanso/.test(await avisos(L)) && await campo(L, 'o:gp:desc').count() === 1, '"Tirar o descanso": anda em todos os tempos de novo (com o aviso)');
+    // a volta pela mesma rota: o grupo no fim (sem descanso agora)
+    await A(L, () => __mundo.App.mudar('no fim', m => { const { N } = __mundo, g = m.objs.find(o => o.id === 'gp'), v = N.viagem(m, g), k = v.cam.length - 1, c = N.centroHex(m, v.cam[k].q, v.cam[k].r); g.x = c.x; g.y = c.y; g.prog = v.total; delete g.desc; m.cal.tempo = 0; }));
+    await selecionar(L, 'gp');
+    ok(await campo(L, 'o:gp:voltar').count() === 1, 'no fim da rota (só ida): o botão "Voltar pela mesma rota"');
+    await botao(L, 'o:gp:voltar');
+    let g = await obj(L, 'gp');
+    ok(g.sentido === -1 && g.prog === 0 && /volta pela mesma rota/.test(await avisos(L)), 'voltando: o sentido vira (e o aviso diz)');
+    const fim = await hexDe('gp');
+    await botao(L, 'o:andar');
+    ok((await hexDe('gp')) !== fim && (await hexDe('gp')) === (await hexK((await A(L, () => __mundo.N.viagem(__mundo.App.mapa, { rota: 'rd' }).cam.length)) - 3)), '"Andar 1 tempo": anda de volta (2 hexágonos para trás)');
+    ok(/Voltando pela mesma rota/.test(await L.F.locator('#pane').innerText()), 'o painel diz que está voltando');
+    const seta = await A(L, () => { const f = document.querySelector('#mundo svg .sel-rota-seta'); const g = f && f.closest('.fixo'); const rt = __mundo.App.mapa.objs.find(o => o.id === 'rd'); return g ? [Math.round(g.__x), Math.round(rt.pts[0][0])] : null; });
+    ok(seta && seta[0] === seta[1], 'a rota do grupo escolhido mostra a seta no começo dela (o sentido da volta): ' + j(seta));
+    // chegando ao fim (indo): o aviso oferece voltar
+    await A(L, () => __mundo.App.mudar('perto do fim', m => { const { N } = __mundo, g = m.objs.find(o => o.id === 'gp'); delete g.sentido; const v = N.viagem(m, g), k = v.cam.length - 2, c = N.centroHex(m, v.cam[k].q, v.cam[k].r); g.x = c.x; g.y = c.y; g.prog = v.acum[k]; }));
+    await selecionar(L, 'gp');
+    await botao(L, 'o:andar');
+    ok(/Os Heróis — chegou ao fim da rota/.test(await avisos(L)), 'chegou ao fim: o aviso diz e oferece "Voltar pela mesma rota": ' + await avisos(L));
+    await L.F.locator('#toasts button', { hasText: 'Voltar pela mesma rota' }).click(); await espera(300);
+    ok((await obj(L, 'gp')).sentido === -1, 'pelo aviso: volta pela mesma rota');
+    await A(L, () => __mundo.App.mudar('a caravana perto do fim', m => { const { N } = __mundo, g = m.objs.find(o => o.id === 'gc'); delete g.desc; delete g.sentido; const v = N.viagem(m, g), k = v.cam.length - 2, c = N.centroHex(m, v.cam[k].q, v.cam[k].r); g.x = c.x; g.y = c.y; g.prog = v.acum[k]; m.cal.tempo = 0; }));
+    await aba(L, 'hoje'); await botao(L, 'hoje:tempo');
+    ok(/Caravana — chegou ao fim da rota/.test(await avisos(L)), '"+1 tempo": o aviso de quem chegou ao fim também: ' + await avisos(L));
+    await aba(L, 'selecao'); await selecionar(L, 'gp');
+    await foto('l9-voltar');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

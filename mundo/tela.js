@@ -1199,7 +1199,7 @@
     let extra = (ctx.mestre ? 'M' : 'J') + ctx.fb;
     if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref) : null);
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid); }
-    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac);
+    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '');
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
@@ -1537,6 +1537,8 @@
     if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
     { const mk = marcaMissao(o, ctx, -12, -12); if (mk) fx.append(mk); }     // (lote 9) a missão, em cima à esquerda
+    if (o.desc) fx.append(s('g', { class: 'pdesc-selo', transform: 'translate(-12 12)' }, s('title', { texto: 'Ponto de descanso (os grupos do mundo dormem aqui)' }),
+      s('circle', { class: 'pdesc-bola', r: 7.5 }), s('path', { class: 'pdesc-lua', d: 'M1.6 -4.2a4.4 4.4 0 1 0 2.8 6.6 3.6 3.6 0 1 1-2.8-6.6z' })));     // (lote 9)
     // marcador com atalho (abre uma cena, outro mapa ou o acampamento): uma setinha no canto de baixo
     if (o.liga) { g0.classList.add('com-liga'); fx.append(s('circle', { class: 'liga-bola', cx: 12, cy: 12, r: 7 }), s('path', { class: 'liga-seta', d: 'M9.5 14.5l5-5M11 9.5h3.5V13' })); }
     if (o.nome) fx.append(rotulo(o.nome, 30));
@@ -1650,6 +1652,12 @@
     const gw = 12 * ctx.fb, bg = bandeira(brasaoDaFac(ctx, o.fac), -(21.5 + gw / 2), -12 + (ctx.fb - 1) * 2.5, gw, nomeFac(ctx, o.fac));   // (lote 9: o tamanho deste aparelho)
     if (bg) fx.append(bg);
     { const mk = marcaMissao(o, ctx, 15, 15); if (mk) fx.append(mk); }       // (lote 9) a missão, embaixo à direita
+    // (lote 9) descansando (o próximo tempo cai no descanso dele): "zZ" embaixo à esquerda — só o mestre
+    if (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o)) {
+      const jn = N().janelaDeDescanso(o, (ctx.m.cal && ctx.m.cal.tpd) || 10);
+      fx.append(s('g', { class: 'dorme', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Descansando (do ' + jn.de + 'º ao ' + jn.ate + 'º tempo)' }),
+        s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: -0.5, y: 3.6, 'text-anchor': 'middle', 'font-size': 9.5, texto: 'zZ' })));
+    }
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }
@@ -1847,7 +1855,7 @@
     if (!rt || !Array.isArray(rt.pts) || rt.pts.length < 2) return;
     let pts = rt.pts;
     if (o.modo === 'circuito') pts = pts.concat([pts[0]]);
-    else if (o.modo === 'volta' && o.sentido === -1) pts = pts.slice().reverse();
+    else if (o.sentido === -1) pts = pts.slice().reverse();          // (indo e voltando, ou — lote 9 — voltando pela mesma rota)
     C.sel.append(s('path', { class: 'sel-rota', d: caminho(pts) }));
     // a seta do sentido, no fim do caminho de agora
     const a = pts[pts.length - 2], b = pts[pts.length - 1], ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI, fs = fixo(b[0], b[1]);
@@ -1856,6 +1864,13 @@
     (Array.isArray(o.paradas) ? o.paradas : []).forEach((p, i) => {
       const fx = fixo(p.x, p.y);
       fx.append(s('g', { class: 'parada', 'data-parada': String(i) }, s('title', { texto: 'Parada ' + (i + 1) }), s('path', { class: 'parada-mastro', d: 'M0 0V-20' }), s('path', { class: 'parada-flamula', d: 'M0 -20L11 -16L0 -12Z' }), s('circle', { class: 'parada-pe', r: 2.6 })));
+      C.sel.append(fx);
+    });
+    // (lote 9) os pontos de descanso do grupo: a lua, na rota
+    (Array.isArray(o.pdesc) ? o.pdesc : []).forEach((p, i) => {
+      const fx = fixo(p.x, p.y);
+      fx.append(s('g', { class: 'pdesc-selo', 'data-pdesc': String(i), transform: 'translate(0 -12)' }, s('title', { texto: 'Ponto de descanso ' + (i + 1) }),
+        s('circle', { class: 'pdesc-bola', r: 7.5 }), s('path', { class: 'pdesc-lua', d: 'M1.6 -4.2a4.4 4.4 0 1 0 2.8 6.6 3.6 3.6 0 1 1-2.8-6.6z' })));
       C.sel.append(fx);
     });
   }

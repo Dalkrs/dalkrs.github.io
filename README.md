@@ -1059,6 +1059,20 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   saiu das Fichas fica apagada, com o aviso no painel. Na projeção, só vai a mostrada, pronta (`t` e `e`, sem a
   ligação: `comMissoes`); quem joga lê "Missão: …" no painel. A aba Hoje lista as "Missões no mapa". Duplicar um
   objeto não leva a missão.
+- **O descanso dos grupos** (parte 3): todo grupo (o dos jogadores também) pode ter uma hora de descanso (`g.desc =
+  { de, ate }`, tempos do dia; pode virar a noite: do 9º ao 2º). Nos tempos do descanso ele não anda (a espera de uma
+  parada passa junto); o painel diz "descansando agora" e o mapa do mestre mostra "zZ" no token. O grupo dos jogadores
+  só para; o grupo do mundo (caravana, patrulha, exército) dorme num **ponto de descanso** — os marcadores marcados como
+  "Ponto de descanso" (`m.desc`, valem para todos) e os pontos do próprio grupo, na rota dele (`g.pdesc`, com a lua no
+  mapa quando ele está escolhido): no começo do descanso, se ainda chega a um andando até a metade do descanso (para
+  dormir pelo menos a outra metade: do 6º ao 10º, chegando até o começo do 8º), segue até lá e dorme; senão, acampa onde
+  está (`andarTempos`, `janelaDeDescanso`, `pontosDeDescanso`). O "+1 tempo" e o "Próximo dia" andam o relógio tempo a
+  tempo junto (o descanso depende do tempo do dia). Os jogadores não veem o descanso nem os pontos.
+- **Paradas e o fim da rota para todos** (parte 3): "Ao chegar ao fim da rota" (só ida, ida e volta, circuito) e as
+  paradas valem para todo grupo, o dos jogadores também.
+- **Voltar pela mesma rota** (parte 3): o grupo de só ida que chega ao fim ganha o botão "Voltar pela mesma rota" no
+  painel, e o aviso da chegada oferece o mesmo: ele vira (`sentido: -1`, o caminho ao contrário) e anda até o começo;
+  lá, o botão o manda de novo para a frente.
 
 ### A Árvore (lote 6)
 
@@ -2059,4 +2073,9 @@ com `SO=missoes`, a missão no mapa (marcar, o "!" nos quatro tipos, só do mest
 tirar com desfazer, a lista da aba Hoje, o que quem joga lê, duplicar sem ela, e a ligada às Fichas — o nome e a
 situação de lá, a escondida que não vai, a concluída que vira ✓, a que saiu); `mundo-lote9.rede`, numa mesa, a missão
 ligada a uma missão do grupo das Fichas (escondida: o "!" só do mestre; revelada: o jogador vê, com o nome; concluída:
-✓ para os dois).
+✓ para os dois). Na parte 3, `lote9-nucleo` confere o descanso (a janela, virando a noite, o grupo dos jogadores que só
+para, o do mundo que vai dormir no ponto de descanso — o marcador ou o dele — se chega até a metade, senão acampa, a
+parada no descanso, o ponto que não segura fora do descanso, a projeção) e a volta pela mesma rota; `mundo-lote9` com
+`SO=descanso`, o descanso pela interface (marcar, "descansando agora", o "zZ", o "+1 tempo"), o "Ponto de descanso" do
+marcador (a caravana segue até ele e dorme lá), o ponto da própria caravana, as paradas e o fim da rota no grupo dos
+jogadores e a volta pela mesma rota (o botão, andando de volta, o aviso ao chegar).
