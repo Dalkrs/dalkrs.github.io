@@ -325,11 +325,21 @@
       botao('Novo equipamento', () => { if (mudarUnid(id, u.id, 'pôr um equipamento', x => { if (x.equip.length >= max) return false; x.equip.push({ nome: 'Equipamento', atq: 1, def: 0 }); }) !== false) kit().focar(base + ':' + u.equip.length + ':nome'); }, { c: 'sm', k: base + ':novo', off: u.equip.length >= max }));
   }
 
+  /* (lote 10, parte 3) a defesa que as construções do assentamento somam na fortificação (a Paliçada, a Muralha…), e
+     a fortificação de um marcador na batalha: { def (até 20), hp, hpMax } — null se ele não protege ninguém */
+  const defCons = (m, mk) => (window.MundoReino && m && mk ? window.MundoReino.defDoAssentamento(m, mk) : 0);
+  function fortDe(m, mk) {
+    const dc = defCons(m, mk);
+    if (!mk || (!mk.estr && !(dc > 0))) return null;
+    return { def: Math.min(20, (mk.estr ? mk.estr.def : 0) + dc), hp: mk.estr ? mk.estr.hp : 1, hpMax: mk.estr ? mk.estr.hpMax : 1, cons: dc };
+  }
   /* ================= o marcador: a Fortificação ================= */
-  function secFortificacao(o) {
-    const { h, botao, nota, secao, linha, campoTexto, campoNumero, mudarObj } = kit(), id = o.id, e = o.estr;
-    if (!e) return secao('Fortificação', nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'),
+  function secFortificacao(o, m) {
+    const { h, botao, nota, secao, linha, campoTexto, campoNumero, mudarObj } = kit(), id = o.id, e = o.estr, dc = defCons(m, o);
+    const notaCons = dc > 0 ? nota('As construções daqui (aba Seleção, Assentamento) somam ' + sinal(dc) + ' de defesa' + (e ? ' na DEF da fortificação.' : ': quem defende aqui já ganha isso na batalha.')) : null;
+    if (!e) return secao('Fortificação', nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'), notaCons,
       linha(botao('Pôr uma fortificação', () => mudarObj(id, 'pôr uma fortificação', x => { x.estr = { nome: '', def: 3, hp: 100, hpMax: 100 }; }), { c: 'sm', k: 'o:' + id + ':estr' })));
+    const defT = Math.min(20, e.def + dc);
     const est = e.hp <= 0 ? 'em ruínas: não protege' : e.hp < e.hpMax ? 'danificada (' + Math.round(e.hp / e.hpMax * 100) + '%)' : 'intacta';
     return secao('Fortificação',
       h('div', { class: 'row' },
@@ -338,7 +348,8 @@
       h('div', { class: 'row' },
         campoNumero('o:' + id + ':estr-hp', 'HP', e.hp, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.hp = n; }), { min: 0, max: e.hpMax }),
         campoNumero('o:' + id + ':estr-hpmax', 'HP máx.', e.hpMax, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.hpMax = n; if (x.estr.hp > n) x.estr.hp = n; }), { min: 1, max: 1e6 })),
-      h('p', { class: 'status' }, h('span', { class: 'tag' + (e.hp < e.hpMax ? ' guerra' : ''), text: est }), ' · protege com ' + sinal(Math.round(e.def * e.hp / e.hpMax)) + ' quem defende aqui'),
+      notaCons,
+      h('p', { class: 'status' }, h('span', { class: 'tag' + (e.hp < e.hpMax ? ' guerra' : ''), text: est }), ' · protege com ' + sinal(Math.round(defT * e.hp / e.hpMax)) + ' quem defende aqui'),
       linha(botao('Consertar', () => mudarObj(id, 'consertar a fortificação', x => { if (x.estr.hp === x.estr.hpMax) return false; x.estr.hp = x.estr.hpMax; }), { c: 'sm', k: 'o:' + id + ':estr-conserta', off: e.hp >= e.hpMax }),
         botao('Tirar', () => { if (mudarObj(id, 'tirar a fortificação', x => { delete x.estr; }) !== false) kit().avisoDesfazer('A fortificação saiu.'); }, { c: 'sm per', k: 'o:' + id + ':estr-tirar' })));
   }
@@ -450,7 +461,7 @@
       const g = kit().achar(m, x[q]);
       if (!g) continue;
       for (const mk of m.objs) {
-        if (mk.k !== 'm' || !mk.estr) continue;
+        if (mk.k !== 'm' || !fortDe(m, mk)) continue;           // (lote 10) ou as construções com defesa
         const perto = N_.temGrade(m) ? (h1 => h1 && (h2 => h2 && N_.distHex(h1, h2) <= 1)(N_.hexDe(m, mk.x, mk.y)))(N_.hexDe(m, g.x, g.y)) : Math.hypot(mk.x - g.x, mk.y - g.y) < 60;
         if (perto && !out.some(o => o.m === mk.id)) out.push({ m: mk.id, lado: q });
       }
@@ -470,7 +481,7 @@
   }
   function contexto(m) {
     let estr = null;
-    if (bat.estr) { const mk = kit().achar(m, bat.estr.m); if (mk && mk.estr) estr = { lado: bat.estr.lado, def: mk.estr.def, hp: mk.estr.hp, hpMax: mk.estr.hpMax }; }
+    if (bat.estr) { const mk = kit().achar(m, bat.estr.m), ft = fortDe(m, mk); if (ft) estr = { lado: bat.estr.lado, def: ft.def, hp: ft.hp, hpMax: ft.hpMax }; }
     // (lote 9) os heróis (o bônus de cada um) e as ações heroicas
     const hv = q => heroisDoLado(m, q).map(x => ({ nome: x.nome, v: x.v }));
     return { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
@@ -539,7 +550,7 @@
       const nomeL = q => (q === 'a' ? nomeA : nomeB);
       out.push(el('label', { class: 'field' }, el('span', { text: 'Fortificação' }),
         el('select', { class: 'in', 'data-k': 'gb:estr', disabled: rolou || null, onchange: ev => { const v = ev.target.value; bat.estr = v ? { m: v.split('|')[0], lado: v.split('|')[1] } : null; pintarBatalha(); } },
-          [el('option', { value: '', text: 'Ninguém defende uma fortificação', selected: !bat.estr ? true : null })].concat(fts.map(f => { const mk = kit().achar(m, f.m); return el('option', { value: f.m + '|' + f.lado, selected: bat.estr && bat.estr.m === f.m && bat.estr.lado === f.lado ? true : null, text: nomeL(f.lado) + ' defende ' + (mk.estr.nome || kit().nomeDe(mk, m)) }); })))));
+          [el('option', { value: '', text: 'Ninguém defende uma fortificação', selected: !bat.estr ? true : null })].concat(fts.map(f => { const mk = kit().achar(m, f.m); return el('option', { value: f.m + '|' + f.lado, selected: bat.estr && bat.estr.m === f.m && bat.estr.lado === f.lado ? true : null, text: nomeL(f.lado) + ' defende ' + ((mk.estr && mk.estr.nome) || kit().nomeDe(mk, m)) }); })))));
     }
     if (rolou && !bat.fim) out.push(el('p', { class: 'note', text: 'Para trocar os lados ou a fortificação, recomece a batalha.' }));
     // a comparação

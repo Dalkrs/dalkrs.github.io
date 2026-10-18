@@ -110,6 +110,12 @@
         .sort((a, b) => (peso[a.e] - peso[b.e]) || a.t.localeCompare(b.t, 'pt-BR') || (a.id < b.id ? -1 : 1));
     },
     podeEditar() { return App.papel === 'mestre' && !comoJog && !!App.mapa; },
+    /* (lote 10, parte 3) Os clãs da página Clã, para a sede do clã num assentamento: id → { id, nome, fac (a facção ligada
+       a ele), cons: [{ id, nome, ico, nivel, efeito }] (as construções dele), jog }. Na mesa, os clãs inteiros (cla:c:, de
+       quem mestra o Clã); fora dela, os deste navegador. */
+    clas: new Map(),
+    // para a conta da produção: clã → { fac, cons: Set } | null
+    infoDoCla(id) { const c = id ? App.clas.get(id) : null; return c ? { fac: c.fac, cons: new Set(c.cons.map(k => k.id)) } : null; },
 
     /* Toda mudança no mapa passa por aqui: fn mexe num rascunho (ou devolve false para desistir); o resultado é
        normalizado e, se mudou de fato, vira um passo de desfazer e é gravado logo depois. */
@@ -608,6 +614,31 @@
       }
     }
     return out;
+  }
+  // (lote 10, parte 3) os clãs que este aparelho lê (ver App.clas)
+  const CLA_LOCAL = 'tinycats:cla:local';
+  function clasLidos() {
+    const out = new Map(), C = window.ClaNucleo;
+    let docs = [];
+    if (modo === 'mesa') { if (D) docs = D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith('cla:c:')).map(l => [l.id.slice(6), dadosDoc(l)]); }
+    else {
+      let loc = null;
+      try { loc = JSON.parse(localStorage.getItem(CLA_LOCAL) || 'null'); } catch (e) { loc = null; }
+      if (loc && typeof loc === 'object' && !Array.isArray(loc)) docs = Object.keys(loc).filter(k => k.startsWith('cla:c:')).map(k => [k.slice(6), loc[k]]);
+    }
+    for (const [id, d] of docs) {
+      if (!d || typeof d !== 'object' || !/^[A-Za-z0-9_:.-]{1,80}$/.test(id)) continue;
+      const cons = C && typeof C.normConstrucoes === 'function' ? C.normConstrucoes(d.construcoes) : [];
+      out.set(id, { id, nome: String(d.nome || 'Clã').slice(0, 60), fac: d.faccao && typeof d.faccao.id === 'string' ? d.faccao.id : null,
+        cons: cons.map(k => ({ id: k.id, nome: k.nome, ico: k.ico, nivel: k.nivel, efeito: k.efeito })), jog: !!d.jogadores });
+    }
+    return new Map([...out].sort((a, b) => (b[1].jog ? 1 : 0) - (a[1].jog ? 1 : 0) || a[1].nome.localeCompare(b[1].nome, 'pt-BR')));
+  }
+  function lerClas() {
+    const novo = clasLidos();
+    if (j([...novo]) === j([...App.clas])) return false;
+    App.clas = novo;
+    return true;
   }
   function lerBrasoes() {
     const novo = brasoesDosClas();
@@ -1237,10 +1268,13 @@
       sombraLocal = jAtual;
       marcarSalvo('ok', 'Salvo neste navegador');
       window.addEventListener('storage', ev => { if (ev.key === CHAVE || ev.key === null) deFora(); });
+      lerClas();                                          // (lote 10, parte 3) os clãs deste navegador (a sede do clã)
+      window.addEventListener('storage', ev => { if ((ev.key === CLA_LOCAL || ev.key === null) && lerClas()) App.emit('muda', { origem: 'fora' }); });
       setTimeout(limparImagensSoltas, 5000);
       return;
     }
     lerBrasoes();                                         // (lote 8) as bandeiras dos clãs, antes da primeira projeção
+    lerClas();                                            // (lote 10, parte 3) os clãs (a sede do clã num assentamento)
     lerMissoes();                                         // (lote 9) as missões do grupo das Fichas (a missão ligada no mapa)
     if (App.papel === 'mestre') {
       for (const l of docsMapas()) {
@@ -1272,10 +1306,11 @@
     D.aoMudar(l => {
       // (lote 8) um clã mudou (o brasão, a facção dele): as bandeiras do mapa acompanham — e quem mestra publica de novo
       if (l && typeof l.id === 'string' && l.id.startsWith('cla:')) {
+        const clas = lerClas();                           // (lote 10, parte 3) a sede do clã: as construções dele
         if (lerBrasoes()) {
           if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
           App.emit('muda', { origem: 'fora' });
-        }
+        } else if (clas) App.emit('muda', { origem: 'fora' });
         return;
       }
       // (lote 9) as missões do grupo mudaram nas Fichas (o nome, a situação, revelada): as missões ligadas acompanham

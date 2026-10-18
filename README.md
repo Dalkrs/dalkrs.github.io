@@ -1153,6 +1153,35 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   (guardada neste aparelho, com o modo) e a escala.
 - **Para os jogadores**, a economia, a produção do mestre e os assentamentos não vão na projeção (por enquanto: a
   parte 5 mostra o que for deles).
+- **O catálogo de construções** (parte 3; `eco.cons`, normalizado em `normCatalogo`): ligar a economia traz o pronto
+  (`catalogoPronto`, pelo papel dos recursos e pelos terrenos e níveis que o mapa tem) — produção (Fazenda, Serraria,
+  Pedreira e Mina de Orith em colina ou montanha, Mercado a partir da Vila, Santuário rúnico, que gasta Lapros), defesa
+  (Paliçada, Muralha a partir da Cidade, Quartel, que come Suprimentos, Torre de vigia) e cívico (Templo, Taverna,
+  Celeiro, Porto na água, Biblioteca) —, cada uma com 3 níveis. Na Economia do mundo, "Mostrar o catálogo" lista as
+  construções (os espaços, os níveis, as exigências e o nível 1); "Editar…" abre a janela da construção: o nome, o
+  ícone (os das construções do Clã e mais alguns), os espaços (de 0 a 6), o que ela exige (o nível do assentamento,
+  outra construção pronta antes e um dos terrenos na região — o que não marcar, não exige) e os níveis (até 5: as
+  semanas de obra, a defesa, uma tabela com o custo, o que produz e o que gasta por semana, recurso a recurso, e o
+  efeito escrito); "+ Construção" cria uma; tirar uma que algum assentamento tem pergunta antes (as dele saem junto). No
+  mapa que ligou a economia antes desta parte, "Pôr o catálogo pronto".
+- **As construções no assentamento** (parte 3; `ass.cons = [{ id, t, n, obra }]`): o nível do assentamento dá os
+  espaços ("Construções · 2 de 6 espaços"); a obra já ocupa o espaço. "+ Construir…" abre a janela da obra: a
+  construção (as que não dão aparecem desligadas, com o motivo: o nível, o terreno, a outra construção, o espaço), as
+  semanas, o custo, o que ela faz pronta, quem paga (a dona do lugar, outra facção ou ninguém — de graça) com o estoque
+  dele e o que falta (faltando, não começa). Começar paga na hora (`comecarObra`: o estoque da facção, com o motivo no
+  histórico dela; sem semanas de obra, fica pronta na hora). Cada construção mostra o nível e o que faz; a obra, as
+  semanas que faltam (dá para mudar) e "Terminar a obra" (a parte 4 conta as semanas sozinha, no fechamento da
+  semana); "Subir para o nível 2…" (a mesma janela; o nível de agora continua valendo durante a obra); "Cancelar a
+  obra…" (devolve o que foi pago a quem pagou; a que não tinha ficado pronta sai); demolir (a obra em andamento
+  devolve). As prontas produzem e gastam por semana (`efeitoDasConstrucoes`): entram na parte própria da região do
+  assentamento ("construções" e "manutenção", na seção Província), no Livro e no modo Economia.
+- **A defesa das construções** (parte 3; `defDoAssentamento`, até 20, só com a economia ligada) soma na fortificação do
+  marcador: a seção Fortificação diz quanto, e na batalha ao lado (`fortificacoesPerto`) o assentamento só com a
+  Paliçada já protege quem o defende (sem HP: as máquinas de cerco não o danificam).
+- **A sede do clã** (parte 3; `ass.cla = { id, prod }`): no assentamento, "Sede de clã" escolhe um dos clãs da página
+  Clã (`App.clas`: na mesa, os que o mestre mestra; fora dela, os deste navegador). As construções do clã aparecem com o
+  nível e o efeito (não ocupam espaços), e "Produção…" dá a cada uma quanto produz por semana; isso vai para a facção
+  ligada ao clã (sem ela, para a dona do lugar: `producaoPorFaccao(m, clas)`), e aparece no Livro do reino.
 
 ### A Árvore (lote 6)
 
@@ -2180,7 +2209,14 @@ com `SO=economia`, ligar pela janela (e desfazer), os recursos (renomear, o pape
 vírgula), os níveis, o assentamento (e deixar de ser, com desfazer), a produção da província (uma linha por recurso,
 com a do mestre), o Livro, a facção (e a nova, que já nasce com os recursos do mundo), o modo Economia (a cor inteira
 na região que mais produz, o topo da escala, trocar o recurso, que fica neste aparelho mesmo recarregando) e
-desligar. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+desligar. Na parte 3, `lote10-nucleo` confere o catálogo normalizado e o pronto (pelos recursos e terrenos do mapa), os
+espaços, as exigências, começar a obra (paga na hora, com o histórico), terminar, subir de nível, cancelar (devolve),
+demolir, o que falta, de graça, a produção e o gasto, a defesa (até 20; desligada, nada), as construções normalizadas
+e a sede do clã (para a facção ligada ao clã; sem ela, para a dona do lugar; a construção que o clã não tem mais não
+conta); `mundo-lote10` com `SO=construcoes`, o catálogo (mostrar, editar — o erro de um número, um nível a mais,
+desfazer —, criar, tirar), construir (a janela: o que não dá, o custo, o estoque, quem paga), as semanas, terminar,
+subir de graça, cancelar, o que falta (e sem pagar), a Paliçada na Fortificação e na batalha, a produção na província e
+a sede do clã (com um clã deste navegador: a produção da Forja no Livro do Vale). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

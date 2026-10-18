@@ -15,6 +15,11 @@
 //     (o nível, a população, onde fica e o que produz); a produção da província e de onde vem (com o valor do mestre); os
 //     assentamentos de dentro; o Livro (o que cada facção produz e o estoque); na facção, os recursos do mundo sem
 //     renomear nem tirar; o modo Economia (a cor pela produção de um recurso, a legenda com a escolha); desligar.
+//   · (parte 3, SO=construcoes) o catálogo de construções (mostrar, editar — com o erro de um número e um nível a mais —,
+//     criar, tirar); no assentamento, construir (a janela: o que não dá e por quê, o custo, o estoque, quem paga), a obra
+//     (as semanas, terminar), subir de nível (de graça), cancelar (devolve), o que falta (sem pagar, dá), demolir; a
+//     defesa na Fortificação e na batalha; a produção na província; a sede do clã (os clãs deste navegador, a produção da
+//     construção do clã, para a facção ligada a ele, no Livro).
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -301,6 +306,146 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     await aba(L, 'selecao'); await selecionar(L, 'vl');
     ok(!/Assentamento/i.test(await textoPane(L)), 'e o marcador sem a seção Assentamento');
     await selecionar(L, null);
+  });
+
+  if (parte('construcoes')) await passo('as construções', async () => {
+    // a economia ligada, montanhas no Reino, a Cidade Alta (no Reino, fora das sub-regiões) e o estoque de Aldar
+    await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      App.mudar('a economia e a cidade', m => {
+        R.ligarEconomia(m);
+        if (!m.eco.cons.length) m.eco.cons = R.catalogoPronto(m, m.eco);
+        m.objs.push(Object.assign(N.objNovo('m', { x: 700, y: 650, ic: 'castelo' }), { id: 'cid', nome: 'Cidade Alta', ass: { niv: 'cidade', pop: 0 } }));
+        const fa = m.faccoes.find(f => f.id === 'fa');
+        for (const [id, n] of [['lapros', 200], ['madeira', 100], ['pedra', 100], ['orith', 30]]) fa.rec.find(r => r.id === id).n = n;
+      });
+      const p1 = App.mapa.objs.find(o => o.id === 'p1'), hp = R.hexesProprios(App.mapa, p1).filter(k => { const c = N.centroHex(App.mapa, +k.split(',')[0], +k.split(',')[1]); return c.y > 560; });
+      App.mudar('montanhas', m => { hp.slice(0, 4).forEach(k => { m.hexes[k] = 'mo'; }); });
+    });
+    // o catálogo
+    await aba(L, 'faccoes');
+    ok(/Construções do catálogo \(15\)/i.test(await textoPane(L)) && await campo(L, 'eco:cons-ver').count() === 1, 'na Economia do mundo: "Construções do catálogo (15)", com "Mostrar o catálogo"');
+    await botao(L, 'eco:cons-ver');
+    const mina = await A(L, () => { const e = document.querySelector('#pane [data-k="eco:c:mina"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(await L.F.locator('#pane .eco-cons .cons-li').count() === 15 && /Mina de Orith 1 espaço · 3 níveis · em Colina ou Montanha Nível 1: Orith \+3 · custa Lapros 20 · Madeira 15 · Pedra 10 · 4 semanas/.test(mina), 'o catálogo aberto: as 15, cada uma com os espaços, os níveis, as exigências e o nível 1: ' + mina);
+    // editar: o número errado não passa; um nível a mais; salvar (e desfazer)
+    await botao(L, 'eco:c:taverna:editar');
+    await L.F.waitForSelector('dialog.ct-dl[open]');
+    const ct = k => L.F.locator(`dialog.ct-dl[open] [data-k="${k}"]`);
+    ok(await ct('ct:nome').inputValue() === 'Taverna' && await ct('ct:1:prod:lapros').inputValue() === '3' && await L.F.locator('dialog.ct-dl[open] fieldset.ct-nivel').count() === 3, 'editar a Taverna: o nome, os 3 níveis (o 1 produz 3 Lapros)');
+    await ct('ct:nome').fill('Taverna do Gato'); await ct('ct:1:prod:lapros').fill('4,5'); await ct('ct:2:custo:madeira').fill('abc');
+    await ct('ct:ok').click(); await espera(250);
+    ok(/Nível 2, custa, Madeira: use um número\./.test(await A(L, () => document.querySelector('dialog.ct-dl[open] .err').textContent)), 'um número que não é número: a janela diz onde, e não fecha');
+    await ct('ct:2:custo:madeira').fill('15');
+    await ct('ct:niv-novo').click(); await espera(150);
+    ok(await L.F.locator('dialog.ct-dl[open] fieldset.ct-nivel').count() === 4 && await ct('ct:4:prod:lapros').inputValue() === await ct('ct:3:prod:lapros').inputValue(), '+ Nível: o 4, começando igual ao 3');
+    await ct('ct:4:prod:lapros').fill('12');
+    await ct('ct:ok').click(); await espera(400);
+    const tav = await A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.eco.cons.find(c => c.id === 'taverna'))));
+    ok(tav.nome === 'Taverna do Gato' && tav.niveis.length === 4 && tav.niveis[0].prod.lapros === 4.5 && tav.niveis[3].prod.lapros === 12, 'salvar: o nome, 4,5 Lapros no nível 1 e o nível 4: ' + j([tav.nome, tav.niveis.map(x => x.prod)]));
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(await A(L, () => __mundo.App.mapa.eco.cons.find(c => c.id === 'taverna').nome) === 'Taverna', 'desfazer: a Taverna como era');
+    // criar uma construção nova e tirá-la
+    await botao(L, 'eco:cons-novo');
+    await L.F.waitForSelector('dialog.ct-dl[open]');
+    await ct('ct:nome').fill('Moinho'); await ct('ct:ic').selectOption('jardim'); await ct('ct:ter:pl').check(); await ct('ct:cons').selectOption('fazenda');
+    await ct('ct:1:custo:madeira').fill('5'); await ct('ct:1:prod:suprimentos').fill('2'); await ct('ct:1:sem').fill('1');
+    await semAvisos(L); await foto('l10-catalogo');
+    await ct('ct:ok').click(); await espera(400);
+    const mo = await A(L, () => { const c = __mundo.App.mapa.eco.cons.find(x => x.nome === 'Moinho'); return c ? JSON.parse(JSON.stringify(c)) : null; });
+    ok(!!mo && mo.ic === 'jardim' && j(mo.exige) === j({ niv: null, ter: ['pl'], cons: 'fazenda' }) && j(mo.niveis) === j([{ custo: { madeira: 5 }, sem: 1, prod: { suprimentos: 2 }, gasto: {}, def: 0, ef: '' }]), 'criar o Moinho: o ícone, as exigências (planície, depois da Fazenda) e o nível: ' + j(mo));
+    await botao(L, 'eco:c:' + mo.id + ':x');
+    ok(await A(L, () => !__mundo.App.mapa.eco.cons.some(c => c.nome === 'Moinho')), 'tirar o Moinho (ninguém usa: sem perguntar)');
+    // construir na Cidade Alta
+    await aba(L, 'selecao'); await selecionar(L, 'cid');
+    ok(/Construções · 0 de 6 espaços/.test(await textoPane(L)) && await campo(L, 'o:cid:construir').count() === 1, 'no assentamento: "Construções · 0 de 6 espaços" e "+ Construir…"');
+    await botao(L, 'o:cid:construir');
+    await L.F.waitForSelector('dialog.ob-dl[open]');
+    const ob = k => L.F.locator(`dialog.ob-dl[open] [data-k="${k}"]`);
+    const ops = await A(L, () => Array.from(document.querySelectorAll('dialog.ob-dl[open] [data-k="ob:tipo"] option')).map(o => [o.value, o.disabled, o.textContent]));
+    const op = id => ops.find(o => o[0] === id) || [];
+    ok(op('porto')[1] === true && /Porto — precisa de Água na região/.test(op('porto')[2]) && op('mina')[1] === false && op('muralha')[1] === false, 'a janela: o Porto não dá (sem água na região); a Mina e a Muralha dão: ' + j([op('porto'), op('mina')]));
+    await ob('ob:tipo').selectOption('mina'); await espera(150);
+    const det = await A(L, () => document.querySelector('dialog.ob-dl[open] .dl').innerText.replace(/\s+/g, ' '));
+    ok(/4 semanas de obra · custa Lapros 20 · Madeira 15 · Pedra 10/.test(det) && /Pronta, por semana: Orith \+3/.test(det) && /Estoque de Aldar: Lapros 200 · Madeira 100 · Pedra 100/.test(det) && await ob('ob:fac').inputValue() === 'fa', 'a Mina: as semanas, o custo, o que faz e o estoque de quem paga (Aldar, a dona do lugar): ' + det.slice(0, 260));
+    await semAvisos(L); await foto('l10-obra');
+    await ob('ob:ok').click(); await espera(400);
+    const st1 = await A(L, () => { const m = __mundo.App.mapa, c = m.objs.find(o => o.id === 'cid').ass.cons[0], fa = m.faccoes.find(f => f.id === 'fa'); return { c, est: ['madeira', 'pedra', 'lapros'].map(id => fa.rec.find(r => r.id === id).n), mot: fa.hist[fa.hist.length - 1].mot }; });
+    ok(st1.c.t === 'mina' && st1.c.n === 0 && st1.c.obra.sem === 4 && j(st1.est) === j([85, 90, 180]) && st1.mot === 'Obra: Mina de Orith em Cidade Alta' && /Mina de Orith: a obra começou \(4 semanas\)\./.test(await avisos(L)), 'começar: a obra (4 semanas), o custo saiu do estoque de Aldar (com o motivo no histórico) e o aviso: ' + j(st1));
+    const cid0 = st1.c.id;
+    await campo(L, 'cons:' + cid0 + ':sem').fill('2'); await campo(L, 'cons:' + cid0 + ':sem').press('Enter'); await espera(300);
+    ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cons[0].obra.sem) === 2, 'as semanas que faltam: 2');
+    await botao(L, 'cons:' + cid0 + ':terminar');
+    const li = await A(L, id => { const e = document.querySelector('#pane [data-k="cons:' + id + '"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; }, cid0);
+    ok(/Mina de Orith nível 1 de 3 · Orith \+3/.test(li) && /Construções · 1 de 6 espaços/.test(await textoPane(L)), 'terminar a obra: a Mina no nível 1, produzindo: ' + li);
+    // subir de nível, de graça; cancelar a obra
+    await botao(L, 'cons:' + cid0 + ':subir');
+    await L.F.waitForSelector('dialog.ob-dl[open]');
+    await ob('ob:fac').selectOption('');
+    const det2 = await A(L, () => document.querySelector('dialog.ob-dl[open] .dl').innerText.replace(/\s+/g, ' '));
+    ok(/Subir Mina de Orith para o nível 2/.test(det2) && /No nível 2, por semana: Orith \+5 \(agora: Orith \+3\)/.test(det2) && /Ninguém paga: a obra sai de graça\./.test(det2), 'subir para o nível 2: o que muda e, sem ninguém pagando, de graça: ' + det2.slice(0, 200));
+    await ob('ob:ok').click(); await espera(400);
+    ok(await A(L, () => { const m = __mundo.App.mapa, c = m.objs.find(o => o.id === 'cid').ass.cons[0]; return c.n === 1 && c.obra && c.obra.n === 2 && m.faccoes[0].rec.find(r => r.id === 'lapros').n === 180; }), 'a obra do nível 2 começou, e o estoque não mudou');
+    await botao(L, 'cons:' + cid0 + ':cancelar');
+    ok(/A obra do nível 2 para; Mina de Orith continua no nível 1\./.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'cancelar pergunta antes, dizendo o que acontece');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
+    ok(await A(L, () => { const c = __mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cons[0]; return c.n === 1 && !c.obra; }), 'cancelada: a Mina continua no nível 1');
+    // o que falta: sem pagar, dá
+    await A(L, () => __mundo.App.mudar('pouca pedra', m => { m.faccoes[0].rec.find(r => r.id === 'pedra').n = 5; }));
+    await botao(L, 'o:cid:construir');
+    await L.F.waitForSelector('dialog.ob-dl[open]');
+    await ob('ob:tipo').selectOption('muralha'); await espera(150);
+    const falta = await A(L, () => document.querySelector('dialog.ob-dl[open] [data-k="ob:falta"]').textContent);
+    ok(/^Falta: Pedra 35\./.test(falta) && await ob('ob:ok').isDisabled(), 'a Muralha sem pedra bastante: diz o que falta, e não começa: ' + falta);
+    await ob('ob:fac').selectOption(''); await espera(100);
+    ok(!(await ob('ob:ok').isDisabled()), 'escolhendo "Ninguém (de graça)", dá');
+    await L.F.click('dialog.ob-dl[open] button.btn:not(.pri)'); await espera(200);
+    // a Paliçada, de graça: a defesa na Fortificação e na batalha
+    await botao(L, 'o:cid:construir');
+    await L.F.waitForSelector('dialog.ob-dl[open]');
+    await ob('ob:tipo').selectOption('palicada'); await ob('ob:fac').selectOption(''); await ob('ob:ok').click(); await espera(400);
+    const pal = await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cons.find(c => c.t === 'palicada').id);
+    await botao(L, 'cons:' + pal + ':terminar');
+    ok(/As construções daqui \(aba Seleção, Assentamento\) somam \+1 de defesa: quem defende aqui já ganha isso na batalha\./.test(await textoPane(L)), 'a Fortificação: as construções somam +1 de defesa');
+    await A(L, () => __mundo.App.mudar('dois exércitos perto da cidade', m => {
+      const { N } = __mundo;
+      m.objs.push(Object.assign(N.objNovo('g', { x: 700, y: 650, sigla: 'GD' }), { id: 'gd', nome: 'Guarda da Cidade', tipo: 'exercito', fac: 'fa', exe: { moral: 5, mant: 20, unid: [{ id: 'd1', nome: 'Guardas', tropas: 100 }] } }),
+        Object.assign(N.objNovo('g', { x: 742, y: 650, sigla: 'IV' }), { id: 'ge', nome: 'Invasores', tipo: 'exercito', fac: 'fb', exe: { moral: 5, mant: 20, unid: [{ id: 'e1', nome: 'Saqueadores', tropas: 100 }] } }));
+    }));
+    await selecionar(L, 'ge');
+    await botao(L, 'o:ge:batalha');
+    await L.F.waitForSelector('dialog.gb[open]');
+    const fts = await A(L, () => Array.from(document.querySelectorAll('dialog.gb[open] [data-k="gb:estr"] option')).map(o => o.textContent));
+    const tb = await A(L, () => document.querySelector('dialog.gb .gb-corpo').innerText.replace(/\s+/g, ' '));
+    ok(fts.some(t => /defende Cidade Alta/.test(t)) && /Fortificação \+1/.test(tb), 'na batalha ao lado da cidade: quem defende a Cidade Alta ganha a defesa da Paliçada: ' + j(fts));
+    await L.P.keyboard.press('Escape'); await espera(300);
+    await A(L, () => { const d = document.querySelector('dialog.gb[open]'); if (d) d.close(); });
+    await A(L, () => __mundo.App.mudar('os exércitos saem', m => { m.objs = m.objs.filter(o => o.id !== 'gd' && o.id !== 'ge'); }));
+    // a produção da província
+    await selecionar(L, 'p1');
+    const prod = await A(L, () => Array.from(document.querySelectorAll('#pane [data-k="o:p1:prod"] .prod-li')).map(e => e.innerText.replace(/\s+/g, ' ')));
+    ok(prod.some(x => /^Orith \+\d+(,\d+)? terreno \+\d+ · construções \+3$/.test(x)), 'a produção da província: a Mina entra como "construções +3": ' + j(prod));
+    // a sede do clã: os clãs deste navegador
+    await A(L, () => {
+      localStorage.setItem('tinycats:cla:local', JSON.stringify({ 'cla:c:clx': { nome: 'Clã do Gato', faccao: { id: 'fb', nome: 'Vale' }, construcoes: [{ id: 'k1', nome: 'Forja', ico: 'forja', nivel: 2, efeito: 'Armas melhores', prox: {} }] } }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'tinycats:cla:local' }));
+    });
+    await espera(300);
+    await selecionar(L, 'cid');
+    ok(await A(L, () => Array.from(document.querySelectorAll('#pane [data-k="o:cid:cla"] option')).map(o => o.textContent).join('|')) === 'Não é sede de clã|Clã do Gato', 'a sede de clã: os clãs deste navegador');
+    await campo(L, 'o:cid:cla').selectOption('clx'); await espera(300);
+    const sede = await textoPane(L);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cla)) === j({ id: 'clx', prod: {} }) && /O que elas produzem vai para Vale \(a facção ligada ao clã\)\./.test(sede) && /Forja nível 2 · não produz Armas melhores/.test(sede), 'a Cidade Alta é a sede do Clã do Gato: a Forja (nível 2), produzindo para o Vale');
+    await botao(L, 'cla:k1:prod');
+    await L.F.fill('dialog.mundo-dl[open] #dl-orith', '2'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cla.prod)) === j({ k1: { orith: 2 } }) && /Forja nível 2 · Orith \+2 por semana/.test(await textoPane(L)), 'a produção da Forja: 2 de Orith por semana');
+    await A(L, () => { const e = document.querySelector('#pane [data-k="o:cid:esp"]'); if (e) e.scrollIntoView({ block: 'start' }); });
+    await semAvisos(L); await foto('l10-construcoes');
+    await aba(L, 'faccoes');
+    const lvb = await A(L, () => { const e = document.querySelector('#pane [data-k="livro:fb"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(/Produz por semana: Orith 2/.test(lvb), 'no Livro, o Vale produz os 2 de Orith da Forja do clã: ' + lvb);
+    await A(L, () => localStorage.removeItem('tinycats:cla:local'));
+    await aba(L, 'selecao'); await selecionar(L, null);
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

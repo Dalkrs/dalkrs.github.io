@@ -1797,9 +1797,17 @@
      os recursos do mundo (o papel diz o que ele é para as regras: a moeda, a comida…), a produção por semana de cada
      hexágono pelo terreno, a de cada mil pessoas de um assentamento e os níveis dos assentamentos (com os espaços de
      construção). Desligada (on: false), tudo fica guardado. Na região, prod = o valor do mestre por semana; no
-     marcador, ass = { niv, pop } (o assentamento: o nível e a população, que o mestre muda). */
+     marcador, ass = { niv, pop } (o assentamento: o nível e a população, que o mestre muda).
+     (parte 3) eco.cons = o catálogo de construções: [{ id, nome, ic (o ícone), esp (os espaços que ocupa), exige: { niv
+     (o nível mínimo do assentamento), ter: [terrenos: um deles na região], cons (outra construção pronta antes) },
+     niveis: [{ custo, sem (as semanas de obra), prod, gasto (por semana), def (a defesa que soma na fortificação), ef (o
+     efeito escrito) }] }]. No assentamento, ass.cons = [{ id, t (o tipo), n (o nível pronto; 0 = ainda na obra do 1º),
+     obra: { n (o nível que a obra faz), sem (as semanas que faltam), fac (quem pagou), pago } | null }] e ass.cla = {
+     id (o clã da página Clã: este é a sede dele), prod: { construção do clã: { recurso: n } } } — os números que o
+     mestre dá às construções do clã. */
   const PAPEIS_REC = { moeda: 'Moeda', comida: 'Comida', madeira: 'Madeira', pedra: 'Pedra', metal: 'Metal', magia: 'Magia' };
   const MAX_REC_MUNDO = 24, MAX_NIV = 12, MAX_PROD = 1e6, MAX_POP_ASS = 1e9;
+  const MAX_CONS = 40, MAX_NIV_CONS = 5, MAX_CONS_ASS = 16, MAX_SEM_OBRA = 104, MAX_DEF_CONS = 20, MAX_ESP_CONS = 6, MAX_EF_CONS = 200;
   const numProd = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, -MAX_PROD, MAX_PROD) * 100) / 100 + 0 : null; };
   // uma tabela { recurso: n }: só os ids válidos (e, com a lista, só os que existem), sem os zeros
   function normTabProd(t, ids) {
@@ -1810,6 +1818,32 @@
       const n = numProd(t[k]);
       if (n) out[k] = n;
     }
+    return out;
+  }
+  // (parte 3) uma tabela só com números acima de zero (o custo, o gasto)
+  function normTabPos(t, ids) { const out = normTabProd(t, ids); for (const k of Object.keys(out)) if (!(out[k] > 0)) delete out[k]; return out; }
+  // (parte 3) o catálogo de construções (ver acima): os recursos, os terrenos e os níveis que existem
+  function normCatalogo(v, ids, terIds, nivIds) {
+    const out = [], vistos = new Set();
+    for (const c of Array.isArray(v) ? v : []) {
+      if (!ehObj(c) || out.length >= MAX_CONS) continue;
+      const id = idOk(c.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      const ex = ehObj(c.exige) ? c.exige : {}, niveis = [], ter = [];
+      for (const n of Array.isArray(c.niveis) ? c.niveis : []) {
+        if (!ehObj(n) || niveis.length >= MAX_NIV_CONS) continue;
+        niveis.push({ custo: normTabPos(n.custo, ids), sem: inteiro(n.sem, 1, 0, MAX_SEM_OBRA), prod: normTabProd(n.prod, ids), gasto: normTabPos(n.gasto, ids),
+          def: inteiro(n.def, 0, 0, MAX_DEF_CONS), ef: texto(n.ef, '', MAX_EF_CONS).trim() });
+      }
+      if (!niveis.length) niveis.push({ custo: {}, sem: 1, prod: {}, gasto: {}, def: 0, ef: '' });
+      for (const t of Array.isArray(ex.ter) ? ex.ter : []) if (terIds.has(t) && !ter.includes(t)) ter.push(t);
+      out.push({ id, nome: texto(c.nome, '', 40).trim() || 'Construção', ic: typeof c.ic === 'string' && /^[a-z0-9_-]{1,20}$/.test(c.ic) ? c.ic : 'salao',
+        esp: inteiro(c.esp, 1, 0, MAX_ESP_CONS), exige: { niv: nivIds.has(ex.niv) ? ex.niv : null, ter, cons: idRef(ex.cons) }, niveis });
+    }
+    // a outra construção que se exige tem de existir no catálogo (e não ser ela mesma)
+    const cids = new Set(out.map(c => c.id));
+    for (const c of out) if (c.exige.cons && (!cids.has(c.exige.cons) || c.exige.cons === c.id)) c.exige.cons = null;
     return out;
   }
   function normEco(v, terrenos) {
@@ -1834,13 +1868,48 @@
       vn.add(id);
       niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40) });
     }
-    return { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv };
+    return { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
   }
-  // o assentamento do marcador: o nível (um dos da economia) e a população (o mestre muda); sem os dois, nada
+  /* O assentamento do marcador: o nível (um dos da economia) e a população (o mestre muda); (parte 3) as construções e a
+     sede do clã. Sem nada disso, nada. (As referências ao catálogo e às facções se conferem depois, com o mapa todo.) */
   function normAss(v) {
     if (!ehObj(v)) return null;
-    const niv = idRef(v.niv), pop = inteiro(v.pop, 0, 0, MAX_POP_ASS);
-    return niv || pop ? { niv, pop } : null;
+    const niv = idRef(v.niv), pop = inteiro(v.pop, 0, 0, MAX_POP_ASS), out = { niv, pop }, cons = [], vistos = new Set();
+    for (const c of Array.isArray(v.cons) ? v.cons : []) {
+      if (!ehObj(c) || cons.length >= MAX_CONS_ASS || !idRef(c.t)) continue;
+      const o = ehObj(c.obra) ? c.obra : null;
+      const x = { id: unico(idOk(c.id) || 'ct', vistos), t: c.t, n: inteiro(c.n, 0, 0, MAX_NIV_CONS),
+        obra: o ? { n: inteiro(o.n, 1, 1, MAX_NIV_CONS), sem: inteiro(o.sem, 0, 0, MAX_SEM_OBRA), fac: idRef(o.fac), pago: normTabPos(o.pago) } : null };
+      if (x.obra && x.obra.n !== x.n + 1) x.obra.n = x.n + 1;
+      if (x.n || x.obra) cons.push(x);
+    }
+    if (cons.length) out.cons = cons;
+    if (ehObj(v.cla) && idRef(v.cla.id)) {
+      const prod = {};
+      if (ehObj(v.cla.prod)) for (const k of Object.keys(v.cla.prod).slice(0, 60)) { const t = idOk(k) ? normTabProd(v.cla.prod[k]) : {}; if (Object.keys(t).length) prod[k] = t; }
+      out.cla = { id: v.cla.id, prod };
+    }
+    return niv || pop || out.cons || out.cla ? out : null;
+  }
+  /* (parte 3) As construções de um assentamento com o mapa todo: só os tipos do catálogo (o nível até o último deles; a
+     obra só com o nível seguinte, que exista), quem pagou só uma facção que existe, o pago só dos recursos do mundo; a
+     produção do clã só dos recursos do mundo. */
+  function conferirAss(a, eco, facs) {
+    const tipos = new Map(eco ? eco.cons.map(c => [c.id, c]) : []), recIds = new Set(eco ? eco.rec.map(r => r.id) : []);
+    if (a.cons) {
+      a.cons = a.cons.filter(c => {
+        const t = tipos.get(c.t);
+        if (!t) return false;
+        if (c.n > t.niveis.length) c.n = t.niveis.length;
+        if (c.obra) {
+          if (c.n >= t.niveis.length) c.obra = null;
+          else { c.obra.n = c.n + 1; if (c.obra.fac && !facs.has(c.obra.fac)) c.obra.fac = null; c.obra.pago = normTabPos(c.obra.pago, recIds); }
+        }
+        return c.n > 0 || !!c.obra;
+      });
+      if (!a.cons.length) delete a.cons;
+    }
+    if (a.cla) for (const k of Object.keys(a.cla.prod)) { const t = normTabProd(a.cla.prod[k], recIds); if (Object.keys(t).length) a.cla.prod[k] = t; else delete a.cla.prod[k]; }
   }
 
   function normGuerra(v) {
@@ -2048,7 +2117,11 @@
       if (o.k === 'g' && o.exe) for (const u of o.exe.unid) if (u.tipo && !tiposG.has(u.tipo)) u.tipo = null;
       // (lote 10) a produção do mestre só dos recursos do mundo; o nível do assentamento, só um dos da economia
       if (o.k === 'r' && o.prod) { const p = normTabProd(o.prod, recIds); if (Object.keys(p).length) o.prod = p; else delete o.prod; }
-      if (o.k === 'm' && o.ass) { if (o.ass.niv && !nivIds.has(o.ass.niv)) o.ass.niv = null; if (!o.ass.niv && !o.ass.pop) delete o.ass; }
+      if (o.k === 'm' && o.ass) {
+        if (o.ass.niv && !nivIds.has(o.ass.niv)) o.ass.niv = null;
+        conferirAss(o.ass, mapa.eco, facs);                     // (parte 3) as construções e a sede do clã
+        if (!o.ass.niv && !o.ass.pop && !o.ass.cons && !o.ass.cla) delete o.ass;
+      }
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -2282,8 +2355,9 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
-    PAPEIS_REC, normEco,
-    LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
+    PAPEIS_REC, normEco, normAss,
+    LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
+      construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

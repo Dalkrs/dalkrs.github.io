@@ -11,6 +11,12 @@
    assentamentos dela (o de dentro de uma sub-região fica com a sub-região) e o valor do mestre; a província soma a dela
    e a das sub-regiões; cada facção, a parte própria das regiões dela. O estoque de cada facção é o número do recurso
    do mundo nela (f.rec, com o mesmo id).
+   (parte 3) As construções: o catálogo (os de começo: produção, defesa e cívico, com 3 níveis cada), as exigências (o
+   nível do assentamento, um terreno na região, outra construção pronta antes) e o espaço; começar a obra paga o custo
+   do nível na hora (do estoque da facção escolhida, com o histórico), cancelar devolve, terminar põe o nível para valer.
+   As prontas produzem e gastam por semana (na parte própria da região do assentamento) e somam a defesa na fortificação.
+   A sede do clã: os números que o mestre dá às construções do clã vão para a facção ligada ao clã (sem ela, para a
+   dona do lugar).
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -164,7 +170,9 @@
     }
     const pop = {};
     for (const p of Object.keys(POP_INICIAL)) if (porPapel[p]) pop[porPapel[p]] = POP_INICIAL[p];
-    return { on: true, rec, ter, pop, niv: copia(NIVEIS_INICIAIS) };
+    const e = { on: true, rec, ter, pop, niv: copia(NIVEIS_INICIAIS) };
+    e.cons = catalogoPronto(m, e);                                   // (parte 3) o catálogo de construções de começo
+    return e;
   }
   const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   /* Os recursos do mundo numa facção (no rascunho de App.mudar): cada um vira um número dela, com o mesmo id e o mesmo
@@ -213,8 +221,8 @@
     return out;
   }
   const nivelDe = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && id ? e.niv.find(n => n.id === id) || null : null; };
-  /* A parte própria de uma região, por semana: { terreno, pop, mestre, total } (cada um { recurso: n }); null sem a
-     economia ligada. */
+  /* A parte própria de uma região, por semana: { terreno, pop, cons, gasto, mestre, total } (cada um { recurso: n }; o
+     gasto das construções, negativo); null sem a economia ligada. */
   const cacheProd = typeof WeakMap === 'function' ? new WeakMap() : null;
   function producaoPropria(m, r) {
     const eco = ecoDe(m);
@@ -222,11 +230,13 @@
     let c = cacheProd ? cacheProd.get(m) : null;
     if (cacheProd && !c) { c = new Map(); cacheProd.set(m, c); }
     if (c && c.has(r.id)) return c.get(r.id);
-    const out = { terreno: {}, pop: {}, mestre: {}, total: {} };
+    const out = { terreno: {}, pop: {}, cons: {}, gasto: {}, mestre: {}, total: {} };
     for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); }
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.pop > 0) somar(out.pop, eco.pop, a.o.ass.pop / 1000);
+    for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.cons) { const e = efeitoDasConstrucoes(m, a.o); somar(out.cons, e.prod); somar(out.gasto, e.gasto); }
     somar(out.mestre, r.prod);
     somar(somar(somar(out.total, out.terreno), out.pop), out.mestre);
+    somar(somar(out.total, out.cons), out.gasto);
     if (c) c.set(r.id, out);
     return out;
   }
@@ -234,18 +244,28 @@
   function producaoDaRegiao(m, r) {
     const p = producaoPropria(m, r);
     if (!p) return null;
-    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), mestre: somar({}, p.mestre), total: somar({}, p.total) };
-    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'mestre', 'total']) somar(out[k], q[k]); }
+    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), cons: somar({}, p.cons), gasto: somar({}, p.gasto), mestre: somar({}, p.mestre), total: somar({}, p.total) };
+    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'cons', 'gasto', 'mestre', 'total']) somar(out[k], q[k]); }
     return out;
   }
-  // a produção de cada facção por semana (a parte própria das regiões dela): { por: { facção: { recurso: n } }, sem }
-  function producaoPorFaccao(m) {
+  /* A produção de cada facção por semana (a parte própria das regiões dela; (parte 3) e as sedes dos clãs): { por: {
+     facção: { recurso: n } }, sem }. clas (opcional): clã → { fac (a facção ligada a ele), cons (Set: as construções
+     dele que existem) } | null — um Map ou uma função; sem o clã, a produção da sede vai para a dona do lugar. */
+  function producaoPorFaccao(m, clas) {
     const N = NN(), por = {}, sem = {};
     if (!ecoDe(m)) return { por, sem };
     for (const f of m.faccoes || []) por[f.id] = {};
     for (const r of regioes(m)) { const fid = N.facDaRegiao(m, r); somar(fid && por[fid] ? por[fid] : sem, producaoPropria(m, r).total); }
+    for (const a of assentamentosDe(m)) {
+      const c = a.o.ass.cla;
+      if (!c) continue;
+      const info = infoDoCla(clas, c.id), p = producaoDoCla(m, a.o, info ? info.cons : null), dono = a.r ? N.facDaRegiao(m, a.r) : null;
+      const fid = info && info.fac && por[info.fac] ? info.fac : dono;
+      somar(fid && por[fid] ? por[fid] : sem, p);
+    }
     return { por, sem };
   }
+  const infoDoCla = (clas, id) => (!clas || !id ? null : typeof clas === 'function' ? clas(id) || null : typeof clas.get === 'function' ? clas.get(id) || null : null);
   // os assentamentos de dentro de uma região (os dela e os das sub-regiões): [{ o, r, nivel }]
   function assentamentosDaRegiao(m, r) {
     if (!ehObj(r)) return [];
@@ -253,9 +273,160 @@
     return assentamentosDe(m).filter(a => a.r && ids.has(a.r.id)).map(a => Object.assign({ nivel: nivelDe(m, a.o.ass.niv) }, a));
   }
 
+  /* ---------------- (parte 3) as construções ---------------- */
+  // o catálogo de começo (pelo papel dos recursos; os terrenos e os níveis pelos ids de começo): 3 níveis cada
+  const NV = (custo, sem, prod, gasto, def) => ({ custo, sem, prod: prod || {}, gasto: gasto || {}, def: def || 0, ef: '' });
+  const CONSTRUCOES_INICIAIS = [
+    // produção
+    { id: 'fazenda', nome: 'Fazenda', ic: 'fazenda', esp: 1, exige: {}, niveis: [NV({ madeira: 10, moeda: 10 }, 2, { comida: 6 }), NV({ madeira: 15, moeda: 20 }, 2, { comida: 10 }), NV({ madeira: 25, moeda: 35 }, 3, { comida: 15 })] },
+    { id: 'serraria', nome: 'Serraria', ic: 'serraria', esp: 1, exige: {}, niveis: [NV({ moeda: 15 }, 2, { madeira: 6 }), NV({ moeda: 25, pedra: 5 }, 2, { madeira: 10 }), NV({ moeda: 40, pedra: 10 }, 3, { madeira: 15 })] },
+    { id: 'pedreira', nome: 'Pedreira', ic: 'mina', esp: 1, exige: { ter: ['co', 'mo'] }, niveis: [NV({ madeira: 10, moeda: 15 }, 3, { pedra: 5 }), NV({ madeira: 15, moeda: 25 }, 3, { pedra: 8 }), NV({ madeira: 25, moeda: 40 }, 4, { pedra: 12 })] },
+    { id: 'mina', nome: 'Mina de Orith', ic: 'mina', esp: 1, exige: { ter: ['co', 'mo'] }, niveis: [NV({ madeira: 15, pedra: 10, moeda: 20 }, 4, { metal: 3 }), NV({ madeira: 20, pedra: 15, moeda: 35 }, 4, { metal: 5 }), NV({ madeira: 30, pedra: 25, moeda: 50 }, 5, { metal: 8 })] },
+    { id: 'mercado', nome: 'Mercado', ic: 'mercado', esp: 1, exige: { niv: 'vila' }, niveis: [NV({ madeira: 15, pedra: 10 }, 3, { moeda: 10 }), NV({ madeira: 20, pedra: 20, moeda: 20 }, 3, { moeda: 16 }), NV({ madeira: 30, pedra: 30, moeda: 40 }, 4, { moeda: 24 })] },
+    { id: 'santuario', nome: 'Santuário rúnico', ic: 'runa', esp: 1, exige: {}, niveis: [NV({ pedra: 15, metal: 5 }, 4, { magia: 3 }, { moeda: 2 }), NV({ pedra: 20, metal: 10, moeda: 20 }, 4, { magia: 5 }, { moeda: 3 }), NV({ pedra: 30, metal: 15, moeda: 40 }, 5, { magia: 8 }, { moeda: 4 })] },
+    // defesa
+    { id: 'palicada', nome: 'Paliçada', ic: 'palicada', esp: 1, exige: {}, niveis: [NV({ madeira: 20 }, 2, null, null, 1), NV({ madeira: 30, moeda: 10 }, 2, null, null, 2), NV({ madeira: 40, moeda: 20 }, 3, null, null, 3)] },
+    { id: 'muralha', nome: 'Muralha', ic: 'muralha', esp: 2, exige: { niv: 'cidade' }, niveis: [NV({ pedra: 40, moeda: 30 }, 6, null, null, 3), NV({ pedra: 60, moeda: 45 }, 6, null, null, 5), NV({ pedra: 90, moeda: 70, metal: 10 }, 8, null, null, 7)] },
+    { id: 'quartel', nome: 'Quartel', ic: 'quartel', esp: 1, exige: {}, niveis: [NV({ madeira: 20, pedra: 10 }, 3, null, { comida: 3 }), NV({ madeira: 30, pedra: 20, moeda: 20 }, 3, null, { comida: 5 }), NV({ madeira: 40, pedra: 30, moeda: 40 }, 4, null, { comida: 8 })] },
+    { id: 'torre', nome: 'Torre de vigia', ic: 'torre', esp: 1, exige: {}, niveis: [NV({ madeira: 10, pedra: 10 }, 2), NV({ madeira: 15, pedra: 20 }, 2), NV({ pedra: 30, moeda: 20 }, 3)] },
+    // cívico
+    { id: 'templo', nome: 'Templo', ic: 'templo', esp: 1, exige: {}, niveis: [NV({ pedra: 20, moeda: 20 }, 4), NV({ pedra: 30, moeda: 35 }, 4), NV({ pedra: 50, moeda: 60 }, 6)] },
+    { id: 'taverna', nome: 'Taverna', ic: 'taverna', esp: 1, exige: {}, niveis: [NV({ madeira: 10, moeda: 10 }, 2, { moeda: 3 }), NV({ madeira: 15, moeda: 20 }, 2, { moeda: 5 }), NV({ madeira: 25, moeda: 30 }, 3, { moeda: 8 })] },
+    { id: 'celeiro', nome: 'Celeiro', ic: 'celeiro', esp: 1, exige: {}, niveis: [NV({ madeira: 15 }, 2), NV({ madeira: 25, pedra: 5 }, 2), NV({ madeira: 35, pedra: 15 }, 3)] },
+    { id: 'porto', nome: 'Porto', ic: 'porto', esp: 2, exige: { ter: ['ag'] }, niveis: [NV({ madeira: 30, pedra: 10 }, 5, { moeda: 8, comida: 3 }), NV({ madeira: 45, pedra: 20, moeda: 20 }, 5, { moeda: 12, comida: 5 }), NV({ madeira: 60, pedra: 30, moeda: 40 }, 6, { moeda: 18, comida: 8 })] },
+    { id: 'biblioteca', nome: 'Biblioteca', ic: 'biblioteca', esp: 1, exige: {}, niveis: [NV({ pedra: 15, moeda: 25 }, 4, { magia: 1 }), NV({ pedra: 25, moeda: 40 }, 4, { magia: 2 }), NV({ pedra: 35, moeda: 60 }, 5, { magia: 3 })] },
+  ];
+  /* O catálogo de começo para a economia deste mapa: os papéis viram os recursos dela (o primeiro de cada papel; o papel
+     que nenhum recurso tem sai), os terrenos e os níveis que o mapa não tem saem das exigências. */
+  function catalogoPronto(m, eco) {
+    const e = eco || (ehObj(m) && ehObj(m.eco) ? m.eco : null), porPapel = {};
+    for (const r of e && Array.isArray(e.rec) ? e.rec : []) if (r.papel && !porPapel[r.papel]) porPapel[r.papel] = r.id;
+    const terIds = new Set((ehObj(m) && Array.isArray(m.terrenos) ? m.terrenos : []).map(t => t.id)), nivIds = new Set((e && Array.isArray(e.niv) ? e.niv : []).map(n => n.id));
+    const tab = t => { const o = {}; for (const p of Object.keys(t || {})) if (porPapel[p] && t[p]) o[porPapel[p]] = t[p]; return o; };
+    return CONSTRUCOES_INICIAIS.map(c => ({ id: c.id, nome: c.nome, ic: c.ic, esp: c.esp,
+      exige: { niv: c.exige.niv && nivIds.has(c.exige.niv) ? c.exige.niv : null, ter: (c.exige.ter || []).filter(t => terIds.has(t)), cons: null },
+      niveis: c.niveis.map(n => ({ custo: tab(n.custo), sem: n.sem, prod: tab(n.prod), gasto: tab(n.gasto), def: n.def, ef: n.ef })) }));
+  }
+  const tipoDe = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && Array.isArray(e.cons) && id ? e.cons.find(c => c.id === id) || null : null; };
+  const idxNivel = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && id ? e.niv.findIndex(n => n.id === id) : -1; };
+  const nomeRec = (m, id) => { const r = ehObj(m) && ehObj(m.eco) ? m.eco.rec.find(x => x.id === id) : null; return r ? r.nome : id; };
+  const nomesOu = l => (l.length <= 1 ? l.join('') : l.slice(0, -1).join(', ') + ' ou ' + l[l.length - 1]);
+  // os espaços de um assentamento: { total (o do nível), usados (pelas construções, com as que estão em obra), livres }
+  function espacosDe(m, o) {
+    const a = ehObj(o) && ehObj(o.ass) ? o.ass : null, nv = a ? nivelDe(m, a.niv) : null;
+    let usados = 0;
+    for (const c of (a && a.cons) || []) { const t = tipoDe(m, c.t); usados += t ? t.esp : 0; }
+    const total = nv ? nv.esp : 0;
+    return { total, usados, livres: Math.max(0, total - usados) };
+  }
+  /* O que falta para construir um tipo num assentamento: [{ k: 'niv' | 'ter' | 'cons' | 'esp', txt }] (vazio: pode). As
+     exigências do tipo (o nível mínimo, um dos terrenos na região, a outra construção pronta aqui) e o espaço. */
+  function exigenciasDe(m, o, t) {
+    const N = NN(), out = [], a = ehObj(o) && ehObj(o.ass) ? o.ass : null;
+    if (!a || !t) return [{ k: 'tipo', txt: 'não dá' }];
+    if (t.exige.niv) { const precisa = idxNivel(m, t.exige.niv); if (precisa >= 0 && idxNivel(m, a.niv) < precisa) out.push({ k: 'niv', txt: 'precisa de ' + nivelDe(m, t.exige.niv).nome + ' ou maior' }); }
+    if (t.exige.ter.length) {
+      const r = N.regiaoEm(m, o.x, o.y), ters = new Set(r && N.temGrade(m) ? terrenosDaRegiao(m, r).por.map(x => x.id) : []);
+      if (!t.exige.ter.some(id => ters.has(id))) out.push({ k: 'ter', txt: 'precisa de ' + nomesOu(t.exige.ter.map(id => (N.terrenoDe(m, id) || { nome: id }).nome)) + ' na região' });
+    }
+    if (t.exige.cons && !(a.cons || []).some(c => c.t === t.exige.cons && c.n >= 1)) { const o2 = tipoDe(m, t.exige.cons); out.push({ k: 'cons', txt: 'precisa antes de ' + (o2 ? o2.nome : 'outra construção') + ' neste assentamento' }); }
+    const e = espacosDe(m, o);
+    if (t.esp > e.livres) out.push({ k: 'esp', txt: e.total ? 'sem espaço (ocupa ' + t.esp + '; ' + (e.livres === 1 ? 'sobra 1' : e.livres ? 'sobram ' + e.livres : 'não sobra nenhum') + ')' : 'o assentamento precisa de um nível com espaços' });
+    return out;
+  }
+  // o nível seguinte de uma construção: { n, nv, t } — null se já está no último ou se tem obra em andamento
+  function proximoNivel(m, c) { const t = ehObj(c) ? tipoDe(m, c.t) : null; return !t || c.obra || c.n >= t.niveis.length ? null : { n: c.n + 1, nv: t.niveis[c.n], t }; }
+  // o que falta no estoque de uma facção para um custo: [{ id, nome, falta }] (vazio: dá; sem facção, nada falta)
+  function faltaPara(m, facId, custo) {
+    const f = facId && ehObj(m) ? (m.faccoes || []).find(x => x.id === facId) : null, out = [];
+    if (!f) return out;
+    for (const id of Object.keys(custo || {})) { const r = (f.rec || []).find(x => x.id === id), tem = r ? Number(r.n) || 0 : 0; if (tem < custo[id]) out.push({ id, nome: nomeRec(m, id), falta: arred2(custo[id] - tem) }); }
+    return out;
+  }
+  // mexe no estoque de uma facção (no rascunho): k = −1 paga, +1 devolve. Cada número entra no histórico, com o motivo. → o que mexeu
+  function moverEstoque(m, facId, tab, k, mot) {
+    const N = NN(), f = facId && ehObj(m) ? (m.faccoes || []).find(x => x.id === facId) : null, feito = {};
+    if (!f || !ehObj(tab)) return feito;
+    recursosNaFaccao(m, f);
+    for (const id of Object.keys(tab)) {
+      const r = f.rec.find(x => x.id === id);
+      if (!r || !(tab[id] > 0)) continue;
+      if (N.facMudar(f, 'r:' + id, arred2((Number(r.n) || 0) + k * tab[id]), ehObj(m.cal) ? m.cal.dia : 0, mot || '')) feito[id] = tab[id];
+    }
+    return feito;
+  }
+  const achaObj = (m, id) => objsDe(m).find(o => ehObj(o) && o.id === id) || null;
+  const consDe = (o, id) => (ehObj(o) && ehObj(o.ass) && Array.isArray(o.ass.cons) ? o.ass.cons.find(c => c.id === id) || null : null);
+  /* Começar a obra de um tipo num assentamento (no rascunho): paga o custo do nível 1 do estoque de facId (null: ninguém
+     paga) e a construção entra com a obra (sem semanas de obra, fica pronta na hora). → a construção, ou null */
+  function comecarObra(m, oId, tipoId, facId, mot) {
+    const N = NN(), o = achaObj(m, oId), t = tipoDe(m, tipoId);
+    if (!o || o.k !== 'm' || !ehObj(o.ass) || !t) return null;
+    if (!Array.isArray(o.ass.cons)) o.ass.cons = [];
+    if (o.ass.cons.length >= ((N.LIMITES && N.LIMITES.construcoesAss) || 16)) return null;
+    const nv = t.niveis[0], pago = moverEstoque(m, facId, nv.custo, -1, mot);
+    let id = N.novoId('ct');
+    while (o.ass.cons.some(c => c.id === id)) id = N.novoId('ct');
+    const c = { id, t: t.id, n: 0, obra: { n: 1, sem: nv.sem, fac: facId || null, pago } };
+    if (!nv.sem) { c.n = 1; c.obra = null; }
+    o.ass.cons.push(c);
+    return c;
+  }
+  // subir de nível (no rascunho): paga o custo do nível seguinte e começa a obra dele (o nível de agora continua valendo)
+  function subirNivel(m, oId, cId, facId, mot) {
+    const c = consDe(achaObj(m, oId), cId), p = c ? proximoNivel(m, c) : null;
+    if (!p) return null;
+    c.obra = { n: p.n, sem: p.nv.sem, fac: facId || null, pago: moverEstoque(m, facId, p.nv.custo, -1, mot) };
+    if (!p.nv.sem) { c.n = p.n; c.obra = null; }
+    return c;
+  }
+  // terminar a obra agora (no rascunho): o nível dela passa a valer
+  function terminarObra(m, oId, cId) { const c = consDe(achaObj(m, oId), cId); if (!c || !c.obra) return false; c.n = c.obra.n; c.obra = null; return true; }
+  // cancelar a obra (no rascunho): devolve a quem pagou; a construção que ainda não tinha ficado pronta sai
+  function cancelarObra(m, oId, cId, mot) {
+    const o = achaObj(m, oId), c = consDe(o, cId);
+    if (!c || !c.obra) return false;
+    moverEstoque(m, c.obra.fac, c.obra.pago, 1, mot);
+    if (c.n > 0) c.obra = null; else o.ass.cons = o.ass.cons.filter(x => x !== c);
+    if (!o.ass.cons.length) delete o.ass.cons;
+    return true;
+  }
+  // demolir (no rascunho): a construção sai (a obra em andamento devolve o que foi pago)
+  function demolir(m, oId, cId, mot) {
+    const o = achaObj(m, oId), c = consDe(o, cId);
+    if (!c) return false;
+    if (c.obra) moverEstoque(m, c.obra.fac, c.obra.pago, 1, mot);
+    o.ass.cons = o.ass.cons.filter(x => x !== c);
+    if (!o.ass.cons.length) delete o.ass.cons;
+    return true;
+  }
+  // o que as construções prontas de um assentamento fazem por semana: { prod, gasto (negativo), def (até 20) }
+  function efeitoDasConstrucoes(m, o) {
+    const out = { prod: {}, gasto: {}, def: 0 };
+    for (const c of (ehObj(o) && ehObj(o.ass) && o.ass.cons) || []) {
+      const t = tipoDe(m, c.t);
+      if (!t || c.n < 1) continue;
+      const nv = t.niveis[Math.min(c.n, t.niveis.length) - 1];
+      somar(out.prod, nv.prod); somar(out.gasto, nv.gasto, -1); out.def += nv.def;
+    }
+    out.def = Math.min(20, out.def);
+    return out;
+  }
+  // a defesa que as construções somam na fortificação do marcador (só com a economia ligada)
+  const defDoAssentamento = (m, o) => (ecoDe(m) && ehObj(o) && o.k === 'm' ? efeitoDasConstrucoes(m, o).def : 0);
+  // a produção da sede do clã por semana (os números do mestre; cons: as construções do clã que existem — sem a lista, todas)
+  function producaoDoCla(m, o, cons) {
+    const out = {}, c = ehObj(o) && ehObj(o.ass) ? o.ass.cla : null;
+    if (!ecoDe(m) || !ehObj(c)) return out;
+    for (const k of Object.keys(c.prod || {})) if (!cons || cons.has(k)) somar(out, c.prod[k]);
+    return out;
+  }
+
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
     RECURSOS_INICIAIS, TERRENO_INICIAL, POP_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
-    assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao };
+    assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
+    CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
+    cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;
   if (typeof window !== 'undefined') window.MundoReino = MundoReino;
 })();

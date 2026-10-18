@@ -561,6 +561,34 @@ dialog.mundo-dl.eco-dl { width: min(880px, calc(100% - 24px)); }
 .eco-tab tbody th { position: sticky; left: 0; background: var(--surface); font-weight: 600; color: var(--fg); }
 .eco-tab th i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; border: 1px solid var(--line-strong); vertical-align: -1px; }
 .eco-tab td .in { width: 72px; height: 30px; padding: 0 6px; text-align: right; font-family: var(--mono); }
+.mundo-dl .eco-tab td input.in { width: 72px; height: 30px; padding: 0 6px; text-align: right; font-family: var(--mono); }
+/* (lote 10, parte 3) as construções: no assentamento, no catálogo e nas janelas */
+.cons-lista, .eco-cons { display: grid; gap: 6px; }
+.cons-li { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: start; gap: 2px 8px; padding: 8px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.cons-li.em-obra { border-style: dashed; border-color: var(--line-strong); }
+.cons-li .ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--surface); color: var(--lamp-ink); }
+.cons-li .tx { display: grid; gap: 2px; min-width: 0; }
+.cons-li .tx b { font-size: 13px; color: var(--fg); }
+.cons-li .tx small { font-size: 12px; color: var(--fg-3); }
+.cons-li .tx small.cons-ef { color: var(--fg-2); font-style: italic; }
+.cons-li .cons-acoes { gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.cons-li .cons-acoes:empty { display: none; }
+.cons-li > .ib { justify-self: end; }
+.cons-obra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+.cons-obra .in { width: 64px; height: 28px; padding: 0 6px; }
+.tag.obra { color: var(--lamp-ink); border-color: var(--lamp); border-style: dashed; }
+.ob-det { display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.mundo-dl .ob-det p { font-size: 13px; color: var(--fg); }
+.mundo-dl .ob-est { font-size: 13px; }
+.mundo-dl .lin.ct-cab label:first-child { flex: 1 1 200px; }
+.ct-cab .ct-ic { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--line-strong); color: var(--lamp-ink); }
+.mundo-dl .ct-exige .lin label:first-child, .mundo-dl .ct-exige .lin label:last-child { flex: 1 1 0; }
+.ct-ters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mundo-dl label.op.ct-ter { padding: 5px 9px; font-size: 12.5px; }
+.ct-niveis { display: grid; gap: 10px; }
+.mundo-dl fieldset.ct-nivel { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px 10px; }
+.mundo-dl fieldset.ct-nivel legend { padding: 0 4px; }
+.mundo-dl fieldset.ct-nivel .lin label:first-child, .mundo-dl fieldset.ct-nivel .lin label:last-child { flex: 0 0 132px; }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -896,14 +924,14 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=19"></script>
+<script src="nucleo.js?v=20"></script>
 <script src="guerra.js?v=2"></script>
-<script src="reino.js?v=2"></script>
+<script src="reino.js?v=3"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=21"></script>
 <script src="painel.js?v=26"></script>
-<script src="guerra-painel.js?v=2"></script>
-<script src="reino-painel.js?v=2"></script>
-<script src="mundo.js?v=11"></script>
+<script src="guerra-painel.js?v=3"></script>
+<script src="reino-painel.js?v=3"></script>
+<script src="mundo.js?v=12"></script>
 </body>
 </html>

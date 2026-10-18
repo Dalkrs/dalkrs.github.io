@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-9",
+      "data": "2026-10-18",
+      "titulo": "Construções e a sede do clã",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o catálogo de construções, na Economia do mundo — 15 prontas (produção, defesa e cívico), cada uma com 3 níveis. Em cada uma você muda o nome, o ícone, os espaços, o que ela exige (o nível do assentamento, um terreno na região, outra construção antes) e, nível a nível, as semanas de obra, o custo, o que produz, o que gasta e a defesa; dá para criar outras e tirar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no assentamento, “+ Construir…” mostra o custo, as semanas, o que a construção faz e o que falta no estoque de quem paga; começar paga na hora (com Desfazer). Depois: subir de nível, terminar a obra, cancelar (devolve tudo) e demolir. As prontas entram na produção da semana, e a Paliçada e a Muralha somam na defesa da batalha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: um assentamento pode ser a sede de um clã da página Clã — as construções do clã aparecem lá (sem ocupar espaço) e produzem, nos números que você der, para a facção ligada ao clã."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-8",
       "data": "2026-10-18",
       "titulo": "A economia do mundo",
