@@ -4,7 +4,8 @@
    gênero, a casa, a facção, o cargo na corte da facção, o nascimento e a morte pela data do mundo, os pais e os cônjuges,
    onde está, a ficha das Fichas, se os jogadores conhecem, o que eles sabem e a nota do mestre); a casa abre a janela
    dela (o nome, o lema, o chefe e o brasão, com o editor do Clã). Para quem joga, os que o mestre marcou como
-   conhecidos, só para ler (com os laços entre conhecidos). Na cidade e no grupo, "Quem está aqui".
+   conhecidos, só para ler (com os laços entre conhecidos). Na cidade e no grupo, "Quem está aqui". (parte 1b) Na casa,
+   "Árvore da família…": a árvore desenhada numa janela grande (clicar numa pessoa abre o cartão).
    Nada muda até "Salvar" (ou "Criar"); tudo vale num passo de Desfazer. Usa as ferramentas do painel (MundoPainel.kit). */
 (() => {
   'use strict';
@@ -78,8 +79,10 @@
     const cab = h('div', { class: 'corte-casa-cab', 'data-k': 'casa:' + chave },
       casa ? brasaoEl(casa.br, 22) || h('i', { class: 'corte-sem-br', 'aria-hidden': 'true' }) : null,
       h('span', { class: 'tx' }, h('b', { text: casa ? casa.nome : 'Sem casa' }),
-        h('small', { text: [casa && casa.lema ? '“' + casa.lema + '”' : '', chefe ? 'chefe: ' + chefe.nome : '', K.plural(membros.length, 'pessoa', 'pessoas')].filter(Boolean).join(' · ') })),
-      casa && ed ? K.botao('Editar…', () => janelaCasa(casa.id), { c: 'sm', k: 'casa:' + casa.id + ':editar' }) : null);
+        h('small', { text: [casa && casa.lema ? '“' + casa.lema + '”' : '', chefe ? 'chefe: ' + chefe.nome : '', K.plural(membros.length, 'pessoa', 'pessoas')].filter(Boolean).join(' · ') })));
+    // (parte 1b) a árvore da família (todos a abrem; quem joga vê só os conhecidos) e, para quem mestra, editar a casa
+    const acoes = casa ? h('div', { class: 'row corte-casa-acoes' }, K.botao('Árvore da família…', () => janelaArvore(casa.id), { c: 'sm', k: 'casa:' + casa.id + ':arvore', off: !membros.length && !C().membrosDe(v, casa.id).length }),
+      ed ? K.botao('Editar…', () => janelaCasa(casa.id), { c: 'sm', k: 'casa:' + casa.id + ':editar' }) : null) : null;
     const item = p => (ed
       ? h('button', { type: 'button', class: 'li clic corte-p' + (C().vivo(p) ? '' : ' morto'), 'data-k': 'p:' + p.id, onclick: () => janelaPessoa(p.id) },
         h('span', { class: 'tx' }, h('b', { text: p.nome }), h('small', { text: rotulo(v, p, !filtroFac) || 'sem data, cargo nem lugar' })),
@@ -92,7 +95,7 @@
         mortos.map(item)));
     }
     if (!membros.length) corpo.push(nota('Ninguém nesta casa ainda.'));
-    return h('div', { class: 'corte-casa', 'data-casa': chave }, cab, corpo);
+    return h('div', { class: 'corte-casa', 'data-casa': chave }, cab, acoes, corpo);
   }
   // para quem joga: o personagem conhecido, só para ler
   function cartaoPub(v, p) {
@@ -409,5 +412,103 @@
     });
   }
 
-  window.MundoCortePainel = { abaCorte, secQuemEsta, janelaPessoa, janelaCasa, janelaCargos, brasaoEl };
+  /* ---------------- (parte 1b) a árvore da família ----------------
+     Uma janela grande com a árvore desenhada da casa (MundoCorte.arvoreDaCasa): cada pessoa numa caixa (o nome e os
+     anos; o morto com a cruz e mais apagado; quem casou com alguém da casa, com a borda tracejada), os casais ligados por
+     uma linha e os filhos pendurados no meio dos pais. Rola nas duas direções; "−", "+" e "Ajustar" mudam o tamanho.
+     Para quem mestra, clicar numa pessoa abre o cartão dela (e a árvore se refaz ao salvar); para quem joga, só os
+     conhecidos (é a projeção que chega a eles). */
+  const SVG = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs) => { const e = document.createElementNS(SVG, tag); for (const k of Object.keys(attrs || {})) e.setAttribute(k, attrs[k]); return e; };
+  let arvoreAberta = false;
+  function anosTxt(m, p) {
+    const n = p.nasc ? p.nasc.a : null, mo = p.morte ? p.morte.a : null;
+    if (n != null && mo != null) return n + ' – ' + mo;
+    if (n != null) return 'n. ' + n;
+    return mo != null ? '† ' + mo : '';
+  }
+  function desenharArvore(m, casaId, aoClicar) {
+    const t = C().arvoreDaCasa(m, casaId), { LAR, ALT } = C().ARVORE, M = 16;
+    const svg = el('svg', { viewBox: (-M) + ' ' + (-M) + ' ' + (t.larg + 2 * M) + ' ' + (t.alt + 2 * M), class: 'arv-svg', role: 'img', 'aria-label': 'A árvore da família' });
+    const pos = new Map(t.nos.map(n => [n.id, n])), linhas = el('g', { class: 'arv-linhas' }), caixas = el('g', { class: 'arv-caixas' });
+    // os casais: lado a lado, uma linha entre as caixas; longe um do outro, um arco por cima
+    for (const [a, b] of t.casais) {
+      const pa = pos.get(a), pb = pos.get(b), y = pa.y + ALT / 2;
+      if (pa.y === pb.y && pb.x - pa.x <= LAR + C().ARVORE.VAO + 1) linhas.append(el('line', { x1: pa.x + LAR, y1: y, x2: pb.x, y2: y, class: 'arv-casal' }));
+      else linhas.append(el('path', { d: 'M' + (pa.x + LAR / 2) + ' ' + pa.y + ' C' + (pa.x + LAR / 2) + ' ' + (pa.y - 34) + ' ' + (pb.x + LAR / 2) + ' ' + (pb.y - 34) + ' ' + (pb.x + LAR / 2) + ' ' + pb.y, class: 'arv-casal longe' }));
+    }
+    // os filhos: do meio dos pais (ou de baixo do pai que está na árvore) até o alto da caixa do filho
+    for (const f of t.filhos) {
+      const pf = pos.get(f.id), pp = f.pais.map(id => pos.get(id));
+      const juntos = pp.length === 2 && pp[0].y === pp[1].y && t.casais.some(([a, b]) => (a === f.pais[0] && b === f.pais[1]) || (a === f.pais[1] && b === f.pais[0]));
+      const x0 = juntos ? (pp[0].x + LAR + pp[1].x) / 2 : pp[0].x + LAR / 2, y0 = juntos ? pp[0].y + ALT / 2 : pp[0].y + ALT;
+      const meio = pf.y - C().ARVORE.VAO_G / 2, x1 = pf.x + LAR / 2;
+      linhas.append(el('path', { d: 'M' + x0 + ' ' + y0 + ' V' + meio + ' H' + x1 + ' V' + pf.y, class: 'arv-filho' }));
+    }
+    for (const n of t.nos) {
+      const p = C().pessoaDe(m, n.id), morto = !!p.morte, fora = p.casa !== casaId;
+      const g = el('g', { class: 'arv-p' + (morto ? ' morto' : '') + (fora ? ' fora' : ''), transform: 'translate(' + n.x + ' ' + n.y + ')', 'data-p': p.id, tabindex: aoClicar ? '0' : '-1' });
+      if (aoClicar) g.setAttribute('role', 'button');
+      g.append(el('rect', { width: LAR, height: ALT, rx: 9 }));
+      const nome = el('text', { x: 10, y: 20, class: 'arv-nome' }), anos = el('text', { x: 10, y: 37, class: 'arv-anos' });
+      nome.textContent = (morto ? '† ' : '') + (p.nome.length > 20 ? p.nome.slice(0, 19) + '…' : p.nome);
+      anos.textContent = anosTxt(m, p) || (fora ? 'de fora da casa' : '');
+      const tit = el('title'); tit.textContent = p.nome + (anosTxt(m, p) ? ' (' + anosTxt(m, p) + ')' : '');
+      g.append(tit, nome, anos);
+      if (aoClicar) {
+        g.addEventListener('click', () => aoClicar(p.id));
+        g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); aoClicar(p.id); } });
+      }
+      caixas.append(g);
+    }
+    svg.append(linhas, caixas);
+    return { svg, t };
+  }
+  async function janelaArvore(casaId) {
+    const A = app(), K = kit(), { h } = K;
+    if (arvoreAberta) return;
+    const v0 = A.vista(), casa = v0 ? C().casaDe(v0, casaId) : null;
+    if (!casa) return;
+    arvoreAberta = true;
+    const ed = A.podeEditar(), idMapa = A.mapa && A.mapa.id;
+    let zoom = 1, ajustado = true;
+    const caixa = h('div', { class: 'arv-caixa', 'data-k': 'arv:caixa' });
+    const bMenos = h('button', { type: 'button', class: 'btn sm', 'data-k': 'arv:menos', 'aria-label': 'Diminuir', text: '−' }), bMais = h('button', { type: 'button', class: 'btn sm', 'data-k': 'arv:mais', 'aria-label': 'Aumentar', text: '+' });
+    const bAjustar = h('button', { type: 'button', class: 'btn sm', 'data-k': 'arv:ajustar', text: 'Ajustar' }), rotZoom = h('span', { class: 'arv-zoom', 'data-k': 'arv:zoom' });
+    const titulo = h('h2', { text: 'Árvore da família: ' + casa.nome });
+    titulo.id = 'dl-arv-' + Date.now().toString(36);
+    const bFechar = h('button', { type: 'button', class: 'btn pri', 'data-k': 'arv:fechar', text: 'Fechar' });
+    const legenda = h('small', { class: 'ajuda', 'data-k': 'arv:legenda', text: (ed ? 'Clique numa pessoa para abrir o cartão dela. ' : '') + '† morto · borda tracejada: casou com alguém da casa.' + (ed ? '' : ' Só quem vocês conhecem.') });
+    let atual = null;
+    const tamanho = () => { if (!atual) return; const { t } = atual, w = (t.larg + 32) * zoom, hh = (t.alt + 32) * zoom; atual.svg.setAttribute('width', String(Math.round(w))); atual.svg.setAttribute('height', String(Math.round(hh))); rotZoom.textContent = Math.round(zoom * 100) + '%'; };
+    const ajustar = () => { if (!atual) return; const larg = Math.max(200, caixa.clientWidth - 8), alt = Math.max(160, Math.min(window.innerHeight * 0.62, 620) - 8), { t } = atual; zoom = Math.max(0.3, Math.min(1.4, larg / (t.larg + 32), alt / (t.alt + 32))); ajustado = true; tamanho(); };
+    async function abrirCartao(id) {
+      await janelaPessoa(id);
+      if (dl.open) pintar();
+    }
+    function pintar() {
+      const m = A.vista();
+      if (!m || (idMapa && A.mapa && A.mapa.id !== idMapa) || !C().casaDe(m, casaId)) { fim(); return; }
+      atual = desenharArvore(m, casaId, ed ? abrirCartao : null);
+      caixa.replaceChildren(atual.t.nos.length ? atual.svg : h('p', { class: 'note', text: 'Ninguém nesta casa ainda.' }));
+      if (ajustado) ajustar(); else tamanho();
+    }
+    const form = h('form', { class: 'dl', novalidate: true }, titulo, h('div', { class: 'row arv-ctl' }, bMenos, rotZoom, bMais, bAjustar), caixa, legenda, h('div', { class: 'pe' }, bFechar));
+    const dl = h('dialog', { class: 'mundo-dl arv-dl', 'aria-labelledby': titulo.id }, form);
+    let feito = false;
+    const fim = () => { if (feito) return; feito = true; arvoreAberta = false; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); };
+    bMenos.addEventListener('click', () => { zoom = Math.max(0.3, Math.round((zoom - 0.1) * 10) / 10); ajustado = false; tamanho(); });
+    bMais.addEventListener('click', () => { zoom = Math.min(2, Math.round((zoom + 0.1) * 10) / 10); ajustado = false; tamanho(); });
+    bAjustar.addEventListener('click', ajustar);
+    bFechar.addEventListener('click', fim);
+    form.addEventListener('submit', ev => { ev.preventDefault(); fim(); });
+    dl.addEventListener('close', fim);
+    dl.addEventListener('keydown', ev => ev.stopPropagation());
+    document.body.append(dl);
+    dl.showModal();
+    pintar();
+    bFechar.focus();
+  }
+
+  window.MundoCortePainel = { abaCorte, secQuemEsta, janelaPessoa, janelaCasa, janelaCargos, brasaoEl, janelaArvore };
 })();

@@ -1310,6 +1310,14 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   mestre marcou como conhecidos (a projeção leva só eles, sem a nota nem a ficha; os laços só entre conhecidos; o lugar
   só se eles o veem; a casa com algum conhecido, o chefe só se conhecido), com os laços em texto ("filha de…", "esposa
   de…", "mãe de…"). As abas do painel ficaram um pouco mais juntas, para as sete caberem.
+- **A árvore da família** (lote 11, parte 1b). Em cada casa, "Árvore da família…" abre uma janela grande com a árvore
+  desenhada (`arvoreDaCasa`, em `mundo/corte.js`): entram os membros da casa e os cônjuges deles; a geração de cada um
+  sai dos pais (de cima para baixo), e quem casou com alguém da casa (sem os pais na árvore) fica na geração do cônjuge,
+  logo ao lado dele, com a borda tracejada. Os filhos ficam na ordem do meio dos pais, pendurados no meio do casal (ou
+  em quem está na árvore); o morto tem a cruz e fica mais apagado; cada caixa mostra o nome e os anos. A árvore rola
+  nas duas direções e começa ajustada à janela (até 140%); "−", "+" e "Ajustar" mudam o tamanho. Para quem mestra,
+  clicar numa pessoa abre o cartão dela (por cima da árvore) e, ao salvar, a árvore se refaz; quem joga abre a mesma
+  árvore só com os conhecidos (é a projeção que chega a eles), sem abrir cartão.
 
 ### A Árvore (lote 6)
 
@@ -2406,7 +2414,11 @@ datas), a lista (a idade, o cargo, o lugar, "conhecido"), o filho morto em "Mort
 dos dois lados (tirar dos dois), os pais sem os descendentes, a casa (o chefe, o brasão, Cancelar), os cargos
 (renomear, tirar, criar, voltar aos de começo), o filtro, quem está aqui, quem joga, tirar o personagem e a casa e o
 cartão no celular; `mundo-lote8.rede`, numa mesa, a projeção só com os conhecidos (sem as notas) e a aba Corte do
-jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+jogador. Na parte 1b (a árvore), `lote11-nucleo` confere quem entra, as gerações, quem casou ao lado, a ordem dos
+filhos pelo meio dos pais, os casais (o dos primos também), os filhos pendurados nos pais que estão na árvore, o
+tamanho, a casa vazia e a projeção; `mundo-lote11` com `SO=arvore`, a janela (as pessoas, os casais, os filhos, o morto,
+quem casou, as gerações), "+", "Ajustar", clicar que abre o cartão (salvar refaz a árvore), "Fechar", quem joga (só os
+conhecidos) e o celular. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

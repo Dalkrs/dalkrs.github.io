@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-19",
+      "data": "2026-10-18",
+      "titulo": "A árvore da família",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: na aba Corte, cada casa tem “Árvore da família…”: a árvore desenhada, com pais, cônjuges e filhos (os mortos com a cruz). Dá para rolar e mudar o tamanho (“−”, “+” e “Ajustar”). Vocês veem só quem conhecem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na árvore da família, clicar numa pessoa abre o cartão dela; ao salvar, a árvore se refaz. Quem casou com alguém da casa aparece ao lado, com a borda tracejada."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-18",
       "data": "2026-10-18",
       "titulo": "A corte",

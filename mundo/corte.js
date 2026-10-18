@@ -5,7 +5,8 @@
    cargos da corte de cada facção (sem a lista guardada, os de começo).
    Aqui: os cargos de uma facção, a idade (hoje, ou na morte), a data em texto (só o ano, o mês e o ano, ou tudo), os
    pais, os filhos, os cônjuges, os descendentes (para não deixar ninguém ser antepassado de si mesmo), quem está num
-   lugar (os vivos) e os membros de uma casa (os vivos primeiro).
+   lugar (os vivos) e os membros de uma casa (os vivos primeiro); (parte 1b) a árvore da família de uma casa (onde fica
+   cada pessoa, os casais e os filhos).
    Roda no navegador (window.MundoCorte) e no Node (testes). */
 (() => {
   'use strict';
@@ -71,7 +72,77 @@
     conj: { h: 'marido', m: 'esposa', '': 'cônjuge', o: 'cônjuge' } };
   const laco = (tipo, p) => (LACOS[tipo] || {})[(p && p.gen) || ''] || '';
 
-  const MundoCorte = { corteDe, pessoaDe, casaDe, vivo, cargosDe, cargoDe, hoje, idadeDe, dataTxt, paisDe, conjugesDe, filhosDe, descendentesDe, quemEsta, membrosDe, laco };
+  /* ---------------- (parte 1b) a árvore da família de uma casa ----------------
+     Quem entra: os membros da casa e os cônjuges deles (os de outra casa também). A geração de cada um sai dos pais (a
+     de cima é a 0); quem casou com alguém da casa e não tem os pais na árvore fica na geração do cônjuge. Em cada
+     geração, cada membro vem com os cônjuges de fora logo ao lado; os filhos ficam na ordem do meio dos pais (o primeiro
+     da lista desempata). → { nos: [{ id, x, y }] (o canto de cima, à esquerda), casais: [[a, b]], filhos: [{ pais: [a, b?],
+     id }], larg, alt } — vazia sem ninguém. LAR/ALT: o tamanho de cada caixa; os vãos entre elas. */
+  const LAR = 156, ALT = 48, VAO = 26, VAO_G = 64;
+  function arvoreDaCasa(m, casaId) {
+    const todas = corteDe(m).pessoas, ordem = new Map(todas.map((p, i) => [p.id, i]));
+    const membros = todas.filter(p => casaId && p.casa === casaId), dentro = new Set(membros.map(p => p.id));
+    for (const p of membros) for (const id of p.conj) dentro.add(id);
+    const ps = todas.filter(p => dentro.has(p.id)), por = new Map(ps.map(p => [p.id, p]));
+    const vazia = { nos: [], casais: [], filhos: [], larg: 0, alt: 0 };
+    if (!ps.length) return vazia;
+    const paisDentro = p => p.pais.filter(id => por.has(id));
+    // a geração: pelos pais (ninguém é antepassado de si mesmo: a subida termina); o cônjuge sem pais na árvore, a do outro
+    const g = new Map();
+    const geracao = (p, pilha) => {
+      if (g.has(p.id)) return g.get(p.id);
+      if (pilha.has(p.id)) return 0;
+      pilha.add(p.id);
+      const pp = paisDentro(p), v = pp.length ? 1 + Math.max(...pp.map(id => geracao(por.get(id), pilha))) : 0;
+      pilha.delete(p.id);
+      g.set(p.id, v);
+      return v;
+    };
+    for (const p of ps) geracao(p, new Set());
+    for (let volta = 0; volta < ps.length; volta++) {
+      let mudou = false;
+      for (const p of ps) {
+        if (paisDentro(p).length) continue;
+        const cs = p.conj.filter(id => por.has(id)).map(id => g.get(id));
+        if (cs.length) { const alvo = Math.max(...cs); if (alvo > g.get(p.id)) { g.set(p.id, alvo); mudou = true; } }
+      }
+      if (!mudou) break;
+    }
+    // cada geração em unidades: um (o da casa, ou quem tem os pais na árvore) e, logo ao lado, os cônjuges de fora dela
+    const deFora = p => !paisDentro(p).length && p.casa !== casaId;
+    const nG = Math.max(...ps.map(p => g.get(p.id))) + 1, x = new Map(), linhas = [];
+    for (let k = 0; k < nG; k++) {
+      const daqui = ps.filter(p => g.get(p.id) === k), usados = new Set(), unidades = [];
+      for (const p of daqui) {
+        if (usados.has(p.id) || (deFora(p) && p.conj.some(id => por.has(id) && g.get(id) === k && !deFora(por.get(id))))) continue;
+        const u = [p];
+        usados.add(p.id);
+        for (const id of p.conj) { const q = por.get(id); if (q && !usados.has(q.id) && g.get(q.id) === k && deFora(q)) { u.push(q); usados.add(q.id); } }
+        unidades.push(u);
+      }
+      for (const p of daqui) if (!usados.has(p.id)) { unidades.push([p]); usados.add(p.id); }
+      // a ordem: o meio dos pais (na geração de cima); sem pais na árvore, a ordem da lista
+      const meio = u => { const pp = paisDentro(u[0]).filter(id => x.has(id)); return pp.length ? pp.reduce((s, id) => s + x.get(id), 0) / pp.length : null; };
+      unidades.sort((a, b) => { const ma = meio(a), mb = meio(b); if (ma != null && mb != null && ma !== mb) return ma - mb; if ((ma == null) !== (mb == null)) return ma == null ? -1 : 1; return ordem.get(a[0].id) - ordem.get(b[0].id); });
+      let i = 0;
+      for (const u of unidades) for (const p of u) { x.set(p.id, i++); }
+      linhas.push(i);
+    }
+    const nos = ps.map(p => ({ id: p.id, x: x.get(p.id) * (LAR + VAO), y: g.get(p.id) * (ALT + VAO_G) }));
+    const casais = [], vistos = new Set();
+    for (const p of ps) for (const id of p.conj) {
+      if (!por.has(id)) continue;
+      const k = p.id < id ? p.id + '|' + id : id + '|' + p.id;
+      if (vistos.has(k)) continue;
+      vistos.add(k);
+      casais.push(x.get(p.id) <= x.get(id) ? [p.id, id] : [id, p.id]);
+    }
+    const filhos = ps.filter(p => paisDentro(p).length).map(p => ({ pais: paisDentro(p).slice().sort((a, b) => x.get(a) - x.get(b)), id: p.id }));
+    return { nos, casais, filhos, larg: Math.max(...linhas) * (LAR + VAO) - VAO, alt: nG * (ALT + VAO_G) - VAO_G };
+  }
+
+  const MundoCorte = { corteDe, pessoaDe, casaDe, vivo, cargosDe, cargoDe, hoje, idadeDe, dataTxt, paisDe, conjugesDe, filhosDe, descendentesDe, quemEsta, membrosDe, laco,
+    arvoreDaCasa, ARVORE: { LAR, ALT, VAO, VAO_G } };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCorte;
   if (typeof window !== 'undefined') window.MundoCorte = MundoCorte;
 })();

@@ -7,6 +7,9 @@
 //     cargos da corte (renomear, criar, tirar — quem tinha fica sem —, voltar aos de começo); o filtro de facção; "Quem
 //     está aqui" na cidade e no grupo; quem joga (só os conhecidos, os laços entre eles, sem a nota; quem está aqui);
 //     tirar o personagem e a casa (com Desfazer); no celular.
+//   · (parte 1b, SO=arvore) a árvore da família: a janela (as pessoas, os casais, os filhos; o morto e quem casou com
+//     alguém da casa; as gerações), "−", "+" e "Ajustar", clicar abre o cartão (e salvar refaz a árvore), "Fechar",
+//     quem joga (só os conhecidos, sem abrir o cartão), no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -67,7 +70,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     const c1 = await corte(L);
     ok(c1 && c1.casas.length === 1 && c1.casas[0].nome === 'Casa do Vale' && c1.casas[0].lema === 'Firmes como a pedra' && /A casa Casa do Vale entrou na corte\./.test(await avisos(L)), 'criar: a casa entra (com o aviso)');
     const idCasa = c1.casas[0].id;
-    ok(/Casa do Vale “Firmes como a pedra” · 0 pessoas Editar… Ninguém nesta casa ainda\./.test(await textoPane(L)), 'na lista: a casa, o lema, quantas pessoas e "Editar…"');
+    ok(/Casa do Vale “Firmes como a pedra” · 0 pessoas Árvore da família… Editar… Ninguém nesta casa ainda\./.test(await textoPane(L)) && await campo(L, 'casa:' + c1.casas[0].id + ':arvore').isDisabled(), 'na lista: a casa, o lema, quantas pessoas, "Árvore da família…" (sem ninguém, desligada) e "Editar…"');
     await A(L, () => __mundo.App.desfazer()); await espera(300);
     ok(!(await corte(L)), 'desfazer: a casa sai');
     await A(L, () => __mundo.App.refazer()); await espera(300);
@@ -228,6 +231,66 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await A(L, () => { const d = document.querySelector('dialog.ps-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, o cartão cabe na largura');
     await semAvisos(L); await foto('l11-corte-celular');
     await L.F.click(dlg('[data-k="ps:nao"]')); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 1b) a árvore da família ----------
+  if (parte('arvore')) await passo('a árvore da família', async () => {
+    await A(L, () => {
+      __mundo.App.mudar('uma família', m => {
+        m.corte = { cargos: {}, casas: [{ id: 'ka', nome: 'Casa de Aldar', lema: 'Pela coroa', chefe: 'av' }],
+          pessoas: [
+            { id: 'av', nome: 'Rei Aldo', gen: 'h', casa: 'ka', fac: 'fa', nasc: { a: -60 }, morte: { a: -2 }, conj: ['ao'], ver: true },
+            { id: 'ao', nome: 'Rainha Olga', gen: 'm', nasc: { a: -58 }, ver: true },
+            { id: 'f1', nome: 'Príncipe Beto', gen: 'h', casa: 'ka', pais: ['av', 'ao'], nasc: { a: -30 }, conj: ['nr'], ver: true },
+            { id: 'nr', nome: 'Nora Lia', gen: 'm', nasc: { a: -28 }, ver: false },
+            { id: 'f2', nome: 'Princesa Cléo', gen: 'm', casa: 'ka', pais: ['av', 'ao'], nasc: { a: -27 }, ver: true },
+            { id: 'n1', nome: 'Neto Davi', gen: 'h', casa: 'ka', pais: ['f1', 'nr'], nasc: { a: -5 }, ver: true },
+            { id: 'n2', nome: 'Neta Eva', gen: 'm', casa: 'ka', pais: ['f1', 'nr'], nasc: { a: -3 }, ver: false }] };
+      });
+    });
+    await aba(L, 'corte');
+    await botao(L, 'casa:ka:arvore'); await L.F.waitForSelector('dialog.arv-dl[open]');
+    const arv = () => A(L, () => { const d = document.querySelector('dialog.arv-dl[open]'); if (!d) return null; return { tit: d.querySelector('h2').textContent, caixas: [...d.querySelectorAll('.arv-p')].map(g => ({ id: g.dataset.p, cls: g.getAttribute('class'), txt: g.querySelector('.arv-nome').textContent + ' | ' + g.querySelector('.arv-anos').textContent })),
+      casais: d.querySelectorAll('.arv-casal').length, filhos: d.querySelectorAll('.arv-filho').length, zoom: d.querySelector('[data-k="arv:zoom"]').textContent, w: Number(d.querySelector('svg.arv-svg').getAttribute('width')), cx: d.querySelector('[data-k="arv:caixa"]').clientWidth }; });
+    let a0 = await arv();
+    ok(a0.tit === 'Árvore da família: Casa de Aldar' && a0.caixas.length === 7 && a0.casais === 2 && a0.filhos === 4, '"Árvore da família…": a janela com as 7 pessoas (os membros e os cônjuges), os 2 casais e os 4 filhos: ' + j([a0.caixas.length, a0.casais, a0.filhos]));
+    const cx = id => a0.caixas.find(c => c.id === id) || {};
+    ok(/morto/.test(cx('av').cls) && cx('av').txt === '† Rei Aldo | -60 – -2' && cx('f1').txt === 'Príncipe Beto | n. -30' && /fora/.test(cx('ao').cls) && /fora/.test(cx('nr').cls) && !/fora/.test(cx('f1').cls),
+      'o morto com a cruz e os anos; o vivo com o nascimento; quem casou com alguém da casa, de fora (borda tracejada): ' + j([cx('av').txt, cx('f1').txt]));
+    const pos = await A(L, () => Object.fromEntries([...document.querySelectorAll('dialog.arv-dl[open] .arv-p')].map(g => [g.dataset.p, g.getAttribute('transform')])));
+    const xy = id => (/translate\(([-\d.]+) ([-\d.]+)\)/.exec(pos[id]) || []).slice(1).map(Number);
+    ok(xy('av')[1] === xy('ao')[1] && xy('f1')[1] > xy('av')[1] && xy('n1')[1] > xy('f1')[1] && xy('nr')[1] === xy('f1')[1] && Math.abs(xy('ao')[0] - xy('av')[0]) === 182,
+      'as gerações de cima para baixo; o casal lado a lado (a nora na geração do príncipe)');
+    ok(a0.w <= a0.cx && a0.zoom === '140%', 'de começo, ajustada à janela (a árvore pequena fica em 140%, o máximo do ajuste): ' + j([a0.w, a0.cx, a0.zoom]));
+    await L.F.click('dialog.arv-dl[open] [data-k="arv:mais"]'); await L.F.click('dialog.arv-dl[open] [data-k="arv:mais"]'); await espera(100);
+    const a1 = await arv();
+    ok(parseInt(a1.zoom, 10) === parseInt(a0.zoom, 10) + 20 && a1.w > a0.w, '"+" duas vezes: 20% maior: ' + j([a0.zoom, a1.zoom]));
+    await L.F.click('dialog.arv-dl[open] [data-k="arv:ajustar"]'); await espera(100);
+    ok((await arv()).w <= (await arv()).cx && (await arv()).zoom === a0.zoom, '"Ajustar": volta ao tamanho que cabe');
+    await semAvisos(L); await foto('l11-arvore');
+    // clicar numa pessoa abre o cartão; salvar refaz a árvore (ela continua aberta)
+    await L.F.click('dialog.arv-dl[open] .arv-p[data-p="n1"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.ps-dl[open] h2').textContent) === 'Neto Davi', 'clicar no Davi abre o cartão dele (por cima da árvore)');
+    await L.F.fill('dialog.ps-dl[open] [data-k="ps:nome"]', 'Neto Davi II'); await L.F.click('dialog.ps-dl[open] [data-k="ps:ok"]'); await espera(400);
+    ok(await A(L, () => !!document.querySelector('dialog.arv-dl[open]') && /Neto Davi II/.test(document.querySelector('dialog.arv-dl[open] .arv-p[data-p="n1"]').textContent)), 'salvar: a árvore se refaz com o nome novo (e continua aberta)');
+    await L.F.click('dialog.arv-dl[open] [data-k="arv:fechar"]'); await espera(250);
+    ok(await A(L, () => !document.querySelector('dialog.arv-dl')), '"Fechar": a janela some');
+    // quem joga: só os conhecidos, sem abrir o cartão
+    await comoJogador(L, true);
+    await aba(L, 'corte');
+    await botao(L, 'casa:ka:arvore'); await L.F.waitForSelector('dialog.arv-dl[open]');
+    const aj = await arv();
+    ok(aj.caixas.length === 5 && !aj.caixas.some(c => c.id === 'nr' || c.id === 'n2') && aj.filhos === 3 && await A(L, () => !document.querySelector('dialog.arv-dl[open] .arv-p[role="button"]')) && /Só quem vocês conhecem\./.test(await A(L, () => document.querySelector('dialog.arv-dl[open] [data-k="arv:legenda"]').textContent)),
+      'quem joga: a árvore só com os conhecidos (sem a nora nem a neta; o Davi pendurado só no pai), sem abrir cartão: ' + j(aj.caixas.map(c => c.id)));
+    await L.F.click('dialog.arv-dl[open] [data-k="arv:fechar"]'); await espera(200);
+    await comoJogador(L, false);
+    // no celular: a janela cabe
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await A(L, () => { window.MundoCortePainel.janelaArvore('ka'); }); await L.F.waitForSelector('dialog.arv-dl[open]');
+    ok(await A(L, () => { const d = document.querySelector('dialog.arv-dl[open]'); return d.getBoundingClientRect().width <= window.innerWidth && d.scrollWidth <= d.clientWidth + 1; }), 'no celular, a janela da árvore cabe (a árvore rola por dentro)');
+    await semAvisos(L); await foto('l11-arvore-celular');
+    await L.F.click('dialog.arv-dl[open] [data-k="arv:fechar"]'); await espera(200);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 

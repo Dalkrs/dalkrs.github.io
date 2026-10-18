@@ -717,6 +717,24 @@ dialog.mundo-dl .ps-data select { flex: 1 1 auto; width: auto; }
 .mundo-dl .pe .esp { flex: 1 1 auto; }
 .cs-br-caixa { display: flex; align-items: center; gap: 12px; }
 .cs-br { min-width: 48px; min-height: 56px; display: grid; place-items: center; }
+.corte-casa-acoes { gap: 6px; padding: 0 2px 4px; }
+/* (lote 11, parte 1b) a árvore da família */
+dialog.mundo-dl.arv-dl { width: min(1100px, calc(100% - 24px)); }
+.arv-ctl { align-items: center; gap: 6px; }
+.arv-zoom { min-width: 44px; text-align: center; font: 600 12.5px/1 var(--mono); color: var(--fg-2); }
+.arv-caixa { max-height: min(62vh, 620px); overflow: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--table); padding: 4px; }
+.arv-svg { display: block; }
+.arv-p rect { fill: var(--raised); stroke: var(--line-strong); stroke-width: 1.2; }
+.arv-p.fora rect { stroke-dasharray: 5 4; }
+.arv-p.morto { opacity: .6; }
+.arv-p[role="button"] { cursor: pointer; }
+.arv-p[role="button"]:hover rect, .arv-p[role="button"]:focus rect { stroke: var(--lamp); stroke-width: 2; }
+.arv-p:focus { outline: none; }
+.arv-nome { font: 600 13px var(--ui); fill: var(--fg); }
+.arv-anos { font: 400 11.5px var(--ui); fill: var(--fg-3); }
+.arv-casal { stroke: var(--lamp); stroke-width: 2; fill: none; }
+.arv-casal.longe { stroke-dasharray: 4 4; }
+.arv-filho { stroke: var(--fg-3); stroke-width: 1.4; fill: none; }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1122,14 +1140,14 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="nucleo.js?v=27"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=8"></script>
-<script src="corte.js?v=1"></script>
+<script src="corte.js?v=2"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
 <script src="painel.js?v=32"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=10"></script>
-<script src="corte-painel.js?v=1"></script>
+<script src="corte-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

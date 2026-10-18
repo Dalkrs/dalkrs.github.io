@@ -7,6 +7,9 @@
 //     vai; a casa com algum conhecido, o chefe só se conhecido; os cargos das facções que vão) e as contas da corte
 //     (os cargos, a idade — antes e depois do aniversário, na morte, ainda por nascer —, a data em texto, os pais, os
 //     filhos, os cônjuges, os descendentes, quem está num lugar, os membros de uma casa, os laços pelo gênero).
+//   · (parte 1b) a árvore da família: quem entra (os membros e os cônjuges), as gerações, quem casou com alguém da casa
+//     ao lado, os filhos na ordem do meio dos pais, os casais (o dos primos também), os filhos pendurados nos pais que
+//     estão na árvore, o tamanho, a casa vazia, a projeção (só os conhecidos).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 let n = 0, bad = 0;
@@ -86,6 +89,31 @@ const j = JSON.stringify;
   eq([C.membrosDe(m3, 'cv').map(x => x.id), C.membrosDe(m3, null).map(x => x.id)], [['p1', 'p2'], ['p5', 'p6', 'p7', 'p8', 'p9', 'p3', 'p4']], 'os membros de uma casa (os vivos primeiro); os sem casa (os mortos no fim)');
   eq([C.laco('pai', P('p1')), C.laco('pai', P('p2')), C.laco('filho', P('p1')), C.laco('conj', P('p2')), C.laco('conj', P('p3'))], ['mãe', 'pai', 'filha', 'marido', 'cônjuge'], 'os laços pelo gênero (sem ele, o neutro)');
   ok(C.vivo(P('p1')) && !C.vivo(P('p4')) && C.pessoaDe(m, 'xx') === null && C.casaDe(m, 'cv').nome === 'Casa do Vale' && C.corteDe({}).pessoas.length === 0, 'vivo, achar um personagem, uma casa; o mapa sem corte');
+}
+
+/* ---- (parte 1b) a árvore da família ---- */
+{
+  const m = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'Aldar' }], corte: { casas: [{ id: 'ka', nome: 'Aldar' }, { id: 'kz', nome: 'Vazia' }, { id: 'kb', nome: 'Outra' }],
+    pessoas: [
+      { id: 'av', nome: 'Aldo', casa: 'ka', conj: ['ao'], ver: true }, { id: 'ao', nome: 'Olga', casa: 'kb', ver: true },
+      { id: 'k1', nome: 'Kiko', casa: 'ka', pais: ['f2', 'gx'], ver: true },
+      { id: 'f1', nome: 'Beto', casa: 'ka', pais: ['av', 'ao'], conj: ['nr'], ver: true }, { id: 'nr', nome: 'Lia', ver: false },
+      { id: 'gx', nome: 'Gil', ver: true }, { id: 'f2', nome: 'Cléo', casa: 'ka', pais: ['av', 'ao'], conj: ['gx'], ver: true },
+      { id: 'n1', nome: 'Davi', casa: 'ka', pais: ['f1', 'nr'], ver: true }, { id: 'n2', nome: 'Eva', casa: 'ka', pais: ['nr', 'f1'], conj: ['k1'], ver: true },
+      { id: 'so', nome: 'Solto', casa: 'ka', pais: ['px'], ver: true }, { id: 'px', nome: 'Pai de fora', casa: 'kb' }] } });
+  const t = C.arvoreDaCasa(m, 'ka'), P = id => t.nos.find(x => x.id === id), { LAR, ALT, VAO, VAO_G } = C.ARVORE, passo = LAR + VAO, linha = ALT + VAO_G;
+  eq(t.nos.map(x => x.id).sort(), ['ao', 'av', 'f1', 'f2', 'gx', 'k1', 'n1', 'n2', 'nr', 'so'].sort(), 'na árvore da casa: os membros e os cônjuges deles (o pai de fora, que não casou com ninguém da casa, não)');
+  eq(['av', 'ao', 'so', 'f1', 'nr', 'f2', 'gx', 'n1', 'n2', 'k1'].map(id => P(id).y / linha), [0, 0, 0, 1, 1, 1, 1, 2, 2, 2], 'as gerações: pelos pais na árvore (quem casou com alguém da casa fica na geração do cônjuge; quem tem os pais fora, em cima)');
+  ok(P('ao').x === P('av').x + passo && P('nr').x === P('f1').x + passo && P('gx').x === P('f2').x + passo, 'quem casou com alguém da casa fica logo ao lado');
+  ok(P('n1').x < P('k1').x && P('n2').x < P('k1').x, 'os filhos na ordem do meio dos pais (os do Beto antes do filho da Cléo, mesmo vindo depois na lista)');
+  eq(t.casais.map(c => c.join('+')).sort(), ['av+ao', 'f1+nr', 'f2+gx', 'n2+k1'].sort(), 'os casais (o dos primos também), da esquerda para a direita');
+  eq([t.filhos.find(f => f.id === 'n1').pais, t.filhos.find(f => f.id === 'n2').pais], [['f1', 'nr'], ['f1', 'nr']], 'cada filho com os pais que estão na árvore, da esquerda para a direita (mesmo escritos ao contrário)');
+  ok(!t.filhos.some(f => f.id === 'so'), 'o filho do pai de fora não fica pendurado em ninguém');
+  eq([t.larg, t.alt], [4 * passo - VAO, 3 * linha - VAO_G], 'o tamanho da árvore: a geração mais larga e as três gerações');
+  const vazia = { nos: [], casais: [], filhos: [], larg: 0, alt: 0 };
+  eq([C.arvoreDaCasa(m, 'kz'), C.arvoreDaCasa(m, null), C.arvoreDaCasa(m, 'xx')], [vazia, vazia, vazia], 'a casa sem ninguém (ou nenhuma): a árvore vazia');
+  const tj = C.arvoreDaCasa(N.projetar(m), 'ka');
+  ok(!tj.nos.some(x => x.id === 'nr') && tj.nos.length === 9 && tj.filhos.find(f => f.id === 'n1').pais.join() === 'f1', 'para quem joga (a projeção): só os conhecidos (sem a Lia; o Davi pendurado só no pai)');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');
