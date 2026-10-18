@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-2",
+      "data": "2026-10-18",
+      "titulo": "O gêmeo maligno e o Limite de dano na ficha de jogador",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a condição Duplicado — o gêmeo maligno, para o boss que copia um personagem. Escolha quem vai ser copiado e aplique: o gêmeo nasce ao lado, igual para os jogadores (nome, imagem, tamanho e cor), com as barras cheias ou como estão agora, e pode entrar na ordem de turnos logo depois do original. Só você vê a marca Duplicado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o gêmeo de um token com ficha ganha uma ficha só dele nas Fichas (uma cópia: “Nome (gêmeo)”, só do mestre). O dano nele vai para a ficha dele, não para a do original. Quando ele cair, um aviso oferece tirá-lo da cena — nada some sozinho."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: o Limite de dano agora aparece também na ficha de jogador (a da distribuição livre), logo depois das defesas. O jogador e o mestre podem escrever."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-1",
       "data": "2026-10-18",
       "titulo": "A Guerra no Mapa-múndi",

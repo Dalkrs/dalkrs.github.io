@@ -113,6 +113,13 @@ const Proj = (() => {
     delete o.clone;
     const g = grupos && grupos.get(t.clone || t.id);
     if (g) o.cg = g; else delete o.cg;
+    /* (lote 9) o gêmeo de um Duplicado: para os jogadores, igual ao original — sem a marca de quem ele copia e sem a
+       condição Duplicado (só o mestre a vê) */
+    delete o.dup;
+    if (Array.isArray(o.conds) && o.conds.includes('duplicado')) {
+      o.conds = o.conds.filter(c => c !== 'duplicado');
+      if (o.cinfo && o.cinfo.duplicado) { o.cinfo = Object.assign({}, o.cinfo); delete o.cinfo.duplicado; }
+    }
     const deJogador = t.owner === '*' || (!!t.owner && (!jogadores || jogadores.has(t.owner)));
     if (!deJogador) {
       o.owner = null;

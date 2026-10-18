@@ -962,6 +962,19 @@ const FichasExtras = (() => {
       ? '<button class="mini" data-modo="tabela" title="Volta a calcular os atributos pelos tiers e percentuais da tabela de levels. Os pontos distribuídos ficam guardados.">Usar a tabela</button>'
       : '<button class="mini" data-modo="livre" title="O dono da ficha distribui os pontos do level como quiser (ficha de jogador). Os valores atuais são mantidos como ponto de partida.">Distribuição livre</button>';
   }
+  /* (lote 9) O Limite de dano também na ficha de jogador (a da distribuição livre): o mesmo número de consulta da tabela
+     de atributos — quem edita a ficha escreve (o jogador na dele, e o mestre); não entra em conta nenhuma. As cinco
+     colunas desta tabela: o nome, "manual", o campo, os equipamentos (nada) e o total. */
+  function linhaLimiteDeDano(pc) {
+    const v = typeof limiteDeDano === 'function' ? limiteDeDano(pc) : null;
+    return `<tr class="especial" title="Um número de consulta, que você escreve: não entra em conta nenhuma da ficha.">
+            <td><span class="aname">Limite de dano</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">LIM</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
+            <td><input type="text" inputmode="decimal" autocomplete="off" class="defbase" id="f_limdano" data-limdano="1" value="${v == null ? '' : v}" placeholder="—" aria-label="Limite de dano"></td>
+            <td class="num vequip">—</td>
+            <td class="num vtot" id="f_limdano_tot">${v == null ? '—' : fmt(v)}</td>
+          </tr>`;
+  }
   /* O painel de atributos na distribuição livre: cada atributo tem os pontos postos à mão; derivados e defesas como sempre. */
   function painelAtributosLivre(pc, c) {
     const pts = pontosDe(pc, c), k = contador(c);
@@ -998,6 +1011,7 @@ const FichasExtras = (() => {
             <td class="num vequip">${c.eq[d.k] ? (c.eq[d.k] > 0 ? '+' : '') + c.eq[d.k] : '—'}${htmlTemp(c, d.k)}</td>
             <td class="num vtot">${c.def[d.k]}</td>
           </tr>`).join('')}
+          ${linhaLimiteDeDano(pc)}
           </tbody>
         </table>
         <div class="hint" style="margin-top:6px">Distribuição livre: quem controla a ficha põe os pontos onde quiser. O total vem da tabela de levels (${c.limite} no level ${esc(String(pc.level))}); a ficha avisa se faltar ou passar, mas não trava. Os derivados usam os atributos <strong>base</strong> (o Embate soma ainda o Bloqueio inteiro); a árvore e os equipamentos somam por cima.</div>
@@ -1538,7 +1552,7 @@ const FichasExtras = (() => {
   }
   function opcoesDeCondicao(sel) {
     const R = RR(); if (!R || !R.CONDICOES) return '';
-    return `<option value="">escolha a condição</option>` + R.COND_GRUPOS.map(g => `<optgroup label="${esc(g.n)}">${R.CONDICOES.filter(x => x.g === g.id && (x.id !== 'ferida' && x.id !== 'clone' || sel === x.id)).map(x => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
+    return `<option value="">escolha a condição</option>` + R.COND_GRUPOS.map(g => `<optgroup label="${esc(g.n)}">${R.CONDICOES.filter(x => x.g === g.id && (x.id !== 'ferida' && x.id !== 'clone' && x.id !== 'duplicado' || sel === x.id)).map(x => `<option value="${x.id}" ${sel === x.id ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
   }
   function linhaFx(pc, c, it, e, i) {
     const k = esc(it.id) + '|' + i, del = `<button type="button" class="mini danger" data-fxdel="${k}" title="Tirar este efeito" aria-label="Tirar o efeito ${i + 1} de ${esc(it.nome || 'poção')}">×</button>`;
@@ -1786,7 +1800,7 @@ const FichasExtras = (() => {
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,
     htmlAbasAtr, abaDefesas, painelDefesas, htmlTemp, htmlOpcoesBarra, htmlMaisDoItem, htmlTotaisExtras,
-    painelTemporarios, painelBolsa, htmlIdentidade, ligarNovos, icoDef,
+    painelTemporarios, painelBolsa, htmlIdentidade, ligarNovos, icoDef, opcoesDeCondicao,
     util: { q, qa, glifo, optBonus, refocar, mapaDe, estadoDe, sinalTxt, menos, comoMestre, desenhar }, aoVivo, desenhar,
   };
 })();

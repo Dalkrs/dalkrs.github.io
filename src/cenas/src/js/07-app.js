@@ -467,6 +467,20 @@ function regrasDoClone(ops, inv) {
   }
   return out;
 }
+/* (lote 9) O gêmeo de um Duplicado que caiu neste passo: a barra da vida passou de mais de 0 para 0 ou menos (ops e
+   inv: o que mudou e como estava antes). Nada muda sozinho: o aviso oferece tirar o gêmeo da cena. → [{ id, nome }] */
+function gemeosQueCairam(ops, inv) {
+  const sc = Store.scene(), out = [];
+  if (!sc || !sc.tokens.some(t => t.dup)) return out;
+  const ids = new Set((ops || []).filter(op => op.t === 'upd' && op.c === 'tokens' && op.p && 'bars' in op.p).map(op => op.id));
+  for (const id of ids) {
+    const t = Store.get('tokens', id), antes = antesDoToken(inv, id, ['bars']);
+    if (!t || !t.dup || !('bars' in antes)) continue;
+    const a = barraDaVida(antes.bars), d = a ? (t.bars || []).find(b => b && b.n === a.n && b.on !== false) : null;
+    if (a && d && a.v > 0 && d.v <= 0) { const o = Store.get('tokens', t.dup); out.push({ id, nome: o ? tokName(o) : tokName(t) }); }
+  }
+  return out;
+}
 // aplica as regras (dentro de um passo) e avisa quem some
 function aplicarRegrasDoClone(regras) {
   const sc = Store.scene();
@@ -493,6 +507,8 @@ Store.aoFechar(tx => {
   }
   // (lote 8) o Clone: depois de tudo do passo (o dano, a condição que saiu, o que mudou no real)
   aplicarRegrasDoClone(regrasDoClone(tx.fwd, tx.inv));
+  // (lote 9) o gêmeo de um Duplicado que caiu: o aviso (nada muda sozinho)
+  for (const g of gemeosQueCairam(tx.fwd, tx.inv)) Store.emit('duplicado', Object.assign({ k: 'caiu' }, g));
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
@@ -515,6 +531,8 @@ Store.on('commit', e => {
   }), 0);
   // (lote 8) o Clone, para o que chegou de fora (a ficha deu dano no real, um jogador mexeu): num passo logo depois
   if (regrasDoClone(e.ops, e.inv).length) { const ops = e.ops, inv = e.inv; setTimeout(() => Store.tx('Clone', () => aplicarRegrasDoClone(regrasDoClone(ops, inv))), 0); }
+  // (lote 9) o gêmeo que caiu pelo que chegou de fora (a ficha dele mudou nas Fichas)
+  for (const g of gemeosQueCairam(e.ops, e.inv)) Store.emit('duplicado', Object.assign({ k: 'caiu' }, g));
 });
 
 /* ---- Seleção ---- */
@@ -811,6 +829,60 @@ const Act = {
       tirarTokens(sc, cs.map(x => x.id));
     });
     return cs.length;
+  },
+
+  /* (lote 9) O Duplicado: o gêmeo maligno de um personagem (o boss que copia alguém). Um token novo ao lado do
+     copiado (a até 1 quadrado; sem lugar, a até 2 ou 3), igual a ele para os jogadores — nome, imagem, tamanho, cor,
+     anel —, sem dono, com a condição Duplicado (só o mestre a vê) e dup: <id do copiado>. o.barras: 'cheias' (no
+     máximo, sem sobrevida nem podre, sem condições) ou 'agora' (as barras e as condições de agora, com a ferida). Ligado a uma ficha,
+     o gêmeo ganha uma ficha só dele (uma cópia, nas Fichas; Fichas.copiarFicha) — sem ela aqui, vai só o token.
+     o.turnos: entra na ordem de turnos logo depois do copiado, com a mesma iniciativa. Um passo de desfazer (a ficha
+     nova fica nas Fichas). → { id, ficha } ou { erro } */
+  duplicadoCriar(t, o) {
+    o = o || {};
+    const sc = Store.scene();
+    if (!t || t.prop) return { erro: 'só tokens' };
+    let lugar = null;
+    for (const R of [1, 2, 3]) { const v = vagasDoClone(sc, t, 1, R); if (v.length) { lugar = v[0]; break; } }
+    if (!lugar) return { erro: 'sem lugar' };
+    const agora = o.barras === 'agora';
+    const ficha = t.char && typeof Fichas !== 'undefined' && Fichas.copiarFicha ? Fichas.copiarFicha(t.char, { barras: agora ? 'agora' : 'cheias' }) : null;
+    let id = null;
+    Store.tx('Duplicado', () => {
+      /* (como estão agora: as condições vêm junto — a Ferida permanente também, porque o podre está nas barras —, menos o
+         Clone, que é do grupo do original, e o Duplicado, que é só do gêmeo) */
+      const base = Store.get('tokens', t.id), d = clone(base), fora = c => c !== 'clone' && c !== 'duplicado';
+      d.id = uid('tk'); d.x = lugar[0]; d.y = lugar[1]; d.dup = t.id; d.notes = ''; d.owner = null; d.locked = false;
+      delete d.clone; delete d.cg;
+      d.auras = (d.auras || []).map(a => Object.assign({}, a, { id: uid('au') }));
+      d.conds = (agora ? base.conds.filter(fora) : []).concat('duplicado');
+      const ci = {};
+      if (agora) for (const k of Object.keys(base.cinfo || {})) if (fora(k) && base.conds.includes(k)) ci[k] = clone(base.cinfo[k]);
+      d.cinfo = ci;
+      if (!agora) d.bars = d.bars.map(b => { const nb = Object.assign({}, b, { v: b.m }); delete nb.x; delete nb.pod; return nb; });
+      d.char = ficha || null;
+      if (!ficha) d.imgChar = false;                                   // (sem ficha, a imagem passa a ser do token)
+      Store.add('tokens', d);
+      id = d.id;
+      // na ordem de turnos, logo depois do copiado (com a mesma iniciativa); dentro de uma faixa, no fim
+      if (o.turnos && inTurn(sc.turn, t.id)) {
+        const tn = clone(Store.scene().turn), meus = tn.list.filter(e => e.token === t.id);
+        if (meus.length) {
+          const i = tn.list.indexOf(meus[meus.length - 1]);
+          tn.list.splice(i + 1, 0, ...meus.map(e => Object.assign(turnEntry(d, e.k || 1), { init: e.init == null ? null : e.init, roll: e.roll ? clone(e.roll) : null })));
+        } else for (let k = 1; k <= clampTurns(d.turns); k++) tn.list.push(turnEntry(d, k));
+        turnRenumber(tn.list);
+        Store.scn({ turn: tn });
+      }
+    });
+    return { id, ficha };
+  },
+  // (lote 9) tira o gêmeo da cena (a ficha dele continua nas Fichas). Um passo de desfazer. → true se tirou
+  duplicadoTirar(id) {
+    const sc = Store.scene(), t = Store.get('tokens', id);
+    if (!t || !t.dup) return false;
+    Store.tx('Tirar o gêmeo', () => tirarTokens(sc, [id]));
+    return true;
   },
 
   // Dano, cura e condição em vários tokens de uma vez. rows: [{ t, half }]; text: "12" ou "-12" tira, "+8" devolve.

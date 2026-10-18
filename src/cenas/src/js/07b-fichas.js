@@ -242,6 +242,32 @@ const Fichas = (() => {
     if (now) syncToken(now);
     return { dono: jog ? jog.name : null };
   }
+  /* (lote 9) O Duplicado: a ficha do gêmeo — uma cópia da ficha do personagem copiado (atributos, defesas, itens,
+     habilidades, a árvore, a imagem), só do mestre (vis 'mestre', sem dono, do lado Inimigo), na mesma campanha, com o
+     nome "… (gêmeo)" (o token do gêmeo continua com o nome do original). barras 'agora': os valores de agora das barras
+     (com a sobrevida, o podre e as barras especiais); 'cheias': todas no máximo. Fica fora do desfazer da cena: é uma
+     ficha das Fichas. → o id da ficha nova, ou null (a ficha não chega aqui: o auxiliar sem a aba Fichas, sem mesa). */
+  function copiarFicha(charId, o) {
+    const l = get(charId);
+    if (!on || !P || !l || l.ficha == null || papel !== 'mestre' || !vejoTodas()) return null;
+    const copia = x => JSON.parse(JSON.stringify(x == null ? null : x));
+    const id = Math.random().toString(36).slice(2, 10);                // (o mesmo jeito de id das Fichas)
+    const ficha = copia(l.ficha) || {};
+    delete ficha.petDe; ficha.lado = 'Inimigo';
+    const e = l.estado || {}, est = {};
+    if (o && o.barras === 'agora') { for (const k of ['rec', 'sob', 'podre', 'pd']) if (e[k] !== undefined) est[k] = copia(e[k]); }
+    else {
+      // (cheias: cada barra no máximo — mesmo a que começa pela metade — e as especiais também)
+      const rec = {}, pd = {};
+      for (const r of resumo(l).recursos) if (r.max != null && isFinite(r.max)) rec[r.id] = r.max;
+      for (const x of especiaisDe(l)) pd[x.id.slice(PD.length)] = x.max;
+      if (Object.keys(rec).length) est.rec = rec;
+      if (Object.keys(pd).length) est.pd = pd;
+    }
+    const ordem = P.todas().reduce((mx, x) => Math.max(mx, Number(x.ordem) || 0), 0) + 1;
+    P.gravar(id, { nome: (String(l.nome || 'Personagem').trim() + ' (gêmeo)').slice(0, 120), ficha, skills: copia(l.skills || {}) || {}, estado: est, dono_id: null, vis: 'mestre', campanha: l.campanha || null, ordem });
+    return id;
+  }
   /* Abre a ficha do personagem deste token, na aba Fichas do site (dois cliques no token). Só quando a ficha está ao
      alcance de quem clicou: o mestre vê todas; o jogador, a dele e as que o mestre deixou à mostra. */
   function abrir(t) {
@@ -738,7 +764,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

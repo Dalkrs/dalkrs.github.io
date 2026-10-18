@@ -1018,6 +1018,29 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   escondidas (o nome e o tipo); dos tipos, só os nomes; nada do histórico, das fortificações, das vantagens nem das
   fases que vêm (a frente aparece como está hoje). O mapa de antes (sem guerra) continua igual.
 
+### Fichas e Cenas (lote 9)
+
+- **O Limite de dano na ficha de jogador**: a ficha da distribuição livre (`modoAtr: 'livre'`, a dos jogadores) tem a
+  mesma linha "Limite de dano · manual" da tabela de atributos, depois das defesas (`linhaLimiteDeDano`, em
+  `fichas/extras.js`); quem edita a ficha escreve (o jogador na dele, e o mestre). Continua um número de consulta.
+- **O Duplicado** (a condição `duplicado`, junto do Clone): o gêmeo maligno — o boss que copia um personagem. Pela janela
+  da condição (só o mestre, num token de cada vez, nunca num objeto), aplicada no token que vai ser copiado: as barras
+  do gêmeo (cheias — no máximo, sem sobrevida, podre ou condições — ou como estão agora, com as condições e a ferida
+  permanente; o Clone do original não vem) e, se o
+  copiado está na ordem de turnos, entrar logo depois dele (com a mesma iniciativa). O gêmeo nasce ao lado (a até 1
+  quadrado; sem lugar, até 3), igual ao copiado (nome, imagem, tamanho, cor, forma, auras), sem dono, com `dup: <id do
+  copiado>` e a condição Duplicado (`Act.duplicadoCriar`, um passo de desfazer). Ligado a uma ficha, o gêmeo ganha uma
+  ficha só dele (`Fichas.copiarFicha`): uma cópia da original — atributos, defesas, itens, habilidades, a árvore, a
+  imagem —, "… (gêmeo)", só do mestre (`vis: 'mestre'`), sem dono, do lado Inimigo, na mesma campanha, com as barras
+  como foi escolhido; o token do gêmeo segue essa ficha (o dano nele vai para ela, não para a original) e continua com
+  o nome do original. Sem a ficha ao alcance (o auxiliar sem a aba Fichas, ou sem mesa), vai só o token.
+- **Para os jogadores**, o gêmeo é igual ao original: a projeção tira `dup` e a condição Duplicado (e, como todo token
+  do mestre, a ficha). Só o mestre vê a condição ("gêmeo de Ana") e a seção Duplicado no painel do gêmeo (de quem ele é
+  cópia, "Ir até o original", "Tirar da cena").
+- **Quando o gêmeo cai** (a barra da vida passa a 0 ou menos — pelo dano na cena ou pela ficha dele), nada some
+  sozinho: o aviso oferece "Tirar da cena" (`gemeosQueCairam`, no fim de cada passo no programa do mestre; a ficha fica
+  nas Fichas). Tirar a condição do gêmeo o deixa como um token comum.
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1770,6 +1793,8 @@ faltava subir.
   de NPC, o líder é só um nome no alto da hierarquia). As facções que um clã cita vêm dos mapas do Mapa-múndi: uma
   facção escondida no mapa, se o mestre a puser numa relação à mostra, aparece para os jogadores (a lista do mestre
   avisa "escondida no mapa").
+- **Desfazer o Duplicado** (lote 9) tira o gêmeo da cena, mas a ficha dele, que mora nas Fichas, continua lá: apague
+  por lá, se não for usar.
 - **A batalha aberta fica na página** (lote 8, parte 6): com dados rolados e ainda sem aplicar, ela some se a página
   for recarregada (o que foi aplicado está no histórico). Os exércitos que se encontraram no caminho também ficam só
   na página (o aviso e a lista da aba Guerra).
@@ -1996,3 +2021,13 @@ celular), os tipos de tropa, as unidades, a fortificação, a resumida (o bônus
 recomeçar), a detalhada (o momento-chave, o bônus no próprio momento, rolar de novo, escrever, a janela que não pula
 para o topo, fechar e voltar), o depois e o aplicar (com o Desfazer), o histórico, os hexágonos (e o botão direito), as
 fases da frente, o encontro no caminho com o aviso e a proposta dos mantimentos, o que quem joga vê e o celular.
+
+Lote 9: na parte 1, `fichas-lote9` confere o Limite de dano na ficha da distribuição livre (a linha depois das defesas,
+escrever, o que não é número, decimal com vírgula, vazio, fora das contas) e a poção que não oferece o Duplicado;
+`src/cenas/test/lote9.js` com `SO=duplicado`, o Duplicado sem mesa (a janela, as barras cheias — sem sobrevida, podre
+e condições — e como estão — com as condições e a ferida permanente —, o gêmeo sem o dono do original, o lugar ao lado,
+a ordem de turnos com a mesma iniciativa, o painel do gêmeo, o que vai para os jogadores, o gêmeo que cai e o aviso,
+tirar da cena, tirar a condição, desfazer, um token de cada vez, objetos, zonas, a marca que só vale com o id de outro
+token e o cerco sem lugar); `cenas-lote9.rede`, numa mesa, a ficha do gêmeo (a cópia só do mestre, do lado Inimigo, na
+mesma campanha, com as barras cheias ou como estão), o dano no gêmeo indo para a ficha dele e não para a original, o
+gêmeo que cai pela ficha dele (o aviso), a ficha nova nas Fichas do mestre e o gêmeo para os jogadores.

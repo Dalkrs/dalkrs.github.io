@@ -328,6 +328,8 @@ const ICONS = {
   // (lote 8) a ferida permanente (um coração rachado) e o clone (duas figuras, uma atrás da outra)
   c_ferida: 'M12 20s-7.500-4.500-7.500-10.200A4.200 4.200 0 0 1 12 7.300a4.200 4.200 0 0 1 7.500 2.500C19.500 15.500 12 20 12 20zM12 7.300l-1.600 3.200 2.800 1.800-1.700 3.400',
   c_clone: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.500 19.500c0-3.200 2.400-5.500 5.500-5.500s5.500 2.300 5.500 5.500M15 5.300a3 3 0 0 1 0 5.400M17 14.300c2.100.7 3.500 2.600 3.500 5.200',
+  // (lote 9) o duplicado (a figura e o gêmeo dela, dos dois lados de um espelho)
+  c_duplicado: 'M7 10.500a2.700 2.700 0 1 0 0-5.400 2.700 2.700 0 0 0 0 5.400zM2.500 19.500c0-2.900 2-5 4.500-5s4.500 2.100 4.500 5M17 10.500a2.700 2.700 0 1 0 0-5.400 2.700 2.700 0 0 0 0 5.400zM12.500 19.500c0-2.900 2-5 4.500-5s4.500 2.100 4.500 5M12 3v2.200M12 8v2.200M12 13v2.200',
   real: 'M4 17.500L3 7.500l5 4 4-6.500 4 6.500 5-4-1 10zM4.500 20.500h15',     // (lote 8) a coroa do real de um Clone (só o mestre vê)
   // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
   st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
@@ -529,6 +531,7 @@ const CONDS = [
   { id: 'qibloq', n: 'Qi bloqueado', c: '#5b6b80', i: 'c_qibloq', g: 'mente' },
   { id: 'qidesvio', n: 'Desvio de Qi', c: '#d4643a', i: 'c_qidesvio', g: 'mente' },
   { id: 'clone', n: 'Clone', c: '#7f8fd6', i: 'c_clone', g: 'mente' },
+  { id: 'duplicado', n: 'Duplicado', c: '#a0447a', i: 'c_duplicado', g: 'mente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
   { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
   { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
@@ -557,9 +560,10 @@ const CONDS = [
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 /* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:
-   quantas cópias e em que raio). Só o mestre as põe e tira, num token de cada vez — as zonas e o dano em área não
-   as aplicam, e o pedido de um jogador não mexe nelas. */
-const COND_JANELA = new Set(['ferida', 'clone']);
+   quantas cópias e em que raio; lote 9, o Duplicado: o gêmeo maligno, com as barras cheias ou como estão). Só o mestre
+   as põe e tira, num token de cada vez — as zonas e o dano em área não as aplicam, e o pedido de um jogador não mexe
+   nelas. */
+const COND_JANELA = new Set(['ferida', 'clone', 'duplicado']);
 
 // (fl: a luz tremula, como chama; a mágica, não)
 const LIGHT_PRESETS = [
@@ -733,6 +737,8 @@ function normalizeScene(sc) {
     t.char = typeof t.char === 'string' && t.char ? t.char : null;      // personagem da mesa ligado a este token
     // (lote 8) a cópia de um Clone: o id do real (só o mestre sabe; os jogadores veem todos iguais)
     if (!(typeof t.clone === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.clone) && t.clone !== t.id)) delete t.clone;
+    // (lote 9) o gêmeo de um Duplicado: o id do token copiado (só o mestre sabe; para os jogadores, é igual ao original)
+    if (!(typeof t.dup === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.dup) && t.dup !== t.id)) delete t.dup;
     // a fadiga da ficha (a pilha de 5 a 0), que a ficha manda para o token — todos a veem
     if (typeof t.fad === 'number' && isFinite(t.fad)) t.fad = clamp(Math.round(t.fad), 0, 5); else delete t.fad;
     if (t.post === true) t.post = true; else delete t.post;               // (lote 6) em postura: a etiqueta junto do nome

@@ -553,6 +553,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .fer-previa { min-height: 2.6em; color: var(--fg); }
 .cl-quem { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .cl-op { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.cl-quem.col { flex-direction: column; align-items: flex-start; gap: 6px; }       /* (lote 9) as barras do gêmeo, uma embaixo da outra */
 .stp { display: inline-flex; align-items: center; gap: 1px; padding: 1px; background: var(--raised); border: 1px solid var(--line); border-radius: 7px; }
 .field > .stp { justify-self: start; }
 .loose { display: flex; flex-direction: column; gap: 10px; }

@@ -1210,6 +1210,7 @@ const UI = (() => {
     if (on) return '';
     if (id === 'clone' && t.clone) return 'este já é uma cópia';
     if (id === 'clone' && t.prop) return 'só tokens';
+    if (id === 'duplicado' && t.prop) return 'só tokens';
     if (id === 'ferida' && !t.bars.some(b => b.on && b.m > 0)) return 'o token não tem barra para apodrecer';
     if (id === 'ferida' && Fichas.escondida(t)) return 'a ferida de um token ligado fica na ficha, que não chega a você (precisa da aba Fichas)';
     return '';
@@ -1217,7 +1218,8 @@ const UI = (() => {
   // pôr (abre a janela) ou tirar (a condição sai: a ferida leva o podre das barras; o Clone, as cópias)
   function condJanela(id, t, on, depois) {
     if (!t) return;
-    if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else cloneBox(t, depois); return; }
+    if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else if (id === 'duplicado') duplicadoBox(t, depois); else cloneBox(t, depois); return; }
+    if (id === 'duplicado') { tirarMarcaDuplicado(t); if (depois) depois(); return; }
     if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
     else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
     if (depois) depois();
@@ -1294,6 +1296,59 @@ const UI = (() => {
       } }],
     });
   }
+  /* (lote 9) A janela do Duplicado: o gêmeo maligno de quem está escolhido (o boss que copia um personagem). As barras
+     do gêmeo (cheias, ou como estão agora), entrar na ordem de turnos logo depois dele (quando ele está nela), e o que
+     acontece com a ficha (uma cópia só do mestre, ou só o token). */
+  function duplicadoBox(t, depois) {
+    const nome = tokName(t), sc = Store.scene(), naOrdem = inTurn(sc.turn, t.id);
+    const comFicha = !!t.char && Fichas.on() && Fichas.vejoTodas() && !!Fichas.get(t.char);
+    const vida = barraDaVida(t.bars), agoraTxt = vida ? `${vida.n} ${fmt(vida.v)} de ${fmt(vida.m)}` : 'como estão';
+    const op = (v, txt, dica, on) => h('label', { class: 'cl-op', title: dica }, h('input', { type: 'radio', name: 'dp-barras', value: v, id: 'dp-barras-' + v, checked: on }), h('span', { text: txt }));
+    const barras = h('div', { class: 'cl-quem col', role: 'radiogroup', 'aria-label': 'As barras do gêmeo' },
+      op('cheias', 'Cheias', 'Todas as barras no máximo, sem sobrevida, sem ferida e sem condições', true),
+      op('agora', 'Como estão agora (' + agoraTxt + ')', 'As barras e as condições de agora de ' + nome, false));
+    const turno = naOrdem ? h('label', { class: 'cl-op dp-turno' }, h('input', { type: 'checkbox', id: 'dp-turnos', checked: true }), h('span', { text: 'Entrar na ordem de turnos logo depois de ' + nome })) : null;
+    modal({
+      title: 'Duplicado de ' + nome,
+      body: h('div', { class: 'cl-box' },
+        note(`O gêmeo nasce ao lado de ${nome}, igual para os jogadores: nome, imagem, tamanho e cor. Só você vê a condição Duplicado.`),
+        field('As barras do gêmeo', barras, 'stack'),
+        turno,
+        note(comFicha ? `A ficha do gêmeo: uma cópia da de ${nome}, só sua, nas Fichas ("${(Fichas.get(t.char).nome || nome)} (gêmeo)"). Mexer nela não mexe na original.`
+          : t.char ? 'A ficha não chega até você aqui (precisa da aba Fichas): o gêmeo vai só como token.' : 'Este token não tem ficha: o gêmeo vai só como token.'),
+        note('Quando o gêmeo cair (HP 0), um aviso oferece tirá-lo da cena.')),
+      actions: [{ label: 'Cancelar' }, { label: 'Criar o gêmeo', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const agora = !!(document.getElementById('dp-barras-agora') || {}).checked, tCk = document.getElementById('dp-turnos');
+        const r = Act.duplicadoCriar(tt, { barras: agora ? 'agora' : 'cheias', turnos: !!(tCk && tCk.checked) });
+        if (r.erro) { toast(r.erro === 'sem lugar' ? `Não há lugar livre perto de ${tokName(tt)} para o gêmeo.` : 'O Duplicado é só para tokens.'); return false; }
+        setSel([{ c: 'tokens', id: r.id }]);
+        toast(`O gêmeo de ${tokName(tt)} nasceu ao lado dele${r.ficha ? ', com uma ficha só sua nas Fichas' : ''}. Para os jogadores, os dois são iguais.`, { action: 'Desfazer', run: Tools.undo, long: true });
+        if (depois) depois();
+      } }],
+    });
+  }
+  function dupTexto(t) {
+    if (!t.dup) return 'só a marca';
+    const o = Store.get('tokens', t.dup);
+    return 'gêmeo de ' + (o ? tokName(o) : 'um token que saiu da cena');
+  }
+  // tirar a condição do gêmeo: ele vira um token comum (continua na cena)
+  function tirarMarcaDuplicado(t) {
+    const info = Object.assign({}, t.cinfo); delete info.duplicado;
+    Store.tx('Tirar a condição Duplicado', () => Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'duplicado'), cinfo: info, dup: null }));
+    toast(`A condição Duplicado saiu de ${tokName(t)}: agora é um token comum (continua na cena).`, { action: 'Desfazer', run: Tools.undo });
+  }
+  // no painel do gêmeo (mestre): de quem ele é cópia, ir até o original e tirar da cena
+  function dupSec(t) {
+    if (!t.dup || !isGM()) return null;
+    const o = Store.get('tokens', t.dup), l = t.char && Fichas.on() ? Fichas.get(t.char) : null;
+    return sec('s-dup', 'Duplicado', true,
+      note(`Gêmeo de ${o ? tokName(o) : 'um token que saiu da cena'} (só você sabe).${l ? ` Ficha: "${l.nome || 'gêmeo'}" (só sua).` : ' Sem ficha: só o token.'}`),
+      h('div', { class: 'row' },
+        o ? btn('Ir até o original', () => { const oo = Store.get('tokens', o.id); if (!oo) return; setSel([{ c: 'tokens', id: oo.id }]); const [cx, cy] = centroTok(oo, Store.scene()); Render.centerOn(cx, cy); }, { icon: 'center', id: 'tk-dp-orig' }) : null,
+        btn('Tirar da cena', () => { if (Act.duplicadoTirar(t.id)) toast('O gêmeo saiu da cena. A ficha dele continua nas Fichas.', { action: 'Desfazer', run: Tools.undo }); }, { icon: 'trash', id: 'tk-dp-tirar' })));
+  }
   // (lote 8) escolher o real no mapa: a faixa de cima pede o clique; Esc (ou "Fica onde está") encerra sem mudar nada
   function escolhaReal(id) { App.escolhaReal = id; renderBanner(); }
   function fimEscolhaReal() { if (!App.escolhaReal) return; App.escolhaReal = null; renderBanner(); }
@@ -1342,6 +1397,8 @@ const UI = (() => {
           : c.id === 'ferida' ? h('span', { class: 'stp-v ro cact-pod', id: `${pre}-${c.id}-n`, title: 'O que apodreceu na ponta de cada barra: a cura não passa dali até a ferida sair' },
             h('span', { text: podresTexto(t) || 'nenhuma barra' }), edit && isGM() ? h('button', { type: 'button', class: 'lnk', id: `${pre}-${c.id}-mudar`, text: 'Mudar…', onclick: () => feridaBox(t, null, done) }) : null)
           : c.id === 'clone' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: isGM() ? 'Só você sabe quem é o real (a coroa)' : 'Os clones são iguais', text: cloneTexto(t) })
+          // (lote 9) o Duplicado: de quem o gêmeo é cópia (só o mestre vê a condição)
+          : c.id === 'duplicado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Para os jogadores, o gêmeo é igual ao original', text: dupTexto(t) })
           : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
@@ -1350,7 +1407,7 @@ const UI = (() => {
           edit ? inCount(`${pre}-${c.id}-d`, ci.d || 0, v => { Act.condSet(t, c.id, { d: v, d0: v }, 'Duração da condição'); done(); },
             { label: `Rodadas de ${c.n}`, title: 'Quantas rodadas dura. Desconta sozinha quando o token termina a vez; em zero, a condição sai. Vazio: sem prazo.' })
             : h('span', { class: 'stp-v ro', text: ci.d ? String(ci.d) : '–' }),
-          edit ? iconBtn('x', 'Tirar ' + c.n, () => { Act.condToggle([t], c.id); done(); }, { size: 14, cls: 'cact-x', id: `${pre}-${c.id}-x` }) : null);
+          edit ? iconBtn('x', 'Tirar ' + c.n, () => { if (c.id === 'duplicado') tirarMarcaDuplicado(t); else Act.condToggle([t], c.id); done(); }, { size: 14, cls: 'cact-x', id: `${pre}-${c.id}-x` }) : null);
       }));
   }
   /* Com vários tokens escolhidos (lote 6): as condições ativas em algum deles, com o contador de cada um ("3 · 2") e as
@@ -1851,6 +1908,7 @@ const UI = (() => {
       numsBox(t, true),
       sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
       cloneSec(t),
+      dupSec(t),
       sec('s-turn', 'Turnos', true,
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -3151,6 +3209,12 @@ const UI = (() => {
       : d.parte ? `${q(d.n, 'Uma cópia', 'cópias')} de ${d.nome} sem a condição Clone ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
       : `A condição Clone de ${d.nome} acabou: ${d.n === 1 ? 'a cópia sumiu' : `as ${d.n} cópias sumiram`}.`;
     toast(txt, { action: 'Desfazer', run: Tools.undo, key: 'clone' });
+  });
+  // (lote 9) o gêmeo de um Duplicado caiu: o aviso oferece tirá-lo da cena (nada muda sozinho)
+  Store.on('duplicado', d => {
+    if (!isGM() || d.k !== 'caiu') return;
+    toast(`O gêmeo (Duplicado) de ${d.nome} caiu. Tirar da cena?`, { action: 'Tirar da cena', key: 'dup-' + d.id, long: true,
+      run: () => { if (Act.duplicadoTirar(d.id)) toast('O gêmeo saiu da cena. A ficha dele continua nas Fichas.', { action: 'Desfazer', run: Tools.undo }); } });
   });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);
