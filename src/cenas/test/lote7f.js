@@ -50,7 +50,9 @@ const SHOTS = process.env.FOTOS;
     ok(await ev(() => __tc.Gerador.vivo().lugar) === 'tribo' && g0.plano.lugar === 'tribo' && g0.plano.W === 44 && g0.plano.H === 36, 'a aba Tribo: a aldeia média, de 44 × 36 quadrados');
     const c0 = await ctlTxt();
     ok(/Moradias \| Tendas \| Cabanas \| Iurtes \| Palafitas \| Iglus \| Tamanho \| Pequena \| Média \| Grande \| Terreno \| Campo \| Floresta \| Selva \| Deserto \| Neve \| Pântano \| Paliçada com o portão, as torres de vigia e o fosso com estacas \| Lugares sagrados \(o círculo de pedras com a fogueira dos ancestrais, o mastro com crânios, os totens\) \| O dia a dia \(o cercado com os bichos, os secadores, o forno, o tear, a lenha, o riacho e as canoas\)/.test(c0), 'as escolhas: as moradias, o tamanho, o terreno e as três chaves — ' + c0.slice(0, 300));
-    ok(j(g0.op) === j({ moradias: 'tenda', tamanho: 'media', terreno: 'floresta', palicada: true, sagrados: true, vida: true }), 'de começo: as tendas, a média, a floresta e tudo ligado: ' + j(g0.op));
+    // (lote 8, parte 5: com o traçado no automático, a seção "Traçado")
+    const op0 = Object.assign({}, g0.op); delete op0.t;
+    ok(j(op0) === j({ moradias: 'tenda', tamanho: 'media', terreno: 'floresta', palicada: true, sagrados: true, vida: true }) && g0.op.t && Object.values(g0.op.t).every(v => v === null || v === false || v === 'centro'), 'de começo: as tendas, a média, a floresta e tudo ligado (e o traçado no automático): ' + j(g0.op));
     ok(/^Tendas · \d+ moradias \(com a do chefe\) · 44 × 36 quadrados · paliçada, \d torres e fosso · o círculo de pedras · o cercado\.$/.test(await resumo()), 'o resumo diz as moradias, as medidas, a paliçada, o círculo e o cercado: ' + await resumo());
     ok(await page.locator('#ger-nome').inputValue() === 'Aldeia das tendas', 'o nome da cena: "Aldeia das tendas"');
     ok(/Clique no traçado da prévia \(a praça, as moradias, a paliçada, a água\)/.test(await page.locator('#ger-dica').innerText()) && /marcador de Entrada na porta \(só você vê\)/.test(await page.locator('.modal').innerText()), 'a dica (travar o traçado) e a nota (o que sai) são as da tribo');

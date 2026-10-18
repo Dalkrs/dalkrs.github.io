@@ -88,14 +88,93 @@ const Tribo = (() => {
     const rV = mulberry((MO.sub(seed, 2) % 2147483000) + 1), rv = (a, b) => a + rV() * (b - a);
     const palafita = moradias === 'palafita', Rp = T.praca, CHT = CHAO[terreno] || CHAO.outro;
     P.paredes = [];
+    /* (lote 8, parte 5) o traçado escolhido na janela; o que faltar sai como sempre. Os portões na rosa (o primeiro é o
+       principal: a moradia do chefe fica do outro lado da praça; nas palafitas, ele fica num dos quatro lados, com o lago
+       do lado de lá, e não há portão para o lago); a paliçada em octógono ou irregular; o riacho (com o dia a dia, fora das
+       palafitas): de onde vem e para onde vai — então ele vem antes, e a aldeia fica no seco, do lado da praça —, a
+       largura, as curvas, o afluente e o lago, e a praça na beira dele; as pontes onde as trilhas cruzam a água; o relevo
+       natural. Os sorteios novos têm sementes próprias, e os de sempre continuam na mesma ordem. */
+    const T8 = Tracado.escolhas(o, ['oct', 'irregular'], 'redonda');
+    const temRio = !palafita && com.vida, rioRosa = temRio && Tracado.rioDaRosa(T8.rio), pracaRio = temRio && T8.praca === 'rio';
+    const riachoNovo = temRio && !rioRosa && (pracaRio || T8.rio.larg != null || T8.rio.curvas != null);
+    const dirs8 = T8.portoes.length ? T8.portoes : null;
+    const EIXO = { n: 'n', ne: 'n', l: 'l', se: 'l', s: 's', so: 's', o: 'o', no: 'o' };
+    const vetor = id => DIR[id] || [Math.cos(Tracado.DIR[id].a), Math.sin(Tracado.DIR[id].a)];
     // o lado do portão (por onde a trilha chega): u aponta para ele
-    const ladoG = K.pick(['s', 'n', 'o', 'l']), aG = ANG[ladoG], [ux, uy] = DIR[ladoG];
+    const ladoG = K.pick(['s', 'n', 'o', 'l']);
+    const idG = !dirs8 ? ladoG : palafita ? EIXO[dirs8.find(d => DIR[d]) || dirs8[0]] : dirs8[0];
+    const aG = DIR[idG] ? ANG[idG] : Tracado.DIR[idG].a, [ux, uy] = vetor(idG);
     // o riacho (com a vida do dia a dia, fora das palafitas), num dos lados curtos que não é o do portão; a aldeia fica
-    // fora dele
-    const ladoR = !palafita && com.vida ? K.pick(['o', 'l'].filter(l => l !== ladoG)) : null;
-    const fx0 = ladoR === 'o' ? 5.5 : 0, fx1 = ladoR === 'l' ? W - 5.5 : W, fy0 = 0, fy1 = H;
+    // fora dele (lote 8: com os portões da rosa, num lado sem portão — também em cima ou embaixo)
+    const ladosR = dirs8 ? ['o', 'l', 'n', 's'].filter(l => !dirs8.includes(l)) : ['o', 'l'].filter(l => l !== ladoG);
+    const ladoR = !palafita && com.vida ? K.pick(ladosR.length ? ladosR : ['o']) : null;
+    // (lote 8) o riacho novo vem antes da aldeia: o da rosa (das tentativas, uma das que deixam o maior lugar seco para a
+    // aldeia — e ela fica lá) ou o de sempre, num lado, com a largura e as curvas escolhidas (com a praça perto dele, mais
+    // para dentro)
+    const comoAgua = (rios, lagoA) => { const A = { rios, lago: lagoA || null }; A.ag = Tracado.agua(A); return A; };
+    let rio8 = null, lugar8 = null;
+    if (rioRosa) {
+      const s0 = MO.sub(sT, 23), notas = [];
+      /* o lugar da aldeia com esse rio: onde o anel das moradias (da praça até a paliçada, que cabe no mapa com o fosso)
+         fica com mais chão seco do lado da praça — em cada direção, até a água; a praça a mais de três quadrados dela */
+      const lugarDa = A => {
+        const dW = new Float32Array(W * H);
+        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) dW[j * W + i] = A.ag.dist(i + 0.5, j + 0.5);
+        const em = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return i < 0 || j < 0 || i >= W || j >= H ? 99 : dW[j * W + i]; };
+        let m = null;
+        for (let y = Rp + 6; y <= H - Rp - 6 + 1e-9; y += 1.5) for (let x = Rp + 6; x <= W - Rp - 6 + 1e-9; x += 1.5) {
+          if (A.ag.dist(x, y) < Rp + 3) continue;
+          const ex = Math.max(Rp + 2, Math.min(W * 0.36, x - 2.8, W - x - 2.8)), ey = Math.max(Rp + 2, Math.min(H * 0.36, y - 2.8, H - y - 2.8)), r0 = Rp + 0.6;
+          let area = 0;
+          for (let k = 0; k < 24; k++) {
+            const a = k / 24 * TAU, c = Math.cos(a), s = Math.sin(a), r1 = 1 / Math.sqrt((c / ex) ** 2 + (s / ey) ** 2) - 1.1;
+            let fim = r1;
+            for (let d = r0; d <= r1; d += 1) if (em(x + c * d, y + s * d) < 1.5) { fim = d - 1; break; }
+            if (fim > r0) area += (fim - r0) * (fim + r0) / 2;
+          }
+          const nota = area - Math.hypot(x - W / 2, y - H / 2) * 0.5;
+          if (!m || nota > m.nota) m = { nota, x, y };
+        }
+        return m || { nota: -Infinity, x: W / 2, y: H / 2 };
+      };
+      for (let k = 0; k < 24; k++) {
+        const R = Tracado.rioPlano(Object.assign({}, T8.rio, { desvio: 0.5 }), W, H, mulberry(MO.sub(s0, k)), null), A = comoAgua(R.rios.map(x => ({ pts: x.pts, hw: x.hw })), R.lago);
+        notas.push({ A, m: lugarDa(A), k });
+      }
+      notas.sort((a, b) => b.m.nota - a.m.nota || a.k - b.k);
+      const esc = notas[Math.floor(mulberry(MO.sub(s0, 99))() * Math.min(4, notas.length)) % notas.length];
+      rio8 = esc.A; lugar8 = esc.m;
+    } else if (riachoNovo && ladoR) {
+      const rr = mulberry(MO.sub(sT, 24)), vert = ladoR === 'o' || ladoR === 'l', L = vert ? H : W, M = vert ? W : H;
+      const hwR = T8.rio.larg ? Tracado.LARGURA[T8.rio.larg] : 0.8 + rr() * 0.25;
+      const fundo = pracaRio ? M * 0.24 + rr() * 2 : Math.max(2.2 + rr() * 0.8, hwR + 1.1), base = ladoR === 'o' || ladoR === 'n' ? fundo : M - fundo;
+      rio8 = comoAgua([{ pts: Tracado.caminho(vert ? [base, -1] : [-1, base], vert ? [base, L + 1] : [L + 1, base], T8.rio.curvas == null ? 2 : T8.rio.curvas, rr, 0.5), hw: hwR }], null);
+    }
+    let fx0 = ladoR === 'o' ? 5.5 : 0, fx1 = ladoR === 'l' ? W - 5.5 : W, fy0 = ladoR === 'n' ? 5.5 : 0, fy1 = ladoR === 's' ? H - 5.5 : H;
+    // (o riacho novo num lado: a aldeia fica longe dele; o da rosa e o da praça perto do rio: no mapa todo)
+    if (rio8) {
+      if (riachoNovo && !pracaRio) {
+        const r0 = rio8.rios[0], xs = r0.pts.map(q => q[0]), ys = r0.pts.map(q => q[1]);
+        if (ladoR === 'o') fx0 = Math.max(...xs) + r0.hw + 1.2; else if (ladoR === 'l') fx1 = Math.min(...xs) - r0.hw - 1.2;
+        else if (ladoR === 'n') fy0 = Math.max(...ys) + r0.hw + 1.2; else fy1 = Math.min(...ys) - r0.hw - 1.2;
+      } else { fx0 = 0; fx1 = W; fy0 = 0; fy1 = H; }
+    }
     // o meio da aldeia (nas palafitas, mais para o lado do portão: o lago fica do outro lado)
-    const cx = palafita ? Math.round(W / 2 + ux * W * 0.16) : (fx0 + fx1) / 2 + r(-1, 1), cy = palafita ? Math.round(H / 2 + uy * H * 0.16) : (fy0 + fy1) / 2 + r(-0.6, 0.6);
+    let cx = palafita ? Math.round(W / 2 + ux * W * 0.16) : (fx0 + fx1) / 2 + r(-1, 1), cy = palafita ? Math.round(H / 2 + uy * H * 0.16) : (fy0 + fy1) / 2 + r(-0.6, 0.6);
+    // (lote 8) com o rio pelo meio do mapa: a praça no seco; com a praça perto do rio, na beira dele
+    if (rio8 && (rioRosa || pracaRio)) {
+      const rr = mulberry(MO.sub(sT, 25)), r0 = rio8.rios[0], cabeC = (x, y) => x >= Rp + 6 && y >= Rp + 6 && x <= W - Rp - 6 && y <= H - Rp - 6;
+      let achou = false;
+      // (o rio da rosa: a aldeia no maior lugar seco que ele deixou)
+      if (lugar8 && !pracaRio && cabeC(lugar8.x, lugar8.y) && rio8.ag.dist(lugar8.x, lugar8.y) >= Rp + 3) { cx = lugar8.x; cy = lugar8.y; achou = true; }
+      if (pracaRio) for (let k = 0; k < 80 && !achou; k++) {
+        const q = Tracado.aoLongo(r0.pts, 0.2 + rr() * 0.6), lado = rr() < 0.5 ? 1 : -1, d = r0.hw + Rp + 1.5, x = q.x - Math.sin(q.ang) * d * lado, y = q.y + Math.cos(q.ang) * d * lado;
+        if (cabeC(x, y) && rio8.ag.dist(x, y) >= Rp + 1) { cx = x; cy = y; achou = true; }
+      }
+      if (!achou && rio8.ag.dist(cx, cy) < Rp + 3) {
+        busca: for (let d = 0.75; d < 18; d += 0.75) { const n = Math.round(d * 5); for (let k = 0; k < n; k++) { const a = k / n * TAU, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d; if (cabeC(x, y) && rio8.ag.dist(x, y) >= Rp + 3) { cx = x; cy = y; break busca; } } }
+      }
+    }
     const d0 = Rp + 0.8;                                         // (palafitas) do meio da praça até a beira do lago
     // os raios da paliçada: cabem no mapa, com o fosso por fora (nas palafitas, o lado do lago não conta)
     const M0 = 2.8;
@@ -104,7 +183,33 @@ const Tribo = (() => {
     rx = Math.max(rx, Rp + 2); ry = Math.max(ry, Rp + 2);
     let lago = null;                                             // (o contorno do lago das palafitas)
     const naAgua = (x, y) => !!lago && (MO.dentroPoli(lago, x, y) || ((x - cx) * -ux + (y - cy) * -uy) > d0 + 1.6);
-    const gx = cx + ux * rx, gy = cy + uy * ry;                 // o portão (ou, sem paliçada, por onde a trilha sai)
+    // (lote 8) o contorno da paliçada: a elipse de sempre, o octógono ou a irregular (com um ponto a cada uns 0,7 quadrado)
+    const ring8 = T8.muro === 'oct' ? (() => { const c = 0.586 * Math.min(rx, ry); return [[cx - rx + c, cy - ry], [cx + rx - c, cy - ry], [cx + rx, cy - ry + c], [cx + rx, cy + ry - c], [cx + rx - c, cy + ry], [cx - rx + c, cy + ry], [cx - rx, cy + ry - c], [cx - rx, cy - ry + c]]; })()
+      : T8.muro === 'irregular' ? Tracado.muro('irregular', cx, cy, rx, ry, mulberry(MO.sub(sT, 21))).ring : null;
+    const ringF = ring8 ? ring8.concat([ring8[0]]) : null;
+    const amostraAnel = (pol, passo) => { const out = [], R = pol.concat([pol[0]]); for (let i = 1; i < R.length; i++) { const [ax, ay] = R[i - 1], [bx, by] = R[i], n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / passo)); for (let k = 0; k < n; k++) out.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]); } return out; };
+    // os pontos da paliçada (dd: tanto para fora — o fosso)
+    const anelPts = dd => (ring8 ? amostraAnel(ring8.map(([x, y]) => { const d = Math.hypot(x - cx, y - cy) || 1; return [cx + (x - cx) * (d + dd) / d, cy + (y - cy) * (d + dd) / d]; }), 0.7) : elipsePts(cx, cy, rx + dd, ry + dd));
+    // dentro da paliçada com folga m (m < 0: até -m para fora dela)
+    const naAldeia = (x, y, m) => { if (!ring8) return dentroElipse(x, y, cx, cy, rx - m, ry - m); const den = Tracado.dentro(ring8, x, y), d = Tracado.distLinha(ringF, x, y); return m >= 0 ? den && d > m : den || d < -m; };
+    // (lote 8) do outro lado da água (a reta da praça até ali cruza o rio ou o lago): a aldeia fica do lado da praça
+    const linhasAgua = rio8 ? rio8.rios.map(x => x.pts).concat(rio8.lago ? [rio8.lago.concat([rio8.lago[0]])] : []) : [];
+    const alemDoRio = (x, y) => linhasAgua.some(pts => { for (let i = 1; i < pts.length; i++) if (Tracado.cruza([cx, cy], [x, y], pts[i - 1], pts[i])) return true; return false; });
+    /* os portões (lote 8: os da rosa, o principal primeiro): o ponto da paliçada naquela direção (sem paliçada, por onde a
+       trilha sai); nas palafitas, nenhum para o lado do lago; dois portões não ficam colados */
+    const portaoEm = id => {
+      const a = DIR[id] ? ANG[id] : Tracado.DIR[id].a, [vx, vy] = vetor(id), g = ring8 ? Tracado.noContorno(ring8, cx, cy, a) : null;
+      return g ? { id, a, ux: vx, uy: vy, x: g.x, y: g.y } : { id, a, ux: vx, uy: vy, x: cx + vx * rx, y: cy + vy * ry };
+    };
+    const portoes8 = [portaoEm(idG)];
+    for (const d of dirs8 || []) {
+      if (d === idG) continue;
+      const [vx, vy] = vetor(d);
+      if (palafita && vx * -ux + vy * -uy > 0.3) continue;
+      const g = portaoEm(d);
+      if (!portoes8.some(q => Math.hypot(q.x - g.x, q.y - g.y) < 4.5)) portoes8.push(g);
+    }
+    const gx = portoes8[0].x, gy = portoes8[0].y;              // o portão (ou, sem paliçada, por onde a trilha sai)
 
     // ---- a água: o lago das palafitas ou o riacho
     if (palafita) {
@@ -114,6 +219,13 @@ const Tribo = (() => {
       lago = beira.concat([[fim[0] - ux * L, fim[1] - uy * L], [ini[0] - ux * L, ini[1] - uy * L]]);
       K.poeLago(lago, 'agua', -1.5);
       P.juncos = 0.12;
+    } else if (rio8) {
+      // (lote 8: os sorteios do riacho de sempre continuam, para o resto do desenho sair igual)
+      if (ladoR) for (let i = 0; i < 6; i++) r();
+      P.riacho = { lado: rioRosa ? null : ladoR, pts: K.poeRio(rio8.rios[0].pts, rio8.rios[0].hw, 'agua', -1.2) };
+      for (const a of rio8.rios.slice(1)) K.poeRio(a.pts, a.hw, 'agua', -1);
+      if (rio8.lago) K.poeLago(rio8.lago, 'agua', -1.5);
+      P.juncos = 0.1;
     } else if (ladoR) {
       const vert = ladoR === 'o' || ladoR === 'l', fundo = r(2.2, 3), base = ladoR === 'o' || ladoR === 'n' ? fundo : (vert ? W : H) - fundo, L = vert ? H : W;
       const ctrl = [0, 0.33, 0.66, 1].map(t => (vert ? [base + r(-0.8, 0.8), -1 + t * (L + 2)] : [-1 + t * (L + 2), base + r(-0.8, 0.8)]));
@@ -121,7 +233,14 @@ const Tribo = (() => {
       P.juncos = 0.1;
     }
     // ---- o chão batido da aldeia e a praça, com a fogueira no meio e os troncos de sentar em volta
-    K.mancha(MO.blob(K.rT, cx, cy, rx * 0.97, ry * 0.97, 28, 0.08), CHT.aldeia, { a: 0.42 });
+    {
+      const chao = MO.blob(K.rT, cx, cy, rx * 0.97, ry * 0.97, 28, 0.08);
+      // (lote 8: na forma da paliçada; com o riacho novo, o chão batido para na beira, do lado da praça)
+      const recolhe = q => { if (!alemDoRio(q[0], q[1])) return q; let a = 0, b = 1; for (let k = 0; k < 14; k++) { const m = (a + b) / 2; if (alemDoRio(cx + (q[0] - cx) * m, cy + (q[1] - cy) * m)) b = m; else a = m; } const d = Math.hypot(q[0] - cx, q[1] - cy) || 1, t = Math.max(0, a - 0.6 / d); return [cx + (q[0] - cx) * t, cy + (q[1] - cy) * t]; };
+      let pts = ring8 ? ring8.map(([x, y]) => [cx + (x - cx) * 0.97, cy + (y - cy) * 0.97]) : chao;
+      if (rio8) pts = amostraAnel(pts, 0.8).map(recolhe);
+      K.mancha(pts, CHT.aldeia, { a: 0.42 });
+    }
     const praca = MO.blob(K.rT, cx, cy, Rp, Rp * 0.9, 16, 0.18);
     K.mancha(praca, CHT.praca, { pedrisco: ['#8a7a5a', '#4e4330'] });
     K.marcaPoli(praca, 5, true);
@@ -132,8 +251,11 @@ const Tribo = (() => {
 
     // ---- a paliçada, o portão, as torres de vigia e o fosso com estacas
     let portao = null;
+    const portoesP = [], portoesG = [];                          // (lote 8) as portas dos portões e o portão de cada uma
+    // (lote 8) a água do riacho novo (e o que fica do outro lado dela) também abre a paliçada e o fosso
+    const naAguaP = (x, y) => naAgua(x, y) || (!!rio8 && (rio8.ag.dist(x, y) < 0.6 || alemDoRio(x, y)));
     if (com.palicada) {
-      const largP = 1.6, tr = trechos(elipsePts(cx, cy, rx, ry), ([x, y]) => Math.hypot(x - gx, y - gy) > largP && !naAgua(x, y));
+      const largP = 1.6, tr = trechos(anelPts(0), ([x, y]) => portoes8.every(g => Math.hypot(x - g.x, y - g.y) > largP) && !naAguaP(x, y));
       P.palicada = tr;
       for (const t of tr) {
         K.marcaLinha(t, 0.45, 3, true);
@@ -141,33 +263,41 @@ const Tribo = (() => {
         for (let i = 1; i < q.length; i++) P.visao.push([q[i - 1][0], q[i - 1][1], q[i][0], q[i][1]]);
         P.tracado.push({ k: 'linha', pts: t, hw: 0.5 });
       }
-      // o portão: entre as pontas dos dois trechos que encostam nele (uma porta: abre e fecha)
-      const pontas = [];
-      for (const t of tr) for (const q of [t[0], t[t.length - 1]]) if (Math.hypot(q[0] - gx, q[1] - gy) < largP + 1) pontas.push(q);
-      pontas.sort((a, b) => Math.hypot(a[0] - gx, a[1] - gy) - Math.hypot(b[0] - gx, b[1] - gy));
-      if (pontas.length >= 2) {
-        const [a, b] = pontas;
-        portao = { a, b, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 };
-        P.paredes.push({ k: 'door', x1: a[0], y1: a[1], x2: b[0], y2: b[1] });
-        K.marcaLinha([a, b], 0.7, 1, true);
+      // o portão: entre as pontas dos dois trechos que encostam nele (uma porta: abre e fecha) — (lote 8) em cada portão
+      for (const g of portoes8) {
+        const pontas = [];
+        for (const t of tr) for (const q of [t[0], t[t.length - 1]]) if (Math.hypot(q[0] - g.x, q[1] - g.y) < largP + 1) pontas.push(q);
+        pontas.sort((a, b) => Math.hypot(a[0] - g.x, a[1] - g.y) - Math.hypot(b[0] - g.x, b[1] - g.y));
+        if (pontas.length >= 2) {
+          const [a, b] = pontas;
+          portoesP.push({ a, b, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 }); portoesG.push(g);
+          P.paredes.push({ k: 'door', x1: a[0], y1: a[1], x2: b[0], y2: b[1] });
+          K.marcaLinha([a, b], 0.7, 1, true);
+        }
       }
-      K.pinta(2, 'palicada', { trechos: tr, portao });
+      portao = portoesG[0] === portoes8[0] ? portoesP[0] : null;
+      K.pinta(2, 'palicada', { trechos: tr, portao, portoes: portoesP.length > 1 ? portoesP : undefined });
       // as torres de vigia (2 × 2, a 4 m), logo para dentro da paliçada: dos dois lados do portão (um pouco para fora
       // dele, sem fechar a passagem) e, na aldeia média e na grande, mais duas lá atrás
       const torres = [];
       // (px, py: um ponto da paliçada; a torre fica um quadrado e meio para dentro, um pouco para o lado em "fora")
-      const torreEm = (px, py, fora) => {
-        if (naAgua(px, py)) return;
+      const torreEm = (px, py, fora, costas) => {
+        if (naAguaP(px, py)) return;
         // (no portão, "para dentro" é reto, de costas para ele; lá atrás, para o meio da aldeia)
-        const d0 = Math.hypot(cx - px, cy - py) || 1, [dx, dy] = fora ? [-ux, -uy] : [(cx - px) / d0, (cy - py) / d0], [ex, ey] = fora || [0, 0];
+        const d0 = Math.hypot(cx - px, cy - py) || 1, [dx, dy] = fora ? (costas || [-ux, -uy]) : [(cx - px) / d0, (cy - py) / d0], [ex, ey] = fora || [0, 0];
         const x = Math.round(px + dx * 1.5 + ex * 1.6 - 1), y = Math.round(py + dy * 1.5 + ey * 1.6 - 1);
         if (torres.some(q => Math.abs(q.x - x) < 3 && Math.abs(q.y - y) < 3)) return;
         for (let j = y; j < y + 2; j++) for (let i = x; i < x + 2; i++) { const v = K.at(i, j); if (v === 1 || v === 2 || v === 9) return; }
         torres.push({ x, y, s: 2, esc: Math.atan2(dy, dx) });
       };
       // as do portão: além das pontas da paliçada (a passagem fica livre)
-      if (portao) for (const q of [portao.a, portao.b]) { const ex = q[0] - portao.x, ey = q[1] - portao.y, e = Math.hypot(ex, ey) || 1; torreEm(q[0], q[1], [ex / e, ey / e]); }
-      if (tamanho !== 'pequena') for (const da of [2.05, -2.05]) torreEm(cx + Math.cos(aG + da) * rx, cy + Math.sin(aG + da) * ry);
+      portoesP.forEach((pt, k) => { for (const q of [pt.a, pt.b]) { const ex = q[0] - pt.x, ey = q[1] - pt.y, e = Math.hypot(ex, ey) || 1; torreEm(q[0], q[1], [ex / e, ey / e], [-portoesG[k].ux, -portoesG[k].uy]); } });
+      if (tamanho !== 'pequena') for (const da of [2.05, -2.05]) {
+        // (lote 8: não lá onde há outro portão)
+        if (portoes8.slice(1).some(g => Math.abs(Tracado.difAng(g.a, aG + da)) < 0.55)) continue;
+        const g = ring8 ? Tracado.noContorno(ring8, cx, cy, aG + da) : null;
+        if (ring8) { if (g) torreEm(g.x, g.y); } else torreEm(cx + Math.cos(aG + da) * rx, cy + Math.sin(aG + da) * ry);
+      }
       for (const q of torres) {
         for (let j = q.y; j < q.y + 2; j++) for (let i = q.x; i < q.x + 2; i++) K.pos(i, j, 3);
         P.relevo.push({ t: 'plataforma', alt: 4, k: 'rect', x: q.x, y: q.y, w: 2, h: 2 });
@@ -176,25 +306,35 @@ const Tribo = (() => {
       }
       P.torres = torres;
       // o fosso, a um quadrado e meio da paliçada, por fora (inteiro: a ponte de troncos passa por cima, no portão)
-      for (const t of trechos(elipsePts(cx, cy, rx + 1.6, ry + 1.6), ([x, y]) => !naAgua(x, y))) {
+      for (const t of trechos(anelPts(1.6), ([x, y]) => !naAguaP(x, y))) {
         K.pinta(0, 'fossoEstacas', { pts: t, larg: 1, fora: -1 });
         K.marcaLinha(t, 0.55, 6, true);
         P.relevo.push({ t: 'fosso', alt: -1.5, k: 'free', pts: t, sw: 1 });
       }
-      // a ponte de troncos amarrados, por cima do fosso, diante do portão
-      if (portao) {
-        const bx = cx + ux * (rx + 1.6), by = cy + uy * (ry + 1.6), pts = Estilos.retangulo(bx, by, 2.8, 2.4, aG);
+      // a ponte de troncos amarrados, por cima do fosso, diante do portão (lote 8: de cada portão)
+      portoesG.forEach(g => {
+        const q = ring8 ? Tracado.noContorno(ring8, cx, cy, g.a) : null;
+        const bx = q ? q.x + q.nx * 1.6 : cx + g.ux * (rx + 1.6), by = q ? q.y + q.ny * 1.6 : cy + g.uy * (ry + 1.6), ang = q ? Math.atan2(q.ny, q.nx) : g.a, pts = Estilos.retangulo(bx, by, 2.8, 2.4, ang);
         K.marcaPoli(pts, 1, true);
-        K.pinta(1, 'ponteTroncos', { x: bx, y: by, comp: 2.8, larg: 2.4, ang: aG });
+        K.pinta(1, 'ponteTroncos', { x: bx, y: by, comp: 2.8, larg: 2.4, ang });
         P.relevo.push({ t: 'plataforma', alt: 0.3, k: 'poly', pts });
         P.tracado.push({ k: 'poli', pts });
+      });
+    }
+    // ---- a trilha: da praça, pelo portão, até a borda do mapa (lote 8: uma de cada portão; onde ela cruza a água, a
+    //      ponte de tábuas — até o tanto escolhido; sem ponte, a trilha para na beira)
+    const aguaT = rio8 || ((dirs8 || T8.pontes != null) && P.aguas.some(a => a.k === 'rio') ? comoAgua(P.aguas.filter(a => a.k === 'rio').map(a => ({ pts: a.pts, hw: a.hw })), null) : null);
+    let pontesT = 0;
+    portoes8.forEach(g => {
+      const k = portoesG.indexOf(g), pt = k >= 0 ? portoesP[k] : null, fora = DIR[g.id] ? K.borda(g.id, 0.5) : Tracado.naBorda(g.id, W, H, 0, 1), meio = pt ? [pt.x, pt.y] : [g.x, g.y], j1 = r(-1.5, 1.5), j2 = r(-3, 3);
+      const ctrl = [[cx + g.ux * Rp * 0.6, cy + g.uy * Rp * 0.6], meio, [meio[0] + g.ux * 4 - g.uy * j1, meio[1] + g.uy * 4 + g.ux * j1], [fora[0] - g.uy * j2, fora[1] + g.ux * j2]];
+      if (aguaT) for (const q of Tracado.cruzamentos(MO.curva(ctrl), aguaT)) {
+        if (q.lago || (aguaT.lago && Tracado.dentro(aguaT.lago, q.x, q.y))) continue;
+        if (T8.pontes != null && pontesT >= T8.pontes) break;
+        K.ponte(q.x, q.y, q.rio.hw * 2 + 1.6, 1.9, q.ang, null, 0.5); pontesT++;
       }
-    }
-    // ---- a trilha: da praça, pelo portão, até a borda do mapa
-    {
-      const fora = K.borda(ladoG, 0.5), meio = portao ? [portao.x, portao.y] : [gx, gy], j1 = r(-1.5, 1.5), j2 = r(-3, 3);
-      K.poeCaminho([[cx + ux * Rp * 0.6, cy + uy * Rp * 0.6], meio, [meio[0] + ux * 4 - uy * j1, meio[1] + uy * 4 + ux * j1], [fora[0] - uy * j2, fora[1] + ux * j2]], 'trilha');
-    }
+      K.poeCaminho(ctrl, 'trilha');
+    });
 
     // ---- as moradias, o círculo de pedras e o cercado
     const casas = [];
@@ -222,13 +362,13 @@ const Tribo = (() => {
       casas.push(k);
       return k;
     }
-    const dentroPal = (x, y, m) => dentroElipse(x, y, cx, cy, rx - (m || 0), ry - (m || 0));
+    const dentroPal = (x, y, m) => (ring8 ? naAldeia(x, y, m || 0) : dentroElipse(x, y, cx, cy, rx - (m || 0), ry - (m || 0)));
     const dentroPalRet = (x, y, w, h) => dentroPal(x - 0.3, y - 0.3, 1) && dentroPal(x + w + 0.3, y + h + 0.3, 1) && dentroPal(x - 0.3, y + h + 0.3, 1) && dentroPal(x + w + 0.3, y - 0.3, 1);
     // o raio da paliçada no ângulo a (a partir do meio) e o lugar de uma coisa de raio rr no anel entre a praça e a
     // paliçada (f: 0 = junto da praça, 1 = junto da paliçada)
-    const rP = a => 1 / Math.sqrt((Math.cos(a) / rx) ** 2 + (Math.sin(a) / ry) ** 2);
+    const rP = a => { if (ring8) { const g = Tracado.noContorno(ring8, cx, cy, a); return g ? Math.hypot(g.x - cx, g.y - cy) : Math.min(rx, ry); } return 1 / Math.sqrt((Math.cos(a) / rx) ** 2 + (Math.sin(a) / ry) ** 2); };
     const noAnel = (a, rr, f) => { const d0b = Rp + 0.6 + rr, d1b = rP(a) - 1.1 - rr, d = d1b < d0b ? (d0b + d1b) / 2 : d0b + (d1b - d0b) * f; return [cx + Math.cos(a) * d, cy + Math.sin(a) * d]; };
-    const longeDaTrilha = (x, y, m) => !P.caminhos.length || MO.distLinha(P.caminhos[0].pts, x, y) > m;
+    const longeDaTrilha = (x, y, m) => (portoes8.length > 1 ? P.caminhos.every(cm => MO.distLinha(cm.pts, x, y) > m) : !P.caminhos.length || MO.distLinha(P.caminhos[0].pts, x, y) > m);
     // uma moradia no anel entre a praça e a paliçada (com a paliçada ou sem ela, a aldeia fica do mesmo tamanho)
     const poeCasa = (a, chefe, f0) => {
       const base = MEDIDA[moradias][chefe ? 1 : 0];
@@ -238,7 +378,7 @@ const Tribo = (() => {
         // (a cabana: o lado comprido de frente para a praça)
         if (!REDONDA[moradias] && Math.abs(Math.cos(aa)) > Math.abs(Math.sin(aa))) [w, h] = [h, w];
         const q = noAnel(aa, Math.hypot(w, h) / 2 * 0.8, clamp(f0 + df, 0, 1)), x = Math.round(q[0] - w / 2), y = Math.round(q[1] - h / 2);
-        if (!cabe(x, y, w, h, false) || !dentroPalRet(x, y, w, h)) continue;
+        if (!cabe(x, y, w, h, false) || !dentroPalRet(x, y, w, h) || (rio8 && alemDoRio(x + w / 2, y + h / 2))) continue;
         return casaEm(x, y, w, h, ladoPara(x, y, w, h), chefe, null);
       }
       return null;
@@ -254,11 +394,11 @@ const Tribo = (() => {
     if (com.sagrados) {
       const R0 = 2.9;
       // (com uma folga em volta: nada fica encostado nas pedras)
-      let c0 = K.lugar(R0 + 0.9, v => v === 0 || v === 4, 300, (x, y) => !dentroElipse(x, y, cx, cy, rx + 1.5, ry + 1.5) && longeDaTrilha(x, y, 4));
+      let c0 = K.lugar(R0 + 0.9, v => v === 0 || v === 4, 300, (x, y) => !(ring8 ? naAldeia(x, y, -1.5) : dentroElipse(x, y, cx, cy, rx + 1.5, ry + 1.5)) && longeDaTrilha(x, y, 4));
       for (const a of (palafita ? [1.2, -1.2, 0.8, -0.8, 1.6, -1.6] : [Math.PI + 0.95, Math.PI - 0.95, Math.PI + 1.35, Math.PI - 1.35, Math.PI + 0.6, Math.PI - 0.6, Math.PI + 1.75, Math.PI - 1.75]).map(x => aG + x)) for (const f of [0.8, 0.5]) {
         if (c0) break;
         const q = noAnel(a, R0, f);
-        if (q && dentroPal(q[0], q[1], R0 + 1) && K.livreCirc(q[0], q[1], R0 + 0.9, v => v === 0) && longeDaTrilha(q[0], q[1], R0 + 0.5)) c0 = q;
+        if (q && dentroPal(q[0], q[1], R0 + 1) && K.livreCirc(q[0], q[1], R0 + 0.9, v => v === 0) && longeDaTrilha(q[0], q[1], R0 + 0.5) && !(rio8 && alemDoRio(q[0], q[1]))) c0 = q;
       }
       if (c0) {
         const [sx, sy] = c0, chao = MO.blob(K.rT, sx, sy, R0, R0 * 0.93, 14, 0.12);
@@ -291,11 +431,11 @@ const Tribo = (() => {
         if (cerc) break;
         const a = aG + s * Math.PI / 2 + da, deitado = Math.abs(Math.sin(a)) > Math.abs(Math.cos(a)), w = deitado ? c1 : c2, h = deitado ? c2 : c1;
         const q = noAnel(a, Math.hypot(w, h) / 2 * 0.8, f), x = Math.round(q[0] - w / 2), y = Math.round(q[1] - h / 2);
-        if (dentroPalRet(x, y, w, h) && livreRet(x, y, w, h)) cerc = { x, y, w, h };
+        if (dentroPalRet(x, y, w, h) && livreRet(x, y, w, h) && !(rio8 && alemDoRio(x + w / 2, y + h / 2))) cerc = { x, y, w, h };
       }
       for (let t = 0; t < 200 && !cerc; t++) {
         const x = Math.floor(r(2, W - c1 - 2)), y = Math.floor(r(2, H - c2 - 2));
-        if (!dentroElipse(x + c1 / 2, y + c2 / 2, cx, cy, rx + 1, ry + 1) && livreRet(x, y, c1, c2) && longeDaTrilha(x + c1 / 2, y + c2 / 2, 3)) cerc = { x, y, w: c1, h: c2 };
+        if (!(ring8 ? naAldeia(x + c1 / 2, y + c2 / 2, -1) : dentroElipse(x + c1 / 2, y + c2 / 2, cx, cy, rx + 1, ry + 1)) && livreRet(x, y, c1, c2) && longeDaTrilha(x + c1 / 2, y + c2 / 2, 3)) cerc = { x, y, w: c1, h: c2 };
       }
       if (cerc) {
         const { x, y, w, h } = cerc, lado = ladoPara(x, y, w, h), meio = lado === 'n' || lado === 's' ? x + Math.floor(w / 2) : y + Math.floor(h / 2);
@@ -346,8 +486,29 @@ const Tribo = (() => {
       const g0 = 0.62, cS = chefe ? 0.5 : 0.1, n1 = Math.ceil(T.mor / 2), duas = T.mor >= 8;
       // (o ângulo da do chefe, de aG até aG + 2π: os arcos ficam dos dois lados dela)
       const aC = chefe ? aG + ((Math.atan2(chefe.y + chefe.h / 2 - cy, chefe.x + chefe.w / 2 - cx) - aG) % TAU + TAU) % TAU : aG + Math.PI;
-      for (const [a0, a1, n] of [[aG + g0, aC - cS, n1], [aC + cS, aG + TAU - g0, T.mor - n1]]) for (let k = 0; k < n; k++) poeCasa(a0 + (a1 - a0) * (k + 0.5) / n + r(-0.05, 0.05), false, duas ? (k % 2 ? 0.85 : 0.2) : 0.5);
-      for (let t = 0; casas.length < T.mor + 1 && t < 40; t++) poeCasa(r(aG + g0, aG + TAU - g0), false, r(0.1, 0.9));
+      // (lote 8) com mais portões, os vãos livres entre eles (e a do chefe), e as moradias divididas pelo tamanho de cada vão
+      let arcos = [[aG + g0, aC - cS, n1], [aC + cS, aG + TAU - g0, T.mor - n1]];
+      // (com o riacho novo, os ângulos em que o anel das moradias fica do outro lado da água também saem)
+      const tiraRio = [];
+      if (rio8) for (let k = 0; k < 126; k++) { const rl = (k + 0.5) * TAU / 126, q = noAnel(aG + rl, 1.5, 0.5); if (alemDoRio(q[0], q[1]) || rio8.ag.dist(q[0], q[1]) < 1.5) tiraRio.push([rl - TAU / 252, rl + TAU / 252]); }
+      if (portoes8.length > 1 || tiraRio.length) {
+        // (os outros portões guardam um corredor mais estreito que o principal; com muitos portões, todos estreitos — a
+        // trilha já fica marcada no chão, e as moradias não caem nela)
+        const nG = portoes8.length, gP = nG > 2 ? 0.3 : g0, g1 = nG > 2 ? 0.2 : 0.36, rel = a => ((a - aG) % TAU + TAU) % TAU;
+        const base = [[-gP, gP]].concat(portoes8.slice(1).map(g => [rel(g.a) - g1, rel(g.a) + g1]), [[rel(aC) - cS, rel(aC) + cS]], tiraRio);
+        const tira = [].concat(...base.map(([a, b]) => [[a, b], [a - TAU, b - TAU], [a + TAU, b + TAU]])).sort((p, q) => p[0] - q[0]);
+        const vaos = [];
+        let ini = 0;
+        for (const [a, b] of tira) { if (b <= 0 || a >= TAU) continue; if (a > ini) vaos.push([ini, Math.min(a, TAU)]); ini = Math.max(ini, b); }
+        if (ini < TAU) vaos.push([ini, TAU]);
+        const bons = vaos.filter(([a, b]) => b - a > 0.3), tot = bons.reduce((s2, [a, b]) => s2 + b - a, 0) || 1;
+        const cotas = bons.map(([a, b]) => T.mor * (b - a) / tot), ns = cotas.map(Math.floor);
+        for (let falta = T.mor - ns.reduce((s2, v) => s2 + v, 0); falta > 0 && ns.length; falta--) { let m = 0; cotas.forEach((c, i) => { if (c - ns[i] > cotas[m] - ns[m]) m = i; }); ns[m]++; cotas[m] = ns[m]; }
+        arcos = bons.map(([a, b], i) => [aG + a, aG + b, ns[i]]);
+      }
+      for (const [a0, a1, n] of arcos) for (let k = 0; k < n; k++) poeCasa(a0 + (a1 - a0) * (k + 0.5) / n + r(-0.05, 0.05), false, duas ? (k % 2 ? 0.85 : 0.2) : 0.5);
+      const angLivre = () => { if (portoes8.length <= 1 && !tiraRio.length) return r(aG + g0, aG + TAU - g0); const tot = arcos.reduce((s2, [a, b]) => s2 + b - a, 0); let u = r(0, tot); for (const [a, b] of arcos) { if (u <= b - a) return a + u; u -= b - a; } return aG + Math.PI; };
+      for (let t = 0; casas.length < T.mor + 1 && t < 40; t++) poeCasa(angLivre(), false, r(0.1, 0.9));
       // uma trilha de cada porta até a praça (só quando não passa por outra moradia nem pelo cercado)
       for (const k of casas) {
         const pt = k.porta, [dx, dy] = DIR[pt.lado], a = [(pt.x1 + pt.x2) / 2 + dx * 0.7, (pt.y1 + pt.y2) / 2 + dy * 0.7];
@@ -377,7 +538,7 @@ const Tribo = (() => {
     /* ---- o resto (o sorteio dos detalhes) ---- */
     if (com.sagrados) {
       // os totens menores: dos dois lados do portão, por fora, e junto do círculo de pedras
-      if (portao) for (const q of [portao.a, portao.b]) { const dx = q[0] - cx, dy = q[1] - cy, d = Math.hypot(dx, dy) || 1; K.objeto('totem', Math.floor(q[0] + dx / d * 1.2), Math.floor(q[1] + dy / d * 1.2), 0, v => v === 0 || v === 6 || v === 4); }
+      for (const pt of portoesP) for (const q of [pt.a, pt.b]) { const dx = q[0] - cx, dy = q[1] - cy, d = Math.hypot(dx, dy) || 1; K.objeto('totem', Math.floor(q[0] + dx / d * 1.2), Math.floor(q[1] + dy / d * 1.2), 0, v => v === 0 || v === 6 || v === 4); }
       if (P.sagrado) for (let t = 0; t < 30; t++) { const a = rV() * TAU, d = P.sagrado.r + 0.6 + rV() * 0.5; if (K.objeto('totem', Math.floor(P.sagrado.x + Math.cos(a) * d), Math.floor(P.sagrado.y + Math.sin(a) * d), 0, v => v === 0 || v === 4 || v === 5)) break; }
     }
     if (com.vida) {
@@ -389,7 +550,7 @@ const Tribo = (() => {
         K.pinta(2, 'cercado', Object.assign({ bichos }, cerc));
       }
       // os secadores (de peles e de carne), o forno de barro, o tear e a lenha: entre as moradias
-      const lugarV = rr => { for (let t = 0; t < 200; t++) { const x = rv(2, W - 2), y = rv(2, H - 2); if (dentroPal(x, y, 1.2) && K.livreCirc(x, y, rr, v => v === 0)) return [x, y]; } return null; };
+      const lugarV = rr => { for (let t = 0; t < 200; t++) { const x = rv(2, W - 2), y = rv(2, H - 2); if (dentroPal(x, y, 1.2) && K.livreCirc(x, y, rr, v => v === 0) && !(rio8 && alemDoRio(x, y))) return [x, y]; } return null; };
       for (let i = 0; i < (tamanho === 'grande' ? 4 : 3); i++) { const l = lugarV(1); if (l) { K.pinta(2, 'secador', { x: l[0], y: l[1], ang: Math.floor(rV() * 4) * Math.PI / 2, tipo: i % 2 ? 'carne' : 'pele' }); K.marcaCirc(l[0], l[1], 0.95, 4, true); } }
       { const l = lugarV(0.9); if (l) { K.pinta(2, 'fornoBarro', { x: l[0], y: l[1], ang: Math.atan2(cy - l[1], cx - l[0]) }); K.marcaCirc(l[0], l[1], 0.75, 3, true); } }
       { const l = lugarV(1); if (l) { K.pinta(2, 'tear', { x: l[0], y: l[1], ang: Math.floor(rV() * 4) * Math.PI / 2 }); K.marcaCirc(l[0], l[1], 0.85, 4, true); } }
@@ -413,20 +574,38 @@ const Tribo = (() => {
         if (rV() < 0.7) { const p = Paisagem.aoLongo(rio, 0.3 + rV() * 0.4); K.pinta(2, 'canoa', { x: p.x, y: p.y, ang: p.ang, L: 2.8, naAgua: true }); }
       }
     }
-    // as tochas do portão, por dentro
-    if (portao) for (const q of [portao.a, portao.b]) {
+    // as tochas do portão, por dentro (lote 8: de cada portão)
+    for (const pt of portoesP) for (const q of [pt.a, pt.b]) {
       // (logo para dentro, entre a ponta da paliçada e a trilha: a torre de vigia fica do outro lado)
-      const dx = cx - q[0], dy = cy - q[1], d = Math.hypot(dx, dy) || 1, lx = portao.x - q[0], ly = portao.y - q[1], dl = Math.hypot(lx, ly) || 1;
+      const dx = cx - q[0], dy = cy - q[1], d = Math.hypot(dx, dy) || 1, lx = pt.x - q[0], ly = pt.y - q[1], dl = Math.hypot(lx, ly) || 1;
       for (const [fi, fl] of [[0.9, 0.4], [0.9, 0.9], [1.4, 0.6], [1.4, 1.1], [0.6, 1.2]]) if (K.objeto('tocha', Math.floor(q[0] + dx / d * fi + lx / dl * fl), Math.floor(q[1] + dy / d * fi + ly / dl * fl), 0, v => v === 0 || v === 1 || v === 5)) break;
     }
     // dentro da aldeia não nasce árvore; em volta da paliçada, o mato foi aberto (poucas árvores)
-    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (K.at(i, j) === 0 && dentroElipse(i + 0.5, j + 0.5, cx, cy, rx * (com.palicada ? 1 : 0.92), ry * (com.palicada ? 1 : 0.92))) K.pos(i, j, 5);
-    P.dens = (x, y) => (dentroElipse(x, y, cx, cy, rx + 2.6, ry + 2.6) ? 0.12 : 1);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (K.at(i, j) === 0 && (ring8 ? naAldeia(i + 0.5, j + 0.5, com.palicada ? 0 : 0.08 * Math.min(rx, ry)) : dentroElipse(i + 0.5, j + 0.5, cx, cy, rx * (com.palicada ? 1 : 0.92), ry * (com.palicada ? 1 : 0.92))) && !(rio8 && alemDoRio(i + 0.5, j + 0.5))) K.pos(i, j, 5);
+    // (lote 8) o relevo natural: as colinas e as matas (áreas de terreno da cena) e as pedras, em manchas pelo ruído — fora
+    // da aldeia, longe das trilhas, da água e das construções (outro sorteio); as árvores de fora se juntam nos bosques
+    let natural = null;
+    if (T8.relevo) {
+      const pode = (i, j) => {
+        if (K.at(i, j) !== 0 || (ring8 ? naAldeia(i + 0.5, j + 0.5, -3) : dentroElipse(i + 0.5, j + 0.5, cx, cy, rx + 3, ry + 3))) return false;
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const v = K.at(i + a, j + b); if (v === 1 || v === 2 || v === 3 || v === 6 || v === 7 || v === 8 || v === 10) return false; }
+        return true;
+      };
+      natural = Tracado.manchas(W, H, pode, MO.sub(seed, 12));
+      for (const m of natural.matas) P.relevo.push({ t: 'mata', alt: 0, k: 'poly', pts: m.pts });
+      for (const c of natural.colinas) P.relevo.push({ t: 'morro', alt: c.alt, k: 'poly', pts: c.pts });
+      for (const q of natural.pedras) { P.rochas.push({ x: q.x, y: q.y, r: q.r, cores: null }); K.pos(Math.floor(q.x), Math.floor(q.y), 4); }
+    }
+    const densAldeia = (x, y) => (ring8 ? naAldeia(x, y, -2.6) : dentroElipse(x, y, cx, cy, rx + 2.6, ry + 2.6));
+    P.dens = natural ? (x, y) => (densAldeia(x, y) ? 0.12 : 0.15 + 2.7 * natural.bosque(x, y)) : (x, y) => (densAldeia(x, y) ? 0.12 : 1);
     MO.vegetacao(K, rV);
     MO.enfeites(K, rV);
     P.marcas = {};
     K.foco(cx, cy);
     delete P.dens; delete P.esp;
+    // (lote 8: a forma da paliçada e os portões da rosa; sem eles, o plano fica como era)
+    if (ring8) P.muroForma = T8.muro;
+    if (dirs8) P.portoesRosa = portoes8.map(g => g.id);
     return Object.assign(P, { v: 1, lugar: 'tribo', seed, sT, tamanho, moradias, terreno, com, centro: [cx, cy], raios: [rx, ry], ladoPortao: ladoG, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -575,7 +754,7 @@ const Tribo = (() => {
         g.fillStyle = 'rgba(46,31,16,0.7)'; g.beginPath(); g.arc(x + rr * 0.08, y + rr * 0.08, rr * 0.24, 0, TAU); g.fill();
       }
     }
-    if (o.portao) for (const q of [o.portao.a, o.portao.b]) {
+    for (const pt of o.portoes || (o.portao ? [o.portao] : [])) for (const q of [pt.a, pt.b]) {
       const x = q[0] * c, y = q[1] * c, rr = c * 0.36;
       g.globalAlpha = 0.38; g.fillStyle = '#000'; g.beginPath(); g.arc(x + c * 0.18, y + c * 0.24, rr, 0, TAU); g.fill(); g.globalAlpha = 1;
       const gr = g.createRadialGradient(x - rr * 0.3, y - rr * 0.3, rr * 0.1, x, y, rr); gr.addColorStop(0, MAD.luz); gr.addColorStop(0.6, MAD.med); gr.addColorStop(1, MAD.esc);
@@ -846,15 +1025,17 @@ const Tribo = (() => {
   function resumo(p) {
     const n = p.predios.length, M = MORADIAS.find(m => m[0] === p.moradias) || MORADIAS[0];
     const partes = [M[1] + ' · ' + n + (n === 1 ? ' moradia' : ' moradias') + ' (com a do chefe)', p.W + ' × ' + p.H + ' quadrados'];
-    if (p.palicada) partes.push('paliçada' + (p.torres && p.torres.length ? ', ' + p.torres.length + ' torres' : '') + ' e fosso');
+    const nP = (p.paredes || []).filter(w => w.k === 'door').length;
+    if (p.palicada) partes.push('paliçada' + ({ oct: ' em octógono', irregular: ' irregular' }[p.muroForma] || '') + (nP > 1 ? ' com ' + nP + ' portões' : '') + (p.torres && p.torres.length ? ', ' + p.torres.length + ' torres' : '') + ' e fosso');
     if (p.sagrado) partes.push('o círculo de pedras');
     if (p.cercado) partes.push('o cercado');
     return partes.join(' · ') + '.';
   }
-  const lembrar = st => { App.opt.triMor = st.moradias; App.opt.triTam = st.tamanho; App.opt.triTer = st.terreno; App.opt.triPal = st.palicada; App.opt.triSag = st.sagrados; App.opt.triVida = st.vida; };
+  const lembrar = st => { App.opt.triMor = st.moradias; App.opt.triTam = st.tamanho; App.opt.triTer = st.terreno; App.opt.triPal = st.palicada; App.opt.triSag = st.sagrados; App.opt.triVida = st.vida; App.opt.triTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
   function padrao() {
     const o = App.opt;
-    return { moradias: MEDIDA[o.triMor] ? o.triMor : 'tenda', tamanho: TAMANHOS[o.triTam] ? o.triTam : 'media', terreno: TERRENOS_T.some(t => t[0] === o.triTer) ? o.triTer : 'floresta', palicada: o.triPal !== false, sagrados: o.triSag !== false, vida: o.triVida !== false };
+    return { moradias: MEDIDA[o.triMor] ? o.triMor : 'tenda', tamanho: TAMANHOS[o.triTam] ? o.triTam : 'media', terreno: TERRENOS_T.some(t => t[0] === o.triTer) ? o.triTer : 'floresta', palicada: o.triPal !== false, sagrados: o.triSag !== false, vida: o.triVida !== false,
+      t: Tracado.limpar(o.triTracado) };                                         // (lote 8) o traçado (a seção "Traçado")
   }
   function controles(st, K, mudou) {
     const { field, seg, toggle } = K;
@@ -866,14 +1047,21 @@ const Tribo = (() => {
       field('Terreno', seg('tri-ter', st.terreno, TERRENOS_T.map(([k, n]) => [k, n]), v => muda('terreno', v)), 'stack'),
       toggle('tri-pal', st.palicada, v => muda('palicada', v), 'Paliçada com o portão, as torres de vigia e o fosso com estacas'),
       toggle('tri-sag', st.sagrados, v => muda('sagrados', v), 'Lugares sagrados (o círculo de pedras com a fogueira dos ancestrais, o mastro com crânios, os totens)'),
-      toggle('tri-vida', st.vida, v => muda('vida', v), 'O dia a dia (o cercado com os bichos, os secadores, o forno, o tear, a lenha, o riacho e as canoas)'));
+      toggle('tri-vida', st.vida, v => muda('vida', v), 'O dia a dia (o cercado com os bichos, os secadores, o forno, o tear, a lenha, o riacho e as canoas)'),
+      // (lote 8) o traçado: os portões na rosa, a forma da paliçada, o riacho, a praça na beira dele, as pontes e o relevo natural
+      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'tri', portoes: 'Portões',
+        portoesNota: 'Uma trilha sai de cada portão até a praça; a moradia do chefe fica de frente para o primeiro.',
+        muro: { nome: 'Paliçada', formas: [['redonda', 'Redonda'], ['oct', 'Octógono'], ['irregular', 'Irregular']], ligada: !!st.palicada, padraoLigada: true, ligar: v => { st.palicada = v; } },
+        rio: st.vida && st.moradias !== 'palafita' ? true : false, rioNota: st.moradias === 'palafita' ? 'Nas palafitas, a água é o lago da aldeia.' : 'O riacho vem com "O dia a dia" (ligue para escolher de onde ele vem, para onde vai, a largura e as curvas).',
+        praca: ['centro', 'rio'], pontes: true }));
   }
-  const opcoesDe = st => ({ moradias: st.moradias, tamanho: st.tamanho, terreno: st.terreno, palicada: !!st.palicada, sagrados: !!st.sagrados, vida: !!st.vida });
+  const opcoesDe = st => Object.assign({ moradias: st.moradias, tamanho: st.tamanho, terreno: st.terreno, palicada: !!st.palicada, sagrados: !!st.sagrados, vida: !!st.vida }, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o) {
     if (MEDIDA[o.moradias]) st.moradias = o.moradias;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (TERRENOS_T.some(t => t[0] === o.terreno)) st.terreno = o.terreno;
     for (const k of ['palicada', 'sagrados', 'vida']) if (typeof o[k] === 'boolean') st[k] = o[k];
+    st.t = Tracado.limpar(o);                                                       // (lote 8: o traçado do modelo; sem ele, o automático)
     lembrar(st);
   }
   // a parte que trava: o traçado inteiro (a água, a praça, a paliçada, as torres, as moradias, a trilha, o círculo de pedras)
@@ -897,7 +1085,7 @@ const Tribo = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (as torres de vigia, o fosso, a água, os deques e as passarelas)',
     dica: 'Clique no traçado da prévia (a praça, as moradias, a paliçada, a água) para travar: "Gerar outro" troca só as árvores, os enfeites e as coisas do dia a dia.',
     nota: 'Sai uma cena nova: as moradias fechadas, cada uma com um marcador de Entrada na porta (só você vê) — dois cliques geram o interior (a fogueira no meio, as peles, os baús); a fogueira e o totem na praça; a paliçada com o portão (abre e fecha), as torres de vigia de 4 m e o fosso; o cercado com a cerca baixa (deixa ver, não deixa passar). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',

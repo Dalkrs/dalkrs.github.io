@@ -1141,6 +1141,127 @@ const Encontro = (() => {
     return Number.isFinite(s) && s >= 1 && s <= 2147483647 ? { sit: t.sit, s } : null;
   }
   const SECO = { campo: 'savana', floresta: 'savana', selva: 'savana', pantano: 'savana' };
+  /* ================= (lote 8, parte 5) o traçado do encontro =================
+     O rio: o da situação muda (de onde vem e para onde vai, a largura, as curvas, o afluente e o lago — a situação põe a
+     travessia dela onde o caminho cruza o rio novo); se a situação não tem rio e o mestre escolheu de onde ele vem, um rio
+     novo aparece antes de tudo (a situação se arruma em volta dele). As pontes: onde um caminho cruza a água nova (ou um
+     caminho da rosa cruza qualquer água), até o tanto escolhido; sem ponte, o caminho para na beira. Os sorteios novos
+     têm sementes próprias: com as escolhas de sempre, o encontro sai igual. */
+  const MATA_NAT = { estrada: true, floresta: true, campo: true, selva: true, pantano: true, corrompida: true, montanha: true };
+  function prepararTracado(K, T8, sT, chave, rioVale) {
+    const { W, H, P } = K, rosa = rioVale && Tracado.rioDaRosa(T8.rio), conta = { pontes: 0 }, novas = [];
+    // (o ensaio: a situação põe um rio dela? o mesmo sorteio, numa grade à parte — e por onde passam os caminhos dela)
+    let temRio = null;
+    const caminhosEnsaio = [];
+    if (rosa && !K.P.aguaToda) {
+      temRio = false;
+      const Kd = contexto(W, H, K.terreno, K.sit, K.estilo, K.caminho, sT, K.pal), pc0 = Kd.poeCaminho;
+      Kd.poeRio = (...a) => { temRio = true; return [[0, 0], [1, 1]]; };
+      Kd.poeCaminho = (ctrl, tipo) => { if ((tipo || Kd.caminho) !== 'nenhum') caminhosEnsaio.push(curva(ctrl)); return pc0(ctrl, tipo); };
+      try { SIT[chave](Kd); } catch (e) { temRio = true; }
+    }
+    // (o lago fica longe dos caminhos da situação: a travessia dela é no rio, e o caminho não acaba no meio do lago)
+    const longeDosCaminhos = (T8.rio.lago || T8.rio.para === 'lago') && caminhosEnsaio.length ? R0 => {
+      if (!R0.lago) return true;
+      const L = R0.lago.concat([R0.lago[0]]);
+      let m = Infinity;
+      for (const c of caminhosEnsaio) for (const q of c) m = Math.min(m, dentroPoli(R0.lago, q[0], q[1]) ? -1 : distLinha(L, q[0], q[1]));
+      return m >= 2 ? true : m;
+    } : null;
+    const R = rosa ? Tracado.rioPlano(T8.rio, W, H, mulberry(sub(sT, 23)), longeDosCaminhos) : null;
+    // a água nova, para a conta das pontes (os rios e o lago que este traçado pôs)
+    const lavaNova = (pts, hw) => {
+      const n = Math.max(3, Math.round(Paisagem.compr(pts) / 5));
+      for (let k = 0; k < n; k++) { const a = Paisagem.aoLongo(pts, k / n), b = Paisagem.aoLongo(pts, (k + 1) / n); K.zona('lava', (a.x + b.x) / 2, (a.y + b.y) / 2, { k: 'rect', rw: Math.hypot(b.x - a.x, b.y - a.y) + 0.5, rh: hw * 2, dir: Math.round(Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI) }); }
+      for (let t = 0.1; t < 1; t += 0.2) { const q = Paisagem.aoLongo(pts, t); K.luz(q.x, q.y, 6, '#ff8a3a'); }
+    };
+    const poeRio0 = K.poeRio, poeCaminho0 = K.poeCaminho;
+    const resto = (hw, tipo, alt, extra) => {
+      if (!R) return;
+      if (R.rios[1]) { const h2 = Math.max(0.6, Math.round(hw * 0.62 * 10) / 10), pts = poeRio0(R.rios[1].pts, h2, tipo, alt != null ? alt * 0.8 : null); novas.push({ pts, hw: h2, tipo }); if (extra) extra(pts, h2); }
+      if (R.lago) { K.poeLago(R.lago, tipo, alt); novas.push({ lago: R.lago }); }
+    };
+    let feito = false;
+    // (a situação não tem rio: o novo vem antes de tudo)
+    if (temRio === false) {
+      const lava = K.terreno === 'lava', tipo = lava ? 'lava' : 'agua', hw = T8.rio.larg ? Tracado.LARGURA[T8.rio.larg] : 1.2, alt = lava ? -1 : -1.2;
+      const pts = poeRio0(R.rios[0].pts, hw, tipo, alt);
+      novas.push({ pts, hw, tipo });
+      if (lava) lavaNova(pts, hw);
+      resto(hw, tipo, alt, lava ? lavaNova : null);
+      feito = true;
+    }
+    // o primeiro rio da situação: pela rosa, ou com a largura e as curvas escolhidas
+    K.poeRio = (ctrl, hw, tipo, alt) => {
+      if (feito || !rioVale) return poeRio0(ctrl, hw, tipo, alt);
+      feito = true;
+      const h2 = T8.rio.larg ? Tracado.LARGURA[T8.rio.larg] : hw;
+      let pts;
+      if (R) pts = R.rios[0].pts;
+      else if (T8.rio.curvas != null) { const c = curva(ctrl); pts = Tracado.caminho(c[0], c[c.length - 1], T8.rio.curvas, mulberry(sub(sT, 24)), 0.5); }
+      else pts = ctrl;
+      const out = poeRio0(pts, h2, tipo, alt);
+      if (R) { novas.push({ pts: out, hw: h2, tipo }); resto(h2, tipo, alt, tipo === 'lava' ? lavaNova : null); }
+      return out;
+    };
+    // as pontes do caminho onde ele cruza a água (todas: os caminhos da rosa; só a nova: os da situação); a travessia
+    // que a situação já pôs ali (a ponte, as pedras, o tronco) vale
+    const pontes = (pts, tipo, todas) => {
+      const rios = (todas ? P.aguas.filter(a => a.k === 'rio' && (a.tipo === 'agua' || a.tipo === 'lava')).map(a => ({ pts: a.pts, hw: a.hw, tipo: a.tipo })) : novas.filter(a => a.pts)), lagos = todas ? P.aguas.filter(a => a.k === 'lago').map(a => a.pts) : novas.filter(a => a.lago).map(a => a.lago);
+      if (!rios.length) return;
+      for (const q of Tracado.cruzamentos(pts, { rios, lago: null })) {
+        if (lagos.some(l => dentroPoli(l, q.x, q.y))) continue;
+        if (P.pintados.some(o => (o.k === 'ponte' && Math.hypot(o.x - q.x, o.y - q.y) < (o.comp || 2) / 2 + 1.5) || (o.k === 'pedras' && o.pts.some(pq => Math.hypot(pq[0] - q.x, pq[1] - q.y) < 1.6)))) continue;
+        if (T8.pontes != null && conta.pontes >= T8.pontes) return;
+        K.ponte(q.x, q.y, q.rio.hw * 2 + 1.6, hwDe(tipo) * 2 + 0.5, q.ang, q.rio.tipo === 'lava' ? 'pedra' : null, 1);
+        conta.pontes++;
+      }
+    };
+    K.poeCaminho = (ctrl, tipo) => {
+      const t = tipo || K.caminho;
+      if (t !== 'nenhum' && (novas.length || K.rosaCaminho)) pontes(curva(ctrl), t, !!K.rosaCaminho);
+      return poeCaminho0(ctrl, tipo);
+    };
+    return conta;
+  }
+  /* Os caminhos da rosa: de cada direção ligada, um caminho que chega até o caminho da situação (ou até o meio do
+     encontro, quando ela não tem caminho); a direção de onde um caminho já chega não ganha outro. */
+  function caminhosDaRosa(K, ids, sT) {
+    const { W, H, P } = K, rr = mulberry(sub(sT, 26)), tipo = K.camOuTrilha(), hw = hwDe(tipo);
+    const pecas = P.caminhos.map(c => c.pts), chega = new Set();
+    for (const pts of pecas) for (const q of [pts[0], pts[pts.length - 1]]) if (Math.min(q[0], q[1], W - q[0], H - q[1]) < 2) chega.add(Tracado.maisPerto(Math.atan2(q[1] - H / 2, q[0] - W / 2)));
+    const feitos = [];
+    for (const id of ids) {
+      if (chega.has(id)) continue;
+      const a = Tracado.naBorda(id, W, H, (rr() - 0.5) * Math.min(W, H) * 0.25, 1), f = P.foco;
+      const L = Math.hypot(f[0] - a[0], f[1] - a[1]) || 1, nx = -(f[1] - a[1]) / L, ny = (f[0] - a[0]) / L, o2 = (rr() - 0.5) * L * 0.35;
+      let pts = curva([a, [(a[0] + f[0]) / 2 + nx * o2, (a[1] + f[1]) / 2 + ny * o2], f.slice()]);
+      // (até onde ele encontra um caminho que já existe)
+      if (pecas.length) { const k = pts.findIndex((q, i) => i > 2 && pecas.some(pc => distLinha(pc, q[0], q[1]) <= hw + 0.3)); if (k > 0) pts = pts.slice(0, k + 1); }
+      K.rosaCaminho = true;
+      K.poeCaminho(pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1), tipo);
+      K.rosaCaminho = false;
+      feitos.push(id);
+    }
+    return feitos;
+  }
+  // o relevo natural: as colinas, as matas (onde há mato) e as pedras, em manchas pelo ruído — longe da peça do meio,
+  // dos caminhos, da água e do que é grande; as árvores se juntam nos bosques
+  function relevoNatural(K, seed) {
+    const { W, H, P } = K, [fx, fy] = P.foco;
+    const pode = (i, j) => {
+      if (K.at(i, j) !== 0 || Math.hypot(i + 0.5 - fx, j + 0.5 - fy) < Math.min(W, H) * 0.22) return false;
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const v = K.at(i + a, j + b); if (v === 1 || v === 2 || v === 3 || v === 7 || v === 8 || v === 10) return false; }
+      return true;
+    };
+    const nat = Tracado.manchas(W, H, pode, sub(seed, 12));
+    if (MATA_NAT[K.terreno]) for (const m of nat.matas) P.relevo.push({ t: 'mata', alt: 0, k: 'poly', pts: m.pts });
+    for (const c of nat.colinas) P.relevo.push({ t: 'morro', alt: c.alt, k: 'poly', pts: c.pts });
+    for (const q of nat.pedras) { P.rochas.push({ x: q.x, y: q.y, r: q.r }); K.pos(Math.floor(q.x), Math.floor(q.y), 4); }
+    const d0 = P.dens;
+    P.dens = (x, y) => (d0 ? d0(x, y) : 1) * (0.15 + 2.7 * nat.bosque(x, y));
+    return nat;
+  }
   function gerar(o) {
     o = o || {};
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', W = TAMANHOS[tam].W, H = TAMANHOS[tam].H;
@@ -1153,8 +1274,13 @@ const Encontro = (() => {
     // (lote 7, parte 5a) a seca do Mapa-múndi: o chão verde vira o capim seco (o resto do sorteio é o mesmo)
     const pal = o.seco && SECO[pal0] ? SECO[pal0] : pal0;
     const K = contexto(W, H, terreno, sit, estilo, caminho, sT, pal);
+    // (lote 8, parte 5) o traçado escolhido na janela: o rio, as pontes, os caminhos da rosa e o relevo natural
+    const T8 = Tracado.escolhas(o, [], null), mudaRio = terreno !== 'agua' && (Tracado.rioDaRosa(T8.rio) || T8.rio.larg != null || T8.rio.curvas != null);
+    const conta = mudaRio || T8.portoes.length || T8.pontes != null ? prepararTracado(K, T8, sT, terreno + '.' + sit, terreno !== 'agua') : null;
     SIT[terreno + '.' + sit](K);
+    const rosa8 = T8.portoes.length && terreno !== 'agua' ? caminhosDaRosa(K, T8.portoes, sT) : null;
     const rV = mulberry((sub(seed, 2) % 2147483000) + 1);
+    const nat8 = T8.relevo ? relevoNatural(K, seed) : null;
     vegetacao(K, rV);
     enfeites(K, rV);
     if (o.marcas !== false) marcadores(K);
@@ -1162,6 +1288,10 @@ const Encontro = (() => {
     const P = K.P;
     if (!P.tracado.length) P.tracado.push({ k: 'circ', x: P.foco[0], y: P.foco[1], r: 3 });
     delete P.dens; delete P.esp;
+    // (lote 8: o que o traçado novo fez; sem ele, o plano fica como era)
+    if (conta) P.pontesNovas = conta.pontes;
+    if (rosa8) P.caminhosRosa = rosa8;
+    if (nat8) P.pedrasNat = nat8.pedras.length;
     return Object.assign(P, { v: 1, lugar: 'encontro', seed, sT, tamanho: tam, sitPedida, travaTracado: !!trava, comMarcas: o.marcas !== false, seco: pal !== pal0, occ: Array.from(K.occ) });
   }
 
@@ -1368,9 +1498,10 @@ const Encontro = (() => {
   function padrao() {
     const o = App.opt, terreno = TER[o.encTer] ? o.encTer : 'estrada';
     const T = TER[terreno];
-    return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false };
+    return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false,
+      t: Tracado.limpar(o.encTracado) };                                          // (lote 8) o traçado (a seção "Traçado")
   }
-  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; };
+  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
   function controles(st, K, mudou) {
     const { field, seg, toggle } = K, T = TER[st.terreno];
     const camOps = st.terreno === 'agua' ? null : st.terreno === 'estrada' ? CAMINHOS.filter(c => c[0] !== 'nenhum') : CAMINHOS;
@@ -1380,9 +1511,13 @@ const Encontro = (() => {
       h('div', { class: 'ger-l' },
         camOps ? field('Caminho', seg('enc-cam', st.caminho, camOps.map(([k, n]) => [k, n]), v => { st.caminho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack') : null,
         field('Tamanho', seg('enc-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados']), v => { st.tamanho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')),
-      toggle('enc-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e a emboscada (só você vê)'));
+      toggle('enc-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e a emboscada (só você vê)'),
+      // (lote 8) o traçado: os caminhos na rosa, o rio, as pontes e o relevo natural
+      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'enc', portoes: st.terreno === 'agua' ? null : 'Caminhos',
+        portoesNota: 'De onde chegam os caminhos: de cada direção ligada, um caminho até o da situação (ou até o meio do encontro).',
+        rio: st.terreno === 'agua' ? false : true, rioNota: 'No mar, não há rio.', rioDica: 'O rio da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.', pontes: true }));
   }
-  const opcoesDe = st => ({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas });
+  const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o) {
     if (TER[o.terreno]) st.terreno = o.terreno;
     const T = TER[st.terreno];
@@ -1390,6 +1525,7 @@ const Encontro = (() => {
     st.caminho = camValido(st.terreno, typeof o.caminho === 'string' ? o.caminho : st.caminho);
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (typeof o.marcas === 'boolean') st.marcas = o.marcas;
+    st.t = Tracado.limpar(o);                                                       // (lote 8: o traçado do modelo; sem ele, o automático)
     lembrar(st);
   }
   // as partes que travam: o traçado inteiro (a água, o caminho, os penhascos, a peça do meio)
@@ -1413,7 +1549,7 @@ const Encontro = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',

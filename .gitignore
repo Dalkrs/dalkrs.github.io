@@ -3,6 +3,8 @@ node_modules/
 src/**/test/*.png
 src/**/test/v2/
 src/**/test/*.json
+# (as impressões do gerador tiradas antes do lote 8: o teste compara com elas)
+!src/cenas/test/gerador8-ouro.json
 src/**/test/page*.html
 src/cenas/cenas-de-urgm.html
 *.log

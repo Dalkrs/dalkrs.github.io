@@ -839,6 +839,30 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .ger-mds { display: flex; flex-direction: column; gap: 4px; flex: 1 1 280px; min-width: 0; }
 .ger-md { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
 .ger-md select.in, .ger-md input.in { flex: 1 1 170px; width: auto; min-width: 0; }
+/* (lote 8, parte 5) a seção Traçado: abre e fecha; a rosa dos ventos (oito botões em volta de "Auto") */
+.ger-tr { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.ger-tr > summary { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; cursor: pointer; list-style: none; }
+.ger-tr > summary::-webkit-details-marker { display: none; }
+.ger-tr > summary::before { content: '▸'; color: var(--fg-3); transition: transform .15s; }
+.ger-tr[open] > summary::before { transform: rotate(90deg); }
+.ger-tr > summary b { font-weight: 600; }
+.ger-tr > summary .note { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ger-trc { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 12px; }
+.ger-trl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 22px; }
+.ger-trn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; flex: 1 1 160px; min-width: 0; }
+.ger-trn .note { margin: 0; }
+.ger-rg { display: flex; align-items: center; gap: 8px; }
+.ger-rg input[type=range] { width: 140px; }
+.ger-rg .note { margin: 0; font-size: 12px; }
+.rosa-c { display: flex; flex-direction: column; gap: 4px; }
+.rosa-l { display: flex; align-items: center; gap: 8px; }
+.rosa { display: grid; grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 30px); gap: 3px; }
+.rosa-d, .rosa-a, .rosa-x { border: 1px solid var(--line-strong); border-radius: 7px; background: var(--raised); color: var(--fg-2); font: 600 11.5px var(--mono); cursor: pointer; padding: 0; }
+.rosa-a { font: 600 11px var(--ui); color: var(--fg-3); }
+.rosa-x { padding: 6px 10px; font: 600 12.5px var(--ui); }
+.rosa-d:hover, .rosa-a:hover, .rosa-x:hover { background: var(--hover); color: var(--fg); }
+.rosa-d.on, .rosa-x.on { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.rosa-a.on { border-color: var(--lamp); color: var(--lamp-ink); }
 /* as pastas da lista de cenas (lote 6): no menu, a pasta abre e fecha; as cenas dela vêm um pouco para dentro */
 .menu-pasta .menu-l { font-weight: 600; }
 .menu-i.dentro { padding-left: 22px; }

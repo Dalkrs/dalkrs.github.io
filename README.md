@@ -917,6 +917,51 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   camada escondida ou travada tem a etiqueta, e o clique (ou a busca rápida) avisa e, no botão, mostra a camada e vai
   até ele.
 
+### O traçado dos geradores (lote 8)
+
+- **A seção "Traçado"** na janela "Gerar um lugar…" (`Tracado.secao`, `src/cenas/src/js/10c3-tracado.js`), na Cidade,
+  no Vilarejo, na Tribo e no Encontro: abre e fecha (o aparelho lembra), e o resumo dela diz o que saiu do automático
+  ("portões: norte e leste · rio de oeste, até um lago · 2 pontes"). "Voltar ao automático" desfaz tudo. As escolhas
+  vão no modelo guardado (só as que mudaram, `Tracado.soMudadas`) e no estado de cada aba (`cidTracado`,
+  `vilaTracado`, `triTracado`, `encTracado`).
+- **O que sai igual**: com tudo no automático, os quatro geradores dão exatamente o que davam (os modelos, os bairros
+  e as cenas filhas regeradas continuam iguais). Os sorteios novos têm sementes próprias (`sub(seed, k)` com k novos),
+  e os de sempre seguem na mesma ordem. `gerador8-ouro.json` guarda as impressões de 159 lugares tiradas antes.
+- **Os portões numa rosa dos ventos** (oito direções e "Auto"; "Sortear" liga de duas a quatro): na Cidade e no
+  Vilarejo, uma rua principal sai de cada portão até a praça; com muralha, o portão é o ponto do contorno naquela
+  direção (`Tracado.noContorno`). Na Tribo, uma trilha de cada portão, e a moradia do chefe fica de frente para o
+  primeiro; nas palafitas, o principal fica num dos quatro lados e nenhum vai para o lago. No Encontro são os
+  **caminhos**: de cada direção ligada, um caminho até o caminho da situação (ou até o meio do encontro, sem caminho);
+  a direção de onde o caminho da situação já chega não ganha outro.
+- **A forma da muralha**: Cidade (octógono, redonda, irregular, sem — com o mar, cortada na beira e aberta para a
+  água), Vilarejo (retângulo, octógono, redonda, irregular, sem) e Tribo (redonda, octógono, irregular, sem). A
+  paliçada do vilarejo pelo contorno (`Tracado.pecasDoAnel`) tem um vão onde cada rua cruza o contorno e fica aberta
+  onde ele passa pela água; os quadrados dela ficam marcados, e nada nasce em cima.
+- **O rio**: de onde vem e para onde vai (`Tracado.rioPlano`; para onde vai também pode ser um lago dentro do mapa), a
+  largura (riacho 0,9 · rio 1,7 · rio largo 2,6, a meia largura em quadrados), as curvas (0 a 10; 4 é como sempre), o
+  afluente (dois rios que se juntam) e o lago no caminho (no máximo um quinto do mapa, mais largo que o rio). O rio da
+  rosa vem antes e o lugar se arruma em volta: na Cidade, das tentativas, a que passa mais longe da praça (se ela ainda
+  fica a menos de três quadrados da água, anda para o lugar seco mais perto, e as ruas vão até lá; perto de um portão, o
+  primeiro portão com um lugar seco logo para dentro); no Vilarejo, uma das tentativas que deixam mais chão seco no
+  meio, e a praça num lugar seco; na Tribo, uma das que deixam o anel das moradias com mais chão seco, e a aldeia vai
+  para lá (do lado da praça: a paliçada termina na beira, e nada fica do outro lado da água). No Encontro, o rio da
+  situação muda (a travessia dela vai junto, onde o caminho cruza o rio novo); se a situação não tem rio, escolher de
+  onde ele vem põe um rio novo antes de tudo (um ensaio com o mesmo sorteio diz se ela tem, e por onde passam os
+  caminhos dela: o lago fica longe deles). Na Cidade com mar, o rio deságua no mar. Na Tribo, o riacho vem com "O dia a
+  dia" (fora das palafitas).
+- **A praça**: no centro, perto do rio (na beira, do lado de dentro da muralha) ou perto de um portão (a uns cinco a
+  sete quadrados dele, para dentro); a Tribo tem só o centro e perto do rio.
+- **As pontes**: automático (uma em cada rua que cruza a água), nenhuma ou de 1 a 6, na ordem de perto da praça (na
+  Cidade, as principais primeiro); onde não há ponte, a rua (ou a trilha) para na beira, dos dois lados. O lago não tem
+  ponte, nem o rio onde ele passa por dentro do lago. No Encontro, as pontes são onde um caminho cruza a água nova (ou
+  um caminho da rosa cruza qualquer água); a travessia que a situação já pôs (a ponte, as pedras, o tronco) vale.
+- **O relevo natural** (`Tracado.manchas`, ruído suave em três oitavas): as colinas (terreno Morro, com a altura) e as
+  matas (terreno Mata, onde há mato) em manchas, e as pedras em grupos, longe da praça, das ruas, da água e do que foi
+  construído; as árvores de fora se juntam nos bosques. No vilarejo, ele toma o lugar do morro de um canto.
+- **As travas**: no Vilarejo, as ruas novas e o rio da rosa travam pela semente (`{ v: 8, s }` e `{ v: 8, s, k }` —
+  a tentativa que serviu); a trava das ruas de sempre não vale nas ruas novas (escolher os portões traça de novo). Na
+  Cidade, na Tribo e no Encontro, a trava do traçado continua sendo a semente dele, e as escolhas valem por cima.
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1872,4 +1917,14 @@ construção (com 0, no custo, num passo de desfazer, e o nome igual que usa o d
 `mundo-camadas` confere as camadas pela tela: a janelinha (as dez, quanto há de cada uma, C e Esc), esconder (o que
 some, guardado ao recarregar, o ponto no botão), travar (o clique que passa para a região embaixo), a lista do painel
 e a seleção, criar numa camada escondida ou travada (a ferramenta, o clique, o arrasto, o menu do mapa), os atalhos
-com o Desfazer, o terreno e a grade, quem joga e a tela do celular.
+com o Desfazer, o terreno e a grade, quem joga e a tela do celular. Na parte 5, `src/cenas/test/gerador8.js` confere o
+traçado dos geradores: com `SO=ouro`, os 159 lugares de antes, iguais; com `SO=cidade`, os portões na rosa, a muralha
+redonda e irregular (e com o mar), o rio da rosa (longe da praça), a largura e as curvas, o afluente e o lago, a praça
+perto do rio e de um portão, as pontes (nenhuma dentro do lago; com mar, a do cais), o relevo natural, a cena e o bairro
+recortado; com `SO=vila`, os portões e as ruas, a paliçada pelo contorno (os vãos, aberta na água, as casas dentro), o
+rio que vem antes e a praça no seco, as pontes, as travas pela semente e a cena; com `SO=tribo`, os portões (o chefe de
+frente para o primeiro, as palafitas sem portão para o lago), as formas, o riacho e a aldeia no lugar seco maior (as
+moradias cabem), as pontes das trilhas e o relevo; com `SO=encontro`, o rio da situação pela rosa (com a travessia), a
+largura e as curvas, o rio novo, o lago longe da estrada, as pontes, os caminhos da rosa, o relevo e as 48 situações com
+tudo ligado; com `SO=janela` e `SO=vilajanela`, a seção Traçado das quatro abas (a rosa, a forma, o rio, a praça, as
+pontes, o relevo, o resumo, o modelo, voltar ao automático, travar o rio e a cena).

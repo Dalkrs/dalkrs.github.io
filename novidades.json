@@ -2,6 +2,33 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.17-15",
+      "data": "2026-10-17",
+      "titulo": "O traçado dos geradores",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a seção Traçado, na Cidade, no Vilarejo, na Tribo e no Encontro. Os portões ficam numa rosa dos ventos (as oito direções; “Sortear” liga de duas a quatro): de cada portão sai uma rua principal até a praça (na Tribo, uma trilha, e a moradia do chefe fica de frente para o primeiro). No Encontro, são os caminhos que chegam de cada direção."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no Traçado, o rio — de onde vem e para onde vai (ou até um lago), a largura (riacho, rio ou rio largo), as curvas (de reto a bem sinuoso), um afluente (dois rios que se juntam) e um lago no caminho. O lugar se arruma em volta do rio: a praça fica no seco, e a aldeia da Tribo vai para o maior lugar seco. No Encontro, o rio da situação muda junto com a travessia dela; se a situação não tem rio, escolher de onde ele vem põe um rio novo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no Traçado, a forma da muralha ou da paliçada (octógono, redonda ou irregular; no Vilarejo, também o retângulo de sempre; “Sem” desliga), onde fica a praça (no centro, perto do rio ou perto de um portão), quantas pontes (no automático, uma em cada rua que cruza a água; onde não há ponte, a rua para na beira) e o relevo natural (colinas, matas e pedras em manchas, fora do lugar)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: com o Traçado no automático, os lugares saem exatamente como antes (os modelos guardados e os bairros também). O resumo da seção diz o que mudou, “Voltar ao automático” desfaz tudo, e o modelo guardado leva o traçado junto."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.17-14",
       "data": "2026-10-17",
       "titulo": "As camadas do Mapa-múndi",
