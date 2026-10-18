@@ -589,6 +589,25 @@ dialog.mundo-dl.eco-dl { width: min(880px, calc(100% - 24px)); }
 .mundo-dl fieldset.ct-nivel { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px 10px; }
 .mundo-dl fieldset.ct-nivel legend { padding: 0 4px; }
 .mundo-dl fieldset.ct-nivel .lin label:first-child, .mundo-dl fieldset.ct-nivel .lin label:last-child { flex: 0 0 132px; }
+/* (lote 10, parte 4) a semana: o aviso na Economia do mundo e a prévia */
+.sem-box { display: grid; gap: 3px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.sem-box b { font-size: 13px; color: var(--fg); }
+.sem-box small { font-size: 12px; color: var(--fg-3); }
+.sem-box.pend { border-color: var(--lamp); background: var(--lamp-soft); }
+.sem-box.pend b { color: var(--lamp-ink); }
+.sem-box .row { margin-top: 4px; }
+.sem-fac { display: grid; gap: 6px; }
+.sem-cab { display: flex; align-items: center; gap: 8px; }
+.sem-cab i { flex: none; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line-strong); }
+.sem-cab b { font-size: 14px; color: var(--fg); }
+.sem-tab td.num, .sem-tab th.num { text-align: right; font-family: var(--mono); }
+.sem-tab tr.falta td:last-child { color: var(--danger); font-weight: 700; }
+.mundo-dl .sem-exe, .mundo-dl .sem-par { font-size: 12px; color: var(--fg-3); }
+.mundo-dl .sem-par { color: var(--fg-2); }
+.mundo-dl label.op.sem-cons { font-weight: 500; }
+.sem-obras { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; color: var(--fg-2); }
+.sem-obras li.pronta { color: var(--ok); }
+.sem-obras li.parada { color: var(--danger); }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -924,14 +943,14 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=20"></script>
+<script src="nucleo.js?v=21"></script>
 <script src="guerra.js?v=2"></script>
-<script src="reino.js?v=3"></script>
+<script src="reino.js?v=4"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=21"></script>
-<script src="painel.js?v=26"></script>
+<script src="painel.js?v=27"></script>
 <script src="guerra-painel.js?v=3"></script>
-<script src="reino-painel.js?v=3"></script>
+<script src="reino-painel.js?v=4"></script>
 <script src="mundo.js?v=12"></script>
 </body>
 </html>

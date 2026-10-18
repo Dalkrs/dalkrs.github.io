@@ -3091,6 +3091,7 @@
     for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista', 'camadas']) App.on(ev, agendar);
     App.on('mapas', () => { if (menu) abrirMenu(); });
     window.addEventListener('resize', () => fecharMenu());
+    if (RP() && typeof RP().iniciar === 'function') RP().iniciar(App);       // (lote 10, parte 4) a prévia da semana abre sozinha
     pintar();
   }
 

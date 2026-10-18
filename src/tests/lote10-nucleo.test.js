@@ -9,6 +9,10 @@
 //     exigências, começar a obra (paga na hora, com o histórico), terminar, subir de nível, cancelar (devolve), demolir,
 //     o que falta, de graça, a produção e o gasto, a defesa (até 20; desligada, nada), as construções normalizadas e a
 //     sede do clã (para a facção ligada ao clã, sem ela para a dona do lugar).
+//   · (parte 4) a semana (vira de domingo para segunda; as pendentes), a manutenção dos exércitos (por tipo, a cada 10
+//     soldados, na proporção; a das sem tipo), a prévia (o estoque, a produção, a manutenção, o que fica — nunca abaixo
+//     de zero —, o que falta, as construções que param, as consequências, as obras) e aplicar (com o que o mestre
+//     recusou; as regras desligadas; uma semana de cada vez).
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 let n = 0, bad = 0;
@@ -306,6 +310,92 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   ok(j(viaVale.fa) === j(a0) && viaVale.fb.lapros === (b0.lapros || 0) + 5 && viaVale.fb.orith === (b0.orith || 0) + 2, 'o clã ligado ao Vale: a produção da sede vai para o Vale: ' + j(viaVale));
   const soK1 = pf(mcl, id => (id === 'cla1' ? { fac: null, cons: new Set(['k1']) } : null));
   ok(soK1.fa.lapros === (a0.lapros || 0) + 5 && (soK1.fa.orith || 0) === (a0.orith || 0), 'o clã sem facção ligada: para a dona do lugar; a construção que o clã não tem mais não conta');
+}
+
+/* ---- (parte 4) fechar a semana ---- */
+{
+  const base = { nome: 'M', larg: 2000, alt: 1400, grade: { tam: 40, x: 0, y: 0, orient: 'pe', on: true },
+    faccoes: [{ id: 'fa', nome: 'Aldar', apoio: 60 }, { id: 'fb', nome: 'Vale' }], guerra: { tipos: [{ id: 'inf', nome: 'Infantaria' }, { id: 'cer', nome: 'Cerco' }] },
+    objs: [
+      { id: 'p1', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 800, 600) },
+      { id: 's1', k: 'r', nome: 'Ducado', fac: 'fb', pai: 'p1', pts: quad(20, 20, 380, 280) },
+      { id: 'v1', k: 'm', x: 600, y: 450, nome: 'Vila Alta' },
+      { id: 'v2', k: 'm', x: 100, y: 100, nome: 'Aldeia do Vale' },
+      { id: 'ga', k: 'g', x: 500, y: 500, tipo: 'exercito', fac: 'fa', exe: { moral: 5, unid: [{ id: 'u1', tipo: 'inf', tropas: 25 }, { id: 'u2', tropas: 10 }] } },
+      { id: 'gb', k: 'g', x: 150, y: 150, tipo: 'exercito', fac: 'fb', exe: { moral: 6, unid: [{ id: 'u3', tipo: 'cer', tropas: 20 }] } }] };
+  const ml = JSON.parse(j(N.normalizarMapa(base)));
+  ml.cal.dia = 3;
+  const rel = R.ligarEconomia(ml);
+  let m = N.normalizarMapa(ml);
+  ok(rel.semana === true && N.semanaDe(m.cal, 3) === 0 && m.eco.sem === R.semanaN(m, 3) && R.semanasPendentes(m) === 0, 'ligar: hoje vira segunda-feira e a semana começa a contar (nenhuma pendente)');
+  eq([m.eco.manut0, m.eco.manut, m.eco.regras], [{ suprimentos: 1, lapros: 1 }, {}, { fome: 10, moral: 1, obras: true, outro: true, moralOutro: 1 }], 'a manutenção das unidades sem tipo de começo (1 de comida e 1 de moeda a cada 10) e as regras da falta de começo');
+  // o calendário anda: domingo ainda é a mesma semana; segunda, uma para fechar; duas segundas, duas
+  const comDia = d => N.normalizarMapa(Object.assign(JSON.parse(j(m)), { cal: Object.assign({}, m.cal, { dia: d }) }));
+  eq([R.semanasPendentes(comDia(9)), R.semanasPendentes(comDia(10)), R.semanasPendentes(comDia(17)), R.semanasPendentes(comDia(1))], [0, 1, 2, 0], 'a semana vira de domingo para segunda (dia 9 é domingo: nenhuma; 10: uma; 17: duas; para trás: nenhuma)');
+  // a manutenção dos exércitos (por tipo, a cada 10 soldados, na proporção)
+  const mx = JSON.parse(j(m));
+  mx.eco.manut = { inf: { suprimentos: 2, lapros: 1 }, cer: { pedra: 1 }, zz: { lapros: 9 } };
+  mx.eco.cons.push({ id: 'forno', nome: 'Forno', esp: 1, niveis: [{ custo: {}, sem: 1, prod: { lapros: 5 }, gasto: { pedra: 2 } }] });
+  const o = id => mx.objs.find(x => x.id === id);
+  o('v1').ass = { niv: 'metropole', pop: 0, cons: [{ id: 'k1', t: 'fazenda', n: 1 }, { id: 'k2', t: 'santuario', n: 1 }, { id: 'k3', t: 'quartel', n: 1 }, { id: 'k4', t: 'templo', n: 0, obra: { n: 1, sem: 2, fac: 'fa', pago: {} } }, { id: 'k7', t: 'forno', n: 1 }] };
+  o('v2').ass = { niv: 'aldeia', pop: 0, cons: [{ id: 'k5', t: 'forno', n: 1 }, { id: 'k6', t: 'celeiro', n: 0, obra: { n: 1, sem: 1, fac: null, pago: {} } }] };
+  const fa = mx.faccoes[0], fb = mx.faccoes[1];
+  fa.rec.find(r => r.id === 'lapros').n = 4; fa.rec.find(r => r.id === 'suprimentos').n = 1;
+  fb.rec.find(r => r.id === 'pedra').n = 1;
+  mx.cal.dia = 10;
+  m = N.normalizarMapa(mx);
+  eq(m.eco.manut, { inf: { suprimentos: 2, lapros: 1 }, cer: { pedra: 1 } }, 'a manutenção: só dos tipos de tropa que existem');
+  const mn0 = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { manut0: { lapros: -1, suprimentos: 2 }, regras: { fome: 500, moral: -3, obras: 'não', outro: 0, moralOutro: 99 } }) }));
+  eq([mn0.eco.manut0, mn0.eco.regras], [{ suprimentos: 2 }, { fome: 100, moral: 0, obras: false, outro: false, moralOutro: 10 }], 'a manutenção só de números acima de zero; as regras nos limites (o apoio até 100, a moral até 10)');
+  eq([R.manutencaoDe(m, m.objs.find(x => x.id === 'ga')), R.manutencaoDe(m, m.objs.find(x => x.id === 'gb'))], [{ suprimentos: 6, lapros: 3.5 }, { pedra: 2 }],
+    'a manutenção da Hoste: 25 de infantaria (2,5 × 2 de comida e 1 de moeda) e 10 sem tipo; a do Vale, 20 de cerco (2 de pedra)');
+  // a prévia
+  const p = R.semanaPrevia(m);
+  const pa = p.fac.find(x => x.id === 'fa'), pb = p.fac.find(x => x.id === 'fb');
+  ok(p.n === m.eco.sem && p.pendentes === 1 && p.de === 3 && p.ate === 9, 'a prévia da semana que acabou (de segunda, dia 3, a domingo, dia 9)');
+  eq([pa.est, pa.prod, pa.manut, pa.fica, pa.falta], [{ lapros: 4, suprimentos: 1 }, { suprimentos: 3, runas: 3, lapros: -2 }, { suprimentos: 6, lapros: 3.5 }, { runas: 3 }, { lapros: 1.5, suprimentos: 2 }],
+    'Aldar: o estoque, a produção (a Fazenda menos o Quartel; as runas e o gasto do Santuário), a manutenção, o que fica (nunca abaixo de zero) e o que falta');
+  eq([pb.prod, pb.fica, pb.falta, pb.paradas], [{}, {}, { pedra: 1 }, [{ o: 'v2', c: 'k5', t: 'forno', r: 'pedra' }]],
+    'o Vale sem pedra: o Forno dele para (nem produz os 5 Lapros, nem gasta as 2 pedras; o de Aldar não conta para o Vale), e ainda falta 1 para o cerco');
+  eq(pa.paradas, [{ o: 'v1', c: 'k7', t: 'forno', r: 'pedra' }], 'o Forno de Aldar também para (sem pedra)');
+  eq(p.cons.map(c => [c.id, c.de, c.para]), [['fome:fa', 60, 50], ['obras:fa', undefined, undefined], ['moral:ga', 5, 4], ['outro:gb', 6, 5]],
+    'as consequências: a fome de Aldar (apoio 60 → 50), as obras dela param, a Hoste perde moral (sem Lapros) e o cerco do Vale (sem pedra)');
+  eq(p.obras.map(w => [w.c, w.sem0, w.sem1, w.pronta, w.parada]), [['k4', 2, 2, false, true], ['k6', 1, 0, true, false]], 'as obras: o Templo de Aldar para (sem Lapros); o Celeiro (sem ninguém pagando) fica pronto');
+  // aplicar (o mestre recusa a moral da Hoste)
+  const rasc = JSON.parse(j(m)), feito = R.aplicarSemana(rasc, null, ['moral:ga'], 'Semana até o dia 9');
+  const ma = N.normalizarMapa(rasc), fa2 = ma.faccoes[0], g2 = id => ma.objs.find(x => x.id === id);
+  ok(!!feito && ma.eco.sem === m.eco.sem + 1 && R.semanasPendentes(ma) === 0, 'aplicar: a semana fecha (nenhuma pendente)');
+  ok(j(Object.fromEntries(fa2.rec.map(r => [r.id, r.n]))) === j({ lapros: 0, suprimentos: 0, madeira: 0, pedra: 0, orith: 0, runas: 3 }) && fa2.apoio === 50 && fa2.hist[fa2.hist.length - 1].mot === 'Semana até o dia 9',
+    'Aldar: os estoques no que sobrou, o apoio 50 (com o motivo no histórico): ' + j(fa2.rec));
+  ok(g2('ga').exe.moral === 5 && g2('gb').exe.moral === 5, 'a moral recusada não cai (a Hoste fica com 5); a do cerco do Vale cai para 5');
+  ok(j(g2('v1').ass.cons.find(c => c.id === 'k4').obra) === j({ n: 1, sem: 2, fac: 'fa', pago: {} }) && j(g2('v2').ass.cons.find(c => c.id === 'k6')) === j({ id: 'k6', t: 'celeiro', n: 1, obra: null }), 'o Templo continua parado; o Celeiro ficou pronto');
+  // recusar "as obras param": a obra anda mesmo sem moeda
+  const r2 = JSON.parse(j(m)); R.aplicarSemana(r2, null, ['obras:fa'], '');
+  ok(N.normalizarMapa(r2).objs.find(x => x.id === 'v1').ass.cons.find(c => c.id === 'k4').obra.sem === 1, 'recusando "as obras param", o Templo anda uma semana');
+  // as regras do mestre: sem a fome, sem a moral, sem parar as construções
+  const r3 = JSON.parse(j(m)); r3.eco.regras = { fome: 0, moral: 0, obras: false, outro: false, moralOutro: 0 };
+  const p3 = R.semanaPrevia(N.normalizarMapa(r3));
+  ok(p3.cons.length === 0 && p3.fac.find(x => x.id === 'fb').paradas.length === 0 && j(p3.fac.find(x => x.id === 'fb').falta) === j({ pedra: 3 }) && p3.obras.every(w => !w.parada),
+    'com as regras desligadas: nenhuma consequência, o Forno não para (falta mais pedra) e as obras andam');
+  // duas semanas pendentes: uma de cada vez
+  const r4 = JSON.parse(j(m)); r4.cal.dia = 17;
+  const m4 = N.normalizarMapa(r4), p4 = R.semanaPrevia(m4);
+  ok(p4.pendentes === 2 && p4.de === 3, 'duas semanas pendentes: a prévia é a da primeira');
+  R.aplicarSemana(r4, null, [], ''); const m5 = N.normalizarMapa(r4);
+  ok(R.semanasPendentes(m5) === 1 && R.semanaPrevia(m5).de === 10, 'aplicada a primeira, a segunda é a próxima (dia 10 a 16)');
+  // o apoio sem número: a fome não tem o que tirar
+  const r6 = JSON.parse(j(m)); r6.faccoes[0].apoio = null;
+  ok(!R.semanaPrevia(N.normalizarMapa(r6)).cons.some(c => c.tipo === 'fome'), 'sem o apoio escrito, a fome não propõe nada');
+  // o calendário que volta e depois anda não reabre a semana já fechada
+  const r7 = JSON.parse(j(ma)); r7.cal.dia = 4;
+  const m7 = N.normalizarMapa(r7), r8 = JSON.parse(j(m7)); r8.cal.dia = 11;
+  ok(R.semanasPendentes(m7) === 0 && R.semanasPendentes(N.normalizarMapa(r8)) === 0 && m7.eco.sem === ma.eco.sem, 'voltar o calendário para a semana fechada e andar de novo: nenhuma semana para fechar');
+  // ligar de novo depois de um tempo desligada: começa da semana de hoje (sem as que passaram)
+  const r9 = JSON.parse(j(ma)); r9.eco.on = false; r9.cal.dia = 40;
+  const m9 = N.normalizarMapa(r9), r10 = JSON.parse(j(m9)); R.ligarEconomia(r10);
+  ok(R.semanasPendentes(N.normalizarMapa(r10)) === 0, 'ligar de novo depois de semanas desligada: nenhuma pendente');
+  // sem a semana pendente, nada
+  ok(R.semanaPrevia(comDia(9)) === null && R.aplicarSemana(JSON.parse(j(comDia(9))), null, [], '') === null, 'sem semana pendente: sem prévia, e aplicar não faz nada');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

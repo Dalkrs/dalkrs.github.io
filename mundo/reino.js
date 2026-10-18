@@ -17,6 +17,12 @@
    As prontas produzem e gastam por semana (na parte própria da região do assentamento) e somam a defesa na fortificação.
    A sede do clã: os números que o mestre dá às construções do clã vão para a facção ligada ao clã (sem ela, para a
    dona do lugar).
+   (parte 4) A semana: quando o calendário passa de domingo para segunda, a semana que acabou fica para fechar. A prévia
+   (semanaPrevia) soma, por facção, o estoque, a produção e a manutenção dos exércitos (por tipo de tropa, a cada 10
+   soldados, na proporção) e propõe o que a falta traz (o estoque não fica abaixo de zero): sem comida, o apoio cai; sem
+   moeda, as obras param e a moral dos exércitos cai; sem outro recurso, as construções que gastam dele param (e os
+   exércitos que o usam na manutenção perdem moral). As obras andam uma semana. aplicarSemana faz tudo isso no
+   rascunho, menos as consequências que o mestre recusou; as semanas pendentes vão uma de cada vez.
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -209,6 +215,7 @@
     for (const f of m.faccoes || []) for (const l of recursosNaFaccao(m, f)) ligados.push({ fac: f.id, nome: l.nome });
     let semana = false;
     if (ehObj(m.cal) && !Number.isInteger(m.cal.sem0)) { m.cal.sem0 = N.sem0Para(m.cal.dia, 0); semana = true; }
+    m.eco.sem = semanaN(m, ehObj(m.cal) ? m.cal.dia : 0);           // (parte 4) a semana começa a contar agora (nenhuma pendente)
     return { ligados, semana };
   }
   // os assentamentos (os marcadores com assentamento) e a região de cada um (a de mais dentro que tem o marcador)
@@ -422,11 +429,125 @@
     return out;
   }
 
+  /* ---------------- (parte 4) a semana ---------------- */
+  // o número da semana de um dia (a semana vira de domingo para segunda); null sem os dias da semana no mapa
+  const semanaN = (m, dia) => { const c = ehObj(m) && ehObj(m.cal) ? m.cal : null; return c && Number.isInteger(c.sem0) ? Math.floor((c.sem0 + Math.floor(Number(dia) || 0)) / 7) : null; };
+  // as semanas que acabaram e ainda não foram fechadas
+  function semanasPendentes(m) {
+    const e = ecoDe(m), w = e ? semanaN(m, m.cal.dia) : null;
+    return e && w != null && Number.isInteger(e.sem) ? Math.max(0, w - e.sem) : 0;
+  }
+  // o primeiro e o último dia (segunda e domingo) da semana de número n
+  const diasDaSemana = (m, n) => { const d0 = 7 * n - m.cal.sem0; return { de: d0, ate: d0 + 6 }; };
+  // a manutenção de um exército por semana: { recurso: n } — cada unidade, a do tipo dela (ou a das sem tipo) × tropas/10
+  function manutencaoDe(m, g) {
+    const e = ecoDe(m), out = {};
+    if (!e || !ehObj(g) || !ehObj(g.exe)) return out;
+    for (const u of Array.isArray(g.exe.unid) ? g.exe.unid : []) {
+      const tab = u && u.tipo ? e.manut[u.tipo] : e.manut0;
+      if (tab && Number(u.tropas) > 0) somar(out, tab, Number(u.tropas) / 10);
+    }
+    return out;
+  }
+  const exercitosDe = (m, fid) => objsDe(m).filter(o => ehObj(o) && o.k === 'g' && ehObj(o.exe) && fid && o.fac === fid);
+  /* A prévia da semana que vai fechar (a primeira pendente), sem mexer no mapa — null se não há nenhuma. clas: como em
+     producaoPorFaccao. → { n, de, ate, pendentes, fac: [{ id, est, prod, manut, fica, falta, exe: [{ id, manut }], paradas:
+     [{ o, c, t, r }] }], obras: [{ o, c, t, n, sem0, sem1, pronta, parada, fac }], cons: [{ id, tipo: 'fome' | 'moral' |
+     'outro' | 'obras', fac, g, d, de, para, r }] } — cons.id é o que o mestre recusa (fome:facção, moral:exército,
+     outro:exército, obras:facção). */
+  function semanaPrevia(m, clas) {
+    const N = NN(), e = ecoDe(m), pend = semanasPendentes(m);
+    if (!e || !pend) return null;
+    const n = e.sem, dias = diasDaSemana(m, n), rg = e.regras || {}, papel = new Map(e.rec.map(r => [r.id, r.papel || '']));
+    const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
+    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [] };
+    const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
+    const semMoeda = new Set();
+    for (const f of m.faccoes || []) {
+      const est = {}, p = somar({}, prod[f.id] || {}), manut = {}, exe = [], paradas = [];
+      for (const w of e.rec) { const r = (f.rec || []).find(x => x.id === w.id); if (r && Number(r.n)) est[w.id] = arred2(Number(r.n)); }
+      for (const g of exercitosDe(m, f.id)) { const u = manutencaoDe(m, g); if (Object.keys(u).length) { exe.push({ id: g.id, manut: u }); somar(manut, u); } }
+      const saldo = () => { const b = {}; for (const w of e.rec) { const v = arred2((est[w.id] || 0) + (p[w.id] || 0) - (manut[w.id] || 0)); if (v) b[w.id] = v; } return b; };
+      let b = saldo();
+      // sem outro recurso (nem comida nem moeda): as construções desta facção que gastam dele param (nem produzem, nem gastam)
+      const faltaOutro = Object.keys(b).filter(r => b[r] < 0 && !comida(r) && !moeda(r));
+      if (rg.outro && faltaOutro.length) {
+        for (const a of assentamentosDe(m)) {
+          if (dono(a.o) !== f.id) continue;
+          for (const c of a.o.ass.cons || []) {
+            const t = tipoDe(m, c.t);
+            if (!t || c.n < 1) continue;
+            const nv = t.niveis[Math.min(c.n, t.niveis.length) - 1], r = faltaOutro.find(x => nv.gasto[x] > 0);
+            if (!r) continue;
+            paradas.push({ o: a.o.id, c: c.id, t: t.id, r });
+            somar(p, nv.prod, -1); somar(p, nv.gasto);
+          }
+        }
+        if (paradas.length) b = saldo();
+      }
+      const fica = {}, falta = {};
+      for (const w of e.rec) { const v = b[w.id] || 0; if (v < 0) falta[w.id] = arred2(-v); if (v > 0) fica[w.id] = v; }
+      const tem = [est, p, manut, falta].some(x => Object.keys(x).length) || paradas.length;
+      if (tem) out.fac.push({ id: f.id, est, prod: p, manut, fica, falta, exe, paradas });
+      // as consequências (cada uma o mestre pode recusar)
+      const fr = Object.keys(falta);
+      if (fr.some(comida) && rg.fome > 0 && f.apoio != null) out.cons.push({ id: 'fome:' + f.id, tipo: 'fome', fac: f.id, d: rg.fome, de: f.apoio, para: Math.max(0, f.apoio - rg.fome) });
+      if (fr.some(moeda)) {
+        semMoeda.add(f.id);
+        if (rg.obras) out.cons.push({ id: 'obras:' + f.id, tipo: 'obras', fac: f.id });
+      }
+      for (const g of exercitosDe(m, f.id)) {
+        let moral = g.exe.moral;
+        if (fr.some(moeda) && rg.moral > 0) { out.cons.push({ id: 'moral:' + g.id, tipo: 'moral', fac: f.id, g: g.id, d: rg.moral, de: moral, para: Math.max(0, moral - rg.moral) }); moral = Math.max(0, moral - rg.moral); }
+        const u = (exe.find(x => x.id === g.id) || {}).manut || {}, r = fr.find(x => !comida(x) && !moeda(x) && u[x] > 0);
+        if (r && rg.moralOutro > 0) out.cons.push({ id: 'outro:' + g.id, tipo: 'outro', fac: f.id, g: g.id, r, d: rg.moralOutro, de: moral, para: Math.max(0, moral - rg.moralOutro) });
+      }
+    }
+    // as obras: andam uma semana (sem moeda, a da facção que responde por ela para — quem pagou, senão a dona do lugar)
+    for (const a of assentamentosDe(m)) for (const c of a.o.ass.cons || []) {
+      if (!c.obra) continue;
+      const fac = c.obra.fac || dono(a.o), parada = !!(rg.obras && fac && semMoeda.has(fac)), sem1 = parada ? c.obra.sem : Math.max(0, c.obra.sem - 1);
+      out.obras.push({ o: a.o.id, c: c.id, t: c.t, n: c.obra.n, sem0: c.obra.sem, sem1, pronta: !parada && sem1 === 0, parada, fac });
+    }
+    return out;
+  }
+  /* Fechar a semana (no rascunho): a prévia de agora, com as consequências que o mestre não recusou (os ids em
+     recusadas). Os estoques ficam no que sobrou (com o motivo no histórico de cada facção), o apoio e a moral caem, as
+     obras andam (e as prontas sobem de nível) e a semana seguinte passa a ser a aberta. → a prévia aplicada, ou null */
+  function aplicarSemana(m, clas, recusadas, mot) {
+    const N = NN(), prev = semanaPrevia(m, clas);
+    if (!prev) return null;
+    const no = new Set(recusadas || []), dia = ehObj(m.cal) ? m.cal.dia : 0, e = m.eco;
+    for (const pf of prev.fac) {
+      const f = (m.faccoes || []).find(x => x.id === pf.id);
+      if (!f) continue;
+      recursosNaFaccao(m, f);
+      for (const w of e.rec) N.facMudar(f, 'r:' + w.id, pf.fica[w.id] || 0, dia, mot || '');
+    }
+    const moral = new Map();
+    for (const c of prev.cons) {
+      if (no.has(c.id)) continue;
+      if (c.tipo === 'fome') { const f = (m.faccoes || []).find(x => x.id === c.fac); if (f && f.apoio != null) N.facMudar(f, 'apoio', Math.max(0, f.apoio - c.d), dia, mot || ''); }
+      if (c.tipo === 'moral' || c.tipo === 'outro') moral.set(c.g, (moral.get(c.g) || 0) + c.d);
+    }
+    for (const [gid, d] of moral) { const g = achaObj(m, gid); if (g && ehObj(g.exe)) g.exe.moral = Math.max(0, Math.min(10, (Number(g.exe.moral) || 0) - d)); }
+    for (const w of prev.obras) {
+      if (w.parada && !no.has('obras:' + w.fac)) continue;
+      const c = consDe(achaObj(m, w.o), w.c);
+      if (!c || !c.obra) continue;
+      c.obra.sem = Math.max(0, c.obra.sem - 1);
+      if (!c.obra.sem) { c.n = c.obra.n; c.obra = null; }
+    }
+    e.sem = prev.n + 1;
+    return prev;
+  }
+
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
     RECURSOS_INICIAIS, TERRENO_INICIAL, POP_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
     CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
-    cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla };
+    cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,
+    semanaN, semanasPendentes, diasDaSemana, manutencaoDe, semanaPrevia, aplicarSemana };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;
   if (typeof window !== 'undefined') window.MundoReino = MundoReino;
 })();

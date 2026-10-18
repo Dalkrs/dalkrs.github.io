@@ -1804,7 +1804,12 @@
      efeito escrito) }] }]. No assentamento, ass.cons = [{ id, t (o tipo), n (o nível pronto; 0 = ainda na obra do 1º),
      obra: { n (o nível que a obra faz), sem (as semanas que faltam), fac (quem pagou), pago } | null }] e ass.cla = {
      id (o clã da página Clã: este é a sede dele), prod: { construção do clã: { recurso: n } } } — os números que o
-     mestre dá às construções do clã. */
+     mestre dá às construções do clã.
+     (parte 4) A semana: eco.sem = a primeira semana ainda não fechada (o número da semana: (sem0 + dia) / 7, a semana vira
+     de domingo para segunda); eco.manut = { tipo de tropa: { recurso: n } } e eco.manut0 (as unidades sem tipo) = o que
+     cada 10 soldados custam por semana; eco.regras = { fome (o apoio que cai por semana de fome), moral (a moral que cada
+     exército perde sem moeda), obras (sem moeda, as obras param), outro (sem outro recurso, as construções que gastam
+     dele param), moralOutro (e os exércitos que o usam na manutenção perdem de moral) }. */
   const PAPEIS_REC = { moeda: 'Moeda', comida: 'Comida', madeira: 'Madeira', pedra: 'Pedra', metal: 'Metal', magia: 'Magia' };
   const MAX_REC_MUNDO = 24, MAX_NIV = 12, MAX_PROD = 1e6, MAX_POP_ASS = 1e9;
   const MAX_CONS = 40, MAX_NIV_CONS = 5, MAX_CONS_ASS = 16, MAX_SEM_OBRA = 104, MAX_DEF_CONS = 20, MAX_ESP_CONS = 6, MAX_EF_CONS = 200;
@@ -1846,7 +1851,8 @@
     for (const c of out) if (c.exige.cons && (!cids.has(c.exige.cons) || c.exige.cons === c.id)) c.exige.cons = null;
     return out;
   }
-  function normEco(v, terrenos) {
+  const REGRAS_FALTA = { fome: 10, moral: 1, obras: true, outro: true, moralOutro: 1 };
+  function normEco(v, terrenos, tiposG, cal) {
     if (!ehObj(v)) return null;
     const rec = [], vistos = new Set();
     for (const r of Array.isArray(v.rec) ? v.rec : []) {
@@ -1868,7 +1874,23 @@
       vn.add(id);
       niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40) });
     }
-    return { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
+    const eco = { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv, cons: normCatalogo(v.cons, ids, terIds, vn) };
+    // (parte 4) a semana: sem o número guardado, a de hoje (nenhuma pendente); sem os dias da semana no mapa, nenhuma
+    const semHoje = ehObj(cal) && Number.isInteger(cal.sem0) ? Math.floor((cal.sem0 + Math.floor(num(cal.dia, 0))) / 7) : null;
+    // (a guardada fica mesmo à frente de hoje: o calendário que volta e depois anda não reabre as semanas já fechadas)
+    eco.sem = semHoje == null ? null : Number.isInteger(v.sem) ? limitar(v.sem, -1e7, 1e7) : semHoje;
+    // a manutenção dos exércitos: por tipo de tropa (só os que existem) e a das unidades sem tipo (sem ela guardada: a de
+    // começo, 1 de comida e 1 de moeda a cada 10 soldados)
+    const tipos = new Set(tiposG || []), manut = {};
+    if (ehObj(v.manut)) for (const k of Object.keys(v.manut)) if (tipos.has(k)) { const t = normTabPos(v.manut[k], ids); if (Object.keys(t).length) manut[k] = t; }
+    let manut0 = ehObj(v.manut0) ? normTabPos(v.manut0, ids) : null;
+    if (!manut0) { manut0 = {}; for (const p of ['comida', 'moeda']) { const r = rec.find(x => x.papel === p); if (r) manut0[r.id] = 1; } }
+    const rg = ehObj(v.regras) ? v.regras : {};
+    eco.manut0 = manut0;
+    eco.manut = manut;
+    eco.regras = { fome: inteiro(rg.fome, REGRAS_FALTA.fome, 0, 100), moral: inteiro(rg.moral, REGRAS_FALTA.moral, 0, 10), obras: rg.obras === undefined ? REGRAS_FALTA.obras : sim(rg.obras),
+      outro: rg.outro === undefined ? REGRAS_FALTA.outro : sim(rg.outro), moralOutro: inteiro(rg.moralOutro, REGRAS_FALTA.moralOutro, 0, 10) };
+    return eco;
   }
   /* O assentamento do marcador: o nível (um dos da economia) e a população (o mestre muda); (parte 3) as construções e a
      sede do clã. Sem nada disso, nada. (As referências ao catálogo e às facções se conferem depois, com o mapa todo.) */
@@ -2089,7 +2111,7 @@
     mapa.pintura = normPintura(m.pintura, mapa.terrenos);
     const guerra = normGuerra(m.guerra);                         // (lote 8, parte 6) os tipos de tropa, as batalhas, os hexágonos
     if (guerra) mapa.guerra = guerra;
-    const eco = normEco(m.eco, mapa.terrenos);                  // (lote 10) a economia do mundo (só quando há: o mapa de antes fica igual)
+    const eco = normEco(m.eco, mapa.terrenos, mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : [], cal);   // (lote 10) a economia do mundo (só quando há: o mapa de antes fica igual)
     if (eco) mapa.eco = eco;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
@@ -2355,7 +2377,7 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
-    PAPEIS_REC, normEco, normAss,
+    PAPEIS_REC, normEco, normAss, REGRAS_FALTA,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS },
   };

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-10",
+      "data": "2026-10-18",
+      "titulo": "Fechar a semana",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: quando o calendário passa de domingo para segunda, a prévia da semana abre sozinha — por facção, o estoque, a produção, a manutenção dos exércitos, o que fica e o que falta (o estoque não fica abaixo de zero), e as obras andando. Nada muda até você aplicar, com Desfazer; com várias semanas para fechar, vem uma de cada vez."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a falta traz consequências propostas, cada uma com a caixa para recusar — sem comida, o apoio cai; sem moeda, as obras param e a moral dos exércitos cai; sem outro recurso, as construções que gastam dele param. Os números ficam em “Regras da falta…”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Manutenção dos exércitos…” — quanto cada 10 soldados custam por semana, por tipo de tropa (e as unidades sem tipo), pagos na proporção."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-9",
       "data": "2026-10-18",
       "titulo": "Construções e a sede do clã",

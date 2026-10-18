@@ -10,6 +10,11 @@
    exigências e os níveis, com o custo, as semanas, o que produz, o que gasta, a defesa e o efeito —, tirar, pôr o
    pronto); no assentamento, as construções dele (os espaços, construir, subir de nível, terminar, cancelar, demolir) e
    a sede do clã (as construções do clã, com a produção que o mestre dá a cada uma).
+   (parte 4) A semana: na Economia do mundo, a semana aberta (ou as que estão para fechar), a manutenção dos exércitos
+   (uma tabela: os tipos de tropa e as unidades sem tipo, por recurso) e as regras da falta; a prévia da semana (por
+   facção, o estoque, a produção, a manutenção, o que fica e o que falta; as consequências, cada uma com a caixa para
+   recusar; as obras), que abre sozinha quando o calendário passa de domingo para segunda; aplicar (com Desfazer) e a
+   próxima pendente.
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
 (() => {
   'use strict';
@@ -175,6 +180,16 @@
         linha(botao(eco ? 'Ligar de novo…' : 'Ligar a economia…', ligar, { c: 'pri', k: 'eco:ligar' })));
       return secao('Economia do mundo', out);
     }
+    // (parte 4) a semana
+    const wN = R().semanaN(m, m.cal.dia), pend = R().semanasPendentes(m);
+    if (wN == null) out.push(nota('O mapa não conta os dias da semana (aba Mapa): sem eles, a semana não fecha.'));
+    else {
+      const ds = R().diasDaSemana(m, pend ? eco.sem : wN);
+      out.push(h('div', { class: 'sem-box' + (pend ? ' pend' : ''), 'data-k': 'eco:sem' },
+        h('b', { text: pend ? (pend === 1 ? '1 semana para fechar' : pend + ' semanas para fechar') : 'A semana está aberta' }),
+        h('small', { text: pend ? (pend > 1 ? 'A primeira: ' : '') + 'de ' + N().textoData(m.cal, ds.de) + ' a ' + N().textoData(m.cal, ds.ate) + '.' : 'Ela fecha na virada de domingo (' + N().textoData(m.cal, ds.ate) + ') para segunda: a prévia abre sozinha.' }),
+        pend ? linha(botao('Fechar a semana…', () => janelaSemana(), { c: 'pri sm', k: 'eco:semana' })) : null));
+    }
     out.push(h('small', { class: 'note eco-rot', text: 'Recursos do mundo' }));
     out.push(h('div', { class: 'eco-recs' }, eco.rec.map(r => {
       const papel = campoEscolha('eco:r:' + r.id + ':papel', null, r.papel || '', papeisOps(),
@@ -187,7 +202,9 @@
     })));
     out.push(linha(botao('+ Recurso', novoRecurso, { c: 'sm', k: 'eco:rec-novo', off: eco.rec.length >= 24 }),
       botao('Produção do terreno…', janelaTerreno, { c: 'sm', k: 'eco:ter' }),
-      botao('Produção da população…', janelaPopulacao, { c: 'sm', k: 'eco:pop' })));
+      botao('Produção da população…', janelaPopulacao, { c: 'sm', k: 'eco:pop' }),
+      botao('Manutenção dos exércitos…', janelaManutencao, { c: 'sm', k: 'eco:manut' }),
+      botao('Regras da falta…', janelaRegras, { c: 'sm', k: 'eco:regras' })));
     out.push(nota('O papel diz o que o recurso é para as regras (a moeda, a comida…). O estoque de cada facção fica nos números dela (abra a facção, acima).'));
     out.push(h('small', { class: 'note eco-rot', text: 'Níveis dos assentamentos (do menor ao maior)' }));
     out.push(h('div', { class: 'eco-nivs' }, eco.niv.map(n => {
@@ -327,6 +344,7 @@
           if (!t) continue;
           const n = kit().lerNum(t);
           if (!Number.isFinite(n) || Math.abs(n) > 1e6) { err.textContent = l.nome + ', ' + c.nome + ': use um número (de −1.000.000 a 1.000.000).'; ent[l.id + '\n' + c.id].focus(); return; }
+          if (o.positivo && n < 0) { err.textContent = l.nome + ', ' + c.nome + ': use 0 ou mais.'; ent[l.id + '\n' + c.id].focus(); return; }
           if (n) { if (!out[l.id]) out[l.id] = {}; out[l.id][c.id] = Math.round(n * 100) / 100; }
         }
         fim(out);
@@ -366,7 +384,7 @@
         x.obra.sem = n;
       }), { min: 0, max: (N().LIMITES && N().LIMITES.semanasObra) || 104 });
       sem.setAttribute('aria-label', 'Semanas que faltam na obra de ' + t.nome);
-      obra = h('div', { class: 'cons-obra' }, h('span', { class: 'tag obra', text: 'obra do nível ' + c.obra.n }), h('span', { text: 'faltam' }), sem, h('span', { text: c.obra.sem === 1 ? 'semana' : 'semanas' }));
+      obra = h('div', { class: 'cons-obra' }, h('span', { class: 'tag obra', text: 'obra do nível ' + c.obra.n }), h('span', { text: c.obra.sem === 1 ? 'falta' : 'faltam' }), sem, h('span', { text: c.obra.sem === 1 ? 'semana' : 'semanas' }));
     }
     const ef = c.n && t.niveis[c.n - 1].ef ? h('small', { class: 'cons-ef', text: t.niveis[c.n - 1].ef }) : null;
     return h('div', { class: 'cons-li' + (c.obra ? ' em-obra' : ''), 'data-k': 'cons:' + c.id },
@@ -663,6 +681,135 @@
     });
   }
 
+  /* ---------------- (parte 4) a semana ---------------- */
+  // a manutenção dos exércitos: quanto cada 10 soldados custam por semana (por tipo de tropa, e as unidades sem tipo)
+  async function janelaManutencao() {
+    const K = kit(), m = app().mapa;
+    if (!ligada(m)) return;
+    const linhas = [{ id: '_', nome: 'Sem tipo de tropa' }].concat((m.guerra ? m.guerra.tipos : []).map(t => ({ id: t.id, nome: t.nome })));
+    const v = await janelaTabela({ titulo: 'Manutenção dos exércitos', ok: 'Salvar', positivo: true,
+      texto: 'Quanto cada 10 soldados custam por semana para a facção do exército (menos de 10, ou um número quebrado, paga na proporção). Os tipos de tropa vêm da aba Guerra. Vazio ou zero: nada.',
+      linhas, colunas: m.eco.rec, valores: Object.assign({ _: m.eco.manut0 }, m.eco.manut) });
+    if (v == null || !K.mesmoMapa(m.id)) return;
+    const m0 = v._ || {}, resto = Object.assign({}, v);
+    delete resto._;
+    if (mudarEco('mudar a manutenção dos exércitos', e => {
+      if (JSON.stringify(e.manut0) === JSON.stringify(m0) && JSON.stringify(e.manut) === JSON.stringify(resto)) return false;
+      e.manut0 = m0; e.manut = resto;
+    }) !== false) K.avisoDesfazer('Manutenção dos exércitos salva.');
+  }
+  // as regras da falta: o que a prévia da semana propõe
+  async function janelaRegras() {
+    const K = kit(), m = app().mapa;
+    if (!ligada(m)) return;
+    const r = m.eco.regras, sn = [['sim', 'Sim'], ['nao', 'Não']];
+    const v = await K.janela({ titulo: 'Regras da falta', ok: 'Salvar', texto: 'O que a prévia da semana propõe quando falta um recurso. Na prévia, você ainda escolhe o que vale.',
+      campos: [
+        { id: 'fome', rotulo: 'Sem comida: o apoio da facção cai (pontos, por semana)', tipo: 'number', valor: r.fome, min: 0, max: 100 },
+        { id: 'moral', rotulo: 'Sem moeda: a moral de cada exército da facção cai', tipo: 'number', valor: r.moral, min: 0, max: 10 },
+        { id: 'obras', rotulo: 'Sem moeda: as obras da facção param?', tipo: 'select', valor: r.obras ? 'sim' : 'nao', opcoes: sn },
+        { id: 'outro', rotulo: 'Sem outro recurso: as construções que gastam dele param?', tipo: 'select', valor: r.outro ? 'sim' : 'nao', opcoes: sn },
+        { id: 'moralOutro', rotulo: 'Sem outro recurso: a moral dos exércitos que o usam na manutenção cai', tipo: 'number', valor: r.moralOutro, min: 0, max: 10 }],
+      ler: x => {
+        const n = (k, a, b, nome) => { const v0 = Number(String(x[k]).trim() || 0); if (!(Number.isInteger(v0) && v0 >= a && v0 <= b)) throw new Error(nome + ': um número inteiro de ' + a + ' a ' + b + '.'); return v0; };
+        return { fome: n('fome', 0, 100, 'O apoio'), moral: n('moral', 0, 10, 'A moral sem moeda'), obras: x.obras === 'sim', outro: x.outro === 'sim', moralOutro: n('moralOutro', 0, 10, 'A moral sem outro recurso') };
+      } });
+    if (!v || !K.mesmoMapa(m.id)) return;
+    if (mudarEco('mudar as regras da falta', e => { if (JSON.stringify(e.regras) === JSON.stringify(v)) return false; e.regras = v; }) !== false) K.avisoDesfazer('Regras da falta salvas.');
+  }
+  // fechar a semana: a prévia (a primeira pendente); aplicar faz tudo num passo de Desfazer e abre a próxima, se houver
+  let semanaAberta = false;
+  async function janelaSemana() {
+    const A = app(), m = A.mapa;
+    if (semanaAberta || !A.podeEditar() || !ligada(m)) return;
+    const clas = id => (A.infoDoCla ? A.infoDoCla(id) : null), prev = R().semanaPrevia(m, clas);
+    if (!prev) { A.toast('Nenhuma semana para fechar agora.'); return; }
+    semanaAberta = true;
+    let res = null;
+    try { res = await dialogoSemana(m, prev); } finally { semanaAberta = false; }
+    if (!res || !kit().mesmoMapa(m.id)) return;
+    const ate = N().textoData(m.cal, prev.ate);
+    let feito = null;
+    const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate); if (!feito) return false; });
+    if (ok === false || !feito) return;
+    const no = new Set(res.recusadas), prontas = feito.obras.filter(w => w.pronta || (w.parada && no.has('obras:' + w.fac) && w.sem0 <= 1)).length;
+    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : ''));
+    if (R().semanasPendentes(A.mapa) > 0) setTimeout(() => janelaSemana(), 400);
+  }
+  function dialogoSemana(m, prev) {
+    const { h, nomeFac, facDe, fmt, nomeDe, achar } = kit();
+    return new Promise(resolve => {
+      const recs = m.eco.rec, cxs = [], papel = id => (recs.find(r => r.id === id) || {}).papel || '';
+      const nomeR = id => (recs.find(r => r.id === id) || { nome: id }).nome, nomeG = id => { const g = achar(m, id); return g ? nomeDe(g, m) : 'o exército'; }, nomeF = id => { const f = facDe(m, id); return f ? nomeFac(f) : 'a facção'; };
+      const titulo = h('h2', { text: 'Fechar a semana' });
+      titulo.id = 'dl-sem-' + Date.now().toString(36);
+      const mais = prev.pendentes - 1;
+      const sub = h('p', { 'data-k': 'sem:quando', text: 'De ' + N().textoDataSemana(m.cal, prev.de) + ' a ' + N().textoDataSemana(m.cal, prev.ate) + '.' + (mais > 0 ? ' Depois desta, ' + (mais === 1 ? 'mais 1 semana' : 'mais ' + mais + ' semanas') + ' para fechar.' : '') + ' Nada muda até você aplicar.' });
+      const n2 = v => fmt(v || 0, 2);
+      const blocos = prev.fac.map(pf => {
+        const f = facDe(m, pf.id), ids = recs.filter(r => pf.est[r.id] || pf.prod[r.id] || pf.manut[r.id] || pf.falta[r.id] || pf.fica[r.id]);
+        const tab = h('table', { class: 'eco-tab sem-tab' },
+          h('thead', null, h('tr', null, ['Recurso', 'Estoque', 'Produção', 'Manutenção', 'Fica', 'Falta'].map((t, i) => h('th', { scope: 'col', class: i ? 'num' : null, text: t })))),
+          h('tbody', null, ids.map(r => h('tr', { 'data-rec': r.id, class: pf.falta[r.id] ? 'falta' : null },
+            h('th', { scope: 'row' }, h('i', { style: { background: r.cor } }), h('span', { text: r.nome })),
+            h('td', { class: 'num', text: n2(pf.est[r.id]) }), h('td', { class: 'num', text: pf.prod[r.id] ? sinalN(pf.prod[r.id]) : '—' }),
+            h('td', { class: 'num', text: pf.manut[r.id] ? '−' + fmt(pf.manut[r.id], 2) : '—' }), h('td', { class: 'num', text: n2(pf.fica[r.id]) }),
+            h('td', { class: 'num', text: pf.falta[r.id] ? n2(pf.falta[r.id]) : '' })))));
+        const exe = pf.exe.map(x => nomeG(x.id) + ' (' + txtTab(m, x.manut, false) + ')');
+        const par = pf.paradas.map(x => { const o = achar(m, x.o), t = R().tipoDe(m, x.t); return (t ? t.nome : 'A construção') + (o ? ' (' + nomeDe(o, m) + ')' : '') + ' não produz nem gasta: falta ' + nomeR(x.r) + '.'; });
+        return h('div', { class: 'sem-fac', 'data-k': 'sem:fac:' + pf.id }, h('div', { class: 'sem-cab' }, h('i', { style: { background: f ? f.cor : null } }), h('b', { text: f ? nomeFac(f) : pf.id })),
+          ids.length ? h('div', { class: 'eco-tab-caixa' }, tab) : null,
+          exe.length ? h('small', { class: 'sem-exe', text: 'Manutenção dos exércitos: ' + exe.join(' · ') + '.' }) : null,
+          par.map(t => h('small', { class: 'sem-par', text: t })));
+      });
+      const txtCons = c => {
+        if (c.tipo === 'fome') return 'Fome: o apoio de ' + nomeF(c.fac) + ' cai ' + c.d + ' (de ' + c.de + '% para ' + c.para + '%).';
+        if (c.tipo === 'obras') { const pf = prev.fac.find(x => x.id === c.fac), ms = pf ? Object.keys(pf.falta).filter(id => papel(id) === 'moeda').map(nomeR) : [], k = prev.obras.filter(w => w.parada && w.fac === c.fac).length; return 'Sem ' + (ms.join(' e ') || 'moeda') + ': as obras de ' + nomeF(c.fac) + ' param esta semana' + (k ? ' (' + k + ')' : '') + '.'; }
+        if (c.tipo === 'moral') return 'Sem moeda: a moral de ' + nomeG(c.g) + ' cai ' + c.d + ' (de ' + c.de + ' para ' + c.para + ').';
+        return 'Sem ' + nomeR(c.r) + ': a moral de ' + nomeG(c.g) + ' cai ' + c.d + ' (de ' + c.de + ' para ' + c.para + ').';
+      };
+      const listaObras = h('ul', { class: 'sem-obras', 'data-k': 'sem:obras' });
+      const recusadas = () => cxs.filter(([, cb]) => !cb.checked).map(([id]) => id);
+      function pintarObras() {
+        const no = new Set(recusadas());
+        listaObras.replaceChildren(...prev.obras.map(w => {
+          const o = achar(m, w.o), t = R().tipoDe(m, w.t), parada = w.parada && !no.has('obras:' + w.fac), sem1 = parada ? w.sem0 : Math.max(0, w.sem0 - 1);
+          return h('li', { 'data-k': 'sem:obra:' + w.c, class: parada ? 'parada' : sem1 === 0 ? 'pronta' : null },
+            (t ? t.nome : 'Obra') + (w.n > 1 ? ' (nível ' + w.n + ')' : '') + (o ? ' em ' + nomeDe(o, m) : '') + ': ' + (parada ? 'parada (falta moeda)' : sem1 === 0 ? 'fica pronta' : sem1 === 1 ? 'falta 1 semana' : 'faltam ' + sem1 + ' semanas'));
+        }));
+      }
+      const cons = prev.cons.map(c => { const cb = h('input', { type: 'checkbox', 'data-k': 'sem:c:' + c.id, checked: true, onchange: pintarObras }); cxs.push([c.id, cb]); return h('label', { class: 'op sem-cons' }, cb, h('span', { text: txtCons(c) })); });
+      pintarObras();
+      const bNao = h('button', { type: 'button', class: 'btn', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'sem:aplicar', text: 'Aplicar a semana' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo, sub,
+        blocos.length ? blocos : h('p', { class: 'note', text: 'Nada muda nos estoques nesta semana.' }),
+        cons.length ? h('fieldset', { class: 'sem-conss' }, h('legend', { text: 'O que a falta traz (desmarque o que não vale)' }), cons) : null,
+        prev.obras.length ? h('div', { class: 'sem-obras-caixa' }, h('small', { class: 'note', text: 'As obras' }), listaObras) : null,
+        h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl eco-dl sem-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ recusadas: recusadas() }); });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      bOk.focus();
+    });
+  }
+  // a prévia abre sozinha quando o calendário passa de domingo para segunda (por uma mudança deste mestre)
+  let pendVistas = null, iniciado = false;
+  function iniciar(A) {
+    if (iniciado || !A || typeof A.on !== 'function') return;
+    iniciado = true;
+    A.on('muda', info => {
+      const m = A.mapa, p = m && A.podeEditar() && ligada(m) ? R().semanasPendentes(m) : 0, antes = pendVistas;
+      pendVistas = p;
+      if (info && info.origem === 'local' && antes != null && p > antes) setTimeout(() => janelaSemana(), 0);
+    });
+  }
+
   /* ---------------- o Livro do reino (na aba Reinos) ---------------- */
   function secLivro(v) {
     const { h, nota, secao, fmt, plural, nomeFac, facDe } = kit();
@@ -685,5 +832,6 @@
     return secao('Livro do reino', out);
   }
 
-  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, janelaPopulacao, ligar, janelaObra, janelaTipo, icones };
+  window.MundoReinoPainel = { secProvincia, secLivro, secEconomia, secAssentamento, janelaTerreno, janelaPopulacao, ligar, janelaObra, janelaTipo, icones,
+    janelaSemana, janelaManutencao, janelaRegras, iniciar };
 })();

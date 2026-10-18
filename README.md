@@ -1182,6 +1182,27 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   Clã (`App.clas`: na mesa, os que o mestre mestra; fora dela, os deste navegador). As construções do clã aparecem com o
   nível e o efeito (não ocupam espaços), e "Produção…" dá a cada uma quanto produz por semana; isso vai para a facção
   ligada ao clã (sem ela, para a dona do lugar: `producaoPorFaccao(m, clas)`), e aparece no Livro do reino.
+- **A semana** (parte 4; `eco.sem` = a primeira semana ainda não fechada; o número da semana de um dia é (sem0 + dia) / 7,
+  e ela vira de domingo para segunda): na Economia do mundo, a caixa da semana diz se ela está aberta (e quando fecha)
+  ou quantas estão para fechar, com "Fechar a semana…". Quando uma mudança do mestre faz o calendário passar de domingo
+  para segunda (o "+7 dias", o "Próximo dia"…), a prévia abre sozinha; "Agora não" a deixa para depois. Ligar a
+  economia (ou ligar de novo) começa a contar da semana de hoje.
+- **A prévia da semana** (`semanaPrevia`, sem mexer no mapa): por facção, uma tabela com o estoque, a produção (a de
+  sempre, com as construções e as sedes dos clãs), a manutenção dos exércitos, o que fica (nunca abaixo de zero) e o que
+  falta; a manutenção de cada exército; as construções que param. O que a falta traz, cada coisa com a caixa para
+  recusar: sem comida, o apoio da facção cai (só com o apoio escrito); sem moeda, as obras dela param (de quem pagou,
+  senão da dona do lugar) e a moral de cada exército dela cai; sem outro recurso, as construções dela que gastam dele não
+  produzem nem gastam (isso já entra na conta) e a moral dos exércitos que o usam na manutenção cai. As obras andam uma
+  semana (a que chega a zero fica pronta; recusar "as obras param" faz andar). "Aplicar a semana" (`aplicarSemana`, um
+  passo de Desfazer): os estoques ficam no que sobrou (com o motivo "Semana até…" no histórico de cada facção), o apoio
+  e a moral caem, as obras andam e a semana seguinte fica aberta; havendo outra pendente, a prévia dela aparece em
+  seguida (uma de cada vez).
+- **A manutenção dos exércitos** (`eco.manut` por tipo de tropa, `eco.manut0` para as unidades sem tipo;
+  `manutencaoDe`): "Manutenção dos exércitos…" abre a tabela (os tipos de tropa da aba Guerra e "Sem tipo de tropa",
+  um recurso por coluna): quanto cada 10 soldados custam por semana, na proporção (25 soldados pagam 2,5 vezes). As sem
+  tipo começam em 1 de comida e 1 de moeda; um tipo sem número não paga. **As regras da falta** (`eco.regras`):
+  "Regras da falta…" muda quanto o apoio cai (de começo, 10), quanto a moral cai sem moeda (1) ou sem outro recurso
+  (1), e se as obras e as construções param.
 
 ### A Árvore (lote 6)
 
@@ -2216,7 +2237,13 @@ e a sede do clã (para a facção ligada ao clã; sem ela, para a dona do lugar;
 conta); `mundo-lote10` com `SO=construcoes`, o catálogo (mostrar, editar — o erro de um número, um nível a mais,
 desfazer —, criar, tirar), construir (a janela: o que não dá, o custo, o estoque, quem paga), as semanas, terminar,
 subir de graça, cancelar, o que falta (e sem pagar), a Paliçada na Fortificação e na batalha, a produção na província e
-a sede do clã (com um clã deste navegador: a produção da Forja no Livro do Vale). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+a sede do clã (com um clã deste navegador: a produção da Forja no Livro do Vale). Na parte 4, `lote10-nucleo` confere
+a semana (vira de domingo para segunda; as pendentes), a manutenção (por tipo, na proporção; a das sem tipo), a prévia
+(o estoque, a produção, a manutenção, o que fica — nunca abaixo de zero —, o que falta, as construções que param, as
+consequências, as obras) e aplicar (com o que o mestre recusou, as regras desligadas, uma semana de cada vez);
+`mundo-lote10` com `SO=semana`, a caixa da semana, a tabela da manutenção (sem negativo), as regras, a prévia que abre
+sozinha no "+7 dias" (a tabela, as consequências, recusar as obras paradas), aplicar, desfazer, fechar pelo botão e
+duas pendentes. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

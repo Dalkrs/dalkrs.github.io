@@ -20,6 +20,10 @@
 //     (as semanas, terminar), subir de nível (de graça), cancelar (devolve), o que falta (sem pagar, dá), demolir; a
 //     defesa na Fortificação e na batalha; a produção na província; a sede do clã (os clãs deste navegador, a produção da
 //     construção do clã, para a facção ligada a ele, no Livro).
+//   · (parte 4, SO=semana) a semana aberta na Economia do mundo; a manutenção dos exércitos (a tabela, sem número
+//     negativo) e as regras da falta; o calendário passa de domingo para segunda ("+7 dias") e a prévia abre sozinha (o
+//     estoque, a produção, a manutenção, o que fica e o que falta; as consequências — recusar as obras paradas muda as
+//     obras —); aplicar, desfazer, "1 semana para fechar" e fechar pelo botão; duas pendentes, uma de cada vez.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -446,6 +450,72 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     ok(/Produz por semana: Orith 2/.test(lvb), 'no Livro, o Vale produz os 2 de Orith da Forja do clã: ' + lvb);
     await A(L, () => localStorage.removeItem('tinycats:cla:local'));
     await aba(L, 'selecao'); await selecionar(L, null);
+  });
+
+  if (parte('semana')) await passo('fechar a semana', async () => {
+    await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      App.mudar('a economia e a semana', m => {
+        R.ligarEconomia(m);
+        if (!m.eco.cons.length) m.eco.cons = R.catalogoPronto(m, m.eco);
+        const fa = m.faccoes.find(f => f.id === 'fa');
+        fa.apoio = 70;
+        for (const [id, n] of [['lapros', 30], ['suprimentos', 20]]) fa.rec.find(r => r.id === id).n = n;
+        m.objs.push(Object.assign(N.objNovo('m', { x: 850, y: 700, ic: 'vila' }), { id: 'vs', nome: 'Vila do Sul', ass: { niv: 'vila', pop: 0, cons: [{ id: 'kt', t: 'templo', n: 0, obra: { n: 1, sem: 2, fac: 'fa', pago: {} } }] } }));
+      });
+    });
+    await aba(L, 'faccoes');
+    const caixa = () => A(L, () => { const e = document.querySelector('#pane [data-k="eco:sem"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(/^A semana está aberta Ela fecha na virada de domingo \(.+\) para segunda: a prévia abre sozinha\.$/.test(await caixa()) && await campo(L, 'eco:manut').count() === 1 && await campo(L, 'eco:regras').count() === 1,
+      'na Economia do mundo: a semana aberta, "Manutenção dos exércitos…" e "Regras da falta…": ' + await caixa());
+    // a manutenção dos exércitos (a das unidades sem tipo: 1 de comida e 1 de moeda a cada 10, de começo)
+    await botao(L, 'eco:manut');
+    await L.F.waitForSelector('dialog.eco-dl[open]');
+    ok(await A(L, () => [document.querySelector('dialog.eco-dl[open] [data-k="tab:_:suprimentos"]').value, document.querySelector('dialog.eco-dl[open] [data-k="tab:_:lapros"]').value].join()) === '1,1', 'a tabela da manutenção: as unidades sem tipo, 1 de Suprimentos e 1 de Lapros a cada 10');
+    await L.F.fill('dialog.eco-dl[open] [data-k="tab:_:lapros"]', '-1'); await L.F.click('dialog.eco-dl[open] button[type="submit"]'); await espera(200);
+    ok(/Sem tipo de tropa, Lapros: use 0 ou mais\./.test(await A(L, () => document.querySelector('dialog.eco-dl[open] .err').textContent)), 'número negativo na manutenção: não passa');
+    await L.F.fill('dialog.eco-dl[open] [data-k="tab:_:lapros"]', '2'); await L.F.click('dialog.eco-dl[open] button[type="submit"]'); await espera(400);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa.eco.manut0)) === j({ lapros: 2, suprimentos: 1 }), 'salvar: 2 de Lapros a cada 10 soldados sem tipo: ' + await A(L, () => JSON.stringify(__mundo.App.mapa.eco.manut0)));
+    // as regras da falta
+    await botao(L, 'eco:regras');
+    await L.F.fill('dialog.mundo-dl[open] #dl-fome', '15'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
+    ok(await A(L, () => __mundo.App.mapa.eco.regras.fome) === 15, 'as regras da falta: a fome tira 15 de apoio');
+    // o calendário passa de domingo para segunda: a prévia abre sozinha
+    await aba(L, 'hoje'); await semAvisos(L);
+    await L.F.click('#pane [data-k="hoje:+7"]');
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const esp = await A(L, () => { const { App } = __mundo, R = window.MundoReino, p = R.semanaPrevia(App.mapa, id => App.infoDoCla(id)), pf = p.fac.find(x => x.id === 'fa'); return { pf, cons: p.cons.map(c => c.id), sem: App.mapa.eco.sem }; });
+    const linhaFa = await A(L, () => { const e = document.querySelector('dialog.sem-dl[open] [data-k="sem:fac:fa"] tr[data-rec="lapros"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(await A(L, () => /^Fechar a semana De Segunda-Feira, .+ a Domingo, .+\. Nada muda até você aplicar\./.test(document.querySelector('dialog.sem-dl[open] .dl').innerText.replace(/\s+/g, ' ')))
+      && new RegExp('^Lapros 30 ' + (esp.pf.prod.lapros ? '\\+[\\d,]+ ' : '— ') + '−84 0 [\\d,]+$').test(linhaFa) && esp.pf.falta.lapros > 0 && esp.pf.falta.suprimentos > 0,
+      'a prévia abriu sozinha: Aldar com 30 de Lapros, a manutenção da Hoste (420 sem tipo: −84), fica 0 e falta: ' + linhaFa);
+    ok(j(esp.cons) === j(['fome:fa', 'obras:fa', 'moral:ga']) && /Fome: o apoio de Aldar cai 15 \(de 70% para 55%\)\./.test(await A(L, () => document.querySelector('dialog.sem-dl[open] .sem-conss').innerText)), 'as consequências: a fome (apoio 70% → 55%), as obras paradas e a moral da Hoste: ' + j(esp.cons));
+    const obra = () => A(L, () => { const e = document.querySelector('dialog.sem-dl[open] [data-k="sem:obra:kt"]'); return e ? e.textContent : ''; });
+    ok(await obra() === 'Templo em Vila do Sul: parada (falta moeda)', 'a obra do Templo: parada (falta moeda)');
+    await L.F.locator('dialog.sem-dl[open] [data-k="sem:c:obras:fa"]').uncheck(); await espera(100);
+    ok(await obra() === 'Templo em Vila do Sul: falta 1 semana', 'desmarcando "as obras param", o Templo anda: ' + await obra());
+    await semAvisos(L); await foto('l10-semana');
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
+    const dep = await A(L, () => { const m = __mundo.App.mapa, fa = m.faccoes.find(f => f.id === 'fa'); return { lap: fa.rec.find(r => r.id === 'lapros').n, sup: fa.rec.find(r => r.id === 'suprimentos').n, apoio: fa.apoio, moral: m.objs.find(o => o.id === 'ga').exe.moral, obra: m.objs.find(o => o.id === 'vs').ass.cons[0].obra.sem, sem: m.eco.sem, pend: window.MundoReino.semanasPendentes(m) }; });
+    ok(dep.lap === 0 && dep.sup === 0 && dep.apoio === 55 && dep.moral === 4 && dep.obra === 1 && dep.sem === esp.sem + 1 && dep.pend === 0 && /Semana fechada \(até .+\)\./.test(await avisos(L)) && !(await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))),
+      'aplicar: os estoques zerados, o apoio 55%, a moral 4, o Templo andou, a semana fechou (e o aviso): ' + j(dep));
+    // desfazer; fechar pelo botão
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    await aba(L, 'faccoes');
+    ok(await A(L, () => window.MundoReino.semanasPendentes(__mundo.App.mapa)) === 1 && /^1 semana para fechar de .+ a .+\. Fechar a semana…$/.test(await caixa()), 'desfazer: a semana volta a estar para fechar (com o botão): ' + await caixa());
+    await botao(L, 'eco:semana');
+    await L.F.waitForSelector('dialog.sem-dl[open]');
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
+    ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vs').ass.cons[0].obra.sem) === 2, 'fechando pelo botão, com tudo valendo: o Templo fica parado');
+    // duas semanas pendentes: uma de cada vez
+    await A(L, () => __mundo.App.mudar('duas semanas', m => { m.cal.dia += 14; }));
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    ok(/Depois desta, mais 1 semana para fechar\./.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:quando"]').textContent)), 'duas semanas: a prévia da primeira diz que vem mais uma');
+    await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(900);
+    ok(await A(L, () => !!document.querySelector('dialog.sem-dl[open]') && !/Depois desta/.test(document.querySelector('dialog.sem-dl[open] [data-k="sem:quando"]').textContent)), 'aplicada a primeira, a prévia da segunda aparece');
+    await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(300);
+    ok(await A(L, () => window.MundoReino.semanasPendentes(__mundo.App.mapa)) === 1 && /^1 semana para fechar/.test(await caixa()), '"Agora não": a segunda fica para fechar');
+    await aba(L, 'selecao');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));
