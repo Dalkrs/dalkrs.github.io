@@ -1565,7 +1565,7 @@
       if (doMundo.has(r.id)) {
         const n0 = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
         n0.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
-        return h('div', { class: 'rec-linha mundo', 'data-rec': r.id }, h('span', { class: 'rot', title: 'Um recurso do mundo (o nome e a lista ficam na economia, na aba Reinos)', text: r.nome }), n0,
+        return h('div', { class: 'rec-linha rec-mundo', 'data-rec': r.id }, h('span', { class: 'rot', title: 'Um recurso do mundo (o nome e a lista ficam na economia, na aba Reinos)', text: r.nome }), n0,
           verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }), h('span'));
       }
       const nome = campoTexto('f:' + id + ':r:' + r.id + ':nome', null, r.nome, v => mudar('renomear o recurso', x => { const y = x.rec.find(z => z.id === r.id); if (!y || !v.trim() || y.nome === v.trim()) return false; y.nome = v.trim(); }), { max: 60, rotulo: 'Nome do recurso' });

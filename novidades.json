@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-13",
+      "data": "2026-10-18",
+      "titulo": "Os recursos no editor da facção",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Mapa-múndi: com a economia ligada, os recursos do mundo no editor da facção (aba Reinos) apareciam soltos no alto da tela, por cima do nome do mapa. Agora ficam na lista da facção, onde devem estar."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-12",
       "data": "2026-10-18",
       "titulo": "A bandeira da facção",

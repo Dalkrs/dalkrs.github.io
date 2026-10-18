@@ -278,6 +278,9 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     ok(/Produz por semana: Lapros 28 · .*Madeira/.test(lv) && /Estoque: Lapros 40/.test(lv), 'o Livro: o que Aldar produz por semana e o estoque: ' + lv);
     await botao(L, 'fac:fa');
     ok(await campo(L, 'f:fa:r:lapros:n').count() === 1 && !(await campo(L, 'f:fa:r:lapros:nome').count()) && !(await campo(L, 'f:fa:r:lapros:x').count()), 'na facção: o estoque de Lapros (do mundo: sem renomear nem tirar aqui)');
+    ok(await A(L, () => { const p = document.getElementById('pane').getBoundingClientRect(), ls = [...document.querySelectorAll('#pane .rec-linha[data-rec]')];
+      return ls.length > 0 && ls.every(l => { const r = l.getBoundingClientRect(); return getComputedStyle(l).position === 'static' && r.left >= p.left - 1 && r.right <= p.right + 1; }); }),
+      'as linhas dos recursos do mundo ficam na lista da facção, dentro do painel (não soltas por cima do mapa)');
     await botao(L, 'fac:fechar');
     await A(L, () => { const e = document.querySelector('#pane [data-k="livro:fa"]'); if (e) e.scrollIntoView({ block: 'center' }); });
     await semAvisos(L); await foto('l10-economia');
