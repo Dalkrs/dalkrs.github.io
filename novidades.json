@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-3",
+      "data": "2026-10-18",
+      "titulo": "Bandeiras maiores e missões no mapa",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: as bandeiras dos clãs estão maiores. Na aba Facções, em “Neste aparelho”, dá para escolher Pequenas, Médias ou Grandes — vale para todas as bandeiras do mapa, só no aparelho onde você escolheu."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: marque uma missão num marcador, grupo, região ou evento (Seleção → Missão): o ícone ganha um “!”. A missão é um texto curto ou uma missão do grupo das Fichas. Nasce só sua; quando quiser, marque “Os jogadores veem a missão”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a missão concluída vira ✓ (o texto curto, pelo botão Concluir; a das Fichas, sozinha, quando é concluída lá). A aba Hoje lista as missões do mapa. A missão das Fichas ainda escondida não aparece para os jogadores até você revelar lá."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-2",
       "data": "2026-10-18",
       "titulo": "O gêmeo maligno e o Limite de dano na ficha de jogador",

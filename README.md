@@ -1041,6 +1041,25 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   sozinho: o aviso oferece "Tirar da cena" (`gemeosQueCairam`, no fim de cada passo no programa do mestre; a ficha fica
   nas Fichas). Tirar a condição do gêmeo o deixa como um token comum.
 
+### O Mapa-múndi (lote 9)
+
+- **O tamanho das bandeiras** (parte 2), neste aparelho: na aba Facções, "Neste aparelho" → "Tamanho das bandeiras no
+  mapa": Pequenas (as de antes), Médias (de começo, 1,4×) ou Grandes (1,9×) — todas, nas regiões, nos grupos, nas
+  frentes e nas zonas de guerra (`escalaBandeira`, em `mundo/tela.js`; guardado em `tinycats:mundo:painel`, campo
+  `band`). Não mexe no mapa. A base da bandeira da região fica no lugar (em cima do nome) e a do grupo não encosta no
+  token.
+- **A missão no mapa** (parte 2): um marcador, um grupo, uma região ou um evento podem ter uma missão (`o.mis`: `t`, o
+  texto curto; `ref`, o id de uma missão do grupo nas Fichas; `ver`, os jogadores veem; `ok`, concluída à mão). O ícone
+  ganha um "!" (✓ concluída, ✕ falhou; a que só o mestre vê, tracejada; o nome vai na dica). Pela seção Missão do
+  painel: "Marcar missão…" (o texto curto, ou uma missão do grupo das Fichas — as do mundo e as da campanha em vista),
+  "Os jogadores veem a missão" (nasce desmarcado), "Concluir (✓)" / "Reabrir" (no texto curto), "Trocar…" e "Tirar a
+  missão" (com desfazer). A missão ligada pega o nome e a situação das Fichas (`App.missaoDaFicha`, de
+  `fichas:missoes`, `fichas:missoes@<campanha>` e, as escondidas, `fichas:segredos`): concluída lá, vira ✓ sozinha; a
+  ainda escondida nas Fichas não vai para os jogadores mesmo marcada "Os jogadores veem" (até ser revelada lá); a que
+  saiu das Fichas fica apagada, com o aviso no painel. Na projeção, só vai a mostrada, pronta (`t` e `e`, sem a
+  ligação: `comMissoes`); quem joga lê "Missão: …" no painel. A aba Hoje lista as "Missões no mapa". Duplicar um
+  objeto não leva a missão.
+
 ### A Árvore (lote 6)
 
 - **O caminho trancado.** No editor, a chave "Trancado" do nódulo (`n.tranca`) esconde dos jogadores ele e o que só
@@ -1793,6 +1812,8 @@ faltava subir.
   de NPC, o líder é só um nome no alto da hierarquia). As facções que um clã cita vêm dos mapas do Mapa-múndi: uma
   facção escondida no mapa, se o mestre a puser numa relação à mostra, aparece para os jogadores (a lista do mestre
   avisa "escondida no mapa").
+- **A missão ligada a uma missão das Fichas** (lote 9) só aparece numa mesa (fora dela não há Fichas da mesa para
+  ligar), e liga só às missões do grupo (as de cada personagem continuam nas fichas deles: para elas, o texto curto).
 - **Desfazer o Duplicado** (lote 9) tira o gêmeo da cena, mas a ficha dele, que mora nas Fichas, continua lá: apague
   por lá, se não for usar.
 - **A batalha aberta fica na página** (lote 8, parte 6): com dados rolados e ainda sem aplicar, ela some se a página
@@ -2030,4 +2051,12 @@ a ordem de turnos com a mesma iniciativa, o painel do gêmeo, o que vai para os 
 tirar da cena, tirar a condição, desfazer, um token de cada vez, objetos, zonas, a marca que só vale com o id de outro
 token e o cerco sem lugar); `cenas-lote9.rede`, numa mesa, a ficha do gêmeo (a cópia só do mestre, do lado Inimigo, na
 mesma campanha, com as barras cheias ou como estão), o dano no gêmeo indo para a ficha dele e não para a original, o
-gêmeo que cai pela ficha dele (o aviso), a ficha nova nas Fichas do mestre e o gêmeo para os jogadores.
+gêmeo que cai pela ficha dele (o aviso), a ficha nova nas Fichas do mestre e o gêmeo para os jogadores. Na parte 2,
+`lote9-nucleo` confere a missão nas contas (o texto curto, a ligação, `ver`, `ok`, a situação pronta, os objetos que
+têm missão, o que sai, a projeção só com a mostrada); `mundo-lote9` com `SO=bandeiras`, o tamanho das bandeiras neste
+aparelho (Médias de começo, Pequenas, Grandes, em todas, a base no lugar, guardado no aparelho, sem mexer no mapa), e
+com `SO=missoes`, a missão no mapa (marcar, o "!" nos quatro tipos, só do mestre e mostrada, concluir e reabrir, trocar,
+tirar com desfazer, a lista da aba Hoje, o que quem joga lê, duplicar sem ela, e a ligada às Fichas — o nome e a
+situação de lá, a escondida que não vai, a concluída que vira ✓, a que saiu); `mundo-lote9.rede`, numa mesa, a missão
+ligada a uma missão do grupo das Fichas (escondida: o "!" só do mestre; revelada: o jogador vê, com o nome; concluída:
+✓ para os dois).

@@ -86,7 +86,7 @@
     vista() {
       if (!App.mapa) return null;
       if (App.papel !== 'mestre' || !comoJog) return App.mapa;
-      if (cacheVista.de !== App.mapa || cacheVista.br !== brasoesVer) cacheVista = { de: App.mapa, br: brasoesVer, v: comBrasoes(N.projetar(App.mapa), App.mapa.id) };
+      if (cacheVista.de !== App.mapa || cacheVista.br !== brasoesVer || cacheVista.mis !== misVer) cacheVista = { de: App.mapa, br: brasoesVer, mis: misVer, v: comMissoes(comBrasoes(N.projetar(App.mapa), App.mapa.id)) };
       return cacheVista.v;
     },
     /* (lote 8) A bandeira do clã ligado a uma facção (o brasão), para desenhar: a dos clãs que este aparelho lê e, senão,
@@ -98,6 +98,16 @@
       if (v) return v;
       const m = App.vista(), f = m && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === fid) : null;
       return (f && f.br) || null;
+    },
+    /* (lote 9) As missões do grupo das Fichas, para a missão ligada no mapa: o título, a situação e se ainda está escondida
+       dos jogadores (com o mestre). Só na mesa (fora dela não há Fichas da mesa: null). */
+    missaoDaFicha(id) { const f = id ? misFichas.get(id) : null; return f ? Object.assign({}, f) : null; },
+    // as que dá para ligar: as do mundo e as da campanha em vista (as ativas primeiro); fora da mesa, null
+    missoesDasFichas() {
+      if (modo !== 'mesa' || !D) return null;
+      const peso = { ativa: 0, feita: 1, falhou: 2 };
+      return [...misFichas].filter(([, f]) => !f.camp || f.camp === camp).map(([id, f]) => Object.assign({ id }, f))
+        .sort((a, b) => (peso[a.e] - peso[b.e]) || a.t.localeCompare(b.t, 'pt-BR') || (a.id < b.id ? -1 : 1));
     },
     podeEditar() { return App.papel === 'mestre' && !comoJog && !!App.mapa; },
 
@@ -599,6 +609,51 @@
     App.brasoes = novo; brasoesVer++;
     return true;
   }
+  /* (lote 9) As missões do grupo das Fichas (fichas:missoes, a do mundo, e fichas:missoes@<campanha>; as ainda escondidas
+     dos jogadores ficam com o mestre, em fichas:segredos: mis.g e mis.gc[campanha]) → id → { t, e, oculta, camp } */
+  let misVer = 0, misFichas = new Map();
+  const SIT = ['ativa', 'feita', 'falhou'];
+  function missoesDasFichas() {
+    const out = new Map();
+    if (modo !== 'mesa' || !D) return out;
+    const poe = (mapa, oculta, cp) => {
+      if (!mapa || typeof mapa !== 'object' || Array.isArray(mapa)) return;
+      for (const id of Object.keys(mapa)) {
+        const x = mapa[id];
+        if (!x || typeof x !== 'object' || out.has(id)) continue;
+        out.set(id, { t: String(x.t == null ? '' : x.t).trim().slice(0, 120), e: SIT.includes(x.e) ? x.e : 'ativa', oculta, camp: cp });
+      }
+    };
+    for (const l of D.todas()) {
+      if (!l || typeof l.id !== 'string' || !(l.id === 'fichas:missoes' || l.id.startsWith('fichas:missoes@'))) continue;
+      const d = dadosDoc(l);
+      poe(d && d.v, false, l.id.includes('@') ? l.id.slice(l.id.indexOf('@') + 1) : null);
+    }
+    const seg = dadosDoc(D.pegar('fichas:segredos')), mis = seg && seg.v && seg.v.mis;
+    if (mis && typeof mis === 'object') {
+      poe(mis.g, true, null);
+      if (mis.gc && typeof mis.gc === 'object') for (const c of Object.keys(mis.gc)) poe(mis.gc[c], true, c);
+    }
+    return out;
+  }
+  function lerMissoes() {
+    const novo = missoesDasFichas();
+    if (j([...novo]) === j([...misFichas])) return false;
+    misFichas = novo; misVer++;
+    return true;
+  }
+  /* a missão ligada vai para os jogadores com o nome e a situação das Fichas (a que ainda está escondida lá, ou que
+     saiu de lá, não vai); a ligação fica com o mestre */
+  function comMissoes(p) {
+    if (!p || !Array.isArray(p.objs)) return p;
+    for (const o of p.objs) {
+      if (!o.mis || !o.mis.ref) continue;
+      const f = App.missaoDaFicha(o.mis.ref);
+      if (!f || f.oculta) delete o.mis;
+      else o.mis = { t: f.t || o.mis.t || 'Missão', ref: null, ver: true, e: f.e };
+    }
+    return p;
+  }
   /* a projeção leva a bandeira de cada facção (os jogadores a veem mesmo com o clã escondido deles); a facção cujo clã
      este aparelho não lê (o auxiliar sem a aba Clã) fica com a que a projeção já tinha — quem lê os clãs (o mestre da
      mesa, ou quem já recebeu um clã inteiro) sabe quando o clã saiu da facção: aí a bandeira sai */
@@ -616,7 +671,7 @@
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
     if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
-    const p = comBrasoes(N.projetar(m), id), cs = campsDoMapa(id);
+    const p = comMissoes(comBrasoes(N.projetar(m), id)), cs = campsDoMapa(id);
     /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
        que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
     const todos = todosOsMapas();
@@ -1180,6 +1235,7 @@
       return;
     }
     lerBrasoes();                                         // (lote 8) as bandeiras dos clãs, antes da primeira projeção
+    lerMissoes();                                         // (lote 9) as missões do grupo das Fichas (a missão ligada no mapa)
     if (App.papel === 'mestre') {
       for (const l of docsMapas()) {
         const id = l.id.slice(PRE_MAPA.length), pub = docPub(id);
@@ -1211,6 +1267,14 @@
       // (lote 8) um clã mudou (o brasão, a facção dele): as bandeiras do mapa acompanham — e quem mestra publica de novo
       if (l && typeof l.id === 'string' && l.id.startsWith('cla:')) {
         if (lerBrasoes()) {
+          if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
+          App.emit('muda', { origem: 'fora' });
+        }
+        return;
+      }
+      // (lote 9) as missões do grupo mudaram nas Fichas (o nome, a situação, revelada): as missões ligadas acompanham
+      if (l && typeof l.id === 'string' && (l.id === 'fichas:segredos' || l.id === 'fichas:missoes' || l.id.startsWith('fichas:missoes@'))) {
+        if (lerMissoes()) {
           if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
           App.emit('muda', { origem: 'fora' });
         }

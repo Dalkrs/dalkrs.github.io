@@ -461,6 +461,7 @@
     mudarObj(id, 'duplicar', (o, m) => {
       const c = N().copia(o);
       delete c.id;
+      delete c.mis;                                   // (lote 9) a missão fica no original
       if (c.nome.trim()) c.nome = c.nome.trim() + ' (cópia)';
       if ('x' in c) { c.x += d; c.y += d; }
       if (Array.isArray(c.pts)) c.pts = c.pts.map(p => [p[0] + d, p[1] + d]);
@@ -1146,6 +1147,8 @@
   // Leitura (jogador, ou mestre vendo como jogador): só o que está na projeção, e nada do que é só do mestre.
   function leitura(o, v) {
     const N_ = N(), out = [h('h3', { text: nomeDe(o, v) }), h('p', { class: 'sub', text: descricao(o, v, false) })];
+    // (lote 9) a missão que o mestre mostrou
+    if (o.mis) { const st = missaoDe(o); if (st) out.push(h('p', { class: 'mis-linha', 'data-k': 'ler:mis' }, glifoMissao(st.e), h('b', { text: 'Missão: ' + (st.t || 'sem nome') }), st.e !== 'ativa' ? h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : ''), text: SIT_MIS[st.e] }) : null)); }
     if (o.k === 'm' && o.rumor) out.push(h('p', null, h('span', { class: 'tag tensao', text: 'boato' }), ' ', h('small', { class: 'note', text: 'Pode ser verdade ou não.' })));
     if (o.k === 'e') {
       out.push(nota('Desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini) + ' · força ' + o.forca + ' de 3'));
@@ -1197,16 +1200,16 @@
     out.push(h('h3', { text: nomeDe(o, m) }), h('p', { class: 'sub', text: descricao(o, m, true) }));
     if (o.k === 'x') out.push(campoTexto('o:' + id + ':nome', 'Texto', o.nome, grava('mudar o texto', (x, v) => { if (!v.trim()) return false; x.nome = v.replace(/\s+$/, ''); }), { area: true, linhas: 2, max: 400, ph: 'O que está escrito no mapa' }));
     else out.push(campoTexto('o:' + id + ':nome', 'Nome', o.nome, grava('mudar o nome', (x, v) => { x.nome = v.trim(); }), { max: 120, ph: nomeDe(Object.assign({}, o, { nome: '' }), m) }));
-    if (o.k === 'm') out.push(secMarcador(o, grava));
+    if (o.k === 'm') out.push(secMarcador(o, grava), secMissao(o, m));      // (lote 9) a missão: o "!" no ícone
     if (o.k === 'm' && GP()) out.push(GP().secFortificacao(o, m));         // (lote 8, parte 6) a fortificação
     if (o.k === 'z') out.push(...secZona(o, m, grava));
     if (o.k === 'l') out.push(secLinha(o, m, grava));
     if (o.k === 'c') out.push(secCarimbo(o, grava));
     if (o.k === 'x') out.push(secTexto(o, grava));
-    if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m));
+    if (o.k === 'g') out.push(secGrupo(o, m, grava), secHonra(o, m), secMissao(o, m));
     if (o.k === 'g' && o.tipo === 'exercito' && GP()) out.push(...GP().secExercito(o, m));   // (lote 8, parte 6) as unidades
-    if (o.k === 'r') out.push(secRegiao(o, m, grava), secClimaRegiao(o, m));
-    if (o.k === 'e') out.push(...secEvento(o, m, grava));
+    if (o.k === 'r') out.push(secRegiao(o, m, grava), secClimaRegiao(o, m), secMissao(o, m));
+    if (o.k === 'e') out.push(...secEvento(o, m, grava), secMissao(o, m));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
     if (o.k === 'f' && GP()) out.push(GP().secFasesFrente(o, m));          // (lote 8, parte 6) a frente que anda
@@ -1223,6 +1226,87 @@
       botao('Duplicar', () => duplicarObj(id), { k: 'o:duplicar' }),
       botao('Apagar', () => apagarObjs([id]), { c: 'per', k: 'o:apagar' })));
     return out;
+  }
+  /* ---------------- (lote 9) a missão no mapa ----------------
+     Um marcador, um grupo, uma região ou um evento podem ter uma missão: o ícone ganha um "!" (✓ concluída, ✕ falhou).
+     A missão é um texto curto ou uma missão do grupo das Fichas (o nome e a situação vêm de lá). Nasce só do mestre: ele
+     mostra aos jogadores quando quiser (a ligada a uma missão ainda escondida nas Fichas só aparece depois de revelada lá). */
+  const COM_MISSAO = { m: 1, g: 1, r: 1, e: 1 };
+  const SIT_MIS = { ativa: 'Ativa', feita: 'Concluída', falhou: 'Falhou' };
+  // a missão como ela está: { t, e, ligada, oculta (ainda escondida nas Fichas), perdida (saiu das Fichas) }
+  function missaoDe(o) {
+    const mi = o && o.mis;
+    if (!mi) return null;
+    if (mi.ref) {
+      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref) : null;
+      if (!f) return { t: mi.t || '', e: 'ativa', ligada: true, perdida: true };
+      return { t: f.t || mi.t || 'Missão sem título', e: f.e, ligada: true, oculta: !!f.oculta };
+    }
+    return { t: mi.t, e: mi.e === 'feita' || mi.e === 'falhou' ? mi.e : mi.ok ? 'feita' : 'ativa', ligada: false };
+  }
+  function glifoMissao(e) {
+    const d = e === 'feita' ? '<path d="M7.4 12.3l3.1 3.1 6.1-6.3" stroke-width="2.6"/>' : e === 'falhou' ? '<path d="M8.4 8.4l7.2 7.2M15.6 8.4l-7.2 7.2" stroke-width="2.6"/>'
+      : '<path d="M12 6.4v6.4" stroke-width="2.8"/><circle cx="12" cy="17.2" r="1.5" fill="currentColor" stroke="none"/>';
+    return h('span', { class: 'mis-ico m-' + (SIT_MIS[e] ? e : 'ativa'), 'aria-hidden': 'true' }, glifo(d, 15));
+  }
+  function secMissao(o, m) {
+    const id = o.id, mi = o.mis, out = [];
+    if (!mi) {
+      out.push(nota('Marque uma missão aqui: o ícone ganha um “!” no mapa.'));
+      out.push(linha(botao('Marcar missão…', () => janelaMissao(id), { c: 'sm', k: 'o:' + id + ':mis' })));
+      return secao('Missão', out);
+    }
+    const st = missaoDe(o);
+    out.push(h('p', { class: 'mis-linha', 'data-k': 'o:' + id + ':mis-txt' }, glifoMissao(st.e), h('b', { text: st.t || (st.perdida ? 'A missão saiu das Fichas' : 'Missão') }),
+      h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : st.e === 'falhou' ? ' tensao' : ''), text: SIT_MIS[st.e] })));
+    if (st.perdida) out.push(nota('A missão ligada não está mais nas Fichas (foi excluída, ou é de outra campanha). Troque ou tire a missão.'));
+    else if (st.ligada) out.push(nota('Das missões do grupo, nas Fichas: o nome e a situação vêm de lá. Concluída lá, o “!” vira ✓.'));
+    out.push(caixa('o:' + id + ':mis-ver', 'Os jogadores veem a missão', !!mi.ver, v => mudarObj(id, v ? 'mostrar a missão aos jogadores' : 'esconder a missão dos jogadores', x => { if (!x.mis || !!x.mis.ver === !!v) return false; if (v) x.mis.ver = true; else delete x.mis.ver; }),
+      { dica: st.perdida ? 'Sem a missão nas Fichas, nada aparece para os jogadores.' : st.oculta ? 'A missão ainda está escondida nas Fichas: o “!” só aparece para os jogadores depois que você a revelar lá.' : mi.ver ? 'O “!” aparece no mapa deles, com o nome da missão.' : 'Por enquanto, só você vê o “!” (tracejado).' }));
+    out.push(h('div', { class: 'row' },
+      st.ligada ? null : botao(mi.ok ? 'Reabrir' : 'Concluir (✓)', () => mudarObj(id, mi.ok ? 'reabrir a missão' : 'concluir a missão', x => { if (!x.mis) return false; if (x.mis.ok) delete x.mis.ok; else x.mis.ok = true; }), { c: 'sm', k: 'o:' + id + ':mis-ok' }),
+      botao('Trocar…', () => janelaMissao(id), { c: 'sm', k: 'o:' + id + ':mis-trocar' }),
+      botao('Tirar a missão', () => tirarMissao(id), { c: 'sm', k: 'o:' + id + ':mis-tirar' })));
+    return secao('Missão', out);
+  }
+  function tirarMissao(id) {
+    if (mudarObj(id, 'tirar a missão', x => { if (!x.mis) return false; delete x.mis; }) !== false) avisoDesfazer('A missão saiu daqui.');
+  }
+  async function janelaMissao(id) {
+    const m0 = App.mapa, o0 = m0 && achar(m0, id);
+    if (!o0 || !App.podeEditar()) return;
+    const fichas = App.missoesDasFichas ? App.missoesDasFichas() : null, mi = o0.mis || {};
+    const ops = (fichas || []).map(f => [f.id, (f.t || 'Missão sem título') + ' · ' + SIT_MIS[f.e] + (f.oculta ? ' (escondida)' : '')]);
+    const campos = [];
+    if (ops.length) campos.push({ id: 'modo', tipo: 'opcoes', rotulo: 'A missão', valor: mi.ref ? 'f' : 't', opcoes: [['t', 'Um texto curto'], ['f', 'Uma missão do grupo, das Fichas']] });
+    campos.push({ id: 't', rotulo: 'Texto curto', tipo: 'text', valor: mi.ref ? '' : (mi.t || ''), ph: 'Ex.: Resgatar o ferreiro', max: 120 });
+    if (ops.length) campos.push({ id: 'f', rotulo: 'Missão das Fichas', tipo: 'select', valor: mi.ref && ops.some(x => x[0] === mi.ref) ? mi.ref : ops[0][0], opcoes: ops });
+    const dicaFichas = fichas == null ? ' (Para ligar a uma missão das Fichas, abra o mapa dentro do site, numa mesa.)' : !ops.length ? ' (As Fichas ainda não têm missão do grupo para ligar.)' : '';
+    const r = await janela({ titulo: o0.mis ? 'Trocar a missão' : 'Marcar missão', ok: o0.mis ? 'Trocar' : 'Marcar',
+      texto: 'O ícone de ' + nomeDe(o0, m0) + ' ganha um “!”.' + (o0.mis ? '' : ' Nasce só sua: os jogadores veem quando você mostrar.') + dicaFichas,
+      campos,
+      ler: v => {
+        if (v.modo === 'f') { if (!v.f) throw new Error('Escolha a missão.'); return { ref: v.f }; }
+        const t = String(v.t || '').trim();
+        if (!t) throw new Error('Escreva a missão (um texto curto).');
+        return { t };
+      } });
+    if (r == null || !mesmoMapa(m0.id)) return;
+    mudarObj(id, o0.mis ? 'trocar a missão' : 'marcar a missão', x => {
+      const ver = !!(x.mis && x.mis.ver);
+      x.mis = r.ref ? { t: '', ref: r.ref } : { t: r.t, ref: null };
+      if (ver) x.mis.ver = true;
+    });
+  }
+  // (lote 9) as missões marcadas no mapa, na aba Hoje (o mestre vê todas; quem joga, as que o mestre mostrou)
+  function secMissoesNoMapa(v, mestre) {
+    const com = v.objs.filter(o => o.mis && COM_MISSAO[o.k]).map(o => [o, missaoDe(o)]).filter(x => x[1]);
+    if (!com.length) return null;
+    const peso = { ativa: 0, feita: 1, falhou: 2 };
+    com.sort((a, b) => (peso[a[1].e] - peso[b[1].e]) || String(a[1].t).localeCompare(String(b[1].t), 'pt-BR'));
+    return secao('Missões no mapa', h('div', { class: 'lista' }, com.map(([o, st]) => h('button', { type: 'button', class: 'li clic', 'data-k': 'mis:' + o.id, onclick: () => irPara(o.id) },
+      glifoMissao(st.e), h('span', { class: 'tx' }, h('b', { text: st.t || (st.perdida ? 'A missão saiu das Fichas' : 'Missão') }),
+        h('small', { text: nomeDe(o, v) + (st.e !== 'ativa' ? ' · ' + SIT_MIS[st.e].toLocaleLowerCase('pt-BR') : '') + (mestre && (!o.mis.ver || st.oculta || st.perdida) ? ' · só você vê' : '') }))))));
   }
   function secMarcador(o, grava) {
     const I = N().ICONES, id = o.id, ic = I[o.ic] || I.cidade;
@@ -2383,6 +2467,7 @@
     // (lote 7, parte 5a) os eventos na viagem dos grupos: quem está dentro de um evento que pesa e quem está parado
     // antes de uma passagem fechada (só o mestre: o peso é dele)
     if (ed) { const nv = naViagem(v); if (nv.length) out.push(secao('Os eventos na viagem', h('div', { class: 'lista' }, nv.map(([g, txt]) => h('button', { type: 'button', class: 'li clic', 'data-k': 'nv:' + g.id, onclick: () => irPara(g.id) }, icone(g, v), h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: txt }))))))); }
+    { const ms = secMissoesNoMapa(v, mestre); if (ms) out.push(ms); }        // (lote 9) as missões no mapa
     const guerras = v.objs.filter(o => o.k === 'z' && N_.zonaAtiva(o, dia));
     if (guerras.length) out.push(secao('Guerras de hoje', h('div', { class: 'lista' }, guerras.map(z => itemLista(z, v, mestre, 'Desde ' + dataTxt(v, z.ini == null ? dia : z.ini) + (ed && z.fim != null ? ' · até ' + dataTxt(v, z.fim) : ''))))));
     if (ed) {
@@ -2501,6 +2586,9 @@
       }
     }
     out.push(lista);
+    // (lote 9) o tamanho das bandeiras no mapa, só neste aparelho (para quem enxerga melhor maiores)
+    out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
+      v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras dos clãs nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
     return out;
   }
   function editorFaccao(f, m) {

@@ -507,7 +507,7 @@
     desenharPintura(m);
     desenharGrade(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
-    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe() };
+    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe(), fb: escalaBandeira() };
     desenharObjetos(m, ctxAtual);
     desenharHexGuerra(m);
     // As animações (pulso dos eventos, marcha das frentes) repintam o SVG a cada quadro, fora da placa de vídeo.
@@ -1196,7 +1196,8 @@
   // (lote 8) a bandeira de uma facção entra na chave: o clã que muda o brasão (ou deixa a facção) redesenha o que a mostra
   const chaveBr = (ctx, id) => { if (!id) return ''; const br = brasaoDaFac(ctx, id); return br ? '|' + JSON.stringify(br) + nomeFac(ctx, id) : ''; };
   function chaveDe(o, ctx) {
-    let extra = ctx.mestre ? 'M' : 'J';
+    let extra = (ctx.mestre ? 'M' : 'J') + ctx.fb;
+    if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref) : null);
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid); }
     else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac);
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
@@ -1261,7 +1262,7 @@
       case 'f': frente(g0, o, ctx); break;
       case 't': rota(g0, o, ctx); break;
       case 'e': evento(g0, o, ctx); break;
-      case 'm': marcador(g0, o); break;
+      case 'm': marcador(g0, o, ctx); break;
       case 'g': grupo(g0, o, ctx); break;
       case 'z': zona(g0, o, ctx); break;
       case 'l': linhaGeo(g0, o); break;
@@ -1289,6 +1290,37 @@
     if (!id) return null;
     const f = ctx && ctx.fac ? ctx.fac.get(id) : null;
     return (f && f.br) || (App && typeof App.brasaoDe === 'function' ? App.brasaoDe(id) : null);
+  }
+  /* (lote 9) O tamanho das bandeiras, neste aparelho (a aba Facções): pequenas (as de antes), médias (de começo) ou
+     grandes — para quem enxerga melhor maiores. */
+  const ESC_BAND = { p: 1, m: 1.4, g: 1.9 };
+  function escalaBandeira() {
+    try { const v = JSON.parse(localStorage.getItem('tinycats:mundo:painel') || 'null'); return ESC_BAND[v && v.band] || ESC_BAND.m; } catch (e) { return ESC_BAND.m; }
+  }
+  /* (lote 9) A missão como ela aparece: o nome, a situação (para o mestre, a da missão ligada nas Fichas; na projeção, a
+     que veio pronta) e se só o mestre a vê. → { t, e, so, perdida } ou null */
+  function missaoNaTela(o, ctx) {
+    const mi = o && o.mis;
+    if (!mi) return null;
+    if (mi.ref && ctx.mestre) {
+      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref) : null;
+      if (!f) return { t: mi.t || 'Missão que saiu das Fichas', e: 'ativa', so: true, perdida: true };
+      return { t: f.t || mi.t || 'Missão', e: f.e, so: !mi.ver || !!f.oculta };
+    }
+    const e = mi.e === 'feita' || mi.e === 'falhou' ? mi.e : mi.ok ? 'feita' : 'ativa';
+    return { t: mi.t || 'Missão', e, so: !!ctx.mestre && !mi.ver };
+  }
+  // a marca no ícone: "!" (ativa), ✓ (concluída) ou ✕ (falhou); a que só o mestre vê, tracejada. O nome vai na dica.
+  function marcaMissao(o, ctx, x, y) {
+    const mi = missaoNaTela(o, ctx);
+    if (!mi) return null;
+    const g = s('g', { class: 'missao m-' + mi.e + (mi.so ? ' so-mestre' : '') + (mi.perdida ? ' perdida' : ''), transform: 'translate(' + d3(x) + ' ' + d3(y) + ') scale(1.15)' });
+    g.append(s('title', { texto: 'Missão: ' + mi.t + (mi.e === 'feita' ? ' (concluída)' : mi.e === 'falhou' ? ' (falhou)' : '') + (mi.so ? ' · só você vê' : '') }));
+    g.append(s('circle', { class: 'mis-bola', r: 8.5 }));
+    if (mi.e === 'feita') g.append(s('path', { class: 'mis-sinal', d: 'M-3.8 0.2l2.6 2.6 5-5.2' }));
+    else if (mi.e === 'falhou') g.append(s('path', { class: 'mis-sinal', d: 'M-3 -3l6 6M3 -3l-6 6' }));
+    else g.append(s('path', { class: 'mis-sinal', d: 'M0 -4.6v4.4' }), s('circle', { class: 'mis-ponto', cy: 3.7, r: 1.4 }));
+    return g;
   }
   function bandeira(br, x, y, w, dica) {
     if (!br) return null;
@@ -1320,11 +1352,17 @@
     if (o.nome) {
       const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
       // (lote 8) a bandeira do clã da facção, em cima do nome (a da região de dentro só quando a facção é outra)
-      const bf = !o.pai || (o.fac && o.fac === fid) ? bandeira(brasaoDaFac(ctx, fid), 0, -16, 15, 'Bandeira de ' + nomeFac(ctx, fid)) : null;
+      const bw = 15 * ctx.fb, by = -7 - 0.6 * bw;                    // (lote 9: o tamanho deste aparelho; a base fica no lugar)
+      const bf = !o.pai || (o.fac && o.fac === fid) ? bandeira(brasaoDaFac(ctx, fid), 0, by, bw, 'Bandeira de ' + nomeFac(ctx, fid)) : null;
       if (bf) fx.append(bf);
+      { const mk = marcaMissao(o, ctx, bf ? bw / 2 + 11 : 0, bf ? by : -15); if (mk) fx.append(mk); }       // (lote 9) a missão
       fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg' + (o.pai ? ' rotulo-subreg' : '')));
       g1.append(fx);
       g0.__ico = g1; g0.__cam2 = 'nreg';
+    } else if (o.mis) {
+      // (lote 9) a região sem nome: a marca da missão no ponto onde o nome iria
+      const mk = marcaMissao(o, ctx, 0, 0);
+      if (mk) { const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id }); fx.append(mk); g1.append(fx); g0.__ico = g1; g0.__cam2 = 'nreg'; }
     }
   }
   function corFac(ctx, id) { const f = id ? ctx.fac.get(id) : null; return f ? f.cor : '#9aa3b5'; }
@@ -1342,7 +1380,8 @@
       s('path', { class: 'fre-b' + anda, d, stroke: corFac(ctx, o.b) }),
       s('path', { class: 'fre-hit', d }));
     // (lote 8) as bandeiras dos dois lados, no meio da linha (em cima do nome)
-    const ba = bandeira(brasaoDaFac(ctx, o.a), -11, -28, 13, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), 11, -28, 13, nomeFac(ctx, o.b));
+    const fw = 13 * ctx.fb, fdx = fw / 2 + 4.5, fy = -20.2 - 0.6 * fw;     // (lote 9: o tamanho deste aparelho)
+    const ba = bandeira(brasaoDaFac(ctx, o.a), -fdx, fy, fw, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), fdx, fy, fw, nomeFac(ctx, o.b));
     if (o.nome || ba || bb) { const c = meioDe(pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
   // até onde os grupos desta rota já andaram (em unidades ao longo dela): o ponto da rota mais perto do mais adiantado
@@ -1479,11 +1518,12 @@
       s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
       s('path', { class: 'selo', d: 'M0 -17L17 0L0 17L-17 0Z', fill: cor, 'stroke-linejoin': 'round' }),
       glifo(def, 17));
+    { const mk = marcaMissao(o, ctx, -13, -13); if (mk) fx.append(mk); }     // (lote 9) a missão
     fx.append(rotulo(o.nome || def.nome, 31));
     g1.append(fx);
     g0.__ico = g1;
   }
-  function marcador(g0, o) {
+  function marcador(g0, o, ctx) {
     const def = defIcone(o.ic), cor = o.cor || def.cor || '#e6ab4f';
     g0.classList.add('mar');
     if (o.rumor) g0.classList.add('rumor');
@@ -1496,6 +1536,7 @@
       glifo(def, 19));
     if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
+    { const mk = marcaMissao(o, ctx, -12, -12); if (mk) fx.append(mk); }     // (lote 9) a missão, em cima à esquerda
     // marcador com atalho (abre uma cena, outro mapa ou o acampamento): uma setinha no canto de baixo
     if (o.liga) { g0.classList.add('com-liga'); fx.append(s('circle', { class: 'liga-bola', cx: 12, cy: 12, r: 7 }), s('path', { class: 'liga-seta', d: 'M9.5 14.5l5-5M11 9.5h3.5V13' })); }
     if (o.nome) fx.append(rotulo(o.nome, 30));
@@ -1606,8 +1647,9 @@
     const selo = seloDeHonra(o);
     if (selo) fx.append(selo);
     // (lote 8) a bandeira do clã da facção do grupo, do lado esquerdo do token
-    const bg = bandeira(brasaoDaFac(ctx, o.fac), -27, -12, 12, nomeFac(ctx, o.fac));
+    const gw = 12 * ctx.fb, bg = bandeira(brasaoDaFac(ctx, o.fac), -(21.5 + gw / 2), -12 + (ctx.fb - 1) * 2.5, gw, nomeFac(ctx, o.fac));   // (lote 9: o tamanho deste aparelho)
     if (bg) fx.append(bg);
+    { const mk = marcaMissao(o, ctx, 15, 15); if (mk) fx.append(mk); }       // (lote 9) a missão, embaixo à direita
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }
@@ -1633,7 +1675,8 @@
       s('path', { class: 'zona-borda', d, stroke: ca }),
       s('path', { class: 'zona-borda b', d, stroke: cb }));
     // (lote 8) as bandeiras dos dois lados, em cima do nome
-    const ba = bandeira(brasaoDaFac(ctx, o.a), -11, -16, 14, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), 11, -16, 14, nomeFac(ctx, o.b));
+    const zw = 14 * ctx.fb, zdx = zw / 2 + 4, zy = -7.6 - 0.6 * zw;          // (lote 9: o tamanho deste aparelho)
+    const ba = bandeira(brasaoDaFac(ctx, o.a), -zdx, zy, zw, nomeFac(ctx, o.a)), bb = bandeira(brasaoDaFac(ctx, o.b), zdx, zy, zw, nomeFac(ctx, o.b));
     if (o.nome || ba || bb) { const c = pontoDoNome(pts), fx = fixo(c[0], c[1]); if (ba) fx.append(ba); if (bb) fx.append(bb); if (o.nome) fx.append(rotulo(String(o.nome).toLocaleUpperCase('pt-BR'), 4, 'rotulo rotulo-reg')); g0.append(fx); }
   }
   /* (lote 7, parte 5c) A zona de perigo: a área na cor do tipo, com listras finas e a borda tracejada; enquanto acontece,

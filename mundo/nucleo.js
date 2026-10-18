@@ -1350,6 +1350,30 @@
     const p = (ZONAS[tipo] || {}).ef || { fad: 0, conf: 0, san: 0 }, e = ehObj(v) ? v : p;
     return { fad: inteiro(e.fad, p.fad, -5, 5), conf: inteiro(e.conf, p.conf, -100, 100), san: inteiro(e.san, p.san, -100, 100) };
   }
+  /* (lote 9) A missão marcada num objeto (marcador, grupo, região, evento): o "!" no ícone. t: o texto curto que o mestre
+     escreveu; ref: o id de uma missão do grupo nas Fichas (o nome e a situação vêm de lá); ver: os jogadores veem (nasce
+     só do mestre); ok: concluída à mão (o texto curto vira ✓ até o mestre tirar a missão). Na projeção (quem joga), a
+     missão vem pronta: t (o nome) e e (a situação: ativa, feita ou falhou). → null se não tem nem texto nem ligação */
+  const MIS_E = { ativa: 'Ativa', feita: 'Concluída', falhou: 'Falhou' };
+  const COM_MISSAO = { m: 1, g: 1, r: 1, e: 1 };
+  function normMis(v) {
+    if (!ehObj(v)) return null;
+    const t = texto(v.t, '', 120).trim(), ref = idRef(v.ref);
+    if (!t && !ref) return null;
+    const out = { t, ref };
+    if (sim(v.ver)) out.ver = true;
+    if (sim(v.ok)) out.ok = true;
+    if (tem(MIS_E, v.e)) out.e = v.e;
+    return out;
+  }
+  // a situação de uma missão do mapa: a da missão ligada nas Fichas (daFicha: { e }), a que veio pronta (projeção) ou a do
+  // texto curto (concluída à mão: feita)
+  function situacaoDaMissao(mis, daFicha) {
+    if (!ehObj(mis)) return null;
+    if (mis.ref && ehObj(daFicha)) return tem(MIS_E, daFicha.e) ? daFicha.e : 'ativa';
+    if (tem(MIS_E, mis.e)) return mis.e;
+    return mis.ok ? 'feita' : 'ativa';
+  }
   function normAndar(o, out, comParadas) {
     if (o.modo === 'volta' || o.modo === 'circuito') out.modo = o.modo;
     if (out.modo === 'volta' && num(o.sentido, 1) < 0) out.sentido = -1;
@@ -1364,6 +1388,7 @@
   function normObj(o, dia, leve, tpd) {
     if (!ehObj(o) || !tem(PREFIXO, o.k)) return null;
     const b = { id: idOk(o.id), k: o.k, nome: texto(o.nome), txt: texto(o.txt), nota: texto(o.nota), oculto: talvez(o.oculto) };
+    if (COM_MISSAO[o.k]) { const mi = normMis(o.mis); if (mi) b.mis = mi; }         // (lote 9) a missão: o "!" no ícone
     const lugar = () => { const x = coord(o.x), y = coord(o.y); if (x == null || y == null) return false; b.x = x; b.y = y; return true; };
     switch (o.k) {
       case 'm': {
@@ -1948,6 +1973,9 @@
     for (const o of m.objs) {
       if (o.oculto) continue;
       delete o.nota;
+      // (lote 9) a missão: só a que o mestre mostrou; a de texto vai com a situação pronta (a ligada, quem publica troca
+      // pelo nome e pela situação das Fichas — e tira a que ainda está escondida lá)
+      if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
       if (o.k === 'm') { delete o.falso; delete o.estr; if (coberto(o.x, o.y)) continue; }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
@@ -2005,6 +2033,7 @@
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
+    MIS_E, situacaoDaMissao,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     LIMITES: { honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
   };

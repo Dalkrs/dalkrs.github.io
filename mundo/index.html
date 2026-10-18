@@ -366,6 +366,23 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .eve.inativo { opacity: .4; }
 .eve.inativo .eve-area { stroke-dasharray: 2 7; }
 
+/* (lote 9) a missão no ícone: "!" dourado (ativa), ✓ verde (concluída), ✕ cinza (falhou); a que só o mestre vê, tracejada */
+.missao .mis-bola { fill: #f2c14e; stroke: #2b2410; stroke-width: 1.5; }
+.missao .mis-sinal { fill: none; stroke: #2b2410; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+.missao .mis-ponto { fill: #2b2410; }
+.missao.m-feita .mis-bola { fill: #3f9d5a; stroke: #f3ead2; }
+.missao.m-feita .mis-sinal { stroke: #ffffff; }
+.missao.m-falhou .mis-bola { fill: #8a92a6; stroke: #f3ead2; }
+.missao.m-falhou .mis-sinal { stroke: #1d2230; }
+.missao.so-mestre .mis-bola { stroke-dasharray: 3 2.2; }
+.missao.perdida .mis-bola { fill: #c9ced9; }
+/* a marca da missão no painel (as mesmas cores) */
+.mis-ico { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 50%; background: #f2c14e; color: #2b2410; }
+.mis-ico.m-feita { background: #3f9d5a; color: #fff; }
+.mis-ico.m-falhou { background: #8a92a6; color: #1d2230; }
+.mis-linha { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 6px; }
+.tag.ok { color: var(--ok); border-color: var(--ok); }
+
 /* marcador de boato */
 .rumor-bola { fill: #2b3243; stroke: #f3ead2; stroke-width: 1.4; }
 .interroga { font-size: 11px; font-weight: 700; fill: #f3ead2; stroke-width: 0; }
@@ -792,12 +809,12 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=13"></script>
+<script src="nucleo.js?v=14"></script>
 <script src="guerra.js?v=1"></script>
 <script src="camadas.js?v=1"></script>
-<script src="tela.js?v=17"></script>
-<script src="painel.js?v=21"></script>
+<script src="tela.js?v=18"></script>
+<script src="painel.js?v=22"></script>
 <script src="guerra-painel.js?v=1"></script>
-<script src="mundo.js?v=9"></script>
+<script src="mundo.js?v=10"></script>
 </body>
 </html>
