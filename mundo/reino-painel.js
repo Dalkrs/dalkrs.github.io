@@ -80,6 +80,9 @@
   let catAberto = false;                     // o catálogo de construções aberto na aba Reinos (só nesta página)
   let estrAberto = false;                    // (parte 5) a lista dos estratos aberta na aba Reinos (só nesta página)
   let gdAberto = false;                      // (parte 5b) o catálogo de guildas aberto na aba Reinos (só nesta página)
+  // (pente fino) o ícone do marcador que combina com cada nível de começo, e a sugestão que aparece ao escolher o nível
+  const IC_NIVEL = { aldeia: 'vila', vila: 'vila', cidade: 'cidade', metropole: 'cidade' };
+  let sugIcone = null;
 
   /* ---------------- a seção Província (ou Sub-região) ---------------- */
   function secProvincia(o, m) {
@@ -168,12 +171,24 @@
     const { h, nota, secao, campoEscolha, campoNumero, mudarObj, nomeDe } = kit();
     const eco = m.eco, a = o.ass || null, out = [];
     out.push(campoEscolha('o:' + o.id + ':niv', 'Nível', a && a.niv ? a.niv : '', [['', 'Não é assentamento']].concat(eco.niv.map(n => [n.id, n.nome + ' (' + n.esp + (n.esp === 1 ? ' espaço de construção)' : ' espaços de construção)')])),
-      v => mudarObj(o.id, v ? 'mudar o nível do assentamento' : 'deixar de ser assentamento', x => {
-        if (!v) { if (!x.ass) return false; delete x.ass; return; }
-        const b = x.ass || { niv: null, pop: 0 };
-        if (b.niv === v) return false;
-        b.niv = v; x.ass = b;
-      })));
+      v => {
+        const r = mudarObj(o.id, v ? 'mudar o nível do assentamento' : 'deixar de ser assentamento', x => {
+          if (!v) { if (!x.ass) return false; delete x.ass; return; }
+          const b = x.ass || { niv: null, pop: 0 };
+          if (b.niv === v) return false;
+          b.niv = v; x.ass = b;
+        });
+        // (pente fino) o ícone que combina com o nível: a sugestão aparece logo abaixo (um clique; nada muda sozinho)
+        const ic = IC_NIVEL[v], nv = eco.niv.find(n => n.id === v);
+        sugIcone = r !== false && ic && nv && ic !== o.ic ? { o: o.id, ic, nome: nv.nome } : null;
+        return r;
+      }));
+    if (sugIcone && sugIcone.o === o.id && a) {
+      const s0 = sugIcone, nomeIc = (N().ICONES[s0.ic] || {}).nome || s0.ic;
+      out.push(h('div', { class: 'row sug-ic', 'data-k': 'o:' + o.id + ':ic-sug' }, h('small', { text: 'Usar o ícone de ' + nomeIc + ' no mapa (combina com ' + s0.nome + ')?' }),
+        kit().botao('Usar o ícone', () => { sugIcone = null; if (mudarObj(o.id, 'usar o ícone de ' + nomeIc, x => { if (x.ic === s0.ic) return false; x.ic = s0.ic; }) === false) kit().pintar(); }, { c: 'sm', k: 'o:' + o.id + ':ic-usar' }),
+        kit().botao('Agora não', () => { sugIcone = null; kit().pintar(); }, { c: 'sm', k: 'o:' + o.id + ':ic-nao' })));
+    }
     if (a) {
       out.push(...blocoPopulacao(o, m));                                // (parte 5) as pessoas de cada estrato
       const r = N().regiaoEm(m, o.x, o.y), prov = r ? R().provinciaDe(m, r) : null;
@@ -512,7 +527,7 @@
       const liderNome = cat ? null : inp('gd:lider', { maxlength: 60, placeholder: 'Ex.: Mestra Ilsa' });
       const selFicha = fichas ? opcoes('gd:ficha', [['', 'Nenhuma']].concat(fichas.map(f => [f.id, f.nome || 'Sem nome']))) : null;
       const escala = (k, a) => opcoes(k, Array.from({ length: 2 * a + 1 }, (_, i) => a - i).map(n => [n, sinalI(n)]));
-      const infl = cat ? null : escala('gd:infl', 10), rel = cat ? null : escala('gd:rel', 5);
+      const infl = cat ? null : escala('gd:infl', 10), rel = cat ? null : escala('gd:rel', 10);
       const txt = h('textarea', { 'data-k': 'gd:txt', maxlength: 400, rows: 2, placeholder: 'Quem são, onde se reúnem, o que querem…' });
       const LINHAS = [['prod', 'Produz'], ['gasto', 'Gasta']].concat(cat ? [] : [['est', 'Estoque']]), ent = {};
       const tabela = h('div', { class: 'eco-tab-caixa' }, h('table', { class: 'eco-tab gd-tab' },
@@ -783,7 +798,7 @@
   /* ---------------- (parte 3) as construções, no assentamento ---------------- */
   function blocoConstrucoes(o, m) {
     const { h, nota, botao, linha } = kit(), a = o.ass, eco = m.eco, out = [], cs = a.cons || [], e = R().espacosDe(m, o);
-    out.push(h('small', { class: 'note eco-rot', 'data-k': 'o:' + o.id + ':esp', text: 'Construções' + (e.total ? ' · ' + e.usados + ' de ' + pl(e.total, 'espaço', 'espaços') : '') }));
+    out.push(h('small', { class: 'note eco-rot', 'data-k': 'o:' + o.id + ':esp', text: 'Construções da cidade' + (e.total ? ' · ' + e.usados + ' de ' + pl(e.total, 'espaço', 'espaços') : '') }));
     if (cs.length) out.push(h('div', { class: 'cons-lista' }, cs.map(c => linhaConstrucao(o, m, c))));
     else out.push(nota(e.total ? 'Nenhuma construção ainda.' : 'Escolha um nível com espaços de construção para construir aqui.'));
     if (!eco.cons.length) out.push(nota('O catálogo de construções está vazio (aba Reinos, Economia do mundo).'));
@@ -941,6 +956,7 @@
     out.push(nota('As construções do clã (as da página Clã) não ocupam espaços. O que elas produzem vai para ' + (fid ? nomeFac(facDe(m, fid)) : 'ninguém (fora das províncias)') +
       (ligada0 ? ' (a facção ligada ao clã).' : ' (o clã não tem facção ligada deste mapa: a dona do lugar).')));
     if (!c.cons.length) { out.push(nota('O clã ainda não tem construções.')); return out; }
+    out.push(h('small', { class: 'note eco-rot', text: 'Construções do clã (da página Clã)' }));
     out.push(h('div', { class: 'cons-lista cla', 'data-k': 'o:' + o.id + ':cla-cons' }, c.cons.map(k => {
       const p = a.cla.prod[k.id] || {}, txt = txtTab(m, p, true);
       return h('div', { class: 'cons-li', 'data-k': 'cla:' + k.id },

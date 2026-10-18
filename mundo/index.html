@@ -648,6 +648,13 @@ dialog.mundo-dl fieldset.gd-semana, dialog.mundo-dl fieldset.gd-serv-caixa { bor
 .sem-gd { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; color: var(--fg-2); }
 .sem-gd b { color: var(--fg); font-weight: 600; }
 .sem-gd .gd-falta { color: var(--danger); font-weight: 600; }
+/* (lote 10, pente fino) a facção: o estoque e os outros números, juntar pelo nome, a população calculada */
+.rec-outros-rot { display: block; margin-top: 8px; }
+.rec-junta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 2px; padding: 5px 8px; border-radius: 8px; border: 1px dashed var(--lamp); background: var(--lamp-soft); }
+.rec-junta small { flex: 1 1 160px; color: var(--lamp-ink); font-size: 12px; }
+.num-calc { font-family: var(--mono); font-size: 13px; color: var(--fg); text-align: right; padding-right: 8px; }
+.sug-ic { align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--lamp); background: var(--lamp-soft); }
+.sug-ic small { flex: 1 1 180px; color: var(--lamp-ink); font-size: 12.5px; }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -1042,16 +1049,16 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
-<script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=24"></script>
+<script src="../cla/nucleo.js?v=3"></script>
+<script src="nucleo.js?v=25"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=6"></script>
+<script src="reino.js?v=7"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=29"></script>
-<script src="guerra-painel.js?v=4"></script>
+<script src="painel.js?v=30"></script>
+<script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=7"></script>
+<script src="reino-painel.js?v=8"></script>
 <script src="mundo.js?v=13"></script>
 </body>
 </html>

@@ -1561,7 +1561,19 @@
       h('small', { class: 'ajuda', text: 'Cada número que você mudar entra no histórico com a data de hoje e este motivo.' }));
     // os recursos
     const doMundo = new Set(m.eco ? m.eco.rec.map(r => r.id) : []);          // (lote 10) os recursos do mundo: o nome e a lista são da economia
-    const linhas = f.rec.map(r => {
+    const eco = m.eco && m.eco.on ? m.eco : null, Rn = window.MundoReino;
+    // (pente fino) o número só desta facção com o mesmo nome de um recurso do mundo: dá para juntar ao estoque dele
+    const nomeMundo = nome => (eco ? eco.rec.find(w => semAcento(w.nome).trim() === semAcento(nome).trim()) || null : null);
+    const juntar = async rid => {
+      const r = f.rec.find(x => x.id === rid), w = r && nomeMundo(r.nome), fw = w && f.rec.find(x => x.id === w.id), n0 = fw ? Number(fw.n) || 0 : 0;
+      if (!r || !w || !Rn) return;
+      const ok = await confirmar({ titulo: 'Juntar “' + r.nome + '” ao estoque de ' + w.nome + '?', ok: 'Juntar',
+        texto: '“' + r.nome + '” (' + fmt(r.n, 2) + ') soma no estoque de ' + w.nome + ' (' + fmt(n0, 2) + '): fica ' + fmt(n0 + (Number(r.n) || 0), 2) + '. O histórico de “' + r.nome + '” vai junto. Dá para desfazer.' });
+      if (!ok || !mesmoMapa(m.id)) return;
+      let res = null;
+      if (App.mudar('juntar ' + r.nome + ' ao estoque de ' + w.nome, mm => { res = Rn.juntarAoMundo(mm, id, rid, mot()); if (!res) return false; }) !== false && res) avisoDesfazer('“' + r.nome + '” entrou no estoque de ' + w.nome + ': ' + fmt(res.para, 2) + '.');
+    };
+    const linhaDe = r => {
       if (doMundo.has(r.id)) {
         const n0 = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
         n0.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
@@ -1571,23 +1583,41 @@
       const nome = campoTexto('f:' + id + ':r:' + r.id + ':nome', null, r.nome, v => mudar('renomear o recurso', x => { const y = x.rec.find(z => z.id === r.id); if (!y || !v.trim() || y.nome === v.trim()) return false; y.nome = v.trim(); }), { max: 60, rotulo: 'Nome do recurso' });
       const n = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
       n.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
-      return h('div', { class: 'rec-linha', 'data-rec': r.id }, nome, n,
+      const linhaR = h('div', { class: 'rec-linha', 'data-rec': r.id }, nome, n,
         verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }),
         h('button', { type: 'button', class: 'ib', 'data-k': 'f:' + id + ':r:' + r.id + ':x', title: 'Tirar ' + (r.nome || 'o recurso'), 'aria-label': 'Tirar ' + (r.nome || 'o recurso'),
           onclick: () => mudar('tirar ' + (r.nome || 'o recurso'), (x, mm) => N().facTirarRecurso(x, r.id, mm.cal.dia, mot())) }, glifo(X_SVG, 14)));
-    });
-    out.push(h('div', { class: 'sec-sub' },
-      h('div', { class: 'rec-linha rec-cab', 'aria-hidden': 'true' }, h('span', { text: 'Recursos' }), h('span', { text: 'Quanto' }), h('span', { class: 'ver-cab', text: 'Jogadores veem' }), h('span')),
-      linhas.length ? h('div', { class: 'rec-lista' }, linhas) : nota('Nenhum ainda: ouro, comida, soldados, magia…'),
-      linha(botao('+ Recurso', () => novoRecurso(id), { c: 'sm', k: 'f:' + id + ':rec-novo', off: f.rec.length >= lim }))));
-    // população e apoio
-    const pop = campoNumero('f:' + id + ':pop', null, f.pop, numero('pop', 'mudar a população'), { min: 0, max: 1e12, vazio: null, ph: '—', erro: 'Use um número de pessoas (vazio: sem número).' });
+      const w = nomeMundo(r.nome);
+      return w ? [linhaR, h('div', { class: 'rec-junta', 'data-k': 'f:' + id + ':r:' + r.id + ':junta' }, h('small', { text: 'Mesmo nome de ' + w.nome + ', um recurso do mundo.' }),
+        botao('Juntar ao estoque…', () => juntar(r.id), { c: 'sm', k: 'f:' + id + ':r:' + r.id + ':juntar' }))] : linhaR;
+    };
+    if (eco) {
+      // (pente fino) com a economia ligada: o estoque (os recursos do mundo) em cima; os números só desta facção embaixo
+      const mundo = eco.rec.map(w => f.rec.find(r => r.id === w.id)).filter(Boolean), proprios = f.rec.filter(r => !doMundo.has(r.id));
+      out.push(h('div', { class: 'sec-sub' },
+        h('div', { class: 'rec-linha rec-cab', 'aria-hidden': 'true' }, h('span', { text: 'Estoque (recursos do mundo)' }), h('span', { text: 'Quanto' }), h('span', { class: 'ver-cab', text: 'Jogadores veem' }), h('span')),
+        mundo.length ? h('div', { class: 'rec-lista', 'data-k': 'f:' + id + ':estoque' }, mundo.map(linhaDe)) : nota('Nenhum recurso do mundo nesta facção ainda.'),
+        h('small', { class: 'note rec-outros-rot', 'data-k': 'f:' + id + ':outros-rot', text: 'Outros números desta facção' }),
+        proprios.length ? h('div', { class: 'rec-lista', 'data-k': 'f:' + id + ':outros' }, proprios.map(linhaDe)) : nota('Nenhum: soldados, favores, segredos… o que só esta facção conta.'),
+        linha(botao('+ Outro número', () => novoRecurso(id), { c: 'sm', k: 'f:' + id + ':rec-novo', off: f.rec.length >= lim })),
+        nota('Um recurso que todas as facções têm (como ' + (eco.rec[0] ? eco.rec[0].nome : 'a moeda') + ') se cria na Economia do mundo, aqui na aba Reinos.')));
+    } else {
+      const linhas = f.rec.map(linhaDe);
+      out.push(h('div', { class: 'sec-sub' },
+        h('div', { class: 'rec-linha rec-cab', 'aria-hidden': 'true' }, h('span', { text: 'Recursos' }), h('span', { text: 'Quanto' }), h('span', { class: 'ver-cab', text: 'Jogadores veem' }), h('span')),
+        linhas.length ? h('div', { class: 'rec-lista' }, linhas) : nota('Nenhum ainda: ouro, comida, soldados, magia…'),
+        linha(botao('+ Recurso', () => novoRecurso(id), { c: 'sm', k: 'f:' + id + ':rec-novo', off: f.rec.length >= lim }))));
+    }
+    // população e apoio ((pente fino) com a economia ligada, a população é a soma dos assentamentos da facção: só para ler)
+    const pop = eco && Rn ? h('span', { class: 'num-calc', 'data-k': 'f:' + id + ':pop', title: 'A soma das pessoas dos assentamentos das regiões desta facção', text: fmt(Rn.populacaoDaFaccao(m, id), 0) })
+      : campoNumero('f:' + id + ':pop', null, f.pop, numero('pop', 'mudar a população'), { min: 0, max: 1e12, vazio: null, ph: '—', erro: 'Use um número de pessoas (vazio: sem número).' });
     pop.setAttribute('aria-label', 'População');
     const apoio = campoNumero('f:' + id + ':apoio', null, f.apoio, numero('apoio', 'mudar o apoio'), { min: 0, max: 100, vazio: null, ph: '—', erro: 'Use um apoio de 0 a 100% (vazio: sem número).' });
     apoio.setAttribute('aria-label', 'Apoio geral, em %');
     out.push(h('div', { class: 'rec-lista' },
       h('div', { class: 'rec-linha' }, h('span', { class: 'rot', text: 'População' }), pop, verCaixa('f:' + id + ':ver-pop', f.ver.pop, 'a população', (x, v) => { if (x.ver.pop === v) return false; x.ver.pop = v; }), h('span')),
       h('div', { class: 'rec-linha' }, h('span', { class: 'rot', text: 'Apoio geral (%)' }), apoio, verCaixa('f:' + id + ':ver-apoio', f.ver.apoio, 'o apoio', (x, v) => { if (x.ver.apoio === v) return false; x.ver.apoio = v; }), h('span'))));
+    if (eco && Rn) out.push(nota('Com a economia ligada, a população da facção é a soma das pessoas dos assentamentos das regiões dela (mude em cada assentamento, em "População…").'));
     // o histórico
     out.push(h('div', { class: 'row hist-cab' }, h('small', { class: 'note', text: 'Histórico' }),
       verCaixa('f:' + id + ':ver-hist', f.ver.hist, 'o histórico', (x, v) => { if (x.ver.hist === v) return false; x.ver.hist = v; }, true)));
@@ -1616,11 +1646,14 @@
   async function novoRecurso(id) {
     if (!App.podeEditar()) return;
     const idMapa = App.mapa.id, mot = motivoFac.id === id ? motivoFac.txt.trim() : '';
-    const r = await janela({ titulo: 'Recurso novo', ok: 'Pôr', campos: [
-      { id: 'nome', rotulo: 'Nome', valor: '', max: 60, ph: 'Ouro, comida, soldados, magia…' },
+    const eco = App.mapa.eco && App.mapa.eco.on ? App.mapa.eco : null;
+    const r = await janela({ titulo: eco ? 'Outro número desta facção' : 'Recurso novo', ok: 'Pôr', texto: eco ? 'Um número que só esta facção conta (soldados, favores…). Um recurso que todas as facções têm se cria na Economia do mundo.' : null, campos: [
+      { id: 'nome', rotulo: 'Nome', valor: '', max: 60, ph: eco ? 'Soldados, favores, segredos…' : 'Ouro, comida, soldados, magia…' },
       { id: 'n', rotulo: 'Quanto', tipo: 'decimal', valor: '0' },
     ], ler: v => {
       if (!v.nome.trim()) throw new Error('Dê um nome ao recurso.');
+      const w = eco && eco.rec.find(x => semAcento(x.nome).trim() === semAcento(v.nome).trim());
+      if (w) throw new Error(w.nome + ' é um recurso do mundo: o estoque dele já está na lista de cima.');
       const n = lerNum(v.n);
       if (!Number.isFinite(n)) throw new Error('Use um número.');
       return { nome: v.nome.trim(), n };
@@ -2702,6 +2735,14 @@
       return out;
     }
     if (facAberta && !facDe(v, facAberta)) facAberta = null;
+    // (pente fino) o clã dos jogadores ligado a uma facção que não é a marcada como a dos jogadores: avisa e oferece marcar
+    const claJ = ed && mestre && App.clas instanceof Map ? [...App.clas.values()].find(c => c.jog && c.fac && facDe(v, c.fac)) : null, fj = claJ ? facDe(v, claJ.fac) : null;
+    if (fj && !fj.jog) {
+      const outra = v.faccoes.find(g => g.jog);
+      out.push(h('div', { class: 'sug-ic sug-jog', 'data-k': 'fac:jog-sug' },
+        h('small', { text: 'O clã dos jogadores (' + claJ.nome + ') é de ' + nomeFac(fj) + (outra ? ', mas a facção marcada como a dos jogadores é ' + nomeFac(outra) : ', que ainda não está marcada como a facção dos jogadores') + '.' }),
+        botao('Marcar ' + nomeFac(fj) + ' como a dos jogadores…', () => marcarJog(fj.id), { c: 'sm', k: 'fac:jog-marcar' })));
+    }
     const lista = h('div', { class: 'lista' });
     for (const f of v.faccoes) {
       // (lote 10) as províncias (as regiões de fora) e as sub-regiões da facção (a de dentro sem facção própria herda)
@@ -2733,6 +2774,15 @@
     out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
       v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras das facções (as próprias ou as dos clãs ligados a elas) nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
     return out;
+  }
+  // (pente fino) marcar a facção dos jogadores pelo aviso do clã (só uma pode ser; com Desfazer)
+  async function marcarJog(fid) {
+    const m = App.mapa, f = facDe(m, fid), outra = m && m.faccoes.find(g => g.jog && g.id !== fid);
+    if (!f) return;
+    const ok = await confirmar({ titulo: 'Marcar ' + nomeFac(f) + ' como a facção dos jogadores?', ok: 'Marcar',
+      texto: (outra ? nomeFac(outra) + ' deixa de ser (só uma facção pode ser dos jogadores). ' : '') + 'As terras dos jogadores passam a ser as desta facção. Dá para desfazer.' });
+    if (!ok || !mesmoMapa(m.id)) return;
+    if (App.mudar('marcar a facção dos jogadores', mm => { const x = facDe(mm, fid); if (!x || x.jog) return false; for (const g of mm.faccoes) delete g.jog; x.jog = true; }) !== false) avisoDesfazer(nomeFac(f) + ' agora é a facção dos jogadores.');
   }
   function campoBandeira(f) {
     const id = f.id, doCla = App.brasoes instanceof Map ? App.brasoes.get(id) : null, bt = (t, k, fn, c) => botao(t, fn, { c: 'sm' + (c ? ' ' + c : ''), k: 'f:' + id + ':' + k });

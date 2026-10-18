@@ -19,6 +19,8 @@
 //   · (parte 5b) as guildas: o catálogo e as da cidade normalizados, o catálogo pronto (pelo papel, pelos estratos, a moeda
 //     do mapa), a guilda a partir de um modelo, a parte da facção e a da guilda, a produção (como "guildas") e a semana (o
 //     estoque da guilda recebe a parte dela e paga o gasto).
+//   · (pente fino) juntar o número da facção ao recurso do mundo de mesmo nome (com o histórico) e a população da facção
+//     (a soma dos assentamentos; na projeção, com a economia ligada).
 //   · a bandeira própria da facção (sem clã): normalizada (o que não serve volta ao de começo ou sai), ao lado da do clã,
 //     e na projeção (a da facção escondida não vai).
 const N = require('../../mundo/nucleo.js');
@@ -481,7 +483,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     objs: [
       { id: 'r', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 900, 900) },
       { id: 'c1', k: 'm', x: 100, y: 100, ass: { niv: 'vila', pop: 0, estr: { mer: 10, cam: 30 }, guildas: [
-        { id: 'g1', nome: 'Guilda dos Mercadores', ic: 'balanca', estr: 'mer', membros: '8', lider: { nome: '  Ilsa ', ficha: 'pc_ilsa' }, infl: 30, rel: -9, prod: { la: 6 }, gasto: { su: 1 }, pct: 50, est: { la: 10, su: 0, zz: 4 },
+        { id: 'g1', nome: 'Guilda dos Mercadores', ic: 'balanca', estr: 'mer', membros: '8', lider: { nome: '  Ilsa ', ficha: 'pc_ilsa' }, infl: 30, rel: -19, prod: { la: 6 }, gasto: { su: 1 }, pct: 50, est: { la: 10, su: 0, zz: 4 },
           serv: [{ id: 's', tipo: 'contrato', nome: 'Escolta', preco: '40 Lapros' }, { id: 's', tipo: 'info', nome: 'Preços' }], secreta: false },
         { id: 'g2', nome: 'Ladrões', estr: 'fantasma', membros: -4, prod: { su: 2 }, pct: 0, secreta: 1 }] } },
       { id: 'c2', k: 'm', x: 1500, y: 100, ass: { niv: null, pop: 0, guildas: [{ nome: 'Sozinha' }] } }] });
@@ -492,8 +494,8 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   eq(cat[0].serv, [{ id: 'sv', tipo: 'item', nome: 'Seda', preco: '12 Lapros', desc: 'fina' }, { id: 'sv_2', tipo: 'contrato', nome: 'Rota', preco: '', desc: '' }], 'os serviços: o tipo que não existe vira contrato, sem nome sai');
   const c1 = g0.objs.find(o => o.id === 'c1').ass, [g1, g2] = c1.guildas;
   eq(Object.keys(g1), ['id', 'nome', 'ic', 'txt', 'estr', 'membros', 'lider', 'infl', 'rel', 'prod', 'gasto', 'pct', 'est', 'serv', 'secreta'], 'a guilda da cidade: as chaves na ordem de sempre');
-  eq([g1.membros, g1.lider, g1.infl, g1.rel, g1.est, g1.serv.map(s => s.id)], [8, { nome: 'Ilsa', ficha: 'pc_ilsa' }, 10, -5, { la: 10 }, ['s', 's_2']],
-    'os membros inteiros, o líder (o nome aparado e a ficha), a influência até +10, a relação até −5, o estoque só dos recursos do mundo e acima de zero');
+  eq([g1.membros, g1.lider, g1.infl, g1.rel, g1.est, g1.serv.map(s => s.id)], [8, { nome: 'Ilsa', ficha: 'pc_ilsa' }, 10, -10, { la: 10 }, ['s', 's_2']],
+    'os membros inteiros, o líder (o nome aparado e a ficha), a influência até +10, a relação até −10 (pente fino: como a do clã), o estoque só dos recursos do mundo e acima de zero');
   eq([g2.estr, g2.membros, g2.secreta, g2.pct], [null, 0, true, 0], 'o estrato que não existe sai; os membros não ficam negativos');
   ok(j(g0.objs.find(o => o.id === 'c2').ass) === j({ niv: null, pop: 0, guildas: [{ id: 'gd', nome: 'Sozinha', ic: 'salao', txt: '', estr: null, membros: 0, lider: { nome: '', ficha: null }, infl: 0, rel: 0, prod: {}, gasto: {}, pct: 50, est: {}, serv: [], secreta: false }] }),
     'o marcador que só tem uma guilda continua assentamento (a guilda com o de começo)');
@@ -537,6 +539,41 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   eq([gs[0].est, gs[1].est], [{ la: 13 }, { su: 2 }], 'aplicar: o estoque de cada guilda fica no que sobrou');
   const pj = N.projetar(g0);
   ok(!pj.objs.some(o => 'ass' in o) && !('eco' in pj), 'na projeção, nada das guildas (por enquanto, tudo do mestre: a parte 6 decide o que os jogadores veem)');
+}
+
+/* ---- (pente fino) juntar pelo nome e a população da facção ---- */
+{
+  const REC = [{ id: 'lapros', nome: 'Lapros', papel: 'moeda' }, { id: 'su', nome: 'Suprimentos', papel: 'comida' }];
+  const base = { nome: 'M', larg: 2000, alt: 1400, cal: { dia: 3 },
+    eco: { on: true, rec: REC, estr: [{ id: 'cam', nome: 'Camponeses', prod: { su: 0.6 } }], niv: [{ id: 'vila', nome: 'Vila', esp: 4 }] },
+    faccoes: [
+      { id: 'fa', nome: 'Aldar', ver: { pop: true }, pop: 999, rec: [{ id: 'lapros', nome: 'Lapros', n: 30 }, { id: 'rc1', nome: '  LÁPROS ', n: 12, ver: true }, { id: 'rc2', nome: 'Honra', n: 3 }],
+        hist: [{ d: 1, mot: 'tesouro', mud: [['r:rc1', 'lápros', 0, 12]] }] },
+      { id: 'fb', nome: 'Vale', pop: 50, rec: [{ id: 'rc3', nome: 'suprimentos', n: 7 }] }],
+    objs: [
+      { id: 'r1', k: 'r', nome: 'Reino', fac: 'fa', pts: quad(0, 0, 900, 900) },
+      { id: 'r2', k: 'r', nome: 'Vale', fac: 'fb', pts: quad(1000, 0, 1900, 900) },
+      { id: 'a1', k: 'm', x: 100, y: 100, ass: { niv: 'vila', pop: 0, estr: { cam: 40 } } },
+      { id: 'a2', k: 'm', x: 200, y: 100, ass: { niv: 'vila', pop: 0, estr: { cam: 25 } } },
+      { id: 'a3', k: 'm', x: 1200, y: 100, ass: { niv: 'vila', pop: 0, estr: { cam: 10 } } },
+      { id: 'a4', k: 'm', x: 1950, y: 1300, ass: { niv: 'vila', pop: 0, estr: { cam: 99 } } }] };
+  const m = N.normalizarMapa(base);
+  // juntar ao recurso do mundo
+  const r1 = JSON.parse(j(m)), res = R.juntarAoMundo(r1, 'fa', 'rc1', ''), j1 = N.normalizarMapa(r1), fa = j1.faccoes[0];
+  eq(res, { nome: 'Lapros', de: 30, mais: 12, para: 42 }, 'juntar "LÁPROS" (12) ao estoque de Lapros (30): 42');
+  ok(j(fa.rec.map(r => [r.id, r.n])) === j([['lapros', 42], ['rc2', 3]]) && fa.rec[0].ver === true, 'o número da facção sai da lista; o estoque fica com a soma (e "jogadores veem", se o outro tinha)');
+  ok(fa.hist[0].mud[0][0] === 'r:lapros' && fa.hist[fa.hist.length - 1].mud.some(x => x[0] === 'r:lapros' && x[2] === 30 && x[3] === 42) && fa.hist[fa.hist.length - 1].mot === 'juntou LÁPROS',
+    'o histórico do número vai junto (passa a ser o do recurso do mundo) e a junção entra no histórico');
+  ok(R.juntarAoMundo(JSON.parse(j(m)), 'fa', 'rc2', '') === null && R.juntarAoMundo(JSON.parse(j(m)), 'fa', 'lapros', '') === null && R.juntarAoMundo(JSON.parse(j(m)), 'fa', 'xx', '') === null,
+    'sem recurso do mundo com o mesmo nome (ou já sendo o do mundo, ou não existindo): nada');
+  const r2 = JSON.parse(j(m)), res2 = R.juntarAoMundo(r2, 'fb', 'rc3', 'tributo'), fb = N.normalizarMapa(r2).faccoes[1];
+  ok(res2.para === 7 && j(fb.rec.map(r => [r.id, r.n])) === j([['su', 7]]) && fb.hist.some(h => h.mot === 'tributo'), 'a facção sem o estoque do recurso: ele entra com o número dela (e o motivo escrito)');
+  // a população da facção: a soma dos assentamentos dela
+  eq([R.populacaoDaFaccao(m, 'fa'), R.populacaoDaFaccao(m, 'fb')], [65, 10], 'a população de cada facção: a soma das cidades das regiões dela (a de fora das regiões não conta)');
+  const pj = N.projetar(m);
+  eq([pj.faccoes[0].pop, pj.faccoes[1].pop], [65, null], 'na projeção, com a economia ligada: a soma (só para a facção que mostra a população); a outra continua sem número');
+  const pjOff = N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { on: false }) })));
+  eq(pjOff.faccoes[0].pop, 999, 'com a economia desligada, vale o número escrito à mão');
 }
 
 /* ---- a bandeira própria da facção (sem clã) ---- */

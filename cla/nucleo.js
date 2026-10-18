@@ -29,7 +29,7 @@
   const NIVEIS = Array.from({ length: 2 * NIVEL_MAX + 1 }, (_, i) => i - NIVEL_MAX);        // −10 … +10
   const ESCALA_NOME = { mundo: 'Respeito no mundo', rel: 'Relações', membro: 'Respeito dos membros' };
   // as partes de um clã que o mestre mostra (ou não) aos jogadores, num clã de NPC
-  const PARTES = [['cargos', 'Cargos e quem ocupa'], ['construcoes', 'Construções'], ['recursos', 'Recursos'], ['respeito', 'Respeito no mundo'], ['relacoes', 'Relações'], ['hist', 'Histórico']];
+  const PARTES = [['cargos', 'Cargos e quem ocupa'], ['construcoes', 'Construções do clã'], ['recursos', 'Cofre do clã'], ['respeito', 'Respeito no mundo'], ['relacoes', 'Relações'], ['hist', 'Histórico']];
   const PARTE_NOME = Object.fromEntries(PARTES);
   // o brasão: a forma (numa caixa de 100×120), a divisão, duas cores e um símbolo — ou uma imagem
   const FORMAS = [

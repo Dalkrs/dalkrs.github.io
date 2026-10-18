@@ -177,11 +177,19 @@
     // a moral e os mantimentos
     out.push(h('div', { class: 'row' },
       campoNumero('o:' + id + ':moral', 'Moral (0 a 10)', e.moral, n => mudarObj(id, 'mudar a moral', x => { x.exe.moral = n; }), { min: 0, max: 10, erro: 'A moral vai de 0 (em fuga) a 10 (inabalável); 5 é firme.' }),
-      campoNumero('o:' + id + ':mant', 'Mantimentos', e.mant, n => mudarObj(id, 'mudar os mantimentos', x => { x.exe.mant = n; if (n > 0) x.exe.fome = 0; }), { min: 0, max: 1e9 }),
+      campoNumero('o:' + id + ':mant', 'Mantimentos (comida na estrada)', e.mant, n => mudarObj(id, 'mudar os mantimentos', x => { x.exe.mant = n; if (n > 0) x.exe.fome = 0; }), { min: 0, max: 1e9 }),
       campoNumero('o:' + id + ':cons', 'Por dia', e.cons == null ? '' : e.cons, n => mudarObj(id, 'mudar o consumo', x => { x.exe.cons = n; }), { min: 1, max: 1e7, vazio: null, ph: String(Math.ceil(tr / 100) || 0) })));
     out.push(nota('Moral ' + e.moral + ': ' + textoMoral(e.moral) + '. ' + (cons > 0 ? 'Comem ' + fmt(cons, 0) + ' por dia' + (e.cons == null ? ' (um por cem soldados)' : '') + ': dá para ' + plural(dias, 'dia', 'dias') + '.' : 'Sem consumo.')
       + (e.fome ? ' Sem mantimentos há ' + plural(e.fome, 'dia', 'dias') + ': a moral cai 1 por dia, e a fome tira ATQ nas batalhas.' : ' No "Próximo dia", vem a proposta de descontar; quando acabam, a moral cai e a fome tira ATQ.'),
       e.fome ? 'aviso' : null));
+    // (lote 10, pente fino) a manutenção da economia é outra coisa: o que a facção paga por semana por este exército
+    const Rn = window.MundoReino;
+    if (Rn && m.eco && m.eco.on) {
+      const u = Rn.manutencaoDe(m, o), txt = m.eco.rec.filter(r => u[r.id]).map(r => r.nome + ' ' + kit().fmt(u[r.id], 2)).join(' · '), f = o.fac ? kit().facDe(m, o.fac) : null;
+      out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':manut', text: !txt ? 'Manutenção (na Economia do mundo): este exército não custa nada por semana à facção.'
+        : f ? 'Manutenção: custa a ' + kit().nomeFac(f) + ' por semana ' + txt + ' (na Economia do mundo; é outra coisa que os mantimentos, a comida que ele leva).'
+          : 'Manutenção: ' + txt + ' por semana, mas sem facção ninguém paga (os mantimentos são a comida que ele leva).' }));
+    }
     return [secao('Exército', out), secHeroisDoExercito(o, m), secUnidades(o, m),
       linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o) }))];
   }

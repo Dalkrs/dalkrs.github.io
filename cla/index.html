@@ -77,6 +77,10 @@ select.in { padding: 0 6px; width: auto; }
 .vazio-p { font-size: 13px; color: var(--fg-3); margin: 0; }
 .tit { margin: 0; font: 600 21px/1.15 var(--display); color: var(--fg); }
 .cartao { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+/* (lote 10, pente fino) o estoque da facção ligada ao clã, no Mapa-múndi (só para ler) */
+.fac-estoque { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line-strong); }
+.fac-estoque b { font-size: 13.5px; }
+.fac-estoque span { font-size: 13px; color: var(--fg); }
 .cartao > .cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .cartao > .cab .tit { flex: 1; }
 .badge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -252,7 +256,7 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=2"></script>
-<script src="cla.js?v=2"></script>
+<script src="nucleo.js?v=3"></script>
+<script src="cla.js?v=3"></script>
 </body>
 </html>

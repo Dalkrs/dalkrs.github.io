@@ -212,6 +212,31 @@
     }
     return ligados;
   }
+  /* (pente fino) O número que só uma facção tem com o mesmo nome (sem acento nem maiúscula) de um recurso do mundo:
+     junta no estoque dele (soma), o histórico do número vai junto e ele sai da lista (no rascunho). → { nome, de, mais,
+     para } ou null (não é o caso) */
+  function juntarAoMundo(m, facId, recId, mot) {
+    const N = NN(), e = ehObj(m) && ehObj(m.eco) ? m.eco : null, f = e ? (m.faccoes || []).find(x => x.id === facId) : null;
+    const own = f && Array.isArray(f.rec) ? f.rec.find(r => r.id === recId) : null;
+    if (!own || e.rec.some(w => w.id === own.id)) return null;
+    const w = e.rec.find(x => semAcento(x.nome) === semAcento(own.nome));
+    if (!w) return null;
+    let fw = f.rec.find(r => r.id === w.id);
+    if (!fw) { fw = { id: w.id, nome: w.nome, n: 0, ver: false }; f.rec.push(fw); }
+    const de = Number(fw.n) || 0, mais = Number(own.n) || 0, para = arred2(de + mais), velho = 'r:' + own.id;
+    for (const h of Array.isArray(f.hist) ? f.hist : []) for (const u of Array.isArray(h.mud) ? h.mud : []) if (u[0] === velho) u[0] = 'r:' + w.id;
+    f.rec = f.rec.filter(r => r.id !== own.id);
+    if (own.ver) fw.ver = true;
+    N.facMudar(f, 'r:' + w.id, para, ehObj(m.cal) ? m.cal.dia : 0, mot || 'juntou ' + String(own.nome || '').trim());
+    return { nome: w.nome, de, mais, para };
+  }
+  // (pente fino) a população de uma facção: a soma dos assentamentos das regiões dela
+  function populacaoDaFaccao(m, fid) {
+    const N = NN();
+    let n = 0;
+    for (const a of assentamentosDe(m)) if (a.r && N.facDaRegiao(m, a.r) === fid) n += Number(a.o.ass.pop) || 0;
+    return n;
+  }
   /* Ligar a economia (no rascunho): a de começo (ou a que estava guardada, desligada), os recursos do mundo em cada
      facção e o mapa contando os dias da semana (a semana fecha de domingo para segunda; sem a semana, hoje vira
      segunda-feira). → { ligados: [{ fac, nome }], semana: true se passou a contar a semana } */
@@ -651,7 +676,7 @@
 
   const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
     RECURSOS_INICIAIS, TERRENO_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
-    producaoDaPopulacao, distribuir, nivelDaDivisao, GUILDAS_INICIAIS, guildasProntas, guildaDoModelo, guildasDe, partesDaGuilda,
+    producaoDaPopulacao, distribuir, nivelDaDivisao, juntarAoMundo, populacaoDaFaccao, GUILDAS_INICIAIS, guildasProntas, guildaDoModelo, guildasDe, partesDaGuilda,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
     CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
     cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,

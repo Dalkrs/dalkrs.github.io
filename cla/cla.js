@@ -323,7 +323,7 @@
   function escolher(id) { if (sel !== id) { sel = id; aba = 'hier'; verTudo = false; } pintar(); }
 
   /* ---------------- o salão: as partes ---------------- */
-  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['cons', 'Construções', ['construcoes']], ['rec', 'Recursos', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
+  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['cons', 'Construções', ['construcoes']], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
   const abaVisivel = (c, a) => ABAS.find(x => x[0] === a)[2].some(k => c.ver[k]);
   function escondida(c) { return h('div', { class: 'aviso', 'data-k': 'escondida', text: 'O mestre ainda não mostrou esta parte de ' + c.nome + '.' }); }
   function linhaHist(e, i, txt) { return h('div', { class: 'linha-h', 'data-h': String(i) }, h('time', { text: dia(e.em) }), h('span', { text: txt })); }
@@ -554,7 +554,7 @@
   function secConstrucoes(x) {
     const c = x.c, id = x.id;
     return h('div', { class: 'cartao', 'data-k': 'sec:cons', style: 'flex:2 1 520px' },
-      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Construções' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'cons:nova', disabled: c.construcoes.length >= N.MAX.construcoes, onclick: () => construcaoDlg(id, null) }, '+ Construção')),
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Construções do clã' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'cons:nova', disabled: c.construcoes.length >= N.MAX.construcoes, onclick: () => construcaoDlg(id, null) }, '+ Construção')),
       c.construcoes.length ? h('div', { class: 'grade' }, c.construcoes.map(k => {
         const ic = N.ICONES.find(i => i.id === k.ico) || N.ICONES[0], f = N.falta(c, k.id), custo = k.prox.custo;
         const gasto = custo.map(y => '−' + N.qtdTxt(y.qtd) + ' ' + ((c.recursos.lista.find(r => r.id === y.rec) || {}).nome || y.nome)).join(', ');
@@ -566,20 +566,35 @@
             h('span', null, custo.length ? N.custoTxt(custo, c.recursos) : 'sem custo', f.length ? h('span', { class: 'falta', text: ' (faltam ' + f.map(y => N.qtdTxt(y.qtd) + ' ' + y.nome).join(', ') + ')' }) : null,
               k.prox.efeito ? ' · o efeito novo: “' + k.prox.efeito + '”' : null)),
           h('button', { type: 'button', class: 'btn' + (f.length ? '' : ' pri'), 'data-k': 'cons:sobe:' + k.id, disabled: !!f.length || k.nivel >= N.MAX.nivel,
-            title: f.length ? 'Faltam recursos: ajuste os recursos do clã antes' : null, onclick: () => subir(id, k) }, 'Subir de nível' + (gasto && !f.length ? ' (' + gasto + ')' : '')));
+            title: f.length ? 'Faltam recursos: ajuste o cofre do clã antes' : null, onclick: () => subir(id, k) }, 'Subir de nível' + (gasto && !f.length ? ' (' + gasto + ')' : '')));
       })) : h('p', { class: 'vazio-p', text: 'Nenhuma construção ainda.' }),
-      h('p', { class: 'ajuda', text: '“Subir de nível” desconta o custo dos recursos do clã (com Desfazer) e fica no histórico. Cada construção: nome, ícone, nível, efeito escrito e o custo do próximo nível.' }));
+      h('p', { class: 'ajuda', text: '“Subir de nível” desconta o custo do cofre do clã (com Desfazer) e fica no histórico. Cada construção: nome, ícone, nível, efeito escrito e o custo do próximo nível. (As construções das cidades, no Mapa-múndi, são outra coisa: as do catálogo do mundo.)' }));
   }
   function subir(id, k) {
     let feito = false;
     mudarCla(id, 'subir ' + k.nome + ' de nível', y => { const r = N.subirNivel(y, k.id, agora()); if (!r.ok) { toast(r.falta.length ? 'Faltam recursos para subir ' + k.nome + '.' : 'Não deu para subir de nível.'); return false; } feito = trocar(y, r.cla); });
     if (feito) avisoDesfazer(k.nome + (k.nivel === 0 ? ' foi construída.' : ' subiu para o nível ' + (k.nivel + 1) + '.'));
   }
+  /* (lote 10, pente fino) O estoque da facção ligada ao clã, no Mapa-múndi (com a economia ligada), só para ler: o cofre
+     do clã é outra coisa. → { fac, mapa, linhas: [{ nome, n }] } ou null */
+  function estoqueDaFaccao(c) {
+    if (!naMesa || !c.faccao || !c.faccao.id) return null;
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:') || l.apagado || !ehObj(l.dados) || !Array.isArray(l.dados.faccoes)) continue;
+      const f = l.dados.faccoes.find(y => ehObj(y) && y.id === c.faccao.id);
+      if (!f) continue;
+      const eco = ehObj(l.dados.eco) && l.dados.eco.on === true && Array.isArray(l.dados.eco.rec) ? l.dados.eco : null;
+      if (!eco) return null;
+      return { fac: String(f.nome || '').trim().slice(0, 60) || 'Facção', mapa: String(l.dados.nome || '').slice(0, 60),
+        linhas: eco.rec.filter(ehObj).map(w => { const r = Array.isArray(f.rec) ? f.rec.find(y => ehObj(y) && y.id === w.id) : null; return { nome: String(w.nome || '').slice(0, 40), n: r ? Number(r.n) || 0 : 0 }; }) };
+    }
+    return null;
+  }
   function secRecursos(x) {
-    const c = x.c, id = x.id;
+    const c = x.c, id = x.id, est = estoqueDaFaccao(c);
     const mudar = (r, d) => mudarCla(id, (d > 0 ? 'somar ' : 'tirar ') + r.nome, y => trocar(y, N.mudarRecurso(y, r.id, d, usarMotivo('rec'), agora())));
     return h('div', { class: 'cartao', 'data-k': 'sec:rec', style: 'flex:1 1 340px' },
-      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Recursos' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'rec:novo', disabled: c.recursos.lista.length >= N.MAX.recursos, onclick: () => recursoDlg(id, null) }, '+ Recurso')),
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Cofre do clã' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'rec:novo', disabled: c.recursos.lista.length >= N.MAX.recursos, onclick: () => recursoDlg(id, null) }, '+ Recurso')),
       c.recursos.lista.length ? c.recursos.lista.map(r => h('div', { class: 'rec', 'data-rec': r.id },
         h('b', { text: r.nome }),
         h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:ren:' + r.id, title: 'Renomear', 'aria-label': 'Renomear ' + r.nome, onclick: () => recursoDlg(id, r.id) }, '✎'),
@@ -588,7 +603,10 @@
           onchange: function () { mudarCla(id, 'mudar ' + r.nome, y => trocar(y, N.definirRecurso(y, r.id, this.value, usarMotivo('rec'), agora()))) || pintar(); } }),
         h('button', { type: 'button', class: 'ib', 'data-k': 'rec:mais:' + r.id, title: 'Somar 1 (com Shift, 10)', 'aria-label': 'Somar em ' + r.nome, onclick: ev => mudar(r, ev.shiftKey ? 10 : 1) }, '+')))
         : h('p', { class: 'vazio-p', text: 'Nenhum recurso ainda (ouro, madeira, ferro, influência…).' }),
-      h('label', { class: 'field' }, h('span', { text: 'Motivo da próxima mudança (vai para o histórico)' }), motivoEl('rec', 'ex.: o pagamento da escolta')));
+      h('label', { class: 'field' }, h('span', { text: 'Motivo da próxima mudança (vai para o histórico)' }), motivoEl('rec', 'ex.: o pagamento da escolta')),
+      est ? h('div', { class: 'fac-estoque', 'data-k': 'rec:fac' }, h('b', { text: 'Estoque de ' + est.fac + ' (Mapa-múndi)' }),
+        h('span', { 'data-k': 'rec:fac:linhas', text: est.linhas.map(y => y.nome + ' ' + y.n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })).join(' · ') || 'nada' }),
+        h('small', { class: 'ajuda', text: 'Só para ler: é o estoque da facção ligada ao clã, que muda no Mapa-múndi (a semana, as obras). O cofre do clã, acima, é outra coisa.' })) : null);
   }
   function secRespeito(x) {
     const c = x.c, id = x.id, nm = nomes();
@@ -1032,7 +1050,7 @@
         h('div', { class: 'field' }, h('span', { text: 'Ícone' }), icones),
         h('label', { class: 'field' }, h('span', { text: 'Efeito' }), efeito),
         h('fieldset', { class: 'cartao', style: 'margin:0' }, h('legend', { style: 'font-weight:600;color:var(--fg-2);padding:0 6px', text: 'O próximo nível' }),
-          h('div', { class: 'field' }, h('span', { text: 'Custo (sai dos recursos do clã ao subir)' }), listaCusto),
+          h('div', { class: 'field' }, h('span', { text: 'Custo (sai do cofre do clã ao subir)' }), listaCusto),
           h('label', { class: 'field' }, h('span', { text: 'Efeito novo' }), efeitoNovo))),
       pe(k ? h('button', { type: 'button', class: 'btn per', 'data-k': 'dl:apagar', onclick: apagar }, 'Apagar') : null, btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: salvar }, k ? 'Salvar' : 'Criar'))]);
     nome.focus();

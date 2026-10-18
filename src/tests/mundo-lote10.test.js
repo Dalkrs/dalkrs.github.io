@@ -31,6 +31,10 @@
 //     na cidade a partir de um modelo (os campos cheios, o limite de membros, o líder, a influência, a relação, um
 //     serviço novo, no celular), o cartão, a produção na província ("guildas"), editar (a parte da facção, o estoque,
 //     tirar um serviço), Cancelar, tirar e desfazer, o aviso de membros demais e a semana (o estoque da guilda).
+//   · (SO=pentefino) o que estava duplicado: na facção, o estoque (do mundo) e os outros números, juntar pelo nome (a
+//     conta antes, desfazer), o número novo com o nome de um recurso do mundo, a população como a soma das cidades; o
+//     clã dos jogadores ligado a outra facção (avisa e oferece marcar); o exército (mantimentos e manutenção); o nível que
+//     sugere o ícone; as construções da cidade e as do clã; a relação da guilda de −10 a +10.
 //   · (SO=bandeira) a bandeira própria da facção (sem clã): criar (a janela com a de começo, as escolhas e a prévia; nada
 //     muda antes de criar; no celular, cabe), no mapa, na lista, no editor e no Livro; editar e cancelar (ou Esc); salvar
 //     e desfazer; a imagem (o mapa a mostra; "Voltar ao desenho"); com um clã ligado, vale a do clã (a própria fica
@@ -379,7 +383,7 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     ok(await A(L, () => !__mundo.App.mapa.eco.cons.some(c => c.nome === 'Moinho')), 'tirar o Moinho (ninguém usa: sem perguntar)');
     // construir na Cidade Alta
     await aba(L, 'selecao'); await selecionar(L, 'cid');
-    ok(/Construções · 0 de 6 espaços/.test(await textoPane(L)) && await campo(L, 'o:cid:construir').count() === 1, 'no assentamento: "Construções · 0 de 6 espaços" e "+ Construir…"');
+    ok(/Construções da cidade · 0 de 6 espaços/.test(await textoPane(L)) && await campo(L, 'o:cid:construir').count() === 1, 'no assentamento: "Construções da cidade · 0 de 6 espaços" e "+ Construir…"');
     await botao(L, 'o:cid:construir');
     await L.F.waitForSelector('dialog.ob-dl[open]');
     const ob = k => L.F.locator(`dialog.ob-dl[open] [data-k="${k}"]`);
@@ -398,7 +402,7 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'cid').ass.cons[0].obra.sem) === 2, 'as semanas que faltam: 2');
     await botao(L, 'cons:' + cid0 + ':terminar');
     const li = await A(L, id => { const e = document.querySelector('#pane [data-k="cons:' + id + '"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; }, cid0);
-    ok(/Mina de Orith nível 1 de 3 · Orith \+3/.test(li) && /Construções · 1 de 6 espaços/.test(await textoPane(L)), 'terminar a obra: a Mina no nível 1, produzindo: ' + li);
+    ok(/Mina de Orith nível 1 de 3 · Orith \+3/.test(li) && /Construções da cidade · 1 de 6 espaços/.test(await textoPane(L)), 'terminar a obra: a Mina no nível 1, produzindo: ' + li);
     // subir de nível, de graça; cancelar a obra
     await botao(L, 'cons:' + cid0 + ':subir');
     await L.F.waitForSelector('dialog.ob-dl[open]');
@@ -734,6 +738,86 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     await L.F.click('dialog.sem-dl[open] [data-k="sem:aplicar"]'); await espera(500);
     ok(await A(L, id => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'cg').ass.guildas.find(x => x.id === id).est), g.id) === j({ lapros: 14.8 }), 'aplicar: o estoque da guilda fica em 14,8 Lapros (sem Suprimentos)');
     if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250); }
+    await aba(L, 'selecao');
+  });
+
+  // ---------- (pente fino) o que estava duplicado ----------
+  if (parte('pentefino')) await passo('o pente fino', async () => {
+    await A(L, () => {
+      const { App, N } = __mundo, R = window.MundoReino;
+      App.mudar('a economia e o que vai ser conferido', m => {
+        if (!m.eco || !m.eco.on) R.ligarEconomia(m);
+        const fa = m.faccoes.find(f => f.id === 'fa');
+        fa.rec.find(r => r.id === 'lapros').n = 30;
+        fa.rec.push({ id: 'rcy', nome: 'lápros', n: 12, ver: false });
+        m.objs.push(Object.assign(N.objNovo('m', { x: 700, y: 600, ic: 'castelo' }), { id: 'vc', nome: 'Castelo do Rio' }),
+          Object.assign(N.objNovo('m', { x: 300, y: 620, ic: 'vila' }), { id: 'vp', nome: 'Vila Pequena', ass: { niv: 'aldeia', pop: 0, estr: { camponeses: 20 } } }));
+      });
+    });
+    await aba(L, 'faccoes');
+    if (await campo(L, 'f:fa:estoque').count() === 0) { await L.F.click('#pane [data-k="fac:fa"]'); await espera(250); }
+    // os recursos: o estoque (do mundo) em cima, os outros números embaixo, juntar pelo nome
+    ok(await campo(L, 'f:fa:estoque').count() === 1 && await campo(L, 'f:fa:outros').count() === 1 && /Estoque \(recursos do mundo\) Quanto Jogadores veem/.test(await textoPane(L)) && /Outros números desta facção/.test(await textoPane(L))
+      && await L.F.locator('#pane [data-k="f:fa:estoque"] [data-rec="lapros"]').count() === 1 && await L.F.locator('#pane [data-k="f:fa:outros"] [data-rec="rcy"]').count() === 1,
+      'na facção: "Estoque (recursos do mundo)" em cima e "Outros números desta facção" embaixo');
+    ok(/Mesmo nome de Lapros, um recurso do mundo\./.test(await A(L, () => document.querySelector('#pane [data-k="f:fa:r:rcy:junta"]').innerText)), 'o número "lápros" avisa que tem o nome de um recurso do mundo');
+    await botao(L, 'f:fa:r:rcy:juntar');
+    const pj = await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText.replace(/\s+/g, ' '));
+    ok(/Juntar “lápros” ao estoque de Lapros\? “lápros” \(12\) soma no estoque de Lapros \(30\): fica 42\. O histórico de “lápros” vai junto\. Dá para desfazer\./.test(pj), 'juntar: a janela diz a conta antes (12 + 30 = 42): ' + pj.slice(0, 160));
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    const fa1 = await A(L, () => { const f = __mundo.App.mapa.faccoes.find(x => x.id === 'fa'); return { lap: f.rec.find(r => r.id === 'lapros').n, rcy: f.rec.some(r => r.id === 'rcy') }; });
+    ok(fa1.lap === 42 && !fa1.rcy && /“lápros” entrou no estoque de Lapros: 42\./.test(await avisos(L)), 'juntou: o estoque de Lapros com 42 e o número "lápros" saiu (com o aviso)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok(await A(L, () => { const f = __mundo.App.mapa.faccoes.find(x => x.id === 'fa'); return f.rec.find(r => r.id === 'lapros').n === 30 && f.rec.some(r => r.id === 'rcy'); }), 'Desfazer: os dois de volta');
+    // um número novo com o nome de um recurso do mundo: não passa
+    await botao(L, 'f:fa:rec-novo');
+    ok(await A(L, () => document.querySelector('dialog.mundo-dl[open] h2').textContent) === 'Outro número desta facção', '"+ Outro número": a janela do número só desta facção');
+    await L.F.fill('dialog.mundo-dl[open] #dl-nome', 'suprimentos'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(200);
+    ok(/Suprimentos é um recurso do mundo: o estoque dele já está na lista de cima\./.test(await A(L, () => document.querySelector('dialog.mundo-dl[open] .err').textContent)), 'com o nome de um recurso do mundo: não cria (e diz por quê)');
+    await L.F.fill('dialog.mundo-dl[open] #dl-nome', 'Favores'); await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(300);
+    ok(await A(L, () => !!__mundo.App.mapa.faccoes.find(x => x.id === 'fa').rec.find(r => r.nome === 'Favores') && [...document.querySelectorAll('#pane [data-k="f:fa:outros"] input[data-k$=":nome"]')].some(i => i.value === 'Favores')), 'outro nome: entra nos outros números (embaixo)');
+    // a população: a soma das cidades da facção (só para ler)
+    const popEsp = await A(L, () => window.MundoReino.populacaoDaFaccao(__mundo.App.mapa, 'fa'));
+    ok(await campo(L, 'f:fa:pop').count() === 1 && await A(L, () => document.querySelector('#pane [data-k="f:fa:pop"]').tagName) === 'SPAN' && (await A(L, () => document.querySelector('#pane [data-k="f:fa:pop"]').textContent)) === String(popEsp).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+      && /Com a economia ligada, a população da facção é a soma das pessoas dos assentamentos das regiões dela/.test(await textoPane(L)), 'a população da facção: a soma das cidades dela (' + popEsp + '), só para ler, com a nota');
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane [data-k="f:fa:estoque"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await foto('l10-pente-faccao');
+    // o clã dos jogadores ligado a outra facção: avisa e oferece marcar
+    const antes = await A(L, () => (__mundo.App.mapa.faccoes.find(f => f.jog) || {}).id || null);
+    await A(L, () => { __mundo.App.clas = new Map([['k1', { id: 'k1', nome: 'Garras do Vale', fac: 'fb', cons: [{ id: 'c1', nome: 'Forja', ico: 'forja', nivel: 1, efeito: '' }], jog: true }]]); __mundo.App.emit('muda', { origem: 'fora' }); }); await espera(350);
+    const sug = await A(L, () => { const e = document.querySelector('#pane [data-k="fac:jog-sug"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(new RegExp('^O clã dos jogadores \\(Garras do Vale\\) é de Vale' + (antes ? ', mas a facção marcada como a dos jogadores é Aldar\\.' : ', que ainda não está marcada como a facção dos jogadores\\.')).test(sug), 'o clã dos jogadores é do Vale: a aba Reinos avisa: ' + sug);
+    await botao(L, 'fac:jog-marcar');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(await A(L, () => __mundo.App.mapa.faccoes.find(f => f.id === 'fb').jog === true && !__mundo.App.mapa.faccoes.find(f => f.id === 'fa').jog) && await campo(L, 'fac:jog-sug').count() === 0 && /Vale agora é a facção dos jogadores\./.test(await avisos(L)),
+      'marcar (com a confirmação): o Vale é a facção dos jogadores, o aviso some');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // o exército: os mantimentos e a manutenção, explicados
+    await aba(L, 'selecao'); await selecionar(L, 'ga');
+    ok(/Mantimentos \(comida na estrada\)/.test(await textoPane(L)) && /^Manutenção: custa a Aldar por semana Lapros [\d.,]+ · Suprimentos [\d.,]+ \(na Economia do mundo; é outra coisa que os mantimentos, a comida que ele leva\)\.$/.test(await A(L, () => document.querySelector('#pane [data-k="o:ga:manut"]').textContent)),
+      'o exército: "Mantimentos (comida na estrada)" e quanto ele custa a Aldar por semana (a manutenção)');
+    // o nível do assentamento sugere o ícone
+    await selecionar(L, 'vc');
+    await campo(L, 'o:vc:niv').selectOption('cidade'); await espera(350);
+    ok(/Usar o ícone de Cidade no mapa \(combina com Cidade\)\?/.test(await A(L, () => (document.querySelector('#pane [data-k="o:vc:ic-sug"]') || {}).innerText || '')) && await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vc').ic) === 'castelo',
+      'escolher "Cidade" num castelo: a sugestão do ícone aparece (nada muda sozinho)');
+    await botao(L, 'o:vc:ic-usar');
+    ok(await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vc').ic) === 'cidade' && await campo(L, 'o:vc:ic-sug').count() === 0, '"Usar o ícone": o marcador com o ícone de Cidade; a sugestão some');
+    await campo(L, 'o:vc:niv').selectOption('aldeia'); await espera(350);
+    ok(await campo(L, 'o:vc:ic-sug').count() === 1, 'outro nível (Aldeia): a sugestão volta (o ícone de Vila)');
+    await botao(L, 'o:vc:ic-nao');
+    ok(await campo(L, 'o:vc:ic-sug').count() === 0 && await A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'vc').ic) === 'cidade', '"Agora não": a sugestão some e o ícone fica');
+    // as construções: as da cidade e as do clã, com nomes diferentes
+    await A(L, () => __mundo.App.mudar('a sede', m => { m.objs.find(o => o.id === 'vc').ass.cla = { id: 'k1', prod: {} }; })); await espera(300);
+    ok(/Construções da cidade · 0 de 2 espaços/.test(await textoPane(L)) && /Construções do clã \(da página Clã\)/.test(await textoPane(L)), 'na cidade: "Construções da cidade" e, na sede, "Construções do clã (da página Clã)"');
+    await semAvisos(L); await A(L, () => { const e = document.querySelector('#pane [data-k="o:vc:esp"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await foto('l10-pente-cidade');
+    // a relação da guilda: de −10 a +10
+    await A(L, () => __mundo.App.mudar('uma guilda', m => { m.objs.find(o => o.id === 'vp').ass.guildas = [{ id: 'gp', nome: 'Pescadores', rel: -9 }]; })); await espera(250);
+    await selecionar(L, 'vp');
+    await botao(L, 'gd:gp:editar'); await L.F.waitForSelector('dialog.gd-dl[open]');
+    ok(await A(L, () => [...document.querySelectorAll('dialog.gd-dl[open] [data-k="gd:rel"] option')].map(o => o.value).join()) === '10,9,8,7,6,5,4,3,2,1,0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10' && await A(L, () => document.querySelector('dialog.gd-dl[open] [data-k="gd:rel"]').value) === '-9',
+      'a relação da guilda com o grupo: de +10 a −10, como a do clã (a de −9 fica)');
+    await L.F.click('dialog.gd-dl[open] [data-k="gd:nao"]'); await espera(200);
+    await A(L, () => { __mundo.App.clas = new Map(); __mundo.App.emit('muda', { origem: 'fora' }); });
     await aba(L, 'selecao');
   });
 

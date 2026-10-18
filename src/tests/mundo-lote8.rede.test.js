@@ -3,6 +3,8 @@
 //     junto do grupo e na zona de guerra; a projeção a leva, e o jogador a vê no mapa mostrado — sem receber o clã;
 //   · o brasão que muda no Clã muda a bandeira (no mapa do mestre, na projeção e no do jogador);
 //   · o clã que deixa a facção leva a bandeira embora.
+//   · (lote 10, pente fino) no Clã ligado a uma facção com a economia ligada: o "Cofre do clã" e o estoque da facção (só
+//     para ler).
 //   · (lote 10) a bandeira própria de uma facção sem clã: feita na janela, vai na projeção e o jogador a vê; com um clã
 //     ligado, vale a do clã (a própria volta quando ele sai); a imagem (só numa mesa) vai para o banco e o jogador a vê.
 const zlib = require('zlib');
@@ -119,6 +121,20 @@ function png(w, h, cor) {
     ok(await ate(async () => await JW.evaluate(u => { const i = document.querySelector('#mundo svg [data-id="regv"] .bandeira image'); return !!i && i.getAttribute('href') === u; }, url)), 'e o jogador vê a imagem no lugar do desenho');
     const tam = await M.evaluate(async u => { const r = await fetch(u); const b = await r.blob(); const bm = await createImageBitmap(b); return [r.status, b.type, bm.width, bm.height]; }, url);
     ok(tam[0] === 200 && tam[1] === 'image/png' && tam[2] === 400 && tam[3] === 480, 'a imagem guardada é um PNG reduzido (480 px no lado maior): ' + j(tam));
+
+    // ---------- (lote 10, pente fino) no Clã: o cofre do clã e o estoque da facção ligada (só para ler) ----------
+    await W.evaluate(() => { const { App } = __mundo, R = window.MundoReino; App.mudar('a economia', m => { R.ligarEconomia(m); m.faccoes.find(f => f.id === 'fa').rec.find(r => r.id === 'lapros').n = 25; }); });
+    await M.evaluate(d => TC.dados.col('documentos').gravar('cla:c:lam', { dados: d }, null, { cas: true }), clan(BR));
+    ok(await ate(async () => { const d = await doc(M, 'mundo:mapa:' + mapa); return !!(d && d.eco && d.eco.on && d.faccoes.find(f => f.id === 'fa').rec.some(r => r.id === 'lapros' && r.n === 25)); }), '(a economia ligada no mapa, com 25 Lapros em Aldar)');
+    await M.locator('#tab-cla').click();
+    let CW = null;
+    ok(await ate(async () => { CW = await quadro(M, /\/cla\//); return CW && await CW.evaluate(() => !!window.__cla && __cla.pronto && __cla.naMesa); }), 'o Clã da mesa abre');
+    await CW.evaluate(() => { if (__cla.vista !== 'mestre') { const b = document.querySelector('[data-vista="mestre"]'); if (b) b.click(); } });
+    await ate(async () => (await CW.locator('[data-cla="lam"]').count()) > 0);
+    await CW.locator('[data-cla="lam"]').first().click();
+    const caixaFac = () => CW.evaluate(() => { const e = document.querySelector('[data-k="rec:fac"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(await ate(async () => /^Estoque de Aldar \(Mapa-múndi\) .*Lapros 25.* Só para ler: é o estoque da facção ligada ao clã/.test(await caixaFac())), 'no Clã ligado a Aldar: o estoque da facção, só para ler: ' + await caixaFac());
+    ok(await CW.evaluate(() => document.querySelector('[data-k="sec:rec"] h2').textContent === 'Cofre do clã' && document.querySelector('[data-k="sec:cons"] h2').textContent === 'Construções do clã'), 'e o cofre e as construções com o nome do clã');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

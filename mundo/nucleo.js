@@ -1805,7 +1805,7 @@
      Camponeses).
      (parte 5b) As guildas da cidade (não são clãs): ass.guildas = [{ id, nome, ic, txt (a descrição), estr (o estrato de
      onde vêm os membros), membros, lider: { nome, ficha (uma ficha das Fichas, opcional) }, infl (a influência, −10 a
-     +10, só para ler), rel (a relação com o grupo, −5 a +5), prod e gasto (por semana), pct (quantos % do que ela produz
+     +10, só para ler), rel (a relação com o grupo, −10 a +10, como a do clã), prod e gasto (por semana), pct (quantos % do que ela produz
      vão para a facção dona da cidade; o resto fica no estoque dela), est (o estoque da guilda; o gasto sai dele), serv:
      [{ id, tipo (contrato, item, info), nome, preco (texto), desc }], secreta }]; eco.guildas = o catálogo (os modelos:
      sem membros, líder, influência, relação nem estoque).
@@ -1913,7 +1913,7 @@
       txt: texto(g.txt, '', MAX_TXT_GUILDA).trim(), estr: idRef(g.estr) };
     if (!cat) {
       const l = ehObj(g.lider) ? g.lider : {};
-      Object.assign(x, { membros: inteiro(g.membros, 0, 0, MAX_PESSOAS), lider: { nome: texto(l.nome, '', 60).trim(), ficha: idRef(l.ficha) }, infl: inteiro(g.infl, 0, -10, 10), rel: inteiro(g.rel, 0, -5, 5) });
+      Object.assign(x, { membros: inteiro(g.membros, 0, 0, MAX_PESSOAS), lider: { nome: texto(l.nome, '', 60).trim(), ficha: idRef(l.ficha) }, infl: inteiro(g.infl, 0, -10, 10), rel: inteiro(g.rel, 0, -10, 10) });
     }
     Object.assign(x, { prod: normTabProd(g.prod), gasto: normTabPos(g.gasto), pct: inteiro(g.pct, 50, 0, 100) });
     if (!cat) x.est = normTabPos(g.est);
@@ -2410,6 +2410,13 @@
       else if (o.k === 'r') { facEf.set(o.id, facDaRegiao(m, o)); if (o.clima || (o.chj && o.chj.d === dia)) chReg.set(o.id, climaDoDia(m, dia, o).k); }
     }
     m.clima = { hoje: chMundo };
+    // (lote 10, pente fino) com a economia ligada, a população de cada facção é a soma dos assentamentos dela (o número
+    // escrito à mão fica para a economia desligada); vai para os jogadores só se o mestre marcou que eles veem
+    if (m.eco && m.eco.on) {
+      const soma = {};
+      for (const o of m.objs) if (o.k === 'm' && o.ass && o.ass.pop > 0) { const r = regiaoEm(m, o.x, o.y), fid = r ? facDaRegiao(m, r) : null; if (fid) soma[fid] = (soma[fid] || 0) + o.ass.pop; }
+      for (const f of m.faccoes) f.pop = soma[f.id] || 0;
+    }
     delete m.eco;                                              // (lote 10) a economia é do mestre
     const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
     m.faccoes = m.faccoes.filter(f => !f.oculta);

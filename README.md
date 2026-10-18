@@ -1229,7 +1229,7 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   com lembrete ("Vila do Norte (Aldar): Aventureiros (3): rumores · Guarda (6): defesa…"), sem mudar nenhum número.
 - **As guildas** (parte 5b; não são clãs: cada cidade tem as suas, sem filiais): no assentamento, a seção ganha
   "Guildas" — cada uma num cartão (o ícone, o nome, "secreta", os membros e de qual estrato, o líder, a influência de −10
-  a +10, só para ler, a relação com o grupo de −5 a +5, o que produz e gasta por semana, quantos % vão para a facção, o
+  a +10, só para ler, a relação com o grupo de −10 a +10, como a do clã, o que produz e gasta por semana, quantos % vão para a facção, o
   estoque e os serviços), com "Editar…", "Abrir a ficha" (o líder ligado a uma ficha, dentro do site) e tirar (pergunta,
   dizendo o estoque; com Desfazer). "+ Guilda…" abre a janela com a escolha de um modelo do catálogo, que enche os
   campos (`guildaDoModelo`: o que é de cada cidade começa vazio). Os membros vêm de um estrato e não passam das pessoas
@@ -1246,6 +1246,20 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   (as guildas das cidades continuam). A economia ligada agora já vem com eles; o mapa de antes fica com o catálogo
   vazio e o botão "Pôr as 8 prontas". As guildas (`ass.guildas`) não vão na projeção (a parte 6 decide o que os
   jogadores veem).
+- **O pente fino** (o que estava duplicado e confundia; as escolhas do mestre): na facção, com a economia ligada, os
+  números ficam em duas listas — "Estoque (recursos do mundo)" em cima e "Outros números desta facção" embaixo, com
+  "+ Outro número" (que não aceita o nome de um recurso do mundo) e o aviso de que um recurso de todas as facções se
+  cria na Economia do mundo; o número só da facção com o nome de um recurso do mundo avisa e oferece "Juntar ao
+  estoque…" (`juntarAoMundo`: a janela diz a conta antes; soma no estoque, o histórico vai junto; com Desfazer). A
+  **população da facção**, com a economia ligada, é a soma dos assentamentos das regiões dela (`populacaoDaFaccao`; só
+  para ler, com a nota; na projeção, `f.pop` vira essa soma — o número à mão fica para a economia desligada). O
+  **exército**: "Mantimentos (comida na estrada)" e, com a economia ligada, quanto ele custa à facção por semana (a
+  manutenção). O **Clã**: "Cofre do clã" (a aba "Cofre") e "Construções do clã"; no Cofre, o estoque da facção ligada ao
+  clã, do Mapa-múndi, só para ler (numa mesa); na cidade, "Construções da cidade" e, na sede, "Construções do clã (da
+  página Clã)". Quando **o clã dos jogadores** está ligado a uma facção que não é a marcada como a dos jogadores, a aba
+  Reinos avisa e oferece marcá-la (com confirmação e Desfazer). A **relação da guilda** com o grupo vai de −10 a +10. Ao
+  escolher o **nível do assentamento**, aparece a sugestão do ícone que combina (Aldeia e Vila: o de Vila; Cidade e
+  Metrópole: o de Cidade) — "Usar o ícone" ou "Agora não"; nada muda sozinho.
 - **A bandeira própria da facção** (sem clã): no editor da facção (aba Reinos), "Criar a bandeira…" abre o mesmo editor
   do brasão do Clã (`janelaBandeira`) — a forma, a divisão, as duas cores (a paleta do Clã, a cor da facção e "Outra"), o
   símbolo e, numa mesa, uma imagem (reduzida a 480 px, em PNG, e enviada ao banco; fora de uma mesa, só o desenho). A
@@ -2316,8 +2330,13 @@ renomeada), a guilda a partir de um modelo (uma cópia), a parte da facção e a
 região e na facção) e a semana (o estoque recebe a parte da guilda e paga o gasto; o que falta só aparece); `mundo-lote10`
 com `SO=guildas`, o catálogo (mostrar, editar um modelo), a guilda nova a partir de um modelo (o limite de membros, o
 líder, a influência, a relação, um serviço novo, no celular), o cartão, a produção na província, editar (a parte da
-facção, o estoque, tirar um serviço), Cancelar, tirar e desfazer, o aviso de membros demais e a semana. A bandeira
-própria da facção:
+facção, o estoque, tirar um serviço), Cancelar, tirar e desfazer, o aviso de membros demais e a semana. No pente
+fino, `lote10-nucleo` confere juntar pelo nome (a soma, o histórico que vai junto, o "jogadores veem", a facção sem o
+estoque, o que não é o caso) e a população da facção (a soma; na projeção com a economia ligada e desligada);
+`mundo-lote10` com `SO=pentefino`, as duas listas da facção, juntar (a conta antes, desfazer), o número novo com o nome
+de um recurso do mundo, a população só para ler, o aviso do clã dos jogadores (marcar), o exército (os mantimentos e a
+manutenção), o nível que sugere o ícone (usar, agora não), as construções da cidade e as do clã e a relação da guilda;
+`mundo-lote8.rede`, numa mesa, o Cofre do clã e o estoque da facção ligada. A bandeira própria da facção:
 `lote10-nucleo` confere a bandeira normalizada (o que não serve volta ao
 de começo ou sai), ao lado da do clã, e na projeção (a da facção escondida não vai); `mundo-lote10` com `SO=bandeira`,
 criar (a janela com a de começo, as escolhas e a prévia; nada muda antes de criar; no celular, cabe), no mapa, na lista,

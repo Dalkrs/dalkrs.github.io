@@ -2,6 +2,42 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-16",
+      "data": "2026-10-18",
+      "titulo": "O pente fino",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: na facção, com a economia ligada, os números ficam em duas listas — “Estoque (recursos do mundo)” e “Outros números desta facção”. Um número com o nome de um recurso do mundo avisa e oferece “Juntar ao estoque…” (mostra a conta antes e tem Desfazer); um número novo não pode ter o nome de um recurso do mundo."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: com a economia ligada, a população da facção é a soma das pessoas das cidades dela (só para ler). Os jogadores que veem a população recebem essa soma."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o exército mostra “Mantimentos (comida na estrada)” e quanto ele custa à facção por semana; na cidade, “Construções da cidade” e “Construções do clã” ficam separadas; ao escolher o nível do assentamento, aparece a sugestão do ícone que combina (um clique)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: quando o clã dos jogadores está ligado a uma facção que não é a marcada como a dos jogadores, a aba Reinos avisa e oferece marcar. A relação da guilda com o grupo agora vai de −10 a +10, como a do clã."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: no painel do mestre, os recursos do clã viraram o “Cofre do clã”, e as construções, “Construções do clã”. No Cofre, aparece o estoque da facção ligada ao clã, do Mapa-múndi, só para ler."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: a aba “Recursos” agora se chama “Cofre” (o cofre do clã), para não confundir com o estoque da facção no Mapa-múndi."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-15",
       "data": "2026-10-18",
       "titulo": "As guildas",
