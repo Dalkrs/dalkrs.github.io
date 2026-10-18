@@ -1,5 +1,5 @@
 // Mapa-múndi, lote 8 (parte 4): as camadas, pela interface (a página sozinha, no navegador).
-//   · o botão Camadas, na caixa do zoom, abre a janelinha: as dez camadas, com quanto há de cada uma, os atalhos e as
+//   · o botão Camadas, na caixa do zoom, abre a janelinha: as onze camadas (lote 10: com as Sub-regiões), com quanto há de cada uma, os atalhos e as
 //     travas; C abre e fecha, Esc fecha;
 //   · esconder uma camada tira do mapa só o que é dela (o evento some com a área e o selo); fica guardado neste
 //     aparelho (volta igual ao recarregar) e o ponto no botão avisa;
@@ -86,7 +86,7 @@ const meio = (a, css) => A(a, css => { const r = document.querySelector(css).get
     await L.F.click('#zCamadas'); await espera(200);
     ok(await L.F.locator('#camPop').isVisible(), 'o clique abre a janelinha das camadas');
     const ls = await linhas(L);
-    ok(j(ls.map(l => l.nome)) === j(['Cidades e grupos', 'Estradas e rios', 'Rotas', 'Eventos', 'Zonas de perigo', 'Regiões', 'Guerra', 'Textos e carimbos', 'Terreno', 'Grade']), 'as dez camadas: ' + j(ls.map(l => l.nome)));
+    ok(j(ls.map(l => l.nome)) === j(['Cidades e grupos', 'Estradas e rios', 'Rotas', 'Eventos', 'Zonas de perigo', 'Regiões', 'Sub-regiões', 'Guerra', 'Textos e carimbos', 'Terreno', 'Grade']), 'as onze camadas (lote 10: com as Sub-regiões): ' + j(ls.map(l => l.nome)));
     const n = Object.fromEntries(ls.map(l => [l.id, l.n]));
     ok(n.lugares === '2' && n.linhas === '1' && n.rotas === '1' && n.eventos === '1' && n.perigos === '1' && n.regioes === '1' && n.guerra === '2' && n.enfeites === '2' && n.terreno === '' && n.grade === '',
       'cada uma diz quanto há dela no mapa (a guerra conta a zona e a frente; a tempestade é zona de perigo): ' + j(n));
@@ -223,7 +223,7 @@ const meio = (a, css) => A(a, css => { const r = document.querySelector(css).get
     ok(!d.reg && !d.zg && !d.fr && d.zp && d.cid && d.eve && d.rot && d.rio && d.car, 'Viagem: some a região e a guerra (zona e frente); fica a tempestade, as cidades, os eventos, as rotas, os rios e os carimbos: ' + j(d));
     ok((await atalhoMarcado(L)) === 'at:viagem', 'o atalho Viagem fica marcado');
     let av = await avisos(L);
-    ok(av.some(x => x.texto === 'Atalho Viagem: Regiões e Guerra ficaram escondidas.' && x.botao === 'Desfazer'), 'o aviso diz o que ficou escondido, com o Desfazer: ' + j(av));
+    ok(av.some(x => x.texto === 'Atalho Viagem: Regiões, Sub-regiões e Guerra ficaram escondidas.' && x.botao === 'Desfazer'), 'o aviso diz o que ficou escondido, com o Desfazer: ' + j(av));
     ok(await A(L, () => window.MundoCamadas.travada('lugares')), 'o atalho não mexe nas travas');
     await apertarAviso(L, 'Desfazer');
     ok((await desenhado(L, 'reg')) > 0 && (await desenhado(L, 'zg')) > 0 && (await atalhoMarcado(L)) === 'at:tudo', 'o Desfazer volta ao que estava (tudo à vista)');

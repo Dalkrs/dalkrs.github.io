@@ -80,7 +80,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     ok(await L.F.locator('#tab-guerra').isVisible() && (await guerra(L)) === null, 'a aba Guerra está lá, e o mapa ainda não tem guerra nenhuma');
     await A(L, () => __mundo.App.selecionar(['cast'])); await aba(L, 'guerra');
     const abas = await A(L, () => { const t = document.querySelector('.tabs'); return { sw: t.scrollWidth, cw: t.clientWidth, badge: !document.querySelector('#tab-selecao .n').hidden, nomes: [...t.querySelectorAll('.tab')].filter(b => !b.hidden).map(b => b.textContent.replace(/\d+$/, '')) }; });
-    ok(abas.sw <= abas.cw && abas.badge && j(abas.nomes) === j(['Seleção', 'Hoje', 'Facções', 'Guerra', 'Terreno', 'Mapa']), 'as seis abas cabem no painel, mesmo com o número da seleção: ' + j(abas));
+    ok(abas.sw <= abas.cw && abas.badge && j(abas.nomes) === j(['Seleção', 'Hoje', 'Reinos', 'Guerra', 'Terreno', 'Mapa']), 'as seis abas cabem no painel, mesmo com o número da seleção: ' + j(abas));
   });
 
   await passo('a aba Guerra, vazia', async () => {

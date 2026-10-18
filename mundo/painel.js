@@ -1,6 +1,7 @@
 /* Tiny Cats · Mapa-múndi · o painel.
    A barra de cima (seletor de mapas, data, "salvo", ver como jogador, desfazer, mostrar ou esconder o painel), o painel
-   com as abas Seleção, Hoje, Facções, Terreno e Mapa, o estado vazio, as janelas (<dialog>) e os avisos (App.toast).
+   com as abas Seleção, Hoje, Reinos (até o lote 10, Facções), Guerra, Terreno e Mapa, o estado vazio, as janelas
+   (<dialog>) e os avisos (App.toast).
    Nada aqui muda o mapa direto: tudo passa por App.mudar. Campo de texto vira UM passo de desfazer quando a pessoa
    termina de editar (change: Enter ou ao sair do campo), nunca a cada tecla.
    O painel é refeito a cada mudança, mas por cima do que já está na tela (compara e ajusta só o que mudou): quem está
@@ -11,7 +12,7 @@
   const ABAS = [
     { id: 'selecao', nome: 'Seleção' },
     { id: 'hoje', nome: 'Hoje' },
-    { id: 'faccoes', nome: 'Facções' },
+    { id: 'faccoes', nome: 'Reinos' },                             // (lote 10: era "Facções"; o id fica)
     { id: 'guerra', nome: 'Guerra', mestre: true },               // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
     { id: 'terreno', nome: 'Terreno', mestre: true },
     { id: 'mapa', nome: 'Mapa', mestre: true },
@@ -41,6 +42,7 @@
   const N = () => (App && App.N) || window.MundoNucleo;
   const Tela = () => window.MundoTela || null;
   const GP = () => window.MundoGuerraPainel || null;           // (lote 8, parte 6) a guerra no painel
+  const RP = () => window.MundoReinoPainel || null;            // (lote 10) os reinos no painel: a província, o Livro do reino
   const $ = id => document.getElementById(id);
   const estreito = () => !!(window.matchMedia && matchMedia(ESTREITO).matches);
   const celular = () => !!(window.matchMedia && matchMedia(CELULAR).matches);
@@ -181,7 +183,7 @@
     switch (o.k) {
       case 'm': return (o.rumor ? 'Boato · ' : '') + (N_.ICONES[o.ic] || N_.ICONES.cidade).nome + (mestre && o.rumor && o.falso ? ' (falso)' : '');
       case 'g': { const r = achar(m, o.rota), TG = N_.TIPOS_GRUPO || {}; return (TG[o.tipo] ? TG[o.tipo].nome : 'Grupo') + (r ? ' · viajando' : ''); }
-      case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return (p ? 'Dentro de ' + nomeDe(p, m) : 'Região') + (f ? ' · ' + nomeFac(f) + (p && !o.fac ? ' (de ' + nomeDe(p, m) + ')' : '') : ''); }
+      case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return (p ? 'Sub-região de ' + nomeDe(p, m) : 'Província') + (f ? ' · ' + nomeFac(f) + (p && !o.fac ? ' (de ' + nomeDe(p, m) + ')' : '') : ''); }
       case 'e': return (N_.EVENTOS[o.tipo] || N_.EVENTOS.guerra).nome + ' · ' + (mestre ? statusEvento(o, m.cal.dia) : 'força ' + o.forca);
       case 't': return 'Rota · ' + (N_.VIAS[o.via] || N_.VIAS.trilha).nome;
       case 'f': { const a = facDe(m, o.a), b = facDe(m, o.b); return 'Frente' + (a || b ? ' · ' + (a ? nomeFac(a) : '?') + ' × ' + (b ? nomeFac(b) : '?') : ''); }
@@ -1209,7 +1211,7 @@
     if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava), secDescanso(o, m), secHonra(o, m), secMissao(o, m));
     if (o.k === 'g' && o.tipo === 'exercito' && GP()) out.push(...GP().secExercito(o, m));   // (lote 8, parte 6) as unidades
-    if (o.k === 'r') out.push(secRegiao(o, m, grava), secClimaRegiao(o, m), secMissao(o, m));
+    if (o.k === 'r') out.push(secRegiao(o, m, grava), RP() ? RP().secProvincia(o, m) : null, secClimaRegiao(o, m), secMissao(o, m));   // (lote 10) a província
     if (o.k === 'e') out.push(...secEvento(o, m, grava), secMissao(o, m));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
@@ -2634,7 +2636,7 @@
     return out;
   }
 
-  /* ---------------- aba Facções ---------------- */
+  /* ---------------- aba Reinos (até o lote 10, Facções) ---------------- */
   function novaFaccao() {
     if (!App.podeEditar()) return;
     let nova = null;
@@ -2683,7 +2685,7 @@
     return el;
   }
   function abaFaccoes(v) {
-    const ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, out = [h('h3', { text: 'Facções' })];
+    const ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, out = [h('h3', { text: 'Reinos' })];
     if (ed) out.push(linha(botao('Nova facção', novaFaccao, { c: 'pri', k: 'fac:nova' })));
     if (!v.faccoes.length) {
       out.push(nota(ed ? 'Nenhuma facção ainda. Facções dão cor às regiões e lados às frentes, e guardam as relações entre elas.' : 'Nenhuma facção conhecida.'));
@@ -2692,19 +2694,22 @@
     if (facAberta && !facDe(v, facAberta)) facAberta = null;
     const lista = h('div', { class: 'lista' });
     for (const f of v.faccoes) {
-      const regs = v.objs.filter(o => o.k === 'r' && N().facDaRegiao(v, o) === f.id).length;
-      const sub = regs ? plural(regs, 'região', 'regiões') : 'nenhuma região';
+      // (lote 10) as províncias (as regiões de fora) e as sub-regiões da facção (a de dentro sem facção própria herda)
+      const rs = v.objs.filter(o => o.k === 'r' && N().facDaRegiao(v, o) === f.id), np = rs.filter(o => !o.pai).length, ns = rs.length - np;
+      const sub = rs.length ? [np ? plural(np, 'província', 'províncias') : '', ns ? plural(ns, 'sub-região', 'sub-regiões') : ''].filter(Boolean).join(' · ') : 'nenhuma região';
       if (ed) {
         const aberta = facAberta === f.id;
         lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'data-fac': f.id, 'aria-expanded': String(aberta),
           onclick: () => { facAberta = aberta ? null : f.id; pintar(); } },
           bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+          f.jog ? h('span', { class: 'tag jog', text: 'dos jogadores' }) : null,
           f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null));
         if (aberta) lista.append(editorFaccao(f, v));
       } else {
         const rels = Object.keys(f.rel || {}).map(k => [facDe(v, k), f.rel[k]]).filter(([g, r]) => g && r !== 'neutra');
         lista.append(h('div', { class: 'fac-pub', 'data-fac': f.id },
           h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+            f.jog ? h('span', { class: 'tag jog', text: mestre ? 'dos jogadores' : 'vocês' }) : null,
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,
           rels.length ? h('div', { class: 'tags' }, rels.map(([g, r]) => h('span', { class: 'tag ' + r, text: N().RELACOES[r] + ' com ' + nomeFac(g) }))) : null,
@@ -2712,6 +2717,8 @@
       }
     }
     out.push(lista);
+    // (lote 10) o Livro do reino: por facção, as províncias, as sub-regiões, os hexágonos e os exércitos (o do mestre)
+    if (ed && RP()) out.push(RP().secLivro(v));
     // (lote 9) o tamanho das bandeiras no mapa, só neste aparelho (para quem enxerga melhor maiores)
     out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
       v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras dos clãs nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
@@ -2735,6 +2742,18 @@
           : nota('Sem bandeira. Na aba Clã, escolha esta facção no clã: o brasão dele vira a bandeira dela no mapa.')),
       segredo('Só o mestre vê', campoTexto('f:' + id + ':nota', null, f.nota, grava('mudar a nota da facção', (x, v) => { x.nota = v; }), { area: true, linhas: 3, rotulo: 'Nota do mestre', ph: 'Planos, segredos…' })),
       caixa('f:' + id + ':oculta', 'Esconder dos jogadores', f.oculta, grava('esconder a facção', (x, v) => { x.oculta = !!v; }), { dica: 'Some da lista deles; as regiões ficam sem cor de facção para eles.' }),
+      // (lote 10) a facção dos jogadores: as terras deles (uma só)
+      caixa('f:' + id + ':jog', 'Facção dos jogadores', !!f.jog, v => {
+        const outra = m.faccoes.find(g => g.jog && g.id !== id);
+        const r = App.mudar(v ? 'marcar a facção dos jogadores' : 'desmarcar a facção dos jogadores', mm => {
+          const x = facDe(mm, id);
+          if (!x || !!x.jog === !!v) return false;
+          for (const g of mm.faccoes) delete g.jog;
+          if (v) x.jog = true;
+        });
+        if (r !== false && v && outra) App.toast(nomeFac(outra) + ' deixou de ser a facção dos jogadores (só uma pode ser).');
+        return r;
+      }, { dica: 'As terras dos jogadores: quando eles ganharem uma província ou um assentamento, ponha nesta facção. Só uma facção pode ser dos jogadores.' }),
       secNumerosFac(f, m),
       outras.length ? h('div', { class: 'sec' }, h('b', { text: 'Relações' }),
         outras.map(g => h('div', { class: 'rel ' + ((f.rel && f.rel[g.id]) || 'neutra') }, h('i', { style: { background: g.cor } }), h('span', { text: nomeFac(g) }),

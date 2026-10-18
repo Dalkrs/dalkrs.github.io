@@ -116,6 +116,20 @@ button { cursor: pointer; }
 .cam-li .cam-trava[aria-pressed="true"] { color: var(--lamp-ink); background: var(--lamp-soft); border-color: var(--lamp); }
 .cam-pe { display: flex; justify-content: flex-end; margin: 6px 0 0; }
 .cam-nota { margin: 8px 2px 0; font-size: 12px; line-height: 1.35; color: var(--fg-3); }
+/* (lote 10) o modo do mapa (na janelinha das camadas) e a legenda dele, no canto do mapa */
+.cam-rot { display: block; margin: 2px 2px 5px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.cam-modos { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 10px; }
+.cam-modos .chip { height: 28px; box-shadow: none; cursor: pointer; }
+.cam-modos .chip:hover:not([aria-pressed="true"]) { background: var(--hover); color: var(--fg); }
+.modo-leg { position: absolute; left: 10px; bottom: 52px; z-index: 5; display: grid; gap: 6px; width: max-content; max-width: min(330px, calc(100% - 20px)); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); font-size: 12.5px; color: var(--fg-2); cursor: default; }
+.modo-leg p { margin: 0; }
+.modo-leg-topo { display: flex; align-items: center; gap: 10px; }
+.modo-leg-topo b { flex: 1; color: var(--fg); }
+.modo-leg ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.modo-leg li { display: inline-flex; align-items: center; gap: 5px; }
+.modo-leg li i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line-strong); }
+.modo-leg .grad { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #4caf6a, #e6c34f, #e05a4f); }
+.modo-leg .grad-n { display: flex; justify-content: space-between; margin-top: -3px; font-size: 11.5px; color: var(--fg-3); }
 /* o que está numa camada travada aparece, mas o clique passa por ele */
 #mundo svg .obj.trava, #mundo svg .obj.trava * { pointer-events: none !important; }
 .vazio { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; pointer-events: none; }
@@ -135,6 +149,9 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .reg { fill-opacity: .2; fill-rule: evenodd; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .reg.semfac { fill: #9aa3b5; stroke: #c3cadb; stroke-dasharray: 6 5; }
 .reg.subreg { fill-opacity: .16; stroke-width: 1.4; stroke-dasharray: 5 3; }     /* (lote 6) a região de dentro: borda mais fina */
+.reg.m-terreno { fill-opacity: 0; }                                            /* (lote 10) os modos do mapa */
+.reg.m-clima, .reg.m-perigo { fill-opacity: .4; stroke-opacity: .85; }
+.reg.subreg.m-clima, .reg.subreg.m-perigo { fill-opacity: .32; }
 .reg.oculto, .mar.oculto, .eve.oculto, .rot.oculto { opacity: .55; }
 .sel-anel { fill: none; stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
 .rot { fill: none; stroke: #f3ead2; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -442,6 +459,7 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 @media (max-width: 520px) {
   .dica { right: 10px; max-width: none; bottom: 58px; padding: 6px 10px; font-size: 12.5px; }
   .cam-pop { left: 10px; right: 10px; width: auto; max-width: none; }
+  .modo-leg { bottom: 100px; }
 }
 
 /* traço do pincel de névoa enquanto pinta (a névoa de verdade muda ao soltar) */
@@ -499,6 +517,23 @@ button.li { width: 100%; text-align: left; color: inherit; font: inherit; }
 .gr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
 .gr .row { padding-left: 4px; }
 .fac-pub { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+/* (lote 10) a facção dos jogadores, a seção Província e o Livro do reino */
+.tag.jog { color: var(--lamp-ink); border-color: var(--lamp); background: var(--lamp-soft); }
+.prov-de { align-items: center; gap: 6px; }
+.prov-de .note { flex: none; min-width: 0; }
+.prov-subs { display: grid; gap: 3px; }
+.prov-sub { min-height: 34px; }
+.prov-sub .tx small { color: var(--fg-3); }
+.prov-ter { display: grid; gap: 5px; }
+.prov-ter b { font-size: 13px; color: var(--fg); }
+.prov-ter ul, .livro-li { list-style: none; margin: 0; padding: 0; }
+.prov-ter ul { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.prov-ter li { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--fg-2); }
+.prov-ter li i, .livro-li i { flex: none; width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--line-strong); }
+.prov-ter li i.sem, .livro-li i.sem { background: transparent; border-style: dashed; }
+.livro-li { display: grid; grid-template-columns: 11px minmax(0, 1fr); align-items: center; gap: 2px 8px; padding: 7px 9px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.livro-li b { font-size: 13px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.livro-li small { grid-column: 2; font-size: 12px; color: var(--fg-3); }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
 .li.achado, .fac-pub.achado { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -834,12 +869,14 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 <script src="../tc/rules.js?v=15"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=17"></script>
+<script src="nucleo.js?v=18"></script>
 <script src="guerra.js?v=2"></script>
-<script src="camadas.js?v=1"></script>
-<script src="tela.js?v=19"></script>
-<script src="painel.js?v=24"></script>
+<script src="reino.js?v=1"></script>
+<script src="camadas.js?v=2"></script>
+<script src="tela.js?v=20"></script>
+<script src="painel.js?v=25"></script>
 <script src="guerra-painel.js?v=2"></script>
+<script src="reino-painel.js?v=1"></script>
 <script src="mundo.js?v=11"></script>
 </body>
 </html>

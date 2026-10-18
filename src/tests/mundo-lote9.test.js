@@ -355,7 +355,7 @@ async function janela(a, f) {
     // com o mês todo de sol, os trechos iguais seguidos ficam juntos
     await A(L, () => __mundo.App.mudar('só sol', m => { m.clima = Object.assign({}, m.clima, { tab: [...Array(12)].map(() => ({ sol: 100 })) }); }));
     const sol = await A(L, () => __mundo.N.CLIMAS.sol.nome);
-    await L.F.waitForFunction(sol => ((document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '').startsWith('Hoje: ' + sol + ' '), sol, { timeout: 5000 }).catch(() => {});
+    await L.F.waitForFunction(sol => ((document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '').startsWith('Hoje: ' + sol + ' (desde o 1º, agora). '), sol, { timeout: 5000 }).catch(() => {});   // (espera o painel se pintar de novo)
     tr = await A(L, () => (document.querySelector('#pane [data-k="hoje:trechos"]') || {}).textContent || '');
     ok(tr.startsWith('Hoje: ' + sol + ' (desde o 1º, agora). '), 'com o mês todo de sol, os trechos iguais seguidos ficam juntos: ' + tr);
     await A(L, () => __mundo.App.desfazer()); await espera(300);

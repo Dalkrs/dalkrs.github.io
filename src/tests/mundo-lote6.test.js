@@ -175,7 +175,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     ok((await obj(L, 'brenn')).pai === 'reino' && await rotulo(L) === 'pôr a região dentro de Reino de Aldar' && await campo(L, 'o:brenn:pai').inputValue() === 'reino' && await campo(L, 'o:brenn:pai-sugere').count() === 0,
       'um clique: Brenn fica dentro do Reino');
     ok(await ate(porCima), 'no mapa, a região de dentro fica por cima da de fora (mesmo desenhada antes)');
-    ok((await L.F.locator('#pane .sub').first().innerText()) === 'Dentro de Reino de Aldar · Aldar (de Reino de Aldar)' && (await campo(L, 'o:brenn:fac').locator('option').first().innerText()) === 'A de Reino de Aldar (Aldar)',
+    ok((await L.F.locator('#pane .sub').first().innerText()) === 'Sub-região de Reino de Aldar · Aldar (de Reino de Aldar)' && (await campo(L, 'o:brenn:fac').locator('option').first().innerText()) === 'A de Reino de Aldar (Aldar)',
       'sem facção própria, ela é do Aldar (a do Reino): ' + await L.F.locator('#pane .sub').first().innerText());
     const desenho = () => A(L, () => { const p = document.querySelector('#mundo svg [data-id="brenn"] path.reg'); const n = document.querySelector('#mundo svg .c-nreg [data-id="brenn"] text'); return p && { cls: p.getAttribute('class'), fill: p.getAttribute('fill'), nome: n && n.getAttribute('class') }; });
     ok(await ate(async () => { const d = await desenho(); return d && /subreg/.test(d.cls) && d.fill === '#c0503a' && /rotulo-subreg/.test(d.nome); }), 'no mapa: a borda mais fina da região de dentro, a cor da facção herdada e o nome menor: ' + j(await desenho()));
@@ -207,7 +207,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     const lista = await A(L, () => [...document.querySelectorAll('#pane .lista .li')].filter(b => /Reino de Aldar|Brenn/.test(b.textContent)).map(b => [b.querySelector('b').textContent, b.classList.contains('dentro')]));
     ok(j(lista) === j([['Reino de Aldar', false], ['Brenn', true]]), 'na lista do mapa, Brenn vem logo embaixo do Reino, para dentro: ' + j(lista));
     await aba(L, 'faccoes');
-    ok(/Aldar\s*2 regiões/.test(await L.F.locator('#pane').innerText()), 'a facção conta as duas regiões (a de dentro herda)');
+    ok(/Aldar\s*1 província · 1 sub-região/.test(await L.F.locator('#pane').innerText()), 'a facção conta as duas regiões (a de dentro herda): (lote 10) 1 província e 1 sub-região');
     // o grupo dentro de Brenn
     await A(L, Y => __mundo.App.mudar('mover o grupo', m => { const g = m.objs.find(o => o.id === 'g'); g.x = 200; g.y = Y; }), Y); await espera(150);
     await aba(L, 'hoje');

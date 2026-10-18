@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-7",
+      "data": "2026-10-18",
+      "titulo": "Reinos, províncias e modos de mapa",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: as regiões de fora agora são as províncias, e as de dentro delas, as sub-regiões (os ducados, as prefeituras…). Na Seleção, a seção Província mostra as sub-regiões de dentro, de qual província cada uma é parte e os hexágonos por terreno."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: nas camadas, a camada Sub-regiões mostra ou esconde as divisões dentro das províncias, e o modo do mapa troca as cores das regiões — Político, Terreno, Clima (a cor do clima de agora) e, para o mestre, Perigo (pela chance de encontro). A legenda fica no canto do mapa, com o botão que volta ao Político. Vale só neste aparelho."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: a aba Facções agora se chama Reinos. Dá para marcar a facção dos jogadores (as terras deles; quem joga vê “vocês” nela), e o Livro do reino conta, por facção, as províncias, as sub-regiões, os hexágonos e os exércitos."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-6",
       "data": "2026-10-18",
       "titulo": "Heróis na Guerra",

@@ -895,9 +895,10 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 
 - **O botão Camadas**, na caixa do zoom (canto de baixo, à direita; a tecla C abre e fecha), abre a janelinha das
   camadas (`mundo/camadas.js`, `window.MundoCamadas`): Cidades e grupos (os marcadores e os grupos), Estradas e rios,
-  Rotas, Eventos (a área e o selo), Zonas de perigo, Regiões (a área e o nome), Guerra (as zonas de guerra e as
-  frentes), Textos e carimbos, Terreno (a tinta à mão e a dos hexágonos) e Grade (as linhas). Cada linha diz quanto há
-  da camada no mapa aberto e tem o olho (mostrar ou esconder) e o cadeado (travar).
+  Rotas, Eventos (a área e o selo), Zonas de perigo, Regiões (a área e o nome; desde o lote 10, só as províncias),
+  Sub-regiões (lote 10: as regiões de dentro de outra), Guerra (as zonas de guerra e as frentes), Textos e carimbos,
+  Terreno (a tinta à mão e a dos hexágonos) e Grade (as linhas). Cada linha diz quanto há da camada no mapa aberto e tem
+  o olho (mostrar ou esconder) e o cadeado (travar).
 - **Só neste aparelho** (`localStorage` `tinycats:mundo:camadas`, para todos os mapas; vale para quem mestra e para
   quem joga, e acompanha outra aba do mesmo navegador). Esconder só limpa a própria tela: o mapa e o que os outros veem
   não mudam — "Esconder dos jogadores" continua sendo o jeito de esconder deles. O botão ganha um ponto quando há
@@ -907,8 +908,8 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   clique passa por ela (`.obj.trava`, sem ponteiro em nada do que está dentro): clicar na cidade travada pega a região
   embaixo. A Grade não trava (não se clica nela); com a ferramenta Terreno em uso, as linhas aparecem mesmo com a
   camada escondida, como com "Mostrar a grade" desligado.
-- **Os atalhos**: Viagem (sem Regiões e Guerra), Política (sem Rotas, Eventos, Zonas de perigo e Grade), Guerra (sem
-  Rotas, Eventos, Zonas de perigo e Textos e carimbos) e Tudo. Mudam só o que aparece (as travas ficam como estão); o
+- **Os atalhos**: Viagem (sem Regiões, Sub-regiões e Guerra), Política (sem Rotas, Eventos, Zonas de perigo e Grade),
+  Guerra (sem Rotas, Eventos, Zonas de perigo, Sub-regiões e Textos e carimbos) e Tudo. Mudam só o que aparece (as travas ficam como estão); o
   aviso diz o que ficou escondido e traz o Desfazer (um aviso de atalho por vez). O atalho que bate com o que está à
   vista fica marcado.
 - **Nada muda sozinho**: escolher uma ferramenta que cria numa camada escondida ou travada — ou clicar com ela, ou usar
@@ -1098,6 +1099,33 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   (o `estado` dela, com `TC.rules.aplicarDelta`) e as ações vão para as notas da batalha no histórico; o aviso
   "Desfazer" volta o mapa e o HP das fichas. Fora de uma mesa (sem Fichas), a seção só conta quantos heróis o exército
   tem. Os jogadores não veem os heróis (a projeção do exército não os leva).
+
+### O Mapa-múndi como grand strategy (lote 10)
+
+O mundo não anda sozinho: o sistema calcula, lembra e mostra; quem mexe é o mestre (as contas vêm em prévias, e nada
+muda sem "Aplicar", com desfazer). As contas do território ficam em `mundo/reino.js` (`window.MundoReino`, que roda
+também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.MundoReinoPainel`).
+
+- **Províncias e sub-regiões** (parte 1): a região de fora é a província; as de dentro dela (o campo "Dentro de") são
+  as sub-regiões — os ducados, as prefeituras…, em quantos níveis o mestre quiser. As contas fecham na província; cada
+  sub-região mostra a parte dela e pode ter outro dono (a facção dela). Na Seleção, a descrição diz "Província · Aldar"
+  ou "Sub-região de Reino de Aldar · Vale", e a seção **Província** (ou **Sub-região**) mostra as sub-regiões de
+  dentro, em árvore (com o dono quando é outro; clicar vai até ela), de qual província ela é parte (com o botão que
+  volta) e os hexágonos por terreno (`terrenosDaRegiao`: os hexágonos da grade com o centro dentro dela,
+  `hexesDaRegiao`, guardados por mapa). A camada **Sub-regiões** (nas camadas, só neste aparelho) mostra ou esconde
+  as de dentro (a área, a borda e o nome); o atalho Política mostra as duas.
+- **A aba Reinos** (parte 1; era Facções — o id da aba continua `faccoes`): a lista diz as províncias e as
+  sub-regiões de cada facção. **A facção dos jogadores** (`f.jog`, uma só: marcar outra tira a primeira, com o aviso)
+  são as terras deles; vai na projeção (quem joga vê "vocês" nela). O **Livro do reino** (só o mestre, por enquanto)
+  conta, por facção, as províncias, as sub-regiões, os hexágonos (`livroDoReino`: os de cada região ficam com a
+  facção dela — a sub-região de outro dono leva os dela; `hexesProprios` tira os das sub-regiões) e os exércitos,
+  com as tropas; a linha "Sem dono" junta o resto.
+- **Os modos do mapa** (parte 1), na janelinha das camadas (só neste aparelho, guardado com elas em
+  `tinycats:mundo:camadas`, campo `modo`): Político (as cores das facções, o de sempre), Terreno (as regiões só com a
+  borda e o nome), Clima (cada região com a cor do clima de agora: o mestre conta pela região; quem joga recebe o
+  pronto da projeção) e Perigo (pela chance de encontro de cada região, do verde ao vermelho; só o mestre — para quem
+  joga, vira o Político). A legenda aparece no canto do mapa (o modo, as cores e o botão "Político", que volta), e o
+  botão das camadas ganha o ponto enquanto o modo não é o Político.
 
 ### A Árvore (lote 6)
 
@@ -2107,7 +2135,17 @@ jogadores e a volta pela mesma rota (o botão, andando de volta, o aviso ao cheg
 que muda a cada N tempos (os trechos, o 1º igual ao sorteio do dia, os passos só para os vizinhos, a chance do mês, o
 escolhido à mão até a próxima mudança, o clima de agora, uma vez por dia como antes, a região e a projeção);
 `mundo-lote9` com `SO=clima`, "O clima muda" no calendário, os climas do dia na aba Hoje, o clima de agora junto da data
-e o trocado à mão. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+e o trocado à mão.
+
+Lote 10: na parte 1, `lote10-nucleo` confere a facção dos jogadores (uma só, na projeção), as províncias e as
+sub-regiões (em árvore), os hexágonos de uma região contra a conta de força bruta (nas duas orientações da grade e com
+a grade deslocada), os próprios, o terreno de cada um e o Livro do reino (a sub-região de outro dono leva os hexágonos
+dela; a projeção sem os números dos exércitos); `mundo-lote10` com `SO=subregioes`, a camada Sub-regiões (escondida, as
+de dentro somem e as províncias ficam; os atalhos); com `SO=reinos`, a aba Reinos, a facção dos jogadores (só uma, o
+aviso, desfazer), a lista com as províncias e o Livro do reino (e, para quem joga, "vocês" e sem o livro); com
+`SO=provincia`, a seção Província e a Sub-região (a árvore, o terreno, ir e voltar) e a descrição; com `SO=modos`, os
+modos do mapa (Clima com o escolhido à mão numa região, Perigo, Terreno, a legenda e o botão que volta, o que fica
+neste aparelho, e sem o Perigo para quem joga). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta
