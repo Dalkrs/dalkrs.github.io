@@ -1126,6 +1126,33 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   pronto da projeção) e Perigo (pela chance de encontro de cada região, do verde ao vermelho; só o mestre — para quem
   joga, vira o Político). A legenda aparece no canto do mapa (o modo, as cores e o botão "Político", que volta), e o
   botão das camadas ganha o ponto enquanto o modo não é o Político.
+- **A economia do mundo** (parte 2; `mapa.eco`, normalizada em `normEco`; só quando há: o mapa de antes fica igual):
+  "Ligar a economia…" (na aba Reinos) cria os recursos de começo — Lapros (moeda), Suprimentos (comida), Madeira,
+  Pedra, Orith (metal) e Runas (magia) —, a tabela de começo do terreno (pelo papel: planície dá suprimentos, floresta
+  madeira, montanha pedra e orith…), a da população (5 Lapros por mil pessoas) e os níveis dos assentamentos (Aldeia,
+  Vila, Cidade e Metrópole, com 2, 4, 6 e 8 espaços de construção). A janela antes diz o que muda: o recurso que uma
+  facção já tinha com o mesmo nome passa a ser o do mundo (o número e o histórico acompanham: `recursosNaFaccao`), e o
+  mapa que ainda não contava os dias da semana passa a contar (hoje vira segunda-feira; a semana fecha de domingo
+  para segunda). Desligar guarda tudo (`eco.on`). Na seção **Economia do mundo**: os recursos (a cor, o nome — as
+  facções acompanham —, o papel — o que ele é para as regras — e tirar: a facção fica com o estoque, como um recurso só
+  dela), "+ Recurso" (cada facção ganha o estoque dele), "Produção do terreno…" (uma tabela: um terreno por linha, um
+  recurso por coluna, por hexágono e por semana; vírgula vale; negativo gasta), "Produção da população…" (por mil
+  pessoas) e os níveis (o nome, os espaços, "+ Nível", tirar — os assentamentos dele ficam sem nível).
+- **A produção** (parte 2; `producaoPropria`, `producaoDaRegiao`, `producaoPorFaccao`): a parte própria de uma região
+  soma os hexágonos próprios (pelo terreno), os assentamentos dela (os marcadores com assentamento cuja região de mais
+  dentro é ela) e o valor do mestre (`r.prod`, "Produção do mestre…", por semana; negativo gasta); a província soma a
+  dela e a das sub-regiões; cada facção, a parte própria das regiões dela (a sub-região de outro dono leva a dela). A
+  seção Província mostra a produção por semana de cada recurso e de onde vem (o terreno, a população, o do mestre) e os
+  assentamentos de dentro. O Livro do reino ganha o que cada facção produz por semana e o estoque (o número de cada
+  recurso do mundo nela, em `f.rec`, com o mesmo id; na facção, esses números ficam sem renomear nem tirar).
+- **O assentamento** (parte 2; `m.ass = { niv, pop }`): no marcador, a seção Assentamento (com a economia ligada) — o
+  nível ("Não é assentamento", ou um dos níveis, com os espaços) e a população (fixa: só muda quando o mestre muda),
+  onde ele fica (a região e a província) e o que produz pela população. Fora das províncias, não produz para ninguém.
+- **O modo Economia** (parte 2; só o mestre, com a economia ligada): cada região pela produção de um recurso (a parte
+  dela), do tom de base à cor do recurso; sem produção dele, só a borda. A legenda tem a escolha do recurso
+  (guardada neste aparelho, com o modo) e a escala.
+- **Para os jogadores**, a economia, a produção do mestre e os assentamentos não vão na projeção (por enquanto: a
+  parte 5 mostra o que for deles).
 
 ### A Árvore (lote 6)
 
@@ -2145,7 +2172,15 @@ de dentro somem e as províncias ficam; os atalhos); com `SO=reinos`, a aba Rein
 aviso, desfazer), a lista com as províncias e o Livro do reino (e, para quem joga, "vocês" e sem o livro); com
 `SO=provincia`, a seção Província e a Sub-região (a árvore, o terreno, ir e voltar) e a descrição; com `SO=modos`, os
 modos do mapa (Clima com o escolhido à mão numa região, Perigo, Terreno, a legenda e o botão que volta, o que fica
-neste aparelho, e sem o Perigo para quem joga). Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+neste aparelho, e sem o Perigo para quem joga). Na parte 2, `lote10-nucleo` confere a economia normalizada (os
+recursos, as tabelas, os níveis, o assentamento, a produção do mestre, sem a economia o que não fica, a projeção sem
+ela), a de começo, ligar (o recurso de mesmo nome, a semana, sem repetir; ligar de novo a guardada) e a produção (a parte
+própria, a província que soma, por facção, os assentamentos de dentro, o que dá zero sai, desligada); `mundo-lote10`
+com `SO=economia`, ligar pela janela (e desfazer), os recursos (renomear, o papel, criar, tirar), as tabelas (com
+vírgula), os níveis, o assentamento (e deixar de ser, com desfazer), a produção da província (uma linha por recurso,
+com a do mestre), o Livro, a facção (e a nova, que já nasce com os recursos do mundo), o modo Economia (a cor inteira
+na região que mais produz, o topo da escala, trocar o recurso, que fica neste aparelho mesmo recarregando) e
+desligar. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

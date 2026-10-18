@@ -5,6 +5,12 @@
    Os hexágonos de uma região são os da grade com o centro dentro dela; os "próprios" são os dela menos os das
    sub-regiões de dentro (que ficam com a sub-região). O Livro do reino conta, por facção, as províncias, as sub-regiões,
    os hexágonos e os exércitos (com as tropas).
+   (parte 2) A economia do mundo (mapa.eco, normalizada no núcleo): os recursos (os de começo: Lapros, Suprimentos,
+   Madeira, Pedra, Orith e Runas), a produção por semana de cada hexágono pelo terreno, a de cada mil pessoas dos
+   assentamentos e o valor que o mestre escreve na região. A parte própria de uma região soma os hexágonos próprios, os
+   assentamentos dela (o de dentro de uma sub-região fica com a sub-região) e o valor do mestre; a província soma a dela
+   e a das sub-regiões; cada facção, a parte própria das regiões dela. O estoque de cada facção é o número do recurso
+   do mundo nela (f.rec, com o mesmo id).
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -120,7 +126,136 @@
     return { grade, linhas: fs.map(f => por.get(f.id)), sem };
   }
 
-  const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino };
+  /* ---------------- (parte 2) a economia ---------------- */
+  // os recursos de começo (o mestre renomeia, tira e cria outros); o papel diz o que cada um é para as regras
+  const RECURSOS_INICIAIS = [
+    { id: 'lapros', nome: 'Lapros', cor: '#e6ab4f', papel: 'moeda' },
+    { id: 'suprimentos', nome: 'Suprimentos', cor: '#9fbf4a', papel: 'comida' },
+    { id: 'madeira', nome: 'Madeira', cor: '#a8743c', papel: 'madeira' },
+    { id: 'pedra', nome: 'Pedra', cor: '#9aa3b5', papel: 'pedra' },
+    { id: 'orith', nome: 'Orith', cor: '#7fb7e0', papel: 'metal' },
+    { id: 'runas', nome: 'Runas', cor: '#b39cf0', papel: 'magia' },
+  ];
+  // a produção de começo de cada terreno (por hexágono, por semana), pelo papel do recurso
+  const TERRENO_INICIAL = {
+    pl: { comida: 2 }, fl: { madeira: 2, comida: 0.5 }, co: { pedra: 1, comida: 1 }, mo: { pedra: 2, metal: 1 }, pa: { comida: 0.5, magia: 0.5 },
+    de: { moeda: 0.5 }, ne: {}, ag: { comida: 1 }, la: { comida: 3 }, ru: { pedra: 1, magia: 0.5 }, lv: { metal: 1, magia: 0.5 }, cr: { magia: 2 },
+    se: { madeira: 2, comida: 1 }, sv: { comida: 1.5 }, tu: { comida: 0.5 }, tc: { magia: 1 },
+  };
+  const POP_INICIAL = { moeda: 5 };                                 // por mil pessoas, por semana
+  const NIVEIS_INICIAIS = [{ id: 'aldeia', nome: 'Aldeia', esp: 2 }, { id: 'vila', nome: 'Vila', esp: 4 }, { id: 'cidade', nome: 'Cidade', esp: 6 }, { id: 'metropole', nome: 'Metrópole', esp: 8 }];
+  const copia = x => JSON.parse(JSON.stringify(x));
+  const ecoDe = m => (ehObj(m) && ehObj(m.eco) && m.eco.on ? m.eco : null);
+  const arred2 = v => Math.round(v * 100) / 100 + 0;
+  // soma b (vezes k) em a, recurso a recurso; o que dá zero sai
+  function somar(a, b, k) {
+    if (!ehObj(b)) return a;
+    for (const id of Object.keys(b)) { const v = arred2((a[id] || 0) + (Number(b[id]) || 0) * (k == null ? 1 : k)); if (v) a[id] = v; else delete a[id]; }
+    return a;
+  }
+  // a economia de começo para este mapa: os recursos, a tabela do terreno (dos terrenos que ele tem) e os níveis
+  function ecoInicial(m) {
+    const rec = copia(RECURSOS_INICIAIS), porPapel = {}, ter = {};
+    for (const r of rec) porPapel[r.papel] = r.id;
+    for (const t of ehObj(m) && Array.isArray(m.terrenos) ? m.terrenos : []) {
+      const base = TERRENO_INICIAL[t.id], linha = {};
+      if (base) for (const p of Object.keys(base)) if (porPapel[p] && base[p]) linha[porPapel[p]] = base[p];
+      if (Object.keys(linha).length) ter[t.id] = linha;
+    }
+    const pop = {};
+    for (const p of Object.keys(POP_INICIAL)) if (porPapel[p]) pop[porPapel[p]] = POP_INICIAL[p];
+    return { on: true, rec, ter, pop, niv: copia(NIVEIS_INICIAIS) };
+  }
+  const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  /* Os recursos do mundo numa facção (no rascunho de App.mudar): cada um vira um número dela, com o mesmo id e o mesmo
+     nome — o que ela já tinha com o mesmo nome passa a ser ele (o histórico acompanha). → os que ela já tinha:
+     [{ nome }] */
+  function recursosNaFaccao(m, f) {
+    const eco = ehObj(m) && ehObj(m.eco) ? m.eco : null, ligados = [];
+    if (!eco || !ehObj(f)) return ligados;
+    if (!Array.isArray(f.rec)) f.rec = [];
+    const doMundo = new Set(eco.rec.map(r => r.id));
+    for (const w of eco.rec) {
+      let x = f.rec.find(r => r.id === w.id);
+      if (!x) {
+        x = f.rec.find(r => !doMundo.has(r.id) && semAcento(r.nome) === semAcento(w.nome));
+        if (x) {
+          const de = 'r:' + x.id;
+          for (const e of Array.isArray(f.hist) ? f.hist : []) for (const u of Array.isArray(e.mud) ? e.mud : []) if (u[0] === de) u[0] = 'r:' + w.id;
+          x.id = w.id;
+          ligados.push({ nome: x.nome });
+        } else if (f.rec.length < 40) { x = { id: w.id, nome: w.nome, n: 0, ver: false }; f.rec.push(x); }
+      }
+      if (x) x.nome = w.nome;
+    }
+    return ligados;
+  }
+  /* Ligar a economia (no rascunho): a de começo (ou a que estava guardada, desligada), os recursos do mundo em cada
+     facção e o mapa contando os dias da semana (a semana fecha de domingo para segunda; sem a semana, hoje vira
+     segunda-feira). → { ligados: [{ fac, nome }], semana: true se passou a contar a semana } */
+  function ligarEconomia(m) {
+    const N = NN();
+    if (!ehObj(m.eco)) m.eco = ecoInicial(m);
+    m.eco.on = true;
+    const ligados = [];
+    for (const f of m.faccoes || []) for (const l of recursosNaFaccao(m, f)) ligados.push({ fac: f.id, nome: l.nome });
+    let semana = false;
+    if (ehObj(m.cal) && !Number.isInteger(m.cal.sem0)) { m.cal.sem0 = N.sem0Para(m.cal.dia, 0); semana = true; }
+    return { ligados, semana };
+  }
+  // os assentamentos (os marcadores com assentamento) e a região de cada um (a de mais dentro que tem o marcador)
+  const cacheAss = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function assentamentosDe(m) {
+    if (cacheAss && cacheAss.has(m)) return cacheAss.get(m);
+    const N = NN(), out = [];
+    for (const o of objsDe(m)) if (ehObj(o) && o.k === 'm' && ehObj(o.ass)) out.push({ o, r: N.regiaoEm(m, o.x, o.y) });
+    if (cacheAss) cacheAss.set(m, out);
+    return out;
+  }
+  const nivelDe = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && id ? e.niv.find(n => n.id === id) || null : null; };
+  /* A parte própria de uma região, por semana: { terreno, pop, mestre, total } (cada um { recurso: n }); null sem a
+     economia ligada. */
+  const cacheProd = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function producaoPropria(m, r) {
+    const eco = ecoDe(m);
+    if (!eco || !ehObj(r) || r.k !== 'r') return null;
+    let c = cacheProd ? cacheProd.get(m) : null;
+    if (cacheProd && !c) { c = new Map(); cacheProd.set(m, c); }
+    if (c && c.has(r.id)) return c.get(r.id);
+    const out = { terreno: {}, pop: {}, mestre: {}, total: {} };
+    for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); }
+    for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.pop > 0) somar(out.pop, eco.pop, a.o.ass.pop / 1000);
+    somar(out.mestre, r.prod);
+    somar(somar(somar(out.total, out.terreno), out.pop), out.mestre);
+    if (c) c.set(r.id, out);
+    return out;
+  }
+  // a produção de uma região com a das sub-regiões de dentro (a província soma tudo): o mesmo formato
+  function producaoDaRegiao(m, r) {
+    const p = producaoPropria(m, r);
+    if (!p) return null;
+    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), mestre: somar({}, p.mestre), total: somar({}, p.total) };
+    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'mestre', 'total']) somar(out[k], q[k]); }
+    return out;
+  }
+  // a produção de cada facção por semana (a parte própria das regiões dela): { por: { facção: { recurso: n } }, sem }
+  function producaoPorFaccao(m) {
+    const N = NN(), por = {}, sem = {};
+    if (!ecoDe(m)) return { por, sem };
+    for (const f of m.faccoes || []) por[f.id] = {};
+    for (const r of regioes(m)) { const fid = N.facDaRegiao(m, r); somar(fid && por[fid] ? por[fid] : sem, producaoPropria(m, r).total); }
+    return { por, sem };
+  }
+  // os assentamentos de dentro de uma região (os dela e os das sub-regiões): [{ o, r, nivel }]
+  function assentamentosDaRegiao(m, r) {
+    if (!ehObj(r)) return [];
+    const ids = new Set([r.id].concat(subregioesDe(m, r).map(x => x.r.id)));
+    return assentamentosDe(m).filter(a => a.r && ids.has(a.r.id)).map(a => Object.assign({ nivel: nivelDe(m, a.o.ass.niv) }, a));
+  }
+
+  const MundoReino = { ehProvincia, provinciaDe, subregioesDe, hexesDaRegiao, hexesProprios, terrenoDoHex, terrenosDaRegiao, livroDoReino,
+    RECURSOS_INICIAIS, TERRENO_INICIAL, POP_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
+    assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;
   if (typeof window !== 'undefined') window.MundoReino = MundoReino;
 })();

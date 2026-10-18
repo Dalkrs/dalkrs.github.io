@@ -42,11 +42,12 @@
     { id: 'terreno', nome: 'Terreno', dica: 'As regiões só com a borda e o nome: o terreno aparece por baixo.' },
     { id: 'clima', nome: 'Clima', dica: 'Cada região com a cor do clima de agora.' },
     { id: 'perigo', nome: 'Perigo', dica: 'Cada região pela chance de encontro: do verde (calma) ao vermelho (perigosa). Só o mestre.', mestre: true },
+    { id: 'economia', nome: 'Economia', dica: 'Cada região pela produção de um recurso, por semana (com a economia ligada, na aba Reinos). Só o mestre.', mestre: true, eco: true },
   ];
   const CLIMA_COR = { sol: '#f2c14e', nublado: '#9aa3b5', chuva: '#4f8fd0', tempestade: '#7b5fc7', neve: '#eef4fb', nevoa: '#b9c3cc', vento: '#5cc1a8', calor: '#ef7d3a', frio: '#8fc3ea' };
 
   /* ---- o estado deste aparelho ---- */
-  let esc = new Set(), trava = new Set(), modo = 'politico';
+  let esc = new Set(), trava = new Set(), modo = 'politico', modoRec = '';
   function ler() {
     let v = null;
     try { v = JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (e) { v = null; }
@@ -54,10 +55,11 @@
     esc = lista(v && v.esc);
     trava = lista(v && v.trava);
     modo = v && MODOS.some(x => x.id === v.modo) ? v.modo : 'politico';
+    modoRec = v && typeof v.rec === 'string' ? v.rec.slice(0, 60) : '';
     for (const c of LISTA) if (c.semTrava) trava.delete(c.id);
   }
   function guardar() {
-    try { localStorage.setItem(CHAVE, JSON.stringify({ v: 1, esc: IDS.filter(id => esc.has(id)), trava: IDS.filter(id => trava.has(id)), modo })); } catch (e) { /* o navegador não guarda: vale até fechar a página */ }
+    try { localStorage.setItem(CHAVE, JSON.stringify({ v: 1, esc: IDS.filter(id => esc.has(id)), trava: IDS.filter(id => trava.has(id)), modo, rec: modoRec })); } catch (e) { /* o navegador não guarda: vale até fechar a página */ }
   }
   ler();
 
@@ -84,15 +86,43 @@
 
   /* ---- (lote 10) o modo do mapa ---- */
   const mestreAgora = () => { const A = App0 || window.Mundo; return !!(A && typeof A.podeEditar === 'function' && A.podeEditar()); };
-  const modoPode = (id, mestre) => { const x = MODOS.find(y => y.id === id); return !!x && (!x.mestre || mestre); };
+  const vistaAgora = () => { const A = App0 || window.Mundo; return A && typeof A.vista === 'function' ? A.vista() : null; };
+  const ecoLigada = m => !!(m && m.eco && m.eco.on && Array.isArray(m.eco.rec) && m.eco.rec.length);
+  const modoPode = (id, mestre, m) => { const x = MODOS.find(y => y.id === id); return !!x && (!x.mestre || mestre) && (!x.eco || ecoLigada(m === undefined ? vistaAgora() : m)); };
   // o modo que vale agora (o do mestre que não serve a quem joga volta ao Político)
-  const modoAtual = mestre => (modoPode(modo, mestre === undefined ? mestreAgora() : mestre) ? modo : 'politico');
+  const modoAtual = (mestre, m) => (modoPode(modo, mestre === undefined ? mestreAgora() : mestre, m) ? modo : 'politico');
   function mudarModo(id) {
     if (!MODOS.some(x => x.id === id) || modo === id) return false;
     modo = id;
     mudou();
     return true;
   }
+  // (lote 10, parte 2) o recurso do modo Economia: o escolhido (se existe no mapa), senão o primeiro
+  const recDoModo = m => (ecoLigada(m) ? m.eco.rec.find(r => r.id === modoRec) || m.eco.rec[0] : null);
+  function mudarModoRec(id) {
+    if (modoRec === id) return false;
+    modoRec = String(id || '').slice(0, 60);
+    mudou();
+    return true;
+  }
+  // a maior produção (a parte própria de cada região) de um recurso no mapa: o topo da escala
+  const cacheMax = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function maxDoRecurso(m, id) {
+    const Rn = window.MundoReino;
+    let c = cacheMax ? cacheMax.get(m) : null;
+    if (cacheMax && !c) { c = new Map(); cacheMax.set(m, c); }
+    if (c && c.has(id)) return c.get(id);
+    let mx = 0;
+    if (Rn) for (const o of m.objs || []) if (o && o.k === 'r') { const p = Rn.producaoPropria(m, o); if (p && p.total[id] > mx) mx = p.total[id]; }
+    if (c) c.set(id, mx);
+    return mx;
+  }
+  // a cor entre duas (t de 0 a 1)
+  function misturar(a, b, t) {
+    const p = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)), A = p(a), B = p(b), u = Math.max(0, Math.min(1, t));
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * u).toString(16).padStart(2, '0')).join('');
+  }
+  const BASE_ECO = '#f1ecdf';
   // a cor de 0 a 100% de chance de encontro: do verde ao amarelo e ao vermelho
   function corPerigo(ch) {
     const t = Math.max(0, Math.min(100, Number(ch) || 0)) / 100, a = [76, 175, 106], b = [230, 195, 79], c = [224, 90, 79];
@@ -107,11 +137,19 @@
   }
   // Como uma região se pinta no modo de agora: null (o Político, o de sempre) ou { modo, cor } (cor null: a de sempre)
   function modoDaRegiao(m, o, mestre) {
-    const md = modoAtual(mestre);
+    const md = modoAtual(mestre, m);
     if (md === 'politico' || !o || o.k !== 'r') return null;
     if (md === 'terreno') return { modo: 'terreno', cor: null };
     if (md === 'clima') { const k = climaDaRegiao(m, o, mestre); return { modo: 'clima', cor: CLIMA_COR[k] || '#9aa3b5', k: k || '' }; }
     if (md === 'perigo') { const ch = o.enc ? Math.max(0, Math.min(100, Number(o.enc.chance) || 0)) : 0; return { modo: 'perigo', cor: corPerigo(ch), ch }; }
+    if (md === 'economia') {
+      const Rn = window.MundoReino, rec = recDoModo(m), p = Rn && rec ? Rn.producaoPropria(m, o) : null;
+      if (!p) return null;
+      const v = p.total[rec.id] || 0, mx = maxDoRecurso(m, rec.id);
+      // sem produção dele: só a borda (como no Terreno); com: do tom de base à cor do recurso
+      if (!(v > 0) || !(mx > 0)) return { modo: 'economia', cor: null, zero: true, rec: rec.id, v: 0 };
+      return { modo: 'economia', cor: misturar(BASE_ECO, rec.cor, 0.25 + 0.75 * v / mx), rec: rec.id, v };
+    }
     return null;
   }
 
@@ -279,6 +317,15 @@
       const ks = Object.keys(CLIMA_COR).filter(k => vistos.has(k));
       corpo.push(ks.length ? el('ul', null, ks.map(k => el('li', { 'data-clima': k }, el('i', { style: 'background:' + CLIMA_COR[k] }), el('span', { texto: (N && N.CLIMAS && N.CLIMAS[k] ? N.CLIMAS[k].nome : k) }))))
         : el('p', { texto: 'Nenhuma região à vista.' }));
+    } else if (md === 'economia') {
+      const rec = recDoModo(m), mx = rec ? maxDoRecurso(m, rec.id) : 0;
+      const sel = el('select', { class: 'in', 'data-k': 'modo-rec', 'aria-label': 'O recurso do modo Economia', onchange: e => mudarModoRec(e.target.value) },
+        m.eco.rec.map(r => { const op = el('option', { value: r.id, texto: r.nome }); if (rec && r.id === rec.id) op.selected = true; return op; }));
+      const fmtN = n => (Number.isFinite(n) ? n : 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+      corpo.push(el('label', { class: 'modo-leg-rec' }, el('span', { texto: 'Recurso' }), sel),
+        el('div', { class: 'grad', 'aria-hidden': 'true', style: 'background:linear-gradient(90deg,' + BASE_ECO + ',' + (rec ? rec.cor : BASE_ECO) + ')' }),
+        el('div', { class: 'grad-n' }, el('span', { texto: '0' }), el('span', { texto: fmtN(mx) + ' por semana' })),
+        el('p', { texto: 'A produção de cada região (a parte dela: as sub-regiões mostram a delas).' }));
     } else if (md === 'perigo') {
       corpo.push(el('div', { class: 'grad', 'aria-hidden': 'true' }), el('div', { class: 'grad-n' }, el('span', { texto: '0%' }), el('span', { texto: '50%' }), el('span', { texto: '100%' })),
         el('p', { texto: 'A chance de encontro de cada região (a de dentro vale dentro dela).' }));
@@ -332,6 +379,7 @@
     LISTA: LISTA.map(c => Object.assign({}, c)), ATALHOS: ATALHOS.map(a => Object.assign({}, a, { mostra: a.mostra.slice() })),
     deObj, visivel, travada, livre, objVisivel, objLivre, estado,
     MODOS: MODOS.map(x => Object.assign({}, x)), CLIMA_COR: Object.assign({}, CLIMA_COR), modoAtual, mudarModo, modoDaRegiao, corPerigo,
+    mudarModoRec, recDoModo, misturar, BASE_ECO,
     mostrar, travar, atalho, atalhoAtual, destravarTodas, avisar,
     iniciar, abrir, fechar, alternar, aberto,
     nomeDe: id => { const c = defCamada(id); return c ? c.nome : ''; },

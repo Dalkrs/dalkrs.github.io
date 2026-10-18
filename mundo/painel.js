@@ -1205,6 +1205,7 @@
     else out.push(campoTexto('o:' + id + ':nome', 'Nome', o.nome, grava('mudar o nome', (x, v) => { x.nome = v.trim(); }), { max: 120, ph: nomeDe(Object.assign({}, o, { nome: '' }), m) }));
     if (o.k === 'm') out.push(secMarcador(o, grava), secMissao(o, m));      // (lote 9) a missão: o "!" no ícone
     if (o.k === 'm' && GP()) out.push(GP().secFortificacao(o, m));         // (lote 8, parte 6) a fortificação
+    if (o.k === 'm' && RP()) out.push(RP().secAssentamento(o, m));          // (lote 10) o assentamento: o nível e a população
     if (o.k === 'z') out.push(...secZona(o, m, grava));
     if (o.k === 'l') out.push(secLinha(o, m, grava));
     if (o.k === 'c') out.push(secCarimbo(o, grava));
@@ -1559,7 +1560,14 @@
     out.push(campoMotivo('f:' + id + ':motivo', motivoFac, 'Ex.: a batalha de Brenn'),
       h('small', { class: 'ajuda', text: 'Cada número que você mudar entra no histórico com a data de hoje e este motivo.' }));
     // os recursos
+    const doMundo = new Set(m.eco ? m.eco.rec.map(r => r.id) : []);          // (lote 10) os recursos do mundo: o nome e a lista são da economia
     const linhas = f.rec.map(r => {
+      if (doMundo.has(r.id)) {
+        const n0 = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
+        n0.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
+        return h('div', { class: 'rec-linha mundo', 'data-rec': r.id }, h('span', { class: 'rot', title: 'Um recurso do mundo (o nome e a lista ficam na economia, na aba Reinos)', text: r.nome }), n0,
+          verCaixa('f:' + id + ':r:' + r.id + ':ver', r.ver, r.nome || 'o recurso', (x, v) => { const y = x.rec.find(z => z.id === r.id); if (!y || y.ver === v) return false; y.ver = v; }), h('span'));
+      }
       const nome = campoTexto('f:' + id + ':r:' + r.id + ':nome', null, r.nome, v => mudar('renomear o recurso', x => { const y = x.rec.find(z => z.id === r.id); if (!y || !v.trim() || y.nome === v.trim()) return false; y.nome = v.trim(); }), { max: 60, rotulo: 'Nome do recurso' });
       const n = campoNumero('f:' + id + ':r:' + r.id + ':n', null, r.n, numero('r:' + r.id, 'mudar ' + (r.nome || 'o recurso')), { decimal: true, min: -1e12, max: 1e12, erro: 'Use um número.' });
       n.setAttribute('aria-label', 'Quanto ' + (r.nome || 'o recurso'));
@@ -2645,6 +2653,7 @@
       const cor = N().CORES.find(c => !usadas.has(c.toLowerCase())) || N().CORES[m.faccoes.length % N().CORES.length];
       nova = N().faccaoNova('Nova facção', cor);
       m.faccoes.push(nova);
+      if (m.eco && window.MundoReino) window.MundoReino.recursosNaFaccao(m, nova);       // (lote 10) os recursos do mundo
     });
     if (nova) { facAberta = nova.id; focarDepois = 'f:' + nova.id + ':nome'; aba = 'faccoes'; pintar(); }
   }
@@ -2717,8 +2726,8 @@
       }
     }
     out.push(lista);
-    // (lote 10) o Livro do reino: por facção, as províncias, as sub-regiões, os hexágonos e os exércitos (o do mestre)
-    if (ed && RP()) out.push(RP().secLivro(v));
+    // (lote 10) a economia do mundo (ligar, os recursos, as tabelas, os níveis) e o Livro do reino (o do mestre)
+    if (ed && RP()) out.push(RP().secEconomia(v), RP().secLivro(v));
     // (lote 9) o tamanho das bandeiras no mapa, só neste aparelho (para quem enxerga melhor maiores)
     out.push(secao('Neste aparelho', campoEscolha('fac:band', 'Tamanho das bandeiras no mapa', ler().band || 'm', [['p', 'Pequenas'], ['m', 'Médias'], ['g', 'Grandes']],
       v => { lembrar({ band: v }); const T = Tela(); if (T) T.redesenhar(); }, { dica: 'As bandeiras dos clãs nas regiões, nos grupos, nas frentes e nas zonas de guerra. Vale só neste aparelho.' })));
@@ -3114,6 +3123,7 @@
 
   /* (lote 8, parte 6) as ferramentas do painel, para a guerra (mundo/guerra-painel.js) */
   const kit = { app: () => App, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
-    irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; } };
+    irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; },
+    campoCor, lerNum, fmtCampo, mesmoMapa };                       // (lote 10) a economia (mundo/reino-painel.js)
   window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
 })();

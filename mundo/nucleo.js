@@ -1557,6 +1557,8 @@
         if (sim(o.desc)) mc.desc = true;                          // (lote 9) ponto de descanso (os grupos do mundo dormem aqui)
         const estr = normEstr(o.estr);                            // (lote 8, parte 6) a fortificação: a DEF de quem defende ali
         if (estr) mc.estr = estr;
+        const ass = normAss(o.ass);                               // (lote 10) o assentamento: o nível e a população
+        if (ass) mc.ass = ass;
         return mc;
       }
       case 'g':
@@ -1584,6 +1586,8 @@
         if (aj) r.clima = aj;
         if (chj) r.chj = chj;
         if (tem(CLIMAS, o.ch)) r.ch = o.ch;
+        const prod = normTabProd(o.prod);                         // (lote 10) a produção que o mestre escreve, por semana
+        if (Object.keys(prod).length) r.prod = prod;
         return r;
       }
       case 'e': {
@@ -1788,6 +1792,57 @@
     return out;
   }
   // a guerra do mapa (só quando tem algo: o mapa de antes fica igual)
+  /* ---------------- (lote 10) a economia do mundo ----------------
+     eco = { on, rec: [{ id, nome, cor, papel }], ter: { terreno: { recurso: n } }, pop: { recurso: n }, niv: [{ id, nome, esp }] }:
+     os recursos do mundo (o papel diz o que ele é para as regras: a moeda, a comida…), a produção por semana de cada
+     hexágono pelo terreno, a de cada mil pessoas de um assentamento e os níveis dos assentamentos (com os espaços de
+     construção). Desligada (on: false), tudo fica guardado. Na região, prod = o valor do mestre por semana; no
+     marcador, ass = { niv, pop } (o assentamento: o nível e a população, que o mestre muda). */
+  const PAPEIS_REC = { moeda: 'Moeda', comida: 'Comida', madeira: 'Madeira', pedra: 'Pedra', metal: 'Metal', magia: 'Magia' };
+  const MAX_REC_MUNDO = 24, MAX_NIV = 12, MAX_PROD = 1e6, MAX_POP_ASS = 1e9;
+  const numProd = v => { const n = num(v, NaN); return Number.isFinite(n) ? Math.round(limitar(n, -MAX_PROD, MAX_PROD) * 100) / 100 + 0 : null; };
+  // uma tabela { recurso: n }: só os ids válidos (e, com a lista, só os que existem), sem os zeros
+  function normTabProd(t, ids) {
+    const out = {};
+    if (!ehObj(t)) return out;
+    for (const k of Object.keys(t).slice(0, MAX_REC_MUNDO * 2)) {
+      if (!idOk(k) || (ids && !ids.has(k))) continue;
+      const n = numProd(t[k]);
+      if (n) out[k] = n;
+    }
+    return out;
+  }
+  function normEco(v, terrenos) {
+    if (!ehObj(v)) return null;
+    const rec = [], vistos = new Set();
+    for (const r of Array.isArray(v.rec) ? v.rec : []) {
+      if (!ehObj(r) || rec.length >= MAX_REC_MUNDO) continue;
+      const id = idOk(r.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      const x = { id, nome: texto(r.nome, '', 40).trim() || 'Recurso', cor: cor(r.cor, '#9aa3b5') };
+      if (tem(PAPEIS_REC, r.papel)) x.papel = r.papel;
+      rec.push(x);
+    }
+    const ids = new Set(rec.map(r => r.id)), terIds = new Set((terrenos || []).map(t => t.id)), ter = {};
+    if (ehObj(v.ter)) for (const k of Object.keys(v.ter)) if (terIds.has(k)) { const t = normTabProd(v.ter[k], ids); if (Object.keys(t).length) ter[k] = t; }
+    const niv = [], vn = new Set();
+    for (const n of Array.isArray(v.niv) ? v.niv : []) {
+      if (!ehObj(n) || niv.length >= MAX_NIV) continue;
+      const id = idOk(n.id);
+      if (!id || vn.has(id)) continue;
+      vn.add(id);
+      niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40) });
+    }
+    return { on: sim(v.on), rec, ter, pop: normTabProd(v.pop, ids), niv };
+  }
+  // o assentamento do marcador: o nível (um dos da economia) e a população (o mestre muda); sem os dois, nada
+  function normAss(v) {
+    if (!ehObj(v)) return null;
+    const niv = idRef(v.niv), pop = inteiro(v.pop, 0, 0, MAX_POP_ASS);
+    return niv || pop ? { niv, pop } : null;
+  }
+
   function normGuerra(v) {
     if (!ehObj(v)) return null;
     const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
@@ -1965,6 +2020,8 @@
     mapa.pintura = normPintura(m.pintura, mapa.terrenos);
     const guerra = normGuerra(m.guerra);                         // (lote 8, parte 6) os tipos de tropa, as batalhas, os hexágonos
     if (guerra) mapa.guerra = guerra;
+    const eco = normEco(m.eco, mapa.terrenos);                  // (lote 10) a economia do mundo (só quando há: o mapa de antes fica igual)
+    if (eco) mapa.eco = eco;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -1975,6 +2032,7 @@
     });
     // referências para o que não existe viram null
     const facs = new Set(mapa.faccoes.map(f => f.id)), rotas = new Map(), tiposG = new Set(mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : []);
+    const recIds = new Set(mapa.eco ? mapa.eco.rec.map(r => r.id) : []), nivIds = new Set(mapa.eco ? mapa.eco.niv.map(n => n.id) : []);
     for (const o of mapa.objs) if (o.k === 't') rotas.set(o.id, o);
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
@@ -1988,6 +2046,9 @@
       if (o.k === 'e' && o.rota && !rotas.has(o.rota)) { delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido; }
       // (lote 8, parte 6) a unidade de um tipo que não existe mais fica sem tipo
       if (o.k === 'g' && o.exe) for (const u of o.exe.unid) if (u.tipo && !tiposG.has(u.tipo)) u.tipo = null;
+      // (lote 10) a produção do mestre só dos recursos do mundo; o nível do assentamento, só um dos da economia
+      if (o.k === 'r' && o.prod) { const p = normTabProd(o.prod, recIds); if (Object.keys(p).length) o.prod = p; else delete o.prod; }
+      if (o.k === 'm' && o.ass) { if (o.ass.niv && !nivIds.has(o.ass.niv)) o.ass.niv = null; if (!o.ass.niv && !o.ass.pop) delete o.ass; }
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -2137,6 +2198,7 @@
       else if (o.k === 'r') { facEf.set(o.id, facDaRegiao(m, o)); if (o.clima || (o.chj && o.chj.d === dia)) chReg.set(o.id, climaDoDia(m, dia, o).k); }
     }
     m.clima = { hoje: chMundo };
+    delete m.eco;                                              // (lote 10) a economia é do mestre
     const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
     m.faccoes = m.faccoes.filter(f => !f.oculta);
     for (const f of m.faccoes) {
@@ -2157,7 +2219,7 @@
       // (lote 9) a missão: só a que o mestre mostrou; a de texto vai com a situação pronta (a ligada, quem publica troca
       // pelo nome e pela situação das Fichas — e tira a que ainda está escondida lá)
       if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
-      if (o.k === 'm') { delete o.falso; delete o.estr; delete o.desc; if (coberto(o.x, o.y)) continue; }
+      if (o.k === 'm') { delete o.falso; delete o.estr; delete o.desc; delete o.ass; if (coberto(o.x, o.y)) continue; }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
@@ -2175,7 +2237,7 @@
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null; delete o.peso;
         delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido;     // (lote 7, parte 5b) a rota é do mestre
       }
-      else if (o.k === 'r') { delete o.clima; delete o.chj; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.clima; delete o.chj; delete o.prod; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
       else if (o.k === 't' && o.esc) continue;                  // (lote 7, parte 5b) a rota escondida é do mestre
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') {
@@ -2220,6 +2282,7 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
+    PAPEIS_REC, normEco,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;

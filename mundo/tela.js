@@ -1349,7 +1349,7 @@
     const fid = facEfetiva(ctx.m, o), f = fid ? ctx.fac.get(fid) : null, md = modoDe(ctx, o);
     // (lote 10) o modo do mapa deste aparelho pinta a região (Clima, Perigo) ou tira o preenchimento (Terreno)
     const cor = md && md.cor ? md.cor : o.pai && o.cor ? o.cor : f ? f.cor : (o.cor || '');
-    g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac') + (o.pai ? ' subreg' : '') + (md ? ' m-' + md.modo : ''), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
+    g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac') + (o.pai ? ' subreg' : '') + (md ? ' m-' + md.modo + (md.zero ? ' m-zero' : '') : ''), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
     // o nome vai na camada de cima (nreg): a área fica por baixo das estradas e dos carimbos, mas o nome não some sob eles
     if (o.nome) {
       const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-8",
+      "data": "2026-10-18",
+      "titulo": "A economia do mundo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na aba Reinos, “Ligar a economia…” cria os recursos do mundo — Lapros, Suprimentos, Madeira, Pedra, Orith e Runas (dá para renomear, tirar e criar outros) — e o estoque de cada um em cada facção. Desligar guarda tudo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: cada província produz por semana, pelo terreno dos hexágonos (a tabela “Produção do terreno…”), pela população dos assentamentos e pelo que você escrever (“Produção do mestre…”). A seção Província mostra quanto produz e de onde vem, e o Livro do reino, o que cada facção produz e o estoque."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: um marcador pode ser um assentamento — Aldeia, Vila, Cidade ou Metrópole (nomes e espaços seus) — com a população, que só muda quando você mudar. E o modo Economia, nas camadas, pinta cada região pela produção de um recurso."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-7",
       "data": "2026-10-18",
       "titulo": "Reinos, províncias e modos de mapa",
