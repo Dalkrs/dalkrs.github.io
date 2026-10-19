@@ -12,7 +12,8 @@
 //     cidade por dentro; fechar a semana põe o resumo no rascunho do Jornal da mesa (o jogador não o recebe).
 //   · (lote 11, parte 1a) a corte: a projeção leva só os personagens conhecidos (sem as notas); o jogador os vê na aba
 //     Corte. (parte 2a) Os títulos: a projeção leva o do reino (sem a nota) e não o de quem eles não conhecem; o jogador
-//     vê o título junto do nome, a lista "Títulos" e o governante em Reinos.
+//     vê o título junto do nome, a lista "Títulos" e o governante em Reinos. (parte 3a) A diplomacia: a projeção leva o
+//     tratado público (sem a nota), não o secreto nem a opinião; o jogador o vê na aba Diplomacia.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -204,6 +205,17 @@ function png(w, h, cor) {
     ok(await ate(async () => /Reino de Aldar Ana do Vale A coroa de Aldar\./.test(await corteJ()) && !/Mão Oculta/.test(await corteJ())), 'e, em "Títulos", o título do reino com a titular e o texto: ' + (await corteJ()).slice(0, 200));
     await JW.click('#tab-faccoes'); await w(300, J);
     ok(await ate(async () => /Governante: Ana do Vale, Rainha de Aldar/.test(await corteJ())), 'na aba Reinos, o jogador vê o governante');
+    // (parte 3a) a diplomacia: a projeção leva o tratado público (sem a nota), não o secreto nem a opinião; o jogador vê na aba Diplomacia
+    await W.evaluate(() => {
+      __mundo.App.mudar('a diplomacia', m => {
+        m.dipl = { tratados: [{ id: 'tp', tipo: 'alianca', partes: ['fa', 'fb'], pub: true, txt: 'Juntos contra o norte.', nota: 'Aldar quer trair.' }, { id: 'ts', tipo: 'paz', partes: ['fa', 'fb'], pub: false, nota: 'Pacto secreto.' }],
+          opin: [{ de: 'fa', sobre: 'fb', motivos: [{ id: 'm1', txt: 'Inveja das minas', v: -40 }] }] };
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.dipl && j(p.dipl.tratados.map(x => [x.id, x.nota])) === j([['tp', '']]) && !p.dipl.opin.length); }), 'a projeção leva o tratado público (sem a nota), não o secreto nem a opinião');
+    ok(!/Aldar quer trair|Pacto secreto|Inveja das minas/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe a nota, o tratado secreto nem a opinião');
+    await JW.click('#tab-diplomacia'); await w(300, J);
+    ok(await ate(async () => /Aliança: Aldar, Vale/.test(await corteJ()) && /Juntos contra o norte\./.test(await corteJ()) && !/Paz ou trégua/.test(await corteJ())), 'na aba Diplomacia, o jogador vê o tratado público: ' + (await corteJ()).slice(0, 200));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

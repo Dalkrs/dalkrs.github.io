@@ -24,6 +24,11 @@
 //     "Agora não"); "Fazer a sucessão…" no cartão do título (a herdeira menor de idade, com regente), aplicar (os
 //     titulares de antes, a chefia, a notícia no rascunho do Jornal), desfazer e refazer (com o Jornal), "Fazer a
 //     sucessão…" no cartão do morto, no celular.
+//   · (parte 3a, SO=diplomacia) as abas em duas fileiras (o mapa e a política; cabem; quem joga, as dele); a aba
+//     Diplomacia: os pares de facções, a relação (dos dois lados), a opinião de cada lado (os motivos com o prazo, a soma
+//     na hora, os erros), os tratados (o novo, os erros, três partes, o vencido), os tipos (renomear, criar, voltar aos
+//     de começo), encerrar e reabrir, tirar com Desfazer, o filtro, quem joga (a relação, os públicos, sem a opinião nem
+//     a facção escondida), no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -71,7 +76,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
   if (parte('corte')) await passo('a corte', async () => {
     // a aba
     ok((await L.F.locator('#tab-corte').innerText()).trim() === 'Corte', 'a aba Corte, depois de Reinos');
-    ok(await A(L, () => { const t0 = document.getElementById('tabs'); return t0.scrollWidth <= t0.clientWidth + 1; }), 'as sete abas cabem na largura do painel');
+    ok(await A(L, () => { const t0 = document.getElementById('tabs'); return t0.scrollWidth <= t0.clientWidth + 1; }), 'as oito abas cabem na largura do painel (em duas fileiras)');
     await aba(L, 'corte');
     ok(/^Corte Casas ?Títulos \+ Personagem \+ Casa Cargos da corte… Ninguém ainda\. Os personagens do mundo/.test(await textoPane(L)), 'vazia: os botões e o que é a corte');
     // a casa nova
@@ -207,7 +212,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(/QUEM ESTÁ AQUI Caio/i.test(await textoPane(L)), 'no grupo: o Caio');
     await aba(L, 'corte');
     const abasW = await A(L, () => { const t0 = document.getElementById('tabs'); return [t0.scrollWidth, t0.clientWidth, !document.querySelector('#tab-selecao .n').hidden]; });
-    ok(abasW[0] <= abasW[1] + 1 && abasW[2], 'as sete abas cabem também com o número da seleção: ' + j(abasW));
+    ok(abasW[0] <= abasW[1] + 1 && abasW[2], 'as oito abas cabem também com o número da seleção: ' + j(abasW));
     await aba(L, 'selecao');
     // quem joga: só os conhecidos
     await comoJogador(L, true);
@@ -675,6 +680,147 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await semAvisos(L); await foto('l11-sucessao-linha');
     await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
     await botao(L, 'corte:vista:casas');
+  });
+
+  // ---------- (parte 3a) as abas em duas fileiras e a diplomacia ----------
+  if (parte('diplomacia')) await passo('a diplomacia', async () => {
+    await A(L, () => {
+      __mundo.App.mudar('diplomacia: as facções', m => {
+        if (!m.faccoes.some(f => f.id === 'fc')) m.faccoes.push({ id: 'fc', nome: 'Ilhas', cor: '#2f8f8f' }, { id: 'fd', nome: 'Culto', cor: '#5b3fb5', oculta: true });
+        for (const f of m.faccoes) f.rel = {};
+        delete m.dipl;
+      });
+    });
+    // as abas: duas fileiras, por assunto
+    const filas = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
+    ok(j(filas) === j([['Seleção', 'Hoje', 'Terreno', 'Mapa'], ['Reinos', 'Corte', 'Diplomacia', 'Guerra']]), 'as abas em duas fileiras: o mapa em cima, a política embaixo: ' + j(filas));
+    const cabe = () => A(L, () => [...document.querySelectorAll('#tabs, #tabs .tabs-fila')].every(e => e.scrollWidth <= e.clientWidth + 1));
+    ok(await cabe(), 'as duas fileiras cabem no painel');
+    await aba(L, 'diplomacia');
+    const pd = await textoPane(L);
+    ok(/^Diplomacia \+ Tratado Tipos de tratado… Facção Todas as facções.* RELAÇÕES/i.test(pd) && await A(L, () => document.querySelectorAll('#pane .dp-par').length) === 6, 'a aba Diplomacia: os botões, o filtro e os seis pares de facções (com a escondida, para o mestre): ' + pd.slice(0, 140));
+    // a relação (a mesma da aba Reinos)
+    await campo(L, 'dprel:fa:fb').selectOption('guerra'); await espera(300);
+    ok(await A(L, () => { const m = __mundo.App.mapa, f = id => m.faccoes.find(x => x.id === id); return f('fa').rel.fb === 'guerra' && f('fb').rel.fa === 'guerra'; }), 'a relação entre Aldar e Vale: Guerra, dos dois lados');
+    // a opinião de cada lado
+    await botao(L, 'op:fa:fb'); await L.F.waitForSelector('dialog.op-dl[open]');
+    const ladoAB = s0 => dlg('[data-k="op-lado:fa:fb"] ' + s0), ladoBA = s0 => dlg('[data-k="op-lado:fb:fa"] ' + s0);
+    await L.F.click(ladoAB('[data-k="op-novo:fa:fb"]')); await L.F.locator(ladoAB('[data-k="op:txt"]')).last().fill('tomaram Valmor'); await L.F.locator(ladoAB('[data-k="op:v"]')).last().fill('-30');
+    await L.F.locator(ladoAB('[data-k="op:ate:ano"]')).last().fill('2');
+    await L.F.click(ladoAB('[data-k="op-novo:fa:fb"]')); await L.F.locator(ladoAB('[data-k="op:txt"]')).last().fill('aliança antiga'); await L.F.locator(ladoAB('[data-k="op:v"]')).last().fill('20');
+    ok(await A(L, () => document.querySelector('dialog.op-dl[open] [data-k="opt:fa:fb"]').textContent) === '−10', 'a soma dos motivos, na hora: −10');
+    await L.F.click(ladoBA('[data-k="op-novo:fb:fa"]')); await L.F.locator(ladoBA('[data-k="op:v"]')).last().fill('150');
+    await L.F.click(dlg('[data-k="op:ok"]')); await espera(120);
+    const errOp = () => A(L, () => document.querySelector('dialog.op-dl[open] .err').textContent);
+    ok(await errOp() === 'Escreva cada motivo (ou tire a linha).', 'o motivo sem texto: não passa');
+    await L.F.locator(ladoBA('[data-k="op:txt"]')).last().fill('a ofensa na corte');
+    await L.F.click(dlg('[data-k="op:ok"]')); await espera(120);
+    ok(await errOp() === 'O valor de cada motivo vai de −100 a +100.', 'o valor fora de −100 a +100: não passa');
+    await L.F.locator(ladoBA('[data-k="op:v"]')).last().fill('-50');
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.op-dl[open] .err').textContent = ''; }); await foto('l11-dipl-opiniao');
+    await L.F.click(dlg('[data-k="op:ok"]')); await espera(350);
+    const dp = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.dipl || null)));
+    let d = await dp();
+    const ab = d && d.opin.find(o => o.de === 'fa' && o.sobre === 'fb'), ba = d && d.opin.find(o => o.de === 'fb' && o.sobre === 'fa');
+    ok(ab && j(ab.motivos.map(x => [x.txt, x.v, x.ate])) === j([['tomaram Valmor', -30, { a: 2 }], ['aliança antiga', 20, null]]) && ba && ba.motivos[0].v === -50 && /A opinião entre Aldar e Vale está salva\./.test(await avisos(L)),
+      'salvar: os motivos de cada lado (com o prazo): ' + j(d && d.opin));
+    ok(/opinião: Aldar → −10 · Vale → −50/.test(await A(L, () => document.querySelector('#pane [data-k="par:fa:fb"]').innerText)), 'no par: a opinião de cada lado');
+    // os tratados
+    await botao(L, 'dp:novo'); await L.F.waitForSelector('dialog.tr-dl[open]');
+    const errTr = () => A(L, () => document.querySelector('dialog.tr-dl[open] .err').textContent);
+    ok(await A(L, () => document.querySelector('dialog.tr-dl[open] [data-k="tr:tipo"]').value) === 'alianca' && await A(L, () => document.querySelector('dialog.tr-dl[open] [data-k="tr:ini:ano"]').value) === '1'
+      && await A(L, () => document.querySelector('dialog.tr-dl[open] [data-k="tr:fim:ano"]').closest('.ps-data').hidden), 'o tratado novo: Aliança, começando hoje, sem prazo');
+    await L.F.check(dlg('[data-k="tr:parte:fa"]')); await L.F.click(dlg('[data-k="tr:ok"]')); await espera(120);
+    ok(await errTr() === 'Escolha pelo menos duas facções.', 'uma facção só: não passa');
+    await L.F.check(dlg('[data-k="tr:parte:fc"]')); await L.F.check(dlg('[data-k="tr:prazo"]')); await L.F.fill(dlg('[data-k="tr:fim:ano"]'), '0'); await L.F.click(dlg('[data-k="tr:ok"]')); await espera(120);
+    ok(await errTr() === 'O prazo vem antes do começo.', 'o prazo antes do começo: não passa');
+    await L.F.fill(dlg('[data-k="tr:fim:ano"]'), '3'); await L.F.check(dlg('[data-k="tr:pub"]')); await L.F.fill(dlg('[data-k="tr:txt"]'), 'Um defende o outro.'); await L.F.fill(dlg('[data-k="tr:nota"]'), 'As Ilhas querem sair.');
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.tr-dl[open] .err').textContent = ''; }); await foto('l11-dipl-tratado');
+    await L.F.click(dlg('[data-k="tr:ok"]')); await espera(350);
+    d = await dp();
+    const t1 = d.tratados[0];
+    ok(t1 && t1.tipo === 'alianca' && j(t1.partes) === j(['fa', 'fc']) && j(t1.ini) === j({ a: 1, m: 0, d: 1 }) && j(t1.fim) === j({ a: 3 }) && t1.pub && t1.txt === 'Um defende o outro.' && t1.nota === 'As Ilhas querem sair.' && t1.enc === null
+      && /O tratado Aliança: Aldar, Ilhas entrou na diplomacia\./.test(await avisos(L)), 'criar: o tratado com tudo o que foi escolhido: ' + j(t1));
+    ok(/Aliança: Aldar, Ilhas desde 1 de Alvorada, ano 1 · até ano 3 público/.test(await textoPane(L)) && /tratados: Aliança/.test(await A(L, () => document.querySelector('#pane [data-k="par:fa:fc"]').innerText)),
+      'na lista: o tipo, as partes, as datas e "público"; no par, o tratado em vigor');
+    const novoTratado = async (tipo, partes, o) => {
+      await botao(L, 'dp:novo'); await L.F.waitForSelector('dialog.tr-dl[open]');
+      await L.F.selectOption(dlg('[data-k="tr:tipo"]'), tipo);
+      for (const f of partes) await L.F.check(dlg('[data-k="tr:parte:' + f + '"]'));
+      if (o && o.ini != null) { await L.F.fill(dlg('[data-k="tr:ini:ano"]'), String(o.ini)); await L.F.selectOption(dlg('[data-k="tr:ini:mes"]'), ''); await L.F.fill(dlg('[data-k="tr:ini:dia"]'), ''); }
+      if (o && o.fim != null) { await L.F.check(dlg('[data-k="tr:prazo"]')); await L.F.fill(dlg('[data-k="tr:fim:ano"]'), String(o.fim)); }
+      if (o && o.pub) await L.F.check(dlg('[data-k="tr:pub"]'));
+      await L.F.click(dlg('[data-k="tr:ok"]')); await espera(350);
+      return (await dp()).tratados.slice(-1)[0];
+    };
+    const t2 = await novoTratado('comercio', ['fa', 'fb', 'fc']);
+    ok(t2 && j(t2.partes) === j(['fa', 'fb', 'fc']) && /Comércio: Aldar, Vale, Ilhas desde 1 de Alvorada, ano 1 · sem prazo/.test(await textoPane(L)), 'um tratado de três facções, sem prazo');
+    const t3 = await novoTratado('paz', ['fb', 'fc'], { ini: -3, fim: -1, pub: true });
+    ok(/Paz ou trégua: Vale, Ilhas desde ano -3 · até ano -1 vencido/.test(await textoPane(L)), 'o tratado que passou do prazo: "vencido"');
+    const t4 = await novoTratado('passagem', ['fa', 'fd'], { pub: true });
+    // os tipos de tratado
+    await botao(L, 'dp:tipos'); await L.F.waitForSelector('dialog.cg-dl[open]');
+    ok(j(await A(L, () => [...document.querySelectorAll('dialog.cg-dl[open] [data-k="tp:nome"]')].map(i => i.value))) === j(['Aliança', 'Paz ou trégua', 'Comércio', 'Passagem livre']), 'os tipos de começo');
+    await L.F.locator(dlg('[data-k="tp:nome"]')).nth(2).fill('Rota comercial');
+    await L.F.click(dlg('[data-k="tp:novo"]')); await L.F.click(dlg('[data-k="tp:ok"]')); await espera(120);
+    ok(await A(L, () => document.querySelector('dialog.cg-dl[open] .err').textContent) === 'Dê um nome a cada tipo (ou tire o que está vazio).', 'o tipo sem nome: não passa');
+    await L.F.locator(dlg('[data-k="tp:nome"]')).last().fill('Casamento');
+    await L.F.click(dlg('[data-k="tp:ok"]')); await espera(350);
+    d = await dp();
+    ok(j((d.tipos || []).map(x => x.nome)) === j(['Aliança', 'Paz ou trégua', 'Rota comercial', 'Passagem livre', 'Casamento']) && /Rota comercial: Aldar, Vale, Ilhas/.test(await textoPane(L)), 'renomear e criar: o tratado de comércio com o nome novo');
+    await botao(L, 'dp:tipos'); await L.F.waitForSelector('dialog.cg-dl[open]');
+    await L.F.click(dlg('[data-k="tp:comeco"]')); await L.F.click(dlg('[data-k="tp:ok"]')); await espera(350);
+    ok(!('tipos' in (await dp())), '"Voltar aos de começo": a lista guardada sai');
+    // encerrar e reabrir
+    await botao(L, 'tr:' + t1.id); await L.F.waitForSelector('dialog.tr-dl[open]');
+    await L.F.click(dlg('[data-k="tr:encerrar"]')); await espera(250);
+    ok(/Encerrar o tratado Aliança: Aldar, Ilhas\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'encerrar: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    d = await dp();
+    ok(j(d.tratados.find(x => x.id === t1.id).enc) === j({ a: 1, m: 0, d: 1 }) && /Encerrados \(1\)/.test(await textoPane(L)) && !(await A(L, () => document.querySelector('#pane [data-k="dp:encerrados"]').open)),
+      'encerrado hoje: vai para "Encerrados", recolhido');
+    await L.F.click('#pane [data-k="dp:encerrados"] > summary'); await espera(150);
+    await botao(L, 'tr:' + t1.id); await L.F.waitForSelector('dialog.tr-dl[open]');
+    ok(/Este tratado está encerrado \(1 de Alvorada, ano 1\)\./.test(await A(L, () => document.querySelector('dialog.tr-dl[open]').innerText)), 'o cartão do encerrado diz desde quando');
+    await L.F.click(dlg('[data-k="tr:reabrir"]')); await espera(350);
+    ok((await dp()).tratados.find(x => x.id === t1.id).enc === null && /O tratado Aliança: Aldar, Ilhas voltou a valer\./.test(await avisos(L)), '"Reabrir": volta a valer');
+    // tirar (com Desfazer)
+    await botao(L, 'tr:' + t3.id); await L.F.waitForSelector('dialog.tr-dl[open]');
+    await L.F.click(dlg('[data-k="tr:tirar"]')); await espera(250);
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(!(await dp()).tratados.some(x => x.id === t3.id) && /O tratado Paz ou trégua: Vale, Ilhas saiu\./.test(await avisos(L)), 'tirar o tratado (pergunta antes)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await dp()).tratados.some(x => x.id === t3.id), 'Desfazer: ele volta');
+    // o filtro
+    await campo(L, 'dp:fac').selectOption('fd'); await espera(300);
+    ok(await A(L, () => document.querySelectorAll('#pane .dp-par').length) === 3 && /Passagem livre: Aldar, Culto/.test(await textoPane(L)) && !/Rota comercial|Comércio: Aldar/.test(await textoPane(L)), 'o filtro do Culto: os três pares dele e o tratado dele');
+    await campo(L, 'dp:fac').selectOption(''); await espera(300);
+    await semAvisos(L); await foto('l11-dipl');
+    // quem joga: as relações (não neutras) e os tratados públicos; sem a opinião, sem a facção escondida
+    await comoJogador(L, true);
+    await aba(L, 'diplomacia');
+    const pj = await textoPane(L);
+    ok(/Aldar ⇄ Vale Guerra/.test(pj) && !/Aldar ⇄ Ilhas/.test(pj) && /Aliança: Aldar, Ilhas desde 1 de Alvorada, ano 1 · até ano 3 Um defende o outro\./.test(pj) && /Paz ou trégua: Vale, Ilhas/.test(pj) && !/Comércio/.test(pj) && !/Culto/.test(pj) && !/opinião|Valmor|querem sair/.test(pj) && !/\+ Tratado/.test(pj),
+      'quem joga: a guerra, os tratados públicos (sem o de comércio, sem o do Culto escondido), sem a opinião, a nota e os botões: ' + pj.slice(0, 300));
+    await semAvisos(L); await foto('l11-dipl-jogador');
+    const filasJ = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila:not([hidden])')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
+    ok(j(filasJ) === j([['Seleção', 'Hoje'], ['Reinos', 'Corte', 'Diplomacia']]), 'quem joga: as abas dele, nas mesmas fileiras: ' + j(filasJ));
+    await comoJogador(L, false);
+    // no celular: as abas e as janelas cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
+    await A(L, () => __mundo.App.selecionar(['c1'])); await espera(250);
+    ok(await cabe() && await A(L, () => !document.querySelector('#tab-selecao .n').hidden || __mundo.App.sel.length === 0), 'no celular, as duas fileiras de abas cabem');
+    await semAvisos(L); await foto('l11-abas-celular');
+    await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaTratado(window.MundoDiplomacia.diplDe(__mundo.App.mapa).tratados[0].id); }); await L.F.waitForSelector('dialog.tr-dl[open]');
+    ok(await A(L, () => { const dd = document.querySelector('dialog.tr-dl[open]'); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, o cartão do tratado cabe');
+    await L.F.click(dlg('[data-k="tr:nao"]')); await espera(200);
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaOpiniao('fa', 'fb'); }); await L.F.waitForSelector('dialog.op-dl[open]');
+    ok(await A(L, () => { const dd = document.querySelector('dialog.op-dl[open]'); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, a opinião cabe');
+    await semAvisos(L); await foto('l11-dipl-celular');
+    await L.F.click(dlg('[data-k="op:nao"]')); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

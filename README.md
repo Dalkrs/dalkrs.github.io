@@ -1360,6 +1360,18 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   antes (até a data da morte), o herdeiro fica com o título desde ela. "Agora não" deixa os títulos com o morto; depois,
   "Fazer a sucessão…" no cartão do título ou no dele. As regras ficam na corte (`regras`, `titulo.regra`) e são do mestre
   (não vão para os jogadores).
+- **As abas em duas fileiras e a diplomacia** (lote 11, parte 3a; `mundo/diplomacia.js` e `mundo/diplomacia-painel.js`).
+  As abas do painel agora ficam em **duas fileiras, por assunto** — em cima, o mapa (Seleção, Hoje, Terreno, Mapa);
+  embaixo, a política (Reinos, Corte, Diplomacia, Guerra) —, todas à vista e com a letra normal (quem joga vê as dele
+  nas mesmas fileiras). A aba nova, **Diplomacia**, tem o filtro de facção e: as **relações** de cada par de facções
+  (a mesma relação da aba Reinos, para os dois lados) com a **opinião de cada lado** — "Opinião…" abre os motivos de
+  cada um, cada motivo com o valor (de −100 a +100), um prazo opcional e a soma na hora; o vencido continua contando até
+  você tirar; os **tratados** (os em vigor, os vencidos e os que ainda não começaram; os encerrados recolhidos), com
+  "+ Tratado" e "Tipos de tratado…" (os de começo: Aliança, Paz ou trégua, Comércio e Passagem livre; renomear, criar,
+  tirar e "Voltar aos de começo"). O **cartão do tratado**: o tipo, as facções (duas ou mais), o começo e o prazo pela
+  data do mundo, "Público", os termos e a nota do mestre; "Encerrar o tratado…" (guarda a data de hoje) e "Reabrir";
+  "Tirar…" pergunta antes. Tudo fica no mapa (`dipl`, conferido por `normDipl`), com Desfazer. **Quem joga** vê as
+  relações que não são neutras e os tratados públicos entre facções que ele vê (sem a nota); a opinião é do mestre.
 
 ### A Árvore (lote 6)
 
@@ -2483,7 +2495,14 @@ com o regente, o chefe da casa) e o aplicar (os titulares de antes, a data, o va
 chefia), e a projeção sem as regras; `mundo-lote11` com `SO=sucessao`, a regra do reino na facção, a regra e a linha
 no cartão do título (que muda na hora), a morte sem título (sem prévia), a prévia que abre sozinha, "Agora não",
 "Fazer a sucessão…" no título e no morto, a herdeira menor com regente, aplicar com a notícia no Jornal, desfazer e
-refazer (o Jornal junto) e o celular. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+refazer (o Jornal junto) e o celular. Na parte 3a (a diplomacia), `lote11-nucleo` confere os tipos, os tratados e a opinião
+normalizados (as partes que existem — duas ou mais —, o prazo pelo calendário, os motivos de −100 a +100, os limites),
+as contas (o dia de uma data, o estado do tratado hoje, os tratados de uma facção e entre duas, a opinião com os motivos
+vencidos) e a projeção (os públicos sem facção escondida, sem a nota; sem a opinião); `mundo-lote11` com
+`SO=diplomacia`, as abas em duas fileiras (cabem; as de quem joga), os pares, a relação dos dois lados, a opinião (os
+motivos com prazo, a soma na hora, os erros), os tratados (os erros, três partes, o vencido), os tipos, encerrar e
+reabrir, tirar com Desfazer, o filtro, quem joga e o celular; `mundo-lote8.rede`, numa mesa, o tratado público na
+projeção (sem a nota, sem o secreto nem a opinião) e a aba Diplomacia do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

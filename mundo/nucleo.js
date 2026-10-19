@@ -2264,6 +2264,68 @@
     }
   }
 
+  /* ---------------- (lote 11, parte 3a) a diplomacia: os tratados e a opinião entre as facções ----------------
+     dipl = { tipos: [{ id, nome }] (os tipos de tratado; sem a lista guardada, os de começo), tratados: [{ id, tipo,
+     partes (as facções: duas ou mais), ini (o começo, pela data do mundo), fim (o prazo; sem ele, sem prazo), pub (os
+     jogadores sabem), txt (os termos), nota (do mestre), enc (a data em que foi encerrado; sem ela, vale) }], opin: [{ de,
+     sobre (as facções), motivos: [{ id, txt, v (de −100 a +100), ate (o prazo do motivo; sem ele, fica) }] }] (a opinião
+     de uma facção sobre outra: a soma dos motivos, de −100 a +100) }. Só quando há algo (o mapa de antes fica igual). */
+  const TIPOS_TRATADO = [{ id: 'alianca', nome: 'Aliança' }, { id: 'paz', nome: 'Paz ou trégua' }, { id: 'comercio', nome: 'Comércio' }, { id: 'passagem', nome: 'Passagem livre' }];
+  const MAX_TRATADOS = 200, MAX_TIPOS_TRAT = 16, MAX_PARTES = 12, MAX_OPIN = 600, MAX_MOTIVOS_OP = 20, MAX_TXT_DIPL = 600;
+  function normDipl(v, cal) {
+    if (!ehObj(v)) return null;
+    let tipos = null;
+    if (Array.isArray(v.tipos)) {
+      tipos = [];
+      const vt = new Set();
+      for (const t of v.tipos) {
+        if (!ehObj(t) || tipos.length >= MAX_TIPOS_TRAT) continue;
+        const id = idOk(t.id);
+        if (!id || vt.has(id)) continue;
+        vt.add(id);
+        tipos.push({ id, nome: texto(t.nome, '', 40).trim() || 'Tratado' });
+      }
+    }
+    const tratados = [], vtr = new Set();
+    for (const t of Array.isArray(v.tratados) ? v.tratados : []) {
+      if (!ehObj(t) || tratados.length >= MAX_TRATADOS) continue;
+      const id = idOk(t.id);
+      if (!id || vtr.has(id)) continue;
+      vtr.add(id);
+      const partes = [...new Set((Array.isArray(t.partes) ? t.partes : []).map(idOk).filter(Boolean))].slice(0, MAX_PARTES);
+      tratados.push({ id, tipo: idRef(t.tipo), partes, ini: normDataP(t.ini, cal), fim: normDataP(t.fim, cal), pub: sim(t.pub), txt: texto(t.txt, '', MAX_TXT_DIPL).trim(),
+        nota: texto(t.nota, '', MAX_TXT_DIPL).trim(), enc: normDataP(t.enc, cal) });
+    }
+    const opin = [], vo = new Set();
+    for (const o of Array.isArray(v.opin) ? v.opin : []) {
+      if (!ehObj(o) || opin.length >= MAX_OPIN) continue;
+      const de = idOk(o.de), sobre = idOk(o.sobre);
+      if (!de || !sobre || de === sobre || vo.has(de + '>' + sobre)) continue;
+      const motivos = [], vm = new Set();
+      for (const x of Array.isArray(o.motivos) ? o.motivos : []) {
+        if (!ehObj(x) || motivos.length >= MAX_MOTIVOS_OP) continue;
+        const mid = idOk(x.id);
+        if (!mid || vm.has(mid)) continue;
+        vm.add(mid);
+        motivos.push({ id: mid, txt: texto(x.txt, '', 120).trim() || 'Sem motivo', v: inteiro(x.v, 0, -100, 100), ate: normDataP(x.ate, cal) });
+      }
+      if (!motivos.length) continue;
+      vo.add(de + '>' + sobre);
+      opin.push({ de, sobre, motivos });
+    }
+    if (!tipos && !tratados.length && !opin.length) return null;
+    const out = { tratados, opin };
+    if (tipos) out.tipos = tipos;
+    return out;
+  }
+  // a diplomacia com o mapa todo: só as facções que existem (o tratado com menos de duas sai); o tipo, um dos tipos
+  function conferirDipl(d, facs) {
+    const tipos = new Set((d.tipos || TIPOS_TRATADO).map(t => t.id));
+    for (const t of d.tratados) { t.partes = t.partes.filter(f => facs.has(f)); if (t.tipo && !tipos.has(t.tipo)) t.tipo = null; }
+    d.tratados = d.tratados.filter(t => t.partes.length >= 2);
+    d.opin = d.opin.filter(o => facs.has(o.de) && facs.has(o.sobre));
+  }
+
   function normGuerra(v) {
     if (!ehObj(v)) return null;
     const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
@@ -2449,6 +2511,8 @@
     if (ecoJ) mapa.ecoJ = ecoJ;
     const corte = normCorte(m.corte, cal);                       // (lote 11) a corte: os personagens do mundo e as casas
     if (corte) mapa.corte = corte;
+    const dipl = normDipl(m.dipl, cal);                          // (lote 11, parte 3a) a diplomacia: os tratados e a opinião
+    if (dipl) mapa.dipl = dipl;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -2483,6 +2547,7 @@
       }
     }
     if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
+    if (mapa.dipl) conferirDipl(mapa.dipl, facs);                 // (lote 11, parte 3a) as facções dos tratados e da opinião
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2754,6 +2819,13 @@
         m.corte = c;
       } else delete m.corte;
     }
+    /* (lote 11, parte 3a) a diplomacia: os tratados públicos entre facções que eles veem (sem a nota), com os tipos (para
+       os nomes); a opinião é do mestre */
+    if (m.dipl) {
+      const vistas = new Set(m.faccoes.map(f => f.id));
+      const tratados = m.dipl.tratados.filter(t => t.pub && t.partes.every(f => vistas.has(f))).map(t => Object.assign({}, t, { nota: '' }));
+      if (tratados.length) { const d = { tratados, opin: [] }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
+    }
     return normalizarMapa(m);
   }
   // (lote 10, parte 6) as contas da economia (mundo/reino.js), para a projeção: no navegador, as que a página carregou
@@ -2780,11 +2852,13 @@
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
+    TIPOS_TRATADO, normDipl,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
       personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE,
-      titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE },
+      titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
+      tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

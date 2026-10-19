@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-22",
+      "data": "2026-10-18",
+      "titulo": "A diplomacia",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: as abas do painel agora ficam em duas fileiras, por assunto (em cima, o mapa; embaixo, a política), todas à vista e com a letra normal."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a aba nova “Diplomacia”, com as relações entre as facções e os tratados públicos (o tipo, as facções, desde quando, até quando e os termos)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na Diplomacia, a opinião de cada facção sobre a outra (os motivos, cada um com o valor de −100 a +100 e um prazo) e os tratados entre duas ou mais facções (o começo, o prazo, “Público”, os termos e a nota; encerrar e reabrir), com os tipos de tratado para renomear e criar."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-21",
       "data": "2026-10-18",
       "titulo": "A sucessão",

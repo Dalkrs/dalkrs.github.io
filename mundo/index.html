@@ -294,11 +294,14 @@ svg.sem-pulso .zona-pulsa { animation: none; }
 
 /* ---- painel ---- */
 .side { flex: none; width: 330px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
-.tabs { flex: none; display: flex; gap: 0; padding: 0 4px; border-bottom: 1px solid var(--line); }
-.tab { position: relative; height: 40px; padding: 0 3px; border: 0; background: none; color: var(--fg-2); font-weight: 600; font-size: 12.5px; white-space: nowrap; }   /* (lote 11: sete abas, com a Corte) */
+/* (lote 11, parte 3a) as abas em duas fileiras, por assunto (o mapa; a política): todas à vista, com a letra normal */
+.tabs { flex: none; display: flex; flex-direction: column; padding: 0 4px; border-bottom: 1px solid var(--line); }
+.tabs-fila { display: flex; }
+.tabs-fila + .tabs-fila { border-top: 1px solid var(--line); }
+.tab { position: relative; flex: 1 1 auto; height: 34px; padding: 0 6px; border: 0; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; white-space: nowrap; }
 .tab:hover { color: var(--fg); }
 .tab[aria-selected="true"] { color: var(--lamp-ink); }
-.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 3px; right: 3px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -1px; height: 2px; background: var(--lamp); border-radius: 2px; }
 .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .pane h3 { margin: 0; font: 600 19px/1.2 var(--display); }
 .pane .sub { color: var(--fg-3); font-size: 12.5px; margin-top: -8px; }
@@ -771,6 +774,41 @@ dialog.mundo-dl.suc-dl { width: min(560px, calc(100% - 24px)); }
 .suc-item { display: grid; gap: 4px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .suc-item b { font-size: 14px; color: var(--fg); }
 .suc-item small { font-size: 12px; color: var(--fg-3); }
+/* (lote 11, parte 3a) a diplomacia: os pares de facções (a relação e a opinião), os tratados, o cartão do tratado e a opinião */
+.dp-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.dp-pares, .dp-tratados { display: grid; gap: 6px; }
+.dp-par { display: grid; gap: 4px; padding: 8px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.dp-par[data-rel="guerra"] { border-left: 3px solid var(--danger); }
+.dp-par[data-rel="alianca"] { border-left: 3px solid var(--ok); }
+.dp-par[data-rel="tensao"] { border-left: 3px solid var(--lamp); }
+.dp-par-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.dp-par-nomes { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.dp-par-nomes b { font-size: 13.5px; color: var(--fg); }
+.dp-x { color: var(--fg-3); }
+.dp-par-cab .in { width: auto; flex: none; height: 32px; }
+.dp-op { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.dp-op small, .dp-trat { font-size: 12px; color: var(--fg-3); }
+.dp-t .tx { display: grid; min-width: 0; }
+.dp-t small { font-size: 12px; color: var(--fg-3); }
+.li.dp-t .tx small { white-space: normal; overflow: visible; }
+.li.dp-t .tx b { white-space: normal; }
+.dp-partes { display: flex; flex-wrap: wrap; gap: 6px; }
+.mundo-dl label.op.dp-parte { padding: 6px 10px; }
+dialog.mundo-dl.tr-dl { width: min(600px, calc(100% - 24px)); }
+dialog.mundo-dl.tr-dl .pe { flex-wrap: wrap; }
+dialog.mundo-dl.op-dl { width: min(700px, calc(100% - 24px)); }
+.op-lado { display: grid; gap: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.op-cab { font-size: 13.5px; font-weight: 600; color: var(--fg-2); }
+.op-total { color: var(--fg); }
+.op-lista { display: grid; gap: 6px; }
+.op-linha { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+dialog.mundo-dl .op-linha input[type="text"].op-txt { flex: 1 1 170px; width: auto; }
+dialog.mundo-dl .op-linha input[type="text"].op-v { flex: none; width: 64px; }
+.op-ate-rot { font-size: 12px; color: var(--fg-3); }
+.op-ate { display: inline-flex; align-items: center; gap: 6px; order: 3; }
+.op-linha .tag { order: 4; }
+.op-linha .ib { order: 5; }
+@media (max-width: 560px) { .op-linha .ib { order: 3; } .op-ate { order: 4; flex: 1 1 100%; } .op-linha .tag { order: 5; } }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1118,11 +1156,8 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
   .tabs { padding: 0 4px; }
   .tab .n { margin-left: 3px; }
 }
-/* (lote 8, parte 6) as seis abas (com a Guerra) cabem, mesmo com o número da seleção: no painel de 280 px (tela até
-   900 px), letra menor e o número vira um ponto; no celular (o painel de 300 px por cima do mapa), letra um pouco menor.
-   (lote 11) Agora são sete (com a Corte): a letra e os vãos encolhem um pouco mais. */
-@media (max-width: 900px) and (min-width: 681px) { .tab { padding: 0 2px; font-size: 11px; } .tab .n { min-width: 8px; width: 8px; height: 8px; padding: 0; margin-left: 2px; font-size: 0; vertical-align: 5px; } .tab[aria-selected="true"]::after { left: 2px; right: 2px; } }
-@media (max-width: 680px) { .tab { padding: 0 2.5px; font-size: 11.5px; } .tab[aria-selected="true"]::after { left: 2.5px; right: 2.5px; } }
+/* (lote 11, parte 3a) no painel estreito (280 px, ou o do celular), os vãos das abas encolhem um pouco */
+@media (max-width: 900px) { .tab { padding: 0 4px; } .tab[aria-selected="true"]::after { left: 4px; right: 4px; } }
 @media (max-width: 600px) {
   .salvo:not(.ruim) { display: none; }
   .salvo.ruim { max-width: 90px; }
@@ -1187,17 +1222,19 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=29"></script>
+<script src="nucleo.js?v=30"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=8"></script>
 <script src="corte.js?v=4"></script>
+<script src="diplomacia.js?v=1"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=34"></script>
+<script src="painel.js?v=35"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=10"></script>
 <script src="corte-painel.js?v=4"></script>
+<script src="diplomacia-painel.js?v=1"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

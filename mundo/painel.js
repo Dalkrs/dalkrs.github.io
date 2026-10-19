@@ -9,14 +9,16 @@
 (() => {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
+  /* (lote 11, parte 3a) as abas em duas fileiras, por assunto: na de cima, o mapa; na de baixo, a política */
   const ABAS = [
-    { id: 'selecao', nome: 'Seleção' },
-    { id: 'hoje', nome: 'Hoje' },
-    { id: 'faccoes', nome: 'Reinos' },                             // (lote 10: era "Facções"; o id fica)
-    { id: 'corte', nome: 'Corte' },                               // (lote 11) os personagens do mundo e as casas
-    { id: 'guerra', nome: 'Guerra', mestre: true },               // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
-    { id: 'terreno', nome: 'Terreno', mestre: true },
-    { id: 'mapa', nome: 'Mapa', mestre: true },
+    { id: 'selecao', nome: 'Seleção', fila: 1 },
+    { id: 'hoje', nome: 'Hoje', fila: 1 },
+    { id: 'terreno', nome: 'Terreno', fila: 1, mestre: true },
+    { id: 'mapa', nome: 'Mapa', fila: 1, mestre: true },
+    { id: 'faccoes', nome: 'Reinos', fila: 2 },                    // (lote 10: era "Facções"; o id fica)
+    { id: 'corte', nome: 'Corte', fila: 2 },                      // (lote 11) os personagens do mundo e as casas
+    { id: 'diplomacia', nome: 'Diplomacia', fila: 2 },            // (lote 11, parte 3a) as relações, a opinião, os tratados
+    { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
   ];
   const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
@@ -45,6 +47,7 @@
   const GP = () => window.MundoGuerraPainel || null;           // (lote 8, parte 6) a guerra no painel
   const RP = () => window.MundoReinoPainel || null;            // (lote 10) os reinos no painel: a província, o Livro do reino
   const CP = () => window.MundoCortePainel || null;            // (lote 11) a corte no painel: a aba Corte, quem está aqui
+  const DP = () => window.MundoDiplomaciaPainel || null;       // (lote 11, parte 3a) a diplomacia no painel: a aba Diplomacia
   const $ = id => document.getElementById(id);
   const estreito = () => !!(window.matchMedia && matchMedia(ESTREITO).matches);
   const celular = () => !!(window.matchMedia && matchMedia(CELULAR).matches);
@@ -1015,8 +1018,9 @@
     const tabs = $('tabs');
     if (!tabs) return;
     tabs.setAttribute('aria-label', 'Painel do mapa');
-    tabs.replaceChildren(...ABAS.map(a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
-      onclick: () => { aba = a.id; lembrar({ aba }); pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }))));
+    const bt = a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
+      onclick: () => { aba = a.id; lembrar({ aba }); pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }));
+    tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(bt))));
     tabs.addEventListener('keydown', ev => {
       const vis = [...tabs.querySelectorAll('.tab:not([hidden])')], i = vis.indexOf(document.activeElement);
       if (i < 0) return;
@@ -1043,6 +1047,7 @@
       b.setAttribute('aria-selected', String(a.id === vis));
       b.tabIndex = a.id === vis ? 0 : -1;
     }
+    for (const f of tabs.querySelectorAll('.tabs-fila')) f.hidden = ![...f.children].some(b => !b.hidden);    // (parte 3a) a fileira sem aba some
     const n = (App.sel || []).length, badge = $('tab-selecao') && $('tab-selecao').querySelector('.n');
     if (badge) { badge.hidden = !n || vis === 'selecao'; trocarTexto(badge, String(n)); }
   }
@@ -1073,7 +1078,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 

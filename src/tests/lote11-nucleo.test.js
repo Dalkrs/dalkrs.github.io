@@ -16,8 +16,13 @@
 //     os títulos de alguém e de uma terra, por grau; o maior junto do nome; o governante; a maioridade; os papéis de
 //     alguém nos títulos) e a projeção (as terras que eles veem e os conhecidos; a terra escondida e a facção escondida
 //     não; a névoa: o nome pronto; as pessoas só as conhecidas; sem a nota).
+//   · (parte 3a) a diplomacia: os tipos, os tratados e a opinião normalizados (os campos, as partes que existem — duas
+//     ou mais —, o prazo pelo calendário, os limites), as contas (o dia de uma data, o estado do tratado hoje, os
+//     tratados de uma facção e entre duas, a opinião com os motivos vencidos) e a projeção (os públicos sem facção
+//     escondida, sem a nota; sem a opinião).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
+const Dp = require('../../mundo/diplomacia.js');
 let n = 0, bad = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — esperado ' + JSON.stringify(b) + ', veio ' + JSON.stringify(a));
@@ -297,6 +302,56 @@ const j = JSON.stringify;
   const mp = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'antig' } }, pessoas: [{ id: 'a', nome: 'A', ver: true }], titulos: [{ id: 't', nome: 'T', tit: 'a', regra: { forma: 'primo' } }] } });
   const pp = N.projetar(mp).corte;
   eq([pp.titulos[0].regra, 'regras' in pp], [null, false], 'na projeção, sem as regras de sucessão (a do título e as dos reinos)');
+}
+
+/* ---- (parte 3a) a diplomacia: os tratados e a opinião ---- */
+{
+  const CAL = { dia: 35, ano0: 10, meses: [{ nome: 'Degelo', dias: 30 }, { nome: 'Semeadura', dias: 31 }, { nome: 'Colheita', dias: 28 }], era: 'DR' };
+  const base = { nome: 'M', cal: CAL, faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale' }, { id: 'fc', nome: 'Ilhas' }, { id: 'fd', nome: 'Culto', oculta: true }],
+    dipl: {
+      tipos: [{ id: 'alianca', nome: ' Aliança ' }, { id: 'alianca', nome: 'repetida' }, { id: 'liga', nome: '' }, 'lixo'],
+      tratados: [
+        { id: 't1', tipo: 'alianca', partes: ['fa', 'fb', 'fa', 'zz'], ini: { a: 10 }, fim: { a: 12, m: 1, d: 40 }, pub: true, txt: ' Juntos. ', nota: 'segredo' },
+        { id: 't2', tipo: 'paz', partes: ['fa', 'fc', 'fb'], pub: false },
+        { id: 't3', tipo: 'liga', partes: ['fb', 'fd'], pub: true },
+        { id: 't4', partes: ['fa', 'zz'] },
+        { id: 't5', tipo: 'alianca', partes: ['fb', 'fc'], ini: { a: 9 }, fim: { a: 10, m: 0 }, pub: true },
+        { id: 't6', tipo: 'alianca', partes: ['fa', 'fc'], ini: { a: 10, m: 2 }, pub: true },
+        { id: 't7', tipo: 'alianca', partes: ['fa', 'fb'], enc: { a: 10, m: 1, d: 2 }, pub: true },
+        { id: 't8', tipo: 'alianca', partes: ['fa', 'fb', 'fd'], pub: true },
+        { id: 't1', partes: ['fa', 'fb'] }, 'lixo'],
+      opin: [
+        { de: 'fa', sobre: 'fb', motivos: [{ id: 'm1', txt: ' tomaram Valmor ', v: -30, ate: { a: 10, m: 0 } }, { id: 'm2', txt: '', v: 250 }, { id: 'm1', txt: 'repetido', v: 5 }, { id: 'm3', txt: 'velha aliança', v: 'x' }] },
+        { de: 'fa', sobre: 'fb', motivos: [{ id: 'm9', txt: 'repetida', v: 1 }] },
+        { de: 'fb', sobre: 'fa', motivos: [{ id: 'k1', txt: 'ofensa', v: -80 }, { id: 'k2', txt: 'outra', v: -70 }] },
+        { de: 'fa', sobre: 'fa', motivos: [{ id: 'x', txt: 'eu', v: 1 }] }, { de: 'fa', sobre: 'zz', motivos: [{ id: 'x', txt: 'ninguém', v: 1 }] }, { de: 'fc', sobre: 'fa', motivos: [] }] } };
+  const m = N.normalizarMapa(base), d = m.dipl, T = id => d.tratados.find(t => t.id === id);
+  eq(d.tipos, [{ id: 'alianca', nome: 'Aliança' }, { id: 'liga', nome: 'Tratado' }], 'os tipos: sem os repetidos nem o lixo; o nome que falta vira "Tratado"');
+  eq(d.tratados.map(t => t.id), ['t1', 't2', 't3', 't5', 't6', 't7', 't8'], 'os tratados: sem os repetidos, o lixo e o de menos de duas facções que existem');
+  eq(Object.keys(T('t1')), ['id', 'tipo', 'partes', 'ini', 'fim', 'pub', 'txt', 'nota', 'enc'], 'cada tratado com os campos de sempre, nesta ordem');
+  eq([T('t1').partes, T('t2').partes, T('t1').fim, T('t1').txt, T('t2').pub], [['fa', 'fb'], ['fa', 'fc', 'fb'], { a: 12, m: 1, d: 31 }, 'Juntos.', false], 'as partes (sem repetir, só as que existem; três facções também); o prazo pelo calendário; os termos aparados');
+  eq([T('t2').tipo, T('t3').tipo], [null, 'liga'], 'o tipo que não existe na lista guardada sai (fica "Tratado")');
+  eq(d.opin.map(o => o.de + '>' + o.sobre), ['fa>fb', 'fb>fa'], 'a opinião: um registro por lado, de uma facção sobre outra que existe (nem sobre si mesma; sem motivos, nada)');
+  eq(d.opin[0].motivos, [{ id: 'm1', txt: 'tomaram Valmor', v: -30, ate: { a: 10, m: 0 } }, { id: 'm2', txt: 'Sem motivo', v: 100, ate: null }, { id: 'm3', txt: 'velha aliança', v: 0, ate: null }],
+    'os motivos: sem os repetidos; o texto que falta vira "Sem motivo"; o valor de −100 a +100 (o que não é número, 0)');
+  const lim = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'a' }, { id: 'b' }], dipl: { tipos: Array.from({ length: 20 }, (_, i) => ({ id: 'k' + i, nome: 'K' })), tratados: Array.from({ length: 210 }, (_, i) => ({ id: 't' + i, partes: ['a', 'b'] })),
+    opin: [{ de: 'a', sobre: 'b', motivos: Array.from({ length: 25 }, (_, i) => ({ id: 'm' + i, txt: 'M', v: 1 })) }] } }).dipl;
+  ok(lim.tipos.length === N.LIMITES.tiposTratado && lim.tratados.length === N.LIMITES.tratados && lim.opin[0].motivos.length === N.LIMITES.motivosOpiniao, 'os limites: ' + [N.LIMITES.tiposTratado, N.LIMITES.tratados, N.LIMITES.motivosOpiniao].join(', '));
+  ok(!('dipl' in N.normalizarMapa({ nome: 'M', dipl: { tratados: [], opin: [] } })) && 'dipl' in N.normalizarMapa({ nome: 'M', dipl: { tipos: [] } }), 'sem nada, a diplomacia nem fica (só os tipos, mesmo vazios, ficam)');
+  // as contas
+  eq([Dp.tiposDe(m).length, Dp.tiposDe(N.normalizarMapa({ nome: 'M' })).map(t => t.id), Dp.nomeDoTipo(m, T('t2')), Dp.nomeDoTipo(m, T('t3'))], [2, N.TIPOS_TRATADO.map(t => t.id), 'Tratado', 'Tratado'], 'os tipos: os guardados ou os de começo; o nome do tipo (sem ele, "Tratado")');
+  eq([Dp.diaDe(m, { a: 10 }), Dp.diaDe(m, { a: 10 }, true), Dp.diaDe(m, { a: 10, m: 1 }), Dp.diaDe(m, { a: 10, m: 1 }, true), Dp.diaDe(m, { a: 11, m: 0, d: 5 }), Dp.diaDe(m, null)], [0, 88, 30, 60, 93, null],
+    'o dia de uma data (o começo ou o fim do ano, do mês; o dia exato)');
+  eq(['t1', 't2', 't5', 't6', 't7'].map(id => Dp.estadoDe(m, T(id))), ['ativo', 'ativo', 'vencido', 'futuro', 'encerrado'], 'o estado hoje (dia 35: 6 de Semeadura do ano 10): em vigor, sem datas, vencido, ainda não começou, encerrado');
+  eq([Dp.tratadosDe(m, 'fc').map(t => t.id), Dp.tratadosEntre(m, 'fa', 'fb').map(t => t.id), Dp.tratadosDe(m, null).length, Dp.tratadoDe(m, 't3').id], [['t2', 't5', 't6'], ['t1', 't2', 't7', 't8'], 7, 't3'], 'os tratados de uma facção, entre duas, todos');
+  const o1 = Dp.opiniao(m, 'fa', 'fb'), o2 = Dp.opiniao(m, 'fb', 'fa'), o3 = Dp.opiniao(m, 'fc', 'fa');
+  eq([o1.total, o1.motivos.map(x => x.vencido), o2.total, o3, Dp.opTxt(20), Dp.opTxt(-5), Dp.opTxt(0)], [70, [true, false, false], -100, { total: 0, motivos: [] }, '+20', '−5', '0'],
+    'a opinião: a soma dos motivos (de −100 a +100), o motivo vencido (continua contando); sem motivos, 0; o número com o sinal');
+  // a projeção: os tratados públicos entre facções que eles veem, sem a nota; sem a opinião
+  const p = N.projetar(m);
+  eq([p.dipl.tratados.map(t => t.id), p.dipl.tratados[0].nota, p.dipl.opin, p.dipl.tipos.length], [['t1', 't5', 't6', 't7'], '', [], 2], 'na projeção: só os públicos sem facção escondida (nem o de três com a escondida; sem a nota); a opinião não vai; os tipos vão');
+  ok(j(N.normalizarMapa(p)) === j(p), 'o que chega aos jogadores passa igual pela normalização deles');
+  ok(!('dipl' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { dipl: { opin: base.dipl.opin, tratados: [{ id: 'x', partes: ['fa', 'fb'] }] } })))), 'sem tratado público: a diplomacia nem vai');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');
