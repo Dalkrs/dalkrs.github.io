@@ -10,6 +10,12 @@
 //   · (parte 1b) a árvore da família: quem entra (os membros e os cônjuges), as gerações, quem casou com alguém da casa
 //     ao lado, os filhos na ordem do meio dos pais, os casais (o dos primos também), os filhos pendurados nos pais que
 //     estão na árvore, o tamanho, a casa vazia, a projeção (só os conhecidos).
+//   · (parte 2a) os títulos: os graus e os títulos normalizados (os campos, os limites, a maioridade), as referências
+//     (o grau, a terra do tipo certo, o reino, as pessoas; o herdeiro escolhido, o regente e os pretendentes não são o
+//     titular; o titular de antes que saiu fica com o nome), as contas (o nome do título e o de quem tem, pelo gênero;
+//     os títulos de alguém e de uma terra, por grau; o maior junto do nome; o governante; a maioridade; os papéis de
+//     alguém nos títulos) e a projeção (as terras que eles veem e os conhecidos; a terra escondida e a facção escondida
+//     não; a névoa: o nome pronto; as pessoas só as conhecidas; sem a nota).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 let n = 0, bad = 0;
@@ -114,6 +120,91 @@ const j = JSON.stringify;
   eq([C.arvoreDaCasa(m, 'kz'), C.arvoreDaCasa(m, null), C.arvoreDaCasa(m, 'xx')], [vazia, vazia, vazia], 'a casa sem ninguém (ou nenhuma): a árvore vazia');
   const tj = C.arvoreDaCasa(N.projetar(m), 'ka');
   ok(!tj.nos.some(x => x.id === 'nr') && tj.nos.length === 9 && tj.filhos.find(f => f.id === 'n1').pais.join() === 'f1', 'para quem joga (a projeção): só os conhecidos (sem a Lia; o Davi pendurado só no pai)');
+}
+
+/* ---- (parte 2a) os títulos ---- */
+{
+  const CAL = { dia: 0, ano0: 300, meses: [{ nome: 'Degelo', dias: 30 }, { nome: 'Semeadura', dias: 31 }], era: 'DR' };
+  const base = { nome: 'M', cal: CAL, faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Culto', oculta: true }],
+    nevoa: { on: true, ops: [{ t: '+', x: 0, y: 0, r: 400 }] },
+    objs: [{ id: 'r1', k: 'r', nome: 'Valmor', fac: 'fa', pts: [[0, 0], [100, 0], [100, 100]] }, { id: 'r2', k: 'r', nome: 'Longe', pts: [[900, 900], [1000, 900], [1000, 1000]] },
+      { id: 'r3', k: 'r', nome: 'Vale Secreto', oculto: true, pts: [[10, 10], [60, 10], [60, 60]] }, { id: 'c1', k: 'm', x: 20, y: 20, ic: 'castelo' }, { id: 'c2', k: 'm', x: 2000, y: 2000, ic: 'porto' },
+      { id: 'g1', k: 'g', x: 30, y: 30 }],
+    corte: {
+      graus: [{ id: 'reino', nome: 'Reino', h: 'Rei', m: 'Rainha' }, { id: 'ducado', nome: ' Ducado ', h: 'Duque', m: '' }, { id: 'ducado', nome: 'repetido' }, { id: 'sen', nome: '', h: '', m: '', o: 'Senhore' }, 'lixo'],
+      maior: 18,
+      pessoas: [{ id: 'a', nome: 'Ana', gen: 'm', ver: true, nasc: { a: 290 } }, { id: 'b', nome: 'Beto', gen: 'h', nasc: { a: 260 } }, { id: 'c', nome: 'Caio', gen: 'o', ver: true },
+        { id: 'd', nome: 'Duda', morte: { a: 299 } }, { id: 'e', nome: 'Edu', nasc: { a: 295 }, morte: { a: 298 } }, { id: 'f', nome: 'Fábio', nasc: { a: 305 } }],
+      titulos: [
+        { id: 't1', grau: 'ducado', preso: { t: 'r', id: 'r1' }, fac: 'fa', tit: 'a', desde: { a: 298, m: 1, d: 40 }, herd: 'a', reg: 'b', pret: [{ p: 'c', mot: ' irmão ' }, { p: 'c', mot: 'repetido' }, { p: 'a' }, { p: 'zz' }, { p: 'b' }],
+          hist: [{ p: 'd', nome: 'velho' }, { p: 'zz', nome: 'Saiu' }, { p: 'zz' }, { nome: 'Aldric I', de: { a: 200 }, ate: { a: 230 } }, {}], txt: 'O ducado.', nota: 'Segredo.' },
+        { id: 't2', grau: 'reino', preso: { t: 'f', id: 'fa' }, tit: 'b' },
+        { id: 't3', grau: 'sen', preso: { t: 'r', id: 'r2' }, tit: 'c', herd: 'b' },
+        { id: 't4', grau: 'reino', preso: { t: 'r', id: 'r3' }, tit: 'a' },
+        { id: 't5', nome: 'Grão-Mestre da Ordem', tit: 'c', reg: 'c', fac: 'fb', desde: { a: 1 } },
+        { id: 't6', grau: 'imperio', preso: { t: 'm', id: 'c1' }, tit: 'x', desde: { a: 3 } },
+        { id: 't7', grau: 'reino', preso: { t: 'f', id: 'fb' }, tit: 'a' },
+        { id: 't8', grau: 'ducado', preso: { t: 'm', id: 'g1' }, fac: 'zz', tit: 'b', desde: { a: 5 } },
+        { id: 't9', grau: 'ducado', preso: { t: 'm', id: 'c2' }, tit: 'c' },
+        { id: 't1', nome: 'repetido' }, 'lixo'] } };
+  const m = N.normalizarMapa(base), c = m.corte, T = id => c.titulos.find(t => t.id === id), P = id => C.pessoaDe(m, id);
+  eq(c.graus, [{ id: 'reino', nome: 'Reino', h: 'Rei', m: 'Rainha', o: '' }, { id: 'ducado', nome: 'Ducado', h: 'Duque', m: '', o: '' }, { id: 'sen', nome: 'Grau', h: '', m: '', o: 'Senhore' }],
+    'os graus: sem os repetidos nem o lixo; o nome que falta vira "Grau"; as formas como foram escritas');
+  eq(c.maior, 18, 'a maioridade guardada');
+  eq(c.titulos.map(t => t.id), ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9'], 'os títulos: sem os repetidos nem o lixo');
+  eq(Object.keys(T('t1')), ['id', 'grau', 'de', 'nome', 'preso', 'fac', 'tit', 'desde', 'herd', 'reg', 'pret', 'hist', 'txt', 'nota'], 'cada título com os campos de sempre, nesta ordem');
+  eq([T('t1').herd, T('t1').reg, T('t1').desde], [null, 'b', { a: 298, m: 1, d: 31 }], 'o herdeiro escolhido não é o próprio titular; o regente fica; o "desde" (o dia passa do mês: fica no último)');
+  eq(T('t1').pret, [{ p: 'c', mot: 'irmão' }, { p: 'b', mot: '' }], 'os pretendentes: sem repetir, sem o titular, só quem existe (com o motivo)');
+  eq(T('t1').hist, [{ p: 'd', nome: 'Duda', de: null, ate: null }, { p: null, nome: 'Saiu', de: null, ate: null }, { p: null, nome: 'Aldric I', de: { a: 200 }, ate: { a: 230 } }],
+    'os titulares de antes: o nome de quem está vem da corte; quem saiu fica só com o nome (sem nome, sai)');
+  eq([T('t6').grau, T('t6').tit, T('t6').desde], [null, null, null], 'o grau que não existe sai; o titular que não existe sai (e o "desde" com ele)');
+  eq([T('t5').reg, T('t5').fac], [null, 'fb'], 'o regente não é o próprio titular; o reino escondido fica no mapa do mestre');
+  eq([T('t8').preso, T('t8').fac], [null, null], 'a terra tem de ser do tipo certo (um grupo não é); o reino que não existe sai');
+  eq([T('t2').preso, T('t9').preso], [{ t: 'f', id: 'fa' }, { t: 'm', id: 'c2' }], 'presos a uma facção e a um marcador');
+  const lim = N.normalizarMapa({ nome: 'M', corte: { pessoas: Array.from({ length: 12 }, (_, i) => ({ id: 'q' + i })),
+    graus: Array.from({ length: 15 }, (_, i) => ({ id: 'g' + i, nome: 'G' + i })),
+    titulos: Array.from({ length: 210 }, (_, i) => ({ id: 'k' + i, nome: 'K', pret: Array.from({ length: 12 }, (_, j) => ({ p: 'q' + j })), hist: Array.from({ length: 45 }, (_, j) => ({ nome: 'H' + j })) })), maior: 500 } }).corte;
+  ok(lim.titulos.length === N.LIMITES.titulos && lim.graus.length === N.LIMITES.graus && lim.titulos[0].pret.length === N.LIMITES.pretendentes && lim.titulos[0].hist.length === N.LIMITES.titularesAntes && lim.maior === N.LIMITES.maioridade,
+    'os limites: ' + [N.LIMITES.titulos, N.LIMITES.graus, N.LIMITES.pretendentes, N.LIMITES.titularesAntes, N.LIMITES.maioridade].join(', '));
+  eq([N.normalizarMapa({ nome: 'M', corte: { graus: [] } }).corte, N.normalizarMapa({ nome: 'M', corte: { maior: 21 } }).corte.maior, 'maior' in N.normalizarMapa({ nome: 'M', corte: { maior: 'x', graus: [] } }).corte],
+    [{ pessoas: [], casas: [], cargos: {}, titulos: [], graus: [] }, 21, false], 'só os graus (mesmo vazios) ou só a maioridade já fazem a corte; a maioridade que não é número sai');
+  eq(N.normalizarMapa({ nome: 'M', corte: { titulos: [{ id: 'x', nome: 'X' }] } }).corte.titulos.map(t => t.nome), ['X'], 'só um título já faz a corte');
+  // as contas dos títulos
+  eq([C.grausDe(m).map(g => g.id), C.grausDe(N.normalizarMapa({ nome: 'M' })).map(g => g.id)], [['reino', 'ducado', 'sen'], N.GRAUS_INICIAIS.map(g => g.id)], 'os graus: os guardados, ou os de começo');
+  eq(['t1', 't2', 't3', 't5', 't6', 't8', 't9'].map(id => C.nomeDoTitulo(m, T(id))), ['Ducado de Valmor', 'Reino de Arvel', 'Grau de Longe', 'Grão-Mestre da Ordem', 'Título sem nome', 'Ducado', 'Ducado de Porto'],
+    'o nome do título: o grau e "de" + a terra (o marcador sem nome: o do ícone); sem grau, o nome livre; sem terra, só o grau');
+  eq(C.nomeDoTitulo(m, Object.assign({}, T('t1'), { de: 'da Terra Alta' })), 'Ducado da Terra Alta', 'o "de quê" escrito pelo mestre vale antes da terra');
+  eq([C.tituloDoTitular(m, T('t1'), P('a')), C.tituloDoTitular(m, T('t2'), P('a')), C.tituloDoTitular(m, T('t2'), P('b')), C.tituloDoTitular(m, T('t3'), P('c')), C.tituloDoTitular(m, T('t3'), P('b')), C.tituloDoTitular(m, T('t2'), P('d'))],
+    ['Duque de Valmor', 'Rainha de Arvel', 'Rei de Arvel', 'Senhore de Longe', 'Grau de Longe', 'Rei de Arvel'], 'o de quem tem, pelo gênero (sem a forma, a de homem; sem nenhuma, o nome do grau; sem gênero, a de homem)');
+  eq([C.titulosDe(m, 'a').map(t => t.id), C.titulosDe(m, 'b').map(t => t.id), C.titulosDe(m, null)], [['t4', 't7', 't1'], ['t2', 't8'], []], 'os títulos de alguém: do maior grau para o menor (empate: a ordem da lista)');
+  eq(C.porGrau(m, [T('t5'), T('t1'), T('t6'), T('t2')]).map(t => t.id), ['t2', 't1', 't5', 't6'], 'os sem grau por último');
+  eq([C.nomeComTitulo(m, P('a')), C.nomeComTitulo(m, P('d')), C.nomeComTitulo(m, null)], ['Ana, Rainha de Vale Secreto', 'Duda', ''], 'o maior título junto do nome (sem título, só o nome)');
+  eq([C.titulosDaTerra(m, 'r', 'r1').map(t => t.id), C.titulosDaTerra(m, 'f', 'fa').map(t => t.id), C.titulosDaTerra(m, 'm', null)], [['t1'], ['t2'], []], 'os títulos de uma terra');
+  const gv = C.governanteDe(m, 'fa');
+  eq([gv.titulo.id, gv.pessoa.id, C.governanteDe(m, 'zz')], ['t2', 'b', null], 'o governante: quem tem o maior título preso à facção');
+  const m2 = N.normalizarMapa(Object.assign(JSON.parse(j(base)), { corte: Object.assign(JSON.parse(j(base.corte)), { titulos: [{ id: 'v1', grau: 'reino', preso: { t: 'f', id: 'fa' } }, { id: 'v2', grau: 'ducado', preso: { t: 'f', id: 'fa' }, tit: 'c' }] }) }));
+  eq(C.governanteDe(m2, 'fa').pessoa.id, 'c', 'o maior título vago: governa quem tem o seguinte');
+  eq([C.maioridadeDe(m), C.maioridadeDe(N.normalizarMapa({ nome: 'M' })), C.menorDeIdade(m, P('a')), C.menorDeIdade(m, P('b')), C.menorDeIdade(m, P('c')), C.menorDeIdade(m, P('d')), C.menorDeIdade(m, P('e')), C.menorDeIdade(m, P('f'))],
+    [18, 16, true, false, false, false, false, false], 'a maioridade (sem ela, 16); menor de idade: a Ana (10 anos); não: o Beto (40), o Caio (sem nascimento), a Duda e o Edu (mortos), o Fábio (ainda não nasceu)');
+  const pb = C.papeisNosTitulos(m, 'b'), pc0 = C.papeisNosTitulos(m, 'c');
+  eq([pb.tem.map(t => t.id), pb.regente.map(t => t.id), pb.herdeiro.map(t => t.id), pb.pretende.map(x => [x.titulo.id, x.mot]), pc0.pretende.map(x => [x.titulo.id, x.mot]), pc0.herdeiro], [['t2', 't8'], ['t1'], ['t3'], [['t1', '']], [['t1', 'irmão']], []],
+    'os títulos em que alguém aparece: os que tem, de que é regente, herdeiro escolhido ou pretendente (com o motivo)');
+  eq(C.terraDe(m, T('t1')).nome, 'Valmor', 'a terra do título');
+  // a projeção
+  const p = N.projetar(m), pt = p.corte.titulos, Q = id => pt.find(t => t.id === id);
+  eq(pt.map(t => t.id), ['t1', 't2', 't3', 't5', 't6', 't9'], 'na projeção: os títulos das terras que eles veem (a região, a cidade, a facção) e os dos personagens conhecidos (não: a terra escondida pelo mestre, a facção escondida, o titular que eles não conhecem sem terra que eles vejam)');
+  eq([Q('t1').preso, Q('t1').de, Q('t1').tit, Q('t1').reg, Q('t1').nota, Q('t1').txt], [{ t: 'r', id: 'r1' }, '', 'a', null, '', 'O ducado.'], 'a terra que eles veem vai; o titular conhecido; o regente que eles não conhecem, não; sem a nota; com o que eles sabem');
+  eq([Q('t1').pret, Q('t1').hist.map(x => x.nome)], [[{ p: 'c', mot: 'irmão' }], ['Saiu', 'Aldric I']], 'os pretendentes e os titulares de antes: só os conhecidos (os só com nome também)');
+  eq([Q('t2').tit, Q('t2').preso], [null, { t: 'f', id: 'fa' }], 'o título da facção que eles veem, com o titular que eles não conhecem: vai sem o titular');
+  eq([Q('t3').preso, Q('t3').de, Q('t9').de, Q('t5').desde], [null, 'de Longe', 'de Porto', { a: 1 }], 'a terra na névoa: o título vai com o nome pronto (sem a terra); o lugar sem nome, com o do ícone');
+  eq([Q('t3').herd, Q('t5').fac], [null, null], 'o herdeiro escolhido que eles não conhecem não vai; o reino escondido também não');
+  eq([C.nomeDoTitulo(p, Q('t3')), C.tituloDoTitular(p, Q('t3'), C.pessoaDe(p, 'c')), C.nomeDoTitulo(p, Q('t1'))], ['Grau de Longe', 'Senhore de Longe', 'Ducado de Valmor'], 'quem joga lê os mesmos nomes');
+  eq([p.corte.graus.length, p.corte.maior], [3, 18], 'os graus e a maioridade vão (para os nomes e o "menor")');
+  ok(j(N.normalizarMapa(p)) === j(p), 'o que chega aos jogadores passa igual pela normalização deles');
+  const semNinguem = N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { corte: Object.assign(JSON.parse(j(base.corte)), { pessoas: JSON.parse(j(base.corte.pessoas)).map(x => Object.assign(x, { ver: false })) }) })));
+  eq([semNinguem.corte.pessoas, semNinguem.corte.titulos.map(t => t.id)], [[], ['t1', 't2', 't6']], 'ninguém conhecido: os títulos das terras que eles veem vão mesmo assim (sem titular)');
+  const comDe = N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { corte: Object.assign(JSON.parse(j(base.corte)), { titulos: [{ id: 'z', grau: 'sen', preso: { t: 'r', id: 'r2' }, tit: 'c', de: 'das Brumas' }] }) })));
+  eq([comDe.corte.titulos[0].de, comDe.corte.titulos[0].preso], ['das Brumas', null], 'na névoa, o "de quê" escrito pelo mestre vai como está');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

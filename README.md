@@ -1318,6 +1318,30 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   nas duas direções e começa ajustada à janela (até 140%); "−", "+" e "Ajustar" mudam o tamanho. Para quem mestra,
   clicar numa pessoa abre o cartão dela (por cima da árvore) e, ao salvar, a árvore se refaz; quem joga abre a mesma
   árvore só com os conhecidos (é a projeção que chega a eles), sem abrir cartão.
+- **Os títulos** (lote 11, parte 2a). No alto da aba Corte, **"Casas | Títulos"**. Em "Títulos", a lista dos títulos
+  por reino (o governante no alto de cada um; os sem reino no fim), com o filtro de facção, "+ Título" e "Graus e
+  maioridade…". Os **graus** são do mundo, do maior para o menor (os de começo: Império, Reino, Ducado, Condado e
+  Baronia, cada um com o nome de quem tem — Imperador/Imperatriz, Rei/Rainha, Duque/Duquesa, Conde/Condessa,
+  Barão/Baronesa —, e "outro" opcional; renomear, criar, subir e descer, tirar — o título de um grau que sai fica sem
+  grau, com o nome de agora — e "Voltar aos de começo"); a **maioridade** (16 de começo) diz quem é menor de idade. O
+  **cartão do título** (uma janela; nada muda até "Criar" ou "Salvar"): o grau (ou nenhum: um nome livre, como
+  "Grão-Mestre da Ordem"), a terra (uma região, uma cidade ou outro lugar que pode ter senhor, uma facção — ou nada), o
+  "de quê" (vazio: "de" + o nome da terra; escrito: "da Terra Alta"), o reino (de começo, o da terra; não muda sozinho),
+  o titular e desde quando (pela data do mundo), o herdeiro escolhido (passa na frente da regra de sucessão), o regente,
+  os pretendentes (com o motivo), os titulares de antes (uma pessoa da corte ou só o nome, com os anos), o que os
+  jogadores sabem e a nota; uma prévia mostra o nome do título e o de quem tem ("Ducado de Valmor · Ana do Vale:
+  Duquesa de Valmor"). No título novo, o grau e o reino seguem a terra escolhida até você mexer neles (a região de
+  fora: Ducado; a de dentro: Condado; a cidade: Baronia; a facção: Reino). Trocar o titular põe o de antes nos
+  titulares de antes, até hoje (uma caixa, já marcada — desmarque se foi só um engano), e o "desde" vira hoje. Na
+  região, na cidade (e nos lugares que podem ter senhor) e na facção (aba Reinos, "Títulos do reino"), os títulos de lá
+  e "+ Título desta região…"; quem tem o maior título preso à facção é o **governante** (na linha dela, em Reinos). O
+  maior título vai junto do nome nas listas ("Ana do Vale, Duquesa de Valmor"), e o cartão do personagem mostra os
+  títulos em que ele aparece (os que tem, de que é herdeiro escolhido, regente ou pretendente). Tirar da corte quem tem
+  título deixa o título vago. Tudo fica na corte (`titulos`, `graus`, `maior`, conferidos por `normCorte`), com
+  Desfazer. **Quem joga** vê os títulos das terras que vê (a região e a cidade fora da névoa; a facção que não está
+  escondida) e os dos personagens conhecidos — a névoa só esconde o lugar: o título vai com o nome pronto; a terra
+  escondida pelo mestre e a facção escondida não —, com as pessoas só se conhecidas (o titular, o herdeiro, o regente,
+  os pretendentes, os titulares de antes; "sem titular conhecido" quando não) e sem a nota.
 
 ### A Árvore (lote 6)
 
@@ -2418,7 +2442,21 @@ jogador. Na parte 1b (a árvore), `lote11-nucleo` confere quem entra, as geraç�
 filhos pelo meio dos pais, os casais (o dos primos também), os filhos pendurados nos pais que estão na árvore, o
 tamanho, a casa vazia e a projeção; `mundo-lote11` com `SO=arvore`, a janela (as pessoas, os casais, os filhos, o morto,
 quem casou, as gerações), "+", "Ajustar", clicar que abre o cartão (salvar refaz a árvore), "Fechar", quem joga (só os
-conhecidos) e o celular. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+conhecidos) e o celular. Na parte 2a (os títulos), `lote11-nucleo` confere os graus e os títulos normalizados (os campos,
+os limites, a maioridade; só um título, os graus ou a maioridade já fazem a corte), as referências (o grau, a terra do
+tipo certo, o reino, as pessoas; o herdeiro escolhido, o regente e os pretendentes não são o titular; sem titular, sem
+o "desde"; o titular de antes que saiu fica com o nome), as contas (o nome do título e o de quem tem, pelo gênero; os
+títulos de alguém e de uma terra, por grau; o maior junto do nome; o governante, também com o maior título vago; a
+maioridade e quem é menor; os papéis de alguém nos títulos) e a projeção (as terras que eles veem e os conhecidos; a
+terra escondida e a facção escondida não; a névoa com o nome pronto; as pessoas só as conhecidas; sem a nota; ninguém
+conhecido: os títulos das terras vão mesmo assim); `mundo-lote11` com `SO=titulos`, "Casas | Títulos", os graus e a
+maioridade (renomear, subir, os erros, voltar aos de começo), os títulos novos da região, da sub-região, da facção (o
+governante), sem terra e da cidade (o grau e o reino que seguem a terra até você mexer; a prévia; os erros), trocar o
+titular (a caixa, o "desde" que vira hoje, salvar de novo sem mexer, desmarcada não entra), o herdeiro escolhido, o
+regente, os pretendentes, os titulares de antes, o maior título junto do nome (nas casas e em quem está aqui), os
+títulos no cartão do personagem, tirar um grau usado, o filtro, quem joga, tirar o título, tirar da corte a titular e o
+celular; `mundo-lote8.rede`, numa mesa, a projeção com o título do reino (sem a nota, sem o de quem eles não conhecem),
+o título junto do nome, a lista "Títulos" e o governante do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

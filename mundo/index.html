@@ -735,10 +735,52 @@ dialog.mundo-dl.arv-dl { width: min(1100px, calc(100% - 24px)); }
 .arv-casal { stroke: var(--lamp); stroke-width: 2; fill: none; }
 .arv-casal.longe { stroke-dasharray: 4 4; }
 .arv-filho { stroke: var(--fg-3); stroke-width: 1.4; fill: none; }
+/* (lote 11, parte 2a) os títulos: o topo da aba (Casas | Títulos), a lista por reino, o cartão do título e os graus */
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); gap: 2px; }
+.seg button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--hover); color: var(--fg); }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.corte-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.corte-topo .seg button { min-height: 26px; padding: 0 10px; font-size: 12.5px; }
+.corte-bola { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.corte-t .tx { display: grid; min-width: 0; }
+.corte-t small { font-size: 12px; color: var(--fg-3); }
+.li.corte-t .tx small { white-space: normal; overflow: visible; }
+.ps-titulos ul { margin: 0 0 4px; padding-left: 18px; display: grid; gap: 2px; font-size: 13px; color: var(--fg); }
+dialog.mundo-dl.tt-dl { width: min(680px, calc(100% - 24px)); }
+dialog.mundo-dl.tt-dl .lin label, dialog.mundo-dl.tt-dl .lin label:first-child, dialog.mundo-dl.tt-dl .lin label:last-child { flex: 1 1 0; }
+.tt-previa { font-size: 13px; font-weight: 600; color: var(--lamp-ink); }
+.tt-tit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.tt-caixa, .tt-lista { display: grid; gap: 6px; justify-items: start; }
+.tt-lista { justify-items: stretch; width: 100%; }
+.tt-linha { display: flex; gap: 6px; align-items: center; }
+dialog.mundo-dl .tt-linha select { flex: 0 0 36%; width: auto; }
+dialog.mundo-dl .tt-linha input[type="text"] { flex: 1 1 auto; width: auto; }
+dialog.mundo-dl .tt-linha input[type="text"].ano { flex: none; width: 92px; }
+dialog.mundo-dl.gr-dl { width: min(640px, calc(100% - 24px)); }
+.gr-lista { display: grid; gap: 6px; }
+.gr-linha { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) repeat(3, 32px); gap: 6px; align-items: center; }
+.gr-cab span { font-size: 12px; font-weight: 600; color: var(--fg-3); padding-left: 2px; }
+dialog.mundo-dl input[type="text"].gr-maior { width: 90px; }
+.mundo-dl label.gr-maior-rot { justify-items: start; }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
   dialog.mundo-dl.ps-dl .lin label { flex: 1 1 100%; }
+  .tt-tit { grid-template-columns: 1fr; }
+  dialog.mundo-dl.tt-dl .lin { flex-wrap: wrap; }
+  dialog.mundo-dl.tt-dl .lin label { flex: 1 1 100%; }
+  .tt-linha { flex-wrap: wrap; }
+  dialog.mundo-dl .tt-linha select { flex: 1 1 100%; }
+  .gr-cab { display: none; }
+  .gr-lista .gr-linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px 32px 32px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .gr-lista .gr-linha > :nth-child(1) { grid-area: 1 / 1; }
+  .gr-lista .gr-linha > :nth-child(2) { grid-area: 1 / 2; }
+  .gr-lista .gr-linha > :nth-child(3) { grid-area: 2 / 1; }
+  .gr-lista .gr-linha > :nth-child(4) { grid-area: 2 / 2; }
+  .gr-lista .gr-linha > :nth-child(5) { grid-area: 1 / 3; }
+  .gr-lista .gr-linha > :nth-child(6) { grid-area: 1 / 4; }
+  .gr-lista .gr-linha > :nth-child(7) { grid-area: 1 / 5; }
 }
 .fac-pub > .li { padding: 0; border: 0; background: none; }
 /* (lote 7, parte 6) a facção que a busca rápida pediu: marcada por um instante */
@@ -1137,17 +1179,17 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=27"></script>
+<script src="nucleo.js?v=28"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=8"></script>
-<script src="corte.js?v=2"></script>
+<script src="corte.js?v=3"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=32"></script>
+<script src="painel.js?v=33"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=10"></script>
-<script src="corte-painel.js?v=2"></script>
+<script src="corte-painel.js?v=3"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

@@ -6,13 +6,14 @@
    Aqui: os cargos de uma facção, a idade (hoje, ou na morte), a data em texto (só o ano, o mês e o ano, ou tudo), os
    pais, os filhos, os cônjuges, os descendentes (para não deixar ninguém ser antepassado de si mesmo), quem está num
    lugar (os vivos) e os membros de uma casa (os vivos primeiro); (parte 1b) a árvore da família de uma casa (onde fica
-   cada pessoa, os casais e os filhos).
+   cada pessoa, os casais e os filhos); (parte 2a) os títulos (os graus, o nome do título e o de quem tem, os títulos de
+   alguém e de uma terra, o maior junto do nome, o governante de uma facção, a maioridade).
    Roda no navegador (window.MundoCorte) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
-  const VAZIA = { pessoas: [], casas: [], cargos: {} };
+  const VAZIA = { pessoas: [], casas: [], cargos: {}, titulos: [] };
   // a corte do mapa (sem ela, uma vazia)
   const corteDe = m => (ehObj(m) && ehObj(m.corte) ? m.corte : VAZIA);
   const pessoaDe = (m, id) => (id ? corteDe(m).pessoas.find(p => p.id === id) || null : null);
@@ -71,6 +72,84 @@
   const LACOS = { pai: { h: 'pai', m: 'mãe', '': 'pai ou mãe', o: 'pai ou mãe' }, filho: { h: 'filho', m: 'filha', '': 'filho ou filha', o: 'filho ou filha' },
     conj: { h: 'marido', m: 'esposa', '': 'cônjuge', o: 'cônjuge' } };
   const laco = (tipo, p) => (LACOS[tipo] || {})[(p && p.gen) || ''] || '';
+
+  /* ---------------- (parte 2a) os títulos ----------------
+     Os graus (do maior para o menor: os guardados, ou os de começo), o nome do título ("Ducado de Valmor": o grau e o
+     "de quê" — o escrito, ou "de" + o nome da terra; sem grau, o nome livre), o de quem tem ("Duquesa de Valmor", pelo
+     gênero; sem a forma, a de homem), os títulos de alguém (do maior grau para o menor; os sem grau por último), o
+     maior junto do nome ("Ana, Duquesa de Valmor"), os títulos de uma terra, o governante de uma facção (quem tem o
+     maior título preso a ela) e a maioridade (o titular menor de idade). */
+  const titulosDaCorte = m => corteDe(m).titulos || [];
+  const tituloDe = (m, id) => (id ? titulosDaCorte(m).find(t => t.id === id) || null : null);
+  const grausDe = m => (Array.isArray(corteDe(m).graus) ? corteDe(m).graus : NN().GRAUS_INICIAIS);
+  const grauDe = (m, t) => (t && t.grau ? grausDe(m).find(g => g.id === t.grau) || null : null);
+  // a terra do título: a região, o marcador ou a facção (null: sem terra, ou ela não existe)
+  function terraDe(m, t) {
+    const pr = t && t.preso;
+    if (!pr || !ehObj(m)) return null;
+    if (pr.t === 'f') return (Array.isArray(m.faccoes) ? m.faccoes : []).find(f => f.id === pr.id) || null;
+    return (Array.isArray(m.objs) ? m.objs : []).find(o => o.id === pr.id && o.k === pr.t) || null;
+  }
+  // o nome da terra (a região e a facção: o nome escrito; o marcador sem nome: o do ícone)
+  function nomeDaTerra(m, t) {
+    const x = terraDe(m, t);
+    if (!x) return '';
+    const n = String(x.nome || '').trim();
+    if (n || t.preso.t !== 'm') return n;
+    const I = NN().ICONES;
+    return (I[x.ic] || I.cidade).nome;
+  }
+  // o "de quê": o escrito pelo mestre, ou "de" + o nome da terra ('' sem os dois)
+  function deQue(m, t) {
+    if (t.de) return t.de;
+    const n = nomeDaTerra(m, t);
+    return n ? 'de ' + n : '';
+  }
+  const comDe = (base, d) => base + (d ? ' ' + d : '');
+  function nomeDoTitulo(m, t) {
+    if (!t) return '';
+    const g = grauDe(m, t);
+    return g ? comDe(g.nome, deQue(m, t)) : t.nome || 'Título sem nome';
+  }
+  // a forma de quem tem o grau, pelo gênero (sem ela, a de homem; sem nenhuma, o nome do grau)
+  const formaDoGrau = (g, gen) => (gen === 'm' ? g.m : gen === 'o' ? g.o : g.h) || g.h || g.m || g.nome;
+  function tituloDoTitular(m, t, p) {
+    if (!t) return '';
+    const g = grauDe(m, t);
+    return g ? comDe(formaDoGrau(g, p ? p.gen : ''), deQue(m, t)) : t.nome || 'Título sem nome';
+  }
+  // a ordem dos graus (o maior primeiro; sem grau, por último; empate: a ordem da lista)
+  function porGrau(m, l) {
+    const gs = grausDe(m), ordem = new Map(titulosDaCorte(m).map((t, i) => [t.id, i]));
+    const pos = t => { const i = t.grau ? gs.findIndex(g => g.id === t.grau) : -1; return i < 0 ? gs.length : i; };
+    return l.slice().sort((a, b) => pos(a) - pos(b) || ordem.get(a.id) - ordem.get(b.id));
+  }
+  const titulosDe = (m, pid) => (pid ? porGrau(m, titulosDaCorte(m).filter(t => t.tit === pid)) : []);
+  const maiorTituloDe = (m, pid) => titulosDe(m, pid)[0] || null;
+  function nomeComTitulo(m, p) {
+    if (!p) return '';
+    const t = maiorTituloDe(m, p.id);
+    return t ? p.nome + ', ' + tituloDoTitular(m, t, p) : p.nome;
+  }
+  // os títulos presos a uma terra (tipo: 'r', 'm' ou 'f'), do maior para o menor
+  const titulosDaTerra = (m, tipo, id) => (id ? porGrau(m, titulosDaCorte(m).filter(t => t.preso && t.preso.t === tipo && t.preso.id === id)) : []);
+  // o governante de uma facção: quem tem o maior título preso a ela → { titulo, pessoa } ou null
+  function governanteDe(m, fid) {
+    for (const t of titulosDaTerra(m, 'f', fid)) { const p = pessoaDe(m, t.tit); if (p) return { titulo: t, pessoa: p }; }
+    return null;
+  }
+  const maioridadeDe = m => (Number.isInteger(corteDe(m).maior) ? corteDe(m).maior : NN().MAIORIDADE);
+  // menor de idade: vivo, já nascido e abaixo da maioridade (sem o nascimento, não se sabe: não)
+  function menorDeIdade(m, p) {
+    const i = idadeDe(m, p);
+    return vivo(p) && i != null && i >= 0 && i < maioridadeDe(m);
+  }
+  // os títulos em que alguém aparece: os que tem, de que é herdeiro escolhido, regente ou pretendente
+  function papeisNosTitulos(m, pid) {
+    const l = titulosDaCorte(m);
+    return { tem: titulosDe(m, pid), herdeiro: porGrau(m, l.filter(t => t.herd === pid)), regente: porGrau(m, l.filter(t => t.reg === pid)),
+      pretende: porGrau(m, l.filter(t => t.pret.some(x => x.p === pid))).map(t => ({ titulo: t, mot: t.pret.find(x => x.p === pid).mot })) };
+  }
 
   /* ---------------- (parte 1b) a árvore da família de uma casa ----------------
      Quem entra: os membros da casa e os cônjuges deles (os de outra casa também). A geração de cada um sai dos pais (a
@@ -142,7 +221,9 @@
   }
 
   const MundoCorte = { corteDe, pessoaDe, casaDe, vivo, cargosDe, cargoDe, hoje, idadeDe, dataTxt, paisDe, conjugesDe, filhosDe, descendentesDe, quemEsta, membrosDe, laco,
-    arvoreDaCasa, ARVORE: { LAR, ALT, VAO, VAO_G } };
+    arvoreDaCasa, ARVORE: { LAR, ALT, VAO, VAO_G },
+    tituloDe, grausDe, grauDe, terraDe, nomeDaTerra, deQue, nomeDoTitulo, formaDoGrau, tituloDoTitular, porGrau, titulosDe, maiorTituloDe, nomeComTitulo, titulosDaTerra,
+    governanteDe, maioridadeDe, menorDeIdade, papeisNosTitulos };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCorte;
   if (typeof window !== 'undefined') window.MundoCorte = MundoCorte;
 })();

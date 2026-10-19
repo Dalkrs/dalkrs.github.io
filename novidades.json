@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-20",
+      "data": "2026-10-18",
+      "titulo": "Os títulos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: os títulos de nobreza, em “Títulos”, no alto da aba Corte. Cada título fica preso a uma região, a uma cidade, a uma facção ou a nada, e guarda o reino, o titular e desde quando, o herdeiro escolhido, o regente, os pretendentes (com o motivo), os titulares de antes, o que os jogadores sabem e a nota. Trocar o titular põe o de antes na lista, com a data."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Graus e maioridade…”: os graus do mundo (Império, Reino, Ducado, Condado e Baronia, com Rei/Rainha, Duque/Duquesa… para renomear, criar e reordenar) e a idade em que o titular deixa de ser menor. Na região, na cidade e na facção, “+ Título…” já começa preso a ela."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: os títulos das terras que vocês veem e os dos personagens que vocês conhecem aparecem em “Títulos”, na aba Corte, e no cartão da região e da cidade. O maior título vai junto do nome (“Ana do Vale, Duquesa de Valmor”), e a aba Reinos mostra o governante de cada facção."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-19",
       "data": "2026-10-18",
       "titulo": "A árvore da família",

@@ -10,6 +10,13 @@
 //   · (parte 1b, SO=arvore) a árvore da família: a janela (as pessoas, os casais, os filhos; o morto e quem casou com
 //     alguém da casa; as gerações), "−", "+" e "Ajustar", clicar abre o cartão (e salvar refaz a árvore), "Fechar",
 //     quem joga (só os conhecidos, sem abrir o cartão), no celular.
+//   · (parte 2a, SO=titulos) os títulos: "Casas | Títulos" na aba; os graus e a maioridade (renomear, subir, os erros,
+//     voltar aos de começo); o título da região (o grau, a terra e o reino de começo, a prévia do nome, o titular e
+//     desde quando), o da sub-região, o da facção (o governante em Reinos), o sem terra (os erros; o nome livre), o da
+//     cidade (a titular menor de idade); trocar o titular (a caixa dos titulares de antes; o "desde" vira hoje;
+//     desmarcada, não entra); o herdeiro escolhido, o regente, os pretendentes com o motivo, os titulares de antes e os
+//     erros; o maior título junto do nome; os títulos no cartão do personagem; tirar um grau usado (o nome de antes);
+//     o filtro; quem joga (só o que vai na projeção); tirar o título e tirar da corte a titular; no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -59,7 +66,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok((await L.F.locator('#tab-corte').innerText()).trim() === 'Corte', 'a aba Corte, depois de Reinos');
     ok(await A(L, () => { const t0 = document.getElementById('tabs'); return t0.scrollWidth <= t0.clientWidth + 1; }), 'as sete abas cabem na largura do painel');
     await aba(L, 'corte');
-    ok(/^Corte \+ Personagem \+ Casa Cargos da corte… Ninguém ainda\. Os personagens do mundo/.test(await textoPane(L)), 'vazia: os botões e o que é a corte');
+    ok(/^Corte Casas ?Títulos \+ Personagem \+ Casa Cargos da corte… Ninguém ainda\. Os personagens do mundo/.test(await textoPane(L)), 'vazia: os botões e o que é a corte');
     // a casa nova
     await botao(L, 'corte:casa-nova'); await L.F.waitForSelector('dialog.cs-dl[open]');
     ok(await A(L, () => document.querySelector('dialog.cs-dl[open] [data-k="cs:chefe"]').disabled), 'a casa nova: sem membros, sem chefe para escolher');
@@ -292,6 +299,252 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await semAvisos(L); await foto('l11-arvore-celular');
     await L.F.click('dialog.arv-dl[open] [data-k="arv:fechar"]'); await espera(200);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 2a) os títulos ----------
+  if (parte('titulos')) await passo('os títulos', async () => {
+    await A(L, () => {
+      const { App, N } = __mundo;
+      App.mudar('títulos: o começo', m => {
+        m.objs = m.objs.filter(o => o.k !== 'r');
+        m.objs.push(Object.assign(N.objNovo('r', { pts: [[100, 100], [600, 100], [600, 600], [100, 600]] }), { id: 'r1', nome: 'Valmor', fac: 'fa' }),
+          Object.assign(N.objNovo('r', { pts: [[150, 150], [300, 150], [300, 300]] }), { id: 'r2', nome: 'Pedra', pai: 'r1' }));
+        m.corte = { cargos: {}, casas: [], titulos: [], pessoas: [
+          { id: 'ana', nome: 'Ana do Vale', gen: 'm', fac: 'fa', nasc: { a: -30 }, onde: { t: 'm', id: 'c1' }, ver: true }, { id: 'caio', nome: 'Caio', gen: 'h', fac: 'fb', ver: true },
+          { id: 'beto', nome: 'Beto', gen: 'h', ver: false }, { id: 'lia', nome: 'Lia', gen: 'm', nasc: { a: -5 }, ver: false }] };
+      });
+    });
+    await aba(L, 'corte');
+    const seg = await A(L, () => [...document.querySelectorAll('#pane [data-k^="corte:vista:"]')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')));
+    ok(j(seg) === j(['Casas:true', 'Títulos:false']), 'no alto da aba: "Casas | Títulos" (de começo, as casas): ' + j(seg));
+    await botao(L, 'corte:vista:titulos');
+    ok(/^Corte Casas ?Títulos \+ Título Graus e maioridade… Nenhum título ainda\. Os títulos de nobreza/.test(await textoPane(L)) && await A(L, () => document.querySelector('#pane [data-k="corte:vista:titulos"]').getAttribute('aria-pressed')) === 'true',
+      '"Títulos": vazio, com os botões e o que são os títulos: ' + (await textoPane(L)).slice(0, 160));
+    // os graus e a maioridade
+    await botao(L, 'tt:graus'); await L.F.waitForSelector('dialog.gr-dl[open]');
+    const grs = () => A(L, () => [...document.querySelectorAll('dialog.gr-dl[open] .gr-lista .gr-linha')].map(l => [...l.querySelectorAll('input')].map(i => i.value).join('/')));
+    ok(j(await grs()) === j(['Império/Imperador/Imperatriz/', 'Reino/Rei/Rainha/', 'Ducado/Duque/Duquesa/', 'Condado/Conde/Condessa/', 'Baronia/Barão/Baronesa/']) && await A(L, () => document.querySelector('dialog.gr-dl[open] [data-k="gr:maior"]').value) === '16',
+      '"Graus e maioridade…": os de começo, do maior para o menor, e a maioridade (16)');
+    const ultG = k => L.F.locator(dlg('.gr-lista .gr-linha')).last().locator('[data-k="' + k + '"]');
+    await ultG('gr:nome').fill('Senhorio'); await ultG('gr:h').fill('Senhor'); await ultG('gr:m').fill('Senhora');
+    await ultG('gr:sobe').click();
+    await L.F.click(dlg('[data-k="gr:novo"]')); await L.F.click(dlg('[data-k="gr:ok"]')); await espera(120);
+    const errGr = () => A(L, () => document.querySelector('dialog.gr-dl[open] .err').textContent);
+    ok(await errGr() === 'Dê um nome a cada grau (ou tire o que está vazio).', 'o grau sem nome: não passa');
+    await L.F.locator(dlg('.gr-lista .gr-linha')).last().locator('[data-k="gr:x"]').click();
+    await L.F.fill(dlg('[data-k="gr:maior"]'), 'muitos'); await L.F.click(dlg('[data-k="gr:ok"]')); await espera(120);
+    ok(await errGr() === 'A maioridade vai de 0 a 100 anos.', 'a maioridade que não é número: não passa');
+    await L.F.fill(dlg('[data-k="gr:maior"]'), '18'); await L.F.click(dlg('[data-k="gr:ok"]')); await espera(350);
+    let cc = await corte(L);
+    ok(j((cc.graus || []).map(g => g.id + ':' + g.nome + ':' + g.h + ':' + g.m)) === j(['imperio:Império:Imperador:Imperatriz', 'reino:Reino:Rei:Rainha', 'ducado:Ducado:Duque:Duquesa', 'baronia:Senhorio:Senhor:Senhora', 'condado:Condado:Conde:Condessa'])
+      && cc.maior === 18 && /Os graus estão salvos\./.test(await avisos(L)), 'salvar: a Baronia virou Senhorio e subiu um lugar; a maioridade 18: ' + j(cc.graus && cc.graus.map(g => g.nome)));
+    await botao(L, 'tt:graus'); await L.F.waitForSelector('dialog.gr-dl[open]');
+    ok(j(await grs()) === j(['Império/Imperador/Imperatriz/', 'Reino/Rei/Rainha/', 'Ducado/Duque/Duquesa/', 'Senhorio/Senhor/Senhora/', 'Condado/Conde/Condessa/']), 'de novo: os graus guardados, na ordem nova');
+    await L.F.click(dlg('[data-k="gr:comeco"]')); await L.F.fill(dlg('[data-k="gr:maior"]'), '16'); await L.F.click(dlg('[data-k="gr:ok"]')); await espera(350);
+    cc = await corte(L);
+    ok(!('graus' in cc) && !('maior' in cc), '"Voltar aos de começo" e a maioridade de começo: nada fica guardado');
+    // o título da região (no cartão dela)
+    await aba(L, 'selecao'); await selecionar(L, 'r1');
+    ok(/TÍTULO \+ Título desta região…/i.test(await textoPane(L)), 'no cartão da região: "Título", com "+ Título desta região…"');
+    await botao(L, 'o:r1:titulo-novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    const ttv = k => A(L, x => document.querySelector('dialog.tt-dl[open] [data-k="' + x + '"]').value, k);
+    const previa = () => A(L, () => document.querySelector('dialog.tt-dl[open] [data-k="tt:previa"]').textContent);
+    ok(await ttv('tt:grau') === 'ducado' && await ttv('tt:preso') === 'r:r1' && await ttv('tt:fac') === 'fa' && await previa() === 'Ducado de Valmor · quem tem: Duque de Valmor ou Duquesa de Valmor',
+      'o título novo da região: Ducado (a região de fora), preso a ela, do reino dela, com a prévia do nome: ' + await previa());
+    ok(await A(L, () => document.querySelector('dialog.tt-dl[open] [data-k="tt:nome"]').closest('label').hidden && !document.querySelector('dialog.tt-dl[open] [data-k="tt:de"]').closest('label').hidden
+      && document.querySelector('dialog.tt-dl[open] [data-k="tt:de"]').placeholder === 'de Valmor'), 'com grau: o "De quê" (vazio: "de Valmor"), sem o nome livre');
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'ana');
+    ok(await previa() === 'Ducado de Valmor · Ana do Vale: Duquesa de Valmor', 'a titular escolhida: a prévia com o título dela');
+    await L.F.fill(dlg('[data-k="tt:desde:ano"]'), '-2');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    cc = await corte(L);
+    let t1 = cc.titulos[0];
+    ok(t1 && t1.grau === 'ducado' && j(t1.preso) === j({ t: 'r', id: 'r1' }) && t1.fac === 'fa' && t1.tit === 'ana' && j(t1.desde) === j({ a: -2 }) && /O título Ducado de Valmor entrou na corte\./.test(await avisos(L)),
+      'criar: o título com tudo o que foi escolhido: ' + j(t1));
+    ok(/TÍTULO Ducado de Valmor Ana do Vale · desde ano -2/i.test(await textoPane(L)), 'no cartão da região: o título, a titular e desde quando');
+    await semAvisos(L); await foto('l11-titulo-regiao');
+    await selecionar(L, 'r2');
+    await botao(L, 'o:r2:titulo-novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    ok(await ttv('tt:grau') === 'condado' && await ttv('tt:fac') === 'fa', 'a sub-região: Condado, do reino da região de fora');
+    await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
+    ok((await corte(L)).titulos.length === 1, 'Cancelar: nada muda');
+    // a lista dos títulos e o nome com o título
+    await aba(L, 'corte');
+    ok(/Aldar 1 título Ducado de Valmor Ana do Vale · desde ano -2/.test(await textoPane(L)), 'na lista dos títulos: por reino (Aldar), com a titular');
+    await botao(L, 'corte:vista:casas');
+    ok(/Ana do Vale, Duquesa de Valmor/.test(await textoPane(L)), 'nas casas: o maior título junto do nome');
+    await botao(L, 'corte:vista:titulos');
+    // trocar o titular: o de antes vai para os titulares de antes (a caixa, já marcada)
+    await botao(L, 't:' + t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    const caixaAntes = () => A(L, () => { const c0 = document.querySelector('dialog.tt-dl[open] [data-k="tt:antes"]'); return c0.closest('label').hidden ? null : { marcada: c0.checked, txt: c0.closest('label').textContent }; });
+    ok(await caixaAntes() === null && await ttv('tt:desde:ano') === '-2', 'o cartão: a titular de sempre, sem a caixa dos titulares de antes');
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'caio');
+    const hj = await A(L, () => window.MundoCorte.hoje(__mundo.App.mapa)), ca = await caixaAntes();
+    ok(ca && ca.marcada && ca.txt === 'Pôr Ana do Vale nos titulares de antes (até hoje)' && await ttv('tt:desde:ano') === String(hj.a) && await ttv('tt:desde:mes') === String(hj.m),
+      'outro titular: a caixa (marcada) para pôr a Ana nos titulares de antes, e o "desde" vira hoje: ' + j(ca));
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'ana');
+    ok(await caixaAntes() === null && await ttv('tt:desde:ano') === '-2', 'de volta à Ana: a caixa some e o "desde" volta');
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'caio');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    t1 = (await corte(L)).titulos[0];
+    ok(t1.tit === 'caio' && j(t1.desde) === j(hj) && t1.hist.length === 1 && t1.hist[0].p === 'ana' && j(t1.hist[0].de) === j({ a: -2 }) && j(t1.hist[0].ate) === j(hj),
+      'salvar: o Caio, desde hoje; a Ana nos titulares de antes (de -2 até hoje): ' + j(t1.hist));
+    await botao(L, 't:' + t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    ok(j((await corte(L)).titulos[0]) === j(t1), 'salvar de novo sem mexer: nada muda (o "até" da Ana guarda o mês e o dia)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    t1 = (await corte(L)).titulos[0];
+    ok(t1.tit === 'ana' && !t1.hist.length, 'desfazer: a Ana de volta, sem ninguém antes');
+    await botao(L, 't:' + t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'caio'); await L.F.uncheck(dlg('[data-k="tt:antes"]'));
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    t1 = (await corte(L)).titulos[0];
+    ok(t1.tit === 'caio' && !t1.hist.length, 'a caixa desmarcada (foi só um engano): troca sem pôr a Ana nos titulares de antes');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // o herdeiro escolhido, o regente, os pretendentes e os titulares de antes
+    await botao(L, 't:' + t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    const errTt = () => A(L, () => document.querySelector('dialog.tt-dl[open] .err').textContent);
+    await L.F.selectOption(dlg('[data-k="tt:herd"]'), 'ana'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'O herdeiro escolhido não pode ser o próprio titular.', 'o herdeiro escolhido não pode ser a própria titular');
+    await L.F.selectOption(dlg('[data-k="tt:herd"]'), 'beto'); await L.F.selectOption(dlg('[data-k="tt:reg"]'), 'ana'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'O regente não pode ser o próprio titular.', 'nem o regente');
+    await L.F.selectOption(dlg('[data-k="tt:reg"]'), 'caio');
+    await L.F.click(dlg('[data-k="tt:pret-novo"]')); await L.F.locator(dlg('[data-k="tt:pret"]')).last().selectOption('ana');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'O titular não pode ser pretendente do próprio título.', 'nem pretendente');
+    await L.F.locator(dlg('[data-k="tt:pret"]')).last().selectOption('caio'); await L.F.locator(dlg('[data-k="tt:pret-mot"]')).last().fill('primo do duque');
+    await L.F.click(dlg('[data-k="tt:pret-novo"]')); await L.F.locator(dlg('[data-k="tt:pret-mot"]')).last().fill('sem ninguém');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'Escolha quem é cada pretendente (ou tire a linha).', 'o motivo sem o pretendente: não passa');
+    await L.F.locator(dlg('[data-k="tt:pret-x"]')).last().click();
+    await L.F.click(dlg('[data-k="tt:hist-novo"]'));
+    const hl = L.F.locator(dlg('.tt-hist')).last();
+    ok(await hl.locator('[data-k="tt:hist-nome"]').isVisible(), 'o titular de antes novo: "Escrever o nome…", com a caixa do nome');
+    await hl.locator('[data-k="tt:hist-de"]').fill('200'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'Cada titular de antes precisa de um nome (ou tire a linha).', 'o titular de antes sem nome: não passa');
+    await hl.locator('[data-k="tt:hist-nome"]').fill('Aldric I'); await hl.locator('[data-k="tt:hist-ate"]').fill('230');
+    await L.F.fill(dlg('[data-k="tt:txt"]'), 'O velho ducado do rio.'); await L.F.fill(dlg('[data-k="tt:nota"]'), 'O Caio quer o ducado.');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    t1 = (await corte(L)).titulos[0];
+    ok(t1.herd === 'beto' && t1.reg === 'caio' && j(t1.pret) === j([{ p: 'caio', mot: 'primo do duque' }]) && j(t1.hist) === j([{ p: null, nome: 'Aldric I', de: { a: 200 }, ate: { a: 230 } }]) && t1.txt === 'O velho ducado do rio.' && t1.nota === 'O Caio quer o ducado.'
+      && /Ducado de Valmor: salvo\./.test(await avisos(L)), 'salvar: o herdeiro escolhido, o regente, o pretendente com o motivo, o titular de antes (só o nome, com os anos), o texto e a nota: ' + j(t1));
+    // o título da facção: o governante
+    await aba(L, 'faccoes'); await L.F.click('#pane [data-k="fac:fa"]'); await espera(250);
+    ok(/TÍTULOS DO REINO Nenhum título preso a esta facção\./i.test(await textoPane(L)), 'na facção: "Títulos do reino" (nenhum ainda)');
+    await botao(L, 'f:fa:titulo-novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    ok(await ttv('tt:grau') === 'reino' && await ttv('tt:preso') === 'f:fa' && await ttv('tt:fac') === 'fa', 'o título novo da facção: Reino, preso a ela');
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'ana'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    ok(/Governante: Ana do Vale, Rainha de Aldar/.test(await A(L, () => document.querySelector('#pane [data-k="fac:fa"]').innerText)), 'na lista dos reinos: o governante (quem tem o título da facção)');
+    ok(/TÍTULOS DO REINO Reino de Aldar Ana do Vale/i.test(await textoPane(L)), 'e o título nos títulos do reino');
+    await semAvisos(L); await foto('l11-titulos-reinos');
+    // o título novo: o grau e o reino seguem a terra até a pessoa mexer neles
+    await aba(L, 'corte');
+    await botao(L, 'tt:novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await L.F.selectOption(dlg('[data-k="tt:preso"]'), 'm:c1');
+    ok(await ttv('tt:grau') === 'baronia' && await ttv('tt:fac') === 'fa', 'escolhida a cidade: Baronia, do reino dela');
+    await L.F.selectOption(dlg('[data-k="tt:grau"]'), 'condado'); await L.F.selectOption(dlg('[data-k="tt:preso"]'), 'r:r1');
+    ok(await ttv('tt:grau') === 'condado' && await ttv('tt:fac') === 'fa', 'o grau escolhido à mão não muda com a terra (o reino segue)');
+    await L.F.selectOption(dlg('[data-k="tt:fac"]'), 'fb'); await L.F.selectOption(dlg('[data-k="tt:preso"]'), 'f:fa');
+    ok(await ttv('tt:fac') === 'fb', 'nem o reino escolhido à mão');
+    await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
+    // o título sem terra
+    await botao(L, 'tt:novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    ok(await ttv('tt:grau') === '' && await ttv('tt:preso') === '' && await A(L, () => !document.querySelector('dialog.tt-dl[open] [data-k="tt:nome"]').closest('label').hidden), 'o título novo da lista: sem grau e sem terra (o nome livre)');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'Escreva o nome do título.', 'sem grau e sem nome: não passa');
+    await L.F.selectOption(dlg('[data-k="tt:grau"]'), 'ducado'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(120);
+    ok(await errTt() === 'Diga de quê é o título (ex.: “das Ilhas”) ou prenda-o a uma terra.', 'com grau, sem terra nem "de quê": não passa');
+    await L.F.selectOption(dlg('[data-k="tt:grau"]'), ''); await L.F.fill(dlg('[data-k="tt:nome"]'), 'Grão-Mestre da Ordem');
+    await L.F.selectOption(dlg('[data-k="tt:fac"]'), 'fb'); await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'caio');
+    ok(await previa() === 'Grão-Mestre da Ordem · Caio', 'a prévia do título sem grau: o nome e o titular');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    ok(/Vale 1 título Grão-Mestre da Ordem Caio/.test(await textoPane(L)), 'na lista: no reino do Vale');
+    // o título da cidade: a titular menor de idade
+    await aba(L, 'selecao'); await selecionar(L, 'c1');
+    ok(/QUEM ESTÁ AQUI Ana do Vale, Rainha de Aldar/i.test(await textoPane(L)), 'na cidade, "Quem está aqui": a Ana com o maior título');
+    await botao(L, 'o:c1:titulo-novo'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    ok(await ttv('tt:grau') === 'baronia' && await ttv('tt:fac') === 'fa' && await previa() === 'Baronia de Vila Alta · quem tem: Barão de Vila Alta ou Baronesa de Vila Alta', 'o título novo da cidade: Baronia, do reino da região onde ela está: ' + await previa());
+    await L.F.selectOption(dlg('[data-k="tt:tit"]'), 'lia'); await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    await aba(L, 'corte');
+    ok(/Baronia de Vila Alta Lia menor/.test(await textoPane(L)), 'a titular menor de idade: "menor"');
+    // o cartão do personagem: os títulos em que ele aparece
+    await botao(L, 'corte:vista:casas');
+    await L.F.click('#pane [data-k="p:ana"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    const tAna = await A(L, () => document.querySelector('dialog.ps-dl[open] [data-k="ps:titulos"]').innerText.replace(/\s+/g, ' '));
+    ok(/^Títulos Rainha de Aldar Duquesa de Valmor \(desde ano -2\) Mudam no cartão de cada título/.test(tAna), 'no cartão da Ana: os títulos dela, do maior para o menor: ' + tAna);
+    await L.F.click(dlg('[data-k="ps:nao"]')); await espera(200);
+    await L.F.click('#pane [data-k="p:caio"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    const tCaio = await A(L, () => document.querySelector('dialog.ps-dl[open] [data-k="ps:titulos"]').innerText.replace(/\s+/g, ' '));
+    ok(/Grão-Mestre da Ordem regente: Ducado de Valmor pretende: Ducado de Valmor \(primo do duque\)/.test(tCaio), 'no cartão do Caio: o título, a regência e a pretensão (com o motivo): ' + tCaio);
+    await L.F.click(dlg('[data-k="ps:nao"]')); await espera(200);
+    await L.F.click('#pane [data-k="p:beto"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    ok(/herdeiro escolhido: Ducado de Valmor/.test(await A(L, () => document.querySelector('dialog.ps-dl[open] [data-k="ps:titulos"]').innerText)), 'no cartão do Beto: herdeiro escolhido do ducado');
+    await L.F.click(dlg('[data-k="ps:nao"]')); await espera(200);
+    // tirar um grau usado: o título fica sem grau, com o nome de antes
+    await botao(L, 'corte:vista:titulos');
+    await botao(L, 'tt:graus'); await L.F.waitForSelector('dialog.gr-dl[open]');
+    await L.F.locator(dlg('.gr-lista .gr-linha')).nth(2).locator('[data-k="gr:x"]').click();
+    await L.F.click(dlg('[data-k="gr:ok"]')); await espera(350);
+    const tv = (await corte(L)).titulos.find(x => x.id === t1.id);
+    ok(tv.grau === null && tv.nome === 'Ducado de Valmor' && /Os graus estão salvos\. Um título ficou sem grau, com o nome de antes\./.test(await avisos(L)), 'tirar o grau Ducado: o título fica sem grau, com o nome de antes (e o aviso diz)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    cc = await corte(L);
+    ok(cc.titulos.find(x => x.id === t1.id).grau === 'ducado' && !('graus' in cc), 'desfazer: o grau de volta');
+    // o filtro de facção
+    await campo(L, 'corte:fac').selectOption('fb'); await espera(300);
+    const filt = await textoPane(L);
+    ok(/Grão-Mestre da Ordem/.test(filt) && !/Ducado de Valmor/.test(filt), 'o filtro do Vale: só os títulos do Vale');
+    await campo(L, 'corte:fac').selectOption(''); await espera(300);
+    await semAvisos(L); await foto('l11-titulos');
+    await botao(L, 't:' + t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await semAvisos(L); await foto('l11-titulo-cartao');
+    await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
+    // quem joga: os títulos das terras que eles veem e dos conhecidos; as pessoas só as conhecidas; sem a nota
+    await comoJogador(L, true);
+    await aba(L, 'corte');
+    const pj = await textoPane(L);
+    ok(/Ducado de Valmor Ana do Vale · desde ano -2 · regente: Caio pretendente: Caio \(primo do duque\) antes: Aldric I \(200 – 230\) O velho ducado do rio\./.test(pj) && !/quer o ducado/.test(pj) && !/Beto/.test(pj) && !/\+ Título/.test(pj),
+      'quem joga: o título com a titular, o regente, o pretendente e os de antes (o herdeiro que eles não conhecem, não), o texto, sem a nota nem os botões: ' + pj.slice(0, 300));
+    ok(/Baronia de Vila Alta sem titular conhecido/.test(pj) && /Reino de Aldar Ana do Vale/.test(pj) && /Grão-Mestre da Ordem Caio/.test(pj), 'a titular que eles não conhecem: "sem titular conhecido"; os outros títulos');
+    await semAvisos(L); await foto('l11-titulos-jogador');
+    await botao(L, 'corte:vista:casas');
+    ok(/Ana do Vale, Rainha de Aldar/.test(await textoPane(L)), 'quem joga, nas casas: o maior título junto do nome');
+    await aba(L, 'faccoes');
+    ok(/Governante: Ana do Vale, Rainha de Aldar/.test(await textoPane(L)), 'quem joga vê o governante');
+    await aba(L, 'selecao'); await selecionar(L, 'r1');
+    const pr1 = await textoPane(L);
+    ok(/TÍTULO Ducado de Valmor Ana do Vale/i.test(pr1) && !/\+ Título/.test(pr1), 'quem joga, no cartão da região: o título (sem o botão)');
+    await comoJogador(L, false);
+    // tirar o título (com Desfazer)
+    await aba(L, 'corte'); await botao(L, 'corte:vista:titulos');
+    const idBar = (await corte(L)).titulos.find(x => x.grau === 'baronia').id;
+    await botao(L, 't:' + idBar); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await L.F.click(dlg('[data-k="tt:tirar"]')); await espera(250);
+    ok(/Tirar o título Baronia de Vila Alta\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar o título: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(!(await corte(L)).titulos.some(x => x.id === idBar) && /O título Baronia de Vila Alta saiu\./.test(await avisos(L)), 'confirmado: o título sai (com o aviso)');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await corte(L)).titulos.some(x => x.id === idBar), 'Desfazer: ele volta');
+    // tirar da corte a titular: o título fica vago
+    await botao(L, 'corte:vista:casas');
+    await L.F.click('#pane [data-k="p:lia"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    await L.F.click(dlg('[data-k="ps:tirar"]')); await espera(250);
+    ok(/Os títulos que tem ficam vagos\./.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar da corte quem tem título: avisa que os títulos ficam vagos');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok((await corte(L)).titulos.find(x => x.id === idBar).tit === null, 'confirmado: a baronia fica vaga');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // no celular: as janelas cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await A(L, id => { window.MundoCortePainel.janelaTitulo(id); }, t1.id); await L.F.waitForSelector('dialog.tt-dl[open]');
+    ok(await A(L, () => { const d = document.querySelector('dialog.tt-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, o cartão do título cabe na largura');
+    await semAvisos(L); await foto('l11-titulo-celular');
+    await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
+    await A(L, () => { window.MundoCortePainel.janelaGraus(); }); await L.F.waitForSelector('dialog.gr-dl[open]');
+    ok(await A(L, () => { const d = document.querySelector('dialog.gr-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, os graus cabem na largura');
+    await L.F.click(dlg('[data-k="gr:nao"]')); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await aba(L, 'corte');
+    if (await A(L, () => document.querySelector('#pane [data-k="corte:vista:casas"]').getAttribute('aria-pressed') !== 'true')) await botao(L, 'corte:vista:casas');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

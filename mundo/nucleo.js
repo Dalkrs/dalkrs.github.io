@@ -2108,11 +2108,22 @@
      Fichas, opcional), txt (o que os jogadores sabem), nota (do mestre), ver (os jogadores conhecem) }], casas: [{ id,
      nome, br (o brasão, como a bandeira), lema, chefe (um personagem da casa) }], cargos: { facção: [{ id, nome }] } (os
      cargos da corte de cada facção; sem a lista guardada, os de começo) }. Só quando há algo (o mapa de antes fica igual).
-     Ninguém é antepassado de si mesmo (o pai que fecharia um círculo sai). */
+     Ninguém é antepassado de si mesmo (o pai que fecharia um círculo sai).
+     (parte 2a) Os títulos: titulos: [{ id, grau (um dos graus; sem ele, o nome livre), de (o "de quê": "da Terra Alta";
+     vazio, "de" + o nome da terra), nome (o do título sem grau: "Grão-Mestre da Ordem"), preso ({ t: 'r' (uma região) |
+     'm' (um marcador) | 'f' (uma facção), id }; sem, o título sem terra), fac (o reino: para a regra e a lista), tit (o
+     titular), desde (a data em que ele ficou com o título), herd (o herdeiro escolhido), reg (o regente), pret
+     (os pretendentes: [{ p, mot (o motivo) }]), hist (os titulares de antes: [{ p (o personagem; null: só o nome), nome,
+     de, ate }]), txt, nota }]; graus: [{ id, nome (Ducado), h (Duque), m (Duquesa), o (o de outro; vazio, o de homem) }],
+     do maior para o menor (sem a lista guardada, os de começo); maior: a maioridade (sem ela, 16). */
   const GENEROS = { h: 'Homem', m: 'Mulher', o: 'Outro' };
   const CARGOS_INICIAIS = [{ id: 'conselheiro', nome: 'Conselheiro' }, { id: 'marechal', nome: 'Marechal' }, { id: 'tesoureiro', nome: 'Tesoureiro' },
     { id: 'espiao', nome: 'Espião-mestre' }, { id: 'sacerdote', nome: 'Sacerdote' }, { id: 'embaixador', nome: 'Embaixador' }];
   const MAX_PESSOAS_CORTE = 400, MAX_CASAS = 80, MAX_CARGOS = 16, MAX_CONJ = 4, MAX_TXT_CORTE = 600;
+  const GRAUS_INICIAIS = [{ id: 'imperio', nome: 'Império', h: 'Imperador', m: 'Imperatriz', o: '' }, { id: 'reino', nome: 'Reino', h: 'Rei', m: 'Rainha', o: '' },
+    { id: 'ducado', nome: 'Ducado', h: 'Duque', m: 'Duquesa', o: '' }, { id: 'condado', nome: 'Condado', h: 'Conde', m: 'Condessa', o: '' },
+    { id: 'baronia', nome: 'Baronia', h: 'Barão', m: 'Baronesa', o: '' }];
+  const MAX_TITULOS = 200, MAX_GRAUS = 12, MAX_PRET = 8, MAX_HIST_TIT = 40, MAIORIDADE = 16, MAX_MAIORIDADE = 100;
   // a data de um personagem: o ano e, se souber, o mês e o dia (o dia só com o mês)
   function normDataP(v, cal) {
     if (!ehObj(v)) return null;
@@ -2156,7 +2167,49 @@
       }
       cargos[k] = l;
     }
-    return pessoas.length || casas.length || Object.keys(cargos).length ? { pessoas, casas, cargos } : null;
+    // (parte 2a) os graus (do maior para o menor), os títulos e a maioridade
+    let graus = null;
+    if (Array.isArray(v.graus)) {
+      graus = [];
+      const vg = new Set();
+      for (const g of v.graus) {
+        if (!ehObj(g) || graus.length >= MAX_GRAUS) continue;
+        const id = idOk(g.id);
+        if (!id || vg.has(id)) continue;
+        vg.add(id);
+        graus.push({ id, nome: texto(g.nome, '', 40).trim() || 'Grau', h: texto(g.h, '', 40).trim(), m: texto(g.m, '', 40).trim(), o: texto(g.o, '', 40).trim() });
+      }
+    }
+    const titulos = [], vt = new Set();
+    for (const t of Array.isArray(v.titulos) ? v.titulos : []) {
+      if (!ehObj(t) || titulos.length >= MAX_TITULOS) continue;
+      const id = idOk(t.id);
+      if (!id || vt.has(id)) continue;
+      vt.add(id);
+      const pr = ehObj(t.preso) && (t.preso.t === 'r' || t.preso.t === 'm' || t.preso.t === 'f') && idOk(t.preso.id) ? { t: t.preso.t, id: t.preso.id } : null;
+      const pret = [], vpr = new Set(), hist = [];
+      for (const x of Array.isArray(t.pret) ? t.pret : []) {
+        if (!ehObj(x) || pret.length >= MAX_PRET) continue;
+        const p = idOk(x.p);
+        if (!p || vpr.has(p)) continue;
+        vpr.add(p);
+        pret.push({ p, mot: texto(x.mot, '', 120).trim() });
+      }
+      for (const x of Array.isArray(t.hist) ? t.hist : []) {
+        if (!ehObj(x) || hist.length >= MAX_HIST_TIT) continue;
+        const p = idRef(x.p), nome = texto(x.nome, '', 80).trim();
+        if (!p && !nome) continue;
+        hist.push({ p, nome, de: normDataP(x.de, cal), ate: normDataP(x.ate, cal) });
+      }
+      titulos.push({ id, grau: idRef(t.grau), de: texto(t.de, '', 80).trim(), nome: texto(t.nome, '', 80).trim(), preso: pr, fac: idRef(t.fac), tit: idRef(t.tit), desde: normDataP(t.desde, cal),
+        herd: idRef(t.herd), reg: idRef(t.reg), pret, hist, txt: texto(t.txt, '', MAX_TXT_CORTE).trim(), nota: texto(t.nota, '', MAX_TXT_CORTE).trim() });
+    }
+    const maior = v.maior == null ? NaN : inteiro(v.maior, NaN, 0, MAX_MAIORIDADE);
+    if (!pessoas.length && !casas.length && !Object.keys(cargos).length && !titulos.length && !graus && !Number.isFinite(maior)) return null;
+    const out = { pessoas, casas, cargos, titulos };
+    if (graus) out.graus = graus;
+    if (Number.isFinite(maior)) out.maior = maior;
+    return out;
   }
   // a corte com o mapa todo: só a facção, a casa, o cargo (da facção dele), o lugar (um marcador ou um grupo) e as pessoas que existem
   function conferirCorte(c, facs, objs) {
@@ -2178,6 +2231,23 @@
     const sobe = (de, alvo) => { const vistos = new Set(), fila = [de]; while (fila.length) { const x = fila.shift(); if (x === alvo) return true; if (vistos.has(x)) continue; vistos.add(x); const q = ps.get(x); if (q) fila.push(...q.pais); } return false; };
     for (const p of c.pessoas) p.pais = p.pais.filter(id => !sobe(id, p.id));
     for (const x of c.casas) { const q = x.chefe ? ps.get(x.chefe) : null; if (!q || q.casa !== x.id) x.chefe = null; }
+    /* (parte 2a) os títulos: o grau (um dos graus), a terra (do tipo certo), o reino e as pessoas têm de existir; o
+       herdeiro escolhido, o regente e os pretendentes não são o próprio titular; sem titular, sem o "desde"; o titular
+       de antes que saiu da corte fica só com o nome (o nome dos que estão vem da corte) */
+    const graus = new Set((c.graus || GRAUS_INICIAIS).map(g => g.id)), terras = { r: new Set(), m: new Set(), f: facs };
+    for (const o of objs) if (o.k === 'r' || o.k === 'm') terras[o.k].add(o.id);
+    for (const t of c.titulos) {
+      if (t.grau && !graus.has(t.grau)) t.grau = null;
+      if (t.preso && !terras[t.preso.t].has(t.preso.id)) t.preso = null;
+      if (t.fac && !facs.has(t.fac)) t.fac = null;
+      for (const k of ['tit', 'herd', 'reg']) if (t[k] && !ps.has(t[k])) t[k] = null;
+      if (t.herd && t.herd === t.tit) t.herd = null;
+      if (t.reg && t.reg === t.tit) t.reg = null;
+      if (!t.tit) t.desde = null;
+      t.pret = t.pret.filter(x => ps.has(x.p) && x.p !== t.tit);
+      for (const x of t.hist) { if (x.p && !ps.has(x.p)) x.p = null; if (x.p) x.nome = ps.get(x.p).nome; }
+      t.hist = t.hist.filter(x => x.p || x.nome);
+    }
   }
 
   function normGuerra(v) {
@@ -2522,6 +2592,8 @@
     const todoCoberto = pts => nevoa && pts.every(p => cobertoPor(ops, p[0], p[1]));
     delete m.oculto;
     delete m.ecoJ;
+    // (lote 11, parte 2a) as terras dos títulos como o mestre as vê (o nome e o "escondido"), antes dos recortes
+    const terrasAntes = new Map(m.objs.filter(o => o.k === 'r' || o.k === 'm').map(o => [o.id, o])), nomesFac = new Map(m.faccoes.map(f => [f.id, f.nome]));
     /* (lote 10, parte 6) o que os jogadores veem da economia, contado antes de tudo (no mapa inteiro, com o terreno de
        cada hexágono): a facção deles por inteiro (o estoque e a produção, com de onde vem) e o que tem dentro das cidades
        que o mestre abriu para eles. opts.clas: os clãs, para a produção das sedes (como em MundoReino.producaoPorFaccao). */
@@ -2642,8 +2714,30 @@
         pais: p.pais.filter(id => con.has(id)), conj: p.conj.filter(id => con.has(id)), onde: p.onde && noMapa.has(p.onde.id) ? p.onde : null, ficha: null, nota: '' }));
       const casasVistas = new Set(pessoas.map(p => p.casa).filter(Boolean)), facsVistas = new Set(pessoas.map(p => p.fac).filter(Boolean)), cargos = {};
       for (const k of Object.keys(m.corte.cargos)) if (facsVistas.has(k)) cargos[k] = m.corte.cargos[k];
-      if (pessoas.length) m.corte = { pessoas, casas: m.corte.casas.filter(c => casasVistas.has(c.id)).map(c => Object.assign({}, c, { chefe: con.has(c.chefe) ? c.chefe : null })), cargos };
-      else delete m.corte;
+      /* (parte 2a) os títulos: os das terras que eles veem (a região ou a cidade que vai; a facção que não está
+         escondida) e os dos personagens conhecidos (se a terra não foi escondida pelo mestre: a névoa só esconde o
+         lugar — o título vai com o nome pronto, sem a terra). As pessoas do título (o titular, o herdeiro escolhido, o
+         regente, os pretendentes, os titulares de antes), só as conhecidas; sem a nota. */
+      const conhecida = id => (id && con.has(id) ? id : null), titulos = [];
+      for (const t of m.corte.titulos) {
+        const pr = t.preso, terraVai = !!pr && (pr.t === 'f' ? nomesFac.has(pr.id) && !escondidas.has(pr.id) : noMapa.has(pr.id));
+        const terraEscondida = !!pr && (pr.t === 'f' ? escondidas.has(pr.id) : !!(terrasAntes.get(pr.id) || {}).oculto);
+        if (!terraVai && !(conhecida(t.tit) && !terraEscondida)) continue;
+        let de = t.de, preso = pr;
+        if (pr && !terraVai) {
+          const o = terrasAntes.get(pr.id), n = pr.t === 'f' ? (nomesFac.get(pr.id) || '').trim() : o ? (o.nome || '').trim() || (pr.t === 'm' ? (ICONES[o.ic] || ICONES.cidade).nome : '') : '';
+          de = t.de || (n ? 'de ' + n : '');
+          preso = null;
+        }
+        titulos.push(Object.assign({}, t, { de, preso, fac: escondidas.has(t.fac) ? null : t.fac, tit: conhecida(t.tit), herd: conhecida(t.herd), reg: conhecida(t.reg),
+          pret: t.pret.filter(x => con.has(x.p)), hist: t.hist.filter(x => !x.p || con.has(x.p)), nota: '' }));
+      }
+      if (pessoas.length || titulos.length) {
+        const c = { pessoas, casas: m.corte.casas.filter(c0 => casasVistas.has(c0.id)).map(c0 => Object.assign({}, c0, { chefe: con.has(c0.chefe) ? c0.chefe : null })), cargos, titulos };
+        if (m.corte.graus) c.graus = m.corte.graus;
+        if (m.corte.maior != null) c.maior = m.corte.maior;
+        m.corte = c;
+      } else delete m.corte;
     }
     return normalizarMapa(m);
   }
@@ -2670,11 +2764,12 @@
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
-    GENEROS, CARGOS_INICIAIS, normCorte,
+    GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
-      personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE },
+      personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE,
+      titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

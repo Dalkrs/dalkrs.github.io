@@ -11,7 +11,8 @@
 //     aberta (sem a guilda secreta, sem o estoque das outras facções); o jogador vê a linha deles no Livro do reino e a
 //     cidade por dentro; fechar a semana põe o resumo no rascunho do Jornal da mesa (o jogador não o recebe).
 //   · (lote 11, parte 1a) a corte: a projeção leva só os personagens conhecidos (sem as notas); o jogador os vê na aba
-//     Corte.
+//     Corte. (parte 2a) Os títulos: a projeção leva o do reino (sem a nota) e não o de quem eles não conhecem; o jogador
+//     vê o título junto do nome, a lista "Títulos" e o governante em Reinos.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -183,7 +184,10 @@ function png(w, h, cor) {
       __mundo.App.mudar('a corte', m => {
         m.corte = { casas: [{ id: 'kv', nome: 'Casa do Vale', lema: 'Firmes' }], cargos: {},
           pessoas: [{ id: 'pa', nome: 'Ana do Vale', gen: 'm', casa: 'kv', fac: 'fa', cargo: 'marechal', nasc: { a: -30 }, onde: { t: 'm', id: 'cv' }, ver: true, txt: 'A marechal.', nota: 'Trama contra o rei.' },
-            { id: 'pb', nome: 'Bento Oculto', casa: 'kv', fac: 'fa', pais: ['pa'], ver: false, nota: 'Herdeiro secreto.' }] };
+            { id: 'pb', nome: 'Bento Oculto', casa: 'kv', fac: 'fa', pais: ['pa'], ver: false, nota: 'Herdeiro secreto.' }],
+          // (parte 2a) os títulos: o do reino (a titular conhecida) e um sem terra de quem eles não conhecem
+          titulos: [{ id: 'tr', grau: 'reino', preso: { t: 'f', id: 'fa' }, fac: 'fa', tit: 'pa', txt: 'A coroa de Aldar.', nota: 'Usurpou o trono.' },
+            { id: 'tx', nome: 'Mão Oculta', tit: 'pb', nota: 'O culto.' }] };
       });
     });
     ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.corte && p.corte.pessoas.length === 1 && p.corte.pessoas[0].id === 'pa' && p.corte.pessoas[0].nota === '' && p.corte.casas.length === 1); }),
@@ -192,6 +196,14 @@ function png(w, h, cor) {
     await JW.click('#tab-corte'); await w(300, J);
     const corteJ = () => JW.evaluate(() => document.getElementById('pane').innerText.replace(/\s+/g, ' '));
     ok(await ate(async () => /Casa do Vale/.test(await corteJ()) && /Ana do Vale/.test(await corteJ()) && /Marechal de Aldar/.test(await corteJ()) && !/Bento/.test(await corteJ())), 'o jogador vê, na aba Corte, a Ana (com o cargo) e não o Bento: ' + (await corteJ()).slice(0, 160));
+    // (parte 2a) os títulos: a projeção leva o do reino (sem a nota), não o de quem eles não conhecem; o jogador vê o título e o governante
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.corte && j(p.corte.titulos.map(x => [x.id, x.tit, x.nota])) === j([['tr', 'pa', '']])); }), 'a projeção leva o título do reino (com a titular conhecida, sem a nota), não o sem terra de quem eles não conhecem');
+    ok(!/Usurpou|Mão Oculta|O culto/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe a nota nem o título escondido');
+    ok(await ate(async () => /Ana do Vale, Rainha de Aldar/.test(await corteJ())), 'o jogador vê, nas casas, o título junto do nome da Ana');
+    await JW.click('#pane [data-k="corte:vista:titulos"]'); await w(300, J);
+    ok(await ate(async () => /Reino de Aldar Ana do Vale A coroa de Aldar\./.test(await corteJ()) && !/Mão Oculta/.test(await corteJ())), 'e, em "Títulos", o título do reino com a titular e o texto: ' + (await corteJ()).slice(0, 200));
+    await JW.click('#tab-faccoes'); await w(300, J);
+    ok(await ate(async () => /Governante: Ana do Vale, Rainha de Aldar/.test(await corteJ())), 'na aba Reinos, o jogador vê o governante');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

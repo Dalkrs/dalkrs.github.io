@@ -189,7 +189,7 @@ const amostrar = a => A(a, () => {
     await foto('l8-bandeiras');
     // a aba Facções
     await aba(L, 'faccoes');
-    ok(await L.F.locator('#pane .fac-band').count() >= 2, 'na aba Facções, a bandeira no lugar da bolinha de cor');
+    ok(await L.F.locator('#pane [data-k="fac:fa"] .fac-band').count() === 1 && await L.F.locator('#pane [data-k="fac:fb"] .fac-band').count() === 1, 'na aba Facções, a bandeira no lugar da bolinha de cor (na linha de cada facção)');
     await L.F.click('#pane [data-k="fac:fa"]'); await espera(250);
     ok(/A do clã ligado a esta facção/.test(await L.F.locator('#pane').innerText()) && await L.F.locator('#pane .fac-band-campo .fac-band').count() === 1, 'no editor da facção: a bandeira e de onde ela vem');
     // a projeção leva a bandeira; quem joga vê (a da facção escondida, não)

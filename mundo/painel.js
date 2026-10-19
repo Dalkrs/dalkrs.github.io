@@ -1194,6 +1194,7 @@
     if (o.k === 'l' && temGrade(v)) out.push(nota('Cerca de ' + fmt(cubos(v, N_.compPolilinha(o.pts)), 0) + ' cubos de ponta a ponta.'));
     // (lote 10, parte 6) a cidade que o mestre abriu: o nível, a população, as construções prontas e as guildas
     if (o.k === 'm' && o.dentro && RP() && RP().leituraDentro) { const d = RP().leituraDentro(o); if (d) out.push(d); }
+    if ((o.k === 'r' || o.k === 'm') && CP() && CP().secTitulos) { const s = CP().secTitulos(o, v); if (s) out.push(s); }   // (lote 11, parte 2a) os títulos de lá
     if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, v); if (q) out.push(q); }    // (lote 11) quem está aqui (os conhecidos)
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
@@ -1222,6 +1223,7 @@
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
     if (o.k === 'f' && GP()) out.push(GP().secFasesFrente(o, m));          // (lote 8, parte 6) a frente que anda
+    if ((o.k === 'r' || o.k === 'm') && CP() && CP().secTitulos) { const s = CP().secTitulos(o, m); if (s) out.push(s); }   // (lote 11, parte 2a) os títulos de lá
     if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, m); if (q) out.push(q); }    // (lote 11) quem está aqui
     out.push(campoTexto('o:' + id + ':txt', 'O que os jogadores sabem', o.txt, grava('mudar o que os jogadores sabem', (x, v) => { x.txt = v; }), { area: true, linhas: 3, ph: 'O que se conta por aí…' }));
     out.push(segredo('Só o mestre vê',
@@ -2763,18 +2765,19 @@
       // (lote 10) as províncias (as regiões de fora) e as sub-regiões da facção (a de dentro sem facção própria herda)
       const rs = v.objs.filter(o => o.k === 'r' && N().facDaRegiao(v, o) === f.id), np = rs.filter(o => !o.pai).length, ns = rs.length - np;
       const sub = rs.length ? [np ? plural(np, 'província', 'províncias') : '', ns ? plural(ns, 'sub-região', 'sub-regiões') : ''].filter(Boolean).join(' · ') : 'nenhuma região';
+      const gov = CP() && CP().governanteTxt ? CP().governanteTxt(v, f.id) : '';       // (lote 11, parte 2a) quem tem o maior título preso à facção
       if (ed) {
         const aberta = facAberta === f.id;
         lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'data-fac': f.id, 'aria-expanded': String(aberta),
           onclick: () => { facAberta = aberta ? null : f.id; pintar(); } },
-          bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+          bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null),
           f.jog ? h('span', { class: 'tag jog', text: 'dos jogadores' }) : null,
           f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null));
         if (aberta) lista.append(editorFaccao(f, v));
       } else {
         const rels = Object.keys(f.rel || {}).map(k => [facDe(v, k), f.rel[k]]).filter(([g, r]) => g && r !== 'neutra');
         lista.append(h('div', { class: 'fac-pub', 'data-fac': f.id },
-          h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub })),
+          h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null),
             f.jog ? h('span', { class: 'tag jog', text: mestre ? 'dos jogadores' : 'vocês' }) : null,
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,
@@ -2841,6 +2844,7 @@
         return r;
       }, { dica: 'As terras dos jogadores: quando eles ganharem uma província ou um assentamento, ponha nesta facção. Só uma facção pode ser dos jogadores.' }),
       secNumerosFac(f, m),
+      CP() && CP().secTitulosFac ? CP().secTitulosFac(f, m) : null,                    // (lote 11, parte 2a) os títulos do reino
       outras.length ? h('div', { class: 'sec' }, h('b', { text: 'Relações' }),
         outras.map(g => h('div', { class: 'rel ' + ((f.rel && f.rel[g.id]) || 'neutra') }, h('i', { style: { background: g.cor } }), h('span', { text: nomeFac(g) }),
           campoEscolha('rel:' + id + ':' + g.id, null, (f.rel && f.rel[g.id]) || 'neutra', Object.keys(N_.RELACOES).map(k => [k, N_.RELACOES[k]]),
