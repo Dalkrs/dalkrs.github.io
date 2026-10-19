@@ -35,6 +35,11 @@
 //     "Trocas", o tributo que não dá para pagar inteiro, desmarcar refaz as contas; o tratado que vence: renovar, o erro
 //     do prazo; o motivo que vence; aplicar num passo de Desfazer); quem joga (a vassalagem sem o tributo, "vassala de" em
 //     Reinos, o tributo e as trocas no Livro do reino); tirar a vassalagem; no celular.
+//   · (parte 3c, SO=guerrapaz) os motivos de guerra (a sugestão pelo pretendente, "Usar…", os erros, "não vale mais",
+//     mudar); "Declarar guerra…" (quem declara e o motivo dele, os tratados de paz marcados para acabar, o aviso da
+//     vassalagem, a notícia no rascunho do Jornal; Desfazer com o Jornal); "Fazer a paz…" (a relação, o tratado com
+//     prazo, o erro do prazo, a notícia); assinar um tratado com a notícia; quem joga (sem os motivos nem os botões); no
+//     celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -1011,6 +1016,150 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await cabeDl('dialog.sem-dl[open]'), 'no celular, a prévia da semana (com a diplomacia) cabe');
     await semAvisos(L); await foto('l11-semana-celular');
     await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 3c) os motivos de guerra, declarar a guerra e fazer a paz ----------
+  if (parte('guerrapaz')) await passo('a guerra e a paz', async () => {
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(200);
+    if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
+    await A(L, () => {
+      __mundo.App.mudar('guerra e paz: o mundo', m => {
+        if (!m.faccoes.some(f => f.id === 'fc')) m.faccoes.push({ id: 'fc', nome: 'Ilhas', cor: '#2f8f8f' }, { id: 'fd', nome: 'Culto', cor: '#5b3fb5', oculta: true });
+        for (const f of m.faccoes) { f.rel = {}; f.jog = false; }
+        m.dipl = { tratados: [{ id: 'tgp', tipo: 'paz', partes: ['fa', 'fb'], pub: true }, { id: 'tgc', tipo: 'comercio', partes: ['fa', 'fb'] }], opin: [], vassalos: [{ vas: 'fb', sus: 'fa' }], motivosGuerra: [] };
+        if (!m.corte) m.corte = { pessoas: [], casas: [], cargos: {}, titulos: [] };
+        m.corte.pessoas.push({ id: 'gp1', nome: 'Isolda', gen: 'm', fac: 'fa' }, { id: 'gp2', nome: 'Otão', gen: 'h', fac: 'fb' });
+        m.corte.titulos.push({ id: 'gt1', grau: 'reino', de: 'do Vale Alto', fac: 'fb', tit: 'gp2', pret: [{ p: 'gp1', mot: 'pela avó' }] });
+      });
+    });
+    const dp = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.dipl || null)));
+    const ras = () => A(L, () => { try { return JSON.parse(localStorage.getItem('tinycats:jornal:rascunho') || 'null'); } catch (e) { return null; } });
+    const materia = async re => { const r = await ras(); return r && r.materias ? r.materias.find(x => re.test(x.tit)) || null : null; };
+    const hojeDt = await A(L, () => window.MundoCorte.hoje(__mundo.App.mapa)), hojeTxt = await A(L, () => window.MundoCorte.dataTxt(__mundo.App.mapa, window.MundoCorte.hoje(__mundo.App.mapa)));
+    await aba(L, 'diplomacia');
+    const secMg = () => A(L, () => { const e = document.querySelector('#pane [data-k="mg:novo"]'); return e ? e.closest('.sec').innerText.replace(/\s+/g, ' ') : ''; });
+    ok(/MOTIVOS DE GUERRA \+ Motivo de guerra Nenhum motivo de guerra ainda\. Sugestões pelos pretendentes Aldar contra Vale Isolda pretende Reino do Vale Alto \(pela avó\) Usar… Só você vê os motivos de guerra\./i.test(await secMg()),
+      'a seção dos motivos de guerra: vazia, com a sugestão pela pretendente: ' + await secMg());
+    await semAvisos(L); await A(L, () => document.querySelector('#pane [data-k="mg:novo"]').closest('.sec').scrollIntoView()); await espera(150); await foto('l11-motivos-sugestao');
+    // usar a sugestão
+    await botao(L, 'mg:usar:gt1:gp1'); await L.F.waitForSelector('dialog.mg-dl[open]');
+    ok(await A(L, () => { const d0 = document.querySelector('dialog.mg-dl[open]'); return [d0.querySelector('[data-k="mg:de"]').value, d0.querySelector('[data-k="mg:contra"]').value, d0.querySelector('[data-k="mg:txt"]').value, d0.querySelector('[data-k="mg:vale"]').checked].join('|'); }) === 'fa|fb|Isolda pretende Reino do Vale Alto (pela avó)|true',
+      '"Usar…": a janela começa com a sugestão (Aldar contra Vale, o texto, "Ainda vale")');
+    await L.F.click(dlg('[data-k="mg:ok"]')); await espera(350);
+    let d = await dp();
+    ok(d.motivosGuerra.length === 1 && j(d.motivosGuerra[0]) === j({ id: d.motivosGuerra[0].id, de: 'fa', contra: 'fb', txt: 'Isolda pretende Reino do Vale Alto (pela avó)', vale: true, tit: 'gt1', p: 'gp1' }) && /O motivo de guerra de Aldar contra Vale entrou na lista\./.test(await avisos(L)),
+      'criar: o motivo com o título e a pretendente de onde veio: ' + j(d.motivosGuerra));
+    ok(!/Sugestões pelos pretendentes/.test(await secMg()) && /Aldar contra Vale Isolda pretende/.test(await secMg()), 'a sugestão usada sai; o motivo aparece com Aldar');
+    // um motivo novo: os erros, "não vale mais", mudar
+    await botao(L, 'mg:novo'); await L.F.waitForSelector('dialog.mg-dl[open]');
+    const errMg = () => A(L, () => document.querySelector('dialog.mg-dl[open] .err').textContent);
+    await L.F.click(dlg('[data-k="mg:ok"]')); await espera(120);
+    ok(await errMg() === 'Escolha a facção e contra quem.', 'sem as facções: não passa');
+    await L.F.selectOption(dlg('[data-k="mg:de"]'), 'fb'); await L.F.selectOption(dlg('[data-k="mg:contra"]'), 'fb'); await L.F.click(dlg('[data-k="mg:ok"]')); await espera(120);
+    ok(await errMg() === 'O motivo é contra outra facção.', 'contra si mesma: não passa');
+    await L.F.selectOption(dlg('[data-k="mg:contra"]'), 'fa'); await L.F.click(dlg('[data-k="mg:ok"]')); await espera(120);
+    ok(await errMg() === 'Escreva o motivo.', 'sem o motivo: não passa');
+    await L.F.fill(dlg('[data-k="mg:txt"]'), 'a fronteira do rio'); await L.F.uncheck(dlg('[data-k="mg:vale"]'));
+    await L.F.click(dlg('[data-k="mg:ok"]')); await espera(350);
+    d = await dp();
+    const mgB = d.motivosGuerra.find(x => x.de === 'fb');
+    const itemB = () => A(L, id => { const e = document.querySelector('#pane [data-k="mg:' + id + '"]'); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, mgB && mgB.id);
+    ok(mgB && mgB.contra === 'fa' && mgB.txt === 'a fronteira do rio' && mgB.vale === false && await itemB() === 'contra Aldar a fronteira do rio não vale mais' && await campo(L, 'mg:fac:fb').count() === 1,
+      'o motivo do Vale (no grupo dele), que não vale mais (com a etiqueta): ' + await itemB());
+    await botao(L, 'mg:' + mgB.id); await L.F.waitForSelector('dialog.mg-dl[open]');
+    await L.F.check(dlg('[data-k="mg:vale"]')); await L.F.click(dlg('[data-k="mg:ok"]')); await espera(350);
+    ok((await dp()).motivosGuerra.find(x => x.id === mgB.id).vale === true && /O motivo de guerra está salvo\./.test(await avisos(L)), 'mudar: volta a valer');
+    // o filtro; tirar (com Desfazer)
+    await campo(L, 'dp:fac').selectOption('fc'); await espera(300);
+    ok(/MOTIVOS DE GUERRA \+ Motivo de guerra Nenhum motivo de guerra ainda\. Só você vê/i.test(await secMg()), 'o filtro das Ilhas: nenhum motivo');
+    await campo(L, 'dp:fac').selectOption(''); await espera(300);
+    await botao(L, 'mg:' + mgB.id); await L.F.waitForSelector('dialog.mg-dl[open]');
+    await L.F.click(dlg('[data-k="mg:tirar"]')); await espera(250);
+    ok(/Tirar o motivo de guerra\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(!(await dp()).motivosGuerra.some(x => x.id === mgB.id) && /O motivo de guerra saiu\./.test(await avisos(L)), 'tirar: o motivo sai');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await dp()).motivosGuerra.some(x => x.id === mgB.id), 'Desfazer: ele volta');
+    // um motivo que não vale mais não aparece na hora de declarar
+    await A(L, () => __mundo.App.mudar('guerra e paz: um rancor velho', m => { m.dipl.motivosGuerra.push({ id: 'mgv', de: 'fa', contra: 'fb', txt: 'um rancor velho', vale: false }); }));
+    // declarar a guerra
+    await botao(L, 'gu:fa:fb'); await L.F.waitForSelector('dialog.gu-dl[open]');
+    const gd = s0 => 'dialog.gu-dl[open] ' + s0;
+    const motivos = () => A(L, () => [...document.querySelectorAll('dialog.gu-dl[open] [data-k="gu:motivo"] option')].map(o => o.textContent));
+    ok(await L.F.locator(gd('[data-k="gu:de:fa"]')).isChecked() && j(await motivos()) === j(['Isolda pretende Reino do Vale Alto (pela avó)', 'Sem motivo']), 'quem declara: Aldar, com os motivos dela contra o Vale: ' + j(await motivos()));
+    ok(await L.F.locator(gd('[data-k="gu:enc:tgp"]')).isChecked() && !(await L.F.locator(gd('[data-k="gu:enc:tgc"]')).isChecked())
+      && /A relação entre Aldar e Vale: Neutra → Guerra \(dos dois lados\)\./.test(await A(L, () => document.querySelector('dialog.gu-dl[open] [data-k="gu:rel"]').textContent))
+      && /Vale é vassala de Aldar: a vassalagem continua/.test(await A(L, () => document.querySelector('dialog.gu-dl[open] [data-k="gu:vas"]').textContent)),
+      'o que muda: a relação; o tratado de paz marcado para acabar (o de comércio, não); o aviso da vassalagem');
+    await L.F.check(gd('[data-k="gu:de:fb"]')); await espera(80);
+    ok(j(await motivos()) === j(['a fronteira do rio', 'Sem motivo']), 'o Vale declara: os motivos dele');
+    await L.F.check(gd('[data-k="gu:de:fa"]')); await espera(80);
+    ok(!(await L.F.locator(gd('[data-k="gu:jornal"]')).isChecked()), 'a caixa do Jornal, desmarcada');
+    await L.F.check(gd('[data-k="gu:jornal"]')); await L.F.click(gd('[data-k="gu:jornal:ver"] > summary')); await espera(120);
+    const notG = await A(L, () => document.querySelector('dialog.gu-dl[open] [data-k="gu:jornal:txt"]').innerText.replace(/\s+/g, ' ').trim());
+    ok(notG === 'Aldar declara guerra a Vale Aldar declarou guerra a Vale (' + hojeTxt + '). O motivo: Isolda pretende Reino do Vale Alto (pela avó). Os tratados que acabaram: Paz ou trégua.', 'a prévia da notícia: ' + notG);
+    await semAvisos(L); await foto('l11-guerra');
+    await L.F.click(gd('[data-k="gu:ok"]')); await espera(450);
+    d = await dp();
+    const rels = () => A(L, () => { const m = __mundo.App.mapa, f = id => m.faccoes.find(x => x.id === id); return [f('fa').rel.fb || 'neutra', f('fb').rel.fa || 'neutra']; });
+    ok(j(await rels()) === j(['guerra', 'guerra']) && j(d.tratados.find(x => x.id === 'tgp').enc) === j(hojeDt) && d.tratados.find(x => x.id === 'tgc').enc === null
+      && /Aldar declarou guerra a Vale\. 1 tratado acabou\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)), 'declarar: Guerra dos dois lados; a paz acaba hoje (o comércio, não); o aviso');
+    const mg1 = await materia(/^Aldar declara guerra a Vale$/);
+    ok(mg1 && /^Aldar declarou guerra a Vale \(.+\)\.\n\n\*\*O motivo:\*\* Isolda pretende/.test(mg1.txt), 'a notícia no rascunho do Jornal: ' + j(mg1));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    ok(j(await rels()) === j(['neutra', 'neutra']) && (await dp()).tratados.find(x => x.id === 'tgp').enc === null && !(await materia(/^Aldar declara guerra/)), 'Desfazer: a relação, a paz e a notícia voltam como estavam');
+    await A(L, () => __mundo.App.refazer()); await espera(400);
+    ok(j(await rels()) === j(['guerra', 'guerra']) && !!(await materia(/^Aldar declara guerra/)), 'Refazer: a guerra e a notícia de novo');
+    // fazer a paz
+    ok(await campo(L, 'paz:fa:fb').count() === 1 && await campo(L, 'gu:fa:fb').count() === 0, 'em guerra, o par mostra "Fazer a paz…"');
+    await botao(L, 'paz:fa:fb'); await L.F.waitForSelector('dialog.paz-dl[open]');
+    const pz = s0 => 'dialog.paz-dl[open] ' + s0;
+    ok(await L.F.locator(pz('[data-k="paz:rel:neutra"]')).isChecked() && await A(L, () => document.querySelector('dialog.paz-dl[open] [data-k="paz:tipo"]').value) === 'paz' && await L.F.locator(pz('[data-k="paz:pub"]')).isChecked()
+      && await A(L, () => document.querySelector('dialog.paz-dl[open] [data-k="paz:fim:ano"]').closest('.ps-data').hidden) && !(await L.F.locator(pz('[data-k="paz:jornal"]')).isChecked()),
+      'a paz: Neutra, o tratado de Paz ou trégua, público, sem prazo; a caixa do Jornal desmarcada');
+    await L.F.check(pz('[data-k="paz:rel:tensao"]')); await L.F.check(pz('[data-k="paz:prazo"]')); await L.F.fill(pz('[data-k="paz:fim:ano"]'), String(hojeDt.a - 1));
+    await L.F.click(pz('[data-k="paz:ok"]')); await espera(120);
+    ok(await A(L, () => document.querySelector('dialog.paz-dl[open] .err').textContent) === 'O prazo já passou.', 'o prazo que já passou: não passa');
+    await L.F.fill(pz('[data-k="paz:fim:ano"]'), String(hojeDt.a + 2)); await L.F.fill(pz('[data-k="paz:txt"]'), 'Fim da guerra do rio.');
+    await L.F.check(pz('[data-k="paz:jornal"]')); await L.F.click(pz('[data-k="paz:jornal:ver"] > summary')); await espera(120);
+    const notP = await A(L, () => document.querySelector('dialog.paz-dl[open] [data-k="paz:jornal:txt"]').innerText.replace(/\s+/g, ' ').trim());
+    ok(notP === 'Aldar e Vale fazem a paz Aldar e Vale fizeram a paz (' + hojeTxt + '). O tratado: Paz ou trégua, até ano ' + (hojeDt.a + 2) + '. Fim da guerra do rio.', 'a prévia da notícia da paz (acompanha o que muda): ' + notP);
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.paz-dl[open] .err').textContent = ''; }); await foto('l11-paz');
+    await L.F.click(pz('[data-k="paz:ok"]')); await espera(450);
+    d = await dp();
+    const tz = d.tratados[d.tratados.length - 1];
+    ok(j(await rels()) === j(['tensao', 'tensao']) && tz.tipo === 'paz' && j(tz.partes) === j(['fa', 'fb']) && j(tz.ini) === j(hojeDt) && j(tz.fim) === j({ a: hojeDt.a + 2 }) && tz.pub && tz.txt === 'Fim da guerra do rio.' && tz.enc === null
+      && /Aldar e Vale fizeram a paz\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)) && !!(await materia(/^Aldar e Vale fazem a paz$/)),
+      'a paz: Tensão dos dois lados; o tratado de paz desde hoje, com o prazo e os termos; a notícia: ' + j(tz));
+    // assinar um tratado com a notícia
+    await botao(L, 'dp:novo'); await L.F.waitForSelector('dialog.tr-dl[open]');
+    ok(!(await L.F.locator(dlg('[data-k="tr:jornal"]')).isChecked()), 'o tratado novo: a caixa do Jornal, desmarcada');
+    await L.F.check(dlg('[data-k="tr:parte:fa"]')); await L.F.check(dlg('[data-k="tr:parte:fc"]')); await L.F.check(dlg('[data-k="tr:jornal"]'));
+    await L.F.click(dlg('[data-k="tr:ok"]')); await espera(450);
+    const mt = await materia(/^Aldar e Ilhas assinam um tratado$/);
+    ok(/O tratado Aliança: Aldar, Ilhas entrou na diplomacia\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)) && mt && /^Aldar e Ilhas assinaram um tratado de Aliança \(.+\)\.$/.test(mt.txt), 'assinar: a notícia no rascunho do Jornal: ' + j(mt));
+    await botao(L, 'tr:tgc'); await L.F.waitForSelector('dialog.tr-dl[open]');
+    ok(await L.F.locator(dlg('[data-k="tr:jornal"]')).count() === 0, 'o cartão de um tratado que já existe: sem a caixa do Jornal');
+    await L.F.click(dlg('[data-k="tr:nao"]')); await espera(150);
+    // quem joga: sem os motivos de guerra e sem os botões
+    await comoJogador(L, true);
+    await aba(L, 'diplomacia');
+    const pj = await textoPane(L);
+    ok(!/MOTIVOS DE GUERRA|Isolda pretende|fronteira do rio|Declarar guerra|Fazer a paz/i.test(pj), 'quem joga: sem os motivos de guerra e sem os botões');
+    await comoJogador(L, false);
+    // no celular: as janelas cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    const cabeDl = s0 => A(L, x => { const dd = document.querySelector(x); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }, s0);
+    // (quem declara, de começo: a outra do par, quando só ela tem motivo que vale)
+    await A(L, () => __mundo.App.mudar('guerra e paz: o motivo do Culto', m => { m.dipl.motivosGuerra.push({ id: 'mgc', de: 'fd', contra: 'fa', txt: 'a heresia' }); }));
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaGuerra('fa', 'fd'); }); await L.F.waitForSelector('dialog.gu-dl[open]');
+    ok(await L.F.locator('dialog.gu-dl[open] [data-k="gu:de:fd"]').isChecked() && await cabeDl('dialog.gu-dl[open]'), 'no celular, a declaração de guerra cabe (e quem declara, de começo, é o Culto: só ele tem motivo)');
+    await semAvisos(L); await foto('l11-guerra-celular');
+    await L.F.click('dialog.gu-dl[open] [data-k="gu:nao"]'); await espera(200);
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaPaz('fa', 'fb'); }); await L.F.waitForSelector('dialog.paz-dl[open]');
+    ok(await cabeDl('dialog.paz-dl[open]'), 'no celular, a paz cabe');
+    await L.F.click('dialog.paz-dl[open] [data-k="paz:nao"]'); await espera(200);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 

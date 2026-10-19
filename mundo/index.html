@@ -831,6 +831,23 @@ dialog.mundo-dl .tt-troca input[type="text"] { flex: none; width: 76px; }
 .sem-tr-cab small { font-size: 12px; color: var(--fg-3); }
 .sem-tr-ops, .sem-tr-ren { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .mundo-dl .sem-tr-ops label.op { padding: 5px 9px; font-weight: 500; }
+/* (lote 11, parte 3c) os motivos de guerra, declarar a guerra e fazer a paz */
+.dp-bts { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.dp-mg-fac { display: grid; gap: 4px; }
+.dp-mg-cab { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.dp-mg-cab b { color: var(--fg); }
+.li.dp-mg-velho .tx b { color: var(--fg-3); }
+.dp-mg-sug { display: grid; gap: 6px; }
+.dp-mg-s { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border-radius: 10px; border: 1px dashed var(--line-strong); }
+.dp-mg-s .tx { display: grid; min-width: 0; }
+.dp-mg-s b { font-size: 13px; color: var(--fg); }
+.dp-mg-s small { font-size: 12px; color: var(--fg-3); }
+.mundo-dl .lin.mg-lin label:first-child, .mundo-dl .lin.mg-lin label:last-child { flex: 1 1 0; }
+dialog.mundo-dl.gu-dl, dialog.mundo-dl.paz-dl { width: min(560px, calc(100% - 24px)); }
+.gu-muda { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); }
+.gu-muda p { font-size: 13px; }
+.mundo-dl label.op.gu-enc { font-weight: 500; }
+.mundo-dl .paz-rel .row label.op { padding: 6px 12px; }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1244,11 +1261,11 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=31"></script>
+<script src="nucleo.js?v=32"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=9"></script>
 <script src="corte.js?v=4"></script>
-<script src="diplomacia.js?v=2"></script>
+<script src="diplomacia.js?v=3"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
 <script src="painel.js?v=36"></script>
@@ -1256,7 +1273,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=11"></script>
 <script src="corte-painel.js?v=4"></script>
-<script src="diplomacia-painel.js?v=2"></script>
+<script src="diplomacia-painel.js?v=3"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.19-1",
+      "data": "2026-10-19",
+      "titulo": "A guerra e a paz",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na Diplomacia, os motivos de guerra de cada facção contra outra (o motivo e se ainda vale), com sugestões pelos pretendentes: quem pretende um título do reino de outra facção vira sugestão."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Declarar guerra…” no par de facções, com prévia: quem declara e o motivo, a relação que vira Guerra e os tratados entre as duas (os de paz, marcados para acabar). Em guerra, “Fazer a paz…”: a relação fica Neutra ou Tensão e nasce um tratado de paz, com prazo opcional."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: declarar guerra, fazer a paz e assinar um tratado podem mandar a notícia para o rascunho do Jornal (a caixa vem desmarcada; dá para ver a notícia antes)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-23",
       "data": "2026-10-18",
       "titulo": "A vassalagem",

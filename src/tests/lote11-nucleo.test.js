@@ -25,6 +25,10 @@
 //     uma para outra numa semana, os tratados e os motivos que vencem nela, as decisões do mestre), a semana (o tributo e
 //     as trocas com o que sobrou a quem manda, o desmarcado não vai, as decisões junto), a economia dos jogadores (o
 //     tributo e as trocas deles hoje), o resumo para o Jornal e a projeção (a vassalagem sem o tributo).
+//   · (parte 3c) os motivos de guerra normalizados (os campos, contra outra facção que existe, o título e o pretendente
+//     que existem, os limites), as sugestões pelos pretendentes, os tratados que ainda valem entre duas, declarar a guerra
+//     (a relação dos dois lados, os tratados escolhidos acabam), fazer a paz (a relação, o tratado novo), as notícias para
+//     o Jornal e a projeção (sem os motivos de guerra).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 const Dp = require('../../mundo/diplomacia.js');
@@ -395,7 +399,7 @@ const j = JSON.stringify;
     [[null, null, null]], 'o tributo sem quantidade ou sem recurso não vale (e sem a economia, nenhum)');
   const comEco = x => N.normalizarMapa(Object.assign(JSON.parse(j(m)), { dipl: x })).dipl;
   eq(comEco({ vassalos: [{ vas: 'fe', sus: 'fa', trib: { rec: 'lapros', q: '1e12' } }, { vas: 'fc', sus: 'fa', trib: { rec: 'lapros', q: 'x' } }] }).vassalos.map(x => x.trib), [{ rec: 'lapros', q: N.LIMITES.qtdDipl }, null], 'a quantidade tem um teto; a que não é número não vale');
-  ok(j(comEco({ vassalos: [{ vas: 'fb', sus: 'fa' }] })) === j({ tratados: [], opin: [], vassalos: [{ vas: 'fb', sus: 'fa', desde: null, trib: null }] }), 'só com a vassalagem, a diplomacia fica');
+  ok(j(comEco({ vassalos: [{ vas: 'fb', sus: 'fa' }] })) === j({ tratados: [], opin: [], vassalos: [{ vas: 'fb', sus: 'fa', desde: null, trib: null }], motivosGuerra: [] }), 'só com a vassalagem, a diplomacia fica');
   const lim = comEco({ tratados: [{ id: 'x', partes: ['fa', 'fb'], trocas: Array.from({ length: 20 }, () => ({ de: 'fa', para: 'fb', rec: 'lapros', q: 1 })) }],
     vassalos: Array.from({ length: 120 }, (_, i) => ({ vas: 'v' + i, sus: 'fa' })) });
   ok(lim.tratados[0].trocas.length === N.LIMITES.trocas && N.LIMITES.vassalos === 100, 'os limites: ' + N.LIMITES.trocas + ' trocas por tratado, ' + N.LIMITES.vassalos + ' vassalagens');
@@ -468,6 +472,71 @@ const j = JSON.stringify;
   eq(ej2, [{ tipo: 'troca', sentido: 'recebe', com: null, rec: 'lapros', q: 1 }], 'a lista dos jogadores normalizada (o que não existe sai ou vira o de sempre)');
   const ej3 = N.normalizarMapa(Object.assign(JSON.parse(j(pj)), { ecoJ: Object.assign({}, pj.ecoJ, { trocas: Array.from({ length: 120 }, () => ({ tipo: 'trib', sentido: 'envia', com: 'fa', rec: 'lapros', q: 1 })) }) })).ecoJ.trocas;
   ok(ej3.length === 100, 'no máximo 100 na lista dos jogadores');
+}
+
+/* ---- (parte 3c) os motivos de guerra, a guerra e a paz ---- */
+{
+  const base = { nome: 'M', faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale' }, { id: 'fc', nome: 'Ilhas' }, { id: 'fd', nome: 'Culto', oculta: true }, { id: 'fe', nome: ' ' }],
+    corte: { pessoas: [{ id: 'pa', nome: 'Ana', fac: 'fa' }, { id: 'pb', nome: 'Bento', fac: 'fb' }, { id: 'pm', nome: 'Morto', fac: 'fa', morte: { a: -5 } }, { id: 'ps', nome: 'Sem Reino' }, { id: 'pc', nome: 'Caio', fac: 'fc' }],
+      titulos: [{ id: 'tv', grau: 'reino', de: 'do Vale', fac: 'fb', tit: 'pb', pret: [{ p: 'pa', mot: 'pelo sangue da mãe' }, { p: 'pm' }, { p: 'ps' }, { p: 'pc' }] },
+        { id: 'ta', grau: 'ducado', de: 'de Arvel', fac: 'fa', pret: [{ p: 'pa' }] }, { id: 'tl', nome: 'Mão Livre', pret: [{ p: 'pa' }] }] },
+    dipl: {
+      motivosGuerra: [{ id: 'g1', de: 'fa', contra: 'fb', txt: ' tomaram Valmor ', vale: true }, { id: 'g2', de: 'fa', contra: 'fb', txt: '', vale: false }, { id: 'g1', de: 'fb', contra: 'fa', txt: 'repetido' },
+        { id: 'g3', de: 'fa', contra: 'fa', txt: 'si mesma' }, { id: 'g4', de: 'fa', contra: 'zz', txt: 'ninguém' }, { id: 'g5', de: 'fc', contra: 'fb', txt: 'a coroa', tit: 'tv', p: 'pc' },
+        { id: 'g6', de: 'fc', contra: 'fa', txt: 'velho', tit: 'nada', p: 'ninguem' }, 'lixo'],
+      tratados: [{ id: 'tp', tipo: 'paz', partes: ['fa', 'fb'], pub: true }, { id: 'tc', tipo: 'comercio', partes: ['fa', 'fb', 'fc'] }, { id: 'te', tipo: 'alianca', partes: ['fa', 'fb'], enc: { a: 1 } },
+        { id: 'tx', tipo: 'alianca', partes: ['fa', 'fc'] }, { id: 'tw', tipo: 'paz', partes: ['fa', 'fb'], fim: { a: 0 } }, { id: 'tf', partes: ['fa', 'fb'], ini: { a: 5 } }] } };
+  const m = N.normalizarMapa(base), d = m.dipl;
+  eq(d.motivosGuerra.map(x => x.id), ['g1', 'g2', 'g5', 'g6'], 'os motivos de guerra: sem os repetidos, o lixo, contra si mesma e contra quem não existe');
+  eq([Object.keys(d.motivosGuerra[0]), d.motivosGuerra[0].txt, d.motivosGuerra[1].txt, d.motivosGuerra[1].vale, d.motivosGuerra[2].vale], [['id', 'de', 'contra', 'txt', 'vale', 'tit', 'p'], 'tomaram Valmor', 'Sem motivo', false, true],
+    'os campos; o texto aparado (sem ele, "Sem motivo"); se ainda vale (sem dizer, vale)');
+  eq([d.motivosGuerra[2].tit, d.motivosGuerra[2].p, d.motivosGuerra[3].tit, d.motivosGuerra[3].p], ['tv', 'pc', null, null], 'o título e o pretendente de onde veio: só os que existem');
+  const lim = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'a' }, { id: 'b' }], dipl: { motivosGuerra: Array.from({ length: 320 }, (_, i) => ({ id: 'g' + i, de: 'a', contra: 'b', txt: 'x'.repeat(300) })) } }).dipl;
+  ok(lim.motivosGuerra.length === N.LIMITES.motivosGuerra && lim.motivosGuerra[0].txt.length === N.LIMITES.textoMotivoGuerra, 'os limites: ' + N.LIMITES.motivosGuerra + ' motivos, ' + N.LIMITES.textoMotivoGuerra + ' letras');
+  ok(j(N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'a' }, { id: 'b' }], dipl: { motivosGuerra: [{ id: 'g', de: 'a', contra: 'b', txt: 'x', vale: 'não' }] } }).dipl) === j({ tratados: [], opin: [], vassalos: [], motivosGuerra: [{ id: 'g', de: 'a', contra: 'b', txt: 'x', vale: false, tit: null, p: null }] }),
+    'só com motivos de guerra, a diplomacia fica');
+  // as contas
+  eq([Dp.motivosGuerraDe(m, 'fa').map(x => x.id), Dp.motivosGuerraDe(m, 'fc', 'fb').map(x => x.id), Dp.motivoGuerraDe(m, 'g5').txt, Dp.motivoGuerraDe(m, 'zz'), Dp.motivoGuerraDe(m, '')], [['g1', 'g2'], ['g5'], 'a coroa', null, null], 'os motivos de uma facção (contra todas, contra uma) e um pelo id');
+  eq(Dp.sugestoesDeGuerra(m), [{ de: 'fa', contra: 'fb', tit: 'tv', p: 'pa', txt: 'Ana pretende Reino do Vale (pelo sangue da mãe)' }],
+    'as sugestões: a pretendente viva de outra facção, contra o reino do título (não o morto, nem quem não tem facção, nem a da mesma facção, nem o título sem reino; as Ilhas já têm o motivo)');
+  const comMotivo = N.normalizarMapa(Object.assign(JSON.parse(j(base)), { dipl: Object.assign({}, base.dipl, { motivosGuerra: base.dipl.motivosGuerra.concat([{ id: 'g7', de: 'fa', contra: 'fb', txt: 'a coroa', tit: 'tv', p: 'pa' }]) }) }));
+  eq(Dp.sugestoesDeGuerra(comMotivo), [], 'a sugestão usada sai da lista');
+  eq(Dp.tratadosVivosEntre(m, 'fa', 'fb').map(t => t.id), ['tp', 'tc', 'tf'], 'os tratados entre as duas que ainda valem ou vão valer (nem o encerrado, nem o vencido, nem o de outro par)');
+  // declarar a guerra (no rascunho)
+  const F = (mm, id) => mm.faccoes.find(f => f.id === id), T = (mm, id) => mm.dipl.tratados.find(t => t.id === id), dt = { a: 3, m: 1, d: 2 };
+  const r1 = JSON.parse(j(m));
+  eq([Dp.declararGuerra(r1, 'fa', 'fb', ['tp', 'tc', 'te', 'tx', 'zz'], dt), F(r1, 'fa').rel.fb, F(r1, 'fb').rel.fa, T(r1, 'tp').enc, T(r1, 'tc').enc, T(r1, 'te').enc, T(r1, 'tx').enc, T(r1, 'tf').enc],
+    [2, 'guerra', 'guerra', dt, dt, { a: 1 }, null, null], 'declarar a guerra: a relação vira Guerra dos dois lados; os tratados escolhidos entre as duas acabam (o já encerrado e o de outro par, não; o não escolhido continua)');
+  const r1b = JSON.parse(j(m));
+  eq([Dp.declararGuerra(r1b, 'fa', 'zz', ['tp'], dt), Dp.declararGuerra(r1b, 'fa', 'fa', ['tp'], dt), j(r1b) === j(m), Dp.declararGuerra(JSON.parse(j(m)), 'fa', 'fb', null, dt)], [-1, -1, true, 0],
+    'contra quem não existe (ou contra si mesma): nada muda; sem tratados escolhidos, nenhum acaba');
+  // fazer a paz (no rascunho)
+  const r2 = JSON.parse(j(r1));
+  const t2 = Dp.fazerPaz(r2, 'fa', 'fb', 'tensao', { id: 'tz', tipo: 'paz', ini: { a: 3 }, fim: { a: 5 }, pub: true, txt: 'Fim da guerra.' });
+  eq([F(r2, 'fa').rel.fb, F(r2, 'fb').rel.fa, t2, T(r2, 'tz') === t2], ['tensao', 'tensao', { id: 'tz', tipo: 'paz', partes: ['fa', 'fb'], ini: { a: 3 }, fim: { a: 5 }, pub: true, txt: 'Fim da guerra.', nota: '', enc: null, trocas: [] }, true],
+    'fazer a paz: a relação vira Tensão dos dois lados; o tratado de paz entre as duas entra na diplomacia');
+  const r3 = JSON.parse(j(r1));
+  const t3 = Dp.fazerPaz(r3, 'fa', 'fb', 'neutra', { id: 'ty' });
+  eq(['fb' in F(r3, 'fa').rel, 'fa' in F(r3, 'fb').rel, t3.tipo, t3.ini, t3.fim, t3.pub, t3.txt], [false, false, null, null, null, false, ''], 'neutra: a relação sai dos dois lados; o tratado só com o que foi dito');
+  const r4 = { faccoes: [{ id: 'a', rel: { b: 'guerra' } }, { id: 'b', rel: { a: 'guerra' } }] };
+  eq([Dp.fazerPaz(r4, 'a', 'b', 'neutra', { id: 'x' }).id, r4.dipl.tratados.length, Dp.fazerPaz(r4, 'a', 'zz', 'neutra', { id: 'y' }), Dp.fazerPaz(r4, 'a', 'a', 'neutra', { id: 'y' }), r4.dipl.tratados.length], ['x', 1, null, null, 1],
+    'sem a diplomacia ainda, ela nasce com o tratado; com quem não existe (ou consigo mesma), nada');
+  // as notícias
+  const C = require('../../mundo/corte.js');
+  eq(Dp.noticiaGuerra(m, 'fa', 'fb', 'tomaram Valmor.', ['Paz ou trégua', 'Comércio'], dt), { tit: 'Arvel declara guerra a Vale', txt: 'Arvel declarou guerra a Vale (' + C.dataTxt(m, dt) + ').\n\n**O motivo:** tomaram Valmor.\n\n**Os tratados que acabaram:** Paz ou trégua, Comércio.' },
+    'a notícia da guerra: quem, quando, o motivo (sem o ponto repetido) e os tratados que acabaram');
+  eq(Dp.noticiaGuerra(m, 'fb', 'fa', '  ', [], dt).txt, 'Vale declarou guerra a Arvel (' + C.dataTxt(m, dt) + ').', 'sem motivo nem tratados, só o fato');
+  eq(Dp.noticiaPaz(m, 'fa', 'fb', { tipo: 'paz', ini: { a: 3 }, fim: { a: 5 }, txt: 'Fim da guerra.' }), { tit: 'Arvel e Vale fazem a paz', txt: 'Arvel e Vale fizeram a paz (ano 3).\n\n**O tratado:** Paz ou trégua, até ano 5.\n\nFim da guerra.' },
+    'a notícia da paz: o tratado com o prazo e os termos');
+  eq(Dp.noticiaPaz(m, 'fa', 'fe', { tipo: null, ini: { a: 3 }, fim: null, txt: '' }).txt, 'Arvel e Facção sem nome fizeram a paz (ano 3).\n\n**O tratado:** Tratado, sem prazo.', 'sem prazo; a facção sem nome');
+  eq(Dp.noticiaTratado(m, { tipo: 'alianca', partes: ['fa', 'fb', 'fc'], ini: { a: 3 }, fim: { a: 4 }, txt: 'Um defende o outro.' }),
+    { tit: 'Arvel, Vale e Ilhas assinam um tratado', txt: 'Arvel, Vale e Ilhas assinaram um tratado de Aliança (ano 3).\n\n**Até:** ano 4.\n\nUm defende o outro.' }, 'a notícia do tratado: as facções, o tipo, o começo, o prazo e os termos');
+  eq(Dp.noticiaTratado(m, { tipo: null, partes: ['fa', 'zz'], ini: null, fim: null, txt: '' }).txt, 'Arvel e uma facção assinaram um tratado.', 'sem tipo, sem datas (a facção que não existe: "uma facção")');
+  eq([Dp.juntarNomes([]), Dp.juntarNomes(['A']), Dp.juntarNomes(['A', 'B']), Dp.juntarNomes(['A', 'B', 'C'])], ['', 'A', 'A e B', 'A, B e C'], 'os nomes juntos');
+  // a projeção: os motivos de guerra são do mestre
+  const pj = N.projetar(m);
+  eq([pj.dipl.motivosGuerra, pj.dipl.tratados.map(t => t.id)], [[], ['tp']], 'na projeção, sem os motivos de guerra');
+  ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

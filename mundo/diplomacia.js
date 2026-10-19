@@ -9,12 +9,16 @@
    (parte 3b) A vassalagem (a suserana de cada vassala, desde quando, e o tributo por semana) e as trocas por semana de
    cada tratado: o que vai de uma facção para outra numa semana (fluxosDaSemana, para a prévia da semana), os tratados
    e os motivos de opinião que vencem nela, e as decisões do mestre na prévia (encerrar, renovar, tirar o motivo).
+   (parte 3c) Os motivos de guerra de cada facção (e as sugestões pelos pretendentes dos títulos), declarar a guerra (a
+   relação vira Guerra; os tratados escolhidos acabam), fazer a paz (a relação sai de Guerra; nasce um tratado de paz) e
+   as notícias para o rascunho do Jornal (a guerra, a paz, o tratado assinado).
    Roda no navegador (window.MundoDiplomacia) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
+  const CC = () => (typeof window !== 'undefined' && window.MundoCorte) || (typeof require === 'function' ? require('./corte.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
-  const VAZIA = { tratados: [], opin: [], vassalos: [] };
+  const VAZIA = { tratados: [], opin: [], vassalos: [], motivosGuerra: [] };
   const diplDe = m => (ehObj(m) && ehObj(m.dipl) ? m.dipl : VAZIA);
   const tiposDe = m => (Array.isArray(diplDe(m).tipos) ? diplDe(m).tipos : NN().TIPOS_TRATADO);
   const tipoDe = (m, t) => (t && t.tipo ? tiposDe(m).find(x => x.id === t.tipo) || null : null);
@@ -108,8 +112,78 @@
     return n;
   }
 
+  /* ---------------- (parte 3c) os motivos de guerra, a guerra e a paz ---------------- */
+  const facDe = (m, id) => (ehObj(m) && Array.isArray(m.faccoes) && id ? m.faccoes.find(f => f.id === id) || null : null);
+  // os motivos de guerra de uma facção (contra uma, ou contra todas) e um pelo id
+  const motivosGuerraDe = (m, de, contra) => diplDe(m).motivosGuerra.filter(x => x.de === de && (!contra || x.contra === contra));
+  const motivoGuerraDe = (m, id) => (id ? diplDe(m).motivosGuerra.find(x => x.id === id) || null : null);
+  /* As sugestões pelos pretendentes: cada pretendente vivo de um título, da facção dele contra o reino do título (quando
+     são duas facções), sem as que já estão na lista (da mesma facção, pelo mesmo título e o mesmo pretendente). → [{ de,
+     contra, tit, p, txt }] */
+  function sugestoesDeGuerra(m) {
+    const C = CC(), usados = new Set(diplDe(m).motivosGuerra.map(x => x.de + '>' + x.tit + '>' + x.p)), out = [];
+    for (const t of C.corteDe(m).titulos) for (const x of t.pret) {
+      const q = C.pessoaDe(m, x.p);
+      if (!q || !C.vivo(q) || !q.fac || !t.fac || q.fac === t.fac || usados.has(q.fac + '>' + t.id + '>' + q.id)) continue;
+      out.push({ de: q.fac, contra: t.fac, tit: t.id, p: q.id, txt: q.nome + ' pretende ' + C.nomeDoTitulo(m, t) + (x.mot ? ' (' + x.mot + ')' : '') });
+    }
+    return out;
+  }
+  // os tratados entre duas facções que ainda valem ou vão valer (nem encerrados, nem vencidos)
+  const tratadosVivosEntre = (m, a, b) => tratadosEntre(m, a, b).filter(t => estadoDe(m, t) === 'ativo' || estadoDe(m, t) === 'futuro');
+  /* Declarar a guerra, no rascunho (o mapa de App.mudar): a relação entre as duas vira Guerra (dos dois lados) e os
+     tratados escolhidos (encerrar: os ids; só os entre as duas, ainda abertos) acabam na data dt. → quantos tratados
+     acabaram; -1 se uma das facções não existe */
+  function declararGuerra(m, de, contra, encerrar, dt) {
+    const fa = facDe(m, de), fb = facDe(m, contra);
+    if (!fa || !fb || de === contra) return -1;
+    fa.rel[contra] = 'guerra'; fb.rel[de] = 'guerra';
+    const ids = new Set(encerrar || []);
+    let n = 0;
+    for (const t of ehObj(m.dipl) ? m.dipl.tratados : []) if (ids.has(t.id) && !t.enc && t.partes.includes(de) && t.partes.includes(contra)) { t.enc = Object.assign({}, dt); n++; }
+    return n;
+  }
+  /* Fazer a paz, no rascunho: a relação sai de Guerra (rel: 'tensao'; senão, neutra) e o tratado de paz (t: { id, tipo, ini,
+     fim, pub, txt }) entra na diplomacia, entre as duas. → o tratado novo, ou null se uma das facções não existe */
+  function fazerPaz(m, a, b, rel, t) {
+    const fa = facDe(m, a), fb = facDe(m, b);
+    if (!fa || !fb || a === b) return null;
+    if (rel === 'tensao') { fa.rel[b] = 'tensao'; fb.rel[a] = 'tensao'; } else { delete fa.rel[b]; delete fb.rel[a]; }
+    if (!ehObj(m.dipl)) m.dipl = { tratados: [], opin: [], vassalos: [], motivosGuerra: [] };
+    const novo = { id: t.id, tipo: t.tipo || null, partes: [a, b], ini: t.ini || null, fim: t.fim || null, pub: !!t.pub, txt: t.txt || '', nota: '', enc: null, trocas: [] };
+    m.dipl.tratados.push(novo);
+    return novo;
+  }
+  // os nomes em texto ("Aldar", "Aldar e Vale", "Aldar, Vale e Ilhas"), o nome de uma facção e o texto sem o ponto final
+  const juntarNomes = l => (l.length <= 1 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+  const nomeFac = (m, id) => { const f = facDe(m, id); return f ? String(f.nome || '').trim() || 'Facção sem nome' : 'uma facção'; };
+  const semPonto = x => String(x || '').trim().replace(/[.!?…]+$/, '');
+  /* As notícias para o rascunho do Jornal (o mestre revisa lá antes de publicar): a guerra declarada (com o motivo e os
+     tratados que acabaram, se houver), a paz (com o tratado) e o tratado assinado. → { tit, txt } (com o **negrito** do
+     Jornal) */
+  function noticiaGuerra(m, de, contra, motivo, encerrados, dt) {
+    const a = nomeFac(m, de), b = nomeFac(m, contra), partes = [a + ' declarou guerra a ' + b + ' (' + CC().dataTxt(m, dt) + ').'];
+    if (semPonto(motivo)) partes.push('**O motivo:** ' + semPonto(motivo) + '.');
+    if (encerrados.length) partes.push('**Os tratados que acabaram:** ' + encerrados.join(', ') + '.');
+    return { tit: a + ' declara guerra a ' + b, txt: partes.join('\n\n') };
+  }
+  function noticiaPaz(m, a, b, t) {
+    const nomes = juntarNomes([a, b].map(id => nomeFac(m, id))), partes = [nomes + ' fizeram a paz (' + CC().dataTxt(m, t.ini) + ').'];
+    partes.push('**O tratado:** ' + nomeDoTipo(m, t) + (t.fim ? ', até ' + CC().dataTxt(m, t.fim) : ', sem prazo') + '.');
+    if (t.txt) partes.push(t.txt);
+    return { tit: nomes + ' fazem a paz', txt: partes.join('\n\n') };
+  }
+  function noticiaTratado(m, t) {
+    const nomes = juntarNomes(t.partes.map(id => nomeFac(m, id))), tipo = tipoDe(m, t);
+    const partes = [nomes + ' assinaram um tratado' + (tipo ? ' de ' + tipo.nome : '') + (t.ini ? ' (' + CC().dataTxt(m, t.ini) + ')' : '') + '.'];
+    if (t.fim) partes.push('**Até:** ' + CC().dataTxt(m, t.fim) + '.');
+    if (t.txt) partes.push(t.txt);
+    return { tit: nomes + ' assinam um tratado', txt: partes.join('\n\n') };
+  }
+
   const MundoDiplomacia = { diplDe, tiposDe, tipoDe, nomeDoTipo, tratadoDe, diaDe, hojeDia, ESTADOS, estadoDe, tratadosDe, tratadosEntre, opiniao, opTxt,
-    vassalagemDe, vassalasDe, fechaCirculo, fluxosDaSemana, tratadosQueVencem, motivosQueVencem, aplicarDecisoes };
+    vassalagemDe, vassalasDe, fechaCirculo, fluxosDaSemana, tratadosQueVencem, motivosQueVencem, aplicarDecisoes,
+    motivosGuerraDe, motivoGuerraDe, sugestoesDeGuerra, tratadosVivosEntre, declararGuerra, fazerPaz, juntarNomes, noticiaGuerra, noticiaPaz, noticiaTratado };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoDiplomacia;
   if (typeof window !== 'undefined') window.MundoDiplomacia = MundoDiplomacia;
 })();

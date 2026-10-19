@@ -15,7 +15,8 @@
 //     vê o título junto do nome, a lista "Títulos" e o governante em Reinos. (parte 3a) A diplomacia: a projeção leva o
 //     tratado público (sem a nota), não o secreto nem a opinião; o jogador o vê na aba Diplomacia. (parte 3b) A
 //     vassalagem vai sem o tributo e o tratado sem as trocas; o tributo e as trocas da facção deles vão na economia deles;
-//     o jogador vê a vassalagem (na Diplomacia e em Reinos) e o tributo e as trocas no Livro do reino.
+//     o jogador vê a vassalagem (na Diplomacia e em Reinos) e o tributo e as trocas no Livro do reino. (parte 3c) Os
+//     motivos de guerra não vão para o jogador.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -233,6 +234,15 @@ function png(w, h, cor) {
     ok(await ate(async () => /Vale .*vassala de Aldar/.test(await corteJ())), 'em Reinos, o Vale "vassala de Aldar"');
     await JW.click('#pane [data-k="livro:j:de-onde"] > summary'); await w(250, J);
     ok(await ate(async () => /Tributo e trocas, por semana: tributo de Vale: \+3 Lapros · troca com Vale: −2 Lapros \(quando a semana fecha\)\./.test(await corteJ())), 'no Livro do reino, o tributo que Aldar recebe e a troca: ' + (await corteJ()).slice(0, 400));
+    // (parte 3c) os motivos de guerra são do mestre (junto, um tratado público novo, para saber que a projeção já saiu)
+    await W.evaluate(() => {
+      __mundo.App.mudar('os motivos de guerra', m => {
+        m.dipl.motivosGuerra = [{ id: 'mg1', de: 'fb', contra: 'fa', txt: 'Vingança pelo rio' }];
+        m.dipl.tratados.push({ id: 'tq', tipo: 'comercio', partes: ['fa', 'fb'], pub: true });
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.dipl && p.dipl.tratados.some(x => x.id === 'tq') && j(p.dipl.motivosGuerra) === j([])); }) && !/Vingança pelo rio/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))),
+      'a projeção não leva os motivos de guerra');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

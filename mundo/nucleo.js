@@ -2277,10 +2277,12 @@
      de uma facção sobre outra: a soma dos motivos, de −100 a +100) }. Só quando há algo (o mapa de antes fica igual).
      (parte 3b) vassalos: [{ vas (a facção vassala), sus (a suserana), desde, trib ({ rec, q }: o tributo por semana, um
      recurso da economia; sem ele, sem tributo) }] (uma suserana por vassala; ninguém é suserano de si mesmo pela cadeia);
-     e, em cada tratado, trocas: [{ de, para (duas das partes), rec, q }] (o que vai de uma para a outra por semana). */
+     e, em cada tratado, trocas: [{ de, para (duas das partes), rec, q }] (o que vai de uma para a outra por semana).
+     (parte 3c) motivosGuerra: [{ id, de (a facção que tem o motivo), contra (a outra), txt (o motivo), vale (ainda vale),
+     tit e p (o título e o pretendente de onde veio a sugestão; null sem ela) }] (só do mestre). */
   const TIPOS_TRATADO = [{ id: 'alianca', nome: 'Aliança' }, { id: 'paz', nome: 'Paz ou trégua' }, { id: 'comercio', nome: 'Comércio' }, { id: 'passagem', nome: 'Passagem livre' }];
   const MAX_TRATADOS = 200, MAX_TIPOS_TRAT = 16, MAX_PARTES = 12, MAX_OPIN = 600, MAX_MOTIVOS_OP = 20, MAX_TXT_DIPL = 600;
-  const MAX_VASSALOS = 100, MAX_TROCAS = 12, MAX_QTD_DIPL = 1e9;
+  const MAX_VASSALOS = 100, MAX_TROCAS = 12, MAX_QTD_DIPL = 1e9, MAX_MOT_GUERRA = 300, MAX_TXT_MOT_GUERRA = 160;
   // (parte 3b) uma quantidade por semana (o tributo, a troca): positiva, com duas casas; 0 se não serve
   const qtdDipl = v => { const n = num(v, 0); return n > 0 ? arred(Math.min(n, MAX_QTD_DIPL)) : 0; };
   function normDipl(v, cal) {
@@ -2341,13 +2343,22 @@
       const q = ehObj(x.trib) ? qtdDipl(x.trib.q) : 0, rec = ehObj(x.trib) ? idOk(x.trib.rec) : '';
       vassalos.push({ vas, sus, desde: normDataP(x.desde, cal), trib: rec && q ? { rec, q } : null });
     }
-    if (!tipos && !tratados.length && !opin.length && !vassalos.length) return null;
-    const out = { tratados, opin, vassalos };
+    // (parte 3c) os motivos de guerra de cada facção contra outra
+    const motivosGuerra = [], vg = new Set();
+    for (const x of Array.isArray(v.motivosGuerra) ? v.motivosGuerra : []) {
+      if (!ehObj(x) || motivosGuerra.length >= MAX_MOT_GUERRA) continue;
+      const id = idOk(x.id), de = idOk(x.de), contra = idOk(x.contra);
+      if (!id || vg.has(id) || !de || !contra || de === contra) continue;
+      vg.add(id);
+      motivosGuerra.push({ id, de, contra, txt: texto(x.txt, '', MAX_TXT_MOT_GUERRA).trim() || 'Sem motivo', vale: x.vale == null ? true : sim(x.vale), tit: idRef(x.tit), p: idRef(x.p) });
+    }
+    if (!tipos && !tratados.length && !opin.length && !vassalos.length && !motivosGuerra.length) return null;
+    const out = { tratados, opin, vassalos, motivosGuerra };
     if (tipos) out.tipos = tipos;
     return out;
   }
   // a diplomacia com o mapa todo: só as facções que existem (o tratado com menos de duas sai); o tipo, um dos tipos
-  function conferirDipl(d, facs, recs) {
+  function conferirDipl(d, facs, recs, corte) {
     const tipos = new Set((d.tipos || TIPOS_TRATADO).map(t => t.id));
     for (const t of d.tratados) { t.partes = t.partes.filter(f => facs.has(f)); if (t.tipo && !tipos.has(t.tipo)) t.tipo = null; }
     d.tratados = d.tratados.filter(t => t.partes.length >= 2);
@@ -2363,6 +2374,10 @@
       return true;
     });
     for (const x of d.vassalos) if (x.trib && !recs.has(x.trib.rec)) x.trib = null;
+    // (parte 3c) os motivos de guerra: entre facções que existem; o título e o pretendente, só os que existem
+    const tits = new Set(corte ? corte.titulos.map(t => t.id) : []), pess = new Set(corte ? corte.pessoas.map(q => q.id) : []);
+    d.motivosGuerra = d.motivosGuerra.filter(x => facs.has(x.de) && facs.has(x.contra));
+    for (const x of d.motivosGuerra) { if (!tits.has(x.tit)) x.tit = null; if (!pess.has(x.p)) x.p = null; }
   }
 
   function normGuerra(v) {
@@ -2587,7 +2602,7 @@
       }
     }
     if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
-    if (mapa.dipl) conferirDipl(mapa.dipl, facs, recIds);         // (lote 11, parte 3a) as facções dos tratados e da opinião (3b: os recursos)
+    if (mapa.dipl) conferirDipl(mapa.dipl, facs, recIds, mapa.corte);   // (lote 11, parte 3a) as facções dos tratados e da opinião (3b: os recursos; 3c: a corte)
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2861,12 +2876,13 @@
     }
     /* (lote 11, parte 3a) a diplomacia: os tratados públicos entre facções que eles veem (sem a nota), com os tipos (para
        os nomes); a opinião é do mestre. (parte 3b) A vassalagem entre facções que eles veem, sem o tributo; e os tratados,
-       sem as trocas (o tributo e as trocas da facção deles vão na economia deles, em ecoJ) */
+       sem as trocas (o tributo e as trocas da facção deles vão na economia deles, em ecoJ). (parte 3c) Os motivos de
+       guerra são do mestre. */
     if (m.dipl) {
       const vistas = new Set(m.faccoes.map(f => f.id));
       const tratados = m.dipl.tratados.filter(t => t.pub && t.partes.every(f => vistas.has(f))).map(t => Object.assign({}, t, { nota: '', trocas: [] }));
       const vassalos = m.dipl.vassalos.filter(x => vistas.has(x.vas) && vistas.has(x.sus)).map(x => Object.assign({}, x, { trib: null }));
-      if (tratados.length || vassalos.length) { const d = { tratados, opin: [], vassalos }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
+      if (tratados.length || vassalos.length) { const d = { tratados, opin: [], vassalos, motivosGuerra: [] }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
     }
     return normalizarMapa(m);
   }
@@ -2901,7 +2917,7 @@
       personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE,
       titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
-      vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL },
+      vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

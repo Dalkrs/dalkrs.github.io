@@ -1387,6 +1387,17 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   tratado passado do prazo fica "vencido" na lista. **Quem joga** vê a vassalagem (sem o tributo); o tributo e as
   trocas da facção dele vão na economia dele (`ecoJ.trocas`: o Livro do reino, em "De onde vem") e no resumo da semana
   para o Jornal.
+- **Os motivos de guerra, a guerra e a paz** (lote 11, parte 3c). Na aba Diplomacia, a seção **Motivos de guerra** (só
+  do mestre): os motivos de cada facção contra outra (o texto e "Ainda vale"), por facção, com "+ Motivo de guerra"; as
+  **sugestões pelos pretendentes** — quem pretende um título do reino de outra facção vira uma sugestão da facção dele
+  contra esse reino ("Usar…" abre o motivo já preenchido; usada, sai da lista). No par de facções, **"Declarar
+  guerra…"** abre a prévia: quem declara (e o motivo dele, dos que ainda valem), o que muda (a relação vira Guerra dos
+  dois lados; os tratados entre as duas, com os de paz marcados para acabar hoje; o aviso, se uma é vassala da outra) e
+  a caixa, desmarcada, da notícia no rascunho do Jornal (com "Ver a notícia"). Em guerra, o par mostra **"Fazer a
+  paz…"**: a relação fica Neutra ou Tensão e nasce o tratado de paz (o tipo, o prazo opcional, "Pública", os termos),
+  com a notícia. O **tratado novo** também tem a caixa da notícia ("assinaram um tratado de …"). Tudo vale num passo de
+  Desfazer (o Jornal junto). Os motivos ficam no mapa (`dipl.motivosGuerra`) e não vão para os jogadores
+  (`MundoDiplomacia.sugestoesDeGuerra`, `declararGuerra`, `fazerPaz`, `noticiaGuerra`, `noticiaPaz`, `noticiaTratado`).
 
 ### A Árvore (lote 6)
 
@@ -2525,7 +2536,13 @@ sobrou, o desmarcado não vai, as decisões junto), a economia dos jogadores, o 
 `mundo-lote11` com `SO=vassalagem`, a janela da vassalagem (os erros, criar, mudar, Desfazer, tirar), as trocas no
 cartão do tratado, a prévia da semana (a coluna "Trocas", desmarcar refaz as contas, renovar com o erro do prazo, o
 motivo que vence, aplicar e desfazer num passo), quem joga e o celular; `mundo-lote8.rede`, a vassalagem sem o tributo
-na projeção, o tributo e a troca na economia do jogador e o que ele vê. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+na projeção, o tributo e a troca na economia do jogador e o que ele vê. Na parte 3c (a guerra e a paz), `lote11-nucleo`
+confere os motivos de guerra normalizados (contra outra facção que existe, o título e o pretendente que existem, os
+limites), as sugestões pelos pretendentes, os tratados que ainda valem entre duas, declarar a guerra, fazer a paz, as
+notícias e a projeção sem os motivos; `mundo-lote11` com `SO=guerrapaz`, a sugestão e "Usar…", os erros, "não vale
+mais", a prévia da guerra (quem declara e o motivo dele, os tratados, a vassalagem, a notícia), Desfazer com o Jornal, a
+paz (a relação, o prazo, o erro, a notícia), o tratado novo com a notícia, quem joga e o celular; `mundo-lote8.rede`, os
+motivos de guerra fora da projeção. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

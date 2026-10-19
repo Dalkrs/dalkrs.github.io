@@ -9,6 +9,9 @@
    economia), as trocas por semana no cartão do tratado, a vassalagem na aba Reinos ("vassala de …") e a parte da
    diplomacia na prévia da semana (o tributo e as trocas, que o mestre desmarca; os tratados e os motivos que vencem).
    Quem joga vê a vassalagem (sem o tributo).
+   (parte 3c) Os motivos de guerra de cada facção (só o mestre; as sugestões pelos pretendentes dos títulos), "Declarar
+   guerra…" e "Fazer a paz…" no par de facções, com prévia, e a notícia para o rascunho do Jornal (a caixa desmarcada)
+   ao declarar guerra, fazer a paz e assinar um tratado.
    Nada muda até "Salvar" (ou "Criar"); tudo vale num passo de Desfazer. Usa as ferramentas do painel (MundoPainel.kit). */
 (() => {
   'use strict';
@@ -21,7 +24,7 @@
   let filtroFac = '';                        // a facção da aba ('' = todas; só nesta página)
   let encerradosAbertos = false;             // os tratados encerrados à mostra (só nesta página)
 
-  const mudarDipl = (rotulo, fn) => app().mudar(rotulo, mm => { if (!mm.dipl) mm.dipl = { tratados: [], opin: [], vassalos: [] }; return fn(mm.dipl, mm); });
+  const mudarDipl = (rotulo, fn) => app().mudar(rotulo, mm => { if (!mm.dipl) mm.dipl = { tratados: [], opin: [], vassalos: [], motivosGuerra: [] }; return fn(mm.dipl, mm); });
   // (parte 3b) os recursos da economia (para o tributo e as trocas) e o nome de um
   const recsDe = m => (m.eco && Array.isArray(m.eco.rec) ? m.eco.rec : []);
   const nomeRec = (m, id) => (recsDe(m).find(r => r.id === id) || { nome: 'um recurso que não existe mais' }).nome;
@@ -43,7 +46,7 @@
       botao('Tipos de tratado…', () => janelaTipos(), { c: 'sm', k: 'dp:tipos' })));
     if (filtroFac && !K.facDe(v, filtroFac)) filtroFac = '';
     out.push(campoEscolha('dp:fac', 'Facção', filtroFac, [['', 'Todas as facções']].concat(v.faccoes.map(f => [f.id, K.nomeFac(f)])), x => { filtroFac = x; return false; }));
-    out.push(secRelacoes(v, ed), secVassalagem(v, ed), secTratados(v, ed));
+    out.push(secRelacoes(v, ed), secVassalagem(v, ed), secTratados(v, ed), ed ? secMotivosGuerra(v) : null);
     if (!ed) out.push(nota('Só o que vocês sabem: as relações, a vassalagem e os tratados públicos.'));
     return out;
   }
@@ -66,7 +69,9 @@
       linhas.push(h('div', { class: 'dp-par', 'data-rel': rel, 'data-k': 'par:' + a.id + ':' + b.id },
         h('div', { class: 'dp-par-cab' }, nomes, sel),
         h('div', { class: 'dp-op' }, h('small', { text: 'opinião: ' + K.nomeFac(a) + ' → ' + D().opTxt(oab) + ' · ' + K.nomeFac(b) + ' → ' + D().opTxt(oba) }),
-          botao('Opinião…', () => janelaOpiniao(a.id, b.id), { c: 'sm', k: 'op:' + a.id + ':' + b.id })),
+          h('span', { class: 'dp-bts' }, botao('Opinião…', () => janelaOpiniao(a.id, b.id), { c: 'sm', k: 'op:' + a.id + ':' + b.id }),
+            // (parte 3c) a guerra e a paz, com prévia
+            rel === 'guerra' ? botao('Fazer a paz…', () => janelaPaz(a.id, b.id), { c: 'sm', k: 'paz:' + a.id + ':' + b.id }) : botao('Declarar guerra…', () => janelaGuerra(a.id, b.id), { c: 'sm', k: 'gu:' + a.id + ':' + b.id }))),
         extra));
     }
     return secao('Relações', linhas.length ? h('div', { class: 'dp-pares', 'data-k': 'dp:pares' }, linhas) : nota(ed ? 'Nenhum par de facções.' : 'Nenhuma relação além de neutra.'),
@@ -217,7 +222,7 @@
     if (!A.podeEditar() || !m || m.faccoes.length < 2) return;
     const t = id ? D().tratadoDe(m, id) : null;
     if (id && !t) return;
-    const v = await dialogoTratado(m, t);
+    const v = await dialogoTratado(m, t, !t && !!(A.temJornal && A.temJornal()));
     if (!v || !K.mesmoMapa(m.id)) return;
     const nome0 = t ? D().nomeDoTipo(m, t) + ': ' + t.partes.map(x => nomeF(m, x)).join(', ') : '';
     if (v.tirar) {
@@ -235,6 +240,8 @@
         K.avisoDesfazer(v.encerrar ? 'O tratado ' + nome0 + ' foi encerrado.' : 'O tratado ' + nome0 + ' voltou a valer.');
       return;
     }
+    const jornal = !!v.jornal;                                   // (parte 3c) o tratado novo: a notícia no rascunho do Jornal
+    delete v.jornal;
     const nome1 = D().nomeDoTipo(m, v) + ': ' + v.partes.map(x => nomeF(m, x)).join(', ');
     const ok = mudarDipl(t ? 'mudar o tratado' : 'criar o tratado', d => {
       if (!t) { if (d.tratados.length >= (LIM('tratados') || 200)) return false; d.tratados.push(Object.assign({ id: N().novoId('tr'), enc: null }, v)); return; }
@@ -244,7 +251,18 @@
       Object.assign(x, v);
       if (JSON.stringify(x) === ant) return false;
     });
-    if (ok !== false) K.avisoDesfazer(t ? 'O tratado ' + nome1 + ': salvo.' : 'O tratado ' + nome1 + ' entrou na diplomacia.');
+    if (ok === false) return;
+    const jtxt = !t && jornal ? porNoJornal('mt_tr_', D().noticiaTratado(A.mapa, D().diplDe(A.mapa).tratados.slice(-1)[0])) : '';
+    K.avisoDesfazer((t ? 'O tratado ' + nome1 + ': salvo.' : 'O tratado ' + nome1 + ' entrou na diplomacia.') + jtxt);
+  }
+  // (parte 3c) a notícia no rascunho do Jornal (o Desfazer do passo de antes tira, o Refazer põe de novo) → o texto do aviso
+  function porNoJornal(pre, r) {
+    const A = app(), mat = { id: pre + Date.now().toString(36), tit: r.tit, txt: r.txt, ass: '', dest: false }, MAXM = ((window.JornalNucleo && window.JornalNucleo.MAX) || {}).materias || 30;
+    let cheio = false;
+    const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => x.id === mat.id)) return false; if (jx.materias.length >= MAXM) { cheio = true; return false; } jx.materias.push(Object.assign({}, mat)); });
+    const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => x.id !== mat.id); if (jx.materias.length === n0) return false; });
+    if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); return ' A notícia foi para o rascunho do Jornal.'; }
+    return ' A notícia não foi para o Jornal' + (cheio ? ': o rascunho já tem ' + MAXM + ' matérias.' : '.');
   }
   // os campos de uma data do mundo (o ano, o mês e o dia) e a leitura deles (null sem o ano)
   function campoData(k, dt, meses) {
@@ -271,8 +289,9 @@
     return out;
   }
   const mesesDe = m => (m.cal && m.cal.meses && m.cal.meses.length ? m.cal.meses : N().CAL_PADRAO.meses);
-  /* → { tipo, partes, ini, fim, pub, txt, nota, trocas }, { tirar }, { encerrar }, { reabrir } ou null */
-  function dialogoTratado(m, t) {
+  /* → { tipo, partes, ini, fim, pub, txt, nota, trocas, jornal }, { tirar }, { encerrar }, { reabrir } ou null. jornal: a caixa
+     da notícia (só no tratado novo, numa mesa com o Jornal) */
+  function dialogoTratado(m, t, jornal) {
     const K = kit(), { h } = K;
     return new Promise(resolve => {
       const meses = mesesDe(m), tipos = D().tiposDe(m);
@@ -324,6 +343,7 @@
       });
       refazerOpcoes();
       const pub = h('input', { type: 'checkbox', 'data-k': 'tr:pub', checked: t && t.pub ? true : null });
+      const cxJ = jornal ? h('input', { type: 'checkbox', 'data-k': 'tr:jornal' }) : null;      // (parte 3c) desmarcada
       const area = (k, v0, ph) => { const x = h('textarea', { 'data-k': k, rows: 3, maxlength: LIM('textoDipl') || 600, placeholder: ph }); x.value = v0 || ''; return x; };
       const txt = area('tr:txt', t ? t.txt : '', 'O que o tratado diz (os jogadores leem, se for público)…'), nota = area('tr:nota', t ? t.nota : '', 'O que só você sabe: quem quer romper, o que foi prometido por baixo…');
       const est = t ? D().estadoDe(m, t) : '';
@@ -345,6 +365,7 @@
           h('small', { class: 'ajuda', text: 'O que uma facção do tratado manda para outra quando a semana fecha (na prévia, você confere).' + (m.eco.on ? '' : ' Só vale com a economia ligada.') })) : null,
         h('label', { class: 'op' }, pub, h('span', { text: 'Público (os jogadores sabem deste tratado)' })),
         lbl('Os termos', txt), lbl('Nota do mestre (só você vê)', nota),
+        cxJ ? h('label', { class: 'op' }, cxJ, h('span', { text: 'Escrever a notícia no rascunho do Jornal' })) : null,
         err, h('div', { class: 'pe' }, bTirar, bEnc, h('span', { class: 'esp' }), bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl tr-dl', 'aria-labelledby': titulo.id }, form);
       form.addEventListener('input', () => { err.textContent = ''; });
@@ -364,7 +385,7 @@
             if (!(n > 0)) throw new Error('A quantidade de cada troca é maior que zero.');
             return { de: l.de.value, para: l.para.value, rec: l.rec.value, q: n };
           });
-          fim0({ tipo: tipo.value || null, partes: ps, ini: di, fim: df, pub: pub.checked, txt: txt.value.trim(), nota: nota.value.trim(), trocas });
+          fim0({ tipo: tipo.value || null, partes: ps, ini: di, fim: df, pub: pub.checked, txt: txt.value.trim(), nota: nota.value.trim(), trocas, jornal: !!(cxJ && cxJ.checked) });
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       if (bTirar) bTirar.addEventListener('click', () => fim0({ tirar: true }));
@@ -515,6 +536,235 @@
     });
   }
 
+  /* ---------------- (parte 3c) os motivos de guerra ---------------- */
+  // os motivos de guerra de cada facção (com o filtro), as sugestões pelos pretendentes e "+ Motivo de guerra" (só o mestre)
+  function secMotivosGuerra(v) {
+    const K = kit(), { h, secao, nota, botao, linha } = K, naFiltro = x => !filtroFac || x.de === filtroFac || x.contra === filtroFac;
+    const todos = D().diplDe(v).motivosGuerra.filter(naFiltro);
+    const grupos = v.faccoes.filter(f => todos.some(x => x.de === f.id)).map(f => h('div', { class: 'dp-mg-fac', 'data-k': 'mg:fac:' + f.id },
+      h('div', { class: 'dp-mg-cab' }, bola(f), h('b', { text: K.nomeFac(f) })),
+      todos.filter(x => x.de === f.id).map(x => h('button', { type: 'button', class: 'li clic dp-t' + (x.vale ? '' : ' dp-mg-velho'), 'data-k': 'mg:' + x.id, onclick: () => janelaMotivoGuerra(x.id, null) },
+        h('span', { class: 'tx' }, h('b', { text: 'contra ' + nomeF(v, x.contra) }), h('small', { text: x.txt })),
+        x.vale ? null : h('span', { class: 'tag', text: 'não vale mais' })))));
+    const sug = D().sugestoesDeGuerra(v).filter(naFiltro);
+    const sugs = sug.length ? h('div', { class: 'dp-mg-sug', 'data-k': 'mg:sugestoes' }, h('small', { class: 'note', text: 'Sugestões pelos pretendentes' }),
+      sug.map(x => h('div', { class: 'dp-mg-s', 'data-k': 'mg:sug:' + x.tit + ':' + x.p },
+        h('span', { class: 'tx' }, h('b', { text: nomeF(v, x.de) + ' contra ' + nomeF(v, x.contra) }), h('small', { text: x.txt })),
+        botao('Usar…', () => janelaMotivoGuerra(null, x), { c: 'sm', k: 'mg:usar:' + x.tit + ':' + x.p })))) : null;
+    return secao('Motivos de guerra', linha(botao('+ Motivo de guerra', () => janelaMotivoGuerra(null, null), { c: 'sm', k: 'mg:novo', off: D().diplDe(v).motivosGuerra.length >= (LIM('motivosGuerra') || 300) })),
+      grupos.length ? h('div', { class: 'dp-tratados', 'data-k': 'dp:motivos-guerra' }, grupos) : nota('Nenhum motivo de guerra ainda.'), sugs,
+      nota('Só você vê os motivos de guerra. Quem pretende um título do reino de outra facção vira sugestão.'));
+  }
+  // um motivo de guerra (id: o da lista; pre: a sugestão de onde ele vem, para começar)
+  async function janelaMotivoGuerra(id, pre) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (!A.podeEditar() || !m || m.faccoes.length < 2) return;
+    const x = id ? D().motivoGuerraDe(m, id) : null;
+    if (id && !x) return;
+    const v = await dialogoMotivoGuerra(m, x, pre);
+    if (!v || !K.mesmoMapa(m.id)) return;
+    if (v.tirar) {
+      const ok = await K.confirmar({ titulo: 'Tirar o motivo de guerra?', ok: 'Tirar', perigo: true, texto: nomeF(m, x.de) + ' contra ' + nomeF(m, x.contra) + ': “' + x.txt + '”. Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+      if (mudarDipl('tirar o motivo de guerra', d => { const n = d.motivosGuerra.length; d.motivosGuerra = d.motivosGuerra.filter(y => y.id !== x.id); if (d.motivosGuerra.length === n) return false; }) !== false) K.avisoDesfazer('O motivo de guerra saiu.');
+      return;
+    }
+    const ok = mudarDipl(x ? 'mudar o motivo de guerra' : 'criar o motivo de guerra', d => {
+      if (!x) { if (d.motivosGuerra.length >= (LIM('motivosGuerra') || 300)) return false; d.motivosGuerra.push(Object.assign({ id: N().novoId('mg') }, v)); return; }
+      const y = d.motivosGuerra.find(z => z.id === x.id);
+      if (!y) return false;
+      const ant = JSON.stringify(y);
+      Object.assign(y, v);
+      if (JSON.stringify(y) === ant) return false;
+    });
+    if (ok !== false) K.avisoDesfazer(x ? 'O motivo de guerra está salvo.' : 'O motivo de guerra de ' + nomeF(m, v.de) + ' contra ' + nomeF(m, v.contra) + ' entrou na lista.');
+  }
+  /* → { de, contra, txt, vale, tit, p }, { tirar } ou null */
+  function dialogoMotivoGuerra(m, x, pre) {
+    const K = kit(), { h } = K;
+    return new Promise(resolve => {
+      const base = x || pre || null;
+      const opcoes = (k, val) => { const s0 = h('select', { 'data-k': k }, [h('option', { value: '', text: 'Escolha…' })].concat(m.faccoes.map(f => h('option', { value: f.id, text: K.nomeFac(f) })))); s0.value = val || ''; return s0; };
+      const de = opcoes('mg:de', base ? base.de : filtroFac), contra = opcoes('mg:contra', base ? base.contra : '');
+      const txt = h('input', { type: 'text', 'data-k': 'mg:txt', maxlength: LIM('textoMotivoGuerra') || 160, autocomplete: 'off', placeholder: 'O motivo (ex.: tomaram Valmor; a coroa é nossa)', value: base ? base.txt : '' });
+      const vale = h('input', { type: 'checkbox', 'data-k': 'mg:vale', checked: !x || x.vale ? true : null });
+      const titulo = h('h2', { text: x ? 'O motivo de guerra' : 'Um motivo de guerra novo' });
+      titulo.id = 'dl-mg-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bTirar = x ? h('button', { type: 'button', class: 'btn per', 'data-k': 'mg:tirar', text: 'Tirar…' }) : null;
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'mg:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'mg:ok', text: x ? 'Salvar' : 'Criar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('div', { class: 'lin mg-lin' }, h('label', null, 'A facção', de), h('label', null, 'Contra', contra)),
+        h('label', null, 'O motivo', txt),
+        h('label', { class: 'op' }, vale, h('span', { text: 'Ainda vale' })),
+        h('small', { class: 'ajuda', text: 'Só você vê. Na hora de declarar guerra, a prévia mostra os motivos que ainda valem.' }),
+        err, h('div', { class: 'pe' }, bTirar, h('span', { class: 'esp' }), bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl mg-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('input', () => { err.textContent = ''; });
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        try {
+          if (!de.value || !contra.value) throw new Error('Escolha a facção e contra quem.');
+          if (de.value === contra.value) throw new Error('O motivo é contra outra facção.');
+          if (!txt.value.trim()) throw new Error('Escreva o motivo.');
+          fim({ de: de.value, contra: contra.value, txt: txt.value.trim(), vale: vale.checked, tit: base ? base.tit || null : null, p: base ? base.p || null : null });
+        } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
+      });
+      if (bTirar) bTirar.addEventListener('click', () => fim({ tirar: true }));
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (base ? txt : de).focus();
+    });
+  }
+
+  /* ---------------- (parte 3c) declarar a guerra e fazer a paz ---------------- */
+  // a caixa da notícia (desmarcada) com "Ver a notícia" (o texto acompanha o que muda na janela)
+  function caixaJornal(K, k) {
+    const { h } = K, cx = h('input', { type: 'checkbox', 'data-k': k }), txt = h('div', { class: 'sem-jornal-txt', 'data-k': k + ':txt' });
+    const el = h('div', { class: 'sem-jornal', 'data-k': k + '-caixa' }, h('label', { class: 'op' }, cx, h('span', { text: 'Escrever a notícia no rascunho do Jornal' })),
+      h('details', { class: 'sem-jornal-ver', 'data-k': k + ':ver' }, h('summary', { text: 'Ver a notícia' }), txt));
+    const pintar = r => txt.replaceChildren(h('b', { text: r.tit }), ...r.txt.split('\n\n').map(p0 => h('p', { text: p0.replace(/\*\*/g, '') })));
+    return { cx, el, pintar };
+  }
+  async function janelaGuerra(a, b) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (!A.podeEditar() || !m || !K.facDe(m, a) || !K.facDe(m, b)) return;
+    const v = await dialogoGuerra(m, a, b, !!(A.temJornal && A.temJornal()));
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const dt = hoje(m), nomes = v.encerrar.map(id => D().nomeDoTipo(m, D().tratadoDe(m, id)));
+    let n = -1;
+    const ok = mudarDipl('declarar guerra', (d, mm) => { n = D().declararGuerra(mm, v.de, v.contra, v.encerrar, dt); if (n < 0) return false; });
+    if (ok === false || n < 0) return;
+    const jtxt = v.jornal ? porNoJornal('mt_gu_', D().noticiaGuerra(A.mapa, v.de, v.contra, v.motivo, nomes, dt)) : '';
+    K.avisoDesfazer(nomeF(m, v.de) + ' declarou guerra a ' + nomeF(m, v.contra) + '.' + (n ? ' ' + (n === 1 ? '1 tratado acabou.' : n + ' tratados acabaram.') : '') + jtxt);
+  }
+  /* → { de, contra, motivo (o texto; '' sem motivo), encerrar: [os ids dos tratados], jornal } ou null */
+  function dialogoGuerra(m, a, b, jornal) {
+    const K = kit(), { h } = K;
+    return new Promise(resolve => {
+      const valem = (de, contra) => D().motivosGuerraDe(m, de, contra).filter(x => x.vale), nm = 'gu-de-' + Date.now().toString(36);
+      // quem declara: de começo, a primeira do par (ou a outra, se só ela tem motivo que vale)
+      const ini = !valem(a, b).length && valem(b, a).length ? b : a;
+      const quem = [a, b].map(id => { const r = h('input', { type: 'radio', name: nm, value: id, 'data-k': 'gu:de:' + id, checked: id === ini || null }); return { r, el: h('label', { class: 'op' }, r, h('span', { text: nomeF(m, id) + ' declara guerra a ' + nomeF(m, id === a ? b : a) })) }; });
+      const de = () => quem.find(x => x.r.checked).r.value, contra = () => (de() === a ? b : a);
+      const motivo = h('select', { 'data-k': 'gu:motivo' }), motivoTxt = () => { const x = D().motivoGuerraDe(m, motivo.value); return x ? x.txt : ''; };
+      const opcoesMotivo = () => {
+        const l = valem(de(), contra());
+        motivo.replaceChildren(...l.map(x => h('option', { value: x.id, text: x.txt })), h('option', { value: '', text: l.length ? 'Sem motivo' : 'Sem motivo (nenhum na lista)' }));
+        motivo.value = l.length ? l[0].id : '';
+      };
+      // o que muda: a relação, os tratados entre as duas (os de paz, marcados para acabar), a vassalagem (só o aviso)
+      const rel0 = K.facDe(m, a).rel[b] || 'neutra', R = N().RELACOES;
+      const cxs = D().tratadosVivosEntre(m, a, b).map(t => { const cb = h('input', { type: 'checkbox', 'data-k': 'gu:enc:' + t.id, checked: t.tipo === 'paz' || null }); return { t, cb, el: h('label', { class: 'op gu-enc' }, cb, h('span', { text: 'Acaba: ' + D().nomeDoTipo(m, t) + ': ' + t.partes.map(x => nomeF(m, x)).join(', ') })) }; });
+      const vx = [D().vassalagemDe(m, a), D().vassalagemDe(m, b)].find(x => x && (x.sus === a || x.sus === b));
+      const cj = jornal ? caixaJornal(K, 'gu:jornal') : null;
+      const pintarJ = () => { if (cj) cj.pintar(D().noticiaGuerra(m, de(), contra(), motivoTxt(), cxs.filter(c => c.cb.checked).map(c => D().nomeDoTipo(m, c.t)), hoje(m))); };
+      for (const q of quem) q.r.addEventListener('change', () => { opcoesMotivo(); pintarJ(); });
+      motivo.addEventListener('change', pintarJ);
+      for (const c of cxs) c.cb.addEventListener('change', pintarJ);
+      opcoesMotivo(); pintarJ();
+      const titulo = h('h2', { text: 'Declarar guerra' });
+      titulo.id = 'dl-gu-' + Date.now().toString(36);
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'gu:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'gu:ok', text: 'Declarar guerra' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: 'Nada muda até “Declarar guerra” (e dá para desfazer).' }),
+        h('fieldset', { class: 'gu-quem', 'data-k': 'gu:quem' }, h('legend', { text: 'Quem declara' }), quem.map(x => x.el)),
+        h('label', null, 'O motivo', motivo),
+        h('div', { class: 'gu-muda', 'data-k': 'gu:muda' }, h('small', { class: 'note', text: 'O que muda' }),
+          h('p', { 'data-k': 'gu:rel', text: 'A relação entre ' + nomeF(m, a) + ' e ' + nomeF(m, b) + ': ' + R[rel0] + ' → Guerra (dos dois lados).' }),
+          cxs.length ? h('fieldset', { class: 'gu-encs', 'data-k': 'gu:tratados' }, h('legend', { text: 'Os tratados entre as duas (marque os que acabam hoje)' }), cxs.map(c => c.el)) : h('p', { text: 'Nenhum tratado entre as duas.' }),
+          vx ? h('small', { class: 'note', 'data-k': 'gu:vas', text: nomeF(m, vx.vas) + ' é vassala de ' + nomeF(m, vx.sus) + ': a vassalagem continua (tire na Diplomacia, se for o caso).' }) : null),
+        cj ? cj.el : null,
+        h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl gu-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        fim({ de: de(), contra: contra(), motivo: motivoTxt(), encerrar: cxs.filter(c => c.cb.checked).map(c => c.t.id), jornal: !!(cj && cj.cx.checked) });
+      });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      bOk.focus();
+    });
+  }
+  async function janelaPaz(a, b) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (!A.podeEditar() || !m || !K.facDe(m, a) || !K.facDe(m, b)) return;
+    if (D().diplDe(m).tratados.length >= (LIM('tratados') || 200)) { A.toast('A diplomacia já tem ' + (LIM('tratados') || 200) + ' tratados: tire um para fazer a paz.'); return; }
+    const v = await dialogoPaz(m, a, b, !!(A.temJornal && A.temJornal()));
+    if (!v || !K.mesmoMapa(m.id)) return;
+    let novo = null;
+    const ok = mudarDipl('fazer a paz', (d, mm) => { novo = D().fazerPaz(mm, a, b, v.rel, Object.assign({ id: N().novoId('tr'), ini: hoje(mm) }, v.t)); if (!novo) return false; });
+    if (ok === false || !novo) return;
+    const jtxt = v.jornal ? porNoJornal('mt_paz_', D().noticiaPaz(A.mapa, a, b, novo)) : '';
+    K.avisoDesfazer(nomeF(m, a) + ' e ' + nomeF(m, b) + ' fizeram a paz.' + jtxt);
+  }
+  /* → { rel ('neutra' | 'tensao'), t: { tipo, fim, pub, txt } (o tratado de paz), jornal } ou null */
+  function dialogoPaz(m, a, b, jornal) {
+    const K = kit(), { h } = K;
+    return new Promise(resolve => {
+      const meses = mesesDe(m), tipos = D().tiposDe(m), nm = 'paz-rel-' + Date.now().toString(36);
+      const rels = [['neutra', 'Neutra'], ['tensao', 'Tensão']].map(([k, t0], i) => { const r = h('input', { type: 'radio', name: nm, value: k, 'data-k': 'paz:rel:' + k, checked: !i || null }); return { r, el: h('label', { class: 'op' }, r, h('span', { text: t0 })) }; });
+      const tipo = h('select', { 'data-k': 'paz:tipo' }, tipos.map(x => h('option', { value: x.id, text: x.nome })));
+      tipo.value = tipos.some(x => x.id === 'paz') ? 'paz' : tipos[0] ? tipos[0].id : '';
+      const prazo = h('input', { type: 'checkbox', 'data-k': 'paz:prazo' }), fim = campoData('paz:fim', null, meses);
+      const verPrazo = () => { fim.el.hidden = !prazo.checked; };
+      prazo.addEventListener('change', verPrazo);
+      verPrazo();
+      const pub = h('input', { type: 'checkbox', 'data-k': 'paz:pub', checked: true });
+      const txt = h('textarea', { 'data-k': 'paz:txt', rows: 3, maxlength: LIM('textoDipl') || 600, placeholder: 'O que a paz diz (os jogadores leem, se for pública)…' });
+      const cj = jornal ? caixaJornal(K, 'paz:jornal') : null;
+      const rel = () => rels.find(x => x.r.checked).r.value;
+      // o tratado como vai ficar (o prazo que não serve ainda, sem prazo na prévia da notícia)
+      const tratado = () => { let f = null; try { f = prazo.checked ? lerData(fim, 'O prazo', meses) : null; } catch (e) { f = null; } return { tipo: tipo.value || null, ini: hoje(m), fim: f, pub: pub.checked, txt: txt.value.trim() }; };
+      const pintarJ = () => { if (cj) cj.pintar(D().noticiaPaz(m, a, b, tratado())); };
+      const titulo = h('h2', { text: 'Fazer a paz: ' + nomeF(m, a) + ' e ' + nomeF(m, b) });
+      titulo.id = 'dl-paz-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'paz:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'paz:ok', text: 'Fazer a paz' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: 'A relação sai de Guerra e nasce um tratado de paz entre as duas, a partir de hoje. Nada muda até “Fazer a paz” (e dá para desfazer).' }),
+        h('fieldset', { class: 'paz-rel', 'data-k': 'paz:rels' }, h('legend', { text: 'A relação fica' }), h('div', { class: 'row' }, rels.map(x => x.el))),
+        h('label', null, 'O tratado', tipo),
+        h('div', null, h('label', { class: 'op' }, prazo, h('span', { text: 'Tem prazo' })), fim.el),
+        h('label', { class: 'op' }, pub, h('span', { text: 'Pública (os jogadores sabem do tratado)' })),
+        h('label', null, 'Os termos', txt),
+        cj ? cj.el : null,
+        err, h('div', { class: 'pe' }, bNao, bOk));
+      form.addEventListener('input', () => { err.textContent = ''; pintarJ(); });
+      form.addEventListener('change', pintarJ);
+      pintarJ();
+      const dl = h('dialog', { class: 'mundo-dl paz-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim0 = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        try {
+          const df = prazo.checked ? lerData(fim, 'O prazo', meses) : null;
+          if (prazo.checked && !df) throw new Error('O prazo: escreva ao menos o ano.');
+          if (df && D().diaDe(m, df, true) < D().hojeDia(m)) throw new Error('O prazo já passou.');
+          const t = tratado();
+          fim0({ rel: rel(), t: { tipo: t.tipo, fim: df, pub: t.pub, txt: t.txt }, jornal: !!(cj && cj.cx.checked) });
+        } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
+      });
+      bNao.addEventListener('click', () => fim0(null));
+      dl.addEventListener('close', () => fim0(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      bOk.focus();
+    });
+  }
+
   /* ---------------- (parte 3b) a diplomacia na prévia da semana ---------------- */
   // o prazo novo sugerido para renovar um tratado: o mesmo dia, um ano depois
   const umAnoDepois = dt => Object.assign({}, dt, { a: dt.a + 1 });
@@ -581,5 +831,5 @@
     return { fluxos, vencem, motivos, recusados: () => caixas.filter(c => !c.cb.checked).map(c => c.id), pintar, ler };
   }
 
-  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana };
+  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana, janelaMotivoGuerra, janelaGuerra, janelaPaz };
 })();
