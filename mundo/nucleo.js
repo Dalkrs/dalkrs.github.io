@@ -2078,8 +2078,9 @@
      [{ id, nome, cor }] (os recursos do mundo), est (o estoque), prod: { terreno, pop, cons (com o gasto delas), guilda,
      cla (a sede do clã), mestre, total } (por semana), manut (a manutenção dos exércitos, por semana), prov: [{ id (a
      província; null: as terras que eles não veem e o que fica fora das províncias), nome, prod }], livro: { prov, sub,
-     hex, exe, grade } (a linha deles no Livro do reino) }. */
-  const FONTES_J = ['terreno', 'pop', 'cons', 'guilda', 'cla', 'mestre', 'total'];
+     hex, exe, grade } (a linha deles no Livro do reino), trocas (lote 11, parte 3b: o tributo e as trocas dela por semana,
+     [{ tipo ('trib' | 'troca'), sentido ('envia' | 'recebe'), com (a outra facção; null: uma que eles não veem), rec, q }]) }. */
+  const FONTES_J = ['terreno', 'pop', 'cons', 'guilda', 'cla', 'mestre', 'total'], MAX_TROCAS_J = 100;
   function normEcoJ(v) {
     if (!ehObj(v) || !idOk(v.fac)) return null;
     const rec = [], vistos = new Set();
@@ -2095,9 +2096,13 @@
     if (ehObj(v.est)) for (const k of Object.keys(v.est).slice(0, MAX_REC_MUNDO * 2)) { if (!ids.has(k)) continue; const n = Math.round(limitar(num(v.est[k], 0), -1e12, 1e12) * 100) / 100 + 0; if (n) est[k] = n; }
     const prov = [];
     for (const x of Array.isArray(v.prov) ? v.prov : []) if (ehObj(x) && prov.length < 200) prov.push({ id: idRef(x.id), nome: texto(x.nome, '', 120).trim(), prod: fontes(x.prod) });
-    const l = ehObj(v.livro) ? v.livro : {};
+    const l = ehObj(v.livro) ? v.livro : {}, trocas = [];
+    for (const x of Array.isArray(v.trocas) ? v.trocas : []) {
+      const rec = ehObj(x) ? idOk(x.rec) : '', q = rec ? qtdDipl(x.q) : 0;
+      if (ids.has(rec) && q && trocas.length < MAX_TROCAS_J) trocas.push({ tipo: x.tipo === 'trib' ? 'trib' : 'troca', sentido: x.sentido === 'envia' ? 'envia' : 'recebe', com: idRef(x.com), rec, q });
+    }
     return { fac: v.fac, rec, est, prod: fontes(v.prod), manut: normTabPos(v.manut, ids), prov,
-      livro: { prov: inteiro(l.prov, 0, 0, 1e6), sub: inteiro(l.sub, 0, 0, 1e6), hex: inteiro(l.hex, 0, 0, 1e9), exe: inteiro(l.exe, 0, 0, 1e6), grade: sim(l.grade) } };
+      livro: { prov: inteiro(l.prov, 0, 0, 1e6), sub: inteiro(l.sub, 0, 0, 1e6), hex: inteiro(l.hex, 0, 0, 1e9), exe: inteiro(l.exe, 0, 0, 1e6), grade: sim(l.grade) }, trocas };
   }
 
   /* ---------------- (lote 11, parte 1) a corte: os personagens do mundo e as casas ----------------
@@ -2269,9 +2274,15 @@
      partes (as facções: duas ou mais), ini (o começo, pela data do mundo), fim (o prazo; sem ele, sem prazo), pub (os
      jogadores sabem), txt (os termos), nota (do mestre), enc (a data em que foi encerrado; sem ela, vale) }], opin: [{ de,
      sobre (as facções), motivos: [{ id, txt, v (de −100 a +100), ate (o prazo do motivo; sem ele, fica) }] }] (a opinião
-     de uma facção sobre outra: a soma dos motivos, de −100 a +100) }. Só quando há algo (o mapa de antes fica igual). */
+     de uma facção sobre outra: a soma dos motivos, de −100 a +100) }. Só quando há algo (o mapa de antes fica igual).
+     (parte 3b) vassalos: [{ vas (a facção vassala), sus (a suserana), desde, trib ({ rec, q }: o tributo por semana, um
+     recurso da economia; sem ele, sem tributo) }] (uma suserana por vassala; ninguém é suserano de si mesmo pela cadeia);
+     e, em cada tratado, trocas: [{ de, para (duas das partes), rec, q }] (o que vai de uma para a outra por semana). */
   const TIPOS_TRATADO = [{ id: 'alianca', nome: 'Aliança' }, { id: 'paz', nome: 'Paz ou trégua' }, { id: 'comercio', nome: 'Comércio' }, { id: 'passagem', nome: 'Passagem livre' }];
   const MAX_TRATADOS = 200, MAX_TIPOS_TRAT = 16, MAX_PARTES = 12, MAX_OPIN = 600, MAX_MOTIVOS_OP = 20, MAX_TXT_DIPL = 600;
+  const MAX_VASSALOS = 100, MAX_TROCAS = 12, MAX_QTD_DIPL = 1e9;
+  // (parte 3b) uma quantidade por semana (o tributo, a troca): positiva, com duas casas; 0 se não serve
+  const qtdDipl = v => { const n = num(v, 0); return n > 0 ? arred(Math.min(n, MAX_QTD_DIPL)) : 0; };
   function normDipl(v, cal) {
     if (!ehObj(v)) return null;
     let tipos = null;
@@ -2293,8 +2304,15 @@
       if (!id || vtr.has(id)) continue;
       vtr.add(id);
       const partes = [...new Set((Array.isArray(t.partes) ? t.partes : []).map(idOk).filter(Boolean))].slice(0, MAX_PARTES);
+      // (parte 3b) as trocas por semana
+      const trocas = [];
+      for (const y of Array.isArray(t.trocas) ? t.trocas : []) {
+        if (!ehObj(y) || trocas.length >= MAX_TROCAS) continue;
+        const de = idOk(y.de), para = idOk(y.para), rec = idOk(y.rec), q = qtdDipl(y.q);
+        if (de && para && de !== para && rec && q) trocas.push({ de, para, rec, q });
+      }
       tratados.push({ id, tipo: idRef(t.tipo), partes, ini: normDataP(t.ini, cal), fim: normDataP(t.fim, cal), pub: sim(t.pub), txt: texto(t.txt, '', MAX_TXT_DIPL).trim(),
-        nota: texto(t.nota, '', MAX_TXT_DIPL).trim(), enc: normDataP(t.enc, cal) });
+        nota: texto(t.nota, '', MAX_TXT_DIPL).trim(), enc: normDataP(t.enc, cal), trocas });
     }
     const opin = [], vo = new Set();
     for (const o of Array.isArray(v.opin) ? v.opin : []) {
@@ -2313,17 +2331,38 @@
       vo.add(de + '>' + sobre);
       opin.push({ de, sobre, motivos });
     }
-    if (!tipos && !tratados.length && !opin.length) return null;
-    const out = { tratados, opin };
+    // (parte 3b) a vassalagem: uma suserana por vassala
+    const vassalos = [], vv = new Set();
+    for (const x of Array.isArray(v.vassalos) ? v.vassalos : []) {
+      if (!ehObj(x) || vassalos.length >= MAX_VASSALOS) continue;
+      const vas = idOk(x.vas), sus = idOk(x.sus);
+      if (!vas || !sus || vas === sus || vv.has(vas)) continue;
+      vv.add(vas);
+      const q = ehObj(x.trib) ? qtdDipl(x.trib.q) : 0, rec = ehObj(x.trib) ? idOk(x.trib.rec) : '';
+      vassalos.push({ vas, sus, desde: normDataP(x.desde, cal), trib: rec && q ? { rec, q } : null });
+    }
+    if (!tipos && !tratados.length && !opin.length && !vassalos.length) return null;
+    const out = { tratados, opin, vassalos };
     if (tipos) out.tipos = tipos;
     return out;
   }
   // a diplomacia com o mapa todo: só as facções que existem (o tratado com menos de duas sai); o tipo, um dos tipos
-  function conferirDipl(d, facs) {
+  function conferirDipl(d, facs, recs) {
     const tipos = new Set((d.tipos || TIPOS_TRATADO).map(t => t.id));
     for (const t of d.tratados) { t.partes = t.partes.filter(f => facs.has(f)); if (t.tipo && !tipos.has(t.tipo)) t.tipo = null; }
     d.tratados = d.tratados.filter(t => t.partes.length >= 2);
     d.opin = d.opin.filter(o => facs.has(o.de) && facs.has(o.sobre));
+    /* (parte 3b) as trocas: entre duas das partes, de um recurso da economia; a vassalagem: entre facções que existem,
+       sem círculo (a que fecharia o círculo sai), com o tributo de um recurso da economia */
+    for (const t of d.tratados) t.trocas = t.trocas.filter(y => t.partes.includes(y.de) && t.partes.includes(y.para) && recs.has(y.rec));
+    d.vassalos = d.vassalos.filter(x => facs.has(x.vas) && facs.has(x.sus));
+    const sus = new Map();                                      // as aceitas até aqui (sem círculo: a cadeia sempre acaba)
+    d.vassalos = d.vassalos.filter(x => {
+      for (let p = x.sus; p; p = sus.get(p)) if (p === x.vas) return false;
+      sus.set(x.vas, x.sus);
+      return true;
+    });
+    for (const x of d.vassalos) if (x.trib && !recs.has(x.trib.rec)) x.trib = null;
   }
 
   function normGuerra(v) {
@@ -2525,6 +2564,7 @@
     const facs = new Set(mapa.faccoes.map(f => f.id)), rotas = new Map(), tiposG = new Set(mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : []);
     const recIds = new Set(mapa.eco ? mapa.eco.rec.map(r => r.id) : []), nivIds = new Set(mapa.eco ? mapa.eco.niv.map(n => n.id) : []);
     if (mapa.ecoJ && !mapa.faccoes.some(f => f.jog && f.id === mapa.ecoJ.fac)) delete mapa.ecoJ;     // (parte 6) é a da facção dos jogadores
+    if (mapa.ecoJ) for (const x of mapa.ecoJ.trocas) if (!facs.has(x.com)) x.com = null;       // (lote 11, parte 3b) com quem: uma que existe
     for (const o of mapa.objs) if (o.k === 't') rotas.set(o.id, o);
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
@@ -2547,7 +2587,7 @@
       }
     }
     if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
-    if (mapa.dipl) conferirDipl(mapa.dipl, facs);                 // (lote 11, parte 3a) as facções dos tratados e da opinião
+    if (mapa.dipl) conferirDipl(mapa.dipl, facs, recIds);         // (lote 11, parte 3a) as facções dos tratados e da opinião (3b: os recursos)
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2820,11 +2860,13 @@
       } else delete m.corte;
     }
     /* (lote 11, parte 3a) a diplomacia: os tratados públicos entre facções que eles veem (sem a nota), com os tipos (para
-       os nomes); a opinião é do mestre */
+       os nomes); a opinião é do mestre. (parte 3b) A vassalagem entre facções que eles veem, sem o tributo; e os tratados,
+       sem as trocas (o tributo e as trocas da facção deles vão na economia deles, em ecoJ) */
     if (m.dipl) {
       const vistas = new Set(m.faccoes.map(f => f.id));
-      const tratados = m.dipl.tratados.filter(t => t.pub && t.partes.every(f => vistas.has(f))).map(t => Object.assign({}, t, { nota: '' }));
-      if (tratados.length) { const d = { tratados, opin: [] }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
+      const tratados = m.dipl.tratados.filter(t => t.pub && t.partes.every(f => vistas.has(f))).map(t => Object.assign({}, t, { nota: '', trocas: [] }));
+      const vassalos = m.dipl.vassalos.filter(x => vistas.has(x.vas) && vistas.has(x.sus)).map(x => Object.assign({}, x, { trib: null }));
+      if (tratados.length || vassalos.length) { const d = { tratados, opin: [], vassalos }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
     }
     return normalizarMapa(m);
   }
@@ -2858,7 +2900,8 @@
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
       personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE,
       titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
-      tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL },
+      tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
+      vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

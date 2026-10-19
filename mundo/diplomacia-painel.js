@@ -5,6 +5,10 @@
    tratado…". O cartão do tratado: o tipo, as partes (duas ou mais facções), o começo e o prazo pela data do mundo, se
    é público, os termos e a nota; "Encerrar o tratado…" e "Reabrir". Para quem joga, as relações (as que não são
    neutras) e os tratados públicos, só para ler.
+   (parte 3b) A vassalagem ("+ Vassalagem": a vassala, a suserana, desde quando e o tributo por semana — um recurso da
+   economia), as trocas por semana no cartão do tratado, a vassalagem na aba Reinos ("vassala de …") e a parte da
+   diplomacia na prévia da semana (o tributo e as trocas, que o mestre desmarca; os tratados e os motivos que vencem).
+   Quem joga vê a vassalagem (sem o tributo).
    Nada muda até "Salvar" (ou "Criar"); tudo vale num passo de Desfazer. Usa as ferramentas do painel (MundoPainel.kit). */
 (() => {
   'use strict';
@@ -17,7 +21,11 @@
   let filtroFac = '';                        // a facção da aba ('' = todas; só nesta página)
   let encerradosAbertos = false;             // os tratados encerrados à mostra (só nesta página)
 
-  const mudarDipl = (rotulo, fn) => app().mudar(rotulo, mm => { if (!mm.dipl) mm.dipl = { tratados: [], opin: [] }; return fn(mm.dipl, mm); });
+  const mudarDipl = (rotulo, fn) => app().mudar(rotulo, mm => { if (!mm.dipl) mm.dipl = { tratados: [], opin: [], vassalos: [] }; return fn(mm.dipl, mm); });
+  // (parte 3b) os recursos da economia (para o tributo e as trocas) e o nome de um
+  const recsDe = m => (m.eco && Array.isArray(m.eco.rec) ? m.eco.rec : []);
+  const nomeRec = (m, id) => (recsDe(m).find(r => r.id === id) || { nome: 'um recurso que não existe mais' }).nome;
+  const qtdTxt = (m, q, rec) => kit().fmt(q, 2) + ' ' + nomeRec(m, rec);
   const dataTxt = (m, dt) => (C() ? C().dataTxt(m, dt) : '');
   const hoje = m => (C() ? C().hoje(m) : { a: 1 });
   const nomeF = (m, id) => { const K = kit(), f = K.facDe(m, id); return f ? K.nomeFac(f) : 'facção que não existe mais'; };
@@ -31,11 +39,12 @@
       return out;
     }
     if (ed) out.push(linha(botao('+ Tratado', () => janelaTratado(null), { c: 'pri sm', k: 'dp:novo', off: D().diplDe(v).tratados.length >= (LIM('tratados') || 200) }),
+      botao('+ Vassalagem', () => janelaVassalagem(null), { c: 'sm', k: 'dp:vas-novo', off: D().diplDe(v).vassalos.length >= (LIM('vassalos') || 100) }),
       botao('Tipos de tratado…', () => janelaTipos(), { c: 'sm', k: 'dp:tipos' })));
     if (filtroFac && !K.facDe(v, filtroFac)) filtroFac = '';
     out.push(campoEscolha('dp:fac', 'Facção', filtroFac, [['', 'Todas as facções']].concat(v.faccoes.map(f => [f.id, K.nomeFac(f)])), x => { filtroFac = x; return false; }));
-    out.push(secRelacoes(v, ed), secTratados(v, ed));
-    if (!ed) out.push(nota('Só o que vocês sabem: as relações e os tratados públicos.'));
+    out.push(secRelacoes(v, ed), secVassalagem(v, ed), secTratados(v, ed));
+    if (!ed) out.push(nota('Só o que vocês sabem: as relações, a vassalagem e os tratados públicos.'));
     return out;
   }
   // as relações de cada par de facções (quem joga: só as que não são neutras), com a opinião de cada lado
@@ -48,7 +57,9 @@
       if (!ed && rel === 'neutra') continue;
       const nomes = h('span', { class: 'dp-par-nomes' }, bola(a), h('b', { text: K.nomeFac(a) }), h('span', { class: 'dp-x', text: '⇄' }), bola(b), h('b', { text: K.nomeFac(b) }));
       const vivos = D().tratadosEntre(v, a.id, b.id).filter(t => D().estadoDe(v, t) === 'ativo').map(t => D().nomeDoTipo(v, t));
-      const extra = vivos.length ? h('small', { class: 'dp-trat', text: 'tratados: ' + [...new Set(vivos)].join(', ') }) : null;
+      // (parte 3b) a vassalagem entre os dois (de um lado ou do outro)
+      const vx = [D().vassalagemDe(v, a.id), D().vassalagemDe(v, b.id)].find(x => x && (x.sus === a.id || x.sus === b.id));
+      const extra = vivos.length || vx ? h('small', { class: 'dp-trat', text: [vx ? nomeF(v, vx.vas) + ' é vassala de ' + nomeF(v, vx.sus) : '', vivos.length ? 'tratados: ' + [...new Set(vivos)].join(', ') : ''].filter(Boolean).join(' · ') }) : null;
       if (!ed) { linhas.push(h('div', { class: 'dp-par', 'data-rel': rel, 'data-k': 'par:' + a.id + ':' + b.id }, h('div', { class: 'dp-par-cab' }, nomes, h('span', { class: 'tag ' + rel, text: R[rel] })), extra)); continue; }
       const oab = D().opiniao(v, a.id, b.id).total, oba = D().opiniao(v, b.id, a.id).total;
       const sel = campoEscolha('dprel:' + a.id + ':' + b.id, null, rel, Object.keys(R).map(k => [k, R[k]]), x => mudarRelacao(a.id, b.id, x), { rotulo: 'Relação entre ' + K.nomeFac(a) + ' e ' + K.nomeFac(b) });
@@ -84,17 +95,120 @@
   function quandoTxt(v, t) {
     return [t.ini ? 'desde ' + dataTxt(v, t.ini) : '', t.fim ? 'até ' + dataTxt(v, t.fim) : 'sem prazo', t.enc ? 'encerrado em ' + dataTxt(v, t.enc) : ''].filter(Boolean).join(' · ');
   }
+  // (parte 3b) as trocas por semana de um tratado em texto: "Arvel → Vale: 3 Madeira · …"
+  const trocasTxt = (v, t) => t.trocas.map(y => nomeF(v, y.de) + ' → ' + nomeF(v, y.para) + ': ' + qtdTxt(v, y.q, y.rec)).join(' · ');
   function itemTratado(v, t, ed) {
     const K = kit(), { h } = K, est = D().estadoDe(v, t), partes = t.partes.map(id => nomeF(v, id)).join(', ');
     const tagEst = est !== 'ativo' ? h('span', { class: 'tag' + (est === 'vencido' ? ' tensao' : ''), text: D().ESTADOS[est] }) : null;
     if (ed) {
       return h('button', { type: 'button', class: 'li clic dp-t', 'data-k': 'tr:' + t.id, onclick: () => janelaTratado(t.id) },
-        h('span', { class: 'tx' }, h('b', { text: D().nomeDoTipo(v, t) + ': ' + partes }), h('small', { text: quandoTxt(v, t) })),
+        h('span', { class: 'tx' }, h('b', { text: D().nomeDoTipo(v, t) + ': ' + partes }), h('small', { text: quandoTxt(v, t) }),
+          t.trocas.length ? h('small', { class: 'dp-trocas', text: 'por semana: ' + trocasTxt(v, t) }) : null),
         tagEst, t.pub ? h('span', { class: 'tag', title: 'Os jogadores sabem deste tratado', text: 'público' }) : null);
     }
     return h('div', { class: 'corte-pub dp-t', 'data-k': 'tr:' + t.id },
       h('b', { text: D().nomeDoTipo(v, t) + ': ' + partes }), h('small', { text: quandoTxt(v, t) + (est !== 'ativo' ? ' · ' + D().ESTADOS[est] : '') }),
       t.txt ? h('p', { class: 'publico', text: t.txt }) : null);
+  }
+
+  /* ---------------- (parte 3b) a vassalagem ---------------- */
+  // "vassala de Arvel" (a aba Reinos); '' se a facção não é vassala
+  const vassalaTxt = (v, fid) => { const x = D().vassalagemDe(v, fid); return x ? 'vassala de ' + nomeF(v, x.sus) : ''; };
+  // a vassalagem (com o filtro): quem é vassala de quem, desde quando e o tributo (quem joga: sem o tributo)
+  function secVassalagem(v, ed) {
+    const K = kit(), { h, secao, nota } = K, vs = D().diplDe(v).vassalos.filter(x => !filtroFac || x.vas === filtroFac || x.sus === filtroFac);
+    if (!ed && !vs.length) return null;
+    const itens = vs.map(x => {
+      const tit = nomeF(v, x.vas) + ' é vassala de ' + nomeF(v, x.sus), sub = [x.desde ? 'desde ' + dataTxt(v, x.desde) : '', ed ? (x.trib ? 'tributo: ' + qtdTxt(v, x.trib.q, x.trib.rec) + ' por semana' : 'sem tributo') : ''].filter(Boolean).join(' · ');
+      if (!ed) return h('div', { class: 'corte-pub dp-v', 'data-k': 'vas:' + x.vas }, h('b', { text: tit }), sub ? h('small', { text: sub }) : null);
+      return h('button', { type: 'button', class: 'li clic dp-t dp-v', 'data-k': 'vas:' + x.vas, onclick: () => janelaVassalagem(x.vas) },
+        h('span', { class: 'tx' }, h('b', { text: tit }), h('small', { text: sub })));
+    });
+    return secao('Vassalagem', itens.length ? h('div', { class: 'dp-tratados', 'data-k': 'dp:vassalos' }, itens) : nota('Nenhuma facção é vassala de outra.'));
+  }
+  async function janelaVassalagem(vas) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (!A.podeEditar() || !m || m.faccoes.length < 2) return;
+    const x = vas ? D().vassalagemDe(m, vas) : null;
+    if (vas && !x) return;
+    const v = await dialogoVassalagem(m, x);
+    if (!v || !K.mesmoMapa(m.id)) return;
+    if (v.tirar) {
+      const nome0 = nomeF(m, x.vas) + ' vassala de ' + nomeF(m, x.sus);
+      const ok = await K.confirmar({ titulo: 'Tirar a vassalagem?', ok: 'Tirar', perigo: true, texto: nome0 + ': a vassalagem sai (e o tributo junto). Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+      if (mudarDipl('tirar a vassalagem', d => { const n = d.vassalos.length; d.vassalos = d.vassalos.filter(y => y.vas !== x.vas); if (d.vassalos.length === n) return false; }) !== false) K.avisoDesfazer(nomeF(m, x.vas) + ' não é mais vassala de ' + nomeF(m, x.sus) + '.');
+      return;
+    }
+    const ok = mudarDipl(x ? 'mudar a vassalagem' : 'criar a vassalagem', d => {
+      const ant = JSON.stringify(d.vassalos), i = x ? d.vassalos.findIndex(y => y.vas === x.vas) : -1;
+      if (x && i < 0) return false;
+      if (!x && d.vassalos.length >= (LIM('vassalos') || 100)) return false;
+      if (i >= 0) d.vassalos.splice(i, 1, v); else d.vassalos.push(v);
+      if (JSON.stringify(d.vassalos) === ant) return false;
+    });
+    if (ok !== false) K.avisoDesfazer(nomeF(m, v.vas) + ' é vassala de ' + nomeF(m, v.sus) + (x ? ': salvo.' : '.'));
+  }
+  /* → { vas, sus, desde, trib }, { tirar } ou null */
+  function dialogoVassalagem(m, x) {
+    const K = kit(), { h } = K;
+    return new Promise(resolve => {
+      const meses = mesesDe(m), recs = recsDe(m), ligada = !!(m.eco && m.eco.on);
+      const opcoes = (k, val) => { const s0 = h('select', { 'data-k': k }, [h('option', { value: '', text: 'Escolha…' })].concat(m.faccoes.map(f => h('option', { value: f.id, text: K.nomeFac(f) })))); s0.value = val || ''; return s0; };
+      const vas = opcoes('vs:vas', x ? x.vas : filtroFac), sus = opcoes('vs:sus', x ? x.sus : '');
+      const desde = campoData('vs:desde', x ? x.desde : hoje(m), meses);
+      const temTrib = h('input', { type: 'checkbox', 'data-k': 'vs:trib', checked: x && x.trib ? true : null });
+      const rec = h('select', { 'data-k': 'vs:rec', 'aria-label': 'O recurso do tributo' }, recs.map(r => h('option', { value: r.id, text: r.nome })));
+      if (x && x.trib) rec.value = x.trib.rec;
+      const q = h('input', { type: 'text', 'data-k': 'vs:q', inputmode: 'decimal', autocomplete: 'off', placeholder: 'Quanto', 'aria-label': 'Quanto por semana', value: x && x.trib ? K.fmtCampo(x.trib.q) : '' });
+      const campos = h('div', { class: 'vs-trib', 'data-k': 'vs:trib-campos' }, rec, q, h('span', { class: 'vs-sem', text: 'por semana' }));
+      const verTrib = () => { campos.hidden = !temTrib.checked; };
+      temTrib.addEventListener('change', verTrib);
+      verTrib();
+      const titulo = h('h2', { text: x ? 'A vassalagem: ' + nomeF(m, x.vas) : 'Uma vassalagem nova' });
+      titulo.id = 'dl-vs-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bTirar = x ? h('button', { type: 'button', class: 'btn per', 'data-k': 'vs:tirar', text: 'Tirar a vassalagem…' }) : null;
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'vs:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'vs:ok', text: x ? 'Salvar' : 'Criar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('label', null, 'A vassala', vas), h('label', null, 'A suserana', sus),
+        h('div', null, h('span', { class: 'ps-rot', text: 'Desde' }), desde.el),
+        recs.length ? h('div', { class: 'vs-trib-caixa' }, h('label', { class: 'op' }, temTrib, h('span', { text: 'Paga tributo' })), campos,
+          h('small', { class: 'ajuda', text: 'O tributo sai do estoque da vassala e vai para o da suserana quando a semana fecha (na prévia, você confere).' + (ligada ? '' : ' Só vale com a economia ligada.') }))
+          : h('small', { class: 'ajuda', 'data-k': 'vs:sem-eco', text: 'O tributo usa os recursos da economia: ligue a economia na aba Reinos para cobrar tributo.' }),
+        err, h('div', { class: 'pe' }, bTirar, h('span', { class: 'esp' }), bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl vs-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('input', () => { err.textContent = ''; });
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        try {
+          const a = vas.value, b = sus.value;
+          if (!a || !b) throw new Error('Escolha a vassala e a suserana.');
+          if (a === b) throw new Error('A suserana tem de ser outra facção.');
+          const ja = D().vassalagemDe(m, a);
+          if (ja && (!x || x.vas !== a)) throw new Error(nomeF(m, a) + ' já é vassala de ' + nomeF(m, ja.sus) + ' (abra a vassalagem dela).');
+          // (o círculo sem a vassalagem que está sendo mudada)
+          const sem = x ? Object.assign({}, m, { dipl: Object.assign({}, m.dipl, { vassalos: m.dipl.vassalos.filter(y => y.vas !== x.vas) }) }) : m;
+          if (D().fechaCirculo(sem, a, b)) throw new Error('Assim fecharia um círculo: ' + nomeF(m, b) + ' já é vassala de ' + nomeF(m, a) + ' (direto ou pela cadeia).');
+          let trib = null;
+          if (recs.length && temTrib.checked) {
+            const n = K.lerNum(String(q.value).trim());
+            if (!(n > 0)) throw new Error('O tributo: a quantidade por semana é maior que zero.');
+            trib = { rec: rec.value, q: n };
+          }
+          fim({ vas: a, sus: b, desde: lerData(desde, 'Desde', meses), trib });
+        } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
+      });
+      if (bTirar) bTirar.addEventListener('click', () => fim({ tirar: true }));
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      vas.focus();
+    });
   }
 
   /* ---------------- o cartão do tratado ---------------- */
@@ -157,7 +271,7 @@
     return out;
   }
   const mesesDe = m => (m.cal && m.cal.meses && m.cal.meses.length ? m.cal.meses : N().CAL_PADRAO.meses);
-  /* → { tipo, partes, ini, fim, pub, txt, nota }, { tirar }, { encerrar }, { reabrir } ou null */
+  /* → { tipo, partes, ini, fim, pub, txt, nota, trocas }, { tirar }, { encerrar }, { reabrir } ou null */
   function dialogoTratado(m, t) {
     const K = kit(), { h } = K;
     return new Promise(resolve => {
@@ -172,6 +286,43 @@
       const verPrazo = () => { fim.el.hidden = !prazo.checked; };
       prazo.addEventListener('change', verPrazo);
       verPrazo();
+      /* (parte 3b) as trocas por semana (com os recursos da economia): de uma facção do tratado para outra. As escolhas
+         são as facções marcadas; a que sai do tratado deixa a troca sem ela ("—"), até marcar de novo */
+      const recs = recsDe(m), maxT = LIM('trocas') || 12, listaT = h('div', { class: 'tt-trocas', 'data-k': 'tr:trocas' }), linhasT = [];
+      const bTroca = recs.length ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:troca-nova', text: '+ Troca' }) : null;
+      const marcadas = () => [...partes.querySelectorAll('input:checked')].map(i => i.value);
+      const refazerOpcoes = () => {
+        const ps = marcadas();
+        for (const l of linhasT) for (const sel of [l.de, l.para]) {
+          sel.replaceChildren(...[h('option', { value: '', text: '—' })].concat(ps.map(id => h('option', { value: id, text: nomeF(m, id) }))));
+          sel.value = ps.includes(sel.dataset.v) ? sel.dataset.v : '';
+        }
+        if (bTroca) bTroca.disabled = ps.length < 2 || linhasT.length >= maxT;
+      };
+      const linhaT = y => {
+        const de = h('select', { 'data-k': 'tr:troca:de', 'aria-label': 'De' }), para = h('select', { 'data-k': 'tr:troca:para', 'aria-label': 'Para' });
+        de.dataset.v = y.de; para.dataset.v = y.para;
+        for (const s0 of [de, para]) s0.addEventListener('change', () => { s0.dataset.v = s0.value; });
+        const rec = h('select', { 'data-k': 'tr:troca:rec', 'aria-label': 'O recurso' }, recs.map(r => h('option', { value: r.id, text: r.nome })));
+        if (y.rec) rec.value = y.rec;
+        const q = h('input', { type: 'text', 'data-k': 'tr:troca:q', inputmode: 'decimal', autocomplete: 'off', placeholder: 'Quanto', 'aria-label': 'Quanto por semana', value: y.q ? K.fmtCampo(y.q) : '' });
+        const bx = h('button', { type: 'button', class: 'ib', 'data-k': 'tr:troca:x', title: 'Tirar', 'aria-label': 'Tirar a troca' }, K.glifo(K.X_SVG, 13));
+        const l = { de, para, rec, q, el: h('div', { class: 'tt-troca' }, de, h('span', { class: 'dp-x', text: '→' }), para, rec, q, bx) };
+        bx.addEventListener('click', () => { l.el.remove(); linhasT.splice(linhasT.indexOf(l), 1); refazerOpcoes(); });
+        linhasT.push(l);
+        listaT.append(l.el);
+        return l;
+      };
+      if (recs.length) for (const y of t ? t.trocas : []) linhaT(y);
+      partes.addEventListener('change', refazerOpcoes);
+      if (bTroca) bTroca.addEventListener('click', () => {
+        const ps = marcadas();
+        if (ps.length < 2 || linhasT.length >= maxT) return;
+        const l = linhaT({ de: ps[0], para: ps[1], rec: '', q: 0 });
+        refazerOpcoes();
+        l.q.focus();
+      });
+      refazerOpcoes();
       const pub = h('input', { type: 'checkbox', 'data-k': 'tr:pub', checked: t && t.pub ? true : null });
       const area = (k, v0, ph) => { const x = h('textarea', { 'data-k': k, rows: 3, maxlength: LIM('textoDipl') || 600, placeholder: ph }); x.value = v0 || ''; return x; };
       const txt = area('tr:txt', t ? t.txt : '', 'O que o tratado diz (os jogadores leem, se for público)…'), nota = area('tr:nota', t ? t.nota : '', 'O que só você sabe: quem quer romper, o que foi prometido por baixo…');
@@ -190,6 +341,8 @@
         h('div', { class: 'ps-datas' }, h('div', null, h('span', { class: 'ps-rot', text: 'Começo' }), ini.el),
           h('div', null, h('label', { class: 'op' }, prazo, h('span', { text: 'Tem prazo' })), fim.el)),
         h('small', { class: 'ajuda', text: 'A data do mundo: o ano basta. Passado o prazo, o tratado fica “vencido” (a semana avisa).' }),
+        recs.length ? h('div', { class: 'tt-caixa', 'data-k': 'tr:trocas-caixa' }, h('span', { class: 'ps-rot', text: 'Trocas por semana' }), listaT, h('div', { class: 'row' }, bTroca),
+          h('small', { class: 'ajuda', text: 'O que uma facção do tratado manda para outra quando a semana fecha (na prévia, você confere).' + (m.eco.on ? '' : ' Só vale com a economia ligada.') })) : null,
         h('label', { class: 'op' }, pub, h('span', { text: 'Público (os jogadores sabem deste tratado)' })),
         lbl('Os termos', txt), lbl('Nota do mestre (só você vê)', nota),
         err, h('div', { class: 'pe' }, bTirar, bEnc, h('span', { class: 'esp' }), bNao, bOk));
@@ -205,7 +358,13 @@
           const di = lerData(ini, 'O começo', meses), df = prazo.checked ? lerData(fim, 'O prazo', meses) : null;
           if (prazo.checked && !df) throw new Error('O prazo: escreva ao menos o ano.');
           if (di && df && D().diaDe(m, df, true) < D().diaDe(m, di, false)) throw new Error('O prazo vem antes do começo.');
-          fim0({ tipo: tipo.value || null, partes: ps, ini: di, fim: df, pub: pub.checked, txt: txt.value.trim(), nota: nota.value.trim() });
+          const trocas = linhasT.map(l => {
+            const n = K.lerNum(String(l.q.value).trim());
+            if (!l.de.value || !l.para.value || l.de.value === l.para.value) throw new Error('Cada troca vai de uma facção do tratado para outra.');
+            if (!(n > 0)) throw new Error('A quantidade de cada troca é maior que zero.');
+            return { de: l.de.value, para: l.para.value, rec: l.rec.value, q: n };
+          });
+          fim0({ tipo: tipo.value || null, partes: ps, ini: di, fim: df, pub: pub.checked, txt: txt.value.trim(), nota: nota.value.trim(), trocas });
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       if (bTirar) bTirar.addEventListener('click', () => fim0({ tirar: true }));
@@ -356,5 +515,71 @@
     });
   }
 
-  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao };
+  /* ---------------- (parte 3b) a diplomacia na prévia da semana ---------------- */
+  // o prazo novo sugerido para renovar um tratado: o mesmo dia, um ano depois
+  const umAnoDepois = dt => Object.assign({}, dt, { a: dt.a + 1 });
+  /* A parte da diplomacia na prévia da semana (mundo/reino-painel.js): o tributo e as trocas (cada um com a caixa;
+     desmarcado, não vai nesta semana), os tratados que vencem nela (encerrar, renovar até um prazo novo ou deixar
+     vencido) e os motivos de opinião que vencem nela (tirar: marcado). prev: a prévia (MundoReino.semanaPrevia);
+     aoMudar(): uma caixa do tributo ou das trocas mudou (quem chama refaz a prévia e chama pintar). → { fluxos, vencem,
+     motivos (os blocos; null sem nada), recusados() (os ids desmarcados), pintar(prev) (o texto de cada um, com a prévia
+     nova), ler() (as decisões, como em MundoDiplomacia.aplicarDecisoes; erro se um prazo novo não serve) } */
+  function secSemana(m, prev, aoMudar) {
+    const K = kit(), { h } = K, meses = mesesDe(m), caixas = [], decTr = [], decMo = [];
+    // o tributo e as trocas
+    const fluxos = prev.fluxos.length ? h('fieldset', { class: 'sem-flxs', 'data-k': 'sem:fluxos' }, h('legend', { text: 'Tributo e trocas (desmarque o que não vale nesta semana)' }),
+      prev.fluxos.map(x => {
+        const cb = h('input', { type: 'checkbox', 'data-k': 'sem:f:' + x.id, checked: !x.recusado, onchange: () => aoMudar() }), tx = h('span'), el = h('label', { class: 'op sem-flx', 'data-k': 'sem:fl:' + x.id }, cb, tx);
+        caixas.push({ id: x.id, cb, tx, el });
+        return el;
+      }), h('small', { class: 'ajuda', text: 'Cada facção manda do que sobrou da semana dela; o que ela recebe na mesma semana não entra na conta.' })) : null;
+    function pintar(p) {
+      for (const c of caixas) {
+        const x = p.fluxos.find(y => y.id === c.id);
+        if (!x) continue;
+        const t = D().tratadoDe(m, x.ref), trib = x.tipo === 'trib', verbo = trib ? 'paga' : 'manda', qt = qtdTxt(m, x.q, x.rec);
+        const base = trib ? nomeF(m, x.de) + ' paga ' + qt + ' de tributo a ' + nomeF(m, x.para) : nomeF(m, x.de) + ' manda ' + qt + ' para ' + nomeF(m, x.para) + (t ? ' (' + D().nomeDoTipo(m, t) + ')' : '');
+        const falta = !x.recusado && x.pago < x.q ? (x.pago > 0 ? ' Só tem ' + K.fmt(x.pago, 2) + ': ' + verbo + ' isso.' : ' Não tem: não ' + verbo + ' nada.') : '';
+        c.tx.textContent = base + '.' + falta;
+        c.el.classList.toggle('falta', !!falta);
+      }
+    }
+    pintar(prev);
+    // os tratados que vencem
+    const itensTr = prev.vencem.map(id => D().tratadoDe(m, id)).filter(Boolean).map(t => {
+      const nome = D().nomeDoTipo(m, t) + ': ' + t.partes.map(x => nomeF(m, x)).join(', '), nm = 'sem-tr-' + t.id + '-' + Date.now().toString(36);
+      const radio = (val, txt, chk) => { const r = h('input', { type: 'radio', name: nm, value: val, 'data-k': 'sem:tr:' + t.id + ':' + val, checked: chk || null }); return { r, el: h('label', { class: 'op' }, r, h('span', { text: txt })) }; };
+      const enc = radio('encerrar', 'Encerrar', true), ren = radio('renovar', 'Renovar até'), dei = radio('deixar', 'Deixar vencido');
+      const novo = campoData('sem:tr:' + t.id + ':ate', umAnoDepois(t.fim), meses);
+      for (const ev of ['input', 'change']) novo.el.addEventListener(ev, () => { ren.r.checked = true; });
+      decTr.push({ t, nome, rs: [enc.r, ren.r, dei.r], novo });
+      return h('div', { class: 'sem-tr', 'data-k': 'sem:tr:' + t.id },
+        h('div', { class: 'sem-tr-cab' }, h('b', { text: nome }), h('small', { text: 'o prazo: ' + dataTxt(m, t.fim) })),
+        h('div', { class: 'sem-tr-ops' }, enc.el, h('div', { class: 'sem-tr-ren' }, ren.el, novo.el), dei.el));
+    });
+    const vencem = itensTr.length ? h('div', { class: 'sem-trs', 'data-k': 'sem:vencem' }, h('small', { class: 'note', text: 'Tratados que vencem nesta semana' }), itensTr) : null;
+    // os motivos de opinião que vencem
+    const motivos = prev.motivos.length ? h('fieldset', { class: 'sem-mos', 'data-k': 'sem:motivos' }, h('legend', { text: 'Motivos de opinião que vencem nesta semana (desmarque o que fica)' }),
+      prev.motivos.map(x => {
+        const cb = h('input', { type: 'checkbox', 'data-k': 'sem:mo:' + x.de + ':' + x.sobre + ':' + x.id, checked: true });
+        decMo.push({ x, cb });
+        return h('label', { class: 'op sem-mo' }, cb, h('span', { text: 'Tirar: ' + nomeF(m, x.de) + ' sobre ' + nomeF(m, x.sobre) + ', “' + x.txt + '” (' + D().opTxt(x.v) + ').' }));
+      })) : null;
+    function ler() {
+      const tratados = {};
+      for (const d of decTr) {
+        const val = (d.rs.find(r => r.checked) || {}).value;
+        if (val === 'encerrar') tratados[d.t.id] = 'encerrar';
+        if (val !== 'renovar') continue;
+        const nd = lerData(d.novo, 'O prazo novo (' + d.nome + ')', meses);
+        if (!nd) throw new Error('O prazo novo (' + d.nome + '): escreva ao menos o ano.');
+        if (D().diaDe(m, nd, true) <= prev.ate) throw new Error('O prazo novo (' + d.nome + ') tem de ser depois desta semana.');
+        tratados[d.t.id] = nd;
+      }
+      return { tratados, motivos: decMo.filter(d => d.cb.checked).map(d => ({ de: d.x.de, sobre: d.x.sobre, id: d.x.id })) };
+    }
+    return { fluxos, vencem, motivos, recusados: () => caixas.filter(c => !c.cb.checked).map(c => c.id), pintar, ler };
+  }
+
+  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana };
 })();

@@ -809,6 +809,28 @@ dialog.mundo-dl .op-linha input[type="text"].op-v { flex: none; width: 64px; }
 .op-linha .tag { order: 4; }
 .op-linha .ib { order: 5; }
 @media (max-width: 560px) { .op-linha .ib { order: 3; } .op-ate { order: 4; flex: 1 1 100%; } .op-linha .tag { order: 5; } }
+/* (lote 11, parte 3b) a vassalagem, as trocas por semana e a diplomacia na prévia da semana */
+.vs-trib-caixa { display: grid; gap: 6px; }
+.vs-trib { display: flex; gap: 6px; align-items: center; }
+dialog.mundo-dl .vs-trib select { flex: 1 1 auto; width: auto; }
+dialog.mundo-dl .vs-trib input[type="text"] { flex: none; width: 96px; }
+.vs-sem { font-size: 12.5px; color: var(--fg-3); white-space: nowrap; }
+.tt-trocas { display: grid; gap: 6px; justify-self: stretch; }
+.tt-trocas:empty { display: none; }
+.tt-troca { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+dialog.mundo-dl .tt-troca select { flex: 1 1 104px; width: auto; }
+dialog.mundo-dl .tt-troca input[type="text"] { flex: none; width: 76px; }
+.li.dp-t .tx small.dp-trocas { color: var(--fg-2); }
+.sem-facs { display: grid; gap: 12px; }
+.mundo-dl label.op.sem-flx, .mundo-dl label.op.sem-mo { font-weight: 500; }
+.mundo-dl label.op.sem-flx.falta span { color: var(--danger); }
+.sem-trs { display: grid; gap: 8px; }
+.sem-tr { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); }
+.sem-tr-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sem-tr-cab b { font-size: 13.5px; color: var(--fg); }
+.sem-tr-cab small { font-size: 12px; color: var(--fg-3); }
+.sem-tr-ops, .sem-tr-ren { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mundo-dl .sem-tr-ops label.op { padding: 5px 9px; font-weight: 500; }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1222,19 +1244,19 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=30"></script>
+<script src="nucleo.js?v=31"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=8"></script>
+<script src="reino.js?v=9"></script>
 <script src="corte.js?v=4"></script>
-<script src="diplomacia.js?v=1"></script>
+<script src="diplomacia.js?v=2"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=35"></script>
+<script src="painel.js?v=36"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=10"></script>
+<script src="reino-painel.js?v=11"></script>
 <script src="corte-painel.js?v=4"></script>
-<script src="diplomacia-painel.js?v=1"></script>
+<script src="diplomacia-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

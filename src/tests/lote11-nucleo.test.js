@@ -20,9 +20,15 @@
 //     ou mais —, o prazo pelo calendário, os limites), as contas (o dia de uma data, o estado do tratado hoje, os
 //     tratados de uma facção e entre duas, a opinião com os motivos vencidos) e a projeção (os públicos sem facção
 //     escondida, sem a nota; sem a opinião).
+//   · (parte 3b) a vassalagem e as trocas: normalizadas (uma suserana por vassala, sem círculo, o tributo e as trocas de
+//     um recurso da economia, entre as partes, os limites), as contas (a vassalagem de uma facção, o círculo, o que vai de
+//     uma para outra numa semana, os tratados e os motivos que vencem nela, as decisões do mestre), a semana (o tributo e
+//     as trocas com o que sobrou a quem manda, o desmarcado não vai, as decisões junto), a economia dos jogadores (o
+//     tributo e as trocas deles hoje), o resumo para o Jornal e a projeção (a vassalagem sem o tributo).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 const Dp = require('../../mundo/diplomacia.js');
+const R = require('../../mundo/reino.js');
 let n = 0, bad = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — esperado ' + JSON.stringify(b) + ', veio ' + JSON.stringify(a));
@@ -328,7 +334,7 @@ const j = JSON.stringify;
   const m = N.normalizarMapa(base), d = m.dipl, T = id => d.tratados.find(t => t.id === id);
   eq(d.tipos, [{ id: 'alianca', nome: 'Aliança' }, { id: 'liga', nome: 'Tratado' }], 'os tipos: sem os repetidos nem o lixo; o nome que falta vira "Tratado"');
   eq(d.tratados.map(t => t.id), ['t1', 't2', 't3', 't5', 't6', 't7', 't8'], 'os tratados: sem os repetidos, o lixo e o de menos de duas facções que existem');
-  eq(Object.keys(T('t1')), ['id', 'tipo', 'partes', 'ini', 'fim', 'pub', 'txt', 'nota', 'enc'], 'cada tratado com os campos de sempre, nesta ordem');
+  eq(Object.keys(T('t1')), ['id', 'tipo', 'partes', 'ini', 'fim', 'pub', 'txt', 'nota', 'enc', 'trocas'], 'cada tratado com os campos de sempre, nesta ordem (3b: as trocas)');
   eq([T('t1').partes, T('t2').partes, T('t1').fim, T('t1').txt, T('t2').pub], [['fa', 'fb'], ['fa', 'fc', 'fb'], { a: 12, m: 1, d: 31 }, 'Juntos.', false], 'as partes (sem repetir, só as que existem; três facções também); o prazo pelo calendário; os termos aparados');
   eq([T('t2').tipo, T('t3').tipo], [null, 'liga'], 'o tipo que não existe na lista guardada sai (fica "Tratado")');
   eq(d.opin.map(o => o.de + '>' + o.sobre), ['fa>fb', 'fb>fa'], 'a opinião: um registro por lado, de uma facção sobre outra que existe (nem sobre si mesma; sem motivos, nada)');
@@ -352,6 +358,116 @@ const j = JSON.stringify;
   eq([p.dipl.tratados.map(t => t.id), p.dipl.tratados[0].nota, p.dipl.opin, p.dipl.tipos.length], [['t1', 't5', 't6', 't7'], '', [], 2], 'na projeção: só os públicos sem facção escondida (nem o de três com a escondida; sem a nota); a opinião não vai; os tipos vão');
   ok(j(N.normalizarMapa(p)) === j(p), 'o que chega aos jogadores passa igual pela normalização deles');
   ok(!('dipl' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { dipl: { opin: base.dipl.opin, tratados: [{ id: 'x', partes: ['fa', 'fb'] }] } })))), 'sem tratado público: a diplomacia nem vai');
+}
+
+/* ---- (parte 3b) a vassalagem, o tributo e as trocas na semana ---- */
+{
+  // um mundo com a economia ligada no dia 3 (segunda): a semana do dia 3 ao 9; no dia 10, ela fica para fechar
+  const ml = JSON.parse(j(N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale', jog: true }, { id: 'fc', nome: 'Ilhas' }, { id: 'fd', nome: 'Culto', oculta: true }, { id: 'fe', nome: '' }] })));
+  ml.cal.dia = 3;
+  R.ligarEconomia(ml);
+  const m0 = JSON.parse(j(N.normalizarMapa(ml))), F = id => m0.faccoes.find(f => f.id === id), dt = d => ({ a: 1, m: 0, d: d + 1 });   // o dia do mapa → a data (meses de 30 dias)
+  F('fa').rec.find(r => r.id === 'madeira').n = 10; F('fb').rec.find(r => r.id === 'lapros').n = 4;
+  m0.cal.dia = 10;
+  m0.dipl = {
+    vassalos: [{ vas: 'fb', sus: 'fa', desde: dt(9), trib: { rec: 'lapros', q: 10 } }, { vas: 'fc', sus: 'fa', desde: dt(10), trib: { rec: 'lapros', q: 5 } }, { vas: 'fd', sus: 'fb' },
+      { vas: 'fb', sus: 'fc' }, { vas: 'fe', sus: 'fe' }, { vas: 'fa', sus: 'fe' }, { vas: 'fe', sus: 'fd' }, { vas: 'zz', sus: 'fa' }, 'lixo'],
+    tratados: [
+      { id: 't1', partes: ['fa', 'fb'], pub: true, trocas: [{ de: 'fa', para: 'fb', rec: 'madeira', q: 3 }, { de: 'fa', para: 'fa', rec: 'madeira', q: 1 }, { de: 'fa', para: 'fc', rec: 'madeira', q: 1 }, { de: 'fa', para: 'fb', rec: 'ouro', q: 1 }, { de: 'fa', para: 'fb', rec: 'madeira', q: -2 }] },
+      { id: 't2', partes: ['fb', 'fc'], fim: dt(7), trocas: [{ de: 'fb', para: 'fc', rec: 'madeira', q: 2 }] },
+      { id: 't3', partes: ['fa', 'fc'], fim: dt(4), enc: dt(1), trocas: [{ de: 'fc', para: 'fa', rec: 'lapros', q: 1 }] },
+      { id: 't4', partes: ['fa', 'fc'], ini: dt(10), trocas: [{ de: 'fc', para: 'fa', rec: 'lapros', q: 1 }] },
+      { id: 't5', partes: ['fb', 'fc'], fim: dt(1), trocas: [{ de: 'fc', para: 'fb', rec: 'lapros', q: 1 }] },
+      { id: 't6', partes: ['fa', 'fc'], fim: dt(11), trocas: [{ de: 'fa', para: 'fc', rec: 'madeira', q: 9 }] },
+      { id: 't7', partes: ['fb', 'fd'], trocas: [{ de: 'fd', para: 'fb', rec: 'lapros', q: 2.004 }] }],
+    opin: [{ de: 'fa', sobre: 'fb', motivos: [{ id: 'm1', txt: 'insulto', v: -10, ate: dt(3) }, { id: 'm2', txt: 'velho', v: -5, ate: dt(2) }, { id: 'm3', txt: 'sempre', v: 5 }] },
+      { de: 'fb', sobre: 'fa', motivos: [{ id: 'm4', txt: 'tributo', v: -20, ate: dt(9) }] }] };
+  const m = N.normalizarMapa(m0), d = m.dipl;
+  // a normalização
+  eq(d.vassalos.map(x => x.vas + '>' + x.sus), ['fb>fa', 'fc>fa', 'fd>fb', 'fa>fe'], 'a vassalagem: uma suserana por vassala (a primeira), ninguém de si mesmo, só facções que existem; a que fecharia um círculo sai (fe > fd > fb > fa > fe)');
+  eq([Object.keys(d.vassalos[0]), d.vassalos[0].trib, d.vassalos[0].desde, d.vassalos[2].trib, d.vassalos[2].desde], [['vas', 'sus', 'desde', 'trib'], { rec: 'lapros', q: 10 }, { a: 1, m: 0, d: 10 }, null, null], 'os campos da vassalagem; o tributo (um recurso e a quantidade por semana); sem tributo, null');
+  eq(d.tratados.find(t => t.id === 't1').trocas, [{ de: 'fa', para: 'fb', rec: 'madeira', q: 3 }], 'as trocas: de uma facção do tratado para outra (não para si mesma nem para quem não é parte), de um recurso da economia, com a quantidade maior que zero');
+  eq(d.tratados.find(t => t.id === 't7').trocas[0].q, 2, 'a quantidade com duas casas');
+  const sem = x => N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: undefined, dipl: x })).dipl;
+  eq([sem({ vassalos: [{ vas: 'fb', sus: 'fa', trib: { rec: 'lapros', q: 10 } }] }).vassalos[0].trib, sem({ tratados: [{ id: 'x', partes: ['fa', 'fb'], trocas: [{ de: 'fa', para: 'fb', rec: 'lapros', q: 1 }] }] }).tratados[0].trocas],
+    [null, []], 'sem a economia (sem os recursos), sem tributo e sem trocas');
+  eq([sem({ vassalos: [{ vas: 'fb', sus: 'fa', trib: { rec: 'lapros', q: 0 } }, { vas: 'fc', sus: 'fa', trib: { rec: '', q: 3 } }, { vas: 'fe', sus: 'fa', trib: { rec: 'lapros', q: '1e12' } }] }).vassalos.map(x => x.trib)],
+    [[null, null, null]], 'o tributo sem quantidade ou sem recurso não vale (e sem a economia, nenhum)');
+  const comEco = x => N.normalizarMapa(Object.assign(JSON.parse(j(m)), { dipl: x })).dipl;
+  eq(comEco({ vassalos: [{ vas: 'fe', sus: 'fa', trib: { rec: 'lapros', q: '1e12' } }, { vas: 'fc', sus: 'fa', trib: { rec: 'lapros', q: 'x' } }] }).vassalos.map(x => x.trib), [{ rec: 'lapros', q: N.LIMITES.qtdDipl }, null], 'a quantidade tem um teto; a que não é número não vale');
+  ok(j(comEco({ vassalos: [{ vas: 'fb', sus: 'fa' }] })) === j({ tratados: [], opin: [], vassalos: [{ vas: 'fb', sus: 'fa', desde: null, trib: null }] }), 'só com a vassalagem, a diplomacia fica');
+  const lim = comEco({ tratados: [{ id: 'x', partes: ['fa', 'fb'], trocas: Array.from({ length: 20 }, () => ({ de: 'fa', para: 'fb', rec: 'lapros', q: 1 })) }],
+    vassalos: Array.from({ length: 120 }, (_, i) => ({ vas: 'v' + i, sus: 'fa' })) });
+  ok(lim.tratados[0].trocas.length === N.LIMITES.trocas && N.LIMITES.vassalos === 100, 'os limites: ' + N.LIMITES.trocas + ' trocas por tratado, ' + N.LIMITES.vassalos + ' vassalagens');
+  const muitas = Array.from({ length: 120 }, (_, i) => ({ id: 'f' + i, nome: 'F' + i }));
+  eq(N.normalizarMapa({ nome: 'M', faccoes: muitas, dipl: { vassalos: muitas.slice(1).map(f => ({ vas: f.id, sus: 'f0' })) } }).dipl.vassalos.length, N.LIMITES.vassalos, 'no máximo ' + N.LIMITES.vassalos + ' vassalagens');
+  // as contas
+  eq([Dp.vassalagemDe(m, 'fb').sus, Dp.vassalagemDe(m, 'fe'), Dp.vassalagemDe(m, ''), Dp.vassalasDe(m, 'fa').map(x => x.vas), Dp.vassalasDe(m, 'fc')], ['fa', null, null, ['fb', 'fc'], []], 'a vassalagem de uma facção (a suserana dela) e as vassalas de uma suserana');
+  eq([Dp.fechaCirculo(m, 'fa', 'fd'), Dp.fechaCirculo(m, 'fb', 'fd'), Dp.fechaCirculo(m, 'fc', 'fb'), Dp.fechaCirculo(m, 'fe', 'fe'), Dp.fechaCirculo(m, 'fc', 'fe')], [true, true, false, true, false],
+    'o círculo: dar a Arvel o Culto (vassala do Vale, vassalo de Arvel) fecha; ao Vale, o Culto (vassalo dele) fecha; as Ilhas sob o Vale, não; ninguém sob si mesmo');
+  const fl = Dp.fluxosDaSemana(m, 3, 9);
+  eq(fl.map(x => [x.id, x.tipo, x.de, x.para, x.rec, x.q, x.ref]), [['trib:fb', 'trib', 'fb', 'fa', 'lapros', 10, null], ['troca:t1:0', 'troca', 'fa', 'fb', 'madeira', 3, 't1'], ['troca:t2:0', 'troca', 'fb', 'fc', 'madeira', 2, 't2'],
+    ['troca:t6:0', 'troca', 'fa', 'fc', 'madeira', 9, 't6'], ['troca:t7:0', 'troca', 'fd', 'fb', 'lapros', 2, 't7']],
+    'o que vai numa semana (dia 3 ao 9): o tributo da vassala desde o dia 9 (a do dia 10, ainda não); as trocas dos tratados que valeram (o que vence no dia 7 também; nem o encerrado, nem o que começa no dia 10, nem o que venceu no dia 1)');
+  eq(Dp.fluxosDaSemana(m, 10, 16).map(x => x.id), ['trib:fb', 'trib:fc', 'troca:t1:0', 'troca:t4:0', 'troca:t6:0', 'troca:t7:0'], 'na semana seguinte: o tributo das Ilhas começa, e o tratado que começa no dia 10 também troca');
+  eq(Dp.fluxosDaSemana(m, 7, 10).map(x => x.id), ['trib:fb', 'trib:fc', 'troca:t1:0', 'troca:t2:0', 'troca:t4:0', 'troca:t6:0', 'troca:t7:0'], 'nas beiradas: o tributo desde o último dia, o tratado que vence no primeiro dia e o que começa no último valem');
+  eq([Dp.tratadosQueVencem(m, 3, 9).map(t => t.id), Dp.tratadosQueVencem(m, 10, 16).map(t => t.id), Dp.tratadosQueVencem(m, 0, 2).map(t => t.id)], [['t2'], ['t6'], ['t5']], 'os tratados que vencem numa semana (o prazo cai nela; o encerrado não)');
+  eq(Dp.motivosQueVencem(m, 3, 9), [{ de: 'fa', sobre: 'fb', id: 'm1', txt: 'insulto', v: -10 }, { de: 'fb', sobre: 'fa', id: 'm4', txt: 'tributo', v: -20 }], 'os motivos de opinião que vencem na semana (o que venceu antes e o sem prazo, não)');
+  // as decisões (direto no rascunho)
+  const r1 = JSON.parse(j(m));
+  const n1 = Dp.aplicarDecisoes(r1, { tratados: { t2: 'encerrar', t6: 'encerrar', t1: 'encerrar' }, motivos: [{ de: 'fb', sobre: 'fa', id: 'm4' }, { de: 'fa', sobre: 'fb', id: 'm3' }, { de: 'fa', sobre: 'fb', id: 'zz' }, 'lixo'] }, 3, 9);
+  eq([n1, r1.dipl.tratados.find(t => t.id === 't2').enc, r1.dipl.tratados.find(t => t.id === 't6').enc, r1.dipl.tratados.find(t => t.id === 't1').enc, r1.dipl.opin.map(o => o.de + '>' + o.sobre + ':' + o.motivos.map(x => x.id))],
+    [2, { a: 1, m: 0, d: 8 }, null, null, ['fa>fb:m1,m2,m3']], 'decidir: encerrar o que vence na semana (acaba no prazo dele); os outros, não; tirar o motivo que vence (a opinião sem motivo sai); o que não vence fica');
+  const r2 = JSON.parse(j(m));
+  eq([Dp.aplicarDecisoes(r2, { tratados: { t2: { a: 2, m: 3 } }, motivos: [{ de: 'fa', sobre: 'fb', id: 'm1' }] }, 3, 9), r2.dipl.tratados.find(t => t.id === 't2').fim, r2.dipl.tratados.find(t => t.id === 't2').enc, r2.dipl.opin[0].motivos.map(x => x.id)],
+    [2, { a: 2, m: 3 }, null, ['m2', 'm3']], 'renovar: o prazo novo');
+  const r3 = JSON.parse(j(m));
+  eq([Dp.aplicarDecisoes(r3, { tratados: { t2: 'deixar' } }, 3, 9), Dp.aplicarDecisoes(r3, { tratados: { t2: { a: 'x' } } }, 3, 9), Dp.aplicarDecisoes(r3, null, 3, 9), Dp.aplicarDecisoes({}, { tratados: { t2: 'encerrar' } }, 3, 9), j(r3) === j(m)],
+    [0, 0, 0, 0, true], 'deixar como está (ou uma decisão que não serve, ou sem decisões): nada muda');
+  // a prévia da semana
+  const p = R.semanaPrevia(m), P = id => p.fac.find(x => x.id === id);
+  eq(p.fluxos.map(x => [x.id, x.pago, x.recusado]), [['trib:fb', 4, false], ['troca:t1:0', 3, false], ['troca:t2:0', 0, false], ['troca:t6:0', 7, false], ['troca:t7:0', 0, false]],
+    'na prévia: o Vale só tem 4 Lapros (paga 4 dos 10); Arvel manda 3 de Madeira ao Vale e o resto (7 dos 9) às Ilhas; o Vale não manda a Madeira que recebe na mesma semana; o Culto não tem nada');
+  eq([P('fa').est, P('fa').envia, P('fa').recebe, P('fa').fica, P('fa').falta], [{ madeira: 10 }, { madeira: 10 }, { lapros: 4 }, { lapros: 4 }, {}], 'Arvel: manda toda a Madeira, recebe o tributo; fica com 4 Lapros');
+  eq([P('fb').envia, P('fb').recebe, P('fb').fica, P('fc').est, P('fc').recebe, P('fc').fica], [{ lapros: 4 }, { madeira: 3 }, { madeira: 3 }, {}, { madeira: 7 }, { madeira: 7 }], 'o Vale fica com a Madeira que recebeu; as Ilhas (sem nada antes) entram na prévia pelo que recebem');
+  eq([p.fac.map(x => x.id), p.vencem, p.motivos.map(x => x.id)], [['fa', 'fb', 'fc'], ['t2'], ['m1', 'm4']], 'quem entra na prévia (o Culto, sem nada, não); os tratados e os motivos que vencem nela');
+  const pr = R.semanaPrevia(m, null, ['troca:t1:0', 'moral:x']), PR = id => pr.fac.find(x => x.id === id);
+  eq([pr.fluxos.map(x => x.pago), pr.fluxos[1].recusado, PR('fa').envia, PR('fa').fica, PR('fb').fica], [[4, 0, 0, 9, 0], true, { madeira: 9 }, { madeira: 1, lapros: 4 }, {}], 'desmarcar a troca de Arvel com o Vale: ela não vai, e a das Ilhas leva os 9');
+  // aplicar a semana com as decisões
+  const ra = JSON.parse(j(m));
+  const feito = R.aplicarSemana(ra, null, ['trib:fb'], 'Semana até o dia 9', { tratados: { t2: 'encerrar', t6: 'encerrar' }, motivos: [{ de: 'fa', sobre: 'fb', id: 'm1' }] });
+  const ma = N.normalizarMapa(ra), est = id => Object.fromEntries(ma.faccoes.find(f => f.id === id).rec.filter(r => r.n).map(r => [r.id, r.n]));
+  eq([est('fa'), est('fb'), est('fc'), feito.fluxos[0].pago], [{}, { lapros: 4, madeira: 3 }, { madeira: 7 }, 0], 'aplicar: o tributo desmarcado não vai (o Vale fica com os 4 Lapros); as trocas, sim');
+  eq([ma.dipl.tratados.find(t => t.id === 't2').enc, ma.dipl.tratados.find(t => t.id === 't6').enc, ma.dipl.opin.map(o => o.motivos.map(x => x.id).join()), ma.eco.sem], [{ a: 1, m: 0, d: 8 }, null, ['m2,m3', 'm4'], m.eco.sem + 1],
+    'e as decisões: o tratado que venceu encerra no prazo (o que não vence nesta semana, não); o motivo tirado sai (o outro fica); a semana fecha');
+  // a economia dos jogadores (o Vale): o tributo e as trocas de hoje (dia 10), com quem (a escondida, sem o nome)
+  const ej = R.economiaDosJogadores(m, null);
+  eq(ej.trocas, [{ tipo: 'trib', sentido: 'envia', com: 'fa', rec: 'lapros', q: 10 }, { tipo: 'troca', sentido: 'recebe', com: 'fa', rec: 'madeira', q: 3 }, { tipo: 'troca', sentido: 'recebe', com: null, rec: 'lapros', q: 2 }],
+    'a economia deles: o tributo que pagam, a Madeira que recebem e o que vem do Culto (escondido: sem o nome); o tratado que venceu no dia 7 não conta mais');
+  // o resumo para o Jornal (o Vale): o que valeu
+  const rz = R.resumoDaSemana(m, p, [], null);
+  ok(rz.txt.includes('**Tributo e trocas:** pagou 4 Lapros de tributo a Arvel · recebeu 3 Madeira de Arvel.'), 'o resumo da semana: o tributo pago e a troca (o que não valeu, não): ' + rz.txt);
+  const mz = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: m.faccoes.map(f => Object.assign({}, f, { jog: f.id === 'fc', nome: f.id === 'fa' ? ' ' : f.nome })) }));
+  ok(R.resumoDaSemana(mz, R.semanaPrevia(mz), [], null).txt.includes('**Tributo e trocas:** recebeu 7 Madeira de outra facção.'), 'as Ilhas: o que recebem (Arvel sem nome: "outra facção")');
+  const mz2 = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: m.faccoes.map(f => Object.assign({}, f, { jog: f.id === 'fa' })) }));
+  ok(R.resumoDaSemana(mz2, R.semanaPrevia(mz2), [], null).txt.includes('**Tributo e trocas:** recebeu 4 Lapros de tributo de Vale · mandou 3 Madeira para Vale · mandou 7 Madeira para Ilhas.'), 'Arvel: o tributo que recebe e o que manda');
+  const mz3 = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: m.faccoes.map(f => Object.assign({}, f, { jog: f.id === 'fe' })) }));
+  ok(!R.resumoDaSemana(mz3, R.semanaPrevia(mz3), [], null).txt.includes('Tributo'), 'sem tributo nem trocas, a linha não aparece');
+  ok(!R.resumoDaSemana(m, Object.assign({}, p, { fluxos: undefined }), [], null).txt.includes('Tributo'), 'a prévia sem a lista: sem a linha');
+  const mz4 = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { faccoes: m.faccoes.map(f => Object.assign({}, f, { rec: f.id === 'fd' ? f.rec.map(r => Object.assign({}, r, { n: r.id === 'lapros' ? 5 : 0 })) : f.rec })) }));
+  ok(R.resumoDaSemana(mz4, R.semanaPrevia(mz4), [], null).txt.includes('**Tributo e trocas:** pagou 4 Lapros de tributo a Arvel · recebeu 3 Madeira de Arvel · recebeu 2 Lapros de outra facção.'), 'o que vem do Culto (escondido): "outra facção"');
+  // a projeção: a vassalagem entre as que eles veem, sem o tributo; os tratados sem as trocas; a economia deles com o tributo e as trocas
+  const pj = N.projetar(m);
+  eq([pj.dipl.vassalos, pj.dipl.tratados.map(t => [t.id, t.trocas])], [[{ vas: 'fb', sus: 'fa', desde: { a: 1, m: 0, d: 10 }, trib: null }, { vas: 'fc', sus: 'fa', desde: { a: 1, m: 0, d: 11 }, trib: null }, { vas: 'fa', sus: 'fe', desde: null, trib: null }], [['t1', []]]],
+    'na projeção: a vassalagem sem o tributo (a do Culto, escondido, não vai); o tratado público sem as trocas');
+  eq(pj.ecoJ.trocas, ej.trocas, 'a economia deles leva o tributo e as trocas');
+  ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
+  ok('dipl' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { dipl: { vassalos: [{ vas: 'fb', sus: 'fa' }] } }))), 'só com a vassalagem, a diplomacia vai');
+  // a economia dos jogadores normalizada: com quem tem de existir; o recurso, um dos deles; o tipo e o sentido conhecidos
+  const ej2 = N.normalizarMapa(Object.assign(JSON.parse(j(pj)), { ecoJ: Object.assign({}, pj.ecoJ, { trocas: [{ tipo: 'x', sentido: 'y', com: 'zz', rec: 'lapros', q: 1 }, { tipo: 'trib', sentido: 'envia', com: 'fa', rec: 'ouro', q: 1 }, { tipo: 'trib', sentido: 'envia', com: 'fa', rec: 'lapros', q: 0 }, 'lixo'] }) })).ecoJ.trocas;
+  eq(ej2, [{ tipo: 'troca', sentido: 'recebe', com: null, rec: 'lapros', q: 1 }], 'a lista dos jogadores normalizada (o que não existe sai ou vira o de sempre)');
+  const ej3 = N.normalizarMapa(Object.assign(JSON.parse(j(pj)), { ecoJ: Object.assign({}, pj.ecoJ, { trocas: Array.from({ length: 120 }, () => ({ tipo: 'trib', sentido: 'envia', com: 'fa', rec: 'lapros', q: 1 })) }) })).ecoJ.trocas;
+  ok(ej3.length === 100, 'no máximo 100 na lista dos jogadores');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

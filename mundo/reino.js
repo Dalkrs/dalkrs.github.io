@@ -36,10 +36,15 @@
    prontas e as guildas que não são secretas), a economia da facção deles (o estoque e a produção por fonte e por
    província, a manutenção e a linha do Livro do reino; as outras facções, nada) e o resumo da semana para o rascunho do
    Jornal (o saldo, as obras prontas e o que a falta trouxe).
+   (lote 11, parte 3b) A diplomacia na semana: o tributo das vassalas e as trocas dos tratados (mundo/diplomacia.js)
+   acontecem no fim da semana, com o que sobrou a quem manda (quem não tem tudo manda o que tem; o que chega não paga o
+   que sai na mesma semana); o mestre desmarca o que não vale. Os tratados e os motivos de opinião que vencem na semana
+   aparecem na prévia, e as decisões do mestre (encerrar, renovar, tirar) valem junto com a semana.
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
+  const DIP = () => (typeof window !== 'undefined' && window.MundoDiplomacia) || (typeof require === 'function' ? require('./diplomacia.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const MAX_NIVEL = 10;                       // regiões dentro de regiões: até quantos níveis (o mesmo do núcleo)
   const MAX_CONTA = 800000;                   // a conta de uma região não passa de tantos hexágonos olhados (mapa enorme, grade miúda)
@@ -572,17 +577,22 @@
   const exercitosDe = (m, fid) => objsDe(m).filter(o => ehObj(o) && o.k === 'g' && ehObj(o.exe) && fid && o.fac === fid);
   /* A prévia da semana que vai fechar (a primeira pendente), sem mexer no mapa — null se não há nenhuma. clas: como em
      producaoPorFaccao. → { n, de, ate, pendentes, fac: [{ id, est, prod, manut, fica, falta, exe: [{ id, manut }], paradas:
-     [{ o, c, t, r }] }], obras: [{ o, c, t, n, sem0, sem1, pronta, parada, fac }], cons: [{ id, tipo: 'fome' | 'moral' |
-     'outro' | 'obras', fac, g, d, de, para, r }] } — cons.id é o que o mestre recusa (fome:facção, moral:exército,
-     outro:exército, obras:facção). */
-  function semanaPrevia(m, clas) {
+     [{ o, c, t, r }], envia, recebe }], obras: [{ o, c, t, n, sem0, sem1, pronta, parada, fac }], cons: [{ id, tipo: 'fome'
+     | 'moral' | 'outro' | 'obras', fac, g, d, de, para, r }], fluxos, vencem, motivos } — cons.id é o que o mestre recusa
+     (fome:facção, moral:exército, outro:exército, obras:facção).
+     (lote 11, parte 3b) fluxos: o tributo e as trocas da semana (como em MundoDiplomacia.fluxosDaSemana, com pago: o que
+     vai de fato, e recusado), na ordem; envia e recebe: o que cada facção manda e recebe (já na conta do que fica; a falta
+     é a da economia dela, antes deles); recusadas: também os ids do tributo e das trocas que o mestre desmarcou (não vão).
+     vencem: os ids dos tratados que vencem nesta semana; motivos: os motivos de opinião que vencem nela ({ de, sobre, id,
+     txt, v }). */
+  function semanaPrevia(m, clas, recusadas) {
     const N = NN(), e = ecoDe(m), pend = semanasPendentes(m);
     if (!e || !pend) return null;
     const n = e.sem, dias = diasDaSemana(m, n), rg = e.regras || {}, papel = new Map(e.rec.map(r => [r.id, r.papel || '']));
     const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
-    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [] };
+    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [], fluxos: [], vencem: [], motivos: [] };
     const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
-    const semMoeda = new Set();
+    const semMoeda = new Set(), contas = [];
     for (const f of m.faccoes || []) {
       const est = {}, p = somar({}, prod[f.id] || {}), manut = {}, exe = [], paradas = [];
       for (const w of e.rec) { const r = (f.rec || []).find(x => x.id === w.id); if (r && Number(r.n)) est[w.id] = arred2(Number(r.n)); }
@@ -608,7 +618,7 @@
       const fica = {}, falta = {};
       for (const w of e.rec) { const v = b[w.id] || 0; if (v < 0) falta[w.id] = arred2(-v); if (v > 0) fica[w.id] = v; }
       const tem = [est, p, manut, falta].some(x => Object.keys(x).length) || paradas.length;
-      if (tem) out.fac.push({ id: f.id, est, prod: p, manut, fica, falta, exe, paradas });
+      contas.push({ id: f.id, est, prod: p, manut, fica, falta, exe, paradas, envia: {}, recebe: {}, tem });
       // as consequências (cada uma o mestre pode recusar)
       const fr = Object.keys(falta);
       if (fr.some(comida) && rg.fome > 0 && f.apoio != null) out.cons.push({ id: 'fome:' + f.id, tipo: 'fome', fac: f.id, d: rg.fome, de: f.apoio, para: Math.max(0, f.apoio - rg.fome) });
@@ -623,6 +633,20 @@
         if (r && rg.moralOutro > 0) out.cons.push({ id: 'outro:' + g.id, tipo: 'outro', fac: f.id, g: g.id, r, d: rg.moralOutro, de: moral, para: Math.max(0, moral - rg.moralOutro) });
       }
     }
+    /* (lote 11, parte 3b) o tributo e as trocas: no fim da semana, com o que sobrou a quem manda (sobra: o que ainda dá
+       para mandar); quem não tem tudo manda o que tem; o desmarcado pelo mestre não vai */
+    const no = new Set(recusadas || []), conta = new Map(contas.map(c => [c.id, c])), sobra = new Map(contas.map(c => [c.id, Object.assign({}, c.fica)]));
+    for (const fl of DIP().fluxosDaSemana(m, dias.de, dias.ate)) {
+      const s = sobra.get(fl.de), recusado = no.has(fl.id), pago = recusado ? 0 : Math.min(fl.q, s[fl.rec] || 0);
+      if (pago) { somar(s, { [fl.rec]: -pago }); somar(conta.get(fl.de).envia, { [fl.rec]: pago }); somar(conta.get(fl.para).recebe, { [fl.rec]: pago }); }
+      out.fluxos.push(Object.assign({}, fl, { pago, recusado }));
+    }
+    for (const c of contas) {
+      const troca = Object.keys(c.envia).length + Object.keys(c.recebe).length > 0;
+      if (c.tem || troca) out.fac.push({ id: c.id, est: c.est, prod: c.prod, manut: c.manut, fica: somar(somar(Object.assign({}, c.fica), c.envia, -1), c.recebe), falta: c.falta, exe: c.exe, paradas: c.paradas, envia: c.envia, recebe: c.recebe });
+    }
+    out.vencem = DIP().tratadosQueVencem(m, dias.de, dias.ate).map(t => t.id);
+    out.motivos = DIP().motivosQueVencem(m, dias.de, dias.ate);
     // (parte 5) os lembretes dos estratos (os aventureiros trazem rumores…): por assentamento, só para o mestre ver
     for (const a of assentamentosDe(m)) {
       const itens = (e.estr || []).filter(s => s.lembra && a.o.ass.estr && a.o.ass.estr[s.id] > 0).map(s => ({ estr: s.id, n: a.o.ass.estr[s.id], txt: s.lembra }));
@@ -645,9 +669,11 @@
   }
   /* Fechar a semana (no rascunho): a prévia de agora, com as consequências que o mestre não recusou (os ids em
      recusadas). Os estoques ficam no que sobrou (com o motivo no histórico de cada facção), o apoio e a moral caem, as
-     obras andam (e as prontas sobem de nível) e a semana seguinte passa a ser a aberta. → a prévia aplicada, ou null */
-  function aplicarSemana(m, clas, recusadas, mot) {
-    const N = NN(), prev = semanaPrevia(m, clas);
+     obras andam (e as prontas sobem de nível) e a semana seguinte passa a ser a aberta. (lote 11, parte 3b) O tributo e
+     as trocas entram no que fica (os desmarcados, em recusadas, não); dipl: as decisões da diplomacia (como em
+     MundoDiplomacia.aplicarDecisoes: os tratados e os motivos que vencem nesta semana). → a prévia aplicada, ou null */
+  function aplicarSemana(m, clas, recusadas, mot, dipl) {
+    const N = NN(), prev = semanaPrevia(m, clas, recusadas);
     if (!prev) return null;
     const no = new Set(recusadas || []), dia = ehObj(m.cal) ? m.cal.dia : 0, e = m.eco;
     for (const pf of prev.fac) {
@@ -675,6 +701,7 @@
       c.obra.sem = Math.max(0, c.obra.sem - 1);
       if (!c.obra.sem) { c.n = c.obra.n; c.obra = null; }
     }
+    DIP().aplicarDecisoes(m, dipl, prev.de, prev.ate);             // (lote 11, parte 3b) encerrar, renovar, tirar o motivo
     e.sem = prev.n + 1;
     return prev;
   }
@@ -713,8 +740,10 @@
      mestre) e por província (as regiões dela juntas pela província onde ficam; a província que eles não veem, e o que fica
      fora das províncias, vai junto, sem nome: id null), a manutenção dos exércitos (todos os dela: é o estoque que paga) e
      a linha deles no Livro do reino (as províncias, as sub-regiões, os hexágonos e os exércitos que eles veem). clas:
-     como em producaoPorFaccao; visivel(o): o objeto vai para os jogadores. → null sem a economia ligada ou sem a facção dos
-     jogadores (ou com ela escondida) */
+     como em producaoPorFaccao; visivel(o): o objeto vai para os jogadores. (lote 11, parte 3b) trocas: o tributo e as
+     trocas dela que valem hoje (por semana): [{ tipo ('trib' | 'troca'), sentido ('envia' | 'recebe'), com (a outra
+     facção; null se ela é escondida), rec, q }]. → null sem a economia ligada ou sem a facção dos jogadores (ou com ela
+     escondida) */
   function economiaDosJogadores(m, clas, visivel) {
     const N = NN(), e = ecoDe(m), f = e ? facJog(m) : null;
     if (!f || f.oculta) return null;
@@ -747,7 +776,12 @@
     for (const g of exercitosDe(m, f.id)) { somar(manut, manutencaoDe(m, g)); if (vis(g)) livro.exe++; }
     for (const w of e.rec) { const r = (f.rec || []).find(x => x.id === w.id); if (r && Number(r.n)) est[w.id] = arred2(Number(r.n)); }
     const prov = [...porProv.values()].sort((a, b) => (a.id ? 0 : 1) - (b.id ? 0 : 1));
-    return { fac: f.id, rec: e.rec.map(r => ({ id: r.id, nome: r.nome, cor: r.cor })), est, prod, manut, prov, livro };
+    const hj = DIP().hojeDia(m), vista = id => (m.faccoes || []).some(x => x.id === id && !x.oculta);
+    const trocas = DIP().fluxosDaSemana(m, hj, hj).filter(x => x.de === f.id || x.para === f.id).map(x => {
+      const outra = x.de === f.id ? x.para : x.de;
+      return { tipo: x.tipo, sentido: x.de === f.id ? 'envia' : 'recebe', com: vista(outra) ? outra : null, rec: x.rec, q: x.q };
+    });
+    return { fac: f.id, rec: e.rec.map(r => ({ id: r.id, nome: r.nome, cor: r.cor })), est, prod, manut, prov, livro, trocas };
   }
   /* O resumo da semana para o rascunho do Jornal (o mestre revisa e publica), só da facção dos jogadores: o saldo (quanto
      cada recurso mudou e com quanto fica), as obras que ficaram prontas nas cidades que eles veem por dentro e o que a
@@ -789,7 +823,16 @@
       const o = achaObj(m, x.o), t = tipoDe(m, x.t);
       falta.push((o && t && vis(o) ? t.nome + ' (' + nomeO(o, 'uma cidade') + ')' : 'Uma construção') + ' não produziu nem gastou: faltou ' + rec(x.r).nome + '.');
     }
+    // (lote 11, parte 3b) o tributo e as trocas que valeram (a facção escondida fica sem o nome)
+    const trocas = [];
+    for (const x of prev.fluxos || []) {
+      if (!x.pago || (x.de !== f.id && x.para !== f.id)) continue;
+      const o = (m.faccoes || []).find(y => y.id === (x.de === f.id ? x.para : x.de)), nome = o && !o.oculta ? String(o.nome || '').trim() || 'outra facção' : 'outra facção';
+      const qt = fmtN(x.pago) + ' ' + rec(x.rec).nome, sai = x.de === f.id;
+      trocas.push(x.tipo === 'trib' ? (sai ? 'pagou ' + qt + ' de tributo a ' : 'recebeu ' + qt + ' de tributo de ') + nome : (sai ? 'mandou ' + qt + ' para ' : 'recebeu ' + qt + ' de ') + nome);
+    }
     const partes = ['**O saldo:** ' + (saldo.length ? saldo.join(' · ') : 'nada mudou nos estoques') + '.'];
+    if (trocas.length) partes.push('**Tributo e trocas:** ' + trocas.join(' · ') + '.');
     if (prontas.length) partes.push('**Obras prontas:** ' + prontas.join(' · ') + '.');
     if (falta.length) partes.push('**O que a falta trouxe:** ' + falta.join(' '));
     return { tit: (String(f.nome || '').trim() || 'A facção dos jogadores') + ': a semana até ' + N.textoData(m.cal, prev.ate), txt: partes.join('\n\n') };

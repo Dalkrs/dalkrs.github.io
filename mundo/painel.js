@@ -2771,18 +2771,20 @@
       const rs = v.objs.filter(o => o.k === 'r' && N().facDaRegiao(v, o) === f.id), np = rs.filter(o => !o.pai).length, ns = rs.length - np;
       const sub = rs.length ? [np ? plural(np, 'província', 'províncias') : '', ns ? plural(ns, 'sub-região', 'sub-regiões') : ''].filter(Boolean).join(' · ') : 'nenhuma região';
       const gov = CP() && CP().governanteTxt ? CP().governanteTxt(v, f.id) : '';       // (lote 11, parte 2a) quem tem o maior título preso à facção
+      const vas = DP() && DP().vassalaTxt ? DP().vassalaTxt(v, f.id) : '';            // (lote 11, parte 3b) a suserana dela
+      const vasEl = vas ? h('small', { class: 'linha2', 'data-k': 'fac:vas:' + f.id, text: vas }) : null;
       if (ed) {
         const aberta = facAberta === f.id;
         lista.append(h('button', { type: 'button', class: 'li clic' + (aberta ? ' aberta' : '') + (f.oculta ? ' oculto' : ''), 'data-k': 'fac:' + f.id, 'data-fac': f.id, 'aria-expanded': String(aberta),
           onclick: () => { facAberta = aberta ? null : f.id; pintar(); } },
-          bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null),
+          bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null, vasEl),
           f.jog ? h('span', { class: 'tag jog', text: 'dos jogadores' }) : null,
           f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null));
         if (aberta) lista.append(editorFaccao(f, v));
       } else {
         const rels = Object.keys(f.rel || {}).map(k => [facDe(v, k), f.rel[k]]).filter(([g, r]) => g && r !== 'neutra');
         lista.append(h('div', { class: 'fac-pub', 'data-fac': f.id },
-          h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null),
+          h('div', { class: 'li' }, bandeiraFac(f.id, 18) || h('i', { style: { background: f.cor } }), h('span', { class: 'tx' }, h('b', { text: nomeFac(f) }), h('small', { text: sub }), gov ? h('small', { class: 'linha2', text: gov }) : null, vasEl),
             f.jog ? h('span', { class: 'tag jog', text: mestre ? 'dos jogadores' : 'vocês' }) : null,
             mestre && f.oculta ? h('span', { class: 'tag', text: 'escondida' }) : null),
           f.txt.trim() ? h('p', { class: 'publico', text: f.txt.trim() }) : null,

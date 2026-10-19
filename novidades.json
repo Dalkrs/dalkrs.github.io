@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-23",
+      "data": "2026-10-18",
+      "titulo": "A vassalagem",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a vassalagem — quando uma facção é vassala de outra, aparece na aba Diplomacia e na aba Reinos (“vassala de …”)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: no Livro do reino, em “De onde vem”, o tributo e as trocas da facção de vocês, por semana."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na Diplomacia, “+ Vassalagem” (a vassala, a suserana, desde quando e o tributo por semana, com a economia ligada) e, no cartão do tratado, as trocas por semana entre as facções dele."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na prévia da semana, o tributo e as trocas entram na conta (cada um com a caixa: desmarcado, não vai nesta semana), e os tratados e os motivos de opinião que vencem aparecem para você decidir: encerrar, renovar até um prazo novo ou deixar vencido; tirar o motivo."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-22",
       "data": "2026-10-18",
       "titulo": "A diplomacia",

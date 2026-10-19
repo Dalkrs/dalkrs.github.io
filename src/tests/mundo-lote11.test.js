@@ -29,6 +29,12 @@
 //     na hora, os erros), os tratados (o novo, os erros, três partes, o vencido), os tipos (renomear, criar, voltar aos
 //     de começo), encerrar e reabrir, tirar com Desfazer, o filtro, quem joga (a relação, os públicos, sem a opinião nem
 //     a facção escondida), no celular.
+//   · (parte 3b, SO=vassalagem) a vassalagem: a janela (os erros: sem as facções, a mesma, o círculo, a que já é vassala,
+//     o tributo sem quantidade), criar com o tributo (na lista, no par, em Reinos), mudar, Desfazer; as trocas por semana no
+//     cartão do tratado (a troca nova, os erros, a facção que sai e volta; na lista); a prévia da semana (a coluna
+//     "Trocas", o tributo que não dá para pagar inteiro, desmarcar refaz as contas; o tratado que vence: renovar, o erro
+//     do prazo; o motivo que vence; aplicar num passo de Desfazer); quem joga (a vassalagem sem o tributo, "vassala de" em
+//     Reinos, o tributo e as trocas no Livro do reino); tirar a vassalagem; no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -698,7 +704,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await cabe(), 'as duas fileiras cabem no painel');
     await aba(L, 'diplomacia');
     const pd = await textoPane(L);
-    ok(/^Diplomacia \+ Tratado Tipos de tratado… Facção Todas as facções.* RELAÇÕES/i.test(pd) && await A(L, () => document.querySelectorAll('#pane .dp-par').length) === 6, 'a aba Diplomacia: os botões, o filtro e os seis pares de facções (com a escondida, para o mestre): ' + pd.slice(0, 140));
+    ok(/^Diplomacia \+ Tratado \+ Vassalagem Tipos de tratado… Facção Todas as facções.* RELAÇÕES/i.test(pd) && await A(L, () => document.querySelectorAll('#pane .dp-par').length) === 6, 'a aba Diplomacia: os botões, o filtro e os seis pares de facções (com a escondida, para o mestre): ' + pd.slice(0, 140));
     // a relação (a mesma da aba Reinos)
     await campo(L, 'dprel:fa:fb').selectOption('guerra'); await espera(300);
     ok(await A(L, () => { const m = __mundo.App.mapa, f = id => m.faccoes.find(x => x.id === id); return f('fa').rel.fb === 'guerra' && f('fb').rel.fa === 'guerra'; }), 'a relação entre Aldar e Vale: Guerra, dos dois lados');
@@ -820,6 +826,191 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await A(L, () => { const dd = document.querySelector('dialog.op-dl[open]'); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, a opinião cabe');
     await semAvisos(L); await foto('l11-dipl-celular');
     await L.F.click(dlg('[data-k="op:nao"]')); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 3b) a vassalagem, o tributo e as trocas na semana ----------
+  if (parte('vassalagem')) await passo('a vassalagem', async () => {
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(200);
+    if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
+    // o mundo: quatro facções (o Culto escondido), a economia ligada (hoje é segunda), o Vale com 4 Lapros e Aldar com 10 de Madeira
+    await A(L, () => {
+      __mundo.App.mudar('vassalagem: o mundo', m => {
+        if (!m.faccoes.some(f => f.id === 'fc')) m.faccoes.push({ id: 'fc', nome: 'Ilhas', cor: '#2f8f8f' }, { id: 'fd', nome: 'Culto', cor: '#5b3fb5', oculta: true });
+        for (const f of m.faccoes) { f.rel = {}; f.jog = false; }
+        delete m.dipl;
+        if (!m.eco || !m.eco.on) window.MundoReino.ligarEconomia(m);
+        const F = id => m.faccoes.find(f => f.id === id);
+        for (const f of m.faccoes) for (const r of f.rec) r.n = 0;
+        F('fb').rec.find(r => r.id === 'lapros').n = 4; F('fa').rec.find(r => r.id === 'madeira').n = 10;
+      });
+    });
+    const dp = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.dipl || null)));
+    const hojeDt = await A(L, () => window.MundoCorte.hoje(__mundo.App.mapa));
+    await aba(L, 'diplomacia');
+    ok(/VASSALAGEM Nenhuma facção é vassala de outra\./i.test(await textoPane(L)), 'a aba: a seção da vassalagem, vazia');
+    // a janela: os erros
+    await botao(L, 'dp:vas-novo'); await L.F.waitForSelector('dialog.vs-dl[open]');
+    const errVs = () => A(L, () => document.querySelector('dialog.vs-dl[open] .err').textContent);
+    ok(await A(L, () => document.querySelector('dialog.vs-dl[open] [data-k="vs:trib-campos"]').hidden) && await A(L, () => document.querySelector('dialog.vs-dl[open] [data-k="vs:desde:ano"]').value) === String(hojeDt.a),
+      'a vassalagem nova: desde hoje, sem tributo (os campos dele escondidos)');
+    await L.F.click(dlg('[data-k="vs:ok"]')); await espera(120);
+    ok(await errVs() === 'Escolha a vassala e a suserana.', 'sem as facções: não passa');
+    await L.F.selectOption(dlg('[data-k="vs:vas"]'), 'fb'); await L.F.selectOption(dlg('[data-k="vs:sus"]'), 'fb'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(120);
+    ok(await errVs() === 'A suserana tem de ser outra facção.', 'a mesma facção: não passa');
+    await L.F.selectOption(dlg('[data-k="vs:sus"]'), 'fa'); await L.F.check(dlg('[data-k="vs:trib"]'));
+    ok(!(await A(L, () => document.querySelector('dialog.vs-dl[open] [data-k="vs:trib-campos"]').hidden)), '"Paga tributo": os campos aparecem');
+    await L.F.selectOption(dlg('[data-k="vs:rec"]'), 'lapros'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(120);
+    ok(await errVs() === 'O tributo: a quantidade por semana é maior que zero.', 'o tributo sem quantidade: não passa');
+    await L.F.fill(dlg('[data-k="vs:q"]'), '10');
+    await semAvisos(L); await foto('l11-vassalagem');
+    await L.F.click(dlg('[data-k="vs:ok"]')); await espera(350);
+    let d = await dp();
+    ok(d && j(d.vassalos) === j([{ vas: 'fb', sus: 'fa', desde: hojeDt, trib: { rec: 'lapros', q: 10 } }]) && /Vale é vassala de Aldar\./.test(await avisos(L)), 'criar: o Vale vassalo de Aldar, desde hoje, com 10 Lapros de tributo por semana: ' + j(d && d.vassalos));
+    ok(/Vale é vassala de Aldar desde .+ · tributo: 10 Lapros por semana/.test(await A(L, () => document.querySelector('#pane [data-k="vas:fb"]').innerText.replace(/\s+/g, ' '))) && /Vale é vassala de Aldar/.test(await A(L, () => document.querySelector('#pane [data-k="par:fa:fb"]').innerText)),
+      'na lista (desde quando, o tributo) e no par Aldar ⇄ Vale');
+    // o círculo e a que já é vassala
+    await botao(L, 'dp:vas-novo'); await L.F.waitForSelector('dialog.vs-dl[open]');
+    await L.F.selectOption(dlg('[data-k="vs:vas"]'), 'fa'); await L.F.selectOption(dlg('[data-k="vs:sus"]'), 'fb'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(120);
+    ok(await errVs() === 'Assim fecharia um círculo: Vale já é vassala de Aldar (direto ou pela cadeia).', 'Aldar vassala do Vale: fecharia um círculo');
+    await L.F.selectOption(dlg('[data-k="vs:vas"]'), 'fb'); await L.F.selectOption(dlg('[data-k="vs:sus"]'), 'fc'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(120);
+    ok(await errVs() === 'Vale já é vassala de Aldar (abra a vassalagem dela).', 'o Vale já tem suserana: não passa');
+    await L.F.click(dlg('[data-k="vs:nao"]')); await espera(150);
+    // mudar (e Desfazer)
+    await botao(L, 'vas:fb'); await L.F.waitForSelector('dialog.vs-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.vs-dl[open] [data-k="vs:q"]').value) === '10' && await L.F.locator(dlg('[data-k="vs:trib"]')).isChecked(), 'o cartão da vassalagem: o tributo como estava');
+    await L.F.fill(dlg('[data-k="vs:q"]'), '6'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(350);
+    ok((await dp()).vassalos[0].trib.q === 6 && /Vale é vassala de Aldar: salvo\./.test(await avisos(L)), 'mudar o tributo para 6');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok((await dp()).vassalos[0].trib.q === 10, 'Desfazer: volta a 10');
+    await A(L, () => __mundo.App.refazer()); await espera(300);
+    // trocar os lados no cartão (a vassalagem que muda não conta para o círculo)
+    await botao(L, 'vas:fb'); await L.F.waitForSelector('dialog.vs-dl[open]');
+    await L.F.selectOption(dlg('[data-k="vs:vas"]'), 'fa'); await L.F.selectOption(dlg('[data-k="vs:sus"]'), 'fb'); await L.F.click(dlg('[data-k="vs:ok"]')); await espera(350);
+    ok(j((await dp()).vassalos.map(x => x.vas + '>' + x.sus)) === j(['fa>fb']), 'trocar os lados no cartão: Aldar vassala do Vale (sem acusar círculo)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(j((await dp()).vassalos.map(x => x.vas + '>' + x.sus + ':' + x.trib.q)) === j(['fb>fa:6']), 'Desfazer: o Vale volta a ser o vassalo');
+    // em Reinos: "vassala de Aldar"
+    await aba(L, 'faccoes');
+    ok(await A(L, () => { const e = document.querySelector('#pane [data-k="fac:vas:fb"]'); return e ? e.textContent : ''; }) === 'vassala de Aldar' && await L.F.locator('#pane [data-k="fac:vas:fa"]').count() === 0, 'em Reinos: o Vale, "vassala de Aldar"');
+    // o filtro
+    await aba(L, 'diplomacia');
+    await campo(L, 'dp:fac').selectOption('fc'); await espera(300);
+    ok(/VASSALAGEM Nenhuma facção é vassala de outra\./i.test(await textoPane(L)), 'o filtro das Ilhas: nenhuma vassalagem');
+    await campo(L, 'dp:fac').selectOption('fa'); await espera(300);
+    ok(await campo(L, 'vas:fb').count() === 1, 'o filtro de Aldar: a vassalagem do Vale');
+    await campo(L, 'dp:fac').selectOption(''); await espera(300);
+    // as trocas por semana no cartão do tratado
+    await botao(L, 'dp:novo'); await L.F.waitForSelector('dialog.tr-dl[open]');
+    await L.F.selectOption(dlg('[data-k="tr:tipo"]'), 'comercio');
+    ok(await L.F.locator(dlg('[data-k="tr:troca-nova"]')).isDisabled(), 'sem duas facções marcadas, "+ Troca" fica travado');
+    await L.F.check(dlg('[data-k="tr:parte:fa"]')); await L.F.check(dlg('[data-k="tr:parte:fb"]'));
+    await L.F.click(dlg('[data-k="tr:troca-nova"]')); await espera(100);
+    ok(await A(L, () => { const r = document.querySelector('dialog.tr-dl[open] .tt-troca'); return [r.querySelector('[data-k="tr:troca:de"]').value, r.querySelector('[data-k="tr:troca:para"]').value].join(); }) === 'fa,fb', 'a troca nova: de Aldar para o Vale (as duas marcadas)');
+    await L.F.selectOption(dlg('[data-k="tr:troca:rec"]'), 'madeira');
+    await L.F.click(dlg('[data-k="tr:ok"]')); await espera(120);
+    const errTr = () => A(L, () => document.querySelector('dialog.tr-dl[open] .err').textContent);
+    ok(await errTr() === 'A quantidade de cada troca é maior que zero.', 'a troca sem quantidade: não passa');
+    await L.F.fill(dlg('[data-k="tr:troca:q"]'), '3');
+    await L.F.uncheck(dlg('[data-k="tr:parte:fb"]')); await espera(80);
+    ok(await A(L, () => document.querySelector('dialog.tr-dl[open] [data-k="tr:troca:para"]').value) === '', 'o Vale sai do tratado: a troca fica sem ele ("—")');
+    await L.F.check(dlg('[data-k="tr:parte:fc"]')); await L.F.click(dlg('[data-k="tr:ok"]')); await espera(120);
+    ok(await errTr() === 'Cada troca vai de uma facção do tratado para outra.', 'a troca sem o "para": não passa');
+    await L.F.uncheck(dlg('[data-k="tr:parte:fc"]')); await L.F.check(dlg('[data-k="tr:parte:fb"]')); await espera(80);
+    ok(await A(L, () => document.querySelector('dialog.tr-dl[open] [data-k="tr:troca:para"]').value) === 'fb', 'o Vale volta: a troca volta a ser para ele');
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.tr-dl[open] .err').textContent = ''; }); await foto('l11-trocas');
+    await L.F.click(dlg('[data-k="tr:ok"]')); await espera(350);
+    d = await dp();
+    const tc = d.tratados[0];
+    ok(tc && tc.tipo === 'comercio' && j(tc.trocas) === j([{ de: 'fa', para: 'fb', rec: 'madeira', q: 3 }]), 'criar: o tratado de comércio com a troca: ' + j(tc));
+    ok(/Comércio: Aldar, Vale desde .+ por semana: Aldar → Vale: 3 Madeira/.test(await A(L, id => document.querySelector('#pane [data-k="tr:' + id + '"]').innerText.replace(/\s+/g, ' '), tc.id)), 'na lista: as trocas por semana');
+    // um tratado de paz que vence nesta semana (com uma troca do Vale para as Ilhas) e um motivo de opinião que vence nela
+    await A(L, () => {
+      const { App } = __mundo, C = window.MundoCorte, dt = k => C.hoje(Object.assign({}, App.mapa, { cal: Object.assign({}, App.mapa.cal, { dia: App.mapa.cal.dia + k }) }));
+      App.mudar('vassalagem: a paz e o motivo', m => {
+        m.dipl.tratados.push({ id: 'tpz', tipo: 'paz', partes: ['fb', 'fc'], fim: dt(3), pub: true, trocas: [{ de: 'fb', para: 'fc', rec: 'madeira', q: 2 }] });
+        m.dipl.opin.push({ de: 'fa', sobre: 'fb', motivos: [{ id: 'mi', txt: 'o insulto', v: -10, ate: dt(2) }, { id: 'mf', txt: 'para sempre', v: 5 }] });
+      });
+    });
+    // a semana: o calendário passa para a outra segunda e a prévia abre
+    await aba(L, 'hoje'); await semAvisos(L);
+    await L.F.click('#pane [data-k="hoje:+7"]');
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const sd = s0 => 'dialog.sem-dl[open] ' + s0;
+    const cab = await A(L, () => [...document.querySelector('dialog.sem-dl[open] [data-k="sem:fac:fb"] thead tr').children].map(x => x.textContent).join('|'));
+    ok(cab === 'Recurso|Estoque|Produção|Manutenção|Trocas|Fica|Falta', 'a prévia: a coluna "Trocas": ' + cab);
+    const celulas = (fac, rec) => A(L, ([f0, r0]) => { const tr = document.querySelector(`dialog.sem-dl[open] [data-k="sem:fac:${f0}"] tr[data-rec="${r0}"]`); if (!tr) return null; const td = tr.querySelector('[data-k="sem:troca"]'); return [td.textContent, td.nextElementSibling.textContent]; }, [fac, rec]);
+    ok(j(await celulas('fb', 'lapros')) === j(['−4', '0']) && j(await celulas('fa', 'lapros')) === j(['+4', '4']) && j(await celulas('fa', 'madeira')) === j(['−3', '7']) && j(await celulas('fb', 'madeira')) === j(['+3', '3']),
+      'o Vale paga os 4 Lapros que tem; Aldar manda 3 de Madeira: ' + j([await celulas('fb', 'lapros'), await celulas('fa', 'lapros'), await celulas('fa', 'madeira'), await celulas('fb', 'madeira')]));
+    const flx = await A(L, () => [...document.querySelectorAll('dialog.sem-dl[open] [data-k="sem:fluxos"] label')].map(l => l.innerText.replace(/\s+/g, ' ').trim()));
+    ok(j(flx) === j(['Vale paga 6 Lapros de tributo a Aldar. Só tem 4: paga isso.', 'Aldar manda 3 Madeira para Vale (Comércio).', 'Vale manda 2 Madeira para Ilhas (Paz ou trégua). Não tem: não manda nada.']),
+      'o tributo e as trocas, cada um com a caixa (o que não dá para pagar inteiro, avisado): ' + j(flx));
+    await L.F.locator(sd('[data-k="sem:f:trib:fb"]')).uncheck(); await espera(150);
+    ok(j(await celulas('fb', 'lapros')) === j(['—', '4']) && j(await celulas('fa', 'lapros')) === j(['—', '0']) && /^Vale paga 6 Lapros de tributo a Aldar\.$/.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:fl:trib:fb"]').innerText.trim())),
+      'desmarcar o tributo: as contas mudam na hora (o Vale fica com os 4; a linha de Aldar continua no lugar)');
+    ok(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:tr:tpz:encerrar"]').checked) && /Paz ou trégua: Vale, Ilhas o prazo: .+/.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:tr:tpz"]').innerText.replace(/\s+/g, ' '))),
+      'o tratado que vence: "Encerrar" de começo');
+    ok(await L.F.locator(sd('[data-k="sem:mo:fa:fb:mi"]')).isChecked() && /Tirar: Aldar sobre Vale, “o insulto” \(−10\)\./.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:motivos"]').innerText)) && !/para sempre/.test(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:motivos"]').innerText)),
+      'o motivo que vence, para tirar (marcado); o sem prazo não aparece');
+    // aplicar com "Encerrar" (de começo): o tratado acaba no prazo dele; Desfazer volta tudo num passo
+    const antes = await A(L, () => JSON.stringify(__mundo.App.mapa)), fimPz = (await dp()).tratados.find(t0 => t0.id === 'tpz').fim;
+    await semAvisos(L); await L.F.click(sd('[data-k="sem:aplicar"]')); await espera(500);
+    ok(j((await dp()).tratados.find(t0 => t0.id === 'tpz').enc) === j(fimPz) && /Semana fechada \(até .+\)\. 1 tratado encerrado\./.test(await avisos(L)), 'aplicar com "Encerrar": o tratado acaba no prazo dele (e o aviso diz)');
+    await A(L, () => __mundo.App.desfazer()); await espera(500);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa)) === antes, 'Desfazer: tudo volta num passo (os estoques, o tratado, o motivo, a semana)');
+    if (!(await A(L, () => !!document.querySelector('dialog.sem-dl[open]')))) await A(L, () => { window.MundoReinoPainel.janelaSemana(); });
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    await L.F.locator(sd('[data-k="sem:f:trib:fb"]')).uncheck(); await espera(150);
+    // renovar: o prazo novo (o erro antes)
+    await L.F.fill(sd('[data-k="sem:tr:tpz:ate:ano"]'), String(hojeDt.a - 1)); await espera(50);
+    ok(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:tr:tpz:renovar"]').checked), 'escrever o prazo novo marca "Renovar até"');
+    await L.F.click(sd('[data-k="sem:aplicar"]')); await espera(150);
+    ok(await A(L, () => document.querySelector('dialog.sem-dl[open] [data-k="sem:err"]').textContent) === 'O prazo novo (Paz ou trégua: Vale, Ilhas) tem de ser depois desta semana.', 'o prazo novo antes da semana: não aplica');
+    await L.F.fill(sd('[data-k="sem:tr:tpz:ate:ano"]'), String(hojeDt.a + 4)); await L.F.selectOption(sd('[data-k="sem:tr:tpz:ate:mes"]'), ''); await L.F.fill(sd('[data-k="sem:tr:tpz:ate:dia"]'), '');
+    await semAvisos(L); await foto('l11-semana-dipl');
+    await L.F.click(sd('[data-k="sem:aplicar"]')); await espera(500);
+    const est = () => A(L, () => { const m = __mundo.App.mapa, f = id => Object.fromEntries(m.faccoes.find(x => x.id === id).rec.filter(r => r.n).map(r => [r.id, r.n])); return [f('fa'), f('fb'), f('fc')]; });
+    d = await dp();
+    ok(j(await est()) === j([{ madeira: 7 }, { lapros: 4, madeira: 3 }, {}]) && j(d.tratados.find(t0 => t0.id === 'tpz').fim) === j({ a: hojeDt.a + 4 }) && j(d.opin[0].motivos.map(x => x.id)) === j(['mf'])
+      && /Semana fechada \(até .+\)\. 1 tratado renovado\./.test(await avisos(L)), 'aplicar: o tributo desmarcado não foi, a troca foi; o tratado renovado; o motivo tirado: ' + j(await est()));
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa)) === antes, 'Desfazer a renovação: tudo volta de novo');
+    await A(L, () => __mundo.App.refazer()); await espera(300);
+    if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250); }
+    // quem joga (o Vale): a vassalagem sem o tributo; em Reinos, "vassala de" e o tributo e as trocas no Livro do reino
+    await A(L, () => __mundo.App.mudar('vassalagem: a facção dos jogadores', m => { m.faccoes.find(f => f.id === 'fb').jog = true; }));
+    await comoJogador(L, true);
+    await aba(L, 'diplomacia');
+    const pj = await textoPane(L);
+    ok(/VASSALAGEM Vale é vassala de Aldar desde /i.test(pj) && !/tributo/i.test(pj) && !/por semana/.test(pj), 'quem joga: a vassalagem, sem o tributo e sem as trocas: ' + pj.slice(0, 260));
+    await aba(L, 'faccoes');
+    ok(await A(L, () => { const e = document.querySelector('#pane [data-k="fac:vas:fb"]'); return e ? e.textContent : ''; }) === 'vassala de Aldar', 'quem joga, em Reinos: "vassala de Aldar"');
+    await L.F.click('#pane [data-k="livro:j:de-onde"] > summary'); await espera(200);
+    const lj = await A(L, () => { const e = document.querySelector('#pane [data-k="livro:j:trocas"]'); return e ? e.textContent : ''; });
+    ok(lj === 'Tributo e trocas, por semana: tributo a Aldar: −6 Lapros · troca com Aldar: +3 Madeira · troca com Ilhas: −2 Madeira (quando a semana fecha).', 'no Livro do reino deles: o tributo e as trocas, por semana: ' + lj);
+    await semAvisos(L); await foto('l11-vas-jogador');
+    await comoJogador(L, false);
+    // tirar a vassalagem (pergunta antes; Desfazer)
+    await aba(L, 'diplomacia');
+    await botao(L, 'vas:fb'); await L.F.waitForSelector('dialog.vs-dl[open]');
+    await L.F.click(dlg('[data-k="vs:tirar"]')); await espera(250);
+    ok(/Tirar a vassalagem\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok((await dp()).vassalos.length === 0 && /Vale não é mais vassala de Aldar\./.test(await avisos(L)), 'tirar: a vassalagem sai');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await dp()).vassalos.length === 1, 'Desfazer: ela volta');
+    // no celular: a janela da vassalagem e a prévia da semana cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaVassalagem('fb'); }); await L.F.waitForSelector('dialog.vs-dl[open]');
+    const cabeDl = s0 => A(L, x => { const dd = document.querySelector(x); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }, s0);
+    ok(await cabeDl('dialog.vs-dl[open]'), 'no celular, a vassalagem cabe');
+    await semAvisos(L); await foto('l11-vas-celular');
+    await L.F.click(dlg('[data-k="vs:nao"]')); await espera(200);
+    await A(L, () => __mundo.App.mudar('vassalagem: mais uma semana', m => { m.cal.dia += 7; }));
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    ok(await cabeDl('dialog.sem-dl[open]'), 'no celular, a prévia da semana (com a diplomacia) cabe');
+    await semAvisos(L); await foto('l11-semana-celular');
+    await L.F.click('dialog.sem-dl[open] button.btn:not(.pri)'); await espera(250);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 

@@ -35,6 +35,7 @@
   const kit = () => window.MundoPainel.kit;
   const R = () => window.MundoReino;
   const N = () => window.MundoNucleo;
+  const DP = () => window.MundoDiplomaciaPainel;      // (lote 11, parte 3b) a diplomacia na prévia da semana
   const Cam = () => window.MundoCamadas || null;
   const app = () => kit().app();
   const ligada = m => !!(m && m.eco && m.eco.on);
@@ -1178,11 +1179,12 @@
     }
     semanaAberta = true;
     let res = null;
-    try { res = await dialogoSemana(m, prev, jornal); } finally { semanaAberta = false; }
+    // (lote 11, parte 3b) desmarcar o tributo ou uma troca refaz a prévia
+    try { res = await dialogoSemana(m, prev, jornal, rec => R().semanaPrevia(m, clas, rec)); } finally { semanaAberta = false; }
     if (!res || !kit().mesmoMapa(m.id)) return;
     const ate = N().textoData(m.cal, prev.ate);
     let feito = null;
-    const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate); if (!feito) return false; });
+    const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate, res.dipl); if (!feito) return false; });
     if (ok === false || !feito) return;
     const no = new Set(res.recusadas), prontas = feito.obras.filter(w => w.pronta || (w.parada && no.has('obras:' + w.fac) && w.sem0 <= 1)).length;
     // (parte 6) o resumo entra no rascunho do Jornal (o mestre revisa lá e publica); o Desfazer da semana tira, o Refazer põe de novo
@@ -1196,10 +1198,13 @@
       if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); jtxt = ' O resumo foi para o rascunho do Jornal.'; }
       else jtxt = ' O resumo não foi para o Jornal' + (cheio ? ': o rascunho já tem ' + MAXM + ' matérias.' : '.');
     }
-    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : '') + jtxt);
+    // (lote 11, parte 3b) os tratados que o mestre encerrou ou renovou
+    const dec = res.dipl ? Object.values(res.dipl.tratados) : [], nE = dec.filter(x => x === 'encerrar').length, nR = dec.length - nE;
+    const dtxt = nE || nR ? ' ' + [nE ? (nE === 1 ? '1 tratado encerrado' : nE + ' tratados encerrados') : '', nR ? (nR === 1 ? '1 tratado renovado' : nR + ' tratados renovados') : ''].filter(Boolean).join(' e ') + '.' : '';
+    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : '') + dtxt + jtxt);
     if (R().semanasPendentes(A.mapa) > 0) setTimeout(() => janelaSemana(), 400);
   }
-  function dialogoSemana(m, prev, jornal) {
+  function dialogoSemana(m, prev, jornal, refazer) {
     const { h, nomeFac, facDe, fmt, nomeDe, achar } = kit();
     return new Promise(resolve => {
       const recs = m.eco.rec, cxs = [], papel = id => (recs.find(r => r.id === id) || {}).papel || '';
@@ -1209,14 +1214,20 @@
       const mais = prev.pendentes - 1;
       const sub = h('p', { 'data-k': 'sem:quando', text: 'De ' + N().textoDataSemana(m.cal, prev.de) + ' a ' + N().textoDataSemana(m.cal, prev.ate) + '.' + (mais > 0 ? ' Depois desta, ' + (mais === 1 ? 'mais 1 semana' : 'mais ' + mais + ' semanas') + ' para fechar.' : '') + ' Nada muda até você aplicar.' });
       const n2 = v => fmt(v || 0, 2);
-      const blocos = prev.fac.map(pf => {
-        const f = facDe(m, pf.id), ids = recs.filter(r => pf.est[r.id] || pf.prod[r.id] || pf.manut[r.id] || pf.falta[r.id] || pf.fica[r.id]);
+      /* (lote 11, parte 3b) com tributo ou trocas na semana, a coluna "Trocas" (o que chega menos o que sai). Desmarcar um
+         deles refaz a prévia (prev): as facções e as linhas da prévia de começo (prev0) ficam no lugar */
+      const prev0 = prev, comTroca = prev0.fluxos.length > 0, vazia = { est: {}, prod: {}, manut: {}, fica: {}, falta: {}, exe: [], paradas: [], envia: {}, recebe: {} };
+      const temRec = q => r => q.est[r.id] || q.prod[r.id] || q.manut[r.id] || q.falta[r.id] || q.fica[r.id] || q.envia[r.id] || q.recebe[r.id];
+      const blocos = () => prev0.fac.map(p0 => {
+        const pf = prev.fac.find(x => x.id === p0.id) || Object.assign({ id: p0.id }, vazia), troca = r => Math.round(((pf.recebe[r.id] || 0) - (pf.envia[r.id] || 0)) * 100) / 100;
+        const f = facDe(m, pf.id), ids = recs.filter(r => temRec(pf)(r) || temRec(p0)(r));
         const tab = h('table', { class: 'eco-tab sem-tab' },
-          h('thead', null, h('tr', null, ['Recurso', 'Estoque', 'Produção', 'Manutenção', 'Fica', 'Falta'].map((t, i) => h('th', { scope: 'col', class: i ? 'num' : null, text: t })))),
+          h('thead', null, h('tr', null, ['Recurso', 'Estoque', 'Produção', 'Manutenção'].concat(comTroca ? ['Trocas'] : [], ['Fica', 'Falta']).map((t, i) => h('th', { scope: 'col', class: i ? 'num' : null, text: t })))),
           h('tbody', null, ids.map(r => h('tr', { 'data-rec': r.id, class: pf.falta[r.id] ? 'falta' : null },
             h('th', { scope: 'row' }, h('i', { style: { background: r.cor } }), h('span', { text: r.nome })),
             h('td', { class: 'num', text: n2(pf.est[r.id]) }), h('td', { class: 'num', text: pf.prod[r.id] ? sinalN(pf.prod[r.id]) : '—' }),
-            h('td', { class: 'num', text: pf.manut[r.id] ? '−' + fmt(pf.manut[r.id], 2) : '—' }), h('td', { class: 'num', text: n2(pf.fica[r.id]) }),
+            h('td', { class: 'num', text: pf.manut[r.id] ? '−' + fmt(pf.manut[r.id], 2) : '—' }), comTroca ? h('td', { class: 'num', 'data-k': 'sem:troca', text: troca(r) ? sinalN(troca(r)) : '—' }) : null,
+            h('td', { class: 'num', text: n2(pf.fica[r.id]) }),
             h('td', { class: 'num', text: pf.falta[r.id] ? n2(pf.falta[r.id]) : '' })))));
         const exe = pf.exe.map(x => nomeG(x.id) + ' (' + txtTab(m, x.manut, false) + ')');
         const par = pf.paradas.map(x => { const o = achar(m, x.o), t = R().tipoDe(m, x.t); return (t ? t.nome : 'A construção') + (o ? ' (' + nomeDe(o, m) + ')' : '') + ' não produz nem gasta: falta ' + nomeR(x.r) + '.'; });
@@ -1231,8 +1242,11 @@
         if (c.tipo === 'moral') return 'Sem moeda: a moral de ' + nomeG(c.g) + ' cai ' + c.d + ' (de ' + c.de + ' para ' + c.para + ').';
         return 'Sem ' + nomeR(c.r) + ': a moral de ' + nomeG(c.g) + ' cai ' + c.d + ' (de ' + c.de + ' para ' + c.para + ').';
       };
+      const caixaFac = h('div', { class: 'sem-facs', 'data-k': 'sem:facs' }), pintarFac = () => caixaFac.replaceChildren(...blocos());
       const listaObras = h('ul', { class: 'sem-obras', 'data-k': 'sem:obras' });
-      const recusadas = () => cxs.filter(([, cb]) => !cb.checked).map(([id]) => id);
+      // (lote 11, parte 3b) a diplomacia: o tributo e as trocas (desmarcar refaz a prévia), os tratados e os motivos que vencem
+      const dps = DP() ? DP().secSemana(m, prev, () => { prev = refazer(recusadas()) || prev; pintarFac(); dps.pintar(prev); pintarObras(); pintarJornal(); }) : null;
+      const recusadas = () => cxs.filter(([, cb]) => !cb.checked).map(([id]) => id).concat(dps ? dps.recusados() : []);
       function pintarObras() {
         const no = new Set(recusadas());
         listaObras.replaceChildren(...prev.obras.map(w => {
@@ -1249,12 +1263,15 @@
         txtJ.replaceChildren(...(r ? [h('b', { text: r.tit })].concat(r.txt.split('\n\n').map(p => h('p', { text: p.replace(/\*\*/g, '') }))) : []));
       }
       const cons = prev.cons.map(c => { const cb = h('input', { type: 'checkbox', 'data-k': 'sem:c:' + c.id, checked: true, onchange: () => { pintarObras(); pintarJornal(); } }); cxs.push([c.id, cb]); return h('label', { class: 'op sem-cons' }, cb, h('span', { text: txtCons(c) })); });
-      pintarObras(); pintarJornal();
+      pintarFac(); pintarObras(); pintarJornal();
       const bNao = h('button', { type: 'button', class: 'btn', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'sem:aplicar', text: 'Aplicar a semana' });
+      const err = h('p', { class: 'err', role: 'alert', 'data-k': 'sem:err' });
       const form = h('form', { class: 'dl', novalidate: true }, titulo, sub,
-        blocos.length ? blocos : h('p', { class: 'note', text: 'Nada muda nos estoques nesta semana.' }),
+        prev0.fac.length ? caixaFac : h('p', { class: 'note', text: 'Nada muda nos estoques nesta semana.' }),
+        dps ? dps.fluxos : null,
         cons.length ? h('fieldset', { class: 'sem-conss' }, h('legend', { text: 'O que a falta traz (desmarque o que não vale)' }), cons) : null,
         prev.obras.length ? h('div', { class: 'sem-obras-caixa' }, h('small', { class: 'note', text: 'As obras' }), listaObras) : null,
+        dps ? dps.vencem : null, dps ? dps.motivos : null,
         (prev.lembretes || []).length ? h('div', { class: 'sem-lemb-caixa' }, h('small', { class: 'note', text: 'Lembretes dos estratos (nada muda sozinho)' }),
           h('ul', { class: 'sem-lemb', 'data-k': 'sem:lembretes' }, prev.lembretes.map(l => {
             const o = achar(m, l.o), nomeE = id => (m.eco.estr.find(s => s.id === id) || { nome: id }).nome;
@@ -1273,11 +1290,17 @@
           h('label', { class: 'op' }, cxJ, h('span', { text: 'Mandar o resumo da semana para o rascunho do Jornal' })),
           h('small', { class: 'note', text: 'Só o que é da facção dos jogadores: o saldo, as obras prontas nas cidades que eles veem por dentro e o que a falta trouxe. Você revisa no Jornal antes de publicar.' }),
           h('details', { class: 'sem-jornal-ver', 'data-k': 'sem:jornal:ver' }, h('summary', { text: 'Ver o resumo' }), txtJ)) : null,
-        h('div', { class: 'pe' }, bNao, bOk));
+        err, h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl eco-dl sem-dl', 'aria-labelledby': titulo.id }, form);
       let feito = false;
       const fim = v => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v); };
-      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ recusadas: recusadas(), jornal: !!(cxJ && cxJ.checked) }); });
+      form.addEventListener('input', () => { err.textContent = ''; });
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        let dipl = null;
+        try { dipl = dps ? dps.ler() : null; } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; return; }
+        fim({ recusadas: recusadas(), jornal: !!(cxJ && cxJ.checked), dipl });
+      });
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));
       dl.addEventListener('keydown', ev => ev.stopPropagation());
@@ -1479,12 +1502,16 @@
       h('i', { style: { background: r.cor } }), h('b', { text: r.nome + ' ' + sinalN(e.prod.total[r.id]) }),
       h('small', { text: FONTES_J.filter(([k]) => e.prod[k][r.id]).map(([k, t0]) => t0 + ' ' + sinalN(e.prod[k][r.id])).join(' · ') })));
     const manut = txt(e.manut);
+    // (lote 11, parte 3b) o tributo e as trocas deles, por semana (com o sinal: o que sai, o que chega)
+    const com = id => { const g = id ? facDe(v, id) : null; return g ? nomeFac(g) : 'outra facção'; }, recN = id => (e.rec.find(r => r.id === id) || { nome: id }).nome;
+    const trocas = e.trocas.map(x => (x.tipo === 'trib' ? 'tributo ' + (x.sentido === 'envia' ? 'a ' : 'de ') : 'troca com ') + com(x.com) + ': ' + (x.sentido === 'envia' ? '−' : '+') + fmt(x.q, 2) + ' ' + recN(x.rec));
     const provs = e.prov.map(p => h('div', { class: 'prod-li', 'data-k': 'livro:j:p:' + (p.id || '-') },
       h('i', { class: 'sem' }), h('b', { text: p.id ? p.nome || 'Província sem nome' : 'Outras terras' }), h('small', { text: txt(p.prod.total, true) || 'nada' })));
     const det = h('details', { class: 'eco-jog', 'data-k': 'livro:j:de-onde', open: abertosJ.has('de-onde') || null },
       h('summary', { text: 'De onde vem', onclick: function (ev) { ev.preventDefault(); const d = this.parentNode, abrir = !d.open; if (abrir) abertosJ.add('de-onde'); else abertosJ.delete('de-onde'); d.open = abrir; } }),
       h('div', { class: 'prov-prod', 'data-k': 'livro:j:fontes' }, h('small', { class: 'note', text: 'Produção por semana, por fonte' }), porRec.length ? porRec : nota('Nada por enquanto.')),
       manut ? h('p', { class: 'note', 'data-k': 'livro:j:manut', text: 'Manutenção dos exércitos, por semana: ' + manut + ' (sai do estoque quando a semana fecha).' }) : null,
+      trocas.length ? h('p', { class: 'note', 'data-k': 'livro:j:trocas', text: 'Tributo e trocas, por semana: ' + trocas.join(' · ') + ' (quando a semana fecha).' }) : null,
       provs.length ? h('div', { class: 'prov-prod', 'data-k': 'livro:j:provs' }, h('small', { class: 'note', text: 'Por província' }), provs) : null);
     return secao('Livro do reino', linhaL, det, nota('Só a facção de vocês. O estoque muda quando a semana fecha.'));
   }

@@ -1372,6 +1372,21 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   data do mundo, "Público", os termos e a nota do mestre; "Encerrar o tratado…" (guarda a data de hoje) e "Reabrir";
   "Tirar…" pergunta antes. Tudo fica no mapa (`dipl`, conferido por `normDipl`), com Desfazer. **Quem joga** vê as
   relações que não são neutras e os tratados públicos entre facções que ele vê (sem a nota); a opinião é do mestre.
+- **A vassalagem, o tributo e as trocas na semana** (lote 11, parte 3b). Na aba Diplomacia, "+ Vassalagem": a
+  **vassala**, a **suserana**, desde quando e, com a economia, o **tributo** por semana (um recurso e a quantidade).
+  Uma suserana por vassala; a que fecharia um círculo (a suserana já é vassala dela, direto ou pela cadeia) não passa.
+  A vassalagem aparece na seção "Vassalagem", no par das duas e na aba Reinos ("vassala de …"). O **cartão do tratado**
+  ganha as **trocas por semana**: o que uma facção do tratado manda para outra (de um recurso da economia). Na
+  **prévia da semana**, o tributo e as trocas entram na conta (a coluna "Trocas"; o que fica já com eles): acontecem
+  no fim da semana, com o que sobrou a quem manda — quem não tem tudo manda o que tem (a prévia avisa), e o que chega
+  na mesma semana não paga o que sai; cada um tem a caixa (desmarcado, não vai nesta semana; as contas mudam na hora).
+  Os **tratados que vencem** na semana aparecem para decidir: "Encerrar" (de começo; acaba no prazo dele), "Renovar
+  até" um prazo novo (de começo, um ano depois) ou "Deixar vencido"; os **motivos de opinião que vencem**, para tirar
+  (marcados). Tudo vale junto com a semana, num passo de Desfazer (`MundoDiplomacia.fluxosDaSemana`,
+  `tratadosQueVencem`, `motivosQueVencem`, `aplicarDecisoes`; `dipl.vassalos` e `tratado.trocas`). Sem a economia, o
+  tratado passado do prazo fica "vencido" na lista. **Quem joga** vê a vassalagem (sem o tributo); o tributo e as
+  trocas da facção dele vão na economia dele (`ecoJ.trocas`: o Livro do reino, em "De onde vem") e no resumo da semana
+  para o Jornal.
 
 ### A Árvore (lote 6)
 
@@ -2502,7 +2517,15 @@ vencidos) e a projeção (os públicos sem facção escondida, sem a nota; sem a
 `SO=diplomacia`, as abas em duas fileiras (cabem; as de quem joga), os pares, a relação dos dois lados, a opinião (os
 motivos com prazo, a soma na hora, os erros), os tratados (os erros, três partes, o vencido), os tipos, encerrar e
 reabrir, tirar com Desfazer, o filtro, quem joga e o celular; `mundo-lote8.rede`, numa mesa, o tratado público na
-projeção (sem a nota, sem o secreto nem a opinião) e a aba Diplomacia do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+projeção (sem a nota, sem o secreto nem a opinião) e a aba Diplomacia do jogador. Na parte 3b (a vassalagem),
+`lote11-nucleo` confere a vassalagem e as trocas normalizadas (uma suserana por vassala, sem círculo, o tributo e as
+trocas de um recurso da economia e entre as partes, os limites), as contas (a vassalagem de uma facção, o círculo, o que
+vai numa semana, os tratados e os motivos que vencem nela, as decisões), a semana (o tributo e as trocas com o que
+sobrou, o desmarcado não vai, as decisões junto), a economia dos jogadores, o resumo para o Jornal e a projeção;
+`mundo-lote11` com `SO=vassalagem`, a janela da vassalagem (os erros, criar, mudar, Desfazer, tirar), as trocas no
+cartão do tratado, a prévia da semana (a coluna "Trocas", desmarcar refaz as contas, renovar com o erro do prazo, o
+motivo que vence, aplicar e desfazer num passo), quem joga e o celular; `mundo-lote8.rede`, a vassalagem sem o tributo
+na projeção, o tributo e a troca na economia do jogador e o que ele vê. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

@@ -13,7 +13,9 @@
 //   · (lote 11, parte 1a) a corte: a projeção leva só os personagens conhecidos (sem as notas); o jogador os vê na aba
 //     Corte. (parte 2a) Os títulos: a projeção leva o do reino (sem a nota) e não o de quem eles não conhecem; o jogador
 //     vê o título junto do nome, a lista "Títulos" e o governante em Reinos. (parte 3a) A diplomacia: a projeção leva o
-//     tratado público (sem a nota), não o secreto nem a opinião; o jogador o vê na aba Diplomacia.
+//     tratado público (sem a nota), não o secreto nem a opinião; o jogador o vê na aba Diplomacia. (parte 3b) A
+//     vassalagem vai sem o tributo e o tratado sem as trocas; o tributo e as trocas da facção deles vão na economia deles;
+//     o jogador vê a vassalagem (na Diplomacia e em Reinos) e o tributo e as trocas no Livro do reino.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -216,6 +218,21 @@ function png(w, h, cor) {
     ok(!/Aldar quer trair|Pacto secreto|Inveja das minas/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe a nota, o tratado secreto nem a opinião');
     await JW.click('#tab-diplomacia'); await w(300, J);
     ok(await ate(async () => /Aliança: Aldar, Vale/.test(await corteJ()) && /Juntos contra o norte\./.test(await corteJ()) && !/Paz ou trégua/.test(await corteJ())), 'na aba Diplomacia, o jogador vê o tratado público: ' + (await corteJ()).slice(0, 200));
+    // (parte 3b) a vassalagem (o Vale vassalo de Aldar, com tributo) e uma troca no tratado público
+    await W.evaluate(() => {
+      __mundo.App.mudar('a vassalagem', m => {
+        m.dipl.vassalos = [{ vas: 'fb', sus: 'fa', trib: { rec: 'lapros', q: 3 } }];
+        m.dipl.tratados.find(x => x.id === 'tp').trocas = [{ de: 'fa', para: 'fb', rec: 'lapros', q: 2 }];
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.dipl && j(p.dipl.vassalos) === j([{ vas: 'fb', sus: 'fa', desde: null, trib: null }]) && j(p.dipl.tratados[0].trocas) === j([])
+      && p.ecoJ && j(p.ecoJ.trocas) === j([{ tipo: 'trib', sentido: 'recebe', com: 'fb', rec: 'lapros', q: 3 }, { tipo: 'troca', sentido: 'envia', com: 'fb', rec: 'lapros', q: 2 }])); }),
+      'a projeção leva a vassalagem sem o tributo e o tratado sem as trocas; o tributo e a troca de Aldar vão na economia dela');
+    ok(await ate(async () => /VASSALAGEM Vale é vassala de Aldar/i.test(await corteJ()) && !/tributo/i.test(await corteJ())), 'na aba Diplomacia, o jogador vê a vassalagem (sem o tributo): ' + (await corteJ()).slice(0, 200));
+    await JW.click('#tab-faccoes'); await w(300, J);
+    ok(await ate(async () => /Vale .*vassala de Aldar/.test(await corteJ())), 'em Reinos, o Vale "vassala de Aldar"');
+    await JW.click('#pane [data-k="livro:j:de-onde"] > summary'); await w(250, J);
+    ok(await ate(async () => /Tributo e trocas, por semana: tributo de Vale: \+3 Lapros · troca com Vale: −2 Lapros \(quando a semana fecha\)\./.test(await corteJ())), 'no Livro do reino, o tributo que Aldar recebe e a troca: ' + (await corteJ()).slice(0, 400));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {
