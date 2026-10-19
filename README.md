@@ -1342,6 +1342,24 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   escondida) e os dos personagens conhecidos — a névoa só esconde o lugar: o título vai com o nome pronto; a terra
   escondida pelo mestre e a facção escondida não —, com as pessoas só se conhecidas (o titular, o herdeiro, o regente,
   os pretendentes, os titulares de antes; "sem titular conhecido" quando não) e sem a nota.
+- **A sucessão** (lote 11, parte 2b). Cada reino tem a **regra de sucessão** (na facção, aba Reinos: a forma e o
+  gênero; de começo, primogenitura, homens e mulheres por igual), e cada título pode ter a sua (no cartão dele, "Regra
+  de sucessão"; "A do reino" mostra qual é). As formas: **primogenitura** (os filhos do mais velho para o mais novo,
+  cada um com a linha dele — os netos — antes do irmão seguinte; o filho morto passa a vez para os filhos dele),
+  **ultimogenitura** (do mais novo), **antiguidade** (os vivos da casa do titular, do mais velho para o mais novo),
+  **partilha** (os títulos de quem morreu divididos entre os filhos vivos — o maior com o mais velho) e **"o mestre
+  escolhe"**; o gênero: homens e mulheres por igual, homens primeiro, só homens, mulheres primeiro ou só mulheres (no
+  "só", a linha só passa por eles). Sem filhos, a linha sobe pela árvore: os pais (vivos, herdam), os irmãos e os
+  sobrinhos, os avós, os tios e os primos. O herdeiro escolhido passa na frente. O cartão do título mostra **a linha
+  de sucessão** (os próximos, com o laço e a idade), que muda na hora com a regra, o titular e o herdeiro escolhido.
+  Quando o mestre marca a **morte** de quem tem títulos (ou é chefe de uma casa) e salva, abre a **prévia da
+  sucessão** (`sucessaoDe`): cada título com o herdeiro da regra (para trocar: a linha, "Ninguém" ou outra pessoa), o
+  regente quando o herdeiro é menor de idade (de começo, um dos pais dele, vivo), o novo chefe da casa (quem herda o
+  maior título, se for da casa; senão, o mais velho dela) e a caixa, desmarcada, para a notícia no rascunho do Jornal.
+  "Aplicar" (`aplicarSucessao`) faz tudo num passo de Desfazer (o Jornal junto): o morto vai para os titulares de
+  antes (até a data da morte), o herdeiro fica com o título desde ela. "Agora não" deixa os títulos com o morto; depois,
+  "Fazer a sucessão…" no cartão do título ou no dele. As regras ficam na corte (`regras`, `titulo.regra`) e são do mestre
+  (não vão para os jogadores).
 
 ### A Árvore (lote 6)
 
@@ -2456,7 +2474,16 @@ titular (a caixa, o "desde" que vira hoje, salvar de novo sem mexer, desmarcada 
 regente, os pretendentes, os titulares de antes, o maior título junto do nome (nas casas e em quem está aqui), os
 títulos no cartão do personagem, tirar um grau usado, o filtro, quem joga, tirar o título, tirar da corte a titular e o
 celular; `mundo-lote8.rede`, numa mesa, a projeção com o título do reino (sem a nota, sem o de quem eles não conhecem),
-o título junto do nome, a lista "Títulos" e o governante do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+o título junto do nome, a lista "Títulos" e o governante do jogador. Na parte 2b (a sucessão), `lote11-nucleo` confere
+as regras normalizadas (as dos reinos que existem, a do título), a regra de cada título (a dele, a do reino, a de
+começo) e em texto, a linha de sucessão por regra (primogenitura e ultimogenitura, cada gênero, antiguidade e a volta à
+primogenitura, "o mestre escolhe", o herdeiro escolhido vivo, o título vago pelo último titular de antes; os laços), a
+sucessão de quem morreu (a partilha entre os filhos vivos, o herdeiro escolhido na partilha, a herdeira menor de idade
+com o regente, o chefe da casa) e o aplicar (os titulares de antes, a data, o vago, o regente, a lista cheia, a
+chefia), e a projeção sem as regras; `mundo-lote11` com `SO=sucessao`, a regra do reino na facção, a regra e a linha
+no cartão do título (que muda na hora), a morte sem título (sem prévia), a prévia que abre sozinha, "Agora não",
+"Fazer a sucessão…" no título e no morto, a herdeira menor com regente, aplicar com a notícia no Jornal, desfazer e
+refazer (o Jornal junto) e o celular. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

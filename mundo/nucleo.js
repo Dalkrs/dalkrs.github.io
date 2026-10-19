@@ -2124,6 +2124,14 @@
     { id: 'ducado', nome: 'Ducado', h: 'Duque', m: 'Duquesa', o: '' }, { id: 'condado', nome: 'Condado', h: 'Conde', m: 'Condessa', o: '' },
     { id: 'baronia', nome: 'Baronia', h: 'Barão', m: 'Baronesa', o: '' }];
   const MAX_TITULOS = 200, MAX_GRAUS = 12, MAX_PRET = 8, MAX_HIST_TIT = 40, MAIORIDADE = 16, MAX_MAIORIDADE = 100;
+  /* (parte 2b) a sucessão: a regra de cada reino (corte.regras: { facção: { forma, gen } }; sem ela, a de começo) e a de
+     um título (titulo.regra; sem ela, a do reino). A forma: primogenitura (o mais velho e a linha dele), ultimogenitura
+     (o mais novo), antiguidade (o mais velho da casa), partilha (os títulos divididos entre os filhos) ou o mestre
+     escolhe; o gênero: igual, homens primeiro, só homens, mulheres primeiro ou só mulheres. */
+  const FORMAS_SUC = { primo: 'Primogenitura', ultimo: 'Ultimogenitura', antig: 'Antiguidade', partilha: 'Partilha', eletiva: 'O mestre escolhe' };
+  const GENEROS_SUC = { igual: 'Homens e mulheres por igual', homens: 'Homens primeiro', sohomens: 'Só homens', mulheres: 'Mulheres primeiro', somulheres: 'Só mulheres' };
+  const REGRA_PADRAO = { forma: 'primo', gen: 'igual' };
+  const normRegra = v => (ehObj(v) && tem(FORMAS_SUC, v.forma) ? { forma: v.forma, gen: tem(GENEROS_SUC, v.gen) ? v.gen : 'igual' } : null);
   // a data de um personagem: o ano e, se souber, o mês e o dia (o dia só com o mês)
   function normDataP(v, cal) {
     if (!ehObj(v)) return null;
@@ -2202,11 +2210,15 @@
         hist.push({ p, nome, de: normDataP(x.de, cal), ate: normDataP(x.ate, cal) });
       }
       titulos.push({ id, grau: idRef(t.grau), de: texto(t.de, '', 80).trim(), nome: texto(t.nome, '', 80).trim(), preso: pr, fac: idRef(t.fac), tit: idRef(t.tit), desde: normDataP(t.desde, cal),
-        herd: idRef(t.herd), reg: idRef(t.reg), pret, hist, txt: texto(t.txt, '', MAX_TXT_CORTE).trim(), nota: texto(t.nota, '', MAX_TXT_CORTE).trim() });
+        herd: idRef(t.herd), reg: idRef(t.reg), regra: normRegra(t.regra), pret, hist, txt: texto(t.txt, '', MAX_TXT_CORTE).trim(), nota: texto(t.nota, '', MAX_TXT_CORTE).trim() });
     }
     const maior = v.maior == null ? NaN : inteiro(v.maior, NaN, 0, MAX_MAIORIDADE);
-    if (!pessoas.length && !casas.length && !Object.keys(cargos).length && !titulos.length && !graus && !Number.isFinite(maior)) return null;
+    // (parte 2b) as regras de sucessão de cada reino
+    const regras = {};
+    if (ehObj(v.regras)) for (const k of Object.keys(v.regras).slice(0, 200)) { const r = idOk(k) ? normRegra(v.regras[k]) : null; if (r) regras[k] = r; }
+    if (!pessoas.length && !casas.length && !Object.keys(cargos).length && !titulos.length && !graus && !Number.isFinite(maior) && !Object.keys(regras).length) return null;
     const out = { pessoas, casas, cargos, titulos };
+    if (Object.keys(regras).length) out.regras = regras;
     if (graus) out.graus = graus;
     if (Number.isFinite(maior)) out.maior = maior;
     return out;
@@ -2234,6 +2246,8 @@
     /* (parte 2a) os títulos: o grau (um dos graus), a terra (do tipo certo), o reino e as pessoas têm de existir; o
        herdeiro escolhido, o regente e os pretendentes não são o próprio titular; sem titular, sem o "desde"; o titular
        de antes que saiu da corte fica só com o nome (o nome dos que estão vem da corte) */
+    // (parte 2b) as regras de sucessão: só dos reinos que existem
+    if (c.regras) { for (const k of Object.keys(c.regras)) if (!facs.has(k)) delete c.regras[k]; if (!Object.keys(c.regras).length) delete c.regras; }
     const graus = new Set((c.graus || GRAUS_INICIAIS).map(g => g.id)), terras = { r: new Set(), m: new Set(), f: facs };
     for (const o of objs) if (o.k === 'r' || o.k === 'm') terras[o.k].add(o.id);
     for (const t of c.titulos) {
@@ -2717,7 +2731,8 @@
       /* (parte 2a) os títulos: os das terras que eles veem (a região ou a cidade que vai; a facção que não está
          escondida) e os dos personagens conhecidos (se a terra não foi escondida pelo mestre: a névoa só esconde o
          lugar — o título vai com o nome pronto, sem a terra). As pessoas do título (o titular, o herdeiro escolhido, o
-         regente, os pretendentes, os titulares de antes), só as conhecidas; sem a nota. */
+         regente, os pretendentes, os titulares de antes), só as conhecidas; sem a nota. (parte 2b) As regras de sucessão
+         (a do título e as dos reinos) são do mestre. */
       const conhecida = id => (id && con.has(id) ? id : null), titulos = [];
       for (const t of m.corte.titulos) {
         const pr = t.preso, terraVai = !!pr && (pr.t === 'f' ? nomesFac.has(pr.id) && !escondidas.has(pr.id) : noMapa.has(pr.id));
@@ -2730,7 +2745,7 @@
           preso = null;
         }
         titulos.push(Object.assign({}, t, { de, preso, fac: escondidas.has(t.fac) ? null : t.fac, tit: conhecida(t.tit), herd: conhecida(t.herd), reg: conhecida(t.reg),
-          pret: t.pret.filter(x => con.has(x.p)), hist: t.hist.filter(x => !x.p || con.has(x.p)), nota: '' }));
+          pret: t.pret.filter(x => con.has(x.p)), hist: t.hist.filter(x => !x.p || con.has(x.p)), regra: null, nota: '' }));
       }
       if (pessoas.length || titulos.length) {
         const c = { pessoas, casas: m.corte.casas.filter(c0 => casasVistas.has(c0.id)).map(c0 => Object.assign({}, c0, { chefe: con.has(c0.chefe) ? c0.chefe : null })), cargos, titulos };
@@ -2764,7 +2779,7 @@
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
-    GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE,
+    GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,

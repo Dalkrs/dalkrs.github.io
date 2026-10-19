@@ -17,6 +17,13 @@
 //     desmarcada, não entra); o herdeiro escolhido, o regente, os pretendentes com o motivo, os titulares de antes e os
 //     erros; o maior título junto do nome; os títulos no cartão do personagem; tirar um grau usado (o nome de antes);
 //     o filtro; quem joga (só o que vai na projeção); tirar o título e tirar da corte a titular; no celular.
+//   · (parte 2b, SO=sucessao) a sucessão: a regra do reino na facção (guardar, desfazer, "o mestre escolhe" trava o
+//     gênero, a de começo não fica guardada); no cartão do título, a regra (a do reino com o nome) e a linha de sucessão
+//     que muda na hora (homens primeiro, o herdeiro escolhido, "o mestre escolhe", antiguidade); a morte de quem não tem
+//     título (sem prévia); a morte do rei (a prévia sozinha: os herdeiros, a partilha, a chefia, a caixa do Jornal;
+//     "Agora não"); "Fazer a sucessão…" no cartão do título (a herdeira menor de idade, com regente), aplicar (os
+//     titulares de antes, a chefia, a notícia no rascunho do Jornal), desfazer e refazer (com o Jornal), "Fazer a
+//     sucessão…" no cartão do morto, no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -545,6 +552,129 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
     await aba(L, 'corte');
     if (await A(L, () => document.querySelector('#pane [data-k="corte:vista:casas"]').getAttribute('aria-pressed') !== 'true')) await botao(L, 'corte:vista:casas');
+  });
+
+  // ---------- (parte 2b) a sucessão ----------
+  if (parte('sucessao')) await passo('a sucessão', async () => {
+    await A(L, () => {
+      __mundo.App.mudar('sucessão: a família', m => {
+        m.corte = { cargos: {}, casas: [{ id: 'ka', nome: 'Casa de Aldar', chefe: 'rei' }],
+          pessoas: [
+            { id: 'av', nome: 'Aldo', gen: 'h', casa: 'ka', nasc: { a: -60 }, morte: { a: -20 } },
+            { id: 'rei', nome: 'Rui', gen: 'h', casa: 'ka', fac: 'fa', nasc: { a: -40 }, pais: ['av'], ver: true },
+            { id: 'tio', nome: 'Tito', gen: 'h', casa: 'ka', nasc: { a: -35 }, pais: ['av'] },
+            { id: 'f1', nome: 'Fábia', gen: 'm', casa: 'ka', nasc: { a: -15 }, pais: ['rei'], ver: true },
+            { id: 'f2', nome: 'Fred', gen: 'h', casa: 'ka', nasc: { a: -12 }, pais: ['rei'] },
+            { id: 'n1', nome: 'Nina', gen: 'm', casa: 'ka', nasc: { a: -5 }, pais: ['f1', 'gx'] },
+            { id: 'gx', nome: 'Gil', gen: 'h', nasc: { a: -18 } }],
+          titulos: [
+            { id: 't1', grau: 'reino', preso: { t: 'f', id: 'fa' }, fac: 'fa', tit: 'rei', desde: { a: -10 } },
+            { id: 't2', grau: 'ducado', de: 'de Valmor', fac: 'fa', tit: 'rei', regra: { forma: 'partilha', gen: 'igual' } },
+            { id: 't3', grau: 'condado', de: 'de Pedra', fac: 'fa', tit: 'rei', regra: { forma: 'partilha', gen: 'igual' } }] };
+      });
+    });
+    // a regra do reino (na facção)
+    await aba(L, 'faccoes');
+    if (!(await A(L, () => !!document.querySelector('#pane [data-k="f:fa:suc-forma"]')))) await L.F.click('#pane [data-k="fac:fa"]');
+    await espera(250);
+    ok(/SUCESSÃO Forma/i.test(await textoPane(L)) && await campo(L, 'f:fa:suc-forma').inputValue() === 'primo' && await campo(L, 'f:fa:suc-gen').inputValue() === 'igual',
+      'na facção, "Sucessão": de começo, primogenitura, homens e mulheres por igual');
+    await campo(L, 'f:fa:suc-gen').selectOption('homens'); await espera(300);
+    ok(j((await corte(L)).regras) === j({ fa: { forma: 'primo', gen: 'homens' } }), 'homens primeiro: a regra do reino fica guardada');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(!('regras' in (await corte(L))), 'desfazer: de volta à de começo (nada guardado)');
+    await campo(L, 'f:fa:suc-forma').selectOption('eletiva'); await espera(300);
+    ok(j((await corte(L)).regras) === j({ fa: { forma: 'eletiva', gen: 'igual' } }) && await campo(L, 'f:fa:suc-gen').isDisabled(), '"O mestre escolhe": o gênero fica travado');
+    await campo(L, 'f:fa:suc-forma').selectOption('primo'); await espera(300);
+    ok(!('regras' in (await corte(L))), 'de volta à primogenitura por igual: igual à de começo, nada guardado');
+    // a regra e a linha no cartão do título
+    await aba(L, 'corte'); await botao(L, 'corte:vista:titulos');
+    await botao(L, 't:t1'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    const linhaT = () => A(L, () => [...document.querySelectorAll('dialog.tt-dl[open] [data-k="tt:linha"] li')].map(li => li.textContent));
+    const ttv = k => A(L, x => document.querySelector('dialog.tt-dl[open] [data-k="' + x + '"]').value, k);
+    const opRegra = await A(L, () => document.querySelector('dialog.tt-dl[open] [data-k="tt:regra"] option').textContent);
+    let lt = await linhaT();
+    ok(opRegra === 'A do reino: Primogenitura · por igual' && await ttv('tt:regra') === '' && await A(L, () => document.querySelector('dialog.tt-dl[open] [data-k="tt:regra-gen"]').disabled),
+      'no cartão do título: a regra do reino (com o nome dela), o gênero travado');
+    ok(j(lt.slice(0, 4)) === j(['Fábia (filha, 16 anos)', 'Nina (neta, 6 anos)', 'Fred (filho, 13 anos)', 'Tito (irmão, 36 anos)']), 'a linha de sucessão: a filha mais velha e a linha dela, o filho, o irmão: ' + j(lt));
+    await L.F.selectOption(dlg('[data-k="tt:regra"]'), 'primo'); await L.F.selectOption(dlg('[data-k="tt:regra-gen"]'), 'homens');
+    lt = await linhaT();
+    ok(lt[0] === 'Fred (filho, 13 anos)' && lt[1] === 'Fábia (filha, 16 anos)', 'a regra do título, homens primeiro: a linha muda na hora: ' + j(lt.slice(0, 3)));
+    await L.F.selectOption(dlg('[data-k="tt:herd"]'), 'tio');
+    ok((await linhaT())[0] === 'Tito (herdeiro escolhido, 36 anos)', 'o herdeiro escolhido passa na frente');
+    await L.F.selectOption(dlg('[data-k="tt:regra"]'), 'eletiva'); await L.F.selectOption(dlg('[data-k="tt:herd"]'), '');
+    ok(j(await linhaT()) === j(['O mestre escolhe na hora.']), '"O mestre escolhe": ninguém na linha');
+    await L.F.selectOption(dlg('[data-k="tt:regra"]'), 'antig');
+    ok((await linhaT())[0] === 'Tito (da casa, 36 anos)', 'antiguidade: o mais velho da casa');
+    await L.F.click(dlg('[data-k="tt:ok"]')); await espera(350);
+    ok(j((await corte(L)).titulos.find(x => x.id === 't1').regra) === j({ forma: 'antig', gen: 'homens' }), 'salvar: a regra do título fica guardada');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    await semAvisos(L);
+    // marcar a morte de quem tem títulos: a prévia abre sozinha
+    await botao(L, 'corte:vista:casas');
+    await L.F.click('#pane [data-k="p:gx"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    await L.F.check(dlg('[data-k="ps:morreu"]')); await L.F.fill(dlg('[data-k="ps:morte:ano"]'), '1'); await L.F.click(dlg('[data-k="ps:ok"]')); await espera(500);
+    ok(await A(L, () => !document.querySelector('dialog.suc-dl')), 'a morte de quem não tem título nem é chefe: sem prévia');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    await L.F.click('#pane [data-k="p:rei"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    await L.F.check(dlg('[data-k="ps:morreu"]')); await L.F.fill(dlg('[data-k="ps:morte:ano"]'), '1'); await L.F.click(dlg('[data-k="ps:ok"]'));
+    await L.F.waitForSelector('dialog.suc-dl[open]');
+    const suc = () => A(L, () => { const d = document.querySelector('dialog.suc-dl[open]'); return d ? { tit: d.querySelector('h2').textContent, txt: d.innerText.replace(/\s+/g, ' '),
+      v: Object.fromEntries([...d.querySelectorAll('select[data-k^="suc:"]')].map(s0 => [s0.dataset.k, s0.value])), reg: Object.fromEntries([...d.querySelectorAll('.suc-reg')].map(l0 => [l0.querySelector('select').dataset.k, !l0.hidden])), jornal: !!d.querySelector('[data-k="suc:jornal"]') } : null; });
+    let sv = await suc();
+    ok(sv.tit === 'A sucessão de Rui' && /Rui, Rei de Aldar morreu \(ano 1\)\./.test(sv.txt), 'marcar a morte do Rui (e salvar): a prévia da sucessão abre sozinha: ' + sv.txt.slice(0, 120));
+    ok(sv.v['suc:t1'] === 'f1' && sv.v['suc:t2'] === 'f1' && sv.v['suc:t3'] === 'f2' && sv.v['suc:chefe'] === 'f1', 'o reino para a Fábia; a partilha divide o ducado e o condado entre os filhos (o maior com a mais velha); a chefia da casa para quem herda o reino: ' + j(sv.v));
+    ok(/Primogenitura · por igual/.test(sv.txt) && /Partilha · por igual/.test(sv.txt) && sv.jornal && !(await A(L, () => document.querySelector('dialog.suc-dl[open] [data-k="suc:jornal"]').checked)),
+      'cada título com a regra; a caixa do Jornal, desmarcada');
+    ok(!sv.reg['suc:t1:reg'] && sv.reg['suc:t3:reg'] && sv.v['suc:t3:reg'] === '', 'o reino sem regente (a Fábia tem 16 anos); o condado com a caixa do regente (o Fred tem 13), sem sugestão (o pai é o morto)');
+    await L.F.click('dialog.suc-dl[open] [data-k="suc:nao"]'); await espera(350);
+    let cc = await corte(L);
+    ok(cc.titulos.every(x => x.tit === 'rei') && cc.pessoas.find(p0 => p0.id === 'rei').morte && cc.casas[0].chefe === 'rei', '"Agora não": o Rui morto, ainda com os títulos e a chefia');
+    await botao(L, 'corte:vista:titulos');
+    ok(/Reino de Aldar Rui \(† o titular morreu\)/.test(await textoPane(L)), 'na lista: o titular morreu');
+    // depois: "Fazer a sucessão…" no cartão do título; a herdeira menor de idade, com regente
+    await botao(L, 't:t1'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await L.F.click(dlg('[data-k="tt:sucessao"]')); await L.F.waitForSelector('dialog.suc-dl[open]');
+    await L.F.selectOption('dialog.suc-dl[open] [data-k="suc:t1"]', 'n1'); await espera(100);
+    sv = await suc();
+    ok(sv.reg['suc:t1:reg'] && sv.v['suc:t1:reg'] === 'f1', 'a herdeira menor de idade (a Nina): a caixa do regente, com a mãe dela de começo');
+    await L.F.selectOption('dialog.suc-dl[open] [data-k="suc:t1:reg"]', 'gx');
+    await semAvisos(L); await foto('l11-sucessao');
+    await L.F.check('dialog.suc-dl[open] [data-k="suc:jornal"]');
+    await L.F.click('dialog.suc-dl[open] [data-k="suc:ok"]'); await espera(500);
+    cc = await corte(L);
+    const T = id => cc.titulos.find(x => x.id === id);
+    ok(T('t1').tit === 'n1' && T('t1').reg === 'gx' && j(T('t1').desde) === j({ a: 1 }) && j(T('t1').hist[T('t1').hist.length - 1]) === j({ p: 'rei', nome: 'Rui', de: { a: -10 }, ate: { a: 1 } }),
+      'aplicar: o reino para a Nina, com o regente, desde a morte; o Rui nos titulares de antes: ' + j(T('t1')));
+    ok(T('t2').tit === 'f1' && T('t3').tit === 'f2' && cc.casas[0].chefe === 'f1' && /A sucessão de Rui está feita\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)), 'o ducado e o condado divididos; a nova chefe da casa; o aviso');
+    const ras = () => A(L, () => { try { return JSON.parse(localStorage.getItem('tinycats:jornal:rascunho') || 'null'); } catch (e) { return null; } });
+    let r0 = await ras(), mat = r0 && r0.materias.find(x => /^Morreu /.test(x.tit));
+    ok(mat && mat.tit === 'Morreu Rui, Rei de Aldar' && /\*\*Reino de Aldar:\*\* Nina, Rainha de Aldar \(regente: Gil\)/.test(mat.txt) && /\*\*Chefe \(Casa de Aldar\):\*\* Fábia/.test(mat.txt), 'a notícia no rascunho do Jornal: ' + j(mat));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    cc = await corte(L); r0 = await ras();
+    ok(cc.titulos.every(x => x.tit === 'rei') && cc.casas[0].chefe === 'rei' && !(r0 && r0.materias.some(x => /^Morreu /.test(x.tit))), 'desfazer: os títulos e a chefia de volta ao Rui, e a notícia sai do Jornal');
+    await A(L, () => __mundo.App.refazer()); await espera(400);
+    cc = await corte(L); r0 = await ras();
+    ok(cc.titulos.find(x => x.id === 't1').tit === 'n1' && r0 && r0.materias.some(x => x.tit === 'Morreu Rui, Rei de Aldar'), 'refazer: a sucessão e a notícia de novo');
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    // no cartão de quem morreu: "Fazer a sucessão…"
+    await botao(L, 'corte:vista:casas');
+    if (!(await A(L, () => { const d = document.querySelector('#pane [data-k="casa:ka:mortos"]'); return !d || d.open; }))) await L.F.click('#pane [data-k="casa:ka:mortos"] > summary');
+    await espera(150);
+    await L.F.click('#pane [data-k="p:rei"]'); await L.F.waitForSelector('dialog.ps-dl[open]');
+    await L.F.click(dlg('[data-k="ps:sucessao"]')); await L.F.waitForSelector('dialog.suc-dl[open]');
+    ok((await suc()).tit === 'A sucessão de Rui', 'no cartão do Rui (morto, com títulos): "Fazer a sucessão…" abre a prévia');
+    // no celular: a prévia cabe
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    ok(await A(L, () => { const d = document.querySelector('dialog.suc-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, a prévia cabe na largura');
+    await semAvisos(L); await foto('l11-sucessao-celular');
+    await L.F.click('dialog.suc-dl[open] [data-k="suc:nao"]'); await espera(250);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await aba(L, 'corte'); await botao(L, 'corte:vista:titulos');
+    await botao(L, 't:t1'); await L.F.waitForSelector('dialog.tt-dl[open]');
+    await semAvisos(L); await foto('l11-sucessao-linha');
+    await L.F.click(dlg('[data-k="tt:nao"]')); await espera(200);
+    await botao(L, 'corte:vista:casas');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

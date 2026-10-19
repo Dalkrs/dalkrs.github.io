@@ -151,6 +151,142 @@
       pretende: porGrau(m, l.filter(t => t.pret.some(x => x.p === pid))).map(t => ({ titulo: t, mot: t.pret.find(x => x.p === pid).mot })) };
   }
 
+  /* ---------------- (parte 2b) a sucessão ----------------
+     A regra de um título (a dele, a do reino dele, ou a de começo: primogenitura, homens e mulheres por igual) e a linha
+     de sucessão: o herdeiro escolhido na frente (vivo); "o mestre escolhe", só ele. Na antiguidade, os vivos da casa do
+     titular, do mais velho para o mais novo (sem ninguém na casa, como na primogenitura). Na primogenitura (e na
+     partilha), os filhos do titular do mais velho para o mais novo (na ultimogenitura, do mais novo), cada um com a linha
+     dele (os netos…) antes do irmão seguinte; depois, subindo pela árvore: os pais (vivos, herdam) e os outros
+     descendentes deles (os irmãos, os sobrinhos), os avós (os tios, os primos)… O gênero: homens primeiro (ou mulheres
+     primeiro) em cada leva de irmãos; só homens (ou só mulheres) — a linha só passa por eles. Os mortos não herdam, mas
+     a linha passa por eles (os filhos herdam no lugar). Sem titular, a linha sai do último titular de antes que está na
+     corte. */
+  const regraDe = (m, t) => (t && t.regra) || regraDoReino(m, t && t.fac);
+  function regraDoReino(m, fid) {
+    const rs = corteDe(m).regras;
+    return (fid && ehObj(rs) && rs[fid]) || NN().REGRA_PADRAO;
+  }
+  // a regra em texto curto: "Primogenitura · por igual", "Antiguidade · só homens", "O mestre escolhe"
+  const GEN_CURTO = { igual: 'por igual', homens: 'homens primeiro', sohomens: 'só homens', mulheres: 'mulheres primeiro', somulheres: 'só mulheres' };
+  function textoRegra(r) {
+    const N = NN();
+    if (!r || !N.FORMAS_SUC[r.forma]) return '';
+    return r.forma === 'eletiva' ? N.FORMAS_SUC.eletiva : N.FORMAS_SUC[r.forma] + ' · ' + (GEN_CURTO[r.gen] || GEN_CURTO.igual);
+  }
+  // a ordem de nascimento (o mais velho primeiro; maisNovo: o contrário); sem o nascimento, depois, na ordem da lista
+  function porIdade(m, l, maisNovo) {
+    const ordem = new Map(corteDe(m).pessoas.map((p, i) => [p.id, i]));
+    const chave = p => (p.nasc ? [p.nasc.a, p.nasc.m == null ? -1 : p.nasc.m, p.nasc.d == null ? 0 : p.nasc.d] : null);
+    return l.slice().sort((a, b) => {
+      const x = chave(a), y = chave(b);
+      if (x && y) { for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return maisNovo ? y[i] - x[i] : x[i] - y[i]; }
+      else if (x || y) return x ? -1 : 1;
+      return ordem.get(a.id) - ordem.get(b.id);
+    });
+  }
+  const ehHomem = p => p.gen === 'h', ehMulher = p => p.gen === 'm';
+  function peloGenero(l, gen) {
+    if (gen === 'sohomens') return l.filter(ehHomem);
+    if (gen === 'somulheres') return l.filter(ehMulher);
+    if (gen === 'homens') return l.filter(ehHomem).concat(l.filter(p => !ehHomem(p)));
+    if (gen === 'mulheres') return l.filter(ehMulher).concat(l.filter(p => !ehMulher(p)));
+    return l;
+  }
+  // o laço com o titular, para a linha: u = quantas gerações acima, d = quantas abaixo a partir dali
+  const SUC_LACOS = { filho: ['filho', 'filha'], neto: ['neto', 'neta'], bisneto: ['bisneto', 'bisneta'], pai: ['pai', 'mãe'], avo: ['avô', 'avó'],
+    irmao: ['irmão', 'irmã'], sobrinho: ['sobrinho', 'sobrinha'], tio: ['tio', 'tia'], primo: ['primo', 'prima'] };
+  function lacoNaLinha(p, u, d) {
+    const k = u === 0 ? [null, 'filho', 'neto', 'bisneto'][d] : d === 0 ? [null, 'pai', 'avo'][u] : u === 1 ? [null, 'irmao', 'sobrinho'][d] : u === 2 ? [null, 'tio', 'primo'][d] : null;
+    if (!k) return u === 0 ? 'descendente' : 'parente';
+    const [a, b] = SUC_LACOS[k];
+    return p.gen === 'h' ? a : p.gen === 'm' ? b : a + ' ou ' + b;
+  }
+  // → [{ id, por }] (por: o laço com o titular, "herdeiro escolhido" ou "da casa"), até max (8)
+  function linhaDeSucessao(m, t, max) {
+    const lim = max || 8, out = [], vistos = new Set(), regra = regraDe(m, t);
+    const por = (p, rot) => { if (out.length < lim && !out.some(x => x.id === p.id)) out.push({ id: p.id, por: rot }); };
+    if (!t) return out;
+    const he = pessoaDe(m, t.herd);
+    if (he && vivo(he) && he.id !== t.tit) por(he, he.gen === 'm' ? 'herdeira escolhida' : 'herdeiro escolhido');
+    if (regra.forma === 'eletiva') return out;
+    let raiz = pessoaDe(m, t.tit);
+    for (let i = t.hist.length - 1; i >= 0 && !raiz; i--) raiz = pessoaDe(m, t.hist[i].p);
+    if (!raiz) return out;
+    if (regra.forma === 'antig' && raiz.casa) {
+      const l = peloGenero(porIdade(m, corteDe(m).pessoas.filter(q => q.casa === raiz.casa && q.id !== raiz.id && vivo(q))), regra.gen);
+      if (l.length) { for (const q of l) por(q, 'da casa'); return out; }
+    }
+    const filhos = p => peloGenero(porIdade(m, filhosDe(m, p), regra.forma === 'ultimo'), regra.gen);
+    const desce = (p, u, d) => {
+      for (const f of filhos(p)) {
+        if (out.length >= lim) return;
+        if (vistos.has(f.id)) continue;
+        vistos.add(f.id);
+        if (vivo(f)) por(f, lacoNaLinha(f, u, d));
+        desce(f, u, d + 1);
+      }
+    };
+    vistos.add(raiz.id);
+    desce(raiz, 0, 1);
+    let nivel = [raiz];
+    for (let u = 1; u <= 6 && out.length < lim; u++) {
+      const pais = [];
+      for (const q of nivel) for (const a of peloGenero(paisDe(m, q), regra.gen)) if (!vistos.has(a.id) && !pais.includes(a)) pais.push(a);
+      if (!pais.length) break;
+      for (const a of pais) { vistos.add(a.id); if (vivo(a)) por(a, lacoNaLinha(a, u, 0)); desce(a, u, 1); }
+      nivel = pais;
+    }
+    return out;
+  }
+  /* A sucessão de alguém (que morreu): cada título dele (do maior para o menor), com a regra, a linha e o herdeiro de
+     começo (o primeiro da linha; na partilha, os títulos divididos entre os filhos vivos — o maior com o mais velho —,
+     menos os que têm herdeiro escolhido) e o regente de começo (o herdeiro menor de idade: um dos pais dele, vivo); e,
+     se ele era o chefe de uma casa, o novo chefe (quem herda o maior título, se for da casa; senão, o mais velho dela).
+     → { pessoa, itens: [{ titulo, regra, linha, herdeiro, regente }], casa: { casa, chefe } | null } ou null */
+  function sucessaoDe(m, pid) {
+    const p = pessoaDe(m, pid);
+    if (!p) return null;
+    const itens = titulosDe(m, pid).map(t => { const regra = regraDe(m, t), linha = linhaDeSucessao(m, t, 8); return { titulo: t, regra, linha, herdeiro: linha[0] ? linha[0].id : null, regente: null }; });
+    const livres = itens.filter(x => x.regra.forma === 'partilha' && !(pessoaDe(m, x.titulo.herd) && vivo(pessoaDe(m, x.titulo.herd))));
+    if (livres.length > 1) {
+      const filhos = peloGenero(porIdade(m, filhosDe(m, p)), livres[0].regra.gen).filter(vivo);
+      if (filhos.length) livres.forEach((x, i) => { x.herdeiro = filhos[i % filhos.length].id; });
+    }
+    for (const x of itens) {
+      const h = pessoaDe(m, x.herdeiro);
+      if (h && menorDeIdade(m, h)) { const ps = paisDe(m, h).filter(q => vivo(q) && q.id !== pid); x.regente = ps[0] ? ps[0].id : null; }
+    }
+    const casa = corteDe(m).casas.find(c => c.chefe === pid) || null;
+    let chefe = null;
+    if (casa) {
+      const h0 = itens[0] ? pessoaDe(m, itens[0].herdeiro) : null;
+      if (h0 && h0.casa === casa.id && vivo(h0)) chefe = h0.id;
+      else { const l = porIdade(m, corteDe(m).pessoas.filter(q => q.casa === casa.id && q.id !== pid && vivo(q))); chefe = l[0] ? l[0].id : null; }
+    }
+    return { pessoa: p, itens, casa: casa ? { casa, chefe } : null };
+  }
+  /* Aplica a sucessão na corte c (uma cópia do mapa, dentro do Desfazer): cada título de pid escolhido vai para o
+     herdeiro (ou fica vago) desde a data, com o regente; pid vai para os titulares de antes (desde quando tinha, até a
+     data; cheia a lista, sai o mais antigo); a casa de que ele era o chefe ganha o novo chefe. escolhas: [{ titulo,
+     herdeiro, regente }]; chefe: o novo chefe (undefined: não mexe). → quantos títulos mudaram */
+  function aplicarSucessao(c, pid, escolhas, chefe, data) {
+    const p = c.pessoas.find(x => x.id === pid), lim = (NN().LIMITES || {}).titularesAntes || 40;
+    let n = 0;
+    for (const e of escolhas) {
+      const t = c.titulos.find(x => x.id === e.titulo);
+      if (!t || t.tit !== pid) continue;
+      t.hist.push({ p: pid, nome: p ? p.nome : '', de: t.desde || null, ate: data || null });
+      while (t.hist.length > lim) t.hist.shift();
+      t.tit = e.herdeiro || null;
+      t.desde = t.tit ? data || null : null;
+      t.reg = t.tit && e.regente && e.regente !== t.tit ? e.regente : null;
+      if (t.herd && t.herd === t.tit) t.herd = null;
+      n++;
+    }
+    if (chefe !== undefined) { const casa = c.casas.find(x => x.chefe === pid); if (casa) casa.chefe = chefe || null; }
+    return n;
+  }
+
   /* ---------------- (parte 1b) a árvore da família de uma casa ----------------
      Quem entra: os membros da casa e os cônjuges deles (os de outra casa também). A geração de cada um sai dos pais (a
      de cima é a 0); quem casou com alguém da casa e não tem os pais na árvore fica na geração do cônjuge. Em cada
@@ -223,7 +359,8 @@
   const MundoCorte = { corteDe, pessoaDe, casaDe, vivo, cargosDe, cargoDe, hoje, idadeDe, dataTxt, paisDe, conjugesDe, filhosDe, descendentesDe, quemEsta, membrosDe, laco,
     arvoreDaCasa, ARVORE: { LAR, ALT, VAO, VAO_G },
     tituloDe, grausDe, grauDe, terraDe, nomeDaTerra, deQue, nomeDoTitulo, formaDoGrau, tituloDoTitular, porGrau, titulosDe, maiorTituloDe, nomeComTitulo, titulosDaTerra,
-    governanteDe, maioridadeDe, menorDeIdade, papeisNosTitulos };
+    governanteDe, maioridadeDe, menorDeIdade, papeisNosTitulos,
+    regraDe, regraDoReino, textoRegra, porIdade, peloGenero, lacoNaLinha, linhaDeSucessao, sucessaoDe, aplicarSucessao };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCorte;
   if (typeof window !== 'undefined') window.MundoCorte = MundoCorte;
 })();

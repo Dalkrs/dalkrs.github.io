@@ -2845,6 +2845,7 @@
       }, { dica: 'As terras dos jogadores: quando eles ganharem uma província ou um assentamento, ponha nesta facção. Só uma facção pode ser dos jogadores.' }),
       secNumerosFac(f, m),
       CP() && CP().secTitulosFac ? CP().secTitulosFac(f, m) : null,                    // (lote 11, parte 2a) os títulos do reino
+      CP() && CP().secSucessaoFac ? CP().secSucessaoFac(f, m) : null,                  // (lote 11, parte 2b) a regra de sucessão do reino
       outras.length ? h('div', { class: 'sec' }, h('b', { text: 'Relações' }),
         outras.map(g => h('div', { class: 'rel ' + ((f.rel && f.rel[g.id]) || 'neutra') }, h('i', { style: { background: g.cor } }), h('span', { text: nomeFac(g) }),
           campoEscolha('rel:' + id + ':' + g.id, null, (f.rel && f.rel[g.id]) || 'neutra', Object.keys(N_.RELACOES).map(k => [k, N_.RELACOES[k]]),

@@ -152,7 +152,7 @@ const j = JSON.stringify;
     'os graus: sem os repetidos nem o lixo; o nome que falta vira "Grau"; as formas como foram escritas');
   eq(c.maior, 18, 'a maioridade guardada');
   eq(c.titulos.map(t => t.id), ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9'], 'os títulos: sem os repetidos nem o lixo');
-  eq(Object.keys(T('t1')), ['id', 'grau', 'de', 'nome', 'preso', 'fac', 'tit', 'desde', 'herd', 'reg', 'pret', 'hist', 'txt', 'nota'], 'cada título com os campos de sempre, nesta ordem');
+  eq(Object.keys(T('t1')), ['id', 'grau', 'de', 'nome', 'preso', 'fac', 'tit', 'desde', 'herd', 'reg', 'regra', 'pret', 'hist', 'txt', 'nota'], 'cada título com os campos de sempre, nesta ordem');
   eq([T('t1').herd, T('t1').reg, T('t1').desde], [null, 'b', { a: 298, m: 1, d: 31 }], 'o herdeiro escolhido não é o próprio titular; o regente fica; o "desde" (o dia passa do mês: fica no último)');
   eq(T('t1').pret, [{ p: 'c', mot: 'irmão' }, { p: 'b', mot: '' }], 'os pretendentes: sem repetir, sem o titular, só quem existe (com o motivo)');
   eq(T('t1').hist, [{ p: 'd', nome: 'Duda', de: null, ate: null }, { p: null, nome: 'Saiu', de: null, ate: null }, { p: null, nome: 'Aldric I', de: { a: 200 }, ate: { a: 230 } }],
@@ -205,6 +205,98 @@ const j = JSON.stringify;
   eq([semNinguem.corte.pessoas, semNinguem.corte.titulos.map(t => t.id)], [[], ['t1', 't2', 't6']], 'ninguém conhecido: os títulos das terras que eles veem vão mesmo assim (sem titular)');
   const comDe = N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { corte: Object.assign(JSON.parse(j(base.corte)), { titulos: [{ id: 'z', grau: 'sen', preso: { t: 'r', id: 'r2' }, tit: 'c', de: 'das Brumas' }] }) })));
   eq([comDe.corte.titulos[0].de, comDe.corte.titulos[0].preso], ['das Brumas', null], 'na névoa, o "de quê" escrito pelo mestre vai como está');
+}
+
+/* ---- (parte 2b) a sucessão ---- */
+{
+  const CAL = { dia: 0, ano0: 310, meses: [{ nome: 'Degelo', dias: 30 }, { nome: 'Semeadura', dias: 31 }], era: 'DR' };
+  const P0 = [
+    { id: 'av', nome: 'Aldo', gen: 'h', casa: 'ka', nasc: { a: 230 }, morte: { a: 290 }, conj: ['ao'] }, { id: 'ao', nome: 'Olga', gen: 'm', casa: 'kb', nasc: { a: 232 } },
+    { id: 'tia', nome: 'Tânia', gen: 'm', casa: 'ka', nasc: { a: 252 }, pais: ['av', 'ao'] }, { id: 'rei', nome: 'Rui', gen: 'h', casa: 'ka', nasc: { a: 255 }, pais: ['av', 'ao'], conj: ['ro'] },
+    { id: 'tio', nome: 'Tito', gen: 'h', casa: 'ka', nasc: { a: 258 }, pais: ['av', 'ao'] }, { id: 'ro', nome: 'Rosa', gen: 'm', casa: 'kb', nasc: { a: 260 } },
+    { id: 'f4', nome: 'Félix', gen: 'h', casa: 'ka', nasc: { a: 290 }, pais: ['rei', 'ro'] }, { id: 'f1', nome: 'Fábia', gen: 'm', casa: 'ka', nasc: { a: 280 }, pais: ['rei', 'ro'] },
+    { id: 'f2', nome: 'Fred', gen: 'h', casa: 'ka', nasc: { a: 283 }, pais: ['rei', 'ro'] }, { id: 'f3', nome: 'Flor', gen: 'm', casa: 'ka', nasc: { a: 286 }, morte: { a: 295 }, pais: ['rei', 'ro'] },
+    { id: 'n3', nome: 'Nico', gen: 'h', casa: 'ka', nasc: { a: 294 }, pais: ['f3'] }, { id: 'n1', nome: 'Nina', gen: 'm', casa: 'ka', nasc: { a: 300 }, pais: ['f1', 'gx'] },
+    { id: 'gx', nome: 'Gil', gen: 'h', casa: 'kc', nasc: { a: 278 } }, { id: 'n2', nome: 'Neto', gen: 'h', casa: 'ka', nasc: { a: 305 }, pais: ['f2'] },
+    { id: 'p1', nome: 'Pedro', gen: 'h', casa: 'ka', nasc: { a: 285 }, pais: ['tio'] }, { id: 's1', nome: 'Sara', gen: 'm', casa: 'kc', nasc: { a: 278 }, pais: ['tia'] }];
+  const mapa = (titulos, regras, mud) => N.normalizarMapa({ nome: 'M', cal: CAL, faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale' }],
+    corte: { casas: [{ id: 'ka', nome: 'Aldar', chefe: 'rei' }, { id: 'kb', nome: 'Rosas' }, { id: 'kc', nome: 'Gil' }], regras: regras || {},
+      pessoas: P0.map(p => Object.assign({}, p, (mud || {})[p.id] || {})), titulos } });
+  // as regras normalizadas
+  const mr = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'antig', gen: 'homens' }, fz: { forma: 'primo' }, fb: { forma: 'x' } },
+    titulos: [{ id: 't', nome: 'T', regra: { forma: 'partilha', gen: 'zz' } }, { id: 'u', nome: 'U', regra: 'x' }, { id: 'w', nome: 'W', regra: { forma: 'zz', gen: 'homens' } }] } });
+  eq([mr.corte.regras, mr.corte.titulos.map(t => t.regra)], [{ fa: { forma: 'antig', gen: 'homens' } }, [{ forma: 'partilha', gen: 'igual' }, null, null]],
+    'as regras: só as dos reinos que existem e com uma forma que existe (o gênero que não existe vira "igual"); a do título, igual (sem forma: nenhuma)');
+  ok(N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'primo' } } } }).corte.regras.fa.forma === 'primo' && !('regras' in N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fz: { forma: 'primo' } }, titulos: [{ id: 'x', nome: 'X' }] } }).corte),
+    'só uma regra já faz a corte; as regras de reinos que não existem saem (e a lista vazia some)');
+  ok(!('regras' in N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'zz' } }, titulos: [{ id: 'x', nome: 'X' }] } }).corte), 'a regra de um reino que existe, com uma forma que não existe: sai');
+  // a regra de um título e o texto dela
+  const T = (id, o) => Object.assign({ id, grau: 'reino', fac: 'fa', tit: 'rei' }, o || {});
+  let m = mapa([T('t1')], { fa: { forma: 'ultimo', gen: 'homens' } });
+  eq([C.regraDe(m, m.corte.titulos[0]), C.regraDe(m, Object.assign({}, m.corte.titulos[0], { regra: { forma: 'antig', gen: 'igual' } })), C.regraDe(m, Object.assign({}, m.corte.titulos[0], { fac: 'fb' }))],
+    [{ forma: 'ultimo', gen: 'homens' }, { forma: 'antig', gen: 'igual' }, N.REGRA_PADRAO], 'a regra do título: a dele, a do reino, ou a de começo');
+  eq([C.textoRegra({ forma: 'primo', gen: 'igual' }), C.textoRegra({ forma: 'antig', gen: 'sohomens' }), C.textoRegra({ forma: 'eletiva', gen: 'homens' }), N.REGRA_PADRAO],
+    ['Primogenitura · por igual', 'Antiguidade · só homens', 'O mestre escolhe', { forma: 'primo', gen: 'igual' }], 'a regra em texto curto (a de começo: primogenitura, homens e mulheres por igual)');
+  // a linha de sucessão, por regra
+  const linha = (forma, gen, o) => { const mm = mapa([T('t1', Object.assign({ regra: { forma, gen } }, o || {}))]); return C.linhaDeSucessao(mm, mm.corte.titulos[0], 8); };
+  const ids = l => l.map(x => x.id).join(' ');
+  const l0 = linha('primo', 'igual');
+  eq(ids(l0), 'f1 n1 f2 n2 n3 f4 tia s1', 'primogenitura: os filhos do mais velho para o mais novo, cada um com a linha dele (a filha morta: o filho dela no lugar); depois os irmãos e os sobrinhos');
+  eq(l0.map(x => x.por), ['filha', 'neta', 'filho', 'neto', 'neto', 'filho', 'irmã', 'sobrinha'], 'com o laço de cada um com o titular');
+  eq(ids(linha('primo', 'homens')), 'f2 n2 f4 f1 n1 n3 tio p1', 'homens primeiro: em cada leva de irmãos, os homens antes');
+  eq(ids(linha('primo', 'sohomens')), 'f2 n2 f4 tio p1', 'só homens: a linha só passa por eles (sem as filhas e os filhos delas)');
+  eq(ids(linha('primo', 'mulheres')), 'f1 n1 n3 f2 n2 f4 ao tia', 'mulheres primeiro (a mãe viva herda antes dos irmãos)');
+  eq(ids(linha('primo', 'somulheres')), 'f1 n1 ao tia s1', 'só mulheres: a linha só passa por elas');
+  eq(ids(linha('ultimo', 'igual')), 'f4 n3 f2 n2 f1 n1 tio p1', 'ultimogenitura: do mais novo para o mais velho');
+  const la = linha('antig', 'igual');
+  eq([ids(la), la[0].por], ['tia tio f1 f2 p1 f4 n3 n1', 'da casa'], 'antiguidade: os vivos da casa do titular, do mais velho para o mais novo');
+  eq(ids(linha('antig', 'homens')), 'tio f2 p1 f4 n3 n2 tia f1', 'antiguidade, homens primeiro');
+  eq([linha('eletiva', 'igual'), ids(linha('eletiva', 'igual', { herd: 'p1' }))], [[], 'p1'], '"o mestre escolhe": ninguém (só o herdeiro escolhido, se houver)');
+  const lh = linha('primo', 'igual', { herd: 'p1' });
+  eq([ids(lh).split(' ').slice(0, 3).join(' '), lh[0].por, lh.filter(x => x.id === 'p1').length], ['p1 f1 n1', 'herdeiro escolhido', 1], 'o herdeiro escolhido passa na frente (uma vez só)');
+  eq(ids(linha('primo', 'igual', { herd: 'f3' })).split(' ')[0], 'f1', 'o herdeiro escolhido morto não passa');
+  const mg = mapa([T('t1', { tit: 'gx', regra: { forma: 'antig', gen: 'igual' } })], null, { s1: { casa: 'ka' } });
+  eq(ids(C.linhaDeSucessao(mg, mg.corte.titulos[0], 8)), 'n1', 'antiguidade sem mais ninguém vivo na casa: como na primogenitura (a filha do Gil)');
+  const mv = mapa([T('t1', { tit: null, hist: [{ p: 'av' }, { p: 'rei' }] })]);
+  eq(ids(C.linhaDeSucessao(mv, mv.corte.titulos[0], 3)), 'f1 n1 f2', 'o título vago: a linha sai do último titular de antes que está na corte');
+  eq([C.lacoNaLinha({ gen: '' }, 0, 1), C.lacoNaLinha({ gen: 'h' }, 2, 1), C.lacoNaLinha({ gen: 'm' }, 2, 2), C.lacoNaLinha({ gen: 'h' }, 0, 5), C.lacoNaLinha({ gen: 'h' }, 3, 2)],
+    ['filho ou filha', 'tio', 'prima', 'descendente', 'parente'], 'os laços da linha (sem gênero, os dois; longe, "descendente" ou "parente")');
+  eq([C.porIdade(m, [C.pessoaDe(m, 'f4'), { id: 'xx' }, C.pessoaDe(m, 'f1')]).map(p => p.id), C.peloGenero([{ gen: 'm' }, { gen: 'h' }, { gen: '' }], 'homens').map(p => p.gen)], [['f1', 'f4', 'xx'], ['h', 'm', '']],
+    'a ordem de nascimento (sem o nascimento, por último); homens primeiro (os outros na ordem de antes)');
+  // a sucessão de quem morreu: os títulos, a partilha, o regente, o chefe da casa
+  const titulos = [T('t1'), T('t2', { grau: 'ducado', regra: { forma: 'partilha', gen: 'igual' } }), T('t3', { grau: 'condado', regra: { forma: 'partilha', gen: 'igual' } }),
+    T('t4', { grau: 'baronia', regra: { forma: 'eletiva', gen: 'igual' } }), T('t5', { tit: 'tio' })];
+  m = mapa(titulos, null, { rei: { morte: { a: 310 } } });
+  let sc = C.sucessaoDe(m, 'rei');
+  eq(sc.itens.map(x => [x.titulo.id, x.herdeiro, x.regente]), [['t1', 'f1', null], ['t2', 'f1', null], ['t3', 'f2', null], ['t4', null, null]],
+    'a sucessão do Rui: o reino para a Fábia; a partilha divide o ducado e o condado entre os filhos vivos (o maior com a mais velha); "o mestre escolhe": ninguém; o título do Tito não entra');
+  eq([sc.casa.casa.id, sc.casa.chefe], ['ka', 'f1'], 'o chefe da casa: quem herda o maior título (da casa)');
+  eq(sc.itens[0].linha.slice(0, 2).map(x => x.id), ['f1', 'n1'], 'cada título vem com a linha');
+  m = mapa(titulos, null, { rei: { morte: { a: 310 } }, f1: { morte: { a: 305 } } });
+  sc = C.sucessaoDe(m, 'rei');
+  eq([sc.itens[0].herdeiro, sc.itens[0].regente, sc.itens[1].herdeiro, sc.itens[2].herdeiro, sc.casa.chefe], ['n1', 'gx', 'f2', 'f4', 'n1'], 'a Fábia morta: a Nina (menor de idade) herda o reino, com o pai vivo de regente; a partilha só entre os filhos vivos');
+  m = mapa(titulos, null, { rei: { morte: { a: 310 } }, f1: { casa: 'kc' } });
+  eq(C.sucessaoDe(m, 'rei').casa.chefe, 'tia', 'quem herda o maior título é de outra casa: o chefe é o mais velho da casa');
+  m = mapa([T('t2', { grau: 'ducado', regra: { forma: 'partilha', gen: 'igual' }, herd: 'p1' }), T('t3', { grau: 'condado', regra: { forma: 'partilha', gen: 'igual' } }), T('t6', { grau: 'baronia', regra: { forma: 'partilha', gen: 'igual' } })], null, { rei: { morte: { a: 310 } } });
+  eq(C.sucessaoDe(m, 'rei').itens.map(x => x.herdeiro), ['p1', 'f1', 'f2'], 'na partilha, o título com herdeiro escolhido fica com ele; os outros se dividem');
+  eq([C.sucessaoDe(m, 'xx'), C.sucessaoDe(m, 'tio').itens, C.sucessaoDe(m, 'tio').casa], [null, [], null], 'sem a pessoa: nada; sem títulos e sem casa: nada a passar');
+  // aplicar
+  m = mapa(titulos.concat([T('t9', { tit: 'rei', desde: { a: 290 }, herd: 'f2', hist: Array.from({ length: 40 }, (_, i) => ({ nome: 'H' + i })) })]), null, { rei: { morte: { a: 310, m: 1, d: 3 } } });
+  const c = JSON.parse(j(m.corte));
+  const nmud = C.aplicarSucessao(c, 'rei', [{ titulo: 't1', herdeiro: 'n1', regente: 'gx' }, { titulo: 't4', herdeiro: null }, { titulo: 't5', herdeiro: 'f1' }, { titulo: 't9', herdeiro: 'f2', regente: 'f2' }], 'f2', { a: 310, m: 1, d: 3 });
+  const Tc = id => c.titulos.find(t => t.id === id);
+  eq([nmud, Tc('t1').tit, Tc('t1').desde, Tc('t1').reg, Tc('t1').hist[Tc('t1').hist.length - 1]], [3, 'n1', { a: 310, m: 1, d: 3 }, 'gx', { p: 'rei', nome: 'Rui', de: null, ate: { a: 310, m: 1, d: 3 } }],
+    'aplicar: o reino para a Nina desde a data da morte, com o regente; o Rui nos titulares de antes (até a data)');
+  eq([Tc('t4').tit, Tc('t4').desde, Tc('t5').tit, Tc('t9').reg, Tc('t9').herd, Tc('t9').hist.length, Tc('t9').hist[0].nome, Tc('t9').hist[39].de], [null, null, 'tio', null, null, 40, 'H1', { a: 290 }],
+    'o vago fica sem "desde"; o título de outro titular não muda; o regente não é o próprio herdeiro; o herdeiro escolhido que herdou sai; a lista cheia perde o mais antigo');
+  eq(c.casas.find(x => x.id === 'ka').chefe, 'f2', 'aplicar: o novo chefe da casa');
+  const c2 = JSON.parse(j(m.corte));
+  C.aplicarSucessao(c2, 'rei', [], undefined, { a: 310 });
+  eq(c2.casas.find(x => x.id === 'ka').chefe, 'rei', 'sem dizer o chefe: a casa não muda');
+  // a projeção: as regras são do mestre
+  const mp = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'antig' } }, pessoas: [{ id: 'a', nome: 'A', ver: true }], titulos: [{ id: 't', nome: 'T', tit: 'a', regra: { forma: 'primo' } }] } });
+  const pp = N.projetar(mp).corte;
+  eq([pp.titulos[0].regra, 'regras' in pp], [null, false], 'na projeção, sem as regras de sucessão (a do título e as dos reinos)');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

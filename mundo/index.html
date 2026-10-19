@@ -763,6 +763,14 @@ dialog.mundo-dl.gr-dl { width: min(640px, calc(100% - 24px)); }
 .gr-cab span { font-size: 12px; font-weight: 600; color: var(--fg-3); padding-left: 2px; }
 dialog.mundo-dl input[type="text"].gr-maior { width: 90px; }
 .mundo-dl label.gr-maior-rot { justify-items: start; }
+/* (lote 11, parte 2b) a sucessão: a regra e a linha no cartão do título, a prévia */
+.tt-suc { display: grid; gap: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.tt-linha-suc { margin: 0; padding-left: 20px; display: grid; gap: 2px; font-size: 13px; color: var(--fg); }
+.tt-linha-suc li.vazia { list-style: none; margin-left: -20px; color: var(--fg-3); }
+dialog.mundo-dl.suc-dl { width: min(560px, calc(100% - 24px)); }
+.suc-item { display: grid; gap: 4px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.suc-item b { font-size: 14px; color: var(--fg); }
+.suc-item small { font-size: 12px; color: var(--fg-3); }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1179,17 +1187,17 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=28"></script>
+<script src="nucleo.js?v=29"></script>
 <script src="guerra.js?v=3"></script>
 <script src="reino.js?v=8"></script>
-<script src="corte.js?v=3"></script>
+<script src="corte.js?v=4"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=33"></script>
+<script src="painel.js?v=34"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=10"></script>
-<script src="corte-painel.js?v=3"></script>
+<script src="corte-painel.js?v=4"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

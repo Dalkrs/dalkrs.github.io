@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.18-21",
+      "data": "2026-10-18",
+      "titulo": "A sucessão",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a regra de sucessão de cada reino (na facção) e de cada título (no cartão dele): primogenitura, ultimogenitura, antiguidade, partilha ou “o mestre escolhe”, com o gênero (por igual, homens ou mulheres primeiro, só homens ou só mulheres). O cartão do título mostra a linha de sucessão."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: ao marcar a morte de quem tem títulos, abre a prévia da sucessão: cada título com o herdeiro da regra (para trocar), o regente do herdeiro menor de idade, o novo chefe da casa e a notícia para o rascunho do Jornal. Nada muda até “Aplicar” (com Desfazer); “Agora não” deixa para depois."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.18-20",
       "data": "2026-10-18",
       "titulo": "Os títulos",

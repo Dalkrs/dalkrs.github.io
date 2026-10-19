@@ -131,6 +131,7 @@
     if (id && !p) return;
     const v = await dialogoPessoa(m, p);
     if (!v || !K.mesmoMapa(m.id)) return;
+    if (v.sucessao) { await janelaSucessao(p.id); return; }        // (parte 2b) a sucessão de quem já morreu
     if (v.tirar) {
       const ok = await K.confirmar({ titulo: 'Tirar ' + p.nome + ' da corte?', ok: 'Tirar', perigo: true,
         texto: 'Sai da lista e dos laços dos outros (pais, cônjuges, filhos' + (m.corte.casas.some(c => c.chefe === p.id) ? ', chefe da casa' : '') + ').' +
@@ -150,8 +151,11 @@
       if (JSON.stringify(x) === ant && !c.pessoas.some(q => q.id !== x.id && q.conj.includes(x.id) !== x.conj.includes(q.id))) return false;
     });
     if (ok !== false) K.avisoDesfazer(p ? v.nome + ': salvo.' : v.nome + ' entrou na corte.');
+    // (parte 2b) a morte marcada agora, de quem tem títulos ou é chefe de uma casa: a prévia da sucessão (com "Agora não")
+    if (ok !== false && p && !p.morte && v.morte && K.mesmoMapa(m.id) && precisaSucessao(A.mapa, p.id)) await janelaSucessao(p.id);
   }
-  /* A janela do cartão (p null: um personagem novo). → os campos (sem o id), { tirar: true } ou null (cancelou). */
+  /* A janela do cartão (p null: um personagem novo). → os campos (sem o id), { tirar: true }, { sucessao: true } ou null
+     (cancelou). */
   function dialogoPessoa(m, p) {
     const K = kit(), { h } = K, Cx = C(), Nx = N();
     return new Promise(resolve => {
@@ -219,8 +223,10 @@
       const linhasT = pt ? pt.tem.map(t0 => Cx.tituloDoTitular(m, t0, p) + (t0.desde ? ' (desde ' + Cx.dataTxt(m, t0.desde) + ')' : ''))
         .concat(pt.herdeiro.map(t0 => herdeiro + Cx.nomeDoTitulo(m, t0)), pt.regente.map(t0 => 'regente: ' + Cx.nomeDoTitulo(m, t0)),
           pt.pretende.map(x => 'pretende: ' + Cx.nomeDoTitulo(m, x.titulo) + (x.mot ? ' (' + x.mot + ')' : ''))) : [];
-      const secT = linhasT.length ? h('div', { class: 'ps-titulos', 'data-k': 'ps:titulos' }, h('span', { class: 'ps-rot', text: 'Títulos' }), h('ul', null, linhasT.map(l => h('li', { text: l }))),
-        h('small', { class: 'ajuda', text: 'Mudam no cartão de cada título (aba Corte, em Títulos).' })) : null;
+      // (parte 2b) morto, ainda com títulos (ou chefe de uma casa): "Fazer a sucessão…"
+      const bSuc = p && p.morte && precisaSucessao(m, p.id) ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'ps:sucessao', text: 'Fazer a sucessão…' }) : null;
+      const secT = linhasT.length || bSuc ? h('div', { class: 'ps-titulos', 'data-k': 'ps:titulos' }, h('span', { class: 'ps-rot', text: 'Títulos' }), linhasT.length ? h('ul', null, linhasT.map(l => h('li', { text: l }))) : null,
+        h('small', { class: 'ajuda', text: 'Mudam no cartão de cada título (aba Corte, em Títulos).' + (bSuc ? ' Morto: a sucessão passa os títulos (e a chefia da casa) para os herdeiros, com prévia.' : '') }), bSuc ? h('div', { class: 'row' }, bSuc) : null) : null;
       const form = h('form', { class: 'dl', novalidate: true }, titulo,
         h('div', { class: 'lin' }, lbl('Nome', nome), lbl('Gênero', gen)),
         h('div', { class: 'lin' }, lbl('Casa', casa), lbl('Facção', fac), lbl('Cargo na corte', cargo)),
@@ -270,6 +276,7 @@
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       if (bTirar) bTirar.addEventListener('click', () => fim({ tirar: true }));
+      if (bSuc) bSuc.addEventListener('click', () => fim({ sucessao: true }));
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));
       dl.addEventListener('keydown', ev => ev.stopPropagation());
@@ -637,6 +644,7 @@
     if (id && !t) return;
     const v = await dialogoTitulo(m, t, padrao || null);
     if (!v || !K.mesmoMapa(m.id)) return;
+    if (v.sucessao) { await janelaSucessao(t.tit); return; }      // (parte 2b) o titular morreu: a sucessão
     const nome0 = t ? C().nomeDoTitulo(m, t) : '';
     if (v.tirar) {
       const ok = await K.confirmar({ titulo: 'Tirar o título ' + nome0 + '?', ok: 'Tirar', perigo: true, texto: 'Sai da corte, com os titulares de antes e os pretendentes. Dá para desfazer.' });
@@ -719,6 +727,14 @@
       const antes = h('input', { type: 'checkbox', 'data-k': 'tt:antes', checked: true });
       const rotAntes = h('label', { class: 'op', hidden: true }, antes, h('span', { text: pAntes ? 'Pôr ' + pAntes.nome + ' nos titulares de antes (até hoje)' : '' }));
       const herd = escolha('tt:herd', opPessoas('Nenhum (a regra decide)'), t ? t.herd : ''), reg = escolha('tt:reg', opPessoas('Nenhum'), t ? t.reg : '');
+      // (parte 2b) a regra de sucessão (a do reino, ou a do título) e a linha de sucessão (os próximos, só para ler)
+      const F = N().FORMAS_SUC, G = N().GENEROS_SUC;
+      const regra = escolha('tt:regra', [['', 'A do reino']].concat(Object.keys(F).map(k => [k, F[k]])), t && t.regra ? t.regra.forma : '');
+      const regraGen = escolha('tt:regra-gen', Object.keys(G).map(k => [k, G[k]]), t && t.regra ? t.regra.gen : 'igual');
+      const lerRegra = () => (regra.value ? { forma: regra.value, gen: regraGen.value } : null);
+      const linhaSuc = h('ol', { class: 'tt-linha-suc', 'data-k': 'tt:linha' });
+      const pMorto = t ? pessoa(t.tit) : null;
+      const bSucT = pMorto && pMorto.morte ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'tt:sucessao', text: 'Fazer a sucessão…' }) : null;
       const previa = h('p', { class: 'tt-previa', 'data-k': 'tt:previa' });
       // novo: o grau e o reino seguem a terra até a pessoa mexer neles
       let grauMexido = !!t, facMexido = !!t, desdeMexido = false;
@@ -730,6 +746,15 @@
         const formas = g ? [...new Set([g.h, g.m, g.o].filter(Boolean))].map(f0 => f0 + (dq ? ' ' + dq : '')) : [];
         const ou = formas.length <= 1 ? formas.join('') : formas.slice(0, -1).join(', ') + ' ou ' + formas[formas.length - 1];
         previa.textContent = Cx.nomeDoTitulo(m, x) + (q ? ' · ' + q.nome + (g ? ': ' + Cx.tituloDoTitular(m, x, q) : '') : ou ? ' · quem tem: ' + ou : '');
+        // (parte 2b) a regra (a do reino, com o nome dela) e a linha de sucessão de agora
+        const rr = Cx.regraDoReino(m, fac.value || null);
+        regra.options[0].textContent = 'A do reino: ' + Cx.textoRegra(rr);
+        if (!regra.value) regraGen.value = rr.gen;
+        regraGen.disabled = !regra.value || regra.value === 'eletiva';
+        const tx = { id: t ? t.id : '', fac: fac.value || null, tit: tit.value || null, herd: herd.value || null, regra: lerRegra(), hist: t ? t.hist : [], pret: [] };
+        const ls = Cx.linhaDeSucessao(m, tx, 5);
+        linhaSuc.replaceChildren(...(ls.length ? ls.map(y => { const z = pessoa(y.id), i0 = Cx.idadeDe(m, z); return h('li', { text: z.nome + ' (' + y.por + (i0 != null && i0 >= 0 ? ', ' + K.plural(i0, 'ano', 'anos') : '') + ')' }); })
+          : [h('li', { class: 'vazia', text: Cx.regraDe(m, tx).forma === 'eletiva' && !tx.herd ? 'O mestre escolhe na hora.' : 'Ninguém na linha (sem titular, ou sem parentes vivos na corte).' })]));
         // trocar o titular: o de antes vai para os titulares de antes (a caixa) e o "desde" vira hoje
         const trocou = !!pAntes && tit.value !== pAntes.id;
         rotAntes.hidden = !trocou;
@@ -737,7 +762,8 @@
       };
       presoSel.addEventListener('change', () => { const pr = lerPreso(); if (!grauMexido) grau.value = grauPadrao(m, pr); if (!facMexido) fac.value = facDaTerra(m, pr); pintar(); });
       grau.addEventListener('change', () => { grauMexido = true; pintar(); });
-      fac.addEventListener('change', () => { facMexido = true; });
+      fac.addEventListener('change', () => { facMexido = true; pintar(); });
+      for (const el of [herd, regra, regraGen]) el.addEventListener('change', pintar);
       for (const el of [de, nomeL]) el.addEventListener('input', pintar);
       tit.addEventListener('change', pintar);
       for (const el of [desde.a, desde.ms, desde.d]) { el.addEventListener('input', () => { desdeMexido = true; }); el.addEventListener('change', () => { desdeMexido = true; }); }
@@ -788,6 +814,8 @@
         rotAntes,
         h('div', { class: 'lin' }, lbl('Herdeiro escolhido', herd), lbl('Regente', reg)),
         h('small', { class: 'ajuda', text: 'O herdeiro escolhido passa na frente da regra de sucessão. O regente governa pelo titular menor de idade (maioridade: ' + Cx.maioridadeDe(m) + ' anos).' }),
+        h('div', { class: 'tt-suc' }, h('div', { class: 'lin' }, lbl('Regra de sucessão', regra), lbl('Gênero', regraGen)),
+          h('span', { class: 'ps-rot', text: 'A linha de sucessão (os próximos)' }), linhaSuc, bSucT ? h('div', { class: 'row' }, bSucT) : null),
         h('div', { class: 'tt-caixa' }, h('span', { class: 'ps-rot', text: 'Pretendentes (quem reclama o título)' }), caixaPret, bPret),
         h('div', { class: 'tt-caixa' }, h('span', { class: 'ps-rot', text: 'Titulares de antes' }), caixaHist, bHist),
         lbl('O que os jogadores sabem', pub), lbl('Nota do mestre (só você vê)', nota),
@@ -823,10 +851,11 @@
             hist.push({ p: p0, nome: n0, de: dataDe(ya, o0 && o0.de), ate: dataDe(yb, o0 && o0.ate) });
           }
           if (pAntes && ti !== pAntes.id && antes.checked && hist.length < LH) hist.push({ p: pAntes.id, nome: pAntes.nome, de: t.desde, ate: Cx.hoje(m) });
-          fim({ grau: g, de: de0, nome: nome0, preso: pr, fac: fac.value || null, tit: ti, desde: ds, herd: he, reg: re, pret, hist, txt: pub.value.trim(), nota: nota.value.trim() });
+          fim({ grau: g, de: de0, nome: nome0, preso: pr, fac: fac.value || null, tit: ti, desde: ds, herd: he, reg: re, regra: lerRegra(), pret, hist, txt: pub.value.trim(), nota: nota.value.trim() });
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       if (bTirar) bTirar.addEventListener('click', () => fim({ tirar: true }));
+      if (bSucT) bSucT.addEventListener('click', () => fim({ sucessao: true }));
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));
       dl.addEventListener('keydown', ev => ev.stopPropagation());
@@ -910,6 +939,117 @@
     });
   }
 
+  /* ---------------- (parte 2b) a sucessão ----------------
+     Na facção (aba Reinos), a regra de sucessão do reino (a forma e o gênero; de começo, primogenitura, homens e mulheres
+     por igual). Quando o mestre marca a morte de quem tem títulos (ou é chefe de uma casa), abre a prévia: cada título
+     com o herdeiro da regra (e a linha dele), o regente quando o herdeiro é menor de idade, o novo chefe da casa e a
+     caixa (desmarcada) para a notícia no rascunho do Jornal. Nada muda até "Aplicar" (tudo num passo de Desfazer, o
+     Jornal junto); "Agora não" deixa os títulos com o morto — "Fazer a sucessão…" no cartão do título e no dele. */
+  const precisaSucessao = (m, pid) => !!pid && (C().titulosDe(m, pid).length > 0 || C().corteDe(m).casas.some(c => c.chefe === pid));
+  function secSucessaoFac(f, v) {
+    const K = kit(), N_ = N(), r = C().regraDoReino(v, f.id), F = N_.FORMAS_SUC, G = N_.GENEROS_SUC, nomeF = K.nomeFac(f);
+    const grava = mexe => x => mudarCorte('mudar a sucessão de ' + nomeF, c => {
+      const ant = JSON.stringify((c.regras || {})[f.id] || null), nova = mexe(Object.assign({}, (c.regras || {})[f.id] || N_.REGRA_PADRAO), x);
+      if (!c.regras) c.regras = {};
+      if (nova.forma === N_.REGRA_PADRAO.forma && nova.gen === N_.REGRA_PADRAO.gen) delete c.regras[f.id]; else c.regras[f.id] = nova;
+      if (JSON.stringify(c.regras[f.id] || null) === ant) return false;
+    });
+    return K.secao('Sucessão',
+      K.campoEscolha('f:' + f.id + ':suc-forma', 'Forma', r.forma, Object.keys(F).map(k => [k, F[k]]), grava((rr, x) => Object.assign(rr, { forma: x }))),
+      K.campoEscolha('f:' + f.id + ':suc-gen', 'Gênero', r.gen, Object.keys(G).map(k => [k, G[k]]), grava((rr, x) => Object.assign(rr, { gen: x })), { off: r.forma === 'eletiva' }),
+      K.nota('A regra dos títulos deste reino (cada título pode ter a sua, no cartão dele). O herdeiro escolhido de um título passa na frente.'));
+  }
+  // a prévia da sucessão de alguém; aplicar faz tudo num passo de Desfazer (o rascunho do Jornal junto)
+  let sucessaoAberta = false;
+  async function janelaSucessao(pid) {
+    const A = app(), K = kit(), m = A.mapa;
+    if (sucessaoAberta || !A.podeEditar() || !m || !precisaSucessao(m, pid)) return;
+    const plano = C().sucessaoDe(m, pid);
+    if (!plano) return;
+    const jornal = !!(A.temJornal && A.temJornal());
+    sucessaoAberta = true;
+    let v = null;
+    try { v = await dialogoSucessao(m, plano, jornal); } finally { sucessaoAberta = false; }
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const p = plano.pessoa, data = p.morte || C().hoje(m), antes = C().nomeComTitulo(m, p);
+    let feitos = 0;
+    const ok = mudarCorte('a sucessão de ' + p.nome, c => { feitos = C().aplicarSucessao(c, p.id, v.escolhas, plano.casa ? v.chefe : undefined, data); if (!feitos && !plano.casa) return false; });
+    if (ok === false) return;
+    // a notícia no rascunho do Jornal (o Desfazer da sucessão tira, o Refazer põe de novo)
+    let jtxt = '';
+    if (jornal && v.jornal) {
+      const mm = A.mapa, linhas = v.escolhas.map(e => { const t = C().tituloDe(mm, e.titulo), q = C().pessoaDe(mm, e.herdeiro), rg = C().pessoaDe(mm, e.regente); return '**' + (t ? C().nomeDoTitulo(mm, t) : 'Título') + ':** ' + (q ? q.nome + (t ? ', ' + C().tituloDoTitular(mm, t, q) : '') + (rg && t && t.reg === rg.id ? ' (regente: ' + rg.nome + ')' : '') : 'fica vago'); });
+      if (plano.casa) { const q = C().pessoaDe(mm, v.chefe); linhas.push('**Chefe (' + plano.casa.casa.nome + '):** ' + (q ? q.nome : 'ninguém por enquanto')); }
+      const mat = { id: 'mt_suc_' + p.id + '_' + Date.now().toString(36), tit: 'Morreu ' + antes, txt: antes + ' morreu (' + C().dataTxt(mm, data) + ').\n\n' + linhas.join('\n'), ass: '', dest: false };
+      const MAXM = ((window.JornalNucleo && window.JornalNucleo.MAX) || {}).materias || 30;
+      let cheio = false;
+      const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => x.id === mat.id)) return false; if (jx.materias.length >= MAXM) { cheio = true; return false; } jx.materias.push(Object.assign({}, mat)); });
+      const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => x.id !== mat.id); if (jx.materias.length === n0) return false; });
+      if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); jtxt = ' A notícia foi para o rascunho do Jornal.'; }
+      else jtxt = ' A notícia não foi para o Jornal' + (cheio ? ': o rascunho já tem ' + MAXM + ' matérias.' : '.');
+    }
+    K.avisoDesfazer('A sucessão de ' + p.nome + ' está feita.' + jtxt);
+  }
+  // → { escolhas: [{ titulo, herdeiro, regente }], chefe, jornal } ou null ("Agora não")
+  function dialogoSucessao(m, plano, jornal) {
+    const K = kit(), { h } = K, Cx = C(), p = plano.pessoa;
+    return new Promise(resolve => {
+      const vivos = Cx.corteDe(m).pessoas.filter(q => Cx.vivo(q) && q.id !== p.id).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      const pessoa = id => Cx.pessoaDe(m, id);
+      const linhas = plano.itens.map(it => {
+        const t = it.titulo, naLinha = it.linha.map(x => x.id);
+        const s = h('select', { 'data-k': 'suc:' + t.id, 'aria-label': 'Quem herda ' + Cx.nomeDoTitulo(m, t) },
+          it.linha.length ? h('optgroup', { label: 'A linha de sucessão' }, it.linha.map((x, i) => h('option', { value: x.id, text: (i + 1) + '. ' + pessoa(x.id).nome + ' (' + x.por + ')' }))) : null,
+          h('option', { value: '', text: 'Ninguém (o título fica vago)' }),
+          h('optgroup', { label: 'Outra pessoa' }, vivos.filter(q => !naLinha.includes(q.id)).map(q => h('option', { value: q.id, text: q.nome }))));
+        s.value = it.herdeiro || '';
+        const rg = h('select', { 'data-k': 'suc:' + t.id + ':reg', 'aria-label': 'Regente' }, h('option', { value: '', text: 'Sem regente' }), vivos.map(q => h('option', { value: q.id, text: q.nome })));
+        rg.value = it.regente || '';
+        const caixaReg = h('label', { class: 'suc-reg' }, 'Regente (o herdeiro é menor de idade)', rg);
+        // o herdeiro menor de idade: a caixa do regente (sem regente escolhido, um dos pais dele, vivo)
+        const ver = () => {
+          const q = pessoa(s.value), menor = !!(q && Cx.menorDeIdade(m, q));
+          caixaReg.hidden = !menor;
+          if (menor && !rg.value) { const pp = Cx.paisDe(m, q).find(z => Cx.vivo(z) && z.id !== p.id); if (pp) rg.value = pp.id; }
+        };
+        s.addEventListener('change', ver);
+        ver();
+        const el = h('div', { class: 'suc-item', 'data-t': t.id }, h('b', { text: Cx.nomeDoTitulo(m, t) }), h('small', { text: Cx.textoRegra(it.regra) + (it.linha.length ? '' : ' · ninguém na linha: escolha') }), s, caixaReg);
+        return { t, s, rg, caixaReg, el };
+      });
+      let chefe = null;
+      if (plano.casa) {
+        const membros = vivos.filter(q => q.casa === plano.casa.casa.id);
+        chefe = h('select', { 'data-k': 'suc:chefe' }, h('option', { value: '', text: 'Ninguém por enquanto' }), membros.map(q => h('option', { value: q.id, text: q.nome })));
+        chefe.value = plano.casa.chefe || '';
+      }
+      const cxJ = jornal ? h('input', { type: 'checkbox', 'data-k': 'suc:jornal' }) : null;
+      const titulo = h('h2', { text: 'A sucessão de ' + p.nome });
+      titulo.id = 'dl-suc-' + Date.now().toString(36);
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'suc:nao', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'suc:ok', text: 'Aplicar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: (p.morte ? Cx.nomeComTitulo(m, p) + ' morreu (' + Cx.dataTxt(m, p.morte) + '). ' : '') + 'Cada título vai para quem a regra diz; troque se quiser. Nada muda até “Aplicar”.' }),
+        linhas.map(x => x.el),
+        chefe ? h('label', { class: 'suc-chefe' }, 'Chefe (' + plano.casa.casa.nome + ')', chefe) : null,
+        cxJ ? h('label', { class: 'op' }, cxJ, h('span', { text: 'Escrever a notícia no rascunho do Jornal' })) : null,
+        h('small', { class: 'ajuda', text: '“Agora não”: os títulos ficam com ' + p.nome + ' (dá para fazer depois, em “Fazer a sucessão…”, no cartão do título ou no dele).' }),
+        h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl suc-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        fim({ escolhas: linhas.map(x => ({ titulo: x.t.id, herdeiro: x.s.value || null, regente: x.caixaReg.hidden ? null : x.rg.value || null })), chefe: chefe ? chefe.value || null : null, jornal: !!(cxJ && cxJ.checked) });
+      });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      bOk.focus();
+    });
+  }
+
   window.MundoCortePainel = { abaCorte, secQuemEsta, janelaPessoa, janelaCasa, janelaCargos, brasaoEl, janelaArvore,
-    secTitulos, secTitulosFac, governanteTxt, janelaTitulo, janelaGraus };
+    secTitulos, secTitulosFac, governanteTxt, janelaTitulo, janelaGraus, secSucessaoFac, janelaSucessao };
 })();
