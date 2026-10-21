@@ -1409,6 +1409,20 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   conferido por `normIntr`), com Desfazer. **Quem joga** vê, na aba Intrigas dele, os segredos revelados ("boato"; sobre
   quem, se ele vê o dono; sem quem sabe, o falso e a nota) e, nos títulos, a **regra de sucessão** em texto curto
   ("Primogenitura · por igual": a projeção leva a regra que vale para cada título).
+- **As intrigas** (lote 11, parte 4b). Na aba Intrigas, acima dos segredos, com **"+ Intriga"**: as abertas (as em
+  andamento primeiro, depois as planejadas e as descobertas) e as **encerradas** (concluídas e fracassadas) recolhidas
+  em "Encerradas (N)". Na lista: o nome, quem trama, os alvos, os passos feitos ("1 de 2 passos"), o estado e
+  "mostrada". O **cartão da intriga** tem o nome, o estado (Planejando, Em andamento, Descoberta, Concluída, Fracassou),
+  **quem trama** (personagens, como etiquetas, e a facção por trás), os **alvos** (o tipo — personagem, casa, facção,
+  título, região ou lugar do mapa — e qual; "+ Alvo" e o × de cada um), o objetivo, os **passos** (com a caixinha de
+  feito; "+ Passo"), os **segredos que ela usa**, quem já sabe, o texto para os jogadores, **"Os jogadores veem"** (só
+  com o texto para eles) e a nota. O cartão do segredo diz em que intrigas ele é usado, e tirar um segredo avisa que ele
+  sai delas. O filtro de facção vale para quem trama, os alvos e quem sabe. Na **prévia da semana**, as intrigas em
+  andamento aparecem só para o mestre, cada uma com a caixa, desmarcada, que a mostra aos jogadores (sem o texto para
+  eles, travada; a que eles já veem, só diz); as marcadas passam a ser vistas junto com a semana (o mesmo Desfazer).
+  **Quem joga** vê as mostradas: o texto para eles e o estado (o nome, quem trama, os alvos, o objetivo, os passos, os
+  segredos, quem sabe e a nota não vão; o filtro de facção, para eles, vale só para os segredos). No mapa:
+  `intr.intrigas` (`normIntr`; `MundoIntrigas.intrigasEmAndamento`, `mostrarIntrigas`, `facsDaIntriga`).
 
 ### A Árvore (lote 6)
 
@@ -2559,7 +2573,15 @@ nome dele, as escolhas de dono, as facções de um segredo, a notícia), a proje
 veem) e a regra de sucessão de cada título na projeção; `mundo-lote11` com `SO=segredos`, a aba (as nove abas), o
 segredo novo (os erros, quem sabe, boato e falso), mudar e Desfazer, revelar (o que eles vão ler, Cancelar, a notícia),
 o dono que eles não conhecem, quem joga (os revelados; a regra de sucessão), esconder, o filtro, tirar e o celular;
-`mundo-lote8.rede`, o segredo revelado na projeção e na aba do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+`mundo-lote8.rede`, o segredo revelado na projeção e na aba do jogador. Na parte 4b (as intrigas), `lote11-nucleo`
+confere as intrigas normalizadas (os campos, o estado, quem trama, os alvos sem tratado, os passos, os segredos que
+usa, quem sabe, "os jogadores veem" só com o texto, o que não existe mais, os limites), as contas (o nome, quem trama e
+os alvos em texto, os passos feitos, as que usam um segredo, as facções de uma intriga, as em andamento, mostrar as
+marcadas), a projeção (só as mostradas, com o texto e o estado) e a semana (a prévia lembra; aplicar mostra);
+`mundo-lote11` com `SO=intrigas`, a intriga nova (os erros, quem trama, os alvos com "+ Alvo" e o ×, os passos, os
+segredos, quem sabe), a lista, "Usado nas intrigas", mudar e Desfazer, a prévia da semana (as caixas, aplicar, Desfazer
+junto), quem joga (com o filtro), "Os jogadores veem" no cartão, as encerradas, o filtro, tirar e o celular;
+`mundo-lote8.rede`, a intriga mostrada na projeção e na aba do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

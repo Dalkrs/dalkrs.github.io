@@ -17,7 +17,8 @@
 //     vassalagem vai sem o tributo e o tratado sem as trocas; o tributo e as trocas da facção deles vão na economia deles;
 //     o jogador vê a vassalagem (na Diplomacia e em Reinos) e o tributo e as trocas no Livro do reino. (parte 3c) Os
 //     motivos de guerra não vão para o jogador. (parte 4a) Os segredos: só o revelado vai (sem o falso e a nota); o
-//     jogador o vê na aba Intrigas.
+//     jogador o vê na aba Intrigas. (parte 4b) As intrigas: só a mostrada vai, com o texto para eles e o estado (sem o
+//     nome, quem trama, os alvos, os passos, os segredos e a nota); o jogador a vê na aba Intrigas.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -248,14 +249,20 @@ function png(w, h, cor) {
     await W.evaluate(() => {
       __mundo.App.mudar('os segredos', m => {
         m.intr = { segredos: [{ id: 'sg1', txt: 'A Ana trama contra o rei.', de: { t: 'p', id: 'pa' }, sabem: { p: ['pb'], f: [] }, jog: true, boato: true, falso: true, nota: 'Mentira do bardo.' },
-          { id: 'sg2', txt: 'O Bento é herdeiro do trono.', de: { t: 'p', id: 'pb' } }] };
+          { id: 'sg2', txt: 'O Bento é herdeiro do trono.', de: { t: 'p', id: 'pb' } }],
+          intrigas: [{ id: 'ig1', nome: 'O veneno do copeiro', estado: 'andamento', quem: { p: ['pb'], f: 'fb' }, alvos: [{ t: 'p', id: 'pa' }], obj: 'O trono.', passos: [{ id: 'q1', txt: 'Subornar o copeiro', feito: true }],
+            segredos: ['sg2'], txtJ: 'O copeiro anda com moedas demais.', ver: true, nota: 'Primo do Bento.' }, { id: 'ig2', nome: 'A carta escondida', estado: 'andamento', txtJ: 'Uma carta.', nota: 'Selo falso.' }] };
       });
     });
     ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.intr && j(p.intr.segredos.map(x => [x.id, x.de && x.de.id, x.sabem, x.falso, x.nota])) === j([['sg1', 'pa', { p: [], f: [] }, false, '']])); }),
       'a projeção leva só o segredo revelado (o dono conhecido; sem quem sabe, o falso e a nota)');
-    ok(!/Mentira do bardo|herdeiro do trono/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe o segredo escondido nem a nota');
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.intr && j(p.intr.intrigas.map(x => [x.id, x.nome, x.estado, x.quem, x.alvos, x.obj, x.passos, x.segredos, x.txtJ, x.nota]))
+      === j([['ig1', '', 'andamento', { p: [], f: null }, [], '', [], [], 'O copeiro anda com moedas demais.', '']])); }),
+      '(parte 4b) a projeção leva só a intriga mostrada, com o texto para eles e o estado (sem o nome, quem trama, os alvos, o objetivo, os passos, os segredos e a nota)');
+    ok(!/Mentira do bardo|herdeiro do trono|veneno do copeiro|Primo do Bento|carta escondida|Selo falso|Subornar/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe o segredo escondido, a intriga escondida nem as notas');
     await JW.click('#tab-intrigas'); await w(300, J);
-    ok(await ate(async () => /SEGREDOS A Ana trama contra o rei\. boato sobre Ana do Vale/i.test(await corteJ())), 'na aba Intrigas, o jogador vê o segredo revelado: ' + (await corteJ()).slice(0, 200));
+    ok(await ate(async () => /INTRIGAS O copeiro anda com moedas demais\. em andamento SEGREDOS A Ana trama contra o rei\. boato sobre Ana do Vale/i.test(await corteJ())),
+      'na aba Intrigas, o jogador vê a intriga mostrada (o texto e o estado) e o segredo revelado: ' + (await corteJ()).slice(0, 200));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

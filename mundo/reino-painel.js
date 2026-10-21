@@ -29,6 +29,8 @@
    linha da facção deles no Livro do reino (com a produção, o estoque e "De onde vem": por fonte, a manutenção e por
    província) e, na cidade aberta, o nível, a população, as construções prontas e as guildas que não são secretas; na
    prévia da semana, o resumo para o rascunho do Jornal (com a prévia do texto; vai junto com o Desfazer da semana).
+   (lote 11) Na prévia da semana, a diplomacia (parte 3b: o tributo, as trocas, os tratados e os motivos que vencem) e as
+   intrigas em andamento (parte 4b: só o mestre vê; cada uma com a caixa, desmarcada, que a mostra aos jogadores).
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto. */
 (() => {
   'use strict';
@@ -36,6 +38,7 @@
   const R = () => window.MundoReino;
   const N = () => window.MundoNucleo;
   const DP = () => window.MundoDiplomaciaPainel;      // (lote 11, parte 3b) a diplomacia na prévia da semana
+  const IP = () => window.MundoIntrigasPainel;        // (lote 11, parte 4b) as intrigas em andamento na prévia da semana
   const Cam = () => window.MundoCamadas || null;
   const app = () => kit().app();
   const ligada = m => !!(m && m.eco && m.eco.on);
@@ -1184,7 +1187,7 @@
     if (!res || !kit().mesmoMapa(m.id)) return;
     const ate = N().textoData(m.cal, prev.ate);
     let feito = null;
-    const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate, res.dipl); if (!feito) return false; });
+    const ok = A.mudar('fechar a semana', mm => { feito = R().aplicarSemana(mm, clas, res.recusadas, 'Semana até ' + ate, res.dipl, res.intr); if (!feito) return false; });
     if (ok === false || !feito) return;
     const no = new Set(res.recusadas), prontas = feito.obras.filter(w => w.pronta || (w.parada && no.has('obras:' + w.fac) && w.sem0 <= 1)).length;
     // (parte 6) o resumo entra no rascunho do Jornal (o mestre revisa lá e publica); o Desfazer da semana tira, o Refazer põe de novo
@@ -1201,7 +1204,9 @@
     // (lote 11, parte 3b) os tratados que o mestre encerrou ou renovou
     const dec = res.dipl ? Object.values(res.dipl.tratados) : [], nE = dec.filter(x => x === 'encerrar').length, nR = dec.length - nE;
     const dtxt = nE || nR ? ' ' + [nE ? (nE === 1 ? '1 tratado encerrado' : nE + ' tratados encerrados') : '', nR ? (nR === 1 ? '1 tratado renovado' : nR + ' tratados renovados') : ''].filter(Boolean).join(' e ') + '.' : '';
-    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : '') + dtxt + jtxt);
+    // (lote 11, parte 4b) as intrigas que os jogadores passaram a ver
+    const nI = feito.mostradas || 0, itxt = nI ? ' ' + (nI === 1 ? '1 intriga mostrada aos jogadores.' : nI + ' intrigas mostradas aos jogadores.') : '';
+    kit().avisoDesfazer('Semana fechada (até ' + ate + ').' + (prontas ? ' ' + (prontas === 1 ? '1 obra ficou pronta.' : prontas + ' obras ficaram prontas.') : '') + dtxt + itxt + jtxt);
     if (R().semanasPendentes(A.mapa) > 0) setTimeout(() => janelaSemana(), 400);
   }
   function dialogoSemana(m, prev, jornal, refazer) {
@@ -1247,6 +1252,8 @@
       // (lote 11, parte 3b) a diplomacia: o tributo e as trocas (desmarcar refaz a prévia), os tratados e os motivos que vencem
       const dps = DP() ? DP().secSemana(m, prev, () => { prev = refazer(recusadas()) || prev; pintarFac(); dps.pintar(prev); pintarObras(); pintarJornal(); }) : null;
       const recusadas = () => cxs.filter(([, cb]) => !cb.checked).map(([id]) => id).concat(dps ? dps.recusados() : []);
+      // (lote 11, parte 4b) as intrigas em andamento: só o mestre vê; a caixa (desmarcada) mostra cada uma aos jogadores
+      const ips = IP() ? IP().secSemana(m, prev0) : null;
       function pintarObras() {
         const no = new Set(recusadas());
         listaObras.replaceChildren(...prev.obras.map(w => {
@@ -1271,7 +1278,7 @@
         dps ? dps.fluxos : null,
         cons.length ? h('fieldset', { class: 'sem-conss' }, h('legend', { text: 'O que a falta traz (desmarque o que não vale)' }), cons) : null,
         prev.obras.length ? h('div', { class: 'sem-obras-caixa' }, h('small', { class: 'note', text: 'As obras' }), listaObras) : null,
-        dps ? dps.vencem : null, dps ? dps.motivos : null,
+        dps ? dps.vencem : null, dps ? dps.motivos : null, ips ? ips.el : null,
         (prev.lembretes || []).length ? h('div', { class: 'sem-lemb-caixa' }, h('small', { class: 'note', text: 'Lembretes dos estratos (nada muda sozinho)' }),
           h('ul', { class: 'sem-lemb', 'data-k': 'sem:lembretes' }, prev.lembretes.map(l => {
             const o = achar(m, l.o), nomeE = id => (m.eco.estr.find(s => s.id === id) || { nome: id }).nome;
@@ -1299,7 +1306,7 @@
         ev.preventDefault();
         let dipl = null;
         try { dipl = dps ? dps.ler() : null; } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; return; }
-        fim({ recusadas: recusadas(), jornal: !!(cxJ && cxJ.checked), dipl });
+        fim({ recusadas: recusadas(), jornal: !!(cxJ && cxJ.checked), dipl, intr: ips ? ips.ler() : [] });
       });
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));

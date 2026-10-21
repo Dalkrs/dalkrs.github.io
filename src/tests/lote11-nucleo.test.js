@@ -33,6 +33,11 @@
 //     o dono de cada tipo, o que não existe mais sai, os limites), as contas (o dono e o nome dele, as escolhas de dono, as
 //     facções de um segredo, a notícia) e a projeção (só os revelados, sem quem sabe, o falso e a nota; o dono só se eles o
 //     veem); a regra de sucessão que vale para cada título vai na projeção.
+//   · (parte 4b) as intrigas normalizadas (os campos, o estado, quem trama, os alvos — sem tratado —, os passos, os
+//     segredos que usa, quem já sabe, "os jogadores veem" só com o texto para eles, o que não existe mais sai, os limites),
+//     as contas (o nome, quem trama e os alvos em texto, os passos feitos, as que usam um segredo, as facções de uma
+//     intriga, as em andamento, mostrar as marcadas), a projeção (só as mostradas, com o texto e o estado) e a semana (a
+//     prévia lembra as em andamento; aplicar mostra as marcadas).
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 const Dp = require('../../mundo/diplomacia.js');
@@ -587,6 +592,87 @@ const j = JSON.stringify;
   eq([pj.intr.segredos[0].sabem, pj.intr.segredos[0].falso, pj.intr.segredos[0].nota, pj.intr.segredos[0].boato], [{ p: [], f: [] }, false, '', true], 'sem quem sabe, sem o falso e sem a nota; o boato vai');
   ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
   ok(!('intr' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { intr: { segredos: [{ id: 'x', txt: 'só meu' }] } })))), 'sem segredo revelado, nada vai');
+}
+
+/* ---- (parte 4b) as intrigas ---- */
+{
+  const quad = (x, y, w, hh) => [[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]];
+  const base = { nome: 'M', faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale' }, { id: 'fc', nome: 'Ilhas' }, { id: 'fd', nome: 'Culto', oculta: true }],
+    objs: [{ id: 'r1', k: 'r', nome: 'Terra Alta', fac: 'fc', pts: quad(0, 0, 400, 400) }, { id: 'm1', k: 'm', x: 100, y: 100, ic: 'cidade', nome: 'Porto' }],
+    corte: { pessoas: [{ id: 'pa', nome: 'Ana', fac: 'fa', ver: true }, { id: 'pb', nome: 'Bento', fac: 'fb' }, { id: 'pc', nome: 'Caio', fac: 'fd' }, { id: 'pd', nome: 'Dora' }],
+      casas: [{ id: 'ka', nome: 'Casa Alta' }], titulos: [{ id: 'ta', grau: 'reino', de: 'de Arvel', fac: 'fa', tit: 'pa' }] },
+    dipl: { tratados: [{ id: 'tr1', tipo: 'alianca', partes: ['fa', 'fb'], pub: true }] },
+    intr: { segredos: [{ id: 's1', txt: 'O rei é bastardo.' }, { id: 's2', txt: 'O porto é do Culto.' }, { id: 's3', txt: 'O selo é falso.', jog: true }],
+      intrigas: [
+        { id: 'i1', nome: ' O veneno do copeiro ', estado: 'andamento', quem: { p: ['pb', 'pb', 'zz', 'pc'], f: 'fb' },
+          alvos: [{ t: 't', id: 'ta' }, { t: 'p', id: 'pa' }, { t: 'p', id: 'pa' }, { t: 'tr', id: 'tr1' }, { t: 'p', id: 'zz' }, { t: 'c', id: 'ka' }, 'lixo'],
+          obj: ' o trono ', passos: [{ id: 'ps1', txt: ' subornar o copeiro ', feito: true }, { id: 'ps1', txt: 'repetido' }, { id: 'ps2', txt: '' }, { txt: 'sem id' }, 'lixo', { id: 'ps3', txt: 'o veneno', feito: 'sim' }],
+          segredos: ['s1', 's1', 'zz', 's3'], sabem: { p: ['pa', 'zz'], f: ['fc', 'zz'] }, txtJ: ' O copeiro anda com moedas demais. ', ver: true, nota: ' cuidado ' },
+        { id: 'i2', estado: 'x', quem: { f: 'zz' }, alvos: [{ t: 'r', id: 'r1' }], segredos: ['s2'], ver: true, txtJ: '  ' },
+        { id: 'i1', nome: 'repetida' }, { nome: 'sem id' }, 'lixo',
+        { id: 'i3', nome: 'O porto', estado: 'andamento', quem: { p: ['pa'] }, alvos: [{ t: 'm', id: 'm1' }], passos: [{ id: 'q1', txt: 'a' }], txtJ: 'Navios estranhos no porto.' },
+        { id: 'i4', nome: 'A queda', estado: 'concluida', quem: { f: 'fd' }, txtJ: 'Caiu.', ver: true },
+        { id: 'i5', nome: 'Planos', estado: 'plano', txtJ: 'Algo.', alvos: [{ t: 'f', id: 'fd' }, { t: 'p', id: 'pd' }] }] } };
+  const m = N.normalizarMapa(base), X = id => m.intr.intrigas.find(x => x.id === id);
+  eq(m.intr.intrigas.map(x => x.id), ['i1', 'i2', 'i3', 'i4', 'i5'], 'as intrigas: sem a repetida, a sem id e o lixo');
+  eq(Object.keys(X('i1')), ['id', 'nome', 'estado', 'quem', 'alvos', 'obj', 'passos', 'segredos', 'sabem', 'txtJ', 'ver', 'nota'], 'cada intriga com os campos, nesta ordem');
+  eq([X('i1').nome, X('i1').estado, X('i1').quem, X('i1').obj, X('i1').txtJ, X('i1').ver, X('i1').nota], ['O veneno do copeiro', 'andamento', { p: ['pb', 'pc'], f: 'fb' }, 'o trono', 'O copeiro anda com moedas demais.', true, 'cuidado'],
+    'o nome, o objetivo, o texto para eles e a nota aparados; quem trama sem repetir e só quem existe; a facção por trás');
+  eq(X('i1').alvos, [{ t: 't', id: 'ta' }, { t: 'p', id: 'pa' }, { t: 'c', id: 'ka' }], 'os alvos: sem repetir, só os que existem; um tratado não é alvo');
+  eq(X('i1').passos, [{ id: 'ps1', txt: 'subornar o copeiro', feito: true }, { id: 'ps2', txt: 'Passo sem texto', feito: false }, { id: 'ps3', txt: 'o veneno', feito: true }],
+    'os passos: sem repetir o id, sem o sem id e o lixo; o sem texto, "Passo sem texto"; o feito');
+  eq([X('i1').segredos, X('i1').sabem, X('i2').nome, X('i2').estado, X('i2').quem, X('i2').txtJ, X('i2').ver], [['s1', 's3'], { p: ['pa'], f: ['fc'] }, '', 'plano', { p: [], f: null }, '', false],
+    'os segredos que usa (só os que existem); quem já sabe; sem nome, ""; o estado que não existe, "planejando"; a facção que não existe sai; sem o texto para eles, os jogadores não veem');
+  const lim = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa' }], corte: { pessoas: Array.from({ length: 20 }, (_, i) => ({ id: 'p' + i, nome: 'P' + i })) },
+    intr: { segredos: Array.from({ length: 20 }, (_, i) => ({ id: 's' + i, txt: 'x' })), intrigas: Array.from({ length: 210 }, (_, i) => ({ id: 'i' + i, nome: 'n'.repeat(100), txtJ: 'x'.repeat(700),
+      quem: { p: Array.from({ length: 20 }, (_, k) => 'p' + k) }, alvos: Array.from({ length: 20 }, (_, k) => ({ t: 'p', id: 'p' + k })),
+      passos: Array.from({ length: 30 }, (_, k) => ({ id: 'q' + k, txt: 't'.repeat(200) })), segredos: Array.from({ length: 20 }, (_, k) => 's' + k) })) } }).intr, L0 = lim.intrigas[0];
+  ok(lim.intrigas.length === N.LIMITES.intrigas && L0.nome.length === 80 && L0.txtJ.length === N.LIMITES.textoIntriga && L0.quem.p.length === N.LIMITES.quemTrama && L0.alvos.length === N.LIMITES.alvos
+    && L0.passos.length === N.LIMITES.passos && L0.passos[0].txt.length === 160 && L0.segredos.length === N.LIMITES.segredosDaIntriga,
+    'os limites: ' + [N.LIMITES.intrigas, N.LIMITES.quemTrama, N.LIMITES.alvos, N.LIMITES.passos, N.LIMITES.segredosDaIntriga].join(', ') + ' (o nome até 80, o passo até 160)');
+  const so = N.normalizarMapa({ nome: 'M', intr: { intrigas: [{ id: 'x', nome: 'y' }] } }).intr;
+  ok(!!so && j(so.segredos) === '[]' && so.intrigas.length === 1, 'só com uma intriga (sem segredo), as intrigas ficam');
+  eq(N.normalizarMapa({ nome: 'M', intr: { segredos: [{ id: 'x', txt: 'y' }] } }).intr.intrigas, [], 'só com segredos: as intrigas, vazias');
+  const fora = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { corte: Object.assign({}, m.corte, { pessoas: m.corte.pessoas.filter(p => p.id !== 'pb') }), faccoes: m.faccoes.filter(f => f.id !== 'fb'),
+    objs: m.objs.filter(o => o.id !== 'm1'), intr: Object.assign({}, m.intr, { segredos: m.intr.segredos.filter(s => s.id !== 's1') }) }));
+  const F1 = fora.intr.intrigas.find(x => x.id === 'i1'), F3 = fora.intr.intrigas.find(x => x.id === 'i3');
+  eq([F1.quem, F1.segredos, F3.alvos], [{ p: ['pc'], f: null }, ['s3'], []], 'o que saiu do mundo sai da intriga (o Bento, o Vale, o porto); o segredo tirado também');
+  // as contas
+  eq([In.intrigaDe(m, 'i3').nome, In.intrigaDe(m, 'zz'), In.intrigaDe(m, ''), In.intrDe({}).intrigas], ['O porto', null, null, []], 'as intrigas do mapa e uma pelo id');
+  eq([In.nomeDaIntriga(X('i1')), In.nomeDaIntriga(X('i2'))], ['O veneno do copeiro', 'Intriga sem nome'], 'o nome (sem ele, "Intriga sem nome")');
+  eq([In.quemTramaTxt(m, X('i1')), In.quemTramaTxt(m, X('i3')), In.quemTramaTxt(m, X('i5')), In.quemTramaTxt(m, X('i4'))], ['Bento, Caio e Vale', 'Ana', '', 'Culto'], 'quem trama, em texto (os personagens e a facção)');
+  eq([In.alvosTxt(m, X('i1')), In.alvosTxt(m, X('i2')), In.alvosTxt(m, X('i3')), In.alvosTxt(m, X('i4'))], ['Reino de Arvel, Ana e Casa Alta', 'Terra Alta', 'Porto', ''], 'os alvos, em texto');
+  eq([In.passosTxt(X('i1')), In.passosTxt(X('i3')), In.passosTxt(X('i4'))], ['2 de 3 passos', '0 de 1 passo', ''], 'os passos feitos (sem passos, nada)');
+  eq([In.intrigasQueUsam(m, 's1').map(x => x.id), In.intrigasQueUsam(m, 's2').map(x => x.id), In.intrigasQueUsam(m, 'zz')], [['i1'], ['i2'], []], 'as intrigas que usam um segredo');
+  eq(['i1', 'i2', 'i3', 'i4', 'i5'].map(id => [...In.facsDaIntriga(m, X(id))].sort()), [['fa', 'fb', 'fc', 'fd'], ['fc'], ['fa', 'fc'], ['fd'], ['fd']],
+    'as facções de uma intriga: a por trás, as de quem trama, as dos alvos (o reino do título, a dona da região e a do lugar) e as que sabem; o alvo sem facção, nenhuma');
+  eq([In.intrigasEmAndamento(m).map(x => x.id), In.ESTADOS[X('i4').estado], In.TIPOS_ALVO.r, Object.keys(In.TIPOS_ALVO)], [['i1', 'i3'], 'Concluída', 'Região', ['p', 'c', 'f', 't', 'r', 'm']],
+    'as em andamento; os nomes dos estados e dos tipos de alvo');
+  const r1 = JSON.parse(j(m));
+  eq([In.mostrarIntrigas(r1, ['i1', 'i3', 'i4', 'i5', 'zz']), r1.intr.intrigas.map(x => x.ver)], [1, [true, false, true, true, false]],
+    'mostrar: só a em andamento que eles ainda não viam (o porto); a já vista, a encerrada e a planejada, não');
+  const r2 = JSON.parse(j(m));
+  r2.intr.intrigas.find(x => x.id === 'i3').txtJ = '';
+  eq([In.mostrarIntrigas(JSON.parse(j(m)), null), In.mostrarIntrigas({}, ['i3']), In.mostrarIntrigas(r2, ['i3'])], [0, 0, 0], 'sem a lista, sem intrigas ou sem o texto para eles: nada');
+  // a projeção: só as mostradas, com o texto para eles e o estado
+  const pj = N.projetar(m), vista = (id, estado, txtJ) => ({ id, nome: '', estado, quem: { p: [], f: null }, alvos: [], obj: '', passos: [], segredos: [], sabem: { p: [], f: [] }, txtJ, ver: true, nota: '' });
+  eq(pj.intr.intrigas, [vista('i1', 'andamento', 'O copeiro anda com moedas demais.'), vista('i4', 'concluida', 'Caiu.')],
+    'na projeção: só as mostradas, com o texto para eles e o estado (o nome, quem trama, os alvos, o objetivo, os passos, os segredos, quem sabe e a nota, não)');
+  eq(pj.intr.segredos.map(x => x.id), ['s3'], 'só o segredo revelado vai (e a intriga mostrada não leva nem ele)');
+  ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
+  ok(!('intr' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { intr: { intrigas: [{ id: 'x', nome: 'só minha', txtJ: 'a' }] } })))), 'sem intriga mostrada (nem segredo revelado), nada vai');
+  // a semana: a prévia lembra as em andamento; aplicar mostra as marcadas
+  const ml = JSON.parse(j(m));
+  ml.cal.dia = 3;
+  R.ligarEconomia(ml);
+  const me = JSON.parse(j(N.normalizarMapa(ml)));
+  me.cal.dia = 10;
+  const mw = N.normalizarMapa(me), pw = R.semanaPrevia(mw);
+  eq(pw.intrigas, ['i1', 'i3'], 'a prévia da semana: as intrigas em andamento');
+  const rw = JSON.parse(j(mw)), fw = R.aplicarSemana(rw, null, [], 'Semana até o dia 9', null, ['i3', 'i5']);
+  eq([fw.mostradas, rw.intr.intrigas.map(x => x.ver), rw.eco.sem], [1, [true, false, true, true, false], mw.eco.sem + 1], 'aplicar: a marcada passa a ser vista (a planejada, não) e a semana fecha');
+  const rw2 = JSON.parse(j(mw)), fw2 = R.aplicarSemana(rw2, null, [], 'Semana até o dia 9', null);
+  eq([fw2.mostradas, rw2.intr.intrigas.map(x => x.ver)], [0, [true, false, false, true, false]], 'sem marcar nenhuma, nenhuma muda');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

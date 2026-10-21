@@ -45,6 +45,12 @@
 //     eles vão ler, sobre quem só se eles o veem; Cancelar volta ao cartão; a notícia no rascunho do Jornal); o segredo
 //     de quem eles não conhecem; quem joga (os revelados, "boato", sem o falso, quem sabe e a nota; a regra de sucessão
 //     nos títulos); esconder de novo; o filtro; tirar com Desfazer; no celular.
+//   · (parte 4b, SO=intrigas) "+ Intriga" acima dos segredos; a intriga nova (os erros: o nome, o alvo sem escolher, o
+//     passo sem texto, "os jogadores veem" sem o texto; quem trama, os alvos — o tipo e qual, "+ Alvo" e o × —, os passos
+//     com a caixinha, os segredos que usa, quem já sabe, o objetivo e a nota); a lista; "Usado nas intrigas" no cartão do
+//     segredo; mudar e Desfazer; a prévia da semana (as em andamento, só o mestre; a caixa desmarcada; a sem o texto,
+//     travada; a já vista; aplicar mostra a marcada; Desfazer junto com a semana); quem joga (o texto e o estado); as
+//     encerradas recolhidas; o filtro; tirar com Desfazer; tirar o segredo avisa da intriga; no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -1188,7 +1194,8 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     const filas = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
     ok(j(filas[1]) === j(['Reinos', 'Corte', 'Diplomacia', 'Intrigas', 'Guerra']), 'a aba Intrigas, na fileira da política, depois da Diplomacia: ' + j(filas));
     await aba(L, 'intrigas');
-    ok(/^Intrigas \+ Segredo Facção Todas as facções.* SEGREDOS Nenhum segredo ainda\. Os segredos são seus até você revelar/i.test(await textoPane(L)), 'a aba vazia: "+ Segredo", o filtro e a seção dos segredos: ' + (await textoPane(L)).slice(0, 200));
+    ok(/^Intrigas \+ Intriga \+ Segredo Facção Todas as facções.* INTRIGAS Nenhuma intriga ainda\. SEGREDOS Nenhum segredo ainda\. As intrigas e os segredos são seus até você mostrar/i.test(await textoPane(L)),
+      'a aba vazia: "+ Intriga" e "+ Segredo", o filtro e as seções das intrigas e dos segredos: ' + (await textoPane(L)).slice(0, 200));
     // o segredo novo: os erros
     await botao(L, 'in:segredo-novo'); await L.F.waitForSelector('dialog.sg-dl[open]');
     const errSg = () => A(L, () => document.querySelector('dialog.sg-dl[open] .err').textContent);
@@ -1295,6 +1302,191 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await cabeDl('dialog.rv-dl[open]'), 'no celular, o revelar cabe');
     await semAvisos(L); await foto('l11-segredo-celular');
     await L.F.click('dialog.rv-dl[open] [data-k="rv:nao"]'); await espera(150); await L.F.click(dlg('[data-k="sg:nao"]')); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 4b) as intrigas ----------
+  if (parte('intrigas')) await passo('as intrigas', async () => {
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(200);
+    if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
+    // o mundo: quatro facções (o Culto escondido), a Lia (conhecida) e o Rodrigo, o condado do Lago, um segredo; a economia ligada, sem semana para fechar
+    await A(L, () => {
+      __mundo.App.mudar('intrigas: o mundo', m => {
+        if (!m.faccoes.some(f => f.id === 'fc')) m.faccoes.push({ id: 'fc', nome: 'Ilhas', cor: '#2f8f8f' }, { id: 'fd', nome: 'Culto', cor: '#5b3fb5', oculta: true });
+        for (const f of m.faccoes) f.jog = false;
+        if (!m.corte) m.corte = { pessoas: [], casas: [], cargos: {}, titulos: [] };
+        if (!m.corte.pessoas.some(p => p.id === 'sp1')) m.corte.pessoas.push({ id: 'sp1', nome: 'Lia', gen: 'm', fac: 'fa', ver: true }, { id: 'sp2', nome: 'Rodrigo', gen: 'h', fac: 'fb' });
+        if (!m.corte.titulos.some(t => t.id === 'st1')) m.corte.titulos.push({ id: 'st1', grau: 'condado', de: 'do Lago', fac: 'fa', tit: 'sp1' });
+        delete m.intr;
+        const R = window.MundoReino;
+        if (!m.eco || !m.eco.on) R.ligarEconomia(m);
+        m.eco.sem += R.semanasPendentes(m);
+      });
+    });
+    const it = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.intr || null)));
+    const itemI = id => A(L, k => { const e = document.querySelector('#pane [data-k="ig:' + k + '"]'); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, id);
+    const errIg = () => A(L, () => document.querySelector('dialog.ig-dl[open] .err').textContent);
+    await aba(L, 'intrigas');
+    // sem segredo no mundo, o cartão diz (no lugar do seletor); Cancelar não muda nada
+    await botao(L, 'in:intriga-nova'); await L.F.waitForSelector('dialog.ig-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.ig-dl[open] [data-k="ig:segredos"]').textContent) === 'Nenhum segredo ainda (crie na lista dos segredos).', 'sem segredo no mundo, o cartão diz');
+    await L.F.click(dlg('[data-k="ig:nao"]')); await espera(200);
+    ok(await A(L, () => !__mundo.App.mapa.intr && !document.querySelector('dialog.ig-dl[open]')), 'Cancelar: nada muda');
+    await A(L, () => __mundo.App.mudar('intrigas: o segredo', m => { m.intr = { segredos: [{ id: 'is1', txt: 'Lia é filha do capitão da guarda.', de: { t: 'p', id: 'sp1' } }] }; }));
+    ok(/^Intrigas \+ Intriga \+ Segredo Facção Todas as facções.* INTRIGAS Nenhuma intriga ainda\. SEGREDOS Lia é filha do capitão da guarda\./i.test(await textoPane(L)),
+      'a aba: "+ Intriga" (antes de "+ Segredo") e as intrigas acima dos segredos: ' + (await textoPane(L)).slice(0, 220));
+    // a intriga nova: os erros
+    await botao(L, 'in:intriga-nova'); await L.F.waitForSelector('dialog.ig-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.ig-dl[open] [data-k="ig:estado"]').value) === 'plano' && !(await L.F.locator(dlg('[data-k="ig:ver"]')).isChecked()) && await L.F.locator(dlg('[data-k="ig:tirar"]')).count() === 0,
+      'a intriga nova: "Planejando", "Os jogadores veem" desmarcado, sem "Tirar…"');
+    await L.F.click(dlg('[data-k="ig:ok"]')); await espera(120);
+    ok(await errIg() === 'Dê um nome à intriga.', 'sem o nome: não passa');
+    await L.F.fill(dlg('[data-k="ig:nome"]'), 'O veneno do copeiro');
+    await L.F.selectOption(dlg('[data-k="ig:estado"]'), 'andamento');
+    // quem trama: o Rodrigo, com o Vale por trás
+    await L.F.selectOption(dlg('[data-k="ig:quem-p:add"]'), 'sp2'); await L.F.selectOption(dlg('[data-k="ig:quem-f"]'), 'fb');
+    // os alvos: o condado e a Lia (antes, o erro da linha sem alvo; e uma linha a mais, tirada pelo ×)
+    await L.F.click(dlg('[data-k="ig:alvos-novo"]')); await espera(60);
+    await L.F.click(dlg('[data-k="ig:ok"]')); await espera(120);
+    ok(await errIg() === 'Escolha cada alvo (ou tire a linha).', 'a linha do alvo sem o alvo: não passa');
+    await L.F.selectOption(dlg('.ig-alvo:nth-child(1) [data-k="ig:alvo:tipo"]'), 't'); await espera(60);
+    const opsT = await A(L, () => [...document.querySelectorAll('dialog.ig-dl[open] .ig-alvo:nth-child(1) [data-k="ig:alvo:qual"] option')].map(o => o.textContent));
+    ok(j(opsT) === j(['Escolha…'].concat(await A(L, () => window.MundoIntrigas.opcoesDeDono(__mundo.App.mapa, 't').map(x => x[1])))) && opsT.includes('Condado do Lago'),
+      'o tipo "Título": as escolhas são os títulos: ' + j(opsT));
+    await L.F.selectOption(dlg('.ig-alvo:nth-child(1) [data-k="ig:alvo:qual"]'), 'st1');
+    await L.F.click(dlg('[data-k="ig:alvos-novo"]')); await L.F.selectOption(dlg('.ig-alvo:nth-child(2) [data-k="ig:alvo:qual"]'), 'sp1');
+    await L.F.click(dlg('[data-k="ig:alvos-novo"]')); await espera(60);
+    ok(await L.F.locator(dlg('.ig-alvo')).count() === 3, '"+ Alvo": mais uma linha');
+    await L.F.click(dlg('.ig-alvo:nth-child(3) [data-k="ig:alvos:x"]')); await espera(60);
+    ok(await L.F.locator(dlg('.ig-alvo')).count() === 2, 'o × tira a linha');
+    // os passos (o erro do passo sem texto); o primeiro feito
+    await L.F.click(dlg('[data-k="ig:passos-novo"]')); await espera(60);
+    ok(await A(L, () => document.activeElement && document.activeElement.getAttribute('data-k')) === 'ig:passo:txt', '"+ Passo": o cursor vai para o passo novo');
+    await L.F.click(dlg('[data-k="ig:ok"]')); await espera(120);
+    ok(await errIg() === 'Escreva cada passo (ou tire a linha).', 'o passo sem texto: não passa');
+    await L.F.fill(dlg('.ig-passo:nth-child(1) [data-k="ig:passo:txt"]'), 'Subornar o copeiro'); await L.F.check(dlg('.ig-passo:nth-child(1) [data-k="ig:passo:feito"]'));
+    await L.F.click(dlg('[data-k="ig:passos-novo"]')); await L.F.fill(dlg('.ig-passo:nth-child(2) [data-k="ig:passo:txt"]'), 'Pôr o veneno no vinho');
+    // os segredos que ela usa; quem já sabe; o objetivo e a nota
+    await L.F.selectOption(dlg('[data-k="ig:segredos:add"]'), 'is1'); await L.F.selectOption(dlg('[data-k="ig:sabe-f:add"]'), 'fc');
+    await L.F.fill(dlg('[data-k="ig:obj"]'), 'Pôr o Rodrigo no lugar da Lia.'); await L.F.fill(dlg('[data-k="ig:nota"]'), 'O copeiro é primo do Rodrigo.');
+    // "Os jogadores veem" sem o texto para eles: não passa
+    await L.F.check(dlg('[data-k="ig:ver"]')); await L.F.click(dlg('[data-k="ig:ok"]')); await espera(120);
+    ok(await errIg() === 'Para os jogadores verem, escreva o texto para eles.', '"Os jogadores veem" sem o texto para eles: não passa');
+    await L.F.uncheck(dlg('[data-k="ig:ver"]'));
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.ig-dl[open] .err').textContent = ''; document.querySelector('dialog.ig-dl[open]').scrollTop = 0; }); await espera(80); await foto('l11-intriga');
+    await A(L, () => { const dd = document.querySelector('dialog.ig-dl[open]'); dd.scrollTop = dd.scrollHeight; }); await espera(80); await foto('l11-intriga-fim');
+    await L.F.click(dlg('[data-k="ig:ok"]')); await espera(350);
+    let d = await it();
+    const x1 = d && d.intrigas[0];
+    ok(x1 && j(x1) === j({ id: x1.id, nome: 'O veneno do copeiro', estado: 'andamento', quem: { p: ['sp2'], f: 'fb' }, alvos: [{ t: 't', id: 'st1' }, { t: 'p', id: 'sp1' }], obj: 'Pôr o Rodrigo no lugar da Lia.',
+      passos: [{ id: x1.passos[0].id, txt: 'Subornar o copeiro', feito: true }, { id: x1.passos[1].id, txt: 'Pôr o veneno no vinho', feito: false }], segredos: ['is1'], sabem: { p: [], f: ['fc'] }, txtJ: '', ver: false,
+      nota: 'O copeiro é primo do Rodrigo.' }) && x1.passos[0].id !== x1.passos[1].id && /A intriga “O veneno do copeiro” entrou na lista\./.test(await avisos(L)), 'criar: a intriga com tudo o que foi escolhido: ' + j(x1));
+    ok(await itemI(x1.id) === 'O veneno do copeiro por Rodrigo e Vale · contra Condado do Lago e Lia · 1 de 2 passos em andamento', 'na lista: o nome, quem trama, os alvos, os passos e o estado: ' + await itemI(x1.id));
+    // o cartão do segredo diz em que intriga ele é usado
+    await botao(L, 'sg:is1'); await L.F.waitForSelector('dialog.sg-dl[open]');
+    ok(await A(L, () => { const e = document.querySelector('dialog.sg-dl[open] [data-k="sg:intrigas"]'); return e ? e.textContent : ''; }) === 'Usado nas intrigas: O veneno do copeiro.', 'o cartão do segredo: "Usado nas intrigas"');
+    await L.F.click(dlg('[data-k="sg:nao"]')); await espera(200);
+    // mudar (o segundo passo feito, o texto para os jogadores) e Desfazer
+    await botao(L, 'ig:' + x1.id); await L.F.waitForSelector('dialog.ig-dl[open]');
+    ok(await A(L, () => [...document.querySelectorAll('dialog.ig-dl[open] [data-k="ig:passo:feito"]')].map(c => c.checked).join()) === 'true,false' && await L.F.locator(dlg('[data-k="ig:tirar"]')).count() === 1,
+      'o cartão: os passos como estavam; "Tirar…"');
+    await L.F.check(dlg('.ig-passo:nth-child(2) [data-k="ig:passo:feito"]')); await L.F.fill(dlg('[data-k="ig:txtj"]'), 'O copeiro anda com moedas demais.');
+    await L.F.click(dlg('[data-k="ig:ok"]')); await espera(350);
+    d = await it();
+    ok(j(d.intrigas[0]) === j(Object.assign({}, x1, { passos: x1.passos.map(y => Object.assign({}, y, { feito: true })), txtJ: 'O copeiro anda com moedas demais.' })) && /A intriga está salva\./.test(await avisos(L)),
+      'mudar: o passo feito e o texto para eles (eles ainda não veem; o resto, como estava): ' + j(d.intrigas[0]));
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    d = await it();
+    ok(d.intrigas[0].passos.map(y => y.feito).join() === 'true,false' && d.intrigas[0].txtJ === '', 'Desfazer: como antes');
+    await A(L, () => __mundo.App.refazer()); await espera(300);
+    // a semana: as intrigas em andamento na prévia, só para o mestre (mais três: uma sem o texto para eles, uma que eles já veem e uma que fica desmarcada)
+    await A(L, () => __mundo.App.mudar('intrigas: mais três', m => {
+      m.intr.intrigas.push({ id: 'ix2', nome: 'O porto', estado: 'andamento' }, { id: 'ix3', nome: 'A carta', estado: 'andamento', txtJ: 'Uma carta sem selo.', ver: true },
+        { id: 'ix5', nome: 'O sino', estado: 'andamento', txtJ: 'O sino tocou à meia-noite.' });
+    }));
+    await aba(L, 'hoje'); await semAvisos(L);
+    await L.F.click('#pane [data-k="hoje:+7"]');
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    const sd = s0 => 'dialog.sem-dl[open] ' + s0;
+    const semIn = await A(L, () => { const f = document.querySelector('dialog.sem-dl[open] [data-k="sem:intrigas"]'); return f ? [...f.children].map(e => e.innerText.replace(/\s+/g, ' ').trim()) : null; });
+    ok(j(semIn) === j(['Intrigas em andamento (só você vê; marque as que os jogadores passam a ver)', 'O veneno do copeiro (2 de 2 passos): mostrar aos jogadores',
+      'O porto: sem o texto para os jogadores (escreva no cartão para poder mostrar)', 'A carta os jogadores já veem', 'O sino: mostrar aos jogadores']),
+      'a prévia: as intrigas em andamento (a sem o texto para eles, travada; a que eles já veem, só diz): ' + j(semIn));
+    ok(!(await L.F.locator(sd('[data-k="sem:in:ver:' + x1.id + '"]')).isChecked()) && await L.F.locator(sd('[data-k="sem:in:ver:ix2"]')).isDisabled() && await L.F.locator(sd('[data-k="sem:in:ver:ix3"]')).count() === 0,
+      'a caixa de cada uma, desmarcada (a sem o texto, travada; a já vista, sem caixa)');
+    await L.F.check(sd('[data-k="sem:in:ver:' + x1.id + '"]'));
+    await L.F.locator(sd('[data-k="sem:intrigas"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l11-semana-intrigas');
+    const antes = await A(L, () => JSON.stringify(__mundo.App.mapa));
+    await L.F.click(sd('[data-k="sem:aplicar"]')); await espera(500);
+    d = await it();
+    ok(d.intrigas[0].ver === true && d.intrigas.find(x => x.id === 'ix5').ver === false && /Semana fechada \(até .+\)\..*1 intriga mostrada aos jogadores\./.test(await avisos(L)),
+      'aplicar: a marcada passa a ser vista (a desmarcada, não; e o aviso diz): ' + await avisos(L));
+    await A(L, () => __mundo.App.desfazer()); await espera(500);
+    ok(await A(L, () => JSON.stringify(__mundo.App.mapa)) === antes, 'Desfazer: ela volta a ser só sua, junto com a semana');
+    await A(L, () => __mundo.App.refazer()); await espera(400);
+    if (await A(L, () => !!document.querySelector('dialog.sem-dl[open]'))) { await L.F.click('dialog.sem-dl[open] .pe button.btn:not(.pri)'); await espera(250); }
+    ok((await it()).intrigas[0].ver === true, 'Refazer: de novo vista');
+    // quem joga: só as mostradas, com o texto para eles e o estado
+    await comoJogador(L, true);
+    await aba(L, 'intrigas');
+    const pj = await textoPane(L);
+    ok(/INTRIGAS O copeiro anda com moedas demais\. em andamento Uma carta sem selo\. em andamento SEGREDOS Nenhum segredo descoberto ainda\./i.test(pj) && !/veneno|Rodrigo|primo|passos|O porto|\+ Intriga/i.test(pj),
+      'quem joga: as duas mostradas (o texto e o estado), sem o nome, quem trama, os passos, a nota e os botões: ' + pj.slice(0, 300));
+    await semAvisos(L); await foto('l11-intrigas-jogador');
+    await campo(L, 'in:fac').selectOption('fc'); await espera(300);
+    ok(/INTRIGAS O copeiro anda com moedas demais\. em andamento Uma carta sem selo\. em andamento O filtro de facção vale só para os segredos\./i.test(await textoPane(L)),
+      'quem joga, com o filtro: as intrigas aparecem todas (elas não dizem as facções; o filtro vale só para os segredos)');
+    await campo(L, 'in:fac').selectOption(''); await espera(300);
+    await comoJogador(L, false);
+    await aba(L, 'intrigas');
+    ok(/em andamento mostrada$/.test(await itemI(x1.id)) && /em andamento$/.test(await itemI('ix5')), 'na lista do mestre: "mostrada" na que os jogadores veem');
+    // as encerradas: recolhidas (a planejada vem depois das em andamento)
+    await A(L, () => __mundo.App.mudar('intrigas: a planejada', m => { m.intr.intrigas.unshift({ id: 'ix4', nome: 'Os planos', estado: 'plano' }); }));
+    // "Os jogadores veem", pelo cartão (com Desfazer)
+    await botao(L, 'ig:ix4'); await L.F.waitForSelector('dialog.ig-dl[open]');
+    await L.F.fill(dlg('[data-k="ig:txtj"]'), 'Rumores de um plano.'); await L.F.check(dlg('[data-k="ig:ver"]')); await L.F.click(dlg('[data-k="ig:ok"]')); await espera(350);
+    ok((await it()).intrigas[0].ver === true && /planejando mostrada$/.test(await itemI('ix4')), '"Os jogadores veem", no cartão: eles passam a ver (a planejada também)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok((await it()).intrigas[0].ver === false && (await it()).intrigas[0].txtJ === '', 'Desfazer: volta a ser só sua');
+    await botao(L, 'ig:ix2'); await L.F.waitForSelector('dialog.ig-dl[open]');
+    await L.F.selectOption(dlg('[data-k="ig:estado"]'), 'fracassou'); await L.F.click(dlg('[data-k="ig:ok"]')); await espera(350);
+    const enc = () => A(L, () => { const e = document.querySelector('#pane [data-k="ig:encerradas"]'); return e ? e.open + ' ' + e.querySelector('summary').textContent : ''; });
+    ok(await enc() === 'false Encerradas (1)' && j(await A(L, () => [...document.querySelectorAll('#pane [data-k="in:intrigas"] > .in-i')].map(e => e.getAttribute('data-k')))) === j(['ig:' + x1.id, 'ig:ix3', 'ig:ix5', 'ig:ix4']),
+      'a que fracassou vai para "Encerradas (1)", recolhida; as abertas, as em andamento primeiro');
+    await L.F.click('#pane [data-k="ig:encerradas"] > summary'); await espera(200);
+    await campo(L, 'in:fac').selectOption('fc'); await espera(250); await campo(L, 'in:fac').selectOption(''); await espera(250);
+    ok(await enc() === 'true Encerradas (1)' && await campo(L, 'ig:ix2').count() === 1, '"Encerradas" aberta continua aberta quando a aba se refaz');
+    // o filtro: as facções de quem trama, dos alvos e de quem sabe
+    await campo(L, 'in:fac').selectOption('fc'); await espera(300);
+    ok(await campo(L, 'ig:' + x1.id).count() === 1 && await campo(L, 'ig:ix3').count() === 0, 'o filtro das Ilhas (que sabem): só a do copeiro');
+    await campo(L, 'in:fac').selectOption('fd'); await espera(300);
+    ok(/Nenhuma intriga desta facção\./.test(await textoPane(L)), 'o filtro do Culto: nenhuma');
+    await campo(L, 'in:fac').selectOption(''); await espera(300);
+    await semAvisos(L); await foto('l11-intrigas');
+    // tirar (com Desfazer); tirar o segredo avisa que ele sai da intriga
+    await botao(L, 'ig:ix3'); await L.F.waitForSelector('dialog.ig-dl[open]');
+    await L.F.click(dlg('[data-k="ig:tirar"]')); await espera(250);
+    ok(/Tirar a intriga\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok((await it()).intrigas.length === 4 && /A intriga saiu\./.test(await avisos(L)), 'tirar: a intriga sai');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await it()).intrigas.length === 5, 'Desfazer: ela volta');
+    await botao(L, 'sg:is1'); await L.F.waitForSelector('dialog.sg-dl[open]');
+    await L.F.click(dlg('[data-k="sg:tirar"]')); await espera(250);
+    ok(/“Lia é filha do capitão da guarda\.” sai da lista e da intriga que o usa\. Dá para desfazer\./.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar o segredo: avisa que ele sai da intriga que o usa');
+    await L.F.click('dialog.mundo-dl[open] button[type="button"]'); await espera(250);
+    ok((await it()).segredos.length === 1, 'Cancelar: nada muda');
+    // no celular: o cartão e a prévia cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    const cabeDl = s0 => A(L, x => { const dd = document.querySelector(x); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }, s0);
+    await A(L, k => { window.MundoIntrigasPainel.janelaIntriga(k); }, x1.id); await L.F.waitForSelector('dialog.ig-dl[open]');
+    ok(await cabeDl('dialog.ig-dl[open]'), 'no celular, o cartão da intriga cabe');
+    await semAvisos(L); await foto('l11-intriga-celular');
+    await L.F.click(dlg('[data-k="ig:nao"]')); await espera(200);
+    await A(L, () => __mundo.App.mudar('intrigas: mais uma semana', m => { m.intr.intrigas.find(x => x.id === 'ix4').estado = 'andamento'; m.cal.dia += 7; }));
+    await L.F.waitForSelector('dialog.sem-dl[open]', { timeout: 4000 });
+    ok(await cabeDl('dialog.sem-dl[open]') && await L.F.locator('dialog.sem-dl[open] [data-k="sem:in:ver:ix4"]').count() === 1, 'no celular, a prévia da semana (com as intrigas) cabe');
+    await L.F.click('dialog.sem-dl[open] .pe button.btn:not(.pri)'); await espera(250);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 

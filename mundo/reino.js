@@ -40,11 +40,14 @@
    acontecem no fim da semana, com o que sobrou a quem manda (quem não tem tudo manda o que tem; o que chega não paga o
    que sai na mesma semana); o mestre desmarca o que não vale. Os tratados e os motivos de opinião que vencem na semana
    aparecem na prévia, e as decisões do mestre (encerrar, renovar, tirar) valem junto com a semana.
+   (parte 4b) As intrigas em andamento (mundo/intrigas.js) aparecem na prévia, só para o mestre; as que ele marca passam a
+   ser vistas pelos jogadores junto com a semana.
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
   const DIP = () => (typeof window !== 'undefined' && window.MundoDiplomacia) || (typeof require === 'function' ? require('./diplomacia.js') : null);
+  const INT = () => (typeof window !== 'undefined' && window.MundoIntrigas) || (typeof require === 'function' ? require('./intrigas.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const MAX_NIVEL = 10;                       // regiões dentro de regiões: até quantos níveis (o mesmo do núcleo)
   const MAX_CONTA = 800000;                   // a conta de uma região não passa de tantos hexágonos olhados (mapa enorme, grade miúda)
@@ -584,7 +587,7 @@
      vai de fato, e recusado), na ordem; envia e recebe: o que cada facção manda e recebe (já na conta do que fica; a falta
      é a da economia dela, antes deles); recusadas: também os ids do tributo e das trocas que o mestre desmarcou (não vão).
      vencem: os ids dos tratados que vencem nesta semana; motivos: os motivos de opinião que vencem nela ({ de, sobre, id,
-     txt, v }). */
+     txt, v }). (lote 11, parte 4b) intrigas: os ids das intrigas em andamento (o lembrete do mestre). */
   function semanaPrevia(m, clas, recusadas) {
     const N = NN(), e = ecoDe(m), pend = semanasPendentes(m);
     if (!e || !pend) return null;
@@ -647,6 +650,7 @@
     }
     out.vencem = DIP().tratadosQueVencem(m, dias.de, dias.ate).map(t => t.id);
     out.motivos = DIP().motivosQueVencem(m, dias.de, dias.ate);
+    out.intrigas = INT().intrigasEmAndamento(m).map(x => x.id);
     // (parte 5) os lembretes dos estratos (os aventureiros trazem rumores…): por assentamento, só para o mestre ver
     for (const a of assentamentosDe(m)) {
       const itens = (e.estr || []).filter(s => s.lembra && a.o.ass.estr && a.o.ass.estr[s.id] > 0).map(s => ({ estr: s.id, n: a.o.ass.estr[s.id], txt: s.lembra }));
@@ -671,8 +675,10 @@
      recusadas). Os estoques ficam no que sobrou (com o motivo no histórico de cada facção), o apoio e a moral caem, as
      obras andam (e as prontas sobem de nível) e a semana seguinte passa a ser a aberta. (lote 11, parte 3b) O tributo e
      as trocas entram no que fica (os desmarcados, em recusadas, não); dipl: as decisões da diplomacia (como em
-     MundoDiplomacia.aplicarDecisoes: os tratados e os motivos que vencem nesta semana). → a prévia aplicada, ou null */
-  function aplicarSemana(m, clas, recusadas, mot, dipl) {
+     MundoDiplomacia.aplicarDecisoes: os tratados e os motivos que vencem nesta semana). (parte 4b) intr: os ids das intrigas
+     que o mestre mostrou aos jogadores na prévia. → a prévia aplicada (com mostradas: quantas intrigas os jogadores passaram
+     a ver), ou null */
+  function aplicarSemana(m, clas, recusadas, mot, dipl, intr) {
     const N = NN(), prev = semanaPrevia(m, clas, recusadas);
     if (!prev) return null;
     const no = new Set(recusadas || []), dia = ehObj(m.cal) ? m.cal.dia : 0, e = m.eco;
@@ -702,6 +708,7 @@
       if (!c.obra.sem) { c.n = c.obra.n; c.obra = null; }
     }
     DIP().aplicarDecisoes(m, dipl, prev.de, prev.ate);             // (lote 11, parte 3b) encerrar, renovar, tirar o motivo
+    prev.mostradas = INT().mostrarIntrigas(m, intr);               // (parte 4b) as intrigas que os jogadores passam a ver
     e.sem = prev.n + 1;
     return prev;
   }

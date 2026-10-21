@@ -864,6 +864,36 @@ dialog.mundo-dl.sg-dl .pe, dialog.mundo-dl .lin.sg-lin { flex-wrap: wrap; }
 .rv-ler { display: grid; gap: 4px; }
 .rv-ler small { font-size: 12px; color: var(--fg-3); }
 .corte-t small.corte-suc { color: var(--fg-3); }
+/* (lote 11, parte 4b) as intrigas: a lista, o cartão e a parte delas na prévia da semana */
+.li.in-i .tx small { white-space: normal; }
+.in-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.in-s-cab .tag { flex: none; white-space: nowrap; }
+dialog.mundo-dl.ig-dl { width: min(600px, calc(100% - 24px)); }
+dialog.mundo-dl.ig-dl .pe { flex-wrap: wrap; }
+.mundo-dl .lin.ig-cab label:first-child { flex: 1 1 auto; }
+.mundo-dl .lin.ig-cab label:last-child { flex: 0 0 168px; }
+.ig-sec, .ig-bloco { display: grid; gap: 6px; }
+.ig-lista { display: grid; gap: 6px; }
+.ig-lista:empty { display: none; }
+.ig-linha { display: flex; gap: 6px; align-items: center; }
+dialog.mundo-dl .ig-alvo select { flex: 1 1 0; width: auto; }
+dialog.mundo-dl .ig-alvo select:first-child { flex: 0 1 150px; }
+dialog.mundo-dl .ig-passo input[type="text"] { flex: 1 1 auto; width: auto; }
+.ig-passo input[type="checkbox"] { flex: none; width: 18px; height: 18px; margin: 0 4px; accent-color: var(--lamp); }
+.ig-passo:has(input[type="checkbox"]:checked) input[type="text"] { color: var(--fg-3); text-decoration: line-through; }
+.ig-linha .ib { flex: none; }
+.mundo-dl label.op.sem-in { font-weight: 500; }
+.mundo-dl label.op.sem-in:has(input:disabled) { cursor: default; color: var(--fg-3); }
+div.sem-in { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: 9px 11px; border-radius: 8px; border: 1px dashed var(--line-strong); font-size: 13px; color: var(--fg-2); }
+div.sem-in .tag { margin-left: auto; }
+@media (max-width: 560px) {
+  .mundo-dl .lin.ig-cab { flex-wrap: wrap; }
+  .mundo-dl .lin.ig-cab label:first-child, .mundo-dl .lin.ig-cab label:last-child { flex: 1 1 100%; }
+  .ig-alvo { flex-wrap: wrap; }
+  dialog.mundo-dl .ig-alvo select:first-child { flex: 1 1 100%; }
+  .ig-alvo { padding: 6px; border-radius: 10px; border: 1px solid var(--line); }
+}
+.mundo-dl label.ig-fac > span { font-weight: 500; font-size: 12.5px; color: var(--fg-3); }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1277,21 +1307,21 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=33"></script>
+<script src="nucleo.js?v=34"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=9"></script>
+<script src="reino.js?v=10"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
-<script src="intrigas.js?v=1"></script>
+<script src="intrigas.js?v=2"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
 <script src="painel.js?v=37"></script>
 <script src="guerra-painel.js?v=5"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=11"></script>
+<script src="reino-painel.js?v=12"></script>
 <script src="corte-painel.js?v=5"></script>
 <script src="diplomacia-painel.js?v=4"></script>
-<script src="intrigas-painel.js?v=1"></script>
+<script src="intrigas-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>
 </html>

@@ -2384,9 +2384,15 @@
      intr = { segredos: [{ id, txt (o segredo), de ({ t, id }: de quem é — 'p' um personagem, 'c' uma casa, 'f' uma facção,
      't' um título, 'tr' um tratado, 'r' uma região, 'm' um lugar do mapa; null: um segredo do mundo), sabem ({ p, f }: os
      personagens e as facções que sabem), jog (os jogadores sabem: o mestre revelou), boato (é boato: talvez seja verdade,
-     talvez não), falso (é falso; só com boato), nota (do mestre) }] }. Só quando há algo (o mapa de antes fica igual). */
-  const TIPOS_DONO = ['p', 'c', 'f', 't', 'tr', 'r', 'm'];
-  const MAX_SEGREDOS = 300, MAX_SABEM = 24, MAX_TXT_INTR = 600;
+     talvez não), falso (é falso; só com boato), nota (do mestre) }] }. Só quando há algo (o mapa de antes fica igual).
+     (parte 4b) intrigas: [{ id, nome, estado ('plano' | 'andamento' | 'descoberta' | 'concluida' | 'fracassou'), quem
+     ({ p: os personagens que tramam, f: a facção por trás, ou null }), alvos ([{ t, id }]: um personagem, uma casa, uma
+     facção, um título, uma região ou um lugar), obj (o objetivo), passos ([{ id, txt, feito }]), segredos (os segredos
+     que ela usa), sabem ({ p, f }: quem já sabe), txtJ (o texto para os jogadores), ver (os jogadores veem; só com o
+     texto), nota }]. */
+  const TIPOS_DONO = ['p', 'c', 'f', 't', 'tr', 'r', 'm'], TIPOS_ALVO = ['p', 'c', 'f', 't', 'r', 'm'];
+  const ESTADOS_INTRIGA = ['plano', 'andamento', 'descoberta', 'concluida', 'fracassou'];
+  const MAX_SEGREDOS = 300, MAX_SABEM = 24, MAX_TXT_INTR = 600, MAX_INTRIGAS = 200, MAX_PASSOS = 20, MAX_ALVOS = 8, MAX_QUEM = 12, MAX_SEG_INTRIGA = 12;
   const normDono = v => (ehObj(v) && TIPOS_DONO.includes(v.t) && idOk(v.id) ? { t: v.t, id: v.id } : null);
   const listaIds = (v, max) => [...new Set((Array.isArray(v) ? v : []).map(idOk).filter(Boolean))].slice(0, max);
   const normSabem = v => ({ p: listaIds(ehObj(v) ? v.p : null, MAX_SABEM), f: listaIds(ehObj(v) ? v.f : null, MAX_SABEM) });
@@ -2402,7 +2408,33 @@
       segredos.push({ id, txt: texto(x.txt, '', MAX_TXT_INTR).trim() || 'Segredo sem texto', de: normDono(x.de), sabem: normSabem(x.sabem), jog: sim(x.jog), boato,
         falso: boato && sim(x.falso), nota: texto(x.nota, '', MAX_TXT_INTR).trim() });
     }
-    return segredos.length ? { segredos } : null;
+    // (parte 4b) as intrigas
+    const intrigas = [], vi = new Set();
+    for (const x of Array.isArray(v.intrigas) ? v.intrigas : []) {
+      if (!ehObj(x) || intrigas.length >= MAX_INTRIGAS) continue;
+      const id = idOk(x.id);
+      if (!id || vi.has(id)) continue;
+      vi.add(id);
+      const q = ehObj(x.quem) ? x.quem : {}, alvos = [], va = new Set(), passos = [], vp = new Set();
+      for (const a of Array.isArray(x.alvos) ? x.alvos : []) {
+        const d = ehObj(a) && TIPOS_ALVO.includes(a.t) ? normDono(a) : null;
+        if (!d || alvos.length >= MAX_ALVOS || va.has(d.t + ':' + d.id)) continue;
+        va.add(d.t + ':' + d.id);
+        alvos.push(d);
+      }
+      for (const y of Array.isArray(x.passos) ? x.passos : []) {
+        if (!ehObj(y) || passos.length >= MAX_PASSOS) continue;
+        const pid = idOk(y.id);
+        if (!pid || vp.has(pid)) continue;
+        vp.add(pid);
+        passos.push({ id: pid, txt: texto(y.txt, '', 160).trim() || 'Passo sem texto', feito: sim(y.feito) });
+      }
+      const txtJ = texto(x.txtJ, '', MAX_TXT_INTR).trim();          // sem o texto para eles, os jogadores não veem
+      intrigas.push({ id, nome: texto(x.nome, '', 80).trim(), estado: ESTADOS_INTRIGA.includes(x.estado) ? x.estado : 'plano', quem: { p: listaIds(q.p, MAX_QUEM), f: idRef(q.f) },
+        alvos, obj: texto(x.obj, '', MAX_TXT_INTR).trim(), passos, segredos: listaIds(x.segredos, MAX_SEG_INTRIGA), sabem: normSabem(x.sabem),
+        txtJ, ver: sim(x.ver) && !!txtJ, nota: texto(x.nota, '', MAX_TXT_INTR).trim() });
+    }
+    return segredos.length || intrigas.length ? { segredos, intrigas } : null;
   }
   /* as intrigas e os segredos com o mapa todo: o dono que não existe mais sai (o segredo fica, do mundo); quem sabe, só os
      personagens e as facções que existem */
@@ -2413,6 +2445,14 @@
     for (const s of d.segredos) {
       if (s.de && !ex[s.de.t].has(s.de.id)) s.de = null;
       s.sabem = { p: s.sabem.p.filter(id => ex.p.has(id)), f: s.sabem.f.filter(id => ex.f.has(id)) };
+    }
+    // (parte 4b) as intrigas: quem trama, os alvos, os segredos e quem sabe, só os que existem
+    const sgs = ids(d.segredos);
+    for (const x of d.intrigas) {
+      x.quem = { p: x.quem.p.filter(id => ex.p.has(id)), f: ex.f.has(x.quem.f) ? x.quem.f : null };
+      x.alvos = x.alvos.filter(a => ex[a.t].has(a.id));
+      x.segredos = x.segredos.filter(id => sgs.has(id));
+      x.sabem = { p: x.sabem.p.filter(id => ex.p.has(id)), f: x.sabem.f.filter(id => ex.f.has(id)) };
     }
   }
 
@@ -2927,7 +2967,12 @@
     /* (lote 11, parte 4a) os segredos: só os revelados, sem quem sabe, sem o "é falso" e sem a nota. O dono que eles não
        veem (o personagem desconhecido, o título, o tratado, a casa, a região e o lugar que não vão, a facção escondida)
        sai na normalização do fim, que confere os donos com o que vai; sem nenhum revelado, a lista vazia também sai lá. */
-    if (m.intr) m.intr = { segredos: m.intr.segredos.filter(s => s.jog).map(s => Object.assign({}, s, { sabem: { p: [], f: [] }, falso: false, nota: '' })) };
+    /* (parte 4b) as intrigas: só as que o mestre mostrou, com o texto para eles e o estado (o nome, quem trama, os alvos, o
+       objetivo, os passos, os segredos, quem sabe e a nota são do mestre) */
+    if (m.intr) {
+      m.intr = { segredos: m.intr.segredos.filter(s => s.jog).map(s => Object.assign({}, s, { sabem: { p: [], f: [] }, falso: false, nota: '' })),
+        intrigas: m.intr.intrigas.filter(x => x.ver).map(x => ({ id: x.id, nome: '', estado: x.estado, quem: { p: [], f: null }, alvos: [], obj: '', passos: [], segredos: [], sabem: { p: [], f: [] }, txtJ: x.txtJ, ver: true, nota: '' })) };
+    }
     return normalizarMapa(m);
   }
   // (lote 10, parte 6) as contas da economia (mundo/reino.js), para a projeção: no navegador, as que a página carregou
@@ -2954,7 +2999,7 @@
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
-    TIPOS_TRATADO, normDipl, TIPOS_DONO,
+    TIPOS_TRATADO, normDipl, TIPOS_DONO, TIPOS_ALVO, ESTADOS_INTRIGA,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
@@ -2962,7 +3007,7 @@
       titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
-      segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR },
+      segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

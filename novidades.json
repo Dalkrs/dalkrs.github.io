@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-2",
+      "data": "2026-10-21",
+      "titulo": "As intrigas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: na aba Intrigas, as intrigas que vocês descobriram, cada uma com o estado (em andamento, descoberta, concluída…)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na aba Intrigas, as intrigas: o estado, quem trama (personagens e a facção por trás), os alvos, o objetivo, os passos com caixinhas, os segredos que ela usa, quem já sabe, o texto para os jogadores e “Os jogadores veem”. As encerradas ficam recolhidas; o cartão do segredo diz em que intrigas ele é usado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na prévia da semana, as intrigas em andamento aparecem só para você, cada uma com a caixa (desmarcada) que a mostra aos jogadores junto com a semana."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-1",
       "data": "2026-10-21",
       "titulo": "Os segredos",
