@@ -349,10 +349,10 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     });
     // o catálogo
     await aba(L, 'faccoes');
-    ok(/Construções do catálogo \(15\)/i.test(await textoPane(L)) && await campo(L, 'eco:cons-ver').count() === 1, 'na Economia do mundo: "Construções do catálogo (15)", com "Mostrar o catálogo"');
+    ok(/Construções do catálogo \(16\)/i.test(await textoPane(L)) && await campo(L, 'eco:cons-ver').count() === 1, 'na Economia do mundo: "Construções do catálogo (16)", com "Mostrar o catálogo"');   // (lote 12, parte 12c: com a Enfermaria)
     await botao(L, 'eco:cons-ver');
     const mina = await A(L, () => { const e = document.querySelector('#pane [data-k="eco:c:mina"]'); return e ? e.innerText.replace(/\s+/g, ' ') : ''; });
-    ok(await L.F.locator('#pane .eco-cons .cons-li').count() === 15 && /Mina de Orith 1 espaço · 3 níveis · em Colina ou Montanha Nível 1: Orith \+3 · custa Lapros 20 · Madeira 15 · Pedra 10 · 4 semanas/.test(mina), 'o catálogo aberto: as 15, cada uma com os espaços, os níveis, as exigências e o nível 1: ' + mina);
+    ok(await L.F.locator('#pane .eco-cons .cons-li').count() === 16 && /Mina de Orith 1 espaço · 3 níveis · em Colina ou Montanha Nível 1: Orith \+3 · custa Lapros 20 · Madeira 15 · Pedra 10 · 4 semanas/.test(mina), 'o catálogo aberto: as 16 (com a Enfermaria, do lote 12), cada uma com os espaços, os níveis, as exigências e o nível 1: ' + mina);
     // editar: o número errado não passa; um nível a mais; salvar (e desfazer)
     await botao(L, 'eco:c:taverna:editar');
     await L.F.waitForSelector('dialog.ct-dl[open]');

@@ -53,6 +53,7 @@
     { id: 'runa', nome: 'Runa', d: 'M7 21 6 9l6-6 6 6-1 12zM12 8v9M12 11l3-2M12 14l-3-2' },
     { id: 'taverna', nome: 'Taverna', d: 'M5 8h10v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM15 11h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2M7 4.5c1-.8 2 .3 3-.5s2 .3 3 0' },
     { id: 'palicada', nome: 'Paliçada', d: 'M4 21V8l2-3 2 3v13M10 21V8l2-3 2 3v13M16 21V8l2-3 2 3v13M3 13h18' },
+    { id: 'enfermaria', nome: 'Enfermaria', d: 'M4 21V9l8-5 8 5v12zM12 11v7M8.5 14.5h7' },        // (lote 12, parte 12c)
     // (parte 5b) os das guildas
     { id: 'arco', nome: 'Arco', d: 'M6 3c7 3 10 6 10 9s-3 6-10 9M6 3v18M3 12h17M17 9l3 3-3 3' },
     { id: 'adaga', nome: 'Adaga', d: 'M12 2l2 4v8h-4V6zM7 14h10M12 14v6M10.5 21h3' },
@@ -75,7 +76,7 @@
   function txtNivel(m, nv) {
     if (!nv) return '';
     const p = txtTab(m, nv.prod, true), g = txtTab(m, nv.gasto, false);
-    return [p, g ? 'gasta ' + g : '', nv.def ? 'defesa +' + nv.def : ''].filter(Boolean).join(' · ');
+    return [p, g ? 'gasta ' + g : '', nv.def ? 'defesa +' + nv.def : '', nv.cura ? 'cura +' + nv.cura + '%' : ''].filter(Boolean).join(' · ');
   }
   // as exigências de uma construção, em texto ("a partir de Vila · em Colina ou Montanha · depois de Templo")
   function txtExige(m, t) {
@@ -269,11 +270,14 @@
       botao('Divisão por nível…', janelaDivisao, { c: 'sm', k: 'eco:dist', off: !eco.estr.length || !eco.niv.length })));
     // (parte 3) o catálogo de construções
     out.push(h('small', { class: 'note eco-rot', text: 'Construções do catálogo (' + eco.cons.length + ')' }));
-    if (!eco.cons.length) out.push(nota('Nenhuma construção no catálogo: crie as suas ou ponha as 15 prontas (produção, defesa e cívico).'));
+    if (!eco.cons.length) out.push(nota('Nenhuma construção no catálogo: crie as suas ou ponha as ' + ((R().CONSTRUCOES_INICIAIS || []).length || 16) + ' prontas (produção, defesa e cívico).'));
     else if (catAberto) out.push(h('div', { class: 'eco-cons' }, eco.cons.map(t => linhaTipo(m, t))));
+    // (lote 12, parte 12c) as do catálogo pronto que este mapa ainda não tem (a Enfermaria, nos mapas de antes)
+    const faltam = eco.cons.length && R().construcoesQueFaltam ? R().construcoesQueFaltam(m) : [];
     out.push(linha(eco.cons.length ? botao(catAberto ? 'Esconder o catálogo' : 'Mostrar o catálogo', () => { catAberto = !catAberto; kit().pintar(); }, { c: 'sm', k: 'eco:cons-ver', expandido: catAberto })
       : botao('Pôr o catálogo pronto', porCatalogoPronto, { c: 'sm', k: 'eco:cons-pronto' }),
-      botao('+ Construção', () => janelaTipo(null), { c: 'sm', k: 'eco:cons-novo', off: eco.cons.length >= ((N().LIMITES && N().LIMITES.construcoes) || 40) })));
+      botao('+ Construção', () => janelaTipo(null), { c: 'sm', k: 'eco:cons-novo', off: eco.cons.length >= ((N().LIMITES && N().LIMITES.construcoes) || 40) }),
+      faltam.length ? botao('Pôr as novas do catálogo pronto (' + faltam.map(t => t.nome).join(', ') + ')', porQueFaltam, { c: 'sm', k: 'eco:cons-faltam' }) : null));
     // (parte 5b) o catálogo de guildas (os modelos; cada cidade tem as suas)
     out.push(h('small', { class: 'note eco-rot', text: 'Guildas do catálogo (' + eco.guildas.length + ')' }));
     if (!eco.guildas.length) out.push(nota('Nenhuma guilda no catálogo: crie as suas ou ponha as 8 prontas (caçadores, assassinos, ladrões, mercadores, magos, artesãos, aventureiros e bardos). O catálogo só dá os modelos: cada cidade tem as suas guildas.'));
@@ -818,6 +822,8 @@
     if (e.total || cs.length) out.push(linha(botao('+ Construir…', () => janelaObra(o.id, null), { c: 'sm', k: 'o:' + o.id + ':construir', off: !eco.cons.length || cs.length >= lim })));
     const ef = R().efeitoDasConstrucoes(m, o), txt = [txtTab(m, ef.prod, true), txtTab(m, ef.gasto, true), ef.def ? 'defesa +' + ef.def : ''].filter(Boolean).join(' · ');
     if (txt) out.push(nota('Pelas construções prontas, por semana: ' + txt + '.'));
+    // (lote 12, parte 12c) a Enfermaria: a cura por dia de quem está na cidade
+    if (ef.cura) out.push(h('p', { class: 'note', 'data-k': 'o:' + o.id + ':cura', text: 'Os exércitos da facção (ou de uma aliada) nesta cidade, ou colados nela, curam ' + ef.cura + '% por dia do HP que falta na tropa ferida.' }));
     return out;
   }
   function linhaConstrucao(o, m, c) {
@@ -1006,6 +1012,15 @@
         h('div', { class: 'row cons-acoes' }, botao('Editar…', () => janelaTipo(t.id), { c: 'sm', k: 'eco:c:' + t.id + ':editar' }))),
       h('button', { type: 'button', class: 'ib', 'data-k': 'eco:c:' + t.id + ':x', title: 'Tirar ' + t.nome + ' do catálogo', 'aria-label': 'Tirar ' + t.nome + ' do catálogo', onclick: () => tirarTipo(t.id) }, glifo(X_SVG, 14)));
   }
+  // (lote 12, parte 12c) põe no catálogo as do catálogo pronto que faltam (pelo id; as que o mestre tirou, também)
+  function porQueFaltam() {
+    let nomes = [];
+    if (mudarEco('pôr as novas do catálogo pronto', (e, mm) => {
+      const max = (N().LIMITES && N().LIMITES.construcoes) || 40, novas = R().construcoesQueFaltam(mm).slice(0, Math.max(0, max - e.cons.length));
+      if (!novas.length) return false;
+      e.cons = e.cons.concat(novas); nomes = novas.map(t => t.nome);
+    }) !== false) { catAberto = true; kit().avisoDesfazer('Entrou no catálogo: ' + nomes.join(', ') + '.'); }
+  }
   function porCatalogoPronto() {
     let n = 0;
     if (mudarEco('pôr o catálogo pronto', (e, mm) => { if (e.cons.length) return false; e.cons = R().catalogoPronto(mm, e); n = e.cons.length; }) !== false) { catAberto = true; kit().avisoDesfazer('O catálogo pronto entrou: ' + pl(n, 'construção', 'construções') + '.'); }
@@ -1065,12 +1080,13 @@
       const selCons = h('select', { 'data-k': 'ct:cons' }, [h('option', { value: '', text: 'Nenhuma' })].concat(outros.map(x => h('option', { value: x.id, text: x.nome }))));
       selCons.value = t && t.exige.cons ? t.exige.cons : '';
       const fmtC = v => (v ? fmtCampo(v) : '');
-      const valsDe = n => { const o2 = { sem: String(n.sem), def: String(n.def || 0), ef: n.ef || '' }; for (const [k] of KS) { o2[k] = {}; for (const r of recs) o2[k][r.id] = fmtC(n[k][r.id]); } return o2; };
+      const valsDe = n => { const o2 = { sem: String(n.sem), def: String(n.def || 0), cura: String(n.cura || 0), ef: n.ef || '' }; for (const [k] of KS) { o2[k] = {}; for (const r of recs) o2[k][r.id] = fmtC(n[k][r.id]); } return o2; };
       function fsNivel(i, v) {
         const linhas = KS.map(([k, rot]) => h('tr', { 'data-lin': k }, h('th', { scope: 'row', text: rot }),
           recs.map(r => h('td', null, inp('ct:' + i + ':' + k + ':' + r.id, v[k][r.id], { inputmode: 'decimal', class: 'in', placeholder: '0', 'aria-label': 'Nível ' + i + ', ' + rot + ', ' + r.nome })))));
         return h('fieldset', { class: 'ct-nivel', 'data-niv': String(i) }, h('legend', { text: 'Nível ' + i }),
-          h('div', { class: 'lin' }, h('label', null, 'Semanas de obra', inp('ct:' + i + ':sem', v.sem, { inputmode: 'numeric' })), h('label', null, 'Defesa', inp('ct:' + i + ':def', v.def, { inputmode: 'numeric' }))),
+          h('div', { class: 'lin' }, h('label', null, 'Semanas de obra', inp('ct:' + i + ':sem', v.sem, { inputmode: 'numeric' })), h('label', null, 'Defesa', inp('ct:' + i + ':def', v.def, { inputmode: 'numeric' })),
+            h('label', null, 'Cura (% por dia)', inp('ct:' + i + ':cura', v.cura, { inputmode: 'numeric' }))),          // (lote 12, parte 12c)
           h('div', { class: 'eco-tab-caixa' }, h('table', { class: 'eco-tab' },
             h('thead', null, h('tr', null, h('th', { scope: 'col', text: '' }), recs.map(r => h('th', { scope: 'col' }, h('i', { style: { background: r.cor } }), h('span', { text: r.nome }))))),
             h('tbody', null, linhas))),
@@ -1078,7 +1094,7 @@
       }
       const caixaNiveis = h('div', { class: 'ct-niveis' });
       (t ? t.niveis : [{ custo: {}, sem: 2, prod: {}, gasto: {}, def: 0, ef: '' }]).forEach((n, i) => caixaNiveis.append(fsNivel(i + 1, valsDe(n))));
-      const valsDoFs = (fs, i) => { const q = k => { const e0 = fs.querySelector('[data-k="ct:' + i + ':' + k + '"]'); return e0 ? e0.value : ''; }; const o2 = { sem: q('sem'), def: q('def'), ef: q('ef') }; for (const [k] of KS) { o2[k] = {}; for (const r of recs) o2[k][r.id] = q(k + ':' + r.id); } return o2; };
+      const valsDoFs = (fs, i) => { const q = k => { const e0 = fs.querySelector('[data-k="ct:' + i + ':' + k + '"]'); return e0 ? e0.value : ''; }; const o2 = { sem: q('sem'), def: q('def'), cura: q('cura'), ef: q('ef') }; for (const [k] of KS) { o2[k] = {}; for (const r of recs) o2[k][r.id] = q(k + ':' + r.id); } return o2; };
       const bMais = h('button', { type: 'button', class: 'btn sm', 'data-k': 'ct:niv-novo', text: '+ Nível' }), bMenos = h('button', { type: 'button', class: 'btn sm', 'data-k': 'ct:niv-tirar', text: 'Tirar o último nível' });
       const maxN = (N().LIMITES && N().LIMITES.niveisConstrucao) || 5, contar = () => caixaNiveis.children.length, pintarBotoes = () => { bMais.disabled = contar() >= maxN; bMenos.disabled = contar() <= 1; };
       bMais.addEventListener('click', () => { const n = contar(); if (n >= maxN) return; caixaNiveis.append(fsNivel(n + 1, valsDoFs(caixaNiveis.lastElementChild, n))); pintarBotoes(); });
@@ -1108,6 +1124,8 @@
             const i = j0 + 1, v = valsDoFs(fs, i);
             const out = { custo: {}, sem: inteiroDe(v.sem, 0, 104, 'Nível ' + i + ': as semanas de obra, um número inteiro de 0 a 104.'), prod: {}, gasto: {},
               def: inteiroDe(v.def, 0, 20, 'Nível ' + i + ': a defesa, um número inteiro de 0 a 20.'), ef: String(v.ef || '').trim().slice(0, 200) };
+            const cura = inteiroDe(v.cura, 0, 100, 'Nível ' + i + ': a cura, um número inteiro de 0 a 100.');
+            if (cura) out.cura = cura;
             for (const [k, rot] of KS) for (const r of recs) {
               const s0 = String(v[k][r.id] || '').trim();
               if (!s0) continue;

@@ -48,7 +48,7 @@
     return { cmd: { nome: '', b: 0, ficha: null }, moral: 5, mant: 10, cons: null, fome: 0, unid: [unidNova(m, 0, t ? t.id : null)] };
   }
   function unidNova(m, n, tipo) {
-    return { id: novoId('un'), nome: 'Unidade ' + (n + 1), tipo: tipo || null, tropas: 100, hp: 100, hpMax: 100, atq: 0, def: 0, magos: 0, cerco: 0, equip: [] };
+    return { id: novoId('un'), nome: 'Unidade ' + (n + 1), tipo: tipo || null, tropas: 100, hpT: 1, fer: 0, atq: 0, def: 0, magos: 0, cura: 0, cerco: 0, equip: [] };
   }
   const textoMoral = n => MORAIS[Math.max(0, Math.min(10, n))] || '';
   function resumoExercito(m, g) {
@@ -344,7 +344,7 @@
     if (!e) return [secao('Exército', nota('Este exército ainda não tem unidades: as tropas, o HP, o ATQ e a DEF, os magos, as máquinas de cerco e os equipamentos.'),
       linha(botao('Pôr as unidades', () => { if (mudarObj(id, 'pôr as unidades', x => { x.exe = exeNovo(m); }) !== false) { const u = (kit().achar(app().mapa, id) || {}).exe; if (u && u.unid[0]) unidAbertas.add(u.unid[0].id); } }, { c: 'pri sm', k: 'o:' + id + ':exe' })))];
     const L = G().lado(m, o), tr = N().tropasDe(e), cons = N().consumoDe(e), dias = N().diasDeMantimento(e), out = [];
-    out.push(h('p', { class: 'status' }, h('b', { text: plural(tr, 'tropa', 'tropas') }), ' · força ' + fmt(L.forca, 0) + ' · ATQ ' + fmt(L.atq, 1) + ' · DEF ' + fmt(L.def, 1)
+    out.push(h('p', { class: 'status' }, h('b', { text: plural(tr, 'tropa', 'tropas') }), ' · ATQ ' + fmt(L.atq, 1) + ' · DEF ' + fmt(L.def, 1)
       + (L.magos ? ' · ' + plural(L.magos, 'mago', 'magos') : '') + (L.cerco ? ' · ' + plural(L.cerco, 'máquina de cerco', 'máquinas de cerco') : '')));
     // o comandante
     out.push(h('div', { class: 'row' },
@@ -390,6 +390,9 @@
       if (t && rg.terreno > 0) partes.push('terreno duro (' + t.nome + '): −' + fmt(rg.terreno, 1) + '% das tropas por dia');
       if (rg.inverno > 0 && C.invernoEm(m, g.x, g.y, m.cal.dia, rg)) partes.push('inverno: −' + fmt(rg.inverno, 1) + '% por dia');
     }
+    // (parte 12c) a cura: a dos médicos (em qualquer lugar) e a da Enfermaria da cidade
+    const med = Math.min(100, (g.exe && !g.exe.pub ? g.exe.unid : []).reduce((s0, u) => s0 + (u.tropas > 0 ? u.cura || 0 : 0), 0)), enf = C.enfermariaPerto(m, g);
+    if (med || enf) partes.push('cura ' + Math.min(100, med + (enf ? enf.pct : 0)) + '% do HP que falta por dia (' + [med ? 'médicos ' + med + '%' : '', enf ? 'Enfermaria de ' + enf.nome + ' ' + enf.pct + '%' : ''].filter(Boolean).join(', ') + ')');
     return (r ? 'Em ' + nomeDe(r, m) : 'Fora das regiões') + ONDE[on.tipo] + ': ' + partes.join(' · ') + '.';
   }
   /* ---- (lote 9) os heróis ----
@@ -486,20 +489,27 @@
   function secUnidades(o, m) {
     const { h, botao, nota, secao, linha, campoTexto, campoNumero, campoEscolha, caixa, plural, mudarObj } = kit(), id = o.id, e = o.exe, tipos = tiposDe(m), out = [];
     const opsTipo = [['', 'Sem tipo']].concat(tipos.map(t => [t.id, t.nome]));
-    const num = (u, campo, rot, o2) => campoNumero('o:' + id + ':u:' + u.id + ':' + campo, rot, u[campo], n => mudarUnid(id, u.id, 'mudar a unidade', x => { if (x[campo] === n) return false; x[campo] = n; if (campo === 'hpMax' && x.hp > n) x.hp = n; }), o2);
+    const num = (u, campo, rot, o2) => campoNumero('o:' + id + ':u:' + u.id + ':' + campo, rot, u[campo], n => mudarUnid(id, u.id, 'mudar a unidade', x => { if (x[campo] === n) return false; x[campo] = n; if (campo === 'hpT') x.fer = 0; }), o2);
     for (const u of e.unid) {
       const aberta = unidAbertas.has(u.id), tn = tipoNome(m, u.tipo), eqB = u.equip.reduce((s, q) => s + q.atq, 0), eqD = u.equip.reduce((s, q) => s + q.def, 0);
-      const resumo = plural(u.tropas, 'tropa', 'tropas') + (tn ? ' · ' + tn : '') + ' · ATQ ' + (u.atq + eqB) + ' · DEF ' + (u.def + eqD) + (u.hp < u.hpMax ? ' · HP ' + u.hp + '/' + u.hpMax : '') + (u.oc ? ' · escondida' : '');
+      // (lote 12, parte 12c) o HP da unidade: a soma das tropas (a ferida, à parte)
+      const H = N().hpDaUnidade(u);
+      const resumo = plural(u.tropas, 'tropa', 'tropas') + (tn ? ' · ' + tn : '') + ' · ATQ ' + (u.atq + eqB) + ' · DEF ' + (u.def + eqD) + (u.hpT > 1 ? ' · ' + u.hpT + ' HP cada' : '') + (u.fer ? ' · 1 ferida' : '')
+        + (u.cura ? ' · cura ' + u.cura + '%' : '') + (u.oc ? ' · escondida' : '');
       const corpo = aberta ? h('div', { class: 'gu-unid-corpo' },
         h('div', { class: 'row' },
           campoTexto('o:' + id + ':u:' + u.id + ':nome', 'Nome', u.nome, v => mudarUnid(id, u.id, 'mudar o nome da unidade', x => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 80 }),
           campoEscolha('o:' + id + ':u:' + u.id + ':tipo', 'Tipo', u.tipo || '', opsTipo, v => mudarUnid(id, u.id, 'mudar o tipo da unidade', x => { x.tipo = v || null; }))),
         h('div', { class: 'row gu-nums' },
-          num(u, 'tropas', 'Tropas', { min: 0, max: 1e7 }), num(u, 'hp', 'HP', { min: 0, max: u.hpMax }), num(u, 'hpMax', 'HP máx.', { min: 1, max: 1e7 })),
+          num(u, 'tropas', 'Tropas', { min: 0, max: 1e7 }), num(u, 'hpT', 'HP de cada tropa', { min: 1, max: (N().LIMITES && N().LIMITES.hpTropa) || 1e6 })),
+        h('p', { class: 'note gu-hp', 'data-k': 'o:' + id + ':u:' + u.id + ':hp' }, 'HP da unidade: ' + kit().fmt(H.hp, 0) + (u.fer ? ' de ' + kit().fmt(H.max, 0) + ' · uma tropa ferida (' + (u.hpT - u.fer) + ' de ' + u.hpT + ')' : '') + ' — a soma das tropas: o dano mata uma a uma.',
+          u.fer ? ' ' : null, u.fer ? botao('Curar a ferida', () => mudarUnid(id, u.id, 'curar a ferida', x => { if (!x.fer) return false; x.fer = 0; }), { c: 'sm', k: 'o:' + id + ':u:' + u.id + ':curar' }) : null),
         h('div', { class: 'row gu-nums' },
           num(u, 'atq', 'ATQ', { min: -99, max: 99 }), num(u, 'def', 'DEF', { min: -99, max: 99 })),
         h('div', { class: 'row gu-nums' },
-          num(u, 'magos', 'Magos', { min: 0, max: 1e7 }), num(u, 'cerco', 'Máquinas de cerco', { min: 0, max: 1e4 })),
+          num(u, 'magos', 'Magos', { min: 0, max: 1e7 }), num(u, 'cura', 'Cura (%)', { min: 0, max: 100 })),
+        h('div', { class: 'row gu-nums' },
+          num(u, 'cerco', 'Máquinas de cerco', { min: 0, max: 1e4 })),
         secEquip(o, u),
         caixa('o:' + id + ':u:' + u.id + ':oc', 'Escondida dos jogadores', !!u.oc, v => mudarUnid(id, u.id, 'esconder a unidade', x => { if (v) x.oc = true; else delete x.oc; }), { dica: 'Os jogadores veem o nome e o tipo das outras (nunca os números).' }),
         linha(
@@ -621,11 +631,12 @@
   const nomeComida = (m, rec) => (rec && m.eco ? (m.eco.rec.find(r => r.id === rec) || {}).nome || 'comida' : 'comida');
   function avisoDoDia(m, res) {
     const { plural, fmt } = kit(), ls = res.linhas.filter(L => !L.fora), perdas = ls.reduce((s0, L) => s0 + (L.desg ? L.desg.tropas0 - L.desg.tropas1 : 0), 0);
-    const gasto = Object.values(res.estoque).reduce((s0, E) => s0 + (E.de - E.para), 0), forr = ls.reduce((s0, L) => s0 + (L.forr ? L.forr.n : 0), 0);
+    const gasto = Object.values(res.estoque).reduce((s0, E) => s0 + (E.de - E.para), 0), forr = ls.reduce((s0, L) => s0 + (L.forr ? L.forr.n : 0), 0), curou = ls.reduce((s0, L) => s0 + (L.cura ? L.cura.hp : 0), 0);
     const nR = id => { const r = kit().achar(m, id); return r ? kit().nomeDe(r, m) : 'A região'; };
     return (res.dias > 1 ? 'Os ' + res.dias + ' dias da campanha' : 'O dia da campanha') + ': ' + (ls.length ? ls.map(L => L.nome).join(', ') : 'nenhum exército') + '.'
       + (gasto > 0 ? ' Saíram ' + fmt(gasto, 2) + ' ' + nomeComida(m, res.rec) + ' do estoque.' : '') + (forr > 0 ? ' Forragem: ' + plural(forr, 'mantimento', 'mantimentos') + '.' : '')
       + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '')
+      + (curou > 0 ? ' Cura: +' + plural(curou, 'HP', 'HP') + '.' : '')
       + propostasMarcadas(res).map(x => ' ' + nR(x.r) + (x.lib ? ' livre de novo.' : ' ocupada por ' + nomeFacDe(m, x.fac) + '.')).join('');
   }
   /* a janela do dia: por exército, a caixa dele (desmarcado: fica como está) e as linhas — o que come; o reabastecimento,
@@ -658,13 +669,15 @@
         };
         // (o reabastecimento: quem pode, mesmo sem nada hoje — o estoque pode ficar para ele quando outro é desmarcado)
         const reab = linha('reab', !!(base.rec && B.fac && B.cons > 0 && C.REABASTECE.includes(B.onde.tipo))), forr = linha('forr', !!B.forr), desg = linha('desg', !!(B.desg || P.desg));
+        // (parte 12c) a cura: quem tem cura (médicos, Enfermaria) e pode ter ferida hoje (a de antes ou a do desgaste)
+        const cura = linha('cura', B.curaPct > 0 && !!(B.cura || P.cura || B.desg || P.desg));
         const el = h('div', { class: 'dia-ex', 'data-k': 'dia:ex:' + B.g },
           h('label', { class: 'op dia-cab' }, cb, h('span', { class: 'tx' }, h('b', { text: B.nome }), h('small', { text: ondeTxt(B.onde) }))),
-          come, reab ? reab.el : null, forr ? forr.el : null, desg ? desg.el : null);
+          come, reab ? reab.el : null, forr ? forr.el : null, desg ? desg.el : null, cura ? cura.el : null);
         pintores.push(() => {
           const L = res.linhas.find(x => x.g === B.g) || B, fora = !cb.checked, Q = fora ? B : L;
           el.classList.toggle('fora', fora);
-          for (const l of [reab, forr, desg]) if (l) l.x.disabled = fora;
+          for (const l of [reab, forr, desg, cura]) if (l) l.x.disabled = fora;
           const dura = Q.cons > 0 ? Math.floor(Q.mant1 / Q.cons) : Infinity;
           come.textContent = fora ? 'Fica como está: nada muda para ele hoje.' : 'Come ' + fmt(Q.cons, 0) + ' por dia: ' + fmt(Q.mant0, 0) + ' → ' + fmt(Q.mant1, 0)
             + (dura === Infinity ? '' : dura > 0 ? ' (dá para mais ' + plural(dura, 'dia', 'dias') + ')' : Q.mant1 > 0 ? ' (não dá para mais um dia)' : ' (acabou)')
@@ -679,6 +692,11 @@
           if (desg) {
             const X = (!fora && L.desg) || B.desg || P.desg;
             desg.t.textContent = !fora && desg.x.checked && !L.desg ? 'Desgaste: nenhum, com o que está marcado.' : 'Desgaste: −' + plural(X.tropas0 - X.tropas1, 'tropa', 'tropas') + ' (' + motivos(X) + '): ' + fmt(X.tropas0, 0) + ' → ' + fmt(X.tropas1, 0) + acabam(X) + '.';
+          }
+          if (cura) {
+            const X = (!fora && L.cura) || B.cura, quem = X ? [X.med ? 'médicos ' + X.med + '%' : '', X.enf ? 'Enfermaria de ' + X.enf.nome + ' ' + X.enf.pct + '%' : ''].filter(Boolean).join(', ') : '';
+            cura.t.textContent = X && (fora || !cura.x.checked || L.cura) ? 'Cura ' + X.pct + '% (' + quem + '): +' + plural(X.hp, 'HP', 'HP') + ' na tropa ferida de ' + X.unid.map(u => u.nome).join(', ') + '.'
+              : 'Cura ' + B.curaPct + '%: nenhuma tropa ferida, com o que está marcado.';
           }
         });
         return el;
@@ -972,8 +990,7 @@
     return el('div', { class: 'gb-sec' }, tit('Os dois lados', 'bonus', 'Como os bônus são contados'),
       el('div', { class: 'gb-tab' },
         el('div', { class: 'gb-cab' }, el('span'), el('b', { text: A_.nome }), el('b', { text: B_.nome })),
-        lin('Tropas', fmt(A_.tropas, 0), fmt(B_.tropas, 0)),
-        lin('Força (tropas × HP)', fmt(A_.forca, 0), fmt(B_.forca, 0)),
+        lin('Tropas', fmt(A_.tropas, 0), fmt(B_.tropas, 0)),          // (lote 12, parte 12c: a força são as tropas)
         lin('ATQ / DEF médios', fmt(A_.atq, 1) + ' / ' + fmt(A_.def, 1), fmt(B_.atq, 1) + ' / ' + fmt(B_.def, 1)),
         lin('Magos', fmt(A_.magos, 0), fmt(B_.magos, 0)),
         lin('À distância (força)', fmt(A_.dist, 0), fmt(B_.dist, 0)),
@@ -1236,7 +1253,7 @@
       out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:' + q }, el('b', { text: L.nome + ' — perde ' + Math.round(L.perda * 100) + '%' }),
         el('div', { class: 'gb-tab gb-tab3' },
           el('div', { class: 'gb-cab' }, el('span', { text: 'Unidade' }), el('b', { text: 'Tropas' }), el('b', { text: 'HP' })),
-          L.unid.map(u => el('div', { class: u.acaba ? 'acaba' : null }, el('span', { text: u.nome + (u.acaba ? ' — acaba (sai do exército)' : '') }), el('b', { text: fmt(u.tropas0, 0) + ' → ' + fmt(u.tropas1, 0) }), el('b', { text: u.hp0 + ' → ' + u.hp1 })))),
+          L.unid.map(u => el('div', { class: u.acaba ? 'acaba' : null }, el('span', { text: u.nome + (u.acaba ? ' — acaba (sai do exército)' : '') }), el('b', { text: fmt(u.tropas0, 0) + ' → ' + fmt(u.tropas1, 0) }), el('b', { text: fmt(u.hp0, 0) + ' → ' + fmt(u.hp1, 0) })))),
         el('p', null, 'Moral ' + L.moral0 + ' → ', el('b', { text: String(L.moral1) }), ' (' + textoMoral(L.moral1) + ') · mantimentos ' + fmt(L.mant0, 0) + ' → ', el('b', { text: fmt(L.mant1, 0) }), ' (um dia de batalha)')));
     }
     if (prev.estr) out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:estr' }, el('b', { text: 'Fortificação: ' + prev.estr.nome }),

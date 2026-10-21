@@ -13,6 +13,10 @@
 //     contagem do dia (sem defensor — a dona ou uma aliada —, sem fortificação de pé — também a das construções —, a
 //     região de dentro à parte, os dias de antes, a recusa, libertar), aplicar, a produção para quem ocupa (o Livro e a
 //     população, da dona), a forragem na ocupada, anexar, devolver, ocupar à mão, as terras na paz e as notícias.
+//   · (parte 12c) a vida das tropas e a cura: a Enfermaria no catálogo (a cura de cada nível; as que faltam nos mapas de
+//     antes; a cura da cidade, até 100%), a Enfermaria perto (a cidade de casa ou da aliada, no hexágono ou colado; sem
+//     a grade, perto), a cura no dia (os médicos e a Enfermaria; vários dias; desmarcada; os médicos que acabam; a ferida
+//     do desgaste), o desgaste no HP das unidades e aplicar.
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 const C = require('../../mundo/campanha.js');
@@ -320,5 +324,97 @@ const arr = v => Math.round((Number(v) || 0) * 100) / 100;
     'as notícias da ocupação, da libertação (pela aliada, com o nome dela; num outro dia) e da anexação, com a data');
   ok(/^\d+ de .+, ano \d+$/.test(dt), 'a data da notícia: ' + dt);
 }
+/* ---- (parte 12c) a vida das tropas e a cura ---- */
+function mundoVida(extra) {
+  let m = N.normalizarMapa({ id: 'z', nome: 'M', larg: 2000, alt: 1000, grade: { tam: 40, x: 0, y: 0 },
+    faccoes: [{ id: 'fa', nome: 'Aldar', rel: { fb: 'guerra', fc: 'alianca' } }, { id: 'fb', nome: 'Vale', rel: { fa: 'guerra' } }, { id: 'fc', nome: 'Ilhas', rel: { fa: 'alianca' } }],
+    objs: [{ id: 'r1', k: 'r', nome: 'Terra Alta', fac: 'fa', pts: quad(0, 0, 400, 400) }, { id: 'r2', k: 'r', nome: 'Vale Fundo', fac: 'fb', pts: quad(500, 0, 400, 400) },
+      { id: 'r3', k: 'r', nome: 'Ilha', fac: 'fc', pts: quad(1000, 0, 400, 400) },
+      { id: 'c1', k: 'm', nome: 'Vila Alta', x: 100, y: 100 }, { id: 'c2', k: 'm', nome: 'Vila do Vale', x: 600, y: 100 }, { id: 'c3', k: 'm', nome: 'Porto das Ilhas', x: 1100, y: 100 },
+      { id: 'h1', k: 'g', tipo: 'exercito', x: 100, y: 100, fac: 'fa', nome: 'Hoste', exe: { moral: 6, mant: 50, unid: [{ id: 'o1', nome: 'Ogros', tropas: 20, hpT: 10, fer: 7 }, { id: 'm1', nome: 'Médicos', tropas: 10, cura: 20 }] } },
+      { id: 'h2', k: 'g', tipo: 'exercito', x: 600, y: 100, fac: 'fa', nome: 'Vanguarda', exe: { moral: 6, mant: 50, unid: [{ id: 'o2', nome: 'Ogros', tropas: 20, hpT: 10, fer: 7 }] } },
+      { id: 'h3', k: 'g', tipo: 'exercito', x: 1100, y: 100, fac: 'fa', nome: 'Frota', exe: { moral: 6, mant: 50, unid: [{ id: 'o3', nome: 'Marujos', tropas: 20, hpT: 10, fer: 7 }] } },
+      { id: 'h4', k: 'g', tipo: 'exercito', x: 300, y: 300, fac: 'fa', nome: 'Faminta', exe: { moral: 6, mant: 0, unid: [{ id: 'o4', nome: 'Lanceiros', tropas: 155, hpT: 10, fer: 0 }] } }].concat(extra || []) });
+  m = JSON.parse(j(m));
+  m.cal.dia = 150;                                                // (um dia de verão: sem o desgaste do inverno)
+  R.ligarEconomia(m);
+  const ass = n => ({ niv: 'vila', pop: 100, cons: [{ id: 'ce', t: 'enfermaria', n }] });
+  m.objs.find(o => o.id === 'c1').ass = ass(1); m.objs.find(o => o.id === 'c2').ass = ass(3); m.objs.find(o => o.id === 'c3').ass = ass(2);
+  return N.normalizarMapa(m);
+}
+{
+  // o catálogo: a Enfermaria, a cura de cada nível; as que faltam nos mapas de antes
+  const m = mundoVida(), enf = m.eco.cons.find(c => c.id === 'enfermaria');
+  eq([!!enf, enf && enf.niveis.map(nv => nv.cura), enf && enf.ic, m.eco.cons.filter(c => c.niveis.some(nv => 'cura' in nv)).map(c => c.id)], [true, [5, 10, 15], 'enfermaria', ['enfermaria']],
+    'o catálogo pronto traz a Enfermaria (cura +5%, +10%, +15%); só ela tem a cura');
+  const cat = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { cons: [{ id: 'x', nome: 'X', niveis: [{ cura: 150 }, { cura: -3 }, { cura: 'a' }, { cura: 7.6 }] }] }) })).eco.cons[0];
+  eq(cat.niveis.map(nv => nv.cura), [100, undefined, undefined, 8], 'a cura de um nível: de 0 a 100, inteira (zero, nem fica)');
+  const antes = JSON.parse(j(m)); antes.eco.cons = antes.eco.cons.filter(c => c.id !== 'enfermaria' && c.id !== 'taverna');
+  const ma = N.normalizarMapa(antes);
+  eq([R.construcoesQueFaltam(ma).map(c => c.id), R.construcoesQueFaltam(m), R.construcoesQueFaltam(N.normalizarMapa({ nome: 'M' }))], [['taverna', 'enfermaria'].sort((x, y) => R.CONSTRUCOES_INICIAIS.findIndex(c => c.id === x) - R.CONSTRUCOES_INICIAIS.findIndex(c => c.id === y)), [], []],
+    'as do catálogo pronto que o mapa não tem (na ordem dele); com todas, nenhuma; sem a economia, nenhuma');
+  const C1 = m.objs.find(o => o.id === 'c1'), C2 = m.objs.find(o => o.id === 'c2');
+  eq([R.efeitoDasConstrucoes(m, C1).cura, R.curaDoAssentamento(m, C2), R.curaDoAssentamento(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { eco: Object.assign(JSON.parse(j(m.eco)), { on: false }) })), C2)], [5, 15, 0],
+    'a cura das construções da cidade (o nível pronto); sem a economia ligada, nada');
+  const dois = JSON.parse(j(m)); dois.objs.find(o => o.id === 'c1').ass.cons.push({ id: 'cf', t: 'enfermaria', n: 3 });
+  dois.eco.cons.find(c => c.id === 'enfermaria').niveis[2].cura = 98;
+  eq(R.curaDoAssentamento(N.normalizarMapa(dois), N.normalizarMapa(dois).objs.find(o => o.id === 'c1')), 100, 'a cura das construções soma, até 100%');
+}
+{
+  // a Enfermaria perto: a da cidade no hexágono (ou colado), na terra da facção ou de uma aliada
+  const m = mundoVida(), G = id => m.objs.find(o => o.id === id);
+  eq([C.enfermariaPerto(m, G('h1')), C.enfermariaPerto(m, G('h2')), C.enfermariaPerto(m, G('h3')), C.enfermariaPerto(m, G('h4'))],
+    [{ m: 'c1', nome: 'Vila Alta', pct: 5 }, null, { m: 'c3', nome: 'Porto das Ilhas', pct: 10 }, null], 'na cidade de casa e na da aliada, sim; na do inimigo e longe, não');
+  const ocupa = JSON.parse(j(m)); ocupa.objs.find(o => o.id === 'r2').ocup = { fac: 'fa', d: 0 };
+  Object.assign(ocupa.objs.find(o => o.id === 'h4'), { x: 140, y: 100 });
+  const mo = N.normalizarMapa(ocupa);
+  eq([C.enfermariaPerto(mo, mo.objs.find(o => o.id === 'h2')).pct, C.enfermariaPerto(mo, mo.objs.find(o => o.id === 'h4')).m], [15, 'c1'], 'a cidade ocupada é de quem ocupa; colado no hexágono da cidade também vale');
+  const semG = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { grade: null }));
+  eq([C.enfermariaPerto(semG, semG.objs.find(o => o.id === 'h1')).m, C.enfermariaPerto(semG, Object.assign({}, semG.objs.find(o => o.id === 'h1'), { x: 200 }))], ['c1', null], 'sem a grade, perto (menos de 60)');
+  eq(C.enfermariaPerto(m, Object.assign({}, G('h1'), { fac: null })), null, 'o exército sem facção não usa a Enfermaria');
+  eq(C.enfermariaPerto(m, Object.assign({}, G('h1'), { x: 180 })), null, 'a dois hexágonos da cidade, não');
+  const duas = JSON.parse(j(m)); duas.objs.find(o => o.id === 'c1').ass.cons[0].n = 3;
+  duas.objs.push({ id: 'c4', k: 'm', nome: 'Aldeia Baixa', x: 140, y: 100, ass: { niv: 'vila', pop: 0, cons: [{ id: 'cf', t: 'enfermaria', n: 1 }] } });
+  const md = N.normalizarMapa(duas);
+  eq(C.enfermariaPerto(md, md.objs.find(o => o.id === 'h1')), { m: 'c1', nome: 'Vila Alta', pct: 15 }, 'com duas cidades perto, a de maior cura');
+}
+{
+  // o dia: a cura e o desgaste no HP das unidades
+  const m = mundoVida(), r = C.diaDaCampanha(m, 1, []), L = id => r.linhas.find(x => x.g === id);
+  eq([L('h1').curaPct, L('h1').cura], [25, { pct: 25, med: 20, enf: { m: 'c1', nome: 'Vila Alta', pct: 5 }, hp: 2, unid: [{ id: 'o1', nome: 'Ogros', f0: 7, f1: 5 }] }],
+    'a cura: os médicos (20%) e a Enfermaria (5%), 25% do que falta na ferida dos Ogros (7 → 5: o arredondado de 1,75)');
+  eq([L('h2').curaPct, L('h2').cura, L('h3').curaPct, L('h3').cura.unid[0].f1], [0, null, 10, 6], 'sem médicos nem Enfermaria, nada; na Enfermaria da aliada, 10% (pelo menos 1 de HP)');
+  eq([L('h4').desg.unid[0], L('h4').cura], [{ id: 'o4', nome: 'Lanceiros', t0: 155, t1: 152, f1: 1, acaba: false }, null],
+    'o desgaste sai do HP da unidade: 1550 → 1519 (2% da fome): 152 tropas, uma ferida (9 de 10)');
+  eq(C.diaDaCampanha(m, 4, []).linhas.find(x => x.g === 'h3').cura.unid[0].f1, 3, 'pelo menos 1 de HP por dia (10% de 4 seria 0)');
+  const r3 = C.diaDaCampanha(m, 3, []);
+  eq([r3.linhas.find(x => x.g === 'h1').cura.unid[0].f1, r3.linhas.find(x => x.g === 'h3').cura.unid[0].f1], [3, 4], 'vários dias: a cura de cada dia (25% do que falta, arredondado: 7 → 5 → 4 → 3; 10%: pelo menos 1 por dia)');
+  const rr = C.diaDaCampanha(m, 1, ['cura:h1', 'g:h3']);
+  eq([rr.linhas.find(x => x.g === 'h1').cura, rr.linhas.find(x => x.g === 'h1').curaPct, rr.linhas.find(x => x.g === 'h3').cura], [null, 25, null], 'sem a cura (desmarcada) e o exército desmarcado: nada (a % fica para a janela)');
+  // os médicos que morrem no desgaste não curam; o desgaste faz a ferida que a cura trata
+  const dm = JSON.parse(j(m)); const h4 = dm.objs.find(o => o.id === 'h4');
+  h4.exe.unid.push({ id: 'm4', nome: 'Médicos', tropas: 1, cura: 50 });
+  const r4 = C.diaDaCampanha(N.normalizarMapa(dm), 60, []), L4 = r4.linhas.find(x => x.g === 'h4');
+  eq([L4.desg.unid.find(u => u.id === 'm4').acaba, L4.curaPct], [true, 0], 'os médicos que acabam no desgaste não curam');
+  const d5 = JSON.parse(j(m)); d5.objs.find(o => o.id === 'h4').exe.unid.push({ id: 'm5', nome: 'Alquimistas', tropas: 50, cura: 50 });
+  const L5 = C.diaDaCampanha(N.normalizarMapa(d5), 1, []).linhas.find(x => x.g === 'h4');
+  eq([L5.desg.unid.find(u => u.id === 'o4').f1, L5.cura.unid], [1, [{ id: 'o4', nome: 'Lanceiros', f0: 1, f1: 0 }]], 'a ferida do desgaste do dia, a cura trata (50% de 1: pelo menos 1)');
+  // o desgaste com a ferida de antes; o desgaste que só fere (nenhuma tropa morre); o médico sem tropas não cura
+  const d6 = JSON.parse(j(m)), h6 = d6.objs.find(o => o.id === 'h4');
+  h6.exe.unid[0].fer = 3; h6.exe.unid.push({ id: 'p6', nome: 'Poucos', tropas: 10, hpT: 10 });
+  d6.objs.find(o => o.id === 'h3').exe.unid.push({ id: 'z3', nome: 'Médicos mortos', tropas: 0, cura: 50 });
+  const r6 = C.diaDaCampanha(N.normalizarMapa(d6), 1, []), L6 = r6.linhas.find(x => x.g === 'h4');
+  eq([L6.desg.unid.map(u => [u.t1, u.f1]), r6.linhas.find(x => x.g === 'h3').curaPct], [[[152, 4], [10, 2]], 10],
+    'o desgaste sai do HP com a ferida (1547 × 98% = 1516: 152 tropas, falta 4); o que só fere (100 → 98: 10 tropas, falta 2); o médico sem tropas não cura');
+  const so = C.diaDaCampanha(N.normalizarMapa(Object.assign(JSON.parse(j(d6)), { objs: JSON.parse(j(d6)).objs.map(o => (o.id === 'h4' ? Object.assign(o, { exe: Object.assign(o.exe, { unid: [o.exe.unid[1]] }) }) : o)) })), 1, []);
+  eq((L => [L.desg && L.desg.tropas0, L.desg && L.desg.tropas1, L.desg && L.desg.unid[0].f1])(so.linhas.find(x => x.g === 'h4')), [10, 10, 2], 'o desgaste que só fere fica na conta (as tropas iguais)');
+  // aplicar
+  const d = JSON.parse(j(m));
+  C.aplicarDia(d, r);
+  const na = N.normalizarMapa(d), U = (g, u) => na.objs.find(o => o.id === g).exe.unid.find(x => x.id === u);
+  eq([[U('h1', 'o1').tropas, U('h1', 'o1').fer], [U('h3', 'o3').tropas, U('h3', 'o3').fer], [U('h4', 'o4').tropas, U('h4', 'o4').fer], U('h2', 'o2').fer], [[20, 5], [20, 6], [152, 1], 7],
+    'aplicar: a ferida curada; o desgaste nas tropas e na ferida; sem cura, igual');
+}
+
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');
 process.exit(bad ? 1 : 0);

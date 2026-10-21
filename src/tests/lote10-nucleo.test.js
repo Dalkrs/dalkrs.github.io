@@ -232,7 +232,7 @@ const quad = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const m0 = N.normalizarMapa(base), ml = JSON.parse(j(m0));
   R.ligarEconomia(ml);
   const mn = N.normalizarMapa(ml), e = mn.eco, tp = id => e.cons.find(c => c.id === id);
-  ok(e.cons.map(c => c.nome).join() === 'Fazenda,Serraria,Pedreira,Mina de Orith,Mercado,Santuário rúnico,Paliçada,Muralha,Quartel,Torre de vigia,Templo,Taverna,Celeiro,Porto,Biblioteca', 'ligar a economia traz o catálogo pronto: as 15 construções');
+  ok(e.cons.map(c => c.nome).join() === 'Fazenda,Serraria,Pedreira,Mina de Orith,Mercado,Santuário rúnico,Paliçada,Muralha,Quartel,Enfermaria,Torre de vigia,Templo,Taverna,Celeiro,Porto,Biblioteca', 'ligar a economia traz o catálogo pronto: as 16 construções (lote 12, parte 12c: com a Enfermaria)');
   ok(j(tp('mina').niveis.map(x => x.prod)) === j([{ orith: 3 }, { orith: 5 }, { orith: 8 }]) && j(tp('mina').exige.ter) === j(['co', 'mo']) && tp('mercado').exige.niv === 'vila' && tp('muralha').exige.niv === 'cidade' && tp('muralha').esp === 2 && tp('muralha').niveis[0].def === 3
     && j(tp('santuario').niveis[0].gasto) === j({ lapros: 2 }) && j(tp('porto').exige.ter) === j(['ag']) && j(tp('fazenda').niveis[0].custo) === j({ madeira: 10, lapros: 10 }),
     'o catálogo pronto pelos recursos do mapa (o metal é o Orith, a moeda o Lapros…), com as exigências (a Mina em colina ou montanha, o Mercado a partir da Vila, a Muralha da Cidade, o Porto na água) e os 3 níveis');

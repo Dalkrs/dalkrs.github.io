@@ -1697,12 +1697,14 @@
   }
   /* ---------------- (lote 8, parte 6) a guerra ----------------
      O exército (o grupo do tipo Exército): as unidades (o tipo, as tropas, o HP, o ATQ e a DEF, os magos, as máquinas
-     de cerco e os equipamentos), o comandante (o bônus que o mestre escreve, e a ficha dele, se quiser), a moral (0 a 10;
+     de cerco e os equipamentos — lote 12, parte 12c: o HP é o de cada tropa, hpT, e o HP da unidade é a soma das tropas;
+     fer = o que falta na tropa ferida, que conta como viva; cura = a % do HP que falta que a unidade, de médicos ou
+     alquimistas, cura por dia no exército), o comandante (o bônus que o mestre escreve, e a ficha dele, se quiser), a moral (0 a 10;
      5 é firme) e os mantimentos (o estoque, o consumo por dia — sem número, pelo tamanho da tropa — e os dias sem eles).
      A fortificação dos marcadores (a DEF de quem defende ali e o HP: pode ser danificada). Os tipos de tropa (o mestre
      cria, com as vantagens de um contra o outro, na escala do d20), o histórico das batalhas e os hexágonos destruídos
      ou corrompidos. Os números são do mestre: na projeção, os jogadores recebem só os nomes. */
-  const MAX_UNID = 40, MAX_EQUIP = 12, MAX_TIPOS_G = 40, MAX_BATS = 60, MAX_MOM = 12, MAX_NOTAS = 20, MAX_TROPAS = 1e7, MAX_ATR = 99, MAX_BONUS = 20;
+  const MAX_UNID = 40, MAX_EQUIP = 12, MAX_TIPOS_G = 40, MAX_BATS = 60, MAX_MOM = 12, MAX_NOTAS = 20, MAX_TROPAS = 1e7, MAX_ATR = 99, MAX_BONUS = 20, MAX_HP_TROPA = 1e6;
   const HEX_GUERRA = { d: 'Destruído', c: 'Corrompido' };
   const MOMENTOS = { ab: 'Abertura', ch: 'Choque', vi: 'Virada', de: 'Desfecho' };
   const FINS = { dados: 'Nos dados', recuo: 'Recuo', rendicao: 'Rendição', tregua: 'Trégua' };
@@ -1711,10 +1713,25 @@
     return (Array.isArray(v) ? v : []).filter(ehObj).slice(0, MAX_EQUIP).map(e => ({ nome: texto(e.nome, '', 80).trim() || 'Equipamento', atq: atr(e.atq), def: atr(e.def) }));
   }
   function normUnid(u, i, vistos) {
-    const hpMax = inteiro(u.hpMax, 100, 1, MAX_TROPAS), out = { id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo),
-      tropas: inteiro(u.tropas, 100, 0, MAX_TROPAS), hp: inteiro(u.hp, hpMax, 0, hpMax), hpMax, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS), cerco: inteiro(u.cerco, 0, 0, 1e4), equip: normEquip(u.equip) };
+    // (lote 12, parte 12c) o HP de cada tropa (1 de começo; a unidade de antes, com o HP separado, começa inteira) e o
+    // que falta na ferida (menos que o HP de uma tropa)
+    const tropas = inteiro(u.tropas, 100, 0, MAX_TROPAS), hpT = inteiro(u.hpT, 1, 1, MAX_HP_TROPA);
+    const out = { id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo),
+      tropas, hpT, fer: tropas > 0 ? inteiro(u.fer, 0, 0, hpT - 1) : 0, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS),
+      cura: inteiro(u.cura, 0, 0, 100), cerco: inteiro(u.cerco, 0, 0, 1e4), equip: normEquip(u.equip) };
     if (sim(u.oc)) out.oc = true;                                // escondida dos jogadores (até o nome)
     return out;
+  }
+  /* (lote 12, parte 12c) O HP da unidade: { hp (a soma das tropas, menos o que falta na ferida), max (as vivas inteiras) } */
+  function hpDaUnidade(u) {
+    const t = ehObj(u) ? Math.max(0, Number(u.tropas) || 0) : 0, hpT = ehObj(u) ? Math.max(1, Number(u.hpT) || 1) : 1, fer = t > 0 ? Math.max(0, Number(u.fer) || 0) : 0;
+    return { hp: Math.max(0, t * hpT - fer), max: t * hpT };
+  }
+  /* As tropas de uma unidade com um HP (a soma): as que morreram saem uma a uma; a ferida conta como viva.
+     → { tropas, fer } */
+  function tropasComHp(hpT, hp) {
+    const t1 = Math.max(1, Number(hpT) || 1), h = Math.max(0, Math.round(Number(hp) || 0)), tropas = Math.ceil(h / t1);
+    return { tropas, fer: tropas * t1 - h };
   }
   function normExe(v) {
     if (!ehObj(v)) return null;
@@ -1823,7 +1840,8 @@
      (parte 3) eco.cons = o catálogo de construções: [{ id, nome, ic (o ícone), esp (os espaços que ocupa), exige: { niv
      (o nível mínimo do assentamento), ter: [terrenos: um deles na região], cons (outra construção pronta antes) },
      niveis: [{ custo, sem (as semanas de obra), prod, gasto (por semana), def (a defesa que soma na fortificação), ef (o
-     efeito escrito) }] }]. No assentamento, ass.cons = [{ id, t (o tipo), n (o nível pronto; 0 = ainda na obra do 1º),
+     efeito escrito), cura (lote 12, parte 12c: a % do HP que falta que os exércitos na cidade curam por dia; só quando
+     há) }] }]. No assentamento, ass.cons = [{ id, t (o tipo), n (o nível pronto; 0 = ainda na obra do 1º),
      obra: { n (o nível que a obra faz), sem (as semanas que faltam), fac (quem pagou), pago } | null }] e ass.cla = {
      id (o clã da página Clã: este é a sede dele), prod: { construção do clã: { recurso: n } } } — os números que o
      mestre dá às construções do clã.
@@ -1863,8 +1881,11 @@
       const ex = ehObj(c.exige) ? c.exige : {}, niveis = [], ter = [];
       for (const n of Array.isArray(c.niveis) ? c.niveis : []) {
         if (!ehObj(n) || niveis.length >= MAX_NIV_CONS) continue;
-        niveis.push({ custo: normTabPos(n.custo, ids), sem: inteiro(n.sem, 1, 0, MAX_SEM_OBRA), prod: normTabProd(n.prod, ids), gasto: normTabPos(n.gasto, ids),
-          def: inteiro(n.def, 0, 0, MAX_DEF_CONS), ef: texto(n.ef, '', MAX_EF_CONS).trim() });
+        const nv = { custo: normTabPos(n.custo, ids), sem: inteiro(n.sem, 1, 0, MAX_SEM_OBRA), prod: normTabProd(n.prod, ids), gasto: normTabPos(n.gasto, ids),
+          def: inteiro(n.def, 0, 0, MAX_DEF_CONS), ef: texto(n.ef, '', MAX_EF_CONS).trim() };
+        const cura = inteiro(n.cura, 0, 0, 100);                  // (lote 12, parte 12c) a cura da Enfermaria: a % por dia, na cidade
+        if (cura) nv.cura = cura;
+        niveis.push(nv);
       }
       if (!niveis.length) niveis.push({ custo: {}, sem: 1, prod: {}, gasto: {}, def: 0, ef: '' });
       for (const t of Array.isArray(ex.ter) ? ex.ter : []) if (terIds.has(t) && !ter.includes(t)) ter.push(t);
@@ -3080,7 +3101,7 @@
     MIS_E, situacaoDaMissao,
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
-    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe,
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
@@ -3093,7 +3114,7 @@
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
       segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA,
-      forragem: MAX_FORR, contagens: MAX_PRES },
+      forragem: MAX_FORR, contagens: MAX_PRES, hpTropa: MAX_HP_TROPA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

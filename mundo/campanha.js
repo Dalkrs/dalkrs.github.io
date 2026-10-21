@@ -6,6 +6,9 @@
    ele come; a região produz menos naquela semana), comer e o desgaste (a fome em qualquer lugar; o terreno duro e o
    inverno só fora das terras da facção e das aliadas: em casa, o exército se abriga). Tudo
    vira uma proposta: o mestre desmarca o que não vale e aplica num passo de Desfazer.
+   (parte 12c) A cura: no dia, cada exército cura a % do HP que falta na tropa ferida de cada unidade — a soma da cura das
+   unidades de médicos e alquimistas (em qualquer lugar) e a da Enfermaria da cidade onde ele está (o hexágono dela ou
+   um colado, na terra da facção dele ou de uma aliada). O desgaste sai do HP das unidades (as tropas morrem uma a uma).
    (parte 12b) A ocupação: quem controla a região (quem ocupa, ou a dona), as fortificações de pé, a contagem dos dias
    (para ocupar: um exército de uma facção em guerra com a dona, sem exército da dona nem de uma aliada dela e sem
    fortificação de pé dela; para libertar a ocupada: um exército da dona ou de uma aliada, sem o de quem ocupa nem de uma
@@ -80,9 +83,12 @@
      tropas de cada unidade; o terreno e o inverno só fora das terras da facção e das aliadas). recusadas: o que o mestre
      desmarcou — 'g:<id>' (o exército fica como está), 'reab:<id>',
      'forr:<id>' e 'desg:<id>'; (parte 12b) 'ocup:<região>' e 'lib:<região>'.
+     (parte 12c) 'cura:<id>' (sem a cura).
      → { dias, rec (o recurso de comida, ou null), regras, linhas: [{ g, nome, fac, onde, cons, mant0, mant1, fome0, fome1,
      moral0, moral1, fomeDias, reab: { n, gasto } | null, forr: { n, r } | null, desg: { dias: { fome, terreno, inverno },
-     ter (o nome do terreno duro), tropas0, tropas1, unid: [{ id, nome, t0, t1, acaba }] } | null, fora }],
+     ter (o nome do terreno duro), tropas0, tropas1, unid: [{ id, nome, t0, t1, f1 (o que falta na ferida), acaba }] } |
+     null, cura: { pct, med (a % dos médicos), enf: { m, nome, pct } | null, hp (o que volta), unid: [{ id, nome, f0, f1 }] }
+     | null, curaPct (a % de cura do exército, com ou sem ferida), fora }],
      estoque: { facção: { de, para } }, forr: [{ r, s, n }] (a forragem por região e semana, só com a economia ligada),
      (parte 12b) regioes e pres (a ocupação: ocupacaoNoDia) } */
   function diaDaCampanha(m, dias, recusadas) {
@@ -130,10 +136,34 @@
         if (p > 0) fator *= Math.max(0, 1 - p / 100);
       }
       Object.assign(L, { mant1: mant, fome1: fome, moral1: moral, reab: reabN > 0 ? { n: reabN, gasto } : null, forr: forrN > 0 ? { n: forrN, r: onde.r } : null });
+      // (parte 12c) o desgaste sai do HP da unidade (a soma das tropas): as tropas morrem uma a uma
+      let fer = new Map(e.unid.map(u => [u.id, u.tropas > 0 ? u.fer || 0 : 0]));
       if (fator < 1 && !no.has('desg:' + g.id)) {
-        const unid = e.unid.map(u => { const t1 = u.tropas > 0 ? Math.round(u.tropas * fator) : 0; return { id: u.id, nome: u.nome, t0: u.tropas, t1, acaba: u.tropas > 0 && t1 === 0 }; });
+        const unid = e.unid.map(u => {
+          const H = N.hpDaUnidade(u), x = u.tropas > 0 ? N.tropasComHp(u.hpT, Math.round(H.hp * fator)) : { tropas: 0, fer: 0 };
+          return { id: u.id, nome: u.nome, t0: u.tropas, t1: x.tropas, f1: x.fer, acaba: u.tropas > 0 && x.tropas === 0 };
+        });
         const tropas0 = unid.reduce((s, u) => s + u.t0, 0), tropas1 = unid.reduce((s, u) => s + u.t1, 0);
-        if (tropas1 < tropas0) L.desg = { dias: dd, ter: ter ? ter.nome : '', tropas0, tropas1, unid };
+        if (tropas1 < tropas0 || unid.some(u => u.f1 !== fer.get(u.id))) {
+          L.desg = { dias: dd, ter: ter ? ter.nome : '', tropas0, tropas1, unid };
+          fer = new Map(unid.map(u => [u.id, u.t1 > 0 ? u.f1 : 0]));
+        }
+      }
+      // (parte 12c) a cura da tropa ferida de cada unidade, dia a dia: a % do HP que falta (pelo menos 1)
+      const vivas = id => { const D = L.desg && L.desg.unid.find(x => x.id === id); return D ? D.t1 > 0 : true; };
+      const med = Math.min(100, e.unid.reduce((s0, u) => s0 + (u.tropas > 0 && vivas(u.id) ? u.cura || 0 : 0), 0)), enf = enfermariaPerto(m, g);
+      const pct = Math.min(100, med + (enf ? enf.pct : 0));
+      L.curaPct = pct;
+      if (!no.has('cura:' + g.id)) {
+        const unid = [];
+        for (const u of e.unid) {
+          const f0 = fer.get(u.id) || 0;
+          if (!(f0 > 0) || !(pct > 0) || !vivas(u.id)) continue;
+          let f = f0;
+          for (let i = 0; i < n && f > 0; i++) f = Math.max(0, f - Math.max(1, Math.round(f * pct / 100)));
+          unid.push({ id: u.id, nome: u.nome, f0, f1: f });
+        }
+        if (unid.length) L.cura = { pct, med, enf, hp: unid.reduce((s0, x) => s0 + x.f0 - x.f1, 0), unid };
       }
     }
     const forrs = [...porForr].map(([k, v]) => { const [r, s] = k.split('|'); return { r, s: Number(s), n: v }; });
@@ -154,8 +184,10 @@
       g.exe.mant = L.mant1; g.exe.fome = L.fome1; g.exe.moral = L.moral1;
       if (L.desg) {
         const por = new Map(L.desg.unid.map(u => [u.id, u]));
-        g.exe.unid = g.exe.unid.filter(u => !(por.get(u.id) || {}).acaba).map(u => { const x = por.get(u.id); if (x) u.tropas = x.t1; return u; });
+        g.exe.unid = g.exe.unid.filter(u => !(por.get(u.id) || {}).acaba).map(u => { const x = por.get(u.id); if (x) { u.tropas = x.t1; u.fer = x.f1 || 0; } return u; });
       }
+      // (parte 12c) a cura: o que falta na ferida de cada unidade
+      if (L.cura) for (const x of L.cura.unid) { const u = g.exe.unid.find(q => q.id === x.id); if (u) u.fer = x.f1; }
       n++;
     }
     for (const fid of Object.keys(res.estoque)) {
@@ -189,6 +221,27 @@
     const out = {};
     for (const x of ehObj(m) && ehObj(m.guerra) && Array.isArray(m.guerra.forr) ? m.guerra.forr : []) if (x.s === s) out[x.r] = arred2((out[x.r] || 0) + x.n);
     return out;
+  }
+
+  /* ---------------- (parte 12c) a Enfermaria ---------------- */
+  /* A Enfermaria da cidade onde o exército está (o marcador num hexágono a até 1 do dele; sem a grade, perto), na terra
+     da facção dele ou de uma aliada: a de maior cura. → { m (o id do marcador), nome, pct } | null */
+  function enfermariaPerto(m, g) {
+    const N = NN(), R = RR();
+    if (!R || !g.fac || !ehObj(m.eco) || !m.eco.on) return null;
+    const hg = N.temGrade(m) ? N.hexDe(m, g.x, g.y) : null;
+    let melhor = null;
+    for (const o of Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(o) || o.k !== 'm' || !ehObj(o.ass)) continue;
+      const pct = R.curaDoAssentamento(m, o);
+      if (!(pct > 0) || (melhor && melhor.pct >= pct)) continue;
+      const perto = hg ? N.distHex(hg, N.hexDe(m, o.x, o.y)) <= 1 : Math.hypot(o.x - g.x, o.y - g.y) < 60;
+      if (!perto) continue;
+      const r = N.regiaoEm(m, o.x, o.y), dono = r ? N.controleDaRegiao(m, r) : null;
+      if (!dono || !doLado(m, g.fac, dono)) continue;
+      melhor = { m: o.id, nome: String(o.nome || '').trim() || 'a cidade', pct };
+    }
+    return melhor;
   }
 
   /* ---------------- (parte 12b) a ocupação ---------------- */
@@ -311,7 +364,7 @@
     return partes.length ? '**As terras ocupadas:** ' + partes.join('; ') + '.' : '';
   }
 
-  const MundoCampanha = { mesesDeInverno, regrasDe, recComida, aliadas, emGuerra, ondeEsta, REABASTECE, FORRAGEIA, terrenoDuro, invernoEm, diaDaCampanha, aplicarDia, forragemDaSemana,
+  const MundoCampanha = { mesesDeInverno, regrasDe, recComida, aliadas, emGuerra, ondeEsta, REABASTECE, FORRAGEIA, terrenoDuro, invernoEm, diaDaCampanha, aplicarDia, forragemDaSemana, enfermariaPerto,
     fortesDePe, presencas, ocupacaoNoDia, anexar, devolver, ocupar, terrasEntre, terrasNaPaz, noticiaOcupacao, noticiaLibertacao, noticiaAnexacao, textoTerrasNaPaz };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCampanha;
   if (typeof window !== 'undefined') window.MundoCampanha = MundoCampanha;

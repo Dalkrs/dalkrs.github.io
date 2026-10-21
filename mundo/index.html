@@ -593,7 +593,7 @@ dialog.mundo-dl.eco-dl { width: min(880px, calc(100% - 24px)); }
 .ct-niveis { display: grid; gap: 10px; }
 .mundo-dl fieldset.ct-nivel { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px 10px; }
 .mundo-dl fieldset.ct-nivel legend { padding: 0 4px; }
-.mundo-dl fieldset.ct-nivel .lin label:first-child, .mundo-dl fieldset.ct-nivel .lin label:last-child { flex: 0 0 132px; }
+.mundo-dl fieldset.ct-nivel .lin label { flex: 0 0 132px; }     /* (lote 12, parte 12c: a semana, a defesa e a cura, do mesmo tamanho) */
 /* (lote 10, parte 4) a semana: o aviso na Economia do mundo e a prévia */
 .sem-box { display: grid; gap: 3px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .sem-box b { font-size: 13px; color: var(--fg); }
@@ -1148,6 +1148,7 @@ dialog.mundo-dl .band-outra input[type="color"] { width: 30px; height: 24px; pad
 .gu-unid-tit small { color: var(--fg-3); font-size: 12px; }
 .gu-unid-corpo { display: grid; gap: 8px; padding: 0 10px 10px; }
 .gu-nums > .field { min-width: 56px; }
+.gu-unid-corpo p.note.gu-hp { margin: -2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }   /* (lote 12, parte 12c) o HP da unidade */
 .gu-eqs { display: grid; gap: 6px; justify-items: start; }
 .gu-eq { width: 100%; }
 .gu-eq > .field:first-child { flex: 3; }
@@ -1340,19 +1341,19 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=36"></script>
-<script src="guerra.js?v=3"></script>
-<script src="reino.js?v=12"></script>
+<script src="nucleo.js?v=37"></script>
+<script src="guerra.js?v=4"></script>
+<script src="reino.js?v=13"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
-<script src="campanha.js?v=2"></script>
+<script src="campanha.js?v=3"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=23"></script>
 <script src="painel.js?v=39"></script>
-<script src="guerra-painel.js?v=7"></script>
-<script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=13"></script>
+<script src="guerra-painel.js?v=8"></script>
+<script src="guerra-ajuda.js?v=2"></script>
+<script src="reino-painel.js?v=14"></script>
 <script src="corte-painel.js?v=5"></script>
 <script src="diplomacia-painel.js?v=5"></script>
 <script src="intrigas-painel.js?v=2"></script>

@@ -12,6 +12,10 @@
 //     (com a notícia) e "Marcar como ocupada…"; a aba Guerra (as terras ocupadas; a regra dos dias, no resumo e na janela);
 //     quem joga (a leitura e as listras, sem a facção escondida); a paz com as terras (devolver e anexar, na notícia);
 //     no celular.
+//   · (parte 12c, SO=vida) a vida das tropas e a cura: a Enfermaria no catálogo ("Pôr as novas do catálogo pronto" no
+//     mapa de antes; a cura de cada nível no editor), na cidade (a nota da cura); a unidade (o HP de cada tropa, a ferida
+//     e "Curar a ferida"; a cura dos médicos); no exército, a cura dali; no "Próximo dia", a linha da cura (desmarcar,
+//     aplicar e Desfazer); no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -326,6 +330,94 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
       'com a caixa: as duas notícias no rascunho (num aviso só): ' + await avisos(L));
     await A(L, () => __mundo.App.desfazer()); await espera(400);
     ok(!(await materia(/^Terra Alta livre de novo$/)) && !(await materia(/^Forte do Vale ocupada/)) && await A(L, () => !!__mundo.App.mapa.objs.find(o => o.id === 'r1').ocup), 'Desfazer: as duas notícias saem juntas');
+  });
+
+  if (parte('vida')) await passo('a vida das tropas e a cura', async () => {
+    const selecionar = async id => { await A(L, x => __mundo.App.selecionar(x ? [x] : []), id); await espera(250); };
+    const tx = k => textoDe(L, '#pane [data-k="' + k + '"]');
+    // o começo: sem ocupação; a Hoste em Terra Alta com Lanceiros de 10 de HP (uma ferida: falta 6) e Médicos (20%); a
+    // Vila Alta no mesmo lugar, com a Enfermaria (nível 2: 10%); o catálogo sem a Enfermaria (um mapa de antes)
+    await A(L, () => __mundo.App.mudar('a vida: o começo', m => {
+      const N = __mundo.N;
+      for (const o of m.objs) if (o.k === 'r') delete o.ocup;
+      if (m.guerra) delete m.guerra.pres;
+      m.objs = m.objs.filter(o => o.id !== 'cv');
+      const g1 = m.objs.find(o => o.id === 'g1');
+      g1.exe.mant = 200;
+      g1.exe.unid = [{ id: 'u1', nome: 'Lanceiros', tropas: 300, hpT: 10, fer: 6 }, { id: 'um', nome: 'Médicos', tropas: 10, cura: 20 }];
+      m.objs.push(Object.assign(N.objNovo('m', { x: g1.x, y: g1.y }), { id: 'cv', nome: 'Vila Alta', ass: { niv: 'vila', pop: 0 } }));
+      m.eco.cons = m.eco.cons.filter(c => c.id !== 'enfermaria');
+    })); await espera(300);
+    // o catálogo: "Pôr as novas do catálogo pronto"
+    await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await aba(L, 'faccoes');
+    ok(await tx('eco:cons-faltam') === 'Pôr as novas do catálogo pronto (Enfermaria)', 'no mapa de antes, o catálogo oferece pôr a Enfermaria: ' + await tx('eco:cons-faltam'));
+    await botao(L, 'eco:cons-faltam');
+    const temEnf = () => A(L, () => __mundo.App.mapa.eco.cons.some(c => c.id === 'enfermaria'));
+    ok(await temEnf() && /Entrou no catálogo: Enfermaria\./.test(await avisos(L)) && await campo(L, 'eco:cons-faltam').count() === 0 && await A(L, () => __mundo.App.rotuloDesfazer()) === 'pôr as novas do catálogo pronto',
+      'pôr: a Enfermaria entra no catálogo (o botão sai)');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok(!(await temEnf()) && await campo(L, 'eco:cons-faltam').count() === 1, 'Desfazer: sem ela de novo');
+    await A(L, () => __mundo.App.refazer()); await espera(300);
+    // o editor: a cura de cada nível
+    await campo(L, 'eco:c:enfermaria:editar').scrollIntoViewIfNeeded().catch(() => {});
+    if (!(await campo(L, 'eco:c:enfermaria').count())) await botao(L, 'eco:cons-ver');
+    ok(/^Enfermaria 1 espaço · 3 níveis Nível 1: cura \+5% · custa /.test(await tx('eco:c:enfermaria')), 'no catálogo, a Enfermaria: o nível 1 cura +5%: ' + await tx('eco:c:enfermaria'));
+    await botao(L, 'eco:c:enfermaria:editar'); await L.F.waitForSelector('dialog.ct-dl[open]');
+    const ct = k => L.F.locator('dialog.ct-dl[open] [data-k="' + k + '"]');
+    ok(await ct('ct:1:cura').inputValue() === '5' && await ct('ct:2:cura').inputValue() === '10' && await ct('ct:3:cura').inputValue() === '15', 'o editor: a cura de cada nível');
+    await ct('ct:1:cura').fill('150'); await L.F.click('dialog.ct-dl[open] [data-k="ct:ok"]'); await espera(120);
+    ok(await textoDe(L, 'dialog.ct-dl[open] .err') === 'Nível 1: a cura, um número inteiro de 0 a 100.', 'a cura: até 100');
+    await ct('ct:1:cura').fill('8'); await ct('ct:1:cura').scrollIntoViewIfNeeded(); await semAvisos(L); await A(L, () => { document.querySelector('dialog.ct-dl[open] .err').textContent = ''; }); await foto('l12c-catalogo');
+    await L.F.click('dialog.ct-dl[open] [data-k="ct:ok"]'); await espera(350);
+    ok(await A(L, () => __mundo.App.mapa.eco.cons.find(c => c.id === 'enfermaria').niveis.map(n => n.cura).join()) === '8,10,15', 'salvar: o nível 1 cura 8%');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    await A(L, () => __mundo.App.mudar('a Enfermaria na Vila Alta', m => { m.objs.find(o => o.id === 'cv').ass.cons = [{ id: 'ce1', t: 'enfermaria', n: 2 }]; })); await espera(300);
+    // a cidade: a nota da cura
+    await aba(L, 'selecao'); await selecionar('cv');
+    ok(await tx('o:cv:cura') === 'Os exércitos da facção (ou de uma aliada) nesta cidade, ou colados nela, curam 10% por dia do HP que falta na tropa ferida.', 'na cidade, a nota da Enfermaria: ' + await tx('o:cv:cura'));
+    await campo(L, 'o:cv:cura').scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12c-cidade');
+    // a unidade: o HP de cada tropa e a ferida; no exército, a cura dali
+    await selecionar('g1');
+    ok(/cura 30% do HP que falta por dia \(médicos 20%, Enfermaria de Vila Alta 10%\)\.$/.test(await tx('o:g1:campanha')), 'no exército: a cura dos médicos e da Enfermaria: ' + await tx('o:g1:campanha'));
+    if (!(await campo(L, 'o:g1:u:u1:hpT').count())) await botao(L, 'o:g1:u:u1:abre');
+    ok(await A(L, () => document.querySelector('#pane [data-k="o:g1:u:u1:hpT"]').value) === '10' && await tx('o:g1:u:u1:hp') === 'HP da unidade: 2.994 de 3.000 · uma tropa ferida (4 de 10) — a soma das tropas: o dano mata uma a uma. Curar a ferida',
+      'a unidade: o HP de cada tropa e o da unidade, com a ferida: ' + await tx('o:g1:u:u1:hp'));
+    await campo(L, 'o:g1:u:u1:hp').scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12c-unidade');
+    // o "Próximo dia": a cura
+    await A(L, () => __mundo.App.selecionar([])); await espera(200);
+    await semAvisos(L);
+    await L.F.click('#diaMais');
+    await L.F.waitForSelector('dialog.dia-dl[open]');
+    const lc = () => textoDe(L, 'dialog.dia-dl[open] [data-k="dia:cura-linha:g1"]');
+    ok(await lc() === 'Cura 30% (médicos 20%, Enfermaria de Vila Alta 10%): +2 HP na tropa ferida de Lanceiros.' && await L.F.locator(dlg('[data-k="dia:cura:g1"]')).isChecked() && await L.F.locator(dlg('[data-k="dia:cura-linha:g2"]')).count() === 0,
+      'no dia: a cura da Hoste (6 → 4 do que falta), marcada; quem não cura, sem a linha: ' + await lc());
+    await L.F.locator(dlg('[data-k="dia:cura-linha:g1"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12c-dia-cura');
+    await L.F.uncheck(dlg('[data-k="dia:cura:g1"]')); await espera(120);
+    ok(await lc() === 'Cura 30% (médicos 20%, Enfermaria de Vila Alta 10%): +2 HP na tropa ferida de Lanceiros.', 'desmarcada, a linha fica como estava');
+    await L.F.check(dlg('[data-k="dia:cura:g1"]')); await espera(120);
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    const fer = () => A(L, () => __mundo.App.mapa.objs.find(o => o.id === 'g1').exe.unid.find(u => u.id === 'u1').fer);
+    ok(await fer() === 4 && /Cura: \+2 HP\./.test(await avisos(L)), 'aplicar: a ferida cura 2 (o aviso diz): ' + await avisos(L));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    ok(await fer() === 6, 'Desfazer: a ferida como estava');
+    // mudar o HP de cada tropa: a unidade volta inteira
+    await aba(L, 'selecao'); await selecionar('g1');
+    if (!(await campo(L, 'o:g1:u:u1:hpT').count())) await botao(L, 'o:g1:u:u1:abre');
+    const esc = async (k, v) => { const c = campo(L, k); await c.fill(v); await c.press('Enter'); await espera(200); };
+    await esc('o:g1:u:u1:hpT', '20');
+    ok(await A(L, () => (u => [u.hpT, u.fer])(__mundo.App.mapa.objs.find(o => o.id === 'g1').exe.unid.find(u => u.id === 'u1')).join()) === '20,0', 'mudar o HP de cada tropa: 20, inteira');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // "Curar a ferida" na unidade
+    await aba(L, 'selecao'); await selecionar('g1');
+    if (!(await campo(L, 'o:g1:u:u1:curar').count())) await botao(L, 'o:g1:u:u1:abre');
+    await botao(L, 'o:g1:u:u1:curar');
+    ok(await fer() === 0 && await tx('o:g1:u:u1:hp') === 'HP da unidade: 3.000 — a soma das tropas: o dano mata uma a uma.', '"Curar a ferida": a tropa inteira de novo');
+    // no celular: a unidade cabe
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    ok(await A(L, () => { const p = document.getElementById('pane'); return p.scrollWidth <= p.clientWidth + 1; }), 'no celular, a unidade cabe no painel');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

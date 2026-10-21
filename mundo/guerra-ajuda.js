@@ -91,10 +91,10 @@
       // os números
       {
         const max = Math.max(A.forca, B.forca), min = Math.min(A.forca, B.forca), qM = A.forca >= B.forca ? 'a' : 'b';
-        itens.numeros = [p('O lado com mais força ganha +4 a cada vez que dobra a força do outro (até +10); o menor não ganha nada. A força são as tropas, mas a unidade ferida luta menos (pela metade, no pior caso).'),
+        itens.numeros = [p('O lado com mais força ganha +4 a cada vez que dobra a força do outro (até +10); o menor não ganha nada. A força são as tropas (o HP de cada tropa só faz a unidade durar mais).'),
           ex(!(max > 0) ? 'nenhum dos lados tem tropas.' : !(min > 0) ? nome(qM) + ' luta sozinho: +10.' : A.forca === B.forca ? 'as forças são iguais (' + fmt(max, 0) + '): ninguém ganha.'
             : nome(qM) + ' tem força ' + fmt(max, 0) + ' contra ' + fmt(min, 0) + ' — ' + vezes(max / min) + ' — e ganha ' + sinal(qM === 'a' ? vA('numeros') : vB('numeros')) + '.'),
-          conta('Bônus = 4 × log₂(força maior ÷ força menor), arredondado, até 10.', 'Força = a soma, unidade por unidade, de tropas × (0,5 + 0,5 × HP ÷ HP máx.).')];
+          conta('Bônus = 4 × log₂(força maior ÷ força menor), arredondado, até 10.', 'Força = a soma das tropas de cada unidade (a tropa ferida conta).')];
       }
       itens.qualidade = [p('O ATQ médio de um lado (com os equipamentos) contra a DEF média do outro: quem bate mais forte do que o outro se defende ganha. Vai de −6 a +6.'),
         ex(lado2('ATQ ' + fmt(A.atq, 1) + ' contra DEF ' + fmt(B.def, 1) + ' → ' + sinal(vA('qualidade')), 'ATQ ' + fmt(B.atq, 1) + ' contra DEF ' + fmt(A.def, 1) + ' → ' + sinal(vB('qualidade')))),
@@ -159,12 +159,12 @@
       if (f) {
         const pr = g.perdas(f), ma = g.moralDepois(f, 'a', d.A.moral), mb = g.moralDepois(f, 'b', d.B.moral);
         const fr = f.vence ? ' A frente pode andar ' + g.AVANCO[f.tam] + (g.AVANCO[f.tam] === 1 ? ' hexágono' : ' hexágonos') + ' para o lado de ' + nome(f.vence === 'a' ? 'b' : 'a') + '.' : '';
-        exDep = ex(nome('a') + ' perde ' + pct(pr.a || 0) + ' e ' + nome('b') + ' ' + pct(pr.b || 0) + ' das tropas (e do HP de cada unidade). A moral de ' + nome('a') + ' vai de ' + d.A.moral + ' para ' + ma + '; a de ' + nome('b') + ', de ' + d.B.moral + ' para ' + mb + '.' + fr);
+        exDep = ex(nome('a') + ' perde ' + pct(pr.a || 0) + ' e ' + nome('b') + ' ' + pct(pr.b || 0) + ' do HP de cada unidade (as tropas morrem uma a uma). A moral de ' + nome('a') + ' vai de ' + d.A.moral + ' para ' + ma + '; a de ' + nome('b') + ', de ' + d.B.moral + ' para ' + mb + '.' + fr);
       }
       const P = g.PERDA_PERDEDOR, V = g.PERDA_VENCEDOR, MP = g.MORAL_PERDEDOR || [0, 1, 2, 3, 4], MV = g.MORAL_VENCEDOR || [0, 0, 1, 1, 2], DE = g.DANO_ESTRUTURA || [0, 2, 4, 7, 10];
       out.push(sec('depois', 'Depois da batalha',
         p('"Ver o depois…" mostra o que muda; nada muda no mapa até "Aplicar" (e dá para desfazer).'),
-        lista(['As perdas: cada unidade perde a mesma parte das tropas e do HP máximo, pelo resultado. A unidade que fica sem tropas ou sem HP sai do exército.',
+        lista(['As perdas: cada unidade perde a mesma parte do HP dela (a soma do HP das tropas), pelo resultado: as tropas morrem uma a uma, e a que fica ferida conta como viva. A unidade que fica sem tropas sai do exército.',
           'A moral: quem vence pode subir; quem perde cai, mais quanto maior a derrota.',
           'Os mantimentos: um dia de batalha gasta um dia de mantimentos.',
           'A fortificação: as máquinas de cerco de quem ataca sempre batem; se quem ataca vence, batem mais.',

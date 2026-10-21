@@ -61,13 +61,14 @@
   const log2 = x => Math.log(x) / Math.LN2;
 
   /* Um lado da batalha, a partir do grupo do Exército (o que entra na conta; o mapa não muda). As unidades sem tropas
-     não lutam. força da unidade = tropas × (0,5 + 0,5 × HP/HP máx.): a unidade ferida luta pela metade, no pior caso. */
+     não lutam. força da unidade = as tropas (lote 12, parte 12c: o HP de cada tropa só faz a unidade durar mais; a
+     ferida conta como viva). */
   function lado(mapa, g) {
     const exe = g && g.exe && !g.exe.pub ? g.exe : { cmd: { nome: '', b: 0 }, moral: 5, mant: 0, cons: null, fome: 0, unid: [] };
     const tipos = mapa && mapa.guerra ? mapa.guerra.tipos : [];
     const tipoDe = id => tipos.find(t => t.id === id) || null;
     const unid = exe.unid.filter(u => u.tropas > 0);
-    const forcaU = u => u.tropas * (0.5 + 0.5 * (u.hpMax ? limitar(u.hp / u.hpMax, 0, 1) : 1));
+    const forcaU = u => u.tropas;
     const atqU = u => u.atq + soma(u.equip || [], e => e.atq), defU = u => u.def + soma(u.equip || [], e => e.def);
     const F = soma(unid, forcaU);
     const media = f => (F > 0 ? soma(unid, u => forcaU(u) * f(u)) / F : 0);
@@ -244,9 +245,10 @@
       out.lados[q] = {
         g: g.id, nome: g.nome || 'Exército', perda: f,
         unid: exe.unid.map(u => {
-          // (a unidade acaba quando as tropas ou o HP chegam a zero: sai do exército ao aplicar)
-          const tropas = u.tropas > 0 ? Math.max(0, Math.round(u.tropas * (1 - f))) : 0, hp = Math.max(0, u.hp - Math.round(u.hpMax * f));
-          return { id: u.id, nome: u.nome, tropas0: u.tropas, tropas1: tropas, hp0: u.hp, hp1: hp, acaba: u.tropas > 0 && (tropas === 0 || hp === 0) };
+          // (lote 12, parte 12c) a perda sai do HP da unidade (a soma das tropas): as tropas morrem uma a uma, e a que
+          // fica ferida conta como viva. A unidade acaba quando as tropas chegam a zero (sai do exército ao aplicar).
+          const H = N.hpDaUnidade(u), hp = u.tropas > 0 ? Math.max(0, Math.round(H.hp * (1 - f))) : 0, x = N.tropasComHp(u.hpT, hp);
+          return { id: u.id, nome: u.nome, tropas0: u.tropas, tropas1: x.tropas, hp0: H.hp, hp1: hp, fer1: x.fer, acaba: u.tropas > 0 && x.tropas === 0 };
         }),
         moral0: exe.moral, moral1: moralDepois(bat.fim, q, exe.moral), mant0: exe.mant, mant1: Math.max(0, exe.mant - c),
       };
@@ -281,7 +283,7 @@
       const L = prev.lados[q], g = L && achar(L.g);
       if (!g || !g.exe) continue;
       const por = new Map(L.unid.map(u => [u.id, u]));
-      g.exe.unid = g.exe.unid.filter(u => !(por.get(u.id) || {}).acaba).map(u => { const x = por.get(u.id); if (x) { u.tropas = x.tropas1; u.hp = x.hp1; } return u; });
+      g.exe.unid = g.exe.unid.filter(u => !(por.get(u.id) || {}).acaba).map(u => { const x = por.get(u.id); if (x) { u.tropas = x.tropas1; u.fer = x.fer1 || 0; } return u; });
       g.exe.moral = L.moral1; g.exe.mant = L.mant1;
     }
     if (prev.estr) { const m = achar(prev.estr.m); if (m && m.estr) m.estr.hp = prev.estr.hp1; }

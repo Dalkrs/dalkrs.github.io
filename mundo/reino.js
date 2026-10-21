@@ -414,7 +414,7 @@
 
   /* ---------------- (parte 3) as construções ---------------- */
   // o catálogo de começo (pelo papel dos recursos; os terrenos e os níveis pelos ids de começo): 3 níveis cada
-  const NV = (custo, sem, prod, gasto, def) => ({ custo, sem, prod: prod || {}, gasto: gasto || {}, def: def || 0, ef: '' });
+  const NV = (custo, sem, prod, gasto, def, cura) => Object.assign({ custo, sem, prod: prod || {}, gasto: gasto || {}, def: def || 0, ef: '' }, cura ? { cura } : {});
   const CONSTRUCOES_INICIAIS = [
     // produção
     { id: 'fazenda', nome: 'Fazenda', ic: 'fazenda', esp: 1, exige: {}, niveis: [NV({ madeira: 10, moeda: 10 }, 2, { comida: 6 }), NV({ madeira: 15, moeda: 20 }, 2, { comida: 10 }), NV({ madeira: 25, moeda: 35 }, 3, { comida: 15 })] },
@@ -427,6 +427,8 @@
     { id: 'palicada', nome: 'Paliçada', ic: 'palicada', esp: 1, exige: {}, niveis: [NV({ madeira: 20 }, 2, null, null, 1), NV({ madeira: 30, moeda: 10 }, 2, null, null, 2), NV({ madeira: 40, moeda: 20 }, 3, null, null, 3)] },
     { id: 'muralha', nome: 'Muralha', ic: 'muralha', esp: 2, exige: { niv: 'cidade' }, niveis: [NV({ pedra: 40, moeda: 30 }, 6, null, null, 3), NV({ pedra: 60, moeda: 45 }, 6, null, null, 5), NV({ pedra: 90, moeda: 70, metal: 10 }, 8, null, null, 7)] },
     { id: 'quartel', nome: 'Quartel', ic: 'quartel', esp: 1, exige: {}, niveis: [NV({ madeira: 20, pedra: 10 }, 3, null, { comida: 3 }), NV({ madeira: 30, pedra: 20, moeda: 20 }, 3, null, { comida: 5 }), NV({ madeira: 40, pedra: 30, moeda: 40 }, 4, null, { comida: 8 })] },
+    // (lote 12, parte 12c) a Enfermaria: os exércitos na cidade curam a % do HP que falta, por dia
+    { id: 'enfermaria', nome: 'Enfermaria', ic: 'enfermaria', esp: 1, exige: {}, niveis: [NV({ madeira: 15, moeda: 15 }, 2, null, null, 0, 5), NV({ madeira: 20, pedra: 10, moeda: 25 }, 3, null, null, 0, 10), NV({ pedra: 25, moeda: 45 }, 4, null, null, 0, 15)] },
     { id: 'torre', nome: 'Torre de vigia', ic: 'torre', esp: 1, exige: {}, niveis: [NV({ madeira: 10, pedra: 10 }, 2), NV({ madeira: 15, pedra: 20 }, 2), NV({ pedra: 30, moeda: 20 }, 3)] },
     // cívico
     { id: 'templo', nome: 'Templo', ic: 'templo', esp: 1, exige: {}, niveis: [NV({ pedra: 20, moeda: 20 }, 4), NV({ pedra: 30, moeda: 35 }, 4), NV({ pedra: 50, moeda: 60 }, 6)] },
@@ -444,7 +446,12 @@
     const tab = t => { const o = {}; for (const p of Object.keys(t || {})) if (porPapel[p] && t[p]) o[porPapel[p]] = t[p]; return o; };
     return CONSTRUCOES_INICIAIS.map(c => ({ id: c.id, nome: c.nome, ic: c.ic, esp: c.esp,
       exige: { niv: c.exige.niv && nivIds.has(c.exige.niv) ? c.exige.niv : null, ter: (c.exige.ter || []).filter(t => terIds.has(t)), cons: null },
-      niveis: c.niveis.map(n => ({ custo: tab(n.custo), sem: n.sem, prod: tab(n.prod), gasto: tab(n.gasto), def: n.def, ef: n.ef })) }));
+      niveis: c.niveis.map(n => Object.assign({ custo: tab(n.custo), sem: n.sem, prod: tab(n.prod), gasto: tab(n.gasto), def: n.def, ef: n.ef }, n.cura ? { cura: n.cura } : {})) }));
+  }
+  // (lote 12, parte 12c) as construções do catálogo pronto que o mapa ainda não tem (pelo id; a Enfermaria, nos de antes)
+  function construcoesQueFaltam(m) {
+    const e = ecoDe(m), tem = new Set(e && Array.isArray(e.cons) ? e.cons.map(c => c.id) : []);
+    return e ? catalogoPronto(m, e).filter(c => !tem.has(c.id)) : [];
   }
   const tipoDe = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && Array.isArray(e.cons) && id ? e.cons.find(c => c.id === id) || null : null; };
   const idxNivel = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && id ? e.niv.findIndex(n => n.id === id) : -1; };
@@ -541,18 +548,21 @@
   }
   // o que as construções prontas de um assentamento fazem por semana: { prod, gasto (negativo), def (até 20) }
   function efeitoDasConstrucoes(m, o) {
-    const out = { prod: {}, gasto: {}, def: 0 };
+    const out = { prod: {}, gasto: {}, def: 0, cura: 0 };
     for (const c of (ehObj(o) && ehObj(o.ass) && o.ass.cons) || []) {
       const t = tipoDe(m, c.t);
       if (!t || c.n < 1) continue;
       const nv = t.niveis[Math.min(c.n, t.niveis.length) - 1];
-      somar(out.prod, nv.prod); somar(out.gasto, nv.gasto, -1); out.def += nv.def;
+      somar(out.prod, nv.prod); somar(out.gasto, nv.gasto, -1); out.def += nv.def; out.cura += nv.cura || 0;
     }
     out.def = Math.min(20, out.def);
+    out.cura = Math.min(100, out.cura);                          // (lote 12, parte 12c) a Enfermaria
     return out;
   }
   // a defesa que as construções somam na fortificação do marcador (só com a economia ligada)
   const defDoAssentamento = (m, o) => (ecoDe(m) && ehObj(o) && o.k === 'm' ? efeitoDasConstrucoes(m, o).def : 0);
+  // (lote 12, parte 12c) a cura das construções do assentamento (a Enfermaria): a % por dia, para quem está na cidade
+  const curaDoAssentamento = (m, o) => (ecoDe(m) && ehObj(o) && o.k === 'm' ? efeitoDasConstrucoes(m, o).cura : 0);
   // a produção da sede do clã por semana (os números do mestre; cons: as construções do clã que existem — sem a lista, todas)
   function producaoDoCla(m, o, cons) {
     const out = {}, c = ehObj(o) && ehObj(o.ass) ? o.ass.cla : null;
@@ -870,8 +880,8 @@
     RECURSOS_INICIAIS, TERRENO_INICIAL, NIVEIS_INICIAIS, ecoDe, somar, ecoInicial, recursosNaFaccao, ligarEconomia,
     producaoDaPopulacao, distribuir, nivelDaDivisao, juntarAoMundo, populacaoDaFaccao, GUILDAS_INICIAIS, guildasProntas, guildaDoModelo, guildasDe, partesDaGuilda,
     assentamentosDe, nivelDe, producaoPropria, producaoDaRegiao, producaoPorFaccao, assentamentosDaRegiao,
-    CONSTRUCOES_INICIAIS, catalogoPronto, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
-    cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, producaoDoCla,
+    CONSTRUCOES_INICIAIS, catalogoPronto, construcoesQueFaltam, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
+    cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, curaDoAssentamento, producaoDoCla,
     semanaN, semanasPendentes, diasDaSemana, manutencaoDe, semanaPrevia, aplicarSemana,
     verDentro, dentroParaJogadores, economiaDosJogadores, resumoDaSemana };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;

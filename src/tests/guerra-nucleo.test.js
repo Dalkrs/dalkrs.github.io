@@ -71,7 +71,7 @@ function mapaGuerra(extra) {
   const m = N.normalizarMapa({ guerra: { tipos: [{ id: 'cav', nome: 'Cavalaria' }] }, objs: [
     { k: 'g', id: 'ga', x: 10, y: 10, tipo: 'exercito', exe: { cmd: { nome: ' Rei ', b: 50, ficha: 'pc_1' }, moral: 14, mant: -3, cons: '', fome: 2, unid: [
       { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hp: 150, hpMax: 120, atq: 150, def: -150, magos: 3, cerco: 2, equip: [{ nome: 'Lanças', atq: 2 }, 'lixo'], oc: true },
-      { id: 'u1', tipo: 'nada', tropas: -5 }, {}, 'lixo'] } },
+      { id: 'u1', tipo: 'nada', tropas: -5, hpT: 10, fer: 3 }, {}, { id: 'u4', tropas: 20, hpT: 10, fer: 15, cura: 250 }, { id: 'u6', tropas: 3, hpT: 2.4, fer: 1, cura: -3 }, 'lixo'] } },
     { k: 'g', id: 'gc', x: 20, y: 20, tipo: 'caravana', exe: { unid: [{ tropas: 5 }] } },
     { k: 'g', id: 'gd', x: 30, y: 30, exe: { unid: [] } },
     { k: 'g', id: 'ge', x: 40, y: 40, tipo: 'exercito', exe: { moral: 'x', cons: 7, cmd: 'lixo', unid: 'lixo' } },
@@ -79,11 +79,15 @@ function mapaGuerra(extra) {
   const e = achar(m, 'ga').exe;
   eq(e.cmd, { nome: 'Rei', b: 20, ficha: 'pc_1' }, 'o comandante: o nome, o bônus (até ±20) e a ficha ligada');
   eq([e.moral, e.mant, e.cons, e.fome], [10, 0, null, 2], 'a moral vai de 0 a 10, os mantimentos não ficam negativos, o consumo vazio é o de começo (null)');
-  eq(e.unid[0], { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hp: 120, hpMax: 120, atq: 99, def: -99, magos: 3, cerco: 2, equip: [{ nome: 'Lanças', atq: 2, def: 0 }], oc: true },
-    'a unidade: o HP não passa do máximo, ATQ e DEF até ±99, o equipamento com ATQ e DEF, escondida');
-  eq(e.unid.slice(1).map(u => [u.nome, u.tipo, u.tropas, u.hp, u.hpMax, u.atq, u.def, u.magos, u.cerco, u.equip.length]), [['Unidade 2', null, 0, 100, 100, 0, 0, 0, 0, 0], ['Unidade 3', null, 100, 100, 100, 0, 0, 0, 0, 0]],
-    'sem nada: 100 tropas, HP 100; o tipo que não existe vira "sem tipo"; tropas negativas viram zero; o lixo sai');
-  ok(new Set(e.unid.map(u => u.id)).size === 3, 'os ids das unidades não se repetem');
+  eq(e.unid[0], { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hpT: 1, fer: 0, atq: 99, def: -99, magos: 3, cura: 0, cerco: 2, equip: [{ nome: 'Lanças', atq: 2, def: 0 }], oc: true },
+    'a unidade: o HP de antes (separado) sai — 1 de HP por tropa, inteira —, ATQ e DEF até ±99, o equipamento com ATQ e DEF, escondida');
+  eq(e.unid.slice(1).map(u => [u.nome, u.tipo, u.tropas, u.hpT, u.fer, u.atq, u.def, u.magos, u.cura, u.cerco, u.equip.length]),
+    [['Unidade 2', null, 0, 10, 0, 0, 0, 0, 0, 0, 0], ['Unidade 3', null, 100, 1, 0, 0, 0, 0, 0, 0, 0], ['Unidade 4', null, 20, 10, 9, 0, 0, 0, 100, 0, 0], ['Unidade 5', null, 3, 2, 1, 0, 0, 0, 0, 0, 0]],
+    'sem nada: 100 tropas de 1 de HP; o tipo que não existe vira "sem tipo"; tropas negativas viram zero (sem a ferida); a ferida, menos que o HP de uma tropa; a cura de 0 a 100; o lixo sai');
+  ok(new Set(e.unid.map(u => u.id)).size === 5, 'os ids das unidades não se repetem');
+  eq([N.hpDaUnidade(e.unid[3]), N.hpDaUnidade(e.unid[1]), N.hpDaUnidade({ tropas: 98, hpT: 10, fer: 5 }), N.tropasComHp(10, 975), N.tropasComHp(10, 980), N.tropasComHp(10, 0), N.tropasComHp(1, 12.4), N.tropasComHp(0, 3)],
+    [{ hp: 191, max: 200 }, { hp: 0, max: 0 }, { hp: 975, max: 980 }, { tropas: 98, fer: 5 }, { tropas: 98, fer: 0 }, { tropas: 0, fer: 0 }, { tropas: 12, fer: 0 }, { tropas: 3, fer: 0 }],
+    'o HP da unidade (a soma das tropas, menos a ferida) e as tropas de um HP (a ferida conta como viva)');
   ok(!('exe' in achar(m, 'gc')) && !('exe' in achar(m, 'gd')), 'só o grupo do tipo Exército tem exército');
   eq(achar(m, 'ge').exe, { cmd: { nome: '', b: 0, ficha: null }, moral: 5, mant: 0, cons: 7, fome: 0, unid: [] }, 'o exército com lixo: os padrões (moral 5), e o consumo escolhido fica');
   const muitas = N.normalizarMapa({ objs: [{ k: 'g', id: 'g', x: 1, y: 1, tipo: 'exercito', exe: { unid: Array.from({ length: 50 }, () => ({ equip: Array.from({ length: 20 }, () => ({})) })) } }] });
@@ -160,8 +164,8 @@ const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]
   eq([A.tropas, A.forca, Math.round(A.atq * 1000) / 1000, Math.round(A.def * 1000) / 1000, A.magos, A.cerco, A.dist, A.moral, A.cmd, A.cmdNome], [1200, 1200, 5.333, 3.333, 9, 0, 400, 7, 2, 'Rei Aldar'],
     'o lado A: as tropas, a força, ATQ e DEF médios (pela força), os magos, a força de longe (só dos Arqueiros), a moral e o comandante');
   eq([B.tropas, B.forca, B.atq, B.def, B.cerco, B.dist], [900, 900, 5, 6, 2, 0], 'o lado B');
-  const ferido = G.lado(m, { id: 'x', exe: { cmd: { nome: '', b: 0 }, moral: 5, unid: [{ tropas: 1000, hp: 50, hpMax: 100, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 0, hp: 100, hpMax: 100, atq: 50, def: 50, magos: 50, cerco: 9, equip: [] }] } });
-  eq([ferido.forca, ferido.atq, ferido.def, ferido.tropas, ferido.magos, ferido.cerco], [750, 5, 2, 1000, 0, 0], 'a unidade ferida luta menos (HP 50% → 75% da força); o equipamento soma no ATQ e na DEF; a unidade sem tropas não luta (nem os magos e o cerco dela)');
+  const ferido = G.lado(m, { id: 'x', exe: { cmd: { nome: '', b: 0 }, moral: 5, unid: [{ tropas: 1000, hpT: 10, fer: 5, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 10, hpT: 50, fer: 0, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 0, hpT: 1, fer: 0, atq: 50, def: 50, magos: 50, cerco: 9, equip: [] }] } });
+  eq([ferido.forca, ferido.atq, ferido.def, ferido.tropas, ferido.magos, ferido.cerco], [1010, 5, 2, 1010, 0, 0], 'a força são as tropas (a ferida conta; o HP de cada tropa não pesa); o equipamento soma no ATQ e na DEF; a unidade sem tropas não luta (nem os magos e o cerco dela)');
   eq(G.lado(m, { id: 'y', exe: { pub: true, unid: [{ id: 'u', nome: 'U' }] } }).forca, 0, 'o exército dos jogadores (sem números) não tem força');
   eq([G.numeros(0, 5), G.numeros(5, 0), G.numeros(100, 100), G.numeros(150, 100), G.numeros(200, 100), G.numeros(400, 100), G.numeros(800, 100), G.numeros(100, 200)], [0, 10, 0, 2, 4, 8, 10, 0],
     'os números: +4 a cada vez que dobra o outro (até 10); o menor, nada');
@@ -240,9 +244,9 @@ const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]
   const antes = j(m), prev = G.depois(m, bat);
   ok(j(m) === antes, 'a prévia não muda o mapa');
   const La = prev.lados.a, Lb = prev.lados.b;
-  eq([La.perda, La.unid.map(u => [u.tropas0, u.tropas1, u.hp0, u.hp1, u.acaba]), La.moral0, La.moral1, La.mant0, La.mant1], [0.22, [[800, 624, 100, 78, false], [400, 312, 100, 78, false]], 7, 5, 40, 28],
-    'quem perdeu (A): 22% das tropas e do HP, a moral cai 2, e um dia de mantimentos (12) vai na batalha');
-  eq([Lb.perda, Lb.unid.map(u => [u.tropas1, u.hp1]), Lb.moral1, Lb.mant1], [0.07, [[837, 93]], 6, 3], 'quem venceu (B): perde pouco, a moral sobe');
+  eq([La.perda, La.unid.map(u => [u.tropas0, u.tropas1, u.hp0, u.hp1, u.fer1, u.acaba]), La.moral0, La.moral1, La.mant0, La.mant1], [0.22, [[800, 624, 800, 624, 0, false], [400, 312, 400, 312, 0, false]], 7, 5, 40, 28],
+    'quem perdeu (A): 22% do HP das unidades (1 por tropa: 22% das tropas), a moral cai 2, e um dia de mantimentos (12) vai na batalha');
+  eq([Lb.perda, Lb.unid.map(u => [u.tropas1, u.hp1]), Lb.moral1, Lb.mant1], [0.07, [[837, 837]], 6, 3], 'quem venceu (B): perde pouco, a moral sobe');
   eq(prev.estr, { m: 'cast', nome: 'Muralhas', hp0: 60, hp1: 60, hpMax: 60, dano: 0 }, 'a fortificação de quem venceu, contra quem não tem cerco: sem dano');
   eq(prev.hex, { k: hexB, est: 'd', antes: null }, 'o hexágono da batalha fica destruído');
   ok(prev.frente && prev.frente.n === 2 && j(prev.frente.pts1[0]) === j([730, 200]) && j(prev.frente.pts1[prev.frente.pts1.length - 1]) === j([730, 1000]), 'a frente anda, e as pontas ficam');
@@ -254,18 +258,21 @@ const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]
   const dano = f => G.depois(mC, Object.assign({}, bat, { fim: f, frente: null })).estr;
   eq([dano({ vence: 'a', tam: 2, como: 'dados' }).dano, dano({ vence: 'a', tam: 2, como: 'dados' }).hp1, dano({ vence: 'b', tam: 1, como: 'dados' }).dano, dano({ vence: 'a', tam: 4, como: 'dados' }).hp1], [10, 50, 3, 44],
     'o cerco de quem ataca: vencendo, 2 × as máquinas + o tamanho (3 × 2 + 4 = 10); perdendo, só as máquinas (3)');
-  // a unidade que acaba
-  const mU = N.normalizarMapa(Object.assign({}, m, { objs: m.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.concat([{ id: 'u5', nome: 'Feridos', tropas: 50, hp: 10, hpMax: 100 }]) }) }) : o)) }));
+  // (lote 12, parte 12c) o HP de cada tropa: a perda sai da soma, as tropas morrem uma a uma (a ferida fica)
+  const mU = N.normalizarMapa(Object.assign({}, m, { objs: m.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.concat([{ id: 'u5', nome: 'Ogros', tropas: 50, hpT: 10, fer: 3 }, { id: 'u6', nome: 'Um', tropas: 1, hpT: 10, fer: 9 }]) }) }) : o)) }));
   const pU = G.depois(mU, Object.assign({}, bat, { frente: null }));
-  eq(pU.lados.a.unid.find(u => u.id === 'u5'), { id: 'u5', nome: 'Feridos', tropas0: 50, tropas1: 39, hp0: 10, hp1: 0, acaba: true }, 'a unidade que chega a HP 0 acaba');
-  const dU = N.copia(mU);
-  G.aplicar(dU, pU, null);
-  ok(!achar(dU, 'ga').exe.unid.some(u => u.id === 'u5') && achar(dU, 'ga').exe.unid.length === 2, 'ao aplicar, a unidade que acabou sai do exército');
+  eq([pU.lados.a.unid.find(u => u.id === 'u5'), pU.lados.a.unid.find(u => u.id === 'u6')],
+    [{ id: 'u5', nome: 'Ogros', tropas0: 50, tropas1: 39, hp0: 497, hp1: 388, fer1: 2, acaba: false }, { id: 'u6', nome: 'Um', tropas0: 1, tropas1: 1, hp0: 1, hp1: 1, fer1: 9, acaba: false }],
+    'as unidades de 10 de HP por tropa: 22% de 497 (388: 39 tropas, uma ferida com 8 de 10); a de 1 de HP fica (o arredondado)');
+  const dU = N.copia(mU), pX = JSON.parse(j(pU));
+  pX.lados.a.unid.find(u => u.id === 'u6').acaba = true;
+  G.aplicar(dU, pX, null);
+  eq([achar(dU, 'ga').exe.unid.map(u => u.id), (u => [u.tropas, u.fer])(achar(dU, 'ga').exe.unid.find(u => u.id === 'u5'))], [['u1', 'u2', 'u5'], [39, 2]], 'ao aplicar: as tropas e a ferida; a unidade que acabou sai do exército');
   // o aplicar
   const d = N.copia(m), reg = { id: 'bt_1', d: 0, nome: 'Hoste de Aldar × Legião do Vale', a: { nome: 'Hoste de Aldar', g: 'ga', fac: 'fa' }, b: { nome: 'Legião do Vale', g: 'gb', fac: 'fb' }, modo: 'd100', mom: [{ k: 'ch', da: 40, db: 70, ta: 90, tb: 115 }], fim, notas: ['A cavalaria atolou.'], hex: hexB };
   G.aplicar(d, prev, reg);
   const dn = N.normalizarMapa(d);
-  eq([achar(dn, 'ga').exe.unid.map(u => [u.tropas, u.hp]), achar(dn, 'ga').exe.moral, achar(dn, 'ga').exe.mant, achar(dn, 'gb').exe.unid[0].tropas, achar(dn, 'gb').exe.moral], [[[624, 78], [312, 78]], 5, 28, 837, 6], 'aplicar: as tropas, o HP, a moral e os mantimentos de cada lado');
+  eq([achar(dn, 'ga').exe.unid.map(u => [u.tropas, u.fer]), achar(dn, 'ga').exe.moral, achar(dn, 'ga').exe.mant, achar(dn, 'gb').exe.unid[0].tropas, achar(dn, 'gb').exe.moral], [[[624, 0], [312, 0]], 5, 28, 837, 6], 'aplicar: as tropas, a ferida, a moral e os mantimentos de cada lado');
   eq([dn.guerra.hexes[hexB], dn.guerra.bats.length, dn.guerra.bats[0].notas, dn.guerra.bats[0].hex], ['d', 1, ['A cavalaria atolou.'], hexB], 'o hexágono marcado e a batalha no histórico (com as notas e o hexágono)');
   eq([achar(dn, 'fr').pts, achar(dn, 'fr').fases.length, achar(dn, 'fr').fases[0].dia], [[[730, 200], [730, 1000]], 1, 0], 'a frente ganha a fase de hoje (a linha de antes continua valendo nos dias de antes)');
   G.aplicar(d, prev, Object.assign({}, reg, { id: 'bt_2' }));

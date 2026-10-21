@@ -126,13 +126,20 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     const k = c => `o:gc:u:${u.id}:${c}`;
     await escrever(L, k('nome'), 'Salteadores');
     await escolher(L, k('tipo'), T.Lanceiros);
-    for (const [c, v] of [['tropas', '150'], ['atq', '3'], ['def', '2'], ['magos', '1'], ['cerco', '1'], ['hpMax', '80']]) await escrever(L, k(c), v);
+    for (const [c, v] of [['tropas', '150'], ['atq', '3'], ['def', '2'], ['magos', '1'], ['cerco', '1'], ['hpT', '4'], ['cura', '15']]) await escrever(L, k(c), v);
     await botao(L, k('eq:novo'));
     await escrever(L, k('eq:0:nome'), 'Bestas');
     await escrever(L, k('eq:0:atq'), '2');
     await campo(L, k('oc')).check(); await espera(200);
     e = (await obj(L, 'gc')).exe;
-    ok(j(e.unid[0]) === j({ id: u.id, nome: 'Salteadores', tipo: T.Lanceiros, tropas: 150, hp: 80, hpMax: 80, atq: 3, def: 2, magos: 1, cerco: 1, equip: [{ nome: 'Bestas', atq: 2, def: 0 }], oc: true }), 'a unidade: o nome, o tipo, os números (o HP acompanha o máximo), o equipamento e escondida: ' + j(e.unid[0]));
+    ok(j(e.unid[0]) === j({ id: u.id, nome: 'Salteadores', tipo: T.Lanceiros, tropas: 150, hpT: 4, fer: 0, atq: 3, def: 2, magos: 1, cura: 15, cerco: 1, equip: [{ nome: 'Bestas', atq: 2, def: 0 }], oc: true }), 'a unidade: o nome, o tipo, os números (o HP de cada tropa, a cura), o equipamento e escondida: ' + j(e.unid[0]));
+    ok(await A(L, x => document.querySelector(`#pane [data-k="${x}"]`).innerText.replace(/\s+/g, ' ').trim(), k('hp')) === 'HP da unidade: 600 — a soma das tropas: o dano mata uma a uma.', 'o HP da unidade: a soma das tropas (150 × 4)');
+    // (lote 12, parte 12c) a ferida: o HP com o que falta, e "Curar a ferida"
+    await A(L, x => __mundo.App.mudar('ferir', m => { m.objs.find(o => o.id === 'gc').exe.unid[0].fer = 3; }), null); await espera(250);
+    ok(await A(L, x => document.querySelector(`#pane [data-k="${x}"]`).innerText.replace(/\s+/g, ' ').trim(), k('hp')) === 'HP da unidade: 597 de 600 · uma tropa ferida (1 de 4) — a soma das tropas: o dano mata uma a uma. Curar a ferida', 'a ferida: o HP com o que falta e o botão: ' + await A(L, x => document.querySelector(`#pane [data-k="${x}"]`).innerText, k('hp')));
+    await botao(L, k('curar'));
+    ok((await obj(L, 'gc')).exe.unid[0].fer === 0 && await rotulo(L) === 'curar a ferida' && await campo(L, k('curar')).count() === 0, '"Curar a ferida": a tropa volta inteira (o botão sai)');
+    await escrever(L, k('hpT'), '1'); await escrever(L, k('cura'), '0');
     await botao(L, k('abre'));
     const resumo = await A(L, k => document.querySelector(`#pane [data-k="${k}"]`).innerText.replace(/\s+/g, ' '), k('abre'));
     ok(/Salteadores 150 tropas · Lanceiros · ATQ 5 · DEF 2 · escondida/.test(resumo), 'fechada, a unidade mostra o resumo (o ATQ com o equipamento): ' + resumo);
@@ -297,7 +304,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     // no depois: o "?" das perdas
     await naBatalha(L, 'gb:depois');
     await naBatalha(L, 'gb:ajuda:depois');
-    ok(/Nesta batalha: Hoste de Aldar perde 6% e Legião do Vale 35% das tropas \(e do HP de cada unidade\)\. A moral de Hoste de Aldar vai de 7 para 8; a de Legião do Vale, de 5 para 2\. A frente pode andar 3 hexágonos para o lado de Legião do Vale\./.test((await parte('depois')).txt),
+    ok(/Nesta batalha: Hoste de Aldar perde 6% e Legião do Vale 35% do HP de cada unidade \(as tropas morrem uma a uma\)\. A moral de Hoste de Aldar vai de 7 para 8; a de Legião do Vale, de 5 para 2\. A frente pode andar 3 hexágonos para o lado de Legião do Vale\./.test((await parte('depois')).txt),
       'no depois, o "?" explica as perdas, a moral e a frente desta batalha: ' + (await parte('depois')).txt.slice(0, 200));
     await L.P.keyboard.press('Escape'); await espera(200);
     await naBatalha(L, 'gb:voltar');
@@ -308,7 +315,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     const antes = await A(L, () => JSON.stringify(__mundo.App.mapa));
     await naBatalha(L, 'gb:depois');
     let txt = await textoBatalha(L);
-    ok(/Hoste de Aldar — perde 6%/i.test(txt) && /Cavalaria pesada 800 → 752 100 → 94/.test(txt) && /Legião do Vale — perde 35%/i.test(txt) && /Lanceiros 900 → 585 100 → 65/.test(txt), 'a prévia: as tropas e o HP de cada unidade');
+    ok(/Hoste de Aldar — perde 6%/i.test(txt) && /Cavalaria pesada 800 → 752 800 → 752/.test(txt) && /Legião do Vale — perde 35%/i.test(txt) && /Lanceiros 900 → 585 900 → 585/.test(txt), 'a prévia: as tropas e o HP de cada unidade (1 de HP por tropa)');
     ok(/Moral 7 → 8 \(animada\)|Moral 7 → 8 \(feroz\)/.test(txt) && /Moral 5 → 2 \(abalada\)/.test(txt) && /mantimentos 40 → 28/.test(txt) && /HP 60 → 53 de 60 \(dano 7\)/.test(txt), 'a moral, os mantimentos (um dia de batalha) e as muralhas (dano 7)');
     const b = await bat(L);
     ok(b.frente && b.frente.f === 'fr' && b.frente.n === 3 && await gb(L, 'gb:frente').inputValue() === 'fr' && /a linha anda 3 hexágonos para o lado de quem perdeu/.test(txt), 'a frente dos dois lados anda 3 hexágonos (vitória clara), a partir de hoje');
@@ -327,7 +334,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     await naBatalha(L, 'gb:aplicar');
     const m = await A(L, () => __mundo.App.mapa), ga = m.objs.find(o => o.id === 'ga'), gB = m.objs.find(o => o.id === 'gb'), fr = m.objs.find(o => o.id === 'fr');
     ok(!(await janelaAberta(L)) && await rotulo(L) === 'a batalha Hoste de Aldar × Legião do Vale' && /Batalha aplicada: Vitória clara de Hoste de Aldar\./.test(await avisos(L)), 'aplicar: a janela fecha, um passo de desfazer, o aviso');
-    ok(j(ga.exe.unid.map(u => [u.tropas, u.hp])) === j([[752, 94], [376, 94]]) && ga.exe.moral === 8 && ga.exe.mant === 28 && j(gB.exe.unid.map(u => [u.tropas, u.hp])) === j([[585, 65]]) && gB.exe.moral === 2 && gB.exe.mant === 3, 'as tropas, o HP, a moral e os mantimentos de cada lado');
+    ok(j(ga.exe.unid.map(u => [u.tropas, u.fer])) === j([[752, 0], [376, 0]]) && ga.exe.moral === 8 && ga.exe.mant === 28 && j(gB.exe.unid.map(u => [u.tropas, u.fer])) === j([[585, 0]]) && gB.exe.moral === 2 && gB.exe.mant === 3, 'as tropas, a ferida, a moral e os mantimentos de cada lado');
     ok(m.objs.find(o => o.id === 'cast').estr.hp === 53 && m.guerra.hexes[hexBat] === 'c', 'as muralhas danificadas e o hexágono corrompido');
     const xs = fr.fases && fr.fases[0] ? fr.fases[0].pts.map(p => p[0]) : [];
     ok(fr.fases && fr.fases.length === 1 && fr.fases[0].dia === 0 && Math.max(...xs) > 730 + 40 && j(fr.pts) === j([[730, 200], [730, 1000]]), 'a frente: a fase de hoje anda para o lado de quem perdeu (a Legião, à direita); a linha de antes fica');

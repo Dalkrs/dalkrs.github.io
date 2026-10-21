@@ -975,13 +975,14 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   unidades dele sem tipo.
 - **O exército** é um grupo do tipo Exército (`exe` no grupo). A seção Exército: o comandante (o nome e o bônus no
   d20; a ficha ligada, opcional, dá o nome e o retrato), a moral (0 a 10; 5 é firme), os mantimentos e o consumo por dia
-  (um por cem soldados, ou o que o mestre escolher) e as unidades (até 40): nome, tipo, tropas, HP e HP máximo, ATQ,
+  (um por cem soldados, ou o que o mestre escolher) e as unidades (até 40): nome, tipo, tropas, HP e HP máximo (no lote
+  12, parte 12c, viram o HP de cada tropa), ATQ,
   DEF, magos, máquinas de cerco, equipamentos (até 12, cada um com ATQ e DEF) e "escondida dos jogadores"; duplicar e
   apagar (com Desfazer).
 - **A fortificação** é do marcador (`estr`): o nome, a DEF (0 a 20: o bônus de quem defende ali, pelo HP que sobra), o
   HP (danificada, em ruínas) e Consertar. As máquinas de cerco de quem ataca tiram da DEF e danificam.
 - **A batalha** (uma janela, aberta pelo exército, pela aba ou pelo aviso do encontro): os dois lados (a força de cada
-  unidade é tropas × de 50% a 100%, pelo HP), quem defende uma fortificação a até um hexágono (escolhido sozinho), a
+  unidade é tropas × de 50% a 100%, pelo HP; no lote 12, parte 12c, só as tropas), quem defende uma fortificação a até um hexágono (escolhido sozinho), a
   tabela lado a lado e os bônus de cada um, na escala do d20 — números (+4 a cada vez que dobra o outro, até 10), ATQ
   contra DEF (até ±6), os tipos (a vantagem pesada pela força de cada tipo), a moral (− 5), o comandante, os magos
   (√magos, até 6), à distância (+3 se só um lado tem; com os dois, os números da força de longe, até 6), a fortificação
@@ -1459,6 +1460,18 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   joga** vê as listras e "Ocupada por … desde …" (de uma facção escondida, "Ocupada desde …", as listras cinza). No mapa:
   `ocup: { fac, d }` na região e no marcador (`normOcup`; `controleDaRegiao`) e `guerra.pres` (a contagem dos dias, que
   não vai para os jogadores).
+- **A vida das tropas e a cura** (lote 12, parte 12c). Cada unidade tem o **HP de cada tropa** (1 de começo; as unidades
+  de antes, com o HP e o HP máximo separados, começam inteiras com 1 por tropa): o HP da unidade é a soma das tropas, e
+  o dano (a batalha, o desgaste do dia) sai dessa soma — as tropas morrem uma a uma, e a que fica ferida conta como viva
+  (na força e na comida). A força na batalha são as tropas (a unidade ferida não luta mais pela metade); a comida, por
+  tropa. A unidade mostra o HP dela ("2.994 de 3.000 · uma tropa ferida (4 de 10)") e "Curar a ferida". A **cura** só
+  recupera a tropa ferida (as que caíram não voltam): no "Próximo dia", cada exército cura a % do HP que falta — a soma
+  da **Cura (%)** das unidades de médicos e alquimistas (em qualquer lugar) e a da **Enfermaria** (construção nova: +5%,
+  +10%, +15%) da cidade onde ele está (o hexágono dela ou um colado, na terra da facção ou de uma aliada); pelo menos 1
+  de HP por dia; a linha da cura tem a caixa. No exército, a cura dali; na cidade, a nota da Enfermaria. O catálogo
+  oferece "Pôr as novas do catálogo pronto" nos mapas de antes (a Enfermaria), e o editor de construção tem a cura de
+  cada nível. No mapa: `hpT`, `fer` e `cura` na unidade (`hpDaUnidade`, `tropasComHp`) e `cura` no nível da construção
+  (`efeitoDasConstrucoes`, `curaDoAssentamento`; `MundoCampanha.enfermariaPerto`).
 
 ### A Árvore (lote 6)
 
@@ -2634,7 +2647,14 @@ aplicar, a produção para quem ocupa (o Livro e a população, da dona), a forr
 mão, as terras na paz e as notícias; `mundo-lote12` com `SO=ocupacao`, as propostas no dia (desmarcar sem nada mudar de
 lugar, a notícia com a prévia, aplicar, Desfazer e Refazer), as listras, a seção da região (tirar, anexar com a notícia,
 marcar), a aba Guerra e a regra dos dias, quem joga (também com a facção escondida), a paz com as terras e o celular;
-`mundo-lote8.rede`, a ocupação na projeção (sem a contagem) e no mapa do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+`mundo-lote8.rede`, a ocupação na projeção (sem a contagem) e no mapa do jogador. Na parte 12c (a vida das tropas),
+`lote12-nucleo` confere a Enfermaria no catálogo (a cura de cada nível, as que faltam, a cura da cidade até 100%), a
+Enfermaria perto (casa, aliada, ocupada, colada, sem a grade), a cura no dia (os médicos e a Enfermaria, vários dias,
+desmarcada, os médicos que acabam, a ferida do desgaste), o desgaste no HP e aplicar; `guerra-nucleo`, a unidade
+normalizada (o HP de cada tropa, a ferida, a cura), a força pelas tropas e a perda da batalha no HP (as tropas uma a
+uma, a ferida); `mundo-lote12` com `SO=vida`, "Pôr as novas do catálogo pronto", o editor (a cura), a nota da cidade,
+o HP da unidade e "Curar a ferida", a cura no exército e no dia (desmarcar, aplicar, Desfazer) e o celular;
+`mundo-guerra`, os campos novos da unidade e a ferida. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

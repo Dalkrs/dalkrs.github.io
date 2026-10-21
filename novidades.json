@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-5",
+      "data": "2026-10-21",
+      "titulo": "A vida das tropas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: cada unidade do exército tem o “HP de cada tropa” (1 de começo): o HP da unidade é a soma das tropas, e o dano mata as tropas uma a uma, sem acabar com a unidade de uma vez. A unidade mostra o HP e a tropa ferida, com “Curar a ferida”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a cura — as unidades de médicos e alquimistas têm a “Cura (%)”, e a Enfermaria (construção nova) cura quem está na cidade. No “Próximo dia”, a tropa ferida recupera essa % do HP que falta. Nos mapas de antes, o catálogo oferece pôr a Enfermaria."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: na batalha, a força de cada unidade são as tropas (o HP só faz a unidade durar mais), e a perda sai do HP das unidades."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-4",
       "data": "2026-10-21",
       "titulo": "A ocupação",
