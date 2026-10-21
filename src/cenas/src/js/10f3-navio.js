@@ -203,8 +203,9 @@ const Navio = (() => {
       const d = op.danificado;
       g.save(); caminho(n.casco); g.clip();
       for (let i = 0; i < 4; i++) { const hx = X(L * (0.2 + rnd() * 0.6)), hy = Y(B * (0.25 + rnd() * 0.5)); g.fillStyle = 'rgba(12,16,20,0.85)'; g.beginPath(); for (let k = 0; k < 7; k++) { const an = (k / 7) * TAU, rr = c * (0.35 + rnd() * 0.45); const px = hx * c + Math.cos(an) * rr, py = hy * c + Math.sin(an) * rr * 0.7; if (k) g.lineTo(px, py); else g.moveTo(px, py); } g.closePath(); g.fill(); }
-      const mar = g.createLinearGradient(0, (d.mar === 'n' ? n.y : n.y + B) * c, 0, (n.y + B / 2) * c);
-      mar.addColorStop(0, 'rgba(29,74,107,0.85)'); mar.addColorStop(1, 'rgba(29,74,107,0)');
+      // (lote 13, parte 13b: no encalhado na areia, d.chao — [a cor de fora, a mesma sem nada] — é a areia que entra)
+      const mar = g.createLinearGradient(0, (d.mar === 'n' ? n.y : n.y + B) * c, 0, (n.y + B / 2) * c), cm = d.chao || ['rgba(29,74,107,0.85)', 'rgba(29,74,107,0)'];
+      mar.addColorStop(0, cm[0]); mar.addColorStop(1, cm[1]);
       g.fillStyle = mar; g.fillRect(n.x * c, n.y * c, L * c, B * c);
       g.restore();
       const m = n.mastros[Math.floor(n.mastros.length / 2)] || n.mastros[0];

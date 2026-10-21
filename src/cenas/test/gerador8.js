@@ -16,7 +16,7 @@
 //     trilhas, o relevo natural e a cena;
 //   · (SO=encontro) as escolhas novas no Encontro: o rio da situação pela rosa (a travessia dela vai junto), o rio novo
 //     quando a situação não tem, a largura e as curvas, as pontes onde o caminho cruza a água nova, os caminhos que chegam
-//     de cada direção da rosa, o relevo natural; nenhuma das 48 situações quebra com tudo ligado;
+//     de cada direção da rosa, o relevo natural; nenhuma das 60 situações (lote 13: com as da Savana, da Costa e da Tundra) quebra com tudo ligado;
 //   · (SO=janela) a seção Traçado da janela: a rosa, a muralha, o rio, a praça, as pontes, o relevo, o resumo, voltar ao
 //     automático, o modelo que guarda o traçado, e a cena criada (e a seção no Vilarejo).
 // FOTOS=<pasta> guarda capturas.
@@ -383,7 +383,7 @@ const OURO = JSON.parse(fs.readFileSync(path.join(__dirname, 'gerador8-ouro.json
     ok(e.relevo.includes('morro') && e.relevo.includes('mata') && e.pedrasNat > 0, 'o relevo natural: colinas, matas e pedras — ' + j({ pedras: e.pedrasNat }));
     e = await enc(Object.assign({}, b0, { terreno: 'deserto', situacao: 'dunas', caminho: 'trilha', relevoNat: true, tamanho: 'grande' }));
     ok(!e.relevo.includes('mata'), 'no deserto, sem matas');
-    // as 48 situações, com tudo ligado: nenhuma quebra, e nenhum caminho passa pela água sem travessia
+    // as 60 situações, com tudo ligado: nenhuma quebra, e nenhum caminho passa pela água sem travessia
     const todas = await ev(() => {
       const E = __tc.Encontro, out = [];
       for (const t of E.TERRENOS) for (const [sit] of t.sit) {
@@ -395,7 +395,7 @@ const OURO = JSON.parse(fs.readFileSync(path.join(__dirname, 'gerador8-ouro.json
       return out;
     });
     const ruins = todas.filter(x => !x.ok);
-    ok(todas.length === 48 && !ruins.length, 'as 48 situações geram com o traçado todo ligado: ' + (ruins.length ? j(ruins.slice(0, 4)) : 'todas'));
+    ok(todas.length === 60 && !ruins.length, 'as 60 situações geram com o traçado todo ligado: ' + (ruins.length ? j(ruins.slice(0, 4)) : 'todas'));
     const agua = await enc(Object.assign({}, b0, { terreno: 'agua', situacao: 'navio', rioDe: 'n', portoes: ['n'] }));
     ok(agua.rios.length === 0 && !agua.caminhosRosa, 'no mar (Um navio), o rio e os caminhos da rosa não valem');
   }

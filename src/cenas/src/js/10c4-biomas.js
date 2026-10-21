@@ -15,6 +15,10 @@
      baixa, como a água sobe;
    · os patamares, onde o chão passa de uma altura (longe da água): nos biomas de pedra, o planalto e, mais alto, o
      paredão; nos outros, o morro e, mais alto, o topo dele.
+   (lote 13, parte 13b) O Encontro usa as etapas em separado, com a situação no meio: a altura e o rio da rosa antes
+   dela (aguaDe; o rio desvia do que ela põe de grande: o.bloq), o mapa dos vizinhos longe do meio dela
+   (mapaDosBiomas … longe), as manchas (manchasDe) e os patamares só onde ela não usa (patamares … ok); o mar da costa
+   pode entrar mais num ponto (marDe … forma: a enseada).
    --------------------------------------------------------------- */
 const Biomas = (() => {
   /* A tabela. arv(E, rnd, estilo): a espécie de uma árvore (E: o estilo, com as árvores dele). ter: o terreno dos
@@ -195,7 +199,7 @@ const Biomas = (() => {
   /* Cada vizinho fica com a parte dele (as casas em que o ruído dele, mais a preferência, é maior: os de altura no alto,
      os de água no baixo, a costa na faixa do mar; com a costa de principal, os vizinhos ficam longe do mar). Depois,
      duas voltas da maioria em volta e os pedacinhos (menos de seis casas) viram o que está em volta. */
-  function mapaDosBiomas(W, H, seed, B, vizs, frac, alt, marLado) {
+  function mapaDosBiomas(W, H, seed, B, vizs, frac, alt, marLado, longe) {
     const N = W * H, ip = IDX[B.id], bio = new Uint8Array(N).fill(ip);
     vizs.forEach((v, k) => {
       const BV = BIO[v], fv = vizs.length === 1 ? frac : (k === 0 ? 0.58 : 0.42) * frac, nz = Tracado.ruido(sub(seed, 10 + k)), EV = 1 / 8, cand = [];
@@ -207,6 +211,8 @@ const Biomas = (() => {
         else if (BV.pref === 'baixo') s += 0.8 * (1 - alt[q]);
         else if (BV.pref === 'borda' && marLado) s = 2 - distLado(marLado, x, y, W, H) / fundoDe(marLado, W, H) + 0.25 * s;
         if (B.mar && marLado) s += 1.1 * distLado(marLado, x, y, W, H) / fundoDe(marLado, W, H);
+        // (lote 13, parte 13b) longe: { x, y, R } — o meio da situação do Encontro: o vizinho fica longe dele
+        if (longe) { const d = Math.max(0, 1 - Math.hypot(x - longe.x, y - longe.y) / longe.R); s -= 1.6 * d * d; }
         cand.push([s, q]);
       }
       cand.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
@@ -253,19 +259,22 @@ const Biomas = (() => {
   /* ---- o mar (a costa) ----
      Num lado do mapa: a beira ondulada (fundo: quanto o mar entra, mais ou menos), o contorno do mar (passa da borda)
      e a faixa da praia. → { lado, pts, beira, praia, prof(t), noMar(x, y) } */
-  function marDe(W, H, lado, fundo, seed) {
+  function marDe(W, H, lado, fundo, seed, forma) {
     const nz = Tracado.ruido(seed), deitado = lado === 'n' || lado === 's', L = deitado ? W : H, D = deitado ? H : W;
-    const prof = t => clamp(fundo + (nz(t * 0.19, 3.7) - 0.5) * Math.max(2, fundo * 0.55), 1.5, D * 0.6);
+    // (lote 13, parte 13b) forma(t): o quanto o mar entra a mais em t (a enseada do Encontro)
+    const prof = t => clamp(fundo + (forma ? forma(t) : 0) + (nz(t * 0.19, 3.7) - 0.5) * Math.max(2, fundo * 0.55), 1.5, D * 0.6);
     const ponto = (t, d) => (lado === 'n' ? [t, d] : lado === 's' ? [t, H - d] : lado === 'o' ? [d, t] : [W - d, t]);
     const larg = t => 1.5 + nz(t * 0.31 + 11.3, 8.1) * 1.4;
     const beira = [], dentro = [], fora = [];
     for (let t = -2; t <= L + 2.001; t += 0.5) { beira.push(ponto(t, prof(t))); dentro.push(ponto(t, prof(t) - 0.5)); fora.push(ponto(t, prof(t) + larg(t))); }
     const noMar = (x, y) => distLado(lado, x, y, W, H) < prof(deitado ? x : y);
-    return { lado, pts: beira.concat([ponto(L + 2, -3), ponto(-2, -3)]), beira, praia: dentro.concat(fora.reverse()), prof, noMar };
+    // (lote 13, parte 13b: a largura da praia em t e o ponto a d da borda do mar, em t — para quem monta a costa)
+    return { lado, pts: beira.concat([ponto(L + 2, -3), ponto(-2, -3)]), beira, praia: dentro.concat(fora.reverse()), prof, noMar, larg, ponto, L, D };
   }
 
   /* ---- o rio ----
-     o: { de, para (a direção, ou 'lago'), curvas, afluente }. A fonte: uma casa alta da borda (perto da direção de onde
+     o: { de, para (a direção, ou 'lago'), curvas, afluente, bloq (lote 13, parte 13b: as casas por onde ele não passa —
+     o que a situação do Encontro põe de grande) }. A fonte: uma casa alta da borda (perto da direção de onde
      ele vem, se escolhida; longe dos cantos). O alvo: perto da direção para onde vai; o lago (a parte mais baixa do
      meio); o mar; ou, sem nada, uma casa mais baixa da borda, longe da fonte. O passo custa o comprimento × (1 + 9 × o
      que sobe + 1,6 × a altura + as curvas, pelo ruído). → { cel, ini, fim, lagoEm, destino, afluente: { cel, ini } } */
@@ -289,7 +298,7 @@ const Biomas = (() => {
     let alvo = null, lagoEm = null, destino = 'borda';
     if (o.para === 'lago') {
       let m = -1;
-      for (let q = 0; q < N; q++) { const [x, y] = xy(q); if (x < 4 || y < 4 || x > W - 4 || y > H - 4 || ehMar(q) || dist(q, fonte) < mm * 0.4) continue; if (m < 0 || alt[q] < alt[m]) m = q; }
+      for (let q = 0; q < N; q++) { const [x, y] = xy(q); if (x < 4 || y < 4 || x > W - 4 || y > H - 4 || ehMar(q) || (o.bloq && o.bloq(q)) || dist(q, fonte) < mm * 0.4) continue; if (m < 0 || alt[q] < alt[m]) m = q; }
       if (m >= 0) { lagoEm = m; alvo = q => q === m; destino = 'lago'; }
     }
     if (!alvo && Tracado.valida(o.para)) {
@@ -311,7 +320,7 @@ const Biomas = (() => {
     }
     const nz = Tracado.ruido(sub(seed, 5)), w = 0.15 + (o.curvas == null ? 4 : clamp(o.curvas, 0, 10)) * 0.13;
     const custo = (q, m, L) => {
-      if (ehMar(m) && !alvo(m)) return Infinity;
+      if ((ehMar(m) || (o.bloq && o.bloq(m))) && !alvo(m)) return Infinity;
       const [x, y] = xy(m), beira = Math.min(x, y, W - x, H - y) < 2.5 && !alvo(m) ? 2.5 : 0;
       return L * (1 + 9 * Math.max(0, alt[m] - alt[q]) + 1.6 * alt[m] + w * nz(x / 3.3, y / 3.3) + beira);
     };
@@ -412,14 +421,33 @@ const Biomas = (() => {
     const ehMarQ = q => !!mar && mar.noMar(q % W + 0.5, Math.floor(q / W) + 0.5);
     const pertoDoMar = q => { if (!mar) return false; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5; return distLado(mar.lado, x, y, W, H) < mar.prof(mar.lado === 'n' || mar.lado === 's' ? x : y) + 3; };
     // a água: o rio (e o afluente) e o lago
-    const rios = [], lagos = [];
+    const { rios, lagos } = aguaDe(W, H, alt, seed, agua, R0, mar, ehMarQ, pertoDoMar);
+    // perto da água (sem patamar): o rio, o lago e o mar
+    const perto = new Uint8Array(N);
+    const marca = (x, y, r) => { for (let j = Math.max(0, Math.floor(y - r)); j <= Math.min(H - 1, Math.floor(y + r)); j++) for (let i = Math.max(0, Math.floor(x - r)); i <= Math.min(W - 1, Math.floor(x + r)); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= r) perto[j * W + i] = 1; };
+    for (const r of rios) for (const p of r.pts.filter((_, i) => i % 2 === 0)) marca(p[0], p[1], r.hw + 1.8);
+    for (const l of lagos) for (const q of l.cel) marca(q % W + 0.5, Math.floor(q / W) + 0.5, 2);
+    for (let q = 0; q < N; q++) if (pertoDoMar(q)) perto[q] = 1;
+    // os patamares: o alto e o mais alto (de cada bioma), longe da água e da borda
+    const { planaltos, paredoes } = patamares(W, H, alt, bio, q => !perto[q]);
+    // as manchas dos vizinhos (o contorno de cada grupo de casas deles), para o desenho do chão
+    const manchas = manchasDe(W, H, bio, vizs);
+    const presentes = vizs.filter(v => bio.includes(IDX[v]));
+    return { principal: B.id, mistura: mist, vizs: presentes, alt, bio, bioEm, altEm, mar, ehMar, rios, lagos, planaltos, paredoes, manchas, perto, agua };
+  }
+  /* ---- a água do campo (lote 13, parte 13b: também a do rio da rosa no Encontro) ----
+     O rio que desce pelo relevo (R0: { de, para, curvas, hw, afluente, lago }) e o afluente; o lago no fim dele, no
+     caminho dele (R0.lago) ou sozinho (agua 'lago'), fora das casas de pertoDoMar(q) (perto do mar; no Encontro, também
+     perto do que a situação põe). → { rios: [{ pts, pecas, hw, cel, destino, afluente }], lagos: [{ pts, cel, centro }] } */
+  function aguaDe(W, H, alt, seed, agua, R0, mar, ehMarQ, pertoDoMar) {
+    const N = W * H, rios = [], lagos = [];
     const rio = R0 ? rioDe(W, H, alt, R0, sub(seed, 5), ehMarQ) : null;
     const nLago = Math.round(N * (0.045 + sorteio(sub(seed, 6))() * 0.03));
     if (rio && rio.lagoEm != null) { const l = lagoDe(W, H, alt, rio.lagoEm, nLago, pertoDoMar); if (l) lagos.push(l); }
     else if (rio && R0.lago) {
       // o lago no caminho do rio: na casa mais baixa do meio dele
       const longeDoMar = q => { if (!mar) return true; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5; return distLado(mar.lado, x, y, W, H) > mar.prof(mar.lado === 'n' || mar.lado === 's' ? x : y) + 7; };
-      const meio = rio.cel.slice(Math.floor(rio.cel.length * 0.3), Math.ceil(rio.cel.length * 0.7)).filter(q => { const x = q % W, y = Math.floor(q / W); return x >= 4 && y >= 4 && x < W - 4 && y < H - 4 && longeDoMar(q); });
+      const meio = rio.cel.slice(Math.floor(rio.cel.length * 0.3), Math.ceil(rio.cel.length * 0.7)).filter(q => { const x = q % W, y = Math.floor(q / W); return x >= 4 && y >= 4 && x < W - 4 && y < H - 4 && longeDoMar(q) && !pertoDoMar(q); });
       if (meio.length) { const c = meio.reduce((m, q) => (alt[q] < alt[m] ? q : m)); const l = lagoDe(W, H, alt, c, Math.round(nLago * 0.8), pertoDoMar); if (l) lagos.push(l); }
     } else if (agua === 'lago') {
       let m = -1;
@@ -440,19 +468,20 @@ const Biomas = (() => {
         rios.push({ pts: p2, pecas: cortarNosLagos(p2, lagos), hw: hw2, cel: ca, destino: 'rio', afluente: true });
       }
     }
-    // perto da água (sem patamar): o rio, o lago e o mar
-    const perto = new Uint8Array(N);
-    const marca = (x, y, r) => { for (let j = Math.max(0, Math.floor(y - r)); j <= Math.min(H - 1, Math.floor(y + r)); j++) for (let i = Math.max(0, Math.floor(x - r)); i <= Math.min(W - 1, Math.floor(x + r)); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= r) perto[j * W + i] = 1; };
-    for (const r of rios) for (const p of r.pts.filter((_, i) => i % 2 === 0)) marca(p[0], p[1], r.hw + 1.8);
-    for (const l of lagos) for (const q of l.cel) marca(q % W + 0.5, Math.floor(q / W) + 0.5, 2);
-    for (let q = 0; q < N; q++) if (pertoDoMar(q)) perto[q] = 1;
-    // os patamares: o alto e o mais alto (de cada bioma), longe da água e da borda
-    const planaltos = [], paredoes = [];
+    return { rios, lagos };
+  }
+  /* ---- os patamares ----
+     O alto e o mais alto de cada bioma (a altura do patamar é a da parte mais alta do mapa que ele pede), só onde
+     ok(q) deixa (longe da água; no Encontro, longe da situação) e fora da borda: nos de pedra, o planalto e, mais alto,
+     o paredão (pequeno) ou o planalto de cima; nos outros, o morro e o topo dele. → { planaltos: [{ pts, alt, bio, nivel,
+     n }], paredoes: [{ pts, alt, bio, n }] } */
+  function patamares(W, H, alt, bio, ok) {
+    const N = W * H, planaltos = [], paredoes = [];
     const maioria = cel => { const c = new Map(); for (const q of cel) c.set(bio[q], (c.get(bio[q]) || 0) + 1); let m = bio[cel[0]], mc = -1; for (const [v, n] of c) if (n > mc) { m = v; mc = n; } return LISTA[m]; };
     // (a altura do patamar de cada bioma: a da parte mais alta do mapa que ele pede)
     const ord = Float32Array.from(alt).sort(), Q = f => ord[clamp(Math.floor((1 - f) * (N - 1)), 0, N - 1)];
     const lim = LISTA.map(b => [Q(b.alto[0]), Q(b.alto[1])]);
-    const alto = nivel => q => { const i = q % W, j = (q - i) / W; return i > 0 && j > 0 && i < W - 1 && j < H - 1 && !perto[q] && alt[q] >= lim[bio[q]][nivel]; };
+    const alto = nivel => q => { const i = q % W, j = (q - i) / W; return i > 0 && j > 0 && i < W - 1 && j < H - 1 && ok(q) && alt[q] >= lim[bio[q]][nivel]; };
     const G1 = grupos(W, H, alto(0));
     G1.grupos.forEach((cel, g) => {
       if (cel.length < 10) return;
@@ -467,15 +496,18 @@ const Biomas = (() => {
       if (BB.rocha && cel.length <= 36) paredoes.push({ pts, alt: 6, bio: BB.id, n: cel.length });
       else planaltos.push({ pts, alt: BB.rocha ? 6 : 4, bio: BB.id, nivel: 2, n: cel.length });
     });
-    // as manchas dos vizinhos (o contorno de cada grupo de casas deles), para o desenho do chão
+    return { planaltos, paredoes };
+  }
+  // as manchas dos vizinhos (o contorno de cada grupo de casas deles, de quatro casas ou mais), para o desenho do chão
+  function manchasDe(W, H, bio, vizs) {
     const manchas = [];
     for (const v of vizs) {
       const iv = IDX[v], G = grupos(W, H, q => bio[q] === iv);
       G.grupos.forEach((cel, g) => { if (cel.length < 4) return; const pts = contornoDe(cel, W, H, G.marca, g, 2, 0.6); if (pts) manchas.push({ bio: v, pts }); });
     }
-    const presentes = vizs.filter(v => bio.includes(IDX[v]));
-    return { principal: B.id, mistura: mist, vizs: presentes, alt, bio, bioEm, altEm, mar, ehMar, rios, lagos, planaltos, paredoes, manchas, perto, agua };
+    return manchas;
   }
 
-  return { LISTA, BIO, IDS, IDX, valido, MISTURAS, FRACAO, mistura, sub, campo, alturas, vizinhosDe, mapaDosBiomas, marDe, rioDe, lagoDe, cortarNosLagos, grupos, contornoDe, maisBarato, linhaDe, foraDa, serpentear };
+  return { LISTA, BIO, IDS, IDX, valido, MISTURAS, FRACAO, mistura, sub, campo, alturas, vizinhosDe, mapaDosBiomas, marDe, rioDe, lagoDe, cortarNosLagos, grupos, contornoDe, maisBarato, linhaDe, foraDa, serpentear,
+    aguaDe, patamares, manchasDe };
 })();

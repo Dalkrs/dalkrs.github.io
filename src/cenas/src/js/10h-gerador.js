@@ -214,7 +214,7 @@ const Gerador = (() => {
       const antes = { L, comum: Object.assign({}, comum), E: JSON.parse(JSON.stringify(Object.assign({}, estadoDe(l), { plano: null }))) };
       L = l;
       const E = estadoDe(L);
-      L.aplicarOpcoes(E.op, m.o);
+      L.aplicarOpcoes(E.op, m.o, { modelo: true });                 // (lote 13, parte 13b: o modelo de antes do chão novo fica no de antes)
       comum.estilo = Estilos.valido(m.o.estilo);
       if (TONES.some(t => t.id === m.o.hora)) comum.hora = m.o.hora;
       if (WEATHERS.some(w => w[0] === m.o.clima)) comum.clima = m.o.clima;

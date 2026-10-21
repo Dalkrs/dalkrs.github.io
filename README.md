@@ -1004,6 +1004,54 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **O que sai igual**: os outros geradores pintam como antes (conferido pixel a pixel no Encontro, no Porto, na Tribo,
   nas Ruínas e no Vilarejo) e os planos deles são os mesmos (`gerador8.js`, `SO=ouro`).
 
+### O Encontro no chão novo, a Savana, a Costa e a Tundra (lote 13, parte 13b)
+
+- **O chão novo** (`chao: 2` nas escolhas da janela e dos modelos novos; os modelos de antes não têm o campo e geram o
+  mesmo lugar de sempre — `abrirModelo` passa `{ modelo: true }`, e a janela mostra o aviso com o botão "Usar o chão
+  novo", com Desfazer). O bioma de cada terreno (`BIOMA`: a estrada é o campo; o pântano e a água cobrem o mapa todo e
+  ficam como eram; a gruta dos cristais, que também cobre tudo, fica no chão de antes). Antes da situação (`chaoAntes`): os vizinhos da tabela, pela Mistura (a costa não é vizinha no
+  Encontro: sem o mar, ela seria só o campo com palmeiras), a altura (inclinada pelo rio da rosa e pelo mar) e, na
+  Costa, o mar num lado (não o de onde o rio vem; no naufrágio, em cima ou embaixo; a enseada entra mais no meio:
+  `Biomas.marDe(…, forma)`). Depois dela (`chaoDepois`): o mapa dos vizinhos longe do meio dela
+  (`Biomas.mapaDosBiomas(…, longe)`), as manchas (`Biomas.manchasDe`) e os patamares só nas casas que ela não usa
+  (`livresDaSituacao`: nada marcado a dois quadrados, fora das manchas, dos desenhos, do relevo e das zonas dela e do
+  meio dela; `Biomas.patamares(…, ok)`). A vegetação, os enfeites e as pedrinhas de cada bioma onde ele está (no do
+  terreno, a espécie e a densidade da situação, como sempre; as árvores se juntam nos bosques; a mata no relevo onde o
+  bosque fecha; as árvores dos vizinhos com a paleta e a neve deles). No chão novo não há o relevo natural (a chave sai
+  da seção Traçado). A Mistura fica na janela (lembrada como `encMis`); a trava do traçado guarda o chão e a mistura.
+- **O rio da rosa pelo relevo** (`rioDoRelevo`, com `Biomas.aguaDe`): o rio que a rosa pede (o novo, quando a
+  situação não tem rio; ou no lugar do dela) desce pelo relevo e desvia do que a situação põe de grande (as
+  construções, as pedras, o convés: `o.bloq` no `Biomas.rioDe`); o lago não cresce por cima do caminho nem da área
+  dela (se não couber, só fora do que é duro); oito tentativas, notadas como no `Tracado.rioPlano` (o ensaio da
+  situação diz por onde passam os caminhos e o que ela ocupa). O lago vem em duas demãos. Na costa, o rio deságua no
+  mar; na falésia, cai em cachoeira.
+- **Os terrenos novos** (só no chão novo), cada um com quatro situações: a **Savana** — o bebedouro (a água barrenta, o
+  barro pisado com a lama, as trilhas de pegadas dos bichos chegando de todos os lados, os ossos de uma caça), os
+  cupinzeiros (altos, de barro duro: não dá para passar; os grandes tapam a visão; o capim alto e os espinhos entre
+  eles), o baobá gigante (o tronco enorme, que tapa a visão, a copa de galhos grossos, o oco com as oferendas, os
+  baobás menores) e o rochedo dos leões (o lajedo de granito, de 3 m, com os matacões, a toca na beira com os ossos na
+  frente, o capim alto em volta); a **Costa** (o mar num lado, com a praia e a espuma; em duas demãos) — a enseada (a
+  baía redonda, a areia larga no fundo, os braços de pedra entrando no mar, o barco puxado na areia, a fogueira, a
+  correnteza na boca), a falésia (a face de pedra entre a praia lá embaixo e o alto, a escada cavada nela, a gruta no
+  pé, as agulhas de pedra no mar, os ninhos na beira), o naufrágio na areia (o navio encalhado, deitado ao longo da
+  praia, com a amurada quebrada, o mastro caído e a areia entrando — o porão ainda se gera —, os destroços e a carga
+  na areia, as pegadas de quem saiu dele) e as piscinas de maré (o costão de pedra com as poças, cada uma com as
+  algas, as anêmonas e as estrelas-do-mar; os canais por onde a maré entra, com a correnteza); a **Tundra** — as fontes
+  quentes (a água turquesa com a beira de minério, o vapor: a névoa; o chão morno sem neve), a ossada de mamute (o
+  crânio com as presas, as costelas largas, os ossos espalhados, a neve funda, o chão congelado; o caminho passa ao lado
+  dela, nunca por cima), o acampamento de
+  caçadores (a fogueira acesa, com a luz dela, as tendas de couro, o varal das peles, a lenha, as armas e, em volta, as
+  armadilhas de urso ocultas — `oculto` no objeto do plano: só o mestre vê) e o campo de pedras (os matacões em grupos,
+  as poças congeladas, os liquens).
+- **O desenho** (`Paisagem`): as pegadas (de casco, de pata, de gente), o cupinzeiro, o baobá, os ossos de um bicho, a
+  ossada de mamute, a falésia vista de cima, a escada cavada na pedra (`escadaPedra`), a vida da poça de maré, a fonte
+  quente (`lago(…, 'termal')`); no navio encalhado, a areia entrando (`danificado.chao`). Os desenhos da Região livre
+  (a água parada em duas demãos, o morro macio, a boca da gruta, o ninho, a toca) passaram para o motor dos encontros.
+- **O Mapa-múndi**: "Gerar a cena aqui" na savana e na tundra abre os terrenos delas (antes: o capim alto do campo e a
+  neve); a janela vem no chão novo.
+- **O que sai igual**: os modelos de antes (os planos conferidos contra a versão de antes, `lote13b.js`, `SO=chao`), os
+  outros geradores, a Região livre e o desenho deles (51 casos conferidos pixel a pixel).
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -2764,4 +2812,18 @@ a lava e o gelo, a seca, as árvores com a paleta e a neve, o nome, o resumo e s
 chão misto (a passagem gradual), o lago sem a beira, a tundra, o fundo e as estrelas da prévia; com `SO=janela`, a aba
 (as escolhas, o Traçado sem o relevo natural, o rio só com água de rio, o mar na costa, travar pela prévia e gerar outro,
 o modelo), a cena (os marcadores ocultos com os nomes, a chegada sem a emboscada, o relevo, o fundo, o aviso) e quem joga
-não vê os marcadores.
+não vê os marcadores. Na parte 13b, `src/cenas/test/lote13b.js` confere o Encontro no chão novo e os terrenos novos: com
+`SO=chao`, os modelos de antes (dez encontros com as impressões da versão de antes: o rio da rosa, o relevo natural, os
+caminhos, a seca), o pântano, a água e a gruta dos cristais como eram, os vizinhos da tabela (sem a costa) com as manchas, a Mistura, os
+vizinhos longe do meio da situação, os patamares fora do meio, do caminho e das construções dela, as árvores, a
+densidade, os enfeites, as pedrinhas e a mata de cada bioma, o rio da rosa pelo relevo (nasce no lado pedido; na costa,
+acaba no mar; desvia das construções), o lago longe dos caminhos (também nas situações da estrada) e em duas demãos —
+e, direto no motor, nascendo e crescendo fora da área da situação —, sem o relevo natural, a trava, a
+seca, o resumo e o tempo; com `SO=novos`, os quinze terrenos, as doze situações nos três tamanhos (cada uma com o que
+tem de seu: a baía da enseada, a face e a escada da falésia, o navio fora do mar, as armadilhas ocultas, o caminho ao lado da
+ossada…), a cachoeira
+da falésia, o mar do naufrágio, a chegada fora do mar e os nomes; com `SO=pintura`, a fonte quente, os desenhos novos e
+a areia no navio encalhado; com `SO=janela`, a aba (os quinze terrenos, a Mistura, sem o relevo natural; o pântano sem
+a Mistura; a costa), o modelo de antes (o mesmo lugar, o aviso, "Usar o chão novo" e o Desfazer), o modelo novo, o
+Mapa-múndi e a cena (as armadilhas ocultas, a fogueira acesa). O `lote7e.js` e o `gerador8.js` passaram a contar os
+quinze terrenos (as regras dos planos valem para as situações novas).

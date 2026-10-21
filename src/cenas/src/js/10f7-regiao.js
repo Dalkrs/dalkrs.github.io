@@ -370,10 +370,8 @@ const Regiao = (() => {
     return Object.assign(P, { v: 1, lugar: 'regiao', bioma, mistura, aguaPedida, agua, seed, sT, tamanho: tam, vizinhos: F.vizs.slice(), pontesNovas: conta.pontes, travaTracado: !!trava, comMarcas, seco, sitPedida: null, occ: Array.from(K.occ) });
   }
 
-  /* ================= os desenhos ================= */
-  const PZ = Paisagem;
-  Object.assign(MO.PINTORES, { aguaParada: (g, o, c, rnd, p) => PZ.lago(g, o.pts, c, rnd, o.pal || p.pal, o.tipo, o.semBeira), morro: (g, o, c, rnd) => PZ.morroMacio(g, o.pts, c, rnd, o.cores, o.alt),
-    bocaGruta: PZ.bocaGruta, ninho: PZ.ninho, toca: PZ.toca });
+  /* (os desenhos — a água parada em duas demãos, o morro macio, a boca da gruta, o ninho e a toca — são do motor dos
+     encontros: Encontro.motor.pintar) */
 
   /* ================= a cena, a prévia e o lugar (a janela do gerador) ================= */
   const nomePadrao = p => 'Região livre ' + (B.BIO[p.bioma] || B.LISTA[0]).em;

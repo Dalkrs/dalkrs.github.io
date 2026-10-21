@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-9",
+      "data": "2026-10-21",
+      "titulo": "O chão novo dos encontros",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: os encontros de “Gerar um lugar…” nascem no chão novo — as manchas de um ou dois biomas vizinhos (a Mistura: pouca, média ou muita), longe do meio da situação, e os morros, os planaltos e os penhascos só onde ela não usa; as árvores, os enfeites e as pedras de cada bioma onde ele está. O rio escolhido no Traçado desce pelo relevo e desvia das construções; na costa, ele deságua no mar (numa falésia, em cachoeira)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: três terrenos novos no Encontro, com quatro situações cada — a Savana (o bebedouro, os cupinzeiros, o baobá gigante, o rochedo dos leões), a Costa (a enseada, a falésia, o naufrágio na areia, as piscinas de maré) e a Tundra (as fontes quentes, a ossada de mamute, o acampamento de caçadores — com as armadilhas ocultas —, o campo de pedras)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: os modelos de encontro guardados antes continuam gerando o mesmo lugar de sempre; um aviso na janela diz isso, e o botão “Usar o chão novo” troca (com Desfazer). No Mapa-múndi, “Gerar a cena aqui” na savana e na tundra já abre os terrenos delas."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-8",
       "data": "2026-10-21",
       "titulo": "A Região livre",

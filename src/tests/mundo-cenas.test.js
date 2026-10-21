@@ -1,7 +1,7 @@
 // Mapa-múndi → Cenas (lote 7, parte 4b), pela interface, numa moldura (a página faz o papel da casca, sem mesa): o que
 // "Gerar a cena aqui" (no grupo) e "Gerar este lugar…" (no marcador) mandam para a aba Cenas.
-//   · o terreno do hexágono (pelo desenho dele), o caminho da rota (estrada, trilha, mar, rio), a situação que o terreno
-//     já diz (a lavoura, a savana) ou a Surpresa;
+//   · o terreno do hexágono (pelo desenho dele; a savana e a tundra, desde o lote 13, nos terrenos delas), o caminho da
+//     rota (estrada, trilha, mar, rio), a situação que o terreno já diz (a lavoura) ou a Surpresa;
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
 //     inundação: chuva; incêndio: cinzas; magia: vaga-lumes) e o estilo da região mais de dentro que tiver um;
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
@@ -90,7 +90,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   const op = nome => j(ger[nome].op);
   ok(ger['floresta-estrada'].lugar === 'encontro' && op('floresta-estrada') === j({ terreno: 'floresta', situacao: 'surpresa', caminho: 'estrada' }), 'na floresta, numa estrada: o encontro na floresta, com a estrada e a situação sorteada: ' + op('floresta-estrada'));
   ok(op('lavoura') === j({ terreno: 'campo', situacao: 'plantacao', caminho: 'nenhum' }), 'na lavoura, fora de rota: o campo, já na plantação: ' + op('lavoura'));
-  ok(op('savana-trilha') === j({ terreno: 'campo', situacao: 'capim', caminho: 'trilha' }), 'na savana, numa trilha: o capim alto, com a trilha: ' + op('savana-trilha'));
+  ok(op('savana-trilha') === j({ terreno: 'savana', situacao: 'surpresa', caminho: 'trilha' }), 'na savana, numa trilha (lote 13: o terreno Savana), com a trilha e a situação sorteada: ' + op('savana-trilha'));
   ok(op('planicie-estrada') === j({ terreno: 'estrada', situacao: 'surpresa', caminho: 'estrada' }), 'na planície, numa estrada: o encontro na estrada: ' + op('planicie-estrada'));
   ok(op('planicie') === j({ terreno: 'campo', situacao: 'surpresa', caminho: 'nenhum' }), 'na planície, fora de rota: o campo, sem caminho: ' + op('planicie'));
   ok(op('neve-selvagem') === j({ terreno: 'neve', situacao: 'surpresa', caminho: 'nenhum' }), 'na neve, em terreno selvagem: a neve, sem caminho: ' + op('neve-selvagem'));

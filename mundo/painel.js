@@ -1406,8 +1406,9 @@
     // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone (a masmorra: a aba Masmorra, 4b-3c)
     ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'ruinas', op: { tipo: 'forte' } },
     masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } } };
+  // (o desenho do hexágono → o terreno do encontro e, às vezes, a situação; lote 13: a savana e a tundra nos terrenos delas)
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
-    lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['campo', 'capim'], tundra: ['neve'], corrompida: ['corrompida'] };
+    lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['savana'], tundra: ['tundra'], corrompida: ['corrompida'] };
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };
   function terrenoNoPonto(m, x, y) { const hx = N().hexDe(m, x, y); return hx ? N().hexInfo(m, hx.q, hx.r).terreno : null; }
   /* (lote 7, parte 5a) o que os eventos de hoje levam para a cena: o clima (a tempestade e a inundação, chuva; o incêndio,

@@ -1,5 +1,6 @@
 // Bateria do lote 7 (parte 4b-1), no navegador, sem o site:
-//   · a aba Encontro da janela "Gerar um lugar": os doze terrenos e as situações de cada um (e a Surpresa), o caminho
+//   · a aba Encontro da janela "Gerar um lugar": os quinze terrenos (lote 13: e a Savana, a Costa e a Tundra) e as
+//     situações de cada um (e a Surpresa), o caminho
 //     (a estrada nunca fica sem; na água não há), os três tamanhos, travar o traçado clicando na prévia ("Gerar outro"
 //     troca só as árvores, as pedras e os objetos), os marcadores de chegada e de emboscada (ocultos), e a cena (o
 //     fundo pintado, as paredes de visão só no que é grande, o relevo leve, as zonas, as luzes);
@@ -48,7 +49,7 @@ const SHOTS = process.env.FOTOS;
     const g0 = await G();
     ok(await ev(() => __tc.Gerador.vivo().lugar) === 'encontro' && g0.plano.lugar === 'encontro' && g0.plano.W === 32 && g0.plano.H === 24, 'a aba Encontro: o tamanho médio, de 32 × 24 quadrados');
     const c0 = await ctlTxt();
-    ok(/Terreno \| Estrada \| Floresta \| Deserto \| Montanha \| Pântano \| Neve \| Campo \| Selva \| Terra corrompida \| Lava \| Cristais \| Água \| Situação \| Curva na mata \| Carroça tombada \| Ponte sobre o rio \| Encruzilhada \| Surpresa \| Caminho \| Trilha \| Estrada \| Tamanho \| Pequeno \| Médio \| Grande \| Marcar a chegada e a emboscada \(só você vê\)/.test(c0), 'as escolhas: os doze terrenos, as situações da estrada e a Surpresa, o caminho (a estrada nunca fica sem), o tamanho e os marcadores — ' + c0.slice(0, 260));
+    ok(/Terreno \| Estrada \| Floresta \| Deserto \| Montanha \| Pântano \| Neve \| Campo \| Selva \| Terra corrompida \| Lava \| Cristais \| Savana \| Costa \| Tundra \| Água \| Situação \| Curva na mata \| Carroça tombada \| Ponte sobre o rio \| Encruzilhada \| Surpresa \| Caminho \| Trilha \| Estrada \| Tamanho \| Pequeno \| Médio \| Grande \| Mistura \| Pouca \| Média \| Muita \| Marcar a chegada e a emboscada \(só você vê\)/.test(c0), 'as escolhas: os quinze terrenos (lote 13: e a Savana, a Costa e a Tundra), as situações da estrada e a Surpresa, o caminho (a estrada nunca fica sem), o tamanho, a mistura do chão novo e os marcadores — ' + c0.slice(0, 260));
     ok(g0.op.situacao === 'surpresa' && g0.op.caminho === 'trilha' && g0.op.marcas === true, 'de começo: a situação sorteada, a trilha e os marcadores ligados: ' + j(g0.op));
     ok(/^Estrada · (Curva na mata|Carroça tombada|Ponte sobre o rio|Encruzilhada) \(sorteada\) · 32 × 24 quadrados · trilha/.test(await resumo()), 'o resumo diz a situação sorteada, as medidas e o caminho: ' + await resumo());
     ok(await page.locator('#ger-nome').inputValue() === 'Encontro na estrada', 'o nome da cena: "Encontro na estrada"');
@@ -449,11 +450,11 @@ const SHOTS = process.env.FOTOS;
       return out;
     });
     ok(r.erros.length === 0, 'nenhum erro em ' + (r.n + r.erros.length) + ' encontros: ' + r.erros.slice(0, 5).join(' | '));
-    ok(r.n === 144, 'os doze terrenos, cada um com as quatro situações, em três sementes (144 planos): ' + r.n);
+    ok(r.n === 180, 'os quinze terrenos, cada um com as quatro situações, em três sementes (180 planos): ' + r.n);
     ok(r.lentos === 0, 'cada plano sai depressa (o mais lento: ' + Math.round(r.maxMs) + ' ms)');
     ok(r.ruins.length === 0, 'as regras dos planos (marcadores onde se pisa e longe um do outro, paredes, objetos, zonas, relevo leve, luzes, construções, navios, traçado): ' + r.ruins.slice(0, 8).join(' | '));
-    ok(r.det === 48, 'o mesmo pedido (com a mesma semente) dá sempre o mesmo plano: ' + r.det + ' de 48');
-    ok(r.trava === 48, 'com o traçado travado, outra semente mantém a água, o caminho, os penhascos, as construções e os navios: ' + r.trava + ' de 48');
+    ok(r.det === 60, 'o mesmo pedido (com a mesma semente) dá sempre o mesmo plano: ' + r.det + ' de 60');
+    ok(r.trava === 60, 'com o traçado travado, outra semente mantém a água, o caminho, os penhascos, as construções e os navios: ' + r.trava + ' de 60');
     ok(r.porao === 12, 'o porão do navio com a proa para o outro lado é o mesmo, espelhado (com os móveis grandes), sem nada fora: ' + r.porao + ' de 12');
     ok(Object.values(r.sitsSurpresa).every(v => v >= 3), 'a Surpresa sorteia entre as situações de cada terreno: ' + j(r.sitsSurpresa));
     ok(r.semMarcas, 'sem os marcadores, o plano sai sem nenhum');
