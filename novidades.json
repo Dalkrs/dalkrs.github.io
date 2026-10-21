@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-4",
+      "data": "2026-10-21",
+      "titulo": "A ocupação",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: as regiões ocupadas aparecem com listras na cor de quem ocupa, e a região diz “Ocupada por … desde …”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no “Próximo dia”, a ocupação: um exército em guerra que fica 3 dias numa região inimiga sem defensor e sem fortificação de pé traz a proposta de ocupar (e o mesmo para libertar). Desmarcada, a contagem recomeça; a notícia pode ir para o rascunho do Jornal. A região ocupada produz para quem ocupa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na região, “Marcar como ocupada…”, “Anexar…” e “Tirar a ocupação…”; na aba Guerra, as terras ocupadas e os dias da regra; na paz, cada terra ocupada volta para a dona ou fica com quem ocupa."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-3",
       "data": "2026-10-21",
       "titulo": "O dia da campanha",

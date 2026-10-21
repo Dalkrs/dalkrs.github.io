@@ -19,6 +19,8 @@
 //     motivos de guerra não vão para o jogador. (parte 4a) Os segredos: só o revelado vai (sem o falso e a nota); o
 //     jogador o vê na aba Intrigas. (parte 4b) As intrigas: só a mostrada vai, com o texto para eles e o estado (sem o
 //     nome, quem trama, os alvos, os passos, os segredos e a nota); o jogador a vê na aba Intrigas.
+//   · (lote 12, parte 12b) a ocupação: vai na projeção (a contagem dos dias, não); o jogador vê "Ocupada por…" e as
+//     listras; de uma facção escondida, vai sem a facção.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -263,6 +265,23 @@ function png(w, h, cor) {
     await JW.click('#tab-intrigas'); await w(300, J);
     ok(await ate(async () => /INTRIGAS O copeiro anda com moedas demais\. em andamento SEGREDOS A Ana trama contra o rei\. boato sobre Ana do Vale/i.test(await corteJ())),
       'na aba Intrigas, o jogador vê a intriga mostrada (o texto e o estado) e o segredo revelado: ' + (await corteJ()).slice(0, 200));
+    // (lote 12, parte 12b) a ocupação: vai na projeção, sem a contagem dos dias; o jogador vê a leitura e as listras
+    await W.evaluate(() => {
+      __mundo.App.mudar('a ocupação', m => {
+        m.objs.find(o => o.id === 'reg').ocup = { fac: 'fb', d: m.cal.dia };
+        if (!m.guerra) m.guerra = { tipos: [], bats: [], hexes: {} };
+        m.guerra.pres = { reg: { fac: 'fa', n: 2, lib: true } };
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), r = p && p.objs.find(o => o.id === 'reg'); return !!(r && r.ocup && r.ocup.fac === 'fb') && !(p.guerra && p.guerra.pres); }),
+      '(parte 12b) a projeção leva a ocupação, sem a contagem dos dias');
+    await JW.click('#tab-selecao'); await w(250, J);
+    await JW.evaluate(() => __mundo.App.selecionar(['reg'])); await w(300, J);
+    const lerOc = () => JW.evaluate(() => { const e = document.querySelector('#pane [data-k="ler:ocup"]'), p = document.querySelector('#mundo svg g.obj[data-id="reg"] path.reg-ocup'); return [e ? e.innerText.trim() : '', p ? p.getAttribute('data-ocup') : null]; });
+    ok(await ate(async () => { const [t0, p0] = await lerOc(); return /^Ocupada por Vale desde .+\.$/.test(t0) && p0 === 'fb'; }), 'o jogador vê "Ocupada por Vale desde…" e as listras no mapa: ' + j(await lerOc()));
+    await W.evaluate(() => { __mundo.App.mudar('o Vale escondido', m => { m.faccoes.find(f => f.id === 'fb').oculta = true; }); });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), r = p && p.objs.find(o => o.id === 'reg'); return !!(r && r.ocup && r.ocup.fac === null); }) && await ate(async () => { const [t0, p0] = await lerOc(); return /^Ocupada desde .+\.$/.test(t0) && p0 === ''; }),
+      'de uma facção escondida, a ocupação vai sem a facção (o jogador vê "Ocupada desde…" e as listras cinza)');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

@@ -1439,6 +1439,26 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   Inverno rigoroso), com "Voltar às de começo"; no exército, onde ele está e o que vale ali. No mapa: `guerra.regras`
   (`normRegrasCampanha`, `CAMPANHA_PADRAO`) e `guerra.forr` (a forragem por região e semana, que sai ao fechar a
   semana); nada disso vai para os jogadores.
+- **A ocupação** (lote 12, parte 12b; `mundo/campanha.js`). A região fica **"ocupada por"** outra facção sem mudar a
+  dona: a produção dela (o terreno, a população, as construções, as guildas, a sede do clã sem facção) vai para **quem
+  ocupa** (também a forragem que cai na semana), e o exército de quem ocupa está em casa lá; o Livro do reino e a
+  população continuam da dona. No mapa, as **listras** na cor de quem ocupa por cima da cor da dona (no modo Político),
+  também para os jogadores. No "Próximo dia", a janela do dia traz **a ocupação**: em cada região com exército (a de
+  mais dentro), os dias seguidos de uma facção em guerra com a dona **sem defensor** (nenhum exército da dona nem de uma
+  aliada dela) e **sem fortificação de pé** dela (o marcador com a fortificação com HP, ou com a defesa das construções
+  — a Paliçada, a Muralha —, que outra facção não ocupa: aí a linha diz que primeiro vem o cerco); com os dias das
+  regras (3, de começo), a **proposta de ocupar**, marcada; o mesmo para **libertar** a ocupada (a dona ou uma aliada,
+  sem as tropas de quem ocupa nem de uma aliada dela). Desmarcada, a linha só esmaece, a proposta não vale e a contagem
+  recomeça do zero; o exército desmarcado no dia continua lá (conta). A caixa (desmarcada) põe as notícias no rascunho
+  do Jornal, com a prévia só das marcadas; aplicar vale num passo de Desfazer (as notícias juntas). Na região, a seção
+  **Ocupação**: quem ocupa e desde quando, a contagem que está correndo, **"Marcar como ocupada…"** (quem ocupa; de
+  começo, a primeira em guerra com a dona), **"Anexar…"** (a dona passa a ser quem ocupa) e **"Tirar a ocupação…"**,
+  cada um com a confirmação e a notícia (desmarcada); vale só para a região (as de dentro têm a sua). Na aba Guerra, as
+  **terras ocupadas** (e as contagens), e nas regras, os dias sem defensor. Na **paz**, as terras ocupadas entre as duas
+  facções: cada uma volta para a dona (de começo) ou fica com quem ocupa (anexar), no mesmo passo e na notícia. **Quem
+  joga** vê as listras e "Ocupada por … desde …" (de uma facção escondida, "Ocupada desde …", as listras cinza). No mapa:
+  `ocup: { fac, d }` na região e no marcador (`normOcup`; `controleDaRegiao`) e `guerra.pres` (a contagem dos dias, que
+  não vai para os jogadores).
 
 ### A Árvore (lote 6)
 
@@ -2606,7 +2626,15 @@ o inverno; vários dias; as recusas), aplicar e a semana (a produção de comida
 ao fechar); `mundo-lote12` com `SO=dia`, as regras na aba Guerra (os erros, salvar, Desfazer, "Voltar às de começo"),
 onde está cada exército, a janela do dia (os textos, desmarcar refaz as contas, o desmarcado fica como está), aplicar e
 Desfazer, de domingo para segunda (o dia antes da semana), a forragem na prévia da semana e o celular; `mundo-guerra`, o
-dia da campanha sem forragem nem desgaste. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+dia da campanha sem forragem nem desgaste. Na parte 12b (a ocupação), `lote12-nucleo` confere a ocupação normalizada (de
+uma facção que existe e não é a dona; na região e no marcador; a contagem dos dias), quem controla, onde o exército está
+na ocupada, a projeção (de uma facção escondida, sem a facção), a contagem do dia (sem defensor — a dona ou uma aliada —,
+sem fortificação de pé — também a das construções —, a região de dentro à parte, os dias de antes, a recusa, libertar),
+aplicar, a produção para quem ocupa (o Livro e a população, da dona), a forragem na ocupada, anexar, devolver, ocupar à
+mão, as terras na paz e as notícias; `mundo-lote12` com `SO=ocupacao`, as propostas no dia (desmarcar sem nada mudar de
+lugar, a notícia com a prévia, aplicar, Desfazer e Refazer), as listras, a seção da região (tirar, anexar com a notícia,
+marcar), a aba Guerra e a regra dos dias, quem joga (também com a facção escondida), a paz com as terras e o celular;
+`mundo-lote8.rede`, a ocupação na projeção (sem a contagem) e no mapa do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

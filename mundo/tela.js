@@ -1198,7 +1198,7 @@
   function chaveDe(o, ctx) {
     let extra = (ctx.mestre ? 'M' : 'J') + ctx.fb;
     if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref) : null);
-    if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid) + '|' + JSON.stringify(modoDe(ctx, o)); }
+    if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid) + '|' + JSON.stringify(modoDe(ctx, o)) + (o.ocup ? '|oc' + corOcup(ctx, o) : ''); }
     else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '');
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
@@ -1351,6 +1351,15 @@
     // (lote 10) o modo do mapa deste aparelho pinta a região (Clima, Perigo) ou tira o preenchimento (Terreno)
     const cor = md && md.cor ? md.cor : o.pai && o.cor ? o.cor : f ? f.cor : (o.cor || '');
     g0.append(s('path', { class: 'reg' + (cor ? '' : ' semfac') + (o.pai ? ' subreg' : '') + (md ? ' m-' + md.modo + (md.zero ? ' m-zero' : '') : ''), d: caminho(o.pts, true), fill: cor || null, stroke: cor || null }));
+    // (lote 12, parte 12b) a ocupada: listras na cor de quem ocupa (cinza, se os jogadores não sabem quem), por cima da
+    // cor da dona — só no modo Político (os outros modos pintam a região do jeito deles)
+    if (o.ocup && !md) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of o.pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+      const W = um(limitar(Math.hypot(x1 - x0, y1 - y0) / 22, 3, 500)), pid = idSvg('oc-', o.id);
+      g0.append(s('defs', null, s('pattern', { id: pid, patternUnits: 'userSpaceOnUse', width: W, height: W, patternTransform: 'rotate(45)' }, s('rect', { width: um(W * 0.36), height: W, fill: corOcup(ctx, o) }))),
+        s('path', { class: 'reg-ocup', 'data-ocup': o.ocup.fac || '', d: caminho(o.pts, true), fill: `url(#${pid})` }));
+    }
     // o nome vai na camada de cima (nreg): a área fica por baixo das estradas e dos carimbos, mas o nome não some sob eles
     if (o.nome) {
       const c = pontoDoNomeLivre(o.pts, filhasDe(ctx.m, o)), fx = fixo(c[0], c[1]), g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
@@ -1369,6 +1378,8 @@
     }
   }
   function corFac(ctx, id) { const f = id ? ctx.fac.get(id) : null; return f ? f.cor : '#9aa3b5'; }
+  // (lote 12, parte 12b) a cor das listras da ocupada: a de quem ocupa; sem a facção (os jogadores não a conhecem), cinza
+  const corOcup = (ctx, o) => (o.ocup && o.ocup.fac ? corFac(ctx, o.ocup.fac) : '#6b7385');
   // (lote 10) como a região se pinta no modo do mapa deste aparelho: null (o Político) ou { modo, cor }
   function modoDe(ctx, o) { const C = Cam(); try { return C && typeof C.modoDaRegiao === 'function' ? C.modoDaRegiao(ctx.m, o, !!ctx.mestre) : null; } catch (e) { return null; } }
   // as áreas das regiões que ficam dentro desta (para o nome dela não cair em cima delas)

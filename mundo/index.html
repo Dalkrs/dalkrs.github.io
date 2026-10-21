@@ -157,6 +157,7 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .reg.m-economia { fill-opacity: .55; stroke-opacity: .85; }                      /* (lote 10, parte 2) a produção de um recurso */
 .reg.m-economia.m-zero { fill-opacity: 0; }
 .reg.oculto, .mar.oculto, .eve.oculto, .rot.oculto { opacity: .55; }
+.reg-ocup { fill-opacity: .5; stroke: none; pointer-events: none; }               /* (lote 12, parte 12b) a ocupada: as listras de quem ocupa */
 .sel-anel { fill: none; stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
 .rot { fill: none; stroke: #f3ead2; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .rot-fundo { fill: none; stroke: rgba(10,12,18,.55); stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -908,6 +909,20 @@ dialog.mundo-dl.dia-dl .pe, dialog.mundo-dl.cr-dl .pe { flex-wrap: wrap; }
 .mundo-dl label.op.dia-op { font-weight: 500; font-size: 13px; padding: 6px 9px; }
 .dia-ex.fora .dia-op, .dia-ex.fora .dia-come, .dia-ex.fora .dia-nota { opacity: .5; }
 .dia-nota { font-size: 12px; color: var(--fg-3); margin-left: 4px; }
+/* (lote 12, parte 12b) a ocupação no dia da campanha; as terras ocupadas na paz; a lista na aba Guerra */
+.dia-regs { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); margin-top: 10px; }
+.dia-regs-tit { font-size: 13.5px; color: var(--fg); }
+.mundo-dl p.dia-reg { font-size: 13px; color: var(--fg-2); margin: 0 0 0 4px; }
+.mundo-dl label.op.dia-reg-op.nao span { opacity: .5; }
+dialog.mundo-dl.oc-dl { width: min(520px, calc(100% - 24px)); }
+.paz-terras { display: grid; gap: 6px; }
+.paz-terra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.paz-terra .tx { display: grid; flex: 1 1 160px; min-width: 0; }
+.paz-terra .tx b { font-size: 13.5px; }
+.paz-terra .tx small { font-size: 12px; color: var(--fg-3); }
+.mundo-dl .paz-terra label.op { padding: 5px 9px; font-size: 12.5px; font-weight: 500; }
+.gu-conta { display: grid; gap: 2px; margin-top: 6px; }
+.gu-conta p.note { margin: 0; }
 .cr-nums { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; align-items: end; }
 .cr-sec { display: grid; gap: 6px; }
 .cr-ops { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1325,21 +1340,21 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=35"></script>
+<script src="nucleo.js?v=36"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=11"></script>
+<script src="reino.js?v=12"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
-<script src="campanha.js?v=1"></script>
+<script src="campanha.js?v=2"></script>
 <script src="camadas.js?v=3"></script>
-<script src="tela.js?v=22"></script>
-<script src="painel.js?v=38"></script>
-<script src="guerra-painel.js?v=6"></script>
+<script src="tela.js?v=23"></script>
+<script src="painel.js?v=39"></script>
+<script src="guerra-painel.js?v=7"></script>
 <script src="guerra-ajuda.js?v=1"></script>
 <script src="reino-painel.js?v=13"></script>
 <script src="corte-painel.js?v=5"></script>
-<script src="diplomacia-painel.js?v=4"></script>
+<script src="diplomacia-painel.js?v=5"></script>
 <script src="intrigas-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>

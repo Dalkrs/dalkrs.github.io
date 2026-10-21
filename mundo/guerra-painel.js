@@ -8,12 +8,16 @@
    reabastecimento do estoque da facção (na terra dela e das aliadas), a forragem (na terra inimiga ou sem dono) e o
    desgaste —, cada um com a caixa (desmarcar refaz as contas); na aba Guerra, as regras da campanha (os números, os
    terrenos duros e os meses de inverno); no exército, onde ele está e o que vale ali.
+   (lote 12, parte 12b) A ocupação: no dia da campanha, as contagens e as propostas (ocupar, libertar), com a notícia para
+   o rascunho do Jornal (a caixa desmarcada); na região, quem ocupa e desde quando, "Marcar como ocupada…", "Anexar…" e
+   "Tirar a ocupação…"; na aba Guerra, as terras ocupadas e as contagens; nas regras, os dias sem defensor.
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto, tudo passa por App.mudar. */
 (() => {
   'use strict';
   const kit = () => window.MundoPainel.kit;
   const G = () => window.MundoGuerra;
   const CA = () => window.MundoCampanha || null;          // (lote 12) a campanha: o dia, as regras
+  const DP = () => window.MundoDiplomaciaPainel || null;  // (lote 12, parte 12b) a notícia no rascunho do Jornal
   const N = () => window.MundoNucleo;
   const app = () => kit().app();
   const NOME_HEX = { d: 'Destruído', c: 'Corrompido' };
@@ -80,9 +84,105 @@
         kit().icone(g, m), h('span', { class: 'tx' }, h('b', { text: kit().nomeDe(g, m) }), h('small', { text: resumoExercito(m, g) })),
         g.exe && !g.exe.pub && g.exe.fome ? h('span', { class: 'tag guerra', text: 'sem mantimentos' }) : null)))
       : nota('Nenhum exército no mapa. Ponha um grupo (ferramenta Grupo) e escolha o tipo Exército na seção dele.')));
-    if (CA()) out.push(secRegras(m));
+    if (CA()) out.push(secOcupadas(m), secRegras(m));
     out.push(secTipos(m), secHexes(m), secHistorico(m));
     return out;
+  }
+
+  /* ---- (lote 12, parte 12b) as terras ocupadas e as contagens (na aba Guerra) ---- */
+  const nomeFacDe = (m, id) => { const f = id ? kit().facDe(m, id) : null; return f ? kit().nomeFac(f) : 'uma facção'; };
+  const corFacDe = (m, id) => { const f = id ? kit().facDe(m, id) : null; return f ? f.cor : '#9aa3b5'; };
+  function secOcupadas(m) {
+    const { h, nota, secao, plural, nomeDe, dataTxt } = kit(), rg = CA().regrasDe(m), pres = (m.guerra && m.guerra.pres) || {};
+    const ocs = m.objs.filter(o => o.k === 'r' && o.ocup && o.ocup.fac), cont = m.objs.filter(o => o.k === 'r' && pres[o.id]);
+    const ir = o => { kit().abrirAba('selecao'); kit().irPara(o.id); };
+    const out = [];
+    if (!ocs.length && !cont.length) out.push(nota('Nenhuma terra ocupada. Um exército de uma facção em guerra que fica ' + plural(rg.ocupar, 'dia', 'dias') + ' numa região da outra, sem defensor e sem fortificação de pé, traz a proposta no “Próximo dia”. Dá também para marcar à mão, na região.'));
+    if (ocs.length) out.push(h('div', { class: 'lista' }, ocs.map(o => h('button', { type: 'button', class: 'li clic', 'data-k': 'gu:ocup:' + o.id, onclick: () => ir(o) },
+      h('i', { class: 'bola gu-ocup-bola', style: { background: corFacDe(m, o.ocup.fac) } }),
+      h('span', { class: 'tx' }, h('b', { text: nomeDe(o, m) }), h('small', { text: 'de ' + nomeFacDe(m, N().facDaRegiao(m, o)) + ', ocupada por ' + nomeFacDe(m, o.ocup.fac) + ' desde ' + dataTxt(m, o.ocup.d) }))))));
+    if (cont.length) out.push(h('div', { class: 'gu-conta', 'data-k': 'gu:contas' }, h('span', { class: 'ps-rot', text: 'Contando os dias' }),
+      cont.map(o => h('p', { class: 'note', 'data-k': 'gu:conta:' + o.id, text: nomeDe(o, m) + ': ' + nomeFacDe(m, pres[o.id].fac) + ', ' + pres[o.id].n + ' de ' + plural(rg.ocupar, 'dia', 'dias') + (pres[o.id].lib ? ' para libertar.' : ' sem defensor.') }))));
+    return secao('Terras ocupadas', out);
+  }
+
+  /* ================= (lote 12, parte 12b) a região: a ocupação ================= */
+  function secOcupacao(o, m) {
+    const { h, botao, nota, secao, linha, plural, dataTxt } = kit(), C = CA();
+    if (!C || !m.faccoes.length) return null;
+    const id = o.id, dono = N().facDaRegiao(m, o), oc = o.ocup && o.ocup.fac ? o.ocup : null, out = [];
+    if (!dono && !oc) return null;                                // (a terra sem dona não se ocupa: dê a ela uma facção)
+    const pres = m.guerra && m.guerra.pres ? m.guerra.pres[id] : null, rg = C.regrasDe(m), nF = fid => nomeFacDe(m, fid);
+    if (oc) {
+      out.push(h('p', { class: 'status', 'data-k': 'o:' + id + ':ocup' }, h('i', { class: 'bola', style: { background: corFacDe(m, oc.fac) } }), ' Ocupada por ' + nF(oc.fac) + ' desde ' + dataTxt(m, oc.d) + '.'));
+      out.push(nota('A produção daqui vai para ' + nF(oc.fac) + (dono ? '; o Livro do reino e a população continuam de ' + nF(dono) : '') + '. As listras aparecem no mapa, também para os jogadores.'));
+      if (pres && pres.lib) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':ocup-nota', text: nF(pres.fac) + ' está aqui sem as tropas de ' + nF(oc.fac) + ': ' + pres.n + ' de ' + plural(rg.ocupar, 'dia', 'dias') + ' para libertar (a proposta vem no “Próximo dia”).' }));
+      out.push(linha(dono ? botao('Anexar…', () => janelaOcupacao(id, 'anexar'), { c: 'sm', k: 'o:' + id + ':ocup-anexar', title: 'A região passa a ser de ' + nF(oc.fac) }) : null,
+        botao('Tirar a ocupação…', () => janelaOcupacao(id, 'tirar'), { c: 'sm', k: 'o:' + id + ':ocup-tirar' })));
+    } else {
+      out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':ocup-nota', text: pres && !pres.lib ? nF(pres.fac) + ' está aqui sem defensor: ' + pres.n + ' de ' + plural(rg.ocupar, 'dia', 'dias') + ' para ocupar (a proposta vem no “Próximo dia”).'
+        : 'Um exército de uma facção em guerra com ' + nF(dono) + ' que fica aqui ' + plural(rg.ocupar, 'dia', 'dias') + ' sem defensor (e sem fortificação de pé) traz a proposta no “Próximo dia”.' }));
+      out.push(linha(botao('Marcar como ocupada…', () => janelaOcupacao(id, 'ocupar'), { c: 'sm', k: 'o:' + id + ':ocup-marcar', off: m.faccoes.length < 2 })));
+    }
+    const dentro = m.objs.filter(x => x.k === 'r' && x.pai === id).length;
+    if (dentro) out.push(nota('Vale só para esta região: ' + (dentro === 1 ? 'a de dentro tem a sua.' : 'as ' + dentro + ' de dentro têm a sua.')));
+    return secao('Ocupação', out);
+  }
+  // marcar como ocupada, anexar ou tirar a ocupação (com a confirmação e a notícia) — tudo num passo de Desfazer
+  async function janelaOcupacao(rid, modo) {
+    const A = app(), K = kit(), m = A.mapa, C = CA(), r = m ? K.achar(m, rid) : null;
+    if (!A.podeEditar() || !r || r.k !== 'r' || !C || (modo !== 'ocupar' && !(r.ocup && r.ocup.fac))) return;
+    const v = await dialogoOcupacao(m, r, modo, !!(A.temJornal && A.temJornal() && DP()));
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const nome = K.nomeDe(r, m), dono = N().facDaRegiao(m, r), quem = modo === 'ocupar' ? v.fac : r.ocup.fac;
+    // a notícia vem do mapa de antes (a ocupação e a dona de antes)
+    const nt = !v.jornal ? null : modo === 'ocupar' ? C.noticiaOcupacao(m, rid, v.fac) : modo === 'anexar' ? C.noticiaAnexacao(m, rid) : C.noticiaLibertacao(m, rid, quem);
+    const rot = { ocupar: 'marcar a região como ocupada', anexar: 'anexar a região', tirar: 'tirar a ocupação' }[modo];
+    if (A.mudar(rot, d => { if (!(modo === 'ocupar' ? C.ocupar(d, rid, v.fac) : modo === 'anexar' ? C.anexar(d, rid) : C.devolver(d, rid))) return false; }) === false) return;
+    const jtxt = nt ? DP().porNoJornal('mt_oc_', nt) : '';
+    K.avisoDesfazer((modo === 'ocupar' ? nome + ' fica ocupada por ' + nomeFacDe(m, quem) + '.' : modo === 'anexar' ? nome + ' passa a ser de ' + nomeFacDe(m, quem) + '.'
+      : nome + ' não está mais ocupada' + (dono ? ': volta a ser só de ' + nomeFacDe(m, dono) : '') + '.') + jtxt);
+  }
+  /* → { fac (ao ocupar), jornal } ou null */
+  function dialogoOcupacao(m, r, modo, jornal) {
+    const K = kit(), { h } = K, C = CA();
+    return new Promise(resolve => {
+      const nome = K.nomeDe(r, m), dono = N().facDaRegiao(m, r), quem = r.ocup && r.ocup.fac ? r.ocup.fac : null;
+      // ao ocupar: quem ocupa (de começo, a primeira em guerra com a dona)
+      const outras = modo === 'ocupar' ? m.faccoes.filter(f => f.id !== dono && f.id !== quem) : [];
+      const guerra = outras.find(f => dono && C.emGuerra(m, f.id, dono));
+      const sel = modo === 'ocupar' ? h('select', { 'data-k': 'oc:fac' }, outras.map(f => h('option', { value: f.id, text: K.nomeFac(f) + (f.oculta ? ' (escondida)' : '') }))) : null;
+      if (sel) sel.value = (guerra || outras[0] || {}).id || '';
+      const cj = jornal ? DP().caixaJornal(K, 'oc:jornal') : null;
+      const noticia = () => (modo === 'ocupar' ? C.noticiaOcupacao(m, r.id, sel.value) : modo === 'anexar' ? C.noticiaAnexacao(m, r.id) : C.noticiaLibertacao(m, r.id, quem));
+      const pintarJ = () => { if (cj && (modo !== 'ocupar' || sel.value)) cj.pintar(noticia()); };
+      const T = {
+        ocupar: ['Marcar ' + nome + ' como ocupada', 'A dona continua a mesma' + (dono ? ' (' + nomeFacDe(m, dono) + ')' : '') + '; quem ocupa fica com a produção daqui, e o mapa mostra as listras dela. Nada muda até “Ocupar” (e dá para desfazer).', 'Ocupar'],
+        anexar: ['Anexar ' + nome + '?', nome + ' passa a ser de ' + nomeFacDe(m, quem) + ' (a facção da região muda) e a ocupação acaba. Dá para desfazer.', 'Anexar'],
+        tirar: ['Tirar a ocupação de ' + nome + '?', nome + ' volta a ser só de ' + nomeFacDe(m, dono) + ', com a produção. Dá para desfazer.', 'Tirar a ocupação'] }[modo];
+      const titulo = h('h2', { text: T[0] });
+      titulo.id = 'dl-oc-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'oc:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'oc:ok', text: T[2] });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo, h('p', { class: 'note', text: T[1] }),
+        sel ? h('label', null, 'Quem ocupa', sel) : null, cj ? cj.el : null, err, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl oc-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('change', pintarJ);
+      pintarJ();
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        if (sel && !sel.value) { err.textContent = 'Escolha quem ocupa.'; return; }
+        fim({ fac: sel ? sel.value : null, jornal: !!(cj && cj.cx.checked) });
+      });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (sel || bOk).focus();
+    });
   }
 
   /* ---- (lote 12, parte 12a) as regras da campanha: o resumo e "Mudar as regras…" ---- */
@@ -94,6 +194,7 @@
       h('p', { class: 'note', 'data-k': 'gu:regras', text: 'Reabastece até ' + rg.teto + (rg.teto === 1 ? ' dia' : ' dias') + ' de comida (cada mantimento custa ' + fmt(rg.custo, 2) + ' do estoque) · forragem: '
         + fmt(rg.forr, 1) + '% do que come · desgaste por dia: sem comida ' + fmt(rg.fome, 1) + '%, em terreno duro ' + fmt(rg.terreno, 1) + '%, no inverno +' + fmt(rg.inverno, 1) + '% (o terreno e o inverno, só fora de casa).' }),
       h('p', { class: 'note', 'data-k': 'gu:regras-onde', text: 'Terrenos duros: ' + (duros.join(', ') || 'nenhum') + '. Inverno: ' + (inv.join(', ') || 'nenhum mês') + ' e a zona do evento Inverno rigoroso.' }),
+      h('p', { class: 'note', 'data-k': 'gu:regras-ocup', text: 'Ocupação: ' + rg.ocupar + (rg.ocupar === 1 ? ' dia' : ' dias') + ' sem defensor (e sem fortificação de pé) para a proposta; o mesmo para libertar.' }),
       linha(botao('Mudar as regras…', () => janelaRegras(), { c: 'sm', k: 'gu:regras-mudar' })));
   }
   async function janelaRegras() {
@@ -115,7 +216,8 @@
       const num = (k, rot, v0, o) => { const i = h('input', { type: 'text', inputmode: 'decimal', 'data-k': 'cr:' + k, value: kit().fmtCampo(v0, 2), autocomplete: 'off' }); return { k, i, rot, o, el: h('label', null, rot, i) }; };
       const campos = [num('teto', 'Teto (dias de comida)', rg.teto, { min: 1, max: 365, int: true }), num('custo', 'Custo de cada mantimento', rg.custo, { min: 0, max: 1000 }),
         num('forr', 'Forragem (% do que come)', rg.forr, { min: 0, max: 100 }), num('fome', 'Sem comida (% por dia)', rg.fome, { min: 0, max: 100 }),
-        num('terreno', 'Terreno duro (% por dia)', rg.terreno, { min: 0, max: 100 }), num('inverno', 'Inverno (+% por dia)', rg.inverno, { min: 0, max: 100 })];
+        num('terreno', 'Terreno duro (% por dia)', rg.terreno, { min: 0, max: 100 }), num('inverno', 'Inverno (+% por dia)', rg.inverno, { min: 0, max: 100 }),
+        num('ocupar', 'Dias sem defensor para ocupar', rg.ocupar, { min: 1, max: 365, int: true })];      // (parte 12b)
       const caixas = (k, lista, marcados) => h('div', { class: 'cr-ops', 'data-k': 'cr:' + k }, lista.map(([id, nome]) => h('label', { class: 'op cr-op' }, h('input', { type: 'checkbox', value: String(id), 'data-k': 'cr:' + k + ':' + id, checked: marcados.includes(id) ? true : null }), h('span', { text: nome }))));
       const duros = caixas('duros', (m.terrenos || []).map(t => [t.id, t.nome]), rg.duros), meses = caixas('meses', nomesMeses(m).map((n, i) => [i, n]), rg.meses);
       const titulo = h('h2', { text: 'As regras da campanha' });
@@ -272,10 +374,13 @@
       linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o) }))];
   }
   // (lote 12, parte 12a) "Em Terra Alta, terra de Aldar: no "Próximo dia", reabastece do estoque de Aldar até 10 dias."
+  const OCUP_LADO = { aliada: 'aliada', inimiga: 'inimiga', neutra: 'neutra' };   // (parte 12b) na ocupada, o lado de quem ocupa
   function textoOnde(m, g) {
     const { achar, nomeDe, facDe, nomeFac, fmt } = kit(), C = CA(), rg = C.regrasDe(m), on = C.ondeEsta(m, g), r = on.r ? achar(m, on.r) : null;
     const nf = id => { const f = id ? facDe(m, id) : null; return f ? nomeFac(f) : 'outra facção'; };
     const ONDE = { casa: ', terra de ' + nf(on.dono), aliada: ', terra aliada (' + nf(on.dono) + ')', inimiga: ', terra inimiga (' + nf(on.dono) + ')', semdono: r ? ', sem dono' : '', alheia: ', terra de ' + nf(on.dono), neutra: ', terra neutra (' + nf(on.dono) + ')' };
+    // (parte 12b) a ocupada: por quem, e o que ela é para ele
+    if (on.ocup) ONDE[on.tipo] = ', ocupada por ' + nf(on.dono) + (OCUP_LADO[on.tipo] ? ' (' + OCUP_LADO[on.tipo] + ')' : '');
     const casa = C.REABASTECE.includes(on.tipo), partes = [];
     if (casa) partes.push(C.recComida(m) && g.fac ? 'no "Próximo dia", reabastece do estoque de ' + nf(g.fac) + ' até ' + rg.teto + (rg.teto === 1 ? ' dia' : ' dias') : 'em casa (sem a economia ligada, sem estoque para reabastecer)');
     else if (C.FORRAGEIA.includes(on.tipo) && rg.forr > 0) partes.push('colhe ' + fmt(rg.forr, 1) + '% do que come (forragem)');
@@ -505,29 +610,37 @@
     if (!base.linhas.length) return;
     // (o pior caso, sem reabastecer nem forragem: as linhas do desgaste que podem aparecer ficam no lugar desde o começo)
     const pior = C.diaDaCampanha(m, dias, base.linhas.flatMap(L => ['reab:' + L.g, 'forr:' + L.g]));
-    const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec));
+    const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec), !!(A.temJornal && A.temJornal() && DP()));
     if (!res || !kit().mesmoMapa(m.id)) return;
     let n = 0;
-    if (A.mudar('o dia da campanha', d => { n = C.aplicarDia(d, res); if (!n) return false; }) !== false && n) kit().avisoDesfazer(avisoDoDia(m, res));
+    // (parte 12b) as notícias da ocupação e da libertação marcadas vêm do mapa de antes
+    const nts = res.jornal ? propostasMarcadas(res).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac))) : [];
+    if (A.mudar('o dia da campanha', d => { n = C.aplicarDia(d, res); if (!n) return false; }) !== false && n) kit().avisoDesfazer(avisoDoDia(m, res) + (nts.length ? DP().porNoJornal('mt_oc_', nts) : ''));
   }
+  const propostasMarcadas = res => (res.regioes || []).filter(x => (x.tipo === 'ocupar' || x.tipo === 'libertar') && !x.recusado);
   const nomeComida = (m, rec) => (rec && m.eco ? (m.eco.rec.find(r => r.id === rec) || {}).nome || 'comida' : 'comida');
   function avisoDoDia(m, res) {
     const { plural, fmt } = kit(), ls = res.linhas.filter(L => !L.fora), perdas = ls.reduce((s0, L) => s0 + (L.desg ? L.desg.tropas0 - L.desg.tropas1 : 0), 0);
     const gasto = Object.values(res.estoque).reduce((s0, E) => s0 + (E.de - E.para), 0), forr = ls.reduce((s0, L) => s0 + (L.forr ? L.forr.n : 0), 0);
-    return (res.dias > 1 ? 'Os ' + res.dias + ' dias da campanha' : 'O dia da campanha') + ': ' + ls.map(L => L.nome).join(', ') + '.'
+    const nR = id => { const r = kit().achar(m, id); return r ? kit().nomeDe(r, m) : 'A região'; };
+    return (res.dias > 1 ? 'Os ' + res.dias + ' dias da campanha' : 'O dia da campanha') + ': ' + (ls.length ? ls.map(L => L.nome).join(', ') : 'nenhum exército') + '.'
       + (gasto > 0 ? ' Saíram ' + fmt(gasto, 2) + ' ' + nomeComida(m, res.rec) + ' do estoque.' : '') + (forr > 0 ? ' Forragem: ' + plural(forr, 'mantimento', 'mantimentos') + '.' : '')
-      + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '');
+      + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '')
+      + propostasMarcadas(res).map(x => ' ' + nR(x.r) + (x.lib ? ' livre de novo.' : ' ocupada por ' + nomeFacDe(m, x.fac) + '.')).join('');
   }
   /* a janela do dia: por exército, a caixa dele (desmarcado: fica como está) e as linhas — o que come; o reabastecimento,
      a forragem e o desgaste, cada um com a caixa. As linhas ficam no lugar (as de base e as do pior caso); os números
-     acompanham as caixas. → a conta final (para MundoCampanha.aplicarDia) ou null */
-  function dialogoDia(m, base, pior, refazer) {
+     acompanham as caixas. (parte 12b) Depois, a ocupação: as contagens (só o texto) e as propostas — ocupar e libertar —,
+     cada uma com a caixa (marcada; desmarcada, a contagem recomeça), e a caixa das notícias para o rascunho do Jornal
+     (desmarcada; jornal: se dá para escrever lá). → a conta final (para MundoCampanha.aplicarDia, com jornal) ou null */
+  function dialogoDia(m, base, pior, refazer, jornal) {
     const { h, fmt, plural, achar, nomeDe, facDe, nomeFac } = kit(), C = CA();
     return new Promise(resolve => {
       const rg = base.regras, nomeR = nomeComida(m, base.rec);
       const nomeF = id => { const f = id ? facDe(m, id) : null; return f ? nomeFac(f) : 'a facção'; }, nomeReg = id => { const r = id ? achar(m, id) : null; return r ? nomeDe(r, m) : ''; };
       const ONDE = { casa: 'terra de ', aliada: 'terra aliada: ', inimiga: 'terra inimiga: ', alheia: 'terra de ', neutra: 'terra neutra: ' };
-      const ondeTxt = on => { const r = nomeReg(on.r); return (r ? 'em ' + r : 'fora das regiões') + (on.tipo === 'semdono' ? (r ? ', sem dono' : '') : ', ' + ONDE[on.tipo] + nomeF(on.dono)); };
+      const ondeTxt = on => { const r = nomeReg(on.r); return (r ? 'em ' + r : 'fora das regiões') + (on.tipo === 'semdono' ? (r ? ', sem dono' : '')
+        : on.ocup ? ', ocupada por ' + nomeF(on.dono) + (OCUP_LADO[on.tipo] ? ' (' + OCUP_LADO[on.tipo] + ')' : '') : ', ' + ONDE[on.tipo] + nomeF(on.dono)); };   // (parte 12b) a ocupada
       const motivos = X => [X.dias.fome ? 'sem comida' + (base.dias > 1 ? ' em ' + plural(X.dias.fome, 'dia', 'dias') : '') : '', X.dias.terreno ? 'terreno duro: ' + X.ter : '', X.dias.inverno ? 'inverno' : ''].filter(Boolean).join(', ');
       const acabam = X => { const l = X.unid.filter(u => u.acaba).map(u => u.nome); return l.length ? ' · ' + (l.length === 1 ? 'acaba ' : 'acabam ') + l.join(', ') : ''; };
       let res = base;
@@ -570,14 +683,40 @@
         });
         return el;
       };
+      // (parte 12b) a ocupação: as regiões ficam as mesmas com qualquer caixa (o exército desmarcado continua lá)
+      const regs = base.regioes || [], props = regs.filter(x => x.tipo === 'ocupar' || x.tipo === 'libertar');
+      const nomeForte = id => { const o = id ? achar(m, id) : null; return o ? 'a fortificação de ' + nomeDe(o, m) : 'uma fortificação'; };
+      const blocoReg = x => {
+        const nR = nomeReg(x.r) || 'A região';
+        if (x.tipo === 'conta') return h('p', { class: 'dia-reg', 'data-k': 'dia:reg:' + x.r, text: nR + ': ' + nomeF(x.fac) + ' está lá sem ' + (x.lib ? 'as tropas de ' + nomeF(x.quem) : 'defensor') + ' — ' + x.n + ' de ' + plural(x.de, 'dia', 'dias') + (x.lib ? ' para libertar.' : ' para ocupar.') });
+        if (x.tipo === 'forte') return h('p', { class: 'dia-reg', 'data-k': 'dia:reg:' + x.r, text: nR + ': ' + nomeF(x.fac) + ' está lá, mas ' + nomeForte(x.forte) + ' está de pé — para ocupar, primeiro o cerco.' });
+        // (o texto fica o mesmo: desmarcada, a linha só esmaece — nada muda de lugar)
+        const k = (x.lib ? 'lib:' : 'ocup:') + x.r, cb = h('input', { type: 'checkbox', 'data-k': 'dia:' + k, checked: true });
+        const el = h('label', { class: 'op dia-op dia-reg-op', 'data-k': 'dia:' + k + '-linha' }, cb, h('span', { text: (x.lib ? 'Libertar ' : 'Ocupar ') + nR + ': '
+          + (x.lib ? 'volta para ' + nomeF(x.dono) + (x.fac !== x.dono ? ', com as tropas de ' + nomeF(x.fac) : '') + ' (' + plural(x.n, 'dia', 'dias') + ' sem as tropas de ' + nomeF(x.quem) + ').'
+            : 'fica ocupada por ' + nomeF(x.fac) + ' (' + plural(x.n, 'dia', 'dias') + ' sem defensor); a produção de lá vai para ' + nomeF(x.fac) + '.') }));
+        cxs.push([k, cb]);
+        pintores.push(() => el.classList.toggle('nao', !cb.checked));
+        return el;
+      };
+      const cbJ = jornal && props.length ? h('input', { type: 'checkbox', 'data-k': 'dia:jornal' }) : null, verJ = cbJ ? h('div', { class: 'sem-jornal-txt', 'data-k': 'dia:jornal:txt' }) : null;
+      const marcada = x => { const c = cxs.find(([k]) => k === (x.lib ? 'lib:' : 'ocup:') + x.r); return !!c && c[1].checked; };
+      if (verJ) pintores.push(() => {
+        const l = props.filter(marcada).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac)));
+        verJ.replaceChildren(...(l.length ? l.flatMap(r => [h('b', { text: r.tit }), h('p', { text: r.txt })]) : [h('p', { text: 'Nenhuma: as propostas estão desmarcadas.' })]));
+      });
+      const secReg = regs.length ? h('div', { class: 'dia-regs', 'data-k': 'dia:regs' }, h('b', { class: 'dia-regs-tit', text: 'A ocupação' }), regs.map(blocoReg),
+        props.length ? h('small', { class: 'dia-nota', text: 'Desmarcada, a proposta não vale agora e a contagem recomeça do zero.' }) : null,
+        cbJ ? h('div', { class: 'sem-jornal', 'data-k': 'dia:jornal-caixa' }, h('label', { class: 'op' }, cbJ, h('span', { text: props.length > 1 ? 'Escrever as notícias no rascunho do Jornal' : 'Escrever a notícia no rascunho do Jornal' })),
+          h('details', { class: 'sem-jornal-ver', 'data-k': 'dia:jornal:ver' }, h('summary', { text: props.length > 1 ? 'Ver as notícias' : 'Ver a notícia' }), verJ)) : null) : null;
       const titulo = h('h2', { text: base.dias > 1 ? 'Os ' + base.dias + ' dias da campanha' : 'O dia da campanha' });
       titulo.id = 'dl-dia-' + Date.now().toString(36);
       const lista = h('div', { class: 'dia-lista', 'data-k': 'dia:lista' }, base.linhas.map(blocoDe));
       const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'dia:nao', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'dia:ok', text: 'Aplicar' });
       const form = h('form', { class: 'dl', novalidate: true }, titulo,
         h('p', { class: 'note', text: 'Cada exército come pelo tamanho da tropa. Desmarque o que não vale; nada muda até você aplicar.' }),
-        lista,
-        h('small', { class: 'ajuda', text: 'As regras (o teto de ' + plural(rg.teto, 'dia', 'dias') + ', a forragem, o desgaste, os terrenos duros e o inverno) ficam na aba Guerra.' }),
+        lista, secReg,
+        h('small', { class: 'ajuda', text: 'As regras (o teto de ' + plural(rg.teto, 'dia', 'dias') + ', a forragem, o desgaste, os terrenos duros, o inverno e os dias para ocupar) ficam na aba Guerra.' }),
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl dia-dl', 'aria-labelledby': titulo.id }, form);
       const pintar = () => { for (const p0 of pintores) p0(); };
@@ -585,7 +724,7 @@
       pintar();
       let feito = false;
       const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
-      form.addEventListener('submit', ev => { ev.preventDefault(); fim(refazer(recusadas())); });
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim(Object.assign(refazer(recusadas()), { jornal: !!(cbJ && cbJ.checked) })); });
       bNao.addEventListener('click', () => fim(null));
       dl.addEventListener('close', () => fim(null));
       dl.addEventListener('keydown', ev => ev.stopPropagation());
@@ -1164,5 +1303,6 @@
   }
 
   window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha,
+    secOcupacao, janelaOcupacao,                                 // (lote 12, parte 12b) a ocupação da região
     get batalha() { return bat; }, get encontros() { return encontros.slice(); } };
 })();

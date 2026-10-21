@@ -1207,6 +1207,11 @@
     while (p && n <= MAX_NIVEL) { if (p.fac) return p.fac; p = p.pai ? objDe(mapa, p.pai, 'r') : null; n++; }
     return null;
   }
+  /* (lote 12, parte 12b) quem controla a região: quem a ocupa, ou a dona (a facção dela ou a da região de fora). Na
+     projeção, a ocupação de uma facção que os jogadores não veem fica sem a facção (null: a região é da dona, ocupada). */
+  function controleDaRegiao(mapa, r) { const oc = ehObj(r) && ehObj(r.ocup) ? r.ocup : null; return oc && oc.fac ? oc.fac : facDaRegiao(mapa, r); }
+  // (lote 12, parte 12b) a ocupação de uma região ou de um marcador: { fac (quem ocupa), d (o dia em que começou) }
+  const normOcup = v => (ehObj(v) ? { fac: idRef(v.fac), d: inteiro(v.d, 0, -1e9, 1e9) } : null);
   // os ids dos pais, avós… de uma região
   function acimaDe(mapa, r) {
     const out = new Set();
@@ -1561,6 +1566,8 @@
         if (ass) mc.ass = ass;
         const dt = normDentro(o.dentro);                          // (parte 6) na projeção: o que os jogadores veem dentro
         if (dt) mc.dentro = dt;
+        const oc = normOcup(o.ocup);                              // (lote 12, parte 12b) ocupado por outra facção (a fortificação que caiu)
+        if (oc) mc.ocup = oc;
         return mc;
       }
       case 'g':
@@ -1590,6 +1597,8 @@
         if (tem(CLIMAS, o.ch)) r.ch = o.ch;
         const prod = normTabProd(o.prod);                         // (lote 10) a produção que o mestre escreve, por semana
         if (Object.keys(prod).length) r.prod = prod;
+        const oc = normOcup(o.ocup);                              // (lote 12, parte 12b) ocupada por outra facção
+        if (oc) r.ocup = oc;
         return r;
       }
       case 'e': {
@@ -2464,7 +2473,24 @@
     if (regras) g.regras = regras;
     const forr = normForragem(v.forr);
     if (forr.length) g.forr = forr;
-    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr ? g : null;
+    const pres = normPresenca(v.pres);                           // (parte 12b) os dias contados para a ocupação (e a libertação)
+    if (Object.keys(pres).length) g.pres = pres;
+    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr || g.pres ? g : null;
+  }
+  /* (lote 12, parte 12b) os dias contados para a ocupação de cada região (e, com lib, para a libertação): { região: { fac
+     (quem conta), n (os dias seguidos), lib } } */
+  const MAX_PRES = 2000;
+  function normPresenca(v) {
+    const out = {};
+    let k = 0;
+    for (const id of ehObj(v) ? Object.keys(v) : []) {
+      const x = v[id], r = idOk(id), fac = ehObj(x) ? idRef(x.fac) : null, n = ehObj(x) ? inteiro(x.n, 0, 0, 1e6) : 0;
+      if (!r || !fac || !(n > 0) || k >= MAX_PRES) continue;
+      out[r] = { fac, n };
+      if (sim(x.lib)) out[r].lib = true;
+      k++;
+    }
+    return out;
   }
   /* (lote 12, parte 12a) As regras da campanha (o mestre muda; sem elas, as de começo): teto (os dias de comida que o
      exército leva ao se reabastecer), custo (quanto do recurso de comida da facção custa cada mantimento), forr (a % do
@@ -2725,7 +2751,7 @@
       const rs = new Set(mapa.objs.filter(o => o.k === 'r').map(o => o.id));
       mapa.guerra.forr = mapa.guerra.forr.filter(x => rs.has(x.r));
       if (!mapa.guerra.forr.length) delete mapa.guerra.forr;
-      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr) delete mapa.guerra;
+      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres) delete mapa.guerra;
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -2736,6 +2762,18 @@
       let p = o, n = 0;
       while (p && p.pai && n <= MAX_NIVEL) { p = regs.get(p.pai); n++; if (p === o) break; }
       if (p === o || n > MAX_NIVEL) o.pai = null;
+    }
+    // (lote 12, parte 12b) a ocupação: de uma facção que existe e que não é a dona (sem a facção: só na projeção, ocupada
+    // por quem os jogadores não veem); a contagem dos dias, só nas regiões e com as facções que existem
+    for (const o of mapa.objs) {
+      if (!o.ocup) continue;
+      const dono = o.k === 'r' ? facDaRegiao(mapa, o) : (r => (r ? facDaRegiao(mapa, r) : null))(regiaoEm(mapa, o.x, o.y));
+      if ((o.ocup.fac && !facs.has(o.ocup.fac)) || (o.ocup.fac && o.ocup.fac === dono)) delete o.ocup;
+    }
+    if (mapa.guerra && mapa.guerra.pres) {
+      for (const id of Object.keys(mapa.guerra.pres)) if (!regs.has(id) || !facs.has(mapa.guerra.pres[id].fac)) delete mapa.guerra.pres[id];
+      if (!Object.keys(mapa.guerra.pres).length) delete mapa.guerra.pres;
+      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres) delete mapa.guerra;
     }
     return mapa;
   }
@@ -2920,6 +2958,7 @@
       if (o.k === 'm') {
         delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro;
         if (coberto(o.x, o.y)) continue;
+        if (o.ocup && escondidas.has(o.ocup.fac)) o.ocup = { fac: null, d: o.ocup.d };   // (lote 12, parte 12b)
         if (dentro.has(o.id)) o.dentro = dentro.get(o.id);       // (lote 10, parte 6) a cidade aberta: o que tem dentro
       }
       else if (o.k === 'g') {
@@ -2939,7 +2978,8 @@
         o.r = raioNoDia(o, dia); o.cresce = 0; o.fim = null; delete o.peso;
         delete o.rota; delete o.prog; delete o.pt; delete o.modo; delete o.sentido;     // (lote 7, parte 5b) a rota é do mestre
       }
-      else if (o.k === 'r') { delete o.clima; delete o.chj; delete o.prod; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue; }
+      else if (o.k === 'r') { delete o.clima; delete o.chj; delete o.prod; if (chReg.has(o.id)) o.ch = chReg.get(o.id); delete o.enc; delete o.estilo; o.custo = null; o.fac = facEf.get(o.id) || null; if (escondidas.has(o.fac)) o.fac = null; if (todoCoberto(o.pts)) continue;
+        if (o.ocup && escondidas.has(o.ocup.fac)) o.ocup = { fac: null, d: o.ocup.d }; }   // (lote 12, parte 12b) ocupada por quem eles não veem: sem a facção
       else if (o.k === 't' && o.esc) continue;                  // (lote 7, parte 5b) a rota escondida é do mestre
       else if (o.k === 't' || o.k === 'l') { if (todoCoberto(o.pts)) continue; }
       else if (o.k === 'f') {
@@ -3031,7 +3071,7 @@
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
-    TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, acimaDe,
+    TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
     HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
@@ -3053,7 +3093,7 @@
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
       segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA,
-      forragem: MAX_FORR },
+      forragem: MAX_FORR, contagens: MAX_PRES },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

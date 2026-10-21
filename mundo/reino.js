@@ -43,7 +43,8 @@
    (parte 4b) As intrigas em andamento (mundo/intrigas.js) aparecem na prévia, só para o mestre; as que ele marca passam a
    ser vistas pelos jogadores junto com a semana.
    (lote 12, parte 12a) A forragem dos exércitos de fora (mundo/campanha.js) tira da produção de comida da região na
-   semana em que aconteceu (até o que ela produz), na conta da dona.
+   semana em que aconteceu (até o que ela produz), na conta da dona. (parte 12b) A região ocupada produz para quem a
+   ocupa (quem controla; o Livro do reino e a população continuam da dona).
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
@@ -313,11 +314,11 @@
     const N = NN(), por = {}, sem = {};
     if (!ecoDe(m)) return { por, sem };
     for (const f of m.faccoes || []) por[f.id] = {};
-    for (const r of regioes(m)) { const fid = N.facDaRegiao(m, r); somar(fid && por[fid] ? por[fid] : sem, producaoPropria(m, r).total); }
+    for (const r of regioes(m)) { const fid = N.controleDaRegiao(m, r); somar(fid && por[fid] ? por[fid] : sem, producaoPropria(m, r).total); }   // (lote 12: a ocupada produz para quem ocupa)
     for (const a of assentamentosDe(m)) {
       const c = a.o.ass.cla;
       if (!c) continue;
-      const info = infoDoCla(clas, c.id), p = producaoDoCla(m, a.o, info ? info.cons : null), dono = a.r ? N.facDaRegiao(m, a.r) : null;
+      const info = infoDoCla(clas, c.id), p = producaoDoCla(m, a.o, info ? info.cons : null), dono = a.r ? N.controleDaRegiao(m, a.r) : null;
       const fid = info && info.fac && por[info.fac] ? info.fac : dono;
       somar(fid && por[fid] ? por[fid] : sem, p);
     }
@@ -600,18 +601,18 @@
     const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
     const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [], fluxos: [], vencem: [], motivos: [], forr: [] };
     // (lote 12, parte 12a) a forragem dos exércitos de fora: a produção de comida da região cai nesta semana (até o que
-    // ela produz), na conta da dona
+    // ela produz), na conta de quem a controla (a dona; parte 12b: a ocupada, de quem ocupa)
     const CA = CAMP(), rc = e.rec.find(r => r.papel === 'comida');
     if (CA && rc) {
       const fs = CA.forragemDaSemana(m, n);
       for (const rid of Object.keys(fs)) {
-        const r = regiaoDe(m, rid), fid = r ? N.facDaRegiao(m, r) : null, tem = r ? Math.max(0, producaoPropria(m, r).total[rc.id] || 0) : 0, cai = arred2(Math.min(fs[rid], tem));
+        const r = regiaoDe(m, rid), fid = r ? N.controleDaRegiao(m, r) : null, tem = r ? Math.max(0, producaoPropria(m, r).total[rc.id] || 0) : 0, cai = arred2(Math.min(fs[rid], tem));
         if (!fid || !prod[fid] || !(cai > 0)) continue;
         prod[fid][rc.id] = arred2((prod[fid][rc.id] || 0) - cai);
         out.forr.push({ r: rid, fac: fid, rec: rc.id, n: cai });
       }
     }
-    const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
+    const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.controleDaRegiao(m, r) : null; };   // (lote 12: a ocupada, de quem ocupa)
     const semMoeda = new Set(), contas = [];
     for (const f of m.faccoes || []) {
       const est = {}, p = somar({}, prod[f.id] || {}), manut = {}, exe = [], paradas = [];
@@ -782,10 +783,12 @@
       for (const alvo of [prod, porProv.get(chave).prod]) { somar(alvo[k], t); somar(alvo.total, t); }
     };
     for (const r of regioes(m)) {
-      if (N.facDaRegiao(m, r) !== f.id) continue;
-      const q = producaoPropria(m, r);
-      juntar(r, 'terreno', q.terreno); juntar(r, 'pop', q.pop); juntar(r, 'cons', somar(somar({}, q.cons), q.gasto)); juntar(r, 'guilda', q.guilda); juntar(r, 'mestre', q.mestre);
-      if (!vis(r)) continue;
+      // (lote 12, parte 12b) a produção, de quem controla (a ocupada, de quem ocupa); o Livro, das regiões dela
+      if (N.controleDaRegiao(m, r) === f.id) {
+        const q = producaoPropria(m, r);
+        juntar(r, 'terreno', q.terreno); juntar(r, 'pop', q.pop); juntar(r, 'cons', somar(somar({}, q.cons), q.gasto)); juntar(r, 'guilda', q.guilda); juntar(r, 'mestre', q.mestre);
+      }
+      if (N.facDaRegiao(m, r) !== f.id || !vis(r)) continue;
       if (r.pai) livro.sub++; else livro.prov++;
       if (livro.grade) livro.hex += hexesProprios(m, r).length;
     }
@@ -793,7 +796,7 @@
     for (const a of assentamentosDe(m)) {
       const c = a.o.ass.cla;
       if (!c) continue;
-      const info = infoDoCla(clas, c.id), dono = a.r ? N.facDaRegiao(m, a.r) : null;
+      const info = infoDoCla(clas, c.id), dono = a.r ? N.controleDaRegiao(m, a.r) : null;
       const fid = info && info.fac && (m.faccoes || []).some(x => x.id === info.fac) ? info.fac : dono;
       if (fid === f.id) juntar(a.r, 'cla', producaoDoCla(m, a.o, info ? info.cons : null));
     }

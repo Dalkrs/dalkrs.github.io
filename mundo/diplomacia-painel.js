@@ -12,6 +12,8 @@
    (parte 3c) Os motivos de guerra de cada facção (só o mestre; as sugestões pelos pretendentes dos títulos), "Declarar
    guerra…" e "Fazer a paz…" no par de facções, com prévia, e a notícia para o rascunho do Jornal (a caixa desmarcada)
    ao declarar guerra, fazer a paz e assinar um tratado.
+   (lote 12, parte 12b) Na paz, as terras ocupadas entre as duas: cada uma volta para a dona (de começo) ou fica com quem
+   ocupa (anexar), no mesmo passo de Desfazer e na notícia.
    Nada muda até "Salvar" (ou "Criar"); tudo vale num passo de Desfazer. Usa as ferramentas do painel (MundoPainel.kit). */
 (() => {
   'use strict';
@@ -19,6 +21,7 @@
   const D = () => window.MundoDiplomacia;
   const N = () => window.MundoNucleo;
   const C = () => window.MundoCorte;
+  const CA = () => window.MundoCampanha || null;          // (lote 12, parte 12b) as terras ocupadas na paz
   const app = () => kit().app();
   const LIM = k => (N().LIMITES || {})[k];
   let filtroFac = '';                        // a facção da aba ('' = todas; só nesta página)
@@ -255,14 +258,16 @@
     const jtxt = !t && jornal ? porNoJornal('mt_tr_', D().noticiaTratado(A.mapa, D().diplDe(A.mapa).tratados.slice(-1)[0])) : '';
     K.avisoDesfazer((t ? 'O tratado ' + nome1 + ': salvo.' : 'O tratado ' + nome1 + ' entrou na diplomacia.') + jtxt);
   }
-  // (parte 3c) a notícia no rascunho do Jornal (o Desfazer do passo de antes tira, o Refazer põe de novo) → o texto do aviso
+  // (parte 3c) a notícia no rascunho do Jornal (o Desfazer do passo de antes tira, o Refazer põe de novo) → o texto do aviso.
+  // (lote 12, parte 12b) r também pode ser uma lista de notícias: vão todas juntas (ou nenhuma, sem lugar para todas)
   function porNoJornal(pre, r) {
-    const A = app(), mat = { id: pre + Date.now().toString(36), tit: r.tit, txt: r.txt, ass: '', dest: false }, MAXM = ((window.JornalNucleo && window.JornalNucleo.MAX) || {}).materias || 30;
+    const A = app(), lista = Array.isArray(r) ? r : [r], base = pre + Date.now().toString(36), MAXM = ((window.JornalNucleo && window.JornalNucleo.MAX) || {}).materias || 30;
+    const mats = lista.map((x, i) => ({ id: base + (i ? '_' + i : ''), tit: x.tit, txt: x.txt, ass: '', dest: false })), ids = new Set(mats.map(x => x.id)), varias = mats.length > 1;
     let cheio = false;
-    const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => x.id === mat.id)) return false; if (jx.materias.length >= MAXM) { cheio = true; return false; } jx.materias.push(Object.assign({}, mat)); });
-    const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => x.id !== mat.id); if (jx.materias.length === n0) return false; });
-    if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); return ' A notícia foi para o rascunho do Jornal.'; }
-    return ' A notícia não foi para o Jornal' + (cheio ? ': o rascunho já tem ' + MAXM + ' matérias.' : '.');
+    const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => ids.has(x.id))) return false; if (jx.materias.length + mats.length > MAXM) { cheio = true; return false; } for (const x of mats) jx.materias.push(Object.assign({}, x)); });
+    const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => !ids.has(x.id)); if (jx.materias.length === n0) return false; });
+    if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); return varias ? ' As ' + mats.length + ' notícias foram para o rascunho do Jornal.' : ' A notícia foi para o rascunho do Jornal.'; }
+    return (varias ? ' As notícias não foram para o Jornal' : ' A notícia não foi para o Jornal') + (cheio ? (varias ? ': o rascunho só tem lugar para ' + MAXM + ' matérias.' : ': o rascunho já tem ' + MAXM + ' matérias.') : '.');
   }
   // os campos de uma data do mundo (o ano, o mês e o dia) e a leitura deles (null sem o ano)
   function campoData(k, dt, meses) {
@@ -702,13 +707,17 @@
     if (D().diplDe(m).tratados.length >= (LIM('tratados') || 200)) { A.toast('A diplomacia já tem ' + (LIM('tratados') || 200) + ' tratados: tire um para fazer a paz.'); return; }
     const v = await dialogoPaz(m, a, b, !!(A.temJornal && A.temJornal()));
     if (!v || !K.mesmoMapa(m.id)) return;
+    // (lote 12, parte 12b) as terras ocupadas: o parágrafo da notícia vem do mapa de antes
+    const terras = v.terras || [], tt = terras.length && CA() ? CA().textoTerrasNaPaz(m, terras) : '';
     let novo = null;
-    const ok = mudarDipl('fazer a paz', (d, mm) => { novo = D().fazerPaz(mm, a, b, v.rel, Object.assign({ id: N().novoId('tr'), ini: hoje(mm) }, v.t)); if (!novo) return false; });
+    const ok = mudarDipl('fazer a paz', (d, mm) => { novo = D().fazerPaz(mm, a, b, v.rel, Object.assign({ id: N().novoId('tr'), ini: hoje(mm) }, v.t)); if (!novo) return false; if (terras.length && CA()) CA().terrasNaPaz(mm, terras); });
     if (ok === false || !novo) return;
-    const jtxt = v.jornal ? porNoJornal('mt_paz_', D().noticiaPaz(A.mapa, a, b, novo)) : '';
-    K.avisoDesfazer(nomeF(m, a) + ' e ' + nomeF(m, b) + ' fizeram a paz.' + jtxt);
+    const jtxt = v.jornal ? porNoJornal('mt_paz_', comTerras(D().noticiaPaz(A.mapa, a, b, novo), tt)) : '';
+    const nd = terras.filter(x => !x.anexar).length, na = terras.length - nd;
+    K.avisoDesfazer(nomeF(m, a) + ' e ' + nomeF(m, b) + ' fizeram a paz.' + (terras.length ? ' Terras ocupadas: ' + [nd ? K.plural(nd, 'devolvida', 'devolvidas') : '', na ? K.plural(na, 'anexada', 'anexadas') : ''].filter(Boolean).join(', ') + '.' : '') + jtxt);
   }
-  /* → { rel ('neutra' | 'tensao'), t: { tipo, fim, pub, txt } (o tratado de paz), jornal } ou null */
+  const comTerras = (r, tt) => (tt ? { tit: r.tit, txt: r.txt + '\n\n' + tt } : r);
+  /* → { rel ('neutra' | 'tensao'), t: { tipo, fim, pub, txt } (o tratado de paz), jornal, terras: [{ r, anexar }] } ou null */
   function dialogoPaz(m, a, b, jornal) {
     const K = kit(), { h } = K;
     return new Promise(resolve => {
@@ -723,10 +732,19 @@
       const pub = h('input', { type: 'checkbox', 'data-k': 'paz:pub', checked: true });
       const txt = h('textarea', { 'data-k': 'paz:txt', rows: 3, maxlength: LIM('textoDipl') || 600, placeholder: 'O que a paz diz (os jogadores leem, se for pública)…' });
       const cj = jornal ? caixaJornal(K, 'paz:jornal') : null;
+      // (lote 12, parte 12b) as terras ocupadas entre as duas: devolver (de começo) ou anexar
+      const terras = CA() ? CA().terrasEntre(m, a, b).map(t => {
+        const nmT = 'paz-terra-' + t.r + '-' + Date.now().toString(36);
+        const dev = h('input', { type: 'radio', name: nmT, value: 'dev', 'data-k': 'paz:terra:' + t.r + ':dev', checked: true }), anx = h('input', { type: 'radio', name: nmT, value: 'anx', 'data-k': 'paz:terra:' + t.r + ':anx' });
+        return { r: t.r, anx, el: h('div', { class: 'paz-terra', 'data-k': 'paz:terra:' + t.r },
+          h('span', { class: 'tx' }, h('b', { text: t.nome }), h('small', { text: 'de ' + nomeF(m, t.dono) + ', ocupada por ' + nomeF(m, t.quem) })),
+          h('label', { class: 'op' }, dev, h('span', { text: 'Volta para ' + nomeF(m, t.dono) })), h('label', { class: 'op' }, anx, h('span', { text: 'Fica com ' + nomeF(m, t.quem) }))) };
+      }) : [];
+      const escolhas = () => terras.map(t => ({ r: t.r, anexar: t.anx.checked }));
       const rel = () => rels.find(x => x.r.checked).r.value;
       // o tratado como vai ficar (o prazo que não serve ainda, sem prazo na prévia da notícia)
       const tratado = () => { let f = null; try { f = prazo.checked ? lerData(fim, 'O prazo', meses) : null; } catch (e) { f = null; } return { tipo: tipo.value || null, ini: hoje(m), fim: f, pub: pub.checked, txt: txt.value.trim() }; };
-      const pintarJ = () => { if (cj) cj.pintar(D().noticiaPaz(m, a, b, tratado())); };
+      const pintarJ = () => { if (cj) cj.pintar(comTerras(D().noticiaPaz(m, a, b, tratado()), terras.length && CA() ? CA().textoTerrasNaPaz(m, escolhas()) : '')); };
       const titulo = h('h2', { text: 'Fazer a paz: ' + nomeF(m, a) + ' e ' + nomeF(m, b) });
       titulo.id = 'dl-paz-' + Date.now().toString(36);
       const err = h('p', { class: 'err', role: 'alert' });
@@ -738,6 +756,7 @@
         h('div', null, h('label', { class: 'op' }, prazo, h('span', { text: 'Tem prazo' })), fim.el),
         h('label', { class: 'op' }, pub, h('span', { text: 'Pública (os jogadores sabem do tratado)' })),
         h('label', null, 'Os termos', txt),
+        terras.length ? h('fieldset', { class: 'paz-terras', 'data-k': 'paz:terras' }, h('legend', { text: 'As terras ocupadas' }), terras.map(t => t.el)) : null,
         cj ? cj.el : null,
         err, h('div', { class: 'pe' }, bNao, bOk));
       form.addEventListener('input', () => { err.textContent = ''; pintarJ(); });
@@ -753,7 +772,7 @@
           if (prazo.checked && !df) throw new Error('O prazo: escreva ao menos o ano.');
           if (df && D().diaDe(m, df, true) < D().hojeDia(m)) throw new Error('O prazo já passou.');
           const t = tratado();
-          fim0({ rel: rel(), t: { tipo: t.tipo, fim: df, pub: t.pub, txt: t.txt }, jornal: !!(cj && cj.cx.checked) });
+          fim0({ rel: rel(), t: { tipo: t.tipo, fim: df, pub: t.pub, txt: t.txt }, jornal: !!(cj && cj.cx.checked), terras: escolhas() });
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       bNao.addEventListener('click', () => fim0(null));

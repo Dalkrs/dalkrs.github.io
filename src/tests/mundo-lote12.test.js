@@ -5,6 +5,13 @@
 //     (o reabastecimento, a forragem, o desgaste, a fome; desmarcar refaz as contas — o estoque vai para quem vem depois;
 //     o exército desmarcado fica como está); aplicar e Desfazer; de domingo para segunda, o dia antes da semana (que
 //     espera); a forragem na prévia da semana; no celular.
+//   · (parte 12b, SO=ocupacao) no "Próximo dia", a ocupação: a proposta de ocupar (3 dias sem defensor), a de libertar e
+//     a fortificação de pé que impede; desmarcar (a linha esmaece, nada muda de lugar; a contagem recomeça); a notícia
+//     para o rascunho do Jornal (desmarcada; a prévia só com as marcadas); aplicar, Desfazer e Refazer (com a notícia);
+//     as listras no mapa (na cor de quem ocupa); a região: quem ocupa e desde quando, "Tirar a ocupação…", "Anexar…"
+//     (com a notícia) e "Marcar como ocupada…"; a aba Guerra (as terras ocupadas; a regra dos dias, no resumo e na janela);
+//     quem joga (a leitura e as listras, sem a facção escondida); a paz com as terras (devolver e anexar, na notícia);
+//     no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -149,6 +156,176 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await L.F.click(dlg('[data-k="dia:nao"]')); await espera(200);
     ok(!(await L.F.locator('dialog.dia-dl[open]').count()) && j(await est()) === antesN, '"Agora não" fecha sem mudar nada');
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  if (parte('ocupacao')) await passo('a ocupação', async () => {
+    const ras = () => A(L, () => { try { return JSON.parse(localStorage.getItem('tinycats:jornal:rascunho') || 'null'); } catch (e) { return null; } });
+    const materia = async re => { const r = await ras(); return r && r.materias ? r.materias.find(x => re.test(x.tit)) || null : null; };
+    const comoJogador = async sim => { await A(L, x => { __mundo.App.comoJogador = x; __mundo.App.emit('muda', { origem: 'fora' }); }, sim); await espera(400); };
+    const selecionar = async id => { await A(L, x => __mundo.App.selecionar(x ? [x] : []), id); await espera(250); };
+    // o mundo: a Vanguarda há 2 dias no Vale sem defensor; Terra Alta ocupada pelo Vale, com a Hoste lá há 2 dias; o Forte do
+    // Vale com a fortificação de pé e o Cerco de Aldar; a Frota nas Ilhas (aliadas)
+    await A(L, () => __mundo.App.mudar('a ocupação: o começo', m => {
+      const N = __mundo.N, ret = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      m.objs = m.objs.filter(o => !['r4', 'k4', 'g4'].includes(o.id));
+      for (const o of m.objs) if (o.k === 'r') delete o.ocup;
+      m.objs.find(o => o.id === 'r1').ocup = { fac: 'fb', d: m.cal.dia - 5 };
+      m.objs.push(Object.assign(N.objNovo('r', { pts: ret(460, 460, 360, 300) }), { id: 'r4', nome: 'Forte do Vale', fac: 'fb' }),
+        Object.assign(N.objNovo('m', { x: 640, y: 560 }), { id: 'k4', nome: 'Castelo Negro', estr: { nome: 'Muralhas', def: 3, hp: 60, hpMax: 100 } }),
+        Object.assign(N.objNovo('g', { x: 600, y: 680, sigla: 'CE' }), { id: 'g4', nome: 'Cerco', tipo: 'exercito', fac: 'fa', exe: { moral: 6, mant: 9, unid: [{ id: 'u4', nome: 'Sapadores', tropas: 120 }] } }));
+      if (!m.guerra) m.guerra = { tipos: [], bats: [], hexes: {} };
+      delete m.guerra.regras;
+      m.guerra.pres = { r2: { fac: 'fa', n: 2 }, r1: { fac: 'fa', n: 2, lib: true } };
+    })); await espera(300);
+    const hoje0 = await A(L, () => __mundo.App.mapa.cal.dia);
+    const dtTxt = dia => A(L, x => window.MundoPainel.kit.dataTxt(__mundo.App.mapa, x), dia);
+    const dtNot = dia => A(L, x => { const m = __mundo.App.mapa, d = __mundo.N.dataDe(m.cal, x); return window.MundoCorte.dataTxt(m, { a: d.ano, m: d.mes, d: d.diaMes }); }, dia);
+    ok(await A(L, () => !!__mundo.App.mapa.guerra.pres.r2 && __mundo.App.mapa.objs.find(o => o.id === 'r1').ocup.fac === 'fb'), '(o começo: as contagens e Terra Alta ocupada)');
+    // o "Próximo dia": a ocupação
+    await A(L, () => __mundo.App.selecionar([])); await espera(200);
+    await semAvisos(L);
+    await L.F.click('#diaMais');
+    await L.F.waitForSelector('dialog.dia-dl[open]');
+    const hoje = hoje0 + 1, hojeNot = await dtNot(hoje);
+    const lr = k => textoDe(L, 'dialog.dia-dl[open] [data-k="' + k + '"]');
+    ok(await lr('dia:ocup:r2-linha') === 'Ocupar Vale Fundo: fica ocupada por Aldar (3 dias sem defensor); a produção de lá vai para Aldar.'
+      && await lr('dia:lib:r1-linha') === 'Libertar Terra Alta: volta para Aldar (3 dias sem as tropas de Vale).'
+      && await lr('dia:reg:r4') === 'Forte do Vale: Aldar está lá, mas a fortificação de Castelo Negro está de pé — para ocupar, primeiro o cerco.',
+      'no dia, a ocupação: a proposta de ocupar o Vale, a de libertar Terra Alta e o forte que impede: ' + await lr('dia:regs'));
+    ok(await L.F.locator(dlg('[data-k="dia:ocup:r2"]')).isChecked() && await L.F.locator(dlg('[data-k="dia:lib:r1"]')).isChecked() && !(await L.F.locator(dlg('[data-k="dia:jornal"]')).isChecked())
+      && /^A ocupação /.test(await lr('dia:regs')) && /Desmarcada, a proposta não vale agora e a contagem recomeça do zero\./.test(await lr('dia:regs')),
+      'as propostas, marcadas; a caixa das notícias, desmarcada');
+    const alt0 = await A(L, () => document.querySelector('dialog.dia-dl[open] [data-k="dia:regs"]').getBoundingClientRect().height);
+    await L.F.uncheck(dlg('[data-k="dia:lib:r1"]')); await espera(120);
+    ok(await A(L, () => document.querySelector('dialog.dia-dl[open] [data-k="dia:lib:r1-linha"]').classList.contains('nao')) && await lr('dia:lib:r1-linha') === 'Libertar Terra Alta: volta para Aldar (3 dias sem as tropas de Vale).'
+      && Math.abs(await A(L, () => document.querySelector('dialog.dia-dl[open] [data-k="dia:regs"]').getBoundingClientRect().height) - alt0) < 0.5,
+      'desmarcar: a linha esmaece com o mesmo texto (nada muda de lugar)');
+    await L.F.check(dlg('[data-k="dia:jornal"]')); await L.F.click(dlg('[data-k="dia:jornal:ver"] > summary')); await espera(120);
+    const nj = await lr('dia:jornal:txt');
+    ok(nj === 'Vale Fundo ocupada por Aldar As tropas de Aldar ocupam Vale Fundo, terra de Vale (' + hojeNot + ').', 'a prévia das notícias: só a da proposta marcada: ' + nj);
+    await L.F.locator(dlg('[data-k="dia:regs"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12b-dia-ocupacao');
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    const est = () => A(L, () => { const m = __mundo.App.mapa, R = id => m.objs.find(o => o.id === id); return { r1: R('r1').ocup || null, r2: R('r2').ocup || null, f2: R('r2').fac, pres: (m.guerra && m.guerra.pres) || null }; });
+    let e = await est();
+    ok(j(e.r2) === j({ fac: 'fa', d: hoje }) && e.r1 && e.r1.fac === 'fb' && !(e.pres && (e.pres.r1 || e.pres.r2)) && /Vale Fundo ocupada por Aldar\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L))
+      && await A(L, () => __mundo.App.rotuloDesfazer()) === 'o dia da campanha' && !!(await materia(/^Vale Fundo ocupada por Aldar$/)),
+      'aplicar: o Vale ocupado por Aldar desde hoje; Terra Alta continua ocupada (a contagem recomeça); a notícia no rascunho: ' + j(e) + ' ' + await avisos(L));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    e = await est();
+    ok(!e.r2 && e.pres && e.pres.r2 && e.pres.r2.n === 2 && e.pres.r1 && e.pres.r1.lib && !(await materia(/^Vale Fundo ocupada/)), 'Desfazer: sem a ocupação, as contagens de antes e sem a notícia');
+    await A(L, () => __mundo.App.refazer()); await espera(400);
+    ok(j((await est()).r2) === j({ fac: 'fa', d: hoje }) && !!(await materia(/^Vale Fundo ocupada por Aldar$/)), 'Refazer: a ocupação e a notícia de novo');
+    // no exército, a ocupada: de quem ocupa (a Vanguarda reabastece lá)
+    await aba(L, 'selecao'); await selecionar('g2');
+    ok(await textoDe(L, '#pane [data-k="o:g2:campanha"]') === 'Em Vale Fundo, ocupada por Aldar: no "Próximo dia", reabastece do estoque de Aldar até 10 dias.', 'no exército: a terra ocupada por Aldar é casa: ' + await textoDe(L, '#pane [data-k="o:g2:campanha"]'));
+    await selecionar(null);
+    // as listras no mapa, na cor de quem ocupa
+    const listras = id => A(L, x => { const p = document.querySelector('#mundo svg.camadas g.obj[data-id="' + x + '"] path.reg-ocup'); if (!p) return null; const pid = (p.getAttribute('fill') || '').replace(/^url\(#|\)$/g, ''), r = document.getElementById(pid); return { fac: p.getAttribute('data-ocup'), cor: r ? r.querySelector('rect').getAttribute('fill') : null }; }, id);
+    ok(j(await listras('r2')) === j({ fac: 'fa', cor: '#3f7fbf' }) && j(await listras('r1')) === j({ fac: 'fb', cor: '#8a2a2a' }) && await listras('r3') === null, 'no mapa, as listras na cor de quem ocupa (a região livre, sem)');
+    await semAvisos(L); await foto('l12b-mapa');
+    // a região: quem ocupa e desde quando
+    await aba(L, 'selecao'); await selecionar('r2');
+    ok(await textoDe(L, '#pane [data-k="o:r2:ocup"]') === 'Ocupada por Aldar desde ' + await dtTxt(hoje) + '.' && await campo(L, 'o:r2:ocup-anexar').count() === 1 && await campo(L, 'o:r2:ocup-tirar').count() === 1,
+      'na região: ocupada por Aldar desde hoje, com "Anexar…" e "Tirar a ocupação…": ' + await textoDe(L, '#pane [data-k="o:r2:ocup"]'));
+    await campo(L, 'o:r2:ocup').scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12b-regiao');
+    await botao(L, 'o:r2:ocup-tirar'); await L.F.waitForSelector('dialog.oc-dl[open]');
+    ok(await textoDe(L, 'dialog.oc-dl[open] h2') === 'Tirar a ocupação de Vale Fundo?' && !(await L.F.locator(dlg('[data-k="oc:jornal"]')).isChecked()), 'tirar: a confirmação (a caixa do Jornal desmarcada)');
+    await L.F.click(dlg('[data-k="oc:ok"]')); await espera(400);
+    const et = await est();
+    ok(!et.r2 && et.f2 === 'fb' && /Vale Fundo não está mais ocupada: volta a ser só de Vale\./.test(await avisos(L)) && !(await materia(/^Vale Fundo livre de novo$/)), 'tirar a ocupação: o Vale volta a ser só do Vale (a dona, a mesma; sem a notícia): ' + j(et));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    ok(j((await est()).r2) === j({ fac: 'fa', d: hoje }), 'Desfazer: ocupado de novo');
+    await botao(L, 'o:r2:ocup-anexar'); await L.F.waitForSelector('dialog.oc-dl[open]');
+    await L.F.check(dlg('[data-k="oc:jornal"]')); await L.F.click(dlg('[data-k="oc:jornal:ver"] > summary')); await espera(120);
+    const na = await textoDe(L, 'dialog.oc-dl[open] [data-k="oc:jornal:txt"]');
+    ok(await textoDe(L, 'dialog.oc-dl[open] h2') === 'Anexar Vale Fundo?' && na === 'Aldar anexa Vale Fundo Vale Fundo, que era de Vale, passa a ser de Aldar (' + hojeNot + ').', 'anexar: a confirmação e a prévia da notícia: ' + na);
+    await semAvisos(L); await foto('l12b-anexar');
+    await L.F.click(dlg('[data-k="oc:ok"]')); await espera(400);
+    e = await est();
+    ok(!e.r2 && e.f2 === 'fa' && /Vale Fundo passa a ser de Aldar\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)) && !!(await materia(/^Aldar anexa Vale Fundo$/)), 'anexar: o Vale passa a ser de Aldar (sem a ocupação); a notícia');
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    e = await est();
+    ok(e.f2 === 'fb' && j(e.r2) === j({ fac: 'fa', d: hoje }) && !(await materia(/^Aldar anexa/)), 'Desfazer: do Vale, ocupado; sem a notícia');
+    // marcar à mão
+    await selecionar('r3');
+    ok(await textoDe(L, '#pane [data-k="o:r3:ocup-nota"]') === 'Um exército de uma facção em guerra com Ilhas que fica aqui 3 dias sem defensor (e sem fortificação de pé) traz a proposta no “Próximo dia”.',
+      'a região livre: como a ocupação chega');
+    await selecionar('r1');
+    ok(await textoDe(L, '#pane [data-k="o:r1:ocup-nota"]') === '' && await textoDe(L, '#pane [data-k="o:r1:ocup"]') === 'Ocupada por Vale desde ' + await dtTxt(hoje0 - 5) + '.', 'Terra Alta: ocupada pelo Vale (a contagem recomeçou: sem a nota)');
+    await selecionar('r3');
+    await botao(L, 'o:r3:ocup-marcar'); await L.F.waitForSelector('dialog.oc-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.oc-dl[open] [data-k="oc:fac"]').value) === 'fa' && await A(L, () => [...document.querySelectorAll('dialog.oc-dl[open] [data-k="oc:fac"] option')].map(o => o.value).join()) === 'fa,fb',
+      'marcar como ocupada: quem ocupa (sem a dona)');
+    await L.F.selectOption(dlg('[data-k="oc:fac"]'), 'fb'); await L.F.click(dlg('[data-k="oc:ok"]')); await espera(400);
+    ok(await A(L, x => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'r3').ocup) === JSON.stringify({ fac: 'fb', d: x }), hoje) && /Ilha Grande fica ocupada por Vale\./.test(await avisos(L)), 'marcar: as Ilhas ocupadas pelo Vale desde hoje');
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    ok(await A(L, () => !__mundo.App.mapa.objs.find(o => o.id === 'r3').ocup), 'Desfazer: livre de novo');
+    // a aba Guerra: as terras ocupadas e a regra dos dias
+    await A(L, () => __mundo.App.selecionar([])); await espera(200);
+    await aba(L, 'guerra');
+    ok(await textoDe(L, '#pane [data-k="gu:ocup:r1"]') === 'Terra Alta de Aldar, ocupada por Vale desde ' + await dtTxt(hoje0 - 5) && await textoDe(L, '#pane [data-k="gu:ocup:r2"]') === 'Vale Fundo de Vale, ocupada por Aldar desde ' + await dtTxt(hoje)
+      && await textoDe(L, '#pane [data-k="gu:regras-ocup"]') === 'Ocupação: 3 dias sem defensor (e sem fortificação de pé) para a proposta; o mesmo para libertar.',
+      'na aba Guerra: as terras ocupadas e a regra: ' + await textoDe(L, '#pane [data-k="gu:ocup:r1"]'));
+    await campo(L, 'gu:ocup:r1').scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12b-aba-guerra');
+    await botao(L, 'gu:regras-mudar'); await L.F.waitForSelector('dialog.cr-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.cr-dl[open] [data-k="cr:ocupar"]').value) === '3', 'a janela das regras: os dias para ocupar');
+    await L.F.fill(dlg('[data-k="cr:ocupar"]'), '2,5'); await L.F.click(dlg('[data-k="cr:ok"]')); await espera(120);
+    ok(await textoDe(L, 'dialog.cr-dl[open] .err') === 'Dias sem defensor para ocupar: um número inteiro de 1 a 365.', 'os dias: inteiros');
+    await L.F.fill(dlg('[data-k="cr:ocupar"]'), '5'); await L.F.click(dlg('[data-k="cr:ok"]')); await espera(350);
+    ok(await A(L, () => __mundo.App.mapa.guerra.regras.ocupar) === 5 && /^Ocupação: 5 dias/.test(await textoDe(L, '#pane [data-k="gu:regras-ocup"]')), 'salvar: 5 dias');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // quem joga: a leitura e as listras (a facção escondida não vai)
+    await comoJogador(true);
+    await aba(L, 'selecao'); await selecionar('r2');
+    ok(await textoDe(L, '#pane [data-k="ler:ocup"]') === 'Ocupada por Aldar desde ' + await dtTxt(hoje) + '.' && await campo(L, 'o:r2:ocup-tirar').count() === 0, 'quem joga: "Ocupada por Aldar desde…", sem os botões');
+    await semAvisos(L); await foto('l12b-jogador');
+    await comoJogador(false);
+    await A(L, () => __mundo.App.mudar('o Vale escondido', m => { m.faccoes.find(f => f.id === 'fb').oculta = true; })); await espera(300);
+    await comoJogador(true);
+    await selecionar('r1');
+    ok(await textoDe(L, '#pane [data-k="ler:ocup"]') === 'Ocupada desde ' + await dtTxt(hoje0 - 5) + '.' && j(await listras('r1')) === j({ fac: '', cor: '#6b7385' }), 'ocupada por quem eles não conhecem: "Ocupada desde…", as listras cinza');
+    await comoJogador(false);
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    // a paz: as terras ocupadas entre as duas
+    await A(L, () => { window.MundoDiplomaciaPainel.janelaPaz('fa', 'fb'); }); await L.F.waitForSelector('dialog.paz-dl[open]');
+    const pz = s0 => 'dialog.paz-dl[open] ' + s0;
+    ok(await textoDe(L, pz('[data-k="paz:terra:r1"] .tx')) === 'Terra Alta de Aldar, ocupada por Vale' && await textoDe(L, pz('[data-k="paz:terra:r2"] .tx')) === 'Vale Fundo de Vale, ocupada por Aldar'
+      && await L.F.locator(pz('[data-k="paz:terra:r1:dev"]')).isChecked() && await L.F.locator(pz('[data-k="paz:terra:r2:dev"]')).isChecked(), 'a paz: as terras ocupadas, cada uma voltando para a dona (de começo)');
+    await L.F.check(pz('[data-k="paz:terra:r2:anx"]')); await L.F.check(pz('[data-k="paz:jornal"]')); await L.F.click(pz('[data-k="paz:jornal:ver"] > summary')); await espera(120);
+    const np = await textoDe(L, pz('[data-k="paz:jornal:txt"]'));
+    ok(/ As terras ocupadas: Terra Alta volta para Aldar; Vale Fundo passa a ser de Aldar\.$/.test(np), 'a prévia da notícia da paz, com as terras: ' + np);
+    await L.F.locator(pz('[data-k="paz:terras"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12b-paz');
+    await L.F.click(pz('[data-k="paz:ok"]')); await espera(450);
+    e = await est();
+    const mp = await materia(/^Aldar e Vale fazem a paz$/);
+    ok(!e.r1 && !e.r2 && e.f2 === 'fa' && /Aldar e Vale fizeram a paz\. Terras ocupadas: 1 devolvida, 1 anexada\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)) && mp && /\n\n\*\*As terras ocupadas:\*\* Terra Alta volta para Aldar; Vale Fundo passa a ser de Aldar\.$/.test(mp.txt),
+      'a paz: Terra Alta devolvida, o Vale anexado; o aviso e a notícia: ' + j(e) + ' ' + await avisos(L));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    e = await est();
+    ok(e.r1 && e.r1.fac === 'fb' && j(e.r2) === j({ fac: 'fa', d: hoje }) && e.f2 === 'fb' && await A(L, () => __mundo.App.mapa.faccoes.find(f => f.id === 'fa').rel.fb) === 'guerra', 'Desfazer: a guerra e as terras ocupadas de volta');
+    // duas propostas (libertar Terra Alta; ocupar o Forte, com a fortificação em ruínas): sem a caixa, nenhuma notícia;
+    // com ela, as duas — e no celular, o dia cabe
+    await A(L, () => __mundo.App.mudar('a contagem de novo', m => { m.guerra.pres = { r1: { fac: 'fa', n: 2, lib: true }, r4: { fac: 'fa', n: 2 } }; m.objs.find(o => o.id === 'k4').estr.hp = 0; })); await espera(250);
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await A(L, () => { window.MundoGuerraPainel.proporMantimentos(1); }); await L.F.waitForSelector('dialog.dia-dl[open]');
+    await L.F.locator(dlg('[data-k="dia:regs"]')).scrollIntoViewIfNeeded();
+    ok(await A(L, () => { const d = document.querySelector('dialog.dia-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }) && await L.F.locator(dlg('[data-k="dia:lib:r1"]')).count() === 1 && await L.F.locator(dlg('[data-k="dia:ocup:r4"]')).count() === 1,
+      'no celular, o dia com a ocupação cabe (as duas propostas)');
+    await semAvisos(L); await foto('l12b-dia-celular');
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    const sem2 = await A(L, () => { const m = __mundo.App.mapa; return [!!m.objs.find(o => o.id === 'r1').ocup, (m.objs.find(o => o.id === 'r4').ocup || {}).fac]; });
+    ok(j(sem2) === j([false, 'fa']) && !(await materia(/^Terra Alta livre de novo$/)) && !(await materia(/^Forte do Vale ocupada/)) && !/rascunho do Jornal/.test(await avisos(L)), 'aplicar sem a caixa: Terra Alta livre, o Forte ocupado, nenhuma notícia: ' + j(sem2));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+    await A(L, () => { window.MundoGuerraPainel.proporMantimentos(1); }); await L.F.waitForSelector('dialog.dia-dl[open]');
+    await L.F.check(dlg('[data-k="dia:jornal"]')); await L.F.click(dlg('[data-k="dia:jornal:ver"] > summary')); await espera(120);
+    ok(await lr('dia:jornal:txt') === 'Terra Alta livre de novo Aldar retoma Terra Alta, que estava ocupada por Vale (' + hojeNot + '). Forte do Vale ocupada por Aldar As tropas de Aldar ocupam Forte do Vale, terra de Vale (' + hojeNot + ').',
+      'a prévia das duas notícias: ' + await lr('dia:jornal:txt'));
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    ok(!!(await materia(/^Terra Alta livre de novo$/)) && !!(await materia(/^Forte do Vale ocupada por Aldar$/)) && /Terra Alta livre de novo\. Forte do Vale ocupada por Aldar\. As 2 notícias foram para o rascunho do Jornal\./.test(await avisos(L)),
+      'com a caixa: as duas notícias no rascunho (num aviso só): ' + await avisos(L));
+    await A(L, () => __mundo.App.desfazer()); await espera(400);
+    ok(!(await materia(/^Terra Alta livre de novo$/)) && !(await materia(/^Forte do Vale ocupada/)) && await A(L, () => !!__mundo.App.mapa.objs.find(o => o.id === 'r1').ocup), 'Desfazer: as duas notícias saem juntas');
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

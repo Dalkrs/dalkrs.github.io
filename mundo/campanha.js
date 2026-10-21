@@ -6,12 +6,18 @@
    ele come; a região produz menos naquela semana), comer e o desgaste (a fome em qualquer lugar; o terreno duro e o
    inverno só fora das terras da facção e das aliadas: em casa, o exército se abriga). Tudo
    vira uma proposta: o mestre desmarca o que não vale e aplica num passo de Desfazer.
+   (parte 12b) A ocupação: quem controla a região (quem ocupa, ou a dona), as fortificações de pé, a contagem dos dias
+   (para ocupar: um exército de uma facção em guerra com a dona, sem exército da dona nem de uma aliada dela e sem
+   fortificação de pé dela; para libertar a ocupada: um exército da dona ou de uma aliada, sem o de quem ocupa nem de uma
+   aliada dela) e as propostas do dia (ocupar, libertar; a desmarcada recomeça a contagem); anexar, devolver e as
+   notícias para o Jornal.
    Roda no navegador (window.MundoCampanha) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
   const DD = () => (typeof window !== 'undefined' && window.MundoDiplomacia) || (typeof require === 'function' ? require('./diplomacia.js') : null);
   const RR = () => (typeof window !== 'undefined' && window.MundoReino) || (typeof require === 'function' ? require('./reino.js') : null);
+  const CC = () => (typeof window !== 'undefined' && window.MundoCorte) || (typeof require === 'function' ? require('./corte.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const arred2 = n => Math.round(n * 100) / 100 || 0;
   const facDe = (m, id) => (id && ehObj(m) && Array.isArray(m.faccoes) ? m.faccoes.find(f => f.id === id) || null : null);
@@ -44,11 +50,13 @@
   const emGuerra = (m, a, b) => { const fa = facDe(m, a); return !!(fa && ehObj(fa.rel) && fa.rel[b] === 'guerra'); };
   /* A região (a de mais dentro) e a dona dela, e o que isso é para o exército: 'casa' (a terra da facção dele), 'aliada',
      'inimiga' (de uma facção em guerra com a dele), 'semdono', 'alheia' (de uma facção, e o exército sem facção) ou
-     'neutra'. → { r (o id da região, ou null), dono, tipo } */
+     'neutra'. (parte 12b) Na ocupada, dono é quem ocupa (e ocup: true). → { r (o id da região, ou null), dono, tipo, ocup? } */
   function ondeEsta(m, g) {
-    const N = NN(), r = N.regiaoEm(m, g.x, g.y), dono = r ? N.facDaRegiao(m, r) : null;
+    const N = NN(), r = N.regiaoEm(m, g.x, g.y), dono = r ? N.controleDaRegiao(m, r) : null;
     const tipo = !dono ? 'semdono' : !g.fac ? 'alheia' : dono === g.fac ? 'casa' : aliadas(m, g.fac, dono) ? 'aliada' : emGuerra(m, g.fac, dono) ? 'inimiga' : 'neutra';
-    return { r: r ? r.id : null, dono, tipo };
+    const out = { r: r ? r.id : null, dono, tipo };
+    if (dono && dono !== N.facDaRegiao(m, r)) out.ocup = true;
+    return out;
   }
   const REABASTECE = ['casa', 'aliada'], FORRAGEIA = ['inimiga', 'semdono', 'alheia'];
   // o terreno do hexágono do exército, se ele é duro pelas regras (sem a grade, nenhum)
@@ -71,11 +79,12 @@
      moral cai 1 e o contador da fome sobe); e o desgaste do dia (a soma das % da fome, do terreno duro e do inverno, nas
      tropas de cada unidade; o terreno e o inverno só fora das terras da facção e das aliadas). recusadas: o que o mestre
      desmarcou — 'g:<id>' (o exército fica como está), 'reab:<id>',
-     'forr:<id>' e 'desg:<id>'.
+     'forr:<id>' e 'desg:<id>'; (parte 12b) 'ocup:<região>' e 'lib:<região>'.
      → { dias, rec (o recurso de comida, ou null), regras, linhas: [{ g, nome, fac, onde, cons, mant0, mant1, fome0, fome1,
      moral0, moral1, fomeDias, reab: { n, gasto } | null, forr: { n, r } | null, desg: { dias: { fome, terreno, inverno },
      ter (o nome do terreno duro), tropas0, tropas1, unid: [{ id, nome, t0, t1, acaba }] } | null, fora }],
-     estoque: { facção: { de, para } }, forr: [{ r, s, n }] (a forragem por região e semana, só com a economia ligada) } */
+     estoque: { facção: { de, para } }, forr: [{ r, s, n }] (a forragem por região e semana, só com a economia ligada),
+     (parte 12b) regioes e pres (a ocupação: ocupacaoNoDia) } */
   function diaDaCampanha(m, dias, recusadas) {
     const N = NN(), R = RR(), rg = regrasDe(m), rec = recComida(m), no = new Set(recusadas || []);
     const n = Math.max(1, Math.min(366, Math.round(Number(dias) || 1))), hoje = ehObj(m.cal) ? Number(m.cal.dia) || 0 : 0;
@@ -128,11 +137,14 @@
       }
     }
     const forrs = [...porForr].map(([k, v]) => { const [r, s] = k.split('|'); return { r, s: Number(s), n: v }; });
-    return { dias: n, rec, regras: rg, linhas, estoque, forr: forrs };
+    // (parte 12b) a ocupação (o exército desmarcado continua lá: conta)
+    const oc = ocupacaoNoDia(m, n, no, rg);
+    return { dias: n, rec, regras: rg, linhas, estoque, forr: forrs, regioes: oc.regioes, pres: oc.pres };
   }
   /* Aplica o dia no rascunho (d, o mapa de App.mudar): os mantimentos, a fome, a moral e as tropas de cada exército (a
      unidade que fica sem ninguém sai), o estoque de comida das facções (com o motivo no histórico) e a forragem da semana.
-     → quantos exércitos mudaram */
+     (parte 12b) A contagem dos dias da ocupação e as regiões ocupadas e libertadas (as marcadas).
+     → quantas coisas mudaram (os exércitos e as regiões) */
   function aplicarDia(d, res) {
     const N = NN(), achar = id => (Array.isArray(d.objs) ? d.objs : []).find(o => ehObj(o) && o.id === id) || null;
     let n = 0;
@@ -154,6 +166,22 @@
       if (!ehObj(d.guerra)) d.guerra = { tipos: [], bats: [], hexes: {} };
       d.guerra.forr = (Array.isArray(d.guerra.forr) ? d.guerra.forr : []).concat(res.forr.map(x => Object.assign({}, x)));
     }
+    // (parte 12b) a contagem nova dos dias; ocupar e libertar o que ficou marcado (a contagem dela sai; a da desmarcada
+    // também: recomeça do zero)
+    const pres = Object.assign({}, res.pres || {}), hoje = ehObj(d.cal) ? d.cal.dia : 0;
+    for (const x of res.regioes || []) {
+      if (x.tipo !== 'ocupar' && x.tipo !== 'libertar') continue;
+      delete pres[x.r];
+      const r = regiaoDe(d, x.r);
+      if (!r || x.recusado) continue;
+      if (x.tipo === 'ocupar') r.ocup = { fac: x.fac, d: hoje }; else delete r.ocup;
+      n++;
+    }
+    const tinha = ehObj(d.guerra) && ehObj(d.guerra.pres) && Object.keys(d.guerra.pres).length;
+    if (Object.keys(pres).length || tinha) {
+      if (!ehObj(d.guerra)) d.guerra = { tipos: [], bats: [], hexes: {} };
+      if (Object.keys(pres).length) d.guerra.pres = pres; else delete d.guerra.pres;
+    }
     return n;
   }
   // a forragem de uma semana da economia (s), por região: { região: n } (no recurso de comida)
@@ -163,7 +191,128 @@
     return out;
   }
 
-  const MundoCampanha = { mesesDeInverno, regrasDe, recComida, aliadas, emGuerra, ondeEsta, REABASTECE, FORRAGEIA, terrenoDuro, invernoEm, diaDaCampanha, aplicarDia, forragemDaSemana };
+  /* ---------------- (parte 12b) a ocupação ---------------- */
+  const regiaoDe = (m, id) => (id && ehObj(m) && Array.isArray(m.objs) ? m.objs.find(o => ehObj(o) && o.k === 'r' && o.id === id) || null : null);
+  /* As fortificações de pé de uma região nas mãos da dona: os marcadores dela (a região de mais dentro deles é esta) com a
+     fortificação ainda com HP — ou, sem a fortificação, com a defesa das construções (a Paliçada, a Muralha) —, que outra
+     facção não ocupa */
+  function fortesDePe(m, r) {
+    const N = NN(), R = RR(), dono = N.facDaRegiao(m, r), out = [];
+    for (const o of ehObj(m) && Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(o) || o.k !== 'm' || !N.dentroPoligono([o.x, o.y], r.pts)) continue;
+      const aqui = N.regiaoEm(m, o.x, o.y);
+      if (!aqui || aqui.id !== r.id || (ehObj(o.ocup) && o.ocup.fac && o.ocup.fac !== dono)) continue;
+      if (ehObj(o.estr) ? o.estr.hp > 0 : !!(R && R.defDoAssentamento(m, o) > 0)) out.push(o);
+    }
+    return out;
+  }
+  // do lado de x: a própria x ou uma aliada dela
+  const doLado = (m, f, x) => f === x || aliadas(m, f, x);
+  // as facções com exército (com tropas) em cada região, a de mais dentro → Map
+  function presencas(m) {
+    const N = NN(), out = new Map();
+    for (const g of Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(g) || g.k !== 'g' || g.tipo !== 'exercito' || !g.fac || !ehObj(g.exe) || g.exe.pub || !g.exe.unid.some(u => u.tropas > 0)) continue;
+      const r = N.regiaoEm(m, g.x, g.y);
+      if (!r) continue;
+      if (!out.has(r.id)) out.set(r.id, []);
+      if (!out.get(r.id).includes(g.fac)) out.get(r.id).push(g.fac);
+    }
+    return out;
+  }
+  /* A ocupação no dia da campanha (os "dias" que passaram): em cada região com exército (a de mais dentro), quem conta
+     os dias seguidos — para ocupar, uma facção em guerra com a dona (a primeira, na ordem do mapa), sem exército da dona
+     nem de uma aliada dela e sem fortificação de pé dela; para libertar a ocupada, a dona ou uma aliada, sem o exército de
+     quem ocupa nem de uma aliada dela. Com os dias das regras (ocupar), a proposta. no: as recusas ('ocup:<região>',
+     'lib:<região>'). → { regioes: [{ r, tipo ('ocupar' | 'libertar' | 'conta' | 'forte'), lib, fac (quem conta), dono,
+     quem (quem ocupa, ao libertar), n, de, forte (o marcador de pé), recusado (só na proposta) }], pres (a contagem nova:
+     só onde ela continua) } */
+  function ocupacaoNoDia(m, dias, no, rg) {
+    const N = NN(), pres0 = ehObj(m.guerra) && ehObj(m.guerra.pres) ? m.guerra.pres : {}, pres = {}, regioes = [], de = (rg || regrasDe(m)).ocupar;
+    no = no || new Set();
+    for (const [rid, facs] of presencas(m)) {
+      const r = regiaoDe(m, rid), dono = r ? N.facDaRegiao(m, r) : null, oc = r && ehObj(r.ocup) && r.ocup.fac ? r.ocup : null, p0 = pres0[rid];
+      if (!r || !dono) continue;
+      if (oc) {
+        const y = facs.find(f => doLado(m, f, dono));
+        if (!y || facs.some(f => doLado(m, f, oc.fac))) continue;
+        const n = (p0 && p0.lib ? p0.n : 0) + dias;
+        pres[rid] = { fac: y, n, lib: true };
+        regioes.push({ r: rid, tipo: n >= de ? 'libertar' : 'conta', lib: true, fac: y, dono, quem: oc.fac, n: Math.min(n, de), de, recusado: n >= de && no.has('lib:' + rid) });
+        continue;
+      }
+      const x = facs.find(f => emGuerra(m, f, dono));
+      if (!x || facs.some(f => doLado(m, f, dono))) continue;
+      const fortes = fortesDePe(m, r);
+      if (fortes.length) { regioes.push({ r: rid, tipo: 'forte', lib: false, fac: x, dono, n: 0, de, forte: fortes[0].id, recusado: false }); continue; }
+      const n = (p0 && !p0.lib && p0.fac === x ? p0.n : 0) + dias;
+      pres[rid] = { fac: x, n };
+      regioes.push({ r: rid, tipo: n >= de ? 'ocupar' : 'conta', lib: false, fac: x, dono, n: Math.min(n, de), de, recusado: n >= de && no.has('ocup:' + rid) });
+    }
+    return { regioes, pres };
+  }
+  // (à mão) a contagem dos dias da região sai junto
+  const semContagem = (d, rid) => { if (ehObj(d.guerra) && ehObj(d.guerra.pres)) delete d.guerra.pres[rid]; };
+  // anexar a ocupada (no rascunho): a dona passa a ser quem ocupa → a facção nova, ou null
+  function anexar(d, rid) { const r = regiaoDe(d, rid), oc = r && ehObj(r.ocup) ? r.ocup.fac : null; if (!oc) return null; r.fac = oc; delete r.ocup; semContagem(d, rid); return oc; }
+  // devolver (ou tirar à mão) a ocupação, no rascunho → se havia
+  function devolver(d, rid) { const r = regiaoDe(d, rid); if (!r || !r.ocup) return false; delete r.ocup; semContagem(d, rid); return true; }
+  // ocupar à mão, no rascunho: a terra de uma facção; fac, que não é a dona (nem quem já ocupa) → se mudou
+  function ocupar(d, rid, fac) {
+    const N = NN(), r = regiaoDe(d, rid), dono = r ? N.facDaRegiao(d, r) : null;
+    if (!r || !dono || !fac || !facDe(d, fac) || dono === fac || (ehObj(r.ocup) && r.ocup.fac === fac)) return false;
+    r.ocup = { fac, d: ehObj(d.cal) ? Number(d.cal.dia) || 0 : 0 };
+    semContagem(d, rid);
+    return true;
+  }
+  /* A paz: as regiões ocupadas entre as duas facções (a de uma, ocupada pela outra), na ordem do mapa → [{ r, nome, dono,
+     quem }] */
+  function terrasEntre(m, a, b) {
+    const N = NN(), out = [];
+    for (const r of ehObj(m) && Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(r) || r.k !== 'r' || !ehObj(r.ocup) || !r.ocup.fac) continue;
+      const dono = N.facDaRegiao(m, r), quem = r.ocup.fac;
+      if ((dono === a && quem === b) || (dono === b && quem === a)) out.push({ r: r.id, nome: nomeRg(r), dono, quem });
+    }
+    return out;
+  }
+  // o que fica das terras na paz, no rascunho: escolhas = [{ r, anexar }] (sem anexar: devolve) → quantas mudaram
+  function terrasNaPaz(d, escolhas) { let n = 0; for (const x of escolhas || []) if (x.anexar ? anexar(d, x.r) : devolver(d, x.r)) n++; return n; }
+  /* as notícias para o rascunho do Jornal (o mestre revisa lá antes de publicar): { tit, txt }. dia: o dia do mapa (sem
+     ele, hoje) */
+  const nomeRg = r => (r ? String(r.nome || '').trim() || 'Região sem nome' : 'a região');
+  const nomeFc = (m, id) => { const f = facDe(m, id); return f ? String(f.nome || '').trim() || 'Facção sem nome' : 'uma facção'; };
+  const quando = (m, dia) => {
+    const N = NN(), C = CC(), cal = ehObj(m) ? m.cal : null, x = N.dataDe(cal, dia == null ? (ehObj(cal) ? cal.dia : 0) : dia), t = C ? C.dataTxt(m, { a: x.ano, m: x.mes, d: x.diaMes }) : '';
+    return t ? ' (' + t + ')' : '';
+  };
+  function noticiaOcupacao(m, rid, fac, dia) {
+    const r = regiaoDe(m, rid), dono = r ? NN().facDaRegiao(m, r) : null;
+    return { tit: nomeRg(r) + ' ocupada por ' + nomeFc(m, fac), txt: 'As tropas de ' + nomeFc(m, fac) + ' ocupam ' + nomeRg(r) + (dono ? ', terra de ' + nomeFc(m, dono) : '') + quando(m, dia) + '.' };
+  }
+  // por: quem libertou (a dona, ou uma aliada dela)
+  function noticiaLibertacao(m, rid, quem, por, dia) {
+    const r = regiaoDe(m, rid), dono = r ? NN().facDaRegiao(m, r) : null, com = por && por !== dono ? 'Com as tropas de ' + nomeFc(m, por) + ', ' : '';
+    return { tit: nomeRg(r) + ' livre de novo', txt: com + nomeFc(m, dono) + ' retoma ' + nomeRg(r) + (quem ? ', que estava ocupada por ' + nomeFc(m, quem) : '') + quando(m, dia) + '.' };
+  }
+  // (antes de anexar: a região ainda ocupada)
+  function noticiaAnexacao(m, rid, dia) {
+    const r = regiaoDe(m, rid), oc = r && ehObj(r.ocup) ? r.ocup.fac : null, dono = r ? NN().facDaRegiao(m, r) : null;
+    return { tit: nomeFc(m, oc) + ' anexa ' + nomeRg(r), txt: nomeRg(r) + (dono ? ', que era de ' + nomeFc(m, dono) + ',' : '') + ' passa a ser de ' + nomeFc(m, oc) + quando(m, dia) + '.' };
+  }
+  // o parágrafo das terras para a notícia da paz (antes de aplicar): escolhas = [{ r, anexar }] → '' sem nenhuma
+  function textoTerrasNaPaz(m, escolhas) {
+    const N = NN(), partes = [];
+    for (const x of escolhas || []) {
+      const r = regiaoDe(m, x.r), oc = r && ehObj(r.ocup) ? r.ocup.fac : null;
+      if (!oc) continue;
+      partes.push(nomeRg(r) + (x.anexar ? ' passa a ser de ' + nomeFc(m, oc) : ' volta para ' + nomeFc(m, N.facDaRegiao(m, r))));
+    }
+    return partes.length ? '**As terras ocupadas:** ' + partes.join('; ') + '.' : '';
+  }
+
+  const MundoCampanha = { mesesDeInverno, regrasDe, recComida, aliadas, emGuerra, ondeEsta, REABASTECE, FORRAGEIA, terrenoDuro, invernoEm, diaDaCampanha, aplicarDia, forragemDaSemana,
+    fortesDePe, presencas, ocupacaoNoDia, anexar, devolver, ocupar, terrasEntre, terrasNaPaz, noticiaOcupacao, noticiaLibertacao, noticiaAnexacao, textoTerrasNaPaz };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCampanha;
   if (typeof window !== 'undefined') window.MundoCampanha = MundoCampanha;
 })();

@@ -1187,6 +1187,8 @@
       const f = facDaReg(v, o), p = paiDe(v, o), dentro = v.objs.filter(x => x.k === 'r' && x.pai === o.id);
       if (p) out.push(nota('Parte de ' + nomeDe(p, v) + '.'));
       if (f) out.push(h('p', { class: 'note' }, h('i', { class: 'bola', style: { background: f.cor } }), ' Território de ' + nomeFac(f)));
+      // (lote 12, parte 12b) a ocupada: por quem (se eles conhecem a facção) e desde quando
+      if (o.ocup) { const fo = o.ocup.fac ? facDe(v, o.ocup.fac) : null; out.push(h('p', { class: 'note', 'data-k': 'ler:ocup' }, fo ? h('i', { class: 'bola', style: { background: fo.cor } }) : null, (fo ? ' Ocupada por ' + nomeFac(fo) : 'Ocupada') + ' desde ' + dataTxt(v, o.ocup.d) + '.')); }
       if (dentro.length) out.push(nota('Dentro dela: ' + dentro.map(x => nomeDe(x, v)).join(', ') + '.'));
     }
     if (o.k === 't') {
@@ -1228,7 +1230,7 @@
     if (o.k === 'x') out.push(secTexto(o, grava));
     if (o.k === 'g') out.push(secGrupo(o, m, grava), secDescanso(o, m), secHonra(o, m), secMissao(o, m));
     if (o.k === 'g' && o.tipo === 'exercito' && GP()) out.push(...GP().secExercito(o, m));   // (lote 8, parte 6) as unidades
-    if (o.k === 'r') out.push(secRegiao(o, m, grava), RP() ? RP().secProvincia(o, m) : null, secClimaRegiao(o, m), secMissao(o, m));   // (lote 10) a província
+    if (o.k === 'r') out.push(secRegiao(o, m, grava), GP() && GP().secOcupacao ? GP().secOcupacao(o, m) : null, RP() ? RP().secProvincia(o, m) : null, secClimaRegiao(o, m), secMissao(o, m));   // (lote 10) a província; (lote 12) a ocupação
     if (o.k === 'e') out.push(...secEvento(o, m, grava), secMissao(o, m));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));

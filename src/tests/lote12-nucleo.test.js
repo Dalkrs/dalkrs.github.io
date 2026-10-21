@@ -8,6 +8,11 @@
 //     casa —; vários dias; as recusas), aplicar (os exércitos, a unidade que acaba, o estoque com o histórico, a forragem)
 //     e a semana da economia (a produção de comida da região forrageada cai, até a dela; a forragem da semana sai ao
 //     fechar); a projeção sem as regras e sem a forragem.
+//   · (parte 12b) a ocupação: normalizada (de uma facção que existe e não é a dona; na região e no marcador; a contagem
+//     dos dias), quem controla, onde o exército está na ocupada, a projeção (de uma facção escondida, sem a facção), a
+//     contagem do dia (sem defensor — a dona ou uma aliada —, sem fortificação de pé — também a das construções —, a
+//     região de dentro à parte, os dias de antes, a recusa, libertar), aplicar, a produção para quem ocupa (o Livro e a
+//     população, da dona), a forragem na ocupada, anexar, devolver, ocupar à mão, as terras na paz e as notícias.
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 const C = require('../../mundo/campanha.js');
@@ -129,7 +134,7 @@ function mundo() {
 
 /* ---- (parte 12a) aplicar e a semana da economia ---- */
 {
-  const m = mundo(), d = JSON.parse(j(m)), r = C.diaDaCampanha(m, 7, ['g:g3']);
+  const m = mundo(), d = JSON.parse(j(m)), r = C.diaDaCampanha(m, 7, ['g:g3', 'ocup:r2']);    // (sem ocupar o Vale: a parte 12b)
   eq(C.aplicarDia(d, r), 7, 'aplicar: os 7 exércitos marcados');
   const ma = N.normalizarMapa(d), G = id => ma.objs.find(o => o.id === id), fa = ma.faccoes.find(f => f.id === 'fa');
   eq([G('g1').exe.mant, G('g2').exe.mant, G('g2').exe.fome, G('g2').exe.moral, G('g2').exe.unid[0].tropas, G('g3').exe.mant, G('g3').exe.unid[0].tropas],
@@ -159,5 +164,161 @@ function mundo() {
   eq(N.normalizarMapa(dw).guerra.forr, [{ r: 'r1', s: sem + 1, n: 9 }], 'fechar a semana: a forragem dela sai (a da semana seguinte fica)');
 }
 
+/* ---- (parte 12b) a ocupação ---- */
+// Aldar (fa) em guerra com o Vale (fb); as Ilhas (fc), aliadas do Vale; o Culto (fd), aliado de Aldar; o Porto (fe), de ninguém
+function mundoOc(extra) {
+  let m = N.normalizarMapa({ id: 'y', nome: 'M', larg: 4000, alt: 1000,
+    faccoes: [{ id: 'fa', nome: 'Aldar', rel: { fb: 'guerra', fd: 'alianca' } }, { id: 'fb', nome: 'Vale', rel: { fa: 'guerra', fc: 'alianca' } }, { id: 'fc', nome: 'Ilhas', rel: { fb: 'alianca' } },
+      { id: 'fd', nome: 'Culto', rel: { fa: 'alianca' } }, { id: 'fe', nome: 'Porto' }],
+    objs: [{ id: 'r1', k: 'r', nome: 'Terra Alta', fac: 'fa', pts: quad(0, 0, 400, 400) }, { id: 'r2', k: 'r', nome: 'Vale Fundo', fac: 'fb', pts: quad(500, 0, 400, 400) },
+      { id: 'r2s', k: 'r', nome: 'Vau', pai: 'r2', pts: quad(800, 300, 90, 90) }, { id: 'r3', k: 'r', nome: 'Ilha', fac: 'fc', pts: quad(1000, 0, 400, 400) },
+      { id: 'r4', k: 'r', nome: 'Ermo', pts: quad(1500, 0, 400, 400) }, { id: 'r5', k: 'r', nome: 'Forte', fac: 'fb', pts: quad(2000, 0, 400, 400) },
+      { id: 'r6', k: 'r', nome: 'Ruína', fac: 'fb', pts: quad(2500, 0, 400, 400) }, { id: 'r7', k: 'r', nome: 'Paliçada', fac: 'fb', pts: quad(3000, 0, 400, 400) },
+      { id: 'k5', k: 'm', nome: 'Castelo', x: 2100, y: 100, estr: { nome: 'Muralhas', def: 3, hp: 50, hpMax: 100 } },
+      { id: 'k6', k: 'm', nome: 'Torre Velha', x: 2600, y: 100, estr: { nome: '', def: 3, hp: 0, hpMax: 100 } },
+      { id: 'k7', k: 'm', nome: 'Aldeia', x: 3100, y: 100 },
+      ex('a1', 600, 100, 'fa', 5, 100, 'Primeira'), ex('a2', 850, 350, 'fa', 5, 100, 'Segunda'), ex('a3', 1600, 100, 'fa', 5, 100, 'Terceira'),
+      ex('a4', 2150, 150, 'fa', 5, 100, 'Quarta'), ex('a5', 2650, 150, 'fa', 5, 100, 'Quinta'), ex('a6', 3150, 150, 'fa', 5, 100, 'Sexta'), ex('a7', 1100, 100, 'fe', 5, 100, 'Sétima')].concat(extra || []) });
+  m = JSON.parse(j(m));
+  m.cal.dia = 3;
+  R.ligarEconomia(m);
+  m.objs.find(o => o.id === 'k7').ass = { niv: 'aldeia', pop: 100, cons: [{ id: 'c1', t: 'palicada', n: 1 }] };   // (a Paliçada: DEF 1)
+  return N.normalizarMapa(m);
+}
+const arr = v => Math.round((Number(v) || 0) * 100) / 100;
+{
+  // normalizar: a ocupação de uma facção que existe e não é a dona; a contagem dos dias
+  const mn = N.normalizarMapa(Object.assign(JSON.parse(j(mundoOc())), {}));
+  const D = JSON.parse(j(mn)), O = id => D.objs.find(o => o.id === id);
+  O('r1').ocup = { fac: 'fb', d: 2.6 }; O('r2').ocup = { fac: 'fb', d: 1 }; O('r3').ocup = { fac: 'zz', d: 1 }; O('r4').ocup = 'lixo'; O('r6').ocup = { fac: 'fa' };
+  O('k5').ocup = { fac: 'fa', d: 4 }; O('k6').ocup = { fac: 'fb', d: 4 };
+  D.guerra = { pres: { r2: { fac: 'fa', n: 2 }, r6: { fac: 'fa', n: 1, lib: 1 }, zz: { fac: 'fa', n: 1 }, r4: { fac: 'zz', n: 1 }, r5: { fac: 'fa', n: 0 }, r7: 'lixo', 'x y': { fac: 'fa', n: 1 } } };
+  const nn = N.normalizarMapa(D), P = id => nn.objs.find(o => o.id === id);
+  eq([P('r1').ocup, P('r2').ocup, P('r3').ocup, P('r4').ocup, P('r6').ocup, P('k5').ocup, P('k6').ocup], [{ fac: 'fb', d: 3 }, undefined, undefined, undefined, { fac: 'fa', d: 0 }, { fac: 'fa', d: 4 }, undefined],
+    'a ocupação: de uma facção que existe e que não é a dona (na região e no marcador, cuja dona é a da região dele); o dia, inteiro');
+  eq(nn.guerra.pres, { r2: { fac: 'fa', n: 2 }, r6: { fac: 'fa', n: 1, lib: true } }, 'a contagem dos dias: só nas regiões e com as facções que existem, com dias');
+  ok(N.LIMITES.contagens === 2000, 'o limite das contagens: ' + N.LIMITES.contagens);
+  const sp = JSON.parse(j(mn)); sp.guerra = { pres: { zz: { fac: 'fa', n: 1 } } };
+  ok(!('guerra' in N.normalizarMapa(sp)), 'só com a contagem de uma região que não existe, a guerra nem fica');
+  const so = JSON.parse(j(mn)); so.guerra = { pres: { r2: { fac: 'fa', n: 1 } } };
+  eq(N.normalizarMapa(so).guerra.pres, { r2: { fac: 'fa', n: 1 } }, 'só com a contagem, a guerra fica');
+  // quem controla; onde o exército está
+  eq([N.controleDaRegiao(nn, P('r1')), N.controleDaRegiao(nn, P('r2')), N.controleDaRegiao(nn, P('r2s')), N.facDaRegiao(nn, P('r1'))], ['fb', 'fb', 'fb', 'fa'],
+    'quem controla: quem ocupa, senão a dona (a de dentro herda a dona, não a ocupação); a dona continua a mesma');
+  const no2 = JSON.parse(j(mn)); no2.objs.find(o => o.id === 'r2').ocup = { fac: 'fa', d: 3 }; no2.objs.push(ex('b1', 650, 150, 'fb', 5, 100, 'Do Vale'));
+  const m2 = N.normalizarMapa(no2), G2 = id => m2.objs.find(o => o.id === id);
+  eq([C.ondeEsta(m2, G2('a1')), C.ondeEsta(m2, G2('b1')), C.ondeEsta(m2, G2('a2'))], [{ r: 'r2', dono: 'fa', tipo: 'casa', ocup: true }, { r: 'r2', dono: 'fa', tipo: 'inimiga', ocup: true }, { r: 'r2s', dono: 'fb', tipo: 'inimiga' }],
+    'onde: a ocupada é de quem ocupa (o exército de Aldar em casa; o do Vale, na terra inimiga); a de dentro, não');
+  // a projeção
+  const pj = N.projetar(nn), PJ = id => pj.objs.find(o => o.id === id);
+  eq([PJ('r1').ocup, PJ('k5').ocup, 'guerra' in pj], [{ fac: 'fb', d: 3 }, { fac: 'fa', d: 4 }, false], 'a projeção: a ocupação vai (a contagem, não)');
+  const ct = JSON.parse(j(nn)); ct.guerra.tipos = [{ id: 'tp1', nome: 'Lanceiros' }];
+  eq((g => [g.tipos.map(t => t.nome), 'pres' in g])(N.projetar(N.normalizarMapa(ct)).guerra), [['Lanceiros'], false], 'com a guerra que vai (os tipos), a contagem fica');
+  const esc = JSON.parse(j(nn)); esc.faccoes.find(f => f.id === 'fb').oculta = true; esc.faccoes.find(f => f.id === 'fa').oculta = true;
+  const pe = N.projetar(N.normalizarMapa(esc)), PE = id => pe.objs.find(o => o.id === id);
+  eq([PE('r1').ocup, PE('k5').ocup, PE('r1').fac], [{ fac: null, d: 3 }, { fac: null, d: 4 }, null], 'de uma facção escondida, a ocupação vai sem a facção');
+  eq((P => [P.ocup, N.controleDaRegiao(pe, P)])(N.normalizarMapa(pe).objs.find(o => o.id === 'r1')), [{ fac: null, d: 3 }, null], 'e fica assim normalizada (quem controla: a dona, que eles não veem)');
+}
+{
+  // a contagem no dia
+  const m = mundoOc(), r = C.ocupacaoNoDia(m, 1, new Set()), E = id => r.regioes.find(x => x.r === id);
+  eq(r.regioes.map(x => [x.r, x.tipo]), [['r2', 'conta'], ['r2s', 'conta'], ['r5', 'forte'], ['r6', 'conta'], ['r7', 'forte']],
+    'quem conta: na terra da inimiga, sem defensor (a região de dentro conta à parte); a fortificação de pé (e a Paliçada das construções) impede; a em ruínas, não; sem dona e sem guerra, nada');
+  eq([E('r2'), E('r5').forte, E('r7').forte, r.pres], [{ r: 'r2', tipo: 'conta', lib: false, fac: 'fa', dono: 'fb', n: 1, de: 3, recusado: false }, 'k5', 'k7', { r2: { fac: 'fa', n: 1 }, r2s: { fac: 'fa', n: 1 }, r6: { fac: 'fa', n: 1 } }],
+    'a contagem: 1 de 3 dias; a nova, só onde ela continua');
+  const c3 = C.ocupacaoNoDia(N.normalizarMapa(Object.assign(JSON.parse(j(m)), { guerra: { pres: { r2: { fac: 'fa', n: 2 }, r6: { fac: 'fd', n: 2 }, r2s: { fac: 'fa', n: 2, lib: true } } } })), 1, new Set(['ocup:r6']));
+  eq(c3.regioes.filter(x => ['r2', 'r6', 'r2s'].includes(x.r)).map(x => [x.r, x.tipo, x.n, x.recusado]), [['r2', 'ocupar', 3, false], ['r2s', 'conta', 1, false], ['r6', 'conta', 1, false]],
+    'com os dias de antes: no terceiro, a proposta; a contagem de outra facção (ou a de libertar) recomeça; a recusa só vale na proposta');
+  eq(C.ocupacaoNoDia(m, 7, new Set(['ocup:r2'])).regioes.filter(x => x.tipo === 'ocupar').map(x => [x.r, x.n, x.recusado]), [['r2', 3, true], ['r2s', 3, false], ['r6', 3, false]], 'vários dias de uma vez; a recusa');
+  ok(!C.ocupacaoNoDia(m, 7).regioes.some(x => x.recusado), 'sem as recusas, nenhuma');
+  // quem defende: a dona ou uma aliada dela; o sem tropas e o sem facção não contam
+  const def = o => C.ocupacaoNoDia(mundoOc([o]), 1, new Set()).regioes.filter(x => x.r === 'r2').map(x => x.tipo);
+  eq([def(ex('b1', 700, 100, 'fb', 5, 100, 'Do Vale')), def(ex('c1', 700, 100, 'fc', 5, 100, 'Das Ilhas')), def(ex('e1', 700, 100, 'fe', 5, 100, 'Do Porto')),
+    def(ex('b1', 700, 100, 'fb', 5, 0, 'Vazio')), def(ex('n1', 700, 100, null, 5, 100, 'Bandoleiros'))], [[], [], ['conta'], ['conta'], ['conta']],
+    'o exército da dona ou de uma aliada dela defende; o de outra, não; o sem tropas e o sem facção não contam');
+  // no dia da campanha, o exército desmarcado (fica como está) continua lá: conta (e quem defende, defende)
+  const dd = C.diaDaCampanha(mundoOc([ex('b1', 700, 100, 'fb', 5, 100, 'Do Vale')]), 1, ['g:b1', 'g:a1']);
+  eq([C.diaDaCampanha(mundoOc(), 1, ['g:a1']).regioes.find(x => x.r === 'r2').tipo, dd.regioes.some(x => x.r === 'r2')], ['conta', false], 'o exército desmarcado no dia ainda conta para a ocupação');
+  // a fortificação: a ocupada por outra facção não defende; a de dentro de uma região de dentro é dela
+  const mf = JSON.parse(j(m)); mf.objs.find(o => o.id === 'k5').ocup = { fac: 'fa', d: 1 };
+  const mt = JSON.parse(j(m)); mt.objs.push({ id: 'r5s', k: 'r', nome: 'Torreão', pai: 'r5', pts: quad(2060, 60, 80, 80) });
+  const nt = N.normalizarMapa(mt), tipoR5 = mm => C.ocupacaoNoDia(mm, 1, new Set()).regioes.find(x => x.r === 'r5').tipo;
+  eq([tipoR5(N.normalizarMapa(mf)), tipoR5(nt), C.fortesDePe(nt, nt.objs.find(o => o.id === 'r5s')).map(o => o.id)], ['conta', 'conta', ['k5']],
+    'a fortificação ocupada por outra facção não defende; a de dentro de uma região de dentro é dela (o Forte conta)');
+  const sem = JSON.parse(j(m)); sem.eco.on = false;
+  eq(C.fortesDePe(N.normalizarMapa(sem), m.objs.find(o => o.id === 'r7')).length, 0, 'sem a economia, as construções não fazem a fortificação');
+  // libertar
+  const lib = (extra, pres) => { const d = JSON.parse(j(mundoOc(extra))); d.objs.find(o => o.id === 'r1').ocup = { fac: 'fb', d: 0 }; if (pres) d.guerra = { pres }; return N.normalizarMapa(d); };
+  const O1 = C.ocupacaoNoDia(lib([ex('g1', 100, 100, 'fa', 5, 100, 'Hoste')]), 1, new Set(['lib:r1'])), L1 = O1.regioes.find(x => x.r === 'r1');
+  eq([L1, O1.pres.r1], [{ r: 'r1', tipo: 'conta', lib: true, fac: 'fa', dono: 'fa', quem: 'fb', n: 1, de: 3, recusado: false }, { fac: 'fa', n: 1, lib: true }],
+    'a ocupada, com o exército da dona e sem o de quem ocupa: conta para libertar (a recusa só vale na proposta)');
+  ok(!C.ocupacaoNoDia(lib([ex('e1', 100, 100, 'fe', 5, 100, 'Do Porto')]), 1).regioes.some(x => x.r === 'r1'), 'o exército de uma facção de fora, na ocupada: nada');
+  eq([C.ocupacaoNoDia(lib([ex('d1', 100, 100, 'fd', 5, 100, 'Do Culto')], { r1: { fac: 'fa', n: 2, lib: true } }), 1, new Set(['lib:r1'])).regioes.find(x => x.r === 'r1'),
+    C.ocupacaoNoDia(lib([ex('g1', 100, 100, 'fa', 5, 100, 'Hoste'), ex('c1', 150, 150, 'fc', 5, 100, 'Das Ilhas')]), 1, new Set()).regioes.find(x => x.r === 'r1'),
+    C.ocupacaoNoDia(lib([ex('g1', 100, 100, 'fa', 5, 100, 'Hoste')], { r1: { fac: 'fb', n: 2 } }), 1, new Set()).regioes.find(x => x.r === 'r1').n],
+    [{ r: 'r1', tipo: 'libertar', lib: true, fac: 'fd', dono: 'fa', quem: 'fb', n: 3, de: 3, recusado: true }, undefined, 1],
+    'a aliada da dona também liberta (no terceiro dia, a proposta; a recusa); a aliada de quem ocupa impede; a contagem de ocupar não vale para libertar');
+  ok(!C.ocupacaoNoDia(lib([ex('b1', 100, 100, 'fb', 5, 100, 'Do Vale')]), 1, new Set()).regioes.some(x => x.r === 'r1'), 'quem ocupa, sozinho na ocupada: nada');
+  // aplicar
+  const ma = N.normalizarMapa(Object.assign(JSON.parse(j(m)), { guerra: { pres: { r2: { fac: 'fa', n: 2 }, r6: { fac: 'fa', n: 2 } } } }));
+  const res = C.diaDaCampanha(ma, 1, ['ocup:r6']), da = JSON.parse(j(ma));
+  eq([res.regioes.filter(x => x.tipo === 'ocupar').map(x => [x.r, x.recusado]), C.aplicarDia(da, res)], [[['r2', false], ['r6', true]], res.linhas.length + 1], 'o dia da campanha traz a ocupação; aplicar conta os exércitos e as regiões');
+  const na = N.normalizarMapa(da), NA = id => na.objs.find(o => o.id === id);
+  eq([NA('r2').ocup, NA('r6').ocup, na.guerra.pres], [{ fac: 'fa', d: 3 }, undefined, { r2s: { fac: 'fa', n: 1 } }], 'aplicar: o Vale ocupado por Aldar desde hoje (a contagem sai); a recusada recomeça do zero');
+  const dl = JSON.parse(j(lib([ex('g1', 100, 100, 'fa', 5, 100, 'Hoste')], { r1: { fac: 'fa', n: 2, lib: true } }))), rl = C.diaDaCampanha(N.normalizarMapa(dl), 1, []);
+  C.aplicarDia(dl, rl);
+  ok(!N.normalizarMapa(dl).objs.find(o => o.id === 'r1').ocup, 'aplicar: libertar tira a ocupação');
+  const vz = JSON.parse(j(ma)); vz.guerra = { pres: { r2: { fac: 'fa', n: 1 } } };
+  vz.objs = vz.objs.filter(o => o.k !== 'g');
+  const dz = JSON.parse(j(vz)); C.aplicarDia(dz, C.diaDaCampanha(N.normalizarMapa(vz), 1, []));
+  ok(!('guerra' in N.normalizarMapa(dz)), 'sem ninguém para contar, a contagem de antes sai (e a guerra vazia some)');
+}
+{
+  // a produção vai para quem ocupa; o Livro e a população continuam da dona
+  const d = JSON.parse(j(mundoOc())), O = id => d.objs.find(o => o.id === id);
+  O('r2').prod = { suprimentos: 5 }; O('r1').prod = { suprimentos: 2 }; O('r2').ocup = { fac: 'fa', d: 1 };
+  d.faccoes.find(f => f.id === 'fa').jog = true;
+  d.objs.push({ id: 'k2', k: 'm', nome: 'Vila do Vale', x: 700, y: 200, ass: { niv: 'vila', pop: 300 } });
+  const m = N.normalizarMapa(d), por = R.producaoPorFaccao(m).por, sem0 = JSON.parse(j(d)); delete sem0.objs.find(o => o.id === 'r2').ocup;
+  const por0 = R.producaoPorFaccao(N.normalizarMapa(sem0)).por, v2 = arr(R.producaoPropria(m, m.objs.find(o => o.id === 'r2')).total.suprimentos);
+  ok(v2 > 5, 'o Vale produz (os 5 do mestre, o terreno e a vila): ' + v2);
+  eq([arr(por.fa.suprimentos - por0.fa.suprimentos), arr(por0.fb.suprimentos - por.fb.suprimentos)], [v2, v2], 'a produção da ocupada vai para quem ocupa (sai da dona)');
+  const ej = R.economiaDosJogadores(m, null, () => true);
+  eq([arr(ej.prod.total.suprimentos - R.economiaDosJogadores(N.normalizarMapa(sem0), null, () => true).prod.total.suprimentos), ej.livro.prov, R.populacaoDaFaccao(m, 'fb'), R.populacaoDaFaccao(m, 'fa')], [v2, 1, 400, 0],
+    'na economia dos jogadores, a produção da ocupada entra; o Livro conta só as regiões deles; a população fica com a dona');
+  // a forragem na ocupada: na conta de quem a controla
+  const w = JSON.parse(j(m)); w.hexes = {};
+  const sem = N.normalizarMapa(w).eco.sem;
+  w.guerra = { forr: [{ r: 'r2', s: sem, n: 2 }] };
+  w.cal.dia = 10;
+  eq(R.semanaPrevia(N.normalizarMapa(w)).forr, [{ r: 'r2', fac: 'fa', rec: 'suprimentos', n: 2 }], 'a forragem na ocupada sai da produção de quem ocupa');
+}
+{
+  // anexar, devolver, ocupar à mão e a paz
+  const d = JSON.parse(j(mundoOc())), O = id => d.objs.find(o => o.id === id);
+  O('r2').ocup = { fac: 'fa', d: 1 }; O('r1').ocup = { fac: 'fb', d: 1 }; O('r3').ocup = { fac: 'fa', d: 1 };
+  const m = N.normalizarMapa(d);
+  eq(C.terrasEntre(m, 'fa', 'fb'), [{ r: 'r1', nome: 'Terra Alta', dono: 'fa', quem: 'fb' }, { r: 'r2', nome: 'Vale Fundo', dono: 'fb', quem: 'fa' }], 'as terras ocupadas entre as duas (a das Ilhas, não)');
+  eq(C.textoTerrasNaPaz(m, [{ r: 'r1', anexar: false }, { r: 'r2', anexar: true }, { r: 'r4', anexar: true }]), '**As terras ocupadas:** Terra Alta volta para Aldar; Vale Fundo passa a ser de Aldar.', 'o parágrafo das terras para a notícia da paz');
+  eq(C.textoTerrasNaPaz(m, []), '', 'sem terras, nada');
+  const dp = JSON.parse(j(m));
+  eq(C.terrasNaPaz(dp, [{ r: 'r1', anexar: false }, { r: 'r2', anexar: true }, { r: 'r4', anexar: true }]), 2, 'a paz: devolver e anexar (a sem ocupação, nada)');
+  const mp = N.normalizarMapa(dp), MP = id => mp.objs.find(o => o.id === id);
+  eq([MP('r1').fac, MP('r1').ocup, MP('r2').fac, MP('r2').ocup, MP('r3').ocup], ['fa', undefined, 'fa', undefined, { fac: 'fa', d: 1 }], 'devolvida, a ocupação sai; anexada, a dona muda; a outra fica');
+  const dm = JSON.parse(j(m));
+  dm.guerra = { pres: { r5: { fac: 'fa', n: 2 }, r2: { fac: 'fb', n: 1, lib: true }, r6: { fac: 'fa', n: 1 }, r7: { fac: 'fa', n: 1 } } };
+  eq([C.ocupar(dm, 'r4', 'fa'), C.ocupar(dm, 'r5', 'fb'), C.ocupar(dm, 'r5', 'zz'), C.ocupar(dm, 'r2', 'fa'), C.ocupar(dm, 'r5', 'fa'), C.ocupar(dm, 'zz', 'fa'), C.ocupar(dm, 'r5', null)], [false, false, false, false, true, false, false],
+    'ocupar à mão: a terra de uma facção; não a dona, não quem já ocupa, uma facção que existe');
+  eq([dm.objs.find(o => o.id === 'r5').ocup, Object.keys(dm.guerra.pres), C.devolver(dm, 'r2'), C.devolver(dm, 'r2'), C.anexar(dm, 'r5'), C.anexar(dm, 'r5'), dm.objs.find(o => o.id === 'r5').fac, Object.keys(dm.guerra.pres)],
+    [{ fac: 'fa', d: 3 }, ['r2', 'r6', 'r7'], true, false, 'fa', null, 'fa', ['r6', 'r7']], 'ocupar desde hoje; devolver e anexar (só a ocupada); a contagem da região sai junto');
+  // as notícias (com a data)
+  const dt = R.semanaN ? require('../../mundo/corte.js').dataTxt(m, (x => ({ a: x.ano, m: x.mes, d: x.diaMes }))(N.dataDe(m.cal, 3))) : '';
+  const dt10 = require('../../mundo/corte.js').dataTxt(m, (x => ({ a: x.ano, m: x.mes, d: x.diaMes }))(N.dataDe(m.cal, 10)));
+  eq([C.noticiaOcupacao(m, 'r2', 'fa'), C.noticiaLibertacao(m, 'r1', 'fb', 'fa'), C.noticiaLibertacao(m, 'r1', 'fb', 'fd', 10), C.noticiaAnexacao(m, 'r2')],
+    [{ tit: 'Vale Fundo ocupada por Aldar', txt: 'As tropas de Aldar ocupam Vale Fundo, terra de Vale (' + dt + ').' }, { tit: 'Terra Alta livre de novo', txt: 'Aldar retoma Terra Alta, que estava ocupada por Vale (' + dt + ').' },
+      { tit: 'Terra Alta livre de novo', txt: 'Com as tropas de Culto, Aldar retoma Terra Alta, que estava ocupada por Vale (' + dt10 + ').' }, { tit: 'Aldar anexa Vale Fundo', txt: 'Vale Fundo, que era de Vale, passa a ser de Aldar (' + dt + ').' }],
+    'as notícias da ocupação, da libertação (pela aliada, com o nome dela; num outro dia) e da anexação, com a data');
+  ok(/^\d+ de .+, ano \d+$/.test(dt), 'a data da notícia: ' + dt);
+}
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');
 process.exit(bad ? 1 : 0);
