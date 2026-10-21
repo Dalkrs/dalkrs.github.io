@@ -11,6 +11,8 @@
    (lote 12, parte 12b) A ocupação: no dia da campanha, as contagens e as propostas (ocupar, libertar), com a notícia para
    o rascunho do Jornal (a caixa desmarcada); na região, quem ocupa e desde quando, "Marcar como ocupada…", "Anexar…" e
    "Tirar a ocupação…"; na aba Guerra, as terras ocupadas e as contagens; nas regras, os dias sem defensor.
+   (lote 12, parte 12d) As máquinas de cerco: na aba Guerra, os tipos (o dano contra estrutura e contra exército e o
+   acerto; os de começo: Aríete, Catapulta e Trabuco); quantas de cada tipo em cada unidade e na fortificação.
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto, tudo passa por App.mudar. */
 (() => {
   'use strict';
@@ -48,7 +50,7 @@
     return { cmd: { nome: '', b: 0, ficha: null }, moral: 5, mant: 10, cons: null, fome: 0, unid: [unidNova(m, 0, t ? t.id : null)] };
   }
   function unidNova(m, n, tipo) {
-    return { id: novoId('un'), nome: 'Unidade ' + (n + 1), tipo: tipo || null, tropas: 100, hpT: 1, fer: 0, atq: 0, def: 0, magos: 0, cura: 0, cerco: 0, equip: [] };
+    return { id: novoId('un'), nome: 'Unidade ' + (n + 1), tipo: tipo || null, tropas: 100, hpT: 1, fer: 0, atq: 0, def: 0, magos: 0, cura: 0, maq: {}, equip: [] };
   }
   const textoMoral = n => MORAIS[Math.max(0, Math.min(10, n))] || '';
   function resumoExercito(m, g) {
@@ -85,9 +87,77 @@
         g.exe && !g.exe.pub && g.exe.fome ? h('span', { class: 'tag guerra', text: 'sem mantimentos' }) : null)))
       : nota('Nenhum exército no mapa. Ponha um grupo (ferramenta Grupo) e escolha o tipo Exército na seção dele.')));
     if (CA()) out.push(secOcupadas(m), secRegras(m));
-    out.push(secTipos(m), secHexes(m), secHistorico(m));
+    out.push(secTipos(m), secMaquinas(m), secHexes(m), secHistorico(m));
     return out;
   }
+
+  /* ---- (lote 12, parte 12d) as máquinas de cerco: os tipos (sem a lista do mestre, os de começo) ---- */
+  const maquinasDe = m => N().maquinasDe(m);
+  // muda a lista dos tipos (a primeira mudança guarda os de começo no mapa)
+  const mudarMaqs = (rot, fn) => app().mudar(rot, d => { const g = guerraDe(d); if (!Array.isArray(g.maqs)) g.maqs = N().MAQUINAS_PADRAO.map(t => Object.assign({}, t)); return fn(g.maqs, d); });
+  // quantas máquinas de cerco um tipo tem nas unidades e nas fortificações do mapa
+  function usosDaMaquina(m, tid) {
+    let n = 0;
+    for (const o of m.objs) {
+      if (o.k === 'g' && o.exe && !o.exe.pub) for (const u of o.exe.unid) n += (u.maq && u.maq[tid]) || 0;
+      if (o.k === 'm' && o.estr && o.estr.maq) n += o.estr.maq[tid] || 0;
+    }
+    return n;
+  }
+  function secMaquinas(m) {
+    const { h, botao, nota, secao, linha, campoTexto, campoNumero } = kit(), ts = maquinasDe(m), proprias = !!(m.guerra && Array.isArray(m.guerra.maqs)), out = [];
+    const mudarTipo = (tid, rot, fn) => mudarMaqs(rot, l => { const t = l.find(x => x.id === tid); if (!t) return false; return fn(t); });
+    out.push(nota('Estrutura: o dano de cada máquina no HP da fortificação. Exército: o dano nas tropas — na batalha, a raiz da soma vira o bônus da Abertura (até +6, como os magos). Acerto: o mínimo no d20 para um tiro acertar as tropas (vazio: não atira nelas).'));
+    if (!ts.length) out.push(nota('Nenhum tipo de máquina.'));
+    for (const t of ts) {
+      out.push(h('div', { class: 'gu-maq', 'data-k': 'gu:maq:' + t.id },
+        h('div', { class: 'row' },
+          campoTexto('gu:maq:' + t.id + ':nome', 'Nome', t.nome, v => mudarTipo(t.id, 'mudar o nome da máquina', x => { if (!v.trim() || x.nome === v.trim()) return false; x.nome = v.trim(); }), { max: 60 }),
+          h('button', { type: 'button', class: 'ib', title: 'Tirar o tipo de máquina', 'aria-label': 'Tirar a máquina ' + t.nome, 'data-k': 'gu:maq:' + t.id + ':x', onclick: () => tirarMaquina(t.id) }, kit().glifo(kit().X_SVG, 14))),
+        h('div', { class: 'row gu-nums' },
+          campoNumero('gu:maq:' + t.id + ':est', 'Estrutura', t.est, n => mudarTipo(t.id, 'mudar a máquina', x => { if (x.est === n) return false; x.est = n; }), { min: 0, max: 1000 }),
+          campoNumero('gu:maq:' + t.id + ':exe', 'Exército', t.exe, n => mudarTipo(t.id, 'mudar a máquina', x => { if (x.exe === n) return false; x.exe = n; }), { min: 0, max: 1000 }),
+          campoNumero('gu:maq:' + t.id + ':ac', 'Acerto (d20)', t.ac, n => mudarTipo(t.id, 'mudar a máquina', x => { if (x.ac === n) return false; x.ac = n; }), { min: 1, max: 20, vazio: null, ph: '—' }))));
+    }
+    const max = (N().LIMITES && N().LIMITES.maquinas) || 40;
+    out.push(linha(botao('Novo tipo de máquina', () => {
+      const id = novoId('mq');
+      if (mudarMaqs('criar um tipo de máquina', l => { if (l.length >= max) return false; l.push({ id, nome: 'Máquina ' + (l.length + 1), est: 1, exe: 0, ac: null }); }) !== false) kit().focar('gu:maq:' + id + ':nome');
+    }, { c: 'sm', k: 'gu:maq:nova', off: ts.length >= max }),
+      proprias ? botao('Voltar às de começo', () => voltarMaquinas(), { c: 'sm', k: 'gu:maq:comeco' }) : null));
+    return secao('Máquinas de cerco', out);
+  }
+  async function tirarMaquina(tid) {
+    const K = kit(), m = app().mapa, t = maquinasDe(m).find(x => x.id === tid);
+    if (!t) return;
+    const usos = usosDaMaquina(m, tid);
+    if (usos) {
+      const ok = await K.confirmar({ titulo: 'Tirar a máquina ' + t.nome + '?', ok: 'Tirar', perigo: true,
+        texto: (usos === 1 ? 'A máquina dela que está numa unidade ou fortificação sai junto.' : 'As ' + usos + ' máquinas dela nas unidades e fortificações saem junto.') + ' Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+    }
+    if (mudarMaqs('tirar o tipo de máquina', l => { const i = l.findIndex(x => x.id === tid); if (i < 0) return false; l.splice(i, 1); }) !== false) K.avisoDesfazer('A máquina "' + t.nome + '" saiu.');
+  }
+  async function voltarMaquinas() {
+    const K = kit(), m = app().mapa, ids = new Set(N().MAQUINAS_PADRAO.map(t => t.id)), usos = maquinasDe(m).filter(t => !ids.has(t.id)).reduce((s0, t) => s0 + usosDaMaquina(m, t.id), 0);
+    if (usos) {
+      const ok = await K.confirmar({ titulo: 'Voltar às máquinas de começo?', ok: 'Voltar', perigo: true, texto: 'As máquinas dos tipos que você criou (' + usos + ') saem das unidades e fortificações. Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+    }
+    if (app().mudar('voltar às máquinas de começo', d => { if (!d.guerra || !Array.isArray(d.guerra.maqs)) return false; delete d.guerra.maqs; }) !== false) K.avisoDesfazer('As máquinas voltaram às de começo.');
+  }
+  /* os campos de quantas máquinas de cada tipo (numa unidade ou numa fortificação): gravar(tipo, n) */
+  function camposMaq(k, maq, gravar, m, rot) {
+    const { h, campoNumero, nota } = kit(), ts = maquinasDe(m);
+    if (!ts.length) return nota('Sem tipos de máquina de cerco (aba Guerra).');
+    return h('div', { class: 'gu-maqs', 'data-k': k },
+      h('span', { class: 'ps-rot', text: rot || 'Máquinas de cerco' }),
+      h('div', { class: 'row gu-nums' }, ts.map(t => campoNumero(k + ':' + t.id, t.nome, (maq && maq[t.id]) || 0, n => gravar(t.id, n), { min: 0, max: (N().LIMITES && N().LIMITES.maqPorTipo) || 1e4 }))));
+  }
+  // grava quantas de um tipo numa tabela { tipo: quantas } (zero sai) → false se não mudou
+  const porMaq = (x, tid, n) => { const t = x || {}, n0 = t[tid] || 0; if (n0 === n) return false; if (n) t[tid] = n; else delete t[tid]; return t; };
+  // "Aríete 2 · Catapulta 1" (ou '')
+  const txtMaq = (m, maq) => maquinasDe(m).filter(t => maq && maq[t.id]).map(t => t.nome + ' ' + maq[t.id]).join(' · ');
 
   /* ---- (lote 12, parte 12b) as terras ocupadas e as contagens (na aba Guerra) ---- */
   const nomeFacDe = (m, id) => { const f = id ? kit().facDe(m, id) : null; return f ? kit().nomeFac(f) : 'uma facção'; };
@@ -345,7 +415,7 @@
       linha(botao('Pôr as unidades', () => { if (mudarObj(id, 'pôr as unidades', x => { x.exe = exeNovo(m); }) !== false) { const u = (kit().achar(app().mapa, id) || {}).exe; if (u && u.unid[0]) unidAbertas.add(u.unid[0].id); } }, { c: 'pri sm', k: 'o:' + id + ':exe' })))];
     const L = G().lado(m, o), tr = N().tropasDe(e), cons = N().consumoDe(e), dias = N().diasDeMantimento(e), out = [];
     out.push(h('p', { class: 'status' }, h('b', { text: plural(tr, 'tropa', 'tropas') }), ' · ATQ ' + fmt(L.atq, 1) + ' · DEF ' + fmt(L.def, 1)
-      + (L.magos ? ' · ' + plural(L.magos, 'mago', 'magos') : '') + (L.cerco ? ' · ' + plural(L.cerco, 'máquina de cerco', 'máquinas de cerco') : '')));
+      + (L.magos ? ' · ' + plural(L.magos, 'mago', 'magos') : '') + (L.maqN ? ' · ' + plural(L.maqN, 'máquina de cerco', 'máquinas de cerco') : '')));
     // o comandante
     out.push(h('div', { class: 'row' },
       campoTexto('o:' + id + ':cmd', 'Comandante', e.cmd.nome, v => mudarObj(id, 'mudar o comandante', x => { x.exe.cmd.nome = v.trim(); }), { max: 80, ph: comandanteDaFicha(e) || 'Quem comanda' }),
@@ -494,8 +564,9 @@
       const aberta = unidAbertas.has(u.id), tn = tipoNome(m, u.tipo), eqB = u.equip.reduce((s, q) => s + q.atq, 0), eqD = u.equip.reduce((s, q) => s + q.def, 0);
       // (lote 12, parte 12c) o HP da unidade: a soma das tropas (a ferida, à parte)
       const H = N().hpDaUnidade(u);
+      const maqN = N().somaDasMaquinas(m, u.maq).n;
       const resumo = plural(u.tropas, 'tropa', 'tropas') + (tn ? ' · ' + tn : '') + ' · ATQ ' + (u.atq + eqB) + ' · DEF ' + (u.def + eqD) + (u.hpT > 1 ? ' · ' + u.hpT + ' HP cada' : '') + (u.fer ? ' · 1 ferida' : '')
-        + (u.cura ? ' · cura ' + u.cura + '%' : '') + (u.oc ? ' · escondida' : '');
+        + (u.cura ? ' · cura ' + u.cura + '%' : '') + (maqN ? ' · ' + plural(maqN, 'máquina', 'máquinas') : '') + (u.oc ? ' · escondida' : '');
       const corpo = aberta ? h('div', { class: 'gu-unid-corpo' },
         h('div', { class: 'row' },
           campoTexto('o:' + id + ':u:' + u.id + ':nome', 'Nome', u.nome, v => mudarUnid(id, u.id, 'mudar o nome da unidade', x => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 80 }),
@@ -508,8 +579,7 @@
           num(u, 'atq', 'ATQ', { min: -99, max: 99 }), num(u, 'def', 'DEF', { min: -99, max: 99 })),
         h('div', { class: 'row gu-nums' },
           num(u, 'magos', 'Magos', { min: 0, max: 1e7 }), num(u, 'cura', 'Cura (%)', { min: 0, max: 100 })),
-        h('div', { class: 'row gu-nums' },
-          num(u, 'cerco', 'Máquinas de cerco', { min: 0, max: 1e4 })),
+        camposMaq('o:' + id + ':u:' + u.id + ':maq', u.maq, (tid, n) => mudarUnid(id, u.id, 'mudar as máquinas da unidade', x => { const t = porMaq(x.maq, tid, n); if (!t) return false; x.maq = t; }), m),
         secEquip(o, u),
         caixa('o:' + id + ':u:' + u.id + ':oc', 'Escondida dos jogadores', !!u.oc, v => mudarUnid(id, u.id, 'esconder a unidade', x => { if (v) x.oc = true; else delete x.oc; }), { dica: 'Os jogadores veem o nome e o tipo das outras (nunca os números).' }),
         linha(
@@ -548,7 +618,9 @@
   function fortDe(m, mk) {
     const dc = defCons(m, mk);
     if (!mk || (!mk.estr && !(dc > 0))) return null;
-    return { def: Math.min(20, (mk.estr ? mk.estr.def : 0) + dc), hp: mk.estr ? mk.estr.hp : 1, hpMax: mk.estr ? mk.estr.hpMax : 1, cons: dc };
+    // (lote 12, parte 12d) as máquinas da fortificação (o dano contra exército delas entra na Abertura de quem defende)
+    const sm = N().somaDasMaquinas(m, mk.estr ? mk.estr.maq : null);
+    return { def: Math.min(20, (mk.estr ? mk.estr.def : 0) + dc), hp: mk.estr ? mk.estr.hp : 1, hpMax: mk.estr ? mk.estr.hpMax : 1, cons: dc, maqN: sm.n, maqExe: sm.exe, maq: mk.estr && mk.estr.maq ? mk.estr.maq : {} };
   }
   /* ================= o marcador: a Fortificação ================= */
   function secFortificacao(o, m) {
@@ -567,6 +639,8 @@
         campoNumero('o:' + id + ':estr-hpmax', 'HP máx.', e.hpMax, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.hpMax = n; if (x.estr.hp > n) x.estr.hp = n; }), { min: 1, max: 1e6 })),
       notaCons,
       h('p', { class: 'status' }, h('span', { class: 'tag' + (e.hp < e.hpMax ? ' guerra' : ''), text: est }), ' · protege com ' + sinal(Math.round(defT * e.hp / e.hpMax)) + ' quem defende aqui'),
+      // (lote 12, parte 12d) as máquinas da fortificação
+      camposMaq('o:' + id + ':estr-maq', e.maq, (tid, n) => mudarObj(id, 'mudar as máquinas da fortificação', x => { const t = porMaq(x.estr.maq, tid, n); if (!t) return false; x.estr.maq = t; }), m, 'Máquinas da fortificação (entram na batalha de quem defende)'),
       linha(botao('Consertar', () => mudarObj(id, 'consertar a fortificação', x => { if (x.estr.hp === x.estr.hpMax) return false; x.estr.hp = x.estr.hpMax; }), { c: 'sm', k: 'o:' + id + ':estr-conserta', off: e.hp >= e.hpMax }),
         botao('Tirar', () => { if (mudarObj(id, 'tirar a fortificação', x => { delete x.estr; }) !== false) kit().avisoDesfazer('A fortificação saiu.'); }, { c: 'sm per', k: 'o:' + id + ':estr-tirar' })));
   }
@@ -823,7 +897,7 @@
   }
   function contexto(m) {
     let estr = null;
-    if (bat.estr) { const mk = kit().achar(m, bat.estr.m), ft = fortDe(m, mk); if (ft) estr = { lado: bat.estr.lado, def: ft.def, hp: ft.hp, hpMax: ft.hpMax }; }
+    if (bat.estr) { const mk = kit().achar(m, bat.estr.m), ft = fortDe(m, mk); if (ft) estr = { lado: bat.estr.lado, def: ft.def, hp: ft.hp, hpMax: ft.hpMax, maqExe: ft.maqExe }; }
     // (lote 9) os heróis (o bônus de cada um) e as ações heroicas
     const hv = q => heroisDoLado(m, q).map(x => ({ nome: x.nome, v: x.v }));
     return { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
@@ -987,6 +1061,9 @@
     const { fmt, plural } = kit(), ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b), ea = ga.exe, eb = gb.exe;
     const lin = (rot, va, vb) => el('div', null, el('span', { text: rot }), el('b', { text: va }), el('b', { text: vb }));
     const mant = e => { if (!e || e.pub) return '—'; const d = N().diasDeMantimento(e); return e.fome ? 'sem há ' + plural(e.fome, 'dia', 'dias') : d === Infinity ? '—' : plural(d, 'dia', 'dias'); };
+    // (lote 12, parte 12d) as máquinas de cada lado (as da fortificação, com quem defende ali)
+    const fe = bat.estr ? (mk => (mk ? fortDe(m, mk) : null))(kit().achar(m, bat.estr.m)) : null;
+    const maqDe = (q, X) => [txtMaq(m, X.maq), fe && bat.estr.lado === q && fe.maqN ? 'fortificação: ' + txtMaq(m, fe.maq) : ''].filter(Boolean).join(' · ') || '—';
     return el('div', { class: 'gb-sec' }, tit('Os dois lados', 'bonus', 'Como os bônus são contados'),
       el('div', { class: 'gb-tab' },
         el('div', { class: 'gb-cab' }, el('span'), el('b', { text: A_.nome }), el('b', { text: B_.nome })),
@@ -994,7 +1071,7 @@
         lin('ATQ / DEF médios', fmt(A_.atq, 1) + ' / ' + fmt(A_.def, 1), fmt(B_.atq, 1) + ' / ' + fmt(B_.def, 1)),
         lin('Magos', fmt(A_.magos, 0), fmt(B_.magos, 0)),
         lin('À distância (força)', fmt(A_.dist, 0), fmt(B_.dist, 0)),
-        lin('Máquinas de cerco', fmt(A_.cerco, 0), fmt(B_.cerco, 0)),
+        lin('Máquinas de cerco', maqDe('a', A_), maqDe('b', B_)),
         lin('Moral', A_.moral + ' · ' + textoMoral(A_.moral), B_.moral + ' · ' + textoMoral(B_.moral)),
         lin('Comandante', (A_.cmdNome || '—') + ' (' + sinal(A_.cmd) + ')', (B_.cmdNome || '—') + ' (' + sinal(B_.cmd) + ')'),
         ...(() => { const ha = heroisDoLado(m, 'a'), hb = heroisDoLado(m, 'b'); return ha.length || hb.length ? [lin('Heróis', ha.length + ' (' + sinal(somaHerois(ha)) + ')', hb.length + ' (' + sinal(somaHerois(hb)) + ')')] : []; })(),

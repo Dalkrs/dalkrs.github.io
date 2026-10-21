@@ -1132,6 +1132,11 @@ dialog.mundo-dl .band-outra input[type="color"] { width: 30px; height: 24px; pad
 /* ---- (lote 8, parte 6) a guerra: a aba, o exército, as unidades e a janela da batalha ---- */
 .gu-tipo { display: grid; gap: 8px; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .gu-tipo > .row .ib { flex: none; margin-bottom: 2px; }
+/* (lote 12, parte 12d) as máquinas de cerco: os tipos na aba Guerra; quantas na unidade e na fortificação */
+.gu-maq { display: grid; gap: 8px; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.gu-maq > .row .ib { flex: none; margin-bottom: 2px; }
+.gu-maqs { display: grid; gap: 4px; }
+.gu-maqs > .row.gu-nums { flex-wrap: wrap; }
 .gu-vant { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; align-items: end; }
 .gu-vant-tit { grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: var(--fg-3); }
 .gu-enc, .gu-hex { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
@@ -1341,8 +1346,8 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=37"></script>
-<script src="guerra.js?v=4"></script>
+<script src="nucleo.js?v=38"></script>
+<script src="guerra.js?v=5"></script>
 <script src="reino.js?v=13"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
@@ -1351,8 +1356,8 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=23"></script>
 <script src="painel.js?v=39"></script>
-<script src="guerra-painel.js?v=8"></script>
-<script src="guerra-ajuda.js?v=2"></script>
+<script src="guerra-painel.js?v=9"></script>
+<script src="guerra-ajuda.js?v=3"></script>
 <script src="reino-painel.js?v=14"></script>
 <script src="corte-painel.js?v=5"></script>
 <script src="diplomacia-painel.js?v=5"></script>

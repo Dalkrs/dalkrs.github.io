@@ -1,7 +1,7 @@
 /* Tiny Cats · Mapa-múndi · a guerra (lote 8, parte 6): o motor das batalhas, sem página e sem DOM.
    Os lados (a partir do grupo do Exército: as unidades, a moral, o comandante, os mantimentos), os bônus de cada lado
-   (na escala do d20: os números, a qualidade, os tipos de tropa, a moral, o comandante, a magia, a distância, a
-   fortificação, a fome e o que o mestre pôs), a batalha resumida (um d100 de cada lado) e a detalhada (um d20 de cada
+   (na escala do d20: os números, a qualidade, os tipos de tropa, a moral, o comandante, a magia, a distância, as
+   máquinas de cerco — lote 12, parte 12d —, a fortificação, a fome e o que o mestre pôs), a batalha resumida (um d100 de cada lado) e a detalhada (um d20 de cada
    lado em cada momento: Abertura, Choque, Virada e Desfecho; momento-chave quando fica apertado ou sai 1 ou 20), o
    fim por recuo, rendição ou trégua, o depois da batalha (a prévia: tropas e HP, moral, mantimentos, a fortificação,
    a frente que anda e o hexágono) e o aplicar, os mantimentos de cada dia e os exércitos que se encontram.
@@ -22,15 +22,16 @@
   const AVANCO = [0, 1, 2, 3, 4];                 // quantos hexágonos a frente anda, pelo tamanho da vitória
   const ORDEM_MOMENTOS = ['ab', 'ch', 'vi', 'de'];
   // o que cada momento soma (a resumida soma tudo, uma vez)
+  // (lote 12, parte 12d) as máquinas de cerco entram na Abertura (como os magos) e na resumida
   const DO_MOMENTO = {
-    ab: ['magia', 'distancia'],
+    ab: ['magia', 'distancia', 'maquinas'],
     ch: ['numeros', 'qualidade', 'tipos', 'estrutura', 'fome'],
     vi: ['moral', 'comandante', 'herois'],
     de: ['numeros', 'moral', 'fome'],
-    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'estrutura', 'fome'],
+    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'fome'],
   };
   const NOMES = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', herois: 'Heróis', magia: 'Magos',
-    distancia: 'À distância', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre' };
+    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre' };
   const BONUS_MESTRE = { tatica: 'Tática', terreno: 'Terreno', reforco: 'Reforço', magia: 'Magia', outro: 'Outro' };
 
   /* (lote 9) Os heróis: personagens com ficha (os do grupo, NPCs) que lutam junto. O bônus sugerido é a média de dois:
@@ -71,13 +72,17 @@
     const forcaU = u => u.tropas;
     const atqU = u => u.atq + soma(u.equip || [], e => e.atq), defU = u => u.def + soma(u.equip || [], e => e.def);
     const F = soma(unid, forcaU);
+    // (lote 12, parte 12d) as máquinas de cerco das unidades que lutam: { tipo: quantas } e a soma dos danos
+    const maq = {};
+    for (const u of unid) for (const k of Object.keys(u.maq || {})) maq[k] = (maq[k] || 0) + u.maq[k];
+    const sm = NN().somaDasMaquinas(mapa, maq);
     const media = f => (F > 0 ? soma(unid, u => forcaU(u) * f(u)) / F : 0);
     const share = new Map();
     for (const u of unid) share.set(u.tipo || '', (share.get(u.tipo || '') || 0) + (F > 0 ? forcaU(u) / F : 0));
     return {
       g: g ? g.id : null, nome: g ? (g.nome || 'Exército') : 'Lado', fac: g ? g.fac || null : null, x: g ? g.x : null, y: g ? g.y : null,
       cmd: exe.cmd.b || 0, cmdNome: exe.cmd.nome || '', moral: exe.moral, fome: exe.fome || 0, mant: exe.mant || 0,
-      tropas: soma(unid, u => u.tropas), forca: F, atq: media(atqU), def: media(defU), magos: soma(unid, u => u.magos || 0), cerco: soma(unid, u => u.cerco || 0),
+      tropas: soma(unid, u => u.tropas), forca: F, atq: media(atqU), def: media(defU), magos: soma(unid, u => u.magos || 0), maq, maqN: sm.n, maqEst: sm.est, maqExe: sm.exe,
       dist: soma(unid.filter(u => { const t = tipoDe(u.tipo); return !!(t && t.dist); }), forcaU), share, tipos,
     };
   }
@@ -104,10 +109,13 @@
       comandante: () => X.cmd,
       magia: () => Math.min(6, Math.round(Math.sqrt(X.magos))),
       distancia: () => (X.dist > 0 && !(Y.dist > 0) ? 3 : Math.min(6, numeros(X.dist, Y.dist))),
+      // (lote 12, parte 12d) as máquinas: a raiz da soma do dano contra exército (as da fortificação, para quem defende ali), até 6
+      maquinas: () => { const e = ctx && ctx.estr, f = e && e.lado === quem ? Number(e.maqExe) || 0 : 0; return Math.min(6, Math.round(Math.sqrt((X.maqExe || 0) + f))); },
+      // a fortificação: a DEF pelo HP que sobra (parte 12d: as máquinas do outro lado tiram do HP, depois da batalha)
       estrutura: () => {
         const e = ctx && ctx.estr;
         if (!e || e.lado !== quem) return 0;
-        return Math.max(0, Math.round(e.def * (e.hpMax ? limitar(e.hp / e.hpMax, 0, 1) : 1)) - Y.cerco);
+        return Math.max(0, Math.round(e.def * (e.hpMax ? limitar(e.hp / e.hpMax, 0, 1) : 1)));
       },
       fome: () => -Math.min(3, X.fome),
       // (lote 9) os heróis do lado (o bônus de cada um: o da ficha, ou o que o mestre escreveu), até +10 por lado
@@ -253,11 +261,12 @@
         moral0: exe.moral, moral1: moralDepois(bat.fim, q, exe.moral), mant0: exe.mant, mant1: Math.max(0, exe.mant - c),
       };
     }
-    // a fortificação de quem defende: o cerco de quem ataca sempre bate; vencendo, bate mais
+    // a fortificação de quem defende: as máquinas de quem ataca sempre batem (a soma do dano contra estrutura — lote 12,
+    // parte 12d); vencendo, batem o dobro e mais o tamanho da vitória
     const m = bat.estr ? achar(bat.estr.m) : null;
     if (m && m.estr) {
       const atacante = bat.estr.lado === 'a' ? 'b' : 'a', ga = achar(bat[atacante] && bat[atacante].g);
-      const cerco = ga && ga.exe && !ga.exe.pub ? soma(ga.exe.unid.filter(u => u.tropas > 0), u => u.cerco || 0) : 0;
+      const cerco = ga && ga.exe && !ga.exe.pub ? lado(mapa, ga).maqEst : 0;
       const dano = bat.fim.vence === atacante ? cerco * 2 + DANO_ESTRUTURA[bat.fim.tam] : cerco;
       out.estr = { m: m.id, nome: m.estr.nome || m.nome || 'Fortificação', hp0: m.estr.hp, hp1: Math.max(0, m.estr.hp - dano), hpMax: m.estr.hpMax, dano };
     }

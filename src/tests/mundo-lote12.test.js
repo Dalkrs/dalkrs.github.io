@@ -16,6 +16,11 @@
 //     mapa de antes; a cura de cada nível no editor), na cidade (a nota da cura); a unidade (o HP de cada tropa, a ferida
 //     e "Curar a ferida"; a cura dos médicos); no exército, a cura dali; no "Próximo dia", a linha da cura (desmarcar,
 //     aplicar e Desfazer); no celular.
+//   · (parte 12d, SO=maquinas) as máquinas de cerco: na aba Guerra, as de começo (sem a lista no mapa); mudar guarda a
+//     lista (Desfazer volta às de começo); o acerto de 1 a 20 (vazio: não atira); um tipo novo; na unidade e na
+//     fortificação, quantas de cada tipo (zero tira); o resumo e a linha do exército; na batalha, as máquinas de cada lado
+//     (as da fortificação, com quem defende), o bônus na Abertura e na resumida, o "?" e o dano na fortificação, no
+//     depois; tirar um tipo em uso (pergunta antes; as máquinas saem junto; Desfazer) e "Voltar às de começo"; no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -418,6 +423,141 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(await A(L, () => { const p = document.getElementById('pane'); return p.scrollWidth <= p.clientWidth + 1; }), 'no celular, a unidade cabe no painel');
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
     await A(L, () => __mundo.App.desfazer()); await espera(300);
+  });
+
+  if (parte('maquinas')) await passo('as máquinas de cerco', async () => {
+    const selecionar = async id => { await A(L, x => __mundo.App.selecionar(x ? [x] : []), id); await espera(250); };
+    const tx = k => textoDe(L, '#pane [data-k="' + k + '"]');
+    const val = k => A(L, x => { const e = document.querySelector('#pane [data-k="' + x + '"]'); return e ? e.value : null; }, k);
+    const esc = async (k, v) => { const c = campo(L, k); await c.fill(v); await c.press('Enter'); await espera(220); };
+    const maqs = () => A(L, () => { const g = __mundo.App.mapa.guerra; return g && g.maqs ? JSON.parse(JSON.stringify(g.maqs)) : null; });
+    const rot = () => A(L, () => __mundo.App.rotuloDesfazer());
+    const maqU = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'g2').exe.unid.find(u => u.id === 'u2').maq)));
+    const desfazer = async () => { await A(L, () => __mundo.App.desfazer()); await espera(320); };
+    const janela = () => textoDe(L, 'dialog.mundo-dl[open]');
+    const d20 = k => (k - 0.5) / 20, d100 = k => (k - 0.5) / 100;
+    const dados = v => A(L, v => { let i = 0; __mundo.App.rng = () => v[i++ % v.length]; }, v);
+    const gb = k => L.F.locator('dialog.gb [data-k="' + k + '"]');
+    const naBatalha = async k => { await gb(k).first().click(); await espera(250); };
+    const tb = () => textoDe(L, 'dialog.gb .gb-corpo');
+    const painel = () => textoDe(L, '#pane');
+    // o começo: sem ocupação; a Vanguarda (de Aldar) no Vale, com 150 Batedores; no hexágono ao lado, a Guarda do Vale (200
+    // Piqueiros) e o Forte de Pedra (Muralhas: DEF 3, HP 100); sem a lista das máquinas (as de começo)
+    await A(L, () => __mundo.App.mudar('as máquinas: o começo', m => {
+      const N = __mundo.N;
+      m.objs = m.objs.filter(o => !['r4', 'k4', 'g4', 'cv', 'g5', 'k5'].includes(o.id));
+      for (const o of m.objs) if (o.k === 'r') delete o.ocup;
+      if (m.guerra) { delete m.guerra.pres; delete m.guerra.maqs; }
+      const g2 = m.objs.find(o => o.id === 'g2'), h = N.hexDe(m, g2.x, g2.y), c = N.centroHex(m, h.q + 1, h.r);
+      g2.exe = { moral: 6, mant: 10, unid: [{ id: 'u2', nome: 'Batedores', tropas: 150 }] };
+      m.objs.push(Object.assign(N.objNovo('g', { x: c.x, y: c.y, sigla: 'GV' }), { id: 'g5', nome: 'Guarda do Vale', tipo: 'exercito', fac: 'fb', exe: { moral: 6, mant: 10, unid: [{ id: 'u5', nome: 'Piqueiros', tropas: 200 }] } }),
+        Object.assign(N.objNovo('m', { x: c.x, y: c.y }), { id: 'k5', nome: 'Forte de Pedra', estr: { nome: 'Muralhas', def: 3, hp: 100, hpMax: 100 } }));
+    })); await espera(300);
+    // a aba Guerra: as de começo
+    await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await aba(L, 'guerra');
+    const linhaMaq = id => A(L, x => ['nome', 'est', 'exe', 'ac'].map(c => { const e = document.querySelector('#pane [data-k="gu:maq:' + x + ':' + c + '"]'); return e ? e.value : '?'; }).join('|'), id);
+    ok(j([await linhaMaq('ariete'), await linhaMaq('catapulta'), await linhaMaq('trabuco')]) === j(['Aríete|3|0|', 'Catapulta|2|5|11', 'Trabuco|4|3|13'])
+      && await A(L, () => document.querySelector('#pane [data-k="gu:maq:ariete:ac"]').placeholder) === '—' && await campo(L, 'gu:maq:comeco').count() === 0 && await maqs() === null,
+      'a aba Guerra: as máquinas de começo (o Aríete não atira em tropas), sem a lista no mapa nem "Voltar às de começo"');
+    // mudar guarda a lista; Desfazer volta às de começo
+    await esc('gu:maq:catapulta:exe', '6');
+    let ms = await maqs();
+    ok(!!ms && j(ms.map(t => t.nome + ' ' + t.est + '/' + t.exe + '/' + t.ac)) === j(['Aríete 3/0/null', 'Catapulta 2/6/11', 'Trabuco 4/3/13']) && await rot() === 'mudar a máquina' && await campo(L, 'gu:maq:comeco').count() === 1,
+      'mudar uma máquina: a lista fica no mapa (com as de começo), e aparece "Voltar às de começo": ' + j(ms));
+    await desfazer();
+    ok(await maqs() === null && await val('gu:maq:catapulta:exe') === '5' && await campo(L, 'gu:maq:comeco').count() === 0, 'Desfazer: de volta às de começo (sem a lista)');
+    // o acerto: de 1 a 20; vazio, não atira
+    await semAvisos(L);
+    await esc('gu:maq:trabuco:ac', '25');
+    ok(await maqs() === null && /Use um número de 1 a 20\./.test(await avisos(L)), 'o acerto vai de 1 a 20 (o aviso explica): ' + await avisos(L));
+    await esc('gu:maq:trabuco:ac', '');
+    ok(((await maqs()) || [])[2].ac === null && await val('gu:maq:trabuco:ac') === '', 'vazio: o Trabuco não atira em tropas');
+    await desfazer();
+    // um tipo novo: a Balista
+    await botao(L, 'gu:maq:nova');
+    ms = await maqs();
+    const bal = ms && ms[3] ? ms[3].id : '?', foco = await A(L, () => document.activeElement && document.activeElement.getAttribute('data-k'));
+    ok(ms.length === 4 && j(ms[3]) === j({ id: bal, nome: 'Máquina 4', est: 1, exe: 0, ac: null }) && foco === 'gu:maq:' + bal + ':nome' && await rot() === 'criar um tipo de máquina',
+      'novo tipo de máquina: "Máquina 4" (1 contra estrutura; não atira), já com o nome para escrever: ' + j([ms[3], foco]));
+    await esc('gu:maq:' + bal + ':nome', 'Balista'); await esc('gu:maq:' + bal + ':exe', '4'); await esc('gu:maq:' + bal + ':ac', '12');
+    ok(j((await maqs())[3]) === j({ id: bal, nome: 'Balista', est: 1, exe: 4, ac: 12 }), 'o nome e os números da máquina nova');
+    await campo(L, 'gu:maq:' + bal).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12d-maquinas');
+    // na unidade: quantas de cada tipo
+    await aba(L, 'selecao'); await selecionar('g2');
+    if (!(await campo(L, 'o:g2:u:u2:maq:catapulta').count())) await botao(L, 'o:g2:u:u2:abre');
+    ok(await tx('o:g2:u:u2:maq') === 'Máquinas de cerco Aríete Catapulta Trabuco Balista' && await val('o:g2:u:u2:maq:catapulta') === '0', 'na unidade, um campo para cada tipo (começa em 0): ' + await tx('o:g2:u:u2:maq'));
+    await esc('o:g2:u:u2:maq:catapulta', '2'); await esc('o:g2:u:u2:maq:' + bal, '1');
+    ok(j(await maqU()) === j({ catapulta: 2, [bal]: 1 }) && await rot() === 'mudar as máquinas da unidade', 'as máquinas da unidade: 2 Catapultas e 1 Balista');
+    ok(/· 3 máquinas$/.test(await tx('o:g2:u:u2:abre')) && /150 tropas · ATQ [^·]+ · DEF [^·]+ · 3 máquinas de cerco/.test(await painel()), 'o resumo da unidade e a linha do exército contam as máquinas: ' + await tx('o:g2:u:u2:abre'));
+    await esc('o:g2:u:u2:maq:catapulta', '0');
+    ok(j(await maqU()) === j({ [bal]: 1 }), 'zero tira o tipo da unidade');
+    await desfazer();
+    await A(L, () => document.querySelector('#pane [data-k="o:g2:u:u2:maq"]').scrollIntoView({ block: 'center' })); await espera(150); await semAvisos(L); await foto('l12d-unidade');
+    // na fortificação
+    await selecionar('k5');
+    ok(/^Máquinas da fortificação \(entram na batalha de quem defende\)/.test(await tx('o:k5:estr-maq')), 'a fortificação tem as máquinas dela: ' + await tx('o:k5:estr-maq'));
+    await esc('o:k5:estr-maq:catapulta', '1'); await esc('o:k5:estr-maq:' + bal, '1');
+    const maqF = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'k5').estr.maq || null)));
+    ok(j(await maqF()) === j({ catapulta: 1, [bal]: 1 }) && await rot() === 'mudar as máquinas da fortificação', 'a fortificação com 1 Catapulta e 1 Balista');
+    // a batalha: a Vanguarda (2 Catapultas e 1 Balista: 14 contra exército, 5 contra estrutura) contra a Guarda do Vale, que
+    // defende o Forte de Pedra (a Catapulta e a Balista dele: 9)
+    await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await A(L, () => { window.MundoGuerraPainel.abrirBatalha({ a: 'g2', b: 'g5' }); }); await espera(450);
+    const bonusDe = i => A(L, x => { const p = document.querySelectorAll('dialog.gb .gb-bonus p')[x]; return p ? p.innerText.replace(/\s+/g, ' ') : ''; }, i);
+    let t0 = await tb();
+    ok(/Máquinas de cerco Catapulta 2 · Balista 1 fortificação: Catapulta 1 · Balista 1 /.test(t0) && /Máquinas de cerco \+4/.test(await bonusDe(0)) && /Máquinas de cerco \+3/.test(await bonusDe(1)) && /Fortificação \+3/.test(await bonusDe(1)),
+      'os dois lados: as máquinas de cada um (as da fortificação, com quem defende); o bônus: a raiz de 14, +4; a de 9, +3: ' + j([await bonusDe(0), await bonusDe(1)]));
+    await L.F.locator('dialog.gb [data-k="gb:ajuda:b:maquinas"]').first().click(); await espera(300);
+    const aj = await textoDe(L, 'dialog.gb .gb-ajuda [data-sec="b:maquinas"]');
+    ok(/^Máquinas de cerco /.test(aj) && /dano contra exército 14 → \+4/.test(aj) && /dano contra exército 9 \(9 da fortificação\) → \+3/.test(aj), 'o "?" das máquinas: a soma de cada lado e o bônus: ' + aj.slice(0, 260));
+    await semAvisos(L); await foto('l12d-batalha');
+    await L.P.keyboard.press('Escape'); await espera(250);
+    // a Abertura: d20 + as máquinas
+    await dados([d20(10), d20(10)]);
+    await naBatalha('gb:d20');
+    const mom0 = await A(L, () => { const b = window.MundoGuerraPainel.batalha; return b && b.moms[0] ? [b.moms[0].k, b.moms[0].ta, b.moms[0].tb] : null; });
+    ok(j(mom0) === j(['ab', 14, 13]), 'na Abertura, as máquinas somam: 10 + 4 contra 10 + 3: ' + j(mom0));
+    // a resumida e o depois: vencendo, as máquinas de quem ataca batem o dobro do dano contra estrutura, mais o tamanho
+    await naBatalha('gb:recomecar');
+    await dados([d100(95), d100(5)]);
+    await naBatalha('gb:d100');
+    const fim = await A(L, () => { const b = window.MundoGuerraPainel.batalha; return b && b.fim ? JSON.parse(JSON.stringify(b.fim)) : null; });
+    const dano = fim && fim.vence === 'a' ? 5 * 2 + (await A(L, x => window.MundoGuerra.DANO_ESTRUTURA[x], fim.tam)) : -1;
+    await naBatalha('gb:depois');
+    const dep = await textoDe(L, 'dialog.gb [data-k="gb:dep:estr"]');
+    ok(fim && fim.vence === 'a' && dep.toLowerCase() === ('Fortificação: Muralhas HP 100 → ' + (100 - dano) + ' de 100 (dano ' + dano + ')').toLowerCase(), 'no depois, o dano na fortificação: 2 × 5 + o tamanho da vitória (' + dano + '): ' + dep);
+    await naBatalha('gb:fechar');
+    await A(L, () => { if (document.querySelector('dialog.gb[open]')) document.querySelector('dialog.gb').close(); }); await espera(250);
+    // tirar um tipo em uso: pergunta antes; as máquinas saem junto; Desfazer
+    await aba(L, 'guerra');
+    await botao(L, 'gu:maq:' + bal + ':x');
+    ok(await janela() === 'Tirar a máquina Balista? As 2 máquinas dela nas unidades e fortificações saem junto. Dá para desfazer. Cancelar Tirar', 'tirar um tipo em uso pergunta antes (quantas saem): ' + await janela());
+    await L.F.locator('dialog.mundo-dl[open] button', { hasText: 'Cancelar' }).click(); await espera(250);
+    ok((await maqs()).length === 4 && j(await maqU()) === j({ catapulta: 2, [bal]: 1 }), 'Cancelar: nada muda');
+    await botao(L, 'gu:maq:' + bal + ':x');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(j((await maqs()).map(t => t.id)) === j(['ariete', 'catapulta', 'trabuco']) && j(await maqU()) === j({ catapulta: 2 }) && j(await maqF()) === j({ catapulta: 1 }) && /A máquina "Balista" saiu\./.test(await avisos(L)) && await rot() === 'tirar o tipo de máquina',
+      'tirar: o tipo sai, e as Balistas da unidade e da fortificação junto (o aviso tem Desfazer): ' + await avisos(L));
+    await desfazer();
+    ok((await maqs()).length === 4 && j(await maqU()) === j({ catapulta: 2, [bal]: 1 }) && j(await maqF()) === j({ catapulta: 1, [bal]: 1 }), 'Desfazer: a Balista volta, na lista, na unidade e na fortificação');
+    await botao(L, 'gu:maq:ariete:x');
+    ok(!(await janela()) && (await maqs()).length === 3 && /A máquina "Aríete" saiu\./.test(await avisos(L)), 'um tipo sem uso sai sem perguntar (com o aviso)');
+    await desfazer();
+    // "Voltar às de começo": os tipos criados (em uso) saem, com a pergunta antes
+    await botao(L, 'gu:maq:comeco');
+    ok(await janela() === 'Voltar às máquinas de começo? As máquinas dos tipos que você criou (2) saem das unidades e fortificações. Dá para desfazer. Cancelar Voltar', '"Voltar às de começo" pergunta antes: ' + await janela());
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok(await maqs() === null && j(await maqU()) === j({ catapulta: 2 }) && j(await maqF()) === j({ catapulta: 1 }) && /As máquinas voltaram às de começo\./.test(await avisos(L)) && await rot() === 'voltar às máquinas de começo',
+      'voltar: sem a lista no mapa; as Balistas saem da unidade e da fortificação');
+    await desfazer();
+    ok((await maqs()).length === 4, 'Desfazer: a lista do mestre de novo');
+    // no celular: a seção cabe
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await campo(L, 'gu:maq:' + bal).scrollIntoViewIfNeeded();
+    ok(await A(L, () => { const p = document.getElementById('pane'); return p.scrollWidth <= p.clientWidth + 1; }), 'no celular, as máquinas cabem no painel');
+    await semAvisos(L); await foto('l12d-maquinas-celular');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 
   const erros = t.errs.filter(e => !/favicon/i.test(e));

@@ -1,7 +1,7 @@
 // Mapa-múndi, lote 8 (parte 6): a Guerra, pela interface (a página sozinha, no navegador).
 //   · a aba Guerra (só do mestre; as seis abas cabem no painel): vazia no começo, com os tipos de tropa (a tabela do
 //     mestre: o nome, "de longe" e a vantagem contra cada tipo), os exércitos, os hexágonos e o histórico;
-//   · a seção Exército do grupo: "Pôr as unidades", cada unidade (tropas, HP, ATQ, DEF, magos, cerco, equipamentos,
+//   · a seção Exército do grupo: "Pôr as unidades", cada unidade (tropas, HP, ATQ, DEF, magos, máquinas de cerco, equipamentos,
 //     escondida), duplicar e apagar (com Desfazer), o comandante (o bônus), a moral e os mantimentos;
 //   · a Fortificação do marcador (a DEF, o HP, danificada e consertar);
 //   · a batalha resumida (d100): os dois lados lado a lado, quem defende a fortificação, o bônus do mestre (e tirar),
@@ -126,13 +126,13 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     const k = c => `o:gc:u:${u.id}:${c}`;
     await escrever(L, k('nome'), 'Salteadores');
     await escolher(L, k('tipo'), T.Lanceiros);
-    for (const [c, v] of [['tropas', '150'], ['atq', '3'], ['def', '2'], ['magos', '1'], ['cerco', '1'], ['hpT', '4'], ['cura', '15']]) await escrever(L, k(c), v);
+    for (const [c, v] of [['tropas', '150'], ['atq', '3'], ['def', '2'], ['magos', '1'], ['maq:catapulta', '1'], ['hpT', '4'], ['cura', '15']]) await escrever(L, k(c), v);
     await botao(L, k('eq:novo'));
     await escrever(L, k('eq:0:nome'), 'Bestas');
     await escrever(L, k('eq:0:atq'), '2');
     await campo(L, k('oc')).check(); await espera(200);
     e = (await obj(L, 'gc')).exe;
-    ok(j(e.unid[0]) === j({ id: u.id, nome: 'Salteadores', tipo: T.Lanceiros, tropas: 150, hpT: 4, fer: 0, atq: 3, def: 2, magos: 1, cura: 15, cerco: 1, equip: [{ nome: 'Bestas', atq: 2, def: 0 }], oc: true }), 'a unidade: o nome, o tipo, os números (o HP de cada tropa, a cura), o equipamento e escondida: ' + j(e.unid[0]));
+    ok(j(e.unid[0]) === j({ id: u.id, nome: 'Salteadores', tipo: T.Lanceiros, tropas: 150, hpT: 4, fer: 0, atq: 3, def: 2, magos: 1, cura: 15, maq: { catapulta: 1 }, equip: [{ nome: 'Bestas', atq: 2, def: 0 }], oc: true }), 'a unidade: o nome, o tipo, os números (o HP de cada tropa, a cura, as máquinas de cerco), o equipamento e escondida: ' + j(e.unid[0]));
     ok(await A(L, x => document.querySelector(`#pane [data-k="${x}"]`).innerText.replace(/\s+/g, ' ').trim(), k('hp')) === 'HP da unidade: 600 — a soma das tropas: o dano mata uma a uma.', 'o HP da unidade: a soma das tropas (150 × 4)');
     // (lote 12, parte 12c) a ferida: o HP com o que falta, e "Curar a ferida"
     await A(L, x => __mundo.App.mudar('ferir', m => { m.objs.find(o => o.id === 'gc').exe.unid[0].fer = 3; }), null); await espera(250);
@@ -142,7 +142,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     await escrever(L, k('hpT'), '1'); await escrever(L, k('cura'), '0');
     await botao(L, k('abre'));
     const resumo = await A(L, k => document.querySelector(`#pane [data-k="${k}"]`).innerText.replace(/\s+/g, ' '), k('abre'));
-    ok(/Salteadores 150 tropas · Lanceiros · ATQ 5 · DEF 2 · escondida/.test(resumo), 'fechada, a unidade mostra o resumo (o ATQ com o equipamento): ' + resumo);
+    ok(/Salteadores 150 tropas · Lanceiros · ATQ 5 · DEF 2 · 1 máquina · escondida/.test(resumo), 'fechada, a unidade mostra o resumo (o ATQ com o equipamento; as máquinas): ' + resumo);
     await botao(L, 'o:gc:u:nova');
     await botao(L, k('abre'));
     await botao(L, k('dup'));
@@ -181,7 +181,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     await A(L, T => __mundo.App.mudar('os dois exércitos', m => {
       const g = id => m.objs.find(o => o.id === id);
       g('ga').exe = { cmd: { nome: 'Rei Aldar', b: 2 }, moral: 7, mant: 40, unid: [{ id: 'u1', nome: 'Cavalaria pesada', tipo: T.Cavalaria, tropas: 800, atq: 6, def: 4 }, { id: 'u2', nome: 'Arqueiros do rei', tipo: T.Arqueiros, tropas: 400, atq: 4, def: 2, magos: 9 }] };
-      g('gb').exe = { cmd: { nome: 'Duquesa', b: 1 }, moral: 5, mant: 12, unid: [{ id: 'u3', nome: 'Lanceiros', tipo: T.Lanceiros, tropas: 900, atq: 5, def: 6, cerco: 2 }] };
+      g('gb').exe = { cmd: { nome: 'Duquesa', b: 1 }, moral: 5, mant: 12, unid: [{ id: 'u3', nome: 'Lanceiros', tipo: T.Lanceiros, tropas: 900, atq: 5, def: 6, maq: { ariete: 2 } }] };
     }), T);
     await A(L, () => __mundo.App.selecionar(['ga'])); await espera(200);
     await botao(L, 'o:ga:u:u1:abre');

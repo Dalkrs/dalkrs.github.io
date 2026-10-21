@@ -977,20 +977,22 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   d20; a ficha ligada, opcional, dá o nome e o retrato), a moral (0 a 10; 5 é firme), os mantimentos e o consumo por dia
   (um por cem soldados, ou o que o mestre escolher) e as unidades (até 40): nome, tipo, tropas, HP e HP máximo (no lote
   12, parte 12c, viram o HP de cada tropa), ATQ,
-  DEF, magos, máquinas de cerco, equipamentos (até 12, cada um com ATQ e DEF) e "escondida dos jogadores"; duplicar e
-  apagar (com Desfazer).
+  DEF, magos, máquinas de cerco (no lote 12, parte 12d, quantas de cada tipo), equipamentos (até 12, cada um com ATQ e
+  DEF) e "escondida dos jogadores"; duplicar e apagar (com Desfazer).
 - **A fortificação** é do marcador (`estr`): o nome, a DEF (0 a 20: o bônus de quem defende ali, pelo HP que sobra), o
-  HP (danificada, em ruínas) e Consertar. As máquinas de cerco de quem ataca tiram da DEF e danificam.
+  HP (danificada, em ruínas) e Consertar. As máquinas de cerco de quem ataca danificam (até o lote 12, parte 12d,
+  também tiravam da DEF; agora a DEF cai só com o HP).
 - **A batalha** (uma janela, aberta pelo exército, pela aba ou pelo aviso do encontro): os dois lados (a força de cada
   unidade é tropas × de 50% a 100%, pelo HP; no lote 12, parte 12c, só as tropas), quem defende uma fortificação a até um hexágono (escolhido sozinho), a
   tabela lado a lado e os bônus de cada um, na escala do d20 — números (+4 a cada vez que dobra o outro, até 10), ATQ
   contra DEF (até ±6), os tipos (a vantagem pesada pela força de cada tipo), a moral (− 5), o comandante, os magos
-  (√magos, até 6), à distância (+3 se só um lado tem; com os dois, os números da força de longe, até 6), a fortificação
-  e a fome (−1 por dia sem mantimentos, até −3). Os bônus do mestre (tática, terreno, reforço, magia ou outro) valem
+  (√magos, até 6), à distância (+3 se só um lado tem; com os dois, os números da força de longe, até 6), as máquinas de
+  cerco (lote 12, parte 12d: √ da soma do dano contra exército, até 6), a fortificação e a fome (−1 por dia sem
+  mantimentos, até −3). Os bônus do mestre (tática, terreno, reforço, magia ou outro) valem
   para um lado, na batalha toda ou só num momento.
   - **A resumida (d100)**: um d100 de cada lado mais 5 × os bônus; a margem diz o tamanho (menos de 8, empate; até 24,
     apertada; até 49, vitória; até 79, clara; 80 ou mais, esmagadora).
-  - **A detalhada (d20)**: um d20 de cada lado em cada momento — Abertura (magos e à distância), Choque (números, ATQ ×
+  - **A detalhada (d20)**: um d20 de cada lado em cada momento — Abertura (magos, à distância e as máquinas de cerco), Choque (números, ATQ ×
     DEF, tipos, fortificação e fome), Virada (moral e comandante; e os heróis, no lote 9) e Desfecho (números, moral e fome) —, e o placar soma
     as margens (menos de 4, empate; até 11, apertada; até 23, vitória; até 35, clara; 36 ou mais, esmagadora).
     Momento-chave: margem de 2 ou menos, ou saiu 1 ou 20; antes de seguir, o mestre pode mudar um bônus (no próprio
@@ -1008,8 +1010,8 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
     dado e cada bônus mudado); a fórmula de cada coisa fica em "Ver a conta". Esc ou o × fecham só a ajuda.
 - **O depois** (a prévia; nada muda até "Aplicar", que é um passo de desfazer): as tropas e o HP de cada unidade (quem
   perde, mais: de 12% a 50%, pelo tamanho; quem vence, de 4% a 8%; a unidade que chega a zero tropas ou zero HP sai), a
-  moral (quem vence sobe, quem perde cai), um dia de mantimentos, a fortificação (o cerco de quem ataca sempre bate;
-  vencendo, bate mais), a frente (a dos dois lados, a mais perto; anda de 1 a 4 hexágonos — dá para mudar — para o lado
+  moral (quem vence sobe, quem perde cai), um dia de mantimentos, a fortificação (as máquinas de quem ataca sempre
+  batem — a soma do dano contra estrutura delas —; vencendo, o dobro e mais o tamanho da vitória), a frente (a dos dois lados, a mais perto; anda de 1 a 4 hexágonos — dá para mudar — para o lado
   de quem perdeu, só perto da batalha, numa fase nova a partir de hoje: os dias de antes ficam com a linha de antes) e
   o hexágono (fica como está, destruído ou corrompido). A batalha aplicada vai para o histórico (até 60, ficam as mais
   novas): os momentos, os dados e as notas; dá para ler e escrever mais depois.
@@ -1472,6 +1474,17 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   oferece "Pôr as novas do catálogo pronto" nos mapas de antes (a Enfermaria), e o editor de construção tem a cura de
   cada nível. No mapa: `hpT`, `fer` e `cura` na unidade (`hpDaUnidade`, `tropasComHp`) e `cura` no nível da construção
   (`efeitoDasConstrucoes`, `curaDoAssentamento`; `MundoCampanha.enfermariaPerto`).
+- **As máquinas de cerco** (lote 12, parte 12d). Os **tipos** ficam na aba Guerra (seção Máquinas de cerco): o nome, o
+  dano contra estrutura, o dano contra exército e o acerto (o mínimo no d20 para um tiro acertar as tropas; vazio, não
+  atira). Os de começo: Aríete (3 / 0 / não atira), Catapulta (2 / 5 / 11) e Trabuco (4 / 3 / 13); a primeira mudança
+  guarda a lista no mapa ("Voltar às de começo" a tira — com tipos criados em uso, pergunta antes), e dá para criar
+  outros (até 40) e tirar (em uso, pergunta antes: as máquinas dele saem junto). A **unidade** e a **fortificação** têm
+  quantas de cada tipo (o número de antes, "Máquinas de cerco", some). Na **batalha**, as máquinas entram como os magos:
+  na Abertura (e na resumida), a raiz da soma do dano contra exército, até +6 — quem defende a fortificação soma as
+  dela —, e a tabela dos dois lados mostra as de cada um. Na **muralha**, só no HP, depois da batalha: a soma do dano
+  contra estrutura das máquinas de quem ataca (vencendo, o dobro e mais o tamanho da vitória); a DEF da fortificação cai
+  com o HP (as máquinas não tiram mais da DEF). No mapa: `guerra.maqs` (`{ id, nome, est, exe, ac }`; sem ela, os de
+  começo — `MAQUINAS_PADRAO`, `maquinasDe`) e `maq: { tipo: quantas }` na unidade e na fortificação (`somaDasMaquinas`).
 
 ### A Árvore (lote 6)
 
@@ -2654,7 +2667,13 @@ desmarcada, os médicos que acabam, a ferida do desgaste), o desgaste no HP e ap
 normalizada (o HP de cada tropa, a ferida, a cura), a força pelas tropas e a perda da batalha no HP (as tropas uma a
 uma, a ferida); `mundo-lote12` com `SO=vida`, "Pôr as novas do catálogo pronto", o editor (a cura), a nota da cidade,
 o HP da unidade e "Curar a ferida", a cura no exército e no dia (desmarcar, aplicar, Desfazer) e o celular;
-`mundo-guerra`, os campos novos da unidade e a ferida. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+`mundo-guerra`, os campos novos da unidade e a ferida. Na parte 12d (as máquinas de cerco), `guerra-nucleo` confere os
+tipos (os de começo, a tabela normalizada, até 40, a vazia), as máquinas da unidade e da fortificação (só dos tipos que
+existem), a soma, o lado com as máquinas, o bônus da Abertura (a raiz, até 6; as da fortificação para quem defende), a
+fortificação sem tirar da DEF, o dano no HP (o dobro vencendo; os tipos somam) e a projeção sem elas; `mundo-lote12` com
+`SO=maquinas`, a seção da aba Guerra (as de começo, mudar e Desfazer, o acerto, um tipo novo, tirar em uso e "Voltar às
+de começo", com a pergunta), os campos da unidade e da fortificação, o resumo, a batalha (a tabela, o bônus, o "?", a
+Abertura, o dano no depois) e o celular; `mundo-guerra`, os campos das máquinas na unidade. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

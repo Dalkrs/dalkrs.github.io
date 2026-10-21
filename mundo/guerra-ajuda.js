@@ -11,9 +11,9 @@
   const MOM = { ab: 'Abertura', ch: 'Choque', vi: 'Virada', de: 'Desfecho' };
   const EM = { ab: 'na', ch: 'no', vi: 'na', de: 'no' };
   const SECOES = [['modos', 'Resumida ou detalhada'], ['momentos', 'Os quatro momentos'], ['bonus', 'Os bônus'], ['resultado', 'O resultado'], ['depois', 'Depois da batalha'], ['herois', 'Os heróis']];
-  const BONUS = ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'estrutura', 'fome', 'mestre', 'heroica'];
+  const BONUS = ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'fome', 'mestre', 'heroica'];
   const NOME_B = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', herois: 'Heróis', magia: 'Magos',
-    distancia: 'À distância', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre', heroica: 'Ação heroica' };
+    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre', heroica: 'Ação heroica' };
   // o "?" pede uma parte; algumas moram dentro de outra
   const ondeMora = id => (SECOES.some(([s]) => s === id) || /^(m|b):/.test(id) || ['resumida', 'detalhada', 'chave', 'parar'].includes(id) ? id : 'modos');
 
@@ -122,11 +122,19 @@
         ex(lado2('força à distância ' + fmt(A.dist, 0) + ' → ' + sinal(vA('distancia')), 'força à distância ' + fmt(B.dist, 0) + ' → ' + sinal(vB('distancia')))),
         conta('Só um lado com tropas à distância: +3. Os dois: 4 × log₂(maior ÷ menor), arredondado, até 6.')];
       {
-        const f = d.fort, cerco = f ? (f.lado === 'a' ? B.cerco : A.cerco) : 0, base = f ? Math.round(f.def * (f.hpMax ? Math.max(0, Math.min(1, f.hp / f.hpMax)) : 1)) : 0;
-        itens.estrutura = [p('Quem defende uma fortificação (escolhida no alto da janela) ganha a DEF dela. Danificada, ela protege menos; as máquinas de cerco do outro lado tiram dela. As construções de defesa do assentamento (a Paliçada, a Muralha) somam na DEF. Vale no Choque (e na resumida).'),
+        // (lote 12, parte 12d) as máquinas de cerco: o dano contra exército, como os magos
+        const f = d.fort, fa = f && f.lado === 'a' ? f.maqExe || 0 : 0, fb = f && f.lado === 'b' ? f.maqExe || 0 : 0;
+        itens.maquinas = [p('As máquinas de cerco do lado: a soma do dano contra exército de cada uma (quem defende a fortificação soma as dela). A raiz quadrada da soma, até +6: 1 Catapulta (5) dá +2, 4 dão +4. Vale na Abertura (e na resumida). O dano contra estrutura das máquinas de quem ataca bate no HP da fortificação depois da batalha.'),
+          ex(lado2('dano contra exército ' + fmt((A.maqExe || 0) + fa, 0) + (fa ? ' (' + fmt(fa, 0) + ' da fortificação)' : '') + ' → ' + sinal(vA('maquinas')),
+            'dano contra exército ' + fmt((B.maqExe || 0) + fb, 0) + (fb ? ' (' + fmt(fb, 0) + ' da fortificação)' : '') + ' → ' + sinal(vB('maquinas')))),
+          conta('Bônus = a raiz quadrada da soma do dano contra exército, arredondada, até 6.')];
+      }
+      {
+        const f = d.fort, base = f ? Math.round(f.def * (f.hpMax ? Math.max(0, Math.min(1, f.hp / f.hpMax)) : 1)) : 0;
+        itens.estrutura = [p('Quem defende uma fortificação (escolhida no alto da janela) ganha a DEF dela. Danificada, ela protege menos: as máquinas de cerco do outro lado tiram do HP dela depois da batalha. As construções de defesa do assentamento (a Paliçada, a Muralha) somam na DEF. Vale no Choque (e na resumida).'),
           ex(f ? nome(f.lado) + ' defende ' + f.nome + ': DEF ' + f.def + (f.cons ? ' (' + f.cons + ' das construções)' : '') + (f.hpMax && f.hp < f.hpMax ? ', com ' + f.hp + ' de ' + f.hpMax + ' de HP: protege ' + base : '') +
-            (cerco ? '; as máquinas de cerco de ' + nome(f.lado === 'a' ? 'b' : 'a') + ' tiram ' + fmt(cerco, 0) : '') + ' → ' + sinal(f.lado === 'a' ? vA('estrutura') : vB('estrutura')) + '.' : 'ninguém defende uma fortificação.'),
-          conta('Bônus = DEF × (HP ÷ HP máx.), arredondado, − as máquinas de cerco do outro lado (nunca abaixo de 0).', 'A DEF é a da fortificação mais a defesa das construções do assentamento (até 20).')];
+            ' → ' + sinal(f.lado === 'a' ? vA('estrutura') : vB('estrutura')) + '.' : 'ninguém defende uma fortificação.'),
+          conta('Bônus = DEF × (HP ÷ HP máx.), arredondado.', 'A DEF é a da fortificação mais a defesa das construções do assentamento (até 20).')];
       }
       itens.fome = [p('O exército sem mantimentos perde 1 por dia sem eles, até −3. Vale no Choque e no Desfecho (e na resumida).'),
         ex(lado2(A.fome ? 'sem mantimentos há ' + A.fome + (A.fome === 1 ? ' dia' : ' dias') + ' → ' + sinal(vA('fome')) : 'com mantimentos → 0', B.fome ? 'sem mantimentos há ' + B.fome + (B.fome === 1 ? ' dia' : ' dias') + ' → ' + sinal(vB('fome')) : 'com mantimentos → 0')),
@@ -167,14 +175,14 @@
         lista(['As perdas: cada unidade perde a mesma parte do HP dela (a soma do HP das tropas), pelo resultado: as tropas morrem uma a uma, e a que fica ferida conta como viva. A unidade que fica sem tropas sai do exército.',
           'A moral: quem vence pode subir; quem perde cai, mais quanto maior a derrota.',
           'Os mantimentos: um dia de batalha gasta um dia de mantimentos.',
-          'A fortificação: as máquinas de cerco de quem ataca sempre batem; se quem ataca vence, batem mais.',
+          'A fortificação: as máquinas de cerco de quem ataca sempre batem (o dano contra estrutura delas); se quem ataca vence, batem mais.',
           'A frente: anda para o lado de quem perdeu, perto da batalha (você escolhe quanto).',
           'O hexágono da batalha pode ficar destruído ou corrompido (você escolhe).',
           'Os heróis podem sair feridos (veja Os heróis).']),
         exDep,
         conta('Quem perde perde ' + P.slice(1).map(pct).join(', ') + ' (da apertada à esmagadora); quem vence, ' + V.slice(1).map(pct).join(', ') + '. Empate: ' + pct(P[0]) + ' cada; recuo: 10% quem recua e 3% o outro; rendição: 35% e 2%; trégua: 3% cada.',
           'Moral de quem perde: −' + MP.slice(1).join(', −') + '; de quem vence: +' + MV.slice(1).join(', +') + '. Recuo: −1 para quem recua; rendição: −3 para quem se rende e +1 para o outro.',
-          'Dano na fortificação: as máquinas de cerco de quem ataca; se ele vence, o dobro delas + ' + DE.slice(1).join(', ') + ' pelo tamanho da vitória.',
+          'Dano na fortificação: a soma do dano contra estrutura das máquinas de quem ataca; se ele vence, o dobro + ' + DE.slice(1).join(', ') + ' pelo tamanho da vitória.',
           'A frente anda ' + g.AVANCO.slice(1).join(', ') + ' hexágonos, da apertada à esmagadora.')));
     }
 

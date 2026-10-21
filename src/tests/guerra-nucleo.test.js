@@ -1,7 +1,7 @@
 // Lote 8, parte 6 — a Guerra no Mapa-múndi, as contas (sem navegador): mundo/nucleo.js (o que fica guardado no mapa e
 // o que vai para os jogadores) e mundo/guerra.js (o motor das batalhas).
 //   · o mapa de antes continua igual (sem a chave guerra, sem fases na frente); os tipos de tropa (tabela do mestre),
-//     as unidades (tropas, HP, ATQ, DEF, magos, cerco, equipamentos, escondida), o exército (comandante com bônus e
+//     as unidades (tropas, HP, ATQ, DEF, magos, máquinas de cerco — lote 12, parte 12d —, equipamentos, escondida), o exército (comandante com bônus e
 //     ficha, moral, mantimentos), a fortificação do marcador, as fases da frente, o histórico das batalhas e os
 //     hexágonos destruídos ou corrompidos — com os limites; a escala nova leva as fases da frente junto;
 //   · a projeção: os jogadores veem os exércitos e as frentes, sem os números (nem as unidades escondidas, nem a
@@ -31,7 +31,7 @@ const TIPOS = [{ id: 'cav', nome: 'Cavalaria', vant: { arq: 3, lan: -2 } }, { id
 const exA = () => ({ cmd: { nome: 'Rei Aldar', b: 2 }, moral: 7, mant: 40, unid: [
   { id: 'u1', nome: 'Cavalaria pesada', tipo: 'cav', tropas: 800, atq: 6, def: 4 },
   { id: 'u2', nome: 'Arqueiros do rei', tipo: 'arq', tropas: 400, atq: 4, def: 2, magos: 9 }] });
-const exB = () => ({ cmd: { nome: 'Duquesa', b: 1 }, moral: 5, mant: 12, unid: [{ id: 'u3', nome: 'Lanceiros', tipo: 'lan', tropas: 900, atq: 5, def: 6, cerco: 2 }] });
+const exB = () => ({ cmd: { nome: 'Duquesa', b: 1 }, moral: 5, mant: 12, unid: [{ id: 'u3', nome: 'Lanceiros', tipo: 'lan', tropas: 900, atq: 5, def: 6, maq: { ariete: 2 } }] });
 function mapaGuerra(extra) {
   return N.normalizarMapa(Object.assign({
     v: 1, id: 'mp_g', nome: 'Guerra', larg: 2000, alt: 1400, grade: { tam: 40, x: 0, y: 0 },
@@ -67,10 +67,25 @@ function mapaGuerra(extra) {
   const muitos = N.normalizarMapa({ guerra: { tipos: Array.from({ length: 50 }, (_, i) => ({ id: 't' + i, nome: 'T' + i })) } });
   eq(muitos.guerra.tipos.length, N.LIMITES.tiposGuerra, 'até ' + N.LIMITES.tiposGuerra + ' tipos');
 }
+{ // (lote 12, parte 12d) os tipos de máquina de cerco: a tabela do mestre (sem ela, os de começo)
+  const m0 = N.normalizarMapa({ nome: 'M' });
+  eq([N.maquinasDe(m0), 'guerra' in m0], [[{ id: 'ariete', nome: 'Aríete', est: 3, exe: 0, ac: null }, { id: 'catapulta', nome: 'Catapulta', est: 2, exe: 5, ac: 11 }, { id: 'trabuco', nome: 'Trabuco', est: 4, exe: 3, ac: 13 }], false],
+    'sem a tabela, os de começo (o Aríete não atira em tropas); o mapa fica igual');
+  const mm = N.normalizarMapa({ nome: 'M', guerra: { maqs: [{ id: 'bal', nome: ' Balista ', est: 1.6, exe: 2000, ac: 25 }, { id: 'bal', nome: 'Repetida' }, { id: 'tor', est: -3, ac: 0 }, 'lixo', { nome: 'sem id' }] } });
+  eq(mm.guerra.maqs, [{ id: 'bal', nome: 'Balista', est: 2, exe: 1000, ac: 20 }, { id: 'tor', nome: 'Máquina', est: 0, exe: 0, ac: 1 }], 'a tabela: o nome (sem nome: "Máquina"), os danos de 0 a 1000, o acerto de 1 a 20; repetidas e sem id saem');
+  eq([N.normalizarMapa({ nome: 'M', guerra: { maqs: [] } }).guerra.maqs, N.maquinasDe(N.normalizarMapa({ nome: 'M', guerra: { maqs: [] } }))], [[], []], 'a tabela vazia é a escolha do mestre: nenhuma (a guerra fica)');
+  eq(N.normalizarMapa({ nome: 'M', guerra: { maqs: Array.from({ length: 50 }, (_, i) => ({ id: 'q' + i })) } }).guerra.maqs.length, N.LIMITES.maquinas, 'até ' + N.LIMITES.maquinas + ' tipos');
+  const mp = N.normalizarMapa({ nome: 'M', guerra: { maqs: [{ id: 'bal', nome: 'Balista' }], pres: { rx: { fac: 'fz', n: 2 } }, forr: [{ r: 'rx', d: 1 }] } });
+  eq([mp.guerra && mp.guerra.maqs.map(t => t.id), mp.guerra && 'pres' in mp.guerra, mp.guerra && 'forr' in mp.guerra], [['bal'], false, false], 'a contagem e a forragem de regiões que não existem saem, e a guerra fica (com a lista das máquinas)');
+  const mu = N.normalizarMapa({ nome: 'M', guerra: { maqs: [{ id: 'bal', nome: 'Balista', est: 1, exe: 4, ac: 12 }] }, objs: [{ k: 'g', id: 'g', x: 1, y: 1, tipo: 'exercito', exe: { unid: [{ id: 'u', maq: { ariete: 2, bal: 3 } }] } },
+    { k: 'm', id: 'k', x: 1, y: 1, estr: { maq: { trabuco: 1, bal: 99999 } } }, { k: 'm', id: 'k2', x: 1, y: 1, estr: { maq: { ariete: 1 } } }] });
+  eq([achar(mu, 'g').exe.unid[0].maq, achar(mu, 'k').estr.maq, 'maq' in achar(mu, 'k2').estr], [{ bal: 3 }, { bal: 1e4 }, false], 'as máquinas da unidade e da fortificação: só dos tipos que existem (até 10.000 de cada); sem nenhuma, a fortificação fica sem a lista');
+  eq([N.somaDasMaquinas(m0, { ariete: 2, catapulta: 1, zz: 5 }), N.somaDasMaquinas(mu, { ariete: 2, bal: 3 }), N.somaDasMaquinas(m0, null)], [{ n: 3, est: 8, exe: 5 }, { n: 3, est: 3, exe: 12 }, { n: 0, est: 0, exe: 0 }], 'a soma: quantas e os danos, pelos tipos do mapa');
+}
 { // as unidades e o exército
   const m = N.normalizarMapa({ guerra: { tipos: [{ id: 'cav', nome: 'Cavalaria' }] }, objs: [
     { k: 'g', id: 'ga', x: 10, y: 10, tipo: 'exercito', exe: { cmd: { nome: ' Rei ', b: 50, ficha: 'pc_1' }, moral: 14, mant: -3, cons: '', fome: 2, unid: [
-      { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hp: 150, hpMax: 120, atq: 150, def: -150, magos: 3, cerco: 2, equip: [{ nome: 'Lanças', atq: 2 }, 'lixo'], oc: true },
+      { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hp: 150, hpMax: 120, atq: 150, def: -150, magos: 3, cerco: 2, maq: { ariete: 2, zz: 4, trabuco: 0, catapulta: 2.4 }, equip: [{ nome: 'Lanças', atq: 2 }, 'lixo'], oc: true },
       { id: 'u1', tipo: 'nada', tropas: -5, hpT: 10, fer: 3 }, {}, { id: 'u4', tropas: 20, hpT: 10, fer: 15, cura: 250 }, { id: 'u6', tropas: 3, hpT: 2.4, fer: 1, cura: -3 }, 'lixo'] } },
     { k: 'g', id: 'gc', x: 20, y: 20, tipo: 'caravana', exe: { unid: [{ tropas: 5 }] } },
     { k: 'g', id: 'gd', x: 30, y: 30, exe: { unid: [] } },
@@ -79,10 +94,10 @@ function mapaGuerra(extra) {
   const e = achar(m, 'ga').exe;
   eq(e.cmd, { nome: 'Rei', b: 20, ficha: 'pc_1' }, 'o comandante: o nome, o bônus (até ±20) e a ficha ligada');
   eq([e.moral, e.mant, e.cons, e.fome], [10, 0, null, 2], 'a moral vai de 0 a 10, os mantimentos não ficam negativos, o consumo vazio é o de começo (null)');
-  eq(e.unid[0], { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hpT: 1, fer: 0, atq: 99, def: -99, magos: 3, cura: 0, cerco: 2, equip: [{ nome: 'Lanças', atq: 2, def: 0 }], oc: true },
-    'a unidade: o HP de antes (separado) sai — 1 de HP por tropa, inteira —, ATQ e DEF até ±99, o equipamento com ATQ e DEF, escondida');
-  eq(e.unid.slice(1).map(u => [u.nome, u.tipo, u.tropas, u.hpT, u.fer, u.atq, u.def, u.magos, u.cura, u.cerco, u.equip.length]),
-    [['Unidade 2', null, 0, 10, 0, 0, 0, 0, 0, 0, 0], ['Unidade 3', null, 100, 1, 0, 0, 0, 0, 0, 0, 0], ['Unidade 4', null, 20, 10, 9, 0, 0, 0, 100, 0, 0], ['Unidade 5', null, 3, 2, 1, 0, 0, 0, 0, 0, 0]],
+  eq(e.unid[0], { id: 'u1', nome: 'Cav', tipo: 'cav', tropas: 500, hpT: 1, fer: 0, atq: 99, def: -99, magos: 3, cura: 0, maq: { ariete: 2, catapulta: 2 }, equip: [{ nome: 'Lanças', atq: 2, def: 0 }], oc: true },
+    'a unidade: o HP de antes (separado) sai — 1 de HP por tropa, inteira —, ATQ e DEF até ±99, as máquinas de cerco (o número de antes sai; só dos tipos que existem, sem zeros), o equipamento com ATQ e DEF, escondida');
+  eq(e.unid.slice(1).map(u => [u.nome, u.tipo, u.tropas, u.hpT, u.fer, u.atq, u.def, u.magos, u.cura, j(u.maq), u.equip.length]),
+    [['Unidade 2', null, 0, 10, 0, 0, 0, 0, 0, '{}', 0], ['Unidade 3', null, 100, 1, 0, 0, 0, 0, 0, '{}', 0], ['Unidade 4', null, 20, 10, 9, 0, 0, 0, 100, '{}', 0], ['Unidade 5', null, 3, 2, 1, 0, 0, 0, 0, '{}', 0]],
     'sem nada: 100 tropas de 1 de HP; o tipo que não existe vira "sem tipo"; tropas negativas viram zero (sem a ferida); a ferida, menos que o HP de uma tropa; a cura de 0 a 100; o lixo sai');
   ok(new Set(e.unid.map(u => u.id)).size === 5, 'os ids das unidades não se repetem');
   eq([N.hpDaUnidade(e.unid[3]), N.hpDaUnidade(e.unid[1]), N.hpDaUnidade({ tropas: 98, hpT: 10, fer: 5 }), N.tropasComHp(10, 975), N.tropasComHp(10, 980), N.tropasComHp(10, 0), N.tropasComHp(1, 12.4), N.tropasComHp(0, 3)],
@@ -151,7 +166,7 @@ function mapaGuerra(extra) {
   const pn = N.normalizarMapa(p);
   eq(achar(pn, 'ga').exe, pa.exe, 'o mapa dos jogadores, normalizado de novo (no navegador deles), continua sem os números');
   const txt = j([pn.guerra, pn.objs.filter(o => o.k === 'g' || o.k === 'm' || o.k === 'f')]);
-  const vaza = (txt.match(/"(tropas|hp|hpMax|atq|def|magos|cerco|moral|mant|cons|fome|estr|ficha|mom|notas|fases)"|segredo|Assassinos|pc_9|"arq":3|"cav":3/g) || []);
+  const vaza = (txt.match(/"(tropas|hp|hpMax|hpT|fer|cura|maq|maqs|atq|def|magos|cerco|moral|mant|cons|fome|estr|ficha|mom|notas|fases)"|segredo|Assassinos|pc_9|"arq":3|"cav":3/g) || []);
   eq(vaza, [], 'nenhum número, segredo, nota ou fase futura vaza na projeção');
 }
 
@@ -161,11 +176,11 @@ const A = G.lado(m, achar(m, 'ga')), B = G.lado(m, achar(m, 'gb'));
 const FORTE = { estr: { lado: 'b', def: 4, hp: 60, hpMax: 60 }, mestre: [] };
 const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]);
 {
-  eq([A.tropas, A.forca, Math.round(A.atq * 1000) / 1000, Math.round(A.def * 1000) / 1000, A.magos, A.cerco, A.dist, A.moral, A.cmd, A.cmdNome], [1200, 1200, 5.333, 3.333, 9, 0, 400, 7, 2, 'Rei Aldar'],
+  eq([A.tropas, A.forca, Math.round(A.atq * 1000) / 1000, Math.round(A.def * 1000) / 1000, A.magos, A.maqN, A.dist, A.moral, A.cmd, A.cmdNome], [1200, 1200, 5.333, 3.333, 9, 0, 400, 7, 2, 'Rei Aldar'],
     'o lado A: as tropas, a força, ATQ e DEF médios (pela força), os magos, a força de longe (só dos Arqueiros), a moral e o comandante');
-  eq([B.tropas, B.forca, B.atq, B.def, B.cerco, B.dist], [900, 900, 5, 6, 2, 0], 'o lado B');
-  const ferido = G.lado(m, { id: 'x', exe: { cmd: { nome: '', b: 0 }, moral: 5, unid: [{ tropas: 1000, hpT: 10, fer: 5, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 10, hpT: 50, fer: 0, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 0, hpT: 1, fer: 0, atq: 50, def: 50, magos: 50, cerco: 9, equip: [] }] } });
-  eq([ferido.forca, ferido.atq, ferido.def, ferido.tropas, ferido.magos, ferido.cerco], [1010, 5, 2, 1010, 0, 0], 'a força são as tropas (a ferida conta; o HP de cada tropa não pesa); o equipamento soma no ATQ e na DEF; a unidade sem tropas não luta (nem os magos e o cerco dela)');
+  eq([B.tropas, B.forca, B.atq, B.def, B.maq, B.maqN, B.maqEst, B.maqExe, B.dist], [900, 900, 5, 6, { ariete: 2 }, 2, 6, 0, 0], 'o lado B (com 2 Aríetes: 6 contra estrutura, nada contra exército)');
+  const ferido = G.lado(m, { id: 'x', exe: { cmd: { nome: '', b: 0 }, moral: 5, unid: [{ tropas: 1000, hpT: 10, fer: 5, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 10, hpT: 50, fer: 0, atq: 2, def: 1, equip: [{ atq: 3, def: 1 }] }, { tropas: 0, hpT: 1, fer: 0, atq: 50, def: 50, magos: 50, maq: { catapulta: 9 }, equip: [] }] } });
+  eq([ferido.forca, ferido.atq, ferido.def, ferido.tropas, ferido.magos, ferido.maqN], [1010, 5, 2, 1010, 0, 0], 'a força são as tropas (a ferida conta; o HP de cada tropa não pesa); o equipamento soma no ATQ e na DEF; a unidade sem tropas não luta (nem os magos e as máquinas dela)');
   eq(G.lado(m, { id: 'y', exe: { pub: true, unid: [{ id: 'u', nome: 'U' }] } }).forca, 0, 'o exército dos jogadores (sem números) não tem força');
   eq([G.numeros(0, 5), G.numeros(5, 0), G.numeros(100, 100), G.numeros(150, 100), G.numeros(200, 100), G.numeros(400, 100), G.numeros(800, 100), G.numeros(100, 200)], [0, 10, 0, 2, 4, 8, 10, 0],
     'os números: +4 a cada vez que dobra o outro (até 10); o menor, nada');
@@ -174,17 +189,24 @@ const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]
   eq(bs(A, B, FORTE, 'a', 'ab'), [['magia', 3], ['distancia', 3]], 'Abertura de A: os magos (√9 = 3) e a distância (só A tem arqueiros: +3)');
   eq(bs(B, A, FORTE, 'b', 'ab'), [], 'Abertura de B: nada (sem magos, sem arqueiros)');
   eq(bs(A, B, FORTE, 'a', 'ch'), [['numeros', 2], ['qualidade', -1], ['tipos', -1]], 'Choque de A: números (1200 × 900: +2), ATQ contra DEF (5,3 − 6 → −1), tipos (Cavalaria contra Lanceiros, −2 × 2/3 → −1)');
-  eq(bs(B, A, FORTE, 'b', 'ch'), [['qualidade', 2], ['tipos', 2], ['estrutura', 4]], 'Choque de B: ATQ contra DEF (5 − 3,3 → +2), tipos (Lanceiros contra Cavalaria, +3 × 2/3 → +2), as muralhas (DEF 4, A sem cerco)');
+  eq(bs(B, A, FORTE, 'b', 'ch'), [['qualidade', 2], ['tipos', 2], ['estrutura', 4]], 'Choque de B: ATQ contra DEF (5 − 3,3 → +2), tipos (Lanceiros contra Cavalaria, +3 × 2/3 → +2), as muralhas (DEF 4)');
   eq(bs(A, B, FORTE, 'a', 'vi'), [['moral', 2], ['comandante', 2]], 'Virada de A: a moral (7 − 5) e o comandante');
   eq(bs(B, A, FORTE, 'b', 'vi'), [['comandante', 1]], 'Virada de B: só o comandante (moral 5 não soma)');
   eq(bs(A, B, FORTE, 'a', 'de'), [['numeros', 2], ['moral', 2]], 'Desfecho de A: números e moral');
   eq(G.total(G.bonus(A, B, FORTE, 'a', 'd100')), 10, 'a resumida de A soma tudo: 2 − 1 − 1 + 2 + 2 + 3 + 3 = 10');
   eq(G.total(G.bonus(B, A, FORTE, 'b', 'd100')), 9, 'a resumida de B: 2 + 2 + 1 + 4 = 9');
   eq(G.total(G.bonus(B, A, { estr: null, mestre: [] }, 'b', 'd100')), 5, 'sem a fortificação, B perde as muralhas');
-  // a fortificação: só de quem defende, pelo HP, menos o cerco de quem ataca
+  // a fortificação: só de quem defende, pelo HP (lote 12, parte 12d: as máquinas do outro lado batem no HP, não na DEF)
   const est = (e, X, Y, q) => (G.bonus(X, Y, { estr: e, mestre: [] }, q, 'ch').find(b => b.k === 'estrutura') || { v: 0 }).v;
   eq([est({ lado: 'b', def: 4, hp: 30, hpMax: 60 }, B, A, 'b'), est({ lado: 'b', def: 4, hp: 0, hpMax: 60 }, B, A, 'b'), est({ lado: 'a', def: 4, hp: 60, hpMax: 60 }, A, B, 'a'), est({ lado: 'a', def: 4, hp: 60, hpMax: 60 }, B, A, 'b'), est({ lado: 'a', def: 1, hp: 60, hpMax: 60 }, A, B, 'a')],
-    [2, 0, 2, 0, 0], 'a fortificação: pela metade com metade do HP; em ruínas, nada; quem ataca com 2 máquinas de cerco tira 2; só quem defende ganha; nunca fica negativa');
+    [2, 0, 4, 0, 1], 'a fortificação: pela metade com metade do HP; em ruínas, nada; as máquinas de quem ataca (2 Aríetes) não tiram da DEF; só quem defende ganha');
+  // (lote 12, parte 12d) as máquinas de cerco: a raiz da soma do dano contra exército, até 6 (a fortificação, para quem defende)
+  const maqB = (X, ctx, q, mom) => (G.bonus(X, q === 'a' ? B : A, ctx, q, mom).find(b => b.k === 'maquinas') || { v: 0 }).v;
+  const FM = { estr: { lado: 'b', def: 4, hp: 60, hpMax: 60, maqExe: 9 }, mestre: [] };
+  eq([maqB({ ...A, maqExe: 5 }, null, 'a', 'ab'), maqB({ ...A, maqExe: 20 }, null, 'a', 'ab'), maqB({ ...A, maqExe: 100 }, null, 'a', 'ab'), maqB({ ...A, maqExe: 20 }, null, 'a', 'd100'), maqB({ ...A, maqExe: 20 }, null, 'a', 'ch'),
+    maqB(B, FM, 'b', 'ab'), maqB({ ...B, maqExe: 7 }, FM, 'b', 'ab'), maqB({ ...A, maqExe: 0 }, FM, 'a', 'ab')], [2, 4, 6, 4, 0, 3, 4, 0],
+    'as máquinas: 1 Catapulta (5) +2, 20 +4, até +6; na Abertura e na resumida (no Choque, não); a fortificação soma as dela para quem defende (9: +3; com 7 do exército, 16: +4); para quem ataca, não');
+  eq(G.NOMES.maquinas, 'Máquinas de cerco', 'o nome do bônus');
   // a distância dos dois lados, a fome
   const longe = (d1, d2) => [G.bonus({ ...A, dist: d1 }, { ...B, dist: d2 }, null, 'a', 'ab').find(b => b.k === 'distancia'), G.bonus({ ...B, dist: d2 }, { ...A, dist: d1 }, null, 'b', 'ab').find(b => b.k === 'distancia')].map(b => (b ? b.v : 0));
   eq([longe(400, 100), longe(100, 100), longe(400, 0)], [[6, 0], [0, 0], [3, 0]], 'os dois com arqueiros: os números da força de longe (até 6); só um, +3');
@@ -247,17 +269,19 @@ const bs = (X, Y, ctx, q, mom) => G.bonus(X, Y, ctx, q, mom).map(b => [b.k, b.v]
   eq([La.perda, La.unid.map(u => [u.tropas0, u.tropas1, u.hp0, u.hp1, u.fer1, u.acaba]), La.moral0, La.moral1, La.mant0, La.mant1], [0.22, [[800, 624, 800, 624, 0, false], [400, 312, 400, 312, 0, false]], 7, 5, 40, 28],
     'quem perdeu (A): 22% do HP das unidades (1 por tropa: 22% das tropas), a moral cai 2, e um dia de mantimentos (12) vai na batalha');
   eq([Lb.perda, Lb.unid.map(u => [u.tropas1, u.hp1]), Lb.moral1, Lb.mant1], [0.07, [[837, 837]], 6, 3], 'quem venceu (B): perde pouco, a moral sobe');
-  eq(prev.estr, { m: 'cast', nome: 'Muralhas', hp0: 60, hp1: 60, hpMax: 60, dano: 0 }, 'a fortificação de quem venceu, contra quem não tem cerco: sem dano');
+  eq(prev.estr, { m: 'cast', nome: 'Muralhas', hp0: 60, hp1: 60, hpMax: 60, dano: 0 }, 'a fortificação de quem venceu, contra quem não tem máquinas: sem dano');
   eq(prev.hex, { k: hexB, est: 'd', antes: null }, 'o hexágono da batalha fica destruído');
   ok(prev.frente && prev.frente.n === 2 && j(prev.frente.pts1[0]) === j([730, 200]) && j(prev.frente.pts1[prev.frente.pts1.length - 1]) === j([730, 1000]), 'a frente anda, e as pontas ficam');
   const xs = prev.frente.pts1.map(p => p[0]), xMin = Math.min(...xs);
   ok(xMin < 730 - 40 && xMin >= 730 - 80 - 0.01 && Math.max(...xs) <= 730, 'a frente anda para o lado de quem perdeu (A, à esquerda), mais de um hexágono e no máximo dois, perto da batalha (' + xMin + ')');
   ok(prev.frente.pts1.filter(p => Math.abs(p[1] - 610) > 4 * 40 + 20).every(p => p[0] === 730), 'longe da batalha (mais de 4 hexágonos), a linha não muda');
-  // a fortificação com cerco: quem ataca e vence bate mais
-  const mC = N.normalizarMapa(Object.assign({}, m, { objs: m.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.map(u => Object.assign({}, u, { cerco: u.id === 'u1' ? 3 : 0 })) }) }) : o)) }));
+  // a fortificação com as máquinas de quem ataca: vencendo, batem mais (lote 12, parte 12d: o dano contra estrutura delas)
+  const mC = N.normalizarMapa(Object.assign({}, m, { objs: m.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.map(u => Object.assign({}, u, { maq: u.id === 'u1' ? { ariete: 1 } : {} })) }) }) : o)) }));
   const dano = f => G.depois(mC, Object.assign({}, bat, { fim: f, frente: null })).estr;
   eq([dano({ vence: 'a', tam: 2, como: 'dados' }).dano, dano({ vence: 'a', tam: 2, como: 'dados' }).hp1, dano({ vence: 'b', tam: 1, como: 'dados' }).dano, dano({ vence: 'a', tam: 4, como: 'dados' }).hp1], [10, 50, 3, 44],
-    'o cerco de quem ataca: vencendo, 2 × as máquinas + o tamanho (3 × 2 + 4 = 10); perdendo, só as máquinas (3)');
+    'as máquinas de quem ataca: vencendo, 2 × o dano contra estrutura + o tamanho (1 Aríete: 3 × 2 + 4 = 10); perdendo, só o dano (3)');
+  const mT = N.normalizarMapa(Object.assign({}, mC, { objs: mC.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.map(u => Object.assign({}, u, { maq: { trabuco: 2, catapulta: 1 } })) }) }) : o)) }));
+  eq(G.depois(mT, Object.assign({}, bat, { fim: { vence: 'b', tam: 1, como: 'dados' }, frente: null })).estr.dano, 20, 'os tipos somam: 2 Trabucos (4) e 1 Catapulta (2) em cada uma das duas unidades = 20');
   // (lote 12, parte 12c) o HP de cada tropa: a perda sai da soma, as tropas morrem uma a uma (a ferida fica)
   const mU = N.normalizarMapa(Object.assign({}, m, { objs: m.objs.map(o => (o.id === 'ga' ? Object.assign({}, o, { exe: Object.assign({}, o.exe, { unid: o.exe.unid.concat([{ id: 'u5', nome: 'Ogros', tropas: 50, hpT: 10, fer: 3 }, { id: 'u6', nome: 'Um', tropas: 1, hpT: 10, fer: 9 }]) }) }) : o)) }));
   const pU = G.depois(mU, Object.assign({}, bat, { frente: null }));

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-6",
+      "data": "2026-10-21",
+      "titulo": "As máquinas de cerco",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: as máquinas de cerco têm tipos — na aba Guerra, cada tipo tem o dano contra estrutura, o dano contra exército e o acerto no d20. Vêm o Aríete, a Catapulta e o Trabuco; dá para mudar os números, criar outros e tirar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a unidade e a fortificação têm quantas máquinas de cada tipo. Na batalha, elas entram na Abertura como os magos (a raiz da soma do dano contra exército, até +6), e as da fortificação ajudam quem defende. O número de máquinas de antes de cada unidade sai: ponha de novo, pelo tipo."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: depois da batalha, as máquinas de quem ataca batem no HP da fortificação com o dano contra estrutura delas; a defesa da fortificação cai junto com o HP (as máquinas não tiram mais da DEF)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-5",
       "data": "2026-10-21",
       "titulo": "A vida das tropas",

@@ -1699,7 +1699,8 @@
      O exército (o grupo do tipo Exército): as unidades (o tipo, as tropas, o HP, o ATQ e a DEF, os magos, as máquinas
      de cerco e os equipamentos — lote 12, parte 12c: o HP é o de cada tropa, hpT, e o HP da unidade é a soma das tropas;
      fer = o que falta na tropa ferida, que conta como viva; cura = a % do HP que falta que a unidade, de médicos ou
-     alquimistas, cura por dia no exército), o comandante (o bônus que o mestre escreve, e a ficha dele, se quiser), a moral (0 a 10;
+     alquimistas, cura por dia no exército; parte 12d: maq = as máquinas de cerco, { tipo: quantas } — o número de
+     antes, cerco, sai), o comandante (o bônus que o mestre escreve, e a ficha dele, se quiser), a moral (0 a 10;
      5 é firme) e os mantimentos (o estoque, o consumo por dia — sem número, pelo tamanho da tropa — e os dias sem eles).
      A fortificação dos marcadores (a DEF de quem defende ali e o HP: pode ser danificada). Os tipos de tropa (o mestre
      cria, com as vantagens de um contra o outro, na escala do d20), o histórico das batalhas e os hexágonos destruídos
@@ -1718,8 +1719,40 @@
     const tropas = inteiro(u.tropas, 100, 0, MAX_TROPAS), hpT = inteiro(u.hpT, 1, 1, MAX_HP_TROPA);
     const out = { id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo),
       tropas, hpT, fer: tropas > 0 ? inteiro(u.fer, 0, 0, hpT - 1) : 0, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS),
-      cura: inteiro(u.cura, 0, 0, 100), cerco: inteiro(u.cerco, 0, 0, 1e4), equip: normEquip(u.equip) };
+      cura: inteiro(u.cura, 0, 0, 100), maq: normTabMaq(u.maq), equip: normEquip(u.equip) };
     if (sim(u.oc)) out.oc = true;                                // escondida dos jogadores (até o nome)
+    return out;
+  }
+  /* (lote 12, parte 12d) As máquinas de cerco: os tipos (o mestre muda; sem a lista, os de começo) — o dano contra
+     estrutura (por máquina: no HP da fortificação, em cada dia de cerco e depois da batalha), o dano contra exército (na
+     batalha, o bônus da Abertura; no cerco, o tiro de quem está dentro) e o acerto (o mínimo no d20 para o tiro acertar;
+     null: não atira em tropas). A unidade e a fortificação levam { tipo: quantas }. */
+  const MAX_MAQS = 40, MAX_MAQ_N = 1e4, MAX_DANO_MAQ = 1000;
+  const MAQUINAS_PADRAO = [{ id: 'ariete', nome: 'Aríete', est: 3, exe: 0, ac: null }, { id: 'catapulta', nome: 'Catapulta', est: 2, exe: 5, ac: 11 }, { id: 'trabuco', nome: 'Trabuco', est: 4, exe: 3, ac: 13 }];
+  function normMaqs(v) {
+    const out = [], vistos = new Set();
+    for (const t of Array.isArray(v) ? v : []) {
+      if (!ehObj(t) || out.length >= MAX_MAQS) continue;
+      const id = idOk(t.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      out.push({ id, nome: texto(t.nome, '', 60).trim() || 'Máquina', est: inteiro(t.est, 0, 0, MAX_DANO_MAQ), exe: inteiro(t.exe, 0, 0, MAX_DANO_MAQ), ac: inteiro(t.ac, null, 1, 20) });
+    }
+    return out;
+  }
+  // as máquinas de uma unidade ou de uma fortificação: { tipo: quantas } (sem os zeros)
+  function normTabMaq(v) {
+    const out = {};
+    for (const k of ehObj(v) ? Object.keys(v).slice(0, MAX_MAQS * 2) : []) { const n = inteiro(v[k], 0, 0, MAX_MAQ_N); if (idOk(k) && n) out[k] = n; }
+    return out;
+  }
+  // os tipos de máquina que valem: os do mestre, ou os de começo
+  const maquinasDe = mapa => (ehObj(mapa) && ehObj(mapa.guerra) && Array.isArray(mapa.guerra.maqs) ? mapa.guerra.maqs : MAQUINAS_PADRAO.map(t => Object.assign({}, t)));
+  /* A soma das máquinas (a tabela { tipo: quantas }): { n (quantas), est (o dano contra estrutura), exe (o contra
+     exército) }, pelos tipos do mapa (o tipo que não existe não conta) */
+  function somaDasMaquinas(mapa, maq) {
+    const ts = maquinasDe(mapa), out = { n: 0, est: 0, exe: 0 };
+    for (const k of ehObj(maq) ? Object.keys(maq) : []) { const t = ts.find(x => x.id === k), n = Number(maq[k]) || 0; if (!t || !(n > 0)) continue; out.n += n; out.est += n * t.est; out.exe += n * t.exe; }
     return out;
   }
   /* (lote 12, parte 12c) O HP da unidade: { hp (a soma das tropas, menos o que falta na ferida), max (as vivas inteiras) } */
@@ -1764,8 +1797,10 @@
   }
   function normEstr(v) {
     if (!ehObj(v)) return null;
-    const hpMax = inteiro(v.hpMax, 100, 1, 1e6);
-    return { nome: texto(v.nome, '', 80).trim(), def: inteiro(v.def, 3, 0, MAX_BONUS), hp: inteiro(v.hp, hpMax, 0, hpMax), hpMax };
+    const hpMax = inteiro(v.hpMax, 100, 1, 1e6), out = { nome: texto(v.nome, '', 80).trim(), def: inteiro(v.def, 3, 0, MAX_BONUS), hp: inteiro(v.hp, hpMax, 0, hpMax), hpMax };
+    const maq = normTabMaq(v.maq);                               // (lote 12, parte 12d) as máquinas da fortificação
+    if (Object.keys(maq).length) out.maq = maq;
+    return out;
   }
   function normTiposGuerra(v) {
     const out = [], vistos = new Set();
@@ -2496,7 +2531,8 @@
     if (forr.length) g.forr = forr;
     const pres = normPresenca(v.pres);                           // (parte 12b) os dias contados para a ocupação (e a libertação)
     if (Object.keys(pres).length) g.pres = pres;
-    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr || g.pres ? g : null;
+    if (Array.isArray(v.maqs)) g.maqs = normMaqs(v.maqs);        // (parte 12d) os tipos de máquina do mestre (sem eles, os de começo)
+    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr || g.pres || g.maqs ? g : null;
   }
   /* (lote 12, parte 12b) os dias contados para a ocupação de cada região (e, com lib, para a libertação): { região: { fac
      (quem conta), n (os dias seguidos), lib } } */
@@ -2772,7 +2808,7 @@
       const rs = new Set(mapa.objs.filter(o => o.k === 'r').map(o => o.id));
       mapa.guerra.forr = mapa.guerra.forr.filter(x => rs.has(x.r));
       if (!mapa.guerra.forr.length) delete mapa.guerra.forr;
-      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres) delete mapa.guerra;
+      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres && !mapa.guerra.maqs) delete mapa.guerra;
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -2791,10 +2827,17 @@
       const dono = o.k === 'r' ? facDaRegiao(mapa, o) : (r => (r ? facDaRegiao(mapa, r) : null))(regiaoEm(mapa, o.x, o.y));
       if ((o.ocup.fac && !facs.has(o.ocup.fac)) || (o.ocup.fac && o.ocup.fac === dono)) delete o.ocup;
     }
+    // (lote 12, parte 12d) as máquinas das unidades e das fortificações: só dos tipos que existem
+    const tiposMaq = new Set(maquinasDe(mapa).map(t => t.id));
+    for (const o of mapa.objs) {
+      const tabs = o.k === 'g' && o.exe && !o.exe.pub ? o.exe.unid.map(u => u.maq) : o.k === 'm' && o.estr && o.estr.maq ? [o.estr.maq] : [];
+      for (const t of tabs) for (const k of Object.keys(t)) if (!tiposMaq.has(k)) delete t[k];
+      if (o.k === 'm' && o.estr && o.estr.maq && !Object.keys(o.estr.maq).length) delete o.estr.maq;
+    }
     if (mapa.guerra && mapa.guerra.pres) {
       for (const id of Object.keys(mapa.guerra.pres)) if (!regs.has(id) || !facs.has(mapa.guerra.pres[id].fac)) delete mapa.guerra.pres[id];
       if (!Object.keys(mapa.guerra.pres).length) delete mapa.guerra.pres;
-      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres) delete mapa.guerra;
+      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres && !mapa.guerra.maqs) delete mapa.guerra;
     }
     return mapa;
   }
@@ -3101,7 +3144,7 @@
     MIS_E, situacaoDaMissao,
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
-    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp,
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
@@ -3114,7 +3157,7 @@
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
       segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA,
-      forragem: MAX_FORR, contagens: MAX_PRES, hpTropa: MAX_HP_TROPA },
+      forragem: MAX_FORR, contagens: MAX_PRES, hpTropa: MAX_HP_TROPA, maquinas: MAX_MAQS, maqPorTipo: MAX_MAQ_N, danoMaq: MAX_DANO_MAQ },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;
