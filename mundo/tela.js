@@ -1545,11 +1545,14 @@
     if (o.rumor) g0.classList.add('rumor');
     if (o.falso) g0.classList.add('falso');
     const fx = fixo(o.x, o.y);
-    fx.append(
-      s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') }),
+    // (lote 12, parte 12e) o lugar cercado: um anel tracejado na cor de quem cerca (cinza, se os jogadores não sabem quem)
+    const cerc = o.cerco ? (o.cerco.fac ? corFac(ctx, o.cerco.fac) : '#6b7385') : null, nCerco = o.cerco ? (o.cerco.fac ? nomeFac(ctx, o.cerco.fac) : '') : '';
+    fx.append(...[
+      s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') + (o.cerco ? ' · cercado' + (nCerco ? ' por ' + nCerco : '') : '') }),
       s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
+      cerc ? s('circle', { class: 'cerco-anel', r: 18.5, stroke: cerc, 'data-cerco': o.cerco.fac || '' }) : null,
       s('circle', { class: 'selo', r: 14, fill: cor }),
-      glifo(def, 19));
+      glifo(def, 19)].filter(Boolean));
     if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
     { const mk = marcaMissao(o, ctx, -12, -12); if (mk) fx.append(mk); }     // (lote 9) a missão, em cima à esquerda

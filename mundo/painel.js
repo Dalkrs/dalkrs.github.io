@@ -1165,6 +1165,13 @@
     // (lote 9) a missão que o mestre mostrou
     if (o.mis) { const st = missaoDe(o); if (st) out.push(h('p', { class: 'mis-linha', 'data-k': 'ler:mis' }, glifoMissao(st.e), h('b', { text: 'Missão: ' + (st.t || 'sem nome') }), st.e !== 'ativa' ? h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : ''), text: SIT_MIS[st.e] }) : null)); }
     if (o.k === 'm' && o.rumor) out.push(h('p', null, h('span', { class: 'tag tensao', text: 'boato' }), ' ', h('small', { class: 'note', text: 'Pode ser verdade ou não.' })));
+    // (lote 12, parte 12e) o lugar cercado: por quem (se eles conhecem a facção) e desde quando; a reserva e a muralha, quando a
+    // facção deles cerca ou é cercada ali
+    if (o.k === 'm' && o.cerco) {
+      const fc = o.cerco.fac ? facDe(v, o.cerco.fac) : null, c = o.cerco;
+      out.push(h('p', { class: 'note', 'data-k': 'ler:cerco' }, fc ? h('i', { class: 'bola', style: { background: fc.cor } }) : null, (fc ? ' Cercado por ' + nomeFac(fc) : ' Cercado') + ' desde ' + dataTxt(v, c.d) + '.'
+        + (c.res != null ? ' Reserva de comida: ' + plural(c.res, 'dia', 'dias') + (c.hpMax ? ' · a muralha: ' + c.hp + ' de ' + c.hpMax : '') + '.' : '')));
+    }
     if (o.k === 'e') {
       out.push(nota('Desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini) + ' · força ' + o.forca + ' de 3'));
       if (temGrade(v)) out.push(nota('Alcance hoje: cerca de ' + fmt(cubos(v, N_.raioNoDia(o, v.cal.dia)), 0) + ' cubos ao redor.'));

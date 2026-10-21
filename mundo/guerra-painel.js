@@ -86,7 +86,7 @@
         kit().icone(g, m), h('span', { class: 'tx' }, h('b', { text: kit().nomeDe(g, m) }), h('small', { text: resumoExercito(m, g) })),
         g.exe && !g.exe.pub && g.exe.fome ? h('span', { class: 'tag guerra', text: 'sem mantimentos' }) : null)))
       : nota('Nenhum exército no mapa. Ponha um grupo (ferramenta Grupo) e escolha o tipo Exército na seção dele.')));
-    if (CA()) out.push(secOcupadas(m), secRegras(m));
+    if (CA()) { const sc = secCercos(m); if (sc) out.push(sc); out.push(secOcupadas(m), secRegras(m)); }     // (parte 12e) os cercos
     out.push(secTipos(m), secMaquinas(m), secHexes(m), secHistorico(m));
     return out;
   }
@@ -107,7 +107,7 @@
   function secMaquinas(m) {
     const { h, botao, nota, secao, linha, campoTexto, campoNumero } = kit(), ts = maquinasDe(m), proprias = !!(m.guerra && Array.isArray(m.guerra.maqs)), out = [];
     const mudarTipo = (tid, rot, fn) => mudarMaqs(rot, l => { const t = l.find(x => x.id === tid); if (!t) return false; return fn(t); });
-    out.push(nota('Estrutura: o dano de cada máquina no HP da fortificação. Exército: o dano nas tropas — na batalha, a raiz da soma vira o bônus da Abertura (até +6, como os magos). Acerto: o mínimo no d20 para um tiro acertar as tropas (vazio: não atira nelas).'));
+    out.push(nota('Estrutura: o dano de cada máquina no HP da fortificação (depois da batalha e em cada dia de cerco). Exército: o dano nas tropas — na batalha, a raiz da soma vira o bônus da Abertura (até +6, como os magos); no cerco, o de cada tiro de dentro. Acerto: o mínimo no d20 para um tiro acertar as tropas (vazio: não atira nelas).'));
     if (!ts.length) out.push(nota('Nenhum tipo de máquina.'));
     for (const t of ts) {
       out.push(h('div', { class: 'gu-maq', 'data-k': 'gu:maq:' + t.id },
@@ -253,6 +253,174 @@
       dl.showModal();
       (sel || bOk).focus();
     });
+  }
+
+  /* ================= (lote 12, parte 12e) o cerco ================= */
+  const nomeLugarDe = (m, id) => { const mk = id ? kit().achar(m, id) : null; return mk ? kit().nomeDe(mk, m) : 'o lugar'; };
+  // os exércitos de uma lista de ids, com a facção quando ela não é a de quem cerca nem a do dono ("Frota (Ilhas)")
+  const nomesDosExercitos = (m, ids, c) => ids.map(id => kit().achar(m, id)).filter(Boolean)
+    .map(g => kit().nomeDe(g, m) + (g.fac && c && g.fac !== c.fac && g.fac !== c.dono ? ' (' + nomeFacDe(m, g.fac) + ')' : '')).join(', ');
+  // "Cercado por Aldar desde 5 de Alvorada (há 3 dias) · reserva: 27 de 30 dias · a muralha: 85 de 100." (fora: quem cerca)
+  function textoCerco(m, c, fora) {
+    const { plural, dataTxt } = kit();
+    return (fora ? 'Cercando ' + nomeLugarDe(m, c.m) : 'Cercado por ' + nomeFacDe(m, c.fac)) + ' desde ' + dataTxt(m, c.d) + (c.dias ? ' (há ' + plural(c.dias, 'dia', 'dias') + ')' : ' (desde hoje)')
+      + ' · ' + (fora ? 'a reserva de lá: ' : 'reserva: ') + c.res + ' de ' + plural(c.resMax, 'dia', 'dias') + (c.hpMax ? ' · a muralha: ' + c.hp + ' de ' + c.hpMax : '') + '.';
+  }
+  // o cerco de um lugar (no marcador, ou no exército que cerca — gid): a situação, quem cerca e quem está dentro, Assaltar e Levantar
+  function blocoCerco(m, mk, gid) {
+    const { h, botao, linha, plural } = kit(), C = CA(), c = C.cercoDe(m, mk), k = 'o:' + (gid || mk.id);
+    if (!c) return null;
+    return h('div', { class: 'gu-cerco', 'data-k': k + ':cerco' },
+      h('p', { class: 'status', 'data-k': k + ':cerco-txt' }, h('i', { class: 'bola', style: { background: corFacDe(m, c.fac) } }), ' ' + textoCerco(m, c, !!gid)),
+      h('p', { class: 'note', 'data-k': k + ':cerco-quem' }, 'Quem cerca: ' + (nomesDosExercitos(m, c.cercam, c) || 'ninguém agora (no “Próximo dia”, o cerco acaba)') + '. Dentro: '
+        + (nomesDosExercitos(m, c.dentro, c) || (c.mil > 0 ? 'ninguém — no assalto, a milícia (' + plural(c.mil, 'tropa', 'tropas') + ') defende' : 'ninguém, e sem milícia')) + '.'),
+      linha(botao('Assaltar…', () => assaltar(mk.id, gid), { c: 'sm pri', k: k + ':assaltar', off: !c.cercam.length, title: c.cercam.length ? 'Abre a batalha contra quem está dentro, com a fortificação' : 'Ninguém cerca agora' }),
+        botao('Levantar o cerco…', () => levantarCerco(mk.id), { c: 'sm', k: k + ':levantar' })));
+  }
+  // no exército: o cerco dele (cercando, ou cercado), ou os lugares que ele pode cercar
+  function secCercoDoExercito(o, m) {
+    const { h, botao, linha, plural } = kit(), C = CA(), x = C.cercoDoExercito(m, o);
+    if (x && x.lado === 'fora') return blocoCerco(m, kit().achar(m, x.c.m), o.id);
+    if (x) return h('p', { class: 'note gu-cerco-dentro', 'data-k': 'o:' + o.id + ':cercado' }, h('i', { class: 'bola', style: { background: corFacDe(m, x.c.fac) } }),
+      ' Cercado em ' + nomeLugarDe(m, x.c.m) + ' por ' + nomeFacDe(m, x.c.fac) + (x.c.dias ? ' (há ' + plural(x.c.dias, 'dia', 'dias') + ')' : ' (desde hoje)')
+        + ': não reabastece; quando os mantimentos acabam, come da reserva da cidade (' + plural(x.c.res, 'dia', 'dias') + ').');
+    const ls = C.lugaresParaCercar(m, o);
+    return ls.length ? linha(...ls.map(l => botao('Cercar ' + nomeLugarDe(m, l.m) + '…', () => cercarLugar(l.m, o.id), { c: 'sm', k: 'o:' + o.id + ':cercar:' + l.m }))) : null;
+  }
+  // as facções dos exércitos que podem cercar o lugar (a do exército que pediu, primeiro)
+  function quemPodeCercar(m, mkId, gid) {
+    const C = CA(), out = [];
+    for (const g of m.objs) if (g.k === 'g' && g.fac && !out.includes(g.fac) && C.lugaresParaCercar(m, g).some(x => x.m === mkId)) out.push(g.fac);
+    const g0 = gid ? kit().achar(m, gid) : null;
+    if (g0 && out.includes(g0.fac)) { out.splice(out.indexOf(g0.fac), 1); out.unshift(g0.fac); }
+    return out;
+  }
+  async function cercarLugar(mkId, gid) {
+    const A = app(), m = A.mapa, C = CA(), K = kit(), mk = K.achar(m, mkId), facs = mk ? quemPodeCercar(m, mkId, gid) : [];
+    if (!facs.length) return;
+    const v = await dialogoCerco(m, mk, facs, !!(A.temJornal && A.temJornal() && DP()));
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const nt = v.jornal ? C.noticiaCerco(m, mkId, v.fac) : null;
+    if (A.mudar('cercar ' + K.nomeDe(mk, m), d => { if (!C.cercar(d, mkId, v.fac)) return false; }) === false) return;
+    K.avisoDesfazer(nomeFacDe(m, v.fac) + ' cerca ' + K.nomeDe(mk, m) + '.' + (nt ? DP().porNoJornal('mt_ce_', nt) : ''));
+  }
+  /* a janela "Cercar…": quem cerca (a facção, se há mais de uma), quem está dentro, a reserva e a muralha, o aviso sem guerra
+     (a linha fica sempre lá) e a notícia → { fac, jornal } ou null */
+  function dialogoCerco(m, mk, facs, jornal) {
+    const K = kit(), { h, plural } = K, C = CA();
+    return new Promise(resolve => {
+      const nome = K.nomeDe(mk, m), dono = C.donoDoLugar(m, mk), e = mk.estr || null;
+      const res = e && e.res != null ? e.res : N().RESERVA_PADRAO, mil = e && e.mil != null ? e.mil : N().MILICIA_PADRAO;
+      const sel = facs.length > 1 ? h('select', { 'data-k': 'ce:fac' }, facs.map(f => h('option', { value: f, text: nomeFacDe(m, f) }))) : null;
+      const facAgora = () => (sel ? sel.value : facs[0]);
+      const txt = h('p', { class: 'note', 'data-k': 'ce:txt' }), guerra = h('p', { class: 'note', 'data-k': 'ce:guerra' });
+      const cj = jornal ? DP().caixaJornal(K, 'ce:jornal') : null;
+      const pintar = () => {
+        const fac = facAgora(), cercam = C.quemCerca(m, mk, fac).map(g => g.id), dentro = C.quemDentro(m, mk, fac).map(g => g.id), c = { fac, dono };
+        txt.textContent = 'Quem cerca: ' + (nomesDosExercitos(m, cercam, c) || 'ninguém') + '. Dentro: ' + (nomesDosExercitos(m, dentro, c) || 'ninguém de ' + nomeFacDe(m, dono) + (mil > 0 ? ' — no assalto, a milícia (' + plural(mil, 'tropa', 'tropas') + ') defende' : ''))
+          + '. A reserva da cidade: ' + plural(res, 'dia', 'dias') + (e ? '; a muralha: ' + e.hp + ' de ' + e.hpMax : '') + '. A cada “Próximo dia”, as máquinas de fora batem na muralha, as de dentro atiram, a reserva cai 1 e o desgaste do cerco vale para os dois lados. Dá para desfazer.';
+        const emG = C.emGuerra(m, fac, dono);
+        guerra.textContent = emG ? nomeFacDe(m, fac) + ' e ' + nomeFacDe(m, dono) + ' estão em guerra.' : 'Atenção: ' + nomeFacDe(m, fac) + ' e ' + nomeFacDe(m, dono) + ' não estão em guerra.';
+        guerra.classList.toggle('aviso', !emG);
+        if (cj) cj.pintar(C.noticiaCerco(m, mk.id, fac));
+      };
+      const titulo = h('h2', { text: 'Cercar ' + nome + '?' });
+      titulo.id = 'dl-ce-' + Date.now().toString(36);
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'ce:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'ce:ok', text: 'Cercar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo, sel ? h('label', null, 'Quem cerca', sel) : null, txt, guerra, cj ? cj.el : null, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl ce-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('change', pintar);
+      pintar();
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (er) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ fac: facAgora(), jornal: !!(cj && cj.cx.checked) }); });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (sel || bOk).focus();
+    });
+  }
+  /* uma pergunta com a notícia do Jornal (Levantar o cerco, Tomar o lugar): → { jornal } ou null */
+  function perguntaComNoticia(o) {
+    const K = kit(), { h } = K;
+    return new Promise(resolve => {
+      const cj = o.noticia ? DP().caixaJornal(K, o.k + ':jornal') : null;
+      if (cj) cj.pintar(o.noticia);
+      const titulo = h('h2', { text: o.titulo });
+      titulo.id = 'dl-' + o.k + '-' + Date.now().toString(36);
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': o.k + ':nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn ' + (o.perigo ? 'per' : 'pri'), 'data-k': o.k + ':ok', text: o.ok });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo, h('p', { class: 'note', 'data-k': o.k + ':txt', text: o.texto }), cj ? cj.el : null, h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl', 'aria-labelledby': titulo.id }, form);
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (er) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim({ jornal: !!(cj && cj.cx.checked) }); });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (o.perigo ? bNao : bOk).focus();
+    });
+  }
+  async function levantarCerco(mkId) {
+    const A = app(), m = A.mapa, C = CA(), K = kit(), mk = K.achar(m, mkId), c = mk ? C.cercoDe(m, mk) : null;
+    if (!c) return;
+    const jornal = !!(A.temJornal && A.temJornal() && DP()), nome = K.nomeDe(mk, m);
+    const v = await perguntaComNoticia({ k: 'lev', titulo: 'Levantar o cerco de ' + nome + '?', ok: 'Levantar o cerco',
+      texto: nomeFacDe(m, c.fac) + ' deixa de cercar ' + nome + '. Os exércitos ficam onde estão, e a reserva da cidade enche de novo (' + kit().plural(c.resMax, 'dia', 'dias') + '). Dá para desfazer.',
+      noticia: jornal ? C.noticiaFimDoCerco(m, mkId, 'levantou') : null });
+    if (!v || !K.mesmoMapa(m.id)) return;
+    const nt = v.jornal ? C.noticiaFimDoCerco(m, mkId, 'levantou') : null;
+    if (A.mudar('levantar o cerco', d => { if (!C.levantar(d, mkId)) return false; }) === false) return;
+    K.avisoDesfazer('O cerco de ' + nome + ' acabou.' + (nt ? DP().porNoJornal('mt_ce_', nt) : ''));
+  }
+  /* "Assaltar…": a batalha de quem cerca (o exército que pediu, ou o maior) contra quem está dentro (o maior), com a
+     fortificação. Sem ninguém dentro, a milícia vira um exército no lugar (pergunta antes); sem milícia, tomar o lugar. */
+  async function assaltar(mkId, gid) {
+    const A = app(), m = A.mapa, C = CA(), K = kit(), mk = K.achar(m, mkId), c = mk ? C.cercoDe(m, mk) : null;
+    if (!c) return;
+    const maior = ids => ids.map(id => K.achar(m, id)).filter(Boolean).sort((p0, q0) => N().tropasDe(q0.exe) - N().tropasDe(p0.exe))[0];
+    const a = gid && c.cercam.includes(gid) ? gid : (maior(c.cercam) || {}).id;
+    if (!a) { A.toast('Ninguém cerca ' + K.nomeDe(mk, m) + ' agora.'); return; }
+    let b = (maior(c.dentro) || {}).id;
+    const nome = K.nomeDe(mk, m);
+    if (!b && !(c.mil > 0)) {
+      const jornal = !!(A.temJornal && A.temJornal() && DP());
+      const v = await perguntaComNoticia({ k: 'tomar', titulo: 'Tomar ' + nome + '?', ok: 'Tomar o lugar',
+        texto: 'Ninguém defende ' + nome + ' (nem exército dentro, nem milícia): sem batalha, o lugar cai para ' + nomeFacDe(m, c.fac) + ' — ' + textoQueda(m, c) + ' Dá para desfazer.',
+        noticia: jornal ? C.noticiaQueda(m, mkId, 'assalto') : null });
+      if (!v || !K.mesmoMapa(m.id)) return;
+      const nt = v.jornal ? C.noticiaQueda(m, mkId, 'assalto') : null;
+      if (A.mudar('tomar o lugar', d => { if (!C.cair(d, mkId)) return false; }) === false) return;
+      K.avisoDesfazer(nome + ' caiu para ' + nomeFacDe(m, c.fac) + '.' + (nt ? DP().porNoJornal('mt_ce_', nt) : ''));
+      return;
+    }
+    if (!b) {
+      const ok = await K.confirmar({ titulo: 'Chamar a milícia de ' + nome + '?', ok: 'Chamar a milícia',
+        texto: 'Ninguém de ' + nomeFacDe(m, c.dono) + ' está dentro: a milícia (' + K.plural(c.mil, 'tropa', 'tropas') + ') defende. Ela entra no mapa como um exército, “Milícia de ' + nome + '”, e fica lá. Depois vem a batalha. Dá para desfazer.' });
+      if (!ok || !K.mesmoMapa(m.id)) return;
+      let nid = null;
+      if (A.mudar('chamar a milícia', d => { nid = C.chamarMilicia(d, mkId); if (!nid) return false; }) === false || !nid) return;
+      b = nid;
+    }
+    abrirBatalha({ a, b, estr: { m: mkId, lado: 'b' } });
+  }
+  // o que a queda faz: "fica ocupado por Aldar (e Vale Fundo também); saem do mapa: Guarda do Vale."
+  function textoQueda(m, c) {
+    const N_ = N(), mk = kit().achar(m, c.m), r = mk ? N_.regiaoEm(m, mk.x, mk.y) : null, dona = r ? N_.facDaRegiao(m, r) : null, libera = !!dona && (dona === c.fac || CA().aliadas(m, c.fac, dona));
+    const fora = nomesDosExercitos(m, c.dentro || c.sairam || [], c);
+    return (libera ? 'volta para ' + nomeFacDe(m, dona) + (r ? ' (e ' + kit().nomeDe(r, m) + ' fica livre)' : '') : 'fica ocupado por ' + nomeFacDe(m, c.fac) + (r ? ' (e ' + kit().nomeDe(r, m) + ' também)' : ''))
+      + (fora ? '; saem do mapa: ' + fora : '') + '.';
+  }
+  // a aba Guerra: os cercos
+  function secCercos(m) {
+    const { h, secao } = kit(), C = CA(), cs = C.cercosDe(m);
+    if (!cs.length) return null;
+    return secao('Cercos', h('div', { class: 'lista' }, cs.map(c => h('button', { type: 'button', class: 'li clic', 'data-k': 'gu:cerco:' + c.m, onclick: () => { kit().abrirAba('selecao'); kit().irPara(c.m); } },
+      h('i', { class: 'bola gu-ocup-bola', style: { background: corFacDe(m, c.fac) } }),
+      h('span', { class: 'tx' }, h('b', { text: nomeLugarDe(m, c.m) }), h('small', { text: textoCerco(m, c, false).replace(/\.$/, '') }))))));
   }
 
   /* ---- (lote 12, parte 12a) as regras da campanha: o resumo e "Mudar as regras…" ---- */
@@ -432,6 +600,8 @@
       e.fome ? 'aviso' : null));
     // (lote 12, parte 12a) onde ele está e o que vale ali no "Próximo dia"
     if (CA()) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':campanha', text: textoOnde(m, o) }));
+    // (lote 12, parte 12e) o cerco: o que ele cerca, ou onde está cercado; senão, os lugares que ele pode cercar
+    if (CA()) { const ce = secCercoDoExercito(o, m); if (ce) out.push(ce); }
     // (lote 10, pente fino) a manutenção da economia é outra coisa: o que a facção paga por semana por este exército
     const Rn = window.MundoReino;
     if (Rn && m.eco && m.eco.on) {
@@ -626,23 +796,33 @@
   function secFortificacao(o, m) {
     const { h, botao, nota, secao, linha, campoTexto, campoNumero, mudarObj } = kit(), id = o.id, e = o.estr, dc = defCons(m, o);
     const notaCons = dc > 0 ? nota('As construções daqui (aba Seleção, Assentamento) somam ' + sinal(dc) + ' de defesa' + (e ? ' na DEF da fortificação.' : ': quem defende aqui já ganha isso na batalha.')) : null;
-    if (!e) return secao('Fortificação', nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'), notaCons,
-      linha(botao('Pôr uma fortificação', () => mudarObj(id, 'pôr uma fortificação', x => { x.estr = { nome: '', def: 3, hp: 100, hpMax: 100 }; }), { c: 'sm', k: 'o:' + id + ':estr' })));
+    // (lote 12, parte 12e) o cerco: a situação, Assaltar e Levantar; sem cerco, "Cercar…" (com um exército de outra facção perto)
+    const C = CA(), sob = C && o.cerco ? blocoCerco(m, o, null) : null, podem = C && !o.cerco && (e || dc > 0) ? quemPodeCercar(m, id, null) : [];
+    const cercar = podem.length ? botao('Cercar…', () => cercarLugar(id, null), { c: 'sm', k: 'o:' + id + ':cercar' }) : null;
+    if (!e) return secao('Fortificação', sob, nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'), notaCons,
+      linha(botao('Pôr uma fortificação', () => mudarObj(id, 'pôr uma fortificação', x => { x.estr = { nome: '', def: 3, hp: 100, hpMax: 100 }; }), { c: 'sm', k: 'o:' + id + ':estr' }), cercar));
+    const RP = N().RESERVA_PADRAO, MP = N().MILICIA_PADRAO;
+    const porPadrao = (campo, pad, rot) => n => mudarObj(id, rot, x => { const v0 = x.estr[campo] != null ? x.estr[campo] : pad; if (v0 === n) return false; if (n === pad) delete x.estr[campo]; else x.estr[campo] = n; });
     const defT = Math.min(20, e.def + dc);
     const est = e.hp <= 0 ? 'em ruínas: não protege' : e.hp < e.hpMax ? 'danificada (' + Math.round(e.hp / e.hpMax * 100) + '%)' : 'intacta';
-    return secao('Fortificação',
+    return secao('Fortificação', sob,
       h('div', { class: 'row' },
         campoTexto('o:' + id + ':estr-nome', 'Nome', e.nome, v => mudarObj(id, 'mudar a fortificação', x => { x.estr.nome = v.trim(); }), { max: 80, ph: 'Muralhas' }),
         campoNumero('o:' + id + ':estr-def', 'DEF (d20)', e.def, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.def = n; }), { min: 0, max: 20 })),
       h('div', { class: 'row' },
         campoNumero('o:' + id + ':estr-hp', 'HP', e.hp, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.hp = n; }), { min: 0, max: e.hpMax }),
         campoNumero('o:' + id + ':estr-hpmax', 'HP máx.', e.hpMax, n => mudarObj(id, 'mudar a fortificação', x => { x.estr.hpMax = n; if (x.estr.hp > n) x.estr.hp = n; }), { min: 1, max: 1e6 })),
+      // (lote 12, parte 12e) a reserva de comida da cidade (dias) e a milícia
+      h('div', { class: 'row' },
+        campoNumero('o:' + id + ':estr-res', 'Reserva (dias)', e.res != null ? e.res : RP, porPadrao('res', RP, 'mudar a reserva da cidade'), { min: 0, max: (N().LIMITES && N().LIMITES.reserva) || 3650 }),
+        campoNumero('o:' + id + ':estr-mil', 'Milícia (tropas)', e.mil != null ? e.mil : MP, porPadrao('mil', MP, 'mudar a milícia'), { min: 0, max: 1e7 })),
+      nota('A reserva: os dias de comida da cidade num cerco (enche de novo quando ele acaba). A milícia: quem defende no assalto, sem exército dentro.'),
       notaCons,
       h('p', { class: 'status' }, h('span', { class: 'tag' + (e.hp < e.hpMax ? ' guerra' : ''), text: est }), ' · protege com ' + sinal(Math.round(defT * e.hp / e.hpMax)) + ' quem defende aqui'),
       // (lote 12, parte 12d) as máquinas da fortificação
-      camposMaq('o:' + id + ':estr-maq', e.maq, (tid, n) => mudarObj(id, 'mudar as máquinas da fortificação', x => { const t = porMaq(x.estr.maq, tid, n); if (!t) return false; x.estr.maq = t; }), m, 'Máquinas da fortificação (entram na batalha de quem defende)'),
+      camposMaq('o:' + id + ':estr-maq', e.maq, (tid, n) => mudarObj(id, 'mudar as máquinas da fortificação', x => { const t = porMaq(x.estr.maq, tid, n); if (!t) return false; x.estr.maq = t; }), m, 'Máquinas da fortificação (atiram em quem cerca e entram na batalha de quem defende)'),
       linha(botao('Consertar', () => mudarObj(id, 'consertar a fortificação', x => { if (x.estr.hp === x.estr.hpMax) return false; x.estr.hp = x.estr.hpMax; }), { c: 'sm', k: 'o:' + id + ':estr-conserta', off: e.hp >= e.hpMax }),
-        botao('Tirar', () => { if (mudarObj(id, 'tirar a fortificação', x => { delete x.estr; }) !== false) kit().avisoDesfazer('A fortificação saiu.'); }, { c: 'sm per', k: 'o:' + id + ':estr-tirar' })));
+        botao('Tirar', () => { const comCerco = !!o.cerco && !(dc > 0); if (mudarObj(id, 'tirar a fortificação', x => { delete x.estr; if (comCerco) delete x.cerco; }) !== false) kit().avisoDesfazer('A fortificação saiu' + (comCerco ? ' (e o cerco acabou)' : '') + '.'); }, { c: 'sm per', k: 'o:' + id + ':estr-tirar' }), cercar));
   }
 
   /* ================= a frente: as fases ================= */
@@ -690,18 +870,22 @@
   async function proporMantimentos(dias) {
     const A = app(), m = A.mapa, C = CA();
     if (!m || !C) return;
-    const base = C.diaDaCampanha(m, dias, []);
-    if (!base.linhas.length) return;
+    // (parte 12e) o sorteio dos tiros de cada cerco: o mesmo a cada conta refeita (as caixas)
+    const seqs = {}, rngDe = id => { const q = seqs[id] || (seqs[id] = []); let i = 0; return () => { if (i >= q.length) q.push(rng()); return q[i++]; }; };
+    const base = C.diaDaCampanha(m, dias, [], rngDe);
+    if (!base.linhas.length && !(base.cercos || []).length) return;
     // (o pior caso, sem reabastecer nem forragem: as linhas do desgaste que podem aparecer ficam no lugar desde o começo)
-    const pior = C.diaDaCampanha(m, dias, base.linhas.flatMap(L => ['reab:' + L.g, 'forr:' + L.g]));
-    const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec), !!(A.temJornal && A.temJornal() && DP()));
+    const pior = C.diaDaCampanha(m, dias, base.linhas.flatMap(L => ['reab:' + L.g, 'forr:' + L.g]), rngDe);
+    const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec, rngDe), !!(A.temJornal && A.temJornal() && DP()));
     if (!res || !kit().mesmoMapa(m.id)) return;
     let n = 0;
-    // (parte 12b) as notícias da ocupação e da libertação marcadas vêm do mapa de antes
-    const nts = res.jornal ? propostasMarcadas(res).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac))) : [];
+    // (parte 12b) as notícias da ocupação e da libertação marcadas vêm do mapa de antes (parte 12e: e as dos cercos)
+    const nts = res.jornal ? propostasMarcadas(res).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac))).concat(noticiasDosCercos(m, res)) : [];
     if (A.mudar('o dia da campanha', d => { n = C.aplicarDia(d, res); if (!n) return false; }) !== false && n) kit().avisoDesfazer(avisoDoDia(m, res) + (nts.length ? DP().porNoJornal('mt_oc_', nts) : ''));
   }
   const propostasMarcadas = res => (res.regioes || []).filter(x => (x.tipo === 'ocupar' || x.tipo === 'libertar') && !x.recusado);
+  // (parte 12e) as notícias dos cercos que acabam (ninguém cercando) e dos que caem (a rendição), as marcadas
+  const noticiasDosCercos = (m, res) => (res.cercos || []).flatMap(X => (X.fim && !X.recFim ? [CA().noticiaFimDoCerco(m, X.m, 'saiu')] : X.rend && !X.recRend ? [CA().noticiaQueda(m, X.m, 'rendicao')] : []));
   const nomeComida = (m, rec) => (rec && m.eco ? (m.eco.rec.find(r => r.id === rec) || {}).nome || 'comida' : 'comida');
   function avisoDoDia(m, res) {
     const { plural, fmt } = kit(), ls = res.linhas.filter(L => !L.fora), perdas = ls.reduce((s0, L) => s0 + (L.desg ? L.desg.tropas0 - L.desg.tropas1 : 0), 0);
@@ -711,7 +895,15 @@
       + (gasto > 0 ? ' Saíram ' + fmt(gasto, 2) + ' ' + nomeComida(m, res.rec) + ' do estoque.' : '') + (forr > 0 ? ' Forragem: ' + plural(forr, 'mantimento', 'mantimentos') + '.' : '')
       + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '')
       + (curou > 0 ? ' Cura: +' + plural(curou, 'HP', 'HP') + '.' : '')
-      + propostasMarcadas(res).map(x => ' ' + nR(x.r) + (x.lib ? ' livre de novo.' : ' ocupada por ' + nomeFacDe(m, x.fac) + '.')).join('');
+      + propostasMarcadas(res).map(x => ' ' + nR(x.r) + (x.lib ? ' livre de novo.' : ' ocupada por ' + nomeFacDe(m, x.fac) + '.')).join('')
+      // (parte 12e) os cercos
+      + (res.cercos || []).map(X => {
+        const nL = nomeLugarDe(m, X.m);
+        if (X.fim) return X.recFim ? '' : ' O cerco de ' + nL + ' acabou.';
+        if (X.rend && !X.recRend) return ' ' + nL + ' se rendeu.';
+        const ac = X.tiros.filter(t => t.acertou && t.dano > 0).length;
+        return ' ' + nL + ':' + (X.dano > 0 ? ' a muralha −' + X.dano + (ac ? ';' : '.') : '') + (ac ? ' ' + (ac === 1 ? '1 tiro de dentro acertou.' : ac + ' tiros de dentro acertaram.') : X.dano > 0 ? '' : ' a reserva cai para ' + plural(X.res1, 'dia', 'dias') + '.');
+      }).join('');
   }
   /* a janela do dia: por exército, a caixa dele (desmarcado: fica como está) e as linhas — o que come; o reabastecimento,
      a forragem e o desgaste, cada um com a caixa. As linhas ficam no lugar (as de base e as do pior caso); os números
@@ -726,7 +918,9 @@
       const ONDE = { casa: 'terra de ', aliada: 'terra aliada: ', inimiga: 'terra inimiga: ', alheia: 'terra de ', neutra: 'terra neutra: ' };
       const ondeTxt = on => { const r = nomeReg(on.r); return (r ? 'em ' + r : 'fora das regiões') + (on.tipo === 'semdono' ? (r ? ', sem dono' : '')
         : on.ocup ? ', ocupada por ' + nomeF(on.dono) + (OCUP_LADO[on.tipo] ? ' (' + OCUP_LADO[on.tipo] + ')' : '') : ', ' + ONDE[on.tipo] + nomeF(on.dono)); };   // (parte 12b) a ocupada
-      const motivos = X => [X.dias.fome ? 'sem comida' + (base.dias > 1 ? ' em ' + plural(X.dias.fome, 'dia', 'dias') : '') : '', X.dias.terreno ? 'terreno duro: ' + X.ter : '', X.dias.inverno ? 'inverno' : ''].filter(Boolean).join(', ');
+      const motivos = X => [X.dias.fome ? 'sem comida' + (base.dias > 1 ? ' em ' + plural(X.dias.fome, 'dia', 'dias') : '') : '', X.dias.terreno ? 'terreno duro: ' + X.ter : '', X.dias.inverno ? 'inverno' : '', X.dias.cerco ? 'cerco' : ''].filter(Boolean).join(', ');
+      // (parte 12e) os cercos: o nome do lugar e se o exército cerca ou está dentro
+      const nomeLugar = id => nomeLugarDe(m, id), comCerco = B => (B.cerco ? (B.cerco.lado === 'fora' ? ' · cercando ' : ' · cercado em ') + nomeLugar(B.cerco.m) : '');
       const acabam = X => { const l = X.unid.filter(u => u.acaba).map(u => u.nome); return l.length ? ' · ' + (l.length === 1 ? 'acaba ' : 'acabam ') + l.join(', ') : ''; };
       let res = base;
       const cxs = [], pintores = [];
@@ -742,12 +936,16 @@
           return { el: h('label', { class: 'op dia-op', 'data-k': 'dia:' + k + '-linha:' + B.g }, x, t), t, x };
         };
         // (o reabastecimento: quem pode, mesmo sem nada hoje — o estoque pode ficar para ele quando outro é desmarcado)
-        const reab = linha('reab', !!(base.rec && B.fac && B.cons > 0 && C.REABASTECE.includes(B.onde.tipo))), forr = linha('forr', !!B.forr), desg = linha('desg', !!(B.desg || P.desg));
+        const dentro = !!(B.cerco && B.cerco.lado === 'dentro');      // (parte 12e: quem está dentro do cerco não reabastece)
+        const reab = linha('reab', !dentro && !!(base.rec && B.fac && B.cons > 0 && C.REABASTECE.includes(B.onde.tipo))), forr = linha('forr', !!B.forr), desg = linha('desg', !!(B.desg || P.desg));
+        // (parte 12e) os tiros de dentro do cerco nas unidades dele (a caixa é a do cerco)
+        const alvo = !!(B.cerco && B.cerco.lado === 'fora' && (base.cercos || []).some(X => X.m === B.cerco.m && X.atiram.length));
+        const tiros = alvo ? h('p', { class: 'dia-come', 'data-k': 'dia:tiros:' + B.g }) : null;
         // (parte 12c) a cura: quem tem cura (médicos, Enfermaria) e pode ter ferida hoje (a de antes ou a do desgaste)
         const cura = linha('cura', B.curaPct > 0 && !!(B.cura || P.cura || B.desg || P.desg));
         const el = h('div', { class: 'dia-ex', 'data-k': 'dia:ex:' + B.g },
-          h('label', { class: 'op dia-cab' }, cb, h('span', { class: 'tx' }, h('b', { text: B.nome }), h('small', { text: ondeTxt(B.onde) }))),
-          come, reab ? reab.el : null, forr ? forr.el : null, desg ? desg.el : null, cura ? cura.el : null);
+          h('label', { class: 'op dia-cab' }, cb, h('span', { class: 'tx' }, h('b', { text: B.nome }), h('small', { text: ondeTxt(B.onde) + comCerco(B) }))),
+          come, reab ? reab.el : null, forr ? forr.el : null, desg ? desg.el : null, tiros, cura ? cura.el : null);
         pintores.push(() => {
           const L = res.linhas.find(x => x.g === B.g) || B, fora = !cb.checked, Q = fora ? B : L;
           el.classList.toggle('fora', fora);
@@ -755,7 +953,8 @@
           const dura = Q.cons > 0 ? Math.floor(Q.mant1 / Q.cons) : Infinity;
           come.textContent = fora ? 'Fica como está: nada muda para ele hoje.' : 'Come ' + fmt(Q.cons, 0) + ' por dia: ' + fmt(Q.mant0, 0) + ' → ' + fmt(Q.mant1, 0)
             + (dura === Infinity ? '' : dura > 0 ? ' (dá para mais ' + plural(dura, 'dia', 'dias') + ')' : Q.mant1 > 0 ? ' (não dá para mais um dia)' : ' (acabou)')
-            + (Q.fomeDias ? '; ' + plural(Q.fomeDias, 'dia', 'dias') + ' sem comida: moral ' + Q.moral0 + ' → ' + Q.moral1 + ', e a fome tira ATQ' : '') + '.';
+            + (Q.fomeDias ? '; ' + plural(Q.fomeDias, 'dia', 'dias') + ' sem comida: moral ' + Q.moral0 + ' → ' + Q.moral1 + ', e a fome tira ATQ' : '') + '.'
+            + (!fora && Q.daReserva ? ' A reserva da cidade alimentou em ' + plural(Q.daReserva, 'dia', 'dias') + '.' : '');
           come.classList.toggle('aviso', !fora && Q.fomeDias > 0);
           if (reab) {
             const X = (!fora && L.reab) || B.reab, E = res.estoque[B.fac];
@@ -766,6 +965,10 @@
           if (desg) {
             const X = (!fora && L.desg) || B.desg || P.desg;
             desg.t.textContent = !fora && desg.x.checked && !L.desg ? 'Desgaste: nenhum, com o que está marcado.' : 'Desgaste: −' + plural(X.tropas0 - X.tropas1, 'tropa', 'tropas') + ' (' + motivos(X) + '): ' + fmt(X.tropas0, 0) + ' → ' + fmt(X.tropas1, 0) + acabam(X) + '.';
+          }
+          if (tiros) {
+            const X = !fora && L.tiros;
+            tiros.textContent = fora ? 'Fica como está: os tiros de dentro não o acertam hoje.' : X ? 'Tiros de dentro do cerco: −' + plural(X.hp, 'HP', 'HP') + ' (' + X.unid.map(u => u.nome + ' ' + fmt(u.t0, 0) + ' → ' + fmt(u.t1, 0) + (u.acaba ? ', acaba' : '')).join('; ') + ').' : 'Tiros de dentro do cerco: nenhum acertou, com o que está marcado.';
           }
           if (cura) {
             const X = (!fora && L.cura) || B.cura, quem = X ? [X.med ? 'médicos ' + X.med + '%' : '', X.enf ? 'Enfermaria de ' + X.enf.nome + ' ' + X.enf.pct + '%' : ''].filter(Boolean).join(', ') : '';
@@ -791,23 +994,70 @@
         pintores.push(() => el.classList.toggle('nao', !cb.checked));
         return el;
       };
-      const cbJ = jornal && props.length ? h('input', { type: 'checkbox', 'data-k': 'dia:jornal' }) : null, verJ = cbJ ? h('div', { class: 'sem-jornal-txt', 'data-k': 'dia:jornal:txt' }) : null;
+      /* (parte 12e) os cercos: o lugar com as linhas do dia — as máquinas de fora na muralha e os tiros de dentro (cada um
+         com a caixa; desmarcada, a linha só esmaece), a reserva (o texto) e a rendição (a caixa, marcada); sem ninguém
+         cercando, a linha do fim (marcada; desmarcada, o cerco espera) */
+      const cercos = base.cercos || [], cprops = cercos.filter(X => X.fim || X.rend);
+      const textoTiros = Z => {
+        const partes = Z.atiram.map(a0 => { const ts = Z.tiros.filter(t => t.tipo === a0.tipo), ac = ts.filter(t => t.acertou).length, ds = ts.map(t => t.d20);
+          return a0.nome + ' ×' + a0.n + ' (acerto ' + a0.ac + '): saiu ' + (ds.length > 12 ? ds.slice(0, 12).join(', ') + '…' : ds.join(', ')) + ' — ' + (ac ? (ac === 1 ? '1 acertou' : ac + ' acertaram') : 'nenhum acertou'); });
+        const porU = new Map();
+        for (const t of Z.tiros) if (t.alvo && t.dano) { const k = t.alvo.g + '|' + t.alvo.u; porU.set(k, (porU.get(k) || 0) + t.dano); }
+        const alvos = [...porU].map(([k, v0]) => { const [gid, uid] = k.split('|'), g = achar(m, gid), u = g && g.exe && !g.exe.pub ? g.exe.unid.find(q => q.id === uid) : null; return (u ? u.nome : 'uma unidade') + ' −' + v0 + ' HP'; });
+        return 'Tiros de dentro: ' + partes.join('; ') + (alvos.length ? '. No alvo: ' + alvos.join(', ') : '') + '.';
+      };
+      const blocoCercoDia = X => {
+        const nL = nomeLugar(X.m);
+        const linhaC = (k, tem) => {
+          if (!tem) return null;
+          const x = h('input', { type: 'checkbox', 'data-k': 'dia:' + k + ':' + X.m, checked: true }), t = h('span');
+          cxs.push([k + ':' + X.m, x]);
+          return { el: h('label', { class: 'op dia-op', 'data-k': 'dia:' + k + '-linha:' + X.m }, x, t), t, x };
+        };
+        if (X.fim) {
+          const f = linhaC('cfim', true);
+          f.t.textContent = 'O cerco de ' + nL + ' acaba: ninguém de ' + nomeF(X.fac) + ' cerca mais (a reserva enche de novo).';
+          f.el.classList.add('dia-reg-op');
+          pintores.push(() => f.el.classList.toggle('nao', !f.x.checked));
+          return h('div', { class: 'dia-ex dia-cerco', 'data-k': 'dia:cerco:' + X.m }, f.el);
+        }
+        const maq = linhaC('cmaq', X.est > 0 && X.hp0 != null && X.hp0 > 0), tiro = linhaC('ctiro', X.atiram.length > 0), rend = X.rend ? linhaC('rend', true) : null;
+        const reserva = h('p', { class: 'dia-come', 'data-k': 'dia:cres:' + X.m, text: 'A reserva da cidade: ' + X.res0 + ' → ' + plural(X.res1, 'dia', 'dias') + (X.res1 > 0 ? ' (alimenta quem está dentro quando os mantimentos acabam).' : ': acabou.') });
+        if (maq) maq.t.textContent = 'As máquinas de fora batem na muralha: ' + X.hp0 + ' → ' + X.hp1 + ' (' + X.est + ' por dia)' + (X.hp1 <= 0 ? ': a muralha caiu (não protege mais).' : '.');
+        if (rend) { rend.t.textContent = 'Rendição: ' + nL + ' se rende (sem comida, e a moral de quem está dentro em 2 ou menos) — ' + textoQueda(m, X); rend.el.classList.add('dia-reg-op'); }
+        pintores.push(() => {
+          const Y = (res.cercos || []).find(z => z.m === X.m) || X;
+          if (maq) maq.el.classList.toggle('nao', !maq.x.checked);
+          if (tiro) { tiro.t.textContent = textoTiros(tiro.x.checked ? Y : X); tiro.el.classList.toggle('nao', !tiro.x.checked); }
+          if (rend) rend.el.classList.toggle('nao', !rend.x.checked);
+        });
+        return h('div', { class: 'dia-ex dia-cerco', 'data-k': 'dia:cerco:' + X.m },
+          h('div', { class: 'dia-cab' }, h('span', { class: 'tx' }, h('b', { text: nL }), h('small', { text: 'cercado por ' + nomeF(X.fac) + (X.dias ? ' há ' + plural(X.dias, 'dia', 'dias') : ' desde hoje') }))),
+          maq ? maq.el : null, tiro ? tiro.el : null, reserva, rend ? rend.el : null);
+      };
+      const nProps = props.length + cprops.length;
+      const cbJ = jornal && nProps ? h('input', { type: 'checkbox', 'data-k': 'dia:jornal' }) : null, verJ = cbJ ? h('div', { class: 'sem-jornal-txt', 'data-k': 'dia:jornal:txt' }) : null;
       const marcada = x => { const c = cxs.find(([k]) => k === (x.lib ? 'lib:' : 'ocup:') + x.r); return !!c && c[1].checked; };
+      const marcadaC = X => { const c = cxs.find(([k]) => k === (X.fim ? 'cfim:' : 'rend:') + X.m); return !!c && c[1].checked; };
       if (verJ) pintores.push(() => {
-        const l = props.filter(marcada).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac)));
+        const l = props.filter(marcada).map(x => (x.lib ? C.noticiaLibertacao(m, x.r, x.quem, x.fac) : C.noticiaOcupacao(m, x.r, x.fac)))
+          .concat(cprops.filter(marcadaC).map(X => (X.fim ? C.noticiaFimDoCerco(m, X.m, 'saiu') : C.noticiaQueda(m, X.m, 'rendicao'))));
         verJ.replaceChildren(...(l.length ? l.flatMap(r => [h('b', { text: r.tit }), h('p', { text: r.txt })]) : [h('p', { text: 'Nenhuma: as propostas estão desmarcadas.' })]));
       });
+      const caixaJ = cbJ ? h('div', { class: 'sem-jornal', 'data-k': 'dia:jornal-caixa' }, h('label', { class: 'op' }, cbJ, h('span', { text: nProps > 1 ? 'Escrever as notícias no rascunho do Jornal' : 'Escrever a notícia no rascunho do Jornal' })),
+        h('details', { class: 'sem-jornal-ver', 'data-k': 'dia:jornal:ver' }, h('summary', { text: nProps > 1 ? 'Ver as notícias' : 'Ver a notícia' }), verJ)) : null;
+      const secCer = cercos.length ? h('div', { class: 'dia-regs', 'data-k': 'dia:cercos' }, h('b', { class: 'dia-regs-tit', text: cercos.length > 1 ? 'Os cercos' : 'O cerco' }), cercos.map(blocoCercoDia),
+        h('small', { class: 'dia-nota', text: 'Desmarcada, a linha não vale hoje.' }), regs.length ? null : caixaJ) : null;
       const secReg = regs.length ? h('div', { class: 'dia-regs', 'data-k': 'dia:regs' }, h('b', { class: 'dia-regs-tit', text: 'A ocupação' }), regs.map(blocoReg),
         props.length ? h('small', { class: 'dia-nota', text: 'Desmarcada, a proposta não vale agora e a contagem recomeça do zero.' }) : null,
-        cbJ ? h('div', { class: 'sem-jornal', 'data-k': 'dia:jornal-caixa' }, h('label', { class: 'op' }, cbJ, h('span', { text: props.length > 1 ? 'Escrever as notícias no rascunho do Jornal' : 'Escrever a notícia no rascunho do Jornal' })),
-          h('details', { class: 'sem-jornal-ver', 'data-k': 'dia:jornal:ver' }, h('summary', { text: props.length > 1 ? 'Ver as notícias' : 'Ver a notícia' }), verJ)) : null) : null;
+        caixaJ) : null;
       const titulo = h('h2', { text: base.dias > 1 ? 'Os ' + base.dias + ' dias da campanha' : 'O dia da campanha' });
       titulo.id = 'dl-dia-' + Date.now().toString(36);
       const lista = h('div', { class: 'dia-lista', 'data-k': 'dia:lista' }, base.linhas.map(blocoDe));
       const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'dia:nao', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'dia:ok', text: 'Aplicar' });
       const form = h('form', { class: 'dl', novalidate: true }, titulo,
         h('p', { class: 'note', text: 'Cada exército come pelo tamanho da tropa. Desmarque o que não vale; nada muda até você aplicar.' }),
-        lista, secReg,
+        lista, secCer, secReg,
         h('small', { class: 'ajuda', text: 'As regras (o teto de ' + plural(rg.teto, 'dia', 'dias') + ', a forragem, o desgaste, os terrenos duros, o inverno e os dias para ocupar) ficam na aba Guerra.' }),
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl dia-dl', 'aria-labelledby': titulo.id }, form);
@@ -843,6 +1093,8 @@
         bat = null;
       }
       if (!bat || bat.a !== a || bat.b !== b) bat = novaBatalha(m, a, b);
+      // (lote 12, parte 12e) o assalto: a fortificação do lugar cercado, com quem está dentro
+      if (o.estr && !temRolagem() && fortDe(m, kit().achar(m, o.estr.m))) bat.estr = { m: o.estr.m, lado: o.estr.lado };
     }
     if (!bat) return;
     mostrarJanela();
@@ -1335,6 +1587,16 @@
     }
     if (prev.estr) out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:estr' }, el('b', { text: 'Fortificação: ' + prev.estr.nome }),
       el('p', null, 'HP ' + prev.estr.hp0 + ' → ', el('b', { text: String(prev.estr.hp1) }), ' de ' + prev.estr.hpMax + (prev.estr.hp1 <= 0 ? ' — em ruínas' : prev.estr.dano ? ' (dano ' + prev.estr.dano + ')' : ''))));
+    // (lote 12, parte 12e) o cerco: a queda (quem cerca venceu quem estava dentro) ou o socorro (o cerco acaba), com a caixa
+    const sc = cercoDaBatalha(m);
+    if (sc) {
+      const c = CA().cercoDe(m, kit().achar(m, sc.m)), jornal = !!(app().temJornal && app().temJornal() && DP()), nL = nomeLugarDe(m, sc.m);
+      const txt = sc.tipo === 'queda' ? nL + ' cai — ' + textoQueda(m, Object.assign({}, c, { dentro: sc.sairam })) : 'O socorro venceu: o cerco de ' + nL + ' acaba (a reserva enche de novo).';
+      out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:cerco' }, el('b', { text: sc.tipo === 'queda' ? 'O cerco: a queda' : 'O cerco: o socorro' }),
+        el('label', { class: 'op' }, el('input', { type: 'checkbox', 'data-k': 'gb:dep:cerco-x', checked: bat.cercoX !== false ? true : null, onchange: ev => { bat.cercoX = !!ev.target.checked; } }), el('span', { 'data-k': 'gb:dep:cerco-txt', text: txt })),
+        jornal ? el('label', { class: 'op' }, el('input', { type: 'checkbox', 'data-k': 'gb:dep:cerco-jornal', checked: bat.cercoJ ? true : null, onchange: ev => { bat.cercoJ = !!ev.target.checked; } }),
+          el('span', { text: 'Escrever a notícia no rascunho do Jornal' })) : null));
+    }
     // a frente
     const fs = m.objs.filter(o => o.k === 'f');
     if (fs.length) {
@@ -1365,9 +1627,13 @@
     out.push(el('div', { class: 'row gb-pe' }, bt('Voltar', () => { bat.tela = 'montar'; pintarBatalha(); }, { k: 'gb:voltar' }), bt('Aplicar', aplicarBatalha, { c: 'pri', k: 'gb:aplicar' })));
     return out;
   }
+  // (lote 12, parte 12e) o cerco desta batalha: a queda ou o socorro (MundoCampanha.cercoNaBatalha) — ou null
+  const cercoDaBatalha = m => (CA() && bat && bat.fim ? CA().cercoNaBatalha(m, { a: bat.a, b: bat.b, fim: bat.fim, estr: bat.estr }) : null);
   function aplicarBatalha() {
     const A = app(), m = A.mapa, ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b);
     if (!ga || !gb || !bat.fim) return;
+    const sc = cercoDaBatalha(m), comCerco = !!sc && bat.cercoX !== false, nL = sc ? nomeLugarDe(m, sc.m) : '';
+    const ntC = comCerco && bat.cercoJ && DP() ? (sc.tipo === 'queda' ? CA().noticiaQueda(m, sc.m, 'assalto') : CA().noticiaFimDoCerco(m, sc.m, 'socorro')) : null;
     const prev = G().depois(m, configDepois()), nA = kit().nomeDe(ga, m), nB = kit().nomeDe(gb, m);
     const mom = bat.modo === 'd100' && bat.res ? [{ k: 'ch', da: bat.res.da, db: bat.res.db, ta: bat.res.ta, tb: bat.res.tb }]
       : bat.moms.map(x => Object.assign({ k: x.k, da: x.da, db: x.db, ta: x.ta, tb: x.tb }, x.chave ? { chave: true } : {}, x.nota ? { nota: x.nota } : {}));
@@ -1377,23 +1643,26 @@
       modo: bat.modo === 'd20' ? 'd20' : 'd100', mom, fim: { vence: bat.fim.vence, tam: bat.fim.tam, como: bat.fim.como }, notas, hex: bat.hex || undefined };
     const texto = G().textoFim(bat.fim, nA, nB);
     const feridas = bat.ferir !== false ? feridasDosHerois(m).filter(f => !f.sem && f.dano > 0) : [];
-    if (A.mudar('a batalha ' + nA + ' × ' + nB, d => { G().aplicar(d, prev, reg); }) === false) { A.toast('Nada mudou.'); return; }
+    if (A.mudar('a batalha ' + nA + ' × ' + nB, d => { G().aplicar(d, prev, reg); if (comCerco) { if (sc.tipo === 'queda') CA().cair(d, sc.m); else CA().levantar(d, sc.m); } }) === false) { A.toast('Nada mudou.'); return; }
+    const nj = ntC ? DP().noticiasDoPasso('mt_ce_', ntC) : null;
     // (lote 9) os ferimentos dos heróis, no HP da ficha de cada um. O Desfazer e o Refazer deste passo (o do aviso, os de
     // cima) levam junto: devolvem (ou tiram de novo) o que a batalha tirou, a partir do HP de agora — o que mudou na
     // ficha depois (uma cura, um dano numa cena) fica.
     const P = feridas.length && window.TC && window.TC.dados ? window.TC.dados.col('personagens') : null, feitas = [];
     if (P) for (const f of feridas) { const l = P.pegar(f.hr.ficha); if (!l) continue; P.gravar(l.id, { estado: f.estado }); feitas.push({ id: l.id, hp: f.hp, tirou: Math.max(0, (f.antes || 0) - (f.depois || 0)) }); }
-    if (feitas.length && typeof A.foraDoPasso === 'function') {
+    // (parte 12e: a notícia do cerco entra no mesmo "fora do passo" — um só por passo)
+    if ((feitas.length || (nj && nj.posto)) && typeof A.foraDoPasso === 'function') {
       const mexer = s => () => {
         const R = window.TC && window.TC.rules;
         if (R) for (const x of feitas) { const l = P.pegar(x.id); if (l) P.gravar(x.id, { estado: R.aplicarDelta(l.estado || {}, x.hp.id, x.hp.max, s * x.tirou, x.hp.min, x.hp.inicio) }); }
       };
-      A.foraDoPasso({ desfazer: mexer(1), refazer: mexer(-1) });
+      A.foraDoPasso({ desfazer: () => { if (feitas.length) mexer(1)(); if (nj && nj.posto) nj.tirar(); }, refazer: () => { if (feitas.length) mexer(-1)(); if (nj && nj.posto) nj.por(); } });
     }
     bat.tela = 'aplicada';
     bat = null;
     fecharJanela(true);
-    kit().avisoDesfazer('Batalha aplicada: ' + texto + '.' + (feitas.length ? ' ' + (feitas.length === 1 ? 'Um herói ferido' : feitas.length + ' heróis feridos') + ' (na ficha).' : '') + ' Fica no histórico (aba Guerra).');
+    kit().avisoDesfazer('Batalha aplicada: ' + texto + '.' + (feitas.length ? ' ' + (feitas.length === 1 ? 'Um herói ferido' : feitas.length + ' heróis feridos') + ' (na ficha).' : '')
+      + (comCerco ? (sc.tipo === 'queda' ? ' ' + nL + ' caiu para ' + nomeFacDe(m, sc.fac) + '.' : ' O cerco de ' + nL + ' acabou.') : '') + ' Fica no histórico (aba Guerra).' + (nj ? nj.texto : ''));
   }
 
   window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha,

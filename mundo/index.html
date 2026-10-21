@@ -158,6 +158,7 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .reg.m-economia.m-zero { fill-opacity: 0; }
 .reg.oculto, .mar.oculto, .eve.oculto, .rot.oculto { opacity: .55; }
 .reg-ocup { fill-opacity: .5; stroke: none; pointer-events: none; }               /* (lote 12, parte 12b) a ocupada: as listras de quem ocupa */
+.cerco-anel { fill: none; stroke-width: 3; stroke-dasharray: 5 3; pointer-events: none; }   /* (lote 12, parte 12e) o lugar cercado */
 .sel-anel { fill: none; stroke: var(--lamp); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 5 4; pointer-events: none; }
 .rot { fill: none; stroke: #f3ead2; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .rot-fundo { fill: none; stroke: rgba(10,12,18,.55); stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -915,6 +916,14 @@ dialog.mundo-dl.dia-dl .pe, dialog.mundo-dl.cr-dl .pe { flex-wrap: wrap; }
 .mundo-dl p.dia-reg { font-size: 13px; color: var(--fg-2); margin: 0 0 0 4px; }
 .mundo-dl label.op.dia-reg-op.nao span { opacity: .5; }
 dialog.mundo-dl.oc-dl { width: min(520px, calc(100% - 24px)); }
+/* (lote 12, parte 12e) o cerco: no dia (as linhas esmaecem desmarcadas), no lugar e no exército, a janela "Cercar…" */
+.mundo-dl .dia-cerco label.op.dia-op.nao span { opacity: .5; }
+.dia-regs .dia-cerco { border: 0; border-radius: 0; border-top: 1px solid var(--line); padding: 6px 0 0; }
+.dia-regs .dia-cerco:first-of-type { border-top: 0; padding-top: 0; }
+.gu-cerco { display: grid; gap: 6px; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); margin-bottom: 8px; }
+.gu-cerco p { margin: 0; }
+dialog.mundo-dl.ce-dl { width: min(520px, calc(100% - 24px)); }
+.mundo-dl p.note.aviso { color: var(--danger); }
 .paz-terras { display: grid; gap: 6px; }
 .paz-terra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
 .paz-terra .tx { display: grid; flex: 1 1 160px; min-width: 0; }
@@ -1346,21 +1355,21 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=38"></script>
+<script src="nucleo.js?v=39"></script>
 <script src="guerra.js?v=5"></script>
 <script src="reino.js?v=13"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
-<script src="campanha.js?v=3"></script>
+<script src="campanha.js?v=4"></script>
 <script src="camadas.js?v=3"></script>
-<script src="tela.js?v=23"></script>
-<script src="painel.js?v=39"></script>
-<script src="guerra-painel.js?v=9"></script>
-<script src="guerra-ajuda.js?v=3"></script>
+<script src="tela.js?v=24"></script>
+<script src="painel.js?v=40"></script>
+<script src="guerra-painel.js?v=10"></script>
+<script src="guerra-ajuda.js?v=4"></script>
 <script src="reino-painel.js?v=14"></script>
 <script src="corte-painel.js?v=5"></script>
-<script src="diplomacia-painel.js?v=5"></script>
+<script src="diplomacia-painel.js?v=6"></script>
 <script src="intrigas-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>

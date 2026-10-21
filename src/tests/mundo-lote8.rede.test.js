@@ -21,6 +21,8 @@
 //     nome, quem trama, os alvos, os passos, os segredos e a nota); o jogador a vê na aba Intrigas.
 //   · (lote 12, parte 12b) a ocupação: vai na projeção (a contagem dos dias, não); o jogador vê "Ocupada por…" e as
 //     listras; de uma facção escondida, vai sem a facção.
+//   · (lote 12, parte 12e) o cerco: vai na projeção — quem cerca (de uma facção escondida, sem ela), desde quando e, para
+//     a facção dos jogadores cercada, a reserva e a muralha (a fortificação não vai) —; o jogador vê o anel e a leitura.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -282,6 +284,18 @@ function png(w, h, cor) {
     await W.evaluate(() => { __mundo.App.mudar('o Vale escondido', m => { m.faccoes.find(f => f.id === 'fb').oculta = true; }); });
     ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), r = p && p.objs.find(o => o.id === 'reg'); return !!(r && r.ocup && r.ocup.fac === null); }) && await ate(async () => { const [t0, p0] = await lerOc(); return /^Ocupada desde .+\.$/.test(t0) && p0 === ''; }),
       'de uma facção escondida, a ocupação vai sem a facção (o jogador vê "Ocupada desde…" e as listras cinza)');
+    // (lote 12, parte 12e) o cerco da Vila Alta (de Aldar, a facção dos jogadores) pelo Vale (escondido)
+    const dia12e = await W.evaluate(() => {
+      __mundo.App.mudar('o cerco', m => { const c = m.objs.find(o => o.id === 'cv'); c.estr = { nome: 'Paliçada', def: 2, hp: 40, hpMax: 60 }; c.cerco = { fac: 'fb', d: m.cal.dia, res: 25 }; });
+      return __mundo.App.mapa.cal.dia;
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa), c0 = p && p.objs.find(o => o.id === 'cv'); return !!(c0 && j(c0.cerco) === j({ fac: null, d: dia12e, res: 25, hpMax: 60, hp: 40 }) && !('estr' in c0)); }),
+      '(parte 12e) a projeção leva o cerco: sem a facção escondida; a reserva e a muralha, porque é a facção dos jogadores que está cercada (sem a fortificação)');
+    await JW.evaluate(() => __mundo.App.selecionar(['cv'])); await w(300, J);
+    const lerCe = () => JW.evaluate(() => { const e = document.querySelector('#pane [data-k="ler:cerco"]'), c = document.querySelector('#mundo g.obj[data-id="cv"] circle.cerco-anel'); return [e ? e.innerText.trim() : '', c ? c.getAttribute('data-cerco') : null]; });
+    ok(await ate(async () => { const [t0, c0] = await lerCe(); return /^Cercado desde .+\. Reserva de comida: 25 dias · a muralha: 40 de 60\.$/.test(t0) && c0 === ''; }), 'o jogador vê o anel (cinza) e "Cercado desde…", com a reserva e a muralha: ' + j(await lerCe()));
+    await W.evaluate(() => { __mundo.App.mudar('o Vale à vista', m => { m.faccoes.find(f => f.id === 'fb').oculta = false; }); });
+    ok(await ate(async () => { const [t0, c0] = await lerCe(); return /^Cercado por Vale desde .+\./.test(t0) && c0 === 'fb'; }), 'com o Vale à vista: "Cercado por Vale desde…", o anel na cor dele');
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

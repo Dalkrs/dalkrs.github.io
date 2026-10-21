@@ -1568,6 +1568,8 @@
         if (dt) mc.dentro = dt;
         const oc = normOcup(o.ocup);                              // (lote 12, parte 12b) ocupado por outra facção (a fortificação que caiu)
         if (oc) mc.ocup = oc;
+        const ce = normCerco(o.cerco);                            // (lote 12, parte 12e) o cerco do lugar
+        if (ce) mc.cerco = ce;
         return mc;
       }
       case 'g':
@@ -1728,6 +1730,7 @@
      batalha, o bônus da Abertura; no cerco, o tiro de quem está dentro) e o acerto (o mínimo no d20 para o tiro acertar;
      null: não atira em tropas). A unidade e a fortificação levam { tipo: quantas }. */
   const MAX_MAQS = 40, MAX_MAQ_N = 1e4, MAX_DANO_MAQ = 1000;
+  const RESERVA_PADRAO = 30, MILICIA_PADRAO = 100, MAX_RESERVA = 3650;   // (parte 12e) a reserva da cidade (dias) e a milícia
   const MAQUINAS_PADRAO = [{ id: 'ariete', nome: 'Aríete', est: 3, exe: 0, ac: null }, { id: 'catapulta', nome: 'Catapulta', est: 2, exe: 5, ac: 11 }, { id: 'trabuco', nome: 'Trabuco', est: 4, exe: 3, ac: 13 }];
   function normMaqs(v) {
     const out = [], vistos = new Set();
@@ -1800,6 +1803,21 @@
     const hpMax = inteiro(v.hpMax, 100, 1, 1e6), out = { nome: texto(v.nome, '', 80).trim(), def: inteiro(v.def, 3, 0, MAX_BONUS), hp: inteiro(v.hp, hpMax, 0, hpMax), hpMax };
     const maq = normTabMaq(v.maq);                               // (lote 12, parte 12d) as máquinas da fortificação
     if (Object.keys(maq).length) out.maq = maq;
+    // (lote 12, parte 12e) a reserva de comida da cidade, em dias (no cerco), e a milícia (as tropas que defendem sem
+    // exército dentro) — só quando não são as de começo
+    const res = inteiro(v.res, RESERVA_PADRAO, 0, MAX_RESERVA), mil = inteiro(v.mil, MILICIA_PADRAO, 0, MAX_TROPAS);
+    if (res !== RESERVA_PADRAO) out.res = res;
+    if (mil !== MILICIA_PADRAO) out.mil = mil;
+    return out;
+  }
+  /* (lote 12, parte 12e) O cerco do lugar (no marcador): { fac (quem cerca), d (o dia em que começou), res (os dias de
+     comida que sobram na cidade) }. Na projeção, sem a facção escondida; a reserva e o HP da muralha (hp, hpMax) só para a
+     facção dos jogadores, quando ela cerca ou é cercada ali. */
+  function normCerco(v) {
+    if (!ehObj(v)) return null;
+    const out = { fac: idRef(v.fac), d: inteiro(v.d, 0, -1e9, 1e9) };
+    if (v.res != null) out.res = inteiro(v.res, RESERVA_PADRAO, 0, MAX_RESERVA);
+    if (v.hpMax != null) { out.hpMax = inteiro(v.hpMax, 1, 1, 1e6); out.hp = inteiro(v.hp, out.hpMax, 0, out.hpMax); }
     return out;
   }
   function normTiposGuerra(v) {
@@ -2827,6 +2845,8 @@
       const dono = o.k === 'r' ? facDaRegiao(mapa, o) : (r => (r ? facDaRegiao(mapa, r) : null))(regiaoEm(mapa, o.x, o.y));
       if ((o.ocup.fac && !facs.has(o.ocup.fac)) || (o.ocup.fac && o.ocup.fac === dono)) delete o.ocup;
     }
+    // (lote 12, parte 12e) o cerco: de uma facção que existe (sem a facção: só na projeção)
+    for (const o of mapa.objs) if (o.k === 'm' && o.cerco && o.cerco.fac && !facs.has(o.cerco.fac)) delete o.cerco;
     // (lote 12, parte 12d) as máquinas das unidades e das fortificações: só dos tipos que existem
     const tiposMaq = new Set(maquinasDe(mapa).map(t => t.id));
     for (const o of mapa.objs) {
@@ -2996,7 +3016,7 @@
       for (const f of m.faccoes) f.pop = soma[f.id] || 0;
     }
     delete m.eco;                                              // (lote 10) a economia é do mestre
-    const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id));
+    const escondidas = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id)), jogP = (m.faccoes.find(f => f.jog) || {}).id || null;
     m.faccoes = m.faccoes.filter(f => !f.oculta);
     for (const f of m.faccoes) {
       delete f.nota;
@@ -3020,8 +3040,16 @@
       // pelo nome e pela situação das Fichas — e tira a que ainda está escondida lá)
       if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
       if (o.k === 'm') {
+        const est0 = o.estr;
         delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro;
         if (coberto(o.x, o.y)) continue;
+        // (lote 12, parte 12e) o cerco: quem cerca (sem a facção escondida) e desde quando; a reserva e o HP da muralha
+        // só para a facção dos jogadores, quando ela cerca ou é cercada ali
+        if (o.cerco) {
+          const dono = o.ocup && o.ocup.fac ? o.ocup.fac : (r => (r ? facDaRegiao(m, r) : null))(regiaoEm(m, o.x, o.y)), c = { fac: escondidas.has(o.cerco.fac) ? null : o.cerco.fac, d: o.cerco.d };
+          if (jogP && (o.cerco.fac === jogP || dono === jogP)) Object.assign(c, { res: o.cerco.res }, est0 ? { hp: est0.hp, hpMax: est0.hpMax } : {});
+          o.cerco = c;
+        }
         if (o.ocup && escondidas.has(o.ocup.fac)) o.ocup = { fac: null, d: o.ocup.d };   // (lote 12, parte 12b)
         if (dentro.has(o.id)) o.dentro = dentro.get(o.id);       // (lote 10, parte 6) a cidade aberta: o que tem dentro
       }
@@ -3144,7 +3172,7 @@
     MIS_E, situacaoDaMissao,
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
-    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas,
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas, RESERVA_PADRAO, MILICIA_PADRAO,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
@@ -3157,7 +3185,7 @@
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
       segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA,
-      forragem: MAX_FORR, contagens: MAX_PRES, hpTropa: MAX_HP_TROPA, maquinas: MAX_MAQS, maqPorTipo: MAX_MAQ_N, danoMaq: MAX_DANO_MAQ },
+      forragem: MAX_FORR, contagens: MAX_PRES, hpTropa: MAX_HP_TROPA, maquinas: MAX_MAQS, maqPorTipo: MAX_MAQ_N, danoMaq: MAX_DANO_MAQ, reserva: MAX_RESERVA },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

@@ -1485,6 +1485,28 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   contra estrutura das máquinas de quem ataca (vencendo, o dobro e mais o tamanho da vitória); a DEF da fortificação cai
   com o HP (as máquinas não tiram mais da DEF). No mapa: `guerra.maqs` (`{ id, nome, est, exe, ac }`; sem ela, os de
   começo — `MAQUINAS_PADRAO`, `maquinasDe`) e `maq: { tipo: quantas }` na unidade e na fortificação (`somaDasMaquinas`).
+- **O cerco** (lote 12, parte 12e; `mundo/campanha.js`). Um exército a até 1 hexágono de um lugar com fortificação (a do
+  marcador ou a defesa das construções) de outra facção — que não seja aliada; sem guerra entre as duas, a janela avisa —
+  tem **"Cercar …"** (no exército e no lugar): a janela mostra quem cerca (a facção e as aliadas dela, a até 1 hexágono),
+  quem está dentro (o dono do lugar e as aliadas, no mesmo hexágono), a reserva e a muralha, e a notícia para o Jornal
+  (desmarcada). A fortificação ganha a **Reserva** (os dias de comida da cidade num cerco: 30 de começo; enche de novo
+  quando o cerco acaba) e a **Milícia** (100 tropas de começo: quem defende sem exército dentro). A cada **"Próximo
+  dia"**, o cerco tem as linhas dele: as máquinas de fora batem na muralha (a soma do dano contra estrutura); as de
+  dentro — as da fortificação e as das unidades de dentro — atiram (um d20 por máquina contra o acerto do tipo; acertando,
+  o dano contra exército sai do HP de uma unidade sorteada de quem cerca; o sorteio fica o mesmo enquanto a janela está
+  aberta); a reserva cai 1 e alimenta quem está dentro quando os mantimentos acabam (dentro, não se reabastece); o
+  desgaste do cerco (1% por dia, nas regras) vale para os dois lados. Desmarcada, cada linha só esmaece. Sem ninguém
+  cercando, a linha "o cerco acaba" (marcada; desmarcada, ele espera). A **rendição**: com a comida de dentro no fim (a
+  reserva e os mantimentos) e a moral de quem está dentro em 2 ou menos (sem ninguém dentro, basta a reserva acabar), a
+  proposta (marcada). **"Assaltar…"** abre a batalha de quem cerca contra quem está dentro, com a fortificação; sem
+  ninguém dentro, a milícia vira um exército no lugar ("Milícia de …", pergunta antes) — sem milícia, "Tomar o lugar".
+  No depois da batalha: a **queda** (quem cerca venceu quem estava dentro) ou o **socorro** (um exército de fora, do lado
+  do dono, venceu quem cerca: o cerco acaba), com a caixa e a notícia. A queda (também a da rendição): o lugar fica
+  ocupado por quem cercou, com a região dele (ou volta para a dona, se foi ela — ou uma aliada — quem cercou), e os
+  exércitos de dentro saem do mapa. "Levantar o cerco…" o encerra à mão. O lugar cercado tem um anel tracejado na cor de
+  quem cerca; a aba Guerra lista os cercos. **Quem joga** vê o anel e "Cercado por … desde …" (de uma facção escondida,
+  sem ela; o anel cinza) e, quando a facção deles cerca ou é cercada, a reserva e a muralha. No mapa: `cerco: { fac, d,
+  res }` no marcador e `res`/`mil` na fortificação (só quando não são as de começo).
 
 ### A Árvore (lote 6)
 
@@ -2673,7 +2695,14 @@ existem), a soma, o lado com as máquinas, o bônus da Abertura (a raiz, até 6;
 fortificação sem tirar da DEF, o dano no HP (o dobro vencendo; os tipos somam) e a projeção sem elas; `mundo-lote12` com
 `SO=maquinas`, a seção da aba Guerra (as de começo, mudar e Desfazer, o acerto, um tipo novo, tirar em uso e "Voltar às
 de começo", com a pergunta), os campos da unidade e da fortificação, o resumo, a batalha (a tabela, o bônus, o "?", a
-Abertura, o dano no depois) e o celular; `mundo-guerra`, os campos das máquinas na unidade. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+Abertura, o dano no depois) e o celular; `mundo-guerra`, os campos das máquinas na unidade. Na parte 12e (o cerco),
+`lote12-nucleo` confere a reserva, a milícia e o cerco normalizados, a projeção (sem a facção escondida; os números só
+para a facção dos jogadores), os lugares para cercar, cercar, quem cerca e quem está dentro, o dia (as máquinas de fora,
+os tiros de dentro com o sorteio fixo, a reserva que alimenta, o desgaste do cerco, as recusas, vários dias), a rendição,
+aplicar, ninguém cercando, a queda (ocupar e libertar), levantar, a milícia, o cerco na batalha e as notícias;
+`mundo-lote12` com `SO=cerco`, "Cercar…", o cerco no exército, no lugar e na aba Guerra, o anel, o dia (desmarcar,
+aplicar, Desfazer), o assalto com a queda no depois, a milícia, a rendição, o fim sem ninguém cercando, "Levantar o
+cerco…", quem joga e o celular; `mundo-lote8.rede`, o cerco na projeção e no mapa do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

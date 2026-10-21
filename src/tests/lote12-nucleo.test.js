@@ -17,6 +17,14 @@
 //     antes; a cura da cidade, até 100%), a Enfermaria perto (a cidade de casa ou da aliada, no hexágono ou colado; sem
 //     a grade, perto), a cura no dia (os médicos e a Enfermaria; vários dias; desmarcada; os médicos que acabam; a ferida
 //     do desgaste), o desgaste no HP das unidades e aplicar.
+//   · (parte 12e) o cerco: a reserva e a milícia da fortificação e o cerco normalizados, a projeção (quem cerca, sem a
+//     facção escondida; a reserva e a muralha só para a facção dos jogadores, quando ela cerca ou é cercada), os lugares
+//     para cercar (com fortificação, de outra facção que não é aliada; o aviso sem guerra), cercar, quem cerca (com as
+//     aliadas) e quem está dentro, o dia (as máquinas de fora na muralha, os tiros de dentro — o d20 contra o acerto, a
+//     unidade sorteada, o mesmo sorteio a cada conta —, a reserva que alimenta quem está dentro, o desgaste do cerco dos
+//     dois lados, as recusas, vários dias), a rendição (sem comida e com a moral em 2), aplicar (a muralha, a reserva, as
+//     perdas, a queda), ninguém cercando (o fim, ou a espera), a queda (ocupar o lugar e a região; libertar; os de dentro
+//     saem), a milícia que vira exército, levantar, o cerco na batalha (a queda e o socorro) e as notícias.
 const N = require('../../mundo/nucleo.js');
 const R = require('../../mundo/reino.js');
 const C = require('../../mundo/campanha.js');
@@ -414,6 +422,170 @@ function mundoVida(extra) {
   const na = N.normalizarMapa(d), U = (g, u) => na.objs.find(o => o.id === g).exe.unid.find(x => x.id === u);
   eq([[U('h1', 'o1').tropas, U('h1', 'o1').fer], [U('h3', 'o3').tropas, U('h3', 'o3').fer], [U('h4', 'o4').tropas, U('h4', 'o4').fer], U('h2', 'o2').fer], [[20, 5], [20, 6], [152, 1], 7],
     'aplicar: a ferida curada; o desgaste nas tropas e na ferida; sem cura, igual');
+}
+
+/* ---- (parte 12e) o cerco ---- */
+{ // a reserva, a milícia e o cerco normalizados
+  const e = o => N.normalizarMapa({ nome: 'M', objs: [Object.assign({ id: 'k', k: 'm', x: 10, y: 10 }, o)] }).objs[0];
+  eq([e({ estr: { def: 3 } }).estr, e({ estr: { def: 3, res: 12, mil: 0 } }).estr, e({ estr: { res: 99999, mil: -5 } }).estr],
+    [{ nome: '', def: 3, hp: 100, hpMax: 100 }, { nome: '', def: 3, hp: 100, hpMax: 100, res: 12, mil: 0 }, { nome: '', def: 3, hp: 100, hpMax: 100, res: 3650, mil: 0 }],
+    'a fortificação: a reserva (30 dias) e a milícia (100) de começo não ficam; as do mestre, com os limites');
+  eq([N.RESERVA_PADRAO, N.MILICIA_PADRAO], [30, 100], 'a reserva e a milícia de começo');
+  const mm = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], objs: [{ id: 'k', k: 'm', x: 10, y: 10, cerco: { fac: 'fa', d: 4.4, res: 31.6, lixo: 1 } }, { id: 'k2', k: 'm', x: 20, y: 20, cerco: { fac: 'zz', d: 1, res: 3 } }, { id: 'k3', k: 'm', x: 30, y: 30, cerco: 'x' }] });
+  eq(mm.objs.map(o => o.cerco || null), [{ fac: 'fa', d: 4, res: 32 }, null, null], 'o cerco: quem cerca, desde quando e a reserva que sobra; de uma facção que não existe, sai');
+}
+// o mundo do cerco: o Forte de Pedra (de Vale, com 2 Catapultas) no Vale Fundo; a Vanguarda (Aldar, 2 Trabucos) e a Frota (Ilhas,
+// aliada, 1 Aríete) coladas; a Guarda do Vale dentro (1 Catapulta); o Templo (do Culto, neutro) com Batedores de Aldar ao lado
+function mundoCerco() {
+  let m = N.normalizarMapa({ id: 'x', nome: 'M', larg: 4000, alt: 1000, grade: { tam: 40, x: 0, y: 0 },
+    faccoes: [{ id: 'fa', nome: 'Aldar', rel: { fb: 'guerra', fc: 'alianca' } }, { id: 'fb', nome: 'Vale', rel: { fa: 'guerra' } }, { id: 'fc', nome: 'Ilhas', rel: { fa: 'alianca' } }, { id: 'fd', nome: 'Culto' }],
+    objs: [{ id: 'r1', k: 'r', nome: 'Terra Alta', fac: 'fa', pts: quad(0, 0, 400, 400) }, { id: 'r2', k: 'r', nome: 'Vale Fundo', fac: 'fb', pts: quad(500, 0, 400, 400) },
+      { id: 'r4', k: 'r', nome: 'Templo', fac: 'fd', pts: quad(1500, 0, 400, 400) }, { id: 'r3', k: 'r', nome: 'Ilha Grande', fac: 'fc', pts: quad(1000, 0, 400, 400) }] });
+  m = JSON.parse(j(m));
+  const c = (x, y, dq, dr) => { const h = N.hexDe(m, x, y); return N.centroHex(m, h.q + (dq || 0), h.r + (dr || 0)); };
+  const k = c(700, 200), ka = c(700, 200, 1, 0), kb = c(700, 200, -1, 0), t = c(1700, 200), ta = c(1700, 200, 1, 0), il = c(1200, 200), ila = c(1200, 200, 1, 0), k2 = c(700, 200, 2, 0), kd = c(700, 200, 0, 1);
+  m.objs.push({ id: 'k', k: 'm', nome: 'Forte de Pedra', x: k.x, y: k.y, estr: { nome: 'Muralhas', def: 3, hp: 100, hpMax: 100, maq: { catapulta: 2 } } },
+    { id: 'kt', k: 'm', nome: 'Templo', x: t.x, y: t.y, estr: { nome: 'Muros', def: 1, hp: 40, hpMax: 40 } },
+    { id: 'ki', k: 'm', nome: 'Porto', x: il.x, y: il.y, estr: { nome: 'Cais', def: 1, hp: 40, hpMax: 40 } },
+    { id: 'kv', k: 'm', nome: 'Vila', x: ka.x, y: ka.y },
+    { id: 'g2', k: 'g', tipo: 'exercito', nome: 'Vanguarda', fac: 'fa', x: ka.x, y: ka.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u2a', nome: 'Sapadores', tropas: 150, maq: { trabuco: 2 } }, { id: 'u2b', nome: 'Lanceiros', tropas: 50, hpT: 2 }] } },
+    { id: 'g3', k: 'g', tipo: 'exercito', nome: 'Frota', fac: 'fc', x: kb.x, y: kb.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u3', nome: 'Marujos', tropas: 100, maq: { ariete: 1 } }] } },
+    { id: 'g5', k: 'g', tipo: 'exercito', nome: 'Guarda do Vale', fac: 'fb', x: k.x, y: k.y, exe: { moral: 6, mant: 2, unid: [{ id: 'u5', nome: 'Piqueiros', tropas: 200, maq: { catapulta: 1 } }] } },
+    { id: 'g4', k: 'g', tipo: 'exercito', nome: 'Batedores', fac: 'fa', x: ta.x, y: ta.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u4', nome: 'Batedores', tropas: 80 }] } },
+    { id: 'g6', k: 'g', tipo: 'exercito', nome: 'Marinheiros', fac: 'fa', x: ila.x, y: ila.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u6', nome: 'Marinheiros', tropas: 80 }] } },
+    { id: 'g7', k: 'g', tipo: 'exercito', nome: 'Retaguarda', fac: 'fa', x: k2.x, y: k2.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u7', nome: 'Retaguarda', tropas: 60 }] } },
+    { id: 'g8', k: 'g', tipo: 'exercito', nome: 'Batedores do Vale', fac: 'fb', x: kd.x, y: kd.y, exe: { moral: 6, mant: 10, unid: [{ id: 'u8', nome: 'Batedores', tropas: 70 }] } });
+  m.cal.dia = 150;                                                // (um dia de verão: sem o inverno)
+  return N.normalizarMapa(m);
+}
+const SEQ = { k: [0.5, 0.0, 0.2, 0.9, 0.99] };                    // 11 (acerta, no acerto: a primeira unidade), 5 (erra), 19 (acerta: a última)
+const rngDe = id => { const q = SEQ[id] || [0.5]; let i = 0; return () => q[i++ % q.length]; };
+{ // os lugares para cercar, cercar, quem cerca e quem está dentro
+  const m = mundoCerco(), G = id => m.objs.find(o => o.id === id);
+  eq([C.lugaresParaCercar(m, G('g2')), C.lugaresParaCercar(m, G('g4')), C.lugaresParaCercar(m, G('g6')), C.lugaresParaCercar(m, G('g5')), C.lugaresParaCercar(m, G('g7'))],
+    [[{ m: 'k', dono: 'fb', guerra: true }], [{ m: 'kt', dono: 'fd', guerra: false }], [], [], []],
+    'os lugares para cercar: com fortificação (a Vila, sem, não), a até 1 hexágono (a Retaguarda, a 2, não), de outra facção — em guerra ou não (o aviso) —, nunca de uma aliada (o Porto das Ilhas) nem a própria');
+  { const z = JSON.parse(j(m)); for (const u of z.objs.find(o => o.id === 'g2').exe.unid) u.tropas = 0; eq(C.lugaresParaCercar(N.normalizarMapa(z), N.normalizarMapa(z).objs.find(o => o.id === 'g2')), [], 'o exército sem tropas não cerca'); }
+  const d = JSON.parse(j(m));
+  ok(C.cercar(d, 'k', 'fa') && j(d.objs.find(o => o.id === 'k').cerco) === j({ fac: 'fa', d: 150, res: 30 }), 'cercar: quem cerca, o dia e a reserva cheia (30 dias)');
+  { const z = JSON.parse(j(m)); z.objs.find(o => o.id === 'k').estr.res = 12; C.cercar(z, 'k', 'fa'); ok(z.objs.find(o => o.id === 'k').cerco.res === 12, 'a reserva cheia é a da fortificação (12 dias)'); }
+  ok(!C.cercar(d, 'k', 'fa') && !C.cercar(JSON.parse(j(m)), 'ki', 'fa') && !C.cercar(JSON.parse(j(m)), 'kv', 'fa') && !C.cercar(JSON.parse(j(m)), 'k', 'fb') && !C.cercar(JSON.parse(j(m)), 'k', 'zz'),
+    'não cerca de novo, nem o lugar da aliada, nem sem fortificação, nem o próprio, nem sem a facção');
+  const md = N.normalizarMapa(d), c0 = C.cercoDe(md, md.objs.find(o => o.id === 'k'));
+  eq([c0.fac, c0.dono, c0.dias, c0.res, c0.resMax, c0.hp, c0.hpMax, c0.mil, c0.cercam, c0.dentro], ['fa', 'fb', 0, 30, 30, 100, 100, 100, ['g2', 'g3'], ['g5']],
+    'o cerco: quem cerca (Aldar e a Frota, das Ilhas aliadas; a Retaguarda, a 2 hexágonos, não) e quem está dentro (a Guarda do Vale, no hexágono do forte; os Batedores do Vale, colados, estão fora)');
+  eq([C.cercoDoExercito(md, md.objs.find(o => o.id === 'g3')).lado, C.cercoDoExercito(md, md.objs.find(o => o.id === 'g5')).lado, C.cercoDoExercito(md, md.objs.find(o => o.id === 'g4'))], ['fora', 'dentro', null],
+    'o cerco de cada exército: quem cerca, quem está dentro, quem não está');
+}
+{ // o dia do cerco
+  const m0 = mundoCerco(), d = JSON.parse(j(m0));
+  C.cercar(d, 'k', 'fa');
+  const m = N.normalizarMapa(d);
+  const r = C.diaDaCampanha(m, 1, [], rngDe), X = r.cercos[0], L = id => r.linhas.find(l => l.g === id);
+  eq([X.m, X.fim, X.hp0, X.hp1, X.est, X.dano, X.res0, X.res1, X.atiram], ['k', false, 100, 89, 11, 11, 30, 29, [{ tipo: 'catapulta', nome: 'Catapulta', n: 3, ac: 11, exe: 5 }]],
+    'as máquinas de fora batem na muralha (2 Trabucos e 1 Aríete: 11); atiram de dentro as 3 Catapultas (2 do forte e 1 da Guarda); a reserva cai 1');
+  eq(X.tiros.map(t => [t.d20, t.acertou, t.alvo, t.dano]), [[11, true, { g: 'g2', u: 'u2a' }, 5], [5, false, null, 0], [19, true, { g: 'g3', u: 'u3' }, 5]],
+    'os tiros: um d20 por máquina contra o acerto (11 acerta); acertando, o dano contra exército numa unidade sorteada de quem cerca');
+  eq([L('g2').cerco, L('g5').cerco, L('g2').desg.dias, L('g2').desg.unid.map(u => [u.t0, u.t1, u.f1]), L('g2').tiros, L('g3').tiros.hp, L('g5').desg.unid[0].t1, L('g5').mant1, L('g5').daReserva],
+    [{ m: 'k', lado: 'fora' }, { m: 'k', lado: 'dentro' }, { fome: 0, terreno: 0, inverno: 0, cerco: 1 }, [[150, 149, 0], [50, 50, 1]],
+      { hp: 5, tropas0: 149, tropas1: 144, unid: [{ id: 'u2a', nome: 'Sapadores', t0: 149, t1: 144, f1: 0, hp: 5, acaba: false }] }, 5, 198, 0, undefined],
+    'nas linhas: o desgaste do cerco (1%) dos dois lados; os tiros depois do desgaste; quem está dentro come o que leva (a reserva ainda não precisou)');
+  eq(j(C.diaDaCampanha(m, 1, [], rngDe).cercos[0].tiros) === j(X.tiros), true, 'o mesmo sorteio a cada conta refeita (as caixas)');
+  // as recusas
+  const r2 = C.diaDaCampanha(m, 1, ['cmaq:k', 'g:g2'], rngDe), X2 = r2.cercos[0];
+  eq([X2.hp1, X2.dano, X2.tiros.filter(t => t.alvo).map(t => t.alvo.g), r2.linhas.find(l => l.g === 'g2').tiros], [100, 0, ['g3', 'g3'], undefined],
+    'desmarcadas: as máquinas de fora não batem; o exército desmarcado não é alvo');
+  const r3 = C.diaDaCampanha(m, 1, ['ctiro:k'], rngDe);
+  eq([r3.cercos[0].tiros.length, r3.linhas.find(l => l.g === 'g3').tiros], [0, undefined], 'desmarcados, os tiros de dentro não acontecem');
+  // vários dias: a reserva alimenta quem está dentro (sem a fome); a muralha cai até 0
+  const r4 = C.diaDaCampanha(m, 3, ['ctiro:k'], rngDe), L4 = r4.linhas.find(l => l.g === 'g5');
+  eq([r4.cercos[0].resDia, r4.cercos[0].res1, r4.cercos[0].hp1, L4.mant1, L4.daReserva, L4.fomeDias, L4.moral1], [[30, 29, 28], 27, 67, 0, 2, 0, 6], 'em 3 dias: a reserva 30 → 27; a Guarda come o que leva no 1º dia e da reserva nos outros (sem fome)');
+  { const z = JSON.parse(j(m)), g = z.objs.find(o => o.id === 'g5'); g.exe.mant = 0; g.exe.moral = 2; const Z = C.diaDaCampanha(N.normalizarMapa(z), 1, ['ctiro:k'], rngDe); eq([Z.cercos[0].res1, Z.cercos[0].rend], [29, false], 'com a reserva ainda (29), sem rendição, mesmo com a moral em 2'); }
+  { const z = JSON.parse(j(m)); R.ligarEconomia(z); z.faccoes.find(f => f.id === 'fb').rec.find(r => r.id === 'suprimentos').n = 50; z.objs.find(o => o.id === 'g5').exe.mant = 0;
+    const Z = C.diaDaCampanha(N.normalizarMapa(z), 1, ['ctiro:k'], rngDe), L5 = Z.linhas.find(l => l.g === 'g5'); eq([L5.onde.tipo, L5.reab, L5.daReserva], ['casa', null, 1], 'dentro do cerco, em casa e com o estoque: não reabastece (a reserva alimenta)'); }
+  const d9 = JSON.parse(j(m)); d9.objs.find(o => o.id === 'k').estr.hp = 15;
+  eq(C.diaDaCampanha(N.normalizarMapa(d9), 3, ['ctiro:k'], rngDe).cercos[0].dano, 15, 'a muralha não fica abaixo de 0');
+  // aplicar: a muralha, a reserva, o desgaste e os tiros
+  const da = JSON.parse(j(m));
+  C.aplicarDia(da, r);
+  const A = id => da.objs.find(o => o.id === id);
+  eq([A('k').estr.hp, A('k').cerco.res, A('g2').exe.unid.map(u => [u.tropas, u.fer]), A('g3').exe.unid[0].tropas, A('g5').exe.unid[0].tropas], [89, 29, [[144, 0], [50, 1]], 94, 198],
+    'aplicar: a muralha (89), a reserva (29), o desgaste e os tiros nas tropas');
+}
+{ // a rendição: a comida de dentro acaba e a moral chega a 2
+  const d = JSON.parse(j(mundoCerco()));
+  C.cercar(d, 'k', 'fa');
+  const k = d.objs.find(o => o.id === 'k'), g5 = d.objs.find(o => o.id === 'g5');
+  k.cerco.res = 1; g5.exe.mant = 0; g5.exe.moral = 3;
+  const m = N.normalizarMapa(d);
+  const r = C.diaDaCampanha(m, 3, ['ctiro:k'], rngDe), X = r.cercos[0], L5 = r.linhas.find(l => l.g === 'g5');
+  eq([X.res1, L5.daReserva, L5.fomeDias, L5.moral1, X.rend, X.recRend], [0, 1, 2, 1, true, false], 'a reserva alimenta no 1º dia e acaba; 2 dias de fome (a moral 3 → 1): a proposta da rendição');
+  ok(!C.diaDaCampanha(m, 1, ['ctiro:k'], rngDe).cercos[0].rend, 'com a moral em 3 (no 1º dia, ainda com a reserva), sem rendição');
+  ok(C.diaDaCampanha(m, 3, ['ctiro:k', 'rend:k'], rngDe).cercos[0].recRend, 'a rendição desmarcada');
+  // aplicar a rendição: a queda — o forte e a região ocupados por Aldar; a Guarda sai do mapa; o cerco acaba
+  const da = JSON.parse(j(m));
+  C.aplicarDia(da, r);
+  const A = id => da.objs.find(o => o.id === id) || null, mn = N.normalizarMapa(da);
+  eq([A('k').ocup, A('r2').ocup, A('g5'), 'cerco' in A('k'), N.controleDaRegiao(mn, mn.objs.find(o => o.id === 'r2'))], [{ fac: 'fa', d: 150 }, { fac: 'fa', d: 150 }, null, false, 'fa'],
+    'a queda: o forte e o Vale Fundo ocupados por Aldar; quem estava dentro sai do mapa; o cerco acaba');
+  const dr = JSON.parse(j(m));
+  C.aplicarDia(dr, C.diaDaCampanha(m, 3, ['ctiro:k', 'rend:k'], rngDe));
+  ok(dr.objs.find(o => o.id === 'k').cerco.res === 0 && !!dr.objs.find(o => o.id === 'g5'), 'desmarcada, nada cai (o cerco continua)');
+  // sem ninguém dentro, basta a reserva acabar
+  const ds = JSON.parse(j(m)); ds.objs = ds.objs.filter(o => o.id !== 'g5');
+  ok(C.diaDaCampanha(N.normalizarMapa(ds), 1, [], rngDe).cercos[0].rend, 'sem ninguém dentro, a reserva acabou: a rendição');
+}
+{ // ninguém cercando: o cerco acaba (ou espera)
+  const d = JSON.parse(j(mundoCerco()));
+  C.cercar(d, 'k', 'fa');
+  for (const id of ['g2', 'g3']) { const g = d.objs.find(o => o.id === id); g.x += 400; }
+  const m = N.normalizarMapa(d), r = C.diaDaCampanha(m, 1, [], rngDe), X = r.cercos[0];
+  eq([X.fim, X.recFim, X.tiros.length, X.res1, r.linhas.find(l => l.g === 'g5').cerco], [true, false, 0, 30, null], 'ninguém cercando: a proposta de acabar; nada mais acontece (a reserva fica, quem está dentro fica como antes)');
+  const da = JSON.parse(j(m)); C.aplicarDia(da, r);
+  const de = JSON.parse(j(m)); C.aplicarDia(de, C.diaDaCampanha(m, 1, ['cfim:k'], rngDe));
+  eq(['cerco' in da.objs.find(o => o.id === 'k'), 'cerco' in de.objs.find(o => o.id === 'k')], [false, true], 'aplicar: o cerco acaba; desmarcado, espera');
+}
+{ // a queda que liberta, levantar, a milícia e o cerco na batalha
+  const m0 = mundoCerco();
+  const d = JSON.parse(j(m0));
+  d.objs.find(o => o.id === 'r2').ocup = { fac: 'fa', d: 140 };
+  d.objs.find(o => o.id === 'k').ocup = { fac: 'fa', d: 140 };
+  const g5 = d.objs.find(o => o.id === 'g5'), g2 = d.objs.find(o => o.id === 'g2');
+  [g5.fac, g2.fac] = ['fa', 'fb'];                               // (o forte nas mãos de Aldar, com a guarnição dela; o Vale cerca)
+  d.objs = d.objs.filter(o => o.id !== 'g3');
+  ok(C.cercar(d, 'k', 'fb'), 'a dona cerca o próprio forte, que Aldar ocupa');
+  const q = C.cair(d, 'k');
+  eq([q.libertou, q.sairam, 'ocup' in d.objs.find(o => o.id === 'k'), 'ocup' in d.objs.find(o => o.id === 'r2')], [true, ['g5'], false, false], 'a queda que liberta: o forte e a região voltam para o Vale; a guarnição de Aldar sai');
+  const dl = JSON.parse(j(m0)); C.cercar(dl, 'k', 'fa');
+  ok(C.levantar(dl, 'k') && !('cerco' in dl.objs.find(o => o.id === 'k')) && !C.levantar(dl, 'k'), 'levantar: o cerco acaba (a reserva enche de novo)');
+  // a milícia: sem ninguém dentro
+  const dm = JSON.parse(j(m0)); C.cercar(dm, 'k', 'fa'); dm.objs = dm.objs.filter(o => o.id !== 'g5'); dm.objs.find(o => o.id === 'k').estr.mil = 60;
+  const id = C.chamarMilicia(dm, 'k'), mm = N.normalizarMapa(dm), gm = mm.objs.find(o => o.id === id);
+  eq([gm.nome, gm.fac, gm.tipo, gm.x === mm.objs.find(o => o.id === 'k').x, gm.exe.unid.map(u => [u.nome, u.tropas]), gm.exe.mant, C.cercoDe(mm, mm.objs.find(o => o.id === 'k')).dentro], ['Milícia de Forte de Pedra', 'fb', 'exercito', true, [['Milícia', 60]], 0, [id]],
+    'a milícia vira um exército do dono, no lugar (as tropas da fortificação), e fica dentro');
+  const d0 = JSON.parse(j(m0)); C.cercar(d0, 'k', 'fa'); d0.objs.find(o => o.id === 'k').estr.mil = 0;
+  ok(C.chamarMilicia(d0, 'k') === null, 'sem milícia, nada');
+  // o cerco na batalha
+  const db = JSON.parse(j(m0)); C.cercar(db, 'k', 'fa');
+  const p = db.objs.find(o => o.id === 'g6'); p.fac = 'fb'; const c2 = N.centroHex(db, N.hexDe(db, db.objs.find(o => o.id === 'k').x, db.objs.find(o => o.id === 'k').y).q, N.hexDe(db, db.objs.find(o => o.id === 'k').x, db.objs.find(o => o.id === 'k').y).r + 2); p.x = c2.x; p.y = c2.y;
+  const mb = N.normalizarMapa(db), fim = v => ({ vence: v, tam: 2, como: 'dados' });
+  eq([C.cercoNaBatalha(mb, { a: 'g2', b: 'g5', fim: fim('a'), estr: { m: 'k', lado: 'b' } }), C.cercoNaBatalha(mb, { a: 'g2', b: 'g5', fim: fim('b'), estr: { m: 'k', lado: 'b' } }),
+    C.cercoNaBatalha(mb, { a: 'g6', b: 'g2', fim: fim('a'), estr: null }), C.cercoNaBatalha(mb, { a: 'g6', b: 'g2', fim: fim('b'), estr: null }), C.cercoNaBatalha(mb, { a: 'g2', b: 'g5', fim: { vence: null, tam: 0 }, estr: { m: 'k', lado: 'b' } }),
+    C.cercoNaBatalha(mb, { a: 'g2', b: 'g5', fim: fim('a'), estr: null }), C.cercoNaBatalha(mb, { a: 'g4', b: 'g2', fim: fim('a'), estr: null })],
+    [{ tipo: 'queda', m: 'k', fac: 'fa', dono: 'fb', sairam: ['g5'] }, null, { tipo: 'socorro', m: 'k', fac: 'fa', dono: 'fb' }, null, null, null, null],
+    'na batalha: quem cerca vence o assalto (a fortificação do lugar), a queda; quem está dentro resiste, nada; o socorro de fora vence quem cerca, o cerco acaba; perdendo, nada; sem vencedor, nada; sem a fortificação, nada; quem não é do dono vence quem cerca, nada');
+  // as notícias
+  const mn = N.normalizarMapa(db);
+  eq([C.noticiaCerco(mn, 'k', 'fa').tit, C.noticiaQueda(mn, 'k', 'rendicao').txt.split(' (')[0], C.noticiaQueda(mn, 'k', 'assalto').tit, C.noticiaFimDoCerco(mn, 'k', 'socorro').txt.split(' (')[0], C.noticiaFimDoCerco(mn, 'k', 'saiu').tit],
+    ['Aldar cerca Forte de Pedra', 'Sem comida, Forte de Pedra se rende para Aldar, depois do cerco às tropas de Vale', 'Forte de Pedra cai', 'Com o socorro que chegou, Forte de Pedra se livra do cerco de Aldar', 'Acaba o cerco de Forte de Pedra'], 'as notícias');
+}
+{ // a projeção
+  const d = JSON.parse(j(mundoCerco())); C.cercar(d, 'k', 'fa'); d.objs.find(o => o.id === 'k').cerco.res = 21;
+  const pj = mut => { const x = JSON.parse(j(d)); mut(x); return N.projetar(N.normalizarMapa(x)).objs.find(o => o.id === 'k').cerco; };
+  eq([pj(() => {}), pj(x => { x.faccoes.find(f => f.id === 'fa').jog = true; }), pj(x => { x.faccoes.find(f => f.id === 'fb').jog = true; }), pj(x => { x.faccoes.find(f => f.id === 'fd').jog = true; }),
+    pj(x => { x.faccoes.find(f => f.id === 'fa').oculta = true; })],
+    [{ fac: 'fa', d: 150 }, { fac: 'fa', d: 150, res: 21, hpMax: 100, hp: 100 }, { fac: 'fa', d: 150, res: 21, hpMax: 100, hp: 100 }, { fac: 'fa', d: 150 }, { fac: null, d: 150 }],
+    'a projeção: quem cerca e desde quando; a reserva e a muralha só quando a facção dos jogadores cerca ou é cercada; de uma facção escondida, sem ela');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

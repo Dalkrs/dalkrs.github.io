@@ -131,7 +131,7 @@
       }
       {
         const f = d.fort, base = f ? Math.round(f.def * (f.hpMax ? Math.max(0, Math.min(1, f.hp / f.hpMax)) : 1)) : 0;
-        itens.estrutura = [p('Quem defende uma fortificação (escolhida no alto da janela) ganha a DEF dela. Danificada, ela protege menos: as máquinas de cerco do outro lado tiram do HP dela depois da batalha. As construções de defesa do assentamento (a Paliçada, a Muralha) somam na DEF. Vale no Choque (e na resumida).'),
+        itens.estrutura = [p('Quem defende uma fortificação (escolhida no alto da janela) ganha a DEF dela. Danificada, ela protege menos: as máquinas de cerco do outro lado tiram do HP dela depois da batalha e em cada dia de cerco. As construções de defesa do assentamento (a Paliçada, a Muralha) somam na DEF. Vale no Choque (e na resumida).'),
           ex(f ? nome(f.lado) + ' defende ' + f.nome + ': DEF ' + f.def + (f.cons ? ' (' + f.cons + ' das construções)' : '') + (f.hpMax && f.hp < f.hpMax ? ', com ' + f.hp + ' de ' + f.hpMax + ' de HP: protege ' + base : '') +
             ' → ' + sinal(f.lado === 'a' ? vA('estrutura') : vB('estrutura')) + '.' : 'ninguém defende uma fortificação.'),
           conta('Bônus = DEF × (HP ÷ HP máx.), arredondado.', 'A DEF é a da fortificação mais a defesa das construções do assentamento (até 20).')];

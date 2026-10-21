@@ -261,13 +261,20 @@
   // (parte 3c) a notícia no rascunho do Jornal (o Desfazer do passo de antes tira, o Refazer põe de novo) → o texto do aviso.
   // (lote 12, parte 12b) r também pode ser uma lista de notícias: vão todas juntas (ou nenhuma, sem lugar para todas)
   function porNoJornal(pre, r) {
+    const x = noticiasDoPasso(pre, r);
+    if (x.posto) app().foraDoPasso({ desfazer: x.tirar, refazer: x.por });
+    return x.texto;
+  }
+  /* (lote 12, parte 12e) as notícias no rascunho do Jornal, para quem já tem o seu "fora do passo" (um só por passo): põe
+     agora e devolve { posto, texto, por, tirar } — quem chama junta o tirar e o por no Desfazer e no Refazer dele */
+  function noticiasDoPasso(pre, r) {
     const A = app(), lista = Array.isArray(r) ? r : [r], base = pre + Date.now().toString(36), MAXM = ((window.JornalNucleo && window.JornalNucleo.MAX) || {}).materias || 30;
     const mats = lista.map((x, i) => ({ id: base + (i ? '_' + i : ''), tit: x.tit, txt: x.txt, ass: '', dest: false })), ids = new Set(mats.map(x => x.id)), varias = mats.length > 1;
     let cheio = false;
     const por = () => A.mudarRascunhoJornal(jx => { if (jx.materias.some(x => ids.has(x.id))) return false; if (jx.materias.length + mats.length > MAXM) { cheio = true; return false; } for (const x of mats) jx.materias.push(Object.assign({}, x)); });
     const tirar = () => A.mudarRascunhoJornal(jx => { const n0 = jx.materias.length; jx.materias = jx.materias.filter(x => !ids.has(x.id)); if (jx.materias.length === n0) return false; });
-    if (por()) { A.foraDoPasso({ desfazer: tirar, refazer: por }); return varias ? ' As ' + mats.length + ' notícias foram para o rascunho do Jornal.' : ' A notícia foi para o rascunho do Jornal.'; }
-    return (varias ? ' As notícias não foram para o Jornal' : ' A notícia não foi para o Jornal') + (cheio ? (varias ? ': o rascunho só tem lugar para ' + MAXM + ' matérias.' : ': o rascunho já tem ' + MAXM + ' matérias.') : '.');
+    if (por()) return { posto: true, por, tirar, texto: varias ? ' As ' + mats.length + ' notícias foram para o rascunho do Jornal.' : ' A notícia foi para o rascunho do Jornal.' };
+    return { posto: false, por, tirar, texto: (varias ? ' As notícias não foram para o Jornal' : ' A notícia não foi para o Jornal') + (cheio ? (varias ? ': o rascunho só tem lugar para ' + MAXM + ' matérias.' : ': o rascunho já tem ' + MAXM + ' matérias.') : '.') };
   }
   // os campos de uma data do mundo (o ano, o mês e o dia) e a leitura deles (null sem o ano)
   function campoData(k, dt, meses) {
@@ -851,5 +858,5 @@
   }
 
   window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana, janelaMotivoGuerra, janelaGuerra, janelaPaz,
-    porNoJornal, caixaJornal };                                  // (lote 11, parte 4a) para as intrigas (mundo/intrigas-painel.js)
+    porNoJornal, noticiasDoPasso, caixaJornal };                                  // (lote 11, parte 4a) para as intrigas (mundo/intrigas-painel.js)
 })();

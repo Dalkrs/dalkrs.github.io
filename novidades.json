@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-7",
+      "data": "2026-10-21",
+      "titulo": "O cerco",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o cerco — um exército perto de um lugar com fortificação de outra facção tem “Cercar…” (no exército e no lugar). A fortificação ganha a reserva de comida da cidade, em dias, e a milícia, que defende quando não há exército dentro."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: no “Próximo dia”, o cerco tem as linhas dele: as máquinas de fora batem na muralha, as de dentro atiram (um d20 contra o acerto de cada uma, numa unidade sorteada de quem cerca), a reserva cai e alimenta quem está dentro, e o desgaste do cerco vale para os dois lados. Sem comida e com a moral baixa, vem a proposta de rendição."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Assaltar…” abre a batalha contra quem está dentro, com a fortificação (sem ninguém, a milícia vira um exército no lugar). Vencendo, o lugar cai: fica ocupado, com a região, e quem estava dentro sai do mapa. O socorro que vence quem cerca acaba com o cerco; “Levantar o cerco…” o encerra à mão."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o lugar cercado aparece com um anel tracejado no mapa, e a leitura dele diz quem cerca e desde quando — quando é a sua facção, também a reserva de comida e a muralha."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-6",
       "data": "2026-10-21",
       "titulo": "As máquinas de cerco",

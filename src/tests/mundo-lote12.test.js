@@ -21,6 +21,12 @@
 //     fortificação, quantas de cada tipo (zero tira); o resumo e a linha do exército; na batalha, as máquinas de cada lado
 //     (as da fortificação, com quem defende), o bônus na Abertura e na resumida, o "?" e o dano na fortificação, no
 //     depois; tirar um tipo em uso (pergunta antes; as máquinas saem junto; Desfazer) e "Voltar às de começo"; no celular.
+//   · (parte 12e, SO=cerco) o cerco: "Cercar…" no exército (a janela: quem cerca, quem está dentro, a guerra, a notícia),
+//     o cerco no exército, no lugar (a reserva e a milícia da fortificação) e na aba Guerra; o anel no mapa; o dia (as
+//     máquinas de fora, os tiros de dentro com o dado, a reserva; desmarcar esmaece; aplicar e Desfazer); o assalto (a
+//     batalha com a fortificação; a queda no depois: o lugar e a região ocupados, quem estava dentro sai; Desfazer); a
+//     milícia que vira exército; a rendição no dia; o fim sem ninguém cercando; "Levantar o cerco…"; quem joga (o anel, a
+//     leitura e os números da facção deles); no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -496,7 +502,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await A(L, () => document.querySelector('#pane [data-k="o:g2:u:u2:maq"]').scrollIntoView({ block: 'center' })); await espera(150); await semAvisos(L); await foto('l12d-unidade');
     // na fortificação
     await selecionar('k5');
-    ok(/^Máquinas da fortificação \(entram na batalha de quem defende\)/.test(await tx('o:k5:estr-maq')), 'a fortificação tem as máquinas dela: ' + await tx('o:k5:estr-maq'));
+    ok(/^Máquinas da fortificação \(atiram em quem cerca e entram na batalha de quem defende\)/.test(await tx('o:k5:estr-maq')), 'a fortificação tem as máquinas dela: ' + await tx('o:k5:estr-maq'));
     await esc('o:k5:estr-maq:catapulta', '1'); await esc('o:k5:estr-maq:' + bal, '1');
     const maqF = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === 'k5').estr.maq || null)));
     ok(j(await maqF()) === j({ catapulta: 1, [bal]: 1 }) && await rot() === 'mudar as máquinas da fortificação', 'a fortificação com 1 Catapulta e 1 Balista');
@@ -527,8 +533,9 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await naBatalha('gb:depois');
     const dep = await textoDe(L, 'dialog.gb [data-k="gb:dep:estr"]');
     ok(fim && fim.vence === 'a' && dep.toLowerCase() === ('Fortificação: Muralhas HP 100 → ' + (100 - dano) + ' de 100 (dano ' + dano + ')').toLowerCase(), 'no depois, o dano na fortificação: 2 × 5 + o tamanho da vitória (' + dano + '): ' + dep);
-    await naBatalha('gb:fechar');
-    await A(L, () => { if (document.querySelector('dialog.gb[open]')) document.querySelector('dialog.gb').close(); }); await espera(250);
+    // (a batalha não fica aberta: recomeçar e fechar)
+    await naBatalha('gb:voltar'); await naBatalha('gb:recomecar'); await naBatalha('gb:fechar');
+    ok(!(await A(L, () => !!window.MundoGuerraPainel.batalha)), '(a batalha não fica guardada)');
     // tirar um tipo em uso: pergunta antes; as máquinas saem junto; Desfazer
     await aba(L, 'guerra');
     await botao(L, 'gu:maq:' + bal + ':x');
@@ -557,6 +564,175 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await campo(L, 'gu:maq:' + bal).scrollIntoViewIfNeeded();
     ok(await A(L, () => { const p = document.getElementById('pane'); return p.scrollWidth <= p.clientWidth + 1; }), 'no celular, as máquinas cabem no painel');
     await semAvisos(L); await foto('l12d-maquinas-celular');
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  if (parte('cerco')) await passo('o cerco', async () => {
+    const selecionar = async id => { await A(L, x => __mundo.App.selecionar(x ? [x] : []), id); await espera(250); };
+    const tx = k => textoDe(L, '#pane [data-k="' + k + '"]');
+    const esc = async (k, v) => { const c = campo(L, k); await c.fill(v); await c.press('Enter'); await espera(220); };
+    const rot = () => A(L, () => __mundo.App.rotuloDesfazer());
+    const desfazer = async () => { await A(L, () => __mundo.App.desfazer()); await espera(350); };
+    const obj = id => A(L, x => { const o = __mundo.App.mapa.objs.find(q => q.id === x); return o ? JSON.parse(JSON.stringify(o)) : null; }, id);
+    const d20 = k => (k - 0.5) / 20, d100 = k => (k - 0.5) / 100;
+    const dados = v => A(L, v => { let i = 0; __mundo.App.rng = () => v[i++ % v.length]; }, v);
+    const gb = k => L.F.locator('dialog.gb [data-k="' + k + '"]');
+    const naBatalha = async k => { await gb(k).first().click(); await espera(260); };
+    const bat = () => A(L, () => { const b = window.MundoGuerraPainel.batalha; return b ? JSON.parse(JSON.stringify(b)) : null; });
+    const comoJogador = async sim => { await A(L, x => { __mundo.App.comoJogador = x; __mundo.App.emit('muda', { origem: 'fora' }); }, sim); await espera(400); };
+    const diaDaCampanha = async () => { await A(L, () => { window.MundoGuerraPainel.proporMantimentos(1); }); await L.F.waitForSelector('dialog.dia-dl[open]'); await espera(150); };
+    const ld = k => textoDe(L, 'dialog.dia-dl[open] [data-k="' + k + '"]');
+    // o começo: sem ocupação nem cerco; a Vanguarda (de Aldar, 150 Sapadores com 2 Trabucos) no Vale Fundo; no hexágono ao
+    // lado, o Forte de Pedra (do Vale: Muralhas DEF 3, HP 100, 2 Catapultas) com a Guarda do Vale dentro (200 Piqueiros)
+    await A(L, () => __mundo.App.mudar('o cerco: o começo', m => {
+      const N = __mundo.N;
+      m.objs = m.objs.filter(o => !['r4', 'k4', 'g4', 'cv', 'g5', 'k5', 'kc', 'gc'].includes(o.id) && !/^Milícia/.test(o.nome || ''));
+      for (const o of m.objs) { if (o.k === 'r') delete o.ocup; if (o.k === 'm') delete o.cerco; }
+      if (m.guerra) { delete m.guerra.pres; delete m.guerra.maqs; }
+      for (const f of m.faccoes) { delete f.jog; f.oculta = false; }
+      const g2 = m.objs.find(o => o.id === 'g2');
+      g2.x = 640; g2.y = 200;
+      g2.exe = { moral: 6, mant: 10, unid: [{ id: 'u2', nome: 'Sapadores', tropas: 150, maq: { trabuco: 2 } }] };
+      const h = N.hexDe(m, g2.x, g2.y), c = N.centroHex(m, h.q + 1, h.r);
+      m.objs.push(Object.assign(N.objNovo('m', { x: c.x, y: c.y }), { id: 'kc', nome: 'Forte de Pedra', estr: { nome: 'Muralhas', def: 3, hp: 100, hpMax: 100, maq: { catapulta: 2 } } }),
+        Object.assign(N.objNovo('g', { x: c.x, y: c.y, sigla: 'GV' }), { id: 'gc', nome: 'Guarda do Vale', tipo: 'exercito', fac: 'fb', exe: { moral: 6, mant: 10, unid: [{ id: 'uc', nome: 'Piqueiros', tropas: 200 }] } }));
+    })); await espera(300);
+    const hoje = await A(L, () => __mundo.App.mapa.cal.dia), hojeTxt = await A(L, x => window.MundoPainel.kit.dataTxt(__mundo.App.mapa, x), hoje);
+    // "Cercar…" no exército
+    await aba(L, 'selecao'); await selecionar('g2');
+    ok(await tx('o:g2:cercar:kc') === 'Cercar Forte de Pedra…', 'no exército perto do forte do Vale: "Cercar Forte de Pedra…"');
+    await botao(L, 'o:g2:cercar:kc'); await L.F.waitForSelector('dialog.ce-dl[open]');
+    const ce = k => textoDe(L, 'dialog.ce-dl[open] [data-k="' + k + '"]');
+    ok(await ce('ce:txt') === 'Quem cerca: Vanguarda. Dentro: Guarda do Vale. A reserva da cidade: 30 dias; a muralha: 100 de 100. A cada “Próximo dia”, as máquinas de fora batem na muralha, as de dentro atiram, a reserva cai 1 e o desgaste do cerco vale para os dois lados. Dá para desfazer.'
+      && await ce('ce:guerra') === 'Aldar e Vale estão em guerra.' && await L.F.locator('dialog.ce-dl[open] [data-k="ce:fac"]').count() === 0 && await L.F.locator('dialog.ce-dl[open] [data-k="ce:jornal"]').count() === 1,
+      'a janela "Cercar…": quem cerca, quem está dentro, a reserva e a muralha, o que acontece a cada dia; estão em guerra; a notícia (desmarcada): ' + await ce('ce:txt'));
+    await semAvisos(L); await foto('l12e-cercar');
+    await L.F.click('dialog.ce-dl[open] [data-k="ce:ok"]'); await espera(350);
+    ok(j((await obj('kc')).cerco) === j({ fac: 'fa', d: hoje, res: 30 }) && await rot() === 'cercar Forte de Pedra' && /Aldar cerca Forte de Pedra\./.test(await avisos(L)), 'cercar: o cerco no lugar (Aldar, hoje, a reserva cheia), com o aviso');
+    ok(await tx('o:g2:cerco-txt') === 'Cercando Forte de Pedra desde ' + hojeTxt + ' (desde hoje) · a reserva de lá: 30 de 30 dias · a muralha: 100 de 100.' && await tx('o:g2:cerco-quem') === 'Quem cerca: Vanguarda. Dentro: Guarda do Vale.'
+      && await campo(L, 'o:g2:assaltar').count() === 1 && await campo(L, 'o:g2:cercar:kc').count() === 0, 'no exército: o cerco dele, com Assaltar e Levantar: ' + await tx('o:g2:cerco-txt'));
+    await selecionar('gc');
+    ok(/^Cercado em Forte de Pedra por Aldar \(desde hoje\): não reabastece; quando os mantimentos acabam, come da reserva da cidade \(30 dias\)\.$/.test(await tx('o:gc:cercado')), 'em quem está dentro: cercado, e a reserva: ' + await tx('o:gc:cercado'));
+    // no lugar: o cerco, a reserva e a milícia
+    await selecionar('kc');
+    ok(await tx('o:kc:cerco-txt') === 'Cercado por Aldar desde ' + hojeTxt + ' (desde hoje) · reserva: 30 de 30 dias · a muralha: 100 de 100.' && await A(L, () => [document.querySelector('#pane [data-k="o:kc:estr-res"]').value, document.querySelector('#pane [data-k="o:kc:estr-mil"]').value].join()) === '30,100',
+      'no lugar: o cerco, e a reserva (30) e a milícia (100) da fortificação');
+    await esc('o:kc:estr-mil', '60');
+    ok((await obj('kc')).estr.mil === 60 && await rot() === 'mudar a milícia', 'a milícia: 60');
+    await esc('o:kc:estr-mil', '100');
+    ok(!('mil' in (await obj('kc')).estr), 'de volta a 100 (a de começo), o número sai');
+    await A(L, () => document.querySelector('#pane [data-k="o:kc:cerco"]').scrollIntoView({ block: 'start' })); await espera(150); await semAvisos(L); await foto('l12e-lugar');
+    // o anel no mapa e a aba Guerra
+    ok(await A(L, () => { const c = document.querySelector('#mundo g.obj[data-id="kc"] circle.cerco-anel'); return c ? c.getAttribute('stroke') : null; }) === '#3f7fbf', 'no mapa: o anel tracejado na cor de quem cerca');
+    await aba(L, 'guerra');
+    ok(/^Forte de Pedra Cercado por Aldar desde /.test(await tx('gu:cerco:kc')), 'na aba Guerra, os cercos: ' + await tx('gu:cerco:kc'));
+    // o dia: as máquinas de fora, os tiros de dentro (13: acerta os Sapadores; 5: erra) e a reserva
+    await aba(L, 'selecao'); await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await dados([d20(13), 0, d20(5), d20(17)]);                  // (4 números: sem o sorteio fixo, a conta refeita mudaria)
+    await diaDaCampanha();
+    ok(await ld('dia:cmaq-linha:kc') === 'As máquinas de fora batem na muralha: 100 → 92 (8 por dia).' && await ld('dia:ctiro-linha:kc') === 'Tiros de dentro: Catapulta ×2 (acerto 11): saiu 13, 5 — 1 acertou. No alvo: Sapadores −5 HP.'
+      && await ld('dia:cres:kc') === 'A reserva da cidade: 30 → 29 dias (alimenta quem está dentro quando os mantimentos acabam).',
+      'no dia, o cerco: as máquinas de fora (2 Trabucos: 8), os tiros de dentro (o d20 de cada Catapulta) e a reserva: ' + await ld('dia:cerco:kc'));
+    ok(/^Tiros de dentro do cerco: −5 HP \(Sapadores \d+ → \d+\)\.$/.test(await ld('dia:tiros:g2')) && /· cercando Forte de Pedra$/.test(await textoDe(L, 'dialog.dia-dl[open] [data-k="dia:ex:g2"] .dia-cab small')) && await L.F.locator(dlg('[data-k="dia:reab-linha:gc"]')).count() === 0,
+      'no exército: os tiros que ele leva; quem está dentro não reabastece: ' + await ld('dia:tiros:g2'));
+    await L.F.locator(dlg('[data-k="dia:cerco:kc"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12e-dia');
+    await L.F.uncheck(dlg('[data-k="dia:ctiro:kc"]')); await espera(150);
+    ok(await A(L, () => document.querySelector('dialog.dia-dl[open] [data-k="dia:ctiro-linha:kc"]').classList.contains('nao')) && await ld('dia:ctiro-linha:kc') === 'Tiros de dentro: Catapulta ×2 (acerto 11): saiu 13, 5 — 1 acertou. No alvo: Sapadores −5 HP.'
+      && await ld('dia:tiros:g2') === 'Tiros de dentro do cerco: nenhum acertou, com o que está marcado.', 'desmarcados, os tiros esmaecem (o texto fica) e não acertam ninguém');
+    await L.F.check(dlg('[data-k="dia:ctiro:kc"]')); await espera(150);
+    ok(await ld('dia:ctiro-linha:kc') === 'Tiros de dentro: Catapulta ×2 (acerto 11): saiu 13, 5 — 1 acertou. No alvo: Sapadores −5 HP.', 'marcados de novo: os mesmos dados (o sorteio fica)');
+    const sap0 = (await obj('g2')).exe.unid[0].tropas;
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    const k1 = await obj('kc'), sap1 = (await obj('g2')).exe.unid[0].tropas;
+    ok(k1.estr.hp === 92 && k1.cerco.res === 29 && sap1 < sap0 - 4 && /Forte de Pedra: a muralha −8; 1 tiro de dentro acertou\./.test(await avisos(L)), 'aplicar: a muralha 92, a reserva 29, os Sapadores perdem (o aviso diz): ' + await avisos(L));
+    await desfazer();
+    ok((await obj('kc')).estr.hp === 100 && (await obj('kc')).cerco.res === 30, 'Desfazer: como estava');
+    // o assalto: a batalha com a fortificação; a queda no depois
+    await selecionar('kc');
+    await botao(L, 'o:kc:assaltar'); await L.F.waitForSelector('dialog.gb[open]');
+    const b0 = await bat();
+    ok(b0.a === 'g2' && b0.b === 'gc' && j(b0.estr) === j({ m: 'kc', lado: 'b' }), 'Assaltar: a batalha de quem cerca contra quem está dentro, com a fortificação: ' + j([b0.a, b0.b, b0.estr]));
+    await dados([d100(99), d100(1)]);
+    await naBatalha('gb:d100');
+    await naBatalha('gb:depois');
+    ok(await textoDe(L, 'dialog.gb [data-k="gb:dep:cerco-txt"]') === 'Forte de Pedra cai — fica ocupado por Aldar (e Vale Fundo também); saem do mapa: Guarda do Vale.' && await gb('gb:dep:cerco-x').isChecked() && !(await gb('gb:dep:cerco-jornal').isChecked()),
+      'no depois do assalto vencido: a queda (marcada) e a notícia (desmarcada): ' + await textoDe(L, 'dialog.gb [data-k="gb:dep:cerco"]'));
+    await gb('gb:dep:cerco').scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12e-queda');
+    await naBatalha('gb:aplicar'); await espera(250);
+    const kq = await obj('kc'), r2 = await obj('r2');
+    ok(j(kq.ocup) === j({ fac: 'fa', d: hoje }) && j(r2.ocup) === j({ fac: 'fa', d: hoje }) && !kq.cerco && !(await obj('gc')) && /Forte de Pedra caiu para Aldar\./.test(await avisos(L)),
+      'aplicar: o forte e o Vale Fundo ocupados por Aldar; a Guarda sai do mapa; o cerco acaba: ' + await avisos(L));
+    await desfazer();
+    ok(!!(await obj('kc')).cerco && !!(await obj('gc')) && !(await obj('r2')).ocup, 'Desfazer: o cerco, a Guarda e o Vale como estavam');
+    await selecionar('kc');
+    await botao(L, 'o:kc:assaltar'); await L.F.waitForSelector('dialog.gb[open]');
+    await dados([d100(99), d100(1)]);
+    await naBatalha('gb:d100'); await naBatalha('gb:depois');
+    await gb('gb:dep:cerco-x').uncheck(); await espera(120);
+    await naBatalha('gb:aplicar'); await espera(250);
+    ok(!!(await obj('kc')).cerco && !!(await obj('gc')) && !(await obj('kc')).ocup, 'a queda desmarcada: a batalha vale, o forte não cai');
+    await desfazer();
+    // a milícia: sem ninguém dentro
+    await A(L, () => __mundo.App.mudar('a Guarda sai', m => { m.objs = m.objs.filter(o => o.id !== 'gc'); })); await espera(300);
+    await selecionar('kc');
+    ok(await tx('o:kc:cerco-quem') === 'Quem cerca: Vanguarda. Dentro: ninguém — no assalto, a milícia (100 tropas) defende.', 'sem ninguém dentro: a milícia defende no assalto');
+    await botao(L, 'o:kc:assaltar'); await L.F.waitForSelector('dialog.mundo-dl[open]');
+    ok(/^Chamar a milícia de Forte de Pedra\? Ninguém de Vale está dentro: a milícia \(100 tropas\) defende\. Ela entra no mapa como um exército, “Milícia de Forte de Pedra”, e fica lá\./.test(await textoDe(L, 'dialog.mundo-dl[open]')), 'Assaltar sem ninguém dentro: pergunta antes de chamar a milícia');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await L.F.waitForSelector('dialog.gb[open]');
+    const mil = await A(L, () => { const g = __mundo.App.mapa.objs.find(o => /^Milícia de Forte de Pedra$/.test(o.nome || '')); return g ? { id: g.id, fac: g.fac, t: g.exe.unid[0].tropas } : null; });
+    ok(!!mil && mil.fac === 'fb' && mil.t === 100 && (await bat()).b === mil.id, 'a milícia vira um exército do Vale no forte (100 tropas), e a batalha é contra ela');
+    await naBatalha('gb:fechar'); await espera(200);
+    await desfazer(); await desfazer();
+    ok(!!(await obj('gc')) && !(await A(L, () => __mundo.App.mapa.objs.some(o => /^Milícia/.test(o.nome || '')))), 'Desfazer: sem a milícia, e a Guarda de volta');
+    // a rendição: a reserva acabou e a moral de quem está dentro chega a 2
+    await A(L, () => __mundo.App.mudar('sem comida', m => { m.objs.find(o => o.id === 'kc').cerco.res = 0; const g = m.objs.find(o => o.id === 'gc'); g.exe.mant = 0; g.exe.moral = 3; })); await espera(300);
+    await dados([d20(2)]);
+    await diaDaCampanha();
+    ok(await ld('dia:rend-linha:kc') === 'Rendição: Forte de Pedra se rende (sem comida, e a moral de quem está dentro em 2 ou menos) — fica ocupado por Aldar (e Vale Fundo também); saem do mapa: Guarda do Vale.'
+      && await L.F.locator(dlg('[data-k="dia:rend:kc"]')).isChecked() && await ld('dia:cres:kc') === 'A reserva da cidade: 0 → 0 dias: acabou.', 'no dia: a proposta da rendição (marcada): ' + await ld('dia:rend-linha:kc'));
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    ok(j((await obj('kc')).ocup) === j({ fac: 'fa', d: hoje }) && !(await obj('gc')) && /Forte de Pedra se rendeu\./.test(await avisos(L)), 'aplicar: o forte cai (rendição): ' + await avisos(L));
+    await desfazer(); await desfazer();
+    // ninguém cercando: o cerco acaba no dia
+    await A(L, () => __mundo.App.mudar('a Vanguarda sai', m => { m.objs.find(o => o.id === 'g2').x = 260; })); await espera(300);
+    await diaDaCampanha();
+    ok(await ld('dia:cfim-linha:kc') === 'O cerco de Forte de Pedra acaba: ninguém de Aldar cerca mais (a reserva enche de novo).' && await L.F.locator(dlg('[data-k="dia:cfim:kc"]')).isChecked(), 'ninguém cercando: o cerco acaba (marcado)');
+    await L.F.uncheck(dlg('[data-k="dia:cfim:kc"]')); await espera(120);
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    ok(!!(await obj('kc')).cerco, 'desmarcado, o cerco espera');
+    await diaDaCampanha();
+    await L.F.click(dlg('[data-k="dia:ok"]')); await espera(450);
+    ok(!(await obj('kc')).cerco && /O cerco de Forte de Pedra acabou\./.test(await avisos(L)), 'marcado, acaba');
+    await desfazer(); await desfazer(); await desfazer();
+    ok((await obj('g2')).x === 640 && !!(await obj('kc')).cerco, '(de volta: a Vanguarda colada, o cerco)');
+    // "Levantar o cerco…"
+    await selecionar('kc');
+    await botao(L, 'o:kc:levantar'); await L.F.waitForSelector('dialog.mundo-dl[open]');
+    ok(/^Levantar o cerco de Forte de Pedra\? Aldar deixa de cercar Forte de Pedra\. Os exércitos ficam onde estão, e a reserva da cidade enche de novo \(30 dias\)\. Dá para desfazer\./.test(await textoDe(L, 'dialog.mundo-dl[open]')), 'Levantar o cerco: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] [data-k="lev:ok"]'); await espera(350);
+    ok(!(await obj('kc')).cerco && await rot() === 'levantar o cerco' && /O cerco de Forte de Pedra acabou\./.test(await avisos(L)), 'levantar: o cerco acaba');
+    await desfazer();
+    // quem joga: o anel, a leitura e os números (só da facção deles)
+    await comoJogador(true);
+    await selecionar('kc');
+    ok(await textoDe(L, '#pane [data-k="ler:cerco"]') === 'Cercado por Aldar desde ' + hojeTxt + '.' && await A(L, () => !!document.querySelector('#mundo g.obj[data-id="kc"] circle.cerco-anel')), 'quem joga: o anel e "Cercado por Aldar desde…" (sem os números)');
+    await comoJogador(false);
+    await A(L, () => __mundo.App.mudar('Aldar dos jogadores', m => { m.faccoes.find(f => f.id === 'fa').jog = true; })); await espera(300);
+    await comoJogador(true);
+    await selecionar('kc');
+    ok(await textoDe(L, '#pane [data-k="ler:cerco"]') === 'Cercado por Aldar desde ' + hojeTxt + '. Reserva de comida: 30 dias · a muralha: 100 de 100.', 'a facção dos jogadores cerca: a reserva e a muralha');
+    await semAvisos(L); await foto('l12e-jogador');
+    await comoJogador(false);
+    await desfazer();
+    // no celular: o lugar e o dia cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    await selecionar('kc');
+    ok(await A(L, () => { const p = document.getElementById('pane'); return p.scrollWidth <= p.clientWidth + 1; }), 'no celular, o cerco no lugar cabe no painel');
+    await A(L, () => __mundo.App.selecionar([])); await espera(150);
+    await diaDaCampanha();
+    ok(await A(L, () => { const d = document.querySelector('dialog.dia-dl[open]'); return d.scrollWidth <= d.clientWidth + 1 && d.getBoundingClientRect().width <= window.innerWidth; }), 'no celular, o dia com o cerco cabe');
+    await L.F.locator(dlg('[data-k="dia:cerco:kc"]')).scrollIntoViewIfNeeded(); await semAvisos(L); await foto('l12e-dia-celular');
+    await L.F.click(dlg('[data-k="dia:nao"]')); await espera(200);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 
