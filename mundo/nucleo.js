@@ -2456,10 +2456,49 @@
     }
   }
 
-  function normGuerra(v) {
+  function normGuerra(v, terrenos, nMeses) {
     if (!ehObj(v)) return null;
     const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
-    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length ? g : null;
+    // (lote 12, parte 12a) as regras da campanha e a forragem (só quando há: o mapa de antes fica igual)
+    const regras = normRegrasCampanha(v.regras, terrenos, nMeses);
+    if (regras) g.regras = regras;
+    const forr = normForragem(v.forr);
+    if (forr.length) g.forr = forr;
+    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr ? g : null;
+  }
+  /* (lote 12, parte 12a) As regras da campanha (o mestre muda; sem elas, as de começo): teto (os dias de comida que o
+     exército leva ao se reabastecer), custo (quanto do recurso de comida da facção custa cada mantimento), forr (a % do
+     que ele come que colhe na terra inimiga ou sem dono), fome, terreno e inverno (a % das tropas que se perde por dia:
+     sem comida, em terreno duro e, a mais, no inverno), cerco (a % por dia de cerco, dos dois lados), duros (os terrenos
+     duros), meses (os meses de inverno; null: os da estação do calendário) e ocupar (os dias sem defensor para a
+     proposta de ocupação). */
+  const CAMPANHA_PADRAO = { teto: 10, custo: 1, forr: 50, fome: 2, terreno: 1, inverno: 1, cerco: 1, duros: ['mo', 'pa', 'de', 'ne', 'se', 'lv', 'tu', 'tc'], meses: null, ocupar: 3 };
+  const MAX_FORR = 500;
+  function normRegrasCampanha(v, terrenos, nMeses) {
+    if (!ehObj(v)) return null;
+    const P = CAMPANHA_PADRAO, pct = (x, p) => Math.round(limitar(num(x, p), 0, 100) * 10) / 10;
+    const ters = new Set((Array.isArray(terrenos) ? terrenos : TERRENOS_PADRAO).map(t => t.id)), n = Number.isInteger(nMeses) && nMeses > 0 ? nMeses : 12;
+    return { teto: inteiro(v.teto, P.teto, 1, 365), custo: Math.round(limitar(num(v.custo, P.custo), 0, 1000) * 100) / 100, forr: pct(v.forr, P.forr),
+      fome: pct(v.fome, P.fome), terreno: pct(v.terreno, P.terreno), inverno: pct(v.inverno, P.inverno), cerco: pct(v.cerco, P.cerco),
+      duros: (Array.isArray(v.duros) ? listaIds(v.duros, MAX_TER) : P.duros.slice()).filter(id => ters.has(id)),
+      meses: Array.isArray(v.meses) ? [...new Set(v.meses.map(x => inteiro(x, -1, -1, 999)).filter(x => x >= 0 && x < n))].sort((a, b) => a - b) : null,
+      ocupar: inteiro(v.ocupar, P.ocupar, 1, 365) };
+  }
+  /* A forragem que os exércitos fizeram, por região e por semana (a semana da economia tira da produção de comida da
+     região): [{ r, s, n }], uma linha por região e semana (as repetidas somam). */
+  function normForragem(v) {
+    const out = [], por = new Map();
+    for (const x of Array.isArray(v) ? v : []) {
+      if (!ehObj(x)) continue;
+      const r = idOk(x.r), s = inteiro(x.s, NaN, -1e6, 1e6), n = Math.round(limitar(num(x.n, 0), 0, 1e9) * 100) / 100;
+      if (!r || !Number.isFinite(s) || !(n > 0)) continue;
+      const k = r + '|' + s;
+      if (por.has(k)) { const y = por.get(k); y.n = Math.round((y.n + n) * 100) / 100; continue; }
+      if (out.length >= MAX_FORR) continue;
+      const y = { r, s, n };
+      por.set(k, y); out.push(y);
+    }
+    return out;
   }
   // as tropas do exército, o consumo de mantimentos por dia (o escolhido, ou um por cem soldados) e quantos dias duram
   const tropasDe = exe => (exe && Array.isArray(exe.unid) ? exe.unid.reduce((s, u) => s + (u.tropas || 0), 0) : 0);
@@ -2633,7 +2672,7 @@
     mapa.terrenos = normTerrenos(m.terrenos);
     mapa.hexes = normHexes(m.hexes, mapa.terrenos);
     mapa.pintura = normPintura(m.pintura, mapa.terrenos);
-    const guerra = normGuerra(m.guerra);                         // (lote 8, parte 6) os tipos de tropa, as batalhas, os hexágonos
+    const guerra = normGuerra(m.guerra, mapa.terrenos, mesesDe(cal).length);   // (lote 8, parte 6) os tipos de tropa, as batalhas, os hexágonos (lote 12: as regras da campanha, a forragem)
     if (guerra) mapa.guerra = guerra;
     const eco = normEco(m.eco, mapa.terrenos, mapa.guerra ? mapa.guerra.tipos.map(t => t.id) : [], cal);   // (lote 10) a economia do mundo (só quando há: o mapa de antes fica igual)
     if (eco) mapa.eco = eco;
@@ -2682,6 +2721,12 @@
     if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
     if (mapa.dipl) conferirDipl(mapa.dipl, facs, recIds, mapa.corte);   // (lote 11, parte 3a) as facções dos tratados e da opinião (3b: os recursos; 3c: a corte)
     if (mapa.intr) conferirIntr(mapa.intr, mapa);                // (lote 11, parte 4a) os donos dos segredos e quem sabe
+    if (mapa.guerra && mapa.guerra.forr) {                        // (lote 12, parte 12a) a forragem, só nas regiões que existem
+      const rs = new Set(mapa.objs.filter(o => o.k === 'r').map(o => o.id));
+      mapa.guerra.forr = mapa.guerra.forr.filter(x => rs.has(x.r));
+      if (!mapa.guerra.forr.length) delete mapa.guerra.forr;
+      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr) delete mapa.guerra;
+    }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2995,7 +3040,7 @@
     MIS_E, situacaoDaMissao,
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
-    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento,
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe,
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
@@ -3007,7 +3052,8 @@
       titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
       vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
-      segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA },
+      segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR, intrigas: MAX_INTRIGAS, passos: MAX_PASSOS, alvos: MAX_ALVOS, quemTrama: MAX_QUEM, segredosDaIntriga: MAX_SEG_INTRIGA,
+      forragem: MAX_FORR },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

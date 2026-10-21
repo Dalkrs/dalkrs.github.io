@@ -894,6 +894,24 @@ div.sem-in .tag { margin-left: auto; }
   .ig-alvo { padding: 6px; border-radius: 10px; border: 1px solid var(--line); }
 }
 .mundo-dl label.ig-fac > span { font-weight: 500; font-size: 12.5px; color: var(--fg-3); }
+/* (lote 12, parte 12a) o dia da campanha e as regras da campanha */
+dialog.mundo-dl.dia-dl, dialog.mundo-dl.cr-dl { width: min(600px, calc(100% - 24px)); }
+dialog.mundo-dl.dia-dl .pe, dialog.mundo-dl.cr-dl .pe { flex-wrap: wrap; }
+.dia-lista { display: grid; gap: 10px; }
+.dia-ex { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); }
+.mundo-dl label.op.dia-cab { padding: 6px 9px; }
+.dia-cab .tx { display: grid; min-width: 0; }
+.dia-cab .tx b { font-size: 13.5px; color: var(--fg); }
+.dia-cab .tx small { font-size: 12px; font-weight: 500; color: var(--fg-3); }
+.mundo-dl p.dia-come { font-size: 13px; color: var(--fg-2); margin: 0 0 0 4px; }
+.mundo-dl p.dia-come.aviso { color: var(--danger); }
+.mundo-dl label.op.dia-op { font-weight: 500; font-size: 13px; padding: 6px 9px; }
+.dia-ex.fora .dia-op, .dia-ex.fora .dia-come, .dia-ex.fora .dia-nota { opacity: .5; }
+.dia-nota { font-size: 12px; color: var(--fg-3); margin-left: 4px; }
+.cr-nums { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; align-items: end; }
+.cr-sec { display: grid; gap: 6px; }
+.cr-ops { display: flex; flex-wrap: wrap; gap: 6px; }
+.mundo-dl label.op.cr-op { padding: 5px 9px; font-size: 12.5px; font-weight: 500; }
 @media (max-width: 560px) {
   .ps-datas { grid-template-columns: 1fr; }
   dialog.mundo-dl.ps-dl .lin { flex-wrap: wrap; }
@@ -1307,18 +1325,19 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=34"></script>
+<script src="nucleo.js?v=35"></script>
 <script src="guerra.js?v=3"></script>
-<script src="reino.js?v=10"></script>
+<script src="reino.js?v=11"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
+<script src="campanha.js?v=1"></script>
 <script src="camadas.js?v=3"></script>
 <script src="tela.js?v=22"></script>
-<script src="painel.js?v=37"></script>
-<script src="guerra-painel.js?v=5"></script>
+<script src="painel.js?v=38"></script>
+<script src="guerra-painel.js?v=6"></script>
 <script src="guerra-ajuda.js?v=1"></script>
-<script src="reino-painel.js?v=12"></script>
+<script src="reino-painel.js?v=13"></script>
 <script src="corte-painel.js?v=5"></script>
 <script src="diplomacia-painel.js?v=4"></script>
 <script src="intrigas-painel.js?v=2"></script>

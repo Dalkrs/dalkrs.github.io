@@ -1423,6 +1423,22 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   **Quem joga** vê as mostradas: o texto para eles e o estado (o nome, quem trama, os alvos, o objetivo, os passos, os
   segredos, quem sabe e a nota não vão; o filtro de facção, para eles, vale só para os segredos). No mapa:
   `intr.intrigas` (`normIntr`; `MundoIntrigas.intrigasEmAndamento`, `mostrarIntrigas`, `facsDaIntriga`).
+- **O dia da campanha** (lote 12, parte 12a; `mundo/campanha.js`, `window.MundoCampanha`). O "Próximo dia" abre a
+  janela do dia com cada exército: **o que ele come** (sem a refeição inteira, o dia é de fome: a moral cai 1 e a fome
+  tira ATQ), o **reabastecimento** (na terra da facção dele ou de uma aliada — a relação Aliança ou um tratado de
+  aliança valendo —, do estoque do recurso de comida da facção: o que falta para a refeição e para o teto de 10 dias,
+  1 mantimento por 1 de comida; o estoque vai primeiro para quem vem antes no mapa), a **forragem** (na terra de uma
+  facção em guerra com a dele, sem dono ou, para o exército sem facção, em qualquer terra: metade do que ele come; a
+  produção de comida da região cai naquela semana, até a dela, na conta da dona) e o **desgaste** (a % das tropas por
+  dia: sem comida 2%, em qualquer lugar; em terreno duro 1% e no inverno +1%, só fora das terras da facção e das
+  aliadas). Cada um tem a caixa: desmarcar refaz as contas (o estoque vai para quem vem depois); o exército desmarcado
+  fica como está; as linhas ficam no lugar (as que podem aparecer já aparecem); aplicar vale num passo de Desfazer (o
+  estoque, com o motivo no histórico da facção). Conta o dia que passou (de domingo para segunda, o domingo), e a prévia
+  da semana espera o dia da campanha. Na aba Guerra, as **regras da campanha** (o teto, o custo, a forragem, o
+  desgaste, os terrenos duros e os meses de inverno — de começo, os da estação do calendário, e a zona do evento
+  Inverno rigoroso), com "Voltar às de começo"; no exército, onde ele está e o que vale ali. No mapa: `guerra.regras`
+  (`normRegrasCampanha`, `CAMPANHA_PADRAO`) e `guerra.forr` (a forragem por região e semana, que sai ao fechar a
+  semana); nada disso vai para os jogadores.
 
 ### A Árvore (lote 6)
 
@@ -2581,7 +2597,16 @@ marcadas), a projeção (só as mostradas, com o texto e o estado) e a semana (a
 `mundo-lote11` com `SO=intrigas`, a intriga nova (os erros, quem trama, os alvos com "+ Alvo" e o ×, os passos, os
 segredos, quem sabe), a lista, "Usado nas intrigas", mudar e Desfazer, a prévia da semana (as caixas, aplicar, Desfazer
 junto), quem joga (com o filtro), "Os jogadores veem" no cartão, as encerradas, o filtro, tirar e o celular;
-`mundo-lote8.rede`, a intriga mostrada na projeção e na aba do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+`mundo-lote8.rede`, a intriga mostrada na projeção e na aba do jogador. No Lote 12, parte 12a (o dia da campanha),
+`lote12-nucleo` confere as regras da campanha normalizadas (os limites, os terrenos e os meses que existem; as de
+começo, com o inverno pela estação), a forragem guardada, onde cada exército está (casa, aliada pela relação e pelo
+tratado, inimiga, neutra, sem dono, alheia), o terreno duro e o inverno (o mês e a zona do evento), o dia da campanha
+(reabastecer até o teto, do estoque, na ordem; a forragem; comer; a fome; o desgaste só fora de casa para o terreno e
+o inverno; vários dias; as recusas), aplicar e a semana (a produção de comida forrageada cai; a forragem da semana sai
+ao fechar); `mundo-lote12` com `SO=dia`, as regras na aba Guerra (os erros, salvar, Desfazer, "Voltar às de começo"),
+onde está cada exército, a janela do dia (os textos, desmarcar refaz as contas, o desmarcado fica como está), aplicar e
+Desfazer, de domingo para segunda (o dia antes da semana), a forragem na prévia da semana e o celular; `mundo-guerra`, o
+dia da campanha sem forragem nem desgaste. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

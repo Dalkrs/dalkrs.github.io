@@ -59,6 +59,9 @@
   let quadro = 0, chaveRolagem = '', focarDepois = null, menu = null, arqModo = null, nomeNovo = '';
   let jsonArq = null, comoChip = null;
   const abertas = new Set();                      // janelas abertas (fecha a anterior ao abrir outra)
+  let propostas = null;                           // (lote 12) as propostas do tempo que passou (a fila), enquanto correm
+  // (lote 12) depois das propostas do tempo que passou (o dia da campanha antes da semana), ou já, sem nenhuma
+  const depoisDasPropostas = fn => { if (propostas) propostas.then(() => setTimeout(fn, 0)); else fn(); };
 
   /* ---------------- apoio ---------------- */
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto.
@@ -1901,7 +1904,7 @@
       if (confrontos.length) GP().ofertarBatalhas(confrontos, m.cal.dia);
       if (t.dias > 0) fila.push(() => GP().proporMantimentos(t.dias));
     }
-    if (fila.length) (async () => { for (const f of fila) { try { await f(); } catch (e) { console.error(e); } } })();
+    if (fila.length) propostas = (async () => { for (const f of fila) { try { await f(); } catch (e) { console.error(e); } } })().finally(() => { propostas = null; });
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }
@@ -3216,6 +3219,7 @@
   /* (lote 8, parte 6) as ferramentas do painel, para a guerra (mundo/guerra-painel.js) */
   const kit = { app: () => App, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
     irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; },
-    campoCor, lerNum, fmtCampo, mesmoMapa, bandeiraFac };          // (lote 10) a economia e a bandeira (mundo/reino-painel.js)
+    campoCor, lerNum, fmtCampo, mesmoMapa, bandeiraFac,           // (lote 10) a economia e a bandeira (mundo/reino-painel.js)
+    depoisDasPropostas };                                          // (lote 12) a semana espera o dia da campanha
   window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
 })();

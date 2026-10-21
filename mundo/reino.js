@@ -42,12 +42,15 @@
    aparecem na prévia, e as decisões do mestre (encerrar, renovar, tirar) valem junto com a semana.
    (parte 4b) As intrigas em andamento (mundo/intrigas.js) aparecem na prévia, só para o mestre; as que ele marca passam a
    ser vistas pelos jogadores junto com a semana.
+   (lote 12, parte 12a) A forragem dos exércitos de fora (mundo/campanha.js) tira da produção de comida da região na
+   semana em que aconteceu (até o que ela produz), na conta da dona.
    Roda no navegador (window.MundoReino) e no Node (testes). */
 (() => {
   'use strict';
   const NN = () => (typeof window !== 'undefined' && window.MundoNucleo) || (typeof require === 'function' ? require('./nucleo.js') : null);
   const DIP = () => (typeof window !== 'undefined' && window.MundoDiplomacia) || (typeof require === 'function' ? require('./diplomacia.js') : null);
   const INT = () => (typeof window !== 'undefined' && window.MundoIntrigas) || (typeof require === 'function' ? require('./intrigas.js') : null);
+  const CAMP = () => (typeof window !== 'undefined' && window.MundoCampanha) || (typeof require === 'function' ? require('./campanha.js') : null);
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const MAX_NIVEL = 10;                       // regiões dentro de regiões: até quantos níveis (o mesmo do núcleo)
   const MAX_CONTA = 800000;                   // a conta de uma região não passa de tantos hexágonos olhados (mapa enorme, grade miúda)
@@ -587,13 +590,27 @@
      vai de fato, e recusado), na ordem; envia e recebe: o que cada facção manda e recebe (já na conta do que fica; a falta
      é a da economia dela, antes deles); recusadas: também os ids do tributo e das trocas que o mestre desmarcou (não vão).
      vencem: os ids dos tratados que vencem nesta semana; motivos: os motivos de opinião que vencem nela ({ de, sobre, id,
-     txt, v }). (lote 11, parte 4b) intrigas: os ids das intrigas em andamento (o lembrete do mestre). */
+     txt, v }). (lote 11, parte 4b) intrigas: os ids das intrigas em andamento (o lembrete do mestre). (lote 12, parte
+     12a) forr: a forragem dos exércitos de fora nesta semana ({ r, fac, rec, n }: a produção de comida da região que caiu,
+     na conta da dona). */
   function semanaPrevia(m, clas, recusadas) {
     const N = NN(), e = ecoDe(m), pend = semanasPendentes(m);
     if (!e || !pend) return null;
     const n = e.sem, dias = diasDaSemana(m, n), rg = e.regras || {}, papel = new Map(e.rec.map(r => [r.id, r.papel || '']));
     const comida = r => papel.get(r) === 'comida', moeda = r => papel.get(r) === 'moeda';
-    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [], fluxos: [], vencem: [], motivos: [] };
+    const prod = producaoPorFaccao(m, clas).por, out = { n, de: dias.de, ate: dias.ate, pendentes: pend, fac: [], obras: [], cons: [], lembretes: [], guildas: [], fluxos: [], vencem: [], motivos: [], forr: [] };
+    // (lote 12, parte 12a) a forragem dos exércitos de fora: a produção de comida da região cai nesta semana (até o que
+    // ela produz), na conta da dona
+    const CA = CAMP(), rc = e.rec.find(r => r.papel === 'comida');
+    if (CA && rc) {
+      const fs = CA.forragemDaSemana(m, n);
+      for (const rid of Object.keys(fs)) {
+        const r = regiaoDe(m, rid), fid = r ? N.facDaRegiao(m, r) : null, tem = r ? Math.max(0, producaoPropria(m, r).total[rc.id] || 0) : 0, cai = arred2(Math.min(fs[rid], tem));
+        if (!fid || !prod[fid] || !(cai > 0)) continue;
+        prod[fid][rc.id] = arred2((prod[fid][rc.id] || 0) - cai);
+        out.forr.push({ r: rid, fac: fid, rec: rc.id, n: cai });
+      }
+    }
     const dono = o => { const r = N.regiaoEm(m, o.x, o.y); return r ? N.facDaRegiao(m, r) : null; };
     const semMoeda = new Set(), contas = [];
     for (const f of m.faccoes || []) {
@@ -620,7 +637,7 @@
       }
       const fica = {}, falta = {};
       for (const w of e.rec) { const v = b[w.id] || 0; if (v < 0) falta[w.id] = arred2(-v); if (v > 0) fica[w.id] = v; }
-      const tem = [est, p, manut, falta].some(x => Object.keys(x).length) || paradas.length;
+      const tem = [est, p, manut, falta].some(x => Object.keys(x).length) || paradas.length || out.forr.some(x => x.fac === f.id);
       contas.push({ id: f.id, est, prod: p, manut, fica, falta, exe, paradas, envia: {}, recebe: {}, tem });
       // as consequências (cada uma o mestre pode recusar)
       const fr = Object.keys(falta);
@@ -709,6 +726,7 @@
     }
     DIP().aplicarDecisoes(m, dipl, prev.de, prev.ate);             // (lote 11, parte 3b) encerrar, renovar, tirar o motivo
     prev.mostradas = INT().mostrarIntrigas(m, intr);               // (parte 4b) as intrigas que os jogadores passam a ver
+    if (ehObj(m.guerra) && Array.isArray(m.guerra.forr)) m.guerra.forr = m.guerra.forr.filter(x => x.s > prev.n);   // (lote 12) a forragem desta semana já contou
     e.sem = prev.n + 1;
     return prev;
   }

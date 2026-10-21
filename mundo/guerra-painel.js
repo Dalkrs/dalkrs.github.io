@@ -4,11 +4,16 @@
    marcador, as fases da frente, a leitura dos jogadores (só os nomes), a janela da batalha (a resumida no d100 e a
    detalhada no d20, em momentos, com o mestre mexendo em cada um) com o depois (a prévia, e aplicar num passo de
    desfazer), os exércitos que se encontram no caminho e os mantimentos de cada dia.
+   (lote 12, parte 12a) O dia da campanha: no "Próximo dia", a janela com cada exército — o que ele come, o
+   reabastecimento do estoque da facção (na terra dela e das aliadas), a forragem (na terra inimiga ou sem dono) e o
+   desgaste —, cada um com a caixa (desmarcar refaz as contas); na aba Guerra, as regras da campanha (os números, os
+   terrenos duros e os meses de inverno); no exército, onde ele está e o que vale ali.
    Usa as ferramentas do painel (MundoPainel.kit): nada aqui muda o mapa direto, tudo passa por App.mudar. */
 (() => {
   'use strict';
   const kit = () => window.MundoPainel.kit;
   const G = () => window.MundoGuerra;
+  const CA = () => window.MundoCampanha || null;          // (lote 12) a campanha: o dia, as regras
   const N = () => window.MundoNucleo;
   const app = () => kit().app();
   const NOME_HEX = { d: 'Destruído', c: 'Corrompido' };
@@ -75,8 +80,79 @@
         kit().icone(g, m), h('span', { class: 'tx' }, h('b', { text: kit().nomeDe(g, m) }), h('small', { text: resumoExercito(m, g) })),
         g.exe && !g.exe.pub && g.exe.fome ? h('span', { class: 'tag guerra', text: 'sem mantimentos' }) : null)))
       : nota('Nenhum exército no mapa. Ponha um grupo (ferramenta Grupo) e escolha o tipo Exército na seção dele.')));
+    if (CA()) out.push(secRegras(m));
     out.push(secTipos(m), secHexes(m), secHistorico(m));
     return out;
+  }
+
+  /* ---- (lote 12, parte 12a) as regras da campanha: o resumo e "Mudar as regras…" ---- */
+  const nomesMeses = m => N().mesesDe(m.cal).map((x, i) => String(x.nome || '').trim() || 'Mês ' + (i + 1));
+  function secRegras(m) {
+    const { h, botao, secao, linha, fmt } = kit(), rg = CA().regrasDe(m), ms = nomesMeses(m);
+    const duros = (m.terrenos || []).filter(t => rg.duros.includes(t.id)).map(t => t.nome), inv = rg.meses.map(i => ms[i]).filter(Boolean);
+    return secao('Regras da campanha',
+      h('p', { class: 'note', 'data-k': 'gu:regras', text: 'Reabastece até ' + rg.teto + (rg.teto === 1 ? ' dia' : ' dias') + ' de comida (cada mantimento custa ' + fmt(rg.custo, 2) + ' do estoque) · forragem: '
+        + fmt(rg.forr, 1) + '% do que come · desgaste por dia: sem comida ' + fmt(rg.fome, 1) + '%, em terreno duro ' + fmt(rg.terreno, 1) + '%, no inverno +' + fmt(rg.inverno, 1) + '% (o terreno e o inverno, só fora de casa).' }),
+      h('p', { class: 'note', 'data-k': 'gu:regras-onde', text: 'Terrenos duros: ' + (duros.join(', ') || 'nenhum') + '. Inverno: ' + (inv.join(', ') || 'nenhum mês') + ' e a zona do evento Inverno rigoroso.' }),
+      linha(botao('Mudar as regras…', () => janelaRegras(), { c: 'sm', k: 'gu:regras-mudar' })));
+  }
+  async function janelaRegras() {
+    const A = app(), m = A.mapa;
+    if (!m || !A.podeEditar() || !CA()) return;
+    const v = await dialogoRegras(m);
+    if (!v || !kit().mesmoMapa(m.id)) return;
+    if (v.comeco) {
+      if (A.mudar('voltar às regras de começo da campanha', d => { if (!d.guerra || !d.guerra.regras) return false; delete d.guerra.regras; }) !== false) kit().avisoDesfazer('As regras da campanha voltaram às de começo.');
+      return;
+    }
+    if (A.mudar('mudar as regras da campanha', d => { const g = guerraDe(d), ant = JSON.stringify(g.regras || null); g.regras = v.regras; if (JSON.stringify(v.regras) === ant) return false; }) !== false) kit().avisoDesfazer('As regras da campanha estão salvas.');
+  }
+  /* a janela das regras: os números, os terrenos duros e os meses de inverno → { regras } | { comeco: true } | null */
+  function dialogoRegras(m) {
+    const { h } = kit();
+    return new Promise(resolve => {
+      const rg = CA().regrasDe(m), proprias = !!(m.guerra && m.guerra.regras);
+      const num = (k, rot, v0, o) => { const i = h('input', { type: 'text', inputmode: 'decimal', 'data-k': 'cr:' + k, value: kit().fmtCampo(v0, 2), autocomplete: 'off' }); return { k, i, rot, o, el: h('label', null, rot, i) }; };
+      const campos = [num('teto', 'Teto (dias de comida)', rg.teto, { min: 1, max: 365, int: true }), num('custo', 'Custo de cada mantimento', rg.custo, { min: 0, max: 1000 }),
+        num('forr', 'Forragem (% do que come)', rg.forr, { min: 0, max: 100 }), num('fome', 'Sem comida (% por dia)', rg.fome, { min: 0, max: 100 }),
+        num('terreno', 'Terreno duro (% por dia)', rg.terreno, { min: 0, max: 100 }), num('inverno', 'Inverno (+% por dia)', rg.inverno, { min: 0, max: 100 })];
+      const caixas = (k, lista, marcados) => h('div', { class: 'cr-ops', 'data-k': 'cr:' + k }, lista.map(([id, nome]) => h('label', { class: 'op cr-op' }, h('input', { type: 'checkbox', value: String(id), 'data-k': 'cr:' + k + ':' + id, checked: marcados.includes(id) ? true : null }), h('span', { text: nome }))));
+      const duros = caixas('duros', (m.terrenos || []).map(t => [t.id, t.nome]), rg.duros), meses = caixas('meses', nomesMeses(m).map((n, i) => [i, n]), rg.meses);
+      const titulo = h('h2', { text: 'As regras da campanha' });
+      titulo.id = 'dl-cr-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bComeco = proprias ? h('button', { type: 'button', class: 'btn', 'data-k': 'cr:comeco', text: 'Voltar às de começo' }) : null;
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'cr:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'cr:ok', text: 'Salvar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: 'Valem para a proposta do "Próximo dia" (nada muda sem você aplicar). O terreno duro e o inverno só desgastam fora das terras da facção e das aliadas.' }),
+        h('div', { class: 'cr-nums' }, campos.map(c => c.el)),
+        h('div', { class: 'cr-sec' }, h('span', { class: 'ps-rot', text: 'Os terrenos duros' }), duros),
+        h('div', { class: 'cr-sec' }, h('span', { class: 'ps-rot', text: 'Os meses de inverno' }), meses),
+        err, h('div', { class: 'pe' }, bComeco, h('span', { class: 'esp' }), bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl cr-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('input', () => { err.textContent = ''; });
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const regras = Object.assign({}, rg);
+        for (const c of campos) {
+          const n0 = kit().lerNum(c.i.value);
+          if (!Number.isFinite(n0) || n0 < c.o.min || n0 > c.o.max || (c.o.int && !Number.isInteger(n0))) { err.textContent = c.rot + ': ' + (c.o.int ? 'um número inteiro' : 'um número') + ' de ' + c.o.min + ' a ' + c.o.max + '.'; c.i.focus(); return; }
+          regras[c.k] = n0;
+        }
+        regras.duros = [...duros.querySelectorAll('input:checked')].map(x => x.value);
+        regras.meses = [...meses.querySelectorAll('input:checked')].map(x => Number(x.value));
+        fim({ regras });
+      });
+      if (bComeco) bComeco.addEventListener('click', () => fim({ comeco: true }));
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      campos[0].i.focus();
+    });
   }
 
   /* ---- os tipos de tropa: a tabela do mestre (vazia no começo) ---- */
@@ -180,8 +256,10 @@
       campoNumero('o:' + id + ':mant', 'Mantimentos (comida na estrada)', e.mant, n => mudarObj(id, 'mudar os mantimentos', x => { x.exe.mant = n; if (n > 0) x.exe.fome = 0; }), { min: 0, max: 1e9 }),
       campoNumero('o:' + id + ':cons', 'Por dia', e.cons == null ? '' : e.cons, n => mudarObj(id, 'mudar o consumo', x => { x.exe.cons = n; }), { min: 1, max: 1e7, vazio: null, ph: String(Math.ceil(tr / 100) || 0) })));
     out.push(nota('Moral ' + e.moral + ': ' + textoMoral(e.moral) + '. ' + (cons > 0 ? 'Comem ' + fmt(cons, 0) + ' por dia' + (e.cons == null ? ' (um por cem soldados)' : '') + ': dá para ' + plural(dias, 'dia', 'dias') + '.' : 'Sem consumo.')
-      + (e.fome ? ' Sem mantimentos há ' + plural(e.fome, 'dia', 'dias') + ': a moral cai 1 por dia, e a fome tira ATQ nas batalhas.' : ' No "Próximo dia", vem a proposta de descontar; quando acabam, a moral cai e a fome tira ATQ.'),
+      + (e.fome ? ' Sem mantimentos há ' + plural(e.fome, 'dia', 'dias') + ': a moral cai 1 por dia, e a fome tira ATQ nas batalhas.' : ' No "Próximo dia", vem a proposta do dia da campanha; quando acabam, a moral cai e a fome tira ATQ.'),
       e.fome ? 'aviso' : null));
+    // (lote 12, parte 12a) onde ele está e o que vale ali no "Próximo dia"
+    if (CA()) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':campanha', text: textoOnde(m, o) }));
     // (lote 10, pente fino) a manutenção da economia é outra coisa: o que a facção paga por semana por este exército
     const Rn = window.MundoReino;
     if (Rn && m.eco && m.eco.on) {
@@ -192,6 +270,22 @@
     }
     return [secao('Exército', out), secHeroisDoExercito(o, m), secUnidades(o, m),
       linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o) }))];
+  }
+  // (lote 12, parte 12a) "Em Terra Alta, terra de Aldar: no "Próximo dia", reabastece do estoque de Aldar até 10 dias."
+  function textoOnde(m, g) {
+    const { achar, nomeDe, facDe, nomeFac, fmt } = kit(), C = CA(), rg = C.regrasDe(m), on = C.ondeEsta(m, g), r = on.r ? achar(m, on.r) : null;
+    const nf = id => { const f = id ? facDe(m, id) : null; return f ? nomeFac(f) : 'outra facção'; };
+    const ONDE = { casa: ', terra de ' + nf(on.dono), aliada: ', terra aliada (' + nf(on.dono) + ')', inimiga: ', terra inimiga (' + nf(on.dono) + ')', semdono: r ? ', sem dono' : '', alheia: ', terra de ' + nf(on.dono), neutra: ', terra neutra (' + nf(on.dono) + ')' };
+    const casa = C.REABASTECE.includes(on.tipo), partes = [];
+    if (casa) partes.push(C.recComida(m) && g.fac ? 'no "Próximo dia", reabastece do estoque de ' + nf(g.fac) + ' até ' + rg.teto + (rg.teto === 1 ? ' dia' : ' dias') : 'em casa (sem a economia ligada, sem estoque para reabastecer)');
+    else if (C.FORRAGEIA.includes(on.tipo) && rg.forr > 0) partes.push('colhe ' + fmt(rg.forr, 1) + '% do que come (forragem)');
+    else partes.push('vive do que leva');
+    if (!casa) {
+      const t = C.terrenoDuro(m, g, rg);
+      if (t && rg.terreno > 0) partes.push('terreno duro (' + t.nome + '): −' + fmt(rg.terreno, 1) + '% das tropas por dia');
+      if (rg.inverno > 0 && C.invernoEm(m, g.x, g.y, m.cal.dia, rg)) partes.push('inverno: −' + fmt(rg.inverno, 1) + '% por dia');
+    }
+    return (r ? 'Em ' + nomeDe(r, m) : 'Fora das regiões') + ONDE[on.tipo] + ': ' + partes.join(' · ') + '.';
   }
   /* ---- (lote 9) os heróis ----
      As fichas da mesa (os do grupo, os NPCs) que lutam junto: as do exército (exe.herois) e as que o mestre põe só numa
@@ -402,20 +496,103 @@
     const [a, b] = pares[0], ga = kit().achar(m, a), gb = kit().achar(m, b);
     if (ga && gb) A.toast('Exércitos frente a frente: ' + kit().nomeDe(ga, m) + ' e ' + kit().nomeDe(gb, m) + (pares.length > 1 ? ' (e mais ' + (pares.length - 1) + ' na aba Guerra)' : '') + '.', 'Abrir a batalha', () => abrirBatalha({ a, b }), 12000);
   }
-  // a proposta do "Próximo dia": descontar os mantimentos de cada exército (e a moral de quem ficou sem)
+  /* a proposta do "Próximo dia" — (lote 12, parte 12a) o dia da campanha: cada exército com o que come, o reabastecimento,
+     a forragem e o desgaste, cada um com a caixa (desmarcar refaz as contas); aplicar vale num passo de Desfazer */
   async function proporMantimentos(dias) {
-    const A = app(), m = A.mapa, props = G().mantimentosDoDia(m, dias);
-    if (!props.length) return;
-    const { fmt } = kit();
-    const linhas = props.map(p => [p.g, p.nome + ': ' + fmt(p.mant0, 0) + ' → ' + fmt(p.mant1, 0) + (p.fome1 > p.fome0 ? ' — acabou: moral ' + p.moral0 + ' → ' + p.moral1 + ', e a fome tira ATQ' : ' (' + (p.dura === 1 ? 'mais 1 dia' : 'mais ' + p.dura + ' dias') + ')')]);
-    const v = await kit().janela({ titulo: 'Os mantimentos ' + (dias > 1 ? 'destes ' + dias + ' dias' : 'do dia'), texto: 'Cada exército come pelo tamanho da tropa. Descontar? Desmarque quem não deve.', ok: 'Descontar', cancelar: 'Agora não',
-      campos: [{ id: 'quem', rotulo: 'Quem come', tipo: 'caixas', opcoes: linhas, valor: linhas.map(x => x[0]) }] });
-    if (!v) return;
-    const quem = new Set(Array.isArray(v.quem) ? v.quem : []), escolhidas = props.filter(p => quem.has(p.g));
-    if (!escolhidas.length) return;
-    if (A.mudar('os mantimentos do dia', d => {
-      for (const p of escolhidas) { const g = kit().achar(d, p.g); if (!g || !g.exe) continue; g.exe.mant = p.mant1; g.exe.fome = p.fome1; g.exe.moral = p.moral1; }
-    }) !== false) kit().avisoDesfazer('Mantimentos descontados: ' + escolhidas.map(p => p.nome).join(', ') + '.');
+    const A = app(), m = A.mapa, C = CA();
+    if (!m || !C) return;
+    const base = C.diaDaCampanha(m, dias, []);
+    if (!base.linhas.length) return;
+    // (o pior caso, sem reabastecer nem forragem: as linhas do desgaste que podem aparecer ficam no lugar desde o começo)
+    const pior = C.diaDaCampanha(m, dias, base.linhas.flatMap(L => ['reab:' + L.g, 'forr:' + L.g]));
+    const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec));
+    if (!res || !kit().mesmoMapa(m.id)) return;
+    let n = 0;
+    if (A.mudar('o dia da campanha', d => { n = C.aplicarDia(d, res); if (!n) return false; }) !== false && n) kit().avisoDesfazer(avisoDoDia(m, res));
+  }
+  const nomeComida = (m, rec) => (rec && m.eco ? (m.eco.rec.find(r => r.id === rec) || {}).nome || 'comida' : 'comida');
+  function avisoDoDia(m, res) {
+    const { plural, fmt } = kit(), ls = res.linhas.filter(L => !L.fora), perdas = ls.reduce((s0, L) => s0 + (L.desg ? L.desg.tropas0 - L.desg.tropas1 : 0), 0);
+    const gasto = Object.values(res.estoque).reduce((s0, E) => s0 + (E.de - E.para), 0), forr = ls.reduce((s0, L) => s0 + (L.forr ? L.forr.n : 0), 0);
+    return (res.dias > 1 ? 'Os ' + res.dias + ' dias da campanha' : 'O dia da campanha') + ': ' + ls.map(L => L.nome).join(', ') + '.'
+      + (gasto > 0 ? ' Saíram ' + fmt(gasto, 2) + ' ' + nomeComida(m, res.rec) + ' do estoque.' : '') + (forr > 0 ? ' Forragem: ' + plural(forr, 'mantimento', 'mantimentos') + '.' : '')
+      + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '');
+  }
+  /* a janela do dia: por exército, a caixa dele (desmarcado: fica como está) e as linhas — o que come; o reabastecimento,
+     a forragem e o desgaste, cada um com a caixa. As linhas ficam no lugar (as de base e as do pior caso); os números
+     acompanham as caixas. → a conta final (para MundoCampanha.aplicarDia) ou null */
+  function dialogoDia(m, base, pior, refazer) {
+    const { h, fmt, plural, achar, nomeDe, facDe, nomeFac } = kit(), C = CA();
+    return new Promise(resolve => {
+      const rg = base.regras, nomeR = nomeComida(m, base.rec);
+      const nomeF = id => { const f = id ? facDe(m, id) : null; return f ? nomeFac(f) : 'a facção'; }, nomeReg = id => { const r = id ? achar(m, id) : null; return r ? nomeDe(r, m) : ''; };
+      const ONDE = { casa: 'terra de ', aliada: 'terra aliada: ', inimiga: 'terra inimiga: ', alheia: 'terra de ', neutra: 'terra neutra: ' };
+      const ondeTxt = on => { const r = nomeReg(on.r); return (r ? 'em ' + r : 'fora das regiões') + (on.tipo === 'semdono' ? (r ? ', sem dono' : '') : ', ' + ONDE[on.tipo] + nomeF(on.dono)); };
+      const motivos = X => [X.dias.fome ? 'sem comida' + (base.dias > 1 ? ' em ' + plural(X.dias.fome, 'dia', 'dias') : '') : '', X.dias.terreno ? 'terreno duro: ' + X.ter : '', X.dias.inverno ? 'inverno' : ''].filter(Boolean).join(', ');
+      const acabam = X => { const l = X.unid.filter(u => u.acaba).map(u => u.nome); return l.length ? ' · ' + (l.length === 1 ? 'acaba ' : 'acabam ') + l.join(', ') : ''; };
+      let res = base;
+      const cxs = [], pintores = [];
+      const recusadas = () => cxs.filter(([, cb]) => !cb.checked).map(([id]) => id);
+      const blocoDe = B => {
+        const P = pior.linhas.find(x => x.g === B.g) || B, cb = h('input', { type: 'checkbox', 'data-k': 'dia:g:' + B.g, checked: true });
+        cxs.push(['g:' + B.g, cb]);
+        const come = h('p', { class: 'dia-come', 'data-k': 'dia:come:' + B.g });
+        const linha = (k, tem) => {
+          if (!tem) return null;
+          const x = h('input', { type: 'checkbox', 'data-k': 'dia:' + k + ':' + B.g, checked: true }), t = h('span');
+          cxs.push([k + ':' + B.g, x]);
+          return { el: h('label', { class: 'op dia-op', 'data-k': 'dia:' + k + '-linha:' + B.g }, x, t), t, x };
+        };
+        // (o reabastecimento: quem pode, mesmo sem nada hoje — o estoque pode ficar para ele quando outro é desmarcado)
+        const reab = linha('reab', !!(base.rec && B.fac && B.cons > 0 && C.REABASTECE.includes(B.onde.tipo))), forr = linha('forr', !!B.forr), desg = linha('desg', !!(B.desg || P.desg));
+        const el = h('div', { class: 'dia-ex', 'data-k': 'dia:ex:' + B.g },
+          h('label', { class: 'op dia-cab' }, cb, h('span', { class: 'tx' }, h('b', { text: B.nome }), h('small', { text: ondeTxt(B.onde) }))),
+          come, reab ? reab.el : null, forr ? forr.el : null, desg ? desg.el : null);
+        pintores.push(() => {
+          const L = res.linhas.find(x => x.g === B.g) || B, fora = !cb.checked, Q = fora ? B : L;
+          el.classList.toggle('fora', fora);
+          for (const l of [reab, forr, desg]) if (l) l.x.disabled = fora;
+          const dura = Q.cons > 0 ? Math.floor(Q.mant1 / Q.cons) : Infinity;
+          come.textContent = fora ? 'Fica como está: nada muda para ele hoje.' : 'Come ' + fmt(Q.cons, 0) + ' por dia: ' + fmt(Q.mant0, 0) + ' → ' + fmt(Q.mant1, 0)
+            + (dura === Infinity ? '' : dura > 0 ? ' (dá para mais ' + plural(dura, 'dia', 'dias') + ')' : Q.mant1 > 0 ? ' (não dá para mais um dia)' : ' (acabou)')
+            + (Q.fomeDias ? '; ' + plural(Q.fomeDias, 'dia', 'dias') + ' sem comida: moral ' + Q.moral0 + ' → ' + Q.moral1 + ', e a fome tira ATQ' : '') + '.';
+          come.classList.toggle('aviso', !fora && Q.fomeDias > 0);
+          if (reab) {
+            const X = (!fora && L.reab) || B.reab, E = res.estoque[B.fac];
+            reab.t.textContent = X ? 'Reabastece ' + plural(X.n, 'mantimento', 'mantimentos') + ' (' + fmt(X.gasto, 2) + ' ' + nomeR + ' do estoque de ' + nomeF(B.fac) + (!fora && L.reab && E ? ', que fica em ' + fmt(E.para, 2) : '') + ').'
+              : 'Reabastece: nada' + (E && E.para < Math.max(rg.custo, 0.01) ? ' (o estoque de ' + nomeR + ' de ' + nomeF(B.fac) + ' acabou).' : ' (já leva o que precisa).');
+          }
+          if (forr) { const X = (!fora && L.forr) || B.forr; forr.t.textContent = 'Forragem: colhe ' + plural(X.n, 'mantimento', 'mantimentos') + (nomeReg(X.r) ? ' em ' + nomeReg(X.r) : ' na terra sem dono') + (base.rec && B.onde.dono ? ' (a produção de ' + nomeR + ' de lá cai nesta semana)' : '') + '.'; }
+          if (desg) {
+            const X = (!fora && L.desg) || B.desg || P.desg;
+            desg.t.textContent = !fora && desg.x.checked && !L.desg ? 'Desgaste: nenhum, com o que está marcado.' : 'Desgaste: −' + plural(X.tropas0 - X.tropas1, 'tropa', 'tropas') + ' (' + motivos(X) + '): ' + fmt(X.tropas0, 0) + ' → ' + fmt(X.tropas1, 0) + acabam(X) + '.';
+          }
+        });
+        return el;
+      };
+      const titulo = h('h2', { text: base.dias > 1 ? 'Os ' + base.dias + ' dias da campanha' : 'O dia da campanha' });
+      titulo.id = 'dl-dia-' + Date.now().toString(36);
+      const lista = h('div', { class: 'dia-lista', 'data-k': 'dia:lista' }, base.linhas.map(blocoDe));
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'dia:nao', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'dia:ok', text: 'Aplicar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: 'Cada exército come pelo tamanho da tropa. Desmarque o que não vale; nada muda até você aplicar.' }),
+        lista,
+        h('small', { class: 'ajuda', text: 'As regras (o teto de ' + plural(rg.teto, 'dia', 'dias') + ', a forragem, o desgaste, os terrenos duros e o inverno) ficam na aba Guerra.' }),
+        h('div', { class: 'pe' }, bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl dia-dl', 'aria-labelledby': titulo.id }, form);
+      const pintar = () => { for (const p0 of pintores) p0(); };
+      form.addEventListener('change', ev => { if (ev.target && ev.target.type === 'checkbox') { res = refazer(recusadas()); pintar(); } });
+      pintar();
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => { ev.preventDefault(); fim(refazer(recusadas())); });
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      bOk.focus();
+    });
   }
 
   /* ================= a janela da batalha ================= */

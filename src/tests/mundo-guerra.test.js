@@ -12,7 +12,8 @@
 //     com a fase de hoje e o hexágono desenhados;
 //   · o histórico (ler e escrever mais), tirar a marca de um hexágono, marcar pelo botão direito, as fases da frente;
 //   · o exército que encontra outro no caminho ("Próximo dia"): o aviso oferece abrir a batalha (e a aba lista); a
-//     proposta dos mantimentos (desmarcar quem não come; "Agora não" não muda nada); a fome entra na batalha;
+//     proposta dos mantimentos — desde o lote 12, o dia da campanha, aqui sem forragem nem desgaste — (desmarcar quem não
+//     come; "Agora não" não muda nada); a fome entra na batalha;
 //   · quem joga não vê a aba nem os números (vê os nomes das unidades que não estão escondidas);
 //   · no celular, a aba e a janela da batalha cabem na tela.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
@@ -377,16 +378,19 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
       const g = id => m.objs.find(o => o.id === id);
       Object.assign(g('ga'), { x: 620, y: Y + 34.64 });
       Object.assign(g('gb'), { x: 200, y: Y, rota: 'rt', prog: 0, pt: 20 });     // (4 hexágonos por tempo: no fim de nenhum tempo ela está ao lado da Hoste — só o caminho do dia mostra o encontro)
+      // (lote 12) as regras da campanha sem forragem e sem desgaste: aqui, só o que eles comem
+      m.guerra.regras = { forr: 0, fome: 0, terreno: 0, inverno: 0 };
     }), Y);
     await semAvisos(L);
     await L.F.click('#diaMais');
-    const dlg = L.F.locator('dialog.mundo-dl:not(.gb)[open]'); await dlg.waitFor();
+    const dlg = L.F.locator('dialog.dia-dl[open]'); await dlg.waitFor();
     const txt = (await dlg.innerText()).replace(/\s+/g, ' ');
-    ok(/Os mantimentos do dia/.test(txt) && /Hoste de Aldar: 28 → 16 \(mais 1 dia\)/.test(txt) && /Legião do Vale: 3 → 0 — acabou: moral 2 → 1, e a fome tira ATQ/.test(txt) && /Bandoleiros: 20 → 17/.test(txt), 'o "Próximo dia" propõe descontar os mantimentos de cada exército (e diz quem ficou sem): ' + txt.slice(0, 260));
-    await dlg.locator('input[name="dl-quem"][value="gc"]').uncheck();
+    ok(/O dia da campanha/.test(txt) && /Hoste de Aldar fora das regiões Come 12 por dia: 28 → 16 \(dá para mais 1 dia\)\./.test(txt) && /Legião do Vale fora das regiões Come \d+ por dia: 3 → 0 \(acabou\); 1 dia sem comida: moral 2 → 1, e a fome tira ATQ\./.test(txt)
+      && /Bandoleiros fora das regiões Come 3 por dia: 20 → 17/.test(txt), 'o "Próximo dia" (lote 12: o dia da campanha) propõe o que cada exército come (e diz quem ficou sem): ' + txt.slice(0, 300));
+    await dlg.locator('[data-k="dia:g:gc"]').uncheck();
     await dlg.locator('button[type="submit"]').click(); await espera(300);
     const ga = await obj(L, 'ga'), gB = await obj(L, 'gb'), gc = await obj(L, 'gc');
-    ok(ga.exe.mant === 16 && gB.exe.mant === 0 && gB.exe.fome === 1 && gB.exe.moral === 1 && gc.exe.mant === 20 && await rotulo(L) === 'os mantimentos do dia', 'descontado só de quem ficou marcado; a Legião sem mantimentos perde moral');
+    ok(ga.exe.mant === 16 && gB.exe.mant === 0 && gB.exe.fome === 1 && gB.exe.moral === 1 && gc.exe.mant === 20 && await rotulo(L) === 'o dia da campanha', 'descontado só de quem ficou marcado; a Legião sem mantimentos perde moral');
     const av = await avisos(L);
     ok(/Exércitos frente a frente: Hoste de Aldar e Legião do Vale\./.test(av) && gB.x === 1000, 'no caminho, a Legião passou pela Hoste: o aviso oferece a batalha: ' + av.slice(0, 300));
     await foto('l8p6-encontro');
@@ -402,7 +406,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     ok(!/Exércitos que se encontraram/i.test(await painel(L)), 'tirar o encontro da lista');
     const dia = (await A(L, () => __mundo.App.mapa.cal.dia));
     await L.F.click('#diaMais');
-    const dlg2 = L.F.locator('dialog.mundo-dl:not(.gb)[open]'); await dlg2.waitFor();
+    const dlg2 = L.F.locator('dialog.dia-dl[open]'); await dlg2.waitFor();
     await dlg2.locator('button:not([type="submit"])').click(); await espera(250);
     ok((await A(L, () => __mundo.App.mapa.cal.dia)) === dia + 1 && (await obj(L, 'ga')).exe.mant === 16, '"Agora não": o dia passa e os mantimentos ficam');
   });

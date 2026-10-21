@@ -1236,10 +1236,12 @@
             h('td', { class: 'num', text: pf.falta[r.id] ? n2(pf.falta[r.id]) : '' })))));
         const exe = pf.exe.map(x => nomeG(x.id) + ' (' + txtTab(m, x.manut, false) + ')');
         const par = pf.paradas.map(x => { const o = achar(m, x.o), t = R().tipoDe(m, x.t); return (t ? t.nome : 'A construção') + (o ? ' (' + nomeDe(o, m) + ')' : '') + ' não produz nem gasta: falta ' + nomeR(x.r) + '.'; });
+        // (lote 12, parte 12a) a forragem dos exércitos de fora nas regiões desta facção
+        const forr = (prev.forr || []).filter(x => x.fac === pf.id).map(x => { const r = achar(m, x.r); return 'Forragem de exércitos de fora' + (r ? ' em ' + nomeDe(r, m) : '') + ': −' + fmt(x.n, 2) + ' ' + nomeR(x.rec) + ' na produção.'; });
         return h('div', { class: 'sem-fac', 'data-k': 'sem:fac:' + pf.id }, h('div', { class: 'sem-cab' }, kit().bandeiraFac(pf.id, 14) || h('i', { style: { background: f ? f.cor : null } }), h('b', { text: f ? nomeFac(f) : pf.id })),
           ids.length ? h('div', { class: 'eco-tab-caixa' }, tab) : null,
           exe.length ? h('small', { class: 'sem-exe', text: 'Manutenção dos exércitos: ' + exe.join(' · ') + '.' }) : null,
-          par.map(t => h('small', { class: 'sem-par', text: t })));
+          par.map(t => h('small', { class: 'sem-par', text: t })), forr.map(t => h('small', { class: 'sem-par', 'data-k': 'sem:forr', text: t })));
       });
       const txtCons = c => {
         if (c.tipo === 'fome') return 'Fome: o apoio de ' + nomeF(c.fac) + ' cai ' + c.d + ' (de ' + c.de + '% para ' + c.para + '%).';
@@ -1324,7 +1326,8 @@
     A.on('muda', info => {
       const m = A.mapa, p = m && A.podeEditar() && ligada(m) ? R().semanasPendentes(m) : 0, antes = pendVistas;
       pendVistas = p;
-      if (info && info.origem === 'local' && antes != null && p > antes) setTimeout(() => janelaSemana(), 0);
+      // (lote 12) depois das propostas do tempo que passou (o dia da campanha vem antes da semana)
+      if (info && info.origem === 'local' && antes != null && p > antes) setTimeout(() => { const K = kit(); if (K.depoisDasPropostas) K.depoisDasPropostas(() => janelaSemana()); else janelaSemana(); }, 0);
     });
   }
 
