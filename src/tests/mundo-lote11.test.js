@@ -40,6 +40,11 @@
 //     vassalagem, a notícia no rascunho do Jornal; Desfazer com o Jornal); "Fazer a paz…" (a relação, o tratado com
 //     prazo, o erro do prazo, a notícia); assinar um tratado com a notícia; quem joga (sem os motivos nem os botões); no
 //     celular.
+//   · (parte 4a, SO=segredos) a aba Intrigas (as nove abas; vazia); o segredo novo (os erros; de quem é; quem sabe —
+//     personagens e facções, tirar e pôr —; boato e falso; a nota); mudar e Desfazer; revelar (por cima do cartão: o que
+//     eles vão ler, sobre quem só se eles o veem; Cancelar volta ao cartão; a notícia no rascunho do Jornal); o segredo
+//     de quem eles não conhecem; quem joga (os revelados, "boato", sem o falso, quem sabe e a nota; a regra de sucessão
+//     nos títulos); esconder de novo; o filtro; tirar com Desfazer; no celular.
 // TC_SCRATCH=<pasta> guarda capturas em <pasta>/fotos.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -87,7 +92,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
   if (parte('corte')) await passo('a corte', async () => {
     // a aba
     ok((await L.F.locator('#tab-corte').innerText()).trim() === 'Corte', 'a aba Corte, depois de Reinos');
-    ok(await A(L, () => { const t0 = document.getElementById('tabs'); return t0.scrollWidth <= t0.clientWidth + 1; }), 'as oito abas cabem na largura do painel (em duas fileiras)');
+    ok(await A(L, () => { const t0 = document.getElementById('tabs'); return t0.scrollWidth <= t0.clientWidth + 1; }), 'as nove abas cabem na largura do painel (em duas fileiras)');
     await aba(L, 'corte');
     ok(/^Corte Casas ?Títulos \+ Personagem \+ Casa Cargos da corte… Ninguém ainda\. Os personagens do mundo/.test(await textoPane(L)), 'vazia: os botões e o que é a corte');
     // a casa nova
@@ -223,7 +228,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     ok(/QUEM ESTÁ AQUI Caio/i.test(await textoPane(L)), 'no grupo: o Caio');
     await aba(L, 'corte');
     const abasW = await A(L, () => { const t0 = document.getElementById('tabs'); return [t0.scrollWidth, t0.clientWidth, !document.querySelector('#tab-selecao .n').hidden]; });
-    ok(abasW[0] <= abasW[1] + 1 && abasW[2], 'as oito abas cabem também com o número da seleção: ' + j(abasW));
+    ok(abasW[0] <= abasW[1] + 1 && abasW[2], 'as nove abas cabem também com o número da seleção: ' + j(abasW));
     await aba(L, 'selecao');
     // quem joga: só os conhecidos
     await comoJogador(L, true);
@@ -526,7 +531,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await comoJogador(L, true);
     await aba(L, 'corte');
     const pj = await textoPane(L);
-    ok(/Ducado de Valmor Ana do Vale · desde ano -2 · regente: Caio pretendente: Caio \(primo do duque\) antes: Aldric I \(200 – 230\) O velho ducado do rio\./.test(pj) && !/quer o ducado/.test(pj) && !/Beto/.test(pj) && !/\+ Título/.test(pj),
+    ok(/Ducado de Valmor Ana do Vale · desde ano -2 · regente: Caio sucessão: Primogenitura · por igual pretendente: Caio \(primo do duque\) antes: Aldric I \(200 – 230\) O velho ducado do rio\./.test(pj) && !/quer o ducado/.test(pj) && !/Beto/.test(pj) && !/\+ Título/.test(pj),
       'quem joga: o título com a titular, o regente, o pretendente e os de antes (o herdeiro que eles não conhecem, não), o texto, sem a nota nem os botões: ' + pj.slice(0, 300));
     ok(/Baronia de Vila Alta sem titular conhecido/.test(pj) && /Reino de Aldar Ana do Vale/.test(pj) && /Grão-Mestre da Ordem Caio/.test(pj), 'a titular que eles não conhecem: "sem titular conhecido"; os outros títulos');
     await semAvisos(L); await foto('l11-titulos-jogador');
@@ -704,7 +709,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     });
     // as abas: duas fileiras, por assunto
     const filas = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
-    ok(j(filas) === j([['Seleção', 'Hoje', 'Terreno', 'Mapa'], ['Reinos', 'Corte', 'Diplomacia', 'Guerra']]), 'as abas em duas fileiras: o mapa em cima, a política embaixo: ' + j(filas));
+    ok(j(filas) === j([['Seleção', 'Hoje', 'Terreno', 'Mapa'], ['Reinos', 'Corte', 'Diplomacia', 'Intrigas', 'Guerra']]), 'as abas em duas fileiras: o mapa em cima, a política embaixo: ' + j(filas));
     const cabe = () => A(L, () => [...document.querySelectorAll('#tabs, #tabs .tabs-fila')].every(e => e.scrollWidth <= e.clientWidth + 1));
     ok(await cabe(), 'as duas fileiras cabem no painel');
     await aba(L, 'diplomacia');
@@ -815,7 +820,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
       'quem joga: a guerra, os tratados públicos (sem o de comércio, sem o do Culto escondido), sem a opinião, a nota e os botões: ' + pj.slice(0, 300));
     await semAvisos(L); await foto('l11-dipl-jogador');
     const filasJ = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila:not([hidden])')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
-    ok(j(filasJ) === j([['Seleção', 'Hoje'], ['Reinos', 'Corte', 'Diplomacia']]), 'quem joga: as abas dele, nas mesmas fileiras: ' + j(filasJ));
+    ok(j(filasJ) === j([['Seleção', 'Hoje'], ['Reinos', 'Corte', 'Diplomacia', 'Intrigas']]), 'quem joga: as abas dele, nas mesmas fileiras: ' + j(filasJ));
     await comoJogador(L, false);
     // no celular: as abas e as janelas cabem
     await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
@@ -1160,6 +1165,136 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     await A(L, () => { window.MundoDiplomaciaPainel.janelaPaz('fa', 'fb'); }); await L.F.waitForSelector('dialog.paz-dl[open]');
     ok(await cabeDl('dialog.paz-dl[open]'), 'no celular, a paz cabe');
     await L.F.click('dialog.paz-dl[open] [data-k="paz:nao"]'); await espera(200);
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
+  });
+
+  // ---------- (parte 4a) a aba Intrigas e os segredos ----------
+  if (parte('segredos')) await passo('os segredos', async () => {
+    await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(200);
+    if (await L.F.locator('#side.fechado').count()) { await L.F.click('#btPainel'); await espera(250); }
+    await A(L, () => {
+      __mundo.App.mudar('segredos: o mundo', m => {
+        if (!m.faccoes.some(f => f.id === 'fc')) m.faccoes.push({ id: 'fc', nome: 'Ilhas', cor: '#2f8f8f' }, { id: 'fd', nome: 'Culto', cor: '#5b3fb5', oculta: true });
+        for (const f of m.faccoes) f.jog = false;
+        delete m.intr;
+        if (!m.corte) m.corte = { pessoas: [], casas: [], cargos: {}, titulos: [] };
+        m.corte.pessoas.push({ id: 'sp1', nome: 'Lia', gen: 'm', fac: 'fa', ver: true }, { id: 'sp2', nome: 'Rodrigo', gen: 'h', fac: 'fb' });
+        m.corte.titulos.push({ id: 'st1', grau: 'condado', de: 'do Lago', fac: 'fa', tit: 'sp1' });
+      });
+    });
+    const it = () => A(L, () => JSON.parse(JSON.stringify(__mundo.App.mapa.intr || null)));
+    const ras = () => A(L, () => { try { return JSON.parse(localStorage.getItem('tinycats:jornal:rascunho') || 'null'); } catch (e) { return null; } });
+    const materia = async re => { const r = await ras(); return r && r.materias ? r.materias.find(x => re.test(x.tit)) || null : null; };
+    const filas = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
+    ok(j(filas[1]) === j(['Reinos', 'Corte', 'Diplomacia', 'Intrigas', 'Guerra']), 'a aba Intrigas, na fileira da política, depois da Diplomacia: ' + j(filas));
+    await aba(L, 'intrigas');
+    ok(/^Intrigas \+ Segredo Facção Todas as facções.* SEGREDOS Nenhum segredo ainda\. Os segredos são seus até você revelar/i.test(await textoPane(L)), 'a aba vazia: "+ Segredo", o filtro e a seção dos segredos: ' + (await textoPane(L)).slice(0, 200));
+    // o segredo novo: os erros
+    await botao(L, 'in:segredo-novo'); await L.F.waitForSelector('dialog.sg-dl[open]');
+    const errSg = () => A(L, () => document.querySelector('dialog.sg-dl[open] .err').textContent);
+    ok(await A(L, () => document.querySelector('dialog.sg-dl[open] [data-k="sg:dono"]').hidden) && await A(L, () => document.querySelector('dialog.sg-dl[open] .sg-falso').hidden), 'o segredo novo: do mundo (sem escolher o dono); o "é falso" escondido');
+    await L.F.click(dlg('[data-k="sg:ok"]')); await espera(120);
+    ok(await errSg() === 'Escreva o segredo.', 'sem o texto: não passa');
+    await L.F.fill(dlg('[data-k="sg:txt"]'), 'Lia é filha do capitão da guarda.');
+    await L.F.selectOption(dlg('[data-k="sg:tipo"]'), 'p'); await L.F.click(dlg('[data-k="sg:ok"]')); await espera(120);
+    ok(await errSg() === 'Escolha de quem é o segredo (ou “Ninguém”).', 'o tipo sem o dono: não passa');
+    await L.F.selectOption(dlg('[data-k="sg:dono"]'), 'sp1');
+    // quem sabe: personagens e facções (tirar e pôr de novo)
+    await L.F.selectOption(dlg('[data-k="sg:sabe-p:add"]'), 'sp2'); await L.F.selectOption(dlg('[data-k="sg:sabe-f:add"]'), 'fb'); await espera(80);
+    ok(j(await A(L, () => [...document.querySelectorAll('dialog.sg-dl[open] .in-chip')].map(c => c.textContent))) === j(['Rodrigo', 'Vale']), 'quem sabe: Rodrigo e o Vale, como etiquetas');
+    await L.F.click(dlg('[data-k="sg:sabe-p:x:sp2"]')); await espera(60);
+    ok(await L.F.locator(dlg('[data-k="sg:sabe-p"] .in-chip')).count() === 0, 'o × tira o Rodrigo');
+    await L.F.selectOption(dlg('[data-k="sg:sabe-p:add"]'), 'sp2'); await espera(60);
+    await L.F.check(dlg('[data-k="sg:boato"]'));
+    ok(!(await A(L, () => document.querySelector('dialog.sg-dl[open] .sg-falso').hidden)), '"É boato": aparece o "É falso"');
+    await L.F.check(dlg('[data-k="sg:falso"]')); await L.F.fill(dlg('[data-k="sg:nota"]'), 'Vem à tona se o capitão morrer.');
+    await semAvisos(L); await A(L, () => { document.querySelector('dialog.sg-dl[open] .err').textContent = ''; }); await foto('l11-segredo');
+    await L.F.click(dlg('[data-k="sg:ok"]')); await espera(350);
+    let d = await it();
+    const s1 = d && d.segredos[0];
+    ok(s1 && j(s1) === j({ id: s1.id, txt: 'Lia é filha do capitão da guarda.', de: { t: 'p', id: 'sp1' }, sabem: { p: ['sp2'], f: ['fb'] }, jog: false, boato: true, falso: true, nota: 'Vem à tona se o capitão morrer.' }) && /O segredo entrou na lista\./.test(await avisos(L)),
+      'criar: o segredo com tudo o que foi escolhido: ' + j(s1));
+    const itemS = id => A(L, k => { const e = document.querySelector('#pane [data-k="sg:' + k + '"]'); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, id);
+    ok(await itemS(s1.id) === 'Lia é filha do capitão da guarda. sobre Lia · sabem: Rodrigo e Vale boato falso', 'na lista: o texto, sobre quem, quem sabe, "boato" e "falso": ' + await itemS(s1.id));
+    // mudar e Desfazer
+    await botao(L, 'sg:' + s1.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    ok(await L.F.locator(dlg('[data-k="sg:revelar"]')).count() === 1 && await L.F.locator(dlg('[data-k="sg:esconder"]')).count() === 0 && await L.F.locator(dlg('[data-k="sg:estado"]')).count() === 0, 'o cartão: "Revelar aos jogadores…" (ainda não revelado)');
+    await L.F.fill(dlg('[data-k="sg:txt"]'), 'Lia é filha bastarda do capitão da guarda.'); await L.F.click(dlg('[data-k="sg:ok"]')); await espera(350);
+    ok((await it()).segredos[0].txt === 'Lia é filha bastarda do capitão da guarda.' && /O segredo está salvo\./.test(await avisos(L)), 'mudar o texto');
+    await A(L, () => __mundo.App.desfazer()); await espera(300);
+    ok((await it()).segredos[0].txt === 'Lia é filha do capitão da guarda.', 'Desfazer: o texto de antes');
+    // revelar: por cima do cartão; Cancelar volta ao cartão
+    await botao(L, 'sg:' + s1.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    await L.F.click(dlg('[data-k="sg:revelar"]')); await L.F.waitForSelector('dialog.rv-dl[open]');
+    const rv = s0 => 'dialog.rv-dl[open] ' + s0;
+    ok(await A(L, () => document.querySelector('dialog.rv-dl[open] [data-k="rv:ler"]').innerText.replace(/\s+/g, ' ').trim()) === 'Lia é filha do capitão da guarda. boato sobre Lia' && !(await L.F.locator(rv('[data-k="rv:jornal"]')).isChecked()),
+      'revelar: o que eles vão ler (o texto, "boato", sobre a Lia, que eles conhecem); a caixa do Jornal desmarcada');
+    await L.F.click(rv('[data-k="rv:nao"]')); await espera(150);
+    ok(await A(L, () => !!document.querySelector('dialog.sg-dl[open]') && !document.querySelector('dialog.rv-dl[open]')), 'Cancelar volta ao cartão, como estava');
+    await L.F.click(dlg('[data-k="sg:revelar"]')); await L.F.waitForSelector('dialog.rv-dl[open]');
+    await L.F.check(rv('[data-k="rv:jornal"]')); await L.F.click(rv('[data-k="rv:jornal:ver"] > summary')); await espera(120);
+    ok(await A(L, () => document.querySelector('dialog.rv-dl[open] [data-k="rv:jornal:txt"]').innerText.replace(/\s+/g, ' ').trim()) === 'Um boato: Lia Lia é filha do capitão da guarda.', 'a prévia da notícia');
+    await semAvisos(L); await foto('l11-revelar');
+    await L.F.click(rv('[data-k="rv:ok"]')); await espera(450);
+    d = await it();
+    ok(d.segredos[0].jog === true && /O segredo foi revelado aos jogadores\. A notícia foi para o rascunho do Jornal\./.test(await avisos(L)) && !!(await materia(/^Um boato: Lia$/)) && /revelado$/.test(await itemS(s1.id)),
+      'revelar: os jogadores sabem; a notícia no rascunho do Jornal; "revelado" na lista');
+    // o segredo de quem eles não conhecem: revelado sem dizer de quem é
+    await botao(L, 'in:segredo-novo'); await L.F.waitForSelector('dialog.sg-dl[open]');
+    await L.F.fill(dlg('[data-k="sg:txt"]'), 'Rodrigo deve ao banco das Ilhas.'); await L.F.selectOption(dlg('[data-k="sg:tipo"]'), 'p'); await L.F.selectOption(dlg('[data-k="sg:dono"]'), 'sp2');
+    await L.F.click(dlg('[data-k="sg:ok"]')); await espera(350);
+    const s2 = (await it()).segredos[1];
+    await botao(L, 'sg:' + s2.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    await L.F.click(dlg('[data-k="sg:revelar"]')); await L.F.waitForSelector('dialog.rv-dl[open]');
+    await L.F.click(rv('[data-k="rv:jornal:ver"] > summary')); await espera(120);
+    ok(await A(L, () => document.querySelector('dialog.rv-dl[open] [data-k="rv:sobre"]').textContent) === 'sem dizer de quem é (eles não veem Rodrigo)'
+      && await A(L, () => document.querySelector('dialog.rv-dl[open] [data-k="rv:jornal:txt"]').innerText.replace(/\s+/g, ' ').trim()) === 'Um segredo revelado Rodrigo deve ao banco das Ilhas.',
+      'o dono que eles não conhecem: vai sem dizer de quem é (a notícia também)');
+    await L.F.click(rv('[data-k="rv:ok"]')); await espera(450);
+    ok((await it()).segredos[1].jog === true && /O segredo foi revelado aos jogadores\.$/.test((await avisos(L)).split('\n')[0].trim()), 'revelar sem a notícia');
+    // quem joga: os revelados, com "boato"; sem o falso, quem sabe e a nota; a regra de sucessão nos títulos
+    await comoJogador(L, true);
+    await aba(L, 'intrigas');
+    const pj = await textoPane(L);
+    ok(/SEGREDOS Lia é filha do capitão da guarda\. boato sobre Lia Rodrigo deve ao banco das Ilhas\. Só o que vocês descobriram\./i.test(pj) && !/falso|sabem|capitão morrer|\+ Segredo|Rodrigo deve.*sobre/i.test(pj),
+      'quem joga: os dois segredos revelados ("boato"; sobre a Lia; o do Rodrigo sem dono), sem o falso, quem sabe, a nota e os botões: ' + pj.slice(0, 300));
+    await semAvisos(L); await foto('l11-segredos-jogador');
+    await aba(L, 'corte');
+    if (await campo(L, 'corte:vista:titulos').count()) { await L.F.click('#pane [data-k="corte:vista:titulos"]'); await espera(250); }
+    ok(/sucessão: Primogenitura · por igual/.test(await A(L, () => { const e = document.querySelector('#pane [data-k="t:st1"]'); return e ? e.innerText : ''; })), 'quem joga, nos títulos: a regra de sucessão em texto curto');
+    await comoJogador(L, false);
+    // esconder de novo
+    await aba(L, 'intrigas');
+    await botao(L, 'sg:' + s2.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    ok(await A(L, () => document.querySelector('dialog.sg-dl[open] [data-k="sg:estado"]').textContent) === 'Os jogadores sabem deste segredo.' && await L.F.locator(dlg('[data-k="sg:revelar"]')).count() === 0,
+      'o cartão do revelado diz que os jogadores sabem (e não tem "Revelar…")');
+    await L.F.click(dlg('[data-k="sg:esconder"]')); await espera(350);
+    ok((await it()).segredos[1].jog === false && /O segredo voltou a ser só seu\./.test(await avisos(L)), '"Esconder dos jogadores": volta a ser só seu');
+    // o filtro
+    await campo(L, 'in:fac').selectOption('fc'); await espera(300);
+    ok(/Nenhum segredo desta facção\./.test(await textoPane(L)), 'o filtro das Ilhas: nenhum segredo');
+    await campo(L, 'in:fac').selectOption('fb'); await espera(300);
+    ok(await campo(L, 'sg:' + s1.id).count() === 1 && await campo(L, 'sg:' + s2.id).count() === 1, 'o filtro do Vale: o que o Vale sabe e o do Rodrigo, do Vale');
+    await campo(L, 'in:fac').selectOption(''); await espera(300);
+    await semAvisos(L); await foto('l11-segredos');
+    // tirar (com Desfazer)
+    await botao(L, 'sg:' + s2.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    await L.F.click(dlg('[data-k="sg:tirar"]')); await espera(250);
+    ok(/Tirar o segredo\?/.test(await A(L, () => document.querySelector('dialog.mundo-dl[open]').innerText)), 'tirar: pergunta antes');
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(350);
+    ok((await it()).segredos.length === 1 && /O segredo saiu\./.test(await avisos(L)), 'tirar: o segredo sai');
+    await L.F.locator('#toasts button', { hasText: 'Desfazer' }).click(); await espera(350);
+    ok((await it()).segredos.length === 2, 'Desfazer: ele volta');
+    // no celular: as abas, o cartão e o revelar cabem
+    await L.P.setViewportSize({ width: 400, height: 820 }); await espera(400);
+    const cabeDl = s0 => A(L, x => { const dd = document.querySelector(x); return dd.scrollWidth <= dd.clientWidth + 1 && dd.getBoundingClientRect().width <= window.innerWidth; }, s0);
+    ok(await A(L, () => [...document.querySelectorAll('#tabs, #tabs .tabs-fila')].every(e => e.scrollWidth <= e.clientWidth + 1)), 'no celular, as nove abas cabem');
+    await A(L, k => { window.MundoIntrigasPainel.janelaSegredo(k); }, s2.id); await L.F.waitForSelector('dialog.sg-dl[open]');
+    ok(await cabeDl('dialog.sg-dl[open]'), 'no celular, o cartão do segredo cabe');
+    await L.F.click(dlg('[data-k="sg:revelar"]')); await L.F.waitForSelector('dialog.rv-dl[open]');
+    ok(await cabeDl('dialog.rv-dl[open]'), 'no celular, o revelar cabe');
+    await semAvisos(L); await foto('l11-segredo-celular');
+    await L.F.click('dialog.rv-dl[open] [data-k="rv:nao"]'); await espera(150); await L.F.click(dlg('[data-k="sg:nao"]')); await espera(200);
     await L.P.setViewportSize({ width: 1400, height: 900 }); await espera(300);
   });
 

@@ -18,6 +18,7 @@
     { id: 'faccoes', nome: 'Reinos', fila: 2 },                    // (lote 10: era "Facções"; o id fica)
     { id: 'corte', nome: 'Corte', fila: 2 },                      // (lote 11) os personagens do mundo e as casas
     { id: 'diplomacia', nome: 'Diplomacia', fila: 2 },            // (lote 11, parte 3a) as relações, a opinião, os tratados
+    { id: 'intrigas', nome: 'Intrigas', fila: 2 },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
     { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
   ];
   const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto' };
@@ -48,6 +49,7 @@
   const RP = () => window.MundoReinoPainel || null;            // (lote 10) os reinos no painel: a província, o Livro do reino
   const CP = () => window.MundoCortePainel || null;            // (lote 11) a corte no painel: a aba Corte, quem está aqui
   const DP = () => window.MundoDiplomaciaPainel || null;       // (lote 11, parte 3a) a diplomacia no painel: a aba Diplomacia
+  const IP = () => window.MundoIntrigasPainel || null;          // (lote 11, parte 4a) as intrigas e os segredos: a aba Intrigas
   const $ = id => document.getElementById(id);
   const estreito = () => !!(window.matchMedia && matchMedia(ESTREITO).matches);
   const celular = () => !!(window.matchMedia && matchMedia(CELULAR).matches);
@@ -1078,7 +1080,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'intrigas' ? (IP() ? IP().abaIntrigas(v) : nota('As intrigas não carregaram. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 

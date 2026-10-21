@@ -1398,6 +1398,17 @@ também no Node) e o que aparece no painel, em `mundo/reino-painel.js` (`window.
   com a notícia. O **tratado novo** também tem a caixa da notícia ("assinaram um tratado de …"). Tudo vale num passo de
   Desfazer (o Jornal junto). Os motivos ficam no mapa (`dipl.motivosGuerra`) e não vão para os jogadores
   (`MundoDiplomacia.sugestoesDeGuerra`, `declararGuerra`, `fazerPaz`, `noticiaGuerra`, `noticiaPaz`, `noticiaTratado`).
+- **A aba Intrigas e os segredos** (lote 11, parte 4a; `mundo/intrigas.js` e `mundo/intrigas-painel.js`). A aba nova,
+  **Intrigas** (na fileira da política, depois da Diplomacia), tem o filtro de facção e os **segredos**: cada um com o
+  texto, de quem é (um personagem, uma casa, uma facção, um título, um tratado, uma região ou um lugar do mapa; ou
+  "Ninguém": um segredo do mundo), **quem sabe** (personagens e facções, como etiquetas), "É boato" e "É falso" (só o
+  mestre sabe) e a nota. Na lista: o texto, sobre quem, quem sabe e as etiquetas "boato", "falso" e "revelado".
+  **"Revelar aos jogadores…"** abre, por cima do cartão, o que eles vão ler (o texto, "boato" e sobre quem — só se eles
+  veem o dono, pela projeção) e a caixa, desmarcada, da notícia no rascunho do Jornal (sem o dono que eles não veem);
+  "Cancelar" volta ao cartão. **"Esconder dos jogadores"** desfaz a revelação. Tudo fica no mapa (`intr.segredos`,
+  conferido por `normIntr`), com Desfazer. **Quem joga** vê, na aba Intrigas dele, os segredos revelados ("boato"; sobre
+  quem, se ele vê o dono; sem quem sabe, o falso e a nota) e, nos títulos, a **regra de sucessão** em texto curto
+  ("Primogenitura · por igual": a projeção leva a regra que vale para cada título).
 
 ### A Árvore (lote 6)
 
@@ -2542,7 +2553,13 @@ limites), as sugestões pelos pretendentes, os tratados que ainda valem entre du
 notícias e a projeção sem os motivos; `mundo-lote11` com `SO=guerrapaz`, a sugestão e "Usar…", os erros, "não vale
 mais", a prévia da guerra (quem declara e o motivo dele, os tratados, a vassalagem, a notícia), Desfazer com o Jornal, a
 paz (a relação, o prazo, o erro, a notícia), o tratado novo com a notícia, quem joga e o celular; `mundo-lote8.rede`, os
-motivos de guerra fora da projeção. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
+motivos de guerra fora da projeção. Na parte 4a (os segredos), `lote11-nucleo` confere os segredos normalizados (os
+campos, o boato e o falso, quem sabe, o dono de cada tipo, o que não existe mais, os limites), as contas (o dono e o
+nome dele, as escolhas de dono, as facções de um segredo, a notícia), a projeção (só os revelados; o dono só se eles o
+veem) e a regra de sucessão de cada título na projeção; `mundo-lote11` com `SO=segredos`, a aba (as nove abas), o
+segredo novo (os erros, quem sabe, boato e falso), mudar e Desfazer, revelar (o que eles vão ler, Cancelar, a notícia),
+o dono que eles não conhecem, quem joga (os revelados; a regra de sucessão), esconder, o filtro, tirar e o celular;
+`mundo-lote8.rede`, o segredo revelado na projeção e na aba do jogador. Na parte 5, `lote9-nucleo` confere os heróis nas contas (o bônus sugerido, o teto de +10 na Virada e
 na resumida, a ação heroica fora do teto e no momento certo, os ferimentos pelo tamanho do resultado, `exe.herois`
 guardado e a projeção sem eles); `mundo-herois`, numa página com fichas de mentira (a coleção `personagens` sem o
 banco, que guarda o que se grava), os heróis do exército (o sugerido, o escrito, Tirar), os da batalha (só nesta

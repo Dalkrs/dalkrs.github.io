@@ -575,6 +575,7 @@
     const antes = t.hist.map(x => x.nome + anosDe(x.de, x.ate));
     return h('div', { class: 'corte-pub corte-t', 'data-k': 't:' + t.id },
       h('b', { text: C().nomeDoTitulo(v, t) }), h('small', { text: titularTxt(v, t, false) + (p && C().menorDeIdade(v, p) ? ' (menor de idade)' : '') }),
+      h('small', { class: 'corte-suc', text: 'sucessão: ' + C().textoRegra(C().regraDe(v, t)) }),     // (parte 4a) a regra, em texto curto
       herd ? h('small', { text: (herd.gen === 'm' ? 'herdeira escolhida: ' : 'herdeiro escolhido: ') + herd.nome }) : null,
       pret.length ? h('small', { text: (pret.length === 1 ? 'pretendente: ' : 'pretendentes: ') + listaNomes(pret) }) : null,
       antes.length ? h('small', { class: 'corte-lacos', text: 'antes: ' + antes.join(', ') }) : null,

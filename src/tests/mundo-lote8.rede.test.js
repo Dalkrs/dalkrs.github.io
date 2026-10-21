@@ -16,7 +16,8 @@
 //     tratado público (sem a nota), não o secreto nem a opinião; o jogador o vê na aba Diplomacia. (parte 3b) A
 //     vassalagem vai sem o tributo e o tratado sem as trocas; o tributo e as trocas da facção deles vão na economia deles;
 //     o jogador vê a vassalagem (na Diplomacia e em Reinos) e o tributo e as trocas no Livro do reino. (parte 3c) Os
-//     motivos de guerra não vão para o jogador.
+//     motivos de guerra não vão para o jogador. (parte 4a) Os segredos: só o revelado vai (sem o falso e a nota); o
+//     jogador o vê na aba Intrigas.
 const zlib = require('zlib');
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
@@ -205,7 +206,7 @@ function png(w, h, cor) {
     ok(!/Usurpou|Mão Oculta|O culto/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe a nota nem o título escondido');
     ok(await ate(async () => /Ana do Vale, Rainha de Aldar/.test(await corteJ())), 'o jogador vê, nas casas, o título junto do nome da Ana');
     await JW.click('#pane [data-k="corte:vista:titulos"]'); await w(300, J);
-    ok(await ate(async () => /Reino de Aldar Ana do Vale A coroa de Aldar\./.test(await corteJ()) && !/Mão Oculta/.test(await corteJ())), 'e, em "Títulos", o título do reino com a titular e o texto: ' + (await corteJ()).slice(0, 200));
+    ok(await ate(async () => /Reino de Aldar Ana do Vale sucessão: Primogenitura · por igual A coroa de Aldar\./.test(await corteJ()) && !/Mão Oculta/.test(await corteJ())), 'e, em "Títulos", o título do reino com a titular, a regra de sucessão (parte 4a) e o texto: ' + (await corteJ()).slice(0, 200));
     await JW.click('#tab-faccoes'); await w(300, J);
     ok(await ate(async () => /Governante: Ana do Vale, Rainha de Aldar/.test(await corteJ())), 'na aba Reinos, o jogador vê o governante');
     // (parte 3a) a diplomacia: a projeção leva o tratado público (sem a nota), não o secreto nem a opinião; o jogador vê na aba Diplomacia
@@ -243,6 +244,18 @@ function png(w, h, cor) {
     });
     ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.dipl && p.dipl.tratados.some(x => x.id === 'tq') && j(p.dipl.motivosGuerra) === j([])); }) && !/Vingança pelo rio/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))),
       'a projeção não leva os motivos de guerra');
+    // (parte 4a) os segredos: só o revelado vai (com o dono conhecido; sem quem sabe, o falso e a nota)
+    await W.evaluate(() => {
+      __mundo.App.mudar('os segredos', m => {
+        m.intr = { segredos: [{ id: 'sg1', txt: 'A Ana trama contra o rei.', de: { t: 'p', id: 'pa' }, sabem: { p: ['pb'], f: [] }, jog: true, boato: true, falso: true, nota: 'Mentira do bardo.' },
+          { id: 'sg2', txt: 'O Bento é herdeiro do trono.', de: { t: 'p', id: 'pb' } }] };
+      });
+    });
+    ok(await ate(async () => { const p = await doc(M, 'mundo:pub:' + mapa); return !!(p && p.intr && j(p.intr.segredos.map(x => [x.id, x.de && x.de.id, x.sabem, x.falso, x.nota])) === j([['sg1', 'pa', { p: [], f: [] }, false, '']])); }),
+      'a projeção leva só o segredo revelado (o dono conhecido; sem quem sabe, o falso e a nota)');
+    ok(!/Mentira do bardo|herdeiro do trono/.test(JSON.stringify(await doc(J, 'mundo:pub:' + mapa))), 'o jogador não recebe o segredo escondido nem a nota');
+    await JW.click('#tab-intrigas'); await w(300, J);
+    ok(await ate(async () => /SEGREDOS A Ana trama contra o rei\. boato sobre Ana do Vale/i.test(await corteJ())), 'na aba Intrigas, o jogador vê o segredo revelado: ' + (await corteJ()).slice(0, 200));
   } catch (e) {
     ok(false, 'parou: ' + String((e && e.message) || e).split('\n')[0]);
   } finally {

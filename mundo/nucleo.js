@@ -2380,6 +2380,42 @@
     for (const x of d.motivosGuerra) { if (!tits.has(x.tit)) x.tit = null; if (!pess.has(x.p)) x.p = null; }
   }
 
+  /* ---------------- (lote 11, parte 4a) as intrigas e os segredos ----------------
+     intr = { segredos: [{ id, txt (o segredo), de ({ t, id }: de quem é — 'p' um personagem, 'c' uma casa, 'f' uma facção,
+     't' um título, 'tr' um tratado, 'r' uma região, 'm' um lugar do mapa; null: um segredo do mundo), sabem ({ p, f }: os
+     personagens e as facções que sabem), jog (os jogadores sabem: o mestre revelou), boato (é boato: talvez seja verdade,
+     talvez não), falso (é falso; só com boato), nota (do mestre) }] }. Só quando há algo (o mapa de antes fica igual). */
+  const TIPOS_DONO = ['p', 'c', 'f', 't', 'tr', 'r', 'm'];
+  const MAX_SEGREDOS = 300, MAX_SABEM = 24, MAX_TXT_INTR = 600;
+  const normDono = v => (ehObj(v) && TIPOS_DONO.includes(v.t) && idOk(v.id) ? { t: v.t, id: v.id } : null);
+  const listaIds = (v, max) => [...new Set((Array.isArray(v) ? v : []).map(idOk).filter(Boolean))].slice(0, max);
+  const normSabem = v => ({ p: listaIds(ehObj(v) ? v.p : null, MAX_SABEM), f: listaIds(ehObj(v) ? v.f : null, MAX_SABEM) });
+  function normIntr(v) {
+    if (!ehObj(v)) return null;
+    const segredos = [], vs = new Set();
+    for (const x of Array.isArray(v.segredos) ? v.segredos : []) {
+      if (!ehObj(x) || segredos.length >= MAX_SEGREDOS) continue;
+      const id = idOk(x.id);
+      if (!id || vs.has(id)) continue;
+      vs.add(id);
+      const boato = sim(x.boato);
+      segredos.push({ id, txt: texto(x.txt, '', MAX_TXT_INTR).trim() || 'Segredo sem texto', de: normDono(x.de), sabem: normSabem(x.sabem), jog: sim(x.jog), boato,
+        falso: boato && sim(x.falso), nota: texto(x.nota, '', MAX_TXT_INTR).trim() });
+    }
+    return segredos.length ? { segredos } : null;
+  }
+  /* as intrigas e os segredos com o mapa todo: o dono que não existe mais sai (o segredo fica, do mundo); quem sabe, só os
+     personagens e as facções que existem */
+  function conferirIntr(d, mapa) {
+    const c = mapa.corte, ids = l => new Set((l || []).map(x => x.id));
+    const ex = { p: ids(c && c.pessoas), c: ids(c && c.casas), f: ids(mapa.faccoes), t: ids(c && c.titulos), tr: ids(mapa.dipl && mapa.dipl.tratados),
+      r: ids(mapa.objs.filter(o => o.k === 'r')), m: ids(mapa.objs.filter(o => o.k === 'm')) };
+    for (const s of d.segredos) {
+      if (s.de && !ex[s.de.t].has(s.de.id)) s.de = null;
+      s.sabem = { p: s.sabem.p.filter(id => ex.p.has(id)), f: s.sabem.f.filter(id => ex.f.has(id)) };
+    }
+  }
+
   function normGuerra(v) {
     if (!ehObj(v)) return null;
     const g = { tipos: normTiposGuerra(v.tipos), bats: normBatalhas(v.bats), hexes: normHexGuerra(v.hexes) };
@@ -2567,6 +2603,8 @@
     if (corte) mapa.corte = corte;
     const dipl = normDipl(m.dipl, cal);                          // (lote 11, parte 3a) a diplomacia: os tratados e a opinião
     if (dipl) mapa.dipl = dipl;
+    const intr = normIntr(m.intr);                               // (lote 11, parte 4a) as intrigas e os segredos
+    if (intr) mapa.intr = intr;
     const vistos = new Set();
     (Array.isArray(m.objs) ? m.objs : []).forEach((o, i) => {
       if (mapa.objs.length >= MAX_OBJS) return;
@@ -2603,6 +2641,7 @@
     }
     if (mapa.corte) conferirCorte(mapa.corte, facs, mapa.objs);   // (lote 11) as referências da corte
     if (mapa.dipl) conferirDipl(mapa.dipl, facs, recIds, mapa.corte);   // (lote 11, parte 3a) as facções dos tratados e da opinião (3b: os recursos; 3c: a corte)
+    if (mapa.intr) conferirIntr(mapa.intr, mapa);                // (lote 11, parte 4a) os donos dos segredos e quem sabe
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
     for (const o of mapa.objs) if (o.k === 'r') regs.set(o.id, o);
@@ -2852,7 +2891,8 @@
          escondida) e os dos personagens conhecidos (se a terra não foi escondida pelo mestre: a névoa só esconde o
          lugar — o título vai com o nome pronto, sem a terra). As pessoas do título (o titular, o herdeiro escolhido, o
          regente, os pretendentes, os titulares de antes), só as conhecidas; sem a nota. (parte 2b) As regras de sucessão
-         (a do título e as dos reinos) são do mestre. */
+         dos reinos são do mestre; (parte 4a) o título vai com a regra que vale para ele (a dele, a do reino ou a de
+         começo), para o texto curto. */
       const conhecida = id => (id && con.has(id) ? id : null), titulos = [];
       for (const t of m.corte.titulos) {
         const pr = t.preso, terraVai = !!pr && (pr.t === 'f' ? nomesFac.has(pr.id) && !escondidas.has(pr.id) : noMapa.has(pr.id));
@@ -2865,7 +2905,7 @@
           preso = null;
         }
         titulos.push(Object.assign({}, t, { de, preso, fac: escondidas.has(t.fac) ? null : t.fac, tit: conhecida(t.tit), herd: conhecida(t.herd), reg: conhecida(t.reg),
-          pret: t.pret.filter(x => con.has(x.p)), hist: t.hist.filter(x => !x.p || con.has(x.p)), regra: null, nota: '' }));
+          pret: t.pret.filter(x => con.has(x.p)), hist: t.hist.filter(x => !x.p || con.has(x.p)), regra: t.regra || (m.corte.regras || {})[t.fac] || REGRA_PADRAO, nota: '' }));
       }
       if (pessoas.length || titulos.length) {
         const c = { pessoas, casas: m.corte.casas.filter(c0 => casasVistas.has(c0.id)).map(c0 => Object.assign({}, c0, { chefe: con.has(c0.chefe) ? c0.chefe : null })), cargos, titulos };
@@ -2884,6 +2924,10 @@
       const vassalos = m.dipl.vassalos.filter(x => vistas.has(x.vas) && vistas.has(x.sus)).map(x => Object.assign({}, x, { trib: null }));
       if (tratados.length || vassalos.length) { const d = { tratados, opin: [], vassalos, motivosGuerra: [] }; if (m.dipl.tipos) d.tipos = m.dipl.tipos; m.dipl = d; } else delete m.dipl;
     }
+    /* (lote 11, parte 4a) os segredos: só os revelados, sem quem sabe, sem o "é falso" e sem a nota. O dono que eles não
+       veem (o personagem desconhecido, o título, o tratado, a casa, a região e o lugar que não vão, a facção escondida)
+       sai na normalização do fim, que confere os donos com o que vai; sem nenhum revelado, a lista vazia também sai lá. */
+    if (m.intr) m.intr = { segredos: m.intr.segredos.filter(s => s.jog).map(s => Object.assign({}, s, { sabem: { p: [], f: [] }, falso: false, nota: '' })) };
     return normalizarMapa(m);
   }
   // (lote 10, parte 6) as contas da economia (mundo/reino.js), para a projeção: no navegador, as que a página carregou
@@ -2910,14 +2954,15 @@
     normHerois,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
-    TIPOS_TRATADO, normDipl,
+    TIPOS_TRATADO, normDipl, TIPOS_DONO,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,
       personagens: MAX_PESSOAS_CORTE, casas: MAX_CASAS, cargos: MAX_CARGOS, conjuges: MAX_CONJ, textoCorte: MAX_TXT_CORTE,
       titulos: MAX_TITULOS, graus: MAX_GRAUS, pretendentes: MAX_PRET, titularesAntes: MAX_HIST_TIT, maioridade: MAX_MAIORIDADE,
       tratados: MAX_TRATADOS, tiposTratado: MAX_TIPOS_TRAT, partes: MAX_PARTES, opinioes: MAX_OPIN, motivosOpiniao: MAX_MOTIVOS_OP, textoDipl: MAX_TXT_DIPL,
-      vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA },
+      vassalos: MAX_VASSALOS, trocas: MAX_TROCAS, qtdDipl: MAX_QTD_DIPL, motivosGuerra: MAX_MOT_GUERRA, textoMotivoGuerra: MAX_TXT_MOT_GUERRA,
+      segredos: MAX_SEGREDOS, sabem: MAX_SABEM, textoIntriga: MAX_TXT_INTR },
   };
   if (typeof module === 'object' && module && module.exports) module.exports = MundoNucleo;
   if (typeof window !== 'undefined') window.MundoNucleo = MundoNucleo;

@@ -56,7 +56,7 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
     await L.F.fill('#vazio [data-k="vz:nome"]', 'Hexes'); await L.F.click('#vazio [data-k="vz:papel"]'); await espera(300);
     const m = await mapa(L);
     ok(!!m && m.grade.tam === 0 && m.terrenos.length === 16 && j(m.hexes) === '{}', 'um mapa novo: sem grade, com os dezesseis terrenos de começo, nenhum hexágono pintado');
-    ok(await L.F.locator('#tab-terreno').isVisible() && (await L.F.locator('#tabs .tab:not([hidden])').allInnerTexts()).join('|').replace(/\s+/g, '') === 'Seleção|Hoje|Terreno|Mapa|Reinos|Corte|Diplomacia|Guerra', 'o painel ganha a aba Terreno (lote 11, parte 3a: as abas em duas fileiras — o mapa e a política)');
+    ok(await L.F.locator('#tab-terreno').isVisible() && (await L.F.locator('#tabs .tab:not([hidden])').allInnerTexts()).join('|').replace(/\s+/g, '') === 'Seleção|Hoje|Terreno|Mapa|Reinos|Corte|Diplomacia|Intrigas|Guerra', 'o painel ganha a aba Terreno (lote 11, parte 3a: as abas em duas fileiras — o mapa e a política; parte 4a: Intrigas)');
   });
 
   await passo('sem grade', async () => {

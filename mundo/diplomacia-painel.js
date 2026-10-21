@@ -831,5 +831,6 @@
     return { fluxos, vencem, motivos, recusados: () => caixas.filter(c => !c.cb.checked).map(c => c.id), pintar, ler };
   }
 
-  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana, janelaMotivoGuerra, janelaGuerra, janelaPaz };
+  window.MundoDiplomaciaPainel = { abaDiplomacia, janelaTratado, janelaTipos, janelaOpiniao, janelaVassalagem, vassalaTxt, secSemana, janelaMotivoGuerra, janelaGuerra, janelaPaz,
+    porNoJornal, caixaJornal };                                  // (lote 11, parte 4a) para as intrigas (mundo/intrigas-painel.js)
 })();

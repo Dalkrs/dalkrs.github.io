@@ -29,10 +29,15 @@
 //     que existem, os limites), as sugestões pelos pretendentes, os tratados que ainda valem entre duas, declarar a guerra
 //     (a relação dos dois lados, os tratados escolhidos acabam), fazer a paz (a relação, o tratado novo), as notícias para
 //     o Jornal e a projeção (sem os motivos de guerra).
+//   · (parte 4a) os segredos normalizados (os campos, o boato e o falso, quem sabe — personagens e facções que existem —,
+//     o dono de cada tipo, o que não existe mais sai, os limites), as contas (o dono e o nome dele, as escolhas de dono, as
+//     facções de um segredo, a notícia) e a projeção (só os revelados, sem quem sabe, o falso e a nota; o dono só se eles o
+//     veem); a regra de sucessão que vale para cada título vai na projeção.
 const N = require('../../mundo/nucleo.js');
 const C = require('../../mundo/corte.js');
 const Dp = require('../../mundo/diplomacia.js');
 const R = require('../../mundo/reino.js');
+const In = require('../../mundo/intrigas.js');
 let n = 0, bad = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' — esperado ' + JSON.stringify(b) + ', veio ' + JSON.stringify(a));
@@ -309,9 +314,11 @@ const j = JSON.stringify;
   C.aplicarSucessao(c2, 'rei', [], undefined, { a: 310 });
   eq(c2.casas.find(x => x.id === 'ka').chefe, 'rei', 'sem dizer o chefe: a casa não muda');
   // a projeção: as regras são do mestre
-  const mp = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'antig' } }, pessoas: [{ id: 'a', nome: 'A', ver: true }], titulos: [{ id: 't', nome: 'T', tit: 'a', regra: { forma: 'primo' } }] } });
+  const mp = N.normalizarMapa({ nome: 'M', faccoes: [{ id: 'fa', nome: 'A' }], corte: { regras: { fa: { forma: 'antig', gen: 'homens' } }, pessoas: [{ id: 'a', nome: 'A', ver: true }],
+    titulos: [{ id: 't', nome: 'T', tit: 'a', fac: 'fa', regra: { forma: 'ultimo', gen: 'mulheres' } }, { id: 't2', nome: 'T2', tit: 'a', fac: 'fa' }, { id: 't3', nome: 'T3', tit: 'a' }] } });
   const pp = N.projetar(mp).corte;
-  eq([pp.titulos[0].regra, 'regras' in pp], [null, false], 'na projeção, sem as regras de sucessão (a do título e as dos reinos)');
+  eq([pp.titulos.map(t => t.regra), 'regras' in pp], [[{ forma: 'ultimo', gen: 'mulheres' }, { forma: 'antig', gen: 'homens' }, N.REGRA_PADRAO], false],
+    'na projeção (parte 4a), cada título com a regra que vale para ele (a dele, a do reino, a de começo), para o texto curto; as regras dos reinos não vão');
 }
 
 /* ---- (parte 3a) a diplomacia: os tratados e a opinião ---- */
@@ -537,6 +544,49 @@ const j = JSON.stringify;
   const pj = N.projetar(m);
   eq([pj.dipl.motivosGuerra, pj.dipl.tratados.map(t => t.id)], [[], ['tp']], 'na projeção, sem os motivos de guerra');
   ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
+}
+
+/* ---- (parte 4a) os segredos ---- */
+{
+  const quad = (x, y, w, hh) => [[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]];
+  const base = { nome: 'M', faccoes: [{ id: 'fa', nome: 'Arvel' }, { id: 'fb', nome: 'Vale' }, { id: 'fd', nome: 'Culto', oculta: true }],
+    objs: [{ id: 'r1', k: 'r', nome: 'Terra Alta', fac: 'fa', pts: quad(0, 0, 400, 400) }, { id: 'm1', k: 'm', x: 100, y: 100, ic: 'cidade', nome: '' }, { id: 'm2', k: 'm', x: 900, y: 900, nome: 'Torre', oculto: true }],
+    corte: { pessoas: [{ id: 'pa', nome: 'Ana', fac: 'fa', casa: 'ka', ver: true }, { id: 'pb', nome: 'Bento', fac: 'fb', casa: 'ka' }, { id: 'pc', nome: 'Abel' }], casas: [{ id: 'ka', nome: 'Casa Alta' }],
+      titulos: [{ id: 'ta', grau: 'reino', de: 'de Arvel', fac: 'fa', tit: 'pa' }] },
+    dipl: { tratados: [{ id: 'tr1', tipo: 'alianca', partes: ['fa', 'fb'], pub: true }, { id: 'tr2', tipo: 'paz', partes: ['fa', 'fb'] }] },
+    intr: { segredos: [
+      { id: 's1', txt: ' O rei é bastardo. ', de: { t: 'p', id: 'pa' }, sabem: { p: ['pb', 'pb', 'zz'], f: ['fb', 'zz'] }, jog: true, boato: true, falso: true, nota: ' cuidado ' },
+      { id: 's2', txt: '', de: { t: 'p', id: 'pb' }, jog: true }, { id: 's1', txt: 'repetido' }, { id: 's3', txt: 'a casa', de: { t: 'c', id: 'ka' }, falso: true },
+      { id: 's4', txt: 'o reino', de: { t: 't', id: 'ta' }, jog: true }, { id: 's5', txt: 'o tratado', de: { t: 'tr', id: 'tr2' }, jog: true },
+      { id: 's6', txt: 'o tratado público', de: { t: 'tr', id: 'tr1' }, jog: true }, { id: 's7', txt: 'a região', de: { t: 'r', id: 'r1' }, jog: true },
+      { id: 's8', txt: 'a cidade', de: { t: 'm', id: 'm1' }, jog: true }, { id: 's9', txt: 'a torre', de: { t: 'm', id: 'm2' }, jog: true },
+      { id: 's10', txt: 'o culto', de: { t: 'f', id: 'fd' }, jog: true }, { id: 's11', txt: 'some', de: { t: 'p', id: 'zz' } }, { id: 's12', txt: 'tipo', de: { t: 'x', id: 'pa' } },
+      { id: 's13', txt: 'do mundo', jog: true }, { id: 's14', txt: 'o Abel', de: { t: 'p', id: 'pc' } }, 'lixo'] } };
+  const m = N.normalizarMapa(base), S = id => m.intr.segredos.find(x => x.id === id);
+  eq(m.intr.segredos.map(x => x.id), ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11', 's12', 's13', 's14'], 'os segredos: sem o repetido e o lixo');
+  eq(Object.keys(S('s1')), ['id', 'txt', 'de', 'sabem', 'jog', 'boato', 'falso', 'nota'], 'cada segredo com os campos de sempre, nesta ordem');
+  eq([S('s1').txt, S('s2').txt, S('s1').sabem, S('s1').nota, S('s1').boato, S('s1').falso, S('s3').falso, S('s3').jog], ['O rei é bastardo.', 'Segredo sem texto', { p: ['pb'], f: ['fb'] }, 'cuidado', true, true, false, false],
+    'o texto aparado (sem ele, "Segredo sem texto"); quem sabe, sem repetir e só quem existe; a nota; o falso só com o boato');
+  eq([S('s4').de, S('s8').de, S('s11').de, S('s12').de, S('s13').de], [{ t: 't', id: 'ta' }, { t: 'm', id: 'm1' }, null, null, null], 'o dono de cada tipo; o que não existe (ou de um tipo que não existe) sai: o segredo fica, do mundo');
+  const lim = N.normalizarMapa({ nome: 'M', faccoes: Array.from({ length: 30 }, (_, i) => ({ id: 'f' + i })), intr: { segredos: Array.from({ length: 320 }, (_, i) => ({ id: 's' + i, txt: 'x'.repeat(700), sabem: { f: Array.from({ length: 30 }, (_, k) => 'f' + k) } })) } }).intr;
+  ok(lim.segredos.length === N.LIMITES.segredos && lim.segredos[0].txt.length === N.LIMITES.textoIntriga && lim.segredos[0].sabem.f.length === N.LIMITES.sabem, 'os limites: ' + [N.LIMITES.segredos, N.LIMITES.textoIntriga, N.LIMITES.sabem].join(', '));
+  ok(!('intr' in N.normalizarMapa({ nome: 'M', intr: { segredos: [] } })) && 'intr' in N.normalizarMapa({ nome: 'M', intr: { segredos: [{ id: 'x', txt: 'y' }] } }), 'sem segredo, as intrigas nem ficam');
+  // as contas
+  eq([In.intrDe({}).segredos, In.segredoDe(m, 's4').txt, In.segredoDe(m, 'zz'), In.segredoDe(m, '')], [[], 'o reino', null, null], 'os segredos do mapa e um pelo id');
+  eq(['s1', 's3', 's4', 's5', 's6', 's7', 's8', 's10', 's13'].map(id => In.nomeDoDono(m, S(id).de)), ['Ana', 'Casa Alta', 'Reino de Arvel', 'Paz ou trégua: Arvel, Vale', 'Aliança: Arvel, Vale', 'Terra Alta', N.ICONES.cidade.nome, 'Culto', ''],
+    'o nome do dono (o título pelo grau; o tratado pelo tipo e as partes; o lugar sem nome, o do ícone; sem dono, nada)');
+  eq([In.opcoesDeDono(m, 'p'), In.opcoesDeDono(m, 'f').map(x => x[0]), In.opcoesDeDono(m, 'm').map(x => x[0]), In.opcoesDeDono(m, 'tr').map(x => x[1]), In.opcoesDeDono(m, 'x')],
+    [[['pc', 'Abel'], ['pa', 'Ana'], ['pb', 'Bento']], ['fa', 'fb', 'fd'], ['m1', 'm2'], ['Aliança: Arvel, Vale', 'Paz ou trégua: Arvel, Vale'], []], 'as escolhas de dono de cada tipo (os personagens em ordem alfabética)');
+  eq(['s1', 's3', 's4', 's6', 's7', 's8', 's9', 's10', 's13', 's14'].map(id => [...In.facsDoSegredo(m, S(id))].sort()), [['fa', 'fb'], ['fa', 'fb'], ['fa'], ['fa', 'fb'], ['fa'], ['fa'], [], ['fd'], [], []],
+    'as facções de um segredo: a do personagem e as que sabem; as dos membros da casa; o reino do título; as partes do tratado; a dona da região e a do lugar; a própria facção; o personagem sem facção, nenhuma');
+  eq([In.noticiaSegredo(m, S('s1')), In.noticiaSegredo(m, S('s13'))], [{ tit: 'Um boato: Ana', txt: 'O rei é bastardo.' }, { tit: 'Um segredo revelado', txt: 'do mundo' }], 'a notícia: boato ou segredo, de quem, e o texto');
+  // a projeção: só os revelados, sem quem sabe, o falso e a nota; o dono só se eles o veem
+  const pj = N.projetar(m);
+  eq(pj.intr.segredos.map(x => [x.id, x.de && x.de.id]), [['s1', 'pa'], ['s2', null], ['s4', 'ta'], ['s5', null], ['s6', 'tr1'], ['s7', 'r1'], ['s8', 'm1'], ['s9', null], ['s10', null], ['s13', null]],
+    'na projeção: só os revelados; o dono só se eles o veem (não o desconhecido, o tratado secreto, o lugar escondido, a facção escondida)');
+  eq([pj.intr.segredos[0].sabem, pj.intr.segredos[0].falso, pj.intr.segredos[0].nota, pj.intr.segredos[0].boato], [{ p: [], f: [] }, false, '', true], 'sem quem sabe, sem o falso e sem a nota; o boato vai');
+  ok(j(N.normalizarMapa(pj)) === j(pj), 'o que chega aos jogadores passa igual pela normalização deles');
+  ok(!('intr' in N.projetar(N.normalizarMapa(Object.assign(JSON.parse(j(base)), { intr: { segredos: [{ id: 'x', txt: 'só meu' }] } })))), 'sem segredo revelado, nada vai');
 }
 
 console.log(bad ? bad + ' falharam de ' + n : n + ' verificações passaram');

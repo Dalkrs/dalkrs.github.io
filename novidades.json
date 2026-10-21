@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-1",
+      "data": "2026-10-21",
+      "titulo": "Os segredos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a aba nova “Intrigas”, com os segredos que vocês descobriram (sobre quem, quando vocês sabem de quem é; os boatos vêm marcados)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: nos títulos da aba Corte, a regra de sucessão de cada um (por exemplo, “Primogenitura · por igual”)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na aba Intrigas, os segredos do mundo: o texto, de quem é (personagem, casa, facção, título, tratado ou lugar), quem sabe (personagens e facções), “É boato” e “É falso” e a nota. “Revelar aos jogadores…” mostra o que eles vão ler e pode mandar a notícia ao rascunho do Jornal (a caixa vem desmarcada); “Esconder dos jogadores” desfaz."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.19-1",
       "data": "2026-10-19",
       "titulo": "A guerra e a paz",
