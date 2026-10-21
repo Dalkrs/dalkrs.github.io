@@ -1345,6 +1345,8 @@ const Encontro = (() => {
     const cv = document.createElement('canvas'); cv.width = Math.round(W); cv.height = Math.round(H);
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x6c8e9cf5) >>> 0 || 9);
     P.chao(g, p.W, p.H, c, rnd, p.pal);
+    // (lote 13) o chão dos biomas vizinhos (a Região livre): as manchas de beira macia, por cima do chão do principal
+    for (const b of p.biomas || []) if (b.pal !== p.pal) P.chaoMisto(g, p.W, p.H, c, rnd, b.pal, b.pts);
     // a gruta: tudo rocha, e o chão por cima
     for (const cav of p.cavernas || []) { P.penhasco(g, [[-1, -1], [p.W + 1, -1], [p.W + 1, p.H + 1], [-1, p.H + 1]], c, rnd, ['#4a4f5a', '#2e323a', '#15171c'], 6); P.mancha(g, cav.chao, c, rnd, CH.gruta, { pedrisco: ['#7a8090', '#2a2e36'] }); g.save(); P.suave(g, cav.chao, c); g.globalAlpha = 0.55; g.strokeStyle = '#0e1014'; g.lineWidth = c * 0.9; g.stroke(); g.restore(); }
     // a água rasa por todo o mapa (o pântano) ou o mar
@@ -1352,8 +1354,9 @@ const Encontro = (() => {
     for (const m of p.chao) P.mancha(g, m.pts, c, rnd, m.cores, m.op || {});
     for (const o of p.pintados) if (o.z === 0) pintaObjeto(g, o, c, rnd, p);
     for (const a of p.abismos) P.abismo(g, a.pts, c, rnd, a.cores || [P.pedraDe(p.pal)[1], P.pedraDe(p.pal)[2], '#070606']);
-    for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, p.pal, a.tipo);
-    for (const a of p.aguas) if (a.k === 'rio') P.rio(g, a.pts, a.hw, c, rnd, p.pal, a.tipo);
+    // (lote 13: a água de outro bioma traz a paleta dele)
+    for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, a.pal || p.pal, a.tipo);
+    for (const a of p.aguas) if (a.k === 'rio') P.rio(g, a.pts, a.hw, c, rnd, a.pal || p.pal, a.tipo);
     const cores = Estilos.corDaRua(est, P.PAL[p.pal] || P.PAL.campo);
     for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cores, cm.tipo);
     for (const o of p.pintados) if (o.z === 1) pintaObjeto(g, o, c, rnd, p);
@@ -1373,7 +1376,8 @@ const Encontro = (() => {
     for (const n of p.navios) Navio.pintar(g, n, c, rnd, { danificado: n.danificado });
     for (const r of p.rochas) P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal));
     const neve = p.terreno === 'neve';
-    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, p.pal, neve);
+    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve)
+    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, a.pal || p.pal, a.neve != null ? a.neve : neve);
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
     P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
     return cv;
@@ -1424,6 +1428,8 @@ const Encontro = (() => {
     // os marcadores ocultos: por onde o grupo chega e a boa emboscada
     if (p.marcas && p.marcas.chegada && Props.P.chegada) sc.tokens.push(Props.novo(sc, 'chegada', p.marcas.chegada[0] * c, p.marcas.chegada[1] * c, 1, true));
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
+    // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
+    if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     // as luzes (a lava, os cristais, a fenda)
     for (const l of p.luzes) sc.lights.push({ id: uid('lz'), name: 'Luz do lugar', x: l.x * c, y: l.y * c, bright: l.bright, dim: l.dim, c: l.c, on: true, fl: true });
     if (op.relevo !== false) {
@@ -1489,6 +1495,14 @@ const Encontro = (() => {
     const m = p.marcas || {};
     if (m.chegada) { const [x, y] = m.chegada; g.fillStyle = '#3fbf6a'; g.strokeStyle = '#0e2a18'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc((x + 0.5) * cell, (y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo((x + 0.38) * cell, (y + 0.22) * cell); g.lineTo((x + 0.75) * cell, (y + 0.36) * cell); g.lineTo((x + 0.38) * cell, (y + 0.5) * cell); g.closePath(); g.fill(); g.fillRect((x + 0.33) * cell, (y + 0.2) * cell, Math.max(1, cell * 0.07), cell * 0.6); }
     if (m.emboscada) { const [x, y] = m.emboscada; g.fillStyle = '#d0453a'; g.strokeStyle = '#2a0e0a'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc((x + 0.5) * cell, (y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke(); g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1.5, cell * 0.1); g.beginPath(); g.moveTo((x + 0.3) * cell, (y + 0.3) * cell); g.lineTo((x + 0.7) * cell, (y + 0.7) * cell); g.moveTo((x + 0.7) * cell, (y + 0.3) * cell); g.lineTo((x + 0.3) * cell, (y + 0.7) * cell); g.stroke(); }
+    // (lote 13) os pontos de interesse: a estrela no dourado
+    if (p.comMarcas !== false) for (const q of p.pontos || []) {
+      const X = (q.x + 0.5) * cell, Y = (q.y + 0.5) * cell, R = Math.max(5, cell * 0.46);
+      g.fillStyle = '#d89a32'; g.strokeStyle = '#3a2508'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill(); g.stroke();
+      g.fillStyle = '#fff8e6'; g.beginPath();
+      for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? R * 0.22 : R * 0.72; g.lineTo(X + Math.cos(a) * r, Y + Math.sin(a) * r); }
+      g.closePath(); g.fill();
+    }
     g.fillStyle = '#f3ead2';
     for (const o of p.objetos) { g.beginPath(); g.arc((o.x + o.s / 2) * cell, (o.y + o.s / 2) * cell, Math.max(1.5, cell * 0.16 * o.s), 0, TAU); g.fill(); }
     return { cell };

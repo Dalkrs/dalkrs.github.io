@@ -115,6 +115,16 @@ const Props = (() => {
       }
     }
   }
+  // (lote 13) o marcador do ponto de interesse da Região livre, só do mestre: a estrela de quatro pontas no dourado
+  function marcaInteresse(c, R) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#f0c66a', '#c08a2e', '#7a5418']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#f6e7c4'; c.stroke();
+    c.fillStyle = '#fff8e6'; c.beginPath();
+    for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? R * 0.17 : R * 0.56; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+    c.fillStyle = '#c08a2e'; c.beginPath(); c.arc(0, 0, R * 0.09, 0, TAU); c.fill();
+  }
 
   /* ---- O catálogo ---- */
   const G = [
@@ -732,6 +742,8 @@ const Props = (() => {
     // (lote 7, parte 4b) os marcadores do encontro gerado: só do mestre (nascem ocultos)
     chegada: { n: 'Chegada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, true); } },
     emboscada: { n: 'Emboscada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, false); } },
+    // (lote 13) o ponto de interesse da Região livre: só do mestre (nasce oculto), com o nome do que há ali
+    interesse: { n: 'Ponto de interesse', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaInteresse(c, R); } },
   };
   const ORDER = Object.keys(P);
 

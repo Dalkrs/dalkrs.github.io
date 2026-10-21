@@ -4271,6 +4271,16 @@ const Props = (() => {
       }
     }
   }
+  // (lote 13) o marcador do ponto de interesse da Região livre, só do mestre: a estrela de quatro pontas no dourado
+  function marcaInteresse(c, R) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#f0c66a', '#c08a2e', '#7a5418']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#f6e7c4'; c.stroke();
+    c.fillStyle = '#fff8e6'; c.beginPath();
+    for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? R * 0.17 : R * 0.56; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+    c.fillStyle = '#c08a2e'; c.beginPath(); c.arc(0, 0, R * 0.09, 0, TAU); c.fill();
+  }
 
   /* ---- O catálogo ---- */
   const G = [
@@ -4888,6 +4898,8 @@ const Props = (() => {
     // (lote 7, parte 4b) os marcadores do encontro gerado: só do mestre (nascem ocultos)
     chegada: { n: 'Chegada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, true); } },
     emboscada: { n: 'Emboscada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, false); } },
+    // (lote 13) o ponto de interesse da Região livre: só do mestre (nasce oculto), com o nome do que há ali
+    interesse: { n: 'Ponto de interesse', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaInteresse(c, R); } },
   };
   const ORDER = Object.keys(P);
 
@@ -16777,7 +16789,8 @@ const Tracado = (() => {
        muro: { nome: 'Muralha', formas: [[id, nome]], ligada: bool, ligar(bool) } (null = não tem);
        rio: o lugar tem rio ligado (false: a seção diz como ligar — rioNota, se o lugar diz de outro jeito; null = não tem
        rio nenhum); mar: com mar (o rio vai para ele); praca: tem praça (true: os três lugares; ou a lista dos que valem
-       ali); pontes: tem pontes; portoesNota: o que os portões fazem ali (senão, "uma rua principal…"). */
+       ali); pontes: tem pontes; portoesNota: o que os portões fazem ali (senão, "uma rua principal…"); relevo: false
+       tira a chave do relevo natural (o lugar já nasce do relevo). */
   function secao(t, K, mudou, cfg) {
     const { field, seg, toggle, btn, note, inSelect } = K, P = cfg.pre, linhas = [];
     if (cfg.portoes) {
@@ -16808,7 +16821,8 @@ const Tracado = (() => {
       linhas.push(field('Praça', seg(P + '-praca', ops.some(x => x[0] === t.praca) ? t.praca : 'centro', ops, v => { t.praca = v; mudou(); }), 'stack'));
     }
     if (cfg.pontes && cfg.rio) linhas.push(field('Pontes', inSelect(P + '-pontes', t.pontes == null ? 'auto' : String(t.pontes), [['auto', 'Automático (uma em cada rua que cruza a água)'], ['0', 'Nenhuma (as ruas param na beira)'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']], v => { t.pontes = v === 'auto' ? null : Number(v); mudou(); }), 'stack'));
-    linhas.push(toggle(P + '-relnat', t.relevoNat, v => { t.relevoNat = v; mudou(); }, 'Relevo natural (colinas, matas e pedras em manchas)'));
+    // (lote 13: a Região livre já nasce do relevo — cfg.relevo false tira a chave)
+    if (cfg.relevo !== false) linhas.push(toggle(P + '-relnat', t.relevoNat, v => { t.relevoNat = v; mudou(); }, 'Relevo natural (colinas, matas e pedras em manchas)'));
     const mud = Object.keys(soMudadas(t)).length;
     linhas.push(h('div', { class: 'row' }, btn('Voltar ao automático', () => { Object.assign(t, padrao()); if (cfg.muro && !cfg.muro.ligada && cfg.muro.padraoLigada) cfg.muro.ligar(true); mudou(); }, { kind: 'small', id: P + '-tr-auto', disabled: !mud, title: 'Tudo como sempre: os portões, o rio, a praça, as pontes e o relevo' })));
     const det = h('details', { class: 'ger-tr', id: P + '-tr', open: App.opt.genTracado === true, ontoggle: e => { App.opt.genTracado = e.target.open; } },
@@ -16839,7 +16853,488 @@ const Tracado = (() => {
   const nomes = ids => { const n = lista(ids).map(id => DIR[id].n.toLowerCase()); return !n.length ? 'automático' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]; };
 
   return { DIRS, DIR, IDS, valida, lista, maisPerto, oposta, difAng, LARGURA, LARGURAS, naBorda, caminho, suave, arredondar, rioPlano, blob, agua, cruzamentos, cortar, muro, torresPor, cortarNoMar, noContorno,
-    pecasDoAnel, cruza, ruido, manchas, contorno, aoLongo, distLinha, dentro, dentroDe, comprimento, rosa, nomes, CAMPOS, padrao, limpar, soMudadas, escolhas, rioDaRosa, secao, resumoDe };
+    pecasDoAnel, cruza, ruido, manchas, contorno, simplificar, aoLongo, distLinha, dentro, dentroDe, comprimento, rosa, nomes, CAMPOS, padrao, limpar, soMudadas, escolhas, rioDaRosa, secao, resumoDe };
+})();
+/* ---------------------------------------------------------------
+   10c4. BIOMAS — o motor de biomas (lote 13, parte 13a)
+   A conta por baixo dos lugares de natureza aberta (a Região livre; depois, o chão do Encontro). Tudo é conta pura,
+   sorteada pela semente: a mesma semente, com as mesmas escolhas, dá o mesmo chão.
+   · os biomas, de uma tabela pronta: o nome, a paleta do chão, as árvores (a espécie de cada estilo) e quantas, os
+     enfeites e as pedrinhas, se é de pedra (no alto, o planalto de pedra e o paredão; nos outros, o morro), a água
+     parada (o gelo, a lava, o espelho), as poças (a água rasa, o lodo, a lava), onde ele fica quando é vizinho (os de
+     altura no alto, os de água no baixo, a costa num lado, junto do mar) e os vizinhos que combinam com ele;
+   · a altura do chão (o ruído, de 0 a 1), inclinada pelo rio (de onde ele vem é alto; para onde vai, baixo) e pelo
+     mar (baixo);
+   · o mapa dos biomas: o principal e um ou dois vizinhos, pela Mistura (pouca, média ou muita), em manchas que se
+     juntam, sem os pedacinhos soltos;
+   · o rio que desce pelo relevo, do alto para o baixo, pelo caminho mais barato (subir custa muito; o vale é bom), com
+     as curvas pedidas: acaba num lago, no mar ou sai pela borda; o afluente desce até ele; o lago enche a parte mais
+     baixa, como a água sobe;
+   · os patamares, onde o chão passa de uma altura (longe da água): nos biomas de pedra, o planalto e, mais alto, o
+     paredão; nos outros, o morro e, mais alto, o topo dele.
+   --------------------------------------------------------------- */
+const Biomas = (() => {
+  /* A tabela. arv(E, rnd, estilo): a espécie de uma árvore (E: o estilo, com as árvores dele). ter: o terreno dos
+     encontros (as árvores e os enfeites de sempre). alto: que parte do mapa (do mais alto para baixo) é patamar e
+     que parte é o mais alto, onde o bioma está. morro: as cores do morro [a luz do alto, a encosta, as curvas de nível]
+     (os de pedra usam as da pedra: Paisagem.PEDRA). clareira: as cores do chão aberto (Encontro.motor.CH, ou elas mesmas). */
+  const LISTA = [
+    { id: 'floresta', n: 'Floresta', em: 'na floresta', pal: 'floresta', ter: 'floresta', dens: 0.15, arv: E => E.arvore.floresta, enf: ['arbusto', 'toco', 'cogumelos', 'pedra', 'arbusto'], pedrinhas: 3, juncos: 0.15, mata: true,
+      rocha: false, alto: [0.2, 0.06], morro: ['#a9c27a', '#5a7444', '#1f2a17'], clareira: 'clareira', pref: null, viz: ['campo', 'montanha', 'pantano'] },
+    { id: 'campo', n: 'Campo', em: 'no campo', pal: 'campo', ter: 'campo', dens: 0.03, arv: E => E.arvore.campo, enf: ['arbusto', 'pedra', 'flores'], pedrinhas: 3, juncos: 0.15,
+      rocha: false, alto: [0.15, 0.05], morro: ['#c3d68f', '#667f48', '#2c3a1f'], clareira: 'grama', pref: null, viz: ['floresta', 'savana', 'costa'] },
+    { id: 'deserto', n: 'Deserto', em: 'no deserto', pal: 'areia', ter: 'deserto', dens: 0.012, arv: () => 'cacto', enf: ['pedra', 'arbusto', 'pedra'], pedrinhas: 5, juncos: 0,
+      rocha: true, pedra: 'canion', alto: [0.16, 0.05], clareira: 'areia', pref: null, viz: ['savana', 'montanha', 'costa'] },
+    { id: 'montanha', n: 'Montanha', em: 'na montanha', pal: 'rocha', ter: 'montanha', dens: 0.03, arv: (E, r, est) => (est === 'anao' ? 'rocha' : 'pinheiro'), enf: ['pedra', 'pedra', 'arbusto'], pedrinhas: 10, juncos: 0,
+      rocha: true, pedra: 'rocha', alto: [0.26, 0.09], clareira: 'terra', pref: 'alto', viz: ['floresta', 'neve', 'tundra'] },
+    { id: 'pantano', n: 'Pântano', em: 'no pântano', pal: 'pantano', ter: 'pantano', dens: 0.1, arv: (E, r) => (r() < 0.6 ? 'mangue' : 'morta'), enf: ['toco', 'cogumelos', 'arbusto'], pedrinhas: 0, juncos: 0.4, mata: true,
+      rocha: false, alto: [0.07, 0.02], morro: ['#9aa878', '#454f33', '#1d2316'], clareira: 'ilha', pref: 'baixo', poca: 'agua', viz: ['floresta', 'selva', 'corrompida'] },
+    { id: 'neve', n: 'Neve', em: 'na neve', pal: 'neve', ter: 'neve', dens: 0.07, arv: E => (E.arvore.neve === 'rocha' ? 'rocha' : 'pinheiro'), enf: ['pedra', 'toco', 'pedra'], pedrinhas: 4, juncos: 0, neve: true,
+      rocha: true, pedra: 'neve', alto: [0.18, 0.06], clareira: 'neveFunda', pref: 'alto', lago: 'gelo', viz: ['tundra', 'montanha', 'floresta'] },
+    { id: 'selva', n: 'Selva', em: 'na selva', pal: 'selva', ter: 'selva', dens: 0.18, arv: (E, r) => (r() < 0.82 ? 'selva' : 'palmeira'), enf: ['arbusto', 'flores', 'cogumelos', 'arbusto'], pedrinhas: 2, juncos: 0.25, mata: true,
+      rocha: false, alto: [0.16, 0.05], morro: ['#8fbf6a', '#30552a', '#122412'], clareira: 'clareira', pref: 'baixo', viz: ['pantano', 'floresta', 'costa'] },
+    { id: 'corrompida', n: 'Terra corrompida', em: 'na terra corrompida', pal: 'corrompida', ter: 'corrompida', dens: 0.07, arv: () => 'morta', enf: ['pedra', 'cogumelos'], pedrinhas: 4, juncos: 0.1,
+      rocha: false, alto: [0.2, 0.06], morro: ['#a594b0', '#4a3f52', '#1f1826'], clareira: 'rachado', pref: null, poca: 'lodo', viz: ['pantano', 'floresta', 'cristais'] },
+    { id: 'lava', n: 'Lava', em: 'na terra de lava', pal: 'basalto', ter: 'lava', dens: 0.012, arv: () => 'carbonizada', enf: ['pedra'], pedrinhas: 6, juncos: 0,
+      rocha: true, pedra: 'basalto', alto: [0.16, 0.06], clareira: 'cinza', pref: null, agua: 'lava', lago: 'lava', poca: 'lava', viz: ['montanha', 'corrompida', 'deserto'] },
+    { id: 'cristais', n: 'Cristais', em: 'entre os cristais', pal: 'cristal', ter: 'cristais', dens: 0.02, arv: () => 'cristal', enf: ['pedra'], pedrinhas: 3, juncos: 0, cristais: true,
+      rocha: true, pedra: 'cristal', alto: [0.18, 0.06], clareira: 'cristalClaro', pref: 'alto', lago: 'espelho', viz: ['montanha', 'neve', 'corrompida'] },
+    { id: 'savana', n: 'Savana', em: 'na savana', pal: 'savana', ter: 'campo', dens: 0.022, arv: () => 'acacia', enf: ['arbusto', 'pedra', 'arbusto'], pedrinhas: 3, juncos: 0.1,
+      rocha: false, alto: [0.14, 0.04], morro: ['#e0d49a', '#8f884c', '#4a4424'], clareira: 'capimAlto', pref: null, viz: ['campo', 'deserto', 'floresta'] },
+    { id: 'costa', n: 'Costa', em: 'na costa', pal: 'campo', ter: 'campo', dens: 0.03, arv: (E, r) => (r() < 0.55 ? 'palmeira' : E.arvore.campo), enf: ['pedra', 'arbusto'], pedrinhas: 4, juncos: 0.12,
+      rocha: true, pedra: 'mar', alto: [0.14, 0.05], clareira: 'grama', pref: 'borda', mar: true, viz: ['campo', 'selva', 'deserto'] },
+    { id: 'tundra', n: 'Tundra', em: 'na tundra', pal: 'tundra', ter: 'neve', dens: 0.012, arv: () => 'pinheiro', enf: ['pedra', 'pedra', 'toco'], pedrinhas: 8, juncos: 0, neve: true,
+      rocha: true, pedra: 'tundra', alto: [0.16, 0.05], clareira: ['#a3ab98', '#b3baa8', '#959d8a', '#c2c8b6'], pref: 'alto', lago: 'gelo', viz: ['neve', 'montanha', 'campo'] },
+  ];
+  const BIO = Object.fromEntries(LISTA.map(b => [b.id, b]));
+  const IDS = LISTA.map(b => b.id), IDX = Object.fromEntries(IDS.map((id, k) => [id, k]));
+  const valido = id => (typeof id === 'string' && BIO[id] ? id : 'floresta');
+  const MISTURAS = [['pouca', 'Pouca', null, 'Os vizinhos em poucas manchas'], ['media', 'Média', null, 'O principal e uns pedaços dos vizinhos'], ['muita', 'Muita', null, 'Quase metade da cena é dos vizinhos']];
+  const FRACAO = { pouca: 0.16, media: 0.32, muita: 0.48 };
+  const mistura = v => (typeof v === 'string' && FRACAO[v] != null ? v : 'media');
+
+  /* ---- a conta de apoio ---- */
+  // a semente de uma parte do sorteio (k), bem embaralhada (a mesma conta do motor dos encontros)
+  const sub = (seed, k) => { let h = ((seed >>> 0) ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0; h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) || (k + 1); };
+  const sorteio = s => mulberry((s % 2147483000) + 1);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const VIZ4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const VIZ8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+  // o lado do mapa → o vetor para fora; a direção da rosa → o vetor dela
+  const LADO = { n: [0, -1], s: [0, 1], o: [-1, 0], l: [1, 0] };
+  const vetor = id => { const d = Tracado.DIR[id]; return d ? [Math.cos(d.a), Math.sin(d.a)] : null; };
+  const angLado = l => Math.atan2(LADO[l][1], LADO[l][0]);
+  // a distância de um ponto à borda de um lado, e a medida do mapa nessa direção
+  const distLado = (lado, x, y, W, H) => (lado === 'n' ? y : lado === 's' ? H - y : lado === 'o' ? x : W - x);
+  const fundoDe = (lado, W, H) => (lado === 'n' || lado === 's' ? H : W);
+  // o lado mais perto de uma casa da borda
+  const ladoDaCasa = (q, W, H) => { const i = q % W, j = (q - i) / W, d = { n: j, s: H - 1 - j, o: i, l: W - 1 - i }; return Object.keys(d).reduce((m, k) => (d[k] < d[m] ? k : m), 'n'); };
+
+  // os grupos ligados (pelas quatro vizinhas) das casas em que em(q) vale → { grupos: [[q…]], marca: q → o grupo }
+  function grupos(W, H, em) {
+    const N = W * H, marca = new Int32Array(N).fill(-1), out = [];
+    for (let k = 0; k < N; k++) {
+      if (marca[k] >= 0 || !em(k)) continue;
+      const g = out.length, fila = [k], cel = [];
+      marca[k] = g;
+      while (fila.length) {
+        const q = fila.pop(), i = q % W, j = (q - i) / W;
+        cel.push(q);
+        for (const [a, b] of VIZ4) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= W || y >= H) continue; const n = y * W + x; if (marca[n] < 0 && em(n)) { marca[n] = g; fila.push(n); } }
+      }
+      out.push(cel);
+    }
+    return { grupos: out, marca };
+  }
+  // o contorno macio de um grupo (em quadrados), ou null: a escada das casas sai, a forma fica
+  function contornoDe(cel, W, H, marca, g, voltas, eps) {
+    const pts = Tracado.contorno(cel.map(q => [q % W, (q - (q % W)) / W]), W, H, marca, g);
+    if (!pts || pts.length < 4) return null;
+    const s = Tracado.simplificar(pts, eps == null ? 0.6 : eps);
+    return s.length >= 3 ? Tracado.arredondar(s, voltas == null ? 2 : voltas) : null;
+  }
+  /* O caminho mais barato (Dijkstra, pelas oito vizinhas) das fontes até uma casa em que alvo(q) vale. custo(de, para,
+     passo): o preço do passo (Infinity: não passa). → os índices, da fonte ao alvo, ou null */
+  function maisBarato(W, H, fontes, alvo, custo) {
+    const N = W * H, dist = new Float64Array(N).fill(Infinity), de = new Int32Array(N).fill(-1), hp = [];
+    const sobe = i => { while (i > 0) { const p = (i - 1) >> 1; if (hp[p][0] <= hp[i][0]) break; [hp[p], hp[i]] = [hp[i], hp[p]]; i = p; } };
+    const desce = i => { for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hp.length && hp[l][0] < hp[m][0]) m = l; if (r < hp.length && hp[r][0] < hp[m][0]) m = r; if (m === i) return; [hp[m], hp[i]] = [hp[i], hp[m]]; i = m; } };
+    const poe = (d, q) => { hp.push([d, q]); sobe(hp.length - 1); };
+    const tira = () => { const t = hp[0], u = hp.pop(); if (hp.length) { hp[0] = u; desce(0); } return t; };
+    for (const f of fontes) { dist[f] = 0; poe(0, f); }
+    let fim = -1;
+    while (hp.length) {
+      const [d, q] = tira();
+      if (d > dist[q]) continue;
+      if (alvo(q)) { fim = q; break; }
+      const i = q % W, j = (q - i) / W;
+      for (const [a, b, L] of VIZ8) {
+        const x = i + a, y = j + b;
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        const m = y * W + x, c = custo(q, m, L);
+        if (!(c < Infinity) || d + c >= dist[m]) continue;
+        dist[m] = d + c; de[m] = q; poe(d + c, m);
+      }
+    }
+    if (fim < 0) return null;
+    const out = [];
+    for (let q = fim; q >= 0; q = de[q]) out.push(q);
+    return out.reverse();
+  }
+  /* As casas → a linha macia (um ponto a cada meio quadrado): uma casa a cada duas, uma volta de Chaikin (tira os
+     dentes da escada) e a curva por elas. ini e fim: um ponto a mais no começo e no fim (fora da borda, dentro do mar). */
+  function linhaDe(W, cel, ini, fim) {
+    const c = cel.map(q => [q % W + 0.5, Math.floor(q / W) + 0.5]), ctl = [];
+    for (let k = 0; k < c.length; k += 2) ctl.push(c[k]);
+    if (c.length > 1 && ctl[ctl.length - 1] !== c[c.length - 1]) ctl.push(c[c.length - 1]);
+    if (ini) ctl.unshift(ini);
+    if (fim) ctl.push(fim);
+    if (ctl.length < 2) return ctl;
+    const q = [ctl[0]];
+    for (let i = 0; i < ctl.length - 1; i++) { const a = ctl[i], b = ctl[i + 1]; q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); }
+    q.push(ctl[ctl.length - 1]);
+    return Tracado.suave(q, 0.5);
+  }
+  /* A linha serpenteando (como o rio de sempre, em Tracado.caminho): pontos de controle a cada uns seis quadrados ao
+     longo dela, empurrados para os lados (um para cada lado, quase sempre), tanto mais quanto mais curvas (0 = segue a
+     linha; 10 = bem sinuoso); as pontas ficam, e os pontos fixos (o meio do lago no caminho) também. */
+  function serpentear(pts, curvas, rnd, maxAmp, fixos) {
+    const L = Tracado.comprimento(pts), k = clamp(Number(curvas), 0, 10) / 10, amp = k * Math.min(maxAmp, L * 0.11);
+    if (L < 4 || amp < 0.05) return pts;
+    const esp = Math.max(5.5, amp * 2.3), n = Math.max(2, Math.round(L / esp)), ctl = [pts[0]];
+    let lado = rnd() < 0.5 ? 1 : -1;
+    for (let i = 1; i < n; i++) {
+      // (o passo e o tamanho de cada curva variam: o rio não fica uma onda certinha)
+      const t = (i + (rnd() - 0.5) * 0.5) / n, p = Tracado.aoLongo(pts, t), env = Math.sqrt(Math.sin(Math.PI * t));
+      if (rnd() < 0.8) lado = -lado;
+      const off = lado * amp * (0.35 + 0.65 * rnd()) * env;
+      ctl.push([p.x - Math.sin(p.ang) * off, p.y + Math.cos(p.ang) * off]);
+    }
+    ctl.push(pts[pts.length - 1]);
+    for (const f of fixos || []) {
+      let m = 1, dm = Infinity;
+      for (let i = 1; i < ctl.length - 1; i++) { const d = Math.hypot(ctl[i][0] - f[0], ctl[i][1] - f[1]); if (d < dm) { dm = d; m = i; } }
+      if (ctl.length > 2) ctl[m] = f.slice();
+    }
+    return Tracado.suave(ctl, 0.5);
+  }
+  // o ponto fora da borda ao lado de uma casa da borda (o rio entra e sai do mapa por ali)
+  const foraDa = (q, W, H) => { const i = q % W, j = (q - i) / W, x = i + 0.5, y = j + 0.5, l = ladoDaCasa(q, W, H); return l === 'n' ? [x, -1.5] : l === 's' ? [x, H + 1.5] : l === 'o' ? [-1.5, y] : [W + 1.5, y]; };
+
+  /* ---- a altura ----
+     O ruído (as feições de uns onze quadrados), inclinado: alto de onde o rio vem, baixo para onde ele vai e para o lado
+     do mar (k: quanto inclina). → a altura de cada casa, de 0 a 1 */
+  function alturas(W, H, seed, o) {
+    const nA = Tracado.ruido(seed), EA = 1 / 11, alt = new Float32Array(W * H);
+    const de = vetor(o.de), para = vetor(o.para), mar = o.mar ? LADO[o.mar] : null, k = o.k == null ? 0.7 : o.k;
+    let lo = Infinity, hi = -Infinity;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const u = (i + 0.5) / W - 0.5, v = (j + 0.5) / H - 0.5;
+      let a = nA((i + 0.5) * EA, (j + 0.5) * EA), t = 0, n = 0;
+      if (de) { t += u * de[0] + v * de[1]; n++; }
+      if (para) { t -= u * para[0] + v * para[1]; n++; }
+      if (mar) { t -= (u * mar[0] + v * mar[1]) * 1.2; n++; }
+      if (n) a += k * t / Math.max(1, n * 0.75);
+      alt[j * W + i] = a; lo = Math.min(lo, a); hi = Math.max(hi, a);
+    }
+    const s = hi - lo > 1e-6 ? 1 / (hi - lo) : 0;
+    for (let q = 0; q < alt.length; q++) alt[q] = (alt[q] - lo) * s;
+    return alt;
+  }
+
+  /* ---- o mapa dos biomas ---- */
+  // os vizinhos: um (pouca), um ou dois (média, pela semente) ou dois (muita), da tabela do principal
+  function vizinhosDe(B, mist, rr) {
+    const pool = B.viz.slice(), n = mist === 'pouca' ? 1 : mist === 'muita' ? 2 : rr() < 0.5 ? 1 : 2, out = [];
+    for (let k = 0; k < n && pool.length; k++) out.push(pool.splice(Math.floor(rr() * pool.length) % pool.length, 1)[0]);
+    return out;
+  }
+  /* Cada vizinho fica com a parte dele (as casas em que o ruído dele, mais a preferência, é maior: os de altura no alto,
+     os de água no baixo, a costa na faixa do mar; com a costa de principal, os vizinhos ficam longe do mar). Depois,
+     duas voltas da maioria em volta e os pedacinhos (menos de seis casas) viram o que está em volta. */
+  function mapaDosBiomas(W, H, seed, B, vizs, frac, alt, marLado) {
+    const N = W * H, ip = IDX[B.id], bio = new Uint8Array(N).fill(ip);
+    vizs.forEach((v, k) => {
+      const BV = BIO[v], fv = vizs.length === 1 ? frac : (k === 0 ? 0.58 : 0.42) * frac, nz = Tracado.ruido(sub(seed, 10 + k)), EV = 1 / 8, cand = [];
+      for (let q = 0; q < N; q++) {
+        if (bio[q] !== ip) continue;
+        const i = q % W, j = (q - i) / W, x = i + 0.5, y = j + 0.5;
+        let s = nz(x * EV, y * EV);
+        if (BV.pref === 'alto') s += 0.8 * alt[q];
+        else if (BV.pref === 'baixo') s += 0.8 * (1 - alt[q]);
+        else if (BV.pref === 'borda' && marLado) s = 2 - distLado(marLado, x, y, W, H) / fundoDe(marLado, W, H) + 0.25 * s;
+        if (B.mar && marLado) s += 1.1 * distLado(marLado, x, y, W, H) / fundoDe(marLado, W, H);
+        cand.push([s, q]);
+      }
+      cand.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+      const n = Math.round(fv * N), iv = IDX[v];
+      for (let t = 0; t < n && t < cand.length; t++) bio[cand[t][1]] = iv;
+    });
+    // a maioria em volta (a casa conta duas vezes)
+    for (let volta = 0; volta < 2; volta++) {
+      const novo = bio.slice();
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const q0 = j * W + i, conta = new Map([[bio[q0], 2]]);
+        for (const [a, b] of VIZ8) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= W || y >= H) continue; const v = bio[y * W + x]; conta.set(v, (conta.get(v) || 0) + 1); }
+        let m = bio[q0], mc = conta.get(m);
+        for (const [v, c] of conta) if (c > mc) { m = v; mc = c; }
+        novo[q0] = m;
+      }
+      bio.set(novo);
+    }
+    // os pedacinhos soltos (os grupos do mesmo bioma com menos de seis casas) viram o bioma que mais encosta neles
+    for (let volta = 0; volta < 3; volta++) {
+      const marca = new Int32Array(N).fill(-1), lista = [];
+      for (let k = 0; k < N; k++) {
+        if (marca[k] >= 0) continue;
+        const g = lista.length, v = bio[k], fila = [k], cel = [];
+        marca[k] = g;
+        while (fila.length) { const q = fila.pop(), i = q % W, j = (q - i) / W; cel.push(q); for (const [a, b] of VIZ4) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= W || y >= H) continue; const n = y * W + x; if (marca[n] < 0 && bio[n] === v) { marca[n] = g; fila.push(n); } } }
+        lista.push({ v, cel });
+      }
+      if (lista.length < 2) break;
+      let mudou = false;
+      for (const g of lista) {
+        if (g.cel.length >= 6) continue;
+        const conta = new Map();
+        for (const q of g.cel) { const i = q % W, j = (q - i) / W; for (const [a, b] of VIZ4) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= W || y >= H) continue; const v = bio[y * W + x]; if (v !== g.v) conta.set(v, (conta.get(v) || 0) + 1); } }
+        let m = null, mc = -1;
+        for (const [v, c] of conta) if (c > mc) { m = v; mc = c; }
+        if (m != null) { for (const q of g.cel) bio[q] = m; mudou = true; }
+      }
+      if (!mudou) break;
+    }
+    return bio;
+  }
+
+  /* ---- o mar (a costa) ----
+     Num lado do mapa: a beira ondulada (fundo: quanto o mar entra, mais ou menos), o contorno do mar (passa da borda)
+     e a faixa da praia. → { lado, pts, beira, praia, prof(t), noMar(x, y) } */
+  function marDe(W, H, lado, fundo, seed) {
+    const nz = Tracado.ruido(seed), deitado = lado === 'n' || lado === 's', L = deitado ? W : H, D = deitado ? H : W;
+    const prof = t => clamp(fundo + (nz(t * 0.19, 3.7) - 0.5) * Math.max(2, fundo * 0.55), 1.5, D * 0.6);
+    const ponto = (t, d) => (lado === 'n' ? [t, d] : lado === 's' ? [t, H - d] : lado === 'o' ? [d, t] : [W - d, t]);
+    const larg = t => 1.5 + nz(t * 0.31 + 11.3, 8.1) * 1.4;
+    const beira = [], dentro = [], fora = [];
+    for (let t = -2; t <= L + 2.001; t += 0.5) { beira.push(ponto(t, prof(t))); dentro.push(ponto(t, prof(t) - 0.5)); fora.push(ponto(t, prof(t) + larg(t))); }
+    const noMar = (x, y) => distLado(lado, x, y, W, H) < prof(deitado ? x : y);
+    return { lado, pts: beira.concat([ponto(L + 2, -3), ponto(-2, -3)]), beira, praia: dentro.concat(fora.reverse()), prof, noMar };
+  }
+
+  /* ---- o rio ----
+     o: { de, para (a direção, ou 'lago'), curvas, afluente }. A fonte: uma casa alta da borda (perto da direção de onde
+     ele vem, se escolhida; longe dos cantos). O alvo: perto da direção para onde vai; o lago (a parte mais baixa do
+     meio); o mar; ou, sem nada, uma casa mais baixa da borda, longe da fonte. O passo custa o comprimento × (1 + 9 × o
+     que sobe + 1,6 × a altura + as curvas, pelo ruído). → { cel, ini, fim, lagoEm, destino, afluente: { cel, ini } } */
+  function rioDe(W, H, alt, o, seed, ehMar) {
+    const N = W * H, rr = sorteio(seed), mm = Math.min(W, H), R = Math.max(3, mm * 0.3);
+    const xy = q => [q % W + 0.5, Math.floor(q / W) + 0.5];
+    const dist = (a, b) => { const [ax, ay] = xy(a), [bx, by] = xy(b); return Math.hypot(ax - bx, ay - by); };
+    const naBorda = q => { const i = q % W, j = (q - i) / W; return i === 0 || j === 0 || i === W - 1 || j === H - 1; };
+    const canto = q => { const i = q % W, j = (q - i) / W; return j === 0 || j === H - 1 ? Math.min(i + 0.5, W - i - 0.5) : Math.min(j + 0.5, H - j - 0.5); };
+    const pertoDe = (q, id) => { const [x, y] = xy(q), p = Tracado.naBorda(id, W, H, 0, 0); return Math.hypot(x - p[0], y - p[1]) <= R; };
+    const borda = [];
+    let temMar = false;
+    for (let q = 0; q < N; q++) { if (ehMar(q)) temMar = true; else if (naBorda(q)) borda.push(q); }
+    if (!borda.length) return null;
+    let fontes = borda.filter(q => canto(q) >= 3 && (!o.de || pertoDe(q, o.de)));
+    if (!fontes.length) fontes = borda.filter(q => !o.de || pertoDe(q, o.de));
+    if (!fontes.length) fontes = borda.slice();
+    fontes.sort((a, b) => alt[b] - alt[a] || a - b);
+    const fonte = fontes[Math.floor(rr() * Math.min(3, fontes.length)) % fontes.length];
+    // o alvo
+    let alvo = null, lagoEm = null, destino = 'borda';
+    if (o.para === 'lago') {
+      let m = -1;
+      for (let q = 0; q < N; q++) { const [x, y] = xy(q); if (x < 4 || y < 4 || x > W - 4 || y > H - 4 || ehMar(q) || dist(q, fonte) < mm * 0.4) continue; if (m < 0 || alt[q] < alt[m]) m = q; }
+      if (m >= 0) { lagoEm = m; alvo = q => q === m; destino = 'lago'; }
+    }
+    if (!alvo && Tracado.valida(o.para)) {
+      const alvos = new Set(borda.filter(q => pertoDe(q, o.para) && dist(q, fonte) > mm * 0.4));
+      if (alvos.size) alvo = q => alvos.has(q);
+      else if (temMar) { alvo = q => ehMar(q); destino = 'mar'; }
+    }
+    if (!alvo && temMar) { alvo = q => ehMar(q); destino = 'mar'; }
+    /* (sem direção: noutro lado do mapa, mais baixo, com a reta da fonte até lá passando perto do meio — o rio
+       atravessa a região, e não corta só um canto nem corre junto da borda) */
+    const ladoF = ladoDaCasa(fonte, W, H);
+    if (!alvo) {
+      const a0 = alt[fonte], [fx, fy] = xy(fonte);
+      const pelMeio = q => { const [x, y] = xy(q), dx = x - fx, dy = y - fy, l = dx * dx + dy * dy || 1, t = clamp(((W / 2 - fx) * dx + (H / 2 - fy) * dy) / l, 0, 1); return Math.hypot(fx + dx * t - W / 2, fy + dy * t - H / 2) <= mm * 0.28; };
+      const ok = q => naBorda(q) && !ehMar(q) && canto(q) >= 2 && ladoDaCasa(q, W, H) !== ladoF && dist(q, fonte) > mm * 0.5;
+      const conds = [q => ok(q) && pelMeio(q) && alt[q] < a0 - 0.05, q => ok(q) && pelMeio(q), ok];
+      for (const c of conds) { let tem = false; for (const q of borda) if (c(q)) { tem = true; break; } if (tem) { alvo = c; break; } }
+      if (!alvo) alvo = ok;
+    }
+    const nz = Tracado.ruido(sub(seed, 5)), w = 0.15 + (o.curvas == null ? 4 : clamp(o.curvas, 0, 10)) * 0.13;
+    const custo = (q, m, L) => {
+      if (ehMar(m) && !alvo(m)) return Infinity;
+      const [x, y] = xy(m), beira = Math.min(x, y, W - x, H - y) < 2.5 && !alvo(m) ? 2.5 : 0;
+      return L * (1 + 9 * Math.max(0, alt[m] - alt[q]) + 1.6 * alt[m] + w * nz(x / 3.3, y / 3.3) + beira);
+    };
+    let cel = maisBarato(W, H, [fonte], alvo, custo);
+    if (!cel && destino === 'borda') cel = maisBarato(W, H, [fonte], q => naBorda(q) && !ehMar(q) && ladoDaCasa(q, W, H) !== ladoF && dist(q, fonte) > mm * 0.5, custo);
+    if (!cel || cel.length < 4) return null;
+    const ult = cel[cel.length - 1], [ux, uy] = xy(ult);
+    const r = { cel, ini: foraDa(fonte, W, H), fim: null, lagoEm, destino, afluente: null };
+    if (destino === 'borda') r.fim = foraDa(ult, W, H);
+    else if (destino === 'mar') { const pre = xy(cel[Math.max(0, cel.length - 3)]), dx = ux - pre[0], dy = uy - pre[1], L = Math.hypot(dx, dy) || 1; r.fim = [ux + dx / L * 2.2, uy + dy / L * 2.2]; }
+    // o afluente: de outra casa alta da borda, longe do rio, até o trecho do meio dele
+    if (o.afluente) {
+      const noRio = new Set(cel), meio = new Set(cel.slice(Math.floor(cel.length * 0.3), Math.ceil(cel.length * 0.75))), amostra = cel.filter((_, k) => k % 3 === 0);
+      const longe = borda.filter(q => canto(q) >= 3 && !noRio.has(q) && dist(q, fonte) > mm * 0.35 && amostra.every(p => dist(p, q) > mm * 0.3));
+      longe.sort((a, b) => alt[b] - alt[a] || a - b);
+      for (const f2 of longe.slice(0, 4)) {
+        const ca = maisBarato(W, H, [f2], q => meio.has(q), (q, m, L) => (noRio.has(m) && !meio.has(m) ? Infinity : custo(q, m, L)));
+        if (ca && ca.length >= 4) { r.afluente = { cel: ca, ini: foraDa(f2, W, H) }; break; }
+      }
+    }
+    return r;
+  }
+  /* O lago em volta de uma casa (centro): enche como a água sobe (sempre a casa mais baixa da beira, e um pouco a mais
+     perto do meio: ele não escorre comprido pelo vale) até ter n casas, sem chegar a dois quadrados da borda nem entrar
+     em bloq. → { pts (o contorno macio), cel (o conjunto), centro } */
+  function lagoDe(W, H, alt, centro, n, bloq) {
+    const N = W * H, em = new Uint8Array(N), hp = [[alt[centro], centro]], visto = new Uint8Array(N), ci = centro % W, cj = Math.floor(centro / W);
+    const prio = m => alt[m] + 0.035 * Math.hypot(m % W - ci, Math.floor(m / W) - cj);
+    visto[centro] = 1;
+    let k = 0;
+    while (hp.length && k < n) {
+      let mi = 0;
+      for (let t = 1; t < hp.length; t++) if (hp[t][0] < hp[mi][0] || (hp[t][0] === hp[mi][0] && hp[t][1] < hp[mi][1])) mi = t;
+      const [, q] = hp.splice(mi, 1)[0];
+      em[q] = 1; k++;
+      const i = q % W, j = (q - i) / W;
+      for (const [a, b] of VIZ4) { const x = i + a, y = j + b; if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) continue; const m = y * W + x; if (visto[m] || (bloq && bloq(m))) continue; visto[m] = 1; hp.push([prio(m), m]); }
+    }
+    const G = grupos(W, H, q => !!em[q]);
+    if (!G.grupos.length) return null;
+    let g = 0;
+    G.grupos.forEach((c, i) => { if (c.length > G.grupos[g].length) g = i; });
+    const pts = contornoDe(G.grupos[g], W, H, G.marca, g, 3, 0.7);
+    return pts ? { pts, cel: new Set(G.grupos[g]), centro: [centro % W + 0.5, Math.floor(centro / W) + 0.5] } : null;
+  }
+  // a linha cortada onde ela entra num dos lagos (fica um pouco de cada ponta lá dentro: o lago cobre a junta)
+  function cortarNosLagos(pts, lagos) {
+    let pecas = [pts];
+    for (const L of lagos) {
+      const novas = [];
+      for (const p of pecas) {
+        const iv = Tracado.dentroDe(p, (x, y) => Tracado.dentro(L.pts, x, y), -0.5).filter(([a, b]) => b > a);
+        if (iv.length) novas.push(...Tracado.cortar(p, iv, 1)); else novas.push(p);
+      }
+      pecas = novas;
+    }
+    return pecas;
+  }
+
+  /* ---- o campo inteiro ----
+     O chão de uma cena W × H. o: { bioma, mistura, agua: 'rio' | 'lago' | 'nenhuma', rio: { de, para, curvas, hw,
+     afluente, lago } (lago: o lago no caminho do rio), marLado (o lado do mar, na costa; senão, sorteado) }.
+     → { principal, mistura, vizs, alt, bio, bioEm(x, y), altEm(x, y), mar, ehMar(x, y), rios: [{ pts, pecas, hw, cel,
+     destino, afluente }], lagos: [{ pts, cel, centro }], planaltos: [{ pts, alt, bio, nivel }], paredoes: [{ pts, alt,
+     bio }], manchas: [{ bio, pts }], perto (as casas perto da água) } */
+  function campo(W, H, seed, o) {
+    o = o || {};
+    const B = BIO[valido(o.bioma)], mist = mistura(o.mistura), rr = sorteio(sub(seed, 1)), N = W * H;
+    const vizs = vizinhosDe(B, mist, rr);
+    const agua = o.agua === 'lago' || o.agua === 'nenhuma' ? o.agua : 'rio', R0 = agua === 'rio' ? Object.assign({}, o.rio || {}) : null;
+    // o mar, na costa (a principal ou uma vizinha): o lado — não o de onde o rio vem; o de para onde ele vai, se dá
+    let marLado = null;
+    if (B.mar || vizs.some(v => BIO[v].mar)) {
+      const todos = ['n', 's', 'o', 'l'];
+      let lados = todos.filter(l => !R0 || !Tracado.valida(R0.de) || Math.abs(Tracado.difAng(Tracado.DIR[R0.de].a, angLado(l))) > Math.PI / 2 - 0.01);
+      if (!lados.length) lados = todos;
+      if (todos.includes(o.marLado)) marLado = o.marLado;
+      else if (R0 && Tracado.valida(R0.para)) { const a = Tracado.DIR[R0.para].a; marLado = lados.reduce((m, l) => (Math.abs(Tracado.difAng(a, angLado(l))) < Math.abs(Tracado.difAng(a, angLado(m))) ? l : m)); }
+      else marLado = lados[Math.floor(rr() * lados.length) % lados.length];
+      if (R0 && B.mar && R0.para !== 'lago') R0.para = null;                // (na costa, o rio vai para o mar, ou para o lago)
+    }
+    // sem a rosa, o chão inclina menos, para um lado sorteado
+    let k = 0.7, inclina = null;
+    if (R0 && !Tracado.valida(R0.de) && !Tracado.valida(R0.para) && !marLado) { inclina = Tracado.IDS[Math.floor(rr() * 8) % 8]; k = 0.45; }
+    const alt = alturas(W, H, sub(seed, 2), { de: R0 ? R0.de || inclina : null, para: R0 && Tracado.valida(R0.para) ? R0.para : null, mar: marLado, k });
+    const bio = mapaDosBiomas(W, H, sub(seed, 3), B, vizs, FRACAO[mist], alt, marLado);
+    const bioEm = (x, y) => LISTA[bio[clamp(Math.floor(y), 0, H - 1) * W + clamp(Math.floor(x), 0, W - 1)]];
+    const altEm = (x, y) => alt[clamp(Math.floor(y), 0, H - 1) * W + clamp(Math.floor(x), 0, W - 1)];
+    // o mar: na costa principal, uns 28% do mapa; na vizinha, metade da faixa dela
+    let mar = null;
+    if (marLado) {
+      const D = fundoDe(marLado, W, H);
+      let fundo = D * 0.28;
+      if (!B.mar) { let n = 0; for (let q = 0; q < N; q++) if (LISTA[bio[q]].mar) n++; fundo = clamp(n / N * D * 0.5, 2.5, D * 0.3); }
+      mar = marDe(W, H, marLado, fundo, sub(seed, 4));
+    }
+    const ehMar = (x, y) => !!mar && mar.noMar(x, y);
+    const ehMarQ = q => !!mar && mar.noMar(q % W + 0.5, Math.floor(q / W) + 0.5);
+    const pertoDoMar = q => { if (!mar) return false; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5; return distLado(mar.lado, x, y, W, H) < mar.prof(mar.lado === 'n' || mar.lado === 's' ? x : y) + 3; };
+    // a água: o rio (e o afluente) e o lago
+    const rios = [], lagos = [];
+    const rio = R0 ? rioDe(W, H, alt, R0, sub(seed, 5), ehMarQ) : null;
+    const nLago = Math.round(N * (0.045 + sorteio(sub(seed, 6))() * 0.03));
+    if (rio && rio.lagoEm != null) { const l = lagoDe(W, H, alt, rio.lagoEm, nLago, pertoDoMar); if (l) lagos.push(l); }
+    else if (rio && R0.lago) {
+      // o lago no caminho do rio: na casa mais baixa do meio dele
+      const longeDoMar = q => { if (!mar) return true; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5; return distLado(mar.lado, x, y, W, H) > mar.prof(mar.lado === 'n' || mar.lado === 's' ? x : y) + 7; };
+      const meio = rio.cel.slice(Math.floor(rio.cel.length * 0.3), Math.ceil(rio.cel.length * 0.7)).filter(q => { const x = q % W, y = Math.floor(q / W); return x >= 4 && y >= 4 && x < W - 4 && y < H - 4 && longeDoMar(q); });
+      if (meio.length) { const c = meio.reduce((m, q) => (alt[q] < alt[m] ? q : m)); const l = lagoDe(W, H, alt, c, Math.round(nLago * 0.8), pertoDoMar); if (l) lagos.push(l); }
+    } else if (agua === 'lago') {
+      let m = -1;
+      for (let q = 0; q < N; q++) { const x = q % W, y = Math.floor(q / W); if (x < 4 || y < 4 || x >= W - 4 || y >= H - 4 || pertoDoMar(q)) continue; if (m < 0 || alt[q] < alt[m]) m = q; }
+      if (m >= 0) { const l = lagoDe(W, H, alt, m, nLago, pertoDoMar); if (l) lagos.push(l); }
+    }
+    if (rio) {
+      // (o caminho mais barato dá o rumo, pelo relevo; as curvas pedidas fazem ele serpentear)
+      const hw = R0.hw || 1.2, rc = sorteio(sub(seed, 7)), curvas = R0.curvas == null ? 4 : R0.curvas;
+      const fixos = R0.lago && rio.lagoEm == null && lagos.length ? [lagos[0].centro] : [];
+      const pts = serpentear(linhaDe(W, rio.cel, rio.ini, rio.fim), curvas, rc, 4.5, fixos);
+      rios.push({ pts, pecas: cortarNosLagos(pts, lagos), hw, cel: rio.cel, destino: rio.destino, afluente: false });
+      if (rio.afluente) {
+        // (o afluente acaba no ponto do rio mais perto do fim do rumo dele)
+        const ca = rio.afluente.cel, u = ca[ca.length - 1], ux = u % W + 0.5, uy = Math.floor(u / W) + 0.5;
+        const jn = pts.reduce((m, p) => (Math.hypot(p[0] - ux, p[1] - uy) < Math.hypot(m[0] - ux, m[1] - uy) ? p : m));
+        const hw2 = Math.max(0.6, Math.round(hw * 0.62 * 10) / 10), p2 = serpentear(linhaDe(W, ca.slice(0, -1), rio.afluente.ini, jn.slice()), curvas, rc, 3, []);
+        rios.push({ pts: p2, pecas: cortarNosLagos(p2, lagos), hw: hw2, cel: ca, destino: 'rio', afluente: true });
+      }
+    }
+    // perto da água (sem patamar): o rio, o lago e o mar
+    const perto = new Uint8Array(N);
+    const marca = (x, y, r) => { for (let j = Math.max(0, Math.floor(y - r)); j <= Math.min(H - 1, Math.floor(y + r)); j++) for (let i = Math.max(0, Math.floor(x - r)); i <= Math.min(W - 1, Math.floor(x + r)); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= r) perto[j * W + i] = 1; };
+    for (const r of rios) for (const p of r.pts.filter((_, i) => i % 2 === 0)) marca(p[0], p[1], r.hw + 1.8);
+    for (const l of lagos) for (const q of l.cel) marca(q % W + 0.5, Math.floor(q / W) + 0.5, 2);
+    for (let q = 0; q < N; q++) if (pertoDoMar(q)) perto[q] = 1;
+    // os patamares: o alto e o mais alto (de cada bioma), longe da água e da borda
+    const planaltos = [], paredoes = [];
+    const maioria = cel => { const c = new Map(); for (const q of cel) c.set(bio[q], (c.get(bio[q]) || 0) + 1); let m = bio[cel[0]], mc = -1; for (const [v, n] of c) if (n > mc) { m = v; mc = n; } return LISTA[m]; };
+    // (a altura do patamar de cada bioma: a da parte mais alta do mapa que ele pede)
+    const ord = Float32Array.from(alt).sort(), Q = f => ord[clamp(Math.floor((1 - f) * (N - 1)), 0, N - 1)];
+    const lim = LISTA.map(b => [Q(b.alto[0]), Q(b.alto[1])]);
+    const alto = nivel => q => { const i = q % W, j = (q - i) / W; return i > 0 && j > 0 && i < W - 1 && j < H - 1 && !perto[q] && alt[q] >= lim[bio[q]][nivel]; };
+    const G1 = grupos(W, H, alto(0));
+    G1.grupos.forEach((cel, g) => {
+      if (cel.length < 10) return;
+      const BB = maioria(cel), pts = contornoDe(cel, W, H, G1.marca, g, 3, 0.7);
+      if (pts) planaltos.push({ pts, alt: BB.rocha ? 3 : 2, bio: BB.id, nivel: 1, n: cel.length });
+    });
+    const G2 = grupos(W, H, alto(1));
+    G2.grupos.forEach((cel, g) => {
+      if (cel.length < 4) return;
+      const BB = maioria(cel), pts = contornoDe(cel, W, H, G2.marca, g, 2, 0.6);
+      if (!pts) return;
+      if (BB.rocha && cel.length <= 36) paredoes.push({ pts, alt: 6, bio: BB.id, n: cel.length });
+      else planaltos.push({ pts, alt: BB.rocha ? 6 : 4, bio: BB.id, nivel: 2, n: cel.length });
+    });
+    // as manchas dos vizinhos (o contorno de cada grupo de casas deles), para o desenho do chão
+    const manchas = [];
+    for (const v of vizs) {
+      const iv = IDX[v], G = grupos(W, H, q => bio[q] === iv);
+      G.grupos.forEach((cel, g) => { if (cel.length < 4) return; const pts = contornoDe(cel, W, H, G.marca, g, 2, 0.6); if (pts) manchas.push({ bio: v, pts }); });
+    }
+    const presentes = vizs.filter(v => bio.includes(IDX[v]));
+    return { principal: B.id, mistura: mist, vizs: presentes, alt, bio, bioEm, altEm, mar, ehMar, rios, lagos, planaltos, paredoes, manchas, perto, agua };
+  }
+
+  return { LISTA, BIO, IDS, IDX, valido, MISTURAS, FRACAO, mistura, sub, campo, alturas, vizinhosDe, mapaDosBiomas, marDe, rioDe, lagoDe, cortarNosLagos, grupos, contornoDe, maisBarato, linhaDe, foraDa, serpentear };
 })();
 /* ---------------------------------------------------------------
    10d. VILA — o gerador de vilarejo (lote 6; lote 7: estilos, travar, janelas e a noite)
@@ -19321,6 +19816,9 @@ const Cidade = (() => {
    (lote 7, parte 4b) O mar (do raso junto da beira ao fundo, com as fileiras de ondas) e o que fica nele e na beira,
    para o Porto e para a Cidade com mar: o cais e os molhes de pedra (com os cabeços), o quebra-mar, o farol, a prancha
    dos navios, o guindaste, a carga do cais, as redes, o secador de peixe, a barraca do peixe e os blocos de gelo.
+   (lote 13) A tundra, o chão de outro bioma em manchas de beira macia (a passagem gradual de um bioma para o outro), o
+   morro macio (o chão de baixo continua aparecendo) e os pontos de interesse da Região livre: a boca da gruta, o ninho
+   e a toca.
    --------------------------------------------------------------- */
 const Paisagem = (() => {
   const TAU = Math.PI * 2;
@@ -19336,13 +19834,16 @@ const Paisagem = (() => {
     cristal: { base: '#555f6c', manchas: ['#4b5462', '#606b79', '#46505e', '#6a7585', '#3f4855'], fios: ['#7c8a9c', '#383f4a'], rua: ['#5a6270', '#6c7482', '#7e8694'], copa: ['#3f5a6a', '#4a6a7c', '#557a8e'], luz: '#8ab4d6', agua: ['#2f5e8a', '#4a7fb0', '#7fb2dc'], margem: '#3e4654' },
     mar: { base: '#1d4a6b', manchas: ['#1a4361', '#215276', '#183d58', '#265a80', '#163a54'], fios: ['#4a86ad', '#12324a'], rua: ['#8a7a5a', '#a08e6a', '#b2a07c'], copa: ['#2c4629', '#355432', '#3f6239'], luz: '#5aa0c8', agua: ['#1d4a6b', '#2a6690', '#5a9cc6'], margem: '#cdb98e' },
     savana: { base: '#8a8648', manchas: ['#7f7b40', '#959150', '#76723a', '#a09a58', '#6c6834'], fios: ['#aca464', '#5e5a2e'], rua: ['#8a7550', '#a08a62', '#b09a72'], copa: ['#4f6a2e', '#5a7a34', '#66883c'], luz: '#9ab05a', agua: ['#356f8c', '#4683a0', '#69a2bc'], margem: '#7a6a40' },
+    // (lote 13) a tundra: o chão baixo e frio, cinza-esverdeado, com o musgo, os liquens e os restos de neve
+    tundra: { base: '#8c9384', manchas: ['#81887a', '#979e8e', '#788070', '#a3a998', '#6f7668'], fios: ['#b3b8a3', '#5c6354'], rua: ['#776d5e', '#8b8170', '#9d9382'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#c3ccc2', agua: ['#4c7790', '#6790a6', '#90b3c6'], margem: '#6b7064' },
   });
   // o desenho miúdo de cada chão: o capim, as ondinhas da areia, o brilho da neve, as rachaduras da rocha, as ondas
-  const FIOS = { campo: 'capim', floresta: 'capim', pantano: 'capim', selva: 'capim', savana: 'capim', areia: 'areia', canion: 'areia', neve: 'neve', rocha: 'racha', basalto: 'racha', corrompida: 'racha', cristal: 'racha', mar: 'onda' };
+  const FIOS = { campo: 'capim', floresta: 'capim', pantano: 'capim', selva: 'capim', savana: 'capim', areia: 'areia', canion: 'areia', neve: 'neve', rocha: 'racha', basalto: 'racha', corrompida: 'racha', cristal: 'racha', mar: 'onda', tundra: 'tundra' };
   // as cores das pedras e dos penhascos de cada chão: [clara, média, escura]
   const PEDRA = { campo: ['#a3a7ae', '#757a83', '#4e535b'], floresta: ['#9aa09a', '#6f766f', '#474d47'], areia: ['#d9b98a', '#b08a5c', '#7a5a38'], neve: ['#e8eef2', '#aab6c0', '#6f7c88'],
     rocha: ['#a8a39a', '#7d786f', '#4d4a44'], canion: ['#d08a5a', '#a8633a', '#6e3a20'], pantano: ['#8a8f7a', '#62675a', '#3e4238'], selva: ['#8e9a86', '#66725e', '#3f4a3a'],
-    corrompida: ['#7a6a86', '#53465e', '#2e2636'], basalto: ['#5a524c', '#3a3430', '#1c1918'], cristal: ['#a8b6c8', '#7a889a', '#4c5666'], mar: ['#8a8f96', '#61666d', '#3c4046'], savana: ['#b8a888', '#8e8062', '#5e533e'] };
+    corrompida: ['#7a6a86', '#53465e', '#2e2636'], basalto: ['#5a524c', '#3a3430', '#1c1918'], cristal: ['#a8b6c8', '#7a889a', '#4c5666'], mar: ['#8a8f96', '#61666d', '#3c4046'], savana: ['#b8a888', '#8e8062', '#5e533e'],
+    tundra: ['#b8bdb4', '#8a9088', '#5a5f58'] };
   const pedraDe = pal => PEDRA[pal] || PEDRA.campo;
   const tom = Estilos.tom;
 
@@ -19404,6 +19905,15 @@ const Paisagem = (() => {
         g.stroke();
       }
       for (let i = 0, n = Math.round(W * H * 0.9); i < n; i++) { g.globalAlpha = 0.3; g.fillStyle = P.fios[i % 2]; g.beginPath(); g.arc(rnd() * w, rnd() * h, c * (0.03 + rnd() * 0.05), 0, TAU); g.fill(); }
+    } else if (fio === 'tundra') {
+      // (lote 13) o capim baixo e ralo, os restos de neve, o musgo e os liquens
+      g.lineWidth = Math.max(1, c * 0.022);
+      for (let i = 0, n = Math.round(W * H * 1.6); i < n; i++) {
+        const x = rnd() * w, y = rnd() * h, a = -Math.PI / 2 + (rnd() - 0.5) * 1.1, l = c * (0.04 + rnd() * 0.07);
+        g.globalAlpha = 0.3; g.strokeStyle = P.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      }
+      for (let i = 0, n = Math.round(W * H * 0.035); i < n; i++) { g.globalAlpha = 0.14 + rnd() * 0.12; g.fillStyle = '#e6ecee'; const rr = c * (0.3 + rnd() * 0.8); g.beginPath(); g.ellipse(rnd() * w, rnd() * h, rr, rr * (0.4 + rnd() * 0.4), rnd() * 3, 0, TAU); g.fill(); }
+      for (let i = 0, n = Math.round(W * H * 0.7); i < n; i++) { g.globalAlpha = 0.35; g.fillStyle = i % 3 ? '#5e6a4a' : '#b08e52'; g.beginPath(); g.arc(rnd() * w, rnd() * h, c * (0.03 + rnd() * 0.05), 0, TAU); g.fill(); }
     } else if (fio === 'onda') {
       // as ondas: arcos claros em fileiras desencontradas e as cristas de espuma
       g.lineWidth = Math.max(1, c * 0.035);
@@ -19441,6 +19951,29 @@ const Paisagem = (() => {
     if (op.bolhas) { g.lineWidth = Math.max(1, c * 0.03); for (let i = 0, n = Math.round(area * 0.8); i < n; i++) { g.globalAlpha = 0.5; g.strokeStyle = op.bolhas; g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, c * (0.06 + rnd() * 0.12), 0, TAU); g.stroke(); } }
     g.restore();
   }
+  /* (lote 13) O chão de outro bioma em manchas de beira macia (polis: os contornos, em quadrados): o chão inteiro dele,
+     recortado pela máscara das manchas, borrada (a passagem de um bioma para o outro fica gradual; borra: quantos
+     quadrados de passagem). Só na caixa das manchas, com a folga do borrado. A máscara vem da sombra (o desenho fica
+     fora da tela e só a sombra borrada cai no lugar): funciona em todo navegador. */
+  function chaoMisto(g, W, H, c, rnd, pal, polis, borra) {
+    if (!polis || !polis.length) return;
+    const b = borra || 1.3, m = b + 0.6;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const pts of polis) { const q = caixa(pts); x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[2]); y1 = Math.max(y1, q[3]); }
+    x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
+    const ox = Math.floor(x0 * c), oy = Math.floor(y0 * c), w = Math.ceil(x1 * c) - ox, h = Math.ceil(y1 * c) - oy;
+    if (w < 2 || h < 2) return;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g2 = cv.getContext('2d');
+    g2.translate(-ox, -oy); chao(g2, W, H, c, rnd, pal); g2.setTransform(1, 0, 0, 1, 0, 0);
+    const mk = document.createElement('canvas'); mk.width = w; mk.height = h;
+    const gm = mk.getContext('2d'), longe = w + h + 64;
+    gm.shadowColor = '#000'; gm.shadowBlur = Math.max(2, c * b); gm.shadowOffsetX = longe; gm.fillStyle = '#000';
+    gm.translate(-ox - longe, -oy);
+    for (const pts of polis) { suave(gm, pts, c); gm.fill(); }
+    g2.globalCompositeOperation = 'destination-in'; g2.drawImage(mk, 0, 0);
+    g.drawImage(cv, ox, oy);
+  }
 
   /* ================= a água (e o que corre como ela) ================= */
   // o rio: uma linha grossa (hw: a meia largura). tipo: 'agua' | 'lava' | 'lodo'
@@ -19474,8 +20007,9 @@ const Paisagem = (() => {
     }
     g.restore();
   }
-  // o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho' | 'mar'
-  function lago(g, pts, c, rnd, pal, tipo) {
+  /* o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho' | 'mar'. semBeira: sem a
+     beira (lote 13: a segunda demão, por cima da ponta do rio que entra nele — a beira da primeira fica embaixo do rio) */
+  function lago(g, pts, c, rnd, pal, tipo, semBeira) {
     const P = PAL[pal] || PAL.campo, [x0, y0, x1, y1] = caixa(pts), area = (x1 - x0) * (y1 - y0);
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     if (tipo === 'mar') {
@@ -19492,7 +20026,7 @@ const Paisagem = (() => {
         g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + L / 2, y - c * 0.14, x + L, y); g.stroke();
       }
     } else if (tipo === 'gelo') {
-      suave(g, pts, c); g.strokeStyle = '#c9d6df'; g.lineWidth = c * 0.9; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = '#c9d6df'; g.lineWidth = c * 0.9; g.stroke(); }
       const gr = g.createLinearGradient(x0 * c, y0 * c, x1 * c, y1 * c); gr.addColorStop(0, '#e8f6fc'); gr.addColorStop(0.5, '#bfe0f0'); gr.addColorStop(1, '#9cc8e0');
       suave(g, pts, c); g.fillStyle = gr; g.fill();
       g.clip();
@@ -19506,10 +20040,13 @@ const Paisagem = (() => {
       }
       g.globalAlpha = 0.5; g.fillStyle = '#ffffff'; for (let i = 0, n = Math.round(area * 0.8); i < n; i++) { g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, Math.max(0.6, c * 0.02), 0, TAU); g.fill(); }
       g.restore(); g.save();
-      suave(g, pts, c); g.globalAlpha = 0.7; g.strokeStyle = '#f2f7fa'; g.lineWidth = c * 0.22; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.globalAlpha = 0.7; g.strokeStyle = '#f2f7fa'; g.lineWidth = c * 0.22; g.stroke(); }
     } else if (tipo === 'lava') {
-      suave(g, pts, c); g.globalAlpha = 0.14; g.strokeStyle = '#ff6a1a'; g.lineWidth = c * 2.2; g.stroke(); g.lineWidth = c * 1.2; g.stroke();
-      g.globalAlpha = 1; suave(g, pts, c); g.strokeStyle = '#1a0f0a'; g.lineWidth = c * 0.7; g.stroke();
+      if (!semBeira) {
+        suave(g, pts, c); g.globalAlpha = 0.14; g.strokeStyle = '#ff6a1a'; g.lineWidth = c * 2.2; g.stroke(); g.lineWidth = c * 1.2; g.stroke();
+        g.globalAlpha = 1; suave(g, pts, c); g.strokeStyle = '#1a0f0a'; g.lineWidth = c * 0.7; g.stroke();
+      }
+      g.globalAlpha = 1;
       suave(g, pts, c); g.fillStyle = '#7a1e08'; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.8), c); g.fillStyle = '#d4520f'; g.fill();
@@ -19520,7 +20057,7 @@ const Paisagem = (() => {
       for (let i = 0, n = Math.round(area * 0.15) + 2; i < n; i++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); g.beginPath(); g.arc(x * c, y * c, c * (0.2 + rnd() * 0.5), rnd() * 3, rnd() * 3 + 2); g.stroke(); }
     } else if (tipo === 'lodo') {
       const lodo = pal === 'corrompida' ? ['#2a1f33', '#4a2f5a', '#7a4f96', '#b07ad0'] : ['#2f3a22', '#46532c', '#62703c', '#9aaa5a'];
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.6; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.6; g.stroke(); }
       suave(g, pts, c); g.fillStyle = lodo[0]; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.7), c); g.globalAlpha = 0.8; g.fillStyle = lodo[1]; g.fill();
@@ -19528,7 +20065,7 @@ const Paisagem = (() => {
       for (let i = 0, n = Math.round(area * 0.9); i < n; i++) { g.globalAlpha = 0.6; g.strokeStyle = rnd() < 0.5 ? lodo[2] : lodo[3]; g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, c * (0.05 + rnd() * 0.14), 0, TAU); g.stroke(); }
     } else if (tipo === 'espelho') {
       // o lago espelhado: claro, liso, refletindo o céu; os cristais da beira brilham nele
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.5; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.5; g.stroke(); }
       const gr = g.createLinearGradient(x0 * c, y0 * c, x1 * c, y1 * c); gr.addColorStop(0, '#dff3ff'); gr.addColorStop(0.45, '#9fd0ee'); gr.addColorStop(1, '#5f9cc8');
       suave(g, pts, c); g.fillStyle = gr; g.fill();
       g.clip();
@@ -19537,7 +20074,7 @@ const Paisagem = (() => {
       g.globalAlpha = 0.9; g.fillStyle = '#ffffff';
       for (let i = 0, n = Math.round(area * 0.2) + 4; i < n; i++) { const x = (x0 + rnd() * (x1 - x0)) * c, y = (y0 + rnd() * (y1 - y0)) * c, s = c * (0.05 + rnd() * 0.08); g.beginPath(); g.moveTo(x, y - s * 2); g.lineTo(x + s * 0.5, y); g.lineTo(x, y + s * 2); g.lineTo(x - s * 0.5, y); g.closePath(); g.fill(); g.beginPath(); g.moveTo(x - s * 2, y); g.lineTo(x, y + s * 0.5); g.lineTo(x + s * 2, y); g.lineTo(x, y - s * 0.5); g.closePath(); g.fill(); }
     } else {
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.7; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.7; g.stroke(); }
       suave(g, pts, c); g.fillStyle = P.agua[0]; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.78), c); g.globalAlpha = 0.85; g.fillStyle = P.agua[1]; g.fill();
@@ -20233,6 +20770,32 @@ const Paisagem = (() => {
     g.globalAlpha = 0.18; for (let i = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.8); i < n; i++) { g.fillStyle = rnd() < 0.5 ? cores[0] : cores[2]; const rr = c * (0.2 + rnd() * 0.5); g.beginPath(); g.ellipse((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, rr, rr * 0.6, rnd() * 3, 0, TAU); g.fill(); }
     g.restore();
   }
+  /* (lote 13) O morro macio (pts: o contorno; alt: a altura; cores: [a luz do alto, a encosta, as curvas de nível]): o
+     chão de baixo continua aparecendo — a sombra da encosta para baixo e à direita (só fora do morro), o alto um pouco
+     mais claro em camadas, as curvas de nível e as hachuras do lado da sombra, como num mapa antigo. */
+  function morroMacio(g, pts, c, rnd, cores, alt) {
+    const camadas = clamp(Math.round((alt || 2) / 1.5), 1, 3);
+    const trajeto = pp => { const n = pp.length; g.moveTo((pp[n - 1][0] + pp[0][0]) / 2 * c, (pp[n - 1][1] + pp[0][1]) / 2 * c); for (let i = 0; i < n; i++) { const p = pp[i], q = pp[(i + 1) % n]; g.quadraticCurveTo(p[0] * c, p[1] * c, (p[0] + q[0]) / 2 * c, (p[1] + q[1]) / 2 * c); } g.closePath(); };
+    g.save(); g.lineJoin = 'round';
+    g.save(); g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); trajeto(pts); g.clip('evenodd');
+    const d = c * (0.22 + 0.12 * camadas);
+    g.translate(d, d * 1.25); g.beginPath(); trajeto(pts); g.globalAlpha = 0.22; g.fillStyle = '#000'; g.fill();
+    g.restore();
+    for (let k = 0; k < camadas; k++) {
+      const pp = encolher(pts, 1 - k * (0.55 / camadas)).map(([x, y]) => [x - k * 0.1, y - k * 0.13]);
+      g.beginPath(); trajeto(pp); g.globalAlpha = 0.1 + k * 0.05; g.fillStyle = cores[0]; g.fill();
+      g.globalAlpha = 0.38; g.strokeStyle = cores[2]; g.lineWidth = Math.max(1, c * 0.045); g.stroke();
+    }
+    const [cx, cy] = centro(pts), anel = pts.concat([pts[0]]), L = compr(anel), n = Math.round(L * 1.8);
+    g.lineCap = 'round'; g.strokeStyle = cores[2]; g.lineWidth = Math.max(1, c * 0.04);
+    for (let i = 0; i < n; i++) {
+      const p = aoLongo(anel, i / n), dx = cx - p.x, dy = cy - p.y, dd = Math.hypot(dx, dy) || 1;
+      if (-dx / dd * 0.6 - dy / dd * 0.8 < 0.05) continue;
+      const l = Math.min(dd * 0.3, 0.35 + (alt || 2) * 0.1) * (0.7 + rnd() * 0.5);
+      g.globalAlpha = 0.3 + rnd() * 0.2; g.beginPath(); g.moveTo(p.x * c, p.y * c); g.lineTo((p.x + dx / dd * l) * c, (p.y + dy / dd * l) * c); g.stroke();
+    }
+    g.restore();
+  }
   // a duna (pts: o contorno; ang: de onde sopra o vento): a encosta clara a barlavento, a sombra a sotavento e a crista
   function duna(g, pts, c, rnd, ang) {
     const [cx, cy] = centro(pts), ux = Math.cos(ang), uy = Math.sin(ang);
@@ -20444,6 +21007,73 @@ const Paisagem = (() => {
     g.globalAlpha = 0.6; poli(g, encolher(o.pts, 0.6), c, true); g.fillStyle = '#ffffff'; g.fill();
     g.restore();
   }
+  /* ================= (lote 13) os pontos de interesse da Região livre ================= */
+  // um ossinho (x, y: o meio, em pixels; l: o comprimento; ang: o sentido)
+  function ossinho(g, x, y, l, ang, c) {
+    const ux = Math.cos(ang) * l / 2, uy = Math.sin(ang) * l / 2, r = Math.max(0.8, c * 0.035);
+    g.strokeStyle = '#ece3cf'; g.lineWidth = Math.max(1, c * 0.045); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x - ux, y - uy); g.lineTo(x + ux, y + uy); g.stroke();
+    g.fillStyle = '#ece3cf';
+    for (const s of [-1, 1]) for (const t of [-1, 1]) { g.beginPath(); g.arc(x + s * ux - uy / l * 2 * r * t, y + s * uy + ux / l * 2 * r * t, r, 0, TAU); g.fill(); }
+  }
+  /* A boca de uma gruta (x, y: o meio da boca, na beira da pedra; ang: para onde ela abre; r: o tamanho): o escuro que
+     entra na pedra, a beirada de rocha em arco e as pedras caídas na frente. */
+  function bocaGruta(g, o, c, rnd) {
+    const R = (o.r || 1) * c, a = o.ang || 0, ux = Math.cos(a), uy = Math.sin(a);
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(a);
+    const gr = g.createRadialGradient(-R * 0.35, 0, R * 0.08, -R * 0.2, 0, R * 1.15);
+    gr.addColorStop(0, '#030303'); gr.addColorStop(0.55, '#120f0d'); gr.addColorStop(1, 'rgba(18,15,13,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(-R * 0.25, 0, R * 0.85, R * 1.1, 0, 0, TAU); g.fill();
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = Math.max(1.5, c * 0.12); g.beginPath(); g.ellipse(-R * 0.25, 0, R * 0.85, R * 1.1, 0, -Math.PI * 0.42, Math.PI * 0.42); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.ellipse(-R * 0.2, 0, R * 0.92, R * 1.16, 0, -Math.PI * 0.4, Math.PI * 0.1); g.stroke();
+    g.restore();
+    const k = o.r || 1;
+    for (let i = 0; i < 5; i++) { const d = k * (0.8 + rnd() * 0.9), s = (rnd() - 0.5) * k * 1.8; pedra(g, o.x + ux * d - uy * s, o.y + uy * d + ux * s, 0.12 + rnd() * 0.16, c, rnd, o.cores || PEDRA.rocha); }
+  }
+  /* O ninho grande no chão (x, y: o meio; r: o raio): os galhos trançados em roda, o fundo de palha, os ovos e umas
+     penas e ossinhos em volta. */
+  function ninho(g, o, c, rnd) {
+    const X = o.x * c, Y = o.y * c, R = (o.r || 1) * c;
+    g.save(); g.lineCap = 'round';
+    g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(X + R * 0.12, Y + R * 0.16, R * 1.05, R * 0.95, 0, 0, TAU); g.fill();
+    g.globalAlpha = 1; g.fillStyle = '#6b5232'; g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill();
+    for (let i = 0; i < 46; i++) {
+      const a = rnd() * TAU, d = R * (0.62 + rnd() * 0.4), l = R * (0.35 + rnd() * 0.45), b = a + Math.PI / 2 + (rnd() - 0.5) * 0.9, x = X + Math.cos(a) * d, y = Y + Math.sin(a) * d;
+      g.strokeStyle = ['#4a3620', '#7a5c38', '#5e4428', '#8f6c42'][i % 4]; g.lineWidth = Math.max(1, c * (0.04 + rnd() * 0.04));
+      g.beginPath(); g.moveTo(x - Math.cos(b) * l / 2, y - Math.sin(b) * l / 2); g.lineTo(x + Math.cos(b) * l / 2, y + Math.sin(b) * l / 2); g.stroke();
+    }
+    const gr = g.createRadialGradient(X, Y, R * 0.1, X, Y, R * 0.62); gr.addColorStop(0, '#3a2a18'); gr.addColorStop(1, '#5a4428');
+    g.fillStyle = gr; g.beginPath(); g.arc(X, Y, R * 0.58, 0, TAU); g.fill();
+    for (let i = 0, n = 2 + Math.floor(rnd() * 3); i < n; i++) {
+      const a = rnd() * TAU, d = R * rnd() * 0.3, ex = X + Math.cos(a) * d, ey = Y + Math.sin(a) * d;
+      g.fillStyle = '#efe6d2'; g.beginPath(); g.ellipse(ex, ey, R * 0.16, R * 0.12, rnd() * 3, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(80,60,40,0.5)'; g.lineWidth = Math.max(0.8, c * 0.02); g.stroke();
+      g.fillStyle = 'rgba(120,90,60,0.55)'; g.beginPath(); g.arc(ex + R * 0.04, ey - R * 0.02, Math.max(0.6, R * 0.025), 0, TAU); g.fill();
+    }
+    // as penas e os ossinhos em volta
+    for (let i = 0; i < 4; i++) {
+      const a = rnd() * TAU, d = R * (1.15 + rnd() * 0.6), x = X + Math.cos(a) * d, y = Y + Math.sin(a) * d, b = rnd() * TAU;
+      if (i % 2) ossinho(g, x, y, c * (0.25 + rnd() * 0.15), b, c);
+      else { g.fillStyle = '#c9c4bb'; g.beginPath(); g.ellipse(x, y, c * 0.16, c * 0.05, b, 0, TAU); g.fill(); g.strokeStyle = '#7d776d'; g.lineWidth = Math.max(0.8, c * 0.015); g.beginPath(); g.moveTo(x - Math.cos(b) * c * 0.18, y - Math.sin(b) * c * 0.18); g.lineTo(x + Math.cos(b) * c * 0.16, y + Math.sin(b) * c * 0.16); g.stroke(); }
+    }
+    g.restore();
+  }
+  /* A toca (x, y: o meio do buraco; ang: para onde a terra foi jogada; r: o tamanho): o monte de terra revirada, o
+     buraco escuro e uns ossos roídos. */
+  function toca(g, o, c, rnd) {
+    const X = o.x * c, Y = o.y * c, R = (o.r || 1) * c, a = o.ang || 0, ux = Math.cos(a), uy = Math.sin(a);
+    const mx = X + ux * R * 0.6, my = Y + uy * R * 0.6;
+    g.save();
+    g.globalAlpha = 0.25; g.fillStyle = '#000'; g.beginPath(); g.ellipse(mx + R * 0.1, my + R * 0.14, R * 0.9, R * 0.62, a + Math.PI / 2, 0, TAU); g.fill();
+    g.globalAlpha = 0.95; g.fillStyle = '#7a6040'; g.beginPath(); g.ellipse(mx, my, R * 0.85, R * 0.58, a + Math.PI / 2, 0, TAU); g.fill();
+    for (let i = 0; i < 26; i++) { const d = R * rnd() * 0.8, b = rnd() * TAU; g.globalAlpha = 0.55; g.fillStyle = rnd() < 0.5 ? '#9a7c52' : '#5e472c'; g.beginPath(); g.arc(mx + Math.cos(b) * d, my + Math.sin(b) * d * 0.7, Math.max(0.8, R * (0.04 + rnd() * 0.06)), 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
+    const gr = g.createRadialGradient(X - ux * R * 0.1, Y - uy * R * 0.1, R * 0.05, X, Y, R * 0.5); gr.addColorStop(0, '#050403'); gr.addColorStop(0.7, '#1c140c'); gr.addColorStop(1, '#3a2a18');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(X, Y, R * 0.46, R * 0.38, a, 0, TAU); g.fill();
+    for (let i = 0; i < 3; i++) { const b = rnd() * TAU, d = R * (0.7 + rnd() * 0.7); ossinho(g, X + Math.cos(b) * d, Y + Math.sin(b) * d, c * (0.22 + rnd() * 0.16), rnd() * TAU, c); }
+    g.restore();
+  }
   // escurece de leve as bordas (o mesmo dos outros geradores)
   function vinheta(g, W, H, c, forte) {
     const w = W * c, h = H * c, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
@@ -20453,7 +21083,7 @@ const Paisagem = (() => {
   return { PAL, FIOS, PEDRA, pedraDe, poli, suave, caixa, centro, encolher, aoLongo, compr, chao, mancha, rio, lago, praia, espuma, cachoeira, caminho, penhasco, pedra, arvore, cristais,
     tabuas, carroca, tenda, fogueiraApagada, ossada, pasDoMoinho, plantacao, cerca, feno, espantalho, ponte, passarela, pedrasDePassar, fenda, basalto, raiz, troncoGigante, troncoColossal,
     luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD,
-    cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo };
+    cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo, chaoMisto, morroMacio, bocaGruta, ninho, toca, ossinho };
 })();
 /* ---------------------------------------------------------------
    10f2. ENCONTRO — os encontros de viagem (lote 7, parte 4b)
@@ -21802,6 +22432,8 @@ const Encontro = (() => {
     const cv = document.createElement('canvas'); cv.width = Math.round(W); cv.height = Math.round(H);
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x6c8e9cf5) >>> 0 || 9);
     P.chao(g, p.W, p.H, c, rnd, p.pal);
+    // (lote 13) o chão dos biomas vizinhos (a Região livre): as manchas de beira macia, por cima do chão do principal
+    for (const b of p.biomas || []) if (b.pal !== p.pal) P.chaoMisto(g, p.W, p.H, c, rnd, b.pal, b.pts);
     // a gruta: tudo rocha, e o chão por cima
     for (const cav of p.cavernas || []) { P.penhasco(g, [[-1, -1], [p.W + 1, -1], [p.W + 1, p.H + 1], [-1, p.H + 1]], c, rnd, ['#4a4f5a', '#2e323a', '#15171c'], 6); P.mancha(g, cav.chao, c, rnd, CH.gruta, { pedrisco: ['#7a8090', '#2a2e36'] }); g.save(); P.suave(g, cav.chao, c); g.globalAlpha = 0.55; g.strokeStyle = '#0e1014'; g.lineWidth = c * 0.9; g.stroke(); g.restore(); }
     // a água rasa por todo o mapa (o pântano) ou o mar
@@ -21809,8 +22441,9 @@ const Encontro = (() => {
     for (const m of p.chao) P.mancha(g, m.pts, c, rnd, m.cores, m.op || {});
     for (const o of p.pintados) if (o.z === 0) pintaObjeto(g, o, c, rnd, p);
     for (const a of p.abismos) P.abismo(g, a.pts, c, rnd, a.cores || [P.pedraDe(p.pal)[1], P.pedraDe(p.pal)[2], '#070606']);
-    for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, p.pal, a.tipo);
-    for (const a of p.aguas) if (a.k === 'rio') P.rio(g, a.pts, a.hw, c, rnd, p.pal, a.tipo);
+    // (lote 13: a água de outro bioma traz a paleta dele)
+    for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, a.pal || p.pal, a.tipo);
+    for (const a of p.aguas) if (a.k === 'rio') P.rio(g, a.pts, a.hw, c, rnd, a.pal || p.pal, a.tipo);
     const cores = Estilos.corDaRua(est, P.PAL[p.pal] || P.PAL.campo);
     for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cores, cm.tipo);
     for (const o of p.pintados) if (o.z === 1) pintaObjeto(g, o, c, rnd, p);
@@ -21830,7 +22463,8 @@ const Encontro = (() => {
     for (const n of p.navios) Navio.pintar(g, n, c, rnd, { danificado: n.danificado });
     for (const r of p.rochas) P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal));
     const neve = p.terreno === 'neve';
-    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, p.pal, neve);
+    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve)
+    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, a.pal || p.pal, a.neve != null ? a.neve : neve);
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
     P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
     return cv;
@@ -21881,6 +22515,8 @@ const Encontro = (() => {
     // os marcadores ocultos: por onde o grupo chega e a boa emboscada
     if (p.marcas && p.marcas.chegada && Props.P.chegada) sc.tokens.push(Props.novo(sc, 'chegada', p.marcas.chegada[0] * c, p.marcas.chegada[1] * c, 1, true));
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
+    // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
+    if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     // as luzes (a lava, os cristais, a fenda)
     for (const l of p.luzes) sc.lights.push({ id: uid('lz'), name: 'Luz do lugar', x: l.x * c, y: l.y * c, bright: l.bright, dim: l.dim, c: l.c, on: true, fl: true });
     if (op.relevo !== false) {
@@ -21946,6 +22582,14 @@ const Encontro = (() => {
     const m = p.marcas || {};
     if (m.chegada) { const [x, y] = m.chegada; g.fillStyle = '#3fbf6a'; g.strokeStyle = '#0e2a18'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc((x + 0.5) * cell, (y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo((x + 0.38) * cell, (y + 0.22) * cell); g.lineTo((x + 0.75) * cell, (y + 0.36) * cell); g.lineTo((x + 0.38) * cell, (y + 0.5) * cell); g.closePath(); g.fill(); g.fillRect((x + 0.33) * cell, (y + 0.2) * cell, Math.max(1, cell * 0.07), cell * 0.6); }
     if (m.emboscada) { const [x, y] = m.emboscada; g.fillStyle = '#d0453a'; g.strokeStyle = '#2a0e0a'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc((x + 0.5) * cell, (y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke(); g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1.5, cell * 0.1); g.beginPath(); g.moveTo((x + 0.3) * cell, (y + 0.3) * cell); g.lineTo((x + 0.7) * cell, (y + 0.7) * cell); g.moveTo((x + 0.7) * cell, (y + 0.3) * cell); g.lineTo((x + 0.3) * cell, (y + 0.7) * cell); g.stroke(); }
+    // (lote 13) os pontos de interesse: a estrela no dourado
+    if (p.comMarcas !== false) for (const q of p.pontos || []) {
+      const X = (q.x + 0.5) * cell, Y = (q.y + 0.5) * cell, R = Math.max(5, cell * 0.46);
+      g.fillStyle = '#d89a32'; g.strokeStyle = '#3a2508'; g.lineWidth = Math.max(1.5, cell * 0.08); g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill(); g.stroke();
+      g.fillStyle = '#fff8e6'; g.beginPath();
+      for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? R * 0.22 : R * 0.72; g.lineTo(X + Math.cos(a) * r, Y + Math.sin(a) * r); }
+      g.closePath(); g.fill();
+    }
     g.fillStyle = '#f3ead2';
     for (const o of p.objetos) { g.beginPath(); g.arc((o.x + o.s / 2) * cell, (o.y + o.s / 2) * cell, Math.max(1.5, cell * 0.16 * o.s), 0, TAU); g.fill(); }
     return { cell };
@@ -24703,6 +25347,472 @@ const Ruinas = (() => {
   return { TIPOS, TAMANHOS, TERRENOS_R, MASMORRA, gerar, resumo, criar, nomePadrao, limparTrava, travaDe, LUGAR };
 })();
 /* ---------------------------------------------------------------
+   10f7. REGIÃO LIVRE — uma área para explorar (lote 13, parte 13a)
+   Uma aba da janela "Gerar um lugar…", feita com o motor dos biomas (Biomas.campo) e o dos encontros (Encontro.motor).
+   Sem situação: a natureza aberta — o bioma principal com as manchas de um ou dois vizinhos (a Mistura: pouca, média
+   ou muita), o rio que desce pelo relevo (ou o lago, ou nada), o mar na costa, os morros e os penhascos onde o chão
+   sobe, o caminho (a trilha ou a estrada) com as pontes onde ele cruza a água, e os pontos de interesse sorteados (um
+   no Pequeno, dois no Médio, três no Grande): a clareira com algo (o poço velho, a árvore antiga, o círculo de pedras),
+   a entrada de gruta, o ninho ou a toca, o vau ou a ponte velha. Os marcadores da chegada e de cada ponto (com o nome
+   do que há ali) nascem ocultos: só o mestre vê.
+   O traçado (a água, o relevo, o caminho e os pontos) tem o sorteio dele: travá-lo deixa "Gerar outro" trocar só as
+   árvores, as pedras e os enfeites. Nada muda nas cenas que já existem.
+   --------------------------------------------------------------- */
+const Regiao = (() => {
+  const TAU = Math.PI * 2, MO = Encontro.motor, B = Biomas;
+  const TAMANHOS = { pequeno: { n: 'Pequeno', W: 32, H: 24, pontos: 1 }, medio: { n: 'Médio', W: 40, H: 30, pontos: 2 }, grande: { n: 'Grande', W: 48, H: 36, pontos: 3 } };
+  const AGUAS = [['surpresa', 'Surpresa', null, 'A semente escolhe: o rio, o rio que acaba num lago, só o lago ou nada'], ['rio', 'Rio'], ['lago', 'Lago'], ['nenhuma', 'Sem água']];
+  const CAMINHOS = [['nenhum', 'Sem caminho'], ['trilha', 'Trilha'], ['estrada', 'Estrada']];
+  // (lote 7, parte 5a) a seca do Mapa-múndi: o chão verde vira o capim seco
+  const SECO = { campo: 'savana', floresta: 'savana', selva: 'savana', pantano: 'savana' };
+  const hwDe = tipo => (tipo === 'estrada' ? 1.35 : 0.75);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const plural = (n, s, p) => n + ' ' + (n === 1 ? s : p || s + 's');
+  const juntar = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+
+  /* ================= o plano (conta pura) ================= */
+  // a trava: a semente do traçado; vale enquanto o bioma, o tamanho, a mistura, a água e o caminho forem os mesmos
+  function limparTrava(t, o) {
+    if (!t || typeof t !== 'object' || t.bioma !== o.bioma || t.tamanho !== o.tamanho || t.mistura !== o.mistura || t.agua !== o.agua || t.caminho !== o.caminho) return null;
+    const s = Math.round(Number(t.s));
+    return Number.isFinite(s) && s >= 1 && s <= 2147483647 ? { s } : null;
+  }
+  // a lava correndo: a zona de lava ao longo dela (só os pedaços dentro do mapa) e as luzes
+  function lavaAoLongo(K, pts, hw) {
+    const n = Math.max(3, Math.round(Paisagem.compr(pts) / 5));
+    for (let k = 0; k < n; k++) {
+      const a = Paisagem.aoLongo(pts, k / n), b = Paisagem.aoLongo(pts, (k + 1) / n), x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
+      if (K.dentro(x, y, 0.5)) K.zona('lava', x, y, { k: 'rect', rw: Math.hypot(b.x - a.x, b.y - a.y) + 0.5, rh: hw * 2, dir: Math.round(Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI) });
+    }
+    for (let t = 0.1; t < 1; t += 0.2) { const q = Paisagem.aoLongo(pts, t); if (K.dentro(q.x, q.y, 0.5)) K.luz(q.x, q.y, 6, '#ff8a3a'); }
+  }
+  /* A travessia de um rio em (x, y), no sentido ang: o vau (as pedras de atravessar) no rio de água estreito; senão a
+     ponte velha (o tronco, no riacho; a de pedra, na lava). → o nome do que ficou ali */
+  function travessia(K, x, y, ang, hw, lava) {
+    const P = K.P;
+    if (!lava && hw <= 1.8 && K.rT() < 0.6) {
+      const pedras = [];
+      for (let t = -hw - 0.1; t <= hw + 0.15; t += 0.62) pedras.push([x + Math.cos(ang) * t, y + Math.sin(ang) * t]);
+      K.pinta(1, 'pedras', { pts: pedras });
+      for (const [px, py] of pedras) { K.marcaCirc(px, py, 0.45, 10, true); P.relevo.push({ t: 'plataforma', alt: 0.3, k: 'ell', x: px - 0.32, y: py - 0.25, w: 0.64, h: 0.5 }); }
+      P.tracado.push({ k: 'linha', pts: pedras, hw: 0.4 });
+      return 'Vau';
+    }
+    const mat = lava ? 'pedra' : hw <= 1.0 ? 'tronco' : null;
+    K.ponte(x, y, hw * 2 + 1.6, lava ? 1.4 : mat === 'tronco' ? 0.85 : 1.2, ang, mat, lava ? 1 : 0.6);
+    return lava ? 'Ponte de pedra velha' : mat === 'tronco' ? 'Tronco sobre o rio' : 'Ponte velha';
+  }
+  /* Os caminhos: de cada direção (as da rosa; sem elas, de um lado a outro), pelo caminho mais barato — subir custa, a
+     água do rio custa (ele cruza onde é estreito, com a ponte), o lago, o mar e o penhasco não deixam. O primeiro vai de
+     uma direção à outra; os outros, até ele. As pontes ficam onde ele cruza o rio (até quantas foram pedidas); o vau
+     pedido fica no primeiro cruzamento. → { pontes } */
+  function poeCaminhos(K, F, T8, tipo, vau, sT) {
+    const { W, H, P } = K, N = W * H, hw = hwDe(tipo), alt = F.alt, conta = { pontes: 0 };
+    const lagos = F.lagos.map(l => l.pts), naLago = (x, y) => F.ehMar(x, y) || lagos.some(l => Tracado.dentro(l, x, y));
+    // as casas do rio (dá para cruzar); as outras de água (o lago, o mar) não
+    const noRio = new Uint8Array(N);
+    for (const a of P.aguas) if (a.k === 'rio') for (let k = 0; k < a.pts.length; k += 2) {
+      const [x, y] = a.pts[k], rr = a.hw + 0.4;
+      for (let j = Math.max(0, Math.floor(y - rr)); j <= Math.min(H - 1, Math.floor(y + rr)); j++) for (let i = Math.max(0, Math.floor(x - rr)); i <= Math.min(W - 1, Math.floor(x + rr)); i++)
+        if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= rr && !naLago(i + 0.5, j + 0.5)) noRio[j * W + i] = 1;
+    }
+    const passa = q => { const v = K.occ[q]; return !(v === 3 || v === 7 || v === 8 || (v === 2 && !noRio[q])); };
+    const nz = Tracado.ruido(MO.sub(sT, 46));
+    const custo = (q, m, L) => {
+      if (!passa(m)) return Infinity;
+      const v = K.occ[m];
+      let c = 1 + 12 * Math.abs(alt[m] - alt[q]) + 1.6 * nz((m % W) / 5, Math.floor(m / W) / 5);
+      if (noRio[m]) c += 6;
+      if (v === 5) c += 2;
+      { const x = m % W + 0.5, y = Math.floor(m / W) + 0.5; if (Math.min(x, y, W - x, H - y) < 2) c += 1.5; }   // (não corre junto da borda)
+      if (v === 6) c += 0.4;
+      return L * c;
+    };
+    const R = Math.max(3, Math.min(W, H) * 0.25);
+    const naBorda = q => { const i = q % W, j = (q - i) / W; return i === 0 || j === 0 || i === W - 1 || j === H - 1; };
+    const bordaPerto = id => {
+      const p = Tracado.naBorda(id, W, H, 0, 0), out = [];
+      for (let q = 0; q < N; q++) { if (!naBorda(q) || !passa(q) || noRio[q] || K.occ[q] === 5) continue; const d = Math.hypot(q % W + 0.5 - p[0], Math.floor(q / W) + 0.5 - p[1]); if (d <= R) out.push([d, q]); }
+      return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[1]);
+    };
+    const rios = () => P.aguas.filter(a => a.k === 'rio').map(a => ({ pts: a.pts, hw: a.hw, tipo: a.tipo }));
+    const noCaminho = new Set();
+    // (o caminho serpenteia de leve; se a curva passar pela água parada ou pela pedra, fica o rumo de antes)
+    const cabe = linha => linha.every(([x, y]) => !K.dentro(x, y, 0.01) || passa(Math.min(H - 1, Math.floor(y)) * W + Math.min(W - 1, Math.floor(x))));
+    let nCam = 0;
+    const umCaminho = (cel, ini, fim) => {
+      let pts = B.linhaDe(W, cel, ini, fim);
+      const sr = MO.sub(sT, 47 + nCam++);
+      for (const amp of [2.2, 1.3, 0.7]) { const ser = B.serpentear(pts, 4, mulberry((sr % 2147483000) + 1), amp, []); if (cabe(ser)) { pts = ser; break; } }
+      const ctrl = pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1), linha = MO.curva(ctrl), rs = rios();
+      for (const q of rs.length ? Tracado.cruzamentos(linha, { rios: rs, lago: null }) : []) {
+        if (naLago(q.x, q.y) || !K.dentro(q.x, q.y, 0)) continue;
+        if (P.pintados.some(o => (o.k === 'ponte' && Math.hypot(o.x - q.x, o.y - q.y) < (o.comp || 2) / 2 + 2) || (o.k === 'pedras' && o.pts.some(pq => Math.hypot(pq[0] - q.x, pq[1] - q.y) < 2)))) continue;
+        if (vau && vau.quer && !vau.feito && K.dentro(q.x, q.y, 3)) { vau.feito = { x: q.x, y: q.y, ang: q.ang, hw: q.rio.hw, nome: travessia(K, q.x, q.y, q.ang, q.rio.hw, q.rio.tipo === 'lava') }; continue; }
+        if (T8.pontes != null && conta.pontes >= T8.pontes) continue;
+        K.ponte(q.x, q.y, q.rio.hw * 2 + 1.6, hw * 2 + 0.5, q.ang, q.rio.tipo === 'lava' ? 'pedra' : null, 1);
+        conta.pontes++;
+      }
+      K.poeCaminho(ctrl, tipo);
+      for (const q of cel) noCaminho.add(q);
+    };
+    // as direções: as da rosa (as do mar não contam); sem elas, um lado e o outro
+    const noMar = id => { const p = Tracado.naBorda(id, W, H, 0, -1); return F.ehMar(p[0], p[1]); };
+    let dirs = T8.portoes.filter(id => !noMar(id));
+    if (!dirs.length && T8.portoes.length) return conta;
+    if (!dirs.length) {
+      const lados = ['n', 's', 'o', 'l'].filter(l => !noMar(l)), a = lados[Math.floor(K.rT() * lados.length) % lados.length];
+      dirs = [a];
+    }
+    if (dirs.length === 1) {
+      const b = Tracado.oposta(dirs[0]);
+      if (!noMar(b)) dirs.push(b);
+      else {
+        // (o outro lado é o mar: vai para um dos lados de través)
+        const outras = Tracado.IDS.filter(id => id !== dirs[0] && !noMar(id) && Math.abs(Tracado.difAng(Tracado.DIR[id].a, Tracado.DIR[dirs[0]].a)) > Math.PI / 2 - 0.01);
+        if (outras.length) dirs.push(outras[Math.floor(K.rT() * outras.length) % outras.length]);
+      }
+    }
+    const a0 = bordaPerto(dirs[0]), b0 = new Set(dirs[1] ? bordaPerto(dirs[1]) : []);
+    if (a0.length && b0.size) {
+      const f = a0[Math.floor(K.rT() * Math.min(3, a0.length)) % a0.length], cel = B.maisBarato(W, H, [f], q => b0.has(q), custo);
+      if (cel && cel.length > 3) umCaminho(cel, B.foraDa(f, W, H), B.foraDa(cel[cel.length - 1], W, H));
+    }
+    for (const id of dirs.slice(2)) {
+      const a = bordaPerto(id);
+      if (!a.length) continue;
+      const cel = noCaminho.size ? B.maisBarato(W, H, [a[0]], q => noCaminho.has(q), custo) : null;
+      if (cel && cel.length > 3) umCaminho(cel, B.foraDa(a[0], W, H), null);
+    }
+    return conta;
+  }
+  // a espécie da árvore antiga (o cacto vira a árvore morta; o cristal, um cristal grande)
+  const antigaDe = (b, E, rnd, estilo) => { const e = b.arv(E, rnd, estilo); return e === 'cacto' ? 'morta' : e; };
+  /* Os pontos de interesse, longe uns dos outros e da chegada, a três quadrados da borda ou mais: o vau (se o caminho
+     não o pôs), a gruta, a clareira e o ninho (ou a toca). → as clareiras ({ x, y, R }: as árvores ficam em volta) */
+  function poePontos(K, F, tipos, estilo, tam, vau, chegada) {
+    const { W, H, P } = K, diag = Math.hypot(W, H), E = Estilos.de(estilo), clareiras = [];
+    const longe = (x, y, d) => P.pontos.every(q => Math.hypot(q.cx - x, q.cy - y) >= d) && (!chegada || Math.hypot(chegada[0] + 0.5 - x, chegada[1] + 0.5 - y) >= Math.max(5, d * 0.6));
+    const filtro = (m, d) => (x, y) => x > m && y > m && x < W - m && y < H - m && longe(x, y, d);
+    const tentar = fn => { for (const d of [diag * 0.28, diag * 0.18, 0]) { const r = fn(filtro(3, d)); if (r) return r; } return null; };
+    const marcar = (k, n, cx, cy, mx, my) => { const [i, j] = MO.lugarDePe(K, mx, my); P.pontos.push({ k, n, x: i, y: j, cx: +cx.toFixed(2), cy: +cy.toFixed(2) }); P.tracado.push({ k: 'circ', x: cx, y: cy, r: 2.2 }); };
+    const ordem = ['vau', 'gruta', 'clareira', 'ninho'].filter(t => tipos.includes(t));
+    for (const t of ordem) {
+      if (t === 'vau') {
+        let f = vau.feito;
+        if (!f) {
+          // num rio, longe das pontes e dos lagos, dentro do mapa
+          const rio = P.aguas.filter(a => a.k === 'rio').sort((a, b) => b.hw - a.hw)[0];
+          for (let k = 0; rio && !f && k < 60; k++) {
+            const q = Paisagem.aoLongo(rio.pts, K.r(0.2, 0.8));
+            if (!K.dentro(q.x, q.y, 3.5) || F.ehMar(q.x, q.y) || F.lagos.some(l => Tracado.dentro(l.pts, q.x, q.y) || Tracado.distLinha(l.pts.concat([l.pts[0]]), q.x, q.y) < rio.hw + 1.5)) continue;
+            if (P.pintados.some(o => (o.k === 'ponte' || o.k === 'pedras') && Math.hypot((o.x != null ? o.x : o.pts[0][0]) - q.x, (o.y != null ? o.y : o.pts[0][1]) - q.y) < 6) || !longe(q.x, q.y, k < 30 ? diag * 0.2 : 4)) continue;
+            const ang = q.ang + Math.PI / 2;
+            f = { x: q.x, y: q.y, ang, hw: rio.hw, nome: travessia(K, q.x, q.y, ang, rio.hw, rio.tipo === 'lava') };
+          }
+        }
+        if (f) marcar('vau', f.nome, f.x, f.y, f.x - Math.cos(f.ang) * (f.hw + 1.3), f.y - Math.sin(f.ang) * (f.hw + 1.3));
+      } else if (t === 'gruta') {
+        const b = tentar(fl => {
+          // na beira de um paredão que já existe, do lado aberto; senão, um penhasco novo
+          const cands = [];
+          for (const m of P.massas) {
+            const [cx, cy] = Paisagem.centro(m.pts);
+            for (let i = 0; i < m.pts.length; i += 2) {
+              const [x, y] = m.pts[i], dx = x - cx, dy = y - cy, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, fx = x + ux * 1.4, fy = y + uy * 1.4;
+              if (!fl(fx, fy)) continue;
+              const v = K.at(Math.floor(fx), Math.floor(fy));
+              if (v === 0 || v === 6 || v === 5) cands.push({ x: x - ux * 0.15, y: y - uy * 0.15, ang: Math.atan2(uy, ux), cores: m.cores, nota: Math.hypot(fx - W / 2, fy - H / 2) + K.rT() * 4 });
+            }
+          }
+          if (cands.length) return cands.sort((a, c) => a.nota - c.nota)[0];
+          const l = K.lugar(2.9, v => v === 0 || v === 6, 150, fl);
+          if (!l) return null;
+          const BL = F.bioEm(l[0], l[1]), cores = Paisagem.pedraDe(BL.pedra || 'rocha'), rx = K.r(1.8, 2.4), pts = MO.blob(K.rT, l[0], l[1], rx, rx * K.r(0.75, 0.95), 12, 0.3, K.r(0, TAU));
+          K.poePenhasco(pts, 4, cores);
+          const ang = Math.atan2(H / 2 - l[1], W / 2 - l[0]) + K.r(-0.6, 0.6), q = Tracado.noContorno(pts, l[0], l[1], ang);
+          return { x: (q ? q.x : l[0] + Math.cos(ang) * rx) - Math.cos(ang) * 0.15, y: (q ? q.y : l[1] + Math.sin(ang) * rx) - Math.sin(ang) * 0.15, ang, cores };
+        });
+        if (b) { K.pinta(2, 'bocaGruta', { x: b.x, y: b.y, ang: b.ang, r: 0.85, cores: b.cores }); marcar('gruta', 'Entrada de gruta', b.x, b.y, b.x + Math.cos(b.ang) * 1.3, b.y + Math.sin(b.ang) * 1.3); }
+      } else if (t === 'clareira') {
+        const R0 = { pequeno: 2.4, medio: 2.8, grande: 3.2 }[tam] + K.r(-0.3, 0.3);
+        const l = tentar(fl => K.lugar(R0 + 0.4, v => v === 0, 150, fl));
+        if (!l) continue;
+        const [x, y] = l, b = F.bioEm(x, y), pts = MO.blob(K.rT, x, y, R0, R0 * K.r(0.78, 0.95), 14, 0.25, K.r(0, TAU));
+        const verde = !['deserto', 'lava', 'cristais', 'neve', 'tundra', 'montanha'].includes(b.id);
+        K.pinta(0, 'mancha', { pts, cores: Array.isArray(b.clareira) ? b.clareira : MO.CH[b.clareira] || MO.CH.clareira, op: verde ? { flores: ['#f2c94c', '#e85d75', '#ffffff', '#9b7bd8'], capim: ['#86a85a', '#4f6e3a'] } : { pedrisco: ['#d8d2c4', '#5e5a52'] } });
+        K.marcaPoli(pts, 5);
+        clareiras.push({ x, y, R: R0 });
+        const oQue = K.pick(['poco', 'arvore', 'circulo']);
+        if (oQue === 'poco' && K.objeto('poco', Math.floor(x - 0.5), Math.floor(y - 0.5), 0, v => v === 5 || v === 0)) {
+          for (let k = 0; k < 4; k++) { const a = K.r(0, TAU), d = K.r(1.1, 1.7), px = x + Math.cos(a) * d, py = y + Math.sin(a) * d; if (K.at(Math.floor(px), Math.floor(py)) === 5) { P.rochas.push({ x: px, y: py, r: K.r(0.18, 0.3), cores: Paisagem.pedraDe(b.pedra || 'rocha') }); K.pos(Math.floor(px), Math.floor(py), 4); } }
+          marcar('clareira', 'Poço velho', x, y, x + 1.2, y);
+        } else if (oQue === 'arvore' && b.id === 'cristais') {
+          K.cristalGrande(x, y, K.r(1.2, 1.6), 'azul');
+          marcar('clareira', 'Cristal antigo', x, y, x + 2, y);
+        } else if (oQue === 'arvore') {
+          const esp = antigaDe(b, E, K.rT, estilo), rr = esp === 'selva' ? K.r(2.3, 2.7) : esp === 'acacia' ? K.r(2.1, 2.5) : K.r(1.9, 2.3);
+          K.arvore(x, y, rr, esp); P.cobertura.push({ x, y, r: Math.min(1.6, rr * 0.7) });
+          marcar('clareira', 'Árvore antiga', x, y, x + rr * 0.9, y + 0.3);
+        } else {
+          const n = K.ri(7, 9), rc = Math.min(R0 * 0.62, 2.1), cores = Paisagem.pedraDe(b.pedra || 'rocha');
+          for (let k = 0; k < n; k++) { const a = (k / n) * TAU + K.r(-0.12, 0.12), px = x + Math.cos(a) * rc, py = y + Math.sin(a) * rc; P.rochas.push({ x: px, y: py, r: K.r(0.36, 0.48), cores }); K.pos(Math.floor(px), Math.floor(py), 4); }
+          marcar('clareira', 'Círculo de pedras', x, y, x, y);
+        }
+      } else if (t === 'ninho') {
+        const l = tentar(fl => K.lugar(1.7, v => v === 0 || v === 6, 150, fl));
+        if (!l) continue;
+        const [x, y] = l, b = F.bioEm(x, y), toca = ['deserto', 'savana', 'campo', 'tundra', 'montanha'].includes(b.id) ? K.sorte(0.7) : K.sorte(0.3);
+        if (toca) { const ang = K.r(0, TAU); K.pinta(2, 'toca', { x, y, r: 0.9, ang }); K.marcaCirc(x, y, 1.1, 4, true); marcar('ninho', 'Toca', x, y, x - Math.cos(ang) * 1.6, y - Math.sin(ang) * 1.6); }
+        else { const rr = K.r(0.9, 1.2); K.pinta(2, 'ninho', { x, y, r: rr }); K.marcaCirc(x, y, rr + 0.2, 4, true); marcar('ninho', 'Ninho', x, y, x + rr + 1, y); }
+      }
+    }
+    return clareiras;
+  }
+  /* O que cada bioma tem de seu, onde ele aparece: as poças (a água rasa e a lama no pântano, o lodo na terra corrompida,
+     a lava), os cristais grandes, a neve funda e as fendas de lava. */
+  function proprios(K, F) {
+    const { W, H, P } = K, conta = {};
+    for (let q = 0; q < W * H; q++) { const b = B.LISTA[F.bio[q]].id; conta[b] = (conta[b] || 0) + 1; }
+    const noBioma = (id, m) => (x, y) => F.bioEm(x, y).id === id && K.dentro(x, y, m || 2) && P.pontos.every(q => Math.hypot(q.cx - x, q.cy - y) > 4);
+    for (const id of Object.keys(conta)) {
+      const b = B.BIO[id], n0 = conta[id];
+      if (b.poca) for (let k = 0, n = Math.min(3, Math.floor(n0 / 150)); k < n; k++) {
+        const l = K.lugar(2, v => v === 0, 80, noBioma(id));
+        if (!l) break;
+        const rx = K.r(0.9, 1.6), pts = MO.blob(K.rT, l[0], l[1], rx, rx * K.r(0.6, 0.85), 10, 0.3, K.r(0, TAU));
+        if (b.poca === 'agua') { K.poeLago(pts, 'agua', -0.5); K.zona('lama', l[0], l[1], { r: rx + 0.8 }); }
+        else if (b.poca === 'lodo') { K.poeLago(pts, 'lodo', -0.5); K.zona('toxica', l[0], l[1], { r: rx * 0.9 }); }
+        else { K.poeLago(pts, 'lava', -1); K.zona('lava', l[0], l[1], { r: rx * 0.9 }); K.luz(l[0], l[1], 5, '#ff8a3a'); }
+      }
+      if (b.cristais) for (let k = 0, n = Math.min(3, 1 + Math.floor(n0 / 260)); k < n; k++) { const l = K.lugar(1.8, v => v === 0, 80, noBioma(id, 2.5)); if (l) K.cristalGrande(l[0], l[1], K.r(0.9, 1.4), 'azul'); }
+      if (b.neve) for (let k = 0, n = Math.min(3, 1 + Math.floor(n0 / 300)); k < n; k++) {
+        const l = K.lugar(1.8, v => v === 0, 80, noBioma(id));
+        if (!l) break;
+        const d = MO.blob(K.rT, l[0], l[1], K.r(1.4, 2.4), K.r(0.9, 1.4), 10, 0.3, K.r(0, TAU));
+        K.pinta(0, 'mancha', { pts: d, cores: id === 'tundra' ? ['#dfe5e6', '#cfd7d9', '#eef2f3'] : MO.CH.neveFunda, op: id === 'tundra' ? { a: 0.8 } : null }); K.marcaPoli(d, 6);
+      }
+      if (id === 'lava') for (let k = 0, n = Math.min(2, 1 + Math.floor(n0 / 400)); k < n; k++) {
+        const l = K.lugar(1.5, v => v === 0, 80, noBioma(id, 3));
+        if (!l) break;
+        const an = K.r(0, TAU), L = K.r(4, 7), pts = MO.curva([l, [l[0] + Math.cos(an + 0.4) * L * 0.5, l[1] + Math.sin(an + 0.4) * L * 0.5], [l[0] + Math.cos(an) * L, l[1] + Math.sin(an) * L]], 0.6);
+        K.pinta(0, 'fenda', { pts, larg: 0.35, brilho: '#ff8a2a', cores: ['#1c1714', '#3a1206'] });
+        const m = Paisagem.aoLongo(pts, 0.5); K.luz(m.x, m.y, 3, '#ff8a3a'); K.zona('brasas', m.x, m.y, { r: K.r(1.2, 1.8) });
+      }
+    }
+  }
+
+  function gerar(o) {
+    o = o || {};
+    const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', { W, H } = TAMANHOS[tam];
+    const bioma = B.valido(o.bioma), BB = B.BIO[bioma], mistura = B.mistura(o.mistura);
+    const aguaPedida = AGUAS.some(a => a[0] === o.agua) ? o.agua : 'surpresa', caminho = CAMINHOS.some(c => c[0] === o.caminho) ? o.caminho : 'trilha';
+    const estilo = Estilos.valido(o.estilo), seed = (Math.round(Number(o.seed)) >>> 0) || 1, comMarcas = o.marcas !== false;
+    const trava = limparTrava(o.trava, { bioma, tamanho: tam, mistura, agua: aguaPedida, caminho });
+    const sT = trava ? trava.s : (MO.sub(seed, 1) % 2147483000) + 1;
+    const palDe = id => { const p0 = B.BIO[id].pal; return o.seco && SECO[p0] ? SECO[p0] : p0; };
+    const pal = palDe(bioma);
+    const K = MO.contexto(W, H, BB.ter, 'regiao', estilo, caminho, sT, pal), P = K.P;
+    const rV = mulberry((MO.sub(seed, 2) % 2147483000) + 1);
+    const T8 = Tracado.escolhas(o, [], null);
+    // a água: a Surpresa sorteia (escolher o rio na rosa garante o rio)
+    let agua = aguaPedida, paraLago = false;
+    if (agua === 'surpresa') {
+      if (Tracado.rioDaRosa(T8.rio)) agua = 'rio';
+      else { const u = MO.sub(sT, 42) % 100; agua = u < 62 ? 'rio' : u < 85 ? 'lago' : 'nenhuma'; paraLago = u >= 45 && u < 62; }
+    }
+    const rioOp = agua === 'rio' ? { de: T8.rio.de, para: T8.rio.para || (paraLago ? 'lago' : null), curvas: T8.rio.curvas, hw: T8.rio.larg ? Tracado.LARGURA[T8.rio.larg] : 1.2, afluente: T8.rio.afluente, lago: T8.rio.lago } : null;
+    const F = B.campo(W, H, MO.sub(sT, 40), { bioma, mistura, agua, rio: rioOp });
+    P.biomas = []; P.pontos = []; P.lagos = []; P.rios = []; P.patamares = { morros: 0, planaltos: 0, paredoes: 0 };
+    // o chão dos vizinhos (as manchas de beira macia, no desenho)
+    for (const v of F.vizs) { const pts = F.manchas.filter(m => m.bio === v).map(m => m.pts); if (pts.length) P.biomas.push({ id: v, pal: palDe(v), pts }); }
+    /* a água parada grande (o lago, o mar), em duas demãos: a de sempre, antes dos rios (a beira fica embaixo deles), e
+       outra sem a beira, depois, por cima da ponta do rio que entra nela */
+    const aguaParada = (pts, tipo, alt, v, palA) => {
+      K.poeLago(pts, tipo, alt, v);
+      if (palA) P.aguas[P.aguas.length - 1].pal = palA;
+      K.pinta(1, 'aguaParada', { pts, tipo, pal: palA || null, semBeira: true });
+    };
+    // o mar (na costa): a praia, o mar e a espuma da beira
+    if (F.mar) {
+      K.pinta(0, 'praia', { pts: F.mar.praia }); K.marcaPoli(F.mar.praia, 5);
+      aguaParada(F.mar.pts, 'mar', -2, 2);
+      K.pinta(1, 'espuma', { pts: F.mar.beira });
+      P.mar = { lado: F.mar.lado };
+    }
+    // os lagos: o tipo é o do bioma onde ele fica (o gelo, na neve e na tundra: dá para andar, e escorrega)
+    for (const L of F.lagos) {
+      const BL = F.bioEm(L.centro[0], L.centro[1]), tipo = BL.lago || 'agua', rr = Math.sqrt(L.cel.size / Math.PI);
+      if (tipo === 'gelo') {
+        aguaParada(L.pts, 'gelo', null, 5, palDe(BL.id));
+        K.zona('gelado', L.centro[0], L.centro[1], { r: rr * 0.95 });
+        for (const q of Array.from(L.cel).filter((_, k) => k % 23 === 7).slice(0, 3)) K.zona('gelado', q % W + 0.5, Math.floor(q / W) + 0.5, { r: Math.max(1.5, rr * 0.55) });
+      } else aguaParada(L.pts, tipo, tipo === 'lava' ? -1 : -1.5, 2, palDe(BL.id));
+      if (tipo === 'lava') { K.zona('lava', L.centro[0], L.centro[1], { r: rr * 0.85 }); K.luz(L.centro[0], L.centro[1], 7, '#ff8a3a'); }
+      P.lagos.push({ tipo });
+    }
+    // os rios (o de lava na terra de lava, com a zona e a luz)
+    const tipoRio = BB.agua === 'lava' ? 'lava' : 'agua';
+    for (const rio of F.rios) {
+      for (const pc of rio.pecas) { const pts = K.poeRio(pc, rio.hw, tipoRio, tipoRio === 'lava' ? -1 : rio.afluente ? -1 : -1.2); if (tipoRio === 'lava') lavaAoLongo(K, pts, rio.hw); }
+      P.rios.push({ hw: rio.hw, afluente: rio.afluente, destino: rio.destino });
+    }
+    // os patamares: o planalto de pedra (andável, a beira em degraus) e o morro; o paredão (o penhasco: não passa)
+    for (const pl of F.planaltos) {
+      const BP = B.BIO[pl.bio], BC = o.seco && SECO[BP.pal] ? B.BIO.savana : BP, cores = BP.rocha ? Paisagem.pedraDe(BP.pedra) : BC.morro;
+      K.pinta(0, BP.rocha ? 'planalto' : 'morro', { pts: pl.pts, alt: pl.alt, cores });
+      if (BP.rocha) K.marcaPoli(pl.pts, 6);
+      P.relevo.push({ t: 'morro', alt: pl.alt, k: 'poly', pts: pl.pts });
+      P.tracado.push({ k: 'poli', pts: pl.pts });
+      if (BP.rocha) P.patamares.planaltos++; else P.patamares.morros++;
+    }
+    for (const pd of F.paredoes) { K.poePenhasco(pd.pts, pd.alt, Paisagem.pedraDe(B.BIO[pd.bio].pedra || 'rocha')); P.patamares.paredoes++; }
+    // os pontos de interesse: quantos, pelo tamanho; os tipos sorteados (o vau só com rio)
+    const tipos = ['clareira', 'gruta', 'ninho', 'vau'].filter(t => t !== 'vau' || P.aguas.some(a => a.k === 'rio'));
+    for (let i = tipos.length - 1; i > 0; i--) { const k = Math.floor(K.rT() * (i + 1)); [tipos[i], tipos[k]] = [tipos[k], tipos[i]]; }
+    const escolhidos = tipos.slice(0, TAMANHOS[tam].pontos), vau = { quer: escolhidos.includes('vau'), feito: null };
+    // o caminho (sem caminho, a rosa ainda põe trilhas)
+    const tipoCam = caminho === 'nenhum' ? (T8.portoes.length ? 'trilha' : null) : caminho;
+    const conta = tipoCam ? poeCaminhos(K, F, T8, tipoCam, vau, sT) : { pontes: 0 };
+    // a chegada: na ponta do caminho que entra no mapa; sem caminho, numa borda de terra
+    let chegada;
+    if (K.rota) { const p = K.rota.find(([x, y]) => x >= 0.6 && y >= 0.6 && x <= W - 0.6 && y <= H - 0.6) || K.rota[0]; chegada = MO.lugarDePe(K, clamp(p[0], 0.6, W - 0.6), clamp(p[1], 0.6, H - 0.6)); }
+    else {
+      const lados = ['o', 'l', 'n', 's'].filter(l => !F.mar || l !== F.mar.lado), lado = lados[Math.floor(K.rT() * lados.length) % lados.length], t = K.r(0.3, 0.7);
+      chegada = MO.lugarDePe(K, lado === 'o' ? 0.8 : lado === 'l' ? W - 0.8 : t * W, lado === 'n' ? 0.8 : lado === 's' ? H - 0.8 : t * H);
+    }
+    const clareiras = poePontos(K, F, escolhidos, estilo, tam, vau, chegada);
+    proprios(K, F);
+    // a mata (o relevo) onde o bosque fecha, nos biomas de mato; as árvores se juntam nos bosques
+    const nb = Tracado.ruido(MO.sub(sT, 44)), EB = 1 / 6.5, bq = (x, y) => clamp((nb(x * EB, y * EB) - 0.42) / 0.22, 0, 1);
+    const G = B.grupos(W, H, q => { const i = q % W, j = (q - i) / W; return K.at(i, j) === 0 && F.bioEm(i + 0.5, j + 0.5).mata && bq(i + 0.5, j + 0.5) > 0.62; });
+    G.grupos.forEach((cel, g) => { if (cel.length < 10) return; const pts = B.contornoDe(cel, W, H, G.marca, g, 3, 0.75); if (pts) P.relevo.push({ t: 'mata', alt: 0, k: 'poly', pts }); });
+    // a vegetação: a de cada bioma, onde ele está (na passagem de um para o outro, elas se misturam)
+    const E = Estilos.de(estilo);
+    const hsh = (i, j, k) => { let x = Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(k, 1442695041) + (sT | 0); x = Math.imul(x ^ (x >>> 13), 1274126177); x ^= x >>> 16; return (x >>> 0) / 4294967296; };
+    const bioJ = (x, y) => { const i = Math.floor(x * 2), j = Math.floor(y * 2); return F.bioEm(x + (hsh(i, j, 1) - 0.5) * 2.4, y + (hsh(i, j, 2) - 0.5) * 2.4); };
+    P.densBase = 1;
+    P.dens = (x, y) => {
+      for (const c of clareiras) { const d = Math.hypot(x - c.x, y - c.y) / c.R; if (d < 1.15) return 0; if (d < 1.6) return bioJ(x, y).dens * 2.2; }
+      return bioJ(x, y).dens * (0.25 + 1.75 * bq(x, y));
+    };
+    P.esp = (x, y, rnd) => bioJ(x, y).arv(E, rnd, estilo);
+    P.juncos = Math.max(0, ...[bioma].concat(F.vizs).map(id => B.BIO[id].juncos || 0));
+    MO.vegetacao(K, rV);
+    P.arvores = P.arvores.filter(a => a.esp !== 'juncos' || (F.bioEm(a.x, a.y).juncos || 0) > 0);
+    for (const a of P.arvores) { const b = F.bioEm(a.x, a.y); if (a.pal == null) a.pal = palDe(b.id); if (a.neve == null) a.neve = !!b.neve; }
+    // os enfeites (objetos que dá para mover) e as pedrinhas pintadas, de cada bioma
+    for (let k = 0, tent = 0, n = Math.round(W * H / 150); k < n && tent < 200; tent++) {
+      const i = 1 + Math.floor(rV() * (W - 2)), j = 1 + Math.floor(rV() * (H - 2)), ids = F.bioEm(i + 0.5, j + 0.5).enf, id = ids[Math.floor(rV() * ids.length) % ids.length];
+      if (K.objeto(id, i, j, Math.floor(rV() * 4) * 90, v => v === 0)) k++;
+    }
+    for (let t = 0, n = Math.round(W * H / 4); t < n; t++) {
+      const x = 0.5 + rV() * (W - 1), y = 0.5 + rV() * (H - 1), b = F.bioEm(x, y);
+      if (rV() >= b.pedrinhas / 192 || K.at(Math.floor(x), Math.floor(y)) !== 0) continue;
+      P.rochas.push({ x, y, r: 0.25 + rV() * 0.3, cores: Paisagem.pedraDe(b.pedra || palDe(b.id)) }); K.pos(Math.floor(x), Math.floor(y), 4);
+    }
+    P.marcas = comMarcas ? { chegada } : {};
+    if (!P.tracado.length) P.tracado.push({ k: 'circ', x: W / 2, y: H / 2, r: 3 });
+    delete P.dens; delete P.esp;
+    const seco = !!o.seco && [bioma].concat(F.vizs).some(id => SECO[B.BIO[id].pal]);
+    return Object.assign(P, { v: 1, lugar: 'regiao', bioma, mistura, aguaPedida, agua, seed, sT, tamanho: tam, vizinhos: F.vizs.slice(), pontesNovas: conta.pontes, travaTracado: !!trava, comMarcas, seco, sitPedida: null, occ: Array.from(K.occ) });
+  }
+
+  /* ================= os desenhos ================= */
+  const PZ = Paisagem;
+  Object.assign(MO.PINTORES, { aguaParada: (g, o, c, rnd, p) => PZ.lago(g, o.pts, c, rnd, o.pal || p.pal, o.tipo, o.semBeira), morro: (g, o, c, rnd) => PZ.morroMacio(g, o.pts, c, rnd, o.cores, o.alt),
+    bocaGruta: PZ.bocaGruta, ninho: PZ.ninho, toca: PZ.toca });
+
+  /* ================= a cena, a prévia e o lugar (a janela do gerador) ================= */
+  const nomePadrao = p => 'Região livre ' + (B.BIO[p.bioma] || B.LISTA[0]).em;
+  const criar = (p, nome, ex) => MO.criarPlano(p, nome, ex, nomePadrao);
+  function resumo(p) {
+    const Bp = B.BIO[p.bioma] || B.LISTA[0], viz = (p.vizinhos || []).filter(v => B.BIO[v]).map(v => B.BIO[v].n.toLowerCase());
+    const partes = [Bp.n + (viz.length ? ' com ' + juntar(viz) : ''), p.W + ' × ' + p.H + ' quadrados'];
+    const ag = [], rios = p.rios || [];
+    if (rios.some(r => !r.afluente)) ag.push(rios.some(r => r.afluente) ? 'rio com afluente' : 'rio');
+    for (const l of p.lagos || []) ag.push(l.tipo === 'gelo' ? 'lago congelado' : l.tipo === 'lava' ? 'lago de lava' : l.tipo === 'espelho' ? 'lago espelhado' : 'lago');
+    if (p.mar) ag.push('o mar');
+    if (ag.length) partes.push(juntar(ag));
+    if (p.caminhos.length) partes.push(p.caminhos.some(c => c.tipo === 'estrada') ? 'estrada' : 'trilha');
+    const pm = p.patamares || {}, rel = [];
+    if (pm.morros) rel.push(plural(pm.morros, 'morro'));
+    if (pm.planaltos) rel.push(plural(pm.planaltos, 'planalto'));
+    if (pm.paredoes) rel.push(plural(pm.paredoes, 'penhasco'));
+    if (rel.length) partes.push(juntar(rel));
+    const pts = p.pontos || [];
+    if (pts.length) partes.push(plural(pts.length, 'ponto de interesse', 'pontos de interesse') + ' (' + pts.map(q => q.n.toLowerCase()).join(', ') + ')');
+    if (p.seco) partes.push('o chão seco');
+    return partes.join(' · ') + '.';
+  }
+  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
+  // (o relevo natural não vale aqui: a Região já nasce do relevo)
+  const tracadoDe = o => Object.assign(Tracado.limpar(o), { relevoNat: false, praca: 'centro', muroForma: null });
+  function padrao() {
+    const o = App.opt;
+    return { bioma: B.BIO[o.regBio] ? o.regBio : 'floresta', mistura: B.mistura(o.regMis), agua: AGUAS.some(a => a[0] === o.regAgua) ? o.regAgua : 'surpresa', caminho: CAMINHOS.some(c => c[0] === o.regCam) ? o.regCam : 'trilha',
+      tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado) };
+  }
+  function controles(st, K, mudou) {
+    const { field, seg, toggle } = K;
+    // (o bioma, a mistura, o tamanho, a água e o caminho trocam o traçado: soltam a trava)
+    const muda = (campo, v) => { st[campo] = v; lembrar(st); mudou(true, { soltar: true }); };
+    const temRio = st.agua === 'rio' || st.agua === 'surpresa';
+    return h('div', { class: 'ger-c' },
+      field('Bioma', seg('reg-bio', st.bioma, B.LISTA.map(b => [b.id, b.n]), v => muda('bioma', v)), 'stack'),
+      h('div', { class: 'ger-l' },
+        field('Mistura', seg('reg-mis', st.mistura, B.MISTURAS, v => muda('mistura', v)), 'stack'),
+        field('Tamanho', seg('reg-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados · ' + plural(TAMANHOS[k].pontos, 'ponto de interesse', 'pontos de interesse')]), v => muda('tamanho', v)), 'stack')),
+      h('div', { class: 'ger-l' },
+        field('Água', seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
+        field('Caminho', seg('reg-cam', st.caminho, CAMINHOS, v => muda('caminho', v)), 'stack')),
+      toggle('reg-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e os pontos de interesse (só você vê)'),
+      Tracado.secao(st.t || (st.t = tracadoDe(null)), K, () => { lembrar(st); mudou(true); }, { pre: 'reg', portoes: 'Caminhos',
+        portoesNota: 'De onde chegam os caminhos: o primeiro atravessa a região; os outros vão até ele.',
+        rio: temRio, rioNota: st.agua === 'lago' ? 'Só o lago, sem rio: escolha "Rio" ou a Surpresa em Água para ter o rio.' : 'Sem água: escolha "Rio" ou a Surpresa em Água para ter o rio.',
+        mar: st.bioma === 'costa', rioDica: st.agua === 'surpresa' ? 'Na Surpresa, escolher de onde o rio vem (ou para onde vai) garante o rio.' : 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto.', pontes: true, relevo: false }));
+  }
+  const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, Tracado.soMudadas(st.t || Tracado.padrao()));
+  function aplicarOpcoes(st, o) {
+    if (B.BIO[o.bioma]) st.bioma = o.bioma;
+    if (typeof o.mistura === 'string' && B.FRACAO[o.mistura] != null) st.mistura = o.mistura;
+    if (AGUAS.some(a => a[0] === o.agua)) st.agua = o.agua;
+    if (CAMINHOS.some(c => c[0] === o.caminho)) st.caminho = o.caminho;
+    if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
+    if (typeof o.marcas === 'boolean') st.marcas = o.marcas;
+    st.t = tracadoDe(o);
+    lembrar(st);
+  }
+  // a parte que trava: o traçado inteiro (a água, o relevo, o caminho e os pontos de interesse)
+  const partes = p => (p.tracado.length ? ['tracado'] : []);
+  function parteEm(p, x, y) {
+    for (const f of p.tracado) {
+      if (f.k === 'linha' && MO.distLinha(f.pts, x, y) <= f.hw + 0.5) return 'tracado';
+      if (f.k === 'poli' && MO.dentroPoli(f.pts, x, y)) return 'tracado';
+      if (f.k === 'circ' && Math.hypot(x - f.x, y - f.y) <= f.r) return 'tracado';
+    }
+    return null;
+  }
+  const nomeDaParte = () => 'o traçado (a água, os morros e os penhascos, o caminho e os pontos de interesse)';
+  const formaDaParte = (p, parte) => (parte === 'tracado' ? p.tracado.map(f => (f.k === 'linha' ? { k: 'linha', pts: f.pts, hw: f.hw } : f.k === 'circ' ? { k: 'circ', x: f.x, y: f.y, r: f.r } : { k: 'poli', pts: f.pts })) : []);
+  const travada = (p, parte) => parte === 'tracado' && !!p.travaTracado;
+  const travaDe = p => (p.travaTracado ? { bioma: p.bioma, tamanho: p.tamanho, mistura: p.mistura, agua: p.aguaPedida, caminho: p.caminho, s: p.sT } : null);
+  function alternar(p, parte, trava) {
+    if (parte !== 'tracado') return trava;
+    p.travaTracado = !p.travaTracado;
+    return travaDe(p);
+  }
+  const quantasTravadas = p => (p.travaTracado ? 1 : 0);
+  const baseDe = () => null;
+  const LUGAR = { id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+    relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
+    aceitaSeco: true,
+    dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
+    nota: 'Sai uma cena nova para explorar: o chão do bioma com as manchas dos vizinhos, a água que segue o relevo, os morros e os penhascos, o caminho e os pontos de interesse. Os marcadores da chegada e de cada ponto (com o nome do que há ali) nascem ocultos: só você vê. O relevo, as zonas e as luzes saem editáveis; nada sai escrito; as cenas que já existem não mudam.',
+    feito: (sc, p) => `"${sc.name}" criada: ${resumo(p).replace(/\.$/, '')}. Tudo é editável.` };
+  return { TAMANHOS, AGUAS, CAMINHOS, gerar, resumo, criar, nomePadrao, limparTrava, travaDe, LUGAR };
+})();
+/* ---------------------------------------------------------------
    10g. INTERIOR — a planta de dentro de um prédio (lote 7)
    Dois cliques no marcador de Entrada de um prédio da cidade abrem "Gerar o interior": o tipo do prédio e o estilo já
    vêm escolhidos (dá para trocar), a prévia mostra a planta e "Gerar outro" sorteia de novo. Uma Entrada que o mestre
@@ -26982,7 +28092,7 @@ const Masmorra = (() => {
 })();
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
-   Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
+   Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
    (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
@@ -26991,7 +28101,7 @@ const Masmorra = (() => {
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR, Ruinas.LUGAR, Masmorra.LUGAR, Porto.LUGAR];
+  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR, Regiao.LUGAR, Ruinas.LUGAR, Masmorra.LUGAR, Porto.LUGAR];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -27544,7 +28654,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

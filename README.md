@@ -963,6 +963,47 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   a tentativa que serviu); a trava das ruas de sempre não vale nas ruas novas (escolher os portões traça de novo). Na
   Cidade, na Tribo e no Encontro, a trava do traçado continua sendo a semente dele, e as escolhas valem por cima.
 
+### O motor de biomas e a Região livre (lote 13)
+
+- **O motor de biomas** (`Biomas`, `src/cenas/src/js/10c4-biomas.js`; conta pura, sorteada pela semente). A tabela dos
+  treze biomas (`LISTA`: os doze dos encontros sem a Água — ela vem como rio, lago e mar — e mais a Savana, a Costa e a
+  Tundra): a paleta do chão, as árvores de cada estilo e quantas, os enfeites e as pedrinhas, se é de pedra, a água
+  parada (o gelo, a lava, o espelho), as poças, onde ele fica quando é vizinho (os de altura no alto, os de água no
+  baixo, a costa num lado, junto do mar), que parte do mapa é patamar e os três vizinhos que combinam com ele.
+  `campo(W, H, seed, o)`: a altura (`Tracado.ruido`, inclinada pelo rio escolhido e pelo mar); o mapa dos biomas (o
+  principal e um vizinho na Mistura pouca, um ou dois na média, dois na muita — uns 16%, 32% ou 48% da cena —, em
+  manchas: duas voltas da maioria em volta, sem os pedacinhos de menos de seis casas); o mar na costa (uns 28% do mapa
+  num lado; na costa vizinha, metade da faixa dela); o rio (o caminho mais barato do alto para o baixo — subir custa, e
+  correr junto da borda também —, da casa mais alta da borda até outro lado, com a reta passando perto do meio, ou até
+  o lago, ou até o mar; as curvas fazem ele serpentear como o rio de sempre; o afluente chega no trecho do meio dele);
+  o lago (enche como a água sobe, e um pouco mais perto do meio: não escorre comprido pelo vale); os patamares (as
+  casas acima da altura de cada bioma, longe da água e da borda: o planalto e o paredão nos de pedra, o morro e o topo
+  dele nos outros).
+- **A Região livre** (`Regiao`, `10f7-regiao.js`, com o motor dos encontros): a aba entre o Encontro e as Ruínas, uma
+  área para explorar, sem situação. O bioma, a Mistura, o tamanho (32 × 24, 40 × 30 ou 48 × 36), a água (a Surpresa —
+  o rio, o rio que acaba no lago, só o lago ou nada; escolher o rio na rosa garante o rio —, Rio, Lago, Sem água), o
+  caminho (sem, trilha, estrada; sem caminho, a rosa ainda põe trilhas), os marcadores e o Traçado (os caminhos da rosa
+  — o primeiro atravessa a região, os outros vão até ele —, o rio e as pontes; sem a chave do relevo natural,
+  `cfg.relevo: false`). O caminho cruza o rio pela ponte (sem ponte, para na beira) e não vem do mar.
+- **O desenho**: o chão dos vizinhos em manchas de beira macia (`Paisagem.chaoMisto`: o chão inteiro do vizinho,
+  recortado pela máscara borrada — feita pela sombra, que funciona em todo navegador); o morro macio
+  (`Paisagem.morroMacio`: a sombra só fora dele, o alto mais claro, as curvas de nível; o chão continua aparecendo); o
+  lago e o mar em duas demãos (a de sempre antes dos rios; outra sem a beira, `Paisagem.lago(…, semBeira)`, por cima da
+  ponta do rio — a foz fica limpa); a água e as árvores com a paleta do bioma delas (`a.pal`; nas árvores, `a.neve`);
+  na passagem de um bioma para o outro, as espécies se misturam.
+- **Os pontos de interesse** (um no Pequeno, dois no Médio, três no Grande; longe uns dos outros e da chegada): a
+  clareira com o poço velho, a árvore antiga (nos cristais, o cristal antigo) ou o círculo de pedras; a entrada de gruta
+  (na beira de um paredão, do lado aberto, ou num penhasco novo; `Paisagem.bocaGruta`); o ninho ou a toca
+  (`Paisagem.ninho`, `Paisagem.toca`); o vau ou a ponte velha (no primeiro cruzamento do caminho com o rio, ou no rio,
+  longe das pontes). Cada um tem o marcador oculto `interesse` (o nome é o que há ali; ele também fica na paleta de
+  objetos, em Perigos e marcos); a chegada fica na ponta do caminho que entra no mapa.
+- **O que cada bioma tem de seu**: as poças (a água rasa com a lama no pântano, o lodo com a zona tóxica, a lava), os
+  cristais grandes, a neve funda, as fendas de lava; o lago congelado na neve e na tundra (dá para andar nele, com a zona
+  escorregadia); o rio de lava, com a zona e a luz; a mata (o relevo) onde o bosque fecha. A trava do traçado vale no
+  mesmo bioma, tamanho, mistura, água e caminho; a seca do Mapa-múndi seca o chão verde (o dos vizinhos também).
+- **O que sai igual**: os outros geradores pintam como antes (conferido pixel a pixel no Encontro, no Porto, na Tribo,
+  nas Ruínas e no Vilarejo) e os planos deles são os mesmos (`gerador8.js`, `SO=ouro`).
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -2710,3 +2751,17 @@ batalha, o bônus à mão, o teto, a linha da comparação), a ação heroica (c
 ação), a Virada com os heróis, os ferimentos (a prévia, aplicar no HP das fichas, o Desfazer e o Refazer — o do aviso e o
 de cima — a partir do HP de agora) e a batalha sem ferir; `mundo-herois.rede`, numa mesa, a ficha feita nas Fichas como
 herói do exército (o bônus pelas contas dela), a batalha e o ferimento que sobe para a mesa (e o Desfazer e o Refazer).
+
+Lote 13: na parte 13a, `src/cenas/test/lote13.js` confere o motor de biomas e a Região livre: com `SO=motor`, a tabela
+dos treze biomas e dos vizinhos, a mesma semente (o mesmo chão), a Mistura (pouca < média < muita, um ou dois vizinhos
+da tabela), a costa (o mar num lado, a praia, o rio que deságua nele), o rio pela rosa (do oeste para o leste, descendo),
+o rio sem a rosa em trinta sementes (atravessa a região, sai por outro lado, desce), o rio que acaba no lago, o lago no
+caminho do rio, o afluente no trecho do meio, as curvas, o lago sozinho, sem água, os patamares longe da água e da borda
+(o pântano quase plano, a montanha cheia deles) e o tempo da conta; com `SO=regiao`, o plano (de começo, os tamanhos e
+os pontos de interesse nos treze biomas, os marcadores onde se pisa e com os nomes, o vau só com rio, as quatro águas
+com as três misturas, a mesma semente, a trava do traçado, a Surpresa, o caminho e a rosa, as pontes e sem elas, a costa,
+a lava e o gelo, a seca, as árvores com a paleta e a neve, o nome, o resumo e sem os marcadores); com `SO=pintura`, o
+chão misto (a passagem gradual), o lago sem a beira, a tundra, o fundo e as estrelas da prévia; com `SO=janela`, a aba
+(as escolhas, o Traçado sem o relevo natural, o rio só com água de rio, o mar na costa, travar pela prévia e gerar outro,
+o modelo), a cena (os marcadores ocultos com os nomes, a chegada sem a emboscada, o relevo, o fundo, o aviso) e quem joga
+não vê os marcadores.

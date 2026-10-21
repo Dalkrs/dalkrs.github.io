@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-8",
+      "data": "2026-10-21",
+      "titulo": "A Região livre",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar um lugar…” ganhou a aba Região livre — uma área para explorar, sem situação. Escolha o bioma (os de antes e mais Savana, Costa e Tundra), a Mistura (pouca, média ou muita: manchas de um ou dois biomas vizinhos que combinam, com a passagem gradual de um para o outro), o tamanho, a água (o rio, o lago, nada ou a Surpresa) e o caminho."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: na Região livre, o chão segue o relevo — o rio desce do alto para o baixo e acaba num lago, no mar ou sai pela borda; os morros e, nos biomas de pedra, os planaltos e os penhascos ficam onde o chão sobe; o caminho cruza o rio pela ponte. No Traçado, dá para escolher de onde o rio vem e para onde vai, a largura, as curvas, o afluente, o lago, as pontes e de onde chegam os caminhos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: cada Região livre tem pontos de interesse sorteados — um no Pequeno, dois no Médio, três no Grande: o poço velho, a árvore antiga ou o círculo de pedras numa clareira, a entrada de gruta, o ninho ou a toca, o vau ou a ponte velha. Os marcadores da chegada e de cada ponto, com o nome do que há ali, nascem ocultos (o do ponto de interesse também fica na paleta de objetos)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-7",
       "data": "2026-10-21",
       "titulo": "O cerco",

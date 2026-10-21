@@ -541,7 +541,8 @@ const Tracado = (() => {
        muro: { nome: 'Muralha', formas: [[id, nome]], ligada: bool, ligar(bool) } (null = não tem);
        rio: o lugar tem rio ligado (false: a seção diz como ligar — rioNota, se o lugar diz de outro jeito; null = não tem
        rio nenhum); mar: com mar (o rio vai para ele); praca: tem praça (true: os três lugares; ou a lista dos que valem
-       ali); pontes: tem pontes; portoesNota: o que os portões fazem ali (senão, "uma rua principal…"). */
+       ali); pontes: tem pontes; portoesNota: o que os portões fazem ali (senão, "uma rua principal…"); relevo: false
+       tira a chave do relevo natural (o lugar já nasce do relevo). */
   function secao(t, K, mudou, cfg) {
     const { field, seg, toggle, btn, note, inSelect } = K, P = cfg.pre, linhas = [];
     if (cfg.portoes) {
@@ -572,7 +573,8 @@ const Tracado = (() => {
       linhas.push(field('Praça', seg(P + '-praca', ops.some(x => x[0] === t.praca) ? t.praca : 'centro', ops, v => { t.praca = v; mudou(); }), 'stack'));
     }
     if (cfg.pontes && cfg.rio) linhas.push(field('Pontes', inSelect(P + '-pontes', t.pontes == null ? 'auto' : String(t.pontes), [['auto', 'Automático (uma em cada rua que cruza a água)'], ['0', 'Nenhuma (as ruas param na beira)'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']], v => { t.pontes = v === 'auto' ? null : Number(v); mudou(); }), 'stack'));
-    linhas.push(toggle(P + '-relnat', t.relevoNat, v => { t.relevoNat = v; mudou(); }, 'Relevo natural (colinas, matas e pedras em manchas)'));
+    // (lote 13: a Região livre já nasce do relevo — cfg.relevo false tira a chave)
+    if (cfg.relevo !== false) linhas.push(toggle(P + '-relnat', t.relevoNat, v => { t.relevoNat = v; mudou(); }, 'Relevo natural (colinas, matas e pedras em manchas)'));
     const mud = Object.keys(soMudadas(t)).length;
     linhas.push(h('div', { class: 'row' }, btn('Voltar ao automático', () => { Object.assign(t, padrao()); if (cfg.muro && !cfg.muro.ligada && cfg.muro.padraoLigada) cfg.muro.ligar(true); mudou(); }, { kind: 'small', id: P + '-tr-auto', disabled: !mud, title: 'Tudo como sempre: os portões, o rio, a praça, as pontes e o relevo' })));
     const det = h('details', { class: 'ger-tr', id: P + '-tr', open: App.opt.genTracado === true, ontoggle: e => { App.opt.genTracado = e.target.open; } },
@@ -603,5 +605,5 @@ const Tracado = (() => {
   const nomes = ids => { const n = lista(ids).map(id => DIR[id].n.toLowerCase()); return !n.length ? 'automático' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1]; };
 
   return { DIRS, DIR, IDS, valida, lista, maisPerto, oposta, difAng, LARGURA, LARGURAS, naBorda, caminho, suave, arredondar, rioPlano, blob, agua, cruzamentos, cortar, muro, torresPor, cortarNoMar, noContorno,
-    pecasDoAnel, cruza, ruido, manchas, contorno, aoLongo, distLinha, dentro, dentroDe, comprimento, rosa, nomes, CAMPOS, padrao, limpar, soMudadas, escolhas, rioDaRosa, secao, resumoDe };
+    pecasDoAnel, cruza, ruido, manchas, contorno, simplificar, aoLongo, distLinha, dentro, dentroDe, comprimento, rosa, nomes, CAMPOS, padrao, limpar, soMudadas, escolhas, rioDaRosa, secao, resumoDe };
 })();

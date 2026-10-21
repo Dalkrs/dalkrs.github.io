@@ -247,7 +247,7 @@ const SHOTS = process.env.FOTOS;
     await page.locator('#sceneBtn').click(); await w(200);
     await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
     const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Ruínas', 'Masmorra', 'Porto']), 'a aba Masmorra, entre as Ruínas e o Porto: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Porto']), 'a aba Masmorra, entre as Ruínas e o Porto: ' + j(abas));
     ok(await ev(() => !!document.getElementById('ger-hora') && !!document.getElementById('ger-clima')), '(nas outras abas, a hora e o clima)');
     await page.locator('#ger-lugar button', { hasText: 'Masmorra' }).click(); await w(700);
     const a0 = await ev(() => ({ lugar: __tc.Gerador.vivo().lugar, plano: __tc.Gerador.vivo().estado.plano.lugar, hora: !!document.getElementById('ger-hora'), clima: !!document.getElementById('ger-clima'), est: !!document.getElementById('ger-est'),

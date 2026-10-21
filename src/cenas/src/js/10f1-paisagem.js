@@ -9,6 +9,9 @@
    (lote 7, parte 4b) O mar (do raso junto da beira ao fundo, com as fileiras de ondas) e o que fica nele e na beira,
    para o Porto e para a Cidade com mar: o cais e os molhes de pedra (com os cabeços), o quebra-mar, o farol, a prancha
    dos navios, o guindaste, a carga do cais, as redes, o secador de peixe, a barraca do peixe e os blocos de gelo.
+   (lote 13) A tundra, o chão de outro bioma em manchas de beira macia (a passagem gradual de um bioma para o outro), o
+   morro macio (o chão de baixo continua aparecendo) e os pontos de interesse da Região livre: a boca da gruta, o ninho
+   e a toca.
    --------------------------------------------------------------- */
 const Paisagem = (() => {
   const TAU = Math.PI * 2;
@@ -24,13 +27,16 @@ const Paisagem = (() => {
     cristal: { base: '#555f6c', manchas: ['#4b5462', '#606b79', '#46505e', '#6a7585', '#3f4855'], fios: ['#7c8a9c', '#383f4a'], rua: ['#5a6270', '#6c7482', '#7e8694'], copa: ['#3f5a6a', '#4a6a7c', '#557a8e'], luz: '#8ab4d6', agua: ['#2f5e8a', '#4a7fb0', '#7fb2dc'], margem: '#3e4654' },
     mar: { base: '#1d4a6b', manchas: ['#1a4361', '#215276', '#183d58', '#265a80', '#163a54'], fios: ['#4a86ad', '#12324a'], rua: ['#8a7a5a', '#a08e6a', '#b2a07c'], copa: ['#2c4629', '#355432', '#3f6239'], luz: '#5aa0c8', agua: ['#1d4a6b', '#2a6690', '#5a9cc6'], margem: '#cdb98e' },
     savana: { base: '#8a8648', manchas: ['#7f7b40', '#959150', '#76723a', '#a09a58', '#6c6834'], fios: ['#aca464', '#5e5a2e'], rua: ['#8a7550', '#a08a62', '#b09a72'], copa: ['#4f6a2e', '#5a7a34', '#66883c'], luz: '#9ab05a', agua: ['#356f8c', '#4683a0', '#69a2bc'], margem: '#7a6a40' },
+    // (lote 13) a tundra: o chão baixo e frio, cinza-esverdeado, com o musgo, os liquens e os restos de neve
+    tundra: { base: '#8c9384', manchas: ['#81887a', '#979e8e', '#788070', '#a3a998', '#6f7668'], fios: ['#b3b8a3', '#5c6354'], rua: ['#776d5e', '#8b8170', '#9d9382'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#c3ccc2', agua: ['#4c7790', '#6790a6', '#90b3c6'], margem: '#6b7064' },
   });
   // o desenho miúdo de cada chão: o capim, as ondinhas da areia, o brilho da neve, as rachaduras da rocha, as ondas
-  const FIOS = { campo: 'capim', floresta: 'capim', pantano: 'capim', selva: 'capim', savana: 'capim', areia: 'areia', canion: 'areia', neve: 'neve', rocha: 'racha', basalto: 'racha', corrompida: 'racha', cristal: 'racha', mar: 'onda' };
+  const FIOS = { campo: 'capim', floresta: 'capim', pantano: 'capim', selva: 'capim', savana: 'capim', areia: 'areia', canion: 'areia', neve: 'neve', rocha: 'racha', basalto: 'racha', corrompida: 'racha', cristal: 'racha', mar: 'onda', tundra: 'tundra' };
   // as cores das pedras e dos penhascos de cada chão: [clara, média, escura]
   const PEDRA = { campo: ['#a3a7ae', '#757a83', '#4e535b'], floresta: ['#9aa09a', '#6f766f', '#474d47'], areia: ['#d9b98a', '#b08a5c', '#7a5a38'], neve: ['#e8eef2', '#aab6c0', '#6f7c88'],
     rocha: ['#a8a39a', '#7d786f', '#4d4a44'], canion: ['#d08a5a', '#a8633a', '#6e3a20'], pantano: ['#8a8f7a', '#62675a', '#3e4238'], selva: ['#8e9a86', '#66725e', '#3f4a3a'],
-    corrompida: ['#7a6a86', '#53465e', '#2e2636'], basalto: ['#5a524c', '#3a3430', '#1c1918'], cristal: ['#a8b6c8', '#7a889a', '#4c5666'], mar: ['#8a8f96', '#61666d', '#3c4046'], savana: ['#b8a888', '#8e8062', '#5e533e'] };
+    corrompida: ['#7a6a86', '#53465e', '#2e2636'], basalto: ['#5a524c', '#3a3430', '#1c1918'], cristal: ['#a8b6c8', '#7a889a', '#4c5666'], mar: ['#8a8f96', '#61666d', '#3c4046'], savana: ['#b8a888', '#8e8062', '#5e533e'],
+    tundra: ['#b8bdb4', '#8a9088', '#5a5f58'] };
   const pedraDe = pal => PEDRA[pal] || PEDRA.campo;
   const tom = Estilos.tom;
 
@@ -92,6 +98,15 @@ const Paisagem = (() => {
         g.stroke();
       }
       for (let i = 0, n = Math.round(W * H * 0.9); i < n; i++) { g.globalAlpha = 0.3; g.fillStyle = P.fios[i % 2]; g.beginPath(); g.arc(rnd() * w, rnd() * h, c * (0.03 + rnd() * 0.05), 0, TAU); g.fill(); }
+    } else if (fio === 'tundra') {
+      // (lote 13) o capim baixo e ralo, os restos de neve, o musgo e os liquens
+      g.lineWidth = Math.max(1, c * 0.022);
+      for (let i = 0, n = Math.round(W * H * 1.6); i < n; i++) {
+        const x = rnd() * w, y = rnd() * h, a = -Math.PI / 2 + (rnd() - 0.5) * 1.1, l = c * (0.04 + rnd() * 0.07);
+        g.globalAlpha = 0.3; g.strokeStyle = P.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      }
+      for (let i = 0, n = Math.round(W * H * 0.035); i < n; i++) { g.globalAlpha = 0.14 + rnd() * 0.12; g.fillStyle = '#e6ecee'; const rr = c * (0.3 + rnd() * 0.8); g.beginPath(); g.ellipse(rnd() * w, rnd() * h, rr, rr * (0.4 + rnd() * 0.4), rnd() * 3, 0, TAU); g.fill(); }
+      for (let i = 0, n = Math.round(W * H * 0.7); i < n; i++) { g.globalAlpha = 0.35; g.fillStyle = i % 3 ? '#5e6a4a' : '#b08e52'; g.beginPath(); g.arc(rnd() * w, rnd() * h, c * (0.03 + rnd() * 0.05), 0, TAU); g.fill(); }
     } else if (fio === 'onda') {
       // as ondas: arcos claros em fileiras desencontradas e as cristas de espuma
       g.lineWidth = Math.max(1, c * 0.035);
@@ -129,6 +144,29 @@ const Paisagem = (() => {
     if (op.bolhas) { g.lineWidth = Math.max(1, c * 0.03); for (let i = 0, n = Math.round(area * 0.8); i < n; i++) { g.globalAlpha = 0.5; g.strokeStyle = op.bolhas; g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, c * (0.06 + rnd() * 0.12), 0, TAU); g.stroke(); } }
     g.restore();
   }
+  /* (lote 13) O chão de outro bioma em manchas de beira macia (polis: os contornos, em quadrados): o chão inteiro dele,
+     recortado pela máscara das manchas, borrada (a passagem de um bioma para o outro fica gradual; borra: quantos
+     quadrados de passagem). Só na caixa das manchas, com a folga do borrado. A máscara vem da sombra (o desenho fica
+     fora da tela e só a sombra borrada cai no lugar): funciona em todo navegador. */
+  function chaoMisto(g, W, H, c, rnd, pal, polis, borra) {
+    if (!polis || !polis.length) return;
+    const b = borra || 1.3, m = b + 0.6;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const pts of polis) { const q = caixa(pts); x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[2]); y1 = Math.max(y1, q[3]); }
+    x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
+    const ox = Math.floor(x0 * c), oy = Math.floor(y0 * c), w = Math.ceil(x1 * c) - ox, h = Math.ceil(y1 * c) - oy;
+    if (w < 2 || h < 2) return;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g2 = cv.getContext('2d');
+    g2.translate(-ox, -oy); chao(g2, W, H, c, rnd, pal); g2.setTransform(1, 0, 0, 1, 0, 0);
+    const mk = document.createElement('canvas'); mk.width = w; mk.height = h;
+    const gm = mk.getContext('2d'), longe = w + h + 64;
+    gm.shadowColor = '#000'; gm.shadowBlur = Math.max(2, c * b); gm.shadowOffsetX = longe; gm.fillStyle = '#000';
+    gm.translate(-ox - longe, -oy);
+    for (const pts of polis) { suave(gm, pts, c); gm.fill(); }
+    g2.globalCompositeOperation = 'destination-in'; g2.drawImage(mk, 0, 0);
+    g.drawImage(cv, ox, oy);
+  }
 
   /* ================= a água (e o que corre como ela) ================= */
   // o rio: uma linha grossa (hw: a meia largura). tipo: 'agua' | 'lava' | 'lodo'
@@ -162,8 +200,9 @@ const Paisagem = (() => {
     }
     g.restore();
   }
-  // o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho' | 'mar'
-  function lago(g, pts, c, rnd, pal, tipo) {
+  /* o lago (pts: o contorno, em quadrados). tipo: 'agua' | 'gelo' | 'lava' | 'lodo' | 'espelho' | 'mar'. semBeira: sem a
+     beira (lote 13: a segunda demão, por cima da ponta do rio que entra nele — a beira da primeira fica embaixo do rio) */
+  function lago(g, pts, c, rnd, pal, tipo, semBeira) {
     const P = PAL[pal] || PAL.campo, [x0, y0, x1, y1] = caixa(pts), area = (x1 - x0) * (y1 - y0);
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     if (tipo === 'mar') {
@@ -180,7 +219,7 @@ const Paisagem = (() => {
         g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + L / 2, y - c * 0.14, x + L, y); g.stroke();
       }
     } else if (tipo === 'gelo') {
-      suave(g, pts, c); g.strokeStyle = '#c9d6df'; g.lineWidth = c * 0.9; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = '#c9d6df'; g.lineWidth = c * 0.9; g.stroke(); }
       const gr = g.createLinearGradient(x0 * c, y0 * c, x1 * c, y1 * c); gr.addColorStop(0, '#e8f6fc'); gr.addColorStop(0.5, '#bfe0f0'); gr.addColorStop(1, '#9cc8e0');
       suave(g, pts, c); g.fillStyle = gr; g.fill();
       g.clip();
@@ -194,10 +233,13 @@ const Paisagem = (() => {
       }
       g.globalAlpha = 0.5; g.fillStyle = '#ffffff'; for (let i = 0, n = Math.round(area * 0.8); i < n; i++) { g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, Math.max(0.6, c * 0.02), 0, TAU); g.fill(); }
       g.restore(); g.save();
-      suave(g, pts, c); g.globalAlpha = 0.7; g.strokeStyle = '#f2f7fa'; g.lineWidth = c * 0.22; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.globalAlpha = 0.7; g.strokeStyle = '#f2f7fa'; g.lineWidth = c * 0.22; g.stroke(); }
     } else if (tipo === 'lava') {
-      suave(g, pts, c); g.globalAlpha = 0.14; g.strokeStyle = '#ff6a1a'; g.lineWidth = c * 2.2; g.stroke(); g.lineWidth = c * 1.2; g.stroke();
-      g.globalAlpha = 1; suave(g, pts, c); g.strokeStyle = '#1a0f0a'; g.lineWidth = c * 0.7; g.stroke();
+      if (!semBeira) {
+        suave(g, pts, c); g.globalAlpha = 0.14; g.strokeStyle = '#ff6a1a'; g.lineWidth = c * 2.2; g.stroke(); g.lineWidth = c * 1.2; g.stroke();
+        g.globalAlpha = 1; suave(g, pts, c); g.strokeStyle = '#1a0f0a'; g.lineWidth = c * 0.7; g.stroke();
+      }
+      g.globalAlpha = 1;
       suave(g, pts, c); g.fillStyle = '#7a1e08'; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.8), c); g.fillStyle = '#d4520f'; g.fill();
@@ -208,7 +250,7 @@ const Paisagem = (() => {
       for (let i = 0, n = Math.round(area * 0.15) + 2; i < n; i++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); g.beginPath(); g.arc(x * c, y * c, c * (0.2 + rnd() * 0.5), rnd() * 3, rnd() * 3 + 2); g.stroke(); }
     } else if (tipo === 'lodo') {
       const lodo = pal === 'corrompida' ? ['#2a1f33', '#4a2f5a', '#7a4f96', '#b07ad0'] : ['#2f3a22', '#46532c', '#62703c', '#9aaa5a'];
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.6; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.6; g.stroke(); }
       suave(g, pts, c); g.fillStyle = lodo[0]; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.7), c); g.globalAlpha = 0.8; g.fillStyle = lodo[1]; g.fill();
@@ -216,7 +258,7 @@ const Paisagem = (() => {
       for (let i = 0, n = Math.round(area * 0.9); i < n; i++) { g.globalAlpha = 0.6; g.strokeStyle = rnd() < 0.5 ? lodo[2] : lodo[3]; g.beginPath(); g.arc((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, c * (0.05 + rnd() * 0.14), 0, TAU); g.stroke(); }
     } else if (tipo === 'espelho') {
       // o lago espelhado: claro, liso, refletindo o céu; os cristais da beira brilham nele
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.5; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.5; g.stroke(); }
       const gr = g.createLinearGradient(x0 * c, y0 * c, x1 * c, y1 * c); gr.addColorStop(0, '#dff3ff'); gr.addColorStop(0.45, '#9fd0ee'); gr.addColorStop(1, '#5f9cc8');
       suave(g, pts, c); g.fillStyle = gr; g.fill();
       g.clip();
@@ -225,7 +267,7 @@ const Paisagem = (() => {
       g.globalAlpha = 0.9; g.fillStyle = '#ffffff';
       for (let i = 0, n = Math.round(area * 0.2) + 4; i < n; i++) { const x = (x0 + rnd() * (x1 - x0)) * c, y = (y0 + rnd() * (y1 - y0)) * c, s = c * (0.05 + rnd() * 0.08); g.beginPath(); g.moveTo(x, y - s * 2); g.lineTo(x + s * 0.5, y); g.lineTo(x, y + s * 2); g.lineTo(x - s * 0.5, y); g.closePath(); g.fill(); g.beginPath(); g.moveTo(x - s * 2, y); g.lineTo(x, y + s * 0.5); g.lineTo(x + s * 2, y); g.lineTo(x, y - s * 0.5); g.closePath(); g.fill(); }
     } else {
-      suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.7; g.stroke();
+      if (!semBeira) { suave(g, pts, c); g.strokeStyle = P.margem; g.lineWidth = c * 0.7; g.stroke(); }
       suave(g, pts, c); g.fillStyle = P.agua[0]; g.fill();
       g.clip();
       suave(g, encolher(pts, 0.78), c); g.globalAlpha = 0.85; g.fillStyle = P.agua[1]; g.fill();
@@ -921,6 +963,32 @@ const Paisagem = (() => {
     g.globalAlpha = 0.18; for (let i = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.8); i < n; i++) { g.fillStyle = rnd() < 0.5 ? cores[0] : cores[2]; const rr = c * (0.2 + rnd() * 0.5); g.beginPath(); g.ellipse((x0 + rnd() * (x1 - x0)) * c, (y0 + rnd() * (y1 - y0)) * c, rr, rr * 0.6, rnd() * 3, 0, TAU); g.fill(); }
     g.restore();
   }
+  /* (lote 13) O morro macio (pts: o contorno; alt: a altura; cores: [a luz do alto, a encosta, as curvas de nível]): o
+     chão de baixo continua aparecendo — a sombra da encosta para baixo e à direita (só fora do morro), o alto um pouco
+     mais claro em camadas, as curvas de nível e as hachuras do lado da sombra, como num mapa antigo. */
+  function morroMacio(g, pts, c, rnd, cores, alt) {
+    const camadas = clamp(Math.round((alt || 2) / 1.5), 1, 3);
+    const trajeto = pp => { const n = pp.length; g.moveTo((pp[n - 1][0] + pp[0][0]) / 2 * c, (pp[n - 1][1] + pp[0][1]) / 2 * c); for (let i = 0; i < n; i++) { const p = pp[i], q = pp[(i + 1) % n]; g.quadraticCurveTo(p[0] * c, p[1] * c, (p[0] + q[0]) / 2 * c, (p[1] + q[1]) / 2 * c); } g.closePath(); };
+    g.save(); g.lineJoin = 'round';
+    g.save(); g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); trajeto(pts); g.clip('evenodd');
+    const d = c * (0.22 + 0.12 * camadas);
+    g.translate(d, d * 1.25); g.beginPath(); trajeto(pts); g.globalAlpha = 0.22; g.fillStyle = '#000'; g.fill();
+    g.restore();
+    for (let k = 0; k < camadas; k++) {
+      const pp = encolher(pts, 1 - k * (0.55 / camadas)).map(([x, y]) => [x - k * 0.1, y - k * 0.13]);
+      g.beginPath(); trajeto(pp); g.globalAlpha = 0.1 + k * 0.05; g.fillStyle = cores[0]; g.fill();
+      g.globalAlpha = 0.38; g.strokeStyle = cores[2]; g.lineWidth = Math.max(1, c * 0.045); g.stroke();
+    }
+    const [cx, cy] = centro(pts), anel = pts.concat([pts[0]]), L = compr(anel), n = Math.round(L * 1.8);
+    g.lineCap = 'round'; g.strokeStyle = cores[2]; g.lineWidth = Math.max(1, c * 0.04);
+    for (let i = 0; i < n; i++) {
+      const p = aoLongo(anel, i / n), dx = cx - p.x, dy = cy - p.y, dd = Math.hypot(dx, dy) || 1;
+      if (-dx / dd * 0.6 - dy / dd * 0.8 < 0.05) continue;
+      const l = Math.min(dd * 0.3, 0.35 + (alt || 2) * 0.1) * (0.7 + rnd() * 0.5);
+      g.globalAlpha = 0.3 + rnd() * 0.2; g.beginPath(); g.moveTo(p.x * c, p.y * c); g.lineTo((p.x + dx / dd * l) * c, (p.y + dy / dd * l) * c); g.stroke();
+    }
+    g.restore();
+  }
   // a duna (pts: o contorno; ang: de onde sopra o vento): a encosta clara a barlavento, a sombra a sotavento e a crista
   function duna(g, pts, c, rnd, ang) {
     const [cx, cy] = centro(pts), ux = Math.cos(ang), uy = Math.sin(ang);
@@ -1132,6 +1200,73 @@ const Paisagem = (() => {
     g.globalAlpha = 0.6; poli(g, encolher(o.pts, 0.6), c, true); g.fillStyle = '#ffffff'; g.fill();
     g.restore();
   }
+  /* ================= (lote 13) os pontos de interesse da Região livre ================= */
+  // um ossinho (x, y: o meio, em pixels; l: o comprimento; ang: o sentido)
+  function ossinho(g, x, y, l, ang, c) {
+    const ux = Math.cos(ang) * l / 2, uy = Math.sin(ang) * l / 2, r = Math.max(0.8, c * 0.035);
+    g.strokeStyle = '#ece3cf'; g.lineWidth = Math.max(1, c * 0.045); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x - ux, y - uy); g.lineTo(x + ux, y + uy); g.stroke();
+    g.fillStyle = '#ece3cf';
+    for (const s of [-1, 1]) for (const t of [-1, 1]) { g.beginPath(); g.arc(x + s * ux - uy / l * 2 * r * t, y + s * uy + ux / l * 2 * r * t, r, 0, TAU); g.fill(); }
+  }
+  /* A boca de uma gruta (x, y: o meio da boca, na beira da pedra; ang: para onde ela abre; r: o tamanho): o escuro que
+     entra na pedra, a beirada de rocha em arco e as pedras caídas na frente. */
+  function bocaGruta(g, o, c, rnd) {
+    const R = (o.r || 1) * c, a = o.ang || 0, ux = Math.cos(a), uy = Math.sin(a);
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(a);
+    const gr = g.createRadialGradient(-R * 0.35, 0, R * 0.08, -R * 0.2, 0, R * 1.15);
+    gr.addColorStop(0, '#030303'); gr.addColorStop(0.55, '#120f0d'); gr.addColorStop(1, 'rgba(18,15,13,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(-R * 0.25, 0, R * 0.85, R * 1.1, 0, 0, TAU); g.fill();
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = Math.max(1.5, c * 0.12); g.beginPath(); g.ellipse(-R * 0.25, 0, R * 0.85, R * 1.1, 0, -Math.PI * 0.42, Math.PI * 0.42); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.ellipse(-R * 0.2, 0, R * 0.92, R * 1.16, 0, -Math.PI * 0.4, Math.PI * 0.1); g.stroke();
+    g.restore();
+    const k = o.r || 1;
+    for (let i = 0; i < 5; i++) { const d = k * (0.8 + rnd() * 0.9), s = (rnd() - 0.5) * k * 1.8; pedra(g, o.x + ux * d - uy * s, o.y + uy * d + ux * s, 0.12 + rnd() * 0.16, c, rnd, o.cores || PEDRA.rocha); }
+  }
+  /* O ninho grande no chão (x, y: o meio; r: o raio): os galhos trançados em roda, o fundo de palha, os ovos e umas
+     penas e ossinhos em volta. */
+  function ninho(g, o, c, rnd) {
+    const X = o.x * c, Y = o.y * c, R = (o.r || 1) * c;
+    g.save(); g.lineCap = 'round';
+    g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(X + R * 0.12, Y + R * 0.16, R * 1.05, R * 0.95, 0, 0, TAU); g.fill();
+    g.globalAlpha = 1; g.fillStyle = '#6b5232'; g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill();
+    for (let i = 0; i < 46; i++) {
+      const a = rnd() * TAU, d = R * (0.62 + rnd() * 0.4), l = R * (0.35 + rnd() * 0.45), b = a + Math.PI / 2 + (rnd() - 0.5) * 0.9, x = X + Math.cos(a) * d, y = Y + Math.sin(a) * d;
+      g.strokeStyle = ['#4a3620', '#7a5c38', '#5e4428', '#8f6c42'][i % 4]; g.lineWidth = Math.max(1, c * (0.04 + rnd() * 0.04));
+      g.beginPath(); g.moveTo(x - Math.cos(b) * l / 2, y - Math.sin(b) * l / 2); g.lineTo(x + Math.cos(b) * l / 2, y + Math.sin(b) * l / 2); g.stroke();
+    }
+    const gr = g.createRadialGradient(X, Y, R * 0.1, X, Y, R * 0.62); gr.addColorStop(0, '#3a2a18'); gr.addColorStop(1, '#5a4428');
+    g.fillStyle = gr; g.beginPath(); g.arc(X, Y, R * 0.58, 0, TAU); g.fill();
+    for (let i = 0, n = 2 + Math.floor(rnd() * 3); i < n; i++) {
+      const a = rnd() * TAU, d = R * rnd() * 0.3, ex = X + Math.cos(a) * d, ey = Y + Math.sin(a) * d;
+      g.fillStyle = '#efe6d2'; g.beginPath(); g.ellipse(ex, ey, R * 0.16, R * 0.12, rnd() * 3, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(80,60,40,0.5)'; g.lineWidth = Math.max(0.8, c * 0.02); g.stroke();
+      g.fillStyle = 'rgba(120,90,60,0.55)'; g.beginPath(); g.arc(ex + R * 0.04, ey - R * 0.02, Math.max(0.6, R * 0.025), 0, TAU); g.fill();
+    }
+    // as penas e os ossinhos em volta
+    for (let i = 0; i < 4; i++) {
+      const a = rnd() * TAU, d = R * (1.15 + rnd() * 0.6), x = X + Math.cos(a) * d, y = Y + Math.sin(a) * d, b = rnd() * TAU;
+      if (i % 2) ossinho(g, x, y, c * (0.25 + rnd() * 0.15), b, c);
+      else { g.fillStyle = '#c9c4bb'; g.beginPath(); g.ellipse(x, y, c * 0.16, c * 0.05, b, 0, TAU); g.fill(); g.strokeStyle = '#7d776d'; g.lineWidth = Math.max(0.8, c * 0.015); g.beginPath(); g.moveTo(x - Math.cos(b) * c * 0.18, y - Math.sin(b) * c * 0.18); g.lineTo(x + Math.cos(b) * c * 0.16, y + Math.sin(b) * c * 0.16); g.stroke(); }
+    }
+    g.restore();
+  }
+  /* A toca (x, y: o meio do buraco; ang: para onde a terra foi jogada; r: o tamanho): o monte de terra revirada, o
+     buraco escuro e uns ossos roídos. */
+  function toca(g, o, c, rnd) {
+    const X = o.x * c, Y = o.y * c, R = (o.r || 1) * c, a = o.ang || 0, ux = Math.cos(a), uy = Math.sin(a);
+    const mx = X + ux * R * 0.6, my = Y + uy * R * 0.6;
+    g.save();
+    g.globalAlpha = 0.25; g.fillStyle = '#000'; g.beginPath(); g.ellipse(mx + R * 0.1, my + R * 0.14, R * 0.9, R * 0.62, a + Math.PI / 2, 0, TAU); g.fill();
+    g.globalAlpha = 0.95; g.fillStyle = '#7a6040'; g.beginPath(); g.ellipse(mx, my, R * 0.85, R * 0.58, a + Math.PI / 2, 0, TAU); g.fill();
+    for (let i = 0; i < 26; i++) { const d = R * rnd() * 0.8, b = rnd() * TAU; g.globalAlpha = 0.55; g.fillStyle = rnd() < 0.5 ? '#9a7c52' : '#5e472c'; g.beginPath(); g.arc(mx + Math.cos(b) * d, my + Math.sin(b) * d * 0.7, Math.max(0.8, R * (0.04 + rnd() * 0.06)), 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
+    const gr = g.createRadialGradient(X - ux * R * 0.1, Y - uy * R * 0.1, R * 0.05, X, Y, R * 0.5); gr.addColorStop(0, '#050403'); gr.addColorStop(0.7, '#1c140c'); gr.addColorStop(1, '#3a2a18');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(X, Y, R * 0.46, R * 0.38, a, 0, TAU); g.fill();
+    for (let i = 0; i < 3; i++) { const b = rnd() * TAU, d = R * (0.7 + rnd() * 0.7); ossinho(g, X + Math.cos(b) * d, Y + Math.sin(b) * d, c * (0.22 + rnd() * 0.16), rnd() * TAU, c); }
+    g.restore();
+  }
   // escurece de leve as bordas (o mesmo dos outros geradores)
   function vinheta(g, W, H, c, forte) {
     const w = W * c, h = H * c, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
@@ -1141,5 +1276,5 @@ const Paisagem = (() => {
   return { PAL, FIOS, PEDRA, pedraDe, poli, suave, caixa, centro, encolher, aoLongo, compr, chao, mancha, rio, lago, praia, espuma, cachoeira, caminho, penhasco, pedra, arvore, cristais,
     tabuas, carroca, tenda, fogueiraApagada, ossada, pasDoMoinho, plantacao, cerca, feno, espantalho, ponte, passarela, pedrasDePassar, fenda, basalto, raiz, troncoGigante, troncoColossal,
     luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD,
-    cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo };
+    cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo, chaoMisto, morroMacio, bocaGruta, ninho, toca, ossinho };
 })();
