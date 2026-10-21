@@ -293,6 +293,7 @@ const Regiao = (() => {
       P.mar = { lado: F.mar.lado };
     }
     // os lagos: o tipo é o do bioma onde ele fica (o gelo, na neve e na tundra: dá para andar, e escorrega)
+    const agLagos = [];
     for (const L of F.lagos) {
       const BL = F.bioEm(L.centro[0], L.centro[1]), tipo = BL.lago || 'agua', rr = Math.sqrt(L.cel.size / Math.PI);
       if (tipo === 'gelo') {
@@ -301,7 +302,7 @@ const Regiao = (() => {
         for (const q of Array.from(L.cel).filter((_, k) => k % 23 === 7).slice(0, 3)) K.zona('gelado', q % W + 0.5, Math.floor(q / W) + 0.5, { r: Math.max(1.5, rr * 0.55) });
       } else aguaParada(L.pts, tipo, tipo === 'lava' ? -1 : -1.5, 2, palDe(BL.id));
       if (tipo === 'lava') { K.zona('lava', L.centro[0], L.centro[1], { r: rr * 0.85 }); K.luz(L.centro[0], L.centro[1], 7, '#ff8a3a'); }
-      P.lagos.push({ tipo });
+      P.lagos.push({ tipo }); agLagos.push(P.aguas.filter(a => a.k === 'lago' && a.pts === L.pts)[0] || null);
     }
     // os rios (o de lava na terra de lava, com a zona e a luz)
     const tipoRio = BB.agua === 'lava' ? 'lava' : 'agua';
@@ -335,6 +336,8 @@ const Regiao = (() => {
     }
     const clareiras = poePontos(K, F, escolhidos, estilo, tam, vau, chegada);
     proprios(K, F);
+    // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
+    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
     // a mata (o relevo) onde o bosque fecha, nos biomas de mato; as árvores se juntam nos bosques
     const nb = Tracado.ruido(MO.sub(sT, 44)), EB = 1 / 6.5, bq = (x, y) => clamp((nb(x * EB, y * EB) - 0.42) / 0.22, 0, 1);
     const G = B.grupos(W, H, q => { const i = q % W, j = (q - i) / W; return K.at(i, j) === 0 && F.bioEm(i + 0.5, j + 0.5).mata && bq(i + 0.5, j + 0.5) > 0.62; });
@@ -363,6 +366,10 @@ const Regiao = (() => {
       if (rV() >= b.pedrinhas / 192 || K.at(Math.floor(x), Math.floor(y)) !== 0) continue;
       P.rochas.push({ x, y, r: 0.25 + rV() * 0.3, cores: Paisagem.pedraDe(b.pedra || palDe(b.id)) }); K.pos(Math.floor(x), Math.floor(y), 4);
     }
+    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: P.pontos.map(q => [q.cx, q.cy, 5]).concat([[chegada[0] + 0.5, chegada[1] + 0.5, 5]]) });
+    // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (o lago, as poças do pântano)
+    Estacoes.noPlano(K, o.estacao);
+    agLagos.forEach((a, i) => { if (a && a.tipo === 'gelo') P.lagos[i].tipo = 'gelo'; });
     P.marcas = comMarcas ? { chegada } : {};
     if (!P.tracado.length) P.tracado.push({ k: 'circ', x: W / 2, y: H / 2, r: 3 });
     delete P.dens; delete P.esp;
@@ -393,15 +400,19 @@ const Regiao = (() => {
     const pts = p.pontos || [];
     if (pts.length) partes.push(plural(pts.length, 'ponto de interesse', 'pontos de interesse') + ' (' + pts.map(q => q.n.toLowerCase()).join(', ') + ')');
     if (p.seco) partes.push('o chão seco');
+    // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
+    if (p.estacao) partes.push(Estacoes.texto(p));
+    partes.push(...Historia.texto(p));
     return partes.join(' · ') + '.';
   }
-  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
+  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; };
   // (o relevo natural não vale aqui: a Região já nasce do relevo)
   const tracadoDe = o => Object.assign(Tracado.limpar(o), { relevoNat: false, praca: 'centro', muroForma: null });
   function padrao() {
     const o = App.opt;
     return { bioma: B.BIO[o.regBio] ? o.regBio : 'floresta', mistura: B.mistura(o.regMis), agua: AGUAS.some(a => a[0] === o.regAgua) ? o.regAgua : 'surpresa', caminho: CAMINHOS.some(c => c[0] === o.regCam) ? o.regCam : 'trilha',
-      tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado) };
+      tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado),
+      historia: Historia.valida(o.regHist), achados: o.regAchados !== false };        // (lote 13, parte 13c) a história do lugar e os achados raros
   }
   function controles(st, K, mudou) {
     const { field, seg, toggle } = K;
@@ -416,20 +427,27 @@ const Regiao = (() => {
       h('div', { class: 'ger-l' },
         field('Água', seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
         field('Caminho', seg('reg-cam', st.caminho, CAMINHOS, v => muda('caminho', v)), 'stack')),
+      // (lote 13, parte 13c) a história do lugar e os achados raros
+      Historia.campo(st, K, () => { lembrar(st); mudou(true); }, 'reg'),
+      toggle('reg-achados', st.achados !== false, v => { st.achados = v; lembrar(st); mudou(true); }, 'Achados raros: a semente decide, um em cada quatro lugares (só você vê o marcador)'),
       toggle('reg-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e os pontos de interesse (só você vê)'),
       Tracado.secao(st.t || (st.t = tracadoDe(null)), K, () => { lembrar(st); mudou(true); }, { pre: 'reg', portoes: 'Caminhos',
         portoesNota: 'De onde chegam os caminhos: o primeiro atravessa a região; os outros vão até ele.',
         rio: temRio, rioNota: st.agua === 'lago' ? 'Só o lago, sem rio: escolha "Rio" ou a Surpresa em Água para ter o rio.' : 'Sem água: escolha "Rio" ou a Surpresa em Água para ter o rio.',
         mar: st.bioma === 'costa', rioDica: st.agua === 'surpresa' ? 'Na Surpresa, escolher de onde o rio vem (ou para onde vai) garante o rio.' : 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto.', pontes: true, relevo: false }));
   }
-  const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, Tracado.soMudadas(st.t || Tracado.padrao()));
-  function aplicarOpcoes(st, o) {
+  const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas },
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+  function aplicarOpcoes(st, o, op) {
     if (B.BIO[o.bioma]) st.bioma = o.bioma;
     if (typeof o.mistura === 'string' && B.FRACAO[o.mistura] != null) st.mistura = o.mistura;
     if (AGUAS.some(a => a[0] === o.agua)) st.agua = o.agua;
     if (CAMINHOS.some(c => c[0] === o.caminho)) st.caminho = o.caminho;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (typeof o.marcas === 'boolean') st.marcas = o.marcas;
+    // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
+    if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
+    if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
     st.t = tracadoDe(o);
     lembrar(st);
   }
@@ -454,7 +472,8 @@ const Regiao = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
     aceitaSeco: true,
     dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',

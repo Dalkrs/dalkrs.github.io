@@ -3,7 +3,8 @@
 //   · o terreno do hexágono (pelo desenho dele; a savana e a tundra, desde o lote 13, nos terrenos delas), o caminho da
 //     rota (estrada, trilha, mar, rio), a situação que o terreno já diz (a lavoura) ou a Surpresa;
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
-//     inundação: chuva; incêndio: cinzas; magia: vaga-lumes) e o estilo da região mais de dentro que tiver um;
+//     inundação: chuva; incêndio: cinzas; magia: vaga-lumes), o estilo da região mais de dentro que tiver um e (lote 13,
+//     parte 13c) a estação do mês de hoje (com o Inverno rigoroso em cima, inverno);
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
 //     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
 //     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão.
@@ -125,6 +126,13 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(e3.clima === 'neblina' && j(e3.fx) === j(['espiritos']) && e3.hora === 'dia', 'a assombração: neblina e a Névoa de espíritos: ' + j([e3.clima, e3.fx]));
   const e4 = await comEventos([]);
   ok(!('fx' in e4) && !('seco' in e4) && !('eventos' in e4) && e4.hora === 'dia', 'sem os eventos novos, o pedido de antes: ' + j(e4));
+  // (lote 13, parte 13c) a estação do mês de hoje no calendário; com o Inverno rigoroso em cima, inverno
+  ok(Object.values(ger).every(g => g.estacao === 'inverno') && e4.estacao === 'inverno', 'a estação do mês de hoje (o dia 10: o primeiro mês, inverno), em todos: ' + j(Object.values(ger).map(g => g.estacao)));
+  await F.evaluate(() => __mundo.App.mudar('o outono', m => { const N = __mundo.N, n = N.mesesDe(m.cal).length; let d = 0; while (d < 4000 && N.estacaoDoMes(N.dataDe(m.cal, d).mes, n) !== 'outono') d++; m.cal.dia = d; }));
+  const e5 = await comEventos([]), e6 = await comEventos(['inverno']);
+  ok(e5.estacao === 'outono' && e6.estacao === 'inverno', 'no mês de outono, o outono; com o Inverno rigoroso em cima, o inverno: ' + j([e5.estacao, e6.estacao]));
+  await comEventos([]);
+  await F.evaluate(() => __mundo.App.mudar('de volta ao dia 10', m => { m.cal.dia = 10; }));
   // (lote 7, parte 5c) sem evento, o clima do dia: a neve neva; a névoa vira neblina; o calor não tem clima de cena; o
   // evento vence o clima do dia; a região com ajuste manda no clima dela
   const comClima = async (k, extra) => { await F.evaluate(([k, extra]) => __mundo.App.mudar('o clima do dia', m => { m.clima = { tab: m.cal.meses.map(() => ({ [k]: 100 })) }; if (extra) extra(m); }), [k, null]); return gerarAqui('planicie'); };

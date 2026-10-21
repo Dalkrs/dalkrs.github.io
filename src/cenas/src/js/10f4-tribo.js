@@ -606,6 +606,7 @@ const Tribo = (() => {
     // (lote 8: a forma da paliçada e os portões da rosa; sem eles, o plano fica como era)
     if (ring8) P.muroForma = T8.muro;
     if (dirs8) P.portoesRosa = portoes8.map(g => g.id);
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'tribo', seed, sT, tamanho, moradias, terreno, com, centro: [cx, cy], raios: [rx, ry], ladoPortao: ladoG, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -1029,6 +1030,7 @@ const Tribo = (() => {
     if (p.palicada) partes.push('paliçada' + ({ oct: ' em octógono', irregular: ' irregular' }[p.muroForma] || '') + (nP > 1 ? ' com ' + nP + ' portões' : '') + (p.torres && p.torres.length ? ', ' + p.torres.length + ' torres' : '') + ' e fosso');
     if (p.sagrado) partes.push('o círculo de pedras');
     if (p.cercado) partes.push('o cercado');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.triMor = st.moradias; App.opt.triTam = st.tamanho; App.opt.triTer = st.terreno; App.opt.triPal = st.palicada; App.opt.triSag = st.sagrados; App.opt.triVida = st.vida; App.opt.triTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
@@ -1085,7 +1087,8 @@ const Tribo = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (as torres de vigia, o fosso, a água, os deques e as passarelas)',
     dica: 'Clique no traçado da prévia (a praça, as moradias, a paliçada, a água) para travar: "Gerar outro" troca só as árvores, os enfeites e as coisas do dia a dia.',
     nota: 'Sai uma cena nova: as moradias fechadas, cada uma com um marcador de Entrada na porta (só você vê) — dois cliques geram o interior (a fogueira no meio, as peles, os baús); a fogueira e o totem na praça; a paliçada com o portão (abre e fecha), as torres de vigia de 4 m e o fosso; o cercado com a cerca baixa (deixa ver, não deixa passar). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',

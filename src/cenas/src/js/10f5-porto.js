@@ -347,6 +347,7 @@ const Porto = (() => {
     P.marcas = {};
     K.foco(...pt(0, -3));
     delete P.dens; delete P.esp;
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'porto', tipo, seed, sT, tamanho, com, ladoMar: ladoM, pieres: pieres.map(q => ({ k: q.k, sv: q.sv, Lp: q.Lp })), vagas: vagas.map(vg => vg.caixa), pranchas,
       travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
@@ -364,6 +365,7 @@ const Porto = (() => {
     const n = p.predios.length, partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · ' + n + (n === 1 ? ' prédio' : ' prédios'), p.W + ' × ' + p.H + ' quadrados'];
     if (p.navios.length) partes.push(p.tipo === 'vila' ? 'o barco de pesca atracado' : p.navios.length === 1 ? 'um navio atracado' : p.navios.length + ' navios atracados');
     if (p.farol) partes.push(p.tipo === 'vila' ? 'o farol na ponta de pedras' : 'o farol no quebra-mar');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.porTipo = st.tipo; App.opt.porTam = st.tamanho; App.opt.porTer = st.terreno; App.opt.porNav = st.navios; App.opt.porFarol = st.farol; App.opt.porMerc = st.mercado; };
@@ -415,7 +417,8 @@ const Porto = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'porto', n: 'Porto', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'porto', n: 'Porto', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (o mar, os píeres e os molhes, o quebra-mar, os conveses e o farol)',
     dica: 'Clique no traçado da prévia (o mar, a beira, as ruas, os píeres, os prédios) para travar: "Gerar outro" troca só os barcos pequenos, o mercado e as árvores.',
     nota: 'Sai uma cena nova: o mar com a beira, os píeres, os prédios fechados (cada um com um marcador de Entrada na porta, só seu: dois cliques geram o interior) e os navios grandes atracados — cada um é um lugar: o convés com a amurada (deixa ver, não deixa passar), a prancha até a terra e a escotilha (dois cliques geram o porão e as cabines). Os barcos pequenos são desenho. Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',

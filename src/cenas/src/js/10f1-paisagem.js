@@ -422,8 +422,10 @@ const Paisagem = (() => {
     const x = a.x * c, y = a.y * c, R = a.r * c;
     const sombra = (k, dx, dy) => { g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * (dx == null ? 0.16 : dx), y + R * (dy == null ? 0.2 : dy), R * (k || 1), 0, TAU); g.fill(); g.globalAlpha = 1; };
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-    if (esp === 'morta' || esp === 'carbonizada') {
-      const corT = esp === 'carbonizada' ? '#1c1714' : pal === 'corrompida' ? '#2a2230' : '#3b3029', corL = esp === 'carbonizada' ? '#3a2a20' : pal === 'corrompida' ? '#4a3a56' : '#5a4a3c';
+    // (lote 13, parte 13c: a queimada é a carbonizada de um incêndio antigo, já sem as brasas)
+    if (esp === 'morta' || esp === 'carbonizada' || esp === 'queimada') {
+      const brasa = esp === 'carbonizada', preta = brasa || esp === 'queimada';
+      const corT = preta ? '#1c1714' : pal === 'corrompida' ? '#2a2230' : '#3b3029', corL = preta ? '#3a2a20' : pal === 'corrompida' ? '#4a3a56' : '#5a4a3c';
       sombra(0.55, 0.25, 0.3);
       // os galhos tortos: poucos e compridos, para um lado mais que para o outro, cada um se abrindo em forquilha
       const n = 3 + Math.floor(rnd() * 2), a0 = rnd() * TAU, abre = 2.2 + rnd() * 1.6;
@@ -435,7 +437,7 @@ const Paisagem = (() => {
       for (let i = 0; i < n; i++) galho(x, y, a0 + (i / Math.max(1, n - 1) - 0.5) * abre + (rnd() - 0.5) * 0.4, R * 0.2, R * (0.45 + rnd() * 0.2), 0);
       g.fillStyle = corT; g.beginPath(); g.arc(x, y, R * 0.2, 0, TAU); g.fill();
       g.fillStyle = corL; g.beginPath(); g.arc(x - R * 0.04, y - R * 0.04, R * 0.1, 0, TAU); g.fill();
-      if (esp === 'carbonizada') { g.fillStyle = '#ff8a3a'; for (let i = 0; i < 5; i++) { g.globalAlpha = 0.8; g.beginPath(); g.arc(x + (rnd() - 0.5) * R, y + (rnd() - 0.5) * R, Math.max(0.8, R * 0.04), 0, TAU); g.fill(); } }
+      if (brasa) { g.fillStyle = '#ff8a3a'; for (let i = 0; i < 5; i++) { g.globalAlpha = 0.8; g.beginPath(); g.arc(x + (rnd() - 0.5) * R, y + (rnd() - 0.5) * R, Math.max(0.8, R * 0.04), 0, TAU); g.fill(); } }
     } else if (esp === 'selva') {
       sombra(1.05);
       const cores = ['#1f4a24', '#2a5e2c', '#357236', '#3f8540'];

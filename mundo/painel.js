@@ -1421,8 +1421,10 @@
     for (const r of N().regioesEm(m, x, y)) { let o = r, n = 0; while (o && n < 12) { if (o.estilo) return o.estilo; o = o.pai ? achar(m, o.pai) : null; n++; } }
     return '';
   }
+  // (lote 13, parte 13c) a estação do mês de hoje no calendário (no Inverno rigoroso, inverno)
+  const estacaoNoPonto = (m, c) => (c.eventos.some(e => e && e.tipo === 'inverno') ? 'inverno' : N().estacaoDoMes(N().dataDe(m.cal, m.cal && m.cal.dia).mes, N().mesesDe(m.cal).length));
   const comum = (m, x, y) => {
-    const e = estiloNoPonto(m, x, y), c = N().cenaNoPonto(m, x, y), out = { hora: horaComEventos(N().horaDoTempo(m.cal), c), clima: c.clima };
+    const e = estiloNoPonto(m, x, y), c = N().cenaNoPonto(m, x, y), out = { hora: horaComEventos(N().horaDoTempo(m.cal), c), clima: c.clima, estacao: estacaoNoPonto(m, c) };
     // (lote 7, parte 5c) sem clima de evento, o clima do dia (o da região, ou o do mundo)
     if (!out.clima && N().climaNoPonto) { const cl = N().CLIMAS[N().climaNoPonto(m, x, y).k]; if (cl && cl.cena) out.clima = cl.cena; }
     if (e) out.estilo = e;

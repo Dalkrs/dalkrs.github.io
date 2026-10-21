@@ -4282,6 +4282,17 @@ const Props = (() => {
     c.fillStyle = '#c08a2e'; c.beginPath(); c.arc(0, 0, R * 0.09, 0, TAU); c.fill();
   }
 
+  // (lote 13, parte 13c) o achado raro: a moeda de ouro com o brilho de quatro pontas
+  function marcaAchado(c, R) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#fff0b8', '#e6b43a', '#8a5a12']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#5a3a0a'; c.stroke();
+    c.fillStyle = '#fffbe8'; c.beginPath();
+    for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? R * 0.12 : R * 0.6; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+    c.fillStyle = '#e6b43a'; c.beginPath(); c.arc(0, 0, R * 0.1, 0, TAU); c.fill();
+  }
+
   /* ---- O catálogo ---- */
   const G = [
     { id: 'luz', n: 'Luzes' },
@@ -4900,6 +4911,8 @@ const Props = (() => {
     emboscada: { n: 'Emboscada', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaEncontro(c, R, false); } },
     // (lote 13) o ponto de interesse da Região livre: só do mestre (nasce oculto), com o nome do que há ali
     interesse: { n: 'Ponto de interesse', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaInteresse(c, R); } },
+    // (lote 13, parte 13c) o achado raro (a Região livre e o Encontro): só do mestre (nasce oculto), com o nome do que é
+    achado: { n: 'Achado raro', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaAchado(c, R); } },
   };
   const ORDER = Object.keys(P);
 
@@ -20261,8 +20274,10 @@ const Paisagem = (() => {
     const x = a.x * c, y = a.y * c, R = a.r * c;
     const sombra = (k, dx, dy) => { g.globalAlpha = 0.28; g.fillStyle = '#000'; g.beginPath(); g.arc(x + R * (dx == null ? 0.16 : dx), y + R * (dy == null ? 0.2 : dy), R * (k || 1), 0, TAU); g.fill(); g.globalAlpha = 1; };
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-    if (esp === 'morta' || esp === 'carbonizada') {
-      const corT = esp === 'carbonizada' ? '#1c1714' : pal === 'corrompida' ? '#2a2230' : '#3b3029', corL = esp === 'carbonizada' ? '#3a2a20' : pal === 'corrompida' ? '#4a3a56' : '#5a4a3c';
+    // (lote 13, parte 13c: a queimada é a carbonizada de um incêndio antigo, já sem as brasas)
+    if (esp === 'morta' || esp === 'carbonizada' || esp === 'queimada') {
+      const brasa = esp === 'carbonizada', preta = brasa || esp === 'queimada';
+      const corT = preta ? '#1c1714' : pal === 'corrompida' ? '#2a2230' : '#3b3029', corL = preta ? '#3a2a20' : pal === 'corrompida' ? '#4a3a56' : '#5a4a3c';
       sombra(0.55, 0.25, 0.3);
       // os galhos tortos: poucos e compridos, para um lado mais que para o outro, cada um se abrindo em forquilha
       const n = 3 + Math.floor(rnd() * 2), a0 = rnd() * TAU, abre = 2.2 + rnd() * 1.6;
@@ -20274,7 +20289,7 @@ const Paisagem = (() => {
       for (let i = 0; i < n; i++) galho(x, y, a0 + (i / Math.max(1, n - 1) - 0.5) * abre + (rnd() - 0.5) * 0.4, R * 0.2, R * (0.45 + rnd() * 0.2), 0);
       g.fillStyle = corT; g.beginPath(); g.arc(x, y, R * 0.2, 0, TAU); g.fill();
       g.fillStyle = corL; g.beginPath(); g.arc(x - R * 0.04, y - R * 0.04, R * 0.1, 0, TAU); g.fill();
-      if (esp === 'carbonizada') { g.fillStyle = '#ff8a3a'; for (let i = 0; i < 5; i++) { g.globalAlpha = 0.8; g.beginPath(); g.arc(x + (rnd() - 0.5) * R, y + (rnd() - 0.5) * R, Math.max(0.8, R * 0.04), 0, TAU); g.fill(); } }
+      if (brasa) { g.fillStyle = '#ff8a3a'; for (let i = 0; i < 5; i++) { g.globalAlpha = 0.8; g.beginPath(); g.arc(x + (rnd() - 0.5) * R, y + (rnd() - 0.5) * R, Math.max(0.8, R * 0.04), 0, TAU); g.fill(); } }
     } else if (esp === 'selva') {
       sombra(1.05);
       const cores = ['#1f4a24', '#2a5e2c', '#357236', '#3f8540'];
@@ -23136,8 +23151,13 @@ const Encontro = (() => {
     const novo = F && !K.P.aguaToda && !K.P.cavernas.length;
     if (novo) chaoDepois(K, F, sT, !!o.seco);
     const nat8 = T8.relevo && !F ? relevoNatural(K, seed) : null;
+    // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
+    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
     if (novo) { vegetacaoNova(K, F, rV, sT); enfeitesNovos(K, F, rV); }
     else { vegetacao(K, rV); enfeites(K, rV); }
+    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: [[K.P.foco[0], K.P.foco[1], Math.hypot(W, H) * 0.22]] });
+    // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (antes dos marcadores: o gelo é chão)
+    Estacoes.noPlano(K, o.estacao);
     if (o.marcas !== false) marcadores(K);
     else K.P.marcas = {};
     const P = K.P;
@@ -23222,10 +23242,13 @@ const Encontro = (() => {
     for (const b of p.biomas || []) if (b.pal !== p.pal) P.chaoMisto(g, p.W, p.H, c, rnd, b.pal, b.pts);
     // a gruta: tudo rocha, e o chão por cima
     for (const cav of p.cavernas || []) { P.penhasco(g, [[-1, -1], [p.W + 1, -1], [p.W + 1, p.H + 1], [-1, p.H + 1]], c, rnd, ['#4a4f5a', '#2e323a', '#15171c'], 6); P.mancha(g, cav.chao, c, rnd, CH.gruta, { pedrisco: ['#7a8090', '#2a2e36'] }); g.save(); P.suave(g, cav.chao, c); g.globalAlpha = 0.55; g.strokeStyle = '#0e1014'; g.lineWidth = c * 0.9; g.stroke(); g.restore(); }
-    // a água rasa por todo o mapa (o pântano) ou o mar
-    if (p.aguaToda) P.aguaRasa(g, p.W, p.H, c, rnd, p.pal);
+    // (lote 13, parte 13c) a estação: o pintor dela, com o sorteio dele (sem estação — o verão —, nada muda)
+    const EST = p.estacao ? Estacoes.pintor(p, c) : null;
+    // a água rasa por todo o mapa (o pântano; no inverno, congelada) ou o mar
+    if (p.aguaToda) { P.aguaRasa(g, p.W, p.H, c, rnd, p.pal); if (EST && p.aguaToda.tipo === 'gelo') EST.geloRaso(g); }
     for (const m of p.chao) P.mancha(g, m.pts, c, rnd, m.cores, m.op || {});
     for (const o of p.pintados) if (o.z === 0) pintaObjeto(g, o, c, rnd, p);
+    if (EST) EST.chao(g);
     for (const a of p.abismos) P.abismo(g, a.pts, c, rnd, a.cores || [P.pedraDe(p.pal)[1], P.pedraDe(p.pal)[2], '#070606']);
     // (lote 13: a água de outro bioma traz a paleta dele)
     for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, a.pal || p.pal, a.tipo);
@@ -23234,6 +23257,7 @@ const Encontro = (() => {
     for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cores, cm.tipo);
     for (const o of p.pintados) if (o.z === 1) pintaObjeto(g, o, c, rnd, p);
     for (const m of p.massas) P.penhasco(g, m.pts, c, rnd, m.cores || P.pedraDe(p.pal), m.alt);
+    if (EST) EST.nosPenhascos(g);
     for (const o of p.pintados) if (o.z === 2) pintaObjeto(g, o, c, rnd, p);
     // as construções: a aberta (piso, paredes, enfeite do estilo) e a fechada (o telhado)
     const TP = Estilos.tipos(est);
@@ -23246,11 +23270,16 @@ const Encontro = (() => {
       Estilos.paredesPintadas(g, k, c, rnd, est);
       Estilos.enfeiteDaCasa(g, k, c, rnd, est, def);
     });
+    if (EST) EST.nosTelhados(g);
     for (const n of p.navios) Navio.pintar(g, n, c, rnd, { danificado: n.danificado });
-    for (const r of p.rochas) P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal));
+    for (const r of p.rochas) { const pts = P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal)); if (EST) EST.naPedra(g, r, pts); }
     const neve = p.terreno === 'neve' || p.terreno === 'tundra';
-    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve)
-    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, a.pal || p.pal, a.neve != null ? a.neve : neve);
+    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve; 13c: e a cor e a neve da estação)
+    for (const a of p.arvores) {
+      const pa = a.pal || p.pal, nv = a.neve != null ? a.neve : neve;
+      P.arvore(g, a, c, rnd, a.esp, EST ? EST.palDaArvore(a, pa) : pa, nv);
+      if (EST) EST.naArvore(g, a, pa, nv);
+    }
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
     P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
     return cv;
@@ -23304,6 +23333,9 @@ const Encontro = (() => {
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
     // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    // (lote 13, parte 13c) as marcas da história do lugar e o achado raro: ocultos, com o nome do que é
+    if (p.comMarcas !== false && Props.P.interesse) for (const q of p.historia || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    if (p.comMarcas !== false && p.achado && Props.P.achado) { const t = Props.novo(sc, 'achado', p.achado.x * c, p.achado.y * c, 1, true); t.name = 'Achado: ' + p.achado.n.toLowerCase(); sc.tokens.push(t); }
     // as luzes (a lava, os cristais, a fenda)
     for (const l of p.luzes) sc.lights.push({ id: uid('lz'), name: 'Luz do lugar', x: l.x * c, y: l.y * c, bright: l.bright, dim: l.dim, c: l.c, on: true, fl: true });
     if (op.relevo !== false) {
@@ -23352,6 +23384,9 @@ const Encontro = (() => {
     if (pm.paredoes) rel.push(plural(pm.paredoes, 'penhasco'));
     if (rel.length) partes.push(juntar(rel));
     if (p.seco) partes.push('o chão seco');
+    // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
+    if (p.estacao) partes.push(Estacoes.texto(p));
+    partes.push(...Historia.texto(p));
     if (p.predios.length) partes.push(p.predios.length === 1 ? '1 construção' : p.predios.length + ' construções');
     if (p.navios.length) partes.push(p.navios.length === 1 ? 'um navio' : p.navios.length + ' navios');
     if (p.visao.length) partes.push(p.visao.length + ' paredes de visão');
@@ -23396,14 +23431,15 @@ const Encontro = (() => {
     const T = TER[terreno];
     return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false,
       t: Tracado.limpar(o.encTracado),                                            // (lote 8) o traçado (a seção "Traçado")
-      chao: 2, mistura: Biomas.mistura(o.encMis) };                               // (lote 13, parte 13b) o chão novo e a mistura dele
+      chao: 2, mistura: Biomas.mistura(o.encMis),                                 // (lote 13, parte 13b) o chão novo e a mistura dele
+      historia: Historia.valida(o.encHist), achados: o.encAchados !== false };     // (13c) a história do lugar e os achados raros
   }
-  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; };
+  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; };
   function controles(st, K, mudou) {
     const { field, seg, toggle, note, btn } = K, T = TER[st.terreno];
     const camOps = st.terreno === 'agua' ? null : st.terreno === 'estrada' ? CAMINHOS.filter(c => c[0] !== 'nenhum') : CAMINHOS;
     // (lote 13, parte 13b) o chão: o novo, com a mistura; o de antes, num modelo de antes (com o botão para trocar)
-    const chao = chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno];
+    const chao = chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno], semTerra = st.terreno === 'agua' || st.terreno === 'pantano';
     const usarNovo = () => {
       st.chao = 2; mudou(true, { soltar: true });
       UI.toast('O chão novo: as manchas dos vizinhos e os morros longe da situação.', { action: 'Desfazer', run: () => { if (document.getElementById('ger-prev')) { st.chao = 1; mudou(true, { soltar: true }); } } });
@@ -23416,6 +23452,9 @@ const Encontro = (() => {
         field('Tamanho', seg('enc-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados']), v => { st.tamanho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')),
       semChao ? null : chao === 2 ? field('Mistura', seg('enc-mis', Biomas.mistura(st.mistura), Biomas.MISTURAS, v => { st.mistura = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')
         : h('div', { class: 'ger-l', id: 'enc-chao-velho' }, note('Modelo de antes do chão novo: ele gera o mesmo lugar de sempre, sem as manchas dos vizinhos e os morros.'), btn('Usar o chão novo', usarNovo, { kind: 'small', id: 'enc-chao', title: 'Gera de novo com o chão dos biomas (o modelo guardado não muda)' })),
+      // (lote 13, parte 13c) a história do lugar e os achados raros (na água e no pântano não há onde)
+      semTerra ? null : Historia.campo(st, K, () => { lembrar(st); mudou(true); }, 'enc'),
+      semTerra ? null : toggle('enc-achados', st.achados !== false, v => { st.achados = v; lembrar(st); mudou(true); }, 'Achados raros: a semente decide, um em cada quatro lugares (só você vê o marcador)'),
       toggle('enc-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e a emboscada (só você vê)'),
       // (lote 8) o traçado: os caminhos na rosa, o rio, as pontes e o relevo natural (no chão novo, não: ele já tem)
       Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'enc', portoes: st.terreno === 'agua' ? null : 'Caminhos',
@@ -23424,7 +23463,8 @@ const Encontro = (() => {
         rioDica: chao === 2 ? 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto. O da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.' : 'O rio da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.',
         pontes: true, relevo: chao === 2 ? false : undefined }));
   }
-  const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
+  const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null,
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
   // op.modelo: as escolhas vêm de um modelo guardado (o de antes do chão novo não tem o chão: fica no de antes)
   function aplicarOpcoes(st, o, op) {
     if (TER[o.terreno]) st.terreno = o.terreno;
@@ -23436,6 +23476,9 @@ const Encontro = (() => {
     st.t = Tracado.limpar(o);                                                       // (lote 8: o traçado do modelo; sem ele, o automático)
     if (op && op.modelo) st.chao = o.chao === 2 ? 2 : 1;
     if (typeof o.mistura === 'string' && Biomas.FRACAO[o.mistura] != null) st.mistura = o.mistura;
+    // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
+    if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
+    if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
     lembrar(st);
   }
   // as partes que travam: o traçado inteiro (a água, o caminho, os penhascos, a peça do meio)
@@ -23459,7 +23502,8 @@ const Encontro = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os morros e os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',
@@ -24407,6 +24451,7 @@ const Tribo = (() => {
     // (lote 8: a forma da paliçada e os portões da rosa; sem eles, o plano fica como era)
     if (ring8) P.muroForma = T8.muro;
     if (dirs8) P.portoesRosa = portoes8.map(g => g.id);
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'tribo', seed, sT, tamanho, moradias, terreno, com, centro: [cx, cy], raios: [rx, ry], ladoPortao: ladoG, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -24830,6 +24875,7 @@ const Tribo = (() => {
     if (p.palicada) partes.push('paliçada' + ({ oct: ' em octógono', irregular: ' irregular' }[p.muroForma] || '') + (nP > 1 ? ' com ' + nP + ' portões' : '') + (p.torres && p.torres.length ? ', ' + p.torres.length + ' torres' : '') + ' e fosso');
     if (p.sagrado) partes.push('o círculo de pedras');
     if (p.cercado) partes.push('o cercado');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.triMor = st.moradias; App.opt.triTam = st.tamanho; App.opt.triTer = st.terreno; App.opt.triPal = st.palicada; App.opt.triSag = st.sagrados; App.opt.triVida = st.vida; App.opt.triTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
@@ -24886,7 +24932,8 @@ const Tribo = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'tribo', n: 'Tribo', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (as torres de vigia, o fosso, a água, os deques e as passarelas)',
     dica: 'Clique no traçado da prévia (a praça, as moradias, a paliçada, a água) para travar: "Gerar outro" troca só as árvores, os enfeites e as coisas do dia a dia.',
     nota: 'Sai uma cena nova: as moradias fechadas, cada uma com um marcador de Entrada na porta (só você vê) — dois cliques geram o interior (a fogueira no meio, as peles, os baús); a fogueira e o totem na praça; a paliçada com o portão (abre e fecha), as torres de vigia de 4 m e o fosso; o cercado com a cerca baixa (deixa ver, não deixa passar). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
@@ -25242,6 +25289,7 @@ const Porto = (() => {
     P.marcas = {};
     K.foco(...pt(0, -3));
     delete P.dens; delete P.esp;
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'porto', tipo, seed, sT, tamanho, com, ladoMar: ladoM, pieres: pieres.map(q => ({ k: q.k, sv: q.sv, Lp: q.Lp })), vagas: vagas.map(vg => vg.caixa), pranchas,
       travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
@@ -25259,6 +25307,7 @@ const Porto = (() => {
     const n = p.predios.length, partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · ' + n + (n === 1 ? ' prédio' : ' prédios'), p.W + ' × ' + p.H + ' quadrados'];
     if (p.navios.length) partes.push(p.tipo === 'vila' ? 'o barco de pesca atracado' : p.navios.length === 1 ? 'um navio atracado' : p.navios.length + ' navios atracados');
     if (p.farol) partes.push(p.tipo === 'vila' ? 'o farol na ponta de pedras' : 'o farol no quebra-mar');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.porTipo = st.tipo; App.opt.porTam = st.tamanho; App.opt.porTer = st.terreno; App.opt.porNav = st.navios; App.opt.porFarol = st.farol; App.opt.porMerc = st.mercado; };
@@ -25310,7 +25359,8 @@ const Porto = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'porto', n: 'Porto', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'porto', n: 'Porto', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (o mar, os píeres e os molhes, o quebra-mar, os conveses e o farol)',
     dica: 'Clique no traçado da prévia (o mar, a beira, as ruas, os píeres, os prédios) para travar: "Gerar outro" troca só os barcos pequenos, o mercado e as árvores.',
     nota: 'Sai uma cena nova: o mar com a beira, os píeres, os prédios fechados (cada um com um marcador de Entrada na porta, só seu: dois cliques geram o interior) e os navios grandes atracados — cada um é um lugar: o convés com a amurada (deixa ver, não deixa passar), a prancha até a terra e a escotilha (dois cliques geram o porão e as cabines). Os barcos pequenos são desenho. Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
@@ -25754,6 +25804,7 @@ const Ruinas = (() => {
     MO.enfeites(K, rV);
     P.marcas = {};
     delete P.dens; delete P.esp;
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'ruinas', tipo, seed, sT, tamanho, com, entradas, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -26101,6 +26152,7 @@ const Ruinas = (() => {
     const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1], p.W + ' × ' + p.H + ' quadrados'];
     if (p.entradas && p.entradas.length) partes.push(ENTRADA_TXT[p.tipo] + ' (a masmorra embaixo: ' + { cripta: 'a cripta', pedra: 'a masmorra de pedra', caverna: 'a caverna', mina: 'a mina' }[MASMORRA[p.tipo]] + ')');
     if (p.com && p.com.mato) partes.push('com o mato');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.ruiTipo = st.tipo; App.opt.ruiTam = st.tamanho; App.opt.ruiTer = st.terreno; App.opt.ruiMas = st.masmorra; App.opt.ruiMato = st.mato; };
@@ -26149,7 +26201,8 @@ const Ruinas = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'ruinas', n: 'Ruínas', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'ruinas', n: 'Ruínas', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (o estilóbato, as colunas caídas, os pedaços da torre, o adarve, os menires, o paredão)',
     dica: 'Clique nas ruínas da prévia para travar o traçado: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
     nota: 'Sai uma cena nova: as ruínas (as paredes que ainda estão de pé tapam a visão; as baixas deixam ver e não deixam passar; as colunas e os pedaços grandes também tapam), o relevo e, com a chave, a entrada da masmorra — um marcador de Entrada, oculto: dois cliques nele geram o nível 1 lá embaixo (a cripta embaixo do templo, a caverna atrás da boca, a mina…). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
@@ -26451,6 +26504,7 @@ const Regiao = (() => {
       P.mar = { lado: F.mar.lado };
     }
     // os lagos: o tipo é o do bioma onde ele fica (o gelo, na neve e na tundra: dá para andar, e escorrega)
+    const agLagos = [];
     for (const L of F.lagos) {
       const BL = F.bioEm(L.centro[0], L.centro[1]), tipo = BL.lago || 'agua', rr = Math.sqrt(L.cel.size / Math.PI);
       if (tipo === 'gelo') {
@@ -26459,7 +26513,7 @@ const Regiao = (() => {
         for (const q of Array.from(L.cel).filter((_, k) => k % 23 === 7).slice(0, 3)) K.zona('gelado', q % W + 0.5, Math.floor(q / W) + 0.5, { r: Math.max(1.5, rr * 0.55) });
       } else aguaParada(L.pts, tipo, tipo === 'lava' ? -1 : -1.5, 2, palDe(BL.id));
       if (tipo === 'lava') { K.zona('lava', L.centro[0], L.centro[1], { r: rr * 0.85 }); K.luz(L.centro[0], L.centro[1], 7, '#ff8a3a'); }
-      P.lagos.push({ tipo });
+      P.lagos.push({ tipo }); agLagos.push(P.aguas.filter(a => a.k === 'lago' && a.pts === L.pts)[0] || null);
     }
     // os rios (o de lava na terra de lava, com a zona e a luz)
     const tipoRio = BB.agua === 'lava' ? 'lava' : 'agua';
@@ -26493,6 +26547,8 @@ const Regiao = (() => {
     }
     const clareiras = poePontos(K, F, escolhidos, estilo, tam, vau, chegada);
     proprios(K, F);
+    // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
+    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
     // a mata (o relevo) onde o bosque fecha, nos biomas de mato; as árvores se juntam nos bosques
     const nb = Tracado.ruido(MO.sub(sT, 44)), EB = 1 / 6.5, bq = (x, y) => clamp((nb(x * EB, y * EB) - 0.42) / 0.22, 0, 1);
     const G = B.grupos(W, H, q => { const i = q % W, j = (q - i) / W; return K.at(i, j) === 0 && F.bioEm(i + 0.5, j + 0.5).mata && bq(i + 0.5, j + 0.5) > 0.62; });
@@ -26521,6 +26577,10 @@ const Regiao = (() => {
       if (rV() >= b.pedrinhas / 192 || K.at(Math.floor(x), Math.floor(y)) !== 0) continue;
       P.rochas.push({ x, y, r: 0.25 + rV() * 0.3, cores: Paisagem.pedraDe(b.pedra || palDe(b.id)) }); K.pos(Math.floor(x), Math.floor(y), 4);
     }
+    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: P.pontos.map(q => [q.cx, q.cy, 5]).concat([[chegada[0] + 0.5, chegada[1] + 0.5, 5]]) });
+    // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (o lago, as poças do pântano)
+    Estacoes.noPlano(K, o.estacao);
+    agLagos.forEach((a, i) => { if (a && a.tipo === 'gelo') P.lagos[i].tipo = 'gelo'; });
     P.marcas = comMarcas ? { chegada } : {};
     if (!P.tracado.length) P.tracado.push({ k: 'circ', x: W / 2, y: H / 2, r: 3 });
     delete P.dens; delete P.esp;
@@ -26551,15 +26611,19 @@ const Regiao = (() => {
     const pts = p.pontos || [];
     if (pts.length) partes.push(plural(pts.length, 'ponto de interesse', 'pontos de interesse') + ' (' + pts.map(q => q.n.toLowerCase()).join(', ') + ')');
     if (p.seco) partes.push('o chão seco');
+    // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
+    if (p.estacao) partes.push(Estacoes.texto(p));
+    partes.push(...Historia.texto(p));
     return partes.join(' · ') + '.';
   }
-  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
+  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; };
   // (o relevo natural não vale aqui: a Região já nasce do relevo)
   const tracadoDe = o => Object.assign(Tracado.limpar(o), { relevoNat: false, praca: 'centro', muroForma: null });
   function padrao() {
     const o = App.opt;
     return { bioma: B.BIO[o.regBio] ? o.regBio : 'floresta', mistura: B.mistura(o.regMis), agua: AGUAS.some(a => a[0] === o.regAgua) ? o.regAgua : 'surpresa', caminho: CAMINHOS.some(c => c[0] === o.regCam) ? o.regCam : 'trilha',
-      tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado) };
+      tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado),
+      historia: Historia.valida(o.regHist), achados: o.regAchados !== false };        // (lote 13, parte 13c) a história do lugar e os achados raros
   }
   function controles(st, K, mudou) {
     const { field, seg, toggle } = K;
@@ -26574,20 +26638,27 @@ const Regiao = (() => {
       h('div', { class: 'ger-l' },
         field('Água', seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
         field('Caminho', seg('reg-cam', st.caminho, CAMINHOS, v => muda('caminho', v)), 'stack')),
+      // (lote 13, parte 13c) a história do lugar e os achados raros
+      Historia.campo(st, K, () => { lembrar(st); mudou(true); }, 'reg'),
+      toggle('reg-achados', st.achados !== false, v => { st.achados = v; lembrar(st); mudou(true); }, 'Achados raros: a semente decide, um em cada quatro lugares (só você vê o marcador)'),
       toggle('reg-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e os pontos de interesse (só você vê)'),
       Tracado.secao(st.t || (st.t = tracadoDe(null)), K, () => { lembrar(st); mudou(true); }, { pre: 'reg', portoes: 'Caminhos',
         portoesNota: 'De onde chegam os caminhos: o primeiro atravessa a região; os outros vão até ele.',
         rio: temRio, rioNota: st.agua === 'lago' ? 'Só o lago, sem rio: escolha "Rio" ou a Surpresa em Água para ter o rio.' : 'Sem água: escolha "Rio" ou a Surpresa em Água para ter o rio.',
         mar: st.bioma === 'costa', rioDica: st.agua === 'surpresa' ? 'Na Surpresa, escolher de onde o rio vem (ou para onde vai) garante o rio.' : 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto.', pontes: true, relevo: false }));
   }
-  const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, Tracado.soMudadas(st.t || Tracado.padrao()));
-  function aplicarOpcoes(st, o) {
+  const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas },
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+  function aplicarOpcoes(st, o, op) {
     if (B.BIO[o.bioma]) st.bioma = o.bioma;
     if (typeof o.mistura === 'string' && B.FRACAO[o.mistura] != null) st.mistura = o.mistura;
     if (AGUAS.some(a => a[0] === o.agua)) st.agua = o.agua;
     if (CAMINHOS.some(c => c[0] === o.caminho)) st.caminho = o.caminho;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (typeof o.marcas === 'boolean') st.marcas = o.marcas;
+    // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
+    if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
+    if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
     st.t = tracadoDe(o);
     lembrar(st);
   }
@@ -26612,13 +26683,535 @@ const Regiao = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
     aceitaSeco: true,
     dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
     nota: 'Sai uma cena nova para explorar: o chão do bioma com as manchas dos vizinhos, a água que segue o relevo, os morros e os penhascos, o caminho e os pontos de interesse. Os marcadores da chegada e de cada ponto (com o nome do que há ali) nascem ocultos: só você vê. O relevo, as zonas e as luzes saem editáveis; nada sai escrito; as cenas que já existem não mudam.',
     feito: (sc, p) => `"${sc.name}" criada: ${resumo(p).replace(/\.$/, '')}. Tudo é editável.` };
   return { TAMANHOS, AGUAS, CAMINHOS, gerar, resumo, criar, nomePadrao, limparTrava, travaDe, LUGAR };
+})();
+/* ---------------------------------------------------------------
+   10f8. ESTAÇÕES — a primavera, o verão, o outono e o inverno nos lugares de fora (lote 13, parte 13c)
+   Uma escolha da janela "Gerar um lugar…" para a Região livre, o Encontro, a Tribo, as Ruínas e o Porto. O verão é o
+   lugar de sempre: o plano e o desenho não mudam. Só os chãos que têm estação mudam — o campo, a floresta, o pântano e
+   a montanha nas quatro; a tundra e a terra corrompida, no inverno —; o deserto, a savana, a selva, a neve, a lava, os
+   cristais e o mar ficam iguais o ano todo (num chão misto, cada mancha segue o bioma dela).
+   · na primavera: o verde mais novo, as flores no chão e as árvores floridas;
+   · no outono: as copas amarelas, laranja e vermelhas (os pinheiros ficam verdes) e as folhas caídas no chão;
+   · no inverno: a neve fina no chão, nas copas, nas pedras, nos penhascos e nos telhados (só enfeita: não é zona), as
+     árvores de folha quase sem folhas — e a água parada e rasa (o lago, a poça, a água do pântano) vira gelo: dá para
+     andar nele, e a zona Gelado diz que escorrega. O rio, o mar, a fonte quente, o lodo e a lava não congelam.
+   O desenho da estação tem o sorteio dele: o mesmo lugar, em outra estação, fica com as mesmas árvores, pedras e
+   caminhos, só com as cores e os enfeites da estação.
+   --------------------------------------------------------------- */
+const Estacoes = (() => {
+  const TAU = Math.PI * 2, MO = Encontro.motor, PS = Paisagem;
+  const LISTA = [['primavera', 'Primavera'], ['verao', 'Verão'], ['outono', 'Outono'], ['inverno', 'Inverno']];
+  const EM = { primavera: 'na primavera', verao: 'no verão', outono: 'no outono', inverno: 'no inverno' };
+  const valida = v => (LISTA.some(e => e[0] === v) ? v : 'verao');
+  // as estações de cada chão (pela paleta): as quatro, ou só o inverno
+  const DO_CHAO = { campo: 'todas', floresta: 'todas', pantano: 'todas', rocha: 'todas', tundra: 'inverno', corrompida: 'inverno' };
+  const tem = (pal, est) => { const v = DO_CHAO[pal]; return est !== 'verao' && (v === 'todas' || (v === 'inverno' && est === 'inverno')); };
+  // as copas da estação (a árvore de folha): o verde novo, as três do outono, os galhos de inverno quase sem folha
+  Object.assign(PS.PAL, {
+    estPrimavera: Object.assign({}, PS.PAL.campo, { copa: ['#3e6e34', '#4e843e', '#60984a'], luz: '#9ccc6e' }),
+    estOutonoLaranja: Object.assign({}, PS.PAL.campo, { copa: ['#a8541c', '#c46e26', '#dc8e3a'], luz: '#f0b45a' }),
+    estOutonoVermelho: Object.assign({}, PS.PAL.campo, { copa: ['#8a2a1a', '#a83a22', '#c4502c'], luz: '#e07a4a' }),
+    estOutonoAmarelo: Object.assign({}, PS.PAL.campo, { copa: ['#9a8420', '#b8a02c', '#d2ba40'], luz: '#ecd66a' }),
+    estInverno: Object.assign({}, PS.PAL.campo, { copa: ['#5c6359', '#6a7166', '#788073'], luz: '#a4ab9e' }),
+  });
+  const OUTONO = ['estOutonoLaranja', 'estOutonoVermelho', 'estOutonoAmarelo'];
+  const CORES_FOLHA = ['#c46e26', '#dc8e3a', '#a83a22', '#c4502c', '#b8a02c', '#d2ba40', '#8a5a2a', '#7a4a22'];
+  const CORES_FLOR = ['#f2c94c', '#ffffff', '#e85d75', '#9b7bd8', '#f4a6c0', '#ffd27a'];
+  // um número de 0 a 1 que só depende do lugar (x, y) e de k: a mesma árvore, a mesma escolha
+  const hash = (x, y, k) => { let h = Math.imul(Math.round(x * 97) | 0, 374761393) + Math.imul(Math.round(y * 89) | 0, 668265263) + Math.imul(k | 0, 1442695041); h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const folhosa = esp => !esp || esp === 'folhosa';
+  const tirar = (arr, f) => { for (let i = arr.length - 1; i >= 0; i--) if (f(arr[i])) arr.splice(i, 1); };
+  const palEm = (P, x, y) => { for (const b of P.biomas || []) if (b.pts.some(pts => MO.dentroPoli(pts, x, y))) return b.pal; return P.pal; };
+
+  /* ================= o plano ================= */
+  /* O lago de água (o de sempre, a poça) vira gelo: as casas de água viram chão (de andar, que escorrega), a fundura sai,
+     a segunda demão também vira gelo, a lama da beira some e a zona Gelado cobre o lago (um círculo no meio e uns
+     menores pelas pontas). → quantas casas */
+  function congelar(K, a) {
+    const { W, H, P } = K, [x0, y0, x1, y1] = PS.caixa(a.pts), cel = [];
+    for (let j = Math.max(0, Math.floor(y0)); j <= Math.min(H - 1, Math.floor(y1)); j++) for (let i = Math.max(0, Math.floor(x0)); i <= Math.min(W - 1, Math.floor(x1)); i++) {
+      if (!MO.dentroPoli(a.pts, i + 0.5, j + 0.5)) continue;
+      cel.push([i + 0.5, j + 0.5]);
+      if (K.at(i, j) === 2) K.pos(i, j, 5);
+    }
+    a.tipo = 'gelo';
+    for (const o of P.pintados) if (o.k === 'aguaParada' && o.tipo === 'agua' && o.pts === a.pts) o.tipo = 'gelo';
+    tirar(P.relevo, r => r.t === 'agua' && r.k === 'poly' && r.pts === a.pts);
+    const [cx, cy] = cel.length ? [cel.reduce((s, q) => s + q[0], 0) / cel.length, cel.reduce((s, q) => s + q[1], 0) / cel.length] : PS.centro(a.pts);
+    const rr = Math.sqrt(Math.max(1, cel.length) / Math.PI);
+    tirar(P.zonas, z => z.fx === 'lama' && Math.hypot(z.x - cx, z.y - cy) <= rr + (z.r || 1) + 1);
+    K.zona('gelado', +cx.toFixed(2), +cy.toFixed(2), { r: +Math.max(1, rr * 0.95).toFixed(2) });
+    // (as pontas: as casas mais longe do meio, longe umas das outras)
+    const pontas = [];
+    for (const q of cel.slice().sort((p, s) => Math.hypot(s[0] - cx, s[1] - cy) - Math.hypot(p[0] - cx, p[1] - cy) || p[0] - s[0] || p[1] - s[1])) {
+      if (pontas.length >= 3 || Math.hypot(q[0] - cx, q[1] - cy) < rr * 0.9) break;
+      if (pontas.every(p => Math.hypot(p[0] - q[0], p[1] - q[1]) > rr)) pontas.push(q);
+    }
+    for (const q of pontas) K.zona('gelado', +((q[0] + cx) / 2).toFixed(2), +((q[1] + cy) / 2).toFixed(2), { r: +Math.max(1.2, rr * 0.6).toFixed(2) });
+    return cel.length;
+  }
+  /* O plano na estação (depois de tudo, antes dos marcadores): a estação fica marcada no plano (no verão, nada muda);
+     no inverno, a água parada e rasa dos chãos com estação vira gelo. */
+  function noPlano(K, est) {
+    est = valida(est);
+    if (est === 'verao') return;
+    const { W, H, P } = K;
+    P.estacao = est;
+    P.estacaoMuda = [P.pal].concat((P.biomas || []).map(b => b.pal)).some(pal => tem(pal, est));
+    if (est !== 'inverno') return;
+    let n = 0;
+    for (const a of P.aguas) {
+      if (a.k !== 'lago' || a.tipo !== 'agua') continue;
+      const [cx, cy] = PS.centro(a.pts);
+      if (tem(a.pal || palEm(P, cx, cy), 'inverno') && congelar(K, a)) n++;
+    }
+    // a água rasa do pântano, por todo o mapa: o gelo e a zona cobrindo tudo (a lama congela junto)
+    if (P.aguaToda && P.aguaToda.tipo === 'agua' && tem(P.pal, 'inverno')) {
+      P.aguaToda = Object.assign({}, P.aguaToda, { tipo: 'gelo' });
+      tirar(P.zonas, z => z.fx === 'lama');
+      K.zona('gelado', W / 2, H / 2, { r: Math.ceil(Math.hypot(W, H) / 2) + 1 });
+      n++;
+    }
+    if (n) P.gelos = n;
+  }
+  // o que o resumo diz da estação
+  function texto(p) {
+    if (!p || !p.estacao || p.estacao === 'verao') return '';
+    if (p.estacaoMuda === false) return EM[p.estacao] + ' (este chão não muda com a estação)';
+    return EM[p.estacao] + (p.gelos ? ', com a água congelada' : '');
+  }
+
+  /* ================= o desenho ================= */
+  // uma forma borrada (a sombra de um contorno levado para longe): a máscara de beira macia das manchas
+  function borrado(g, polis, c, b) {
+    const longe = g.canvas.width + g.canvas.height + 64;
+    g.save(); g.shadowColor = '#000'; g.shadowBlur = Math.max(2, c * b); g.shadowOffsetX = longe; g.fillStyle = '#000';
+    g.translate(-longe, 0);
+    for (const pts of polis) { PS.suave(g, pts, c); g.fill(); }
+    g.restore();
+  }
+  /* O pintor da estação de um plano (p.estacao) em c pixels por quadrado, com o sorteio dele (o resto do desenho fica
+     igual ao do verão). → { chao, geloRaso, palDaArvore, naArvore, naPedra, nosPenhascos, nosTelhados } */
+  function pintor(p, c) {
+    const est = valida(p.estacao), W = p.W, H = p.H, rE = mulberry(((p.seed ^ 0x5eaa50f1) >>> 0) || 7);
+    const base = tem(p.pal, est), outras = (p.biomas || []).filter(b => b.pal !== p.pal);
+    const fora = outras.filter(b => !tem(b.pal, est)).flatMap(b => b.pts), dentro = outras.filter(b => tem(b.pal, est)).flatMap(b => b.pts);
+    const algum = base || dentro.length > 0;
+    const vale = (x, y) => tem(palEm(p, x, y), est);
+    // o que vai no chão: o tom da estação e os enfeites (as flores, as folhas, a neve fina)
+    function noChao(g) {
+      const w = W * c, h = H * c;
+      g.save();
+      if (est === 'primavera') {
+        g.globalAlpha = 0.07; g.fillStyle = '#8fd65a'; g.fillRect(0, 0, w, h);
+        for (let i = 0, n = Math.round(W * H * 0.22); i < n; i++) {
+          const x = rE() * w, y = rE() * h, cor = CORES_FLOR[Math.floor(rE() * CORES_FLOR.length) % CORES_FLOR.length], m = 2 + Math.floor(rE() * 4);
+          g.fillStyle = cor;
+          for (let k = 0; k < m; k++) { g.globalAlpha = 0.8 + rE() * 0.2; g.beginPath(); g.arc(x + (rE() - 0.5) * c * 0.7, y + (rE() - 0.5) * c * 0.7, c * (0.045 + rE() * 0.04), 0, TAU); g.fill(); }
+        }
+      } else if (est === 'outono') {
+        g.globalAlpha = 0.1; g.fillStyle = '#d08a2a'; g.fillRect(0, 0, w, h);
+        const folha = (x, y) => { g.globalAlpha = 0.75 + rE() * 0.25; g.fillStyle = CORES_FOLHA[Math.floor(rE() * CORES_FOLHA.length) % CORES_FOLHA.length]; g.beginPath(); g.ellipse(x, y, c * (0.07 + rE() * 0.05), c * (0.035 + rE() * 0.025), rE() * Math.PI, 0, TAU); g.fill(); };
+        for (let i = 0, n = Math.round(W * H * 1.1); i < n; i++) folha(rE() * w, rE() * h);
+        // (debaixo das árvores de folha, mais folhas)
+        for (const a of p.arvores) if (folhosa(a.esp) && vale(a.x, a.y)) for (let k = 0; k < 12; k++) { const an = rE() * TAU, d = Math.sqrt(rE()) * a.r * 1.5; folha((a.x + Math.cos(an) * d) * c, (a.y + Math.sin(an) * d) * c); }
+      } else if (est === 'inverno') {
+        // (a neve fina: um véu claro e, por cima, os montinhos de beira macia; o brilho miúdo)
+        g.globalAlpha = 0.3; g.fillStyle = '#eef3f8'; g.fillRect(0, 0, w, h);
+        g.globalAlpha = 1;
+        for (let i = 0, n = Math.round(W * H * 0.4); i < n; i++) {
+          const x = rE() * w, y = rE() * h, rr = c * (0.6 + rE() * 1.3), gr = g.createRadialGradient(x, y, 0, x, y, rr), a = 0.18 + rE() * 0.22;
+          gr.addColorStop(0, 'rgba(250,252,255,' + a.toFixed(3) + ')'); gr.addColorStop(0.6, 'rgba(246,249,252,' + (a * 0.55).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(246,249,252,0)');
+          g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill();
+        }
+        g.fillStyle = '#ffffff';
+        for (let i = 0, n = Math.round(W * H * 1.2); i < n; i++) { g.globalAlpha = 0.35 + rE() * 0.35; g.beginPath(); g.arc(rE() * w, rE() * h, c * (0.015 + rE() * 0.03), 0, TAU); g.fill(); }
+      }
+      g.restore();
+    }
+    return {
+      // o chão (antes da água e dos caminhos): só onde o bioma tem a estação, com a beira macia nas manchas
+      chao(g) {
+        if (!algum) return;
+        if (base && !fora.length) { noChao(g); return; }
+        const cv = document.createElement('canvas'); cv.width = g.canvas.width; cv.height = g.canvas.height;
+        const o = cv.getContext('2d');
+        noChao(o);
+        o.globalCompositeOperation = base ? 'destination-out' : 'destination-in';
+        borrado(o, base ? fora : dentro, c, 1.3);
+        g.drawImage(cv, 0, 0);
+      },
+      // a água rasa do pântano congelada: a camada de gelo por cima, com as placas, as rachaduras e a geada
+      geloRaso(g) {
+        const w = W * c, h = H * c;
+        g.save();
+        g.globalAlpha = 0.62; g.fillStyle = '#cfe4ee'; g.fillRect(0, 0, w, h);
+        for (let i = 0, n = Math.round(W * H * 0.12); i < n; i++) { g.globalAlpha = 0.16; g.fillStyle = '#8fb8cf'; const rr = c * (0.6 + rE() * 1.5); g.beginPath(); g.ellipse(rE() * w, rE() * h, rr, rr * 0.6, rE() * 3, 0, TAU); g.fill(); }
+        for (let i = 0, n = Math.round(W * H * 0.05) + 4; i < n; i++) {
+          let x = rE() * W, y = rE() * H, an = rE() * TAU;
+          g.globalAlpha = 0.5; g.strokeStyle = '#6d98b4'; g.lineWidth = Math.max(1, c * 0.035); g.beginPath(); g.moveTo(x * c, y * c);
+          for (let k = 0; k < 5; k++) { an += (rE() - 0.5) * 1.2; x += Math.cos(an) * (0.4 + rE() * 0.9); y += Math.sin(an) * (0.4 + rE() * 0.9); g.lineTo(x * c, y * c); }
+          g.stroke(); g.globalAlpha = 0.45; g.strokeStyle = '#f4fbff'; g.lineWidth = Math.max(0.6, c * 0.015); g.stroke();
+        }
+        g.globalAlpha = 0.55; g.fillStyle = '#ffffff';
+        for (let i = 0, n = Math.round(W * H * 0.6); i < n; i++) { g.beginPath(); g.arc(rE() * w, rE() * h, Math.max(0.6, c * 0.025), 0, TAU); g.fill(); }
+        g.restore();
+      },
+      // a paleta da copa na estação (só a árvore de folha muda de cor; as outras ficam como são)
+      palDaArvore(a, pal) {
+        if (!folhosa(a.esp) || !tem(pal, est)) return pal;
+        if (est === 'primavera') return 'estPrimavera';
+        if (est === 'inverno') return 'estInverno';
+        const u = hash(a.x, a.y, 3);
+        return u < 0.34 ? OUTONO[0] : u < 0.66 ? OUTONO[1] : u < 0.88 ? OUTONO[2] : pal;
+      },
+      // por cima da árvore: a neve nas copas (no inverno), as flores (na primavera, em parte das árvores de folha)
+      naArvore(g, a, pal, temNeve) {
+        if (!tem(pal, est)) return;
+        const x = a.x * c, y = a.y * c, R = a.r * c, esp = a.esp;
+        g.save();
+        if (est === 'inverno' && !temNeve) {
+          g.fillStyle = '#f4f8fb';
+          if (esp === 'pinheiro') for (let i = 0; i < 7; i++) { const an = rE() * TAU, d = R * (0.3 + rE() * 0.6); g.globalAlpha = 0.85; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU); g.fill(); }
+          else if (folhosa(esp) || esp === 'elfica' || esp === 'oriental') {
+            // (a neve assentada no alto das copas: os montinhos claros, mais do lado da luz)
+            for (let i = 0; i < 9; i++) { const an = rE() * TAU, d = Math.sqrt(rE()) * R * 0.6, px = x + Math.cos(an) * d - R * 0.12, py = y + Math.sin(an) * d - R * 0.14, rr = R * (0.13 + rE() * 0.15); g.globalAlpha = 0.75 + rE() * 0.2; g.fillStyle = i % 3 ? '#f4f8fb' : '#e2eaf0'; g.beginPath(); g.arc(px, py, rr, 0, TAU); g.fill(); }
+          } else if (esp === 'rocha') { g.globalAlpha = 0.85; g.beginPath(); g.ellipse(x - R * 0.12, y - R * 0.2, R * 0.48, R * 0.3, -0.3, 0, TAU); g.fill(); }
+        } else if (est === 'primavera' && folhosa(esp) && hash(a.x, a.y, 5) < 0.45) {
+          const rosa = hash(a.x, a.y, 6) < 0.5;
+          for (let i = 0; i < 13; i++) { const an = rE() * TAU, d = Math.sqrt(rE()) * R * 0.78; g.globalAlpha = 0.9; g.fillStyle = i % 3 === 0 ? '#ffffff' : rosa ? '#f4a6c0' : '#fff3f7'; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, Math.max(1, R * 0.065), 0, TAU); g.fill(); }
+        }
+        g.restore();
+      },
+      // a neve em cima da pedra (no inverno): uma capa clara do lado de cima, dentro do contorno dela
+      naPedra(g, r, pts) {
+        if (est !== 'inverno' || !pts || !vale(r.x, r.y)) return;
+        g.save(); g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px * c, py * c) : g.moveTo(px * c, py * c))); g.closePath(); g.clip();
+        g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb'; g.beginPath(); g.ellipse((r.x - r.r * 0.1) * c, (r.y - r.r * 0.38) * c, r.r * 0.78 * c, r.r * 0.5 * c, -0.2, 0, TAU); g.fill();
+        g.restore();
+      },
+      // a neve fina no alto dos penhascos e dos planaltos de pedra
+      nosPenhascos(g) {
+        if (est !== 'inverno') return;
+        for (const m of p.massas || []) {
+          const [cx, cy] = PS.centro(m.pts);
+          if (!vale(cx, cy)) continue;
+          g.save(); PS.suave(g, m.pts, c); g.clip();
+          g.globalAlpha = 0.3; g.fillStyle = '#f4f8fb'; g.fillRect(0, 0, W * c, H * c);
+          const [x0, y0, x1, y1] = PS.caixa(m.pts);
+          for (let i = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.8); i < n; i++) { const rr = c * (0.2 + rE() * 0.5); g.globalAlpha = 0.18 + rE() * 0.2; g.beginPath(); g.ellipse((x0 + rE() * (x1 - x0)) * c, (y0 + rE() * (y1 - y0)) * c, rr, rr * 0.6, rE() * 3, 0, TAU); g.fill(); }
+          g.restore();
+        }
+      },
+      // a neve nos telhados (as construções fechadas)
+      nosTelhados(g) {
+        if (est !== 'inverno') return;
+        for (const k of p.predios || []) {
+          if (k.aberto || !vale(k.x + k.w / 2, k.y + k.h / 2)) continue;
+          const cont = Estilos.contorno(k);
+          g.save(); g.beginPath(); cont.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); g.clip();
+          g.globalAlpha = 0.42; g.fillStyle = '#f4f8fb'; g.fillRect(k.x * c - c, k.y * c - c, (k.w + 2) * c, (k.h + 2) * c);
+          for (let i = 0, n = Math.round(k.w * k.h * 1.2); i < n; i++) { g.globalAlpha = 0.3 + rE() * 0.3; g.beginPath(); g.arc((k.x + rE() * k.w) * c, (k.y + rE() * k.h) * c, c * (0.08 + rE() * 0.14), 0, TAU); g.fill(); }
+          g.restore();
+        }
+      },
+    };
+  }
+  return { LISTA, EM, valida, tem, DO_CHAO, noPlano, congelar, texto, pintor };
+})();
+/* ---------------------------------------------------------------
+   10f9. A HISTÓRIA DO LUGAR E OS ACHADOS RAROS (lote 13, parte 13c)
+   Para a Região livre e o Encontro. A história (caixas na janela; várias juntas): o que aconteceu ali antes, cada uma
+   com as marcas dela, longe do meio da situação e do caminho:
+   · Batalha antiga: as armas enferrujadas (as espadas, as lanças, os machados, os escudos, os elmos), os ossos de quem
+     caiu, o túmulo e o estandarte rasgado;
+   · Acampamento abandonado: a fogueira fria, a tenda rasgada, os caixotes, o barril e o tronco de sentar;
+   · Incêndio: o chão queimado com as cinzas, as árvores carbonizadas e os tocos;
+   · Ruínas pequenas: o alicerce com os pedaços de parede (de pé, tapando a visão; baixos, deixando ver; caídos, só o
+     entulho), o chão de lajes, a coluna caída.
+   O achado raro (a semente decide, uma em cada quatro cenas): um baú, um altar, uma árvore antiga, uma pedra rúnica ou
+   um esqueleto com uma bolsa, num canto longe do meio. Cada marca da história e o achado ganham o marcador oculto do
+   mestre, com o nome do que é.
+   Tudo entra depois da vegetação e dos enfeites, com o sorteio dele: só a área da história (ou do achado) muda — as
+   árvores, as pedrinhas e os enfeites que estavam ali saem —, e o resto do lugar fica igual.
+   --------------------------------------------------------------- */
+const Historia = (() => {
+  const TAU = Math.PI * 2, MO = Encontro.motor;
+  const LISTA = [['batalha', 'Batalha antiga', 'As armas enferrujadas, os ossos de quem caiu, o túmulo e o estandarte rasgado'],
+    ['acampamento', 'Acampamento abandonado', 'A fogueira fria, a tenda rasgada e o que ficou para trás'],
+    ['incendio', 'Incêndio', 'O chão queimado, as árvores carbonizadas e os tocos'],
+    ['ruinas', 'Ruínas pequenas', 'O alicerce com os pedaços de parede, o chão de lajes e a coluna caída']];
+  const NOME = { batalha: 'Batalha antiga', acampamento: 'Acampamento abandonado', incendio: 'Incêndio antigo', ruinas: 'Ruínas pequenas' };
+  const ACHADOS = { bau: 'Baú escondido', altar: 'Altar esquecido', arvore: 'Árvore antiga', runa: 'Pedra rúnica', esqueleto: 'Esqueleto com uma bolsa' };
+  const valida = v => (Array.isArray(v) ? LISTA.map(x => x[0]).filter(k => v.includes(k)) : []);
+  // a pedra das ruínas pequenas, pelo chão: [clara, média, escura, a junta]
+  const PEDRA = { areia: ['#d8be92', '#bea276', '#957b56', '#6c573a'], savana: ['#cdb68e', '#b39a72', '#8a7454', '#5e4e38'], canion: ['#d3a27a', '#b5835c', '#8a5e3e', '#5e3e28'],
+    neve: ['#cdd1d5', '#adb2b7', '#868b91', '#5f6369'], tundra: ['#c4c9c4', '#a3a9a3', '#7c827c', '#565b56'] };
+  const pedraDe = pal => PEDRA[pal] || ['#b1ab9f', '#938d82', '#6f6a61', '#4a463f'];
+  // a árvore antiga de cada chão
+  const ANTIGA = { savana: 'acacia', selva: 'selva', pantano: 'mangue', neve: 'pinheiro', tundra: 'pinheiro', rocha: 'pinheiro', areia: 'morta', canion: 'morta', corrompida: 'morta', basalto: 'morta' };
+  const tirar = (arr, f) => { for (let i = arr.length - 1; i >= 0; i--) if (f(arr[i], i)) arr.splice(i, 1); };
+  // um objeto perto de (x, y), no raio rr, pelo sorteio da história (o do lugar fica como está)
+  const perto = (K, rnd, id, x, y, rr, ok) => { for (let k = 0; k < 30; k++) { const an = rnd() * TAU, d = rnd() * rr; if (K.objeto(id, Math.floor(x + Math.cos(an) * d), Math.floor(y + Math.sin(an) * d), Math.floor(rnd() * 4) * 90, ok)) return true; } return false; };
+
+  /* O que havia antes da vegetação (a grade e quantas árvores, pedras e objetos), para saber o que pode sair. */
+  const antes = K => ({ occ: Uint8Array.from(K.occ), arv: K.P.arvores.length, roc: K.P.rochas.length, obj: K.P.objetos.length });
+
+  /* A história e o achado num lugar já com a vegetação. A: o que havia antes dela (antes(K)); op: { historia, seed (o do
+     achado), evitar: [[x, y, r]] (o meio da situação, os pontos de interesse, a chegada), longe (a distância do meio,
+     em quadrados) }. */
+  function noLugar(K, A, op) {
+    const { W, H, P } = K, hist = valida(op.historia), diag = Math.hypot(W, H);
+    if ((P.cavernas && P.cavernas.length) || K.terreno === 'agua') return;   // (a gruta cobre o mapa; na água, o mar é o chão: não tem onde)
+    const livre = (i, j) => i >= 0 && j >= 0 && i < W && j < H && A.occ[j * W + i] === 0 && (K.at(i, j) === 0 || K.at(i, j) === 4);
+    const livreCirc = (x, y, rr) => { for (let j = Math.floor(y - rr); j <= Math.floor(y + rr); j++) for (let i = Math.floor(x - rr); i <= Math.floor(x + rr); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= rr && !livre(i, j)) return false; return true; };
+    const evitar = (op.evitar || []).slice();
+    const longe = (x, y, f) => evitar.every(([ex, ey, er]) => Math.hypot(x - ex, y - ey) >= er * f);
+    // um lugar livre de raio rr, longe do que há para evitar (se não houver, cada vez mais perto)
+    const lugar = (rnd, rr) => {
+      for (const f of [1, 0.7, 0.45]) for (let k = 0; k < 160; k++) {
+        const x = rr + 1 + rnd() * (W - 2 * rr - 2), y = rr + 1 + rnd() * (H - 2 * rr - 2);
+        if (longe(x, y, f) && livreCirc(x, y, rr + 0.6)) return [x, y];
+      }
+      return null;
+    };
+    // a área sai limpa: as árvores, as pedrinhas e os enfeites que a vegetação pôs nela
+    const limpar = dentro => {
+      tirar(P.arvores, (a, i) => i >= A.arv && dentro(a.x, a.y));
+      tirar(P.rochas, (r, i) => i >= A.roc && dentro(r.x, r.y));
+      tirar(P.objetos, (o, i) => i >= A.obj && dentro(o.x + (o.s || 1) / 2, o.y + (o.s || 1) / 2));
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (A.occ[j * W + i] === 0 && K.at(i, j) === 4 && dentro(i + 0.5, j + 0.5)) K.pos(i, j, 0);
+    };
+    // (o marcador fica de pé ao lado; cx, cy: o meio da marca, e R: o tamanho dela)
+    const marca = (lista, k, n, x, y, cx, cy, R) => { const [i, j] = MO.lugarDePe(K, x, y); lista.push({ k, n, x: i, y: j, cx: +cx.toFixed(2), cy: +cy.toFixed(2), R: +R.toFixed(2) }); };
+    // (a história: as maiores primeiro, cada uma com o sorteio dela)
+    if (hist.length) {
+      P.historia = [];
+      for (const k of ['ruinas', 'incendio', 'batalha', 'acampamento'].filter(x => hist.includes(x))) {
+        const rH = mulberry((MO.sub(op.sT || 1, 140 + LISTA.findIndex(x => x[0] === k)) % 2147483000) + 1);
+        // (sem lugar do tamanho de sempre, uma menor; sem nenhum, ela fica de fora — o resumo diz)
+        const R0 = { ruinas: 3.4, incendio: 3.6, batalha: 2.8, acampamento: 2.4 }[k];
+        let R = R0, l = null;
+        for (const f of [1, 0.75, 0.55]) { R = R0 * f; l = lugar(rH, R); if (l) break; }
+        if (!l) { (P.historiaFora = P.historiaFora || []).push(NOME[k]); continue; }
+        const [x, y] = l;
+        limpar((px, py) => Math.hypot(px - x, py - y) <= R + 0.8);
+        FEITO[k](K, rH, x, y, R);
+        marca(P.historia, k, NOME[k], x + 1.2, y + 0.4, x, y, R);
+        evitar.push([x, y, R * 2 + 2]);
+      }
+      if (!P.historia.length) delete P.historia;
+      if (P.historiaFora) P.historiaFora.sort((p, q) => Object.values(NOME).indexOf(p) - Object.values(NOME).indexOf(q));
+    }
+    // o achado raro: uma em cada quatro (a semente da cena decide), num canto longe do meio
+    const rA = mulberry((MO.sub(op.seed || 1, 131) % 2147483000) + 1);
+    if (op.achados && rA() < 0.25 && !P.aguaToda) {
+      const tipos = Object.keys(ACHADOS), t = tipos[Math.floor(rA() * tipos.length) % tipos.length];
+      evitar.push([W / 2, H / 2, diag * 0.3]);
+      const l = lugar(rA, t === 'arvore' ? 2.2 : 1.3);
+      if (l) {
+        const [x, y] = l;
+        limpar((px, py) => Math.hypot(px - x, py - y) <= (t === 'arvore' ? 2.6 : 1.8));
+        const n = ACHADO[t](K, rA, x, y);
+        if (n) { const lista = []; marca(lista, t, n, x + 1, y + 0.6, x, y, t === 'arvore' ? 2.6 : 1.8); P.achado = lista[0]; }
+      }
+    }
+  }
+
+  /* ================= cada história ================= */
+  const FEITO = {
+    // as armas no chão, os ossos, o túmulo e o estandarte
+    batalha(K, rH, cx, cy, R) {
+      const itens = [], tipos = ['espada', 'espada', 'espada', 'lanca', 'lanca', 'machado', 'escudo', 'elmo'];
+      for (let k = 0, n = 7 + Math.floor(rH() * 4); k < 40 && itens.length < n; k++) {
+        const an = rH() * TAU, d = Math.sqrt(rH()) * R, x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d;
+        if (K.at(Math.floor(x), Math.floor(y)) !== 0 || itens.some(q => Math.hypot(q.x - x, q.y - y) < 0.7)) continue;
+        itens.push({ x: +x.toFixed(2), y: +y.toFixed(2), ang: +(rH() * TAU).toFixed(2), t: tipos[Math.floor(rH() * tipos.length) % tipos.length] });
+      }
+      K.pinta(2, 'armasVelhas', { itens });
+      for (let k = 0; k < 3; k++) { const an = rH() * TAU, d = R * (0.3 + rH() * 0.6), x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d; if (K.at(Math.floor(x), Math.floor(y)) === 0) K.pinta(2, 'ossos', { x, y, r: 0.55 }); }
+      { const an = rH() * TAU, x = cx + Math.cos(an) * R * 0.6, y = cy + Math.sin(an) * R * 0.6; K.pinta(3, 'estandarteRasgado', { x, y, ang: rH() * TAU, cor: ['#7a2a22', '#2f4a6e', '#5a6a2e', '#6a4a7a'][Math.floor(rH() * 4) % 4] }); }
+      K.marcaCirc(cx, cy, R, 5);
+      K.objeto('tumulo', Math.floor(cx), Math.floor(cy), Math.floor(rH() * 4) * 90, v => v === 5);
+    },
+    // a fogueira fria, a tenda rasgada, os caixotes, o barril e o tronco
+    acampamento(K, rH, cx, cy, R) {
+      K.pinta(1, 'fogueiraApagada', { x: cx, y: cy });
+      const an = rH() * TAU, tx = cx + Math.cos(an) * 1.7, ty = cy + Math.sin(an) * 1.7;
+      K.pinta(2, 'tenda', { x: tx, y: ty, ang: an + Math.PI / 2 + (rH() - 0.5) * 0.4, l: 2.2, w: 1.6, cor: ['#9a8a6a', '#8a7a5e', '#a89878'][Math.floor(rH() * 3) % 3], rasgada: true });
+      K.marcaCirc(cx, cy, R, 5);
+      for (const id of ['caixote', 'barril', 'caixote', 'tronco']) perto(K, rH, id, cx, cy, R * 0.9, v => v === 5);
+    },
+    // o chão queimado, as árvores carbonizadas e os tocos
+    incendio(K, rH, cx, cy, R) {
+      const pts = MO.blob(rH, cx, cy, R, R * (0.72 + rH() * 0.2), 14, 0.32, rH() * TAU);
+      K.mancha(pts, ['#2e2924', '#3a332c', '#24201c', '#46403a'], { pedrisco: ['#8a8580', '#1e1b18'] });
+      K.marcaPoli(pts, 5);
+      const arv = [];
+      for (let k = 0, n = 4 + Math.floor(rH() * 4); k < 60 && arv.length < n; k++) {
+        const x = cx + (rH() - 0.5) * 2 * R, y = cy + (rH() - 0.5) * 2 * R;
+        if (!MO.dentroPoli(pts, x, y) || arv.some(q => Math.hypot(q[0] - x, q[1] - y) < 1.4)) continue;
+        arv.push([x, y]); K.arvore(x, y, 0.7 + rH() * 0.35, 'queimada');
+      }
+      for (let k = 0; k < 2; k++) perto(K, rH, 'toco', cx, cy, R * 0.8, v => v === 5);
+    },
+    // o alicerce com os pedaços de parede, as lajes, o entulho e a coluna caída
+    ruinas(K, rH, cx, cy) {
+      const P = K.P, cores = pedraDe(K.pal), w = 4 + Math.floor(rH() * 3), h = 3 + Math.floor(rH() * 2), x0 = Math.round(cx - w / 2), y0 = Math.round(cy - h / 2);
+      P.paredes = P.paredes || [];
+      K.pinta(1, 'lajes', { x: x0, y: y0, w, h, cores, rachas: true });
+      K.marcaPoli([[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]], 5);
+      const lados = [[[x0, y0], [x0 + w, y0]], [[x0 + w, y0], [x0 + w, y0 + h]], [[x0 + w, y0 + h], [x0, y0 + h]], [[x0, y0 + h], [x0, y0]]];
+      const porta = Math.floor(rH() * 4) % 4;
+      lados.forEach(([a, b], s) => {
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(L / 1.8));
+        for (let k = 0; k < n; k++) {
+          const t0 = k / n, t1 = (k + 1) / n, p0 = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], p1 = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
+          if (s === porta && k === Math.floor(n / 2)) continue;          // (a porta: a abertura no meio de um lado)
+          const u = rH();
+          if (u < 0.3) { K.pinta(2, 'entulhoRuina', { x: (p0[0] + p1[0]) / 2, y: (p0[1] + p1[1]) / 2, r: Math.max(0.7, L / n * 0.45), cores }); continue; }
+          const pe = u < 0.68;
+          P.paredes.push({ k: pe ? 'wall' : 'mureta', x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1] });
+          K.pinta(2, 'paredeRuina', { a: p0, b: p1, esp: 0.45, alta: pe, cores });
+          K.marcaLinha([p0, p1], 0.28, 3, true);
+          if (pe) P.cobertura.push({ x: (p0[0] + p1[0]) / 2, y: (p0[1] + p1[1]) / 2, r: 0.7 });
+        }
+      });
+      // a coluna caída, fora do alicerce, e o entulho em volta
+      const ang = rH() * TAU, bx = cx + Math.cos(ang) * (Math.max(w, h) / 2 + 1.2), by = cy + Math.sin(ang) * (Math.max(w, h) / 2 + 1.2), angCai = ang + (rH() - 0.5) * 1.2, L = 2.6 + rH();
+      if (K.dentro(bx + Math.cos(angCai) * L, by + Math.sin(angCai) * L, 1) && K.dentro(bx, by, 1)) {
+        K.pinta(2, 'colunaCaida', { x: bx, y: by, ang: angCai, L, r: 0.42, cores, hera: false });
+        K.marcaLinha([[bx, by], [bx + Math.cos(angCai) * L, by + Math.sin(angCai) * L]], 0.36, 4);
+      }
+      for (let k = 0; k < 3; k++) { const a2 = rH() * TAU, d = Math.max(w, h) / 2 + rH() * 1.5; K.pinta(1, 'entulhoRuina', { x: cx + Math.cos(a2) * d, y: cy + Math.sin(a2) * d, r: 0.45 + rH() * 0.3, cores }); }
+    },
+  };
+
+  /* ================= cada achado ================= */
+  const ACHADO = {
+    bau: (K, rA, x, y) => (K.objeto('bau', Math.floor(x), Math.floor(y), Math.floor(rA() * 4) * 90, v => v === 0) ? ACHADOS.bau : null),
+    altar: (K, rA, x, y) => (K.objeto('altar', Math.floor(x), Math.floor(y), Math.floor(rA() * 4) * 90, v => v === 0) ? ACHADOS.altar : null),
+    runa: (K, rA, x, y) => (K.objeto('runa', Math.floor(x), Math.floor(y), 0, v => v === 0) ? ACHADOS.runa : null),
+    arvore(K, rA, x, y) {
+      if (K.pal === 'cristal') { K.cristalGrande(x, y, 1.4, 'azul'); return 'Cristal antigo'; }
+      const esp = ANTIGA[K.pal] || 'folhosa', rr = esp === 'selva' ? 2.4 : esp === 'acacia' ? 2.2 : 2.0;
+      K.arvore(x, y, rr, esp); K.P.cobertura.push({ x, y, r: Math.min(1.6, rr * 0.7) });
+      return ACHADOS.arvore;
+    },
+    esqueleto(K, rA, x, y) {
+      const ang = rA() * TAU;
+      K.pinta(2, 'esqueleto', { x, y, ang });
+      K.pinta(2, 'bolsa', { x: x + Math.cos(ang + 1.4) * 0.9, y: y + Math.sin(ang + 1.4) * 0.9, ang: rA() * TAU });
+      K.marcaCirc(x, y, 1, 5);
+      return ACHADOS.esqueleto;
+    },
+  };
+
+  /* ================= o desenho ================= */
+  const FERRUGEM = ['#8a5a3a', '#6e4a30', '#9a6a44'], FERRO = ['#8a8a86', '#6a6a66', '#4a4a46'], MAD = ['#6b4a2b', '#4e3420'];
+  // as armas velhas no chão (cada uma: x, y, ang, t), enferrujadas, meio enterradas
+  function armasVelhas(g, o, c) {
+    g.save(); g.lineCap = 'round';
+    c = c * 1.45;                                                    // (as armas um pouco maiores que o tamanho de verdade: para ver)
+    for (const q of o.itens || []) {
+      g.save(); g.translate(q.x * c / 1.45, q.y * c / 1.45); g.rotate(q.ang || 0);
+      g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(c * 0.04, c * 0.05, c * 0.42, c * 0.12, 0, 0, TAU); g.fill(); g.globalAlpha = 1;
+      if (q.t === 'escudo' || q.t === 'elmo') {
+        const R = c * (q.t === 'escudo' ? 0.25 : 0.17);
+        g.fillStyle = q.t === 'escudo' ? '#7a5a3a' : FERRO[1]; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+        g.strokeStyle = q.t === 'escudo' ? FERRO[1] : FERRUGEM[1]; g.lineWidth = Math.max(1, c * 0.045); g.stroke();
+        if (q.t === 'escudo') { g.fillStyle = FERRUGEM[2]; g.beginPath(); g.arc(0, 0, R * 0.28, 0, TAU); g.fill(); g.strokeStyle = 'rgba(20,14,8,0.6)'; g.lineWidth = Math.max(1, c * 0.025); g.beginPath(); g.moveTo(-R * 0.9, -R * 0.2); g.lineTo(-R * 0.3, R * 0.1); g.stroke(); }
+        else { g.fillStyle = 'rgba(20,14,8,0.7)'; g.fillRect(-R * 0.6, -R * 0.12, R * 1.2, R * 0.24); }
+      } else if (q.t === 'lanca') {
+        g.strokeStyle = MAD[0]; g.lineWidth = Math.max(1.5, c * 0.07); g.beginPath(); g.moveTo(-c * 0.55, 0); g.lineTo(c * 0.4, 0); g.stroke();
+        g.fillStyle = '#9a9a92'; g.beginPath(); g.moveTo(c * 0.4, -c * 0.08); g.lineTo(c * 0.66, 0); g.lineTo(c * 0.4, c * 0.08); g.closePath(); g.fill();
+        g.strokeStyle = FERRUGEM[0]; g.lineWidth = Math.max(1, c * 0.02); g.stroke();
+      } else if (q.t === 'machado') {
+        g.strokeStyle = MAD[1]; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); g.moveTo(-c * 0.35, 0); g.lineTo(c * 0.3, 0); g.stroke();
+        g.fillStyle = FERRUGEM[1]; g.beginPath(); g.moveTo(c * 0.22, -c * 0.02); g.quadraticCurveTo(c * 0.32, -c * 0.24, c * 0.42, -c * 0.2); g.lineTo(c * 0.36, c * 0.04); g.closePath(); g.fill();
+      } else {
+        // a espada: a lâmina, a guarda e o cabo (às vezes quebrada)
+        const L = c * (rLen(q) ? 0.42 : 0.6);
+        g.strokeStyle = FERRO[2]; g.lineWidth = Math.max(1.5, c * 0.1); g.beginPath(); g.moveTo(-c * 0.1, 0); g.lineTo(L, 0); g.stroke();
+        g.strokeStyle = '#b4b4ac'; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); g.moveTo(-c * 0.1, 0); g.lineTo(L, 0); g.stroke();
+        g.strokeStyle = FERRUGEM[0]; g.lineWidth = Math.max(1, c * 0.025); g.beginPath(); g.moveTo(c * 0.05, 0); g.lineTo(L * 0.8, 0); g.stroke();
+        g.strokeStyle = FERRUGEM[1]; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.moveTo(-c * 0.1, -c * 0.14); g.lineTo(-c * 0.1, c * 0.14); g.stroke();
+        g.strokeStyle = MAD[1]; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); g.moveTo(-c * 0.1, 0); g.lineTo(-c * 0.3, 0); g.stroke();
+      }
+      g.restore();
+    }
+    g.restore();
+  }
+  const rLen = q => ((Math.round(q.x * 31 + q.y * 17) % 3) === 0);
+  // o estandarte rasgado, caído: o mastro e o pano desbotado com os cortes
+  function estandarteRasgado(g, o, c) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0); g.lineCap = 'round';
+    g.globalAlpha = 0.3; g.fillStyle = '#000'; g.fillRect(-c * 0.9, -c * 0.05, c * 1.9, c * 0.5); g.globalAlpha = 1;
+    g.strokeStyle = MAD[0]; g.lineWidth = Math.max(1.5, c * 0.07); g.beginPath(); g.moveTo(-c * 0.95, 0); g.lineTo(c * 0.95, 0); g.stroke();
+    const cor = o.cor || '#7a2a22';
+    g.fillStyle = Estilos.tom(cor, -0.1); g.globalAlpha = 0.92;
+    g.beginPath(); g.moveTo(c * 0.2, 0); g.lineTo(c * 0.85, 0); g.lineTo(c * 0.8, c * 0.42); g.lineTo(c * 0.68, c * 0.3); g.lineTo(c * 0.56, c * 0.5); g.lineTo(c * 0.44, c * 0.32); g.lineTo(c * 0.3, c * 0.46); g.lineTo(c * 0.22, c * 0.28); g.closePath(); g.fill();
+    g.globalAlpha = 0.7; g.strokeStyle = Estilos.tom(cor, 0.35); g.lineWidth = Math.max(1, c * 0.03); g.beginPath(); g.arc(c * 0.52, c * 0.17, c * 0.09, 0, TAU); g.stroke();
+    g.restore();
+  }
+  // o esqueleto deitado (x, y: o meio; ang: da cabeça para os pés)
+  function esqueleto(g, o, c) {
+    const osso = '#e9e0c9', esc = '#8f8268';
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0); g.lineCap = 'round';
+    g.globalAlpha = 0.25; g.fillStyle = '#000'; g.beginPath(); g.ellipse(c * 0.05, c * 0.06, c * 0.85, c * 0.32, 0, 0, TAU); g.fill(); g.globalAlpha = 1;
+    // a espinha, as costelas e a bacia
+    g.strokeStyle = osso; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.moveTo(-c * 0.5, 0); g.lineTo(c * 0.2, 0); g.stroke();
+    for (let k = 0; k < 4; k++) { const x = -c * (0.4 - k * 0.1); g.lineWidth = Math.max(1, c * 0.035); g.beginPath(); g.ellipse(x, 0, c * 0.05, c * 0.2, 0, -1.3, 1.3); g.stroke(); g.beginPath(); g.ellipse(x, 0, c * 0.05, c * 0.2, 0, Math.PI - 1.3, Math.PI + 1.3); g.stroke(); }
+    g.fillStyle = osso; g.beginPath(); g.ellipse(c * 0.25, 0, c * 0.1, c * 0.16, 0, 0, TAU); g.fill();
+    // os braços e as pernas
+    Paisagem.ossinho(g, -c * 0.35, -c * 0.3, c * 0.34, 0.35, c); Paisagem.ossinho(g, -c * 0.32, c * 0.3, c * 0.34, -0.4, c);
+    Paisagem.ossinho(g, c * 0.5, -c * 0.1, c * 0.42, 0.15, c); Paisagem.ossinho(g, c * 0.52, c * 0.12, c * 0.42, -0.25, c);
+    // o crânio
+    g.fillStyle = osso; g.beginPath(); g.arc(-c * 0.7, 0, c * 0.17, 0, TAU); g.fill(); g.strokeStyle = esc; g.lineWidth = Math.max(1, c * 0.02); g.stroke();
+    g.fillStyle = '#3a3226'; for (const s of [-1, 1]) { g.beginPath(); g.arc(-c * 0.75, s * c * 0.06, c * 0.035, 0, TAU); g.fill(); }
+    g.restore();
+  }
+  // a bolsa de couro, amarrada, com as moedas que escaparam
+  function bolsa(g, o, c) {
+    g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0);
+    g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(c * 0.04, c * 0.05, c * 0.24, c * 0.18, 0, 0, TAU); g.fill(); g.globalAlpha = 1;
+    g.fillStyle = '#7a5532'; g.beginPath(); g.ellipse(0, 0, c * 0.22, c * 0.17, 0, 0, TAU); g.fill();
+    g.strokeStyle = '#4e3420'; g.lineWidth = Math.max(1, c * 0.03); g.stroke();
+    g.fillStyle = '#9a7048'; g.beginPath(); g.ellipse(-c * 0.06, -c * 0.05, c * 0.09, c * 0.06, 0, 0, TAU); g.fill();
+    g.strokeStyle = '#c9a45a'; g.lineWidth = Math.max(1, c * 0.025); g.beginPath(); g.moveTo(c * 0.16, -c * 0.1); g.lineTo(c * 0.26, -c * 0.16); g.stroke();
+    g.fillStyle = '#e8c24a'; for (const [dx, dy] of [[0.3, 0.06], [0.36, 0.14], [0.27, 0.18]]) { g.beginPath(); g.arc(dx * c, dy * c, Math.max(1, c * 0.045), 0, TAU); g.fill(); }
+    g.restore();
+  }
+  Object.assign(MO.PINTORES, { armasVelhas, estandarteRasgado, esqueleto, bolsa });
+
+  /* ================= a janela ================= */
+  // as caixas da história (várias juntas), no jeito das escolhas da janela
+  function campo(st, kit, aoMudar, pre) {
+    const sel = valida(st.historia);
+    const caixas = h('div', { class: 'seg', role: 'group', id: pre + '-hist', 'aria-label': 'História do lugar (várias juntas)' }, LISTA.map(([k, n, dica]) => h('button', {
+      type: 'button', class: 'seg-b' + (sel.includes(k) ? ' on' : ''), 'aria-pressed': String(sel.includes(k)), title: dica, 'data-hist': k,
+      onclick: () => { st.historia = LISTA.map(x => x[0]).filter(x => (x === k ? !sel.includes(k) : sel.includes(x))); aoMudar(); },
+    }, n)));
+    return kit.field('História do lugar', caixas, 'stack');
+  }
+  // o que o resumo diz: a história e o achado (só o mestre vê o marcador)
+  function texto(p) {
+    const partes = [];
+    if (p.historia && p.historia.length) partes.push('a história: ' + juntar(p.historia.map(q => q.n.toLowerCase())));
+    if (p.historiaFora && p.historiaFora.length) partes.push('sem lugar para ' + juntar(p.historiaFora.map(n => n.toLowerCase())) + ' (a situação ocupa o mapa)');
+    if (p.achado) partes.push('um achado raro (' + p.achado.n.toLowerCase() + ')');
+    return partes;
+  }
+  const juntar = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+  return { LISTA, NOME, ACHADOS, valida, antes, noLugar, campo, texto };
 })();
 /* ---------------------------------------------------------------
    10g. INTERIOR — a planta de dentro de um prédio (lote 7)
@@ -28901,8 +29494,9 @@ const Masmorra = (() => {
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
-   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena e o relevo
-   (as áreas de terreno com altura e as formas de enfeite; desligado, o lugar sai plano). A prévia
+   para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
+   (lote 13, parte 13c: só nos lugares de fora — L.aceitaEstacao) e o relevo (as áreas de terreno com altura e as formas
+   de enfeite; desligado, o lugar sai plano). A prévia
    mostra o lugar; um clique numa parte dela (uma casa, o rio, as ruas e a praça) trava a parte, e "Gerar outro"
    sorteia só o resto. A semente fica à mostra (a mesma semente, com as mesmas escolhas, dá o mesmo lugar) e o lugar
    pode ser guardado como modelo, para gerar outros parecidos (os modelos são do mestre: na mesa, vão no índice das
@@ -28959,8 +29553,10 @@ const Gerador = (() => {
     if (!isGM()) return;
     const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
     let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
-    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '', relevo: App.opt.genRelevo !== false };
-    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genRelevo = comum.relevo; App.opt.genLugar = L.id; };
+    const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '', relevo: App.opt.genRelevo !== false, estacao: Estacoes.valida(App.opt.genEstacao) };
+    const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genRelevo = comum.relevo; App.opt.genEstacao = comum.estacao; App.opt.genLugar = L.id; };
+    // (lote 13, parte 13c) a estação vai só para os lugares de fora (os outros não a conhecem)
+    const comEstacao = (l, o) => (l.aceitaEstacao ? Object.assign(o, { estacao: comum.estacao }) : o);
     // o estado de cada aba (as escolhas, a semente, o que está travado e o plano na tela): trocar de aba não perde nada
     const estados = {};
     const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
@@ -28970,6 +29566,7 @@ const Gerador = (() => {
       if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
       if (typeof pre.relevo === 'boolean') comum.relevo = pre.relevo;
+      if (Estacoes.LISTA.some(e => e[0] === pre.estacao)) comum.estacao = pre.estacao;
     }
     /* (lote 7, parte 5a) o que os eventos do Mapa-múndi levam para a cena (o clima e a hora já vêm nas escolhas de baixo):
        o chão seco (a seca) e as zonas que cobrem a cena (a Lua de sangue, a Névoa de espíritos). Uma chave tira. */
@@ -29037,7 +29634,7 @@ const Gerador = (() => {
     }
     function refazer() {
       const E = estadoDe(L);
-      E.plano = L.gerar(E.op, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco });
+      E.plano = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco }));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
       try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
@@ -29103,7 +29700,7 @@ const Gerador = (() => {
       nome = String(nome || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       if (!nome) { UI.toast('Dê um nome ao modelo.'); return; }
       const E = estadoDe(L), lista = modelos();
-      const m = { id: uid('md'), nome, lugar: L.id, o: Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima, relevo: comum.relevo }), seed: E.seed, trava: L.travaDe(E.plano) };
+      const m = { id: uid('md'), nome, lugar: L.id, o: comEstacao(L, Object.assign(L.opcoesDe(E.op), { estilo: comum.estilo, hora: comum.hora, clima: comum.clima, relevo: comum.relevo })), seed: E.seed, trava: L.travaDe(E.plano) };
       guardarModelos(lista.concat([m]));
       modeloNovo = false; pintarModelos('ger-guardar');
       UI.toast(`Modelo "${nome}" guardado: as escolhas, a semente ${E.seed} e as partes travadas.`, { action: 'Desfazer', run: () => { guardarModelos(modelos().filter(x => x.id !== m.id)); if (md.isConnected) pintarModelos(); } });
@@ -29119,6 +29716,7 @@ const Gerador = (() => {
       if (TONES.some(t => t.id === m.o.hora)) comum.hora = m.o.hora;
       if (WEATHERS.some(w => w[0] === m.o.clima)) comum.clima = m.o.clima;
       if (typeof m.o.relevo === 'boolean') comum.relevo = m.o.relevo;
+      if (L.aceitaEstacao) comum.estacao = Estacoes.valida(m.o.estacao);       // (o modelo de antes das estações: o verão)
       E.seed = m.seed; E.trava = m.trava; E.base = null;
       lembrarComum(); pintar(); refazer();
       UI.toast(`Modelo "${m.nome}" aberto: a semente ${m.seed} e as partes travadas dele. "Gerar outro" sorteia outros parecidos.`, { action: 'Desfazer', run: () => {
@@ -29147,6 +29745,7 @@ const Gerador = (() => {
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
+          L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null));
       nota.textContent = L.nota;
@@ -29171,7 +29770,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo }) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             UI.closeModal();
             UI.switchScene(sc.id);
@@ -29409,7 +30008,8 @@ async function start(snap) {
   Store.on('commit', e => { if (e.ops.some(op => op.t === 'scn' && op.p && 'name' in op.p)) listar(); });
   listar();
   // Outro sistema pediu uma cena: { cena: id } abre a que existe; { criar: { id, nome } } cria (uma vez) e abre.
-  // (lote 7, parte 4b) { gerar: { lugar, op, estilo, hora, clima, nome }, cena? } — o Mapa-múndi pede um lugar gerado: a
+  // (lote 7, parte 4b) { gerar: { lugar, op, estilo, hora, clima, nome }, cena? } — o Mapa-múndi pede um lugar gerado (lote
+  // 13, parte 13c: com a estação do calendário): a
   // janela "Gerar um lugar" abre já preenchida (com o id da cena, se o marcador do mapa já leva a ela); se a cena já
   // existe, só abre a cena.
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
@@ -29417,7 +30017,7 @@ async function start(snap) {
     const ger = alvo.gerar && typeof alvo.gerar === 'object' ? alvo.gerar : null;
     if (ger && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
       if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o lugar de novo no Mapa-múndi.'); return; }
-      Gerador.abrir(typeof ger.lugar === 'string' ? ger.lugar : 'encontro', { op: ger.op && typeof ger.op === 'object' ? ger.op : null, estilo: ger.estilo, hora: ger.hora, clima: ger.clima,
+      Gerador.abrir(typeof ger.lugar === 'string' ? ger.lugar : 'encontro', { op: ger.op && typeof ger.op === 'object' ? ger.op : null, estilo: ger.estilo, hora: ger.hora, clima: ger.clima, estacao: ger.estacao,
         nome: typeof ger.nome === 'string' ? ger.nome : null, id: typeof alvo.cena === 'string' ? alvo.cena : null,
         // (lote 7, parte 5a) o que os eventos do mapa levam para a cena: as zonas que a cobrem, o chão seco e os nomes deles
         fx: Array.isArray(ger.fx) ? ger.fx.filter(k => typeof k === 'string' && FX.P[k]).slice(0, 4) : null, seco: ger.seco === true,
@@ -29462,7 +30062,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

@@ -435,6 +435,7 @@ const Ruinas = (() => {
     MO.enfeites(K, rV);
     P.marcas = {};
     delete P.dens; delete P.esp;
+    Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
     return Object.assign(P, { v: 1, lugar: 'ruinas', tipo, seed, sT, tamanho, com, entradas, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -782,6 +783,7 @@ const Ruinas = (() => {
     const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1], p.W + ' × ' + p.H + ' quadrados'];
     if (p.entradas && p.entradas.length) partes.push(ENTRADA_TXT[p.tipo] + ' (a masmorra embaixo: ' + { cripta: 'a cripta', pedra: 'a masmorra de pedra', caverna: 'a caverna', mina: 'a mina' }[MASMORRA[p.tipo]] + ')');
     if (p.com && p.com.mato) partes.push('com o mato');
+    if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { App.opt.ruiTipo = st.tipo; App.opt.ruiTam = st.tamanho; App.opt.ruiTer = st.terreno; App.opt.ruiMas = st.masmorra; App.opt.ruiMato = st.mato; };
@@ -830,7 +832,8 @@ const Ruinas = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'ruinas', n: 'Ruínas', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'ruinas', n: 'Ruínas', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo e formas (o estilóbato, as colunas caídas, os pedaços da torre, o adarve, os menires, o paredão)',
     dica: 'Clique nas ruínas da prévia para travar o traçado: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
     nota: 'Sai uma cena nova: as ruínas (as paredes que ainda estão de pé tapam a visão; as baixas deixam ver e não deixam passar; as colunas e os pedaços grandes também tapam), o relevo e, com a chave, a entrada da masmorra — um marcador de Entrada, oculto: dois cliques nele geram o nível 1 lá embaixo (a cripta embaixo do templo, a caverna atrás da boca, a mina…). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',

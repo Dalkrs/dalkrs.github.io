@@ -307,7 +307,7 @@ const OURO = { casos: [
     await page.locator('#ger-lugar button', { hasText: 'Encontro' }).click(); await w(800);
     let g = await G();
     const c0 = await ctlTxt();
-    ok(/^Terreno \| Estrada \| Floresta \| Deserto \| Montanha \| Pântano \| Neve \| Campo \| Selva \| Terra corrompida \| Lava \| Cristais \| Savana \| Costa \| Tundra \| Água \| Situação/.test(c0) && /Tamanho \| Pequeno \| Médio \| Grande \| Mistura \| Pouca \| Média \| Muita \| Marcar a chegada e a emboscada/.test(c0), 'a aba Encontro: os quinze terrenos e a Mistura depois do tamanho — ' + c0.slice(0, 320));
+    ok(/^Terreno \| Estrada \| Floresta \| Deserto \| Montanha \| Pântano \| Neve \| Campo \| Selva \| Terra corrompida \| Lava \| Cristais \| Savana \| Costa \| Tundra \| Água \| Situação/.test(c0) && /Tamanho \| Pequeno \| Médio \| Grande \| Mistura \| Pouca \| Média \| Muita \| (História do lugar \|.*\| Achados raros.*\| )?Marcar a chegada e a emboscada/.test(c0), 'a aba Encontro: os quinze terrenos e a Mistura depois do tamanho (13c: e a história do lugar e os achados) — ' + c0.slice(0, 320));
     ok(g.op.chao === 2 && g.op.mistura === 'media' && g.plano.chaoNovo === true && await page.locator('#enc-relnat').count() === 0, 'de começo: o chão novo, a mistura média, sem a chave do relevo natural');
     await exato('enc-ter', 'Savana');
     g = await G();

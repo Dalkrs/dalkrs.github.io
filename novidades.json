@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-10",
+      "data": "2026-10-21",
+      "titulo": "As estações, a história do lugar e os achados",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a Estação em “Gerar um lugar…” (Primavera, Verão, Outono, Inverno) para a Região livre, o Encontro, a Tribo, as Ruínas e o Porto. O verão é o lugar de sempre; na primavera, as flores e as árvores floridas; no outono, as copas amarelas, laranja e vermelhas e as folhas no chão; no inverno, a neve fina e a água parada e rasa congelada (dá para andar, e a zona Gelado escorrega). O rio, o mar e a fonte quente não congelam, e o deserto, a selva e a neve ficam iguais o ano todo. Vindo do Mapa-múndi, já vem a estação do mês de hoje no calendário."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a História do lugar na Região livre e no Encontro — Batalha antiga, Acampamento abandonado, Incêndio e Ruínas pequenas, várias juntas. Cada uma deixa as marcas dela longe do meio da situação e ganha um marcador oculto com o nome; o resto do lugar fica igual."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os Achados raros — a semente decide, em uma de cada quatro cenas: um baú, um altar, uma árvore antiga, uma pedra rúnica ou um esqueleto com uma bolsa, num canto longe do meio, com um marcador oculto dizendo o que é. Os modelos guardados antes continuam gerando o mesmo lugar."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-9",
       "data": "2026-10-21",
       "titulo": "O chão novo dos encontros",

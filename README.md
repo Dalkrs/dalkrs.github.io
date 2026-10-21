@@ -1052,6 +1052,39 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **O que sai igual**: os modelos de antes (os planos conferidos contra a versão de antes, `lote13b.js`, `SO=chao`), os
   outros geradores, a Região livre e o desenho deles (51 casos conferidos pixel a pixel).
 
+### As estações, a história do lugar e os achados raros (lote 13, parte 13c)
+
+- **A Estação** (`Estacoes`, 10f8-estacoes.js): uma escolha da janela "Gerar um lugar…" — Primavera, Verão, Outono,
+  Inverno — nos lugares de fora (a Região livre, o Encontro, a Tribo, as Ruínas e o Porto: `LUGAR.aceitaEstacao`),
+  lembrada (`genEstacao`) e guardada no modelo (o modelo de antes abre no verão). Vinda do Mapa-múndi, a do mês de hoje
+  no calendário (`estacaoDoMes`; com o Inverno rigoroso em cima, o inverno). O verão é o lugar de sempre: o plano e o
+  desenho não mudam (os planos e os desenhos de todos os geradores de fora conferidos contra a 13b). Só os chãos que têm
+  estação mudam (`DO_CHAO`: o campo, a floresta, o pântano e a montanha nas quatro; a tundra e a terra corrompida, no
+  inverno); o deserto, a savana, a selva, a neve, a lava, os cristais e o mar ficam iguais (o resumo avisa), e num chão
+  misto cada mancha segue o bioma dela (a máscara de beira macia). O desenho tem o sorteio dele (`pintor(p, c)`): o
+  mesmo lugar, com as cores e os enfeites da estação — na primavera, o verde novo, as flores no chão e parte das árvores
+  floridas; no outono, as copas amarelas, laranja e vermelhas (os pinheiros ficam verdes) e as folhas caídas; no
+  inverno, a neve fina no chão, nas copas, nas pedras, nos penhascos e nos telhados (só enfeita) e as árvores de folha
+  quase sem folhas.
+- **O inverno congela** (`noPlano`, antes dos marcadores): a água parada e rasa dos chãos com estação vira gelo — o lago
+  (e a segunda demão dele), as poças do pântano e a água rasa do pântano inteiro —: as casas viram chão de andar, a
+  fundura sai, a lama da beira some e a zona Gelado cobre o gelo (um círculo no meio e uns menores pelas pontas; no
+  pântano, uma só, no mapa todo). O rio, o mar, a fonte quente, o lodo e a lava não congelam.
+- **A história do lugar** (`Historia`, 10f9-historia.js), na Região livre e no Encontro: as caixas "História do lugar"
+  (várias juntas; lembradas e no modelo — o de antes fica sem): a Batalha antiga (as armas enferrujadas, os ossos, o
+  túmulo, o estandarte rasgado), o Acampamento abandonado (a fogueira fria, a tenda rasgada, os caixotes, o barril, o
+  tronco), o Incêndio (o chão queimado, as árvores carbonizadas sem as brasas — a espécie `queimada` —, os tocos) e as
+  Ruínas pequenas (o alicerce com os pedaços de parede, de pé ou baixos, as lajes, o entulho, a coluna caída). Cada uma
+  longe do meio da situação, do caminho e das outras, só em casas que a situação não usa (o que havia antes da
+  vegetação: `Historia.antes`); sem lugar do tamanho de sempre, encolhe; sem nenhum, fica de fora (o resumo diz). Entra
+  depois da vegetação, com o sorteio dela: as árvores, as pedrinhas e os enfeites da área saem, e o resto do lugar fica
+  igual. Na água e na gruta dos cristais, não há onde (a janela nem mostra no Pântano e na Água).
+- **Os achados raros**: a chave "Achados raros" (ligada de começo; o modelo de antes fica sem): a semente da cena decide,
+  uma em cada quatro — um baú, um altar, uma árvore antiga, uma pedra rúnica ou um esqueleto com uma bolsa —, num canto
+  longe do meio, com o lugar limpo só em volta dele.
+- **Os marcadores**: cada marca da história ganha o marcador oculto de ponto de interesse com o nome dela; o achado, o
+  marcador novo `achado` (a moeda de ouro: `Achado: …`) — os dois só com a chave dos marcadores ligada.
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -2826,4 +2859,15 @@ da falésia, o mar do naufrágio, a chegada fora do mar e os nomes; com `SO=pint
 a areia no navio encalhado; com `SO=janela`, a aba (os quinze terrenos, a Mistura, sem o relevo natural; o pântano sem
 a Mistura; a costa), o modelo de antes (o mesmo lugar, o aviso, "Usar o chão novo" e o Desfazer), o modelo novo, o
 Mapa-múndi e a cena (as armadilhas ocultas, a fogueira acesa). O `lote7e.js` e o `gerador8.js` passaram a contar os
-quinze terrenos (as regras dos planos valem para as situações novas).
+quinze terrenos (as regras dos planos valem para as situações novas). Na parte 13c, `src/cenas/test/lote13c.js` confere as estações, a história do lugar e
+os achados: com `SO=estacoes`, a lista e as regras, o verão igual ao de sem estação (nos cinco lugares de fora), a
+primavera e o outono no mesmo lugar, o inverno congelando o lago (o tipo, a segunda demão, as casas, a fundura, a zona
+cobrindo o gelo), as poças e o pântano inteiro, e não o rio, o mar, a fonte quente, a lava e o oásis; o desenho (as
+estações diferentes; o deserto igual; a mancha sem estação igual por dentro; as copas do outono quentes, as do inverno
+com neve, as da primavera floridas; a neve nas pedras, nos telhados e nos penhascos) e o resumo; com `SO=historia`,
+cada história com o que tem de seu, longe do meio, fora do caminho, só a área dela mudando e limpa, as quatro juntas, o
+encolher no mapa pequeno, o "sem lugar", a árvore queimada sem brasas e os marcadores na cena; com `SO=achados`, a
+frequência, os cinco, longe do meio, o lugar de sempre sem achado, nunca sem pedir, a Região livre e o marcador na
+cena; com `SO=janela`, a Estação (nos lugares de fora, lembrada, no modelo, vinda do Mapa-múndi), a História do lugar e
+os Achados raros (no estado, no plano, lembrados, no modelo; o modelo de antes sem eles; na água e no pântano, sem) e a
+cena criada. O `mundo-cenas.test.js` confere a estação do calendário no pedido da cena.

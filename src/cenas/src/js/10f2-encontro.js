@@ -1809,8 +1809,13 @@ const Encontro = (() => {
     const novo = F && !K.P.aguaToda && !K.P.cavernas.length;
     if (novo) chaoDepois(K, F, sT, !!o.seco);
     const nat8 = T8.relevo && !F ? relevoNatural(K, seed) : null;
+    // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
+    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
     if (novo) { vegetacaoNova(K, F, rV, sT); enfeitesNovos(K, F, rV); }
     else { vegetacao(K, rV); enfeites(K, rV); }
+    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: [[K.P.foco[0], K.P.foco[1], Math.hypot(W, H) * 0.22]] });
+    // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (antes dos marcadores: o gelo é chão)
+    Estacoes.noPlano(K, o.estacao);
     if (o.marcas !== false) marcadores(K);
     else K.P.marcas = {};
     const P = K.P;
@@ -1895,10 +1900,13 @@ const Encontro = (() => {
     for (const b of p.biomas || []) if (b.pal !== p.pal) P.chaoMisto(g, p.W, p.H, c, rnd, b.pal, b.pts);
     // a gruta: tudo rocha, e o chão por cima
     for (const cav of p.cavernas || []) { P.penhasco(g, [[-1, -1], [p.W + 1, -1], [p.W + 1, p.H + 1], [-1, p.H + 1]], c, rnd, ['#4a4f5a', '#2e323a', '#15171c'], 6); P.mancha(g, cav.chao, c, rnd, CH.gruta, { pedrisco: ['#7a8090', '#2a2e36'] }); g.save(); P.suave(g, cav.chao, c); g.globalAlpha = 0.55; g.strokeStyle = '#0e1014'; g.lineWidth = c * 0.9; g.stroke(); g.restore(); }
-    // a água rasa por todo o mapa (o pântano) ou o mar
-    if (p.aguaToda) P.aguaRasa(g, p.W, p.H, c, rnd, p.pal);
+    // (lote 13, parte 13c) a estação: o pintor dela, com o sorteio dele (sem estação — o verão —, nada muda)
+    const EST = p.estacao ? Estacoes.pintor(p, c) : null;
+    // a água rasa por todo o mapa (o pântano; no inverno, congelada) ou o mar
+    if (p.aguaToda) { P.aguaRasa(g, p.W, p.H, c, rnd, p.pal); if (EST && p.aguaToda.tipo === 'gelo') EST.geloRaso(g); }
     for (const m of p.chao) P.mancha(g, m.pts, c, rnd, m.cores, m.op || {});
     for (const o of p.pintados) if (o.z === 0) pintaObjeto(g, o, c, rnd, p);
+    if (EST) EST.chao(g);
     for (const a of p.abismos) P.abismo(g, a.pts, c, rnd, a.cores || [P.pedraDe(p.pal)[1], P.pedraDe(p.pal)[2], '#070606']);
     // (lote 13: a água de outro bioma traz a paleta dele)
     for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, a.pal || p.pal, a.tipo);
@@ -1907,6 +1915,7 @@ const Encontro = (() => {
     for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cores, cm.tipo);
     for (const o of p.pintados) if (o.z === 1) pintaObjeto(g, o, c, rnd, p);
     for (const m of p.massas) P.penhasco(g, m.pts, c, rnd, m.cores || P.pedraDe(p.pal), m.alt);
+    if (EST) EST.nosPenhascos(g);
     for (const o of p.pintados) if (o.z === 2) pintaObjeto(g, o, c, rnd, p);
     // as construções: a aberta (piso, paredes, enfeite do estilo) e a fechada (o telhado)
     const TP = Estilos.tipos(est);
@@ -1919,11 +1928,16 @@ const Encontro = (() => {
       Estilos.paredesPintadas(g, k, c, rnd, est);
       Estilos.enfeiteDaCasa(g, k, c, rnd, est, def);
     });
+    if (EST) EST.nosTelhados(g);
     for (const n of p.navios) Navio.pintar(g, n, c, rnd, { danificado: n.danificado });
-    for (const r of p.rochas) P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal));
+    for (const r of p.rochas) { const pts = P.pedra(g, r.x, r.y, r.r, c, rnd, r.cores || P.pedraDe(p.pal)); if (EST) EST.naPedra(g, r, pts); }
     const neve = p.terreno === 'neve' || p.terreno === 'tundra';
-    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve)
-    for (const a of p.arvores) P.arvore(g, a, c, rnd, a.esp, a.pal || p.pal, a.neve != null ? a.neve : neve);
+    // (lote 13: a árvore de outro bioma traz a paleta dele e se tem neve; 13c: e a cor e a neve da estação)
+    for (const a of p.arvores) {
+      const pa = a.pal || p.pal, nv = a.neve != null ? a.neve : neve;
+      P.arvore(g, a, c, rnd, a.esp, EST ? EST.palDaArvore(a, pa) : pa, nv);
+      if (EST) EST.naArvore(g, a, pa, nv);
+    }
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
     P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
     return cv;
@@ -1977,6 +1991,9 @@ const Encontro = (() => {
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
     // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    // (lote 13, parte 13c) as marcas da história do lugar e o achado raro: ocultos, com o nome do que é
+    if (p.comMarcas !== false && Props.P.interesse) for (const q of p.historia || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    if (p.comMarcas !== false && p.achado && Props.P.achado) { const t = Props.novo(sc, 'achado', p.achado.x * c, p.achado.y * c, 1, true); t.name = 'Achado: ' + p.achado.n.toLowerCase(); sc.tokens.push(t); }
     // as luzes (a lava, os cristais, a fenda)
     for (const l of p.luzes) sc.lights.push({ id: uid('lz'), name: 'Luz do lugar', x: l.x * c, y: l.y * c, bright: l.bright, dim: l.dim, c: l.c, on: true, fl: true });
     if (op.relevo !== false) {
@@ -2025,6 +2042,9 @@ const Encontro = (() => {
     if (pm.paredoes) rel.push(plural(pm.paredoes, 'penhasco'));
     if (rel.length) partes.push(juntar(rel));
     if (p.seco) partes.push('o chão seco');
+    // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
+    if (p.estacao) partes.push(Estacoes.texto(p));
+    partes.push(...Historia.texto(p));
     if (p.predios.length) partes.push(p.predios.length === 1 ? '1 construção' : p.predios.length + ' construções');
     if (p.navios.length) partes.push(p.navios.length === 1 ? 'um navio' : p.navios.length + ' navios');
     if (p.visao.length) partes.push(p.visao.length + ' paredes de visão');
@@ -2069,14 +2089,15 @@ const Encontro = (() => {
     const T = TER[terreno];
     return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false,
       t: Tracado.limpar(o.encTracado),                                            // (lote 8) o traçado (a seção "Traçado")
-      chao: 2, mistura: Biomas.mistura(o.encMis) };                               // (lote 13, parte 13b) o chão novo e a mistura dele
+      chao: 2, mistura: Biomas.mistura(o.encMis),                                 // (lote 13, parte 13b) o chão novo e a mistura dele
+      historia: Historia.valida(o.encHist), achados: o.encAchados !== false };     // (13c) a história do lugar e os achados raros
   }
-  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; };
+  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; };
   function controles(st, K, mudou) {
     const { field, seg, toggle, note, btn } = K, T = TER[st.terreno];
     const camOps = st.terreno === 'agua' ? null : st.terreno === 'estrada' ? CAMINHOS.filter(c => c[0] !== 'nenhum') : CAMINHOS;
     // (lote 13, parte 13b) o chão: o novo, com a mistura; o de antes, num modelo de antes (com o botão para trocar)
-    const chao = chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno];
+    const chao = chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno], semTerra = st.terreno === 'agua' || st.terreno === 'pantano';
     const usarNovo = () => {
       st.chao = 2; mudou(true, { soltar: true });
       UI.toast('O chão novo: as manchas dos vizinhos e os morros longe da situação.', { action: 'Desfazer', run: () => { if (document.getElementById('ger-prev')) { st.chao = 1; mudou(true, { soltar: true }); } } });
@@ -2089,6 +2110,9 @@ const Encontro = (() => {
         field('Tamanho', seg('enc-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados']), v => { st.tamanho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')),
       semChao ? null : chao === 2 ? field('Mistura', seg('enc-mis', Biomas.mistura(st.mistura), Biomas.MISTURAS, v => { st.mistura = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')
         : h('div', { class: 'ger-l', id: 'enc-chao-velho' }, note('Modelo de antes do chão novo: ele gera o mesmo lugar de sempre, sem as manchas dos vizinhos e os morros.'), btn('Usar o chão novo', usarNovo, { kind: 'small', id: 'enc-chao', title: 'Gera de novo com o chão dos biomas (o modelo guardado não muda)' })),
+      // (lote 13, parte 13c) a história do lugar e os achados raros (na água e no pântano não há onde)
+      semTerra ? null : Historia.campo(st, K, () => { lembrar(st); mudou(true); }, 'enc'),
+      semTerra ? null : toggle('enc-achados', st.achados !== false, v => { st.achados = v; lembrar(st); mudou(true); }, 'Achados raros: a semente decide, um em cada quatro lugares (só você vê o marcador)'),
       toggle('enc-marcas', st.marcas, v => { st.marcas = v; lembrar(st); mudou(true); }, 'Marcar a chegada e a emboscada (só você vê)'),
       // (lote 8) o traçado: os caminhos na rosa, o rio, as pontes e o relevo natural (no chão novo, não: ele já tem)
       Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'enc', portoes: st.terreno === 'agua' ? null : 'Caminhos',
@@ -2097,7 +2121,8 @@ const Encontro = (() => {
         rioDica: chao === 2 ? 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto. O da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.' : 'O rio da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.',
         pontes: true, relevo: chao === 2 ? false : undefined }));
   }
-  const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
+  const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null,
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
   // op.modelo: as escolhas vêm de um modelo guardado (o de antes do chão novo não tem o chão: fica no de antes)
   function aplicarOpcoes(st, o, op) {
     if (TER[o.terreno]) st.terreno = o.terreno;
@@ -2109,6 +2134,9 @@ const Encontro = (() => {
     st.t = Tracado.limpar(o);                                                       // (lote 8: o traçado do modelo; sem ele, o automático)
     if (op && op.modelo) st.chao = o.chao === 2 ? 2 : 1;
     if (typeof o.mistura === 'string' && Biomas.FRACAO[o.mistura] != null) st.mistura = o.mistura;
+    // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
+    if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
+    if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
     lembrar(st);
   }
   // as partes que travam: o traçado inteiro (a água, o caminho, os penhascos, a peça do meio)
@@ -2132,7 +2160,8 @@ const Encontro = (() => {
   }
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
-  const LUGAR = { id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
+  const LUGAR = { aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os morros e os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',
