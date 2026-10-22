@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.21-11",
+      "data": "2026-10-21",
+      "titulo": "A cena que nasce do hexágono",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi e Cenas: “Gerar a cena aqui” leva o hexágono do grupo junto. A janela abre no Encontro, e a Região livre também vem pronta: os vizinhos do mapa entram pelas bordas certas (o campo a leste, a montanha a sudoeste, a água do mar ou do lago com a praia), e o rio e a estrada do mapa entram e saem pelos lados certos. No alto da janela, uma frase diz tudo o que veio do hexágono, e uma chave tira."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as cenas de dois hexágonos vizinhos se encaixam — o rio e a estrada que saem de uma entram na outra pelo mesmo ponto, e o chão da borda é o mesmo dos dois lados. No Encontro, o caminho da situação vai até os pontos do mapa. Sem o hexágono, tudo continua como era."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-10",
       "data": "2026-10-21",
       "titulo": "As estações, a história do lugar e os achados",

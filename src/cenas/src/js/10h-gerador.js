@@ -85,6 +85,21 @@ const Gerador = (() => {
     const evDaAba = l => !evPedido || l.semHora ? null : { seco: evPedido.seco && !!l.aceitaSeco, fx: evPedido.fx, nomes: evPedido.nomes };
     const temEv = l => { const e = evDaAba(l); return !!e && (e.seco || e.fx.length > 0); };
     const usaEv = l => comum.comEventos && temEv(l);
+    /* (lote 14, parte 14a) O hexágono do Mapa-múndi ("Gerar a cena aqui"): o chão dele e dos vizinhos nas bordas, o rio e
+       os caminhos do mapa pelos pontos certos — nas abas que aceitam (o Encontro, nos terrenos de chão de bioma, e a
+       Região livre). Uma chave tira. As outras abas também vêm preenchidas (pre.ops: a Região livre com o bioma, a água e
+       o caminho do hexágono), sem mexer no que a janela lembra para a próxima vez. */
+    const hexPedido = pre && typeof pre === 'object' ? HexCena.valida(pre.hex) : null;
+    comum.comHex = !!hexPedido;
+    const hexDaAba = l => (hexPedido && l.aceitaHex && l.aceitaHex(estadoDe(l).op, hexPedido) ? hexPedido : null);
+    const usaHex = l => (comum.comHex ? hexDaAba(l) : null);
+    const comHex = (l, o) => { const hx = usaHex(l); return hx ? Object.assign(o, { hex: hx }) : o; };
+    if (pre && pre.ops && typeof pre.ops === 'object') {
+      const lembrado = Object.assign({}, App.opt);
+      for (const id of Object.keys(pre.ops)) { const l = lugar(id); if (l && l !== L && pre.ops[id] && typeof pre.ops[id] === 'object') l.aplicarOpcoes(estadoDe(l).op, pre.ops[id]); }
+      for (const k of Object.keys(App.opt)) if (!(k in lembrado)) delete App.opt[k];
+      Object.assign(App.opt, lembrado);
+    }
     let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
     const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
     const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
@@ -141,7 +156,7 @@ const Gerador = (() => {
     }
     function refazer() {
       const E = estadoDe(L);
-      E.plano = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco }));
+      E.plano = L.gerar(E.op, comHex(L, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco })));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
       try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
@@ -246,15 +261,22 @@ const Gerador = (() => {
       const a = document.activeElement, fid = a && a.id && ctl.contains(a) ? a.id : null;
       const E = estadoDe(L);
       abas.replaceChildren(...(LUGARES.length > 1 ? [seg('ger-lugar', L.id, LUGARES.map(l => [l.id, l.n]), v => { L = lugar(v) || L; lembrarComum(); nomeMexido = false; pintar(); refazer(); })] : []));
-      ctl.replaceChildren(
-        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }),
+      // (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto: a chave e o que vem dele (na aba que não aceita, o porquê)
+      const blocoHex = hexDaAba(L) ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' },
+        K.toggle('ger-hex', comum.comHex, v => { comum.comHex = v; const E2 = estadoDe(L); E2.trava = null; E2.base = null; pintar(); refazer(); }, 'Com o hexágono do Mapa-múndi: os vizinhos nas bordas, o rio e os caminhos pelos lados certos'),
+        (n => { n.id = 'ger-hex-txt'; return n; })(note(HexCena.texto(hexPedido, L.biomaDe ? L.biomaDe(E.op) : null))))
+        : hexPedido && L.aceitaHex ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' }, (n => { n.id = 'ger-hex-nao'; return n; })(note(!HexCena.aceita(hexPedido)
+          ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
+          : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;
+      ctl.replaceChildren(...[blocoHex,
+        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) }),
         h('div', { class: 'ger-cm' },
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
-          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null));
+          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null)].filter(Boolean));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }

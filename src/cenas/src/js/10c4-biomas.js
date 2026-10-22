@@ -168,12 +168,27 @@ const Biomas = (() => {
   // o ponto fora da borda ao lado de uma casa da borda (o rio entra e sai do mapa por ali)
   const foraDa = (q, W, H) => { const i = q % W, j = (q - i) / W, x = i + 0.5, y = j + 0.5, l = ladoDaCasa(q, W, H); return l === 'n' ? [x, -1.5] : l === 's' ? [x, H + 1.5] : l === 'o' ? [-1.5, y] : [W + 1.5, y]; };
 
+  /* (lote 14, parte 14a) A linha que entra e sai pelos pontos certos da borda (o rio e o caminho do hexágono passam pelo
+     mesmo ponto na cena do vizinho): o pedaço de fora, em cada ponta pedida, troca pelo ponto exato da borda e pelo de
+     fora dele. ini, fim: { x, y, fora } (a ponta do hexágono) ou null (a ponta fica como está) */
+  function prenderPontas(pts, W, H, ini, fim) {
+    const dentro = p => p[0] > 0.3 && p[1] > 0.3 && p[0] < W - 0.3 && p[1] < H - 0.3;
+    let a = 0, b = pts.length - 1;
+    if (ini) while (a < b && !dentro(pts[a])) a++;
+    if (fim) while (b > a && !dentro(pts[b])) b--;
+    let out = pts.slice(a, b + 1);
+    if (ini) out = [ini.fora.slice(), [ini.x, ini.y]].concat(out);
+    if (fim) out = out.concat([[fim.x, fim.y], fim.fora.slice()]);
+    return out;
+  }
+
   /* ---- a altura ----
      O ruído (as feições de uns onze quadrados), inclinado: alto de onde o rio vem, baixo para onde ele vai e para o lado
      do mar (k: quanto inclina). → a altura de cada casa, de 0 a 1 */
   function alturas(W, H, seed, o) {
     const nA = Tracado.ruido(seed), EA = 1 / 11, alt = new Float32Array(W * H);
-    const de = vetor(o.de), para = vetor(o.para), mar = o.mar ? LADO[o.mar] : null, k = o.k == null ? 0.7 : o.k;
+    // (lote 14, parte 14a: de e para também podem vir como o vetor [x, y] — os pontos do rio do hexágono)
+    const de = Array.isArray(o.de) ? o.de : vetor(o.de), para = Array.isArray(o.para) ? o.para : vetor(o.para), mar = o.mar ? LADO[o.mar] : null, k = o.k == null ? 0.7 : o.k;
     let lo = Infinity, hi = -Infinity;
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       const u = (i + 0.5) / W - 0.5, v = (j + 0.5) / H - 0.5;
@@ -289,14 +304,22 @@ const Biomas = (() => {
     let temMar = false;
     for (let q = 0; q < N; q++) { if (ehMar(q)) temMar = true; else if (naBorda(q)) borda.push(q); }
     if (!borda.length) return null;
-    let fontes = borda.filter(q => canto(q) >= 3 && (!o.de || pertoDe(q, o.de)));
-    if (!fontes.length) fontes = borda.filter(q => !o.de || pertoDe(q, o.de));
-    if (!fontes.length) fontes = borda.slice();
-    fontes.sort((a, b) => alt[b] - alt[a] || a - b);
-    const fonte = fontes[Math.floor(rr() * Math.min(3, fontes.length)) % fontes.length];
-    // o alvo
+    // (lote 14, parte 14a) o rio do hexágono: a fonte na casa do ponto de entrada (ou da nascente, ali dentro)
+    const fonte = o.pIni ? o.pIni.cel : (() => {
+      let fontes = borda.filter(q => canto(q) >= 3 && (!o.de || pertoDe(q, o.de)));
+      if (!fontes.length) fontes = borda.filter(q => !o.de || pertoDe(q, o.de));
+      if (!fontes.length) fontes = borda.slice();
+      fontes.sort((a, b) => alt[b] - alt[a] || a - b);
+      return fontes[Math.floor(rr() * Math.min(3, fontes.length)) % fontes.length];
+    })();
+    // o alvo (o do hexágono: a casa do ponto de saída — na água do vizinho, a água; ali dentro, o lago)
     let alvo = null, lagoEm = null, destino = 'borda';
-    if (o.para === 'lago') {
+    if (o.pFim) {
+      const c = o.pFim.cel;
+      if (!o.pFim.borda) { lagoEm = c; alvo = q => q === c; destino = 'lago'; }
+      else if (ehMar(c)) { alvo = q => ehMar(q); destino = 'mar'; }
+      else alvo = q => q === c;
+    } else if (o.para === 'lago') {
       let m = -1;
       for (let q = 0; q < N; q++) { const [x, y] = xy(q); if (x < 4 || y < 4 || x > W - 4 || y > H - 4 || ehMar(q) || (o.bloq && o.bloq(q)) || dist(q, fonte) < mm * 0.4) continue; if (m < 0 || alt[q] < alt[m]) m = q; }
       if (m >= 0) { lagoEm = m; alvo = q => q === m; destino = 'lago'; }
@@ -328,17 +351,18 @@ const Biomas = (() => {
     if (!cel && destino === 'borda') cel = maisBarato(W, H, [fonte], q => naBorda(q) && !ehMar(q) && ladoDaCasa(q, W, H) !== ladoF && dist(q, fonte) > mm * 0.5, custo);
     if (!cel || cel.length < 4) return null;
     const ult = cel[cel.length - 1], [ux, uy] = xy(ult);
-    const r = { cel, ini: foraDa(fonte, W, H), fim: null, lagoEm, destino, afluente: null };
-    if (destino === 'borda') r.fim = foraDa(ult, W, H);
+    const r = { cel, ini: o.pIni ? (o.pIni.borda ? o.pIni.fora : null) : foraDa(fonte, W, H), fim: null, lagoEm, destino, afluente: null };
+    if (destino === 'borda') r.fim = o.pFim ? o.pFim.fora : foraDa(ult, W, H);
     else if (destino === 'mar') { const pre = xy(cel[Math.max(0, cel.length - 3)]), dx = ux - pre[0], dy = uy - pre[1], L = Math.hypot(dx, dy) || 1; r.fim = [ux + dx / L * 2.2, uy + dy / L * 2.2]; }
     // o afluente: de outra casa alta da borda, longe do rio, até o trecho do meio dele
     if (o.afluente) {
       const noRio = new Set(cel), meio = new Set(cel.slice(Math.floor(cel.length * 0.3), Math.ceil(cel.length * 0.75))), amostra = cel.filter((_, k) => k % 3 === 0);
       const longe = borda.filter(q => canto(q) >= 3 && !noRio.has(q) && dist(q, fonte) > mm * 0.35 && amostra.every(p => dist(p, q) > mm * 0.3));
       longe.sort((a, b) => alt[b] - alt[a] || a - b);
-      for (const f2 of longe.slice(0, 4)) {
+      // (lote 14, parte 14a: o afluente do hexágono vem do ponto dele)
+      for (const f2 of o.pAf ? [o.pAf.cel] : longe.slice(0, 4)) {
         const ca = maisBarato(W, H, [f2], q => meio.has(q), (q, m, L) => (noRio.has(m) && !meio.has(m) ? Infinity : custo(q, m, L)));
-        if (ca && ca.length >= 4) { r.afluente = { cel: ca, ini: foraDa(f2, W, H) }; break; }
+        if (ca && ca.length >= 4) { r.afluente = { cel: ca, ini: o.pAf ? (o.pAf.borda ? o.pAf.fora : null) : foraDa(f2, W, H) }; break; }
       }
     }
     return r;
@@ -458,13 +482,17 @@ const Biomas = (() => {
       // (o caminho mais barato dá o rumo, pelo relevo; as curvas pedidas fazem ele serpentear)
       const hw = R0.hw || 1.2, rc = sorteio(sub(seed, 7)), curvas = R0.curvas == null ? 4 : R0.curvas;
       const fixos = R0.lago && rio.lagoEm == null && lagos.length ? [lagos[0].centro] : [];
-      const pts = serpentear(linhaDe(W, rio.cel, rio.ini, rio.fim), curvas, rc, 4.5, fixos);
+      let pts = serpentear(linhaDe(W, rio.cel, rio.ini, rio.fim), curvas, rc, 4.5, fixos);
+      // (lote 14, parte 14a: o rio do hexágono entra e sai pelos pontos exatos da borda)
+      if (R0.pIni || R0.pFim) pts = prenderPontas(pts, W, H, R0.pIni && R0.pIni.borda ? R0.pIni : null, R0.pFim && R0.pFim.borda && rio.destino === 'borda' ? R0.pFim : null);
       rios.push({ pts, pecas: cortarNosLagos(pts, lagos), hw, cel: rio.cel, destino: rio.destino, afluente: false });
       if (rio.afluente) {
         // (o afluente acaba no ponto do rio mais perto do fim do rumo dele)
         const ca = rio.afluente.cel, u = ca[ca.length - 1], ux = u % W + 0.5, uy = Math.floor(u / W) + 0.5;
         const jn = pts.reduce((m, p) => (Math.hypot(p[0] - ux, p[1] - uy) < Math.hypot(m[0] - ux, m[1] - uy) ? p : m));
-        const hw2 = Math.max(0.6, Math.round(hw * 0.62 * 10) / 10), p2 = serpentear(linhaDe(W, ca.slice(0, -1), rio.afluente.ini, jn.slice()), curvas, rc, 3, []);
+        const hw2 = Math.max(0.6, Math.round(hw * 0.62 * 10) / 10);
+        let p2 = serpentear(linhaDe(W, ca.slice(0, -1), rio.afluente.ini, jn.slice()), curvas, rc, 3, []);
+        if (R0.pAf && R0.pAf.borda) p2 = prenderPontas(p2, W, H, R0.pAf, null);
         rios.push({ pts: p2, pecas: cortarNosLagos(p2, lagos), hw: hw2, cel: ca, destino: 'rio', afluente: true });
       }
     }
@@ -509,5 +537,5 @@ const Biomas = (() => {
   }
 
   return { LISTA, BIO, IDS, IDX, valido, MISTURAS, FRACAO, mistura, sub, campo, alturas, vizinhosDe, mapaDosBiomas, marDe, rioDe, lagoDe, cortarNosLagos, grupos, contornoDe, maisBarato, linhaDe, foraDa, serpentear,
-    aguaDe, patamares, manchasDe };
+    aguaDe, patamares, manchasDe, prenderPontas };
 })();

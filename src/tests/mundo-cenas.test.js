@@ -5,6 +5,8 @@
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
 //     inundação: chuva; incêndio: cinzas; magia: vaga-lumes), o estilo da região mais de dentro que tiver um e (lote 13,
 //     parte 13c) a estação do mês de hoje (com o Inverno rigoroso em cima, inverno);
+//   · (lote 14, parte 14a) o hexágono do grupo (o terreno dele e dos vizinhos, os rios e os caminhos que passam ali, em
+//     pedaços) e a Região livre já preenchida com ele (o bioma, a água, o caminho); no mar, o hexágono sem a Região;
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
 //     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
 //     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão.
@@ -97,6 +99,34 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(op('neve-selvagem') === j({ terreno: 'neve', situacao: 'surpresa', caminho: 'nenhum' }), 'na neve, em terreno selvagem: a neve, sem caminho: ' + op('neve-selvagem'));
   ok(op('mar') === j({ terreno: 'agua', situacao: 'navio' }) && op('rio') === j({ terreno: 'agua', situacao: 'barco' }), 'numa rota de mar, o navio; numa de rio, o barco: ' + op('mar') + ' ' + op('rio'));
   ok(op('estranha') === j({ terreno: 'campo', situacao: 'surpresa', caminho: 'nenhum' }), 'num terreno que o mestre criou sem desenho: o campo: ' + op('estranha'));
+  // (lote 14, parte 14a) o hexágono do grupo (o terreno dele e dos vizinhos, os rios e os caminhos que passam ali) e a
+  // Região livre já preenchida com ele
+  {
+    const hx = ger['floresta-estrada'].hex, hl = ger.lavoura.hex;
+    ok(hx && hx.k === '0,4' && hx.orient === 'pe' && hx.ter === 'floresta' && hx.viz.l === 'floresta' && hx.viz.o === null && hx.viz.se === 'floresta', 'o hexágono vai junto: a chave, a floresta, o vizinho igual e o de fora do terreno (nenhum): ' + j(hx && [hx.k, hx.ter, hx.viz]));
+    ok(hx && hx.caminhos.length === 1 && hx.caminhos[0].t === 'estrada' && hx.caminhos[0].ini === false && hx.caminhos[0].fim === true && hx.rios.length === 0, 'a rota de estrada do grupo, que sai do meio do hexágono (acaba dentro de um lado, sai pela borda do outro): ' + j(hx && hx.caminhos.map(c => [c.t, c.ini, c.fim])));
+    ok(j(ger['floresta-estrada'].ops) === j({ regiao: { bioma: 'floresta', agua: 'nenhuma', caminho: 'estrada' } }), 'a Região livre preenchida: o bioma, sem rio no mapa (nenhuma água a mais), a estrada: ' + j(ger['floresta-estrada'].ops));
+    ok(hl && hl.ter === 'campo' && hl.viz.o === 'floresta' && hl.viz.l === 'campo' && j(ger.lavoura.ops) === j({ regiao: { bioma: 'campo', agua: 'nenhuma', caminho: 'nenhum' } }), 'na lavoura: o campo, a floresta a oeste, sem caminho: ' + j(hl && [hl.ter, hl.viz, ger.lavoura.ops]));
+    ok(ger['savana-trilha'].hex.caminhos.some(c => c.t === 'trilha') && ger['savana-trilha'].ops.regiao.caminho === 'trilha' && ger['savana-trilha'].ops.regiao.bioma === 'savana', 'na savana, a trilha do grupo: ' + j(ger['savana-trilha'].ops));
+    ok(ger.mar.hex && ger.mar.hex.ter === 'agua' && !('ops' in ger.mar), 'no mar: o hexágono (de água) vai, sem a Região livre preenchida');
+    await F.evaluate(id => __mundo.App.mudar('um rio', m => { const N = __mundo.N, g = m.objs.find(o => o.id === id), a = N.centroHex(m, 6, 3), b = N.centroHex(m, 8, 5); m.objs.push(Object.assign(N.objNovo('l', { pts: [[a.x, a.y - 30], [g.x + 3, g.y - 2], [b.x, b.y + 30]] }), { estilo: 'rio', nome: 'Rio 14' })); }), ids.planicie);
+    const gp = await gerarAqui('planicie');
+    ok(gp.hex.rios.length === 1 && gp.hex.rios[0].ini && gp.hex.rios[0].fim && gp.hex.rios[0].pts[0][1] === 0 && gp.ops.regiao.agua === 'rio', 'com um rio do mapa passando ali: o rio (entra por cima, sai por baixo) e a Região com o rio: ' + j(gp.hex.rios.map(r => [r.pts[0], r.pts[r.pts.length - 1]])));
+    await F.evaluate(() => __mundo.App.mudar('sem o rio', m => { m.objs = m.objs.filter(o => o.nome !== 'Rio 14'); }));
+    // de ponta a ponta: o pedido chega às Cenas (a página do site, numa moldura da mesma casca) e a janela "Gerar um
+    // lugar" abre no Encontro, com a chave do hexágono ligada e a Região livre já preenchida
+    await P.evaluate(() => { const f = document.createElement('iframe'); f.id = 'cenasF'; f.src = '/cenas/?debug'; f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2'; document.body.append(f); });
+    let CF = null;
+    for (let i = 0; i < 100 && !CF; i++) { CF = P.frames().find(f => /\/cenas\//.test(f.url())) || null; if (!CF) await espera(100); }
+    await CF.waitForFunction(() => window.__tc && __tc.Gerador && __tc.Store && __tc.Store.S, null, { timeout: 20000 });
+    await espera(800);
+    await P.evaluate(alvo => document.getElementById('cenasF').contentWindow.postMessage({ tinycats: { t: 'alvo', alvo } }, location.origin), { gerar: ger['floresta-estrada'] });
+    await CF.waitForFunction(() => !!__tc.Gerador.vivo(), null, { timeout: 15000 }).catch(() => null);
+    const nas = await CF.evaluate(() => { const V = __tc.Gerador.vivo(); if (!V) return null; const E = V.estado; return { lugar: V.lugar, comHex: V.comum.comHex, hex: E.plano && E.plano.hex ? E.plano.hex.k : null, chave: !!document.getElementById('ger-hex'), txt: (document.getElementById('ger-hex-txt') || {}).textContent || '' }; });
+    ok(nas && nas.lugar === 'encontro' && nas.comHex === true && nas.hex === '0,4' && nas.chave && /^Floresta \(hexágono 0, 4\)/.test(nas.txt), 'de ponta a ponta: nas Cenas, a janela abre no Encontro, com o hexágono do grupo: ' + j(nas));
+    await CF.evaluate(() => __tc.UI.closeModal());
+    await P.evaluate(() => document.getElementById('cenasF').remove());
+  }
   ok(Object.values(ger).every(g => g.hora === 'entardecer'), 'a hora do tempo de agora (o 8º de 10): entardecer, em todos');
   const clima = Object.fromEntries(Object.entries(ger).map(([k, g]) => [k, g.clima]));
   ok(clima['floresta-estrada'] === 'chuva' && clima.rio === 'chuva' && clima['savana-trilha'] === 'cinzas' && clima['neve-selvagem'] === 'vagalumes', 'o clima dos eventos: a tempestade e a inundação dão chuva, o incêndio cinzas, a magia vaga-lumes: ' + j(clima));

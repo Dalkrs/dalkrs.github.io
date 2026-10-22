@@ -58,7 +58,7 @@ const Regiao = (() => {
      água do rio custa (ele cruza onde é estreito, com a ponte), o lago, o mar e o penhasco não deixam. O primeiro vai de
      uma direção à outra; os outros, até ele. As pontes ficam onde ele cruza o rio (até quantas foram pedidas); o vau
      pedido fica no primeiro cruzamento. → { pontes } */
-  function poeCaminhos(K, F, T8, tipo, vau, sT) {
+  function poeCaminhos(K, F, T8, tipo, vau, sT, doHex) {
     const { W, H, P } = K, N = W * H, hw = hwDe(tipo), alt = F.alt, conta = { pontes: 0 };
     const lagos = F.lagos.map(l => l.pts), naLago = (x, y) => F.ehMar(x, y) || lagos.some(l => Tracado.dentro(l, x, y));
     // as casas do rio (dá para cruzar); as outras de água (o lago, o mar) não
@@ -92,22 +92,42 @@ const Regiao = (() => {
     // (o caminho serpenteia de leve; se a curva passar pela água parada ou pela pedra, fica o rumo de antes)
     const cabe = linha => linha.every(([x, y]) => !K.dentro(x, y, 0.01) || passa(Math.min(H - 1, Math.floor(y)) * W + Math.min(W - 1, Math.floor(x))));
     let nCam = 0;
-    const umCaminho = (cel, ini, fim) => {
+    // (lote 14, parte 14a: tipoC — o tipo deste caminho, quando não é o de todos; pI e pF — as pontas exatas do hexágono)
+    const umCaminho = (cel, ini, fim, tipoC, pI, pF) => {
+      const tp = tipoC || tipo, hwc = tipoC ? hwDe(tipoC) : hw;
       let pts = B.linhaDe(W, cel, ini, fim);
       const sr = MO.sub(sT, 47 + nCam++);
       for (const amp of [2.2, 1.3, 0.7]) { const ser = B.serpentear(pts, 4, mulberry((sr % 2147483000) + 1), amp, []); if (cabe(ser)) { pts = ser; break; } }
-      const ctrl = pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1), linha = MO.curva(ctrl), rs = rios();
+      if (pI || pF) pts = B.prenderPontas(pts, W, H, pI || null, pF || null);
+      const n = pts.length, ctrl = pts.filter((_, i) => i % 3 === 0 || i === n - 1 || (pI && i === 1) || (pF && i === n - 2)), linha = MO.curva(ctrl), rs = rios();
       for (const q of rs.length ? Tracado.cruzamentos(linha, { rios: rs, lago: null }) : []) {
         if (naLago(q.x, q.y) || !K.dentro(q.x, q.y, 0)) continue;
         if (P.pintados.some(o => (o.k === 'ponte' && Math.hypot(o.x - q.x, o.y - q.y) < (o.comp || 2) / 2 + 2) || (o.k === 'pedras' && o.pts.some(pq => Math.hypot(pq[0] - q.x, pq[1] - q.y) < 2)))) continue;
         if (vau && vau.quer && !vau.feito && K.dentro(q.x, q.y, 3)) { vau.feito = { x: q.x, y: q.y, ang: q.ang, hw: q.rio.hw, nome: travessia(K, q.x, q.y, q.ang, q.rio.hw, q.rio.tipo === 'lava') }; continue; }
         if (T8.pontes != null && conta.pontes >= T8.pontes) continue;
-        K.ponte(q.x, q.y, q.rio.hw * 2 + 1.6, hw * 2 + 0.5, q.ang, q.rio.tipo === 'lava' ? 'pedra' : null, 1);
+        K.ponte(q.x, q.y, q.rio.hw * 2 + 1.6, hwc * 2 + 0.5, q.ang, q.rio.tipo === 'lava' ? 'pedra' : null, 1);
         conta.pontes++;
       }
-      K.poeCaminho(ctrl, tipo);
+      K.poeCaminho(ctrl, tp);
       for (const q of cel) noCaminho.add(q);
     };
+    /* (lote 14, parte 14a) Os caminhos do hexágono: cada um vai da ponta dele na borda à outra (ou ao ponto onde ele acaba,
+       ali dentro), pelo mais barato — os que atravessam primeiro, a estrada antes; o caminho que já existe sai mais
+       barato (eles se juntam onde passam perto). A ponta que cai na água ou na pedra começa na casa livre mais perto. */
+    if (doHex) {
+      const livre = c0 => { if (passa(c0) && !noRio[c0]) return c0; let m = -1, dm = Infinity; const i0 = c0 % W, j0 = (c0 - i0) / W; for (let q = 0; q < N; q++) { if (!passa(q) || noRio[q]) continue; const d = Math.hypot(q % W - i0, Math.floor(q / W) - j0); if (d < dm) { dm = d; m = q; } } return m; };
+      const barato = (q, m, L) => { const c = custo(q, m, L); return K.occ[m] === 1 ? c * 0.55 : c; };
+      const ordem = doHex.filter(c => c.ini.borda || c.fim.borda).sort((a, b) => (b.ini.borda && b.fim.borda) - (a.ini.borda && a.fim.borda) || (b.t === 'estrada') - (a.t === 'estrada'));
+      for (const c of ordem) {
+        const [p, q2] = c.ini.borda ? [c.ini, c.fim] : [c.fim, c.ini], a = livre(p.cel), b = livre(q2.cel);
+        if (a < 0 || b < 0 || a === b) continue;
+        const cel = B.maisBarato(W, H, [a], x => x === b, barato);
+        if (!cel || cel.length < 3) continue;
+        const exA = a === p.cel, exB = q2.borda && b === q2.cel;
+        umCaminho(cel, exA ? p.fora : null, exB ? q2.fora : null, c.t, exA ? p : null, exB ? q2 : null);
+      }
+      return conta;
+    }
     // as direções: as da rosa (as do mar não contam); sem elas, um lado e o outro
     const noMar = id => { const p = Tracado.naBorda(id, W, H, 0, -1); return F.ehMar(p[0], p[1]); };
     let dirs = T8.portoes.filter(id => !noMar(id));
@@ -267,14 +287,18 @@ const Regiao = (() => {
     const K = MO.contexto(W, H, BB.ter, 'regiao', estilo, caminho, sT, pal), P = K.P;
     const rV = mulberry((MO.sub(seed, 2) % 2147483000) + 1);
     const T8 = Tracado.escolhas(o, [], null);
+    // (lote 14, parte 14a) o hexágono do Mapa-múndi: os vizinhos nas bordas (e a água deles), o rio e os caminhos do mapa
+    // pelos pontos certos da borda (o que o mapa não tem fica à escolha: sem rio no mapa, a Água; sem caminho, o Caminho)
+    const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex), rioDoMapa = comHex && hex.rios.length > 0, camDoMapa = comHex && hex.caminhos.length > 0;
     // a água: a Surpresa sorteia (escolher o rio na rosa garante o rio)
     let agua = aguaPedida, paraLago = false;
-    if (agua === 'surpresa') {
+    if (rioDoMapa) agua = 'rio';
+    else if (agua === 'surpresa') {
       if (Tracado.rioDaRosa(T8.rio)) agua = 'rio';
       else { const u = MO.sub(sT, 42) % 100; agua = u < 62 ? 'rio' : u < 85 ? 'lago' : 'nenhuma'; paraLago = u >= 45 && u < 62; }
     }
     const rioOp = agua === 'rio' ? { de: T8.rio.de, para: T8.rio.para || (paraLago ? 'lago' : null), curvas: T8.rio.curvas, hw: T8.rio.larg ? Tracado.LARGURA[T8.rio.larg] : 1.2, afluente: T8.rio.afluente, lago: T8.rio.lago } : null;
-    const F = B.campo(W, H, MO.sub(sT, 40), { bioma, mistura, agua, rio: rioOp });
+    const F = comHex ? HexCena.campo(W, H, MO.sub(sT, 40), { bioma, mistura, hex, agua, rio: rioOp }) : B.campo(W, H, MO.sub(sT, 40), { bioma, mistura, agua, rio: rioOp });
     P.biomas = []; P.pontos = []; P.lagos = []; P.rios = []; P.patamares = { morros: 0, planaltos: 0, paredoes: 0 };
     // o chão dos vizinhos (as manchas de beira macia, no desenho)
     for (const v of F.vizs) { const pts = F.manchas.filter(m => m.bio === v).map(m => m.pts); if (pts.length) P.biomas.push({ id: v, pal: palDe(v), pts }); }
@@ -292,6 +316,13 @@ const Regiao = (() => {
       K.pinta(1, 'espuma', { pts: F.mar.beira });
       P.mar = { lado: F.mar.lado };
     }
+    // (lote 14, parte 14a) a água dos vizinhos do hexágono: a praia, a água e a espuma, como o mar da costa
+    for (const A of F.mares || []) {
+      K.pinta(0, 'praia', { pts: A.praia }); K.marcaPoli(A.praia, 5);
+      aguaParada(A.pts, 'mar', -2, 2);
+      K.pinta(1, 'espuma', { pts: A.beira });
+    }
+    if (F.mares && F.mares.length) P.mar = { lado: null };
     // os lagos: o tipo é o do bioma onde ele fica (o gelo, na neve e na tundra: dá para andar, e escorrega)
     const agLagos = [];
     for (const L of F.lagos) {
@@ -326,7 +357,7 @@ const Regiao = (() => {
     const escolhidos = tipos.slice(0, TAMANHOS[tam].pontos), vau = { quer: escolhidos.includes('vau'), feito: null };
     // o caminho (sem caminho, a rosa ainda põe trilhas)
     const tipoCam = caminho === 'nenhum' ? (T8.portoes.length ? 'trilha' : null) : caminho;
-    const conta = tipoCam ? poeCaminhos(K, F, T8, tipoCam, vau, sT) : { pontes: 0 };
+    const conta = camDoMapa ? poeCaminhos(K, F, T8, 'trilha', vau, sT, F.linhas.caminhos) : tipoCam ? poeCaminhos(K, F, T8, tipoCam, vau, sT) : { pontes: 0 };
     // a chegada: na ponta do caminho que entra no mapa; sem caminho, numa borda de terra
     let chegada;
     if (K.rota) { const p = K.rota.find(([x, y]) => x >= 0.6 && y >= 0.6 && x <= W - 0.6 && y <= H - 0.6) || K.rota[0]; chegada = MO.lugarDePe(K, clamp(p[0], 0.6, W - 0.6), clamp(p[1], 0.6, H - 0.6)); }
@@ -374,6 +405,8 @@ const Regiao = (() => {
     if (!P.tracado.length) P.tracado.push({ k: 'circ', x: W / 2, y: H / 2, r: 3 });
     delete P.dens; delete P.esp;
     const seco = !!o.seco && [bioma].concat(F.vizs).some(id => SECO[B.BIO[id].pal]);
+    // (lote 14, parte 14a: o hexágono — só quando veio; sem ele, o plano é o de sempre)
+    if (comHex) P.hex = { k: hex.k, q: hex.q, r: hex.r, orient: hex.orient, viz: Object.assign({}, hex.viz), ter: hex.ter, nome: hex.nome, rios: F.linhas.rios.length, caminhos: F.linhas.caminhos.length, agua: (F.mares || []).length, rioDoMapa, camDoMapa };
     return Object.assign(P, { v: 1, lugar: 'regiao', bioma, mistura, aguaPedida, agua, seed, sT, tamanho: tam, vizinhos: F.vizs.slice(), pontesNovas: conta.pontes, travaTracado: !!trava, comMarcas, seco, sitPedida: null, occ: Array.from(K.occ) });
   }
 
@@ -403,6 +436,8 @@ const Regiao = (() => {
     // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
     if (p.estacao) partes.push(Estacoes.texto(p));
     partes.push(...Historia.texto(p));
+    // (lote 14, parte 14a) o hexágono do Mapa-múndi
+    if (p.hex) partes.push(HexCena.resumoTxt(p.hex));
     return partes.join(' · ') + '.';
   }
   const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; };
@@ -414,19 +449,23 @@ const Regiao = (() => {
       tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado),
       historia: Historia.valida(o.regHist), achados: o.regAchados !== false };        // (lote 13, parte 13c) a história do lugar e os achados raros
   }
-  function controles(st, K, mudou) {
-    const { field, seg, toggle } = K;
+  /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o rio e os caminhos dele ficam no
+     lugar da Água e do Caminho (e da rosa do Traçado); sem rio ou sem caminho no mapa, a escolha continua */
+  function controles(st, K, mudou, ctx) {
+    const { field, seg, toggle, note } = K;
     // (o bioma, a mistura, o tamanho, a água e o caminho trocam o traçado: soltam a trava)
     const muda = (campo, v) => { st[campo] = v; lembrar(st); mudou(true, { soltar: true }); };
-    const temRio = st.agua === 'rio' || st.agua === 'surpresa';
+    const hx = ctx && ctx.hex ? ctx.hex : null, rioHex = hx && hx.rios.length ? HexCena.rioTxt(hx) : '', camHex = hx && hx.caminhos.length ? HexCena.caminhosTxt(hx) : '';
+    const doMapa = (id, txt) => { const n = note('Do Mapa-múndi: ' + txt + '.'); n.id = id; return n; };
+    const temRio = !!rioHex || st.agua === 'rio' || st.agua === 'surpresa';
     return h('div', { class: 'ger-c' },
       field('Bioma', seg('reg-bio', st.bioma, B.LISTA.map(b => [b.id, b.n]), v => muda('bioma', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Mistura', seg('reg-mis', st.mistura, B.MISTURAS, v => muda('mistura', v)), 'stack'),
         field('Tamanho', seg('reg-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados · ' + plural(TAMANHOS[k].pontos, 'ponto de interesse', 'pontos de interesse')]), v => muda('tamanho', v)), 'stack')),
       h('div', { class: 'ger-l' },
-        field('Água', seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
-        field('Caminho', seg('reg-cam', st.caminho, CAMINHOS, v => muda('caminho', v)), 'stack')),
+        field('Água', rioHex ? doMapa('reg-agua-hex', rioHex) : seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
+        field('Caminho', camHex ? doMapa('reg-cam-hex', camHex) : seg('reg-cam', st.caminho, CAMINHOS, v => muda('caminho', v)), 'stack')),
       // (lote 13, parte 13c) a história do lugar e os achados raros
       Historia.campo(st, K, () => { lembrar(st); mudou(true); }, 'reg'),
       toggle('reg-achados', st.achados !== false, v => { st.achados = v; lembrar(st); mudou(true); }, 'Achados raros: a semente decide, um em cada quatro lugares (só você vê o marcador)'),
@@ -434,7 +473,8 @@ const Regiao = (() => {
       Tracado.secao(st.t || (st.t = tracadoDe(null)), K, () => { lembrar(st); mudou(true); }, { pre: 'reg', portoes: 'Caminhos',
         portoesNota: 'De onde chegam os caminhos: o primeiro atravessa a região; os outros vão até ele.',
         rio: temRio, rioNota: st.agua === 'lago' ? 'Só o lago, sem rio: escolha "Rio" ou a Surpresa em Água para ter o rio.' : 'Sem água: escolha "Rio" ou a Surpresa em Água para ter o rio.',
-        mar: st.bioma === 'costa', rioDica: st.agua === 'surpresa' ? 'Na Surpresa, escolher de onde o rio vem (ou para onde vai) garante o rio.' : 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto.', pontes: true, relevo: false }));
+        mar: st.bioma === 'costa', rioDica: rioHex ? 'O rio desce pelo relevo, do ponto por onde entra ao por onde sai.' : st.agua === 'surpresa' ? 'Na Surpresa, escolher de onde o rio vem (ou para onde vai) garante o rio.' : 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto.', pontes: true, relevo: false,
+        rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + '.' : null }));
   }
   const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas },
     Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
@@ -473,7 +513,8 @@ const Regiao = (() => {
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
-  const LUGAR = { aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 14, parte 14a) a Região livre aceita o hexágono de terra
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex), biomaDe: st => st.bioma, aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
     aceitaSeco: true,
     dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',

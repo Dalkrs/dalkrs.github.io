@@ -1503,11 +1503,12 @@ const Encontro = (() => {
      têm sementes próprias: com as escolhas de sempre, o encontro sai igual. */
   const MATA_NAT = { estrada: true, floresta: true, campo: true, selva: true, pantano: true, corrompida: true, montanha: true };
   function prepararTracado(K, T8, sT, chave, rioVale, F) {
-    const { W, H, P } = K, rosa = rioVale && Tracado.rioDaRosa(T8.rio), conta = { pontes: 0 }, novas = [];
+    // (lote 14, parte 14a: T8.rio.hex — o rio do hexágono do Mapa-múndi, pelos pontos dele)
+    const { W, H, P } = K, rosa = rioVale && (Tracado.rioDaRosa(T8.rio) || !!T8.rio.hex), conta = { pontes: 0 }, novas = [];
     // (o ensaio: a situação põe um rio dela? o mesmo sorteio, numa grade à parte — e por onde passam os caminhos dela)
-    let temRio = null, ocupado = null;
+    let temRio = null, ocupado = null, cobre = false;
     const caminhosEnsaio = [];
-    if (rosa && !K.P.aguaToda) {
+    if ((rosa || (F && F.hexAgua)) && !K.P.aguaToda) {
       temRio = false;
       const Kd = contexto(W, H, K.terreno, K.sit, K.estilo, K.caminho, sT, K.pal), pc0 = Kd.poeCaminho;
       if (K.mar) Kd.mar = K.mar;                                       // (lote 13, parte 13b: o mar da costa, já sorteado)
@@ -1515,7 +1516,11 @@ const Encontro = (() => {
       Kd.poeCaminho = (ctrl, tipo) => { if ((tipo || Kd.caminho) !== 'nenhum') caminhosEnsaio.push(curva(ctrl)); return pc0(ctrl, tipo); };
       try { SIT[chave](Kd); } catch (e) { temRio = true; }
       ocupado = Kd.occ;
+      if (Kd.P.aguaToda || Kd.P.cavernas.length) cobre = true;
     }
+    // (lote 14, parte 14a) a água dos vizinhos do hexágono, fora do que a situação usa, antes de tudo (não onde a
+    // situação cobre tudo: a gruta)
+    if (F && F.hexAgua && !cobre) poeAguaDoHex(K, F, ocupado);
     // (o lago fica longe dos caminhos da situação: a travessia dela é no rio, e o caminho não acaba no meio do lago)
     const longeDosCaminhos = (T8.rio.lago || T8.rio.para === 'lago') && caminhosEnsaio.length ? R0 => {
       if (!R0.lago) return true;
@@ -1663,12 +1668,99 @@ const Encontro = (() => {
     const alt = B.alturas(W, H, sub(sT, 74), { de: rio && Tracado.valida(rio.de) ? rio.de : null, para: rio && Tracado.valida(rio.para) ? rio.para : null, mar: marLado, k: 0.7 });
     return { B: BB, vizs, alt, marLado, mar, mist };
   }
+  /* (lote 14, parte 14a) O chão do hexágono do Mapa-múndi, antes da situação: o de chaoAntes (o bioma do terreno; na costa,
+     o mar dela), com os vizinhos do mapa nas bordas no lugar dos sorteados, a água deles (posta em prepararTracado, fora
+     do que a situação usa) e a altura do rio do mapa (alta de onde ele vem, baixa para onde vai e perto da água). */
+  function chaoAntesHex(K, T8, sT, mist, hex) {
+    const F = chaoAntes(K, T8, sT, mist), { W, H } = K;
+    const M = HexCena.mapa(W, H, hex, F.B.id, mist), Ls = HexCena.linhas(hex, W, H), rh = HexCena.rioDoMapa(Ls, M, W, H);
+    if (!F.marLado && (rh || M.temAgua)) {
+      const rio = Tracado.rioDaRosa(T8.rio) ? T8.rio : null;
+      F.alt = HexCena.altura(W, H, sub(sT, 74), M, HexCena.distancia(W, H, q => M.agua[q] === 1), rh, { de: rio && Tracado.valida(rio.de) ? rio.de : null, para: rio && Tracado.valida(rio.para) ? rio.para : null, k: 0.7 });
+    }
+    return Object.assign(F, { vizs: M.vizs.slice(), hexM: M, hexL: Ls, hexRio: rh, hexAgua: M.temAgua, hexPontas: HexCena.pontasDosCaminhos(Ls) });
+  }
+  // a água dos vizinhos do hexágono: as casas dela fora do que a situação põe (o ensaio, com um quadrado de folga), com a
+  // praia, as duas demãos e a espuma (como o mar da costa)
+  function poeAguaDoHex(K, F, ocupado) {
+    const { W, H, P } = K, N = W * H, ag = new Uint8Array(N), usado = new Uint8Array(N);
+    if (ocupado) for (let q = 0; q < N; q++) {
+      const v = ocupado[q];
+      if (v === 0 || v === 6 || v === 2) continue;
+      const i = q % W, j = (q - i) / W;
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const x = i + a, y = j + b; if (x >= 0 && y >= 0 && x < W && y < H) usado[y * W + x] = 1; }
+    }
+    for (let q = 0; q < N; q++) ag[q] = F.hexM.agua[q] && !usado[q] ? 1 : 0;
+    const As = HexCena.aguas(W, H, { agua: ag });
+    for (const A of As) {
+      K.pinta(0, 'praia', { pts: A.praia }); K.marcaPoli(A.praia, 5);
+      K.poeLago(A.pts, 'mar', -2, 2);
+      K.pinta(1, 'aguaParada', { pts: A.pts, tipo: 'mar', semBeira: true });
+      K.pinta(1, 'espuma', { pts: A.beira });
+    }
+    if (As.length) P.mar = { lado: null };
+    const dA = HexCena.distancia(W, H, q => ag[q] === 1);
+    Object.assign(F, { aguaQ: q => ag[q] === 1, dAguaQ: q => dA[q], mares: As });
+  }
+  /* (lote 14, parte 14a) Os caminhos do hexágono que a situação não levou: cada ponta que sobrou vai pelo mais barato até
+     o caminho que já existe (sem nenhum, o primeiro do mapa que atravessa vai de uma ponta à outra) — a água, a pedra e o
+     que a situação põe não deixam; o rio custa (a ponte fica onde ele cruza). → quantos */
+  function caminhosDoHex(K, F, sobra, sT) {
+    const { W, H, P } = K, N = W * H, B = Biomas, alt = F.alt;
+    const noRio = new Uint8Array(N);
+    for (const a of P.aguas) if (a.k === 'rio') for (let k = 0; k < a.pts.length; k += 2) { const [x, y] = a.pts[k], rr = a.hw + 0.4; for (let j = Math.max(0, Math.floor(y - rr)); j <= Math.min(H - 1, Math.floor(y + rr)); j++) for (let i = Math.max(0, Math.floor(x - rr)); i <= Math.min(W - 1, Math.floor(x + rr)); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= rr) noRio[j * W + i] = 1; }
+    const passa = q => { const v = K.occ[q]; return !(v === 3 || v === 7 || v === 8 || v === 10 || (v === 2 && !noRio[q])); };
+    const nz = Tracado.ruido(sub(sT, 90));
+    const custo = (q, m, L) => {
+      if (!passa(m)) return Infinity;
+      const v = K.occ[m], x = m % W + 0.5, y = Math.floor(m / W) + 0.5;
+      let c = 1 + 12 * Math.abs(alt[m] - alt[q]) + 1.2 * nz(x / 5, y / 5);
+      if (noRio[m]) c += 6;
+      if (v === 5) c += 3;
+      if (v === 4) c += 0.8;
+      if (v === 1) c *= 0.5;
+      if (Math.min(x, y, W - x, H - y) < 2) c += 1.5;
+      return L * c;
+    };
+    const livre = c0 => { if (passa(c0) && !noRio[c0]) return c0; let m = -1, dm = Infinity; const i0 = c0 % W, j0 = (c0 - i0) / W; for (let q = 0; q < N; q++) { if (!passa(q) || noRio[q]) continue; const d = Math.hypot(q % W - i0, Math.floor(q / W) - j0); if (d < dm) { dm = d; m = q; } } return m; };
+    const desenha = (cel, pI, pF, tipo) => {
+      let pts = B.linhaDe(W, cel, pI ? pI.fora : null, pF ? pF.fora : null);
+      pts = B.prenderPontas(pts, W, H, pI, pF);
+      const n = pts.length, ctrl = pts.filter((_, i) => i % 3 === 0 || i === n - 1 || (pI && i === 1) || (pF && i === n - 2));
+      K.rosaCaminho = true;
+      K.poeCaminho(ctrl, tipo);
+      K.rosaCaminho = false;
+    };
+    let feitos = 0;
+    const naRede = () => { const s = new Set(); for (let q = 0; q < N; q++) if (K.occ[q] === 1) s.add(q); return s; };
+    // (sem caminho nenhum: o primeiro do mapa que atravessa, de ponta a ponta)
+    if (!P.caminhos.length) {
+      const c = F.hexL.caminhos.find(x => x.ini.borda && x.fim.borda && sobra.some(p => p.cel === x.ini.cel) && sobra.some(p => p.cel === x.fim.cel));
+      if (c) {
+        const a = livre(c.ini.cel), b = livre(c.fim.cel), cel = a >= 0 && b >= 0 && a !== b ? B.maisBarato(W, H, [a], q => q === b, custo) : null;
+        if (cel && cel.length > 2) { desenha(cel, a === c.ini.cel ? c.ini : null, b === c.fim.cel ? c.fim : null, c.t); feitos++; sobra = sobra.filter(p => p.cel !== c.ini.cel && p.cel !== c.fim.cel); }
+      }
+    }
+    for (const p of sobra.slice().sort((x, y) => (y.t === 'estrada') - (x.t === 'estrada'))) {
+      const rede = naRede(), a = livre(p.cel);
+      if (a < 0) continue;
+      // (sem rede: até o meio do encontro)
+      const f = K.P.foco, alvoF = Math.min(H - 1, Math.max(0, Math.floor(f[1]))) * W + Math.min(W - 1, Math.max(0, Math.floor(f[0])));
+      const cel = B.maisBarato(W, H, [a], q => (rede.size ? rede.has(q) : q === alvoF), custo);
+      if (!cel || cel.length < 3) continue;
+      desenha(cel, a === p.cel ? p : null, null, p.t);
+      feitos++;
+    }
+    return feitos;
+  }
   // o rio da rosa no chão novo: desce pelo relevo (do alto para o baixo, até o outro lado, o lago ou o mar); serve(R),
   // como no Tracado.rioPlano, nota cada tentativa (o lago longe dos caminhos da situação). → { rios: [{ pts }], lago }
   function rioDoRelevo(K, F, r, sT, serve, ocupado) {
     const { W, H } = K, mar = F.mar, N = W * H;
     const R0 = { de: r.de, para: mar && r.para !== 'lago' ? null : r.para, curvas: r.curvas, hw: r.larg ? Tracado.LARGURA[r.larg] : 1.2, afluente: r.afluente, lago: r.lago };
-    const ehMarQ = q => !!mar && mar.noMar(q % W + 0.5, Math.floor(q / W) + 0.5);
+    // (lote 14, parte 14a) o rio do hexágono: os pontos do mapa (a rosa não conta); a água dos vizinhos é mar
+    if (r.hex) Object.assign(R0, { de: null, para: null, pIni: r.hex.pIni, pFim: r.hex.pFim, pAf: r.hex.pAf, afluente: !!r.hex.pAf || r.afluente });
+    const ehMarQ = q => (!!mar && mar.noMar(q % W + 0.5, Math.floor(q / W) + 0.5)) || (!!F.aguaQ && F.aguaQ(q));
     const querLago = !!(R0.lago || R0.para === 'lago');
     // (o rio não passa pelas construções, pelas pedras grandes nem pelo convés da situação: elas, com um quadrado de
     // folga; o lago também não cresce por cima do caminho nem da área dela — e, se não couber, só fora do que é duro)
@@ -1676,7 +1768,7 @@ const Encontro = (() => {
     const duro = new Uint8Array(N), tudo = new Uint8Array(N);
     if (ocupado) for (let q = 0; q < N; q++) { const v = ocupado[q], i = q % W, j = (q - i) / W; if (v === 0 || v === 6 || v === 2) continue; marca(tudo, i, j, v === 1 ? 2 : 1); if (v === 3 || v === 8) marca(duro, i, j, 1); }
     if (ocupado) R0.bloq = q => duro[q] === 1;
-    const pertoDe = perto => q => { if (perto && perto[q]) return true; if (!mar) return false; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5, l = mar.lado; return (l === 'n' ? y : l === 's' ? H - y : l === 'o' ? x : W - x) < mar.prof(l === 'n' || l === 's' ? x : y) + 3; };
+    const pertoDe = perto => q => { if (perto && perto[q]) return true; if (F.aguaQ && F.dAguaQ(q) < 3) return true; if (!mar) return false; const x = q % W + 0.5, y = Math.floor(q / W) + 0.5, l = mar.lado; return (l === 'n' ? y : l === 's' ? H - y : l === 'o' ? x : W - x) < mar.prof(l === 'n' || l === 's' ? x : y) + 3; };
     let melhor = null, nota0 = -Infinity;
     for (const perto of ocupado ? [tudo, duro] : [null]) for (let k = 0; k < 8; k++) {
       const A = Biomas.aguaDe(W, H, F.alt, sub(sT, 80 + k), 'rio', R0, mar, ehMarQ, pertoDe(perto));
@@ -1728,7 +1820,8 @@ const Encontro = (() => {
      patamares (o morro, o planalto, o paredão) só onde a situação não usa. */
   function chaoDepois(K, F, sT, seco) {
     const { W, H, P } = K, B = Biomas, [fx, fy] = P.foco;
-    const bio = B.mapaDosBiomas(W, H, sub(sT, 75), F.B, F.vizs, B.FRACAO[F.mist], F.alt, F.marLado, { x: fx, y: fy, R: Math.hypot(W, H) * 0.32 });
+    // (lote 14, parte 14a: no hexágono, o chão dos vizinhos do mapa)
+    const bio = F.hexM ? F.hexM.bio : B.mapaDosBiomas(W, H, sub(sT, 75), F.B, F.vizs, B.FRACAO[F.mist], F.alt, F.marLado, { x: fx, y: fy, R: Math.hypot(W, H) * 0.32 });
     F.bio = bio;
     F.bioEm = (x, y) => B.LISTA[bio[clamp(Math.floor(y), 0, H - 1) * W + clamp(Math.floor(x), 0, W - 1)]];
     F.palDe = id => { const p0 = B.BIO[id].pal; return seco && SECO[p0] ? SECO[p0] : p0; };
@@ -1739,7 +1832,7 @@ const Encontro = (() => {
     for (const v of F.vizs) { const pts = manchas.filter(m => m.bio === v).map(m => m.pts); if (pts.length) P.biomas.push({ id: v, pal: F.palDe(v), pts }); }
     // os patamares, onde a situação não usa
     F.livre = livresDaSituacao(K);
-    const { planaltos, paredoes } = B.patamares(W, H, F.alt, bio, q => F.livre[q] === 1);
+    const { planaltos, paredoes } = B.patamares(W, H, F.alt, bio, F.hexM ? q => F.livre[q] === 1 && Math.min(q % W, Math.floor(q / W), W - 1 - q % W, H - 1 - Math.floor(q / W)) >= 3 : q => F.livre[q] === 1);
     P.patamares = { morros: 0, planaltos: 0, paredoes: 0 };
     for (const pl of planaltos) {
       const BP = B.BIO[pl.bio], BC = seco && SECO[BP.pal] ? B.BIO.savana : BP, cores = BP.rocha ? Paisagem.pedraDe(BP.pedra) : BC.morro;
@@ -1788,8 +1881,11 @@ const Encontro = (() => {
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', W = TAMANHOS[tam].W, H = TAMANHOS[tam].H;
     const T = TER[o.terreno] || TERRENOS[0], terreno = T.id, estilo = Estilos.valido(o.estilo), seed = (Math.round(Number(o.seed)) >>> 0) || 1;
     const caminho = camValido(terreno, o.caminho), sitPedida = T.sit.some(s => s[0] === o.situacao) ? o.situacao : 'surpresa';
+    // (lote 14, parte 14a) o hexágono do Mapa-múndi: o chão novo com os vizinhos do mapa nas bordas (e a água deles), o rio
+    // e os caminhos do mapa pelos pontos certos da borda — onde o terreno tem chão de bioma (o pântano e a água cobrem tudo)
+    const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex) && !!BIOMA[terreno];
     // (lote 13, parte 13b) o chão novo (chao 2: os modelos de antes não têm e ficam no de sempre) e a mistura dele
-    const chao = chaoDe(terreno, o.chao), mist = chao === 2 ? Biomas.mistura(o.mistura) : null;
+    const chao = comHex ? 2 : chaoDe(terreno, o.chao), mist = chao === 2 ? Biomas.mistura(o.mistura) : null;
     const trava = limparTrava(o.trava, { terreno, tamanho: tam, caminho, sitPedida, chao, mistura: mist });
     const sit = trava ? trava.sit : sitPedida !== 'surpresa' ? sitPedida : T.sit[sub(seed, 9) % T.sit.length][0];
     const sT = trava ? trava.s : (sub(seed, 1) % 2147483000) + 1;
@@ -1798,12 +1894,27 @@ const Encontro = (() => {
     const pal = o.seco && SECO[pal0] ? SECO[pal0] : pal0;
     const K = contexto(W, H, terreno, sit, estilo, caminho, sT, pal);
     // (lote 8, parte 5) o traçado escolhido na janela: o rio, as pontes, os caminhos da rosa e o relevo natural
-    const T8 = Tracado.escolhas(o, [], null), mudaRio = terreno !== 'agua' && (Tracado.rioDaRosa(T8.rio) || T8.rio.larg != null || T8.rio.curvas != null);
-    // (o chão novo, antes da situação: os vizinhos, a altura e o mar da costa)
-    const F = chao === 2 ? chaoAntes(K, T8, sT, mist) : null;
-    const conta = mudaRio || T8.portoes.length || T8.pontes != null ? prepararTracado(K, T8, sT, terreno + '.' + sit, terreno !== 'agua', F) : null;
+    const T8 = Tracado.escolhas(o, [], null);
+    // (o chão novo, antes da situação: os vizinhos, a altura e o mar da costa — no hexágono, os do mapa)
+    const F = chao === 2 ? (comHex ? chaoAntesHex(K, T8, sT, mist, hex) : chaoAntes(K, T8, sT, mist)) : null;
+    if (F && F.hexRio) T8.rio = Object.assign({}, T8.rio, { hex: F.hexRio });
+    const mudaRio = terreno !== 'agua' && (Tracado.rioDaRosa(T8.rio) || T8.rio.larg != null || T8.rio.curvas != null || !!T8.rio.hex);
+    const conta = mudaRio || T8.portoes.length || T8.pontes != null || comHex ? prepararTracado(K, T8, sT, terreno + '.' + sit, terreno !== 'agua', F) : null;
+    // (lote 14, parte 14a) os caminhos da situação com as pontas nos pontos do hexágono (enquanto houver pontas)
+    let pontasHex = F && F.hexPontas ? F.hexPontas.slice() : [];
+    if (pontasHex.length) {
+      const pc = K.poeCaminho;
+      K.poeCaminho = (ctrl, tipo) => {
+        if (!pontasHex.length || (tipo || K.caminho) === 'nenhum') return pc(ctrl, tipo);
+        const r = HexCena.prenderNaSituacao(ctrl, W, H, pontasHex);
+        pontasHex = pontasHex.filter(p => !r.usadas.some(u => u.cel === p.cel && u.x === p.x && u.y === p.y));
+        return pc(r.ctrl, tipo);
+      };
+    }
     SIT[terreno + '.' + sit](K);
-    const rosa8 = T8.portoes.length && terreno !== 'agua' ? caminhosDaRosa(K, T8.portoes, sT) : null;
+    // (no hexágono com caminhos do mapa, os que sobraram; a rosa só quando o mapa não tem caminho ali)
+    const camHex = F && F.hexL && F.hexL.caminhos.length ? caminhosDoHex(K, F, pontasHex, sT) : null;
+    const rosa8 = T8.portoes.length && terreno !== 'agua' && camHex == null ? caminhosDaRosa(K, T8.portoes, sT) : null;
     const rV = mulberry((sub(seed, 2) % 2147483000) + 1);
     // (o chão novo, depois da situação — menos onde ela cobre tudo: a gruta — e no lugar do relevo natural)
     const novo = F && !K.P.aguaToda && !K.P.cavernas.length;
@@ -1827,6 +1938,8 @@ const Encontro = (() => {
     if (nat8) P.pedrasNat = nat8.pedras.length;
     // (lote 13, parte 13b: o chão novo, a mistura e os vizinhos que ficaram; no de antes, nada disso)
     if (F) Object.assign(P, { chaoNovo: true, mistura: mist, vizinhos: novo ? F.vizs.slice() : [] });
+    // (lote 14, parte 14a: o hexágono — só quando veio; sem ele, o plano é o de sempre)
+    if (F && F.hexM) P.hex = { k: hex.k, q: hex.q, r: hex.r, orient: hex.orient, viz: Object.assign({}, hex.viz), ter: hex.ter, nome: hex.nome, rios: F.hexL.rios.length, caminhos: F.hexL.caminhos.length, agua: (F.mares || []).length, rioDoMapa: !!F.hexRio, camDoMapa: F.hexL.caminhos.length > 0 };
     const seco = pal !== pal0 || !!(novo && o.seco && F.vizs.some(v => SECO[Biomas.BIO[v].pal]));
     return Object.assign(P, { v: 1, lugar: 'encontro', seed, sT, tamanho: tam, sitPedida, travaTracado: !!trava, comMarcas: o.marcas !== false, seco, occ: Array.from(K.occ) });
   }
@@ -2049,6 +2162,8 @@ const Encontro = (() => {
     if (p.navios.length) partes.push(p.navios.length === 1 ? 'um navio' : p.navios.length + ' navios');
     if (p.visao.length) partes.push(p.visao.length + ' paredes de visão');
     if (p.zonas.length) partes.push(p.zonas.length === 1 ? '1 zona' : p.zonas.length + ' zonas');
+    // (lote 14, parte 14a) o hexágono do Mapa-múndi
+    if (p.hex) partes.push(HexCena.resumoTxt(p.hex));
     return partes.join(' · ') + '.';
   }
   function previa(cv, p, maxW, maxH, op) {
@@ -2093,11 +2208,14 @@ const Encontro = (() => {
       historia: Historia.valida(o.encHist), achados: o.encAchados !== false };     // (13c) a história do lugar e os achados raros
   }
   const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; };
-  function controles(st, K, mudou) {
+  /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o chão novo vem junto, e o rio e os
+     caminhos dele ficam no lugar da rosa do Traçado (o Caminho continua: é o da situação) */
+  function controles(st, K, mudou, ctx) {
     const { field, seg, toggle, note, btn } = K, T = TER[st.terreno];
     const camOps = st.terreno === 'agua' ? null : st.terreno === 'estrada' ? CAMINHOS.filter(c => c[0] !== 'nenhum') : CAMINHOS;
+    const hx = ctx && ctx.hex ? ctx.hex : null, rioHex = hx && hx.rios.length ? HexCena.rioTxt(hx) : '', camHex = hx && hx.caminhos.length ? HexCena.caminhosTxt(hx) : '';
     // (lote 13, parte 13b) o chão: o novo, com a mistura; o de antes, num modelo de antes (com o botão para trocar)
-    const chao = chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno], semTerra = st.terreno === 'agua' || st.terreno === 'pantano';
+    const chao = hx ? 2 : chaoDe(st.terreno, st.chao), semChao = !BIOMA[st.terreno], semTerra = st.terreno === 'agua' || st.terreno === 'pantano';
     const usarNovo = () => {
       st.chao = 2; mudou(true, { soltar: true });
       UI.toast('O chão novo: as manchas dos vizinhos e os morros longe da situação.', { action: 'Desfazer', run: () => { if (document.getElementById('ger-prev')) { st.chao = 1; mudou(true, { soltar: true }); } } });
@@ -2119,7 +2237,8 @@ const Encontro = (() => {
         portoesNota: 'De onde chegam os caminhos: de cada direção ligada, um caminho até o da situação (ou até o meio do encontro).',
         rio: st.terreno === 'agua' ? false : true, rioNota: 'No mar, não há rio.', mar: st.terreno === 'costa',
         rioDica: chao === 2 ? 'O rio desce pelo relevo: de onde ele vem, o chão é mais alto. O da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.' : 'O rio da situação muda; se ela não tem rio, escolher de onde ele vem põe um rio novo.',
-        pontes: true, relevo: chao === 2 ? false : undefined }));
+        pontes: true, relevo: chao === 2 ? false : undefined,
+        rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + ' (o da situação vai até eles).' : null }));
   }
   const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null,
     Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
@@ -2161,7 +2280,8 @@ const Encontro = (() => {
   const quantasTravadas = p => (p.travaTracado ? 1 : 0);
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
-  const LUGAR = { aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  // (lote 14, parte 14a) o Encontro aceita o hexágono de terra nos terrenos de chão de bioma (o pântano e a água cobrem tudo)
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex) && !!BIOMA[st.terreno], biomaDe: st => BIOMA[st.terreno] || null, aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os morros e os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',

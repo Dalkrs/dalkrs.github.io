@@ -1433,14 +1433,24 @@
     if (c.eventos.length) out.eventos = c.eventos.map(x => N().nomeEvento(x)).slice(0, 6);
     return out;
   };
+  /* (lote 14, parte 14a) o hexágono do ponto (N().hexParaCena: o terreno dele e dos seis vizinhos, os rios e os
+     caminhos que passam por ele) e a Região livre já preenchida com ele: o bioma, o rio (se o mapa tem) e o caminho
+     (o tipo do mapa; sem caminho no mapa, nenhum) — a janela abre no Encontro e a aba Região livre também vem pronta */
+  function doHexagono(m, x, y) {
+    const hx = N().hexDe(m, x, y), hex = hx && N().hexParaCena ? N().hexParaCena(m, hx.q, hx.r) : null;
+    if (!hex) return null;
+    const out = { hex };
+    if (hex.ter && hex.ter !== 'agua') out.ops = { regiao: { bioma: hex.ter, agua: hex.rios.length ? 'rio' : 'nenhuma', caminho: hex.caminhos.some(c => c.t === 'estrada') ? 'estrada' : hex.caminhos.length ? 'trilha' : 'nenhum' } };
+    return out;
+  }
   // "Gerar a cena aqui": um encontro onde o grupo está
   function gerarAqui(g) {
     const m = App.mapa;
     if (!m || !naCasca() || !App.podeEditar()) return false;
-    const ter = terrenoNoPonto(m, g.x, g.y), rt = g.rota ? achar(m, g.rota) : null, via = rt ? rt.via : '';
+    const ter = terrenoNoPonto(m, g.x, g.y), rt = g.rota ? achar(m, g.rota) : null, via = rt ? rt.via : '', hx = doHexagono(m, g.x, g.y);
     let op;
     // (lote 7, parte 4b-3) no terreno Ruínas, fora do mar e do rio: a aba Ruínas
-    if (ter && ter.tex === 'ruinas' && via !== 'mar' && via !== 'rio') return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'ruinas', op: { terreno: 'campo' } }, comum(m, g.x, g.y)) });
+    if (ter && ter.tex === 'ruinas' && via !== 'mar' && via !== 'rio') return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'ruinas', op: { terreno: 'campo' } }, comum(m, g.x, g.y), hx) });
     if (via === 'mar') op = { terreno: 'agua', situacao: 'navio' };
     else if (via === 'rio') op = { terreno: 'agua', situacao: 'barco' };
     else {
@@ -1449,7 +1459,7 @@
       if (terreno === 'campo' && cam !== 'nenhum' && !(e && e[1])) terreno = 'estrada';
       op = { terreno, situacao: e && e[1] && terreno === e[0] ? e[1] : 'surpresa', caminho: terreno === 'estrada' && cam === 'nenhum' ? 'trilha' : cam };
     }
-    return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'encontro', op }, comum(m, g.x, g.y)) });
+    return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'encontro', op }, comum(m, g.x, g.y), hx) });
   }
   // "Gerar este lugar…": o lugar do ícone do marcador; o marcador fica ligado à cena que vai nascer (um passo de desfazer)
   function gerarLugar(o) {

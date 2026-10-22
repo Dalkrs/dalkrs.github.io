@@ -542,10 +542,13 @@ const Tracado = (() => {
        rio: o lugar tem rio ligado (false: a seção diz como ligar — rioNota, se o lugar diz de outro jeito; null = não tem
        rio nenhum); mar: com mar (o rio vai para ele); praca: tem praça (true: os três lugares; ou a lista dos que valem
        ali); pontes: tem pontes; portoesNota: o que os portões fazem ali (senão, "uma rua principal…"); relevo: false
-       tira a chave do relevo natural (o lugar já nasce do relevo). */
+       tira a chave do relevo natural (o lugar já nasce do relevo).
+       (lote 14, parte 14a) portoesHex, rioHex: o texto do que vem do hexágono do Mapa-múndi — no lugar da rosa dos
+       caminhos e da de onde vem e para onde vai o rio (a largura, as curvas, o afluente e o lago continuam). */
   function secao(t, K, mudou, cfg) {
     const { field, seg, toggle, btn, note, inSelect } = K, P = cfg.pre, linhas = [];
-    if (cfg.portoes) {
+    if (cfg.portoes && cfg.portoesHex) linhas.push(note(cfg.portoesHex));
+    else if (cfg.portoes) {
       const sortear = () => { const ids = IDS.slice(); for (let i = ids.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [ids[i], ids[k]] = [ids[k], ids[i]]; } const n = 2 + Math.floor(Math.random() * 3); t.portoes = IDS.filter(id => ids.slice(0, n).includes(id)); mudou(); };
       linhas.push(h('div', { class: 'ger-trl' }, rosa(P + '-portoes', cfg.portoes, t.portoes, true, v => { t.portoes = v; mudou(); }, null, 'Automático: como sempre'),
         h('div', { class: 'ger-trn' }, note(cfg.portoesNota || (cfg.portoes === 'Caminhos' ? 'De onde chegam os caminhos (um de cada direção ligada).' : 'Uma rua principal sai de cada portão até a praça.')),
@@ -558,7 +561,8 @@ const Tracado = (() => {
     if (cfg.rio === false) linhas.push(note(cfg.rioNota || 'Ligue "Com rio" para escolher de onde ele vem, para onde vai, a largura e as curvas.'));
     else if (cfg.rio) {
       const para = cfg.mar ? note('Com mar, o rio deságua no mar.') : rosa(P + '-rio-para', 'Para onde vai', t.rioPara, false, v => { t.rioPara = v; if (v === 'lago') t.lago = false; mudou(); }, ['lago', 'Lago'], 'Automático: do outro lado');
-      linhas.push(h('div', { class: 'ger-trl' }, rosa(P + '-rio-de', 'De onde vem o rio', t.rioDe, false, v => { t.rioDe = v; mudou(); }, null, 'Automático: como sempre'), para));
+      if (cfg.rioHex) linhas.push(note(cfg.rioHex));
+      else linhas.push(h('div', { class: 'ger-trl' }, rosa(P + '-rio-de', 'De onde vem o rio', t.rioDe, false, v => { t.rioDe = v; mudou(); }, null, 'Automático: como sempre'), para));
       const curv = h('input', { type: 'range', id: P + '-rio-curvas', min: 0, max: 10, step: 1, value: t.rioCurvas == null ? 4 : t.rioCurvas, 'aria-label': 'Curvas do rio: de reto a sinuoso', onchange: e => { t.rioCurvas = clampN(Math.round(Number(e.target.value)), 0, 10); mudou(); } });
       linhas.push(h('div', { class: 'ger-l' },
         field('Largura', seg(P + '-rio-larg', t.rioLarg || 'rio', LARGURAS, v => { t.rioLarg = v === 'rio' ? null : v; mudou(); }), 'stack'),
@@ -584,12 +588,14 @@ const Tracado = (() => {
   // o que mudou no traçado, em palavras ("portões ao norte e a leste · rio de oeste para leste · 2 pontes")
   function resumoDe(t, cfg) {
     const out = [];
-    if (cfg.portoes && t.portoes && t.portoes.length) out.push((cfg.portoes === 'Caminhos' ? 'caminhos: ' : 'portões: ') + nomes(t.portoes));
+    if (cfg.portoesHex) out.push('caminhos do mapa');
+    else if (cfg.portoes && t.portoes && t.portoes.length) out.push((cfg.portoes === 'Caminhos' ? 'caminhos: ' : 'portões: ') + nomes(t.portoes));
     if (cfg.muro && t.muroForma) out.push((cfg.muro.nome || 'muralha').toLowerCase() + ' ' + ((cfg.muro.formas.find(f => f[0] === t.muroForma) || [0, ''])[1]).toLowerCase());
     if (cfg.rio) {
       const r = [];
-      if (t.rioDe) r.push('de ' + DIR[t.rioDe].n.toLowerCase());
-      if (t.rioPara) r.push(t.rioPara === 'lago' ? 'até um lago' : 'para ' + DIR[t.rioPara].n.toLowerCase());
+      if (cfg.rioHex) r.push('do mapa');
+      if (t.rioDe && !cfg.rioHex) r.push('de ' + DIR[t.rioDe].n.toLowerCase());
+      if (t.rioPara && !cfg.rioHex) r.push(t.rioPara === 'lago' ? 'até um lago' : 'para ' + DIR[t.rioPara].n.toLowerCase());
       if (t.rioLarg && t.rioLarg !== 'rio') r.push(t.rioLarg === 'riacho' ? 'riacho' : 'rio largo');
       if (t.rioCurvas != null) r.push(t.rioCurvas <= 1 ? 'quase reto' : t.rioCurvas >= 8 ? 'bem sinuoso' : 'curvas ' + t.rioCurvas);
       if (t.afluente) r.push('com afluente');

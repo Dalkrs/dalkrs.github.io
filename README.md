@@ -1085,6 +1085,53 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **Os marcadores**: cada marca da história ganha o marcador oculto de ponto de interesse com o nome dela; o achado, o
   marcador novo `achado` (a moeda de ouro: `Achado: …`) — os dois só com a chave dos marcadores ligada.
 
+### A cena que nasce do hexágono do Mapa-múndi (lote 14, parte 14a)
+
+- **O tijolo do hexágono** (`hexParaCena`, `tijoloHex` em `mundo/nucleo.js`): a cena gerada num hexágono é o retângulo
+  do mundo que fica com ele — com a ponta para cima, da largura de um hexágono e da altura de uma fileira; deitado, o
+  contrário. Os tijolos cobrem o mundo sem sobrar nem sobrepor, então o lado de uma cena é o lado da cena do vizinho (ou
+  a metade dele): com a ponta para cima, os vizinhos de noroeste e de nordeste ficam com a metade esquerda e a direita do
+  lado de cima, o de leste com o lado direito inteiro, os de sudeste e sudoeste com as metades de baixo, o de oeste com
+  o esquerdo; deitado, o de norte em cima, os de nordeste e sudeste nas metades do lado direito, o de sul embaixo, os de
+  sudoeste e noroeste nas do esquerdo. O pedido leva o terreno do hexágono e dos seis vizinhos (pelo desenho: o bioma
+  das Cenas, a água ou nada; o desenho liso, campo), o número do mapa (para as sementes) e as linhas recortadas no
+  tijolo, em (u, v) de 0 a 1, na ordem do mapa: os rios (da nascente para a foz; o mais comprido primeiro, até três) e
+  os caminhos (as linhas de estrada e de trilha e as rotas de estrada e de trilha — a selvagem, a de rio e a de mar não
+  são caminho; a rota em cima da estrada conta uma vez, e a estrada vale mais; até seis), cada pedaço com as pontas na
+  borda (a linha continua no vizinho) ou dentro (ela acaba ali). O pedaço que corre em cima da borda fica de fora.
+- **"Gerar a cena aqui"** (no grupo) manda o hexágono do grupo junto, e a Região livre já preenchida com ele (o bioma, a
+  água — o rio, se o mapa tem; senão, nenhuma — e o caminho do mapa); no mar, o hexágono vai sem a Região. A janela abre
+  no Encontro, com a caixa do hexágono no alto: a chave "Com o hexágono do Mapa-múndi" (ligada) e a frase do que vem
+  dele ("Floresta (hexágono 12, −3): campo a leste, água a nordeste; o rio entra pelo oeste e sai pelo nordeste; a
+  estrada vai do sul ao leste."). A chave vale para o Encontro e a Região livre; desligada, o lugar de sempre. Preencher
+  a outra aba não mexe no que a janela lembra. Na aba que não aceita, a caixa diz por quê (o pântano e a água cobrem a
+  cena; o hexágono de água; o sem terreno: "pinte o terreno dele"). O modelo guarda as escolhas, não o hexágono.
+- **Os vizinhos nas bordas** (`HexCena`, 10c5-hexcena.js): em cada lado com vizinho de outro bioma, a fronteira é uma
+  linha ondulada — uma onda larga e o ruído, sorteados pelo par de hexágonos (a mesma semente dos dois lados) e medidos
+  pelo mundo ao longo do lado, com o sinal trocado de lá: a cena de cá e a de lá desenham a mesma linha, cada uma do seu
+  lado, e o vizinho entra num lugar e a cena entra na dele no outro. A linha some nas pontas do lado (nas quinas e no
+  meio do lado de cima e de baixo, onde três se encontram). A água do vizinho entra mais e segue pela borda toda que é
+  dela (na quina com outra água, não some), com a praia e a espuma, e passa da borda. A Mistura diz quanto os vizinhos
+  entram (pouca, média, muita); os de mesmo bioma não entram. Os pedacinhos soltos viram o que está em volta (os que
+  encostam na borda ficam: a outra metade deles está na cena do vizinho). Os patamares ficam a três quadrados da borda.
+- **O rio e os caminhos pelos lados certos**: o rio do mapa desce do ponto por onde entra ao por onde sai, pelo relevo
+  (o chão é alto de onde ele vem e baixo para onde vai, e baixo perto da água), entrando e saindo pelos pontos exatos da
+  borda (`Biomas.prenderPontas`): o mesmo ponto do mundo é o mesmo ponto relativo do lado, de cá e de lá, em qualquer
+  tamanho de cena. O que nasce ali dentro começa no meio; o que acaba ali, num lago; o que acaba na água do vizinho, na
+  água; o que vem da água nasce na terra mais perto; um segundo rio vira o afluente, do ponto dele. Os caminhos do mapa
+  vão de ponta a ponta pelo mais barato (as pontas a menos de dois quadrados, no mesmo lado, viram uma; o caminho que já
+  existe sai mais barato, e eles se juntam), com as pontes onde cruzam o rio.
+  - Na **Região livre**: a Água e o Caminho dizem o que vem do mapa (sem rio ou sem caminho no mapa, a escolha continua,
+    e o que se escolher ali é do mestre); a rosa do Traçado (de onde vem e para onde vai o rio, os caminhos) dá lugar à
+    nota, e a largura, as curvas, o afluente, o lago e as pontes continuam.
+  - No **Encontro**: o chão novo vem junto (mesmo num modelo de antes), com a situação no meio; a água dos vizinhos fica
+    fora do que a situação põe (o ensaio dela); o rio do mapa fica no lugar do da situação (ou vem antes dela); os
+    caminhos da situação vão até as pontas do mapa (cada ponta uma vez; o caminho que ia para a borda troca a ponta pela
+    do mapa) e as pontas que sobram vão até o caminho que já existe (ou ao meio). A rosa só conta quando o mapa não tem
+    caminho ali. No pântano e na água, o Encontro de sempre.
+- **O que sai igual**: sem o hexágono (ou com um que não presta, de água ou sem terreno), os planos e os desenhos de
+  todos os geradores de fora (conferidos contra a versão de antes: 312 planos e 50 desenhos).
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -2511,7 +2558,8 @@ o chão seco no mesmo traçado, a zona cobrindo a cena, a chave desligada, cada 
 `SO=encontro`, `cena`, `navio`, `mureta`, `mapa`, `regras` ou `eventos`);
 `mundo-cenas` confere o que "Gerar a cena aqui" e "Gerar este lugar…" mandam (o terreno, o caminho, a hora, o
 clima, o estilo, o nome e o atalho; e o que os eventos levam: o clima, o breu do eclipse, as zonas e o chão seco; e o
-clima do dia, sem evento, e o da região com ajuste), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
+clima do dia, sem evento, e o da região com ajuste; desde o lote 14, o hexágono e a Região preenchida, e a janela
+abrindo nas Cenas com eles), numa moldura que faz o papel da casca; `cenas-lote7e.rede`, numa mesa: o grupo
 no mapa gerando o encontro (de noite, com chuva, nórdico; com a seca e a assombração, o chão seco e a Névoa de
 espíritos), a janela já aberta que não é atropelada, a vila do
 marcador (cancelar, gerar de novo, abrir) e a jogadora sem os botões nem o estilo da região. `src/cenas/test/lote7f.js` confere a aba Tribo (as moradias, os tamanhos, os terrenos, as três chaves, travar clicando na praça, as escolhas guardadas, o modelo e o pedido já preenchido), a cena da aldeia (as paredes — o portão, a cerca, a paliçada e as moradias —, as Entradas ocultas que sabem a moradia e a do chefe, as fogueiras, os totens, as tochas, o relevo das torres e do fosso, o portão que abre), a tenda do chefe por dentro (pelos dois cliques na Entrada), as plantas de dentro de todas as moradias, a aldeia das palafitas (sobre o lago, os deques, o píer, a passarela, as portas para ela) e as regras dos planos em 120 sorteios (a do chefe, as moradias separadas e dentro da paliçada, a porta para a praça, a cabana de frente, as torres longe do portão, o riacho fora da aldeia, a trava; com `SO=aba`, `cena`, `interior`, `plantas`, `palafitas`, `regras` ou `pintores`); `cenas-lote7f.rede`, numa mesa: a aldeia dos iglus vai para a jogadora sem as Entradas, e o iglu do chefe por dentro, com o estrado de neve. `src/cenas/test/lote7g.js` confere a aba Porto (os dois lugares, os tamanhos, os terrenos, as três chaves e o terreno, que não mexem no traçado — nem os barcos — e não soltam a trava, travar clicando no navio, a trava que só vale no mesmo lugar e no mesmo tamanho, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), a cena do porto (as paredes — os prédios, o farol, que tapa a visão, e a amurada dos navios —, as Entradas ocultas dos prédios e das escotilhas, os lampiões, o relevo do mar, dos molhes, do convés — debaixo dos castelos — e da galeria do farol, a luz do farol, a passagem pela prancha), o porão do navio (pelos dois cliques na escotilha), a vila de pescadores (o barco na cabeça em T ou ao lado do píer comprido, a praia, o mercado do peixe, a ponta de pedras), as regras dos planos em 120 sorteios (os prédios separados e de frente para o mar, a frente da porta livre, a taverna, os navios nos lugares deles com a prancha na abertura — desenhada e por onde se passa —, os barcos fora dos lugares dos navios, a estrada que sai, nada de árvore no mar; e poucas árvores entre as casas, com a mata cheia para dentro da terra), o desenho do mar (fundo e escuro longe da beira) e a Cidade com mar (sem o mar, os planos de antes, conferidos pelo resumo; com ele, a muralha aberta, sem portão para o mar, os navios, o bairro do porto, a rua do porto, o rio, o recorte do porto até a borda do mapa do lado do mar e a cena; com `SO=aba`, `cena`, `porao`, `vila`, `regras`, `desenho` ou `cidade`); `cenas-lote7g.rede`, numa mesa: o porto grande vai para a jogadora sem as Entradas (com a amurada do navio), e o navio por dentro. `src/cenas/test/lote7h.js` confere as masmorras: as regras dos planos em 144 sorteios (os quatro tipos, os três tamanhos, com e sem os segredos e a escada de descida: o mesmo sorteio dá o mesmo nível; as escadas no chão e ligadas uma à outra; todo o chão alcançável; as portas entre casas abertas; os objetos no chão, sem um em cima do outro; as runas escondidas e só com os segredos; o que cada tipo tem), a janela "Gerar o nível" (pela Entrada posta à mão), a cena (no breu, as paredes, as portas trancadas e secretas, as runas escondidas, a Saída e a Entrada do nível 2; quem joga não vê as Entradas nem as runas), o nível 2 (dentro do nível 1), o desenho dos quatro tipos e a aba Masmorra do "Gerar um lugar…" (sem a hora e o clima, o nível escolhido, "Embaixo de" na ordem das famílias, a cena solta com a Saída sem destino, a cena dentro da de cima com a Saída de volta, o nome e o id pedidos pelo Mapa-múndi; com `SO=regras`, `janela`, `cena`, `descer`, `desenho` ou `aba`); `cenas-lote7h.rede`, numa mesa: a jogadora recebe a masmorra com a porta secreta como parede comum, sem as runas nem as Entradas, e a porta vira porta quando o mestre revela. `src/cenas/test/lote7i.js` confere a aba Ruínas (os cinco lugares, os tamanhos, os terrenos e as duas chaves, que não mexem no traçado, travar clicando nas ruínas, a trava que só vale no mesmo lugar e no mesmo tamanho e vai embora ao trocar o lugar, as escolhas guardadas e o pedido já preenchido do Mapa-múndi), as regras dos planos em 150 sorteios (o mesmo sorteio dá o mesmo lugar; as chaves e o terreno não mexem no traçado; a entrada da masmorra só com a chave, na escada ou na boca, no chão, alcançável andando de uma borda e sabendo o nível de baixo; as paredes que não se cruzam; o que cada lugar tem; a hera só com o mato, e nunca no telhado), a cena do templo (as paredes em ruína e as de visão das colunas, o relevo, a Entrada oculta da cripta), a cripta embaixo (pelos dois cliques na Entrada) e o desenho dos cinco lugares (com `SO=aba`, `regras`, `cena` ou `desenho`); `cenas-lote7i.rede`, numa mesa: o forte em ruínas vai para a jogadora com as paredes e o relevo, sem a Entrada da masmorra, e o mestre desce ao nível 1. `arvore-lote6` confere a Árvore sem mesa: a chave "Trancado", "Aberto para" e a
@@ -2870,4 +2918,23 @@ encolher no mapa pequeno, o "sem lugar", a árvore queimada sem brasas e os marc
 frequência, os cinco, longe do meio, o lugar de sempre sem achado, nunca sem pedir, a Região livre e o marcador na
 cena; com `SO=janela`, a Estação (nos lugares de fora, lembrada, no modelo, vinda do Mapa-múndi), a História do lugar e
 os Achados raros (no estado, no plano, lembrados, no modelo; o modelo de antes sem eles; na água e no pântano, sem) e a
-cena criada. O `mundo-cenas.test.js` confere a estação do calendário no pedido da cena.
+cena criada. O `mundo-cenas.test.js` confere a estação do calendário no pedido da cena. Na parte 14a do lote 14,
+`src/tests/lote14-nucleo.test.js` (sem navegador) confere o tijolo do hexágono: as seis direções de cada orientação, os
+tijolos cobrindo o mundo sem sobrar nem sobrepor (pontos sorteados), o lado de cada vizinho (inteiro ou a metade), o
+pedido (sem grade, nada; o terreno dele e dos vizinhos; o número do mapa), o recorte (a ordem do mapa, as pontas na
+borda ou dentro, a linha em cima da borda e a que só toca o canto de fora, a rota em cima da estrada uma vez só, as
+rotas que não são caminho), o ENCAIXE (o ponto por onde o rio e a estrada saem de um é o ponto por onde entram no
+vizinho, nas duas orientações) e os limites. O `src/cenas/test/lote14a.js` confere a cena: com `SO=motor`, o pedido
+conferido, os lados, o par, o chão (os vizinhos pelas bordas deles, até a fundura; a água; a Mistura; os de mesmo bioma
+não), o ENCAIXE do chão (a linha é a mesma conta dos dois lados, com o sinal trocado; as casas da borda de cá e de lá
+nunca se contradizem), a linha sumindo nas pontas (e a água seguindo na quina), sem pedacinhos soltos, a altura do rio,
+as pontas e a frase; com `SO=regiao`, a Região no hexágono (os vizinhos, o mar com a praia passando da borda, o rio pela
+ponta exata até a água, os caminhos pelas pontas, os patamares longe da borda, a Água escolhida sem rio no mapa, o rio
+que vem da água, o que acaba num lago, o que nasce ali, o afluente) e o ENCAIXE do rio e da estrada entre duas Regiões
+vizinhas de tamanhos diferentes; com `SO=encontro`, o Encontro (o chão novo, os vizinhos, o rio do mapa no lugar do
+riacho, os caminhos até as pontas, sem o da situação também, a água fora das casas, o pântano e a água como sempre,
+todas as situações sem erro, a trava, o rio acabando na água, a rosa, as manchas pelas bordas, os patamares); com
+`SO=janela`, a caixa no alto e a frase, o Traçado, a Região preenchida sem mexer no que a janela lembra, as notas, a
+chave desligada e ligada, o pântano, o modelo sem o hexágono, a cena criada e os avisos do hexágono de água e do sem
+terreno; com `SO=robusto`, pedidos sorteados nos dois lugares (sem erro e rápido). O `mundo-cenas.test.js` confere o
+hexágono e a Região preenchida no pedido da cena — e, de ponta a ponta, a janela abrindo nas Cenas com ele.

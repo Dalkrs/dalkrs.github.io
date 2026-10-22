@@ -776,6 +776,82 @@
     return { hexes: linha.length - 1, cubos: (linha.length - 1) * CUBOS_HEX, terreno: arred(terreno), linha };
   }
 
+  /* ---------------- (lote 14, parte 14a) a cena que nasce do hexágono ----------------
+     O "tijolo" do hexágono: o retângulo do mundo que fica com ele — com a ponta para cima, da largura de um hexágono (de
+     um centro ao do vizinho) e da altura de uma fileira; deitado, o contrário. Os tijolos cobrem o mundo sem sobrar nem
+     sobrepor (o lado de um é o lado do vizinho, ou a metade dele), então o rio que sai de uma cena por um ponto entra
+     na do vizinho pelo mesmo ponto. Os seis vizinhos ficam nos lados: com a ponta para cima, no e ne em cima (a metade
+     esquerda e a direita), l à direita, se e so embaixo (a direita e a esquerda), o à esquerda; deitado, n em cima, ne
+     e se à direita (a metade de cima e a de baixo), s embaixo, so e no à esquerda (a de baixo e a de cima). */
+  const VIZINHOS_HEX = {
+    pe: [['l', 1, 0], ['ne', 1, -1], ['no', 0, -1], ['o', -1, 0], ['so', -1, 1], ['se', 0, 1]],
+    deitado: [['se', 1, 0], ['ne', 1, -1], ['n', 0, -1], ['no', -1, 0], ['so', -1, 1], ['s', 0, 1]],
+  };
+  // o desenho do terreno → o bioma da cena ('agua': o mar ou o lago; o desenho liso — o de quem não escolheu — fica campo,
+  // como no Encontro); o hexágono sem terreno não diz nada (null)
+  const BIOMA_DA_TEX = { mato: 'campo', liso: 'campo', arvores: 'floresta', colinas: 'campo', montes: 'montanha', pedras: 'montanha', juncos: 'pantano', areia: 'deserto', neve: 'neve',
+    ondas: 'agua', lavoura: 'campo', ruinas: 'campo', lava: 'lava', cristais: 'cristais', selva: 'selva', savana: 'savana', tundra: 'tundra', corrompida: 'corrompida' };
+  const texDoTerreno = t => (!t ? '' : t.tex || (TERRENOS_PADRAO.find(x => x.id === t.id) || {}).tex || '');
+  const biomaDoHex = (m, q, r) => BIOMA_DA_TEX[texDoTerreno(hexInfoBase(m, q, r).terreno)] || null;
+  // o número do mapa (pelo id), para as sementes das fronteiras: dois mapas não dão as mesmas
+  const semDoMapa = m => { let h = 0x811c9dc5; for (const ch of String(m.id || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193); } return (h >>> 1) || 1; };
+  function tijoloHex(m, q, r) {
+    const s = num(m.grade.tam, 0) / R3, c = centroHex(m, q, r), pe = m.grade.orient !== 'deitado', w = pe ? s * R3 : s * 1.5, h = pe ? s * 1.5 : s * R3;
+    return { x0: c.x - w / 2, y0: c.y - h / 2, w, h };
+  }
+  /* Uma linha do mundo recortada no tijolo: os pedaços de dentro, na ordem da linha, em (u, v) de 0 a 1 (u para a
+     direita, v para baixo), até 24 pontos cada; ini e fim: a ponta está na borda (a linha continua no vizinho) ou é a
+     ponta da linha, ali dentro. O pedaço que corre em cima da borda (ou é só um ponto) fica de fora; o que corta um canto,
+     mesmo pequeno, fica (o caminho que passa pelo canto do vizinho continua nele). */
+  function recorteNoTijolo(pts, T) {
+    const out = [], E = 1e-4;
+    const uv = (x, y) => [Math.round(limitar((x - T.x0) / T.w, 0, 1) * 1e4) / 1e4, Math.round(limitar((y - T.y0) / T.h, 0, 1) * 1e4) / 1e4];
+    const naBorda = p => p[0] <= E || p[1] <= E || p[0] >= 1 - E || p[1] >= 1 - E;
+    let atual = null;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = xy(pts[i]), b = xy(pts[i + 1]), dx = b.x - a.x, dy = b.y - a.y;
+      // (Liang–Barsky: o trecho [t0, t1] do segmento que fica dentro)
+      let t0 = 0, t1 = 1, fora = false;
+      for (const [p, d] of [[-dx, a.x - T.x0], [dx, T.x0 + T.w - a.x], [-dy, a.y - T.y0], [dy, T.y0 + T.h - a.y]]) {
+        if (Math.abs(p) < 1e-12) { if (d < 0) fora = true; continue; }
+        if (p < 0) t0 = Math.max(t0, d / p); else t1 = Math.min(t1, d / p);
+      }
+      if (fora || t1 < t0) { if (atual) { out.push(atual); atual = null; } continue; }
+      const pa = uv(a.x + dx * t0, a.y + dy * t0), pb = uv(a.x + dx * t1, a.y + dy * t1);
+      if (!atual) atual = [pa];
+      const u = atual[atual.length - 1];
+      if (u[0] !== pb[0] || u[1] !== pb[1]) atual.push(pb);
+      if (t1 < 1) { out.push(atual); atual = null; }
+    }
+    if (atual) out.push(atual);
+    const compr = l => { let s = 0; for (let i = 1; i < l.length; i++) s += Math.hypot(l[i][0] - l[i - 1][0], l[i][1] - l[i - 1][1]); return s; };
+    return out.filter(l => l.length > 1 && compr(l) >= 0.005 && l.some((p, i) => i > 0 && !naBorda([(p[0] + l[i - 1][0]) / 2, (p[1] + l[i - 1][1]) / 2])))
+      .map(l => { const n = l.length, pts2 = n <= 24 ? l : Array.from({ length: 24 }, (_, k) => l[Math.round(k * (n - 1) / 23)]); return { pts: pts2, ini: naBorda(l[0]), fim: naBorda(l[n - 1]) }; });
+  }
+  /* A cena do hexágono (q, r): → { k ('q,r'), q, r, orient, sem (o número do mapa), ter (o bioma dele, ou 'agua', ou
+     null), nome (o do terreno), viz: { direção: bioma }, rios: [{ pts, ini, fim }] (da nascente para a foz; o mais
+     comprido primeiro), caminhos: [{ t, pts, ini, fim }] } — os rios são as linhas de rio; os caminhos, as linhas de
+     estrada e de trilha e as rotas de estrada e de trilha (o mesmo caminho desenhado duas vezes — a rota em cima da
+     estrada — fica um só; a estrada vale mais que a trilha). Sem grade: null. */
+  function hexParaCena(m, q, r) {
+    if (!temGrade(m)) return null;
+    const T = tijoloHex(m, q, r), pe = m.grade.orient !== 'deitado', viz = {}, rios = [], caminhos = [];
+    for (const [d, dq, dr] of VIZINHOS_HEX[pe ? 'pe' : 'deitado']) viz[d] = biomaDoHex(m, q + dq, r + dr);
+    for (const o of Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(o) || !Array.isArray(o.pts) || o.pts.length < 2) continue;
+      const t = o.k === 'l' && tem(LINHAS, o.estilo) ? o.estilo : o.k === 't' && (o.via === 'estrada' || o.via === 'trilha') ? o.via : null;
+      if (t) for (const pc of recorteNoTijolo(o.pts, T)) { if (t === 'rio') rios.push(pc); else caminhos.push(Object.assign({ t }, pc)); }
+    }
+    const perto = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.05;
+    const mesmo = (a, b) => { const a0 = a.pts[0], a1 = a.pts[a.pts.length - 1], b0 = b.pts[0], b1 = b.pts[b.pts.length - 1]; return (perto(a0, b0) && perto(a1, b1)) || (perto(a0, b1) && perto(a1, b0)); };
+    const cam = [];
+    for (const c of caminhos) { const i = cam.findIndex(x => mesmo(x, c)); if (i < 0) cam.push(c); else if (c.t === 'estrada') cam[i].t = 'estrada'; }
+    const compr = pc => { let s = 0; for (let i = 1; i < pc.pts.length; i++) s += Math.hypot(pc.pts[i][0] - pc.pts[i - 1][0], pc.pts[i][1] - pc.pts[i - 1][1]); return s; };
+    rios.sort((a, b) => compr(b) - compr(a));
+    const t0 = hexInfoBase(m, q, r).terreno;
+    return { k: q + ',' + r, q, r, orient: pe ? 'pe' : 'deitado', sem: semDoMapa(m), ter: biomaDoHex(m, q, r), nome: t0 ? texto(t0.nome, '', 60).trim() : '', viz, rios: rios.slice(0, 3), caminhos: cam.slice(0, 6) };
+  }
+
   /* ---------------- viagem ---------------- */
   const n1 = n => String(Math.round(n * 10) / 10).replace('.', ',');
   const plHex = n => (n === 1 ? '1 hexágono' : n + ' hexágonos');
@@ -3162,7 +3238,7 @@
     dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
-    terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
+    terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, VIZINHOS_HEX, BIOMA_DA_TEX, tijoloHex, hexParaCena, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
